@@ -71,7 +71,7 @@ function requireCantidad(value: unknown, audit: AdminAuditFields): number {
   }
   if (n < CANTIDAD_MIN || n > CANTIDAD_MAX) {
     throw new AdminActionError(
-      `La cantidad tiene que estar entre ${CANTIDAD_MIN} y ${CANTIDAD_MAX} por acción. Para más, repetí la operación y queda registrada por separado.`,
+      `La cantidad tiene que estar entre ${CANTIDAD_MIN} y ${CANTIDAD_MAX} por acción. Para más, repite la operación y queda registrada por separado.`,
       400,
       audit
     );
@@ -136,17 +136,16 @@ async function requireTargetUser(
 export async function POST(request: Request) {
   return withAdminAction("grant_credits", async ({ sb }) => {
     const body = await readBody(request);
-    const targetUserId = requireUuid(body.targetUserId, "targetUserId");
-
-    // Cantidad y motivo se validan antes de tocar la DB, pero DESPUÉS de tener
-    // el id: así la fila de error ya dice de qué usuario se trataba.
-    const auditPre: AdminAuditFields = {
+    const targetUserId = requireUuid(body.targetUserId, "targetUserId", {
       targetType: "credit_grant",
-      meta: { targetUserIdNoValidado: targetUserId },
-    };
-    const cantidad = requireCantidad(body.cantidad, auditPre);
-    const motivo = requireMotivo(body.motivo, auditPre);
+      meta: { targetUserIdRecibido: body.targetUserId ?? null },
+    });
 
+    // ORDEN: primero se confirma que el usuario EXISTE, y recién después se
+    // valida el resto. Al revés (como estaba), un error de cantidad o motivo
+    // sobre un usuario perfectamente válido quedaba con target_user_id NULL y el
+    // id colgado en meta — o sea, fuera del índice (target_user_id, created_at)
+    // que es justo por donde se consulta el historial de un usuario.
     const targetEmail = await requireTargetUser(sb, targetUserId);
     // Desde acá el usuario está verificado: la FK de target_user_id no falla.
     const audit: AdminAuditFields = {
@@ -155,13 +154,25 @@ export async function POST(request: Request) {
       targetType: "credit_grant",
     };
 
+    // Los errores de validación llevan lo que se INTENTÓ: sin esto la fila dice
+    // "cantidad fuera de rango" sin decir nunca cuánto se pidió.
+    const auditIntento: AdminAuditFields = {
+      ...audit,
+      meta: {
+        cantidadPedida: body.cantidad ?? null,
+        motivoPedido: typeof body.motivo === "string" ? body.motivo : null,
+      },
+    };
+    const cantidad = requireCantidad(body.cantidad, auditIntento);
+    const motivo = requireMotivo(body.motivo, auditIntento);
+
     const grantId = await grantCredits(targetUserId, SOURCE_ADMIN, cantidad, {
       noExpire: true,
     });
 
     if (!grantId) {
       throw new AdminActionError(
-        "No se pudo otorgar el lote (el insert al ledger falló). Revisá los logs.",
+        "No se pudo otorgar el lote (el insert al ledger falló). Revisa los logs.",
         500,
         { ...audit, meta: { cantidad, motivo } }
       );
@@ -186,7 +197,7 @@ export async function DELETE(request: Request) {
     const body = await readBody(request);
     const auditBase: AdminAuditFields = {
       targetType: "credit_grant",
-      meta: { reversion: true },
+      meta: { reversion: true, grantIdRecibido: body.grantId ?? null },
     };
     const grantId = requireUuid(body.grantId, "grantId", auditBase);
     const motivo = optionalMotivo(body.motivo);
@@ -235,10 +246,14 @@ export async function DELETE(request: Request) {
       const usados = grant.amount - grant.remaining;
       throw new AdminActionError(
         grant.remaining === 0
-          ? `El lote ya no tiene saldo (consumido o revertido antes): no hay nada que revertir. Si necesitás dejar constancia, agregá una nota interna en la ficha del usuario.`
-          : `El usuario ya consumió ${usados} de ${grant.amount} análisis de este lote, así que no se puede revertir. Dejá una nota interna en su ficha explicando el ajuste.`,
+          ? `El lote ya no tiene saldo (consumido o revertido antes): no hay nada que revertir. Si necesitas dejar constancia, agrega una nota interna en la ficha del usuario.`
+          : `El usuario ya consumió ${usados} de ${grant.amount} análisis de este lote, así que no se puede revertir. Deja una nota interna en su ficha explicando el ajuste.`,
         422,
-        { ...audit, before: { amount: grant.amount, remaining: grant.remaining } }
+        {
+          ...audit,
+          before: { amount: grant.amount, remaining: grant.remaining },
+          meta: { ...(audit.meta as object), consumidos: usados },
+        }
       );
     }
 
@@ -257,7 +272,7 @@ export async function DELETE(request: Request) {
       throw new AdminActionError(
         updError
           ? `No se pudo revertir el lote: ${updError.message}`
-          : "El lote cambió mientras se revertía (el usuario consumió un análisis). Volvé a mirarlo.",
+          : "El lote cambió mientras se revertía (el usuario consumió un análisis). Míralo de nuevo.",
         409,
         audit
       );
