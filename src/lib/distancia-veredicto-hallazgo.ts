@@ -45,8 +45,9 @@ import type {
 //
 // · AJUSTA SUPUESTOS ⇒ 30%. Un tope de 15% dejaría al 61% de los AJUSTA rotulados
 //   "estructural" — el veredicto que literalmente se llama "ajusta supuestos" diría que no
-//   hay ajuste posible. Con 30% quedan 11%, que es la cola real de la distribución
-//   (p90 = 31,4%). Ninguna de estas filas dispara Gate 1 (0 brazos en las 143).
+//   hay ajuste posible. Con 30% quedan 11% según el sweep — y solo 1% (2 de 143) una vez
+//   que el plazo pasa a tramos comerciales, porque el redondeo a 30 años rescata la cola.
+//   Ninguna de estas filas dispara Gate 1 (0 brazos en las 143).
 //
 // · BUSCAR OTRA ⇒ 15%. Acá el veredicto YA disparó al menos un brazo del Gate 1, así que
 //   la vara para declararlo "recuperable" es más alta a propósito. El corpus lo respalda:
@@ -65,6 +66,14 @@ export const DIST_PLAZO_TOPE_ANIOS = 30;
 
 /** Tramo comercial del plazo: los bancos ofrecen 15/20/25/30, no años sueltos. */
 export const DIST_PLAZO_TRAMO_ANIOS = 5;
+
+// Rango EXTENDIDO para el caso estructural. Cuando ninguna palanca cruza dentro del tope,
+// la frase necesita el delta mínimo REAL — "más de un 15%" es el umbral, no el dato, y deja
+// al usuario sin saber si está a 16% o a 80%. Estos límites son de búsqueda, no promesas:
+// lo que se encuentra acá NUNCA entra a `palancas` (esas son solo las accionables), solo
+// alimenta `deltaMinimoFueraDeTope` para respaldar la frase dura con un número.
+const DIST_EXT_ARRIENDO_MAX = 2.5;  // +150%
+const DIST_EXT_PRECIO_MIN = 0.30;   // −70%
 
 /** Precisión de la bisección de arriendo/precio, en puntos porcentuales. */
 const DIST_PREC_PTS = 0.1;
@@ -226,6 +235,34 @@ export function buildHallazgoDistanciaVeredicto(p: {
   const palancaMasBarata = palancas[0] ?? null;
   const esEstructural = palancas.length === 0;
 
+  // Estructural: se busca el delta mínimo en rango EXTENDIDO, solo para respaldar la frase
+  // dura con el número real. No entra a `palancas` — no es accionable, es evidencia. Se
+  // computa solo en este caso (2 bisecciones extra) para no pagarlo en los recuperables.
+  let deltaMinimoFueraDeTope: HallazgoDistanciaVeredicto["valor"]["deltaMinimoFueraDeTope"] = null;
+  if (esEstructural) {
+    const candidatos: { palanca: "arriendo" | "precio"; deltaPct: number }[] = [];
+    const fArrExt = biseccionFactor(
+      (f) => alcanzaMeta(p.veredictoAtPatch({ arriendo: Math.round(p.arriendo * f) }), veredictoObjetivo),
+      DIST_EXT_ARRIENDO_MAX,
+      true,
+    );
+    if (fArrExt != null) {
+      candidatos.push({ palanca: "arriendo", deltaPct: Math.round((fArrExt - 1) * 1000) / 10 });
+    }
+    const fPreExt = biseccionFactor(
+      (f) => alcanzaMeta(p.veredictoAtPatch({ precio: p.precioUF * f }), veredictoObjetivo),
+      DIST_EXT_PRECIO_MIN,
+      false,
+    );
+    if (fPreExt != null) {
+      candidatos.push({ palanca: "precio", deltaPct: Math.round((fPreExt - 1) * 1000) / 10 });
+    }
+    // El "mínimo" es el de menor esfuerzo relativo; null si ni el rango extendido cruza
+    // (existe: hay deals que no llegan ni al +150% de arriendo).
+    candidatos.sort((a, b) => Math.abs(a.deltaPct) - Math.abs(b.deltaPct));
+    deltaMinimoFueraDeTope = candidatos[0] ?? null;
+  }
+
   // Solo para BUSCAR OTRA: ¿el salto de DOS bandas cae en rango? Informativo; si no, null.
   const palancaHastaComprar =
     p.veredictoBase === "BUSCAR OTRA" && !esEstructural
@@ -244,11 +281,24 @@ export function buildHallazgoDistanciaVeredicto(p: {
 
   if (esEstructural) {
     titular = "Ningún ajuste realista lo lleva al veredicto de arriba.";
-    fraseCanonica =
-      `Para que tu veredicto ${p.veredictoBase} pasara a ${objetivoNombre} tendrías que subir el arriendo ` +
-      `más de un ${topeAplicado}%, o pagar más de un ${topeAplicado}% menos por el depto, o estirar el crédito ` +
-      `sobre los ${DIST_PLAZO_TOPE_ANIOS} años. Ninguna de las tres es un ajuste de supuestos: la brecha es del ` +
-      `deal, no de cómo lo estás mirando.`;
+    // Con delta mínimo real, la frase cita el HECHO ("ni bajando el precio un 34%") en vez del
+    // umbral ("más de un 15%") — el umbral es nuestra vara, el hecho es del deal. Sin él
+    // (rango extendido tampoco cruza) la frase es aún más dura y no necesita número.
+    const dm = deltaMinimoFueraDeTope;
+    if (dm) {
+      const via =
+        dm.palanca === "precio"
+          ? `bajando el precio un ${fmtPct(Math.abs(dm.deltaPct))}%`
+          : `subiendo el arriendo un ${fmtPct(Math.abs(dm.deltaPct))}%`;
+      fraseCanonica =
+        `Ni ${via} este depto llega a ${objetivoNombre}, y estirar el crédito a ${DIST_PLAZO_TOPE_ANIOS} años ` +
+        `tampoco alcanza. La brecha es del deal, no de cómo lo estás mirando.`;
+    } else {
+      fraseCanonica =
+        `No hay ajuste de supuestos que lleve esto a ${objetivoNombre}: ni subiendo el arriendo a más del ` +
+        `doble, ni pagando un tercio del precio, ni estirando el crédito a ${DIST_PLAZO_TOPE_ANIOS} años. ` +
+        `La brecha es del deal, no de cómo lo estás mirando.`;
+    }
   } else {
     const l = palancaMasBarata!;
     const d = fmtPct(Math.abs(l.deltaPct));
@@ -282,6 +332,7 @@ export function buildHallazgoDistanciaVeredicto(p: {
       palancaMasBarata,
       palancaHastaComprar,
       esEstructural,
+      deltaMinimoFueraDeTope,
       topePct: topeAplicado,
       brazosGate1Activos: p.brazosGate1Activos,
       modalidad: p.modalidad,

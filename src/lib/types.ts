@@ -615,6 +615,11 @@ export interface HallazgoDistanciaVeredicto {
     palancaHastaComprar: PalancaDistancia | null;
     /** Ninguna palanca cruza dentro del tope ⇒ no hay ajuste realista que lo salve. */
     esEstructural: boolean;
+    /** Solo cuando `esEstructural`: el delta mínimo REAL buscado en rango extendido
+     *  (arriendo +150% · precio −70%), para que la frase dura cite el hecho y no el umbral
+     *  ("ni bajando el precio un 34%…" en vez de "más de un 15%"). NO es accionable — por eso
+     *  no entra a `palancas`. null si ni el rango extendido cruza, o si no es estructural. */
+    deltaMinimoFueraDeTope: { palanca: "arriendo" | "precio"; deltaPct: number } | null;
     /** Tope de honestidad aplicado a arriendo y precio (%), calibrado sobre el corpus.
      *  30 para AJUSTA SUPUESTOS · 15 para BUSCAR OTRA (el plazo tiene su propio tope: 30 años). */
     topePct: number;
