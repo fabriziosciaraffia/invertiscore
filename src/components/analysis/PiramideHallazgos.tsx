@@ -87,6 +87,23 @@ export function ordenarHallazgosPiramide(
 }
 
 /**
+ * Orden para el DOCUMENTO (PDF), que sí lista la distancia al veredicto: ahí no hay
+ * drawers ni "La posición de Franco" clickeable, así que el hallazgo tiene que aparecer
+ * entre los demás o se pierde. Mismo gather y mismo criterio Filosofía 1 que la web —
+ * la única diferencia es que no se excluye. Función aparte y no un flag booleano para
+ * que en el call site se lea QUÉ superficie se está armando.
+ */
+export function ordenarHallazgosDocumento(
+  results: FullAnalysisResult | null | undefined,
+  aiAnalysis: AIAnalysisV2 | null | undefined,
+): Hallazgo[] {
+  const gathered = gatherHallazgos(results, aiAnalysis);
+  const adversos = gathered.filter(esAdverso).sort(cmpDecisividad);
+  const favorables = gathered.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
+  return [...adversos, ...favorables];
+}
+
+/**
  * Reparto visual de la pirámide: 1 + 2 + resto. `ordenarHallazgosPiramide` ya excluye
  * `distancia_veredicto`, así que acá no hay nada que filtrar — se conserva el defensive
  * filter por si un caller pasa un array armado a mano.

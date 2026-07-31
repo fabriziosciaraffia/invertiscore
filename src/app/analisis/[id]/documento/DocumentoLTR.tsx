@@ -16,7 +16,7 @@ import type {
   Hallazgo,
   HallazgoDistanciaVeredicto,
 } from "@/lib/types";
-import { ordenarHallazgosPiramide, esAdverso } from "@/components/analysis/PiramideHallazgos";
+import { ordenarHallazgosDocumento, esAdverso } from "@/components/analysis/PiramideHallazgos";
 import { fmtUF, fmtMoney } from "@/components/analysis/utils";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
@@ -143,7 +143,9 @@ export function DocumentoLTR({
           : "Las tres deben cumplirse a la vez para que el veredicto suba a Comprar. Negociar mueve estos números — cuánto exactamente, se recalcula con el precio de cierre en mano, no antes."));
 
   // ── Hallazgos (pirámide, orden Filosofía 1) ──
-  const hallazgos = ordenarHallazgosPiramide(results, ai);
+  // Documento: incluye la distancia al veredicto (la web la movió al drawer de "La
+  // posición de Franco", que en papel no existe).
+  const hallazgos = ordenarHallazgosDocumento(results, ai);
   const adversos = hallazgos.filter(esAdverso);
   const favorables = hallazgos.filter((h) => !esAdverso(h));
 
