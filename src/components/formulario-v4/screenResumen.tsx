@@ -34,8 +34,16 @@ import type { useWizardV4 } from "./useWizardV4";
 import type { WizardV4Answers, Antiguedad } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
-import { comprarLocked, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
-import type { Anomalia, Regla } from "@/lib/plausibilidad";
+import { buildLtrPayload, buildStrPayload, comprarLocked, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
+import {
+  evaluarPlausibilidad,
+  desdeBodyLtr,
+  desdeBodyStr,
+  formatearNumero,
+  formatearPct,
+  type Anomalia,
+  type Regla,
+} from "@/lib/plausibilidad";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
 import { dormLabel, fmtCLP, fmtUF, parseNum, parseDecimalLocale, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
@@ -608,13 +616,16 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const retornoBruto = pUF > 0 && data.ufCLP > 0 && arriendoVal > 0
     ? (arriendoVal * 12) / (pUF * data.ufCLP)
     : 0;
+  // Formateo con los helpers del MÓDULO, no propios: tener dos era el motivo de
+  // que el mismo valor saliera "106667" acá y "106.667" en el estado anomalía, y
+  // de que un retorno de 0,004% se mostrara como "0,0%" perdiendo la información.
   const derivadosResumen = [
-    { label: "Precio", valor: ufM2 > 0 ? `${Math.round(ufM2)} UF/m²` : "—" },
+    { label: "Precio", valor: ufM2 > 0 ? `${formatearNumero(ufM2)} UF/m²` : "—" },
     { label: "Dividendo", valor: cuota > 0 ? `${fmtCLP(cuota)}/mes` : "—" },
     { label: "Pie", valor: pct > 0 ? fmtCLP(pieUF(a, data.ufCLP) * data.ufCLP) : "—" },
     {
       label: esLtr ? "Retorno bruto" : "Retorno bruto LTR",
-      valor: retornoBruto > 0 ? `${(retornoBruto * 100).toFixed(1).replace(".", ",")}% anual` : "—",
+      valor: retornoBruto > 0 ? `${formatearPct(retornoBruto)} anual` : "—",
     },
   ];
   const consumo = lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna);
@@ -687,13 +698,51 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   }
 
   /** CTA del resumen: abre el modal de confirmación. NO dispara el POST todavía. */
+  /**
+   * Chequeo de plausibilidad EN EL CLIENTE, con el mismo módulo puro que corre
+   * el server (sin red, sin DB) y sobre los MISMOS payloads que se van a enviar.
+   * No duplica el punto de verdad: es el mismo archivo. El 422 sigue siendo la
+   * autoridad y el fallback — esto solo evita pedirle al usuario que confirme un
+   * imposible antes de avisarle que es imposible.
+   */
+  function anomaliasLocales(): Anomalia[] {
+    const uf = data.ufCLP;
+    if (!(uf > 0) || !mod) return [];
+    try {
+      if (mod === "str") return evaluarPlausibilidad(desdeBodyStr(buildStrPayload(a, ctx), uf));
+      const ltr = desdeBodyLtr(buildLtrPayload(a, ctx), uf);
+      if (mod === "ltr") return evaluarPlausibilidad(ltr);
+      // AMBAS: precio/superficie son compartidos y la rama STR solo aporta sus
+      // overrides — misma composición que /api/analisis/locked.
+      return evaluarPlausibilidad({ ...ltr, str: desdeBodyStr(buildStrPayload(a, ctx), uf).str });
+    } catch {
+      return []; // fail-open: si algo falla acá, el server igual valida.
+    }
+  }
+
   function abrirConfirmacion() {
     // Blur del input activo ANTES de abrir. En iOS el teclado virtual se queda
     // arriba y el modal nace aplastado contra el borde superior; es el detalle
     // que más rompe en mobile y el que más se olvida.
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    setError(""); setAnomalias([]); setModalAbierto(true);
-    trackWizard(posthog, "wizard4_confirm_shown", { modalidad: mod, camino: canAnalyze ? "credito" : "compra" });
+    // El modal NACE en el estado correcto. Sin esto abría en estado limpio —
+    // "Confirma antes de generar", barra en Ink, tono tranquilo— mostrando
+    // 106.667 UF/m² como si fuera normal, y la alerta recién aparecía DESPUÉS
+    // de que el usuario confirmara. Le pedíamos confirmar un imposible.
+    const locales = anomaliasLocales();
+    setError(locales.length ? locales[0].mensaje : "");
+    setAnomalias(locales);
+    setModalAbierto(true);
+    if (locales.length) {
+      // Mismo bloqueo que tras un 422: el CTA queda inhabilitado hasta que el
+      // usuario edite algo, así cerrar y volver a presionar no es un loop.
+      setHuellaBloqueada(huellaActual);
+      trackWizard(posthog, "wizard4_input_implausible", {
+        modalidad: mod, reglas: locales.map((x) => x.regla), origen: "cliente",
+      });
+    } else {
+      trackWizard(posthog, "wizard4_confirm_shown", { modalidad: mod, camino: canAnalyze ? "credito" : "compra" });
+    }
   }
 
   /** Primario del modal: recién acá sale el POST. */
@@ -953,7 +1002,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         </button>
       )}
 
-      {error && (
+      {(error || anomalias.length > 0) && (
         <div className="mt-4 rounded-xl border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--signal-red)_5%,transparent)] px-4 py-3">
           {/* Con anomalías se muestra la de mayor prioridad (el server ya las
               ordenó). El resto vive en `anomalias` para el modal de PIEZA B. */}
