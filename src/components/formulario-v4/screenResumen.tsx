@@ -873,7 +873,9 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         )}
         <div className="w-full max-w-[360px] shrink-0 flex flex-col justify-end gap-1.5">
           <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : ctaCaveat(isLoggedIn, canAnalyze, mod, a.comuna)}</p>
+          {(incompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
+            <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
+          )}
         </div>
       </div>
 
@@ -881,7 +883,9 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-bg)_92%,transparent)] backdrop-blur px-4 py-3">
         <div className="max-w-3xl mx-auto flex flex-col items-stretch gap-1.5">
           <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : ctaCaveat(isLoggedIn, canAnalyze, mod, a.comuna)}</p>
+          {(incompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
+            <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
+          )}
         </div>
       </div>
     </div>
@@ -894,15 +898,57 @@ function fuenteArriendo(n: number): string {
   return "sin comparables publicados — estimación de mercado";
 }
 
-function ctaCaveat(isLoggedIn: boolean, canAnalyze: boolean, mod: string | undefined, comuna: string | undefined): string {
-  if (isLoggedIn && !canAnalyze) return `Estás comprando este análisis${mod === "both" ? " comparativo" : ""}${comuna ? ` de ${comuna}` : ""}. Pagas y se desbloquea al instante.`;
-  return "Después de esto, el informe es final.";
+/**
+ * Línea de consumo bajo el CTA. Depende del TIER COMPLETO, no de un booleano.
+ *
+ * Antes decía "1 crédito" a todo el mundo, incluidos ilimitados y admins que no
+ * gastan nada — copy falso verificado en producción, en un producto cuya
+ * propuesta es la franqueza. `null` = no se renderiza nada (es la respuesta
+ * correcta para quien no consume: mejor silencio que una mención inventada).
+ *
+ * Vocabulario: "el análisis", nunca "crédito". El usuario compra análisis; el
+ * crédito es contabilidad interna.
+ */
+export function lineaConsumo(
+  tier: TierInfo | null,
+  isLoggedIn: boolean,
+  canAnalyze: boolean,
+  mod: string | undefined,
+  comuna: string | undefined,
+): string | null {
+  const sufijoMod = mod === "both" ? " comparativo" : "";
+
+  // Guest: rama propia. Antes caía en "Después de esto, el informe es final."
+  // bajo un botón que dice "Crear cuenta gratis" — dos mensajes que no se hablan.
+  if (!isLoggedIn) return "Creas tu cuenta y el primero va por cuenta de Franco.";
+
+  // Sin saldo: compra directa.
+  if (!canAnalyze) {
+    return `Estás comprando este análisis${sufijoMod}${comuna ? ` de ${comuna}` : ""}. Pagas y se desbloquea al instante.`;
+  }
+
+  // Ilimitado y admin NO consumen: el bloque no se renderiza. Cero mención.
+  if (tier?.isUnlimited || tier?.isAdmin) return null;
+
+  // Welcome: el backend lo cobra ANTES del ledger, así que manda sobre el saldo.
+  if (tier?.welcomeAvailable) {
+    return "Este es tu análisis de bienvenida — el primero va por cuenta de Franco.";
+  }
+
+  // Saldo finito. Con plan mostramos el total del ciclo ("3 de 10"); sin plan
+  // (créditos comprados sueltos) no hay denominador que mostrar.
+  const saldo = tier?.credits ?? 0;
+  const totalPlan = tier?.activePlan === "plan10" ? 10 : tier?.activePlan === "plan50" ? 50 : null;
+  const quedan = saldo === 1 ? "Te queda 1" : `Te quedan ${saldo}`;
+  return `Esto usa uno de tus análisis. ${quedan}${totalPlan ? ` de ${totalPlan}` : ""}.`;
 }
 
 function FinalCTA({ mod, isLoggedIn, canAnalyze, submitting, incompleto, onGenerar, onDesbloquear, onTerminal }: { mod: string | undefined; isLoggedIn: boolean; canAnalyze: boolean; submitting: boolean; incompleto: boolean; onGenerar: () => void; onDesbloquear: () => void; onTerminal: () => void }) {
   const cls = "font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed";
   if (canAnalyze) {
-    return <button type="button" onClick={onGenerar} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</> : <>✦ Generar análisis · 1 crédito</>}</button>;
+    // Sin "· 1 crédito": era falso para ilimitados y admins, y el consumo real
+    // lo dice `lineaConsumo` según el tier. El botón solo nombra la acción.
+    return <button type="button" onClick={onGenerar} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</> : <>✦ Generar el análisis</>}</button>;
   }
   if (isLoggedIn) {
     return <button type="button" onClick={onDesbloquear} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}</button>;
