@@ -226,6 +226,26 @@ class ApiError extends Error {
   }
 }
 
+/**
+ * Lee el body de una respuesta fallida y arma el SubmitResult. Único lugar donde
+ * se parsea un error del server: los tres call-sites que hacían `fetch` a mano
+ * dejaban caer `anomalias` cada uno por su cuenta (así se perdía el mensaje del
+ * guard en el camino locked).
+ *
+ * Devuelve el ARRAY COMPLETO, no el primer mensaje aplanado: el consumidor de
+ * hoy muestra `anomalias[0]` en la caja de error, pero el modal compartido de
+ * PIEZA B va a necesitar todas. La propagación es definitiva; lo único que
+ * cambia después es dónde se pinta.
+ */
+async function errorDeRespuesta(res: Response, fallback: string): Promise<SubmitResult> {
+  const err = await res.json().catch(() => ({}));
+  return {
+    ok: false,
+    error: err.error || fallback,
+    anomalias: Array.isArray(err.anomalias) ? (err.anomalias as Anomalia[]) : undefined,
+  };
+}
+
 async function postJson(url: string, body: unknown): Promise<{ id: string }> {
   const res = await fetch(url, {
     method: "POST",
@@ -233,11 +253,8 @@ async function postJson(url: string, body: unknown): Promise<{ id: string }> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new ApiError(
-      err.error || "Error al crear el análisis",
-      Array.isArray(err.anomalias) ? (err.anomalias as Anomalia[]) : undefined,
-    );
+    const { error, anomalias } = await errorDeRespuesta(res, "Error al crear el análisis");
+    throw new ApiError(error!, anomalias);
   }
   return res.json();
 }
@@ -270,12 +287,7 @@ export async function submitConCredito(a: WizardV4Answers, ctx: SubmitContext): 
       }),
     });
     if (!chargeRes.ok) {
-      const err = await chargeRes.json().catch(() => ({}));
-      return {
-        ok: false,
-        error: err.error || "No pudimos procesar tu análisis. Intenta de nuevo.",
-        anomalias: Array.isArray(err.anomalias) ? (err.anomalias as Anomalia[]) : undefined,
-      };
+      return errorDeRespuesta(chargeRes, "No pudimos procesar tu análisis. Intenta de nuevo.");
     }
     const { chargeId } = (await chargeRes.json()) as { chargeId: string };
     const ambasGroupId = crypto.randomUUID();
@@ -316,10 +328,7 @@ export async function comprarLocked(a: WizardV4Answers, ctx: SubmitContext): Pro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tipoAnalisis: "both", ltr: buildLtrPayload(a, ctx), str: buildStrPayload(a, ctx) }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return { ok: false, error: err.error || "No se pudo crear el análisis. Intenta de nuevo." };
-      }
+      if (!res.ok) return errorDeRespuesta(res, "No se pudo crear el análisis. Intenta de nuevo.");
       const { ltrId, strId } = (await res.json()) as { ltrId: string; strId: string };
       return { ok: true, redirect: `/checkout?product=single&analysisId=${ltrId}&companionStrId=${strId}` };
     }
@@ -329,10 +338,7 @@ export async function comprarLocked(a: WizardV4Answers, ctx: SubmitContext): Pro
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return { ok: false, error: err.error || "No se pudo crear el análisis. Intenta de nuevo." };
-    }
+    if (!res.ok) return errorDeRespuesta(res, "No se pudo crear el análisis. Intenta de nuevo.");
     const { id } = (await res.json()) as { id: string };
     return { ok: true, redirect: `/checkout?product=single&analysisId=${id}` };
   } catch (err) {

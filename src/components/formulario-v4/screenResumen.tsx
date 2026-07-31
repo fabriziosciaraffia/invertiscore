@@ -35,6 +35,7 @@ import type { WizardV4Answers, Antiguedad } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { comprarLocked, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
+import type { Anomalia } from "@/lib/plausibilidad";
 import { dormLabel, fmtCLP, fmtUF, parseNum, parseDecimalLocale, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
@@ -433,6 +434,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const mod = a.modalidad;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // Anomalías del guard de plausibilidad (422), COMPLETAS y ya ordenadas por
+  // prioridad desde el server. Hoy la caja de error pinta la primera; PIEZA B
+  // las consume todas en el modal compartido sin tocar esta propagación.
+  const [anomalias, setAnomalias] = useState<Anomalia[]>([]);
 
   // Acordeón mobile: las 3 cards nacen COLAPSADAS (la línea-resumen es la
   // revisión de un vistazo). Desktop las muestra todas. null = ninguna abierta.
@@ -577,48 +582,42 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   };
 
   /**
-   * Texto para la caja de error. Si el submit fue rechazado por el guard de
-   * plausibilidad (422), la primera anomalía ya viene ordenada por prioridad
-   * desde el server y trae la frase en tuteo — sin esto la caja mostraba el id
-   * de máquina (`input_implausible`).
+   * Fallo de submit, compartido por los DOS caminos (crédito y compra locked).
+   * Guarda el array COMPLETO de anomalías en estado — no el primer mensaje
+   * aplanado — porque el modal compartido de PIEZA B las va a necesitar todas.
+   * Lo único que cambia entonces es dónde se pinta, no cómo llegan.
    */
-  function textoError(res: SubmitResult, fallback: string): string {
-    if (res.anomalias?.length) return res.anomalias[0].mensaje;
-    // `error` puede ser un id de máquina; nunca se muestra crudo.
-    return res.error && res.error !== "input_implausible" ? res.error : fallback;
+  function manejarFallo(res: SubmitResult, fallback: string) {
+    if (res.anomalias?.length) {
+      trackWizard(posthog, "wizard4_input_implausible", {
+        modalidad: mod,
+        reglas: res.anomalias.map((x) => x.regla),
+      });
+    }
+    setAnomalias(res.anomalias ?? []);
+    // `error` puede ser un id de máquina (`input_implausible`): nunca se muestra
+    // crudo. Con anomalías la caja usa el mensaje en tuteo; sin ellas, el fallback.
+    setError(res.error && res.error !== "input_implausible" ? res.error : fallback);
+    setSubmitting(false);
+  }
+
+  function iniciarSubmit() {
+    setError(""); setAnomalias([]); setSubmitting(true); onTerminal();
   }
 
   async function onGenerar() {
-    setError(""); setSubmitting(true); onTerminal();
+    iniciarSubmit();
     trackWizard(posthog, "wizard4_submitted", { modalidad: mod });
     const res = await submitConCredito(a, ctx);
     if (res.ok && res.redirect) window.location.href = res.redirect;
-    else {
-      if (res.anomalias?.length) {
-        trackWizard(posthog, "wizard4_input_implausible", {
-          modalidad: mod,
-          reglas: res.anomalias.map((x) => x.regla),
-        });
-      }
-      setError(textoError(res, "No pudimos generar el análisis."));
-      setSubmitting(false);
-    }
+    else manejarFallo(res, "No pudimos generar el análisis.");
   }
   async function onDesbloquear() {
-    setError(""); setSubmitting(true); onTerminal();
+    iniciarSubmit();
     trackWizard(posthog, "wizard4_checkout_initiated", { modalidad: mod });
     const res = await comprarLocked(a, ctx);
     if (res.ok && res.redirect) window.location.href = res.redirect;
-    else {
-      if (res.anomalias?.length) {
-        trackWizard(posthog, "wizard4_input_implausible", {
-          modalidad: mod,
-          reglas: res.anomalias.map((x) => x.regla),
-        });
-      }
-      setError(textoError(res, "No se pudo crear el análisis."));
-      setSubmitting(false);
-    }
+    else manejarFallo(res, "No se pudo crear el análisis.");
   }
 
   // Líneas-resumen (mobile) — se recomputan de answers → se actualizan al commit.
@@ -854,7 +853,11 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
 
       {error && (
         <div className="mt-4 rounded-xl border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--signal-red)_5%,transparent)] px-4 py-3">
-          <p className="font-body text-[13px] text-[var(--franco-text)] m-0">{error}</p>
+          {/* Con anomalías se muestra la de mayor prioridad (el server ya las
+              ordenó). El resto vive en `anomalias` para el modal de PIEZA B. */}
+          <p className="font-body text-[13px] text-[var(--franco-text)] m-0">
+            {anomalias.length > 0 ? anomalias[0].mensaje : error}
+          </p>
         </div>
       )}
 
