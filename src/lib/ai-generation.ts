@@ -418,6 +418,7 @@ modoSugerido = "optimizar_flujo" (bajo mercado pero flujo apretado):
 - Explica que el descuento NO es por mercado sino por matemática propia.
 - contenido: "El precio está bien vs mercado, pero tu aporte mensual es alto. Bajar a precioSugerido vuelve la matemática mensual sostenible."
 - glosa: "Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos."
+- SUB-CASO \`sugeridoMandadoPorVeredicto\` = true (el precioSugerido ES el umbral donde cambia el veredicto): el argumento NO es "el flujo se vuelve sostenible" — es más fuerte. Ese precio cambia la CONCLUSIÓN del análisis, y \`razonSugerido\` ya lo dice. Tu glosa debe nombrarlo así: cerrar a precioSugerido lleva el veredicto a la banda de arriba. PROHIBIDO en este sub-caso decir "no hay caso para pedir descuento" o "no hay margen de negociación": existe un descuento concreto que cambia el resultado, y negarlo contradice a la propia pirámide del informe.
 
 modoSugerido = "alinear_mercado" (sobre mercado o cerca):
 - Lógica habitual: justifica con comparables + mejora de flujo (TIR, etc.).
@@ -1152,6 +1153,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
 ANCLAS DE NEGOCIACIÓN (REGLA 5 v10 — usar EXACTOS, no recalcular):
 - modoSugerido: "${modoSugerido}"
 - razonSugerido: "${razonSugerido}"
+- sugeridoMandadoPorVeredicto: ${neg?.sugeridoMandadoPorVeredicto === true}${neg?.sugeridoMandadoPorVeredicto === true ? ` (el precio sugerido ES el umbral donde el veredicto pasa a ${neg?.veredictoAlUmbral ?? ""} — ver el SUB-CASO en §12)` : ""}
 - primeraOferta_uf: ${primeraOfertaUF} (${fmtCLP(primeraOfertaCLP)})${primeraOfertaUF === techoUF ? " ← IGUAL al techo (modo cerrar_actual: no sugerir descuento)" : ""}
 - techo_uf: ${techoUF} (${fmtCLP(techoCLP)})
 - walkAway: ${walkAwayAncla === null
