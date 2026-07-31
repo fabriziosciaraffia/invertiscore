@@ -2,19 +2,28 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
+import { conNext, esDestinoSeguro } from "@/lib/auth-next";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
+  // Se lee ANTES de las salidas de error: un link de confirmación vencido
+  // también tiene que devolver al usuario a donde iba, no al dashboard.
+  const next = requestUrl.searchParams.get("next");
+
+  /** /login con el aviso de error, conservando la intención de destino. */
+  const loginConError = () => {
+    const u = new URL("/login", request.url);
+    u.searchParams.set("confirm_error", "1");
+    return NextResponse.redirect(conNext(u, next));
+  };
   // Supabase puede redirigir con error en la query cuando el link de
   // confirmación expiró o ya se usó (ej: error=access_denied,
   // error_code=otp_expired).
   const errorParam = requestUrl.searchParams.get("error");
 
   if (errorParam) {
-    return NextResponse.redirect(
-      new URL("/login?confirm_error=1", request.url),
-    );
+    return loginConError();
   }
 
   if (code) {
@@ -40,9 +49,7 @@ export async function GET(request: Request) {
     // Si falla (link expirado/ya usado), redirigimos a login con aviso claro.
     const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      return NextResponse.redirect(
-        new URL("/login?confirm_error=1", request.url),
-      );
+      return loginConError();
     }
 
     // Meta CAPI: CompleteRegistration SOLO en altas nuevas. Este route sirve tanto
@@ -76,10 +83,10 @@ export async function GET(request: Request) {
     }
   }
 
-  // Honrar ?next= (intención de compra, ej /checkout?product=X). Solo paths
-  // relativos (empiezan con "/") para evitar open redirect a dominios externos.
-  const next = requestUrl.searchParams.get("next");
-  const dest = next && next.startsWith("/") ? next : "/dashboard";
+  // Honrar ?next= (intención de compra, ej /checkout?product=X; o el round-trip
+  // del wizard). `esDestinoSeguro` solo acepta paths relativos: evita el open
+  // redirect a dominios externos.
+  const dest = esDestinoSeguro(next) ? next : "/dashboard";
 
   return NextResponse.redirect(new URL(dest, request.url));
 }
