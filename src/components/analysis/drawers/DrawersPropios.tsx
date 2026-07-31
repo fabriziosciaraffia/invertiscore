@@ -695,8 +695,9 @@ export function DrawerDistanciaLtr({
           : "Antes de descartarlo, confirma ese techo de arriendo contra 2–3 publicaciones comparables de la zona. Si el mercado lo da, la decisión se toma sola."}
       </Box>
       <Note>
-        El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen. El pie y la
-        tasa no entran acá: son condiciones de tu bolsillo y del banco, no del depto.
+        {tienePlazo
+          ? "El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen. El pie y la tasa no entran acá: son condiciones de tu bolsillo y del banco, no del depto."
+          : "El pie y la tasa no entran acá: son condiciones de tu bolsillo y del banco, no del depto."}
       </Note>
     </div>
   );
