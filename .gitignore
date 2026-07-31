@@ -95,3 +95,25 @@ supabase/seeds/
 # dumps de auditoría
 audit/
 .env.local
+
+# ── Artefactos de agente ────────────────────────────────────────────────────
+# Los goals dejan prompts, reportes, snapshots y scripts de QA en la raíz y en
+# scripts/. Eran ~300 archivos untracked: git status quedaba ilegible y el
+# staging selectivo se volvía un campo minado.
+of-*.md
+of-*.ts
+of-*.mjs
+scripts/of-*
+snap-*.md
+prod-snap-*.md
+scripts/output/
+tmp/
+*.patch
+
+# EXCEPCIONES: estos cuatro of-* SÍ están versionados (calibración de AMBAS y su
+# POC). Un .gitignore no des-trackea lo ya trackeado, pero sin estas negaciones
+# quedaban invisibles para `git add` si alguna vez se recrean — y el patrón que
+# los tapa es el mismo que limpia los 182 scripts de agente. Se salvan por
+# nombre en vez de sacrificar el patrón entero.
+!scripts/of-ambas-calib-*
+!scripts/of-calib-poc.ts
