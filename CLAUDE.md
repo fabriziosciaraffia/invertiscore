@@ -30,6 +30,7 @@ Next.js 14 + App Router + TypeScript + Tailwind + shadcn/ui + Supabase + Claude 
 - `credit_grants`: ledger de créditos comprados (FIFO por expiración). id, user_id, amount, remaining, source, payment_id, granted_at, expires_at, consumed
 - `documentos_tributarios`: boletas electrónicas (DTE 39). id, payment_id, user_id, tipo_dte, folio, monto_total/neto/iva, estado (pendiente|emitido|error|anulado), ambiente (dev|prod), token, autoservicio_url, openfactura_response (jsonb)
 - `market_data`: datos de referencia por comuna · `config`: key-value global · `scraped_properties`: propiedades scrapeadas
+- **NULL en filtros de exclusión**: en SQL `columna <> 'x'` devuelve NULL —no `true`— cuando la columna es NULL, así que un `.neq('columna','x')` pelado en Supabase **descarta también las filas con NULL**. Para "todo lo que no sea x, incluidos los sin valor" va `.or('columna.is.null,columna.neq.x')`. Esto casi rompe la cancelación de suscripciones `past_due` en el fix del cron `expire-grace`: el `.neq` se habría comido las filas sin procedencia, que son la mayoría.
 
 ## Modelo de acceso y precios
 - Modelo de crédito: **1 análisis = 1 crédito**, sin distinción de tipo (LTR/STR/AMBAS).
@@ -43,7 +44,7 @@ Next.js 14 + App Router + TypeScript + Tailwind + shadcn/ui + Supabase + Claude 
 - Gate verificado: el **simulador interactivo** (sliders + recalcular) y la **Advanced Section** (proyección de patrimonio, escenarios venta/refi, indicadores) son solo premium/subscriber.
 
 ### Precios (fuente de verdad: `src/lib/flow-products.ts` = montos a Flow · `src/lib/pricing.ts` = UI)
-- **Análisis individual (single): $9.990** — 1 crédito al ledger (expira en 1 año).
+- **Análisis individual (single): $9.990** — 1 crédito al ledger, **sin caducidad** (`expires_at` NULL, `noExpire: true` en `payments/confirm`). Coherente con el copy "análisis sin caducidad"; los que sí expiran al año son los lotes de plan. Como el FIFO ordena por `expires_at` con los NULL al final, el usuario gasta primero lo que vence.
 - **Plan 10**: $39.990/mes · $395.880/año — 10 análisis/mes.
 - **Plan 50**: $149.990/mes · $1.499.880/año — 50 análisis/mes.
 - **Ilimitado**: $399.990/mes · $3.959.880/año — sin límite (`is_unlimited`).
@@ -118,6 +119,8 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
 - Mostrá el diff antes de que se apruebe un commit.
 - **Los reportes de los agentes también van en tuteo chileno, sin voseo.** Aplica al texto que el agente escribe para el usuario, no solo al copy del producto (ya se coló voseo 3 veces).
 - **QA vía browser: cada cifra reportada va con la URL exacta desde donde se leyó.** Sin URL la cifra no cuenta. Un mockup abierto en otra pestaña ya generó un bloqueante falso que costó un goal completo de diagnóstico.
+- **Constraints y esquema se verifican LEYENDO el catálogo** (`pg_constraint`, `information_schema.columns`, `pg_indexes`), nunca insertando filas de prueba: dev y prod comparten base, así que una fila de prueba es una fila en producción.
+- **La extensión Claude-in-Chrome puede fingir bugs de UI.** Síntoma: los clicks dejan de disparar handlers pero el foco y el tecleo siguen funcionando. Es la extensión, no la app — no persigas el bug en el código. Recovery: pestaña nueva o recargar la extensión.
 
 ## Skills y herramientas
 - Antes de cualquier cambio de **UI o de prompts de IA**, leé las skills en `~/.claude/skills/`: `franco-design-system`, `analysis-voice-franco`, `brand-voice-franco`, `ux-cx-franco`, `testing-patterns-franco`. El skill activo de diseño es `franco-design-system` (no `design-system-franco`, que es backup).
