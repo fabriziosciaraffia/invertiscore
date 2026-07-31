@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { conNext } from "@/lib/auth-next";
+import { conNext, esDestinoSeguro } from "@/lib/auth-next";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
@@ -57,7 +57,7 @@ export async function updateSession(request: NextRequest) {
     if (plan) {
       url.pathname = "/checkout";
       url.search = `product=${encodeURIComponent(plan)}`;
-    } else if (next && next.startsWith("/")) {
+    } else if (esDestinoSeguro(next)) {
       const target = new URL(next, request.url);
       url.pathname = target.pathname;
       url.search = target.search;

@@ -98,6 +98,50 @@ test("rechaza el truco de la doble barra (//evil.cl)", () => {
   assert.equal(hrefAuth("/login", "?next=%2F%2Fevil.cl"), "/login");
 });
 
+/**
+ * Estos son los que se le escapan a un chequeo de prefijos. El parser WHATWG
+ * trata la barra invertida como barra para esquemas especiales y descarta
+ * tab/newline/CR, así que varias escrituras distintas resuelven al mismo
+ * dominio externo. Por eso el guard compara ORIGEN resuelto, no prefijos.
+ */
+const VECTORES_EXTERNOS = [
+  "//evil.cl",
+  "/\\evil.cl", // barra invertida: pasaba un !startsWith("//")
+  "\\\\evil.cl",
+  "/\t/evil.cl", // el parser descarta el tab y queda //
+  "/\n/evil.cl",
+  "/\r/evil.cl",
+  "https://evil.cl",
+  "http://evil.cl",
+  "javascript:alert(1)",
+  "data:text/html,<script>alert(1)</script>",
+];
+
+test("ningún vector de escritura llega a otro dominio", () => {
+  const fugas: string[] = [];
+  for (const v of VECTORES_EXTERNOS) {
+    if (!esDestinoSeguro(v)) continue;
+    // Si el guard lo aceptó, tiene que resolver DENTRO del sitio.
+    const origen = (() => { try { return new URL(v, "https://refranco.ai/login").origin; } catch { return "(no parsea)"; } })();
+    if (origen !== "https://refranco.ai") fugas.push(`${JSON.stringify(v)} -> ${origen}`);
+  }
+  assert.deepEqual(fugas, [], `destinos que salen del sitio: ${fugas.join(" | ")}`);
+});
+
+test("el destino de router.push cae a /dashboard ante cualquier vector", () => {
+  // Espeja lo que hacen login/page.tsx y register/page.tsx tras autenticar.
+  for (const v of VECTORES_EXTERNOS) {
+    const destino = esDestinoSeguro(v) ? v : "/dashboard";
+    assert.equal(destino, "/dashboard", `${JSON.stringify(v)} deberia caer a /dashboard`);
+  }
+});
+
+test("los destinos legítimos siguen pasando", () => {
+  for (const v of ["/dashboard", "/analisis/nuevo-v4?resume=1", "/cuenta?tab=facturacion", "/checkout?product=plan10_mensual"]) {
+    assert.equal(esDestinoSeguro(v), true, `deberia aceptar: ${v}`);
+  }
+});
+
 test("rechaza esquemas raros y vacíos", () => {
   for (const malo of ["javascript:alert(1)", "", null, undefined, "dashboard"]) {
     assert.equal(esDestinoSeguro(malo as string), false, `deberia rechazar: ${malo}`);

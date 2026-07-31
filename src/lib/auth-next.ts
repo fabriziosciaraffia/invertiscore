@@ -21,9 +21,28 @@
  */
 const PARAMS_INTENCION = ["next", "plan"] as const;
 
-/** Solo relativos: un `next` absoluto sería un open redirect. */
+/** Base inerte para resolver el destino. `.invalid` es un TLD reservado. */
+const BASE_INERTE = "https://franco.invalid";
+
+/**
+ * ¿El destino se queda DENTRO del sitio? Solo paths relativos.
+ *
+ * No alcanza con mirar prefijos. Se probó `startsWith("/") && !startsWith("//")`
+ * y lo pasa `/\evil.cl`: el parser WHATWG trata la barra invertida como barra
+ * para esquemas especiales, así que resuelve a https://evil.cl. Lo mismo con
+ * caracteres que el parser descarta (`/<tab>/evil.cl`).
+ *
+ * Por eso se RESUELVE contra una base inerte y se compara el origen: es el
+ * mismo parser que va a usar el navegador o `NextResponse.redirect`, así que no
+ * quedan variantes de escritura sin cubrir.
+ */
 export function esDestinoSeguro(next: string | null | undefined): next is string {
-  return typeof next === "string" && next.startsWith("/") && !next.startsWith("//");
+  if (typeof next !== "string" || !next.startsWith("/")) return false;
+  try {
+    return new URL(next, BASE_INERTE).origin === BASE_INERTE;
+  } catch {
+    return false;
+  }
 }
 
 /**
