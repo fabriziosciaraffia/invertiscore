@@ -623,21 +623,30 @@ export interface HallazgoDistanciaVeredicto {
     /** Tope de honestidad aplicado a arriendo y precio (%), calibrado sobre el corpus.
      *  30 para AJUSTA SUPUESTOS · 15 para BUSCAR OTRA (el plazo tiene su propio tope: 30 años). */
     topePct: number;
+    /** Cercanía normalizada al umbral: 1 − |deltaPct de la palanca más barata| / tope,
+     *  saturado a [0,1]. 1 = pegado al veredicto de arriba · 0 = en el tope o estructural.
+     *  Vive DENTRO de `valor` a propósito: es un dato de lectura, no un peso de ranking.
+     *  Nunca debe alimentar un sort junto a magnitudContinua (miden cosas distintas). */
+    cercaniaUmbral: number;
     /** Cuáles brazos del GATE 1 están activos (solo informativo; vacío si no dispara). */
     brazosGate1Activos: string[];
     modalidad: "ltr" | "str" | "ambas";
   };
-  // SIEMPRE adverso: el hallazgo solo existe cuando el veredicto no es COMPRAR. Que exista
-  // una palanca barata no lo vuelve favorable — la brecha es la brecha; el tono lo pone la
-  // frase (recuperable vs estructural), no la señal-máquina.
-  direccion: "favorable" | "adverso";
-  // SOLO-LECTURA: 0 fija. El kicker honesto de la corona garantiza que si el orden
-  // Filosofía 1 lo coronara, lleva "OJO ANTES DE FIRMAR", nunca "LO MÁS DECISIVO".
+  // SIEMPRE "neutral". Este hallazgo NO es una señal sobre el deal — es un mapa de la
+  // distancia al umbral. Marcarlo "adverso" lo metía al bloque de adversos del orden
+  // Filosofía 1 y, con su magnitud alta, empujaba hallazgos genuinamente decisivos fuera
+  // del top-3 (medido: 3 filas con un dec≥0,85 degradado a chip). Su posición en la
+  // pirámide es FIJA, no competida — ver ordenarHallazgosPiramide.
+  direccion: "neutral";
+  // SOLO-LECTURA: 0 fija. No entra a calcDecisividades ni compite en ningún ranking.
   decisividad: number;
-  // Cercanía normalizada: 1 − |deltaPct de la palanca más barata| / tope, saturado a [0,1].
-  // Más cerca del veredicto superior ⇒ mayor magnitud; 0 si es estructural. Solo desempate
-  // secundario del sort entre pares de igual decisividad (E4).
-  magnitudContinua?: number;
+  // `?: undefined` a propósito, no ausente: el campo sigue siendo LEGIBLE en la unión
+  // (los comparadores hacen `h.magnitudContinua ?? 0` y compilan), pero es IMPOSIBLE
+  // asignarle un valor. El número de cercanía al umbral vive en `valor.cercaniaUmbral`.
+  // Tenerlo acá lo hacía competir contra magnitudes que miden otra cosa (|Δscore|/25):
+  // dos escalas distintas desempatando en el mismo comparador. El tipo ahora impide
+  // reintroducir esa mezcla por olvido.
+  magnitudContinua?: undefined;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
   titular: string;
   fraseCanonica: string;
@@ -821,6 +830,20 @@ export interface NegociacionScenario {
   // Razón canónica del motor (sin LLM). La IA puede glosar con este texto como
   // base — no inventa la razón.
   razon?: string;
+  // ── Umbral de veredicto (jerarquía de precios) ──────────────────────────────
+  // Precio al que el VEREDICTO sube de banda, tomado tal cual de la palanca precio de
+  // `distancia_veredicto` (nunca recalculado acá). Es una semántica DISTINTA de
+  // `precioLimiteUF`, que es el techo donde la TIR cae al 6%: uno responde "hasta dónde
+  // pagar sin que el retorno deje de valer la pena", el otro "a qué precio esto cambia
+  // de conclusión". Cuando existe y es más exigente que el sugerido, MANDA sobre él
+  // (ver calcNegociacionScenario) — antes convivían tres números sin ninguna regla que
+  // los ordenara, y el drawer podía decir "no hay caso para pedir descuento" mientras la
+  // pirámide mostraba a cuánto estaba el cambio de veredicto. null si no aplica.
+  precioUmbralVeredictoUF?: number | null;
+  /** Veredicto al que se llega cerrando en `precioUmbralVeredictoUF`. */
+  veredictoAlUmbral?: Veredicto | null;
+  /** true si `precioSugeridoUF` quedó fijado por el umbral de veredicto. */
+  sugeridoMandadoPorVeredicto?: boolean;
 }
 
 // Vocabulario unificado de veredictos. 3 valores canónicos compartidos por
