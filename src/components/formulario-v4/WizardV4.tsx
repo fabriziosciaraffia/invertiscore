@@ -11,7 +11,7 @@
 // Acto 3 + resumen: placeholders navegables (Fases 3-4).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import { usePostHog } from "posthog-js/react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
@@ -28,6 +28,7 @@ import {
   reactionText,
   type NodeId,
   type ReactionLive,
+  type WizardV4Answers,
 } from "./wizardV4Nodes";
 import { cuotaCLP, fmtCLP, parseNum } from "./derive";
 import { avisoSubsidioAplica } from "./wizardV4Subsidio";
@@ -43,6 +44,9 @@ import {
 import { PieScreen, PlazoScreen, PrecioScreen, TasaFixScreen, TasaScreen } from "./screensActo2";
 import { AdrFixScreen, AdrScreen, ArrFixScreen, ArrScreen } from "./screensActo3";
 import { InformeScreen } from "./screenInforme";
+import { ModalPlausibilidad } from "./ModalPlausibilidad";
+import { buildPlausibilidadParcial } from "./wizardV4Submit";
+import { evaluarPlausibilidad, type Anomalia, type Regla } from "@/lib/plausibilidad";
 
 /** Guard de sesión del StartFreeAnalysis (1 disparo por pestaña/sesión). */
 const SFA_SESSION_KEY = "meta_sfa_fired";
@@ -165,11 +169,54 @@ export function WizardV4({ resume }: { resume: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avisoVisible]);
 
+  // ── ALERTA TEMPRANA (PIEZA B2) ─────────────────────────────────────────────
+  //
+  // Cada regla dispara cuando sus insumos existen: UF/m² se puede calcular
+  // apenas hay precio y superficie, cinco pantallas antes del resumen. No hay
+  // chequeo nuevo — es `evaluarPlausibilidad` con el input PARCIAL que haya, y
+  // el fail-open por regla se encarga de que lo que no tiene insumos no corra.
+  //
+  // Se evalúa en CADA respuesta, no en una lista de pantallas: así una
+  // corrección hacia atrás (editar la superficie después del precio) también
+  // dispara. En el avance normal el efecto es el de la tabla del contrato,
+  // porque una regla sin insumos no devuelve nada.
+  const [alerta, setAlerta] = useState<{ anomalias: Anomalia[]; seguir: () => void } | null>(null);
+  // Una vez por VALOR y por REGLA: se recuerda con qué valor se mostró cada una.
+  // Si el usuario cierra y no toca el dato, no vuelve; si lo edita y sigue fuera
+  // de rango, el valor cambia y vuelve a avisar.
+  const vistas = useRef<Partial<Record<Regla, number>>>({});
+
+  const answerConAlerta = useCallback(
+    (node: NodeId, patch?: Partial<WizardV4Answers>) => {
+      const avanzar = () => w.answer(node, patch);
+      if (data.ufCLP <= 0) { avanzar(); return; }
+      const answersConPatch = { ...nav.answers, ...patch };
+      let nuevas: Anomalia[] = [];
+      try {
+        nuevas = evaluarPlausibilidad(buildPlausibilidadParcial(answersConPatch, data.ufCLP))
+          .filter((an) => vistas.current[an.regla] !== an.valor);
+      } catch {
+        nuevas = []; // fail-open: el resumen y el server siguen siendo las redes duras.
+      }
+      if (nuevas.length === 0) { avanzar(); return; }
+      for (const an of nuevas) vistas.current[an.regla] = an.valor;
+      // Blur ANTES de abrir: acá el usuario viene de tipear y en mobile el
+      // teclado está abierto — sin esto el modal nace aplastado arriba.
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      trackWizard(posthog, "wizard4_alerta_temprana", {
+        node, reglas: nuevas.map((x) => x.regla), modalidad: nav.answers.modalidad,
+      });
+      setAlerta({ anomalias: nuevas, seguir: avanzar });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [w.answer, nav.answers, data.ufCLP, posthog],
+  );
+
   const screenProps: ScreenProps = {
     answers: nav.answers,
     data,
     patchAnswers: w.patchAnswers,
-    answer: w.answer,
+    answer: answerConAlerta,
     goDetour: w.goDetour,
   };
 
@@ -249,6 +296,28 @@ export function WizardV4({ resume }: { resume: boolean }) {
           </div>
         </div>
       </main>
+
+      {/* Alerta temprana: mismo componente que el resumen, en modo "aviso".
+          Avisa y deja seguir — el resumen y el server siguen bloqueando. */}
+      <ModalPlausibilidad
+        open={alerta !== null}
+        anomalias={alerta?.anomalias ?? []}
+        modo="aviso"
+        onSeguir={() => {
+          const seguir = alerta?.seguir;
+          setAlerta(null);
+          seguir?.();
+        }}
+        onCerrar={() => {
+          setAlerta(null);
+          // "Corregir": el foco vuelve al campo de ESTA pantalla.
+          window.setTimeout(() => {
+            const input = document.querySelector<HTMLInputElement>(".wizard4-screen input");
+            input?.focus();
+            input?.select?.();
+          }, 0);
+        }}
+      />
     </div>
   );
 }

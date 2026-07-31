@@ -772,7 +772,16 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   }
 
   // Líneas-resumen (mobile) — se recomputan de answers → se actualizan al commit.
-  const summary01 = [a.direccion, tipoStr !== "—" ? tipoStr.toLowerCase() : null, sup > 0 ? `${a.superficieUtil} m²` : null, pUF > 0 ? fmtUF(pUF) : null].filter(Boolean).join(" · ") || "—";
+  // Card 01 colapsada (mobile): PRECIO primero. Antes abría con `a.direccion`,
+  // que es el formatted_address de Places ("Suecia 750, 7510297 Providencia,
+  // Región M…") y se comía la línea entera: la card del dato más decisivo era la
+  // única que no mostraba ningún número. La comuna sola ubica igual y deja
+  // espacio; la dirección completa está a un tap, dentro de la card.
+  const summary01 = [
+    pUF > 0 ? fmtUF(pUF) : null,
+    sup > 0 ? `${a.superficieUtil} m²` : null,
+    a.comuna || null,
+  ].filter(Boolean).join(" · ") || "—";
   const summary02 = [pct > 0 ? `${Math.round(pct)}% pie` : null, a.plazoCredito ? `${a.plazoCredito} años` : null, a.tasaInteres ? `${a.tasaInteres}%` : null].filter(Boolean).join(" · ") || "—";
   const summary03 = esStr
     ? [a.adrTarifa ? `${fmtCLP(parseNum(a.adrTarifa))}/noche` : null, a.adrOcupacion ? `${a.adrOcupacion}%` : null, a.edificioPermiteAirbnb ? LABEL_GATE[a.edificioPermiteAirbnb] : null].filter(Boolean).join(" · ") || "—"

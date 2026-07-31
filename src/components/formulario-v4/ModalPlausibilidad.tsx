@@ -58,6 +58,20 @@ export interface ModalPlausibilidadProps {
   consumo?: string | null;
   /** Copy del primario en estado limpio (cambia en el camino de compra). */
   labelConfirmar?: string;
+  /**
+   * Qué hace el modal cuando hay anomalías.
+   *
+   *  · "bloqueo" (default) — el del RESUMEN. Un solo botón, sin salida: el
+   *    siguiente paso es cobrar y el server rechaza igual, así que frenar es
+   *    honesto.
+   *  · "aviso" — el de la ALERTA TEMPRANA (B2). Avisa y deja seguir: acá el
+   *    siguiente paso es otra pregunta, y si el dato malo está cinco pantallas
+   *    atrás, bloquear deja al usuario atascado. El resumen y el server siguen
+   *    siendo las redes duras.
+   */
+  modo?: "bloqueo" | "aviso";
+  /** Solo en modo "aviso": avanzar igual a la pantalla siguiente. */
+  onSeguir?: () => void;
   submitting?: boolean;
   onOrigen?: (key: string) => void;
   onConfirmar?: () => void;
@@ -73,6 +87,8 @@ export function ModalPlausibilidad({
   resumen,
   consumo,
   labelConfirmar = "Generar el análisis",
+  modo = "bloqueo",
+  onSeguir,
   submitting = false,
   onOrigen,
   onConfirmar,
@@ -292,10 +308,21 @@ export function ModalPlausibilidad({
         {/* Acciones fijas. Mobile: apiladas, ancho completo, primario arriba. */}
         <div className="shrink-0 flex flex-col sm:flex-row gap-2 sm:gap-2.5 px-5 sm:px-7 pt-4 pb-5 sm:pb-6">
           {esAnomalia ? (
-            // Sin "continuar igual": el server lo rechaza de todos modos.
-            <button ref={primarioRef} type="button" onClick={cerrar} className={btnPrimario}>
-              Volver y corregir
-            </button>
+            modo === "aviso" ? (
+              <>
+                <button ref={primarioRef} type="button" onClick={cerrar} className={btnPrimario}>
+                  Corregir
+                </button>
+                <button type="button" onClick={onSeguir} className={btnGhost}>
+                  Seguir así
+                </button>
+              </>
+            ) : (
+              // Sin "continuar igual": el server lo rechaza de todos modos.
+              <button ref={primarioRef} type="button" onClick={cerrar} className={btnPrimario}>
+                Volver y corregir
+              </button>
+            )
           ) : (
             <>
               <button ref={primarioRef} type="button" onClick={onConfirmar} disabled={submitting} className={btnPrimario}>

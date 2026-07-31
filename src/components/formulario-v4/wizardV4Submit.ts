@@ -24,7 +24,7 @@ import { getMantencionRate } from "@/lib/analysis";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
-import type { Anomalia } from "@/lib/plausibilidad";
+import type { Anomalia, PlausibilidadInput } from "@/lib/plausibilidad";
 import type { WizardV4Answers } from "./wizardV4Nodes";
 
 export interface SubmitContext {
@@ -194,6 +194,45 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     estaAmoblado: a.estaAmoblado === true,
     costoAmoblamiento: a.costoAmoblamiento ? parseNum(a.costoAmoblamiento) : costos.costoAmoblamiento,
     arriendoLargoMensual: parseNum(a.arriendo ?? "") || ctx.arriendoSugerido || 0,
+  };
+}
+
+// ── Input PARCIAL para la alerta temprana (PIEZA B2) ─────────────────────────
+
+/**
+ * Mapea las respuestas TAL COMO ESTÁN a un PlausibilidadInput, sin rellenar
+ * nada. Es lo que hace posible el chequeo por capas: `evaluarPlausibilidad` es
+ * fail-open por regla, así que con datos parciales devuelve solo las reglas que
+ * tienen con qué. UF/m² se puede evaluar apenas hay precio y superficie —cinco
+ * pantallas antes del resumen— y el yield recién cuando existe el arriendo.
+ *
+ * NO usa buildLtrPayload a propósito: ese builder rellena defaults
+ * (`tasaInteres || 4.72`, `arriendo || arriendoSugerido`), y con esos rellenos
+ * el yield dispararía en la pantalla del precio contra un arriendo que el
+ * usuario todavía no confirmó. Acá campo ausente = NaN = regla que no corre.
+ *
+ * La rama STR sigue el mismo criterio que `desdeBodyStr`: solo mira tarifa y
+ * ocupación cuando el usuario las CORRIGIÓ. Con la estimación de AirROI no hay
+ * input humano que juzgar.
+ */
+export function buildPlausibilidadParcial(a: WizardV4Answers, ufCLP: number): PlausibilidadInput {
+  const soloSiHay = (v: string | undefined, parse: (s: string) => number): number =>
+    v ? parse(v) : NaN;
+
+  const corregidoStr = a.adrModo === "corregir";
+  const ocupacion = corregidoStr ? soloSiHay(a.adrOcupacion, parseDecimalLocale) : NaN;
+  const tarifa = corregidoStr ? soloSiHay(a.adrTarifa, parseNum) : NaN;
+
+  return {
+    precioUF: soloSiHay(a.precio, parseNum),
+    superficieM2: soloSiHay(a.superficieUtil, parseDecimalLocale),
+    ufCLP,
+    tasaAnualPct: soloSiHay(a.tasaInteres, parseDecimalLocale),
+    arriendoMensualCLP: soloSiHay(a.arriendo, parseNum),
+    str: {
+      tarifaNocheCLP: Number.isNaN(tarifa) ? null : tarifa,
+      ocupacionPct: Number.isNaN(ocupacion) ? null : ocupacion,
+    },
   };
 }
 

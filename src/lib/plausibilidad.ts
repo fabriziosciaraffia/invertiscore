@@ -153,22 +153,28 @@ const PRIORIDAD_REGLA: readonly Regla[] = [
  * revelación donde no la hay es mentir, así que el flag vive acá y no como un
  * if en el componente.
  *
- * `unidad` — sufijo del número grande ("UF / m²", "% anual").
+ * `unidad` — sufijo del número grande, lo que va DESPUÉS del espacio.
  */
+// El "%" NUNCA va acá: pertenece al número y viaja pegado a él (ver
+// `valorParaMostrar`). El modal separa número y unidad con 7-9px, así que un
+// "%" en la unidad quedaba despegado de su cifra — "0,006 % anual" — contra el
+// formato del resto del sistema, que lo escribe pegado.
 export const META_REGLA: Record<Regla, { deriva: boolean; unidad: string }> = {
   uf_m2_fuera_rango: { deriva: true, unidad: "UF / m²" },
-  yield_imposible: { deriva: true, unidad: "% anual" },
-  str_yield_imposible: { deriva: true, unidad: "% anual" },
+  yield_imposible: { deriva: true, unidad: "anual" },
+  str_yield_imposible: { deriva: true, unidad: "anual" },
   precio_total_fuera_rango: { deriva: false, unidad: "UF" },
   superficie_fuera_rango: { deriva: false, unidad: "m²" },
   arriendo_fuera_rango: { deriva: false, unidad: "al mes" },
-  tasa_fuera_rango: { deriva: false, unidad: "% anual" },
+  tasa_fuera_rango: { deriva: false, unidad: "anual" },
   str_ocupacion_fuera_rango: { deriva: false, unidad: "de ocupación" },
   str_tarifa_fuera_rango: { deriva: false, unidad: "por noche" },
 };
 
 /** Reglas cuyo `valor` es una fracción y se muestra como porcentaje. */
 const REGLAS_PCT = new Set<Regla>(["yield_imposible", "str_yield_imposible"]);
+/** Reglas cuyo `valor` YA es un porcentaje (no una fracción) y lleva "%" pegado. */
+const REGLAS_PCT_DIRECTO = new Set<Regla>(["tasa_fuera_rango", "str_ocupacion_fuera_rango"]);
 /** Reglas cuyo `valor` es un monto en pesos. */
 const REGLAS_CLP = new Set<Regla>(["arriendo_fuera_rango", "str_tarifa_fuera_rango"]);
 
@@ -190,11 +196,15 @@ export function valorParaMostrar(a: Anomalia): {
 
   // El % del yield ya viene con su símbolo desde `pct`; se lo saco porque en el
   // modal la unidad va aparte, en gris y más chica.
+  // El "%" viaja PEGADO al número, nunca en la unidad: el modal las separa con
+  // 7-9px y el símbolo quedaba huérfano de su cifra.
   const numero = REGLAS_PCT.has(a.regla)
-    ? pct(a.valor, dir, limite).replace("%", "")
-    : REGLAS_CLP.has(a.regla)
-      ? clp(a.valor, dir, limite)
-      : num(a.valor, dir, limite);
+    ? pct(a.valor, dir, limite)
+    : REGLAS_PCT_DIRECTO.has(a.regla)
+      ? `${num(a.valor, dir, limite)}%`
+      : REGLAS_CLP.has(a.regla)
+        ? clp(a.valor, dir, limite)
+        : num(a.valor, dir, limite);
 
   return { numero, unidad: meta.unidad, deriva: meta.deriva };
 }
