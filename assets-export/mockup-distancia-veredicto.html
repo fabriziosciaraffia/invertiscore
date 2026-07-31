@@ -1,0 +1,575 @@
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  MOCKUP VINCULANTE · HALLAZGO `distancia_veredicto` — superficies
+  ═══════════════════════════════════════════════════════════════════════════
+  El motor ya emite el hallazgo (rama claude/hallazgo-distancia-veredicto,
+  commits db5f563 + 99a8d0a). Falta darle superficie: hoy cae al display
+  genérico de GenericFindingCard (kicker "EN CONTRA", sin KPI, sin drawer).
+
+  Esto NO es código de la app. Es contrato de diseño: nada se implementa
+  hasta aprobar.
+
+  LEYENDA DE PROCEDENCIA
+  ----------------------
+  · TOKENS / TIPOGRAFÍA = reales (franco-design-system Capa 5, columna LIGHT
+    — light es el default del producto, §5.3).
+  · CIFRAS = REALES, leídas del motor sobre las 4 filas canónicas de prod
+    (script of-verif-distancia.ts). No hay placeholders en esta versión.
+  · Lo que el motor todavía NO emite va marcado inline [REQUIERE MOTOR].
+
+  SECCIONES
+  ---------
+  A · Card de pirámide — 3 niveles × 3 estados + decisión de kicker (A/B)
+  B · Drawer "Lo que te separa"
+  C · Frase canónica — las 4 ramas de copy
+  D · Card "Margen del veredicto" — espejo bidireccional
+  E · "La posición de Franco" — línea nueva
+  F · PDF — bloque de gates condicionado
+  G · Notas de implementación + lo que falta en el motor
+-->
+<meta charset="utf-8" />
+<title>Mockup · distancia_veredicto — Franco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap"
+  rel="stylesheet"
+/>
+
+<style>
+  /* ══ TOKENS · tema LIGHT (franco-design-system Capa 5.1, columna light) ══ */
+  :root {
+    --bg:              #F6F6F7;
+    --card:            #FFFFFF;
+    --elevated:        #FFFFFF;
+    --sunken:          #F0F0F2;
+    --text:            #0F0F0F;
+    --text-secondary:  #52525B;
+    --text-muted:      #6B6B72;
+    --text-tertiary:   #6A6A71;
+    --border:          #DDDDE1;
+    --border-hover:    #CBCBD1;
+    --border-strong:   #B0B0B8;
+    --signal:          #C8323C;
+    --card-hover-shadow: 0 6px 18px rgba(15,15,15,.08), 0 1px 3px rgba(15,15,15,.05);
+    --serif: "Source Serif 4", Georgia, serif;
+    --sans:  "IBM Plex Sans", system-ui, sans-serif;
+    --mono:  "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 24px 96px;
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 15px; line-height: 1.6;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  /* ── Chrome del mockup (no es producto) ── */
+  .doc-h1 { font-family: var(--serif); font-weight: 700; font-size: 34px; margin: 0 0 6px; letter-spacing: -.01em; }
+  .doc-sub { color: var(--text-secondary); font-size: 14px; margin: 0 0 40px; max-width: 70ch; }
+  .sec { margin: 56px 0 0; }
+  .sec-h { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .sec-n { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .sec-t { font-family: var(--serif); font-weight: 700; font-size: 21px; }
+  .sec-d { color: var(--text-secondary); font-size: 13.5px; margin: 12px 0 22px; max-width: 76ch; }
+  .caso-lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-tertiary); margin: 26px 0 8px; }
+  .nota { font-size: 12.5px; color: var(--text-muted); margin: 10px 0 0; max-width: 76ch; }
+  .flag { display: inline-block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; padding: 2px 6px; border: 1px solid var(--signal); color: var(--signal); border-radius: 3px; vertical-align: middle; }
+  .ab { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 820px) { .ab { grid-template-columns: 1fr; } }
+  .ab-h { font-family: var(--mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 8px; }
+
+  /* ══ PRIMITIVAS REALES DEL PRODUCTO ══ */
+  /* Card de hallazgo (GenericFindingCard) */
+  .hall {
+    background: var(--card); border: .5px solid var(--border); border-radius: 16px;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .hall:hover { transform: translateY(-3px); box-shadow: var(--card-hover-shadow); border-color: var(--border-hover); }
+  .hall.n1 { padding: 20px 22px; border-color: var(--border-strong); }
+  .hall.n2 { padding: 16px 18px; }
+  .hall.n3 { padding: 13px 15px; background: var(--sunken); }
+  .hall-kick { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--text-tertiary); display: block; margin-bottom: 9px; }
+  .hall-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+  .hall-title { font-family: var(--serif); font-weight: 700; line-height: 1.24; margin: 0; }
+  .n1 .hall-title { font-size: 19px; }
+  .n2 .hall-title { font-size: 16px; }
+  .n3 .hall-title { font-size: 14px; }
+  .hall-kpi { font-family: var(--mono); font-weight: 700; line-height: 1; text-align: right; white-space: nowrap; }
+  .n1 .hall-kpi { font-size: 36px; }
+  .n2 .hall-kpi { font-size: 28px; }
+  .n3 .hall-kpi { font-size: 22px; }
+  .hall-kpi-sub { display: block; font-family: var(--mono); font-weight: 400; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary); margin-top: 6px; }
+  .hall-body { font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); margin: 11px 0 0; max-width: 62ch; }
+  .n3 .hall-body { font-size: 12.5px; }
+  .hall-foot { margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .hall-link { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary); }
+  .hall-vias { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 7px; }
+  .via { font-family: var(--mono); font-size: 10.5px; letter-spacing: .03em; padding: 4px 9px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); background: var(--bg); }
+  .via b { font-weight: 700; color: var(--text); }
+
+  /* Drawer */
+  .drawer { background: var(--card); border: .5px solid var(--border); border-radius: 16px; padding: 24px 26px; max-width: 560px; }
+  .drw-n { font-family: var(--mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-tertiary); }
+  .drw-t { font-family: var(--serif); font-weight: 700; font-size: 23px; margin: 7px 0 14px; line-height: 1.2; }
+  .drw-p { font-size: 13.5px; line-height: 1.62; color: var(--text-secondary); margin: 0 0 20px; }
+  .drw-row { display: grid; grid-template-columns: 92px 1fr auto; gap: 14px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .drw-row:last-of-type { border-bottom: 0; }
+  .drw-pal { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-tertiary); }
+  .drw-txt { font-size: 13px; color: var(--text-secondary); }
+  .drw-txt b { color: var(--text); font-family: var(--mono); font-weight: 500; font-size: 12.5px; }
+  .drw-delta { font-family: var(--mono); font-weight: 700; font-size: 15px; text-align: right; }
+  .drw-box { margin-top: 20px; border-left: 3px solid var(--border-strong); border-radius: 0 8px 8px 0; background: var(--sunken); padding: 13px 15px; }
+  .drw-box-l { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-tertiary); display: block; margin-bottom: 5px; }
+  .drw-box-p { font-size: 12.5px; color: var(--text-secondary); margin: 0; font-style: italic; }
+  .drw-proc { margin-top: 18px; padding-top: 13px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); }
+
+  /* Rango de veredicto (Margen del veredicto bidireccional) */
+  .rango { margin: 16px 0 4px; }
+  .rango-track { position: relative; height: 6px; border-radius: 4px; background: linear-gradient(90deg, var(--signal) 0%, #B9793E 46%, var(--border-strong) 100%); }
+  .rango-mark { position: absolute; top: -6px; width: 2px; height: 18px; background: var(--text); }
+  .rango-dot { position: absolute; top: -4px; width: 14px; height: 14px; border-radius: 50%; background: var(--text); border: 3px solid var(--card); transform: translateX(-7px); }
+  .rango-lbls { display: flex; justify-content: space-between; margin-top: 12px; font-family: var(--mono); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-tertiary); }
+  .rango-lbls b { display: block; font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: 0; margin-bottom: 2px; }
+  .rango-lbls .mid { text-align: center; }
+  .rango-lbls .rgt { text-align: right; }
+
+  /* Posición de Franco */
+  .posf { border-left: 3px solid var(--signal); border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--signal) 5%, transparent); padding: 15px 17px; max-width: 76ch; }
+  .posf-l { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; font-weight: 600; text-transform: uppercase; color: var(--signal); display: block; margin-bottom: 7px; }
+  .posf-p { font-size: 13.5px; line-height: 1.58; font-style: italic; margin: 0; }
+  .posf-p .add { background: rgba(200,50,60,.09); border-bottom: 1px solid rgba(200,50,60,.35); padding: 1px 2px; }
+
+  /* PDF */
+  .pdf { background: #FFFFFF; border: 1px solid var(--border); border-radius: 4px; padding: 26px 30px; max-width: 640px; font-size: 13px; }
+  .pdf-t { font-family: var(--serif); font-weight: 700; font-size: 17px; margin: 0 0 14px; }
+  .pdf-g { display: grid; grid-template-columns: 1fr auto; gap: 9px 16px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .pdf-g:last-of-type { border-bottom: 0; }
+  .pdf-g .v { font-family: var(--mono); font-size: 12px; }
+  .pdf-ok { color: var(--text); } .pdf-no { color: var(--signal); }
+  .pdf-foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); line-height: 1.55; }
+  .pdf-foot .add { background: rgba(200,50,60,.09); border-bottom: 1px solid rgba(200,50,60,.35); }
+  del { color: var(--text-muted); text-decoration-color: var(--signal); }
+
+  code { font-family: var(--mono); font-size: 12px; background: var(--sunken); padding: 1px 5px; border-radius: 3px; }
+  ul.notas { font-size: 13.5px; color: var(--text-secondary); max-width: 80ch; padding-left: 20px; }
+  ul.notas li { margin-bottom: 9px; }
+  ul.notas b { color: var(--text); }
+</style>
+
+<div class="wrap">
+
+<h1 class="doc-h1">Hallazgo <span style="font-family:var(--mono);font-size:26px">distancia_veredicto</span> — superficies</h1>
+<p class="doc-sub">
+  Contrato de diseño. El motor ya emite el hallazgo; falta la superficie. Todas las cifras
+  de este documento son <strong>reales</strong>, leídas del motor sobre las 4 filas canónicas de
+  producción. Tema light (default del producto, Capa 5.3).
+</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">A</span><span class="sec-t">Card de pirámide</span></div>
+  <p class="sec-d">
+    El hallazgo tiene <code>decisividad: 0</code> (solo-lectura), así que el orden Filosofía 1 lo
+    ubica entre los adversos pero nunca corona salvo empate en cero. En la práctica cae a
+    <strong>nivel 2 o 3</strong>. Se muestran los tres tamaños para fijar el display.
+  </p>
+
+  <div class="caso-lbl">Decisión pendiente · kicker (elegí uno)</div>
+  <div class="ab">
+    <div>
+      <div class="ab-h">Opción A — “Lo que te separa”</div>
+      <div class="hall n2">
+        <span class="hall-kick">Lo que te separa</span>
+        <div class="hall-top">
+          <h3 class="hall-title">Está a un arriendo de distancia de Comprar.</h3>
+          <div class="hall-kpi">+4,3%<span class="hall-kpi-sub">arriendo</span></div>
+        </div>
+        <p class="hall-body">
+          Tu veredicto Ajusta supuestos pasa a Comprar si el arriendo llega a $851.946 al mes
+          —un 4,3% sobre los $817.000 que declaraste—, o estirando el crédito de 25 a 30 años,
+          sin capital adicional.
+        </p>
+        <div class="hall-vias">
+          <span class="via">arriendo <b>+4,3%</b></span>
+          <span class="via">precio <b>−4,7%</b></span>
+          <span class="via">plazo <b>25 → 30 años</b></span>
+        </div>
+        <div class="hall-foot"><span class="hall-link">Ver las tres vías →</span></div>
+      </div>
+      <p class="nota">
+        Neutro y funciona igual en los tres estados (recuperable a Comprar, recuperable a
+        Ajusta, estructural). No promete que la ruta exista.
+      </p>
+    </div>
+    <div>
+      <div class="ab-h">Opción B — “Ruta a comprar” (varía con el objetivo)</div>
+      <div class="hall n2">
+        <span class="hall-kick">Ruta a comprar</span>
+        <div class="hall-top">
+          <h3 class="hall-title">Está a un arriendo de distancia de Comprar.</h3>
+          <div class="hall-kpi">+4,3%<span class="hall-kpi-sub">arriendo</span></div>
+        </div>
+        <p class="hall-body">
+          Tu veredicto Ajusta supuestos pasa a Comprar si el arriendo llega a $851.946 al mes
+          —un 4,3% sobre los $817.000 que declaraste—, o estirando el crédito de 25 a 30 años,
+          sin capital adicional.
+        </p>
+        <div class="hall-vias">
+          <span class="via">arriendo <b>+4,3%</b></span>
+          <span class="via">precio <b>−4,7%</b></span>
+          <span class="via">plazo <b>25 → 30 años</b></span>
+        </div>
+        <div class="hall-foot"><span class="hall-link">Ver las tres vías →</span></div>
+      </div>
+      <p class="nota">
+        Más específico, pero necesita 3 variantes (“Ruta a comprar” / “Ruta a ajusta supuestos” /
+        ¿qué dice cuando es estructural?). En el caso estructural “Ruta a comprar” promete una
+        ruta que no existe — habría que caer a un tercer texto y se rompe la unidad.
+      </p>
+    </div>
+  </div>
+  <p class="nota" style="margin-top:16px">
+    <strong>Recomendación: Opción A.</strong> Un solo kicker para los tres estados, no promete
+    ruta, y el titular ya dice la dirección. <strong>Sin badge “EN CONTRA”:</strong> el hallazgo
+    conserva <code>direccion: "adverso"</code> para el orden Filosofía 1, pero el display lo omite —
+    es un mapa, no un golpe. <strong>KPI en Ink, nunca Signal Red</strong> (no es un negativo
+    crítico; la regla del rojo no aplica acá).
+  </p>
+
+  <div class="caso-lbl">Nivel 3 (chip) — 5667320a · BUSCAR OTRA 58 · recuperable</div>
+  <div class="hall n3" style="max-width:420px">
+    <span class="hall-kick">Lo que te separa</span>
+    <div class="hall-top">
+      <h3 class="hall-title">Está a un arriendo de Ajusta supuestos.</h3>
+      <div class="hall-kpi">+10,7%<span class="hall-kpi-sub">arriendo</span></div>
+    </div>
+    <p class="hall-body">Tres vías dentro de rango. Ver detalle.</p>
+  </div>
+
+  <div class="caso-lbl">Nivel 2 — a0c70a9b · BUSCAR OTRA 43 · estructural</div>
+  <div class="hall n2" style="max-width:620px">
+    <span class="hall-kick">Lo que te separa</span>
+    <div class="hall-top">
+      <h3 class="hall-title">Ningún ajuste realista lo mueve de Buscar otra.</h3>
+      <div class="hall-kpi">−34%<span class="hall-kpi-sub">precio · mínimo</span></div>
+    </div>
+    <p class="hall-body">
+      Ni bajando el precio un 34% ni subiendo el arriendo un 45% este depto llega a Ajusta
+      supuestos. La brecha es del deal, no de cómo lo estás mirando.
+    </p>
+    <div class="hall-foot"><span class="hall-link">Por qué no cierra →</span></div>
+  </div>
+  <p class="nota">
+    <span class="flag">REQUIERE MOTOR</span> El KPI y la frase del caso estructural usan el
+    <strong>delta mínimo real</strong> (precio −33,6%, arriendo +45,5%), que hoy el builder
+    <em>no guarda</em>: descarta las palancas que exceden el tope sin registrar cuánto excedían.
+    Hace falta un campo <code>deltaMinimoFueraDeTope</code> con el mejor delta encontrado en un
+    rango extendido. Sin eso, la frase queda en “más de un 15%”, que es el tope y no el dato —
+    mucho más débil y menos creíble.
+  </p>
+
+  <div class="caso-lbl">728b47f3 · COMPRAR 78</div>
+  <p class="nota" style="margin-top:0">
+    El hallazgo <strong>no se emite</strong>. La pirámide queda en N=8, sin card ni hueco. Nada que diseñar.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">B</span><span class="sec-t">Drawer</span></div>
+  <p class="sec-d">
+    Drawer propio (<code>DrawerKey: "distanciaVeredicto"</code>, label “Lo que te separa”).
+    Entra a la secuencia prev/next derivada del orden de la pirámide, como el resto.
+  </p>
+
+  <div class="drawer">
+    <span class="drw-n">Lo que te separa</span>
+    <h3 class="drw-t">Qué tendría que pasar para que sea Comprar</h3>
+    <p class="drw-p">
+      Tu veredicto es Ajusta supuestos porque el aporte mensual todavía pesa demasiado sobre el
+      arriendo. Estas son las tres vías que lo cruzan, cada una por su cuenta: no se suman, cualquiera
+      alcanza.
+    </p>
+
+    <div class="drw-row">
+      <span class="drw-pal">Arriendo</span>
+      <span class="drw-txt">de <b>$817.000</b> a <b>$851.946</b> al mes</span>
+      <span class="drw-delta">+4,3%</span>
+    </div>
+    <div class="drw-row">
+      <span class="drw-pal">Precio</span>
+      <span class="drw-txt">de <b>UF 4.000</b> a <b>UF 3.810</b> de cierre</span>
+      <span class="drw-delta">−4,7%</span>
+    </div>
+    <div class="drw-row">
+      <span class="drw-pal">Plazo</span>
+      <span class="drw-txt">de <b>25</b> a <b>30 años</b> de crédito</span>
+      <span class="drw-delta">+5 años</span>
+    </div>
+
+    <div class="drw-box">
+      <span class="drw-box-l">La más barata en plata tuya</span>
+      <p class="drw-box-p">
+        Estirar el plazo no te cuesta capital: no exige negociar con el vendedor ni que el mercado
+        de arriendo te acompañe. Alarga la deuda y pagas más intereses en total, pero es la única
+        de las tres que depende solo del banco.
+      </p>
+    </div>
+
+    <p class="drw-proc">
+      Cada vía sale de reevaluar el veredicto completo moviendo <em>una sola</em> variable a la vez
+      y dejando el resto igual. El plazo se muestra en tramos de 5 años porque es lo que los bancos
+      ofrecen. Pie y tasa no se listan: son condiciones de tu bolsillo y del banco, no del depto.
+    </p>
+  </div>
+  <p class="nota">
+    El bloque destacado <strong>no usa Signal Red</strong> (Patrón 3 lo reserva para bloques
+    conclusivos de egreso). Border-left en <code>--border-strong</code>, esquinas izquierdas cuadradas.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">C</span><span class="sec-t">Frase canónica — las 4 ramas</span></div>
+  <p class="sec-d">
+    Regla acordada: nombra la palanca de <strong>menor delta entre precio y arriendo</strong>; si el
+    plazo está disponible, agrega la segunda vía. El plazo nunca es la palanca principal aunque su
+    delta sea menor — es la vía de escape, no la conclusión.
+  </p>
+
+  <div class="caso-lbl">C1 · AJUSTA → COMPRAR, arriendo gana (4d82187b)</div>
+  <p class="drw-p" style="max-width:78ch">
+    “Tu veredicto Ajusta supuestos pasa a Comprar si el arriendo llega a <b>$851.946</b> al mes —un
+    <b>4,3%</b> sobre los <b>$817.000</b> que declaraste—, o estirando el crédito de 25 a 30 años,
+    sin capital adicional.”
+  </p>
+
+  <div class="caso-lbl">C2 · BUSCAR → AJUSTA, arriendo gana (5667320a)</div>
+  <p class="drw-p" style="max-width:78ch">
+    “Tu veredicto Buscar otra pasa a Ajusta supuestos si el arriendo llega a <b>$1.074.010</b> al mes
+    —un <b>10,7%</b> sobre los <b>$970.000</b> que declaraste—, o estirando el crédito de 15 a 20 años,
+    sin capital adicional. Para llegar a Comprar la exigencia sube a <b>$1.197.344</b>.”
+  </p>
+
+  <div class="caso-lbl">C3 · precio gana (05462488 · Santiago · AJUSTA 68)</div>
+  <p class="drw-p" style="max-width:78ch">
+    “Tu veredicto Ajusta supuestos pasa a Comprar si cierras en <b>UF 2.319</b> en vez de
+    <b>UF 2.600</b> —un <b>10,8%</b> menos—. Es una diferencia de negociación, no de otro departamento.”
+  </p>
+
+  <div class="caso-lbl">C4 · estructural (a0c70a9b)</div>
+  <p class="drw-p" style="max-width:78ch">
+    “Ni bajando el precio un <b>34%</b> ni subiendo el arriendo un <b>45%</b> este depto llega a Ajusta
+    supuestos, y estirar el crédito a 30 años tampoco alcanza. La brecha es del deal, no de cómo lo
+    estás mirando.” <span class="flag">REQUIERE MOTOR</span>
+  </p>
+
+  <p class="nota">
+    Las cuatro cumplen §2.2: cifra contextualizada (P1), recomendación con número (P2), cero
+    engine-isms (A11 — no se nombra “gate”, “banda”, “score”, “cruza”). Tuteo neutro chileno, “depto”,
+    sin “inquilino”. La frase del motor es la base; la IA la reescribe aguas abajo.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">D</span><span class="sec-t">Margen del veredicto — espejo bidireccional</span></div>
+  <p class="sec-d">
+    Hoy la card de <code>sensibilidad</code> solo mira hacia abajo (“aguanta hasta −25% antes de bajar”)
+    y desaparece entera en Buscar otra. Con el hallazgo nuevo, las dos direcciones existen y conviene
+    mostrarlas como un <strong>rango</strong>: dónde estás y a qué distancia está cada borde.
+  </p>
+
+  <div class="caso-lbl">D1 · AJUSTA SUPUESTOS — las dos direcciones (4d82187b)</div>
+  <div class="hall n2" style="max-width:620px">
+    <span class="hall-kick">Margen del veredicto</span>
+    <div class="hall-top">
+      <h3 class="hall-title">Cuánto aguanta y cuánto le falta</h3>
+    </div>
+    <div class="rango">
+      <div class="rango-track">
+        <span class="rango-mark" style="left:0"></span>
+        <span class="rango-dot" style="left:53%"></span>
+        <span class="rango-mark" style="right:0"></span>
+      </div>
+      <div class="rango-lbls">
+        <span><b>−25%</b>arriendo → buscar otra</span>
+        <span class="mid"><b>Hoy</b>ajusta supuestos</span>
+        <span class="rgt"><b>+4,3%</b>arriendo → comprar</span>
+      </div>
+    </div>
+    <p class="hall-body" style="margin-top:18px">
+      El arriendo tendría que caer un 25% para que esto pase a Buscar otra, y subir un 4,3% para
+      que pase a Comprar. Estás mucho más cerca del borde de arriba que del de abajo.
+    </p>
+  </div>
+  <p class="nota">
+    El track reusa el gradiente del gauge de score (excepción documentada de Capa 1) porque comunica
+    la misma escala peor→mejor. El dot va en Ink, no en ámbar. La posición del dot es
+    <em>proporcional a los dos deltas</em>, no decorativa.
+  </p>
+
+  <div class="caso-lbl">D2 · BUSCAR OTRA — solo hacia arriba (5667320a)</div>
+  <div class="hall n2" style="max-width:620px">
+    <span class="hall-kick">Margen del veredicto</span>
+    <div class="hall-top">
+      <h3 class="hall-title">Cuánto le falta</h3>
+    </div>
+    <div class="rango">
+      <div class="rango-track">
+        <span class="rango-dot" style="left:4%"></span>
+        <span class="rango-mark" style="right:0"></span>
+      </div>
+      <div class="rango-lbls">
+        <span><b>Hoy</b>buscar otra</span>
+        <span class="rgt"><b>+10,7%</b>arriendo → ajusta supuestos</span>
+      </div>
+    </div>
+    <p class="hall-body" style="margin-top:18px">
+      Ya está en el piso: no hay hacia dónde bajar. Lo que falta para subir de veredicto es un
+      arriendo 10,7% mayor.
+    </p>
+  </div>
+  <p class="nota">
+    Esto <strong>reemplaza el silencio actual</strong>: hoy Buscar otra no tiene card de margen
+    (<code>sensibilidad</code> retorna null por diseño) y el usuario no ve nada. La card ahora existe,
+    alimentada por el hallazgo nuevo en vez de por sensibilidad.
+  </p>
+
+  <div class="caso-lbl">D3 · COMPRAR — sin cambios (728b47f3)</div>
+  <p class="nota" style="margin-top:0">
+    Queda exactamente como está hoy: “aguanta que el arriendo caiga hasta un 27,5% antes de cambiar
+    a Ajusta supuestos”. No hay veredicto superior, no hay segunda dirección que mostrar.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">E</span><span class="sec-t">La posición de Franco</span></div>
+  <p class="sec-d">
+    El cierre (<code>conviene.cajaAccionable</code>) lo escribe la IA. Lo que cambia es que ahora
+    <strong>tiene el dato</strong>: la doctrina pide cerrar con la condición que sostiene la posición
+    (§1.10), y la distancia es exactamente eso. En rojo, lo que se agrega.
+  </p>
+
+  <div class="caso-lbl">4d82187b · AJUSTA SUPUESTOS — texto real de prod, con el cierre nuevo</div>
+  <div class="posf">
+    <span class="posf-l">La posición de Franco</span>
+    <p class="posf-p">
+      Este depto tiene dos cosas buenas trabajando a la vez: entras bajo mercado y el cap rate supera
+      la referencia. El aporte de $73.936 al mes es el costo de operar ese activo mientras la plusvalía
+      hace su trabajo. <span class="add">Y estás a muy poco de que deje de ser un costo: con el arriendo
+      en $851.946 —4,3% más— la conclusión cambia a Comprar. Antes de firmar, revisa qué arriendo real
+      soporta el depto; si el mercado te da esa diferencia, la decisión se toma sola.</span>
+    </p>
+  </div>
+
+  <div class="caso-lbl">a0c70a9b · BUSCAR OTRA estructural</div>
+  <div class="posf">
+    <span class="posf-l">La posición de Franco</span>
+    <p class="posf-p">
+      El precio por m² está bajo la mediana y la estructura financiera no es el problema.
+      <span class="add">Pero la brecha no se cierra ajustando supuestos: ni un 34% menos de precio ni
+      un 45% más de arriendo lo mueven de Buscar otra. No es un depto que estés mirando mal — es un
+      depto que no da. Guarda el pie para el siguiente.</span>
+    </p>
+  </div>
+  <p class="nota">
+    Cumple §1.10 (posición + condición) y §1.2 capa 4 (qué pasa si no seguís la recomendación).
+    El cierre estructural es el que más se juega: hoy el copy no lo dice y el usuario se queda sin
+    saber si vale la pena insistir.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">F</span><span class="sec-t">PDF — bloque de gates</span></div>
+  <p class="sec-d">
+    <code>DocumentoLTR.tsx:106-113</code> tiene el pie hardcodeado por veredicto. El de Buscar otra
+    afirma algo que el motor ahora puede desmentir.
+  </p>
+
+  <div class="caso-lbl">F1 · 5667320a — recuperable. Hoy el PDF miente.</div>
+  <div class="pdf">
+    <p class="pdf-t">Qué exigiría un Comprar — hoy</p>
+    <div class="pdf-g"><span>Flujo mensual ≥ 0</span><span class="v pdf-no">−$266.184</span></div>
+    <div class="pdf-g"><span>Rentabilidad neta ≥ 4%</span><span class="v pdf-no">2,9%</span></div>
+    <div class="pdf-g"><span>Plusvalía inmediata ≥ 0</span><span class="v pdf-ok">+16,6%</span></div>
+    <p class="pdf-foot">
+      <del>Cumplir las tres es condición necesaria para un Comprar, pero este caso está lejos de ahí:
+      no es cuestión de afinar un supuesto ni el precio.</del><br /><br />
+      <span class="add">Cumplir las tres es condición necesaria para un Comprar. Este caso no está
+      lejos: con el arriendo en $1.074.010 —10,7% más que el declarado— el veredicto ya sube a Ajusta
+      supuestos, y a $1.197.344 llega a Comprar. Estirar el crédito de 15 a 20 años consigue el primer
+      salto sin poner capital.</span>
+    </p>
+  </div>
+
+  <div class="caso-lbl">F2 · a0c70a9b — estructural. El pie duro se gana el derecho a serlo.</div>
+  <div class="pdf">
+    <p class="pdf-t">Qué exigiría un Comprar — hoy</p>
+    <div class="pdf-g"><span>Flujo mensual ≥ 0</span><span class="v pdf-no">−$806.014</span></div>
+    <div class="pdf-g"><span>Rentabilidad neta ≥ 4%</span><span class="v pdf-no">2,1%</span></div>
+    <div class="pdf-g"><span>Plusvalía inmediata ≥ 0</span><span class="v pdf-no">−52,2%</span></div>
+    <p class="pdf-foot">
+      <span class="add">Cumplir las tres es condición necesaria para un Comprar, y este caso no llega
+      por ninguna vía razonable: ni bajando el precio un 34% ni subiendo el arriendo un 45% cruza
+      siquiera a Ajusta supuestos. No es cuestión de afinar un supuesto ni el precio.</span>
+    </p>
+  </div>
+  <p class="nota">
+    La frase dura <strong>no desaparece</strong> — se gana el derecho a existir con el número que la
+    respalda. Ese era el problema: la misma frase se disparaba en los dos casos.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">G</span><span class="sec-t">Notas de implementación</span></div>
+  <ul class="notas">
+    <li>
+      <b>Motor — lo único que falta.</b> Un campo con el <b>delta mínimo aunque exceda el tope</b>
+      (<code>deltaMinimoFueraDeTope: { palanca, deltaPct }</code>), buscado en rango extendido
+      (arriendo hasta +150%, precio hasta −70%). Sin él, C4, A-estructural, E-estructural y F2 no
+      tienen número y caen a “más de un 15%”, que es el tope, no el dato. Es el cambio que más
+      valor agrega y el más chico.
+    </li>
+    <li>
+      <b>Card.</b> <code>findingDisplay</code> propio en <code>GenericFindingCard</code>:
+      kicker “Lo que te separa”, KPI = delta de la palanca principal en Ink, chips de vías,
+      <b>sin badge de dirección</b>. <code>direccion: "adverso"</code> se conserva (orden Filosofía 1)
+      pero no se renderiza.
+    </li>
+    <li>
+      <b>Drawer.</b> Nueva <code>DrawerKey</code> <code>distanciaVeredicto</code> + entrada en el mapa
+      de <code>AnalysisDrawer</code>. Entra solo a la secuencia LTR.
+    </li>
+    <li>
+      <b>Prompt.</b> El hallazgo entra al gather de <code>ai-generation.ts:1292</code>. Hoy ese gather
+      es la lista de los 6 builders y excluye los solo-lectura a propósito. Al entrar, la IA lo narra
+      <b>desde los valores tipados</b>: prohibido recalcular, prohibido inventar una palanca que no
+      esté en <code>valor.palancas</code>. Guard post-LLM: los montos citados deben coincidir con
+      <code>objetivo</code>.
+    </li>
+    <li>
+      <b>Margen del veredicto.</b> El componente pasa a leer dos fuentes (<code>sensibilidad</code> +
+      <code>distancia_veredicto</code>) y decide el layout por cuáles existen. Buscar otra estrena card.
+    </li>
+    <li>
+      <b>STR no se toca.</b> El hallazgo es LTR-only (se siembra en <code>runAnalysis</code>, no en el
+      motor STR). Verificar que <code>PiramideHallazgosSTR</code> y <code>DocumentoSTR</code> no lo
+      rendericen — no deberían, porque no llega en <code>results.hallazgos</code> del corto.
+    </li>
+    <li>
+      <b>Tech debt, sin acción acá.</b> Quedan AJUSTA SUPUESTOS con
+      <code>esEstructural=true</code>: análisis que el producto llama “ajusta supuestos” pero que
+      ningún ajuste dentro del 30% rescata. Con el plazo en tramos comerciales son <b>2 de 143
+      (1%)</b> — no el ~11% que estimó el sweep de calibración, que se corrió antes de ese cambio y
+      medía el plazo en años exactos. El redondeo a 30 años rescata la mayoría. Es calibración de
+      bandas, no de este hallazgo. Los dos IDs van en el reporte.
+    </li>
+  </ul>
+</section>
+
+</div>
