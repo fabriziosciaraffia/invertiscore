@@ -15,7 +15,8 @@
     — light es el default del producto, §5.3).
   · CIFRAS = REALES, leídas del motor sobre las 4 filas canónicas de prod
     (script of-verif-distancia.ts). No hay placeholders en esta versión.
-  · Lo que el motor todavía NO emite va marcado inline [REQUIERE MOTOR].
+  · El motor ya emite TODO lo que este mockup usa (incluido el delta mínimo del caso
+    estructural, commit 571606f). Lo pendiente es solo superficie.
 
   SECCIONES
   ---------
@@ -152,6 +153,28 @@
   del { color: var(--text-muted); text-decoration-color: var(--signal); }
 
   code { font-family: var(--mono); font-size: 12px; background: var(--sunken); padding: 1px 5px; border-radius: 3px; }
+
+  /* ══ MOBILE ══ El mockup es un documento de contrato, no producto responsive,
+     pero tiene que ser legible si se abre en el teléfono. Se apila lo que tiene
+     ancho fijo y se habilita el encogido de los items flex/grid (min-width:0 —
+     sin eso, flex no baja de min-content y el body desborda). */
+  @media (max-width: 560px) {
+    body { padding: 28px 16px 72px; }
+    .doc-h1 { font-size: 25px; }
+    .doc-h1 span { font-size: 19px !important; word-break: break-all; }
+    .hall-top { flex-direction: column; gap: 10px; }
+    .hall-kpi { text-align: left; }
+    .hall-kpi-sub { margin-top: 3px; }
+    .drw-row { grid-template-columns: 1fr auto; gap: 4px 12px; }
+    .drw-pal { grid-column: 1 / -1; }
+    .rango-lbls { flex-direction: column; gap: 10px; }
+    .rango-lbls .mid, .rango-lbls .rgt { text-align: left; }
+    .pdf, .drawer { padding: 18px 16px; }
+    .pdf-g { grid-template-columns: 1fr; gap: 2px; }
+    .pdf-g .v { text-align: left; }
+  }
+  .hall-top > * , .drw-row > *, .rango-lbls > * { min-width: 0; }
+  .hall-title, .hall-body, .drw-txt, .pdf-foot, .posf-p { overflow-wrap: anywhere; }
   ul.notas { font-size: 13.5px; color: var(--text-secondary); max-width: 80ch; padding-left: 20px; }
   ul.notas li { margin-bottom: 9px; }
   ul.notas b { color: var(--text); }
@@ -175,7 +198,7 @@
     <strong>nivel 2 o 3</strong>. Se muestran los tres tamaños para fijar el display.
   </p>
 
-  <div class="caso-lbl">Decisión pendiente · kicker (elegí uno)</div>
+  <div class="caso-lbl">Kicker — DECIDIDO: opción A (Fabrizio, gate del 30-jul). B queda de registro.</div>
   <div class="ab">
     <div>
       <div class="ab-h">Opción A — “Lo que te separa”</div>
@@ -230,7 +253,7 @@
     </div>
   </div>
   <p class="nota" style="margin-top:16px">
-    <strong>Recomendación: Opción A.</strong> Un solo kicker para los tres estados, no promete
+    <strong>Elegida: Opción A.</strong> Un solo kicker para los tres estados, no promete
     ruta, y el titular ya dice la dirección. <strong>Sin badge “EN CONTRA”:</strong> el hallazgo
     conserva <code>direccion: "adverso"</code> para el orden Filosofía 1, pero el display lo omite —
     es un mapa, no un golpe. <strong>KPI en Ink, nunca Signal Red</strong> (no es un negativo
@@ -252,21 +275,20 @@
     <span class="hall-kick">Lo que te separa</span>
     <div class="hall-top">
       <h3 class="hall-title">Ningún ajuste realista lo mueve de Buscar otra.</h3>
-      <div class="hall-kpi">−34%<span class="hall-kpi-sub">precio · mínimo</span></div>
+      <div class="hall-kpi">−33,6%<span class="hall-kpi-sub">precio · mínimo</span></div>
     </div>
     <p class="hall-body">
-      Ni bajando el precio un 34% ni subiendo el arriendo un 45% este depto llega a Ajusta
-      supuestos. La brecha es del deal, no de cómo lo estás mirando.
+      Ni bajando el precio un 33,6% este depto llega a Ajusta supuestos, y estirar el crédito a 30
+      años tampoco alcanza. La brecha es del deal, no de cómo lo estás mirando.
     </p>
     <div class="hall-foot"><span class="hall-link">Por qué no cierra →</span></div>
   </div>
   <p class="nota">
-    <span class="flag">REQUIERE MOTOR</span> El KPI y la frase del caso estructural usan el
-    <strong>delta mínimo real</strong> (precio −33,6%, arriendo +45,5%), que hoy el builder
-    <em>no guarda</em>: descarta las palancas que exceden el tope sin registrar cuánto excedían.
-    Hace falta un campo <code>deltaMinimoFueraDeTope</code> con el mejor delta encontrado en un
-    rango extendido. Sin eso, la frase queda en “más de un 15%”, que es el tope y no el dato —
-    mucho más débil y menos creíble.
+    El KPI y la frase del caso estructural usan el <strong>delta mínimo real</strong> (precio
+    −33,6%), no el tope. <strong>Ya implementado</strong> (commit 571606f, campo
+    <code>deltaMinimoFueraDeTope</code>): se busca en rango extendido (arriendo +150% · precio
+    −70%) solo cuando <code>esEstructural</code>, y no entra a <code>palancas</code> porque es
+    evidencia, no una vía accionable.
   </p>
 
   <div class="caso-lbl">728b47f3 · COMPRAR 78</div>
@@ -360,9 +382,8 @@
 
   <div class="caso-lbl">C4 · estructural (a0c70a9b)</div>
   <p class="drw-p" style="max-width:78ch">
-    “Ni bajando el precio un <b>34%</b> ni subiendo el arriendo un <b>45%</b> este depto llega a Ajusta
-    supuestos, y estirar el crédito a 30 años tampoco alcanza. La brecha es del deal, no de cómo lo
-    estás mirando.” <span class="flag">REQUIERE MOTOR</span>
+    “Ni bajando el precio un <b>33,6%</b> este depto llega a Ajusta supuestos, y estirar el crédito a
+    30 años tampoco alcanza. La brecha es del deal, no de cómo lo estás mirando.”
   </p>
 
   <p class="nota">
@@ -470,8 +491,7 @@
     <span class="posf-l">La posición de Franco</span>
     <p class="posf-p">
       El precio por m² está bajo la mediana y la estructura financiera no es el problema.
-      <span class="add">Pero la brecha no se cierra ajustando supuestos: ni un 34% menos de precio ni
-      un 45% más de arriendo lo mueven de Buscar otra. No es un depto que estés mirando mal — es un
+      <span class="add">Pero la brecha no se cierra ajustando supuestos: ni bajando el precio un 33,6% se mueve de Buscar otra. No es un depto que estés mirando mal — es un
       depto que no da. Guarda el pie para el siguiente.</span>
     </p>
   </div>
@@ -514,8 +534,7 @@
     <div class="pdf-g"><span>Plusvalía inmediata ≥ 0</span><span class="v pdf-no">−52,2%</span></div>
     <p class="pdf-foot">
       <span class="add">Cumplir las tres es condición necesaria para un Comprar, y este caso no llega
-      por ninguna vía razonable: ni bajando el precio un 34% ni subiendo el arriendo un 45% cruza
-      siquiera a Ajusta supuestos. No es cuestión de afinar un supuesto ni el precio.</span>
+      por ninguna vía razonable: ni bajando el precio un 33,6% cruza siquiera a Ajusta supuestos. No es cuestión de afinar un supuesto ni el precio.</span>
     </p>
   </div>
   <p class="nota">
