@@ -29,10 +29,35 @@ export type Anomalia = {
   regla: Regla;
   /** El valor DERIVADO que falla (UF/m², yield), no siempre el tipeado. */
   valor: number;
+  /** Umbrales que se violaron. USO INTERNO (logs, tests) — NUNCA se muestran. */
   rango: [number, number];
-  /** Tuteo chileno. Nombra la consecuencia, no el rango. */
+  /** Tuteo chileno. Ver REGLA DE COPY abajo. */
   mensaje: string;
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REGLA DE COPY — leer antes de tocar cualquier `mensaje`
+//
+// El mensaje NUNCA expone el umbral del guard. Los rangos de acá abajo son
+// fusibles de ingeniería, deliberadamente holgados: publicarlos los convierte en
+// recomendación implícita. "En el Gran Santiago no pasa de UF 500" le está
+// diciendo al usuario que UF 499/m² está bien — y en Providencia lo normal son
+// 60-130. Es información falsa dicha por omisión.
+//
+// El mensaje lleva DOS cosas y nada más:
+//   (a) el valor DERIVADO del usuario — eso es lo que delata el error;
+//   (b) la acción a tomar, o la causa probable del error.
+//
+// Cuando hay un ancla del mundo real, se usa esa ("a ese precio no hay
+// departamento en Chile", "ni un depósito a plazo rinde tan poco") — nunca
+// nuestro rango.
+//
+// EXCEPCIÓN ÚNICA: si el límite es una verdad y no una elección nuestra
+// (ocupación > 100%), ahí sí se nombra.
+//
+// Tono: directo, sin calificar al usuario. Se le fue un cero tipeando, no hizo
+// nada tonto. "Hay un dígito de más" sí; "ridículo/absurdo/irrisorio" no.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export type Regla =
   | "uf_m2_fuera_rango"
@@ -72,29 +97,136 @@ export interface PlausibilidadInput {
 
 export const RANGO_UF_M2: [number, number] = [10, 500];
 export const RANGO_PRECIO_UF: [number, number] = [300, 100_000];
-export const RANGO_SUPERFICIE_M2: [number, number] = [12, 500];
+// Techo 1.000 y no 500: existen departamentos de 500-600 m² en Vitacura y Las
+// Condes, así que 500 rechazaba propiedades REALES. Mil m² sí es genuinamente
+// imposible para una unidad. El piso de 12 se queda — los microdeptos existen.
+export const RANGO_SUPERFICIE_M2: [number, number] = [12, 1_000];
 export const RANGO_YIELD_BRUTO: [number, number] = [0.005, 0.25];
-export const RANGO_ARRIENDO_CLP: [number, number] = [80_000, 15_000_000];
 export const RANGO_TASA_PCT: [number, number] = [0.5, 20];
 export const RANGO_STR_OCUPACION_PCT: [number, number] = [0, 100];
-export const RANGO_STR_TARIFA_CLP: [number, number] = [5_000, 2_000_000];
 export const RANGO_STR_YIELD_BRUTO: [number, number] = [0.005, 0.4];
 
-// ── Formato (local: el módulo no importa nada) ───────────────────────────────
+// ── Reglas SIN techo (decisión de la revisión de redundancia) ────────────────
+//
+// Arriendo y tarifa/noche solo tienen PISO. Sus techos ($15M/mes y $2M/noche) se
+// quitaron por el mismo patrón que bajó a la superficie:
+//
+//   · El error que pretendían cazar —pegar el precio de venta en el campo de
+//     arriendo, o el ingreso mensual en el de tarifa— ya lo caza `yield_imposible`
+//     / `str_yield_imposible`, porque el yield se calcula CON ese valor.
+//   · Para disparar SOLOS necesitaban precio ≥ UF 18.557 (arriendo) o ≥ UF 23.500
+//     (tarifa): o sea, el único caso que activaban por su cuenta era una propiedad
+//     de lujo genuina. Valor añadido ≈ 0, riesgo de falso positivo > 0.
+//
+// Los pisos se quedan: disparan solos en escenarios de tipeo real (UF 1.000 con
+// $50.000 de arriendo) y no chocan con nada legítimo.
+export const RANGO_ARRIENDO_CLP: [number, number] = [80_000, Infinity];
+export const RANGO_STR_TARIFA_CLP: [number, number] = [5_000, Infinity];
 
-/** Separador de miles con punto, formato chileno. */
-function miles(n: number): string {
-  return Math.round(n).toLocaleString("es-CL", { maximumFractionDigits: 0 });
+/**
+ * Orden de presentación. El cliente muestra `anomalias[0].mensaje`, así que el
+ * primero tiene que ser el MÁS EXPLICATIVO — el que le hace entender al usuario
+ * qué se le fue. UF/m² gana siempre: es el derivado que delata el dígito de más
+ * sin que el usuario tenga que comparar dos campos.
+ *
+ * Vive acá (no en el cliente) para que el orden sea el mismo en el 422, en los
+ * logs y en la pantalla.
+ */
+const PRIORIDAD_REGLA: readonly Regla[] = [
+  "uf_m2_fuera_rango",
+  "precio_total_fuera_rango",
+  "superficie_fuera_rango",
+  "yield_imposible",
+  "str_yield_imposible",
+  "arriendo_fuera_rango",
+  "str_tarifa_fuera_rango",
+  "str_ocupacion_fuera_rango",
+  "tasa_fuera_rango",
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRINCIPIO DE REDONDEO — vale para los 9 mensajes
+//
+// El redondeo NUNCA puede mover el valor mostrado hacia adentro del rango
+// aceptado. Si el guard rechazó 11,9 m² por un piso de 12, mostrar "12 m² no
+// alcanza" es incoherente: el usuario lee un número que el guard sí acepta.
+//
+// Implementación: se redondea al decimal ÚTIL del campo y, si ese redondeo cae
+// dentro (o justo sobre el límite), se agregan decimales hasta que vuelva a
+// quedar estrictamente afuera. Nunca se renderiza 0 para un valor no nulo.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Direccion = "alto" | "bajo";
+
+/** Decimales que aportan según la escala del número. */
+function decimalesUtiles(v: number): number {
+  const abs = Math.abs(v);
+  if (abs >= 10) return 0;
+  if (abs >= 1) return 1;
+  if (abs >= 0.01) return 2;
+  return 4;
 }
-function clp(n: number): string {
-  return `$${miles(n)}`;
+
+/**
+ * Redondea `valor` dejándolo SIEMPRE fuera de `limite` en la dirección de la
+ * violación. Devuelve [valorRedondeado, decimalesUsados].
+ */
+function fueraDeRango(valor: number, dir: Direccion, limite: number): [number, number] {
+  // Un entero se muestra entero: sin esto, -5 salía "-5,0%".
+  const base = Number.isInteger(valor) ? 0 : decimalesUtiles(valor);
+  for (let dec = base; dec <= base + 4; dec++) {
+    const f = 10 ** dec;
+    const r = Math.round(valor * f) / f;
+    const sigueFuera = dir === "alto" ? r > limite : r < limite;
+    if (sigueFuera && r !== 0) return [r, dec];
+  }
+  // Último recurso: truncar hacia afuera (ceil/floor nunca entran al rango).
+  const f = 10 ** (base + 4);
+  const r = dir === "alto" ? Math.ceil(valor * f) / f : Math.floor(valor * f) / f;
+  return [r, base + 4];
 }
-function uf(n: number): string {
-  return `UF ${miles(n)}`;
+
+function fmt(n: number, decimales: number): string {
+  return n.toLocaleString("es-CL", {
+    minimumFractionDigits: decimales,
+    maximumFractionDigits: decimales,
+  });
 }
-/** Porcentaje con coma decimal, sin ceros de relleno innecesarios. */
-function pct(fraccion: number, decimales = 2): string {
-  return `${(fraccion * 100).toFixed(decimales).replace(".", ",")}%`;
+
+/** Número crudo (superficie, ocupación) respetando el principio de redondeo. */
+function num(valor: number, dir: Direccion, limite: number): string {
+  const [n, dec] = fueraDeRango(valor, dir, limite);
+  return fmt(n, dec);
+}
+function clp(valor: number, dir: Direccion, limite: number): string {
+  return `$${num(valor, dir, limite)}`;
+}
+function uf(valor: number, dir: Direccion, limite: number): string {
+  return `UF ${num(valor, dir, limite)}`;
+}
+/** Monto derivado sin límite propio (el CLP equivalente del precio). */
+function clpLlano(n: number): string {
+  return `$${Math.round(n).toLocaleString("es-CL", { maximumFractionDigits: 0 })}`;
+}
+
+/**
+ * Porcentaje. Decimales solo cuando aportan: ≥10% ninguno · 1-10% uno ·
+ * <1% tres. Si esa precisión metiera el valor dentro del rango, manda el
+ * principio de redondeo y se agregan los decimales que hagan falta.
+ */
+function pct(fraccion: number, dir: Direccion, limiteFraccion: number): string {
+  const p = fraccion * 100;
+  const lim = limiteFraccion * 100;
+  const base = p >= 10 ? 0 : p >= 1 ? 1 : 3;
+  for (let dec = base; dec <= base + 4; dec++) {
+    const f = 10 ** dec;
+    const r = Math.round(p * f) / f;
+    const sigueFuera = dir === "alto" ? r > lim : r < lim;
+    if (sigueFuera && r !== 0) return `${fmt(r, dec)}%`;
+  }
+  const f = 10 ** (base + 4);
+  const r = dir === "alto" ? Math.ceil(p * f) / f : Math.floor(p * f) / f;
+  return `${fmt(r, base + 4)}%`;
 }
 
 const finito = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -124,8 +256,8 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
         rango: RANGO_PRECIO_UF,
         mensaje:
           precioUF > max
-            ? `${uf(precioUF)} son ${ufOk ? clp(precioUF * ufCLP) : "una cifra"} — a ese precio no hay departamento en Chile. Revisa si te sobró un dígito.`
-            : `${uf(precioUF)} no alcanza para un departamento en el Gran Santiago. Revisa el precio pedido.`,
+            ? `${uf(precioUF, "alto", max)}${ufOk ? ` son ${clpLlano(precioUF * ufCLP)}` : ""}. A ese precio no hay departamento en Chile — revisa si hay un dígito de más.`
+            : `${uf(precioUF, "bajo", min)} no alcanza para un departamento en el Gran Santiago. Revisa el precio pedido.`,
       });
     }
   }
@@ -141,8 +273,8 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
         rango: RANGO_SUPERFICIE_M2,
         mensaje:
           superficieM2 > max
-            ? `${miles(superficieM2)} m² ya no es un departamento — Franco analiza hasta ${max} m². Revisa la superficie útil.`
-            : `${miles(superficieM2)} m² no alcanza para un departamento habitable — Franco analiza desde ${min} m².`,
+            ? `${num(superficieM2, "alto", max)} m² no es la superficie útil de un departamento. Revisa el dato — puede que sea la superficie del terreno o del edificio.`
+            : `${num(superficieM2, "bajo", min)} m² no alcanza para un departamento habitable. Revisa la superficie útil.`,
       });
     }
   }
@@ -157,10 +289,7 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
         regla: "uf_m2_fuera_rango",
         valor: ufM2,
         rango: RANGO_UF_M2,
-        mensaje:
-          ufM2 > max
-            ? `El m² te queda en ${uf(ufM2)} — en el Gran Santiago no pasa de ${uf(max)}. Revisa el precio o la superficie.`
-            : `El m² te queda en ${uf(ufM2)} — en el Gran Santiago no baja de ${uf(min)}. Revisa el precio o la superficie.`,
+        mensaje: `El m² te queda en ${uf(ufM2, ufM2 > max ? "alto" : "bajo", ufM2 > max ? max : min)}. Eso está fuera de escala para Santiago — revisa el precio o la superficie.`,
       });
     }
   }
@@ -168,17 +297,17 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
   // ── Arriendo mensual ──
   const arriendo = input.arriendoMensualCLP;
   if (finito(arriendo) && arriendo > 0) {
-    const [min, max] = RANGO_ARRIENDO_CLP;
-    if (arriendo < min || arriendo > max) {
+    // Solo PISO — ver la nota de "Reglas SIN techo" arriba.
+    const [min] = RANGO_ARRIENDO_CLP;
+    if (arriendo < min) {
       out.push({
         campo: "arriendo",
         regla: "arriendo_fuera_rango",
         valor: arriendo,
         rango: RANGO_ARRIENDO_CLP,
-        mensaje:
-          arriendo > max
-            ? `${clp(arriendo)} al mes no es un arriendo de departamento — Franco analiza hasta ${clp(max)}.`
-            : `${clp(arriendo)} al mes no cubre ni los gastos comunes — Franco analiza arriendos desde ${clp(min)}.`,
+        // No decimos "no cubre ni los gastos comunes": hay GGCC de $40.000 en
+        // comunas periféricas, así que esa afirmación no siempre es cierta.
+        mensaje: `${clp(arriendo, "bajo", min)} al mes está por debajo de cualquier arriendo real en Santiago. Revisa el monto.`,
       });
     }
 
@@ -194,16 +323,20 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
           rango: RANGO_YIELD_BRUTO,
           mensaje:
             yieldBruto > yMax
-              ? `Con ese arriendo el retorno bruto te da ${pct(yieldBruto)} al año — no existe en el Gran Santiago. Revisa el precio o el arriendo.`
-              : `Con ese arriendo el retorno bruto te da ${pct(yieldBruto, 3)} al año — ni un depósito a plazo rinde tan poco. Revisa el precio o el arriendo.`,
+              ? `Con ese arriendo el retorno bruto te da ${pct(yieldBruto, "alto", yMax)} al año. Ningún arriendo en Santiago rinde así — revisa el precio o el arriendo.`
+              : `Con ese arriendo el retorno bruto te da ${pct(yieldBruto, "bajo", yMin)} al año. Ni un depósito a plazo rinde tan poco — revisa el precio o el arriendo.`,
         });
       }
     }
   }
 
   // ── Tasa ──
+  // `> 0` deliberado, igual que arriendo y tarifa: ningún wizard puede emitir
+  // tasa 0 (ambos caen a 4,72 con `|| 4.72`), así que un 0 significa "no
+  // capturada", no "el usuario tipeó cero". Sin este guard, la calibración
+  // contra las filas reales rechazaba un análisis legítimo con tasa ausente.
   const tasa = input.tasaAnualPct;
-  if (finito(tasa)) {
+  if (finito(tasa) && tasa > 0) {
     const [min, max] = RANGO_TASA_PCT;
     if (tasa < min || tasa > max) {
       out.push({
@@ -211,10 +344,7 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
         regla: "tasa_fuera_rango",
         valor: tasa,
         rango: RANGO_TASA_PCT,
-        mensaje:
-          tasa > max
-            ? `Una tasa de ${String(tasa).replace(".", ",")}% anual no existe en el mercado hipotecario chileno — Franco analiza hasta ${max}%.`
-            : `Una tasa de ${String(tasa).replace(".", ",")}% anual no existe en el mercado hipotecario chileno — Franco analiza desde ${String(min).replace(".", ",")}%.`,
+        mensaje: `Una tasa de ${String(tasa).replace(".", ",")}% anual no existe en el mercado hipotecario chileno. Revisa el dato que te dio el banco.`,
       });
     }
   }
@@ -231,26 +361,27 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
         regla: "str_ocupacion_fuera_rango",
         valor: ocupacion,
         rango: RANGO_STR_OCUPACION_PCT,
+        // EXCEPCIÓN de la regla de copy: acá el límite SÍ se nombra, porque 100%
+        // es una verdad aritmética (las 365 noches del año), no una elección
+        // nuestra. Decirlo explica el error en vez de esconder un umbral.
         mensaje:
           ocupacion > max
-            ? `Una ocupación de ${miles(ocupacion)}% no existe — el año tiene 365 noches y el tope es ${max}%.`
-            : `Una ocupación de ${miles(ocupacion)}% no tiene sentido — el piso es ${min}%.`,
+            ? `Una ocupación de ${num(ocupacion, "alto", max)}% no existe: el máximo es ${max}%, o sea las 365 noches del año arrendadas.`
+            : `Una ocupación de ${num(ocupacion, "bajo", min)}% no existe. Revisa el porcentaje.`,
       });
     }
   }
 
   if (finito(tarifa) && tarifa > 0) {
-    const [min, max] = RANGO_STR_TARIFA_CLP;
-    if (tarifa < min || tarifa > max) {
+    // Solo PISO — ver la nota de "Reglas SIN techo" arriba.
+    const [min] = RANGO_STR_TARIFA_CLP;
+    if (tarifa < min) {
       out.push({
         campo: "tarifaNoche",
         regla: "str_tarifa_fuera_rango",
         valor: tarifa,
         rango: RANGO_STR_TARIFA_CLP,
-        mensaje:
-          tarifa > max
-            ? `${clp(tarifa)} por noche no es una tarifa de departamento en Santiago — Franco analiza hasta ${clp(max)}.`
-            : `${clp(tarifa)} por noche no cubre ni el aseo entre huéspedes — Franco analiza tarifas desde ${clp(min)}.`,
+        mensaje: `${clp(tarifa, "bajo", min)} por noche no cubre ni el aseo entre huéspedes. Revisa la tarifa.`,
       });
     }
 
@@ -266,14 +397,19 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
           rango: RANGO_STR_YIELD_BRUTO,
           mensaje:
             yieldStr > yMax
-              ? `Con esa tarifa y ocupación el retorno bruto te da ${pct(yieldStr)} al año — no existe en renta corta en Santiago. Revisa el precio, la tarifa o la ocupación.`
-              : `Con esa tarifa y ocupación el retorno bruto te da ${pct(yieldStr, 3)} al año — ni un depósito a plazo rinde tan poco. Revisa el precio, la tarifa o la ocupación.`,
+              ? `Con esa tarifa y ocupación el retorno bruto te da ${pct(yieldStr, "alto", yMax)} al año. Ninguna renta corta en Santiago rinde así — revisa el precio, la tarifa o la ocupación.`
+              : `Con esa tarifa y ocupación el retorno bruto te da ${pct(yieldStr, "bajo", yMin)} al año. Ni un depósito a plazo rinde tan poco — revisa el precio, la tarifa o la ocupación.`,
         });
       }
     }
   }
 
-  return out;
+  // Orden estable por prioridad: el cliente muestra `anomalias[0].mensaje`, así
+  // que el más explicativo tiene que quedar primero. Sin esto el orden lo daría
+  // la secuencia de evaluación, que es un detalle de implementación.
+  return out.sort(
+    (a, b) => PRIORIDAD_REGLA.indexOf(a.regla) - PRIORIDAD_REGLA.indexOf(b.regla),
+  );
 }
 
 // ── Adaptadores desde los bodies de las rutas ────────────────────────────────

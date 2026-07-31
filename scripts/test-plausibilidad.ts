@@ -198,7 +198,7 @@ test("precio = 100.001 UF → dispara solo precio", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-seccion("5 · Límites exactos — superficie [12, 500] m²");
+seccion("5 · Límites exactos — superficie [12, 1.000] m²");
 
 test("superficie = 12 m² exacto → no dispara", () => {
   assertLimpio({ precioUF: 300, superficieM2: 12, ufCLP: UF }, "superficie 12 m²");
@@ -208,16 +208,22 @@ test("superficie = 11,9 m² → dispara solo superficie", () => {
   assertReglas({ precioUF: 300, superficieM2: 11.9, ufCLP: UF }, ["superficie_fuera_rango"], "superficie 11,9 m²");
 });
 
-test("superficie = 500 m² exacto → no dispara", () => {
-  assertLimpio({ precioUF: 100_000, superficieM2: 500, ufCLP: UF }, "superficie 500 m²");
+test("superficie = 1.000 m² exacto → no dispara", () => {
+  assertLimpio({ precioUF: 100_000, superficieM2: 1_000, ufCLP: UF }, "superficie 1.000 m²");
 });
 
-test("superficie = 501 m² → dispara solo superficie", () => {
+test("superficie = 1.001 m² → dispara solo superficie", () => {
   assertReglas(
-    { precioUF: 100_000, superficieM2: 501, ufCLP: UF },
+    { precioUF: 100_000, superficieM2: 1_001, ufCLP: UF },
     ["superficie_fuera_rango"],
-    "superficie 501 m²",
+    "superficie 1.001 m²",
   );
+});
+
+test("555 m² en Vitacura (depto real grande) NO dispara — era falso positivo", () => {
+  // El techo viejo de 500 rechazaba departamentos que existen en Vitacura y
+  // Las Condes. La fila real b1a0b94f seguía siendo rechazada, pero por uf_m2.
+  assertLimpio({ precioUF: 25_000, superficieM2: 555, ufCLP: UF }, "555 m² legítimo");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -259,7 +265,7 @@ test("sin arriendo declarado el yield no se evalúa", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-seccion("7 · Límites exactos — arriendo CLP [80.000, 15.000.000]");
+seccion("7 · Límite — arriendo CLP: solo piso ($80.000), sin techo");
 
 test("arriendo = $80.000 exacto → no dispara", () => {
   assertLimpio(
@@ -276,18 +282,20 @@ test("arriendo = $79.999 → dispara solo arriendo", () => {
   );
 });
 
-test("arriendo = $15.000.000 exacto → no dispara", () => {
+test("SIN techo: arriendo de $16.000.000 en un depto de lujo NO dispara", () => {
+  // El techo viejo ($15M) solo podía disparar SOLO con precio >= UF 18.557, o
+  // sea sobre lujo genuino. El tipeo que pretendía cazar lo caza yield_imposible.
   assertLimpio(
-    { precioUF: 20_000, superficieM2: 100, ufCLP: 40_000, arriendoMensualCLP: 15_000_000 },
-    "arriendo 15.000.000",
+    { precioUF: 30_000, superficieM2: 150, ufCLP: 40_000, arriendoMensualCLP: 16_000_000 },
+    "arriendo 16M en lujo",
   );
 });
 
-test("arriendo = $15.000.001 → dispara solo arriendo", () => {
+test("pegar el precio de venta en el arriendo lo sigue cazando yield_imposible", () => {
   assertReglas(
-    { precioUF: 20_000, superficieM2: 100, ufCLP: 40_000, arriendoMensualCLP: 15_000_001 },
-    ["arriendo_fuera_rango"],
-    "arriendo 15.000.001",
+    { precioUF: 5_000, superficieM2: 50, ufCLP: 40_000, arriendoMensualCLP: 186_240_000 },
+    ["yield_imposible"],
+    "precio de venta en el campo arriendo",
   );
 });
 
@@ -310,6 +318,13 @@ test("tasa = 20% exacto → no dispara", () => {
 
 test("tasa = 20,01% → dispara solo tasa", () => {
   assertReglas({ ...baseTasa, tasaAnualPct: 20.01 }, ["tasa_fuera_rango"], "tasa 20,01%");
+});
+
+test("tasa = 0 NO dispara (ausente, no tipeada)", () => {
+  // Hallazgo de la calibración contra filas reales: había un análisis legítimo
+  // con tasaInteres=0 (dato no capturado). Ningún wizard puede emitir 0 —
+  // ambos caen a 4,72 — así que 0 significa ausente y no debe bloquear.
+  assertLimpio({ ...baseTasa, tasaAnualPct: 0 }, "tasa 0");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -342,7 +357,7 @@ test("ocupación = 101% → dispara solo ocupación", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-seccion("10 · Límites exactos — STR tarifa/noche [$5.000, $2.000.000]");
+seccion("10 · Límite — STR tarifa/noche: solo piso ($5.000), sin techo");
 
 test("tarifa = $5.000 exacto → no dispara", () => {
   assertLimpio(
@@ -359,28 +374,28 @@ test("tarifa = $4.999 → dispara solo tarifa", () => {
   );
 });
 
-test("tarifa = $2.000.000 exacto → no dispara", () => {
+test("SIN techo: tarifa de $2.100.000/noche en un depto de lujo NO dispara", () => {
   assertLimpio(
     {
       precioUF: 100_000,
       superficieM2: 400,
       ufCLP: 40_000,
-      str: { tarifaNocheCLP: 2_000_000, ocupacionPct: 50 },
+      str: { tarifaNocheCLP: 2_100_000, ocupacionPct: 50 },
     },
-    "tarifa 2.000.000",
+    "tarifa 2,1M en lujo",
   );
 });
 
-test("tarifa = $2.000.001 → dispara solo tarifa", () => {
+test("pegar el ingreso del mes en la tarifa lo sigue cazando str_yield_imposible", () => {
   assertReglas(
     {
-      precioUF: 100_000,
-      superficieM2: 400,
+      precioUF: 5_000,
+      superficieM2: 50,
       ufCLP: 40_000,
-      str: { tarifaNocheCLP: 2_000_001, ocupacionPct: 50 },
+      str: { tarifaNocheCLP: 3_000_000, ocupacionPct: 50 },
     },
-    ["str_tarifa_fuera_rango"],
-    "tarifa 2.000.001",
+    ["str_yield_imposible"],
+    "ingreso mensual en el campo tarifa",
   );
 });
 
@@ -554,6 +569,283 @@ test("desdeBodyStr caza el caso real tipeado en la rama STR", () => {
   assert.ok(r.includes("uf_m2_fuera_rango"));
   assert.ok(r.includes("precio_total_fuera_rango"));
   assert.ok(r.includes("str_yield_imposible"));
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+seccion("14 · Orden de presentación estable y determinístico");
+
+test("uf_m2 va primero cuando concurre con precio y yield", () => {
+  const out = evaluarPlausibilidad({
+    precioUF: 4_800_000,
+    superficieM2: 45,
+    ufCLP: UF,
+    arriendoMensualCLP: 950_000,
+  });
+  assert.equal(out[0].regla, "uf_m2_fuera_rango", `primero salió ${out[0].regla}`);
+  assert.equal(out[1].regla, "precio_total_fuera_rango");
+  assert.equal(out[2].regla, "yield_imposible");
+});
+
+test("superficie va antes que yield", () => {
+  // UF/m² = 18,2 (dentro de rango) para aislar superficie + yield.
+  const out = evaluarPlausibilidad({
+    precioUF: 20_000,
+    superficieM2: 1_100,
+    ufCLP: UF,
+    arriendoMensualCLP: 100_000,
+  });
+  const i = out.findIndex((a) => a.regla === "superficie_fuera_rango");
+  const j = out.findIndex((a) => a.regla === "yield_imposible");
+  assert.ok(i >= 0 && j >= 0, `esperaba ambas reglas, salió ${JSON.stringify(reglas(out))}`);
+  assert.ok(i < j, "superficie debería ir antes que yield");
+});
+
+test("el orden no depende de la secuencia de evaluación (mismo input, mismo orden)", () => {
+  const input: PlausibilidadInput = {
+    precioUF: 4_800_000,
+    superficieM2: 700,
+    ufCLP: UF,
+    tasaAnualPct: 45,
+    arriendoMensualCLP: 90_000_000,
+    str: { tarifaNocheCLP: 9_000_000, ocupacionPct: 900 },
+  };
+  const a = evaluarPlausibilidad(input).map((x) => x.regla);
+  const b = evaluarPlausibilidad(input).map((x) => x.regla);
+  assert.deepEqual(a, b);
+  assert.equal(a[0], "uf_m2_fuera_rango");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+seccion("15 · REGLA DE COPY: ningún mensaje expone el umbral del guard");
+
+/**
+ * Los rangos son fusibles de ingeniería, deliberadamente holgados. Publicarlos
+ * los convierte en recomendación implícita ("no pasa de UF 500" ⇒ 499 está
+ * bien, cuando en Providencia lo normal son 60-130). Este test es el candado.
+ *
+ * Excepción documentada: str_ocupacion_fuera_rango nombra el 100% porque es una
+ * verdad aritmética (365 noches), no una elección nuestra.
+ */
+const EXCEPCIONES_UMBRAL: Regla[] = ["str_ocupacion_fuera_rango"];
+
+/** Todas las formas en que un umbral podría aparecer renderizado. */
+function formasDelUmbral(n: number): string[] {
+  const miles = Math.round(n).toLocaleString("es-CL", { maximumFractionDigits: 0 });
+  return [
+    `UF ${miles}`,
+    `$${miles}`,
+    `${miles} m²`,
+    `${(n * 100).toFixed(2).replace(".", ",")}%`,
+    `${(n * 100).toFixed(3).replace(".", ",")}%`,
+    `${String(n).replace(".", ",")}%`,
+  ];
+}
+
+/** Casos que disparan cada regla, para inspeccionar su mensaje. */
+const CASOS_COPY: Array<{ nombre: string; input: PlausibilidadInput }> = [
+  { nombre: "uf_m2 alto", input: { precioUF: 4_800_000, superficieM2: 45, ufCLP: UF } },
+  { nombre: "uf_m2 bajo", input: { precioUF: 400, superficieM2: 60, ufCLP: UF } },
+  { nombre: "precio alto", input: { precioUF: 4_800_000, superficieM2: 45, ufCLP: UF } },
+  { nombre: "precio bajo", input: { precioUF: 299, superficieM2: 29, ufCLP: UF } },
+  { nombre: "superficie alta", input: { precioUF: 100_000, superficieM2: 1_200, ufCLP: UF } },
+  { nombre: "superficie baja", input: { precioUF: 300, superficieM2: 11.9, ufCLP: UF } },
+  {
+    nombre: "yield bajo",
+    input: { precioUF: 6_000, superficieM2: 60, ufCLP: 40_000, arriendoMensualCLP: 95_000 },
+  },
+  {
+    nombre: "yield alto",
+    input: { precioUF: 300, superficieM2: 30, ufCLP: 40_000, arriendoMensualCLP: 260_000 },
+  },
+  {
+    nombre: "arriendo bajo",
+    input: { precioUF: 2_000, superficieM2: 20, ufCLP: 40_000, arriendoMensualCLP: 79_999 },
+  },
+  { nombre: "tasa alta", input: { ...baseTasa, tasaAnualPct: 45 } },
+  { nombre: "tasa baja", input: { ...baseTasa, tasaAnualPct: 0.1 } },
+  {
+    nombre: "tarifa baja",
+    input: {
+      precioUF: 2_000,
+      superficieM2: 20,
+      ufCLP: 40_000,
+      str: { tarifaNocheCLP: 4_999, ocupacionPct: 50 },
+    },
+  },
+  {
+    nombre: "str yield alto",
+    input: {
+      precioUF: 2_200,
+      superficieM2: 20,
+      ufCLP: 40_000,
+      str: { tarifaNocheCLP: 100_000, ocupacionPct: 100 },
+    },
+  },
+  {
+    nombre: "str yield bajo",
+    input: {
+      precioUF: 10_000,
+      superficieM2: 100,
+      ufCLP: 40_000,
+      str: { tarifaNocheCLP: 5_000, ocupacionPct: 100 },
+    },
+  },
+];
+
+test("ningún mensaje contiene su propio min ni su propio max renderizado", () => {
+  const leaks: string[] = [];
+  for (const caso of CASOS_COPY) {
+    for (const a of evaluarPlausibilidad(caso.input)) {
+      if (EXCEPCIONES_UMBRAL.includes(a.regla)) continue;
+      for (const umbral of [a.rango[0], a.rango[1]]) {
+        if (!Number.isFinite(umbral)) continue; // reglas sin techo
+        for (const forma of formasDelUmbral(umbral)) {
+          // Match con frontera: "UF 106.667" contiene "UF 10" como substring,
+          // pero ese 10 es el valor del USUARIO, no el umbral. Exigimos que no
+          // siga un dígito ni un separador de miles/decimal.
+          const re = new RegExp(
+            `${forma.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\d.,])`,
+          );
+          if (re.test(a.mensaje)) {
+            leaks.push(`${a.regla} (${caso.nombre}) filtra "${forma}" → ${a.mensaje}`);
+          }
+        }
+      }
+    }
+  }
+  assert.deepEqual(leaks, [], `umbrales filtrados:\n  ${leaks.join("\n  ")}`);
+});
+
+test("ningún mensaje dice 'Franco analiza hasta/desde'", () => {
+  const leaks: string[] = [];
+  for (const caso of CASOS_COPY) {
+    for (const a of evaluarPlausibilidad(caso.input)) {
+      if (/Franco analiza (hasta|desde)/.test(a.mensaje)) {
+        leaks.push(`${a.regla}: ${a.mensaje}`);
+      }
+    }
+  }
+  assert.deepEqual(leaks, [], `mensajes con umbral explícito:\n  ${leaks.join("\n  ")}`);
+});
+
+test("ningún mensaje califica al usuario", () => {
+  const prohibidas = /\b(absurd|ridícul|irrisori|disparat|insensat|obvio|error tuyo)/i;
+  const leaks: string[] = [];
+  for (const caso of CASOS_COPY) {
+    for (const a of evaluarPlausibilidad(caso.input)) {
+      if (prohibidas.test(a.mensaje)) leaks.push(`${a.regla}: ${a.mensaje}`);
+    }
+  }
+  assert.deepEqual(leaks, [], `mensajes que califican al usuario:\n  ${leaks.join("\n  ")}`);
+});
+
+test("todo mensaje incluye el valor derivado del usuario", () => {
+  for (const caso of CASOS_COPY) {
+    for (const a of evaluarPlausibilidad(caso.input)) {
+      assert.ok(a.mensaje.length > 20, `${a.regla}: mensaje demasiado corto`);
+      assert.ok(/\d/.test(a.mensaje), `${a.regla}: no muestra ningún número — ${a.mensaje}`);
+    }
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+seccion("16 · PRINCIPIO DE REDONDEO: el valor mostrado sigue estando fuera");
+
+/**
+ * El redondeo nunca puede mover el valor hacia adentro del rango aceptado. Un
+ * mensaje que diga "12 m² no alcanza" cuando 12 es aceptado es incoherente.
+ *
+ * Para cada regla tomamos un valor APENAS fuera del rango y verificamos que el
+ * número renderizado, parseado de vuelta, siga estando fuera.
+ */
+
+/** Parsea el primer número en formato chileno que aparezca tras `ancla`. */
+function numeroTras(mensaje: string, ancla: string): number {
+  const i = mensaje.indexOf(ancla);
+  assert.ok(i >= 0, `no encontré "${ancla}" en: ${mensaje}`);
+  const m = mensaje.slice(i + ancla.length).match(/-?[\d.]+(?:,\d+)?/);
+  assert.ok(m, `no encontré número tras "${ancla}" en: ${mensaje}`);
+  return Number(m[0].replace(/\./g, "").replace(",", "."));
+}
+
+const CASOS_REDONDEO: Array<{
+  nombre: string;
+  input: PlausibilidadInput;
+  regla: Regla;
+  ancla: string;
+  dir: "alto" | "bajo";
+  /** Escala del número renderizado respecto del rango (1 = misma, 100 = %). */
+  escala?: number;
+}> = [
+  { nombre: "superficie 11,9 (piso 12)", input: { precioUF: 300, superficieM2: 11.9, ufCLP: UF }, regla: "superficie_fuera_rango", ancla: "", dir: "bajo" },
+  { nombre: "superficie 1.000,4 (techo 1.000)", input: { precioUF: 50_000, superficieM2: 1_000.4, ufCLP: UF }, regla: "superficie_fuera_rango", ancla: "", dir: "alto" },
+  { nombre: "uf_m2 9,96 (piso 10)", input: { precioUF: 597.6, superficieM2: 60, ufCLP: UF }, regla: "uf_m2_fuera_rango", ancla: "El m² te queda en UF ", dir: "bajo" },
+  { nombre: "uf_m2 500,4 (techo 500)", input: { precioUF: 30_024, superficieM2: 60, ufCLP: UF }, regla: "uf_m2_fuera_rango", ancla: "El m² te queda en UF ", dir: "alto" },
+  { nombre: "precio 299,6 (piso 300)", input: { precioUF: 299.6, superficieM2: 29, ufCLP: UF }, regla: "precio_total_fuera_rango", ancla: "UF ", dir: "bajo" },
+  { nombre: "precio 0,1 (piso 300)", input: { precioUF: 0.1004, superficieM2: 43.2, ufCLP: UF }, regla: "precio_total_fuera_rango", ancla: "UF ", dir: "bajo" },
+  { nombre: "arriendo 79.999,6 (piso 80.000)", input: { precioUF: 2_000, superficieM2: 20, ufCLP: 40_000, arriendoMensualCLP: 79_999.6 }, regla: "arriendo_fuera_rango", ancla: "$", dir: "bajo" },
+  { nombre: "ocupación 100,4 (techo 100)", input: { precioUF: 5_000, superficieM2: 50, ufCLP: 40_000, str: { tarifaNocheCLP: 50_000, ocupacionPct: 100.4 } }, regla: "str_ocupacion_fuera_rango", ancla: "Una ocupación de ", dir: "alto" },
+  { nombre: "tarifa 4.999,6 (piso 5.000)", input: { precioUF: 2_000, superficieM2: 20, ufCLP: 40_000, str: { tarifaNocheCLP: 4_999.6, ocupacionPct: 50 } }, regla: "str_tarifa_fuera_rango", ancla: "$", dir: "bajo" },
+  { nombre: "yield 0,4996% (piso 0,5%)", input: { precioUF: 6_000, superficieM2: 60, ufCLP: 40_000, arriendoMensualCLP: 99_992 }, regla: "yield_imposible", ancla: "retorno bruto te da ", dir: "bajo", escala: 100 },
+  { nombre: "yield 25,04% (techo 25%)", input: { precioUF: 300, superficieM2: 30, ufCLP: 40_000, arriendoMensualCLP: 250_400 }, regla: "yield_imposible", ancla: "retorno bruto te da ", dir: "alto", escala: 100 },
+  { nombre: "str yield 40,04% (techo 40%)", input: { precioUF: 2_281.25, superficieM2: 20, ufCLP: 40_000, str: { tarifaNocheCLP: 100_100, ocupacionPct: 100 } }, regla: "str_yield_imposible", ancla: "retorno bruto te da ", dir: "alto", escala: 100 },
+];
+
+for (const c of CASOS_REDONDEO) {
+  test(`${c.nombre} → el número mostrado sigue fuera`, () => {
+    const out = evaluarPlausibilidad(c.input);
+    const a = out.find((x) => x.regla === c.regla);
+    assert.ok(a, `no disparó ${c.regla}; salió ${JSON.stringify(reglas(out))}`);
+    const mostrado = numeroTras(a.mensaje, c.ancla);
+    const escala = c.escala ?? 1;
+    const [min, max] = a.rango;
+    if (c.dir === "bajo") {
+      assert.ok(
+        mostrado < min * escala,
+        `mostró ${mostrado}, que el guard ACEPTA (piso ${min * escala}) — ${a.mensaje}`,
+      );
+      assert.notEqual(mostrado, 0, `mostró 0 para un valor no nulo — ${a.mensaje}`);
+    } else {
+      assert.ok(
+        mostrado > max * escala,
+        `mostró ${mostrado}, que el guard ACEPTA (techo ${max * escala}) — ${a.mensaje}`,
+      );
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+seccion("17 · Formato de porcentajes por tramo");
+
+test("≥10% sin decimales · 1-10% un decimal · <1% tres decimales", () => {
+  const alto = evaluarPlausibilidad({
+    precioUF: 300, superficieM2: 30, ufCLP: 40_000, arriendoMensualCLP: 260_000,
+  }).find((a) => a.regla === "yield_imposible");
+  assert.ok(alto?.mensaje.includes("26% al año"), `esperaba "26% al año": ${alto?.mensaje}`);
+
+  const bajo = evaluarPlausibilidad({
+    precioUF: 6_000, superficieM2: 60, ufCLP: 40_000, arriendoMensualCLP: 95_000,
+  }).find((a) => a.regla === "yield_imposible");
+  assert.ok(bajo?.mensaje.includes("0,475% al año"), `esperaba "0,475% al año": ${bajo?.mensaje}`);
+});
+
+test("un valor entero se muestra entero (ocupación -5, no -5,0)", () => {
+  const a = evaluarPlausibilidad({
+    precioUF: 5_000, superficieM2: 50, ufCLP: 40_000,
+    str: { tarifaNocheCLP: 50_000, ocupacionPct: -5 },
+  }).find((x) => x.regla === "str_ocupacion_fuera_rango");
+  assert.ok(a?.mensaje.includes("de -5% no existe"), `esperaba "-5%": ${a?.mensaje}`);
+});
+
+test("ningún porcentaje arrastra ceros de relleno (26,00%)", () => {
+  const leaks: string[] = [];
+  for (const caso of CASOS_COPY) {
+    for (const a of evaluarPlausibilidad(caso.input)) {
+      const m = a.mensaje.match(/\d+,(\d+)%/g) ?? [];
+      for (const hit of m) if (/,0+%$/.test(hit)) leaks.push(`${a.regla}: ${hit} en "${a.mensaje}"`);
+    }
+  }
+  assert.deepEqual(leaks, [], `porcentajes con ceros de relleno:\n  ${leaks.join("\n  ")}`);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
