@@ -1644,10 +1644,22 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       // descartarla ("Este no es un caso de negociar bien..."). Sin este filtro el guard
       // dispara en el acierto y se vuelve ruido — el mismo destino de los guards que el
       // runner ya rotula "ruidosos". Solo cuenta cuando la oración NO la niega.
-      const NIEGA = /\b(no es|no hay|no se trata|ni |tampoco|no basta|no alcanza|no sirve|más allá de|deja de ser)\b/i;
+      // Enumerar negaciones ("no es", "no hay", "no basta"…) resultó ser una lista sin
+      // fondo: la primera versión no cazaba "no se cierra negociando" y el guard gritaba
+      // sobre prosa correcta, gastando un reintento por acierto. En vez de ampliar la
+      // lista, se busca cualquier negación en el tramo que PRECEDE al término de oferta
+      // dentro de la misma oración — que es donde el castellano la pone.
+      const NEGADOR = /\b(no|ni|tampoco|sin|lejos de|imposible)\b/i;
       const oracionesConOferta = (txt: string): string[] =>
         (txt.match(/[^.]*\./g) ?? [txt])
-          .filter((o) => OFERTAS_PROHIBIDAS.test(o) && !NIEGA.test(o))
+          .filter((o) => {
+            const m = o.match(OFERTAS_PROHIBIDAS);
+            if (!m || m.index === undefined) return false;
+            // Ventana previa: la negación que rige al verbo vive cerca, no al inicio del
+            // párrafo. 70 chars cubre "Esa brecha no se cierra negociando" y evita heredar
+            // un "no" de una cláusula anterior sin relación.
+            return !NEGADOR.test(o.slice(Math.max(0, m.index - 70), m.index));
+          })
           .map((o) => o.trim());
       const camposCierre: [string, unknown][] = [
         ["respuestaDirecta_clp", aiResult?.conviene?.respuestaDirecta_clp],
