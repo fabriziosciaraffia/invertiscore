@@ -47,11 +47,12 @@
     "GS-3": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 67,
-      "N": 9,
+      "N": 10,
       "corona": "sobreprecio",
       "hallazgoIds": [
         "cap_rate",
         "capex_puesta_a_punto",
+        "distancia_veredicto",
         "estructura_financiamiento",
         "flujo_mensual",
         "patrimonio",
@@ -69,11 +70,12 @@
     "GS-4": {
       "veredicto": "BUSCAR OTRA",
       "score": 36,
-      "N": 8,
+      "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
         "cap_rate",
         "capex_puesta_a_punto",
+        "distancia_veredicto",
         "estructura_financiamiento",
         "flujo_mensual",
         "patrimonio",
@@ -90,11 +92,12 @@
     "GS-5": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 54,
-      "N": 8,
+      "N": 9,
       "corona": "flujo_mensual",
       "hallazgoIds": [
         "cap_rate",
         "capex_puesta_a_punto",
+        "distancia_veredicto",
         "estructura_financiamiento",
         "flujo_mensual",
         "patrimonio",
@@ -111,11 +114,12 @@
     "GS-6": {
       "veredicto": "BUSCAR OTRA",
       "score": 36,
-      "N": 8,
+      "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
         "cap_rate",
         "capex_puesta_a_punto",
+        "distancia_veredicto",
         "estructura_financiamiento",
         "flujo_mensual",
         "patrimonio",
@@ -132,10 +136,11 @@
     "GS-7": {
       "veredicto": "BUSCAR OTRA",
       "score": 36,
-      "N": 7,
+      "N": 8,
       "corona": "sobreprecio",
       "hallazgoIds": [
         "cap_rate",
+        "distancia_veredicto",
         "estructura_financiamiento",
         "flujo_mensual",
         "patrimonio",
@@ -146,7 +151,7 @@
       "capRatePct": 2.85,
       "sobreprecioPct": 59,
       "flujoNetoMensual": -329290,
-      "tirPct": 2.91,
+      "tirPct": 2.87,
       "patrimonioMult": 1.16
     },
     "BE-caprate": {
@@ -174,11 +179,12 @@
     "BE-patrimonio": {
       "veredicto": "BUSCAR OTRA",
       "score": 32,
-      "N": 8,
+      "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
         "cap_rate",
         "capex_puesta_a_punto",
+        "distancia_veredicto",
         "estructura_financiamiento",
         "flujo_mensual",
         "patrimonio",

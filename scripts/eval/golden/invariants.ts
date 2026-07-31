@@ -129,8 +129,11 @@ export function checkClassB(results: FullAnalysisResult, f: GoldenFacts, ctx: Cl
   const coronaEsperada = (adversos[0] ?? favorables[0])?.id ?? null;
   out.push({ rule: "B4.corona", pass: f.corona === coronaEsperada, detail: `${f.corona} vs esperada ${coronaEsperada}` });
 
-  // B5 — N de la pirámide en [5,9].
-  out.push({ rule: "B5.N∈[5,9]", pass: f.N >= 5 && f.N <= 9, detail: `N=${f.N}` });
+  // B5 — N de la pirámide en [5,10]. El techo subió de 9 a 10 al entrar el hallazgo
+  // `distancia_veredicto`: se emite solo en AJUSTA SUPUESTOS y BUSCAR OTRA, y en AJUSTA
+  // convive con `sensibilidad` (que sí se emite ahí) → 10 es el máximo real. En COMPRAR el
+  // techo sigue siendo 9 (distancia ausente) y en BUSCAR OTRA también (sensibilidad ausente).
+  out.push({ rule: "B5.N∈[5,10]", pass: f.N >= 5 && f.N <= 10, detail: `N=${f.N}` });
 
   // B6 — omisiones donde corresponde.
   const sensDebe = f.veredicto !== "BUSCAR OTRA" && ctx.arriendo > 0;
@@ -138,6 +141,13 @@ export function checkClassB(results: FullAnalysisResult, f: GoldenFacts, ctx: Cl
   const patrDebe = (ctx.totalAportado ?? 0) > 0;
   out.push({ rule: "B6.patrimonio", pass: f.patrimonioPresent === patrDebe, detail: `present=${f.patrimonioPresent} debe=${patrDebe} (aportado=${ctx.totalAportado})` });
   out.push({ rule: "B6.sobreprecio", pass: f.sobreprecioPresent === ctx.medianaConfiable, detail: `present=${f.sobreprecioPresent} confiable=${ctx.medianaConfiable}` });
+  // B6.distancia — espejo exacto de B6.sensibilidad: la distancia al veredicto superior se
+  // emite SOLO cuando NO es COMPRAR (hay a dónde subir), justo al revés de la sensibilidad,
+  // que se omite en BUSCAR OTRA (no hay a dónde bajar). Que las dos condiciones sean
+  // complementarias es el invariante que este check protege.
+  const distDebe = f.veredicto !== "COMPRAR" && ctx.arriendo > 0;
+  const distPresent = (results.hallazgos ?? []).some((h) => h.id === "distancia_veredicto");
+  out.push({ rule: "B6.distancia", pass: distPresent === distDebe, detail: `present=${distPresent} debe=${distDebe} (ver=${f.veredicto})` });
 
   return out;
 }
