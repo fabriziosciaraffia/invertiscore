@@ -35,7 +35,8 @@ import type { WizardV4Answers, Antiguedad } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { comprarLocked, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
-import type { Anomalia } from "@/lib/plausibilidad";
+import type { Anomalia, Regla } from "@/lib/plausibilidad";
+import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
 import { dormLabel, fmtCLP, fmtUF, parseNum, parseDecimalLocale, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
@@ -79,6 +80,38 @@ const FIELD_CARD: Record<string, "01" | "02" | "03"> = {
   gate: "03", arr: "03", adr: "03",
   vacanciaPct: "03", comisionAdminPct: "03",
   costoInsumos: "03", mantencionStr: "03", costoAmoblamiento: "03",
+};
+
+// ── Modal de plausibilidad: de qué campos puede venir cada regla ─────────────
+// El guard NO sabe cuál está mal (en uf_m2 puede ser el precio o la superficie),
+// así que el modal ofrece TODOS los involucrados y solo marca el más probable.
+const ORIGENES_POR_REGLA: Record<Regla, string[]> = {
+  uf_m2_fuera_rango: ["precio", "superficie"],
+  precio_total_fuera_rango: ["precio"],
+  superficie_fuera_rango: ["superficie"],
+  yield_imposible: ["precio", "arriendo"],
+  str_yield_imposible: ["precio", "tarifa", "ocupacion"],
+  arriendo_fuera_rango: ["arriendo"],
+  tasa_fuera_rango: ["tasa"],
+  str_ocupacion_fuera_rango: ["ocupacion"],
+  str_tarifa_fuera_rango: ["tarifa"],
+};
+
+/** `campo` de la anomalía principal → clave de origen (la sospecha marcada). */
+const CAMPO_A_ORIGEN: Record<Anomalia["campo"], string> = {
+  precio: "precio", superficie: "superficie", arriendo: "arriendo",
+  tasa: "tasa", ocupacion: "ocupacion", tarifaNoche: "tarifa",
+};
+
+/** Origen → campo del resumen (para reusar el ring de onAlfiloTap y FIELD_CARD). */
+const ORIGEN_A_FIELD: Record<string, string> = {
+  precio: "precio", superficie: "tam", arriendo: "arr", tasa: "tasa",
+  tarifa: "adr", ocupacion: "adr",
+};
+
+const LABEL_ORIGEN: Record<string, string> = {
+  precio: "Precio", superficie: "Superficie", arriendo: "Arriendo",
+  tasa: "Tasa", tarifa: "Tarifa", ocupacion: "Ocupación",
 };
 
 // ── Envoltorio de campo (label + valor/editor + tag + fuente) ────────────────
@@ -438,6 +471,12 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   // prioridad desde el server. Hoy la caja de error pinta la primera; PIEZA B
   // las consume todas en el modal compartido sin tocar esta propagación.
   const [anomalias, setAnomalias] = useState<Anomalia[]>([]);
+  const [modalAbierto, setModalAbierto] = useState(false);
+  // Huella de los inputs dominantes al momento del rechazo. Mientras no cambie,
+  // el CTA queda deshabilitado y el modal NO reaparece: interrumpe una vez, la
+  // línea inline se queda de recordatorio. Si el usuario edita, la huella cambia
+  // → se rehabilita y el modal puede volver si sigue fuera de rango.
+  const [huellaBloqueada, setHuellaBloqueada] = useState<string | null>(null);
 
   // Acordeón mobile: las 3 cards nacen COLAPSADAS (la línea-resumen es la
   // revisión de un vistazo). Desktop las muestra todas. null = ninguna abierta.
@@ -534,6 +573,52 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const gatePorCompletar = esStr && !a.edificioPermiteAirbnb;
   const incompleto = gatePorCompletar;
 
+  // ── Datos del modal de plausibilidad ──────────────────────────────────────
+  const huellaActual = [a.precio, a.superficieUtil, a.arriendo, a.tasaInteres, a.adrTarifa, a.adrOcupacion].join("|");
+  // Rechazado y sin editar nada desde entonces → CTA bloqueado, sin reabrir modal.
+  const bloqueadoPorAnomalia = huellaBloqueada !== null && huellaBloqueada === huellaActual;
+
+  const valorOrigen: Record<string, string> = {
+    precio: pUF > 0 ? fmtUF(pUF) : "—",
+    superficie: sup > 0 ? `${a.superficieUtil} m²` : "—",
+    arriendo: arriendoVal > 0 ? fmtCLP(arriendoVal) : "—",
+    tasa: a.tasaInteres ? `${a.tasaInteres}%` : "—",
+    tarifa: tarifaVal > 0 ? fmtCLP(tarifaVal) : "—",
+    ocupacion: occVal > 0 ? `${occVal}%` : "—",
+  };
+  // Unión de los orígenes de TODAS las anomalías, sin repetir y en orden de
+  // prioridad (el server ya ordenó las anomalías).
+  const sospechoso = anomalias[0] ? CAMPO_A_ORIGEN[anomalias[0].campo] : null;
+  const origenes: OrigenCampo[] = [];
+  for (const an of anomalias) {
+    for (const o of ORIGENES_POR_REGLA[an.regla] ?? []) {
+      if (origenes.some((x) => x.key === o)) continue;
+      origenes.push({ key: o, label: LABEL_ORIGEN[o] ?? o, valor: valorOrigen[o] ?? "—", sospechoso: o === sospechoso });
+    }
+  }
+
+  // Los 4 DERIVADOS del estado limpio. Nunca repiten lo que el usuario tipeó:
+  // son los números que no vio en ninguna pantalla y que delatan un error de
+  // magnitud aunque no llegue al umbral del guard.
+  const ufM2 = pUF > 0 && sup > 0 ? pUF / sup : 0;
+  // En AMBAS el retorno mostrado es el de RENTA LARGA: es el único que sale de
+  // un valor que el usuario tipeó (el arriendo) contra el precio. El de renta
+  // corta se apoya en la estimación de AirROI, que no es input suyo — confirmarle
+  // un número que no puso sería confirmarle otra cosa.
+  const retornoBruto = pUF > 0 && data.ufCLP > 0 && arriendoVal > 0
+    ? (arriendoVal * 12) / (pUF * data.ufCLP)
+    : 0;
+  const derivadosResumen = [
+    { label: "Precio", valor: ufM2 > 0 ? `${Math.round(ufM2)} UF/m²` : "—" },
+    { label: "Dividendo", valor: cuota > 0 ? `${fmtCLP(cuota)}/mes` : "—" },
+    { label: "Pie", valor: pct > 0 ? fmtCLP(pieUF(a, data.ufCLP) * data.ufCLP) : "—" },
+    {
+      label: esLtr ? "Retorno bruto" : "Retorno bruto LTR",
+      valor: retornoBruto > 0 ? `${(retornoBruto * 100).toFixed(1).replace(".", ",")}% anual` : "—",
+    },
+  ];
+  const consumo = lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna);
+
   // Confirmación de dirección nueva → invalidación + nota de cascada. Comuna
   // distinta descarta TODO (estimados y corregidos); misma comuna conserva
   // correcciones y solo refresca comparables.
@@ -601,23 +686,40 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     setSubmitting(false);
   }
 
-  function iniciarSubmit() {
-    setError(""); setAnomalias([]); setSubmitting(true); onTerminal();
+  /** CTA del resumen: abre el modal de confirmación. NO dispara el POST todavía. */
+  function abrirConfirmacion() {
+    // Blur del input activo ANTES de abrir. En iOS el teclado virtual se queda
+    // arriba y el modal nace aplastado contra el borde superior; es el detalle
+    // que más rompe en mobile y el que más se olvida.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    setError(""); setAnomalias([]); setModalAbierto(true);
+    trackWizard(posthog, "wizard4_confirm_shown", { modalidad: mod, camino: canAnalyze ? "credito" : "compra" });
   }
 
-  async function onGenerar() {
-    iniciarSubmit();
-    trackWizard(posthog, "wizard4_submitted", { modalidad: mod });
-    const res = await submitConCredito(a, ctx);
-    if (res.ok && res.redirect) window.location.href = res.redirect;
-    else manejarFallo(res, "No pudimos generar el análisis.");
+  /** Primario del modal: recién acá sale el POST. */
+  async function confirmarYEnviar() {
+    setError(""); setAnomalias([]); setSubmitting(true); onTerminal();
+    const esCredito = canAnalyze;
+    trackWizard(posthog, esCredito ? "wizard4_submitted" : "wizard4_checkout_initiated", { modalidad: mod });
+    const res = esCredito ? await submitConCredito(a, ctx) : await comprarLocked(a, ctx);
+    if (res.ok && res.redirect) { window.location.href = res.redirect; return; }
+    manejarFallo(res, esCredito ? "No pudimos generar el análisis." : "No se pudo crear el análisis.");
+    // El 422 NO cierra el modal: cambia de estado limpio a estado anomalía.
+    if (res.anomalias?.length) setHuellaBloqueada(huellaActual);
+    else setModalAbierto(false);
   }
-  async function onDesbloquear() {
-    iniciarSubmit();
-    trackWizard(posthog, "wizard4_checkout_initiated", { modalidad: mod });
-    const res = await comprarLocked(a, ctx);
-    if (res.ok && res.redirect) window.location.href = res.redirect;
-    else manejarFallo(res, "No se pudo crear el análisis.");
+
+  /** Un dato de origen del modal: cierra, abre su card y la ilumina. NO navega
+   *  hacia atrás en el wizard — el resumen es editable en el lugar. */
+  function irAOrigen(origen: string) {
+    const field = ORIGEN_A_FIELD[origen];
+    setModalAbierto(false);
+    if (!field) return;
+    const card = FIELD_CARD[field];
+    if (card) { setOpenCard(card); setCascade((c) => (c[card] ? { ...c, [card]: "" } : c)); }
+    setHighlight(field);
+    window.setTimeout(() => setHighlight(null), 1500);
+    trackWizard(posthog, "wizard4_anomalia_origen_tap", { origen });
   }
 
   // Líneas-resumen (mobile) — se recomputan de answers → se actualizan al commit.
@@ -872,17 +974,34 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           </button>
         )}
         <div className="w-full max-w-[360px] shrink-0 flex flex-col justify-end gap-1.5">
-          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
+          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
           {(incompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
             <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
           )}
         </div>
       </div>
 
+      <ModalPlausibilidad
+        open={modalAbierto}
+        anomalias={anomalias}
+        origenes={origenes}
+        resumen={{
+          direccion: a.direccion || a.comuna || "Tu análisis",
+          modalidad: mod === "both" ? "Comparativo · renta larga y corta" : mod === "str" ? "Renta corta" : "Renta larga",
+          derivados: derivadosResumen,
+        }}
+        consumo={consumo}
+        labelConfirmar={canAnalyze ? "Generar el análisis" : `Ir a pagar · ${fmtCLP(SINGLE_PRICE)}`}
+        submitting={submitting}
+        onOrigen={irAOrigen}
+        onConfirmar={confirmarYEnviar}
+        onCerrar={() => setModalAbierto(false)}
+      />
+
       {/* Mobile: CTA sticky. */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-bg)_92%,transparent)] backdrop-blur px-4 py-3">
         <div className="max-w-3xl mx-auto flex flex-col items-stretch gap-1.5">
-          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
+          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
           {(incompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
             <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
           )}
@@ -943,15 +1062,15 @@ export function lineaConsumo(
   return `Esto usa uno de tus análisis. ${quedan}${totalPlan ? ` de ${totalPlan}` : ""}.`;
 }
 
-function FinalCTA({ mod, isLoggedIn, canAnalyze, submitting, incompleto, onGenerar, onDesbloquear, onTerminal }: { mod: string | undefined; isLoggedIn: boolean; canAnalyze: boolean; submitting: boolean; incompleto: boolean; onGenerar: () => void; onDesbloquear: () => void; onTerminal: () => void }) {
+function FinalCTA({ mod, isLoggedIn, canAnalyze, submitting, incompleto, onAbrir, onTerminal }: { mod: string | undefined; isLoggedIn: boolean; canAnalyze: boolean; submitting: boolean; incompleto: boolean; onAbrir: () => void; onTerminal: () => void }) {
   const cls = "font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed";
   if (canAnalyze) {
     // Sin "· 1 crédito": era falso para ilimitados y admins, y el consumo real
     // lo dice `lineaConsumo` según el tier. El botón solo nombra la acción.
-    return <button type="button" onClick={onGenerar} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</> : <>✦ Generar el análisis</>}</button>;
+    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</> : <>✦ Generar el análisis</>}</button>;
   }
   if (isLoggedIn) {
-    return <button type="button" onClick={onDesbloquear} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}</button>;
+    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}</button>;
   }
   if (incompleto) {
     return <span className={`${cls} opacity-60 cursor-not-allowed`}>Crear cuenta gratis <ArrowRight size={14} /></span>;
