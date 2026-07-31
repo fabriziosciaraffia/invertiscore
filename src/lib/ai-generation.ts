@@ -1350,7 +1350,15 @@ ${hallazgosOrdenados
   .join("\n")}
 
 ${hallazgoDistanciaGen ? `
-DISTANCIA AL VEREDICTO (último de la lista). Este hallazgo trae los valores YA CALCULADOS de qué tendría que pasar para que el veredicto suba. REGLA DURA: usa SOLO los montos y porcentajes que vienen en su frase. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí (el pie y la tasa NO son palancas de este análisis), NUNCA inventes un valor intermedio. Si la frase dice que ningún ajuste realista alcanza, no ofrezcas uno igual. Es el material natural del cierre en \`conviene.cajaAccionable\`: la condición concreta bajo la que tu posición se sostiene.
+DISTANCIA AL VEREDICTO (último de la lista). Trae los valores YA CALCULADOS de qué tendría que pasar para que el veredicto suba.
+
+OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra. Es la condición concreta bajo la que tu posición se sostiene (§1.10) y es lo único del informe que responde "¿y ahora qué?".
+
+REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí (el pie y la tasa NO son palancas de este análisis), NUNCA inventes un valor intermedio.
+
+EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: si el arriendo declarado ya viene alto contra la referencia de zona, decirlo es MÁS honesto que celebrar que faltan pocos puntos — nombra la distancia Y advierte que esa palanca se apoya en un supuesto que hay que verificar.
+
+SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues" o cualquier ajuste como salida. La honestidad acá es cerrar la puerta, no dejarla entornada: la brecha es del deal. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe.
 ` : ""}
 CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras (el total con la apertura no puede superar 85); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
@@ -1534,6 +1542,33 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     scanStrings(aiResult, "");
     if (engineIsmHits.length > 0) {
       console.warn(`[ENGINE-ISM-DRIFT] ${analysisId}: ${engineIsmHits.length} hit(s) — ${engineIsmHits.join(" | ")}`);
+    }
+
+    // ─── GUARD ESTRUCTURAL ────────────────────────────────────────────────────
+    // Cuando el motor dice que NINGÚN ajuste realista salva el deal, la prosa no puede
+    // ofrecer negociación como salida. Es la contradicción más cara del informe: el
+    // usuario lee "negociando fuerte hacia UF X" en un análisis cuyo propio motor ya
+    // determinó que ni un descuento del 34% cruza de banda (caso real 67d5aacf).
+    // Detección sobre los campos narrativos de `conviene`, que son los que cierran el
+    // análisis. Es un MONITOR (log), no un rewrite: la corrección estructural es la
+    // directiva del prompt; esto vigila que se cumpla y deja rastro cuando no.
+    if (hallazgoDistanciaGen?.id === "distancia_veredicto" && hallazgoDistanciaGen.valor.esEstructural) {
+      const OFERTAS_PROHIBIDAS =
+        /\b(negociando|negociar|negocia\b|si logras|si consigues|si obtienes|pidiendo un descuento|con un descuento|bajando el precio a)\b/i;
+      const camposCierre: [string, unknown][] = [
+        ["respuestaDirecta_clp", aiResult?.conviene?.respuestaDirecta_clp],
+        ["respuestaDirecta_uf", aiResult?.conviene?.respuestaDirecta_uf],
+        ["cajaAccionable_clp", aiResult?.conviene?.cajaAccionable_clp],
+        ["cajaAccionable_uf", aiResult?.conviene?.cajaAccionable_uf],
+      ];
+      const ofertas = camposCierre
+        .filter(([, v]) => typeof v === "string" && OFERTAS_PROHIBIDAS.test(v as string))
+        .map(([k, v]) => `${k}: "${((v as string).match(new RegExp(`[^.]*${OFERTAS_PROHIBIDAS.source}[^.]*\\.`, "i")) ?? [""])[0].trim().slice(0, 140)}"`);
+      if (ofertas.length > 0) {
+        console.warn(
+          `[DISTANCIA-ESTRUCTURAL] ${analysisId}: el motor dice que ningún ajuste alcanza pero la prosa ofrece salida — ${ofertas.join(" | ")}`,
+        );
+      }
     }
 
     // ─── CATCH-ROOT-A (Fase 2b, modo ACCIÓN) ──────────────────────────────────
