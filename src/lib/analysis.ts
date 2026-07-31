@@ -16,6 +16,7 @@ import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta
 import { getCapRefComuna, buildHallazgoCapRate, CAP_RATE_REF_NACIONAL } from "./cap-rate-hallazgo";
 import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
+import { buildHallazgoDistanciaVeredicto } from "./distancia-veredicto-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { buildHallazgoFlujoMensual } from "./flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
@@ -1083,6 +1084,44 @@ export interface GateFlags {
   gate3: boolean;
 }
 
+/** Los 4 brazos del GATE 1, evaluados por separado. Fuente única de las condiciones. */
+export interface Gate1Brazos {
+  /** cashOnCash < −30% anual. */
+  cocSevero: boolean;
+  /** break-even de tasa == −1: el flujo sigue negativo aunque la tasa baje a 0%. */
+  breakEvenImposible: boolean;
+  /** plusvalía inmediata < −8% Y flujo negativo Y |flujo|/dividendo > 0,3. */
+  plusvaliaConFlujo: boolean;
+  /** flujo negativo Y |flujo|/dividendo > 0,5. */
+  flujoSevero: boolean;
+}
+
+/**
+ * Evalúa los 4 brazos del GATE 1 sobre métricas ya calculadas. Extraído de
+ * evalVeredicto (refactor inerte): la MISMA expresión, ahora legible por brazo.
+ * Lo consumen evalVeredicto (que solo necesita el OR) y el hallazgo de distancia
+ * al veredicto (que necesita CUÁLES están activos para distinguir un BUSCAR OTRA
+ * recuperable de uno estructural). Puro: no toca el input ni recalcula nada.
+ */
+export function evalGate1Brazos(metrics: AnalysisMetrics, breakEvenTasa: number): Gate1Brazos {
+  const dividendoMensual = metrics.dividendo || 1; // evitar división por 0
+  const flujoNegativoRatio = Math.abs(metrics.flujoNetoMensual) / dividendoMensual;
+  // metrics.cashOnCash viene en % (no decimal). Ej: -30 = -30% CoC anual.
+  return {
+    cocSevero: metrics.cashOnCash < -30,
+    breakEvenImposible: breakEvenTasa === -1,
+    plusvaliaConFlujo:
+      (metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 &&
+      metrics.flujoNetoMensual < 0 &&
+      flujoNegativoRatio > 0.3,
+    flujoSevero: metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5,
+  };
+}
+
+/** GATE 1 dispara si CUALQUIER brazo está activo (OR — la expresión original). */
+export const gate1Activo = (b: Gate1Brazos): boolean =>
+  b.cocSevero || b.breakEvenImposible || b.plusvaliaConFlujo || b.flujoSevero;
+
 /**
  * Núcleo del veredicto: bandas del score + 3 gates, devolviendo TAMBIÉN qué gate
  * disparó. Fuente única de la lógica de gates (deriveVeredicto delega acá). El
@@ -1102,20 +1141,18 @@ function evalVeredicto(
   // LTR+STR (skill analysis-voice-franco §1.7). La sub-banda 40-44 cae a BUSCAR.
   let veredicto: Veredicto = score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
 
-  const dividendoMensual = metrics.dividendo || 1; // evitar división por 0
-  const flujoNegativoRatio = Math.abs(metrics.flujoNetoMensual) / dividendoMensual;
+  // Solo GATE 2 lo usa; el ratio |flujo|/dividendo de GATE 1 vive en evalGate1Brazos.
   const flujoMuyNegativoRatio =
     metrics.ingresoMensual > 0
       ? metrics.flujoNetoMensual / metrics.ingresoMensual
       : 0;
 
-  // GATE 1 — fuerza BUSCAR OTRA (señales más severas).
-  // metrics.cashOnCash viene en % (no decimal). Ej: -30 = -30% CoC anual.
-  const gate1 =
-    metrics.cashOnCash < -30 ||
-    breakEvenTasa === -1 ||
-    ((metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 && metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.3) ||
-    (metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5);
+  // GATE 1 — fuerza BUSCAR OTRA (señales más severas). Los 4 brazos viven en
+  // evalGate1Brazos (fuente única): el hallazgo de distancia al veredicto los lee
+  // para distinguir un BUSCAR recuperable de uno estructural sin re-escribir las
+  // condiciones acá.
+  const brazos = evalGate1Brazos(metrics, breakEvenTasa);
+  const gate1 = gate1Activo(brazos);
 
   let gate2 = false;
   let gate3 = false;
@@ -1158,6 +1195,36 @@ export function deriveVeredicto(
   breakEvenTasa: number,
 ): Veredicto {
   return evalVeredicto(score, metrics, breakEvenTasa).veredicto;
+}
+
+/**
+ * Reevalúa SOLO el veredicto sobre un clon del input con `patch` aplicado, por la
+ * MISMA ruta que produce el veredicto canónico en runAnalysis (calcMetrics → score
+ * → breakEven → deriveVeredicto).
+ *
+ * Generalización de `veredictoAtFactor` (que solo escalaba el arriendo): al recibir
+ * un patch arbitrario sirve tanto a la sensibilidad (arriendo hacia abajo) como al
+ * hallazgo de distancia al veredicto (arriendo/precio/plazo hacia arriba), sin
+ * duplicar la ruta ni la lógica de gates.
+ *
+ * SIN RECURSIÓN por construcción: no reconstruye hallazgos, porque los hallazgos
+ * motor-seeded se arman en runAnalysis y no dentro de calcMetrics. calcMetrics se
+ * llama sin `decisividades` a propósito: ese param solo alimenta los hallazgos
+ * internos, no las métricas que deciden el veredicto (mismo criterio que
+ * calcDecisividades, que también lo omite).
+ */
+export function veredictoConPatch(
+  input: AnalisisInput,
+  ufClp: number,
+  medianaComunaVentaUF: { mediana: number | null; n: number } | undefined,
+  asOf: Date,
+  patch: Partial<AnalisisInput>,
+): Veredicto {
+  const clone = { ...input, ...patch };
+  const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
+  const s = calcScoreFromMetrics(clone, m, ufClp, asOf);
+  const bet = calcBreakEvenTasa(clone, m, ufClp);
+  return deriveVeredicto(s, m, bet);
 }
 
 // =========================================
@@ -1725,17 +1792,18 @@ export function runAnalysis(
   // `decisividades`: ese param solo alimenta los hallazgos internos, no las métricas del
   // veredicto (por eso calcDecisividades también lo omite). decisividad 0 fija: no entra al
   // ranking. Guard null si base = BUSCAR OTRA o el arriendo no es computable (pirámide N−1).
-  const veredictoAtFactor = (factor: number): Veredicto => {
-    const clone = { ...input, arriendo: Math.round(input.arriendo * factor) };
-    const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
-    const s = calcScoreFromMetrics(clone, m, ufClp, asOf);
-    const bet = calcBreakEvenTasa(clone, m, ufClp);
-    return deriveVeredicto(s, m, bet);
-  };
+  // veredictoAtPatch: generalización del viejo veredictoAtFactor. La ruta vive en
+  // veredictoConPatch (exportada) y el closure solo cierra sobre el contexto del
+  // análisis. Lo consumen la sensibilidad (arriendo hacia abajo) y el hallazgo de
+  // distancia al veredicto (arriendo/precio/plazo hacia arriba) — una sola ruta.
+  const veredictoAtPatch = (patch: Partial<AnalisisInput>): Veredicto =>
+    veredictoConPatch(input, ufClp, medianaComunaVentaUF, asOf, patch);
   const hallazgoSensibilidad = buildHallazgoSensibilidad({
     veredictoBase: veredicto,
     arriendo: input.arriendo,
-    veredictoAt: veredictoAtFactor,
+    // Salida bit-idéntica al closure anterior: mismo clon { ...input, arriendo }.
+    veredictoAt: (factor: number) =>
+      veredictoAtPatch({ arriendo: Math.round(input.arriendo * factor) }),
     modalidad: "ltr",
   });
   // Hallazgo de PATRIMONIO (a 10 años): 9º hallazgo, el tercero SOLO-LECTURA. Envuelve
@@ -1749,6 +1817,24 @@ export function runAnalysis(
     aportadoCLP: exitScenario.totalAportado,
     valorUF: ufClp,
     incluyeCorretaje: (metrics.corretajeInicialCLP ?? 0) > 0,
+    modalidad: "ltr",
+  });
+  // Hallazgo de DISTANCIA AL VEREDICTO SUPERIOR: 10º hallazgo, el cuarto SOLO-LECTURA.
+  // Espejo de la sensibilidad con el signo invertido — aquella mide cuánto puede empeorar
+  // el arriendo antes de bajar de veredicto; esta, cuánto tiene que mejorar alguna palanca
+  // para subir. Reusa el MISMO closure veredictoAtPatch (una sola ruta de veredicto, misma
+  // lógica de gates) y los brazos de Gate 1 ya evaluados por evalGate1Brazos, sin duplicar
+  // condiciones. Ausente en COMPRAR (no hay veredicto superior) → pirámide N−1.
+  const brazosGate1 = evalGate1Brazos(metrics, breakEvenTasa);
+  const hallazgoDistancia = buildHallazgoDistanciaVeredicto({
+    veredictoBase: veredicto,
+    arriendo: input.arriendo,
+    precioUF: input.precio,
+    plazoCredito: input.plazoCredito,
+    veredictoAtPatch,
+    brazosGate1Activos: Object.entries(brazosGate1)
+      .filter(([, activo]) => activo)
+      .map(([nombre]) => nombre),
     modalidad: "ltr",
   });
 
@@ -1790,6 +1876,7 @@ export function runAnalysis(
       ...(hallazgoTIR ? [hallazgoTIR] : []),
       ...(hallazgoSensibilidad ? [hallazgoSensibilidad] : []),
       ...(hallazgoPatrimonio ? [hallazgoPatrimonio] : []),
+      ...(hallazgoDistancia ? [hallazgoDistancia] : []),
     ],
   };
 }

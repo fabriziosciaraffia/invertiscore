@@ -566,6 +566,78 @@ export interface HallazgoPatrimonio {
   fraseCanonica: string;
 }
 
+/** Una palanca del hallazgo de distancia: el valor que llevaría al veredicto objetivo. */
+export interface PalancaDistancia {
+  /** arriendo (CLP/mes) · precio (UF) · plazo (años del crédito). */
+  palanca: "arriendo" | "precio" | "plazo";
+  /** Valor que hay que alcanzar para cruzar al veredicto objetivo. */
+  objetivo: number;
+  /** Valor declarado hoy (misma unidad que `objetivo`). */
+  actual: number;
+  /** Cambio relativo con signo: +4,2 = subir 4,2% (arriendo/plazo) · −4,7 = bajar 4,7% (precio). */
+  deltaPct: number;
+  /** Cambio absoluto con signo, en la unidad de la palanca (CLP · UF · años). */
+  deltaAbs: number;
+}
+
+// Proto-hallazgo tipado — DISTANCIA AL VEREDICTO SUPERIOR para LTR. 10º hallazgo y el
+// cuarto SOLO-LECTURA (tras TIR, sensibilidad y patrimonio): decisividad 0 fija, NO
+// compite en el ranking ni pasa por calcDecisividades — es una propiedad de la distancia
+// al UMBRAL de decisión, no del deal, y no tiene driver único que neutralizar.
+//
+// Espejo exacto de `sensibilidad`, con el signo invertido: mientras aquella mide cuánto
+// puede EMPEORAR el arriendo antes de que el veredicto baje, esta mide cuánto tiene que
+// MEJORAR alguna palanca para que el veredicto suba. Se emite solo cuando hay un veredicto
+// superior al que llegar: AJUSTA SUPUESTOS → COMPRAR y BUSCAR OTRA → AJUSTA SUPUESTOS
+// (reportando además la distancia a COMPRAR cuando cae en rango). En COMPRAR ⇒ ausente
+// (null): no hay veredicto superior.
+//
+// TRES PALANCAS, bisección independiente por cada una vía veredictoConPatch (la MISMA
+// ruta score → breakEven → gates del veredicto canónico, sin duplicar la lógica): arriendo
+// hacia arriba, precio hacia abajo, plazo del crédito hacia arriba con tope duro de 30
+// años. Pie y tasa NO se emiten aunque el patch los soporte (decisión de producto: son
+// condiciones del banco y del bolsillo, no del deal).
+//
+// esEstructural: true cuando NINGUNA palanca cruza dentro del tope de honestidad
+// calibrado — ahí la frase deja de prometer un ajuste y dice que no lo hay. Ver
+// distancia-veredicto-hallazgo.ts.
+export interface HallazgoDistanciaVeredicto {
+  id: "distancia_veredicto";
+  tipo: "distancia_umbral";
+  valor: {
+    veredictoBase: Veredicto;                 // veredicto al input declarado
+    veredictoObjetivo: Veredicto;             // el inmediatamente superior
+    /** Palancas que cruzan dentro de rango, de la más barata a la más cara. Vacío ⇒ estructural. */
+    palancas: PalancaDistancia[];
+    /** La más barata de `palancas` (índice 0), o null si ninguna cruza. */
+    palancaMasBarata: PalancaDistancia | null;
+    /** Solo para BUSCAR OTRA: distancia a COMPRAR si cae en rango (salto de dos bandas). */
+    palancaHastaComprar: PalancaDistancia | null;
+    /** Ninguna palanca cruza dentro del tope ⇒ no hay ajuste realista que lo salve. */
+    esEstructural: boolean;
+    /** Tope de honestidad aplicado a arriendo y precio (%), calibrado sobre el corpus.
+     *  30 para AJUSTA SUPUESTOS · 15 para BUSCAR OTRA (el plazo tiene su propio tope: 30 años). */
+    topePct: number;
+    /** Cuáles brazos del GATE 1 están activos (solo informativo; vacío si no dispara). */
+    brazosGate1Activos: string[];
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  // SIEMPRE adverso: el hallazgo solo existe cuando el veredicto no es COMPRAR. Que exista
+  // una palanca barata no lo vuelve favorable — la brecha es la brecha; el tono lo pone la
+  // frase (recuperable vs estructural), no la señal-máquina.
+  direccion: "favorable" | "adverso";
+  // SOLO-LECTURA: 0 fija. El kicker honesto de la corona garantiza que si el orden
+  // Filosofía 1 lo coronara, lleva "OJO ANTES DE FIRMAR", nunca "LO MÁS DECISIVO".
+  decisividad: number;
+  // Cercanía normalizada: 1 − |deltaPct de la palanca más barata| / tope, saturado a [0,1].
+  // Más cerca del veredicto superior ⇒ mayor magnitud; 0 si es estructural. Solo desempate
+  // secundario del sort entre pares de igual decisividad (E4).
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  titular: string;
+  fraseCanonica: string;
+}
+
 // ============================================================================
 // PIRÁMIDE STR (E.1b) — 6 proto-hallazgos PROPIOS del corto. Diseño congelado en
 // of-e1a-piramide-str.md. Los 6 heredados (capex/sobreprecio/financiamiento/
@@ -722,6 +794,7 @@ export type Hallazgo =
   | HallazgoTIR
   | HallazgoSensibilidad
   | HallazgoPatrimonio
+  | HallazgoDistanciaVeredicto
   | HallazgoRentabilidadStr
   | HallazgoFlujoStr
   | HallazgoOcupacionVsBanda
