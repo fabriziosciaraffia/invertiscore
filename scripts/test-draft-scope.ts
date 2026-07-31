@@ -23,17 +23,25 @@ class MemStorage {
   removeItem(k: string) { this.m.delete(k); }
   clear() { this.m.clear(); }
 }
-const g = globalThis as unknown as { localStorage: MemStorage; sessionStorage: MemStorage };
+const g = globalThis as unknown as {
+  localStorage: MemStorage;
+  sessionStorage: MemStorage;
+  crypto: { randomUUID: () => string };
+};
 g.localStorage = new MemStorage();
 g.sessionStorage = new MemStorage();
+// `getTabId` acuña con crypto.randomUUID; ids incrementales para que el test
+// pueda afirmar "es el mismo" / "es distinto" sin ambigüedad.
+let seqTab = 0;
+g.crypto = { randomUUID: () => `TAB-${++seqTab}` };
 
 // Imports estáticos: ninguno de los dos módulos toca storage al evaluarse —
 // solo dentro de sus funciones— así que alcanza con que el shim exista antes de
 // la primera llamada.
 import {
-  adoptarDraftInvitado, cleanupOrphans, keyFor, mostRecentDraft, removeDraft, writeDraft,
+  adoptarDraftInvitado, cleanupOrphans, getTabId, keyFor, mostRecentDraft, removeDraft, writeDraft,
 } from "../src/components/formulario-v4/wizardV4Draft";
-import { purgarTodosLosDrafts, purgarDraftsLegacyUnaVez, OWNER_INVITADO } from "../src/lib/draft-keys";
+import { purgarBorradores, purgarBorradoresYPestana, purgarDraftsLegacyUnaVez, OWNER_INVITADO } from "../src/lib/draft-keys";
 
 let pass = 0, fail = 0;
 const fallidos: string[] = [];
@@ -176,7 +184,7 @@ test("cleanupOrphans retira formato viejo y vencidas, conserva la propia vigente
 // ─────────────────────────────────────────────────────────────────────────────
 seccion("4 · Purga (logout y retroactiva)");
 
-test("purgarTodosLosDrafts barre v4 de todos los dueños + v1/v2/v3 + tabId", () => {
+test("purgarBorradoresYPestana barre v4 de todos los dueños + v1/v2/v3 + tabId", () => {
   sembrar(A, TAB1, "x");
   sembrar(B, TAB2, "y");
   sembrar(OWNER_INVITADO, TAB1, "z");
@@ -187,17 +195,17 @@ test("purgarTodosLosDrafts barre v4 de todos los dueños + v1/v2/v3 + tabId", ()
   g.localStorage.setItem("franco_draft_renta_corta", "{}");
   g.sessionStorage.setItem("franco_wizard_v4_tab", TAB1);
 
-  const n = purgarTodosLosDrafts();
+  const n = purgarBorradoresYPestana();
   assert.equal(n, 8, `esperaba 8 keys borradas, borró ${n}`);
   assert.equal(g.localStorage.length, 0);
   assert.equal(g.sessionStorage.getItem("franco_wizard_v4_tab"), null, "el tabId también se va");
 });
 
-test("purgarTodosLosDrafts NO toca keys ajenas al borrador", () => {
+test("purgarBorradores NO toca keys ajenas al borrador", () => {
   sembrar(A, TAB1, "x");
   g.localStorage.setItem("franco_utm", "campaña");
   g.localStorage.setItem("franco_pro_cta_dismissed_at", "hoy");
-  purgarTodosLosDrafts();
+  purgarBorradores();
   assert.equal(g.localStorage.getItem("franco_utm"), "campaña");
   assert.equal(g.localStorage.getItem("franco_pro_cta_dismissed_at"), "hoy");
 });
@@ -213,6 +221,107 @@ test("la purga retroactiva corre UNA vez y deja flag", () => {
   sembrar(A, TAB1, "nuevo-post-purga");
   assert.equal(purgarDraftsLegacyUnaVez(), 0);
   assert.equal(mostRecentDraft(A)?.draft.answers.precio, "nuevo-post-purga");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+seccion("5 · SECUENCIA REAL — el montaje completo, no las piezas sueltas");
+
+/**
+ * Este es el test que faltaba, y el que más vale.
+ *
+ * Los 16 de arriba probaban `adoptarDraftInvitado` en aislamiento, con el tabId
+ * correcto puesto a mano — y pasaban mientras el round-trip estaba roto en
+ * producción. La regresión no vivía en ninguna pieza sino en el ORDEN: la purga
+ * de arranque borraba el `tabId` de sessionStorage justo después de acuñarlo,
+ * así que al volver del login se acuñaba otro y la adopción buscaba en una key
+ * que no existía.
+ *
+ * Por eso acá se replica el efecto de montaje entero, dos veces, con el cambio
+ * de dueño en el medio. Si alguna pieza vuelve a romper la cadena, este cae.
+ */
+
+/** Replica el efecto de montaje de `useWizardV4` en el orden real. */
+function montarWizard(owner: string): { tabId: string; draft: string | null } {
+  purgarDraftsLegacyUnaVez();          // idempotente por flag
+  const tabId = getTabId();
+  adoptarDraftInvitado(tabId, owner);
+  cleanupOrphans(keyFor(owner, tabId));
+  const candidato = mostRecentDraft(owner);
+  return { tabId, draft: candidato ? candidato.key : null };
+}
+
+test("invitado -> registro -> login: el borrador sobrevive el cambio de dueño", () => {
+  // 1. Navegador virgen. El invitado abre el wizard: acá corre la purga retroactiva.
+  const m1 = montarWizard(OWNER_INVITADO);
+  assert.equal(m1.draft, null, "arranca sin borrador");
+
+  // 2. Llena el wizard. Se persiste con el tabId de ESTA pestaña.
+  writeDraft(OWNER_INVITADO, m1.tabId, {
+    answers: { modalidad: "ltr", precio: "5.500", direccion: "Suecia 750" },
+    completed: { mod: true }, current: "resumen", history: ["mod"], mode: "flow",
+  } as never, 0);
+
+  // 3. El tabId TIENE que seguir en sessionStorage: es lo único que conecta al
+  //    invitado con el usuario que va a volver del login en esta misma pestaña.
+  assert.equal(
+    g.sessionStorage.getItem("franco_wizard_v4_tab"),
+    m1.tabId,
+    "la purga se llevó el tabId — la adopción va a buscar en la key equivocada",
+  );
+
+  // 4. Vuelve del login con sesión. Mismo tab, otro dueño.
+  const m2 = montarWizard(A);
+  assert.equal(m2.tabId, m1.tabId, "el tabId cambió entre montajes");
+  assert.equal(m2.draft, keyFor(A, m1.tabId), "el borrador NO se adoptó");
+
+  // 5. Y el contenido llegó entero, no una cáscara.
+  const adoptado = mostRecentDraft(A);
+  assert.equal(adoptado?.draft.answers.precio, "5.500");
+  assert.equal(adoptado?.draft.current, "resumen");
+
+  // 6. No quedó copia a nombre de invitado.
+  assert.equal(mostRecentDraft(OWNER_INVITADO), null);
+});
+
+test("el mismo camino con la purga YA corrida (segundo navegador-sesión)", () => {
+  // El flag ya puesto es el caso del usuario recurrente: la purga es no-op y la
+  // adopción tiene que funcionar igual.
+  g.localStorage.setItem("franco_drafts_purgados_v1", "ya");
+  const m1 = montarWizard(OWNER_INVITADO);
+  writeDraft(OWNER_INVITADO, m1.tabId, {
+    answers: { modalidad: "str", precio: "3.300" },
+    completed: { mod: true }, current: "pie", history: ["mod"], mode: "flow",
+  } as never, 0);
+  const m2 = montarWizard(B);
+  assert.equal(m2.draft, keyFor(B, m1.tabId));
+  assert.equal(mostRecentDraft(B)?.draft.answers.precio, "3.300");
+});
+
+test("el invitado que NO se registra sigue viendo lo suyo al volver", () => {
+  const m1 = montarWizard(OWNER_INVITADO);
+  writeDraft(OWNER_INVITADO, m1.tabId, {
+    answers: { modalidad: "ltr", precio: "4.400" },
+    completed: { mod: true }, current: "pie", history: ["mod"], mode: "flow",
+  } as never, 0);
+  const m2 = montarWizard(OWNER_INVITADO);
+  assert.equal(m2.draft, keyFor(OWNER_INVITADO, m1.tabId));
+  assert.equal(mostRecentDraft(OWNER_INVITADO)?.draft.answers.precio, "4.400");
+});
+
+test("el logout SÍ corta el hilo de la pestaña", () => {
+  // La otra mitad de la separación: en el logout el tabId debe irse, para que la
+  // próxima sesión no herede el scope de pestaña de la anterior.
+  const m1 = montarWizard(A);
+  writeDraft(A, m1.tabId, {
+    answers: { modalidad: "ltr", precio: "9.900" },
+    completed: { mod: true }, current: "pie", history: ["mod"], mode: "flow",
+  } as never, 0);
+  purgarBorradoresYPestana();
+  assert.equal(g.sessionStorage.getItem("franco_wizard_v4_tab"), null);
+  assert.equal(mostRecentDraft(A), null);
+  // Y el siguiente montaje acuña un tabId distinto.
+  const m2 = montarWizard(A);
+  assert.notEqual(m2.tabId, m1.tabId);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -126,11 +126,15 @@ export function useWizardV4({
     // de carga volvería a mostrar el borrador con el scope equivocado.
     if (owner == null || mounted.current) return;
     mounted.current = true;
-    tabId.current = getTabId();
+    // La purga va ANTES de acuñar el tabId, para que el orden no importe: si
+    // alguna vez volviera a tocar sessionStorage, el id se crea después y el
+    // round-trip sobrevive igual. (Hoy `purgarBorradores` ya no lo toca.)
+    //
     // Purga retroactiva, una vez por navegador: los borradores previos al scope
     // por dueño no se pueden atribuir a nadie, así que no hay forma segura de
     // conservarlos. Incluye los de v1/v2/v3, que tienen el mismo problema.
     purgarDraftsLegacyUnaVez();
+    tabId.current = getTabId();
     // Round-trip invitado → registro: el borrador `guest` de ESTA pestaña pasa
     // a nombre del usuario recién logueado. Único cruce de scope permitido.
     adoptarDraftInvitado(tabId.current, owner);

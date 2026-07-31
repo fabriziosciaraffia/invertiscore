@@ -49,16 +49,35 @@ export function todasLasKeysDeDraft(): string[] {
   return keys;
 }
 
-/** Borra TODOS los borradores. Se llama en el logout, antes del signOut. */
-export function purgarTodosLosDrafts(): number {
+/**
+ * Borra los borradores y NADA MÁS. La identidad de pestaña se conserva.
+ *
+ * La distinción no es cosmética: el `tabId` es lo único que sostiene el
+ * round-trip invitado -> registro, porque la adopción busca el borrador `guest`
+ * de ESTA pestaña. Una purga que se lo lleve deja al usuario sin forma de
+ * recuperar lo que escribió.
+ */
+export function purgarBorradores(): number {
   let n = 0;
   try {
     for (const k of todasLasKeysDeDraft()) {
       localStorage.removeItem(k);
       n++;
     }
-    // El tabId también se va: sin borradores no tiene a qué apuntar, y un id
-    // nuevo evita que la próxima sesión herede el scope de pestaña de la anterior.
+  } catch {
+    /* ignore */
+  }
+  return n;
+}
+
+/**
+ * Borra los borradores Y la identidad de pestaña. Es la del LOGOUT: cerrar
+ * sesión tiene que cortar también el hilo de la pestaña, para que la próxima
+ * no herede el scope de la anterior.
+ */
+export function purgarBorradoresYPestana(): number {
+  const n = purgarBorradores();
+  try {
     sessionStorage.removeItem(V4_TAB_KEY);
   } catch {
     /* ignore */
@@ -80,7 +99,10 @@ export function purgarTodosLosDrafts(): number {
 export function purgarDraftsLegacyUnaVez(): number {
   try {
     if (localStorage.getItem(FLAG_PURGA)) return 0;
-    const n = purgarTodosLosDrafts();
+    // `purgarBorradores` y NO la variante con pestaña: acá la pestaña recién
+    // arranca y su id es lo que va a sostener el round-trip. Llevárselo fue
+    // exactamente la regresión que rompió la adopción.
+    const n = purgarBorradores();
     localStorage.setItem(FLAG_PURGA, new Date().toISOString());
     return n;
   } catch {

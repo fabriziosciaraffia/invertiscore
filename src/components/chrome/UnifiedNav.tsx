@@ -46,7 +46,7 @@ import type { User } from "@supabase/supabase-js";
 import FrancoLogo from "@/components/franco-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { createClient } from "@/lib/supabase/client";
-import { purgarTodosLosDrafts } from "@/lib/draft-keys";
+import { purgarBorradoresYPestana } from "@/lib/draft-keys";
 import { useLandingTheme } from "@/components/landing/LandingTheme";
 
 export type UnifiedNavVariant = "landing" | "marketing" | "app";
@@ -238,7 +238,7 @@ export function UnifiedNav({
     setMenuOpen(false);
     // ANTES del signOut — ver la nota en logout-button.tsx. Va fuera del try
     // para que corra aunque Supabase falle: el borrador se purga igual.
-    purgarTodosLosDrafts();
+    purgarBorradoresYPestana();
     try {
       const supabase = supabaseRef.current ?? createClient();
       await supabase.auth.signOut();
