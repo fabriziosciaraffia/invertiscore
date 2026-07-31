@@ -19,6 +19,7 @@ import { trackWizard } from "./track";
 import { useWizardV4 } from "./useWizardV4";
 import { useWizardV4Data } from "./useWizardV4Data";
 import { useWizardV4Tier, esNuevoConAnalisisGratis } from "./useWizardV4Tier";
+import { useWizardV4Owner } from "./useWizardV4Owner";
 import { metaTrackCustom } from "@/lib/meta/pixel";
 import { ResumenScreen } from "./screenResumen";
 import {
@@ -79,7 +80,8 @@ export function WizardV4({ resume }: { resume: boolean }) {
     [posthog],
   );
 
-  const w = useWizardV4({ resume, onEvent: emitEvent });
+  const owner = useWizardV4Owner();
+  const w = useWizardV4({ resume, owner, onEvent: emitEvent });
   const { nav } = w;
   const data = useWizardV4Data(nav.answers);
   const { tier, isLoggedIn } = useWizardV4Tier();

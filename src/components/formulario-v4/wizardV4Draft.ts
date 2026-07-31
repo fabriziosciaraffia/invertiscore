@@ -1,25 +1,34 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Wizard v4 — Persistencia del draft (HALLAZGO-6a)
+// Wizard v4 — Persistencia del draft
 //
-// Draft POR PESTAÑA: cada pestaña tiene un tabId en sessionStorage (per-pestaña,
-// sobrevive reload y navegación del round-trip guest→registro en la MISMA
-// pestaña) y escribe su propia key en localStorage. Así dos ventanas del
-// producto abiertas a la vez NO se pisan (fue corrupción orgánica real, no seed).
+// Key: `franco_wizard_v4_draft__<owner>__<tabId>`.
 //
-// Guard de integridad (de la opción c): al cargar se descarta cualquier draft
-// incoherente en vez de resumir corrupto; cada escritura lleva versión monotónica.
+//   owner — `user.id` con sesión, o `guest` sin ella. Es el SCOPE: un draft
+//           solo se lee para su propio dueño. Antes la key era
+//           `…__<tabId>` y `mostRecentDraft()` escaneaba TODAS las keys sin
+//           mirar quién las escribió, así que en un equipo compartido el
+//           usuario B —o incluso un invitado— veía el borrador de A con su
+//           dirección, precio, pie, tasa y arriendo.
+//   tabId — por pestaña (sessionStorage, sobrevive reload y el round-trip
+//           guest→registro en la MISMA pestaña). Evita que dos ventanas del
+//           producto se pisen; fue corrupción orgánica real, no seed.
 //
-// Banner "análisis sin terminar": apunta al draft más reciente entre todas las
-// keys de pestaña. Limpieza TTL de keys huérfanas para no acumular basura.
+// El único cruce de scope permitido es la ADOPCIÓN: al volver del registro, el
+// draft `guest` de ESTA pestaña pasa a nombre del usuario recién logueado. Es
+// un camino de conversión real —el invitado llena el wizard, se registra y
+// vuelve con ?resume=1— y romperlo le costaría el trabajo justo en el momento
+// de mayor intención. Solo se adopta el de esta pestaña: nunca el de otra.
+//
+// Guard de integridad: al cargar se descarta cualquier draft incoherente en vez
+// de resumir corrupto; cada escritura lleva versión monotónica. Limpieza TTL de
+// keys huérfanas para no acumular basura.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { OWNER_INVITADO, V4_DRAFT_PREFIX, V4_TAB_KEY } from "@/lib/draft-keys";
 import { ALL_NODES, type NodeId, type WizardV4Answers } from "./wizardV4Nodes";
 
-const PREFIX = "franco_wizard_v4_draft";
-const TAB_ID_KEY = "franco_wizard_v4_tab";
-const LEGACY_KEY = "franco_wizard_v4_draft"; // draft mono-key previo (se migra/limpia)
 const TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const VERSION = 4;
 
@@ -37,13 +46,13 @@ export interface PersistedDraft {
 /** tabId estable por pestaña (sessionStorage sobrevive reload y navegación same-tab). */
 export function getTabId(): string {
   try {
-    let id = sessionStorage.getItem(TAB_ID_KEY);
+    let id = sessionStorage.getItem(V4_TAB_KEY);
     if (!id) {
       id =
         typeof crypto !== "undefined" && crypto.randomUUID
           ? crypto.randomUUID()
           : `t_${Math.floor(performance.now())}_${sessionStorage.length}`;
-      sessionStorage.setItem(TAB_ID_KEY, id);
+      sessionStorage.setItem(V4_TAB_KEY, id);
     }
     return id;
   } catch {
@@ -51,8 +60,20 @@ export function getTabId(): string {
   }
 }
 
-function keyFor(tabId: string): string {
-  return `${PREFIX}__${tabId}`;
+function keyFor(owner: string, tabId: string): string {
+  return `${V4_DRAFT_PREFIX}__${owner}__${tabId}`;
+}
+
+/**
+ * Dueño y pestaña de una key. `null` para el formato viejo (`…__<tabId>`, sin
+ * dueño): esas keys no se pueden atribuir a nadie, así que NUNCA se ofrecen —
+ * la purga retroactiva las borra en el primer montaje.
+ */
+function parseKey(key: string): { owner: string; tabId: string } | null {
+  if (!key.startsWith(`${V4_DRAFT_PREFIX}__`)) return null;
+  const partes = key.slice(V4_DRAFT_PREFIX.length + 2).split("__");
+  if (partes.length !== 2 || !partes[0] || !partes[1]) return null;
+  return { owner: partes[0], tabId: partes[1] };
 }
 
 /** ¿El draft tiene forma y estado internamente coherentes? (guard de integridad) */
@@ -86,24 +107,33 @@ function readKey(key: string): PersistedDraft | null {
   }
 }
 
-function allDraftKeys(): string[] {
-  const keys: string[] = [];
+/** Keys de draft v4 presentes, con su dueño resuelto. Excluye las de formato viejo. */
+function keysConDueno(): Array<{ key: string; owner: string; tabId: string }> {
+  const out: Array<{ key: string; owner: string; tabId: string }> = [];
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && (k.startsWith(`${PREFIX}__`) || k === LEGACY_KEY)) keys.push(k);
+      if (!k) continue;
+      const p = parseKey(k);
+      if (p) out.push({ key: k, ...p });
     }
   } catch {
     /* ignore */
   }
-  return keys;
+  return out;
 }
 
-/** Borra keys de draft vencidas (TTL) y la mono-key legacy. No toca las vigentes. */
+/** Borra keys de draft vencidas (TTL) y las de formato viejo. No toca las vigentes. */
 export function cleanupOrphans(currentKey: string): void {
   try {
-    for (const k of allDraftKeys()) {
-      if (k === currentKey) continue;
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(`${V4_DRAFT_PREFIX}__`) || k === currentKey) continue;
+      // Formato viejo (sin dueño): no se puede atribuir → se retira siempre.
+      if (!parseKey(k)) {
+        localStorage.removeItem(k);
+        continue;
+      }
       const raw = localStorage.getItem(k);
       if (!raw) continue;
       let stale = true;
@@ -113,30 +143,68 @@ export function cleanupOrphans(currentKey: string): void {
       } catch {
         stale = true;
       }
-      // La mono-key legacy siempre se retira (migración a per-tab).
-      if (stale || k === LEGACY_KEY) localStorage.removeItem(k);
+      if (stale) localStorage.removeItem(k);
     }
   } catch {
     /* ignore */
   }
 }
 
-/** Draft coherente más reciente entre todas las keys (para el banner cross-sesión). */
-export function mostRecentDraft(): { key: string; draft: PersistedDraft } | null {
+/**
+ * Draft coherente más reciente DEL DUEÑO indicado. El scope es el fix: sin el
+ * filtro por owner esto devolvía el borrador de cualquiera.
+ */
+export function mostRecentDraft(owner: string): { key: string; draft: PersistedDraft } | null {
   let best: { key: string; draft: PersistedDraft } | null = null;
-  for (const k of allDraftKeys()) {
-    const d = readKey(k);
+  for (const { key, owner: dueno } of keysConDueno()) {
+    if (dueno !== owner) continue;
+    const d = readKey(key);
     if (!d) continue;
-    if (!best || d.savedAt > best.draft.savedAt) best = { key: k, draft: d };
+    if (!best || d.savedAt > best.draft.savedAt) best = { key, draft: d };
   }
   return best;
 }
 
-export function writeDraft(tabId: string, draft: Omit<PersistedDraft, "v" | "version" | "savedAt">, prevVersion: number): number {
+/**
+ * ADOPCIÓN — el round-trip invitado → registro.
+ *
+ * Al volver del registro (misma pestaña, mismo tabId), el draft que se escribió
+ * como `guest` pasa a nombre del usuario. Es el ÚNICO cruce de scope permitido,
+ * y está acotado a esta pestaña: el borrador `guest` de otra pestaña —que puede
+ * ser de otra persona— nunca se toca.
+ *
+ * Devuelve la key nueva si adoptó algo.
+ */
+export function adoptarDraftInvitado(tabId: string, owner: string): string | null {
+  if (!owner || owner === OWNER_INVITADO) return null;
+  try {
+    const keyInvitado = keyFor(OWNER_INVITADO, tabId);
+    const raw = localStorage.getItem(keyInvitado);
+    if (!raw) return null;
+    const draft = readKey(keyInvitado);
+    if (!draft) {
+      localStorage.removeItem(keyInvitado); // incoherente o vencido: no se hereda
+      return null;
+    }
+    const keyPropia = keyFor(owner, tabId);
+    localStorage.setItem(keyPropia, raw);
+    localStorage.removeItem(keyInvitado);
+    return keyPropia;
+  } catch {
+    return null;
+  }
+}
+
+export function writeDraft(
+  owner: string,
+  tabId: string,
+  draft: Omit<PersistedDraft, "v" | "version" | "savedAt">,
+  prevVersion: number,
+): number {
   const version = prevVersion + 1;
   try {
     localStorage.setItem(
-      keyFor(tabId),
+      keyFor(owner, tabId),
       JSON.stringify({ ...draft, v: VERSION, version, savedAt: Date.now() }),
     );
   } catch {
@@ -145,10 +213,11 @@ export function writeDraft(tabId: string, draft: Omit<PersistedDraft, "v" | "ver
   return version;
 }
 
-export function removeDraft(tabId: string, extraKey?: string): void {
+export function removeDraft(owner: string, tabId: string, extraKey?: string): void {
   try {
-    localStorage.removeItem(keyFor(tabId));
-    if (extraKey && extraKey !== keyFor(tabId)) localStorage.removeItem(extraKey);
+    const propia = keyFor(owner, tabId);
+    localStorage.removeItem(propia);
+    if (extraKey && extraKey !== propia) localStorage.removeItem(extraKey);
   } catch {
     /* ignore */
   }
