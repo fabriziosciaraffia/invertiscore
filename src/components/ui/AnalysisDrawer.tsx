@@ -23,6 +23,7 @@ import { StateBox } from "@/components/ui/StateBox";
 import {
   DrawerTIRLtr,
   DrawerSensibilidadLtr,
+  DrawerDistanciaLtr,
   DrawerPatrimonioLtr,
   DrawerPlusvaliaLtr,
 } from "@/components/analysis/drawers/DrawersPropios";
@@ -30,6 +31,7 @@ import type {
   HallazgoTIR,
   HallazgoSensibilidad,
   HallazgoPatrimonio,
+  HallazgoDistanciaVeredicto,
   HallazgoPlusvalia,
 } from "@/lib/types";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
@@ -50,7 +52,9 @@ export type DrawerKey =
   | "tir"
   | "sensibilidad"
   | "patrimonio"
-  | "plusvalia";
+  | "plusvalia"
+  // rama superficies-distancia: drawer propio del 10º hallazgo (LTR-only).
+  | "distanciaVeredicto";
 
 interface DrawerProps {
   activeKey: DrawerKey;
@@ -93,6 +97,7 @@ const DRAWER_META: Record<DrawerKey, { label: string }> = {
   capexPuestaAPunto: { label: "Puesta a punto" },
   tir: { label: "Retorno total" },
   sensibilidad: { label: "Margen del veredicto" },
+  distanciaVeredicto: { label: "Lo que te separa" },
   patrimonio: { label: "Patrimonio a 10 años" },
   plusvalia: { label: "Plusvalía de la comuna" },
 };
@@ -1743,6 +1748,9 @@ export function AnalysisDrawer({
   const patrimonioHallazgo = results.hallazgos?.find(
     (h): h is HallazgoPatrimonio => h.id === "patrimonio",
   );
+  const distanciaHallazgo = results.hallazgos?.find(
+    (h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto",
+  );
   const plusvaliaHallazgo =
     results.hallazgos?.find((h): h is HallazgoPlusvalia => h.id === "plusvalia") ??
     results.metrics?.hallazgoPlusvalia ??
@@ -1783,6 +1791,7 @@ export function AnalysisDrawer({
   // Preguntas de los 4 drawers propios LTR (deterministas, cero IA). La de TIR se
   // completa con el % real más abajo (drawerPregunta); las otras son estables.
   const sensibilidadTitle = "¿Cuánto aguanta tu veredicto?";
+  const distanciaTitle = "¿Qué tendría que pasar para que suba?";
   const patrimonioTitle = "¿Cuánto es tuyo a 10 años?";
   const plusvaliaTitle = "¿Cuánto se ha valorizado la comuna?";
   const tirTitle = "¿Por qué tu retorno no es el de un depósito?";
@@ -1815,7 +1824,9 @@ export function AnalysisDrawer({
                   ? ({ pregunta: patrimonioTitle } as { pregunta: string })
                   : activeKey === "plusvalia"
                     ? ({ pregunta: plusvaliaTitle } as { pregunta: string })
-                    : aiAnalysis[activeKey];
+                    : activeKey === "distanciaVeredicto"
+                      ? ({ pregunta: distanciaTitle } as { pregunta: string })
+                      : aiAnalysis[activeKey];
 
   // Override de pregunta por drawer + estado. La pregunta IA es genérica;
   // hardcoded varía según el "veredicto numérico" del bloque para evitar
@@ -1982,6 +1993,12 @@ export function AnalysisDrawer({
           {activeKey === "sensibilidad" &&
             (sensibilidadHallazgo ? (
               <DrawerSensibilidadLtr hallazgo={sensibilidadHallazgo} results={results} currency={currency} valorUF={valorUF} />
+            ) : (
+              faltaHallazgoLtr
+            ))}
+          {activeKey === "distanciaVeredicto" &&
+            (distanciaHallazgo ? (
+              <DrawerDistanciaLtr hallazgo={distanciaHallazgo} currency={currency} valorUF={valorUF} />
             ) : (
               faltaHallazgoLtr
             ))}

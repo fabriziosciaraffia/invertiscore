@@ -14,6 +14,7 @@ import type {
   FullAnalysisResult,
   HallazgoTIR,
   HallazgoSensibilidad,
+  HallazgoDistanciaVeredicto,
   HallazgoPatrimonio,
   HallazgoPlusvalia,
   HallazgoSobreprecio,
@@ -558,6 +559,145 @@ export function DrawerSensibilidadLtr({
           ? "Con este margen, no necesitas afinar el arriendo antes de decidir. Igual conviene validarlo con 2–3 publicaciones comparables de la zona — no para salvar el veredicto, sino para saber con qué flujo real vas a vivir mes a mes."
           : "Antes de decidir, valida el arriendo con 2–3 publicaciones comparables de la zona: el veredicto es sensible a ese número, así que conviene apretarlo antes de firmar."}
       </Box>
+
+      {/* Espejo bidireccional: hasta acá el drawer solo miró hacia ABAJO (cuánto puede
+          caer el arriendo antes de bajar de veredicto). Cuando existe el hallazgo de
+          distancia, el otro borde también tiene número y mostrar uno solo daría una
+          lectura sesgada — "aguanta 25%" suena holgado hasta que ves que el borde de
+          arriba está a 4,3%. En COMPRAR el hallazgo no se emite y este bloque no aparece. */}
+      {(() => {
+        const dist = results.hallazgos?.find(
+          (h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto",
+        );
+        if (!dist || dist.valor.esEstructural) return null;
+        const l = dist.valor.palancaMasBarata;
+        if (!l) return null;
+        const objetivo =
+          dist.valor.veredictoObjetivo === "COMPRAR" ? "COMPRAR" : "AJUSTA SUPUESTOS";
+        const haciaArriba =
+          l.palanca === "plazo"
+            ? `estirar el crédito a ${l.objetivo} años`
+            : l.palanca === "arriendo"
+              ? `un arriendo ${pctStr(Math.abs(l.deltaPct))} mayor`
+              : `un precio ${pctStr(Math.abs(l.deltaPct))} menor`;
+        const masCerca = Math.abs(l.deltaPct) < round1(v.marginPct);
+        return (
+          <Box label="Y hacia el otro lado">
+            <span style={{ fontSize: 15, lineHeight: 1.55 }}>
+              El arriendo tendría que caer <b>{pctStr(v.marginPct)}</b> para que esto baje a{" "}
+              {nuevo}, y basta <b>{haciaArriba}</b> para que suba a {objetivo}.{" "}
+              {masCerca
+                ? "Estás más cerca del borde de arriba que del de abajo: la conclusión de hoy es la más pesimista de las dos que tienes a mano."
+                : "El colchón hacia abajo es más ancho que la distancia hacia arriba, así que el veredicto de hoy es una lectura estable."}
+            </span>
+          </Box>
+        );
+      })()}
+    </div>
+  );
+}
+
+// 2b · DISTANCIA AL VEREDICTO LTR — "lo que te separa" (las vías, una por una)
+// Espejo del drawer de sensibilidad: aquella responde "cuánto aguanta antes de bajar",
+// esta "cuánto falta para subir". Las vías NO se suman — cada una cruza por su cuenta.
+export function DrawerDistanciaLtr({
+  hallazgo,
+  currency,
+  valorUF,
+}: {
+  hallazgo: HallazgoDistanciaVeredicto;
+  currency: Currency;
+  valorUF: number;
+}) {
+  const v = hallazgo.valor;
+  const base = v.veredictoBase;
+  const objetivo = v.veredictoObjetivo;
+
+  if (v.esEstructural) {
+    const dm = v.deltaMinimoFueraDeTope;
+    return (
+      <div>
+        <Lead>
+          Tu veredicto es {base}. La pregunta honesta no es qué falta, sino si hay algo que
+          alcance: probamos subir el arriendo, bajar el precio y estirar el crédito, cada uno por
+          su cuenta y hasta donde deja de ser un ajuste para ser otro departamento.
+        </Lead>
+        <Box label="Qué encontramos" tone="red">
+          {dm ? (
+            <span style={{ fontSize: 15, lineHeight: 1.55 }}>
+              La vía menos exigente de las tres es{" "}
+              {dm.palanca === "precio" ? "bajar el precio" : "subir el arriendo"}, y aun así pide{" "}
+              <b>
+                {dm.deltaPct > 0 ? "+" : "−"}
+                {pctStr(Math.abs(dm.deltaPct))}
+              </b>{" "}
+              para que esto llegue a {objetivo}. Estirar el crédito a 30 años tampoco alcanza.
+            </span>
+          ) : (
+            <span style={{ fontSize: 15, lineHeight: 1.55 }}>
+              Ninguna de las tres llega, ni llevándolas a extremos que ya no son negociación:
+              arriendo al doble, precio a un tercio, crédito a 30 años.
+            </span>
+          )}
+        </Box>
+        <Box label="Qué significa">
+          La brecha no está en cómo estás mirando este depto — está en el depto. Ajustar supuestos
+          sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
+        </Box>
+        <Box label="Qué haces con esto">
+          Guarda el pie para el siguiente. Si igual quieres avanzar por razones que no son
+          financieras, está bien saberlo — pero no te cuentes que los números dan.
+        </Box>
+      </div>
+    );
+  }
+
+  const cells = v.palancas.map((l) => {
+    if (l.palanca === "plazo") {
+      return { k: "Plazo del crédito", v: `${l.objetivo} años`, small: `desde ${l.actual}` };
+    }
+    const valor =
+      l.palanca === "arriendo"
+        ? fmtMoney(l.objetivo, currency, valorUF)
+        : `UF ${Math.round(l.objetivo).toLocaleString("es-CL")}`;
+    return {
+      k: l.palanca === "arriendo" ? "Arriendo mensual" : "Precio de cierre",
+      v: valor,
+      small: `${l.deltaPct > 0 ? "+" : "−"}${pctStr(Math.abs(l.deltaPct))}`,
+    };
+  });
+  const tienePlazo = v.palancas.some((l) => l.palanca === "plazo");
+
+  return (
+    <div>
+      <Lead>
+        Tu veredicto es {base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a{" "}
+        {objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.
+      </Lead>
+
+      <Chips
+        label="Las vías, una por una"
+        cells={cells}
+        foot={
+          tienePlazo
+            ? "Estirar el plazo es la única que no depende de negociar con el vendedor ni de que el mercado de arriendo te acompañe: alarga la deuda y pagas más intereses en total, pero no te cuesta capital hoy."
+            : "Cada valor es el punto exacto donde el veredicto cambia, moviendo esa variable y dejando el resto igual."
+        }
+      />
+
+      <Box label="Qué significa">
+        Que el veredicto no está lejos no lo vuelve un buen negocio por sí solo — lo vuelve un
+        negocio que depende de una condición concreta y verificable, en vez de una intuición.
+      </Box>
+      <Box label="Qué haces con esto">
+        {v.palancas[0]?.palanca === "precio"
+          ? "Llévalo a la mesa: la diferencia está en rango de negociación, no en otro departamento. Si el vendedor no baja, ya sabes exactamente cuánto te separa."
+          : "Antes de descartarlo, confirma ese techo de arriendo contra 2–3 publicaciones comparables de la zona. Si el mercado lo da, la decisión se toma sola."}
+      </Box>
+      <Note>
+        El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen. El pie y la
+        tasa no entran acá: son condiciones de tu bolsillo y del banco, no del depto.
+      </Note>
     </div>
   );
 }

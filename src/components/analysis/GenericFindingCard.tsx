@@ -33,6 +33,7 @@ export const HALLAZGO_DRAWER: Partial<Record<Hallazgo["id"], DrawerKey>> = {
   tir: "tir",
   sensibilidad: "sensibilidad",
   patrimonio: "patrimonio",
+  distancia_veredicto: "distanciaVeredicto",
   plusvalia: "plusvalia",
 };
 
@@ -312,6 +313,47 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         ksub: "% del bruto · típico 30-40%",
       };
     }
+    case "distancia_veredicto": {
+      const v = h.valor;
+      // Kicker NEUTRO y único para los tres estados (decisión Fabrizio, gate 30-jul):
+      // es un mapa, no un golpe. "Ruta a comprar" se descartó porque necesitaría un
+      // tercer texto en el caso estructural, donde "ruta" sería mentira.
+      const kick = "Lo que te separa";
+      const objetivo = v.veredictoObjetivo === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
+      if (v.esEstructural) {
+        const dm = v.deltaMinimoFueraDeTope;
+        return {
+          kick,
+          title: `Ningún ajuste realista lo mueve de ${v.veredictoBase === "BUSCAR OTRA" ? "Buscar otra" : "Ajusta supuestos"}.`,
+          // El KPI cita el delta mínimo REAL, no el tope. Sin él (ni el rango extendido
+          // cruza) el KPI queda vacío y el título carga solo — más honesto que inventar.
+          kpi: dm ? `${dm.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(dm.deltaPct))}%` : "—",
+          // Ink, nunca Signal Red: no es un negativo crítico, es la distancia a un umbral.
+          kpiRed: false,
+          ksub: dm ? `${dm.palanca} · lo mínimo, y aun así no alcanza` : "fuera de todo rango razonable",
+        };
+      }
+      const l = v.palancaMasBarata;
+      if (!l) return { kick, title: `Lo que falta para ${objetivo}.`, kpi: "", kpiRed: false, ksub: "" };
+      const via =
+        l.palanca === "arriendo" ? "arriendo" : l.palanca === "precio" ? "precio" : "crédito";
+      const title =
+        l.palanca === "plazo"
+          ? `Está a un plazo de distancia de ${objetivo}.`
+          : `Está a un ${via} de distancia de ${objetivo}.`;
+      const kpi =
+        l.palanca === "plazo"
+          ? `${l.objetivo} años`
+          : `${l.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(l.deltaPct))}%`;
+      const otras = v.palancas.length - 1;
+      return {
+        kick,
+        title,
+        kpi,
+        kpiRed: false,
+        ksub: otras > 0 ? `${via} · ${otras} vía${otras > 1 ? "s" : ""} más` : via,
+      };
+    }
     default: {
       // Exhaustividad defensiva (no debería alcanzarse: todos los ids tienen caso).
       return { kick: "", title: (h as { titular?: string }).titular ?? "", kpi: "", kpiRed: false, ksub: "" };
@@ -448,15 +490,21 @@ export function GenericFindingCard<K extends string = DrawerKey>({
             {d.title}
           </div>
         </div>
-        <span className="inline-flex items-center gap-1.5 shrink-0 pt-1">
-          <span className="h-[7px] w-[7px] rounded-full" style={{ background: dir.color }} aria-hidden />
-          <span
-            className="font-mono uppercase tracking-[0.06em]"
-            style={{ fontSize: 9, color: "var(--franco-text-tertiary)" }}
-          >
-            {dir.label}
+        {/* Punto de dirección. distancia_veredicto lo OMITE: conserva direccion "adverso"
+            para que el orden Filosofía 1 lo ponga con los adversos, pero rotularlo
+            "En contra" lo convertiría en un golpe cuando es un mapa — la card dice a qué
+            distancia estás del veredicto de arriba, no que algo esté mal. */}
+        {hallazgo.id !== "distancia_veredicto" && (
+          <span className="inline-flex items-center gap-1.5 shrink-0 pt-1">
+            <span className="h-[7px] w-[7px] rounded-full" style={{ background: dir.color }} aria-hidden />
+            <span
+              className="font-mono uppercase tracking-[0.06em]"
+              style={{ fontSize: 9, color: "var(--franco-text-tertiary)" }}
+            >
+              {dir.label}
+            </span>
           </span>
-        </span>
+        )}
       </div>
 
       {/* KPI dominante + sub-label */}
