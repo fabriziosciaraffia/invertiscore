@@ -604,7 +604,22 @@ Cuando una frase compara dos cifras, tienes dos caminos honestos y solo esos dos
 1. Si el bloque de datos trae el múltiplo, la razón o la diferencia en puntos ya calculada, úsala tal cual — es la única base para decir "el doble", "la mitad", "X veces" o "N puntos más".
 2. Si el bloque no trae esa razón, nombra los dos montos absolutos y deja que el lector los compare ("aportas $382.744 frente a un dividendo de $530.341"). Ahí te detienes: no traduzcas esa relación a un múltiplo.
 
-Un múltiplo que calculas tú a partir de dos cifras del bloque es una afirmación que no puedes respaldar: suena redonda y puede estar equivocada. Es la disciplina de §1.4 (solo datos provistos), aplicada a las razones entre cifras, no solo a las cifras sueltas.`;
+Un múltiplo que calculas tú a partir de dos cifras del bloque es una afirmación que no puedes respaldar: suena redonda y puede estar equivocada. Es la disciplina de §1.4 (solo datos provistos), aplicada a las razones entre cifras, no solo a las cifras sueltas.
+
+## 16. Cada umbral responde UNA pregunta — no los intercambies
+
+Un análisis trae varios precios y varios porcentajes de referencia. Cada uno contesta una pregunta distinta y NO son sustituibles entre sí, aunque los tres hablen de "bajar el precio":
+
+- **Cuánto falta para que el veredicto cambie de banda** → esa cifra viene SOLO del bloque de distancia al veredicto, cuando existe. Es la única fuente legítima para cualquier frase del tipo "para que llegue a COMPRAR / a AJUSTA SUPUESTOS", "para que cambie de conclusión", "ningún ajuste realista alcanza porque haría falta X".
+- **A qué precio el arriendo cubre la cuota / el flujo se vuelve positivo** → es una pregunta de CAJA, no de veredicto.
+- **Hasta cuánto conviene pagar por retorno** (el límite de TIR) → es una pregunta de RENTABILIDAD, no de veredicto.
+- **Cuánto vale según comparables** → es una pregunta de MERCADO, no de veredicto.
+
+REGLA: cuando cites uno de los otros umbrales, va SIEMPRE con su etiqueta propia ("para que el flujo se vuelva positivo el precio tendría que ser X", "el máximo que conviene pagar por retorno es X"). Nunca lo presentes, ni por vecindad de frase, como la distancia al veredicto. Si abres una oración diciendo que ningún ajuste alcanza y la cierras con un número de otra pregunta, el lector entiende que ese número ES la brecha — y estarías afirmando algo falso con una cifra verdadera.
+
+Y si ninguno de los umbrales provistos contesta la pregunta que estás por hacer, NO interpoles una cifra intermedia: describe la situación sin número. Una cifra inventada que suena plausible es peor que la ausencia de cifra, porque es incontrastable.
+
+Esta regla vale para todo umbral que el motor emita, incluidos los que aún no existen: si mañana aparece otro precio de referencia, sigue teniendo su propia pregunta y su propia etiqueta.`;
 
 function fmtCLP(n: number): string {
   return (n < 0 ? "-$" : "$") + Math.round(Math.abs(n)).toLocaleString("es-CL");
@@ -1544,6 +1559,74 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     scanStrings(aiResult, "");
     if (engineIsmHits.length > 0) {
       console.warn(`[ENGINE-ISM-DRIFT] ${analysisId}: ${engineIsmHits.length} hit(s) — ${engineIsmHits.join(" | ")}`);
+    }
+
+    // ─── GUARD DE JERARQUÍA DE CIFRAS ─────────────────────────────────────────
+    // El análisis trae varios umbrales de precio (distancia al veredicto, flujo-cero,
+    // límite de TIR, valor de mercado) y el modelo tiende a usar el más dramático para
+    // responder la pregunta del veredicto. Medido tras la primera regen: 4 de 10 prosas
+    // estructurales afirmaban la brecha de banda con un número de otra pregunta,
+    // sobredimensionándola (−51% cuando el umbral estaba en −33,6%) y contradiciendo la
+    // card de la pirámide.
+    //
+    // Detección por ORACIÓN + excepción de etiqueta: una oración que afirma la brecha de
+    // banda y trae cifras dispara SOLO si ninguna calza con los valores tipados Y ninguna
+    // viene precedida por su etiqueta propia. Esa segunda condición es la que evita el
+    // falso positivo del guard anterior: la prosa correcta suele decir "el precio máximo
+    // para que el flujo sea positivo es UF 0, y ningún ajuste lleva el veredicto a otra
+    // banda" — cifra legítima con su etiqueta, más una afirmación de veredicto sin número.
+    // (Partir por comas no sirve: deja la afirmación separada de su propia cifra, y
+    // "Para que cambie de conclusión, el precio tendría que bajar a UF X" pasaría sin
+    // control — verificado con las prosas reales del corpus.)
+    if (hallazgoDistanciaGen?.id === "distancia_veredicto") {
+      const vD = hallazgoDistanciaGen.valor;
+      // Números que SÍ pueden presentarse como distancia al veredicto.
+      const permitidos: number[] = [];
+      for (const l of vD.palancas) {
+        permitidos.push(Math.round(l.objetivo), Math.abs(l.deltaPct));
+      }
+      if (vD.deltaMinimoFueraDeTope) permitidos.push(Math.abs(vD.deltaMinimoFueraDeTope.deltaPct));
+      // Afirma una brecha de banda (no un umbral de caja/retorno/mercado).
+      const AFIRMA_BRECHA =
+        /(veredicto|cambi\w* de conclusión|otra banda|llegu\w* a (COMPRAR|AJUSTA)|llegara a (COMPRAR|AJUSTA)|pas\w* a (COMPRAR|AJUSTA)|sub\w* a (COMPRAR|AJUSTA))/i;
+      const calza = (n: number) =>
+        permitidos.some((p) => (p >= 1000 ? Math.abs(p - n) <= Math.max(2, p * 0.01) : Math.abs(p - n) <= 2));
+      // Etiqueta propia inmediatamente antes de la cifra ⇒ la cifra contesta OTRA pregunta
+      // y es legítima aunque no calce con los tipados.
+      const CON_ETIQUETA =
+        /(flujo (sea|se vuelva|mejore)|cubra (exacto )?la cuota|máximo (de compra |que conviene pagar)|precio máximo|por retorno|TIR|valor estimado de mercado|mediana)[^.]{0,60}$/i;
+      const cifrasDe = (s: string): { n: number; pos: number }[] => {
+        const out: { n: number; pos: number }[] = [];
+        const re1 = /(\d{1,3}(?:,\d)?)\s*%/g;
+        const re2 = /UF\s?([\d.]+)/g;
+        let m: RegExpExecArray | null;
+        while ((m = re1.exec(s)) !== null) out.push({ n: Number(m[1].replace(",", ".")), pos: m.index });
+        while ((m = re2.exec(s)) !== null) out.push({ n: Number(m[1].replace(/\./g, "")), pos: m.index });
+        return out.filter((x) => Number.isFinite(x.n) && x.n > 0);
+      };
+      const desalineadas: string[] = [];
+      for (const [campo, txt] of [
+        ["respuestaDirecta_clp", aiResult?.conviene?.respuestaDirecta_clp],
+        ["cajaAccionable_clp", aiResult?.conviene?.cajaAccionable_clp],
+      ] as [string, unknown][]) {
+        if (typeof txt !== "string") continue;
+        for (const oracion of txt.match(/[^.]+\./g) ?? [txt]) {
+          if (!AFIRMA_BRECHA.test(oracion)) continue;
+          const cifras = cifrasDe(oracion);
+          if (cifras.length === 0) continue; // afirmación sin cifra: nada que contrastar
+          if (cifras.some((c) => calza(c.n))) continue; // alguna es la del hallazgo
+          // Ninguna calza: se salva solo si TODAS traen su etiqueta propia delante.
+          if (cifras.every((c) => CON_ETIQUETA.test(oracion.slice(0, c.pos)))) continue;
+          desalineadas.push(
+            `${campo}: "${oracion.trim().slice(0, 120)}" (cita ${cifras.map((c) => c.n).join("/")}, tipados ${permitidos.join("/") || "ninguno"})`,
+          );
+        }
+      }
+      if (desalineadas.length > 0) {
+        console.warn(
+          `[DISTANCIA-CIFRA] ${analysisId}: presenta como brecha de veredicto un número que no es el del hallazgo — ${desalineadas.join(" | ")}`,
+        );
+      }
     }
 
     // ─── GUARD ESTRUCTURAL ────────────────────────────────────────────────────
