@@ -15,7 +15,7 @@
 //   # 2. Regenerar de verdad
 //   node --env-file=.env.local --import tsx scripts/regen-prosa-hallazgo.ts --write
 //
-//   # Opciones: --dias=60 · --limite=N · --excluir=id1,id2 · --hallazgo=<id>
+//   # Opciones: --dias=60 · --limite=N · --excluir=id1,id2 · --solo=id1,id2 · --hallazgo=<id>
 //
 // GARANTÍAS
 // ---------
@@ -46,6 +46,10 @@ const DIAS = Number(arg("dias", "60"));
 const LIMITE = Number(arg("limite", "0"));
 const HALLAZGO = arg("hallazgo", "distancia_veredicto")!;
 const EXCLUIR = new Set((arg("excluir", "") || "").split(",").filter(Boolean));
+// --solo=id1,id2 restringe el lote a esos ids (igual sujetos al criterio de elegibilidad:
+// si uno no emite el hallazgo, no se regenera). Para re-pasadas quirúrgicas sobre filas
+// ya identificadas, sin volver a barrer el corpus entero.
+const SOLO = new Set((arg("solo", "") || "").split(",").filter(Boolean));
 const MAX_INTENTOS = 2;
 
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -80,6 +84,7 @@ async function main() {
   const elegibles: { id: string; comuna: string; ver: string; estructural: boolean }[] = [];
   for (const row of rows ?? []) {
     if (EXCLUIR.has(row.id)) continue;
+    if (SOLO.size > 0 && !SOLO.has(row.id)) continue;
     const input: AnalisisInput = row.input_data;
     if (!input?.precio || !input?.arriendo || !row.results?.metrics?.precioCLP) continue;
     const uf = Math.round(row.results.metrics.precioCLP / input.precio);
@@ -105,6 +110,7 @@ async function main() {
   console.log(`═══ REGEN DE PROSA · hallazgo "${HALLAZGO}" · últimos ${DIAS} días ═══`);
   console.log(`  elegibles: ${lista.length}  (recuperables ${lista.length - estructurales.length} · estructurales ${estructurales.length})`);
   if (EXCLUIR.size) console.log(`  excluidos por flag: ${[...EXCLUIR].join(", ")}`);
+  if (SOLO.size) console.log(`  restringido a ${SOLO.size} id(s) por --solo`);
   console.log("");
   for (const x of lista) {
     console.log(`  ${x.id}  ${x.comuna.padEnd(16)} ${x.ver.padEnd(17)} ${x.estructural ? "ESTRUCTURAL" : "recuperable"}`);
