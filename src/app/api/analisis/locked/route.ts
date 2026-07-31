@@ -6,11 +6,13 @@ import { getUFValue } from "@/lib/uf";
 import {
   createSupabaseServer,
   requireAuthenticatedUser,
+  guardPlausibilidad,
   buildShortTermAnalysisRow,
   prefetchMedianaComunaVenta,
   buildMedianaSnapshot,
   type ShortTermAnalysisBody,
 } from "@/lib/api-helpers/analisis-pipeline";
+import { desdeBodyLtr, desdeBodyStr } from "@/lib/plausibilidad";
 
 // Crear un análisis BLOQUEADO pre-pago (Camino A, LTR o STR, solo logueado).
 //
@@ -111,6 +113,22 @@ export async function POST(request: Request) {
       }
 
       const ufBoth = await getUFValue();
+
+      // Guard de plausibilidad — antes de TODO (AirROI, motor, inserts). Acá no
+      // se cobra crédito, pero este camino termina en /checkout con pago REAL
+      // por Flow y emisión de boleta: un análisis imposible que llegue a pagarse
+      // exige reembolso manual. Rechazar acá no deja fila ni pending_payment.
+      const plausibleBoth = guardPlausibilidad(
+        {
+          ...desdeBodyLtr(ltrPayload, ufBoth),
+          // Las dos ramas comparten precio/superficie; la STR solo aporta los
+          // overrides de tarifa/ocupación cuando el usuario los corrigió.
+          str: desdeBodyStr(strPayload, ufBoth).str,
+        },
+        { userId: user.id, ruta: "POST /api/analisis/locked (both)" },
+      );
+      if (!plausibleBoth.ok) return plausibleBoth.response;
+
       // STR primero: puede fallar (AirROI caído / sin datos) con su propio
       // contrato HTTP. Si falla, abortamos sin haber insertado el LTR.
       const medianaStrBoth = await prefetchMedianaComunaVenta(
@@ -181,6 +199,14 @@ export async function POST(request: Request) {
     if (isStr) {
       const ufStr = await getUFValue();
       const bodyStr = body as unknown as ShortTermAnalysisBody;
+
+      // Guard de plausibilidad — antes del fetch a AirROI y del insert.
+      const plausibleStr = guardPlausibilidad(desdeBodyStr(bodyStr, ufStr), {
+        userId: user.id,
+        ruta: "POST /api/analisis/locked (str)",
+      });
+      if (!plausibleStr.ok) return plausibleStr.response;
+
       const medianaStr = await prefetchMedianaComunaVenta(
         supabase,
         { comuna: bodyStr.comuna ?? "", superficie: bodyStr.superficieUtil, dormitorios: bodyStr.dormitorios },
@@ -221,6 +247,14 @@ export async function POST(request: Request) {
     const tUf = Date.now();
     const ufValue = await getUFValue();
     console.log(`[LOCKED-TIMING] getUFValue: ${Date.now() - tUf}ms`);
+
+    // Guard de plausibilidad — antes de runAnalysis (que corre dentro de
+    // buildLockedLtrRow, inline en el insert de abajo) y antes del insert.
+    const plausibleLtr = guardPlausibilidad(desdeBodyLtr(body, ufValue), {
+      userId: user.id,
+      ruta: "POST /api/analisis/locked (ltr)",
+    });
+    if (!plausibleLtr.ok) return plausibleLtr.response;
 
     // Mediana comunal pre-fetcheada para inyectar al motor (patrón cap_rate).
     const medianaLtr = await prefetchMedianaComunaVenta(supabase, body, ufValue);
