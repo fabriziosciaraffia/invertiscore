@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup Extras · Variante A (etiqueta neutra) · Franco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,700;1,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink900:#0F0F0F; --ink800:#1A1A1A; --ink700:#2C2C2A; --ink600:#5F5E5A;
+    --ink500:#888780; --ink400:#B4B2A9; --ink300:#CDCBC6; --ink200:#E8E6E1; --ink100:#FAFAF8;
+    --red:#C8323C;
+    /* tokens dark (globals.css) */
+    --card:#1A1A1A;
+    --text:#FAFAF8;
+    --text-sec:rgba(250,250,248,.5);
+    --text-mut:rgba(250,250,248,.35);
+    --text-ter:#888780;
+    --border:rgba(250,250,248,.06);
+    --border-hover:rgba(250,250,248,.12);
+    --border-strong:rgba(250,250,248,.15);
+    --serif:'Source Serif 4',Georgia,serif;
+    --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--ink900);color:var(--text);font-family:var(--sans);font-weight:400;
+    -webkit-font-smoothing:antialiased;padding:40px 0 90px;}
+  .page{max-width:1080px;margin:0 auto;padding:0 32px;}
+  .mono{font-family:var(--mono);}
+  .serif{font-family:var(--serif);font-weight:700;}
+
+  /* mock chrome bar */
+  .mockbar{max-width:1080px;margin:0 auto 30px;padding:0 32px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .mockbar .tag{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--red);border:.5px solid rgba(200,50,60,.4);border-radius:5px;padding:4px 9px;}
+  .mockbar .desc{font-family:var(--mono);font-size:11px;color:var(--text-sec);}
+
+  /* ===== FINDING CARD (ancla — así se ve un HALLAZGO de la pirámide) ===== */
+  .finding{background:var(--card);border:.5px solid var(--border);border-radius:16px;padding:24px;}
+  .finding .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
+  .kick{font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;font-size:10px;color:var(--text-ter);}
+  .f-title{font-family:var(--serif);font-weight:700;line-height:1.2;margin-top:8px;font-size:18px;}
+  .dir{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;padding-top:2px;}
+  .dir .dot{height:7px;width:7px;border-radius:50%;}
+  .dir .lbl{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-size:9px;color:var(--text-ter);}
+  .kpi{font-family:var(--mono);font-weight:700;line-height:1;margin-top:14px;font-size:28px;}
+  .ksub{font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:8px;font-size:10px;color:var(--text-ter);}
+  .fbody{font-size:13.5px;line-height:1.55;margin-top:14px;color:var(--text-sec);}
+  .fdetail{margin-top:16px;padding-top:14px;border-top:.5px solid var(--border);display:flex;justify-content:flex-end;}
+  .fdetail a{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-size:10px;color:var(--text-ter);text-decoration:none;}
+
+  /* ===== SECTION DIVIDER ===== */
+  .fam-head{display:flex;align-items:baseline;gap:12px;margin:34px 2px 14px;}
+  .fam-head .t{font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;font-size:10px;color:var(--text-mut);}
+  .fam-head .rule{flex:1;height:.5px;background:var(--border);}
+
+  /* ===== EXTRAS — SEÑA A: etiqueta neutra + SIN punto de dirección ===== */
+  .extra{background:var(--card);border:.5px solid var(--border);border-radius:16px;}
+  .kick-extra{font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;font-size:9px;
+    color:var(--text-mut);display:inline-flex;align-items:center;gap:6px;}
+  .kick-extra::before{content:"";width:5px;height:5px;border:1px solid var(--text-mut);border-radius:1px;
+    display:inline-block;} /* glifo neutro cuadrado hueco: no es dot de dirección */
+
+  /* zona */
+  .zona{padding:18px 20px;display:grid;grid-template-columns:44px 1fr auto;gap:16px;align-items:center;}
+  .zona .radar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    background:color-mix(in srgb,var(--ink400) 10%,transparent);
+    border:1px solid color-mix(in srgb,var(--ink400) 35%,transparent);color:var(--ink400);}
+  .zona h3{font-family:var(--serif);font-weight:700;font-size:16px;line-height:1.2;margin-top:6px;}
+  .zona .quote{font-family:var(--serif);font-style:italic;font-size:12.5px;line-height:1.5;margin-top:5px;
+    color:color-mix(in srgb,var(--text) 78%,transparent);}
+  .zona .rstack{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;}
+  .pill{font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;font-size:9px;font-weight:500;
+    padding:3px 8px;border-radius:5px;background:color-mix(in srgb,var(--ink400) 15%,transparent);
+    border:.5px solid color-mix(in srgb,var(--ink400) 40%,transparent);color:var(--ink400);}
+  .zona .explore{font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;font-size:9px;color:var(--text-sec);}
+
+  /* simulación */
+  .sim{margin-top:14px;padding:22px 24px 26px;}
+  .sim-head{display:flex;flex-direction:column;gap:5px;padding-bottom:18px;border-bottom:.5px solid var(--border);}
+  .sim-head h2{font-family:var(--serif);font-weight:700;font-size:22px;line-height:1.2;}
+  .sim-head .sub{font-size:13px;color:var(--text-sec);}
+
+  /* sliders row */
+  .sliders{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:20px;}
+  .slider .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+  .slider .name{font-size:14px;color:var(--text);}
+  .slider .val{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--text);}
+  .track{position:relative;height:3px;border-radius:2px;background:var(--border-hover);}
+  .track .fill{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--text);}
+  .track .thumb{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;background:var(--text);
+    transform:translate(-50%,-50%);box-shadow:0 1px 4px rgba(0,0,0,.5);}
+  .track-labels{display:flex;justify-content:space-between;margin-top:7px;font-family:var(--mono);
+    font-size:10px;color:var(--text-mut);}
+  .sim-disc{font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--text-sec);margin-top:18px;}
+
+  /* indicadores strip (OUTPUT de la simulación) */
+  .ind{margin-top:22px;padding:16px 18px;border-radius:12px;
+    background:color-mix(in srgb,var(--text) 3%,transparent);border:.5px solid var(--border);}
+  .ind-lbl{font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;font-size:9px;color:var(--text-ter);
+    display:flex;align-items:center;gap:7px;margin-bottom:14px;}
+  .ind-lbl .live{width:6px;height:6px;border-radius:50%;background:var(--text);
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--text) 12%,transparent);}
+  .ind-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+  .kcell .k{font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;font-size:9px;color:var(--text-ter);}
+  .kcell .v{font-family:var(--mono);font-weight:700;font-size:24px;line-height:1;margin-top:7px;}
+  .kcell .v.neg{color:var(--red);}
+  /* CAP estático: apartado, marcado "fijo" */
+  .ind-static{margin-top:16px;padding-top:14px;border-top:.5px dashed var(--border);
+    display:flex;align-items:center;gap:12px;}
+  .ind-static .k{font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;font-size:9px;color:var(--text-ter);}
+  .ind-static .v{font-family:var(--mono);font-weight:700;font-size:18px;}
+  .ind-static .tag{font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;font-size:9px;
+    color:var(--text-mut);border:.5px solid var(--border-hover);border-radius:4px;padding:2px 7px;}
+  .ind-static .note{font-family:var(--sans);font-size:11px;color:var(--text-mut);margin-left:auto;}
+
+  /* two columns */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:22px;}
+  .subhead{margin-bottom:14px;}
+  .subhead .k{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-size:10px;color:var(--text-ter);}
+  .subhead h3{font-family:var(--serif);font-weight:700;font-size:18px;line-height:1.25;margin-top:5px;}
+
+  /* patrimonio chart */
+  .chartwrap{width:100%;}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;font-family:var(--mono);font-size:10px;
+    color:var(--text-sec);margin-top:12px;}
+  .legend span{display:flex;align-items:center;gap:6px;}
+  .sw{width:10px;height:10px;border-radius:2px;display:inline-block;}
+  .swline{width:16px;height:2px;border-radius:2px;display:inline-block;}
+  .checkpoint{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:18px;
+    background:color-mix(in srgb,var(--text) 3%,transparent);border-left:3px solid var(--text-sec);
+    border-radius:0 8px 8px 0;padding:12px 16px;}
+  .checkpoint .cl{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-size:10px;color:var(--text-sec);}
+  .checkpoint .cctx{font-size:12px;color:var(--text-sec);margin-top:3px;}
+  .checkpoint .cv{font-family:var(--mono);font-weight:700;font-size:22px;line-height:1;text-align:right;}
+  .checkpoint .cd{font-family:var(--mono);font-size:11px;color:var(--text-sec);text-align:right;margin-top:4px;}
+
+  /* venta/refi */
+  .segmented{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:2px;border-radius:9px;
+    background:color-mix(in srgb,var(--text) 4%,transparent);border:.5px solid var(--border-hover);}
+  .segmented button{font-family:var(--sans);font-size:13px;padding:8px 12px;border-radius:7px;border:1px solid transparent;
+    background:transparent;color:var(--text-sec);cursor:pointer;}
+  .segmented button.active{background:rgba(250,250,248,.08);color:var(--text);font-weight:600;
+    border:1px solid rgba(250,250,248,.2);box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .exit-hero{margin-top:16px;background:color-mix(in srgb,var(--text) 3%,transparent);
+    border-left:3px solid var(--text-sec);border-radius:0 8px 8px 0;padding:14px 18px;}
+  .exit-hero .l{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-size:10px;color:var(--text-sec);}
+  .exit-hero .v{font-family:var(--mono);font-weight:700;font-size:28px;line-height:1;margin-top:5px;}
+  .exit-table{margin-top:16px;border-radius:9px;overflow:hidden;
+    background:color-mix(in srgb,var(--text) 2%,transparent);border:.5px solid var(--border-hover);}
+  .exit-table .row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 15px;}
+  .exit-table .row+.row{border-top:.5px solid color-mix(in srgb,var(--text) 8%,transparent);}
+  .exit-table .rl{font-size:13px;color:color-mix(in srgb,var(--text) 85%,transparent);}
+  .exit-table .rv{font-family:var(--mono);font-weight:600;font-size:13px;}
+  .exit-table .rv.red{color:var(--red);}
+  .exit-table .total{border-top:.5px dashed var(--border-hover);background:color-mix(in srgb,var(--ink400) 5%,transparent);padding:12px 15px;}
+  .exit-table .total .rl{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:600;}
+  .exit-table .total .rv{font-size:16px;font-weight:700;}
+  .gain{margin-top:12px;border-radius:9px;padding:11px 14px;font-size:13px;color:color-mix(in srgb,var(--text) 80%,transparent);
+    background:color-mix(in srgb,var(--ink400) 10%,transparent);border:.5px solid color-mix(in srgb,var(--ink400) 30%,transparent);}
+  .gain b{font-family:var(--mono);font-weight:700;color:var(--ink400);}
+
+  .dead{color:var(--red);font-weight:600;}
+</style>
+
+<style>
+  /* ══ BANDA DE ADVERTENCIA ══
+     Todas las cifras de este archivo son placeholders inventados. Sin esta
+     banda el mockup se confunde con la app real: ya pasó una vez, con un
+     reporte de QA levantado contra estos números.
+     Misma banda que el resto de assets-export. El spacer reemplaza al
+     padding-top del body que usan los otros: acá el body es de cada mockup y
+     no se toca. */
+  .mockup-warning {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #C8323C; color: #FFFFFF;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em;
+    text-align: center; padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+  .mockup-warning-spacer { height: 37px; flex: none; }
+</style>
+</head>
+<body>
+<div class="mockup-warning">MOCKUP — DATOS FICTICIOS</div>
+<div class="mockup-warning-spacer" aria-hidden="true"></div>
+
+
+<div class="mockbar">
+  <span class="tag">Variante A · seña = etiqueta neutra</span>
+  <span class="desc">Depto 2D1B Providencia · 55 m² · UF 3.200 · AJUSTA SUPUESTOS · caso demo real · dark 1440×900</span>
+</div>
+
+<div class="page">
+
+  <!-- ══════ ANCLA: dos hallazgos de la pirámide (para contrastar la seña) ══════ -->
+  <div class="fam-head">
+    <span class="t">↑ cola de la pirámide — así se ve un HALLAZGO (tiene punto de dirección)</span>
+    <span class="rule"></span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="finding">
+      <div class="head">
+        <div>
+          <div class="kick">Plusvalía histórica</div>
+          <div class="f-title">Cuánto se ha valorizado la comuna</div>
+        </div>
+        <span class="dir"><span class="dot" style="background:var(--ink400)"></span><span class="lbl">A favor</span></span>
+      </div>
+      <div class="kpi">5,1%</div>
+      <div class="ksub">anual · 2014-2024 · umbral real 3,0%</div>
+      <div class="fbody">Providencia se valorizó 5,1% anual la última década, sobre el umbral que hace que la apuesta a plusvalía tenga respaldo.</div>
+      <div class="fdetail"><a href="#">Ver detalle →</a></div>
+    </div>
+    <div class="finding">
+      <div class="head">
+        <div>
+          <div class="kick">Rendimiento operativo</div>
+          <div class="f-title">Lo que renta hoy vs lo que debería</div>
+        </div>
+        <span class="dir"><span class="dot" style="background:var(--red)"></span><span class="lbl">En contra</span></span>
+      </div>
+      <div class="kpi">2,7%</div>
+      <div class="ksub">cap rate · 1,8 pts bajo el mercado (4,5%)</div>
+      <div class="fbody">A este precio el arriendo rinde 2,7% bruto sobre el valor — bajo lo que rinde el mercado comparable de la comuna.</div>
+      <div class="fdetail"><a href="#">Ver detalle →</a></div>
+    </div>
+  </div>
+
+  <!-- ══════ FAMILIA EXTRAS ══════ -->
+  <div class="fam-head">
+    <span class="t">Extras — contexto y herramienta · sin numeración · sin punto de dirección</span>
+    <span class="rule"></span>
+  </div>
+
+  <!-- ZONA (extra) -->
+  <div class="extra zona">
+    <div class="radar" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+      </svg>
+    </div>
+    <div style="min-width:0;">
+      <span class="kick-extra">Contexto · zona</span>
+      <h3>Lo que no ves a simple vista</h3>
+      <p class="quote">"A dos cuadras hay tres líneas de metro y la clínica más grande de la comuna. Ese acceso es lo que sostiene el arriendo cuando el mercado se enfría."</p>
+    </div>
+    <div class="rstack">
+      <span class="pill">24 lugares</span>
+      <span class="explore">Explorar →</span>
+    </div>
+  </div>
+
+  <!-- SIMULACIÓN (extra) -->
+  <div class="extra sim">
+    <div class="sim-head">
+      <span class="kick-extra">Herramienta · simulación</span>
+      <h2 style="margin-top:6px;">Simula plazo y plusvalía</h2>
+      <span class="sub">Mueve los supuestos y mira cómo responden el patrimonio y las estrategias de salida. Tu veredicto no cambia.</span>
+    </div>
+
+    <!-- SLIDERS (arriba de ambas columnas — controlan las dos) -->
+    <div class="sliders">
+      <div class="slider">
+        <div class="top"><span class="name">Plazo de análisis</span><span class="val">10 años</span></div>
+        <div class="track"><div class="fill" style="width:31%"></div><div class="thumb" style="left:31%"></div></div>
+        <div class="track-labels"><span>1 año</span><span>30 años</span></div>
+      </div>
+      <div class="slider">
+        <div class="top"><span class="name">Plusvalía anual</span><span class="val">4,0%</span></div>
+        <div class="track"><div class="fill" style="width:27%"></div><div class="thumb" style="left:27%"></div></div>
+        <div class="track-labels"><span>0%</span><span>15%</span></div>
+      </div>
+    </div>
+    <p class="sim-disc">● Estos ajustes simulan escenarios. El veredicto, el costo mensual y el largo plazo de arriba quedan fijos en tu análisis original.</p>
+
+    <!-- INDICADORES: output de la simulación (4 reaccionan) -->
+    <div class="ind">
+      <div class="ind-lbl"><span class="live"></span>Escenario simulado · reaccionan a los sliders</div>
+      <div class="ind-grid">
+        <div class="kcell"><div class="k">TIR @ 10 años</div><div class="v">9,6%</div></div>
+        <div class="kcell"><div class="k">Cash-on-Cash @ 10 años</div><div class="v neg">−11,1%</div></div>
+        <div class="kcell"><div class="k">Payback (con venta)</div><div class="v">Año 2</div></div>
+        <div class="kcell"><div class="k">Múltiplo @ 10 años</div><div class="v">1,3x</div></div>
+      </div>
+      <div class="ind-static">
+        <span class="k">Cap Rate</span>
+        <span class="v">2,7%</span>
+        <span class="tag">Fijo</span>
+        <span class="note">No varía con los sliders — ya vive como hallazgo arriba.</span>
+      </div>
+    </div>
+
+    <!-- DOS COLUMNAS -->
+    <div class="cols">
+      <!-- IZQUIERDA: patrimonio -->
+      <div>
+        <div class="subhead"><div class="k">Patrimonio</div><h3>Cómo crece tu capital</h3></div>
+        <div class="chartwrap"><svg id="chartA" width="100%" height="280" viewBox="0 0 500 280" preserveAspectRatio="none"></svg></div>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--red)"></span>Aporte acumulado</span>
+          <span><span class="sw" style="background:var(--text);opacity:.5"></span>Valor depto</span>
+          <span><span class="swline" style="background:var(--text)"></span>Patrimonio neto</span>
+        </div>
+        <div class="checkpoint">
+          <div>
+            <div class="cl">Patrimonio teórico al año 10</div>
+            <div class="cctx">vs $57.677.828 aportados</div>
+          </div>
+          <div>
+            <div class="cv">$111.064.000</div>
+            <div class="cd">+$53.386.172 (+93%)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DERECHA: venta o refinanciamiento -->
+      <div>
+        <div class="subhead"><div class="k">Venta o refinanciamiento</div><h3>Cómo materializas la inversión</h3></div>
+        <div class="segmented">
+          <button class="active">Si vendes</button>
+          <button>Si refinancias</button>
+        </div>
+        <div class="exit-hero">
+          <div class="l">Al vender en el año 10 recibes</div>
+          <div class="v">$107.388.260</div>
+        </div>
+        <div class="exit-table">
+          <div class="row"><span class="rl">Valor del depto</span><span class="rv">+$183.787.000</span></div>
+          <div class="row"><span class="rl">− Deuda pendiente</span><span class="rv red">−$72.723.000</span></div>
+          <div class="row"><span class="rl">− Comisión venta (2%)</span><span class="rv red">−$3.675.740</span></div>
+          <div class="row total"><span class="rl">= Te queda</span><span class="rv">$107.388.260</span></div>
+        </div>
+        <div class="gain">Ganancia neta <b>+$49.710.432</b> (+86%) vs inversión total de <span class="mono">$57.677.828</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p style="text-align:center;font-size:10px;color:var(--text-mut);margin-top:26px;">
+    Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
+  </p>
+</div>
+
+<script>
+(function(){
+  // data: [aporte, valor, neto] en millones
+  var d=[[27.3,124.2,24.8],[31.2,129.1,31.9],[35.0,134.3,39.3],[38.5,139.7,48.0],
+         [41.9,145.3,56.6],[45.0,151.1,66.0],[48.0,157.1,75.4],[50.7,163.4,85.1],
+         [53.3,170.0,95.0],[55.6,176.7,103.4],[57.7,183.8,111.1]];
+  var W=500,H=280,padL=40,padR=12,padT=12,padB=26;
+  var iw=W-padL-padR, ih=H-padT-padB;
+  var maxStack=0; d.forEach(function(r){maxStack=Math.max(maxStack,r[0]+r[1]);});
+  maxStack=Math.ceil(maxStack/50)*50; // 250
+  var n=d.length, gap=iw/n, bw=gap*0.5;
+  function y(v){return padT+ih-(v/maxStack)*ih;}
+  function x(i){return padL+gap*i+gap/2;}
+  var svg=document.getElementById('chartA');
+  var ns='http://www.w3.org/2000/svg';
+  function el(t,a){var e=document.createElementNS(ns,t);for(var k in a)e.setAttribute(k,a[k]);return e;}
+  // gridlines + Y labels
+  for(var g=0;g<=maxStack;g+=50){
+    svg.appendChild(el('line',{x1:padL,y1:y(g),x2:W-padR,y2:y(g),stroke:'rgba(250,250,248,.06)','stroke-dasharray':'3 3'}));
+    var t=el('text',{x:padL-6,y:y(g)+3,'text-anchor':'end','font-family':'JetBrains Mono, monospace','font-size':9,fill:'rgba(250,250,248,.5)'});
+    t.textContent='$'+g+'M'; svg.appendChild(t);
+  }
+  // bars stacked: aporte (red bottom) + valor (ink 50% on top)
+  d.forEach(function(r,i){
+    var cx=x(i);
+    var hAp=(r[0]/maxStack)*ih, hVal=(r[1]/maxStack)*ih;
+    svg.appendChild(el('rect',{x:cx-bw/2,y:y(r[0]),width:bw,height:hAp,fill:'var(--red)'}));
+    svg.appendChild(el('rect',{x:cx-bw/2,y:y(r[0]+r[1]),width:bw,height:hVal,fill:'var(--text)','fill-opacity':.5}));
+    var xl=el('text',{x:cx,y:H-9,'text-anchor':'middle','font-family':'JetBrains Mono, monospace','font-size':9,fill:'rgba(250,250,248,.5)'});
+    xl.textContent='a'+i; svg.appendChild(xl);
+  });
+  // neto line
+  var pts=d.map(function(r,i){return x(i)+','+y(r[2]);}).join(' ');
+  svg.appendChild(el('polyline',{points:pts,fill:'none',stroke:'var(--text)','stroke-width':2.5}));
+  d.forEach(function(r,i){svg.appendChild(el('circle',{cx:x(i),cy:y(r[2]),r:3,fill:'var(--ink900)',stroke:'var(--text)','stroke-width':1.5}));});
+})();
+</script>
+</body>
+</html>

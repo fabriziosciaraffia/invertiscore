@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup — Alerta de plausibilidad · refranco.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F0F0F;
+    --signal:#C8323C;
+    --paper:#FAFAF8;
+    --paper-2:#F2F1EE;
+    --rule:#E2E0DB;
+    --muted:#6E6C68;
+    --serif:'Source Serif 4',Georgia,serif;
+    --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--paper-2);color:var(--ink);
+    font-family:var(--sans);line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:56px 24px 120px}
+
+  /* ---------- encabezado del documento ---------- */
+  .doc-eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:14px;
+  }
+  h1{
+    font-family:var(--serif);font-weight:700;font-size:40px;line-height:1.12;
+    margin:0 0 14px;letter-spacing:-.01em;
+  }
+  .lede{font-size:17px;color:#3A3936;max-width:62ch;margin:0 0 8px}
+  .contract{
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--signal);margin-top:22px;
+  }
+
+  hr.rule{border:0;border-top:1px solid var(--rule);margin:44px 0}
+
+  h2{
+    font-family:var(--serif);font-weight:600;font-size:26px;
+    margin:0 0 6px;letter-spacing:-.01em;
+  }
+  .sec-eyebrow{
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:10px;
+  }
+  p.note{color:#3A3936;max-width:66ch;margin:0 0 22px;font-size:15px}
+
+  /* ---------- tabla de capas ---------- */
+  .capas{
+    border:1px solid var(--rule);background:var(--paper);
+    border-radius:2px;overflow:hidden;
+  }
+  .capa{
+    display:grid;grid-template-columns:172px 1fr 132px;gap:20px;
+    padding:15px 20px;border-bottom:1px solid var(--rule);align-items:baseline;
+  }
+  .capa:last-child{border-bottom:0}
+  .capa-when{
+    font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink);font-weight:500;
+  }
+  .capa-what{font-size:14px;color:#3A3936}
+  .capa-rule{
+    font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;
+  }
+  .capa.now{background:#FDF6F6}
+  .capa.now .capa-when{color:var(--signal)}
+
+  /* ---------- marco de demo ---------- */
+  .demo{
+    position:relative;border:1px solid var(--rule);background:var(--paper);
+    border-radius:2px;overflow:hidden;margin-top:8px;
+  }
+  .demo-bar{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:9px 16px;border-bottom:1px solid var(--rule);
+    font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);background:var(--paper-2);
+  }
+  .demo-stage{position:relative;height:430px;overflow:hidden}
+
+  /* fondo simulado del wizard */
+  .bg{position:absolute;inset:0;padding:30px 34px;filter:saturate(.9)}
+  .bg-step{
+    font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  .bg-track{height:2px;background:var(--rule);margin:12px 0 26px;position:relative}
+  .bg-track i{position:absolute;left:0;top:0;height:2px;width:46%;background:var(--signal)}
+  .bg-q{font-family:var(--serif);font-size:27px;font-weight:600;margin:0 0 20px}
+  .bg-label{font-size:12px;font-weight:600;margin-bottom:7px}
+  .bg-field{
+    border:1px solid var(--ink);border-radius:2px;padding:13px 15px;
+    font-family:var(--mono);font-size:16px;max-width:520px;background:#fff;
+  }
+  .bg-conv{
+    font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:9px;
+  }
+  .bg-btn{
+    display:inline-block;margin-top:22px;background:var(--signal);color:#fff;
+    font-family:var(--mono);font-size:12px;letter-spacing:.1em;
+    text-transform:uppercase;padding:12px 22px;border-radius:2px;
+  }
+  .bg-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
+  .bg-card{border:1px solid var(--rule);border-radius:2px;padding:13px;background:#fff}
+  .bg-card h4{
+    font-family:var(--serif);font-size:14px;margin:0 0 10px;font-weight:600;
+  }
+  .bg-card .k{
+    font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);margin-top:9px;
+  }
+  .bg-card .v{font-family:var(--mono);font-size:13px}
+
+  /* ---------- el modal ---------- */
+  .scrim{
+    position:absolute;inset:0;background:rgba(15,15,15,.72);
+    backdrop-filter:blur(2px);display:flex;align-items:center;
+    justify-content:center;padding:22px;
+  }
+  .alert{
+    width:100%;max-width:470px;background:var(--paper);border-radius:3px;
+    box-shadow:0 24px 60px rgba(0,0,0,.34);overflow:hidden;
+    animation:rise .22s cubic-bezier(.2,.7,.3,1) both;
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(9px) scale(.985)}}
+  @media (prefers-reduced-motion:reduce){.alert{animation:none}}
+  .alert-top{height:3px;background:var(--signal)}
+  .alert-body{padding:26px 28px 8px}
+  .alert-eyebrow{
+    font-family:var(--mono);font-size:10px;letter-spacing:.17em;
+    text-transform:uppercase;color:var(--signal);font-weight:500;
+  }
+
+  /* la firma: el número derivado */
+  .derived{margin:20px 0 4px}
+  .derived-num{
+    font-family:var(--mono);font-weight:700;font-size:46px;line-height:1;
+    letter-spacing:-.02em;color:var(--ink);
+  }
+  .derived-unit{
+    font-family:var(--mono);font-size:14px;color:var(--muted);
+    letter-spacing:.04em;margin-left:9px;
+  }
+  .derived-label{
+    font-family:var(--mono);font-size:10px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--muted);margin-top:9px;
+  }
+
+  .alert-msg{
+    font-size:15px;line-height:1.55;color:#26251F;
+    margin:20px 0 0;max-width:44ch;
+  }
+
+  .origin{
+    margin-top:20px;border-top:1px solid var(--rule);padding-top:14px;
+    display:flex;gap:8px;flex-wrap:wrap;
+  }
+  .orig-btn{
+    display:flex;align-items:baseline;gap:8px;background:var(--paper-2);
+    border:1px solid var(--rule);border-radius:2px;padding:9px 12px;
+    cursor:pointer;font-family:inherit;text-align:left;
+  }
+  .orig-btn:hover{border-color:var(--ink)}
+  .orig-btn .k{
+    font-family:var(--mono);font-size:9px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  .orig-btn .v{font-family:var(--mono);font-size:13px;color:var(--ink)}
+  .orig-btn .go{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .orig-btn.hit{border-color:var(--signal);background:#FDF6F6}
+  .orig-btn.hit .v{color:var(--signal);font-weight:500}
+  .hint{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted);margin:9px 0 0;
+  }
+
+  .stack{
+    margin-top:16px;border-top:1px solid var(--rule);padding-top:13px;
+  }
+  .stack .k{
+    font-family:var(--mono);font-size:9px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:8px;
+  }
+  .stack li{
+    font-size:13.5px;color:#3A3936;margin-bottom:6px;list-style:none;
+    padding-left:16px;position:relative;
+  }
+  .stack li::before{
+    content:'';position:absolute;left:0;top:8px;width:5px;height:5px;
+    background:var(--signal);border-radius:50%;
+  }
+  .stack ul{margin:0;padding:0}
+
+  .alert-actions{
+    display:flex;gap:10px;padding:22px 28px 26px;
+  }
+  .btn{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;
+    text-transform:uppercase;padding:13px 20px;border-radius:2px;
+    border:1px solid transparent;cursor:pointer;
+  }
+  .btn-primary{background:var(--ink);color:var(--paper);flex:1}
+  .btn-ghost{background:transparent;color:var(--muted);border-color:var(--rule)}
+
+  /* ---------- comparación antes/después ---------- */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px}
+  .compare-col h3{
+    font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;margin:0 0 10px;color:var(--muted);
+  }
+  .compare-col.after h3{color:var(--signal)}
+  .box{
+    border:1px solid var(--rule);background:var(--paper);
+    border-radius:2px;padding:20px;height:100%;
+  }
+  .old-error{
+    border-left:2px solid var(--signal);background:#FDF6F6;
+    padding:11px 14px;font-size:13.5px;color:#26251F;
+  }
+  .verdict{
+    font-size:13.5px;color:#3A3936;margin-top:14px;
+  }
+  .verdict b{color:var(--ink)}
+
+  .spec{
+    display:grid;grid-template-columns:154px 1fr;gap:12px 20px;
+    font-size:14px;color:#3A3936;
+  }
+  .spec dt{
+    font-family:var(--mono);font-size:10px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--muted);padding-top:3px;
+  }
+  .spec dd{margin:0}
+
+  .switcher{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .switcher button{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;
+    text-transform:uppercase;padding:9px 14px;border-radius:2px;
+    border:1px solid var(--rule);background:var(--paper);cursor:pointer;
+    color:var(--muted);
+  }
+  .switcher button[aria-pressed="true"]{
+    background:var(--ink);color:var(--paper);border-color:var(--ink);
+  }
+  .hidden{display:none}
+  @media(max-width:760px){
+    .compare{grid-template-columns:1fr}
+    .capa{grid-template-columns:1fr;gap:4px}
+    .capa-rule{text-align:left}
+    .derived-num{font-size:38px}
+  }
+</style>
+
+<style>
+  /* ══ BANDA DE ADVERTENCIA ══
+     Todas las cifras de este archivo son placeholders inventados. Sin esta
+     banda el mockup se confunde con la app real: ya pasó una vez, con un
+     reporte de QA levantado contra estos números.
+     Misma banda que el resto de assets-export. El spacer reemplaza al
+     padding-top del body que usan los otros: acá el body es de cada mockup y
+     no se toca. */
+  .mockup-warning {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #C8323C; color: #FFFFFF;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em;
+    text-align: center; padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+  .mockup-warning-spacer { height: 37px; flex: none; }
+</style>
+</head>
+<body>
+<div class="mockup-warning">MOCKUP — DATOS FICTICIOS</div>
+<div class="mockup-warning-spacer" aria-hidden="true"></div>
+
+<div class="wrap">
+
+  <div class="doc-eyebrow">Mockup · Pieza B</div>
+  <h1>Alerta de plausibilidad</h1>
+  <p class="lede">El guard ya rechaza el dato imposible antes de cobrar. Lo que falta es que el usuario <em>vea</em> el error en el momento en que lo comete, no seis pantallas después y no en una línea de texto al pie de un botón.</p>
+  <div class="contract">Contrato vinculante — la implementación sigue esto</div>
+
+  <hr class="rule">
+
+  <!-- ============ 1 · PRINCIPIO ============ -->
+  <div class="sec-eyebrow">01 · El principio</div>
+  <h2>Cada regla dispara cuando sus insumos existen</h2>
+  <p class="note">Hoy el chequeo corre una sola vez, al final. Pero <span style="font-family:var(--mono);font-size:13px">UF/m²</span> se puede calcular apenas hay precio y superficie — cinco pantallas antes del resumen. El módulo ya lo permite: el <em>fail-open</em> por regla significa que evaluar con datos parciales devuelve solo las reglas que tienen con qué.</p>
+
+  <div class="capas">
+    <div class="capa">
+      <div class="capa-when">Superficie</div>
+      <div class="capa-what">Nada todavía — un número solo no dice nada.</div>
+      <div class="capa-rule">—</div>
+    </div>
+    <div class="capa now">
+      <div class="capa-when">Precio → continuar</div>
+      <div class="capa-what">Primer cruce posible: precio contra superficie. Acá se caza el error de magnitud.</div>
+      <div class="capa-rule">uf_m2 · precio_total</div>
+    </div>
+    <div class="capa">
+      <div class="capa-when">Arriendo → continuar</div>
+      <div class="capa-what">Ya hay con qué calcular el retorno bruto.</div>
+      <div class="capa-rule">yield</div>
+    </div>
+    <div class="capa">
+      <div class="capa-when">Tarifa y ocupación</div>
+      <div class="capa-what">Rama corta: retorno bruto de renta corta.</div>
+      <div class="capa-rule">str_yield · ocupación</div>
+    </div>
+    <div class="capa">
+      <div class="capa-when">Resumen → generar</div>
+      <div class="capa-what">Red final. Solo alcanza acá lo que el usuario editó inline.</div>
+      <div class="capa-rule">todas</div>
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ============ 2 · EL MODAL ============ -->
+  <div class="sec-eyebrow">02 · La alerta</div>
+  <h2>El número que nunca vio</h2>
+  <p class="note">El usuario tipeó <span style="font-family:var(--mono);font-size:13px">4.800.000</span> y lo dio por bueno — ya lo revisó mentalmente, es invisible para él. Lo que no ha visto nunca es lo que ese número <em>significa</em>: UF 106.667 el metro cuadrado. Por eso el derivado va grande y lo tipeado va chico. La jerarquía invierte lo que el usuario cree que revisó.</p>
+
+  <div class="switcher">
+    <button aria-pressed="true" onclick="show('a',this)">Una anomalía · pantalla del precio</button>
+    <button aria-pressed="false" onclick="show('b',this)">Varias anomalías · resumen</button>
+    <button aria-pressed="false" onclick="show('c',this)">Sin derivado · la tasa</button>
+  </div>
+
+  <!-- ---- variante A ---- -->
+  <div class="demo" id="demo-a">
+    <div class="demo-bar"><span>Acto 2 · pantalla del precio</span><span>al presionar continuar</span></div>
+    <div class="demo-stage">
+      <div class="bg">
+        <div class="bg-step">Acto 2 · cómo lo financias</div>
+        <div class="bg-track"><i></i></div>
+        <div class="bg-q">¿Cuánto piden por él?</div>
+        <div class="bg-label">Precio pedido</div>
+        <div class="bg-field">4.800.000 <span style="float:right;color:#6E6C68;font-size:12px">UF</span></div>
+        <div class="bg-conv">= $196.056.000.000</div>
+        <div class="bg-btn">Continuar →</div>
+      </div>
+      <div class="scrim">
+        <div class="alert" role="alertdialog" aria-labelledby="t-a">
+          <div class="alert-top"></div>
+          <div class="alert-body">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div class="alert-eyebrow">Revisa este dato</div>
+              <div style="font-family:var(--mono);font-size:15px;color:var(--muted);line-height:1;cursor:pointer">✕</div>
+            </div>
+            <div class="derived">
+              <span class="derived-num">106.667</span><span class="derived-unit">UF / m²</span>
+              <div class="derived-label">lo que implica el precio que pusiste</div>
+            </div>
+            <p class="alert-msg" id="t-a">El m² te queda en UF 106.667. Eso está fuera de escala para Santiago — revisa el precio o la superficie.</p>
+            <div class="origin">
+              <button class="orig-btn hit"><span class="k">Precio</span><span class="v">UF 4.800.000</span><span class="go">→</span></button>
+              <button class="orig-btn"><span class="k">Superficie</span><span class="v">45 m²</span><span class="go">→</span></button>
+            </div>
+            <p class="hint">Toca el que quieras corregir</p>
+          </div>
+          <div class="alert-actions">
+            <button class="btn btn-primary">Volver y corregir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- variante B ---- -->
+  <div class="demo hidden" id="demo-b">
+    <div class="demo-bar"><span>Resumen · red final</span><span>al presionar generar</span></div>
+    <div class="demo-stage">
+      <div class="bg">
+        <div class="bg-step">Resumen · comparativo</div>
+        <div class="bg-track"><i style="width:100%"></i></div>
+        <div class="bg-q" style="font-size:22px">Revisa antes de generar</div>
+        <div class="bg-cards">
+          <div class="bg-card"><h4>01 Qué compras</h4>
+            <div class="k">Precio</div><div class="v">UF 4.800.000</div>
+            <div class="k">Superficie</div><div class="v">45 m²</div></div>
+          <div class="bg-card"><h4>02 Cómo financias</h4>
+            <div class="k">Pie</div><div class="v">20%</div>
+            <div class="k">Cuota</div><div class="v">$837.440.563</div></div>
+          <div class="bg-card"><h4>03 Cómo rentabilizas</h4>
+            <div class="k">Arriendo</div><div class="v">$673.000</div>
+            <div class="k">Ocupación</div><div class="v">49%</div></div>
+        </div>
+      </div>
+      <div class="scrim">
+        <div class="alert" role="alertdialog" aria-labelledby="t-b">
+          <div class="alert-top"></div>
+          <div class="alert-body">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div class="alert-eyebrow">Revisa estos datos</div>
+              <div style="font-family:var(--mono);font-size:15px;color:var(--muted);line-height:1;cursor:pointer">✕</div>
+            </div>
+            <div class="derived">
+              <span class="derived-num">106.667</span><span class="derived-unit">UF / m²</span>
+              <div class="derived-label">lo que implica el precio que pusiste</div>
+            </div>
+            <p class="alert-msg" id="t-b">El m² te queda en UF 106.667. Eso está fuera de escala para Santiago — revisa el precio o la superficie.</p>
+            <div class="stack">
+              <div class="k">Y arrastra dos cosas más</div>
+              <ul>
+                <li>UF 4.800.000 son $196.056.000.000 — a ese precio no hay departamento en Chile.</li>
+                <li>Con ese arriendo el retorno bruto te da 0,004% al año.</li>
+              </ul>
+            </div>
+            <div class="origin">
+              <button class="orig-btn hit"><span class="k">Precio</span><span class="v">UF 4.800.000</span><span class="go">→</span></button>
+              <button class="orig-btn"><span class="k">Superficie</span><span class="v">45 m²</span><span class="go">→</span></button>
+              <button class="orig-btn"><span class="k">Arriendo</span><span class="v">$673.000</span><span class="go">→</span></button>
+            </div>
+            <p class="hint">Toca el que quieras corregir</p>
+          </div>
+          <div class="alert-actions">
+            <button class="btn btn-primary">Volver y corregir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- variante C ---- -->
+  <div class="demo hidden" id="demo-c">
+    <div class="demo-bar"><span>Acto 2 · pantalla de la tasa</span><span>el valor es el que se tipeó — no hay derivado que revelar</span></div>
+    <div class="demo-stage">
+      <div class="bg">
+        <div class="bg-step">Acto 2 · cómo lo financias</div>
+        <div class="bg-track"><i style="width:62%"></i></div>
+        <div class="bg-q">Tu tasa hipotecaria</div>
+        <div class="bg-label">Tasa anual</div>
+        <div class="bg-field">45 <span style="float:right;color:#6E6C68;font-size:12px">%</span></div>
+        <div class="bg-btn">Continuar →</div>
+      </div>
+      <div class="scrim">
+        <div class="alert" role="alertdialog" aria-labelledby="t-c">
+          <div class="alert-top"></div>
+          <div class="alert-body">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div class="alert-eyebrow">Revisa este dato</div>
+              <div style="font-family:var(--mono);font-size:15px;color:var(--muted);line-height:1;cursor:pointer">✕</div>
+            </div>
+            <div class="derived">
+              <span class="derived-num">45</span><span class="derived-unit">% anual</span>
+              <div class="derived-label">la tasa que ingresaste</div>
+            </div>
+            <p class="alert-msg" id="t-c">Una tasa de 45% anual no existe en el mercado hipotecario chileno. Revisa el dato que te dio el banco.</p>
+            <div class="origin">
+              <button class="orig-btn hit"><span class="k">Tasa</span><span class="v">45%</span><span class="go">→</span></button>
+            </div>
+            <p class="hint">Toca para corregir</p>
+          </div>
+          <div class="alert-actions">
+            <button class="btn btn-primary">Volver y corregir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:16px;margin-bottom:0"><b>El label es lo que cambia.</b> En UF/m² dice "lo que implica el precio que pusiste" porque es un número calculado que el usuario nunca vio. En la tasa dice "la tasa que ingresaste", porque ahí el número grande es literalmente lo que tipeó y fingir revelación sería falso. Mismo componente, label distinto según si la regla deriva o no.</p>
+
+  <hr class="rule">
+
+  <!-- ---- variante D ---- -->
+  <div class="sec-eyebrow">02b · El caso del 99%</div>
+  <h2>Cuando no hay nada malo</h2>
+  <p class="note">Casi nadie va a ver una anomalía. El estado que casi todos verán es este: confirmar que van a gastar un análisis, con el mini resumen que pediste. Es el mismo componente, con la barra en Ink en vez de Signal Red — el rojo se reserva para cuando algo está mal.</p>
+
+  <div class="demo" id="demo-d-wrap">
+    <div class="demo-bar"><span>Resumen · sin anomalías</span><span>confirmar el gasto</span></div>
+    <div class="demo-stage">
+      <div class="bg">
+        <div class="bg-step">Resumen · comparativo</div>
+        <div class="bg-track"><i style="width:100%"></i></div>
+        <div class="bg-q" style="font-size:22px">Revisa antes de generar</div>
+        <div class="bg-cards">
+          <div class="bg-card"><h4>01 Qué compras</h4>
+            <div class="k">Precio</div><div class="v">UF 5.500</div>
+            <div class="k">Superficie</div><div class="v">60 m²</div></div>
+          <div class="bg-card"><h4>02 Cómo financias</h4>
+            <div class="k">Pie</div><div class="v">20%</div>
+            <div class="k">Cuota</div><div class="v">$959.567</div></div>
+          <div class="bg-card"><h4>03 Cómo rentabilizas</h4>
+            <div class="k">Arriendo</div><div class="v">$890.000</div>
+            <div class="k">Ocupación</div><div class="v">49%</div></div>
+        </div>
+      </div>
+      <div class="scrim">
+        <div class="alert" role="dialog" aria-labelledby="t-d">
+          <div class="alert-top" style="background:var(--ink)"></div>
+          <div class="alert-body">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div class="alert-eyebrow" style="color:var(--muted)">Confirma antes de generar</div>
+              <div style="font-family:var(--mono);font-size:15px;color:var(--muted);line-height:1;cursor:pointer">✕</div>
+            </div>
+            <h3 id="t-d" style="font-family:var(--serif);font-size:22px;font-weight:600;margin:15px 0 4px;letter-spacing:-.01em">Suecia 750, Providencia</h3>
+            <div style="font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.03em">Comparativo · renta larga y corta</div>
+
+            <div style="margin-top:19px;border-top:1px solid var(--rule);padding-top:15px;display:grid;grid-template-columns:1fr 1fr;gap:13px 20px">
+              <div><div style="font-family:var(--mono);font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)">Precio</div><div style="font-family:var(--mono);font-size:14px;margin-top:2px">92 UF/m²</div></div>
+              <div><div style="font-family:var(--mono);font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)">Dividendo</div><div style="font-family:var(--mono);font-size:14px;margin-top:2px">$959.567/mes</div></div>
+              <div><div style="font-family:var(--mono);font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)">Pie</div><div style="font-family:var(--mono);font-size:14px;margin-top:2px">$44.929.500</div></div>
+              <div><div style="font-family:var(--mono);font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)">Retorno bruto</div><div style="font-family:var(--mono);font-size:14px;margin-top:2px">4,8% anual</div></div>
+            </div>
+
+            <div style="margin-top:17px;border-top:1px solid var(--rule);padding-top:13px;font-size:13.5px;color:#3A3936">
+              Esto usa uno de tus análisis. Te quedan <b style="font-family:var(--mono)">3 de 10</b>.
+            </div>
+          </div>
+          <div class="alert-actions">
+            <button class="btn btn-primary">Generar el análisis</button>
+            <button class="btn btn-ghost">Revisar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top:18px"><b>Los derivados son el mini resumen.</b> No repito lo que el usuario tipeó — muestro UF/m², dividendo, pie en pesos y retorno bruto. Son los que revelan si algo anda mal aunque no llegue al umbral del guard, y los que no vio en ninguna pantalla anterior.</p>
+
+  <div class="capas">
+    <div class="capa"><div class="capa-when">Con saldo</div><div class="capa-what">Esto usa uno de tus análisis. Te quedan <b>3 de 10</b>.</div><div class="capa-rule">plan finito</div></div>
+    <div class="capa"><div class="capa-when">Bienvenida</div><div class="capa-what">Este es tu análisis de bienvenida — el primero va por cuenta de Franco.</div><div class="capa-rule">welcome</div></div>
+    <div class="capa"><div class="capa-when">Ilimitado / admin</div><div class="capa-what">Sin mención de consumo: el bloque no se renderiza.</div><div class="capa-rule">is_unlimited</div></div>
+    <div class="capa now"><div class="capa-when">Sin saldo</div><div class="capa-what">Estás comprando este análisis comparativo de Providencia. Pagas y se desbloquea al instante.</div><div class="capa-rule">$9.990</div></div>
+  </div>
+
+  <p class="note" style="margin-top:14px;margin-bottom:0">Hoy el botón dice <span style="font-family:var(--mono);font-size:13px">· 1 crédito</span> incluso a un ilimitado y a un admin, que no gastan nada — verificado en producción. El modal obliga a arreglarlo: el copy tiene que leer el tier completo, no el booleano.</p>
+
+  <hr class="rule">
+  <!-- ============ 3 · CONTRA EL ESTADO ACTUAL ============ -->
+  <div class="sec-eyebrow">03 · Contra lo que hay hoy</div>
+  <h2>Por qué la línea al pie no alcanza</h2>
+
+  <div class="compare">
+    <div class="compare-col">
+      <h3>Hoy — en producción local</h3>
+      <div class="box">
+        <div class="old-error">El m² te queda en UF 106.667. Eso está fuera de escala para Santiago — revisa el precio o la superficie.</div>
+        <p class="verdict">Correcto en contenido y <b>casi invisible</b> en jerarquía: aparece bajo tres tarjetas densas, al final de un scroll largo, con el mismo peso tipográfico que una nota al pie. Compite con el botón rojo que está justo debajo. Y llega cinco pantallas después de que el error se cometió.</p>
+      </div>
+    </div>
+    <div class="compare-col after">
+      <h3>Propuesto</h3>
+      <div class="box">
+        <p class="verdict" style="margin-top:0"><b>Interrumpe.</b> Un modal centrado detiene el flujo: no hay nada más que mirar.</p>
+        <p class="verdict"><b>Revela.</b> El derivado en 46px es información que el usuario nunca vio, no una repetición de lo que ya validó.</p>
+        <p class="verdict"><b>Llega a tiempo.</b> En la pantalla del precio, con el dato fresco y el campo a un click.</p>
+        <p class="verdict"><b>Señala dónde tocar.</b> El campo culpable va marcado en Signal Red entre los datos de origen.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <hr class="rule">
+
+  <!-- ============ 4 · MOBILE ============ -->
+  <div class="sec-eyebrow">04 · Mobile</div>
+  <h2>La pantalla chica es el caso principal, no la excepción</h2>
+  <p class="note">A 390px el modal no es el mismo objeto encogido: cambia el tamaño del derivado, los botones se apilan a lo ancho completo, y aparece un problema que en desktop no existe — el teclado virtual. Si el usuario viene de tipear el precio, el teclado ocupa cerca de la mitad de la pantalla y el modal nace comprimido contra el borde superior.</p>
+
+  <div style="display:flex;gap:34px;align-items:flex-start;flex-wrap:wrap">
+    <div style="flex:0 0 auto">
+      <div style="width:390px;border:1px solid var(--rule);border-radius:14px;overflow:hidden;background:var(--paper);position:relative;height:600px">
+        <div style="height:26px;background:var(--paper-2);border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--muted)">390 × 844</div>
+        <div style="position:relative;height:574px;overflow:hidden">
+          <div style="padding:18px 18px">
+            <div class="bg-step" style="font-size:9px">Acto 2 · cómo lo financias</div>
+            <div class="bg-track" style="margin:10px 0 18px"><i></i></div>
+            <div style="font-family:var(--serif);font-size:21px;font-weight:600;margin-bottom:16px">¿Cuánto piden por él?</div>
+            <div class="bg-label" style="font-size:11px">Precio pedido</div>
+            <div class="bg-field" style="font-size:15px;padding:11px 13px">4.800.000</div>
+          </div>
+          <div class="scrim" style="padding:14px;align-items:flex-start;padding-top:52px">
+            <div class="alert" style="max-width:100%">
+              <div class="alert-top"></div>
+              <div class="alert-body" style="padding:20px 20px 4px">
+                <div class="alert-eyebrow">Revisa este dato</div>
+                <div class="derived" style="margin:15px 0 2px">
+                  <span class="derived-num" style="font-size:34px">106.667</span><span class="derived-unit" style="font-size:12px;margin-left:7px">UF / m²</span>
+                  <div class="derived-label" style="font-size:9px;margin-top:7px">lo que implica el precio que pusiste</div>
+                </div>
+                <p class="alert-msg" style="font-size:14px;margin-top:15px">El m² te queda en UF 106.667. Eso está fuera de escala para Santiago — revisa el precio o la superficie.</p>
+                <div class="origin" style="margin-top:15px;padding-top:12px;gap:20px">
+                  <div><div class="k">Precio</div><div class="v hit" style="font-size:13px">UF 4.800.000</div></div>
+                  <div><div class="k">Superficie</div><div class="v" style="font-size:13px">45 m²</div></div>
+                </div>
+              </div>
+              <div class="alert-actions" style="flex-direction:column;padding:16px 20px 20px;gap:8px">
+                <button class="btn btn-primary" style="width:100%;padding:15px">Corregir el precio</button>
+                <button class="btn btn-ghost" style="width:100%;padding:15px">Cerrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1 1 300px;min-width:280px">
+      <dl class="spec">
+        <dt>Teclado virtual</dt>
+        <dd><b>Blur del input antes de abrir el modal.</b> Sin esto, en iOS el teclado queda arriba y el modal nace apretado contra el borde. Es el detalle que más se olvida y el que más rompe.</dd>
+
+        <dt>Alto de pantalla</dt>
+        <dd><span style="font-family:var(--mono);font-size:12.5px">100dvh</span>, nunca <span style="font-family:var(--mono);font-size:12.5px">100vh</span>: en Safari la barra de URL hace que <span style="font-family:var(--mono);font-size:12.5px">vh</span> mienta y el modal quede cortado abajo.</dd>
+
+        <dt>Derivado</dt>
+        <dd>34px en mobile, no 46. Con la unidad al lado, 46px se pasa del ancho útil y fuerza un salto de línea feo entre el número y "UF / m²".</dd>
+
+        <dt>Botones</dt>
+        <dd>Apilados, ancho completo, primario arriba. Mínimo 44px de alto — es el área táctil, no una preferencia estética.</dd>
+
+        <dt>CTA sticky</dt>
+        <dd>El wizard tiene un CTA fijo abajo en mobile. El modal va por encima y el sticky no debe asomar por el backdrop.</dd>
+
+        <dt>Anclaje</dt>
+        <dd>Arriba con margen, no centrado vertical. Con el teclado abierto o varias anomalías, centrar deja la mitad del contenido fuera de la pantalla.</dd>
+
+        <dt>Desborde</dt>
+        <dd>Si el contenido no cabe, scrollea el cuerpo del modal y los botones quedan fijos abajo. Nunca un modal donde haya que scrollear para encontrar cómo salir.</dd>
+
+        <dt>Backdrop</dt>
+        <dd>Sigue sin cerrar al tocarlo — en mobile el toque accidental es mucho más frecuente que en desktop.</dd>
+      </dl>
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ============ 5 · REGLAS ============ -->
+  <div class="sec-eyebrow">05 · Especificación</div>
+  <h2>Lo que la implementación no puede cambiar</h2>
+
+  <dl class="spec">
+    <dt>Tipografía</dt>
+    <dd>Derivado y datos en JetBrains Mono. Mensaje en IBM Plex Sans. Sin Source Serif en el modal: no es una pieza editorial, es una interrupción.</dd>
+
+    <dt>Signal Red</dt>
+    <dd>Tres usos y ni uno más: la barra superior de 3px, el eyebrow, y el campo culpable. El número derivado va en Ink — el rojo pierde fuerza si lo pinta todo.</dd>
+
+    <dt>Sin umbrales</dt>
+    <dd>El modal nunca muestra el rango del guard. Vale la misma doctrina ya escrita en el módulo.</dd>
+
+    <dt>Cierre</dt>
+    <dd>Escape y el botón secundario cierran. Click en el backdrop <em>no</em> cierra — <span style="font-family:var(--mono);font-size:12.5px">dismissOnBackdropClick=false</span>, que el componente de <span style="font-family:var(--mono);font-size:12.5px">ui/Modal</span> ya soporta.</dd>
+
+    <dt>Los datos son botones</dt>
+    <dd>El modal no decide cuál campo está mal — el guard no puede saberlo. Cada dato de origen lleva a su campo. El marcado en Signal Red es la sospecha más probable, no una sentencia.</dd>
+
+    <dt>Después de cerrar</dt>
+    <dd>El botón de generar queda deshabilitado y la línea inline actual persiste bajo las cards. El modal interrumpe una vez; la línea se queda de recordatorio. Sin esto, cerrar y volver a presionar es un loop.</dd>
+
+    <dt>Reaparición</dt>
+    <dd>El modal vuelve solo si el usuario editó el dato y sigue fuera de rango. Nunca dos veces por el mismo valor.</dd>
+
+    <dt>Label del derivado</dt>
+    <dd>Cambia según si la regla deriva o no: "lo que implica el precio que pusiste" cuando el número es calculado, "la tasa que ingresaste" cuando es el mismo que tipeó. Fingir revelación donde no la hay es mentir.</dd>
+
+    <dt>Sin "continuar igual"</dt>
+    <dd>Estos son rechazos duros: el server los va a rechazar de todos modos. Ofrecer seguir sería mentir sobre lo que va a pasar.</dd>
+
+    <dt>Anomalías múltiples</dt>
+    <dd>Una sola protagonista — la de mayor prioridad, con su derivado grande. El resto en lista breve. Nunca tres números gigantes compitiendo.</dd>
+
+    <dt>Foco</dt>
+    <dd>Al abrir, el foco va al botón primario. Al cerrar, vuelve al control que lo disparó. El modal atrapa el tab.</dd>
+
+    <dt>Una vez por dato</dt>
+    <dd>El modal no reaparece si el usuario cierra y el dato no cambió. Reaparece si lo edita y sigue fuera de rango.</dd>
+  </dl>
+
+  <hr class="rule">
+  <div class="sec-eyebrow">Pendiente de decisión</div>
+  <p class="note" style="margin-bottom:0">Falta resolver si la alerta temprana usa el mismo endpoint <span style="font-family:var(--mono);font-size:13px">dry-run</span> (ya autenticado, con debounce) o si el chequeo corre puro en el cliente con el módulo importado — más rápido, sin red, pero duplica el punto de verdad. La recomendación va en el mensaje que acompaña este mockup.</p>
+
+</div>
+
+<script>
+  function show(which, btn){
+    ['a','b','c'].forEach(function(k){
+      document.getElementById('demo-'+k).classList.toggle('hidden', which!==k);
+    });
+    document.querySelectorAll('.switcher button').forEach(function(b){
+      b.setAttribute('aria-pressed', b===btn ? 'true':'false');
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hero LTR · DARK · mockup (ebb7c788)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,300;1,8..60,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ===== TOKENS DARK REALES (src/app/globals.css :root / map-styles.ts) ===== */
+  :root{
+    --franco-bg:#0F0F0F;
+    --franco-bg-alt:#161616;
+    --franco-card:#1A1A1A;
+    --franco-text:#FAFAF8;
+    --franco-text-secondary:rgba(250,250,248,0.5);
+    --franco-text-muted:rgba(250,250,248,0.35);
+    --franco-text-tertiary:#888780;
+    --franco-border:rgba(250,250,248,0.06);
+    --franco-border-hover:rgba(250,250,248,0.12);
+    --franco-border-strong:rgba(250,250,248,0.15);
+    --signal-red:#C8323C;
+    --franco-wm-re:rgba(255,255,255,0.32);
+    --franco-wm-franco:#FAFAF8;
+    /* Ink scale */
+    --ink-700:#2C2C2A; --ink-600:#5F5E5A; --ink-500:#888780; --ink-400:#B4B2A9; --ink-300:#CDCBC6;
+    /* map dark (FRANCO_MAP_STYLE_DARK) */
+    --map-geom:#1a1a1a; --map-road:#2a2a2a; --map-hwy:#3a3a3a; --map-water:#0a0a0a; --map-label:#8a8a8a; --map-admin:#2a2a2a;
+    --font-heading:'Source Serif 4', Georgia, serif;
+    --font-body:'IBM Plex Sans', -apple-system, sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+    --rail: 460px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--franco-bg);
+    color:var(--franco-text);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    padding:44px 32px 64px;
+    display:flex; justify-content:center;
+  }
+  .page{width:100%; max-width:1180px;}
+
+  /* ===== SUPERFICIE CONTINUA (un informe, no widgets) ===== */
+  .hero{
+    border:1px solid var(--franco-border-strong);
+    border-radius:16px;
+    background:var(--franco-bg);
+    overflow:hidden;
+  }
+  .hair{height:1px; background:var(--franco-border);}
+  .row{padding:0;}
+
+  /* label mono uppercase */
+  .lbl{
+    font-family:var(--font-mono); font-size:11px; font-weight:500;
+    text-transform:uppercase; letter-spacing:0.06em; color:var(--franco-text-tertiary);
+  }
+  .mono{font-family:var(--font-mono);}
+  .serif{font-family:var(--font-heading);}
+
+  /* ===== FILA 1 · IDENTIDAD ===== */
+  .r-identity{display:flex; align-items:flex-start; justify-content:space-between; gap:24px; padding:26px 30px 22px;}
+  .addr{font-family:var(--font-heading); font-weight:700; font-size:27px; line-height:1.15; letter-spacing:-0.01em; color:var(--franco-text);}
+  .addr .comuna{color:var(--franco-text-secondary); font-weight:400;}
+  .subaddr{margin-top:7px; font-size:13.5px; color:var(--franco-text-secondary);}
+  /* toggle CLP/UF */
+  .toggle{display:inline-flex; border:1px solid var(--franco-border-strong); border-radius:8px; overflow:hidden; flex:none;}
+  .toggle button{
+    font-family:var(--font-mono); font-size:11px; font-weight:500; letter-spacing:0.06em;
+    padding:7px 13px; background:transparent; color:var(--franco-text-muted); border:0; cursor:pointer;
+  }
+  .toggle button.on{background:var(--franco-text); color:var(--franco-bg);}
+
+  /* ===== FILA 2 · CHIPS ===== */
+  .r-chips{display:flex; align-items:center; gap:0; padding:15px 30px; flex-wrap:nowrap;}
+  .chipgrp{display:flex; align-items:center; gap:7px; flex-wrap:nowrap;}
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+    border:1px solid var(--franco-border); border-radius:8px;
+    padding:5px 9px; background:var(--franco-bg-alt); flex:none;
+  }
+  .chip svg{width:12px; height:12px; color:var(--franco-text-tertiary); flex:none;}
+  .chip .k{font-family:var(--font-mono); font-size:12px; font-weight:500; color:var(--franco-text);}
+  .chip .u{font-family:var(--font-mono); font-size:10px; color:var(--franco-text-muted); letter-spacing:0.02em;}
+  .chip .sub{font-family:var(--font-mono); font-size:9.5px; color:var(--franco-text-muted); margin-left:1px;}
+  .divmute{width:1px; align-self:stretch; background:var(--franco-border-hover); margin:3px 14px;}
+
+  /* ===== GRILLA COMPARTIDA (1fr | 460px) ===== */
+  .grid{display:grid; grid-template-columns:1fr var(--rail);}
+  .colL{padding:26px 30px;}
+  .colR{border-left:1px solid var(--franco-border); padding:20px;}
+
+  /* ===== FILA 3 · SCORE | MAPA ===== */
+  .score-head{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .wm{display:inline-flex; align-items:baseline; line-height:1;}
+  .wm .re{font-family:var(--font-heading); font-style:italic; font-weight:300; font-size:17px; color:var(--franco-wm-re); margin-right:-0.08em;}
+  .wm .fr{font-family:var(--font-heading); font-weight:700; font-size:17px; color:var(--franco-wm-franco);}
+  .wm .ai{font-family:var(--font-body); font-weight:600; font-size:6px; letter-spacing:0.1em; color:var(--signal-red); margin-left:1px; position:relative; top:-6px;}
+  .score-num-row{display:flex; align-items:center; gap:16px; margin-top:16px;}
+  .score-num{font-family:var(--font-mono); font-weight:700; font-size:52px; line-height:0.9; color:var(--franco-text); letter-spacing:-0.02em;}
+  .score-num .den{font-size:22px; font-weight:400; color:var(--franco-text-muted);}
+  .badge-verdict{
+    font-family:var(--font-mono); font-size:12px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+    background:var(--signal-red); color:#fff; padding:7px 12px; border-radius:7px; white-space:nowrap;
+  }
+  .scorebar-wrap{margin-top:22px;}
+  .scorebar{position:relative; height:7px; border-radius:4px;
+    /* degradé suave rojo→ámbar suave→neutro (SIN verde). Ver nota de conflicto con "cero ámbar". */
+    background:linear-gradient(90deg,#C8323C 0%, #C8323C 14%, #B9793E 46%, #6E6C66 74%, #4A4A46 100%);
+  }
+  .marker{position:absolute; top:50%; width:14px; height:14px; border-radius:50%; background:var(--franco-text); border:3px solid var(--franco-bg); transform:translate(-50%,-50%); box-shadow:0 0 0 1px var(--franco-border-strong);}
+  .axis{display:flex; justify-content:space-between; margin-top:9px;}
+  .axis span{font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:var(--franco-text-muted);}
+  .axis span.hot{color:var(--franco-text-secondary);}
+
+  /* ===== MAPA (replica MapaThumbnail · tiles dark reales) ===== */
+  .map{position:relative; width:100%; height:206px; border-radius:12px; overflow:hidden; border:1px solid var(--franco-border); background:var(--map-geom);}
+  .map svg{display:block; width:100%; height:100%;}
+  .map-badge{position:absolute; background:rgba(15,15,15,0.72); border-radius:6px; padding:4px 8px;}
+  .map-badge span{font-family:var(--font-mono); font-size:10px; letter-spacing:0.02em; color:#fff;}
+  .map-badge.br{bottom:8px; right:8px;}
+  .map-badge.tl{top:8px; left:8px;}
+
+  /* ===== FILA 4 · VEREDICTO | FINDINGS ===== */
+  .kick{margin-bottom:12px;}
+  .q-title{font-family:var(--font-heading); font-weight:700; font-size:23px; line-height:1.22; color:var(--franco-text); letter-spacing:-0.01em; margin-bottom:14px;}
+  .prosa{font-size:14.5px; line-height:1.62; color:var(--franco-text-secondary); max-width:56ch;}
+  .prosa .n{font-family:var(--font-mono); font-size:13px; color:var(--franco-text); background:rgba(250,250,248,0.05); padding:0 4px; border-radius:3px;}
+  .prosa .nr{color:var(--signal-red);}
+  .next{
+    margin-top:20px; border-left:3px solid var(--signal-red); border-radius:0 8px 8px 0;
+    background:rgba(200,50,60,0.05); padding:13px 16px;
+  }
+  .next .lbl{color:var(--signal-red); display:block; margin-bottom:6px;}
+  .next p{margin:0; font-size:13.5px; line-height:1.55; color:var(--franco-text); font-style:italic;}
+
+  /* findings card */
+  .fcard-title{font-family:var(--font-heading); font-weight:700; font-size:15px; color:var(--franco-text); margin-bottom:2px;}
+  .fcard-sub{font-size:11.5px; color:var(--franco-text-muted); margin-bottom:16px;}
+  .finding{display:grid; grid-template-columns:20px 1fr auto; gap:12px; padding:13px 0; border-top:1px solid var(--franco-border); align-items:start;}
+  .finding:first-of-type{border-top:0;}
+  .rank{font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--franco-text-tertiary); padding-top:2px;}
+  .f-desc{font-size:12.5px; line-height:1.4; color:var(--franco-text); }
+  .f-term{margin-top:5px; display:inline-flex; align-items:center; gap:4px;}
+  .f-term .t{font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:var(--franco-text-muted); border-bottom:1px dotted var(--franco-border-strong); cursor:help;}
+  .f-term .info{width:12px; height:12px; border-radius:50%; border:1px solid var(--franco-border-strong); color:var(--franco-text-muted); font-size:8px; display:inline-flex; align-items:center; justify-content:center; font-family:var(--font-mono);}
+  .f-kpi{text-align:right; white-space:nowrap;}
+  .f-kpi .v{font-family:var(--font-mono); font-size:17px; font-weight:700; color:var(--franco-text); line-height:1;}
+  .f-kpi .v.red{color:var(--signal-red);}
+  .f-kpi .s{display:block; margin-top:5px; font-family:var(--font-mono); font-size:9.5px; color:var(--franco-text-muted); letter-spacing:0.01em;}
+  .tip{position:relative;}
+  .tip .bubble{
+    position:absolute; bottom:135%; left:0; z-index:5; width:236px;
+    background:var(--franco-card); border:1px solid var(--franco-border-strong); border-radius:8px;
+    padding:10px 12px; font-family:var(--font-body); font-size:11px; line-height:1.45; color:var(--franco-text-secondary);
+    opacity:0; pointer-events:none; transition:opacity 120ms ease; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  .tip:hover .bubble{opacity:1;}
+  .synth{margin-top:16px; padding-top:14px; border-top:1px solid var(--franco-border); font-size:12.5px; line-height:1.5; color:var(--franco-text-secondary);}
+  .synth .bridge{display:block; margin-top:8px; font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--franco-text-tertiary);}
+
+  /* ===== PIE · FIRMA ===== */
+  .sign{display:flex; align-items:center; justify-content:space-between; padding:16px 30px;}
+  .sign .meta{font-size:11px; color:var(--franco-text-muted); letter-spacing:0.01em;}
+  .sign .wm .re,.sign .wm .fr{font-size:15px;} .sign .wm .ai{font-size:5.5px; top:-5px;}
+</style>
+
+<style>
+  /* ══ BANDA DE ADVERTENCIA ══
+     Todas las cifras de este archivo son placeholders inventados. Sin esta
+     banda el mockup se confunde con la app real: ya pasó una vez, con un
+     reporte de QA levantado contra estos números.
+     Misma banda que el resto de assets-export. El spacer reemplaza al
+     padding-top del body que usan los otros: acá el body es de cada mockup y
+     no se toca. */
+  .mockup-warning {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #C8323C; color: #FFFFFF;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em;
+    text-align: center; padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+  .mockup-warning-spacer { height: 37px; flex: none; }
+</style>
+</head>
+<body>
+<div class="mockup-warning">MOCKUP — DATOS FICTICIOS</div>
+<div class="mockup-warning-spacer" aria-hidden="true"></div>
+
+<div class="page">
+  <div class="hero">
+
+    <!-- FILA 1 · IDENTIDAD -->
+    <div class="row r-identity">
+      <div>
+        <div class="addr">Av. Irarrázaval 2345 <span class="comuna">· Ñuñoa</span></div>
+        <div class="subaddr">Depto 2D/1B · análisis de inversión</div>
+      </div>
+      <div class="toggle" role="group" aria-label="Moneda">
+        <button class="on">CLP</button><button>UF</button>
+      </div>
+    </div>
+    <div class="hair"></div>
+
+    <!-- FILA 2 · CHIPS (una fila, agrupación muda por hairline) -->
+    <div class="row r-chips">
+      <div class="chipgrp">
+        <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5"/><path d="M2 12h20v6"/><path d="M6 18v2M18 18v2"/></svg><span class="k">2</span><span class="u">dorm</span></div>
+        <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M6 12V6a2 2 0 0 1 2-2 2 2 0 0 1 2 2"/></svg><span class="k">1</span><span class="u">baño</span></div>
+        <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h4M17 3v4M3 15h4M17 17v4"/></svg><span class="k">50</span><span class="u">m²</span></div>
+        <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="k">12</span><span class="u">años</span></div>
+      </div>
+      <div class="divmute"></div>
+      <div class="chipgrp">
+        <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg><span class="k">$213.400.000</span><span class="sub">UF 5.500</span></div>
+        <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20 20 4M8 4H4v4M16 20h4v-4"/></svg><span class="k">UF 110</span><span class="u">/m²</span></div>
+        <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="k">10%</span><span class="u">pie</span><span class="sub">· 25 años · 4,5%</span></div>
+        <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v12H3zM3 7l9 6 9-6"/></svg><span class="k">$620.000</span><span class="u">arriendo est.</span></div>
+      </div>
+    </div>
+    <div class="hair"></div>
+
+    <!-- FILA 3 · SCORE | MAPA (grilla compartida) -->
+    <div class="grid">
+      <div class="colL">
+        <div class="score-head">
+          <span class="lbl">Franco Score</span>
+          <span class="wm"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span></span>
+        </div>
+        <div class="score-num-row">
+          <div class="score-num">36<span class="den">/100</span></div>
+          <div class="badge-verdict">Buscar otra</div>
+        </div>
+        <div class="scorebar-wrap">
+          <div class="scorebar"><div class="marker" style="left:36%"></div></div>
+          <div class="axis"><span class="hot">Buscar otra</span><span>Ajusta supuestos</span><span>Comprar</span></div>
+        </div>
+      </div>
+      <div class="colR">
+        <div class="map">
+          <svg viewBox="0 0 460 206" preserveAspectRatio="xMidYMid slice">
+            <rect x="0" y="0" width="460" height="206" fill="#1a1a1a"/>
+            <!-- calles secundarias #2a2a2a -->
+            <g stroke="#2a2a2a" stroke-width="7">
+              <line x1="0" y1="42" x2="460" y2="42"/><line x1="0" y1="150" x2="460" y2="150"/>
+              <line x1="86" y1="0" x2="86" y2="206"/><line x1="230" y1="0" x2="230" y2="206"/><line x1="366" y1="0" x2="366" y2="206"/>
+            </g>
+            <g stroke="#0f0f0f" stroke-width="1">
+              <line x1="0" y1="42" x2="460" y2="42"/><line x1="0" y1="150" x2="460" y2="150"/>
+              <line x1="86" y1="0" x2="86" y2="206"/><line x1="230" y1="0" x2="230" y2="206"/><line x1="366" y1="0" x2="366" y2="206"/>
+            </g>
+            <!-- Av. Irarrázaval (highway #3a3a3a) -->
+            <line x1="-10" y1="118" x2="470" y2="96" stroke="#3a3a3a" stroke-width="12"/>
+            <text x="18" y="110" fill="#8a8a8a" font-family="'IBM Plex Sans',sans-serif" font-size="9" letter-spacing="0.4">Av. Irarrázaval</text>
+            <text x="300" y="164" fill="#8a8a8a" font-family="'IBM Plex Sans',sans-serif" font-size="9">Ñuñoa</text>
+            <!-- comparables · Ink 400 #B4B2A9 (blueprint: NO verde) -->
+            <g fill="#B4B2A9">
+              <circle cx="150" cy="70" r="3.4"/><circle cx="196" cy="120" r="3.4"/><circle cx="270" cy="66" r="3.4"/>
+              <circle cx="310" cy="128" r="3.4"/><circle cx="120" cy="128" r="3.4"/><circle cx="180" cy="168" r="3.4"/>
+              <circle cx="256" cy="160" r="3.4"/><circle cx="330" cy="80" r="3.4"/><circle cx="205" cy="44" r="3.4"/>
+              <circle cx="60" cy="90" r="3.4"/><circle cx="392" cy="112" r="3.4"/><circle cx="288" cy="188" r="3.4"/>
+              <circle cx="356" cy="176" r="3.4"/><circle cx="98" cy="60" r="3.4"/><circle cx="418" cy="66" r="3.4"/>
+              <circle cx="142" cy="104" r="3.4"/><circle cx="244" cy="98" r="3.4"/><circle cx="322" cy="46" r="3.4"/>
+              <circle cx="72" cy="150" r="3.4"/><circle cx="384" cy="150" r="3.4"/><circle cx="220" cy="184" r="3.4"/>
+              <circle cx="168" cy="132" r="3.4"/>
+            </g>
+            <!-- subject · Signal Red #C8323C (uso #7) -->
+            <g transform="translate(230,103)">
+              <path d="M0 -15 C 8 -15 13 -9 13 -2 C 13 7 0 17 0 17 C 0 17 -13 7 -13 -2 C -13 -9 -8 -15 0 -15 Z" fill="#C8323C"/>
+              <circle cx="0" cy="-2" r="4.5" fill="#1a1a1a"/>
+            </g>
+          </svg>
+          <div class="map-badge tl"><span>Av. Irarrázaval 2345</span></div>
+          <div class="map-badge br"><span>22 comparables cerca</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="hair"></div>
+
+    <!-- FILA 4 · VEREDICTO | FINDINGS (misma grilla) -->
+    <div class="grid">
+      <div class="colL">
+        <div class="lbl kick">01 · Veredicto</div>
+        <div class="q-title">¿Conviene o no conviene?</div>
+        <p class="prosa">
+          Lo que más pesa acá es el rendimiento: un Cap Rate de <span class="n">2,0%</span> cuando el
+          mercado exige <span class="n">4,0%</span> significa que este depto produce la mitad de lo que
+          debería para su precio. Encima, tu precio por m² (<span class="n">UF 110</span>) está
+          <span class="n">90%</span> sobre la mediana de Ñuñoa (<span class="n">UF 58</span>): el problema
+          no es el mercado ni la zona, es que este depto vale el doble de lo que deberían valer sus metros.
+          La consecuencia directa es un aporte de <span class="n nr">$789.000</span> al mes de tu bolsillo
+          durante toda la proyección, sin que el arriendo llegue a cubrir el dividendo en ninguno de los 20
+          años proyectados. No hay estructura financiera que arregle eso.
+        </p>
+        <div class="next">
+          <span class="lbl">Próximo paso</span>
+          <p>¿Puedes sostener $789.000 al mes de forma indefinida, sabiendo que el retorno depende
+          exclusivamente de la venta final y no de los flujos mensuales?</p>
+        </div>
+      </div>
+      <div class="colR">
+        <div class="fcard-title">Lo que define este veredicto</div>
+        <div class="fcard-sub">Los 3 hallazgos que más movieron el score, por decisividad.</div>
+
+        <div class="finding">
+          <div class="rank">01</div>
+          <div>
+            <div class="f-desc">Estás pagando caro el metro para esta comuna: casi el doble de la mediana.</div>
+            <div class="f-term tip">
+              <span class="t">Precio/m² vs zona</span><span class="info">i</span>
+              <span class="bubble">Tu UF/m² contra la mediana de precios de publicación de venta de la comuna (scraped, n = 540). Mide sobreprecio, no transacción cerrada.</span>
+            </div>
+          </div>
+          <div class="f-kpi"><span class="v">+90%</span><span class="s">UF 110 vs UF 58</span></div>
+        </div>
+
+        <div class="finding">
+          <div class="rank">02</div>
+          <div>
+            <div class="f-desc">Rinde bajo el promedio que el mercado exige para este precio.</div>
+            <div class="f-term tip">
+              <span class="t">CAP rate</span><span class="info">i</span>
+              <span class="bubble">Rentabilidad operativa neta (NOI) sobre el precio, neta de gastos. Referencia de mercado residencial Santiago: 4,0%.</span>
+            </div>
+          </div>
+          <div class="f-kpi"><span class="v">2,0%</span><span class="s">gap −2,0 pts vs 4,0%</span></div>
+        </div>
+
+        <div class="finding">
+          <div class="rank">03</div>
+          <div>
+            <div class="f-desc">El arriendo nunca cubre el dividendo: pones plata todos los meses.</div>
+            <div class="f-term tip">
+              <span class="t">Aporte mensual</span><span class="info">i</span>
+              <span class="bubble">Flujo neto tras dividendo y todos los gastos operativos. Negativo = sale de tu bolsillo cada mes, no del arriendo.</span>
+            </div>
+          </div>
+          <div class="f-kpi"><span class="v red">−$789.313</span><span class="s">cada mes · 20 años</span></div>
+        </div>
+
+        <div class="synth">
+          Tres señales, una raíz: el precio del metro. Ni la plusvalía histórica de Ñuñoa (3,2% anual)
+          rescata una compra que arranca 90% cara.
+          <span class="bridge">Cómo pesa cada hallazgo ↓</span>
+        </div>
+      </div>
+    </div>
+    <div class="hair"></div>
+
+    <!-- PIE · FIRMA -->
+    <div class="row sign">
+      <div class="meta">Análisis generado por IA · 3 jul 2026</div>
+      <span class="wm"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span></span>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

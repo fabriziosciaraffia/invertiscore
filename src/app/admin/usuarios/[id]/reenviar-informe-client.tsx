@@ -29,11 +29,15 @@ export type ReenvioInfo = {
 
 export function ReenviarInformeButton({
   analisisId,
+  /** Destinatario del correo. Va en la confirmación: el operador tiene que ver
+   *  a qué casilla sale antes de mandar algo que no se puede deshacer. */
+  targetEmail,
   /** Motivo por el que NO se puede reenviar. null = habilitado. */
   motivoBloqueo,
   ultimoReenvio,
 }: {
   analisisId: string;
+  targetEmail: string;
   motivoBloqueo: string | null;
   ultimoReenvio: ReenvioInfo | null;
 }) {
@@ -53,7 +57,7 @@ export function ReenviarInformeButton({
       : "";
     if (
       !window.confirm(
-        `¿Reenviar el correo del informe al usuario?\n\nEl correo sale al instante y no se puede deshacer.${yaMandado}`
+        `¿Reenviar el correo del informe a ${targetEmail}?\n\nEl correo sale al instante y no se puede deshacer.${yaMandado}`
       )
     ) {
       return;

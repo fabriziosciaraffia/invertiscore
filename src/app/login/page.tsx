@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { LinkAuth } from "@/components/auth/LinkAuth";
+import { esDestinoSeguro } from "@/lib/auth-next";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -60,9 +62,15 @@ export default function LoginPage() {
       return;
     }
 
-    // Destino tras login: ?next= (intención de compra, ej /checkout?product=X) o dashboard.
+    // Destino tras login: ?next= (intención de compra, ej /checkout?product=X, o
+    // el round-trip del wizard) o dashboard.
+    //
+    // `esDestinoSeguro` NO es decorativo acá: `router.push` navega a lo que le
+    // den, así que un `?next=//evil.cl` —protocolo-relativa, que el navegador
+    // resuelve a otro dominio— sacaba al usuario del sitio con solo loguearse
+    // normal. No hacía falta ningún code ni token.
     const next = new URLSearchParams(window.location.search).get("next");
-    router.push(next || "/dashboard");
+    router.push(esDestinoSeguro(next) ? next : "/dashboard");
     router.refresh();
   };
 
@@ -178,12 +186,12 @@ export default function LoginPage() {
 
               <p className="text-center font-body text-sm text-[var(--franco-text-secondary)]">
                 ¿No tienes cuenta?{" "}
-                <Link
-                  href="/register"
+                <LinkAuth
+                  destino="/register"
                   className="font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]"
                 >
                   Regístrate
-                </Link>
+                </LinkAuth>
               </p>
             </div>
           </div>

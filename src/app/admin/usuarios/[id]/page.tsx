@@ -319,6 +319,7 @@ export default async function AdminUsuarioDetallePage({
               </Link>
               <ReenviarInformeButton
                 analisisId={a.id}
+                targetEmail={email || userId}
                 motivoBloqueo={motivoBloqueoReenvio(a)}
                 ultimoReenvio={ultimoReenvioPorAnalisis.get(a.id) ?? null}
               />

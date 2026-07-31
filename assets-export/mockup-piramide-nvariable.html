@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pirámide N-variable — mockups</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;700&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  --bg:#0F0F0F; --card:#1A1A1A; --text:#FAFAF8;
+  --text-secondary:rgba(250,250,248,0.5); --text-muted:rgba(250,250,248,0.35);
+  --text-tertiary:#888780; --border:rgba(250,250,248,0.06);
+  --border-strong:rgba(250,250,248,0.15); --chip-bg:rgba(26,26,26,0.55);
+  --buy:#B0BEC5; --avoid:#C8323C;
+  --serif:'Source Serif 4',Georgia,serif; --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;padding-bottom:80px}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:10;background:rgba(15,15,15,0.9);backdrop-filter:blur(8px);border-bottom:0.5px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.nav .brand{font-family:var(--serif);font-weight:700;font-size:15px}
+.nav .brand .ai{font-family:var(--mono);color:var(--avoid);font-size:12px}
+.nav .grp{display:flex;gap:6px;align-items:center}
+.nav .grp-label{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-right:2px}
+.nav button{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-secondary);background:transparent;border:0.5px solid var(--border-strong);border-radius:6px;padding:6px 11px;cursor:pointer;transition:all .15s}
+.nav button:hover{color:var(--text);border-color:var(--text-tertiary)}
+.nav button.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.nav .spacer{flex:1}
+.nav .caption{font-family:var(--sans);font-size:11px;color:var(--text-muted)}
+
+/* stage */
+.stage{max-width:1180px;margin:0 auto;padding:28px 32px 0}
+.stage-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.stage-head .fam{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-tertiary)}
+.stage-head .desc{font-family:var(--sans);font-size:13px;color:var(--text-secondary)}
+.stage-head .shape{font-family:var(--mono);font-size:11px;color:var(--buy);margin-left:auto}
+
+/* pyramid header (matches app) */
+.py-head{display:flex;align-items:baseline;gap:12px;margin:18px 2px 12px}
+.py-head .kick{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary)}
+.py-head .h{font-family:var(--serif);font-weight:700;font-size:19px}
+.py-head .n{font-family:var(--sans);font-size:12px;color:var(--text-tertiary);margin-left:auto}
+
+.tiers{display:flex;flex-direction:column;gap:12px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.band{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.band > .card{flex:0 1 calc(33.333% - 8px)}
+
+/* card */
+.card{border-radius:16px;background:var(--card);border:0.5px solid var(--border)}
+.card.l1{padding:28px;border-color:var(--border-strong)}
+.card.l2{padding:24px}
+.card.l3{padding:16px;background:var(--chip-bg)}
+.card.lm{padding:20px} /* mid tier (familia B) */
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.kick{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-tertiary)}
+.kick .soon{color:var(--text-muted)}
+.title{font-family:var(--serif);font-weight:700;line-height:1.2;margin-top:8px}
+.l1 .title{font-size:22px}
+.l2 .title{font-size:18px}
+.lm .title{font-size:16px}
+.l3 .title{font-size:15px;color:var(--text-secondary)}
+.dir{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;padding-top:3px}
+.dir .dot{width:7px;height:7px;border-radius:50%}
+.dir .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-tertiary)}
+.dir.buy .dot{background:var(--buy)} .dir.avoid .dot{background:var(--avoid)}
+.kpi{font-family:var(--mono);font-weight:700;line-height:1;margin-top:14px}
+.l1 .kpi{font-size:36px} .l2 .kpi{font-size:28px} .lm .kpi{font-size:25px}
+.l3 .kpi{font-size:22px;color:var(--text-secondary)}
+.kpi.red{color:var(--avoid)}
+.ksub{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-tertiary);margin-top:9px}
+.body{font-family:var(--sans);line-height:1.55;color:var(--text-secondary);margin-top:14px}
+.l1 .body,.l2 .body,.lm .body{font-size:13.5px}
+.l3 .body{font-size:12.5px}
+.foot{margin-top:16px;padding-top:14px;border-top:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.foot .prov{font-family:var(--sans);font-size:11px;color:var(--text-muted)}
+.foot .det{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-tertiary)}
+</style>
+
+<style>
+  /* ══ BANDA DE ADVERTENCIA ══
+     Todas las cifras de este archivo son placeholders inventados. Sin esta
+     banda el mockup se confunde con la app real: ya pasó una vez, con un
+     reporte de QA levantado contra estos números.
+     Misma banda que el resto de assets-export. El spacer reemplaza al
+     padding-top del body que usan los otros: acá el body es de cada mockup y
+     no se toca. */
+  .mockup-warning {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #C8323C; color: #FFFFFF;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em;
+    text-align: center; padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+  .mockup-warning-spacer { height: 37px; flex: none; }
+</style>
+</head>
+<body>
+<div class="mockup-warning">MOCKUP — DATOS FICTICIOS</div>
+<div class="mockup-warning-spacer" aria-hidden="true"></div>
+
+<div class="nav">
+  <span class="brand">re<span style="opacity:.4">franco</span><span class="ai">.ai</span></span>
+  <div class="grp"><span class="grp-label">Familia A</span>
+    <button data-f="A" data-n="5">A · 5</button>
+    <button data-f="A" data-n="6">A · 6</button>
+    <button data-f="A" data-n="7">A · 7</button>
+    <button data-f="A" data-n="8" class="active">A · 8</button>
+    <button data-f="A" data-n="9">A · 9</button>
+  </div>
+  <div class="grp"><span class="grp-label">Familia B</span>
+    <button data-f="B" data-n="5">B · 5</button>
+    <button data-f="B" data-n="6">B · 6</button>
+    <button data-f="B" data-n="7">B · 7</button>
+    <button data-f="B" data-n="8">B · 8</button>
+    <button data-f="B" data-n="9">B · 9</button>
+  </div>
+  <span class="spacer"></span>
+  <span class="caption">1440×900 · dark · contenido real del corpus (2aa47321) + 2 hallazgos futuros marcados «próximo»</span>
+</div>
+
+<div class="stage" id="stage"></div>
+
+<script>
+// Pool de 9 hallazgos, orden Filosofía 1 (adversos primero, luego favorables por decisividad).
+// Los 7 reales del corpus + 2 futuros (sensibilidad, patrimonio) marcados «próximo».
+const F = [
+  {kick:"Flujo mensual", title:"Lo que sale de tu bolsillo cada mes", kpi:"−$181.482", red:true, dir:"avoid", ksub:"Cada mes · sale de tu bolsillo, no del arriendo",
+   body:"Tienes que poner $181.482 al mes de tu bolsillo — un aporte acotado frente al dividendo. Sostenible si tu flujo es estable; la plusvalía puede compensarlo.", prov:"Sobre tus datos declarados"},
+  {kick:"Puesta a punto", title:"Dejarlo listo para arrendar", kpi:"+$3.601.260", red:false, dir:"avoid", ksub:"UF 90 · 8% de tu inversión inicial",
+   body:"Departamento de 4 años: para captar arriendo de mercado, considera unos UF 90 ($3.601.260) de puesta a punto — cerca del 8% de tu inversión inicial. No es flipping: es dejarlo en estándar de arriendo.", prov:"Estimado por antigüedad"},
+  {kick:"Rendimiento operativo", title:"Lo que renta hoy vs lo que debería", kpi:"4,8%", red:false, dir:"buy", ksub:"Cap rate · 0,8 pts sobre el mercado (4,0%)",
+   body:"Tu CAP rate es 4,8% — +0,8 pts sobre la referencia de mercado (4,0%). Rinde por sobre lo que el mercado paga para este precio.", prov:""},
+  {kick:"Precio por metro", title:"Entras barato por el metro cuadrado", kpi:"−12%", red:false, dir:"buy", ksub:"Bajo la mediana · UF 83,3 vs UF 94,5 /m²",
+   body:"Tu precio por m² (UF 83,3) está 12% bajo la mediana de la zona (UF 94,5). Entras barato para esta comuna.", prov:"Mediana de publicación, no transacción"},
+  {kick:"Estructura de la compra", title:"Cómo estás financiando", kpi:"Pie 20%", red:false, dir:"buy", ksub:"Tasa 4,5% · óptimo de pie 25%",
+   body:"Tu estructura de financiamiento está bien: el pie (20%) y la tasa (4,5%) dejan un margen menor, sin un punto débil claro.", prov:"Tasa vs referencia de mercado"},
+  {kick:'Sensibilidad <span class="soon">· próximo</span>', title:"Qué tan firme es el número", kpi:"Media", red:false, dir:"buy", ksub:"Si el arriendo cae 10% · TIR 13,6% → 9,1%",
+   body:"El veredicto aguanta un arriendo 10% menor sin darse vuelta, pero la holgura no es amplia. (Hallazgo futuro — placeholder de layout.)", prov:""},
+  {kick:"Retorno total", title:"Lo que rinde puesto todo junto", kpi:"13,6%", red:false, dir:"buy", ksub:"TIR a 10 años · 7,6 pts sobre el mínimo de 6%",
+   body:"Tu TIR —la rentabilidad anual de toda tu inversión— es 13,6%, sobre el mínimo de 6% que un deal apalancado debería rendir para valer el esfuerzo y la iliquidez.", prov:""},
+  {kick:'Patrimonio <span class="soon">· próximo</span>', title:"Lo que construís en 10 años", kpi:"UF 2.940", red:false, dir:"buy", ksub:"Al año 10 · aporte UF 1.100 → patrimonio neto",
+   body:"En 10 años tu patrimonio neto llega a UF 2.940 sobre UF 1.100 aportados. (Hallazgo futuro — placeholder de layout.)", prov:""},
+  {kick:"Plusvalía histórica", title:"Cuánto se ha valorizado la zona", kpi:"3,0%", red:false, dir:"buy", ksub:"Anual · 2014-2024 · umbral real 3,0%",
+   body:"En la última década los departamentos en Providencia se valorizaron 3,0% anual, en línea con el umbral de apreciación real (3,0%). Referencia, no garantía futura.", prov:"Histórico 2014-2024"},
+];
+
+// Contenido fiel por N (índices en F, orden Filosofía 1: adversos 0,1 primero;
+// favorables por decisividad; placeholders «próximo» —5 sensibilidad, 7 patrimonio—
+// como las incorporaciones más nuevas, al final). N=6 = 6 reales SIN TIR.
+const SETS = {
+  5:[0,1,2,3,4],
+  6:[0,1,2,3,4,8],        // sin TIR: flujo,capex,cap,sobreprecio,estructura,plusvalía
+  7:[0,1,2,3,4,6,8],      // 7 reales (con TIR)
+  8:[0,1,2,3,4,6,8,5],    // 7 reales + sensibilidad «próximo» — CASO DE ESTRÉS
+  9:[0,1,2,3,4,6,8,5,7],  // + patrimonio «próximo»
+};
+
+const dirLbl = d => d === "avoid" ? "En contra" : "A favor";
+
+function cardHTML(f, lvl){
+  const isChip = lvl === "l3";
+  const foot = (lvl === "l1" || lvl === "l2" || lvl === "lm")
+    ? `<div class="foot"><span class="prov">${f.prov||""}</span><span class="det">Ver detalle →</span></div>` : "";
+  return `<div class="card ${lvl}">
+    <div class="card-head">
+      <div>
+        <div class="kick">${lvl==="l1"?'<span style="color:var(--text-tertiary)">Lo más decisivo · </span>':""}${f.kick}</div>
+        <div class="title">${f.title}</div>
+      </div>
+      <div class="dir ${f.dir}"><span class="dot"></span><span class="lbl">${dirLbl(f.dir)}</span></div>
+    </div>
+    <div class="kpi ${f.red?'red':''}">${f.kpi}</div>
+    <div class="ksub">${f.ksub}</div>
+    <p class="body">${f.body}</p>
+    ${foot}
+  </div>`;
+}
+
+function tierGrid(items, lvl, cols){
+  const cls = cols===2?"g2":cols===3?"g3":cols===4?"g4":"g3";
+  return `<div class="grid ${cls}">${items.map(f=>cardHTML(f,lvl)).join("")}</div>`;
+}
+
+function render(family, n){
+  const pool = (SETS[n] || F.map((_,i)=>i).slice(0,n)).map(i => F[i]);
+  let html = "", shape = "";
+  const tier1 = cardHTML(pool[0], "l1");
+  const tier2 = pool.slice(1,3);
+
+  if(family === "A"){
+    const t3 = pool.slice(3);
+    const c = t3.length;
+    // matriz adaptativa: c=2→2col · c=3→3col · c=4→4col(1 fila) · c=5→3+2 centrado · c=6→3+3
+    let t3html;
+    if(c === 0){ t3html=""; }
+    else if(c <= 4){ t3html = tierGrid(t3, "l3", c); }
+    else if(c === 5){ t3html = tierGrid(t3.slice(0,2),"l3",2) + tierGrid(t3.slice(2),"l3",3); } // ajuste Fabrizio: 2 anchos + 3
+    else { t3html = tierGrid(t3, "l3", 3); } // c=6 → 3+3
+    html = tier1 + tierGrid(tier2,"l2",2) + t3html;
+    shape = `Silueta 1 · 2 · [${c} adaptativo]`;
+  } else {
+    // Familia B — 4 niveles graduados: 1 + 2 + 3(mid) + resto(chips centrados)
+    const t3 = pool.slice(3,6);   // mid tier, hasta 3
+    const t4 = pool.slice(6);     // chips
+    let midhtml = t3.length ? tierGrid(t3, "lm", t3.length) : "";
+    let chiphtml = t4.length ? `<div class="band">${t4.map(f=>cardHTML(f,"l3")).join("")}</div>` : "";
+    html = tier1 + tierGrid(tier2,"l2",2) + midhtml + chiphtml;
+    shape = `Silueta 1 · 2 · ${t3.length}${t4.length?` · ${t4.length}`:""} graduado`;
+  }
+
+  const stage = document.getElementById("stage");
+  stage.innerHTML = `
+    <div class="stage-head">
+      <span class="fam">Familia ${family} · N=${n}</span>
+      <span class="desc">${family==="A"?"3 niveles fijos, nivel 3 con columnas adaptativas":"4 niveles graduados (1·2·3·chips centrados)"}</span>
+      <span class="shape">${shape}</span>
+    </div>
+    <div class="py-head"><span class="kick">El detalle</span><span class="h">Empezando por lo adverso</span><span class="n">${n} hallazgos</span></div>
+    <div class="tiers">${html}</div>`;
+}
+
+document.querySelectorAll(".nav button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    render(b.dataset.f, +b.dataset.n);
+  });
+});
+render("A", 8);
+</script>
+</body>
+</html>

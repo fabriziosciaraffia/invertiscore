@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Franco · Hero Resultados LTR — v5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Ink scale */
+    --ink-900:#0F0F0F; --ink-800:#1A1A1A; --ink-700:#2C2C2A; --ink-600:#5F5E5A;
+    --ink-500:#888780; --ink-400:#B4B2A9; --ink-300:#CDCBC6; --ink-200:#E8E6E1; --ink-100:#FAFAF8;
+    /* Signal Red */
+    --red:#C8323C;
+    /* Neutros de superficie */
+    --page:#F0F0EC; --card:#FAFAF8; --card-2:#FFFFFF; --border:#E6E6E2; --muted:#71717A;
+    /* Map tema dark (real, del wizard) */
+    --map-base:#1a1a1a; --map-road:#2a2a2a; --map-hw:#3a3a3a; --map-water:#0a0a0a; --map-txt:#8a8a8a;
+    --serif:'Source Serif 4', Georgia, serif;
+    --sans:'IBM Plex Sans', system-ui, sans-serif;
+    --mono:'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--page);font-family:var(--sans);color:var(--ink-900);-webkit-font-smoothing:antialiased;padding:40px 20px 80px}
+  .stage{max-width:1080px;margin:0 auto}
+
+  /* ===== chrome mínimo (contexto) ===== */
+  .topbar{display:flex;align-items:center;gap:14px;height:52px;padding:0 4px;margin-bottom:22px;color:var(--ink-600);font-size:13px}
+  .wm{font-family:var(--serif);font-size:17px;letter-spacing:-0.01em}
+  .wm .re{font-weight:400;opacity:.28}
+  .wm .fr{font-weight:700}
+  .wm .ai{font-family:var(--mono);font-weight:600;font-size:14px}
+  .wm .dot{color:var(--red)}
+  .topbar .sep{width:1px;height:18px;background:var(--border)}
+  .topbar .back{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-500)}
+  .topbar .spacer{flex:1}
+  .topbar .ico{width:30px;height:30px;border:1px solid var(--border);border-radius:8px;display:grid;place-items:center;color:var(--ink-500);background:var(--card)}
+
+  /* ===== HERO shell (BUSCAR OTRA: wash + borde Signal Red) ===== */
+  .hero{
+    background:linear-gradient(0deg, rgba(200,50,60,.045), rgba(200,50,60,.045)), var(--card);
+    border:1px solid rgba(200,50,60,.32);
+    border-radius:18px;overflow:hidden;
+    box-shadow:0 1px 2px rgba(15,15,15,.04), 0 8px 30px rgba(15,15,15,.05);
+  }
+
+  /* ---- 1. MAPA chico arriba (estilo real wizard: tiles dark) ---- */
+  .map{position:relative;height:132px;background:var(--map-base);border-bottom:1px solid var(--border)}
+  .map svg{position:absolute;inset:0;width:100%;height:100%}
+  .map .badge{position:absolute;bottom:8px;right:10px;padding:4px 8px;border-radius:6px;background:rgba(15,15,15,.72)}
+  .map .badge span{font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:#fff}
+  .map .loc{position:absolute;bottom:8px;left:12px;font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:rgba(250,250,248,.72)}
+  /* pins */
+  .pin-sub{fill:var(--red);stroke:#FAFAF8;stroke-width:2}
+  .pin-cmp{fill:var(--ink-400);opacity:.92}
+
+  /* ---- 2. Property header ---- */
+  .phead{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:20px 26px 16px}
+  .phead .title{font-family:var(--serif);font-weight:700;font-size:24px;line-height:1.15;letter-spacing:-0.01em}
+  .phead .title .comuna{color:var(--ink-600)}
+  .phead .sub{margin-top:5px;font-size:13px;color:var(--ink-500)}
+  .phead .price{margin-top:9px;font-family:var(--mono);font-size:14px;color:var(--ink-800);letter-spacing:.01em}
+  .phead .price .uf{color:var(--ink-500);font-size:12px}
+  .toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;font-family:var(--mono);font-size:11px;letter-spacing:.05em;flex-shrink:0}
+  .toggle span{padding:6px 11px;color:var(--ink-500)}
+  .toggle span.on{background:var(--ink-900);color:var(--ink-100)}
+
+  .divider{height:1px;background:repeating-linear-gradient(90deg,var(--border) 0 6px,transparent 6px 12px);margin:0 26px}
+
+  /* ---- 3. Core row: SCORE izq (grande) | DATA der ---- */
+  .core{display:grid;grid-template-columns:300px 1fr;gap:0}
+  .score{
+    padding:22px 26px 24px;border-right:1px solid var(--border);
+    background:linear-gradient(0deg, rgba(200,50,60,.05), rgba(200,50,60,.05));
+    display:flex;flex-direction:column;
+  }
+  .score .who{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500)}
+  .score .who .wm2{font-family:var(--serif);font-size:13px;letter-spacing:-0.01em;text-transform:none}
+  .score .who .wm2 .re{font-weight:400;opacity:.28}.score .who .wm2 .fr{font-weight:700}.score .who .wm2 .ai{font-family:var(--mono);font-weight:600;font-size:11px}.score .who .wm2 .dot{color:var(--red)}
+  .score .lbl{margin-top:16px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500)}
+  .score .num{font-family:var(--mono);font-weight:700;font-size:76px;line-height:.92;letter-spacing:-0.03em;color:var(--ink-900);margin-top:2px}
+  .score .num .max{font-size:22px;color:var(--ink-400);font-weight:500}
+  .badge-verdict{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;margin-top:14px;padding:7px 12px;border-radius:8px;background:var(--red);color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.06em}
+  .badge-verdict .glyph{font-size:11px}
+  /* barra buscar/ajusta/comprar */
+  .vbar{margin-top:20px}
+  .vbar .track{display:flex;height:8px;border-radius:6px;overflow:hidden;background:var(--ink-200)}
+  .vbar .seg{flex:1}
+  .vbar .seg.s1{background:var(--red)}
+  .vbar .seg.s2{background:var(--ink-400)}
+  .vbar .seg.s3{background:var(--ink-300)}
+  .vbar .rail{position:relative;height:0}
+  .vbar .dot{position:absolute;top:-13px;left:16%;width:12px;height:12px;border-radius:50%;background:var(--ink-900);border:2px solid var(--card);transform:translateX(-50%)}
+  .vbar .axis{display:flex;justify-content:space-between;margin-top:9px;font-family:var(--mono);font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-500)}
+  .vbar .axis .a1{color:var(--red);font-weight:500}
+
+  /* DATA der */
+  .data{padding:22px 26px 24px}
+  .grp-lbl{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);margin-bottom:11px}
+  .grp-lbl .tick{width:14px;height:1px;background:var(--ink-300)}
+  /* (a) chips finos del ACTIVO */
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid var(--border);border-radius:9px;background:var(--card-2)}
+  .chip svg{width:14px;height:14px;stroke:var(--ink-500);fill:none;stroke-width:1.6;flex-shrink:0}
+  .chip .v{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--ink-800)}
+  .chip .u{font-family:var(--mono);font-size:11px;color:var(--ink-500)}
+  /* (b) inputs del ANÁLISIS — naturaleza distinta (surface tintada + label "tú ingresaste") */
+  .inputs-wrap{margin-top:20px;background:rgba(95,94,90,.05);border:1px solid var(--border);border-radius:12px;padding:14px 15px}
+  .inputs{display:flex;flex-wrap:wrap;gap:7px 9px}
+  .inchip{display:inline-flex;align-items:baseline;gap:6px;padding:5px 10px;border-radius:8px;background:var(--card-2);border:1px solid var(--border)}
+  .inchip .k{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-500)}
+  .inchip .v{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--ink-800)}
+  .inputs-note{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-500);margin-top:2px}
+  .inputs-note svg{width:12px;height:12px;stroke:var(--ink-500);fill:none;stroke-width:1.6}
+
+  /* ---- 4. VEREDICTO body ---- */
+  .verdict{padding:22px 26px 6px;border-top:1px solid var(--border)}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500)}
+  .q{font-family:var(--serif);font-weight:700;font-size:26px;line-height:1.2;letter-spacing:-0.01em;margin-top:8px}
+  .reason{font-size:15px;line-height:1.62;color:var(--ink-700);margin-top:12px;max-width:74ch}
+  .reason b{font-weight:400;color:var(--ink-900);font-family:var(--mono);font-size:14px}
+  /* callout binding (border-left rojo, esquinas izq cuadradas) */
+  .callout{margin-top:16px;display:flex;gap:13px;background:rgba(200,50,60,.055);border-left:3px solid var(--red);border-radius:0 10px 10px 0;padding:13px 16px}
+  .callout .cl-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--red);font-weight:500;white-space:nowrap;padding-top:2px}
+  .callout .cl-txt{font-size:14px;line-height:1.5;color:var(--ink-800)}
+
+  /* ---- 5. CARD-RESUMEN: lo que define este veredicto ---- */
+  .define{margin:20px 26px 24px;border:1px solid var(--border);border-radius:14px;background:var(--card-2);overflow:hidden}
+  .define .dh{padding:15px 18px 13px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .define .dh .t{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-600)}
+  .define .dh .hint{font-size:11px;color:var(--ink-500)}
+  .frow{display:grid;grid-template-columns:26px 1fr auto;gap:14px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)}
+  .frow .rank{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--ink-300);text-align:center}
+  .frow .mid .adv{font-size:14.5px;line-height:1.4;color:var(--ink-900)}
+  .frow .mid .term{margin-top:4px;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-500);border-bottom:1px dotted var(--ink-400);display:inline-block;cursor:help}
+  .frow .kpi{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--ink-900);text-align:right;white-space:nowrap}
+  .frow .kpi.neg{color:var(--red)}
+  .frow .kpi .ref{display:block;font-weight:400;font-size:10px;color:var(--ink-500);letter-spacing:.02em}
+  .synthesis{padding:15px 18px;background:rgba(95,94,90,.045);display:flex;gap:11px;align-items:flex-start}
+  .synthesis .s-ico{color:var(--ink-400);font-family:var(--mono);font-size:13px;padding-top:1px}
+  .synthesis .s-txt{font-size:13.5px;line-height:1.5;color:var(--ink-700)}
+  .synthesis .s-txt b{color:var(--ink-900);font-weight:400;font-style:italic;font-family:var(--serif)}
+  .bridge{padding:11px 18px 15px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400);text-align:center}
+
+  /* tooltip */
+  [data-tip]{position:relative}
+  [data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:135%;left:0;width:250px;background:var(--ink-900);color:var(--ink-100);font-family:var(--sans);font-size:11px;line-height:1.45;letter-spacing:0;text-transform:none;padding:9px 11px;border-radius:8px;z-index:10;box-shadow:0 6px 20px rgba(0,0,0,.22)}
+</style>
+
+<style>
+  /* ══ BANDA DE ADVERTENCIA ══
+     Todas las cifras de este archivo son placeholders inventados. Sin esta
+     banda el mockup se confunde con la app real: ya pasó una vez, con un
+     reporte de QA levantado contra estos números.
+     Misma banda que el resto de assets-export. El spacer reemplaza al
+     padding-top del body que usan los otros: acá el body es de cada mockup y
+     no se toca. */
+  .mockup-warning {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #C8323C; color: #FFFFFF;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em;
+    text-align: center; padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+  .mockup-warning-spacer { height: 37px; flex: none; }
+</style>
+</head>
+<body>
+<div class="mockup-warning">MOCKUP — DATOS FICTICIOS</div>
+<div class="mockup-warning-spacer" aria-hidden="true"></div>
+
+<div class="stage">
+
+  <!-- chrome mínimo -->
+  <div class="topbar">
+    <span class="wm"><span class="re">re</span><span class="fr">franco</span><span class="ai">.<span class="dot">a</span>i</span></span>
+    <span class="sep"></span>
+    <span class="back">← Dashboard</span>
+    <span class="spacer"></span>
+    <span class="ico">⊕</span><span class="ico">···</span>
+  </div>
+
+  <div class="hero">
+
+    <!-- 1 · MAPA chico (estilo real del wizard: tiles dark, subject Signal Red, comparables Ink 400) -->
+    <div class="map">
+      <svg viewBox="0 0 1080 132" preserveAspectRatio="xMidYMid slice">
+        <!-- agua -->
+        <rect x="0" y="0" width="1080" height="132" fill="#1a1a1a"/>
+        <polygon points="880,0 1080,0 1080,132 940,132" fill="#0a0a0a"/>
+        <!-- calles secundarias -->
+        <g stroke="#2a2a2a" stroke-width="7">
+          <line x1="0" y1="42" x2="1080" y2="30"/>
+          <line x1="0" y1="96" x2="1080" y2="104"/>
+          <line x1="150" y1="0" x2="180" y2="132"/>
+          <line x1="430" y1="0" x2="450" y2="132"/>
+          <line x1="690" y1="0" x2="720" y2="132"/>
+        </g>
+        <!-- avenida (highway) -->
+        <line x1="0" y1="70" x2="1080" y2="62" stroke="#3a3a3a" stroke-width="11"/>
+        <line x1="300" y1="132" x2="360" y2="0" stroke="#3a3a3a" stroke-width="11"/>
+        <!-- comparables (Ink 400) -->
+        <g class="pin-cmp">
+          <circle cx="360" cy="46" r="4.5"/><circle cx="430" cy="92" r="4.5"/>
+          <circle cx="500" cy="34" r="4.5"/><circle cx="560" cy="98" r="4.5"/>
+          <circle cx="612" cy="58" r="4.5"/><circle cx="678" cy="40" r="4.5"/>
+          <circle cx="470" cy="70" r="4.5"/><circle cx="628" cy="100" r="4.5"/>
+          <circle cx="392" cy="74" r="4.5"/><circle cx="700" cy="86" r="4.5"/>
+          <circle cx="738" cy="56" r="4.5"/><circle cx="332" cy="104" r="4.5"/>
+        </g>
+        <!-- subject (Signal Red, tamaño medio) -->
+        <circle class="pin-sub" cx="536" cy="66" r="9"/>
+      </svg>
+      <div class="loc">Ñuñoa · Gran Santiago</div>
+      <div class="badge"><span>12 comparables cerca</span></div>
+    </div>
+
+    <!-- 2 · Property header -->
+    <div class="phead">
+      <div>
+        <div class="title">Av. Irarrázaval 2345 <span class="comuna">· Ñuñoa</span></div>
+        <div class="sub">Análisis en Ñuñoa · Depto 2D/1B · 50 m²</div>
+        <div class="price">$213.400.000 <span class="uf">· UF 5.500</span></div>
+      </div>
+      <div class="toggle"><span class="on">CLP</span><span>UF</span></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 3 · Core: SCORE izq | DATA der -->
+    <div class="core">
+
+      <!-- SCORE block (izq, grande, mono) -->
+      <div class="score">
+        <div class="who">esto lo dice&nbsp; <span class="wm2"><span class="re">re</span><span class="fr">franco</span><span class="ai">.<span class="dot">a</span>i</span></span></div>
+        <div class="lbl">Franco Score</div>
+        <div class="num">36<span class="max"> /100</span></div>
+        <span class="badge-verdict"><span class="glyph">◆</span> BUSCAR OTRA</span>
+        <div class="vbar">
+          <div class="track">
+            <div class="seg s1"></div><div class="seg s2"></div><div class="seg s3"></div>
+          </div>
+          <div class="rail"><div class="dot"></div></div>
+          <div class="axis"><span class="a1">Buscar otra</span><span>Ajusta</span><span>Comprar</span></div>
+        </div>
+      </div>
+
+      <!-- DATA (der) -->
+      <div class="data">
+        <!-- (a) CARACTERÍSTICAS DEL ACTIVO -->
+        <div class="grp-lbl"><span class="tick"></span> Características del activo</div>
+        <div class="chips">
+          <div class="chip"><svg viewBox="0 0 24 24"><path d="M3 12V7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v5"/><path d="M3 12h18v6"/><path d="M3 18v2M21 18v2"/><path d="M7 9h4M13 9h4"/></svg><span class="v">2</span><span class="u">dorm</span></div>
+          <div class="chip"><svg viewBox="0 0 24 24"><path d="M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M6 12V6a2 2 0 0 1 2-2 2 2 0 0 1 2 2"/><path d="M6 19l-1 2M18 19l1 2"/></svg><span class="v">1</span><span class="u">baño</span></div>
+          <div class="chip"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 9h3M4 15h3M17 4v3M9 4v3"/></svg><span class="v">50</span><span class="u">m²</span></div>
+          <div class="chip"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg><span class="v">UF 110</span><span class="u">/m²</span></div>
+          <div class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="v">12</span><span class="u">años</span></div>
+        </div>
+
+        <!-- (b) INPUTS DEL ANÁLISIS -->
+        <div class="inputs-wrap">
+          <div class="grp-lbl" style="margin-bottom:10px"><span class="tick"></span> Inputs del análisis</div>
+          <div class="inputs">
+            <div class="inchip"><span class="k">Pie</span><span class="v">10%</span></div>
+            <div class="inchip"><span class="k">Plazo</span><span class="v">25 años</span></div>
+            <div class="inchip"><span class="k">Tasa</span><span class="v">4,5%</span></div>
+            <div class="inchip"><span class="k">Arriendo est.</span><span class="v">$620.000</span></div>
+          </div>
+          <div class="inputs-note"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Parámetros que ingresaste en el wizard — no rasgos del inmueble.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 · VEREDICTO -->
+    <div class="verdict">
+      <div class="kicker">01 · Veredicto</div>
+      <div class="q">¿Conviene o no conviene?</div>
+      <p class="reason">Lo que más pesa es el rendimiento: un <b>cap rate de 2,0%</b> cuando el mercado exige 4,0% significa que este depto produce la mitad de lo que debería para su precio. Y tu precio por m² está <b>90%</b> sobre la mediana de Ñuñoa — el problema no es la zona, es este depto a este precio. La consecuencia es un aporte de <b>$789.000</b> al mes de tu bolsillo durante toda la proyección, sin que el arriendo cubra el dividendo en ningún año.</p>
+      <div class="callout">
+        <span class="cl-lbl">Antes de seguir, decide:</span>
+        <span class="cl-txt">El rendimiento no cierra y el precio por m² no tiene respaldo en la zona: busca otra propiedad.</span>
+      </div>
+    </div>
+
+    <!-- 5 · CARD-RESUMEN: lo que define este veredicto (TOP-3 por decisividad) -->
+    <div class="define">
+      <div class="dh">
+        <span class="t">Lo que define este veredicto</span>
+        <span class="hint">Los 3 hallazgos más decisivos</span>
+      </div>
+
+      <div class="frow">
+        <div class="rank">1</div>
+        <div class="mid">
+          <div class="adv">Estás pagando el metro cuadrado al doble de lo que vale en la zona.</div>
+          <span class="term" data-tip="Tu precio por m² comparado con la mediana de publicaciones de venta de Ñuñoa (n=540 avisos). Es publicación, no transacción cerrada.">Sobreprecio vs. mediana comuna ⓘ</span>
+        </div>
+        <div class="kpi">+90%<span class="ref">UF 110 vs UF 58 /m²</span></div>
+      </div>
+
+      <div class="frow">
+        <div class="rank">2</div>
+        <div class="mid">
+          <div class="adv">Renta la mitad de lo que debería para su precio.</div>
+          <span class="term" data-tip="Cap rate: rentabilidad operativa neta anual sobre el precio, después de gastos. Referencia de mercado residencial Santiago ≈ 4,0%.">Cap rate ⓘ</span>
+        </div>
+        <div class="kpi">2,0%<span class="ref">ref. mercado 4,0%</span></div>
+      </div>
+
+      <div class="frow">
+        <div class="rank">3</div>
+        <div class="mid">
+          <div class="adv">Cada mes pones plata de tu bolsillo; el arriendo no alcanza a cubrir el dividendo.</div>
+          <span class="term" data-tip="Aporte mensual neto: flujo que sale de tu bolsillo cada mes tras el dividendo del crédito y todos los gastos operativos.">Aporte mensual neto ⓘ</span>
+        </div>
+        <div class="kpi neg">−$789.313<span class="ref">al mes</span></div>
+      </div>
+
+      <div class="synthesis">
+        <span class="s-ico">▸</span>
+        <span class="s-txt"><b>El precio no tiene respaldo en la zona y el rendimiento no cierra.</b> No hay estructura de financiamiento que arregle un metro cuadrado que vale el doble de lo que debería.</span>
+      </div>
+      <div class="bridge">Cómo pesa cada hallazgo en el veredicto ↓</div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
