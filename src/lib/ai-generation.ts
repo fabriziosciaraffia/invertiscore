@@ -1556,7 +1556,16 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // directiva del prompt; esto vigila que se cumpla y deja rastro cuando no.
     if (hallazgoDistanciaGen?.id === "distancia_veredicto" && hallazgoDistanciaGen.valor.esEstructural) {
       const OFERTAS_PROHIBIDAS =
-        /\b(negociando|negociar|negocia\b|si logras|si consigues|si obtienes|pidiendo un descuento|con un descuento|bajando el precio a)\b/i;
+        /\b(negociando|negociar|negocia|si logras|si consigues|si obtienes|pidiendo un descuento|con un descuento|bajando el precio a)\b/i;
+      // La prosa CORRECTA para un estructural nombra la negociación justamente para
+      // descartarla ("Este no es un caso de negociar bien..."). Sin este filtro el guard
+      // dispara en el acierto y se vuelve ruido — el mismo destino de los guards que el
+      // runner ya rotula "ruidosos". Solo cuenta cuando la oración NO la niega.
+      const NIEGA = /\b(no es|no hay|no se trata|ni |tampoco|no basta|no alcanza|no sirve|más allá de|deja de ser)\b/i;
+      const oracionesConOferta = (txt: string): string[] =>
+        (txt.match(/[^.]*\./g) ?? [txt])
+          .filter((o) => OFERTAS_PROHIBIDAS.test(o) && !NIEGA.test(o))
+          .map((o) => o.trim());
       const camposCierre: [string, unknown][] = [
         ["respuestaDirecta_clp", aiResult?.conviene?.respuestaDirecta_clp],
         ["respuestaDirecta_uf", aiResult?.conviene?.respuestaDirecta_uf],
@@ -1564,8 +1573,9 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         ["cajaAccionable_uf", aiResult?.conviene?.cajaAccionable_uf],
       ];
       const ofertas = camposCierre
-        .filter(([, v]) => typeof v === "string" && OFERTAS_PROHIBIDAS.test(v as string))
-        .map(([k, v]) => `${k}: "${((v as string).match(new RegExp(`[^.]*${OFERTAS_PROHIBIDAS.source}[^.]*\\.`, "i")) ?? [""])[0].trim().slice(0, 140)}"`);
+        .flatMap(([k, v]) =>
+          typeof v === "string" ? oracionesConOferta(v).map((o) => `${k}: "${o.slice(0, 140)}"`) : [],
+        );
       if (ofertas.length > 0) {
         console.warn(
           `[DISTANCIA-ESTRUCTURAL] ${analysisId}: el motor dice que ningún ajuste alcanza pero la prosa ofrece salida — ${ofertas.join(" | ")}`,
