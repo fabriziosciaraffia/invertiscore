@@ -241,6 +241,28 @@ function fueraDeRango(valor: number, dir: Direccion, limite: number): [number, n
   return [r, base + 4];
 }
 
+/** Tramos de decimales del porcentaje: >=10% ninguno · 1-10% uno · <1% tres. */
+function decimalesPct(p: number): number {
+  return p >= 10 ? 0 : p >= 1 ? 1 : 3;
+}
+
+/**
+ * Número dentro de rango, con miles chilenos y los decimales útiles de su escala.
+ * Lo usa el estado LIMPIO del modal (PIEZA B1) para que no tenga formateadores
+ * propios: "106667" y "106.667" para el mismo valor era el síntoma de tenerlos.
+ */
+export function formatearNumero(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  return fmt(v, decimalesUtiles(v));
+}
+
+/** Porcentaje dentro de rango, con los MISMOS tramos que usa `pct`. */
+export function formatearPct(fraccion: number): string {
+  if (!Number.isFinite(fraccion)) return "—";
+  const p = fraccion * 100;
+  return `${fmt(p, decimalesPct(p))}%`;
+}
+
 function fmt(n: number, decimales: number): string {
   return n.toLocaleString("es-CL", {
     minimumFractionDigits: decimales,
@@ -272,7 +294,7 @@ function clpLlano(n: number): string {
 function pct(fraccion: number, dir: Direccion, limiteFraccion: number): string {
   const p = fraccion * 100;
   const lim = limiteFraccion * 100;
-  const base = p >= 10 ? 0 : p >= 1 ? 1 : 3;
+  const base = decimalesPct(p);
   for (let dec = base; dec <= base + 4; dec++) {
     const f = 10 ** dec;
     const r = Math.round(p * f) / f;

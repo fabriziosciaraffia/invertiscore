@@ -17,6 +17,8 @@ import {
   evaluarPlausibilidad,
   desdeBodyLtr,
   desdeBodyStr,
+  formatearNumero,
+  formatearPct,
   type Anomalia,
   type Regla,
   type PlausibilidadInput,
@@ -846,6 +848,55 @@ test("ningún porcentaje arrastra ceros de relleno (26,00%)", () => {
     }
   }
   assert.deepEqual(leaks, [], `porcentajes con ceros de relleno:\n  ${leaks.join("\n  ")}`);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+seccion("18 · Formateadores compartidos (los usa el modal en estado limpio)");
+
+/**
+ * El estado limpio del modal tenía formateadores propios: el mismo valor salía
+ * "106667" ahí y "106.667" en el estado anomalía, y un retorno de 0,004% se
+ * mostraba "0,0%". Estos son los que ahora usa, para que no haya dos.
+ */
+
+test("formatearNumero pone separador de miles chileno", () => {
+  assert.equal(formatearNumero(106666.67), "106.667");
+  assert.equal(formatearNumero(1234567), "1.234.567");
+  assert.equal(formatearNumero(92), "92");
+});
+
+test("formatearNumero conserva decimales útiles en valores chicos", () => {
+  assert.equal(formatearNumero(5.766), "5,8");
+  assert.equal(formatearNumero(0.1004), "0,10");
+});
+
+test("formatearNumero coincide con el número del estado anomalía", () => {
+  // Mismo valor, mismo string en los dos estados del modal.
+  const a = evaluarPlausibilidad({ precioUF: 4_800_000, superficieM2: 45, ufCLP: UF })
+    .find((x) => x.regla === "uf_m2_fuera_rango");
+  assert.ok(a);
+  assert.ok(a.mensaje.includes(formatearNumero(a.valor)), `"${a.mensaje}" no contiene "${formatearNumero(a.valor)}"`);
+});
+
+test("formatearPct aplica los tramos: ≥10% sin decimales", () => {
+  assert.equal(formatearPct(0.26), "26%");
+  assert.equal(formatearPct(0.048), "4,8%");
+});
+
+test("formatearPct usa tres decimales bajo 1% (no pierde la información)", () => {
+  // El caso que motivó el fix: 0,004% se mostraba como "0,0%".
+  assert.equal(formatearPct(0.00004), "0,004%");
+  assert.equal(formatearPct(0.000061), "0,006%");
+});
+
+test("formatearPct no arrastra ceros de relleno", () => {
+  assert.ok(!/,0+%$/.test(formatearPct(0.26)));
+  assert.ok(!/,0+%$/.test(formatearPct(0.15)));
+});
+
+test("no finitos caen a guion, no a NaN", () => {
+  assert.equal(formatearNumero(NaN), "—");
+  assert.equal(formatearPct(Infinity), "—");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
