@@ -8,6 +8,7 @@ import { fmtCLP, fmtNumber, fmtRelative, fmtDateShort, fmtPlanLabel } from "@/li
 import { fmtDec } from "@/components/analysis/utils";
 import { NotaComposer, NotaCard } from "./notas-client";
 import { ReenviarInformeButton, type ReenvioInfo } from "./reenviar-informe-client";
+import { OtorgarAnalisisForm, RevertirGrantButton } from "./grants-client";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,7 @@ export default async function AdminUsuarioDetallePage({
     paymentsRes,
     docsRes,
     notasRes,
-    reenviosRes,
+    auditRes,
   ] = await Promise.all([
     sb
       .from("user_credits")
@@ -73,9 +74,11 @@ export default async function AdminUsuarioDetallePage({
       .eq("user_id", userId)
       .maybeSingle(),
     // Lotes vivos: mismo criterio que getAvailableCredits/consumeCredit.
+    // id/amount se suman para los lotes manuales: el desglose los lista uno por
+    // uno (quién los otorgó y por qué) y la reversión necesita el id del lote.
     sb
       .from("credit_grants")
-      .select("source, remaining")
+      .select("id, source, amount, remaining, granted_at")
       .eq("user_id", userId)
       .gt("remaining", 0)
       .or(`expires_at.is.null,expires_at.gt.${nowIso}`),
@@ -111,13 +114,15 @@ export default async function AdminUsuarioDetallePage({
       .eq("target_user_id", userId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
-    // Reenvíos EXITOSOS del informe. Es la única memoria de "este correo ya se
-    // mandó": la acción no tiene idempotencia, así que sin esto es imposible
-    // saberlo. Solo result='ok' — un intento fallido no significa correo enviado.
+    // Acciones de escritura EXITOSAS sobre este usuario, en una sola query:
+    //  - resend_report: única memoria de "este correo ya se mandó" (la acción no
+    //    tiene idempotencia, así que sin esto es imposible saberlo).
+    //  - grant_credits: quién otorgó cada lote manual y por qué.
+    // Solo result='ok' — un intento fallido no movió nada.
     sb
       .from("admin_audit_log")
-      .select("target_id, admin_email, created_at")
-      .eq("action", "resend_report")
+      .select("action, target_id, admin_email, created_at, meta")
+      .in("action", ["resend_report", "grant_credits"])
       .eq("target_user_id", userId)
       .eq("result", "ok")
       .order("created_at", { ascending: false }),
@@ -130,7 +135,9 @@ export default async function AdminUsuarioDetallePage({
   const legacyCredits = credits?.credits ?? 0;
 
   // ─── Saldo del ledger + desglose por source ───
-  const liveGrants = (liveGrantsRes.data ?? []) as Array<{ source: string; remaining: number | null }>;
+  const liveGrants = (liveGrantsRes.data ?? []) as Array<{
+    id: string; source: string; amount: number | null; remaining: number | null; granted_at: string;
+  }>;
   const ledgerSaldo = liveGrants.reduce((s, g) => s + (g.remaining ?? 0), 0);
   const saldoTotal = ledgerSaldo + legacyCredits;
   const porSource = new Map<string, number>();
@@ -138,6 +145,11 @@ export default async function AdminUsuarioDetallePage({
     porSource.set(g.source, (porSource.get(g.source) ?? 0) + (g.remaining ?? 0));
   }
   const desglose = Array.from(porSource.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+  // Lotes MANUALES vivos, uno por uno: son los únicos con procedencia humana que
+  // hay que poder auditar de un vistazo (y revertir). Un lote revertido queda en
+  // remaining=0, así que sale solo de esta lista — su rastro vive en el audit log.
+  const lotesManuales = liveGrants.filter((g) => g.source === "admin_grant");
 
   // ─── Badge de estado derivado (jerarquía mayor) ───
   const payments = (paymentsRes.data ?? []) as Array<{
@@ -168,20 +180,41 @@ export default async function AdminUsuarioDetallePage({
   const toMs = (d: string | null | undefined) => (d ? new Date(d).getTime() : null);
   const events: TimelineEvent[] = [];
 
-  // ─── Último reenvío OK por análisis (memoria de "el correo ya salió") ───
-  // La query viene ordenada desc, así que el primer hit de cada target_id es el
-  // más reciente. Si la tabla no existe todavía, degrada a "sin reenvíos".
-  if (reenviosRes.error) {
-    console.error("[admin/usuarios/[id]] admin_audit_log query error:", reenviosRes.error);
+  // ─── Audit log: memoria de las acciones de escritura sobre este usuario ───
+  // Una sola query trae reenvíos y otorgamientos; acá se parten por acción. Viene
+  // ordenada desc, así que el primer hit de cada target_id es el más reciente.
+  if (auditRes.error) {
+    console.error("[admin/usuarios/[id]] admin_audit_log query error:", auditRes.error);
   }
+  const auditRows = (auditRes.data ?? []) as Array<{
+    action: string; target_id: string | null; admin_email: string; created_at: string;
+    meta: { motivo?: string; reversion?: boolean } | null;
+  }>;
+
+  // Reenvíos OK por análisis ("el correo ya salió").
   const ultimoReenvioPorAnalisis = new Map<string, ReenvioInfo>();
-  for (const r of (reenviosRes.data ?? []) as Array<{
-    target_id: string | null; admin_email: string; created_at: string;
-  }>) {
+  for (const r of auditRows) {
+    if (r.action !== "resend_report") continue;
     if (!r.target_id || ultimoReenvioPorAnalisis.has(r.target_id)) continue;
     ultimoReenvioPorAnalisis.set(r.target_id, {
       fechaLabel: `${fmtDateShort(r.created_at)} · ${fmtRelative(r.created_at)}`,
       adminEmail: r.admin_email,
+    });
+  }
+
+  // Quién otorgó cada lote manual y por qué. Se excluyen las reversiones: apuntan
+  // al mismo target_id y pisarían el motivo del otorgamiento original.
+  const otorgamientoPorGrant = new Map<
+    string,
+    { adminEmail: string; motivo: string | null; fechaLabel: string }
+  >();
+  for (const r of auditRows) {
+    if (r.action !== "grant_credits" || r.meta?.reversion === true) continue;
+    if (!r.target_id || otorgamientoPorGrant.has(r.target_id)) continue;
+    otorgamientoPorGrant.set(r.target_id, {
+      adminEmail: r.admin_email,
+      motivo: r.meta?.motivo ?? null,
+      fechaLabel: `${fmtDateShort(r.created_at)} · ${fmtRelative(r.created_at)}`,
     });
   }
 
@@ -385,6 +418,7 @@ export default async function AdminUsuarioDetallePage({
   const sourceLabel = (s: string): string => {
     if (s === "welcome") return "Bienvenida";
     if (s === "single") return "Compra individual";
+    if (s === "admin_grant") return "Otorgado por admin";
     if (s.startsWith("plan10")) return "Plan 10";
     if (s.startsWith("plan50")) return "Plan 50";
     return s;
@@ -466,6 +500,48 @@ export default async function AdminUsuarioDetallePage({
                   <span className="font-mono text-xs text-[var(--franco-text-muted)]">{fmtNumber(legacyCredits)}</span>
                 </div>
               )}
+
+              {/* Lotes MANUALES, uno por uno: quién y por qué. El resto de los
+                  sources se queda en el agregado de arriba — solo lo regalado
+                  necesita procedencia humana. Revertir aparece solo si el lote
+                  está INTACTO (remaining == amount); el server lo revalida. */}
+              {lotesManuales.length > 0 && (
+                <div className="border-t border-[var(--franco-border)] mt-3 pt-3 space-y-2.5">
+                  <div className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-muted)]">
+                    Lotes otorgados
+                  </div>
+                  {lotesManuales.map((g) => {
+                    const info = otorgamientoPorGrant.get(g.id);
+                    const intacto = g.amount != null && g.remaining === g.amount;
+                    return (
+                      <div key={g.id} className="rounded-md border border-[var(--franco-border)] p-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="font-mono text-xs text-[var(--franco-text)]">
+                            {fmtNumber(g.remaining ?? 0)}
+                            {g.amount != null && g.remaining !== g.amount && (
+                              <span className="text-[var(--franco-text-muted)]"> de {fmtNumber(g.amount)}</span>
+                            )}
+                          </span>
+                          {intacto && (
+                            <RevertirGrantButton grantId={g.id} cantidad={g.amount ?? 0} />
+                          )}
+                        </div>
+                        {info?.motivo && (
+                          <p className="font-body text-xs text-[var(--franco-text)] mt-1">{info.motivo}</p>
+                        )}
+                        <div className="font-mono text-[10px] text-[var(--franco-text-muted)] mt-1">
+                          {info
+                            ? `${info.adminEmail} · ${info.fechaLabel}`
+                            : `sin registro en el audit log · ${fmtDateShort(g.granted_at)}`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Alta de lote manual */}
+              <OtorgarAnalisisForm targetUserId={userId} targetEmail={email || userId} />
             </div>
 
             {/* Card SUSCRIPCIÓN */}
