@@ -20,11 +20,12 @@
  * propio Signal Red (#FFD9DC), no son color nuevo.
  */
 
-import Link from "next/link";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
+import type { OrigenCTA } from "@/lib/cta-analizar";
 
 const RED_TINT = "#FFD9DC"; // tinte claro de Signal Red para texto sobre campo rojo
 
-export function ConversionHook({ href = "/register" }: { href?: string }) {
+export function ConversionHook({ origen = "resultado_hook" }: { origen?: OrigenCTA }) {
   return (
     <div
       className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
@@ -63,8 +64,8 @@ export function ConversionHook({ href = "/register" }: { href?: string }) {
         </p>
       </div>
 
-      <Link
-        href={href}
+      <CtaAnalizar
+        origen={origen}
         className="inline-flex shrink-0 items-center justify-center gap-2 font-mono uppercase transition-opacity hover:opacity-90"
         style={{
           background: "var(--signal-red)",
@@ -77,12 +78,12 @@ export function ConversionHook({ href = "/register" }: { href?: string }) {
         }}
       >
         Analizar el mío →
-      </Link>
+      </CtaAnalizar>
     </div>
   );
 }
 
-export function ConversionCloser({ href = "/register" }: { href?: string }) {
+export function ConversionCloser({ origen = "resultado_cierre" }: { origen?: OrigenCTA }) {
   return (
     <section
       className="rounded-2xl px-7 py-12 text-center sm:py-[52px]"
@@ -126,8 +127,8 @@ export function ConversionCloser({ href = "/register" }: { href?: string }) {
       >
         Datos reales del mercado, sin conflictos de interés. Veredicto en menos de un minuto.
       </p>
-      <Link
-        href={href}
+      <CtaAnalizar
+        origen={origen}
         className="group inline-flex items-center gap-2 font-mono uppercase transition-transform duration-150 hover:scale-[1.02]"
         style={{
           background: "#FFFFFF",
@@ -144,7 +145,7 @@ export function ConversionCloser({ href = "/register" }: { href?: string }) {
         <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">
           →
         </span>
-      </Link>
+      </CtaAnalizar>
       <p
         className="font-body"
         style={{ fontSize: 12, color: RED_TINT, margin: "14px 0 0 0" }}

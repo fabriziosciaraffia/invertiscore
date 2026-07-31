@@ -3,13 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import { usePostHog } from "posthog-js/react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import PricingPlans from "@/components/landing/PricingPlans";
 import SavingsCalculator from "@/components/landing/SavingsCalculator";
 import { getFAQItemsByIds } from "@/lib/faq-data";
-import type { User } from "@supabase/supabase-js";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
 
 // ─── FadeIn ─────────────────────────────────────────
 function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -43,14 +42,10 @@ const FAQ_ITEMS = getFAQItemsByIds(["caducan", "cambiar-plan", "cancelar", "fact
 // ─── Page ───────────────────────────────────────────
 export default function PricingPage() {
   const posthog = usePostHog();
-  const [user, setUser] = useState<User | null>(null);
+  // Ya no se lee la sesion: el destino del CTA es el wizard con y sin ella.
   useEffect(() => {
     posthog?.capture("pricing_viewed");
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
   }, []);
-
-  const ctaHref = user ? "/analisis/nuevo-v4" : "/register";
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
@@ -136,7 +131,7 @@ export default function PricingPage() {
             <div>
               <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-2">Producto</p>
               <div className="flex flex-col gap-1.5">
-                <Link href={ctaHref} className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Análisis gratis</Link>
+                <CtaAnalizar origen="pricing" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Análisis gratis</CtaAnalizar>
                 <Link href="/pricing" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Planes</Link>
                 <Link href="/dashboard" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Dashboard</Link>
               </div>

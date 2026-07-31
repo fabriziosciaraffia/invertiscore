@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { LABEL_ANALIZAR } from "@/lib/cta-analizar";
 
 /**
  * Sección 08 · CTA secundario — franja horizontal compacta sobre bg base
@@ -52,8 +53,7 @@ export default function SectionCTASecondary() {
 
         {/* DER · CTA */}
         <div className="flex shrink-0 flex-col items-start gap-2.5 md:items-end">
-          <Link
-            href="/register"
+          <CtaAnalizar origen="landing_cta_secundario"
             className="group inline-flex items-center gap-2 font-mono font-bold uppercase text-[#C8323C] transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[rgba(200,50,60,0.06)]"
             style={{
               background: "transparent",
@@ -64,14 +64,14 @@ export default function SectionCTASecondary() {
               borderRadius: 6,
             }}
           >
-            Analizar departamento
+            {LABEL_ANALIZAR}
             <span
               aria-hidden="true"
               className="transition-transform duration-200 group-hover:translate-x-0.5"
             >
               →
             </span>
-          </Link>
+          </CtaAnalizar>
           <p
             className="font-body text-[var(--landing-text-muted)]"
             style={{ fontSize: 11 }}

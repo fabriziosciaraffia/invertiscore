@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getAllComunasStats, fmtCLP } from "@/lib/data/comunas-seo";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
 
 export const revalidate = 86400; // ISR: 24 hours
 
@@ -95,12 +96,11 @@ export default async function ComunasIndexPage() {
           <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
             Analízalo gratis en 2 minutos. Franco te dice si comprar, negociar o seguir buscando.
           </p>
-          <Link
-            href="/analisis/nuevo-v4"
+          <CtaAnalizar origen="comunas_indice"
             className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
           >
             Analizar gratis
-          </Link>
+          </CtaAnalizar>
         </div>
       </main>
 

@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import HeroAnimatedDesktop from "./HeroAnimatedDesktop";
 import HeroStaticMobile from "./HeroStaticMobile";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { LABEL_ANALIZAR } from "@/lib/cta-analizar";
 
 /**
  * Sección 01 · Hero (F.11 Phase 2.7 Etapa 4).
@@ -170,18 +171,17 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
         }}
         className={`${mobile ? "mt-5" : "mt-7"} flex items-start`}
       >
-        <Link
-          href="/register"
+        <CtaAnalizar origen="landing_hero"
           className="group inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-6 py-[14px] font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-white shadow-[0_2px_0_rgba(0,0,0,0.08)] transition-[transform,filter] duration-150 hover:scale-[1.02] hover:brightness-95"
         >
-          Analizar departamento
+          {LABEL_ANALIZAR}
           <span
             aria-hidden="true"
             className="transition-transform duration-200 group-hover:translate-x-0.5"
           >
             →
           </span>
-        </Link>
+        </CtaAnalizar>
       </motion.div>
     </>
   );

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
 
 export const metadata: Metadata = {
   title: "¿Dónde está disponible Franco?",
@@ -70,12 +70,11 @@ export default function CoberturaPage() {
             Analízalo en 2 minutos. Franco te dice si comprar, negociar o seguir
             buscando.
           </p>
-          <Link
-            href="/register"
+          <CtaAnalizar origen="cobertura"
             className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
           >
             Analiza tu departamento
-          </Link>
+          </CtaAnalizar>
         </div>
       </main>
 

@@ -128,7 +128,7 @@ export function SharedComparativaClient(p: Props) {
         <div className="container mx-auto max-w-[1100px] px-4 sm:px-6 py-6">
           {/* CTA conversión — anzuelo (superficie Ink) */}
           <div className="mb-5">
-            <ConversionHook href="/register?next=/analisis/nuevo-v4" />
+            <ConversionHook />
           </div>
 
           {/* ── ACTO 1 · Hero — veredicto + prosa integrada + toggle (F-C3b) ── */}
@@ -208,7 +208,7 @@ export function SharedComparativaClient(p: Props) {
           {/* CTA conversión — cierre (campo Signal Red) */}
           {(
             <div className="mt-8 mb-4">
-              <ConversionCloser href="/register?next=/analisis/nuevo-v4" />
+              <ConversionCloser />
             </div>
           )}
 

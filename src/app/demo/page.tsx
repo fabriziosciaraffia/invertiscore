@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { PremiumResults } from "@/app/analisis/[id]/results-client";
 import type { FullAnalysisResult, AnalisisInput, AIAnalysisV2 } from "@/lib/types";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
 
 // ─── Hardcoded demo data ────────────────────────────
 const UF_CLP = 38800;
@@ -304,12 +304,11 @@ export default function DemoPage() {
       <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <FrancoLogo size="header" href="/" inverted />
-          <Link
-            href="/register"
+          <CtaAnalizar origen="demo"
             className="bg-[#C8323C] text-white font-body text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[#C8323C]/90 transition-colors"
           >
             Analiza tu depto gratis →
-          </Link>
+          </CtaAnalizar>
         </div>
       </nav>
 
@@ -319,12 +318,11 @@ export default function DemoPage() {
           <p className="font-body text-[13px] text-[var(--franco-text)] text-center">
             Esto es un análisis de ejemplo.
           </p>
-          <Link
-            href="/register"
+          <CtaAnalizar origen="demo"
             className="inline-flex items-center gap-1.5 font-body text-[13px] font-bold text-[#C8323C] hover:text-[#C8323C]/80 transition-colors"
           >
             Analiza tu propio departamento gratis <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          </CtaAnalizar>
         </div>
       </div>
 
@@ -355,12 +353,11 @@ export default function DemoPage() {
       <div className="bg-[var(--franco-bg)] py-12 text-center">
         <p className="font-heading font-bold text-xl text-white mb-2">¿Tienes un depto en la mira?</p>
         <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">Resultado en 30 segundos. Registro gratis.</p>
-        <Link
-          href="/register"
+        <CtaAnalizar origen="demo"
           className="inline-block bg-[#C8323C] text-white font-body text-[15px] font-bold px-8 py-3.5 rounded-lg shadow-[0_4px_20px_rgba(200,50,60,0.3)] hover:shadow-[0_4px_24px_rgba(200,50,60,0.4)] transition-shadow"
         >
           Analizar mi departamento →
-        </Link>
+        </CtaAnalizar>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import LeverageSection from "@/components/leverage-section";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
 
 export default function AprendePage() {
   return (
@@ -49,12 +50,11 @@ export default function AprendePage() {
         <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">
           Ingresa los datos y Franco te dice la verdad en 30 segundos.
         </p>
-        <Link
-          href="/register"
+        <CtaAnalizar origen="aprende"
           className="inline-block bg-[#C8323C] text-white font-body text-[15px] font-semibold px-8 py-3.5 rounded-lg hover:bg-[#C8323C]/90 transition-colors"
         >
           Analiza gratis →
-        </Link>
+        </CtaAnalizar>
       </div>
 
       {/* Footer */}

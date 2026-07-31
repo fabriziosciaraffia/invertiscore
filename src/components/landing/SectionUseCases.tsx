@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { RevealOnScroll } from "./RevealOnScroll";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { LABEL_ANALIZAR, type OrigenCTA } from "@/lib/cta-analizar";
 
 /**
  * Sección 05 · Para quién — carrusel de 3 perfiles (F.11 Phase 2.22).
@@ -58,8 +60,17 @@ type Profile = {
   narrative: string;
   kpis: Kpi[];
   ctaText: string;
+  /** Con origen -> va al wizard (CTA de analisis). Sin el, Link crudo a ctaHref. */
+  ctaOrigen?: OrigenCTA;
   ctaHref: string;
 };
+
+const estiloCtaPerfil = {
+  fontSize: 11,
+  letterSpacing: "0.12em",
+  color: "#C8323C",
+  textDecoration: "none",
+} as const;
 
 const PROFILES: ReadonlyArray<Profile> = [
   {
@@ -76,8 +87,9 @@ const PROFILES: ReadonlyArray<Profile> = [
       { label: "Precio que cierra", value: "$199M" },
       { label: "Ventaja apalancado", value: "+$15M" },
     ],
-    ctaText: "Analizar departamento →",
-    ctaHref: "/register",
+    ctaText: LABEL_ANALIZAR,
+    ctaOrigen: "landing_casos_uso",
+    ctaHref: "",
   },
   {
     id: "02",
@@ -93,8 +105,10 @@ const PROFILES: ReadonlyArray<Profile> = [
       { label: "Arriendo vs mercado", value: "−UF 2/mes", red: true },
       { label: "Potencial Airbnb", value: "+$148K/mes" },
     ],
-    ctaText: "Evaluar inversión →",
-    ctaHref: "/register",
+    // Texto propio del perfil a proposito: la promesa cambia por persona.
+    ctaText: "Evaluar inversión",
+    ctaOrigen: "landing_casos_uso",
+    ctaHref: "",
   },
   {
     id: "03",
@@ -665,18 +679,19 @@ function AnswerColumn({ profile }: { profile: Profile }) {
           paddingTop: 12,
         }}
       >
-        <Link
-          href={profile.ctaHref}
-          className="font-mono font-bold uppercase transition-opacity hover:opacity-80"
-          style={{
-            fontSize: 11,
-            letterSpacing: "0.12em",
-            color: "#C8323C",
-            textDecoration: "none",
-          }}
-        >
-          {profile.ctaText}
-        </Link>
+        {profile.ctaOrigen ? (
+          <CtaAnalizar
+            origen={profile.ctaOrigen}
+            className="font-mono font-bold uppercase transition-opacity hover:opacity-80"
+            style={estiloCtaPerfil}
+          >
+            {profile.ctaText} →
+          </CtaAnalizar>
+        ) : (
+          <Link href={profile.ctaHref} className="font-mono font-bold uppercase transition-opacity hover:opacity-80" style={estiloCtaPerfil}>
+            {profile.ctaText}
+          </Link>
+        )}
       </div>
     </div>
   );

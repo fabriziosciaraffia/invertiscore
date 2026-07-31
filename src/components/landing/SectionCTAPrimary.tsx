@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { LABEL_ANALIZAR } from "@/lib/cta-analizar";
 
 /**
  * Sección 06 · CTA primario — franja horizontal compacta en Signal Red
@@ -45,8 +46,7 @@ export default function SectionCTAPrimary() {
 
         {/* DER · CTA */}
         <div className="flex shrink-0 flex-col items-start gap-2.5 md:items-end">
-          <Link
-            href="/register"
+          <CtaAnalizar origen="landing_cta_primario"
             className="group inline-flex items-center gap-2 font-mono font-bold uppercase transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[#F4F4F4]"
             style={{
               background: "#FFFFFF",
@@ -58,14 +58,14 @@ export default function SectionCTAPrimary() {
               boxShadow: "0 2px 0 rgba(0,0,0,0.1)",
             }}
           >
-            Analizar departamento
+            {LABEL_ANALIZAR}
             <span
               aria-hidden="true"
               className="transition-transform duration-200 group-hover:translate-x-0.5"
             >
               →
             </span>
-          </Link>
+          </CtaAnalizar>
           <p className="font-body" style={{ fontSize: 11, color: "#FFD9DC" }}>
             Sin tarjeta · 1 análisis gratis · 30s
           </p>

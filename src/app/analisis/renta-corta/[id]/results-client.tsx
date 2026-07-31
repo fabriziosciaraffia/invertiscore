@@ -198,7 +198,7 @@ export function STRResultsClient({
         {/* CTA conversión — anzuelo (superficie Ink) · solo guest */}
         {accessLevel === "guest" && (
           <div className="mb-5">
-            <ConversionHook href="/register" />
+            <ConversionHook />
           </div>
         )}
 
@@ -347,7 +347,7 @@ export function STRResultsClient({
         {/* CTA conversión — cierre (campo Signal Red) · solo guest */}
         {accessLevel === "guest" && (
           <div className="mt-8 mb-4">
-            <ConversionCloser href="/register" />
+            <ConversionCloser />
           </div>
         )}
 

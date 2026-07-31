@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { LABEL_ANALIZAR } from "@/lib/cta-analizar";
 
 /**
  * Sección 10 · CTA final — franja centrada compacta de cierre en Signal Red
@@ -49,8 +50,7 @@ export default function SectionFinalCTA() {
         >
           30 segundos y decides con fundamentos. Antes de firmar 25 años.
         </p>
-        <Link
-          href="/register"
+        <CtaAnalizar origen="landing_cta_final"
           className="group inline-flex items-center gap-2 font-mono font-bold uppercase transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[#F4F4F4]"
           style={{
             background: "#FFFFFF",
@@ -63,14 +63,14 @@ export default function SectionFinalCTA() {
             marginBottom: 14,
           }}
         >
-          Analizar departamento
+          {LABEL_ANALIZAR}
           <span
             aria-hidden="true"
             className="transition-transform duration-200 group-hover:translate-x-0.5"
           >
             →
           </span>
-        </Link>
+        </CtaAnalizar>
         <p className="font-body" style={{ fontSize: 12, color: "#FFD9DC" }}>
           1 análisis gratis · sin tarjeta
         </p>

@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
 
 export default function AboutPage() {
   return (
@@ -29,12 +29,11 @@ export default function AboutPage() {
         </div>
 
         <div className="mt-12">
-          <Link
-            href="/register"
+          <CtaAnalizar origen="about"
             className="inline-block bg-[#C8323C] text-white font-body text-[15px] font-semibold px-8 py-3.5 rounded-lg hover:bg-[#C8323C]/90 transition-colors"
           >
             Analizar un departamento →
-          </Link>
+          </CtaAnalizar>
         </div>
       </main>
 

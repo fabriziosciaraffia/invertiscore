@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getComunaStats, getAllComunasStats, fmtCLP, fmtUF, UF_CLP } from "@/lib/data/comunas-seo";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
 
 export const revalidate = 86400;
 
@@ -210,12 +211,11 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
             <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
               Analízalo en 2 minutos. Franco te dice si comprar, negociar o seguir buscando.
             </p>
-            <Link
-              href={`/analisis/nuevo-v4?comuna=${encodeURIComponent(stats.nombre)}`}
+            <CtaAnalizar origen="comuna_detalle" comuna={stats.nombre}
               className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
             >
               Analizar depto en {stats.nombre}
-            </Link>
+            </CtaAnalizar>
           </div>
         </section>
 

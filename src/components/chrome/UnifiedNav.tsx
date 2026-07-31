@@ -47,6 +47,8 @@ import FrancoLogo from "@/components/franco-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { createClient } from "@/lib/supabase/client";
 import { useLandingTheme } from "@/components/landing/LandingTheme";
+import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { LABEL_ANALIZAR, LABEL_ANALIZAR_LOGUEADO, type OrigenCTA } from "@/lib/cta-analizar";
 
 export type UnifiedNavVariant = "landing" | "marketing" | "app";
 
@@ -246,9 +248,13 @@ export function UnifiedNav({
   };
 
   // ── CTA primario (Signal Red) ─────────────────────────────────────
-  const ctaPrimary = loggedIn
-    ? { label: "Nuevo análisis", href: "/analisis/nuevo-v4" }
-    : { label: "Analizar departamento", href: "/register" };
+  // El DESTINO ya no depende de la sesion: invitado y logueado van al wizard.
+  // Solo cambia la etiqueta, porque dentro del producto "Nuevo analisis" dice
+  // mejor lo que hace.
+  const ctaPrimary = {
+    label: loggedIn ? LABEL_ANALIZAR_LOGUEADO : LABEL_ANALIZAR,
+    origen: (loggedIn ? "nav" : "nav") as OrigenCTA,
+  };
 
   // ───────────────────────── MINIMAL ───────────────────────────────
   if (minimal) {
@@ -327,9 +333,9 @@ export function UnifiedNav({
             {/* CTA + avatar (desktop) */}
             {authReady && (
               <div className="hidden items-center gap-3 md:flex">
-                <Link href={ctaPrimary.href} className={ctaPrimaryClass}>
+                <CtaAnalizar origen={ctaPrimary.origen} className={ctaPrimaryClass}>
                   {ctaPrimary.label}
-                </Link>
+                </CtaAnalizar>
 
                 {loggedIn && (
                   <div className="relative" ref={dropRef}>
@@ -469,7 +475,7 @@ function MobileSheet({
   email: string;
   initials: string;
   centerLinks: NavLink[];
-  ctaPrimary: { label: string; href: string };
+  ctaPrimary: { label: string; origen: OrigenCTA };
   onSignOut: () => void;
 }) {
   // ESC + scroll lock.
@@ -623,13 +629,12 @@ function MobileSheet({
           className="px-6 py-4"
           style={{ borderTop: "0.5px solid var(--franco-border)" }}
         >
-          <Link
-            href={ctaPrimary.href}
-            onClick={onClose}
+          <CtaAnalizar
+            origen="nav_mobile"
             className="flex w-full items-center justify-center rounded-[6px] bg-signal-red px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-[0.06em] text-white transition-colors hover:bg-signal-red/90"
           >
             {ctaPrimary.label}
-          </Link>
+          </CtaAnalizar>
         </div>
       </div>
 
