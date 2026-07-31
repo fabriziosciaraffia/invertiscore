@@ -144,6 +144,61 @@ const PRIORIDAD_REGLA: readonly Regla[] = [
   "tasa_fuera_rango",
 ];
 
+/**
+ * Metadatos de PRESENTACIÓN por regla (PIEZA B1). No tocan rangos ni mensajes.
+ *
+ * `deriva` — ¿el `valor` es un número CALCULADO que el usuario nunca vio, o es
+ * literalmente lo que tipeó? Define el label bajo el número grande del modal:
+ * "lo que implica el precio que pusiste" vs "la tasa que ingresaste". Fingir
+ * revelación donde no la hay es mentir, así que el flag vive acá y no como un
+ * if en el componente.
+ *
+ * `unidad` — sufijo del número grande ("UF / m²", "% anual").
+ */
+export const META_REGLA: Record<Regla, { deriva: boolean; unidad: string }> = {
+  uf_m2_fuera_rango: { deriva: true, unidad: "UF / m²" },
+  yield_imposible: { deriva: true, unidad: "% anual" },
+  str_yield_imposible: { deriva: true, unidad: "% anual" },
+  precio_total_fuera_rango: { deriva: false, unidad: "UF" },
+  superficie_fuera_rango: { deriva: false, unidad: "m²" },
+  arriendo_fuera_rango: { deriva: false, unidad: "al mes" },
+  tasa_fuera_rango: { deriva: false, unidad: "% anual" },
+  str_ocupacion_fuera_rango: { deriva: false, unidad: "de ocupación" },
+  str_tarifa_fuera_rango: { deriva: false, unidad: "por noche" },
+};
+
+/** Reglas cuyo `valor` es una fracción y se muestra como porcentaje. */
+const REGLAS_PCT = new Set<Regla>(["yield_imposible", "str_yield_imposible"]);
+/** Reglas cuyo `valor` es un monto en pesos. */
+const REGLAS_CLP = new Set<Regla>(["arriendo_fuera_rango", "str_tarifa_fuera_rango"]);
+
+/**
+ * Número grande del modal, ya formateado. Vive acá para que respete el PRINCIPIO
+ * DE REDONDEO de abajo — si el componente formateara por su cuenta podría
+ * mostrar un valor que el guard acepta, que es justo el bug que ese principio
+ * cierra.
+ */
+export function valorParaMostrar(a: Anomalia): {
+  numero: string;
+  unidad: string;
+  deriva: boolean;
+} {
+  const meta = META_REGLA[a.regla];
+  const [min, max] = a.rango;
+  const dir: Direccion = a.valor > max ? "alto" : "bajo";
+  const limite = dir === "alto" ? max : min;
+
+  // El % del yield ya viene con su símbolo desde `pct`; se lo saco porque en el
+  // modal la unidad va aparte, en gris y más chica.
+  const numero = REGLAS_PCT.has(a.regla)
+    ? pct(a.valor, dir, limite).replace("%", "")
+    : REGLAS_CLP.has(a.regla)
+      ? clp(a.valor, dir, limite)
+      : num(a.valor, dir, limite);
+
+  return { numero, unidad: meta.unidad, deriva: meta.deriva };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PRINCIPIO DE REDONDEO — vale para los 9 mensajes
 //
