@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { LinkAuth } from "@/components/auth/LinkAuth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -178,12 +179,12 @@ export default function LoginPage() {
 
               <p className="text-center font-body text-sm text-[var(--franco-text-secondary)]">
                 ¿No tienes cuenta?{" "}
-                <Link
-                  href="/register"
+                <LinkAuth
+                  destino="/register"
                   className="font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]"
                 >
                   Regístrate
-                </Link>
+                </LinkAuth>
               </p>
             </div>
           </div>

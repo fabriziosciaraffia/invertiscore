@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { usePostHog } from "posthog-js/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { LinkAuth } from "@/components/auth/LinkAuth";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -119,12 +119,12 @@ export default function RegisterPage() {
                     enlace abre Franco y te deja adentro.
                   </p>
                 </div>
-                <Link
-                  href="/login"
+                <LinkAuth
+                  destino="/login"
                   className="mt-6 inline-block font-body text-sm font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]"
                 >
                   Volver a iniciar sesión
-                </Link>
+                </LinkAuth>
               </div>
             ) : (
               <>
@@ -246,12 +246,12 @@ export default function RegisterPage() {
 
                   <p className="text-center font-body text-sm text-[var(--franco-text-secondary)]">
                     ¿Ya tienes cuenta?{" "}
-                    <Link
-                      href="/login"
+                    <LinkAuth
+                      destino="/login"
                       className="font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]"
                     >
                       Inicia sesión
-                    </Link>
+                    </LinkAuth>
                   </p>
                 </div>
               </>
