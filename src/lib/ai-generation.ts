@@ -1781,23 +1781,36 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // determinística caiga sobre el aiResult final.
     if (aiResult?.conviene && hallazgosOrdenados.length > 0) {
       const wcCont = (s: unknown) => (typeof s === "string" && s.trim() ? s.trim().split(/\s+/).filter(Boolean).length : 0);
-      const contWC = wcCont(aiResult.conviene.respuestaDirecta_clp);
-      if (contWC > maxContinuacion * 1.1) {
-        console.warn(`[PLANC-BUDGET] ${analysisId}: continuación ${contWC} palabras > máx ${maxContinuacion} — retry`);
-        const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu conviene.respuestaDirecta midió ${contWC} palabras; el MÁXIMO de la continuación es ${maxContinuacion}. Reescribí el JSON COMPLETO desarrollando UN SOLO matiz (el de mayor consecuencia en plata) en ≤${maxContinuacion} palabras; los demás matices viven en la pirámide — no los encadenes.`;
+      // HASTA 2 reintentos, no uno. Con uno solo, un modelo que se pasaba dos veces
+      // seguidas dejaba pasar totales sobre 97 palabras y el Golden los cazaba en
+      // A6.presupuesto. La doctrina del repo es enforcement por construcción, no techo
+      // reportado: se insiste, y el correctivo se endurece en el segundo intento.
+      const PLANC_MAX_RETRIES = 2;
+      for (let intento = 1; intento <= PLANC_MAX_RETRIES; intento++) {
+        const contWC = wcCont(aiResult.conviene.respuestaDirecta_clp);
+        if (contWC <= maxContinuacion * 1.1) break;
+        console.warn(`[PLANC-BUDGET] ${analysisId}: continuación ${contWC} palabras > máx ${maxContinuacion} — retry ${intento}/${PLANC_MAX_RETRIES}`);
+        const insistencia =
+          intento === 1
+            ? ""
+            : " Este es el SEGUNDO aviso: la versión anterior también se pasó. Escribí una sola oración de continuación si hace falta — es preferible una línea corta que una que no cabe.";
+        const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu conviene.respuestaDirecta midió ${contWC} palabras; el MÁXIMO de la continuación es ${maxContinuacion}. Reescribí el JSON COMPLETO desarrollando UN SOLO matiz (el de mayor consecuencia en plata) en ≤${maxContinuacion} palabras; los demás matices viven en la pirámide — no los encadenes.${insistencia}`;
         try {
           const regen = await anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 8000, messages: [{ role: "user", content: userPrompt + correctivo }], system: SYSTEM_PROMPT });
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
           const regenResult = parseAndNormalize(regenText);
-          if (regenResult) {
-            const contWC2 = wcCont(regenResult.conviene?.respuestaDirecta_clp);
-            console.warn(`[PLANC-BUDGET] ${analysisId}: retry → ${contWC2} palabras${contWC2 > maxContinuacion * 1.1 ? ` (sigue > máx ${maxContinuacion}, aceptado)` : " (OK)"}`);
-            aiResult = regenResult;
-          } else {
-            console.warn(`[PLANC-BUDGET] ${analysisId}: retry no parseó — conservo la continuación previa`);
+          if (!regenResult) {
+            console.warn(`[PLANC-BUDGET] ${analysisId}: retry ${intento} no parseó — conservo la continuación previa`);
+            break;
           }
+          aiResult = regenResult;
+          const contWC2 = wcCont(regenResult.conviene?.respuestaDirecta_clp);
+          const ok = contWC2 <= maxContinuacion * 1.1;
+          console.warn(`[PLANC-BUDGET] ${analysisId}: retry ${intento} → ${contWC2} palabras${ok ? " (OK)" : intento === PLANC_MAX_RETRIES ? ` (sigue > máx ${maxContinuacion}, aceptado)` : ""}`);
+          if (ok) break;
         } catch (e) {
-          console.warn(`[PLANC-BUDGET] ${analysisId}: retry falló (best-effort): ${(e as Error)?.message ?? e}`);
+          console.warn(`[PLANC-BUDGET] ${analysisId}: retry ${intento} falló (best-effort): ${(e as Error)?.message ?? e}`);
+          break;
         }
       }
     }
