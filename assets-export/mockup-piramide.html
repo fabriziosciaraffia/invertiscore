@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup Pirámide LTR · Franco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,700;1,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Ink scale */
+    --ink900:#0F0F0F; --ink800:#1A1A1A; --ink700:#2C2C2A; --ink600:#5F5E5A;
+    --ink500:#888780; --ink400:#B4B2A9; --ink300:#CDCBC6; --ink200:#E8E6E1; --ink100:#FAFAF8;
+    /* Signal Red */
+    --red:#C8323C;
+    --serif:'Source Serif 4',Georgia,serif;
+    --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--ink900);color:var(--ink100);font-family:var(--sans);font-weight:400;
+    -webkit-font-smoothing:antialiased;padding:48px 0 80px;}
+  .page{max-width:1120px;margin:0 auto;padding:0 40px;}
+  .mono{font-family:var(--mono);}
+  .label{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.06em;
+    font-size:12px;color:var(--ink500);}
+  .micro{font-family:var(--sans);font-size:10px;color:var(--ink500);}
+  .serif{font-family:var(--serif);font-weight:700;}
+  .adverso,.afavor{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.06em;
+    font-size:10px;padding:2px 7px;border-radius:3px;display:inline-block;}
+  .adverso{color:var(--ink100);border:.5px solid var(--ink600);background:rgba(180,178,169,.06);}
+  .afavor{color:var(--ink400);border:.5px solid var(--ink700);}
+
+  /* ---------- mock chrome banner ---------- */
+  .mockbar{max-width:1120px;margin:0 auto 28px;padding:0 40px;}
+  .mockbar .tag{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--ink500);border:1px dashed var(--ink600);border-radius:4px;padding:6px 10px;display:inline-block;}
+
+  /* ---------- HERO (altitud 0) ---------- */
+  .hero{background:linear-gradient(0deg,rgba(200,50,60,.06),rgba(200,50,60,.06)),var(--ink800);
+    border:1px solid rgba(200,50,60,.35);border-radius:16px;padding:34px 36px 32px;}
+  .prop-top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .prop-name{font-family:var(--serif);font-weight:700;font-size:22px;line-height:1.15;}
+  .prop-sub{font-family:var(--sans);font-size:12px;color:var(--ink500);margin-top:3px;}
+  .toggle{font-family:var(--mono);font-size:11px;color:var(--ink500);border:.5px solid var(--ink600);
+    border-radius:6px;overflow:hidden;display:inline-flex;}
+  .toggle span{padding:5px 11px;}
+  .toggle .on{background:var(--ink100);color:var(--ink900);}
+  .divider{border:0;border-top:1px dashed var(--ink700);margin:20px 0;}
+  .meta-score{display:grid;grid-template-columns:1fr auto 300px;gap:28px;align-items:center;}
+  .metagrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px 22px;}
+  .metagrid .k{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.06em;font-size:10px;color:var(--ink500);}
+  .metagrid .v{font-family:var(--mono);font-weight:500;font-size:14px;color:var(--ink100);margin-top:3px;}
+  .vline{width:1px;align-self:stretch;background:var(--ink700);}
+  .scoreblock .toprow{display:flex;justify-content:space-between;align-items:center;}
+  .badge-red{font-family:var(--mono);font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    font-size:11px;color:#fff;background:var(--red);padding:5px 10px;border-radius:5px;}
+  .scorenum{font-family:var(--mono);font-weight:700;font-size:46px;line-height:1;margin-top:8px;}
+  .scorebar{height:5px;border-radius:3px;margin-top:12px;position:relative;
+    background:linear-gradient(90deg,var(--red),var(--ink600));}
+  .scorebar .dot{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;background:var(--ink100);
+    border:2px solid var(--ink900);transform:translate(-50%,-50%);left:36%;}
+  .axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--ink500);
+    text-transform:uppercase;letter-spacing:.08em;margin-top:7px;}
+
+  .verdict-body{margin-top:26px;}
+  .kicker{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--red);}
+  .qh{font-family:var(--serif);font-weight:700;font-size:26px;margin-top:10px;line-height:1.2;}
+  .binding{font-family:var(--sans);font-size:15px;line-height:1.6;color:var(--ink200);margin-top:14px;max-width:78ch;}
+  .binding b{font-weight:500;color:var(--ink100);}
+  .banner{margin-top:18px;display:flex;gap:12px;align-items:center;background:var(--red);border-radius:8px;padding:11px 15px;}
+  .banner .bt{font-family:var(--mono);font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:10px;color:#fff;
+    border:1px solid rgba(255,255,255,.5);padding:3px 8px;border-radius:4px;white-space:nowrap;}
+  .banner .bp{font-family:var(--sans);font-size:13px;color:#fff;}
+  .alert{margin-top:20px;border-left:3px solid var(--red);border-radius:0 8px 8px 0;background:rgba(200,50,60,.06);padding:14px 18px;}
+  .alert .al{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.06em;font-size:10px;color:var(--red);}
+  .alert .aq{font-family:var(--sans);font-size:14px;color:var(--ink200);margin-top:6px;line-height:1.55;}
+
+  /* ---------- section heading ---------- */
+  .zone-h{display:flex;align-items:baseline;gap:14px;margin:44px 2px 6px;}
+  .zone-h .n{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--ink500);}
+  .zone-h .t{font-family:var(--serif);font-weight:700;font-size:19px;}
+  .zone-h .hint{font-family:var(--sans);font-size:12px;color:var(--ink500);margin-left:auto;}
+
+  /* ---------- PYRAMID ---------- */
+  .pyramid{display:flex;flex-direction:column;gap:14px;margin-top:14px;}
+  .row{display:grid;gap:14px;}
+  .row.r1{grid-template-columns:1fr;}
+  .row.r2{grid-template-columns:1fr 1fr;}
+  .row.r3{grid-template-columns:1fr 1fr;}
+
+  .card{background:var(--ink800);border:.5px solid var(--ink700);border-radius:14px;padding:22px 24px;position:relative;
+    display:flex;flex-direction:column;gap:0;}
+  /* altitude tiers */
+  .tier1{padding:28px 30px;}
+  .tier2{padding:22px 24px;}
+  .tier3{padding:17px 20px;background:rgba(26,26,26,.55);}
+  .card .head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;}
+  .card .kick{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.07em;font-size:10px;color:var(--ink500);}
+  .card .title{font-family:var(--serif);font-weight:700;line-height:1.2;margin-top:9px;}
+  .tier1 .title{font-size:23px;} .tier2 .title{font-size:19px;} .tier3 .title{font-size:16px;color:var(--ink300);}
+  .kpi{font-family:var(--mono);font-weight:700;line-height:1;margin-top:14px;}
+  .tier1 .kpi{font-size:38px;} .tier2 .kpi{font-size:30px;} .tier3 .kpi{font-size:24px;color:var(--ink300);}
+  .kpi.red{color:var(--red);}
+  .ksub{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.05em;font-size:10px;color:var(--ink500);margin-top:8px;}
+  .resumen{font-family:var(--sans);font-size:13.5px;line-height:1.55;color:var(--ink400);margin-top:13px;}
+  .tier3 .resumen{font-size:12.5px;}
+  .foot{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:13px;border-top:.5px solid var(--ink700);}
+  .open{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.06em;font-size:10px;color:var(--ink400);}
+  /* decisividad weight */
+  .weight{display:flex;align-items:center;gap:8px;}
+  .weight .wl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink600);}
+  .wbar{width:64px;height:3px;border-radius:2px;background:var(--ink700);position:relative;overflow:hidden;}
+  .wbar i{position:absolute;left:0;top:0;bottom:0;background:var(--ink400);}
+  /* M3 drawer-absorption annotation */
+  .note{margin-top:14px;border:1px dashed var(--ink600);border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:flex-start;}
+  .note .dm{font-family:var(--mono);font-size:11px;color:var(--ink500);line-height:1;}
+  .note .nt{font-family:var(--mono);font-size:10px;letter-spacing:.02em;color:var(--ink500);line-height:1.45;text-transform:uppercase;}
+
+  /* ---------- ZONA (M4) ---------- */
+  .zona{margin-top:14px;background:var(--ink800);border:.5px solid var(--ink700);border-radius:14px;padding:22px 26px;
+    display:grid;grid-template-columns:44px 1fr auto;gap:20px;align-items:center;}
+  .zona .icon{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--ink600);opacity:.7;display:flex;align-items:center;justify-content:center;}
+  .zona .icon:after{content:"";width:14px;height:14px;border-radius:50%;border:1.5px solid var(--ink500);}
+  .zona .zk{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.07em;font-size:10px;color:var(--ink500);}
+  .zona .zt{font-family:var(--serif);font-weight:700;font-size:17px;margin-top:5px;}
+  .zona .zq{font-family:var(--sans);font-style:italic;font-size:13px;color:var(--ink400);margin-top:6px;line-height:1.5;}
+  .zona .zc{text-align:right;}
+  .zona .pill{font-family:var(--mono);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--ink400);border:.5px solid var(--ink600);border-radius:20px;padding:4px 11px;display:inline-block;}
+  .zona .exp{font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.06em;font-size:10px;color:var(--ink400);margin-top:10px;}
+
+  .footnote{margin-top:22px;text-align:center;}
+  .footnote p{font-family:var(--sans);font-size:11px;color:rgba(250,250,248,.35);}
+</style>
+
+<style>
+  /* ══ BANDA DE ADVERTENCIA ══
+     Todas las cifras de este archivo son placeholders inventados. Sin esta
+     banda el mockup se confunde con la app real: ya pasó una vez, con un
+     reporte de QA levantado contra estos números.
+     Misma banda que el resto de assets-export. El spacer reemplaza al
+     padding-top del body que usan los otros: acá el body es de cada mockup y
+     no se toca. */
+  .mockup-warning {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #C8323C; color: #FFFFFF;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em;
+    text-align: center; padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+  .mockup-warning-spacer { height: 37px; flex: none; }
+</style>
+</head>
+<body>
+<div class="mockup-warning">MOCKUP — DATOS FICTICIOS</div>
+<div class="mockup-warning-spacer" aria-hidden="true"></div>
+
+
+  <!-- annotation banner (not part of product) -->
+  <div class="mockbar">
+    <span class="tag">Mockup estático · concepto pirámide · caso ebb7c788 (Ñuñoa · BUSCAR OTRA) · datos reales</span>
+  </div>
+
+<div class="page">
+
+  <!-- ===================== M1 · HERO altitud 0 ===================== -->
+  <section class="hero">
+    <div class="prop-top">
+      <div>
+        <div class="prop-name">Depto 2D1B / Ñuñoa</div>
+        <div class="prop-sub">Análisis en Ñuñoa</div>
+      </div>
+      <div class="toggle"><span class="on">CLP</span><span>UF</span></div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="meta-score">
+      <div class="metagrid">
+        <div><div class="k">Superficie</div><div class="v">50 m²</div></div>
+        <div><div class="k">Precio</div><div class="v">$224.526.500</div></div>
+        <div><div class="k">$/m²</div><div class="v">$4.490.530</div></div>
+        <div><div class="k">Pie</div><div class="v">10%</div></div>
+        <div><div class="k">Financiamiento</div><div class="v">25 años · 4,5%</div></div>
+        <div><div class="k">Arriendo</div><div class="v">$620.000/mes</div></div>
+      </div>
+      <div class="vline"></div>
+      <div class="scoreblock">
+        <div class="toprow">
+          <span class="label" style="color:var(--ink500)">Franco Score</span>
+          <span class="badge-red">Buscar otra</span>
+        </div>
+        <div class="scorenum">36</div>
+        <div class="scorebar"><div class="dot"></div></div>
+        <div class="axis"><span>Buscar</span><span>Ajusta</span><span>Comprar</span></div>
+      </div>
+    </div>
+
+    <div class="verdict-body">
+      <div class="kicker">01 · Veredicto</div>
+      <h2 class="qh">¿Por qué no conviene?</h2>
+      <p class="binding">Lo que más pesa acá es el precio por metro: <b>estás pagando 90% más por m² que la mediana de Ñuñoa</b> (UF 110 contra UF 58). No es el mercado ni la zona — es este depto a este precio. Ese sobreprecio arrastra todo lo demás: el rendimiento no cierra y el aporte mensual no desaparece en ningún año de la proyección.</p>
+      <div class="banner">
+        <span class="bt">Buscar otra</span>
+        <span class="bp">El rendimiento no cierra y el precio por m² no tiene respaldo en la zona: busca otra propiedad.</span>
+      </div>
+      <div class="alert">
+        <div class="al">Antes de seguir, decide</div>
+        <div class="aq">¿Puedes sostener $789.000 al mes de forma indefinida, sabiendo que el retorno depende exclusivamente de la venta final y no de los flujos mensuales?</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== M2 · LA PIRÁMIDE ===================== -->
+  <div class="zone-h">
+    <span class="n">La cadena de razonamiento</span>
+    <span class="t">Ordenada por lo que más pesa en el veredicto</span>
+    <span class="hint">6 hallazgos · de más a menos decisivo</span>
+  </div>
+
+  <div class="pyramid">
+
+    <!-- TIER 1 — sobreprecio (dec 1.00) binding -->
+    <div class="row r1">
+      <div class="card tier1">
+        <div class="head">
+          <div>
+            <div class="kick">Lo más decisivo · precio por metro</div>
+            <div class="title">Estás pagando de más por el metro cuadrado</div>
+          </div>
+          <span class="adverso">En contra</span>
+        </div>
+        <div class="kpi red">+90%</div>
+        <div class="ksub">sobre la mediana de la zona · UF 110 vs UF 58 /m²</div>
+        <div class="resumen">Tu metro cuesta UF 110 cuando la zona se transa en UF 58. Estás pagando el doble de lo que valen estos metros para esta comuna — y ese sobreprecio no tiene respaldo en los comparables.</div>
+        <div class="note"><span class="dm">◇</span><span class="nt">Drawer: comparativa de 4 precios con TIR · escalera abre/techo · guión de contraoferta</span></div>
+        <div class="foot">
+          <div class="weight"><span class="wl">Peso 1.00</span><span class="wbar"><i style="width:100%"></i></span></div>
+          <span class="open">Ver detalle →</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 2 — cap_rate (1.00) + estructura (0.85) -->
+    <div class="row r2">
+      <div class="card tier2">
+        <div class="head">
+          <div>
+            <div class="kick">Rendimiento operativo</div>
+            <div class="title">Lo que renta hoy vs lo que debería</div>
+          </div>
+          <span class="adverso">En contra</span>
+        </div>
+        <div class="kpi">2,0%</div>
+        <div class="ksub">cap rate · 2,0 pts bajo el mercado (4,0%)</div>
+        <div class="resumen">A este precio, el depto produce la mitad de lo que debería rentar en la zona. El precio pide ajuste, o conviene comparar con opciones más rentables.</div>
+        <div class="note"><span class="dm">◇</span><span class="nt">Drawer breve: rendimiento vs referencia de mercado (sin contenido absorbido)</span></div>
+        <div class="foot">
+          <div class="weight"><span class="wl">Peso 1.00</span><span class="wbar"><i style="width:100%"></i></span></div>
+          <span class="open">Ver detalle →</span>
+        </div>
+      </div>
+      <div class="card tier2">
+        <div class="head">
+          <div>
+            <div class="kick">Estructura de la compra</div>
+            <div class="title">Cómo estás financiando</div>
+          </div>
+          <span class="adverso">En contra</span>
+        </div>
+        <div class="kpi">Pie 10%</div>
+        <div class="ksub">muy bajo el óptimo (25%)</div>
+        <div class="resumen">El pie de 10% dispara el crédito y la cuota. La tasa (4,5%) está en buen nivel; el problema es cuánto pones al principio, no el costo del crédito.</div>
+        <div class="note"><span class="dm">◇</span><span class="nt">Drawer: estructura sugerida (pie/plazo/tasa) + cuánto baja la cuota</span></div>
+        <div class="foot">
+          <div class="weight"><span class="wl">Peso 0.85</span><span class="wbar"><i style="width:85%"></i></span></div>
+          <span class="open">Ver detalle →</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 2b — flujo_mensual (0.74) full width medium -->
+    <div class="row r1">
+      <div class="card tier2">
+        <div class="head">
+          <div>
+            <div class="kick">Flujo mensual</div>
+            <div class="title">Lo que sale de tu bolsillo cada mes</div>
+          </div>
+          <span class="adverso">En contra</span>
+        </div>
+        <div class="kpi red">−$789.313</div>
+        <div class="ksub">todos los meses · sale de tu bolsillo, no del arriendo</div>
+        <div class="resumen">El arriendo de $620.000 no alcanza a cubrir el dividendo de $1.067.532. La diferencia la pones tú, cada mes, de forma sostenida durante toda la proyección.</div>
+        <div class="note"><span class="dm">◇</span><span class="nt">Drawer: desglose de 8 gastos (waterfall) + proyección del aporte a 10 años</span></div>
+        <div class="foot">
+          <div class="weight"><span class="wl">Peso 0.74</span><span class="wbar"><i style="width:74%"></i></span></div>
+          <span class="open">Ver detalle →</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 3 — capex (0.21) + plusvalia (0.10) small/tenuous -->
+    <div class="row r3">
+      <div class="card tier3">
+        <div class="head">
+          <div>
+            <div class="kick">Puesta a punto</div>
+            <div class="title">Dejarlo listo para arrendar</div>
+          </div>
+          <span class="adverso">En contra</span>
+        </div>
+        <div class="kpi">+$7.144.025</div>
+        <div class="ksub">UF 175 · 21% de tu inversión inicial</div>
+        <div class="resumen">Tiene 12 años. Para captar arriendo de mercado necesita puesta a punto antes del día uno. No es flipping: es dejarlo en estándar de arriendo.</div>
+        <div class="note"><span class="dm">◇</span><span class="nt">Drawer: detalle de la puesta a punto (inversión · UF/m² · % día 1)</span></div>
+        <div class="foot">
+          <div class="weight"><span class="wl">Peso 0.21</span><span class="wbar"><i style="width:21%"></i></span></div>
+          <span class="open">Ver detalle →</span>
+        </div>
+      </div>
+      <div class="card tier3">
+        <div class="head">
+          <div>
+            <div class="kick">Plusvalía histórica</div>
+            <div class="title">Cuánto se ha valorizado la zona</div>
+          </div>
+          <span class="afavor">A favor</span>
+        </div>
+        <div class="kpi">3,2%<span style="font-size:.5em;color:var(--ink500);font-weight:500;"> anual</span></div>
+        <div class="ksub">en línea con el umbral real (3,0%)</div>
+        <div class="resumen">Ñuñoa creció 3,2% al año en la última década. Plusvalía normal, no excepcional: es una referencia razonable, no una garantía a futuro.</div>
+        <div class="note"><span class="dm">◇</span><span class="nt">Drawer: TIR · ganancia neta · esfuerzo total · waterfall de venta a 10 años</span></div>
+        <div class="foot">
+          <div class="weight"><span class="wl">Peso 0.10</span><span class="wbar"><i style="width:10%"></i></span></div>
+          <span class="open">Ver detalle →</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== M4 · ZONA aparte ===================== -->
+  <div class="zone-h">
+    <span class="n">06 · Zona</span>
+    <span class="t">El contexto del barrio</span>
+  </div>
+  <div class="zona">
+    <div class="icon"></div>
+    <div>
+      <div class="zk">Lo que no ves a simple vista</div>
+      <div class="zt">Contexto de Ñuñoa</div>
+      <div class="zq">"Estás en rango medio de arriendo, pero pagando casi el doble por m² que la mediana de Ñuñoa."</div>
+    </div>
+    <div class="zc">
+      <span class="pill">18 lugares</span>
+      <div class="exp">Explorar →</div>
+    </div>
+  </div>
+
+  <div class="footnote">
+    <p>Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
+  </div>
+
+</div>
+</body>
+</html>

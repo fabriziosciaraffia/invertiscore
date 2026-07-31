@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drawers propios — mockup ⛔#1</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,700;1,400;1,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink900:#0F0F0F; --ink100:#FAFAF8; --ink400:#B0BEC5; --red:#C8323C;
+    --card:#1A1A1A; --elevated:#222222;
+    --text:#FAFAF8; --text2:rgba(250,250,248,0.5); --text3:#888780; --muted:rgba(250,250,248,0.35);
+    --border:rgba(250,250,248,0.06); --border-strong:rgba(250,250,248,0.15);
+    --track:rgba(250,250,248,0.06);
+    --serif:'Source Serif 4',Georgia,serif; --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:#0a0a0a;color:var(--text);font-family:var(--sans);margin:0;padding:40px 20px;}
+  .page{max-width:960px;margin:0 auto;}
+  .pagehead{margin-bottom:32px;}
+  .pagehead h1{font-family:var(--serif);font-weight:700;font-size:26px;margin:0 0 6px;}
+  .pagehead p{font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:0;}
+  .split{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--red);
+    margin:44px 0 14px;padding-bottom:8px;border-bottom:.5px solid var(--border-strong);}
+
+  /* Drawer chrome — espejo de AnalysisDrawer / DrawerSTR */
+  .drawer{background:var(--card);border:.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:22px;}
+  .dhead{padding:20px 24px 16px;border-bottom:.5px solid var(--border);}
+  .dhead .dl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin:0 0 6px;}
+  .dhead .dq{font-family:var(--serif);font-weight:700;font-size:23px;line-height:1.25;margin:0;}
+  .dbody{padding:20px 24px;}
+  .lead{font-family:var(--sans);font-size:13px;line-height:1.6;color:var(--text);margin:0 0 16px;}
+  .lead .tt{color:var(--text3);cursor:help;border-bottom:1px dotted var(--text3);}
+
+  /* Chips numéricos */
+  .chips{background:var(--elevated);border:.5px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;}
+  .chips .cl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin:0 0 12px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+  .cell .k{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);margin:0 0 4px;}
+  .cell .v{font-family:var(--mono);font-weight:700;font-size:20px;line-height:1.05;margin:0;}
+  .cell .v small{font-size:13px;font-weight:500;}
+  .cell .v.red{color:var(--red);}
+  .cell .v.pos{color:var(--ink400);}
+  .chips .foot{font-family:var(--sans);font-size:11px;color:var(--text2);margin:12px 0 0;}
+
+  /* Bloque procedencia / palanca (border-left) */
+  .box{border-left:3px solid var(--text);background:color-mix(in srgb,var(--text) 4%,transparent);
+    border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:14px;}
+  .box.red{border-left-color:var(--red);background:color-mix(in srgb,var(--red) 7%,transparent);}
+  .box .bl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin:0 0 5px;}
+  .box .bt{font-family:var(--sans);font-size:12.5px;line-height:1.55;color:var(--text);margin:0;}
+  .box .big{font-family:var(--mono);font-weight:700;font-size:24px;line-height:1.1;margin:0 0 3px;}
+  .box .big small{font-size:14px;font-weight:500;}
+
+  /* Barra descomposición (3 fuentes / equity split) */
+  .decomp{margin-bottom:16px;}
+  .decomp .row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+  .decomp .rl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);width:92px;flex-shrink:0;}
+  .decomp .bar{flex:1;height:22px;background:var(--track);border-radius:4px;position:relative;overflow:hidden;}
+  .decomp .fill{position:absolute;top:0;left:0;bottom:0;border-radius:4px;}
+  .decomp .rv{font-family:var(--mono);font-weight:700;font-size:12px;width:96px;text-align:right;flex-shrink:0;}
+  .decomp .rv.red{color:var(--red);}
+  .fill.strong{background:var(--ink400);} .fill.mid{background:rgba(176,190,197,0.55);}
+  .fill.weak{background:rgba(176,190,197,0.3);} .fill.red{background:var(--red);}
+  /* Total neto reconstruible bajo la descomposición */
+  .decomp .net{display:flex;justify-content:space-between;align-items:baseline;
+    border-top:.5px solid var(--border-strong);margin-top:4px;padding-top:10px;}
+  .decomp .net .nl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);}
+  .decomp .net .nv{font-family:var(--mono);font-weight:700;font-size:13px;}
+
+  /* Cadena causal (una sola, números encadenados) */
+  .chain{display:flex;align-items:stretch;gap:8px;margin:2px 0 12px;flex-wrap:wrap;}
+  .chain .step{flex:1;min-width:96px;background:var(--elevated);border:.5px solid var(--border);
+    border-radius:8px;padding:10px 12px;text-align:center;}
+  .chain .sv{display:block;font-family:var(--mono);font-weight:700;font-size:15px;line-height:1.1;margin-bottom:4px;}
+  .chain .sv.pos{color:var(--ink400);}
+  .chain .sk{display:block;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);line-height:1.35;}
+  .chain .arrow{align-self:center;font-family:var(--mono);color:var(--text3);font-size:15px;flex-shrink:0;}
+
+  /* Footer nav */
+  .dfoot{padding:12px 24px;border-top:.5px solid var(--border);display:flex;justify-content:space-between;gap:10px;}
+  .dfoot a{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);text-decoration:none;}
+  .note{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:6px 2px 0;}
+</style>
+
+<style>
+  /* ══ BANDA DE ADVERTENCIA ══
+     Todas las cifras de este archivo son placeholders inventados. Sin esta
+     banda el mockup se confunde con la app real: ya pasó una vez, con un
+     reporte de QA levantado contra estos números.
+     Misma banda que el resto de assets-export. El spacer reemplaza al
+     padding-top del body que usan los otros: acá el body es de cada mockup y
+     no se toca. */
+  .mockup-warning {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #C8323C; color: #FFFFFF;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em;
+    text-align: center; padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+  .mockup-warning-spacer { height: 37px; flex: none; }
+</style>
+</head>
+<body>
+<div class="mockup-warning">MOCKUP — DATOS FICTICIOS</div>
+<div class="mockup-warning-spacer" aria-hidden="true"></div>
+
+<div class="page">
+  <div class="pagehead">
+    <h1>Drawers propios — 10 puertas verdaderas</h1>
+    <p>⛔#1 · datos reales · LTR Ñuñoa COMPRAR (82) · STR Providencia AJUSTA SUPUESTOS (51)</p>
+  </div>
+
+  <!-- ══════════════════════ LTR ══════════════════════ -->
+  <div class="split">LTR · 4 drawers nuevos (tir · sensibilidad · patrimonio · plusvalía)</div>
+
+  <!-- 1 · TIR LTR -->
+  <div class="drawer">
+    <div class="dhead">
+      <p class="dl">Retorno total</p>
+      <h2 class="dq">¿Por qué tu 20,8% no es el 20,8% de un depósito?</h2>
+    </div>
+    <div class="dbody">
+      <p class="lead">La <span class="tt" title="TIR = rentabilidad anual de toda tu inversión, ya juntando arriendo, tus aportes y la venta a 10 años.">TIR (la rentabilidad anual de toda tu inversión)</span> es 20,8%. Un depósito te paga su tasa y listo; tu 20,8% se arma de tres motores distintos, y cada uno tiene su propio riesgo. Vale saber cuál lo carga.</p>
+
+      <div class="chips">
+        <p class="cl">Tu retorno vs el piso</p>
+        <div class="grid3">
+          <div class="cell"><p class="k">Tu TIR</p><p class="v pos">20,8%</p></div>
+          <div class="cell"><p class="k">Piso exigible</p><p class="v">6,0%</p></div>
+          <div class="cell"><p class="k">Margen</p><p class="v pos">+14,8 pts</p></div>
+        </div>
+        <p class="foot">6% es el mínimo que un crédito apalancado debe rendir para pagar el esfuerzo y la iliquidez de tener un depto.</p>
+      </div>
+
+      <div class="decomp">
+        <div class="row"><span class="rl">Plusvalía</span><div class="bar"><div class="fill strong" style="width:100%"></div></div><span class="rv">$48,4M · 52%</span></div>
+        <div class="row"><span class="rl">Flujo 10 años</span><div class="bar"><div class="fill mid" style="width:47%"></div></div><span class="rv">$22,7M · 24%</span></div>
+        <div class="row"><span class="rl">Amortización</span><div class="bar"><div class="fill weak" style="width:46%"></div></div><span class="rv">$22,1M · 24%</span></div>
+      </div>
+
+      <div class="box">
+        <p class="bl">Qué significa</p>
+        <p class="bt">Más de la mitad de tu retorno lo carga la <b>plusvalía proyectada</b> ($48,4M) — un supuesto a futuro, no plata en la mano. El arriendo que te queda ($22,7M) y la deuda que amortizas ($22,1M) son más firmes: dependen de que el depto se arriende, no de que la comuna siga subiendo.</p>
+      </div>
+      <div class="box red">
+        <p class="bl">Qué pasa si falla</p>
+        <p class="bt">Si la comuna no se aprecia (plusvalía 0%), tu retorno cae cerca de la mitad: la operación sigue rentando, pero pasa a apoyarse en el arriendo y la amortización, no en la apuesta de valorización. Por eso el 20,8% no es comparable pelado con un depósito UF.</p>
+      </div>
+      <p class="note">Montos en CLP · togglean a UF con el switch de la página · los tres motores salen del escenario de salida a 10 años, no se recalculan aparte.</p>
+    </div>
+    <div class="dfoot"><a href="#">← Flujo mensual</a><a href="#">Margen del veredicto →</a></div>
+  </div>
+
+  <!-- 2 · SENSIBILIDAD LTR -->
+  <div class="drawer">
+    <div class="dhead">
+      <p class="dl">Margen del veredicto</p>
+      <h2 class="dq">¿Cuánto aguanta tu veredicto?</h2>
+    </div>
+    <div class="dbody">
+      <p class="lead">Tu veredicto es COMPRAR con el arriendo que declaraste ($780.000). La pregunta honesta es cuánto puede fallar ese número antes de que la conclusión cambie. El dial que probamos es el arriendo: lo bajamos hasta que el veredicto se mueve.</p>
+
+      <div class="box">
+        <p class="bl">Cuánto aguanta</p>
+        <p class="bt" style="font-size:15px;line-height:1.55;">Tu arriendo puede caer hasta <b>$534.300</b> —un <b>31,5% menos</b> que los $780.000 que declaraste— antes de que el veredicto pase de COMPRAR a AJUSTA SUPUESTOS. Todo lo que quede por encima de ese piso, aguanta.</p>
+      </div>
+
+      <div class="chips">
+        <p class="cl">Los tres números, por separado</p>
+        <div class="grid3">
+          <div class="cell"><p class="k">Arriendo hoy</p><p class="v">$780.000</p></div>
+          <div class="cell"><p class="k">Piso antes de cambiar</p><p class="v">$534.300</p></div>
+          <div class="cell"><p class="k">Colchón</p><p class="v pos">$245.700<small>/mes</small></p></div>
+        </div>
+        <p class="foot">Entre lo que declaraste y el piso hay $245.700 al mes de holgura. Recién bajo $534.300 el veredicto se movería a AJUSTA SUPUESTOS.</p>
+      </div>
+
+      <div class="box">
+        <p class="bl">Qué significa</p>
+        <p class="bt">Es un colchón amplio. Aunque te hayas pasado de optimista en el arriendo por un cuarto largo, la conclusión no se cae: tendrías que estar equivocado por casi un tercio para que COMPRAR deje de tenerse en pie. La decisión no cuelga de que el arriendo declarado sea exacto al peso.</p>
+      </div>
+      <div class="box">
+        <p class="bl">Qué haces con esto</p>
+        <p class="bt">Con este margen, no necesitas afinar el arriendo antes de decidir. Igual conviene validarlo con 2–3 publicaciones comparables de la zona — no para salvar el veredicto, sino para saber con qué flujo real vas a vivir mes a mes.</p>
+      </div>
+    </div>
+    <div class="dfoot"><a href="#">← Retorno total</a><a href="#">Patrimonio a 10 años →</a></div>
+  </div>
+
+  <!-- 3 · PATRIMONIO LTR -->
+  <div class="drawer">
+    <div class="dhead">
+      <p class="dl">Patrimonio a 10 años</p>
+      <h2 class="dq">¿Cuánto es tuyo a 10 años?</h2>
+    </div>
+    <div class="dbody">
+      <p class="lead">El depto vale una cosa; lo tuyo es esa cifra menos la deuda que aún le debes al banco. A 10 años, tras vender y saldar el crédito, esto es lo que te queda en la mano frente a lo que fuiste poniendo.</p>
+
+      <div class="chips">
+        <p class="cl">Lo tuyo vs lo que pusiste</p>
+        <div class="grid3">
+          <div class="cell"><p class="k">Tu parte</p><p class="v">UF 2.260</p></div>
+          <div class="cell"><p class="k">Aportaste</p><p class="v">UF 572</p></div>
+          <div class="cell"><p class="k">Multiplicador</p><p class="v pos">×4,0</p></div>
+        </div>
+        <p class="foot">$87.702.204 contra los $22.193.600 que pusiste entre pie, gastos y aportes del camino.</p>
+      </div>
+
+      <div class="box">
+        <p class="bl">La deuda que se paga sola</p>
+        <p class="bt">En estos 10 años amortizas <b>$22,1M</b> del crédito — y acá el arriendo la paga entera por ti: como el flujo te queda a favor todos los años, no pusiste un peso extra para bajar la deuda. Eso es apalancamiento sano: el inquilino te construye patrimonio mientras tú no aportas de tu bolsillo.</p>
+      </div>
+      <div class="box">
+        <p class="bl">Qué significa</p>
+        <p class="bt">Multiplicas por cuatro lo que pusiste, apalancado por dos motores: la deuda que el arriendo amortiza y la plusvalía proyectada. La parte que depende de que la comuna suba la ves en detalle en el drawer de plusvalía — acá lo que importa es que, incluso sin esa apuesta, tu parte supera lo aportado.</p>
+      </div>
+    </div>
+    <div class="dfoot"><a href="#">← Margen del veredicto</a><a href="#">Plusvalía de la comuna →</a></div>
+  </div>
+
+  <!-- 4 · PLUSVALÍA LTR -->
+  <div class="drawer">
+    <div class="dhead">
+      <p class="dl">Plusvalía de la comuna</p>
+      <h2 class="dq">¿Cuánto se ha valorizado la comuna?</h2>
+    </div>
+    <div class="dbody">
+      <p class="lead">La <span class="tt" title="Plusvalía = cuánto sube de precio el depto con los años.">plusvalía (cuánto sube de precio el depto con los años)</span> es el motor que más pesa en tu retorno a 10 años. Por eso conviene mirar de dónde sale el número y qué tan garantizado está.</p>
+
+      <div class="chips">
+        <p class="cl">Histórico de Ñuñoa</p>
+        <div class="grid2">
+          <div class="cell"><p class="k">Se valorizó</p><p class="v">3,2% <small>anual</small></p></div>
+          <div class="cell"><p class="k">Umbral real</p><p class="v">3,0% <small>anual</small></p></div>
+        </div>
+        <p class="foot">3,2% anual entre 2014 y 2024 — apenas sobre el 3% que hace que la propiedad gane valor real, no solo nominal.</p>
+      </div>
+
+      <div class="box">
+        <p class="bl">De dónde sale</p>
+        <p class="bt">Es el histórico 2014–2024 de la comuna (Arenas &amp; Cayo, Tinsa, Propital). Es una <b>referencia histórica, no una garantía a futuro</b>: la comuna subió parejo con la inflación la última década, pero nada asegura que repita ese ritmo los próximos diez años.</p>
+      </div>
+      <div class="box red">
+        <p class="bl">Qué pasa si se detiene</p>
+        <p class="bt">Si la comuna dejara de apreciarse (0% real), tu multiplicador a 10 años cae de <b>×4,0 a ×1,8</b>: seguirías terminando con más de lo que pusiste, pero la mitad de tu ganancia depende de que esta tendencia histórica se sostenga. Es el supuesto más frágil de todo el análisis.</p>
+      </div>
+    </div>
+    <div class="dfoot"><a href="#">← Patrimonio a 10 años</a><a href="#">Cerrar ✕</a></div>
+  </div>
+
+  <!-- ══════════════════════ STR ══════════════════════ -->
+  <div class="split">STR · 6 drawers nuevos (financiamiento · precio · retorno · patrimonio · plusvalía · estructura de costos)</div>
+
+  <!-- 5 · FINANCIAMIENTO STR -->
+  <div class="drawer">
+    <div class="dhead">
+      <p class="dl">Cómo estás financiando</p>
+      <h2 class="dq">¿Cómo estás financiando?</h2>
+    </div>
+    <div class="dbody">
+      <p class="lead">Cómo armas el crédito define cuánta cuota cargas cada mes — y en una renta corta con flujo apretado, eso mueve la aguja. Tu pie y tu tasa hoy dejan un margen menor.</p>
+
+      <div class="chips">
+        <p class="cl">Tu estructura actual</p>
+        <div class="grid3">
+          <div class="cell"><p class="k">Pie</p><p class="v">20% <small>· óptimo 25%</small></p></div>
+          <div class="cell"><p class="k">Tasa</p><p class="v">4,11%</p></div>
+          <div class="cell"><p class="k">Cuota / mes</p><p class="v">$662.927</p></div>
+        </div>
+        <p class="foot">La tasa (4,11%) está en buen nivel — prácticamente en el promedio de mercado (4,1%). El punto flojo es el pie.</p>
+      </div>
+
+      <div class="box">
+        <p class="bl">La palanca real: el pie</p>
+        <div class="chain">
+          <div class="step"><span class="sv">+$7,8M</span><span class="sk">de pie hoy<br>(20% → 25%)</span></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="sv">−$41.000</span><span class="sk">de cuota<br>al mes</span></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="sv pos">−$60k → −$19k</span><span class="sk">tu flujo<br>mensual</span></div>
+        </div>
+        <p class="bt">Un solo movimiento, tres efectos encadenados: pones ~$7,8M más de pie el día uno, la cuota baja ~$41.000 al mes, y con eso tu flujo mejora de −$60.000 a −$19.000 mensuales. No lo deja neutro, pero le saca dos tercios a la sangría — y es lo único que no depende del mercado ni de la ocupación, solo de cuánto pones día uno.</p>
+      </div>
+      <div class="box">
+        <p class="bl">Qué haces con esto</p>
+        <p class="bt">Si tienes la liquidez para subir el pie, es el ajuste de mayor impacto y menor riesgo. Si no la tienes, el flujo negativo es un dato a asumir, no un error a esconder.</p>
+      </div>
+    </div>
+    <div class="dfoot"><a href="#">← Ventaja vs arriendo largo</a><a href="#">¿Pagas caro? →</a></div>
+  </div>
+
+  <!-- 6 · PRECIO / SOBREPRECIO STR (fusión dos lentes) -->
+  <div class="drawer">
+    <div class="dhead">
+      <p class="dl">Precio por metro</p>
+      <h2 class="dq">¿Estás pagando caro?</h2>
+    </div>
+    <div class="dbody">
+      <p class="lead">Dos maneras de mirar lo mismo: cuánto pagas por metro cuadrado frente a la comuna, y cuánto pagas por el depto entero frente a su valor estimado de mercado. Ambas apuntan al mismo lado.</p>
+
+      <div class="chips">
+        <p class="cl">Lente 1 · por metro cuadrado</p>
+        <div class="grid3">
+          <div class="cell"><p class="k">Tu m²</p><p class="v pos">UF 80</p></div>
+          <div class="cell"><p class="k">Mediana comuna</p><p class="v">UF 103,8</p></div>
+          <div class="cell"><p class="k">Diferencia</p><p class="v pos">−23%</p></div>
+        </div>
+        <p class="foot">Entras 23% bajo la mediana de publicación de Providencia (27 avisos comparables).</p>
+      </div>
+
+      <div class="chips">
+        <p class="cl">Lente 2 · el depto entero</p>
+        <div class="grid3">
+          <div class="cell"><p class="k">Tu precio</p><p class="v pos">UF 4.000</p></div>
+          <div class="cell"><p class="k">Valor estimado</p><p class="v">UF 5.190</p></div>
+          <div class="cell"><p class="k">Margen</p><p class="v pos">≈ $46M</p></div>
+        </div>
+        <p class="foot">Sobre tus 50 m² a mediana comunal, el mercado estimaría ~UF 5.190. Pagas ~$46M menos.</p>
+      </div>
+
+      <div class="box">
+        <p class="bl">De dónde sale (sin adornos)</p>
+        <p class="bt">El "valor estimado de mercado" es la <b>mediana de publicaciones</b> de venta de la comuna ajustada hacia precio de cierre por un factor asumido — <b>no son transacciones cerradas medidas</b>. Es una estimación de referencia, no un valor de tasación. Por eso decimos "estimado", nunca "vale menos".</p>
+      </div>
+      <div class="box">
+        <p class="bl">Tu palanca de negociación</p>
+        <p class="bt">Entrar bajo mercado ya te da una ventaja de compra de ~$46M el día uno — es parte de por qué tu patrimonio a 10 años cierra a favor pese al flujo negativo. No hay urgencia de bajar más el precio; la palanca de este deal está en el flujo (pie y gestión), no en el precio de entrada.</p>
+      </div>
+    </div>
+    <div class="dfoot"><a href="#">← Cómo estás financiando</a><a href="#">Retorno total →</a></div>
+  </div>
+
+  <!-- 7 · TIR / RETORNO STR -->
+  <div class="drawer">
+    <div class="dhead">
+      <p class="dl">Retorno total</p>
+      <h2 class="dq">¿Por qué tu 10,3% no es el 10,3% de un depósito?</h2>
+    </div>
+    <div class="dbody">
+      <p class="lead">La <span class="tt" title="TIR = rentabilidad anual de toda tu inversión, juntando caja, amortización y venta.">TIR (la rentabilidad anual de toda tu inversión)</span> es 10,3%, sobre el piso de 6%. Pero acá hay una vuelta importante: uno de los tres motores del retorno no suma, resta — y ese 10,3% ya lo trae descontado.</p>
+
+      <div class="chips">
+        <p class="cl">Tu retorno vs el piso</p>
+        <div class="grid3">
+          <div class="cell"><p class="k">Tu TIR</p><p class="v pos">10,3%</p></div>
+          <div class="cell"><p class="k">Piso exigible</p><p class="v">6,0%</p></div>
+          <div class="cell"><p class="k">Margen</p><p class="v pos">+4,3 pts</p></div>
+        </div>
+        <p class="foot">Ese +4,3 pts es sobre el piso de 6% — y está medido <b>después</b> de descontar la caja negativa, no antes. El 10,3% no es un retorno bruto que luego baja.</p>
+      </div>
+
+      <div class="decomp">
+        <div class="row"><span class="rl">Plusvalía</span><div class="bar"><div class="fill strong" style="width:100%"></div></div><span class="rv">+$48,7M</span></div>
+        <div class="row"><span class="rl">Amortización</span><div class="bar"><div class="fill mid" style="width:72%"></div></div><span class="rv">+$35,2M</span></div>
+        <div class="row"><span class="rl">Flujo 10 años</span><div class="bar"><div class="fill red" style="width:17%"></div></div><span class="rv red">−$8,5M</span></div>
+        <div class="net"><span class="nl">Suma de los tres, en bruto</span><span class="nv">$75,4M</span></div>
+      </div>
+
+      <div class="box">
+        <p class="bl">Qué significa</p>
+        <p class="bt">Tu 10,3% no viene de la caja — la caja <b>resta</b> $8,5M en el camino, porque el corto te saca plata cada mes. Lo levantan la plusvalía ($48,7M) y la amortización ($35,2M): juntas suman $83,9M, y recién después baja a $75,4M cuando le restas la caja. El 10,3% es la tasa sobre lo que queda al final —tras esa resta y los costos de vender—, no antes. Sin la resta de la caja, lo que terminas teniendo pasaría de <b>~$69,3M a ~$77,8M</b> — de ×1,8 a ×2,1 sobre lo que pusiste.</p>
+      </div>
+      <div class="box red">
+        <p class="bl">Qué pasa si falla</p>
+        <p class="bt">Si la comuna no se aprecia, el 10,3% se desploma: te quedas apoyado solo en la amortización, con una caja que ya es negativa. A diferencia de una renta larga sana, este retorno depende fuerte de un supuesto a futuro — vale entrarle con los ojos abiertos.</p>
+      </div>
+      <p class="note">No repite el drawer de patrimonio: acá se explica la TASA (por qué 10,3%); allá, el STOCK (cuánto es tuyo).</p>
+    </div>
+    <div class="dfoot"><a href="#">← ¿Pagas caro?</a><a href="#">Patrimonio a 10 años →</a></div>
+  </div>
+
+  <!-- 8 · PATRIMONIO STR -->
+  <div class="drawer">
+    <div class="dhead">
+      <p class="dl">Patrimonio a 10 años</p>
+      <h2 class="dq">¿Cuánto es tuyo a 10 años?</h2>
+    </div>
+    <div class="dbody">
+      <p class="lead">El depto vale una cosa; lo tuyo es esa cifra menos lo que aún le debes al banco. A 10 años, tras vender y saldar el crédito, esto te queda frente a lo que pusiste.</p>
+
+      <div class="chips">
+        <p class="cl">Lo tuyo vs lo que pusiste</p>
+        <div class="grid3">
+          <div class="cell"><p class="k">Tu parte</p><p class="v">UF 1.785</p></div>
+          <div class="cell"><p class="k">Aportaste</p><p class="v">UF 970</p></div>
+          <div class="cell"><p class="k">Multiplicador</p><p class="v">×1,8</p></div>
+        </div>
+        <p class="foot">$69.272.150 contra los $37.644.000 que pusiste. Terminas con más de lo que entró, pero el margen es acotado.</p>
+      </div>
+
+      <div class="box red">
+        <p class="bl">Acá la deuda NO se paga sola</p>
+        <p class="bt">El arriendo sí amortiza <b>$35,2M</b> del crédito en 10 años — esa parte trabaja a tu favor. Pero como el flujo es negativo, no alcanza a cubrir toda la cuota: pusiste <b>$8,5M de tu bolsillo</b> en el camino (unos $60.000 al mes). La deuda baja, sí, pero en parte la pagas tú, no solo el inquilino.</p>
+      </div>
+      <div class="box">
+        <p class="bl">Qué significa</p>
+        <p class="bt">Un ×1,8 con flujo negativo dice que buena parte del resultado depende de que la plusvalía proyectada se cumpla — lo ves en el drawer de plusvalía. No es un mal cierre, pero es más frágil que un ×1,8 apoyado en caja positiva: acá el patrimonio se construye a pesar del flujo, no gracias a él.</p>
+      </div>
+    </div>
+    <div class="dfoot"><a href="#">← Retorno total</a><a href="#">Plusvalía de la comuna →</a></div>
+  </div>
+
+  <!-- 9 · PLUSVALÍA STR -->
+  <div class="drawer">
+    <div class="dhead">
+      <p class="dl">Plusvalía de la comuna</p>
+      <h2 class="dq">¿Cuánto se ha valorizado la comuna?</h2>
+    </div>
+    <div class="dbody">
+      <p class="lead">En este deal la <span class="tt" title="Plusvalía = cuánto sube de precio el depto con los años.">plusvalía (cuánto sube de precio el depto con los años)</span> no es un extra: es el motor que sostiene todo el retorno, porque la caja es negativa. Por eso importa doble de dónde sale.</p>
+
+      <div class="chips">
+        <p class="cl">Histórico de Providencia</p>
+        <div class="grid2">
+          <div class="cell"><p class="k">Se valorizó</p><p class="v">3,0% <small>anual</small></p></div>
+          <div class="cell"><p class="k">Umbral real</p><p class="v">3,0% <small>anual</small></p></div>
+        </div>
+        <p class="foot">3,0% anual entre 2014 y 2024 — justo en el umbral de apreciación real, ni más ni menos.</p>
+      </div>
+
+      <div class="box">
+        <p class="bl">De dónde sale</p>
+        <p class="bt">Histórico 2014–2024 de la comuna (Arenas &amp; Cayo, Tinsa, Propital). <b>Referencia histórica, no garantía futura.</b> Providencia subió parejo con la inflación la última década; el modelo asume que repite ese ritmo, pero es un supuesto.</p>
+      </div>
+      <div class="box red">
+        <p class="bl">Qué pasa si se detiene</p>
+        <p class="bt">Acá está el nervio del deal: si la comuna no se aprecia (0% real), tu multiplicador cae de <b>×1,8 a ×0,4</b> — terminarías con <b>menos de lo que pusiste</b>. Con flujo negativo y sin plusvalía, la operación pierde plata. Toda la tesis de este corto descansa sobre que la valorización histórica se sostenga.</p>
+      </div>
+    </div>
+    <div class="dfoot"><a href="#">← Patrimonio a 10 años</a><a href="#">Estructura de costos →</a></div>
+  </div>
+
+  <!-- 10 · ESTRUCTURA COSTOS STR -->
+  <div class="drawer">
+    <div class="dhead">
+      <p class="dl">Estructura de costos</p>
+      <h2 class="dq">¿En qué se va cada peso?</h2>
+    </div>
+    <div class="dbody">
+      <p class="lead">De cada $100 que entran por noches arrendadas, una parte se va en operar el depto antes de que veas un peso de utilidad. Cuánto se va decide si el corto respira o no.</p>
+
+      <div class="chips">
+        <p class="cl">De cada $100 brutos</p>
+        <div class="grid3">
+          <div class="cell"><p class="k">Se va en costos</p><p class="v">$34</p></div>
+          <div class="cell"><p class="k">Vara típica</p><p class="v">$30–$40</p></div>
+          <div class="cell"><p class="k">Queda operativo</p><p class="v">$66</p></div>
+        </div>
+        <p class="foot">Sobre $911.742 brutos al mes: $281.150 de operación (aseo, servicios, insumos) + $27.352 de comisión.</p>
+      </div>
+
+      <div class="box">
+        <p class="bl">Qué significa</p>
+        <p class="bt">34% está dentro de lo típico para una renta corta — no es acá donde se rompe el deal. El problema del flujo negativo viene de la ocupación y la cuota, no de costos inflados. Cada punto que bajes de comisión o servicios va directo a tu bolsillo, pero no esperes que un recorte de costos dé vuelta el mes.</p>
+      </div>
+      <div class="box">
+        <p class="bl">La única palanca real: cómo lo gestionas</p>
+        <p class="bt">La diferencia grande no está en los insumos, está en quién administra. Gestionándolo tú, el flujo es <b>−$59.687/mes</b>. Con administrador profesional, la comisión sube de $27.000 a $182.000 y el flujo cae a <b>−$214.683/mes</b>. En un corto tan apretado, tercerizar la gestión se come la operación: si no vas a administrarlo tú, los números no dan.</p>
+      </div>
+    </div>
+    <div class="dfoot"><a href="#">← Plusvalía de la comuna</a><a href="#">Cerrar ✕</a></div>
+  </div>
+
+  <p class="note" style="text-align:center;margin-top:32px;">Plantillas determinísticas · cero prosa IA · cero cambio de prompt · todo deriva de results/exit/projections persistidos.</p>
+</div>
+</body>
+</html>

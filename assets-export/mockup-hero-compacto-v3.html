@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · Hero LTR compacto v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --franco-bg:#0F0F0F; --franco-bg-alt:#161616; --franco-card:#1A1A1A;
+    --franco-text:#FAFAF8; --franco-text-secondary:rgba(250,250,248,0.5);
+    --franco-text-muted:rgba(250,250,248,0.35); --franco-text-tertiary:#888780;
+    --franco-border:rgba(250,250,248,0.06); --franco-border-hover:rgba(250,250,248,0.12);
+    --franco-border-strong:rgba(250,250,248,0.15);
+    --franco-wm-re:rgba(255,255,255,0.32); --franco-wm-franco:#FAFAF8;
+    --signal-red:#C8323C; --fold:#4FC3F7;
+    --serif:"Source Serif 4",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--franco-bg);color:var(--franco-text);font-family:var(--sans);padding:40px 24px 90px;-webkit-font-smoothing:antialiased}
+  .page{max-width:900px;margin:0 auto}
+  .cmp{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--franco-text-tertiary);margin:0 2px 12px;display:flex;gap:10px;align-items:baseline}
+  .cmp b{color:var(--franco-text);font-weight:700}
+  .cmp .h{color:var(--franco-text-muted);text-transform:none;letter-spacing:0;font-family:var(--sans);font-size:12px}
+  .stage{position:relative;min-height:770px;margin-bottom:52px}
+  .fold{position:absolute;left:0;right:0;top:712px;border-top:2px dashed var(--fold);pointer-events:none;z-index:5}
+  .fold .tag{position:absolute;right:0;top:-9px;background:var(--fold);color:#08222e;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:4px;white-space:nowrap}
+  .fold .cut{position:absolute;left:0;top:3px;font-family:var(--mono);font-size:9px;letter-spacing:.05em;color:var(--fold)}
+  .hero{background:var(--franco-bg);border:0.5px solid var(--franco-border-strong);border-radius:16px;overflow:hidden;position:relative;z-index:1}
+  .hair{height:1px;background:var(--franco-border)}
+  .pad{padding-left:32px;padding-right:32px}
+  .f1{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding-top:18px;padding-bottom:16px}
+  .f1 h1{font-family:var(--serif);font-weight:700;font-size:27px;line-height:1.15;letter-spacing:-.01em}
+  .f1 h1 .comuna{font-weight:400;color:var(--franco-text-secondary)}
+  .toggle{display:inline-flex;border:0.5px solid var(--franco-border-strong);border-radius:8px;overflow:hidden;flex:none}
+  .toggle button{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.06em;padding:6px 12px;border:0;background:transparent;color:var(--franco-text-muted)}
+  .toggle button.on{background:var(--franco-text);color:var(--franco-bg)}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:0.5px solid var(--franco-border);background:var(--franco-bg-alt);border-radius:8px;padding:6px 10px;white-space:nowrap}
+  .chip .k{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--franco-text)}
+  .chip .u{font-family:var(--mono);font-size:10px;color:var(--franco-text-muted);letter-spacing:.02em}
+  .chip .s{font-family:var(--mono);font-size:9.5px;color:var(--franco-text-muted)}
+  .grid52{display:grid;grid-template-columns:minmax(0,52fr) minmax(0,48fr);column-gap:32px}
+  .grid66{display:grid;grid-template-columns:minmax(0,66fr) minmax(0,34fr);column-gap:32px}
+  .grid66 > div:last-of-type{display:flex}
+  .grid66 > div:last-of-type > .map{flex:1;min-height:190px}
+  .f3{padding-top:20px;padding-bottom:20px}
+  .f3.p12{padding-top:12px;padding-bottom:12px}
+  .lbl{font-family:var(--mono);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--franco-text-tertiary)}
+  .scorerow{display:flex;align-items:center;gap:16px;margin-top:12px}
+  .scorenum{font-family:var(--mono);font-weight:700;font-size:52px;line-height:.9;letter-spacing:-.02em}
+  .scorenum small{font-size:22px;font-weight:400;color:var(--franco-text-muted)}
+  .badge{font-family:var(--mono);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 12px;border-radius:6px;white-space:nowrap}
+  .badge.comprar{background:var(--franco-text);color:var(--franco-bg)}
+  .scorebar{margin-top:14px}
+  .track{position:relative;height:7px;border-radius:4px;background:linear-gradient(90deg,#C8323C 0%,#C8323C 14%,#B9793E 46%,#6E6C66 74%,#4A4A46 100%)}
+  .knob{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;transform:translate(-50%,-50%);background:var(--franco-text);border:3px solid var(--franco-bg);box-shadow:0 0 0 1px var(--franco-border-strong)}
+  .axis{display:flex;justify-content:space-between;margin-top:10px}
+  .axis span{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--franco-text-muted)}
+  .axis span.on{color:var(--franco-text-secondary)}
+  .chipwrap{margin-top:16px;display:flex;flex-direction:column;gap:7px}
+  .chiprow{display:flex;flex-wrap:wrap;gap:6px}
+  .map{border-radius:12px;border:0.5px solid var(--franco-border);
+    background:radial-gradient(circle at 60% 44%, rgba(200,50,60,0.10), transparent 40%),
+      repeating-linear-gradient(0deg,transparent 0 27px,var(--franco-border) 27px 28px),
+      repeating-linear-gradient(90deg,transparent 0 27px,var(--franco-border) 27px 28px),
+      var(--franco-bg-alt);position:relative;overflow:hidden}
+  .map.h190{height:190px}
+  .map .pin{position:absolute;left:60%;top:44%;width:11px;height:11px;border-radius:50% 50% 50% 0;background:var(--signal-red);transform:translate(-50%,-100%) rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.5)}
+  .map .cap{position:absolute;left:12px;bottom:10px;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--franco-text-muted)}
+  .f4{padding-top:22px;padding-bottom:22px}
+  .f4.p14{padding-top:14px;padding-bottom:14px}
+  .q{font-family:var(--serif);font-weight:700;font-size:22px;line-height:1.22;letter-spacing:-.01em;margin:12px 0}
+  .prosa{font-size:15px;line-height:1.62;color:var(--franco-text-secondary);max-width:65ch;text-align:left}
+  .mi{font-family:var(--mono);font-size:13px;color:var(--franco-text);background:rgba(250,250,248,0.05);padding:0 4px;border-radius:3px}
+  .nextstep{margin-top:16px;border-left:3px solid var(--signal-red);border-radius:0 8px 8px 0;background:color-mix(in srgb,var(--signal-red) 5%,transparent);padding:9px 14px}
+  .nextstep .nl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;color:var(--signal-red);display:block;margin-bottom:4px}
+  .nextstep p{font-size:13.5px;line-height:1.55;font-style:italic;color:var(--franco-text)}
+  .fh1{font-family:var(--serif);font-weight:700;font-size:15px;margin-bottom:2px}
+  .fh2{font-size:11.5px;color:var(--franco-text-muted);margin-bottom:10px}
+  .frow{display:grid;grid-template-columns:20px 1fr auto;gap:10px;padding:6px 0;align-items:start;border-top:1px solid var(--franco-border)}
+  .frow:first-of-type{border-top:0}
+  .frank{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--franco-text-tertiary);padding-top:2px}
+  .fdesc{font-size:12.5px;line-height:1.4;color:var(--franco-text)}
+  .fterm{display:inline-flex;align-items:center;gap:4px;margin-top:4px}
+  .fterm .t{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--franco-text-muted);border-bottom:1px dotted var(--franco-border-strong)}
+  .fterm .i{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;border-radius:50%;border:1px solid var(--franco-border-strong);font-family:var(--mono);font-size:8px;color:var(--franco-text-muted)}
+  .fkpi{text-align:right;white-space:nowrap}
+  .fkpi .v{font-family:var(--mono);font-size:17px;font-weight:700;line-height:1;color:var(--franco-text)}
+  .fkpi .vs{display:block;margin-top:4px;font-family:var(--mono);font-size:9.5px;color:var(--franco-text-muted)}
+  /* v2: frase + cue */
+  .vfrase{margin-top:10px;padding-top:10px;border-top:1px solid var(--franco-border);font-size:12.5px;line-height:1.5;color:var(--franco-text-secondary)}
+  .vfrase .cue{display:block;margin-top:6px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--franco-text-tertiary)}
+  /* v3: solo el cue (puente a la pirámide), pegado al TOP-3 */
+  .cueonly{margin-top:12px;padding-top:10px;border-top:1px solid var(--franco-border)}
+  .cueonly .cue{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--franco-text-tertiary)}
+  .firma{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px;padding-bottom:16px}
+  .firma.p12{padding-top:12px;padding-bottom:12px}
+  .firma .sig{font-size:11px;color:var(--franco-text-muted)}
+  .wm{display:inline-flex;align-items:baseline;line-height:1}
+  .wm .re{font-family:var(--serif);font-style:italic;font-weight:300;font-size:17px;color:var(--franco-wm-re);margin-right:-.08em}
+  .wm .fr{font-family:var(--serif);font-weight:700;font-size:17px;color:var(--franco-wm-franco)}
+  .wm .ai{font-family:var(--sans);font-weight:600;font-size:.35em;letter-spacing:.1em;color:#C8323C;margin-left:1px}
+</style>
+
+<style>
+  /* ══ BANDA DE ADVERTENCIA ══
+     Todas las cifras de este archivo son placeholders inventados. Sin esta
+     banda el mockup se confunde con la app real: ya pasó una vez, con un
+     reporte de QA levantado contra estos números.
+     Misma banda que el resto de assets-export. El spacer reemplaza al
+     padding-top del body que usan los otros: acá el body es de cada mockup y
+     no se toca. */
+  .mockup-warning {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #C8323C; color: #FFFFFF;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em;
+    text-align: center; padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+  .mockup-warning-spacer { height: 37px; flex: none; }
+</style>
+</head>
+<body>
+<div class="mockup-warning">MOCKUP — DATOS FICTICIOS</div>
+<div class="mockup-warning-spacer" aria-hidden="true"></div>
+
+<div class="page">
+
+  <!-- ══════════ 1 · v2 (807px) ══════════ -->
+  <div class="cmp"><b>1 · Compacto v2</b><span class="h">— 807px · paddings holgados · chips doble moneda · veredictoFrase presente</span></div>
+  <div class="stage">
+    <div class="fold"><span class="cut">↑ entra sin scroll</span><span class="tag">FOLD owner · 712px</span></div>
+    <div class="hero">
+      <div class="f1 pad"><div><h1>Av. Providencia 1234<span class="comuna"> · Providencia</span></h1></div>
+        <div class="toggle"><button class="on">CLP</button><button>UF</button></div></div>
+      <div class="hair"></div>
+      <div class="grid66 f3 pad">
+        <div>
+          <div class="lbl">Franco Score</div>
+          <div class="scorerow"><div class="scorenum">82<small>/100</small></div><span class="badge comprar">COMPRAR</span></div>
+          <div class="scorebar"><div class="track"><div class="knob" style="left:82%"></div></div>
+            <div class="axis"><span>Buscar otra</span><span>Ajusta supuestos</span><span class="on">Comprar</span></div></div>
+          <div class="chipwrap">
+            <div class="chiprow"><span class="chip"><span class="k">2</span><span class="u">dorm</span></span><span class="chip"><span class="k">1</span><span class="u">baño</span></span><span class="chip"><span class="k">50</span><span class="u">m²</span></span><span class="chip"><span class="k">4</span><span class="u">años</span></span></div>
+            <div class="chiprow"><span class="chip"><span class="k">UF 3.500</span><span class="s">$139.650.000</span></span><span class="chip"><span class="k">UF 70,0</span><span class="u">/m²</span></span><span class="chip"><span class="k">20%</span><span class="u">pie</span><span class="s">· 25a · 4,5%</span></span><span class="chip"><span class="k">$1.100.000</span><span class="u">arr.</span></span></div>
+          </div>
+        </div>
+        <div><div class="map"><div class="pin"></div><div class="cap">Providencia</div></div></div>
+      </div>
+      <div class="hair"></div>
+      <div class="grid52 f4 pad">
+        <div>
+          <div class="lbl">01 · Veredicto</div>
+          <h2 class="q">¿Conviene o no conviene?</h2>
+          <div class="prosa">Lo que más pesa acá es el rendimiento: CAP rate de <span class="mi">8,9%</span>, casi 5 puntos sobre el mercado, y el arriendo cubre la cuota dejando <span class="mi">$262.468</span> al mes. Pero todo descansa en un supuesto: <span class="mi">$1.100.000</span> de arriendo declarado cuando Providencia paga <span class="mi">~$580.000</span> por 50 m². Si el real es el de mercado, la operación pasa de positiva a negativa en un solo ajuste. Sumá <span class="mi">UF 75</span> de puesta a punto: tu inversión real es ~9% más que el pie.</div>
+          <div class="nextstep"><span class="nl">Próximo paso</span><p>Verificá el arriendo real con 3 publicaciones comparables de Providencia para 50 m² antes de firmar — todo el caso descansa en ese número.</p></div>
+        </div>
+        <div>
+          <div class="fh1">Lo que define este veredicto</div>
+          <div class="fh2">Los 3 hallazgos que más movieron el score, por decisividad.</div>
+          <div class="frow"><div class="frank">01</div><div><div class="fdesc">Rinde por sobre lo que el mercado paga para este precio.</div><div class="fterm"><span class="t">CAP rate</span><span class="i">i</span></div></div><div class="fkpi"><div class="v">8,9%</div><span class="vs">gap 4,9 pts vs 4,0%</span></div></div>
+          <div class="frow"><div class="frank">02</div><div><div class="fdesc">El arriendo cubre la cuota y te deja margen cada mes.</div><div class="fterm"><span class="t">Aporte mensual</span><span class="i">i</span></div></div><div class="fkpi"><div class="v">+$262.468</div><span class="vs">cada mes · toda la proyección</span></div></div>
+          <div class="frow"><div class="frank">03</div><div><div class="fdesc">Pagás apenas sobre el metro de la zona.</div><div class="fterm"><span class="t">Precio/m² vs zona</span><span class="i">i</span></div></div><div class="fkpi"><div class="v">+3%</div><span class="vs">UF 70,0 vs UF 68,0 /m²</span></div></div>
+          <div class="vfrase">El rendimiento manda, pero descansa en un arriendo declarado que hay que verificar.<span class="cue">Cómo pesa cada hallazgo ↓</span></div>
+        </div>
+      </div>
+      <div class="hair"></div>
+      <div class="firma pad"><span class="sig">Análisis generado por IA · 4 jul 2026</span><span class="wm"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span></span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ 2 · v3 (final) ══════════ -->
+  <div class="cmp"><b>2 · Compacto v3</b><span class="h">— paddings −40px · chips single-currency (CLP) · veredictoFrase fuera (cue queda)</span></div>
+  <div class="stage">
+    <div class="fold"><span class="cut">↑ entra sin scroll</span><span class="tag">FOLD owner · 712px</span></div>
+    <div class="hero">
+      <div class="f1 pad"><div><h1>Av. Providencia 1234<span class="comuna"> · Providencia</span></h1></div>
+        <div class="toggle"><button class="on">CLP</button><button>UF</button></div></div>
+      <div class="hair"></div>
+      <!-- F3: padding −16, chips single-currency (CLP) -->
+      <div class="grid66 f3 p12 pad">
+        <div>
+          <div class="lbl">Franco Score</div>
+          <div class="scorerow"><div class="scorenum">82<small>/100</small></div><span class="badge comprar">COMPRAR</span></div>
+          <div class="scorebar"><div class="track"><div class="knob" style="left:82%"></div></div>
+            <div class="axis"><span>Buscar otra</span><span>Ajusta supuestos</span><span class="on">Comprar</span></div></div>
+          <div class="chipwrap">
+            <div class="chiprow"><span class="chip"><span class="k">2</span><span class="u">dorm</span></span><span class="chip"><span class="k">1</span><span class="u">baño</span></span><span class="chip"><span class="k">50</span><span class="u">m²</span></span><span class="chip"><span class="k">4</span><span class="u">años</span></span></div>
+            <div class="chiprow"><span class="chip"><span class="k">$139,7 MM</span></span><span class="chip"><span class="k">UF 70,0</span><span class="u">/m²</span></span><span class="chip"><span class="k">20%</span><span class="u">pie</span><span class="s">· 25a · 4,5%</span></span><span class="chip"><span class="k">$1,1 MM</span><span class="u">arr.</span></span></div>
+          </div>
+        </div>
+        <div><div class="map"><div class="pin"></div><div class="cap">Providencia</div></div></div>
+      </div>
+      <div class="hair"></div>
+      <!-- F4: padding −16, veredictoFrase fuera, cue pegado -->
+      <div class="grid52 f4 p14 pad">
+        <div>
+          <div class="lbl">01 · Veredicto</div>
+          <h2 class="q">¿Conviene o no conviene?</h2>
+          <div class="prosa">Lo que más pesa acá es el rendimiento: CAP rate de <span class="mi">8,9%</span>, casi 5 puntos sobre el mercado, y el arriendo cubre la cuota dejando <span class="mi">$262.468</span> al mes. Pero todo descansa en un supuesto: <span class="mi">$1.100.000</span> de arriendo declarado cuando Providencia paga <span class="mi">~$580.000</span> por 50 m². Si el real es el de mercado, la operación pasa de positiva a negativa en un solo ajuste. Sumá <span class="mi">UF 75</span> de puesta a punto: tu inversión real es ~9% más que el pie.</div>
+          <div class="nextstep"><span class="nl">Próximo paso</span><p>Verificá el arriendo real con 3 publicaciones comparables de Providencia para 50 m² antes de firmar — todo el caso descansa en ese número.</p></div>
+        </div>
+        <div>
+          <div class="fh1">Lo que define este veredicto</div>
+          <div class="fh2">Los 3 hallazgos que más movieron el score, por decisividad.</div>
+          <div class="frow"><div class="frank">01</div><div><div class="fdesc">Rinde por sobre lo que el mercado paga para este precio.</div><div class="fterm"><span class="t">CAP rate</span><span class="i">i</span></div></div><div class="fkpi"><div class="v">8,9%</div><span class="vs">gap 4,9 pts vs 4,0%</span></div></div>
+          <div class="frow"><div class="frank">02</div><div><div class="fdesc">El arriendo cubre la cuota y te deja margen cada mes.</div><div class="fterm"><span class="t">Aporte mensual</span><span class="i">i</span></div></div><div class="fkpi"><div class="v">+$262.468</div><span class="vs">cada mes · toda la proyección</span></div></div>
+          <div class="frow"><div class="frank">03</div><div><div class="fdesc">Pagás apenas sobre el metro de la zona.</div><div class="fterm"><span class="t">Precio/m² vs zona</span><span class="i">i</span></div></div><div class="fkpi"><div class="v">+3%</div><span class="vs">UF 70,0 vs UF 68,0 /m²</span></div></div>
+          <div class="cueonly"><span class="cue">Cómo pesa cada hallazgo ↓</span></div>
+        </div>
+      </div>
+      <div class="hair"></div>
+      <div class="firma p12 pad"><span class="sig">Análisis generado por IA · 4 jul 2026</span><span class="wm"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span></span></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
