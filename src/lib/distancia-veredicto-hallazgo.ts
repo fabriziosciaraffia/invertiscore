@@ -269,9 +269,10 @@ export function buildHallazgoDistanciaVeredicto(p: {
       ? (palancasHasta("COMPRAR")[0] ?? null)
       : null;
 
-  // magnitudContinua: cercanía normalizada (1 = pegado al umbral, 0 = en el tope o fuera).
-  // Solo desempate secundario del sort entre pares de igual decisividad (E4).
-  const magnitudContinua = palancaMasBarata
+  // Cercanía al umbral (1 = pegado al veredicto de arriba, 0 = en el tope o estructural).
+  // Va DENTRO de `valor`, NO en magnitudContinua: ese campo lo leen los comparadores de la
+  // pirámide y del hero, donde compite contra |Δscore|/25 — otra escala, otra pregunta.
+  const cercaniaUmbral = palancaMasBarata
     ? clamp01(1 - Math.abs(palancaMasBarata.deltaPct) / topeAplicado)
     : 0;
 
@@ -334,13 +335,15 @@ export function buildHallazgoDistanciaVeredicto(p: {
       esEstructural,
       deltaMinimoFueraDeTope,
       topePct: topeAplicado,
+      cercaniaUmbral,
       brazosGate1Activos: p.brazosGate1Activos,
       modalidad: p.modalidad,
     },
-    // Siempre adverso: el hallazgo solo existe cuando el veredicto no es COMPRAR.
-    direccion: "adverso",
+    // NEUTRAL: es un mapa de la distancia al umbral, no una señal sobre el deal. Marcarlo
+    // adverso lo hacía competir en el bloque de adversos y degradaba hallazgos decisivos.
+    direccion: "neutral",
     decisividad: 0, // SOLO-LECTURA — no entra al ranking de decisividad
-    magnitudContinua,
+    // SIN magnitudContinua: la cercanía vive en valor.cercaniaUmbral (fuera de los sorts).
     procedencia: {
       base: "Reevaluación del veredicto subiendo el arriendo, bajando el precio y estirando el plazo, una palanca a la vez",
       // alta: recálculo determinístico sobre tus propios datos, no una estimación externa.

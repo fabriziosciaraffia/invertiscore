@@ -73,9 +73,40 @@ export function ordenarHallazgosPiramide(
   aiAnalysis: AIAnalysisV2 | null | undefined,
 ): Hallazgo[] {
   const gathered = gatherHallazgos(results, aiAnalysis);
-  const adversos = gathered.filter(esAdverso).sort(cmpDecisividad);
-  const favorables = gathered.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
-  return [...adversos, ...favorables];
+  // distancia_veredicto NO compite: se saca del sort y se inserta en posición fija.
+  // Cuando competía (direccion "adverso" + magnitud alta) empujaba hallazgos genuinamente
+  // decisivos fuera del top-3 — medido: cap_rate 0,85 y sobreprecio 0,88 degradados a chip
+  // en 3 filas del corpus. Su lugar es narrativo, no ganado: va justo después del bloque
+  // de adversos, para que se lea "esto es lo que duele → esto es lo que te separa → esto
+  // es lo que acompaña".
+  const rankeables = gathered.filter((h) => h.id !== "distancia_veredicto");
+  const distancia = gathered.find((h) => h.id === "distancia_veredicto") ?? null;
+  const adversos = rankeables.filter(esAdverso).sort(cmpDecisividad);
+  const favorables = rankeables.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
+  const base = [...adversos, ...favorables];
+  if (!distancia) return base;
+  // Después del último adverso; si no hay adversos, en posición 2 (tras el primer favorable).
+  const pos = adversos.length > 0 ? adversos.length : Math.min(1, base.length);
+  return [...base.slice(0, pos), distancia, ...base.slice(pos)];
+}
+
+/**
+ * Reparto visual de la pirámide. Los NIVELES se asignan sobre los hallazgos rankeables
+ * (los 9 del ranking), NO sobre el array completo: `distancia_veredicto` no compite por
+ * nivel igual que no compite por orden. Se renderiza como banda propia de ancho completo
+ * entre el nivel 1 y el nivel 2 — el lugar que le da el orden de lectura sin robarle un
+ * puesto a nadie. Así los demás conservan EXACTAMENTE los niveles que tenían antes de que
+ * este hallazgo existiera.
+ */
+export function piramideLayout(ordered: Hallazgo[]): {
+  distancia: Hallazgo | null;
+  nivel1: Hallazgo | undefined;
+  nivel2: Hallazgo[];
+  nivel3: Hallazgo[];
+} {
+  const distancia = ordered.find((h) => h.id === "distancia_veredicto") ?? null;
+  const rank = ordered.filter((h) => h.id !== "distancia_veredicto");
+  return { distancia, nivel1: rank[0], nivel2: rank.slice(1, 3), nivel3: rank.slice(3) };
 }
 
 // Matriz de columnas del nivel 3 según cuántos chips quedan (Familia A, aprobada por
@@ -143,11 +174,13 @@ export function PiramideHallazgos({
 }) {
   const ordered = ordenarHallazgosPiramide(results, aiAnalysis);
   if (ordered.length === 0) return null;
-  const gathered = ordered; // mismo set (gather+dedup); alias para el guard de corona
 
-  const nivel1 = ordered[0];
-  const nivel2 = ordered.slice(1, 3);
-  const nivel3 = ordered.slice(3);
+  // Niveles sobre los RANKEABLES (distancia_veredicto va aparte, banda propia).
+  const { distancia, nivel1, nivel2, nivel3 } = piramideLayout(ordered);
+  if (!nivel1) return null;
+  // Guard de corona: se evalúa sobre los rankeables, no sobre el set completo — la
+  // distancia tiene decisividad 0 fija y no debe contar como candidata al máximo.
+  const gathered = ordered.filter((h) => h.id !== "distancia_veredicto");
 
   // Kicker honesto de la corona: "Lo más decisivo" solo si el coronado (ordered[0],
   // que el orden Filosofía 1 elige por "adverso primero") es el ÚNICO de mayor
@@ -204,6 +237,13 @@ export function PiramideHallazgos({
         {/* Nivel 1 — decisivo, ancho completo. bodyDuplicado suprime el <p> si la
             prosa ya abrió con esta misma fraseCanonica (eco literal apertura↔corona). */}
         <GenericFindingCard hallazgo={nivel1} nivel={1} esElMasDecisivo={esElMasDecisivo} bodyDuplicado={bodyCoronaDuplicado} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
+
+        {/* Distancia al veredicto — banda propia de ancho completo, entre el nivel 1 y el
+            nivel 2. No compite por puesto ni por nivel: es el puente de lectura entre "lo
+            que duele" y "lo que acompaña". Ausente en COMPRAR. */}
+        {distancia && (
+          <GenericFindingCard hallazgo={distancia} nivel={2} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
+        )}
 
         {/* Nivel 2 — los dos siguientes, en fila */}
         {nivel2.length > 0 && (
