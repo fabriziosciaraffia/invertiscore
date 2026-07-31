@@ -6,11 +6,13 @@ import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import {
   createSupabaseServer,
   requireAuthenticatedUser,
+  guardPlausibilidad,
   ensureCreditCharged,
   markPremiumAndClaimPrepaid,
   buildShortTermAnalysisRow,
   prefetchMedianaComunaVenta,
 } from "@/lib/api-helpers/analisis-pipeline";
+import { desdeBodyStr } from "@/lib/plausibilidad";
 
 // ─── POST handler ──────────────────────────────────────
 
@@ -32,11 +34,24 @@ export async function POST(request: Request) {
         ? body.ambasGroupId
         : null;
 
+    // SUBIDO sobre el cobro (PIEZA A): el guard de plausibilidad necesita la UF
+    // para derivar el yield bruto. Lectura cacheada con fallback, sin efectos.
+    const ufValue = await getUFValue();
+
+    // Guard de plausibilidad — ANTES de cobrar. Acá pesa doble: el cobro estaba
+    // por delante del fetch a AirROI, así que un input imposible quemaba el
+    // crédito y encima gastaba una llamada externa. Solo valida tarifa/ocupación
+    // cuando el usuario las CORRIGIÓ (overrides no nulos); con la estimación de
+    // AirROI no hay input humano que juzgar.
+    const plausible = guardPlausibilidad(desdeBodyStr(body, ufValue), {
+      userId: user.id,
+      ruta: "POST /api/analisis/short-term",
+    });
+    if (!plausible.ok) return plausible.response;
+
     const charge = await ensureCreditCharged({ user, prepaidChargeId });
     if (!charge.ok) return charge.response;
     const { prepaidNeedClaim, mode: chargeMode } = charge;
-
-    const ufValue = await getUFValue();
 
     // Bloque medio (AirROI + motor + score + armado del row) compartido con
     // /api/analisis/locked vía buildShortTermAnalysisRow — un solo call-site de

@@ -6,9 +6,11 @@
 //   1. createSupabaseServer()      — server-side Supabase client con cookies.
 //   2. createPaymentsAdminClient() — admin client para validar/claim payments.
 //   3. requireAuthenticatedUser()  — auth gate, returns 401 NextResponse if no user.
-//   4. ensureCreditCharged()       — handle prepaid charge OR cobro normal,
+//   4. guardPlausibilidad()        — 422 si el input es aritméticamente
+//                                    imposible. SIEMPRE antes de cobrar.
+//   5. ensureCreditCharged()       — handle prepaid charge OR cobro normal,
 //                                    con admin bypass.
-//   5. markPremiumAndClaimPrepaid()— post-insert: mark is_premium=true +
+//   6. markPremiumAndClaimPrepaid()— post-insert: mark is_premium=true +
 //                                    claim del prepaid charge si aplica.
 
 import { NextResponse } from "next/server";
@@ -18,6 +20,7 @@ import { cookies } from "next/headers";
 import { chargeAnalysisCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
 import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
+import { evaluarPlausibilidad, type Anomalia, type PlausibilidadInput } from "@/lib/plausibilidad";
 import type { AnalisisInput } from "@/lib/types";
 import {
   calcShortTerm,
@@ -147,6 +150,56 @@ export async function requireAuthenticatedUser(
     };
   }
   return { ok: true, user };
+}
+
+// ─── Guard de plausibilidad (PRE-COBRO) ────────────────
+
+export interface PlausibilidadOk {
+  ok: true;
+}
+export interface PlausibilidadErr {
+  ok: false;
+  response: NextResponse;
+}
+
+/**
+ * Gate de plausibilidad. Va SIEMPRE entre el parse del body y
+ * `ensureCreditCharged`: si el input es aritméticamente imposible no se cobra
+ * el crédito ni se inserta la fila.
+ *
+ * Motivo (auditoría PIEZA A): los endpoints hacían `request.json()` y llamaban
+ * a cobrar sin validar nada. Un precio de UF 4.800.000 (tipeo de UF 4.800) se
+ * procesaba completo y cobraba. Como el cobro ocurre ANTES del insert y no hay
+ * rollback, ese crédito se perdía sin dejar fila.
+ *
+ * 422 (no 400): el body está bien formado, lo que no es procesable es su
+ * contenido. El caller hace `if (!guard.ok) return guard.response;`.
+ *
+ * El `console.error` es deliberado y no un error real: es la señal para contar
+ * cuántas veces dispara en prod la primera semana y decidir si los rangos están
+ * bien calibrados. Prefijo `[PLAUSIBILIDAD]` para grepear en los logs de Vercel.
+ */
+export function guardPlausibilidad(
+  input: PlausibilidadInput,
+  ctx: { userId: string; ruta: string },
+): PlausibilidadOk | PlausibilidadErr {
+  const anomalias: Anomalia[] = evaluarPlausibilidad(input);
+  if (anomalias.length === 0) return { ok: true };
+
+  console.error(
+    `[PLAUSIBILIDAD] rechazo ${ctx.ruta} · user=${ctx.userId} · reglas=${anomalias
+      .map((a) => a.regla)
+      .join(",")}`,
+    JSON.stringify(anomalias.map((a) => ({ regla: a.regla, campo: a.campo, valor: a.valor }))),
+  );
+
+  return {
+    ok: false,
+    response: NextResponse.json(
+      { error: "input_implausible", anomalias },
+      { status: 422 },
+    ),
+  };
 }
 
 // ─── Credit charge ─────────────────────────────────────

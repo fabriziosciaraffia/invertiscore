@@ -5,6 +5,13 @@ import { cookies } from "next/headers";
 import { randomUUID } from "crypto";
 import { chargeAnalysisCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
+import { getUFValue } from "@/lib/uf";
+import {
+  evaluarPlausibilidad,
+  desdeBodyLtr,
+  desdeBodyStr,
+  type Anomalia,
+} from "@/lib/plausibilidad";
 
 /**
  * POST /api/credits/charge — Pre-cobro centralizado para flujo AMBAS.
@@ -78,6 +85,39 @@ export async function POST(request: Request) {
         { error: "intent inválido (debe ser ltr, str o both)" },
         { status: 400 },
       );
+    }
+
+    // Guard de plausibilidad — ANTES de cobrar (PIEZA A).
+    //
+    // OJO con el alcance real: este endpoint históricamente recibe SOLO
+    // `{ intent }`, sin un solo dato de la propiedad, así que no tenía nada que
+    // validar. Acepta ahora `ltr` / `str` OPCIONALES — los mismos payloads que
+    // el wizard ya construyó para los dos POSTs hijos. Mientras el cliente no
+    // los mande, este bloque es no-op y el flujo AMBAS queda protegido recién
+    // en los hijos, o sea DESPUÉS del cobro. Wiring del cliente: pendiente de OK.
+    if (body?.ltr || body?.str) {
+      const ufValue = await getUFValue();
+      const anomalias: Anomalia[] = [
+        ...(body.ltr ? evaluarPlausibilidad(desdeBodyLtr(body.ltr, ufValue)) : []),
+        ...(body.str ? evaluarPlausibilidad(desdeBodyStr(body.str, ufValue)) : []),
+      ];
+      // Dedup por regla: en AMBAS las dos ramas comparten precio y superficie,
+      // así que un precio imposible saldría duplicado.
+      const unicas = anomalias.filter(
+        (a, i) => anomalias.findIndex((b) => b.regla === a.regla) === i,
+      );
+      if (unicas.length > 0) {
+        console.error(
+          `[PLAUSIBILIDAD] rechazo POST /api/credits/charge · user=${user.id} · reglas=${unicas
+            .map((a) => a.regla)
+            .join(",")}`,
+          JSON.stringify(unicas.map((a) => ({ regla: a.regla, campo: a.campo, valor: a.valor }))),
+        );
+        return NextResponse.json(
+          { error: "input_implausible", anomalias: unicas },
+          { status: 422 },
+        );
+      }
     }
 
     const isAdmin = isAdminUser(user.email);

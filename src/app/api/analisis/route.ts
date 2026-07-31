@@ -12,11 +12,13 @@ import { readVeredicto } from "@/lib/results-helpers";
 import {
   createSupabaseServer,
   requireAuthenticatedUser,
+  guardPlausibilidad,
   ensureCreditCharged,
   markPremiumAndClaimPrepaid,
   prefetchMedianaComunaVenta,
   buildMedianaSnapshot,
 } from "@/lib/api-helpers/analisis-pipeline";
+import { desdeBodyLtr } from "@/lib/plausibilidad";
 
 export async function POST(request: Request) {
   try {
@@ -39,13 +41,25 @@ export async function POST(request: Request) {
         ? body.ambasGroupId
         : null;
 
+    // Pasar UF actual explícitamente al motor (antes era módulo-level mutable;
+    // ver audit/sesionA-residual-2/diagnostico.md).
+    // SUBIDO sobre el cobro (PIEZA A): el guard de plausibilidad necesita la UF
+    // para derivar el yield bruto. Es una lectura cacheada con fallback, sin
+    // efectos: moverla no cambia nada del cálculo posterior.
+    const ufValue = await getUFValue();
+
+    // Guard de plausibilidad — ANTES de cobrar. Input imposible ⇒ 422, sin
+    // crédito consumido y sin fila.
+    const plausible = guardPlausibilidad(desdeBodyLtr(body, ufValue), {
+      userId: user.id,
+      ruta: "POST /api/analisis",
+    });
+    if (!plausible.ok) return plausible.response;
+
     const charge = await ensureCreditCharged({ user, prepaidChargeId });
     if (!charge.ok) return charge.response;
     const { prepaidNeedClaim, mode: chargeMode } = charge;
 
-    // Pasar UF actual explícitamente al motor (antes era módulo-level mutable;
-    // ver audit/sesionA-residual-2/diagnostico.md).
-    const ufValue = await getUFValue();
     // Pre-fetch async de la mediana comunal de venta UF/m² para inyectarla al
     // motor síncrono (patrón cap_rate). Defensivo: cae a null sin romper.
     const medianaComuna = await prefetchMedianaComunaVenta(supabase, body, ufValue);
