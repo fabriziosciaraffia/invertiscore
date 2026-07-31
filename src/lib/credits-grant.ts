@@ -112,6 +112,12 @@ export async function grantCredits(
  *
  * Devuelve true si el UPDATE no falló. (No necesita `key`: los campos salen todos
  * de `product`; el `key` solo se usa como source del grant, que acá no ocurre.)
+ *
+ * ILIMITADO MANUAL: si un admin encendió el ilimitado a mano
+ * (unlimited_source='manual'), este flujo automático NO lo pisa — ni para
+ * encenderlo ni para apagarlo. Una decisión de admin solo la deshace un admin,
+ * con el toggle de /admin. Por eso el UPDATE va partido en dos: los campos de
+ * plan siempre, y los del flag solo cuando la procedencia no es manual.
  */
 export async function setPlanFields(
   userId: string,
@@ -124,12 +130,12 @@ export async function setPlanFields(
   const cycleMs = product.billing === "annual" ? ONE_YEAR_MS : ONE_MONTH_MS;
   const subscriptionEndsAt = new Date(now.getTime() + cycleMs).toISOString();
 
+  // 1) Campos de plan: siempre, sin condición.
   const { error } = await supabase
     .from("user_credits")
     .update({
       active_plan: product.plan ?? null,
       billing_period: product.billing ?? null,
-      is_unlimited: product.isUnlimited === true,
       subscription_ends_at: subscriptionEndsAt,
       updated_at: now.toISOString(),
     })
@@ -137,6 +143,27 @@ export async function setPlanFields(
 
   if (error) {
     console.error("[setPlanFields] user_credits update error:", error);
+    return false;
+  }
+
+  // 2) Flag de ilimitado + su procedencia, SALVO que sea manual. El guard va en
+  // el WHERE (no en un read-then-write) para que no haya ventana entre leer la
+  // procedencia y escribir el flag. El .or() con is.null es necesario: en SQL
+  // `unlimited_source <> 'manual'` da NULL —no true— cuando la columna es NULL,
+  // así que un .neq() pelado se comería todas las filas sin procedencia.
+  const esIlimitado = product.isUnlimited === true;
+  const { error: flagError } = await supabase
+    .from("user_credits")
+    .update({
+      is_unlimited: esIlimitado,
+      unlimited_source: esIlimitado ? "subscription" : null,
+      updated_at: now.toISOString(),
+    })
+    .eq("user_id", userId)
+    .or("unlimited_source.is.null,unlimited_source.neq.manual");
+
+  if (flagError) {
+    console.error("[setPlanFields] user_credits is_unlimited update error:", flagError);
     return false;
   }
   return true;

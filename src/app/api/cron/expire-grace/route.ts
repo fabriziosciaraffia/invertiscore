@@ -15,6 +15,13 @@ import { createClient } from "@supabase/supabase-js";
  *    así que sin este barrido un ilimitado cancelado mantendría free pass para
  *    siempre. Solo apaga el flag (el status ya es cancelled).
  *
+ * ILIMITADO MANUAL (user_credits.unlimited_source = 'manual', toggle de /admin):
+ * NINGUNO de los dos barridos lo apaga. Sin esto, encender el toggle sobre un
+ * ex-suscriptor —el caso más típico para dar cortesía— se revertía solo a la
+ * mañana siguiente y sin más rastro que un contador en los logs. El barrido 1
+ * igual cierra el ciclo de la suscripción (cancelled + limpia gracia): lo único
+ * que respeta es el flag.
+ *
  * Idempotente: tras el update las filas ya no matchean su filtro.
  *
  * Auth: Vercel Cron dispara GET con `Authorization: Bearer ${CRON_SECRET}`.
@@ -47,9 +54,11 @@ export async function GET(request: Request) {
   // es más legible y evita ramificar el payload por fila dentro de un loop mixto.
 
   // ── 1 · past_due con gracia vencida ──
+  // Trae unlimited_source para decidir por fila si toca el flag: el ilimitado
+  // MANUAL (toggle de /admin) no se apaga acá — ver el comentario del loop.
   const { data: pastDueRows, error: pdError } = await supabase
     .from("user_credits")
-    .select("user_id")
+    .select("user_id, unlimited_source")
     .eq("subscription_status", "past_due")
     .not("grace_ends_at", "is", null)
     .lte("grace_ends_at", nowIso);
@@ -60,11 +69,18 @@ export async function GET(request: Request) {
   }
 
   // ── 2 · cancelled con ciclo vencido que aún tiene free pass (is_unlimited) ──
+  // Este barrido existe SOLO para apagar el flag, así que el ilimitado manual se
+  // excluye de raíz.
+  //
+  // El filtro va como .or(is null, neq manual) y NO como .neq("manual") a secas:
+  // en SQL `unlimited_source <> 'manual'` es NULL —no true— cuando la columna es
+  // NULL, así que un .neq pelado también se comería las filas sin procedencia.
   const { data: cancelledRows, error: cError } = await supabase
     .from("user_credits")
     .select("user_id")
     .eq("subscription_status", "cancelled")
     .eq("is_unlimited", true)
+    .or("unlimited_source.is.null,unlimited_source.neq.manual")
     .not("subscription_ends_at", "is", null)
     .lte("subscription_ends_at", nowIso);
 
@@ -78,15 +94,24 @@ export async function GET(request: Request) {
   let unlimitedRevoked = 0;
 
   // past_due vencido → cancelled + apaga is_unlimited + limpia grace.
+  //
+  // El ilimitado MANUAL se respeta, pero la fila NO se saltea entera: este
+  // barrido hace DOS cosas independientes —cerrar el ciclo de vida de la
+  // suscripción (cancelled + limpiar gracia) y apagar el free pass— y solo la
+  // segunda es una decisión de admin. Excluir la fila completa dejaría la
+  // suscripción colgada en past_due para siempre. Por eso el payload se arma por
+  // fila en vez de filtrar en la query.
   for (const row of pastDueRows ?? []) {
     try {
       processed++;
+      const esManual = row.unlimited_source === "manual";
       const { error: updErr } = await supabase
         .from("user_credits")
         .update({
           subscription_status: "cancelled",
-          is_unlimited: false,
           grace_ends_at: null,
+          // Solo si el ilimitado NO lo puso un admin a mano.
+          ...(esManual ? {} : { is_unlimited: false, unlimited_source: null }),
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", row.user_id);
@@ -115,6 +140,7 @@ export async function GET(request: Request) {
         .from("user_credits")
         .update({
           is_unlimited: false,
+          unlimited_source: null,
           next_monthly_grant_at: null,
           updated_at: new Date().toISOString(),
         })
