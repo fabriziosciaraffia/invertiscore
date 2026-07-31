@@ -45,7 +45,14 @@ export type GrantOpts = {
 };
 
 /**
- * Inserta un lote de créditos en el ledger. Devuelve true si insertó.
+ * Inserta un lote de créditos en el ledger. Devuelve el ID del lote insertado, o
+ * null si no insertó (dedup o error).
+ *
+ * El id lo necesita el otorgamiento manual desde /admin: su fila de auditoría
+ * apunta al lote concreto en target_id, y sin eso la reversión no tendría a qué
+ * agarrarse. Los callers que solo miran "¿otorgó?" siguen andando igual — null
+ * es falsy, igual que el false de antes.
+ *
  * No toca user_credits (eso lo hace applyPlanCredits para suscripciones).
  */
 export async function grantCredits(
@@ -53,8 +60,8 @@ export async function grantCredits(
   source: string,
   amount: number,
   opts: GrantOpts = {}
-): Promise<boolean> {
-  if (!userId || amount <= 0) return false;
+): Promise<string | null> {
+  if (!userId || amount <= 0) return null;
 
   const supabase = createAdminClient();
   const now = new Date();
@@ -62,32 +69,36 @@ export async function grantCredits(
     ? null
     : new Date(now.getTime() + ONE_YEAR_MS).toISOString();
 
-  const { error } = await supabase.from("credit_grants").insert({
-    user_id: userId,
-    amount,
-    remaining: amount,
-    source,
-    payment_id: opts.paymentId ?? null,
-    granted_at: now.toISOString(),
-    expires_at: expiresAt,
-  });
+  const { data, error } = await supabase
+    .from("credit_grants")
+    .insert({
+      user_id: userId,
+      amount,
+      remaining: amount,
+      source,
+      payment_id: opts.paymentId ?? null,
+      granted_at: now.toISOString(),
+      expires_at: expiresAt,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     // 23505 = unique_violation del índice uq_credit_grants_payment_id: ya hay un lote
     // para este payment_id → dedup ESPERADO (carrera webhook+cron sobre el mismo cargo).
     // El otro proceso ya otorgó; NO es un error real → log informativo, no console.error
-    // (mismo criterio que emitirBoletaDTE con su 23505). Return false igual que siempre.
+    // (mismo criterio que emitirBoletaDTE con su 23505). Return null igual que antes false.
     if (error.code === "23505") {
       console.log(
         "[grantCredits] grant ya existe para payment_id (dedup esperado), skip:",
         opts.paymentId
       );
-      return false;
+      return null;
     }
     console.error("[grantCredits] insert error:", error);
-    return false;
+    return null;
   }
-  return true;
+  return (data?.id as string) ?? null;
 }
 
 /**
@@ -101,6 +112,12 @@ export async function grantCredits(
  *
  * Devuelve true si el UPDATE no falló. (No necesita `key`: los campos salen todos
  * de `product`; el `key` solo se usa como source del grant, que acá no ocurre.)
+ *
+ * ILIMITADO MANUAL: si un admin encendió el ilimitado a mano
+ * (unlimited_source='manual'), este flujo automático NO lo pisa — ni para
+ * encenderlo ni para apagarlo. Una decisión de admin solo la deshace un admin,
+ * con el toggle de /admin. Por eso el UPDATE va partido en dos: los campos de
+ * plan siempre, y los del flag solo cuando la procedencia no es manual.
  */
 export async function setPlanFields(
   userId: string,
@@ -113,12 +130,12 @@ export async function setPlanFields(
   const cycleMs = product.billing === "annual" ? ONE_YEAR_MS : ONE_MONTH_MS;
   const subscriptionEndsAt = new Date(now.getTime() + cycleMs).toISOString();
 
+  // 1) Campos de plan: siempre, sin condición.
   const { error } = await supabase
     .from("user_credits")
     .update({
       active_plan: product.plan ?? null,
       billing_period: product.billing ?? null,
-      is_unlimited: product.isUnlimited === true,
       subscription_ends_at: subscriptionEndsAt,
       updated_at: now.toISOString(),
     })
@@ -126,6 +143,27 @@ export async function setPlanFields(
 
   if (error) {
     console.error("[setPlanFields] user_credits update error:", error);
+    return false;
+  }
+
+  // 2) Flag de ilimitado + su procedencia, SALVO que sea manual. El guard va en
+  // el WHERE (no en un read-then-write) para que no haya ventana entre leer la
+  // procedencia y escribir el flag. El .or() con is.null es necesario: en SQL
+  // `unlimited_source <> 'manual'` da NULL —no true— cuando la columna es NULL,
+  // así que un .neq() pelado se comería todas las filas sin procedencia.
+  const esIlimitado = product.isUnlimited === true;
+  const { error: flagError } = await supabase
+    .from("user_credits")
+    .update({
+      is_unlimited: esIlimitado,
+      unlimited_source: esIlimitado ? "subscription" : null,
+      updated_at: now.toISOString(),
+    })
+    .eq("user_id", userId)
+    .or("unlimited_source.is.null,unlimited_source.neq.manual");
+
+  if (flagError) {
+    console.error("[setPlanFields] user_credits is_unlimited update error:", flagError);
     return false;
   }
   return true;
@@ -196,7 +234,8 @@ export async function applyPlanCredits(
   if (!product.isUnlimited) {
     // Plan con capacidad finita → grant del ciclo (expira en 1 año).
     // source = key completa del catálogo (mensual/anual), no la base product.plan.
-    ok = await grantCredits(userId, key, product.capacity ?? 0, opts);
+    // grantCredits devuelve el id del lote (o null): acá solo interesa si otorgó.
+    ok = (await grantCredits(userId, key, product.capacity ?? 0, opts)) !== null;
   }
 
   const fieldsOk = await setPlanFields(userId, product);

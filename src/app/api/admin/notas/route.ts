@@ -48,25 +48,31 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
 }
 
 /** UUID bien formado. Sin esto, un id basura estalla como 22P02 (500) en vez de 400. */
-function requireUuid(value: unknown, campo: string): string {
+function requireUuid(value: unknown, campo: string, audit: AdminAuditFields = {}): string {
   if (typeof value !== "string" || !UUID_RE.test(value)) {
-    throw new AdminActionError(`${campo} inválido`, 400);
+    throw new AdminActionError(`${campo} inválido`, 400, audit);
   }
   return value;
 }
 
-function requireTexto(value: unknown): string {
+/**
+ * `audit` lleva el contexto de lo que se INTENTÓ (a quién y con qué largo de
+ * texto): sin eso, la fila de error dice "la nota no puede estar vacía" sin
+ * decir nunca sobre qué usuario.
+ */
+function requireTexto(value: unknown, audit: AdminAuditFields = {}): string {
   if (typeof value !== "string") {
-    throw new AdminActionError("El texto de la nota es obligatorio", 400);
+    throw new AdminActionError("El texto de la nota es obligatorio", 400, audit);
   }
   const texto = value.trim();
   if (!texto) {
-    throw new AdminActionError("La nota no puede estar vacía", 400);
+    throw new AdminActionError("La nota no puede estar vacía", 400, audit);
   }
   if (texto.length > TEXTO_MAX) {
     throw new AdminActionError(
       `La nota supera el máximo de ${TEXTO_MAX} caracteres`,
-      400
+      400,
+      audit
     );
   }
   return texto;
@@ -154,10 +160,21 @@ function notaAudit(
 export async function POST(request: Request) {
   return withAdminAction("note_add", async ({ adminUser, sb }) => {
     const body = await readBody(request);
-    const targetUserId = requireUuid(body.targetUserId, "targetUserId");
-    const texto = requireTexto(body.texto);
+    const targetUserId = requireUuid(body.targetUserId, "targetUserId", {
+      targetType: "admin_nota",
+      meta: { targetUserIdRecibido: body.targetUserId ?? null },
+    });
 
+    // ORDEN: existencia del usuario PRIMERO, validación del texto después. Al
+    // revés, un texto vacío sobre un usuario válido dejaba la fila de error con
+    // target_user_id NULL — fuera del índice por el que se consulta su historial.
     const targetEmail = await requireTargetUser(sb, targetUserId);
+    const texto = requireTexto(body.texto, {
+      targetUserId,
+      targetEmail,
+      targetType: "admin_nota",
+      meta: { largoRecibido: typeof body.texto === "string" ? body.texto.length : null },
+    });
 
     const { data, error } = await sb
       .from("admin_notas")
@@ -193,11 +210,19 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   return withAdminAction("note_edit", async ({ sb }) => {
     const body = await readBody(request);
-    const notaId = requireUuid(body.notaId, "notaId");
-    const texto = requireTexto(body.texto);
+    const notaId = requireUuid(body.notaId, "notaId", {
+      targetType: "admin_nota",
+      meta: { notaIdRecibido: body.notaId ?? null },
+    });
 
+    // Mismo orden que en POST: primero se resuelve la nota (que es la que
+    // aporta el target_user_id), después se valida el texto nuevo.
     const { nota, targetEmail } = await readNotaViva(sb, notaId);
     const audit = notaAudit(nota.target_user_id, targetEmail, notaId);
+    const texto = requireTexto(body.texto, {
+      ...audit,
+      meta: { largoRecibido: typeof body.texto === "string" ? body.texto.length : null },
+    });
 
     if (texto === nota.texto) {
       throw new AdminActionError("La nota no cambió", 400, audit);
@@ -231,7 +256,10 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   return withAdminAction("note_delete", async ({ sb }) => {
     const body = await readBody(request);
-    const notaId = requireUuid(body.notaId, "notaId");
+    const notaId = requireUuid(body.notaId, "notaId", {
+      targetType: "admin_nota",
+      meta: { notaIdRecibido: body.notaId ?? null },
+    });
 
     const { nota, targetEmail } = await readNotaViva(sb, notaId);
     const audit = notaAudit(nota.target_user_id, targetEmail, notaId);

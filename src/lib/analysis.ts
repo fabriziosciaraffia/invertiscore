@@ -1561,6 +1561,10 @@ function calcNegociacionScenario(
   metrics: { flujoNetoMensual: number },
   ufClp: number,
   asOf: Date,
+  // Umbral de veredicto (jerarquía de precios): el precio al que el veredicto sube de
+  // banda, tomado de la palanca precio de `distancia_veredicto`. Se RECIBE ya calculado —
+  // acá no se recomputa nada. Ausente ⇒ comportamiento idéntico al previo.
+  umbralVeredicto?: { precioUF: number; veredicto: Veredicto } | null,
 ): NegociacionScenario {
   const vmFrancoUF = input.valorMercadoFranco || input.precio;
   const arriendo = input.arriendo || 0;
@@ -1603,6 +1607,23 @@ function calcNegociacionScenario(
     razon = "Pagas sobre el valor estimado de mercado de la zona. Este precio te alinea con comparables y mejora la matemática.";
   }
 
+  // ── JERARQUÍA DE PRECIOS: el umbral de veredicto MANDA sobre el sugerido ──────────
+  // Regla: si cerrar a un precio hace que el veredicto suba de banda, ese es el número
+  // que vale la pena pelear — por encima de "alinear con comparables" o de "el flujo se
+  // vuelve sostenible", que son criterios más blandos. Y `cerrar_actual` ("no hay caso
+  // para pedir descuento") deja de ser emitible cuando existe un descuento que cambia la
+  // conclusión: era la contradicción más visible del informe.
+  let sugeridoMandadoPorVeredicto = false;
+  if (umbralVeredicto && umbralVeredicto.precioUF < precioSugeridoUF) {
+    precioSugeridoUF = Math.round(umbralVeredicto.precioUF * 10) / 10;
+    modo = "optimizar_flujo";
+    sugeridoMandadoPorVeredicto = true;
+    const destino = umbralVeredicto.veredicto === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
+    razon =
+      `Cerrando en UF ${precioSugeridoUF.toLocaleString("es-CL")} el veredicto sube a ${destino}. ` +
+      `Ese es el número que vale la pena pelear: no es alinearse con comparables, es cambiar la conclusión.`;
+  }
+
   const tirAlSugerido = tirForPrice(input, precioSugeridoUF, ufClp, asOf);
   const tirAlVmFranco = tirForPrice(input, vmFrancoUF, ufClp, asOf);
 
@@ -1632,6 +1653,9 @@ function calcNegociacionScenario(
   }
 
   return {
+    precioUmbralVeredictoUF: umbralVeredicto?.precioUF ?? null,
+    veredictoAlUmbral: umbralVeredicto?.veredicto ?? null,
+    sugeridoMandadoPorVeredicto,
     precioSugeridoUF,
     precioSugeridoCLP: Math.round(precioSugeridoUF * ufClp),
     tirAlSugerido,
@@ -1663,7 +1687,6 @@ export function runAnalysis(
   const cashflowYear1 = calcCashflowYear1(input, metrics, asOf);
   const projections = calcProjections({ input, metrics, plazoVenta: 20, ufClp, asOf });
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
-  const negociacion = calcNegociacionScenario(input, exitScenario.tir, metrics, ufClp, asOf);
   const refinanceScenario = calcRefinanceScenario(input, metrics, projections, 5);
   const score = calcScoreFromMetrics(input, metrics, ufClp, asOf);
   const sensitivity = calcSensitivity(input, score, metrics, ufClp, asOf);
@@ -1837,6 +1860,27 @@ export function runAnalysis(
       .map(([nombre]) => nombre),
     modalidad: "ltr",
   });
+
+  // Negociación DESPUÉS del hallazgo de distancia (antes se calculaba junto al exit):
+  // necesita la palanca precio para aplicar la jerarquía. El reorden es seguro —
+  // calcNegociacionScenario solo depende de input/tir/metrics/uf/asOf, y su resultado
+  // solo se consume en este return.
+  const palancaPrecioVeredicto = hallazgoDistancia?.valor.palancas.find(
+    (l) => l.palanca === "precio",
+  );
+  const negociacion = calcNegociacionScenario(
+    input,
+    exitScenario.tir,
+    metrics,
+    ufClp,
+    asOf,
+    palancaPrecioVeredicto
+      ? {
+          precioUF: palancaPrecioVeredicto.objetivo,
+          veredicto: hallazgoDistancia!.valor.veredictoObjetivo,
+        }
+      : null,
+  );
 
   return {
     score: clamp(score, 0, 100),

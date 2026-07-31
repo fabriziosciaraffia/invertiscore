@@ -504,6 +504,11 @@ function DrawerNegociacion({
   const tirAlSugerido = negData.tirAlSugerido;
   const tirAlVmFranco = negData.tirAlVmFranco;
   const precioLimiteCLP = negData.precioLimiteCLP;
+  // Jerarquía de precios (motor decide, drawer obedece): si el sugerido quedó fijado por
+  // el umbral de veredicto, la escalera lo nombra como tal. Valores TIPADOS del motor.
+  const mandadoPorVeredicto = negData.sugeridoMandadoPorVeredicto === true;
+  const destinoUmbral =
+    negData.veredictoAlUmbral === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
   const tirAlLimite = negData.tirAlLimite;
 
   const fmtFull = (v: number) => {
@@ -612,12 +617,19 @@ function DrawerNegociacion({
     {
       key: "sug",
       nombre: "Sugerido",
-      sub: "cierra acá si puedes",
+      // Cuando el motor fijó el sugerido por el UMBRAL DE VEREDICTO, el sub y el tooltip lo
+      // dicen: no es "un precio mejor", es el precio que cambia la conclusión. Se lee del
+      // campo tipado (negData) — cero recálculo en superficie.
+      sub: mandadoPorVeredicto
+        ? `acá el veredicto sube a ${destinoUmbral}`
+        : "cierra acá si puedes",
       precio: precioSugeridoCLP,
       tir: tirAlSugerido,
       barColor: "var(--franco-text)",
       highlight: true,
-      tooltip: "Precio recomendado por Franco para que la inversión cierre con TIR razonable. Punto de partida para negociar.",
+      tooltip: mandadoPorVeredicto
+        ? `Cerrando en este precio el veredicto pasa a ${destinoUmbral}. Es el umbral donde cambia la conclusión del análisis, no una referencia de mercado — por eso manda sobre cualquier otro precio sugerido.`
+        : "Precio recomendado por Franco para que la inversión cierre con TIR razonable. Punto de partida para negociar.",
     },
     {
       key: "lim",
@@ -626,12 +638,15 @@ function DrawerNegociacion({
       // Si null + no-sobreprecio → reescritura clara. Default: "máximo que conviene pagar".
       sub: precioLimiteCLP === null
         ? "sin límite definido — tu precio ya rinde bajo el umbral 6%"
-        : "máximo que conviene pagar",
+        : "máximo que conviene pagar por retorno",
       precio: precioLimiteCLP,
       tir: tirAlLimite,
       barColor: "var(--signal-red)",
       highlight: false,
-      tooltip: "Precio máximo bajo el cual la TIR cae bajo 6%. Sobre 6% es el umbral mínimo para que la inversión sea más atractiva que instrumentos de bajo riesgo (depósitos a plazo, fondos mutuos conservadores).",
+      // Semántica EXPLÍCITAMENTE distinta del Sugerido cuando ese viene del umbral de
+      // veredicto: uno es techo de RETORNO (TIR 6%), el otro es umbral de CONCLUSIÓN.
+      // Nombrarlas igual era la raíz de tener tres precios sin regla entre ellos.
+      tooltip: "Precio máximo bajo el cual la TIR cae bajo 6%. Es un techo de RETORNO, no el precio que cambia el veredicto: sobre 6% es el mínimo para que la inversión sea más atractiva que instrumentos de bajo riesgo (depósitos a plazo, fondos mutuos conservadores).",
     },
   ].filter((f) => {
     // PARTE 7.1: ocultar fila Límite cuando esSobreprecio + null (combo ilógico).
