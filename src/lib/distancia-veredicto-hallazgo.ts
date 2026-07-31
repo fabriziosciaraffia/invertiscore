@@ -63,6 +63,9 @@ export const topeParaVeredicto = (v: Veredicto): number =>
 /** Tope duro del plazo del crédito (años). Sobre esto ningún banco chileno presta. */
 export const DIST_PLAZO_TOPE_ANIOS = 30;
 
+/** Tramo comercial del plazo: los bancos ofrecen 15/20/25/30, no años sueltos. */
+export const DIST_PLAZO_TRAMO_ANIOS = 5;
+
 /** Precisión de la bisección de arriendo/precio, en puntos porcentuales. */
 const DIST_PREC_PTS = 0.1;
 
@@ -179,19 +182,38 @@ export function buildHallazgoDistanciaVeredicto(p: {
     }
 
     // Plazo: entero, del actual+1 al tope. Barrido lineal (≤ 30 evaluaciones, sin bisección
-    // porque el dominio es discreto y chico).
-    if (Number.isFinite(p.plazoCredito) && p.plazoCredito > 0) {
+    // porque el dominio es discreto y chico). El plazo exacto que cruza NO es el que se
+    // emite: los bancos chilenos ofrecen tramos de 5 años (15/20/25/30), así que un "28
+    // años" es un número que el usuario no puede pedir. Se redondea hacia ARRIBA al
+    // múltiplo de 5 siguiente (más plazo ⇒ cuota más baja ⇒ el cruce se mantiene) y se
+    // RE-VERIFICA el veredicto en ese plazo comercial antes de emitirlo: si por cualquier
+    // no-monotonía el redondeo no cruzara, la palanca no se emite en vez de prometer algo
+    // falso. Si ya estás en el tope (30), no hay tramo al que moverse ⇒ tampoco se emite.
+    if (
+      Number.isFinite(p.plazoCredito) &&
+      p.plazoCredito > 0 &&
+      p.plazoCredito < DIST_PLAZO_TOPE_ANIOS
+    ) {
       for (let anios = Math.floor(p.plazoCredito) + 1; anios <= DIST_PLAZO_TOPE_ANIOS; anios++) {
-        if (alcanzaMeta(p.veredictoAtPatch({ plazoCredito: anios }), meta)) {
+        if (!alcanzaMeta(p.veredictoAtPatch({ plazoCredito: anios }), meta)) continue;
+        const comercial = Math.min(
+          DIST_PLAZO_TOPE_ANIOS,
+          Math.ceil(anios / DIST_PLAZO_TRAMO_ANIOS) * DIST_PLAZO_TRAMO_ANIOS,
+        );
+        // Re-verificación en el tramo comercial (no se asume la monotonía del motor).
+        if (
+          comercial > p.plazoCredito &&
+          alcanzaMeta(p.veredictoAtPatch({ plazoCredito: comercial }), meta)
+        ) {
           out.push({
             palanca: "plazo",
-            objetivo: anios,
+            objetivo: comercial,
             actual: p.plazoCredito,
-            deltaPct: Math.round((anios / p.plazoCredito - 1) * 1000) / 10,
-            deltaAbs: anios - p.plazoCredito,
+            deltaPct: Math.round((comercial / p.plazoCredito - 1) * 1000) / 10,
+            deltaAbs: comercial - p.plazoCredito,
           });
-          break;
         }
+        break;
       }
     }
 
