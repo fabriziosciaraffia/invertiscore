@@ -18,6 +18,7 @@ import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../../../src/lib/engines/short-term-score";
 import { buildStrHallazgos } from "../../../src/lib/str-hallazgos";
 import type { Hallazgo } from "../../../src/lib/types";
+import { metricaValorONull } from "../../../src/lib/types";
 import { STR_GE_SEEDS, loadFrozen, type FrozenFixture, type Sintesis, type StrGeSeed } from "./str-seeds";
 import { buildHallazgoRentabilidadStr } from "../../../src/lib/rentabilidad-str-hallazgo";
 import { buildHallazgoSensibilidadStr } from "../../../src/lib/sensibilidad-str-hallazgo";
@@ -150,7 +151,9 @@ export function strFactsFromSeed(r: StrRecompute): StrBaseline {
     score: r.score.score,
     N: r.hz.length,
     tirPct: exit?.tirAnual ?? null,
-    multiplicadorCapital: exit?.multiplicadorCapital ?? null,
+    // Pie cero (fase 1-2): multiplicadorCapital pasó a MetricaSobreCapital;
+    // metricaValorONull extrae el número (y tolera el number crudo legacy).
+    multiplicadorCapital: metricaValorONull(exit?.multiplicadorCapital),
     equityCLP: exit?.equityCLP ?? null,
     valorVenta: exit?.valorVenta ?? null,
     capitalInvertido: r.rec.capitalInvertido ?? null,
