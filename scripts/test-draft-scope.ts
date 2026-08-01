@@ -39,7 +39,8 @@ g.crypto = { randomUUID: () => `TAB-${++seqTab}` };
 // solo dentro de sus funciones— así que alcanza con que el shim exista antes de
 // la primera llamada.
 import {
-  adoptarDraftInvitado, cleanupOrphans, getTabId, keyFor, mostRecentDraft, removeDraft, writeDraft,
+  adoptarDraftInvitado, adoptarEnEstaPestana, cleanupOrphans, descartarBorradores, getTabId,
+  keyFor, mostRecentDraft, mostrarBannerDraft, removeDraft, writeDraft,
 } from "../src/components/formulario-v4/wizardV4Draft";
 import { purgarBorradores, purgarBorradoresYPestana, purgarDraftsLegacyUnaVez, OWNER_INVITADO } from "../src/lib/draft-keys";
 
@@ -322,6 +323,153 @@ test("el logout SÍ corta el hilo de la pestaña", () => {
   // Y el siguiente montaje acuña un tabId distinto.
   const m2 = montarWizard(A);
   assert.notEqual(m2.tabId, m1.tabId);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+seccion("6 · HIGIENE DEL BANNER — secuencias, no llamadas sueltas");
+
+/**
+ * Las tres acciones del banner ("Empezar de cero", "Retomar", mostrarse o no)
+ * viven en `wizardV4Draft` justamente para que estos tests llamen al MISMO
+ * código que corre en producción. El hook es un llamador de una línea. Si la
+ * conducta viviera adentro del hook, acá solo se podría probar una réplica — y
+ * una réplica se edita junto al arreglo, así que no prueba nada.
+ *
+ * Todo lo de abajo es SECUENCIA: montaje → acción → montaje siguiente. El bug
+ * de estos tres nunca se ve en una llamada aislada; se ve en lo que sobrevive
+ * al recargar.
+ */
+
+/** Simula abrir una pestaña NUEVA: el tabId se acuña de cero en el próximo montaje. */
+function nuevaPestana(): void {
+  g.sessionStorage.removeItem("franco_wizard_v4_tab");
+}
+
+/**
+ * Navegador de usuario RECURRENTE: la purga retroactiva ya corrió alguna vez.
+ * Va SIEMPRE antes de `sembrar`, si no el primer `montarWizard` se lleva las
+ * semillas (la purga barre todo borrador v4 la primera vez, por diseño).
+ */
+function purgaYaCorrida(): void {
+  g.localStorage.setItem("franco_drafts_purgados_v1", "ya");
+}
+
+/** Todas las keys de borrador v4 de un dueño, tal como quedaron en el storage. */
+function keysDe(owner: string): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < g.localStorage.length; i++) {
+    const k = g.localStorage.key(i);
+    if (k && k.startsWith(`franco_wizard_v4_draft__${owner}__`)) out.push(k);
+  }
+  return out;
+}
+
+test("con DOS borradores, 'Empezar de cero' no deja ninguno vivo al recargar", () => {
+  purgaYaCorrida();
+  // Dos pestañas del mismo usuario dejaron borrador. Una tercera monta y recibe
+  // la oferta del más reciente — la otra queda huérfana pero sigue ahí.
+  sembrar(A, TAB1, "el-huerfano", 60_000);
+  sembrar(A, TAB2, "el-ofrecido", 0);
+  sembrar(B, TAB1, "de-otro-usuario"); // testigo del scope
+
+  const m1 = montarWizard(A);
+  assert.equal(m1.draft, keyFor(A, TAB2), "debía ofrecerse el más reciente");
+
+  // Click en "Empezar de cero".
+  descartarBorradores(A);
+
+  // Recarga: no puede quedar NADA que ofrecer.
+  const m2 = montarWizard(A);
+  assert.equal(m2.draft, null, "un borrador sobrevivió al descarte y revivió al recargar");
+  assert.equal(keysDe(A).length, 0, `quedaron keys de A: ${keysDe(A).join(", ")}`);
+
+  // Y el descarte NO se pasó de scope: el borrador de B sigue intacto.
+  assert.equal(mostRecentDraft(B)?.draft.answers.precio, "de-otro-usuario");
+});
+
+test("con TRES borradores tampoco: 'Empezar de cero' es de cero", () => {
+  purgaYaCorrida();
+  sembrar(A, TAB1, "uno", 60_000);
+  sembrar(A, TAB2, "dos", 30_000);
+  sembrar(A, "tab-tres", "tres", 0);
+  montarWizard(A);
+  descartarBorradores(A);
+  assert.equal(keysDe(A).length, 0, `quedaron keys de A: ${keysDe(A).join(", ")}`);
+  assert.equal(montarWizard(A).draft, null);
+});
+
+test("'Retomar' tres veces seguidas deja UNA key, no cuatro", () => {
+  // Pestaña original: llena el wizard y deja su borrador.
+  const m0 = montarWizard(A);
+  writeDraft(A, m0.tabId, {
+    answers: { modalidad: "ltr", precio: "5.500", direccion: "Suecia 750" },
+    completed: { mod: true }, current: "pie", history: ["mod"], mode: "flow",
+  } as never, 0);
+
+  // Tres pestañas nuevas lo retoman, una tras otra. Cada vuelta: montaje →
+  // click en "Retomar" → persistencia debounced en la key de ESA pestaña.
+  for (let vuelta = 1; vuelta <= 3; vuelta++) {
+    nuevaPestana();
+    const m = montarWizard(A);
+    assert.ok(m.draft, `la vuelta ${vuelta} no recibió oferta de borrador`);
+    adoptarEnEstaPestana(A, m.tabId, m.draft);
+    writeDraft(A, m.tabId, {
+      answers: { modalidad: "ltr", precio: "5.500", direccion: "Suecia 750" },
+      completed: { mod: true }, current: "pie", history: ["mod"], mode: "flow",
+    } as never, vuelta);
+  }
+
+  const keys = keysDe(A);
+  assert.equal(keys.length, 1, `cada 'Retomar' agregó una key: quedaron ${keys.length}`);
+  // Y el borrador que quedó es el bueno, no una cáscara.
+  assert.equal(mostRecentDraft(A)?.draft.answers.precio, "5.500");
+});
+
+test("'Retomar' en la MISMA pestaña (reload) no se borra a sí mismo", () => {
+  // La key ofrecida y la propia son la misma: no hay nada que mover, y sobre
+  // todo no hay que borrarla.
+  const m0 = montarWizard(A);
+  writeDraft(A, m0.tabId, {
+    answers: { modalidad: "str", precio: "3.300" },
+    completed: { mod: true }, current: "pie", history: ["mod"], mode: "flow",
+  } as never, 0);
+
+  const m1 = montarWizard(A); // recarga, mismo tabId
+  assert.equal(m1.draft, keyFor(A, m0.tabId));
+  adoptarEnEstaPestana(A, m1.tabId, m1.draft);
+  assert.equal(mostRecentDraft(A)?.draft.answers.precio, "3.300", "se borró el propio borrador");
+});
+
+test("el banner se ofrece en la pantalla 1 y NO en la 2", () => {
+  purgaYaCorrida();
+  sembrar(A, TAB1, "6.400");
+  const m = montarWizard(A);
+  assert.ok(m.draft, "el montaje debía ofrecer el borrador");
+  const ofrecido = mostRecentDraft(A)!.draft;
+
+  // Pantalla 1: recién montado, sin historial.
+  assert.equal(
+    mostrarBannerDraft(ofrecido, { current: "mod", history: [] }),
+    true,
+    "el banner tiene que aparecer en la primera pantalla",
+  );
+
+  // Pantalla 2: el usuario ya eligió informe y avanzó.
+  assert.equal(
+    mostrarBannerDraft(ofrecido, { current: "dir", history: ["mod"] }),
+    false,
+    "el banner se está renderizando fuera de la primera pantalla",
+  );
+
+  // Y en una pantalla profunda tampoco.
+  assert.equal(
+    mostrarBannerDraft(ofrecido, { current: "pie", history: ["mod", "dir", "tipo", "precio"] }),
+    false,
+    "el banner sobrevive hasta el fondo del wizard",
+  );
+
+  // Sin borrador pendiente no hay banner ni en la primera.
+  assert.equal(mostrarBannerDraft(null, { current: "mod", history: [] }), false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
