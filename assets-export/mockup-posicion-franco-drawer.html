@@ -1,0 +1,356 @@
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  MOCKUP VINCULANTE · "La posición de Franco" abre drawer + apertura por veredicto
+  ═══════════════════════════════════════════════════════════════════════════
+  Dos cambios conectados:
+  1. respuestaDirecta abre con la RESPUESTA (hoy abre con el CAP rate).
+  2. La card de distancia sale de la pirámide y su drawer pasa a abrirse desde
+     "La posición de Franco", que gana affordance.
+
+  Esto NO es código de la app. Contrato de diseño: nada se implementa hasta aprobar.
+
+  PROCEDENCIA
+  -----------
+  · TOKENS / TIPOGRAFÍA = reales (franco-design-system Capa 5, columna LIGHT).
+  · TEXTOS "hoy" = REALES, leídos de prod (4d82187b · a0c70a9b · bc1017b7).
+  · TEXTOS "propuesto" = redacción de muestra sobre los MISMOS valores tipados
+    del motor. La prosa final la escribe la IA con la directiva nueva.
+
+  SECCIONES
+  ---------
+  A · Apertura por veredicto — antes/después, los 3 casos
+  B · Affordance de "La posición de Franco"
+  C · Qué abre en cada veredicto (incluye la decisión abierta de COMPRAR)
+  D · La pirámide sin la card de distancia
+  E · Notas de implementación
+-->
+<meta charset="utf-8" />
+<title>Mockup · Posición de Franco → drawer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg:#F6F6F7; --card:#FFFFFF; --sunken:#F0F0F2; --text:#0F0F0F;
+    --text-secondary:#52525B; --text-muted:#6B6B72; --text-tertiary:#6A6A71;
+    --border:#DDDDE1; --border-hover:#CBCBD1; --border-strong:#B0B0B8; --signal:#C8323C;
+    --shadow:0 6px 18px rgba(15,15,15,.08), 0 1px 3px rgba(15,15,15,.05);
+    --serif:"Source Serif 4",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:40px 24px 96px;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6}
+  .wrap{max-width:1000px;margin:0 auto}
+  .doc-h1{font-family:var(--serif);font-weight:700;font-size:32px;margin:0 0 6px;letter-spacing:-.01em}
+  .doc-sub{color:var(--text-secondary);font-size:14px;margin:0 0 40px;max-width:72ch}
+  .sec{margin:54px 0 0}
+  .sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:6px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+  .sec-n{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary)}
+  .sec-t{font-family:var(--serif);font-weight:700;font-size:21px}
+  .sec-d{color:var(--text-secondary);font-size:13.5px;margin:12px 0 22px;max-width:76ch}
+  .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-tertiary);margin:24px 0 8px}
+  .nota{font-size:12.5px;color:var(--text-muted);margin:10px 0 0;max-width:78ch}
+  .nota b{color:var(--text)}
+
+  /* Hero — bloque veredicto (réplica del real) */
+  .hero{background:var(--card);border:.5px solid var(--border);border-radius:16px;padding:22px 24px;max-width:680px}
+  .hero-k{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-tertiary);margin:0 0 12px}
+  .hero-q{font-family:var(--serif);font-weight:700;font-size:22px;line-height:1.22;margin:0 0 14px}
+  .hero-p{font-size:14.5px;line-height:1.62;color:var(--text-secondary);max-width:65ch;margin:0}
+  .hero-p .abre{background:rgba(200,50,60,.09);border-bottom:1px solid rgba(200,50,60,.35);padding:1px 2px;color:var(--text);font-weight:500}
+  .hero-p .dist{background:rgba(15,15,15,.06);border-bottom:1px solid rgba(15,15,15,.2);padding:1px 2px}
+
+  /* Posición de Franco */
+  .posf{border-left:3px solid var(--signal);border-radius:0 8px 8px 0;background:color-mix(in srgb,var(--signal) 5%,transparent);padding:15px 17px;max-width:680px;
+        transition:transform .18s ease,box-shadow .18s ease}
+  .posf.target{cursor:pointer}
+  .posf.target:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+  .posf-l{font-family:var(--mono);font-size:10px;letter-spacing:.06em;font-weight:600;text-transform:uppercase;color:var(--signal);display:block;margin-bottom:7px}
+  .posf-p{font-size:13.5px;line-height:1.58;font-style:italic;margin:0}
+  .posf-foot{margin-top:12px;padding-top:10px;border-top:1px solid rgba(200,50,60,.2);display:flex;justify-content:flex-end}
+  .posf-link{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-tertiary)}
+  .posf.target:hover .posf-link{color:var(--text)}
+
+  /* Pirámide simulada */
+  .pir{display:flex;flex-direction:column;gap:10px;max-width:680px}
+  .pcard{background:var(--card);border:.5px solid var(--border);border-radius:14px;padding:12px 14px}
+  .pcard.n1{border-color:var(--border-strong);padding:16px 18px}
+  .pcard.n3{background:var(--sunken);padding:10px 12px}
+  .pk{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-tertiary)}
+  .pt{font-family:var(--serif);font-weight:700;font-size:14px;margin-top:4px}
+  .n1 .pt{font-size:17px}
+  .prow{display:grid;gap:10px}
+  .c2{grid-template-columns:1fr 1fr}
+  .c3{grid-template-columns:repeat(3,1fr)}
+  .tachado{opacity:.42;position:relative}
+  .tachado::after{content:"sale de la pirámide";position:absolute;right:12px;top:50%;transform:translateY(-50%);
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--signal)}
+
+  .ab{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:860px){.ab{grid-template-columns:1fr}}
+  .ab-h{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:8px}
+  .pill{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;padding:2px 7px;border:1px solid var(--border-strong);border-radius:999px;color:var(--text-secondary);margin-left:6px;vertical-align:middle}
+  .pill.rec{border-color:var(--signal);color:var(--signal)}
+  code{font-family:var(--mono);font-size:12px;background:var(--sunken);padding:1px 5px;border-radius:3px}
+  ul.notas{font-size:13.5px;color:var(--text-secondary);max-width:80ch;padding-left:20px}
+  ul.notas li{margin-bottom:9px}
+  ul.notas b{color:var(--text)}
+  @media(max-width:560px){
+    body{padding:28px 16px 72px}
+    .doc-h1{font-size:24px}
+    .c2,.c3{grid-template-columns:1fr}
+    .tachado::after{position:static;display:block;transform:none;margin-top:6px}
+  }
+</style>
+
+<div class="wrap">
+
+<h1 class="doc-h1">La posición de Franco abre el drawer · el veredicto abre con el veredicto</h1>
+<p class="doc-sub">
+  Contrato de diseño. Los textos marcados “hoy” son reales de producción; los “propuesto”
+  son redacción de muestra sobre los mismos valores tipados del motor — la prosa final la
+  escribe la IA con la directiva nueva. Tema light.
+</p>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">A</span><span class="sec-t">La respuesta va primero</span></div>
+  <p class="sec-d">
+    Hoy los tres veredictos abren igual: con el CAP rate o con el aporte mensual. El usuario
+    pregunta “¿conviene?” y tiene que leer cuatro líneas para saberlo — el badge lo dice, pero
+    la prosa no. En <span style="background:rgba(200,50,60,.09)">rojo</span>, la apertura nueva;
+    en <span style="background:rgba(15,15,15,.06)">gris</span>, la mención breve de la distancia.
+  </p>
+
+  <div class="lbl">4d82187b · AJUSTA SUPUESTOS 75 · recuperable</div>
+  <div class="ab">
+    <div>
+      <div class="ab-h">Hoy</div>
+      <div class="hero">
+        <p class="hero-k">Veredicto</p>
+        <h3 class="hero-q">¿Conviene o no conviene?</h3>
+        <p class="hero-p">Tu CAP rate es 5,1% — +1,1 pts sobre la referencia de mercado (4,0%). Rinde por sobre lo que el mercado paga para este precio. El precio por m² (UF 80) está 18% bajo la mediana de Providencia (UF 98): entras barato en una comuna cara. El peso real está en el arriendo declarado: con $817.000 el flujo queda negativo en $73.936 al mes.</p>
+      </div>
+    </div>
+    <div>
+      <div class="ab-h">Propuesto</div>
+      <div class="hero">
+        <p class="hero-k">Veredicto</p>
+        <h3 class="hero-q">¿Conviene o no conviene?</h3>
+        <p class="hero-p"><span class="abre">Todavía no: tienes que ajustar los supuestos.</span> El CAP rate rinde 5,1% —sobre la referencia de mercado— y entras 18% bajo la mediana comunal, pero con $817.000 de arriendo el flujo queda negativo en $73.936 al mes. <span class="dist">Estás a 4,3% de arriendo de que esto sea un Comprar.</span></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="lbl">a0c70a9b · BUSCAR OTRA 43 · estructural</div>
+  <div class="ab">
+    <div>
+      <div class="ab-h">Hoy</div>
+      <div class="hero">
+        <p class="hero-k">Veredicto</p>
+        <h3 class="hero-q">¿Conviene o no conviene?</h3>
+        <p class="hero-p">Tienes que poner $806.014 al mes de tu bolsillo — un aporte fuerte respecto al dividendo. Antes de avanzar, confirma que puedes sostenerlo de forma estable mes a mes: es plata que sale de tu bolsillo todos los meses, no del arriendo.</p>
+      </div>
+    </div>
+    <div>
+      <div class="ab-h">Propuesto</div>
+      <div class="hero">
+        <p class="hero-k">Veredicto</p>
+        <h3 class="hero-q">¿Conviene o no conviene?</h3>
+        <p class="hero-p"><span class="abre">No conviene.</span> Tienes que poner $806.014 al mes de tu bolsillo, y el arriendo de referencia de la zona ($580.000) no llega ni a la mitad de lo que haría falta para amortiguar el dividendo. La brecha no se cierra ajustando supuestos.</p>
+      </div>
+    </div>
+  </div>
+  <p class="nota">
+    En el estructural <b>no se menciona distancia</b>: no hay una que prometer. La última frase
+    hace el trabajo sin cifra, como manda §16.
+  </p>
+
+  <div class="lbl">bc1017b7 · COMPRAR 76</div>
+  <div class="ab">
+    <div>
+      <div class="ab-h">Hoy</div>
+      <div class="hero">
+        <p class="hero-k">Veredicto</p>
+        <h3 class="hero-q">¿Conviene o no conviene?</h3>
+        <p class="hero-p">Tu CAP rate es 6,6% — +2,6 pts sobre la referencia de mercado (4,0%). Rinde por sobre lo que el mercado paga para este precio. Pero el arriendo que declaraste ($1.200.000) está 47% sobre la mediana de la zona ($814.000).</p>
+      </div>
+    </div>
+    <div>
+      <div class="ab-h">Propuesto</div>
+      <div class="hero">
+        <p class="hero-k">Veredicto</p>
+        <h3 class="hero-q">¿Conviene o no conviene?</h3>
+        <p class="hero-p"><span class="abre">Conviene, con una condición.</span> El CAP rate rinde 6,6% sobre la referencia de mercado y el flujo es positivo, pero todo eso se apoya en un arriendo declarado de $1.200.000 que está 47% sobre la mediana de la zona ($814.000).</p>
+      </div>
+    </div>
+  </div>
+  <p class="nota">
+    <b>“Conviene” nunca es incondicional cuando hay un supuesto que lo sostiene.</b> La apertura
+    afirma el veredicto y la misma oración avisa que viene un matiz — sin eso, la prosa
+    contradiría al párrafo siguiente. Es §2.4 de la doctrina: apertura sobria + razón sintética.
+  </p>
+  <p class="nota">
+    <b>Presupuesto:</b> el techo Plan C son 85 palabras totales. Las tres aperturas propuestas
+    caben (48 · 42 · 40 palabras, medidas) porque la apertura <em>reemplaza</em> texto descriptivo, no se
+    suma. Si en algún caso no cupiera, el guard PLANC ya hace retry — no hay que aflojar el techo.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">B</span><span class="sec-t">Affordance de “La posición de Franco”</span></div>
+  <p class="sec-d">
+    El bloque conserva su anatomía exacta (border-left Signal Red, wash 5%, label, cursiva).
+    Gana lo mismo que ya tienen las cards de la pirámide: <code>franco-card-target</code>
+    (lift −3px + sombra al hover) y un link mono uppercase al pie. Cero elementos nuevos en
+    el sistema — es el lenguaje de drawers que el usuario ya aprendió.
+  </p>
+
+  <div class="lbl">Hoy — sin affordance</div>
+  <div class="posf">
+    <span class="posf-l">La posición de Franco</span>
+    <p class="posf-p">El veredicto pasa a COMPRAR si el arriendo llega a $851.946 al mes — $34.946 sobre lo que declaraste. Antes de avanzar, verifica ese número contra tres publicaciones reales de departamentos similares en Providencia.</p>
+  </div>
+
+  <div class="lbl">Propuesto — clickeable (pasá el mouse por encima)</div>
+  <div class="posf target">
+    <span class="posf-l">La posición de Franco</span>
+    <p class="posf-p">El veredicto pasa a COMPRAR si el arriendo llega a $851.946 al mes — $34.946 sobre lo que declaraste. Antes de avanzar, verifica ese número contra tres publicaciones reales de departamentos similares en Providencia.</p>
+    <div class="posf-foot"><span class="posf-link">Ver las vías →</span></div>
+  </div>
+  <p class="nota">
+    El divisor del pie va en Signal Red al 20%, no en <code>--franco-border</code>: dentro de un
+    bloque con wash rojo, el hairline neutro se ve sucio. Es el único ajuste de token.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">C</span><span class="sec-t">Qué abre en cada veredicto</span></div>
+
+  <div class="lbl">AJUSTA SUPUESTOS y BUSCAR OTRA recuperable → drawer “Lo que te separa”</div>
+  <div class="posf target">
+    <span class="posf-l">La posición de Franco</span>
+    <p class="posf-p">El veredicto pasa a COMPRAR si el arriendo llega a $851.946 al mes…</p>
+    <div class="posf-foot"><span class="posf-link">Ver las vías →</span></div>
+  </div>
+  <p class="nota">Abre el drawer ya construido: las tres vías, “qué significa”, “qué haces con esto”.</p>
+
+  <div class="lbl">BUSCAR OTRA estructural → mismo drawer, rama estructural</div>
+  <div class="posf target">
+    <span class="posf-l">La posición de Franco</span>
+    <p class="posf-p">Este deal no cierra: para que el veredicto siquiera subiera a AJUSTA SUPUESTOS, el precio tendría que caer un 33,6%…</p>
+    <div class="posf-foot"><span class="posf-link">Por qué no cierra →</span></div>
+  </div>
+  <p class="nota">
+    Mismo componente, rama estructural (ya existe): qué encontramos, qué significa, qué haces.
+    Solo cambia el label del link — prometer “vías” donde no las hay sería el mismo error que
+    ya corregimos en el kicker de la card.
+  </p>
+
+  <div class="lbl">COMPRAR → decisión abierta <span class="pill rec">elegí una</span></div>
+  <div class="ab">
+    <div>
+      <div class="ab-h">Opción A — sin drawer (conservadora)</div>
+      <div class="posf">
+        <span class="posf-l">La posición de Franco</span>
+        <p class="posf-p">Este depto tiene fundamentos reales — metro a 100 metros, precio/m² bajo la mediana comunal y flujo positivo si el arriendo se sostiene…</p>
+      </div>
+      <p class="nota">
+        Queda exactamente como hoy. Honesto: en COMPRAR no hay distancia que mostrar, y no se
+        inventa contenido para llenar un hueco. Contra: el bloque se vuelve clickeable en dos
+        de tres veredictos y no en el tercero — inconsistencia que el usuario nota.
+      </p>
+    </div>
+    <div>
+      <div class="ab-h">Opción B — abre “Margen del veredicto” <span class="pill">recomendada</span></div>
+      <div class="posf target">
+        <span class="posf-l">La posición de Franco</span>
+        <p class="posf-p">Este depto tiene fundamentos reales — metro a 100 metros, precio/m² bajo la mediana comunal y flujo positivo si el arriendo se sostiene…</p>
+        <div class="posf-foot"><span class="posf-link">Cuánto aguanta →</span></div>
+      </div>
+      <p class="nota">
+        En COMPRAR la pregunta que sigue no es “qué falta” sino “cuánto aguanta esto antes de
+        dejar de convenir”, y ese drawer <b>ya existe y está bien construido</b> (hallazgo
+        <code>sensibilidad</code>, presente en el 100% de los COMPRAR). Cero código nuevo, el
+        bloque es clickeable siempre, y la cadena narrativa cierra: el veredicto de arriba
+        muestra su margen, los de abajo su distancia.
+      </p>
+    </div>
+  </div>
+  <p class="nota">
+    <b>Recomiendo B.</b> El riesgo es que el mismo elemento abra drawers distintos según
+    veredicto; lo mitiga el label del link, que siempre dice qué vas a ver. Si preferís A, el
+    bloque queda sin affordance en COMPRAR y se implementa igual de rápido.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">D</span><span class="sec-t">La pirámide vuelve a 9</span></div>
+  <p class="sec-d">
+    La banda de “Lo que te separa” sale del render. El hallazgo sigue en el motor, en el PDF y
+    en el prompt — solo deja de ocupar espacio en la web, donde competía por atención con los
+    hallazgos que sí explican el veredicto.
+  </p>
+  <div class="pir">
+    <div class="pcard n1"><span class="pk">Ojo antes de firmar · flujo mensual</span><div class="pt">Lo que sale de tu bolsillo cada mes</div></div>
+    <div class="pcard tachado"><span class="pk">Lo que te separa</span><div class="pt">Está a un arriendo de distancia de Comprar.</div></div>
+    <div class="prow c2">
+      <div class="pcard"><span class="pk">Puesta a punto</span><div class="pt">Dejarlo listo para arrendar</div></div>
+      <div class="pcard"><span class="pk">Rendimiento operativo</span><div class="pt">Lo que renta hoy vs lo que debería</div></div>
+    </div>
+    <div class="prow c3">
+      <div class="pcard n3"><span class="pk">Precio por metro</span></div>
+      <div class="pcard n3"><span class="pk">Estructura de la compra</span></div>
+      <div class="pcard n3"><span class="pk">Margen del veredicto</span></div>
+    </div>
+    <div class="prow c3">
+      <div class="pcard n3"><span class="pk">Patrimonio a 10 años</span></div>
+      <div class="pcard n3"><span class="pk">Retorno total</span></div>
+      <div class="pcard n3"><span class="pk">Plusvalía histórica</span></div>
+    </div>
+  </div>
+  <p class="nota">
+    Con N=9 el nivel 3 son 6 chips → <code>filasNivel3</code> los reparte en 3+3 (hoy con N=10
+    hacía 4+3 con la banda aparte). El encabezado vuelve a decir “9 hallazgos”.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-h"><span class="sec-n">E</span><span class="sec-t">Notas de implementación</span></div>
+  <ul class="notas">
+    <li>
+      <b>El estado ya está donde hace falta.</b> <code>HeroLTR</code> se renderiza DENTRO de
+      <code>SubjectCardGrid</code>, que es quien maneja <code>activeDrawer</code>. Basta pasarle
+      un callback <code>onOpenPosicion</code> — no hay que levantar estado ni tocar
+      <code>results-client</code>.
+    </li>
+    <li>
+      <b>La distancia sale de la secuencia prev/next.</b> <code>drawerSequence</code> se arma
+      recorriendo <code>ordenarHallazgosPiramide</code>; al sacar la card, el drawer deja de
+      estar en las flechas y pasa a abrirse suelto. Correcto: ya no es una parada de la
+      pirámide, es el detalle de la posición.
+    </li>
+    <li>
+      <b>Lo que NO se toca:</b> el hallazgo en el motor, <code>DocumentoLTR</code> (el PDF sigue
+      listándolo entre los hallazgos y usando su pie condicionado), el gather del prompt, el
+      guard de cifras, y el espejo bidireccional del drawer de sensibilidad.
+    </li>
+    <li>
+      <b>Golden Set:</b> N vuelve a 9 en LTR no-COMPRAR. Re-baseline esperado solo en
+      <code>N</code> e <code>hallazgoIds</code>… <em>salvo</em> que el baseline lea el conteo del
+      motor y no del render — en ese caso no se mueve nada. Se verifica al correr, no se asume.
+    </li>
+    <li>
+      <b>findingDisplay de <code>distancia_veredicto</code>:</b> queda sin uso en la web pero
+      NO se borra — el PDF y cualquier superficie futura lo necesitan, y el costo de mantenerlo
+      es cero.
+    </li>
+  </ul>
+</section>
+
+</div>

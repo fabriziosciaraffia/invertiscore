@@ -168,6 +168,7 @@ export function SubjectCardGrid({
   return (
     <div id="informe-pro-section" className="mb-8">
       <HeroLTR
+        onOpenDrawer={setActiveDrawer}
         data={aiAnalysis}
         currency={currency}
         onCurrencyChange={onCurrencyChange}

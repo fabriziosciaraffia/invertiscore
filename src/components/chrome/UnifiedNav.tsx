@@ -46,6 +46,7 @@ import type { User } from "@supabase/supabase-js";
 import FrancoLogo from "@/components/franco-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { createClient } from "@/lib/supabase/client";
+import { purgarBorradoresYPestana } from "@/lib/draft-keys";
 import { useLandingTheme } from "@/components/landing/LandingTheme";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { LABEL_ANALIZAR, LABEL_ANALIZAR_LOGUEADO, type OrigenCTA } from "@/lib/cta-analizar";
@@ -237,6 +238,9 @@ export function UnifiedNav({
   const handleSignOut = async () => {
     setDropOpen(false);
     setMenuOpen(false);
+    // ANTES del signOut — ver la nota en logout-button.tsx. Va fuera del try
+    // para que corra aunque Supabase falle: el borrador se purga igual.
+    purgarBorradoresYPestana();
     try {
       const supabase = supabaseRef.current ?? createClient();
       await supabase.auth.signOut();

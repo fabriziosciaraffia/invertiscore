@@ -20,6 +20,7 @@ import {
   type WizardV4Answers,
 } from "./wizardV4Nodes";
 import {
+  adoptarDraftInvitado,
   cleanupOrphans,
   getTabId,
   keyFor,
@@ -28,6 +29,7 @@ import {
   writeDraft,
   type PersistedDraft,
 } from "./wizardV4Draft";
+import { purgarDraftsLegacyUnaVez } from "@/lib/draft-keys";
 
 type Mode = "flow" | "edit" | "reask";
 
@@ -86,7 +88,16 @@ export interface UseWizardV4 {
   canGoBack: boolean;
 }
 
-export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: WizardV4Event }): UseWizardV4 {
+export function useWizardV4({
+  resume,
+  owner,
+  onEvent,
+}: {
+  resume: boolean;
+  /** `user.id` o `guest`. `null` = todavía resolviendo: no se toca el storage. */
+  owner: string | null;
+  onEvent?: WizardV4Event;
+}): UseWizardV4 {
   const [nav, setNav] = useState<WizardV4Nav>(DEFAULT_NAV);
   const [draftPendiente, setDraftPendiente] = useState<PersistedDraft | null>(null);
   const mounted = useRef(false);
@@ -111,11 +122,24 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
   //    ?resume=1 (vuelta post-registro, misma pestaña) rehidrata directo al
   //    resumen; si no, se ofrece vía banner y el form arranca limpio. ──
   useEffect(() => {
-    if (mounted.current) return;
+    // Sin dueño resuelto no se lee ni se escribe nada: leer durante la ventana
+    // de carga volvería a mostrar el borrador con el scope equivocado.
+    if (owner == null || mounted.current) return;
     mounted.current = true;
+    // La purga va ANTES de acuñar el tabId, para que el orden no importe: si
+    // alguna vez volviera a tocar sessionStorage, el id se crea después y el
+    // round-trip sobrevive igual. (Hoy `purgarBorradores` ya no lo toca.)
+    //
+    // Purga retroactiva, una vez por navegador: los borradores previos al scope
+    // por dueño no se pueden atribuir a nadie, así que no hay forma segura de
+    // conservarlos. Incluye los de v1/v2/v3, que tienen el mismo problema.
+    purgarDraftsLegacyUnaVez();
     tabId.current = getTabId();
-    cleanupOrphans(keyFor(tabId.current));
-    const candidate = mostRecentDraft();
+    // Round-trip invitado → registro: el borrador `guest` de ESTA pestaña pasa
+    // a nombre del usuario recién logueado. Único cruce de scope permitido.
+    adoptarDraftInvitado(tabId.current, owner);
+    cleanupOrphans(keyFor(owner, tabId.current));
+    const candidate = mostRecentDraft(owner);
     if (!candidate) return;
     offeredKey.current = candidate.key;
     const d = candidate.draft;
@@ -134,19 +158,20 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
     } else {
       setDraftPendiente(d);
     }
-  }, [resume]);
+  }, [resume, owner]);
 
   // ── Persistencia debounced (500ms) en la key de ESTA pestaña. No persiste
   //    mientras hay un draft pendiente sin resolver (evita pisar con el form
   //    limpio). Versión monotónica por escritura. ──
   useEffect(() => {
-    if (draftPendiente || !tabId.current) return;
+    if (draftPendiente || !tabId.current || !owner) return;
     const t = setTimeout(() => {
       // Solo vale la pena guardar si el usuario avanzó algo.
       if (nav.current === "mod" && nav.history.length === 0 && Object.keys(nav.answers).length === 0) {
         return;
       }
       draftVersion.current = writeDraft(
+        owner,
         tabId.current,
         {
           answers: nav.answers,
@@ -159,7 +184,7 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
       );
     }, 500);
     return () => clearTimeout(t);
-  }, [nav, draftPendiente]);
+  }, [nav, draftPendiente, owner]);
 
   const patchAnswers = useCallback((patch: Partial<WizardV4Answers>) => {
     setNav((s) => ({ ...s, answers: { ...s.answers, ...patch } }));
@@ -273,13 +298,13 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
 
   const discardDraft = useCallback(() => {
     // Borra la key de esta pestaña + la del draft que se había ofrecido.
-    removeDraft(tabId.current, offeredKey.current ?? undefined);
+    removeDraft(owner ?? "", tabId.current, offeredKey.current ?? undefined);
     offeredKey.current = null;
     draftVersion.current = 0;
     setDraftPendiente(null);
     highWater.current = 0; // reinicia la barra al empezar de cero
     setNav(DEFAULT_NAV);
-  }, []);
+  }, [owner]);
 
   // Chevron atrás: oculto solo en la primera pantalla (sin historial). El resumen
   // SÍ lleva chevron (semántica = volver al último nodo del historial).

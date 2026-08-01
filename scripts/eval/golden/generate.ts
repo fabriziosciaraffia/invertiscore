@@ -62,8 +62,26 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       const strings = ((): { path: string; s: string }[] => { const o: { path: string; s: string }[] = []; collectStrings(ai, o); return o; })();
       const rd = norm(ai.conviene?.respuestaDirecta_clp ?? "");
 
-      // A1 (HARD) — apertura == fraseCanonica del #1 por decisividad (una moneda).
-      if (coronaFrase && !rd.startsWith(coronaFrase.slice(0, Math.min(40, coronaFrase.length)))) bump("A1.apertura");
+      // A1 (HARD) — apertura == RESPUESTA al veredicto + fraseCanonica del #1 (una moneda).
+      // El contrato cambió: el motor antepone la respuesta ("Conviene." / "No conviene." /
+      // "Todavía no: tienes que ajustar los supuestos.") antes de la apertura fija, para que
+      // la primera línea conteste la pregunta que el usuario hizo. El check verifica AMBAS
+      // piezas y en ese orden — es más estricto que el anterior, no menos: antes bastaba con
+      // que la fraseCanonica estuviera al inicio; ahora además la respuesta tiene que estar
+      // y la fraseCanonica tiene que seguirla.
+      const RESPUESTAS_VEREDICTO = [
+        "Todavía no: tienes que ajustar los supuestos.",
+        "Conviene, con una condición.",
+        "No conviene.",
+        "Conviene.",
+      ];
+      const respUsada = RESPUESTAS_VEREDICTO.find((r) => rd.startsWith(r));
+      if (!respUsada) {
+        bump("A1.apertura");
+      } else if (coronaFrase) {
+        const resto = rd.slice(respUsada.length).trim();
+        if (!resto.startsWith(coronaFrase.slice(0, Math.min(40, coronaFrase.length)))) bump("A1.apertura");
+      }
 
       // A2 (HARD) — fabricación de cifra de zona: el flag interno _catchRootAFlag se
       // setea SOLO si la fabricación sobrevivió los reintentos (robusto, no parsea logs).
