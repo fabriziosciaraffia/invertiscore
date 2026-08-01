@@ -21,11 +21,13 @@ import {
 } from "./wizardV4Nodes";
 import {
   adoptarDraftInvitado,
+  adoptarEnEstaPestana,
   cleanupOrphans,
+  descartarBorradores,
   getTabId,
   keyFor,
   mostRecentDraft,
-  removeDraft,
+  mostrarBannerDraft,
   writeDraft,
   type PersistedDraft,
 } from "./wizardV4Draft";
@@ -84,6 +86,8 @@ export interface UseWizardV4 {
   resumeDraft: () => void;
   /** Descarta el draft ofrecido y arranca limpio. */
   discardDraft: () => void;
+  /** ¿Se muestra el banner de retomar? (solo en la primera pantalla). */
+  bannerDraftVisible: boolean;
   /** ¿Se puede mostrar el chevron atrás? (oculto en primera pantalla y en edición). */
   canGoBack: boolean;
 }
@@ -276,35 +280,46 @@ export function useWizardV4({
   }, [goBack]);
 
   const resumeDraft = useCallback(() => {
-    setDraftPendiente((d) => {
-      if (d) {
-        // A partir de acá esta pestaña es la dueña del draft: continúa la versión
-        // monotónica desde la ofrecida y escribe en su propia key.
-        draftVersion.current = d.version ?? 0;
-        setNav({
-          current: d.current ?? "mod",
-          history: d.history ?? [],
-          answers: d.answers ?? {},
-          completed: d.completed ?? {},
-          mode: "flow",
-          editContext: null,
-          reactionSource: null,
-          dir: "forward",
-        });
-      }
-      return null;
+    const d = draftPendiente;
+    if (!d) return;
+    // A partir de acá esta pestaña es la dueña del draft: continúa la versión
+    // monotónica desde la ofrecida y escribe en su propia key. La de origen se
+    // retira — si sobrevive, cada "Retomar" deja una key más.
+    draftVersion.current = d.version ?? 0;
+    adoptarEnEstaPestana(owner ?? "", tabId.current, offeredKey.current);
+    offeredKey.current = null;
+    setNav({
+      current: d.current ?? "mod",
+      history: d.history ?? [],
+      answers: d.answers ?? {},
+      completed: d.completed ?? {},
+      mode: "flow",
+      editContext: null,
+      reactionSource: null,
+      dir: "forward",
     });
-  }, []);
+    setDraftPendiente(null);
+  }, [draftPendiente, owner]);
 
   const discardDraft = useCallback(() => {
-    // Borra la key de esta pestaña + la del draft que se había ofrecido.
-    removeDraft(owner ?? "", tabId.current, offeredKey.current ?? undefined);
+    // "Empezar de cero" = ningún borrador del dueño sobrevive, no solo dos.
+    descartarBorradores(owner ?? "");
     offeredKey.current = null;
     draftVersion.current = 0;
     setDraftPendiente(null);
     highWater.current = 0; // reinicia la barra al empezar de cero
     setNav(DEFAULT_NAV);
   }, [owner]);
+
+  // El banner solo vive en la primera pantalla. Si el usuario arranca a llenar
+  // sin resolverlo, la oferta se retira sola: dejarla colgada bloquearía la
+  // persistencia el resto de la sesión (el efecto de escritura no corre con un
+  // draft pendiente). No borra nada — el borrador viejo sigue en storage y se
+  // vuelve a ofrecer en el próximo montaje.
+  const bannerDraftVisible = mostrarBannerDraft(draftPendiente, nav);
+  useEffect(() => {
+    if (draftPendiente && !bannerDraftVisible) setDraftPendiente(null);
+  }, [draftPendiente, bannerDraftVisible]);
 
   // Chevron atrás: oculto solo en la primera pantalla (sin historial). El resumen
   // SÍ lleva chevron (semántica = volver al último nodo del historial).
@@ -331,6 +346,7 @@ export function useWizardV4({
     gateNoBack,
     resumeDraft,
     discardDraft,
+    bannerDraftVisible,
     canGoBack,
   };
 }

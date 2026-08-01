@@ -282,8 +282,9 @@ export function WizardV4({
           </div>
         </div>
 
-        {/* Banner de retomar draft */}
-        {w.draftPendiente && (
+        {/* Banner de retomar draft. Vive en el layout del <main>, fuera del
+            router de pantallas → sin el gate se renderiza en las 12 pantallas. */}
+        {w.bannerDraftVisible && (
           <div className="mb-6 rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
             <p className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1.5">
               Análisis sin terminar

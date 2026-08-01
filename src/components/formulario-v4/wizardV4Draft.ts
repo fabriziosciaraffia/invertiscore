@@ -223,4 +223,79 @@ export function removeDraft(owner: string, tabId: string, extraKey?: string): vo
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CONDUCTA DEL BANNER "análisis sin terminar"
+//
+// Las tres funciones de abajo son la conducta de las dos acciones del banner y
+// de su visibilidad. Viven acá y no dentro del hook a propósito: el hook es un
+// componente React y no se puede montar en el script de tests, así que si la
+// lógica vive adentro solo se puede probar una RÉPLICA — y una réplica que se
+// edita junto al arreglo no prueba nada (fue exactamente lo que dejó pasar la
+// regresión del tabId). El hook es un llamador de una línea; el test llama al
+// mismo código que corre en producción.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * ¿Corresponde mostrar el banner de retomar?
+ *
+ * Solo en la PRIMERA pantalla. El banner vive en el layout del `<main>`, fuera
+ * del router de pantallas, así que sin esta condición se renderiza en las 12
+ * pantallas del wizard — ofreciendo "retomar" a alguien que ya va por el pie.
+ */
+export function mostrarBannerDraft(
+  draftPendiente: PersistedDraft | null,
+  nav: { current: NodeId; history: NodeId[] },
+): boolean {
+  if (!draftPendiente) return false;
+  return nav.current === "mod" && nav.history.length === 0;
+}
+
+/**
+ * "Empezar de cero" — borra TODOS los borradores del dueño actual.
+ *
+ * No alcanza con borrar la de esta pestaña y la ofrecida: con tres o más keys
+ * las huérfanas sobreviven al descarte y reviven en el próximo montaje, porque
+ * `mostRecentDraft` escanea todas las del dueño. "Empezar de cero" tiene que
+ * significar exactamente eso.
+ *
+ * El scope por dueño sigue intacto: nunca toca keys de otro usuario.
+ */
+export function descartarBorradores(owner: string): number {
+  if (!owner) return 0;
+  let n = 0;
+  try {
+    for (const { key, owner: dueno } of keysConDueno()) {
+      if (dueno !== owner) continue;
+      localStorage.removeItem(key);
+      n++;
+    }
+  } catch {
+    /* ignore */
+  }
+  return n;
+}
+
+/**
+ * "Retomar" — esta pestaña pasa a ser la dueña del borrador ofrecido.
+ *
+ * El borrador puede venir de OTRA pestaña (`mostRecentDraft` cruza pestañas
+ * dentro del mismo dueño). Al retomarlo, esta pestaña empieza a escribir en su
+ * propia key; si la de origen queda viva, cada "Retomar" agrega una key más —
+ * es el motor de la acumulación. Se borra la de origen, salvo que ya SEA la de
+ * esta pestaña (reload o adopción invitado→registro: ahí no hay nada que mover).
+ */
+export function adoptarEnEstaPestana(
+  owner: string,
+  tabId: string,
+  offeredKey: string | null,
+): void {
+  if (!owner || !offeredKey) return;
+  if (offeredKey === keyFor(owner, tabId)) return;
+  try {
+    localStorage.removeItem(offeredKey);
+  } catch {
+    /* ignore */
+  }
+}
+
 export { keyFor };
