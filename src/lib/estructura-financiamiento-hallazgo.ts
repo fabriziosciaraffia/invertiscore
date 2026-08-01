@@ -56,6 +56,24 @@ function buildFrase(p: {
   const market = fmtTasa(p.marketPct);
   const spread = `${Math.abs(p.spreadBps)} pts`;
 
+  // Pie cero (fase 1-2): con pie 0 el diagnóstico honesto es "financiamiento
+  // 100%", no "pie bajo el óptimo" (no hay pie que subir gradualmente: la
+  // estructura es otra). classifyPieLevel(0) = problematico ⇒ el driver acá
+  // solo puede ser "pie" o "ambos"; el guard driver!=="tasa" es defensivo.
+  if (p.piePct === 0 && p.driver !== "tasa") {
+    if (p.driver === "ambos")
+      return (
+        `Estás financiando el 100% de la propiedad y con la tasa sobre el mercado: sin pie, ` +
+        `el crédito y la cuota quedan en su punto más alto, y la tasa (${tasa}%) suma ` +
+        `${spread} sobre la referencia (${market}%).`
+      );
+    return (
+      `Estás financiando el 100% de la propiedad: sin pie, el crédito y la cuota quedan ` +
+      `en su punto más alto y todo el resultado descansa en el flujo mensual. ` +
+      `La tasa (${tasa}%) está en mejor nivel.`
+    );
+  }
+
   switch (p.overall) {
     case "optimo":
       // optimo ⇒ ambos optimo (worst de dos = optimo solo si los dos lo son).
