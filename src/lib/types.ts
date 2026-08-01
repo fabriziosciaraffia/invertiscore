@@ -351,9 +351,10 @@ export interface HallazgoCapRate {
     scope: "nacional" | "comuna";
     modalidad: "ltr" | "str" | "ambas";
   };
-  // favorable si capRate ≥ referencia; adverso si <. (La frase puede decir "en
-  // línea" cuando |gap| es mínimo, pero la señal-máquina es binaria.)
-  direccion: "favorable" | "adverso";
+  // favorable si capRate ≥ referencia; adverso si <. "neutral" cuando |gap| < 0,2
+  // (paquete A, familia 6 del censo): "rinde en línea con el mercado" no es ni
+  // ventaja ni advertencia — la etiqueta ya no desdice a la frase.
+  direccion: "favorable" | "adverso" | "neutral";
   decisividad: number; // 0..1 — Δdecisión calibrada (calcDecisividades, E2)
   // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
   magnitudContinua?: number;
@@ -380,6 +381,13 @@ export interface HallazgoFlujoMensual {
     dividendoMensualCLP: number;   // divisor de la decisividad (:224)
     ratioSobreDividendo: number;   // |aporte| / dividendo, pre-saturación (≥0)
     modalidad: "ltr" | "str" | "ambas";
+    // Rama del cierre de la frase "acotada" (paquete A, familia 1 del censo): el consuelo
+    // ("la plusvalía puede compensarlo") solo se emite cuando es verdad. "plusvalia" =
+    // veredicto no-BUSCAR y plusvalía histórica ≥ umbral real; "estable" = plusvalía débil o
+    // negativa (el cierre no la invoca); "ninguno" = veredicto BUSCAR OTRA (sin consuelo).
+    // Persistido para que el render de la card reproduzca la MISMA rama (bit-consistencia).
+    // Ausente (filas legacy) ⇒ el render cae a "plusvalia" (texto pre-fix, byte-idéntico).
+    consuelo?: "plusvalia" | "estable" | "ninguno";
   };
   // favorable si el aporte ≥ 0 (el arriendo cubre todo); adverso si < 0 (pones
   // plata de tu bolsillo). El signo NO determina decisividad — la magnitud sí.
@@ -418,11 +426,11 @@ export interface HallazgoSobreprecio {
     n: number;                   // N de ventas usadas para la mediana
     comuna: string;              // nombre de la comuna de la mediana — nombra el nivel en el ksub (R2). "" si no disponible
   };
-  // DIRECCIÓN INVERTIDA respecto a cap_rate/flujo: en o BAJO la mediana =
-  // favorable (entras barato); SOBRE la mediana = adverso (pagas caro). Más caro
-  // = peor. (La frase puede decir "en línea" cuando |desv| ≤ 2; la señal-máquina
-  // es binaria: favorable si desv ≤ 0.)
-  direccion: "favorable" | "adverso";
+  // DIRECCIÓN INVERTIDA respecto a cap_rate/flujo: BAJO la mediana = favorable
+  // (entras barato); SOBRE la mediana = adverso (pagas caro). Más caro = peor.
+  // "neutral" cuando |desv| ≤ 2 (paquete A, familia 6 del censo): "pagas lo justo"
+  // no es ni ventaja ni advertencia — la etiqueta ya no desdice a la frase.
+  direccion: "favorable" | "adverso" | "neutral";
   decisividad: number; // 0..1 — Δdecisión calibrada (calcDecisividades, E2)
   // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
   magnitudContinua?: number;

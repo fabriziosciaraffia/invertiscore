@@ -106,6 +106,9 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
 - Antes de cada commit: `tsc` limpio (exit 0) + lint del archivo tocado.
 - **Scripts de diagnóstico/QA** (`scripts/of-*`): facturación, créditos y pruebas de correo. Corren con `node --env-file=.env.local [--import tsx] scripts/of-*.mjs`. Untracked, NO se commitean.
 
+## Testing
+- **Los tests con shim de storage no modelan el debounce de 500ms.** Cualquier operación que borre y reescriba necesita verificación en navegador midiendo el instante intermedio.
+
 ## Entorno y seguridad
 - Variables de entorno: editalas **solo** en VS Code (`.env.local`) o en el dashboard de Vercel. **Nunca en terminal.**
 - **Nunca** pegues keys/secrets en el chat ni en logs — solo nombres de variables.
@@ -119,6 +122,7 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
 - Mostrá el diff antes de que se apruebe un commit.
 - **Los reportes de los agentes también van en tuteo chileno, sin voseo.** Aplica al texto que el agente escribe para el usuario, no solo al copy del producto (ya se coló voseo 3 veces).
 - **QA vía browser: cada cifra reportada va con la URL exacta desde donde se leyó.** Sin URL la cifra no cuenta. Un mockup abierto en otra pestaña ya generó un bloqueante falso que costó un goal completo de diagnóstico.
+- **Al mover un dato entre keys de storage: copiar primero, borrar después.** Nunca borrar y después escribir. El shim de los tests es instantáneo; el navegador real tiene debounce, y en esa ventana el dato no existe en ningún lado. Apareció dos veces: en `adoptarDraftInvitado` (invitado→registro) y en `adoptarEnEstaPestana` ("Retomar"). La segunda la cazó el paseo por el navegador, no los 25 tests.
 - **Constraints y esquema se verifican LEYENDO el catálogo** (`pg_constraint`, `information_schema.columns`, `pg_indexes`), nunca insertando filas de prueba: dev y prod comparten base, así que una fila de prueba es una fila en producción.
 - **La extensión Claude-in-Chrome puede fingir bugs de UI.** Síntoma: los clicks dejan de disparar handlers pero el foco y el tecleo siguen funcionando. Es la extensión, no la app — no persigas el bug en el código. Recovery: pestaña nueva o recargar la extensión.
 

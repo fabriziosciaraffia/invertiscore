@@ -34,7 +34,12 @@ type Currency = "CLP" | "UF";
 // de signo que el resto de los helpers.
 const dec1 = (n: number) => n.toFixed(1).replace(".", ",").replace("-", "−");
 const pctStr = (n: number) => dec1(n) + "%";
-const multStr = (n: number) => "×" + dec1(n);
+// Multiplicador a 2 decimales RECORTADOS — misma precisión que card (findingDisplay),
+// hero y la prosa (exit.multiplicadorCapital a 2 dec). Familia 7 del censo: antes el
+// drawer decía ×1,5 mientras la card decía ×1,45. El gate anti-no-op de los stress
+// sigue comparando a 1 decimal (round1) — solo cambia el display.
+const multStr = (n: number) =>
+  "×" + n.toFixed(2).replace(/0$/, "").replace(/\.$/, "").replace(".", ",").replace("-", "−");
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 // ── GRUPO A · clasificar SOBRE LO MOSTRADO (una regla, un lugar) ────────────────

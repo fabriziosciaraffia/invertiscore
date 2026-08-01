@@ -91,19 +91,26 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         kick: "Precio por metro",
         title,
         kpi: `${sobre ? "+" : ""}${Math.round(v.desviacionPct)}%`,
-        kpiRed: sobre, // pagar sobre la mediana = críticamente adverso (mockup)
+        // Rojo solo fuera de la banda "en línea": un +1% con dot neutral no puede
+        // cargar Signal Red (la etiqueta y el KPI dirían cosas distintas).
+        kpiRed: sobre && !enLinea,
         ksub: `${sobre ? "sobre" : "bajo"} la mediana ${geo} · UF ${pct1(v.sujetoUfM2)} vs UF ${pct1(v.medianaComunaUfM2)} /m²`,
         procedencia: "Mediana de publicación de venta de la comuna, no transacción",
       };
     }
     case "cap_rate": {
       const v = h.valor;
+      // Banda "en línea" (|gap| < 0,2 — dirección neutral): el ksub no puede decir
+      // "bajo/sobre el mercado" mientras el dot dice "Leve" y la prosa "en línea".
+      const capEnLinea = Math.abs(v.gapPts) < 0.2;
       return {
         kick: "Rendimiento operativo",
         title: "Lo que renta hoy vs lo que debería",
         kpi: `${pct1(v.capRatePct)}%`,
         kpiRed: false,
-        ksub: `cap rate · ${pct1(Math.abs(v.gapPts))} pts ${v.gapPts < 0 ? "bajo" : "sobre"} el mercado (${pct1(v.capRefPct)}%)`,
+        ksub: capEnLinea
+          ? `cap rate · en línea con el mercado (${pct1(v.capRefPct)}%)`
+          : `cap rate · ${pct1(Math.abs(v.gapPts))} pts ${v.gapPts < 0 ? "bajo" : "sobre"} el mercado (${pct1(v.capRefPct)}%)`,
       };
     }
     case "flujo_mensual": {
@@ -208,7 +215,9 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
       const v = h.valor;
       // KPI = patrimonio absoluto (D1: "KPI en UF"; togglea CLP/UF como capex). ksub = el
       // multiplicador + lo aportado. Título direction-aware (mismas 3 bandas que la frase).
-      const multFmt = "×" + (Math.round(v.multiplicador * 10) / 10).toFixed(1).replace(".", ",");
+      // 2 decimales recortados — misma precisión que la fraseCanonica del builder y que el
+      // multiplicador que la prosa recibe del exit (familia 7: mata el ×1,5 vs ×1,45).
+      const multFmt = "×" + v.multiplicador.toFixed(2).replace(/0$/, "").replace(/\.$/, "").replace(".", ",");
       const adverso = v.multiplicador < v.corteAdverso;
       const favorable = v.multiplicador >= v.corteFavorable;
       const patrimonioFmt = currency === "UF" ? fmtUF(valorUF > 0 ? v.patrimonioCLP / valorUF : 0) : fmtCLP(v.patrimonioCLP);
@@ -372,7 +381,9 @@ function fraseCanonicaCard(h: Hallazgo, currency: "CLP" | "UF", valorUF: number)
     const abs = Math.abs(v.flujoNetoMensualCLP);
     const montoFmt = currency === "UF" ? fmtUF(valorUF > 0 ? abs / valorUF : 0) : fmtCLP(abs);
     const ratio = v.dividendoMensualCLP > 0 ? abs / v.dividendoMensualCLP : 0;
-    return buildFraseFlujo(montoFmt, h.direccion, ratio).fraseCanonica;
+    // v.consuelo reproduce la rama seeded (familia 1); ausente (legacy) ⇒ default
+    // "plusvalia" dentro de buildFraseFlujo = texto pre-fix, byte-idéntico.
+    return buildFraseFlujo(montoFmt, h.direccion, ratio, v.consuelo).fraseCanonica;
   }
   return h.fraseCanonica;
 }

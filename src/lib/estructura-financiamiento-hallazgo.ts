@@ -54,7 +54,14 @@ function buildFrase(p: {
   const pie = fmtPie(p.piePct);
   const tasa = fmtTasa(p.tasaPct);
   const market = fmtTasa(p.marketPct);
-  const spread = `${Math.abs(p.spreadBps)} pts`;
+  // Spread de DISPLAY derivado de las tasas YA redondeadas a 1 decimal — el lector debe
+  // poder verificar la resta con los números que ve en la misma frase (antes: "62 pts"
+  // junto a 4,7% vs 4,1%, que dan 60). El spread interno del motor (fh.tasa.spread_bps,
+  // sobre tasas sin redondear) NO cambia: sigue en valor.spreadBps para gates/auditoría.
+  const spreadDisplayPts = Math.abs(
+    Math.round((Math.round(p.tasaPct * 10) / 10 - Math.round(p.marketPct * 10) / 10) * 100),
+  );
+  const spread = `${spreadDisplayPts} pts`;
 
   // Pie cero (fase 1-2): con pie 0 el diagnóstico honesto es "financiamiento
   // 100%", no "pie bajo el óptimo" (no hay pie que subir gradualmente: la
@@ -82,20 +89,24 @@ function buildFrase(p: {
         `(en línea con la referencia de mercado, ${market}%). No hay palanca evidente que mover.`
       );
 
+    // "aceptable" es un factor NETO POSITIVO (etiqueta "A favor") con una optimización
+    // disponible — la frase abre por la fortaleza y cierra con la mejora como palanca,
+    // no como advertencia (familia 6 del censo: la etiqueta ya no desdice al texto).
     case "aceptable":
       if (p.driver === "pie")
         return (
-          `Tu estructura de financiamiento está bien, con un margen menor por el pie: ` +
-          `${pie}% queda algo bajo el óptimo de ${PIE_OPTIMO_PCT}%. La tasa (${tasa}%) está en buen nivel.`
+          `Tu estructura de financiamiento está bien: la tasa (${tasa}%) está en buen nivel y el ` +
+          `pie de ${pie}% cumple. Si puedes acercarlo al óptimo de ${PIE_OPTIMO_PCT}%, la dejas sólida.`
         );
       if (p.driver === "tasa")
         return (
-          `Tu estructura de financiamiento está bien, con un margen menor por la tasa: ` +
-          `${tasa}% deja ${spread} sobre la referencia de mercado (${market}%). El pie (${pie}%) está en nivel adecuado.`
+          `Tu estructura de financiamiento está bien: el pie (${pie}%) está en nivel adecuado y la ` +
+          `tasa (${tasa}%) queda apenas ${spread} sobre la referencia de mercado (${market}%). ` +
+          `Cotizar en otro banco puede cerrar ese margen.`
         );
       return (
-        `Tu estructura de financiamiento está bien: el pie (${pie}%) y la tasa (${tasa}%) ` +
-        `dejan un margen menor, sin un punto débil claro.`
+        `Tu estructura de financiamiento está bien: el pie (${pie}%) y la tasa (${tasa}%) cumplen, ` +
+        `con espacio menor de optimización en ambos.`
       );
 
     case "mejorable":
@@ -141,8 +152,8 @@ function buildTitular(p: { overall: FinancingHealthLevel; driver: "pie" | "tasa"
     case "optimo":
       return "Tu financiamiento está sólido: pie y tasa bien puestos.";
     case "aceptable":
-      if (p.driver === "pie") return "Tu financiamiento está bien; el pie deja un margen menor.";
-      if (p.driver === "tasa") return "Tu financiamiento está bien; la tasa deja un margen menor.";
+      if (p.driver === "pie") return "Tu financiamiento está bien; el pie puede afinarse.";
+      if (p.driver === "tasa") return "Tu financiamiento está bien; la tasa puede afinarse.";
       return "Tu financiamiento está bien, sin un punto débil claro.";
     case "mejorable":
       if (p.driver === "pie") return "Tu financiamiento tiene margen: el pie te deja corto.";

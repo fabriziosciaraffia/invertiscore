@@ -110,7 +110,7 @@ export function buildHallazgoPuestaAPunto(p: {
   const fraseCanonica =
     `Departamento de ${p.antiguedad} años: para captar arriendo de mercado, ` +
     `considera unos UF ${ufFmt} (${clpFmt}) de puesta a punto — cerca del ${pct}% ` +
-    `de tu inversión inicial. No es flipping: es dejarlo en estándar de arriendo.`;
+    `de tu inversión inicial. No es remodelar para revender: es dejarlo en estándar de arriendo.`;
 
   const titular =
     p.capex.montoUF > 0

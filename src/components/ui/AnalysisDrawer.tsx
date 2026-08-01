@@ -1439,7 +1439,7 @@ function DrawerCapexPuestaAPunto({
   return (
     <div>
       <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
-        <span>No es flipping: es dejar el depto en estándar de arriendo para captar el precio de mercado.</span>
+        <span>No es remodelar para revender: es dejar el depto en estándar de arriendo para captar el precio de mercado.</span>
         <InfoTooltip content="Pintura, pisos, cocina/baño al día. Un usado sin puesta a punto suele arrendar bajo el precio de mercado de la zona." />
       </p>
 
@@ -1525,6 +1525,9 @@ function DrawerCapRate({
 }) {
   const { capRatePct, capRefPct, gapPts } = hallazgo.valor;
   const adverso = hallazgo.direccion === "adverso"; // rinde bajo la referencia
+  // Banda "en línea" (|gap| < 0,2 — direccion "neutral" en hallazgos nuevos). Se deriva
+  // del gap y no de direccion para cubrir también filas legacy persistidas (binarias).
+  const enLinea = Math.abs(gapPts) < 0.2;
   const precioCLP = results.metrics?.precioCLP ?? 0;
   const arriendoActual = results.metrics?.ingresoMensual ?? 0;
 
@@ -1616,7 +1619,7 @@ function DrawerCapRate({
         }}
       >
         <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-          {adverso ? "Para rendir como el mercado" : "Ya rinde sobre el mercado"}
+          {adverso ? "Para rendir como el mercado" : enLinea ? "Rinde en línea con el mercado" : "Ya rinde sobre el mercado"}
         </p>
         {adverso ? (
           <>
@@ -1628,6 +1631,10 @@ function DrawerCapRate({
               Hoy arriendas en {fmt(arriendoActual)}. Para rendir como la referencia de mercado ({pct(capRefPct)}%) necesitarías arrendar en torno a {fmt(arriendoObjetivo)} al mes — o pagar menos por el depto.
             </p>
           </>
+        ) : enLinea ? (
+          <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
+            Tu arriendo de {fmt(arriendoActual)} al mes renta lo esperable para la referencia de mercado ({pct(capRefPct)}%). Ni ventaja ni castigo por este lado: el caso se decide en las otras piezas.
+          </p>
         ) : (
           <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
             Tu arriendo de {fmt(arriendoActual)} al mes ya renta por sobre la referencia de mercado ({pct(capRefPct)}%). El activo trabaja a tu favor.
