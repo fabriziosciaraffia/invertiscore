@@ -281,8 +281,16 @@ export function descartarBorradores(owner: string): number {
  * El borrador puede venir de OTRA pestaña (`mostRecentDraft` cruza pestañas
  * dentro del mismo dueño). Al retomarlo, esta pestaña empieza a escribir en su
  * propia key; si la de origen queda viva, cada "Retomar" agrega una key más —
- * es el motor de la acumulación. Se borra la de origen, salvo que ya SEA la de
- * esta pestaña (reload o adopción invitado→registro: ahí no hay nada que mover).
+ * es el motor de la acumulación.
+ *
+ * MUEVE, no borra — igual que `adoptarDraftInvitado`. Borrar la de origen y
+ * esperar a que la persistencia debounced (500ms) escriba la nueva deja una
+ * ventana con CERO borradores: una recarga ahí adentro se lleva el trabajo.
+ * Copiar primero y borrar después hace que el borrador exista siempre en alguna
+ * key; la escritura debounced después solo lo pisa con lo mismo o más.
+ *
+ * No hace nada si la ofrecida ya ES la de esta pestaña (reload, o adopción
+ * invitado→registro): ahí no hay nada que mover.
  */
 export function adoptarEnEstaPestana(
   owner: string,
@@ -290,8 +298,11 @@ export function adoptarEnEstaPestana(
   offeredKey: string | null,
 ): void {
   if (!owner || !offeredKey) return;
-  if (offeredKey === keyFor(owner, tabId)) return;
+  const propia = keyFor(owner, tabId);
+  if (offeredKey === propia) return;
   try {
+    const raw = localStorage.getItem(offeredKey);
+    if (raw !== null) localStorage.setItem(propia, raw);
     localStorage.removeItem(offeredKey);
   } catch {
     /* ignore */

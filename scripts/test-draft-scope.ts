@@ -425,6 +425,29 @@ test("'Retomar' tres veces seguidas deja UNA key, no cuatro", () => {
   assert.equal(mostRecentDraft(A)?.draft.answers.precio, "5.500");
 });
 
+test("'Retomar' no deja una ventana con CERO borradores", () => {
+  // Guarda contra sobre-corregir el fix (lo cazó el paseo por el navegador):
+  // si "Retomar" BORRA la de origen en vez de moverla, entre el click y la
+  // escritura debounced (500ms) no existe ningún borrador — una recarga ahí
+  // adentro se lleva el trabajo. Acá se mira JUSTO después de adoptar, sin
+  // ningún writeDraft en el medio.
+  const m0 = montarWizard(A);
+  writeDraft(A, m0.tabId, {
+    answers: { modalidad: "ltr", precio: "7.700", direccion: "Suecia 750" },
+    completed: { mod: true }, current: "pie", history: ["mod"], mode: "flow",
+  } as never, 0);
+
+  nuevaPestana();
+  const m1 = montarWizard(A);
+  adoptarEnEstaPestana(A, m1.tabId, m1.draft);
+
+  const vivo = mostRecentDraft(A);
+  assert.ok(vivo, "quedó una ventana sin ningún borrador: una recarga ahí lo pierde");
+  assert.equal(vivo.key, keyFor(A, m1.tabId), "debe quedar en la key de esta pestaña");
+  assert.equal(vivo.draft.answers.precio, "7.700", "el contenido no sobrevivió la mudanza");
+  assert.equal(keysDe(A).length, 1, "movió pero dejó la de origen");
+});
+
 test("'Retomar' en la MISMA pestaña (reload) no se borra a sí mismo", () => {
   // La key ofrecida y la propia son la misma: no hay nada que mover, y sobre
   // todo no hay que borrarla.
