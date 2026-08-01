@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo } from "@/lib/types";
+import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent, Wallet, Info } from "lucide-react";
 import { fmtCLP, fmtUF, fmtMoney } from "@/components/analysis/utils";
 import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
@@ -23,6 +24,7 @@ export function HeroLTR({
   data,
   currency,
   onCurrencyChange,
+  onOpenDrawer,
   veredicto,
   score,
   propiedadTitle,
@@ -42,6 +44,9 @@ export function HeroLTR({
   inputData: AnalisisInput | null | undefined;
   results: FullAnalysisResult | null | undefined;
   comuna?: string;
+  /** Abre un drawer desde "La posición de Franco". Sin este callback el bloque queda
+   *  informativo (sin affordance), que es el comportamiento previo. */
+  onOpenDrawer?: (key: DrawerKey) => void;
   ciudad?: string;
   valorUF: number;
   createdAt?: string;
@@ -141,6 +146,27 @@ export function HeroLTR({
   // prosa fundida lo dice. El campo sigue en el schema (Entrega 2 decide su destino).
   const pregunta = data.conviene.pregunta || "¿Conviene o no conviene?";
   const topHallazgos = gatherTopHallazgos(results, data).slice(0, 3);
+
+  // Destino del drawer de la posición de Franco, por veredicto:
+  //  · no-COMPRAR con hallazgo de distancia → "Lo que te separa" (las vías, o por qué no
+  //    cierra si es estructural). El label distingue: prometer "vías" donde no las hay
+  //    sería el mismo error que ya se corrigió en el kicker de la card.
+  //  · COMPRAR → "Margen del veredicto". Acá la pregunta que sigue no es qué falta sino
+  //    cuánto aguanta antes de dejar de convenir, y ese drawer ya existe (sensibilidad se
+  //    emite en todo COMPRAR). Decisión de Fabrizio en el gate del mockup.
+  const hallazgosRow = (results?.hallazgos ?? []) as Hallazgo[];
+  const distanciaRow = hallazgosRow.find((h) => h.id === "distancia_veredicto");
+  const posicionDrawer: { key: DrawerKey; label: string } | null = distanciaRow
+    ? {
+        key: "distanciaVeredicto",
+        label:
+          distanciaRow.id === "distancia_veredicto" && distanciaRow.valor.esEstructural
+            ? "Por qué no cierra"
+            : "Ver las vías",
+      }
+    : hallazgosRow.some((h) => h.id === "sensibilidad")
+      ? { key: "sensibilidad", label: "Ver el margen" }
+      : null;
   const fechaFirma = formatFecha(createdAt);
 
   return (
@@ -278,15 +304,34 @@ export function HeroLTR({
         </div>
       </div>
 
-      {/* ═══ POSICIÓN DE FRANCO — full-width, ambas columnas (A5) ═══ */}
+      {/* ═══ POSICIÓN DE FRANCO — full-width, ambas columnas (A5) ═══
+          Gana affordance de drawer: es donde vive la salida del análisis, así que es el
+          lugar natural para abrir el detalle. Reusa el lenguaje que el usuario ya aprendió
+          en la pirámide (franco-card-target + link mono al pie); cero primitivas nuevas.
+          Qué abre depende del veredicto y el link SIEMPRE lo anuncia — la inconsistencia
+          de destino no molesta si el label dice a dónde vas. */}
       {cajaAccionable && (
         <div className="px-6 md:px-8 pb-4">
           <div
+            className={posicionDrawer ? "franco-card-target cursor-pointer" : undefined}
             style={{
               borderLeft: "3px solid var(--signal-red)",
               borderRadius: "0 8px 8px 0",
               background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
             }}
+            {...(posicionDrawer
+              ? {
+                  role: "button" as const,
+                  tabIndex: 0,
+                  onClick: () => onOpenDrawer?.(posicionDrawer.key),
+                  onKeyDown: (e: React.KeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onOpenDrawer?.(posicionDrawer.key);
+                    }
+                  },
+                }
+              : {})}
           >
             <div className="px-4 py-3.5">
               <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
@@ -295,6 +340,18 @@ export function HeroLTR({
               <p className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)] m-0">
                 {cajaAccionable}
               </p>
+              {posicionDrawer && (
+                /* Divisor en Signal Red al 20%: dentro de un bloque con wash rojo el
+                   hairline neutro se ve sucio. Único ajuste de token del cambio. */
+                <div
+                  className="mt-3 pt-2.5 flex justify-end"
+                  style={{ borderTop: "1px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}
+                >
+                  <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
+                    {posicionDrawer.label} →
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
