@@ -1,0 +1,25 @@
+{
+  "_doc": "Muestra de calibración Fase 1 (14 casos). Grupos: testigo (falla dim-2 conocida), pre-regen (sobrevivientes pv null/2 — candidatos a contradicción dim-3), regen-recientes (pv=3 de esta semana — deben salir limpios o casi).",
+  "ids": [
+    "cda5a2f2-e0e5-4ff5-bb2b-374f38f88638",
+    "8bda5e13-4f5c-43ad-9370-c6e40080a288",
+    "163422e4-9fc6-4438-aa0f-47b4cbf58e55",
+    "8c592df8-18ad-4d04-aefc-7a6faea5f5ea",
+    "d1ac20f1-a147-44da-8824-23dedf1148f7",
+    "11a6dc52-e437-4353-8f68-63e79ec03d5a",
+    "99722e1d-9c8f-4ee9-9cfc-54ae2974109d",
+    "79742a04-e860-4955-9330-4476d6202bcb",
+    "54288493-93cd-4f20-b936-9afc4b60b927",
+    "04cef08e-3381-4585-9f45-d331b37ce9f9",
+    "1b622c91-b7da-4f49-92bd-488a98bd7726",
+    "879f208c-c4c1-4e5e-9edb-50f0f9c2ebac",
+    "d01bc7b6-f2eb-434f-a2b5-d12fa04904a4",
+    "d18b20c9-279e-4004-a137-904d5c8444b9"
+  ],
+  "_grupos": {
+    "testigo": ["cda5a2f2"],
+    "pre-regen": ["8bda5e13", "163422e4", "8c592df8", "d1ac20f1", "11a6dc52", "99722e1d"],
+    "regen-recientes": ["79742a04", "54288493", "04cef08e", "1b622c91", "879f208c", "d01bc7b6", "d18b20c9"]
+  },
+  "_nota": "Los 7 primeros del grupo regen-recientes son pv=3 generados esta semana; 1b622c91 y 04cef08e cubren AJUSTA SUPUESTOS, 879f208c y d18b20c9 son STR COMPRAR."
+}
