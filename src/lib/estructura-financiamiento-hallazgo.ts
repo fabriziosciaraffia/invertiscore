@@ -54,7 +54,14 @@ function buildFrase(p: {
   const pie = fmtPie(p.piePct);
   const tasa = fmtTasa(p.tasaPct);
   const market = fmtTasa(p.marketPct);
-  const spread = `${Math.abs(p.spreadBps)} pts`;
+  // Spread de DISPLAY derivado de las tasas YA redondeadas a 1 decimal — el lector debe
+  // poder verificar la resta con los números que ve en la misma frase (antes: "62 pts"
+  // junto a 4,7% vs 4,1%, que dan 60). El spread interno del motor (fh.tasa.spread_bps,
+  // sobre tasas sin redondear) NO cambia: sigue en valor.spreadBps para gates/auditoría.
+  const spreadDisplayPts = Math.abs(
+    Math.round((Math.round(p.tasaPct * 10) / 10 - Math.round(p.marketPct * 10) / 10) * 100),
+  );
+  const spread = `${spreadDisplayPts} pts`;
 
   switch (p.overall) {
     case "optimo":

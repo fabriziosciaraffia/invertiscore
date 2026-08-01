@@ -69,6 +69,15 @@ export function buildHallazgoSobreprecio(
   const desv = pvc.desviacionPct; // entero, ya redondeado en FASE A (buildPrecioVsComuna)
   const desvAbs = Math.abs(desv);
 
+  // Redondeo a 1 decimal UNA vez (precisión de display): body (fmtUF), y valor.sujetoUfM2/
+  // valor.medianaComunaUfM2 leen de acá; el ksub de la card (pct1) reformatea esos mismos
+  // valores → mismo string. Sin esto, body (fmtUF sobre el crudo) y ksub (toFixed sobre el
+  // crudo por otra vía) divergían en el borde .x5 (UF 81,0 vs 81,1 en la misma card —
+  // mismo linaje que el bug cap_rate). Patrón round-una-vez de cap-rate-hallazgo.ts:116.
+  // desviacionPct NO se recalcula: sigue siendo la fuente única de FASE A.
+  const sujetoUfM2 = Math.round(pvc.sujetoUfM2 * 10) / 10;
+  const medianaComunaUfM2 = Math.round(pvc.medianaComunaUfM2 * 10) / 10;
+
   // DIRECCIÓN INVERTIDA (≠ cap_rate / flujo_mensual):
   //   |desv| ≤ 2 → neutral  (pagas lo justo — familia 6 del censo: la etiqueta ya no
   //                          desdice a la frase "a precio de comuna")
@@ -77,8 +86,8 @@ export function buildHallazgoSobreprecio(
   const direccion: "favorable" | "adverso" | "neutral" =
     desvAbs <= EN_LINEA_UMBRAL_PCT ? "neutral" : desv <= 0 ? "favorable" : "adverso";
 
-  const sujetoFmt = fmtUF(pvc.sujetoUfM2);
-  const medianaFmt = fmtUF(pvc.medianaComunaUfM2);
+  const sujetoFmt = fmtUF(sujetoUfM2);
+  const medianaFmt = fmtUF(medianaComunaUfM2);
 
   let fraseCanonica: string;
   let titular: string;
@@ -103,8 +112,10 @@ export function buildHallazgoSobreprecio(
     id: "sobreprecio",
     tipo: "precio_vs_comuna",
     valor: {
-      sujetoUfM2: pvc.sujetoUfM2,
-      medianaComunaUfM2: pvc.medianaComunaUfM2,
+      // Ya redondeados a 1 decimal — mismo valor que el body; el ksub de la card los
+      // reformatea (pct1) sin re-redondear por otra vía (round-una-vez).
+      sujetoUfM2,
+      medianaComunaUfM2,
       desviacionPct: desv,
       sobreprecioUfM2: pvc.sobreprecioUfM2,
       banda,
