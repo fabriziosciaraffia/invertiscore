@@ -18,7 +18,7 @@ import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
 import { buildHallazgoDistanciaVeredicto } from "./distancia-veredicto-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
-import { buildHallazgoFlujoMensual } from "./flujo-mensual-hallazgo";
+import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo } from "./flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
@@ -350,9 +350,20 @@ function calcMetrics(
           magnitudContinua: decisividades?.cap_rate?.magnitud ?? 0,
         })
       : null;
+  // Plusvalía de la comuna: se resuelve ACÁ (antes del hallazgo de flujo) porque la
+  // rama "acotada" del flujo la necesita como contexto (familia 1 del censo editorial):
+  // el consuelo "la plusvalía puede compensarlo" solo se emite si la comuna apreció
+  // sobre el umbral real. El hallazgo de plusvalía (abajo) reusa esta MISMA resolución.
+  const plusvaliaComuna = resolvePlusvaliaComuna(input.comuna);
+  // ESTRICTAMENTE sobre el umbral: una comuna "en línea" (== 3,0%, apreciación que solo
+  // empata la inflación real — "referencia, no garantía" en su propia card) no es material
+  // de consuelo. Solo la plusvalía que ganó valor real por sobre el umbral puede compensar.
+  const plusvaliaFavorable = plusvaliaComuna.anualizada > getPlusvaliaRef().pct;
   // Hallazgo de flujo mensual: envuelve el aporte de :242 (no lo recalcula). La
   // decisividad es |aporte| / dividendo, espejo del Gate 1 del veredicto (:1225).
-  // Solo emite si hay dividendo computable (>0).
+  // Solo emite si hay dividendo computable (>0). El veredicto aún no existe en este
+  // scope: la rama "ninguno" (BUSCAR OTRA) la aplica runAnalysis post-deriveVeredicto
+  // vía aplicarVeredictoAFlujo.
   const hallazgoFlujoMensual =
     dividendo > 0
       ? buildHallazgoFlujoMensual({
@@ -361,6 +372,7 @@ function calcMetrics(
           modalidad: "ltr",
           decisividad: decisividades?.flujo_mensual?.decisividad ?? 0,
           magnitudContinua: decisividades?.flujo_mensual?.magnitud ?? 0,
+          consuelo: plusvaliaFavorable ? "plusvalia" : "estable",
         })
       : null;
   // Hallazgo de plusvalía: envuelve la tasa histórica anualizada de la comuna que
@@ -368,7 +380,6 @@ function calcMetrics(
   // apreciación real (getPlusvaliaRef). Cae elegante al promedio Gran Santiago sin
   // dato propio (confianza baja). CONTRAPESO de la tesis; HISTÓRICA, no garantía
   // futura. Siempre computable (la tasa o su default es finita).
-  const plusvaliaComuna = resolvePlusvaliaComuna(input.comuna);
   const hallazgoPlusvalia = buildHallazgoPlusvalia({
     anualizadaPct: plusvaliaComuna.anualizada,
     tieneData: plusvaliaComuna.tieneData,
@@ -1753,6 +1764,13 @@ export function runAnalysis(
   // pueden hacer que el badge contradiga la banda del score — intencional (audit
   // §2.4): señales estructurales (CoC severo, break-even imposible) priman.
   const veredicto: Veredicto = deriveVeredicto(score, metrics, breakEvenTasa);
+
+  // Familia 1 (censo editorial): con el veredicto YA derivado, la frase acotada del flujo
+  // pierde el consuelo si el caso es BUSCAR OTRA. Se reemplaza el carrier de metrics para
+  // que hero, pirámide y results.hallazgos lean la MISMA versión (no-op en COMPRAR/AJUSTA).
+  if (metrics.hallazgoFlujoMensual) {
+    metrics.hallazgoFlujoMensual = aplicarVeredictoAFlujo(metrics.hallazgoFlujoMensual, veredicto);
+  }
 
   // Commit E.2 · clasificacion/clasificacionColor (legacy) derivan del veredicto
   // final (post-gates), no del score crudo. Evita divergencia que antes ensuciaba

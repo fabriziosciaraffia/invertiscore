@@ -67,19 +67,22 @@ export function buildHallazgoSobreprecio(
   }
 
   const desv = pvc.desviacionPct; // entero, ya redondeado en FASE A (buildPrecioVsComuna)
+  const desvAbs = Math.abs(desv);
 
   // DIRECCIÓN INVERTIDA (≠ cap_rate / flujo_mensual):
-  //   desv ≤ 0 → favorable (en o bajo la mediana = entras barato)
-  //   desv > 0 → adverso   (sobre la mediana = pagas caro)
-  const direccion: "favorable" | "adverso" = desv <= 0 ? "favorable" : "adverso";
+  //   |desv| ≤ 2 → neutral  (pagas lo justo — familia 6 del censo: la etiqueta ya no
+  //                          desdice a la frase "a precio de comuna")
+  //   desv < 0  → favorable (bajo la mediana = entras barato)
+  //   desv > 0  → adverso   (sobre la mediana = pagas caro)
+  const direccion: "favorable" | "adverso" | "neutral" =
+    desvAbs <= EN_LINEA_UMBRAL_PCT ? "neutral" : desv <= 0 ? "favorable" : "adverso";
 
   const sujetoFmt = fmtUF(pvc.sujetoUfM2);
   const medianaFmt = fmtUF(pvc.medianaComunaUfM2);
-  const desvAbs = Math.abs(desv);
 
   let fraseCanonica: string;
   let titular: string;
-  if (desvAbs <= EN_LINEA_UMBRAL_PCT) {
+  if (direccion === "neutral") {
     titular = "Pagas el metro a precio de comuna, sin sobreprecio.";
     fraseCanonica =
       `Tu precio por m² (${sujetoFmt}) está en línea con la mediana de la comuna (${medianaFmt}). ` +

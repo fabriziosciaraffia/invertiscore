@@ -39,22 +39,25 @@ export function buildHallazgoSensibilidadStr(p: {
 
   let titular: string;
   let fraseCanonica: string;
+  // "la tarifa diaria (ADR)" glosa la sigla en cada rama (familia 4 del censo): la card
+  // es standalone y cada informe muestra UNA sola rama — no hay primer uso previo.
   if (fragil) {
     titular = "El veredicto se sostiene solo si la ocupación se cumple.";
     fraseCanonica =
       `Para no perder plata necesitas facturar el ${beFmt}% del nivel de mercado — sobre lo que rinde la zona ` +
-      `típica. Es un margen apretado: si la ocupación o el ADR vienen algo abajo, el corto deja de cuadrar. ` +
-      `Confírmalos contra listings comparables activos antes de comprar.`;
+      `típica. Es un margen apretado: si la ocupación o la tarifa diaria (ADR) vienen algo abajo, el corto ` +
+      `deja de cuadrar. Confírmalas contra listings comparables activos antes de comprar.`;
   } else if (holgado) {
     titular = "El veredicto aguanta aunque rindas bajo la zona.";
     fraseCanonica =
       `Tu punto de equilibrio está en el ${beFmt}% del nivel de mercado: cuadras facturando por debajo de lo ` +
-      `que rinde la zona típica. Hay colchón si la ocupación o el ADR vienen algo más bajos de lo asumido.`;
+      `que rinde la zona típica. Hay colchón si la ocupación o la tarifa diaria (ADR) vienen algo más bajas ` +
+      `de lo asumido.`;
   } else {
     titular = "El veredicto cuadra justo al nivel de la zona.";
     fraseCanonica =
       `Tu punto de equilibrio está en el ${beFmt}% del nivel de mercado — justo en el borde. Cuadras si la zona ` +
-      `rinde lo típico, pero sin colchón para un mal trimestre de ocupación o ADR.`;
+      `rinde lo típico, pero sin colchón para un mal trimestre de ocupación o de tarifa diaria (ADR).`;
   }
 
   return {

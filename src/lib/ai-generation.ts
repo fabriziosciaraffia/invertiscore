@@ -1270,14 +1270,20 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       decisividad: decisividades.cap_rate?.decisividad ?? 0,
       magnitudContinua: decisividades.cap_rate?.magnitud ?? 0,
     });
+    // Plusvalía resuelta ANTES del flujo (espejo de calcMetrics): la rama acotada del
+    // flujo condiciona su cierre por plusvalía y veredicto (familia 1 del censo) — acá
+    // el veredicto YA existe (veredictoMotor), así que el "ninguno" se pasa directo.
+    const plusvaliaComunaGen = resolvePlusvaliaComuna(input.comuna);
+    // Estrictamente sobre el umbral (espejo de calcMetrics): "en línea" no consuela.
+    const plusvaliaFavorableGen = plusvaliaComunaGen.anualizada > getPlusvaliaRef().pct;
     const hallazgoFlujoGen = buildHallazgoFlujoMensual({
       flujoNetoMensualCLP: m.flujoNetoMensual,
       dividendoMensualCLP: m.dividendo,
       modalidad: "ltr",
       decisividad: decisividades.flujo_mensual?.decisividad ?? 0,
       magnitudContinua: decisividades.flujo_mensual?.magnitud ?? 0,
+      consuelo: veredictoMotor === "BUSCAR OTRA" ? "ninguno" : plusvaliaFavorableGen ? "plusvalia" : "estable",
     });
-    const plusvaliaComunaGen = resolvePlusvaliaComuna(input.comuna);
     const hallazgoPlusvaliaGen = buildHallazgoPlusvalia({
       anualizadaPct: plusvaliaComunaGen.anualizada,
       tieneData: plusvaliaComunaGen.tieneData,
