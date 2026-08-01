@@ -1,4 +1,5 @@
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
+import { metricaODefault } from "@/lib/types";
 import { calcExitScenario } from "@/lib/analysis";
 
 const GASTOS_CIERRE_PCT = 0.02;
@@ -73,11 +74,14 @@ export function calculateKPIs(inp: KPIInputs): KPIResults {
   }
 
   return {
-    tir: exit.tir,
+    // TODO(pie-cero-fase-3): con pie 0 tir/multiplo son 'no_aplica' y acá se
+    // aplanan a 0 para preservar el contrato number del simulador; el KPI
+    // honesto ("—") en la superficie interactiva es fase 3.
+    tir: metricaODefault(exit.tir, 0),
     capRate,
     cashOnCash,
     paybackAnios,
-    multiplo: exit.multiplicadorCapital,
+    multiplo: metricaODefault(exit.multiplicadorCapital, 0),
     valorVenta: exit.valorVenta,
     saldoCredito: exit.saldoCredito,
     inversionInicial,

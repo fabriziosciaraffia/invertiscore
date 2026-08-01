@@ -22,7 +22,8 @@ import {
 import { calcInversionInicialCLP } from "../inversion-inicial";
 import { PLUSVALIA_PROYECCION_ANUAL } from "../plusvalia-proyeccion";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
-import type { Hallazgo } from "../types";
+import type { Hallazgo, MetricaSobreCapital } from "../types";
+import { metricaNoAplica, metricaValor } from "../types";
 
 // =========================================
 // Types
@@ -144,7 +145,9 @@ export interface EscenarioSTR {
   noiMensual: number;
   flujoCajaMensual: number;
   capRate: number;
-  cashOnCash: number;
+  // Sobre capital propio (decimal): 'no_aplica' cuando pie === 0 (pie cero · fase 1-2).
+  // Filas persistidas pre-migración traen number crudo → leer con metricaValorONull.
+  cashOnCash: MetricaSobreCapital;
   rentabilidadBruta: number;
   adrReferencia: number;
   ocupacionReferencia: number;
@@ -201,7 +204,9 @@ export interface ExitScenarioSTR {
   equityCLP: number;                 // = EQUITY: valorVenta - saldo - cierre (sin flujo)
   retornoTotal: number;              // = flujoAcumulado + equityCLP (con flujo; espejo analysis.ts:683)
   totalAportado: number;             // = capitalInicial + Σ aportes mensuales negativos (espejo analysis.ts:704)
-  multiplicadorCapital: number;      // EQUITY(sin flujo) / totalAportado → ×1 = break-even (espejo analysis.ts:727)
+  // EQUITY(sin flujo) / totalAportado → ×1 = break-even (espejo LTR). Sobre capital
+  // propio: 'no_aplica' cuando pie === 0 (pie cero · fase 1-2); legacy trae number.
+  multiplicadorCapital: MetricaSobreCapital;
   tirAnual: number;                  // TIR % del cashflow año 0 → año N
 }
 
@@ -380,8 +385,8 @@ export interface SensibilidadPrecioRow {
   delta: number;
   /** CAP rate resultante (decimal). */
   capRate: number;
-  /** Cash-on-Cash resultante anual (decimal). */
-  cashOnCash: number;
+  /** Cash-on-Cash resultante anual (decimal). 'no_aplica' cuando pie === 0. */
+  cashOnCash: MetricaSobreCapital;
   /** Flujo de caja mensual con precio reducido. */
   flujoCajaMensual: number;
   /** Payback amoblamiento en meses (negativo = no recupera, 0 = sin amobl). */
@@ -715,6 +720,7 @@ function calcEscenario(
   dividendoMensual: number,
   precioCompra: number,
   capitalInvertido: number,
+  pieCLP: number,
 ): EscenarioSTR {
   const ingresoBrutoMensual = Math.round(revenueAnual / 12);
   const comisionMensual = Math.round(ingresoBrutoMensual * comisionRate);
@@ -724,7 +730,12 @@ function calcEscenario(
 
   const noiAnual = noiMensual * 12;
   const capRate = precioCompra > 0 ? noiAnual / precioCompra : 0;
-  const cashOnCash = capitalInvertido > 0 ? (flujoCajaMensual * 12) / capitalInvertido : 0;
+  // Pie cero (fase 1-2): sin pie no hay capital propio que rente — CoC 'no_aplica'
+  // aunque capitalInvertido > 0 por amoblamiento/CapEx (no son capital propio).
+  const cashOnCash: MetricaSobreCapital =
+    pieCLP === 0
+      ? metricaNoAplica("sin_pie")
+      : metricaValor(capitalInvertido > 0 ? (flujoCajaMensual * 12) / capitalInvertido : 0);
   const rentabilidadBruta = precioCompra > 0 ? (ingresoBrutoMensual * 12) / precioCompra : 0;
 
   return {
@@ -865,15 +876,20 @@ function buildProjections(
 function buildExitScenario(
   projections: YearProjectionSTR[],
   capitalInicial: number,
+  pieCLP: number,
   yearVenta: number = HORIZONTE_DEFAULT,
 ): ExitScenarioSTR {
+  // Pie cero (fase 1-2): sin capital propio el multiplicador no aplica, aunque
+  // capitalInicial > 0 por amoblamiento/CapEx (no son capital propio).
+  const sinPie = pieCLP === 0;
   const idx = Math.min(yearVenta - 1, projections.length - 1);
   const proy = projections[idx];
   if (!proy) {
     return {
       yearVenta, valorVenta: 0, saldoCreditoAlVender: 0, gastosCierre: 0,
       flujoAcumuladoAlVender: 0, equityCLP: 0, retornoTotal: 0, totalAportado: 0,
-      multiplicadorCapital: 0, tirAnual: 0,
+      multiplicadorCapital: sinPie ? metricaNoAplica("sin_pie") : metricaValor(0),
+      tirAnual: 0,
     };
   }
 
@@ -922,7 +938,7 @@ function buildExitScenario(
     equityCLP: Math.round(equityCLP),
     retornoTotal: Math.round(retornoTotal),
     totalAportado: Math.round(totalAportado),
-    multiplicadorCapital,
+    multiplicadorCapital: sinPie ? metricaNoAplica("sin_pie") : metricaValor(multiplicadorCapital),
     tirAnual,
   };
 }
@@ -978,7 +994,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
 
   // Helper parcial
   const buildEscenario = (label: string, revenueAnual: number, adr: number, ocu: number) =>
-    calcEscenario(label, revenueAnual, adr, ocu, comisionRate, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido);
+    calcEscenario(label, revenueAnual, adr, ocu, comisionRate, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie);
 
   // --- 2. Escenarios ---
   // Calibración v1: el escenario `base` se construye con los 3 ejes
@@ -1052,8 +1068,8 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   // STR auto y admin para la comparativa: ambos sobre el revenueBase calibrado
   // (mismo ADR ajustado y misma ocupación target). Lo único que cambia entre
   // los dos es la comisión que se paga.
-  const str_auto = calcEscenario('Auto', revenueBase, adrBase, occBase, COMISION_AIRBNB, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido);
-  const str_admin = calcEscenario('Administrador', revenueBase, adrBase, occBase, comisionAdministrador, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido);
+  const str_auto = calcEscenario('Auto', revenueBase, adrBase, occBase, COMISION_AIRBNB, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie);
+  const str_admin = calcEscenario('Administrador', revenueBase, adrBase, occBase, comisionAdministrador, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie);
 
   // Sobre-renta del modo actualmente seleccionado (escenario base)
   const sobreRenta = base.noiMensual - ltr_noiMensual;
@@ -1154,7 +1170,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     perdidaRampUp,
     asOf,
   );
-  const exitScenario = buildExitScenario(projections, capitalInvertido);
+  const exitScenario = buildExitScenario(projections, capitalInvertido, pie);
 
   // --- 9. Subsidio Ley 21.748 (Commit 3a · 2026-05-12) ---
   // Paridad con LTR analysis.ts:307-311. La rebaja NO se aplica al cálculo
@@ -1297,7 +1313,13 @@ function calcSensibilidadPrecio(
     const capitalInvertido = pieMonto + (input.costoAmoblamiento || 0) + capexPuestaAPuntoCLP;
     const flujoCajaMensual = noiMensualConst - dividendoMensual;
     const capRate = precioCLP > 0 ? noiAnual / precioCLP : 0;
-    const cashOnCash = capitalInvertido > 0 ? (flujoCajaMensual * 12) / capitalInvertido : 0;
+    // Pie cero (fase 1-2): este companion no suma gastos de cierre, así que con
+    // pie 0 (y sin amoblamiento/CapEx) capitalInvertido daba exactamente 0 y el
+    // guard devolvía un CoC 0% FALSO. Ahora: sin pie ⇒ 'no_aplica', nunca número.
+    const cashOnCash: MetricaSobreCapital =
+      pieMonto === 0
+        ? metricaNoAplica("sin_pie")
+        : metricaValor(capitalInvertido > 0 ? (flujoCajaMensual * 12) / capitalInvertido : 0);
     const sobreRenta = base.flujoCajaMensual; // placeholder — usamos NOI vs LTR igual
     let paybackMeses = -1;
     if ((input.costoAmoblamiento || 0) <= 0) paybackMeses = 0;
@@ -1307,7 +1329,10 @@ function calcSensibilidadPrecio(
       precioCLP: Math.round(precioCLP),
       delta: Math.round(delta),
       capRate: Math.round(capRate * 10000) / 10000,
-      cashOnCash: Math.round(cashOnCash * 10000) / 10000,
+      cashOnCash:
+        cashOnCash.tipo === "valor"
+          ? metricaValor(Math.round(cashOnCash.valor * 10000) / 10000)
+          : cashOnCash,
       flujoCajaMensual: Math.round(flujoCajaMensual),
       paybackMeses,
     };

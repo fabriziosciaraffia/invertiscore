@@ -1,4 +1,5 @@
 import { ShortTermResult } from './short-term-engine';
+import { metricaValorONull } from '../types';
 import { CLINICAS, ZONAS_NEGOCIOS, ZONAS_TURISTICAS, ACCESO_SKI, distanciaMinima } from '../data/str-attractors';
 import { findNearestStation } from '../metro-stations';
 
@@ -343,7 +344,10 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   // (degrade COMPRAR) → resto se respeta del score base.
   let overrideApplied: string | null = null;
   const sobreRentaPct = inputs.results.comparativa.sobreRentaPct;
-  const coc = base.cashOnCash; // decimal (-0.10 = -10%)
+  // decimal (-0.10 = -10%). Pie cero: null = 'no_aplica' ⇒ los brazos CoC de los
+  // gates se OMITEN (ni true ni false) y manda el brazo de flujo (opción a).
+  // metricaValorONull tolera también el number crudo de results legacy.
+  const coc = metricaValorONull(base.cashOnCash);
   const beRatio = inputs.results.breakEvenPctDelMercado; // 1.00 = break-even al precio del mercado
 
   // Gate flujo-negativo (2026-06): si el escenario base deja flujo mensual
@@ -362,17 +366,19 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   const HORIZONTE_MULT_MINIMO = 2.65;     // equity(sin flujo)/totalAportado (re-derivado).
   const exit = inputs.results.exitScenario;
   const tir = exit?.tirAnual;
-  const multCap = exit?.multiplicadorCapital;
+  // Pie cero: multiplicador 'no_aplica' ⇒ null ⇒ ese brazo del horizonte se omite
+  // (la TIR STR sigue siendo number). Legacy con number crudo pasa igual que antes.
+  const multCap = metricaValorONull(exit?.multiplicadorCapital);
   const horizonteCierraFavorable =
     exit != null &&
     typeof tir === "number" && Number.isFinite(tir) && tir !== 0 &&
-    ((tir >= HORIZONTE_TIR_MINIMO) || (typeof multCap === "number" && multCap >= HORIZONTE_MULT_MINIMO));
+    ((tir >= HORIZONTE_TIR_MINIMO) || (multCap !== null && multCap >= HORIZONTE_MULT_MINIMO));
 
   // GATE 1 — fuerza BUSCAR OTRA (señales estructurales severas).
   if (inputs.regulacionEdificio === 'no') {
     veredicto = 'BUSCAR OTRA';
     overrideApplied = 'Edificio no permite Airbnb — operación inviable';
-  } else if (coc < -0.30) {
+  } else if (coc !== null && coc < -0.30) {
     veredicto = 'BUSCAR OTRA';
     overrideApplied = 'Cash-on-Cash <-30% — pérdida estructural insostenible';
   } else if (beRatio > 1.30) {
@@ -391,7 +397,7 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
     if (sobreRentaPct < 0) {
       veredicto = 'AJUSTA SUPUESTOS';
       overrideApplied = 'LTR genera más que STR — máximo AJUSTA SUPUESTOS';
-    } else if (coc < -0.10) {
+    } else if (coc !== null && coc < -0.10) {
       veredicto = 'AJUSTA SUPUESTOS';
       overrideApplied = 'Cash-on-Cash <-10% — esfuerzo mensual significativo';
     } else if (base.flujoCajaMensual < 0 && !horizonteCierraFavorable) {

@@ -1,6 +1,7 @@
 import { extractRiesgos } from "@/components/ui/AnalysisDrawer";
 import { readVeredicto } from "@/lib/results-helpers";
 import type { AISection, AINegociacionSection, FullAnalysisResult } from "@/lib/types";
+import { metricaValorONull } from "@/lib/types";
 import { parseUFString } from "./utils";
 
 /** Las 5 dimensiones que el grid 2×2 + ReestructuracionMiniCard renderean. */
@@ -83,9 +84,11 @@ export function getPunchline(
 
   // 3. Largo plazo — from motor
   if (section === "largoPlazo") {
-    const tir = results?.exitScenario?.tir;
+    // TODO(pie-cero-fase-3): con pie 0 la TIR es 'no_aplica' (null acá) y la card
+    // cae al fallback de retorno total, igual que las filas legacy sin TIR.
+    const tir = metricaValorONull(results?.exitScenario?.tir);
     const aniosPlazo = results?.exitScenario?.anios ?? 10;
-    if (typeof tir === "number" && !isNaN(tir)) {
+    if (tir !== null && !isNaN(tir)) {
       const tirPct = tir.toFixed(1).replace(".", ",");
       const isNeg = tir < 0;
       // Skill Patrón 2: KPI binario (signal-red criticidad / var(--franco-text)

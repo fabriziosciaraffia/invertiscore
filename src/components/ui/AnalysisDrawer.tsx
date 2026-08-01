@@ -13,6 +13,7 @@ import type {
   HallazgoCapRate,
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
+import { metricaODefault } from "@/lib/types";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
@@ -439,7 +440,9 @@ function DrawerNegociacion({
   const esPasada = diferenciaCLP > 0 && pctDiferencia > 2;
   const esSobreprecio = diferenciaCLP < 0 && pctDiferencia > 2;
 
-  const tirActual = results.exitScenario?.tir ?? 0;
+  // TODO(pie-cero-fase-3): con pie 0 la TIR es 'no_aplica' y acá se aplana a 0
+  // (misma decisión que el motor de negociación); el drawer honesto es fase 3.
+  const tirActual = metricaODefault(results.exitScenario?.tir, 0);
   const neg = results.negociacion;
 
   // Fallbacks si el análisis es viejo (sin motor.negociacion): recomputar en el

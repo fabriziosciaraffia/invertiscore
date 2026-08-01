@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { PremiumResults } from "@/app/analisis/[id]/results-client";
 import type { FullAnalysisResult, AnalisisInput, AIAnalysisV2 } from "@/lib/types";
+import { metricaValor } from "@/lib/types";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 
@@ -115,9 +116,9 @@ const DEMO_RESULTS: FullAnalysisResult = {
     rentabilidadBruta: 4.1,
     rentabilidadNeta: 2.3,
     capRate: 2.7,
-    cashOnCash: -14.0,
+    cashOnCash: metricaValor(-14.0),
     precioM2: PRECIO_UF / SUPERFICIE, // UF/m²
-    mesesPaybackPie: -1, // N/A (negative flow)
+    mesesPaybackPie: metricaValor(-1), // N/A (negative flow)
     dividendo: DIVIDENDO,
     flujoNetoMensual: FLUJO_NETO,
     noi: Math.round(ARRIENDO * 12 - GGCC * 12 - CONTRIBUCIONES_TRIM * 4 - PRECIO_CLP * 0.005),
@@ -172,8 +173,8 @@ const DEMO_RESULTS: FullAnalysisResult = {
       equityCLP: gananciaNeta, // rename honesto gananciaNeta→equityCLP (campo del tipo)
       flujoAcumulado,
       retornoTotal,
-      multiplicadorCapital,
-      tir: 9.6,
+      multiplicadorCapital: metricaValor(multiplicadorCapital),
+      tir: metricaValor(9.6),
       inversionInicial,
       flujoMensualAcumuladoNegativo,
       totalAportado,

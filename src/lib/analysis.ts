@@ -9,7 +9,9 @@ import type {
   Desglose,
   FullAnalysisResult,
   NegociacionScenario,
+  MetricaSobreCapital,
 } from "./types";
+import { metricaNoAplica, metricaValor, metricaValorONull, metricaODefault } from "./types";
 import { estimarContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
@@ -402,8 +404,19 @@ function calcMetrics(
     input.comuna,
   );
 
-  const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
-  const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
+  // Pie cero (fase 1-2): con pieCLP === 0 no hay capital propio, así que las
+  // métricas que dividen por él pasan a 'no_aplica' en vez de un número
+  // inventado. Los gastos de cierre y el CapEx integran capitalInvertido pero
+  // NO cuentan como capital propio para la activación (decisión cerrada).
+  const sinPie = pieCLP === 0;
+  const cashOnCash: MetricaSobreCapital = sinPie
+    ? metricaNoAplica("sin_pie")
+    : metricaValor(
+        Math.round((capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0) * 100) / 100,
+      );
+  const mesesPaybackPie: MetricaSobreCapital = sinPie
+    ? metricaNoAplica("sin_pie")
+    : metricaValor(flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999);
 
   // Plusvalía inmediata — Franco (datos reales, para cálculos) y Usuario (referencial)
   const vmFrancoUF = input.valorMercadoFranco || input.precio;
@@ -424,9 +437,9 @@ function calcMetrics(
     rentabilidadBruta: Math.round(rentabilidadBruta * 100) / 100,
     rentabilidadNeta: Math.round(rentabilidadNeta * 100) / 100,
     capRate: Math.round(capRate * 100) / 100,
-    cashOnCash: Math.round(cashOnCash * 100) / 100,
+    cashOnCash,
     precioM2: Math.round(precioM2 * 10) / 10,
-    mesesPaybackPie: mesesPaybackPie,
+    mesesPaybackPie,
     dividendo,
     flujoNetoMensual,
     noi,
@@ -678,13 +691,17 @@ export function calcProjections(args: {
 // =========================================
 
 export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics, projections: YearProjection[], anios: number = 10): ExitScenario {
+  // Pie cero (fase 1-2): sin capital propio, multiplicador y TIR no aplican —
+  // aunque inversionInicial > 0 por gastos de cierre/CapEx (no son capital propio).
+  const sinPie = metrics.pieCLP === 0;
   const proy = projections[anios - 1];
   if (!proy) {
     return {
       anios,
       valorVenta: 0, saldoCredito: 0, comisionVenta: 0,
       equityCLP: 0, flujoAcumulado: 0, retornoTotal: 0,
-      multiplicadorCapital: 0, tir: 0,
+      multiplicadorCapital: sinPie ? metricaNoAplica("sin_pie") : metricaValor(0),
+      tir: sinPie ? metricaNoAplica("sin_pie") : metricaValor(0),
       inversionInicial: 0, flujoMensualAcumuladoNegativo: 0,
       totalAportado: 0, gananciaSobreTotal: 0, porcentajeGananciaSobreTotal: 0,
     };
@@ -762,8 +779,8 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
     equityCLP: Math.round(equityCLP),
     flujoAcumulado: proy.flujoAcumulado,
     retornoTotal: Math.round(retornoTotal),
-    multiplicadorCapital,
-    tir,
+    multiplicadorCapital: sinPie ? metricaNoAplica("sin_pie") : metricaValor(multiplicadorCapital),
+    tir: sinPie ? metricaNoAplica("sin_pie") : metricaValor(tir),
     inversionInicial: Math.round(inversionInicial),
     flujoMensualAcumuladoNegativo: Math.round(flujoMensualAcumuladoNegativo),
     totalAportado: Math.round(totalAportado),
@@ -1107,8 +1124,13 @@ export function evalGate1Brazos(metrics: AnalysisMetrics, breakEvenTasa: number)
   const dividendoMensual = metrics.dividendo || 1; // evitar división por 0
   const flujoNegativoRatio = Math.abs(metrics.flujoNetoMensual) / dividendoMensual;
   // metrics.cashOnCash viene en % (no decimal). Ej: -30 = -30% CoC anual.
+  // Pie cero: con CoC 'no_aplica' el brazo se OMITE (queda false en el OR, sin
+  // evaluar el umbral) — manda el brazo de flujo (opción a, decisión cerrada).
+  // metricaValorONull también tolera el number crudo de metrics persistidos
+  // pre-migración (jsonb) que llegan por rutas de recompute parcial.
+  const coc = metricaValorONull(metrics.cashOnCash);
   return {
-    cocSevero: metrics.cashOnCash < -30,
+    cocSevero: coc !== null && coc < -30,
     breakEvenImposible: breakEvenTasa === -1,
     plusvaliaConFlujo:
       (metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 &&
@@ -1157,13 +1179,18 @@ function evalVeredicto(
   let gate2 = false;
   let gate3 = false;
 
+  // Pie cero: con CoC 'no_aplica' los dos brazos de GATE 2 dependen de CoC y el
+  // gate completo se OMITE (ni true ni false) — manda el brazo de flujo de GATE 1.
+  const cocGate2 = metricaValorONull(metrics.cashOnCash);
+
   if (gate1) {
     veredicto = "BUSCAR OTRA";
   } else if (
     // GATE 2 — máximo AJUSTA SUPUESTOS (degrade COMPRAR; no toca BUSCAR).
     // CoC entre -10% y -30% O flujo neto < -5% del ingreso con CoC negativo.
     veredicto === "COMPRAR" &&
-    (metrics.cashOnCash < -10 || (flujoMuyNegativoRatio < -0.05 && metrics.cashOnCash < 0))
+    cocGate2 !== null &&
+    (cocGate2 < -10 || (flujoMuyNegativoRatio < -0.05 && cocGate2 < 0))
   ) {
     gate2 = true;
     veredicto = "AJUSTA SUPUESTOS";
@@ -1376,7 +1403,14 @@ export function calcDecisividades(
   //    (opción A: no roba el driver de otro hallazgo). cashOnCash → 0 por
   //    coherencia. Con flujo 0 el break-even ya no es -1 (no es negativo). ──
   if (baseMetrics.dividendo > 0) {
-    const mNeu = { ...baseMetrics, flujoNetoMensual: 0, cashOnCash: 0 };
+    // Pie cero: si el CoC base es 'no_aplica' se preserva (neutralizar el flujo
+    // no inventa un CoC donde no hay capital propio); con valor, CoC → 0 como antes.
+    const mNeu = {
+      ...baseMetrics,
+      flujoNetoMensual: 0,
+      cashOnCash:
+        baseMetrics.cashOnCash.tipo === "no_aplica" ? baseMetrics.cashOnCash : metricaValor(0),
+    };
     const sNeu = calcScoreFromMetrics(input, mNeu, ufClp, asOf);
     const beNeu = baseBreakEven === -1 ? input.tasaInteres : baseBreakEven;
     out.flujo_mensual = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
@@ -1435,8 +1469,11 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics, asOf: Date
     pros.push(`Después de pagar dividendo, gastos y todos los costos, te sobran ${fmtP(metrics.flujoNetoMensual)} al mes. La propiedad se paga sola.`);
   else if (metrics.flujoNetoMensual === 0)
     pros.push("Flujo exactamente neutro — el arriendo cubre todos los costos.");
-  if (metrics.cashOnCash > 5)
-    pros.push(`Tu pie renta un ${metrics.cashOnCash.toFixed(1)}% anual (cash-on-cash), mejor que la mayoría de las alternativas de renta fija.`);
+  // Pie cero: con CoC 'no_aplica' no existe "tu pie renta X%" — la frase honesta
+  // de 100% financiamiento vive en generateContras (bloque de atención).
+  const cocPros = metricaValorONull(metrics.cashOnCash);
+  if (cocPros !== null && cocPros > 5)
+    pros.push(`Tu pie renta un ${cocPros.toFixed(1)}% anual (cash-on-cash), mejor que la mayoría de las alternativas de renta fija.`);
   if (input.enConstruccion || input.antiguedad <= 2) {
     pros.push("Al ser nueva o casi nueva, los costos de mantención serán bajos por varios años. Menos sorpresas.");
   } else if (input.antiguedad >= 3 && input.antiguedad <= 8) {
@@ -1482,11 +1519,17 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics, asOf: D
     contras.push(`Con ${input.antiguedad} años de antigüedad, es probable que pronto aparezcan gastos de mantención mayores (fachada, ascensores, impermeabilización). Pregunta por el fondo de reserva del edificio.`);
   if (metrics.ingresoMensual > 0 && metrics.gastos > metrics.ingresoMensual * 0.25)
     contras.push("Los gastos comunes son altos (>25% del arriendo). Aunque los paga el arrendatario, GGCC altos dificultan arrendar y aumentan tu costo durante vacancia.");
-  if (metrics.cashOnCash < 0) {
+  // Pie cero: "tu pie está rentando negativo" sería mentira sin pie. En su lugar,
+  // la frase honesta de 100% financiamiento (una sola, tono Franco).
+  if (metrics.cashOnCash.tipo === "no_aplica") {
+    contras.push(
+      "Estás financiando el 100% de la propiedad: sin pie, no hay rentabilidad sobre capital propio que medir (cash-on-cash y payback no aplican). Todo el resultado descansa en el flujo mensual y la plusvalía, con el dividendo en su punto más alto.",
+    );
+  } else if (metrics.cashOnCash.valor < 0) {
     if (metrics.flujoNetoMensual >= 0) {
       contras.push("Cash-on-cash negativo por alta inversión inicial, pero el flujo mensual es positivo.");
     } else {
-      contras.push(`Tu pie está rentando negativo (${metrics.cashOnCash.toFixed(1)}% anual). El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.`);
+      contras.push(`Tu pie está rentando negativo (${metrics.cashOnCash.valor.toFixed(1)}% anual). El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.`);
     }
   }
   if (input.vacanciaMeses >= 2)
@@ -1518,7 +1561,10 @@ export function tirForPrice(input: AnalisisInput, precioUF: number, ufClp: numbe
   const m = calcMetrics(clone, ufClp);
   const projs = calcProjections({ input: clone, metrics: m, plazoVenta: 20, ufClp, asOf });
   const ex = calcExitScenario(clone, m, projs, 10);
-  return ex.tir;
+  // TODO(pie-cero-fase-3): con pie 0 la TIR es 'no_aplica' y acá se aplana a 0
+  // para preservar el contrato number de la superficie de negociación (drawer +
+  // NegociacionScenario). El tratamiento honesto del drawer es fase 3.
+  return metricaODefault(ex.tir, 0);
 }
 
 // Fase 3.7 v10 — umbral del aporte mensual considerado "viable" en la matemática
@@ -1805,7 +1851,9 @@ export function runAnalysis(
   // driver único, no pasa por calcDecisividades (no entra al ranking). Se siembra ACÁ
   // y no como carrier de metrics porque exitScenario se computa post-calcMetrics.
   // Guard null si la TIR no es finita → hallazgo ausente (pirámide N-1).
-  const hallazgoTIR = buildHallazgoTIR({ tirPct: exitScenario.tir, modalidad: "ltr" });
+  // Pie cero: TIR 'no_aplica' ⇒ hallazgo ausente por la misma vía (honesto, sin número).
+  const tirNum = metricaValorONull(exitScenario.tir);
+  const hallazgoTIR = tirNum === null ? null : buildHallazgoTIR({ tirPct: tirNum, modalidad: "ltr" });
   // Hallazgo de SENSIBILIDAD (robustez del veredicto): 8º hallazgo, el segundo SOLO-LECTURA.
   // Estresa el arriendo declarado hacia abajo por bisección [−50%,0] y reporta cuánto aguanta
   // el veredicto antes de cambiar. El closure `veredictoAt` reevalúa el veredicto sobre un
@@ -1868,9 +1916,11 @@ export function runAnalysis(
   const palancaPrecioVeredicto = hallazgoDistancia?.valor.palancas.find(
     (l) => l.palanca === "precio",
   );
+  // TODO(pie-cero-fase-3): con pie 0 la TIR base se aplana a 0 (gate interno
+  // "tirActual > 6" no corre → sin precio límite). Drawer negociación honesto: fase 3.
   const negociacion = calcNegociacionScenario(
     input,
-    exitScenario.tir,
+    metricaODefault(exitScenario.tir, 0),
     metrics,
     ufClp,
     asOf,
