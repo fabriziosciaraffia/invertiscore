@@ -15,7 +15,7 @@
 
 import type { FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
-import { normalizeLegacyVerdict } from "@/lib/types";
+import { normalizeLegacyVerdict, metricaODefault } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
 import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
@@ -83,7 +83,9 @@ export function DocumentoAmbas({
   const ltrFlujoMensual = ltrResults?.metrics?.flujoNetoMensual ?? 0;
   const ltrRetorno = ltrResults as unknown as { retorno?: { inversionInicial?: number }; exitScenario?: { inversionInicial?: number } } | null;
   const ltrCapital = ltrRetorno?.retorno?.inversionInicial ?? ltrRetorno?.exitScenario?.inversionInicial ?? ltrResults?.metrics?.pieCLP ?? 0;
-  const ltrTir = ltrResults?.exitScenario?.tir ?? 0;
+  // TODO(pie-cero-fase-3): con pie 0 la TIR LTR es 'no_aplica' y acá se aplana a 0
+  // para la tabla comparativa; el documento AMBAS honesto es fase 3.
+  const ltrTir = metricaODefault(ltrResults?.exitScenario?.tir, 0);
   const ltrCap = ltrResults?.metrics?.rentabilidadNeta ?? 0;
 
   const strBase = strResults?.escenarios?.base;

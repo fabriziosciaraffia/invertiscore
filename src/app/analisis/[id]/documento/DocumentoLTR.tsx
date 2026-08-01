@@ -18,6 +18,7 @@ import type {
 } from "@/lib/types";
 import { ordenarHallazgosDocumento, esAdverso } from "@/components/analysis/PiramideHallazgos";
 import { fmtUF, fmtMoney } from "@/components/analysis/utils";
+import { metricaDisplay, metricaODefault } from "@/lib/types";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
 import { PatrimonioChartSVG } from "./PatrimonioChartSVG";
@@ -84,7 +85,9 @@ export function DocumentoLTR({
   // ¿el precio sugerido MEJORA materialmente la TIR? (≥ 0,3 pts sobre lo actual,
   // comparado sobre valores redondeados = lo que se muestra). En BUSCAR OTRA con
   // TIR negativa el sugerido no mueve la aguja → no afirmar "mejora la matemática".
-  const tirActual = results.exitScenario.tir;
+  // TODO(pie-cero-fase-3): con pie 0 la TIR es 'no_aplica' y acá se aplana a 0
+  // para la aritmética de negociación; el documento honesto es fase 3.
+  const tirActual = metricaODefault(results.exitScenario.tir, 0);
   const tirMejoraPts = neg ? round1(neg.tirAlSugerido) - round1(tirActual) : 0;
   const tirMejoraMaterial = tirMejoraPts >= 0.3;
   // nunca "de X a Y" si redondean igual (QA punto 1c).
@@ -306,9 +309,10 @@ export function DocumentoLTR({
         <div className="chips">
           <p className="cl">Tu retorno vs el piso</p>
           <div className="grid g3">
-            <div className="c"><p className="ck">Tu TIR</p><div className={`cv ${exit.tir >= 6 ? "pos" : "neg"}`}>{pct(exit.tir)}</div></div>
+            {/* TODO(pie-cero-fase-3): con pie 0 la TIR muestra "—" y la aritmética se aplana a 0. */}
+            <div className="c"><p className="ck">Tu TIR</p><div className={`cv ${metricaODefault(exit.tir, 0) >= 6 ? "pos" : "neg"}`}>{metricaDisplay(exit.tir, pct)}</div></div>
             <div className="c"><p className="ck">Piso exigible</p><div className="cv">6,0%</div></div>
-            <div className="c"><p className="ck">Margen</p><div className={`cv ${exit.tir - 6 >= 0 ? "pos" : "neg"}`}>{(exit.tir - 6 >= 0 ? "+" : "") + dec(exit.tir - 6)} pts</div></div>
+            <div className="c"><p className="ck">Margen</p><div className={`cv ${metricaODefault(exit.tir, 0) - 6 >= 0 ? "pos" : "neg"}`}>{(metricaODefault(exit.tir, 0) - 6 >= 0 ? "+" : "") + dec(metricaODefault(exit.tir, 0) - 6)} pts</div></div>
           </div>
           <p className="foot">6,0% es el mínimo que un crédito apalancado debe rendir para pagar el esfuerzo y la iliquidez de tener un depto.</p>
         </div>
@@ -317,7 +321,8 @@ export function DocumentoLTR({
           <p className="bl">Patrimonio al año {exit.anios}</p>
           <p className="big">{money(exit.equityCLP)}</p>
           <p className="bt">
-            Tras vender y saldar el crédito, tu parte es {money(exit.equityCLP)} frente a los {money(exit.totalAportado)} que aportaste — un multiplicador de {dec(exit.multiplicadorCapital)}× sobre lo que pusiste.
+            {/* TODO(pie-cero-fase-3): con pie 0 el multiplicador muestra "—". */}
+            Tras vender y saldar el crédito, tu parte es {money(exit.equityCLP)} frente a los {money(exit.totalAportado)} que aportaste — un multiplicador de {metricaDisplay(exit.multiplicadorCapital, dec)}× sobre lo que pusiste.
           </p>
         </div>
         {largo?.cajaAccionable_clp && (
@@ -342,9 +347,9 @@ export function DocumentoLTR({
             </div>
             <p className="foot">
               {tirMejoraMaterial && tirDistinto ? (
-                <>{neg.razon ?? "Este precio te acerca a los comparables de la zona."} La TIR pasa de {pct(exit.tir)} a {pct(neg.tirAlSugerido)}.</>
+                <>{neg.razon ?? "Este precio te acerca a los comparables de la zona."} La TIR pasa de {metricaDisplay(exit.tir, pct)} a {pct(neg.tirAlSugerido)}.</>
               ) : (
-                <>El precio no es la palanca de este caso: acercarlo al mercado de la zona apenas mueve el retorno (TIR {pct(exit.tir)}). Lo que decide acá vive en el flujo y los supuestos, no en el precio de entrada.</>
+                <>El precio no es la palanca de este caso: acercarlo al mercado de la zona apenas mueve el retorno (TIR {metricaDisplay(exit.tir, pct)}). Lo que decide acá vive en el flujo y los supuestos, no en el precio de entrada.</>
               )}
               {neg.precioLimiteUF != null && (
                 <> El <b>techo</b> es {fmtUFint(neg.precioLimiteUF)}: por encima de ese precio la operación deja de rendir el 6% mínimo que un crédito apalancado debe pagar.</>
@@ -409,10 +414,11 @@ export function DocumentoLTR({
           <div className="sim-block">
             <p className="sbl">08 · Indicadores @ {exit.anios} años</p>
             <div className="kpis">
-              <div className="kpi"><p className="kk">TIR</p><div className="kv">{pct(exit.tir)}</div></div>
+              {/* TODO(pie-cero-fase-3): con pie 0 TIR/CoC/múltiplo muestran "—". */}
+              <div className="kpi"><p className="kk">TIR</p><div className="kv">{metricaDisplay(exit.tir, pct)}</div></div>
               <div className="kpi"><p className="kk">Rent. neta</p><div className="kv">{pct(m.rentabilidadNeta)}</div></div>
-              <div className="kpi"><p className="kk">Cash-on-cash</p><div className={`kv ${m.cashOnCash < 0 ? "neg" : ""}`}>{pct(m.cashOnCash)}</div></div>
-              <div className="kpi"><p className="kk">Múltiplo</p><div className="kv">{dec(exit.multiplicadorCapital)}×</div></div>
+              <div className="kpi"><p className="kk">Cash-on-cash</p><div className={`kv ${metricaODefault(m.cashOnCash, 0) < 0 ? "neg" : ""}`}>{metricaDisplay(m.cashOnCash, pct)}</div></div>
+              <div className="kpi"><p className="kk">Múltiplo</p><div className="kv">{metricaDisplay(exit.multiplicadorCapital, dec)}×</div></div>
               <div className="kpi"><p className="kk">Rent. bruta</p><div className="kv">{pct(m.rentabilidadBruta)}</div></div>
               <div className="kpi"><p className="kk">Plusvalía proy.</p><div className="kv">{plusvProyPct}</div></div>
             </div>
@@ -425,7 +431,8 @@ export function DocumentoLTR({
           <div className="wrow"><span className="wl sub">− Deuda pendiente del crédito</span><span className="wv neg">−{money(exit.saldoCredito)}</span></div>
           <div className="wrow"><span className="wl sub">− Comisión de venta</span><span className="wv neg">−{money(exit.comisionVenta)}</span></div>
           <div className="wrow total"><span className="wl">Recibes en la mano</span><span className="wv">{money(exit.equityCLP)}</span></div>
-          <div className="wrow"><span className="wl sub">Sobre lo aportado ({money(exit.totalAportado)})</span><span className="wv">{dec(exit.multiplicadorCapital)}×</span></div>
+          {/* TODO(pie-cero-fase-3): con pie 0 el multiplicador muestra "—". */}
+          <div className="wrow"><span className="wl sub">Sobre lo aportado ({money(exit.totalAportado)})</span><span className="wv">{metricaDisplay(exit.multiplicadorCapital, dec)}×</span></div>
         </div>
 
         <div className="zona">

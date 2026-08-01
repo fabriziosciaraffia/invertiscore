@@ -20,6 +20,7 @@ import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from 
 import { buildHallazgoEstructuraFinanciamiento } from "@/lib/estructura-financiamiento-hallazgo";
 import { calcDecisividades } from "@/lib/analysis";
 import type { Hallazgo } from "@/lib/types";
+import { metricaDisplay, metricaODefault } from "@/lib/types";
 
 const anthropic = new Anthropic();
 
@@ -1049,7 +1050,9 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
 
     const neg = results.negociacion;
     const precioSugeridoCLPNeg = neg?.precioSugeridoCLP ?? Math.round(Math.min(input.precio, vmFrancoUF) * 0.97 * UF_CLP);
-    const tirActual = exit?.tir ?? 0;
+    // TODO(pie-cero-fase-4): con pie 0 la TIR es 'no_aplica' y acá se aplana a 0
+    // para las líneas de negociación del prompt; el tratamiento honesto es fase 4.
+    const tirActual = metricaODefault(exit?.tir, 0);
     const tirAlSugeridoNeg = neg?.tirAlSugerido ?? null;
     const deltaTirSugerido = typeof tirAlSugeridoNeg === "number"
       ? tirAlSugeridoNeg - tirActual
@@ -1418,6 +1421,10 @@ SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROH
 CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras (el total con la apertura no puede superar 85); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
+    // TODO(pie-cero-fase-4): las líneas Cash-on-Cash / TIR / Multiplicador del
+    // bloque INDICADORES usan metricaDisplay — con pie 0 el prompt muestra "—"
+    // sin instrucción a la IA de cómo narrarlo; el tratamiento honesto del
+    // prompt (doctrina 100% financiamiento) es fase 4.
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
 
 PERFIL Y ETAPA
@@ -1455,9 +1462,9 @@ INDICADORES CALCULADOS
 - Rentabilidad bruta: ${pct(m.rentabilidadBruta)}%
 - Cap rate: ${pct(m.capRate)}%
 - Rentabilidad neta: ${pct(m.rentabilidadNeta)}%
-- Cash-on-Cash: ${pct(m.cashOnCash)}%
-- TIR a 10 años: ${pct(exit.tir)}%
-- Multiplicador de capital (10 años): ${pct(exit.multiplicadorCapital, 2)}x
+- Cash-on-Cash: ${metricaDisplay(m.cashOnCash, (n) => `${pct(n)}%`)}
+- TIR a 10 años: ${metricaDisplay(exit.tir, (n) => `${pct(n)}%`)}
+- Multiplicador de capital (10 años): ${metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
 - Inversión inicial total: ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})
 - Precio máximo de compra para flujo positivo: ${fmtUF(results.valorMaximoCompra)}
 ${hallazgosBloque}

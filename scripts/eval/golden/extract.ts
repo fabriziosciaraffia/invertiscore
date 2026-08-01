@@ -8,6 +8,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FullAnalysisResult, Hallazgo } from "../../../src/lib/types";
+import { metricaValorONull } from "../../../src/lib/types";
 
 // ── Gather + dedup + orden — espejo de PiramideHallazgos.tsx ─────────────────
 
@@ -187,7 +188,9 @@ export function extractFacts(results: FullAnalysisResult, precioUF: number): Gol
     capRatePct: typeof m?.capRate === "number" ? m.capRate : null,
     sobreprecioPct: sob ? sob.valor.desviacionPct : (pvc?.desviacionPct ?? null),
     flujoNetoMensual: m?.flujoNetoMensual ?? 0,
-    tirPct: typeof exit?.tir === "number" ? exit.tir : null,
+    // Pie cero (fase 1-2): exit.tir pasó a MetricaSobreCapital; metricaValorONull
+    // extrae el número (y tolera el number crudo de filas persistidas legacy).
+    tirPct: metricaValorONull(exit?.tir),
     patrimonioMult: patr ? patr.valor.multiplicador : null,
     sensibilidadPresent: !!sens,
     patrimonioPresent: !!patr,

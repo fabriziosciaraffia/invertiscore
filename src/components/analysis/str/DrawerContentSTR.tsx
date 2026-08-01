@@ -45,6 +45,7 @@ import {
 import { FlujoEstacionalChartSTR } from "./FlujoEstacionalChartSTR";
 import { DrawerTipoHuesped } from "./DrawerTipoHuesped";
 import { fmtMoney, fmtPct, fmtDec } from "../utils";
+import { metricaDisplay, metricaODefault } from "@/lib/types";
 
 export interface InputDataSTR {
   edificioPermiteAirbnb?: "si" | "no" | "no_seguro";
@@ -441,10 +442,11 @@ export function DrawerContentSTR({
             value={fmtPct(base.capRate * 100, 2)}
             tooltip="NOI anual dividido por precio de compra. En STR saludable: 6-8%. Bajo 5% indica precio alto vs lo que el activo genera."
           />
+          {/* TODO(pie-cero-fase-3): con pie 0 muestra "—" (sin capital propio). */}
           <DataRow
             label="Cash-on-Cash (retorno sobre capital invertido)"
-            value={fmtPct(base.cashOnCash * 100, 1)}
-            isCritical={base.cashOnCash < 0}
+            value={metricaDisplay(base.cashOnCash, (n) => fmtPct(n * 100, 1))}
+            isCritical={metricaODefault(base.cashOnCash, 0) < 0}
             tooltip="Retorno anual sobre el capital efectivamente invertido (pie + gastos de cierre + amoblamiento + puesta a punto). Si es negativo, pones plata extra cada mes."
           />
           <DataRow
@@ -643,8 +645,9 @@ export function DrawerContentSTR({
                     <span className="w-20 text-right font-mono text-[13px] font-medium">
                       {fmtPct(r.capRate * 100, 2)}
                     </span>
-                    <span className="w-20 text-right font-mono text-[13px]" style={{ color: r.cashOnCash < 0 ? "var(--signal-red)" : "var(--franco-text)" }}>
-                      {fmtPct(r.cashOnCash * 100, 1)}
+                    {/* TODO(pie-cero-fase-3): con pie 0 muestra "—" (sin capital propio). */}
+                    <span className="w-20 text-right font-mono text-[13px]" style={{ color: metricaODefault(r.cashOnCash, 0) < 0 ? "var(--signal-red)" : "var(--franco-text)" }}>
+                      {metricaDisplay(r.cashOnCash, (n) => fmtPct(n * 100, 1))}
                     </span>
                     <span className="w-28 text-right font-mono text-[13px]" style={{ color: flujoNeg ? "var(--signal-red)" : "var(--franco-text)" }}>
                       {(r.flujoCajaMensual >= 0 ? "+" : "")}

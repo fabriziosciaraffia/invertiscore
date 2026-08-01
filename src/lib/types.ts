@@ -72,6 +72,74 @@ export interface AnalisisInput {
   incluyeCorretajeInicial?: boolean;
 }
 
+// ─── Métricas sobre capital propio (pie cero · fase 1-2) ─────────────────────
+//
+// Con pie 0 (100% financiamiento, típico bono pie) las métricas que dividen por
+// el capital propio pierden significado: no hay pie que rente ni payback que
+// medir. Estado tipado "no aplica" EN VEZ de un número inventado (0%, Infinity,
+// 999). Enforcement por construcción: el consumidor que asume number no compila.
+//
+// Criterio de activación (decisión cerrada): pieCLP === 0. Los gastos de cierre
+// (y el amoblamiento/CapEx en STR) NO cuentan como capital propio para estas
+// métricas aunque sí integren capitalInvertido.
+//
+// La razón es un enum extensible: hoy solo 'sin_pie'; futuro 'bono_pie', etc.
+export type RazonSinCapital = "sin_pie";
+
+export type MetricaSobreCapital =
+  | { tipo: "valor"; valor: number }
+  | { tipo: "no_aplica"; razon: RazonSinCapital };
+
+export const metricaValor = (valor: number): MetricaSobreCapital => ({ tipo: "valor", valor });
+
+export const metricaNoAplica = (razon: RazonSinCapital = "sin_pie"): MetricaSobreCapital => ({
+  tipo: "no_aplica",
+  razon,
+});
+
+/**
+ * Lectura numérica tolerante a filas persistidas pre-migración: los results
+ * jsonb guardados antes del tipo traen number crudo donde hoy va la unión.
+ * Devuelve el número cuando existe (unión 'valor' o number legacy finito) y
+ * null cuando la métrica no aplica o falta. Los gates del motor leen por acá
+ * para que un brazo sobre capital se OMITA (ni true ni false) con 'no_aplica'.
+ */
+export function metricaValorONull(
+  m: MetricaSobreCapital | number | null | undefined,
+): number | null {
+  if (typeof m === "number") return Number.isFinite(m) ? m : null;
+  if (m == null) return null;
+  return m.tipo === "valor" ? m.valor : null;
+}
+
+/**
+ * Adaptador TEMPORAL para consumidores de render/prompt (fases 3-4): preserva
+ * el comportamiento visual actual devolviendo el número cuando hay valor y el
+ * fallback cuando no aplica. El rediseño real de cada superficie (mostrar "—",
+ * copy propio, etc.) es fase 3 (render) / fase 4 (prompt IA); cada callsite
+ * queda marcado con TODO(pie-cero-fase-3) o TODO(pie-cero-fase-4).
+ */
+export function metricaODefault(
+  m: MetricaSobreCapital | number | null | undefined,
+  fallback: number = 0,
+): number {
+  const v = metricaValorONull(m);
+  return v ?? fallback;
+}
+
+/**
+ * Formato display mínimo (fases 3-4): formatea el valor con `fmt` o devuelve
+ * "—" cuando la métrica no aplica. Cero rediseño visual: para análisis con pie
+ * > 0 el output es byte-idéntico al previo.
+ */
+export function metricaDisplay(
+  m: MetricaSobreCapital | number | null | undefined,
+  fmt: (n: number) => string,
+): string {
+  const v = metricaValorONull(m);
+  return v === null ? "—" : fmt(v);
+}
+
 export interface MonthlyCashflow {
   mes: number;
   ingreso: number;
@@ -108,8 +176,10 @@ export interface ExitScenario {
   equityCLP: number;
   flujoAcumulado: number;
   retornoTotal: number;
-  multiplicadorCapital: number;
-  tir: number;
+  // Sobre capital propio: 'no_aplica' cuando pieCLP === 0 (pie cero · fase 1-2).
+  // Filas persistidas pre-migración traen number crudo → leer con metricaValorONull.
+  multiplicadorCapital: MetricaSobreCapital;
+  tir: MetricaSobreCapital;
   // Concepto "plata que realmente pusiste" a lo largo del plazo
   inversionInicial: number;              // pie + gastos cierre + CapEx puesta a punto + corretaje (usados, día 1)
   flujoMensualAcumuladoNegativo: number; // suma absoluta de años con flujo neto negativo
@@ -138,9 +208,11 @@ export interface AnalysisMetrics {
   rentabilidadBruta: number;
   rentabilidadNeta: number;
   capRate: number;
-  cashOnCash: number;
+  // Sobre capital propio: 'no_aplica' cuando pieCLP === 0 (pie cero · fase 1-2).
+  // Filas persistidas pre-migración traen number crudo → leer con metricaValorONull.
+  cashOnCash: MetricaSobreCapital;
   precioM2: number;
-  mesesPaybackPie: number;
+  mesesPaybackPie: MetricaSobreCapital;
   dividendo: number;
   flujoNetoMensual: number;
   noi: number;

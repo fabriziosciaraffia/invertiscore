@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, DollarSign } from "lucide-react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import type { Analisis, Desglose } from "@/lib/types";
+import { metricaValorONull, metricaODefault } from "@/lib/types";
 import { fmtM, fmtMult } from "@/components/analysis/utils";
 
 // Paleta congelada Ink + Signal Red: las series NO se distinguen por matiz
@@ -130,8 +131,10 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
       },
       {
         label: "Cash-on-Cash",
-        values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.cashOnCash) : "—"),
-        raw: analisis.map((a) => a.results?.metrics?.cashOnCash ?? 0),
+        // TODO(pie-cero-fase-3): con pie 0 muestra "—" (metricaValorONull → null);
+        // el sort usa 0 como neutro, igual que las filas sin dato.
+        values: analisis.map((a) => a.results?.metrics ? formatPct(metricaValorONull(a.results.metrics.cashOnCash)) : "—"),
+        raw: analisis.map((a) => metricaODefault(a.results?.metrics?.cashOnCash, 0)),
         higherIsBetter: true,
       },
     ],
@@ -162,26 +165,27 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
     rows: [
       {
         label: "ROI Total",
+        // TODO(pie-cero-fase-3): con pie 0 multiplicador/TIR muestran "—" y ordenan como 0.
         values: analisis.map((a) => {
-          const m = a.results?.exitScenario?.multiplicadorCapital;
-          return Number.isFinite(m) ? fmtMult(m as number, 2) : "—";
+          const m = metricaValorONull(a.results?.exitScenario?.multiplicadorCapital);
+          return m !== null ? fmtMult(m, 2) : "—";
         }),
-        raw: analisis.map((a) => a.results?.exitScenario?.multiplicadorCapital ?? 0),
+        raw: analisis.map((a) => metricaODefault(a.results?.exitScenario?.multiplicadorCapital, 0)),
         higherIsBetter: true,
       },
       {
         label: "TIR",
-        values: analisis.map((a) => formatPct(a.results?.exitScenario?.tir)),
-        raw: analisis.map((a) => a.results?.exitScenario?.tir ?? 0),
+        values: analisis.map((a) => formatPct(metricaValorONull(a.results?.exitScenario?.tir))),
+        raw: analisis.map((a) => metricaODefault(a.results?.exitScenario?.tir, 0)),
         higherIsBetter: true,
       },
       {
         label: "Multiplicador capital",
         values: analisis.map((a) => {
-          const m = a.results?.exitScenario?.multiplicadorCapital;
-          return Number.isFinite(m) ? fmtMult(m as number, 1) : "—";
+          const m = metricaValorONull(a.results?.exitScenario?.multiplicadorCapital);
+          return m !== null ? fmtMult(m, 1) : "—";
         }),
-        raw: analisis.map((a) => a.results?.exitScenario?.multiplicadorCapital ?? 0),
+        raw: analisis.map((a) => metricaODefault(a.results?.exitScenario?.multiplicadorCapital, 0)),
         higherIsBetter: true,
       },
     ],

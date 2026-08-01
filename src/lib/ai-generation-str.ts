@@ -37,6 +37,7 @@ import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engin
 import { sobreRentaPctEsConfiable } from "@/lib/engines/str-universo-santiago";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
+import { metricaDisplay } from "@/lib/types";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
 
@@ -544,6 +545,9 @@ export function buildUserPromptSTR(
     ? `\n\n=== HALLAZGO QUE LIDERA LA PIRÁMIDE (ancla el ángulo-lead del hero · §7.bis) ===\nEl coronado (más decisivo/adverso) es: «${cardFrases.coronado.titular}» — ${cardFrases.coronado.frase}\n→ \`conviene.respuestaDirecta\` debe alinear su ángulo-lead con este hallazgo. No lo copies (§1.bis); no contradigas la jerarquía visual.`
     : "";
 
+  // TODO(pie-cero-fase-4): las líneas CoC / Multiplicador de este prompt usan
+  // metricaDisplay — con pie 0 muestran "—" sin instrucción a la IA de cómo
+  // narrarlo; el tratamiento honesto del prompt STR (100% financiamiento) es fase 4.
   const userPrompt = `Analiza esta inversión inmobiliaria en renta corta (Airbnb). Aplica la doctrina §0-§14 del system prompt y devuelve el JSON v3.
 
 === DATOS DE LA PROPIEDAD ===
@@ -581,7 +585,7 @@ NOI mensual: ${fmtCLPSigned(base.noiMensual)}
 Dividendo: -${fmtCLP(dividendo)}/mes
 FLUJO DE CAJA MENSUAL: ${fmtCLPSigned(base.flujoCajaMensual)}
 CAP rate: ${pct(base.capRate * 100, 2)}% (umbral STR de referencia: 5%)
-Cash-on-Cash: ${pct(base.cashOnCash * 100)}%
+Cash-on-Cash: ${metricaDisplay(base.cashOnCash, (n) => `${pct(n * 100)}%`)}
 
 === ESCENARIOS (conservador / base / upside) ===
 Conservador (ocupación en el cuartil bajo observado): NOI ${fmtCLPSigned(cons.noiMensual)}/mes, Flujo ${fmtCLPSigned(cons.flujoCajaMensual)}/mes
@@ -613,10 +617,10 @@ ${projY10 && exit ? `Patrimonio neto al año ${exit.yearVenta} (valor del activo
 Flujo operativo acumulado a ese año (dato APARTE, no entra al patrimonio): ${fmtCLPSigned(projY10.flujoAcumulado)}
 Tu parte al vender año ${exit.yearVenta} (EQUITY = lo que te queda en la mano al liquidar el activo, neto de deuda y comisión, SIN flujo; NO "ganancia neta"): ${fmtCLPSigned(exit.equityCLP)}
 Retorno total (equity + flujo acumulado): ${fmtCLPSigned(exit.retornoTotal)}
-TIR @ ${exit.yearVenta} años: ${pct(exit.tirAnual)}% · Multiplicador de capital (equity/aportado, ×1 = recuperas lo puesto): ${pct(exit.multiplicadorCapital, 2)}x
+TIR @ ${exit.yearVenta} años: ${pct(exit.tirAnual)}% · Multiplicador de capital (equity/aportado, ×1 = recuperas lo puesto): ${metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
 Depósito a plazo (UF+5%) a 10 años, sobre ese mismo capital aportado (${fmtCLP(exit.totalAportado)}): ${fmtCLP(Math.round(exit.totalAportado * Math.pow(1.05, 10)))} (múltiplo ×${pct(Math.pow(1.05, 10), 2)})
 Fondo mutuo (7%) a 10 años, sobre ese mismo capital: ${fmtCLP(Math.round(exit.totalAportado * Math.pow(1.07, 10)))} (múltiplo ×${pct(Math.pow(1.07, 10), 2)})
-Comparación de múltiplos (YA calculada — úsala tal cual, no recalcules): tu capital rinde ×${pct(exit.multiplicadorCapital, 2)} en el depto (equity/aportado) frente a ×${pct(Math.pow(1.05, 10), 2)} en depósito UF y ×${pct(Math.pow(1.07, 10), 2)} en fondo mutuo. Ese es el ancla honesta del Ángulo 3: ajústala por esfuerzo, iliquidez y riesgo; nunca inventes el rendimiento del instrumento.` : "(proyecciones long-term no disponibles)"}
+Comparación de múltiplos (YA calculada — úsala tal cual, no recalcules): tu capital rinde ${metricaDisplay(exit.multiplicadorCapital, (n) => `×${pct(n, 2)}`)} en el depto (equity/aportado) frente a ×${pct(Math.pow(1.05, 10), 2)} en depósito UF y ×${pct(Math.pow(1.07, 10), 2)} en fondo mutuo. Ese es el ancla honesta del Ángulo 3: ajústala por esfuerzo, iliquidez y riesgo; nunca inventes el rendimiento del instrumento.` : "(proyecciones long-term no disponibles)"}
 
 === ATRACTORES DE DEMANDA EN LA ZONA ===
 Metro más cercano: ${metroName} a ${distMetro}m
@@ -636,7 +640,7 @@ ${r.subsidioTasa ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioT
 ${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar: el usuario puede pedir tasa subsidiada al banco (~0,6 pp menos). BAJA el dividendo y MEJORA el flujo. No está reflejado en este cálculo.` : r.subsidioTasa.califica && r.subsidioTasa.aplicado ? `→ Ya aplicado (la tasa ingresada coincide con la subsidiada). No lo menciones como mejora.` : `→ No califica. NO mencionar el subsidio.`}` : "(subsidio no calculado)"}
 
 === SENSIBILIDAD DE PRECIO (Ángulo 4 — la tabla vive en su propio drawer de datos) ===
-${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${pct(s.capRate * 100, 2)}%, CoC ${pct(s.cashOnCash * 100)}%, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${bloqueCards}${bloqueCoronado}${anomaliasTexto}
+${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${pct(s.capRate * 100, 2)}%, CoC ${metricaDisplay(s.cashOnCash, (n) => `${pct(n * 100)}%`)}, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${bloqueCards}${bloqueCoronado}${anomaliasTexto}
 
 ═══════════════════════════════════════════════════════════════════
 INSTRUCCIÓN FINAL

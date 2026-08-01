@@ -3,6 +3,7 @@
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { fmtMoney, fmtPct } from "../utils";
+import { metricaDisplay, metricaODefault } from "@/lib/types";
 
 /**
  * Sub-sección 08 · INDICADORES — variante STR (Patrón 7.B.2).
@@ -48,8 +49,9 @@ export function IndicatorsSTR({
     },
     {
       label: "CASH-ON-CASH",
-      value: fmtPct(base.cashOnCash * 100, 1),
-      tone: base.cashOnCash < 0 ? "bad" : "neutral",
+      // TODO(pie-cero-fase-3): con pie 0 muestra "—" (sin capital propio).
+      value: metricaDisplay(base.cashOnCash, (n) => fmtPct(n * 100, 1)),
+      tone: metricaODefault(base.cashOnCash, 0) < 0 ? "bad" : "neutral",
       tooltip: "Retorno anual sobre lo que efectivamente pusiste de tu bolsillo (pie + amoblamiento + gastos de cierre + puesta a punto).",
     },
     {
