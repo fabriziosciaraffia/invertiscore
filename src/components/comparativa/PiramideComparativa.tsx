@@ -100,7 +100,19 @@ function FindingCard({ finding: f, nivel, onOpen }: { finding: FindingComparativ
   const bodySize = nivel === 1 ? "text-[14px]" : "text-[12.5px]";
   const border = nivel === 1 ? "var(--franco-text-tertiary)" : "var(--franco-border)";
   const bg = chip ? "color-mix(in srgb, var(--franco-text) 3%, var(--franco-card))" : "var(--franco-card)";
-  const kick = nivel === 1 ? `Lo más decisivo · ${f.kicker.toLowerCase()}` : f.kicker;
+  // El kicker de nivel 1 NO afirma un ranking. Antes decía "Lo más decisivo · …" para la
+  // posición 0, siempre, sin validar nada — y acá no hay nada contra qué validar: a
+  // diferencia de LTR/STR, la `decisividad` de FindingComparativa es una CONSTANTE literal
+  // por tipo (flujo 0,95 · breakeven 0,9 · gestión 0,85 …), documental según su propio
+  // comentario, y el orden lo fija `buildFindingsComparativa` por banda: en STR_FRAGIL
+  // corona break-even (0,9) mientras flujo (0,95) queda debajo. O sea el rótulo era falso
+  // por construcción en esa banda, y en las demás acertaba por accidente de constantes.
+  // El guard `coronaEsLaMasDecisiva` de LTR/STR no se porta acá a propósito: mide unicidad
+  // del máximo de una decisividad CALCULADA por neutralización, y aplicarlo sobre números
+  // que no miden nada daría un veredicto con la misma autoridad falsa, solo que más caro.
+  // Queda el kicker plano, que es cierto. Lo que haría falta para un guard real está en el
+  // reporte del goal (decisividad calculada, no constante).
+  const kick = f.kicker;
 
   // Affordance de card completa (Fase 2): TODA la card es el trigger en los 3
   // niveles (antes solo el chip nivel 3). El "Ver cómo se calcula →" pasa a
