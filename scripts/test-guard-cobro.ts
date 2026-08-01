@@ -33,13 +33,20 @@
  *
  * Producción no se toca. El `POST` que corre acá es el que corre en Vercel.
  *
- * SOBRE `welcomeMarcado`
- * ─────────────────────
+ * SOBRE `welcomeMarcado` — LEER ANTES DE CONFIAR EN ESA ASERCIÓN
+ * ─────────────────────────────────────────────────────────────
  * En producción el flag `welcome_credit_used` lo escribe `chargeAnalysisCredit`
- * por dentro (access.ts:142). Como el espía no ejecuta ese cuerpo, el espía
- * MODELA ese efecto: si el cobro corre en modo welcome, marca. Es simulación
- * declarada, no ejecución — pero hace que la aserción dependa del orden y no sea
- * vacía: si el cobro sube arriba del guard, el flag se marca.
+ * por dentro (access.ts:142). El espía NO ejecuta ese cuerpo: modela el efecto
+ * (si el cobro corre en modo welcome, marca).
+ *
+ * Por lo tanto `assert.equal(ctx.welcomeMarcado, false)` prueba UNA sola cosa:
+ * que el cobro no corrió antes del guard. Es una aserción de ORDEN.
+ *
+ * NO prueba que el UPDATE de `welcome_credit_used` funcione, ni que su cláusula
+ * condicional `.eq('welcome_credit_used', false)` sea correcta, ni que el flag
+ * se escriba de verdad en la base. Nada de eso está cubierto acá ni en ningún
+ * otro test del repo. Si algún día se rompe esa escritura, esta suite sigue
+ * verde — y tiene que seguir verde, porque no es lo que mira.
  *
  * CÓMO VERIFICAR QUE ESTOS TESTS SIRVEN (el rojo)
  * ──────────────────────────────────────────────
@@ -315,7 +322,9 @@ async function assertRechazoSinCobro(res: Response, ruta: string) {
   assert.deepEqual(ctx.cobros, [], `${ruta}: SE COBRÓ antes del guard → ${ctx.cobros.join(",")}`);
   // 2 · no quedó fila
   assert.equal(filasAnalisis(), 0, `${ruta}: quedó fila en analisis pese al 422`);
-  // 3 · el welcome no se quemó
+  // 3 · el welcome no se quemó. OJO: esto prueba el ORDEN (el cobro no corrió
+  // antes del guard), NO que el UPDATE de welcome_credit_used funcione — el
+  // espía modela ese efecto, no lo ejecuta. Ver el header.
   assert.equal(ctx.welcomeMarcado, false, `${ruta}: se marcó welcome_credit_used`);
 }
 
