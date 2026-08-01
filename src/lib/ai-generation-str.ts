@@ -38,6 +38,7 @@ import { sobreRentaPctEsConfiable } from "@/lib/engines/str-universo-santiago";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
 // que el render y que REGLA 10 del prompt LTR. Nunca literal tipeado.
@@ -206,7 +207,7 @@ PARTE II — VOZ Y EXPRESIÓN
 
 Voz: español chileno claro y profesional. Tuteo neutro chileno: "tú aportas", "puedes", "tu cuota". Confianza basada en datos. Honestidad incómoda > simpatía vacía.
 
-Voseo argentino — PROHIBIDO. Verbos en -ás/-és/-ís acentuados son voseo. Antes de cerrar el JSON, relee y conjuga: "comprás"→"compras", "preferís"→"prefieres", "invertís"→"inviertes", "tenés"→"tienes", "podés"→"puedes".
+Voseo argentino — PROHIBIDO. REGLA POSITIVA: toda segunda persona singular va en tuteo chileno SIN tilde final ("tú controlas", "compras", "tienes", "delegas"). Verbos en -ás/-és/-ís acentuados son voseo. Antes de cerrar el JSON, relee y conjuga: "comprás"→"compras", "controlás"→"controlas", "preferís"→"prefieres", "invertís"→"inviertes", "tenés"→"tienes", "podés"→"puedes". En el mismo repaso verifica concordancia y ortografía: "los gastos comunes" (nunca "la gastos comunes"), "la sobre-renta está pareja" (nunca "parejo"), "autogestión" (una g), "delegas" (nunca "delgas"), "comuna" (nunca "commune"), "ilíquido" (una l).
 
 Otros prohibidos: chilenismos coloquiales ("cachái", "weón", "po", "bacán", "fome"); rioplatenses ("che", "ponele", "bárbaro", "re bien"); tratamientos forzados ("hermano", "compadre", "amigo"); arranques de cliché ("Te voy a hablar claro", "Mira, esto es así", "Voy a ser franco contigo"); disclaimers de IA; operadores específicos por nombre.
 
@@ -476,8 +477,14 @@ export function buildUserPromptSTR(
   }
   const ingresoBrutoBase = base.ingresoBrutoMensual;
   const costosOpTotal = base.costosOperativos + base.comisionMensual;
-  if (ingresoBrutoBase > 0 && costosOpTotal / ingresoBrutoBase > 0.25) {
-    anomalias.push(`COSTOS OPERATIVOS ALTOS: ${Math.round((costosOpTotal / ingresoBrutoBase) * 100)}% del ingreso bruto se va en costos + comisión (rango sano 15-25%).`);
+  // Banda canónica 30-40 (misma métrica y mismos cortes que la card estructura_costos_str —
+  // decisión de producto, censo familia 2). El "rango sano 15-25%" anterior era la banda de
+  // la COMISIÓN sola aplicada por error al total: la card decía "dentro de lo típico" y la
+  // prosa "sobre el rango sano" para el mismo número. Redondeo espejo del builder (cs) para
+  // que anomalía y card disparen en el mismo borde.
+  const costStackPctAnomalia = ingresoBrutoBase > 0 ? Math.round((costosOpTotal / ingresoBrutoBase) * 100) : 0;
+  if (costStackPctAnomalia > COSTOS_STR_BANDA_ADV_PCT) {
+    anomalias.push(`COSTOS OPERATIVOS ALTOS: ${costStackPctAnomalia}% del ingreso bruto se va en costos totales de operar —gastos + comisión— (banda típica ${COSTOS_STR_BANDA_FAV_PCT}-${COSTOS_STR_BANDA_ADV_PCT}% del ingreso bruto; sobre ${COSTOS_STR_BANDA_ADV_PCT}% es alto).`);
   }
   const anomaliasTexto = anomalias.length > 0
     ? `\n\n=== ANOMALÍAS DETECTADAS POR EL MOTOR ===\n${anomalias.map((a, i) => `${i + 1}. ${a}`).join("\n")}\n\nMENCIÓN OBLIGATORIA (§8). Recuerda: el break-even se menciona UNA vez (§Ángulo 6).`
