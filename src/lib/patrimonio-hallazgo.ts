@@ -42,8 +42,12 @@ export const PATR_CORTE_FAVORABLE = 2;  // ≥ 2× ⇒ favorable (patrimonio dob
 export const PATR_BANDA_MAGNITUD = 2;
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-// Multiplicador con coma chilena, 1 decimal: 0,69 → "0,7" · 2,5 → "2,5".
-const fmtMult = (n: number) => (Math.round(n * 10) / 10).toFixed(1).replace(".", ",");
+// Multiplicador con coma chilena, 2 decimales RECORTADOS: 1,45 → "1,45" · 2,30 → "2,3".
+// Antes redondeaba a 1 decimal y la card decía ×1,5 mientras la prosa (que recibe el
+// mismo exit.multiplicadorCapital a 2 decimales) decía ×1,45 — familia 7 del censo:
+// misma cifra, dos redondeos. Una sola precisión de display para ambas superficies.
+const fmtMult = (n: number) =>
+  (Math.round(n * 100) / 100).toFixed(2).replace(/0$/, "").replace(/\.$/, "").replace(".", ",");
 // UF entera con separador de miles chileno: 4617 → "4.617".
 const fmtUF = (clp: number, valorUF: number) =>
   valorUF > 0 ? Math.round(clp / valorUF).toLocaleString("es-CL") : "0";

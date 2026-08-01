@@ -64,20 +64,24 @@ function buildFrase(p: {
         `(en línea con la referencia de mercado, ${market}%). No hay palanca evidente que mover.`
       );
 
+    // "aceptable" es un factor NETO POSITIVO (etiqueta "A favor") con una optimización
+    // disponible — la frase abre por la fortaleza y cierra con la mejora como palanca,
+    // no como advertencia (familia 6 del censo: la etiqueta ya no desdice al texto).
     case "aceptable":
       if (p.driver === "pie")
         return (
-          `Tu estructura de financiamiento está bien, con un margen menor por el pie: ` +
-          `${pie}% queda algo bajo el óptimo de ${PIE_OPTIMO_PCT}%. La tasa (${tasa}%) está en buen nivel.`
+          `Tu estructura de financiamiento está bien: la tasa (${tasa}%) está en buen nivel y el ` +
+          `pie de ${pie}% cumple. Si puedes acercarlo al óptimo de ${PIE_OPTIMO_PCT}%, la dejas sólida.`
         );
       if (p.driver === "tasa")
         return (
-          `Tu estructura de financiamiento está bien, con un margen menor por la tasa: ` +
-          `${tasa}% deja ${spread} sobre la referencia de mercado (${market}%). El pie (${pie}%) está en nivel adecuado.`
+          `Tu estructura de financiamiento está bien: el pie (${pie}%) está en nivel adecuado y la ` +
+          `tasa (${tasa}%) queda apenas ${spread} sobre la referencia de mercado (${market}%). ` +
+          `Cotizar en otro banco puede cerrar ese margen.`
         );
       return (
-        `Tu estructura de financiamiento está bien: el pie (${pie}%) y la tasa (${tasa}%) ` +
-        `dejan un margen menor, sin un punto débil claro.`
+        `Tu estructura de financiamiento está bien: el pie (${pie}%) y la tasa (${tasa}%) cumplen, ` +
+        `con espacio menor de optimización en ambos.`
       );
 
     case "mejorable":
@@ -123,8 +127,8 @@ function buildTitular(p: { overall: FinancingHealthLevel; driver: "pie" | "tasa"
     case "optimo":
       return "Tu financiamiento está sólido: pie y tasa bien puestos.";
     case "aceptable":
-      if (p.driver === "pie") return "Tu financiamiento está bien; el pie deja un margen menor.";
-      if (p.driver === "tasa") return "Tu financiamiento está bien; la tasa deja un margen menor.";
+      if (p.driver === "pie") return "Tu financiamiento está bien; el pie puede afinarse.";
+      if (p.driver === "tasa") return "Tu financiamiento está bien; la tasa puede afinarse.";
       return "Tu financiamiento está bien, sin un punto débil claro.";
     case "mejorable":
       if (p.driver === "pie") return "Tu financiamiento tiene margen: el pie te deja corto.";

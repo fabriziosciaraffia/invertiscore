@@ -729,7 +729,8 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
     }
     case "patrimonio": {
       const v = h.valor;
-      const multFmt = "×" + (Math.round(v.multiplicador * 10) / 10).toFixed(1).replace(".", ",");
+      // 2 decimales recortados — misma precisión que card y prosa (familia 7 del censo).
+      const multFmt = "×" + v.multiplicador.toFixed(2).replace(/0$/, "").replace(/\.$/, "").replace(".", ",");
       return {
         desc,
         term: "Patrimonio a 10 años",

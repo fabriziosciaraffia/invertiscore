@@ -117,30 +117,37 @@ export function buildHallazgoCapRate(p: {
 
   const gap = capRatePct - p.ref.pct; // signed
   const gapRounded = Math.round(gap * 10) / 10;
-  const direccion: "favorable" | "adverso" =
-    capRatePct >= p.ref.pct ? "favorable" : "adverso";
+  const gapAbs = Math.abs(gapRounded);
+  // "neutral" en la banda "en línea" (|gap| < 0,2 — familia 6 del censo): rendir lo
+  // esperable no es ventaja ni advertencia, y la etiqueta de la card ya no desdice a
+  // la frase. Fuera de la banda, binaria como siempre.
+  const direccion: "favorable" | "adverso" | "neutral" =
+    gapAbs < 0.2 ? "neutral" : capRatePct >= p.ref.pct ? "favorable" : "adverso";
 
   const crFmt = fmt1(capRatePct);
   const refFmt = fmt1(p.ref.pct);
-  const gapAbs = Math.abs(gapRounded);
   const gapFmt = fmt1(gapAbs);
+
+  // Glosa inline de CAP rate (familia 4 del censo): la card es standalone — no hay
+  // orden de "primer uso" que garantice la glosa de la prosa. Espejo del patrón TIR.
+  const glosaCap = `Tu CAP rate —lo que el arriendo te deja al año sobre el precio, ya descontados los gastos—`;
 
   let fraseCanonica: string;
   let titular: string;
-  if (gapAbs < 0.2) {
+  if (direccion === "neutral") {
     titular = "Rinde en línea con lo que pide el mercado.";
     fraseCanonica =
-      `Tu CAP rate es ${crFmt}% — en línea con la referencia de mercado (${refFmt}%). ` +
+      `${glosaCap} es ${crFmt}% — en línea con la referencia de mercado (${refFmt}%). ` +
       `Rinde lo esperable para este precio.`;
   } else if (direccion === "favorable") {
     titular = "Rinde por sobre lo que el mercado paga.";
     fraseCanonica =
-      `Tu CAP rate es ${crFmt}% — +${gapFmt} pts sobre la referencia de mercado (${refFmt}%). ` +
+      `${glosaCap} es ${crFmt}% — +${gapFmt} pts sobre la referencia de mercado (${refFmt}%). ` +
       `Rinde por sobre lo que el mercado paga para este precio.`;
   } else {
     titular = "Rinde bajo lo que el mercado exige acá.";
     fraseCanonica =
-      `Tu CAP rate es ${crFmt}% — ${gapFmt} pts bajo la referencia de mercado (${refFmt}%). ` +
+      `${glosaCap} es ${crFmt}% — ${gapFmt} pts bajo la referencia de mercado (${refFmt}%). ` +
       `Rinde bajo el promedio; el precio pide ajuste o conviene comparar con opciones más rentables en la zona.`;
   }
 

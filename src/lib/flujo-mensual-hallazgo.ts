@@ -34,10 +34,21 @@ const UMBRAL_DECISIVO = 0.5;
  * `montoFmt` ya trae signo/símbolo; la rama (favorable / acotado / fuerte) NO depende de la
  * moneda, solo de dirección y ratio → el texto es idéntico salvo el monto formateado.
  */
+/**
+ * Rama del CIERRE de la frase "acotada" (paquete A, familia 1 del censo editorial): el
+ * consuelo "la plusvalía puede compensarlo" solo se emite cuando es verdad.
+ *   "plusvalia" — veredicto no-BUSCAR y plusvalía histórica ≥ umbral real (texto original).
+ *   "estable"   — plusvalía débil/negativa: el cierre nombra por qué NO invoca la plusvalía.
+ *   "ninguno"   — veredicto BUSCAR OTRA: cero consuelo; el aporte se narra como constante.
+ * Default "plusvalia" = comportamiento legacy (filas persistidas sin valor.consuelo).
+ */
+export type ConsueloFlujo = "plusvalia" | "estable" | "ninguno";
+
 export function buildFraseFlujo(
   montoFmt: string,
   direccion: "favorable" | "adverso",
   ratio: number,
+  consuelo: ConsueloFlujo = "plusvalia",
 ): { titular: string; fraseCanonica: string } {
   if (direccion === "favorable") {
     return {
@@ -48,8 +59,27 @@ export function buildFraseFlujo(
     };
   }
   if (ratio < UMBRAL_DECISIVO) {
+    const titular = "Pones algo de tu bolsillo cada mes.";
+    if (consuelo === "ninguno") {
+      return {
+        titular,
+        fraseCanonica:
+          `Tienes que poner ${montoFmt} al mes de tu bolsillo — acotado frente al dividendo, ` +
+          `y constante: sale de tu bolsillo mes a mes mientras tengas el depto, y el resto ` +
+          `del caso no lo compensa.`,
+      };
+    }
+    if (consuelo === "estable") {
+      return {
+        titular,
+        fraseCanonica:
+          `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte acotado frente al dividendo. ` +
+          `Sostenible si tu flujo es estable; eso sí, la plusvalía histórica de la comuna no está ` +
+          `para compensarlo.`,
+      };
+    }
     return {
-      titular: "Pones algo de tu bolsillo cada mes.",
+      titular,
       fraseCanonica:
         `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte acotado frente al dividendo. ` +
         `Sostenible si tu flujo es estable; la plusvalía puede compensarlo.`,
@@ -84,6 +114,11 @@ export function buildHallazgoFlujoMensual(p: {
   decisividad: number;
   /** Magnitud continua pre-floor — desempate secundario del sort (E4). */
   magnitudContinua: number;
+  /** Rama del cierre "acotado" (familia 1). El caller la deriva del contexto que el
+   *  builder no tiene: plusvalía de la comuna en calcMetrics ("plusvalia"/"estable")
+   *  y veredicto en runAnalysis ("ninguno" vía aplicarVeredictoAFlujo, post-derive).
+   *  Ausente ⇒ "plusvalia" (comportamiento legacy). */
+  consuelo?: ConsueloFlujo;
 }): HallazgoFlujoMensual | null {
   if (!Number.isFinite(p.flujoNetoMensualCLP)) return null;
   if (!Number.isFinite(p.dividendoMensualCLP) || p.dividendoMensualCLP <= 0) return null;
@@ -93,11 +128,17 @@ export function buildHallazgoFlujoMensual(p: {
   // frase ("acotado" vs "fuerte") y el campo valor.ratioSobreDividendo.
   const ratio = Math.abs(aporte) / p.dividendoMensualCLP;
   const direccion: "favorable" | "adverso" = aporte >= 0 ? "favorable" : "adverso";
+  const consuelo = p.consuelo ?? "plusvalia";
 
   // Frase SEEDED en CLP (contrato Plan C bit-idéntico): el monto va en CLP vía fmtCLP. El
   // render de la card reusa la MISMA plantilla (buildFraseFlujo) con el monto en la moneda
   // activa — misma rama, mismo texto, solo cambia el formato del monto.
-  const { titular, fraseCanonica } = buildFraseFlujo(fmtCLP(aporte), direccion, ratio);
+  const { titular, fraseCanonica } = buildFraseFlujo(fmtCLP(aporte), direccion, ratio, consuelo);
+
+  // valor.consuelo solo se persiste en la rama que lo usa (adverso + acotado): ahí el
+  // render necesita reproducir la MISMA variante. En favorable/fuerte no aplica.
+  const consueloPersistido =
+    direccion === "adverso" && ratio < UMBRAL_DECISIVO ? consuelo : undefined;
 
   return {
     id: "flujo_mensual",
@@ -107,6 +148,7 @@ export function buildHallazgoFlujoMensual(p: {
       dividendoMensualCLP: Math.round(p.dividendoMensualCLP),
       ratioSobreDividendo: Math.round(ratio * 100) / 100,
       modalidad: p.modalidad,
+      ...(consueloPersistido ? { consuelo: consueloPersistido } : {}),
     },
     direccion,
     decisividad: p.decisividad,
@@ -118,4 +160,31 @@ export function buildHallazgoFlujoMensual(p: {
     titular,
     fraseCanonica,
   };
+}
+
+/**
+ * Parche post-veredicto (familia 1): el hallazgo se emite en calcMetrics, ANTES de que
+ * runAnalysis derive el veredicto — por eso el "ninguno" (BUSCAR OTRA) no puede decidirse
+ * en el builder. runAnalysis llama esto DESPUÉS de deriveVeredicto y reemplaza el carrier:
+ * si el veredicto es BUSCAR OTRA y la frase quedó en rama acotada-con-consuelo, se re-emite
+ * con consuelo "ninguno" (misma plantilla, mismos números). En cualquier otro caso devuelve
+ * el hallazgo intacto (referencia idéntica — cero churn en COMPRAR/AJUSTA).
+ */
+export function aplicarVeredictoAFlujo(
+  h: HallazgoFlujoMensual,
+  veredicto: string,
+): HallazgoFlujoMensual {
+  if (veredicto !== "BUSCAR OTRA") return h;
+  if (h.direccion !== "adverso") return h;
+  const ratio = h.valor.ratioSobreDividendo;
+  if (!(ratio < UMBRAL_DECISIVO)) return h;
+  if (h.valor.consuelo === "ninguno") return h;
+
+  const { titular, fraseCanonica } = buildFraseFlujo(
+    fmtCLP(h.valor.flujoNetoMensualCLP),
+    h.direccion,
+    ratio,
+    "ninguno",
+  );
+  return { ...h, titular, fraseCanonica, valor: { ...h.valor, consuelo: "ninguno" } };
 }

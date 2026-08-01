@@ -72,26 +72,28 @@ export function buildHallazgoTIR(p: {
 
   let fraseCanonica: string;
   let titular: string;
+  // "compra apalancada —con crédito de por medio—" reemplaza al anglicismo "deal
+  // apalancado" (familia 4 del censo: jerga sin glosa en frase de card standalone).
   if (gapAbs < TIR_BORDE) {
     titular = "Puesto todo junto, el retorno queda justo en el filo.";
     fraseCanonica =
       `Tu TIR —la rentabilidad anual de toda tu inversión— es ${tirFmt}%, justo en el mínimo ` +
-      `de ${TIR_UMBRAL_MINIMO}% que un deal apalancado debería rendir. Está al filo: cualquier ` +
-      `supuesto que se mueva (arriendo, tasa, precio de salida) lo define.`;
+      `de ${TIR_UMBRAL_MINIMO}% que le pedimos a una compra apalancada, hecha con crédito. ` +
+      `Está al filo: cualquier supuesto que se mueva (arriendo, tasa, precio de salida) lo define.`;
   } else if (direccion === "favorable") {
     titular = "Puesto todo junto, el retorno anual rinde lo suficiente.";
     fraseCanonica =
       `Tu TIR —la rentabilidad anual de toda tu inversión— es ${tirFmt}%, sobre el mínimo de ` +
-      `${TIR_UMBRAL_MINIMO}% que un deal apalancado debería rendir para valer el esfuerzo y la ` +
-      `iliquidez. Ese número ya integra el arriendo, tus aportes mensuales y la venta proyectada ` +
-      `a 10 años, no solo la renta del mes.`;
+      `${TIR_UMBRAL_MINIMO}% que le pedimos a una compra apalancada —hecha con crédito— para ` +
+      `valer el esfuerzo y la iliquidez. Ese número ya integra el arriendo, tus aportes mensuales ` +
+      `y la venta proyectada a 10 años, no solo la renta del mes.`;
   } else {
     titular = "Puesto todo junto, el retorno anual se queda corto.";
     fraseCanonica =
       `Tu TIR —la rentabilidad anual de toda tu inversión— es ${tirFmt}%, bajo el mínimo de ` +
-      `${TIR_UMBRAL_MINIMO}% que un deal apalancado debería rendir para justificar el capital y ` +
-      `el riesgo. Ese número ya integra el arriendo, tus aportes y la venta a 10 años: no lo ` +
-      `levanta la plusvalía.`;
+      `${TIR_UMBRAL_MINIMO}% que le pedimos a una compra apalancada —hecha con crédito— para ` +
+      `justificar el capital y el riesgo. Ese número ya integra el arriendo, tus aportes y la ` +
+      `venta a 10 años: no lo levanta la plusvalía.`;
   }
 
   return {
