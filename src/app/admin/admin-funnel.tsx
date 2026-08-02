@@ -1,17 +1,22 @@
 import { fmtCLP, fmtNumber, fmtDateShort } from "@/lib/admin-format";
 
 /**
- * Funnel de 4 etapas. Presentación pura: los conteos los calcula la página.
+ * Funnel de 4 etapas con barras horizontales PROPORCIONALES al valor.
  *
- * El porcentaje es siempre respecto de la etapa ANTERIOR, no del total: lo que
- * interesa es dónde se cae, no cuánto queda. Puede pasar de 100% (los que pagaron
- * y los que abandonaron el checkout son conjuntos distintos, no un subconjunto);
- * se muestra tal cual en vez de recortarlo, porque un 125% dice algo real.
+ * Antes eran cuatro cajas del mismo tamaño con el número adentro, que es
+ * exactamente lo que un funnel no debe ser: si todas las etapas se ven iguales,
+ * la forma no dice nada y hay que leer los números uno por uno.
+ *
+ * Entre etapa y etapa va la caída en usuarios Y en porcentaje ("−16 usuarios ·
+ * −33%"), no la conversión: el dato accionable es cuánta gente se pierde, no
+ * cuánta sobrevive.
  */
 export interface EtapaFunnel {
   valor: number;
   nombre: string;
   detalle: string;
+  /** Qué hizo (o no hizo) la gente que se cayó acá. Se muestra en la banda de caída. */
+  caida: string;
 }
 
 export interface CheckoutAbandonado {
@@ -23,67 +28,80 @@ export interface CheckoutAbandonado {
   esTest: boolean;
 }
 
-function pct(actual: number, anterior: number): string | null {
-  if (anterior <= 0) return null;
-  return `${Math.round((actual / anterior) * 100)}%`;
-}
-
 export function AdminFunnel({
   etapas,
   abandonados,
   includeTest,
 }: {
-  etapas: [EtapaFunnel, EtapaFunnel, EtapaFunnel, EtapaFunnel];
+  etapas: EtapaFunnel[];
   abandonados: CheckoutAbandonado[];
   includeTest: boolean;
 }) {
-  const max = Math.max(...etapas.map((e) => e.valor), 1);
+  // La barra es proporcional a la PRIMERA etapa, no al máximo: el funnel se lee
+  // como fracción del total que entró, que es lo que la forma tiene que contar.
+  const base = Math.max(etapas[0]?.valor ?? 0, 1);
 
   return (
     <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)]">
-      <div className="grid grid-cols-2 lg:grid-cols-4">
-        {etapas.map((e, i) => {
-          const anterior = i > 0 ? etapas[i - 1].valor : null;
-          const conversion = anterior != null ? pct(e.valor, anterior) : null;
-          const enCero = e.valor === 0;
-          return (
-            <div
-              key={e.nombre}
-              className={`relative border-[var(--franco-border)] p-4 ${
-                i < 3 ? "lg:border-r" : ""
-              } ${i === 0 ? "border-r" : ""} ${i < 2 ? "border-b lg:border-b-0" : ""}`}
-            >
-              <div
-                className={`font-mono text-[32px] font-bold leading-none tracking-tight ${
-                  enCero ? "text-[var(--franco-text-muted)]" : "text-[var(--franco-text)]"
-                }`}
-              >
-                {fmtNumber(e.valor)}
+      {etapas.map((e, i) => {
+        const anterior = i > 0 ? etapas[i - 1].valor : null;
+        const perdidos = anterior != null ? anterior - e.valor : null;
+        const pctCaida = anterior != null && anterior > 0 ? Math.round((perdidos! / anterior) * 100) : null;
+        const enCero = e.valor === 0;
+
+        return (
+          <div key={e.nombre}>
+            {/* Banda de caída, entre la etapa anterior y esta */}
+            {anterior != null && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-[var(--franco-border)] bg-[var(--franco-sunken)] px-4 py-1.5 font-mono text-[11px] text-[var(--franco-text-secondary)]">
+                <span aria-hidden="true" className="text-[var(--franco-text-muted)]">
+                  ↓
+                </span>
+                {anterior === 0 ? (
+                  <span className="text-[var(--franco-text-muted)]">
+                    sin caída que medir: la etapa anterior está en cero
+                  </span>
+                ) : (
+                  <>
+                    <b className="font-medium text-[var(--signal-red)]">
+                      −{fmtNumber(perdidos!)} {perdidos === 1 ? "usuario" : "usuarios"} · −{pctCaida}%
+                    </b>
+                    <span className="text-[var(--franco-text-muted)]">{e.caida}</span>
+                  </>
+                )}
               </div>
-              <div className="mt-1.5 font-body text-[13px] text-[var(--franco-text)]">{e.nombre}</div>
-              <div className="mt-0.5 font-body text-[11px] text-[var(--franco-text-muted)]">{e.detalle}</div>
-              {conversion && (
-                <div className="mt-0.5 font-mono text-[10px] text-[var(--franco-text-tertiary)] lg:hidden">
-                  {conversion} del anterior
+            )}
+
+            <div className={`border-t border-[var(--franco-border)] px-4 py-3.5 first:border-t-0 ${i === 0 ? "border-t-0" : ""}`}>
+              <div className="flex items-baseline justify-between gap-3.5">
+                <div className="min-w-0">
+                  <div
+                    className={`font-body text-sm ${enCero ? "text-[var(--franco-text-muted)]" : "text-[var(--franco-text)]"}`}
+                  >
+                    {e.nombre}
+                  </div>
+                  <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
+                    {e.detalle}
+                  </div>
                 </div>
-              )}
-              <div className="mt-3 h-[3px] overflow-hidden rounded-sm bg-[var(--franco-sunken)]">
+                <div
+                  className={`shrink-0 font-mono text-[22px] font-bold tracking-tight ${
+                    enCero ? "text-[var(--franco-text-muted)]" : "text-[var(--franco-text)]"
+                  }`}
+                >
+                  {fmtNumber(e.valor)}
+                </div>
+              </div>
+              <div className="mt-2 h-[26px] overflow-hidden rounded bg-[var(--franco-sunken)]">
                 <span
-                  className={`block h-full ${enCero ? "bg-[var(--franco-border-strong)]" : "bg-[var(--franco-text)]"}`}
-                  style={{ width: `${Math.max((e.valor / max) * 100, 2)}%` }}
+                  className={`block h-full rounded ${enCero ? "bg-[var(--franco-border-strong)]" : "bg-[var(--franco-text)]"}`}
+                  style={{ width: `${(e.valor / base) * 100}%` }}
                 />
               </div>
-              {/* Pastilla de conversión entre columnas — solo desktop, donde las
-                  cuatro etapas están en una fila y la lectura es horizontal. */}
-              {conversion && (
-                <span className="absolute right-0 top-4 z-10 hidden translate-x-1/2 whitespace-nowrap rounded-full border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 font-mono text-[10px] font-medium text-[var(--franco-text-secondary)] lg:inline">
-                  {conversion}
-                </span>
-              )}
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
 
       <div className="border-t border-[var(--franco-border)] p-4">
         <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
