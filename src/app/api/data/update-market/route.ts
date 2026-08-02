@@ -117,3 +117,12 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ success: true, results });
 }
+
+// Vercel Cron dispara GET. Reusamos el handler POST (con su validación Bearer
+// CRON_SECRET) para no duplicar lógica ni perder la auth — mismo patrón que
+// /api/data/scrape-properties y compañía.
+//
+// Sin esta línea, apuntarle el cron a esta ruta devolvía 405: era el motivo real
+// por el que la UF no se podía automatizar, más allá de que el cron estuviera
+// apuntando a otro path. El botón de /admin/operacion sigue llamando por POST.
+export const GET = POST;

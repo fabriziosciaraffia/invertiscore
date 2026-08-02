@@ -13,7 +13,7 @@
       "schedule": "0 12 * * *"
     },
     {
-      "path": "/api/scraping/update-market-data",
+      "path": "/api/data/update-market",
       "schedule": "0 10 * * *"
     },
     {
