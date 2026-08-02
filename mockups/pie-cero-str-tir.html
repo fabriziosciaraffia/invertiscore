@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pie cero · STR TIR (rama A) — mockup contrato</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,700;1,400;1,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink900:#0F0F0F; --ink100:#FAFAF8; --ink400:#B4B2A9; --ink500:#888780; --red:#C8323C;
+    --card:#1A1A1A; --elevated:#222222;
+    --text:#FAFAF8; --text2:rgba(250,250,248,0.5); --text3:#888780; --muted:rgba(250,250,248,0.35);
+    --border:rgba(250,250,248,0.06); --border-strong:rgba(250,250,248,0.15);
+    --serif:'Source Serif 4',Georgia,serif; --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:#0a0a0a;color:var(--text);font-family:var(--sans);margin:0;padding:40px 20px;}
+  .page{max-width:1040px;margin:0 auto;}
+  .pagehead h1{font-family:var(--serif);font-weight:700;font-size:26px;margin:0 0 6px;}
+  .pagehead .sub{font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 14px;}
+  .contract{border:.5px dashed var(--border-strong);border-radius:8px;padding:14px 16px;margin-bottom:8px;}
+  .contract p{font-family:var(--sans);font-size:12px;line-height:1.55;color:var(--text2);margin:0 0 6px;}
+  .contract p:last-child{margin:0;}
+  .contract b{color:var(--text);font-weight:500;}
+  .contract code{font-family:var(--mono);font-size:11px;color:var(--text);}
+  .caso{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;}
+  .caso span{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);
+    border:.5px solid var(--border-strong);border-radius:4px;padding:3px 8px;}
+  .caso span b{color:var(--text);font-weight:700;}
+
+  .split{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--red);
+    margin:48px 0 6px;padding-bottom:8px;border-bottom:.5px solid var(--border-strong);}
+  .files{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.02em;margin:0 0 16px;}
+  .files b{color:var(--text2);font-weight:500;}
+
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;}
+  @media(max-width:860px){.duo{grid-template-columns:1fr;}}
+  .stage{background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:18px;}
+  .stage .tag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin:0 0 14px;
+    display:inline-block;border-radius:4px;padding:3px 8px;}
+  .tag.antes{color:var(--text3);border:.5px solid var(--border-strong);}
+  .tag.despues{color:var(--ink900);background:var(--ink100);font-weight:700;}
+  .tag.control{color:var(--text2);border:.5px solid var(--border-strong);}
+  .lie{outline:1px dashed color-mix(in srgb,var(--red) 55%,transparent);outline-offset:3px;border-radius:4px;}
+  .lienote{font-family:var(--mono);font-size:9px;letter-spacing:.03em;color:var(--red);margin:10px 0 0;text-transform:uppercase;line-height:1.55;}
+  .oknote{font-family:var(--mono);font-size:9px;letter-spacing:.03em;color:var(--text3);margin:10px 0 0;text-transform:uppercase;line-height:1.55;}
+  .designnote{border-left:3px solid var(--ink400);background:color-mix(in srgb,var(--text) 3%,transparent);
+    border-radius:0 8px 8px 0;padding:10px 14px;margin:16px 0 0;}
+  .designnote p{font-family:var(--sans);font-size:11.5px;line-height:1.55;color:var(--text2);margin:0 0 7px;}
+  .designnote p:last-child{margin:0;}
+  .designnote b{color:var(--text);font-weight:500;}
+  .designnote code{font-family:var(--mono);font-size:10.5px;color:var(--text);}
+
+  /* ── Card de la app (espejo de IndicatorsSTR.tsx) ─────────────────────────── */
+  .strip{background:color-mix(in srgb,var(--text) 3%,transparent);border:.5px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .kgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px 16px;}
+  @media(max-width:640px){.kgrid{grid-template-columns:repeat(2,1fr);}}
+  .kpi .kk{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);
+    margin:0;display:flex;align-items:center;gap:4px;}
+  .kpi .kv{font-family:var(--mono);font-weight:700;font-size:24px;line-height:1;margin:7px 0 0;white-space:nowrap;}
+  .kpi .kv.red{color:var(--red);}
+  .kpi .kv.na{font-size:15px;font-weight:500;line-height:1;margin-top:10px;color:var(--text2);}
+  .kpi .kv.dash{color:var(--text);}
+  .kpi .ks{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:5px 0 0;}
+  .tt{color:var(--text3);cursor:help;font-size:10px;border:.5px solid var(--border-strong);border-radius:50%;width:12px;height:12px;
+    display:inline-flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;}
+
+  /* ── Documento (tema claro estructural, espejo del CSS de DocumentoSTR) ───── */
+  .doc{background:#FFFFFF;color:#0F0F0F;border-radius:10px;padding:18px 20px;}
+  .doc .sbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#6A6A71;margin:0 0 10px;}
+  .doc .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 14px;}
+  .doc .kk{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;color:#6A6A71;margin:0 0 4px;}
+  .doc .kv{font-family:var(--mono);font-weight:700;font-size:16px;color:#0F0F0F;margin:0;}
+  .doc .kv.na{font-size:11px;font-weight:500;color:#52525B;padding-top:2px;}
+  .doc .kv.neg{color:var(--red);}
+  .doc .foot{font-family:var(--sans);font-size:10px;color:#52525B;margin:12px 0 0;line-height:1.5;}
+  .doc .box{border-left:3px solid #B0B0B8;background:rgba(15,15,15,.03);border-radius:0 8px 8px 0;padding:10px 12px;margin:14px 0 0;}
+  .doc .box .bl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#6A6A71;margin:0 0 4px;}
+  .doc .box .bt{font-family:var(--sans);font-size:10.5px;line-height:1.5;color:#52525B;margin:0;}
+
+  /* ── Tabla de estados ─────────────────────────────────────────────────────── */
+  .estados{width:100%;border-collapse:collapse;margin-top:6px;}
+  .estados th{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);
+    text-align:left;padding:8px 10px;border-bottom:.5px solid var(--border-strong);font-weight:500;}
+  .estados td{font-family:var(--sans);font-size:11.5px;color:var(--text2);padding:9px 10px;border-bottom:.5px solid var(--border);vertical-align:top;}
+  .estados td b{color:var(--text);font-weight:500;}
+  .estados td code{font-family:var(--mono);font-size:10.5px;color:var(--text);}
+  .estados .render{font-family:var(--mono);font-size:12px;color:var(--text);font-weight:500;white-space:nowrap;}
+
+  .pend{border:.5px dashed var(--border-strong);border-radius:10px;padding:14px 18px;margin-top:6px;}
+  .pend h3{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:0 0 10px;}
+  .pend li{font-family:var(--sans);font-size:12px;line-height:1.6;color:var(--text2);margin-bottom:9px;}
+  .pend li:last-child{margin-bottom:0;}
+  .pend b{color:var(--text);font-weight:500;font-family:var(--mono);font-size:11px;}
+  .footer{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:44px 0 0;text-align:center;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="pagehead">
+    <h1>Pie cero · STR — la TIR que sube porque el capital baja</h1>
+    <p class="sub">Mockup contrato · rama A · dark mode · base master 3ffe2c3</p>
+    <div class="contract">
+      <p><b>Contrato vinculante de la rama A</b> (migrar <code>exitScenario.tirAnual</code> a <code>MetricaSobreCapital</code> SIN tocar veredictos — el gate del score queda para la rama B). Cero código de producto acá. Solo dos superficies necesitan contrato visual; el resto de la rama es mecánico y reusa D1 tal cual.</p>
+      <p><b>Por qué importa el número que se deja de mostrar:</b> con pie 0 la TIR de GE-1 sube de <b>11,2% a 18,5%</b>. No mejoró nada del negocio — el flujo mensual EMPEORA de +$14.747 a −$138.909. Sube porque la TIR divide por el capital inicial, y sin pie ese denominador casi desaparece. Es exactamente el número que la doctrina declara inexistente, y hoy se imprime como si fuera un logro.</p>
+      <p><b>Corrección al alcance:</b> la footnote del asterisco <b>YA EXISTE</b> en DocumentoSTR (línea 501, condicionada a <code>cocNA</code>) y ya importa <code>NO_APLICA_FOOTNOTE_DOC</code>. La celda Cash-on-cash de al lado ya imprime «No aplica*». O sea la pregunta «¿reusa la constante o necesita variante?» ya está respondida por el código: <b>la reusa, hoy, en producción</b>. Lo que falta es solo que la celda TIR se sume al mismo patrón y que la footnote se condicione por el OR.</p>
+      <p>Cifras del motor real, seed golden <b>GE-1</b> (<code>str-seeds-frozen.json</code>), dos corridas pareadas que solo cambian el pie:</p>
+      <div class="caso">
+        <span>Santiago</span><span><b>$158.808.400</b></span><span>UF <b>38.800</b></span><span>ocupación <b>46%</b></span>
+        <span>autogestión</span><span>horizonte <b>10</b> años</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 1 · DOCUMENTO STR ═══════════════ -->
+  <div class="split">1 · DocumentoSTR — bloque «Indicadores @ 10 años»</div>
+  <p class="files">Implementa: <b>DocumentoSTR.tsx:494</b> (celda TIR) + <b>:501</b> (la condición de la footnote, hoy solo <code style="font-family:var(--mono)">cocNA</code>)</p>
+
+  <div class="duo">
+    <div class="stage">
+      <span class="tag antes">ANTES · pie 0% · lo que se imprime hoy</span>
+      <div class="doc">
+        <p class="sbl">Indicadores @ 10 años</p>
+        <div class="kpis lie">
+          <div><p class="kk">TIR a 10 años</p><p class="kv">18,5%</p></div>
+          <div><p class="kk">CAP rate</p><p class="kv">4,76%</p></div>
+          <div><p class="kk">Cash-on-cash</p><p class="kv na">No aplica*</p></div>
+          <div><p class="kk">NOI mensual</p><p class="kv">$629.372</p></div>
+          <div><p class="kk">Recup. amoblam.</p><p class="kv">8 m</p></div>
+          <div><p class="kk">Ocupación</p><p class="kv">46%</p></div>
+        </div>
+        <p class="foot">* Sin capital propio (pie $0): las métricas sobre tu capital no aplican. Este caso se evalúa por flujo mensual y plusvalía.</p>
+      </div>
+      <p class="lienote">▲ La misma fila se contradice: «Cash-on-cash: No aplica» junto a «TIR: 18,5%». Las dos son retorno sobre capital propio, las dos dividen por el mismo denominador inexistente. Y la footnote de abajo ya dice que esas métricas no aplican — mientras la celda de la izquierda muestra la más alta del bloque.</p>
+    </div>
+
+    <div class="stage">
+      <span class="tag despues">DESPUÉS · rama A</span>
+      <div class="doc">
+        <p class="sbl">Indicadores @ 10 años</p>
+        <div class="kpis">
+          <div><p class="kk">TIR a 10 años</p><p class="kv na">No aplica*</p></div>
+          <div><p class="kk">CAP rate</p><p class="kv">4,76%</p></div>
+          <div><p class="kk">Cash-on-cash</p><p class="kv na">No aplica*</p></div>
+          <div><p class="kk">NOI mensual</p><p class="kv">$629.372</p></div>
+          <div><p class="kk">Recup. amoblam.</p><p class="kv">8 m</p></div>
+          <div><p class="kk">Ocupación</p><p class="kv">46%</p></div>
+        </div>
+        <p class="foot">* Sin capital propio (pie $0): las métricas sobre tu capital no aplican. Este caso se evalúa por flujo mensual y plusvalía.</p>
+      </div>
+      <p class="oknote">▲ Las cuatro celdas que no son sobre capital (CAP, NOI, recuperación, ocupación) quedan idénticas — se ve qué es y qué no es métrica sobre capital.</p>
+      <div class="designnote">
+        <p><b>1 · La footnote se reusa tal cual.</b> <code>NO_APLICA_FOOTNOTE_DOC</code> sin variante: DocumentoSTR es un documento de UNA modalidad, igual que DocumentoLTR, así que «este caso» en singular es correcto. La variante AMBAS existió solo porque allá la fila comparaba dos columnas y había que explicar la pérdida del ganador. Acá no hay ganador que perder.</p>
+        <p><b>2 · La condición de la footnote pasa a OR.</b> Hoy es <code>{cocNA &amp;&amp; ...}</code>; pasa a <code>{(cocNA || tirNA) &amp;&amp; ...}</code>. En la práctica las dos se activan juntas (misma condición <code>pieCLP === 0</code>), pero condicionarla por una sola métrica es exactamente el acople que produjo este bug: la footnote afirmaba algo que la celda de al lado desmentía.</p>
+        <p><b>3 · Ubicación: no se mueve.</b> La footnote ya está donde corresponde — al pie del bloque <code>.sim-block</code>, después del grid y antes del box «Escenario base · congelado». Mismo <code>marginTop: 8</code>. Cero cambio de layout.</p>
+        <p><b>4 · Tipografía heredada sin tocar:</b> el <code>style={{fontSize: 11, fontWeight: 500}}</code> que la celda CoC ya aplica, aplicado igual a la TIR. Es el D1 de documento que fase 3 fijó. Cero Signal Red — la clase <code>neg</code> NO se aplica a una celda «No aplica».</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" style="margin-top:18px">
+    <span class="tag control">CONTROL · pie 20% · idéntico antes y después</span>
+    <div class="doc">
+      <p class="sbl">Indicadores @ 10 años</p>
+      <div class="kpis">
+        <div><p class="kk">TIR a 10 años</p><p class="kv">11,2%</p></div>
+        <div><p class="kk">CAP rate</p><p class="kv">4,76%</p></div>
+        <div><p class="kk">Cash-on-cash</p><p class="kv">0,5%</p></div>
+        <div><p class="kk">NOI mensual</p><p class="kv">$629.372</p></div>
+        <div><p class="kk">Recup. amoblam.</p><p class="kv">8 m</p></div>
+        <div><p class="kk">Ocupación</p><p class="kv">46%</p></div>
+      </div>
+    </div>
+    <p class="oknote">▲ Sin footnote, sin celdas «No aplica», TIR con su número. El gate es <code style="font-family:var(--mono);text-transform:none">esMetricaNoAplica(exit.tirAnual)</code>: con pie &gt; 0 el render es byte-idéntico al de hoy.</p>
+  </div>
+
+  <!-- ═══════════════ 2 · INDICATORS STR ═══════════════ -->
+  <div class="split">2 · IndicatorsSTR — la celda TIR alcanza a la de al lado</div>
+  <p class="files">Implementa: <b>IndicatorsSTR.tsx:33-34</b> (guard <code style="font-family:var(--mono)">hasTir</code>) + la celda TIR del array <code style="font-family:var(--mono)">cells</code></p>
+
+  <div class="duo">
+    <div class="stage">
+      <span class="tag antes">ANTES · pie 0% · lo que se ve hoy</span>
+      <div class="strip lie">
+        <div class="kgrid">
+          <div class="kpi"><p class="kk">NOI MENSUAL <span class="tt">i</span></p><p class="kv">$629.372</p></div>
+          <div class="kpi"><p class="kk">CAP RATE <span class="tt">i</span></p><p class="kv">4,76%</p></div>
+          <div class="kpi"><p class="kk">CASH-ON-CASH <span class="tt">i</span></p><p class="kv na">No aplica</p><p class="ks">Sin capital propio (pie $0)</p></div>
+          <div class="kpi"><p class="kk">RECUPERACIÓN AMOBLAMIENTO <span class="tt">i</span></p><p class="kv">8 m</p></div>
+          <div class="kpi"><p class="kk">TIR A 10 AÑOS <span class="tt">i</span></p><p class="kv">18,5%</p></div>
+        </div>
+      </div>
+      <p class="lienote">▲ Dos celdas del mismo grid, mismo denominador: una dice «No aplica» y la otra muestra 18,5% en Mono Bold 24px — el valor tipográficamente más fuerte del bloque.</p>
+    </div>
+
+    <div class="stage">
+      <span class="tag despues">DESPUÉS · paridad con la celda de al lado</span>
+      <div class="strip">
+        <div class="kgrid">
+          <div class="kpi"><p class="kk">NOI MENSUAL <span class="tt">i</span></p><p class="kv">$629.372</p></div>
+          <div class="kpi"><p class="kk">CAP RATE <span class="tt">i</span></p><p class="kv">4,76%</p></div>
+          <div class="kpi"><p class="kk">CASH-ON-CASH <span class="tt">i</span></p><p class="kv na">No aplica</p><p class="ks">Sin capital propio (pie $0)</p></div>
+          <div class="kpi"><p class="kk">RECUPERACIÓN AMOBLAMIENTO <span class="tt">i</span></p><p class="kv">8 m</p></div>
+          <div class="kpi"><p class="kk">TIR A 10 AÑOS <span class="tt">i</span></p><p class="kv na">No aplica</p><p class="ks">Sin capital propio (pie $0)</p></div>
+        </div>
+      </div>
+      <p class="oknote">▲ Las dos celdas sobre capital quedan simétricas: mismo valor, mismo sublabel, mismo tooltip. Nada más del grid se mueve.</p>
+      <div class="designnote">
+        <p><b>Cero CSS nuevo.</b> El mecanismo D1 de cards ya está implementado y es genérico: la celda lleva <code>na: true</code> y el render aplica Mono 15px/500 color secundario + sublabel <code>NO_APLICA_SUBLABEL</code> + tooltip <code>NO_APLICA_TOOLTIP</code>. La celda TIR solo se suma al mismo camino: <code>na: tirNA</code>, <code>value: tirNA ? NO_APLICA_VALOR : …</code>, tooltip condicional. Es literalmente copiar lo que la celda CoC ya hace tres líneas más arriba.</p>
+        <p><b>El <code>tone</code> se apaga.</b> Con <code>na</code> el render ya ignora <code>tone</code> (usa el color secundario), pero la celda TIR debe pasar <code>tone: "neutral"</code> igual — un «No aplica» no es criticidad y no puede heredar Signal Red por accidente.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" style="margin-top:18px">
+    <span class="tag control">CONTROL · pie 20% · idéntico antes y después</span>
+    <div class="strip">
+      <div class="kgrid">
+        <div class="kpi"><p class="kk">NOI MENSUAL <span class="tt">i</span></p><p class="kv">$629.372</p></div>
+        <div class="kpi"><p class="kk">CAP RATE <span class="tt">i</span></p><p class="kv">4,76%</p></div>
+        <div class="kpi"><p class="kk">CASH-ON-CASH <span class="tt">i</span></p><p class="kv">0,5%</p></div>
+        <div class="kpi"><p class="kk">RECUPERACIÓN AMOBLAMIENTO <span class="tt">i</span></p><p class="kv">8 m</p></div>
+        <div class="kpi"><p class="kk">TIR A 10 AÑOS <span class="tt">i</span></p><p class="kv">11,2%</p></div>
+      </div>
+    </div>
+    <p class="oknote">▲ Las cinco celdas en Mono Bold 24px, cero sublabels. Con pie &gt; 0 el grid es byte-idéntico al de hoy.</p>
+  </div>
+
+  <!-- ═══════════════ 3 · LOS TRES ESTADOS ═══════════════ -->
+  <div class="split">3 · Los tres estados que el guard debe distinguir</div>
+  <p class="files">El guard actual <b>hasTir = !!exit &amp;&amp; Number.isFinite(exit.tirAnual) &amp;&amp; exit.tirAnual !== 0</b> colapsa «no aplica» y «sin dato» en el mismo «—»</p>
+
+  <table class="estados">
+    <thead>
+      <tr><th style="width:15%">Estado</th><th style="width:31%">Cuándo</th><th style="width:27%">Con la migración</th><th style="width:27%">Render</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>No aplica</b></td>
+        <td>Decisión del análisis: <code>pieCLP === 0</code>, financiamiento 100%</td>
+        <td><code>esMetricaNoAplica(tirAnual)</code></td>
+        <td><span class="render">No aplica</span> + sublabel + tooltip D1<br><span style="font-size:10px;color:var(--muted)">(en documento: <span class="render" style="font-size:11px">No aplica*</span> + footnote)</span></td>
+      </tr>
+      <tr>
+        <td><b>Sin dato</b></td>
+        <td>Legacy pre-Ronda 4b: no hay <code>exitScenario</code>, o el valor persistido es 0</td>
+        <td><code>metricaValorONull(tirAnual) === null</code> — o el guard <code>!== 0</code>, que se PRESERVA para el legacy crudo</td>
+        <td><span class="render">—</span><br><span style="font-size:10px;color:var(--muted)">sin sublabel, sin footnote</span></td>
+      </tr>
+      <tr>
+        <td><b>Valor</b></td>
+        <td>Todo lo demás</td>
+        <td><code>metricaValorONull(tirAnual)</code> → número</td>
+        <td><span class="render">11,2%</span> Mono Bold, como hoy</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="designnote">
+    <p><b>El orden de evaluación importa</b> y es el único punto donde el guard puede salir mal: <code>esMetricaNoAplica</code> se pregunta PRIMERO. Si se evalúa antes el guard legacy, un análisis con pie 0 caería en «—» (sin dato) en vez de «No aplica» (decisión), que es precisamente la distinción que fase 3 fijó y que este mockup viene a completar.</p>
+    <p><b>Por qué se preserva el <code>!== 0</code>:</b> los análisis STR anteriores a la Ronda 4b traen <code>tirAnual: 0</code> crudo en el jsonb. Con la migración ese 0 pasa por <code>metricaValorONull</code> y sale como <code>0</code>, no como <code>null</code> — sin el guard se imprimiría «0,0%», que es el mismo tipo de cero falso que esta serie de ramas viene eliminando. El guard legacy sigue vivo, solo baja de prioridad.</p>
+  </div>
+
+  <!-- ═══════════════ FUERA DE ALCANCE ═══════════════ -->
+  <div class="split" style="color:var(--text3)">Fuera de este mockup · dentro de la rama A</div>
+  <div class="pend">
+    <h3>Mecánico, sin contrato visual — entra al goal de implementación</h3>
+    <ul>
+      <li><b>short-term-engine.ts</b> — el tipo (<b>:215</b>) y los wraps (<b>:899</b> early-return, <b>:937/949</b> cálculo normal). El patrón exacto ya existe una línea abajo, en <code style="font-family:var(--mono)">multiplicadorCapital</code>.</li>
+      <li><b>str-hallazgos.ts:187</b> — <code style="font-family:var(--mono)">buildHallazgoTIR</code> se llama SIN guard. LTR ya lo tiene (<code style="font-family:var(--mono)">analysis.ts:1882-83</code>), así que hoy con pie 0 STR emite un hallazgo de TIR y LTR no. Mismo guard de null.</li>
+      <li><b>ai-generation-str.ts:631</b> — la línea manda la TIR cruda y el multiplicador como no-aplica, en la MISMA frase. Pasa a <code style="font-family:var(--mono)">NO_APLICA_PROMPT</code>. Cierra la contradicción de STR consigo mismo.</li>
+      <li><b>DocumentoAmbas.tsx:105</b> — <code style="font-family:var(--mono)">strTir = tirAnual ?? 0</code> pasa a <code style="font-family:var(--mono)">metricaODefault</code>. Rompe en COMPILACIÓN, no en runtime — el tipado lo caza. La fila simétrica de pie-cero-ambas NO se toca ni queda redundante: sigue siendo el único lugar que apaga el ganador.</li>
+      <li><b>Tooling</b> — <code style="font-family:var(--mono)">str-recompute.ts:153</code> (desenvolver con metricaValorONull), <code style="font-family:var(--mono)">smoke-str-engine-4b-persist.ts:130</code> (el assert afirma literalmente que el campo es number — se reescribe), <code style="font-family:var(--mono)">smoke-str-engine-4b.ts:75</code> y <code style="font-family:var(--mono)">qa-str-prompt-tuteo.ts:183</code>.</li>
+      <li><b>Golden</b> — los 6 seeds STR tienen pie 20%, así que ninguno se mueve. <code style="font-family:var(--mono)">tirPct</code> vive en el baseline como drift clase (a), tolerancia 0,1: sin re-baseline.</li>
+      <li><b>El gate del score (rama B)</b> — <code style="font-family:var(--mono)">horizonteCierraFavorable</code> queda intacto en la rama A: sigue leyendo el número por dentro. La decisión sobre su polaridad invertida y la banda de veredictos afectados es de la rama B.</li>
+    </ul>
+  </div>
+
+  <p class="footer">refranco.ai · mockup pie-cero STR TIR · rama A · cifras reales del motor (seed golden GE-1 · pie 20% vs pie 0) · no es la app</p>
+</div>
+</body>
+</html>
