@@ -173,9 +173,15 @@ export function PiramideHallazgos({
   // legacy con sobreprecio en 01. Forward-only: no regeneramos la prosa vieja.
   const normEco = (s: string | null | undefined) =>
     (s ?? "").replace(/\s+/g, " ").trim().toLowerCase().replace(/\bzona\b/g, "comuna");
+  // La prosa ensamblada antepone la RESPUESTA al veredicto ("Conviene." / "No
+  // conviene." / "Todavía no: …") ANTES de la apertura fija — sin descontarla, el
+  // startsWith nunca calza y el eco sobrevive (la card 01 repite el bloque que la
+  // prosa acaba de decir). Se strippea ese prefijo antes de comparar.
+  const stripRespuesta = (s: string) =>
+    s.replace(/^(conviene(, con una condición)?\.|no conviene\.|todavía no:[^.]*\.)\s*/i, "");
   const fraseCorona = normEco(nivel1.fraseCanonica);
   const bodyCoronaDuplicado =
-    fraseCorona.length > 0 && normEco(respuestaDirectaCorona).startsWith(fraseCorona);
+    fraseCorona.length > 0 && stripRespuesta(normEco(respuestaDirectaCorona)).startsWith(fraseCorona);
 
   return (
     <section className="mt-3">
