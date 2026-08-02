@@ -40,6 +40,7 @@ import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { metricaDisplay, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
 import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
+import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
 
@@ -861,11 +862,15 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   const { userPrompt, veredictoMotor, cardFrases } = buildUserPromptSTR(inp, r, comuna);
 
   // FASE 1 — reintento por HARD drift (invariante que no puede persistir: revenue/
-  // ramp-up). Los engine-isms SOFT son detección-only; "el/del motor" lo elimina la
-  // despersonalización. El presupuesto se enforca aparte, en FASE 2 (1 reintento por
+  // ramp-up) y por voseo NO corregible (pronombre "vos" o -és/-ís fuera del léxico:
+  // no sabemos a qué tuteo mapean, así que la única salida es regenerar). Los
+  // engine-isms SOFT son detección-only; "el/del motor" lo elimina la
+  // despersonalización y el voseo CONOCIDO lo arregla sanitizeVozChilena abajo, sin
+  // gastar un reintento. El presupuesto se enforca aparte, en FASE 2 (1 reintento por
   // desborde grosero). Así un caso limpio y dentro de techo hace 1 intento.
+  const vozDura = (ai: AIAnalysisSTRv2 | null) => (ai ? hitsQueExigenReintento(scanVozChilena(ai)) : []);
   const scoreOf = (ai: AIAnalysisSTRv2 | null): number =>
-    ai ? scanStrHardDrift(ai).length : Number.POSITIVE_INFINITY;
+    ai ? scanStrHardDrift(ai).length + vozDura(ai).length : Number.POSITIVE_INFINITY;
 
   let best: AIAnalysisSTRv2 | null = null;
   let bestScore = Number.POSITIVE_INFINITY;
@@ -878,6 +883,8 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
       if (hard.length) {
         correctivo = `\n\n⚠️ CORRECCIÓN: la versión anterior usó términos prohibidos (${hard.join(", ")}). Reemplázalos ("revenue"→"ingresos brutos", "ramp-up"→"estabilización inicial"). Reescribe el JSON COMPLETO respetando la doctrina §0-§14.`;
       }
+      const voz = vozDura(best);
+      if (voz.length) correctivo += correctivoVoz(voz);
     }
     let ai: AIAnalysisSTRv2 | null = null;
     try {
@@ -920,7 +927,7 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
       usedTries += 1;
       const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
       const retryAi = parseStrJson(rawText);
-      if (retryAi && scanStrHardDrift(retryAi).length === 0 && grossOf(retryAi).length < grossBest.length) {
+      if (retryAi && scanStrHardDrift(retryAi).length === 0 && vozDura(retryAi).length === 0 && grossOf(retryAi).length < grossBest.length) {
         log(`[STR-BUDGET-RETRY] retry mejoró: ${grossBest.length}→${grossOf(retryAi).length} campo(s) >1.3× — aceptado`);
         best = retryAi;
       } else {
@@ -939,6 +946,12 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   // Despersonaliza "el/del motor" → "análisis" (A11) — garantiza que la entidad interna
   // nunca llega al usuario, sin reintento caro.
   best = despersonalizarMotor(best, log);
+  // Red final de voz (§2.1): el voseo conocido y los typos recurrentes se reescriben a
+  // tuteo chileno. Mismo contrato que despersonalizarMotor — swap determinístico, 1
+  // token por 1 token, así que corre después del guard de presupuesto sin invalidarlo.
+  best = sanitizeVozChilena(best, log);
+  const vozResidual = vozDura(best);
+  if (vozResidual.length) log(`[VOZ-RESIDUAL] ${vozResidual.length} forma(s) sin corrección tras los reintentos — ${vozResidual.map((h) => h.token).join(", ")}`);
 
   const hardDriftHits = scanStrHardDrift(best);
   const softDriftHits = scanStrSoftDrift(best);

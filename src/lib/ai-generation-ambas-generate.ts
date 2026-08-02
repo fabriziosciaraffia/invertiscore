@@ -29,6 +29,7 @@ import {
   scanCardCifraEcho,
   extractCifras,
 } from "@/lib/ai-generation-ambas";
+import { scanVozChilena, hitsQueExigenReintento, correctivoVoz } from "@/lib/voz-chilena";
 import { deriveRecomendacionModalidad } from "@/lib/engines/str-universo-santiago";
 import type { BandaComparativa } from "@/lib/engines/str-universo-santiago";
 import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
@@ -272,6 +273,36 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
       }
     } catch (e) {
       log(`[AMBAS-PLANC-BUDGET] retry falló (best-effort): ${(e as Error)?.message ?? e}`);
+    }
+  }
+
+  // CATCH-VOZ — reintento ÚNICO por voseo NO corregible (pronombre "vos" o un
+  // -és/-ís fuera del léxico). El voseo conocido y los typos recurrentes NO
+  // llegan acá: los arregla `sanitizeComparativaAI` abajo, sin pagar una
+  // regeneración. Best-effort: nunca rompe la generación.
+  {
+    const noCorregibles = hitsQueExigenReintento(scanVozChilena(aiResult));
+    if (noCorregibles.length) {
+      log(`[AMBAS-CATCH-VOZ] ${noCorregibles.length} forma(s) sin corrección determinística (${noCorregibles.map((h) => h.token).join(", ")}) — 1 reintento`);
+      try {
+        const regen = await anthropic.messages.create({
+          model: CLAUDE_MODEL,
+          max_tokens: 4000,
+          messages: [{ role: "user", content: userPrompt + correctivoVoz(noCorregibles) }],
+          system: SYSTEM_PROMPT_AMBAS,
+        });
+        const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+        const regenResult = parse(regenText);
+        const quedan = regenResult ? hitsQueExigenReintento(scanVozChilena(regenResult)) : null;
+        if (regenResult && quedan && quedan.length < noCorregibles.length) {
+          log(`[AMBAS-CATCH-VOZ] retry mejoró: ${noCorregibles.length}→${quedan.length} — aceptado`);
+          aiResult = regenResult;
+        } else {
+          log(`[AMBAS-CATCH-VOZ] retry no mejoró — conservo el previo`);
+        }
+      } catch (e) {
+        log(`[AMBAS-CATCH-VOZ] retry falló (best-effort): ${(e as Error)?.message ?? e}`);
+      }
     }
   }
 
