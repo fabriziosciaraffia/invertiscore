@@ -1344,4 +1344,9 @@ export interface Analisis {
   // desbloqueado (hijos íntegros). Flipeada por payments/confirm (product
   // 'unlock') sobre ambas filas del grupo. No aplica a análisis sueltos.
   ambas_unlocked_at?: string | null;
+  // Vía de cobro del análisis (migración charge_mode, espejo de ChargeMode del
+  // pipeline). Escrita al crear por /api/analisis y /api/analisis/short-term;
+  // NULL = histórico pre-migración (o fila locked pre-pago). Gatea el CTA
+  // post-análisis welcome ('welcome' + dueño).
+  charge_mode?: "welcome" | "paid" | "subscription" | "admin" | null;
 }

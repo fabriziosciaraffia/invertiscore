@@ -419,7 +419,8 @@ export function GenericFindingCard<K extends string = DrawerKey>({
   currency = "CLP",
   valorUF,
   palanca,
-  esElMasDecisivo = true,
+  numero,
+  anchorId,
   bodyDuplicado = false,
   onOpenDrawer,
   drawerMap,
@@ -432,11 +433,13 @@ export function GenericFindingCard<K extends string = DrawerKey>({
   valorUF: number;
   /** Zona de "palanca" opcional (nivel 1): acción/CTA bajo un border-top. */
   palanca?: React.ReactNode;
-  /** Solo aplica al nivel 1 (corona): si el coronado ES el de mayor decisividad
-   *  del set, el kicker dice "Lo más decisivo"; si no (la corona la gana el orden
-   *  Filosofía 1, no la decisividad), dice "Ojo antes de firmar" — honesto, sin
-   *  afirmar un peso que el dato no respalda. Default true: no altera otros callers. */
-  esElMasDecisivo?: boolean;
+  /** Posición en el orden único ("01", "02", …): antecede al tema en el eyebrow.
+   *  La numeración es compartida con el índice del hero — es la que carga la
+   *  jerarquía (los kickers de corona murieron). Sin `numero`, el eyebrow queda
+   *  solo con el tema (callers fuera de la pirámide). */
+  numero?: string;
+  /** Id de ancla estable de la card (el índice del hero linkea con #anchorId). */
+  anchorId?: string;
   /** Suprime el <p> body (fraseCanonica) cuando ese texto YA lo dice la apertura de
    *  la prosa (respuestaDirecta abre con la misma fraseCanonica del coronado). Evita
    *  que el usuario lea el mismo bloque dos veces en una pantalla. Lo computa el caller
@@ -477,12 +480,24 @@ export function GenericFindingCard<K extends string = DrawerKey>({
   // nivel-3 = superficie hundida. Light: --franco-sunken; dark: fallback inline
   // (rgba dark original) → dark sin cambio. Fase 2.
   const bg = nivel === 3 ? "var(--franco-sunken, rgba(26,26,26,0.55))" : "var(--franco-card)";
-  const kickPrefix = esElMasDecisivo ? "Lo más decisivo" : "Ojo antes de firmar";
-  const kick = nivel === 1 ? `${kickPrefix} · ${d.kick.toLowerCase()}` : d.kick;
+  // Eyebrow = número de posición + tema ("01 · Flujo mensual"). La dirección va en el
+  // dot existente a la derecha; la jerarquía la carga la numeración compartida con el
+  // índice del hero, no un kicker. El número va en bold Ink (mockup .num); el tema
+  // conserva el tono tertiary del eyebrow.
+  const kick = numero ? (
+    <>
+      <span className="font-bold" style={{ color: "var(--franco-text)" }}>{numero}</span>
+      {" · "}
+      {d.kick}
+    </>
+  ) : (
+    d.kick
+  );
 
   return (
     <div
-      className={`rounded-2xl ${pad} ${cardClickable ? "franco-card-target cursor-pointer" : ""}`}
+      id={anchorId}
+      className={`rounded-2xl scroll-mt-[68px] ${pad} ${cardClickable ? "franco-card-target cursor-pointer" : ""}`}
       style={{ background: bg, border: `0.5px solid ${border}` }}
       {...(cardClickable
         ? {

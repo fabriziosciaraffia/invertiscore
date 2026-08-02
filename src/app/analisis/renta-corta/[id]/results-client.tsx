@@ -26,6 +26,7 @@ import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConv
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
+import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { HeroSTR } from "@/components/analysis/str/HeroSTR";
@@ -68,6 +69,9 @@ interface STRResultsProps {
   /** Hijo subordinado de un AMBAS: link al comparativo. Si viene, se oculta el
    * Compartir propio y se muestra el banner de subordinación (migración 20260715). */
   subordinatedHref?: string | null;
+  /** Gate server-side (input_data.chargeMode === "welcome" + dueño): monta el
+   * CTA post-análisis welcome (banda inline + popup). */
+  showCtaWelcome?: boolean;
 }
 
 export function STRResultsClient({
@@ -85,6 +89,7 @@ export function STRResultsClient({
   welcomeAvailable = true,
   aiAnalysisInitial,
   subordinatedHref = null,
+  showCtaWelcome = false,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
@@ -304,6 +309,18 @@ export function STRResultsClient({
           onOpen={() => setActiveDrawer("tipoHuesped")}
         />
 
+        {/* CTA post-análisis welcome — banda inline al cierre del informe +
+            popup (trigger IntersectionObserver + dwell). Solo cobro welcome.
+            Gate aiAnalysis: no montar (banda NI observer) mientras la prosa
+            genera — el skeleton deja la banda en viewport y el popup dispara
+            sobre el informe vacío, quemando el guard. Render, no CSS. */}
+        {showCtaWelcome && aiAnalysis != null && (
+          <>
+            <div style={{ height: 24 }} />
+            <CtaWelcome analysisId={analysisId} />
+          </>
+        )}
+
         {/* CTAs de dueño/wallet */}
         {(
           <>
@@ -331,8 +348,9 @@ export function STRResultsClient({
           </>
         )}
 
-        {/* Link analizar otra propiedad */}
-        {(
+        {/* Link analizar otra propiedad — oculto cuando la banda CTA welcome
+            está visible (mismo texto, destino distinto: evita el duplicado). */}
+        {!showCtaWelcome && (
           <div className="mt-6 mb-4 flex items-center justify-center">
             <Link
               href="/analisis/renta-corta"

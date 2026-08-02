@@ -107,11 +107,11 @@ function FindingCard({ finding: f, nivel, onOpen }: { finding: FindingComparativ
   // comentario, y el orden lo fija `buildFindingsComparativa` por banda: en STR_FRAGIL
   // corona break-even (0,9) mientras flujo (0,95) queda debajo. O sea el rótulo era falso
   // por construcción en esa banda, y en las demás acertaba por accidente de constantes.
-  // El guard `coronaEsLaMasDecisiva` de LTR/STR no se porta acá a propósito: mide unicidad
-  // del máximo de una decisividad CALCULADA por neutralización, y aplicarlo sobre números
-  // que no miden nada daría un veredicto con la misma autoridad falsa, solo que más caro.
-  // Queda el kicker plano, que es cierto. Lo que haría falta para un guard real está en el
-  // reporte del goal (decisividad calculada, no constante).
+  // (LTR/STR retiraron sus kickers de corona con el orden único — la jerarquía la carga
+  // la numeración compartida hero↔pirámide. Acá no hay numeración compartida ni
+  // decisividad calculada, así que el kicker plano sigue siendo lo único afirmable.)
+  // Queda el kicker plano, que es cierto. Lo que haría falta para portar el orden único
+  // está en el reporte del goal (decisividad calculada, no constante).
   const kick = f.kicker;
 
   // Affordance de card completa (Fase 2): TODA la card es el trigger en los 3

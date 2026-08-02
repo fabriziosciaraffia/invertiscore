@@ -27,7 +27,7 @@
       "veredicto": "COMPRAR",
       "score": 70,
       "N": 8,
-      "corona": "sobreprecio",
+      "corona": "cap_rate",
       "hallazgoIds": [
         "cap_rate",
         "estructura_financiamiento",
@@ -196,7 +196,7 @@
       "veredicto": "COMPRAR",
       "score": 76,
       "N": 9,
-      "corona": "plusvalia",
+      "corona": "cap_rate",
       "hallazgoIds": [
         "cap_rate",
         "capex_puesta_a_punto",
@@ -240,7 +240,7 @@
       "veredicto": "COMPRAR",
       "score": 71,
       "N": 9,
-      "corona": "sobreprecio",
+      "corona": "cap_rate",
       "hallazgoIds": [
         "cap_rate",
         "capex_puesta_a_punto",

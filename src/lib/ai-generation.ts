@@ -19,6 +19,7 @@ import { buildHallazgoFlujoMensual } from "@/lib/flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from "@/lib/plusvalia-hallazgo";
 import { buildHallazgoEstructuraFinanciamiento } from "@/lib/estructura-financiamiento-hallazgo";
 import { calcDecisividades } from "@/lib/analysis";
+import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 import type { Hallazgo } from "@/lib/types";
 import { metricaDisplay, metricaODefault, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_PROMPT } from "@/lib/no-aplica-copy";
@@ -1365,10 +1366,10 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       (results.hallazgos as Hallazgo[] | undefined)?.find((h) => h.id === "distancia_veredicto") ??
       null;
 
-    // Orden = pirámide, por decisividad DESC. .filter(Boolean) descarta nulls
-    // (capex si antigüedad ≤2, sobreprecio sin mediana → cae lecturaSinReferencia,
-    // flujo sin crédito, etc.). NO asume 6 fijos.
-    const hallazgosOrdenados: Hallazgo[] = [
+    // Candidatos del prompt. .filter(Boolean) descarta nulls (capex si antigüedad ≤2,
+    // sobreprecio sin mediana → cae lecturaSinReferencia, flujo sin crédito, etc.).
+    // NO asume 6 fijos.
+    const hallazgosPromptSet = [
       hallazgoCapex,
       hallazgoCapRateGen,
       hallazgoFlujoGen,
@@ -1383,13 +1384,15 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       // SENSIBILIDAD y PATRIMONIO, que solo viven en la pirámide, sin feed de prosa).
       // Narrowar a Hallazgo (que ya incluye esos read-only) haría el predicado inválido;
       // narrowamos al propio tipo del array (los builders sin null).
-      .filter((h): h is NonNullable<typeof h> => h != null)
-      // Orden de la pirámide: decisividad DESC (el floor manda: vinculantes arriba)
-      // y, DENTRO del mismo valor, magnitud continua DESC (desempate E4 — el que
-      // mueve más el score va primero; el que empata por floor pero no mueve el
-      // score, ej. capex-des-arma-gate, queda al final del grupo). Mismo comparador
-      // que HeroLTR.tsx (mantener sincronizados).
-      .sort((a, b) => b.decisividad - a.decisividad || (b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0));
+      .filter((h): h is NonNullable<typeof h> => h != null);
+    // ORDEN ÚNICO (esquema C-umbral, orden-hallazgos.ts): el MISMO orden que muestran
+    // el índice del hero y la pirámide — 01 = adverso más decisivo si pasa el piso
+    // 0,85; resto ranking puro decisividad→magnitud. El [0] de esta lista es el 01
+    // visible del informe, y su fraseCanonica es la apertura fija Plan C: apertura,
+    // índice y pirámide cuentan la misma historia. (Los solo-lectura, todos con
+    // decisividad 0, no pueden ser 01 mientras algún builder pese > 0 — el orden del
+    // prompt y el de la pirámide eligen el mismo 01 por construcción en ese caso.)
+    const hallazgosOrdenados: Hallazgo[] = ordenarHallazgosUnico(hallazgosPromptSet);
 
     // Peso CUALITATIVO por umbrales: NO se expone el float a la IA (invita a
     // recitar "con una decisividad de 0,9…" → engine-ism). Cortes: ≥0.5 decisivo ·
@@ -1431,7 +1434,7 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
 
     const hallazgosBloque = hallazgosOrdenados.length > 0
       ? `
-HALLAZGOS DEL ANÁLISIS (vienen ordenados por cuánto pesan en la decisión; el 1º es el que más manda). Narralos en pirámide con TU voz. NO copies la frase literal, NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostené la tensión con honestidad — no la aplanes.
+HALLAZGOS DEL ANÁLISIS (vienen en el ORDEN DEL INFORME: el 1º es el que abre la lectura — el adverso más determinante cuando lo hay, o el de más peso — y el resto va por cuánto pesa en la decisión). Narralos en pirámide con TU voz. NO copies la frase literal, NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostené la tensión con honestidad — no la aplanes.
 
 PRIMERA ORACIÓN FIJA de conviene.respuestaDirecta (consume ${aperturaWC} palabras) — YA está escrita y se antepone automáticamente. NO la escribas, NO la repitas, NO la parafrasees; tu texto CONTINÚA después de ella: «${hallazgosOrdenados[0].fraseCanonica}»
 

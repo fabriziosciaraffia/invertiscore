@@ -182,6 +182,11 @@ export default async function AnalisisDetallePage({
   const isSharedLink = !isLoggedIn && !!analisis.user_id;
   const isPremium = isAdmin || isDemo || !!analisis.is_premium;
 
+  // CTA post-análisis welcome: el cobro de ESTE análisis fue el crédito de
+  // bienvenida — columna charge_mode escrita al crear (opción B; históricos
+  // NULL → false). Solo dueño: vistas compartidas no reciben el CTA.
+  const showCtaWelcome = isOwner && analisis.charge_mode === "welcome";
+
   // Owner first name for personalization
   const ownerFullName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
   const ownerFirstName = isOwner ? (ownerFullName.split(' ')[0] || '') : '';
@@ -325,6 +330,7 @@ export default async function AnalisisDetallePage({
           ownerFirstName={ownerFirstName}
           analysesCount={analysesCount}
           isLoggedIn={isLoggedIn}
+          showCtaWelcome={showCtaWelcome}
         />
 
         {/* Fallback for old analyses without full results */}

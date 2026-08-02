@@ -16,6 +16,9 @@
 //   node --env-file=.env.local --import tsx scripts/regen-prosa-hallazgo.ts --write
 //
 //   # Opciones: --dias=60 · --limite=N · --excluir=id1,id2 · --solo=id1,id2 · --hallazgo=<id>
+//   #   --hallazgo=cualquiera: no exige un hallazgo específico (regen por cambio de ORDEN,
+//   #   no por hallazgo nuevo — ej. re-anclaje de la apertura Plan C al 01 del orden único).
+//   #   El resto de garantías (prosa previa, sin cobro, guards con revert) no cambia.
 //
 // GARANTÍAS
 // ---------
@@ -95,13 +98,15 @@ async function main() {
     } catch {
       continue;
     }
-    const h: any = (R.hallazgos ?? []).find((x: any) => x.id === HALLAZGO);
-    if (!h) continue;
+    // Modo "cualquiera": la elegibilidad no exige un hallazgo específico (el criterio
+    // de selección viene por --solo). El flag estructural sale de la distancia si existe.
+    const h: any = (R.hallazgos ?? []).find((x: any) => (HALLAZGO === "cualquiera" ? x.id === "distancia_veredicto" : x.id === HALLAZGO));
+    if (!h && HALLAZGO !== "cualquiera") continue;
     elegibles.push({
       id: row.id,
       comuna: row.comuna ?? "—",
       ver: R.veredicto,
-      estructural: h.valor?.esEstructural === true,
+      estructural: h?.valor?.esEstructural === true,
     });
   }
 

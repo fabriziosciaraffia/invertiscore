@@ -11,6 +11,7 @@
 import type { FullAnalysisResult, Hallazgo } from "../../../src/lib/types";
 import { esMetricaNoAplica } from "../../../src/lib/types";
 import { gatherHallazgos, displayUnit, type GoldenFacts } from "./extract";
+import { ordenarHallazgosUnico } from "../../../src/lib/orden-hallazgos";
 
 export interface Check {
   rule: string;
@@ -131,14 +132,13 @@ export function checkClassB(results: FullAnalysisResult, f: GoldenFacts, ctx: Cl
   const sens = byId("sensibilidad");
   if (sens) dirCheck("sensibilidad", sens.valor.marginPct < sens.valor.corteAdverso, `margin=${sens.valor.marginPct} corte=${sens.valor.corteAdverso}`);
 
-  // B4 — dedup + corona. Sin ids duplicados; corona == #1 adverso por decisividad.
+  // B4 — dedup + corona. Sin ids duplicados; corona (posición 01) == la que emite el
+  // ORDEN ÚNICO (esquema C-umbral): adverso más decisivo si pasa el piso 0,85; si no,
+  // ranking puro decisividad→magnitud.
   const ids = gathered.map((h: Hallazgo) => h.id);
   const dup = ids.length !== new Set(ids).size;
   out.push({ rule: "B4.dedup", pass: !dup, detail: dup ? `ids duplicados: [${ids}]` : `${ids.length} ids únicos` });
-  // corona esperada = primer adverso por decisividad; si no hay adverso, el favorable más decisivo.
-  const adversos = gathered.filter((h) => h.direccion !== "favorable").sort((a, b) => b.decisividad - a.decisividad || (b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0));
-  const favorables = gathered.filter((h) => h.direccion === "favorable").sort((a, b) => b.decisividad - a.decisividad || (b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0));
-  const coronaEsperada = (adversos[0] ?? favorables[0])?.id ?? null;
+  const coronaEsperada = ordenarHallazgosUnico(gathered)[0]?.id ?? null;
   out.push({ rule: "B4.corona", pass: f.corona === coronaEsperada, detail: `${f.corona} vs esperada ${coronaEsperada}` });
 
   // B5 — N de la pirámide en [5,10]. El techo subió de 9 a 10 al entrar el hallazgo

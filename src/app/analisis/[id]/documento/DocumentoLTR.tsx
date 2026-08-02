@@ -16,7 +16,7 @@ import type {
   Hallazgo,
   HallazgoDistanciaVeredicto,
 } from "@/lib/types";
-import { ordenarHallazgosDocumento, esAdverso } from "@/components/analysis/PiramideHallazgos";
+import { ordenarHallazgosDocumento } from "@/components/analysis/PiramideHallazgos";
 import { fmtUF, fmtMoney } from "@/components/analysis/utils";
 import { metricaDisplay, metricaODefault } from "@/lib/types";
 import { calcDividendo } from "@/lib/analysis";
@@ -154,12 +154,12 @@ export function DocumentoLTR({
           ? "Cumplir las tres es condición necesaria para un Comprar, pero este caso está lejos de ahí: no es cuestión de afinar un supuesto ni el precio."
           : "Las tres deben cumplirse a la vez para que el veredicto suba a Comprar. Negociar mueve estos números — cuánto exactamente, se recalcula con el precio de cierre en mano, no antes."));
 
-  // ── Hallazgos (pirámide, orden Filosofía 1) ──
+  // ── Hallazgos (ORDEN ÚNICO — el mismo del índice del hero y la pirámide web) ──
   // Documento: incluye la distancia al veredicto (la web la movió al drawer de "La
-  // posición de Franco", que en papel no existe).
+  // posición de Franco", que en papel no existe); con decisividad 0 cae sola al fondo.
+  // El rótulo de dirección por fila lo carga cada HallRow — sin partición por grupo.
   const hallazgos = ordenarHallazgosDocumento(results, ai);
-  const adversos = hallazgos.filter(esAdverso);
-  const favorables = hallazgos.filter((h) => !esAdverso(h));
+  const esAdverso = (h: Hallazgo) => h.direccion !== "favorable";
 
   // ── Exit scenario (waterfall + patrimonio) ──
   const exit = results.exitScenario;
@@ -278,16 +278,12 @@ export function DocumentoLTR({
           una hoja bajo ~40% con supuestos+índice sueltos (QA punto 4). */}
       <section className="doc-section">
         <p className="eyebrow">El detalle · {hallazgos.length} hallazgos</p>
-        <h2 className="title">Empezando por lo adverso</h2>
+        <h2 className="title">En el mismo orden del informe</h2>
         <p className="body sec" style={{ marginTop: 6, marginBottom: 2 }}>
-          Ordenados por cuánto pesan en la decisión. Cada frase es la lectura determinística del motor; el detalle abre su capítulo más adelante.
+          Una sola lista, ordenada por cuánto pesa cada hallazgo en la decisión. Cada frase es la lectura determinística del motor; el detalle abre su capítulo más adelante.
         </p>
 
-        {adversos.length > 0 && <p className="hall-group-label first">Adversos — lo que baja el veredicto</p>}
-        {adversos.map((h) => <HallRow key={h.id} h={h} rank={++rank} />)}
-
-        {favorables.length > 0 && <p className="hall-group-label">Favorables — lo que lo sostiene</p>}
-        {favorables.map((h) => <HallRow key={h.id} h={h} rank={++rank} />)}
+        {hallazgos.map((h) => <HallRow key={h.id} h={h} rank={++rank} />)}
       </section>
 
       {/* ═══════════ SECCIÓN 3 · 02 COSTO + 03 NEGOCIACIÓN ═══════════ */}

@@ -3,11 +3,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent, Wallet, Info } from "lucide-react";
-import { fmtCLP, fmtUF, fmtMoney } from "@/components/analysis/utils";
+import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent, Wallet } from "lucide-react";
+import { fmtUF } from "@/components/analysis/utils";
 import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
-import { Tooltip as HintTooltip, InfoTooltip } from "@/components/ui/tooltip";
+import { InfoTooltip } from "@/components/ui/tooltip";
+import { ordenarHallazgosPiramide } from "./PiramideHallazgos";
+import { IndiceRow } from "./IndiceHallazgos";
+import { numeroHallazgo } from "@/lib/orden-hallazgos";
 
 /**
  * Hero de resultados LTR — rediseño dark (Fase 1a). Referencia visual aprobada:
@@ -145,7 +148,12 @@ export function HeroLTR({
   // veredictoFrase (schema.conviene) ya no se renderiza en el hero compacto — la
   // prosa fundida lo dice. El campo sigue en el schema (Entrega 2 decide su destino).
   const pregunta = data.conviene.pregunta || "¿Conviene o no conviene?";
-  const topHallazgos = gatherTopHallazgos(results, data).slice(0, 3);
+  // ÍNDICE del informe: los primeros 3 del ORDEN ÚNICO — el MISMO array que renderiza
+  // la pirámide (fuente única: ordenarHallazgosPiramide). El hero los numera 01-03 y
+  // cada fila ancla a su card; la pirámide continúa la numeración.
+  const ordenados = ordenarHallazgosPiramide(results, data);
+  const topHallazgos = ordenados.slice(0, 3);
+  const restantes = Math.max(0, ordenados.length - topHallazgos.length);
 
   // Destino del drawer de la posición de Franco, por veredicto:
   //  · no-COMPRAR con hallazgo de distancia → "Lo que te separa" (las vías, o por qué no
@@ -274,32 +282,28 @@ export function HeroLTR({
           </div>
         </div>
 
-        {/* Findings TOP-3 por decisividad */}
+        {/* ÍNDICE — primeros 3 del orden único, numerados y clickeables (ancla a su card) */}
         <div>
-          <div className="font-heading font-bold text-[15px] text-[var(--franco-text)] mb-0.5">
-            Lo que define este veredicto
-          </div>
-          <div className="font-body text-[11.5px] text-[var(--franco-text-muted)] mb-4">
-            {topHallazgos.length > 0
-              ? `Los ${topHallazgos.length} hallazgos que más movieron el score.`
-              : "Hallazgos que definen el score."}
-          </div>
-
-          {topHallazgos.map((h, i) => (
-            <FindingRow
-              key={h.id}
-              rank={String(i + 1).padStart(2, "0")}
-              f={describeHallazgo(h, currency, valorUF)}
-            />
-          ))}
-
-          {/* Puente a la pirámide — pegado al TOP-3 (veredictoFrase ya no se renderiza) */}
           {topHallazgos.length > 0 && (
-            <div className="mt-3 pt-2.5 border-t border-[var(--franco-border)]">
-              <span className="block font-mono text-[10.5px] uppercase tracking-[0.05em] text-[var(--franco-text-tertiary)]">
-                Cómo pesa cada hallazgo ↓
-              </span>
-            </div>
+            <>
+              <div className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text)] mb-2.5">
+                Léelo en este orden ↓
+              </div>
+              {topHallazgos.map((h, i) => (
+                <IndiceRow key={h.id} rank={numeroHallazgo(i)} h={h} currency={currency} valorUF={valorUF} />
+              ))}
+              {restantes > 0 && (
+                <div className="font-body text-[11.5px] text-[var(--franco-text-muted)] mt-2">
+                  …y {restantes} hallazgos más, abajo, en el mismo orden.
+                </div>
+              )}
+              {/* Puente a la pirámide (veredictoFrase ya no se renderiza) */}
+              <div className="mt-3 pt-2.5 border-t border-[var(--franco-border)]">
+                <span className="block font-mono text-[10.5px] uppercase tracking-[0.05em] text-[var(--franco-text-tertiary)]">
+                  Cómo pesa cada hallazgo ↓
+                </span>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -540,213 +544,6 @@ function formatFecha(iso?: string): string {
   return d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
 }
 
-// Porcentaje con 1 decimal es-CL (2 → "2,0"). Signo del propio número.
-function pct1(n: number): string {
-  return n.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
-// Margen de sensibilidad: entero sin decimal (−7%), coma chilena si no (−7,5%).
-function fmtMargin(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ",");
-}
-
-// Monto con signo explícito (− real, U+2212) respetando el toggle.
-function fmtSigned(clp: number, currency: "CLP" | "UF", valorUF: number): string {
-  const s = clp < 0 ? "−" : "+";
-  return s + fmtMoney(Math.abs(clp), currency, valorUF);
-}
-
-/**
- * Junta los proto-hallazgos disponibles (carriers en metrics + ai_analysis +
- * results.hallazgos), dedupe por id (mayor decisividad gana) y ordena por
- * decisividad desc. El caller toma el TOP-N.
- */
-function gatherTopHallazgos(
-  results: FullAnalysisResult | null | undefined,
-  data: AIAnalysisV2,
-): Hallazgo[] {
-  const out: Hallazgo[] = [];
-  const push = (h: Hallazgo | null | undefined) => {
-    if (!h || typeof h.decisividad !== "number") return;
-    // estructura_financiamiento ya NO se excluye: con la calibración a "Δdecisión"
-    // su decisividad refleja cuánto mueve la decisión (no el 0,85 fijo por nivel),
-    // así que cae bajo el aporte cuando no es vinculante y sube al TOP-3 solo si
-    // realmente lo es. El sort de dos niveles (decisividad, magnitud) lo ordena bien.
-    out.push(h);
-  };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const m = results?.metrics as any;
-  push(m?.hallazgoSobreprecio);
-  push(m?.hallazgoCapRate);
-  push(m?.hallazgoFlujoMensual);
-  push(m?.hallazgoPlusvalia);
-  push(m?.hallazgoPuestaAPunto);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  push((data as any)?.hallazgoSobreprecio);
-  if (Array.isArray(results?.hallazgos)) results.hallazgos.forEach(push);
-
-  const byId = new Map<string, Hallazgo>();
-  for (const h of out) {
-    const prev = byId.get(h.id);
-    // El hallazgo CON titular gana SIEMPRE al que no lo tiene (presencia de titular
-    // = clave primaria). Sobreprecio tiene copia persistida en ai_analysis (legacy,
-    // sin titular, decisividad de calibración vieja) y otra recomputada fresca (con
-    // titular). El fresco es la fuente de verdad: gana aunque su decisividad sea
-    // menor, y así el RANKING usa la decisividad correcta (no la stale). Entre dos
-    // con el mismo estado de titular, manda la mayor decisividad, como antes.
-    const hT = !!h.titular;
-    const pT = prev ? !!prev.titular : false;
-    const gana = !prev || (hT && !pT) || (hT === pT && h.decisividad > prev.decisividad);
-    if (gana) byId.set(h.id, h);
-  }
-  // Orden: decisividad DESC y, dentro del mismo valor, magnitud continua DESC
-  // (desempate E4 — mismo comparador que la pirámide en ai-generation.ts).
-  return Array.from(byId.values()).sort(
-    (a, b) => b.decisividad - a.decisividad || (b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0),
-  );
-}
-
-interface FindingView {
-  desc: string;
-  term: string;
-  tooltip: string;
-  kpi: string;
-  kpiSub?: string;
-  kpiRed: boolean;
-}
-
-// Traduce un proto-hallazgo del motor a la fila de la card (desc de asesor +
-// término técnico + KPI). Narrowing por `id` (unión discriminada).
-function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): FindingView {
-  const tip = h.procedencia?.base ?? "";
-  // Narrativa = titular del motor (direction-aware, 6-12 palabras, sin número).
-  // Fuente única con la pirámide; la línea nunca contradice al KPI ni queda
-  // descabezada (el bug de rebanar fraseCanonica, que tiene 2 familias invertidas).
-  // Fallback SOLO para hallazgos legacy sin titular (sobreprecio persistido en
-  // ai_analysis pre-deploy, cuando el recompute fresco no está disponible):
-  // fraseCanonica COMPLETA — la línea jamás queda vacía. Se ve larga, nunca en blanco.
-  const desc = h.titular || h.fraseCanonica;
-  switch (h.id) {
-    case "sobreprecio": {
-      const v = h.valor;
-      return {
-        desc,
-        term: "Precio/m² vs comuna",
-        tooltip: `${tip}${v.n ? ` · n = ${v.n}` : ""}.`,
-        // Signo direction-aware: antes hardcodeaba "+" → "+-12%" en favorable (desv<0).
-        kpi: `${v.desviacionPct > 0 ? "+" : ""}${Math.round(v.desviacionPct)}%`,
-        kpiSub: `UF ${pct1(v.sujetoUfM2)} vs UF ${pct1(v.medianaComunaUfM2)}`,
-        kpiRed: false,
-      };
-    }
-    case "cap_rate": {
-      const v = h.valor;
-      return {
-        desc,
-        term: "CAP rate",
-        tooltip: tip ? `${tip}.` : "Rentabilidad operativa neta (NOI) sobre el precio.",
-        kpi: `${pct1(v.capRatePct)}%`,
-        kpiSub: `gap ${pct1(v.gapPts)} pts vs ${pct1(v.capRefPct)}%`,
-        kpiRed: false,
-      };
-    }
-    case "flujo_mensual": {
-      const v = h.valor;
-      return {
-        desc,
-        term: "Aporte mensual",
-        tooltip: tip
-          ? `${tip}.`
-          : "Flujo neto tras la cuota del crédito y gastos. Negativo = sale de tu bolsillo.",
-        kpi: fmtSigned(v.flujoNetoMensualCLP, currency, valorUF),
-        kpiSub: "cada mes · toda la proyección",
-        kpiRed: v.flujoNetoMensualCLP < 0,
-      };
-    }
-    case "plusvalia": {
-      const v = h.valor;
-      return {
-        desc,
-        term: "Plusvalía histórica",
-        tooltip: tip ? `${tip}.` : "Apreciación histórica de la comuna. Referencia, no garantía.",
-        kpi: `${pct1(v.anualizadaPct)}%`,
-        kpiSub: "anual · 2014-2024",
-        kpiRed: false,
-      };
-    }
-    case "capex_puesta_a_punto": {
-      const v = h.valor;
-      return {
-        desc,
-        term: "CapEx habilitación",
-        tooltip: tip ? `${tip}.` : "Inversión estimada para dejarlo en estándar de arriendo.",
-        kpi: currency === "UF" ? fmtUF(v.montoUF) : fmtCLP(v.montoCLP),
-        kpiSub: "puesta a punto",
-        kpiRed: false,
-      };
-    }
-    case "estructura_financiamiento": {
-      const v = h.valor;
-      return {
-        desc,
-        term: "Estructura (pie/tasa)",
-        tooltip: tip ? `${tip}.` : "Salud combinada de pie y tasa contra el mercado.",
-        kpi: `${v.piePct}% / ${pct1(v.tasaPct)}%`,
-        kpiSub: "pie / tasa",
-        kpiRed: h.direccion === "adverso",
-      };
-    }
-    case "tir": {
-      const v = h.valor;
-      return {
-        desc,
-        term: "TIR a 10 años",
-        // Glosa inline en el tooltip: la card de la pirámide glosa TIR en su body, pero
-        // la fila del hero es terse; el tooltip explica el concepto (skill §279).
-        tooltip: `Rentabilidad anual de toda tu inversión — integra tus aportes y la venta a 10 años. Mínimo sano: ${v.umbralPct}%.`,
-        kpi: `${pct1(v.tirPct)}%`,
-        kpiSub: `vs mínimo ${v.umbralPct}% · a 10 años`,
-        kpiRed: false, // espejo cap_rate — el punto de dirección carga la señal adversa
-      };
-    }
-    case "sensibilidad": {
-      const v = h.valor;
-      return {
-        desc,
-        term: "Margen del veredicto",
-        // Glosa inline (skill A11): consecuencia vivida, sin narrar la mecánica ("cruza"/
-        // "breakeven"). La fila del hero es terse; el tooltip explica el concepto.
-        tooltip: `Cuánto puede caer el arriendo real frente al que declaraste sin que cambie el veredicto — mide qué tan firme es la conclusión.`,
-        // KPI Opción A (mismo formato que findingDisplay): el verbo carga la dirección.
-        kpi: v.firme
-          ? "Aguanta −50% o más"
-          : h.direccion === "adverso"
-            ? `Se cae con −${fmtMargin(v.marginPct)}%`
-            : `Aguanta hasta −${fmtMargin(v.marginPct)}%`,
-        kpiSub: v.firme ? "veredicto firme" : `pasa a ${v.veredictoNuevo}`,
-        kpiRed: h.direccion === "adverso",
-      };
-    }
-    case "patrimonio": {
-      const v = h.valor;
-      // 2 decimales recortados — misma precisión que card y prosa (familia 7 del censo).
-      const multFmt = "×" + v.multiplicador.toFixed(2).replace(/0$/, "").replace(/\.$/, "").replace(".", ",");
-      return {
-        desc,
-        term: "Patrimonio a 10 años",
-        // Glosa inline: qué es el número (lo que te queda al vender) y contra qué se lee
-        // (lo aportado). Sin narrar la mecánica ni comparar instrumentos (D5).
-        tooltip: `Lo que te queda al vender a 10 años, neto de deuda y comisión, contra todo lo que pusiste. El multiplicador dice cuántas veces recuperas lo aportado.`,
-        kpi: fmtMoney(v.patrimonioCLP, currency, valorUF),
-        kpiSub: `${multFmt} lo aportado`,
-        kpiRed: h.direccion === "adverso", // multiplicador < 1: terminas con menos
-      };
-    }
-    default:
-      return { desc: "", term: "", tooltip: "", kpi: "", kpiRed: false };
-  }
-}
-
 /**
  * Renderiza prosa con los números (montos $/UF y porcentajes) en JetBrains Mono
  * inline. Split con grupo de captura: los tokens numéricos caen en índices impares.
@@ -774,47 +571,3 @@ function renderProsaMono(texto: string): ReactNode {
   ));
 }
 
-// ── Fila de finding: rank + desc asesor + término con tooltip + KPI ──
-function FindingRow({ rank, f }: { rank: string; f: FindingView }) {
-  return (
-    <div className="grid grid-cols-[20px_1fr_auto] gap-3 py-3 items-start border-t border-[var(--franco-border)] first:border-t-0">
-      <div className="font-mono text-[12px] font-bold text-[var(--franco-text-tertiary)] pt-0.5">
-        {rank}
-      </div>
-      <div className="min-w-0">
-        <div className="font-body text-[12.5px] leading-[1.4] text-[var(--franco-text)]">
-          {f.desc}
-        </div>
-        <Tooltip term={f.term} tip={f.tooltip} />
-      </div>
-      <div className="text-right whitespace-nowrap">
-        <div
-          className="font-mono text-[17px] font-bold leading-none"
-          style={{ color: f.kpiRed ? "var(--signal-red)" : "var(--franco-text)" }}
-        >
-          {f.kpi}
-        </div>
-        {f.kpiSub && (
-          <span className="block mt-1.5 font-mono text-[9.5px] text-[var(--franco-text-muted)]">
-            {f.kpiSub}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Término técnico con tooltip — delega en el bubble estándar (portal + clamp +
-//    tap en mobile + sombra tokenizada). Antes: bubble local hover-only con sombra
-//    hardcodeada (parchework #4). Fase 2 · migrado al estándar. ──
-function Tooltip({ term, tip }: { term: string; tip: string }) {
-  const termEl = (
-    <span className="inline-flex items-center gap-1 mt-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)] border-b border-dotted border-[var(--franco-border-strong)] cursor-help">
-        {term}
-      </span>
-      <Info size={11} strokeWidth={2} className="text-[var(--franco-text-muted)] shrink-0" aria-hidden />
-    </span>
-  );
-  return tip ? <HintTooltip content={tip}>{termEl}</HintTooltip> : termEl;
-}

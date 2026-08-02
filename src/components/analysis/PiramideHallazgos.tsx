@@ -1,31 +1,28 @@
-// PiramideHallazgos — reemplaza el grid 2×2 de dimensiones IA por los 6 hallazgos
-// del motor, ordenados por decisividad calibrada y renderizados en 3 niveles
-// (GenericFindingCard). Fase 1b.
+// PiramideHallazgos — los hallazgos del motor renderizados en 3 niveles
+// (GenericFindingCard) bajo el ORDEN ÚNICO (esquema C-umbral, orden-hallazgos.ts).
 //
 //  - Junta los hallazgos disponibles: carriers del motor (results.metrics) +
 //    results.hallazgos + sobreprecio async (aiAnalysis.hallazgoSobreprecio). Dedup
 //    por id. Cuando sobreprecio llega por el polling, el re-render lo inserta y
 //    reordena solo (sin lógica extra: el orden se deriva de props en cada render).
-//  - Orden Filosofía 1: ADVERSOS primero (por decisividad DESC, magnitud DESC como
-//    desempate — el mismo comparador de dos niveles que el hero), FAVORABLES después.
-//  - Nivel por posición: el más decisivo → 1 · los 2 siguientes → 2 · el resto → 3.
-//    Si un favorable muy decisivo cayera nivel 1, es correcto: el punto dice que es
-//    a favor, el tamaño dice que pesa.
+//  - Orden ÚNICO: 01 = adverso más decisivo si pasa el piso 0,85; resto ranking
+//    puro decisividad→magnitud sin partición por dirección. Es el MISMO orden que
+//    muestra el índice del hero (que numera 01-03) — la numeración continúa acá.
+//  - Nivel por posición: 01 → 1 · 02-03 → 2 · el resto → 3. Cada card lleva su
+//    número en el eyebrow y un id de ancla estable (el índice del hero linkea).
 //
-// El "ver detalle" NO se conecta acá (drawers = paso siguiente). Gather replicado
-// del HeroLTR a propósito (no se toca el hero); la unificación es posterior.
+// El "ver detalle" se conecta vía onOpenDrawer; la secuencia prev/next de los
+// drawers se deriva de ESTE mismo array (un solo orden de verdad).
 
 import type { AIAnalysisV2, FullAnalysisResult, Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { GenericFindingCard } from "./GenericFindingCard";
-
-// Comparador de dos niveles: decisividad DESC, luego magnitud continua DESC.
-// Exportado (E.1b): lo reusa PiramideHallazgosSTR para el mismo orden Filosofía 1.
-export const cmpDecisividad = (a: Hallazgo, b: Hallazgo) =>
-  b.decisividad - a.decisividad || ((b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0));
-
-// Filosofía 1: adverso (o neutral/leve) va en el grupo de arriba; favorable abajo.
-export const esAdverso = (h: Hallazgo) => h.direccion !== "favorable";
+import {
+  anchorHallazgo,
+  dedupHallazgos,
+  numeroHallazgo,
+  ordenarHallazgosUnico,
+} from "@/lib/orden-hallazgos";
 
 function gatherHallazgos(
   results: FullAnalysisResult | null | undefined,
@@ -50,24 +47,14 @@ function gatherHallazgos(
 
   // Dedup por id: el hallazgo CON titular gana SIEMPRE al que no lo tiene (misma
   // regla que el hero — la copia legacy de sobreprecio en ai_analysis, sin titular
-  // y con decisividad vieja, no debe gobernar ni el ranking ni la narración). Entre
-  // dos con el mismo estado de titular, manda la mayor decisividad.
-  const byId = new Map<string, Hallazgo>();
-  for (const h of out) {
-    const prev = byId.get(h.id);
-    const hT = !!h.titular;
-    const pT = prev ? !!prev.titular : false;
-    const gana = !prev || (hT && !pT) || (hT === pT && h.decisividad > prev.decisividad);
-    if (gana) byId.set(h.id, h);
-  }
-  return Array.from(byId.values());
+  // y con decisividad vieja, no debe gobernar ni el ranking ni la narración).
+  return dedupHallazgos(out);
 }
 
-// Orden EXACTO que renderiza la pirámide (Filosofía 1: adversos por decisividad,
-// luego favorables). Exportado (fix-drawers): la navegación prev/next de los drawers
-// se deriva de ESTE mismo array — un solo orden de verdad. gather + dedup + sort viven
-// acá; el componente lo consume tal cual (sin recomputar), y el orquestador (SubjectCardGrid)
-// lo usa para armar la secuencia de drawers.
+// Orden EXACTO que renderiza la pirámide (orden único C-umbral). Exportado: el
+// índice del hero toma sus primeros 3 de ESTE mismo array, y la navegación
+// prev/next de los drawers también se deriva de acá — un solo orden de verdad.
+// gather + dedup + sort viven acá; el componente lo consume tal cual.
 export function ordenarHallazgosPiramide(
   results: FullAnalysisResult | null | undefined,
   aiAnalysis: AIAnalysisV2 | null | undefined,
@@ -80,27 +67,22 @@ export function ordenarHallazgosPiramide(
   // saca del render Y de la secuencia prev/next (que se deriva de este mismo array), que
   // es lo correcto: ya no es una parada de la pirámide. El hallazgo sigue intacto en el
   // motor, el PDF y el prompt.
-  const rankeables = gathered.filter((h) => h.id !== "distancia_veredicto");
-  const adversos = rankeables.filter(esAdverso).sort(cmpDecisividad);
-  const favorables = rankeables.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
-  return [...adversos, ...favorables];
+  return ordenarHallazgosUnico(gathered.filter((h) => h.id !== "distancia_veredicto"));
 }
 
 /**
  * Orden para el DOCUMENTO (PDF), que sí lista la distancia al veredicto: ahí no hay
  * drawers ni "La posición de Franco" clickeable, así que el hallazgo tiene que aparecer
- * entre los demás o se pierde. Mismo gather y mismo criterio Filosofía 1 que la web —
- * la única diferencia es que no se excluye. Función aparte y no un flag booleano para
- * que en el call site se lea QUÉ superficie se está armando.
+ * entre los demás o se pierde. Mismo gather y mismo ORDEN ÚNICO que la web — la única
+ * diferencia es que no se excluye (con decisividad 0 y sin magnitud, la distancia cae
+ * sola al fondo de la lista). Función aparte y no un flag booleano para que en el call
+ * site se lea QUÉ superficie se está armando.
  */
 export function ordenarHallazgosDocumento(
   results: FullAnalysisResult | null | undefined,
   aiAnalysis: AIAnalysisV2 | null | undefined,
 ): Hallazgo[] {
-  const gathered = gatherHallazgos(results, aiAnalysis);
-  const adversos = gathered.filter(esAdverso).sort(cmpDecisividad);
-  const favorables = gathered.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
-  return [...adversos, ...favorables];
+  return ordenarHallazgosUnico(gatherHallazgos(results, aiAnalysis));
 }
 
 /**
@@ -122,7 +104,7 @@ export function piramideLayout(ordered: Hallazgo[]): {
 // que la última fila quede balanceada en todo N∈[5,9] (evita el huérfano de N=7 y el
 // 3+2 suelto de N=8). Clases ESTÁTICAS: Tailwind JIT no genera `grid-cols-${n}`
 // interpolado, así que cada string de columnas es literal. El orden de `resto` se
-// preserva (Filosofía 1): en el caso de 5, los 2 chips más decisivos ganan ancho en la
+// preserva (orden único): en el caso de 5, los 2 chips más decisivos ganan ancho en la
 // fila de 2 y el resto va a la de 3. Mobile (<md): todas las filas apilan a 1 columna.
 export function filasNivel3(resto: Hallazgo[]): { items: Hallazgo[]; cols: string }[] {
   const n = resto.length;
@@ -148,24 +130,6 @@ export function filasNivel3(resto: Hallazgo[]): { items: Hallazgo[]; cols: strin
   return [{ items: resto, cols: "md:grid-cols-3" }];
 }
 
-// Guard de corona honesta — criterio ÚNICO para LTR y STR (lo importa PiramideHallazgosSTR).
-// El kicker "Lo más decisivo" se gana solo si el coronado es el ÚNICO con la decisividad
-// máxima del set. Antes bastaba con empatar en el máximo (>=), y eso rompía en el caso
-// frecuente: DECISIVIDAD_FLOOR (0,85 en analysis.ts) pisa al MISMO valor a todo hallazgo
-// cuya neutralización flipea el veredicto o desarma un gate — ~1 de cada 4 análisis
-// (medido en 1488c9a). Con empate, quién corona lo decide el orden Filosofía 1 (adverso
-// primero) y quién va 01 en el TOP-3 lo decide el desempate por magnitud → dos "lo más
-// importante" distintos en la misma pantalla. Máximo ESTRICTO: si hay empate nadie reclama
-// el título y la corona cae al kicker existente "Ojo antes de firmar".
-// Devuelve false también cuando NADIE mueve el score (max≈0, posible en STR con adversos
-// todos solo-lectura) — ese guard ya existía y se conserva.
-export function coronaEsLaMasDecisiva(corona: Hallazgo, gathered: Hallazgo[]): boolean {
-  const max = Math.max(...gathered.map((h) => h.decisividad));
-  if (!(max > 1e-9)) return false;
-  const enElMaximo = gathered.filter((h) => h.decisividad >= max - 1e-9);
-  return enElMaximo.length === 1 && corona.decisividad >= max - 1e-9;
-}
-
 export function PiramideHallazgos({
   results,
   aiAnalysis,
@@ -185,26 +149,19 @@ export function PiramideHallazgos({
 
   const { nivel1, nivel2, nivel3 } = piramideLayout(ordered);
   if (!nivel1) return null;
-  const gathered = ordered;
+  // Número de posición en el orden único (el índice del hero numera 01-03 con el
+  // MISMO array, así que acá la numeración simplemente continúa).
+  const numeroDe = (h: Hallazgo) => numeroHallazgo(ordered.indexOf(h));
 
-  // Kicker honesto de la corona: "Lo más decisivo" solo si el coronado (ordered[0],
-  // que el orden Filosofía 1 elige por "adverso primero") es el ÚNICO de mayor
-  // decisividad real del set. Si no lo es —porque hay otro más decisivo (ej. un
-  // favorable sobre todos los adversos) o porque EMPATA en el máximo—, la card
-  // muestra "Ojo antes de firmar": así no contradice al TOP-3 del hero, que
-  // desempata por magnitud continua. Criterio en coronaEsLaMasDecisiva (compartido
-  // con la pirámide STR).
-  const esElMasDecisivo = coronaEsLaMasDecisiva(nivel1, gathered);
-
-  // Eco literal apertura↔corona: la prosa (respuestaDirecta, Plan C) SIEMPRE abre con
-  // la fraseCanonica del hallazgo #1 por decisividad (ai-generation.ts:1567-1592). Cuando
-  // ese #1 es también el coronado por la pirámide (Filosofía 1), el body de la corona
-  // —que es esa MISMA fraseCanonica— repite el bloque que la prosa ya dijo arriba.
-  // Detección DIRECTA (no proxy) sobre el texto persistido de la moneda mostrada: si la
-  // respuestaDirecta empieza (normalizada) con la fraseCanonica del coronado, se suprime
-  // solo el <p> body de la corona. Sin eco (corona≠#1, o prosa pre-Plan-C con apertura
-  // distinta) → body intacto. Normalización mínima: colapsa whitespace + trim + lower
-  // (ambos lados salen del mismo string del motor; el trim/collapse blinda el borde).
+  // Eco literal apertura↔01: la prosa (respuestaDirecta, Plan C) SIEMPRE abre con
+  // la fraseCanonica del hallazgo 01 del orden único (ai-generation.ts). Cuando la
+  // card 01 repite esa MISMA fraseCanonica en su body, el usuario leería el mismo
+  // bloque dos veces en una pantalla. Detección DIRECTA (no proxy) sobre el texto
+  // persistido de la moneda mostrada: si la respuestaDirecta empieza (normalizada)
+  // con la fraseCanonica del 01, se suprime solo el <p> body de esa card. Sin eco
+  // (prosa pre-Plan-C, o prosa vieja anclada a otro 01) → body intacto.
+  // Normalización mínima: colapsa whitespace + trim + lower (ambos lados salen del
+  // mismo string del motor; el trim/collapse blinda el borde).
   const respuestaDirectaCorona =
     currency === "CLP"
       ? aiAnalysis?.conviene?.respuestaDirecta_clp
@@ -212,17 +169,23 @@ export function PiramideHallazgos({
   // Canoniza "zona"→"comuna" antes de comparar: la fraseCanonica FRESCA dice
   // "mediana de la comuna" (fix wording), pero la prosa PERSISTIDA legacy abre con
   // "mediana de la zona". Sin esta normalización el eco no haría startsWith y el
-  // body de la corona reaparecería duplicado (misma idea, dos fraseos) en las filas
-  // legacy con sobreprecio coronado. Forward-only: no regeneramos la prosa vieja.
+  // body de la card 01 reaparecería duplicado (misma idea, dos fraseos) en las filas
+  // legacy con sobreprecio en 01. Forward-only: no regeneramos la prosa vieja.
   const normEco = (s: string | null | undefined) =>
     (s ?? "").replace(/\s+/g, " ").trim().toLowerCase().replace(/\bzona\b/g, "comuna");
+  // La prosa ensamblada antepone la RESPUESTA al veredicto ("Conviene." / "No
+  // conviene." / "Todavía no: …") ANTES de la apertura fija — sin descontarla, el
+  // startsWith nunca calza y el eco sobrevive (la card 01 repite el bloque que la
+  // prosa acaba de decir). Se strippea ese prefijo antes de comparar.
+  const stripRespuesta = (s: string) =>
+    s.replace(/^(conviene(, con una condición)?\.|no conviene\.|todavía no:[^.]*\.)\s*/i, "");
   const fraseCorona = normEco(nivel1.fraseCanonica);
   const bodyCoronaDuplicado =
-    fraseCorona.length > 0 && normEco(respuestaDirectaCorona).startsWith(fraseCorona);
+    fraseCorona.length > 0 && stripRespuesta(normEco(respuestaDirectaCorona)).startsWith(fraseCorona);
 
   return (
     <section className="mt-3">
-      {/* Encuadre — ordenado por lo que más pesa (molde zone-h del mockup) */}
+      {/* Encuadre — el mismo orden que anunció el índice del hero */}
       <div className="flex items-baseline gap-3 mb-3 px-0.5">
         <span
           className="font-mono uppercase"
@@ -231,7 +194,7 @@ export function PiramideHallazgos({
           El detalle
         </span>
         <span className="font-serif font-bold" style={{ fontSize: 19 }}>
-          Empezando por lo adverso
+          En el mismo orden
         </span>
         <span className="font-body ml-auto shrink-0" style={{ fontSize: 12, color: "var(--franco-text-tertiary)" }}>
           {ordered.length} hallazgos
@@ -239,15 +202,15 @@ export function PiramideHallazgos({
       </div>
 
       <div className="flex flex-col gap-3">
-        {/* Nivel 1 — decisivo, ancho completo. bodyDuplicado suprime el <p> si la
-            prosa ya abrió con esta misma fraseCanonica (eco literal apertura↔corona). */}
-        <GenericFindingCard hallazgo={nivel1} nivel={1} esElMasDecisivo={esElMasDecisivo} bodyDuplicado={bodyCoronaDuplicado} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
+        {/* Nivel 1 — la posición 01, ancho completo. bodyDuplicado suprime el <p> si la
+            prosa ya abrió con esta misma fraseCanonica (eco literal apertura↔01). */}
+        <GenericFindingCard hallazgo={nivel1} nivel={1} numero={numeroDe(nivel1)} anchorId={anchorHallazgo(nivel1)} bodyDuplicado={bodyCoronaDuplicado} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
 
-        {/* Nivel 2 — los dos siguientes, en fila */}
+        {/* Nivel 2 — 02 y 03, en fila */}
         {nivel2.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {nivel2.map((h) => (
-              <GenericFindingCard key={h.id} hallazgo={h} nivel={2} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
+              <GenericFindingCard key={h.id} hallazgo={h} nivel={2} numero={numeroDe(h)} anchorId={anchorHallazgo(h)} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
             ))}
           </div>
         )}
@@ -259,7 +222,7 @@ export function PiramideHallazgos({
           filasNivel3(nivel3).map((fila, i) => (
             <div key={i} className={`grid grid-cols-1 ${fila.cols} gap-3`}>
               {fila.items.map((h) => (
-                <GenericFindingCard key={h.id} hallazgo={h} nivel={3} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
+                <GenericFindingCard key={h.id} hallazgo={h} nivel={3} numero={numeroDe(h)} anchorId={anchorHallazgo(h)} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
               ))}
             </div>
           ))}

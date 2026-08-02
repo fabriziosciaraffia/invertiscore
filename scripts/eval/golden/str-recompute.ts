@@ -90,7 +90,7 @@ function invariantes(hz: Hallazgo[], score: any, rec: any, medianaConfiable: boo
   const oc = byId("ocupacion_vs_banda");
   if (oc && oc.valor.esFallback) out.push({ rule: "BS6.fallback", pass: oc.procedencia.confianza === "baja" && !/ramp-?up/i.test(oc.fraseCanonica) && /no hay datos/i.test(oc.fraseCanonica), detail: `conf=${oc.procedencia.confianza}` });
 
-  // BS7 — N∈[7,12]; corona no "Lo más decisivo" si maxDecisividad≈0.
+  // BS7 — N∈[7,12].
   out.push({ rule: "BS7.N∈[7,12]", pass: hz.length >= 7 && hz.length <= 12, detail: `N=${hz.length}` });
 
   // BS8 — "revenue" prohibido en output (frases + procedencia).

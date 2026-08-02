@@ -39,6 +39,7 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { metricaDisplay, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_PROMPT } from "@/lib/no-aplica-copy";
+import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
 
@@ -350,20 +351,12 @@ const wordCount = (s: unknown): number =>
   typeof s === "string" && s.trim() ? s.trim().split(/\s+/).filter(Boolean).length : 0;
 
 // ─────────────────────────────────────────────────────────────────────────
-// Pirámide: orden Filosofía 1 (adversos primero por decisividad). Réplica
-// mínima de cmpDecisividad/esAdverso (viven en un componente "use client";
-// se replican acá para no arrastrar React a un route/script server-side).
+// Pirámide: ORDEN ÚNICO (esquema C-umbral) — el mismo módulo puro server-safe
+// que consumen el índice del hero, la pirámide y el documento STR. El coronado
+// que ancla el ángulo-lead del hero (§7.bis) es el 01 visible del informe.
 // ─────────────────────────────────────────────────────────────────────────
-const esAdverso = (h: Hallazgo): boolean => h.direccion !== "favorable";
-const cmpDecisividad = (a: Hallazgo, b: Hallazgo): number =>
-  b.decisividad - a.decisividad || ((b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0));
-
-function ordenarHallazgos(hallazgos: Hallazgo[]): Hallazgo[] {
-  const list = (Array.isArray(hallazgos) ? hallazgos : []).filter(Boolean);
-  const adversos = list.filter(esAdverso).sort(cmpDecisividad);
-  const favorables = list.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
-  return [...adversos, ...favorables];
-}
+const ordenarHallazgos = (hallazgos: Hallazgo[]): Hallazgo[] =>
+  ordenarHallazgosUnico((Array.isArray(hallazgos) ? hallazgos : []).filter(Boolean));
 
 /** fraseCanónica + titular de una card por id de hallazgo (para "LO QUE LA CARD YA MOSTRÓ" + strip). */
 export interface CardFrasesSTR {
