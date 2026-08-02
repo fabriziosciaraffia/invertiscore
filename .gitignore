@@ -91,6 +91,13 @@ step*-*.png
 cards-ds-*.png
 caso*-*.png
 
+# EXCEPCIÓN: los patrones de screenshots de arriba no llevan slash inicial, así
+# que matchean a cualquier profundidad. `f*-*.png` se comía 24 de los 31
+# wordmarks de marca (franco-wordmark-*.png) sin que nadie lo notara: eran
+# untracked "por diseño" en apariencia y en realidad estaban tapados. Los
+# entregables de marca se versionan enteros.
+!docs/brand-assets/**
+
 # scripts y docs dev locales
 scripts/dev-*
 scripts/audit-*

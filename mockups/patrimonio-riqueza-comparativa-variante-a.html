@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — Patrimonio (Opción C) + Volatilidad · comparativa</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --ink:#0F0F0F;
+    --card:#171717;
+    --card-2:#1D1D1D;
+    --border:#2A2A2A;
+    --text:#EDEDED;
+    --text-2:#A8A8A8;
+    --text-3:#6E6E6E;
+    --signal:#C8323C;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    padding:48px 32px;
+    min-height:100vh;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+
+  .mockup-tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:.18em;
+    color:var(--text-3);
+    border:1px solid var(--border);
+    display:inline-block;
+    padding:6px 12px;border-radius:4px;
+    margin-bottom:28px;
+  }
+  .mockup-tag b{color:var(--text-2);font-weight:500}
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
+  }
+  @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:28px 28px 24px;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:.16em;
+    color:var(--text-3);
+    margin-bottom:10px;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .eyebrow .chip{
+    font-size:9px;color:var(--signal);
+    border:1px solid rgba(200,50,60,.4);
+    padding:3px 8px;border-radius:3px;letter-spacing:.14em;
+  }
+  h2{
+    font-family:'Source Serif 4',serif;
+    font-size:21px;font-weight:600;
+    line-height:1.3;
+    margin-bottom:20px;
+    letter-spacing:.01em;
+  }
+
+  svg{width:100%;height:auto;display:block}
+  .axis{stroke:#2E2E2E;stroke-width:1}
+  .tick-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;fill:var(--text-3);
+  }
+  .series-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:9.5px;letter-spacing:.08em;fill:var(--text-2);
+  }
+  .brecha-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;font-weight:700;fill:var(--signal);
+  }
+  .brecha-sub{
+    font-family:'JetBrains Mono',monospace;
+    font-size:8.5px;letter-spacing:.1em;fill:var(--text-3);
+  }
+
+  .legend{
+    display:flex;gap:22px;flex-wrap:wrap;
+    margin-top:14px;padding-top:14px;
+    border-top:1px solid var(--border);
+  }
+  .legend .item{
+    display:flex;align-items:center;gap:8px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9.5px;letter-spacing:.1em;color:var(--text-2);
+  }
+  .sw{width:26px;height:0;border-top-width:2.5px;border-top-style:solid}
+  .sw.activo{border-color:var(--text)}
+  .sw.thin{border-top-width:1.5px;border-color:#8A8A8A}
+  .sw.dash{border-top-style:dashed}
+
+  .note{
+    margin-top:16px;
+    background:var(--card-2);
+    border-left:2px solid var(--border);
+    padding:14px 16px;
+    font-size:12.5px;line-height:1.55;
+    color:var(--text-2);
+  }
+  .note .mono{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text)}
+  .note .mono.red{color:var(--signal)}
+  .note-eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:9px;letter-spacing:.16em;color:var(--text-3);
+    display:block;margin-bottom:6px;
+  }
+
+  .qa{
+    margin-top:32px;
+    border:1px dashed var(--border);
+    border-radius:12px;
+    padding:24px 28px;
+  }
+  .qa h3{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:.18em;font-weight:500;
+    color:var(--text-3);margin-bottom:16px;
+  }
+  .qa .cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media (max-width:900px){ .qa .cols{grid-template-columns:1fr} }
+  .qa p{font-size:13px;line-height:1.6;color:var(--text-2)}
+  .qa p b{color:var(--text);font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="mockup-tag">MOCKUP · CONTRATO VISUAL — <b>PATRIMONIO OPCIÓN C (3 LÍNEAS) + VOLATILIDAD SIN CAMBIOS</b> · CASO KENNEDY 7031</div>
+
+  <div class="grid">
+
+    <!-- ==================== CARD IZQUIERDA: PATRIMONIO OPCIÓN C ==================== -->
+    <div class="card">
+      <div class="eyebrow">
+        <span>PATRIMONIO Y RIQUEZA · 10 AÑOS</span>
+        <span class="chip">PROPUESTA</span>
+      </div>
+      <h2>El activo construye igual; tu bolsillo hace la diferencia</h2>
+
+      <svg viewBox="0 0 560 340" xmlns="http://www.w3.org/2000/svg">
+        <!-- grid Y -->
+        <line class="axis" x1="50" y1="290" x2="530" y2="290"/>
+        <line class="axis" x1="50" y1="222.5" x2="530" y2="222.5" stroke-dasharray="2 4"/>
+        <line class="axis" x1="50" y1="155" x2="530" y2="155" stroke-dasharray="2 4"/>
+        <line class="axis" x1="50" y1="87.5" x2="530" y2="87.5" stroke-dasharray="2 4"/>
+        <line class="axis" x1="50" y1="20" x2="530" y2="20" stroke-dasharray="2 4"/>
+
+        <text class="tick-label" x="44" y="294" text-anchor="end">$0</text>
+        <text class="tick-label" x="44" y="226.5" text-anchor="end">$100M</text>
+        <text class="tick-label" x="44" y="159" text-anchor="end">$200M</text>
+        <text class="tick-label" x="44" y="91.5" text-anchor="end">$300M</text>
+        <text class="tick-label" x="44" y="24" text-anchor="end">$400M</text>
+
+        <!-- ticks X años 1..10 -->
+        <text class="tick-label" x="50" y="308" text-anchor="middle">1</text>
+        <text class="tick-label" x="103.3" y="308" text-anchor="middle">2</text>
+        <text class="tick-label" x="156.7" y="308" text-anchor="middle">3</text>
+        <text class="tick-label" x="210" y="308" text-anchor="middle">4</text>
+        <text class="tick-label" x="263.3" y="308" text-anchor="middle">5</text>
+        <text class="tick-label" x="316.7" y="308" text-anchor="middle">6</text>
+        <text class="tick-label" x="370" y="308" text-anchor="middle">7</text>
+        <text class="tick-label" x="423.3" y="308" text-anchor="middle">8</text>
+        <text class="tick-label" x="476.7" y="308" text-anchor="middle">9</text>
+        <text class="tick-label" x="530" y="308" text-anchor="middle">10</text>
+        <text class="tick-label" x="290" y="326" text-anchor="middle">Años</text>
+
+        <!-- RIQUEZA TOTAL STR (punteada fina) -->
+        <polyline points="50,214.4 103.3,207.8 156.7,200.8 210,193.5 263.3,185.8 316.7,177.8 370,168.0 423.3,157.7 476.7,146.2 530,134.0"
+          fill="none" stroke="#8A8A8A" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+        <!-- RIQUEZA TOTAL LTR (fina sólida) -->
+        <polyline points="50,213.5 103.3,205.8 156.7,197.9 210,189.6 263.3,181.0 316.7,172.0 370,161.2 423.3,150.0 476.7,137.5 530,124.3"
+          fill="none" stroke="#8A8A8A" stroke-width="1.5"/>
+
+        <!-- PATRIMONIO DEL ACTIVO (gruesa, ambas modalidades) -->
+        <polyline points="50,205.3 103.3,189.6 156.7,173.5 210,157.1 263.3,140.3 316.7,123.1 370,104.2 423.3,84.9 476.7,64.2 530,42.9"
+          fill="none" stroke="#EDEDED" stroke-width="2.5"/>
+
+        <!-- dots extremos patrimonio -->
+        <circle cx="50" cy="205.3" r="3" fill="#EDEDED"/>
+        <circle cx="530" cy="42.9" r="3" fill="#EDEDED"/>
+
+        <!-- etiqueta serie activo -->
+        <text class="series-label" x="332" y="108" text-anchor="start">PATRIMONIO DEL ACTIVO</text>
+        <text class="series-label" x="332" y="120" text-anchor="start" fill="#6E6E6E">AMBAS MODALIDADES · $366,1M</text>
+
+        <!-- etiqueta riquezas -->
+        <text class="series-label" x="300" y="205" text-anchor="start">RIQUEZA TOTAL</text>
+        <text class="series-label" x="300" y="217" text-anchor="start" fill="#6E6E6E">ACTIVO + FLUJO DEL CAMINO</text>
+
+        <!-- brecha año 10 -->
+        <line x1="541" y1="124.3" x2="541" y2="134.0" stroke="#C8323C" stroke-width="1.5"/>
+        <line x1="537" y1="124.3" x2="541" y2="124.3" stroke="#C8323C" stroke-width="1.5"/>
+        <line x1="537" y1="134.0" x2="541" y2="134.0" stroke="#C8323C" stroke-width="1.5"/>
+        <text class="brecha-label" x="548" y="127" text-anchor="start" transform="rotate(90 548 127)">$14,4M</text>
+      </svg>
+
+      <div class="legend">
+        <div class="item"><span class="sw activo"></span>PATRIMONIO DEL ACTIVO · AMBAS</div>
+        <div class="item"><span class="sw thin"></span>RIQUEZA · RENTA LARGA</div>
+        <div class="item"><span class="sw thin dash"></span>RIQUEZA · RENTA CORTA</div>
+      </div>
+
+      <div class="note">
+        <span class="note-eyebrow">DESTINO DEL ACTIVO IGUAL · DESTINO DEL BOLSILLO DISTINTO</span>
+        El activo termina en <span class="mono">$366.074.202</span> arriendes corto o largo: se aprecia igual y la deuda se amortiza igual. La diferencia la pone el camino: sumando lo que embolsas o aportas mes a mes, terminas con <span class="mono red">$14,4M</span> más en renta larga (<span class="mono">$245,5M</span> vs <span class="mono">$231,0M</span>).
+      </div>
+    </div>
+
+    <!-- ==================== CARD DERECHA: VOLATILIDAD (SIN CAMBIOS) ==================== -->
+    <div class="card">
+      <div class="eyebrow">
+        <span>FLUJO MENSUAL · 12 MESES ESTABILIZADOS</span>
+        <span class="chip" style="color:var(--text-3);border-color:var(--border)">SIN CAMBIOS</span>
+      </div>
+      <h2>Volatilidad vs estabilidad del flujo de caja</h2>
+
+      <svg viewBox="0 0 560 340" xmlns="http://www.w3.org/2000/svg">
+        <!-- grid Y -->
+        <line class="axis" x1="50" y1="20" x2="530" y2="20" stroke-dasharray="2 4"/>
+        <line class="axis" x1="50" y1="87.5" x2="530" y2="87.5" stroke-dasharray="2 4"/>
+        <line class="axis" x1="50" y1="155" x2="530" y2="155" stroke-dasharray="2 4"/>
+        <line class="axis" x1="50" y1="222.5" x2="530" y2="222.5" stroke-dasharray="2 4"/>
+        <line class="axis" x1="50" y1="290" x2="530" y2="290"/>
+
+        <text class="tick-label" x="44" y="24" text-anchor="end">$-300K</text>
+        <text class="tick-label" x="44" y="91.5" text-anchor="end">$-600K</text>
+        <text class="tick-label" x="44" y="159" text-anchor="end">$-900K</text>
+        <text class="tick-label" x="44" y="226.5" text-anchor="end">$-1,2M</text>
+        <text class="tick-label" x="44" y="294" text-anchor="end">$-1,5M</text>
+
+        <!-- meses -->
+        <text class="tick-label" x="50" y="308" text-anchor="middle">E</text>
+        <text class="tick-label" x="93.6" y="308" text-anchor="middle">F</text>
+        <text class="tick-label" x="137.3" y="308" text-anchor="middle">M</text>
+        <text class="tick-label" x="180.9" y="308" text-anchor="middle">A</text>
+        <text class="tick-label" x="224.5" y="308" text-anchor="middle">M</text>
+        <text class="tick-label" x="268.2" y="308" text-anchor="middle">J</text>
+        <text class="tick-label" x="311.8" y="308" text-anchor="middle">J</text>
+        <text class="tick-label" x="355.5" y="308" text-anchor="middle">A</text>
+        <text class="tick-label" x="399.1" y="308" text-anchor="middle">S</text>
+        <text class="tick-label" x="442.7" y="308" text-anchor="middle">O</text>
+        <text class="tick-label" x="486.4" y="308" text-anchor="middle">N</text>
+        <text class="tick-label" x="530" y="308" text-anchor="middle">D</text>
+
+        <!-- STR punteada volátil -->
+        <polyline points="50,222.5 93.6,245.7 137.3,222.5 180.9,200.0 224.5,177.5 268.2,110.0 311.8,36.7 355.5,87.5 399.1,166.3 442.7,200.0 486.4,222.5 530,240.5"
+          fill="none" stroke="#8A8A8A" stroke-width="1.5" stroke-dasharray="6 4"/>
+        <circle cx="311.8" cy="36.7" r="3" fill="#8A8A8A"/>
+        <circle cx="93.6" cy="245.7" r="3" fill="#8A8A8A"/>
+
+        <!-- LTR plana -->
+        <polyline points="50,133.8 530,133.8" fill="none" stroke="#EDEDED" stroke-width="2"/>
+
+        <text class="series-label" x="60" y="126" text-anchor="start">RENTA LARGA · $-805.665 CONSTANTE</text>
+        <text class="series-label" x="330" y="30" text-anchor="start" fill="#6E6E6E">PEAK JUL</text>
+        <text class="series-label" x="100" y="262" text-anchor="start" fill="#6E6E6E">VALLE FEB</text>
+      </svg>
+
+      <div class="legend">
+        <div class="item"><span class="sw activo" style="border-top-width:2px"></span>RENTA LARGA</div>
+        <div class="item"><span class="sw thin dash"></span>RENTA CORTA</div>
+      </div>
+
+      <div class="note">
+        <span class="note-eyebrow">ESTACIONALIDAD DE SANTIAGO</span>
+        LTR mantiene <span class="mono">$-805.665</span> casi constante mes a mes. STR fluctúa entre <span class="mono">$-1.303.399</span> y <span class="mono">$-373.546</span> (<span class="mono">$929.853</span> de rango) con promedio <span class="mono">$-1.002.644</span>. La estacionalidad (peak julio · valle febrero) exige fondo de reserva 3-4 meses si vas por STR.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== BLOQUE QA: ¿REDUNDANCIA? ==================== -->
+  <div class="qa">
+    <h3>QA DE REDUNDANCIA — QUÉ PREGUNTA RESPONDE CADA GRÁFICO</h3>
+    <div class="cols">
+      <p><b>Izquierda (horizonte: 10 años).</b> ¿Dónde termino y por qué? Muestra el <b>stock</b> — el activo idéntico en ambas — y el <b>acumulado</b> del camino, que abre la brecha de $14,4M. La escala es de cientos de millones y el tiempo se mide en años.</p>
+      <p><b>Derecha (horizonte: 1 año).</b> ¿Puedo sostener el mes a mes? Muestra la <b>forma</b> del flujo dentro de un año: plana vs serrucho, y el fondo de reserva que exige el serrucho. La escala es de cientos de miles y el tiempo se mide en meses.</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

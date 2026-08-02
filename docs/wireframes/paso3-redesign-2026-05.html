@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Wireframe — Paso 3 + 4 rediseño (mayo 2026)</title>
+<style>
+  :root {
+    --ink: #0F0F0F;
+    --signal-red: #C8323C;
+    --muted: #71717A;
+    --warm-bg: #FAFAF8;
+    --cool-bg: #F0F0EC;
+    --border: #E6E6E2;
+    --bg: #FFFFFF;
+    --card: #FFFFFF;
+    --override-yellow: #FBBF24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--warm-bg);
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  .page-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    min-height: 100vh;
+  }
+  .wireframe { padding: 24px; max-width: 720px; }
+  .debug-panel {
+    background: var(--ink);
+    color: #d4d4d4;
+    padding: 20px 16px;
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 11px;
+    line-height: 1.55;
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+  .debug-panel h3 {
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    margin: 0 0 12px;
+  }
+  .debug-panel pre { margin: 0 0 16px; white-space: pre-wrap; word-break: break-word; }
+  .debug-panel .key { color: #a3a3a3; }
+  .debug-panel .val { color: #fafafa; }
+  .debug-panel .val.derived { color: #fbbf24; }
+  .debug-panel .val.override { color: var(--signal-red); font-weight: bold; }
+  .debug-panel .note { color: #71717A; font-style: italic; }
+
+  h2 { font-family: ui-serif, Georgia, "Times New Roman", serif; font-weight: 700; font-size: 20px; margin: 0 0 4px; }
+  h3 { font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  .tag { font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; color: var(--muted); }
+
+  .block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 12px;
+  }
+  .block.hidden { display: none; }
+  .block .row { margin-bottom: 16px; }
+  .block .row:last-child { margin-bottom: 0; }
+  .label { font-size: 13px; font-weight: 500; margin-bottom: 6px; display: block; }
+  .help { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+  /* ─── Stepper ─── */
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .stepper .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .stepper .step.active {
+    color: var(--ink);
+    background: var(--cool-bg);
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .stepper .step.done .num {
+    background: var(--ink);
+    color: white;
+  }
+  .stepper .step .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--ink);
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .stepper .step.active .num { background: var(--signal-red); color: white; }
+  .stepper .step .sep { margin: 0 4px; color: var(--border); }
+
+  /* ─── Modalidad toggle ─── */
+  .modalidad-toggle {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .modalidad-toggle button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .modalidad-toggle button.active {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+  .modalidad-toggle button .label-mono {
+    font-family: "JetBrains Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .modalidad-toggle button .sub { font-size: 11px; opacity: 0.8; }
+
+  /* ─── Radios / toggles ─── */
+  .radio-list { display: flex; flex-direction: column; gap: 6px; }
+  .radio-list .opt {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .radio-list .opt.active { background: var(--ink); color: white; border-color: var(--ink); }
+  .radio-list .opt .opt-label { font-size: 13px; font-weight: 500; }
+  .radio-list .opt .opt-sub {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    opacity: 0.75;
+    margin-top: 2px;
+  }
+
+  .toggle-row { display: grid; gap: 6px; grid-template-columns: 1fr 1fr; }
+  .toggle-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .toggle-row .opt {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .toggle-row .opt.active { background: var(--ink); color: white; border-color: var(--ink); }
+
+  input[type="text"], input[type="number"], select {
+    width: 100%; height: 36px; padding: 0 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    font-family: inherit; font-size: 13px; background: var(--bg);
+  }
+  input[type="text"]:focus, select:focus, input[type="number"]:focus {
+    outline: none; border-color: var(--signal-red);
+    box-shadow: 0 0 0 3px rgba(200, 50, 60, 0.1);
+  }
+  input[type="range"] { width: 100%; accent-color: var(--ink); }
+
+  .collapsible-head {
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none;
+  }
+  .collapsible-body { display: none; padding-top: 12px; }
+  .collapsible.open .collapsible-body { display: block; }
+  .collapsible.open .chev { transform: rotate(180deg); }
+  .chev { transition: transform 0.2s; }
+  .collapsible.hidden { display: none; }
+
+  .summary-row {
+    display: flex; justify-content: space-between;
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+    padding: 6px 0; border-bottom: 1px dashed var(--border);
+  }
+  .summary-row:last-child { border-bottom: none; font-weight: 600; }
+
+  /* ─── STR Preview metrics ─── */
+  .str-preview {
+    margin-top: 16px;
+    padding: 14px;
+    background: var(--cool-bg);
+    border-radius: 8px;
+    border-left: 3px solid var(--ink);
+  }
+  .str-preview .preview-title {
+    font-family: "JetBrains Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .preview-line {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+  }
+  .preview-line.calc { color: var(--muted); font-size: 11px; }
+  .preview-line.result {
+    border-top: 1px dashed var(--border);
+    margin-top: 6px; padding-top: 8px;
+    font-weight: 600; font-size: 13px;
+  }
+  .preview-line.revenue {
+    border-top: 1px solid var(--ink);
+    margin-top: 6px; padding-top: 8px;
+    font-size: 14px; font-weight: 700;
+  }
+  .preview-line .editable {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .preview-line input[type="number"] {
+    width: 120px; height: 28px; font-size: 12px;
+    font-family: "JetBrains Mono", monospace;
+    text-align: right;
+  }
+  .preview-line .edit-link, .preview-line .reset-link {
+    background: none; border: none; cursor: pointer;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    text-decoration: underline dotted;
+    color: var(--muted);
+    padding: 2px 4px;
+  }
+  .preview-line .edit-link:hover, .preview-line .reset-link:hover { color: var(--ink); }
+  .preview-line .badge-override {
+    background: var(--override-yellow);
+    color: var(--ink);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  /* ─── CTAs ─── */
+  .cta-row {
+    display: flex; gap: 12px; justify-content: flex-end;
+    margin-top: 24px; padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .cta {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--signal-red); color: white;
+    padding: 12px 22px;
+    border-radius: 8px; border: none;
+    font-family: "JetBrains Mono", monospace;
+    text-transform: uppercase; font-size: 12px; letter-spacing: 0.06em;
+    cursor: pointer; font-weight: 500;
+  }
+  .cta.ghost {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .cta.ghost:hover { color: var(--ink); border-color: var(--ink); }
+
+  /* ─── Meta header ─── */
+  .meta {
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .meta .title { font-family: ui-serif, Georgia, serif; font-size: 16px; font-weight: 700; margin: 0 0 2px; }
+  .meta .sub { font-size: 12px; color: var(--muted); }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pill {
+    background: var(--cool-bg); border-radius: 20px; padding: 4px 10px;
+    font-family: "JetBrains Mono", monospace; font-size: 10px; color: var(--muted);
+  }
+
+  .legend {
+    border-left: 3px solid var(--ink);
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.03);
+    margin-bottom: 16px;
+    border-radius: 0 6px 6px 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Step views */
+  .step-view { display: none; }
+  .step-view.active { display: block; }
+</style>
+</head>
+<body>
+<div class="page-grid">
+  <!-- ─── WIREFRAME (lado izquierdo) ─── -->
+  <div class="wireframe">
+    <div class="legend">
+      <strong>Wireframe iteración 2 — paso 3 + paso 4 (mayo 2026).</strong>
+      Cambios desde la v1: bloque B simplificado (sin "mixto" ni "familiar"), preview de métricas STR live con override manual,
+      modal residual convertido en paso 4 explícito. Toggle modalidad arriba para ver bloques B (STR) y C (LTR) condicionalmente.
+    </div>
+
+    <!-- ─── Stepper ─── -->
+    <div class="stepper">
+      <div class="step done"><span class="num">✓</span>Propiedad</div>
+      <span class="sep">→</span>
+      <div class="step done"><span class="num">✓</span>Financiamiento</div>
+      <span class="sep">→</span>
+      <div class="step active" id="stepIndicator3"><span class="num">3</span>Operacional</div>
+      <span class="sep">→</span>
+      <div class="step" id="stepIndicator4"><span class="num">4</span>Ajuste fino (opcional)</div>
+    </div>
+
+    <div class="meta">
+      <p class="title">Depto en Providencia · Usado · 60 m²</p>
+      <p class="sub">UF 4.500 · ≈ $174.420.000 · pie 20%</p>
+      <div class="pill-row">
+        <span class="pill">2D · 1B</span>
+        <span class="pill">cap 4 huéspedes</span>
+        <span class="pill">sin estacionamientos</span>
+        <span class="pill">sin bodega</span>
+      </div>
+    </div>
+
+    <!-- ════════ STEP 3 ════════ -->
+    <div class="step-view active" id="stepView3">
+      <h3>¿Cómo lo analizamos?</h3>
+      <div class="modalidad-toggle">
+        <button data-mod="ltr">
+          <p class="label-mono">Renta larga</p>
+          <p class="sub">Arriendo tradicional</p>
+        </button>
+        <button data-mod="str">
+          <p class="label-mono">Renta corta</p>
+          <p class="sub">Airbnb</p>
+        </button>
+        <button data-mod="both" class="active">
+          <p class="label-mono">Ambas ★</p>
+          <p class="sub">LTR vs STR</p>
+        </button>
+      </div>
+
+      <!-- Bloque A — Estado del depto -->
+      <div class="block" data-block="A">
+        <h3>A · Estado del depto</h3>
+        <div class="row">
+          <span class="label">¿Está amoblado?</span>
+          <div class="toggle-row" data-field="estaAmoblado">
+            <button class="opt" data-val="false">No, falta amoblar</button>
+            <button class="opt active" data-val="true">Sí, ya amoblado</button>
+          </div>
+          <p class="help" id="amoblamientoHelp">Sin inversión inicial pendiente.</p>
+        </div>
+        <div class="row" id="costoAmoblamientoRow" style="display: none;">
+          <label class="label">Costo de amoblar (CLP único)</label>
+          <input type="text" data-field="costoAmoblamiento" value="3.500.000" />
+          <p class="help">Default $3.500.000 para 2D1B estándar Airbnb.</p>
+        </div>
+        <div class="row">
+          <span class="label">Habilitación / posicionamiento</span>
+          <div class="toggle-row cols-3" data-field="habilitacion">
+            <button class="opt active" data-val="basico">Básico</button>
+            <button class="opt" data-val="estandar">Estándar</button>
+            <button class="opt" data-val="premium">Premium</button>
+          </div>
+          <p class="help" id="habilitacionHelp">Funcional, fotos amateur. ADR sin uplift.</p>
+        </div>
+      </div>
+
+      <!-- Bloque B — Operación STR (solo str/both) -->
+      <div class="block" data-block="B">
+        <h3>B · Operación Airbnb</h3>
+
+        <!-- ⚡ Cambio iter-2: 2 opciones (residencial / dedicado) — sin "mixto" -->
+        <div class="row">
+          <span class="label">¿Cómo es el edificio?</span>
+          <div class="radio-list" data-field="tipoEdificio">
+            <button class="opt active" data-val="residencial_puro">
+              <div class="opt-label">Residencial</div>
+              <div class="opt-sub">La mayoría vive ahí · ADR ×1.00</div>
+            </button>
+            <button class="opt" data-val="dedicado">
+              <div class="opt-label">Dedicado 100% renta corta</div>
+              <div class="opt-sub">Aparthotel tipo Andes STR, Mayflower · ADR ×1.10</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- ⚡ Cambio iter-2: 2 opciones (auto / pro_formal) — sin "familiar" -->
+        <div class="row">
+          <span class="label">¿Quién va a operar el Airbnb?</span>
+          <div class="radio-list" data-field="gestionOption">
+            <button class="opt active" data-val="tu_mismo">
+              <div class="opt-label">Auto-gestión</div>
+              <div class="opt-sub">Tú operas · comisión Airbnb 3%</div>
+            </button>
+            <button class="opt" data-val="pro_formal">
+              <div class="opt-label">Operador profesional</div>
+              <div class="opt-sub">Andes STR, Mayflower · comisión ~20%</div>
+            </button>
+          </div>
+          <div id="comisionSlider" style="display: none; margin-top: 12px;">
+            <label class="label">Comisión exacta: <span id="comisionLabel">20</span>%</label>
+            <input type="range" min="10" max="30" step="1" value="20" data-field="comisionAdminPct" />
+            <p class="help">Ajusta si tu acuerdo difiere del default 20%.</p>
+          </div>
+        </div>
+
+        <div class="row">
+          <label class="label">¿Tu edificio permite Airbnb?</label>
+          <select data-field="edificioPermiteAirbnb">
+            <option value="si">Sí permite</option>
+            <option value="no">No permite</option>
+            <option value="no_seguro" selected>No estoy seguro</option>
+          </select>
+          <p class="help" id="edificioPermiteHelp">Te conviene revisar el reglamento de copropiedad antes de comprar.</p>
+        </div>
+
+        <div class="row" id="operadorRow" style="display: none;">
+          <label class="label">Operador del edificio (opcional)</label>
+          <input type="text" data-field="operadorNombre" placeholder="Andes STR, Mayflower, Wynwood…" />
+          <p class="help">Si lo conoces, nos ayuda a refinar estimaciones para futuros usuarios.</p>
+        </div>
+
+        <!-- ⚡ Cambio iter-2: preview de métricas STR live + override manual -->
+        <div class="str-preview">
+          <div class="preview-title">Preview operacional · live</div>
+
+          <div class="preview-line calc">
+            <span>ADR baseline (AirROI Providencia 2D1B)</span>
+            <span>$55.000</span>
+          </div>
+          <div class="preview-line calc">
+            <span>× factor edificio</span>
+            <span id="previewFactorEdif">×1.00</span>
+          </div>
+          <div class="preview-line calc">
+            <span>× factor habilitación</span>
+            <span id="previewFactorHab">×1.00</span>
+          </div>
+
+          <div class="preview-line result">
+            <span>ADR ajustado</span>
+            <span class="editable" id="adrEditable"></span>
+          </div>
+
+          <div class="preview-line result">
+            <span>Ocupación estabilizada (mes 7+)</span>
+            <span class="editable" id="occEditable"></span>
+          </div>
+
+          <div class="preview-line revenue">
+            <span>Revenue mensual estimado</span>
+            <span id="previewRevenue">$828.000</span>
+          </div>
+
+          <p class="help" style="margin-top: 10px;" id="overrideHelp">
+            Los valores se recalculan según los ejes de arriba. Puedes editar manualmente y volver al sugerido en cualquier momento.
+          </p>
+        </div>
+      </div>
+
+      <!-- Bloque C — Comparativa LTR (solo ltr/both) -->
+      <div class="block" data-block="C">
+        <h3>C · Comparativa renta larga</h3>
+        <div class="row">
+          <label class="label">Arriendo mensual estimado</label>
+          <input type="text" data-field="arriendo" value="850.000" />
+          <p class="help">Mercado sugiere $820.000 · basado en 47 propiedades comparables.</p>
+        </div>
+      </div>
+
+      <!-- Bloque D — Costos mensuales (siempre) -->
+      <div class="block" data-block="D">
+        <h3>D · Costos mensuales recurrentes</h3>
+        <div class="row">
+          <label class="label">Gastos comunes mensuales</label>
+          <input type="text" data-field="gastos" value="120.000" />
+          <p class="help">Mercado sugiere $115.000 (tier comuna · 60m² × valor m²).</p>
+        </div>
+        <div class="row">
+          <label class="label">Contribuciones (trimestral)</label>
+          <input type="text" data-field="contribuciones" value="220.000" />
+        </div>
+
+        <!-- ⚡ Cambio iter-2: este collapsible se oculta cuando modalidad=ltr -->
+        <div class="collapsible open" id="strCostsCollapsible">
+          <div class="row" style="border-top: 1px dashed var(--border); padding-top: 12px;">
+            <div class="collapsible-head">
+              <span class="label" style="margin: 0;">Costos operativos STR</span>
+              <span class="chev">▾</span>
+            </div>
+            <div class="collapsible-body">
+              <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div>
+                  <label class="label" style="font-size: 12px;">Electricidad</label>
+                  <input type="text" value="35.000" />
+                </div>
+                <div>
+                  <label class="label" style="font-size: 12px;">Agua</label>
+                  <input type="text" value="8.000" />
+                </div>
+                <div>
+                  <label class="label" style="font-size: 12px;">WiFi</label>
+                  <input type="text" value="22.000" />
+                </div>
+                <div>
+                  <label class="label" style="font-size: 12px;">Insumos</label>
+                  <input type="text" value="20.000" />
+                </div>
+                <div>
+                  <label class="label" style="font-size: 12px;">Mantención</label>
+                  <input type="text" value="11.000" />
+                </div>
+              </div>
+              <p class="help">Defaults para 2D1B. Edita si tienes data real.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumen + CTAs paso 3 -->
+      <div class="block" style="background: rgba(0, 0, 0, 0.03);">
+        <h3>Resumen</h3>
+        <div class="summary-row"><span>Modalidad</span><span id="sumModalidad">AMBAS ★</span></div>
+        <div class="summary-row"><span>Banda STR</span><span id="sumBanda">auto_gestion_residencial</span></div>
+        <div class="summary-row"><span>Ocupación target</span><span id="sumOcc">55%</span></div>
+        <div class="summary-row"><span>Comisión STR</span><span id="sumComision">3%</span></div>
+        <div class="summary-row"><span>Factor ADR</span><span id="sumADR">×1.00</span></div>
+      </div>
+
+      <div class="cta-row">
+        <button class="cta ghost" onclick="submitAnalisis()">Saltar y analizar</button>
+        <button class="cta" onclick="goToStep(4)">Continuar a ajuste fino →</button>
+      </div>
+    </div>
+
+    <!-- ════════ STEP 4 ════════ -->
+    <div class="step-view" id="stepView4">
+      <h3>Ajuste fino (opcional)</h3>
+      <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px;">
+        Defaults razonables del mercado chileno. Editá solo si tienes data más fina para tu caso.
+      </p>
+
+      <!-- Sección Crédito -->
+      <div class="block">
+        <h3>Crédito hipotecario</h3>
+        <div class="row">
+          <label class="label">Plazo del crédito (años): <span id="plazoLabel">25</span></label>
+          <input type="range" min="10" max="30" step="5" value="25" id="plazoCredito" />
+        </div>
+        <div class="row">
+          <label class="label">Tasa de interés anual (%)</label>
+          <input type="text" value="4,72" id="tasaInteres" />
+          <p class="help">Default 4,72% según mercado actual. Subsidio a la tasa (Ley 21.748) puede bajar ~0,6 puntos si calificás.</p>
+        </div>
+      </div>
+
+      <!-- Sección LTR (solo ltr/both) -->
+      <div class="block" data-block-step4="ltr">
+        <h3>Renta larga</h3>
+        <div class="row">
+          <label class="label">Vacancia (%): <span id="vacanciaLabel">5</span></label>
+          <input type="range" min="0" max="25" value="5" id="vacanciaPct" />
+          <p class="help">% del año sin arrendatario. Default 5% ≈ 18 días/año.</p>
+        </div>
+        <div class="row">
+          <label class="label">Comisión gestión LTR (%): <span id="adminLabel">0</span></label>
+          <input type="range" min="0" max="15" value="0" id="adminPct" />
+          <p class="help">Default 0% = autogestión. 7-10% si delegás a corredor.</p>
+        </div>
+      </div>
+
+      <!-- Sección STR (solo str/both) -->
+      <div class="block" data-block-step4="str">
+        <h3>Renta corta — overrides</h3>
+        <div class="row">
+          <p class="help" style="margin-bottom: 12px; margin-top: 0;">
+            La comisión exacta se setea en el bloque B del paso 3. Acá podés override-arla si tu acuerdo difiere del default por banda.
+          </p>
+          <label class="label">Comisión exacta operador (%): <span id="comisionExactaLabel">20</span></label>
+          <input type="range" min="5" max="30" value="20" id="comisionExacta" />
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <button class="cta ghost" onclick="goToStep(3)">← Volver</button>
+        <button class="cta" onclick="submitAnalisis()">Ajustar y analizar →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── DEBUG PANEL (lado derecho) ─── -->
+  <div class="debug-panel">
+    <h3>State del wizard</h3>
+    <pre id="stateDebug"></pre>
+
+    <h3>Mapeo motor (derivado)</h3>
+    <pre id="motorDebug"></pre>
+
+    <h3>Métricas STR (preview)</h3>
+    <pre id="metricsDebug"></pre>
+
+    <h3>Validaciones</h3>
+    <pre id="validationsDebug"></pre>
+
+    <p class="note">
+      Iter-2: fusión gestionOption binaria (auto/pro_formal). tipoEdificio binario
+      (residencial/dedicado). Override manual ADR + Occ via badge. Modal residual ya
+      no existe — paso 4 inline skippable.
+    </p>
+  </div>
+</div>
+
+<script>
+  // ─── Constantes de simulación ───
+  const ADR_BASELINE = 55000; // Mock: AirROI Providencia 2D1B mediana
+
+  // ─── Estado central ───
+  const state = {
+    currentStep: 3,
+    modalidad: "both",
+    estaAmoblado: true,
+    costoAmoblamiento: "3500000",
+    habilitacion: "basico",
+    tipoEdificio: "residencial_puro",     // ⚡ Iter-2: residencial_puro | dedicado (sin mixto)
+    gestionOption: "tu_mismo",            // ⚡ Iter-2: tu_mismo | pro_formal (sin familiar)
+    comisionAdminPct: 20,
+    edificioPermiteAirbnb: "no_seguro",
+    operadorNombre: "",
+    arriendo: "850000",
+    gastos: "120000",
+    contribuciones: "220000",
+    plazoCredito: 25,
+    tasaInteres: "4,72",
+    vacanciaPct: 5,
+    adminPct: 0,
+    // ⚡ Iter-2: overrides manuales
+    adrOverride: null,    // null = usar derivado · number = override usuario
+    occOverride: null,    // null = usar derivado · number (0-1) = override
+  };
+
+  // ─── Mapeo fusión → motor (iter-2: binario) ───
+  function gestionOptionToMotor(opt) {
+    switch (opt) {
+      case "tu_mismo":   return { modoGestion: "auto", adminPro: false, comisionDefault: 3 };
+      case "pro_formal": return { modoGestion: "administrador", adminPro: true, comisionDefault: 20 };
+    }
+    // Fallback defensivo: si alguien introduce un valor inválido, tratar como auto.
+    return { modoGestion: "auto", adminPro: false, comisionDefault: 3 };
+  }
+
+  function calcBanda(tipoEdificio, adminPro) {
+    const dedicado = tipoEdificio === "dedicado";
+    if (dedicado && adminPro)  return { name: "edificio_dedicado_admin_pro", occ: 0.74 };
+    if (dedicado && !adminPro) return { name: "edificio_dedicado_auto",      occ: 0.65 };
+    if (!dedicado && adminPro) return { name: "admin_pro_residencial",       occ: 0.65 };
+    return { name: "auto_gestion_residencial", occ: 0.55 };
+  }
+
+  function calcFactorEdif(tipoEdificio) {
+    return { residencial_puro: 1.0, dedicado: 1.10 }[tipoEdificio] ?? 1.0;
+  }
+  function calcFactorHab(habilitacion) {
+    return { basico: 1.0, estandar: 1.05, premium: 1.10 }[habilitacion] ?? 1.0;
+  }
+
+  // ─── Cálculo derivado de métricas STR ───
+  function calcMetrics() {
+    const motor = gestionOptionToMotor(state.gestionOption);
+    const banda = calcBanda(state.tipoEdificio, motor.adminPro);
+    const factorEdif = calcFactorEdif(state.tipoEdificio);
+    const factorHab = calcFactorHab(state.habilitacion);
+
+    const adrDerivado = Math.round(ADR_BASELINE * factorEdif * factorHab);
+    const occDerivado = banda.occ;
+
+    // Override gana cuando es no-null
+    const adrFinal = state.adrOverride !== null ? state.adrOverride : adrDerivado;
+    const occFinal = state.occOverride !== null ? state.occOverride : occDerivado;
+    const revenueMensual = Math.round((adrFinal * occFinal * 365) / 12);
+
+    const adrEsOverride = state.adrOverride !== null && state.adrOverride !== adrDerivado;
+    const occEsOverride = state.occOverride !== null && state.occOverride !== occDerivado;
+
+    return {
+      motor,
+      banda,
+      factorEdif,
+      factorHab,
+      adrDerivado,
+      occDerivado,
+      adrFinal,
+      occFinal,
+      revenueMensual,
+      adrEsOverride,
+      occEsOverride,
+    };
+  }
+
+  function fmtCLP(n) { return "$" + Math.round(n).toLocaleString("es-CL"); }
+  function fmtPct(n) { return (n * 100).toFixed(0) + "%"; }
+
+  // ─── Render ───
+  function render() {
+    // Stepper
+    document.getElementById("stepIndicator3").classList.toggle("active", state.currentStep === 3);
+    document.getElementById("stepIndicator3").classList.toggle("done", state.currentStep > 3);
+    document.getElementById("stepIndicator4").classList.toggle("active", state.currentStep === 4);
+
+    // Step views
+    document.getElementById("stepView3").classList.toggle("active", state.currentStep === 3);
+    document.getElementById("stepView4").classList.toggle("active", state.currentStep === 4);
+
+    // Modalidad toggle (siempre en paso 3)
+    document.querySelectorAll(".modalidad-toggle button").forEach((b) => {
+      b.classList.toggle("active", b.dataset.mod === state.modalidad);
+    });
+
+    // ⚡ Iter-2: bug fix de visibilidad bloques B/C/costos STR según modalidad
+    const showSTR = state.modalidad === "str" || state.modalidad === "both";
+    const showLTR = state.modalidad === "ltr" || state.modalidad === "both";
+    document.querySelector('[data-block="B"]').classList.toggle("hidden", !showSTR);
+    document.querySelector('[data-block="C"]').classList.toggle("hidden", !showLTR);
+    document.getElementById("strCostsCollapsible").classList.toggle("hidden", !showSTR);
+
+    // En paso 4: idem
+    document.querySelector('[data-block-step4="ltr"]').classList.toggle("hidden", !showLTR);
+    document.querySelector('[data-block-step4="str"]').classList.toggle("hidden", !showSTR);
+
+    // Toggles activos
+    document.querySelectorAll('[data-field="estaAmoblado"] .opt').forEach((b) => {
+      b.classList.toggle("active", String(state.estaAmoblado) === b.dataset.val);
+    });
+    document.getElementById("costoAmoblamientoRow").style.display = state.estaAmoblado ? "none" : "block";
+    document.getElementById("amoblamientoHelp").textContent =
+      state.estaAmoblado ? "Sin inversión inicial pendiente." : "Se calcula inversión inicial para amoblar.";
+
+    document.querySelectorAll('[data-field="habilitacion"] .opt').forEach((b) => {
+      b.classList.toggle("active", state.habilitacion === b.dataset.val);
+    });
+    document.getElementById("habilitacionHelp").textContent = {
+      basico: "Funcional, fotos amateur. ADR sin uplift.",
+      estandar: "Decente + fotos profesionales. ADR ×1.05.",
+      premium: "Decoración curada, amenidades. ADR ×1.10.",
+    }[state.habilitacion];
+
+    document.querySelectorAll('[data-field="tipoEdificio"] .opt').forEach((b) => {
+      b.classList.toggle("active", state.tipoEdificio === b.dataset.val);
+    });
+
+    document.querySelectorAll('[data-field="gestionOption"] .opt').forEach((b) => {
+      b.classList.toggle("active", state.gestionOption === b.dataset.val);
+    });
+    // Slider comisión visible solo si pro_formal
+    const showSlider = state.gestionOption === "pro_formal";
+    document.getElementById("comisionSlider").style.display = showSlider ? "block" : "none";
+    if (showSlider) {
+      const slider = document.querySelector('[data-field="comisionAdminPct"]');
+      if (slider) slider.value = state.comisionAdminPct;
+      document.getElementById("comisionLabel").textContent = state.comisionAdminPct;
+    }
+
+    document.querySelector('[data-field="edificioPermiteAirbnb"]').value = state.edificioPermiteAirbnb;
+    document.getElementById("edificioPermiteHelp").textContent = {
+      si: "Confirmado: el reglamento permite renta corta.",
+      no: "Algunos edificios prohíben Airbnb. Verifica antes de invertir.",
+      no_seguro: "Te conviene revisar el reglamento de copropiedad antes de comprar.",
+    }[state.edificioPermiteAirbnb];
+
+    document.getElementById("operadorRow").style.display = state.tipoEdificio === "dedicado" ? "block" : "none";
+
+    // ⚡ Iter-2: render del preview STR + ADR/Occ editables
+    const m = calcMetrics();
+    document.getElementById("previewFactorEdif").textContent = "×" + m.factorEdif.toFixed(2);
+    document.getElementById("previewFactorHab").textContent = "×" + m.factorHab.toFixed(2);
+    document.getElementById("previewRevenue").textContent = fmtCLP(m.revenueMensual);
+    renderAdrEditable(m);
+    renderOccEditable(m);
+
+    // Resumen paso 3
+    const comisionVisual = state.gestionOption === "tu_mismo" ? 3 : state.comisionAdminPct;
+    document.getElementById("sumModalidad").textContent = {
+      ltr: "RENTA LARGA", str: "RENTA CORTA", both: "AMBAS ★",
+    }[state.modalidad];
+    document.getElementById("sumBanda").textContent = m.banda.name;
+    document.getElementById("sumOcc").textContent = fmtPct(m.occFinal) + (m.occEsOverride ? " (override)" : "");
+    document.getElementById("sumComision").textContent = comisionVisual + "%";
+    document.getElementById("sumADR").textContent = "×" + (m.factorEdif * m.factorHab).toFixed(2) + (m.adrEsOverride ? " (override)" : "");
+
+    // Debug panels
+    document.getElementById("stateDebug").innerHTML = renderState();
+    document.getElementById("motorDebug").innerHTML = renderMotor(m);
+    document.getElementById("metricsDebug").innerHTML = renderMetrics(m);
+    document.getElementById("validationsDebug").innerHTML = renderValidations(m);
+  }
+
+  function renderAdrEditable(m) {
+    const slot = document.getElementById("adrEditable");
+    if (state.adrOverride === null) {
+      slot.innerHTML = `
+        <span>${fmtCLP(m.adrDerivado)}/noche</span>
+        <button class="edit-link" onclick="enableAdrOverride()">Editar manualmente</button>
+      `;
+    } else {
+      slot.innerHTML = `
+        <input type="number" id="adrOverrideInput" value="${state.adrOverride}" />
+        <span class="badge-override">override</span>
+        <button class="reset-link" onclick="resetAdrOverride()">Usar sugerido</button>
+      `;
+      document.getElementById("adrOverrideInput").addEventListener("input", (e) => {
+        state.adrOverride = Number(e.target.value) || 0;
+        render();
+      });
+    }
+  }
+
+  function renderOccEditable(m) {
+    const slot = document.getElementById("occEditable");
+    if (state.occOverride === null) {
+      slot.innerHTML = `
+        <span>${fmtPct(m.occDerivado)}</span>
+        <button class="edit-link" onclick="enableOccOverride()">Editar manualmente</button>
+      `;
+    } else {
+      slot.innerHTML = `
+        <input type="number" id="occOverrideInput" min="0" max="100" step="1" value="${Math.round(state.occOverride * 100)}" />
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">%</span>
+        <span class="badge-override">override</span>
+        <button class="reset-link" onclick="resetOccOverride()">Usar sugerido</button>
+      `;
+      document.getElementById("occOverrideInput").addEventListener("input", (e) => {
+        const pct = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+        state.occOverride = pct / 100;
+        render();
+      });
+    }
+  }
+
+  // ─── Override handlers ───
+  function enableAdrOverride() {
+    const m = calcMetrics();
+    state.adrOverride = m.adrDerivado;
+    render();
+  }
+  function resetAdrOverride() { state.adrOverride = null; render(); }
+  function enableOccOverride() {
+    const m = calcMetrics();
+    state.occOverride = m.occDerivado;
+    render();
+  }
+  function resetOccOverride() { state.occOverride = null; render(); }
+  window.enableAdrOverride = enableAdrOverride;
+  window.enableOccOverride = enableOccOverride;
+  window.resetAdrOverride = resetAdrOverride;
+  window.resetOccOverride = resetOccOverride;
+
+  // ─── Navegación pasos ───
+  function goToStep(n) { state.currentStep = n; window.scrollTo({ top: 0, behavior: "smooth" }); render(); }
+  function submitAnalisis() {
+    alert("(Wireframe) En la app real: POST a /api/analisis/short-term con el state actual.\n\n" +
+          JSON.stringify({
+            modoGestion: gestionOptionToMotor(state.gestionOption).modoGestion,
+            adminPro: gestionOptionToMotor(state.gestionOption).adminPro,
+            tipoEdificio: state.tipoEdificio,
+            habilitacion: state.habilitacion,
+            adrOverride: state.adrOverride,
+            occOverride: state.occOverride,
+          }, null, 2));
+  }
+  window.goToStep = goToStep;
+  window.submitAnalisis = submitAnalisis;
+
+  // ─── Debug renderers ───
+  function renderState() {
+    return Object.entries(state).map(([k, v]) =>
+      `<span class="key">${k}</span>: <span class="val">${JSON.stringify(v)}</span>`
+    ).join("\n");
+  }
+
+  function renderMotor(m) {
+    const comision = state.gestionOption === "tu_mismo" ? 0.03 : state.comisionAdminPct / 100;
+    return [
+      `<span class="key">// Body POST a /api/analisis/short-term:</span>`,
+      `<span class="key">modoGestion</span>: <span class="val derived">${JSON.stringify(m.motor.modoGestion)}</span>`,
+      `<span class="key">adminPro</span>: <span class="val derived">${m.motor.adminPro}</span>`,
+      `<span class="key">comisionAdministrador</span>: <span class="val derived">${comision}</span>`,
+      `<span class="key">tipoEdificio</span>: <span class="val">${JSON.stringify(state.tipoEdificio)}</span>`,
+      `<span class="key">habilitacion</span>: <span class="val">${JSON.stringify(state.habilitacion)}</span>`,
+      ``,
+      `<span class="key">// Output del motor:</span>`,
+      `<span class="key">banda</span>: <span class="val derived">"${m.banda.name}"</span>`,
+      `<span class="key">ocupacionTarget</span>: <span class="val derived">${m.banda.occ}</span>`,
+      `<span class="key">factorADRTotal</span>: <span class="val derived">${(m.factorEdif * m.factorHab).toFixed(3)}</span>`,
+    ].join("\n");
+  }
+
+  function renderMetrics(m) {
+    const lines = [
+      `<span class="key">ADR baseline</span>: <span class="val">${m.adrDerivado / calcFactorEdif(state.tipoEdificio) / calcFactorHab(state.habilitacion)}</span>`,
+      `<span class="key">factorEdif × factorHab</span>: <span class="val derived">${(m.factorEdif * m.factorHab).toFixed(3)}</span>`,
+    ];
+    if (m.adrEsOverride) {
+      lines.push(`<span class="key">ADR derivado</span>: <span class="val derived">${m.adrDerivado}</span>`);
+      lines.push(`<span class="key">ADR override</span>: <span class="val override">${state.adrOverride}</span> ★`);
+    } else {
+      lines.push(`<span class="key">ADR final</span>: <span class="val derived">${m.adrFinal}</span>`);
+    }
+    if (m.occEsOverride) {
+      lines.push(`<span class="key">Occ derivado</span>: <span class="val derived">${m.occDerivado}</span>`);
+      lines.push(`<span class="key">Occ override</span>: <span class="val override">${state.occOverride}</span> ★`);
+    } else {
+      lines.push(`<span class="key">Occ final</span>: <span class="val derived">${m.occFinal}</span>`);
+    }
+    lines.push(`<span class="key">revenueMensual</span>: <span class="val">${m.revenueMensual}</span>`);
+    return lines.join("\n");
+  }
+
+  function renderValidations(m) {
+    const checks = [];
+    // Inconsistencia auto+true imposible por construcción de la fusión binaria
+    const inconsistente = (m.motor.modoGestion === "auto" && m.motor.adminPro === true);
+    checks.push(`<span class="val">${inconsistente ? "✗" : "✓"}</span> Combinación coherente (motor)`);
+
+    if (state.tipoEdificio === "dedicado" && !state.operadorNombre.trim()) {
+      checks.push(`<span class="note">○ Edificio dedicado sin operador (opcional)</span>`);
+    }
+    if ((state.modalidad === "str" || state.modalidad === "both") && state.edificioPermiteAirbnb === "no") {
+      checks.push(`<span class="val">⚠ Edificio no permite Airbnb — modelo STR ficticio</span>`);
+    }
+    if (m.adrEsOverride || m.occEsOverride) {
+      checks.push(`<span class="val" style="color: var(--override-yellow);">★ Override manual activo — métricas no calibradas por motor</span>`);
+    }
+    if ((state.modalidad === "str" || state.modalidad === "both") && state.tipoEdificio === "dedicado" && m.motor.adminPro === false) {
+      checks.push(`<span class="note">○ Edificio dedicado con auto-gestión — combo raro pero matemáticamente coherente (banda edificio_dedicado_auto, 65%)</span>`);
+    }
+    return checks.join("\n");
+  }
+
+  // ─── Event handlers ───
+  document.querySelectorAll(".modalidad-toggle button").forEach((b) => {
+    b.addEventListener("click", () => { state.modalidad = b.dataset.mod; render(); });
+  });
+
+  document.querySelectorAll('[data-field="estaAmoblado"] .opt').forEach((b) => {
+    b.addEventListener("click", () => { state.estaAmoblado = b.dataset.val === "true"; render(); });
+  });
+
+  document.querySelectorAll('[data-field="habilitacion"] .opt').forEach((b) => {
+    b.addEventListener("click", () => { state.habilitacion = b.dataset.val; render(); });
+  });
+
+  document.querySelectorAll('[data-field="tipoEdificio"] .opt').forEach((b) => {
+    b.addEventListener("click", () => { state.tipoEdificio = b.dataset.val; render(); });
+  });
+
+  document.querySelectorAll('[data-field="gestionOption"] .opt').forEach((b) => {
+    b.addEventListener("click", () => {
+      state.gestionOption = b.dataset.val;
+      const motor = gestionOptionToMotor(state.gestionOption);
+      state.comisionAdminPct = motor.comisionDefault;
+      render();
+    });
+  });
+
+  document.querySelector('[data-field="comisionAdminPct"]').addEventListener("input", (e) => {
+    state.comisionAdminPct = Number(e.target.value);
+    render();
+  });
+
+  document.querySelector('[data-field="edificioPermiteAirbnb"]').addEventListener("change", (e) => {
+    state.edificioPermiteAirbnb = e.target.value;
+    render();
+  });
+
+  document.querySelector('[data-field="operadorNombre"]').addEventListener("input", (e) => {
+    state.operadorNombre = e.target.value; render();
+  });
+
+  document.querySelector('[data-field="arriendo"]').addEventListener("input", (e) => {
+    state.arriendo = e.target.value; render();
+  });
+
+  document.querySelector('[data-field="gastos"]').addEventListener("input", (e) => {
+    state.gastos = e.target.value; render();
+  });
+
+  document.querySelector('[data-field="contribuciones"]').addEventListener("input", (e) => {
+    state.contribuciones = e.target.value; render();
+  });
+
+  document.querySelectorAll(".collapsible-head").forEach((h) => {
+    h.addEventListener("click", () => h.parentElement.parentElement.classList.toggle("open"));
+  });
+
+  // Paso 4 inputs
+  document.getElementById("plazoCredito").addEventListener("input", (e) => {
+    state.plazoCredito = Number(e.target.value);
+    document.getElementById("plazoLabel").textContent = state.plazoCredito;
+    render();
+  });
+  document.getElementById("tasaInteres").addEventListener("input", (e) => {
+    state.tasaInteres = e.target.value;
+    render();
+  });
+  document.getElementById("vacanciaPct").addEventListener("input", (e) => {
+    state.vacanciaPct = Number(e.target.value);
+    document.getElementById("vacanciaLabel").textContent = state.vacanciaPct;
+    render();
+  });
+  document.getElementById("adminPct").addEventListener("input", (e) => {
+    state.adminPct = Number(e.target.value);
+    document.getElementById("adminLabel").textContent = state.adminPct;
+    render();
+  });
+  document.getElementById("comisionExacta").addEventListener("input", (e) => {
+    state.comisionAdminPct = Number(e.target.value);
+    document.getElementById("comisionExactaLabel").textContent = state.comisionAdminPct;
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
