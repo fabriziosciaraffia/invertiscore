@@ -106,6 +106,11 @@ async function main() {
   const args = process.argv.slice(2);
   const dry = args.includes("--dry"), muestra = args.includes("--muestra"), go = args.includes("--go");
   if (!dry && !muestra && !go) { console.error("Especificá --dry | --muestra | --go"); process.exit(1); }
+  // --solo=id1,id2 (paquete B): restringe el lote a esos ids (prefijos de 8+ chars válidos).
+  // Para regen quirúrgica post-censo sin re-barrer el corpus completo.
+  const soloArg = args.find((a) => a.startsWith("--solo="))?.slice("--solo=".length) ?? "";
+  const SOLO = soloArg.split(",").map((s) => s.trim()).filter(Boolean);
+  const enSolo = (id: string) => SOLO.length === 0 || SOLO.some((p) => id.startsWith(p));
 
   const { data: rows, error } = await sb.from("analisis")
     .select("id, nombre, user_id, comuna, input_data, results, ai_analysis, created_at")
@@ -123,10 +128,10 @@ async function main() {
   // y las exclusiones semánticas de ⛔#2.
   const recomputables = (rows ?? []).filter((r) => {
     const d = r.input_data as any, res = r.results as any;
-    return d?.precioCompra && d?.precioCompraUF && res?.airbnbRaw && !isExcluded(r.id);
+    return d?.precioCompra && d?.precioCompraUF && res?.airbnbRaw && !isExcluded(r.id) && enSolo(r.id);
   });
-  const excluidas = (rows ?? []).filter((r) => !recomputables.includes(r));
-  console.log(`\nCorpus: ${rows?.length} · recomputables: ${recomputables.length} · excluidas: ${excluidas.length} [${excluidas.map((e) => e.id.slice(0, 8)).join(", ")}]`);
+  const excluidas = (rows ?? []).filter((r) => !recomputables.includes(r) && enSolo(r.id));
+  console.log(`\nCorpus: ${rows?.length} · recomputables: ${recomputables.length} · excluidas: ${excluidas.length} [${excluidas.map((e) => e.id.slice(0, 8)).join(", ")}]${SOLO.length ? ` · --solo: ${SOLO.length} id(s)` : ""}`);
 
   // ── DRY: invariante en memoria ──────────────────────────────────────────
   if (dry) {
