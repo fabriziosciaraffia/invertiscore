@@ -23,8 +23,11 @@ export function AdminTitular({
   pagaron: number;
   includeTest: boolean;
 }) {
+  // El número va un punto por debajo del texto que lo rodea: en mono, a igual
+  // tamaño nominal, la caja tipográfica se ve más grande que la serif. A 390px
+  // con el titular en 20px, un mono de 26px rompía la línea.
   const N = (n: number) => (
-    <span className="font-mono text-[26px] font-bold sm:text-[26px]">{fmtNumber(n)}</span>
+    <span className="font-mono text-[19px] font-bold sm:text-[26px]">{fmtNumber(n)}</span>
   );
 
   // Cierre: tres estados, del peor al mejor. Se elige el primero que aplique.
