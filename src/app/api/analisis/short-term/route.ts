@@ -76,6 +76,13 @@ export async function POST(request: Request) {
       .from("analisis")
       .insert({
         ...built.row,
+        // CTA welcome: la vía de cobro viaja junto al input (aditivo, espejo
+        // LTR). Va DESPUÉS del spread para sobreescribir el input_data del
+        // helper; /api/analisis/locked no lo setea (pre-pago ≠ welcome).
+        input_data: {
+          ...(built.row.input_data as Record<string, unknown>),
+          chargeMode,
+        },
         user_id: user.id,
         creator_name:
           user?.user_metadata?.nombre ||

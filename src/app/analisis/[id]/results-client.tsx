@@ -11,6 +11,7 @@ import type { MarketDataRow } from "@/lib/market-data";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
+import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 // Ronda 4a.1: leaf components extraídos a src/components/analysis/.
 import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/components/analysis/utils";
 // Ronda 4a.2: Advanced Section.
@@ -90,6 +91,7 @@ export function PremiumResults({
   ownerFirstName = "",
   analysesCount = 0,
   isLoggedIn = false,
+  showCtaWelcome = false,
 }: {
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium" | "subscriber";
@@ -119,6 +121,9 @@ export function PremiumResults({
   ownerFirstName?: string;
   analysesCount?: number;
   isLoggedIn?: boolean;
+  /** Gate server-side (input_data.chargeMode === "welcome" + dueño): monta el
+   * CTA post-análisis welcome (banda inline + popup). */
+  showCtaWelcome?: boolean;
 }) {
   const posthog = usePostHog();
   const [horizonYears, setHorizonYears] = useState(10);
@@ -1000,6 +1005,14 @@ export function PremiumResults({
           </div>
         )}
         {mainContent}
+
+        {/* CTA post-análisis welcome — banda inline al cierre del informe +
+            popup (trigger IntersectionObserver + dwell). Solo cobro welcome. */}
+        {showCtaWelcome && analysisId && (
+          <div className="mt-8">
+            <CtaWelcome analysisId={analysisId} />
+          </div>
+        )}
 
         {/* WalletStatusCTA in-line al cierre — refleja estado del wallet
             del user logueado. Excluye admin/sharedView/welcomeDisponible. */}

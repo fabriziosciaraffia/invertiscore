@@ -194,6 +194,10 @@ export default async function STRResultPage({
   const strAiFresh = !!strAiPersisted && typeof strAiPersisted === "object"
     && (strAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_STR;
 
+  // CTA post-análisis welcome: espejo del gate LTR — persistido como
+  // input_data.chargeMode al crear; históricos sin el campo → false. Solo dueño.
+  const showCtaWelcome = isOwner && inputDataStr?.chargeMode === "welcome";
+
   const sharedProps = {
     analysisId: data.id,
     results,
@@ -211,6 +215,7 @@ export default async function STRResultPage({
     welcomeAvailable,
     aiAnalysisInitial: strAiFresh ? data.ai_analysis : null,
     subordinatedHref,
+    showCtaWelcome,
   };
 
   return <STRResultsClient {...sharedProps} />;
