@@ -310,8 +310,11 @@ export function STRResultsClient({
         />
 
         {/* CTA post-análisis welcome — banda inline al cierre del informe +
-            popup (trigger IntersectionObserver + dwell). Solo cobro welcome. */}
-        {showCtaWelcome && (
+            popup (trigger IntersectionObserver + dwell). Solo cobro welcome.
+            Gate aiAnalysis: no montar (banda NI observer) mientras la prosa
+            genera — el skeleton deja la banda en viewport y el popup dispara
+            sobre el informe vacío, quemando el guard. Render, no CSS. */}
+        {showCtaWelcome && aiAnalysis != null && (
           <>
             <div style={{ height: 24 }} />
             <CtaWelcome analysisId={analysisId} />

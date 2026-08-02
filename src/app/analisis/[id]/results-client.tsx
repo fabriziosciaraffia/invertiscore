@@ -1007,8 +1007,12 @@ export function PremiumResults({
         {mainContent}
 
         {/* CTA post-análisis welcome — banda inline al cierre del informe +
-            popup (trigger IntersectionObserver + dwell). Solo cobro welcome. */}
-        {showCtaWelcome && analysisId && (
+            popup (trigger IntersectionObserver + dwell). Solo cobro welcome.
+            Gate aiAnalysis: no montar (banda NI observer) mientras el informe
+            está en skeleton de generación — el layout corto deja la banda en
+            viewport y el popup dispara sobre el skeleton, quemando el guard.
+            Render, no CSS (el observer no debe armarse). */}
+        {showCtaWelcome && analysisId && aiAnalysis != null && (
           <div className="mt-8">
             <CtaWelcome analysisId={analysisId} />
           </div>
