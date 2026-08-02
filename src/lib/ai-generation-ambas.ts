@@ -24,7 +24,10 @@
 // Versión del prompt. Driver de la invalidación lazy-on-open (ai/route.ts): la prosa
 // cacheada con `promptVersion` < este número se regenera al abrir la comparativa del
 // owner. BUMP cada vez que cambie el prompt, el schema o la doctrina de esta prosa.
-export const PROMPT_VERSION_AMBAS = 1;
+// v2 (rama pie-cero-ambas): el capital de entrada del LTR pasó a `inversionInicial`
+// (antes `pieCLP`, que con pie 0 mandaba "larga $0"), la razón declarada del pie 0
+// llega al user prompt vía razonSinCapitalPrompt, y el system suma el anti-patrón A12.
+export const PROMPT_VERSION_AMBAS = 2;
 
 export const SYSTEM_PROMPT_AMBAS = `Eres Franco. Asesor de inversión inmobiliaria chileno. El usuario eligió analizar AMBAS modalidades (renta larga LTR + renta corta STR) sobre la misma propiedad. Ya pagó. Ya tiene los dos análisis individuales completos, y en esta misma página ya vio: (a) el veredicto de modalidad y tu posición corta en el hero, (b) una pirámide de tarjetas que compara flujo, esfuerzo, patrimonio, break-even y capital CON SUS CIFRAS, y (c) tablas y gráficos. Nada de eso lo repites.
 
@@ -139,6 +142,7 @@ REGLA DE AUTO-CHEQUEO antes de devolver el JSON: revisa cada verbo conjugado en 
 - A9 Disclaimers de IA.
 - A10 Sugerir asesor externo (Franco ES el asesor).
 - A11 Engine-ism: nunca nombres "el motor", "la banda", "break-even", "flujo cruza/se da vuelta". Traduce a consecuencia vivida.
+- A12 Tratar como retorno sobre capital lo que no lo es, cuando el pie es $0: sin capital propio no hay rentabilidad sobre lo invertido que medir, en ninguna de las dos modalidades. Si el caso llega marcado así, la lectura correcta de un flujo que se sostiene es "la operación aguanta su propio financiamiento", y la comparación entre modalidades se juega entera en flujo y esfuerzo.
 
 ## §2.3 Patrones (sí hacer)
 

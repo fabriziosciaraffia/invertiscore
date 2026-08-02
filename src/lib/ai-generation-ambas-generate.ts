@@ -13,6 +13,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
 import type { FullAnalysisResult, AIAnalysisComparativa, RecomendacionModalidadAmbas, AnalisisInput } from "@/lib/types";
+import { esMetricaNoAplica } from "@/lib/types";
+import { razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import {
   SYSTEM_PROMPT_AMBAS,
@@ -109,7 +111,22 @@ export async function generateComparativaAI(opts: GenerateComparativaOpts): Prom
   const strFlujoMensual = strBase?.flujoCajaMensual ?? 0;
   const deltaFlujoMensual = strFlujoMensual - ltrFlujoMensual;
 
-  const ltrCapital = ltrMetrics?.pieCLP ?? 0;
+  // Capital de entrada del LTR: `inversionInicial` (pie + cierre + CapEx + corretaje),
+  // la MISMA derivación que ya usan la web, el share y el documento. Antes leía
+  // `pieCLP` pelado y con pie 0 el prompt recibía "larga $0" — falso (el largo sí pone
+  // plata de entrada) y además discrepante de la tabla que el usuario tiene enfrente.
+  const ltrRetorno = ltrResults as unknown as {
+    retorno?: { inversionInicial?: number };
+    exitScenario?: { inversionInicial?: number };
+  };
+  const ltrCapital =
+    ltrRetorno.retorno?.inversionInicial ?? ltrRetorno.exitScenario?.inversionInicial ?? ltrMetrics?.pieCLP ?? 0;
+
+  // Pie cero (fase 5b + rama AMBAS): la razón la declara el usuario en el wizard y
+  // viaja en la métrica del motor. Sin esto, el `bono_pie` declarado no llegaba nunca
+  // a la prosa comparativa.
+  const cocNoAplicaAmbas = esMetricaNoAplica(ltrMetrics?.cashOnCash) ? ltrMetrics!.cashOnCash : null;
+  const sinCapitalPropio = cocNoAplicaAmbas !== null;
   const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
   const strCapital = strResults.capitalInvertido ?? 0;
 
@@ -184,7 +201,9 @@ Se antepone automáticamente. NO la escribas, NO la parafrasees. Tu movimiento 1
 Flujo mensual: larga ${fmtCLPAmbas(ltrFlujoMensual)} · corta ${fmtCLPAmbas(strFlujoMensual)} · diferencia ${fmtCLPAmbas(deltaFlujoMensual)} a favor de ${deltaFlujoMensual >= 0 ? "renta corta" : "renta larga"}.
 Lo que renta la operación (NOI) mensual: larga ${fmtCLPAmbas(ltrNOIMensual)} · corta ${fmtCLPAmbas(strNOIMensual)} · diferencia ${fmtCLPAmbas(deltaNOIMensual)}.
 Patrimonio a 10 años: larga ${fmtCLPAmbas(ltrPatY10)} · corta ${fmtCLPAmbas(strPatY10)} · diferencia ${fmtCLPAmbas(deltaPatY10)} (${Math.abs(deltaPatY10) < 1_000_000 ? "prácticamente igual" : "distinto"}).
-Capital de entrada: larga ${fmtCLPAmbas(ltrCapital)} · corta ${fmtCLPAmbas(strCapital)} · el corto pide ${fmtCLPAmbas(strCapital - ltrCapital)} más${costoAmoblamiento > 0 ? ` (amoblamiento ${fmtCLPAmbas(costoAmoblamiento)})` : ""}.
+Capital de entrada: larga ${fmtCLPAmbas(ltrCapital)} · corta ${fmtCLPAmbas(strCapital)} · el corto pide ${fmtCLPAmbas(Math.abs(strCapital - ltrCapital))} ${strCapital >= ltrCapital ? "más" : "menos"}${costoAmoblamiento > 0 ? ` (amoblamiento ${fmtCLPAmbas(costoAmoblamiento)})` : ""}.
+${sinCapitalPropio ? `Capital propio: NO HAY en ninguna de las dos — el pie es $0 y la compra se financia al 100% (razonSinCapital: ${razonSinCapitalPrompt(cocNoAplicaAmbas!.razon)}). El capital de entrada de la línea anterior son gastos de cierre y puesta a punto, NO capital propio que rente; por eso la TIR y el retorno sobre capital no existen en este caso y la comparación entre modalidades se juega entera en flujo y esfuerzo (ver A12).
+` : ""}
 Sobre-renta STR vs LTR: ${sobreRentaPctConfiable ? fmtPctAmbas(sobreRentaPct, 1) : `${fmtCLPAmbas(sobreRentaCLP)}/mes (porcentaje N/D)`}.
 Esfuerzo: larga ~0,5 hrs/semana (pasiva tras firmar). Corta auto-gestión 8-12 hrs/semana; con administrador ${comisionAdmin}% del bruto y ~0,5-1 hrs/semana tuyas.
 Modo de gestión asumido: ${modoGestion}.
