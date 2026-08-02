@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Franco · Mockup — Página completa: opción 3 (índice) vs opción 1 (resumen)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..700&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F6F7; --card:#FFFFFF; --sunken:#F0F0F2;
+    --text:#0F0F0F; --text-sec:#52525B; --text-muted:#6B6B72; --text-ter:#6A6A71;
+    --border:#DDDDE1; --border-strong:#B0B0B8; --red:#C8323C;
+    --serif:'Source Serif 4',Georgia,serif; --sans:'IBM Plex Sans',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  ::selection{background:var(--red);color:#FFF}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.55;padding:28px 20px 90px}
+  .wrap{max-width:1240px;margin:0 auto}
+  .brand{font-family:var(--serif);font-size:20px;font-weight:700}
+  .brand .re{font-style:italic;font-weight:300;opacity:.28}
+  .brand .ai{font-family:var(--mono);font-weight:500;font-size:14px;color:var(--red)}
+  .doc-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-ter);margin-top:14px}
+  h1{font-family:var(--serif);font-size:29px;font-weight:700;margin:6px 0 10px;line-height:1.22}
+  .intro{max-width:900px;color:var(--text-sec);font-size:13.5px}
+  .intro b{color:var(--text)}
+  .metabox{background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-top:18px}
+  .metabox h3{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-ter);margin-bottom:8px}
+  .metabox p{font-size:12.5px;color:var(--text-sec);margin-bottom:6px}
+  .metabox p:last-child{margin-bottom:0}
+
+  /* ── Sección por caso ── */
+  .caso{margin-top:52px}
+  .caso-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px;border-bottom:.5px solid var(--border-strong);padding-bottom:10px;margin-bottom:16px}
+  .caso-perfil{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-ter)}
+  .caso-title{font-family:var(--serif);font-size:21px;font-weight:700}
+  .badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;padding:3px 9px;border-radius:99px;text-transform:uppercase}
+  .badge.buscar{background:var(--red);color:#FFF}
+  .badge.ajusta{border:1px solid var(--border-strong);color:var(--text)}
+  .badge.comprar{background:var(--text);color:#FFF}
+  .caso-meta{font-family:var(--mono);font-size:11px;color:var(--text-sec)}
+
+  .opciones{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .opcion{background:transparent}
+  .op-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;border:1px solid var(--border-strong);border-radius:8px 8px 0 0;background:var(--sunken);display:inline-block}
+  .pagina{border:1px solid var(--border-strong);border-radius:0 12px 12px 12px;background:var(--bg);padding:16px 16px 20px}
+
+  /* ── Hero (fiel al patrón, comprimido) ── */
+  .hero{background:linear-gradient(180deg,#FFFFFF,#F4F4F6);border:.5px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 1px 2px rgba(15,15,15,.05),0 6px 16px rgba(15,15,15,.06)}
+  .hero .sec{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-ter)}
+  .hero h2{font-family:var(--serif);font-size:20px;font-weight:700;margin:4px 0 8px}
+  .hero .prosa{font-size:13px;color:var(--text-sec)}
+  .hero .prosa b{color:var(--text)}
+
+  /* Índice (opción 3) */
+  .indice{margin:14px 0;border-top:.5px dashed var(--border);padding-top:12px}
+  .indice h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text);margin-bottom:8px}
+  .idx-item{display:flex;align-items:baseline;gap:10px;padding:7px 10px;border:.5px solid var(--border);border-radius:9px;margin-bottom:6px;background:var(--card);text-decoration:none;color:var(--text);transition:transform .12s ease, box-shadow .12s ease}
+  .idx-item:hover{transform:translateY(-2px);box-shadow:0 2px 8px rgba(15,15,15,.08)}
+  .idx-item .n{font-family:var(--mono);font-weight:700;font-size:13px;width:26px}
+  .idx-item .t{font-size:13px;flex:1}
+  .idx-item .k{font-family:var(--mono);font-size:12px;white-space:nowrap}
+  .idx-item .k.red{color:var(--red)}
+  .idx-item .go{font-family:var(--mono);font-size:11px;color:var(--text-muted)}
+
+  /* Resumen (opción 1) */
+  .resumen{margin:14px 0;border-top:.5px dashed var(--border);padding-top:12px}
+  .resumen h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-ter);margin-bottom:8px}
+  .res-item{display:flex;align-items:baseline;gap:10px;padding:4px 0;font-size:13px}
+  .res-item .k{font-family:var(--mono);font-size:12.5px;white-space:nowrap;margin-left:auto}
+  .res-item .k.red{color:var(--red)}
+
+  .posicion{border-left:3px solid var(--text);border-radius:0 10px 10px 0;background:rgba(15,15,15,.03);padding:10px 14px;margin-top:12px}
+  .posicion h5{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+  .posicion p{font-size:12.5px;color:var(--text-sec);font-style:italic}
+
+  /* ── Pirámide ── */
+  .pir{margin-top:16px}
+  .pir-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+  .pir-head .tit{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+  .pir-head .sub{font-family:var(--mono);font-size:10px;color:var(--text-muted)}
+  .card{background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:11px 13px;margin-bottom:7px;scroll-margin-top:14px}
+  .card .eyebrow{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-ter);display:flex;align-items:center;gap:8px}
+  .card .eyebrow .num{font-weight:700;color:var(--text)}
+  .card .eyebrow .dir{margin-left:auto;display:flex;align-items:center;gap:5px}
+  .dot{display:inline-block;width:6px;height:6px;border-radius:50%}
+  .dot.adv{background:var(--red)} .dot.fav{background:#7A7973} .dot.neu{background:transparent;border:1px solid var(--border-strong)}
+  .card .title{font-family:var(--serif);font-weight:700;font-size:14.5px;margin-top:3px;line-height:1.3}
+  .card .kpi{font-family:var(--mono);font-weight:700;font-size:18px;margin-top:3px}
+  .card .kpi.red{color:var(--red)}
+  .card .ksub{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);margin-top:1px}
+  .card .frase{font-size:12px;color:var(--text-sec);margin-top:6px}
+  .card.corona{border-color:var(--border-strong);box-shadow:0 1px 2px rgba(15,15,15,.05),0 4px 10px rgba(15,15,15,.06);padding:14px 16px}
+  .card.corona .title{font-size:17px}
+  .card.corona .kpi{font-size:24px}
+  .nivel2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .nivel2 .card{margin-bottom:0}
+  .nivel3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:7px}
+  .nivel3 .card{background:var(--sunken);margin-bottom:0;padding:9px 11px}
+  .nivel3 .card .title{font-family:var(--sans);font-weight:400;font-size:11.5px;color:var(--text-sec)}
+  .nivel3 .card .kpi{font-size:14px}
+  .nivel3 .card .frase{display:none}
+
+  .nota{border-top:.5px dashed var(--border);margin-top:12px;padding-top:10px;font-size:12px;color:var(--text-sec)}
+  .nota b{color:var(--text)} .nota .warn{color:var(--red)}
+
+  @media (max-width:920px){
+    .opciones{grid-template-columns:1fr}
+    .nivel3{grid-template-columns:1fr 1fr}
+    h1{font-size:23px}
+    body{padding:20px 12px 60px}
+    .pagina{padding:12px 10px 16px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand"><span class="re">re</span>franco<span class="ai">.ai</span></div>
+  <div class="doc-label">Mockup de decisión · página completa · opción 3 (índice) vs opción 1 (resumen) · orden único C-umbral</div>
+  <h1>Una sola jerarquía: ¿el hero la anuncia como índice, o calla el ranking?</h1>
+  <p class="intro">
+    Ambas opciones usan el mismo <b>orden único</b> en la pirámide: posición 01 = el adverso más
+    decisivo <b>solo si su decisividad ≥ 0,85</b> (el floor vinculante — sin adverso que pase el piso,
+    no se fuerza apertura adversa); el resto, ranking puro decisividad → magnitud; los dec-0 caen al
+    fondo (capex resuelto); empates del floor los desempata la magnitud. Lo que cambia es el HERO:
+    la <b>opción 3</b> lo convierte en índice clickeable (01-02-03 → ancla a su card) y la pirámide
+    continúa la numeración; la <b>opción 1</b> muestra 3 datos como hechos, sin numerar, y la
+    pirámide es la única lista ordenada (kickers actuales intactos). Cifras 100% reales
+    (ensamblado local en <span style="font-family:var(--mono);font-size:12px">dd2b22e</span>).
+  </p>
+
+  <div class="metabox">
+    <h3>Propuestas de rótulo y eyebrow (opción 3)</h3>
+    <p><b>Rótulo del índice</b> (elegir 1): <span style="font-family:var(--serif);font-weight:700">«Léelo en este orden ↓»</span> · <span style="font-family:var(--serif);font-weight:700">«El informe, en este orden ↓»</span> · <span style="font-family:var(--serif);font-weight:700">«Parte por aquí ↓»</span>. El mockup usa la primera.</p>
+    <p><b>Eyebrow de card</b>: número + tema, con la dirección en el dot existente a la derecha («01 · FLUJO MENSUAL ·&nbsp;&nbsp;● En contra»). Los kickers de corona («Lo más decisivo»/«Ojo antes de firmar») mueren en la opción 3 — el 01 ya carga la jerarquía. Alternativa si el dot no basta: «01 · FLUJO MENSUAL · EN CONTRA» todo en el eyebrow (más ruidoso).</p>
+    <p><b>STR</b>: comparte el sort — mismo orden único y misma numeración; su hero ya usa gatherTop de results.hallazgos, así que el índice es el mismo cambio. Única diferencia: sin capex condicional por antigüedad-fallback y N puede llegar a 12 (numeración 01-12).</p>
+    <p><b>Restricciones respetadas</b>: banda de distancia fuera (vive en posición de Franco); N=9 no-COMPRAR / 8 COMPRAR; nada asume 3 palancas fijas de distancia.</p>
+  </div>
+
+  <!-- ════════════════ CASO TESTIGO · 4d82187b ════════════════ -->
+  <section class="caso">
+    <div class="caso-head">
+      <span class="caso-perfil">Caso testigo · ajusta mixto · empate ×4 en el floor</span>
+      <span class="caso-title">4d82187b · Providencia</span>
+      <span class="badge ajusta">Ajusta supuestos</span>
+      <span class="caso-meta">N=9 · orden único: flujo abre (adverso 0,85 pasa el umbral) → resto por peso</span>
+    </div>
+    <div class="opciones">
+
+      <!-- OPCIÓN 3 -->
+      <div class="opcion">
+        <span class="op-label">Opción 3 · hero con índice</span>
+        <div class="pagina">
+          <div class="hero">
+            <div class="sec">01 · Veredicto</div>
+            <h2>¿Conviene o no conviene?</h2>
+            <p class="prosa">Tu CAP rate es 5,1% — +1,1 pts sobre la referencia de mercado (4,0%). Rinde por sobre lo que el mercado paga para este precio. El precio por m² (UF 80) está 18% bajo la mediana de Providencia (UF 98): entras barato en una comuna cara. El peso real está en el arriendo declarado: con $817.000 el flujo queda negativo en $73.936 al mes — si el arriendo real de zona ronda $580.000, ese aporte mensual se dispara y la lógica del caso cambia por completo.</p>
+            <div class="indice">
+              <h4>Léelo en este orden ↓</h4>
+              <a class="idx-item" href="#t3-c1"><span class="n">01</span><span class="dot adv"></span><span class="t">Lo que sale de tu bolsillo cada mes</span><span class="k red">−$73.936</span><span class="go">↓</span></a>
+              <a class="idx-item" href="#t3-c2"><span class="n">02</span><span class="dot fav"></span><span class="t">Lo que renta hoy vs lo que debería</span><span class="k">5,1%</span><span class="go">↓</span></a>
+              <a class="idx-item" href="#t3-c3"><span class="n">03</span><span class="dot fav"></span><span class="t">Entras barato por el metro cuadrado</span><span class="k">−18%</span><span class="go">↓</span></a>
+            </div>
+            <div class="posicion">
+              <h5>La posición de Franco</h5>
+              <p>El veredicto pasa a COMPRAR si el arriendo llega a $851.946 al mes — $34.946 sobre lo que declaraste. Antes de avanzar, verifica ese número contra tres publicaciones reales de departamentos similares en Providencia: si el mercado no sostiene $851.946, el caso sigue siendo AJUSTA SUPUESTOS y la palanca es el precio, no el arriendo.</p>
+            </div>
+          </div>
+          <div class="pir">
+            <div class="pir-head"><span class="tit">El detalle, en el mismo orden</span><span class="sub">9 hallazgos · la numeración continúa del hero</span></div>
+            <div class="card corona" id="t3-c1">
+              <div class="eyebrow"><span class="num">01</span> Flujo mensual <span class="dir"><span class="dot adv"></span>En contra</span></div>
+              <div class="title">Lo que sale de tu bolsillo cada mes</div>
+              <div class="kpi red">−$73.936</div><div class="ksub">cada mes · sale de tu bolsillo, no del arriendo</div>
+              <div class="frase">Tienes que poner $73.936 al mes de tu bolsillo — un aporte acotado frente al dividendo. Sostenible si tu flujo es estable; eso sí, la plusvalía histórica de la comuna no está para compensarlo.</div>
+            </div>
+            <div class="nivel2">
+              <div class="card" id="t3-c2">
+                <div class="eyebrow"><span class="num">02</span> Rendimiento operativo <span class="dir"><span class="dot fav"></span>A favor</span></div>
+                <div class="title">Lo que renta hoy vs lo que debería</div>
+                <div class="kpi">5,1%</div><div class="ksub">cap rate · 1,1 pts sobre el mercado (4,0%)</div>
+                <div class="frase">Tu CAP rate —lo que el arriendo te deja al año sobre el precio, ya descontados los gastos— es 5,1%. Rinde por sobre lo que el mercado paga para este precio.</div>
+              </div>
+              <div class="card" id="t3-c3">
+                <div class="eyebrow"><span class="num">03</span> Precio por metro <span class="dir"><span class="dot fav"></span>A favor</span></div>
+                <div class="title">Entras barato por el metro cuadrado</div>
+                <div class="kpi">−18%</div><div class="ksub">bajo la mediana de Providencia · UF 80,0 vs UF 98,0 /m²</div>
+                <div class="frase">Tu precio por m² (UF 80,0) está 18% bajo la mediana de la comuna (UF 98,0). Entras barato para esta comuna.</div>
+              </div>
+            </div>
+            <div class="nivel3">
+              <div class="card"><div class="eyebrow"><span class="num">04</span> Estructura <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cómo estás financiando</div><div class="kpi">Pie 20%</div><div class="ksub">tasa 4,1% · óptimo 25%</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">05</span> Margen del veredicto <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cuánto aguanta tu veredicto</div><div class="kpi">−25%</div><div class="ksub">aguanta antes de BUSCAR OTRA</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">06</span> Patrimonio <span class="dir"><span class="dot fav"></span></span></div><div class="title">Vale bastante más de lo aportado</div><div class="kpi">×2,14</div><div class="ksub">$121.530.932 · aportaste $56.824.404</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">07</span> Retorno total <span class="dir"><span class="dot fav"></span></span></div><div class="title">Lo que rinde puesto todo junto</div><div class="kpi">9,0%</div><div class="ksub">TIR 10 años · 3,0 pts sobre el mínimo</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">08</span> Puesta a punto <span class="dir"><span class="dot adv"></span></span></div><div class="title">Dejarlo listo para arrendar</div><div class="kpi">+$3.063.375</div><div class="ksub">UF 75 · 8% de tu inversión inicial</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">09</span> Plusvalía <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cuánto se ha valorizado la comuna</div><div class="kpi">3,0%</div><div class="ksub">anual 2014-2024 · umbral 3,0%</div></div>
+            </div>
+          </div>
+          <div class="nota"><b>La historia:</b> abre por el aporte (la conversación del AJUSTA), y 02-03 son las dos fortalezas empatadas en el floor, ordenadas por magnitud — hero y pirámide son la misma lista, literalmente. <span class="warn">Dónde chirría:</span> el empate ×4 queda invisible (04 estructura también pesa 0,85 y nada lo dice); y el 08 capex "En contra" sentado bajo cinco favorables puede leerse como "esto casi no importa" — que es exactamente lo que el dato dice, pero hay que bancárselo.</div>
+        </div>
+      </div>
+
+      <!-- OPCIÓN 1 -->
+      <div class="opcion">
+        <span class="op-label">Opción 1 · hero con resumen (sin ranking)</span>
+        <div class="pagina">
+          <div class="hero">
+            <div class="sec">01 · Veredicto</div>
+            <h2>¿Conviene o no conviene?</h2>
+            <p class="prosa">Tu CAP rate es 5,1% — +1,1 pts sobre la referencia de mercado (4,0%). Rinde por sobre lo que el mercado paga para este precio. El precio por m² (UF 80) está 18% bajo la mediana de Providencia (UF 98): entras barato en una comuna cara. El peso real está en el arriendo declarado: con $817.000 el flujo queda negativo en $73.936 al mes — si el arriendo real de zona ronda $580.000, ese aporte mensual se dispara y la lógica del caso cambia por completo.</p>
+            <div class="resumen">
+              <h4>Lo que define este veredicto</h4>
+              <div class="res-item"><span class="dot adv"></span><span>Pones algo de tu bolsillo cada mes.</span><span class="k red">−$73.936</span></div>
+              <div class="res-item"><span class="dot fav"></span><span>Rinde por sobre lo que el mercado paga.</span><span class="k">5,1%</span></div>
+              <div class="res-item"><span class="dot fav"></span><span>Entras barato: el metro está bajo la mediana comunal.</span><span class="k">−18%</span></div>
+            </div>
+            <div class="posicion">
+              <h5>La posición de Franco</h5>
+              <p>El veredicto pasa a COMPRAR si el arriendo llega a $851.946 al mes — $34.946 sobre lo que declaraste. Antes de avanzar, verifica ese número contra tres publicaciones reales en Providencia.</p>
+            </div>
+          </div>
+          <div class="pir">
+            <div class="pir-head"><span class="tit">El detalle</span><span class="sub">9 hallazgos · mismo orden único · kickers actuales</span></div>
+            <div class="card corona">
+              <div class="eyebrow"><span style="color:var(--red)">Ojo antes de firmar · flujo mensual</span> <span class="dir"><span class="dot adv"></span>En contra</span></div>
+              <div class="title">Lo que sale de tu bolsillo cada mes</div>
+              <div class="kpi red">−$73.936</div><div class="ksub">cada mes · sale de tu bolsillo, no del arriendo</div>
+              <div class="frase">Tienes que poner $73.936 al mes de tu bolsillo — un aporte acotado frente al dividendo. Sostenible si tu flujo es estable; eso sí, la plusvalía histórica de la comuna no está para compensarlo.</div>
+            </div>
+            <div class="nivel2">
+              <div class="card"><div class="eyebrow">Rendimiento operativo <span class="dir"><span class="dot fav"></span>A favor</span></div><div class="title">Lo que renta hoy vs lo que debería</div><div class="kpi">5,1%</div><div class="ksub">cap rate · 1,1 pts sobre el mercado</div><div class="frase">Tu CAP rate —lo que el arriendo te deja al año sobre el precio— es 5,1%. Rinde por sobre lo que el mercado paga.</div></div>
+              <div class="card"><div class="eyebrow">Precio por metro <span class="dir"><span class="dot fav"></span>A favor</span></div><div class="title">Entras barato por el metro cuadrado</div><div class="kpi">−18%</div><div class="ksub">bajo la mediana · UF 80,0 vs 98,0 /m²</div><div class="frase">Tu precio por m² está 18% bajo la mediana de la comuna. Entras barato para esta comuna.</div></div>
+            </div>
+            <div class="nivel3">
+              <div class="card"><div class="eyebrow">Estructura <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cómo estás financiando</div><div class="kpi">Pie 20%</div><div class="ksub">tasa 4,1% · óptimo 25%</div></div>
+              <div class="card"><div class="eyebrow">Margen del veredicto <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cuánto aguanta tu veredicto</div><div class="kpi">−25%</div><div class="ksub">antes de BUSCAR OTRA</div></div>
+              <div class="card"><div class="eyebrow">Patrimonio <span class="dir"><span class="dot fav"></span></span></div><div class="title">Vale bastante más de lo aportado</div><div class="kpi">×2,14</div><div class="ksub">aportaste $56.824.404</div></div>
+              <div class="card"><div class="eyebrow">Retorno total <span class="dir"><span class="dot fav"></span></span></div><div class="title">Lo que rinde puesto todo junto</div><div class="kpi">9,0%</div><div class="ksub">TIR 10 años</div></div>
+              <div class="card"><div class="eyebrow">Puesta a punto <span class="dir"><span class="dot adv"></span></span></div><div class="title">Dejarlo listo para arrendar</div><div class="kpi">+$3.063.375</div><div class="ksub">UF 75 · 8% inversión inicial</div></div>
+              <div class="card"><div class="eyebrow">Plusvalía <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cuánto se ha valorizado la comuna</div><div class="kpi">3,0%</div><div class="ksub">anual · umbral 3,0%</div></div>
+            </div>
+          </div>
+          <div class="nota"><b>La historia:</b> el hero afirma tres hechos sin prometer orden; la pirámide manda con el mismo orden único y el kicker "Ojo antes de firmar" es coherente (corona adversa, empate en el máximo). <span class="warn">Dónde chirría:</span> el lector de 30% de atención ve tres datos arriba y nueve abajo sin hilo explícito entre ambos — el problema original, atenuado (una sola lista ordenada) pero no resuelto del todo.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ COMPRAR limpio · bc1017b7 ════════════════ -->
+  <section class="caso">
+    <div class="caso-head">
+      <span class="caso-perfil">Comprar limpio · 1 adverso nimio (d 0,08)</span>
+      <span class="caso-title">bc1017b7 · Providencia</span>
+      <span class="badge comprar">Comprar</span>
+      <span class="caso-meta">N=8 · el umbral NO fuerza apertura adversa (0,08 &lt; 0,85) → abre la fortaleza real</span>
+    </div>
+    <div class="opciones">
+      <div class="opcion">
+        <span class="op-label">Opción 3 · hero con índice</span>
+        <div class="pagina">
+          <div class="hero">
+            <div class="sec">01 · Veredicto</div>
+            <h2>¿Conviene o no conviene?</h2>
+            <p class="prosa">Conviene, con una condición. Tu CAP rate —lo que el arriendo te deja al año sobre el precio, ya descontados los gastos— es 6,6% — +2,6 pts sobre la referencia de mercado (4,0%). El problema es el arriendo declarado: ingresaste $1.200.000 pero el mercado de la zona paga $814.000. Si el arriendo real es ese, el flujo neto pasa de +$68.316 a −$317.684 al mes.</p>
+            <div class="indice">
+              <h4>Léelo en este orden ↓</h4>
+              <a class="idx-item" href="#bc3-c1"><span class="n">01</span><span class="dot fav"></span><span class="t">Lo que renta hoy vs lo que debería</span><span class="k">6,6%</span><span class="go">↓</span></a>
+              <a class="idx-item" href="#bc3-c2"><span class="n">02</span><span class="dot adv"></span><span class="t">Cómo estás financiando</span><span class="k">Pie 10%</span><span class="go">↓</span></a>
+              <a class="idx-item" href="#bc3-c3"><span class="n">03</span><span class="dot fav"></span><span class="t">Tu parte vale bastante más de lo aportado</span><span class="k">×3,22</span><span class="go">↓</span></a>
+            </div>
+            <div class="posicion">
+              <h5>La posición de Franco</h5>
+              <p>Antes de firmar, verifica el arriendo con tres publicaciones comparables en Providencia para 50 m² en construcción con entrega 2028. Si el número real se acerca a $814.000, la estructura financiera complica el caso: el pie bajo deja una cuota alta sin el colchón de un arriendo de mercado. Con los datos actuales el veredicto es comprar — pero descansa en un arriendo que todavía tienes que confirmar.</p>
+            </div>
+          </div>
+          <div class="pir">
+            <div class="pir-head"><span class="tit">El detalle, en el mismo orden</span><span class="sub">8 hallazgos (COMPRAR: sin distancia, sin capex — en construcción)</span></div>
+            <div class="card corona" id="bc3-c1">
+              <div class="eyebrow"><span class="num">01</span> Rendimiento operativo <span class="dir"><span class="dot fav"></span>A favor</span></div>
+              <div class="title">Lo que renta hoy vs lo que debería</div>
+              <div class="kpi">6,6%</div><div class="ksub">cap rate · 2,6 pts sobre el mercado (4,0%)</div>
+              <div class="frase">Tu CAP rate —lo que el arriendo te deja al año sobre el precio, ya descontados los gastos— es 6,6%. Rinde por sobre lo que el mercado paga para este precio.</div>
+            </div>
+            <div class="nivel2">
+              <div class="card" id="bc3-c2">
+                <div class="eyebrow"><span class="num">02</span> Estructura de la compra <span class="dir"><span class="dot adv"></span>En contra</span></div>
+                <div class="title">Cómo estás financiando</div>
+                <div class="kpi">Pie 10%</div><div class="ksub">tasa 3,8% · óptimo de pie 25%</div>
+                <div class="frase">Tu estructura de financiamiento tiene un problema de fondo, principalmente por el pie: 10% está muy bajo el óptimo de 25% y dispara el crédito y la cuota. La tasa (3,8%) está en mejor nivel.</div>
+              </div>
+              <div class="card" id="bc3-c3">
+                <div class="eyebrow"><span class="num">03</span> Patrimonio a 10 años <span class="dir"><span class="dot fav"></span>A favor</span></div>
+                <div class="title">Tu parte vale bastante más de lo aportado</div>
+                <div class="kpi">$87.583.360</div><div class="ksub">×3,22 · aportaste $27.188.809</div>
+                <div class="frase">A 10 años, tras vender y saldar el crédito, tu parte vale UF 2.144 contra las UF 666 que aportaste — un multiplicador de ×3,22.</div>
+              </div>
+            </div>
+            <div class="nivel3">
+              <div class="card"><div class="eyebrow"><span class="num">04</span> Retorno total <span class="dir"><span class="dot fav"></span></span></div><div class="title">Lo que rinde puesto todo junto</div><div class="kpi">13,4%</div><div class="ksub">TIR 10 años · 7,4 pts sobre el mínimo</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">05</span> Margen del veredicto <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cuánto aguanta tu veredicto</div><div class="kpi">−11,5%</div><div class="ksub">antes de AJUSTA · colchón acotado</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">06</span> Precio por metro <span class="dir"><span class="dot fav"></span></span></div><div class="title">Entras barato por el metro cuadrado</div><div class="kpi">−3%</div><div class="ksub">UF 96,0 vs UF 98,7 /m²</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">07</span> Flujo mensual <span class="dir"><span class="dot fav"></span></span></div><div class="title">Lo que te queda cada mes</div><div class="kpi">+$68.316</div><div class="ksub">te queda tras todos los costos</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">08</span> Plusvalía <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cuánto se ha valorizado la comuna</div><div class="kpi">3,0%</div><div class="ksub">anual · umbral 3,0%</div></div>
+            </div>
+          </div>
+          <div class="nota"><b>La historia:</b> el umbral funciona — nadie fuerza un "pero" nimio a la corona: abre el CAP (la razón del COMPRAR) y el pie 10% queda 02, visible y con su Signal Red en el dot. Se lee natural. <span class="warn">Dónde chirría:</span> casi nada en este perfil; lo único es que el "Conviene, con una condición" de la prosa apunta al arriendo, y el 02 del índice apunta al pie — dos "peros" distintos conviviendo (deuda de prosa, no del orden).</div>
+        </div>
+      </div>
+      <div class="opcion">
+        <span class="op-label">Opción 1 · hero con resumen</span>
+        <div class="pagina">
+          <div class="hero">
+            <div class="sec">01 · Veredicto</div>
+            <h2>¿Conviene o no conviene?</h2>
+            <p class="prosa">Conviene, con una condición. Tu CAP rate es 6,6% — +2,6 pts sobre la referencia de mercado. El problema es el arriendo declarado: ingresaste $1.200.000 pero el mercado de la zona paga $814.000. Si el arriendo real es ese, el flujo neto pasa de +$68.316 a −$317.684 al mes.</p>
+            <div class="resumen">
+              <h4>Lo que define este veredicto</h4>
+              <div class="res-item"><span class="dot fav"></span><span>Rinde por sobre lo que el mercado paga.</span><span class="k">6,6%</span></div>
+              <div class="res-item"><span class="dot adv"></span><span>Tu financiamiento tiene un problema de fondo por el pie.</span><span class="k">Pie 10%</span></div>
+              <div class="res-item"><span class="dot fav"></span><span>A 10 años tu parte vale bastante más de lo aportado.</span><span class="k">×3,22</span></div>
+            </div>
+            <div class="posicion"><h5>La posición de Franco</h5><p>Antes de firmar, verifica el arriendo con tres publicaciones comparables en Providencia. Con los datos actuales el veredicto es comprar — pero descansa en un arriendo que todavía tienes que confirmar.</p></div>
+          </div>
+          <div class="pir">
+            <div class="pir-head"><span class="tit">El detalle</span><span class="sub">8 hallazgos · mismo orden único · kickers actuales</span></div>
+            <div class="card corona">
+              <div class="eyebrow"><span>Lo más decisivo · rendimiento operativo</span> <span class="dir"><span class="dot fav"></span>A favor</span></div>
+              <div class="title">Lo que renta hoy vs lo que debería</div>
+              <div class="kpi">6,6%</div><div class="ksub">cap rate · 2,6 pts sobre el mercado (4,0%)</div>
+              <div class="frase">Tu CAP rate es 6,6% — +2,6 pts sobre la referencia de mercado. Rinde por sobre lo que el mercado paga para este precio.</div>
+            </div>
+            <div class="nivel2">
+              <div class="card"><div class="eyebrow">Estructura de la compra <span class="dir"><span class="dot adv"></span>En contra</span></div><div class="title">Cómo estás financiando</div><div class="kpi">Pie 10%</div><div class="ksub">tasa 3,8% · óptimo 25%</div><div class="frase">Problema de fondo por el pie: 10% muy bajo el óptimo de 25%, dispara crédito y cuota.</div></div>
+              <div class="card"><div class="eyebrow">Patrimonio a 10 años <span class="dir"><span class="dot fav"></span>A favor</span></div><div class="title">Tu parte vale bastante más de lo aportado</div><div class="kpi">$87.583.360</div><div class="ksub">×3,22 · aportaste $27.188.809</div><div class="frase">A 10 años tu parte vale UF 2.144 contra las UF 666 aportadas — ×3,22.</div></div>
+            </div>
+            <div class="nivel3">
+              <div class="card"><div class="eyebrow">Retorno total <span class="dir"><span class="dot fav"></span></span></div><div class="title">Puesto todo junto</div><div class="kpi">13,4%</div><div class="ksub">TIR 10 años</div></div>
+              <div class="card"><div class="eyebrow">Margen del veredicto <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cuánto aguanta</div><div class="kpi">−11,5%</div><div class="ksub">colchón acotado</div></div>
+              <div class="card"><div class="eyebrow">Precio por metro <span class="dir"><span class="dot fav"></span></span></div><div class="title">Entras barato</div><div class="kpi">−3%</div><div class="ksub">UF 96,0 vs 98,7</div></div>
+              <div class="card"><div class="eyebrow">Flujo mensual <span class="dir"><span class="dot fav"></span></span></div><div class="title">Lo que te queda</div><div class="kpi">+$68.316</div><div class="ksub">cada mes</div></div>
+              <div class="card"><div class="eyebrow">Plusvalía <span class="dir"><span class="dot fav"></span></span></div><div class="title">La comuna, en la década</div><div class="kpi">3,0%</div><div class="ksub">anual · umbral 3,0%</div></div>
+            </div>
+          </div>
+          <div class="nota"><b>La historia:</b> el kicker "Lo más decisivo" por fin es verdadero (guard ✓, único máximo) y sobre una corona favorable — legítimo en COMPRAR. <span class="warn">Dónde chirría:</span> el resumen del hero repite los mismos 3 protagonistas que la pirámide muestra 200px más abajo, sin decirle al lector que son la misma lista — la redundancia silenciosa que la opción 3 convierte en navegación.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ BUSCAR estructural · a610e8bb ════════════════ -->
+  <section class="caso">
+    <div class="caso-head">
+      <span class="caso-perfil">Buscar otra · estructural · 8/8 adversos</span>
+      <span class="caso-title">a610e8bb · Santiago</span>
+      <span class="badge buscar">Buscar otra</span>
+      <span class="caso-meta">N=8 · apertura adversa = #1 del ranking puro (cap 1,00; empata con sobreprecio) — el orden único no cambia nada acá</span>
+    </div>
+    <div class="opciones">
+      <div class="opcion">
+        <span class="op-label">Opción 3 · hero con índice</span>
+        <div class="pagina">
+          <div class="hero">
+            <div class="sec">01 · Veredicto</div>
+            <h2>¿Conviene o no conviene?</h2>
+            <p class="prosa">Tu CAP rate es 1,8% — 2,2 pts bajo la referencia de mercado (4,0%). Rinde bajo el promedio. El arriendo declarado es $500.000, pero el mercado de la zona paga $326.000 — 53% sobre la referencia. Si el real es el de mercado, tu flujo mensual no es −$649.323 sino −$823.323, y la TIR ya negativa empeora aún más.</p>
+            <div class="indice">
+              <h4>Léelo en este orden ↓</h4>
+              <a class="idx-item" href="#a3-c1"><span class="n">01</span><span class="dot adv"></span><span class="t">Lo que renta hoy vs lo que debería</span><span class="k">1,8%</span><span class="go">↓</span></a>
+              <a class="idx-item" href="#a3-c2"><span class="n">02</span><span class="dot adv"></span><span class="t">Estás pagando de más por el metro cuadrado</span><span class="k red">+130%</span><span class="go">↓</span></a>
+              <a class="idx-item" href="#a3-c3"><span class="n">03</span><span class="dot adv"></span><span class="t">Lo que sale de tu bolsillo cada mes</span><span class="k red">−$649.323</span><span class="go">↓</span></a>
+            </div>
+            <div class="posicion"><h5>La posición de Franco</h5><p>Incluso bajando el precio un 56,3%, este depto no alcanza a cambiar de veredicto — la brecha es del deal, no del precio ni de tu estructura financiera. Verifica el arriendo real con tres publicaciones comparables en Santiago centro; si confirma $326.000, la decisión ya está tomada: busca en otra comuna.</p></div>
+          </div>
+          <div class="pir">
+            <div class="pir-head"><span class="tit">El detalle, en el mismo orden</span><span class="sub">8 hallazgos · todo en contra</span></div>
+            <div class="card corona" id="a3-c1">
+              <div class="eyebrow"><span class="num">01</span> Rendimiento operativo <span class="dir"><span class="dot adv"></span>En contra</span></div>
+              <div class="title">Lo que renta hoy vs lo que debería</div>
+              <div class="kpi">1,8%</div><div class="ksub">cap rate · 2,2 pts bajo el mercado (4,0%)</div>
+              <div class="frase">Tu CAP rate —lo que el arriendo te deja al año sobre el precio, ya descontados los gastos— es 1,8%. Rinde bajo el promedio; el precio pide ajuste o conviene comparar con opciones más rentables en la zona.</div>
+            </div>
+            <div class="nivel2">
+              <div class="card" id="a3-c2"><div class="eyebrow"><span class="num">02</span> Precio por metro <span class="dir"><span class="dot adv"></span>En contra</span></div><div class="title">Estás pagando de más por el metro cuadrado</div><div class="kpi red">+130%</div><div class="ksub">sobre la mediana de Santiago · UF 116,3 vs UF 50,6 /m²</div><div class="frase">Tu precio por m² (UF 116,3) está 130% sobre la mediana de la comuna (UF 50,6). Estás pagando caro el metro para esta comuna.</div></div>
+              <div class="card" id="a3-c3"><div class="eyebrow"><span class="num">03</span> Flujo mensual <span class="dir"><span class="dot adv"></span>En contra</span></div><div class="title">Lo que sale de tu bolsillo cada mes</div><div class="kpi red">−$649.323</div><div class="ksub">cada mes · sale de tu bolsillo, no del arriendo</div><div class="frase">Tienes que poner $649.323 al mes de tu bolsillo — un aporte fuerte respecto al dividendo. Antes de avanzar, confirma que puedes sostenerlo de forma estable mes a mes.</div></div>
+            </div>
+            <div class="nivel3">
+              <div class="card"><div class="eyebrow"><span class="num">04</span> Plusvalía <span class="dir"><span class="dot adv"></span></span></div><div class="title">Perdió valor real en la década</div><div class="kpi">−1,1%</div><div class="ksub">anual 2014-2024 · umbral 3,0%</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">05</span> Estructura <span class="dir"><span class="dot adv"></span></span></div><div class="title">Cómo estás financiando</div><div class="kpi">Pie 10%</div><div class="ksub">tasa 4,0% · óptimo 25%</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">06</span> Retorno total <span class="dir"><span class="dot adv"></span></span></div><div class="title">Se queda corto</div><div class="kpi">−0,3%</div><div class="ksub">TIR 10 años · 6,3 pts bajo el mínimo</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">07</span> Patrimonio <span class="dir"><span class="dot adv"></span></span></div><div class="title">Menos de lo que pusiste</div><div class="kpi">×0,98</div><div class="ksub">$123.557.227 vs $125.476.014</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">08</span> Puesta a punto <span class="dir"><span class="dot adv"></span></span></div><div class="title">Dejarlo listo para arrendar</div><div class="kpi">+$6.117.073</div><div class="ksub">UF 151 · 20% inversión inicial</div></div>
+            </div>
+          </div>
+          <div class="nota"><b>La historia:</b> el índice es una escalera de malas noticias con cifras — brutal y honesto, muy Franco. La numeración 01-08 le da al lector un mapa de cuánto falta. <span class="warn">Dónde chirría:</span> con todo adverso, "léelo en este orden" promete un orden que casi no informa (cap y sobreprecio empatan en 1,00 — el 01 vs 02 es desempate de estabilidad, no de peso).</div>
+        </div>
+      </div>
+      <div class="opcion">
+        <span class="op-label">Opción 1 · hero con resumen</span>
+        <div class="pagina">
+          <div class="hero">
+            <div class="sec">01 · Veredicto</div>
+            <h2>¿Conviene o no conviene?</h2>
+            <p class="prosa">Tu CAP rate es 1,8% — 2,2 pts bajo la referencia de mercado (4,0%). El arriendo declarado es $500.000, pero el mercado de la zona paga $326.000. Si el real es el de mercado, tu flujo mensual no es −$649.323 sino −$823.323, y la TIR ya negativa empeora aún más.</p>
+            <div class="resumen">
+              <h4>Lo que define este veredicto</h4>
+              <div class="res-item"><span class="dot adv"></span><span>Rinde bajo lo que el mercado exige acá.</span><span class="k">1,8%</span></div>
+              <div class="res-item"><span class="dot adv"></span><span>Estás pagando caro el metro para esta comuna.</span><span class="k red">+130%</span></div>
+              <div class="res-item"><span class="dot adv"></span><span>Pones plata de tu bolsillo todos los meses.</span><span class="k red">−$649.323</span></div>
+            </div>
+            <div class="posicion"><h5>La posición de Franco</h5><p>Incluso bajando el precio un 56,3%, este depto no alcanza a cambiar de veredicto. Si el arriendo real confirma $326.000, la decisión ya está tomada: busca en otra comuna.</p></div>
+          </div>
+          <div class="pir">
+            <div class="pir-head"><span class="tit">El detalle</span><span class="sub">8 hallazgos · kicker coherente (empate ⇒ sin título)</span></div>
+            <div class="card corona"><div class="eyebrow"><span style="color:var(--red)">Ojo antes de firmar · rendimiento operativo</span> <span class="dir"><span class="dot adv"></span>En contra</span></div><div class="title">Lo que renta hoy vs lo que debería</div><div class="kpi">1,8%</div><div class="ksub">cap rate · 2,2 pts bajo el mercado</div><div class="frase">Tu CAP rate es 1,8%. Rinde bajo el promedio; el precio pide ajuste o conviene comparar con opciones más rentables.</div></div>
+            <div class="nivel2">
+              <div class="card"><div class="eyebrow">Precio por metro <span class="dir"><span class="dot adv"></span>En contra</span></div><div class="title">Pagando de más por el metro</div><div class="kpi red">+130%</div><div class="ksub">UF 116,3 vs UF 50,6 /m²</div><div class="frase">130% sobre la mediana comunal. Estás pagando caro el metro para esta comuna.</div></div>
+              <div class="card"><div class="eyebrow">Flujo mensual <span class="dir"><span class="dot adv"></span>En contra</span></div><div class="title">Lo que sale de tu bolsillo</div><div class="kpi red">−$649.323</div><div class="ksub">cada mes</div><div class="frase">Aporte fuerte respecto al dividendo: confirma que puedes sostenerlo mes a mes.</div></div>
+            </div>
+            <div class="nivel3">
+              <div class="card"><div class="eyebrow">Plusvalía <span class="dir"><span class="dot adv"></span></span></div><div class="title">Perdió valor real</div><div class="kpi">−1,1%</div><div class="ksub">anual 2014-2024</div></div>
+              <div class="card"><div class="eyebrow">Estructura <span class="dir"><span class="dot adv"></span></span></div><div class="title">Cómo financias</div><div class="kpi">Pie 10%</div><div class="ksub">tasa 4,0%</div></div>
+              <div class="card"><div class="eyebrow">Retorno total <span class="dir"><span class="dot adv"></span></span></div><div class="title">Se queda corto</div><div class="kpi">−0,3%</div><div class="ksub">TIR 10 años</div></div>
+              <div class="card"><div class="eyebrow">Patrimonio <span class="dir"><span class="dot adv"></span></span></div><div class="title">Menos de lo puesto</div><div class="kpi">×0,98</div><div class="ksub">a 10 años</div></div>
+              <div class="card"><div class="eyebrow">Puesta a punto <span class="dir"><span class="dot adv"></span></span></div><div class="title">Listo para arrendar</div><div class="kpi">+$6.117.073</div><div class="ksub">UF 151 · 20%</div></div>
+            </div>
+          </div>
+          <div class="nota"><b>La historia:</b> idéntica secuencia; el hero enumera los tres golpes como hechos y la pirámide los desarrolla. <span class="warn">Dónde chirría:</span> lo mismo que hoy — el lector no sabe que las dos listas son la misma; en un caso donde TODO es adverso, la duda "¿y esto está ordenado por qué?" es la más probable de todas.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ DEMO landing · 6db7a9ac ════════════════ -->
+  <section class="caso">
+    <div class="caso-head">
+      <span class="caso-perfil">Demo de la landing · capex dec-0 · el más decisivo es favorable</span>
+      <span class="caso-title">6db7a9ac · Providencia</span>
+      <span class="badge ajusta">Ajusta supuestos</span>
+      <span class="caso-meta">N=9 · orden único: flujo abre (0,85 pasa el umbral, magnitud desempata sobre estructura) → sobreprecio d 1,00 sube a 02 · capex al fondo (08)</span>
+    </div>
+    <div class="opciones">
+      <div class="opcion">
+        <span class="op-label">Opción 3 · hero con índice</span>
+        <div class="pagina">
+          <div class="hero">
+            <div class="sec">01 · Veredicto</div>
+            <h2>¿Conviene o no conviene?</h2>
+            <p class="prosa">Tu precio por m² (UF 58,2) está 41% bajo la mediana de la comuna (UF 98,6). Entras barato para esta comuna. El aporte mensual de $94.855 es permanente: el arriendo no llega a cubrir el dividendo en ningún punto del horizonte de 20 años. Para que el arriendo cubriera exacto la cuota, el precio tendría que bajar a UF 3.263 — un 2% menos. La ganancia real de esta operación depende casi enteramente de vender bien.</p>
+            <div class="indice">
+              <h4>Léelo en este orden ↓</h4>
+              <a class="idx-item" href="#d3-c1"><span class="n">01</span><span class="dot adv"></span><span class="t">Lo que sale de tu bolsillo cada mes</span><span class="k red">−$94.855</span><span class="go">↓</span></a>
+              <a class="idx-item" href="#d3-c2"><span class="n">02</span><span class="dot fav"></span><span class="t">Entras barato por el metro cuadrado</span><span class="k">−41%</span><span class="go">↓</span></a>
+              <a class="idx-item" href="#d3-c3"><span class="n">03</span><span class="dot adv"></span><span class="t">Cómo estás financiando</span><span class="k">Pie 20%</span><span class="go">↓</span></a>
+            </div>
+            <div class="posicion"><h5>La posición de Franco</h5><p>El precio por m² es genuinamente bueno para Providencia, pero el flujo negativo no tiene tope dentro de la proyección. Si tu situación financiera aguanta $94.855 al mes de manera indefinida y confías en la plusvalía de largo plazo, esta operación tiene sentido. Si ese aporte mensual te aprieta, negocia a UF 3.104 o reconsidera.</p></div>
+          </div>
+          <div class="pir">
+            <div class="pir-head"><span class="tit">El detalle, en el mismo orden</span><span class="sub">9 hallazgos · la numeración continúa del hero</span></div>
+            <div class="card corona" id="d3-c1">
+              <div class="eyebrow"><span class="num">01</span> Flujo mensual <span class="dir"><span class="dot adv"></span>En contra</span></div>
+              <div class="title">Lo que sale de tu bolsillo cada mes</div>
+              <div class="kpi red">−$94.855</div><div class="ksub">cada mes · sale de tu bolsillo, no del arriendo</div>
+              <div class="frase">Tienes que poner $94.855 al mes de tu bolsillo — un aporte acotado frente al dividendo. Sostenible si tu flujo es estable; eso sí, la plusvalía histórica de la comuna no está para compensarlo.</div>
+            </div>
+            <div class="nivel2">
+              <div class="card" id="d3-c2"><div class="eyebrow"><span class="num">02</span> Precio por metro <span class="dir"><span class="dot fav"></span>A favor</span></div><div class="title">Entras barato por el metro cuadrado</div><div class="kpi">−41%</div><div class="ksub">bajo la mediana de Providencia · UF 58,2 vs UF 98,6 /m²</div><div class="frase">Tu precio por m² (UF 58,2) está 41% bajo la mediana de la comuna (UF 98,6). Entras barato para esta comuna.</div></div>
+              <div class="card" id="d3-c3"><div class="eyebrow"><span class="num">03</span> Estructura de la compra <span class="dir"><span class="dot adv"></span>En contra</span></div><div class="title">Cómo estás financiando</div><div class="kpi">Pie 20%</div><div class="ksub">tasa 4,7% · óptimo de pie 25%</div><div class="frase">Tu estructura de financiamiento tiene margen de mejora, principalmente por la tasa: 4,7% queda 60 pts sobre la referencia de mercado (4,1%). El pie (20%) acompaña en nivel adecuado.</div></div>
+            </div>
+            <div class="nivel3">
+              <div class="card"><div class="eyebrow"><span class="num">04</span> Rendimiento operativo <span class="dir"><span class="dot fav"></span></span></div><div class="title">Lo que renta hoy</div><div class="kpi">5,4%</div><div class="ksub">cap rate · 1,4 pts sobre el mercado</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">05</span> Patrimonio <span class="dir"><span class="dot fav"></span></span></div><div class="title">Vale bastante más de lo aportado</div><div class="kpi">×2,28</div><div class="ksub">$93.194.403 · aportaste $40.911.325</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">06</span> Margen del veredicto <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cuánto aguanta</div><div class="kpi">−22%</div><div class="ksub">antes de BUSCAR OTRA · colchón amplio</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">07</span> Retorno total <span class="dir"><span class="dot fav"></span></span></div><div class="title">Puesto todo junto</div><div class="kpi">9,6%</div><div class="ksub">TIR 10 años · 3,6 pts sobre el mínimo</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">08</span> Puesta a punto <span class="dir"><span class="dot adv"></span></span></div><div class="title">Dejarlo listo para arrendar</div><div class="kpi">+$3.285.563</div><div class="ksub">UF 83 · 10% inversión inicial</div></div>
+              <div class="card"><div class="eyebrow"><span class="num">09</span> Plusvalía <span class="dir"><span class="dot fav"></span></span></div><div class="title">La comuna, en la década</div><div class="kpi">3,0%</div><div class="ksub">anual · umbral 3,0%</div></div>
+            </div>
+          </div>
+          <div class="nota"><b>La historia (lo que vería el mundo en la landing):</b> abre por el aporte, el −41% (el dato estrella, d 1,00) sube a 02 con su cifra en el índice, y capex dec-0 muere en el 08 — las dos deudas del demo pagadas. La prosa del hero abre con el mismo 01… no: <span class="warn">abre con el sobreprecio (02)</span> — con el orden nuevo, la apertura Plan C debería re-anclarse al 01 (deuda de prosa que la implementación tendrá que regenerar).</div>
+        </div>
+      </div>
+      <div class="opcion">
+        <span class="op-label">Opción 1 · hero con resumen</span>
+        <div class="pagina">
+          <div class="hero">
+            <div class="sec">01 · Veredicto</div>
+            <h2>¿Conviene o no conviene?</h2>
+            <p class="prosa">Tu precio por m² (UF 58,2) está 41% bajo la mediana de la comuna (UF 98,6). Entras barato para esta comuna. El aporte mensual de $94.855 es permanente: el arriendo no llega a cubrir el dividendo en ningún punto del horizonte. La ganancia real de esta operación depende casi enteramente de vender bien.</p>
+            <div class="resumen">
+              <h4>Lo que define este veredicto</h4>
+              <div class="res-item"><span class="dot adv"></span><span>Pones algo de tu bolsillo cada mes.</span><span class="k red">−$94.855</span></div>
+              <div class="res-item"><span class="dot fav"></span><span>Entras barato: el metro está bajo la mediana comunal.</span><span class="k">−41%</span></div>
+              <div class="res-item"><span class="dot adv"></span><span>Tu financiamiento tiene margen: la tasa está sobre el mercado.</span><span class="k">Pie 20%</span></div>
+            </div>
+            <div class="posicion"><h5>La posición de Franco</h5><p>El precio por m² es genuinamente bueno, pero el flujo negativo no tiene tope. Si aguantas $94.855 al mes de manera indefinida, esta operación tiene sentido. Si te aprieta, negocia a UF 3.104 o reconsidera.</p></div>
+          </div>
+          <div class="pir">
+            <div class="pir-head"><span class="tit">El detalle</span><span class="sub">9 hallazgos · mismo orden único · kickers actuales</span></div>
+            <div class="card corona"><div class="eyebrow"><span style="color:var(--red)">Ojo antes de firmar · flujo mensual</span> <span class="dir"><span class="dot adv"></span>En contra</span></div><div class="title">Lo que sale de tu bolsillo cada mes</div><div class="kpi red">−$94.855</div><div class="ksub">cada mes · sale de tu bolsillo</div><div class="frase">Tienes que poner $94.855 al mes de tu bolsillo — un aporte acotado frente al dividendo; la plusvalía histórica de la comuna no está para compensarlo.</div></div>
+            <div class="nivel2">
+              <div class="card"><div class="eyebrow">Precio por metro <span class="dir"><span class="dot fav"></span>A favor</span></div><div class="title">Entras barato por el metro cuadrado</div><div class="kpi">−41%</div><div class="ksub">UF 58,2 vs UF 98,6 /m²</div><div class="frase">41% bajo la mediana comunal. Entras barato para esta comuna.</div></div>
+              <div class="card"><div class="eyebrow">Estructura de la compra <span class="dir"><span class="dot adv"></span>En contra</span></div><div class="title">Cómo estás financiando</div><div class="kpi">Pie 20%</div><div class="ksub">tasa 4,7% · óptimo 25%</div><div class="frase">Margen de mejora por la tasa: 4,7% queda 60 pts sobre la referencia (4,1%).</div></div>
+            </div>
+            <div class="nivel3">
+              <div class="card"><div class="eyebrow">Rendimiento operativo <span class="dir"><span class="dot fav"></span></span></div><div class="title">Lo que renta hoy</div><div class="kpi">5,4%</div><div class="ksub">cap rate</div></div>
+              <div class="card"><div class="eyebrow">Patrimonio <span class="dir"><span class="dot fav"></span></span></div><div class="title">Más de lo aportado</div><div class="kpi">×2,28</div><div class="ksub">a 10 años</div></div>
+              <div class="card"><div class="eyebrow">Margen del veredicto <span class="dir"><span class="dot fav"></span></span></div><div class="title">Cuánto aguanta</div><div class="kpi">−22%</div><div class="ksub">colchón amplio</div></div>
+              <div class="card"><div class="eyebrow">Retorno total <span class="dir"><span class="dot fav"></span></span></div><div class="title">Puesto todo junto</div><div class="kpi">9,6%</div><div class="ksub">TIR 10 años</div></div>
+              <div class="card"><div class="eyebrow">Puesta a punto <span class="dir"><span class="dot adv"></span></span></div><div class="title">Listo para arrendar</div><div class="kpi">+$3.285.563</div><div class="ksub">UF 83 · 10%</div></div>
+              <div class="card"><div class="eyebrow">Plusvalía <span class="dir"><span class="dot fav"></span></span></div><div class="title">La comuna, en la década</div><div class="kpi">3,0%</div><div class="ksub">anual</div></div>
+            </div>
+          </div>
+          <div class="nota"><b>La historia:</b> mismo orden único (deudas de capex y del d 1,00 pagadas igual); el hero enumera hechos y no promete ranking, así que la prosa que abre por el sobreprecio no contradice nada. <span class="warn">Dónde chirría:</span> es la versión que menos exige y menos entrega: el visitante de la landing no recibe el "mapa de lectura" que el índice sí le da — y el demo es la primera impresión del producto.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="metabox" style="margin-top:26px">
+    <h3>Ficha técnica</h3>
+    <p>Orden único (ambas opciones): 01 = adverso más decisivo si d ≥ 0,85 (floor vinculante); resto decisividad → magnitud sin partición; dec-0 al fondo; empates de floor por magnitud. Cifras: ensamblado local del motor vigente (dd2b22e) sobre filas persistidas de prod. La prosa del hero y la posición de Franco son las reales de cada análisis — donde el orden nuevo desalinea la apertura Plan C (demo), queda anotado como deuda de regeneración de la implementación, no del mockup.</p>
+    <p>Opción 3: los kickers de corona mueren; la jerarquía la carga la numeración compartida. Opción 1: kickers actuales intactos (verificados por caso: bc1017b7 "Lo más decisivo" guard ✓; el resto "Ojo antes de firmar" por empate — siempre coherentes con este orden porque la corona adversa-o-única los mantiene honestos). La banda de distancia no aparece (posición de Franco). STR hereda el mismo orden y numeración (hasta 01-12).</p>
+  </div>
+
+</div>
+<script>
+  // Progressive enhancement del índice: algunos contenedores embebidos suprimen la
+  // navegación por fragmento (window.scrollTo/hash), pero scrollIntoView sí funciona.
+  // En un browser normal el ancla nativa basta; esto solo asegura el mismo gesto en panes.
+  document.querySelectorAll('.idx-item').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const el = document.querySelector(a.getAttribute('href'));
+      if (!el) return;
+      e.preventDefault();
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', a.getAttribute('href'));
+    });
+  });
+</script>
+</body>
+</html>
