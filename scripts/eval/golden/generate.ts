@@ -11,6 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateAiAnalysis } from "../../../src/lib/ai-generation";
 import { runAnalysis } from "../../../src/lib/analysis";
+import { TECHO_CONTINUACION_DURO } from "../../../src/lib/prosa-presupuesto";
 import { GOLDEN_SEEDS, GOLDEN_UF } from "./seeds";
 import { gatherHallazgos, aperturaSource } from "./extract";
 import type { Check } from "./invariants";
@@ -55,32 +56,36 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
     const coronaFrase = apSrc ? norm(apSrc.fraseCanonica) : "";
     const vmFrancoUF = seed.input.valorMercadoFranco || seed.input.precio;
     const vmSolido = Math.abs(vmFrancoUF - seed.input.precio) * GOLDEN_UF > 1_000_000;
-    const maxTotal = 85; // presupuesto Plan C (apertura + continuación)
-    // A6 · EXCEPCIÓN PIE CERO (decisión de Fabrizio, 2026-08-02): con pie 0 la
-    // doctrina `## 5.bis` del system agrega una capa explicativa DELIBERADA
-    // (estructura 100% + vacancia en plata) que el presupuesto Plan C no
-    // contempló; su prosa ya fue aprobada en pixel review. Techo propio, no
-    // pase libre: calibrado sobre K=6 medidos en GS-PC1 (87·92·95·104·105·121)
-    // → máximo 121 + ~15% de holgura = 140. Sobre eso sigue fallando.
+    // A6 · TECHO ESCALADO (fuente única: src/lib/prosa-presupuesto.ts). El techo NO
+    // es plano: la continuación tiene presupuesto propio y el total escala con lo que
+    // el motor antepone (respuesta al veredicto + apertura fija). Se computa por seed
+    // desde las MISMAS piezas determinísticas que usa ai-generation.
     //
-    // MEDIDO (no borrar — evita re-diagnosticar): la causa PRÓXIMA del desborde
-    // no es el pie sino la APERTURA FIJA LARGA. GS-PC2 también es pie 0, activa
-    // la misma doctrina y no desborda (74-88, PLANC nunca se rinde), igual que
-    // el control GS-1 con pie 20% (79-87). En GS-PC1 la fraseCanonica del flujo
-    // "fuerte" deja solo 48 palabras de continuación (vs ~60-65 con apertura de
-    // cap_rate) y el modelo entrega 50-84 en 6/6 corridas. Si algún día un seed
-    // con pie > 0 y apertura "fuerte" desborda, este condicional NO lo cubre —
-    // y debe fallar: ahí la conversación es acortar esa fraseCanonica (builder)
-    // o escalar el techo por longitud de apertura.
-    const seedSinPie = (recomputed as unknown as { metrics?: { pieCLP?: number } }).metrics?.pieCLP === 0;
-    const techoA6 = seedSinPie ? 140 : maxTotal * 1.15;
+    // MURIÓ el techo de emergencia 140 del pie 0. Existía porque el guard PLANC no
+    // enforzaba (aceptaba lo que hubiera tras 2 reintentos) y GS-PC1 desbordaba
+    // sistemático; ahora el guard recorta por oración y el desborde no puede llegar
+    // acá. Su comentario además diagnosticaba mal: culpaba a una "apertura fija larga"
+    // de flujo_mensual que en realidad mide 35 palabras contra las 40 de cap_rate —
+    // GS-PC1 desbordaba con MÁS presupuesto que su control, no con menos.
+    const techoContinuacion = TECHO_CONTINUACION_DURO;
 
     let genOk = 0;
+    // Uso REAL del presupuesto por corrida. No es un check: es la evidencia que hace
+    // auditable la calibración de CONTINUACION_MAX. Un techo que nadie mide vuelve a
+    // ser doctrina muerta — acá se ve si la prosa se infla o si vive pegada al techo.
+    const totalesWC: number[] = [];
     const failCounts: Record<string, number> = {};
     const bump = (rule: string) => { failCounts[rule] = (failCounts[rule] ?? 0) + 1; };
 
     for (let run = 0; run < K; run++) {
+      // Progreso a stderr (console.warn está interceptado por captureWarns durante la
+      // generación). Este tier tarda minutos por corrida y hasta acá no emitía NADA
+      // hasta terminar el seed entero: sin esta línea, un run colgado y uno lento se
+      // ven exactamente igual.
+      const t0 = Date.now();
+      process.stderr.write(`      · ${seed.key} run ${run + 1}/${K}…`);
       const { result: ai, warns } = await captureWarns(() => generateAiAnalysis(seed.uuid, sb, { persist: false }));
+      process.stderr.write(` ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
       if (!ai) { bump("gen.null"); continue; }
       genOk++;
       const strings = ((): { path: string; s: string }[] => { const o: { path: string; s: string }[] = []; collectStrings(ai, o); return o; })();
@@ -114,9 +119,15 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       // A5 (HARD) — §9 en conviene.cajaAccionable presente y con sustancia.
       if (WORDS(ai.conviene?.cajaAccionable_clp ?? "") < 8) bump("A5.§9-cajaAccionable");
 
-      // A6 (HARD) — presupuesto Plan C: apertura + continuación ≤ 85 (+15% tolerancia
-      // del guard). Con pie 0 rige `techoA6` = 140 (ver la excepción calibrada arriba).
-      if (WORDS(rd) > techoA6) bump("A6.presupuesto");
+      // A6 (HARD) — presupuesto Plan C escalado: [respuesta] + [apertura] + continuación,
+      // donde solo la continuación tiene techo (TECHO_CONTINUACION_DURO, ya con la
+      // tolerancia del guard). Las dos piezas del motor se miden REALES, no se estiman:
+      // si A1 falló y no sabemos qué respuesta se usó, se asume la más larga (7 palabras,
+      // "Todavía no: tienes que ajustar los supuestos.") para no cobrarle a A6 una falla
+      // que es de A1.
+      const fijoWC = (respUsada ? WORDS(respUsada) : 7) + WORDS(coronaFrase);
+      totalesWC.push(WORDS(rd));
+      if (WORDS(rd) > fijoWC + techoContinuacion) bump("A6.presupuesto");
 
       // A7·D2 (HARD) — break-even sin negar VM cuando VM es sólido.
       if (vmSolido) {
@@ -172,12 +183,25 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       if (strings.some((x) => ENGINE_ISM_RE.test(x.s))) bump("~engine-ism");
       if (warns.some((w) => w.includes("[ZONA-DRIFT]"))) bump("~zona-drift");
       if (warns.some((w) => /\[PLANC-(DUAL|REPEAT)-STRIPPED\]/.test(w))) bump("~planc-stripped");
+      // El guard tuvo que AMPUTAR: ni el original ni 2 reintentos entraron en el
+      // presupuesto y se cayó una oración entera. Es el fallback diseñado, no una
+      // regresión — pero si la tasa sube, el número a mover es CONTINUACION_MAX, no
+      // el check. SOFT por la misma razón que el resto: es varianza del modelo.
+      if (warns.some((w) => w.includes("[PLANC-BUDGET-TRIM]"))) bump("~planc-trim");
     }
 
     // Consolidar. Regla dura falla si falló en ≥1 run; soft (~) reporta sin bloquear.
     checks.push({ rule: `gen.runs(K=${K})`, pass: genOk === K, detail: `${genOk}/${K} generaciones OK` });
+    // Se imprime SIEMPRE (printSeed solo lista las reglas que fallan): el uso del
+    // presupuesto es evidencia de calibración, no un veredicto.
+    if (totalesWC.length) {
+      console.log(
+        `      · ${seed.key} presupuesto: respuestaDirecta ${Math.min(...totalesWC)}-${Math.max(...totalesWC)} palabras` +
+          ` [apertura fija ${WORDS(coronaFrase)} + respuesta + continuación ≤${techoContinuacion}] · corridas: ${totalesWC.join("·")}`,
+      );
+    }
     const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
-    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~aguanta-lectura"];
+    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~planc-trim", "~aguanta-lectura"];
     for (const r of HARD) {
       const c = failCounts[r] ?? 0;
       if (c > 0) checks.push({ rule: r, pass: false, detail: `falló ${c}/${K} runs` });
