@@ -23,6 +23,23 @@ export const NO_APLICA_FOOTNOTE_DOC =
   "* Sin capital propio (pie $0): las métricas sobre tu capital no aplican. " +
   "Este caso se evalúa por flujo mensual y plusvalía.";
 
+/**
+ * Variante para el documento COMPARATIVO (DocumentoAmbas · hoja 2). Hermana de
+ * la de arriba, no reemplazo: LTR y STR siguen usando aquella tal cual.
+ *
+ * Cambia lo mínimo por dos razones de layout, no de doctrina: (a) "este caso"
+ * es singular y en el comparativo hay DOS modalidades; (b) en una fila de dos
+ * columnas la información que falta no es solo el valor — es el ganador, que
+ * las otras filas sí tienen. Por eso agrega la consecuencia visible ("esta fila
+ * no compara"): sin ella el lector no sabe por qué esa fila se quedó sin lado.
+ *
+ * Si cambia la doctrina de fondo, las dos se editan juntas.
+ */
+export const NO_APLICA_FOOTNOTE_DOC_AMBAS =
+  "* Sin capital propio (pie $0): las métricas sobre tu capital no aplican en " +
+  "ninguna de las dos modalidades, así que esta fila no compara. " +
+  "Las dos se evalúan por flujo mensual y plusvalía.";
+
 // Valor que reciben los PROMPTS IA (fase 4) en las líneas de métricas sobre
 // capital cuando el estado es 'no_aplica' — derivado del sublabel canónico
 // (fuente única). La doctrina pie-0 del system prompt (## 5.bis) referencia

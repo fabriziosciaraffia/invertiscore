@@ -15,7 +15,8 @@
 
 import type { FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
-import { normalizeLegacyVerdict, metricaODefault } from "@/lib/types";
+import { normalizeLegacyVerdict, metricaODefault, esMetricaNoAplica } from "@/lib/types";
+import { NO_APLICA_VALOR, NO_APLICA_FOOTNOTE_DOC_AMBAS } from "@/lib/no-aplica-copy";
 import { readVeredicto } from "@/lib/results-helpers";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
 import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
@@ -83,10 +84,17 @@ export function DocumentoAmbas({
   const ltrFlujoMensual = ltrResults?.metrics?.flujoNetoMensual ?? 0;
   const ltrRetorno = ltrResults as unknown as { retorno?: { inversionInicial?: number }; exitScenario?: { inversionInicial?: number } } | null;
   const ltrCapital = ltrRetorno?.retorno?.inversionInicial ?? ltrRetorno?.exitScenario?.inversionInicial ?? ltrResults?.metrics?.pieCLP ?? 0;
-  // TODO(pie-cero-ambas): con pie 0 la TIR LTR es 'no_aplica' y acá se aplana a 0
-  // para la tabla comparativa. EXCLUIDO deliberadamente de fase 3b (decisión del
-  // goal): el documento AMBAS tiene mockup propio pendiente y su tratamiento
-  // pie-cero se diseña ahí, no acá.
+  // Pie cero (RESUELTO · mockup pie-cero-ambas.html): con pie 0 la TIR LTR es
+  // 'no_aplica' y aplanarla a 0 no dejaba un hueco — dejaba una MENTIRA con
+  // ganador: winMoney comparaba ese cero contra la TIR STR (que el motor sigue
+  // entregando como number, decisión de fase 1-2 documentada en
+  // short-term-score.ts:369) y le daba la fila a renta corta. En el seed AG-6
+  // (LTR_PREFERIDO) eso contradecía al veredicto de la hoja 1 y a las otras 7
+  // filas. Tratamiento SIMÉTRICO: si la métrica no aplica de un lado, la fila no
+  // compara — las dos celdas dicen "No aplica*" y ninguna gana. El flag va acá y
+  // no depende del motor STR: cuando una rama futura migre `tirAnual` a
+  // MetricaSobreCapital, esta fila ya se comporta igual.
+  const tirNoAplica = esMetricaNoAplica(ltrResults?.exitScenario?.tir);
   const ltrTir = metricaODefault(ltrResults?.exitScenario?.tir, 0);
   const ltrCap = ltrResults?.metrics?.rentabilidadNeta ?? 0;
 
@@ -122,11 +130,17 @@ export function DocumentoAmbas({
   // ── Face-off: columna "Mejor" por comparación simple (cero derivación nueva) ──
   const winMoney = (l: number, s: number, altoGana = true) =>
     l === s ? "—" : (altoGana ? s > l : s < l) ? "STR" : "LTR";
-  const rows: { label: string; sub?: string; l: string; s: string; lNeg?: boolean; sNeg?: boolean; win: string; txt?: boolean; tie?: string }[] = [
+  const rows: { label: string; sub?: string; l: string; s: string; lNeg?: boolean; sNeg?: boolean; win: string; txt?: boolean; tie?: string; na?: boolean }[] = [
     { label: "NOI mensual", sub: "neto de gastos, antes de la cuota", l: money(ltrNOIMensual), s: money(strNOIMensual), win: winMoney(ltrNOIMensual, strNOIMensual) },
     { label: "Flujo mensual", sub: "después de la cuota", l: money(ltrFlujoMensual), s: money(strFlujoMensual), lNeg: ltrFlujoMensual < 0, sNeg: strFlujoMensual < 0, win: winMoney(ltrFlujoMensual, strFlujoMensual) },
     { label: "Rentabilidad neta / CAP", l: pct(ltrCap), s: pct(strCap), win: winMoney(ltrCap, strCap) },
-    { label: "TIR a 10 años", l: pct(ltrTir), s: pct(strTir), win: winMoney(ltrTir, strTir) },
+    // Simetría deliberada: con pie 0 la celda STR tampoco muestra su número, aunque
+    // el motor lo entregue. `win: "—"` + `na: true` apagan el realce y TODA etiqueta
+    // de la fila — incluida la de empate, que acá sería tan falsa como el 0%: no
+    // empatan, no aplica.
+    tirNoAplica
+      ? { label: "TIR a 10 años", l: `${NO_APLICA_VALOR}*`, s: `${NO_APLICA_VALOR}*`, win: "—", na: true }
+      : { label: "TIR a 10 años", l: pct(ltrTir), s: pct(strTir), win: winMoney(ltrTir, strTir) },
     { label: "Capital de entrada", l: money(ltrCapital), s: money(strCapital), win: winMoney(ltrCapital, strCapital, false) },
     { label: "Esfuerzo operativo", l: "~0,5 hrs/sem", s: modoGestion === "auto" ? "8-12 hrs/sem" : `${Math.round(comisionAdministrador * 100)}% al admin`, win: "LTR", txt: true },
     { label: "Riesgo principal", l: "Vacancia entre arriendos", s: "Estacionalidad + ocupación", win: "LTR", txt: true },
@@ -294,15 +308,17 @@ export function DocumentoAmbas({
           {rows.map((r) => (
             <div className="row" key={r.label}>
               <div className="m">{r.label}{r.sub && <> <small>· {r.sub}</small></>}</div>
-              <div className={`val ${r.txt ? "txt" : ""} ${r.lNeg ? "neg" : ""} ${r.win === "LTR" ? "col-win" : ""}`}>
+              <div className={`val ${r.txt ? "txt" : ""} ${r.na ? "na" : ""} ${r.lNeg ? "neg" : ""} ${r.win === "LTR" ? "col-win" : ""}`}>
                 {r.l}{r.win === "LTR" && <small>gana larga</small>}
               </div>
-              <div className={`val ${r.txt ? "txt" : ""} ${r.sNeg ? "neg" : ""} ${r.win === "STR" ? "col-win" : ""}`}>
+              <div className={`val ${r.txt ? "txt" : ""} ${r.na ? "na" : ""} ${r.sNeg ? "neg" : ""} ${r.win === "STR" ? "col-win" : ""}`}>
                 {r.s}{r.win === "STR" && <small>gana corta</small>}
-                {r.win === "—" && <small>{r.tie ?? "empatan"}</small>}
+                {r.win === "—" && !r.na && <small>{r.tie ?? "empatan"}</small>}
               </div>
             </div>
           ))}
+          {/* Footnote del asterisco: una sola línea, antes del cierre narrativo. */}
+          {tirNoAplica && <div className="fn">{NO_APLICA_FOOTNOTE_DOC_AMBAS}</div>}
           <div className="foot">
             {patrimonioIgual
               ? `A 10 años el activo es el mismo con cualquiera de las dos: el depto se aprecia igual y la deuda se amortiza igual. Lo que cambia es cuánto pones de tu bolsillo por el camino${brechaRiqueza !== 0 ? ` — y eso abre una diferencia de ${money(Math.abs(brechaRiqueza))} a favor de la ${ganadoraRiqueza}` : ""}.`
