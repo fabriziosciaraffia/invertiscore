@@ -195,6 +195,7 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
         valorUF: ctx.valorUF,
         incluyeCorretaje: ctx.incluyeCorretaje,
         modalidad: "str",
+        sinCapitalPropio: r.pie === 0,
       }),
     );
   }

@@ -147,7 +147,19 @@ function buildFrase(p: {
 //
 // Espejo de buildFrase pero de UNA línea, diagnóstico + dirección, SIN número (el
 // número vive en el KPI de la fila). favorable = optimo|aceptable; adverso = resto.
-function buildTitular(p: { overall: FinancingHealthLevel; driver: "pie" | "tasa" | "ambos" }): string {
+function buildTitular(p: {
+  overall: FinancingHealthLevel;
+  driver: "pie" | "tasa" | "ambos";
+  piePct: number;
+}): string {
+  // Pie cero (fase 3b, decisión cerrada): el titular honesto es el del
+  // financiamiento 100%, no "problema de fondo por el pie" (espejo del guard
+  // de buildFrase). Direction-aware (adverso), sin montos.
+  if (p.piePct === 0 && p.driver !== "tasa") {
+    return p.driver === "ambos"
+      ? "Tu financiamiento es 100% crédito y con tasa sobre el mercado."
+      : "Tu financiamiento es 100% crédito: todo descansa en el flujo.";
+  }
   switch (p.overall) {
     case "optimo":
       return "Tu financiamiento está sólido: pie y tasa bien puestos.";
@@ -203,7 +215,7 @@ export function buildHallazgoEstructuraFinanciamiento(p: {
     spreadBps: fh.tasa.spread_bps,
   });
 
-  const titular = buildTitular({ overall, driver });
+  const titular = buildTitular({ overall, driver, piePct: fh.pie.actual_pct });
 
   return {
     id: "estructura_financiamiento",

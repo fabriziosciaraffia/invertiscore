@@ -113,11 +113,22 @@ export function metricaValorONull(
 }
 
 /**
- * Adaptador TEMPORAL para consumidores de render/prompt (fases 3-4): preserva
- * el comportamiento visual actual devolviendo el número cuando hay valor y el
- * fallback cuando no aplica. El rediseño real de cada superficie (mostrar "—",
- * copy propio, etc.) es fase 3 (render) / fase 4 (prompt IA); cada callsite
- * queda marcado con TODO(pie-cero-fase-3) o TODO(pie-cero-fase-4).
+ * Discriminante runtime-seguro del estado 'no_aplica' (fase 3): distingue la
+ * decisión tipada del motor de un dato simplemente ausente/corrupto (legacy
+ * number NaN, undefined). Solo lo que ES no_aplica recibe el tratamiento D1.
+ */
+export function esMetricaNoAplica(
+  m: MetricaSobreCapital | number | null | undefined,
+): m is { tipo: "no_aplica"; razon: RazonSinCapital } {
+  return typeof m === "object" && m !== null && m.tipo === "no_aplica";
+}
+
+/**
+ * Lectura numérica con fallback. Post-fase-3b su rol es doble: (a) plumbing
+ * numérico donde el consumidor NO usa el valor con pie 0 (tirForPrice,
+ * negociación — ver comentarios en sitio), y (b) adaptador temporal de los
+ * prompts IA, marcados TODO(pie-cero-fase-4). El render ya trata 'no_aplica'
+ * con el D1 del mockup 98e2319 (esMetricaNoAplica + no-aplica-copy.ts).
  */
 export function metricaODefault(
   m: MetricaSobreCapital | number | null | undefined,
@@ -628,6 +639,11 @@ export interface HallazgoPatrimonio {
     banda: number;            // 2 — normalización de magnitudContinua
     incluyeCorretaje: boolean;// el aportado incluye corretaje de compra (usado, análisis nuevo)
     modalidad: "ltr" | "str" | "ambas";
+    // Pie cero (fase 3b · D3): true ⇔ el análisis se hizo sin pie — el card y
+    // la narración muestran el equity ABSOLUTO y suprimen el multiplicador
+    // (que sigue calculado adentro para dirección/banda, no para display).
+    // Ausente en filas persistidas pre-fase-3 ⇒ comportamiento actual.
+    sinCapitalPropio?: boolean;
   };
   // favorable salvo la banda adversa (multiplicador < corteAdverso). La señal-máquina es
   // binaria; la frase distingue adverso / borde / favorable.

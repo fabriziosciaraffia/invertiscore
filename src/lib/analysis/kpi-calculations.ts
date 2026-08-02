@@ -14,14 +14,20 @@ export interface KPIInputs {
 }
 
 export interface KPIResults {
-  tir: number;
+  // Pie cero (fase 3b): null = "no aplica" (sin capital propio). Aplica a las 4
+  // métricas sobre capital — INCLUIDOS el CoC y el payback que este módulo
+  // calcula por su cuenta sobre inversionInicial (con pie 0 esa base son solo
+  // los gastos de cierre y daba un CoC −200% falso; hallazgo del mockup 98e2319).
+  tir: number | null;
   capRate: number;
-  cashOnCash: number;
+  cashOnCash: number | null;
   paybackAnios: number | null;
-  multiplo: number;
+  multiplo: number | null;
   valorVenta: number;
   saldoCredito: number;
   inversionInicial: number;
+  /** true ⇔ pieCLP === 0: el render muestra el tratamiento D1 en las 4. */
+  sinCapitalPropio: boolean;
 }
 
 export type Tone = "good" | "warn" | "bad" | "neutral";
@@ -73,15 +79,18 @@ export function calculateKPIs(inp: KPIInputs): KPIResults {
     }
   }
 
+  // Pie cero (fase 3b): sin capital propio las 4 métricas sobre capital son
+  // null (no aplica) — el simulador nunca muestra un CoC/payback calculado
+  // sobre gastos de cierre. Cap Rate y los montos absolutos no cambian.
+  const sinCapitalPropio = metrics.pieCLP === 0;
+
   return {
-    // TODO(pie-cero-fase-3): con pie 0 tir/multiplo son 'no_aplica' y acá se
-    // aplanan a 0 para preservar el contrato number del simulador; el KPI
-    // honesto ("—") en la superficie interactiva es fase 3.
-    tir: metricaODefault(exit.tir, 0),
+    tir: sinCapitalPropio ? null : metricaODefault(exit.tir, 0),
     capRate,
-    cashOnCash,
-    paybackAnios,
-    multiplo: metricaODefault(exit.multiplicadorCapital, 0),
+    cashOnCash: sinCapitalPropio ? null : cashOnCash,
+    paybackAnios: sinCapitalPropio ? null : paybackAnios,
+    multiplo: sinCapitalPropio ? null : metricaODefault(exit.multiplicadorCapital, 0),
+    sinCapitalPropio,
     valorVenta: exit.valorVenta,
     saldoCredito: exit.saldoCredito,
     inversionInicial,

@@ -73,6 +73,11 @@ export function buildHallazgoPatrimonio(p: {
   /** El aportado incluye corretaje de compra (usado, análisis nuevo). Alimenta la procedencia. */
   incluyeCorretaje: boolean;
   modalidad: "ltr" | "str" | "ambas";
+  /** Pie cero (fase 3b · D3): true ⇔ pieCLP === 0. La narración pasa a
+   *  crecimiento ABSOLUTO del equity y suprime el multiplicador del display
+   *  (dirección/banda siguen saliendo del mismo cálculo — convive con el
+   *  guard aportado ≤ 0 de arriba, no lo duplica). Ausente ⇒ legacy. */
+  sinCapitalPropio?: boolean;
 }): HallazgoPatrimonio | null {
   if (!Number.isFinite(p.patrimonioCLP)) return null;
   if (!Number.isFinite(p.aportadoCLP) || p.aportadoCLP <= 0) return null;
@@ -96,7 +101,17 @@ export function buildHallazgoPatrimonio(p: {
 
   let titular: string;
   let fraseCanonica: string;
-  if (adverso) {
+  if (p.sinCapitalPropio) {
+    // Pie cero (D3, mockup 98e2319): crecimiento absoluto del equity, sin
+    // multiplicador — con financiamiento 100% el "aportado" es cierre + flujo,
+    // y un ×N respondería una pregunta que el usuario no hizo.
+    titular = `A 10 años tu parte al vender llega a UF ${P}.`;
+    fraseCanonica =
+      `A 10 años, tras vender y saldar el crédito, tu parte queda en UF ${P}. ` +
+      `Sin pie inicial, ese patrimonio se construye desde el dividendo: en el camino aportas ` +
+      `UF ${A} de tu bolsillo vía flujo mensual. Con financiamiento 100% no hay multiplicador ` +
+      `sobre capital que medir — lo que decide es si puedes sostener ese aporte hasta ahí.`;
+  } else if (adverso) {
     titular = "A 10 años terminas con menos de lo que pusiste.";
     fraseCanonica =
       `A 10 años, después de vender y pagar el crédito y la comisión, tu parte queda en UF ${P} ` +
@@ -130,6 +145,7 @@ export function buildHallazgoPatrimonio(p: {
       banda: PATR_BANDA_MAGNITUD,
       incluyeCorretaje: p.incluyeCorretaje,
       modalidad: p.modalidad,
+      ...(p.sinCapitalPropio ? { sinCapitalPropio: true } : {}),
     },
     direccion,
     decisividad: 0, // SOLO-LECTURA — no entra al ranking de decisividad

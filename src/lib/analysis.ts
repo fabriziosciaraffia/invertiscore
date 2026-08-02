@@ -1572,9 +1572,10 @@ export function tirForPrice(input: AnalisisInput, precioUF: number, ufClp: numbe
   const m = calcMetrics(clone, ufClp);
   const projs = calcProjections({ input: clone, metrics: m, plazoVenta: 20, ufClp, asOf });
   const ex = calcExitScenario(clone, m, projs, 10);
-  // TODO(pie-cero-fase-3): con pie 0 la TIR es 'no_aplica' y acá se aplana a 0
-  // para preservar el contrato number de la superficie de negociación (drawer +
-  // NegociacionScenario). El tratamiento honesto del drawer es fase 3.
+  // Pie cero (resuelto en fase 3b · D2): con pie 0 devuelve 0 para preservar el
+  // contrato number, y NINGÚN consumidor lo usa en ese caso — el drawer y el
+  // documento de negociación pasan a la lectura plata-mensual (calcDividendo) y
+  // la bisección del precio límite se omite (fila Límite suprimida, mockup 98e2319).
   return metricaODefault(ex.tir, 0);
 }
 
@@ -1907,6 +1908,7 @@ export function runAnalysis(
     valorUF: ufClp,
     incluyeCorretaje: (metrics.corretajeInicialCLP ?? 0) > 0,
     modalidad: "ltr",
+    sinCapitalPropio: metrics.pieCLP === 0,
   });
   // Hallazgo de DISTANCIA AL VEREDICTO SUPERIOR: 10º hallazgo, el cuarto SOLO-LECTURA.
   // Espejo de la sensibilidad con el signo invertido — aquella mide cuánto puede empeorar
@@ -1934,8 +1936,10 @@ export function runAnalysis(
   const palancaPrecioVeredicto = hallazgoDistancia?.valor.palancas.find(
     (l) => l.palanca === "precio",
   );
-  // TODO(pie-cero-fase-3): con pie 0 la TIR base se aplana a 0 (gate interno
-  // "tirActual > 6" no corre → sin precio límite). Drawer negociación honesto: fase 3.
+  // Pie cero (resuelto en fase 3b · D2): con pie 0 la TIR base se aplana a 0 y
+  // el gate interno "tirActual > 6" no corre → sin precio límite. Eso ES la
+  // decisión: la fila Límite (techo de TIR) se suprime sin capital propio y el
+  // render lee la negociación en plata mensual (mockup 98e2319).
   const negociacion = calcNegociacionScenario(
     input,
     metricaODefault(exitScenario.tir, 0),
