@@ -12,6 +12,7 @@ import { getUserAccessLevel } from "@/lib/access";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
+import { etiquetaAnalisis } from "@/lib/format-direccion";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
 import { prefetchMedianaComunaVenta, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
@@ -37,7 +38,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     return { title: "Franco — Análisis de inversión inmobiliaria" };
   }
 
-  const title = `Análisis Franco: ${data.nombre}`;
+  // La comuna manda: `nombre` es texto libre y editable, así que el título se
+  // arma con `etiquetaAnalisis`, que le pega la comuna autoritativa cuando el
+  // nombre no la nombra. Sin esto, una fila con el nombre desincronizado
+  // rotularía la pestaña con otra comuna que la del análisis.
+  const title = `Análisis Franco: ${etiquetaAnalisis(data.nombre, data.comuna)}`;
   const creatorText = data.creator_name ? `Análisis de ${data.creator_name} — ` : "";
   const description = `${creatorText}Franco Score: ${data.score}/100. Análisis de inversión inmobiliaria en ${data.comuna}.`;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";

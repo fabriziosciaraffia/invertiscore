@@ -34,3 +34,28 @@ export function formatDireccionDisplay(
   if (calle.toLowerCase().endsWith(c.toLowerCase())) return calle;
   return `${calle}, ${c}`;
 }
+
+/**
+ * Etiqueta de un análisis para el `<title>` de la pestaña y el OG.
+ *
+ * `nombre` es texto libre: el wizard lo autogenera ("Depto 2D1B Providencia",
+ * "Renta Corta - <dirección completa>") pero es una columna editable, mientras
+ * que `comuna` es la columna autoritativa (CLAUDE.md · fuente de verdad =
+ * top-level, no `input_data`). Rotular la pestaña con `nombre` a secas deja la
+ * puerta abierta a que la comuna del título no calce con la del análisis y nada
+ * lo cruce.
+ *
+ * Regla: si el nombre ya nombra su comuna (el caso normal), se usa tal cual; si
+ * no, la comuna autoritativa se agrega al final. Sin nombre, se arma desde la
+ * comuna. Idempotente.
+ */
+export function etiquetaAnalisis(
+  nombre: string | null | undefined,
+  comuna: string | null | undefined,
+): string {
+  const n = nombre?.trim() ?? "";
+  const c = comuna?.trim() ?? "";
+  if (!n) return c ? `Depto en ${c}` : "Análisis de inversión";
+  if (!c || n.toLowerCase().includes(c.toLowerCase())) return n;
+  return `${n} · ${c}`;
+}
