@@ -20,7 +20,9 @@ import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from 
 import { buildHallazgoEstructuraFinanciamiento } from "@/lib/estructura-financiamiento-hallazgo";
 import { calcDecisividades } from "@/lib/analysis";
 import type { Hallazgo } from "@/lib/types";
-import { metricaDisplay, metricaODefault } from "@/lib/types";
+import { metricaDisplay, metricaODefault, esMetricaNoAplica } from "@/lib/types";
+import { NO_APLICA_PROMPT } from "@/lib/no-aplica-copy";
+import { calcDividendo } from "@/lib/analysis";
 
 const anthropic = new Anthropic();
 
@@ -172,6 +174,20 @@ Forma: completa el campo \`reestructuracion\` del JSON output con contenido_clp,
 Cuando completas \`reestructuracion\`:
 - contenido_clp/uf: 3-5 frases. Diagnóstico de por qué la estructura actual no funciona + recomendación concreta + simulación del impacto. Tono honesto sobre el esfuerzo.
 - estructuraSugerida: NO la calcules. Los 4 números (pieSugerido_pct, plazoSugerido_anios, tasaObjetivo_pct, impactoCuotaMensual_clp) vienen ya calculados en \`estructuraFinancieraSugerida\` (bloque de salud del financiamiento del input). Copialos tal cual: son la fuente única y se sobrescriben de todas formas. Tu prosa (contenido_clp/uf) DEBE ser coherente con esos números — no menciones un pie, una tasa o un ahorro de cuota distintos a esos números.
+
+## 5.bis Pie 0 — financiamiento 100% (SOLO si el input trae \`capitalPropio: no aplica\`)
+
+Esta sección se activa ÚNICAMENTE cuando el input declara pie 0% (línea \`capitalPropio\` presente). Con pie mayor a 0 esta sección NO existe para ti: ni la menciones ni dejes que su vocabulario ("financiamiento 100%", "bono pie", "sin capital propio") se filtre a un análisis normal.
+
+a. NÓMBRALO SIN EUFEMISMOS. Pie 0 = financiamiento del 100%, típicamente bono pie u otra promoción de la inmobiliaria. "Pie bajo" está PROHIBIDO para pie 0 — no es un pie chico, es una estructura distinta (el Nivel 3 de §5 no aplica tal cual: no hay pie que "subir al óptimo"; las palancas son el precio y la tasa). La línea \`razonSinCapital\` del input declara el origen: 'sin_pie' = compra sin pie declarado (100% crédito). Si llega una razón nueva (ej. 'bono_pie'), nárrala tal como el input la describa — no inventes el origen.
+
+b. EL RIESGO A NARRAR ES ESTRUCTURAL, no una métrica: dividendo en su punto más alto, cero colchón de capital, sensibilidad total a vacancia y tasa. El escenario concreto es la vacancia: un mes vacío = pagar de tu bolsillo el dividendo completo + gastos comunes + contribuciones — el input trae esos montos, úsalos en plata, no en abstracto.
+
+c. PROHIBIDO CELEBRAR MÉTRICAS SOBRE CAPITAL. Cash-on-cash, payback del pie, TIR y multiplicador de capital vienen como "no aplica: sin capital propio (pie $0)": NO existen, NO los inventes, NO digas "rentabilidad infinita", "retorno espectacular sobre lo invertido" ni equivalentes. Si el flujo es positivo, la lectura correcta es "la operación aguanta su propio financiamiento completo" — mérito del flujo, no de un retorno sobre capital que no hay. La comparación con instrumentos (§3 ángulo 3) se hace en flujo, esfuerzo y riesgo, nunca en múltiplos.
+
+d. DUREZA EXTRA CON EL PRECIO. Si el pie es 0, alguien lo está cubriendo — usualmente la inmobiliaria vía precio de lista cargado. Compara el precio/m² contra la mediana de la zona con MÁS dureza que en un caso normal, no menos: un sobreprecio con pie 0 suele ser el costo del bono escondido en el crédito. Si no hay mediana confiable, dilo como límite del análisis y recomienda verificar comparables antes de firmar.
+
+e. LA PALANCA DE PRECIO SE EXPRESA EN PLATA MENSUAL: cada peso menos de precio es crédito que no tomas, y eso baja el dividendo desde el día uno. El input reemplaza las lecturas de TIR de negociación por la baja de dividendo al precio sugerido — esa es la cifra que se narra. Las reglas de §12 (jerarquía de precios, umbral de veredicto, diferencia absoluta vs por m²) siguen aplicando igual; solo cambia la moneda del beneficio: dividendo/mes en vez de puntos de TIR.
 
 ## 6. Tiempos verbales — disciplina pasada vs futura
 
@@ -1050,8 +1066,25 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
 
     const neg = results.negociacion;
     const precioSugeridoCLPNeg = neg?.precioSugeridoCLP ?? Math.round(Math.min(input.precio, vmFrancoUF) * 0.97 * UF_CLP);
-    // TODO(pie-cero-fase-4): con pie 0 la TIR es 'no_aplica' y acá se aplana a 0
-    // para las líneas de negociación del prompt; el tratamiento honesto es fase 4.
+    // Pie cero (fase 4 · doctrina ## 5.bis): con pie 0 las métricas sobre capital
+    // llegan al prompt como "no aplica: sin capital propio (pie $0)" y las
+    // lecturas de TIR de negociación se REEMPLAZAN por la baja de dividendo al
+    // precio sugerido (plata mensual, coherente con el render D2). La razón viene
+    // del enum RazonSinCapital — extensible ('bono_pie' futuro) sin refactor.
+    const cocNoAplica = esMetricaNoAplica(m.cashOnCash)
+      ? m.cashOnCash
+      : m.pieCLP === 0
+        ? ({ tipo: "no_aplica", razon: "sin_pie" } as const)
+        : null;
+    const sinCapitalPropio = cocNoAplica !== null;
+    // Baja de dividendo al precio sugerido: crédito = precio × (1 − pie%), misma
+    // estructura declarada. Motor real (calcDividendo), sin cifras inventadas.
+    const dividendoAlSugerido = calcDividendo(
+      precioSugeridoCLPNeg * (1 - (input.piePct ?? 0) / 100),
+      input.tasaInteres,
+      input.plazoCredito,
+    );
+    const bajaDividendoSugerido = Math.max(0, Math.round(m.dividendo - dividendoAlSugerido));
     const tirActual = metricaODefault(exit?.tir, 0);
     const tirAlSugeridoNeg = neg?.tirAlSugerido ?? null;
     const deltaTirSugerido = typeof tirAlSugeridoNeg === "number"
@@ -1421,10 +1454,10 @@ SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROH
 CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras (el total con la apertura no puede superar 85); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
-    // TODO(pie-cero-fase-4): las líneas Cash-on-Cash / TIR / Multiplicador del
-    // bloque INDICADORES usan metricaDisplay — con pie 0 el prompt muestra "—"
-    // sin instrucción a la IA de cómo narrarlo; el tratamiento honesto del
-    // prompt (doctrina 100% financiamiento) es fase 4.
+    // Pie cero (RESUELTO fase 4): con pie 0 las métricas sobre capital llegan
+    // como NO_APLICA_PROMPT, el input declara capitalPropio + razonSinCapital,
+    // la negociación viaja en plata mensual y la doctrina vive en ## 5.bis del
+    // system. Copy canónico: no-aplica-copy.ts (fuente única con el render).
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
 
 PERFIL Y ETAPA
@@ -1462,10 +1495,11 @@ INDICADORES CALCULADOS
 - Rentabilidad bruta: ${pct(m.rentabilidadBruta)}%
 - Cap rate: ${pct(m.capRate)}%
 - Rentabilidad neta: ${pct(m.rentabilidadNeta)}%
-- Cash-on-Cash: ${metricaDisplay(m.cashOnCash, (n) => `${pct(n)}%`)}
-- TIR a 10 años: ${metricaDisplay(exit.tir, (n) => `${pct(n)}%`)}
-- Multiplicador de capital (10 años): ${metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
-- Inversión inicial total: ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})
+- Cash-on-Cash: ${esMetricaNoAplica(m.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(m.cashOnCash, (n) => `${pct(n)}%`)}
+- TIR a 10 años: ${esMetricaNoAplica(exit.tir) ? NO_APLICA_PROMPT : metricaDisplay(exit.tir, (n) => `${pct(n)}%`)}
+- Multiplicador de capital (10 años): ${esMetricaNoAplica(exit.multiplicadorCapital) ? NO_APLICA_PROMPT : metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
+${sinCapitalPropio ? `- capitalPropio: no aplica (razonSinCapital: ${cocNoAplica!.razon}${cocNoAplica!.razon === "sin_pie" ? " — compra sin pie declarado, financiamiento del 100%" : ""}). APLICA LA DOCTRINA ## 5.bis del system: riesgo estructural, cero celebración de métricas sobre capital, dureza extra con el precio/m².
+` : ""}- Inversión inicial total: ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})${sinCapitalPropio ? " — SIN pie: son gastos de cierre/puesta a punto, NO capital propio que rente" : ""}
 - Precio máximo de compra para flujo positivo: ${fmtUF(results.valorMaximoCompra)}
 ${hallazgosBloque}
 
@@ -1478,11 +1512,16 @@ ${!tieneDiferenciaValida ? `- lecturaSinReferencia (narrá ESTA idea con tus pal
 - sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${pct(sobreprecioPorM2UF)} UF/m² (tu ${pct(pvc.sujetoUfM2)} vs comuna ${pct(precioM2Zona)})` : "sin dato"}
 - precioSugerido: ${fmtUF(precioSugeridoUF)} (${fmtCLP(precioSugeridoCLPNeg)})
 - Precio con 10% de descuento: ${fmtUF(precioConDescuento10)}
-- tirActual: ${pct(tirActual)}%
+${sinCapitalPropio
+  ? `- tirActual: ${NO_APLICA_PROMPT} — el beneficio de negociar se lee en dividendo, no en TIR (## 5.bis.e)
+- bajaDividendoAlSugerido: −${fmtCLP(bajaDividendoSugerido)}/mes (crédito que no tomas al cerrar en el precio sugerido)
+- lecturaNegociacionSinPie (narrá ESTA idea con tus palabras): sin pie, cada peso menos de precio es crédito que no tomas — cerrando en ${fmtUF(precioSugeridoUF)} el dividendo baja ${fmtCLP(bajaDividendoSugerido)} al mes y tu flujo mejora exactamente eso
+- Precio límite (TIR baja a 6%): no aplica sin capital propio — el techo por retorno no tiene base; el límite de este caso lo pone tu flujo`
+  : `- tirActual: ${pct(tirActual)}%
 - tirAlSugerido: ${tirAlSugeridoNeg !== null ? tirAlSugeridoNeg.toFixed(1) + "%" : "sin dato"}
 - Cambio de TIR si negociás: ${deltaTirSugerido !== null ? (deltaTirSugerido >= 0 ? "+" : "") + deltaTirSugerido.toFixed(1) + " pp" : "sin dato"}
 - lecturaTIR (narrá esta idea con tus palabras): ${tirAlSugeridoNeg !== null && deltaTirSugerido !== null ? `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido; al precio sugerido sería ${tirAlSugeridoNeg.toFixed(1)}% (${deltaTirSugerido >= 0 ? "+" : ""}${deltaTirSugerido.toFixed(1)} pp)` : `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido`}
-- Precio límite (TIR baja a 6%): ${precioLimiteCLPNeg !== null ? fmtCLP(precioLimiteCLPNeg) : "sin dato / TIR actual ya ≤ 6%"}
+- Precio límite (TIR baja a 6%): ${precioLimiteCLPNeg !== null ? fmtCLP(precioLimiteCLPNeg) : "sin dato / TIR actual ya ≤ 6%"}`}
 - Precio al que el arriendo cubre exacto la cuota: ${precioFlujoNeutroUF > 0 ? fmtUF(precioFlujoNeutroUF) + ` (descuento ${descuentoParaNeutro.toFixed(1)}%)` : "no existe — arriendo no cubre gastos fijos con esta estructura"}
 - Plusvalía inmediata estimada: ${pct(plusvaliaFrancoPct)}% (${plusvaliaFranco >= 0 ? "+" : ""}${fmtCLP(plusvaliaFranco)})
 - lecturaFlujo (narrá esta idea con tus palabras): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
@@ -1496,8 +1535,8 @@ PROYECCIÓN Y ALTERNATIVAS
 - Valor proyectado de la propiedad a 10 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp10)}
 - lecturaPlusvalia (narrá esta idea con tus palabras): de ${fmtUF(m.precioCLP/UF_CLP)} hoy a ${fmtUF(valorProp10/UF_CLP)} en 10 años — +${Math.round((valorProp10/m.precioCLP - 1)*100)}% acumulado por la proyección base de ${PROY_PCT} anual (a 5 años, ${fmtUF(valorProp5/UF_CLP)}, +${Math.round((valorProp5/m.precioCLP - 1)*100)}%)
 - Tu parte al vender a 10 años (equity: valor de venta − deuda − comisión, lo que te queda): ${fmtCLP(exitEquityCLP)}
-- Depósito a plazo (UF+5%) a 10 años: ${fmtCLP(datoDP)}
-- Fondo mutuo (7%) a 10 años: ${fmtCLP(datoFM)}
+- Depósito a plazo (UF+5%) a 10 años: ${fmtCLP(datoDP)}${sinCapitalPropio ? " — OJO: base = solo gastos de cierre (sin pie); con pie 0 la comparación con instrumentos se hace en flujo y esfuerzo, no sobre capital inicial (## 5.bis.c)" : ""}
+- Fondo mutuo (7%) a 10 años: ${fmtCLP(datoFM)}${sinCapitalPropio ? " — misma advertencia" : ""}
 - Dividendo si la tasa sube 1 punto: ${fmtCLP(dividendoSiTasaSube1)} (vs actual ${fmtCLP(m.dividendo)})
 - Dividendo si la tasa sube 2 puntos: ${fmtCLP(dividendoSiTasaSube2)}
 - lecturaSensibilidadTasa (narrá esta idea con tus palabras): ${creditoCLP > 0 ? `si la tasa sube 1 punto tu dividendo pasa de ${fmtCLP(m.dividendo)} a ${fmtCLP(dividendoSiTasaSube1)}; con 2 puntos, a ${fmtCLP(dividendoSiTasaSube2)}` : "sin crédito, la tasa no afecta tu dividendo"}

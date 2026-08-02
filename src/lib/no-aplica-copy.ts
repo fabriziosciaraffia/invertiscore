@@ -20,3 +20,9 @@ export const NO_APLICA_TOOLTIP =
 export const NO_APLICA_FOOTNOTE_DOC =
   "* Sin capital propio (pie $0): las métricas sobre tu capital no aplican. " +
   "Este caso se evalúa por flujo mensual y plusvalía.";
+
+// Valor que reciben los PROMPTS IA (fase 4) en las líneas de métricas sobre
+// capital cuando el estado es 'no_aplica' — derivado del sublabel canónico
+// (fuente única). La doctrina pie-0 del system prompt (## 5.bis) referencia
+// este string textual: si cambia acá, cambia allá.
+export const NO_APLICA_PROMPT = `no aplica: ${NO_APLICA_SUBLABEL.toLowerCase()}`;

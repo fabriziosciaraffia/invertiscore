@@ -37,7 +37,8 @@ import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engin
 import { sobreRentaPctEsConfiable } from "@/lib/engines/str-universo-santiago";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
-import { metricaDisplay } from "@/lib/types";
+import { metricaDisplay, esMetricaNoAplica } from "@/lib/types";
+import { NO_APLICA_PROMPT } from "@/lib/no-aplica-copy";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
 
@@ -179,6 +180,15 @@ NIVEL 1 — Validación silenciosa (\`overall\` ∈ {optimo, aceptable}): una fr
 NIVEL 2 — Observación táctica (\`mejorable\`): frase corta + impacto cuantificado en \`vsLTR.estrategiaSugerida\` u \`operacion.contenido\`.
 NIVEL 3 — Reestructuración (\`problematico\`): la estructura ES la palanca; lo mencionas en \`conviene.respuestaDirecta\` y propones cambio en \`vsLTR.estrategiaSugerida\`.
 Si no viene, omite esta capa.
+
+## 5.bis Pie 0 — financiamiento 100% (SOLO si el input lo declara)
+
+Se activa ÚNICAMENTE cuando el input dice pie 0% (línea "FINANCIAMIENTO DEL 100%" presente). Con pie mayor a 0 esta sección NO existe para ti — que su vocabulario ("financiamiento 100%", "bono pie", "sin capital propio") no se filtre a un análisis normal.
+
+- NÓMBRALO SIN EUFEMISMOS: financiamiento del 100%, típicamente bono pie u otra promoción de la inmobiliaria. "Pie bajo" PROHIBIDO para pie 0. La \`razonSinCapital\` del input declara el origen ('sin_pie' = compra sin pie declarado); si llega una razón nueva, nárrala tal como el input la describa.
+- PROHIBIDO CELEBRAR MÉTRICAS SOBRE CAPITAL: Cash-on-Cash y multiplicador vienen "no aplica: sin capital propio (pie $0)" — no existen, no digas "retorno infinito" ni "múltiplo espectacular". Flujo positivo se lee "la operación aguanta su propio financiamiento completo", nunca como rentabilidad sobre capital. La comparación con instrumentos (Ángulo 3) se hace en FLUJO y esfuerzo, no en múltiplos.
+- DUREZA EXTRA CON EL PRECIO: con pie 0 alguien está cubriendo ese pie — usualmente la inmobiliaria vía precio de lista cargado. El precio/m² contra la zona se compara con MÁS dureza, no menos.
+- El riesgo estructural (dividendo en su punto más alto, cero colchón de capital, sensibilidad total a vacancia y tasa) se SUMA a los riesgos operativos del STR (ocupación, estacionalidad, ramp-up) — no los reemplaza ni los suaviza.
 
 ## 6. Tiempos verbales
 
@@ -545,9 +555,17 @@ export function buildUserPromptSTR(
     ? `\n\n=== HALLAZGO QUE LIDERA LA PIRÁMIDE (ancla el ángulo-lead del hero · §7.bis) ===\nEl coronado (más decisivo/adverso) es: «${cardFrases.coronado.titular}» — ${cardFrases.coronado.frase}\n→ \`conviene.respuestaDirecta\` debe alinear su ángulo-lead con este hallazgo. No lo copies (§1.bis); no contradigas la jerarquía visual.`
     : "";
 
-  // TODO(pie-cero-fase-4): las líneas CoC / Multiplicador de este prompt usan
-  // metricaDisplay — con pie 0 muestran "—" sin instrucción a la IA de cómo
-  // narrarlo; el tratamiento honesto del prompt STR (100% financiamiento) es fase 4.
+  // Pie cero (RESUELTO fase 4): con pie 0 las métricas sobre capital llegan como
+  // NO_APLICA_PROMPT, el input declara la razón (enum RazonSinCapital, extensible)
+  // y la comparación de múltiplos del Ángulo 3 se reemplaza por la lectura en
+  // flujo. Doctrina en ## 5.bis del system; copy canónico en no-aplica-copy.ts.
+  const cocNoAplicaSTR = esMetricaNoAplica(base.cashOnCash)
+    ? base.cashOnCash
+    : piePct === 0
+      ? ({ tipo: "no_aplica", razon: "sin_pie" } as const)
+      : null;
+  const sinCapitalPropio = cocNoAplicaSTR !== null;
+
   const userPrompt = `Analiza esta inversión inmobiliaria en renta corta (Airbnb). Aplica la doctrina §0-§14 del system prompt y devuelve el JSON v3.
 
 === DATOS DE LA PROPIEDAD ===
@@ -557,10 +575,10 @@ Superficie: ${superficie} m²
 Dormitorios: ${dormitorios}, Baños: ${banos}
 Tipo: ${tipoPropiedad || "—"}
 Precio compra: ${fmtUF(precioCompraUF)} (${fmtCLP(precioCompraCLP)})
-Pie: ${piePct}% = ${fmtCLP(pieCLP)}
+Pie: ${piePct}% = ${fmtCLP(pieCLP)}${sinCapitalPropio ? ` — FINANCIAMIENTO DEL 100% (razonSinCapital: ${cocNoAplicaSTR!.razon}${cocNoAplicaSTR!.razon === "sin_pie" ? " — compra sin pie declarado" : ""}). APLICA LA DOCTRINA ## 5.bis del system.` : ""}
 Tasa crédito: ${pct(tasa)}%, Plazo: ${plazo} años
 Dividendo: ${fmtCLP(dividendo)}/mes
-Capital invertido inicial: ${fmtCLP(capitalInv)} (pie + amoblamiento + gastos cierre)
+Capital invertido inicial: ${fmtCLP(capitalInv)} (pie + amoblamiento + gastos cierre)${sinCapitalPropio ? " — SIN pie: amoblamiento y cierre, NO capital propio que rente" : ""}
 Modo gestión seleccionado: ${modoGestion} (comisión: ${comisionPct}%)
 Edificio permite Airbnb: ${regulacion}
 Amoblado: ${amoblado} (costo amoblamiento: ${fmtCLP(costoAmoblamiento)})
@@ -585,7 +603,7 @@ NOI mensual: ${fmtCLPSigned(base.noiMensual)}
 Dividendo: -${fmtCLP(dividendo)}/mes
 FLUJO DE CAJA MENSUAL: ${fmtCLPSigned(base.flujoCajaMensual)}
 CAP rate: ${pct(base.capRate * 100, 2)}% (umbral STR de referencia: 5%)
-Cash-on-Cash: ${metricaDisplay(base.cashOnCash, (n) => `${pct(n * 100)}%`)}
+Cash-on-Cash: ${sinCapitalPropio ? NO_APLICA_PROMPT : metricaDisplay(base.cashOnCash, (n) => `${pct(n * 100)}%`)}
 
 === ESCENARIOS (conservador / base / upside) ===
 Conservador (ocupación en el cuartil bajo observado): NOI ${fmtCLPSigned(cons.noiMensual)}/mes, Flujo ${fmtCLPSigned(cons.flujoCajaMensual)}/mes
@@ -617,10 +635,12 @@ ${projY10 && exit ? `Patrimonio neto al año ${exit.yearVenta} (valor del activo
 Flujo operativo acumulado a ese año (dato APARTE, no entra al patrimonio): ${fmtCLPSigned(projY10.flujoAcumulado)}
 Tu parte al vender año ${exit.yearVenta} (EQUITY = lo que te queda en la mano al liquidar el activo, neto de deuda y comisión, SIN flujo; NO "ganancia neta"): ${fmtCLPSigned(exit.equityCLP)}
 Retorno total (equity + flujo acumulado): ${fmtCLPSigned(exit.retornoTotal)}
-TIR @ ${exit.yearVenta} años: ${pct(exit.tirAnual)}% · Multiplicador de capital (equity/aportado, ×1 = recuperas lo puesto): ${metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
-Depósito a plazo (UF+5%) a 10 años, sobre ese mismo capital aportado (${fmtCLP(exit.totalAportado)}): ${fmtCLP(Math.round(exit.totalAportado * Math.pow(1.05, 10)))} (múltiplo ×${pct(Math.pow(1.05, 10), 2)})
+TIR @ ${exit.yearVenta} años: ${pct(exit.tirAnual)}% · Multiplicador de capital (equity/aportado, ×1 = recuperas lo puesto): ${sinCapitalPropio ? NO_APLICA_PROMPT : metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
+${sinCapitalPropio
+  ? `Comparación de múltiplos: no aplica — sin capital propio (pie $0) no hay múltiplo que comparar. El Ángulo 3 se hace en FLUJO y esfuerzo (## 5.bis.c): nombra el flujo mensual y lo que exige operar el STR frente a no operar nada; nunca un retorno sobre capital que no existe.`
+  : `Depósito a plazo (UF+5%) a 10 años, sobre ese mismo capital aportado (${fmtCLP(exit.totalAportado)}): ${fmtCLP(Math.round(exit.totalAportado * Math.pow(1.05, 10)))} (múltiplo ×${pct(Math.pow(1.05, 10), 2)})
 Fondo mutuo (7%) a 10 años, sobre ese mismo capital: ${fmtCLP(Math.round(exit.totalAportado * Math.pow(1.07, 10)))} (múltiplo ×${pct(Math.pow(1.07, 10), 2)})
-Comparación de múltiplos (YA calculada — úsala tal cual, no recalcules): tu capital rinde ${metricaDisplay(exit.multiplicadorCapital, (n) => `×${pct(n, 2)}`)} en el depto (equity/aportado) frente a ×${pct(Math.pow(1.05, 10), 2)} en depósito UF y ×${pct(Math.pow(1.07, 10), 2)} en fondo mutuo. Ese es el ancla honesta del Ángulo 3: ajústala por esfuerzo, iliquidez y riesgo; nunca inventes el rendimiento del instrumento.` : "(proyecciones long-term no disponibles)"}
+Comparación de múltiplos (YA calculada — úsala tal cual, no recalcules): tu capital rinde ${metricaDisplay(exit.multiplicadorCapital, (n) => `×${pct(n, 2)}`)} en el depto (equity/aportado) frente a ×${pct(Math.pow(1.05, 10), 2)} en depósito UF y ×${pct(Math.pow(1.07, 10), 2)} en fondo mutuo. Ese es el ancla honesta del Ángulo 3: ajústala por esfuerzo, iliquidez y riesgo; nunca inventes el rendimiento del instrumento.`}` : "(proyecciones long-term no disponibles)"}
 
 === ATRACTORES DE DEMANDA EN LA ZONA ===
 Metro más cercano: ${metroName} a ${distMetro}m
@@ -640,7 +660,8 @@ ${r.subsidioTasa ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioT
 ${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar: el usuario puede pedir tasa subsidiada al banco (~0,6 pp menos). BAJA el dividendo y MEJORA el flujo. No está reflejado en este cálculo.` : r.subsidioTasa.califica && r.subsidioTasa.aplicado ? `→ Ya aplicado (la tasa ingresada coincide con la subsidiada). No lo menciones como mejora.` : `→ No califica. NO mencionar el subsidio.`}` : "(subsidio no calculado)"}
 
 === SENSIBILIDAD DE PRECIO (Ángulo 4 — la tabla vive en su propio drawer de datos) ===
-${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${pct(s.capRate * 100, 2)}%, CoC ${metricaDisplay(s.cashOnCash, (n) => `${pct(n * 100)}%`)}, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${bloqueCards}${bloqueCoronado}${anomaliasTexto}
+${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${pct(s.capRate * 100, 2)}%, CoC ${esMetricaNoAplica(s.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(s.cashOnCash, (n) => `${pct(n * 100)}%`)}, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${sinCapitalPropio ? `
+→ Con pie 0 la sensibilidad de precio se narra en FLUJO (## 5.bis.e): cada peso menos de precio es crédito que no tomas — el flujo de cada fila ya trae ese efecto.` : ""}${bloqueCards}${bloqueCoronado}${anomaliasTexto}
 
 ═══════════════════════════════════════════════════════════════════
 INSTRUCCIÓN FINAL
