@@ -13,6 +13,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/admin", label: "Resumen" },
   { href: "/admin/usuarios", label: "Usuarios" },
+  { href: "/admin/operacion", label: "Operación" },
 ] as const;
 
 export function AdminTabs() {
