@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Franco · Mockup — Orden pirámide/hero: 3 esquemas × 4 informes reales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..700&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ── Tokens Galería (light, paleta canónica Cap. 5) ─────────────────────── */
+  :root{
+    --bg:#F6F6F7; --card:#FFFFFF; --sunken:#F0F0F2;
+    --text:#0F0F0F; --text-sec:#52525B; --text-muted:#6B6B72; --text-ter:#6A6A71;
+    --border:#DDDDE1; --border-strong:#B0B0B8;
+    --red:#C8323C;
+    --serif:'Source Serif 4',Georgia,serif; --sans:'IBM Plex Sans',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  ::selection{background:var(--red);color:#FFF}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.55;padding:28px 20px 80px}
+  .wrap{max-width:1220px;margin:0 auto}
+
+  /* ── Chrome del mockup ──────────────────────────────────────────────────── */
+  .brand{font-family:var(--serif);font-size:20px;font-weight:700}
+  .brand .re{font-style:italic;font-weight:300;opacity:.28}
+  .brand .ai{font-family:var(--mono);font-weight:500;font-size:14px;color:var(--red)}
+  .doc-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-ter);margin-top:14px}
+  h1{font-family:var(--serif);font-size:30px;font-weight:700;margin:6px 0 10px;line-height:1.2}
+  .intro{max-width:860px;color:var(--text-sec);font-size:13.5px}
+  .intro b{color:var(--text)}
+
+  /* ── Leyenda / bloques de contexto ──────────────────────────────────────── */
+  .metabox{background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-top:18px}
+  .metabox h3{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-ter);margin-bottom:8px}
+  .metabox p{font-size:12.5px;color:var(--text-sec);margin-bottom:6px}
+  .metabox p:last-child{margin-bottom:0}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-family:var(--mono);font-size:10.5px;color:var(--text-sec);margin-top:8px}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:1px}
+  .dot.adv{background:var(--red)} .dot.fav{background:#7A7973} .dot.neu{background:transparent;border:1px solid var(--border-strong)}
+
+  /* ── Sección por informe ────────────────────────────────────────────────── */
+  .informe{margin-top:44px}
+  .inf-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px;border-bottom:.5px solid var(--border-strong);padding-bottom:10px}
+  .inf-perfil{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-ter)}
+  .inf-title{font-family:var(--serif);font-size:21px;font-weight:700}
+  .inf-meta{font-family:var(--mono);font-size:11px;color:var(--text-sec)}
+  .badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;padding:3px 9px;border-radius:99px;text-transform:uppercase}
+  .badge.buscar{background:var(--red);color:#FFF}
+  .badge.ajusta{border:1px solid var(--border-strong);color:var(--text)}
+  .badge.comprar{background:var(--text);color:#FFF}
+
+  /* Hero top-3 (referencia fija) */
+  .hero-ref{background:var(--card);border:.5px solid var(--border);border-left:3px solid var(--text);border-radius:0 10px 10px 0;padding:12px 16px;margin-top:14px}
+  .hero-ref h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-ter);margin-bottom:8px}
+  .hero-row{display:flex;align-items:baseline;gap:10px;padding:3px 0;font-size:13px}
+  .hero-row .n{font-family:var(--mono);font-size:11px;color:var(--text-muted);width:18px}
+  .hero-row .t{font-family:var(--sans)}
+  .hero-row .dm{font-family:var(--mono);font-size:10.5px;color:var(--text-muted);margin-left:auto;white-space:nowrap}
+
+  /* Matriz de esquemas */
+  .schemes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+  .scheme{background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column}
+  .scheme h5{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+  .scheme h5 .sch-a{color:var(--text)}
+  .scheme .sch-sub{font-family:var(--sans);font-size:11.5px;color:var(--text-muted);margin-bottom:10px}
+
+  /* Mini-cards */
+  .mini{border:.5px solid var(--border);border-radius:9px;padding:8px 10px;margin-bottom:6px;background:var(--card)}
+  .mini .kick{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-ter);display:flex;gap:6px;align-items:center}
+  .mini .kick .pos{color:var(--text-muted)}
+  .mini .tit{font-family:var(--serif);font-weight:700;font-size:13.5px;line-height:1.3;margin-top:2px}
+  .mini .dm{font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-top:3px}
+  .mini.corona{border:.5px solid var(--border-strong);box-shadow:0 1px 2px rgba(15,15,15,.05),0 3px 8px rgba(15,15,15,.05)}
+  .mini.corona .tit{font-size:15px}
+  .mini.n3{background:var(--sunken);padding:6px 10px;margin-bottom:5px}
+  .mini.n3 .tit{font-family:var(--sans);font-weight:400;font-size:12px;color:var(--text-sec)}
+  .mini.capex{outline:1.5px dashed var(--border-strong);outline-offset:1px}
+  .kicker-line{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px}
+  .kicker-line.ok{color:var(--text)}
+  .kicker-line.ojo{color:var(--red)}
+  .kicker-line.mal{color:var(--red);text-decoration:underline dotted}
+  .nivel-sep{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin:8px 0 5px}
+
+  .cell-note{border-top:.5px dashed var(--border);margin-top:auto;padding-top:8px;font-size:11.5px;color:var(--text-sec)}
+  .cell-note b{color:var(--text)}
+  .cell-note .warn{color:var(--red)}
+
+  /* Notas por esquema (globales) */
+  .notas{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+  .nota{background:var(--card);border:.5px solid var(--border);border-left:3px solid var(--text);border-radius:0 10px 10px 0;padding:14px 16px}
+  .nota h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+  .nota p{font-size:12.5px;color:var(--text-sec);font-style:italic;margin-bottom:6px}
+  .nota .tit-props{font-style:normal;font-size:12px;color:var(--text);border-top:.5px dashed var(--border);padding-top:8px;margin-top:8px}
+  .nota .tit-props span{font-family:var(--serif);font-weight:700}
+
+  @media (max-width:900px){
+    .schemes,.notas{grid-template-columns:1fr}
+    h1{font-size:24px}
+    body{padding:20px 14px 60px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand"><span class="re">re</span>franco<span class="ai">.ai</span></div>
+  <div class="doc-label">Mockup de decisión · orden pirámide ↔ hero · 4 informes reales × 3 esquemas</div>
+  <h1>¿Un solo ranking, la advertencia primero, o el híbrido?</h1>
+  <p class="intro">
+    Hoy conviven <b>dos jerarquías</b> en la misma página: el hero rankea su TOP-3 por
+    <b>decisividad → magnitud</b>, y la pirámide ordena por <b>Filosofía 1</b> (adversos primero,
+    decisividad dentro de cada grupo). Este mockup muestra los tres esquemas con datos 100% reales
+    (recompute local, motor vigente en <span style="font-family:var(--mono);font-size:12px">078bc43</span>).
+    El TOP-3 del hero se muestra como referencia fija — <b>no cambia con el esquema</b>.
+  </p>
+
+  <div class="metabox">
+    <h3>Lo que dice el corpus (53 LTR con prosa, recomputados hoy)</h3>
+    <p>· Solo <b style="font-family:var(--mono)">10/53</b> informes tienen hoy el mismo orden en hero y pirámide (A==B).</p>
+    <p>· <b style="font-family:var(--mono)">22/53</b> tienen empate en la decisividad máxima (el floor 0,85 pisa a todo factor vinculante al mismo valor) — en ellos, nadie gana el kicker "Lo más decisivo" y quién corona lo decide la partición, no el peso.</p>
+    <p>· <b style="font-family:var(--mono)">6/53</b> tienen capex con decisividad 0 sentado en nivel 2 (la deuda que este rediseño debe pagar). En A y C cae naturalmente al fondo del ranking — verificado en los 4 casos de abajo.</p>
+    <p>· <b>STR comparte el sort y el guard de corona</b> (ordenarHallazgosPiramideSTR + coronaEsLaMasDecisiva, un solo criterio): el esquema que se elija aplica a ambas pirámides. El mockup es LTR.</p>
+    <p>· Restricciones respetadas: la banda de distancia <b>no vuelve</b> a la pirámide (vive en la posición de Franco); N=9 fijo en LTR no-COMPRAR, 8 en COMPRAR; nada acá asume 3 palancas fijas de distancia (pie condicional viene).</p>
+    <div class="legend">
+      <span><span class="dot adv"></span>EN CONTRA</span>
+      <span><span class="dot fav"></span>A FAVOR</span>
+      <span><span class="dot neu"></span>LEVE / NEUTRAL</span>
+      <span>d = decisividad · m = magnitud continua</span>
+      <span style="outline:1.5px dashed var(--border-strong);outline-offset:2px;padding:0 4px">capex dec-0</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════ INFORME (a) — COMPRAR mayormente favorable ══════════════════ -->
+  <section class="informe">
+    <div class="inf-head">
+      <span class="inf-perfil">Perfil (a) · comprar mayormente favorable</span>
+      <span class="inf-title">bc1017b7 · Providencia</span>
+      <span class="badge comprar">Comprar</span>
+      <span class="inf-meta">N=8 · 1 en contra / 7 a favor · sin capex (depto nuevo)</span>
+    </div>
+    <div class="hero-ref">
+      <h4>Top-3 del hero (referencia fija · decisividad → magnitud)</h4>
+      <div class="hero-row"><span class="n">01</span><span class="t">Rinde por sobre lo que el mercado paga.</span><span class="dm"><span class="dot fav"></span>d 0,88 · m 0,88</span></div>
+      <div class="hero-row"><span class="n">02</span><span class="t">Tu financiamiento tiene un problema de fondo por el pie.</span><span class="dm"><span class="dot adv"></span>d 0,08 · m 0,08</span></div>
+      <div class="hero-row"><span class="n">03</span><span class="t">A 10 años tu parte vale bastante más de lo aportado.</span><span class="dm"><span class="dot fav"></span>d 0,00 · m 1,00</span></div>
+    </div>
+    <div class="schemes">
+      <!-- A -->
+      <div class="scheme">
+        <h5>Esquema A · Calce total</h5>
+        <div class="sch-sub">Los 8 en el orden exacto del hero</div>
+        <div class="mini corona"><div class="kicker-line ok">Lo más decisivo · rendimiento operativo</div><div class="kick"><span class="pos">1</span><span class="dot fav"></span>CAP RATE</div><div class="tit">Rinde por sobre lo que el mercado paga.</div><div class="dm">d 0,88 · m 0,88 · guard ✓ único máximo</div></div>
+        <div class="nivel-sep">Nivel 2</div>
+        <div class="mini"><div class="kick"><span class="pos">2</span><span class="dot adv"></span>ESTRUCTURA</div><div class="tit">Tu financiamiento tiene un problema de fondo por el pie.</div><div class="dm">d 0,08 · m 0,08</div></div>
+        <div class="mini"><div class="kick"><span class="pos">3</span><span class="dot fav"></span>PATRIMONIO</div><div class="tit">A 10 años tu parte vale bastante más de lo aportado.</div><div class="dm">d 0,00 · m 1,00</div></div>
+        <div class="nivel-sep">Nivel 3</div>
+        <div class="mini n3"><div class="kick"><span class="pos">4</span><span class="dot fav"></span>TIR</div><div class="tit">Retorno anual suficiente · d 0,00 · m 0,74</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">5</span><span class="dot fav"></span>SENSIBILIDAD</div><div class="tit">Aguanta arriendo más bajo · d 0,00 · m 0,18</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">6</span><span class="dot fav"></span>SOBREPRECIO</div><div class="tit">Entras barato el metro · d 0,00 · m 0,00</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">7</span><span class="dot fav"></span>FLUJO</div><div class="tit">El arriendo cubre la cuota · d 0,00 · m 0,00</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">8</span><span class="dot fav"></span>PLUSVALÍA</div><div class="tit">Subió parejo con inflación · d 0,00 · m 0,00</div></div>
+        <div class="cell-note"><b>Calza 1:1 con el hero.</b> La corona es la fortaleza real del caso y gana el kicker limpio. El "pero" del pie queda 2º — visible, no coronado.</div>
+      </div>
+      <!-- B -->
+      <div class="scheme">
+        <h5>Esquema B · Filosofía 1 (statu quo)</h5>
+        <div class="sch-sub">Adversos primero · "Empezando por lo adverso"</div>
+        <div class="mini corona"><div class="kicker-line ojo">Ojo antes de firmar · estructura de la compra</div><div class="kick"><span class="pos">1</span><span class="dot adv"></span>ESTRUCTURA</div><div class="tit">Tu financiamiento tiene un problema de fondo por el pie.</div><div class="dm">d 0,08 · m 0,08 · guard ✗ (hay uno más decisivo)</div></div>
+        <div class="nivel-sep">Nivel 2</div>
+        <div class="mini"><div class="kick"><span class="pos">2</span><span class="dot fav"></span>CAP RATE</div><div class="tit">Rinde por sobre lo que el mercado paga.</div><div class="dm">d 0,88 · m 0,88 ← el más decisivo, sin corona</div></div>
+        <div class="mini"><div class="kick"><span class="pos">3</span><span class="dot fav"></span>PATRIMONIO</div><div class="tit">A 10 años tu parte vale bastante más de lo aportado.</div><div class="dm">d 0,00 · m 1,00</div></div>
+        <div class="nivel-sep">Nivel 3 (igual que A: 4-8)</div>
+        <div class="mini n3"><div class="tit">TIR · Sensibilidad · Sobreprecio · Flujo · Plusvalía</div></div>
+        <div class="cell-note"><span class="warn">La corona es una nimiedad (d 0,08)</span> elevada solo por ser el único adverso, sobre un caso cuyo motor dice "compra". El hero dice 01 = CAP; la pirámide corona otra cosa.</div>
+      </div>
+      <!-- C -->
+      <div class="scheme">
+        <h5>Esquema C · Híbrido</h5>
+        <div class="sch-sub">Corona = adverso más decisivo · resto por peso</div>
+        <div class="mini corona"><div class="kicker-line ojo">Ojo antes de firmar · estructura de la compra</div><div class="kick"><span class="pos">1</span><span class="dot adv"></span>ESTRUCTURA</div><div class="tit">Tu financiamiento tiene un problema de fondo por el pie.</div><div class="dm">d 0,08 · m 0,08 · guard ✗</div></div>
+        <div class="nivel-sep">Nivel 2</div>
+        <div class="mini"><div class="kick"><span class="pos">2</span><span class="dot fav"></span>CAP RATE</div><div class="tit">Rinde por sobre lo que el mercado paga.</div><div class="dm">d 0,88 · m 0,88</div></div>
+        <div class="mini"><div class="kick"><span class="pos">3</span><span class="dot fav"></span>PATRIMONIO</div><div class="tit">A 10 años tu parte vale bastante más de lo aportado.</div><div class="dm">d 0,00 · m 1,00</div></div>
+        <div class="nivel-sep">Nivel 3 (igual que A: 4-8)</div>
+        <div class="mini n3"><div class="tit">TIR · Sensibilidad · Sobreprecio · Flujo · Plusvalía</div></div>
+        <div class="cell-note">Idéntico a B en este caso (un solo adverso). <span class="warn">La apertura franca eleva un d 0,08</span>: el precio del híbrido se paga entero en los COMPRAR limpios.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ INFORME (b) — BUSCAR estructural ══════════════════ -->
+  <section class="informe">
+    <div class="inf-head">
+      <span class="inf-perfil">Perfil (b) · buscar otra, estructural</span>
+      <span class="inf-title">a610e8bb · Santiago</span>
+      <span class="badge buscar">Buscar otra</span>
+      <span class="inf-meta">N=8 · 8 en contra / 0 a favor · empate en el máximo (cap y sobreprecio, d 1,00)</span>
+    </div>
+    <div class="hero-ref">
+      <h4>Top-3 del hero (referencia fija)</h4>
+      <div class="hero-row"><span class="n">01</span><span class="t">Rinde bajo lo que el mercado exige acá.</span><span class="dm"><span class="dot adv"></span>d 1,00 · m 1,00</span></div>
+      <div class="hero-row"><span class="n">02</span><span class="t">Estás pagando caro el metro para esta comuna.</span><span class="dm"><span class="dot adv"></span>d 1,00 · m 1,00</span></div>
+      <div class="hero-row"><span class="n">03</span><span class="t">Pones plata de tu bolsillo todos los meses.</span><span class="dm"><span class="dot adv"></span>d 0,85 · m 0,76</span></div>
+    </div>
+    <div class="schemes">
+      <div class="scheme">
+        <h5>Esquema A · Calce total</h5>
+        <div class="sch-sub">Todo adverso → mismo orden en los 3 esquemas</div>
+        <div class="mini corona"><div class="kicker-line ojo">Ojo antes de firmar · rendimiento operativo</div><div class="kick"><span class="pos">1</span><span class="dot adv"></span>CAP RATE</div><div class="tit">Rinde bajo lo que el mercado exige acá.</div><div class="dm">d 1,00 · m 1,00 · guard ✗ (empata con sobreprecio)</div></div>
+        <div class="nivel-sep">Nivel 2</div>
+        <div class="mini"><div class="kick"><span class="pos">2</span><span class="dot adv"></span>SOBREPRECIO</div><div class="tit">Estás pagando caro el metro para esta comuna.</div><div class="dm">d 1,00 · m 1,00</div></div>
+        <div class="mini"><div class="kick"><span class="pos">3</span><span class="dot adv"></span>FLUJO</div><div class="tit">Pones plata de tu bolsillo todos los meses.</div><div class="dm">d 0,85 · m 0,76</div></div>
+        <div class="nivel-sep">Nivel 3</div>
+        <div class="mini n3"><div class="kick"><span class="pos">4</span><span class="dot adv"></span>PLUSVALÍA</div><div class="tit">Perdió valor real en la década · d 0,16 · m 0,16</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">5</span><span class="dot adv"></span>ESTRUCTURA</div><div class="tit">Problema de fondo por el pie · d 0,04 · m 0,04</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">6</span><span class="dot adv"></span>TIR</div><div class="tit">El retorno se queda corto · d 0,00 · m 0,63</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">7</span><span class="dot adv"></span>PATRIMONIO</div><div class="tit">Terminas con menos de lo que pusiste · d 0,00 · m 0,01</div></div>
+        <div class="mini n3 capex"><div class="kick"><span class="pos">8</span><span class="dot adv"></span>CAPEX</div><div class="tit">Puesta a punto · d 0,00 · m 0,00 — al fondo, natural</div></div>
+        <div class="cell-note"><b>Los tres esquemas son idénticos aquí</b> (8/8 adversos): el desempate cap/sobreprecio lo resuelve la estabilidad del sort (orden de gather) en TODOS los esquemas — y el kicker cae honesto a "Ojo antes de firmar" por el empate.</div>
+      </div>
+      <div class="scheme">
+        <h5>Esquema B · Filosofía 1 (statu quo)</h5>
+        <div class="sch-sub">Idéntico a A en este perfil</div>
+        <div class="mini corona"><div class="kicker-line ojo">Ojo antes de firmar · rendimiento operativo</div><div class="kick"><span class="pos">1</span><span class="dot adv"></span>CAP RATE</div><div class="tit">Rinde bajo lo que el mercado exige acá.</div><div class="dm">mismo orden 1-8 que A</div></div>
+        <div class="cell-note">El statu quo ya se comporta como "un solo ranking" cuando todo es adverso: la partición no tiene qué particionar. capex dec-0 queda al fondo también en B (fondo del grupo adverso).</div>
+      </div>
+      <div class="scheme">
+        <h5>Esquema C · Híbrido</h5>
+        <div class="sch-sub">Idéntico a A en este perfil</div>
+        <div class="mini corona"><div class="kicker-line ojo">Ojo antes de firmar · rendimiento operativo</div><div class="kick"><span class="pos">1</span><span class="dot adv"></span>CAP RATE</div><div class="tit">Rinde bajo lo que el mercado exige acá.</div><div class="dm">mismo orden 1-8 que A</div></div>
+        <div class="cell-note">La corona del híbrido (adverso más decisivo) coincide con el #1 del ranking puro. El caso estructural no discrimina esquemas — la decisión se juega en los perfiles mixtos y en COMPRAR.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ INFORME (c) — AJUSTA mixto, empate ×4 en el floor ══════════════════ -->
+  <section class="informe">
+    <div class="inf-head">
+      <span class="inf-perfil">Perfil (c) · ajusta mixto · empate ×4 en el floor 0,85</span>
+      <span class="inf-title">4d82187b · Providencia</span>
+      <span class="badge ajusta">Ajusta supuestos</span>
+      <span class="inf-meta">N=9 · 2 en contra / 7 a favor · 4 hallazgos pisados a d 0,85 por el floor</span>
+    </div>
+    <div class="hero-ref">
+      <h4>Top-3 del hero (referencia fija · el empate lo desempata la magnitud)</h4>
+      <div class="hero-row"><span class="n">01</span><span class="t">Rinde por sobre lo que el mercado paga.</span><span class="dm"><span class="dot fav"></span>d 0,85 · m 0,60</span></div>
+      <div class="hero-row"><span class="n">02</span><span class="t">Entras barato: el metro está bajo la mediana comunal.</span><span class="dm"><span class="dot fav"></span>d 0,85 · m 0,56</span></div>
+      <div class="hero-row"><span class="n">03</span><span class="t">Pones algo de tu bolsillo cada mes.</span><span class="dm"><span class="dot adv"></span>d 0,85 · m 0,12</span></div>
+    </div>
+    <div class="schemes">
+      <div class="scheme">
+        <h5>Esquema A · Calce total</h5>
+        <div class="sch-sub">Empate ×4 → manda la magnitud</div>
+        <div class="mini corona"><div class="kicker-line mal">Ojo antes de firmar · rendimiento operativo ← chirría</div><div class="kick"><span class="pos">1</span><span class="dot fav"></span>CAP RATE</div><div class="tit">Rinde por sobre lo que el mercado paga.</div><div class="dm">d 0,85 · m 0,60 · guard ✗ (empate ×4: nadie reclama el título)</div></div>
+        <div class="nivel-sep">Nivel 2</div>
+        <div class="mini"><div class="kick"><span class="pos">2</span><span class="dot fav"></span>SOBREPRECIO</div><div class="tit">Entras barato: el metro está bajo la mediana comunal.</div><div class="dm">d 0,85 · m 0,56</div></div>
+        <div class="mini"><div class="kick"><span class="pos">3</span><span class="dot adv"></span>FLUJO</div><div class="tit">Pones algo de tu bolsillo cada mes.</div><div class="dm">d 0,85 · m 0,12</div></div>
+        <div class="nivel-sep">Nivel 3</div>
+        <div class="mini n3"><div class="kick"><span class="pos">4</span><span class="dot fav"></span>ESTRUCTURA</div><div class="tit">Está bien; el pie puede afinarse · d 0,85 · m 0,08</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">5</span><span class="dot fav"></span>SENSIBILIDAD</div><div class="tit">Se sostiene aunque el arriendo caiga · d 0,00 · m 0,72</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">6</span><span class="dot fav"></span>PATRIMONIO</div><div class="tit">Vale bastante más de lo aportado · d 0,00 · m 0,57</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">7</span><span class="dot fav"></span>TIR</div><div class="tit">Retorno anual suficiente · d 0,00 · m 0,30</div></div>
+        <div class="mini n3 capex"><div class="kick"><span class="pos">8</span><span class="dot adv"></span>CAPEX</div><div class="tit">Puesta a punto · d 0,00 · m 0,00 — al fondo, natural</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">9</span><span class="dot fav"></span>PLUSVALÍA</div><div class="tit">Subió parejo con inflación · d 0,00 · m 0,00</div></div>
+        <div class="cell-note"><span class="warn">El kicker fallback queda incoherente:</span> "Ojo antes de firmar" sobre una corona FAVORABLE. Si eliges A, hace falta un tercer kicker para corona favorable sin título (ej. "El de mayor peso"). Un AJUSTA que abre celebrando también es discutible.</div>
+      </div>
+      <div class="scheme">
+        <h5>Esquema B · Filosofía 1 (statu quo)</h5>
+        <div class="sch-sub">Los 2 adversos primero</div>
+        <div class="mini corona"><div class="kicker-line ojo">Ojo antes de firmar · flujo mensual</div><div class="kick"><span class="pos">1</span><span class="dot adv"></span>FLUJO</div><div class="tit">Pones algo de tu bolsillo cada mes.</div><div class="dm">d 0,85 · m 0,12 · guard ✗ (empate ×4)</div></div>
+        <div class="nivel-sep">Nivel 2</div>
+        <div class="mini capex"><div class="kick"><span class="pos">2</span><span class="dot adv"></span>CAPEX</div><div class="tit">Necesita puesta a punto antes de arrendar a mercado.</div><div class="dm">d 0,00 · m 0,00 ← dec-0 en nivel 2 (la deuda)</div></div>
+        <div class="mini"><div class="kick"><span class="pos">3</span><span class="dot fav"></span>CAP RATE</div><div class="tit">Rinde por sobre lo que el mercado paga.</div><div class="dm">d 0,85 · m 0,60</div></div>
+        <div class="nivel-sep">Nivel 3</div>
+        <div class="mini n3"><div class="tit">4. Sobreprecio (f · 0,85/0,56) ← empatado en el máximo, enterrado · 5. Estructura · 6. Sensibilidad · 7. Patrimonio · 8. TIR · 9. Plusvalía</div></div>
+        <div class="cell-note"><span class="warn">capex d 0,00 sentado en nivel 2</span> por ser el 2º adverso. Fix mínimo si B se mantiene: dentro del grupo adverso, los dec-0 caen al fondo del grupo (sort secundario dec&gt;0 primero). El desempate del floor lo resuelve la dirección, no el peso.</div>
+      </div>
+      <div class="scheme">
+        <h5>Esquema C · Híbrido</h5>
+        <div class="sch-sub">Corona franca + resto por peso</div>
+        <div class="mini corona"><div class="kicker-line ojo">Ojo antes de firmar · flujo mensual</div><div class="kick"><span class="pos">1</span><span class="dot adv"></span>FLUJO</div><div class="tit">Pones algo de tu bolsillo cada mes.</div><div class="dm">d 0,85 · m 0,12 · guard ✗ — pero el kicker es coherente (corona adversa)</div></div>
+        <div class="nivel-sep">Nivel 2</div>
+        <div class="mini"><div class="kick"><span class="pos">2</span><span class="dot fav"></span>CAP RATE</div><div class="tit">Rinde por sobre lo que el mercado paga.</div><div class="dm">d 0,85 · m 0,60</div></div>
+        <div class="mini"><div class="kick"><span class="pos">3</span><span class="dot fav"></span>SOBREPRECIO</div><div class="tit">Entras barato: el metro está bajo la mediana comunal.</div><div class="dm">d 0,85 · m 0,56</div></div>
+        <div class="nivel-sep">Nivel 3</div>
+        <div class="mini n3"><div class="tit">4. Estructura (f · 0,85/0,08) · 5. Sensibilidad · 6. Patrimonio · 7. TIR · <b>8. CAPEX (dec-0, al fondo natural)</b> · 9. Plusvalía</div></div>
+        <div class="cell-note"><b>La apertura franca se conserva</b> (AJUSTA abre con el aporte de bolsillo) y del 2 en adelante el orden ES el del hero (desfasado en uno). capex cae al fondo sin fix. El empate queda repartido: dirección elige la corona, magnitud ordena el resto.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ INFORME (d) — capex dec-0 en nivel 2 (demo) ══════════════════ -->
+  <section class="informe">
+    <div class="inf-head">
+      <span class="inf-perfil">Perfil (d) · capex dec-0 en nivel 2 hoy · análisis demo de la landing</span>
+      <span class="inf-title">6db7a9ac · Providencia</span>
+      <span class="badge ajusta">Ajusta supuestos</span>
+      <span class="inf-meta">N=9 · 3 en contra / 6 a favor · el más decisivo del set es FAVORABLE (sobreprecio d 1,00)</span>
+    </div>
+    <div class="hero-ref">
+      <h4>Top-3 del hero (referencia fija)</h4>
+      <div class="hero-row"><span class="n">01</span><span class="t">Entras barato: el metro está bajo la mediana comunal.</span><span class="dm"><span class="dot fav"></span>d 1,00 · m 1,00</span></div>
+      <div class="hero-row"><span class="n">02</span><span class="t">Pones algo de tu bolsillo cada mes.</span><span class="dm"><span class="dot adv"></span>d 0,85 · m 0,12</span></div>
+      <div class="hero-row"><span class="n">03</span><span class="t">Tu financiamiento tiene margen: la tasa está sobre el mercado.</span><span class="dm"><span class="dot adv"></span>d 0,85 · m 0,08</span></div>
+    </div>
+    <div class="schemes">
+      <div class="scheme">
+        <h5>Esquema A · Calce total</h5>
+        <div class="sch-sub">El favorable más pesado corona</div>
+        <div class="mini corona"><div class="kicker-line ok">Lo más decisivo · precio por metro</div><div class="kick"><span class="pos">1</span><span class="dot fav"></span>SOBREPRECIO</div><div class="tit">Entras barato: el metro está bajo la mediana comunal.</div><div class="dm">d 1,00 · m 1,00 · guard ✓ único máximo</div></div>
+        <div class="nivel-sep">Nivel 2</div>
+        <div class="mini"><div class="kick"><span class="pos">2</span><span class="dot adv"></span>FLUJO</div><div class="tit">Pones algo de tu bolsillo cada mes.</div><div class="dm">d 0,85 · m 0,12</div></div>
+        <div class="mini"><div class="kick"><span class="pos">3</span><span class="dot adv"></span>ESTRUCTURA</div><div class="tit">Tu financiamiento tiene margen: la tasa está sobre el mercado.</div><div class="dm">d 0,85 · m 0,08</div></div>
+        <div class="nivel-sep">Nivel 3</div>
+        <div class="mini n3"><div class="kick"><span class="pos">4</span><span class="dot fav"></span>CAP RATE</div><div class="tit">Rinde por sobre el mercado · d 0,48 · m 0,48</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">5</span><span class="dot fav"></span>PATRIMONIO</div><div class="tit">Vale bastante más de lo aportado · d 0,00 · m 0,64</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">6</span><span class="dot fav"></span>SENSIBILIDAD</div><div class="tit">Se sostiene aunque caiga el arriendo · d 0,00 · m 0,60</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">7</span><span class="dot fav"></span>TIR</div><div class="tit">Retorno anual suficiente · d 0,00 · m 0,36</div></div>
+        <div class="mini n3 capex"><div class="kick"><span class="pos">8</span><span class="dot adv"></span>CAPEX</div><div class="tit">Puesta a punto · d 0,00 · m 0,00 — al fondo, natural</div></div>
+        <div class="mini n3"><div class="kick"><span class="pos">9</span><span class="dot fav"></span>PLUSVALÍA</div><div class="tit">Subió parejo con inflación · d 0,00 · m 0,00</div></div>
+        <div class="cell-note"><b>El hallazgo más decisivo del análisis por fin corona</b> — hoy está enterrado 4º. Contra: un AJUSTA SUPUESTOS que abre con "entras barato" suena a compra; el ajuste (flujo+tasa) queda 2º y 3º.</div>
+      </div>
+      <div class="scheme">
+        <h5>Esquema B · Filosofía 1 (statu quo)</h5>
+        <div class="sch-sub">Lo que el demo muestra HOY</div>
+        <div class="mini corona"><div class="kicker-line ojo">Ojo antes de firmar · flujo mensual</div><div class="kick"><span class="pos">1</span><span class="dot adv"></span>FLUJO</div><div class="tit">Pones algo de tu bolsillo cada mes.</div><div class="dm">d 0,85 · m 0,12 · guard ✗ (sobreprecio d 1,00 existe)</div></div>
+        <div class="nivel-sep">Nivel 2</div>
+        <div class="mini"><div class="kick"><span class="pos">2</span><span class="dot adv"></span>ESTRUCTURA</div><div class="tit">Tu financiamiento tiene margen: la tasa está sobre el mercado.</div><div class="dm">d 0,85 · m 0,08</div></div>
+        <div class="mini capex"><div class="kick"><span class="pos">3</span><span class="dot adv"></span>CAPEX</div><div class="tit">Necesita puesta a punto antes de arrendar a mercado.</div><div class="dm">d 0,00 · m 0,00 ← dec-0 en nivel 2 (la deuda, en la landing)</div></div>
+        <div class="nivel-sep">Nivel 3</div>
+        <div class="mini n3"><div class="tit">4. <b>Sobreprecio (f · 1,00/1,00) ← el más decisivo del set, enterrado</b> · 5. CAP · 6. Patrimonio · 7. Sensibilidad · 8. TIR · 9. Plusvalía</div></div>
+        <div class="cell-note"><span class="warn">Doble deuda en el demo:</span> capex d 0,00 en nivel 2, y el d 1,00 del informe en nivel 3. El hero dice 01 = "entras barato"; la pirámide lo esconde bajo tres adversos.</div>
+      </div>
+      <div class="scheme">
+        <h5>Esquema C · Híbrido</h5>
+        <div class="sch-sub">Advertencia primero, peso después</div>
+        <div class="mini corona"><div class="kicker-line ojo">Ojo antes de firmar · flujo mensual</div><div class="kick"><span class="pos">1</span><span class="dot adv"></span>FLUJO</div><div class="tit">Pones algo de tu bolsillo cada mes.</div><div class="dm">d 0,85 · m 0,12 · guard ✗ — kicker coherente (corona adversa)</div></div>
+        <div class="nivel-sep">Nivel 2</div>
+        <div class="mini"><div class="kick"><span class="pos">2</span><span class="dot fav"></span>SOBREPRECIO</div><div class="tit">Entras barato: el metro está bajo la mediana comunal.</div><div class="dm">d 1,00 · m 1,00 ← el más decisivo sube a nivel 2</div></div>
+        <div class="mini"><div class="kick"><span class="pos">3</span><span class="dot adv"></span>ESTRUCTURA</div><div class="tit">Tu financiamiento tiene margen: la tasa está sobre el mercado.</div><div class="dm">d 0,85 · m 0,08</div></div>
+        <div class="nivel-sep">Nivel 3</div>
+        <div class="mini n3"><div class="tit">4. CAP (f · 0,48) · 5. Patrimonio · 6. Sensibilidad · 7. TIR · <b>8. CAPEX (dec-0, al fondo natural)</b> · 9. Plusvalía</div></div>
+        <div class="cell-note"><b>El compromiso del demo:</b> abre con el aporte (la conversación del AJUSTA) y el d 1,00 queda 2º, visible. Sigue sin calzar 1:1 con el hero (01 hero ≠ corona), pero el TOP-3 del hero y el nivel 1-2 de la pirámide comparten los mismos 3 protagonistas.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ Notas por esquema + títulos ══════════════════ -->
+  <div class="notas">
+    <div class="nota">
+      <h4>Esquema A · Calce total — la nota honesta</h4>
+      <p>Una sola jerarquía en toda la página: lo que el hero promete, la pirámide cumple, y capex dec-0 muere al fondo sin fix. El guard de corona por fin puede ganarse (2 de 4 casos acá).</p>
+      <p>Dónde chirría: en los mixtos con empate el kicker fallback "Ojo antes de firmar" cae sobre coronas FAVORABLES (4d82187b) — exige un tercer kicker; y "empezar por lo bueno" en AJUSTA/BUSCAR mixtos le quita a Franco su gesto más franco: abrir por el pero.</p>
+      <div class="tit-props">Título propuesto: <span>«Lo que más pesó»</span> · <span>«El peso de cada pieza»</span> · <span>«Por qué este veredicto»</span></div>
+    </div>
+    <div class="nota">
+      <h4>Esquema B · Statu quo — la nota honesta</h4>
+      <p>La apertura franca es real: el lector siempre choca primero con el riesgo. En los estructurales (a610e8bb) se comporta idéntico a A.</p>
+      <p>Dónde chirría: corona nimiedades en COMPRAR (bc1017b7: d 0,08 coronado sobre un d 0,88), entierra el hallazgo más decisivo del demo en nivel 3, y mantiene capex dec-0 en nivel 2 (6/53 hoy) — el fix mínimo (dec-0 al fondo del grupo adverso) arregla capex pero no el descalce con el hero: 43/53 informes seguirían con dos jerarquías.</p>
+      <div class="tit-props">Título: <span>«Empezando por lo adverso»</span> se mantiene (sigue siendo verdadero).</div>
+    </div>
+    <div class="nota">
+      <h4>Esquema C · Híbrido — la nota honesta</h4>
+      <p>Conserva el gesto editorial (abrir por el pero) y desde el 2º lugar obedece al peso: el d 1,00 del demo sube a nivel 2, capex muere al fondo sin fix, y el kicker de corona siempre es coherente (corona adversa ⇒ "Ojo antes de firmar" nunca miente).</p>
+      <p>Dónde chirría: el 01 del hero y la corona siguen sin ser la misma card en los mixtos (descalce residual, más chico); y en COMPRAR limpios paga el mismo precio que B — eleva el único adverso aunque sea nimio (bc1017b7). Se puede amortiguar con un umbral (corona adversa solo si d ≥ X), pero eso es una cuarta variante.</p>
+      <div class="tit-props">Título propuesto: <span>«Primero lo adverso, después el peso»</span> · <span>«El pero primero; el resto, por peso»</span></div>
+    </div>
+  </div>
+
+  <div class="metabox" style="margin-top:22px">
+    <h3>Ficha técnica</h3>
+    <p>Datos: recompute local (motor en <span style="font-family:var(--mono);font-size:11.5px">078bc43</span>, post paquete A + pie-cero + round-una-vez) sobre las filas persistidas de prod; decisividad/magnitud/dirección y titulares tal como los emite el motor hoy. El guard mostrado es <span style="font-family:var(--mono);font-size:11.5px">coronaEsLaMasDecisiva</span> vigente (máximo estricto único). Los esquemas A y C están simulados con el mismo comparador del hero (decisividad → magnitud); B es el orden que la página muestra hoy.</p>
+    <p>La banda de distancia al veredicto no aparece en ningún esquema (vive en "La posición de Franco"). STR comparte sort y guard: la elección aplica a ambas pirámides.</p>
+  </div>
+
+</div>
+</body>
+</html>
