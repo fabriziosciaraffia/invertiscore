@@ -29,10 +29,11 @@
 --   cohorte_activados  = usuarios registrados en esa semana que activaron ALGUNA
 --                        vez (esta es la cohorte: divide por `registros`).
 --
--- "Activar" acá es "generó su primer análisis", que NO es lo mismo que el
--- welcome_credit_used del funnel: hoy hay 32 usuarios con al menos un análisis y
--- 28 con el crédito de bienvenida marcado. Son dos preguntas distintas y ambas
--- valen; no unificarlas por parecer inconsistentes.
+-- "Activar" es SIEMPRE "generó su primer análisis", acá y en el funnel de
+-- admin_overview. Es una decisión tomada: welcome_credit_used quedó descartado
+-- como criterio de etapa porque es un flag de cobro, no una acción del usuario —
+-- y tener dos números distintos (28 y 32) para la misma idea en la misma
+-- pantalla confunde más de lo que informa.
 -- ───────────────────────────────────────────────────────────────────────────
 create or replace function public.admin_weekly_stats(
   p_weeks int default 12,
@@ -124,7 +125,7 @@ create or replace function public.admin_overview(
 )
 returns table (
   registrados int,
-  usaron_gratis int,
+  activaron int,
   iniciaron_checkout int,
   pagaron int,
   nuevos_30d int,
@@ -145,10 +146,11 @@ as $$
   select
     (select count(*) from usuarios)::int,
 
-    (select count(*)
-       from usuarios u
-       join public.user_credits c on c.user_id = u.id
-      where c.welcome_credit_used is true)::int,
+    -- Activación = generó al menos un análisis. Misma definición que la etapa
+    -- "activaciones" de admin_weekly_stats: un solo número para una sola idea.
+    (select count(distinct a.user_id)
+       from public.analisis a
+       join usuarios u on u.id = a.user_id)::int,
 
     (select count(distinct p.user_id)
        from public.payments p
@@ -190,8 +192,9 @@ grant execute on function public.admin_overview(boolean) to service_role;
 
 
 -- ───────────────────────────────────────────────────────────────────────────
--- Comprobación rápida después de correrlas (debería dar los mismos números que
--- el panel muestra hoy, al 2026-08-02: 48 / 28 / 0 / 0 y 12 filas de semanas).
+-- Comprobación rápida después de correrlas. Al 2026-08-02 admin_overview(false)
+-- debería dar registrados=48, activaron=32, iniciaron_checkout=0, pagaron=0, y
+-- admin_weekly_stats(12, false) exactamente 12 filas.
 -- ───────────────────────────────────────────────────────────────────────────
 -- select * from public.admin_overview(false);
 -- select * from public.admin_weekly_stats(12, false);
