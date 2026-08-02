@@ -92,6 +92,14 @@ docs/audit-*.md
 outputs/
 supabase/seeds/
 
+# Salidas de corrida del evaluador editorial. El instrumento (RUBRICA.md, juez,
+# ensamblador, censo) SÍ se versiona: es la fuente de verdad y se edita a mano.
+# Lo que sale de cada corrida —informes ensamblados, JSON de fallas, logs— es
+# regenerable y pesa megas (2,7 MB en una sola sesión). El patrón cubre out/,
+# out-censo/, out-cierre2/, out-mockup2/… y sus .log hermanos.
+scripts/eval/editorial/out*/
+scripts/eval/editorial/out*.log
+
 # dumps de auditoría
 audit/
 .env.local
