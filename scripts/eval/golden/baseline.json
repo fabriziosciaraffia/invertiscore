@@ -154,6 +154,44 @@
       "tirPct": 2.87,
       "patrimonioMult": 1.16
     },
+    "GS-PC1": {
+      "veredicto": "BUSCAR OTRA",
+      "score": 46,
+      "N": 6,
+      "corona": "flujo_mensual",
+      "hallazgoIds": [
+        "cap_rate",
+        "distancia_veredicto",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia"
+      ],
+      "capRatePct": 4.13,
+      "sobreprecioPct": null,
+      "flujoNetoMensual": -427083,
+      "tirPct": null,
+      "patrimonioMult": 1.38
+    },
+    "GS-PC2": {
+      "veredicto": "COMPRAR",
+      "score": 71,
+      "N": 6,
+      "corona": "plusvalia",
+      "hallazgoIds": [
+        "cap_rate",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sensibilidad"
+      ],
+      "capRatePct": 8.39,
+      "sobreprecioPct": null,
+      "flujoNetoMensual": 54168,
+      "tirPct": null,
+      "patrimonioMult": 29.27
+    },
     "BE-caprate": {
       "veredicto": "COMPRAR",
       "score": 76,

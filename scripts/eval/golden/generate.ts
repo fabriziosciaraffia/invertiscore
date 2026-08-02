@@ -39,7 +39,13 @@ async function captureWarns<T>(fn: () => Promise<T>): Promise<{ result: T; warns
 export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<SeedReport[]> {
   const reports: SeedReport[] = [];
 
-  for (const seed of GOLDEN_SEEDS) {
+  // --solo=GS-PC1,GS-PC2 → corre el tier AUTO solo sobre esos seeds (mismo
+  // patrón --solo del regen STR del paquete B). Sin flag: todos.
+  const soloArg = process.argv.find((a) => a.startsWith("--solo="));
+  const solo = soloArg ? new Set(soloArg.slice("--solo=".length).split(",").map((s) => s.trim())) : null;
+  const seedsARecorrer = solo ? GOLDEN_SEEDS.filter((s) => solo.has(s.key)) : GOLDEN_SEEDS;
+
+  for (const seed of seedsARecorrer) {
     const checks: Check[] = [];
     // Fuente de la apertura para A1: #1 por decisividad pura entre los 6 builders
     // (NO la corona adverso-first de la pirámide — divergen cuando un favorable
@@ -103,6 +109,41 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       const lp = norm(ai.largoPlazo?.contenido_clp ?? "");
       if (lp && !/(dep[óo]sito a plazo|fondo mutuo)/i.test(lp)) bump("A8.D1-instrumentos");
 
+      // ── Checks pie-0 (GS-PC* · fase 4, aprobados 2026-08-01) — doctrina ## 5.bis ──
+      if (seed.key.startsWith("GS-PC")) {
+        const todo = strings.map((x) => x.s).join(" || ");
+        // A-PC1 (HARD) — nombra la estructura sin eufemismos y sin celebración:
+        // financiamiento + 100% presentes; "pie bajo", "infinit", "espectacular"
+        // y múltiplos ×N prohibidos.
+        const nombra = /financi/i.test(todo) && /100\s*%/.test(todo);
+        const celebra = /pie\s+bajo/i.test(todo) || /infinit/i.test(todo) || /espectacular/i.test(todo) || /×\s*\d/.test(todo);
+        if (!nombra || celebra) bump("A-PC1.doctrina-100pct");
+        // A-PC2 (HARD) — el escenario de vacancia aparece en ALGÚN campo de la
+        // prosa (## 5.bis.b manda narrarlo pero NO fija campo: la generación real
+        // lo ubica donde el análisis lo pide — largoPlazo, costoMensual,
+        // reestructuracion...). Scope global a propósito.
+        if (!/vacancia/i.test(todo)) bump("A-PC2.vacancia");
+        // A-PC3 (PC2 · flujo positivo) — HARD: prohibido narrar el flujo positivo
+        // como retorno sobre capital. SOFT: presencia de la lectura correcta
+        // "aguanta/sostiene su (propio) financiamiento" (fraseo estocástico —
+        // guardrail positivo vive en el system; acá solo se reporta la tasa).
+        if (seed.key === "GS-PC2") {
+          // Prohibida la CELEBRACIÓN, no la mención: la doctrina misma manda
+          // negar el retorno sobre capital ("no hay capital que rente"). Un match
+          // SIN negación en la ventana previa = atribución/celebración → HARD.
+          const reRetorno = /(rentabilidad|retorno)\s+(sobre|de|del)\s+(tu\s+|su\s+)?(capital|pie)/gi;
+          let celebra = false;
+          for (const mt of todo.matchAll(reRetorno)) {
+            const prev = todo.slice(Math.max(0, (mt.index ?? 0) - 70), mt.index ?? 0);
+            if (!/\bno\b|\bni\b|\bnunca\b|\bsin\b/i.test(prev)) { celebra = true; break; }
+          }
+          if (celebra) bump("A-PC3.retorno-sobre-capital");
+          // Lectura correcta del flujo positivo — el modelo la parafrasea
+          // legítimamente ("se financia sola desde el día uno"): soft, reporta tasa.
+          if (!/(aguanta|sostiene|banca)[^.]{0,80}financiamiento|financia\s+sola|paga\s+su\s+propio\s+(cr[eé]dito|financiamiento)/i.test(todo)) bump("~aguanta-lectura");
+        }
+      }
+
       // SOFT (reporta TASA, NO bloquea) — detectores de FRASEO estocásticos. El producto
       // mismo trata engine-ism como detección no-bloqueante; hard-gatear sobre variación
       // rara del LLM (engine-ism ~1/6 runs) volvería flaky al golden. Una REGRESIÓN de
@@ -116,8 +157,8 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
 
     // Consolidar. Regla dura falla si falló en ≥1 run; soft (~) reporta sin bloquear.
     checks.push({ rule: `gen.runs(K=${K})`, pass: genOk === K, detail: `${genOk}/${K} generaciones OK` });
-    const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "gen.null"];
-    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped"];
+    const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
+    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~aguanta-lectura"];
     for (const r of HARD) {
       const c = failCounts[r] ?? 0;
       if (c > 0) checks.push({ rule: r, pass: false, detail: `falló ${c}/${K} runs` });

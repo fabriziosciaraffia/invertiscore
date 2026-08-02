@@ -189,6 +189,8 @@ d. DUREZA EXTRA CON EL PRECIO. Si el pie es 0, alguien lo está cubriendo — us
 
 e. LA PALANCA DE PRECIO SE EXPRESA EN PLATA MENSUAL: cada peso menos de precio es crédito que no tomas, y eso baja el dividendo desde el día uno. El input reemplaza las lecturas de TIR de negociación por la baja de dividendo al precio sugerido — esa es la cifra que se narra. Las reglas de §12 (jerarquía de precios, umbral de veredicto, diferencia absoluta vs por m²) siguen aplicando igual; solo cambia la moneda del beneficio: dividendo/mes en vez de puntos de TIR.
 
+f. ESTA DOCTRINA NO EXPANDE TU PRESUPUESTO DE PALABRAS. Los contratos de largo por campo (§13, Plan C) siguen intactos con pie 0. Si no te cabe todo, prioriza: (1º) la estructura 100% y su consecuencia en el dividendo, (2º) el escenario de vacancia en plata; el resto vive en las cards y drawers — no lo fuerces en la apertura.
+
 ## 6. Tiempos verbales — disciplina pasada vs futura
 
 Default: el usuario está EVALUANDO una posible compra. Lenguaje condicional informativo:

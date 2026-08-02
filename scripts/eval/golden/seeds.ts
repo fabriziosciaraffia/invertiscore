@@ -159,6 +159,38 @@ export const GOLDEN_SEEDS: GoldenSeed[] = [
     mediana: { mediana: 55.7, n: 60 },
     nota: "Plusvalía histórica de Santiago negativa (~-1,1%): rama adverso-negativo del hallazgo plusvalía. Nuevo #2, entrega 2028. Mediana fijada a la documentada (55,7) para cubrir sobreprecio confiable + plusvalía negativa juntos.",
   },
+  // ── Pie cero (fase 4 · aprobados 2026-08-01) — el caso canónico del diagnóstico
+  //    pie-0 en sus dos lados del flujo. Mediana null A PROPÓSITO: los esperados
+  //    aprobados (score 46/71) salen del caso empírico SIN mediana comunal, y la
+  //    dureza-de-precio del prompt ejercita el camino "sin comparables confiables".
+  {
+    key: "GS-PC1",
+    uuid: "90111111-0000-4000-a000-0000000000b1",
+    label: "BUSCAR OTRA · Santiago pie 0 · flujo negativo · G1 breakEvenImposible",
+    ejes: ["veredicto:BUSCAR", "gate:gate1", "pie:0%", "capital:no-aplica", "flujo:-", "mediana:NO-confiable", "estado:nuevo-inmediata"],
+    input: ltr({
+      comuna: "Santiago", ciudad: "Santiago", nombre: "GOLDEN GS-PC1 Santiago",
+      precio: 4000, arriendo: 650000, superficie: 55, superficieTotal: 55,
+      dormitorios: 2, banos: 2, antiguedad: 0, piePct: 0, tasaInteres: 4.7,
+      plazoCredito: 25, gastos: 120000, contribuciones: 200000, vacanciaMeses: 1,
+    }),
+    mediana: { mediana: null, n: 0 },
+    nota: "Financiamiento 100% (pie 0): CoC/payback/TIR/multiplicador = no_aplica(sin_pie) — B-PC1 exige que NINGUNA serialice number. Veredicto movido SOLO por flujo (cocSevero omitido; cae por breakEvenImposible). Prosa: doctrina ## 5.bis (A-PC1/A-PC2).",
+  },
+  {
+    key: "GS-PC2",
+    uuid: "90111111-0000-4000-a000-0000000000b2",
+    label: "COMPRAR (G3) · Santiago pie 0 · flujo positivo · sin celebración",
+    ejes: ["veredicto:COMPRAR", "gate:gate3", "pie:0%", "capital:no-aplica", "flujo:+", "mediana:NO-confiable", "estado:nuevo-inmediata"],
+    input: ltr({
+      comuna: "Santiago", ciudad: "Santiago", nombre: "GOLDEN GS-PC2 Santiago",
+      precio: 4000, arriendo: 1200000, superficie: 55, superficieTotal: 55,
+      dormitorios: 2, banos: 2, antiguedad: 0, piePct: 0, tasaInteres: 4.7,
+      plazoCredito: 25, gastos: 120000, contribuciones: 200000, vacanciaMeses: 1,
+    }),
+    mediana: { mediana: null, n: 0 },
+    nota: "El lado positivo del pie 0: flujo +$54K → COMPRAR por G3 (flujo+neta+plusvalía, cero métricas sobre capital). La lectura correcta es 'aguanta su propio financiamiento completo', nunca retorno sobre capital (A-PC3).",
+  },
 ];
 
 // ── 3 casos-borde deterministas (solo motor, sin LLM) ───────────────────────

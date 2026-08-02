@@ -25,8 +25,16 @@ const sb = createClient(
 (async () => {
   const { data: users, error: uErr } = await sb.auth.admin.listUsers();
   if (uErr) throw uErr;
-  const admin = users?.users.find((u: any) => u.email === "fabriziosciaraffia@gmail.com");
-  if (!admin) throw new Error("Admin user no encontrado");
+  let adminId = users?.users.find((u: any) => u.email === "fabriziosciaraffia@gmail.com")?.id ?? null;
+  if (!adminId) {
+    // listUsers() pagina (50 por defecto) y el admin puede quedar fuera de la
+    // primera página. Fallback: el user_id de una fila GOLDEN ya seedeada — el
+    // dueño de las filas del set ES el admin.
+    const { data: fila } = await sb.from("analisis").select("user_id").eq("id", GOLDEN_SEEDS[0].uuid).single();
+    adminId = fila?.user_id ?? null;
+  }
+  if (!adminId) throw new Error("Admin user no encontrado (ni por email ni por fila GOLDEN existente)");
+  const admin = { id: adminId };
 
   const all: { key: string; uuid: string; seed: GoldenSeed | BordeSeed }[] = [
     ...GOLDEN_SEEDS.map((s) => ({ key: s.key, uuid: s.uuid, seed: s })),

@@ -73,6 +73,9 @@ export async function runRecomputeTier(sb: SupabaseClient): Promise<SeedReport[]
       arriendo: input.arriendo,
       totalAportado: recomputed.exitScenario?.totalAportado ?? null,
       medianaConfiable: !!(mediana && typeof mediana.mediana === "number" && mediana.mediana > 0),
+      // B-PC1 (pie cero): activa la invariante "ninguna métrica sobre capital
+      // serializa number" cuando el recompute declara pie 0.
+      pieCLP: (recomputed as any).metrics?.pieCLP ?? null,
     }));
 
     // B8 — veredicto persistido == recompute (idempotencia del motor sobre la fila real).

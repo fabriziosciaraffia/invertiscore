@@ -9,6 +9,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FullAnalysisResult, Hallazgo } from "../../../src/lib/types";
+import { esMetricaNoAplica } from "../../../src/lib/types";
 import { gatherHallazgos, displayUnit, type GoldenFacts } from "./extract";
 
 export interface Check {
@@ -84,6 +85,8 @@ export interface ClassBContext {
   arriendo: number;
   totalAportado: number | null;
   medianaConfiable: boolean; // mediana != null
+  /** pieCLP del recompute — activa B-PC1 (pie cero) cuando es 0. */
+  pieCLP?: number | null;
 }
 
 export function checkClassB(results: FullAnalysisResult, f: GoldenFacts, ctx: ClassBContext): Check[] {
@@ -106,10 +109,19 @@ export function checkClassB(results: FullAnalysisResult, f: GoldenFacts, ctx: Cl
     const isAdverso = h.direccion !== "favorable";
     out.push({ rule: `B2.dir[${id}]`, pass: isAdverso === expectAdverso, detail: `${h.direccion} — ${why}` });
   };
+  // cap_rate y sobreprecio tienen dirección TERNARIA desde el paquete A (banda
+  // "en línea" → neutral: cap-rate-hallazgo |gap| < 0,2 · sobreprecio-hallazgo
+  // |desv| ≤ 2). El check binario viejo marcaba FAIL al primer seed que pisara
+  // la banda neutral (GS-PC1, gap +0,1). Espejo de los umbrales del builder.
+  const dir3Check = (id: string, esperada: "favorable" | "adverso" | "neutral", why: string) => {
+    const h = byId(id);
+    if (!h) return;
+    out.push({ rule: `B2.dir[${id}]`, pass: h.direccion === esperada, detail: `${h.direccion} vs esperada ${esperada} — ${why}` });
+  };
   const sob = byId("sobreprecio");
-  if (sob) dirCheck("sobreprecio", sob.valor.desviacionPct > 0, `desv=${sob.valor.desviacionPct}%`);
+  if (sob) dir3Check("sobreprecio", Math.abs(sob.valor.desviacionPct) <= 2 ? "neutral" : sob.valor.desviacionPct > 0 ? "adverso" : "favorable", `desv=${sob.valor.desviacionPct}%`);
   const cr = byId("cap_rate");
-  if (cr) dirCheck("cap_rate", cr.valor.gapPts < 0, `gap=${cr.valor.gapPts}pts`);
+  if (cr) dir3Check("cap_rate", Math.abs(cr.valor.gapPts) < 0.2 ? "neutral" : cr.valor.gapPts < 0 ? "adverso" : "favorable", `gap=${cr.valor.gapPts}pts`);
   const fl = byId("flujo_mensual");
   if (fl) dirCheck("flujo_mensual", fl.valor.flujoNetoMensualCLP < 0, `flujo=${fl.valor.flujoNetoMensualCLP}`);
   const pv = byId("plusvalia");
@@ -148,6 +160,27 @@ export function checkClassB(results: FullAnalysisResult, f: GoldenFacts, ctx: Cl
   const distDebe = f.veredicto !== "COMPRAR" && ctx.arriendo > 0;
   const distPresent = (results.hallazgos ?? []).some((h) => h.id === "distancia_veredicto");
   out.push({ rule: "B6.distancia", pass: distPresent === distDebe, detail: `present=${distPresent} debe=${distDebe} (ver=${f.veredicto})` });
+
+  // B-PC1 — pie cero (fase 4, aprobado 2026-08-01): con pieCLP === 0 NINGUNA
+  // métrica sobre capital serializa como number — las 4 deben ser el estado
+  // tipado 'no_aplica' (enforcement por construcción del tipo MetricaSobreCapital).
+  if (ctx.pieCLP === 0) {
+    const mm: any = results.metrics ?? {};
+    const ex: any = results.exitScenario ?? {};
+    const capitales: [string, unknown][] = [
+      ["cashOnCash", mm.cashOnCash],
+      ["mesesPaybackPie", mm.mesesPaybackPie],
+      ["tir", ex.tir],
+      ["multiplicadorCapital", ex.multiplicadorCapital],
+    ];
+    for (const [nombre, v] of capitales) {
+      out.push({
+        rule: `B-PC1.no-aplica[${nombre}]`,
+        pass: esMetricaNoAplica(v as any),
+        detail: esMetricaNoAplica(v as any) ? `no_aplica(${(v as any).razon})` : `serializó ${JSON.stringify(v)} con pie 0`,
+      });
+    }
+  }
 
   return out;
 }
