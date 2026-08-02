@@ -20,6 +20,13 @@ import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from 
 import { buildHallazgoEstructuraFinanciamiento } from "@/lib/estructura-financiamiento-hallazgo";
 import { calcDecisividades } from "@/lib/analysis";
 import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
+import {
+  CONTINUACION_MAX,
+  TECHO_CONTINUACION_DURO,
+  TOLERANCIA_PRESUPUESTO,
+  contarPalabras,
+  recortarContinuacion,
+} from "@/lib/prosa-presupuesto";
 import type { Hallazgo } from "@/lib/types";
 import { metricaDisplay, metricaODefault, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
@@ -575,7 +582,7 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 Largos por campo:
 - conviene.respuestaDirecta: escribís SOLO la CONTINUACIÓN. El motor antepone DOS cosas por su cuenta: la RESPUESTA al veredicto ("Conviene." / "Todavía no: tienes que ajustar los supuestos." / "No conviene.") y después la PRIMERA ORACIÓN FIJA que narra el #1. NO escribas ninguna de las dos ni las repitas — tampoco abras tu continuación afirmando o negando la conveniencia, porque quedaría dicho dos veces. Tu continuación:
   (1) UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona al #1, y SOLO si cambia la decisión: el supuesto que sostiene el caso (arriendo declarado vs mediana), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Termina en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
-  (2) PRESUPUESTO: la continuación tiene un MÁXIMO por caso que se te indica en el bloque de hallazgos ("MÁXIMO N palabras", = 85 − las palabras de la apertura fija). El TOTAL ensamblado (apertura + continuación) debe quedar ≤85. Un guard lo mide y puede pedirte recortar.
+  (2) PRESUPUESTO: tu continuación tiene un máximo PROPIO de ${CONTINUACION_MAX} palabras, y no depende de cuánto ocupe lo que el motor antepone — el techo total escala con eso. Escribí para ese presupuesto, no para el total. Un guard lo mide, puede pedirte recortar y, si insistís, RECORTA ÉL por oración: la última idea que no quepa se pierde entera, así que poné lo que importa primero.
   PROHIBIDO: repetir la apertura fija; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones de magnitud fuera de §15 (con el % o múltiplo provisto, o los dos montos absolutos, nunca como aproximación verbal); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
 - conviene.cajaAccionable: 1-2 frases — la POSICIÓN PERSONAL de Franco que cierra el análisis (§9): síntesis + condición bajo la que se sostiene + costo de avanzar contra el análisis si aplica. Cierra con un próximo paso concreto. NO checklist genérica, NO pregunta retórica sin respuesta.
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números.
@@ -1403,10 +1410,9 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       dir === "favorable" ? "a favor" : dir === "adverso" ? "en contra" : "neutral";
 
     // Respuesta al veredicto que el motor antepone (ver el ensamblado más abajo). Se
-    // resuelve ACÁ porque su largo entra en el presupuesto: reservar una constante no
-    // alcanzaba — "Todavía no: tienes que ajustar los supuestos." son 7 palabras y con
-    // una reserva de 6 el total ensamblado se pasaba del techo (medido: 90 y 87 palabras
-    // en generación fresca). Ahora la reserva es exactamente lo que la frase ocupa.
+    // resuelve ACÁ porque su largo entra en el techo TOTAL que el prompt declara y que
+    // verifica el golden (A6) — 2 palabras ("No conviene.") o 7 ("Todavía no: tienes
+    // que ajustar los supuestos."), medidas, nunca una reserva estimada.
     const sensibilidadGen = (results.hallazgos as Hallazgo[] | undefined)?.find(
       (h) => h.id === "sensibilidad",
     );
@@ -1422,15 +1428,18 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
         : veredictoMotor === "BUSCAR OTRA"
           ? "No conviene."
           : "Todavía no: tienes que ajustar los supuestos.";
-    const respuestaWC = respuestaVeredicto.trim().split(/\s+/).filter(Boolean).length;
+    const respuestaWC = contarPalabras(respuestaVeredicto);
 
-    // PLAN C — presupuesto DINÁMICO de la continuación: máximo por caso = 85 − las
-    // palabras que consume la apertura fija (fraseCanonica del #1). Se inyecta en el
-    // userPrompt y se reusa en el guard post-LLM.
+    // PLAN C — presupuesto de la continuación: FIJO (CONTINUACION_MAX), y el techo
+    // TOTAL escala con lo que el motor antepone. La regla, su calibración y por qué
+    // murió el techo plano de 85 viven en prosa-presupuesto.ts (fuente única con el
+    // check A6 del golden). aperturaWC sigue midiéndose acá porque el prompt declara
+    // cuánto consume la apertura y el techo total se reporta en los logs del guard.
     const aperturaWC = hallazgosOrdenados.length > 0
-      ? String(hallazgosOrdenados[0].fraseCanonica).trim().split(/\s+/).filter(Boolean).length
+      ? contarPalabras(String(hallazgosOrdenados[0].fraseCanonica))
       : 0;
-    const maxContinuacion = Math.max(30, 85 - aperturaWC - respuestaWC);
+    const maxContinuacion = CONTINUACION_MAX;
+    const techoTotal = aperturaWC + respuestaWC + maxContinuacion;
 
     const hallazgosBloque = hallazgosOrdenados.length > 0
       ? `
@@ -1456,7 +1465,7 @@ EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: si el ar
 
 SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues" o cualquier ajuste como salida. La honestidad acá es cerrar la puerta, no dejarla entornada: la brecha es del deal. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe.
 ` : ""}
-CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras (el total con la apertura no puede superar 85); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
+CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras — es TU presupuesto, entero, y no se descuenta de las ${aperturaWC + respuestaWC} que el motor ya antepuso (el total ensamblado no pasa de ${techoTotal}); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
     // Pie cero (RESUELTO fase 4): con pie 0 las métricas sobre capital llegan
@@ -1837,29 +1846,37 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       }
     }
 
-    // PLAN C GUARD — enforcement de presupuesto por construcción. La continuación
-    // (lo que escribió el modelo, aún SIN la apertura) no puede superar
-    // maxContinuacion (= 85 − palabras de la apertura). El modelo no cuenta bien
-    // (v5/v6 se pasaban), así que medimos acá: si supera maxContinuacion×1.1, UN
-    // retry con feedback (patrón CATCH-ROOT-A); si el retry también excede, se
-    // acepta + log [PLANC-BUDGET]. Corre ANTES de FASE B para que la reinyección
-    // determinística caiga sobre el aiResult final.
+    // PLAN C GUARD — enforcement de presupuesto POR CONSTRUCCIÓN. La continuación (lo
+    // que escribió el modelo, aún SIN la apertura) no puede superar maxContinuacion.
+    // El modelo no cuenta bien, así que medimos acá: sobre maxContinuacion×1.1, hasta
+    // 2 retries con feedback endurecido (patrón CATCH-ROOT-A).
+    //
+    // Y SI NO CONVERGE, NO SE ACEPTA. Antes el tercer strike se logueaba y pasaba
+    // ("sigue > máx, aceptado"): un techo que se reporta pero no se cumple es doctrina
+    // muerta — se desbordaba de forma sistemática y el golden lo cazaba en A6. Ahora se
+    // recorta por ORACIÓN (nunca a media frase) hasta la línea dura, quedándose con la
+    // versión más corta de las tres. Es peor prosa que un retry que converge y mejor
+    // que un techo decorativo; y el desborde ya es raro con presupuesto propio.
+    //
+    // Se mide el MÁXIMO de las dos variantes de moneda: el techo aplica a lo que el
+    // usuario lee, y el toggle CLP/UF no elige cuál. Corre ANTES de FASE B para que la
+    // reinyección determinística caiga sobre el aiResult final.
     if (aiResult?.conviene && hallazgosOrdenados.length > 0) {
-      const wcCont = (s: unknown) => (typeof s === "string" && s.trim() ? s.trim().split(/\s+/).filter(Boolean).length : 0);
-      // HASTA 2 reintentos, no uno. Con uno solo, un modelo que se pasaba dos veces
-      // seguidas dejaba pasar totales sobre 97 palabras y el Golden los cazaba en
-      // A6.presupuesto. La doctrina del repo es enforcement por construcción, no techo
-      // reportado: se insiste, y el correctivo se endurece en el segundo intento.
+      const wcCont = (ai: typeof aiResult): number =>
+        Math.max(contarPalabras(ai?.conviene?.respuestaDirecta_clp), contarPalabras(ai?.conviene?.respuestaDirecta_uf));
+      const limiteRetry = maxContinuacion * TOLERANCIA_PRESUPUESTO;
+      // El mejor candidato es el MÁS CORTO que hayamos visto: si el retry empeora, no
+      // hay razón para quedarse con él (antes se pisaba el previo sin comparar).
+      let mejor = aiResult;
+      let mejorWC = wcCont(aiResult);
       const PLANC_MAX_RETRIES = 2;
-      for (let intento = 1; intento <= PLANC_MAX_RETRIES; intento++) {
-        const contWC = wcCont(aiResult.conviene.respuestaDirecta_clp);
-        if (contWC <= maxContinuacion * 1.1) break;
-        console.warn(`[PLANC-BUDGET] ${analysisId}: continuación ${contWC} palabras > máx ${maxContinuacion} — retry ${intento}/${PLANC_MAX_RETRIES}`);
+      for (let intento = 1; intento <= PLANC_MAX_RETRIES && mejorWC > limiteRetry; intento++) {
+        console.warn(`[PLANC-BUDGET] ${analysisId}: continuación ${mejorWC} palabras > máx ${maxContinuacion} — retry ${intento}/${PLANC_MAX_RETRIES}`);
         const insistencia =
           intento === 1
             ? ""
-            : " Este es el SEGUNDO aviso: la versión anterior también se pasó. Escribí una sola oración de continuación si hace falta — es preferible una línea corta que una que no cabe.";
-        const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu conviene.respuestaDirecta midió ${contWC} palabras; el MÁXIMO de la continuación es ${maxContinuacion}. Reescribí el JSON COMPLETO desarrollando UN SOLO matiz (el de mayor consecuencia en plata) en ≤${maxContinuacion} palabras; los demás matices viven en la pirámide — no los encadenes.${insistencia}`;
+            : ` Este es el SEGUNDO aviso: la versión anterior también se pasó. Escribí una sola oración de continuación si hace falta — es preferible una línea corta que una que no cabe. Si te vuelves a pasar, el motor recorta por oración y la última idea se pierde entera.`;
+        const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu conviene.respuestaDirecta midió ${mejorWC} palabras; el MÁXIMO de la continuación es ${maxContinuacion}. Reescribí el JSON COMPLETO desarrollando UN SOLO matiz (el de mayor consecuencia en plata) en ≤${maxContinuacion} palabras; los demás matices viven en la pirámide — no los encadenes.${insistencia}`;
         try {
           const regen = await anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 8000, messages: [{ role: "user", content: userPrompt + correctivo }], system: SYSTEM_PROMPT });
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
@@ -1868,15 +1885,28 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
             console.warn(`[PLANC-BUDGET] ${analysisId}: retry ${intento} no parseó — conservo la continuación previa`);
             break;
           }
-          aiResult = regenResult;
-          const contWC2 = wcCont(regenResult.conviene?.respuestaDirecta_clp);
-          const ok = contWC2 <= maxContinuacion * 1.1;
-          console.warn(`[PLANC-BUDGET] ${analysisId}: retry ${intento} → ${contWC2} palabras${ok ? " (OK)" : intento === PLANC_MAX_RETRIES ? ` (sigue > máx ${maxContinuacion}, aceptado)` : ""}`);
-          if (ok) break;
+          const wc2 = wcCont(regenResult);
+          console.warn(`[PLANC-BUDGET] ${analysisId}: retry ${intento} → ${wc2} palabras${wc2 <= limiteRetry ? " (OK)" : ""}`);
+          if (wc2 < mejorWC) { mejor = regenResult; mejorWC = wc2; }
         } catch (e) {
           console.warn(`[PLANC-BUDGET] ${analysisId}: retry ${intento} falló (best-effort): ${(e as Error)?.message ?? e}`);
           break;
         }
+      }
+      aiResult = mejor;
+      // Enforcement final: recorte determinístico por oración. Ambas variantes pierden
+      // las MISMAS oraciones — si divergieran, el toggle de moneda cambiaría el
+      // contenido de la prosa y no solo sus cifras.
+      if (mejorWC > TECHO_CONTINUACION_DURO && aiResult?.conviene) {
+        const { clp, uf, oracionesDescartadas } = recortarContinuacion(
+          typeof aiResult.conviene.respuestaDirecta_clp === "string" ? aiResult.conviene.respuestaDirecta_clp : "",
+          typeof aiResult.conviene.respuestaDirecta_uf === "string" ? aiResult.conviene.respuestaDirecta_uf : "",
+        );
+        aiResult.conviene.respuestaDirecta_clp = clp;
+        aiResult.conviene.respuestaDirecta_uf = uf;
+        console.warn(
+          `[PLANC-BUDGET-TRIM] ${analysisId}: no convergió en ${PLANC_MAX_RETRIES} reintentos (${mejorWC} > ${TECHO_CONTINUACION_DURO}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras${clp ? "" : " (continuación vacía: queda la apertura del motor sola)"}`,
+        );
       }
     }
 
@@ -1960,8 +1990,9 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       // a secas contradice al párrafo siguiente, que suele avisar que el arriendo declarado
       // está sobre mercado. La señal ya existe y es determinística: el margen de
       // `sensibilidad` bajo su propio corte favorable = el veredicto cuelga del arriendo.
-      // (`respuestaVeredicto` se resolvió arriba, junto al presupuesto, porque su largo
-      // se descuenta del techo de 85.)
+      // (`respuestaVeredicto` se resolvió arriba, junto al presupuesto: ya no se
+      // descuenta de la continuación —tiene techo propio— pero sí entra en el techo
+      // TOTAL que se declara en el prompt y que verifica el golden.)
       const anteponerVeredicto = (t: unknown): string => {
         const txt = typeof t === "string" ? t.trim() : "";
         if (!txt) return respuestaVeredicto;
