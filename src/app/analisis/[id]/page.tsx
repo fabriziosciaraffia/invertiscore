@@ -183,12 +183,9 @@ export default async function AnalisisDetallePage({
   const isPremium = isAdmin || isDemo || !!analisis.is_premium;
 
   // CTA post-análisis welcome: el cobro de ESTE análisis fue el crédito de
-  // bienvenida — persistido como input_data.chargeMode al crear (los históricos
-  // no lo traen → false). Solo dueño: vistas compartidas no reciben el CTA.
-  const showCtaWelcome =
-    isOwner &&
-    (analisis.input_data as { chargeMode?: string } | null)?.chargeMode ===
-      "welcome";
+  // bienvenida — columna charge_mode escrita al crear (opción B; históricos
+  // NULL → false). Solo dueño: vistas compartidas no reciben el CTA.
+  const showCtaWelcome = isOwner && analisis.charge_mode === "welcome";
 
   // Owner first name for personalization
   const ownerFullName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';

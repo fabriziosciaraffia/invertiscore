@@ -76,6 +76,9 @@ export async function POST(request: Request) {
       .from("analisis")
       .insert({
         ...built.row,
+        // Vía de cobro (opción B, espejo LTR): columna top-level, no en
+        // input_data. /api/analisis/locked no la escribe (pre-pago → NULL).
+        charge_mode: chargeMode,
         user_id: user.id,
         creator_name:
           user?.user_metadata?.nombre ||

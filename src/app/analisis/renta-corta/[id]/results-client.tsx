@@ -345,8 +345,9 @@ export function STRResultsClient({
           </>
         )}
 
-        {/* Link analizar otra propiedad */}
-        {(
+        {/* Link analizar otra propiedad — oculto cuando la banda CTA welcome
+            está visible (mismo texto, destino distinto: evita el duplicado). */}
+        {!showCtaWelcome && (
           <div className="mt-6 mb-4 flex items-center justify-center">
             <Link
               href="/analisis/renta-corta"

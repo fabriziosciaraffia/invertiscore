@@ -94,6 +94,11 @@ export async function POST(request: Request) {
         resumen: result.resumen,
         results: result,
         input_data: body,
+        // Vía de cobro (opción B, migración charge_mode): columna top-level,
+        // NO en input_data (input_data alimenta motor/prompts). En AMBAS el
+        // mode viene del payment_data del prepaid vía ensureCreditCharged,
+        // así que ambos hermanos lo escriben igual. Gatea el CTA welcome.
+        charge_mode: chargeMode,
         // Snapshot de la mediana resuelta acá (Fase A): fuente única futura para
         // sobreprecio/hero/prosa/zona. Nadie lo lee aún (Fase B cablea lecturas).
         mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
