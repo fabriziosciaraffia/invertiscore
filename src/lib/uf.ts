@@ -39,6 +39,60 @@ export const UF_FROZEN_MIN = 25000;
 export const UF_FROZEN_MAX = 45000;
 
 /**
+ * Parsea un número que viene del Banco Central, que manda el mismo dato en dos
+ * formatos según la serie: chileno ("39.841,72") o con punto decimal
+ * ("39841.72").
+ *
+ * El parseo anterior era `.replace(/\./g, "").replace(",", ".")`: borraba TODOS
+ * los puntos asumiendo separador de miles. Con "39.841,72" funcionaba; con
+ * "39841.72" devolvía 3984172 — la UF quedó guardada ×100 en config el
+ * 2026-03-16 y ahí siguió, porque nada volvió a escribirla (la ruta que la
+ * actualiza no tiene cron).
+ *
+ * Reglas, en orden:
+ *  1. Si hay coma, la coma es el decimal y los puntos son miles.
+ *  2. Sin coma y con UN punto seguido de exactamente 3 dígitos ("39.841"), el
+ *     punto es separador de miles — es el único caso realmente ambiguo y en
+ *     castellano gana la lectura de miles.
+ *  3. Cualquier otro caso: punto decimal o entero pelado.
+ *
+ * Devuelve null si no queda un número finito.
+ */
+export function parseNumeroBCCH(raw: unknown): number | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+
+  let normalizado: string;
+  if (s.includes(",")) {
+    normalizado = s.replace(/\./g, "").replace(",", ".");
+  } else {
+    const partes = s.split(".");
+    normalizado =
+      partes.length === 2 && partes[0].length > 0 && partes[1].length === 3
+        ? partes.join("")
+        : s;
+  }
+
+  const n = parseFloat(normalizado);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * ¿Este número puede ser la UF de hoy en CLP? Guarda de escritura: ante un valor
+ * implausible es mejor dejar el dato viejo que pisarlo con basura — un valor
+ * corrupto silencioso es peor que uno stale, porque el stale al menos se ve en
+ * el panel con su fecha.
+ */
+export function esUFPlausible(n: number | null | undefined): n is number {
+  return typeof n === "number" && Number.isFinite(n) && n >= UF_FROZEN_MIN && n <= UF_FROZEN_MAX;
+}
+
+/** Banda plausible de la tasa hipotecaria en UF (% anual). Mismo criterio. */
+export function esTasaPlausible(n: number | null | undefined): n is number {
+  return typeof n === "number" && Number.isFinite(n) && n > 0 && n < 20;
+}
+
+/**
  * Resuelve la UF que el RENDER debe usar para recomputar un análisis, de modo
  * que sus KPI calcen con la prosa IA. La prosa se generó con la UF CONGELADA al
  * crear el análisis — `ai-generation.ts:716` usa `results.metrics.precioCLP /

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup v2 · Panel admin — resumen y operación</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --franco-bg:#F6F6F7; --franco-card:#FFFFFF; --franco-sunken:#F0F0F2;
+  --franco-text:#0F0F0F; --franco-text-secondary:#52525B; --franco-text-muted:#6B6B72; --franco-text-tertiary:#6A6A71;
+  --franco-border:#DDDDE1; --franco-border-hover:#CBCBD1; --franco-border-strong:#B0B0B8;
+  --signal-red:#C8323C;
+  --ink-400:#B4B2A9; --ink-500:#888780; --ink-600:#5F5E5A; --ink-700:#2C2C2A;
+  --shadow:0 1px 2px rgba(15,15,15,.04),0 4px 12px rgba(15,15,15,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--franco-bg);color:var(--franco-text);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Source Serif 4',Georgia,serif}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+::selection{background:var(--signal-red);color:#fff}
+
+/* chrome del mockup */
+.mk{max-width:1200px;margin:0 auto;padding:22px 24px 0}
+.mk h1{font-family:'Source Serif 4',serif;font-weight:700;font-size:26px;letter-spacing:-.01em}
+.mk p{font-size:13px;color:var(--franco-text-secondary);margin-top:6px;max-width:80ch}
+.sep{max-width:1200px;margin:36px auto 0;padding:0 24px}
+.sep span{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--franco-text-tertiary);background:var(--franco-sunken);border:1px solid var(--franco-border);border-radius:999px;padding:5px 12px}
+.cap{max-width:1200px;margin:8px auto 0;padding:0 24px;font-size:12px;color:var(--franco-text-muted);max-width:1200px}
+.frame{max-width:1200px;margin:12px auto;border:1px solid var(--franco-border);border-radius:14px;overflow:hidden;background:var(--franco-bg);box-shadow:var(--shadow)}
+
+/* chrome producto */
+.topbar{background:var(--franco-card);border-bottom:1px solid var(--franco-border)}
+.tin{max-width:1200px;margin:0 auto;padding:14px 20px 0;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px}
+.wm{font-family:'Source Serif 4',serif;font-size:19px}
+.wm .re{font-weight:300;font-style:italic;opacity:.28}.wm .fr{font-weight:700}
+.wm .ai{font-family:'IBM Plex Sans',sans-serif;font-weight:500;font-size:15px;color:var(--signal-red)}
+.wm .s{color:var(--franco-border-strong);margin:0 9px;font-weight:300}
+.wm .ctx{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--franco-text-tertiary)}
+.back{font-size:13px;color:var(--franco-text-muted);text-decoration:none}
+.tabs{max-width:1200px;margin:0 auto;padding:0 20px;display:flex;gap:2px;align-items:flex-end;overflow-x:auto}
+.tab{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--franco-text-muted);text-decoration:none;padding:12px 14px;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--franco-text);border-bottom-color:var(--signal-red)}
+.tab.off{color:var(--franco-border-strong);cursor:default}
+.tab.off::after{content:'PRONTO';font-size:8px;margin-left:6px;border:1px solid var(--franco-border);border-radius:3px;padding:1px 4px}
+.page{max-width:1200px;margin:0 auto;padding:26px 20px 40px}
+
+h2.sec{font-family:'Source Serif 4',serif;font-weight:700;font-size:17px}
+.srow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:11px;flex-wrap:wrap}
+.hint{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--franco-text-tertiary)}
+section{margin-bottom:34px}
+.card{background:var(--franco-card);border:1px solid var(--franco-border);border-radius:12px}
+.pad{padding:16px}
+.lbl{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--franco-text-tertiary)}
+
+/* barra contexto */
+.ctxbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:var(--franco-card);border:1px solid var(--franco-border);border-radius:12px;padding:11px 14px;margin-bottom:24px}
+.ctxbar .t{font-size:13px;color:var(--franco-text-secondary)}
+.ctxbar .t b{font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--franco-text)}
+.sw{display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--franco-text-secondary);text-decoration:none;white-space:nowrap}
+.tr{width:34px;height:19px;border-radius:999px;background:var(--franco-sunken);border:1px solid var(--franco-border-strong);position:relative;flex:none}
+.tr i{position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:999px;background:var(--franco-text-muted)}
+.sw.on .tr{background:var(--franco-text);border-color:var(--franco-text)}
+.sw.on .tr i{left:18px;background:#fff}
+
+/* A · TITULAR */
+.titular{background:var(--franco-card);border:1px solid var(--franco-border);border-radius:12px;padding:26px 24px}
+.titular p{font-family:'Source Serif 4',serif;font-weight:700;font-size:27px;line-height:1.32;letter-spacing:-.012em}
+.titular p .n{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:26px}
+.titular p .q{color:var(--franco-text-muted)}
+.titular .pie{font-size:12px;color:var(--franco-text-muted);margin-top:14px;padding-top:13px;border-top:1px solid var(--franco-border)}
+
+/* B · FUNNEL proporcional */
+.fstage{padding:14px 16px;border-top:1px solid var(--franco-border)}
+.fstage:first-child{border-top:0}
+.fhead{display:flex;align-items:baseline;justify-content:space-between;gap:14px}
+.fname{font-size:14px}
+.fsub{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--franco-text-tertiary);margin-top:2px}
+.fval{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px;letter-spacing:-.01em;flex:none}
+.fstage.zero .fval,.fstage.zero .fname{color:var(--franco-text-muted)}
+.fbar{height:26px;border-radius:4px;background:var(--franco-sunken);margin-top:9px;overflow:hidden}
+.fbar i{display:block;height:100%;background:var(--franco-text);border-radius:4px}
+.fstage.zero .fbar i{background:var(--franco-border-strong);min-width:3px}
+.drop{display:flex;align-items:center;gap:8px;padding:7px 16px;background:var(--franco-sunken);border-top:1px solid var(--franco-border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--franco-text-secondary)}
+.drop b{font-weight:500;color:var(--signal-red)}
+.drop .ar{color:var(--franco-text-muted)}
+
+/* C · TENDENCIA */
+.chart{padding:16px 16px 6px}
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:0 16px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--franco-text-secondary)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.i-reg{background:var(--franco-text)} .i-act{background:var(--ink-400)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:500;color:var(--franco-text-muted);padding-bottom:9px;white-space:nowrap}
+td{padding:9px 0;border-top:1px solid var(--franco-border);vertical-align:middle}
+td+td,th+th{padding-left:14px}
+.num{font-family:'JetBrains Mono',monospace;font-size:12px}
+.dim{color:var(--franco-text-muted)}
+.right{text-align:right}
+.minibar{display:inline-block;width:52px;height:6px;background:var(--franco-sunken);border-radius:2px;overflow:hidden;vertical-align:middle;margin-right:8px}
+.minibar i{display:block;height:100%;background:var(--franco-text)}
+
+/* D · KPIs */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kpi{background:var(--franco-card);border:1px solid var(--franco-border);border-radius:12px;padding:16px}
+.kpi .v{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:26px;letter-spacing:-.015em}
+.kpi .k{font-size:13px;color:var(--franco-text);margin-top:5px}
+.kpi .s{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--franco-text-tertiary);margin-top:3px}
+
+/* operación */
+.pills{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.pill{flex:none;display:flex;align-items:center;gap:8px;background:var(--franco-card);border:1px solid var(--franco-border);border-radius:9px;padding:8px 11px}
+.dot{width:7px;height:7px;border-radius:999px;flex:none}
+.ok{background:var(--ink-400)}.warn{background:var(--ink-600)}.err{background:var(--signal-red)}
+.pill .pl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--franco-text-muted)}
+.pill .pv{font-family:'JetBrains Mono',monospace;font-size:12px}
+.pill.bad{border-color:rgba(200,50,60,.4)}
+.pill.bad .pv{color:var(--signal-red)}
+.btn{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--franco-text);background:var(--franco-card);border:1px solid var(--franco-border);border-radius:8px;padding:8px 13px;text-decoration:none;display:inline-block}
+.age{display:inline-block;width:100%;max-width:130px;height:7px;background:var(--franco-sunken);border-radius:2px;overflow:hidden;vertical-align:middle}
+.age i{display:block;height:100%}
+.badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;border-radius:4px;padding:2px 6px;white-space:nowrap}
+.b-red{color:var(--signal-red);border-color:rgba(200,50,60,.4)}
+.b-muted{color:var(--franco-text-muted);border-color:var(--franco-border-strong)}
+.empty{font-size:13px;color:var(--franco-text-muted);padding:14px 0 4px}
+.empty b{color:var(--franco-text);font-weight:500}
+
+@media(max-width:900px){ .kpis{grid-template-columns:1fr 1fr} .kpi:last-child{grid-column:1/-1} }
+</style>
+</head>
+<body>
+
+<div class="mk">
+  <h1 class="serif">Mockup v2 · Panel admin</h1>
+  <p>Contrato vinculante del rediseño. Datos <b>reales</b> leídos de la base el 2 ago 2026 (read-only). La base creció desde el mockup anterior: hoy son <b>48</b> usuarios reales (no 47) y <b>83</b> en total. Vistas: <b>A</b> resumen desktop · <b>B</b> operación desktop · <b>C</b> mobile 390px.</p>
+</div>
+
+<!-- ═══════════ A · RESUMEN ═══════════ -->
+<div class="sep"><span>A · /admin — resumen · 4 bloques · desktop</span></div>
+<div class="cap">Pirámide invertida: qué pasó (prosa) → dónde se cae (funnel) → cómo viene (tendencia) → los tres números que importan. Todo lo operacional se fue a la pestaña nueva.</div>
+<div class="frame">
+  <div class="topbar">
+    <div class="tin">
+      <div class="wm"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span><span class="s">/</span><span class="ctx">Panel de administración</span></div>
+      <a class="back" href="#">← Volver al sitio</a>
+    </div>
+    <nav class="tabs">
+      <a class="tab on" href="#">Resumen</a>
+      <a class="tab" href="#">Usuarios</a>
+      <a class="tab" href="#">Operación</a>
+      <span class="tab off">Finanzas</span>
+    </nav>
+  </div>
+
+  <div class="page">
+    <div class="ctxbar">
+      <div class="t">Mostrando <b>48 usuarios reales</b>. Se excluyen <b>35 cuentas internas</b>.</div>
+      <a class="sw" href="#"><span class="tr"><i></i></span> Incluir cuentas de prueba</a>
+    </div>
+
+    <!-- a · TITULAR -->
+    <section>
+      <div class="titular">
+        <p>
+          <span class="n">48</span> usuarios reales, <span class="n">36</span> del último mes.
+          <span class="n">32</span> generaron al menos un análisis.
+          <span class="q">Ninguno ha llegado al checkout.</span>
+        </p>
+        <div class="pie">
+          La frase se arma desde los datos, no está escrita a mano: cambia sola cuando cambian los números
+          («ninguno ha llegado al checkout» pasa a «3 llegaron al checkout y 1 pagó» en cuanto ocurra).
+        </div>
+      </div>
+    </section>
+
+    <!-- b · FUNNEL -->
+    <section>
+      <div class="srow">
+        <h2 class="sec">Dónde se cae</h2>
+        <span class="hint">Todo el histórico · sin cuentas de prueba</span>
+      </div>
+      <div class="card">
+        <div class="fstage">
+          <div class="fhead">
+            <div><div class="fname">Registrados</div><div class="fsub">Cuentas creadas</div></div>
+            <div class="fval">48</div>
+          </div>
+          <div class="fbar"><i style="width:100%"></i></div>
+        </div>
+        <div class="drop"><span class="ar">↓</span> <b>−16 usuarios · −33%</b> <span class="dim">se registraron y nunca generaron un análisis</span></div>
+
+        <div class="fstage">
+          <div class="fhead">
+            <div><div class="fname">Activaron</div><div class="fsub">Generaron su primer análisis</div></div>
+            <div class="fval">32</div>
+          </div>
+          <div class="fbar"><i style="width:66.7%"></i></div>
+        </div>
+        <div class="drop"><span class="ar">↓</span> <b>−32 usuarios · −100%</b> <span class="dim">no abrieron el checkout</span></div>
+
+        <div class="fstage zero">
+          <div class="fhead">
+            <div><div class="fname">Iniciaron checkout</div><div class="fsub">Pago pendiente sobre $0</div></div>
+            <div class="fval">0</div>
+          </div>
+          <div class="fbar"><i style="width:0"></i></div>
+        </div>
+        <div class="drop"><span class="ar">↓</span> <span class="dim">sin caída que medir: la etapa anterior está en cero</span></div>
+
+        <div class="fstage zero">
+          <div class="fhead">
+            <div><div class="fname">Pagaron</div><div class="fsub">Pago confirmado sobre $0</div></div>
+            <div class="fval">0</div>
+          </div>
+          <div class="fbar"><i style="width:0"></i></div>
+        </div>
+
+        <div class="pad" style="border-top:1px solid var(--franco-border)">
+          <div class="lbl" style="margin-bottom:7px">Checkouts abandonados</div>
+          <div class="empty">Ningún usuario real llegó al checkout todavía. <b>Los 7 pagos pendientes de la base son de cuentas internas</b> — se ven activando el toggle.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- c · TENDENCIA -->
+    <section>
+      <div class="srow">
+        <h2 class="sec">Cómo viene</h2>
+        <span class="hint">Últimas 12 semanas</span>
+      </div>
+      <div class="card">
+        <div class="chart">
+          <svg viewBox="0 0 940 260" style="width:100%;height:auto;display:block" role="img" aria-label="Registros y activaciones por semana, últimas 12 semanas">
+            <!-- grid -->
+            <g stroke="#DDDDE1" stroke-width="1">
+              <line x1="46" y1="20"  x2="920" y2="20"/>
+              <line x1="46" y1="76"  x2="920" y2="76"/>
+              <line x1="46" y1="132" x2="920" y2="132"/>
+              <line x1="46" y1="188" x2="920" y2="188"/>
+              <line x1="46" y1="216" x2="920" y2="216" stroke="#B0B0B8"/>
+            </g>
+            <g font-family="JetBrains Mono, monospace" font-size="10" fill="#6A6A71">
+              <text x="38" y="24"  text-anchor="end">40</text>
+              <text x="38" y="80"  text-anchor="end">30</text>
+              <text x="38" y="136" text-anchor="end">20</text>
+              <text x="38" y="192" text-anchor="end">10</text>
+              <text x="38" y="220" text-anchor="end">0</text>
+            </g>
+            <!-- barras: 12 semanas, dos series -->
+            <!-- reg=[0,2,1,0,0,0,0,0,0,0,0,36]  act=[0,2,1,0,0,0,0,0,0,0,0,25] -->
+            <g>
+              <rect x="64"  y="216" width="26" height="0"   fill="#0F0F0F"/><rect x="92"  y="216" width="26" height="0"   fill="#B4B2A9"/>
+              <rect x="137" y="205" width="26" height="11"  fill="#0F0F0F"/><rect x="165" y="205" width="26" height="11"  fill="#B4B2A9"/>
+              <rect x="210" y="210" width="26" height="6"   fill="#0F0F0F"/><rect x="238" y="210" width="26" height="6"   fill="#B4B2A9"/>
+              <rect x="283" y="216" width="26" height="0"   fill="#0F0F0F"/><rect x="311" y="216" width="26" height="0"   fill="#B4B2A9"/>
+              <rect x="356" y="216" width="26" height="0"   fill="#0F0F0F"/><rect x="384" y="216" width="26" height="0"   fill="#B4B2A9"/>
+              <rect x="429" y="216" width="26" height="0"   fill="#0F0F0F"/><rect x="457" y="216" width="26" height="0"   fill="#B4B2A9"/>
+              <rect x="502" y="216" width="26" height="0"   fill="#0F0F0F"/><rect x="530" y="216" width="26" height="0"   fill="#B4B2A9"/>
+              <rect x="575" y="216" width="26" height="0"   fill="#0F0F0F"/><rect x="603" y="216" width="26" height="0"   fill="#B4B2A9"/>
+              <rect x="648" y="216" width="26" height="0"   fill="#0F0F0F"/><rect x="676" y="216" width="26" height="0"   fill="#B4B2A9"/>
+              <rect x="721" y="216" width="26" height="0"   fill="#0F0F0F"/><rect x="749" y="216" width="26" height="0"   fill="#B4B2A9"/>
+              <rect x="794" y="216" width="26" height="0"   fill="#0F0F0F"/><rect x="822" y="216" width="26" height="0"   fill="#B4B2A9"/>
+              <rect x="843" y="15"  width="26" height="201" fill="#0F0F0F"/><rect x="871" y="76"  width="26" height="140" fill="#B4B2A9"/>
+            </g>
+            <g font-family="JetBrains Mono, monospace" font-size="9" fill="#6A6A71" text-anchor="middle">
+              <text x="91"  y="236">11 may</text><text x="164" y="236">18 may</text><text x="237" y="236">25 may</text>
+              <text x="310" y="236">1 jun</text><text x="383" y="236">8 jun</text><text x="456" y="236">15 jun</text>
+              <text x="529" y="236">22 jun</text><text x="602" y="236">29 jun</text><text x="675" y="236">6 jul</text>
+              <text x="748" y="236">13 jul</text><text x="821" y="236">20 jul</text><text x="870" y="236" fill="#0F0F0F">27 jul</text>
+            </g>
+            <g font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">
+              <text x="856" y="10" fill="#0F0F0F" text-anchor="middle">36</text>
+              <text x="884" y="70" fill="#5F5E5A" text-anchor="middle">25</text>
+            </g>
+          </svg>
+        </div>
+        <div class="legend">
+          <span><i class="i-reg"></i>Registros</span>
+          <span><i class="i-act"></i>Activaciones (primer análisis)</span>
+        </div>
+        <div class="pad" style="border-top:1px solid var(--franco-border)">
+          <div class="lbl" style="margin-bottom:9px">Cohorte por semana de registro</div>
+          <table>
+            <thead><tr><th>Semana</th><th>Registrados</th><th>Activaron</th><th class="right">Tasa</th></tr></thead>
+            <tbody>
+              <tr><td class="num">27 jul</td><td class="num">36</td><td class="num">25</td><td class="right"><span class="minibar"><i style="width:69%"></i></span><span class="num">69%</span></td></tr>
+              <tr><td class="num">25 may</td><td class="num">1</td><td class="num">1</td><td class="right"><span class="minibar"><i style="width:100%"></i></span><span class="num">100%</span></td></tr>
+              <tr><td class="num">18 may</td><td class="num">2</td><td class="num">2</td><td class="right"><span class="minibar"><i style="width:100%"></i></span><span class="num">100%</span></td></tr>
+              <tr><td class="num dim" colspan="4">Las 9 semanas sin registros no se listan en la tabla; en el gráfico sí aparecen, porque el hueco es parte de la historia.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--franco-text-muted);margin-top:9px">
+        <b style="color:var(--franco-text);font-weight:500">Una sola definición de activación</b> en toda la pantalla: generó su primer análisis (32 usuarios). El <span class="mono" style="font-size:11px">welcome_credit_used</span> quedó fuera como criterio de etapa — es un flag de cobro, no una acción del usuario.
+      </p>
+    </section>
+
+    <!-- d · KPIs -->
+    <section style="margin-bottom:0">
+      <div class="srow"><h2 class="sec">Los tres números</h2><span class="hint">Últimos 30 días</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="v">36</div><div class="k">Usuarios nuevos</div><div class="s">75% de toda la base</div></div>
+        <div class="kpi"><div class="v">67%</div><div class="k">Tasa de activación</div><div class="s">32 de 48 generaron un análisis</div></div>
+        <div class="kpi"><div class="v">$0</div><div class="k">Ingresos</div><div class="s">$109.940 con cuentas internas</div></div>
+      </div>
+      <p style="font-size:12px;color:var(--franco-text-muted);margin-top:11px">
+        Se van «Costo IA estimado» (era análisis × $150, un número inventado: el usage real de tokens no se guarda) y «Análisis desbloqueados» (duplicaba análisis totales: hoy los 40 análisis del mes son los 40 desbloqueados).
+      </p>
+    </section>
+  </div>
+</div>
+
+<!-- ═══════════ B · OPERACIÓN ═══════════ -->
+<div class="sep"><span>B · /admin/operacion — desktop</span></div>
+<div class="cap">Todo lo que se fue del resumen. Ordenado por urgencia: lo que está roto arriba.</div>
+<div class="frame">
+  <div class="topbar">
+    <div class="tin">
+      <div class="wm"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span><span class="s">/</span><span class="ctx">Panel de administración</span></div>
+      <a class="back" href="#">← Volver al sitio</a>
+    </div>
+    <nav class="tabs">
+      <a class="tab" href="#">Resumen</a><a class="tab" href="#">Usuarios</a><a class="tab on" href="#">Operación</a><span class="tab off">Finanzas</span>
+    </nav>
+  </div>
+
+  <div class="page">
+    <section>
+      <h2 class="sec" style="margin-bottom:11px">Estado del sistema</h2>
+      <div class="pills">
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Base de datos</div><div class="pv">665 análisis</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Propiedades</div><div class="pv">6.184 · hace 9 h</div></div></div>
+        <div class="pill bad"><span class="dot err"></span><div><div class="pl">UF</div><div class="pv">$3.984.172 · 16 mar</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Usuarios</div><div class="pv">48 reales · 83 total</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Último pago</div><div class="pv">hace 3 d</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Cron: scraping</div><div class="pv">hace 9 h</div></div></div>
+        <div class="pill bad"><span class="dot err"></span><div><div class="pl">Cron: UF/Tasa</div><div class="pv">nunca · 16 mar</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Cron: geocode</div><div class="pv">hace 9 h</div></div></div>
+      </div>
+      <div class="card pad" style="margin-top:12px;border-color:rgba(200,50,60,.35)">
+        <div class="lbl" style="color:var(--signal-red);margin-bottom:7px">Dos alertas con explicación, no solo un punto rojo</div>
+        <p style="font-size:13px;color:var(--franco-text-secondary);line-height:1.6">
+          <b style="font-weight:500;color:var(--franco-text)">UF y tasa congeladas desde el 16 de marzo.</b> La ruta que las actualiza
+          (<span class="mono" style="font-size:12px">/api/data/update-market</span>) no tiene cron: solo corre cuando alguien aprieta el botón de acá abajo.
+          El cron que sí existe apunta a otra ruta, que escribe en una tabla que no está en la base.<br>
+          <b style="font-weight:500;color:var(--franco-text)">El valor de la UF está mal parseado.</b> Dice $3.984.172 donde debería decir $39.842:
+          el parser borra los puntos asumiendo separador de miles, y cuando el Banco Central manda el punto como decimal el número queda ×100.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="sec" style="margin-bottom:11px">Acciones</h2>
+      <div class="card pad">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="btn">Actualizar UF/Tasa</span><span class="btn">Scraping</span><span class="btn">Geocodificar</span><span class="btn">Market data</span>
+        </div>
+        <p style="font-size:11px;color:var(--franco-text-muted);margin-top:11px">Ejecutan los endpoints CRON con el secret server-side.</p>
+      </div>
+    </section>
+
+    <section>
+      <div class="srow"><h2 class="sec">Cobertura de datos</h2><span class="hint">23 comunas · ordenadas por antigüedad</span></div>
+      <div class="card pad">
+        <table>
+          <thead><tr><th>Comuna</th><th>Antigüedad</th><th>Arriendos</th><th>Ventas</th></tr></thead>
+          <tbody>
+            <tr><td>Conchalí</td><td><span class="age"><i style="width:100%;background:#C8323C"></i></span> <span class="num" style="color:var(--signal-red)">131 d</span> <span class="badge b-red">Crítico</span></td><td class="num">7</td><td class="num">1</td></tr>
+            <tr><td>Peñalolén</td><td><span class="age"><i style="width:100%;background:#C8323C"></i></span> <span class="num" style="color:var(--signal-red)">131 d</span> <span class="badge b-red">Crítico</span></td><td class="num">1</td><td class="num">1</td></tr>
+            <tr><td>La Cisterna</td><td><span class="age"><i style="width:44%;background:#5F5E5A"></i></span> <span class="num">57 d</span></td><td class="num">2</td><td class="num">16</td></tr>
+            <tr><td>Puente Alto</td><td><span class="age"><i style="width:44%;background:#5F5E5A"></i></span> <span class="num">57 d</span></td><td class="num">14</td><td class="num">4</td></tr>
+            <tr><td>Quinta Normal</td><td><span class="age"><i style="width:44%;background:#5F5E5A"></i></span> <span class="num">57 d</span></td><td class="num">11</td><td class="num">1</td></tr>
+            <tr><td>San Miguel</td><td><span class="age"><i style="width:40%;background:#5F5E5A"></i></span> <span class="num">52 d</span></td><td class="num">13</td><td class="num">10</td></tr>
+            <tr><td>Recoleta</td><td><span class="age"><i style="width:15%;background:#888780"></i></span> <span class="num">20 d</span></td><td class="num">5</td><td class="num">3</td></tr>
+            <tr><td class="dim">… 14 comunas más entre 19 y 2 días …</td><td class="dim num">—</td><td class="num dim">—</td><td class="num dim">—</td></tr>
+            <tr><td>Las Condes</td><td><span class="age"><i style="width:2%;background:#B4B2A9"></i></span> <span class="num dim">hoy</span></td><td class="num">159</td><td class="num">28</td></tr>
+            <tr><td>Providencia</td><td><span class="age"><i style="width:2%;background:#B4B2A9"></i></span> <span class="num dim">hoy</span></td><td class="num">30</td><td class="num">15</td></tr>
+            <tr style="border-top:2px solid var(--franco-border)"><td style="font-weight:500;padding-top:10px">TOTAL</td><td class="num dim" style="padding-top:10px">—</td><td class="num" style="font-weight:500;padding-top:10px">699</td><td class="num" style="font-weight:500;padding-top:10px">318</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:12px;color:var(--franco-text-muted);margin-top:9px">
+        <b style="color:var(--franco-text);font-weight:500">El mapa no entra en esta vuelta.</b> No hay ningún GeoJSON de comunas en el repo
+        y no hay librería de mapas instalada (ni <span class="mono" style="font-size:11px">react-simple-maps</span>, ni <span class="mono" style="font-size:11px">d3-geo</span>, ni Leaflet): pintarlo obliga
+        a sumar un asset geográfico y una dependencia. Queda la tabla ordenada por antigüedad, que era el punto —
+        Conchalí y Peñalolén con 131 días ahora son la primera fila, no algo enterrado en el medio. Ver la nota del reporte.
+      </p>
+    </section>
+
+    <section>
+      <div class="srow"><h2 class="sec">Análisis</h2><span class="hint">Compartidos y últimos Pro</span></div>
+      <div class="card pad">
+        <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:baseline;margin-bottom:14px">
+          <div><div class="mono" style="font-size:24px;font-weight:700">49</div><div style="font-size:12px;color:var(--franco-text-muted)">con dueño (URL pública)</div></div>
+        </div>
+        <div style="border-top:1px solid var(--franco-border);padding-top:12px">
+          <div class="lbl" style="margin-bottom:8px">Últimos análisis Pro</div>
+          <div class="empty">Sin análisis Pro de usuarios reales en el período.</div>
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-bottom:0">
+      <div class="srow"><h2 class="sec">Documentos tributarios</h2><span class="hint">respeta el toggle</span></div>
+      <div class="card pad">
+        <table>
+          <thead><tr><th>Fecha</th><th>Correo</th><th>Folio</th><th>Concepto</th><th>Monto</th><th>Estado</th></tr></thead>
+          <tbody><tr><td colspan="6"><div class="empty">Sin documentos de usuarios reales.</div></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ═══════════ C · MOBILE ═══════════ -->
+<div class="sep"><span>C · mobile 390px</span></div>
+<div class="cap">Funnel apilado (ya lo es en desktop), gráfico full-width, KPIs 2×2 con el tercero a lo ancho, cohorte sin la columna de barra.</div>
+<div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;gap:20px;flex-wrap:wrap">
+  <div class="frame" style="margin:12px 0;flex:none;width:390px;max-width:390px">
+    <div class="topbar">
+      <div class="tin" style="padding:12px 14px 0">
+        <div class="wm" style="font-size:17px"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span></div>
+        <a class="back" href="#" style="font-size:12px">←</a>
+      </div>
+      <nav class="tabs" style="padding:0 14px"><a class="tab on" href="#">Resumen</a><a class="tab" href="#">Usuarios</a><a class="tab" href="#">Operación</a></nav>
+    </div>
+    <div class="page" style="padding:18px 14px 26px">
+      <div class="ctxbar" style="padding:10px 12px;margin-bottom:18px">
+        <div class="t" style="font-size:12px">48 reales · 35 internas excluidas</div>
+        <a class="sw" href="#" style="font-size:9px"><span class="tr"><i></i></span> Incluir prueba</a>
+      </div>
+
+      <section style="margin-bottom:26px">
+        <div class="titular" style="padding:18px 16px">
+          <p style="font-size:20px;line-height:1.36"><span class="n" style="font-size:19px">48</span> usuarios reales, <span class="n" style="font-size:19px">36</span> del último mes. <span class="n" style="font-size:19px">32</span> generaron un análisis. <span class="q">Ninguno ha llegado al checkout.</span></p>
+        </div>
+      </section>
+
+      <section style="margin-bottom:26px">
+        <h2 class="sec" style="margin-bottom:10px">Dónde se cae</h2>
+        <div class="card">
+          <div class="fstage" style="padding:12px 13px">
+            <div class="fhead"><div><div class="fname" style="font-size:13px">Registrados</div></div><div class="fval" style="font-size:20px">48</div></div>
+            <div class="fbar" style="height:22px"><i style="width:100%"></i></div>
+          </div>
+          <div class="drop" style="padding:6px 13px;font-size:10px"><span class="ar">↓</span> <b>−16 · −33%</b></div>
+          <div class="fstage" style="padding:12px 13px">
+            <div class="fhead"><div><div class="fname" style="font-size:13px">Activaron</div></div><div class="fval" style="font-size:20px">32</div></div>
+            <div class="fbar" style="height:22px"><i style="width:66.7%"></i></div>
+          </div>
+          <div class="drop" style="padding:6px 13px;font-size:10px"><span class="ar">↓</span> <b>−32 · −100%</b></div>
+          <div class="fstage zero" style="padding:12px 13px">
+            <div class="fhead"><div><div class="fname" style="font-size:13px">Iniciaron checkout</div></div><div class="fval" style="font-size:20px">0</div></div>
+            <div class="fbar" style="height:22px"><i style="width:0"></i></div>
+          </div>
+          <div class="fstage zero" style="padding:12px 13px">
+            <div class="fhead"><div><div class="fname" style="font-size:13px">Pagaron</div></div><div class="fval" style="font-size:20px">0</div></div>
+            <div class="fbar" style="height:22px"><i style="width:0"></i></div>
+          </div>
+        </div>
+      </section>
+
+      <section style="margin-bottom:26px">
+        <h2 class="sec" style="margin-bottom:10px">Cómo viene</h2>
+        <div class="card">
+          <div style="padding:13px 10px 4px">
+            <svg viewBox="0 0 340 190" style="width:100%;height:auto;display:block">
+              <g stroke="#DDDDE1" stroke-width="1">
+                <line x1="26" y1="14" x2="332" y2="14"/><line x1="26" y1="62" x2="332" y2="62"/>
+                <line x1="26" y1="110" x2="332" y2="110"/><line x1="26" y1="152" x2="332" y2="152" stroke="#B0B0B8"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="8" fill="#6A6A71">
+                <text x="22" y="17" text-anchor="end">40</text><text x="22" y="65" text-anchor="end">27</text>
+                <text x="22" y="113" text-anchor="end">13</text><text x="22" y="155" text-anchor="end">0</text>
+              </g>
+              <g>
+                <rect x="36"  y="152" width="9" height="0"   fill="#0F0F0F"/><rect x="46"  y="152" width="9" height="0"  fill="#B4B2A9"/>
+                <rect x="61"  y="145" width="9" height="7"   fill="#0F0F0F"/><rect x="71"  y="145" width="9" height="7"  fill="#B4B2A9"/>
+                <rect x="86"  y="148" width="9" height="4"   fill="#0F0F0F"/><rect x="96"  y="148" width="9" height="4"  fill="#B4B2A9"/>
+                <rect x="111" y="152" width="9" height="0" fill="#0F0F0F"/><rect x="121" y="152" width="9" height="0" fill="#B4B2A9"/>
+                <rect x="136" y="152" width="9" height="0" fill="#0F0F0F"/><rect x="146" y="152" width="9" height="0" fill="#B4B2A9"/>
+                <rect x="161" y="152" width="9" height="0" fill="#0F0F0F"/><rect x="171" y="152" width="9" height="0" fill="#B4B2A9"/>
+                <rect x="186" y="152" width="9" height="0" fill="#0F0F0F"/><rect x="196" y="152" width="9" height="0" fill="#B4B2A9"/>
+                <rect x="211" y="152" width="9" height="0" fill="#0F0F0F"/><rect x="221" y="152" width="9" height="0" fill="#B4B2A9"/>
+                <rect x="236" y="152" width="9" height="0" fill="#0F0F0F"/><rect x="246" y="152" width="9" height="0" fill="#B4B2A9"/>
+                <rect x="261" y="152" width="9" height="0" fill="#0F0F0F"/><rect x="271" y="152" width="9" height="0" fill="#B4B2A9"/>
+                <rect x="286" y="152" width="9" height="0" fill="#0F0F0F"/><rect x="296" y="152" width="9" height="0" fill="#B4B2A9"/>
+                <rect x="306" y="18"  width="9" height="134" fill="#0F0F0F"/><rect x="316" y="61" width="9" height="91" fill="#B4B2A9"/>
+              </g>
+              <g font-family="JetBrains Mono, monospace" font-size="8" fill="#6A6A71" text-anchor="middle">
+                <text x="46" y="168">may</text><text x="130" y="168">jun</text><text x="228" y="168">jul</text><text x="315" y="168" fill="#0F0F0F">27 jul</text>
+              </g>
+            </svg>
+          </div>
+          <div class="legend" style="padding:0 13px 12px;gap:14px;font-size:9px"><span><i class="i-reg"></i>Registros</span><span><i class="i-act"></i>Activaciones</span></div>
+          <div class="pad" style="border-top:1px solid var(--franco-border);padding:13px">
+            <div class="lbl" style="margin-bottom:8px">Cohorte</div>
+            <table>
+              <thead><tr><th>Semana</th><th>Reg.</th><th>Act.</th><th class="right">Tasa</th></tr></thead>
+              <tbody>
+                <tr><td class="num">27 jul</td><td class="num">36</td><td class="num">25</td><td class="num right">69%</td></tr>
+                <tr><td class="num">25 may</td><td class="num">1</td><td class="num">1</td><td class="num right">100%</td></tr>
+                <tr><td class="num">18 may</td><td class="num">2</td><td class="num">2</td><td class="num right">100%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section style="margin-bottom:0">
+        <h2 class="sec" style="margin-bottom:10px">Los tres números</h2>
+        <div class="kpis" style="grid-template-columns:1fr 1fr;gap:10px">
+          <div class="kpi" style="padding:13px"><div class="v" style="font-size:22px">36</div><div class="k" style="font-size:12px">Usuarios nuevos</div></div>
+          <div class="kpi" style="padding:13px"><div class="v" style="font-size:22px">67%</div><div class="k" style="font-size:12px">Activación</div></div>
+          <div class="kpi" style="padding:13px;grid-column:1/-1"><div class="v" style="font-size:22px">$0</div><div class="k" style="font-size:12px">Ingresos 30 días</div><div class="s">$109.940 con cuentas internas</div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="frame" style="margin:12px 0;flex:none;width:390px;max-width:390px">
+    <div class="topbar">
+      <div class="tin" style="padding:12px 14px 0">
+        <div class="wm" style="font-size:17px"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span></div>
+        <a class="back" href="#" style="font-size:12px">←</a>
+      </div>
+      <nav class="tabs" style="padding:0 14px"><a class="tab" href="#">Resumen</a><a class="tab" href="#">Usuarios</a><a class="tab on" href="#">Operación</a></nav>
+    </div>
+    <div class="page" style="padding:18px 14px 26px">
+      <section style="margin-bottom:24px">
+        <h2 class="sec" style="margin-bottom:10px">Estado del sistema</h2>
+        <div class="pills" style="flex-wrap:nowrap">
+          <div class="pill bad"><span class="dot err"></span><div><div class="pl">UF</div><div class="pv">16 mar</div></div></div>
+          <div class="pill bad"><span class="dot err"></span><div><div class="pl">Cron UF/Tasa</div><div class="pv">nunca</div></div></div>
+          <div class="pill"><span class="dot ok"></span><div><div class="pl">Scraping</div><div class="pv">9 h</div></div></div>
+          <div class="pill"><span class="dot ok"></span><div><div class="pl">Usuarios</div><div class="pv">48</div></div></div>
+        </div>
+        <div class="card pad" style="margin-top:11px;border-color:rgba(200,50,60,.35);padding:13px">
+          <div class="lbl" style="color:var(--signal-red);margin-bottom:6px">Alerta</div>
+          <p style="font-size:12px;color:var(--franco-text-secondary);line-height:1.55">UF y tasa congeladas desde el 16 de marzo: la ruta que las actualiza no tiene cron. Además el valor está ×100 por un bug de parseo.</p>
+        </div>
+      </section>
+      <section style="margin-bottom:0">
+        <h2 class="sec" style="margin-bottom:10px">Cobertura</h2>
+        <div class="card pad" style="padding:13px">
+          <table>
+            <thead><tr><th>Comuna</th><th class="right">Antigüedad</th></tr></thead>
+            <tbody>
+              <tr><td>Conchalí</td><td class="num right" style="color:var(--signal-red)">131 d</td></tr>
+              <tr><td>Peñalolén</td><td class="num right" style="color:var(--signal-red)">131 d</td></tr>
+              <tr><td>La Cisterna</td><td class="num right">57 d</td></tr>
+              <tr><td>Puente Alto</td><td class="num right">57 d</td></tr>
+              <tr><td class="dim">… 19 más</td><td class="num right dim">≤ 52 d</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="mk" style="padding-top:36px;padding-bottom:48px">
+  <div class="lbl" style="margin-bottom:9px">Lo que el mockup fija</div>
+  <p style="max-width:82ch">
+    1 · <b>/admin</b> queda con exactamente 4 bloques: titular en prosa → funnel proporcional con caída explícita → tendencia (gráfico Recharts + cohorte) → 3 KPIs. Se va el bloque Segmentos.<br>
+    2 · <b>/admin/operacion</b> es pestaña nueva y se lleva: estado del sistema, acciones, cobertura, análisis compartidos, últimos Pro y documentos tributarios.<br>
+    3 · El funnel usa barras horizontales proporcionales al valor y muestra la caída en usuarios <b>y</b> en porcentaje entre etapa y etapa.<br>
+    4 · Las series y el funnel salen de <b>dos RPC nuevas</b> (<span class="mono" style="font-size:12px">admin_weekly_stats</span> y <span class="mono" style="font-size:12px">admin_overview</span>): agregación en SQL, cero filas viajando a JS. Eso mata el <span class="mono" style="font-size:12px">TOPE_USUARIOS=1000</span> de la rama anterior. El SQL va en <span class="mono" style="font-size:12px">docs/sql/admin-panel-rpcs.sql</span> para correr a mano.<br>
+    5 · La pill «Usuarios» pasa a contar usuarios de verdad (48 reales / 83 total), no filas de <span class="mono" style="font-size:12px">user_credits</span> — que eran 69 porque 14 cuentas viejas nunca tuvieron fila.<br>
+    6 · Las pills en rojo dejan de decir solo «—»: hay un bloque que explica qué está roto y desde cuándo.<br>
+    7 · <b>Sin mapa de comunas</b>: no hay GeoJSON en el repo ni librería de mapas instalada. Queda la tabla ordenada por antigüedad, con las dos comunas críticas arriba.
+  </p>
+</div>
+
+</body>
+</html>

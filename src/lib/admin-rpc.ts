@@ -145,6 +145,102 @@ export async function adminMetrics(
 }
 
 /**
+ * Funnel y KPIs del resumen, en una fila. Ver docs/sql/admin-panel-rpcs.sql.
+ *
+ * `activaron` = usuarios con al menos un análisis. Es la MISMA definición que
+ * usa la serie semanal: una sola idea de "activación" en toda la pantalla.
+ * welcome_credit_used quedó descartado como criterio de etapa — es un flag de
+ * cobro, no una acción del usuario.
+ */
+export interface AdminOverview {
+  registrados: number;
+  activaron: number;
+  iniciaron_checkout: number;
+  pagaron: number;
+  nuevos_30d: number;
+  ingresos_30d: number;
+  analisis_30d: number;
+}
+
+const OVERVIEW_VACIO: AdminOverview = {
+  registrados: 0,
+  activaron: 0,
+  iniciaron_checkout: 0,
+  pagaron: 0,
+  nuevos_30d: 0,
+  ingresos_30d: 0,
+  analisis_30d: 0,
+};
+
+/**
+ * Agregados del resumen. Reemplaza el TOPE_USUARIOS=1000 que traía hasta mil
+ * filas de usuarios a JS solo para contar tres cosas.
+ *
+ * Si la función todavía no existe en la base (el SQL se corre a mano), loguea y
+ * devuelve ceros: el panel se ve vacío pero no se cae.
+ */
+export async function adminOverview(
+  sb: SupabaseClient,
+  includeTest = false
+): Promise<AdminOverview> {
+  const { data, error } = await sb.rpc("admin_overview", { p_include_test: includeTest });
+
+  if (error) {
+    console.error("[adminOverview] rpc error:", error);
+    return OVERVIEW_VACIO;
+  }
+  // La RPC devuelve una sola fila; PostgREST la entrega como array.
+  const row = (Array.isArray(data) ? data[0] : data) as Partial<AdminOverview> | undefined;
+  if (!row) return OVERVIEW_VACIO;
+
+  return {
+    registrados: row.registrados ?? 0,
+    activaron: row.activaron ?? 0,
+    iniciaron_checkout: row.iniciaron_checkout ?? 0,
+    pagaron: row.pagaron ?? 0,
+    nuevos_30d: row.nuevos_30d ?? 0,
+    ingresos_30d: Number(row.ingresos_30d ?? 0),
+    analisis_30d: row.analisis_30d ?? 0,
+  };
+}
+
+/** Una semana de la serie. `semana` es el lunes, en formato YYYY-MM-DD. */
+export interface AdminSemana {
+  semana: string;
+  registros: number;
+  activaciones: number;
+  /** Usuarios registrados ESA semana que activaron alguna vez (la cohorte). */
+  cohorte_activados: number;
+}
+
+/**
+ * Serie semanal de registros y activaciones, más la cohorte por semana de alta.
+ * La RPC devuelve siempre las N semanas completas (las vacías en cero), así que
+ * el gráfico no inventa continuidad donde hubo un hueco.
+ */
+export async function adminWeeklyStats(
+  sb: SupabaseClient,
+  { weeks = 12, includeTest = false }: { weeks?: number; includeTest?: boolean } = {}
+): Promise<AdminSemana[]> {
+  const { data, error } = await sb.rpc("admin_weekly_stats", {
+    p_weeks: weeks,
+    p_include_test: includeTest,
+  });
+
+  if (error) {
+    console.error("[adminWeeklyStats] rpc error:", error);
+    return [];
+  }
+
+  return ((data ?? []) as Array<Partial<AdminSemana>>).map((r) => ({
+    semana: String(r.semana ?? ""),
+    registros: r.registros ?? 0,
+    activaciones: r.activaciones ?? 0,
+    cohorte_activados: r.cohorte_activados ?? 0,
+  }));
+}
+
+/**
  * Saldo a MOSTRAR de una fila de la RPC.
  *
  * Misma suma que `getAvailableCredits` (src/lib/credits-grant.ts): lotes vivos del

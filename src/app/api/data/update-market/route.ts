@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { parseNumeroBCCH, esUFPlausible, esTasaPlausible } from "@/lib/uf";
 
 function getSupabase() {
   return createClient(
@@ -62,12 +63,18 @@ export async function POST(request: Request) {
   const tasaObs = await fetchBCCH("F022.VIV.TIP.MA03.UF.Z.M", firstDate, today);
   if (tasaObs && tasaObs.length > 0) {
     const latest = tasaObs[tasaObs.length - 1];
-    const value = parseFloat(String(latest.value).replace(",", "."));
-    if (!isNaN(value) && value > 0) {
+    const value = parseNumeroBCCH(latest.value);
+    // Guarda de plausibilidad: si el valor no entra en la banda, NO se escribe.
+    // Dejar el dato viejo es mejor que pisarlo con basura — el stale se ve en el
+    // panel con su fecha, el corrupto no se ve hasta que alguien lo audita.
+    if (esTasaPlausible(value)) {
       const { error } = await supabase
         .from("config")
         .upsert({ key: "tasa_hipotecaria", value: String(value), updated_at: new Date().toISOString() }, { onConflict: "key" });
       results.tasa = { value, source: "banco_central", error: error?.message };
+    } else {
+      console.error("[update-market] tasa implausible, no se escribe:", latest.value, "→", value);
+      results.tasa = { error: `Valor implausible del BCCh: ${String(latest.value)}` };
     }
   } else {
     results.tasa = { error: "No data from BCCH (check BCCH_API_USER/BCCH_API_PASS)" };
@@ -75,9 +82,11 @@ export async function POST(request: Request) {
 
   // 2. UF (serie diaria)
   let ufValue: number | null = null;
+  let ufCrudo = "";
   const ufObs = await fetchBCCH("F073.UFF.PRE.Z.D", today, today);
   if (ufObs && ufObs.length > 0) {
-    ufValue = parseFloat(String(ufObs[0].value).replace(/\./g, "").replace(",", "."));
+    ufCrudo = String(ufObs[0].value);
+    ufValue = parseNumeroBCCH(ufCrudo);
   } else {
     // Si no hay dato de hoy, intentar ayer
     const yesterday = new Date();
@@ -85,16 +94,23 @@ export async function POST(request: Request) {
     const yDate = yesterday.toISOString().split("T")[0];
     const ufObs2 = await fetchBCCH("F073.UFF.PRE.Z.D", yDate, yDate);
     if (ufObs2 && ufObs2.length > 0) {
-      ufValue = parseFloat(String(ufObs2[0].value).replace(/\./g, "").replace(",", "."));
+      ufCrudo = String(ufObs2[0].value);
+      ufValue = parseNumeroBCCH(ufCrudo);
       results.uf = { date: yDate };
     }
   }
 
-  if (ufValue && !isNaN(ufValue) && ufValue > 0) {
+  // Misma guarda que la tasa. Acá importa el doble: este es el valor que quedó
+  // ×100 en config desde el 2026-03-16 y nadie lo notó, porque el único chequeo
+  // que había río abajo era `> 30000` — que 3.984.172 cumple de sobra.
+  if (esUFPlausible(ufValue)) {
     const { error } = await supabase
       .from("config")
       .upsert({ key: "uf_value", value: String(Math.round(ufValue)), updated_at: new Date().toISOString() }, { onConflict: "key" });
     results.uf = { ...results.uf, value: Math.round(ufValue), source: "banco_central", error: error?.message };
+  } else if (ufValue != null) {
+    console.error("[update-market] UF implausible, no se escribe:", ufCrudo, "→", ufValue);
+    results.uf = { ...results.uf, error: `Valor implausible del BCCh: ${ufCrudo}` };
   } else if (!results.uf?.date) {
     results.uf = { error: "No UF data from BCCH" };
   }
