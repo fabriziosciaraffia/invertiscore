@@ -29,12 +29,19 @@ export const DECISIVIDAD_FLOOR_ORDEN = 0.85;
 // determinístico y calza con el mockup vinculante (capex 08 · plusvalía 09).
 const rankDireccion = (d: Hallazgo["direccion"]) => (d === "adverso" ? 0 : d === "favorable" ? 2 : 1);
 
-/** Comparador de tres niveles: decisividad DESC, magnitud continua DESC,
- *  y a empate total, adverso antes que favorable. */
+/** Comparador de cuatro niveles: decisividad DESC, magnitud continua DESC,
+ *  a empate total adverso antes que favorable, y como último recurso el id
+ *  (alfabético). El id cierra el orden TOTAL: sin él, un empate exacto (ej.
+ *  cap_rate y sobreprecio ambos 1,00/1,00 en a610e8bb) lo resolvía la
+ *  estabilidad del sort — es decir, el orden de gather de cada superficie —
+ *  y la apertura Plan C podía anclar un 01 distinto del que la pirámide
+ *  mostraba. Con el id, todas las superficies computan el mismo orden
+ *  aunque junten los hallazgos en secuencias distintas. */
 export const cmpDecisividad = (a: Hallazgo, b: Hallazgo) =>
   b.decisividad - a.decisividad ||
   (b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0) ||
-  rankDireccion(a.direccion) - rankDireccion(b.direccion);
+  rankDireccion(a.direccion) - rankDireccion(b.direccion) ||
+  a.id.localeCompare(b.id);
 
 /**
  * Orden único (esquema C-umbral) sobre una lista ya deduplicada. El "adverso
