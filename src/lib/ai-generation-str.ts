@@ -628,7 +628,7 @@ ${projY10 && exit ? `Patrimonio neto al año ${exit.yearVenta} (valor del activo
 Flujo operativo acumulado a ese año (dato APARTE, no entra al patrimonio): ${fmtCLPSigned(projY10.flujoAcumulado)}
 Tu parte al vender año ${exit.yearVenta} (EQUITY = lo que te queda en la mano al liquidar el activo, neto de deuda y comisión, SIN flujo; NO "ganancia neta"): ${fmtCLPSigned(exit.equityCLP)}
 Retorno total (equity + flujo acumulado): ${fmtCLPSigned(exit.retornoTotal)}
-TIR @ ${exit.yearVenta} años: ${pct(exit.tirAnual)}% · Multiplicador de capital (equity/aportado, ×1 = recuperas lo puesto): ${sinCapitalPropio ? NO_APLICA_PROMPT : metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
+TIR @ ${exit.yearVenta} años: ${sinCapitalPropio ? NO_APLICA_PROMPT : metricaDisplay(exit.tirAnual, (n) => `${pct(n)}%`)} · Multiplicador de capital (equity/aportado, ×1 = recuperas lo puesto): ${sinCapitalPropio ? NO_APLICA_PROMPT : metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
 ${sinCapitalPropio
   ? `Comparación de múltiplos: no aplica — sin capital propio (pie $0) no hay múltiplo que comparar. El Ángulo 3 se hace en FLUJO y esfuerzo (## 5.bis.c): nombra el flujo mensual y lo que exige operar el STR frente a no operar nada; nunca un retorno sobre capital que no existe.`
   : `Depósito a plazo (UF+5%) a 10 años, sobre ese mismo capital aportado (${fmtCLP(exit.totalAportado)}): ${fmtCLP(Math.round(exit.totalAportado * Math.pow(1.05, 10)))} (múltiplo ×${pct(Math.pow(1.05, 10), 2)})

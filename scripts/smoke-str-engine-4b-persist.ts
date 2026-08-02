@@ -127,7 +127,9 @@ async function main() {
     'has_francoVerdict': typeof r.francoVerdict === 'string',
     'engineSignal_eq_veredicto': r.engineSignal === r.veredicto,
     'projections_y10_patrimonio_positive': typeof projections?.[9]?.patrimonioNeto === 'number' && (projections[9].patrimonioNeto as number) > 0,
-    'exit_tirAnual_is_number': typeof exitScenario?.tirAnual === 'number',
+    // Rama A: tirAnual es MetricaSobreCapital (unión) o number crudo en filas
+    // legacy. El assert deja de exigir number y verifica que el dato LLEGA.
+    'exit_tirAnual_presente': exitScenario?.tirAnual != null,
   };
 
   console.log('=== PERSISTENCE CHECKS ===');

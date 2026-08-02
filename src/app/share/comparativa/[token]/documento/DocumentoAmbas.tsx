@@ -102,7 +102,10 @@ export function DocumentoAmbas({
   const strNOIMensual = strBase?.noiMensual ?? 0;
   const strFlujoMensual = strBase?.flujoCajaMensual ?? 0;
   const strCapital = strResults?.capitalInvertido ?? 0;
-  const strTir = strResults?.exitScenario?.tirAnual ?? 0;
+  // Rama A: `tirAnual` STR pasó a MetricaSobreCapital. Solo se usa en la rama
+  // pie > 0 de la fila (con pie 0 la fila entera es "No aplica*"), pero el
+  // desenvuelto es obligatorio: la unión no es un number.
+  const strTir = metricaODefault(strResults?.exitScenario?.tirAnual, 0);
   const strCap = (strBase?.capRate ?? 0) * 100;
 
   const ltrProj = ltrResults?.projections ?? [];

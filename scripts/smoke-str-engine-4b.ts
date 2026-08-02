@@ -2,6 +2,7 @@
 // Verifica que projections + exitScenario + engineSignal + francoVerdict
 // aparezcan en el output con valores coherentes para un caso típico.
 import { calcShortTerm, type ShortTermInputs, type AirbnbData } from '../src/lib/engines/short-term-engine';
+import { metricaValorONull } from '../src/lib/types';
 
 const airbnbData: AirbnbData = {
   estimated_adr: 75000,
@@ -72,7 +73,7 @@ console.log({
 const ex = r.exitScenario;
 if (!ex) throw new Error('exitScenario undefined');
 console.log({
-  tirAnualPct: ex.tirAnual,
+  tirAnualPct: metricaValorONull(ex.tirAnual),
   multiplicadorCapital: ex.multiplicadorCapital,
   gananciaNetaPositiva: ex.gananciaNeta > 0,
 });

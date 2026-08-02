@@ -365,9 +365,17 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   const HORIZONTE_TIR_MINIMO = 10;        // TIR nominal % a 10 años.
   const HORIZONTE_MULT_MINIMO = 2.65;     // equity(sin flujo)/totalAportado (re-derivado).
   const exit = inputs.results.exitScenario;
-  const tir = exit?.tirAnual;
-  // Pie cero: multiplicador 'no_aplica' ⇒ null ⇒ ese brazo del horizonte se omite
-  // (la TIR STR sigue siendo number). Legacy con number crudo pasa igual que antes.
+  // RAMA A (pie-cero-str-tir): `tirAnual` pasó a MetricaSobreCapital para el
+  // render/prompt, pero este gate sigue leyendo el NÚMERO — de `tirAnualParaGate`,
+  // que lo conserva. La rama A migra la presentación sin mover un solo veredicto;
+  // qué hace este brazo sin capital propio es la decisión de la rama B.
+  // Legacy (jsonb pre-rama-A, sin el campo): cae al number crudo de `tirAnual`.
+  const tir =
+    typeof exit?.tirAnualParaGate === "number"
+      ? exit.tirAnualParaGate
+      : metricaValorONull(exit?.tirAnual);
+  // Pie cero: multiplicador 'no_aplica' ⇒ null ⇒ ese brazo del horizonte se omite.
+  // Legacy con number crudo pasa igual que antes.
   const multCap = metricaValorONull(exit?.multiplicadorCapital);
   const horizonteCierraFavorable =
     exit != null &&

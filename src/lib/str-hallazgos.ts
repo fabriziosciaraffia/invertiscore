@@ -9,6 +9,7 @@
 // magnitud para el sort. No se construye un calcDecisividades STR.
 
 import type { Hallazgo } from "./types";
+import { metricaValorONull } from "./types";
 import type { ShortTermResult } from "./engines/short-term-engine";
 import type { FrancoScoreSTR } from "./engines/short-term-score";
 import { STR_UNIVERSO_OCC } from "./engines/str-universo-santiago";
@@ -184,7 +185,13 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
   // ── INTEGRADORES (condicionales a exitScenario, solo-lectura) ──
   const exit = r.exitScenario;
   if (exit) {
-    out.push(buildHallazgoTIR({ tirPct: exit.tirAnual, modalidad: "str" }));
+    // Pie cero (rama A): TIR 'no_aplica' ⇒ hallazgo ausente, igual que LTR
+    // (analysis.ts:1882-83). Sin este guard, con pie 0 el corto emitía un hallazgo
+    // de TIR que el largo ya no emite — la misma asimetría que la rama cierra.
+    const tirNum = metricaValorONull(exit.tirAnual);
+    if (tirNum !== null) {
+      out.push(buildHallazgoTIR({ tirPct: tirNum, modalidad: "str" }));
+    }
     out.push(
       buildHallazgoPatrimonio({
         patrimonioCLP: exit.equityCLP,

@@ -71,6 +71,11 @@ export function DocumentoSTR({
   const cocNA = esMetricaNoAplica(base.cashOnCash);
   const cocBaseNum = metricaValorONull(base.cashOnCash);
   const cocBasePct = cocBaseNum === null ? null : cocBaseNum * 100;
+  // Rama A: la TIR se suma al mismo tratamiento. Sin esto, el bloque imprimía
+  // "Cash-on-cash: No aplica*" junto a "TIR: 18,5%" — dos métricas sobre el mismo
+  // capital inexistente, una declarada y la otra celebrada.
+  const tirNA = esMetricaNoAplica(results.exitScenario?.tirAnual);
+  const tirNum = metricaValorONull(results.exitScenario?.tirAnual);
   const sinPie = results.pie === 0;
 
   // ── Portada · metadata ──
@@ -491,14 +496,19 @@ export function DocumentoSTR({
           <div className="sim-block">
             <p className="sbl">Indicadores @ {exit?.yearVenta ?? 10} años</p>
             <div className="kpis">
-              <div className="kpi"><p className="kk">TIR a {exit?.yearVenta ?? 10} años</p><div className="kv">{exit ? pct(exit.tirAnual) : "—"}</div></div>
+              {/* Orden de evaluación (contrato del mockup): 'no aplica' PRIMERO —
+                  si el guard legacy va antes, un pie 0 cae en "—" (sin dato) en vez
+                  del tratamiento. El `!== 0` se conserva para el legacy pre-4b. */}
+              <div className="kpi"><p className="kk">TIR a {exit?.yearVenta ?? 10} años</p><div className="kv" style={tirNA ? { fontSize: 11, fontWeight: 500 } : undefined}>{tirNA ? "No aplica*" : exit && tirNum !== null && tirNum !== 0 ? pct(tirNum) : "—"}</div></div>
               <div className="kpi"><p className="kk">CAP rate</p><div className={`kv ${capBasePct < 5 ? "neg" : ""}`}>{pct(capBasePct)}</div></div>
               <div className="kpi"><p className="kk">Cash-on-cash</p><div className={`kv ${(cocBasePct ?? 0) < 0 ? "neg" : ""}`} style={cocNA ? { fontSize: 11, fontWeight: 500 } : undefined}>{cocNA ? "No aplica*" : cocBasePct === null ? "—" : pct(cocBasePct)}</div></div>
               <div className="kpi"><p className="kk">NOI mensual</p><div className="kv">{money(base.noiMensual)}</div></div>
               <div className="kpi"><p className="kk">Recup. amoblam.</p><div className="kv">{c.paybackMeses > 0 ? `${c.paybackMeses} m` : c.paybackMeses === 0 ? "—" : "N/A"}</div></div>
               <div className="kpi"><p className="kk">Ocupación</p><div className="kv">{occPct}%</div></div>
             </div>
-            {cocNA && <p className="foot" style={{ marginTop: 8 }}>{NO_APLICA_FOOTNOTE_DOC}</p>}
+            {/* La footnote cubre TODAS las métricas sobre capital del bloque: condicionarla
+                por una sola (cocNA) fue el acople que dejó la TIR contradiciéndola. */}
+            {(cocNA || tirNA) && <p className="foot" style={{ marginTop: 8 }}>{NO_APLICA_FOOTNOTE_DOC}</p>}
             <div className="box" style={{ marginTop: 14 }}>
               <p className="bl">Escenario base · congelado</p>
               <p className="bt">Escenario del análisis: ocupación {occPct}%, gestión por {modoGestion === "auto" ? "autogestión" : "administrador"}. En la versión interactiva ajustas ocupación, tarifa y gestión y todos recalculan; en el documento quedan fijos.</p>

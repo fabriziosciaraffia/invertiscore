@@ -30,8 +30,14 @@ export function IndicatorsSTR({
   // TIR proviene de exitScenario (Ronda 4b). Análisis pre-4b no lo tienen
   // persistido — render con "—" en lugar de 0 (que confunde con "TIR real = 0%").
   const exit = results.exitScenario;
-  const hasTir = !!exit && Number.isFinite(exit.tirAnual) && exit.tirAnual !== 0;
-  const tirValue = exit?.tirAnual ?? 0;
+  // Rama A · orden de evaluación (contrato del mockup): 'no aplica' se pregunta
+  // PRIMERO. Si el guard legacy fuera antes, un pie 0 caería en "—" (sin dato) en
+  // vez del tratamiento D1 — la distinción que fase 3 fijó. El `!== 0` se conserva
+  // para el legacy pre-Ronda 4b, que trae tirAnual 0 crudo y sin él diría "0,0%".
+  const tirNA = esMetricaNoAplica(exit?.tirAnual);
+  const tirNum = metricaValorONull(exit?.tirAnual);
+  const hasTir = !tirNA && !!exit && tirNum !== null && tirNum !== 0;
+  const tirValue = tirNum ?? 0;
   const yearsExit = exit?.yearVenta ?? 10;
   const payback = results.comparativa.paybackMeses;
 
@@ -71,9 +77,13 @@ export function IndicatorsSTR({
     },
     {
       label: `TIR a ${yearsExit} AÑOS`,
-      value: hasTir ? fmtPct(tirValue, 1) : "—",
-      tone: !hasTir ? "neutral" : tirValue < 0 ? "bad" : "neutral",
-      tooltip: "Tasa interna de retorno considerando capital inicial, flujos operativos año a año y venta del activo al año del horizonte.",
+      value: tirNA ? NO_APLICA_VALOR : hasTir ? fmtPct(tirValue, 1) : "—",
+      // Un "No aplica" nunca hereda Signal Red: no es criticidad, es N/A deliberado.
+      tone: tirNA || !hasTir ? "neutral" : tirValue < 0 ? "bad" : "neutral",
+      tooltip: tirNA
+        ? NO_APLICA_TOOLTIP
+        : "Tasa interna de retorno considerando capital inicial, flujos operativos año a año y venta del activo al año del horizonte.",
+      na: tirNA,
     },
   ];
 

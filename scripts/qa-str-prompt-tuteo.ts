@@ -10,6 +10,7 @@ import { config } from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
+import { metricaValorONull } from '../src/lib/types';
 import Anthropic from '@anthropic-ai/sdk';
 import { SYSTEM_PROMPT_STR } from '../src/lib/ai-generation-str';
 import type { ShortTermResult, STRVerdict } from '../src/lib/engines/short-term-engine';
@@ -180,8 +181,8 @@ Pérdida ramp-up 3 meses: ${fmtCLP(r.perdidaRampUp)}
 === PROYECCIÓN LARGO PLAZO ===
 ${projY10 && exit ? `Patrimonio neto al año ${exit.yearVenta}: ${fmtCLP(projY10.patrimonioNeto)}
 Ganancia neta al vender año ${exit.yearVenta}: ${fmtCLPSigned(exit.gananciaNeta)}
-TIR @ ${exit.yearVenta} años: ${exit.tirAnual.toFixed(1)}%
-Multiplicador capital: ${exit.multiplicadorCapital.toFixed(2)}x` : '(no disponible)'}
+TIR @ ${exit.yearVenta} años: ${metricaValorONull(exit.tirAnual)?.toFixed(1) ?? "no aplica"}%
+Multiplicador capital: ${metricaValorONull(exit.multiplicadorCapital)?.toFixed(2) ?? "no aplica"}x` : '(no disponible)'}
 
 ═══════════════════════════════════════════════════════════════════
 INSTRUCCIÓN FINAL

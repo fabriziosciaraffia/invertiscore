@@ -150,7 +150,9 @@ export function strFactsFromSeed(r: StrRecompute): StrBaseline {
     veredicto: r.score.veredicto,
     score: r.score.score,
     N: r.hz.length,
-    tirPct: exit?.tirAnual ?? null,
+    // Pie cero (rama A): tirAnual pasó a MetricaSobreCapital — mismo desenvuelto
+    // que el multiplicador de abajo y que el extractor LTR (extract.ts:190).
+    tirPct: metricaValorONull(exit?.tirAnual),
     // Pie cero (fase 1-2): multiplicadorCapital pasó a MetricaSobreCapital;
     // metricaValorONull extrae el número (y tolera el number crudo legacy).
     multiplicadorCapital: metricaValorONull(exit?.multiplicadorCapital),
