@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pie cero · AMBAS — hoja 2 del documento comparativo · mockup contrato</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,700;1,400;1,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink900:#0F0F0F; --ink100:#FAFAF8; --ink400:#B4B2A9; --ink500:#888780; --red:#C8323C;
+    --card:#1A1A1A; --elevated:#222222;
+    --text:#FAFAF8; --text2:rgba(250,250,248,0.5); --text3:#888780; --muted:rgba(250,250,248,0.35);
+    --border:rgba(250,250,248,0.06); --border-strong:rgba(250,250,248,0.15);
+    --serif:'Source Serif 4',Georgia,serif; --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:#0a0a0a;color:var(--text);font-family:var(--sans);margin:0;padding:40px 20px;}
+  .page{max-width:1040px;margin:0 auto;}
+  .pagehead h1{font-family:var(--serif);font-weight:700;font-size:26px;margin:0 0 6px;}
+  .pagehead .sub{font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 14px;}
+  .contract{border:.5px dashed var(--border-strong);border-radius:8px;padding:14px 16px;margin-bottom:8px;}
+  .contract p{font-family:var(--sans);font-size:12px;line-height:1.55;color:var(--text2);margin:0 0 6px;}
+  .contract p:last-child{margin:0;}
+  .contract b{color:var(--text);font-weight:500;}
+  .contract i{color:var(--text2);}
+  .caso{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;}
+  .caso span{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);
+    border:.5px solid var(--border-strong);border-radius:4px;padding:3px 8px;}
+  .caso span b{color:var(--text);font-weight:700;}
+
+  .split{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--red);
+    margin:48px 0 6px;padding-bottom:8px;border-bottom:.5px solid var(--border-strong);}
+  .files{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.02em;margin:0 0 16px;}
+  .files b{color:var(--text2);font-weight:500;}
+
+  .stack{display:flex;flex-direction:column;gap:18px;}
+  .stage{background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:18px;position:relative;}
+  .stage .tag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin:0 0 14px;
+    display:inline-block;border-radius:4px;padding:3px 8px;}
+  .tag.antes{color:var(--text3);border:.5px solid var(--border-strong);}
+  .tag.despues{color:var(--ink900);background:var(--ink100);font-weight:700;}
+  .tag.control{color:var(--text2);border:.5px solid var(--border-strong);}
+  .lie{outline:1px dashed color-mix(in srgb,var(--red) 55%,transparent);outline-offset:3px;border-radius:4px;}
+  .lienote{font-family:var(--mono);font-size:9px;letter-spacing:.03em;color:var(--red);margin:10px 0 0;text-transform:uppercase;line-height:1.5;}
+  .oknote{font-family:var(--mono);font-size:9px;letter-spacing:.03em;color:var(--text3);margin:10px 0 0;text-transform:uppercase;line-height:1.5;}
+  .designnote{border-left:3px solid var(--ink400);background:color-mix(in srgb,var(--text) 3%,transparent);
+    border-radius:0 8px 8px 0;padding:10px 14px;margin:16px 0 0;}
+  .designnote p{font-family:var(--sans);font-size:11.5px;line-height:1.55;color:var(--text2);margin:0 0 7px;}
+  .designnote p:last-child{margin:0;}
+  .designnote b{color:var(--text);font-weight:500;}
+  .designnote code{font-family:var(--mono);font-size:10.5px;color:var(--text);}
+
+  /* ── Documento (tema claro ESTRUCTURAL, espejo de documento.css) ─────────── */
+  .doc{background:#FFFFFF;color:#0F0F0F;border-radius:10px;padding:20px 22px;
+    --dtext:#0f0f0f; --dsec:#52525b; --dmuted:#6b6b72; --dter:#6a6a71;
+    --dborder:#dddde1; --dstrong:#b0b0b8; --dsunken:#f0f0f2;}
+  .doc .eyebrow{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--dter);margin:0 0 6px;}
+  .doc .title{font-family:var(--serif);font-weight:700;font-size:21px;line-height:1.2;margin:0;}
+  .doc .body{font-family:var(--sans);font-size:12.5px;line-height:1.62;color:var(--dsec);margin:6px 0 12px;}
+
+  /* .faceoff — valores calcados de documento.css:140-155 */
+  .faceoff{border:.5px solid var(--dborder);border-radius:10px;overflow:hidden;margin:16px 0 0;}
+  .faceoff .hdr,.faceoff .row{display:grid;grid-template-columns:1.35fr 1fr 1fr;}
+  .faceoff .hdr{background:var(--dsunken);}
+  .faceoff .hdr>div{padding:10px 16px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--dsec);}
+  .faceoff .hdr>div.hl{color:var(--dtext);font-weight:700;}
+  .faceoff .row{border-top:.5px solid var(--dborder);}
+  .faceoff .row>div{padding:9px 16px;}
+  .faceoff .m{font-family:var(--sans);font-size:11.5px;color:var(--dtext);}
+  .faceoff .m small{color:var(--dmuted);font-size:9.5px;}
+  .faceoff .val{font-family:var(--mono);font-weight:700;font-size:13px;}
+  .faceoff .val.neg{color:var(--red);}
+  .faceoff .val.txt{font-size:11px;font-weight:500;}
+  .faceoff .val small{font-weight:400;font-size:9px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--dmuted);display:block;margin-top:1px;}
+  .faceoff .col-win{background:rgba(15,15,15,.03);}
+  .faceoff .foot{font-family:var(--sans);font-size:10.5px;line-height:1.5;color:var(--dsec);
+    padding:11px 16px;background:rgba(15,15,15,.02);border-top:.5px solid var(--dborder);}
+  .modtag{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:1px 6px;border-radius:4px;border:1px solid var(--dstrong);color:var(--dsec);}
+
+  /* NUEVO · lo único que este mockup agrega al CSS del documento */
+  .faceoff .val.na{font-family:var(--mono);font-weight:500;font-size:11.5px;color:var(--dsec);letter-spacing:.01em;}
+  .faceoff .fn{font-family:var(--sans);font-size:9.5px;line-height:1.5;color:var(--dmuted);
+    padding:8px 16px;border-top:.5px dashed var(--dstrong);}
+
+  .fnbox{background:var(--card);border:.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
+  .fnbox .fl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:0 0 8px;}
+  .fnbox .ft{font-family:var(--sans);font-size:12px;line-height:1.6;color:var(--text);margin:0;}
+  .fnbox .ft .add{color:var(--ink100);background:color-mix(in srgb,var(--ink400) 22%,transparent);
+    border-radius:3px;padding:0 3px;}
+  .fnbox .ft.old{color:var(--text2);}
+  .fnbox .why{font-family:var(--sans);font-size:11px;line-height:1.55;color:var(--text2);margin:9px 0 0;}
+
+  .pend{border:.5px dashed var(--border-strong);border-radius:10px;padding:14px 18px;margin-top:6px;}
+  .pend h3{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:0 0 10px;}
+  .pend li{font-family:var(--sans);font-size:12px;line-height:1.6;color:var(--text2);margin-bottom:9px;}
+  .pend li:last-child{margin-bottom:0;}
+  .pend b{color:var(--text);font-weight:500;font-family:var(--mono);font-size:11px;}
+  .footer{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:44px 0 0;text-align:center;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="pagehead">
+    <h1>Pie cero · AMBAS — la fila que no se puede comparar</h1>
+    <p class="sub">Mockup contrato · dark mode · rama pie-cero-ambas · base master 4aa898e</p>
+    <div class="contract">
+      <p><b>Este archivo es el contrato vinculante del mockup AMBAS.</b> Cero código de producto acá: solo el antes (lo que el documento imprime hoy con pie 0) y el después (el diseño que se implementa). Salda la deuda que el mockup de fase 3 dejó anotada explícitamente: <i>«DocumentoAmbas.tsx — la TIR LTR aplanada a 0 entra a la tabla face-off […]; el tratamiento pie-0 debe entrar AHÍ, no acá.»</i></p>
+      <p><b>Decisión cerrada · tratamiento SIMÉTRICO.</b> Con pie 0 la fila «TIR a 10 años» muestra «No aplica*» en <b>las dos</b> columnas y ninguna gana. El criterio: si la métrica no aplica de un lado, la comparación de esa fila no existe. <b>La fila no se elimina</b> — se declara no aplicable, que es información. Hereda D1 de fase 3 en su forma de documento (valor + asterisco + footnote única, sin sublabel por celda).</p>
+      <p><b>Por qué simétrico desde ya:</b> en el motor la TIR STR sigue siendo <code style="font-family:var(--mono);font-size:11px">number</code> mientras la LTR es <code style="font-family:var(--mono);font-size:11px">MetricaSobreCapital</code> — decisión consciente de fase 1-2, documentada en <span style="font-family:var(--mono);font-size:11px">short-term-score.ts:369</span>. Este mockup trata la fila a nivel de PRESENTACIÓN, no de motor. Cuando una rama futura migre la TIR STR, <b>este mockup no se rehace</b>: la fila ya se comporta igual.</p>
+      <p>Todas las cifras salen del motor real corriendo el seed golden <b>AG-6-ltr-preferido</b> (<span style="font-family:var(--mono);font-size:11px">ambas-seeds-frozen.json</span>), en dos corridas pareadas que solo cambian el pie. UF $38.800, fecha congelada:</p>
+      <div class="caso">
+        <span>Providencia</span><span>UF <b>5.281</b></span><span><b>50</b> m²</span><span>tasa <b>4,11%</b></span><span><b>25</b> años</span>
+        <span>arriendo <b>$893.000</b></span><span>ADR <b>$43.306</b> · occ <b>46%</b></span><span>autogestión</span>
+        <span>veredicto <b>LTR_PREFERIDO</b></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 1 · PIE 0 · ANTES ═══════════════ -->
+  <div class="split">1 · Hoja 2 con pie 0 — lo que el documento imprime hoy</div>
+  <p class="files">Implementa: <b>DocumentoAmbas.tsx:90</b> (<b>metricaODefault(ltr.exitScenario.tir, 0)</b>) + <b>:97</b> (str.exitScenario.tirAnual crudo) + <b>:123-137</b> (winMoney / rows)</p>
+
+  <div class="stack">
+    <div class="stage">
+      <span class="tag antes">ANTES · pie 0% · lo que se imprime hoy en master</span>
+      <div class="doc">
+        <p class="eyebrow">De un vistazo · frente a frente</p>
+        <h2 class="title">El destino es el mismo; el camino, distinto</h2>
+        <p class="body">Cada número sale del análisis propio de su modalidad. La columna «mejor» compara la fila, nada más.</p>
+        <div class="faceoff">
+          <div class="hdr">
+            <div>Indicador</div>
+            <div class="hl">Renta larga <span class="modtag">LTR</span></div>
+            <div class="hl">Renta corta <span class="modtag">STR</span></div>
+          </div>
+          <div class="row">
+            <div class="m">NOI mensual <small>· neto de gastos, antes de la cuota</small></div>
+            <div class="val col-win">$732.111<small>gana larga</small></div>
+            <div class="val">$307.262</div>
+          </div>
+          <div class="row">
+            <div class="m">Flujo mensual <small>· después de la cuota</small></div>
+            <div class="val neg col-win">$-436.341<small>gana larga</small></div>
+            <div class="val neg">$-786.774</div>
+          </div>
+          <div class="row">
+            <div class="m">Rentabilidad neta / CAP</div>
+            <div class="val col-win">3,9%<small>gana larga</small></div>
+            <div class="val">1,8%</div>
+          </div>
+          <div class="row lie">
+            <div class="m">TIR a 10 años</div>
+            <div class="val">0%</div>
+            <div class="val col-win">0,9%<small>gana corta</small></div>
+          </div>
+          <div class="row">
+            <div class="m">Capital de entrada</div>
+            <div class="val">$11.106.112</div>
+            <div class="val col-win">$10.508.056<small>gana corta</small></div>
+          </div>
+          <div class="row">
+            <div class="m">Esfuerzo operativo</div>
+            <div class="val txt col-win">~0,5 hrs/sem<small>gana larga</small></div>
+            <div class="val txt">8-12 hrs/sem</div>
+          </div>
+          <div class="row">
+            <div class="m">Riesgo principal</div>
+            <div class="val txt col-win">Vacancia entre arriendos<small>gana larga</small></div>
+            <div class="val txt">Estacionalidad + ocupación</div>
+          </div>
+          <div class="row">
+            <div class="m">Activo neto de deuda a 10 años</div>
+            <div class="val">$128.563.559</div>
+            <div class="val">$128.563.559<small>igual en las dos</small></div>
+          </div>
+          <div class="foot">A 10 años el activo es el mismo con cualquiera de las dos: el depto se aprecia igual y la deuda se amortiza igual. Lo que cambia es cuánto pones de tu bolsillo por el camino — y eso abre una diferencia de $40.294.377 a favor de la renta larga.</div>
+        </div>
+      </div>
+      <p class="lienote">▲ El 0% de la izquierda no existe: es la TIR LTR «no aplica» aplanada por el adaptador. Contra ese cero, un 0,9% real gana — y la fila TIR queda como la ÚNICA de las ocho que apunta a renta corta, contradiciendo al veredicto LTR_PREFERIDO de la hoja 1 y a las otras siete filas.</p>
+    </div>
+
+    <!-- ═══════════════ DESPUÉS ═══════════════ -->
+    <div class="stage">
+      <span class="tag despues">DESPUÉS · tratamiento simétrico</span>
+      <div class="doc">
+        <p class="eyebrow">De un vistazo · frente a frente</p>
+        <h2 class="title">El destino es el mismo; el camino, distinto</h2>
+        <p class="body">Cada número sale del análisis propio de su modalidad. La columna «mejor» compara la fila, nada más.</p>
+        <div class="faceoff">
+          <div class="hdr">
+            <div>Indicador</div>
+            <div class="hl">Renta larga <span class="modtag">LTR</span></div>
+            <div class="hl">Renta corta <span class="modtag">STR</span></div>
+          </div>
+          <div class="row">
+            <div class="m">NOI mensual <small>· neto de gastos, antes de la cuota</small></div>
+            <div class="val col-win">$732.111<small>gana larga</small></div>
+            <div class="val">$307.262</div>
+          </div>
+          <div class="row">
+            <div class="m">Flujo mensual <small>· después de la cuota</small></div>
+            <div class="val neg col-win">$-436.341<small>gana larga</small></div>
+            <div class="val neg">$-786.774</div>
+          </div>
+          <div class="row">
+            <div class="m">Rentabilidad neta / CAP</div>
+            <div class="val col-win">3,9%<small>gana larga</small></div>
+            <div class="val">1,8%</div>
+          </div>
+          <div class="row">
+            <div class="m">TIR a 10 años</div>
+            <div class="val na">No aplica*</div>
+            <div class="val na">No aplica*</div>
+          </div>
+          <div class="row">
+            <div class="m">Capital de entrada</div>
+            <div class="val">$11.106.112</div>
+            <div class="val col-win">$10.508.056<small>gana corta</small></div>
+          </div>
+          <div class="row">
+            <div class="m">Esfuerzo operativo</div>
+            <div class="val txt col-win">~0,5 hrs/sem<small>gana larga</small></div>
+            <div class="val txt">8-12 hrs/sem</div>
+          </div>
+          <div class="row">
+            <div class="m">Riesgo principal</div>
+            <div class="val txt col-win">Vacancia entre arriendos<small>gana larga</small></div>
+            <div class="val txt">Estacionalidad + ocupación</div>
+          </div>
+          <div class="row">
+            <div class="m">Activo neto de deuda a 10 años</div>
+            <div class="val">$128.563.559</div>
+            <div class="val">$128.563.559<small>igual en las dos</small></div>
+          </div>
+          <div class="fn">* Sin capital propio (pie $0): las métricas sobre tu capital no aplican en ninguna de las dos modalidades, así que esta fila no compara. Las dos se evalúan por flujo mensual y plusvalía.</div>
+          <div class="foot">A 10 años el activo es el mismo con cualquiera de las dos: el depto se aprecia igual y la deuda se amortiza igual. Lo que cambia es cuánto pones de tu bolsillo por el camino — y eso abre una diferencia de $40.294.377 a favor de la renta larga.</div>
+        </div>
+      </div>
+      <p class="oknote">▲ Ahora las ocho filas dicen lo mismo que el veredicto: renta larga gana donde hay algo que comparar, y donde no lo hay, la tabla lo dice en vez de inventarlo.</p>
+
+      <div class="designnote">
+        <p><b>Las cuatro reglas de la fila (contrato):</b></p>
+        <p><b>1 · Valor.</b> «No aplica*» en JetBrains Mono <b>11,5px peso 500</b>, color <code>--text-secondary</code> (#52525B) — proporción exacta del D1 de documento de fase 3 (<code>.doc .kv.na</code>: 11px/500 sobre un valor base de 16px/700; acá el valor base de <code>.faceoff .val</code> es 13px/700). Presencia tipográfica de decisión, no de dato faltante. <b>Cero Signal Red</b>: no es criticidad.</p>
+        <p><b>2 · Simetría.</b> Las dos celdas idénticas. La celda STR NO muestra su 0,9% aunque el motor todavía lo entregue como number: si la comparación no existe, no existe para ninguna de las dos.</p>
+        <p><b>3 · Nadie gana.</b> Ninguna celda lleva <code>col-win</code> (el wash <code>rgba(15,15,15,.03)</code>) ni el <code>&lt;small&gt;</code> de ganador. <b>Tampoco «empatan»</b>: hoy <code>win === "—"</code> imprime <code>{r.tie ?? "empatan"}</code> en la celda STR, y «empatan» sería falso — no empatan, no aplica. La fila pie-0 pasa sin ningún <code>&lt;small&gt;</code>; el asterisco hace el trabajo.</p>
+        <p><b>4 · Footnote única.</b> Una sola línea al pie del bloque, <b>antes</b> del <code>.foot</code> narrativo del patrimonio (que conserva su lugar de cierre). Sans 9,5px color <code>--text-muted</code>, separada por <code>border-top: .5px dashed</code>. Es la misma mecánica «No aplica* + footnote única» que fase 3 fijó para los documentos imprimibles — por eso el sublabel «SIN CAPITAL PROPIO (PIE $0)» NO se repite por celda: en una fila de dos columnas aparecería dos veces para decir lo mismo.</p>
+        <p><b>Lo único que se agrega al CSS del documento</b> son dos clases: <code>.faceoff .val.na</code> y <code>.faceoff .fn</code>. El resto de la tabla no se toca.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 2 · CONTROL PIE 20% ═══════════════ -->
+  <div class="split">2 · Control pie 20% — prueba de no-regresión</div>
+  <p class="files">Mismo seed AG-6, único cambio: <b>piePct 20</b>. La fila TIR conserva sus dos números y su ganador. Byte-idéntica a hoy.</p>
+
+  <div class="stage">
+    <span class="tag control">CONTROL · pie 20% · idéntica antes y después del cambio</span>
+    <div class="doc">
+      <p class="eyebrow">De un vistazo · frente a frente</p>
+      <h2 class="title">El destino es el mismo; el camino, distinto</h2>
+      <p class="body">Cada número sale del análisis propio de su modalidad. La columna «mejor» compara la fila, nada más.</p>
+      <div class="faceoff">
+        <div class="hdr">
+          <div>Indicador</div>
+          <div class="hl">Renta larga <span class="modtag">LTR</span></div>
+          <div class="hl">Renta corta <span class="modtag">STR</span></div>
+        </div>
+        <div class="row">
+          <div class="m">NOI mensual <small>· neto de gastos, antes de la cuota</small></div>
+          <div class="val col-win">$732.111<small>gana larga</small></div>
+          <div class="val">$307.262</div>
+        </div>
+        <div class="row">
+          <div class="m">Flujo mensual <small>· después de la cuota</small></div>
+          <div class="val neg col-win">$-217.534<small>gana larga</small></div>
+          <div class="val neg">$-567.967</div>
+        </div>
+        <div class="row">
+          <div class="m">Rentabilidad neta / CAP</div>
+          <div class="val col-win">3,9%<small>gana larga</small></div>
+          <div class="val">1,8%</div>
+        </div>
+        <div class="row">
+          <div class="m">TIR a 10 años</div>
+          <div class="val col-win">7%<small>gana larga</small></div>
+          <div class="val">2,5%</div>
+        </div>
+        <div class="row">
+          <div class="m">Capital de entrada</div>
+          <div class="val">$52.086.672</div>
+          <div class="val col-win">$51.488.616<small>gana corta</small></div>
+        </div>
+        <div class="row">
+          <div class="m">Esfuerzo operativo</div>
+          <div class="val txt col-win">~0,5 hrs/sem<small>gana larga</small></div>
+          <div class="val txt">8-12 hrs/sem</div>
+        </div>
+        <div class="row">
+          <div class="m">Riesgo principal</div>
+          <div class="val txt col-win">Vacancia entre arriendos<small>gana larga</small></div>
+          <div class="val txt">Estacionalidad + ocupación</div>
+        </div>
+        <div class="row">
+          <div class="m">Activo neto de deuda a 10 años</div>
+          <div class="val">$157.925.293</div>
+          <div class="val">$157.925.293<small>igual en las dos</small></div>
+        </div>
+        <div class="foot">A 10 años el activo es el mismo con cualquiera de las dos: el depto se aprecia igual y la deuda se amortiza igual. Lo que cambia es cuánto pones de tu bolsillo por el camino — y eso abre una diferencia de $40.294.400 a favor de la renta larga.</div>
+      </div>
+    </div>
+    <p class="oknote">▲ Sin footnote, sin celdas «No aplica», la fila TIR gana para larga (7% vs 2,5%). El gate es <code style="font-family:var(--mono);text-transform:none">esMetricaNoAplica(ltr.exitScenario.tir)</code>: con pie &gt; 0 el render es byte-idéntico al de hoy.</p>
+  </div>
+
+  <!-- ═══════════════ 3 · LA FOOTNOTE ═══════════════ -->
+  <div class="split">3 · La footnote — variante mínima propuesta</div>
+  <p class="files">Fuente única: <b>no-aplica-copy.ts</b> · constante <b>NO_APLICA_FOOTNOTE_DOC</b></p>
+
+  <div class="fnbox">
+    <p class="fl">Existente · usada hoy por DocumentoLTR y DocumentoSTR</p>
+    <p class="ft old">* Sin capital propio (pie $0): las métricas sobre tu capital no aplican. Este caso se evalúa por flujo mensual y plusvalía.</p>
+    <p class="why">No calza tal cual por dos razones. «Este caso» es singular y en el comparativo hay <b>dos</b> casos; y sobre todo, no dice lo único que el lector necesita saber acá: por qué la fila dejó de tener ganador cuando las otras siete lo tienen.</p>
+  </div>
+
+  <div class="fnbox">
+    <p class="fl">Propuesta · variante AMBAS (constante nueva, hermana en el mismo archivo)</p>
+    <p class="ft">* Sin capital propio (pie $0): las métricas sobre tu capital no aplican <span class="add">en ninguna de las dos modalidades, así que esta fila no compara. Las dos</span> se evalúan por flujo mensual y plusvalía.</p>
+    <p class="why">Conserva la estructura de la original en tres tiempos (condición → qué no aplica → por qué se evalúa) y cambia lo mínimo: pluraliza y agrega la consecuencia visible. <b>La original no se toca</b> — LTR y STR la siguen usando. Nombre sugerido: <code style="font-family:var(--mono);font-size:11px;color:var(--text)">NO_APLICA_FOOTNOTE_DOC_AMBAS</code>, derivada de la misma raíz para que un cambio de doctrina se propague.</p>
+  </div>
+
+  <div class="designnote">
+    <p><b>Descartado (queda anotado por si vuelve):</b> cambiar el label de la fila a «TIR a 10 años · sobre tu capital propio» para que se entienda sola sin footnote. Se descarta porque el label quedaría distinto según el pie, y una fila que cambia de nombre según el caso es peor que una footnote. Si algún día se quiere el sublabel, va en <b>las dos</b> variantes (pie 0 y pie &gt; 0), no solo en una.</p>
+  </div>
+
+  <!-- ═══════════════ FUERA DE ALCANCE ═══════════════ -->
+  <div class="split" style="color:var(--text3)">Fuera de alcance de este mockup · dentro de la rama</div>
+  <div class="pend">
+    <h3>No se mockean (no son superficie visual) — entran al goal de implementación</h3>
+    <ul>
+      <li><b>ai-generation-ambas-generate.ts:112</b> — <b>ltrCapital = ltrMetrics?.pieCLP</b> hace que el prompt reciba «Capital de entrada: larga <b>$0</b> · corta $10.508.056 · el corto pide $10.508.056 más». Es falso y además discrepa de la propia tabla de arriba, que dice $11.106.112. Fix: leer <b>inversionInicial</b> con fallback a pieCLP — la misma derivación que ya usan la web, el share y el documento.</li>
+      <li><b>ai-generation-ambas.ts</b> — SYSTEM_PROMPT_AMBAS no tiene doctrina pie-0 (cero ocurrencias de «5.bis»; LTR tiene 6, STR 5) y el <b>bono_pie</b> que el usuario declaró en el wizard nunca llega a la prosa comparativa. Mínimo propuesto, dos líneas: (a) al user prompt, <b>razonSinCapitalPrompt(razon)</b> tal cual; (b) al system, una línea dentro del bloque de prohibiciones ya existente, sin sección nueva.</li>
+      <li><b>ResumenAnexoModal (S7)</b> — con pie 0 el KPI «TIR a 10 años» desaparece del modal sin decir por qué (el hallazgo TIR viene null desde el motor). Es correcto pero mudo. <b>Recomendación: dejarlo fuera de esta rama</b> — es una superficie de la vista web, no del documento, y su arreglo es el D1 con sublabel (el de cards, no el de documento). Merece su propia sección de mockup si se toma.</li>
+      <li><b>Dashboard, columna «Retorno» (S9)</b> — la vista SQL <b>franco_jsonb_num</b> ve un objeto donde espera un número y devuelve NULL, así que la celda ya muestra «—». No rompe ni miente. Es transversal a LTR/STR/AMBAS, no propio de esta rama.</li>
+      <li><b>TIR STR en el motor</b> — <b>exitScenario.tirAnual</b> sigue siendo number. El tratamiento de este mockup es simétrico justamente para no depender de eso. Migrarla toca el score STR, IndicatorsSTR, DocumentoSTR:494, el hallazgo TIR y el prompt STR, y exige re-baseline del golden STR: es una rama aparte, no un ítem de esta.</li>
+    </ul>
+  </div>
+
+  <p class="footer">refranco.ai · mockup pie-cero AMBAS · cifras reales del motor (seed golden AG-6-ltr-preferido · pie 20% vs pie 0) · no es la app</p>
+</div>
+</body>
+</html>
