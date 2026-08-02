@@ -90,12 +90,9 @@ export function DocumentoSTR({
   const occTargetPct = ej ? Math.round(ej.ocupacionTarget * 100) : null;
   const nochesMes = Math.round((occPct / 100) * 30);
 
-  // ── Hallazgos (pirámide · orden adversos-first) ──
+  // ── Hallazgos (ORDEN ÚNICO — el mismo del índice del hero y la pirámide web) ──
   const hallazgos = ordenarHallazgosPiramideSTR(results.hallazgos);
-  const adversos = hallazgos.filter((h) => h.direccion === "adverso");
-  const favorables = hallazgos.filter((h) => h.direccion !== "adverso");
-  // Variante D — título de la pirámide según haya o no adversos.
-  const tituloPiramide = adversos.length > 0 ? "Empezando por lo adverso" : "Empezando por lo que lo sostiene";
+  const tituloPiramide = "En el mismo orden del informe";
 
   // ── Comparativa de gestión (motor: str_admin vs str_auto) ──
   const admin = c.str_admin;
@@ -297,14 +294,10 @@ export function DocumentoSTR({
         <p className="eyebrow">El detalle · {hallazgos.length} hallazgos</p>
         <h2 className="title">{tituloPiramide}</h2>
         <p className="body sec" style={{ marginTop: 6, marginBottom: 2 }}>
-          Ordenados por cuánto pesan en la decisión. Cada frase es la lectura determinística del motor; el detalle de cada uno abre su capítulo más adelante.
+          Una sola lista, ordenada por cuánto pesa cada hallazgo en la decisión. Cada frase es la lectura determinística del motor; el detalle de cada uno abre su capítulo más adelante.
         </p>
 
-        {adversos.length > 0 && <p className="hall-group-label first">Adversos — lo que baja el veredicto</p>}
-        {adversos.map((h) => <HallRow key={h.id} h={h} rank={++rank} />)}
-
-        {favorables.length > 0 && <p className="hall-group-label">Favorables — lo que lo sostiene</p>}
-        {favorables.map((h) => <HallRow key={h.id} h={h} rank={++rank} />)}
+        {hallazgos.map((h) => <HallRow key={h.id} h={h} rank={++rank} />)}
       </section>
 
       {/* ═══════════ SECCIÓN 3 · 02 RENTABILIDAD Y COSTOS ═══════════ */}

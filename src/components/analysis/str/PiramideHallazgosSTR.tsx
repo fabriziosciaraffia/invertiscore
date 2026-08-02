@@ -1,9 +1,10 @@
 "use client";
 
 // Pirámide de hallazgos STR (E.1b) — hermano de PiramideHallazgos (LTR). Reusa el mismo
-// orden Filosofía 1 (adversos primero, por decisividad), el guard de corona honesta y la
-// matriz N-variable extendida (filasNivel3, N∈[5,12]); renderiza con GenericFindingCard
-// (que ya tiene los casos findingDisplay de los 6 propios STR + los heredados LTR).
+// ORDEN ÚNICO (esquema C-umbral, orden-hallazgos.ts) y la matriz N-variable extendida
+// (filasNivel3, N∈[5,12]); renderiza con GenericFindingCard (que ya tiene los casos
+// findingDisplay de los 6 propios STR + los heredados LTR). La numeración continúa la
+// del índice del hero (01-03 arriba, hasta 12 acá).
 //
 // A diferencia de la LTR, lee results.hallazgos directamente (el pipeline lo persistió con
 // la pirámide completa) — no gathera de carriers del motor ni suprime eco de prosa (la
@@ -12,7 +13,8 @@
 
 import type { Hallazgo } from "@/lib/types";
 import { GenericFindingCard } from "@/components/analysis/GenericFindingCard";
-import { coronaEsLaMasDecisiva, filasNivel3 } from "@/components/analysis/PiramideHallazgos";
+import { filasNivel3 } from "@/components/analysis/PiramideHallazgos";
+import { anchorHallazgo, numeroHallazgo } from "@/lib/orden-hallazgos";
 // Orden extraído a módulo puro server-safe (lo consume también la vista documento).
 // Re-exportado acá para no romper los importadores (results-client, DrawerSTR seq).
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
@@ -55,16 +57,12 @@ export function PiramideHallazgosSTR({
 }) {
   const ordered = ordenarHallazgosPiramideSTR(hallazgos);
   if (ordered.length === 0) return null;
-  const gathered = ordered; // mismo set (dedup); alias para el guard de corona
 
   const nivel1 = ordered[0];
   const nivel2 = ordered.slice(1, 3);
   const nivel3 = ordered.slice(3);
-
-  // Corona honesta: "Lo más decisivo" solo si el coronado es el ÚNICO de mayor decisividad
-  // real (empate ⇒ no reclama el título) Y algún hallazgo mueve el score (guard STR:
-  // adversos todos solo-lectura ⇒ no). Mismo criterio que la pirámide LTR, un solo lugar.
-  const esElMasDecisivo = coronaEsLaMasDecisiva(nivel1, gathered);
+  // Número de posición en el orden único — la numeración continúa la del índice del hero.
+  const numeroDe = (h: Hallazgo) => numeroHallazgo(ordered.indexOf(h));
 
   return (
     <section className="mt-3">
@@ -76,7 +74,7 @@ export function PiramideHallazgosSTR({
           El detalle
         </span>
         <span className="font-serif font-bold" style={{ fontSize: 19 }}>
-          Empezando por lo adverso
+          En el mismo orden
         </span>
         <span className="font-body ml-auto shrink-0" style={{ fontSize: 12, color: "var(--franco-text-tertiary)" }}>
           {ordered.length} hallazgos
@@ -84,14 +82,14 @@ export function PiramideHallazgosSTR({
       </div>
 
       <div className="flex flex-col gap-3">
-        {/* Nivel 1 — decisivo, ancho completo */}
-        <GenericFindingCard<DrawerKeySTR> hallazgo={nivel1} nivel={1} esElMasDecisivo={esElMasDecisivo} currency={currency} valorUF={valorUF} drawerMap={HALLAZGO_DRAWER_STR} onOpenDrawer={onOpenDrawer} />
+        {/* Nivel 1 — la posición 01, ancho completo */}
+        <GenericFindingCard<DrawerKeySTR> hallazgo={nivel1} nivel={1} numero={numeroDe(nivel1)} anchorId={anchorHallazgo(nivel1)} currency={currency} valorUF={valorUF} drawerMap={HALLAZGO_DRAWER_STR} onOpenDrawer={onOpenDrawer} />
 
-        {/* Nivel 2 — los dos siguientes, en fila */}
+        {/* Nivel 2 — 02 y 03, en fila */}
         {nivel2.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {nivel2.map((h) => (
-              <GenericFindingCard<DrawerKeySTR> key={h.id} hallazgo={h} nivel={2} currency={currency} valorUF={valorUF} drawerMap={HALLAZGO_DRAWER_STR} onOpenDrawer={onOpenDrawer} />
+              <GenericFindingCard<DrawerKeySTR> key={h.id} hallazgo={h} nivel={2} numero={numeroDe(h)} anchorId={anchorHallazgo(h)} currency={currency} valorUF={valorUF} drawerMap={HALLAZGO_DRAWER_STR} onOpenDrawer={onOpenDrawer} />
             ))}
           </div>
         )}
@@ -101,7 +99,7 @@ export function PiramideHallazgosSTR({
           filasNivel3(nivel3).map((fila, i) => (
             <div key={i} className={`grid grid-cols-1 ${fila.cols} gap-3`}>
               {fila.items.map((h) => (
-                <GenericFindingCard<DrawerKeySTR> key={h.id} hallazgo={h} nivel={3} currency={currency} valorUF={valorUF} drawerMap={HALLAZGO_DRAWER_STR} onOpenDrawer={onOpenDrawer} />
+                <GenericFindingCard<DrawerKeySTR> key={h.id} hallazgo={h} nivel={3} numero={numeroDe(h)} anchorId={anchorHallazgo(h)} currency={currency} valorUF={valorUF} drawerMap={HALLAZGO_DRAWER_STR} onOpenDrawer={onOpenDrawer} />
               ))}
             </div>
           ))}

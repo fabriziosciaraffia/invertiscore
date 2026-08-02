@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { BedDouble, Bath, Ruler, Building2, Scaling, Percent, Wrench, Info } from "lucide-react";
-import type { Hallazgo, AIAnalysisSTRv2 } from "@/lib/types";
+import { BedDouble, Bath, Ruler, Building2, Scaling, Percent, Wrench } from "lucide-react";
+import type { AIAnalysisSTRv2 } from "@/lib/types";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import { fmtUF } from "@/components/analysis/utils";
-import { findingDisplay } from "@/components/analysis/GenericFindingCard";
 import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { ProsaSkeleton } from "@/components/analysis/ProsaSkeleton";
-import { Tooltip as HintTooltip, InfoTooltip } from "@/components/ui/tooltip";
+import { InfoTooltip } from "@/components/ui/tooltip";
+import { IndiceRow } from "@/components/analysis/IndiceHallazgos";
+import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
+import { numeroHallazgo } from "@/lib/orden-hallazgos";
 
 /**
  * Hero de resultados STR (E.5) — port del patrón HeroLTR al módulo renta corta.
@@ -152,8 +154,12 @@ export function HeroSTR({
   const isNeutro = v === "COMPRAR";
   const cajaLabel = isNeutro ? "Considera antes de cerrar" : "La posición de Franco";
 
-  // ── TOP-3 hallazgos por decisividad (de la pirámide persistida) ──
-  const top3 = gatherTop(results.hallazgos).slice(0, 3);
+  // ── ÍNDICE del informe: primeros 3 del ORDEN ÚNICO (el MISMO array que renderiza
+  // la pirámide STR — fuente única: ordenarHallazgosPiramideSTR). El hero numera
+  // 01-03 y cada fila ancla a su card; la pirámide continúa hasta 12. ──
+  const ordenados = ordenarHallazgosPiramideSTR(results.hallazgos);
+  const top3 = ordenados.slice(0, 3);
+  const restantes = Math.max(0, ordenados.length - top3.length);
   const fechaFirma = formatFecha(createdAt);
 
   return (
@@ -239,27 +245,27 @@ export function HeroSTR({
           </div>
         </div>
 
-        {/* TOP-3 findings */}
+        {/* ÍNDICE — primeros 3 del orden único, numerados y clickeables (ancla a su card) */}
         <div>
-          <div className="font-heading font-bold text-[15px] text-[var(--franco-text)] mb-0.5">
-            Lo que define este veredicto
-          </div>
-          <div className="font-body text-[11.5px] text-[var(--franco-text-muted)] mb-4">
-            {top3.length > 0
-              ? `Los ${top3.length} hallazgos que más movieron el score.`
-              : "Hallazgos que definen el score."}
-          </div>
-
-          {top3.map((h, i) => (
-            <FindingRow key={h.id} rank={String(i + 1).padStart(2, "0")} h={h} currency={currency} valorUF={valorUF} />
-          ))}
-
           {top3.length > 0 && (
-            <div className="mt-3 pt-2.5 border-t border-[var(--franco-border)]">
-              <span className="block font-mono text-[10.5px] uppercase tracking-[0.05em] text-[var(--franco-text-tertiary)]">
-                Cómo pesa cada hallazgo ↓
-              </span>
-            </div>
+            <>
+              <div className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text)] mb-2.5">
+                Léelo en este orden ↓
+              </div>
+              {top3.map((h, i) => (
+                <IndiceRow key={h.id} rank={numeroHallazgo(i)} h={h} currency={currency} valorUF={valorUF} />
+              ))}
+              {restantes > 0 && (
+                <div className="font-body text-[11.5px] text-[var(--franco-text-muted)] mt-2">
+                  …y {restantes} hallazgos más, abajo, en el mismo orden.
+                </div>
+              )}
+              <div className="mt-3 pt-2.5 border-t border-[var(--franco-border)]">
+                <span className="block font-mono text-[10.5px] uppercase tracking-[0.05em] text-[var(--franco-text-tertiary)]">
+                  Cómo pesa cada hallazgo ↓
+                </span>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -302,23 +308,6 @@ export function HeroSTR({
         <Wordmark />
       </div>
     </div>
-  );
-}
-
-// ── Dedup + orden por decisividad (espejo de gatherTopHallazgos LTR) ──
-function gatherTop(hallazgos: Hallazgo[] | null | undefined): Hallazgo[] {
-  const list = Array.isArray(hallazgos) ? hallazgos.filter(Boolean) : [];
-  const byId = new Map<string, Hallazgo>();
-  for (const h of list) {
-    if (typeof h.decisividad !== "number") continue;
-    const prev = byId.get(h.id);
-    const hT = !!h.titular;
-    const pT = prev ? !!prev.titular : false;
-    const gana = !prev || (hT && !pT) || (hT === pT && h.decisividad > prev.decisividad);
-    if (gana) byId.set(h.id, h);
-  }
-  return Array.from(byId.values()).sort(
-    (a, b) => b.decisividad - a.decisividad || (b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0),
   );
 }
 
@@ -425,65 +414,6 @@ function renderProsaMono(texto: string): ReactNode {
       )}
     </p>
   ));
-}
-
-// Glosa canónica por tipo de hallazgo para el TOP-3 del hero (D-A · paridad con
-// HeroLTR, que glosa cada término con tooltip). Una línea llana por tipo, alineada
-// al glosario. Cubre los 6 hallazgos STR propios + los heredados que pueden coronar.
-const GLOSA_TOP3: Partial<Record<Hallazgo["id"], string>> = {
-  rentabilidad_str: "Cuánto renta la operación —el cap rate: lo que deja el arriendo tras los gastos de operarlo (NOI), sobre el precio— frente al umbral STR de referencia.",
-  flujo_str: "Lo que te queda cada mes después de todos los costos, incluida la cuota del crédito.",
-  ocupacion_vs_banda: "Qué porcentaje de las noches esperas ocupar, comparado con la banda de la comuna.",
-  ventaja_vs_ltr: "Cuánto más (o menos) deja la renta corta frente a arrendar a un solo inquilino todo el año.",
-  sensibilidad_str: "Cuánto puede caer el ingreso antes de llegar al punto de equilibrio (donde no ganas ni pones plata).",
-  estructura_costos_str: "Qué parte del ingreso bruto se va en costos de operar el Airbnb.",
-  sobreprecio: "Cuánto pagas por metro cuadrado frente a la mediana de publicación de la comuna.",
-  plusvalia: "Cuánto se ha valorizado la comuna al año en la última década.",
-  tir: "La rentabilidad anual de toda tu inversión (TIR), juntando flujo, plusvalía y venta al cierre.",
-  patrimonio: "Cuánto vale tu parte al final del horizonte, frente a lo que pusiste.",
-  capex_puesta_a_punto: "Lo que cuesta dejar el depto listo para operar, además del amoblamiento.",
-  estructura_financiamiento: "Cómo financias la compra: cuánto de pie y a qué tasa, frente al óptimo.",
-};
-
-// Término técnico con tooltip — delega en el bubble estándar (portal + clamp + tap
-// mobile + sombra tokenizada). Antes: bubble local hover-only con sombra hardcodeada
-// (parchework #5). Fase 2 · migrado al estándar.
-function FindingTooltip({ term, tip }: { term: string; tip: string }) {
-  if (!tip) {
-    return (
-      <span className="mt-1.5 inline-flex items-center font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)]">
-        {term}
-      </span>
-    );
-  }
-  const termEl = (
-    <span className="inline-flex items-center gap-1 mt-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)] border-b border-dotted border-[var(--franco-border-strong)] cursor-help">
-        {term}
-      </span>
-      <Info size={11} strokeWidth={2} className="text-[var(--franco-text-muted)] shrink-0" aria-hidden />
-    </span>
-  );
-  return <HintTooltip content={tip}>{termEl}</HintTooltip>;
-}
-
-// ── Fila de finding: rank + titular + término + KPI (reusa findingDisplay) ──
-function FindingRow({ rank, h, currency, valorUF }: { rank: string; h: Hallazgo; currency: "CLP" | "UF"; valorUF: number }) {
-  const d = findingDisplay(h, currency, valorUF);
-  const desc = h.titular || d.title;
-  return (
-    <div className="grid grid-cols-[20px_1fr_auto] gap-3 py-3 items-start border-t border-[var(--franco-border)] first:border-t-0">
-      <div className="font-mono text-[12px] font-bold text-[var(--franco-text-tertiary)] pt-0.5">{rank}</div>
-      <div className="min-w-0">
-        <div className="font-body text-[12.5px] leading-[1.4] text-[var(--franco-text)]">{desc}</div>
-        <FindingTooltip term={d.kick} tip={GLOSA_TOP3[h.id] ?? ""} />
-      </div>
-      <div className="text-right whitespace-nowrap">
-        <div className="font-mono text-[17px] font-bold leading-none" style={{ color: d.kpiRed ? "var(--signal-red)" : "var(--franco-text)" }}>{d.kpi}</div>
-        {d.ksub && <span className="block mt-1.5 font-mono text-[9.5px] text-[var(--franco-text-muted)]">{d.ksub}</span>}
-      </div>
-    </div>
-  );
 }
 
 // Fecha firma "3 jul 2026" (es-CL).
