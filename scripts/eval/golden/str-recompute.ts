@@ -18,7 +18,7 @@ import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../../../src/lib/engines/short-term-score";
 import { buildStrHallazgos } from "../../../src/lib/str-hallazgos";
 import type { Hallazgo } from "../../../src/lib/types";
-import { metricaValorONull } from "../../../src/lib/types";
+import { metricaValorONull, esMetricaNoAplica } from "../../../src/lib/types";
 import { STR_GE_SEEDS, loadFrozen, type FrozenFixture, type Sintesis, type StrGeSeed } from "./str-seeds";
 import { buildHallazgoRentabilidadStr } from "../../../src/lib/rentabilidad-str-hallazgo";
 import { buildHallazgoSensibilidadStr } from "../../../src/lib/sensibilidad-str-hallazgo";
@@ -35,15 +35,41 @@ function buildInputs(d: any, airbnbData: any, uf: number) {
     adrOverride: typeof d.adrOverride === "number" ? d.adrOverride : null, occOverride: typeof d.occOverride === "number" ? d.occOverride : null,
     costoElectricidad: d.costoElectricidad, costoAgua: d.costoAgua, costoWifi: d.costoWifi, costoInsumos: d.costoInsumos,
     gastosComunes: d.gastosComunes, mantencion: d.mantencion, contribuciones: d.contribuciones || 0,
-    costoAmoblamiento: d.estaAmoblado ? 0 : (d.costoAmoblamiento || 0), arriendoLargoMensual: d.arriendoLargoMensual, valorUF: uf };
+    costoAmoblamiento: d.estaAmoblado ? 0 : (d.costoAmoblamiento || 0), arriendoLargoMensual: d.arriendoLargoMensual, valorUF: uf,
+    // Pie cero: la razón viaja al motor para que las métricas sobre capital la
+    // lleven en su estado 'no_aplica' (GE-PC). Ausente con pie > 0 ⇒ no-op.
+    ...(d.razonSinPie ? { razonSinPie: d.razonSinPie } : {}) };
 }
 
-// Aplica la síntesis del caso (GE-3 reg=no; GE-5 occ-strip) sobre el frozen.
+/** Seeds sin fixture propia y la fila base sobre la que se sintetizan. */
+export const FILA_BASE: Record<string, string> = { "GE-PC": "GE-1" };
+
+/**
+ * Transformación pie-cero-banda (GE-PC · rama B). Sobre GE-1: precio ×0,7 y
+ * ADR ×1,4. NO son números mágicos — son el punto donde el caso cae en la única
+ * banda que hace decidir al brazo del horizonte: score ≥70 (llega a GATE 2 como
+ * COMPRAR), flujo NEGATIVO y break-even ≤110% (ningún otro brazo lo ataja
+ * antes). Con pie 0 queda AJUSTA SUPUESTOS por el horizonte; con pie 20% el
+ * mismo perfil es COMPRAR con flujo positivo. Si el motor cambia y el caso deja
+ * de caer en la banda, el golden lo va a cantar — que es el punto.
+ */
+const PC_PRECIO_MULT = 0.7;
+const PC_ADR_MULT = 1.4;
+
+// Aplica la síntesis del caso (GE-3 reg=no; GE-5 occ-strip; GE-PC pie 0) sobre el frozen.
 function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any; reg: string } {
   const d = { ...fx.input_data };
   let raw = fx.airbnbRaw;
   let reg = d.edificioPermiteAirbnb || "no_seguro";
   if (s === "reg_no") reg = "no";
+  if (s === "pie_cero_banda") {
+    const ab = buildAirbnbData(fx.airbnbRaw as any, fx.uf) as any;
+    const adrBase = ab.adr ?? ab.percentiles?.adr?.p50 ?? 45000;
+    d.piePct = 0;
+    d.razonSinPie = "bono_pie";
+    d.precioCompra = Math.round(d.precioCompra * PC_PRECIO_MULT);
+    d.adrOverride = Math.round(adrBase * PC_ADR_MULT);
+  }
   if (s === "occ_strip") {
     // Quita toda señal de ocupación → resolveOccObservada cae a fallback 0,45.
     raw = { ...fx.airbnbRaw, estimated_occupancy: 0, percentiles: { ...fx.airbnbRaw.percentiles, occupancy: { p25: 0, p50: 0, p75: 0, p90: 0, avg: 0 } } };
@@ -71,6 +97,30 @@ function invariantes(hz: Hallazgo[], score: any, rec: any, medianaConfiable: boo
   const se = byId("sensibilidad_str"); if (se) dir("sensibilidad_str", se.valor.beRatioPct > se.valor.corteFragil, `be=${se.valor.beRatioPct} frágil=${se.valor.corteFragil}`);
   if (cs) dir("estructura_costos_str", cs.valor.costStackPct > cs.valor.bandaAdvPct, `cs=${cs.valor.costStackPct} banda=${cs.valor.bandaAdvPct}`);
 
+  // BS-PC — pie cero (rama B, decisión cerrada). Doctrina que este bloque fija
+  // para siempre: SIN CAPITAL PROPIO, NINGÚN VEREDICTO PUEDE DESCANSAR EN LA TIR
+  // NI EN EL MULTIPLICADOR. Se verifica en tres frentes:
+  //   1. las dos métricas sobre capital del exit serializan 'no_aplica' (nunca number);
+  //   2. el horizonte NO cierra (no hay con qué medirlo);
+  //   3. y por lo tanto un COMPRAR con flujo negativo es imposible: si el score
+  //      llega a la banda, GATE 2 lo degrada. Es exactamente el flip de la rama B.
+  if (rec.pie === 0) {
+    const ex: any = rec.exitScenario ?? {};
+    for (const [nombre, v] of [["tirAnual", ex.tirAnual], ["multiplicadorCapital", ex.multiplicadorCapital]] as [string, unknown][]) {
+      out.push({
+        rule: `BS-PC.no-aplica[${nombre}]`,
+        pass: esMetricaNoAplica(v as any),
+        detail: esMetricaNoAplica(v as any) ? `no_aplica(${(v as any).razon})` : `serializó ${JSON.stringify(v)} con pie 0`,
+      });
+    }
+    const flujoNeg = rec.escenarios.base.flujoCajaMensual < 0;
+    out.push({
+      rule: "BS-PC.sin-comprar-por-horizonte",
+      pass: !(score.veredicto === "COMPRAR" && flujoNeg),
+      detail: `veredicto=${score.veredicto} flujo=${Math.round(rec.escenarios.base.flujoCajaMensual)} — con pie 0 un COMPRAR con flujo negativo estaría descansando en una TIR que no existe`,
+    });
+  }
+
   // BS3 — decisividad>0 SOLO en los 4 dim-outcomes.
   let bs3 = true;
   for (const h of hz) { const dec = decisivos.has(h.id); if ((dec && h.decisividad <= 0) || (!dec && h.decisividad !== 0)) bs3 = false; }
@@ -78,7 +128,10 @@ function invariantes(hz: Hallazgo[], score: any, rec: any, medianaConfiable: boo
 
   // BS4 — omisiones.
   const has = (id: string) => hz.some((h) => h.id === id);
-  out.push({ rule: "BS4.tir⟺exit", pass: has("tir") === !!rec.exitScenario, detail: `tir=${has("tir")} exit=${!!rec.exitScenario}` });
+  // Pie cero (rama A): con la TIR en 'no_aplica' el hallazgo NO se emite aunque
+  // el exitScenario exista — espejo del guard de LTR (analysis.ts:1882-83).
+  const tirAplica = metricaValorONull(rec.exitScenario?.tirAnual) !== null;
+  out.push({ rule: "BS4.tir⟺exit", pass: has("tir") === (!!rec.exitScenario && tirAplica), detail: `tir=${has("tir")} exit=${!!rec.exitScenario} tirAplica=${tirAplica}` });
   out.push({ rule: "BS4.patrimonio⟺exit", pass: has("patrimonio") === !!rec.exitScenario, detail: `patr=${has("patrimonio")}` });
   out.push({ rule: "BS4.sobreprecio⟺mediana", pass: has("sobreprecio") === medianaConfiable, detail: `sob=${has("sobreprecio")} conf=${medianaConfiable}` });
 
@@ -123,7 +176,9 @@ export interface StrRecompute { rec: any; score: any; hz: Hallazgo[]; mediana: {
 
 // Recompute determinístico de UN seed GE (reusado por el tier de checks y por str-accept).
 export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenFixture>): StrRecompute | null {
-  const fx = frozen[seed.key];
+  // GE-PC no tiene fixture propia: se sintetiza sobre GE-1 (ver FILA_BASE), igual
+  // que reg_no/occ_strip sintetizan sobre la suya. Cero datos nuevos congelados.
+  const fx = frozen[seed.key] ?? frozen[FILA_BASE[seed.key] ?? ""];
   if (!fx) return null;
   const { d, raw, reg } = synth(fx, seed.sintesis);
   const airbnbData = buildAirbnbData(raw as any, fx.uf);

@@ -14,7 +14,7 @@
 import fs from "fs";
 import path from "path";
 
-export type Sintesis = "reg_no" | "occ_strip" | null;
+export type Sintesis = "reg_no" | "occ_strip" | "pie_cero_banda" | null;
 
 export interface StrGeSeed {
   key: string;         // "GE-1"
@@ -44,6 +44,15 @@ export const STR_GE_SEEDS: StrGeSeed[] = [
   { key: "GE-6", label: "ADR legacy uplifted · forward-only", sintesis: null,
     ejes: ["E10:factor≠1", "forward-only", "capRate-normalizado"],
     nota: "Fila que persistió con factorADR≠1 (revenue inflado); el recompute normaliza a 1,0 → capRate menor. Verifica forward-only." },
+  { key: "GE-PC", label: "AJUSTA · pie 0 · el horizonte no se puede medir (rama B)", sintesis: "pie_cero_banda",
+    ejes: ["E1:AJUSTA", "E2:G2-horizonte", "pie:0", "flujo:-", "BE≤110"],
+    nota: "El caso que FIJA la decisión de la rama B (opción 1). Sintetizado sobre GE-1 para " +
+      "caer en la única banda donde el brazo del horizonte decide: score ≥70, flujo NEGATIVO y " +
+      "break-even ≤110% (o sea, ningún otro gate ataja antes). Con pie 0 la TIR y el multiplicador " +
+      "son 'no_aplica' ⇒ el horizonte no cierra ⇒ GATE 2 degrada COMPRAR → AJUSTA SUPUESTOS. " +
+      "Replica el perfil del único caso real del corpus (Las Condes, medido en el recompute de " +
+      "banda) sin congelar su fila. Invariante BS-PC: con pie 0 ningún COMPRAR puede descansar en " +
+      "TIR ni multiplicador. Su control es el MISMO perfil con pie 20%: COMPRAR con flujo positivo." },
 ];
 
 // ── 3 razor-edges a nivel de builder (frontera exacta del corte) ─────────────

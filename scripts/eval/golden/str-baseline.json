@@ -72,6 +72,18 @@
       "capitalInvertido": 40119560,
       "patrimonioCLP": 108851097,
       "patrimonioMult": 1.38
+    },
+    "GE-PC": {
+      "veredicto": "AJUSTA SUPUESTOS",
+      "score": 77,
+      "N": 10,
+      "tirPct": null,
+      "multiplicadorCapital": null,
+      "equityCLP": 58504562,
+      "valorVenta": 149397647,
+      "capitalInvertido": 5723318,
+      "patrimonioCLP": 58504562,
+      "patrimonioMult": 5.43
     }
   }
 }

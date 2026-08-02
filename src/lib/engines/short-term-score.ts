@@ -365,21 +365,20 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   const HORIZONTE_TIR_MINIMO = 10;        // TIR nominal % a 10 años.
   const HORIZONTE_MULT_MINIMO = 2.65;     // equity(sin flujo)/totalAportado (re-derivado).
   const exit = inputs.results.exitScenario;
-  // RAMA A (pie-cero-str-tir): `tirAnual` pasó a MetricaSobreCapital para el
-  // render/prompt, pero este gate sigue leyendo el NÚMERO — de `tirAnualParaGate`,
-  // que lo conserva. La rama A migra la presentación sin mover un solo veredicto;
-  // qué hace este brazo sin capital propio es la decisión de la rama B.
-  // Legacy (jsonb pre-rama-A, sin el campo): cae al number crudo de `tirAnual`.
-  const tir =
-    typeof exit?.tirAnualParaGate === "number"
-      ? exit.tirAnualParaGate
-      : metricaValorONull(exit?.tirAnual);
-  // Pie cero: multiplicador 'no_aplica' ⇒ null ⇒ ese brazo del horizonte se omite.
-  // Legacy con number crudo pasa igual que antes.
+  // RAMA B · pie cero (decisión cerrada, opción 1): sin capital propio el
+  // horizonte NO SE PUEDE MEDIR — TIR y multiplicador son ambos 'no_aplica' ⇒
+  // null ⇒ el brazo entero queda false y GATE 2 degrada el COMPRAR que tenga
+  // flujo negativo. Es deliberado: sin pie no hay retorno sobre capital que
+  // compense poner plata todos los meses, y el corto no tiene el contrapeso
+  // patrimonial que el largo sí tiene vía dividendo. Un COMPRAR no puede
+  // descansar en una TIR que sube porque el capital baja.
+  // Con pie > 0 (y con legacy number crudo) la lectura es byte-idéntica a la
+  // previa: metricaValorONull devuelve exactamente el mismo número.
+  const tir = metricaValorONull(exit?.tirAnual);
   const multCap = metricaValorONull(exit?.multiplicadorCapital);
   const horizonteCierraFavorable =
     exit != null &&
-    typeof tir === "number" && Number.isFinite(tir) && tir !== 0 &&
+    tir !== null && Number.isFinite(tir) && tir !== 0 &&
     ((tir >= HORIZONTE_TIR_MINIMO) || (multCap !== null && multCap >= HORIZONTE_MULT_MINIMO));
 
   // GATE 1 — fuerza BUSCAR OTRA (señales estructurales severas).

@@ -215,19 +215,6 @@ export interface ExitScenarioSTR {
   // TIR % del cashflow año 0 → año N. Sobre capital propio: 'no_aplica' cuando
   // pie === 0 (rama A pie-cero-str-tir); legacy trae number crudo.
   tirAnual: MetricaSobreCapital;
-  /**
-   * ⚠ USO EXCLUSIVO DEL GATE DEL SCORE — NO RENDERIZAR, NO MANDAR A PROMPTS.
-   *
-   * Con pie 0 `tirAnual` es 'no_aplica' y la unión NO conserva el número (es
-   * `{tipo,razon}`), pero `horizonteCierraFavorable` (short-term-score.ts) sigue
-   * necesitándolo: la rama A migra la PRESENTACIÓN sin mover ni un veredicto, y
-   * decidir qué hace ese gate sin capital propio es materia de la rama B.
-   *
-   * Es el mismo número que `tirAnual` cuando la métrica aplica. Cualquier
-   * superficie que lo lea para mostrarlo está reintroduciendo justo el bug que
-   * esta rama cierra: una TIR que sube porque el capital baja.
-   */
-  tirAnualParaGate: number;
 }
 
 export type BandaOcupacionSTR =
@@ -912,7 +899,6 @@ function buildExitScenario(
       flujoAcumuladoAlVender: 0, equityCLP: 0, retornoTotal: 0, totalAportado: 0,
       multiplicadorCapital: sinPie ? metricaNoAplica(razonSinPie) : metricaValor(0),
       tirAnual: sinPie ? metricaNoAplica(razonSinPie) : metricaValor(0),
-      tirAnualParaGate: 0,
     };
   }
 
@@ -965,7 +951,6 @@ function buildExitScenario(
     // Espejo exacto del multiplicador de arriba: sin capital propio no hay retorno
     // sobre lo invertido que medir, aunque capitalInicial > 0 por amoblamiento/CapEx.
     tirAnual: sinPie ? metricaNoAplica(razonSinPie) : metricaValor(tirAnual),
-    tirAnualParaGate: tirAnual,
   };
 }
 
