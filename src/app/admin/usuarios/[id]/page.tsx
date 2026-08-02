@@ -454,8 +454,9 @@ export default async function AdminUsuarioDetallePage({
   };
 
   return (
-    <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
-      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 sm:py-10">
+    <>
+      {/* El chrome (fondo, ancho máximo y padding) lo pone src/app/admin/layout.tsx. */}
+      <div>
         {/* ← Usuarios */}
         <div className="mb-6">
           <Link
@@ -614,6 +615,6 @@ export default async function AdminUsuarioDetallePage({
           </aside>
         </div>
       </div>
-    </div>
+    </>
   );
 }
