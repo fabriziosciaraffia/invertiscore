@@ -93,11 +93,7 @@ export async function POST(request: Request) {
         desglose: result.desglose,
         resumen: result.resumen,
         results: result,
-        // CTA welcome: la vía de cobro viaja junto al input (aditivo, sin
-        // migración). Las páginas de informe leen input_data.chargeMode
-        // server-side para gatear el CTA post-análisis welcome; ausente
-        // (análisis históricos) = no welcome.
-        input_data: { ...body, chargeMode },
+        input_data: body,
         // Snapshot de la mediana resuelta acá (Fase A): fuente única futura para
         // sobreprecio/hero/prosa/zona. Nadie lo lee aún (Fase B cablea lecturas).
         mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
