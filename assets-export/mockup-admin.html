@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · Panel admin Franco (contrato)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --franco-bg:#F6F6F7; --franco-card:#FFFFFF; --franco-elevated:#FFFFFF; --franco-sunken:#F0F0F2;
+  --franco-text:#0F0F0F; --franco-text-secondary:#52525B; --franco-text-muted:#6B6B72; --franco-text-tertiary:#6A6A71;
+  --franco-border:#DDDDE1; --franco-border-hover:#CBCBD1; --franco-border-strong:#B0B0B8;
+  --signal-red:#C8323C;
+  --ink-400:#B4B2A9; --ink-500:#888780; --ink-600:#5F5E5A; --ink-700:#2C2C2A;
+  --card-shadow:0 1px 2px rgba(15,15,15,.04),0 4px 12px rgba(15,15,15,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--franco-bg);color:var(--franco-text);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Source Serif 4',Georgia,serif}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+::selection{background:var(--signal-red);color:#fff}
+
+/* ── chrome del mockup (no es parte del producto) ── */
+.mk-note{max-width:1200px;margin:0 auto;padding:22px 24px 0}
+.mk-note h1{font-family:'Source Serif 4',serif;font-weight:700;font-size:26px;letter-spacing:-.01em}
+.mk-note p{font-size:13px;color:var(--franco-text-secondary);margin-top:6px;max-width:78ch}
+.mk-sep{max-width:1200px;margin:34px auto 0;padding:0 24px}
+.mk-sep span{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--franco-text-tertiary);background:var(--franco-sunken);border:1px solid var(--franco-border);border-radius:999px;padding:5px 12px}
+.mk-cap{max-width:1200px;margin:8px auto 0;padding:0 24px;font-size:12px;color:var(--franco-text-muted)}
+.frame{max-width:1200px;margin:12px auto;border:1px solid var(--franco-border);border-radius:14px;overflow:hidden;background:var(--franco-bg);box-shadow:var(--card-shadow)}
+.frame.narrow{max-width:400px}
+
+/* ── chrome del producto ── */
+.topbar{background:var(--franco-card);border-bottom:1px solid var(--franco-border)}
+.topbar-in{max-width:1200px;margin:0 auto;padding:14px 20px 0;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px}
+.wordmark{font-family:'Source Serif 4',serif;font-size:19px;letter-spacing:-.01em}
+.wordmark .re{font-weight:300;font-style:italic;opacity:.28}
+.wordmark .fr{font-weight:700}
+.wordmark .ai{font-family:'IBM Plex Sans',sans-serif;font-weight:500;font-size:15px;color:var(--signal-red)}
+.wordmark .sep{color:var(--franco-border-strong);margin:0 9px;font-weight:300}
+.wordmark .ctx{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--franco-text-tertiary)}
+.back{font-size:13px;color:var(--franco-text-muted);text-decoration:none}
+.back:hover{color:var(--franco-text)}
+.tabs{max-width:1200px;margin:0 auto;padding:0 20px;display:flex;gap:2px;align-items:flex-end}
+.tab{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--franco-text-muted);text-decoration:none;padding:12px 14px;border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--franco-text)}
+.tab.on{color:var(--franco-text);border-bottom-color:var(--signal-red)}
+.tab.off{color:var(--franco-border-strong);cursor:default}
+.tab.off::after{content:'PRONTO';font-size:8px;margin-left:6px;border:1px solid var(--franco-border);border-radius:3px;padding:1px 4px;letter-spacing:.06em}
+
+.page{max-width:1200px;margin:0 auto;padding:26px 20px 40px}
+h2.sec{font-family:'Source Serif 4',serif;font-weight:700;font-size:17px;margin-bottom:11px}
+.sec-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:11px;flex-wrap:wrap}
+.sec-row h2{margin:0}
+.sec-hint{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--franco-text-tertiary)}
+section{margin-bottom:30px}
+.card{background:var(--franco-card);border:1px solid var(--franco-border);border-radius:12px}
+.pad{padding:16px}
+.lbl{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--franco-text-tertiary)}
+
+/* ── barra de contexto (toggle test) ── */
+.ctxbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:var(--franco-card);border:1px solid var(--franco-border);border-radius:12px;padding:11px 14px;margin-bottom:24px}
+.ctxbar .txt{font-size:13px;color:var(--franco-text-secondary)}
+.ctxbar .txt b{font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--franco-text)}
+.switch{display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--franco-text-secondary);text-decoration:none;white-space:nowrap}
+.track{width:34px;height:19px;border-radius:999px;background:var(--franco-sunken);border:1px solid var(--franco-border-strong);position:relative;flex:none}
+.track i{position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:999px;background:var(--franco-text-muted);transition:.15s}
+.switch.on .track{background:var(--franco-text);border-color:var(--franco-text)}
+.switch.on .track i{left:18px;background:#fff}
+
+/* ── funnel ── */
+.funnel{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.stage{padding:16px;border-right:1px solid var(--franco-border);position:relative}
+.stage:last-child{border-right:0}
+.stage .n{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:32px;line-height:1.05;letter-spacing:-.02em}
+.stage.zero .n{color:var(--franco-text-muted)}
+.stage .name{font-size:13px;color:var(--franco-text);margin-top:5px}
+.stage .sub{font-size:11px;color:var(--franco-text-muted);margin-top:2px}
+.conv{position:absolute;top:16px;right:-1px;transform:translateX(50%);z-index:2;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;background:var(--franco-card);border:1px solid var(--franco-border);border-radius:999px;padding:2px 7px;color:var(--franco-text-secondary);white-space:nowrap}
+.conv.bad{color:var(--signal-red);border-color:rgba(200,50,60,.35)}
+.bar{height:3px;background:var(--franco-sunken);border-radius:2px;margin-top:12px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--franco-text)}
+.stage.zero .bar i{background:var(--franco-border-strong)}
+
+/* ── listas ── */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:500;color:var(--franco-text-muted);padding-bottom:9px;white-space:nowrap}
+td{padding:9px 0;border-top:1px solid var(--franco-border);vertical-align:top}
+td+td,th+th{padding-left:14px}
+.num{font-family:'JetBrains Mono',monospace;font-size:12px}
+.dim{color:var(--franco-text-muted)}
+.empty{font-size:13px;color:var(--franco-text-muted);padding:14px 0 4px}
+.empty b{color:var(--franco-text);font-weight:500}
+
+/* ── KPIs ── */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:11px}
+.kpi{background:var(--franco-card);border:1px solid var(--franco-border);border-radius:12px;padding:14px}
+.kpi .v{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:21px;letter-spacing:-.01em}
+.kpi .k{font-size:12px;color:var(--franco-text-muted);margin-top:4px}
+.kpi .s{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--franco-text-tertiary);margin-top:2px}
+
+/* ── segmentos ── */
+.segs{display:flex;flex-direction:column;gap:2px}
+.seg{display:grid;grid-template-columns:150px 1fr 62px;align-items:center;gap:14px;padding:9px 0;border-top:1px solid var(--franco-border)}
+.seg:first-child{border-top:0}
+.seg .sn{font-size:13px}
+.seg .st{height:8px;background:var(--franco-sunken);border-radius:2px;overflow:hidden}
+.seg .st i{display:block;height:100%;background:var(--franco-text)}
+.seg .sv{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:500;text-align:right}
+.seg.nil .sn,.seg.nil .sv{color:var(--franco-text-muted)}
+
+/* ── health ── */
+.pills{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.pill{flex:none;display:flex;align-items:center;gap:8px;background:var(--franco-card);border:1px solid var(--franco-border);border-radius:9px;padding:8px 11px}
+.dot{width:7px;height:7px;border-radius:999px;flex:none}
+.ok{background:var(--ink-400)} .warn{background:var(--ink-600)} .err{background:var(--signal-red)}
+.pill .pl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--franco-text-muted)}
+.pill .pv{font-family:'JetBrains Mono',monospace;font-size:12px}
+
+/* ── badges ── */
+.badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;border-radius:4px;padding:2px 6px;white-space:nowrap}
+.b-muted{color:var(--franco-text-muted);border-color:var(--franco-border-strong)}
+.b-ink{color:var(--ink-700);border-color:var(--ink-500)}
+.b-red{color:var(--signal-red);border-color:rgba(200,50,60,.4)}
+.b-test{color:var(--franco-text-muted);border-color:var(--franco-border);background:var(--franco-sunken)}
+
+/* ── controles usuarios ── */
+.controls{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-bottom:16px}
+.search{flex:1;min-width:210px;display:flex;align-items:center;gap:8px;background:var(--franco-card);border:1px solid var(--franco-border);border-radius:9px;padding:9px 12px}
+.search input{border:0;outline:0;background:transparent;font:inherit;font-size:13px;width:100%;color:var(--franco-text)}
+.search input::placeholder{color:var(--franco-text-muted)}
+select{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--franco-text);background:var(--franco-card);border:1px solid var(--franco-border);border-radius:9px;padding:10px 12px}
+.btn{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--franco-text);color:#fff;border:1px solid var(--franco-text);border-radius:9px;padding:10px 15px;cursor:pointer}
+.pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:13px;border-top:1px solid var(--franco-border);flex-wrap:wrap}
+.pager .info{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--franco-text-muted)}
+.pgbtn{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--franco-text);background:var(--franco-card);border:1px solid var(--franco-border);border-radius:8px;padding:7px 12px;text-decoration:none}
+.pgbtn.dis{color:var(--franco-border-strong);cursor:default}
+.utable td{padding:11px 0}
+.uemail{font-family:'JetBrains Mono',monospace;font-size:12px;word-break:break-all}
+.rowlink{color:var(--franco-text);text-decoration:none}
+.rowlink:hover{color:var(--signal-red)}
+
+/* ── cards mobile ── */
+.ucards{display:flex;flex-direction:column;gap:9px}
+.ucard{background:var(--franco-card);border:1px solid var(--franco-border);border-radius:11px;padding:13px}
+.ucard .top{display:flex;justify-content:space-between;gap:9px;align-items:flex-start}
+.ucard .em{font-family:'JetBrains Mono',monospace;font-size:12px;word-break:break-all;line-height:1.4}
+.ucard .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:11px;padding-top:10px;border-top:1px solid var(--franco-border)}
+.ucard .g .gl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--franco-text-tertiary)}
+.ucard .g .gv{font-family:'JetBrains Mono',monospace;font-size:13px;margin-top:1px}
+
+@media(max-width:900px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .funnel{grid-template-columns:1fr 1fr}
+  .stage{border-bottom:1px solid var(--franco-border)}
+  .stage:nth-child(2){border-right:0}
+  .stage:nth-child(3),.stage:nth-child(4){border-bottom:0}
+  .conv{display:none}
+  .seg{grid-template-columns:120px 1fr 52px;gap:10px}
+}
+</style>
+</head>
+<body>
+
+<div class="mk-note">
+  <h1 class="serif">Mockup · Panel admin</h1>
+  <p>Contrato vinculante de la reestructuración. Datos <b>reales</b> de la base al 2 ago 2026 (leídos read-only). Modo light (default del producto). Tres vistas: <b>A</b> Resumen desktop · <b>B</b> Usuarios desktop · <b>C</b> mobile 380px.</p>
+</div>
+
+<!-- ══════════════ A · RESUMEN (desktop) ══════════════ -->
+<div class="mk-sep"><span>A · /admin — resumen · desktop</span></div>
+<div class="mk-cap">Header y pestañas viven en <b>src/app/admin/layout.tsx</b> (nuevo) — compartidos por las dos páginas. La pestaña Finanzas queda declarada como slot, deshabilitada.</div>
+<div class="frame">
+  <div class="topbar">
+    <div class="topbar-in">
+      <div class="wordmark"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span><span class="sep">/</span><span class="ctx">Panel de administración</span></div>
+      <a class="back" href="#">← Volver al sitio</a>
+    </div>
+    <nav class="tabs">
+      <a class="tab on" href="#">Resumen</a>
+      <a class="tab" href="#">Usuarios</a>
+      <span class="tab off">Finanzas</span>
+    </nav>
+  </div>
+
+  <div class="page">
+
+    <!-- barra de contexto -->
+    <div class="ctxbar">
+      <div class="txt">Mostrando <b>47 usuarios reales</b>. Se excluyen <b>35 cuentas internas</b> de <span class="mono" style="font-size:12px">test_accounts</span>.</div>
+      <a class="switch" href="#"><span class="track"><i></i></span> Incluir cuentas de prueba</a>
+    </div>
+
+    <!-- FUNNEL -->
+    <section>
+      <div class="sec-row">
+        <h2 class="sec">Funnel</h2>
+        <span class="sec-hint">Todo el histórico · sin cuentas de prueba</span>
+      </div>
+      <div class="card">
+        <div class="funnel">
+          <div class="stage">
+            <div class="n">47</div>
+            <div class="name">Registrados</div>
+            <div class="sub">Cuentas reales creadas</div>
+            <div class="bar"><i style="width:100%"></i></div>
+            <span class="conv">60%</span>
+          </div>
+          <div class="stage">
+            <div class="n">28</div>
+            <div class="name">Usaron el análisis gratis</div>
+            <div class="sub">welcome_credit_used</div>
+            <div class="bar"><i style="width:60%"></i></div>
+            <span class="conv bad">0%</span>
+          </div>
+          <div class="stage zero">
+            <div class="n">0</div>
+            <div class="name">Iniciaron checkout</div>
+            <div class="sub">Pago pendiente sobre $0</div>
+            <div class="bar"><i style="width:2%"></i></div>
+            <span class="conv">—</span>
+          </div>
+          <div class="stage zero">
+            <div class="n">0</div>
+            <div class="name">Pagaron</div>
+            <div class="sub">Pago confirmado sobre $0</div>
+            <div class="bar"><i style="width:2%"></i></div>
+          </div>
+        </div>
+        <div class="pad" style="border-top:1px solid var(--franco-border)">
+          <div class="lbl" style="margin-bottom:7px">Checkouts abandonados</div>
+          <div class="empty">Ningún usuario real llegó al checkout todavía. <b>Los 7 pagos pendientes de la base son de cuentas internas</b> — se ven activando el toggle de arriba.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KPIs -->
+    <section>
+      <div class="sec-row"><h2 class="sec">Últimos 30 días</h2><span class="sec-hint">sin cuentas de prueba</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="v">35</div><div class="k">Usuarios nuevos</div><div class="s">alta de cuenta</div></div>
+        <div class="kpi"><div class="v">40</div><div class="k">Análisis totales</div><div class="s">98 con cuentas de prueba</div></div>
+        <div class="kpi"><div class="v">40</div><div class="k">Análisis desbloqueados</div><div class="s">is_premium</div></div>
+        <div class="kpi"><div class="v">$0</div><div class="k">Ingresos</div><div class="s">$109.940 con cuentas de prueba</div></div>
+        <div class="kpi"><div class="v">~$6.000</div><div class="k">Costo IA estimado</div><div class="s">40 × $150 · sin medición real</div></div>
+      </div>
+    </section>
+
+    <!-- SEGMENTOS -->
+    <section>
+      <div class="sec-row"><h2 class="sec">Segmentos</h2><span class="sec-hint">admin_metrics · 47 usuarios</span></div>
+      <div class="card pad">
+        <div class="segs">
+          <div class="seg"><span class="sn">Uso gratis</span><span class="st"><i style="width:100%"></i></span><span class="sv">28</span></div>
+          <div class="seg"><span class="sn">Registrado</span><span class="st"><i style="width:68%"></i></span><span class="sv">19</span></div>
+          <div class="seg nil"><span class="sn">Comprador</span><span class="st"><i style="width:0"></i></span><span class="sv">0</span></div>
+          <div class="seg nil"><span class="sn">Suscriptor activo</span><span class="st"><i style="width:0"></i></span><span class="sv">0</span></div>
+          <div class="seg nil"><span class="sn">Suscriptor churn</span><span class="st"><i style="width:0"></i></span><span class="sv">0</span></div>
+          <div class="seg nil"><span class="sn">Admin ilimitado</span><span class="st"><i style="width:0"></i></span><span class="sv">0</span></div>
+        </div>
+        <div style="margin-top:12px;padding-top:11px;border-top:1px solid var(--franco-border);font-size:12px;color:var(--franco-text-muted)">
+          Cada fila enlaza a Usuarios ya filtrado por ese segmento. Los seis segmentos se listan siempre, incluso en cero: un segmento vacío es información.
+        </div>
+      </div>
+    </section>
+
+    <!-- HEALTH -->
+    <section>
+      <h2 class="sec">Estado del sistema</h2>
+      <div class="pills">
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Base de datos</div><div class="pv">659 análisis</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Propiedades</div><div class="pv">6.184 · hace 9 h</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">UF</div><div class="pv">$40.171</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Pagos</div><div class="pv">hace 2 d</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Usuarios</div><div class="pv">82</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Cron: scraping</div><div class="pv">hace 9 h</div></div></div>
+        <div class="pill"><span class="dot ok"></span><div><div class="pl">Cron: UF/tasa</div><div class="pv">hace 6 h</div></div></div>
+        <div class="pill"><span class="dot warn"></span><div><div class="pl">Cron: geocode</div><div class="pv">hace 9 h</div></div></div>
+      </div>
+    </section>
+
+    <!-- ACCIONES -->
+    <section>
+      <h2 class="sec">Acciones rápidas</h2>
+      <div class="card pad">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="pgbtn">Actualizar UF</span><span class="pgbtn">Scraping</span><span class="pgbtn">Geocodificar</span><span class="pgbtn">Market data</span>
+        </div>
+        <p style="font-size:11px;color:var(--franco-text-muted);margin-top:11px">Sin cambios respecto de hoy: mismos endpoints CRON con el secret server-side.</p>
+      </div>
+    </section>
+
+    <!-- PAGOS -->
+    <section>
+      <div class="sec-row"><h2 class="sec">Últimos pagos</h2><span class="sec-hint">transacciones reales · sin consumos de crédito</span></div>
+      <div class="card pad">
+        <table>
+          <thead><tr><th>Fecha</th><th>Email</th><th>Producto</th><th>Monto</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td colspan="5"><div class="empty">Sin pagos de usuarios reales. <b>Los 25 pagos de la base son de cuentas internas</b> — activá el toggle para verlos.<br><span style="color:var(--franco-text-muted)">Los 47 registros <span class="mono" style="font-size:11px">analysis_charge</span> de $0 ya no aparecen acá: son consumo del análisis gratis, no transacciones.</span></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- DOCS -->
+    <section>
+      <div class="sec-row"><h2 class="sec">Documentos tributarios</h2><span class="sec-hint">sin cambios · respeta el toggle</span></div>
+      <div class="card pad">
+        <table>
+          <thead><tr><th>Fecha</th><th>Email</th><th>Folio</th><th>Concepto</th><th>Monto</th><th>Estado</th></tr></thead>
+          <tbody><tr><td colspan="6"><div class="empty">Sin documentos de usuarios reales.</div></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- COBERTURA -->
+    <section style="margin-bottom:0">
+      <div class="sec-row"><h2 class="sec">Cobertura de datos</h2><span class="sec-hint">sin cambios</span></div>
+      <div class="card pad">
+        <table>
+          <thead><tr><th>Comuna</th><th>Arriendos</th><th>Ventas</th><th>Último scraping</th></tr></thead>
+          <tbody>
+            <tr><td>Las Condes</td><td class="num">612</td><td class="num">988</td><td class="num dim">hace 9 h</td></tr>
+            <tr><td>Ñuñoa</td><td class="num">388</td><td class="num">571</td><td class="num dim">hace 9 h</td></tr>
+            <tr><td class="dim">…</td><td class="num dim">…</td><td class="num dim">…</td><td class="num dim">…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ══════════════ A2 · RESUMEN con toggle ON ══════════════ -->
+<div class="mk-sep"><span>A2 · /admin — con cuentas de prueba incluidas</span></div>
+<div class="mk-cap">Mismo layout, <b>?test=1</b>. Cambia el conjunto, no la estructura. Acá aparecen los checkouts abandonados: ese bloque es el que justifica el toggle.</div>
+<div class="frame">
+  <div class="page" style="padding-top:20px">
+    <div class="ctxbar" style="border-color:var(--franco-border-strong)">
+      <div class="txt">Mostrando <b>82 usuarios</b>, incluidas las <b>35 cuentas internas</b>.</div>
+      <a class="switch on" href="#"><span class="track"><i></i></span> Incluir cuentas de prueba</a>
+    </div>
+
+    <section>
+      <div class="sec-row"><h2 class="sec">Funnel</h2><span class="sec-hint">Todo el histórico · con cuentas de prueba</span></div>
+      <div class="card">
+        <div class="funnel">
+          <div class="stage"><div class="n">82</div><div class="name">Registrados</div><div class="sub">Cuentas creadas</div><div class="bar"><i style="width:100%"></i></div><span class="conv">56%</span></div>
+          <div class="stage"><div class="n">46</div><div class="name">Usaron el análisis gratis</div><div class="sub">welcome_credit_used</div><div class="bar"><i style="width:56%"></i></div><span class="conv">9%</span></div>
+          <div class="stage"><div class="n">4</div><div class="name">Iniciaron checkout</div><div class="sub">Pago pendiente sobre $0</div><div class="bar"><i style="width:5%"></i></div><span class="conv">275%</span></div>
+          <div class="stage"><div class="n">11</div><div class="name">Pagaron</div><div class="sub">Pago confirmado sobre $0</div><div class="bar"><i style="width:13%"></i></div></div>
+        </div>
+        <div class="pad" style="border-top:1px solid var(--franco-border)">
+          <div class="lbl" style="margin-bottom:9px">Checkouts abandonados · 7</div>
+          <table>
+            <thead><tr><th>Email</th><th>Producto</th><th>Monto</th><th>Fecha</th></tr></thead>
+            <tbody>
+              <tr><td class="uemail">maignacia.assadi@gmail.com <span class="badge b-test">Interna</span></td><td>single</td><td class="num">$199.800</td><td class="num dim">16 jun 2026</td></tr>
+              <tr><td class="uemail">fabriziosciaraffia@gmail.com <span class="badge b-test">Interna</span></td><td>single</td><td class="num">$9.990</td><td class="num dim">3 jun 2026</td></tr>
+              <tr><td class="uemail">maignacia.assadi@gmail.com <span class="badge b-test">Interna</span></td><td>single</td><td class="num">$9.990</td><td class="num dim">2 jun 2026</td></tr>
+              <tr><td class="uemail">fabriziosciaraffia+test10@gmail.com <span class="badge b-test">Interna</span></td><td>pro</td><td class="num">$4.990</td><td class="num dim">12 abr 2026</td></tr>
+              <tr><td class="uemail">fabriziosciaraffia+test10@gmail.com <span class="badge b-test">Interna</span></td><td>pack3</td><td class="num">$9.990</td><td class="num dim">12 abr 2026</td></tr>
+              <tr><td class="uemail">fabriziosciaraffia+test11@gmail.com <span class="badge b-test">Interna</span></td><td>pack3</td><td class="num">$9.990</td><td class="num dim">8 abr 2026</td></tr>
+              <tr><td class="uemail">fabriziosciaraffia+test11@gmail.com <span class="badge b-test">Interna</span></td><td>pro</td><td class="num">$4.990</td><td class="num dim">7 abr 2026</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--franco-text-muted);margin-top:9px">Nota de lectura: con cuentas de prueba el paso 3→4 da <b>275%</b>. No es un error de cálculo — los que pagaron y los que abandonaron el checkout son conjuntos distintos, no un subconjunto. Se muestra el porcentaje tal cual, sin recortarlo a 100%.</p>
+    </section>
+
+    <section style="margin-bottom:0">
+      <div class="sec-row"><h2 class="sec">Segmentos</h2><span class="sec-hint">admin_metrics · 82 usuarios</span></div>
+      <div class="card pad">
+        <div class="segs">
+          <div class="seg"><span class="sn">Uso gratis</span><span class="st"><i style="width:100%"></i></span><span class="sv">39</span></div>
+          <div class="seg"><span class="sn">Registrado</span><span class="st"><i style="width:82%"></i></span><span class="sv">32</span></div>
+          <div class="seg"><span class="sn">Comprador</span><span class="st"><i style="width:13%"></i></span><span class="sv">5</span></div>
+          <div class="seg"><span class="sn">Suscriptor activo</span><span class="st"><i style="width:13%"></i></span><span class="sv">5</span></div>
+          <div class="seg"><span class="sn">Suscriptor churn</span><span class="st"><i style="width:3%"></i></span><span class="sv">1</span></div>
+          <div class="seg nil"><span class="sn">Admin ilimitado</span><span class="st"><i style="width:0"></i></span><span class="sv">0</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ══════════════ B · USUARIOS (desktop) ══════════════ -->
+<div class="mk-sep"><span>B · /admin/usuarios — desktop</span></div>
+<div class="mk-cap">Una sola llamada a <b>admin_list_users</b>. Búsqueda, segmento, toggle y página van por <b>searchParams</b> (form GET) — la URL es el estado, se puede compartir y volver atrás. El buscador client-side se retira.</div>
+<div class="frame">
+  <div class="topbar">
+    <div class="topbar-in">
+      <div class="wordmark"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span><span class="sep">/</span><span class="ctx">Panel de administración</span></div>
+      <a class="back" href="#">← Volver al sitio</a>
+    </div>
+    <nav class="tabs">
+      <a class="tab" href="#">Resumen</a>
+      <a class="tab on" href="#">Usuarios</a>
+      <span class="tab off">Finanzas</span>
+    </nav>
+  </div>
+
+  <div class="page">
+    <div class="controls">
+      <label class="search"><span class="dim mono" style="font-size:12px">⌕</span><input placeholder="Buscar por email…" value=""></label>
+      <select><option>Todos los segmentos</option><option>Uso gratis</option><option>Registrado</option><option>Comprador</option><option>Suscriptor activo</option><option>Suscriptor churn</option><option>Admin ilimitado</option></select>
+      <button class="btn">Filtrar</button>
+      <a class="switch" href="#"><span class="track"><i></i></span> Cuentas de prueba</a>
+    </div>
+
+    <div class="card pad">
+      <table class="utable">
+        <thead><tr><th>Email</th><th>Segmento</th><th>Saldo</th><th>Análisis</th><th>Último análisis</th><th>Registro</th></tr></thead>
+        <tbody>
+          <tr><td><a class="rowlink uemail" href="#">cfuentes812@gmail.com</a></td><td><span class="badge b-muted">Uso gratis</span></td><td class="num">0</td><td class="num">2</td><td class="num dim">hace 3 h</td><td class="num dim">1 ago 2026</td></tr>
+          <tr><td><a class="rowlink uemail" href="#">i.molinapaolini@gmail.com</a></td><td><span class="badge b-muted">Uso gratis</span></td><td class="num">0</td><td class="num">2</td><td class="num dim">hace 4 h</td><td class="num dim">1 ago 2026</td></tr>
+          <tr><td><a class="rowlink uemail" href="#">alejoarango8a@gmail.com</a></td><td><span class="badge b-muted">Uso gratis</span></td><td class="num">0</td><td class="num">2</td><td class="num dim">hace 15 h</td><td class="num dim">1 ago 2026</td></tr>
+          <tr><td><a class="rowlink uemail" href="#">rvaldiviabravo@gmail.com</a></td><td><span class="badge b-muted">Registrado</span></td><td class="num">1</td><td class="num">0</td><td class="num dim">—</td><td class="num dim">31 jul 2026</td></tr>
+          <tr><td><a class="rowlink uemail" href="#">ejemplo.suscriptor@gmail.com</a></td><td><span class="badge b-ink">Suscriptor activo</span></td><td class="num">10</td><td class="num">14</td><td class="num dim">hace 2 d</td><td class="num dim">12 jul 2026</td></tr>
+          <tr><td><a class="rowlink uemail" href="#">ejemplo.churn@gmail.com</a></td><td><span class="badge b-red">Suscriptor churn</span></td><td class="num">0</td><td class="num">6</td><td class="num dim">hace 21 d</td><td class="num dim">3 jun 2026</td></tr>
+          <tr><td><a class="rowlink uemail" href="#">ejemplo.comprador@gmail.com</a></td><td><span class="badge b-ink">Comprador</span></td><td class="num">2</td><td class="num">5</td><td class="num dim">hace 8 d</td><td class="num dim">28 may 2026</td></tr>
+        </tbody>
+      </table>
+      <div class="pager">
+        <span class="info">1–50 de 47</span>
+        <span style="display:flex;gap:7px"><span class="pgbtn dis">← Anterior</span><span class="pgbtn dis">Siguiente →</span></span>
+      </div>
+    </div>
+
+    <p style="font-size:12px;color:var(--franco-text-muted);margin-top:12px">
+      Con el toggle activo se agrega el badge <span class="badge b-test">Interna</span> junto al email y la columna Segmento no cambia. Ilimitado se muestra como saldo <span class="mono">∞</span>.
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════ C · MOBILE ══════════════ -->
+<div class="mk-sep"><span>C · mobile 380px</span></div>
+<div class="mk-cap">KPIs en 2×2 · funnel en 2×2 (los % entre etapas se ocultan, el número manda) · tabla de usuarios colapsa a cards.</div>
+<div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;gap:20px;flex-wrap:wrap">
+
+  <div class="frame narrow" style="margin:12px 0;flex:none;width:380px">
+    <div class="topbar">
+      <div class="topbar-in" style="padding:12px 14px 0">
+        <div class="wordmark" style="font-size:17px"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span></div>
+        <a class="back" href="#" style="font-size:12px">←</a>
+      </div>
+      <nav class="tabs" style="padding:0 14px"><a class="tab on" href="#">Resumen</a><a class="tab" href="#">Usuarios</a><span class="tab off">Finanzas</span></nav>
+    </div>
+    <div class="page" style="padding:18px 14px 26px">
+      <div class="ctxbar" style="padding:10px 12px;margin-bottom:18px">
+        <div class="txt" style="font-size:12px">47 usuarios reales · 35 internas excluidas</div>
+        <a class="switch" href="#" style="font-size:9px"><span class="track"><i></i></span> Incluir prueba</a>
+      </div>
+
+      <section>
+        <h2 class="sec">Funnel</h2>
+        <div class="card">
+          <div class="funnel">
+            <div class="stage" style="padding:13px"><div class="n" style="font-size:27px">47</div><div class="name" style="font-size:12px">Registrados</div><div class="bar"><i style="width:100%"></i></div></div>
+            <div class="stage" style="padding:13px"><div class="n" style="font-size:27px">28</div><div class="name" style="font-size:12px">Usaron gratis</div><div class="sub">60% del anterior</div><div class="bar"><i style="width:60%"></i></div></div>
+            <div class="stage zero" style="padding:13px"><div class="n" style="font-size:27px">0</div><div class="name" style="font-size:12px">Checkout</div><div class="sub">0% del anterior</div><div class="bar"><i style="width:2%"></i></div></div>
+            <div class="stage zero" style="padding:13px"><div class="n" style="font-size:27px">0</div><div class="name" style="font-size:12px">Pagaron</div><div class="bar"><i style="width:2%"></i></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="sec">Últimos 30 días</h2>
+        <div class="kpis" style="grid-template-columns:1fr 1fr">
+          <div class="kpi"><div class="v">35</div><div class="k">Usuarios nuevos</div></div>
+          <div class="kpi"><div class="v">40</div><div class="k">Análisis</div></div>
+          <div class="kpi"><div class="v">40</div><div class="k">Desbloqueados</div></div>
+          <div class="kpi"><div class="v">$0</div><div class="k">Ingresos</div></div>
+          <div class="kpi" style="grid-column:1/-1"><div class="v">~$6.000</div><div class="k">Costo IA estimado</div><div class="s">40 × $150 · sin medición real</div></div>
+        </div>
+      </section>
+
+      <section style="margin-bottom:0">
+        <h2 class="sec">Segmentos</h2>
+        <div class="card pad">
+          <div class="segs">
+            <div class="seg" style="grid-template-columns:1fr 46px;gap:10px"><span class="sn" style="font-size:12px">Uso gratis</span><span class="sv">28</span></div>
+            <div class="seg" style="grid-template-columns:1fr 46px;gap:10px"><span class="sn" style="font-size:12px">Registrado</span><span class="sv">19</span></div>
+            <div class="seg nil" style="grid-template-columns:1fr 46px;gap:10px"><span class="sn" style="font-size:12px">Comprador</span><span class="sv">0</span></div>
+            <div class="seg nil" style="grid-template-columns:1fr 46px;gap:10px"><span class="sn" style="font-size:12px">Suscriptor activo</span><span class="sv">0</span></div>
+            <div class="seg nil" style="grid-template-columns:1fr 46px;gap:10px"><span class="sn" style="font-size:12px">Suscriptor churn</span><span class="sv">0</span></div>
+            <div class="seg nil" style="grid-template-columns:1fr 46px;gap:10px"><span class="sn" style="font-size:12px">Admin ilimitado</span><span class="sv">0</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="frame narrow" style="margin:12px 0;flex:none;width:380px">
+    <div class="topbar">
+      <div class="topbar-in" style="padding:12px 14px 0">
+        <div class="wordmark" style="font-size:17px"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span></div>
+        <a class="back" href="#" style="font-size:12px">←</a>
+      </div>
+      <nav class="tabs" style="padding:0 14px"><a class="tab" href="#">Resumen</a><a class="tab on" href="#">Usuarios</a><span class="tab off">Finanzas</span></nav>
+    </div>
+    <div class="page" style="padding:18px 14px 26px">
+      <div class="controls" style="gap:8px">
+        <label class="search" style="min-width:0"><span class="dim mono" style="font-size:12px">⌕</span><input placeholder="Buscar por email…"></label>
+        <select style="flex:1">Todos los segmentos</select>
+        <button class="btn">Filtrar</button>
+      </div>
+      <a class="switch" href="#" style="margin-bottom:14px"><span class="track"><i></i></span> Cuentas de prueba</a>
+
+      <div class="ucards">
+        <div class="ucard">
+          <div class="top"><span class="em">cfuentes812@gmail.com</span><span class="badge b-muted">Uso gratis</span></div>
+          <div class="grid">
+            <div class="g"><div class="gl">Saldo</div><div class="gv">0</div></div>
+            <div class="g"><div class="gl">Análisis</div><div class="gv">2</div></div>
+            <div class="g"><div class="gl">Último análisis</div><div class="gv">hace 3 h</div></div>
+            <div class="g"><div class="gl">Registro</div><div class="gv">1 ago 2026</div></div>
+          </div>
+        </div>
+        <div class="ucard">
+          <div class="top"><span class="em">rvaldiviabravo@gmail.com</span><span class="badge b-muted">Registrado</span></div>
+          <div class="grid">
+            <div class="g"><div class="gl">Saldo</div><div class="gv">1</div></div>
+            <div class="g"><div class="gl">Análisis</div><div class="gv">0</div></div>
+            <div class="g"><div class="gl">Último análisis</div><div class="gv">—</div></div>
+            <div class="g"><div class="gl">Registro</div><div class="gv">31 jul 2026</div></div>
+          </div>
+        </div>
+        <div class="ucard">
+          <div class="top"><span class="em">ejemplo.suscriptor@gmail.com</span><span class="badge b-ink">Suscriptor activo</span></div>
+          <div class="grid">
+            <div class="g"><div class="gl">Saldo</div><div class="gv">10</div></div>
+            <div class="g"><div class="gl">Análisis</div><div class="gv">14</div></div>
+            <div class="g"><div class="gl">Último análisis</div><div class="gv">hace 2 d</div></div>
+            <div class="g"><div class="gl">Registro</div><div class="gv">12 jul 2026</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="pager"><span class="info">1–50 de 47</span><span style="display:flex;gap:7px"><span class="pgbtn dis">←</span><span class="pgbtn dis">→</span></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-note" style="padding-top:34px;padding-bottom:44px">
+  <div class="lbl" style="margin-bottom:9px">Lo que el mockup fija</div>
+  <p style="max-width:80ch">
+    1 · Header + pestañas en <b>layout.tsx</b> compartido; Finanzas declarada como slot deshabilitado.<br>
+    2 · Toggle de cuentas de prueba <b>por página</b>, vía searchParams, apagado por defecto. Un layout de Next no recibe searchParams, así que no puede ser global sin volverlo client.<br>
+    3 · Funnel arriba de todo: es lo que se mira primero.<br>
+    4 · Ingresos y listados con criterio de pago real (<span class="mono" style="font-size:12px">status='paid' AND amount&gt;0 AND product&lt;&gt;'analysis_charge'</span>).<br>
+    5 · Segmentos con barra CSS, sin Recharts. Seis filas siempre, incluso en cero.<br>
+    6 · Usuarios: la columna <b>nombre se retira</b> — <span class="mono" style="font-size:12px">admin_list_users</span> no devuelve <span class="mono" style="font-size:12px">user_metadata</span> y resolverlo por fila sería un N+1 contra la Auth API. El nombre sigue en la ficha del usuario.<br>
+    7 · «Últimos usuarios» desaparece de Resumen: la pestaña Usuarios lo cubre mejor y con eso se van dos <span class="mono" style="font-size:12px">.in()</span> más. «Análisis compartidos» se conserva, filtrado por el toggle.<br>
+    8 · Sin tocar créditos, cobro ni endpoints de escritura.
+  </p>
+</div>
+
+</body>
+</html>

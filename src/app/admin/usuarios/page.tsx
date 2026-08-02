@@ -1,125 +1,137 @@
-import Link from "next/link";
-import { type User } from "@supabase/supabase-js";
 import { requireAdminPage } from "@/lib/admin-auth";
-import { getLedgerBalances } from "@/lib/credits-grant";
-import { resolveDisplayName } from "@/lib/welcome";
+import {
+  adminListUsers,
+  esSegmentoValido,
+  leerIncludeTest,
+  saldoDeFila,
+  type AdminSegmento,
+} from "@/lib/admin-rpc";
+import { fmtNumber } from "@/lib/admin-format";
+import { TestToggle } from "../test-toggle";
+import { UsuariosFiltros } from "./usuarios-filtros";
 import { UsuariosTable, type UsuarioRow } from "./usuarios-table";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminUsuariosPage() {
+const POR_PAGINA = 50;
+
+type SP = Record<string, string | string[] | undefined>;
+
+function primerValor(v: string | string[] | undefined): string {
+  return (Array.isArray(v) ? v[0] : v) ?? "";
+}
+
+/** Arma una URL de esta misma página cambiando solo los parámetros indicados. */
+function urlCon(sp: SP, cambios: Record<string, string | null>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    const s = primerValor(v);
+    if (s) q.set(k, s);
+  }
+  for (const [k, v] of Object.entries(cambios)) {
+    if (v === null) q.delete(k);
+    else q.set(k, v);
+  }
+  const s = q.toString();
+  return s ? `/admin/usuarios?${s}` : "/admin/usuarios";
+}
+
+export default async function AdminUsuariosPage({ searchParams }: { searchParams: SP }) {
   // Gate compartido (src/lib/admin-auth.ts): getUser con el anon server client,
   // allowlist por ADMIN_EMAIL, redirect a /login o /dashboard, y solo entonces
-  // el client de service role.
+  // el client de service role — que es el único con grant sobre las RPCs.
   const { sb } = await requireAdminPage();
 
-  // ─── USUARIOS (paginar hasta agotar — listUsers tope 1000/página) ───
-  // Una sola página truncaría la base; el buscador filtra client-side sobre las
-  // filas cargadas, así que un usuario fuera del primer lote sería invisible e
-  // inalcanzable. Acumulamos todas las páginas. Tope de seguridad: 50 páginas
-  // (50k usuarios) → si se alcanza, seguimos con lo que haya (no rompemos).
-  const PER_PAGE = 1000;
-  const MAX_PAGES = 50;
-  const users: User[] = [];
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const { data: usersList } = await sb.auth.admin.listUsers({ page, perPage: PER_PAGE });
-    const batch = usersList?.users ?? [];
-    users.push(...batch);
-    if (batch.length < PER_PAGE) break; // última página
-  }
-  const userIds = users.map((u) => u.id);
+  // ─── Estado de la vista: todo en la URL ───
+  // Antes la búsqueda era client-side sobre las filas ya cargadas, lo que obligaba
+  // a traer la base entera de usuarios para que el buscador no mintiera. Ahora el
+  // filtro viaja a la RPC y solo vuelve la página pedida.
+  const search = primerValor(searchParams.q).trim();
+  const segParam = primerValor(searchParams.segmento);
+  const segment: AdminSegmento | null = esSegmentoValido(segParam) ? segParam : null;
+  const includeTest = leerIncludeTest(searchParams.test);
+  const paginaPedida = Number.parseInt(primerValor(searchParams.page), 10);
+  const pagina = Number.isFinite(paginaPedida) && paginaPedida > 0 ? paginaPedida : 1;
 
-  // ─── SALDO: ledger vivo (batch) + user_credits legacy (batch) ───
-  const ledgerMap = userIds.length
-    ? await getLedgerBalances(userIds, sb)
-    : new Map<string, number>();
+  // ─── UNA sola llamada: join, filtro, orden y paginación del lado del servidor ───
+  const { rows: rpcRows, total } = await adminListUsers(sb, {
+    search: search || null,
+    segment,
+    includeTest,
+    limit: POR_PAGINA,
+    offset: (pagina - 1) * POR_PAGINA,
+  });
 
-  const { data: creditsRows } = userIds.length
-    ? await sb
-        .from("user_credits")
-        .select("user_id, credits, is_unlimited, subscription_status, active_plan")
-        .in("user_id", userIds)
-    : { data: [] };
-  const creditsMap = new Map<
-    string,
-    { credits: number; is_unlimited: boolean; subscription_status: string; active_plan: string | null }
-  >();
-  for (const c of (creditsRows ?? []) as Array<{
-    user_id: string;
-    credits: number | null;
-    is_unlimited: boolean | null;
-    subscription_status: string | null;
-    active_plan: string | null;
-  }>) {
-    creditsMap.set(c.user_id, {
-      credits: c.credits ?? 0,
-      is_unlimited: c.is_unlimited ?? false,
-      subscription_status: c.subscription_status ?? "none",
-      active_plan: c.active_plan ?? null,
-    });
-  }
+  const rows: UsuarioRow[] = rpcRows.map((r) => ({
+    id: r.user_id,
+    email: r.email ?? "",
+    // Saldo con el mismo criterio que getAvailableCredits: ledger vivo + legacy.
+    saldo: saldoDeFila(r),
+    isUnlimited: r.is_unlimited ?? false,
+    isTestUser: r.is_test_user ?? false,
+    segmento: r.segmento ?? "registrado",
+    analisisTotal: r.analisis_total ?? 0,
+    ultimoAnalisis: r.ultimo_analisis,
+    createdAt: r.created_at,
+  }));
 
-  // ─── ÚLTIMO ANÁLISIS por usuario (un query, primer hit por orden desc) ───
-  const { data: analisisRows } = userIds.length
-    ? await sb
-        .from("analisis")
-        .select("user_id, comuna, created_at")
-        .in("user_id", userIds)
-        .order("created_at", { ascending: false })
-    : { data: [] };
-  const lastAnalisisMap = new Map<string, { comuna: string | null; created_at: string }>();
-  for (const a of (analisisRows ?? []) as Array<{ user_id: string; comuna: string | null; created_at: string }>) {
-    if (!lastAnalisisMap.has(a.user_id)) {
-      lastAnalisisMap.set(a.user_id, { comuna: a.comuna, created_at: a.created_at });
-    }
-  }
-
-  // ─── Armado de filas + orden por created_at del usuario desc ───
-  const rows: UsuarioRow[] = users
-    .map((u) => {
-      const c = creditsMap.get(u.id);
-      const saldo = (ledgerMap.get(u.id) ?? 0) + (c?.credits ?? 0);
-      const last = lastAnalisisMap.get(u.id);
-      return {
-        id: u.id,
-        nombre: resolveDisplayName(u.user_metadata, u.email),
-        email: u.email ?? "",
-        saldo,
-        isUnlimited: c?.is_unlimited ?? false,
-        subscriptionStatus: c?.subscription_status ?? "none",
-        activePlan: c?.active_plan ?? null,
-        lastComuna: last?.comuna ?? null,
-        lastAnalisisAt: last?.created_at ?? null,
-        createdAt: u.created_at ?? null,
-      };
-    })
-    .sort((a, b) => {
-      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return tb - ta;
-    });
+  const desde = total === 0 ? 0 : (pagina - 1) * POR_PAGINA + 1;
+  const hasta = Math.min(pagina * POR_PAGINA, total);
+  const hayAnterior = pagina > 1;
+  const haySiguiente = hasta < total;
 
   return (
-    <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
-      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 sm:py-10">
-        {/* Header */}
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h1 className="font-heading text-2xl font-bold text-[var(--franco-text)]">Usuarios</h1>
-            <p className="font-mono text-sm text-[var(--franco-text-muted)] mt-1">
-              Mesa de operaciones
-            </p>
-          </div>
-          <Link
-            href="/admin"
-            className="text-sm text-[var(--franco-text-muted)] hover:text-[var(--franco-text)] font-body"
-          >
-            ← Panel
-          </Link>
+    <>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h1 className="font-heading text-2xl font-bold text-[var(--franco-text)]">Usuarios</h1>
+          <p className="mt-1 font-mono text-sm text-[var(--franco-text-muted)]">Mesa de operaciones</p>
         </div>
-
-        <UsuariosTable rows={rows} />
       </div>
-    </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+        <UsuariosFiltros search={search} segmento={segment} includeTest={includeTest} />
+        <TestToggle includeTest={includeTest} href={urlCon(searchParams, { test: includeTest ? null : "1", page: null })} />
+      </div>
+
+      <UsuariosTable rows={rows} />
+
+      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--franco-border)] pt-3.5">
+        <span className="font-mono text-[11px] text-[var(--franco-text-muted)]">
+          {total === 0 ? "Sin resultados" : `${fmtNumber(desde)}–${fmtNumber(hasta)} de ${fmtNumber(total)}`}
+        </span>
+        <div className="flex gap-2">
+          <PagerLink href={urlCon(searchParams, { page: String(pagina - 1) })} enabled={hayAnterior}>
+            ← Anterior
+          </PagerLink>
+          <PagerLink href={urlCon(searchParams, { page: String(pagina + 1) })} enabled={haySiguiente}>
+            Siguiente →
+          </PagerLink>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PagerLink({ href, enabled, children }: { href: string; enabled: boolean; children: React.ReactNode }) {
+  const base =
+    "rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors";
+  if (!enabled) {
+    return (
+      <span
+        aria-disabled="true"
+        className={`${base} cursor-default border-[var(--franco-border)] text-[var(--franco-border-strong)]`}
+      >
+        {children}
+      </span>
+    );
+  }
+  return (
+    <a
+      href={href}
+      className={`${base} border-[var(--franco-border)] bg-[var(--franco-card)] text-[var(--franco-text)] hover:border-[var(--franco-border-hover)]`}
+    >
+      {children}
+    </a>
   );
 }
