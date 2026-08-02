@@ -99,6 +99,17 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
   2. Eliminar el junction de forma segura (sin seguir al target).
   Razón: el `rm -rf` interno de `git worktree remove` puede seguir el junction y borrar `node_modules` del repo principal. Si pasa, el daño típico es solo `node_modules/.bin` (shims) → se repara con `npm rebuild`.
 
+## Cierre de goals — la rama llega ff-ready
+
+Antes del push final, en el worktree:
+1. `git fetch && git rebase origin/master`
+2. Re-correr gates después del rebase: `node_modules/.bin/tsc --noEmit` + `node_modules/.bin/next lint` (nunca npx)
+3. `git push --force-with-lease origin <rama>` (solo la rama, nunca master)
+
+Si el rebase conflictúa: DETENTE y reporta. No resolver a ciegas sobre trabajo ajeno recién mergeado.
+
+Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual de dos pasos.
+
 ## Type-check, lint y scripts
 - Type-check: `node_modules/.bin/tsc --noEmit` — **NO** `npx tsc`. El repo puede venir sin `node_modules` → `npm ci` primero.
 - Lint por archivo: `npx next lint --file <archivo>`.
