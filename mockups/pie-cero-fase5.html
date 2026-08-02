@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pie cero · Fase 5 — wizard abre la puerta · mockup contrato</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,700;1,400;1,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink900:#0F0F0F; --ink100:#FAFAF8; --ink400:#B4B2A9; --ink500:#888780; --red:#C8323C;
+    --card:#1A1A1A; --elevated:#222222;
+    --text:#FAFAF8; --text2:rgba(250,250,248,0.5); --text3:#888780; --muted:rgba(250,250,248,0.35);
+    --border:rgba(250,250,248,0.06); --border-strong:rgba(250,250,248,0.15);
+    --serif:'Source Serif 4',Georgia,serif; --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:#0a0a0a;color:var(--text);font-family:var(--sans);margin:0;padding:40px 20px;}
+  .page{max-width:1060px;margin:0 auto;}
+  .pagehead h1{font-family:var(--serif);font-weight:700;font-size:26px;margin:0 0 6px;}
+  .pagehead .sub{font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 14px;}
+  .contract{border:.5px dashed var(--border-strong);border-radius:8px;padding:14px 16px;}
+  .contract p{font-family:var(--sans);font-size:12px;line-height:1.55;color:var(--text2);margin:0 0 6px;}
+  .contract p:last-child{margin:0;}
+  .contract b{color:var(--text);font-weight:500;}
+  .caso{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;}
+  .caso span{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);
+    border:.5px solid var(--border-strong);border-radius:4px;padding:3px 8px;}
+  .caso span b{color:var(--text);font-weight:700;}
+
+  .split{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--red);
+    margin:48px 0 6px;padding-bottom:8px;border-bottom:.5px solid var(--border-strong);}
+  .files{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.02em;margin:0 0 16px;}
+  .files b{color:var(--text2);font-weight:500;}
+
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;}
+  @media(max-width:880px){.duo{grid-template-columns:1fr;}}
+  .stage{background:#0f0f0f;border:.5px solid var(--border);border-radius:12px;padding:18px;}
+  .stage .tag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin:0 0 16px;
+    display:inline-block;border-radius:4px;padding:3px 8px;}
+  .tag.antes{color:var(--text3);border:.5px solid var(--border-strong);}
+  .tag.despues{color:var(--ink900);background:var(--ink100);font-weight:700;}
+  .lie{outline:1px dashed color-mix(in srgb,var(--red) 55%,transparent);outline-offset:4px;border-radius:6px;}
+  .lienote{font-family:var(--mono);font-size:9px;letter-spacing:.03em;color:var(--red);margin:14px 0 0;text-transform:uppercase;line-height:1.5;}
+  .designnote{border-left:3px solid var(--ink400);background:color-mix(in srgb,var(--text) 3%,transparent);
+    border-radius:0 8px 8px 0;padding:11px 14px;margin:16px 0 0;}
+  .designnote p{font-family:var(--sans);font-size:11.5px;line-height:1.55;color:var(--text2);margin:0;}
+  .designnote b{color:var(--text);font-weight:500;}
+
+  /* ── Wizard v4 · primitivos reales (ui.tsx) ── */
+  .wz{background:var(--card);border:.5px solid var(--border);border-radius:14px;padding:22px 20px;}
+  .stepper{display:flex;align-items:center;gap:7px;margin-bottom:20px;}
+  .stepper .badge{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:10px;flex-shrink:0;}
+  .badge.done{background:color-mix(in srgb,var(--text) 12%,transparent);color:var(--text2);}
+  .badge.active{background:var(--red);color:#fff;font-weight:700;}
+  .badge.pending{border:.5px solid var(--border-strong);color:var(--muted);}
+  .stepper .sl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);}
+  .stepper .line{flex:1;height:.5px;background:var(--border-strong);}
+  .stepper .cnt{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+
+  .qhead{font-family:var(--serif);font-weight:700;font-size:24px;line-height:1.25;margin:0 0 6px;}
+  .qsub{font-family:var(--sans);font-size:13.5px;color:var(--text2);margin:0 0 20px;line-height:1.5;}
+
+  .fieldrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;}
+  .flabel{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--text);display:inline-flex;align-items:center;gap:6px;}
+  .tt{color:var(--text3);font-size:10px;border:.5px solid var(--border-strong);border-radius:50%;width:13px;height:13px;
+    display:inline-flex;align-items:center;justify-content:center;line-height:1;cursor:help;}
+  .seg{display:inline-flex;border-radius:8px;border:.5px solid var(--border);background:var(--card);padding:4px;gap:4px;}
+  .seg button{font-family:var(--mono);font-size:13px;padding:7px 14px;border-radius:6px;border:none;background:transparent;
+    color:var(--text2);cursor:pointer;}
+  .seg button.on{background:var(--text);color:var(--ink900);}
+
+  .inp{position:relative;margin-bottom:12px;}
+  .inp input{width:100%;height:44px;border-radius:8px;background:var(--card);border:.5px solid var(--border);
+    padding:0 44px 0 12px;font-family:var(--mono);font-size:15px;color:var(--text);}
+  .inp .sfx{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .equiv{font-family:var(--mono);font-size:13px;color:var(--text2);margin:0 0 12px;}
+
+  /* Copy D2 — permiso informado bajo el campo */
+  .permiso{border-left:2px solid var(--ink400);border-radius:0 8px 8px 0;padding:11px 14px;margin:0 0 18px;
+    background:color-mix(in srgb,var(--text) 3.5%,transparent);}
+  .permiso .pk{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin:0 0 4px;}
+  .permiso p{font-family:var(--sans);font-size:13px;line-height:1.55;color:var(--text);margin:0;}
+
+  /* Selector D3 — ChoiceTile real */
+  .tiles{display:flex;flex-direction:column;gap:9px;margin-bottom:16px;}
+  .tile{text-align:left;border-radius:12px;padding:14px 18px;width:100%;background:var(--card);
+    border:.5px solid var(--border);color:var(--text);cursor:pointer;}
+  .tile.sel{background:var(--text);color:var(--ink900);border:1.5px solid var(--text);}
+  .tile .tt1{font-family:var(--sans);font-size:15px;display:block;}
+  .tile .tt2{font-family:var(--sans);font-size:12px;display:block;margin-top:3px;color:var(--text2);}
+  .tile.sel .tt2{color:rgba(15,15,15,0.62);}
+
+  .btnrow{margin-top:4px;}
+  .btn{font-family:var(--mono);text-transform:uppercase;font-weight:500;font-size:12px;letter-spacing:.06em;
+    padding:14px 24px;border-radius:8px;min-height:44px;display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;}
+  .btn.on{background:var(--red);color:#fff;}
+  .btn.off{background:transparent;color:var(--muted);border:1px solid var(--border-strong);cursor:not-allowed;}
+  .gatehint{font-family:var(--sans);font-size:12px;color:var(--text2);margin:9px 0 0;}
+
+  /* Resumen · ActCard */
+  .act{background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .acthead{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;}
+  .acthead .num{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.08em;}
+  .acthead .ti{font-family:var(--serif);font-weight:700;font-size:17px;}
+  .actsum{font-family:var(--mono);font-size:12px;color:var(--text2);margin:0 0 14px;}
+  .nf{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:.5px solid var(--border);}
+  .nf .nl{font-family:var(--sans);font-size:13px;color:var(--text2);}
+  .nf .nv{font-family:var(--mono);font-size:13px;font-weight:500;text-align:right;}
+  .nf .nv.dim{color:var(--muted);}
+  .razon{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:9px 0;}
+  .razon .nl{font-family:var(--sans);font-size:13px;color:var(--text2);}
+  .razon .nv{font-family:var(--sans);font-size:13px;text-align:right;}
+  .tagx{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    border:.5px solid var(--border-strong);border-radius:4px;padding:2px 6px;margin-left:7px;}
+
+  /* Card hallazgo (pirámide) */
+  .fcard{background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .fcard .kick{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin:0 0 8px;}
+  .fcard .ft{font-family:var(--serif);font-weight:700;font-size:16.5px;line-height:1.3;margin:0 0 10px;}
+  .fcard .fk{font-family:var(--mono);font-weight:700;font-size:24px;margin:0 0 3px;}
+  .fcard .fks{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 11px;}
+  .fcard .fb{font-family:var(--sans);font-size:12px;line-height:1.55;color:var(--text2);margin:0;}
+  .fcard .fb b{color:var(--text);font-weight:500;}
+
+  .pend{border:.5px dashed var(--border-strong);border-radius:10px;padding:14px 18px;margin-top:14px;}
+  .pend h3{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:0 0 10px;}
+  .pend li{font-family:var(--sans);font-size:12px;line-height:1.6;color:var(--text2);margin-bottom:9px;}
+  .pend b{color:var(--text);font-weight:500;font-family:var(--mono);font-size:11px;}
+  .footer{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:44px 0 0;text-align:center;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="pagehead">
+    <h1>Pie cero · Fase 5 — el wizard abre la puerta</h1>
+    <p class="sub">Mockup contrato · dark mode · rama pie-cero · base fases 1-4 en master (42fe1bd)</p>
+    <div class="contract">
+      <p><b>Contrato vinculante de la fase 5b.</b> Hoy el wizard BLOQUEA el pie 0 (<span style="font-family:var(--mono);font-size:11px">screensActo2.tsx:167</span>, <span style="font-family:var(--mono);font-size:11px">disabled={pct &lt;= 0}</span>) y el único camino es el editor inline del resumen — un hoyo. Decisiones cerradas: <b>D1</b> destape del Continuar (techo &gt;100% se mantiene) · <b>D2</b> copy que nombra la consecuencia · <b>D3</b> selector obligatorio solo con pie exactamente 0 · <b>D4</b> puesta a punto sin porcentaje.</p>
+      <p>Cifras del motor real (script QA <span style="font-family:var(--mono);font-size:11px">of-pie-cero-fase5-datos.ts</span>, UF $38.800):</p>
+      <div class="caso">
+        <span>UF <b>4.000</b> · $155.200.000</span><span><b>55</b> m²</span><span>tasa <b>4,7%</b></span><span><b>25</b> años</span>
+        <span>pie 0 → crédito <b>$155.200.000</b></span><span>dividendo <b>$880.365</b>/mes</span>
+        <span>pie 20% → <b>UF 800</b> · dividendo $704.292</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 1 · PIESCREEN CON PIE 0 ═══════════════ -->
+  <div class="split">1 · PieScreen del wizard v4 — pie 0 escrito (D1 + D2 + D3)</div>
+  <p class="files">Implementa: <b>screensActo2.tsx / PieScreen</b> (gate :167 · copy y selector nuevos) · answer nuevo <b>pieCobertura</b> en <b>useWizardV4.ts</b> + persistencia en <b>wizardV4Submit.ts</b></p>
+  <div class="duo">
+    <div class="stage">
+      <span class="tag antes">ANTES · el wizard te deja sin salida</span>
+      <div class="wz lie">
+        <div class="stepper">
+          <span class="badge done">✓</span><span class="sl">Depto</span><span class="line"></span>
+          <span class="badge active">2</span><span class="sl">Plata</span><span class="line"></span>
+          <span class="badge pending">3</span><span class="cnt">Paso 2 de 3</span>
+        </div>
+        <p class="qhead">¿Cuánto pones de pie?</p>
+        <p class="qsub">Lo que pagas al contado al firmar.</p>
+        <div class="fieldrow">
+          <span class="flabel">Pie <span class="tt">i</span></span>
+          <span class="seg"><button class="on">%</button><button>UF</button><button>$</button></span>
+        </div>
+        <div class="inp"><input value="0" readonly><span class="sfx">%</span></div>
+        <div class="btnrow"><button class="btn off">Continuar →</button></div>
+      </div>
+      <p class="lienote">▲ El botón se apaga sin decir por qué. No hay copy, no hay salida: el usuario con bono pie cree que Franco no sirve para su caso — y el único camino real (editar el pie en el resumen) es invisible acá.</p>
+    </div>
+
+    <div class="stage">
+      <span class="tag despues">DESPUÉS · D1 + D2 + D3</span>
+      <div class="wz">
+        <div class="stepper">
+          <span class="badge done">✓</span><span class="sl">Depto</span><span class="line"></span>
+          <span class="badge active">2</span><span class="sl">Plata</span><span class="line"></span>
+          <span class="badge pending">3</span><span class="cnt">Paso 2 de 3</span>
+        </div>
+        <p class="qhead">¿Cuánto pones de pie?</p>
+        <p class="qsub">Lo que pagas al contado al firmar.</p>
+        <div class="fieldrow">
+          <span class="flabel">Pie <span class="tt">i</span></span>
+          <span class="seg"><button class="on">%</button><button>UF</button><button>$</button></span>
+        </div>
+        <div class="inp"><input value="0" readonly><span class="sfx">%</span></div>
+
+        <div class="permiso">
+          <p class="pk">Pie 0%</p>
+          <p>Financias el 100% con crédito: el dividendo queda en su punto más alto. Franco analiza el depto igual y te muestra qué significa mes a mes.</p>
+        </div>
+
+        <div class="fieldrow" style="margin-top:2px"><span class="flabel">¿Cómo se cubre el pie?</span></div>
+        <div class="tiles">
+          <button class="tile sel"><span class="tt1">Bono pie de la inmobiliaria</span><span class="tt2">la inmobiliaria lo cubre como promoción</span></button>
+          <button class="tile"><span class="tt1">Pie en cuotas antes de la entrega</span><span class="tt2">lo pagas repartido hasta que te entregan</span></button>
+          <button class="tile"><span class="tt1">Lo cubro con otra fuente</span><span class="tt2">ahorro, familia, otra propiedad</span></button>
+          <button class="tile"><span class="tt1">Prefiero no decir</span></button>
+        </div>
+
+        <div class="btnrow"><button class="btn on">Continuar →</button></div>
+      </div>
+      <div class="designnote"><p><b>Anatomía:</b> primitivos reales del wizard — <span style="font-family:var(--mono);font-size:11px">ChoiceTile</span> (seleccionado = invertido Ink, sin hover-lift) y <span style="font-family:var(--mono);font-size:11px">PrimaryBtn</span> (Signal Red sólido = uso permitido #1). Las equivalencias en vivo NO se muestran con pie 0 (hoy ya se ocultan con <span style="font-family:var(--mono);font-size:11px">pct &gt; 0</span>): "= UF 0 · $0" sería ruido. El bloque D2 ocupa ese lugar.<br><b>Gate D3:</b> sin opción elegida el Continuar queda en outline inactivo + hint "Elige una opción para continuar" (estado en la columna de al lado del bloque 1b).</p></div>
+    </div>
+  </div>
+
+  <div class="split" style="color:var(--text3)">1b · El gate de D3 — sin elegir, no avanza</div>
+  <div class="duo">
+    <div class="stage">
+      <span class="tag antes">GATE ACTIVO · ninguna opción elegida</span>
+      <div class="wz">
+        <div class="fieldrow"><span class="flabel">¿Cómo se cubre el pie?</span></div>
+        <div class="tiles">
+          <button class="tile"><span class="tt1">Bono pie de la inmobiliaria</span><span class="tt2">la inmobiliaria lo cubre como promoción</span></button>
+          <button class="tile"><span class="tt1">Pie en cuotas antes de la entrega</span><span class="tt2">lo pagas repartido hasta que te entregan</span></button>
+          <button class="tile"><span class="tt1">Lo cubro con otra fuente</span><span class="tt2">ahorro, familia, otra propiedad</span></button>
+          <button class="tile"><span class="tt1">Prefiero no decir</span></button>
+        </div>
+        <div class="btnrow"><button class="btn off">Continuar →</button></div>
+        <p class="gatehint">Elige una opción para continuar.</p>
+      </div>
+    </div>
+    <div class="stage">
+      <span class="tag antes">TECHO INTACTO · pie &gt; 100% (regla vieja, se mantiene)</span>
+      <div class="wz">
+        <div class="fieldrow">
+          <span class="flabel">Pie <span class="tt">i</span></span>
+          <span class="seg"><button class="on">%</button><button>UF</button><button>$</button></span>
+        </div>
+        <div class="inp"><input value="120" readonly><span class="sfx">%</span></div>
+        <p style="font-family:var(--sans);font-size:12px;color:var(--red);margin:0 0 14px;line-height:1.45">El pie no puede superar el 100% del precio. Ajústalo para continuar.</p>
+        <div class="btnrow"><button class="btn off">Continuar →</button></div>
+      </div>
+      <div class="designnote"><p>D1 destapa el piso (0), <b>no el techo</b>: <span style="font-family:var(--mono);font-size:11px">pieExcede</span> sigue bloqueando igual que hoy. El selector D3 tampoco aparece acá — solo con pie exactamente 0.</p></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 2 · PIESCREEN PIE 20% ═══════════════ -->
+  <div class="split">2 · PieScreen con pie 20% — prueba de no-filtración</div>
+  <p class="files">Implementa: <b>screensActo2.tsx / PieScreen</b> — con <span style="font-family:var(--mono);font-size:11px">pct &gt; 0</span> el render es BYTE-IDÉNTICO al de hoy</p>
+  <div class="duo">
+    <div class="stage">
+      <span class="tag antes">HOY</span>
+      <div class="wz">
+        <div class="fieldrow">
+          <span class="flabel">Pie <span class="tt">i</span></span>
+          <span class="seg"><button class="on">%</button><button>UF</button><button>$</button></span>
+        </div>
+        <div class="inp"><input value="20" readonly><span class="sfx">%</span></div>
+        <p class="equiv">= UF 800 · $31.040.000</p>
+        <div class="btnrow"><button class="btn on">Continuar →</button></div>
+      </div>
+    </div>
+    <div class="stage">
+      <span class="tag despues">DESPUÉS · sin cambios</span>
+      <div class="wz">
+        <div class="fieldrow">
+          <span class="flabel">Pie <span class="tt">i</span></span>
+          <span class="seg"><button class="on">%</button><button>UF</button><button>$</button></span>
+        </div>
+        <div class="inp"><input value="20" readonly><span class="sfx">%</span></div>
+        <p class="equiv">= UF 800 · $31.040.000</p>
+        <div class="btnrow"><button class="btn on">Continuar →</button></div>
+      </div>
+      <div class="designnote"><p>Sin bloque D2, sin selector D3, mismas equivalencias, mismo botón. El único diff de código en esta ruta es el gate (<span style="font-family:var(--mono);font-size:11px">pct &lt;= 0</span> → <span style="font-family:var(--mono);font-size:11px">pct &lt; 0</span> + gate de cobertura), que con pie 20% evalúa igual que hoy.</p></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 3 · CARD 02 DEL RESUMEN ═══════════════ -->
+  <div class="split">3 · Card 02 del resumen — "Cómo lo financias" con pie 0</div>
+  <p class="files">Implementa: <b>screenResumen.tsx</b> — <span style="font-family:var(--mono);font-size:11px">pieStr</span> (:547), <span style="font-family:var(--mono);font-size:11px">summary02</span> (:785) y la fila "Pie" de la lista (:625); las tres colapsan a "—" hoy por el mismo <span style="font-family:var(--mono);font-size:11px">pct &gt; 0</span></p>
+  <div class="duo">
+    <div class="stage">
+      <span class="tag antes">ANTES · el pie desaparece del resumen</span>
+      <div class="act lie">
+        <div class="acthead"><span class="num">02</span><span class="ti">Cómo lo financias</span></div>
+        <p class="actsum">25 años · 4,7%</p>
+        <div class="nf"><span class="nl">Pie (% del precio)</span><span class="nv dim">—</span></div>
+        <div class="nf"><span class="nl">Plazo</span><span class="nv">25 años</span></div>
+        <div class="nf" style="border:none"><span class="nl">Tasa</span><span class="nv">4,7%</span></div>
+      </div>
+      <p class="lienote">▲ Con pie 0 el resumen dice "—" (dato faltante) y la línea de arriba pierde el chip del pie: el usuario que acaba de declarar 0% no ve reflejada su decisión, y no puede confirmar que Franco la registró.</p>
+    </div>
+    <div class="stage">
+      <span class="tag despues">DESPUÉS</span>
+      <div class="act">
+        <div class="acthead"><span class="num">02</span><span class="ti">Cómo lo financias</span></div>
+        <p class="actsum">Sin pie · 25 años · 4,7%</p>
+        <div class="nf"><span class="nl">Pie (% del precio)</span><span class="nv">0% · financias el 100%</span></div>
+        <div class="razon"><span class="nl">Cómo se cubre</span><span class="nv">Bono pie de la inmobiliaria<span class="tagx">lo indicaste tú</span></span></div>
+        <div class="nf" style="border-top:.5px solid var(--border)"><span class="nl">Plazo</span><span class="nv">25 años</span></div>
+        <div class="nf" style="border:none"><span class="nl">Tasa</span><span class="nv">4,7%</span></div>
+      </div>
+      <div class="designnote"><p><b>Tres cambios:</b> (1) <span style="font-family:var(--mono);font-size:11px">pieStr</span> pasa de "—" a <b>"0% · financias el 100%"</b> — el 0 es un dato declarado, no un vacío; (2) la línea resumen abre con <b>"Sin pie"</b> en vez de omitir el chip (hoy quedaba "25 años · 4,7%", como si el pie no existiera); (3) fila nueva <b>"Cómo se cubre"</b> con la razón de D3 y el tag "lo indicaste tú" (mismo patrón que "corregido por ti" de los NumField). Con pie &gt; 0 la fila no existe y las otras dos no cambian.</p></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 4 · PUESTA A PUNTO ═══════════════ -->
+  <div class="split">4 · Card de puesta a punto — el porcentaje que miente (D4)</div>
+  <p class="files">Implementa: <b>capex-puesta-a-punto.ts</b> (fraseCanonica :110-113) + <b>GenericFindingCard.tsx</b> (ksub del caso <span style="font-family:var(--mono);font-size:11px">capex_puesta_a_punto</span>, :143-151)</p>
+  <div class="duo">
+    <div class="stage">
+      <span class="tag antes">ANTES · 71% (base desplomada)</span>
+      <div class="fcard lie">
+        <p class="kick">Puesta a punto</p>
+        <p class="ft">Dejarlo listo para arrendar</p>
+        <p class="fk">+$7.469.000</p>
+        <p class="fks">UF 193 · 71% de tu inversión inicial</p>
+        <p class="fb">Departamento de 10 años: para captar arriendo de mercado, considera unos UF 193 ($7.469.000) de puesta a punto — cerca del <b>71%</b> de tu inversión inicial. No es remodelar para revender: es dejarlo en estándar de arriendo.</p>
+      </div>
+      <p class="lienote">▲ El MISMO depto con pie 20% dice <b>18%</b>. El salto a 71% no es que la puesta a punto sea peor: es que sin pie la base (inversión inicial) se desploma a $10,6M. El porcentaje mide el denominador, no el gasto — infla y asusta.</p>
+    </div>
+    <div class="stage">
+      <span class="tag despues">DESPUÉS · D4</span>
+      <div class="fcard">
+        <p class="kick">Puesta a punto</p>
+        <p class="ft">Dejarlo listo para arrendar</p>
+        <p class="fk">+$7.469.000</p>
+        <p class="fks">UF 193 · antes de arrendar, en una sola vez</p>
+        <p class="fb">Departamento de 10 años: para captar arriendo de mercado, considera unos UF 193 ($7.469.000) de puesta a punto. Sin pie, es la única plata tuya que entra el día uno además de los gastos de cierre. No es remodelar para revender: es dejarlo en estándar de arriendo.</p>
+      </div>
+      <div class="designnote"><p><b>Cambios D4:</b> el KPI (monto) no se toca. El <b>ksub cambia el % por el cuándo</b> ("antes de arrendar, en una sola vez") — información útil que el porcentaje tapaba. La frase suprime la comparación contra la inversión inicial y en su lugar dice algo verdadero y propio del caso: con pie 0, el CapEx <b>es</b> el desembolso propio del día uno. Con pie &gt; 0 la card y la frase quedan exactamente como hoy (el % sigue siendo honesto ahí).</p></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ SIN DECISIÓN ═══════════════ -->
+  <div class="split" style="color:var(--text3)">Decisiones de UX que D1-D4 no cubren — sin diseño inventado</div>
+  <div class="pend">
+    <h3>Sin decisión — requieren tu llamada antes de 5b</h3>
+    <ul>
+      <li><b>¿La razón de D3 viaja al motor y a la prosa?</b> El enum <b>RazonSinCapital</b> (fase 1-2) hoy tiene un solo miembro, <b>'sin_pie'</b>, y la doctrina <b>## 5.bis.a</b> (fase 4) ya dice "si llega una razón nueva, nárrala tal como el input la describa". Mapear "Bono pie" → <b>'bono_pie'</b> encendería esa capacidad — pero toca motor y prompts, no solo wizard. Alternativa: la razón queda como dato de wizard (analytics + resumen) y el motor sigue viendo 'sin_pie'. <b>Es una decisión de alcance de 5b, no de diseño.</b></li>
+      <li><b>¿La razón es editable desde el resumen?</b> Todo lo demás de la card 02 lo es (<span style="font-family:var(--mono);font-size:11px">commitEdit</span>). Acá la mockeé como línea de solo lectura. Si debe ser editable, necesita su propio control (chips) y define si el cambio recalcula algo.</li>
+      <li><b>¿Qué pasa con la razón si el usuario vuelve atrás y cambia el pie de 0 a 20%?</b> Opciones: se borra en silencio, se conserva por si vuelve a 0, o se pregunta. Hoy el wizard limpia <span style="font-family:var(--mono);font-size:11px">pieMonto</span> al cambiar de unidad — hay precedente de borrado silencioso, pero no lo di por hecho.</li>
+      <li><b>Analytics.</b> El wizard trackea eventos (<span style="font-family:var(--mono);font-size:11px">trackWizard</span>). Un <span style="font-family:var(--mono);font-size:11px">wizard4_pie_cero</span> con la razón elegida diría cuánta demanda real hay de bono pie — dato que hoy no existe. No lo mockeé porque no es superficie visible.</li>
+      <li><b>El label de D3 con pie 0.</b> "¿Cómo se cubre el pie?" es tu redacción cerrada y la respeté. Ojo a la lectura literal: si el pie es 0, hablar de "cubrir el pie" puede sonar contradictorio para un primerizo. Variante si la quieres: <b>"¿Por qué no pones pie?"</b> (más directa) o <b>"¿Quién cubre el pie?"</b>. Es cambio de una línea.</li>
+    </ul>
+  </div>
+
+  <p class="footer">refranco.ai · mockup pie-cero fase 5a · cifras reales del motor (caso canónico UF 4.000 · pie 0) · no es la app</p>
+</div>
+</body>
+</html>
