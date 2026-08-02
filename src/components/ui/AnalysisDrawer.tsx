@@ -12,7 +12,7 @@ import type {
   HallazgoEstructuraFinanciamiento,
   HallazgoCapRate,
 } from "@/lib/types";
-import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
+import { calcFlujoDesglose, tirForPrice, calcDividendo } from "@/lib/analysis";
 import { metricaODefault } from "@/lib/types";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
@@ -440,9 +440,13 @@ function DrawerNegociacion({
   const esPasada = diferenciaCLP > 0 && pctDiferencia > 2;
   const esSobreprecio = diferenciaCLP < 0 && pctDiferencia > 2;
 
-  // TODO(pie-cero-fase-3): con pie 0 la TIR es 'no_aplica' y acá se aplana a 0
-  // (misma decisión que el motor de negociación); el drawer honesto es fase 3.
   const tirActual = metricaODefault(results.exitScenario?.tir, 0);
+  // Pie cero (fase 3b · D2, mockup 98e2319): sin capital propio el beneficio de
+  // negociar se mide en PLATA MENSUAL, no en TIR — la columna TIR pasa a
+  // "Tu flujo/mes", la fila Límite (techo de retorno) se suprime y los
+  // escenarios −5%/−10% se muestran como baja de dividendo.
+  const mtr = results.metrics;
+  const sinPie = mtr ? mtr.pieCLP === 0 : inputData.piePct === 0;
   const neg = results.negociacion;
 
   // Fallbacks si el análisis es viejo (sin motor.negociacion): recomputar en el
@@ -454,12 +458,14 @@ function DrawerNegociacion({
     const asOf = createdAt ? new Date(createdAt) : new Date();
     const baseSugerido = Math.min(inputData.precio, vmFrancoUF);
     const precioSugUF = Math.round(baseSugerido * 0.97 * 10) / 10;
-    const tirSug = tirForPrice(inputData, precioSugUF, valorUF, asOf);
-    const tirVm = tirForPrice(inputData, vmFrancoUF, valorUF, asOf);
+    // Pie cero: la TIR no aplica — el render plata-mensual no la consume y la
+    // bisección del límite (techo de TIR) se omite entera.
+    const tirSug = sinPie ? 0 : tirForPrice(inputData, precioSugUF, valorUF, asOf);
+    const tirVm = sinPie ? 0 : tirForPrice(inputData, vmFrancoUF, valorUF, asOf);
     // Precio límite por bisección simple solo si la TIR actual es > 6
     let precioLimUF: number | null = null;
     let tirLim: number | null = null;
-    if (tirActual > 6) {
+    if (!sinPie && tirActual > 6) {
       let lo = inputData.precio;
       // P2 (Fase 20): rango ampliado a vmFranco × 1.5 (era × 1.3) para que
       // Límite ≥ vmFranco en deals con ventaja extrema (>30% bajo mercado).
@@ -488,7 +494,7 @@ function DrawerNegociacion({
       tirAlLimite: tirLim,
       tirAlVmFranco: tirVm,
     };
-  }, [neg, inputData, vmFrancoUF, valorUF, tirActual, createdAt]);
+  }, [neg, inputData, vmFrancoUF, valorUF, tirActual, createdAt, sinPie]);
 
   // Guard P3: data corrupta o legacy sin precio válido — el resto del drawer
   // produciría barras NaN y veredicto sin sentido. Después de hooks por
@@ -527,6 +533,25 @@ function DrawerNegociacion({
     typeof t === "number" && !isNaN(t)
       ? t.toFixed(1).replace(".", ",") + "%"
       : "—";
+  // Pie cero (D2): dividendo y flujo mensual estimados al cerrar a un precio
+  // dado, con la MISMA estructura del análisis (piePct/tasa/plazo declarados).
+  // Motor real (calcDividendo), nunca cifras hardcodeadas.
+  const dividendoAt = (precioCLPTarget: number) =>
+    calcDividendo(
+      precioCLPTarget * (1 - (inputData.piePct ?? 0) / 100),
+      inputData.tasaInteres,
+      inputData.plazoCredito,
+    );
+  const flujoMesAt = (precioCLPTarget: number): number | null =>
+    mtr ? mtr.flujoNetoMensual + (mtr.dividendo - dividendoAt(precioCLPTarget)) : null;
+  const fmtFlujoMes = (v: number | null | undefined) => {
+    if (typeof v !== "number" || isNaN(v)) return "—";
+    return (v < 0 ? "−" : "+") + fmtFull(Math.abs(v));
+  };
+  const flujoMesColor = (v: number | null | undefined) => {
+    if (typeof v !== "number" || isNaN(v)) return "color-mix(in srgb, var(--franco-text) 45%, transparent)";
+    return v < 0 ? "var(--signal-red)" : "var(--franco-text)";
+  };
   const tirColor = (t: number | null | undefined) => {
     if (typeof t !== "number" || isNaN(t)) return "color-mix(in srgb, var(--franco-text) 45%, transparent)";
     if (t >= 9) return "var(--ink-400)";
@@ -599,6 +624,7 @@ function DrawerNegociacion({
       sub: "lo que pide el corredor",
       precio: precioCLP,
       tir: tirActual,
+      flujoMes: mtr?.flujoNetoMensual ?? null,
       barColor: "rgba(250,250,248,0.55)",
       highlight: false,
       tooltip: "Precio publicado por el corredor que estás analizando.",
@@ -611,6 +637,7 @@ function DrawerNegociacion({
         : "estimado según comparables de zona",
       precio: vmFrancoCLP,
       tir: tirAlVmFranco ?? tirActual,
+      flujoMes: flujoMesAt(vmFrancoCLP),
       barColor: "var(--ink-400)",
       highlight: false,
       tooltip: vmDebil
@@ -628,6 +655,7 @@ function DrawerNegociacion({
         : "cierra acá si puedes",
       precio: precioSugeridoCLP,
       tir: tirAlSugerido,
+      flujoMes: flujoMesAt(precioSugeridoCLP),
       barColor: "var(--franco-text)",
       highlight: true,
       tooltip: mandadoPorVeredicto
@@ -644,6 +672,7 @@ function DrawerNegociacion({
         : "máximo que conviene pagar por retorno",
       precio: precioLimiteCLP,
       tir: tirAlLimite,
+      flujoMes: null,
       barColor: "var(--signal-red)",
       highlight: false,
       // Semántica EXPLÍCITAMENTE distinta del Sugerido cuando ese viene del umbral de
@@ -652,6 +681,10 @@ function DrawerNegociacion({
       tooltip: "Precio máximo bajo el cual la TIR cae bajo 6%. Es un techo de RETORNO, no el precio que cambia el veredicto: sobre 6% es el mínimo para que la inversión sea más atractiva que instrumentos de bajo riesgo (depósitos a plazo, fondos mutuos conservadores).",
     },
   ].filter((f) => {
+    // Pie cero (D2): la fila Límite se suprime SIEMPRE — su semántica es techo
+    // de RETORNO (TIR 6%) y sin capital propio no tiene base. El bloque
+    // conclusivo del sugerido toma su lugar (mockup 98e2319).
+    if (f.key === "lim" && sinPie) return false;
     // PARTE 7.1: ocultar fila Límite cuando esSobreprecio + null (combo ilógico).
     if (f.key === "lim" && esSobreprecio && precioLimiteCLP === null) return false;
     return true;
@@ -741,11 +774,23 @@ function DrawerNegociacion({
           Comparativa de precios
         </p>
 
+        {/* Pie cero (D2): intro de la lectura plata-mensual, antes de la tabla. */}
+        {sinPie && (
+          <p
+            className="font-body m-0 mb-3"
+            style={{ fontSize: 12.5, lineHeight: 1.55, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)" }}
+          >
+            Sin pie, el beneficio de negociar se mide en plata mensual: cada peso menos de precio es crédito que no tomas, y eso baja el dividendo desde el día uno.
+          </p>
+        )}
+
         {/* Header de columnas — solo desktop (mobile muestra precio+tir apilados) */}
         <div
           className="hidden sm:grid items-center gap-3 pb-2 mb-1 font-mono uppercase"
           style={{
-            gridTemplateColumns: "minmax(160px, 1.4fr) 1fr 90px 60px",
+            gridTemplateColumns: sinPie
+              ? "minmax(160px, 1.4fr) 1fr 90px 92px"
+              : "minmax(160px, 1.4fr) 1fr 90px 60px",
             fontSize: 9,
             letterSpacing: "0.06em",
             color: "color-mix(in srgb, var(--franco-text) 45%, transparent)",
@@ -756,8 +801,14 @@ function DrawerNegociacion({
           <span></span>
           <span className="text-right">Precio</span>
           <span className="inline-flex items-center justify-end gap-1">
-            <span>TIR</span>
-            <InfoTooltip content="Tasa Interna de Retorno: rentabilidad anual proyectada de la inversión incluyendo flujo, plusvalía y venta a 10 años." />
+            <span>{sinPie ? "Tu flujo/mes" : "TIR"}</span>
+            <InfoTooltip
+              content={
+                sinPie
+                  ? "Flujo mensual estimado si cierras a ese precio, con tu misma estructura (crédito por el 100% del precio). Sin capital propio, la TIR no aplica."
+                  : "Tasa Interna de Retorno: rentabilidad anual proyectada de la inversión incluyendo flujo, plusvalía y venta a 10 años."
+              }
+            />
           </span>
         </div>
 
@@ -775,7 +826,11 @@ function DrawerNegociacion({
                 {/* Desktop: 4 columnas */}
                 <div
                   className="hidden sm:grid items-center gap-3"
-                  style={{ gridTemplateColumns: "minmax(160px, 1.4fr) 1fr 90px 60px" }}
+                  style={{
+                    gridTemplateColumns: sinPie
+                      ? "minmax(160px, 1.4fr) 1fr 90px 92px"
+                      : "minmax(160px, 1.4fr) 1fr 90px 60px",
+                  }}
                 >
                   <div className="flex flex-col min-w-0">
                     <span
@@ -821,9 +876,9 @@ function DrawerNegociacion({
                   </span>
                   <span
                     className="font-mono font-bold text-right whitespace-nowrap"
-                    style={{ fontSize: 12, color: tirColor(f.tir) }}
+                    style={{ fontSize: 12, color: sinPie ? flujoMesColor(f.flujoMes) : tirColor(f.tir) }}
                   >
-                    {fmtTir(f.tir)}
+                    {sinPie ? fmtFlujoMes(f.flujoMes) : fmtTir(f.tir)}
                   </span>
                 </div>
 
@@ -855,9 +910,9 @@ function DrawerNegociacion({
                     </span>
                     <span
                       className="font-mono font-bold whitespace-nowrap"
-                      style={{ fontSize: 12, color: tirColor(f.tir) }}
+                      style={{ fontSize: 12, color: sinPie ? flujoMesColor(f.flujoMes) : tirColor(f.tir) }}
                     >
-                      {fmtTir(f.tir)}
+                      {sinPie ? fmtFlujoMes(f.flujoMes) : fmtTir(f.tir)}
                     </span>
                   </div>
                 </div>
@@ -866,6 +921,59 @@ function DrawerNegociacion({
           })}
         </div>
       </div>
+
+      {/* Pie cero (D2): escenarios −5%/−10% en plata mensual + el número que
+          cambia la conclusión. Motor real (calcDividendo), sin cifras fijas. */}
+      {sinPie && mtr && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {[0.05, 0.1].map((d) => {
+              const nuevoDiv = dividendoAt(precioCLP * (1 - d));
+              const baja = mtr.dividendo - nuevoDiv;
+              const creditoBaja = precioCLP * d * (1 - (inputData.piePct ?? 0) / 100);
+              return (
+                <div
+                  key={d}
+                  className="rounded-[8px] p-3.5"
+                  style={{ background: "var(--franco-elevated)", border: "0.5px solid var(--franco-border)" }}
+                >
+                  <p className="font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--franco-text-secondary)] m-0 mb-1.5">
+                    Negociando −{Math.round(d * 100)}%
+                  </p>
+                  <p className="font-mono font-bold text-[17px] m-0 mb-1 text-[var(--franco-text)]">
+                    −{fmtFull(baja)}/mes
+                  </p>
+                  <p className="font-body text-[10.5px] leading-[1.45] text-[var(--franco-text-secondary)] m-0">
+                    El crédito baja {fmtShort(creditoBaja)} → el dividendo cae a {fmtFull(nuevoDiv)} y tu flujo mejora exactamente eso.
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          <div
+            className="rounded-r-[8px] p-4"
+            style={{
+              borderLeft: "3px solid var(--franco-text)",
+              background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+            }}
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--franco-text-secondary)] m-0 mb-1.5">
+              El número que vale la pena pelear
+            </p>
+            <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
+              Cerrando en{" "}
+              <b className="font-mono font-bold">
+                UF {Math.round(negData.precioSugeridoUF).toLocaleString("es-CL")}
+              </b>{" "}
+              ({precioCLP > 0 ? `−${((1 - precioSugeridoCLP / precioCLP) * 100).toFixed(1).replace(".", ",")}%` : ""}) el dividendo baja{" "}
+              <b className="font-mono font-bold">{fmtFull(mtr.dividendo - dividendoAt(precioSugeridoCLP))}/mes</b>
+              {mandadoPorVeredicto
+                ? ` y el veredicto sube a ${destinoUmbral}. No es alinearse con comparables: es cambiar la conclusión.`
+                : " — tu flujo mejora exactamente eso."}
+            </p>
+          </div>
+        </>
+      )}
 
       {/* Aunque negocies al máximo (negociacion.contenido — Entrega B).
           break-even del arriendo + palanca de financiamiento. Contrato reescrito
@@ -1316,8 +1424,9 @@ function DrawerReestructuracion({
 // Fallback del drawer de estructura/financiamiento: cuando NO existe
 // aiAnalysis.reestructuracion (salud financiera sana, sin Nivel 3), el "ver
 // detalle" del hallazgo estructura abre este contenido liviano solo-motor. Sin
-// IA, sin chart. Confirma que la estructura está sana (pie, tasa, cuota actual
-// desde el hallazgo + results.metrics) y que no hay palanca urgente que mover.
+// IA, sin chart. BIFURCA por direccion del hallazgo (fase 3b · D4): favorable →
+// confirma que la estructura está sana; adverso → estructura tensionada (intro
+// del hallazgo o del caso pie 0, vacancia en plata, palanca honesta).
 // Estilo sobrio de DrawerCapexPuestaAPunto.
 function DrawerEstructuraSana({
   hallazgo,
@@ -1330,15 +1439,46 @@ function DrawerEstructuraSana({
   currency: "CLP" | "UF";
   valorUF: number;
 }) {
-  const { piePct, tasaPct, tasaMarketPct } = hallazgo.valor;
+  const { piePct, tasaPct, tasaMarketPct, driver } = hallazgo.valor;
   const cuotaActual = results.metrics?.dividendo ?? 0;
   const pieFmt = Number.isInteger(piePct) ? String(piePct) : piePct.toFixed(1).replace(".", ",");
+
+  // Pie cero (fase 3b · D4, mockup 98e2319): el drawer deja de ser fallback
+  // ciego y BIFURCA por direccion del hallazgo. Favorable → texto "sana" de
+  // siempre. Adverso → estructura tensionada (el caso pie 5% que antes caía en
+  // "está sana" ahora cae acá), con pie 0 como caso extremo.
+  const adverso = hallazgo.direccion === "adverso";
+  const sinPie = piePct === 0;
+  const m = results.metrics;
+  // Obligaciones duras del dueño en un mes sin arrendatario: dividendo + GGCC
+  // + contribuciones mensualizadas (m.contribuciones viene trimestral).
+  const contribMes = m ? Math.round(m.contribuciones / 3) : 0;
+  const vacanciaMes = m ? Math.round(m.dividendo + m.gastos + contribMes) : null;
+  const creditoCLP = m ? m.precioCLP - m.pieCLP : null;
+  // Spread de display sobre tasas ya redondeadas (round-una-vez, misma
+  // convención que la fraseCanonica del hallazgo).
+  const spreadDisplayPts = Math.abs(
+    Math.round((Math.round(tasaPct * 10) / 10 - Math.round(tasaMarketPct * 10) / 10) * 100),
+  );
+  const tasaSobreMercado = Math.round(tasaPct * 10) / 10 > Math.round(tasaMarketPct * 10) / 10;
 
   return (
     <div>
       <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
-        <span>Tu estructura de financiamiento está sana: el pie y la tasa no están frenando el deal.</span>
-        <InfoTooltip content="Cuando el pie y la tasa están en rango, el problema —si lo hay— está en el precio o el flujo, no en cómo financias." />
+        <span>
+          {!adverso
+            ? "Tu estructura de financiamiento está sana: el pie y la tasa no están frenando el deal."
+            : sinPie
+              ? "Tu estructura de financiamiento está tensionada: financias el 100% con crédito, el dividendo queda en su punto más alto y no hay colchón de capital."
+              : hallazgo.fraseCanonica}
+        </span>
+        <InfoTooltip
+          content={
+            !adverso
+              ? "Cuando el pie y la tasa están en rango, el problema —si lo hay— está en el precio o el flujo, no en cómo financias."
+              : "Con la estructura fuera de rango el financiamiento no acompaña: la cuota queda más alta y el margen ante imprevistos, menor."
+          }
+        />
       </p>
 
       {/* Estructura actual — chips numéricos en mono */}
@@ -1376,7 +1516,9 @@ function DrawerEstructuraSana({
           </div>
         </div>
         <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-3">
-          Óptimo de pie 25% · tasa de mercado {tasaMarketPct.toFixed(1).replace(".", ",")}%.
+          {sinPie && creditoCLP !== null
+            ? `Financiamiento 100% · tasa de mercado ${tasaMarketPct.toFixed(1).replace(".", ",")}%${tasaSobreMercado ? ` (+${spreadDisplayPts} pts)` : ""} · crédito ${fmtMoney(creditoCLP, currency, valorUF)}.`
+            : `Óptimo de pie 25% · tasa de mercado ${tasaMarketPct.toFixed(1).replace(".", ",")}%.`}
         </p>
       </div>
 
@@ -1397,21 +1539,70 @@ function DrawerEstructuraSana({
         </p>
       </div>
 
-      {/* Bloque conclusivo — sin palanca urgente */}
-      <div
-        className="rounded-r-[8px] p-4"
-        style={{
-          borderLeft: "3px solid var(--franco-text)",
-          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-        }}
-      >
-        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-          Sin palanca urgente
-        </p>
-        <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-          No hay una palanca de financiamiento urgente que mover. Si este deal necesita ajuste, está en el precio o el flujo, no en cómo lo financias.
-        </p>
-      </div>
+      {!adverso ? (
+        /* Bloque conclusivo — sin palanca urgente (estado a favor, texto de siempre) */
+        <div
+          className="rounded-r-[8px] p-4"
+          style={{
+            borderLeft: "3px solid var(--franco-text)",
+            background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+          }}
+        >
+          <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
+            Sin palanca urgente
+          </p>
+          <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
+            No hay una palanca de financiamiento urgente que mover. Si este deal necesita ajuste, está en el precio o el flujo, no en cómo lo financias.
+          </p>
+        </div>
+      ) : (
+        /* Estado en contra (D4): la vacancia en plata + dónde está la palanca.
+           Signal Red legítimo: monto negativo crítico que sale del bolsillo (uso #2). */
+        <>
+          {vacanciaMes !== null && m && (
+            <div
+              className="rounded-r-[8px] p-4 mb-4"
+              style={{
+                borderLeft: "3px solid var(--signal-red)",
+                background: "color-mix(in srgb, var(--signal-red) 7%, transparent)",
+              }}
+            >
+              <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--signal-red)] m-0 mb-1">
+                Un mes de vacancia, en plata
+              </p>
+              <p className="font-mono font-bold text-[22px] leading-[1.1] text-[var(--signal-red)] m-0 mb-1">
+                {fmtMoney(vacanciaMes, currency, valorUF)}
+              </p>
+              <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
+                Sin arrendatario pagas el mes completo de tu bolsillo: dividendo {fmtMoney(m.dividendo, currency, valorUF)} + gastos comunes {fmtMoney(m.gastos, currency, valorUF)} + contribuciones {fmtMoney(contribMes, currency, valorUF)}.{" "}
+                {sinPie
+                  ? "Sin colchón de capital, no tienes margen ante vacancia prolongada o un alza de tasa al renovar."
+                  : "Con la cuota en este nivel, una vacancia prolongada o un alza de tasa al renovar pegan directo en tu flujo."}
+              </p>
+            </div>
+          )}
+          <div
+            className="rounded-r-[8px] p-4"
+            style={{
+              borderLeft: "3px solid var(--franco-text)",
+              background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+            }}
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Dónde está la palanca
+            </p>
+            <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
+              {sinPie
+                ? "Acá la palanca no es subir el pie que no tienes: es el precio (cada peso menos es crédito que no tomas) y asegurar flujo estable antes de firmar."
+                : driver === "tasa"
+                  ? "La palanca acá es la tasa: cotizar en otro banco puede bajar la cuota."
+                  : driver === "ambos"
+                    ? "Hay palanca en el pie y en la tasa: subir el pie y cotizar la tasa en otro banco bajan la cuota."
+                    : "La palanca acá es el pie: subirlo baja el crédito y la cuota, y te acerca al rango sano."}
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }

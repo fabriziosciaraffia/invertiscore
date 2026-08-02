@@ -13,7 +13,8 @@
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
-import { normalizeLegacyVerdict, metricaDisplay, metricaValorONull } from "@/lib/types";
+import { normalizeLegacyVerdict, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
+import { NO_APLICA_FOOTNOTE_DOC } from "@/lib/no-aplica-copy";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
 import { findingDisplay } from "@/components/analysis/GenericFindingCard";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
@@ -65,10 +66,12 @@ export function DocumentoSTR({
   const base = results.escenarios.base;
   const c = results.comparativa;
   const capBasePct = base.capRate * 100;
-  // TODO(pie-cero-fase-3): con pie 0 el CoC es 'no_aplica' (null acá) y las dos
-  // celdas que lo muestran caen a "—"; el documento honesto es fase 3.
+  // Pie cero (fase 3b · D1 texto plano, mockup 98e2319): CoC 'no_aplica' se
+  // imprime "No aplica*" con footnote única; legacy sin dato sigue en "—".
+  const cocNA = esMetricaNoAplica(base.cashOnCash);
   const cocBaseNum = metricaValorONull(base.cashOnCash);
   const cocBasePct = cocBaseNum === null ? null : cocBaseNum * 100;
+  const sinPie = results.pie === 0;
 
   // ── Portada · metadata ──
   const precioUF = Number(inputData?.precioCompraUF) || (Number(inputData?.precioCompra) || 0) / (ufFrozen || 1);
@@ -316,7 +319,7 @@ export function DocumentoSTR({
             <div className="c"><p className="ck">Ingreso bruto</p><div className="cv">{money(base.ingresoBrutoMensual)}<small>/mes</small></div></div>
             <div className="c"><p className="ck">NOI mensual</p><div className="cv">{money(base.noiMensual)}</div></div>
             <div className="c"><p className="ck">CAP rate</p><div className={`cv ${capBasePct < 5 ? "neg" : "pos"}`}>{pct(capBasePct)}</div></div>
-            <div className="c"><p className="ck">Cash-on-cash</p><div className={`cv ${(cocBasePct ?? 0) < 0 ? "neg" : "pos"}`}>{cocBasePct === null ? "—" : pct(cocBasePct)}</div></div>
+            <div className="c"><p className="ck">Cash-on-cash</p><div className={`cv ${(cocBasePct ?? 0) < 0 ? "neg" : "pos"}`} style={cocNA ? { fontSize: 11, fontWeight: 500 } : undefined}>{cocNA ? "No aplica*" : cocBasePct === null ? "—" : pct(cocBasePct)}</div></div>
           </div>
           <p className="foot">El escenario base factura la ocupación mediana observada de la zona ({occPct}%), no la potencial con gestión profesional.</p>
         </div>
@@ -497,11 +500,12 @@ export function DocumentoSTR({
             <div className="kpis">
               <div className="kpi"><p className="kk">TIR a {exit?.yearVenta ?? 10} años</p><div className="kv">{exit ? pct(exit.tirAnual) : "—"}</div></div>
               <div className="kpi"><p className="kk">CAP rate</p><div className={`kv ${capBasePct < 5 ? "neg" : ""}`}>{pct(capBasePct)}</div></div>
-              <div className="kpi"><p className="kk">Cash-on-cash</p><div className={`kv ${(cocBasePct ?? 0) < 0 ? "neg" : ""}`}>{cocBasePct === null ? "—" : pct(cocBasePct)}</div></div>
+              <div className="kpi"><p className="kk">Cash-on-cash</p><div className={`kv ${(cocBasePct ?? 0) < 0 ? "neg" : ""}`} style={cocNA ? { fontSize: 11, fontWeight: 500 } : undefined}>{cocNA ? "No aplica*" : cocBasePct === null ? "—" : pct(cocBasePct)}</div></div>
               <div className="kpi"><p className="kk">NOI mensual</p><div className="kv">{money(base.noiMensual)}</div></div>
               <div className="kpi"><p className="kk">Recup. amoblam.</p><div className="kv">{c.paybackMeses > 0 ? `${c.paybackMeses} m` : c.paybackMeses === 0 ? "—" : "N/A"}</div></div>
               <div className="kpi"><p className="kk">Ocupación</p><div className="kv">{occPct}%</div></div>
             </div>
+            {cocNA && <p className="foot" style={{ marginTop: 8 }}>{NO_APLICA_FOOTNOTE_DOC}</p>}
             <div className="box" style={{ marginTop: 14 }}>
               <p className="bl">Escenario base · congelado</p>
               <p className="bt">Escenario del análisis: ocupación {occPct}%, gestión por {modoGestion === "auto" ? "autogestión" : "administrador"}. En la versión interactiva ajustas ocupación, tarifa y gestión y todos recalculan; en el documento quedan fijos.</p>
@@ -518,8 +522,12 @@ export function DocumentoSTR({
               <div className="wrow"><span className="wl sub">− Comisión de venta + cierre (2%)</span><span className="wv neg">−{money(exit.gastosCierre)}</span></div>
               <div className="wrow total"><span className="wl">Tu parte, en la mano</span><span className="wv">{money(exit.equityCLP)}</span></div>
               <div className="wrow"><span className="wl sub">Flujo operativo acumulado (aparte)</span><span className={`wv ${exit.flujoAcumuladoAlVender < 0 ? "neg" : ""}`}>{money(exit.flujoAcumuladoAlVender)}</span></div>
-              {/* TODO(pie-cero-fase-3): con pie 0 el multiplicador muestra "—". */}
-              <div className="wrow"><span className="wl sub">Sobre lo aportado ({money(exit.totalAportado)})</span><span className="wv">{metricaDisplay(exit.multiplicadorCapital, dec)}×</span></div>
+              {sinPie || esMetricaNoAplica(exit.multiplicadorCapital) ? (
+                /* Pie cero (D3 al documento): monto aportado en pesos, sin ×N. */
+                <div className="wrow"><span className="wl sub">Aportado en el camino (flujo + cierre)</span><span className="wv">{money(exit.totalAportado)}</span></div>
+              ) : (
+                <div className="wrow"><span className="wl sub">Sobre lo aportado ({money(exit.totalAportado)})</span><span className="wv">{(() => { const v = metricaValorONull(exit.multiplicadorCapital); return v === null ? "—" : dec(v); })()}×</span></div>
+              )}
             </div>
           </>
         )}

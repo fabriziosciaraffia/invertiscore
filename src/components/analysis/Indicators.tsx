@@ -11,6 +11,7 @@ import {
 } from "@/lib/analysis/kpi-calculations";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { fmtPct as fmtPctCL, fmtMult } from "@/components/analysis/utils";
+import { NO_APLICA_VALOR, NO_APLICA_SUBLABEL, NO_APLICA_TOOLTIP } from "@/lib/no-aplica-copy";
 import { useSimulation } from "@/contexts/SimulationContext";
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
 
@@ -57,35 +58,47 @@ export function Indicators({
   const fmtPct = (v: number) => (Number.isFinite(v) ? fmtPctCL(v, 1) : "—");
   const fmtMultiplo = (v: number) => (Number.isFinite(v) ? fmtMult(v, 2) : "—");
 
+  // Pie cero (fase 3b · D1): con pie 0 las 4 métricas sobre capital muestran
+  // "No aplica" + sublabel — decisión del análisis, no dato faltante. Cero
+  // Signal Red (no es criticidad). Tooltip compartido del mockup 98e2319.
+  const na = kpis.sinCapitalPropio;
+
   // Los 4 que reaccionan a los sliders. tono === "bad" → Signal Red (uso #2
   // valores críticos): Cash-on-Cash negativo, TIR/Múltiplo bajo umbral.
-  const cells: Array<{ label: string; value: string; tone: Tone; tooltip: string }> = [
+  const cells: Array<{ label: string; value: string; tone: Tone; tooltip: string; na: boolean }> = [
     {
       label: `TIR a ${plazoLabel}`,
-      value: fmtPct(kpis.tir),
-      tone: tonoTIR(kpis.tir),
-      tooltip: tirTooltip,
+      value: na ? NO_APLICA_VALOR : fmtPct(kpis.tir ?? NaN),
+      tone: na ? "neutral" : tonoTIR(kpis.tir ?? 0),
+      tooltip: na ? NO_APLICA_TOOLTIP : tirTooltip,
+      na,
     },
     {
       label: `Cash-on-Cash a ${plazoLabel}`,
-      value: fmtPct(kpis.cashOnCash),
-      tone: tonoCashOnCash(kpis.cashOnCash),
-      tooltip:
-        "Flujo anual promedio sobre tu inversión inicial del día uno (pie + gastos de cierre + corretaje).",
+      value: na ? NO_APLICA_VALOR : fmtPct(kpis.cashOnCash ?? NaN),
+      tone: na ? "neutral" : tonoCashOnCash(kpis.cashOnCash ?? 0),
+      tooltip: na
+        ? NO_APLICA_TOOLTIP
+        : "Flujo anual promedio sobre tu inversión inicial del día uno (pie + gastos de cierre + corretaje).",
+      na,
     },
     {
       label: "Payback (con venta)",
-      value: paybackValue,
-      tone: tonoPayback(kpis.paybackAnios),
-      tooltip:
-        "Año desde la compra en que el patrimonio neto acumulado iguala tu inversión inicial del día uno (pie + gastos de cierre + corretaje), contando la venta del depto.",
+      value: na ? NO_APLICA_VALOR : paybackValue,
+      tone: na ? "neutral" : tonoPayback(kpis.paybackAnios),
+      tooltip: na
+        ? NO_APLICA_TOOLTIP
+        : "Año desde la compra en que el patrimonio neto acumulado iguala tu inversión inicial del día uno (pie + gastos de cierre + corretaje), contando la venta del depto.",
+      na,
     },
     {
       label: `Múltiplo a ${plazoLabel}`,
-      value: fmtMultiplo(kpis.multiplo),
-      tone: tonoMultiplo(kpis.multiplo),
-      tooltip:
-        "Cuánto recibes al final por cada peso que pusiste en total — el pie más los aportes que fuiste haciendo por el camino. Múltiplo 2x = recibes el doble.",
+      value: na ? NO_APLICA_VALOR : fmtMultiplo(kpis.multiplo ?? NaN),
+      tone: na ? "neutral" : tonoMultiplo(kpis.multiplo ?? 0),
+      tooltip: na
+        ? NO_APLICA_TOOLTIP
+        : "Cuánto recibes al final por cada peso que pusiste en total — el pie más los aportes que fuiste haciendo por el camino. Múltiplo 2x = recibes el doble.",
+      na,
     },
   ];
 
@@ -130,16 +143,36 @@ export function Indicators({
               <InfoTooltip content={c.tooltip} />
             </span>
             <span
-              className="font-mono font-bold whitespace-nowrap"
-              style={{
-                fontSize: 24,
-                lineHeight: 1,
-                marginTop: 7,
-                color: c.tone === "bad" ? "var(--signal-red)" : "var(--franco-text)",
-              }}
+              className={c.na ? "font-mono whitespace-nowrap" : "font-mono font-bold whitespace-nowrap"}
+              style={
+                c.na
+                  ? {
+                      // D1: presencia tipográfica de decisión, no de dato faltante —
+                      // Mono 15px peso 500 color secundario, nunca Signal Red.
+                      fontSize: 15,
+                      fontWeight: 500,
+                      lineHeight: 1,
+                      marginTop: 10,
+                      color: "var(--franco-text-secondary)",
+                    }
+                  : {
+                      fontSize: 24,
+                      lineHeight: 1,
+                      marginTop: 7,
+                      color: c.tone === "bad" ? "var(--signal-red)" : "var(--franco-text)",
+                    }
+              }
             >
               {c.value}
             </span>
+            {c.na && (
+              <span
+                className="font-mono uppercase"
+                style={{ fontSize: 8.5, letterSpacing: "0.05em", color: "var(--franco-text-muted)", marginTop: 5 }}
+              >
+                {NO_APLICA_SUBLABEL}
+              </span>
+            )}
           </div>
         ))}
       </div>

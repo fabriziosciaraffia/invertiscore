@@ -3,7 +3,8 @@
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { fmtMoney, fmtPct } from "../utils";
-import { metricaDisplay, metricaODefault } from "@/lib/types";
+import { metricaValorONull, esMetricaNoAplica } from "@/lib/types";
+import { NO_APLICA_VALOR, NO_APLICA_SUBLABEL, NO_APLICA_TOOLTIP } from "@/lib/no-aplica-copy";
 
 /**
  * Sub-sección 08 · INDICADORES — variante STR (Patrón 7.B.2).
@@ -34,7 +35,13 @@ export function IndicatorsSTR({
   const yearsExit = exit?.yearVenta ?? 10;
   const payback = results.comparativa.paybackMeses;
 
-  const cells: Array<{ label: string; value: string; tone: "bad" | "neutral"; tooltip: string }> = [
+  // Pie cero (fase 3b · D1): CoC 'no_aplica' → "No aplica" + sublabel, cero
+  // Signal Red. esMetricaNoAplica distingue la decisión del motor de un legacy
+  // sin dato (que sigue mostrando el guard de siempre).
+  const cocNA = esMetricaNoAplica(base.cashOnCash);
+  const cocNum = metricaValorONull(base.cashOnCash);
+
+  const cells: Array<{ label: string; value: string; tone: "bad" | "neutral"; tooltip: string; na?: boolean }> = [
     {
       label: "NOI MENSUAL",
       value: fmtMoney(base.noiMensual, currency, valorUF),
@@ -49,10 +56,12 @@ export function IndicatorsSTR({
     },
     {
       label: "CASH-ON-CASH",
-      // TODO(pie-cero-fase-3): con pie 0 muestra "—" (sin capital propio).
-      value: metricaDisplay(base.cashOnCash, (n) => fmtPct(n * 100, 1)),
-      tone: metricaODefault(base.cashOnCash, 0) < 0 ? "bad" : "neutral",
-      tooltip: "Retorno anual sobre lo que efectivamente pusiste de tu bolsillo (pie + amoblamiento + gastos de cierre + puesta a punto).",
+      value: cocNA ? NO_APLICA_VALOR : cocNum !== null ? fmtPct(cocNum * 100, 1) : "—",
+      tone: cocNum !== null && cocNum < 0 ? "bad" : "neutral",
+      tooltip: cocNA
+        ? NO_APLICA_TOOLTIP
+        : "Retorno anual sobre lo que efectivamente pusiste de tu bolsillo (pie + amoblamiento + gastos de cierre + puesta a punto).",
+      na: cocNA,
     },
     {
       label: "RECUPERACIÓN AMOBLAMIENTO",
@@ -88,16 +97,35 @@ export function IndicatorsSTR({
               <InfoTooltip content={c.tooltip} />
             </span>
             <span
-              className="font-mono font-bold whitespace-nowrap"
-              style={{
-                fontSize: 24,
-                lineHeight: 1,
-                marginTop: 7,
-                color: c.tone === "bad" ? "var(--signal-red)" : "var(--franco-text)",
-              }}
+              className={c.na ? "font-mono whitespace-nowrap" : "font-mono font-bold whitespace-nowrap"}
+              style={
+                c.na
+                  ? {
+                      // D1: decisión del análisis, no dato faltante (mockup 98e2319).
+                      fontSize: 15,
+                      fontWeight: 500,
+                      lineHeight: 1,
+                      marginTop: 10,
+                      color: "var(--franco-text-secondary)",
+                    }
+                  : {
+                      fontSize: 24,
+                      lineHeight: 1,
+                      marginTop: 7,
+                      color: c.tone === "bad" ? "var(--signal-red)" : "var(--franco-text)",
+                    }
+              }
             >
               {c.value}
             </span>
+            {c.na && (
+              <span
+                className="font-mono uppercase"
+                style={{ fontSize: 8.5, letterSpacing: "0.05em", color: "var(--franco-text-muted)", marginTop: 5 }}
+              >
+                {NO_APLICA_SUBLABEL}
+              </span>
+            )}
           </div>
         ))}
       </div>

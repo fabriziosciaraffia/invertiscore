@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, DollarSign } from "lucide-react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import type { Analisis, Desglose } from "@/lib/types";
-import { metricaValorONull, metricaODefault } from "@/lib/types";
+import { metricaValorONull, metricaODefault, esMetricaNoAplica } from "@/lib/types";
+import { NO_APLICA_VALOR } from "@/lib/no-aplica-copy";
 import { fmtM, fmtMult } from "@/components/analysis/utils";
 
 // Paleta congelada Ink + Signal Red: las series NO se distinguen por matiz
@@ -53,7 +54,10 @@ function formatUF(n: number | null | undefined): string {
 interface MetricRow {
   label: string;
   values: (string | number)[];
-  raw: number[];
+  // Pie cero (fase 3b): null = métrica 'no_aplica' — la celda queda FUERA del
+  // ranking best/worst (nunca ordena como 0, nunca "peor" en rojo) y ordena al
+  // final por exclusión. La celda muestra el tratamiento D1 ("No aplica").
+  raw: (number | null)[];
   higherIsBetter: boolean;
 }
 
@@ -131,10 +135,14 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
       },
       {
         label: "Cash-on-Cash",
-        // TODO(pie-cero-fase-3): con pie 0 muestra "—" (metricaValorONull → null);
-        // el sort usa 0 como neutro, igual que las filas sin dato.
-        values: analisis.map((a) => a.results?.metrics ? formatPct(metricaValorONull(a.results.metrics.cashOnCash)) : "—"),
-        raw: analisis.map((a) => metricaODefault(a.results?.metrics?.cashOnCash, 0)),
+        values: analisis.map((a) => {
+          if (!a.results?.metrics) return "—";
+          if (esMetricaNoAplica(a.results.metrics.cashOnCash)) return NO_APLICA_VALOR;
+          return formatPct(metricaValorONull(a.results.metrics.cashOnCash));
+        }),
+        raw: analisis.map((a) =>
+          esMetricaNoAplica(a.results?.metrics?.cashOnCash) ? null : metricaODefault(a.results?.metrics?.cashOnCash, 0),
+        ),
         higherIsBetter: true,
       },
     ],
@@ -165,27 +173,41 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
     rows: [
       {
         label: "ROI Total",
-        // TODO(pie-cero-fase-3): con pie 0 multiplicador/TIR muestran "—" y ordenan como 0.
         values: analisis.map((a) => {
+          if (esMetricaNoAplica(a.results?.exitScenario?.multiplicadorCapital)) return NO_APLICA_VALOR;
           const m = metricaValorONull(a.results?.exitScenario?.multiplicadorCapital);
           return m !== null ? fmtMult(m, 2) : "—";
         }),
-        raw: analisis.map((a) => metricaODefault(a.results?.exitScenario?.multiplicadorCapital, 0)),
+        raw: analisis.map((a) =>
+          esMetricaNoAplica(a.results?.exitScenario?.multiplicadorCapital)
+            ? null
+            : metricaODefault(a.results?.exitScenario?.multiplicadorCapital, 0),
+        ),
         higherIsBetter: true,
       },
       {
         label: "TIR",
-        values: analisis.map((a) => formatPct(metricaValorONull(a.results?.exitScenario?.tir))),
-        raw: analisis.map((a) => metricaODefault(a.results?.exitScenario?.tir, 0)),
+        values: analisis.map((a) => {
+          if (esMetricaNoAplica(a.results?.exitScenario?.tir)) return NO_APLICA_VALOR;
+          return formatPct(metricaValorONull(a.results?.exitScenario?.tir));
+        }),
+        raw: analisis.map((a) =>
+          esMetricaNoAplica(a.results?.exitScenario?.tir) ? null : metricaODefault(a.results?.exitScenario?.tir, 0),
+        ),
         higherIsBetter: true,
       },
       {
         label: "Multiplicador capital",
         values: analisis.map((a) => {
+          if (esMetricaNoAplica(a.results?.exitScenario?.multiplicadorCapital)) return NO_APLICA_VALOR;
           const m = metricaValorONull(a.results?.exitScenario?.multiplicadorCapital);
           return m !== null ? fmtMult(m, 1) : "—";
         }),
-        raw: analisis.map((a) => metricaODefault(a.results?.exitScenario?.multiplicadorCapital, 0)),
+        raw: analisis.map((a) =>
+          esMetricaNoAplica(a.results?.exitScenario?.multiplicadorCapital)
+            ? null
+            : metricaODefault(a.results?.exitScenario?.multiplicadorCapital, 0),
+        ),
         higherIsBetter: true,
       },
     ],
@@ -231,12 +253,16 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
   return sections;
 }
 
-function getCellStyle(raw: number[], index: number, higherIsBetter: boolean): string {
-  if (raw.every((v) => v === 0)) return "text-[var(--franco-text)]";
+function getCellStyle(raw: (number | null)[], index: number, higherIsBetter: boolean): string {
   const val = raw[index];
-  const best = higherIsBetter ? Math.max(...raw) : Math.min(...raw);
-  const worst = higherIsBetter ? Math.min(...raw) : Math.max(...raw);
-  if (raw.every((v) => v === val)) return "text-[var(--franco-text)]";
+  // Pie cero (D1): 'no_aplica' queda fuera del ranking — neutro secundario,
+  // nunca best (bold) ni worst (Signal Red).
+  if (val === null) return "text-[var(--franco-text-secondary)]";
+  const nums = raw.filter((v): v is number => v !== null);
+  if (nums.every((v) => v === 0)) return "text-[var(--franco-text)]";
+  const best = higherIsBetter ? Math.max(...nums) : Math.min(...nums);
+  const worst = higherIsBetter ? Math.min(...nums) : Math.max(...nums);
+  if (nums.every((v) => v === val)) return "text-[var(--franco-text)]";
   if (val === best) return "font-bold text-[var(--franco-text)]";
   if (val === worst) return "text-signal-red";
   return "text-[var(--franco-text)]";

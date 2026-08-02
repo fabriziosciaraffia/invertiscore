@@ -45,7 +45,8 @@ import {
 import { FlujoEstacionalChartSTR } from "./FlujoEstacionalChartSTR";
 import { DrawerTipoHuesped } from "./DrawerTipoHuesped";
 import { fmtMoney, fmtPct, fmtDec } from "../utils";
-import { metricaDisplay, metricaODefault } from "@/lib/types";
+import { metricaValorONull, esMetricaNoAplica } from "@/lib/types";
+import { NO_APLICA_VALOR, NO_APLICA_SUBLABEL, NO_APLICA_TOOLTIP } from "@/lib/no-aplica-copy";
 
 export interface InputDataSTR {
   edificioPermiteAirbnb?: "si" | "no" | "no_seguro";
@@ -442,12 +443,23 @@ export function DrawerContentSTR({
             value={fmtPct(base.capRate * 100, 2)}
             tooltip="NOI anual dividido por precio de compra. En STR saludable: 6-8%. Bajo 5% indica precio alto vs lo que el activo genera."
           />
-          {/* TODO(pie-cero-fase-3): con pie 0 muestra "—" (sin capital propio). */}
+          {/* Pie cero (fase 3b · D1): 'no_aplica' → "No aplica — sin capital propio
+              (pie $0)", nunca crítico ni Signal Red (mockup 98e2319). */}
           <DataRow
             label="Cash-on-Cash (retorno sobre capital invertido)"
-            value={metricaDisplay(base.cashOnCash, (n) => fmtPct(n * 100, 1))}
-            isCritical={metricaODefault(base.cashOnCash, 0) < 0}
-            tooltip="Retorno anual sobre el capital efectivamente invertido (pie + gastos de cierre + amoblamiento + puesta a punto). Si es negativo, pones plata extra cada mes."
+            value={
+              esMetricaNoAplica(base.cashOnCash)
+                ? `${NO_APLICA_VALOR} — ${NO_APLICA_SUBLABEL.toLowerCase()}`
+                : metricaValorONull(base.cashOnCash) !== null
+                  ? fmtPct((metricaValorONull(base.cashOnCash) as number) * 100, 1)
+                  : "—"
+            }
+            isCritical={(metricaValorONull(base.cashOnCash) ?? 0) < 0}
+            tooltip={
+              esMetricaNoAplica(base.cashOnCash)
+                ? NO_APLICA_TOOLTIP
+                : "Retorno anual sobre el capital efectivamente invertido (pie + gastos de cierre + amoblamiento + puesta a punto). Si es negativo, pones plata extra cada mes."
+            }
           />
           <DataRow
             label="Rentabilidad bruta"
@@ -645,9 +657,22 @@ export function DrawerContentSTR({
                     <span className="w-20 text-right font-mono text-[13px] font-medium">
                       {fmtPct(r.capRate * 100, 2)}
                     </span>
-                    {/* TODO(pie-cero-fase-3): con pie 0 muestra "—" (sin capital propio). */}
-                    <span className="w-20 text-right font-mono text-[13px]" style={{ color: metricaODefault(r.cashOnCash, 0) < 0 ? "var(--signal-red)" : "var(--franco-text)" }}>
-                      {metricaDisplay(r.cashOnCash, (n) => fmtPct(n * 100, 1))}
+                    {/* Pie cero (fase 3b · D1): 'no_aplica' → "No aplica" neutro, sin rojo. */}
+                    <span
+                      className="w-20 text-right font-mono text-[13px]"
+                      style={{
+                        color: esMetricaNoAplica(r.cashOnCash)
+                          ? "var(--franco-text-secondary)"
+                          : (metricaValorONull(r.cashOnCash) ?? 0) < 0
+                            ? "var(--signal-red)"
+                            : "var(--franco-text)",
+                      }}
+                    >
+                      {esMetricaNoAplica(r.cashOnCash)
+                        ? NO_APLICA_VALOR
+                        : metricaValorONull(r.cashOnCash) !== null
+                          ? fmtPct((metricaValorONull(r.cashOnCash) as number) * 100, 1)
+                          : "—"}
                     </span>
                     <span className="w-28 text-right font-mono text-[13px]" style={{ color: flujoNeg ? "var(--signal-red)" : "var(--franco-text)" }}>
                       {(r.flujoCajaMensual >= 0 ? "+" : "")}

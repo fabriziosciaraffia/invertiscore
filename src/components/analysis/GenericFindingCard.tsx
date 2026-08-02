@@ -222,6 +222,19 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
       const favorable = v.multiplicador >= v.corteFavorable;
       const patrimonioFmt = currency === "UF" ? fmtUF(valorUF > 0 ? v.patrimonioCLP / valorUF : 0) : fmtCLP(v.patrimonioCLP);
       const aportadoFmt = currency === "UF" ? fmtUF(valorUF > 0 ? v.aportadoCLP / valorUF : 0) : fmtCLP(v.aportadoCLP);
+      // Pie cero (fase 3b · D3, mockup 98e2319): equity ABSOLUTO, multiplicador
+      // suprimido del display (sigue clasificando dirección adentro del builder).
+      // ksub lleva el monto en la OTRA moneda; sin Signal Red (no es criticidad).
+      if (v.sinCapitalPropio) {
+        const otraMoneda = currency === "UF" ? fmtCLP(v.patrimonioCLP) : fmtUF(valorUF > 0 ? v.patrimonioCLP / valorUF : 0);
+        return {
+          kick: "Patrimonio a 10 años",
+          title: h.titular,
+          kpi: patrimonioFmt,
+          kpiRed: false,
+          ksub: `tu parte al vender · año 10 · ${otraMoneda}`,
+        };
+      }
       return {
         kick: "Patrimonio a 10 años",
         title: adverso

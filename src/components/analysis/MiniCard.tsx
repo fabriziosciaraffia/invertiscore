@@ -84,8 +84,9 @@ export function getPunchline(
 
   // 3. Largo plazo — from motor
   if (section === "largoPlazo") {
-    // TODO(pie-cero-fase-3): con pie 0 la TIR es 'no_aplica' (null acá) y la card
-    // cae al fallback de retorno total, igual que las filas legacy sin TIR.
+    // Pie cero (fase 3b, decisión cerrada): con TIR 'no_aplica' (null acá) la
+    // card MANTIENE el fallback de monto absoluto (retorno total) — más útil
+    // como gancho del drawer que un "No aplica", igual que las filas legacy.
     const tir = metricaValorONull(results?.exitScenario?.tir);
     const aniosPlazo = results?.exitScenario?.anios ?? 10;
     if (tir !== null && !isNaN(tir)) {
