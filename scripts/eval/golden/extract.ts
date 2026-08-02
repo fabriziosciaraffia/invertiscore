@@ -9,12 +9,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FullAnalysisResult, Hallazgo } from "../../../src/lib/types";
 import { metricaValorONull } from "../../../src/lib/types";
+import { ordenarHallazgosUnico } from "../../../src/lib/orden-hallazgos";
 
 // ── Gather + dedup + orden — espejo de PiramideHallazgos.tsx ─────────────────
-
-const cmpDecisividad = (a: Hallazgo, b: Hallazgo) =>
-  b.decisividad - a.decisividad || ((b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0));
-const esAdverso = (h: Hallazgo) => h.direccion !== "favorable";
 
 export function gatherHallazgos(results: FullAnalysisResult): Hallazgo[] {
   const out: Hallazgo[] = [];
@@ -41,12 +38,11 @@ export function gatherHallazgos(results: FullAnalysisResult): Hallazgo[] {
   return Array.from(byId.values());
 }
 
-/** Orden Filosofía 1: adversos primero (decisividad DESC), favorables después.
- *  Es el orden de la PIRÁMIDE (render) → define la CORONA (top-adverso). */
+/** ORDEN ÚNICO (esquema C-umbral): 01 = adverso más decisivo si pasa el piso
+ *  0,85; resto ranking puro decisividad→magnitud. Es el orden de la PIRÁMIDE
+ *  (render) y del índice del hero → hallazgoIds[0] es el 01 visible. */
 export function ordenarHallazgos(hs: Hallazgo[]): Hallazgo[] {
-  const adversos = hs.filter(esAdverso).sort(cmpDecisividad);
-  const favorables = hs.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
-  return [...adversos, ...favorables];
+  return ordenarHallazgosUnico(hs);
 }
 
 // Los 6 builders que alimentan el prompt (NO los solo-lectura TIR/sensibilidad/
@@ -55,12 +51,13 @@ const BUILDERS_PROMPT = new Set([
   "capex_puesta_a_punto", "cap_rate", "flujo_mensual", "sobreprecio", "plusvalia", "estructura_financiamiento",
 ]);
 
-/** Fuente de la APERTURA (respuestaDirecta): #1 por decisividad PURA entre los 6
- *  builders (sin adverso-first, sin read-only). Espejo de ai-generation.ts:1257,1279.
- *  Puede DIFERIR de la corona de la pirámide (top-adverso) cuando un favorable tiene
- *  la mayor decisividad — ej. cap_rate favorable dec 0.85 vs sobreprecio adverso 0.4. */
+/** Fuente de la APERTURA (respuestaDirecta): el 01 del ORDEN ÚNICO aplicado al set
+ *  de candidatos del prompt (los 6 builders; la distancia, dec-0, nunca es 01).
+ *  Espejo del anclaje Plan C en ai-generation.ts (hallazgosOrdenados[0]). Coincide
+ *  con el 01 de la pirámide siempre que algún builder pese > 0 (los solo-lectura
+ *  van con decisividad 0 y no pueden ganar el ranking mientras eso pase). */
 export function aperturaSource(hs: Hallazgo[]): Hallazgo | null {
-  const cands = hs.filter((h) => BUILDERS_PROMPT.has(h.id)).sort(cmpDecisividad);
+  const cands = ordenarHallazgosUnico(hs.filter((h) => BUILDERS_PROMPT.has(h.id)));
   return cands[0] ?? null;
 }
 
