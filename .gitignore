@@ -56,6 +56,16 @@ ms-playwright/
 .prod-cookies-*
 .set-*cookies*
 *.local.json
+# Volcados de sesión de navegador en la raíz. `.evaluate-fn.txt` era el cuerpo
+# de un document.cookie con un access_token de Supabase en texto plano, y los
+# patrones de arriba no lo tapaban: no decía "cookie" en el nombre. Estos
+# cubren la familia que lo generó y los nombres con pinta de token.
+# OJO: el .gitignore evita commitearlos, NO evita que existan en disco. Un
+# archivo así se borra, no se ignora.
+.evaluate-*
+*auth-token*
+.token-*
+.session-*
 
 # config local MCP (servidores externos)
 .mcp.json
@@ -87,10 +97,15 @@ scripts/audit-*
 scripts/find-*
 scripts/probe-*
 docs/audit-*.md
+# scripts/auth-*: fabrican cookies de sesión de Supabase para QA. Son útiles y
+# se reusan, pero generan credenciales — se quedan locales por decisión, nunca
+# en el repo.
+scripts/auth-*
 
 # artefactos locales
 outputs/
 supabase/seeds/
+supabase/.temp/
 
 # Salidas de corrida del evaluador editorial. El instrumento (RUBRICA.md, juez,
 # ensamblador, censo) SÍ se versiona: es la fuente de verdad y se edita a mano.
