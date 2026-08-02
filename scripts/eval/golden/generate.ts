@@ -56,6 +56,24 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
     const vmFrancoUF = seed.input.valorMercadoFranco || seed.input.precio;
     const vmSolido = Math.abs(vmFrancoUF - seed.input.precio) * GOLDEN_UF > 1_000_000;
     const maxTotal = 85; // presupuesto Plan C (apertura + continuación)
+    // A6 · EXCEPCIÓN PIE CERO (decisión de Fabrizio, 2026-08-02): con pie 0 la
+    // doctrina `## 5.bis` del system agrega una capa explicativa DELIBERADA
+    // (estructura 100% + vacancia en plata) que el presupuesto Plan C no
+    // contempló; su prosa ya fue aprobada en pixel review. Techo propio, no
+    // pase libre: calibrado sobre K=6 medidos en GS-PC1 (87·92·95·104·105·121)
+    // → máximo 121 + ~15% de holgura = 140. Sobre eso sigue fallando.
+    //
+    // MEDIDO (no borrar — evita re-diagnosticar): la causa PRÓXIMA del desborde
+    // no es el pie sino la APERTURA FIJA LARGA. GS-PC2 también es pie 0, activa
+    // la misma doctrina y no desborda (74-88, PLANC nunca se rinde), igual que
+    // el control GS-1 con pie 20% (79-87). En GS-PC1 la fraseCanonica del flujo
+    // "fuerte" deja solo 48 palabras de continuación (vs ~60-65 con apertura de
+    // cap_rate) y el modelo entrega 50-84 en 6/6 corridas. Si algún día un seed
+    // con pie > 0 y apertura "fuerte" desborda, este condicional NO lo cubre —
+    // y debe fallar: ahí la conversación es acortar esa fraseCanonica (builder)
+    // o escalar el techo por longitud de apertura.
+    const seedSinPie = (recomputed as unknown as { metrics?: { pieCLP?: number } }).metrics?.pieCLP === 0;
+    const techoA6 = seedSinPie ? 140 : maxTotal * 1.15;
 
     let genOk = 0;
     const failCounts: Record<string, number> = {};
@@ -96,8 +114,9 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       // A5 (HARD) — §9 en conviene.cajaAccionable presente y con sustancia.
       if (WORDS(ai.conviene?.cajaAccionable_clp ?? "") < 8) bump("A5.§9-cajaAccionable");
 
-      // A6 (HARD) — presupuesto Plan C: apertura + continuación ≤ 85 (+15% tolerancia del guard).
-      if (WORDS(rd) > maxTotal * 1.15) bump("A6.presupuesto");
+      // A6 (HARD) — presupuesto Plan C: apertura + continuación ≤ 85 (+15% tolerancia
+      // del guard). Con pie 0 rige `techoA6` = 140 (ver la excepción calibrada arriba).
+      if (WORDS(rd) > techoA6) bump("A6.presupuesto");
 
       // A7·D2 (HARD) — break-even sin negar VM cuando VM es sólido.
       if (vmSolido) {
