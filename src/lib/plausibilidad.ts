@@ -24,7 +24,7 @@
 
 export type Anomalia = {
   /** Campo al que el usuario tiene que volver. */
-  campo: "precio" | "superficie" | "arriendo" | "tasa" | "ocupacion" | "tarifaNoche";
+  campo: "precio" | "superficie" | "arriendo" | "tasa" | "pie" | "ocupacion" | "tarifaNoche";
   /** Id estable para contar en logs/analytics. No cambiar sin migrar los conteos. */
   regla: Regla;
   /** El valor DERIVADO que falla (UF/m², yield), no siempre el tipeado. */
@@ -66,6 +66,7 @@ export type Regla =
   | "yield_imposible"
   | "arriendo_fuera_rango"
   | "tasa_fuera_rango"
+  | "pie_fuera_rango"
   | "str_ocupacion_fuera_rango"
   | "str_tarifa_fuera_rango"
   | "str_yield_imposible";
@@ -79,6 +80,9 @@ export interface PlausibilidadInput {
   ufCLP: number;
   /** Tasa anual del crédito en % (ej. 4.72). */
   tasaAnualPct?: number;
+  /** Pie en PORCENTAJE del precio (0-100). Fase 5b: el 0 es LEGÍTIMO
+   *  (financiamiento 100%); lo que esta regla caza es el rango imposible. */
+  piePct?: number;
   /** Arriendo largo mensual en CLP. Solo se evalúa si es > 0. */
   arriendoMensualCLP?: number;
   /**
@@ -103,6 +107,10 @@ export const RANGO_PRECIO_UF: [number, number] = [300, 100_000];
 export const RANGO_SUPERFICIE_M2: [number, number] = [12, 1_000];
 export const RANGO_YIELD_BRUTO: [number, number] = [0.005, 0.25];
 export const RANGO_TASA_PCT: [number, number] = [0.5, 20];
+// Fase 5b: el piso es 0 INCLUSIVE — pie 0 (bono pie / financiamiento 100%) es un
+// caso real que el producto soporta de punta a punta. El techo 100 es aritmético:
+// sobre el precio completo no hay pie que poner.
+export const RANGO_PIE_PCT: [number, number] = [0, 100];
 export const RANGO_STR_OCUPACION_PCT: [number, number] = [0, 100];
 export const RANGO_STR_YIELD_BRUTO: [number, number] = [0.005, 0.4];
 
@@ -142,6 +150,7 @@ const PRIORIDAD_REGLA: readonly Regla[] = [
   "str_tarifa_fuera_rango",
   "str_ocupacion_fuera_rango",
   "tasa_fuera_rango",
+  "pie_fuera_rango",
 ];
 
 /**
@@ -167,6 +176,7 @@ export const META_REGLA: Record<Regla, { deriva: boolean; unidad: string }> = {
   superficie_fuera_rango: { deriva: false, unidad: "m²" },
   arriendo_fuera_rango: { deriva: false, unidad: "al mes" },
   tasa_fuera_rango: { deriva: false, unidad: "anual" },
+  pie_fuera_rango: { deriva: false, unidad: "del precio" },
   str_ocupacion_fuera_rango: { deriva: false, unidad: "de ocupación" },
   str_tarifa_fuera_rango: { deriva: false, unidad: "por noche" },
 };
@@ -174,7 +184,7 @@ export const META_REGLA: Record<Regla, { deriva: boolean; unidad: string }> = {
 /** Reglas cuyo `valor` es una fracción y se muestra como porcentaje. */
 const REGLAS_PCT = new Set<Regla>(["yield_imposible", "str_yield_imposible"]);
 /** Reglas cuyo `valor` YA es un porcentaje (no una fracción) y lleva "%" pegado. */
-const REGLAS_PCT_DIRECTO = new Set<Regla>(["tasa_fuera_rango", "str_ocupacion_fuera_rango"]);
+const REGLAS_PCT_DIRECTO = new Set<Regla>(["tasa_fuera_rango", "str_ocupacion_fuera_rango", "pie_fuera_rango"]);
 /** Reglas cuyo `valor` es un monto en pesos. */
 const REGLAS_CLP = new Set<Regla>(["arriendo_fuera_rango", "str_tarifa_fuera_rango"]);
 
@@ -436,6 +446,29 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
     }
   }
 
+  // ── Pie (fase 5b) ──
+  // Valida RANGO, no la existencia: pie 0 es legítimo (financiamiento 100%,
+  // típicamente bono pie) y el producto lo soporta de punta a punta. Lo que se
+  // caza es lo imposible — negativo, o más que el precio completo. El techo SÍ
+  // se nombra en el mensaje (misma excepción que la ocupación >100%: es una
+  // verdad aritmética, no un umbral elegido por nosotros).
+  const pie = input.piePct;
+  if (finito(pie)) {
+    const [min, max] = RANGO_PIE_PCT;
+    if (pie < min || pie > max) {
+      out.push({
+        campo: "pie",
+        regla: "pie_fuera_rango",
+        valor: pie,
+        rango: RANGO_PIE_PCT,
+        mensaje:
+          pie > max
+            ? `Un pie de ${num(pie, "alto", max)}% no existe: el máximo es ${max}%, o sea pagar el depto completo al contado.`
+            : `El pie no puede ser negativo. Revisa el monto.`,
+      });
+    }
+  }
+
   // ── STR (solo valores corregidos por el usuario) ──
   const tarifa = input.str?.tarifaNocheCLP;
   const ocupacion = input.str?.ocupacionPct;
@@ -524,6 +557,7 @@ export function desdeBodyLtr(
     superficie?: unknown;
     arriendo?: unknown;
     tasaInteres?: unknown;
+    piePct?: unknown;
   },
   ufCLP: number,
 ): PlausibilidadInput {
@@ -533,6 +567,7 @@ export function desdeBodyLtr(
     ufCLP,
     tasaAnualPct: numOrNaN(body?.tasaInteres),
     arriendoMensualCLP: numOrNaN(body?.arriendo),
+    piePct: numOrNaN(body?.piePct),
   };
 }
 
@@ -546,6 +581,7 @@ export function desdeBodyStr(
     arriendoLargoMensual?: unknown;
     adrOverride?: unknown;
     occOverride?: unknown;
+    piePct?: unknown;
   },
   ufCLP: number,
 ): PlausibilidadInput {
@@ -572,6 +608,7 @@ export function desdeBodyStr(
     ufCLP,
     tasaAnualPct: numOrNaN(body?.tasaInteres),
     arriendoMensualCLP: numOrNaN(body?.arriendoLargoMensual),
+    piePct: numOrNaN(body?.piePct),
     str: {
       tarifaNocheCLP: Number.isNaN(adr) ? null : adr,
       ocupacionPct: Number.isNaN(occ) ? null : occ * 100,

@@ -82,6 +82,9 @@ export function buildHallazgoPuestaAPunto(p: {
   // fallback (hoy: STR, donde el form no captura antigüedad y el pipeline la
   // hardcodea usado=5). Degrada la confianza de la procedencia.
   antiguedadEsFallback?: boolean;
+  /** Fase 5b · D4: con pie 0 el % sobre la inversión inicial miente (la base se
+   *  desploma). true ⇒ la frase y el ksub muestran solo el monto. */
+  sinCapitalPropio?: boolean;
 }): HallazgoPuestaAPunto | null {
   if (p.capex.montoCLP <= 0) return null;
 
@@ -107,10 +110,18 @@ export function buildHallazgoPuestaAPunto(p: {
     base = "curva por antigüedad";
   }
 
-  const fraseCanonica =
-    `Departamento de ${p.antiguedad} años: para captar arriendo de mercado, ` +
-    `considera unos UF ${ufFmt} (${clpFmt}) de puesta a punto — cerca del ${pct}% ` +
-    `de tu inversión inicial. No es remodelar para revender: es dejarlo en estándar de arriendo.`;
+  // Fase 5b · D4 (mockup 5f7c4f9): con pie 0 el porcentaje MIENTE — la base
+  // (inversión inicial) se desploma a gastos de cierre + este mismo CapEx, y el
+  // mismo depto salta de 18% (pie 20%) a 71%. El % mide el denominador, no el
+  // gasto: se suprime y en su lugar va lo que sí es verdad y propio del caso.
+  const fraseCanonica = p.sinCapitalPropio
+    ? `Departamento de ${p.antiguedad} años: para captar arriendo de mercado, ` +
+      `considera unos UF ${ufFmt} (${clpFmt}) de puesta a punto. Sin pie, es la única ` +
+      `plata tuya que entra el día uno además de los gastos de cierre. No es remodelar ` +
+      `para revender: es dejarlo en estándar de arriendo.`
+    : `Departamento de ${p.antiguedad} años: para captar arriendo de mercado, ` +
+      `considera unos UF ${ufFmt} (${clpFmt}) de puesta a punto — cerca del ${pct}% ` +
+      `de tu inversión inicial. No es remodelar para revender: es dejarlo en estándar de arriendo.`;
 
   const titular =
     p.capex.montoUF > 0
@@ -129,6 +140,7 @@ export function buildHallazgoPuestaAPunto(p: {
       modalidad: p.modalidad,
       origen: p.capex.origen,
       fraccionInversion,
+      ...(p.sinCapitalPropio ? { sinCapitalPropio: true } : {}),
     },
     direccion: p.capex.montoUF > 0 ? "adverso" : "neutral",
     decisividad: p.decisividad,

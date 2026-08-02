@@ -56,6 +56,24 @@ export type EstimModo = "estimacion" | "corregir";
 export type Antiguedad = "" | "0-2" | "3-5" | "6-10" | "11-20" | "20+";
 export type EstadoVenta = "inmediata" | "futura";
 export type PieUnidad = "clp" | "uf" | "pct";
+/** Fase 5b · opciones de "¿Por qué no pones pie?" (mockup 5f7c4f9 + corrección
+ *  de 4→3: "pie en cuotas" se eliminó porque NO produce pie 0 — el pie existe,
+ *  solo se paga fraccionado, y ofrecerla induciría a declarar 0 falsamente).
+ *  Mapean 1:1 a RazonSinCapital (lib/types.ts) en el payload. */
+export type PieRazon = "bono_pie" | "otra_fuente" | "no_declarada";
+
+/** Etiquetas del selector — fuente única para el wizard y el resumen. */
+export const PIE_RAZON_OPCIONES: ReadonlyArray<{ value: PieRazon; label: string; sub?: string }> = [
+  { value: "bono_pie", label: "Bono pie de la inmobiliaria", sub: "la inmobiliaria lo cubre como promoción" },
+  { value: "otra_fuente", label: "Lo cubro con otra fuente", sub: "ahorro, familia, otra propiedad" },
+  { value: "no_declarada", label: "Prefiero no decir" },
+];
+
+export const PIE_RAZON_LABEL: Record<PieRazon, string> = {
+  bono_pie: "Bono pie de la inmobiliaria",
+  otra_fuente: "Lo cubro con otra fuente",
+  no_declarada: "Prefiero no decir",
+};
 
 export interface WizardV4Answers {
   // ── Decisiones de rama (dirigen computeNext) ──
@@ -89,6 +107,9 @@ export interface WizardV4Answers {
   precio?: string; // UF — SIN prefill (Franco no lo sugiere, lo evalúa)
   pieMonto?: string; // valor crudo en la unidad elegida
   pieUnidad?: PieUnidad;
+  /** Fase 5b · "¿Por qué no pones pie?". Obligatoria SOLO con pie exactamente 0;
+   *  se descarta en silencio si el pie vuelve a > 0 (decisión cerrada). */
+  pieRazon?: PieRazon;
   plazoCredito?: string; // "20" | "25" | "30"
   tasaInteres?: string; // % anual, coma decimal
 

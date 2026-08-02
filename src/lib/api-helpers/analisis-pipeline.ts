@@ -21,7 +21,7 @@ import { chargeAnalysisCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
 import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
 import { evaluarPlausibilidad, type Anomalia, type PlausibilidadInput } from "@/lib/plausibilidad";
-import type { AnalisisInput } from "@/lib/types";
+import type { AnalisisInput, RazonSinCapital } from "@/lib/types";
 import {
   calcShortTerm,
   type ShortTermInputs,
@@ -479,6 +479,8 @@ export interface ShortTermAnalysisBody {
   precioCompra: number;
   precioCompraUF: number;
   piePct: number;
+  /** Fase 5b · origen del pie 0 declarado en el wizard (solo con piePct === 0). */
+  razonSinPie?: RazonSinCapital;
   tasaInteres: number;
   /** Tasa hipotecaria de mercado vigente (%, ej. 4,72). OPCIONAL: solo v4.
    *  Alimenta subsidioTasa. Ausente ⇒ fallback en el motor (idéntico al previo). */
@@ -584,6 +586,8 @@ export async function buildShortTermAnalysisRow(
     antiguedadEsFallback,
     comuna: typeof body.comuna === "string" ? body.comuna : undefined,
     piePercent: body.piePct / 100,
+    // Fase 5b: origen del pie 0 (wizard → payload → motor → prompt).
+    razonSinPie: body.razonSinPie,
     tasaCredito: body.tasaInteres / 100,
     // Tasa de mercado real (v4, % → decimal). Ausente en legacy ⇒ motor cae al fallback.
     tasaMercado: typeof body.tasaMercado === "number" ? body.tasaMercado / 100 : undefined,

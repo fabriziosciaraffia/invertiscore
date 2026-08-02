@@ -147,7 +147,11 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         title: "Dejarlo listo para arrendar",
         kpi: `+${currency === "UF" ? fmtUF(v.montoUF) : fmtCLP(v.montoCLP)}`,
         kpiRed: false,
-        ksub: `UF ${Math.round(v.montoUF)} · ${Math.round(v.fraccionInversion * 100)}% de tu inversión inicial`,
+        // Fase 5b · D4: con pie 0 el % sobre la inversión inicial miente (la
+        // base se desploma) — el ksub cambia el porcentaje por el CUÁNDO.
+        ksub: v.sinCapitalPropio
+          ? `UF ${Math.round(v.montoUF)} · antes de arrendar, en una sola vez`
+          : `UF ${Math.round(v.montoUF)} · ${Math.round(v.fraccionInversion * 100)}% de tu inversión inicial`,
       };
     }
     case "plusvalia": {

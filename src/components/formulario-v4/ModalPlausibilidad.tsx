@@ -358,6 +358,7 @@ function etiquetaTipeada(a: Anomalia): string {
     case "superficie": return "la superficie";
     case "arriendo": return "el arriendo";
     case "tasa": return "la tasa";
+    case "pie": return "el pie";
     case "ocupacion": return "la ocupación";
     case "tarifaNoche": return "la tarifa";
   }

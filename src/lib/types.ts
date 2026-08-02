@@ -70,6 +70,11 @@ export interface AnalisisInput {
   // input_data. El motor lo lee una vez en calcMetrics → metrics.corretajeInicialCLP.
   // Ausente ⇒ false ⇒ comportamiento viejo (análisis previos recomputan idéntico).
   incluyeCorretajeInicial?: boolean;
+  // Origen del pie 0 declarado en el wizard (fase 5b, "¿Por qué no pones pie?").
+  // Solo tiene sentido con piePct === 0; el motor lo propaga a la razón de las
+  // métricas sobre capital. Ausente ⇒ 'sin_pie' (no se preguntó): análisis
+  // previos, editor inline del resumen y API directa recomputan idéntico.
+  razonSinPie?: RazonSinCapital;
 }
 
 // ─── Métricas sobre capital propio (pie cero · fase 1-2) ─────────────────────
@@ -83,8 +88,24 @@ export interface AnalisisInput {
 // (y el amoblamiento/CapEx en STR) NO cuentan como capital propio para estas
 // métricas aunque sí integren capitalInvertido.
 //
-// La razón es un enum extensible: hoy solo 'sin_pie'; futuro 'bono_pie', etc.
-export type RazonSinCapital = "sin_pie";
+// La razón es un enum extensible. Fase 5b la puebla desde el wizard ("¿Por qué
+// no pones pie?"); antes solo existía el genérico.
+//
+// 'sin_pie' vs 'no_declarada' son estados de CONOCIMIENTO distintos y por eso
+// conviven: el primero es "no se preguntó" (análisis previos a fase 5b, editor
+// inline del resumen, API directa) y el segundo es "se preguntó y el usuario
+// declinó". La prosa los trata IGUAL (Franco no afirma el origen en ninguno de
+// los dos, ver ## 5.bis.a), así que separarlos no arriesga invención; lo que
+// preserva es el dato de producto — cuántos declinan — que colapsarlos borraría.
+export type RazonSinCapital =
+  /** No se preguntó (compat: análisis previos, editor inline, API). */
+  | "sin_pie"
+  /** Bono pie de la inmobiliaria — origen conocido, activa la dureza de precio. */
+  | "bono_pie"
+  /** Lo cubre el usuario con ahorro/familia/otra propiedad. */
+  | "otra_fuente"
+  /** El usuario eligió no decirlo. */
+  | "no_declarada";
 
 export type MetricaSobreCapital =
   | { tipo: "valor"; valor: number }
@@ -329,6 +350,8 @@ export interface HallazgoPuestaAPunto {
     // ("X% de tu plata día 1", card/drawer). Antes vivía en `decisividad`; con la
     // calibración E2 esa pasó a ser "Δdecisión", así que la fracción vive acá.
     fraccionInversion: number;
+    /** Fase 5b · D4: pie 0 ⇒ la fracción no se muestra (base desplomada). */
+    sinCapitalPropio?: boolean;
   };
   // Nunca 'favorable': una puesta a punto siempre resta de tu plata día 1.
   direccion: "adverso" | "neutral";

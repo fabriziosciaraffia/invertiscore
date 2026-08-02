@@ -22,7 +22,7 @@ import { calcDecisividades } from "@/lib/analysis";
 import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 import type { Hallazgo } from "@/lib/types";
 import { metricaDisplay, metricaODefault, esMetricaNoAplica } from "@/lib/types";
-import { NO_APLICA_PROMPT } from "@/lib/no-aplica-copy";
+import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
 import { calcDividendo } from "@/lib/analysis";
 
 const anthropic = new Anthropic();
@@ -180,13 +180,13 @@ Cuando completas \`reestructuracion\`:
 
 Esta sección se activa ÚNICAMENTE cuando el input declara pie 0% (línea \`capitalPropio\` presente). Con pie mayor a 0 esta sección NO existe para ti: ni la menciones ni dejes que su vocabulario ("financiamiento 100%", "bono pie", "sin capital propio") se filtre a un análisis normal.
 
-a. NÓMBRALO SIN EUFEMISMOS. Pie 0 = financiamiento del 100%, típicamente bono pie u otra promoción de la inmobiliaria. "Pie bajo" está PROHIBIDO para pie 0 — no es un pie chico, es una estructura distinta (el Nivel 3 de §5 no aplica tal cual: no hay pie que "subir al óptimo"; las palancas son el precio y la tasa). La línea \`razonSinCapital\` del input declara el origen: 'sin_pie' = compra sin pie declarado (100% crédito). Si llega una razón nueva (ej. 'bono_pie'), nárrala tal como el input la describa — no inventes el origen.
+a. NÓMBRALO SIN EUFEMISMOS. Pie 0 = financiamiento del 100%, típicamente bono pie u otra promoción de la inmobiliaria. "Pie bajo" está PROHIBIDO para pie 0 — no es un pie chico, es una estructura distinta (el Nivel 3 de §5 no aplica tal cual: no hay pie que "subir al óptimo"; las palancas son el precio y la tasa). La línea \`razonSinCapital\` del input declara el origen Y qué puedes afirmar de él — viene glosada, seguila al pie de la letra: 'bono_pie' (la inmobiliaria cubre el pie: nómbralo y endurece el precio), 'otra_fuente' (lo cubre el comprador con fondos propios: NO insinúes bono en el precio), 'no_declarada' (se le preguntó y prefirió no decirlo: no lo supongas), 'sin_pie' (no se preguntó: no afirmes origen). Nunca inventes el origen ni lo deduzcas del resto del caso.
 
 b. EL RIESGO A NARRAR ES ESTRUCTURAL, no una métrica: dividendo en su punto más alto, cero colchón de capital, sensibilidad total a vacancia y tasa. El escenario concreto es la vacancia: un mes vacío = pagar de tu bolsillo el dividendo completo + gastos comunes + contribuciones — el input trae esos montos, úsalos en plata, no en abstracto.
 
 c. PROHIBIDO CELEBRAR MÉTRICAS SOBRE CAPITAL. Cash-on-cash, payback del pie, TIR y multiplicador de capital vienen como "no aplica: sin capital propio (pie $0)": NO existen, NO los inventes, NO digas "rentabilidad infinita", "retorno espectacular sobre lo invertido" ni equivalentes. Si el flujo es positivo, la lectura correcta es "la operación aguanta su propio financiamiento completo" — mérito del flujo, no de un retorno sobre capital que no hay. La comparación con instrumentos (§3 ángulo 3) se hace en flujo, esfuerzo y riesgo, nunca en múltiplos.
 
-d. DUREZA EXTRA CON EL PRECIO. Si el pie es 0, alguien lo está cubriendo — usualmente la inmobiliaria vía precio de lista cargado. Compara el precio/m² contra la mediana de la zona con MÁS dureza que en un caso normal, no menos: un sobreprecio con pie 0 suele ser el costo del bono escondido en el crédito. Si no hay mediana confiable, dilo como límite del análisis y recomienda verificar comparables antes de firmar.
+d. DUREZA CON EL PRECIO, CALIBRADA POR LA RAZÓN. Si el pie es 0, alguien lo está cubriendo. Cuando el input declara 'bono_pie' es la inmobiliaria: ahí la comparación del precio/m² contra la mediana de la zona va con MÁS dureza que en un caso normal, porque el bono suele estar cargado en el precio de lista. Con 'otra_fuente' (lo cubre el comprador) esa sospecha NO aplica — no la insinúes. Con 'sin_pie' o 'no_declarada' mantén la cautela genérica sin afirmar quién lo cubre. Si no hay mediana confiable, dilo como límite del análisis y recomienda verificar comparables antes de firmar.
 
 e. LA PALANCA DE PRECIO SE EXPRESA EN PLATA MENSUAL: cada peso menos de precio es crédito que no tomas, y eso baja el dividendo desde el día uno. El input reemplaza las lecturas de TIR de negociación por la baja de dividendo al precio sugerido — esa es la cifra que se narra. Las reglas de §12 (jerarquía de precios, umbral de veredicto, diferencia absoluta vs por m²) siguen aplicando igual; solo cambia la moneda del beneficio: dividendo/mes en vez de puntos de TIR.
 
@@ -1503,7 +1503,7 @@ INDICADORES CALCULADOS
 - Cash-on-Cash: ${esMetricaNoAplica(m.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(m.cashOnCash, (n) => `${pct(n)}%`)}
 - TIR a 10 años: ${esMetricaNoAplica(exit.tir) ? NO_APLICA_PROMPT : metricaDisplay(exit.tir, (n) => `${pct(n)}%`)}
 - Multiplicador de capital (10 años): ${esMetricaNoAplica(exit.multiplicadorCapital) ? NO_APLICA_PROMPT : metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
-${sinCapitalPropio ? `- capitalPropio: no aplica (razonSinCapital: ${cocNoAplica!.razon}${cocNoAplica!.razon === "sin_pie" ? " — compra sin pie declarado, financiamiento del 100%" : ""}). APLICA LA DOCTRINA ## 5.bis del system: riesgo estructural, cero celebración de métricas sobre capital, dureza extra con el precio/m².
+${sinCapitalPropio ? `- capitalPropio: no aplica (razonSinCapital: ${razonSinCapitalPrompt(cocNoAplica!.razon)}). APLICA LA DOCTRINA ## 5.bis del system: riesgo estructural, cero celebración de métricas sobre capital, dureza con el precio/m² según la razón declarada.
 ` : ""}- Inversión inicial total: ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})${sinCapitalPropio ? " — SIN pie: son gastos de cierre/puesta a punto, NO capital propio que rente" : ""}
 - Precio máximo de compra para flujo positivo: ${fmtUF(results.valorMaximoCompra)}
 ${hallazgosBloque}

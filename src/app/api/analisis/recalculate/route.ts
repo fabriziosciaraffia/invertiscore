@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis } from "@/lib/analysis";
+import { RANGO_PIE_PCT } from "@/lib/plausibilidad";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
@@ -47,6 +48,17 @@ export async function POST(request: Request) {
 
     if (!analysisId || !inputData) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
+    }
+
+    // Fase 5b · rango del pie (0-100). El simulador reenvía inputData completo,
+    // así que un pie imposible por API llegaría al motor sin este guard. Valida
+    // RANGO, no existencia: el 0 (financiamiento 100%) pasa.
+    const piePctIn = Number((inputData as AnalisisInput).piePct);
+    if (Number.isFinite(piePctIn) && (piePctIn < RANGO_PIE_PCT[0] || piePctIn > RANGO_PIE_PCT[1])) {
+      return NextResponse.json(
+        { error: "input_implausible", campo: "pie" },
+        { status: 422 },
+      );
     }
 
     // Verify the analysis belongs to this user (also fetch input_data for tier merge)

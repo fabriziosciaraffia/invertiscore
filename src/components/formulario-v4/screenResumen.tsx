@@ -32,6 +32,7 @@ import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import type { useWizardV4 } from "./useWizardV4";
 import type { WizardV4Answers, Antiguedad } from "./wizardV4Nodes";
+import { PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { buildLtrPayload, buildStrPayload, comprarLocked, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
@@ -101,6 +102,7 @@ const ORIGENES_POR_REGLA: Record<Regla, string[]> = {
   str_yield_imposible: ["precio", "tarifa", "ocupacion"],
   arriendo_fuera_rango: ["arriendo"],
   tasa_fuera_rango: ["tasa"],
+  pie_fuera_rango: ["pie"],
   str_ocupacion_fuera_rango: ["ocupacion"],
   str_tarifa_fuera_rango: ["tarifa"],
 };
@@ -108,18 +110,18 @@ const ORIGENES_POR_REGLA: Record<Regla, string[]> = {
 /** `campo` de la anomalía principal → clave de origen (la sospecha marcada). */
 const CAMPO_A_ORIGEN: Record<Anomalia["campo"], string> = {
   precio: "precio", superficie: "superficie", arriendo: "arriendo",
-  tasa: "tasa", ocupacion: "ocupacion", tarifaNoche: "tarifa",
+  tasa: "tasa", pie: "pie", ocupacion: "ocupacion", tarifaNoche: "tarifa",
 };
 
 /** Origen → campo del resumen (para reusar el ring de onAlfiloTap y FIELD_CARD). */
 const ORIGEN_A_FIELD: Record<string, string> = {
   precio: "precio", superficie: "tam", arriendo: "arr", tasa: "tasa",
-  tarifa: "adr", ocupacion: "adr",
+  pie: "pie", tarifa: "adr", ocupacion: "adr",
 };
 
 const LABEL_ORIGEN: Record<string, string> = {
   precio: "Precio", superficie: "Superficie", arriendo: "Arriendo",
-  tasa: "Tasa", tarifa: "Tarifa", ocupacion: "Ocupación",
+  tasa: "Tasa", pie: "Pie", tarifa: "Tarifa", ocupacion: "Ocupación",
 };
 
 // ── Envoltorio de campo (label + valor/editor + tag + fuente) ────────────────
@@ -544,7 +546,14 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const pUF = precioUF(a);
   const precioCLP = pUF > 0 ? `≈ ${fmtCLP(pUF * data.ufCLP)} · calculada` : undefined;
   const pct = piePct(a, data.ufCLP);
-  const pieStr = pct > 0 ? `${Math.round(pct)}% · ${fmtUF(pieUF(a, data.ufCLP))}` : "—";
+  // Fase 5b (mockup 5f7c4f9): el 0 es un dato DECLARADO, no un vacío. "—" queda
+  // solo para el pie realmente ausente (campo sin tocar).
+  const pieDeclarado = (a.pieMonto ?? "").trim() !== "";
+  const pieStr = pct > 0
+    ? `${Math.round(pct)}% · ${fmtUF(pieUF(a, data.ufCLP))}`
+    : pieDeclarado
+      ? "0% · financias el 100%"
+      : "—";
   const cuota = cuotaCLP(a, data.ufCLP);
   const cuotaStr = cuota > 0 ? `Cuota ≈ ${fmtCLP(cuota)}/mes · calculada` : undefined;
   const sup = parseDecimalLocale(a.superficieUtil ?? "");
@@ -622,7 +631,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const derivadosResumen = [
     { label: "Precio", valor: ufM2 > 0 ? `${formatearNumero(ufM2)} UF/m²` : "—" },
     { label: "Dividendo", valor: cuota > 0 ? `${fmtCLP(cuota)}/mes` : "—" },
-    { label: "Pie", valor: pct > 0 ? fmtCLP(pieUF(a, data.ufCLP) * data.ufCLP) : "—" },
+    // Fase 5b: pie 0 declarado muestra $0 (dato), no "—" (ausencia).
+    { label: "Pie", valor: pct > 0 ? fmtCLP(pieUF(a, data.ufCLP) * data.ufCLP) : pieDeclarado ? fmtCLP(0) : "—" },
     {
       label: esLtr ? "Retorno bruto" : "Retorno bruto LTR",
       valor: retornoBruto > 0 ? `${formatearPct(retornoBruto)} anual` : "—",
@@ -782,7 +792,9 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     sup > 0 ? `${a.superficieUtil} m²` : null,
     a.comuna || null,
   ].filter(Boolean).join(" · ") || "—";
-  const summary02 = [pct > 0 ? `${Math.round(pct)}% pie` : null, a.plazoCredito ? `${a.plazoCredito} años` : null, a.tasaInteres ? `${a.tasaInteres}%` : null].filter(Boolean).join(" · ") || "—";
+  // Fase 5b: con pie 0 la línea abre con "Sin pie" — antes el chip desaparecía
+  // y el resumen se leía como si el pie no existiera.
+  const summary02 = [pct > 0 ? `${Math.round(pct)}% pie` : pieDeclarado ? "Sin pie" : null, a.plazoCredito ? `${a.plazoCredito} años` : null, a.tasaInteres ? `${a.tasaInteres}%` : null].filter(Boolean).join(" · ") || "—";
   const summary03 = esStr
     ? [a.adrTarifa ? `${fmtCLP(parseNum(a.adrTarifa))}/noche` : null, a.adrOcupacion ? `${a.adrOcupacion}%` : null, a.edificioPermiteAirbnb ? LABEL_GATE[a.edificioPermiteAirbnb] : null].filter(Boolean).join(" · ") || "—"
     : (a.arriendo ? `${fmtCLP(parseNum(a.arriendo))}/mes` : "—");
@@ -906,8 +918,27 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           {cascade["02"] && <CascadeNote text={cascade["02"]} />}
           <NumField
             label="Pie (% del precio)" raw={String(Math.round(pct) || "")} display={pieStr} suffix="%" format={piePctClamp}
-            onCommit={(v) => commitEdit("pie", { pieUnidad: "pct", pieMonto: v })}
+            onCommit={(v) => {
+              // Fase 5b: al subir el pie sobre 0, la razón se descarta en
+              // SILENCIO (misma regla que el wizard). Al bajarlo a 0 el selector
+              // aparece acá para que el usuario la declare sin volver atrás.
+              const nuevoPct = piePct({ ...a, pieUnidad: "pct", pieMonto: v }, data.ufCLP);
+              commitEdit("pie", nuevoPct > 0 && a.pieRazon
+                ? { pieUnidad: "pct", pieMonto: v, pieRazon: undefined }
+                : { pieUnidad: "pct", pieMonto: v });
+            }}
           />
+          {/* Fase 5b · la razón del pie 0 vive donde el usuario la declaró y se
+              edita como el resto de la card (mockup 5f7c4f9). Con pie > 0 la
+              fila no existe. */}
+          {pct === 0 && pieDeclarado && (
+            <ChipsField
+              label="Cómo se cubre" value={a.pieRazon}
+              options={PIE_RAZON_OPCIONES.map((o) => ({ value: o.value, label: o.label }))}
+              tag={a.pieRazon ? "lo indicaste tú" : undefined}
+              onCommit={(v) => commitEdit("pie", { pieRazon: v })}
+            />
+          )}
           <ChipsField
             label="Plazo" value={a.plazoCredito}
             options={[{ value: "15", label: "15" }, { value: "20", label: "20" }, { value: "25", label: "25" }, { value: "30", label: "30" }]}

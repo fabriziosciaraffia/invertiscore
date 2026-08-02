@@ -10,6 +10,7 @@ import type {
   FullAnalysisResult,
   NegociacionScenario,
   MetricaSobreCapital,
+  RazonSinCapital,
 } from "./types";
 import { metricaNoAplica, metricaValor, metricaValorONull, metricaODefault } from "./types";
 import { estimarContribuciones } from "./contribuciones";
@@ -337,6 +338,8 @@ function calcMetrics(
     inversionInicialCLP: capitalInvertido,
     decisividad: decisividades?.capex_puesta_a_punto?.decisividad ?? 0,
     magnitudContinua: decisividades?.capex_puesta_a_punto?.magnitud ?? 0,
+    // Fase 5b · D4: sin pie el % sobre la inversión inicial miente.
+    sinCapitalPropio: pieCLP === 0,
   });
   // Hallazgo de cap rate: envuelve el número de :250 (no lo recalcula) y lo
   // compara contra la referencia de mercado. getCapRefComuna es el único punto
@@ -420,13 +423,16 @@ function calcMetrics(
   // inventado. Los gastos de cierre y el CapEx integran capitalInvertido pero
   // NO cuentan como capital propio para la activación (decisión cerrada).
   const sinPie = pieCLP === 0;
+  // Fase 5b: la razón la declara el wizard ("¿Por qué no pones pie?"). Ausente
+  // ⇒ 'sin_pie' (no se preguntó) — análisis previos recomputan idéntico.
+  const razonPie: RazonSinCapital = input.razonSinPie ?? "sin_pie";
   const cashOnCash: MetricaSobreCapital = sinPie
-    ? metricaNoAplica("sin_pie")
+    ? metricaNoAplica(razonPie)
     : metricaValor(
         Math.round((capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0) * 100) / 100,
       );
   const mesesPaybackPie: MetricaSobreCapital = sinPie
-    ? metricaNoAplica("sin_pie")
+    ? metricaNoAplica(razonPie)
     : metricaValor(flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999);
 
   // Plusvalía inmediata — Franco (datos reales, para cálculos) y Usuario (referencial)
@@ -705,14 +711,16 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   // Pie cero (fase 1-2): sin capital propio, multiplicador y TIR no aplican —
   // aunque inversionInicial > 0 por gastos de cierre/CapEx (no son capital propio).
   const sinPie = metrics.pieCLP === 0;
+  // Fase 5b: misma razón declarada que usa calcMetrics (fuente única del input).
+  const razonPie: RazonSinCapital = input.razonSinPie ?? "sin_pie";
   const proy = projections[anios - 1];
   if (!proy) {
     return {
       anios,
       valorVenta: 0, saldoCredito: 0, comisionVenta: 0,
       equityCLP: 0, flujoAcumulado: 0, retornoTotal: 0,
-      multiplicadorCapital: sinPie ? metricaNoAplica("sin_pie") : metricaValor(0),
-      tir: sinPie ? metricaNoAplica("sin_pie") : metricaValor(0),
+      multiplicadorCapital: sinPie ? metricaNoAplica(razonPie) : metricaValor(0),
+      tir: sinPie ? metricaNoAplica(razonPie) : metricaValor(0),
       inversionInicial: 0, flujoMensualAcumuladoNegativo: 0,
       totalAportado: 0, gananciaSobreTotal: 0, porcentajeGananciaSobreTotal: 0,
     };
@@ -790,8 +798,8 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
     equityCLP: Math.round(equityCLP),
     flujoAcumulado: proy.flujoAcumulado,
     retornoTotal: Math.round(retornoTotal),
-    multiplicadorCapital: sinPie ? metricaNoAplica("sin_pie") : metricaValor(multiplicadorCapital),
-    tir: sinPie ? metricaNoAplica("sin_pie") : metricaValor(tir),
+    multiplicadorCapital: sinPie ? metricaNoAplica(razonPie) : metricaValor(multiplicadorCapital),
+    tir: sinPie ? metricaNoAplica(razonPie) : metricaValor(tir),
     inversionInicial: Math.round(inversionInicial),
     flujoMensualAcumuladoNegativo: Math.round(flujoMensualAcumuladoNegativo),
     totalAportado: Math.round(totalAportado),

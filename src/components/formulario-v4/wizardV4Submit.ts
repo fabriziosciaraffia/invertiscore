@@ -104,6 +104,10 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
       ctx.precioM2UF && supUtil > 0 ? Math.round(ctx.precioM2UF * supUtil) : undefined,
     valorMercadoUsuario: undefined,
     piePct,
+    // Fase 5b: el origen del pie 0 viaja al motor (razón de MetricaSobreCapital)
+    // y de ahí al prompt. Solo tiene sentido con pie 0 — con pie > 0 el wizard
+    // ya la descartó, y este guard lo hace explícito en el borde.
+    razonSinPie: piePct === 0 ? a.pieRazon : undefined,
     plazoCredito: Number(a.plazoCredito) || 25,
     tasaInteres: parseDecimalLocale(a.tasaInteres ?? "") || 4.72,
     tasaMercado: ctx.tasaMercado,
@@ -170,6 +174,8 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     precioCompra: precioCompraCLP,
     precioCompraUF: precioUF,
     piePct: derivePiePctLocal(a, ctx.ufCLP),
+    // Fase 5b: misma razón que el lado LTR — el usuario la declara una vez.
+    razonSinPie: derivePiePctLocal(a, ctx.ufCLP) === 0 ? a.pieRazon : undefined,
     tasaInteres: parseDecimalLocale(a.tasaInteres ?? "") || 4.72,
     tasaMercado: ctx.tasaMercado,
     plazoCredito: Number(a.plazoCredito) || 25,

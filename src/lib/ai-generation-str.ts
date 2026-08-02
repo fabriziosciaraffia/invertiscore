@@ -38,7 +38,7 @@ import { sobreRentaPctEsConfiable } from "@/lib/engines/str-universo-santiago";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { metricaDisplay, esMetricaNoAplica } from "@/lib/types";
-import { NO_APLICA_PROMPT } from "@/lib/no-aplica-copy";
+import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
 import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
@@ -186,7 +186,7 @@ Si no viene, omite esta capa.
 
 Se activa ÚNICAMENTE cuando el input dice pie 0% (línea "FINANCIAMIENTO DEL 100%" presente). Con pie mayor a 0 esta sección NO existe para ti — que su vocabulario ("financiamiento 100%", "bono pie", "sin capital propio") no se filtre a un análisis normal.
 
-- NÓMBRALO SIN EUFEMISMOS: financiamiento del 100%, típicamente bono pie u otra promoción de la inmobiliaria. "Pie bajo" PROHIBIDO para pie 0. La \`razonSinCapital\` del input declara el origen ('sin_pie' = compra sin pie declarado); si llega una razón nueva, nárrala tal como el input la describa.
+- NÓMBRALO SIN EUFEMISMOS: financiamiento del 100%, típicamente bono pie u otra promoción de la inmobiliaria. "Pie bajo" PROHIBIDO para pie 0. La \`razonSinCapital\` del input viene glosada con el origen Y qué puedes afirmar: 'bono_pie' (la inmobiliaria lo cubre → endurece la lectura del precio), 'otra_fuente' (lo cubre el comprador → NO insinúes bono en el precio), 'no_declarada' / 'sin_pie' (no afirmes el origen). Seguila al pie de la letra.
 - PROHIBIDO CELEBRAR MÉTRICAS SOBRE CAPITAL: Cash-on-Cash y multiplicador vienen "no aplica: sin capital propio (pie $0)" — no existen, no digas "retorno infinito" ni "múltiplo espectacular". Flujo positivo se lee "la operación aguanta su propio financiamiento completo", nunca como rentabilidad sobre capital. La comparación con instrumentos (Ángulo 3) se hace en FLUJO y esfuerzo, no en múltiplos.
 - DUREZA EXTRA CON EL PRECIO: con pie 0 alguien está cubriendo ese pie — usualmente la inmobiliaria vía precio de lista cargado. El precio/m² contra la zona se compara con MÁS dureza, no menos.
 - El riesgo estructural (dividendo en su punto más alto, cero colchón de capital, sensibilidad total a vacancia y tasa) se SUMA a los riesgos operativos del STR (ocupación, estacionalidad, ramp-up) — no los reemplaza ni los suaviza.
@@ -568,7 +568,7 @@ Superficie: ${superficie} m²
 Dormitorios: ${dormitorios}, Baños: ${banos}
 Tipo: ${tipoPropiedad || "—"}
 Precio compra: ${fmtUF(precioCompraUF)} (${fmtCLP(precioCompraCLP)})
-Pie: ${piePct}% = ${fmtCLP(pieCLP)}${sinCapitalPropio ? ` — FINANCIAMIENTO DEL 100% (razonSinCapital: ${cocNoAplicaSTR!.razon}${cocNoAplicaSTR!.razon === "sin_pie" ? " — compra sin pie declarado" : ""}). APLICA LA DOCTRINA ## 5.bis del system.` : ""}
+Pie: ${piePct}% = ${fmtCLP(pieCLP)}${sinCapitalPropio ? ` — FINANCIAMIENTO DEL 100% (razonSinCapital: ${razonSinCapitalPrompt(cocNoAplicaSTR!.razon)}). APLICA LA DOCTRINA ## 5.bis del system.` : ""}
 Tasa crédito: ${pct(tasa)}%, Plazo: ${plazo} años
 Dividendo: ${fmtCLP(dividendo)}/mes
 Capital invertido inicial: ${fmtCLP(capitalInv)} (pie + amoblamiento + gastos cierre)${sinCapitalPropio ? " — SIN pie: amoblamiento y cierre, NO capital propio que rente" : ""}

@@ -10,7 +10,8 @@ import { trackWizard } from "./track";
 import { mesesHastaEntrega } from "@/components/formulario-v3/wizardV3State";
 import type { ScreenProps } from "./screensActo1";
 import type { PieUnidad } from "./wizardV4Nodes";
-import { FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented, TextInput } from "./ui";
+import { PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
+import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented, TextInput } from "./ui";
 import { fmtCLP, fmtUF, parseNum, parseDecimalLocale, piePct, pieUF, pieCLP } from "./derive";
 import { calificaSubsidioV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 
@@ -95,6 +96,7 @@ const PIE_UNITS: Array<{ value: PieUnidad; label: string }> = [
 ];
 
 export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) {
+  const posthog = usePostHog();
   const unidad = answers.pieUnidad ?? "pct";
   const monto = answers.pieMonto ?? "";
   const validador = unidad === "pct" ? decOk : numOk;
@@ -104,6 +106,10 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
   const clp = pieCLP(answers, data.ufCLP);
   // QA-1: el pie no puede superar el 100% del precio (absurdo aritmético).
   const pieExcede = pct > 100;
+  // Fase 5b · D1: el pie 0 deja de bloquear el Continuar. `pieCero` exige monto
+  // ESCRITO (no el campo vacío): sin eso, la pantalla mostraría el bloque y el
+  // selector antes de que el usuario tipee nada.
+  const pieCero = monto.trim() !== "" && pct === 0;
 
   // Equivalencias en vivo: las otras dos unidades respecto a la que escribe.
   const equiv: string[] = [];
@@ -142,7 +148,17 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
 
       <TextInput
         value={monto}
-        onChange={(v) => { if (validador(v)) patchAnswers({ pieMonto: v }); }}
+        onChange={(v) => {
+          if (!validador(v)) return;
+          // Fase 5b: si el pie vuelve a > 0, la razón se descarta EN SILENCIO
+          // (decisión cerrada). Un pie con monto ya no necesita explicación.
+          const nuevoPct = piePct({ ...answers, pieMonto: v }, data.ufCLP);
+          patchAnswers(
+            nuevoPct > 0 && answers.pieRazon
+              ? { pieMonto: v, pieRazon: undefined }
+              : { pieMonto: v },
+          );
+        }}
         placeholder={unidad === "pct" ? "20" : unidad === "uf" ? "640" : "24.800.000"}
         inputMode={unidad === "pct" ? "decimal" : "numeric"}
         mono
@@ -163,10 +179,67 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
         </p>
       )}
 
+      {/* Fase 5b · pie 0 (mockup 5f7c4f9). D2: permiso informado que nombra la
+          consecuencia (el dividendo queda en su punto más alto), no solo el
+          hecho. Ocupa el lugar de las equivalencias, que con pie 0 se ocultan
+          solas (pct > 0) — "= UF 0 · $0" sería ruido. */}
+      {pieCero && (
+        <div
+          className="rounded-r-lg border-l-2 border-[var(--franco-text-secondary)] pl-4 pr-4 py-3"
+          style={{ background: "color-mix(in srgb, var(--franco-text) 3.5%, transparent)" }}
+        >
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-[var(--franco-text-tertiary)] m-0 mb-1">
+            Pie 0%
+          </p>
+          <p className="font-body text-[13px] leading-[1.55] text-[var(--franco-text)] m-0">
+            Financias el 100% con crédito: el dividendo queda en su punto más alto. Franco analiza el depto igual y te muestra qué significa mes a mes.
+          </p>
+        </div>
+      )}
+
+      {/* D3 · selector obligatorio, SOLO con pie exactamente 0. */}
+      {pieCero && (
+        <div className="flex flex-col gap-2.5">
+          <FieldLabel>¿Por qué no pones pie?</FieldLabel>
+          {PIE_RAZON_OPCIONES.map((o) => (
+            <ChoiceTile
+              key={o.value}
+              selected={answers.pieRazon === o.value}
+              onClick={() => patchAnswers({ pieRazon: o.value })}
+              ariaLabel={o.label}
+            >
+              <span className="block">{o.label}</span>
+              {o.sub && (
+                <span
+                  className={`block font-body text-[12px] mt-0.5 ${
+                    answers.pieRazon === o.value ? "opacity-60" : "text-[var(--franco-text-secondary)]"
+                  }`}
+                >
+                  {o.sub}
+                </span>
+              )}
+            </ChoiceTile>
+          ))}
+        </div>
+      )}
+
       <div className="mt-1">
-        <PrimaryBtn onClick={() => answer("pie")} disabled={pct <= 0 || pieExcede}>
+        <PrimaryBtn
+          onClick={() => {
+            if (pieCero) {
+              trackWizard(posthog, "wizard4_pie_cero", { razon: answers.pieRazon });
+            }
+            answer("pie");
+          }}
+          disabled={pct < 0 || pieExcede || (pieCero && !answers.pieRazon)}
+        >
           Continuar →
         </PrimaryBtn>
+        {pieCero && !answers.pieRazon && (
+          <p className="font-body text-[12px] text-[var(--franco-text-secondary)] m-0 mt-2.5">
+            Elige una opción para continuar.
+          </p>
+        )}
       </div>
     </div>
   );
