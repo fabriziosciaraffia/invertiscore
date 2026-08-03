@@ -67,6 +67,20 @@ const inputs: ShortTermInputs = {
 };
 
 async function main() {
+  // Guard de ejecución. Este smoke ESCRIBE en `analisis` (ver cabecera) y la
+  // fila queda colgada de un user_id real. La advertencia en el comentario no
+  // frena un `node scripts/…` distraído; esto sí.
+  if (process.env.SMOKE_PERSIST_CONFIRMO !== 'si') {
+    console.log(
+      'Este smoke INSERTA una fila real en `analisis` (dev y prod comparten base) y la\n' +
+      'cuelga del user_id de una persona real hasta que el cleanup la borre.\n\n' +
+      'Si querés correrlo igual, con intención:\n' +
+      '  SMOKE_PERSIST_CONFIRMO=si node --import tsx scripts/smoke-str-engine-4b-persist.ts\n\n' +
+      'Para verificar el motor SIN tocar la base: scripts/smoke-str-engine-4b.ts',
+    );
+    process.exit(0);
+  }
+
   const result = calcShortTerm(inputs);
 
   // Buscar un user_id real (cualquiera) para no violar FK.
@@ -113,11 +127,32 @@ async function main() {
   console.log('=== INSERTED ===');
   console.log('id:', inserted.id);
 
+  // A partir de acá TODO va en try/finally: la fila ya existe en `analisis` y
+  // está colgada de un user_id REAL, así que aparece en el dashboard de esa
+  // persona hasta que se borre. Antes el DELETE vivía en el flujo lineal después
+  // de varios throw: cualquier fallo intermedio la dejaba ahí para siempre.
+  let allPass = false;
+  try {
+    allPass = await verificarPersistencia(inserted.id as string);
+  } finally {
+    const { error: delErr } = await supabase.from('analisis').delete().eq('id', inserted.id);
+    if (delErr) {
+      console.error('\n⚠️  CLEANUP FALLÓ — hay que borrar a mano la fila', inserted.id, delErr);
+    } else {
+      console.log('\n=== CLEANUP === deleted id', inserted.id);
+    }
+  }
+
+  if (!allPass) process.exit(1);
+}
+
+/** Lee la fila de vuelta y verifica que el jsonb sobrevivió el round-trip. */
+async function verificarPersistencia(id: string): Promise<boolean> {
   // Leer de vuelta para confirmar persistencia
   const { data: row, error: readErr } = await supabase
     .from('analisis')
     .select('id, results')
-    .eq('id', inserted.id)
+    .eq('id', id)
     .single();
   if (readErr) throw readErr;
   if (!row?.results) throw new Error('results vacío en BD');
@@ -152,14 +187,7 @@ async function main() {
   console.log('\n=== TOP-LEVEL veredicto ===');
   console.log(JSON.stringify({ veredicto: r.veredicto }, null, 2));
 
-  // Cleanup
-  const { error: delErr } = await supabase.from('analisis').delete().eq('id', inserted.id);
-  if (delErr) throw delErr;
-  console.log('\n=== CLEANUP === deleted id', inserted.id);
-
-  if (!allPass) {
-    process.exit(1);
-  }
+  return allPass;
 }
 
 main().catch((e) => {
