@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/observabilidad";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
@@ -96,6 +97,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Use credit error:", error instanceof Error ? error.message : "Unknown");
+    // Un crédito que no se pudo usar es plata del usuario que quedó en el limbo.
+    captureApiError(error, { ruta: "POST /api/analisis/use-credit", operacion: "consumir-credito" });
     return NextResponse.json({ error: "Error al usar crédito" }, { status: 500 });
   }
 }

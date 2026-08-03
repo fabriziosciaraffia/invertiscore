@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import { createClient } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { recurringProductByAmount, recurringProductByPlan, addOneMonth } from "@/lib/credits-grant";
@@ -139,6 +140,10 @@ export async function POST(request: Request) {
           }
         } catch (e) {
           console.error("[payment-callback] Meta CAPI Subscribe excepción:", e);
+          captureApiWarning(e, {
+            ruta: "POST /api/subscriptions/payment-callback",
+            operacion: "meta-capi-subscribe",
+          });
         }
       }
 
@@ -199,6 +204,10 @@ export async function POST(request: Request) {
         }
       } catch (e) {
         console.error("[subscriptions/payment-callback] aviso past_due email error:", e);
+        captureApiWarning(e, {
+          ruta: "POST /api/subscriptions/payment-callback",
+          operacion: "email-past-due",
+        });
       }
     }
     // status 1 = pendiente → no cambia subscription_status
@@ -206,6 +215,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "ok" });
   } catch (err) {
     console.error("Subscription payment callback error:", err);
+    // Igual que payments/confirm: devuelve 200 para que Flow no reintente, asi
+    // que sin esto el fallo de un cobro recurrente no lo ve nadie.
+    captureApiError(err, {
+      ruta: "POST /api/subscriptions/payment-callback",
+      operacion: "cobro-recurrente",
+      tags: { respuesta_a_flow: "200-error" },
+    });
     return NextResponse.json({ status: "error" }, { status: 200 });
   }
 }

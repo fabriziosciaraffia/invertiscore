@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
@@ -56,6 +57,10 @@ function cacheEstaFrescaSTR(ai: unknown): boolean {
 // resuelve auth/crédito/cache y persiste.
 // ─────────────────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
+  // Fuera del try: el catch global lo necesita para que el evento de Sentry diga
+  // QUÉ análisis falló, no solo que algo falló.
+  let analysisId: string | undefined;
+
   try {
     const supabase = createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
@@ -63,7 +68,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { analysisId } = await request.json();
+    ({ analysisId } = await request.json());
     if (!analysisId) {
       return NextResponse.json({ error: "analysisId requerido" }, { status: 400 });
     }
@@ -168,6 +173,7 @@ export async function POST(request: Request) {
         return ai;
       } catch (genError) {
         console.error("[STR AI v3] generación falló:", genError);
+        captureApiWarning(genError, { ruta: "POST /api/analisis/short-term/ai", operacion: "generar-prosa-str-background", analysisId });
         return null;
       }
     })();
@@ -183,6 +189,7 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("STR AI v3 error:", error);
+    captureApiError(error, { ruta: "POST /api/analisis/short-term/ai", operacion: "generar-prosa-str", analysisId });
     return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
   }
 }

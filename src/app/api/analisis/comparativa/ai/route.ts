@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/observabilidad";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { isAdminUser } from "@/lib/admin";
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("Comparativa AI error:", error);
+    captureApiError(error, { ruta: "POST /api/analisis/comparativa/ai", operacion: "generar-prosa-ambas" });
     return NextResponse.json({ error: "Error generando narrativa IA" }, { status: 500 });
   }
 }

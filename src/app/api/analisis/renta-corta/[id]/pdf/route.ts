@@ -19,6 +19,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
 import { renderPdf } from "@/lib/pdf/render-pdf";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
@@ -93,6 +94,7 @@ export async function GET(
     });
   } catch (error) {
     console.error("[STR PDF] Error:", error);
+    captureApiError(error, { ruta: "GET /api/analisis/renta-corta/[id]/pdf", operacion: "generar-pdf-str" });
     return NextResponse.json(
       { error: "Error generando PDF", detail: (error as Error).message },
       { status: 500 },

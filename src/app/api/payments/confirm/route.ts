@@ -10,6 +10,7 @@ import { generateAiAnalysis } from "@/lib/ai-generation";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { emitirBoletaDTE } from "@/lib/openfactura/client";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
+import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -180,6 +181,11 @@ export async function POST(request: Request) {
               await generateAiAnalysis(analysisId, supabase);
             } catch (e) {
               console.error("[payments/confirm] generateAiAnalysis diferida falló:", e);
+              captureApiWarning(e, {
+                ruta: "POST /api/payments/confirm",
+                operacion: "ia-diferida-post-pago",
+                commerceOrder: flowData.commerceOrder,
+              });
             }
           }
 
@@ -319,6 +325,11 @@ export async function POST(request: Request) {
           }
         } catch (e) {
           console.error("Payment email error:", e);
+          captureApiWarning(e, {
+            ruta: "POST /api/payments/confirm",
+            operacion: "email-confirmacion-pago",
+            commerceOrder: flowData.commerceOrder,
+          });
         }
       }
 
@@ -365,6 +376,11 @@ export async function POST(request: Request) {
           }
         } catch (e) {
           console.error("[payments/confirm] emisión boleta excepción:", e);
+          captureApiWarning(e, {
+            ruta: "POST /api/payments/confirm",
+            operacion: "emitir-boleta",
+            commerceOrder: flowData.commerceOrder,
+          });
         }
       }
 
@@ -410,6 +426,11 @@ export async function POST(request: Request) {
           }
         } catch (e) {
           console.error("[payments/confirm] emisión boleta unlock excepción:", e);
+          captureApiWarning(e, {
+            ruta: "POST /api/payments/confirm",
+            operacion: "emitir-boleta-unlock",
+            commerceOrder: flowData.commerceOrder,
+          });
         }
       }
 
@@ -431,6 +452,11 @@ export async function POST(request: Request) {
           });
         } catch (e) {
           console.error("[payments/confirm] Meta CAPI Purchase excepción:", e);
+          captureApiWarning(e, {
+            ruta: "POST /api/payments/confirm",
+            operacion: "meta-capi-purchase",
+            commerceOrder: flowData.commerceOrder,
+          });
         }
       }
 
@@ -488,6 +514,11 @@ export async function POST(request: Request) {
         });
       } catch (emailError) {
         console.error("Failed to send admin payment alert:", emailError);
+        captureApiWarning(emailError, {
+          ruta: "POST /api/payments/confirm",
+          operacion: "aviso-admin-pago",
+          commerceOrder: flowData.commerceOrder,
+        });
       }
     }
 
@@ -560,6 +591,11 @@ export async function POST(request: Request) {
         });
       } catch (emailError) {
         console.error("Failed to send admin payment failure alert:", emailError);
+        captureApiWarning(emailError, {
+          ruta: "POST /api/payments/confirm",
+          operacion: "aviso-admin-pago-fallido",
+          commerceOrder: flowData.commerceOrder,
+        });
       }
     }
 
@@ -567,6 +603,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "ok" });
   } catch (err) {
     console.error("Payment confirm error:", err);
+    // Este catch devuelve 200 a propósito (Flow reintenta ante cualquier otra
+    // cosa), así que el error es DOBLEMENTE invisible: ni el usuario ni Flow se
+    // enteran. Sentry es el único lugar donde queda registro de que un cobro
+    // confirmado no terminó de procesarse.
+    captureApiError(err, {
+      ruta: "POST /api/payments/confirm",
+      operacion: "confirmar-pago",
+      tags: { respuesta_a_flow: "200-error" },
+    });
     return NextResponse.json({ status: "error" }, { status: 200 });
   }
 }

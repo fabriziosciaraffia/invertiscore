@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost, flowGet } from "@/lib/flow";
@@ -33,6 +34,11 @@ async function resolveExistingCustomerId(
         "):",
         e instanceof Error ? e.message : String(e)
       );
+      captureApiWarning(e, {
+        ruta: "POST /api/subscriptions/create",
+        operacion: "flow-customer-list",
+        extra: { page },
+      });
       return null;
     }
 
@@ -232,6 +238,10 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[subscriptions/create] Unhandled error:", message);
+    captureApiError(error, {
+      ruta: "POST /api/subscriptions/create",
+      operacion: "crear-suscripcion",
+    });
     return NextResponse.json({
       error: "Error al crear suscripción",
       details: message,

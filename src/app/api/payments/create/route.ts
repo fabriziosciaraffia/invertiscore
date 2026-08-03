@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
@@ -176,6 +177,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: redirectUrl });
   } catch (err: unknown) {
     console.error("Payment create error:", err instanceof Error ? err.message : "Unknown error");
+    captureApiError(err, {
+      ruta: "POST /api/payments/create",
+      operacion: "crear-orden-flow",
+    });
     return NextResponse.json({
       error: "Error al procesar pago",
       details: err instanceof Error ? err.message : "Unknown error",

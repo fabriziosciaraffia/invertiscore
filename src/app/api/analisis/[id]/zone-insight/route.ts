@@ -8,6 +8,7 @@
 // write best-effort y traducción de errores a HTTP.
 
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
 import { buildZoneInsightForRow, type ZoneInsightResponse } from "@/lib/zone-insight-core";
 
@@ -67,6 +68,7 @@ export async function GET(
     return NextResponse.json(response);
   } catch (error) {
     console.error("zone-insight error:", error);
+    captureApiError(error, { ruta: "GET /api/analisis/[id]/zone-insight", operacion: "generar-zone-insight" });
     return NextResponse.json({ error: "Error generando insight" }, { status: 500 });
   }
 }
