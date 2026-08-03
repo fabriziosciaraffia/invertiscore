@@ -8,6 +8,8 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { Hallazgo } from "@/lib/types";
 import { generateStrProse, PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
+import { CLAUDE_MODEL } from "@/lib/ai-config";
+import { camposUpdateUsage } from "@/lib/ai-usage";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 
@@ -152,7 +154,17 @@ export async function POST(request: Request) {
           logger: (m) => console.warn(`[STR AI v3] ${analysisId}: ${m}`),
         });
         const ai = gen.ai as unknown as Record<string, unknown>;
-        await supabase.from("analisis").update({ ai_analysis: ai }).eq("id", analysisId);
+        await supabase
+          .from("analisis")
+          .update({
+            ai_analysis: ai,
+            // Consumo de tokens de la generación, SUMADO a lo que ya tenía la
+            // fila (regenerar no borra el costo previo). `analysis` viene de un
+            // select("*") de más arriba, así que ya trae los contadores actuales
+            // — cero queries nuevas.
+            ...camposUpdateUsage(gen.usage, analysis, CLAUDE_MODEL),
+          })
+          .eq("id", analysisId);
         return ai;
       } catch (genError) {
         console.error("[STR AI v3] generación falló:", genError);

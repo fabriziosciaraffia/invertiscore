@@ -12,6 +12,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
+import { acumularUsage, camposUpdateUsage, nuevoAcumuladorUsage } from "@/lib/ai-usage";
 import type { FullAnalysisResult, AIAnalysisComparativa, RecomendacionModalidadAmbas, AnalisisInput } from "@/lib/types";
 import { esMetricaNoAplica } from "@/lib/types";
 import { razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
@@ -55,6 +56,9 @@ export interface GenerateComparativaOpts {
 export async function generateComparativaAI(opts: GenerateComparativaOpts): Promise<AIAnalysisComparativa | null> {
   const { ltrId, strId, supabase } = opts;
   const persist = opts.persist !== false;
+  // Consumo de tokens de la generación comparativa (principal + retries). Se
+  // escribe al final, junto al UPDATE de `results` que ya existe.
+  const usage = nuevoAcumuladorUsage();
   const log = opts.log ?? ((m: string) => console.warn(`${m} · ${ltrId}`));
 
   const [{ data: ltrRow }, { data: strRow }] = await Promise.all([
@@ -248,6 +252,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
     messages: [{ role: "user", content: userPrompt }],
     system: SYSTEM_PROMPT_AMBAS,
   });
+  acumularUsage(usage, msg);
   const rawText = msg.content[0].type === "text" ? msg.content[0].text : "";
   let aiResult = parse(rawText);
   if (!aiResult) return null;
@@ -273,6 +278,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
         messages: [{ role: "user", content: userPrompt + correctivo }],
         system: SYSTEM_PROMPT_AMBAS,
       });
+      acumularUsage(usage, regen);
       const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
       const regenResult = parse(regenText);
       if (regenResult) {
@@ -300,6 +306,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
           messages: [{ role: "user", content: userPrompt + correctivoVoz(noCorregibles) }],
           system: SYSTEM_PROMPT_AMBAS,
         });
+        acumularUsage(usage, regen);
         const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
         const regenResult = parse(regenText);
         const quedan = regenResult ? hitsQueExigenReintento(scanVozChilena(regenResult)) : null;
@@ -336,7 +343,16 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
 
   if (persist) {
     const updatedResults = { ...(ltrResults as object), comparativaAI: aiResult };
-    await supabase.from("analisis").update({ results: updatedResults }).eq("id", ltrId);
+    await supabase
+      .from("analisis")
+      .update({
+        results: updatedResults,
+        // El consumo de la comparativa se carga a la fila LTR, que es donde vive
+        // `comparativaAI` — misma fila, mismo UPDATE, cero queries nuevas.
+        // `ltrRow` viene de un select("*"), así que ya trae los contadores.
+        ...camposUpdateUsage(usage, ltrRow, CLAUDE_MODEL),
+      })
+      .eq("id", ltrId);
   }
 
   return aiResult;
