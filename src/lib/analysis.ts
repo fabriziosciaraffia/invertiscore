@@ -667,6 +667,11 @@ export function calcProjections(args: {
   // (short-term-engine.ts:797, que ya ancla a precioCompra). El reloj de la plusvalía
   // corre desde el año 0 incluso con entrega futura — ver el bloque `valorPropiedad`
   // dentro del loop para por qué el Modelo B3 quedó superado en ese punto.
+  //
+  // Años hasta la entrega. Se usa para contar la EDAD del inmueble desde la escritura
+  // (se entrega nuevo), no para gatear reajustes: todos los términos se reajustan
+  // parejo desde el año 1 (ver el bloque de reajuste al final del loop).
+  const aniosEntrega = Math.ceil(mesesPreEntrega / 12);
   // Flujo operativo: no incluye inversión inicial (pie) ni cuotas pre-entrega
   let flujoAcumulado = 0;
 
@@ -676,9 +681,16 @@ export function calcProjections(args: {
     const mesInicio = (anio - 1) * 12 + 1;
     const mesFin = anio * 12;
 
-    // Mantención crece por antigüedad + inflación de costos
-    const antiguedadActual = input.antiguedad + anio;
+    // Mantención: la TASA depende de la edad del edificio, y con entrega futura el
+    // depto se recibe NUEVO — la edad se cuenta desde la ENTREGA, no desde la fecha
+    // del análisis. Antes envejecía desde el año 1: un depto en blanco que se entrega
+    // en 4 años llegaba a la escritura tratado como de 4 años de antigüedad y ya
+    // cruzado a la banda de mantención siguiente, contra un arriendo que ni siquiera
+    // había empezado. Sin pre-entrega (aniosEntrega = 0) el término queda idéntico.
+    const antiguedadActual = input.antiguedad + Math.max(0, anio - aniosEntrega);
     const mantencionBase = Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
+    // El FACTOR de inflación sí corre continuo desde el año 1: expresa el monto en
+    // plata del año `anio`, igual que el resto de los términos.
     const mantencionAnual = Math.round(mantencionBase * Math.pow(1 + GGCC_INFLACION, anio - 1));
 
     // Dividendo in UF is constant, but in CLP it grows with UF (≈ inflation)
@@ -746,12 +758,20 @@ export function calcProjections(args: {
       patrimonioNeto: Math.round(patrimonioNeto),
     });
 
-    // Apply inflation for next year (only for post-delivery periods)
-    if (mesFin > mesesPreEntrega) {
-      arriendoActual *= (1 + ARRIENDO_INFLACION);
-      gastosActual *= (1 + GGCC_INFLACION);
-      contribucionesActual *= (1 + GGCC_INFLACION);
-    }
+    // REAJUSTE PAREJO: todos los términos se expresan en plata del año `anio`, sin
+    // importar si ese año es pre o post entrega. Si el dividendo infla N años, el
+    // arriendo infla los mismos N.
+    //
+    // Antes este reajuste estaba gateado por `mesFin > mesesPreEntrega` mientras que
+    // el dividendo y la mantención NO lo estaban. El resultado era un régimen híbrido:
+    // ingresos congelados a plata de hoy contra costos ya inflados al futuro. En el
+    // caso 33253a77 (entrega a 40 meses) eso costaba $46.142/mes en el primer año
+    // operativo y se sostenía los 80 meses de la ventana, empujando el flujo a 10 años
+    // a negativo por construcción. Sesga SIEMPRE en contra, porque los dos términos
+    // que se saltaban el gate eran los dos de costo.
+    arriendoActual *= (1 + ARRIENDO_INFLACION);
+    gastosActual *= (1 + GGCC_INFLACION);
+    contribucionesActual *= (1 + GGCC_INFLACION);
   }
 
   return projections;
