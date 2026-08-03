@@ -11,6 +11,12 @@ import {
   leerIncludeTest,
   PRODUCTO_CONSUMO,
 } from "@/lib/admin-rpc";
+import {
+  FUENTE_SENTRY,
+  METRICA_ERRORES_1D,
+  leerSerie,
+  resumirSerie,
+} from "@/lib/metrics-daily";
 import { AdminActions } from "../admin-actions";
 import { RetryButton } from "../retry-button";
 import { TestToggle } from "../test-toggle";
@@ -18,6 +24,29 @@ import { TestToggle } from "../test-toggle";
 export const dynamic = "force-dynamic";
 
 const SIN_CONSUMOS = `product.is.null,product.neq.${PRODUCTO_CONSUMO}`;
+
+/** Ventana de la pastilla de errores: el día de hoy más los 6 anteriores. */
+const DIAS_VENTANA_ERRORES = 7;
+
+/**
+ * Umbrales de la pastilla de errores, en errores por día.
+ *
+ * Calibrados al volumen REAL de hoy, no a un estándar de la industria: 48
+ * usuarios reales y algo más de un análisis por día. Con ese tráfico, diez
+ * errores en 24 horas no puede ser ruido de fondo — es algo roto. Y un solo
+ * error ya merece una mirada, aunque no despertar a nadie.
+ *
+ * No hay línea base todavía (Sentry recién empezó a ver los errores de las
+ * rutas de API), así que estos números son un punto de partida deliberadamente
+ * conservador. Cuando haya un par de semanas de serie en metrics_daily, se
+ * recalibran contra la mediana observada en vez de contra una intuición.
+ */
+const ERRORES_UMBRAL_WARN = 1;
+const ERRORES_UMBRAL_ERROR = 10;
+
+/** Link al buscador de issues del proyecto, con la ventana ya aplicada. */
+const SENTRY_ISSUES_URL =
+  "https://sentry.io/organizations/franco-1v/issues/?project=javascript-nextjs&statsPeriod=24h";
 
 function horasDesde(date: string | null | undefined): number | null {
   if (!date) return null;
@@ -64,6 +93,7 @@ export default async function AdminOperacionPage({
     geocodeLatest,
     overviewReal,
     overviewTotal,
+    serieErrores,
   ] = await Promise.all([
     sb.from("analisis").select("*", { count: "exact", head: true }),
     sb.from("scraped_properties").select("*", { count: "exact", head: true }).eq("is_active", true),
@@ -84,6 +114,10 @@ export default async function AdminOperacionPage({
     sb.from("scraped_properties").select("scraped_at").not("lat", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(),
     adminOverview(sb, false),
     adminOverview(sb, true),
+    // Errores de Sentry: se leen de metrics_daily, NO de la API de Sentry. Un
+    // timeout de un tercero no puede dejar esta página colgada — el cron diario
+    // (/api/cron/sentry-metrics) es el único que habla con Sentry.
+    leerSerie(sb, FUENTE_SENTRY, METRICA_ERRORES_1D, DIAS_VENTANA_ERRORES),
   ]);
 
   // ─── UF y tasa ───
@@ -103,6 +137,33 @@ export default async function AdminOperacionPage({
 
   const lastScrapedAt = propsLastScraped.data?.scraped_at as string | undefined;
   const geocodeAt = geocodeLatest.data?.scraped_at as string | undefined;
+
+  // ─── ERRORES (Sentry) ───
+  // "0 errores" y "sin dato" NO son lo mismo, y la pastilla tiene que
+  // distinguirlos: el primero es una buena noticia, el segundo significa que el
+  // cron no corrió y estamos ciegos. Mostrar "0" en ambos casos sería mentir
+  // sobre el más grave de los dos.
+  const errores = resumirSerie(serieErrores);
+  const sinDatoErrores = errores.ultimoDia === null || !errores.fresca;
+
+  const estadoErrores: "ok" | "warn" | "error" = sinDatoErrores
+    ? "warn"
+    : errores.ultimoDia! >= ERRORES_UMBRAL_ERROR
+    ? "error"
+    : errores.ultimoDia! >= ERRORES_UMBRAL_WARN
+    ? "warn"
+    : "ok";
+
+  const valorErrores = sinDatoErrores
+    ? errores.ultimaFecha
+      ? `sin medir desde ${fmtDateShort(errores.ultimaFecha)}`
+      : "sin dato"
+    // El 7d se DERIVA sumando las filas diarias; no se guarda aparte para que no
+    // pueda desincronizarse del detalle. Si faltan días en la serie se dice,
+    // porque un total de 3 días no es comparable con uno de 7.
+    : `${fmtNumber(errores.ultimoDia!)} · 24h  ·  ${fmtNumber(errores.suma7d)} · ${errores.diasConDato === DIAS_VENTANA_ERRORES ? "7d" : `${errores.diasConDato}d`}`;
+
+  const hayAlertaErrores = estadoErrores === "error";
 
   const pills: Array<{ label: string; value: string; estado: "ok" | "warn" | "error" }> = [
     {
@@ -152,6 +213,11 @@ export default async function AdminOperacionPage({
       label: "Cron: Geocode",
       value: geocodeAt ? fmtRelative(geocodeAt) : "sin datos",
       estado: geocodeAt ? "ok" : "warn",
+    },
+    {
+      label: "Errores (Sentry)",
+      value: valorErrores,
+      estado: estadoErrores,
     },
   ];
 
@@ -306,6 +372,32 @@ export default async function AdminOperacionPage({
               )}{" "}
               Los análisis no usan este valor —toman la UF de mindicador.cl al momento de calcular—, así que no hay
               informes afectados.
+            </p>
+          </div>
+        )}
+
+        {/* Mismo criterio que el bloque de arriba: el punto rojo dice QUE pasa
+            algo, este bloque dice qué y adónde ir a mirarlo. */}
+        {hayAlertaErrores && (
+          <div className="mt-3 rounded-xl border p-4" style={{ borderColor: "rgba(200,50,60,.35)" }}>
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-[var(--signal-red)]">
+              Pico de errores
+            </div>
+            <p className="font-body text-[13px] leading-relaxed text-[var(--franco-text-secondary)]">
+              <b className="font-medium text-[var(--franco-text)]">
+                {fmtNumber(errores.ultimoDia!)} errores en las últimas 24 horas
+              </b>{" "}
+              (umbral: {fmtNumber(ERRORES_UMBRAL_ERROR)}). Con el volumen actual del producto, eso no es ruido de fondo:
+              algo se rompió. El detalle —qué falla, en qué ruta y a cuántos usuarios— está en Sentry; acá solo vive el
+              conteo.{" "}
+              <a
+                href={SENTRY_ISSUES_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-[var(--franco-text)] underline decoration-[var(--franco-border-strong)] underline-offset-2 transition-colors hover:text-[var(--signal-red)]"
+              >
+                Ver los errores en Sentry →
+              </a>
             </p>
           </div>
         )}
