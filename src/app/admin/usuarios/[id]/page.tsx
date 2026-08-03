@@ -11,6 +11,7 @@ import { ReenviarInformeButton, type ReenvioInfo } from "./reenviar-informe-clie
 import { OtorgarAnalisisForm, RevertirGrantButton } from "./grants-client";
 import { UnlimitedToggle, type UnlimitedEstado } from "./unlimited-client";
 import { hasSubscriptionAccess } from "@/lib/access";
+import { leerAtribucion, fmtFuente } from "@/lib/attribution";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,26 @@ function veredictoTone(v: string): StatusBadgeTone {
   if (v === "BUSCAR OTRA") return "signal-red";
   if (v === "AJUSTA SUPUESTOS") return "ink-500";
   return "ink-400"; // COMPRAR
+}
+
+/** Fila de la card de origen. Se omite sola cuando el campo viene vacío. */
+function CampoOrigen({ label, valor }: { label: string; valor: string | null | undefined }) {
+  if (!valor) return null;
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="shrink-0 font-body text-xs text-[var(--franco-text-muted)]">{label}</dt>
+      <dd className="break-all text-right font-mono text-xs text-[var(--franco-text)]">{valor}</dd>
+    </div>
+  );
+}
+
+/** "_fbp + _fbc" / "solo _fbp" / null. El valor crudo no se muestra: es un id
+ *  largo e ilegible; lo accionable es si Meta puede matchear a esta persona. */
+function cookiesMetaLabel(a: { fbp?: string | null; fbc?: string | null }): string | null {
+  if (a.fbp && a.fbc) return "_fbp + _fbc";
+  if (a.fbp) return "solo _fbp";
+  if (a.fbc) return "solo _fbc";
+  return null;
 }
 
 type TimelineEvent = {
@@ -69,6 +90,7 @@ export default async function AdminUsuarioDetallePage({
     docsRes,
     notasRes,
     auditRes,
+    atribucion,
   ] = await Promise.all([
     sb
       .from("user_credits")
@@ -129,6 +151,10 @@ export default async function AdminUsuarioDetallePage({
       .eq("target_user_id", userId)
       .eq("result", "ok")
       .order("created_at", { ascending: false }),
+    // De dónde vino este usuario. Devuelve null si no tiene fila — que es el caso
+    // de todos los que se registraron antes de que esto existiera, y también del
+    // tráfico directo sin cookies de Meta.
+    leerAtribucion(sb, userId),
   ]);
 
   const credits = creditsRes.data ?? null;
@@ -612,6 +638,38 @@ export default async function AdminUsuarioDetallePage({
                 </dl>
               </div>
             )}
+
+            {/* Card ORIGEN — de dónde vino este usuario.
+                Siempre visible, incluso sin datos: "no sabemos de dónde vino"
+                también es información, y esconder la card haría creer que el
+                dato no existe en el producto. */}
+            <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
+              <div className="mb-2 font-body text-xs text-[var(--franco-text-muted)]">Origen</div>
+              {atribucion ? (
+                <>
+                  <div className="font-mono text-sm text-[var(--franco-text)]">
+                    {fmtFuente(atribucion)}
+                  </div>
+                  <dl className="mt-3 space-y-1.5 border-t border-[var(--franco-border)] pt-3">
+                    <CampoOrigen label="Campaña" valor={atribucion.utm_campaign} />
+                    <CampoOrigen label="Contenido" valor={atribucion.utm_content} />
+                    <CampoOrigen label="Término" valor={atribucion.utm_term} />
+                    <CampoOrigen label="Entró por" valor={atribucion.landing_path} />
+                    <CampoOrigen label="Vino de" valor={atribucion.referrer} />
+                    {/* Las cookies del pixel no se muestran enteras: son un
+                        identificador largo y no se leen a ojo. Sí importa saber
+                        si Meta puede matchear a esta persona. */}
+                    <CampoOrigen label="Cookies Meta" valor={cookiesMetaLabel(atribucion)} />
+                    <CampoOrigen label="Registrado" valor={fmtDateShort(atribucion.created_at)} />
+                  </dl>
+                </>
+              ) : (
+                <p className="font-body text-xs leading-relaxed text-[var(--franco-text-muted)]">
+                  Sin datos de origen. Las cuentas creadas antes de que se
+                  registrara la atribución no se pueden reconstruir.
+                </p>
+              )}
+            </div>
           </aside>
         </div>
       </div>
