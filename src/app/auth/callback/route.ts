@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import { conNext, esDestinoSeguro } from "@/lib/auth-next";
+import { guardarAtribucion } from "@/lib/attribution";
+import { createAdminServiceClient } from "@/lib/admin-auth";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -80,6 +82,31 @@ export async function GET(request: Request) {
       }
     } catch (e) {
       console.error("[auth/callback] Meta CAPI CompleteRegistration excepción:", e);
+    }
+
+    // Atribución de origen — primera mitad. Acá están las cookies del pixel
+    // (_fbp/_fbc), que es lo ÚNICO del origen que viaja en este request: los UTM
+    // viven en localStorage del navegador y los completa después el cliente vía
+    // POST /api/attribution. La RPC es first-touch y solo rellena NULLs, así que
+    // las dos escrituras se suman sin pisarse y el orden da igual.
+    //
+    // Sin filtro de created_at (a diferencia del bloque de CAPI de arriba): un
+    // login recurrente no crea fila nueva ni cambia la existente —la RPC no
+    // toca lo ya seteado—, y en cambio permite recuperar la atribución de
+    // alguien que se registró antes de que esto existiera.
+    //
+    // Bloque aislado con el mismo criterio que CAPI: perder una atribución es
+    // molesto, romper un login es grave.
+    try {
+      const user = sessionData?.user;
+      if (user?.id) {
+        await guardarAtribucion(createAdminServiceClient(), user.id, {
+          fbp: cookieStore.get("_fbp")?.value ?? null,
+          fbc: cookieStore.get("_fbc")?.value ?? null,
+        });
+      }
+    } catch (e) {
+      console.error("[auth/callback] atribución excepción:", e);
     }
   }
 
