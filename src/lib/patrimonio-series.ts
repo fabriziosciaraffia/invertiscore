@@ -7,9 +7,10 @@
 // divergente.
 //
 // Semántica:
-//  - aporteAcum: plata TUYA puesta hasta el año i = gastos de cierre + corretaje
-//    + pie (prorrateado por cuotas si el pie se paga en cuotas) + |flujo negativo
-//    acumulado|. NO es capitalInvertido del motor.
+//  - aporteAcum: plata TUYA puesta hasta el año i = inversión inicial (pie, prorrateado
+//    si el pie se paga en cuotas, + gastos de cierre + CapEx + corretaje) + los años de
+//    flujo negativo. Cuadra al peso con `exitScenario.totalAportado`, que es lo que
+//    narran los drawers. NO es capitalInvertido del motor.
 //  - valorDepto: valor de MERCADO del activo; null pre-entrega (el comprador aún
 //    no lo recibe, así que no es suyo para graficar).
 //  - precioPactadoCLP: el precio de la promesa. Fijo todos los años — esa es la
@@ -18,6 +19,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "./types";
+import { calcInversionInicialCLP } from "./inversion-inicial";
 
 export interface PatrimonioRow {
   anio: number;
@@ -75,14 +77,48 @@ export function buildPatrimonioSeries(
    * Item 9 auditoría) y que este builder reintroducía.
    */
   const pieAcumHastaAnio = (i: number) =>
-    enCuotasPie ? Math.min(totalCuotas, i * 12) * montoCuota : pieCLP;
+    enCuotasPie ? pieCLP * Math.min(1, (i * 12) / totalCuotas) : pieCLP;
+
+  /**
+   * Aportes del bolsillo por flujo negativo hasta el año i. Usa EXACTAMENTE la regla
+   * de calcExitScenario (:818-821): suma los años con flujo anual negativo, sin netear
+   * contra los años positivos.
+   *
+   * Antes el chart usaba `|min(0, flujoAcumulado)|`, que sí netea. En una serie que
+   * alterna signo (típica cuando la mantención cruza banda y el arriendo la vuelve a
+   * alcanzar) las dos reglas dan números distintos: en 98e578f6 el chart decía
+   * $402.492 y el drawer $1.115.048 para el mismo concepto. Manda la del drawer, que
+   * es la que el copy narra y la que alimenta el multiplicador y el hallazgo de
+   * patrimonio.
+   */
+  const aportesPorFlujoHastaAnio = (i: number) =>
+    projections.slice(0, i).filter((p) => p.flujoAnual < 0)
+      .reduce((s, p) => s + Math.abs(p.flujoAnual), 0);
+
+  /**
+   * Aporte propio acumulado hasta el año i. Suma por `calcInversionInicialCLP`, la
+   * fuente única que ya usan calcMetrics y calcExitScenario — así el "vs $X aportados"
+   * del chart no puede volver a desalinearse del drawer.
+   *
+   * Ese desalineamiento existía: el builder sumaba a mano pie + cierre + corretaje y
+   * se olvidaba del CapEx de puesta a punto, que sí entra en `inversionInicial`. En
+   * 506 de los 586 análisis LTR (todos los usados, donde el CapEx > 0) el chart decía
+   * que habías puesto MENOS plata de la que el drawer reportaba.
+   */
+  const aporteHastaAnio = (i: number) =>
+    calcInversionInicialCLP({
+      pieCLP: pieAcumHastaAnio(i),
+      gastosCierreCLP: gastosCierre,
+      capexPuestaAPuntoCLP: metrics.capexPuestaAPuntoCLP ?? 0,
+      corretajeInicialCLP: corretaje,
+    }) + aportesPorFlujoHastaAnio(i);
 
   const a0PreEntrega = 0 < aniosEntregaInternal;
   // El banco no cursa hasta la escritura: pre-entrega la deuda es 0 (espejo exacto
   // de calcProjections). Antes se decidía por `estadoVenta === "futura"`, que dejaba
   // fuera "blanco" y "verde" — también pre-entrega cuando traen fechaEntrega.
   const deudaA0 = a0PreEntrega ? 0 : creditoInicial;
-  const aporteA0 = gastosCierre + corretaje + pieAcumHastaAnio(0);
+  const aporteA0 = aporteHastaAnio(0);
   rows.push({
     anio: 0,
     aporteAcum: aporteA0,
@@ -101,8 +137,7 @@ export function buildPatrimonioSeries(
   for (let i = 1; i <= plazoAnios; i++) {
     const p = projections[i - 1];
     if (!p) break;
-    const aporteAcum =
-      gastosCierre + corretaje + pieAcumHastaAnio(i) + Math.abs(Math.min(0, p.flujoAcumulado));
+    const aporteAcum = aporteHastaAnio(i);
     const isPreEntrega = i < aniosEntregaInternal;
     rows.push({
       anio: i,
