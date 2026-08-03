@@ -103,7 +103,7 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
 
 Antes del push final, en el worktree:
 1. `git fetch && git rebase origin/master`
-2. Re-correr gates después del rebase: `node_modules/.bin/tsc --noEmit` + `node_modules/.bin/next lint` (nunca npx)
+2. Re-correr gates después del rebase: `node_modules/.bin/tsc --noEmit` + `node_modules/.bin/next lint` (nunca npx) + `npm run typecheck:scripts` si se tocó `scripts/` o un tipo del motor
 3. `git push --force-with-lease origin <rama>` (solo la rama, nunca master)
 
 Si el rebase conflictúa: DETENTE y reporta. No resolver a ciegas sobre trabajo ajeno recién mergeado.
@@ -112,6 +112,7 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
 
 ## Type-check, lint y scripts
 - Type-check: `node_modules/.bin/tsc --noEmit` — **NO** `npx tsc`. El repo puede venir sin `node_modules` → `npm ci` primero.
+- **Type-check del tooling: `npm run typecheck:scripts`** (= `tsc --noEmit -p tsconfig.scripts.json`). El tsconfig del app **excluye `scripts/**`**, así que el gate normal NO ve la carpeta donde viven el golden y los smoke tests. Sin este gate un extractor puede leer un campo renombrado y la red de seguridad mide mal **en silencio** — pasó con el bundle del juez (4 campos rotos, 3 invisibles para `tsc`). Corre junto al type-check del app cuando se toque `scripts/` o un tipo compartido con el motor. `scripts/_archivo/` queda fuera a propósito.
 - Lint por archivo: `npx next lint --file <archivo>`.
 - `npm run build` puede fallar localmente por env faltante (p.ej. `FIRECRAWL_API_KEY`): usá `tsc` para el chequeo local.
 - Antes de cada commit: `tsc` limpio (exit 0) + lint del archivo tocado.

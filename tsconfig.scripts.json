@@ -1,0 +1,10 @@
+{
+  "//": "Gate de tipos del tooling. El tsconfig del app excluye scripts/**, así que sin esto la carpeta donde viven el golden y los smoke tests no la verificaba nadie: un extractor podía leer un campo renombrado y la red de seguridad medía mal en silencio (pasó con el bundle del juez, rama fix-judge-truthbundle). target ES2022 porque los scripts iteran Set/Map y el tsconfig del app no declara target — tsc asumía ES5 y pedía downlevelIteration por algo que en runtime (tsx) siempre funcionó. No se toca el target del app: eso es del build de Next, no de esto. scripts/_archivo queda fuera a propósito (ver su README).",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "noEmit": true
+  },
+  "include": ["scripts/**/*.ts", "scripts/**/*.tsx", "src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "scripts/_archivo/**"]
+}
