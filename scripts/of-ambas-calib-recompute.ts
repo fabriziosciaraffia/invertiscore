@@ -110,6 +110,8 @@ async function main() {
         comuna: (strInput?.comuna as string) ?? str.comuna ?? "",
         superficie: Number(strInput?.superficieUtil) || 0,
         dormitorios: Number(strInput?.dormitorios) || 0,
+        esNuevo: strInput?.tipoPropiedad === "nuevo",
+        antiguedad: typeof strInput?.antiguedad === "number" ? strInput.antiguedad : undefined,
       } as any, strUf);
     } catch { /* null */ }
     const strNew = recomputeShortTermForLegacy(strInput, strRes, strUf, strAsOf, strMediana);
@@ -123,6 +125,8 @@ async function main() {
         comuna: (ltrInput?.comuna as string) ?? ltr.comuna ?? "",
         superficie: Number(ltrInput?.superficie) || 0,
         dormitorios: Number(ltrInput?.dormitorios) || 0,
+        esNuevo: ltrInput?.esNuevo,
+        antiguedad: typeof ltrInput?.antiguedad === "number" ? ltrInput.antiguedad : undefined,
       } as any, ltrUf);
     } catch { /* null */ }
     let ltrNew: any = null, ltrErr: string | null = null;

@@ -2,6 +2,9 @@
 // salud de financiamiento lo define financing-health.ts; el Hallazgo de estructura
 // lo reusa tal cual.
 import type { FinancingHealthLevel } from "./financing-health";
+// Universo de la mediana comunal (nuevo|usado). Canónico en comuna-stats.ts —
+// también type-only, así que no hay ciclo en runtime.
+import type { CondicionMercado } from "./comuna-stats";
 
 export interface Desglose {
   rentabilidad: number;
@@ -329,6 +332,10 @@ export interface PrecioVsComuna {
   confiable: boolean;
   /** N de ventas válidas usadas para la mediana (0 si no hay). */
   n: number;
+  /** Universo de la muestra: la mediana sale SOLO de publicaciones de ese tipo.
+   *  OPCIONAL — ausente en análisis con snapshot anterior al fix de segmentación,
+   *  cuya mediana es de universo mixto y por eso no se rotula. */
+  universo?: CondicionMercado;
 }
 
 // Proto-hallazgo tipado — CapEx de puesta a punto para usados. NO es un type
@@ -459,6 +466,9 @@ export interface HallazgoSobreprecio {
     banda: number;               // banda de saturación de la decisividad, en %
     n: number;                   // N de ventas usadas para la mediana
     comuna: string;              // nombre de la comuna de la mediana — nombra el nivel en el ksub (R2). "" si no disponible
+    // Universo de la muestra. Ausente ⇒ mediana de universo mixto (snapshot
+    // pre-segmentación): la frase NO declara universo. Ver sobreprecio-hallazgo.ts.
+    universo?: CondicionMercado;
   };
   // DIRECCIÓN INVERTIDA respecto a cap_rate/flujo: BAJO la mediana = favorable
   // (entras barato); SOBRE la mediana = adverso (pagas caro). Más caro = peor.

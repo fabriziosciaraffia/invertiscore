@@ -19,7 +19,12 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 import { cookies } from "next/headers";
 import { chargeAnalysisCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
-import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
+import {
+  getComunaMedianaVentaUF,
+  resolverCondicionMercado,
+  type CondicionMercado,
+  type MedianaComunaVenta,
+} from "@/lib/comuna-stats";
 import { evaluarPlausibilidad, type Anomalia, type PlausibilidadInput } from "@/lib/plausibilidad";
 import type { AnalisisInput, RazonSinCapital } from "@/lib/types";
 import {
@@ -42,23 +47,32 @@ import type { AirbnbEstimateData, AirbnbEstimateDirectData } from "@/lib/airbnb/
  * Centraliza el try/catch: un fallo de la query NO debe romper la creación o el
  * recálculo del análisis — cae a { mediana: null, n: 0 } y el motor emite
  * precioVsComuna con sujetoUfM2 presente y desviación null.
+ *
+ * El UNIVERSO (nuevo|usado) se deriva acá del propio input, así que todos los
+ * bordes que ya pasaban el input completo quedan segmentados sin tocarlos. Los
+ * bordes STR, que arman un literal con comuna/superficie/dormitorios, pueden
+ * pasar `esNuevo`/`antiguedad` explícitos; si no los pasan cae a "usado", que es
+ * el universo del ~96% del inventario y el comportamiento previo.
  */
 export async function prefetchMedianaComunaVenta(
   supabase: SupabaseClient,
-  input: Pick<AnalisisInput, "comuna" | "superficie" | "dormitorios">,
+  input: Pick<AnalisisInput, "comuna" | "superficie" | "dormitorios"> &
+    Partial<Pick<AnalisisInput, "esNuevo" | "antiguedad">>,
   ufValue: number
-): Promise<{ mediana: number | null; n: number }> {
+): Promise<MedianaComunaVenta> {
+  const condicion = resolverCondicionMercado(input);
   try {
     return await getComunaMedianaVentaUF(
       supabase,
       input.comuna,
       input.superficie,
       input.dormitorios,
-      ufValue
+      ufValue,
+      condicion
     );
   } catch (e) {
     console.error("[prefetchMedianaComunaVenta] falló (no bloquea el análisis):", e);
-    return { mediana: null, n: 0 };
+    return { mediana: null, n: 0, universo: condicion, ventanaDias: null };
   }
 }
 
@@ -71,18 +85,24 @@ export interface MedianaComunaSnapshot {
   n: number;
   resolvedAt: string;
   nivel: string;
+  /** Universo de la muestra (nuevo|usado). OPCIONAL: los snapshots anteriores al
+   *  fix de segmentación no lo tienen, y su mediana es de universo MIXTO. Ausente
+   *  ⇒ la prosa no declara universo (no se le pone etiqueta a un número que no la
+   *  tiene). Ver sobreprecio-hallazgo.ts. */
+  universo?: CondicionMercado;
 }
 
 /** Envuelve el `{ mediana, n }` del prefetch con el timestamp y el nivel de
  * procedencia, en el shape único que persisten los flujos de creación. */
 export function buildMedianaSnapshot(
-  resuelta: { mediana: number | null; n: number }
+  resuelta: { mediana: number | null; n: number; universo?: CondicionMercado }
 ): MedianaComunaSnapshot {
   return {
     mediana: resuelta.mediana,
     n: resuelta.n,
     resolvedAt: new Date().toISOString(),
     nivel: "prefetch",
+    ...(resuelta.universo ? { universo: resuelta.universo } : {}),
   };
 }
 

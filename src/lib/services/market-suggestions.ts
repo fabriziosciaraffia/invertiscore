@@ -250,19 +250,24 @@ async function getSugerenciasPorComuna(
   propType: string = "arriendo",
   condicion: string | null = null
 ): Promise<Sugerencias | null> {
-  // `condicion` ya no se usa acá: el factor cierre lo aplica getComunaMedianaVentaUF
-  // por fila. Se mantiene en la firma porque los callers lo pasan posicionalmente.
-  void condicion;
   const supabase = getSupabase();
 
   // VENTA: el precioM2 sale del helper canónico getComunaMedianaVentaUF, que lee
   // scraped_properties DIRECTO (misma fuente que el sobreprecio → coherencia garantizada)
-  // con ventana superficie ±20%, dormitorios, frescura 90d (+adaptativa 180) y factor
-  // cierre YA aplicado por fila. market_stats está desactualizado y no se usa para venta.
+  // con ventana superficie ±20%, dormitorios, segmentación por universo
+  // (nuevo|usado), escalera de frescura por universo y factor cierre YA aplicado
+  // por fila. market_stats está desactualizado y no se usa para venta.
+  //
+  // `condicion` vuelve a usarse: el wizard la manda como `tipoPropiedad`
+  // (nuevo-v2/page.tsx: paramsVenta.set("condicion", ...)), y ahora decide el
+  // universo de la mediana. Así el precio/m² SUGERIDO en el wizard sale del mismo
+  // mercado contra el que después se mide el sobreprecio — sin eso, el wizard le
+  // sugeriría a un depto nuevo un valor de mercado de usados.
   if (propType === "venta") {
     const ufCLP = await getUFValue();
     const { mediana: medianaUF, n } = await getComunaMedianaVentaUF(
-      supabase, comuna, superficie, dormitorios, ufCLP);
+      supabase, comuna, superficie, dormitorios, ufCLP,
+      condicion === "nuevo" ? "nuevo" : "usado");
     if (medianaUF && medianaUF > 0) {
       // medianaUF es UF/m²; el consumidor espera CLP/m² (lo divide por UF). No re-aplicar
       // factorCierre: el helper ya lo aplicó internamente.

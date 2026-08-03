@@ -93,7 +93,8 @@ export async function generateComparativaAI(opts: GenerateComparativaOpts): Prom
   const strMedianaRc = strInput
     ? await prefetchMedianaComunaVenta(
         supabase,
-        { comuna: (strInput.comuna as string) ?? (strRow.comuna as string) ?? "", superficie: Number(strInput.superficieUtil) || 0, dormitorios: Number(strInput.dormitorios) || 0 },
+        { comuna: (strInput.comuna as string) ?? (strRow.comuna as string) ?? "", superficie: Number(strInput.superficieUtil) || 0, dormitorios: Number(strInput.dormitorios) || 0,
+          esNuevo: strInput.tipoPropiedad === "nuevo", antiguedad: typeof strInput.antiguedad === "number" ? strInput.antiguedad : undefined },
         ltrUf,
       )
     : { mediana: null, n: 0 };

@@ -22,6 +22,7 @@
 // narra aguas abajo. Voz: tuteo neutro chileno, SIN voseo.
 
 import type { HallazgoSobreprecio, PrecioVsComuna } from "./types";
+import type { CondicionMercado } from "./comuna-stats";
 
 /**
  * Banda (en %) que satura la decisividad: |desviacionPct| ≥ banda ⇒ 1.0.
@@ -39,6 +40,23 @@ const EN_LINEA_UMBRAL_PCT = 2;
 
 const fmtUF = (n: number) =>
   `UF ${(Math.round(n * 10) / 10).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+
+/**
+ * Sujeto de la comparación, con el UNIVERSO declarado. Antes decía siempre "la
+ * mediana de la comuna" — y esa etiqueta era el defecto: la mediana salía del
+ * mercado de USADOS y se le presentaba a deptos nuevos como si fuera "la comuna"
+ * entera. Ahora la frase nombra de qué está hecha la muestra.
+ *
+ * Sin universo (snapshots anteriores al fix, cuya mediana es mixta) cae a la
+ * redacción previa, byte-idéntica: no se le pone etiqueta a un número que no la
+ * tiene. Sin N (>0) tampoco se rotula — una frase que dijera "0 publicaciones"
+ * sería peor que la genérica.
+ */
+function refMediana(universo: CondicionMercado | undefined, n: number): string {
+  if (!universo || !Number.isFinite(n) || n <= 0) return "la mediana de la comuna";
+  const tipo = universo === "nuevo" ? "nuevos" : "usados";
+  return `la mediana de ${n.toLocaleString("es-CL")} publicaciones de departamentos ${tipo} de la comuna`;
+}
 
 /**
  * Construye el proto-hallazgo de sobreprecio reusando metrics.precioVsComuna.
@@ -88,23 +106,24 @@ export function buildHallazgoSobreprecio(
 
   const sujetoFmt = fmtUF(sujetoUfM2);
   const medianaFmt = fmtUF(medianaComunaUfM2);
+  const ref = refMediana(pvc.universo, pvc.n);
 
   let fraseCanonica: string;
   let titular: string;
   if (direccion === "neutral") {
     titular = "Pagas el metro a precio de comuna, sin sobreprecio.";
     fraseCanonica =
-      `Tu precio por m² (${sujetoFmt}) está en línea con la mediana de la comuna (${medianaFmt}). ` +
+      `Tu precio por m² (${sujetoFmt}) está en línea con ${ref} (${medianaFmt}). ` +
       `Pagas lo que vale el metro en esta comuna.`;
   } else if (direccion === "favorable") {
     titular = "Entras barato: el metro está bajo la mediana comunal.";
     fraseCanonica =
-      `Tu precio por m² (${sujetoFmt}) está ${desvAbs}% bajo la mediana de la comuna (${medianaFmt}). ` +
+      `Tu precio por m² (${sujetoFmt}) está ${desvAbs}% bajo ${ref} (${medianaFmt}). ` +
       `Entras barato para esta comuna.`;
   } else {
     titular = "Estás pagando caro el metro para esta comuna.";
     fraseCanonica =
-      `Tu precio por m² (${sujetoFmt}) está ${desvAbs}% sobre la mediana de la comuna (${medianaFmt}). ` +
+      `Tu precio por m² (${sujetoFmt}) está ${desvAbs}% sobre ${ref} (${medianaFmt}). ` +
       `Estás pagando caro el metro para esta comuna.`;
   }
 
@@ -121,12 +140,15 @@ export function buildHallazgoSobreprecio(
       banda,
       n: pvc.n,
       comuna: comuna.trim(),
+      ...(pvc.universo ? { universo: pvc.universo } : {}),
     },
     direccion,
     decisividad,
     magnitudContinua,
     procedencia: {
-      base: "mediana de precios de PUBLICACIÓN de venta de la comuna (scraped), no transacción",
+      base: pvc.universo
+        ? `mediana de precios de PUBLICACIÓN de venta de departamentos ${pvc.universo === "nuevo" ? "NUEVOS" : "USADOS"} de la comuna (scraped), no transacción`
+        : "mediana de precios de PUBLICACIÓN de venta de la comuna (scraped), no transacción",
       confianza: "media",
     },
     titular,

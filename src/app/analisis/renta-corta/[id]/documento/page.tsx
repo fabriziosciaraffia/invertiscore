@@ -62,6 +62,8 @@ export default async function DocumentoSTRPage({ params }: { params: { id: strin
           comuna: (inputDataStr.comuna as string) ?? "",
           superficie: Number(inputDataStr.superficieUtil) || 0,
           dormitorios: Number(inputDataStr.dormitorios) || 0,
+          esNuevo: inputDataStr.tipoPropiedad === "nuevo",
+          antiguedad: typeof inputDataStr.antiguedad === "number" ? inputDataStr.antiguedad : undefined,
         },
         ufFrozen,
       )

@@ -28,7 +28,7 @@ import { calcFrancoScoreSTR } from "../src/lib/engines/short-term-score";
 import type { FrancoScoreSTR } from "../src/lib/engines/short-term-score";
 import { buildStrHallazgos } from "../src/lib/str-hallazgos";
 import { buildAirbnbData } from "../src/lib/api-helpers/analisis-pipeline";
-import { getComunaMedianaVentaUF } from "../src/lib/comuna-stats";
+import { getComunaMedianaVentaUF, resolverCondicionMercado } from "../src/lib/comuna-stats";
 import { generateStrProse } from "../src/lib/ai-generation-str";
 import type { AIAnalysisSTRv2 } from "../src/lib/types";
 config({ path: path.resolve(process.cwd(), ".env.local") });
@@ -75,7 +75,7 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
   } as any);
   // mediana comunal real (sobreprecio) — mismo helper que el prefetch del pipeline.
   let mediana: { mediana: number | null; n: number } = { mediana: null, n: 0 };
-  try { mediana = await getComunaMedianaVentaUF(sb, comuna, d.superficieUtil, d.dormitorios ?? null, uf); } catch { /* cae a null → sobreprecio omitido, patrón LTR */ }
+  try { mediana = await getComunaMedianaVentaUF(sb, comuna, d.superficieUtil, d.dormitorios ?? null, uf, resolverCondicionMercado({ esNuevo: d.tipoPropiedad === "nuevo", antiguedad: d.antiguedad })); } catch { /* cae a null → sobreprecio omitido, patrón LTR */ }
   const strHallazgos = buildStrHallazgos({
     result: rec, francoScore: score, comuna: comuna || "", precioUF: d.precioCompraUF, superficieM2: d.superficieUtil,
     piePct: d.piePct, tasaPct: d.tasaInteres, plazoAnios: d.plazoCredito, mediana, valorUF: uf, incluyeCorretaje: false,

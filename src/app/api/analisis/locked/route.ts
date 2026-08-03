@@ -133,7 +133,8 @@ export async function POST(request: Request) {
       // contrato HTTP. Si falla, abortamos sin haber insertado el LTR.
       const medianaStrBoth = await prefetchMedianaComunaVenta(
         supabase,
-        { comuna: strPayload.comuna ?? "", superficie: strPayload.superficieUtil, dormitorios: strPayload.dormitorios },
+        { comuna: strPayload.comuna ?? "", superficie: strPayload.superficieUtil, dormitorios: strPayload.dormitorios,
+          esNuevo: strPayload.tipoPropiedad === "nuevo", antiguedad: strPayload.antiguedad },
         ufBoth,
       );
       const builtStr = await buildShortTermAnalysisRow(strPayload, ufBoth, medianaStrBoth);
@@ -209,7 +210,8 @@ export async function POST(request: Request) {
 
       const medianaStr = await prefetchMedianaComunaVenta(
         supabase,
-        { comuna: bodyStr.comuna ?? "", superficie: bodyStr.superficieUtil, dormitorios: bodyStr.dormitorios },
+        { comuna: bodyStr.comuna ?? "", superficie: bodyStr.superficieUtil, dormitorios: bodyStr.dormitorios,
+          esNuevo: bodyStr.tipoPropiedad === "nuevo", antiguedad: bodyStr.antiguedad },
         ufStr,
       );
       const built = await buildShortTermAnalysisRow(bodyStr, ufStr, medianaStr);

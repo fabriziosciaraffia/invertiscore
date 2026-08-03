@@ -24,6 +24,7 @@ import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo } from "./flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
+import type { MedianaComunaInyectada } from "./comuna-stats";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
@@ -230,7 +231,7 @@ function calcMetrics(
   // el pipeline, igual que entra ufClp). El motor sigue síncrono y puro: recibe
   // el número, no hace queries. Opcional → callers que no la pasan obtienen
   // precioVsComuna con sujetoUfM2 presente y desviación null.
-  medianaComunaVentaUF?: { mediana: number | null; n: number },
+  medianaComunaVentaUF?: MedianaComunaInyectada,
   // Overrides de neutralización contrafactual (E1 · calibración de decisividades).
   // Cuando se pasan, reemplazan un valor derivado ANTES de que alimente el resto
   // del cálculo — hoy solo capex (feed de capitalInvertido → cashOnCash). Ausente
@@ -406,6 +407,10 @@ function calcMetrics(
     medianaComunaUfM2: medianaComunaVentaUF?.mediana ?? null,
     confiable: medianaComunaVentaUF?.mediana != null && medianaComunaVentaUF.mediana > 0,
     n: medianaComunaVentaUF?.n ?? 0,
+    // Universo de la muestra. Viaja desde la query (o el snapshot) hasta la
+    // fraseCanonica: es lo que evita volver a rotular "la mediana de la comuna"
+    // a una mediana que es de un solo universo.
+    universo: medianaComunaVentaUF?.universo,
   });
   // Hallazgo de sobreprecio: builder puro y determinístico sobre precioVsComuna
   // (NO recalcula la desviación). null cuando la mediana no es confiable — caso
@@ -1262,7 +1267,7 @@ export function deriveVeredicto(
 export function veredictoConPatch(
   input: AnalisisInput,
   ufClp: number,
-  medianaComunaVentaUF: { mediana: number | null; n: number } | undefined,
+  medianaComunaVentaUF: MedianaComunaInyectada | undefined,
   asOf: Date,
   patch: Partial<AnalisisInput>,
 ): Veredicto {
@@ -1348,7 +1353,7 @@ function decisividadDesde(
 function solveArriendoForCapRate(
   input: AnalisisInput,
   ufClp: number,
-  mediana: { mediana: number | null; n: number } | undefined,
+  mediana: MedianaComunaInyectada | undefined,
   targetCapPct: number,
 ): number {
   let lo = 0;
@@ -1375,7 +1380,7 @@ function solveArriendoForCapRate(
 export function calcDecisividades(
   input: AnalisisInput,
   ufClp: number,
-  medianaComuna?: { mediana: number | null; n: number },
+  medianaComuna?: MedianaComunaInyectada,
   // asOf con default (excepción a "requerido"): este boundary exportado tiene callers
   // externos (ai-generation) y su OUTPUT es date-invariante — el penalty de entrega
   // futura afecta base y neutralizado por igual, se cancela en la resta base−neu → la
@@ -1739,7 +1744,7 @@ export function runAnalysis(
   ufClp: number,
   // Mediana comunal de venta UF/m² ya resuelta (pre-fetch del pipeline). Se
   // propaga tal cual a calcMetrics. Opcional para no romper callers existentes.
-  medianaComunaVentaUF?: { mediana: number | null; n: number },
+  medianaComunaVentaUF?: MedianaComunaInyectada,
   // Fecha de análisis CONGELADA (espejo de ufFrozen). Default new Date() = momento
   // de creación (≈ el created_at que se persistirá). El render la pasa re-derivada
   // de created_at para que la proyección/score/prosa no deriven en recomputes

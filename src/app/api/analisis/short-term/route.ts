@@ -61,7 +61,8 @@ export async function POST(request: Request) {
     // (patrón LTR). No bloquea: cae a { mediana:null } y sobreprecio se omite.
     const medianaComuna = await prefetchMedianaComunaVenta(
       supabase,
-      { comuna: body.comuna, superficie: body.superficieUtil, dormitorios: body.dormitorios },
+      { comuna: body.comuna, superficie: body.superficieUtil, dormitorios: body.dormitorios,
+        esNuevo: body.tipoPropiedad === "nuevo", antiguedad: body.antiguedad },
       ufValue,
     );
     const built = await buildShortTermAnalysisRow(body, ufValue, medianaComuna);

@@ -130,6 +130,8 @@ export async function POST(request: Request) {
         comuna: (input.comuna as string) ?? comuna,
         superficie: Number(input.superficieUtil) || 0,
         dormitorios: Number(input.dormitorios) || 0,
+        esNuevo: input.tipoPropiedad === "nuevo",
+        antiguedad: typeof input.antiguedad === "number" ? input.antiguedad : undefined,
       },
       ufFrozen,
     );

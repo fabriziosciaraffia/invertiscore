@@ -156,6 +156,8 @@ export default async function ComparativaPage({
           comuna: (strInput.comuna as string) ?? str.comuna ?? "",
           superficie: Number(strInput.superficieUtil) || 0,
           dormitorios: Number(strInput.dormitorios) || 0,
+          esNuevo: strInput.tipoPropiedad === "nuevo",
+          antiguedad: typeof strInput.antiguedad === "number" ? strInput.antiguedad : undefined,
         },
         ltrUfFrozen,
       )

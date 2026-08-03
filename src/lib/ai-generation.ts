@@ -17,7 +17,11 @@ import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "@/lib/capex-pu
 import { readVeredicto } from "@/lib/results-helpers";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
-import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
+import {
+  getComunaMedianaVentaUF,
+  resolverCondicionMercado,
+  type CondicionMercado,
+} from "@/lib/comuna-stats";
 import { buildPrecioVsComuna } from "@/lib/precio-vs-comuna";
 import {
   resolverArriendoReferencia,
@@ -826,15 +830,23 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // Zone market data
     let precioM2Zona = m.precioM2;
     let precioM2ZonaConfiable = false; // true cuando hay dato real de zona (no fallback al m² del depto)
+    // Universo del sujeto (nuevo|usado) y N de la muestra que respalda la mediana.
+    // Ambos viajan hasta la fraseCanonica del hallazgo: sin ellos la frase no
+    // puede declarar de qué está hecha la muestra y cae a la redacción genérica.
+    const condicionSujeto = resolverCondicionMercado(input);
+    let universoZona: CondicionMercado | undefined;
+    let nZona = 0;
 
-    // 1º (prioritario): mediana de precio/m² de venta desde scraped_properties
-    // (dato real, ≥20 ventas; misma fuente y umbral que el drawer zone-insight).
+    // 1º (prioritario): mediana de precio/m² de venta desde scraped_properties,
+    // DENTRO del universo del sujeto (misma fuente y umbral que el drawer zone-insight).
     {
-      const { mediana: medianaUF } = await getComunaMedianaVentaUF(
-        supabase, input.comuna, input.superficie, input.dormitorios, UF_CLP);
+      const { mediana: medianaUF, n, universo } = await getComunaMedianaVentaUF(
+        supabase, input.comuna, input.superficie, input.dormitorios, UF_CLP, condicionSujeto);
       if (typeof medianaUF === "number" && medianaUF > 0) {
         precioM2Zona = medianaUF;
         precioM2ZonaConfiable = true;
+        universoZona = universo;
+        nZona = n;
       }
     }
     // 2º (si !confiable): zone_insight cacheado (medianaComuna, misma fuente scraped).
@@ -880,13 +892,19 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // cadena de precio/m² (el arriendo de zona ya no sale de ahí).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const medianaSnapshot = (analysis as any).mediana_comuna_snapshot as
-      { mediana: number | null; n: number } | null | undefined;
+      { mediana: number | null; n: number; universo?: CondicionMercado } | null | undefined;
     if (medianaSnapshot != null) {
       if (typeof medianaSnapshot.mediana === "number" && medianaSnapshot.mediana > 0) {
         precioM2Zona = medianaSnapshot.mediana;
         precioM2ZonaConfiable = true;
+        // El universo viaja CON la cifra: un snapshot anterior a la segmentación
+        // trae una mediana de universo mixto y NO debe rotularse (undefined).
+        universoZona = medianaSnapshot.universo;
+        nZona = medianaSnapshot.n ?? 0;
       } else {
         precioM2ZonaConfiable = false; // snapshot congeló "sin mediana confiable"
+        universoZona = undefined;
+        nZona = 0;
       }
     }
 
@@ -895,12 +913,18 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // (input.precio/superficie), idéntico al que persiste el motor en
     // metrics.precioVsComuna y al que muestra el hero. La mediana ya resuelta
     // (snapshot Fase B, o los 3 fallbacks) se inyecta tal cual; mediana null si no
-    // es confiable. n no se usa en la narración (lo cablea FASE B al construir el hallazgo).
+    // es confiable.
+    //
+    // El `n` ya NO va en 0: desde que la frase declara "la mediana de N
+    // publicaciones de departamentos [nuevos|usados]", el N es parte del texto
+    // y un 0 lo dejaría sin rotular (o peor, rotulado con cero). Sale de la
+    // misma fuente que la mediana (snapshot si existe, query si no).
     const pvc = buildPrecioVsComuna({
       sujetoUfM2: input.superficie > 0 ? input.precio / input.superficie : 0,
       medianaComunaUfM2: precioM2ZonaConfiable ? precioM2Zona : null,
       confiable: precioM2ZonaConfiable,
-      n: 0,
+      n: precioM2ZonaConfiable ? nZona : 0,
+      universo: precioM2ZonaConfiable ? universoZona : undefined,
     });
 
     // Decisividades calibradas (E2 · escala común "Δdecisión"). Fuente única y

@@ -1,5 +1,6 @@
 import type { AnalisisInput, FullAnalysisResult } from "@/lib/types";
 import { runAnalysis } from "@/lib/analysis";
+import type { MedianaComunaInyectada } from "@/lib/comuna-stats";
 
 /**
  * Recomputa `FullAnalysisResult` desde `input + ufClp` usando el motor actual.
@@ -36,7 +37,7 @@ import { runAnalysis } from "@/lib/analysis";
 export function recomputeResultsForLegacy(
   input: AnalisisInput,
   ufClp: number,
-  medianaComuna?: { mediana: number | null; n: number },
+  medianaComuna?: MedianaComunaInyectada,
   // Fecha de análisis CONGELADA (espejo de ufClp). El render la re-deriva de
   // created_at para que la proyección/score/prosa de deptos en verde no deriven
   // entre recomputes. Ausente ⇒ new Date() (compat). Ver of-datedrift-design.md.

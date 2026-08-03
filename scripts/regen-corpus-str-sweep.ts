@@ -14,7 +14,7 @@ import { calcShortTerm } from "../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../src/lib/engines/short-term-score";
 import { buildStrHallazgos } from "../src/lib/str-hallazgos";
 import { buildAirbnbData } from "../src/lib/api-helpers/analisis-pipeline";
-import { getComunaMedianaVentaUF } from "../src/lib/comuna-stats";
+import { getComunaMedianaVentaUF, resolverCondicionMercado } from "../src/lib/comuna-stats";
 config({ path: path.resolve(process.cwd(), ".env.local") });
 
 const sb = createClient(
@@ -86,7 +86,7 @@ async function main() {
         regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro", lat: typeof d.lat === "number" ? d.lat : -33.4378, lng: typeof d.lng === "number" ? d.lng : -70.6504,
         revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue } as any);
       let mediana: { mediana: number | null; n: number } = { mediana: null, n: 0 };
-      try { mediana = await getComunaMedianaVentaUF(sb, r.comuna as string, d.superficieUtil, d.dormitorios ?? null, uf); } catch { /* null */ }
+      try { mediana = await getComunaMedianaVentaUF(sb, r.comuna as string, d.superficieUtil, d.dormitorios ?? null, uf, resolverCondicionMercado({ esNuevo: d.tipoPropiedad === "nuevo", antiguedad: d.antiguedad })); } catch { /* null */ }
       const str = buildStrHallazgos({ result: rec, francoScore: score, comuna: (r.comuna as string) || "", precioUF: d.precioCompraUF, superficieM2: d.superficieUtil,
         piePct: d.piePct, tasaPct: d.tasaInteres, plazoAnios: d.plazoCredito, mediana, valorUF: uf, incluyeCorretaje: false });
       hallazgos = [...(rec.hallazgos ?? []), ...str];

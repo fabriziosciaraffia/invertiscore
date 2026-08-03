@@ -15,6 +15,7 @@
 // RESUELTA; este builder es síncrono y puro, no hace queries.
 
 import type { PrecioVsComuna } from "./types";
+import type { CondicionMercado } from "./comuna-stats";
 
 /**
  * Empaqueta la cifra UF/m² del sujeto (sin estacionamiento) + la desviación vs la
@@ -35,9 +36,12 @@ export function buildPrecioVsComuna(p: {
   confiable: boolean;
   /** N de ventas válidas usadas para la mediana. */
   n: number;
+  /** Universo de la muestra (nuevo|usado). Ausente ⇒ mediana mixta pre-segmentación. */
+  universo?: CondicionMercado;
 }): PrecioVsComuna {
   const sujetoUfM2 = Math.round(p.sujetoUfM2 * 10) / 10;
   const mediana = p.medianaComunaUfM2;
+  const universo = p.universo ? { universo: p.universo } : {};
 
   const sujetoOk = Number.isFinite(sujetoUfM2) && sujetoUfM2 > 0;
   const medianaOk = typeof mediana === "number" && Number.isFinite(mediana) && mediana > 0;
@@ -51,6 +55,7 @@ export function buildPrecioVsComuna(p: {
       sobreprecioUfM2: null,
       confiable: false,
       n: p.n,
+      ...universo,
     };
   }
 
@@ -65,5 +70,6 @@ export function buildPrecioVsComuna(p: {
     sobreprecioUfM2,
     confiable: true,
     n: p.n,
+    ...universo,
   };
 }

@@ -57,7 +57,12 @@ export function procedenciaExtendida(
     }
     case "sobreprecio": {
       const v = h.valor;
-      return `Comparamos tu precio por m² (UF ${pct1(v.sujetoUfM2)}) contra la mediana de ${v.n} publicaciones de venta de la comuna (UF ${pct1(v.medianaComunaUfM2)}). Es una mediana de avisos ajustada a un precio de cierre estimado —una referencia, no una tasación—.`;
+      // El universo es la mitad de la procedencia: una mediana de usados no es
+      // comparable con un depto nuevo, y decir solo "de venta de la comuna" fue
+      // lo que dejó pasar esa comparación durante meses. Ausente ⇒ mediana mixta
+      // (snapshot pre-segmentación) y la frase se queda como estaba.
+      const universo = v.universo === "nuevo" ? "nuevos " : v.universo === "usado" ? "usados " : "";
+      return `Comparamos tu precio por m² (UF ${pct1(v.sujetoUfM2)}) contra la mediana de ${v.n} publicaciones de venta de departamentos ${universo}de la comuna (UF ${pct1(v.medianaComunaUfM2)}). Es una mediana de avisos ajustada a un precio de cierre estimado —una referencia, no una tasación—.`;
     }
     case "plusvalia": {
       const v = h.valor;

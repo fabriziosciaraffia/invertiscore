@@ -20,7 +20,11 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
 // que el render y REGLA 10 del prompt LTR. Nunca literal tipeado.
 const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
-import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
+import {
+  getComunaMedianaVentaUF,
+  resolverCondicionMercado,
+  type CondicionMercado,
+} from "@/lib/comuna-stats";
 
 const anthropic = new Anthropic();
 
@@ -162,10 +166,13 @@ async function fetchComunaStats(
   superficie: number,
   dormitorios: number | null,
   arriendoEstimadoCLP: number,
-  ufValue: number
+  ufValue: number,
+  condicion: CondicionMercado
 ): Promise<{ precioM2: ZoneInsightStats["precioM2"]; ofertaComparable: ZoneInsightStats["ofertaComparable"] }> {
   // VENTA comparables (price/m²) use a ±20% surface window inside
-  // getComunaMedianaVentaUF (shared with ai-generation).
+  // getComunaMedianaVentaUF (shared with ai-generation), restricted to the
+  // subject's own market universe (nuevo|usado) — same segmentation as the
+  // sobreprecio finding, so drawer and hero never quote different markets.
   // ARRIENDO uses a cascading strategy in fetchOfertaComparableCascade below.
 
   // ── VENTA: median price/m² in UF ──
@@ -174,7 +181,8 @@ async function fetchComunaStats(
     comuna,
     superficie,
     dormitorios,
-    ufValue
+    ufValue,
+    condicion
   );
 
   const precioM2: ZoneInsightStats["precioM2"] =
@@ -628,6 +636,13 @@ export async function buildZoneInsightForRow(
     : null;
   const arriendoEstimadoCLP: number =
     Number(row.arriendo) || Number(input.arriendo) || Number(results?.metrics?.ingresoMensual) || 0;
+  // Universo del sujeto: el drawer compara contra el MISMO mercado que el
+  // hallazgo de sobreprecio. `antiguedad` vive tanto en la columna top-level
+  // como en input_data (fuente de verdad: la columna, ver CLAUDE.md).
+  const condicionSujeto = resolverCondicionMercado({
+    esNuevo: input.esNuevo,
+    antiguedad: typeof row.antiguedad === "number" ? row.antiguedad : input.antiguedad,
+  });
   const ufValue: number = results?.metrics?.precioCLP && precioUF
     ? results.metrics.precioCLP / precioUF
     : 38800;
@@ -666,7 +681,8 @@ export async function buildZoneInsightForRow(
       superficie,
       dormitorios,
       arriendoEstimadoCLP,
-      ufValue
+      ufValue,
+      condicionSujeto
     );
     precioM2 = stats.precioM2;
     ofertaComparable = stats.ofertaComparable;
