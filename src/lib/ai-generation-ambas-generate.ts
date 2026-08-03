@@ -251,7 +251,16 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
   let aiResult = parse(rawText);
   if (!aiResult) return null;
 
-  // PLANC-BUDGET GUARD — enforcement por construcción (espejo LTR 1551-1579).
+  // PLANC-BUDGET GUARD — 1 reintento y se acepta lo que venga.
+  //
+  // OJO — ya NO es espejo del LTR. Allá (ai-generation.ts, guard PLAN C) la rama
+  // "sigue > máx, aceptado" murió: hay 2 reintentos y, si no converge, recorte
+  // determinístico por oración (prosa-presupuesto.ts). Acá sigue vigente el patrón
+  // viejo. La diferencia es deliberada por ahora: el techo de AMBAS ya es propio de la
+  // continuación (maxQuien/maxSwitch/maxCierre NO se descuentan de la apertura del
+  // motor), que era la causa raíz del desborde LTR, y no hay medición de desborde
+  // sistemático en AMBAS que justifique tocarlo a ciegas. Si aparece, el recorte por
+  // oración se importa desde prosa-presupuesto.ts — pero por campo, no sobre el total.
   const contWC = wcCont(aiResult);
   if (contWC > maxTotal * 1.1) {
     log(`[AMBAS-PLANC-BUDGET] continuación ${contWC} palabras > máx ${maxTotal} — retry`);
