@@ -6,7 +6,9 @@
 // Reusable: of-audit-calibrate.ts (calibración ~8) y, en 2c, el barrido completo.
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AnalisisInput, FullAnalysisResult, MetricaSobreCapital } from "../../src/lib/types";
+import type {
+  AnalisisInput, FullAnalysisResult, MetricaSobreCapital, Veredicto, PrecioVsComuna,
+} from "../../src/lib/types";
 import { esMetricaNoAplica, metricaValorONull } from "../../src/lib/types";
 import { NO_APLICA_PROMPT } from "../../src/lib/no-aplica-copy";
 import { METRO_STATIONS, haversineDistance, findNearestStation } from "../../src/lib/metro-stations";
@@ -86,19 +88,82 @@ REGLAS DE SALIDA ESTRICTAS:
 // ── Bundle del motor ────────────────────────────────────────────────────────
 
 /**
- * Métricas sobre capital para el juez. Desde pie-cero fase 1-2 son
- * `MetricaSobreCapital` (unión), y pasarlas crudas serializaba
- * `{"tipo":"valor","valor":10.17}` en un campo que el bundle anuncia como
- * `_pct`: el juez tenía que adivinar el contrato. Acá se emite el NÚMERO cuando
- * la métrica aplica y, cuando no, el MISMO string que el generador vio en su
- * prompt (`NO_APLICA_PROMPT`) — así el juez y el generador leen el caso igual.
+ * Una cifra tal como el juez la lee: el número cuando existe, el string de "no
+ * aplica" cuando la métrica no tiene sentido para el caso, o null si falta.
+ * NUNCA un objeto: si el juez recibe `{"tipo":"valor","valor":10.17}` en un
+ * campo llamado `_pct`, tiene que adivinar el contrato.
  */
-function metricaParaJuez(m: MetricaSobreCapital | number | null | undefined): number | string | null {
+type CifraJuez = number | string | null;
+
+/**
+ * Métricas sobre capital para el juez. Desde pie-cero fase 1-2 son
+ * `MetricaSobreCapital` (unión), y pasarlas crudas serializaba el objeto. Acá se
+ * emite el NÚMERO cuando la métrica aplica y, cuando no, el MISMO string que el
+ * generador vio en su prompt (`NO_APLICA_PROMPT`) — juez y generador leen igual.
+ */
+function metricaParaJuez(m: MetricaSobreCapital | number | null | undefined): CifraJuez {
   if (esMetricaNoAplica(m)) return NO_APLICA_PROMPT;
   return metricaValorONull(m);
 }
 
-export function buildEngineBundle(input: AnalisisInput, results: FullAnalysisResult) {
+/**
+ * CONTRATO del bundle que el juez recibe como fuente de verdad del motor.
+ *
+ * Declararlo NO es ceremonia: sin tipo de retorno, `buildEngineBundle` devolvía
+ * un objeto literal y asignarle un valor de otra forma compilaba sin chistar.
+ * Así fue como `cashOnCash_pct`, `tir_pct_10a` y `multiplicadorCapital`
+ * empezaron a entregar objetos al pasar a `MetricaSobreCapital` en pie-cero, y
+ * el juez auditó con ellos rotos hasta la rama fix-judge-truthbundle. `tsc` solo
+ * cazó el cuarto campo, y únicamente porque su nombre de origen había
+ * desaparecido.
+ *
+ * A partir de acá, cualquier cambio de FORMA en un campo del motor revienta el
+ * compilador en `npm run typecheck:scripts` en vez de degradar al juez en
+ * silencio. Si agregás un campo, decidí su tipo acá primero: el nombre del campo
+ * es una promesa que el juez lee literalmente.
+ */
+export interface EngineBundle {
+  veredicto: Veredicto;
+  score: number;
+  flujoNetoMensual: number;
+  dividendo: number;
+  ingresoMensual: number;
+  egresosMensuales: number;
+  rentabilidadBruta_pct: number;
+  rentabilidadNeta_pct: number;
+  capRate_pct: number;
+  /** Sobre capital propio: número, o "no aplica…" con pie 0. */
+  cashOnCash_pct: CifraJuez;
+  /** Opcionales del motor: si faltan, el campo se omite del JSON (ausencia, no cifra falsa). */
+  plusvaliaInmediataFranco_pct: number | undefined;
+  valorMercadoFrancoUF: number | undefined;
+  precioCLP: number;
+  pieCLP: number;
+  /** Sobre capital propio: número, o "no aplica…" con pie 0. */
+  tir_pct_10a: CifraJuez;
+  /** Sobre capital propio: número, o "no aplica…" con pie 0. */
+  multiplicadorCapital: CifraJuez;
+  /** Renombrado desde `gananciaNeta` (b931831); acá ya viene resuelto. */
+  equityCLP_10a: number | undefined;
+  /** Objeto a propósito: el juez necesita mediana, desviación y confiabilidad. */
+  precioVsComuna: PrecioVsComuna | null | undefined;
+  input: {
+    comuna: string;
+    precioUF: number;
+    arriendoCLP: number;
+    piePct: number;
+    tasaInteres: number;
+    plazoCredito: number;
+    antiguedad: number;
+    superficie: number;
+    dormitorios: number;
+    estadoVenta: string;
+    enConstruccion: boolean;
+    gastosGGCC: number;
+  };
+}
+
+export function buildEngineBundle(input: AnalisisInput, results: FullAnalysisResult): EngineBundle {
   const m = results.metrics;
   return {
     veredicto: results.veredicto,
@@ -144,12 +209,33 @@ export function buildEngineBundle(input: AnalisisInput, results: FullAnalysisRes
 }
 
 // ── Bundle de verdad (datasets) ──────────────────────────────────────────────
+
+/**
+ * CONTRATO del bundle de datasets. Su exposición al drift es DISTINTA a la del
+ * EngineBundle: no consume campos del motor, sino `PLUSVALIA_HISTORICA`,
+ * `METRO_STATIONS` y el snapshot de mediana que le pasa el caller. Por eso no
+ * pudo sufrir el problema de los campos renombrados. Se tipa igual para que un
+ * cambio en esos datasets también reviente el compilador.
+ */
+export interface TruthBundle {
+  plusvalia_historica: {
+    comuna: string;
+    anualizada_pct: number;
+    acumulada10a_pct: number;
+    tieneData: boolean;
+    nota?: string;
+  };
+  mediana_zona_UFm2: { mediana: number | null; n: number; nota?: string };
+  /** Blob informativo: forma variable según haya coords o no (ver abajo). */
+  metro: Record<string, unknown>;
+}
+
 export function buildTruthBundle(
   comuna: string,
   lat: number | null,
   lng: number | null,
   medianaSnapshot: { mediana: number | null; n: number } | null,
-) {
+): TruthBundle {
   // Plusvalía histórica de la comuna (fuente de verdad).
   const pv = PLUSVALIA_HISTORICA[comuna];
   const plusvalia = pv
