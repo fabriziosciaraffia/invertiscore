@@ -3,7 +3,8 @@
  *
  * El repo no tiene framework de testing instalado (jest/vitest/etc.). Este
  * script usa `node:assert/strict` y se ejecuta con tsx — mismo patrón que
- * `scripts/test-financing-health.ts`.
+ * `scripts/_archivo/test-financing-health.ts` (archivado: quedó sin consumidor
+ * y sus símbolos ya no existen en el motor, ver el README de esa carpeta).
  *
  *   npx tsx scripts/test-plausibilidad.ts
  *
