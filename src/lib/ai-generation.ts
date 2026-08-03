@@ -1493,7 +1493,7 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
     const arriendoReferenciaBloque = arriendoReferencia
       ? `- Arriendo de comparables de la zona (${rotuloArriendoReferencia(arriendoReferencia)}): ${fmtCLP(arriendoReferencia.valorCLP)}/mes — nómbralo por lo que es (comparables publicados en ese radio); NO lo llames "referencia de zona" ni "lo que paga el mercado" a secas
 - Procedencia del arriendo de este caso: ${procedenciaLinea}${yieldZonaPct !== null ? `\n- Yield bruto de esos comparables: ${pct(yieldZonaPct)}%` : ""}`
-      : `- Arriendo de comparables de la zona: sin dato — no hay comparables de arriendo publicados para esta zona. La lectura del arriendo se apoya SOLO en lo que ese arriendo produce en el flujo, la TIR y el break-even. No lo califiques frente al mercado (ni alto, ni bajo, ni "en línea"): no tienes con qué compararlo.`;
+      : `- Arriendo de comparables de la zona: sin dato — no hay comparables de arriendo publicados para esta zona, así que el arriendo del caso es el único que existe en este análisis. Su lectura entra por lo que produce: el flujo mensual, el break-even de precio y el margen del veredicto, todos ya calculados arriba. Si adviertes sobre la sensibilidad al arriendo, la cifra sale de esos datos dados — el escenario de caída se expresa con el margen del veredicto que ya viene en los hallazgos, nunca con un porcentaje de caída elegido por ti ni con un arriendo de mercado que este caso no tiene.`;
 
     // Matiz del bloque "distancia al veredicto": qué se puede advertir sobre la
     // palanca del arriendo, según de dónde salió ese arriendo. Con procedencia
