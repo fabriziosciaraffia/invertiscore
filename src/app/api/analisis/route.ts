@@ -9,6 +9,7 @@ import { sendAnalysisReadyEmail } from "@/lib/email";
 import { resolveDisplayName, ensureWelcomeEmail } from "@/lib/welcome";
 import { generateAiAnalysis } from "@/lib/ai-generation";
 import { readVeredicto } from "@/lib/results-helpers";
+import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import {
   createSupabaseServer,
   requireAuthenticatedUser,
@@ -21,15 +22,25 @@ import {
 import { desdeBodyLtr } from "@/lib/plausibilidad";
 
 export async function POST(request: Request) {
+  // Declarados FUERA del try para que el catch pueda reportarlos a Sentry: un
+  // error sin user_id ni comuna es un evento que no se puede investigar.
+  let userId: string | undefined;
+  let comuna: string | undefined;
+  // Frontera del INSERT — ver el comentario donde se pone en true. Una falla con
+  // `filaCreada === false` no deja rastro en la base.
+  let filaCreada = false;
+
   try {
     const supabase = createSupabaseServer();
 
     const auth = await requireAuthenticatedUser(supabase);
     if (!auth.ok) return auth.response;
     const { user } = auth;
+    userId = user.id;
 
     const body: AnalisisInput & { prepaidChargeId?: string; ambasGroupId?: string } = await request.json();
     const prepaidChargeId = body.prepaidChargeId;
+    comuna = body.comuna;
     // Enlace AMBAS (flujo crédito/welcome): el wizard genera el group_id y lo
     // pasa a los dos POSTs (LTR + STR). Acá es el lado LTR → rol 'ltr'. Se valida
     // como uuid; junk se ignora (fila queda suelta). El hermano se resuelve por
@@ -67,6 +78,9 @@ export async function POST(request: Request) {
 
     const dbClient = supabase;
 
+    // Frontera del INSERT: `filaCreada` (declarada arriba, fuera del try) pasa a
+    // true recién después de que este INSERT devuelve fila. Una falla antes de
+    // ese punto no deja rastro en `analisis`.
     const { data, error } = await dbClient
       .from("analisis")
       .insert({
@@ -111,11 +125,21 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("Supabase insert error:", error);
+      // El INSERT falló: tampoco hay fila. Se reporta acá porque este `if` no
+      // lanza —devuelve directo—, así que el catch global nunca lo ve.
+      captureApiError(error, {
+        ruta: "POST /api/analisis",
+        operacion: "insert-analisis",
+        userId: user.id,
+        tags: { fase: "insert-rechazado", fila_creada: "no" },
+        extra: { comuna: body.comuna, tipo_analisis: "long-term" },
+      });
       return NextResponse.json(
         { error: "Error al guardar el análisis" },
         { status: 500 },
       );
     }
+    filaCreada = true;
 
     // Marcar análisis como premium tras cobro exitoso (o admin bypass).
     // Backlog #3: TODOS los análisis del registrado son premium completos
@@ -189,6 +213,12 @@ export async function POST(request: Request) {
             );
           } catch (e) {
             console.error("Analysis email error:", e);
+            captureApiWarning(e, {
+              ruta: "POST /api/analisis",
+              operacion: "email-analisis-listo",
+              userId,
+              analysisId,
+            });
           }
         }
         // IA al final (no bloquea la notificación). El page la recupera vía
@@ -197,6 +227,15 @@ export async function POST(request: Request) {
           await generateAiAnalysis(analysisId, dbClient);
         } catch (e) {
           console.error("Background AI generation failed:", e);
+          // La fila existe y el usuario ya tiene su análisis; lo que falta es la
+          // prosa. El page la recupera por polling, así que no rompe nada — pero
+          // si esto falla seguido, la IA está caída y nadie se entera.
+          captureApiWarning(e, {
+            ruta: "POST /api/analisis",
+            operacion: "generacion-ia-background",
+            userId,
+            analysisId,
+          });
         }
       })());
     }
@@ -237,6 +276,11 @@ export async function POST(request: Request) {
           });
         } catch (e) {
           console.error("[api/analisis] Meta CAPI Lead excepción:", e);
+          captureApiWarning(e, {
+            ruta: "POST /api/analisis",
+            operacion: "meta-capi-lead",
+            userId,
+          });
         }
       })());
     }
@@ -244,6 +288,21 @@ export async function POST(request: Request) {
     return NextResponse.json(data);
   } catch (error) {
     console.error("API error:", error);
+    // El tag `fila_creada` es lo que hace útil este evento. Si es "no", el
+    // usuario intentó generar un análisis y NO existe registro de ese intento en
+    // ninguna tabla — este evento de Sentry es la única evidencia de que ocurrió.
+    // Si es "sí", la fila está y el error pasó después (email, IA, CAPI), que es
+    // molesto pero recuperable.
+    captureApiError(error, {
+      ruta: "POST /api/analisis",
+      operacion: "crear-analisis-ltr",
+      userId,
+      tags: {
+        fase: filaCreada ? "post-insert" : "pre-insert",
+        fila_creada: filaCreada ? "si" : "no",
+      },
+      extra: { comuna },
+    });
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 },
