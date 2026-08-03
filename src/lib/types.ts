@@ -239,6 +239,34 @@ export interface SensitivityRow {
   delta: number;
 }
 
+/**
+ * Ganancia de plusvalía acumulada durante la espera de una entrega futura.
+ *
+ * Doctrina (supersede el "Modelo B3 liquidable" en lo que toca al VALOR):
+ * el comprador fija el precio hoy y recibe el activo en `fechaEntrega`. El precio
+ * pactado no se mueve — esa es su ventaja. El mercado sí se mueve: al escriturar
+ * recibe un activo que vale `valorEntregaCLP`, no `precioCompraCLP`. La diferencia
+ * es ganancia real, aunque no liquidable hasta la escritura.
+ *
+ * Todos los montos en CLP a la UF congelada del análisis.
+ */
+export interface PreEntregaGanancia {
+  /** Meses entre la fecha de análisis (asOf) y la entrega. Siempre > 0. */
+  mesesEspera: number;
+  /** Años enteros que usa la proyección como reloj de plusvalía (ceil de meses/12). */
+  aniosEspera: number;
+  /** Precio pactado en la promesa — no se mueve durante la espera. */
+  precioCompraCLP: number;
+  /** Valor de mercado estimado al momento de escriturar. */
+  valorEntregaCLP: number;
+  /** valorEntregaCLP − precioCompraCLP. Positivo con plusvalía proyectada > 0. */
+  gananciaCLP: number;
+  /** Ganancia como % sobre el precio pactado. */
+  gananciaPct: number;
+  /** Tasa anual de plusvalía usada (decimal, ej. 0.03). */
+  tasaAnual: number;
+}
+
 export interface AnalysisMetrics {
   rentabilidadBruta: number;
   rentabilidadNeta: number;
@@ -270,6 +298,14 @@ export interface AnalysisMetrics {
   plusvaliaInmediataFrancoPct?: number;
   plusvaliaInmediataUsuario?: number;   // CLP vs estimación usuario
   plusvaliaInmediataUsuarioPct?: number;
+  // Plusvalía ganada ANTES de escriturar (solo entrega futura / venta en blanco).
+  // El precio de compra queda FIJO en lo pactado; el valor de mercado se aprecia
+  // durante la espera a la tasa de plusvalía del análisis. La diferencia es
+  // ganancia del comprador por haber comprado anticipado, y se realiza recién al
+  // escriturar. Ausente (undefined) cuando no hay pre-entrega — NO cero, para que
+  // el consumidor distinga "no aplica" de "aplica y da 0".
+  // NO alimenta score ni gates: es un valor citable para la narrativa.
+  preEntrega?: PreEntregaGanancia;
   // Precios de equilibrio
   precioFlujoNeutroCLP?: number;
   precioFlujoNeutroUF?: number;

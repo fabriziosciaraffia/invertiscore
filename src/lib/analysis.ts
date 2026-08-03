@@ -11,6 +11,7 @@ import type {
   NegociacionScenario,
   MetricaSobreCapital,
   RazonSinCapital,
+  PreEntregaGanancia,
 } from "./types";
 import { metricaNoAplica, metricaValor, metricaValorONull, metricaODefault } from "./types";
 import { estimarContribuciones } from "./contribuciones";
@@ -189,6 +190,46 @@ function calcMesesHastaEntrega(input: AnalisisInput, asOf: Date): number {
   if (!anio || !mes) return 0;
   const entrega = new Date(anio, mes - 1);
   return Math.max(0, Math.round((entrega.getTime() - asOf.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+}
+
+/**
+ * Plusvalía ganada durante la espera de una entrega futura.
+ *
+ * El precio pactado queda fijo; el valor de mercado corre al ritmo de la plusvalía
+ * del análisis. La diferencia es ganancia del comprador por comprar anticipado, y
+ * se materializa al escriturar. Espeja EXACTAMENTE el reloj de `calcProjections`
+ * (misma tasa, mismo `Math.ceil(meses/12)`) para que el valor citado coincida con
+ * el `valorPropiedad` del año de entrega — si uno cambia, el otro tiene que cambiar.
+ *
+ * Devuelve null cuando NO hay pre-entrega (entrega inmediata o sin fecha): el
+ * consumidor distingue "no aplica" de "aplica y da 0".
+ *
+ * Puro. No alimenta score ni gates — es un valor citable para la narrativa.
+ */
+export function calcPreEntrega(p: {
+  input: AnalisisInput;
+  precioCLP: number;
+  asOf: Date;
+  plusvaliaAnual?: number;
+}): PreEntregaGanancia | null {
+  const mesesEspera = calcMesesHastaEntrega(p.input, p.asOf);
+  if (mesesEspera <= 0) return null;
+  if (!(p.precioCLP > 0)) return null;
+
+  const tasaAnual = p.plusvaliaAnual ?? PLUSVALIA_ANUAL;
+  const aniosEspera = Math.ceil(mesesEspera / 12);
+  const valorEntregaCLP = p.precioCLP * Math.pow(1 + tasaAnual, aniosEspera);
+  const gananciaCLP = valorEntregaCLP - p.precioCLP;
+
+  return {
+    mesesEspera,
+    aniosEspera,
+    precioCompraCLP: Math.round(p.precioCLP),
+    valorEntregaCLP: Math.round(valorEntregaCLP),
+    gananciaCLP: Math.round(gananciaCLP),
+    gananciaPct: Math.round((gananciaCLP / p.precioCLP) * 1000) / 10,
+    tasaAnual,
+  };
 }
 
 /**
@@ -623,10 +664,9 @@ export function calcProjections(args: {
   // ganancias NO realizadas (optimismo estructural) y hacía divergir la curva LTR de la STR
   // para la misma propiedad. "La pasada" se reporta APARTE, sin componer, como
   // `metrics.plusvaliaInmediataFranco` (delta one-time). Homologa la base con STR
-  // (short-term-engine.ts:797, que ya ancla a precioCompra). Modelo B3 (sesión B3-fix H3):
-  // pre-entrega no compoundéa plusvalía ni acumula deuda. Recién a partir del año de entrega
-  // arranca el reloj: en a_entrega exponente=0; en a_entrega+1 exponente=1.
-  const aniosEntrega = Math.ceil(mesesPreEntrega / 12);
+  // (short-term-engine.ts:797, que ya ancla a precioCompra). El reloj de la plusvalía
+  // corre desde el año 0 incluso con entrega futura — ver el bloque `valorPropiedad`
+  // dentro del loop para por qué el Modelo B3 quedó superado en ese punto.
   // Flujo operativo: no incluye inversión inicial (pie) ni cuotas pre-entrega
   let flujoAcumulado = 0;
 
@@ -667,11 +707,20 @@ export function calcProjections(args: {
 
     flujoAcumulado += flujoAnual;
 
-    // Modelo B3 liquidable: plusvalía solo desde entrega. Antes de escritura
-    // el comprador no puede liquidar — el "valor" honesto es el precio pagado fijo
-    // (P1-C: base = precioCLP, no vmFranco).
-    const aniosPostEntrega = Math.max(0, anio - aniosEntrega);
-    const valorPropiedad = precioCLP * Math.pow(1 + plusvaliaAnual, aniosPostEntrega);
+    // Reloj de mercado CONTINUO desde el año 0 (P1-C: base = precioCLP, no vmFranco).
+    //
+    // Supersede el "Modelo B3 liquidable", que congelaba el valor durante la
+    // pre-entrega. Ese modelo confundía DOS cosas distintas: el precio pactado (que
+    // efectivamente no se mueve — es la ventaja del comprador) y el valor de mercado
+    // del activo (que sí se mueve mientras el comprador espera). Congelar el segundo
+    // le regalaba al vendedor la plusvalía del periodo de construcción: el comprador
+    // escrituraba un activo apreciado y el motor lo valuaba al precio de promesa.
+    //
+    // La NO liquidabilidad pre-entrega sigue respetada donde corresponde: el chart
+    // oculta el valor hasta la entrega (patrimonio-series: isPreEntrega ⇒ valorDepto
+    // null) y la deuda sigue en 0 hasta que el banco cursa. Lo que cambia es que al
+    // escriturar el activo entra valuado a mercado, no al precio pactado.
+    const valorPropiedad = precioCLP * Math.pow(1 + plusvaliaAnual, anio);
 
     // Crédito: el banco no disbursa hasta escritura. Pre-entrega → deuda 0.
     // Año que termina exactamente en escritura → crédito recién entregado,
@@ -1755,6 +1804,12 @@ export function runAnalysis(
   // inyectarlas en los hallazgos que este construye (escala común "Δdecisión").
   const decisividades = calcDecisividades(input, ufClp, medianaComunaVentaUF, asOf);
   const metrics = calcMetrics(input, ufClp, medianaComunaVentaUF, undefined, decisividades);
+  // Pre-entrega: se enriquece acá y no dentro de calcMetrics porque depende de `asOf`,
+  // que calcMetrics no recibe (13 call sites contrafactuales que no la necesitan). No
+  // alimenta score ni gates, así que las metrics contrafactuales sin el campo son
+  // equivalentes para todo lo que sí decide.
+  const preEntrega = calcPreEntrega({ input, precioCLP: metrics.precioCLP, asOf });
+  if (preEntrega) metrics.preEntrega = preEntrega;
   const cashflowYear1 = calcCashflowYear1(input, metrics, asOf);
   const projections = calcProjections({ input, metrics, plazoVenta: 20, ufClp, asOf });
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
