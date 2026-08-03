@@ -20,7 +20,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Anthropic from "@anthropic-ai/sdk";
 import { generateStrProse } from "../../../src/lib/ai-generation-str";
-import { STR_GE_SEEDS, loadFrozen } from "./str-seeds";
+import { STR_GE_SEEDS, loadFrozen, type FrozenFixture } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
 
 type Modo = "auto" | "administrador";
@@ -112,7 +112,11 @@ export async function runStrSemanticTier(): Promise<StrSemanticReport[]> {
     }
     // Override del modo sobre el frozen (mismo patrón `sintesis`). El motor recomputa la
     // comisión por modo (short-term-engine.ts:966); la prosa se genera del recompute.
-    const fxMode = {
+    // Anotado como FrozenFixture: el spread de un Record<string, any> con props
+    // literales pierde el index signature, y el tipo inferido quedaba en solo
+    // {modoGestion, comisionAdministrador, adminPro} — mentía sobre su contenido
+    // (en runtime trae el input_data completo del frozen).
+    const fxMode: FrozenFixture = {
       ...baseFx,
       input_data: { ...baseFx.input_data, modoGestion: c.mode, comisionAdministrador: c.comision, adminPro: c.mode === "administrador" },
     };
