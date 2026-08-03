@@ -430,13 +430,14 @@ export function DocumentoLTR({
 
         <div className="sim-grid">
           <div className="sim-block">
-            <p className="sbl">09 · Patrimonio — barras apiladas</p>
+            <p className="sbl">09 · Patrimonio</p>
             {patrimonioRows.length > 0 ? (
               <>
                 <PatrimonioChartSVG rows={patrimonioRows} valorUF={ufFrozen} />
                 <div className="chart-legend">
                   <span><i className="sw red" />Aporte acumulado</span>
-                  <span><i className="sw ink50" />Valor depto</span>
+                  <span><i className="sw ink16" />Precio que pactaste</span>
+                  <span><i className="sw hatch" />Plusvalía acumulada</span>
                   <span><i className="sw line" />Patrimonio neto</span>
                 </div>
               </>

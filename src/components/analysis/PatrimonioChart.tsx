@@ -12,13 +12,24 @@ import { fmtAxisMoney, fmtMoney } from "./utils";
 
 /**
  * Sub-sección 09 · PATRIMONIO (Patrón 7.B.3 Chart Block). Visualiza el
- * crecimiento del patrimonio: barras apiladas (Aporte acumulado en Signal Red,
- * Valor depto en Ink 50% opacity) + Línea Patrimonio neto en Ink sólido.
+ * crecimiento del patrimonio.
  *
- * Modelo B3 liquidable (sesión B3-fix H3): pre-entrega valor = vmFranco fijo
- * y deuda = 0. Plusvalía compoundéa sólo desde a_entrega.
+ * DOS COLUMNAS SEPARADAS por año (NO se apilan entre sí):
+ *   · Aporte acumulado — barra entera, Signal Red (uso #8 del sistema cromático:
+ *     dinero que pones). No se desglosa: el flujo cambia de naturaleza según su
+ *     signo y no hay partición limpia cuando el flujo es positivo.
+ *   · Valor del depto — barra desglosada en dos segmentos apilados ENTRE SÍ:
+ *     "Precio que pactaste" (Ink tenue) + "Plusvalía acumulada" (Ink con trama
+ *     diagonal, el tratamiento del sistema para valor proyectado/estimado).
+ * Más la línea de Patrimonio neto en Ink sólido.
  *
- * Move verbatim desde results-client.tsx LTR (Ronda 4a.2).
+ * Por qué NO se apilan las dos columnas: el aporte ya está CONTENIDO en el valor
+ * del depto (lo que pusiste es parte de lo que vale). Apilarlas sumaba dos veces
+ * la misma plata y dibujaba una barra que ningún número del tooltip explicaba —
+ * el año de entrega mostraba ~$130M cuando el valor era ~$105M.
+ *
+ * Pre-entrega la columna de valor queda VACÍA a propósito: el activo todavía no
+ * es del comprador, sólo lo es el pie que va poniendo.
  */
 export function PatrimonioChart({
   projections,
@@ -38,26 +49,38 @@ export function PatrimonioChart({
   // Serie extraída a builder puro (src/lib/patrimonio-series.ts) — fuente única
   // compartida con la vista documento (SVG estático). Comportamiento idéntico.
   const chartData = useMemo(
-    () => buildPatrimonioSeries(projections, metrics, inputData, valorUF, plazoAnios),
+    () =>
+      buildPatrimonioSeries(projections, metrics, inputData, valorUF, plazoAnios).map((r) => {
+        // Desglose de la barra de valor en dos segmentos apilados. Se clampean para
+        // que la suma sea SIEMPRE exactamente `valorDepto`: con el slider de plusvalía
+        // en negativo el valor cae bajo el precio pactado, y ahí el segmento de
+        // plusvalía es 0 y el de precio absorbe todo (la caída se lee en el tooltip,
+        // que muestra los números reales, no en un segmento dibujado hacia abajo).
+        const v = r.valorDepto;
+        const oculto = r.isPreEntrega || v === null;
+        return {
+          ...r,
+          precioSeg: oculto ? null : Math.min(r.precioPactadoCLP, v),
+          plusvaliaSeg: oculto ? null : Math.max(0, v - r.precioPactadoCLP),
+        };
+      }),
     [projections, metrics, plazoAnios, valorUF, inputData],
   );
 
-  // Año de entrega si es venta en blanco
-  const entregaAnio = useMemo(() => {
-    if (!inputData.fechaEntrega || inputData.estadoVenta === "inmediata") return null;
-    const [a, me] = inputData.fechaEntrega.split("-").map(Number);
-    const now = new Date();
-    const ent = new Date(a, (me || 1) - 1);
-    const meses = Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
-    if (meses <= 0) return null;
-    return Math.ceil(meses / 12);
-  }, [inputData.fechaEntrega, inputData.estadoVenta]);
+  // Año de entrega. Sale de `metrics.preEntrega`, congelado por el motor contra el
+  // asOf del análisis. Antes se recalculaba acá con `new Date()` vivo: la línea
+  // "📦 Entrega" se corría sola con el paso del tiempo y podía caer en un año
+  // distinto del que usa la serie (que sí venía de asOf).
+  const entregaAnio = metrics.preEntrega?.aniosEspera ?? null;
 
   const last = chartData[chartData.length - 1];
   const ganancia = last ? last.patrimonioNeto - last.aporteAcum : 0;
   const gananciaPct = last && last.aporteAcum > 0 ? (ganancia / last.aporteAcum) * 100 : 0;
 
   const tickFormatter = (v: number) => fmtAxisMoney(v, currency, valorUF);
+  // Dos columnas por año (aporte | valor) ⇒ cada barra ocupa la mitad del ancho
+  // que ocupaba la única barra apilada anterior.
+  const barSize = Math.max(5, Math.floor(150 / Math.max(plazoAnios, 1)));
 
   return (
     <div className="flex flex-col gap-4">
@@ -67,6 +90,15 @@ export function PatrimonioChart({
               ReferenceLine); con top:10 el label se dibujaba en la banda del
               margen y quedaba clipeado arriba del chart. */}
           <ComposedChart data={chartData} margin={{ top: 28, right: 16, left: currency === "UF" ? 20 : 10, bottom: 8 }}>
+            {/* Trama diagonal para "Plusvalía acumulada". El sistema cromático
+                resuelve "proyectado / estimado / futuro" con pattern o stroke en
+                Ink — nunca con un color extra (no hay verde en la paleta). */}
+            <defs>
+              <pattern id="franco-plusvalia-hatch" width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width={5} height={5} fill="var(--franco-text)" fillOpacity={0.06} />
+                <line x1={0} y1={0} x2={0} y2={5} stroke="var(--franco-text)" strokeOpacity={0.42} strokeWidth={1.6} />
+              </pattern>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" vertical={false} />
             <XAxis
               dataKey="anio"
@@ -94,28 +126,31 @@ export function PatrimonioChart({
                     }}
                   >
                     <div className="mb-1.5 font-medium">Año {row.anio}</div>
-                    {/* Pre-entrega: el activo aún no existe en tu patrimonio →
-                        se omiten Valor depto y −Deuda (paridad con el bar oculto);
-                        el tooltip muestra solo lo aportado = patrimonio. Post-entrega
-                        aparece la ecuación Valor − Deuda = Patrimonio. */}
+                    {/* Cada fila con swatch corresponde a UNA serie dibujada; las
+                        filas sin swatch (Valor depto, − Deuda) son derivadas y van
+                        marcadas como tales — por eso no están en la leyenda.
+                        Pre-entrega el activo todavía no es del comprador: se omite
+                        todo el bloque de valor, igual que la columna del chart. */}
                     {!row.isPreEntrega && row.valorDepto !== null && (
-                      <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
-                        <span className="inline-block h-2 w-2 rounded-full" style={{ background: "color-mix(in srgb, var(--franco-text) 50%, transparent)" }} />
-                        Valor depto: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.valorDepto)}</span>
-                      </div>
-                    )}
-                    {!row.isPreEntrega && (
-                      // −Deuda: color propio (muted) — NO es una serie graficada
-                      // (por eso queda fuera de la leyenda de 3), pero necesita
-                      // identidad distinta del rojo de "Aporte acum" para no leerse
-                      // como lo mismo.
-                      <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
-                        <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--franco-text-muted)" }} />
-                        − Deuda: <span className="ml-auto font-mono" style={{ color: "var(--franco-text-muted)" }}>−{fmt(row.deudaPendiente)}</span>
-                      </div>
+                      <>
+                        <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
+                          <span className="inline-block h-2 w-2 rounded-sm" style={{ background: "color-mix(in srgb, var(--franco-text) 16%, transparent)" }} />
+                          Precio que pactaste: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.precioPactadoCLP)}</span>
+                        </div>
+                        <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
+                          <span className="inline-block h-2 w-2 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.42 }} />
+                          + Plusvalía acumulada: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.valorDepto - row.precioPactadoCLP)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 pl-4" style={{ color: "var(--franco-text-secondary)" }}>
+                          = Valor depto: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.valorDepto)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 pl-4" style={{ color: "var(--franco-text-secondary)" }}>
+                          − Deuda: <span className="ml-auto font-mono" style={{ color: "var(--franco-text-muted)" }}>−{fmt(row.deudaPendiente)}</span>
+                        </div>
+                      </>
                     )}
                     <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--signal-red)" }} />
+                      <span className="inline-block h-2 w-2 rounded-sm" style={{ background: "var(--signal-red)" }} />
                       Aporte acum: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.aporteAcum)}</span>
                     </div>
                     <div className="mt-1.5 pt-1.5 flex items-center gap-2" style={{ borderTop: "0.5px dashed var(--franco-border)" }}>
@@ -137,22 +172,33 @@ export function PatrimonioChart({
               />
             )}
             {/* Aporte acumulado en Signal Red — uso #8 explícito skill (egresos
-                visualizados en gráficos / dinero que pones) */}
+                visualizados en gráficos / dinero que pones). Columna PROPIA:
+                stackId distinto del de valor, porque el aporte ya está contenido
+                en el valor y apilarlos sumaba dos veces la misma plata. */}
             <Bar
               dataKey="aporteAcum"
-              stackId="composicion"
+              stackId="aporte"
               fill="var(--signal-red)"
               name="Aporte acumulado"
-              barSize={Math.max(8, Math.floor(280 / Math.max(plazoAnios, 1)))}
+              barSize={barSize}
             />
-            {/* Valor depto en Ink primary opacity 50% — proyección de valor */}
+            {/* Columna de valor, desglosada. Tratamiento LIVIANO a propósito: es el
+                contexto, no el protagonista — el número que importa es la línea de
+                patrimonio neto, que antes quedaba aplastada por un bloque sólido. */}
             <Bar
-              dataKey="valorDepto"
-              stackId="composicion"
+              dataKey="precioSeg"
+              stackId="valor"
               fill="var(--franco-text)"
-              fillOpacity={0.5}
-              name="Valor depto"
-              barSize={Math.max(8, Math.floor(280 / Math.max(plazoAnios, 1)))}
+              fillOpacity={0.16}
+              name="Precio que pactaste"
+              barSize={barSize}
+            />
+            <Bar
+              dataKey="plusvaliaSeg"
+              stackId="valor"
+              fill="url(#franco-plusvalia-hatch)"
+              name="Plusvalía acumulada"
+              barSize={barSize}
             />
             {/* Patrimonio neto en Ink primary sólido — el resultado neto */}
             <Line
@@ -167,15 +213,28 @@ export function PatrimonioChart({
         </ResponsiveContainer>
       </div>
 
-      {/* Leyenda */}
+      {/* Leyenda — declara EXACTAMENTE las 4 series dibujadas, ni una más.
+          "Valor depto" y "− Deuda" no aparecen acá porque no son series: la
+          primera es la suma de los dos segmentos de la columna de valor y la
+          segunda es un derivado que sólo vive en el tooltip. */}
       <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center font-mono" style={{ fontSize: 10, color: "var(--franco-text-secondary)" }}>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--signal-red)" }} />
           Aporte acumulado
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.5 }} />
-          Valor depto
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "color-mix(in srgb, var(--franco-text) 16%, transparent)" }} />
+          Precio que pactaste
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-sm"
+            style={{
+              background:
+                "repeating-linear-gradient(45deg, color-mix(in srgb, var(--franco-text) 42%, transparent) 0 1.6px, color-mix(in srgb, var(--franco-text) 6%, transparent) 1.6px 5px)",
+            }}
+          />
+          Plusvalía acumulada
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-4 rounded" style={{ background: "var(--franco-text)", height: 2 }} />

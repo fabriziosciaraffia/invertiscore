@@ -237,6 +237,14 @@
 .franco-doc .chart-legend .sw.red { background: var(--signal-red); }
 .franco-doc .chart-legend .sw.ink { background: var(--text); }
 .franco-doc .chart-legend .sw.ink50 { background: var(--text); opacity: .5; }
+/* Columna de valor: precio pactado (Ink tenue) + plusvalía acumulada (trama
+   diagonal en Ink — tratamiento de "proyectado" del sistema, sin color extra). */
+.franco-doc .chart-legend .sw.ink16 { background: color-mix(in srgb, var(--text) 16%, transparent); }
+.franco-doc .chart-legend .sw.hatch {
+  background: repeating-linear-gradient(45deg,
+    color-mix(in srgb, var(--text) 42%, transparent) 0 1.3px,
+    color-mix(in srgb, var(--text) 6%, transparent) 1.3px 4px);
+}
 .franco-doc .chart-legend .sw.line { width: 12px; height: 2px; background: var(--text); }
 .franco-doc .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .franco-doc .kpi { background: var(--sunken); border-radius: 8px; padding: 10px 12px; }

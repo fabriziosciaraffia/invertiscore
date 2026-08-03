@@ -38,11 +38,13 @@ export function PatrimonioChartSVG({
   const n = rows.length;
   if (n === 0) return null;
 
-  // Escala Y: incluye el tope apilado (aporte + valor) y el patrimonio neto.
+  // Escala Y: el tope es la barra MÁS ALTA de cada año, no la suma de las dos.
+  // Aporte y valor son columnas SEPARADAS (el aporte ya está contenido en el valor;
+  // apilarlas contaba dos veces la misma plata y disparaba la escala).
   // yMin permite que la línea baje si el patrimonio quedara negativo (underwater);
   // yMax normaliza todo al máximo → ninguna barra excede PLOT_H.
-  const stackedTop = (r: PatrimonioRow) => r.aporteAcum + (r.valorDepto ?? 0);
-  const rawMax = Math.max(...rows.map((r) => Math.max(stackedTop(r), r.patrimonioNeto)), 0);
+  const topDeAnio = (r: PatrimonioRow) => Math.max(r.aporteAcum, r.valorDepto ?? 0);
+  const rawMax = Math.max(...rows.map((r) => Math.max(topDeAnio(r), r.patrimonioNeto)), 0);
   const yMax = rawMax > 0 ? rawMax * 1.08 : 1; // headroom 8%; fallback evita ÷0 (serie ~0)
   const yMin = Math.min(0, ...rows.map((r) => r.patrimonioNeto));
   const span = yMax - yMin || 1;
@@ -70,6 +72,12 @@ export function PatrimonioChartSVG({
 
   return (
     <svg viewBox={`0 0 ${VB_W} ${VB_H}`} width="100%" role="img" aria-label="Patrimonio proyectado por año" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <pattern id="doc-plusvalia-hatch" width={4} height={4} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width={4} height={4} fill="var(--text)" fillOpacity={0.06} />
+          <line x1={0} y1={0} x2={0} y2={4} stroke="var(--text)" strokeOpacity={0.42} strokeWidth={1.3} />
+        </pattern>
+      </defs>
       {/* Gridlines + labels Y */}
       {gridVals.map((v, k) => {
         const y = yFor(v);
@@ -83,20 +91,35 @@ export function PatrimonioChartSVG({
         );
       })}
 
-      {/* Barras apiladas: aporte (rojo, base) + valor depto (Ink 50%, encima) */}
+      {/* Dos columnas por año, lado a lado (NO apiladas entre sí):
+          · aporte acumulado (Signal Red, entero)
+          · valor del depto, desglosado en precio pactado (Ink tenue) + plusvalía
+            acumulada (Ink con trama diagonal — tratamiento de "proyectado" del
+            sistema; sin colores fuera de Ink + Signal Red).
+          Pre-entrega la columna de valor no se dibuja (el activo aún no es suyo). */}
       {rows.map((r, i) => {
-        const x = xCenter(i) - barW / 2;
+        const half = barW / 2;
+        const xAporte = xCenter(i) - barW / 2;
+        const xValor = xCenter(i) + 0.5;
         const yAporte = yFor(r.aporteAcum);
-        const hAporte = Math.max(0, zeroY - yAporte);
         const segs = [
-          <rect key={`a${i}`} x={x} y={yAporte} width={barW} height={hAporte} fill="var(--signal-red)" />,
+          <rect key={`a${i}`} x={xAporte} y={yAporte} width={Math.max(1, half - 0.5)} height={Math.max(0, zeroY - yAporte)} fill="var(--signal-red)" />,
         ];
         if (r.valorDepto != null) {
-          const yTop = yFor(r.aporteAcum + r.valorDepto);
-          const hValor = Math.max(0, yAporte - yTop);
+          // Clamp espejo del chart web: la suma de los dos segmentos es siempre
+          // exactamente valorDepto, incluso con plusvalía negativa.
+          const precioSeg = Math.min(r.precioPactadoCLP, r.valorDepto);
+          const yPrecio = yFor(precioSeg);
+          const yTop = yFor(r.valorDepto);
+          const w = Math.max(1, half - 0.5);
           segs.push(
-            <rect key={`v${i}`} x={x} y={yTop} width={barW} height={hValor} fill="var(--text)" fillOpacity={0.5} />,
+            <rect key={`p${i}`} x={xValor} y={yPrecio} width={w} height={Math.max(0, zeroY - yPrecio)} fill="var(--text)" fillOpacity={0.16} />,
           );
+          if (r.valorDepto > precioSeg) {
+            segs.push(
+              <rect key={`v${i}`} x={xValor} y={yTop} width={w} height={Math.max(0, yPrecio - yTop)} fill="url(#doc-plusvalia-hatch)" />,
+            );
+          }
         }
         return <g key={`bar${i}`}>{segs}</g>;
       })}
