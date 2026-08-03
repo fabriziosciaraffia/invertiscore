@@ -5,8 +5,9 @@ import { scrapeTocTocMap, scrapeTocTocAPI, scrapeTocToc, getComunasBatch, TOTAL_
 // que las dos rutas escriban el mismo shape.
 import { propertyToRow } from "@/lib/services/scraper/property-row";
 
-// Vercel Hobby permite hasta 60s. Sin esto, el techo es 10s y una corrida real
-// (1 comuna x 5 páginas, ~11s) lo supera. Necesario antes de subir BATCH_SIZE/maxPages.
+// Hobby con Fluid Compute permite hasta 300s (el "60s" de antes quedó obsoleto
+// cuando Vercel subió el default). 60 le sobra a este pase (~11s por corrida);
+// se mantiene como tope conservador para cazar corridas colgadas temprano.
 export const maxDuration = 60;
 
 

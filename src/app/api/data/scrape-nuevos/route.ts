@@ -6,6 +6,7 @@ import {
   ESTADO_OBRA_NUEVA,
 } from "@/lib/services/scraper/toctoc";
 import { propertyToRow } from "@/lib/services/scraper/property-row";
+import { desactivarProyectosConUnidades } from "@/lib/services/scraper/toctoc-unidades";
 
 // ─── Pase de OBRA NUEVA, con cadencia propia ─────────────────────────────────
 //
@@ -90,6 +91,14 @@ export async function POST(request: Request) {
     if (error) errors.push(`Bulk upsert error: ${error.message}`);
     else inserted = rows.length;
   }
+
+  // Convivencia con el pase de unidades (scrape-unidades-nuevas): el upsert de
+  // arriba acaba de RESUCITAR (is_active: true) las filas-proyecto, incluidas
+  // las que ese pase había desactivado por tener unidades. Re-aplicar el
+  // invariante acá (global e idempotente) evita que la mediana cuente el
+  // proyecto dos veces durante el día. Ver toctoc-unidades.ts.
+  const recon = await desactivarProyectosConUnidades(supabase);
+  errors.push(...recon.errores);
   const t2 = Date.now();
 
   // Cobertura por comuna: sin esto, un viewport roto o una comuna que dejó de
@@ -105,6 +114,7 @@ export async function POST(request: Request) {
     inserted,
     skipped,
     descartadasNoNuevas,
+    basesDesactivadas: recon.desactivadas,
     totalScraped: result.properties.length,
     withCoords: validProps.filter((p) => p.lat && p.lng).length,
     porComuna,
