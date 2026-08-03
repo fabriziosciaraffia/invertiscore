@@ -44,9 +44,9 @@ const r = calcShortTerm(input);
 
 console.log('=== TOP-LEVEL ===');
 console.log(JSON.stringify({
+  // `engineSignal` y `francoVerdict` los removió el commit E.2 (2026-05-13):
+  // FrancoScoreSTR es la única fuente del veredicto canónico (short-term-engine.ts:1285).
   veredicto: r.veredicto,
-  engineSignal: r.engineSignal,
-  francoVerdict: r.francoVerdict,
   pie: r.pie,
   capitalInvertido: r.capitalInvertido,
   dividendoMensual: r.dividendoMensual,
@@ -74,6 +74,9 @@ const ex = r.exitScenario;
 if (!ex) throw new Error('exitScenario undefined');
 console.log({
   tirAnualPct: metricaValorONull(ex.tirAnual),
-  multiplicadorCapital: ex.multiplicadorCapital,
-  gananciaNetaPositiva: ex.gananciaNeta > 0,
+  multiplicadorCapital: metricaValorONull(ex.multiplicadorCapital),
+  // `gananciaNeta` se renombró a `equityCLP` (rename honesto b931831); fallback
+  // pre-regen idéntico al de SaleBlockSTR:45 y ai-generation.ts:780.
+  equityPositivo:
+    (ex.equityCLP ?? (ex as unknown as { gananciaNeta?: number }).gananciaNeta ?? 0) > 0,
 });

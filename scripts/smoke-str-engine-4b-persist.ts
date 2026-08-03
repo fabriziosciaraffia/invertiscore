@@ -2,9 +2,16 @@
 // 1) Corre calcShortTerm con caso sintético.
 // 2) Inserta el `result` en `analisis` con cliente service-role (mismo shape
 //    que la ruta /api/analisis/short-term).
-// 3) Lee la fila persistida y verifica que projections + exitScenario +
-//    engineSignal + francoVerdict estén en el JSON guardado.
+// 3) Lee la fila persistida y verifica que projections + exitScenario + el
+//    veredicto estén en el JSON guardado.
 // 4) DELETE para no dejar basura.
+//
+// ⚠ NO CORRER SIN DECISIÓN EXPLÍCITA. Este smoke ESCRIBE en la tabla `analisis`,
+// y dev y prod comparten base: la fila de prueba es una fila en producción (ver
+// CLAUDE.md § "Constraints y esquema se verifican LEYENDO el catálogo"). Además
+// el DELETE del final NO está en try/finally: si algo falla entre el insert y el
+// cleanup, la fila queda. Para verificar el motor sin tocar la base está
+// `smoke-str-engine-4b.ts`, que cubre projections + exitScenario en memoria.
 
 import { config } from 'dotenv';
 import path from 'path';
@@ -123,9 +130,10 @@ async function main() {
     'has_projections_array': Array.isArray(projections),
     'projections_length_10': projections?.length === 10,
     'has_exitScenario_obj': exitScenario && typeof exitScenario === 'object',
-    'has_engineSignal': typeof r.engineSignal === 'string',
-    'has_francoVerdict': typeof r.francoVerdict === 'string',
-    'engineSignal_eq_veredicto': r.engineSignal === r.veredicto,
+    // `engineSignal` / `francoVerdict` los removió el commit E.2 (2026-05-13):
+    // FrancoScoreSTR es la única fuente del veredicto. Los tres checks que los
+    // exigían daban `false` desde entonces — el smoke no podía pasar nunca.
+    'has_veredicto': typeof r.veredicto === 'string',
     'projections_y10_patrimonio_positive': typeof projections?.[9]?.patrimonioNeto === 'number' && (projections[9].patrimonioNeto as number) > 0,
     // Rama A: tirAnual es MetricaSobreCapital (unión) o number crudo en filas
     // legacy. El assert deja de exigir number y verifica que el dato LLEGA.
@@ -141,8 +149,8 @@ async function main() {
   console.log(JSON.stringify(projections?.[9], null, 2));
   console.log('\n=== SAMPLE — exitScenario ===');
   console.log(JSON.stringify(exitScenario, null, 2));
-  console.log('\n=== TOP-LEVEL veredicto / engineSignal / francoVerdict ===');
-  console.log(JSON.stringify({ veredicto: r.veredicto, engineSignal: r.engineSignal, francoVerdict: r.francoVerdict }, null, 2));
+  console.log('\n=== TOP-LEVEL veredicto ===');
+  console.log(JSON.stringify({ veredicto: r.veredicto }, null, 2));
 
   // Cleanup
   const { error: delErr } = await supabase.from('analisis').delete().eq('id', inserted.id);
