@@ -361,6 +361,8 @@ function etiquetaTipeada(a: Anomalia): string {
     case "pie": return "el pie";
     case "ocupacion": return "la ocupación";
     case "tarifaNoche": return "la tarifa";
+    case "vacancia": return "la vacancia";
+    case "comisionAdmin": return "la comisión de administración";
   }
 }
 
