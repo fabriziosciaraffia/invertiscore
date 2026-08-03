@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/observabilidad";
 import { randomUUID } from "crypto";
 import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis } from "@/lib/analysis";
@@ -285,6 +286,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: data.id });
   } catch (error) {
     console.error("[analisis/locked] API error:", error);
+    // Mismo gap que POST /api/analisis: si esto explota antes del INSERT, el
+    // usuario intentó crear un análisis bloqueado y no queda rastro en la base.
+    captureApiError(error, { ruta: "POST /api/analisis/locked", operacion: "crear-analisis-bloqueado" });
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 },

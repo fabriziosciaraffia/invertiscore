@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/observabilidad";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { consumeCredit } from "@/lib/access";
@@ -42,6 +43,10 @@ function cacheEstaFrescaLTR(ai: unknown): boolean {
 }
 
 export async function POST(request: Request) {
+  // Fuera del try: el catch global lo necesita para que el evento de Sentry diga
+  // QUÉ análisis falló, no solo que algo falló.
+  let analysisId: string | undefined;
+
   try {
     const supabase = createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
@@ -49,7 +54,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { analysisId } = await request.json();
+    ({ analysisId } = await request.json());
     if (!analysisId) {
       return NextResponse.json({ error: "analysisId requerido" }, { status: 400 });
     }
@@ -109,6 +114,7 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("AI analysis error:", error);
+    captureApiError(error, { ruta: "POST /api/analisis/ai", operacion: "generar-prosa-ltr", analysisId });
     return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
   }
 }

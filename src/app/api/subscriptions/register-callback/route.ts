@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import { createClient } from "@supabase/supabase-js";
 import { flowPost, flowGet } from "@/lib/flow";
 import { recurringProductByPlan, setPlanFields, addOneMonth } from "@/lib/credits-grant";
@@ -197,6 +198,10 @@ export async function POST(request: Request) {
       }
     } catch (e) {
       console.error("[register-callback] email confirmación alta error:", e);
+      captureApiWarning(e, {
+        ruta: "GET /api/subscriptions/register-callback",
+        operacion: "email-alta-suscripcion",
+      });
     }
 
     // TODO(facturación): aquí sería el punto natural para emitir la boleta del
@@ -225,6 +230,10 @@ export async function POST(request: Request) {
     return NextResponse.redirect(returnUrl);
   } catch (err) {
     console.error("Register callback error:", err);
+    captureApiError(err, {
+      ruta: "GET /api/subscriptions/register-callback",
+      operacion: "alta-suscripcion",
+    });
     return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
   }
 }

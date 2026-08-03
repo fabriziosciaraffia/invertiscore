@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import { cookies } from "next/headers";
 import { waitUntil } from "@vercel/functions";
 import { getUFValue } from "@/lib/uf";
@@ -161,6 +162,7 @@ export async function POST(request: Request) {
           });
         } catch (e) {
           console.error("[short-term] Meta CAPI Lead excepción:", e);
+          captureApiWarning(e, { ruta: "POST /api/analisis/short-term", operacion: "meta-capi-lead" });
         }
       })());
     }
@@ -168,6 +170,7 @@ export async function POST(request: Request) {
     return NextResponse.json(data);
   } catch (error) {
     console.error("[short-term] API error:", error);
+    captureApiError(error, { ruta: "POST /api/analisis/short-term", operacion: "crear-analisis-str" });
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 },

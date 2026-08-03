@@ -14,6 +14,7 @@
 //   - Cache best-effort en columna analisis.guest_insight (jsonb).
 
 import { NextResponse } from "next/server";
+import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
@@ -198,6 +199,7 @@ async function generateGuestInsightAI(
     };
   } catch (e) {
     console.error("guest-insight: AI generation failed", e);
+    captureApiWarning(e, { ruta: "POST /api/analisis/short-term/[id]/guest-insight", operacion: "generar-guest-insight-ia" });
     // Fallback: narrativa mínima derivada del motor.
     return {
       headline: `Tu huésped más probable: ${PERFIL_LABEL[profile.dominante.perfil].toLowerCase()}.`,
@@ -287,6 +289,7 @@ export async function GET(
     return NextResponse.json(response);
   } catch (error) {
     console.error("guest-insight error:", error);
+    captureApiError(error, { ruta: "POST /api/analisis/short-term/[id]/guest-insight", operacion: "generar-guest-insight" });
     return NextResponse.json({ error: "Error generando insight de huésped" }, { status: 500 });
   }
 }

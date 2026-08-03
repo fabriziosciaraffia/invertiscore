@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/observabilidad";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { AnalisisInput } from "@/lib/types";
@@ -130,6 +131,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, score: result.score, results: result });
   } catch (error) {
     console.error("Recalculate API error:", error);
+    captureApiError(error, { ruta: "POST /api/analisis/recalculate", operacion: "recalcular-analisis" });
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
