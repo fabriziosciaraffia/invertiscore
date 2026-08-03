@@ -6,7 +6,9 @@
 // Reusable: of-audit-calibrate.ts (calibración ~8) y, en 2c, el barrido completo.
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AnalisisInput, FullAnalysisResult } from "../../src/lib/types";
+import type { AnalisisInput, FullAnalysisResult, MetricaSobreCapital } from "../../src/lib/types";
+import { esMetricaNoAplica, metricaValorONull } from "../../src/lib/types";
+import { NO_APLICA_PROMPT } from "../../src/lib/no-aplica-copy";
 import { METRO_STATIONS, haversineDistance, findNearestStation } from "../../src/lib/metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "../../src/lib/plusvalia-historica";
 import { generateAiAnalysis } from "../../src/lib/ai-generation";
@@ -82,6 +84,20 @@ REGLAS DE SALIDA ESTRICTAS:
 - NO marques como afirmacion-sin-fuente ni incoherencia-contra-fuente las cifras de instrumentos alternativos (depósito UF, fondo mutuo) — son supuestos doctrinales legítimos (ver A4/Ángulo 3).`;
 
 // ── Bundle del motor ────────────────────────────────────────────────────────
+
+/**
+ * Métricas sobre capital para el juez. Desde pie-cero fase 1-2 son
+ * `MetricaSobreCapital` (unión), y pasarlas crudas serializaba
+ * `{"tipo":"valor","valor":10.17}` en un campo que el bundle anuncia como
+ * `_pct`: el juez tenía que adivinar el contrato. Acá se emite el NÚMERO cuando
+ * la métrica aplica y, cuando no, el MISMO string que el generador vio en su
+ * prompt (`NO_APLICA_PROMPT`) — así el juez y el generador leen el caso igual.
+ */
+function metricaParaJuez(m: MetricaSobreCapital | number | null | undefined): number | string | null {
+  if (esMetricaNoAplica(m)) return NO_APLICA_PROMPT;
+  return metricaValorONull(m);
+}
+
 export function buildEngineBundle(input: AnalisisInput, results: FullAnalysisResult) {
   const m = results.metrics;
   return {
@@ -94,14 +110,21 @@ export function buildEngineBundle(input: AnalisisInput, results: FullAnalysisRes
     rentabilidadBruta_pct: m.rentabilidadBruta,
     rentabilidadNeta_pct: m.rentabilidadNeta,
     capRate_pct: m.capRate,
-    cashOnCash_pct: m.cashOnCash,
+    cashOnCash_pct: metricaParaJuez(m.cashOnCash),
     plusvaliaInmediataFranco_pct: m.plusvaliaInmediataFrancoPct,
     valorMercadoFrancoUF: m.valorMercadoFrancoUF,
     precioCLP: m.precioCLP,
     pieCLP: m.pieCLP,
-    tir_pct_10a: results.exitScenario?.tir,
-    multiplicadorCapital: results.exitScenario?.multiplicadorCapital,
-    gananciaNeta_10a: results.exitScenario?.gananciaNeta,
+    tir_pct_10a: metricaParaJuez(results.exitScenario?.tir),
+    multiplicadorCapital: metricaParaJuez(results.exitScenario?.multiplicadorCapital),
+    // El campo se renombró a `equityCLP` (rename honesto b931831): leerlo por el
+    // nombre viejo devolvía SIEMPRE undefined, así que el juez evaluaba la prosa
+    // sin la cifra de "lo que te queda al vender". Fallback pre-regen idéntico al
+    // de ai-generation.ts:780 y SaleBlockSTR:45 (filas persistidas pre-rename).
+    equityCLP_10a: results.exitScenario
+      ? results.exitScenario.equityCLP ??
+        (results.exitScenario as unknown as { gananciaNeta?: number }).gananciaNeta
+      : undefined,
     precioVsComuna: m.precioVsComuna,
     input: {
       comuna: input.comuna,
