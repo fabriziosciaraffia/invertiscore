@@ -17,6 +17,10 @@ export function buildPatrimonioSeriesSTR(results: ShortTermResult): PatrimonioRo
   const projections = results.projections ?? [];
   if (projections.length === 0) return [];
   const capitalInicial = results.capitalInvertido;
+  // Precio pactado: el motor STR deriva pie y crédito del precio de compra
+  // (short-term-engine.ts:825-826), así que la suma lo reconstruye exacto.
+  // STR compoundéa desde precioCompra en el año 1 (:834) — misma base que LTR.
+  const precioPactadoCLP = results.pie + results.montoCredito;
 
   return projections.map((p) => {
     // Aporte acumulado: capital inicial + |suma de flujos operacionales negativos
@@ -30,6 +34,7 @@ export function buildPatrimonioSeriesSTR(results: ShortTermResult): PatrimonioRo
       anio: p.year,
       aporteAcum: capitalInicial + aportesNegativos,
       valorDepto: p.valorDepto,
+      precioPactadoCLP,
       patrimonioNeto: p.patrimonioNeto, // valorDepto − saldoCredito (sin flujo · homologación LTR)
       flujoAcumulado: p.flujoAcumulado,
       deudaPendiente: p.saldoCredito,
