@@ -1,7 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
-import { CLAUDE_MODEL } from "@/lib/ai-config";
+import { CLAUDE_MODEL, MICRO_CHECK_MODEL } from "@/lib/ai-config";
+import {
+  acumularLlamadaSinTokens,
+  acumularUsage,
+  camposUpdateUsage,
+  nuevoAcumuladorUsage,
+  type AiUsage,
+} from "@/lib/ai-usage";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { estimarContribuciones } from "@/lib/contribuciones";
@@ -716,9 +723,8 @@ export function hasNewAiStructure(ai: unknown): boolean {
  * `opts.persist` (default true): cuando es false, genera y devuelve el resultado
  * SIN escribir a Supabase. Sirve para validación local del prompt sin tocar datos.
  */
-// Modelo del micro-check CATCH-ROOT-A: clasificación binaria sí/no — haiku
-// (barato/rápido); en Fase 2 se llama varias veces por el loop de regeneración.
-const MICRO_CHECK_MODEL = "claude-haiku-4-5-20251001";
+// MICRO_CHECK_MODEL vive en @/lib/ai-config, junto a CLAUDE_MODEL: son los dos
+// modelos que el producto usa en producción y se migran mirándolos juntos.
 
 // Detección semántica (Root A'): ¿la prosa afirma una mediana/promedio/precio DE
 // LA ZONA o un "% sobre la zona" cuando NO hay dato de zona confiable? El prompt-
@@ -726,8 +732,13 @@ const MICRO_CHECK_MODEL = "claude-haiku-4-5-20251001";
 // se detecta a la salida. PUEDE lanzar (error de red / JSON inválido); el caller
 // la envuelve en try/catch (best-effort, nunca bloquea la generación).
 // Reutilizable por la Fase 2 (loop de regeneración).
+//
+// `usage` es opcional y solo cuenta la LLAMADA, no sus tokens: este check corre
+// contra MICRO_CHECK_MODEL (haiku), que tiene otra tarifa que el modelo del
+// análisis. Sumar sus tokens a las mismas columnas dejaría un total que no se
+// puede convertir a plata con ningún precio único. Ver src/lib/ai-usage.ts.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic): Promise<{ fabrica: boolean; cita: string }> {
+async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic, usage?: AiUsage): Promise<{ fabrica: boolean; cita: string }> {
   const camposNarrativos = JSON.stringify({
     conviene: aiResult?.conviene?.respuestaDirecta_clp,
     negociacion: aiResult?.negociacion?.contenido_clp,
@@ -739,6 +750,7 @@ async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic
     system: "Sos un detector de UN solo patrón: la fabricación de una CIFRA de zona inexistente. Esta comuna NO tiene dato de mediana/promedio/precio de zona (el motor no lo tiene). Respondé fabrica=true SOLO si la prosa afirma una CIFRA NUMÉRICA atribuida A LA ZONA/COMUNA: una mediana, un promedio, un precio/m² de referencia de la zona, o un porcentaje \"% sobre/bajo la zona/el promedio\" (es decir, un número que compara el depto contra un valor de zona). Ejemplos fabrica=true: \"la mediana de la zona es UF 37,5\", \"46% sobre el promedio de la zona\", \"los comparables de la zona están en UF X/m²\". Respondé fabrica=false (NO es fabricación) cuando: (a) dice que el precio es \"alto/elevado para la zona\" de forma CUALITATIVA, SIN una cifra de zona (es una impresión, no una estadística); (b) la única cifra es del PROPIO depto (su precio/m², ej. UF 54,5/m², o precio÷superficie) — esa es legítima, no es cifra de zona; (c) NIEGA explícitamente que haya mediana/dato de zona confiable; (d) la plusvalía histórica (% anual de apreciación). Ejemplos fabrica=false: \"el precio es alto para la zona\" (sin cifra), \"UF 54,5/m² es elevado\" (cifra del propio depto), \"no hay mediana confiable de la zona\", \"el motor usa el promedio de Gran Santiago de 3% anual\" (plusvalía). La cita debe ser el fragmento que contiene la CIFRA de zona fabricada; si fabrica=false, cadena vacía. Respondé SOLO un JSON válido, sin texto alrededor: {\"fabrica\": true|false, \"cita\": \"fragmento textual exacto o cadena vacía\"}.",
     messages: [{ role: "user", content: camposNarrativos }],
   });
+  if (usage) acumularLlamadaSinTokens(usage);
   const t = msg.content[0]?.type === "text" ? msg.content[0].text : "";
   const cleaned = t.trim().replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
   // Parse TOLERANTE (igual robustez que parseAndNormalize): haiku a veces agrega
@@ -764,7 +776,13 @@ async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function generateAiAnalysis(analysisId: string, supabase: SupabaseClient, opts: { persist?: boolean } = {}): Promise<any | null> {
+  // Consumo de tokens de ESTA generación: la llamada principal más todos sus
+  // retries. Se acumula en memoria y se escribe una sola vez, colgado del UPDATE
+  // de ai_analysis que ya existe al final — cero queries nuevas.
+  const usage = nuevoAcumuladorUsage();
   try {
+    // El `select("*")` ya trae las columnas ai_*_tokens de la fila, así que la
+    // suma sobre el valor previo (regeneraciones) no necesita releerla.
     const { data: analysis } = await supabase
       .from("analisis")
       .select("*")
@@ -1683,6 +1701,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       messages: [{ role: "user", content: userPrompt }],
       system: SYSTEM_PROMPT,
     });
+    acumularUsage(usage, message);
 
     const text = message.content[0].type === "text" ? message.content[0].text : "";
 
@@ -1858,7 +1877,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     const CATCH_ROOTA_MAX_RETRIES = 2;
     if (!precioM2ZonaConfiable && aiResult) {
       try {
-        let deteccion = await detectarFabricacionZona(aiResult, anthropic);
+        let deteccion = await detectarFabricacionZona(aiResult, anthropic, usage);
         if (!deteccion.fabrica) {
           console.warn(`[CATCH-ROOT-A] ${analysisId}: fabrica=false`);
         } else {
@@ -1883,6 +1902,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
               messages: [{ role: "user", content: userPromptSinAnomalias + correctivo }],
               system: SYSTEM_PROMPT,
             });
+            acumularUsage(usage, regen);
             const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
             const regenResult = parseAndNormalize(regenText);
             if (!regenResult) {
@@ -1891,7 +1911,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
               break;
             }
             aiResult = regenResult;
-            deteccion = await detectarFabricacionZona(aiResult, anthropic);
+            deteccion = await detectarFabricacionZona(aiResult, anthropic, usage);
             console.warn(`[CATCH-ROOT-A] ${analysisId}: intento ${intento} → fabrica=${deteccion.fabrica}${deteccion.fabrica ? ` cita="${deteccion.cita.slice(0, 160)}"` : ""}`);
           }
           if (deteccion.fabrica) {
@@ -1930,6 +1950,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
             messages: [{ role: "user", content: userPrompt + correctivoVoz(noCorregibles) }],
             system: SYSTEM_PROMPT,
           });
+          acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
           const regenResult = parseAndNormalize(regenText);
           const quedan = regenResult ? hitsQueExigenReintento(scanVozChilena(regenResult)) : null;
@@ -1979,6 +2000,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu conviene.respuestaDirecta midió ${mejorWC} palabras; el MÁXIMO de la continuación es ${maxContinuacion}. Reescribí el JSON COMPLETO desarrollando UN SOLO matiz (el de mayor consecuencia en plata) en ≤${maxContinuacion} palabras; los demás matices viven en la pirámide — no los encadenes.${insistencia}`;
         try {
           const regen = await anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 8000, messages: [{ role: "user", content: userPrompt + correctivo }], system: SYSTEM_PROMPT });
+          acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
           const regenResult = parseAndNormalize(regenText);
           if (!regenResult) {
@@ -2136,13 +2158,19 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     }
 
     if (opts.persist === false) {
-      // Modo validación local: no escribe a Supabase.
+      // Modo validación local: no escribe a Supabase. Tampoco el usage — el
+      // golden corre esto contra filas reales y no debe moverles los contadores.
       return aiResult;
     }
 
     const { error: updateError } = await supabase
       .from("analisis")
-      .update({ ai_analysis: aiResult })
+      .update({
+        ai_analysis: aiResult,
+        // Consumo acumulado de la generación. SUMA sobre lo que ya tenía la fila
+        // (regenerar no borra el costo previo) — ver camposUpdateUsage.
+        ...camposUpdateUsage(usage, analysis, CLAUDE_MODEL),
+      })
       .eq("id", analysisId);
     if (updateError) {
       console.error(`generateAiAnalysis: fallo al guardar ai_analysis (${analysisId}):`, updateError);

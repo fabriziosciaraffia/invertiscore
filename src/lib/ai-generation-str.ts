@@ -25,6 +25,7 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
+import { acumularUsage, nuevoAcumuladorUsage, type AiUsage } from "@/lib/ai-usage";
 import { findNearestStation } from "@/lib/metro-stations";
 import {
   CLINICAS,
@@ -844,6 +845,11 @@ export interface GenerateStrProseResult {
   softDriftHits: string[];    // engine-isms, detección-only
   overBudget: { path: string; wc: number; max: number }[];
   tries: number;
+  /**
+   * Consumo de tokens de esta generación (intento principal + retries). Lo
+   * persiste el CALLER: esta función genera y devuelve, no toca la base.
+   */
+  usage: AiUsage;
 }
 
 function parseStrJson(raw: string): AIAnalysisSTRv2 | null {
@@ -872,6 +878,10 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   const scoreOf = (ai: AIAnalysisSTRv2 | null): number =>
     ai ? scanStrHardDrift(ai).length + vozDura(ai).length : Number.POSITIVE_INFINITY;
 
+  // Consumo de tokens de todos los intentos. Viaja en el resultado; el caller lo
+  // escribe junto con ai_analysis.
+  const usage = nuevoAcumuladorUsage();
+
   let best: AIAnalysisSTRv2 | null = null;
   let bestScore = Number.POSITIVE_INFINITY;
   let usedTries = 0;
@@ -894,6 +904,7 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
         messages: [{ role: "user", content: userPrompt + correctivo }],
         system: SYSTEM_PROMPT_STR,
       });
+      acumularUsage(usage, msg);
       const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
       ai = parseStrJson(rawText);
     } catch (e) {
@@ -924,6 +935,7 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
         messages: [{ role: "user", content: userPrompt + correctivo }],
         system: SYSTEM_PROMPT_STR,
       });
+      acumularUsage(usage, msg);
       usedTries += 1;
       const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
       const retryAi = parseStrJson(rawText);
@@ -965,5 +977,5 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   // así endpoint y corpus sellan idéntico. Espejo ambas-generate.ts.
   best.promptVersion = PROMPT_VERSION_STR;
 
-  return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, tries: usedTries };
+  return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, tries: usedTries, usage };
 }
