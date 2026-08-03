@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { scrapeTocTocMap, scrapeTocTocAPI, scrapeTocToc, getComunasBatch, TOTAL_BATCHES, ScrapedProperty } from "@/lib/services/scraper/toctoc";
+// Mapeo a fila compartido con /api/data/scrape-nuevos (pase de obra nueva), para
+// que las dos rutas escriban el mismo shape.
+import { propertyToRow } from "@/lib/services/scraper/property-row";
 
 // Vercel Hobby permite hasta 60s. Sin esto, el techo es 10s y una corrida real
 // (1 comuna x 5 páginas, ~11s) lo supera. Necesario antes de subir BATCH_SIZE/maxPages.
@@ -136,33 +139,6 @@ export async function POST(request: Request) {
       total_ms: t3 - t0,
     },
   });
-}
-
-function propertyToRow(prop: ScrapedProperty) {
-  return {
-    source: prop.source,
-    source_id: prop.sourceId,
-    type: prop.type,
-    comuna: prop.comuna,
-    direccion: prop.direccion || null,
-    lat: prop.lat || null,
-    lng: prop.lng || null,
-    precio: prop.precio,
-    moneda: prop.moneda,
-    superficie_m2: prop.superficieM2 || null,
-    dormitorios: prop.dormitorios || null,
-    banos: prop.banos || null,
-    gastos_comunes: prop.gastosComunes || null,
-    estacionamientos: prop.estacionamientos || null,
-    bodegas: prop.bodegas || null,
-    piso: prop.piso || null,
-    antiguedad: prop.antiguedad || null,
-    url: prop.url || null,
-    condicion: prop.condicion || "usado",
-    is_active: true,
-    scraped_at: new Date().toISOString(),
-    geocode_attempted: false,
-  };
 }
 
 // Vercel Cron dispara GET. Reusamos el handler POST (con su validación Bearer

@@ -77,6 +77,12 @@ export function getComunasBatch(batch: number): string[] {
   return COMUNAS_SANTIAGO.slice(startIndex, startIndex + BATCH_SIZE);
 }
 
+/** Todas las comunas cubiertas, sin rotación por batch. La usa el pase de obra
+ *  nueva, que cabe entero en una corrida (ver ESTADO_OBRA_NUEVA). */
+export function getTodasLasComunas(): string[] {
+  return [...COMUNAS_SANTIAGO];
+}
+
 const HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
   "Accept": "text/html,application/xhtml+xml",
@@ -128,18 +134,31 @@ async function getTocTocSession(): Promise<{ cookies: string; token: string }> {
   return { cookies, token };
 }
 
+/**
+ * Filtro `estado` del GetProps de TocToc — verificado en vivo contra la API:
+ *   0 = todo · 1 = obra NUEVA (100% urls compranuevo) · 2 = usada · 3 = vacío.
+ * El campo siempre estuvo en el body, fijo en 0. Con 0 la respuesta se capa en
+ * `limite` (510) sobre un universo de miles, y la obra nueva —que es ~1% del
+ * stock— entra o no según el orden: por eso su ingesta llegaba en lotes
+ * esporádicos en vez de continua. Pedirla por separado la hace determinista.
+ */
+export const ESTADO_TODO = 0;
+export const ESTADO_OBRA_NUEVA = 1;
+export const ESTADO_USADO = 2;
+
 async function fetchMapProperties(
   comunaSlug: string,
   operacion: number,
   viewport: string,
   cookies: string,
-  token: string
+  token: string,
+  estado: number = ESTADO_TODO
 ): Promise<unknown[] | null> {
   const body = {
     region: "metropolitana", comuna: comunaSlug, barrio: "", poi: "",
     tipoVista: "mapa", operacion, idPoligono: null, moneda: 2,
     precioDesde: 0, precioHasta: 0, dormitoriosDesde: 0, dormitoriosHasta: 0,
-    banosDesde: 0, banosHasta: 0, tipoPropiedad: "departamento", estado: 0,
+    banosDesde: 0, banosHasta: 0, tipoPropiedad: "departamento", estado,
     disponibilidadEntrega: "", numeroDeDiasTocToc: 0,
     superficieDesdeUtil: 0, superficieHastaUtil: 0,
     superficieDesdeConstruida: 0, superficieHastaConstruida: 0,
@@ -204,21 +223,38 @@ function parseMapProperty(
     }
     if (precio === 0) return null;
 
-    // Surface: search positions 27-28, 33-34 (superficie útil, la correcta cuando viene).
-    // [31]/[32] son superficie total/construida: se agregan AL FINAL como fallback para
-    // los avisos donde la útil viene en 0.0. El orden garantiza que la útil gane si existe.
-    let superficieM2: number | undefined;
-    for (const pos of [27, 28, 33, 34, 31, 32]) {
-      const val = parseFloat(String(arr[pos]));
-      if (val > 15 && val < 500) { superficieM2 = val; break; }
-    }
-
     // URL: last elements often contain strings
     let url: string | undefined;
     for (let i = arr.length - 1; i >= arr.length - 8; i--) {
       if (typeof arr[i] === "string" && (arr[i] as string).startsWith("http")) {
         url = arr[i] as string; break;
       }
+    }
+
+    // La URL distingue obra nueva: .../compranuevo/... -> "nuevo". Sin URL o sin
+    // ese marcador -> "usado" (la mayoria del inventario).
+    const esObraNueva = !!url && url.includes("compranuevo");
+
+    // Superficie. En USADO la fila es de UNA unidad y las posiciones coinciden;
+    // el orden [27,28,33,34,31,32] prioriza la útil y deja total/construida de
+    // fallback para los avisos con útil en 0.0.
+    //
+    // En OBRA NUEVA la fila es del PROYECTO, no de una unidad: el precio de [22]
+    // es el "desde" (verificado contra el "desde UF X" del listado) y [4] son los
+    // dormitorios MÍNIMOS del rango, pero [27] NO es la superficie mínima —
+    // mediana 14,6% sobre [33], hasta 137%. Dividir un precio "desde" por una
+    // superficie que no es la del mínimo daba un UF/m² incoherente: medido sobre
+    // 311 proyectos, el orden viejo subestimaba la mediana en 13,6%
+    // (UF 92,9 vs 107,5). Para obra nueva se toma la tripleta del MISMO extremo
+    // —precio desde + [33] superficie mínima + [4] dormitorios mínimos—, que
+    // describe la unidad de entrada del proyecto y es verificable contra la ficha.
+    // En usado el orden queda intacto (su sesgo medido es 2,7% y sus 25k filas no
+    // se tocan).
+    let superficieM2: number | undefined;
+    const posiciones = esObraNueva ? [33, 27, 28, 34, 31, 32] : [27, 28, 33, 34, 31, 32];
+    for (const pos of posiciones) {
+      const val = parseFloat(String(arr[pos]));
+      if (val > 15 && val < 500) { superficieM2 = val; break; }
     }
 
     const sourceId = url || `toctoc-map-${idProperty}`;
@@ -234,18 +270,26 @@ function parseMapProperty(
       dormitorios: dormitorios > 0 ? dormitorios : undefined,
       banos: banos > 0 ? banos : undefined,
       url,
-      // La URL distingue obra nueva: .../compranuevo/... -> "nuevo". Sin URL o sin
-      // ese marcador -> "usado" (la mayoria del inventario).
-      condicion: (url && url.includes("compranuevo")) ? "nuevo" : "usado",
+      condicion: esObraNueva ? "nuevo" : "usado",
     };
   } catch {
     return null;
   }
 }
 
+/**
+ * @param estado filtro de condición del GetProps (ver ESTADO_*). Default
+ *   ESTADO_TODO = comportamiento previo, byte-idéntico. ESTADO_OBRA_NUEVA lo usa
+ *   el pase de obra nueva del cron, que necesita cadencia propia.
+ * @param pausaMs pausa entre comunas. El pase general usa 2s; el de obra nueva
+ *   puede bajarla porque recorre las 25 comunas en una sola corrida y la
+ *   respuesta es ~20x más chica (9-101 filas vs 510).
+ */
 export async function scrapeTocTocMap(
   type: "arriendo" | "venta" = "arriendo",
-  comunas?: string[]
+  comunas?: string[],
+  estado: number = ESTADO_TODO,
+  pausaMs: number = 2000
 ): Promise<ScraperResult> {
   const properties: ScrapedProperty[] = [];
   const errors: string[] = [];
@@ -269,9 +313,11 @@ export async function scrapeTocTocMap(
       const viewport = COMUNA_VIEWPORTS[comunaSlug];
       if (!viewport) { errors.push(`No viewport for ${comunaSlug}`); continue; }
 
-      const propArrays = await fetchMapProperties(comunaSlug, operacion, viewport, cookies, token);
+      const propArrays = await fetchMapProperties(comunaSlug, operacion, viewport, cookies, token, estado);
       if (!propArrays || propArrays.length === 0) {
-        errors.push(`Map API: no data for ${comunaSlug}`);
+        // Con ESTADO_OBRA_NUEVA el vacío es esperable (hay comunas sin proyectos
+        // en venta); no es un error que valga la pena inundar el reporte.
+        if (estado !== ESTADO_OBRA_NUEVA) errors.push(`Map API: no data for ${comunaSlug}`);
         continue;
       }
 
@@ -280,7 +326,7 @@ export async function scrapeTocTocMap(
         if (prop) properties.push(prop);
       }
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (pausaMs > 0) await new Promise(resolve => setTimeout(resolve, pausaMs));
     } catch (error) {
       errors.push(`Map ${comunaSlug}: ${error}`);
     }
@@ -355,6 +401,17 @@ function parsePropertyFromResult(
     const url = item.urlFicha || undefined;
     const sourceId = url || `toctoc-${comunaFallback}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+    // Condición. Este parser NO la seteaba, así que todo lo que entraba por acá
+    // caía al default "usado" de propertyToRow — incluida la obra nueva. El
+    // listado la trae con nombre propio (`tipoOperacion: "Venta Nuevo"`), y la
+    // urlFicha lleva el mismo marcador que usa el parser del mapa. Se leen las
+    // dos: el campo nombrado manda, la URL respalda.
+    const condicion =
+      String(item.tipoOperacion ?? "").toLowerCase().includes("nuevo") ||
+      String(url ?? "").includes("compranuevo")
+        ? "nuevo"
+        : "usado";
+
     return {
       source: "toctoc",
       sourceId,
@@ -367,6 +424,7 @@ function parsePropertyFromResult(
       dormitorios,
       banos,
       url,
+      condicion,
     };
   } catch {
     return null;

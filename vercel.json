@@ -5,6 +5,10 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/data/scrape-nuevos",
+      "schedule": "30 6 * * *"
+    },
+    {
       "path": "/api/data/geocode-toctoc",
       "schedule": "0 8 * * *"
     },
