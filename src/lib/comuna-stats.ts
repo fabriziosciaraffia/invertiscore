@@ -183,7 +183,27 @@ export async function getComunaMedianaVentaUF(
     q = condicion === "nuevo"
       ? q.eq("condicion", "nuevo")
       : q.or("condicion.is.null,condicion.eq.usado");
-    if (dormitorios !== null) q = q.eq("dormitorios", dormitorios);
+    // Dormitorios: filtro EXACTO en usado, NINGUNO en obra nueva.
+    //
+    // No es una relajación para ganar cobertura — es que en obra nueva el campo
+    // no dice lo que parece. Ahí la fila de la fuente es del PROYECTO, no de una
+    // unidad, y `dormitorios` trae el MÍNIMO del rango que ofrece el proyecto:
+    // uno que va de 1 a 2 dormitorios se registra como 1D. Por eso ~70% del stock
+    // nuevo aparece como 1D, y un sujeto de 2D no encuentra contra qué medirse.
+    // Filtrar por esa etiqueta es filtrar por la tipología de ENTRADA del
+    // proyecto, no por la del depto.
+    //
+    // Quien sí discrimina bien la tipología en ese universo es la superficie
+    // (±20%), que la fila reporta de verdad. Medido sobre los 25 sujetos nuevos
+    // que hoy juntan muestra, sacar el filtro mueve la mediana |Δ| p50 0,2% ·
+    // p75 0,7% · p90 1,9% · max 6,6%, con Δ mediano CON SIGNO de 0,0% (no
+    // introduce sesgo direccional). A cambio, 19 sujetos que no tenían
+    // comparación pasan a tenerla: 25 -> 44 de 78.
+    //
+    // En USADO el filtro se mantiene: ahí la fila es de una unidad y el dato de
+    // dormitorios es real. Misma asimetría-por-universo que VENTANAS_DIAS, y por
+    // el mismo tipo de razón: la fuente se comporta distinto en cada universo.
+    if (dormitorios !== null && condicion === "usado") q = q.eq("dormitorios", dormitorios);
     const { data } = await q;
     return Array.isArray(data) ? data : [];
   }
