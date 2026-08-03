@@ -880,6 +880,9 @@ export interface HallazgoSensibilidadStr {
     beRatioPct: number;      // break-even como % del revenue de mercado (breakEvenPctDelMercado×100)
     corteFavorable: number;  // 100 — al o bajo el mercado (holgado)
     corteFragil: number;     // 110 — sobre esto el margen operativo es frágil (Gate-2)
+    /** 130 — sobre esto NO es margen apretado: Gate-1 fuerza BUSCAR OTRA.
+     *  Opcional: los hallazgos persistidos antes de la tercera banda no lo traen. */
+    corteInviable?: number;
     banda: number;           // normalización de magnitudContinua, en puntos
     modalidad: "ltr" | "str" | "ambas";
   };

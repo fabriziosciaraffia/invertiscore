@@ -18,6 +18,7 @@ import { NO_APLICA_FOOTNOTE_DOC } from "@/lib/no-aplica-copy";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
 import { findingDisplay } from "@/components/analysis/GenericFindingCard";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
+import { BE_STR_CORTE_FAVORABLE, BE_STR_CORTE_FRAGIL, BE_STR_CORTE_INVIABLE } from "@/lib/sensibilidad-str-hallazgo";
 import { buildPatrimonioSeriesSTR } from "@/lib/patrimonio-series-str";
 import { PatrimonioChartSVG } from "../../../[id]/documento/PatrimonioChartSVG";
 import { FlujoEstacionalChartSVG, tieneEstacionalidad } from "./FlujoEstacionalChartSVG";
@@ -126,13 +127,20 @@ export function DocumentoSTR({
 
   // ── Sensibilidad P25–P90 (motor) ──
   const sens = results.sensibilidad ?? [];
-  const breakEvenPct = (results.breakEvenPctDelMercado ?? 0) * 100;
-  // Variante E — rama del box break-even (espejo del hallazgo sensibilidad_str).
-  const breakEvenFragil = breakEvenPct > 110;
-  const breakEvenBorde = breakEvenPct >= 100 && breakEvenPct <= 110;
+  // Redondeo ANTES de decidir la rama (espejo del hallazgo): el KPI que se muestra y la
+  // banda que se elige tienen que salir del mismo número, o el borde 110,0000001 elige
+  // una rama que el texto contradice.
+  const breakEvenPct = Math.round((results.breakEvenPctDelMercado ?? 0) * 100);
+  // Variante E — rama del box break-even (espejo del hallazgo sensibilidad_str, TRES
+  // bandas: >130 no cuadra al nivel de la zona · >110 frágil · [100,110] borde · <100 holgado).
+  const breakEvenInviable = breakEvenPct > BE_STR_CORTE_INVIABLE;
+  const breakEvenFragil = breakEvenPct > BE_STR_CORTE_FRAGIL;
+  const breakEvenBorde = breakEvenPct >= BE_STR_CORTE_FAVORABLE && breakEvenPct <= BE_STR_CORTE_FRAGIL;
   const breakEvenBox =
-    breakEvenFragil
-      ? { red: true, label: "Punto de equilibrio", text: `Para no perder plata necesitas facturar ${money(results.breakEvenRevenueAnual ?? 0)} al año — el ${Math.round(breakEvenPct)}% de los ingresos brutos medianos de la zona (P50). Estás pidiéndole al listing que rinda sobre lo típico solo para quedar en cero: por debajo del P50, el corto ya no cubre la cuota. Es el número más frágil del análisis.` }
+    breakEvenInviable
+      ? { red: true, label: "Punto de equilibrio", text: `Para no perder plata necesitas facturar ${money(results.breakEvenRevenueAnual ?? 0)} al año — el ${breakEvenPct}% de los ingresos brutos medianos de la zona (P50), un ${breakEvenPct - 100}% por sobre lo típico. No es un margen apretado: es pedirle al departamento que opere en el techo del mercado todo el año solo para quedar en cero. La palanca está en el precio de compra o en los costos, no en apretar la ocupación ni la tarifa.` }
+      : breakEvenFragil
+      ? { red: true, label: "Punto de equilibrio", text: `Para no perder plata necesitas facturar ${money(results.breakEvenRevenueAnual ?? 0)} al año — el ${breakEvenPct}% de los ingresos brutos medianos de la zona (P50). Estás pidiéndole al listing que rinda sobre lo típico solo para quedar en cero: por debajo del P50, el corto ya no cubre la cuota. Es el número más frágil del análisis.` }
       : breakEvenBorde
         ? { red: true, label: "Punto de equilibrio", text: `Tu punto de equilibrio está en el ${Math.round(breakEvenPct)}% de los ingresos brutos medianos de la zona (P50) — justo en el borde. Cuadras si la zona rinde lo típico, pero sin colchón para un mal trimestre de ocupación o tarifa.` }
         : { red: false, label: "Punto de equilibrio", text: `Tu punto de equilibrio está en el ${Math.round(breakEvenPct)}% de los ingresos brutos medianos de la zona (P50): cuadras facturando por debajo de lo que rinde la zona típica. Hay colchón si la ocupación o la tarifa vienen algo más bajas de lo asumido.` };

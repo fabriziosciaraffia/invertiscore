@@ -27,6 +27,7 @@ import {
   contarPalabras,
   recortarContinuacion,
 } from "@/lib/prosa-presupuesto";
+import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import type { Hallazgo } from "@/lib/types";
 import { metricaDisplay, metricaODefault, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
@@ -1846,6 +1847,42 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       }
     }
 
+// ─── CATCH-VOZ (§2.1 · tuteo neutro chileno) ──────────────────────────────
+    // La directiva de prompt es estocástica: medido en el ciclo editorial, 5
+    // informes re-emitieron "commune"/"encontrás"/"negociás" en primera pasada y
+    // la segunda limpió. Acá se vuelve invariante, con el mismo reparto que el
+    // catch de "revenue" en STR: lo que sabemos corregir se corrige (swap
+    // determinístico al final, sin regenerar); lo que NO —pronombre "vos" o un
+    // -és/-ís fuera del léxico— dispara UN reintento con la cita exacta.
+    // Corre ANTES del guard de presupuesto para que el techo de palabras siga
+    // siendo la última palabra sobre la continuación. Best-effort en try/catch:
+    // el catch-layer nunca rompe la generación.
+    if (aiResult) {
+      try {
+        const noCorregibles = hitsQueExigenReintento(scanVozChilena(aiResult));
+        if (noCorregibles.length) {
+          console.warn(`[CATCH-VOZ] ${analysisId}: ${noCorregibles.length} forma(s) sin corrección determinística (${noCorregibles.map((h) => h.token).join(", ")}) — 1 reintento`);
+          const regen = await anthropic.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 8000,
+            messages: [{ role: "user", content: userPrompt + correctivoVoz(noCorregibles) }],
+            system: SYSTEM_PROMPT,
+          });
+          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+          const regenResult = parseAndNormalize(regenText);
+          const quedan = regenResult ? hitsQueExigenReintento(scanVozChilena(regenResult)) : null;
+          if (regenResult && quedan && quedan.length < noCorregibles.length) {
+            console.warn(`[CATCH-VOZ] ${analysisId}: retry mejoró ${noCorregibles.length}→${quedan.length} — aceptado`);
+            aiResult = regenResult;
+          } else {
+            console.warn(`[CATCH-VOZ] ${analysisId}: retry no mejoró o no parseó — conservo la prosa previa`);
+          }
+        }
+      } catch (e) {
+        console.warn(`[CATCH-VOZ] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+  
     // PLAN C GUARD — enforcement de presupuesto POR CONSTRUCCIÓN. La continuación (lo
     // que escribió el modelo, aún SIN la apertura) no puede superar maxContinuacion.
     // El modelo no cuenta bien, así que medimos acá: sobre maxContinuacion×1.1, hasta
@@ -1861,6 +1898,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // Se mide el MÁXIMO de las dos variantes de moneda: el techo aplica a lo que el
     // usuario lee, y el toggle CLP/UF no elige cuál. Corre ANTES de FASE B para que la
     // reinyección determinística caiga sobre el aiResult final.
+
     if (aiResult?.conviene && hallazgosOrdenados.length > 0) {
       const wcCont = (ai: typeof aiResult): number =>
         Math.max(contarPalabras(ai?.conviene?.respuestaDirecta_clp), contarPalabras(ai?.conviene?.respuestaDirecta_uf));
@@ -2013,6 +2051,20 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // drawer leen de acá, == calcDividendo. Espejo de hallazgoSobreprecio.
     if (aiResult?.reestructuracion && reestructuracionFinanciera) {
       aiResult.reestructuracion.estructuraSugerida = reestructuracionFinanciera;
+    }
+
+    // RED FINAL DE VOZ — swap determinístico del voseo conocido y los typos
+    // recurrentes ("commune"→"comuna", "delgas"→"delegas"). Es la capa que
+    // GARANTIZA que no llegan al usuario, sin reintento caro: 1 token por 1
+    // token, así que no mueve el conteo de palabras y no invalida el guard de
+    // presupuesto que corrió arriba. Va antes del sello para que el golden
+    // (persist:false) vea exactamente lo que ve producción.
+    if (aiResult) {
+      aiResult = sanitizeVozChilena(aiResult, (m) => console.warn(`${m} — ${analysisId}`));
+      const vozResidual = hitsQueExigenReintento(scanVozChilena(aiResult));
+      if (vozResidual.length) {
+        console.warn(`[VOZ-RESIDUAL] ${analysisId}: ${vozResidual.length} forma(s) sin corrección tras el reintento — ${vozResidual.map((h) => `"${h.token}"`).join(", ")}`);
+      }
     }
 
     // Sello de versión (F6). Antes del early-return de persist:false para que el

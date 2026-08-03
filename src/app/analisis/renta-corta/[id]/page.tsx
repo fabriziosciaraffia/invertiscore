@@ -11,6 +11,7 @@ import { normalizeLegacyVerdict } from "@/lib/types";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
+import { etiquetaAnalisis } from "@/lib/format-direccion";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -27,7 +28,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const results = data.results as ShortTermResult | null;
   // Commit 1 · 2026-05-11: normalizar veredicto legacy en metadata.
   const veredicto = normalizeLegacyVerdict(results?.veredicto) ?? "Análisis";
-  const title = `Renta Corta: ${data.nombre} — ${veredicto}`;
+  // Misma regla que el título LTR: la comuna autoritativa se pega si el nombre
+  // libre no la nombra (ver `etiquetaAnalisis`).
+  const title = `Renta Corta: ${etiquetaAnalisis(data.nombre, data.comuna)} — ${veredicto}`;
   const description = `Análisis de renta corta en ${data.comuna}. Veredicto: ${veredicto}.`;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 

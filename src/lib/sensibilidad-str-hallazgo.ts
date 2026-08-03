@@ -4,14 +4,25 @@
 // (ambos aprobados en of-e1a). Mide cuánto del nivel de mercado necesitas facturar para no
 // perder plata: >100% = necesitas rendir sobre la zona típica (frágil).
 //
-// Cortes 100/110 alineados a los gates STR: Gate-2 capa COMPRAR con beRatio>1,10 y Gate-1
-// fuerza BUSCAR con beRatio>1,30 (short-term-score.ts). Dirección binaria: adverso solo en
-// la banda frágil (>110%); holgado (<100) y borde [100,110] son favorables.
+// Cortes 100/110/130 alineados a los gates STR: Gate-2 capa COMPRAR con beRatio>1,10 y
+// Gate-1 fuerza BUSCAR con beRatio>1,30 (short-term-score.ts). Dirección binaria: adverso
+// desde la banda frágil (>110%); holgado (<100) y borde [100,110] son favorables.
+//
+// POR QUÉ TRES BANDAS Y NO DOS
+// ────────────────────────────
+// Con dos bandas, TODO break-even sobre 110% recibía la misma frase — "es un margen
+// apretado" —, incluido el caso de 159% o de 250%. Necesitar el 159% del nivel de mercado
+// no es un margen apretado: es pedirle al listing que facture 59% por sobre lo que rinde
+// la zona típica, algo que el propio Gate-1 ya considera inviable (fuerza BUSCAR OTRA
+// sobre 1,30). La frase minimizaba lo que el motor había clasificado como severo — la
+// misma clase de desalineación que el occOverride mal-etiquetado como "mediana observada".
+// Medido sobre el corpus: 38 de 81 análisis STR con break-even computable caen sobre 130%.
 
 import type { HallazgoSensibilidadStr } from "./types";
 
 export const BE_STR_CORTE_FAVORABLE = 100; // ≤100% del mercado ⇒ holgado
 export const BE_STR_CORTE_FRAGIL = 110;    // >110% ⇒ frágil (adverso), alineado a Gate-2
+export const BE_STR_CORTE_INVIABLE = 130;  // >130% ⇒ no cuadra al nivel de la zona (Gate-1)
 export const BE_STR_BANDA_PTS = 25;        // normalización de magnitudContinua
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -31,6 +42,7 @@ export function buildHallazgoSensibilidadStr(p: {
   // Redondeo de display ANTES de decidir dirección/banda: KPI (Math.round(be)) y dirección
   // deben coincidir siempre (evita el borde float 1,10*100=110,0000001 > 110 → adverso).
   const be = Math.round(p.breakEvenPctDelMercado * 100);
+  const inviable = be > BE_STR_CORTE_INVIABLE;
   const fragil = be > BE_STR_CORTE_FRAGIL;
   const holgado = be < BE_STR_CORTE_FAVORABLE;
   const direccion: "favorable" | "adverso" = fragil ? "adverso" : "favorable";
@@ -41,7 +53,14 @@ export function buildHallazgoSensibilidadStr(p: {
   let fraseCanonica: string;
   // "la tarifa diaria (ADR)" glosa la sigla en cada rama (familia 4 del censo): la card
   // es standalone y cada informe muestra UNA sola rama — no hay primer uso previo.
-  if (fragil) {
+  if (inviable) {
+    titular = "No cuadra al nivel que rinde la zona.";
+    fraseCanonica =
+      `Para no perder plata necesitas facturar el ${beFmt}% del nivel de mercado: un ${pct0(be - 100)}% ` +
+      `por sobre lo que rinde la zona típica. No es un margen apretado — es pedirle al departamento que ` +
+      `opere en el techo del mercado todo el año solo para quedar en cero. La palanca está en el precio ` +
+      `de compra o en los costos de operación, no en apretar la ocupación ni la tarifa diaria (ADR).`;
+  } else if (fragil) {
     titular = "El veredicto se sostiene solo si la ocupación se cumple.";
     fraseCanonica =
       `Para no perder plata necesitas facturar el ${beFmt}% del nivel de mercado — sobre lo que rinde la zona ` +
@@ -67,6 +86,7 @@ export function buildHallazgoSensibilidadStr(p: {
       beRatioPct: be,
       corteFavorable: BE_STR_CORTE_FAVORABLE,
       corteFragil: BE_STR_CORTE_FRAGIL,
+      corteInviable: BE_STR_CORTE_INVIABLE,
       banda: BE_STR_BANDA_PTS,
       modalidad: p.modalidad,
     },

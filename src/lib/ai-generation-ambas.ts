@@ -208,104 +208,20 @@ JSON exacto, sin texto adicional. NO incluyas \`apertura\` ni \`headline\` (los 
 }`;
 
 /**
- * Sanitizer voseo→tuteo. Safety net cuando el LLM desliza voseo argentino
- * pese a las instrucciones del prompt. Mapping table explícito, no regex
- * pattern, para evitar falsos positivos con palabras como "demás", "país",
- * "interés", "estás" (irregular = mismo en tuteo/voseo).
+ * Sanitizer voseo→tuteo del canal comparativo.
  *
- * Auditado contra outputs reales generados con SYSTEM_PROMPT_AMBAS v0.
- * Lista extendida sobre la marcha cuando aparezcan nuevos verbos.
+ * La tabla YA NO VIVE ACÁ: se migró a `voz-chilena.ts`, el catch-layer
+ * compartido LTR + STR + AMBAS. Motivo: era el único canal con red post-LLM
+ * mientras LTR y STR confiaban solo en la directiva de prompt, y una tabla por
+ * canal significa tres lugares donde agregar cada forma nueva. Se conserva el
+ * nombre exportado porque `sanitizeComparativaAI` lo usa.
  */
-// Lookbehind/lookahead negativos sobre letras ASCII + acentos hispanos.
-// Más confiable que `\b` de JS, que NO reconoce vocales acentuadas como
-// word chars (entonces \b después de "mirá" no marca límite y la regex falla).
-const LETTER_LOOKBEHIND = "(?<![A-Za-zÀ-ÿ])";
-const LETTER_LOOKAHEAD = "(?![A-Za-zÀ-ÿ])";
-
-function voseoEntry(voseo: string, tuteo: string): Array<[RegExp, string]> {
-  const cap = voseo.charAt(0).toUpperCase() + voseo.slice(1);
-  const capTuteo = tuteo.charAt(0).toUpperCase() + tuteo.slice(1);
-  return [
-    [new RegExp(`${LETTER_LOOKBEHIND}${voseo}${LETTER_LOOKAHEAD}`, "g"), tuteo],
-    [new RegExp(`${LETTER_LOOKBEHIND}${cap}${LETTER_LOOKAHEAD}`, "g"), capTuteo],
-  ];
-}
-
-const VOSEO_TO_TUTEO: Array<[RegExp, string]> = [
-  // ─── Indicativo presente — verbos regulares ─────────────────────────────
-  ...voseoEntry("perdés", "pierdes"),
-  ...voseoEntry("empezás", "empiezas"),
-  ...voseoEntry("querés", "quieres"),
-  ...voseoEntry("insistís", "insistes"),
-  ...voseoEntry("operás", "operas"),
-  ...voseoEntry("buscás", "buscas"),
-  ...voseoEntry("tenés", "tienes"),
-  ...voseoEntry("venís", "vienes"),
-  ...voseoEntry("decís", "dices"),
-  ...voseoEntry("vivís", "vives"),
-  ...voseoEntry("sentís", "sientes"),
-  ...voseoEntry("pensás", "piensas"),
-  ...voseoEntry("mirás", "miras"),
-  ...voseoEntry("dejás", "dejas"),
-  ...voseoEntry("aportás", "aportas"),
-  ...voseoEntry("pagás", "pagas"),
-  ...voseoEntry("esperás", "esperas"),
-  ...voseoEntry("ganás", "ganas"),
-  ...voseoEntry("creés", "crees"),
-  ...voseoEntry("pasás", "pasas"),
-  ...voseoEntry("volvés", "vuelves"),
-  ...voseoEntry("hacés", "haces"),
-  ...voseoEntry("comprás", "compras"),
-  ...voseoEntry("vendés", "vendes"),
-  ...voseoEntry("preferís", "prefieres"),
-  ...voseoEntry("elegís", "eliges"),
-  ...voseoEntry("abrís", "abres"),
-  ...voseoEntry("entrás", "entras"),
-  ...voseoEntry("salís", "sales"),
-  ...voseoEntry("ponés", "pones"),
-  ...voseoEntry("recuperás", "recuperas"),
-  ...voseoEntry("sabés", "sabes"),
-  ...voseoEntry("agarrás", "agarras"),
-  ...voseoEntry("llevás", "llevas"),
-  ...voseoEntry("generás", "generas"),
-  ...voseoEntry("movés", "mueves"),
-  ...voseoEntry("cubrís", "cubres"),
-  ...voseoEntry("subís", "subes"),
-  ...voseoEntry("bajás", "bajas"),
-  ...voseoEntry("armás", "armas"),
-  ...voseoEntry("aceptás", "aceptas"),
-  ...voseoEntry("negociás", "negocias"),
-  ...voseoEntry("evaluás", "evalúas"),
-  ...voseoEntry("invertís", "inviertes"),
-  ...voseoEntry("arriendás", "arriendas"),
-  ...voseoEntry("completás", "completas"),
-
-  // ─── Imperativos voseo (terminan en vocal acentuada sin s) ──────────────
-  ...voseoEntry("mirá", "mira"),
-  ...voseoEntry("pensá", "piensa"),
-  ...voseoEntry("dejá", "deja"),
-  ...voseoEntry("vení", "ven"),
-  ...voseoEntry("decí", "di"),
-  ...voseoEntry("hacé", "haz"),
-  ...voseoEntry("esperá", "espera"),
-  ...voseoEntry("aportá", "aporta"),
-  ...voseoEntry("pedí", "pide"),
-  ...voseoEntry("andá", "anda"),
-  ...voseoEntry("buscá", "busca"),
-  ...voseoEntry("negociá", "negocia"),
-  ...voseoEntry("validá", "valida"),
-  ...voseoEntry("subí", "sube"),
-  ...voseoEntry("bajá", "baja"),
-];
-
-
 export function sanitizeVoseo(text: string): string {
-  let out = text;
-  for (const [pattern, replacement] of VOSEO_TO_TUTEO) {
-    out = out.replace(pattern, replacement);
-  }
-  return out;
+  return sanitizeVozChilenaTexto(text);
 }
+
+import { sanitizeVozChilenaTexto } from "./voz-chilena";
+
 
 import type { AIAnalysisComparativa } from "./types";
 
