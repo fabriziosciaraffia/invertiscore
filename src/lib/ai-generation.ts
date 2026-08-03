@@ -12,6 +12,11 @@ import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
 import { buildPrecioVsComuna } from "@/lib/precio-vs-comuna";
+import {
+  resolverArriendoReferencia,
+  resolverProcedenciaArriendo,
+  rotuloArriendoReferencia,
+} from "@/lib/arriendo-referencia";
 import { buildHallazgoSobreprecio } from "@/lib/sobreprecio-hallazgo";
 import { buildReestructuracionFinanciera } from "@/lib/financing-health";
 import { getCapRefComuna, buildHallazgoCapRate } from "@/lib/cap-rate-hallazgo";
@@ -254,6 +259,18 @@ OBLIGATORIO mencionarla en \`conviene.respuestaDirecta\` cuando:
 Forma: diagnóstico + implicancia.
 Ejemplo: "Santiago centro creció 0,8% anualizado en la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón."
 COLISIÓN CON OTRO MATIZ: si en la continuación ya entró otro matiz decisivo (ej. el arriendo), la plusvalía NO abre oración propia — entra como cláusula subordinada ("…en una comuna que además rindió 2,2% anual la última década"). No revientes el presupuesto por sumarla como párrafo aparte.
+
+## 8.bis Procedencia del arriendo — Franco no reprocha lo que Franco sugirió
+
+El caso declara de dónde salió el arriendo con el que está hecho todo el análisis (línea \`Procedencia del arriendo de este caso\`). Son dos situaciones y se tratan distinto.
+
+**Lo estimó Franco y el usuario lo aceptó.** El arriendo del caso ES la mediana de comparables: el mismo número, brecha 0. La incertidumbre acá es de la estimación, no del usuario, y se nombra como lo que es — un riesgo del mundo. La forma correcta es la advertencia: "la estimación sale de los arriendos publicados en el radio; lo que firmes puede quedar por debajo, y ahí tu aporte mensual sube". Misma temperatura que la card de Margen del Veredicto: advierte sobre el mundo, no acusa al usuario.
+
+Toda la crítica al deal sigue en pie, y entra por lo que es verdadero: cuánto del dividendo alcanza a cubrir ese arriendo, cuánto pones de tu bolsillo cada mes, el break-even, la TIR. Casi siempre es más duro que el reproche — y además es cierto.
+
+**Lo declaró el usuario.** Es un supuesto suyo y se audita como cualquier otro input: si viene sobre los comparables, el bloque \`anomalias\` lo trae con su impacto, y aplica §8 (diagnóstico + impacto + acción).
+
+Regla de cifras: el único porcentaje de brecha entre el arriendo del caso y los comparables que puedes nombrar es el que venga escrito en el bloque \`anomalias\`. Si no viene, no hay brecha que nombrar. Y cuando el caso dice que no hay comparables de arriendo, el arriendo se lee solo por lo que produce en el flujo.
 
 ## 8.1 CapEx de puesta a punto (usados) — cuándo y dónde narrarlo
 
@@ -582,7 +599,7 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 
 Largos por campo:
 - conviene.respuestaDirecta: escribís SOLO la CONTINUACIÓN. El motor antepone DOS cosas por su cuenta: la RESPUESTA al veredicto ("Conviene." / "Todavía no: tienes que ajustar los supuestos." / "No conviene.") y después la PRIMERA ORACIÓN FIJA que narra el #1. NO escribas ninguna de las dos ni las repitas — tampoco abras tu continuación afirmando o negando la conveniencia, porque quedaría dicho dos veces. Tu continuación:
-  (1) UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona al #1, y SOLO si cambia la decisión: el supuesto que sostiene el caso (arriendo declarado vs mediana), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Termina en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
+  (1) UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona al #1, y SOLO si cambia la decisión: el supuesto de arriendo que sostiene el caso (con el encuadre que fija §8.bis según su procedencia), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Termina en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
   (2) PRESUPUESTO: tu continuación tiene un máximo PROPIO de ${CONTINUACION_MAX} palabras, y no depende de cuánto ocupe lo que el motor antepone — el techo total escala con eso. Escribí para ese presupuesto, no para el total. Un guard lo mide, puede pedirte recortar y, si insistís, RECORTA ÉL por oración: la última idea que no quepa se pierde entera, así que poné lo que importa primero.
   PROHIBIDO: repetir la apertura fija; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones de magnitud fuera de §15 (con el % o múltiplo provisto, o los dos montos absolutos, nunca como aproximación verbal); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
 - conviene.cajaAccionable: 1-2 frases — la POSICIÓN PERSONAL de Franco que cierra el análisis (§9): síntesis + condición bajo la que se sostiene + costo de avanzar contra el análisis si aplica. Cierra con un próximo paso concreto. NO checklist genérica, NO pregunta retórica sin respuesta.
@@ -790,8 +807,6 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
 
     // Zone market data
     let precioM2Zona = m.precioM2;
-    let arriendoZona = input.arriendo;
-    let yieldZona = m.rentabilidadBruta;
     let precioM2ZonaConfiable = false; // true cuando hay dato real de zona (no fallback al m² del depto)
 
     // 1º (prioritario): mediana de precio/m² de venta desde scraped_properties
@@ -814,19 +829,23 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         precioM2ZonaConfiable = true;
       }
     }
-    // 3º (último recurso): getMarketDataForComuna (market/seed). SIEMPRE alimenta
-    // arriendoZona y yieldZona (como hoy); su precio/m² SOLO pisa precioM2Zona si
-    // aún no hay dato confiable de scraped_properties / zone_insight.
+    // 3º (último recurso): getMarketDataForComuna (market/seed). Su precio/m² SOLO
+    // pisa precioM2Zona si aún no hay dato confiable de scraped_properties /
+    // zone_insight.
+    //
+    // Ya NO alimenta el arriendo ni el yield de zona. Lo hacía SIEMPRE, y como la
+    // tabla `market_data` no existe en la base, ese "siempre" era siempre el seed
+    // hardcodeado — una referencia sin superficie ni frescura que quedaba 44% bajo
+    // el arriendo que el propio wizard sugiere (hasta 171% en 3D+) y que terminaba
+    // desmintiendo en el informe una cifra que Franco había propuesto. La
+    // referencia de arriendo vive ahora en arriendo-referencia.ts, con fuente única
+    // y sin fallback al seed.
     try {
       const { getMarketDataForComuna } = await import("@/lib/market-data");
       const market = await getMarketDataForComuna(input.comuna, input.dormitorios);
-      if (market) {
-        arriendoZona = market.arriendo_promedio;
-        yieldZona = Math.round((arriendoZona * 12 / (market.precio_m2_venta_promedio * input.superficie * UF_CLP)) * 1000) / 10;
-        if (!precioM2ZonaConfiable) {
-          precioM2Zona = market.precio_m2_venta_promedio;
-          precioM2ZonaConfiable = true;
-        }
+      if (market && !precioM2ZonaConfiable) {
+        precioM2Zona = market.precio_m2_venta_promedio;
+        precioM2ZonaConfiable = true;
       }
     } catch {
       // use defaults
@@ -840,7 +859,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // (no sobreprecio), congelado al crear y NO re-resuelto. Esto alinea hero chip,
     // prosa IA y hallazgo viejo con el motor sync (mismo número → mata la
     // divergencia). Se aplica acá (justo antes del consumidor) para no tocar la
-    // cadena, que además resuelve arriendoZona/yieldZona (fuera de este scope).
+    // cadena de precio/m² (el arriendo de zona ya no sale de ahí).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const medianaSnapshot = (analysis as any).mediana_comuna_snapshot as
       { mediana: number | null; n: number } | null | undefined;
@@ -958,14 +977,25 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     const anomalias: string[] = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const zonaRadio = (input as any).zonaRadio as { precioM2VentaCLP?: number; arriendoPromedio?: number } | undefined;
-    const arriendoRef = zonaRadio?.arriendoPromedio || arriendoZona;
-    if (arriendoRef > 0 && input.arriendo > 0) {
+    // Referencia de arriendo: fuente única (arriendo-referencia.ts), SIN fallback
+    // al seed. Antes esta puerta hacía `zonaRadio?.arriendoPromedio || arriendoZona`
+    // — priorizaba bien, pero cuando no había dato scraped caía al seed y emitía
+    // "ARRIENDO ALTO: ingresaste X pero el mercado paga Y" contra una constante
+    // hardcodeada. Sin dato scraped no hay anomalía de arriendo: la ausencia de
+    // referencia no es evidencia de desvío (mismo criterio que CATCH-ROOT-A abajo).
+    const arriendoReferencia = resolverArriendoReferencia(input);
+    const procedenciaArriendo = resolverProcedenciaArriendo(input.arriendo, arriendoReferencia);
+    // Con procedencia "estimacion_franco" la brecha es 0 por construcción (el
+    // arriendo ES la mediana), así que ningún umbral dispara: el guard queda
+    // implícito, no hay que excluirla a mano.
+    if (arriendoReferencia && input.arriendo > 0) {
+      const arriendoRef = arriendoReferencia.valorCLP;
       const diffArriendo = ((input.arriendo - arriendoRef) / arriendoRef) * 100;
       if (diffArriendo > 30) {
         const flujoConArriendoReal = m.flujoNetoMensual - (input.arriendo - arriendoRef);
-        anomalias.push(`ARRIENDO ALTO: El usuario ingresó ${fmtCLP(input.arriendo)} pero el mercado paga ${fmtCLP(arriendoRef)} (${Math.round(diffArriendo)}% sobre mercado). Considera ajustar a la baja tu proyección de arriendo o verifica con propiedades similares publicadas en la zona — si no logras ese precio, tu flujo real sería ${fmtCLP(flujoConArriendoReal)}, no ${fmtCLP(m.flujoNetoMensual)}.`);
+        anomalias.push(`ARRIENDO ALTO: El usuario ingresó ${fmtCLP(input.arriendo)} pero la ${rotuloArriendoReferencia(arriendoReferencia)} es ${fmtCLP(arriendoRef)} (${Math.round(diffArriendo)}% sobre esos comparables). Considera ajustar a la baja tu proyección de arriendo o verifica con propiedades similares publicadas en la zona — si no logras ese precio, tu flujo real sería ${fmtCLP(flujoConArriendoReal)}, no ${fmtCLP(m.flujoNetoMensual)}.`);
       } else if (diffArriendo < -30) {
-        anomalias.push(`ARRIENDO BAJO: El usuario ingresó arriendo de ${fmtCLP(input.arriendo)} pero el mercado indica ${fmtCLP(arriendoRef)} (${Math.round(Math.abs(diffArriendo))}% bajo mercado). Podría estar subestimando o es una zona particular. Sugiere verificar.`);
+        anomalias.push(`ARRIENDO BAJO: El usuario ingresó arriendo de ${fmtCLP(input.arriendo)} pero la ${rotuloArriendoReferencia(arriendoReferencia)} es ${fmtCLP(arriendoRef)} (${Math.round(Math.abs(diffArriendo))}% bajo esos comparables). Podría estar subestimando o es una zona particular. Sugiere verificar.`);
       }
     }
     const precioM2Usuario = pvc.sujetoUfM2;
@@ -1442,6 +1472,39 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
     const maxContinuacion = CONTINUACION_MAX;
     const techoTotal = aperturaWC + respuestaWC + maxContinuacion;
 
+    // ── Referencia de arriendo: las tres piezas que el prompt consume ─────────
+    // Todas cuelgan de la MISMA resolución (arriendo-referencia.ts) para que no
+    // se puedan desincronizar: la línea de datos, el yield derivado de ella y el
+    // matiz del bloque "distancia al veredicto". Antes cada una tenía su propio
+    // criterio y la del prompt no tenía ninguno.
+    //
+    // El yield de zona se recalcula acá (ya no viene del seed): arriendo real de
+    // comparables sobre el valor de la propiedad a la mediana comunal. Necesita
+    // las dos puntas confiables — sin eso no se emite, porque un yield armado con
+    // media zona real y media zona inventada es peor que ningún yield.
+    const yieldZonaPct = arriendoReferencia && precioM2ZonaConfiable && input.superficie > 0 && precioM2Zona > 0
+      ? Math.round((arriendoReferencia.valorCLP * 12 / (precioM2Zona * input.superficie * UF_CLP)) * 1000) / 10
+      : null;
+
+    const procedenciaLinea = procedenciaArriendo === "estimacion_franco"
+      ? "lo estimó Franco (esa misma mediana de comparables) y el usuario la aceptó tal cual — el arriendo del caso y la referencia son EL MISMO NÚMERO, la brecha entre ambos es 0 por construcción. Aplica §8.bis del system."
+      : "lo declaró el usuario, distinto de lo que Franco estimó para la zona. Aplica §8.bis del system.";
+
+    const arriendoReferenciaBloque = arriendoReferencia
+      ? `- Arriendo de comparables de la zona (${rotuloArriendoReferencia(arriendoReferencia)}): ${fmtCLP(arriendoReferencia.valorCLP)}/mes — nómbralo por lo que es (comparables publicados en ese radio); NO lo llames "referencia de zona" ni "lo que paga el mercado" a secas
+- Procedencia del arriendo de este caso: ${procedenciaLinea}${yieldZonaPct !== null ? `\n- Yield bruto de esos comparables: ${pct(yieldZonaPct)}%` : ""}`
+      : `- Arriendo de comparables de la zona: sin dato — no hay comparables de arriendo publicados para esta zona, así que el arriendo del caso es el único que existe en este análisis. Su lectura entra por lo que produce: el flujo mensual, el break-even de precio y el margen del veredicto, todos ya calculados arriba. Si adviertes sobre la sensibilidad al arriendo, la cifra sale de esos datos dados — el escenario de caída se expresa con el margen del veredicto que ya viene en los hallazgos, nunca con un porcentaje de caída elegido por ti ni con un arriendo de mercado que este caso no tiene.`;
+
+    // Matiz del bloque "distancia al veredicto": qué se puede advertir sobre la
+    // palanca del arriendo, según de dónde salió ese arriendo. Con procedencia
+    // "estimacion_franco" la advertencia sigue viva (es información valiosa) pero
+    // apunta a la estimación, no al usuario — Franco no reprocha lo que sugirió.
+    const matizPalancaArriendo = !arriendoReferencia
+      ? "EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: nombra la distancia Y advierte que esa palanca se apoya en un supuesto de arriendo que no está contrastado con comparables — hay que verificarlo antes de contar con él."
+      : procedenciaArriendo === "estimacion_franco"
+        ? `EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: el arriendo de la palanca es la estimación de Franco, así que la advertencia va sobre la estimación y sobre el mundo, no sobre el usuario — la mediana sale de ${arriendoReferencia.n > 0 ? `${arriendoReferencia.n} avisos publicados` : "los avisos publicados"} y lo que se firma puede quedar por debajo. Nombra la distancia Y advierte que el arriendo efectivo es lo que hay que confirmar con el arrendatario real.`
+        : "EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: si el arriendo declarado ya viene alto contra los comparables publicados, decirlo es MÁS honesto que celebrar que faltan pocos puntos — nombra la distancia Y advierte que esa palanca se apoya en un supuesto que hay que verificar.";
+
     const hallazgosBloque = hallazgosOrdenados.length > 0
       ? `
 HALLAZGOS DEL ANÁLISIS (vienen en el ORDEN DEL INFORME: el 1º es el que abre la lectura — el adverso más determinante cuando lo hay, o el de más peso — y el resto va por cuánto pesa en la decisión). Narralos en pirámide con TU voz. NO copies la frase literal, NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostené la tensión con honestidad — no la aplanes.
@@ -1462,7 +1525,7 @@ TAMBIÉN en \`conviene.respuestaDirecta\`, si el hallazgo NO es estructural: cie
 
 REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí (el pie y la tasa NO son palancas de este análisis), NUNCA inventes un valor intermedio.
 
-EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: si el arriendo declarado ya viene alto contra la referencia de zona, decirlo es MÁS honesto que celebrar que faltan pocos puntos — nombra la distancia Y advierte que esa palanca se apoya en un supuesto que hay que verificar.
+${matizPalancaArriendo}
 
 SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues" o cualquier ajuste como salida. La honestidad acá es cerrar la puerta, no dejarla entornada: la brecha es del deal. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe.
 ` : ""}
@@ -1561,8 +1624,7 @@ COMPARACIÓN DE PRECIO POR M² (fuente única — NO recalcules ni estimes de me
 - Mediana de la comuna: ${hallazgoSobreprecio ? fmtUF(hallazgoSobreprecio.valor.medianaComunaUfM2) : "sin dato confiable de la comuna"}
 - Desviación vs mediana: ${hallazgoSobreprecio ? (hallazgoSobreprecio.valor.desviacionPct >= 0 ? "+" : "") + hallazgoSobreprecio.valor.desviacionPct + "% (USA ESTE NÚMERO EXACTO — la mediana y el % salen del hallazgo, no los recalcules)" : "sin dato — no afirmes nada sobre precio vs comuna (ver REGLA 0)"}
 - Lectura canónica del hallazgo (narra ESTA idea con tus palabras; NO inventes otra mediana ni otro %): ${hallazgoSobreprecio ? `"${hallazgoSobreprecio.fraseCanonica}"` : "—"}
-- Arriendo de referencia de la zona: ${fmtCLP(arriendoZona)}
-- Yield de la zona: ${pct(yieldZona)}%
+${arriendoReferenciaBloque}
 
 UBICACIÓN Y PLUSVALÍA
 ${metroInfo}
