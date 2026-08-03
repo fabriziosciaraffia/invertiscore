@@ -24,7 +24,16 @@
 
 export type Anomalia = {
   /** Campo al que el usuario tiene que volver. */
-  campo: "precio" | "superficie" | "arriendo" | "tasa" | "pie" | "ocupacion" | "tarifaNoche";
+  campo:
+    | "precio"
+    | "superficie"
+    | "arriendo"
+    | "tasa"
+    | "pie"
+    | "ocupacion"
+    | "tarifaNoche"
+    | "vacancia"
+    | "comisionAdmin";
   /** Id estable para contar en logs/analytics. No cambiar sin migrar los conteos. */
   regla: Regla;
   /** El valor DERIVADO que falla (UF/m², yield), no siempre el tipeado. */
@@ -69,7 +78,9 @@ export type Regla =
   | "pie_fuera_rango"
   | "str_ocupacion_fuera_rango"
   | "str_tarifa_fuera_rango"
-  | "str_yield_imposible";
+  | "str_yield_imposible"
+  | "vacancia_fuera_rango"
+  | "comision_admin_fuera_rango";
 
 export interface PlausibilidadInput {
   /** Precio de compra en UF. */
@@ -85,6 +96,17 @@ export interface PlausibilidadInput {
   piePct?: number;
   /** Arriendo largo mensual en CLP. Solo se evalúa si es > 0. */
   arriendoMensualCLP?: number;
+  /**
+   * Vacancia en PORCENTAJE del año (0-100), no en meses. El body LTR la manda
+   * como `vacanciaMeses`; el adaptador la devuelve a porcentaje, que es la
+   * unidad en la que el usuario la tipea y la ve.
+   */
+  vacanciaPct?: number;
+  /**
+   * Comisión de administración en PORCENTAJE del arriendo (0-100), no fracción.
+   * LTR la manda ya en porcentaje y STR en fracción — los adaptadores unifican.
+   */
+  comisionAdminPct?: number;
   /**
    * Rama STR. Solo con valores CORREGIDOS por el usuario: cuando el wizard usa
    * la estimación de AirROI los overrides van en null y no hay input humano que
@@ -113,6 +135,15 @@ export const RANGO_TASA_PCT: [number, number] = [0.5, 20];
 export const RANGO_PIE_PCT: [number, number] = [0, 100];
 export const RANGO_STR_OCUPACION_PCT: [number, number] = [0, 100];
 export const RANGO_STR_YIELD_BRUTO: [number, number] = [0.005, 0.4];
+// El techo 25 no es una elección nueva: es el tope que ya tienen los sliders de
+// vacancia de los wizards v1 y v3 (`max={25}`), o sea 3 meses al año vacío. Lo
+// que caza es el tipeo del resumen v4, donde el campo es texto libre y el
+// sanitizer borra la coma ("7,5" → "75").
+export const RANGO_VACANCIA_PCT: [number, number] = [0, 25];
+// Mismo criterio: los sliders LTR llegan hasta 15% y el de la renta corta hasta
+// 30%. El techo se pone en el más alto de los dos para no rechazar un STR
+// legítimo con administrador caro.
+export const RANGO_COMISION_ADMIN_PCT: [number, number] = [0, 30];
 
 // ── Reglas SIN techo (decisión de la revisión de redundancia) ────────────────
 //
@@ -151,6 +182,8 @@ const PRIORIDAD_REGLA: readonly Regla[] = [
   "str_ocupacion_fuera_rango",
   "tasa_fuera_rango",
   "pie_fuera_rango",
+  "vacancia_fuera_rango",
+  "comision_admin_fuera_rango",
 ];
 
 /**
@@ -179,12 +212,20 @@ export const META_REGLA: Record<Regla, { deriva: boolean; unidad: string }> = {
   pie_fuera_rango: { deriva: false, unidad: "del precio" },
   str_ocupacion_fuera_rango: { deriva: false, unidad: "de ocupación" },
   str_tarifa_fuera_rango: { deriva: false, unidad: "por noche" },
+  vacancia_fuera_rango: { deriva: false, unidad: "del año" },
+  comision_admin_fuera_rango: { deriva: false, unidad: "del arriendo" },
 };
 
 /** Reglas cuyo `valor` es una fracción y se muestra como porcentaje. */
 const REGLAS_PCT = new Set<Regla>(["yield_imposible", "str_yield_imposible"]);
 /** Reglas cuyo `valor` YA es un porcentaje (no una fracción) y lleva "%" pegado. */
-const REGLAS_PCT_DIRECTO = new Set<Regla>(["tasa_fuera_rango", "str_ocupacion_fuera_rango", "pie_fuera_rango"]);
+const REGLAS_PCT_DIRECTO = new Set<Regla>([
+  "tasa_fuera_rango",
+  "str_ocupacion_fuera_rango",
+  "pie_fuera_rango",
+  "vacancia_fuera_rango",
+  "comision_admin_fuera_rango",
+]);
 /** Reglas cuyo `valor` es un monto en pesos. */
 const REGLAS_CLP = new Set<Regla>(["arriendo_fuera_rango", "str_tarifa_fuera_rango"]);
 
@@ -300,6 +341,13 @@ function clp(valor: number, dir: Direccion, limite: number): string {
 }
 function uf(valor: number, dir: Direccion, limite: number): string {
   return `UF ${num(valor, dir, limite)}`;
+}
+/**
+ * Meses derivados sin límite propio (la traducción de la vacancia). Un entero se
+ * muestra entero — mismo criterio que `fueraDeRango`: "9 meses", no "9,0 meses".
+ */
+function meses(n: number): string {
+  return fmt(n, Number.isInteger(n) ? 0 : 1);
 }
 /** Monto derivado sin límite propio (el CLP equivalente del precio). */
 function clpLlano(n: number): string {
@@ -469,6 +517,52 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
     }
   }
 
+  // ── Vacancia ──
+  // `finito` a secas, sin `> 0`: la vacancia 0 es una declaración legítima (el
+  // usuario que asume arriendo continuo), igual que el pie 0. Lo que se caza es
+  // el rango imposible. El caso real que lo motiva es el resumen del wizard v4,
+  // donde el campo es texto libre y su sanitizer borra la coma: "7,5" entra como
+  // "75", pasa al motor y cobra el crédito.
+  const vacancia = input.vacanciaPct;
+  if (finito(vacancia)) {
+    const [min, max] = RANGO_VACANCIA_PCT;
+    if (vacancia < min || vacancia > max) {
+      out.push({
+        campo: "vacancia",
+        regla: "vacancia_fuera_rango",
+        valor: vacancia,
+        rango: RANGO_VACANCIA_PCT,
+        // El umbral no se nombra (regla de copy). Lo que se nombra es la
+        // traducción a meses, que es el dato que le hace ver el error: un 75%
+        // son nueve meses al año con el depto vacío.
+        mensaje:
+          vacancia > max
+            ? `Una vacancia de ${num(vacancia, "alto", max)}% son ${meses((vacancia * 12) / 100)} meses al año con el depto vacío. Revisa el porcentaje.`
+            : `La vacancia no puede ser negativa. Revisa el porcentaje.`,
+      });
+    }
+  }
+
+  // ── Comisión de administración ──
+  // LTR manda `undefined` cuando es 0 (autogestión), así que ese caso llega como
+  // NaN y no dispara. STR manda siempre un valor. Cero es legítimo en ambos.
+  const comision = input.comisionAdminPct;
+  if (finito(comision)) {
+    const [min, max] = RANGO_COMISION_ADMIN_PCT;
+    if (comision < min || comision > max) {
+      out.push({
+        campo: "comisionAdmin",
+        regla: "comision_admin_fuera_rango",
+        valor: comision,
+        rango: RANGO_COMISION_ADMIN_PCT,
+        mensaje:
+          comision > max
+            ? `Una comisión de administración de ${num(comision, "alto", max)}% del arriendo no existe en el mercado chileno. Revisa el porcentaje.`
+            : `La comisión de administración no puede ser negativa. Revisa el porcentaje.`,
+      });
+    }
+  }
+
   // ── STR (solo valores corregidos por el usuario) ──
   const tarifa = input.str?.tarifaNocheCLP;
   const ocupacion = input.str?.ocupacionPct;
@@ -558,9 +652,17 @@ export function desdeBodyLtr(
     arriendo?: unknown;
     tasaInteres?: unknown;
     piePct?: unknown;
+    vacanciaMeses?: unknown;
+    comisionAdministrador?: unknown;
   },
   ufCLP: number,
 ): PlausibilidadInput {
+  // El body LTR manda la vacancia en MESES/año (los tres wizards convierten
+  // `pct * 12 / 100` antes de postear). El módulo evalúa PORCENTAJE, que es la
+  // unidad que el usuario tipea, así que se deshace la conversión. NaN se
+  // propaga solo por la aritmética y mantiene el fail-open.
+  const vacanciaMeses = numOrNaN(body?.vacanciaMeses);
+
   return {
     precioUF: numOrNaN(body?.precio),
     superficieM2: numOrNaN(body?.superficie),
@@ -568,6 +670,9 @@ export function desdeBodyLtr(
     tasaAnualPct: numOrNaN(body?.tasaInteres),
     arriendoMensualCLP: numOrNaN(body?.arriendo),
     piePct: numOrNaN(body?.piePct),
+    vacanciaPct: (vacanciaMeses * 100) / 12,
+    // LTR ya viaja en porcentaje (0-100) y llega `undefined` cuando es 0.
+    comisionAdminPct: numOrNaN(body?.comisionAdministrador),
   };
 }
 
@@ -582,6 +687,7 @@ export function desdeBodyStr(
     adrOverride?: unknown;
     occOverride?: unknown;
     piePct?: unknown;
+    comisionAdministrador?: unknown;
   },
   ufCLP: number,
 ): PlausibilidadInput {
@@ -609,6 +715,11 @@ export function desdeBodyStr(
     tasaAnualPct: numOrNaN(body?.tasaInteres),
     arriendoMensualCLP: numOrNaN(body?.arriendoLargoMensual),
     piePct: numOrNaN(body?.piePct),
+    // El body STR manda la comisión como FRACCIÓN (0.20 = 20%; así lo declara
+    // `ShortTermInput` en short-term-engine.ts y así la dividen los tres
+    // emisores). Se pasa a porcentaje, mismo criterio que `occOverride`.
+    // Sin vacancia: la renta corta no tiene ese campo → fail-open.
+    comisionAdminPct: numOrNaN(body?.comisionAdministrador) * 100,
     str: {
       tarifaNocheCLP: Number.isNaN(adr) ? null : adr,
       ocupacionPct: Number.isNaN(occ) ? null : occ * 100,

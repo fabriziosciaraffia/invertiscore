@@ -105,23 +105,28 @@ const ORIGENES_POR_REGLA: Record<Regla, string[]> = {
   pie_fuera_rango: ["pie"],
   str_ocupacion_fuera_rango: ["ocupacion"],
   str_tarifa_fuera_rango: ["tarifa"],
+  vacancia_fuera_rango: ["vacancia"],
+  comision_admin_fuera_rango: ["comisionAdmin"],
 };
 
 /** `campo` de la anomalía principal → clave de origen (la sospecha marcada). */
 const CAMPO_A_ORIGEN: Record<Anomalia["campo"], string> = {
   precio: "precio", superficie: "superficie", arriendo: "arriendo",
   tasa: "tasa", pie: "pie", ocupacion: "ocupacion", tarifaNoche: "tarifa",
+  vacancia: "vacancia", comisionAdmin: "comisionAdmin",
 };
 
 /** Origen → campo del resumen (para reusar el ring de onAlfiloTap y FIELD_CARD). */
 const ORIGEN_A_FIELD: Record<string, string> = {
   precio: "precio", superficie: "tam", arriendo: "arr", tasa: "tasa",
   pie: "pie", tarifa: "adr", ocupacion: "adr",
+  vacancia: "vacanciaPct", comisionAdmin: "comisionAdminPct",
 };
 
 const LABEL_ORIGEN: Record<string, string> = {
   precio: "Precio", superficie: "Superficie", arriendo: "Arriendo",
   tasa: "Tasa", pie: "Pie", tarifa: "Tarifa", ocupacion: "Ocupación",
+  vacancia: "Vacancia", comisionAdmin: "Comisión administración",
 };
 
 // ── Envoltorio de campo (label + valor/editor + tag + fuente) ────────────────
@@ -602,6 +607,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     tasa: a.tasaInteres ? `${a.tasaInteres}%` : "—",
     tarifa: tarifaVal > 0 ? fmtCLP(tarifaVal) : "—",
     ocupacion: occVal > 0 ? `${occVal}%` : "—",
+    vacancia: `${a.vacanciaPct ?? "5"}%`,
+    comisionAdmin: `${a.comisionAdminPct ?? "0"}%`,
   };
   // Unión de los orígenes de TODAS las anomalías, sin repetir y en orden de
   // prioridad (el server ya ordenó las anomalías).
