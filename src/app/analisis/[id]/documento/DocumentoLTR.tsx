@@ -470,7 +470,7 @@ export function DocumentoLTR({
           <div className="wrow total"><span className="wl">Recibes en la mano</span><span className="wv">{money(exit.equityCLP)}</span></div>
           {sinPie ? (
             /* Pie cero (D3 al documento): monto aportado en pesos, sin ×N. */
-            <div className="wrow"><span className="wl sub">Aportado en el camino (flujo + cierre)</span><span className="wv">{money(exit.totalAportado)}</span></div>
+            <div className="wrow"><span className="wl sub">Plata tuya comprometida en total</span><span className="wv">{money(exit.totalAportado)}</span></div>
           ) : (
             <div className="wrow"><span className="wl sub">Sobre lo aportado ({money(exit.totalAportado)})</span><span className="wv">{metricaDisplay(exit.multiplicadorCapital, dec)}×</span></div>
           )}

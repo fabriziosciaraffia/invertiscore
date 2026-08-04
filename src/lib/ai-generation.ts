@@ -987,10 +987,38 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       : "";
 
     const precioConDescuento10 = Math.round(input.precio * 0.9);
-    const projections = results.projections as { flujoAcumulado: number }[] | undefined;
-    const flujoNegAcum10 = projections && projections.length >= 10 && projections[9].flujoAcumulado < 0
-      ? Math.round(Math.abs(projections[9].flujoAcumulado))
-      : m.flujoNetoMensual < 0 ? Math.round(Math.abs(m.flujoNetoMensual) * 12 * 10) : 0;
+    const projections = results.projections as { flujoAcumulado: number; flujoAnual: number }[] | undefined;
+
+    // ── APORTE: fuente única `exitScenario.totalAportado` ──────────────────────
+    //
+    // Este bloque narraba el aporte con |projections[9].flujoAcumulado|, que
+    // difiere del motor en DOS ejes: excluye la inversión inicial y NETEA los
+    // años buenos contra los malos. La card de patrimonio, el chart, el PDF y el
+    // multiplicador usan `totalAportado` = inversionInicial + Σ|flujoAnual<0|.
+    // Medido sobre 587 LTR: divergían en el 100%, mediana $37,1M, y en 88 casos
+    // de flujo positivo el prompt decía "pusiste $0" habiendo puesto el pie
+    // completo. El neteo es además la regla que 2183141 ya declaró perdedora
+    // ("manda la regla del drawer, sin netear") al cerrar la misma divergencia
+    // entre chart y drawer — el fix no había llegado hasta acá.
+    //
+    // Se narran las DOS cifras porque distinguir el desembolso del día 1 del
+    // esfuerzo mensual es información legítima; lo que faltaba era el total y el
+    // rótulo que impide confundir la parte con el todo.
+    const sumaAportesNegativos = (hasta: number) =>
+      projections
+        ? Math.round(projections.slice(0, hasta).filter((p) => p.flujoAnual < 0).reduce((s, p) => s + Math.abs(p.flujoAnual), 0))
+        : m.flujoNetoMensual < 0 ? Math.round(Math.abs(m.flujoNetoMensual) * 12 * hasta) : 0;
+
+    /** Aportes MENSUALES acumulados a 10 años (sin netear) — parte del total. */
+    const aporteMensual10 = sumaAportesNegativos(10);
+    /** Aportes MENSUALES acumulados a 5 años — parte del total a 5 años. */
+    const aporteMensual5 = sumaAportesNegativos(5);
+    /** TOTAL de plata propia comprometida a 10 años. Del exit cuando está (la
+     *  misma cifra que la card); si el exit no lo trae (legacy), se reconstruye
+     *  con la misma fórmula. */
+    const aporteTotal10 = typeof exit.totalAportado === "number" && exit.totalAportado > 0
+      ? exit.totalAportado
+      : inversionTotal + aporteMensual10;
     const datoDP = Math.round(inversionTotal * Math.pow(1.05, 10));
     const datoFM = Math.round(inversionTotal * Math.pow(1.07, 10));
     const valorProp5 = Math.round(m.precioCLP * Math.pow(1 + PLUSVALIA_PROYECCION_ANUAL, 5));
@@ -1001,10 +1029,6 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     const dividendoSiTasaSube2 = creditoCLP > 0
       ? Math.round((creditoCLP * ((input.tasaInteres + 2) / 100 / 12)) / (1 - Math.pow(1 + (input.tasaInteres + 2) / 100 / 12, -(input.plazoCredito * 12))))
       : 0;
-
-    const flujoNegAcum5 = projections && projections.length >= 5 && projections[4].flujoAcumulado < 0
-      ? Math.round(Math.abs(projections[4].flujoAcumulado))
-      : Math.round(Math.abs(m.flujoNetoMensual) * 60);
 
     // --- Anomalías ---
     const anomalias: string[] = [];
@@ -1639,9 +1663,11 @@ ${sinCapitalPropio
 - Plazo del crédito: ${input.plazoCredito} años (NO confundir con mesesDeFlujoNegativo)
 
 PROYECCIÓN Y ALTERNATIVAS
-- Aporte de tu bolsillo acumulado a 5 años: ${fmtCLP(flujoNegAcum5)}
-- Aporte de tu bolsillo acumulado a 10 años: ${fmtCLP(flujoNegAcum10)}
-- lecturaPatrimonio (narra esta idea con tus palabras): en 10 años pones ${fmtUF(flujoNegAcum10/UF_CLP)} de tu bolsillo; si vendes, tu parte al liquidar (valor de venta − deuda − comisión) es ${fmtUF(exitEquityCLP/UF_CLP)}: un monto único, lo que es tuyo del activo a la venta. Preséntala así, como tu parte — no como "ganancia neta"
+- PLATA TUYA COMPROMETIDA en 10 años (TOTAL — esta es la cifra a usar cuando digas "lo que pones de tu bolsillo" o "lo que aportas"): ${fmtCLP(aporteTotal10)} (${fmtUF(aporteTotal10/UF_CLP)})
+- Ese total se compone de: ${fmtCLP(inversionTotal)} que desembolsas el día 1 (inversión inicial) + ${fmtCLP(aporteMensual10)} de aportes mensuales sumados a lo largo de los 10 años${aporteMensual10 === 0 ? " (el arriendo cubre la cuota, así que después del día 1 no pones más)" : ""}
+- Aportes mensuales acumulados a 5 años: ${fmtCLP(aporteMensual5)} (parte del total, NO el total)
+- lecturaAporte (narra ESTA idea con tus palabras): comprometes ${fmtUF(aporteTotal10/UF_CLP)} de plata propia en 10 años — ${fmtUF(inversionTotal/UF_CLP)} al firmar y ${fmtUF(aporteMensual10/UF_CLP)} repartidos mes a mes. Cuando compares con otros instrumentos o midas el esfuerzo total, usa esa cifra completa
+- lecturaPatrimonio (narra esta idea con tus palabras): en 10 años pones ${fmtUF(aporteTotal10/UF_CLP)} de tu bolsillo; si vendes, tu parte al liquidar (valor de venta − deuda − comisión) es ${fmtUF(exitEquityCLP/UF_CLP)}: un monto único, lo que es tuyo del activo a la venta. Preséntala así, como tu parte — no como "ganancia neta"
 - Valor proyectado de la propiedad a 5 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp5)}
 - Valor proyectado de la propiedad a 10 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp10)}
 - lecturaPlusvalia (narrá esta idea con tus palabras): de ${fmtUF(m.precioCLP/UF_CLP)} hoy a ${fmtUF(valorProp10/UF_CLP)} en 10 años — +${Math.round((valorProp10/m.precioCLP - 1)*100)}% acumulado por la proyección base de ${PROY_PCT} anual (a 5 años, ${fmtUF(valorProp5/UF_CLP)}, +${Math.round((valorProp5/m.precioCLP - 1)*100)}%)

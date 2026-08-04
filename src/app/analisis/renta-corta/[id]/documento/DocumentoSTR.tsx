@@ -536,7 +536,7 @@ export function DocumentoSTR({
               <div className="wrow"><span className="wl sub">Flujo operativo acumulado (aparte)</span><span className={`wv ${exit.flujoAcumuladoAlVender < 0 ? "neg" : ""}`}>{money(exit.flujoAcumuladoAlVender)}</span></div>
               {sinPie || esMetricaNoAplica(exit.multiplicadorCapital) ? (
                 /* Pie cero (D3 al documento): monto aportado en pesos, sin ×N. */
-                <div className="wrow"><span className="wl sub">Aportado en el camino (flujo + cierre)</span><span className="wv">{money(exit.totalAportado)}</span></div>
+                <div className="wrow"><span className="wl sub">Plata tuya comprometida en total</span><span className="wv">{money(exit.totalAportado)}</span></div>
               ) : (
                 <div className="wrow"><span className="wl sub">Sobre lo aportado ({money(exit.totalAportado)})</span><span className="wv">{(() => { const v = metricaValorONull(exit.multiplicadorCapital); return v === null ? "—" : dec(v); })()}×</span></div>
               )}
