@@ -19,10 +19,24 @@ export interface NearbyPropertyPoint {
 }
 
 export interface Sugerencias {
-  arriendo: number;
+  /**
+   * null = Franco no tiene con qué estimar. NO es 0 ni un valor por defecto: el
+   * consumidor debe mostrar el campo vacío y pedirle el número al usuario.
+   * Hasta el 2026-08-04 esto nunca era null porque había dos niveles de relleno
+   * (market_stats congelada + un seed hardcodeado de 17 comunas); ambos se
+   * retiraron. Ver `source`.
+   */
+  arriendo: number | null;
   ggcc: number | null;
-  contribTrim: number;
-  source: "radio" | "comuna" | "estimacion";
+  contribTrim: number | null;
+  /**
+   * De dónde salió el número, para que el consumidor pueda decirlo sin mentir:
+   * - "radio"    → mediana de comparables publicados dentro de `radiusUsed` metros.
+   * - "comuna"   → mediana comunal de VENTA (scraped_properties, helper canónico).
+   *                Solo aplica a propType="venta"; el arriendo nunca usa este nivel.
+   * - "sin-dato" → no hubo comparables. `arriendo` viene en null.
+   */
+  source: "radio" | "comuna" | "sin-dato";
   sampleSize: number;
   radiusMeters?: number;
   /** Radio final usado por el loop adaptativo (solo source="radio"). Alias explícito de radiusMeters. */
@@ -93,15 +107,36 @@ export async function getSugerencias(
     }
   }
 
-  // NIVEL 2: Estadísticas por comuna + dormitorios
-  const dormForComuna = dormFilter || 2;
-  const comunaResult = await getSugerenciasPorComuna(comuna, superficie, dormForComuna, propType, condicion);
-  if (comunaResult) return comunaResult;
+  // NIVEL 2 — SOLO VENTA: mediana comunal desde scraped_properties.
+  //
+  // El arriendo NO tiene nivel 2. Lo tuvo hasta el 2026-08-04: leía `market_stats`,
+  // una tabla congelada el 2026-03-24 cuyo writer nunca paginó el SELECT y por eso
+  // calculó sobre 1.000 de 55.466 propiedades (el 87% de sus filas eran duplicados
+  // que nadie leía). Servía medianas de n=1 o n=2 como si fueran de la comuna entera.
+  //
+  // Tampoco hay nivel 3. Lo hubo: `getFallbackEstimacion`, un seed de 17 comunas con
+  // un arriendo por m² fijo. Ninguno de los dos era un dato: eran un número plausible
+  // ocupando el lugar de uno real, y el wizard los presentaba con el mismo rótulo de
+  // confianza que a los comparables medidos.
+  //
+  // Sin comparables, Franco no estima: lo dice y le pide el número al usuario.
+  if (propType === "venta") {
+    const dormForComuna = dormFilter || 2;
+    const ventaResult = await getMedianaComunalVenta(comuna, superficie, dormForComuna, condicion);
+    if (ventaResult) return ventaResult;
+  }
 
-  // NIVEL 3: Fallback a estimación hardcodeada
-  const ufCLP = await getUFValue();
-  return getFallbackEstimacion(comuna, superficie, dormForComuna, precioUF, ufCLP);
+  return SIN_DATO;
 }
+
+/** Respuesta canónica cuando no hay comparables. Ver `Sugerencias.arriendo`. */
+const SIN_DATO: Sugerencias = {
+  arriendo: null,
+  ggcc: null,
+  contribTrim: null,
+  source: "sin-dato",
+  sampleSize: 0,
+};
 
 async function getNearbyPropertiesForMap(
   lat: number,
@@ -243,110 +278,41 @@ async function getSugerenciasPorRadio(
   };
 }
 
-async function getSugerenciasPorComuna(
+/**
+ * NIVEL 2 de VENTA. El precioM2 sale del helper canónico getComunaMedianaVentaUF,
+ * que lee scraped_properties DIRECTO (misma fuente que el sobreprecio → coherencia
+ * garantizada) con ventana superficie ±20%, dormitorios, segmentación por universo
+ * (nuevo|usado), escalera de frescura por universo y factor cierre YA aplicado por fila.
+ *
+ * `condicion` la manda el wizard como `tipoPropiedad` y decide el universo de la
+ * mediana. Así el precio/m² SUGERIDO sale del mismo mercado contra el que después
+ * se mide el sobreprecio — sin eso, a un depto nuevo se le sugeriría un valor de usados.
+ */
+async function getMedianaComunalVenta(
   comuna: string,
   superficie: number,
   dormitorios: number,
-  propType: string = "arriendo",
   condicion: string | null = null
 ): Promise<Sugerencias | null> {
   const supabase = getSupabase();
+  const ufCLP = await getUFValue();
+  const { mediana: medianaUF, n } = await getComunaMedianaVentaUF(
+    supabase, comuna, superficie, dormitorios, ufCLP,
+    condicion === "nuevo" ? "nuevo" : "usado");
+  if (!medianaUF || medianaUF <= 0) return null; // sin ventas frescas suficientes
 
-  // VENTA: el precioM2 sale del helper canónico getComunaMedianaVentaUF, que lee
-  // scraped_properties DIRECTO (misma fuente que el sobreprecio → coherencia garantizada)
-  // con ventana superficie ±20%, dormitorios, segmentación por universo
-  // (nuevo|usado), escalera de frescura por universo y factor cierre YA aplicado
-  // por fila. market_stats está desactualizado y no se usa para venta.
-  //
-  // `condicion` vuelve a usarse: el wizard la manda como `tipoPropiedad`
-  // (nuevo-v2/page.tsx: paramsVenta.set("condicion", ...)), y ahora decide el
-  // universo de la mediana. Así el precio/m² SUGERIDO en el wizard sale del mismo
-  // mercado contra el que después se mide el sobreprecio — sin eso, el wizard le
-  // sugeriría a un depto nuevo un valor de mercado de usados.
-  if (propType === "venta") {
-    const ufCLP = await getUFValue();
-    const { mediana: medianaUF, n } = await getComunaMedianaVentaUF(
-      supabase, comuna, superficie, dormitorios, ufCLP,
-      condicion === "nuevo" ? "nuevo" : "usado");
-    if (medianaUF && medianaUF > 0) {
-      // medianaUF es UF/m²; el consumidor espera CLP/m² (lo divide por UF). No re-aplicar
-      // factorCierre: el helper ya lo aplicó internamente.
-      const precioM2CLP = Math.round(medianaUF * ufCLP);
-      const precioTotalCLP = Math.round(precioM2CLP * superficie);
-      return {
-        // En venta, "arriendo" no lo lee el consumidor; lo dejamos como precio total implícito.
-        arriendo: Math.round(precioTotalCLP / 1000) * 1000,
-        ggcc: null,
-        contribTrim: estimarContribuciones(precioTotalCLP),
-        source: "comuna",
-        sampleSize: n,
-        precioM2: precioM2CLP,
-      };
-    }
-    return null; // sin ventas frescas suficientes → cae a NIVEL 3
-  }
-
-  // Bloque arriendo (venta ya retornó arriba): el arriendo no lleva corrección
-  // publicado->cierre, así que el factor es siempre 1.
-  const factorCierre = 1;
-
-  const { data: stats } = await supabase
-    .from("market_stats")
-    .select("*")
-    .eq("comuna", comuna)
-    .eq("dormitorios", dormitorios)
-    .eq("type", propType)
-    .single();
-
-  if (stats && stats.count >= 5) {
-    return {
-      arriendo: Math.round(stats.precio_mediana / 1000) * 1000,
-      ggcc: stats.ggcc_promedio ? Math.round(stats.ggcc_promedio / 1000) * 1000 : null,
-      contribTrim: stats.precio_m2_mediana ? estimarContribuciones(Math.round(stats.precio_m2_mediana * superficie)) : estimarContribuciones(superficie * 2_000_000),
-      source: "comuna",
-      sampleSize: stats.count,
-      precioM2: stats.precio_m2_mediana ? Math.round(stats.precio_m2_mediana * factorCierre) : undefined,
-    };
-  }
-  return null;
-}
-
-function getFallbackEstimacion(
-  comuna: string,
-  superficie: number,
-  dormitorios: number,
-  precioUF?: number,
-  ufCLP: number = 38800
-): Sugerencias {
-  const ESTIMACIONES: Record<string, { arriendoM2: number; ggccM2: number }> = {
-    "Providencia": { arriendoM2: 7600, ggccM2: 1200 },
-    "Las Condes": { arriendoM2: 8200, ggccM2: 1400 },
-    "Ñuñoa": { arriendoM2: 7000, ggccM2: 1100 },
-    "Santiago": { arriendoM2: 6200, ggccM2: 1000 },
-    "Santiago Centro": { arriendoM2: 6200, ggccM2: 1000 },
-    "La Florida": { arriendoM2: 5800, ggccM2: 900 },
-    "Vitacura": { arriendoM2: 9500, ggccM2: 1800 },
-    "Lo Barnechea": { arriendoM2: 8500, ggccM2: 1600 },
-    "San Miguel": { arriendoM2: 6000, ggccM2: 950 },
-    "Macul": { arriendoM2: 5500, ggccM2: 850 },
-    "Estación Central": { arriendoM2: 5600, ggccM2: 900 },
-    "Independencia": { arriendoM2: 5400, ggccM2: 850 },
-    "Recoleta": { arriendoM2: 5200, ggccM2: 800 },
-    "Maipú": { arriendoM2: 5000, ggccM2: 750 },
-    "Puente Alto": { arriendoM2: 4500, ggccM2: 700 },
-    "Peñalolén": { arriendoM2: 5300, ggccM2: 850 },
-    "La Reina": { arriendoM2: 7200, ggccM2: 1200 },
-  };
-
-  const data = ESTIMACIONES[comuna] || { arriendoM2: 6000, ggccM2: 1000 };
-  const ajusteDorm = dormitorios >= 3 ? 1.05 : dormitorios === 1 ? 0.95 : 1.0;
-
+  // medianaUF es UF/m²; el consumidor espera CLP/m² (lo divide por UF). No re-aplicar
+  // factorCierre: el helper ya lo aplicó internamente.
+  const precioM2CLP = Math.round(medianaUF * ufCLP);
+  const precioTotalCLP = Math.round(precioM2CLP * superficie);
   return {
-    arriendo: Math.round(data.arriendoM2 * superficie * ajusteDorm / 1000) * 1000,
-    ggcc: Math.round(data.ggccM2 * superficie / 1000) * 1000,
-    contribTrim: estimarContribuciones(precioUF ? precioUF * ufCLP : 3000 * ufCLP),
-    source: "estimacion",
-    sampleSize: 0,
+    // En venta, "arriendo" no lo lee el consumidor; lo dejamos como precio total implícito.
+    arriendo: Math.round(precioTotalCLP / 1000) * 1000,
+    ggcc: null,
+    contribTrim: estimarContribuciones(precioTotalCLP),
+    source: "comuna",
+    sampleSize: n,
+    precioM2: precioM2CLP,
   };
 }
 

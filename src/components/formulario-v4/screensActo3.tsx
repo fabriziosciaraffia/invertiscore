@@ -10,7 +10,7 @@ import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import type { ScreenProps } from "./screensActo1";
 import { FuenteLine, GhostBtn, PrimaryBtn, TextInput } from "./ui";
-import { dormLabel, fmtCLP, parseNum, parseDecimalLocale, precioUF } from "./derive";
+import { dormLabel, fmtCLP, fuenteArriendoLine, parseNum, parseDecimalLocale, precioUF } from "./derive";
 
 const numOk = (v: string) => v === "" || /^[\d.]*$/.test(v);
 
@@ -45,22 +45,55 @@ function SupuestosDetails({ summary, children }: { summary: string; children: Re
 
 // ── arr (arriendo LTR) ────────────────────────────────────────────────────────
 
-export function ArrScreen({ answers, data, answer, goDetour }: ScreenProps) {
+export function ArrScreen({ answers, data, answer, goDetour, patchAnswers }: ScreenProps) {
   const sugerido = data.arriendoSugerido;
   const listo = sugerido != null && sugerido > 0;
-  // Tres tramos según el tamaño de la muestra: robusta (≥10), muestra chica
-  // (1-9, con caveat honesto) y sin datos (0). Franco declara la procedencia real.
-  const n = data.arriendoN;
-  const fuenteArr =
-    n >= 10
-      ? `mediana de ${n} arriendos comparables publicados en la zona`
-      : n > 0
-        ? `mediana de solo ${n} ${n === 1 ? "arriendo comparable" : "arriendos comparables"} en la zona — muestra chica, ajústalo si conoces el arriendo real`
-        : "sin comparables publicados — estimación de mercado";
+  // Tres estados, no dos: con dato, buscando y SIN dato. El tercero apareció el
+  // 2026-08-04, cuando se retiraron los dos niveles de relleno — antes siempre
+  // llegaba un número, aunque fuera inventado.
+  const buscando = data.suggestionsLoading;
+  const sinDato = !listo && !buscando;
 
   const sup = parseDecimalLocale(answers.superficieUtil ?? "");
   const ggcc = data.ggccSugerido ?? getGgccFallback(answers.comuna ?? "", sup) ?? 0;
   const contrib = estimarContribuciones(precioUF(answers) * data.ufCLP, answers.tipoPropiedad === "nuevo");
+  const supuestos = (
+    <SupuestosDetails summary="Supuestos — GGCC, contribuciones, vacancia">
+      <SupuestoRow label="Gastos comunes" value={`${fmtCLP(ggcc)}/mes`} fuente="gastos comunes típicos de la comuna" />
+      <SupuestoRow label="Contribuciones" value={`${fmtCLP(contrib)}/trim`} fuente="fórmula SII según avalúo estimado" />
+      <SupuestoRow label="Vacancia" value={`${answers.vacanciaPct ?? "5"}%`} fuente="promedio de meses sin arrendatario al año" />
+    </SupuestosDetails>
+  );
+
+  // Sin comparables no hay estimación que ofrecer. Franco lo dice y pide el número
+  // en vez de rellenar el campo con una cifra que no puede respaldar.
+  if (sinDato) {
+    const val = answers.arriendo ?? "";
+    return (
+      <div className="flex flex-col gap-5">
+        <div>
+          <p className="font-body text-[13px] text-[var(--franco-text)] font-medium mb-1.5">Arriendo mensual</p>
+          <TextInput
+            value={val}
+            onChange={(v) => { if (numOk(v)) patchAnswers({ arriendo: v }); }}
+            placeholder="650.000"
+            inputMode="numeric"
+            mono
+            suffix="$"
+          />
+          <FuenteLine>
+            No hay arriendos publicados cerca de esta dirección para comparar. Ingresa el que estimas cobrar.
+          </FuenteLine>
+        </div>
+
+        {supuestos}
+
+        <PrimaryBtn onClick={() => answer("arr", { arrModo: "corregir" })} disabled={parseNum(val) <= 0}>
+          Guardar y continuar →
+        </PrimaryBtn>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -71,14 +104,12 @@ export function ArrScreen({ answers, data, answer, goDetour }: ScreenProps) {
         <p className="font-mono text-[28px] font-bold text-[var(--franco-text)] m-0 leading-none">
           {listo ? `${fmtCLP(sugerido ?? 0)}/mes` : "Estimando…"}
         </p>
-        <FuenteLine>{fuenteArr}</FuenteLine>
+        {listo && (
+          <FuenteLine>{fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed)}</FuenteLine>
+        )}
       </div>
 
-      <SupuestosDetails summary="Supuestos — GGCC, contribuciones, vacancia">
-        <SupuestoRow label="Gastos comunes" value={`${fmtCLP(ggcc)}/mes`} fuente="gastos comunes típicos de la comuna" />
-        <SupuestoRow label="Contribuciones" value={`${fmtCLP(contrib)}/trim`} fuente="fórmula SII según avalúo estimado" />
-        <SupuestoRow label="Vacancia" value={`${answers.vacanciaPct ?? "5"}%`} fuente="promedio de meses sin arrendatario al año" />
-      </SupuestosDetails>
+      {supuestos}
 
       <div className="flex flex-col sm:flex-row gap-3">
         <PrimaryBtn

@@ -72,3 +72,35 @@ export function cuotaCLP(a: WizardV4Answers, ufCLP: number): number {
   if (pUF <= 0 || ufCLP <= 0) return 0;
   return calcDividendo(pUF, pct, plazoAnios(a), tasaPct(a), ufCLP);
 }
+
+/** Metros a texto legible: 800 → "800 m", 1500 → "1,5 km". */
+function fmtRadio(m: number): string {
+  return m < 1000 ? `${m} m` : `${String(m / 1000).replace(".", ",")} km`;
+}
+
+/**
+ * Procedencia del arriendo sugerido, para la línea de fuente. Vive acá porque la
+ * declaran DOS pantallas (arr en el Acto 3 y el resumen); tenerla duplicada ya
+ * costó una vez: las dos decían "mediana de N arriendos comparables publicados en
+ * la zona" mirando solo el tamaño de la muestra, así que un número traído de la
+ * comuna entera —y de una tabla congelada cuatro meses— se presentaba con el mismo
+ * aval que los comparables medidos por radio.
+ *
+ * El nivel manda (`fuente`, que declara el endpoint); el n solo modula el caveat.
+ */
+export function fuenteArriendoLine(
+  fuente: "radio" | "comuna" | "sin-dato",
+  n: number,
+  radio: number | null,
+): string {
+  if (fuente === "sin-dato" || n <= 0) {
+    return "sin arriendos publicados cerca para comparar — el valor lo pones tú";
+  }
+  if (fuente === "comuna") {
+    return `mediana de ${n} arriendos de la comuna completa — no de la zona del depto`;
+  }
+  const donde = radio ? `a menos de ${fmtRadio(radio)} de la dirección` : "en la zona";
+  return n >= 10
+    ? `mediana de ${n} arriendos publicados ${donde}`
+    : `mediana de solo ${n} ${n === 1 ? "arriendo publicado" : "arriendos publicados"} ${donde} — muestra chica, ajústalo si conoces el arriendo real`;
+}

@@ -46,7 +46,7 @@ import {
   type Regla,
 } from "@/lib/plausibilidad";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
-import { dormLabel, fmtCLP, fmtUF, parseNum, parseDecimalLocale, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
+import { dormLabel, fmtCLP, fmtUF, fuenteArriendoLine, parseNum, parseDecimalLocale, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
@@ -980,7 +980,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
               <NumField
                 label="Arriendo mensual" raw={fmtMiles(a.arriendo ?? String(sugArriendo || ""))} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
                 tag={a.arrModo === "corregir" ? "corregido por ti" : "estimado"}
-                fuente={fuenteArriendo(data.arriendoN)} highlight={highlight === "arr"}
+                fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed)} highlight={highlight === "arr"}
                 onCommit={(v) => commitEdit("arr", { arriendo: fmtMiles(v), arrModo: "corregir" })}
               />
               <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={`${a.vacanciaPct ?? "5"}%`} suffix="%" format={pctInt} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
@@ -1105,12 +1105,6 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
       </div>
     </div>
   );
-}
-
-function fuenteArriendo(n: number): string {
-  if (n >= 10) return `mediana de ${n} arriendos comparables publicados en la zona`;
-  if (n > 0) return `mediana de solo ${n} ${n === 1 ? "arriendo comparable" : "arriendos comparables"} en la zona — muestra chica, ajústalo si conoces el arriendo real`;
-  return "sin comparables publicados — estimación de mercado";
 }
 
 /**

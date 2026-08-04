@@ -525,7 +525,7 @@ export default function RentaCortaFormPage() {
         if (d.arriendo) {
           setApiSuggestions({
             arriendo: d.arriendo,
-            source: d.source || "estimacion",
+            source: d.source || "sin-dato",
             sampleSize: d.sampleSize || 0,
             precioM2: d.precioM2 || undefined,
           });
@@ -552,7 +552,11 @@ export default function RentaCortaFormPage() {
         ? Math.round((precioM2 * supUtil) / 1000) * 1000
         : apiSuggestions.arriendo;
     }
-    return Math.round(6000 * supUtil);
+    // Sin comparables no hay sugerencia. Hasta el 2026-08-04 acá había un
+    // `6000 * m²` — una constante única para todo Chile, ofrecida con el mismo
+    // "Sugerencia:" en rojo que las medianas reales. El campo queda vacío y
+    // Franco pide el número; ver la ayuda bajo el input.
+    return null;
   }, [form.comuna, form.superficieUtil, apiSuggestions]);
 
   // ─── Geocoding when address changes ────────────────
@@ -1708,6 +1712,11 @@ export default function RentaCortaFormPage() {
               onCurrencyToggle={() => toggleFieldCurrency("arriendoLargo")}
               required
             />
+            {!arriendoSugerido && !form.arriendoLargo && (
+              <p className="mt-1 text-xs text-[var(--franco-text-muted)]">
+                No hay arriendos publicados cerca para comparar. Ingresa el que estimas cobrar.
+              </p>
+            )}
             {form.arriendoLargo && Number(form.arriendoLargo) > 0 && (
               <p className="mt-1 text-xs text-[var(--franco-text-muted)]">
                 {fieldCurrency.arriendoLargo === "UF"
