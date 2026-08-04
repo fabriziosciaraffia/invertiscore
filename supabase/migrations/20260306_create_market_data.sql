@@ -1,28 +1,15 @@
--- Market data table for real estate market statistics by comuna
-CREATE TABLE IF NOT EXISTS market_data (
-  id BIGSERIAL PRIMARY KEY,
-  comuna TEXT NOT NULL,
-  tipo TEXT NOT NULL, -- '1D', '2D', '3D'
-  arriendo_promedio INTEGER NOT NULL, -- CLP/mes
-  precio_m2_promedio NUMERIC(6,1) NOT NULL, -- UF/m² (arriendo-derived)
-  precio_m2_venta_promedio NUMERIC(6,1) NOT NULL DEFAULT 0, -- UF/m² (sale price)
-  gastos_comunes_m2 INTEGER NOT NULL DEFAULT 1200, -- CLP/m²
-  numero_publicaciones INTEGER NOT NULL DEFAULT 0,
-  fecha_actualizacion TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(comuna, tipo)
-);
+-- Config table for global app settings (uf_value, tasa_hipotecaria)
+--
+-- NOTA (2026-08-03): este archivo creaba DOS tablas. El bloque de `market_data`
+-- se retiró porque esa tabla nunca llegó a existir en la base: la migración no
+-- se aplicó y sus lectores (getMarketDataForComuna, getZoneComparison) se comían
+-- el PGRST205 en un try/catch y caían a un seed hardcodeado que subestimaba el
+-- precio/m² entre 17% y 30%. Ese camino completo se borró.
+--
+-- `config` SÍ está viva en producción (la escribe el cron de UF/tasa y la lee
+-- getConfig en src/lib/config-store.ts), así que el bloque queda. El nombre del
+-- archivo se conserva para no alterar el orden ni el historial de migraciones.
 
-ALTER TABLE market_data ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Anyone can read market data"
-  ON market_data FOR SELECT USING (true);
-
-CREATE POLICY "Authenticated can manage market data"
-  ON market_data FOR ALL USING (true) WITH CHECK (true);
-
-CREATE INDEX idx_market_data_comuna_tipo ON market_data(comuna, tipo);
-
--- Config table for global app settings (tasa hipotecaria, etc.)
 CREATE TABLE IF NOT EXISTS config (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,

@@ -284,20 +284,6 @@ const DEMO_AI: AIAnalysisV2 = {
   },
 };
 
-// ─── Zone comparison data ────────────────────────────
-const DEMO_ZONE_DATA = [
-  {
-    comuna: "Providencia",
-    tipo: "2D",
-    arriendo_promedio: 430000,
-    precio_m2_promedio: 10.2,
-    precio_m2_venta_promedio: 62.8,
-    gastos_comunes_m2: 1450,
-    numero_publicaciones: 342,
-    fecha_actualizacion: "2026-03-15",
-  },
-];
-
 export default function DemoPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
@@ -340,7 +326,6 @@ export default function DemoPage() {
           freePrecioM2={PRECIO_UF / SUPERFICIE}
           resumenEjecutivo={DEMO_RESULTS.resumenEjecutivo}
           ufValue={UF_CLP}
-          zoneData={DEMO_ZONE_DATA}
           demoAiData={DEMO_AI}
           nombre="Depto 2D1B Providencia"
           ciudad="Santiago"

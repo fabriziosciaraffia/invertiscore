@@ -13,7 +13,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
-import { getZoneComparison } from "@/lib/market-data";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
@@ -108,12 +107,10 @@ export default async function DocumentoLTRPage({
     day: "numeric", month: "long", year: "numeric",
   });
 
-  // Zona: getZoneComparison da stats de mercado server-side. El insight narrativo
-  // (headline/preview/narrative) se genera client-side hoy (useZoneInsight) → no
-  // disponible en el server sin disparar IA. DESVIACIÓN documentada: la card zona
-  // muestra encuadre neutro; el narrativo se cablea en un goal posterior.
-  await getZoneComparison(analisis.comuna);
-
+  // Zona: la card muestra encuadre neutro. El insight narrativo
+  // (headline/preview/narrative) se genera client-side (useZoneInsight) y no está
+  // disponible en el server sin disparar IA. DESVIACIÓN documentada: el narrativo
+  // se cablea en un goal posterior.
   return (
     <DocumentoLTR
       id={analisis.id}
