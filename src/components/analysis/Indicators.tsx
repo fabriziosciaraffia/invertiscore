@@ -107,7 +107,11 @@ export function Indicators({
     {
       label: `TIR a ${plazoLabel}`,
       value: na ? NO_APLICA_VALOR : fmtPct(kpis.tir ?? NaN),
-      tone: na ? "neutral" : tonoTIR(kpis.tir ?? 0),
+      // Sin TIR (kpis.tir === null: el VPN del flujo no cruza cero) el valor cae
+      // a "—" y el tono queda NEUTRAL. `tonoTIR(kpis.tir ?? 0)` daba "bad" sobre
+      // un cero inventado: Signal Red pintado sobre una ausencia, que es la
+      // misma familia de mentira que el 100%. Ver src/lib/finance/irr.ts.
+      tone: na || kpis.tir === null ? "neutral" : tonoTIR(kpis.tir),
       tooltip: na ? tooltipD1 : tirTooltip,
       na,
       sublabel: sublabelD1,
