@@ -20,7 +20,7 @@
 
 import type { AnalisisInput } from "../../src/lib/types";
 import type { AirbnbData, ShortTermInputs } from "../../src/lib/engines/short-term-engine";
-import { SEED_MARKET_DATA } from "../../src/lib/market-seed";
+import { SEED_MARKET_DATA } from "./fixture-mediana-seed";
 
 export const AUDIT_UF = 38800;
 

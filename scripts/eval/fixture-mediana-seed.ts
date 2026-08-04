@@ -1,4 +1,21 @@
-// Seed market data — pure data, no server imports. Safe for client components.
+// ─────────────────────────────────────────────────────────────────────────────
+// FIXTURE del golden — NO es dato de producción.
+//
+// Estos números vivieron en src/lib/market-seed.ts desde el 2026-03-06 como
+// "datos de mercado" y alimentaban getMarketDataForComuna, que consultaba una
+// tabla `market_data` que NUNCA existió: el try/catch se comía el PGRST205 y
+// caía siempre acá. Medido contra las medianas reales de scraped_properties,
+// subestimaban el precio/m² entre 17% y 30% (Las Condes UF 75 vs 90,6 real;
+// Ñuñoa 58 vs 82,8; Providencia 68 vs 91,3). Ese camino se retiró el 2026-08-03.
+//
+// Lo que queda es su único uso legítimo: `medianaSeed()` en fixtures.ts los usa
+// como valor CONGELADO de "mediana de zona" para 38 casos del golden. Ahí no
+// importa que sean irreales — importa que no cambien, porque los baselines se
+// calcularon con ellos.
+//
+// Por eso viven en scripts/eval/ y no en src/: nada de producción puede
+// importarlos, y el nombre del archivo dice lo que son.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface MarketSeedRow {
   comuna: string;
