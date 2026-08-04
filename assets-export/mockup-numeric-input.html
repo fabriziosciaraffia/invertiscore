@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup — NumericInput del wizard v4 · refranco.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════
+     Tokens — paleta GALERÍA (light), verificada contra
+     src/app/globals.css  [data-theme="light"].  NO son los hexes cálidos de
+     los mockups viejos (#FAFAF8 / #F2F1EE / #E2E0DB): esos quedaron obsoletos
+     en la migración. Neutros FRÍOS.
+     ═══════════════════════════════════════════════════════════════════════ */
+  :root{
+    --bg:#F6F6F7;
+    --card:#FFFFFF;
+    --sunken:#F0F0F2;
+    --text:#0F0F0F;
+    --text-secondary:#52525B;
+    --text-muted:#6B6B72;
+    --text-tertiary:#6A6A71;
+    --border:#DDDDE1;
+    --border-hover:#CBCBD1;
+    --border-strong:#B0B0B8;
+    --signal:#C8323C;
+
+    --serif:'Source Serif 4',Georgia,serif;
+    --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--sans);line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--signal);color:#FFF}
+  .wrap{max-width:1000px;margin:0 auto;padding:56px 24px 120px}
+
+  /* ── encabezado del documento ── */
+  .doc-eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--text-tertiary);margin-bottom:14px;
+  }
+  h1{
+    font-family:var(--serif);font-weight:700;font-size:40px;line-height:1.12;
+    margin:0 0 16px;letter-spacing:-.01em;
+  }
+  .lede{font-size:17px;color:var(--text-secondary);max-width:64ch;margin:0 0 10px}
+  .contract{
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--signal);margin-top:24px;
+  }
+  hr.rule{border:0;border-top:1px solid var(--border);margin:48px 0}
+
+  h2{font-family:var(--serif);font-weight:700;font-size:26px;margin:0 0 8px;letter-spacing:-.01em}
+  h3{font-family:var(--serif);font-weight:600;font-size:19px;margin:34px 0 8px}
+  .sec-eyebrow{
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--text-tertiary);margin-bottom:10px;
+  }
+  p.note{color:var(--text-secondary);max-width:70ch;margin:0 0 24px;font-size:15px}
+  p.note.tight{margin-bottom:14px}
+  code{font-family:var(--mono);font-size:.88em;background:var(--sunken);padding:1px 5px;border-radius:2px}
+
+  /* ── el componente ── */
+  .campo{margin-bottom:4px}
+  .campo-label{
+    display:flex;align-items:center;gap:8px;
+    font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;
+  }
+  .campo-shell{position:relative;display:flex;align-items:center;gap:10px}
+  .campo-input{
+    width:100%;height:44px;border-radius:8px;background:var(--card);
+    border:.5px solid var(--border);
+    padding:0 46px 0 12px;font-family:var(--mono);font-size:15px;color:var(--text);
+    outline:none;transition:border-color .14s ease, box-shadow .14s ease;
+  }
+  .campo-input.strong{border-width:1.5px;border-color:var(--text)}
+  .campo-input:focus{border-color:var(--signal);box-shadow:0 0 0 3px rgba(200,50,60,.10)}
+  .campo-sufijo{
+    position:absolute;right:12px;top:50%;transform:translateY(-50%);
+    font-family:var(--mono);font-size:12px;color:var(--text-muted);pointer-events:none;
+  }
+  /* Estado ERROR — Signal Red uso #6 (indicadores de error en formularios). */
+  .campo.err .campo-input{border-color:var(--signal);border-width:1.5px}
+  .campo.err .campo-input:focus{box-shadow:0 0 0 3px rgba(200,50,60,.13)}
+
+  /* ── el eco ── */
+  /* Reusa el patrón de "equivalencia" que el wizard YA tiene en el Acto 2
+     (screensActo2.tsx: `= ${fmtCLP(...)}`). No es un elemento nuevo. */
+  .eco{
+    min-height:22px;margin-top:7px;
+    font-family:var(--mono);font-size:13px;color:var(--text-secondary);
+    display:flex;align-items:baseline;gap:7px;
+  }
+  .eco-vacio{visibility:hidden}
+  .eco-encurso{color:var(--text-muted);font-family:var(--sans);font-size:12.5px;font-style:italic}
+  .eco-error{
+    color:var(--signal);font-family:var(--sans);font-size:12.5px;font-style:normal;
+  }
+  .eco-val{color:var(--text);font-weight:500}
+
+  /* ── aviso de escala (NO usa rojo — ver §6) ── */
+  /* El sistema reemplaza el ámbar de alerta por "Ink + jerarquía tipográfica
+     (label uppercase + borde lateral Ink 600)". Esto es exactamente eso. */
+  .escala{
+    margin-top:9px;border-left:2px solid var(--border-strong);
+    border-radius:0 6px 6px 0;padding:8px 12px;background:var(--sunken);
+  }
+  .escala-label{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--text-tertiary);margin-bottom:3px;
+  }
+  .escala-txt{font-size:12.5px;color:var(--text-secondary);line-height:1.45}
+
+  /* ── toggle de unidad ── */
+  .seg{display:inline-flex;border:.5px solid var(--border);background:var(--card);border-radius:8px;padding:3px;gap:3px}
+  .seg button{
+    font-family:var(--mono);font-size:12px;padding:5px 13px;border-radius:5px;border:0;
+    background:transparent;color:var(--text-secondary);cursor:pointer;transition:background .12s,color .12s;
+  }
+  .seg button.on{background:var(--text);color:var(--card)}
+
+  /* ── layout de bloques ── */
+  .panel{
+    border:1px solid var(--border);background:var(--card);border-radius:10px;
+    padding:22px 24px;
+  }
+  .panel + .panel{margin-top:14px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+
+  .caso-tag{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--text-tertiary);margin-bottom:12px;display:block;
+  }
+
+  /* ── tabla de estados ── */
+  table.est{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  table.est th{
+    text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--text-tertiary);font-weight:500;
+    padding:11px 14px;border-bottom:1px solid var(--border);
+  }
+  table.est td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13.5px;color:var(--text-secondary);vertical-align:top}
+  table.est tr:last-child td{border-bottom:0}
+  table.est td.k{font-family:var(--mono);font-size:12px;color:var(--text);white-space:nowrap}
+  table.est td.m{font-family:var(--mono);font-size:12px;color:var(--text-secondary)}
+
+  /* ── traza ── */
+  table.traza{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-family:var(--mono);font-size:12.5px}
+  table.traza th{
+    text-align:left;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--text-tertiary);font-weight:500;padding:10px 14px;border-bottom:1px solid var(--border);
+  }
+  table.traza td{padding:8px 14px;border-bottom:1px solid var(--border);color:var(--text-secondary)}
+  table.traza tr:last-child td{border-bottom:0}
+  table.traza td.tecla{color:var(--text);font-weight:500}
+  table.traza td.off{color:var(--text-muted);font-style:italic;font-family:var(--sans);font-size:12px}
+
+  /* ── antes / después ── */
+  .ab{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--card)}
+  @media(max-width:760px){.ab{grid-template-columns:1fr}}
+  .ab > div{padding:20px 22px}
+  .ab > div:first-child{border-right:1px solid var(--border);background:var(--sunken)}
+  @media(max-width:760px){.ab > div:first-child{border-right:0;border-bottom:1px solid var(--border)}}
+  .ab-h{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:12px}
+  .ab-row{display:flex;align-items:baseline;gap:9px;font-family:var(--mono);font-size:14px;margin-bottom:7px}
+  .ab-row .flecha{color:var(--text-muted)}
+  .ab-bad{color:var(--signal);font-weight:500}
+  .ab-good{color:var(--text);font-weight:500}
+  .ab-foot{font-size:12.5px;color:var(--text-muted);margin-top:12px;line-height:1.45}
+
+  /* ── anatomía ── */
+  .anat{display:grid;grid-template-columns:1fr 250px;gap:26px;align-items:start}
+  @media(max-width:760px){.anat{grid-template-columns:1fr}}
+  .anat-notas{border-left:1px solid var(--border);padding-left:20px}
+  .anat-n{margin-bottom:15px}
+  .anat-n b{
+    display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--text-tertiary);font-weight:500;margin-bottom:2px;
+  }
+  .anat-n span{font-size:12.5px;color:var(--text-secondary);line-height:1.45}
+
+  /* ── decisiones ── */
+  .dec{border:1px solid var(--border);border-radius:10px;background:var(--card);overflow:hidden}
+  .dec-item{padding:16px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:30px 1fr;gap:14px}
+  .dec-item:last-child{border-bottom:0}
+  .dec-num{font-family:var(--mono);font-size:12px;color:var(--signal);font-weight:500}
+  .dec-q{font-size:14.5px;color:var(--text);margin:0 0 5px;font-weight:500}
+  .dec-a{font-size:13px;color:var(--text-secondary);margin:0;line-height:1.5}
+  .dec-a em{color:var(--text-muted)}
+
+  .rojo-lista{border:1px solid var(--border);border-radius:10px;background:var(--card);padding:4px 0}
+  .rojo-item{display:grid;grid-template-columns:130px 1fr;gap:16px;padding:12px 20px;border-bottom:1px solid var(--border);align-items:baseline}
+  .rojo-item:last-child{border-bottom:0}
+  .rojo-uso{font-family:var(--mono);font-size:11px;color:var(--text);letter-spacing:.04em}
+  .rojo-uso.no{color:var(--text-muted);text-decoration:line-through}
+  .rojo-por{font-size:13px;color:var(--text-secondary);line-height:1.45}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ══════════════════ ENCABEZADO ══════════════════ -->
+  <div class="doc-eyebrow">Contrato visual · wizard v4 · componente de entrada numérica</div>
+  <h1>NumericInput — el eco es la defensa</h1>
+  <p class="lede">
+    Hoy los ocho filtros del wizard borran el separador “equivocado” en silencio y sueldan los
+    dígitos: escribes <code>4,5</code> y queda <code>45</code>. Ningún campo rechaza visiblemente,
+    ninguno muestra un error. Todos los errores conocidos de esa familia son ×10.
+  </p>
+  <p class="lede">
+    La propuesta invierte el mecanismo. En vez de pelear con las teclas, el campo <b>acepta</b> lo
+    que escribes y muestra debajo, en vivo, <b>cómo lo está entendiendo</b>. Si no lo entiende, el
+    eco se apaga — y lo que escribiste sigue ahí, intacto, para que veas qué fue lo que no se
+    entendió.
+  </p>
+  <div class="contract">Contrato — requiere OK antes de implementar en src/</div>
+
+  <hr class="rule">
+
+  <!-- ══════════════════ §1 ══════════════════ -->
+  <div class="sec-eyebrow">01 · Por qué</div>
+  <h2>El filtro miente; el eco no puede</h2>
+  <p class="note">
+    Un filtro que borra la tecla te deja con un número plausible y equivocado. Un eco que se apaga
+    te deja con la duda en el lugar correcto: la pantalla. Este es el mismo tipeo en los dos
+    mundos.
+  </p>
+
+  <div class="ab">
+    <div>
+      <div class="ab-h">Hoy · el filtro se come el separador</div>
+      <div class="ab-row"><span>4,5</span><span class="flecha">→</span><span class="ab-bad">45</span></div>
+      <div class="ab-row"><span>7,5</span><span class="flecha">→</span><span class="ab-bad">75</span></div>
+      <div class="ab-row"><span>3.200,5</span><span class="flecha">→</span><span class="ab-bad">32.005</span></div>
+      <div class="ab-foot">
+        Sin error, sin aviso, sin rastro. El análisis se genera y el crédito se cobra sobre el
+        número de la derecha.
+      </div>
+    </div>
+    <div>
+      <div class="ab-h">Propuesta · el eco dice qué entendió</div>
+      <div class="ab-row"><span>4,5</span><span class="flecha">→</span><span class="ab-good">4,5%</span></div>
+      <div class="ab-row"><span>7,5</span><span class="flecha">→</span><span class="ab-good">7,5%</span></div>
+      <div class="ab-row"><span>3.200,5</span><span class="flecha">→</span><span class="ab-good">UF 3.200,5</span></div>
+      <div class="ab-foot">
+        La lectura la hace <code>parseNumeroCL</code>, que ya existe en
+        <code>src/lib/numero-cl.ts</code>. Este mockup corre esa misma regla, portada tal cual.
+      </div>
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ══════════════════ §2 ══════════════════ -->
+  <div class="sec-eyebrow">02 · Anatomía</div>
+  <h2>Cuatro piezas, tres de ellas condicionales</h2>
+  <p class="note">
+    El campo en reposo es un input y nada más. Las otras tres piezas aparecen solo cuando tienen
+    algo que decir — el componente no ocupa espacio hablando de un campo vacío.
+  </p>
+
+  <div class="anat">
+    <div class="panel" id="f-anatomia"></div>
+    <div class="anat-notas">
+      <div class="anat-n"><b>1 · Input</b><span>Mono. Acepta dígitos, coma y punto. No reordena ni borra lo tipeado.</span></div>
+      <div class="anat-n"><b>2 · Eco</b><span>Mono, prefijo <code>=</code>. Es el patrón de equivalencia que el Acto 2 ya usa; acá se generaliza a todo campo numérico.</span></div>
+      <div class="anat-n"><b>3 · Error</b><span>Ocupa el lugar del eco, nunca los dos a la vez. Sans, Signal Red.</span></div>
+      <div class="anat-n"><b>4 · Escala</b><span>Aviso del guard de plausibilidad. Convive con el eco: el número se entendió, el problema es su tamaño. Nunca en rojo.</span></div>
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ══════════════════ §3 ══════════════════ -->
+  <div class="sec-eyebrow">03 · Estados</div>
+  <h2>Cinco estados, y solo uno es rojo</h2>
+  <p class="note">
+    La distinción que sostiene el diseño: <b>“todavía no se puede leer” no es lo mismo que “no se
+    va a poder leer”.</b> Mientras exista una tecla que salve lo escrito, el campo se calla. El
+    rojo aparece cuando ninguna continuación arregla lo tipeado, o cuando sales del campo dejándolo
+    así.
+  </p>
+
+  <table class="est">
+    <tr>
+      <th style="width:150px">Estado</th>
+      <th style="width:120px">Ejemplo</th>
+      <th>Qué se ve</th>
+      <th style="width:110px">Rojo</th>
+    </tr>
+    <tr>
+      <td class="k">vacío</td>
+      <td class="m">""</td>
+      <td>Solo el input. Sin eco, sin reserva de espacio visible.</td>
+      <td class="m">no</td>
+    </tr>
+    <tr>
+      <td class="k">en curso</td>
+      <td class="m">"3.2" en $</td>
+      <td>Eco apagado. Hint en gris: “seguí escribiendo”. El campo no se marca — todavía puede terminar bien (<code>3.200</code>).</td>
+      <td class="m">no</td>
+    </tr>
+    <tr>
+      <td class="k">interpretado</td>
+      <td class="m">"3.200,5"</td>
+      <td>Eco encendido con el valor formateado.</td>
+      <td class="m">no</td>
+    </tr>
+    <tr>
+      <td class="k">fuera de escala</td>
+      <td class="m">"45" en tasa</td>
+      <td>Eco encendido <b>+</b> aviso de escala. El número se leyó bien; lo que falla es la magnitud.</td>
+      <td class="m">no</td>
+    </tr>
+    <tr>
+      <td class="k">no interpretable</td>
+      <td class="m">"12.34.567"</td>
+      <td>Eco apagado, borde marcado, mensaje que dice qué pasó y cómo salir. <b>La tecla no se borra.</b></td>
+      <td class="m" style="color:var(--signal)">sí · uso #6</td>
+    </tr>
+  </table>
+
+  <h3>Los cinco, congelados y a la vez</h3>
+  <p class="note tight">
+    Estos no son capturas: se renderizan con el mismo código que los campos vivos de más abajo, así
+    que el mockup no puede mentir sobre lo que hace el componente.
+  </p>
+  <div class="grid2" id="galeria"></div>
+
+  <hr class="rule">
+
+  <!-- ══════════════════ §4 ══════════════════ -->
+  <div class="sec-eyebrow">04 · Los campos, en vivo</div>
+  <h2>Escribe en cualquiera de estos</h2>
+  <p class="note">
+    Uno por cada clase de campo del wizard. Funcionan de verdad: la regla de desambiguación está
+    portada de <code>src/lib/numero-cl.ts</code>, no reinventada. Prueba
+    <code>4,5</code> · <code>4.5</code> · <code>1.234.567</code> · <code>12.34.567</code> ·
+    <code>1,5</code> en estacionamientos.
+  </p>
+
+  <div class="panel">
+    <span class="caso-tag">01 · Precio — el toggle cambia la precisión en caliente (UF: 2 decimales · $: 0)</span>
+    <div id="f-precio"></div>
+  </div>
+
+  <div class="panel">
+    <div class="grid2">
+      <div>
+        <span class="caso-tag">02 · Tasa — 1 decimal</span>
+        <div id="f-tasa"></div>
+      </div>
+      <div>
+        <span class="caso-tag">03 · Arriendo — 0 decimales</span>
+        <div id="f-arriendo"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="grid2">
+      <div>
+        <span class="caso-tag">04 · Comisión administración — 1 decimal</span>
+        <div id="f-comision"></div>
+      </div>
+      <div>
+        <span class="caso-tag">05 · Estacionamientos — 0 decimales</span>
+        <div id="f-estac"></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ══════════════════ §5 ══════════════════ -->
+  <div class="sec-eyebrow">05 · Traza</div>
+  <h2>El eco cambia de opinión mientras escribes, y eso es lo correcto</h2>
+  <p class="note">
+    Tipeando <code>3.200</code> en el campo de precio en UF, tecla por tecla. En el paso 3 el punto
+    todavía se lee como decimal; en el paso 5 pasa a ser separador de miles. El usuario ve la
+    reinterpretación ocurrir — que es exactamente la información que hoy no tiene.
+  </p>
+  <table class="traza" id="traza"></table>
+  <p class="note" style="margin-top:14px">
+    Ningún paso intermedio se marca en rojo: todos son prefijos que pueden terminar bien. Comparado
+    con hoy, donde el mismo tipeo produce <code>3.200</code> sin que nadie confirme si eso son
+    3.200 o 3,2.
+  </p>
+
+  <hr class="rule">
+
+  <!-- ══════════════════ §6 ══════════════════ -->
+  <div class="sec-eyebrow">06 · Presupuesto de Signal Red</div>
+  <h2>Un solo uso nuevo, y ya estaba en la lista</h2>
+  <p class="note">
+    El sistema tiene 9 usos permitidos de Signal Red y prohíbe cualquier otro “porque queda lindo”.
+    Este componente gasta <b>uno</b>, y es el que ya existe. Lo importante es lo que decidí
+    <b>no</b> pintar de rojo.
+  </p>
+
+  <div class="rojo-lista">
+    <div class="rojo-item">
+      <div class="rojo-uso">Uso #6 · sí</div>
+      <div class="rojo-por">
+        <b>Borde y mensaje del estado “no interpretable”.</b> Es literalmente “indicadores de error
+        en formularios (validación fallida)”. Sin desvío del sistema.
+      </div>
+    </div>
+    <div class="rojo-item">
+      <div class="rojo-uso no">Aviso de escala</div>
+      <div class="rojo-por">
+        <b>No va en rojo.</b> El número se entendió; lo que falla es su magnitud. Si los dos
+        estados fueran rojos, el usuario no podría distinguir “no te entendí” de “te entendí y es
+        imposible”. Va con el reemplazo que el propio sistema define para el ámbar de alerta:
+        <em>Ink + jerarquía tipográfica (label uppercase + borde lateral)</em>. Además, en el campo
+        esto es un <em>aviso</em>, no un bloqueo — el bloqueo duro ya vive en el modal de
+        plausibilidad y en el 422 del servidor.
+      </div>
+    </div>
+    <div class="rojo-item">
+      <div class="rojo-uso no">Estado “en curso”</div>
+      <div class="rojo-por">
+        <b>No va en rojo.</b> Marcar cada estado intermedio entrena a ignorar el rojo. Si el rojo
+        aparece mientras todavía estás escribiendo, deja de significar algo.
+      </div>
+    </div>
+    <div class="rojo-item">
+      <div class="rojo-uso no">El eco</div>
+      <div class="rojo-por">
+        <b>Nunca.</b> El eco es dato, no alerta. Va en Ink, mono, con el valor en peso medium — la
+        jerarquía la carga la tipografía, como en el resto del sistema.
+      </div>
+    </div>
+    <div class="rojo-item">
+      <div class="rojo-uso">Foco</div>
+      <div class="rojo-por">
+        El anillo de foco en Signal Red al 10% ya es el comportamiento del <code>TextInput</code>
+        actual del wizard (<code>ui.tsx</code>). No se agrega nada.
+      </div>
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ══════════════════ §7 ══════════════════ -->
+  <div class="sec-eyebrow">07 · Decisiones</div>
+  <h2>Lo que decidí y lo que necesito que decidas</h2>
+
+  <div class="dec">
+    <div class="dec-item">
+      <div class="dec-num">D1</div>
+      <div>
+        <p class="dec-q">El toggle UF/$ convierte el valor, no reinterpreta el texto.</p>
+        <p class="dec-a">
+          Con <code>3.200,5</code> en UF y cambio a $, el campo pasa a
+          <code>126.419.750</code>, no a un error por decimales de más. La alternativa —
+          re-parsear el texto crudo con la nueva precisión— tiraría error en un gesto que el
+          usuario percibe como “mostrar lo mismo en otra moneda”. Efecto conocido: ir y volver
+          reescribe el texto a la forma canónica (<code>3.200,5</code> vuelve como
+          <code>3.200,50</code>). El valor es idéntico; cambia solo cómo está escrito.
+          <em>Decidido; avísame si lo ves distinto.</em>
+        </p>
+      </div>
+    </div>
+    <div class="dec-item">
+      <div class="dec-num">D2</div>
+      <div>
+        <p class="dec-q">El rojo entra en dos momentos: cuando nada puede salvarlo, o al salir del campo.</p>
+        <p class="dec-a">
+          Mientras el foco está adentro y lo escrito todavía puede terminar bien, no hay marca.
+          Al salir (blur) con algo ilegible, se marca. <em>Es la decisión con más superficie de las
+          tres — es la que define si el componente se siente vigilante o paciente.</em>
+        </p>
+      </div>
+    </div>
+    <div class="dec-item">
+      <div class="dec-num">D3</div>
+      <div>
+        <p class="dec-q">El eco muestra la unidad, no solo el número.</p>
+        <p class="dec-a">
+          <code>= UF 3.200,5</code> y no <code>= 3.200,5</code>. La unidad es la mitad del error
+          que se quiere cazar: quien escribe el precio en pesos dentro del campo en UF hoy no tiene
+          ninguna señal. <em>Decidido.</em>
+        </p>
+      </div>
+    </div>
+    <div class="dec-item">
+      <div class="dec-num">D4</div>
+      <div>
+        <p class="dec-q">¿El aviso de escala vive en el campo, o solo en el modal al final?</p>
+        <p class="dec-a">
+          Acá lo muestro en el campo. Es la alerta temprana que el
+          <code>ModalPlausibilidad</code> ya contempla como modo “aviso”. El costo es ruido visual
+          en un campo que el usuario podría estar por corregir solo. <b>Sin decidir — es tuya.</b>
+        </p>
+      </div>
+    </div>
+    <div class="dec-item">
+      <div class="dec-num">D6</div>
+      <div>
+        <p class="dec-q">La tasa con 1 decimal rechaza el valor que el producto usa hoy.</p>
+        <p class="dec-a">
+          El campo de tasa está acá con 1 decimal, como pediste. Pero la tasa que el wizard
+          escribe solo es <code>4,72</code> — <code>tasaStr</code> hace <code>toFixed(2)</code>, y
+          el subsidio de la Ley 21.748 resta 0,6 pp sobre ese valor. Con 1 decimal,
+          <code>parseNumeroCL("4,72", 1)</code> devuelve <code>null</code>: el propio default del
+          producto quedaría marcado en rojo. Por eso el campo de arriba está precargado en
+          <code>4,7</code> y no en <code>4,72</code>. <b>La tasa necesita 2 decimales</b> — lo dejo
+          señalado en vez de cambiarlo por mi cuenta, porque el brief decía 1.
+        </p>
+      </div>
+    </div>
+    <div class="dec-item">
+      <div class="dec-num">D5</div>
+      <div>
+        <p class="dec-q">¿Qué pasa con lo ya guardado cuando el componente entre a producción?</p>
+        <p class="dec-a">
+          Los borradores del wizard tienen strings escritos por los filtros viejos. Un
+          <code>75</code> guardado como comisión se va a leer como 75%, no como el 7,5% que la
+          persona quiso. El componente no puede adivinarlo. <b>Sin decidir: hay que elegir entre
+          dejarlo pasar o invalidar los borradores previos.</b>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top:34px;font-size:13px;color:var(--text-muted)">
+    Mockup standalone, sin dependencias ni build. La regla de desambiguación de este archivo es una
+    port literal de <code>src/lib/numero-cl.ts</code> (rama <code>parse-numero-cl</code>) — si al
+    implementar el componente los dos divergen, manda el módulo.
+  </p>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   PORT LITERAL de src/lib/numero-cl.ts — misma regla, mismos nombres.
+   No reimplementar: si el módulo cambia, se re-porta.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function parseNumeroCL(input, decimales) {
+  if (typeof input !== "string") return null;
+  const limpio = input.trim();
+  if (limpio === "") return null;
+
+  const negativo = limpio[0] === "-";
+  const cuerpo = negativo || limpio[0] === "+" ? limpio.slice(1) : limpio;
+
+  if (!/^[\d.,]+$/.test(cuerpo)) return null;
+  if (!/\d/.test(cuerpo)) return null;
+
+  const posiciones = [];
+  for (let i = 0; i < cuerpo.length; i++) {
+    const c = cuerpo[i];
+    if (c === "." || c === ",") posiciones.push(i);
+  }
+
+  const ultima = posiciones.length > 0 ? posiciones[posiciones.length - 1] : -1;
+  const cola = ultima >= 0 ? cuerpo.slice(ultima + 1) : "";
+
+  let ultimaEsDecimal;
+  if (posiciones.length === 0)      ultimaEsDecimal = false;
+  else if (cola.length === 1 || cola.length === 2) ultimaEsDecimal = true;   // regla 1
+  else if (cola.length === 3)       ultimaEsDecimal = false;                // regla 2
+  else if (cola.length === 0)       ultimaEsDecimal = true;                 // separador colgando
+  else return null;                                                          // 4+ dígitos
+
+  const enteroTxt   = ultimaEsDecimal ? cuerpo.slice(0, ultima) : cuerpo;
+  const fraccionTxt = ultimaEsDecimal ? cola : "";
+
+  const grupos = enteroTxt.split(/[.,]/);
+  if (grupos.length > 1) {
+    if (grupos[0].length < 1 || grupos[0].length > 3) return null;
+    for (let i = 1; i < grupos.length; i++) if (grupos[i].length !== 3) return null;
+  }
+  const digitosEnteros = grupos.join("");
+
+  const fraccionSignificativa = fraccionTxt.replace(/0+$/, "");
+  if (fraccionSignificativa.length > decimales) return null;
+
+  const valor = Number((digitosEnteros || "0") + "." + (fraccionTxt || "0"));
+  if (!Number.isFinite(valor)) return null;
+  if (valor === 0) return 0;
+  return negativo ? -valor : valor;
+}
+
+function formatNumeroCL(valor, decimales) {
+  if (!Number.isFinite(valor)) return "—";
+  const fijo = Math.abs(valor).toFixed(decimales);
+  const partes = fijo.split(".");
+  const conMiles = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const cuerpo = partes[1] ? conMiles + "," + partes[1] : conMiles;
+  return valor < 0 && Number(fijo) !== 0 ? "-" + cuerpo : cuerpo;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LÓGICA DEL COMPONENTE — esto SÍ es propuesta nueva de este mockup.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * ¿Lo escrito puede TODAVÍA terminar bien agregando dígitos?
+ * Se prueba agregando 1, 2 y 3 dígitos: es lo que hace falta para cerrar un
+ * grupo de miles. Si ninguna continuación parsea, no hay tecla que lo salve y
+ * el error es definitivo — recién ahí se marca en rojo con el foco adentro.
+ */
+function esPrefijoViable(texto, decimales) {
+  for (const sufijo of ["0", "00", "000"]) {
+    if (parseNumeroCL(texto + sufijo, decimales) !== null) return true;
+  }
+  return false;
+}
+
+/** Por qué no se pudo leer. Define el mensaje: qué pasó + cómo salir. */
+function motivoError(texto, decimales) {
+  const cuerpo = texto.trim().replace(/^[-+]/, "");
+  if (!/^[\d.,]*$/.test(cuerpo)) return "solo números, punto y coma.";
+
+  // ¿Se leería bien con más decimales? Entonces el problema es la precisión.
+  for (const d of [1, 2]) {
+    if (d > decimales && parseNumeroCL(texto, d) !== null) {
+      return decimales === 0
+        ? "este campo va en números enteros."
+        : "este campo toma " + decimales + " decimal" + (decimales === 1 ? "" : "es") + ".";
+    }
+  }
+  return "revisa los puntos: los miles van de a tres (1.234.567).";
+}
+
+const UF_CLP = 39500; // constante de demo, no es la UF viva
+
+/**
+ * Decimales con los que mostrar un valor SIN redondearlo nunca. El eco no puede
+ * mentir: si mostrara "3.200,3" para 3200,25 estaría cometiendo, en la línea de
+ * defensa, el mismo truncado silencioso que el componente viene a matar.
+ */
+function decUtil(v) {
+  if (Number.isInteger(v)) return 0;
+  return Math.round(v * 10) / 10 === v ? 1 : 2;
+}
+
+/**
+ * Rangos reales del guard (src/lib/plausibilidad.ts), solo los de estos campos.
+ * OJO: `comision` sale de la rama `guard-pct-ranges`, todavía sin mergear —
+ * precioUF, tasa y arriendo sí están en master.
+ */
+const ESCALA = {
+  precioUF:  { min: 300,   max: 100000, txt: (v) => v > 100000
+      ? "UF " + formatNumeroCL(v, 0) + ". A ese precio no hay departamento en Chile — revisa si hay un dígito de más."
+      : "UF " + formatNumeroCL(v, 0) + " no alcanza para un departamento en el Gran Santiago. Revisa el precio pedido." },
+  tasa:      { min: 0.5,   max: 20,     txt: (v) => "Una tasa de " + formatNumeroCL(v, decUtil(v)) + "% anual no existe en el mercado hipotecario chileno. Revisa el dato que te dio el banco." },
+  arriendo:  { min: 80000, max: Infinity, txt: (v) => "$" + formatNumeroCL(v, 0) + " al mes está por debajo de cualquier arriendo real en Santiago. Revisa el monto." },
+  comision:  { min: 0,     max: 30,     txt: (v) => "Una comisión de administración de " + formatNumeroCL(v, decUtil(v)) + "% del arriendo no existe en el mercado chileno. Revisa el porcentaje." },
+};
+
+/**
+ * Estado completo del campo para un texto dado.
+ * → "vacio" | "encurso" | "ok" | "escala" | "error"
+ */
+function estadoDe(texto, cfg, blurred) {
+  if (texto.trim() === "") return { estado: "vacio" };
+
+  const valor = parseNumeroCL(texto, cfg.decimales);
+
+  if (valor === null) {
+    const viable = esPrefijoViable(texto, cfg.decimales);
+    // Rojo si ninguna tecla lo salva, o si ya soltó el campo así.
+    if (!viable || blurred) {
+      return { estado: "error", msg: motivoError(texto, cfg.decimales) };
+    }
+    return { estado: "encurso" };
+  }
+
+  const eco = cfg.eco(valor);
+  const regla = cfg.escala ? ESCALA[cfg.escala] : null;
+  if (regla && (valor < regla.min || valor > regla.max)) {
+    return { estado: "escala", eco, aviso: regla.txt(valor) };
+  }
+  return { estado: "ok", eco };
+}
+
+/* ── Render ─────────────────────────────────────────────────────────────── */
+
+function montar(host, cfg) {
+  const wrap = document.createElement("div");
+  wrap.className = "campo";
+  wrap.innerHTML =
+    '<div class="campo-label"><span class="lbl"></span></div>' +
+    '<div class="campo-shell">' +
+      '<input class="campo-input' + (cfg.strong ? " strong" : "") + '" autocomplete="off" spellcheck="false">' +
+      '<span class="campo-sufijo"></span>' +
+    '</div>' +
+    '<div class="eco"></div>' +
+    '<div class="zona-escala"></div>';
+  host.appendChild(wrap);
+
+  const input  = wrap.querySelector("input");
+  const sufijo = wrap.querySelector(".campo-sufijo");
+  const eco    = wrap.querySelector(".eco");
+  const zona   = wrap.querySelector(".zona-escala");
+  wrap.querySelector(".lbl").textContent = cfg.label;
+
+  // Toggle de unidad (solo precio).
+  if (cfg.unidades) {
+    const seg = document.createElement("div");
+    seg.className = "seg";
+    cfg.unidades.forEach((u) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = u.label;
+      b.onclick = () => {
+        if (cfg.unidad === u.key) return;
+        // D1: el toggle CONVIERTE el valor, no reinterpreta el texto.
+        const anterior = cfg.unidades.find((x) => x.key === cfg.unidad);
+        const v = parseNumeroCL(input.value, anterior.decimales);
+        cfg.unidad = u.key;
+        cfg.decimales = u.decimales;
+        cfg.eco = u.eco;
+        cfg.escala = u.escala;
+        if (v !== null) {
+          input.value = formatNumeroCL(v * (anterior.factor / u.factor), u.decimales);
+        }
+        seg.querySelectorAll("button").forEach((x, i) =>
+          x.classList.toggle("on", cfg.unidades[i].key === u.key));
+        sufijo.textContent = u.sufijo;
+        pintar();
+      };
+      seg.appendChild(b);
+    });
+    wrap.querySelector(".campo-label").appendChild(seg);
+    seg.style.marginLeft = "auto";
+    seg.querySelectorAll("button").forEach((x, i) =>
+      x.classList.toggle("on", cfg.unidades[i].key === cfg.unidad));
+  }
+
+  let blurred = cfg.forzarBlur === true;
+
+  function pintar() {
+    const r = estadoDe(input.value, cfg, blurred);
+    wrap.classList.toggle("err", r.estado === "error");
+    zona.innerHTML = "";
+    eco.className = "eco";
+
+    if (r.estado === "vacio") {
+      eco.classList.add("eco-vacio");
+      eco.textContent = " ";
+    } else if (r.estado === "encurso") {
+      eco.classList.add("eco-encurso");
+      eco.textContent = "Seguí escribiendo — todavía no se puede leer.";
+    } else if (r.estado === "error") {
+      eco.classList.add("eco-error");
+      eco.textContent = "No se entiende ese número: " + r.msg;
+    } else {
+      eco.innerHTML = '<span>=</span><span class="eco-val"></span>';
+      eco.querySelector(".eco-val").textContent = r.eco;
+      if (r.estado === "escala") {
+        zona.innerHTML =
+          '<div class="escala"><div class="escala-label">Fuera de escala</div>' +
+          '<div class="escala-txt"></div></div>';
+        zona.querySelector(".escala-txt").textContent = r.aviso;
+      }
+    }
+  }
+
+  input.addEventListener("input", () => { blurred = false; pintar(); });
+  input.addEventListener("blur",  () => { blurred = true;  pintar(); });
+  input.addEventListener("focus", () => { blurred = false; pintar(); });
+
+  input.value = cfg.valor || "";
+  sufijo.textContent = cfg.sufijo || (cfg.unidades ? cfg.unidades.find((u) => u.key === cfg.unidad).sufijo : "");
+  pintar();
+  return wrap;
+}
+
+/* ── Configuración de los 5 campos ──────────────────────────────────────── */
+
+function cfgPrecio(valor) {
+  const uf  = { key:"uf",  label:"UF", sufijo:"UF", decimales:2, factor:1,
+                eco:(v)=>"UF " + formatNumeroCL(v, decUtil(v)), escala:"precioUF" };
+  const clp = { key:"clp", label:"$",  sufijo:"$",  decimales:0, factor:1/UF_CLP,
+                eco:(v)=>"$" + formatNumeroCL(v, 0), escala:null };
+  return { label:"Precio pedido", valor, strong:true, unidad:"uf",
+           decimales:uf.decimales, eco:uf.eco, escala:uf.escala,
+           unidades:[uf, clp] };
+}
+const cfgTasa = (valor, forzarBlur) => ({
+  label:"Tasa de interés", valor, sufijo:"%", decimales:1, escala:"tasa", forzarBlur,
+  eco:(v)=>formatNumeroCL(v, decUtil(v)) + "% anual",
+});
+const cfgArriendo = (valor, forzarBlur) => ({
+  label:"Arriendo mensual", valor, sufijo:"$", decimales:0, escala:"arriendo", forzarBlur,
+  eco:(v)=>"$" + formatNumeroCL(v,0) + "/mes",
+});
+const cfgComision = (valor, forzarBlur) => ({
+  label:"Comisión administración", valor, sufijo:"%", decimales:1, escala:"comision", forzarBlur,
+  eco:(v)=>formatNumeroCL(v, decUtil(v)) + "% del arriendo",
+});
+const cfgEstac = (valor, forzarBlur) => ({
+  label:"Estacionamientos", valor, sufijo:"", decimales:0, forzarBlur,
+  eco:(v)=>formatNumeroCL(v,0) + (v === 1 ? " estacionamiento" : " estacionamientos"),
+});
+
+/* ── §3 · galería de estados congelados ─────────────────────────────────── */
+
+const GALERIA = [
+  ["Vacío",            cfgArriendo("",            false)],
+  ["En curso · «3.2» en un campo de 0 decimales", cfgArriendo("3.2", false)],
+  ["Interpretado",     cfgComision("7,5",         false)],
+  ["Fuera de escala",  cfgTasa("45",              false)],
+  ["No interpretable", cfgArriendo("12.34.567",   true)],
+  ["No interpretable · decimal en campo entero", cfgEstac("1,5", true)],
+];
+
+const galeria = document.getElementById("galeria");
+GALERIA.forEach(([titulo, cfg]) => {
+  const box = document.createElement("div");
+  box.className = "panel";
+  const tag = document.createElement("span");
+  tag.className = "caso-tag";
+  tag.textContent = titulo;
+  box.appendChild(tag);
+  galeria.appendChild(box);
+  montar(box, cfg);
+});
+
+/* ── §4 · campos vivos ──────────────────────────────────────────────────── */
+
+// §2 · anatomía. Se monta con el MISMO código que los campos vivos para que las
+// cuatro piezas del diagrama no puedan quedar desalineadas de la conducta real.
+// El valor es la corrupción ×10 de la auditoría: un dígito de más en el precio.
+montar(document.getElementById("f-anatomia"), cfgPrecio("320.050"));
+
+montar(document.getElementById("f-precio"),   cfgPrecio("3.200,5"));
+montar(document.getElementById("f-tasa"),     cfgTasa("4,7", false));
+montar(document.getElementById("f-arriendo"), cfgArriendo("650.000", false));
+montar(document.getElementById("f-comision"), cfgComision("7,5", false));
+montar(document.getElementById("f-estac"),    cfgEstac("1", false));
+
+/* ── §5 · traza tecla por tecla ─────────────────────────────────────────── */
+
+(function traza() {
+  const objetivo = "3.200";
+  const cfg = { decimales: 2, eco: (v) => "UF " + formatNumeroCL(v, decUtil(v)), escala: null };
+  const t = document.getElementById("traza");
+  t.innerHTML = "<tr><th style='width:70px'>Paso</th><th style='width:150px'>En el campo</th><th>Eco</th><th style='width:150px'>Estado</th></tr>";
+  let texto = "";
+  for (let i = 0; i < objetivo.length; i++) {
+    texto += objetivo[i];
+    const r = estadoDe(texto, cfg, false);
+    const tr = document.createElement("tr");
+    const eco =
+      r.estado === "ok" || r.estado === "escala" ? "= " + r.eco
+      : r.estado === "encurso" ? "apagado"
+      : r.estado === "error" ? "apagado" : "—";
+    tr.innerHTML =
+      "<td>" + (i + 1) + "</td>" +
+      "<td class='tecla'>" + texto + "</td>" +
+      "<td class='" + (r.estado === "ok" || r.estado === "escala" ? "tecla" : "off") + "'>" + eco + "</td>" +
+      "<td>" + r.estado + "</td>";
+    t.appendChild(tr);
+  }
+})();
+</script>
+</body>
+</html>
