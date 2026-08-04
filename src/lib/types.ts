@@ -121,6 +121,40 @@ export const metricaNoAplica = (razon: RazonSinCapital = "sin_pie"): MetricaSobr
   razon,
 });
 
+// ─── TIR: "no aplica" y "no se pudo calcular" son estados DISTINTOS ──────────
+//
+// `no_aplica` es una decisión del análisis (pie 0 ⇒ no hay capital propio que
+// rente). `no_calculable` es una propiedad del flujo: el VPN no cruza cero en
+// [−99%, 1000%], así que no existe raíz que reportar. Colapsarlos mentiría en
+// las dos direcciones, y colapsar cualquiera de los dos a un número es lo que
+// producía el "100%" fantasma (ver src/lib/finance/irr.ts).
+//
+// El estado viaja TIPADO hasta el borde a propósito: `metricaODefault(tir, 0)`
+// a mitad de camino volvería a inventar un número, solo que ahora sería 0 en
+// vez de 100. Los consumidores leen con metricaValorONull y deciden explícitamente.
+export type RazonTIRNoCalculable = "sin-bracket" | "flujos-invalidos";
+
+export type MetricaTIR =
+  | MetricaSobreCapital
+  | { tipo: "no_calculable"; razon: RazonTIRNoCalculable };
+
+export const metricaNoCalculable = (razon: RazonTIRNoCalculable): MetricaTIR => ({
+  tipo: "no_calculable",
+  razon,
+});
+
+/**
+ * Discriminante del estado 'no_calculable'. Espejo de `esMetricaNoAplica`: el
+ * render que quiera distinguir "no aplica" (pie 0) de "no hay TIR" (flujo sin
+ * raíz) tiene los dos predicados; el que solo quiera saber "¿hay número?" usa
+ * metricaValorONull, que devuelve null en ambos.
+ */
+export function esMetricaNoCalculable(
+  m: MetricaTIR | number | null | undefined,
+): m is { tipo: "no_calculable"; razon: RazonTIRNoCalculable } {
+  return typeof m === "object" && m !== null && m.tipo === "no_calculable";
+}
+
 /**
  * Lectura numérica tolerante a filas persistidas pre-migración: los results
  * jsonb guardados antes del tipo traen number crudo donde hoy va la unión.
@@ -129,7 +163,7 @@ export const metricaNoAplica = (razon: RazonSinCapital = "sin_pie"): MetricaSobr
  * para que un brazo sobre capital se OMITA (ni true ni false) con 'no_aplica'.
  */
 export function metricaValorONull(
-  m: MetricaSobreCapital | number | null | undefined,
+  m: MetricaTIR | number | null | undefined,
 ): number | null {
   if (typeof m === "number") return Number.isFinite(m) ? m : null;
   if (m == null) return null;
@@ -142,7 +176,7 @@ export function metricaValorONull(
  * number NaN, undefined). Solo lo que ES no_aplica recibe el tratamiento D1.
  */
 export function esMetricaNoAplica(
-  m: MetricaSobreCapital | number | null | undefined,
+  m: MetricaTIR | number | null | undefined,
 ): m is { tipo: "no_aplica"; razon: RazonSinCapital } {
   return typeof m === "object" && m !== null && m.tipo === "no_aplica";
 }
@@ -155,7 +189,7 @@ export function esMetricaNoAplica(
  * con el D1 del mockup 98e2319 (esMetricaNoAplica + no-aplica-copy.ts).
  */
 export function metricaODefault(
-  m: MetricaSobreCapital | number | null | undefined,
+  m: MetricaTIR | number | null | undefined,
   fallback: number = 0,
 ): number {
   const v = metricaValorONull(m);
@@ -168,7 +202,7 @@ export function metricaODefault(
  * > 0 el output es byte-idéntico al previo.
  */
 export function metricaDisplay(
-  m: MetricaSobreCapital | number | null | undefined,
+  m: MetricaTIR | number | null | undefined,
   fmt: (n: number) => string,
 ): string {
   const v = metricaValorONull(m);
@@ -214,7 +248,10 @@ export interface ExitScenario {
   // Sobre capital propio: 'no_aplica' cuando pieCLP === 0 (pie cero · fase 1-2).
   // Filas persistidas pre-migración traen number crudo → leer con metricaValorONull.
   multiplicadorCapital: MetricaSobreCapital;
-  tir: MetricaSobreCapital;
+  // MetricaTIR (no MetricaSobreCapital): suma el estado 'no_calculable' para el
+  // flujo cuyo VPN no cruza cero. Filas persistidas traen number crudo o la unión
+  // vieja — ambas siguen siendo legibles con metricaValorONull.
+  tir: MetricaTIR;
   // Concepto "plata que realmente pusiste" a lo largo del plazo
   inversionInicial: number;              // pie + gastos cierre + CapEx puesta a punto + corretaje (usados, día 1)
   flujoMensualAcumuladoNegativo: number; // suma absoluta de años con flujo neto negativo
@@ -987,11 +1024,13 @@ export type Hallazgo =
 export interface NegociacionScenario {
   precioSugeridoUF: number;
   precioSugeridoCLP: number;
-  tirAlSugerido: number;
+  // null ⇒ ese precio no tiene TIR reportable (pie 0, o VPN sin raíz). Filas
+  // persistidas traen number; los lectores usan `?? null` y renderizan "—".
+  tirAlSugerido: number | null;
   precioLimiteUF: number | null;
   precioLimiteCLP: number | null;
   tirAlLimite: number | null;
-  tirAlVmFranco: number;
+  tirAlVmFranco: number | null;
   // Fase 3.7 v10 — modo del sugerido. Define qué argumento usar en la glosa IA
   // y si la card "Sugerido" muestra un descuento o señala "cerrar al actual".
   modo?: "cerrar_actual" | "optimizar_flujo" | "alinear_mercado";

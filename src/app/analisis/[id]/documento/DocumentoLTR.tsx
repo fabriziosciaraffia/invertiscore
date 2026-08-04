@@ -18,7 +18,7 @@ import type {
 } from "@/lib/types";
 import { ordenarHallazgosDocumento } from "@/components/analysis/PiramideHallazgos";
 import { fmtUF, fmtMoney } from "@/components/analysis/utils";
-import { metricaDisplay, metricaODefault } from "@/lib/types";
+import { metricaDisplay, metricaODefault, metricaValorONull } from "@/lib/types";
 import { calcDividendo } from "@/lib/analysis";
 import { NO_APLICA_FOOTNOTE_DOC } from "@/lib/no-aplica-copy";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
@@ -96,11 +96,17 @@ export function DocumentoLTR({
   // comparado sobre valores redondeados = lo que se muestra). En BUSCAR OTRA con
   // TIR negativa el sugerido no mueve la aguja → no afirmar "mejora la matemática".
   // Con pie 0 esta aritmética no se usa (rama plata-mensual arriba).
-  const tirActual = metricaODefault(results.exitScenario.tir, 0);
-  const tirMejoraPts = neg ? round1(neg.tirAlSugerido) - round1(tirActual) : 0;
-  const tirMejoraMaterial = tirMejoraPts >= 0.3;
+  // null ⇒ sin TIR reportable (pie 0, o VPN sin raíz): la comparación de mejora
+  // no se puede afirmar, así que cae al brazo conservador sin citar puntos.
+  const tirActual = metricaValorONull(results.exitScenario.tir);
+  const tirSug = neg?.tirAlSugerido ?? null;
+  const tirComparable = tirActual !== null && tirSug !== null;
+  const tirMejoraPts = tirComparable ? round1(tirSug) - round1(tirActual) : 0;
+  const tirMejoraMaterial = tirComparable && tirMejoraPts >= 0.3;
   // nunca "de X a Y" si redondean igual (QA punto 1c).
-  const tirDistinto = neg ? pct(tirActual) !== pct(neg.tirAlSugerido) : false;
+  const tirDistinto = tirComparable ? pct(tirActual) !== pct(tirSug) : false;
+  /** Porcentaje o "—" cuando no hay número. Sin copy nuevo: mismo guion que metricaDisplay. */
+  const pctON = (n: number | null | undefined) => (n == null ? "—" : pct(n));
 
   // ── Condiciones del gate COMPRAR (estado ACTUAL) ── (QA punto 2)
   const gates = [
@@ -325,9 +331,11 @@ export function DocumentoLTR({
           <div className="chips">
             <p className="cl">Tu retorno vs el piso</p>
             <div className="grid g3">
-              <div className="c"><p className="ck">Tu TIR</p><div className={`cv ${metricaODefault(exit.tir, 0) >= 6 ? "pos" : "neg"}`}>{metricaDisplay(exit.tir, pct)}</div></div>
+              {/* Sin TIR no hay tono: la clase pos/neg se omite y el valor cae a "—".
+                  Antes metricaODefault(...,0) pintaba "neg" sobre un cero inventado. */}
+              <div className="c"><p className="ck">Tu TIR</p><div className={`cv ${tirActual === null ? "" : tirActual >= 6 ? "pos" : "neg"}`}>{metricaDisplay(exit.tir, pct)}</div></div>
               <div className="c"><p className="ck">Piso exigible</p><div className="cv">6,0%</div></div>
-              <div className="c"><p className="ck">Margen</p><div className={`cv ${metricaODefault(exit.tir, 0) - 6 >= 0 ? "pos" : "neg"}`}>{(metricaODefault(exit.tir, 0) - 6 >= 0 ? "+" : "") + dec(metricaODefault(exit.tir, 0) - 6)} pts</div></div>
+              <div className="c"><p className="ck">Margen</p><div className={`cv ${tirActual === null ? "" : tirActual - 6 >= 0 ? "pos" : "neg"}`}>{tirActual === null ? "—" : (tirActual - 6 >= 0 ? "+" : "") + dec(tirActual - 6) + " pts"}</div></div>
             </div>
             <p className="foot">6,0% es el mínimo que un crédito apalancado debe rendir para pagar el esfuerzo y la iliquidez de tener un depto.</p>
           </div>
@@ -373,14 +381,14 @@ export function DocumentoLTR({
             {/* Grilla 2 o 3 columnas según haya techo — sin celda fantasma (QA 1b). */}
             <div className={`grid ${neg.precioLimiteUF != null ? "g3" : "g2"}`}>
               <div className="c"><p className="ck">Precio sugerido</p><div className="cv pos">{fmtUFint(neg.precioSugeridoUF)}</div></div>
-              <div className="c"><p className="ck">TIR al sugerido</p><div className="cv">{pct(neg.tirAlSugerido)}</div></div>
+              <div className="c"><p className="ck">TIR al sugerido</p><div className="cv">{pctON(neg.tirAlSugerido)}</div></div>
               {neg.precioLimiteUF != null && (
                 <div className="c"><p className="ck">Techo (TIR 6%)</p><div className="cv">{fmtUFint(neg.precioLimiteUF)}</div></div>
               )}
             </div>
             <p className="foot">
               {tirMejoraMaterial && tirDistinto ? (
-                <>{neg.razon ?? "Este precio te acerca a los comparables de la zona."} La TIR pasa de {metricaDisplay(exit.tir, pct)} a {pct(neg.tirAlSugerido)}.</>
+                <>{neg.razon ?? "Este precio te acerca a los comparables de la zona."} La TIR pasa de {metricaDisplay(exit.tir, pct)} a {pctON(neg.tirAlSugerido)}.</>
               ) : (
                 <>El precio no es la palanca de este caso: acercarlo al mercado de la zona apenas mueve el retorno (TIR {metricaDisplay(exit.tir, pct)}). Lo que decide acá vive en el flujo y los supuestos, no en el precio de entrada.</>
               )}

@@ -7,7 +7,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
-  AnalisisInput, FullAnalysisResult, MetricaSobreCapital, Veredicto, PrecioVsComuna,
+  AnalisisInput, FullAnalysisResult, MetricaTIR, Veredicto, PrecioVsComuna,
 } from "../../src/lib/types";
 import { esMetricaNoAplica, metricaValorONull } from "../../src/lib/types";
 import { NO_APLICA_PROMPT } from "../../src/lib/no-aplica-copy";
@@ -101,8 +101,10 @@ type CifraJuez = number | string | null;
  * emite el NÚMERO cuando la métrica aplica y, cuando no, el MISMO string que el
  * generador vio en su prompt (`NO_APLICA_PROMPT`) — juez y generador leen igual.
  */
-function metricaParaJuez(m: MetricaSobreCapital | number | null | undefined): CifraJuez {
+function metricaParaJuez(m: MetricaTIR | number | null | undefined): CifraJuez {
   if (esMetricaNoAplica(m)) return NO_APLICA_PROMPT;
+  // 'no_calculable' (TIR sin raíz del VPN) cae a null a propósito: el generador
+  // OMITE esa línea de su prompt, así que el juez tampoco debe verla. Regla espejo.
   return metricaValorONull(m);
 }
 

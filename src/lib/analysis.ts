@@ -10,10 +10,12 @@ import type {
   FullAnalysisResult,
   NegociacionScenario,
   MetricaSobreCapital,
+  MetricaTIR,
   RazonSinCapital,
   PreEntregaGanancia,
 } from "./types";
-import { metricaNoAplica, metricaValor, metricaValorONull, metricaODefault } from "./types";
+import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "./types";
+import { calcIRRPct } from "./finance/irr";
 import { estimarContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
@@ -90,24 +92,6 @@ function saldoCredito(creditoInicial: number, tasaAnual: number, plazoAnos: numb
   const dividendo = (creditoInicial * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n));
   return creditoInicial * Math.pow(1 + tasaMensual, mesActual) -
     dividendo * ((Math.pow(1 + tasaMensual, mesActual) - 1) / tasaMensual);
-}
-
-function calcTIR(flujos: number[], guess: number = 0.1): number {
-  let rate = guess;
-  for (let iter = 0; iter < 100; iter++) {
-    let npv = 0;
-    let dnpv = 0;
-    for (let i = 0; i < flujos.length; i++) {
-      npv += flujos[i] / Math.pow(1 + rate, i);
-      dnpv -= (i * flujos[i]) / Math.pow(1 + rate, i + 1);
-    }
-    if (Math.abs(npv) < 1) break;
-    if (dnpv === 0) break;
-    rate -= npv / dnpv;
-    if (rate < -0.99) rate = -0.5;
-    if (rate > 10) rate = 1;
-  }
-  return rate;
 }
 
 function clamp(val: number, min: number, max: number): number {
@@ -862,7 +846,16 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
     }
     flujos.push(flujo);
   }
-  const tir = Math.round(calcTIR(flujos, 0.1) * 10000) / 100;
+  // El solver devuelve un estado, no siempre un número: un flujo cuyo VPN no
+  // cruza cero en [−99%, 1000%] no tiene TIR que reportar. Ese caso NO se colapsa
+  // a 0 ni a ningún otro valor de consuelo — viaja tipado hasta el render y los
+  // prompts. El "100%" fantasma nacía exactamente de colapsarlo. Ver finance/irr.ts.
+  const tirIRR = calcIRRPct(flujos);
+  const tirMetrica: MetricaTIR = sinPie
+    ? metricaNoAplica(razonPie)
+    : tirIRR.ok
+      ? metricaValor(tirIRR.rate)
+      : metricaNoCalculable(tirIRR.reason);
 
   return {
     anios,
@@ -873,7 +866,7 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
     flujoAcumulado: proy.flujoAcumulado,
     retornoTotal: Math.round(retornoTotal),
     multiplicadorCapital: sinPie ? metricaNoAplica(razonPie) : metricaValor(multiplicadorCapital),
-    tir: sinPie ? metricaNoAplica(razonPie) : metricaValor(tir),
+    tir: tirMetrica,
     inversionInicial: Math.round(inversionInicial),
     flujoMensualAcumuladoNegativo: Math.round(flujoMensualAcumuladoNegativo),
     totalAportado: Math.round(totalAportado),
@@ -1649,16 +1642,23 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics, asOf: D
 export { calcMetrics, calcScoreFromMetrics };
 
 // TIR para un precio alternativo (UF). Recomputa métricas/proyecciones/exit.
-export function tirForPrice(input: AnalisisInput, precioUF: number, ufClp: number, asOf: Date): number {
+//
+// Devuelve `null` cuando ese precio candidato NO tiene TIR reportable — sea
+// porque el pie es 0 ('no_aplica') o porque el VPN del flujo no cruza cero
+// ('no_calculable'). El contrato viejo era `number` con 0 de relleno, y ese 0
+// entraba a la bisección del precio límite como si fuera una TIR de 0%: el
+// candidato quedaba evaluado en vez de descartado. Ahora el llamador decide.
+export function tirForPrice(
+  input: AnalisisInput,
+  precioUF: number,
+  ufClp: number,
+  asOf: Date,
+): number | null {
   const clone: AnalisisInput = { ...input, precio: precioUF };
   const m = calcMetrics(clone, ufClp);
   const projs = calcProjections({ input: clone, metrics: m, plazoVenta: 20, ufClp, asOf });
   const ex = calcExitScenario(clone, m, projs, 10);
-  // Pie cero (resuelto en fase 3b · D2): con pie 0 devuelve 0 para preservar el
-  // contrato number, y NINGÚN consumidor lo usa en ese caso — el drawer y el
-  // documento de negociación pasan a la lectura plata-mensual (calcDividendo) y
-  // la bisección del precio límite se omite (fila Límite suprimida, mockup 98e2319).
-  return metricaODefault(ex.tir, 0);
+  return metricaValorONull(ex.tir);
 }
 
 // Fase 3.7 v10 — umbral del aporte mensual considerado "viable" en la matemática
@@ -1697,7 +1697,9 @@ function calcPrecioFlujoViable(
 
 function calcNegociacionScenario(
   input: AnalisisInput,
-  tirActual: number,
+  // null ⇒ el análisis no tiene TIR reportable (pie 0, o VPN sin raíz). El gate
+  // del precio límite se omite entero, igual que ya se omitía con pie 0.
+  tirActual: number | null,
   metrics: { flujoNetoMensual: number },
   ufClp: number,
   asOf: Date,
@@ -1770,7 +1772,7 @@ function calcNegociacionScenario(
   // Precio límite: buscar por bisección el precio donde TIR cae a 6%.
   let precioLimiteUF: number | null = null;
   let tirAlLimite: number | null = null;
-  if (tirActual > 6) {
+  if (tirActual !== null && tirActual > 6) {
     let lo = input.precio;
     // P2 (Fase 20): rango ampliado a vmFranco × 1.5 (era × 1.3) para que
     // Límite ≥ vmFranco en deals con ventaja extrema (>30% bajo mercado).
@@ -1778,6 +1780,13 @@ function calcNegociacionScenario(
     for (let i = 0; i < 18; i++) {
       const mid = (lo + hi) / 2;
       const tir = tirForPrice(input, mid, ufClp, asOf);
+      // Candidato sin TIR reportable: NO se trata como TIR=0 (eso lo mandaría al
+      // brazo `hi = mid` y sesgaría el límite hacia abajo). Se descarta subiendo
+      // el piso, que es la mitad del intervalo que sigue siendo evaluable.
+      if (tir === null) {
+        lo = mid;
+        continue;
+      }
       if (tir > 6) lo = mid;
       else hi = mid;
       if (Math.abs(tir - 6) < 0.1) {
@@ -2030,7 +2039,7 @@ export function runAnalysis(
   // render lee la negociación en plata mensual (mockup 98e2319).
   const negociacion = calcNegociacionScenario(
     input,
-    metricaODefault(exitScenario.tir, 0),
+    metricaValorONull(exitScenario.tir),
     metrics,
     ufClp,
     asOf,

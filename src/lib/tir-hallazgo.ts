@@ -42,7 +42,12 @@ const fmt1 = (n: number) => n.toFixed(1).replace(".", ",");
 /**
  * Construye el proto-hallazgo de TIR reusando exitScenario.tir (:702, no lo recalcula).
  * SOLO-LECTURA: decisividad 0 fija; magnitudContinua = |tir−6|/10 (desempate del sort).
- * Devuelve null si la TIR no es finita (guard defensivo por si calcTIR diverge).
+ * Devuelve null si la TIR no es finita. El guard REAL vive aguas arriba: el
+ * callsite lee `exitScenario.tir` con metricaValorONull, así que 'no_aplica'
+ * (pie 0) y 'no_calculable' (VPN sin raíz) ya llegan como null y el hallazgo se
+ * omite de la pirámide. Este `isFinite` queda como red de filas legacy que
+ * persistieron un number crudo cuando el solver viejo divergía (hay 3 en la base
+ * con 645%, 686% y 186%) — ver src/lib/finance/irr.ts.
  *
  * La fraseCanonica es la línea determinística del motor (sin LLM); la IA la reescribe
  * aguas abajo. Voz: tuteo neutro chileno. Glosa TIR inline porque la card de la pirámide

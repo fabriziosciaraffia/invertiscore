@@ -45,7 +45,7 @@ import {
 } from "@/lib/prosa-presupuesto";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import type { Hallazgo } from "@/lib/types";
-import { metricaDisplay, metricaODefault, esMetricaNoAplica } from "@/lib/types";
+import { metricaDisplay, metricaODefault, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
 import { calcDividendo } from "@/lib/analysis";
 
@@ -1175,6 +1175,13 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         ? ({ tipo: "no_aplica", razon: "sin_pie" } as const)
         : null;
     const sinCapitalPropio = cocNoAplica !== null;
+    // TIR 'no_calculable' (VPN sin raíz): la línea se OMITE del bundle en vez de
+    // entregarle al modelo un guion suelto que narrar. No es lo mismo que
+    // 'no_aplica' (pie 0), que sí tiene su propia doctrina declarada (## 5.bis).
+    const tirLineaPrompt =
+      esMetricaNoAplica(exit.tir) || metricaValorONull(exit.tir) !== null
+        ? `- TIR a 10 años: ${esMetricaNoAplica(exit.tir) ? NO_APLICA_PROMPT : metricaDisplay(exit.tir, (n) => `${pct(n)}%`)}\n`
+        : "";
     // Baja de dividendo al precio sugerido: crédito = precio × (1 − pie%), misma
     // estructura declarada. Motor real (calcDividendo), sin cifras inventadas.
     const dividendoAlSugerido = calcDividendo(
@@ -1631,8 +1638,7 @@ INDICADORES CALCULADOS
 - Cap rate: ${pct(m.capRate)}%
 - Rentabilidad neta: ${pct(m.rentabilidadNeta)}%
 - Cash-on-Cash: ${esMetricaNoAplica(m.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(m.cashOnCash, (n) => `${pct(n)}%`)}
-- TIR a 10 años: ${esMetricaNoAplica(exit.tir) ? NO_APLICA_PROMPT : metricaDisplay(exit.tir, (n) => `${pct(n)}%`)}
-- Multiplicador de capital (10 años): ${esMetricaNoAplica(exit.multiplicadorCapital) ? NO_APLICA_PROMPT : metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
+${tirLineaPrompt}- Multiplicador de capital (10 años): ${esMetricaNoAplica(exit.multiplicadorCapital) ? NO_APLICA_PROMPT : metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
 ${sinCapitalPropio ? `- capitalPropio: no aplica (razonSinCapital: ${razonSinCapitalPrompt(cocNoAplica!.razon)}). APLICA LA DOCTRINA ## 5.bis del system: riesgo estructural, cero celebración de métricas sobre capital, dureza con el precio/m² según la razón declarada.
 ` : ""}- Inversión inicial total: ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})${sinCapitalPropio ? " — SIN pie: son gastos de cierre/puesta a punto, NO capital propio que rente" : ""}
 - Precio máximo de compra para flujo positivo: ${fmtUF(results.valorMaximoCompra)}

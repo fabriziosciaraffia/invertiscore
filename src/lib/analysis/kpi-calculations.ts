@@ -1,5 +1,5 @@
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
-import { metricaODefault } from "@/lib/types";
+import { metricaODefault, metricaValorONull } from "@/lib/types";
 import { calcExitScenario } from "@/lib/analysis";
 
 const GASTOS_CIERRE_PCT = 0.02;
@@ -167,7 +167,12 @@ export function calculateKPIs(inp: KPIInputs): KPIResults {
   const noAplica = sinCapitalPropio || horizonteAntesDeEntrega;
 
   return {
-    tir: noAplica ? null : metricaODefault(exit.tir, 0),
+    // Dos razones independientes para no emitir TIR, y las dos mandan:
+    // `noAplica` (pie 0 o horizonte antes de la entrega) y 'no_calculable' (el
+    // VPN del flujo no cruza cero). metricaValorONull en vez de
+    // metricaODefault(...,0) porque el default a 0 sería otro número inventado —
+    // el mismo pecado que producía el 100%. null ⇒ "—" sin badge de tono.
+    tir: noAplica ? null : metricaValorONull(exit.tir),
     capRate,
     cashOnCash: noAplica ? null : cashOnCash,
     paybackAnios: noAplica ? null : paybackAnios,

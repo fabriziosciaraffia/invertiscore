@@ -22,8 +22,9 @@ import {
 import { calcInversionInicialCLP } from "../inversion-inicial";
 import { PLUSVALIA_PROYECCION_ANUAL } from "../plusvalia-proyeccion";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
-import type { Hallazgo, MetricaSobreCapital, RazonSinCapital } from "../types";
-import { metricaNoAplica, metricaValor } from "../types";
+import type { Hallazgo, MetricaSobreCapital, MetricaTIR, RazonSinCapital } from "../types";
+import { metricaNoAplica, metricaNoCalculable, metricaValor } from "../types";
+import { calcIRRPct } from "../finance/irr";
 
 // =========================================
 // Types
@@ -213,8 +214,9 @@ export interface ExitScenarioSTR {
   // propio: 'no_aplica' cuando pie === 0 (pie cero · fase 1-2); legacy trae number.
   multiplicadorCapital: MetricaSobreCapital;
   // TIR % del cashflow año 0 → año N. Sobre capital propio: 'no_aplica' cuando
-  // pie === 0 (rama A pie-cero-str-tir); legacy trae number crudo.
-  tirAnual: MetricaSobreCapital;
+  // pie === 0 (rama A pie-cero-str-tir); legacy trae number crudo. Suma
+  // 'no_calculable' (MetricaTIR) cuando el VPN del flujo no cruza cero.
+  tirAnual: MetricaTIR;
 }
 
 export type BandaOcupacionSTR =
@@ -777,27 +779,6 @@ function saldoCreditoSTR(creditoInicial: number, tasaAnualDecimal: number, plazo
 }
 
 /**
- * TIR de un flujo de caja (Newton-Raphson). Misma implementación que LTR.
- */
-function calcTIRSTR(flujos: number[], guess: number = 0.1): number {
-  let rate = guess;
-  for (let iter = 0; iter < 100; iter++) {
-    let npv = 0;
-    let dnpv = 0;
-    for (let i = 0; i < flujos.length; i++) {
-      npv += flujos[i] / Math.pow(1 + rate, i);
-      dnpv -= (i * flujos[i]) / Math.pow(1 + rate, i + 1);
-    }
-    if (Math.abs(npv) < 1) break;
-    if (dnpv === 0) break;
-    rate -= npv / dnpv;
-    if (rate < -0.99) rate = -0.5;
-    if (rate > 10) rate = 1;
-  }
-  return rate;
-}
-
-/**
  * Proyecciones año-a-año para Patrón 7 (Advanced Section). Ronda 4b.
  *
  * Año 1 aplica perdidaRampUp (5 primeros meses operan al 50/60/70/80/90%).
@@ -936,7 +917,14 @@ function buildExitScenario(
     }
     flujos.push(flujo);
   }
-  const tirAnual = Math.round(calcTIRSTR(flujos, 0.1) * 10000) / 100;
+  // El solver puede no encontrar raíz (flujo cuyo VPN nunca cruza cero). Ese
+  // estado viaja tipado hasta el borde: NO se colapsa a 0 acá. Ver finance/irr.ts.
+  const tirIRR = calcIRRPct(flujos);
+  const tirMetrica: MetricaTIR = sinPie
+    ? metricaNoAplica(razonSinPie)
+    : tirIRR.ok
+      ? metricaValor(tirIRR.rate)
+      : metricaNoCalculable(tirIRR.reason);
 
   return {
     yearVenta,
@@ -950,7 +938,7 @@ function buildExitScenario(
     multiplicadorCapital: sinPie ? metricaNoAplica(razonSinPie) : metricaValor(multiplicadorCapital),
     // Espejo exacto del multiplicador de arriba: sin capital propio no hay retorno
     // sobre lo invertido que medir, aunque capitalInicial > 0 por amoblamiento/CapEx.
-    tirAnual: sinPie ? metricaNoAplica(razonSinPie) : metricaValor(tirAnual),
+    tirAnual: tirMetrica,
   };
 }
 

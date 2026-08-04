@@ -473,6 +473,9 @@ function DrawerNegociacion({
       for (let i = 0; i < 18; i++) {
         const mid = (lo + hi) / 2;
         const t = tirForPrice(inputData, mid, valorUF, asOf);
+        // Candidato sin TIR reportable: se descarta subiendo el piso, NO se trata
+        // como TIR=0 (espejo exacto de calcNegociacionScenario en el motor).
+        if (t === null) { lo = mid; continue; }
         if (t > 6) lo = mid; else hi = mid;
         if (Math.abs(t - 6) < 0.1) {
           precioLimUF = Math.round(mid * 10) / 10;
