@@ -337,6 +337,14 @@ export function Paso3Modalidad({
                     )}
                   </CampoEstado>
                 )}
+                {/* Sin sugerencia el campo quedaba mudo: ni cifra ni explicación. Desde
+                    el 2026-08-04 esto pasa de verdad —se retiraron los niveles de
+                    relleno— así que hay que decir por qué está vacío. */}
+                {suggestions.arriendo == null && !state.editedFields.includes("arriendo") && (
+                  <p className="mt-1.5 font-body text-[12px] text-[var(--franco-text-muted)]">
+                    No hay arriendos publicados cerca para comparar. Ingresa el que estimas cobrar.
+                  </p>
+                )}
               </label>
 
               {Number(state.estacionamientos) > 0 && (
