@@ -9,8 +9,11 @@ import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import { MapaThumbnail } from "@/components/formulario-v3/MapaThumbnail";
 import type { WizardV4Answers, NodeId, Antiguedad } from "./wizardV4Nodes";
+import { DEC } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
-import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, Segmented, TextInput } from "./ui";
+import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, Segmented } from "./ui";
+import { NumericInput } from "./NumericInput";
+import { leerNum } from "./derive";
 
 export interface ScreenProps {
   answers: WizardV4Answers;
@@ -19,8 +22,6 @@ export interface ScreenProps {
   answer: (node: NodeId, patch?: Partial<WizardV4Answers>) => void;
   goDetour: (fix: NodeId, patch?: Partial<WizardV4Answers>) => void;
 }
-
-const num = (v: string) => (/^\d*[.,]?\d*$/.test(v) ? v : null);
 
 // ── dir ──────────────────────────────────────────────────────────────────────
 
@@ -275,25 +276,22 @@ export function AntiguedadScreen({ answer }: ScreenProps) {
 // ── tam ──────────────────────────────────────────────────────────────────────
 
 export function TamanoScreen({ answers, patchAnswers, answer }: ScreenProps) {
-  const sup = parseFloat((answers.superficieUtil ?? "").replace(",", ".")) || 0;
+  const sup = leerNum(answers.superficieUtil, DEC.superficie);
   const dorm = answers.esStudio ? "0" : answers.dormitorios;
   const puedeSeguir = sup > 0 && !!dorm && !!answers.banos;
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <FieldLabel tooltip="Metros cuadrados al interior del depto, sin terrazas ni espacios comunes.">
-          Superficie útil
-        </FieldLabel>
-        <TextInput
-          value={answers.superficieUtil ?? ""}
-          onChange={(v) => { if (num(v) !== null) patchAnswers({ superficieUtil: v }); }}
-          placeholder="50"
-          inputMode="decimal"
-          mono
-          suffix="m²"
-        />
-      </div>
+      <NumericInput
+        label="Superficie útil"
+        tooltip="Metros cuadrados al interior del depto, sin terrazas ni espacios comunes."
+        value={answers.superficieUtil ?? ""}
+        onChange={(v) => patchAnswers({ superficieUtil: v })}
+        decimales={DEC.superficie}
+        placeholder="50"
+        sufijo="m²"
+        ecoSufijo=" m²"
+      />
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -345,26 +343,24 @@ export function TamanoScreen({ answers, patchAnswers, answer }: ScreenProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <FieldLabel tooltip="Cuántos estacionamientos incluye. 0 si no tiene.">Estacionamientos</FieldLabel>
-          <TextInput
-            value={answers.estacionamientos ?? ""}
-            onChange={(v) => { if (num(v) !== null) patchAnswers({ estacionamientos: v }); }}
-            placeholder="0"
-            inputMode="numeric"
-            mono
-          />
-        </div>
-        <div>
-          <FieldLabel tooltip="Cuántas bodegas incluye. 0 si no tiene.">Bodegas</FieldLabel>
-          <TextInput
-            value={answers.bodegas ?? ""}
-            onChange={(v) => { if (num(v) !== null) patchAnswers({ bodegas: v }); }}
-            placeholder="0"
-            inputMode="numeric"
-            mono
-          />
-        </div>
+        <NumericInput
+          label="Estacionamientos"
+          tooltip="Cuántos estacionamientos incluye. 0 si no tiene."
+          value={answers.estacionamientos ?? ""}
+          onChange={(v) => patchAnswers({ estacionamientos: v })}
+          decimales={DEC.estacionamientos}
+          placeholder="0"
+          formatEco={(v) => `${v} ${v === 1 ? "estacionamiento" : "estacionamientos"}`}
+        />
+        <NumericInput
+          label="Bodegas"
+          tooltip="Cuántas bodegas incluye. 0 si no tiene."
+          value={answers.bodegas ?? ""}
+          onChange={(v) => patchAnswers({ bodegas: v })}
+          decimales={DEC.bodegas}
+          placeholder="0"
+          formatEco={(v) => `${v} ${v === 1 ? "bodega" : "bodegas"}`}
+        />
       </div>
 
       <FuenteLine>Estac. y bodega afectan precio y arriendo — déjalos en 0 si no aplican.</FuenteLine>

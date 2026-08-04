@@ -25,13 +25,14 @@ import { ResumenScreen } from "./screenResumen";
 import {
   ACTO_BY_NODE,
   ACTO_LABEL,
+  DEC,
   NODE_TITLE,
   reactionText,
   type NodeId,
   type ReactionLive,
   type WizardV4Answers,
 } from "./wizardV4Nodes";
-import { cuotaCLP, fmtCLP, parseNum } from "./derive";
+import { cuotaCLP, fmtCLP, leerNum } from "./derive";
 import { avisoSubsidioAplica } from "./wizardV4Subsidio";
 import { ChoiceTile, FrancoReaction, GhostBtn, PrimaryBtn } from "./ui";
 import {
@@ -176,7 +177,7 @@ export function WizardV4({
   // Reacción de Franco con datos reales (comparables, UF del día, cuota, aviso subsidio).
   const live: ReactionLive = {};
   if (data.comparablesCount > 0) live.comparables = data.comparablesCount;
-  const puf = parseNum(nav.answers.precio ?? "");
+  const puf = leerNum(nav.answers.precio, DEC.precioUF);
   if (puf > 0 && data.ufCLP > 0) live.precioCLP = fmtCLP(puf * data.ufCLP);
   const cuota = cuotaCLP(nav.answers, data.ufCLP);
   if (cuota > 0) live.cuota = fmtCLP(cuota);

@@ -17,15 +17,15 @@
 import {
   antiguedadToNumber,
   mesesHastaEntrega,
-  parseDecimalLocale,
-  parseNum,
 } from "@/components/formulario-v3/wizardV3State";
 import { getMantencionRate } from "@/lib/analysis";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
+import { parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import type { Anomalia, PlausibilidadInput } from "@/lib/plausibilidad";
-import type { WizardV4Answers } from "./wizardV4Nodes";
+import { DEC, decPie, type WizardV4Answers } from "./wizardV4Nodes";
+import { leerNum } from "./derive";
 
 export interface SubmitContext {
   ufCLP: number;
@@ -40,29 +40,34 @@ export interface SubmitContext {
   ggccSugerido: number | null;
 }
 
+/**
+ * Entero no negativo del wizard (contadores y chips). Lee con `parseNumeroCL`
+ * igual que todo lo demás; un texto ilegible cae al fallback en vez de colarse
+ * como NaN.
+ */
 const intSafe = (v: string | undefined, fallback: number): number => {
   if (!v) return fallback;
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 0 ? n : fallback;
+  const n = parseNumeroCL(v, 0);
+  return n !== null && n >= 0 ? n : fallback;
 };
 
 /** GGCC efectivo (editado → sugerido → fallback comuna). */
 function ggccCLP(a: WizardV4Answers, ctx: SubmitContext, sup: number): number {
-  if (a.gastosComunes) return parseNum(a.gastosComunes);
+  if (a.gastosComunes) return leerNum(a.gastosComunes, DEC.gastosComunes);
   return ctx.ggccSugerido ?? getGgccFallback(a.comuna ?? "", sup) ?? 0;
 }
 
 /** Contribuciones trimestrales efectivas (editado → fórmula SII). */
 function contribCLP(a: WizardV4Answers, precioCLP: number): number {
-  if (a.contribuciones) return parseNum(a.contribuciones);
+  if (a.contribuciones) return leerNum(a.contribuciones, DEC.contribuciones);
   return estimarContribuciones(precioCLP, a.tipoPropiedad === "nuevo");
 }
 
 // ── LTR ───────────────────────────────────────────────────────────────────────
 
 export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
-  const supUtil = parseDecimalLocale(a.superficieUtil ?? "");
-  const precioUF = parseNum(a.precio ?? "");
+  const supUtil = leerNum(a.superficieUtil, DEC.superficie);
+  const precioUF = leerNum(a.precio, DEC.precioUF);
   const nEstac = intSafe(a.estacionamientos, 0);
   const nBodega = intSafe(a.bodegas, 0);
   const antigNum = a.tipoPropiedad === "usado" ? antiguedadToNumber(a.antiguedad ?? "") : 0;
@@ -73,6 +78,7 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
   const piePct = derivePiePctLocal(a, ctx.ufCLP);
   const pieUF = precioUF * (piePct / 100);
   const dorm = a.esStudio ? 0 : intSafe(a.dormitorios, 2);
+  const comisionAdmin = leerNum(a.comisionAdminPct, DEC.comisionAdmin);
   const nombre = `Depto ${a.esStudio ? "studio" : dorm + "D"}${a.banos || "1"}B ${a.comuna ?? ""}`.trim();
 
   return {
@@ -109,19 +115,21 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     // ya la descartó, y este guard lo hace explícito en el borde.
     razonSinPie: piePct === 0 ? a.pieRazon : undefined,
     plazoCredito: Number(a.plazoCredito) || 25,
-    tasaInteres: parseDecimalLocale(a.tasaInteres ?? "") || 4.72,
+    tasaInteres: leerNum(a.tasaInteres, DEC.tasa) || 4.72,
     tasaMercado: ctx.tasaMercado,
     esNuevo: a.tipoPropiedad === "nuevo",
     gastos: ggccCLP(a, ctx, supUtil),
     contribuciones: contribCLP(a, Math.round(precioUF * ctx.ufCLP)),
     provisionMantencion: Math.round((precioUF * ctx.ufCLP * getMantencionRate(antigNum)) / 12),
     tipoRenta: "larga",
-    arriendo: parseNum(a.arriendo ?? "") || ctx.arriendoSugerido || 0,
+    arriendo: leerNum(a.arriendo, DEC.arriendo) || ctx.arriendoSugerido || 0,
     arriendoEstacionamiento: 0,
     arriendoBodega: 0,
-    vacanciaMeses: (Number(a.vacanciaPct ?? 5) * 12) / 100,
-    usaAdministrador: Number(a.comisionAdminPct ?? 0) > 0,
-    comisionAdministrador: Number(a.comisionAdminPct ?? 0) > 0 ? Number(a.comisionAdminPct) : undefined,
+    // El body viaja en MESES/año; el usuario la tipea en %. El 5 es el default
+    // silencioso del wizard cuando nunca tocó el campo.
+    vacanciaMeses: ((a.vacanciaPct ? leerNum(a.vacanciaPct, DEC.vacancia) : 5) * 12) / 100,
+    usaAdministrador: comisionAdmin > 0,
+    comisionAdministrador: comisionAdmin > 0 ? comisionAdmin : undefined,
     zonaRadio: {
       precioM2VentaCLP: null,
       arriendoPromedio: ctx.arriendoSugerido,
@@ -138,8 +146,8 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
 // Pie % derivado (mismo criterio que derive.ts, inline para no crear ciclo).
 function derivePiePctLocal(a: WizardV4Answers, ufCLP: number): number {
   const unit = a.pieUnidad ?? "pct";
-  const monto = unit === "pct" ? parseDecimalLocale(a.pieMonto ?? "") : parseNum(a.pieMonto ?? "");
-  const pUF = parseNum(a.precio ?? "");
+  const monto = leerNum(a.pieMonto, decPie(unit));
+  const pUF = leerNum(a.precio, DEC.precioUF);
   if (monto <= 0) return 0;
   if (unit === "pct") return Math.min(monto, 100);
   if (pUF <= 0 || ufCLP <= 0) return 0;
@@ -150,8 +158,8 @@ function derivePiePctLocal(a: WizardV4Answers, ufCLP: number): number {
 // ── STR ───────────────────────────────────────────────────────────────────────
 
 export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
-  const supUtil = parseDecimalLocale(a.superficieUtil ?? "");
-  const precioUF = parseNum(a.precio ?? "");
+  const supUtil = leerNum(a.superficieUtil, DEC.superficie);
+  const precioUF = leerNum(a.precio, DEC.precioUF);
   const precioCompraCLP = Math.round(precioUF * ctx.ufCLP);
   const antigNum = a.tipoPropiedad === "usado" ? antiguedadToNumber(a.antiguedad ?? "") : 0;
   const dorm = a.esStudio ? 0 : intSafe(a.dormitorios, 2);
@@ -176,30 +184,30 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     piePct: derivePiePctLocal(a, ctx.ufCLP),
     // Fase 5b: misma razón que el lado LTR — el usuario la declara una vez.
     razonSinPie: derivePiePctLocal(a, ctx.ufCLP) === 0 ? a.pieRazon : undefined,
-    tasaInteres: parseDecimalLocale(a.tasaInteres ?? "") || 4.72,
+    tasaInteres: leerNum(a.tasaInteres, DEC.tasa) || 4.72,
     tasaMercado: ctx.tasaMercado,
     plazoCredito: Number(a.plazoCredito) || 25,
     modoGestion: a.modoGestion ?? "auto",
     comisionAdministrador:
-      a.modoGestion === "administrador" ? parseDecimalLocale(a.comisionStrPct ?? "") / 100 || 0.2 : 0.2,
+      a.modoGestion === "administrador" ? leerNum(a.comisionStrPct, DEC.comisionAdmin) / 100 || 0.2 : 0.2,
     edificioPermiteAirbnb: a.edificioPermiteAirbnb ?? "no_seguro",
     tipoEdificio: "residencial_puro",
     adminPro: a.modoGestion === "administrador",
     habilitacion: "basico",
     operadorNombre: null,
     // Overrides solo cuando el usuario corrigió; en estimación el motor deriva de AirROI.
-    adrOverride: corregido ? parseNum(a.adrTarifa ?? "") || null : null,
-    occOverride: corregido ? parseDecimalLocale(a.adrOcupacion ?? "") / 100 || null : null,
-    costoElectricidad: a.costoElectricidad ? parseNum(a.costoElectricidad) : costos.costoElectricidad,
-    costoAgua: a.costoAgua ? parseNum(a.costoAgua) : costos.costoAgua,
-    costoWifi: a.costoWifi ? parseNum(a.costoWifi) : costos.costoWifi,
-    costoInsumos: a.costoInsumos ? parseNum(a.costoInsumos) : costos.costoInsumos,
+    adrOverride: corregido ? leerNum(a.adrTarifa, DEC.tarifa) || null : null,
+    occOverride: corregido ? leerNum(a.adrOcupacion, DEC.ocupacion) / 100 || null : null,
+    costoElectricidad: a.costoElectricidad ? leerNum(a.costoElectricidad, DEC.costos) : costos.costoElectricidad,
+    costoAgua: a.costoAgua ? leerNum(a.costoAgua, DEC.costos) : costos.costoAgua,
+    costoWifi: a.costoWifi ? leerNum(a.costoWifi, DEC.costos) : costos.costoWifi,
+    costoInsumos: a.costoInsumos ? leerNum(a.costoInsumos, DEC.costos) : costos.costoInsumos,
     gastosComunes: ggccCLP(a, ctx, supUtil),
-    mantencion: a.mantencionStr ? parseNum(a.mantencionStr) : costos.mantencion,
+    mantencion: a.mantencionStr ? leerNum(a.mantencionStr, DEC.costos) : costos.mantencion,
     contribuciones: contribCLP(a, precioCompraCLP),
     estaAmoblado: a.estaAmoblado === true,
-    costoAmoblamiento: a.costoAmoblamiento ? parseNum(a.costoAmoblamiento) : costos.costoAmoblamiento,
-    arriendoLargoMensual: parseNum(a.arriendo ?? "") || ctx.arriendoSugerido || 0,
+    costoAmoblamiento: a.costoAmoblamiento ? leerNum(a.costoAmoblamiento, DEC.costos) : costos.costoAmoblamiento,
+    arriendoLargoMensual: leerNum(a.arriendo, DEC.arriendo) || ctx.arriendoSugerido || 0,
   };
 }
 
@@ -222,19 +230,22 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
  * input humano que juzgar.
  */
 export function buildPlausibilidadParcial(a: WizardV4Answers, ufCLP: number): PlausibilidadInput {
-  const soloSiHay = (v: string | undefined, parse: (s: string) => number): number =>
-    v ? parse(v) : NaN;
+  // NaN y no 0: es lo que activa el fail-open del guard. Un texto ILEGIBLE
+  // también cae en NaN — antes devolvía un número plausible y equivocado, que
+  // podía disparar una anomalía falsa sobre un dato que ni siquiera se entendió.
+  const soloSiHay = (v: string | undefined, decimales: Decimales): number =>
+    v ? parseNumeroCL(v, decimales) ?? NaN : NaN;
 
   const corregidoStr = a.adrModo === "corregir";
-  const ocupacion = corregidoStr ? soloSiHay(a.adrOcupacion, parseDecimalLocale) : NaN;
-  const tarifa = corregidoStr ? soloSiHay(a.adrTarifa, parseNum) : NaN;
+  const ocupacion = corregidoStr ? soloSiHay(a.adrOcupacion, DEC.ocupacion) : NaN;
+  const tarifa = corregidoStr ? soloSiHay(a.adrTarifa, DEC.tarifa) : NaN;
 
   return {
-    precioUF: soloSiHay(a.precio, parseNum),
-    superficieM2: soloSiHay(a.superficieUtil, parseDecimalLocale),
+    precioUF: soloSiHay(a.precio, DEC.precioUF),
+    superficieM2: soloSiHay(a.superficieUtil, DEC.superficie),
     ufCLP,
-    tasaAnualPct: soloSiHay(a.tasaInteres, parseDecimalLocale),
-    arriendoMensualCLP: soloSiHay(a.arriendo, parseNum),
+    tasaAnualPct: soloSiHay(a.tasaInteres, DEC.tasa),
+    arriendoMensualCLP: soloSiHay(a.arriendo, DEC.arriendo),
     str: {
       tarifaNocheCLP: Number.isNaN(tarifa) ? null : tarifa,
       ocupacionPct: Number.isNaN(ocupacion) ? null : ocupacion,

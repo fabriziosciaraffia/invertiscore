@@ -9,10 +9,10 @@ import { estimarContribuciones } from "@/lib/contribuciones";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import type { ScreenProps } from "./screensActo1";
-import { FuenteLine, GhostBtn, PrimaryBtn, TextInput } from "./ui";
-import { dormLabel, fmtCLP, fuenteArriendoLine, parseNum, parseDecimalLocale, precioUF } from "./derive";
-
-const numOk = (v: string) => v === "" || /^[\d.]*$/.test(v);
+import { DEC } from "./wizardV4Nodes";
+import { FuenteLine, GhostBtn, PrimaryBtn } from "./ui";
+import { NumericInput } from "./NumericInput";
+import { dormLabel, fmtCLP, fuenteArriendoLine, leerNum, precioUF, superficieM2 } from "./derive";
 
 // ── Supuestos plegados (details) ──────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ export function ArrScreen({ answers, data, answer, goDetour, patchAnswers }: Scr
   const buscando = data.suggestionsLoading;
   const sinDato = !listo && !buscando;
 
-  const sup = parseDecimalLocale(answers.superficieUtil ?? "");
+  const sup = superficieM2(answers);
   const ggcc = data.ggccSugerido ?? getGgccFallback(answers.comuna ?? "", sup) ?? 0;
   const contrib = estimarContribuciones(precioUF(answers) * data.ufCLP, answers.tipoPropiedad === "nuevo");
   const supuestos = (
@@ -72,14 +72,15 @@ export function ArrScreen({ answers, data, answer, goDetour, patchAnswers }: Scr
     return (
       <div className="flex flex-col gap-5">
         <div>
-          <p className="font-body text-[13px] text-[var(--franco-text)] font-medium mb-1.5">Arriendo mensual</p>
-          <TextInput
+          <NumericInput
+            label="Arriendo mensual"
             value={val}
-            onChange={(v) => { if (numOk(v)) patchAnswers({ arriendo: v }); }}
+            onChange={(v) => patchAnswers({ arriendo: v })}
+            decimales={DEC.arriendo}
             placeholder="650.000"
-            inputMode="numeric"
-            mono
-            suffix="$"
+            sufijo="$"
+            ecoPrefijo="$"
+            ecoSufijo="/mes"
           />
           <FuenteLine>
             No hay arriendos publicados cerca de esta dirección para comparar. Ingresa el que estimas cobrar.
@@ -88,7 +89,7 @@ export function ArrScreen({ answers, data, answer, goDetour, patchAnswers }: Scr
 
         {supuestos}
 
-        <PrimaryBtn onClick={() => answer("arr", { arrModo: "corregir" })} disabled={parseNum(val) <= 0}>
+        <PrimaryBtn onClick={() => answer("arr", { arrModo: "corregir" })} disabled={leerNum(val, DEC.arriendo) <= 0}>
           Guardar y continuar →
         </PrimaryBtn>
       </div>
@@ -126,18 +127,19 @@ export function ArrScreen({ answers, data, answer, goDetour, patchAnswers }: Scr
 
 export function ArrFixScreen({ answers, data, patchAnswers, answer }: ScreenProps) {
   const val = answers.arriendo ?? (data.arriendoSugerido ? String(data.arriendoSugerido) : "");
-  const valido = parseNum(val) > 0;
+  const valido = leerNum(val, DEC.arriendo) > 0;
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <p className="font-body text-[13px] text-[var(--franco-text)] font-medium mb-1.5">Arriendo mensual</p>
-        <TextInput
+        <NumericInput
+          label="Arriendo mensual"
           value={answers.arriendo ?? ""}
-          onChange={(v) => { if (numOk(v)) patchAnswers({ arriendo: v }); }}
+          onChange={(v) => patchAnswers({ arriendo: v })}
+          decimales={DEC.arriendo}
           placeholder={data.arriendoSugerido ? String(data.arriendoSugerido) : "650.000"}
-          inputMode="numeric"
-          mono
-          suffix="$"
+          sufijo="$"
+          ecoPrefijo="$"
+          ecoSufijo="/mes"
         />
         <FuenteLine>Lo que crees que puedes cobrar de arriendo al mes.</FuenteLine>
       </div>
@@ -217,32 +219,30 @@ export function AdrFixScreen({ answers, data, patchAnswers, answer }: ScreenProp
   const tarifaDef = airRoi.ingresoBrutoMensual > 0 && occ > 0
     ? String(Math.round(airRoi.ingresoBrutoMensual / (DIAS_MES * occ)))
     : "";
-  const valido = parseNum(answers.adrTarifa ?? "") > 0 && parseDecimalLocale(answers.adrOcupacion ?? "") > 0;
+  const valido =
+    leerNum(answers.adrTarifa, DEC.tarifa) > 0 && leerNum(answers.adrOcupacion, DEC.ocupacion) > 0;
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="font-body text-[13px] text-[var(--franco-text)] font-medium mb-1.5">Tarifa / noche</p>
-          <TextInput
-            value={answers.adrTarifa ?? ""}
-            onChange={(v) => { if (numOk(v)) patchAnswers({ adrTarifa: v }); }}
-            placeholder={tarifaDef || "55.000"}
-            inputMode="numeric"
-            mono
-            suffix="$"
-          />
-        </div>
-        <div>
-          <p className="font-body text-[13px] text-[var(--franco-text)] font-medium mb-1.5">Ocupación</p>
-          <TextInput
-            value={answers.adrOcupacion ?? ""}
-            onChange={(v) => { if (v === "" || /^\d{0,3}$/.test(v)) patchAnswers({ adrOcupacion: v }); }}
-            placeholder={occ > 0 ? String(Math.round(occ * 100)) : "60"}
-            inputMode="numeric"
-            mono
-            suffix="%"
-          />
-        </div>
+        <NumericInput
+          label="Tarifa / noche"
+          value={answers.adrTarifa ?? ""}
+          onChange={(v) => patchAnswers({ adrTarifa: v })}
+          decimales={DEC.tarifa}
+          placeholder={tarifaDef || "55.000"}
+          sufijo="$"
+          ecoPrefijo="$"
+          ecoSufijo="/noche"
+        />
+        <NumericInput
+          label="Ocupación"
+          value={answers.adrOcupacion ?? ""}
+          onChange={(v) => patchAnswers({ adrOcupacion: v })}
+          decimales={DEC.ocupacion}
+          placeholder={occ > 0 ? String(Math.round(occ * 100)) : "60"}
+          sufijo="%"
+          ecoSufijo="% de ocupación"
+        />
       </div>
       <FuenteLine>Ajusta si tienes datos propios de tarifa u ocupación para este depto.</FuenteLine>
       <div className="mt-1">

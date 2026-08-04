@@ -9,7 +9,8 @@ import {
   calificaSubsidio,
   aplicaSubsidio,
 } from "@/lib/constants/subsidio";
-import { parseDecimalLocale, parseNum } from "@/components/formulario-v3/wizardV3State";
+import { DEC } from "./wizardV4Nodes";
+import { leerNum } from "./derive";
 import type { WizardV4Answers } from "./wizardV4Nodes";
 
 /** Margen del aviso anticipado sobre el techo (UF 4.400, calibrable). */
@@ -25,14 +26,14 @@ export { TECHO_UF_SUBSIDIO, calcTasaConSubsidio };
 export function avisoSubsidioAplica(a: WizardV4Answers, precioM2UF: number | null): boolean {
   if (a.tipoPropiedad !== "nuevo") return false;
   if (!precioM2UF || precioM2UF <= 0) return false;
-  const sup = parseDecimalLocale(a.superficieUtil ?? "");
+  const sup = leerNum(a.superficieUtil, DEC.superficie);
   if (sup <= 0) return false;
   return precioM2UF * sup <= AVISO_MARGEN_UF;
 }
 
 /** ¿El precio real + tipo califican al subsidio? (nuevo ≤ UF 4.000). */
 export function calificaSubsidioV4(a: WizardV4Answers): boolean {
-  return calificaSubsidio(a.tipoPropiedad ?? "", parseNum(a.precio ?? ""));
+  return calificaSubsidio(a.tipoPropiedad ?? "", leerNum(a.precio, DEC.precioUF));
 }
 
 /** Tasa con subsidio dada la tasa de mercado real (rebaja 0,6pp). */
@@ -47,7 +48,7 @@ export function tasaConSubsidioV4(tasaMercado: number): number {
  */
 export function subsidioAplicadoV4(a: WizardV4Answers, tasaMercado: number): boolean {
   if (!calificaSubsidioV4(a)) return false;
-  const tasa = parseDecimalLocale(a.tasaInteres ?? "");
+  const tasa = leerNum(a.tasaInteres, DEC.tasa);
   if (tasa <= 0) return false;
   return aplicaSubsidio(tasa, calcTasaConSubsidio(tasaMercado));
 }

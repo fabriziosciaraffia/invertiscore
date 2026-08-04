@@ -10,48 +10,59 @@ import { trackWizard } from "./track";
 import { mesesHastaEntrega } from "@/components/formulario-v3/wizardV3State";
 import type { ScreenProps } from "./screensActo1";
 import type { PieUnidad } from "./wizardV4Nodes";
-import { PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
-import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented, TextInput } from "./ui";
-import { fmtCLP, fmtUF, parseNum, parseDecimalLocale, piePct, pieUF, pieCLP } from "./derive";
+import { DEC, decPie, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
+import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented } from "./ui";
+import { NumericInput, convertirUnidad, decimalesUtiles } from "./NumericInput";
+import { formatNumeroCL } from "@/lib/numero-cl";
+import { fmtCLP, fmtUF, leerNum, piePct, pieUF, pieCLP, precioUF } from "./derive";
 import { calificaSubsidioV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 
-const numOk = (v: string) => v === "" || /^[\d.]*$/.test(v);
-const decOk = (v: string) => v === "" || /^\d*[,]?\d*$/.test(v);
 const MES_ABBR = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+/** Número exacto, sin redondear: el eco nunca miente sobre lo que se leyó. */
+const exacto = (v: number) => formatNumeroCL(v, decimalesUtiles(v));
 
 // ── precio ────────────────────────────────────────────────────────────────────
 
 export function PrecioScreen({ answers, data, patchAnswers, answer }: ScreenProps) {
   const [unidad, setUnidad] = useState<"uf" | "clp">("uf");
-  const ufActual = parseNum(answers.precio ?? "");
-  const [raw, setRaw] = useState<string>(() =>
-    ufActual > 0 ? String(unidad === "uf" ? ufActual : Math.round(ufActual * data.ufCLP)) : "",
-  );
+  // `answers.precio` guarda SIEMPRE UF: es lo que viaja al payload. `raw` es lo
+  // que el usuario ve, en la unidad que eligió. En UF los dos son el mismo
+  // texto; en pesos, `raw` son pesos y el precio se guarda convertido.
+  const [raw, setRaw] = useState<string>(() => answers.precio ?? "");
+  const decUnidad = unidad === "uf" ? DEC.precioUF : DEC.precioCLP;
 
   const onRaw = (v: string) => {
-    if (!numOk(v)) return;
     setRaw(v);
-    const parsed = parseNum(v);
-    const uf = unidad === "uf" ? parsed : data.ufCLP > 0 ? Math.round(parsed / data.ufCLP) : 0;
-    patchAnswers({ precio: uf > 0 ? String(uf) : "" });
+    if (unidad === "uf") { patchAnswers({ precio: v }); return; }
+    // En pesos: se guarda el equivalente en UF. Texto ilegible ⇒ precio vacío,
+    // NUNCA un número inventado — el Continuar queda bloqueado y el eco explica.
+    const enUF =
+      data.ufCLP > 0 ? convertirUnidad(v, DEC.precioCLP, DEC.precioUF, 1 / data.ufCLP) : null;
+    patchAnswers({ precio: enUF ?? "" });
   };
 
   const onToggle = (u: "uf" | "clp") => {
-    const uf = parseNum(answers.precio ?? "");
-    setRaw(uf > 0 ? String(u === "uf" ? uf : Math.round(uf * data.ufCLP)) : "");
+    if (u === unidad) return;
+    // El toggle CONVIERTE el valor; no reinterpreta el string con otra
+    // precisión. El precio en UF no cambia: cambia en qué unidad se muestra.
+    const destino = u === "uf" ? DEC.precioUF : DEC.precioCLP;
+    const factor = u === "clp" ? data.ufCLP : 1 / data.ufCLP;
+    const convertido = convertirUnidad(raw, decUnidad, destino, factor);
+    // Si lo escrito no se puede leer no hay nada que convertir: se deja tal cual
+    // para que el usuario vea qué no se entendió, en vez de borrárselo.
+    if (convertido !== null) {
+      setRaw(convertido);
+      if (u === "uf") patchAnswers({ precio: convertido });
+    }
     setUnidad(u);
   };
 
-  const uf = parseNum(answers.precio ?? "");
-  const equivalencia =
-    uf > 0 ? (unidad === "uf" ? `= ${fmtCLP(uf * data.ufCLP)}` : `= ${fmtUF(uf)}`) : null;
+  const uf = precioUF(answers);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <FieldLabel tooltip="El precio que pide el vendedor. Franco no lo prellena — lo evalúa contra el mercado.">
-          Precio pedido
-        </FieldLabel>
+      <div className="flex items-center justify-end gap-3">
         <Segmented
           options={[
             { value: "uf", label: "UF" },
@@ -62,19 +73,23 @@ export function PrecioScreen({ answers, data, patchAnswers, answer }: ScreenProp
         />
       </div>
 
-      <TextInput
+      <NumericInput
+        label="Precio pedido"
+        tooltip="El precio que pide el vendedor. Franco no lo prellena — lo evalúa contra el mercado."
         value={raw}
         onChange={onRaw}
+        decimales={decUnidad}
         placeholder={unidad === "uf" ? "3.200" : "124.000.000"}
-        inputMode="numeric"
-        mono
+        sufijo={unidad === "uf" ? "UF" : "$"}
         strong
-        suffix={unidad === "uf" ? "UF" : "$"}
+        // El eco lleva la equivalencia adentro: el número tipeado va exacto y la
+        // otra moneda al lado. Antes era una línea aparte, también con "=".
+        formatEco={(v) =>
+          unidad === "uf"
+            ? `UF ${exacto(v)}${data.ufCLP > 0 ? ` · ${fmtCLP(v * data.ufCLP)}` : ""}`
+            : `$${exacto(v)}${data.ufCLP > 0 ? ` · ${fmtUF(v / data.ufCLP)}` : ""}`
+        }
       />
-
-      {equivalencia && (
-        <p className="font-mono text-[13px] text-[var(--franco-text-secondary)] m-0">{equivalencia}</p>
-      )}
 
       <FuenteLine>Este número lo pones tú — Franco no lo sugiere, lo evalúa.</FuenteLine>
 
@@ -99,7 +114,6 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
   const posthog = usePostHog();
   const unidad = answers.pieUnidad ?? "pct";
   const monto = answers.pieMonto ?? "";
-  const validador = unidad === "pct" ? decOk : numOk;
 
   const pct = piePct(answers, data.ufCLP);
   const uf = pieUF(answers, data.ufCLP);
@@ -135,10 +149,7 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <FieldLabel tooltip="Lo que pagas al contado al firmar. El resto se financia con crédito hipotecario.">
-          Pie
-        </FieldLabel>
+      <div className="flex items-center justify-end gap-3">
         <Segmented
           options={PIE_UNITS}
           value={unidad}
@@ -146,10 +157,11 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
         />
       </div>
 
-      <TextInput
+      <NumericInput
+        label="Pie"
+        tooltip="Lo que pagas al contado al firmar. El resto se financia con crédito hipotecario."
         value={monto}
         onChange={(v) => {
-          if (!validador(v)) return;
           // Fase 5b: si el pie vuelve a > 0, la razón se descarta EN SILENCIO
           // (decisión cerrada). Un pie con monto ya no necesita explicación.
           const nuevoPct = piePct({ ...answers, pieMonto: v }, data.ufCLP);
@@ -159,15 +171,18 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
               : { pieMonto: v },
           );
         }}
+        decimales={decPie(unidad)}
         placeholder={unidad === "pct" ? "20" : unidad === "uf" ? "640" : "24.800.000"}
-        inputMode={unidad === "pct" ? "decimal" : "numeric"}
-        mono
-        suffix={unidad === "pct" ? "%" : unidad === "uf" ? "UF" : "$"}
+        sufijo={unidad === "pct" ? "%" : unidad === "uf" ? "UF" : "$"}
+        // Igual que en precio: el eco lleva las otras dos unidades adentro en vez
+        // de repetir una segunda línea con "=".
+        formatEco={(v) =>
+          [
+            unidad === "pct" ? `${exacto(v)}% del precio` : unidad === "uf" ? `UF ${exacto(v)}` : `$${exacto(v)}`,
+            ...equiv,
+          ].join(" · ")
+        }
       />
-
-      {equiv.length > 0 && (
-        <p className="font-mono text-[13px] text-[var(--franco-text-secondary)] m-0">= {equiv.join(" · ")}</p>
-      )}
 
       {enCuotas && (
         <p className="font-mono text-[12px] text-[var(--franco-text-muted)] m-0">{enCuotas}</p>
@@ -326,21 +341,26 @@ export function TasaScreen({ answers, data, answer, goDetour }: ScreenProps) {
 }
 
 export function TasaFixScreen({ answers, data, patchAnswers, answer }: ScreenProps) {
-  const monto = answers.tasaInteres && parseDecimalLocale(answers.tasaInteres) > 0 ? answers.tasaInteres : "";
-  const valido = parseDecimalLocale(monto) > 0;
+  // El texto crudo se conserva tal cual: filtrarlo acá le borraba al usuario lo
+  // que estaba escribiendo. Si no se puede leer, el eco lo dice y `valido` es 0.
+  const monto = answers.tasaInteres ?? "";
+  const valido = leerNum(monto, DEC.tasa) > 0;
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <FieldLabel tooltip="La tasa anual en UF que te aprobó (o cotizó) tu banco.">Tu tasa pre-aprobada</FieldLabel>
-        <TextInput
+        <NumericInput
+          label="Tu tasa pre-aprobada"
+          tooltip="La tasa anual en UF que te aprobó (o cotizó) tu banco."
           value={monto}
-          onChange={(v) => { if (decOk(v)) patchAnswers({ tasaInteres: v }); }}
+          onChange={(v) => patchAnswers({ tasaInteres: v })}
+          decimales={DEC.tasa}
           placeholder={tasaStr(data.tasaMercado)}
-          inputMode="decimal"
-          mono
-          suffix="%"
+          sufijo="%"
+          ecoSufijo="% anual"
         />
-        <FuenteLine>Escríbela con coma decimal (ej: 4,50).</FuenteLine>
+        {/* Ya no hace falta enseñar la convención: el campo toma coma o punto y
+            el eco muestra cómo lo entendió. */}
+        <FuenteLine>Como te la dio el banco — con coma o con punto, da lo mismo.</FuenteLine>
       </div>
       <div className="mt-1">
         <PrimaryBtn onClick={() => answer("tasaFix")} disabled={!valido}>

@@ -30,7 +30,13 @@ import { OWNER_INVITADO, V4_DRAFT_PREFIX, V4_TAB_KEY } from "@/lib/draft-keys";
 import { ALL_NODES, type NodeId, type WizardV4Answers } from "./wizardV4Nodes";
 
 const TTL_MS = 24 * 60 * 60 * 1000; // 24h
-const VERSION = 4;
+// v5 — migración a `NumericInput`. Los borradores escritos por los filtros
+// viejos guardan valores que ya no se pueden interpretar: un "75" de comisión
+// puede ser un 75% legítimo o el "7,5" al que `pctInt` le comió la coma, y no
+// hay forma de distinguirlos. `isCoherent` descarta todo draft con otro `v`, así
+// que subir el número los invalida a todos de una. El radio está acotado por el
+// TTL: solo alcanza a los de menos de 24h.
+const VERSION = 5;
 
 export interface PersistedDraft {
   v: number;

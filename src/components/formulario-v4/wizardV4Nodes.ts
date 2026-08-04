@@ -19,6 +19,8 @@
 // no por computeNext; su "siguiente" es el mismo que el de su pantalla padre).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { Decimales } from "@/lib/numero-cl";
+
 export type NodeId =
   | "dir"
   | "tipo"
@@ -56,6 +58,47 @@ export type EstimModo = "estimacion" | "corregir";
 export type Antiguedad = "" | "0-2" | "3-5" | "6-10" | "11-20" | "20+";
 export type EstadoVenta = "inmediata" | "futura";
 export type PieUnidad = "clp" | "uf" | "pct";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRECISIÓN POR CAMPO — fuente única
+//
+// Cuántos decimales admite cada campo. Vive acá, y en un solo lugar, porque el
+// bug que la migración a `NumericInput` viene a cerrar era EXACTAMENTE que el
+// mismo campo se leía distinto según la pantalla: la ocupación daba 625 en el
+// Acto 3 y 62 en el resumen, porque cada superficie traía su propio filtro.
+// Un valor acá, importado por la pantalla Y por el submit, hace que eso no se
+// pueda volver a separar.
+//
+// Cambiar un número de esta tabla cambia qué acepta el campo en las dos
+// superficies a la vez. Es la intención.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const DEC = {
+  superficie: 1,
+  estacionamientos: 0,
+  bodegas: 0,
+  precioUF: 2,
+  precioCLP: 0,
+  piePct: 1,
+  pieUF: 2,
+  pieCLP: 0,
+  tasa: 2,
+  arriendo: 0,
+  tarifa: 0,
+  ocupacion: 1,
+  gastosComunes: 0,
+  contribuciones: 0,
+  vacancia: 1,
+  comisionAdmin: 1,
+  costos: 0,
+} as const satisfies Record<string, Decimales>;
+
+/** Decimales del monto del pie según la unidad en que lo esté escribiendo. */
+export function decPie(unidad: PieUnidad | undefined): Decimales {
+  if (unidad === "uf") return DEC.pieUF;
+  if (unidad === "clp") return DEC.pieCLP;
+  return DEC.piePct; // "pct" es el default del selector
+}
 /** Fase 5b · opciones de "¿Por qué no pones pie?" (mockup 5f7c4f9 + corrección
  *  de 4→3: "pie en cuotas" se eliminó porque NO produce pie 0 — el pie existe,
  *  solo se paga fraccionado, y ofrecerla induciría a declarar 0 falsamente).

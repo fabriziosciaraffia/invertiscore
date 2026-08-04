@@ -1,17 +1,32 @@
 // Derivaciones puras del wizard v4 (precio, pie normalizado, cuota). Reusa los
-// helpers de parseo/formato y la fórmula de dividendo de v3 (funciones puras,
-// estables) — no se reinventan.
+// FORMATEADORES y la fórmula de dividendo de v3 (funciones puras, estables) —
+// no se reinventan.
+//
+// El PARSEO ya no viene de v3. `parseNum` y `parseDecimalLocale` leen el punto
+// con significados opuestos (miles vs decimal), y esa ambigüedad es justo lo que
+// la migración a `NumericInput` cierra: v4 lee todo con `parseNumeroCL`, una
+// sola regla, con la precisión que declara `DEC` para cada campo.
+//
+// v3 y v1 siguen con los suyos: no se tocan en esta fase.
 
-import {
-  calcDividendo,
-  fmtCLP,
-  fmtUF,
-  parseDecimalLocale,
-  parseNum,
-} from "@/components/formulario-v3/wizardV3State";
-import type { WizardV4Answers } from "./wizardV4Nodes";
+import { calcDividendo, fmtCLP, fmtUF } from "@/components/formulario-v3/wizardV3State";
+import { parseNumeroCL, type Decimales } from "@/lib/numero-cl";
+import { DEC, decPie, type WizardV4Answers } from "./wizardV4Nodes";
 
-export { fmtCLP, fmtUF, parseNum, parseDecimalLocale };
+export { fmtCLP, fmtUF };
+
+/**
+ * Lectura numérica del wizard. Devuelve 0 cuando el texto no se puede leer.
+ *
+ * El 0 conserva el contrato de los call-sites, que preguntan `> 0` para decidir
+ * si el campo está listo. Antes un texto ambiguo devolvía un número plausible y
+ * equivocado y el wizard dejaba seguir; ahora devuelve 0 y el Continuar queda
+ * bloqueado, que es lo que corresponde. Quien necesite distinguir "vacío" de
+ * "ilegible" usa `parseNumeroCL` directo — `NumericInput` ya lo hace.
+ */
+export function leerNum(texto: string | undefined, decimales: Decimales): number {
+  return parseNumeroCL(texto ?? "", decimales) ?? 0;
+}
 
 /** Concordancia singular/plural de "dormitorio(s)". */
 export function dormLabel(n: number): string {
@@ -20,12 +35,17 @@ export function dormLabel(n: number): string {
 
 /** Precio en UF (0 si vacío/ inválido). */
 export function precioUF(a: WizardV4Answers): number {
-  return parseNum(a.precio ?? "");
+  return leerNum(a.precio, DEC.precioUF);
+}
+
+/** Superficie útil en m² (0 si vacía/ inválida). */
+export function superficieM2(a: WizardV4Answers): number {
+  return leerNum(a.superficieUtil, DEC.superficie);
 }
 
 /** Tasa anual % (default de mercado si no hay). */
 export function tasaPct(a: WizardV4Answers, fallback = 4.72): number {
-  const t = parseDecimalLocale(a.tasaInteres ?? "");
+  const t = leerNum(a.tasaInteres, DEC.tasa);
   return t > 0 ? t : fallback;
 }
 
@@ -44,7 +64,7 @@ export function piePct(a: WizardV4Answers, ufCLP: number): number {
   // sin este default, un pie escrito antes de tocar el toggle se interpretaba
   // como CLP y daba piePct≈0.
   const unit = a.pieUnidad ?? "pct";
-  const monto = unit === "pct" ? parseDecimalLocale(a.pieMonto ?? "") : parseNum(a.pieMonto ?? "");
+  const monto = leerNum(a.pieMonto, decPie(unit));
   const pUF = precioUF(a);
   if (monto <= 0) return 0;
   if (unit === "pct") return Math.min(monto, 100);

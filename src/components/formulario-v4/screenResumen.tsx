@@ -32,7 +32,7 @@ import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import type { useWizardV4 } from "./useWizardV4";
 import type { WizardV4Answers, Antiguedad } from "./wizardV4Nodes";
-import { PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
+import { DEC, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { buildLtrPayload, buildStrPayload, comprarLocked, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
@@ -46,7 +46,9 @@ import {
   type Regla,
 } from "@/lib/plausibilidad";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
-import { dormLabel, fmtCLP, fmtUF, fuenteArriendoLine, parseNum, parseDecimalLocale, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
+import { dormLabel, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, superficieM2, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
+import { ecoPorDefecto, estadoNumericInput } from "./NumericInput";
+import { formatNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
@@ -56,10 +58,6 @@ const LABEL_GATE: Record<string, string> = { si: "Sí permite", no: "No permite"
 
 type Wizard = ReturnType<typeof useWizardV4>;
 
-/** Formatea dígitos con separador de miles chileno (63000 → "63.000"). */
-function fmtMiles(v: string | number): string {
-  return String(v).replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-}
 function tasaStr(t: number): string {
   return t.toFixed(2).replace(".", ",");
 }
@@ -169,18 +167,32 @@ const chipCls = (active: boolean) =>
  *  patchean en vivo; "Listo" cierra y emite el commit. */
 function TamanoField({ a, patch, onCommit }: { a: WizardV4Answers; patch: (p: Partial<WizardV4Answers>) => void; onCommit: () => void }) {
   const [editing, setEditing] = useState(false);
-  const sup = parseDecimalLocale(a.superficieUtil ?? "");
+  const sup = superficieM2(a);
+  const supEstado = estadoNumericInput(a.superficieUtil ?? "", {
+    decimales: DEC.superficie,
+    blurred: true,
+    formatEco: ecoPorDefecto("", " m²"),
+  });
   const display = sup > 0 ? `${a.superficieUtil} m² · ${a.esStudio ? "Studio" : (a.dormitorios ?? "—") + "D"} · ${a.banos ?? "—"}B` : "—";
   return (
     <FieldShell label="Tamaño">
       {editing ? (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
+            {/* Sin filtro: se acepta lo tipeado y el eco de abajo dice cómo se
+                entendió. Misma precisión que el Acto 1 (DEC.superficie). */}
             <input autoFocus value={a.superficieUtil ?? ""} inputMode="decimal"
-              onChange={(e) => { const v = e.target.value; if (v === "" || /^[\d.,]*$/.test(v)) patch({ superficieUtil: v }); }}
+              aria-invalid={supEstado.estado === "error"}
+              onChange={(e) => patch({ superficieUtil: e.target.value })}
               className="w-[90px] h-9 rounded-lg border-[1.5px] border-signal-red bg-[var(--franco-card)] px-2 font-mono text-[14px] text-[var(--franco-text)] focus:outline-none" />
             <span className="font-mono text-[11px] text-[var(--franco-text-muted)]">m²</span>
           </div>
+          {supEstado.estado === "error" && (
+            <p className="font-body text-[11px] text-signal-red m-0 leading-snug">No se entiende: {supEstado.motivo}</p>
+          )}
+          {(supEstado.estado === "ok" || supEstado.estado === "escala") && (
+            <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] m-0">= {supEstado.eco}</p>
+          )}
           <div className="flex flex-wrap gap-1.5">
             <button type="button" onClick={() => patch({ esStudio: true, dormitorios: "0" })} className={chipCls(!!a.esStudio)}>Studio</button>
             {["1", "2", "3", "4"].map((d) => <button key={d} type="button" onClick={() => patch({ esStudio: false, dormitorios: d })} className={chipCls(!a.esStudio && a.dormitorios === d)}>{d === "4" ? "4+" : d}D</button>)}
@@ -214,19 +226,30 @@ function EditableDisplay({ text, tag, onStart }: { text: string; tag?: string; o
   );
 }
 
-/** Input inline con commit en blur/Enter, cancel en Escape. */
+/**
+ * Input inline con commit en blur/Enter, cancel en Escape.
+ *
+ * El chrome es el compacto del resumen; la CONDUCTA es la misma de
+ * `NumericInput` — mismas funciones puras, misma precisión por campo. Antes cada
+ * campo traía su propio filtro y por eso la ocupación daba 625 en el Acto 3 y 62
+ * acá; ahora los dos leen con el `decimales` que declara `DEC`.
+ *
+ * Lo escrito se commitea TAL CUAL, aunque no se pueda leer: borrárselo al salir
+ * sería la misma desaparición silenciosa que el componente viene a matar. Si
+ * queda ilegible, `NumField` lo marca en reposo.
+ */
 function InlineInput({
   initial,
-  format,
+  decimales,
+  formatEco,
   suffix,
-  inputMode = "numeric",
   onCommit,
   onCancel,
 }: {
   initial: string;
-  format?: (v: string) => string;
+  decimales: Decimales;
+  formatEco: (valor: number) => string;
   suffix?: string;
-  inputMode?: "numeric" | "decimal" | "text";
   onCommit: (v: string) => void;
   onCancel: () => void;
 }) {
@@ -238,34 +261,56 @@ function InlineInput({
   const commit = (val: string) => { if (done.current) return; done.current = true; onCommit(val); };
   const cancel = () => { if (done.current) return; done.current = true; onCancel(); };
   useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
+
+  const r = estadoNumericInput(v, { decimales, blurred: false, formatEco });
+  const hayError = r.estado === "error";
+
   return (
-    <span className="relative inline-flex items-center">
-      <input
-        ref={ref}
-        value={v}
-        inputMode={inputMode}
-        onChange={(e) => setV(format ? format(e.target.value) : e.target.value)}
-        onBlur={() => commit(v)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); commit(v); }
-          else if (e.key === "Escape") { e.preventDefault(); cancel(); }
-        }}
-        className={`w-[130px] h-9 rounded-lg border-[1.5px] border-signal-red bg-[var(--franco-card)] px-2 font-mono text-[14px] text-[var(--franco-text)] focus:outline-none ${suffix ? "pr-8" : ""}`}
-      />
-      {suffix && <span className="absolute right-2 font-mono text-[11px] text-[var(--franco-text-muted)] pointer-events-none">{suffix}</span>}
+    <span className="inline-flex flex-col gap-1">
+      <span className="relative inline-flex items-center">
+        <input
+          ref={ref}
+          value={v}
+          inputMode={decimales === 0 ? "numeric" : "decimal"}
+          aria-invalid={hayError}
+          onChange={(e) => setV(e.target.value)}
+          onBlur={() => commit(v)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); commit(v); }
+            else if (e.key === "Escape") { e.preventDefault(); cancel(); }
+          }}
+          className={`w-[130px] h-9 rounded-lg border-[1.5px] border-signal-red bg-[var(--franco-card)] px-2 font-mono text-[14px] text-[var(--franco-text)] focus:outline-none ${suffix ? "pr-8" : ""}`}
+        />
+        {suffix && <span className="absolute right-2 font-mono text-[11px] text-[var(--franco-text-muted)] pointer-events-none">{suffix}</span>}
+      </span>
+      {/* Eco en vivo, igual que en las pantallas del wizard. */}
+      {r.estado === "encurso" && (
+        <span className="font-body text-[11px] italic text-[var(--franco-text-muted)]">Seguí escribiendo…</span>
+      )}
+      {r.estado === "error" && (
+        <span className="font-body text-[11px] text-signal-red leading-snug">No se entiende: {r.motivo}</span>
+      )}
+      {(r.estado === "ok" || r.estado === "escala") && (
+        <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">= {r.eco}</span>
+      )}
     </span>
   );
 }
 
-/** Campo numérico editable (precio/arriendo/tarifa/occ/supuestos). `kind` define
- *  el display; el editor guarda dígitos formateados (parseNum revierte). */
+/**
+ * Campo numérico editable (precio/arriendo/tarifa/occ/supuestos).
+ *
+ * `raw` es el texto TAL COMO está guardado; `decimales` sale de `DEC` y es el
+ * mismo que usa la pantalla del acto. En reposo muestra `display`; si lo
+ * guardado no se puede leer, lo dice ahí mismo en vez de mostrar un "—" mudo.
+ */
 function NumField({
   label,
   raw,
   display,
   suffix,
-  inputMode = "numeric",
-  format,
+  decimales,
+  formatEco,
   tag,
   fuente,
   derived,
@@ -276,8 +321,8 @@ function NumField({
   raw: string;
   display: string;
   suffix: string;
-  inputMode?: "numeric" | "decimal";
-  format?: (v: string) => string;
+  decimales: Decimales;
+  formatEco?: (valor: number) => string;
   tag?: string;
   fuente?: string;
   derived?: string;
@@ -286,6 +331,9 @@ function NumField({
   onCommit: (v: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const eco = formatEco ?? ecoPorDefecto();
+  const enReposo = estadoNumericInput(raw, { decimales, blurred: true, formatEco: eco });
+
   return (
     <div className={highlight ? "rounded-lg -mx-1 px-1 ring-2 ring-signal-red transition-shadow duration-300" : ""}>
     <FieldShell label={label} fuente={fuente} showFuente={editing}>
@@ -293,13 +341,20 @@ function NumField({
         <InlineInput
           initial={raw}
           suffix={suffix}
-          inputMode={inputMode}
-          format={format ?? fmtMiles}
+          decimales={decimales}
+          formatEco={eco}
           onCommit={(v) => { setEditing(false); onCommit(v); }}
           onCancel={() => setEditing(false)}
         />
       ) : (
-        <EditableDisplay text={display} tag={tag} onStart={() => setEditing(true)} />
+        <>
+          <EditableDisplay text={display} tag={tag} onStart={() => setEditing(true)} />
+          {enReposo.estado === "error" && (
+            <p className="font-body text-[11px] text-signal-red m-0 mt-0.5 leading-snug">
+              No se entiende ese número: {enReposo.motivo}
+            </p>
+          )}
+        </>
       )}
       {derived && <DerivedLine text={derived} />}
     </FieldShell>
@@ -561,15 +616,15 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
       : "—";
   const cuota = cuotaCLP(a, data.ufCLP);
   const cuotaStr = cuota > 0 ? `Cuota ≈ ${fmtCLP(cuota)}/mes · calculada` : undefined;
-  const sup = parseDecimalLocale(a.superficieUtil ?? "");
+  const sup = superficieM2(a);
 
   const conSubsidio = subsidioAplicadoV4(a, data.tasaMercado);
   const tasaTag = conSubsidio ? "con subsidio" : a.tasaModo === "preaprobada" ? "corregido por ti" : a.tasaModo === "estimada" ? "estimado" : undefined;
 
   // Detalle del depto (nivel 3 · card 01).
   const tipoStr = a.tipoPropiedad === "nuevo" ? "Nuevo" : a.tipoPropiedad === "usado" ? "Usado" : "—";
-  const nEstac = Number(a.estacionamientos) || 0;
-  const nBodega = Number(a.bodegas) || 0;
+  const nEstac = leerNum(a.estacionamientos, DEC.estacionamientos);
+  const nBodega = leerNum(a.bodegas, DEC.bodegas);
 
   // Supuestos (nivel 3 · card 03).
   const ggccDef = data.ggccSugerido ?? getGgccFallback(a.comuna ?? "", sup) ?? 0;
@@ -586,9 +641,9 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const occRef = data.airRoi.ocupacionReferencia;
   const sugTarifa = data.airRoi.ingresoBrutoMensual > 0 && occRef > 0 ? Math.round(data.airRoi.ingresoBrutoMensual / (DIAS_MES * occRef)) : 0;
   const sugOcc = occRef > 0 ? Math.round(occRef * 100) : 0;
-  const arriendoVal = parseNum(a.arriendo ?? "") || sugArriendo;
-  const tarifaVal = parseNum(a.adrTarifa ?? "") || sugTarifa;
-  const occVal = Number(a.adrOcupacion) || sugOcc;
+  const arriendoVal = leerNum(a.arriendo, DEC.arriendo) || sugArriendo;
+  const tarifaVal = leerNum(a.adrTarifa, DEC.tarifa) || sugTarifa;
+  const occVal = leerNum(a.adrOcupacion, DEC.ocupacion) || sugOcc;
 
   // POR COMPLETAR (R3): tras cambiar de modalidad, la rama STR exige el gate
   // (sin estimación posible). Bloquea generar hasta responderlo.
@@ -803,8 +858,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   // y el resumen se leía como si el pie no existiera.
   const summary02 = [pct > 0 ? `${Math.round(pct)}% pie` : pieDeclarado ? "Sin pie" : null, a.plazoCredito ? `${a.plazoCredito} años` : null, a.tasaInteres ? `${a.tasaInteres}%` : null].filter(Boolean).join(" · ") || "—";
   const summary03 = esStr
-    ? [a.adrTarifa ? `${fmtCLP(parseNum(a.adrTarifa))}/noche` : null, a.adrOcupacion ? `${a.adrOcupacion}%` : null, a.edificioPermiteAirbnb ? LABEL_GATE[a.edificioPermiteAirbnb] : null].filter(Boolean).join(" · ") || "—"
-    : (a.arriendo ? `${fmtCLP(parseNum(a.arriendo))}/mes` : "—");
+    ? [a.adrTarifa ? `${fmtCLP(leerNum(a.adrTarifa, DEC.tarifa))}/noche` : null, a.adrOcupacion ? `${a.adrOcupacion}%` : null, a.edificioPermiteAirbnb ? LABEL_GATE[a.edificioPermiteAirbnb] : null].filter(Boolean).join(" · ") || "—"
+    : (a.arriendo ? `${fmtCLP(leerNum(a.arriendo, DEC.arriendo))}/mes` : "—");
 
   const toggleCard = (c: "01" | "02" | "03") => {
     setOpenCard((prev) => (prev === c ? null : c));
@@ -829,12 +884,6 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     setHighlight(field);
     window.setTimeout(() => setHighlight(null), 1500);
   };
-
-  // Validador % (0-99, tolera coma para tasa).
-  const pctInt = (v: string) => v.replace(/\D/g, "").slice(0, 2);
-  // QA-1: el pie tolera 0-100 (no >100). Clamp al tope.
-  const piePctClamp = (v: string) => { const n = v.replace(/\D/g, "").slice(0, 3); return n === "" ? "" : String(Math.min(100, Number(n))); };
-  const tasaInput = (v: string) => v.replace(/[^\d,]/g, "").slice(0, 5);
 
   return (
     <div className="pb-44 lg:pb-1">
@@ -881,8 +930,9 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             )}
           </FieldShell>
           <NumField
-            label="Precio" raw={fmtMiles(a.precio ?? "")} display={pUF > 0 ? fmtUF(pUF) : "—"} suffix="UF"
-            derived={precioCLP} onCommit={(v) => commitEdit("precio", { precio: fmtMiles(v) })}
+            label="Precio" raw={a.precio ?? ""} display={pUF > 0 ? fmtUF(pUF) : "—"} suffix="UF"
+            decimales={DEC.precioUF} formatEco={ecoPorDefecto("UF ")}
+            derived={precioCLP} onCommit={(v) => commitEdit("precio", { precio: v })}
           />
           <Nivel3 title="Detalle del depto" open={l3c01 === "detalle"} onToggle={() => openL3c01("detalle")}>
             {/* Tipo: estructural → chips inline (muta el detalle + recalcula subsidio). */}
@@ -909,14 +959,14 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
                 onCommit={(v) => commitEdit("antiguedad", { antiguedad: v })} />
             )}
             <TamanoField a={a} patch={w.patchAnswers} onCommit={() => commitEdit("tam", {})} />
-            <NumField label="Estacionamientos" raw={nEstac ? String(nEstac) : ""} display={String(nEstac)} suffix="" format={(v) => v.replace(/\D/g, "").slice(0, 1)} onCommit={(v) => commitEdit("estac", { estacionamientos: v })} />
-            <NumField label="Bodegas" raw={nBodega ? String(nBodega) : ""} display={String(nBodega)} suffix="" format={(v) => v.replace(/\D/g, "").slice(0, 1)} onCommit={(v) => commitEdit("bodega", { bodegas: v })} />
+            <NumField label="Estacionamientos" raw={a.estacionamientos ?? ""} display={String(nEstac)} suffix="" decimales={DEC.estacionamientos} onCommit={(v) => commitEdit("estac", { estacionamientos: v })} />
+            <NumField label="Bodegas" raw={a.bodegas ?? ""} display={String(nBodega)} suffix="" decimales={DEC.bodegas} onCommit={(v) => commitEdit("bodega", { bodegas: v })} />
           </Nivel3>
           {/* Gastos del depto: GGCC + contribuciones son del inmueble, no de la
               modalidad → viven acá en las 3 modalidades (taxonomía de v3 "Comunes"). */}
           <Nivel3 title="Gastos del depto" open={l3c01 === "gastos"} onToggle={() => openL3c01("gastos")}>
-            <NumField label="Gastos comunes" raw={fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))} display={`$${fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))}/mes`} suffix="$" tag={a.gastosComunes ? "corregido por ti" : undefined} fuente="gastos comunes típicos de la comuna" onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: fmtMiles(v) })} />
-            <NumField label="Contribuciones (trim.)" raw={fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))} display={`$${fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))}`} suffix="$" tag={a.contribuciones ? "corregido por ti" : undefined} fuente="fórmula SII según avalúo estimado" onCommit={(v) => commitEdit("contribuciones", { contribuciones: fmtMiles(v) })} />
+            <NumField label="Gastos comunes" raw={a.gastosComunes ?? formatNumeroCL(Math.round(ggccDef), DEC.gastosComunes)} display={`${fmtCLP(leerNum(a.gastosComunes, DEC.gastosComunes) || ggccDef)}/mes`} suffix="$" decimales={DEC.gastosComunes} formatEco={ecoPorDefecto("$", "/mes")} tag={a.gastosComunes ? "corregido por ti" : undefined} fuente="gastos comunes típicos de la comuna" onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: v })} />
+            <NumField label="Contribuciones (trim.)" raw={a.contribuciones ?? formatNumeroCL(Math.round(contribDef), DEC.contribuciones)} display={fmtCLP(leerNum(a.contribuciones, DEC.contribuciones) || contribDef)} suffix="$" decimales={DEC.contribuciones} formatEco={ecoPorDefecto("$")} tag={a.contribuciones ? "corregido por ti" : undefined} fuente="fórmula SII según avalúo estimado" onCommit={(v) => commitEdit("contribuciones", { contribuciones: v })} />
           </Nivel3>
         </ActCard>
 
@@ -924,7 +974,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         <ActCard num="02" title="Cómo lo financias" summaryLine={summary02} open={openCard === "02"} onToggle={() => toggleCard("02")}>
           {cascade["02"] && <CascadeNote text={cascade["02"]} />}
           <NumField
-            label="Pie (% del precio)" raw={String(Math.round(pct) || "")} display={pieStr} suffix="%" format={piePctClamp}
+            label="Pie (% del precio)" raw={pct > 0 ? formatNumeroCL(pct, DEC.piePct) : ""} display={pieStr} suffix="%"
+            decimales={DEC.piePct} formatEco={ecoPorDefecto("", "% del precio")}
             onCommit={(v) => {
               // Fase 5b: al subir el pie sobre 0, la razón se descarta en
               // SILENCIO (misma regla que el wizard). Al bajarlo a 0 el selector
@@ -961,7 +1012,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             />
           ) : (
             <NumField
-              label="Tasa" raw={a.tasaInteres ?? ""} display={a.tasaInteres ? `${a.tasaInteres}%` : "—"} suffix="%" inputMode="decimal" format={tasaInput}
+              label="Tasa" raw={a.tasaInteres ?? ""} display={a.tasaInteres ? `${a.tasaInteres}%` : "—"} suffix="%"
+              decimales={DEC.tasa} formatEco={ecoPorDefecto("", "% anual")}
               tag={tasaTag} derived={cuotaStr} highlight={highlight === "tasa"}
               onCommit={(v) => commitEdit("tasa", { tasaModo: "preaprobada", tasaInteres: v })}
             />
@@ -978,12 +1030,13 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             <>
               {esStr && <Subtitulo>Renta larga</Subtitulo>}
               <NumField
-                label="Arriendo mensual" raw={fmtMiles(a.arriendo ?? String(sugArriendo || ""))} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
+                label="Arriendo mensual" raw={a.arriendo ?? String(sugArriendo || "")} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
+                decimales={DEC.arriendo} formatEco={ecoPorDefecto("$", "/mes")}
                 tag={a.arrModo === "corregir" ? "corregido por ti" : "estimado"}
                 fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed)} highlight={highlight === "arr"}
-                onCommit={(v) => commitEdit("arr", { arriendo: fmtMiles(v), arrModo: "corregir" })}
+                onCommit={(v) => commitEdit("arr", { arriendo: v, arrModo: "corregir" })}
               />
-              <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={`${a.vacanciaPct ?? "5"}%`} suffix="%" format={pctInt} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
+              <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={`${a.vacanciaPct ?? "5"}%`} suffix="%" decimales={DEC.vacancia} formatEco={ecoPorDefecto("", "% del año")} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
             </>
           )}
 
@@ -992,13 +1045,15 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             <>
               {esLtr && <Subtitulo>Renta corta</Subtitulo>}
               <NumField
-                label="Tarifa por noche" raw={fmtMiles(a.adrTarifa ?? String(sugTarifa || ""))} display={tarifaVal > 0 ? `${fmtCLP(tarifaVal)}/noche` : "—"} suffix="$"
+                label="Tarifa por noche" raw={a.adrTarifa ?? String(sugTarifa || "")} display={tarifaVal > 0 ? `${fmtCLP(tarifaVal)}/noche` : "—"} suffix="$"
+                decimales={DEC.tarifa} formatEco={ecoPorDefecto("$", "/noche")}
                 tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"}
                 fuente="datos de mercado Airbnb de la zona, últimos 90 días" highlight={highlight === "adr"}
-                onCommit={(v) => commitEdit("adr", { adrTarifa: fmtMiles(v), adrModo: "corregir" })}
+                onCommit={(v) => commitEdit("adr", { adrTarifa: v, adrModo: "corregir" })}
               />
               <NumField
-                label="Ocupación" raw={String(a.adrOcupacion ?? (sugOcc || ""))} display={occVal > 0 ? `${occVal}%` : "—"} suffix="%" format={pctInt}
+                label="Ocupación" raw={String(a.adrOcupacion ?? (sugOcc || ""))} display={occVal > 0 ? `${occVal}%` : "—"} suffix="%"
+                decimales={DEC.ocupacion} formatEco={ecoPorDefecto("", "% de ocupación")}
                 tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"} highlight={highlight === "adr"}
                 onCommit={(v) => commitEdit("adr", { adrOcupacion: v, adrModo: "corregir" })}
               />
@@ -1008,7 +1063,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           {/* ── Nivel 3 · operación (título "Operación renta larga/corta" siempre) ── */}
           {esLtr && (
             <Nivel3 title="Operación renta larga" open={l3 === "sup"} onToggle={() => openL3("sup")}>
-              <NumField label="Comisión administración" raw={a.comisionAdminPct ?? "0"} display={`${a.comisionAdminPct ?? "0"}%`} suffix="%" format={pctInt} tag={a.comisionAdminPct ? "corregido por ti" : undefined} fuente="0 = autogestión; corredor típico 7-10%" onCommit={(v) => commitEdit("comisionAdminPct", { comisionAdminPct: v })} />
+              <NumField label="Comisión administración" raw={a.comisionAdminPct ?? "0"} display={`${a.comisionAdminPct ?? "0"}%`} suffix="%" decimales={DEC.comisionAdmin} formatEco={ecoPorDefecto("", "% del arriendo")} tag={a.comisionAdminPct ? "corregido por ti" : undefined} fuente="0 = autogestión; corredor típico 7-10%" onCommit={(v) => commitEdit("comisionAdminPct", { comisionAdminPct: v })} />
             </Nivel3>
           )}
           {esStr && (
@@ -1034,9 +1089,9 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
                   onCommit={(v) => commitEdit("gate", { edificioPermiteAirbnb: v })}
                 />
               )}
-              <NumField label="Costos operativos" raw={fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))} display={`$${fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))}/mes`} suffix="$" tag={a.costoInsumos ? "corregido por ti" : undefined} fuente={`consumo operativo típico para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("costoInsumos", { costoInsumos: fmtMiles(v) })} />
-              <NumField label="Mantención" raw={fmtMiles(a.mantencionStr ?? String(costos.mantencion))} display={`$${fmtMiles(a.mantencionStr ?? String(costos.mantencion))}/mes`} suffix="$" tag={a.mantencionStr ? "corregido por ti" : undefined} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: fmtMiles(v) })} />
-              <NumField label="Amoblamiento (capex)" raw={fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))} display={`$${fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))}`} suffix="$" tag={a.costoAmoblamiento ? "corregido por ti" : undefined} fuente="capex inicial estimado si el depto no está amoblado" onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: fmtMiles(v) })} />
+              <NumField label="Costos operativos" raw={a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos)} display={`${fmtCLP(leerNum(a.costoInsumos, DEC.costos) || costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos)}/mes`} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$", "/mes")} tag={a.costoInsumos ? "corregido por ti" : undefined} fuente={`consumo operativo típico para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("costoInsumos", { costoInsumos: v })} />
+              <NumField label="Mantención" raw={a.mantencionStr ?? String(costos.mantencion)} display={`${fmtCLP(leerNum(a.mantencionStr, DEC.costos) || costos.mantencion)}/mes`} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$", "/mes")} tag={a.mantencionStr ? "corregido por ti" : undefined} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: v })} />
+              <NumField label="Amoblamiento (capex)" raw={a.costoAmoblamiento ?? String(costos.costoAmoblamiento)} display={fmtCLP(leerNum(a.costoAmoblamiento, DEC.costos) || costos.costoAmoblamiento)} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$")} tag={a.costoAmoblamiento ? "corregido por ti" : undefined} fuente="capex inicial estimado si el depto no está amoblado" onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: v })} />
             </Nivel3>
           )}
         </ActCard>

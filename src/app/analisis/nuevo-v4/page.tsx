@@ -1,8 +1,9 @@
 "use client";
 
-// Wizard v4 — ruta paralela al v3 (/analisis/nuevo-v2). Se construye completo
-// acá y solo se conecta a producción cuando Fabrizio lo valide. NO reemplaza al
-// v3 hasta entonces.
+// Wizard v4 — el wizard de producción. Nació como ruta paralela al v3
+// (/analisis/nuevo-v2), pero el cutover ya ocurrió: ca3106f (27-jul-2026) dio
+// vuelta todos los links y `RUTA_WIZARD` (src/lib/cta-analizar.ts) apunta acá.
+// v3 sigue montado en su ruta, sin nadie que lo enlace.
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
