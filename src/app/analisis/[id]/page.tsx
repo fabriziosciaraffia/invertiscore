@@ -7,7 +7,6 @@ import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import { PremiumResults } from "./results-client";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
-import { getZoneComparison } from "@/lib/market-data";
 import { getUserAccessLevel } from "@/lib/access";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
@@ -275,9 +274,6 @@ export default async function AnalisisDetallePage({
   const resumenEjecutivo = results?.resumenEjecutivo ??
     `Inversión con score ${analisis.score}/100. Rentabilidad bruta ${yieldBruto.toFixed(1)}%.`;
 
-  // Fetch zone comparison data
-  const zoneData = await getZoneComparison(analisis.comuna);
-
   // F6 — freshness version-aware de la prosa persistida (lazy-on-open). Si quedó con
   // promptVersion vieja (o pre-F6 sin marcador), NO la pasamos como inicial y marcamos
   // aiStale → el client regenera al abrir vía POST (el server NO cobra: hadPriorProse).
@@ -319,7 +315,6 @@ export default async function AnalisisDetallePage({
           freePrecioM2={precioM2}
           resumenEjecutivo={resumenEjecutivo}
           ufValue={ufFrozen}
-          zoneData={zoneData}
           aiAnalysisInitial={ltrAiFresh ? (ltrAiPersisted as Record<string, unknown>) : undefined}
           aiStale={ltrAiStale}
           nombre={analisis.nombre}

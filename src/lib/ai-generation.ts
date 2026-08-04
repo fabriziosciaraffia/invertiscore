@@ -859,27 +859,18 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         precioM2ZonaConfiable = true;
       }
     }
-    // 3º (último recurso): getMarketDataForComuna (market/seed). Su precio/m² SOLO
-    // pisa precioM2Zona si aún no hay dato confiable de scraped_properties /
-    // zone_insight.
+    // NO hay 3º nivel. Lo hubo hasta el 2026-08-03: getMarketDataForComuna, que
+    // consultaba una tabla `market_data` que nunca existió y caía a un seed
+    // hardcodeado de marzo. Ese seed subestimaba el precio/m² entre 17% y 30%
+    // contra las medianas reales de scraped_properties, y lo entregaba con
+    // `precioM2ZonaConfiable = true` — o sea, una cifra inventada presentada al
+    // prompt como dato de zona verificado.
     //
-    // Ya NO alimenta el arriendo ni el yield de zona. Lo hacía SIEMPRE, y como la
-    // tabla `market_data` no existe en la base, ese "siempre" era siempre el seed
-    // hardcodeado — una referencia sin superficie ni frescura que quedaba 44% bajo
-    // el arriendo que el propio wizard sugiere (hasta 171% en 3D+) y que terminaba
-    // desmintiendo en el informe una cifra que Franco había propuesto. La
-    // referencia de arriendo vive ahora en arriendo-referencia.ts, con fuente única
-    // y sin fallback al seed.
-    try {
-      const { getMarketDataForComuna } = await import("@/lib/market-data");
-      const market = await getMarketDataForComuna(input.comuna, input.dormitorios);
-      if (market && !precioM2ZonaConfiable) {
-        precioM2Zona = market.precio_m2_venta_promedio;
-        precioM2ZonaConfiable = true;
-      }
-    } catch {
-      // use defaults
-    }
+    // Sin ese nivel, cuando ni scraped_properties ni zone_insight tienen dato,
+    // `precioM2ZonaConfiable` queda en false y el guard de más abajo (~:1880)
+    // impide que el modelo cite una mediana de comuna. Es el camino que ya
+    // recorrían los análisis de comunas fuera del seed: no decir nada es mejor
+    // que decir un número que no existe.
 
     // Fase B (sobreprecio-sync) — fuente única: si el análisis tiene snapshot de
     // mediana (Fase A), ÉSA es la mediana comunal para la comparación de

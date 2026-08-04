@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getConfig } from "@/lib/market-data";
+import { getConfig } from "@/lib/config-store";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

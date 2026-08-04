@@ -7,7 +7,6 @@ import { calcFlujoDesglose, getMantencionRate, calcExitScenario, calcProjections
 import { readVeredicto } from "@/lib/results-helpers";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { findNearestStation } from "@/lib/metro-stations";
-import type { MarketDataRow } from "@/lib/market-data";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
@@ -64,7 +63,7 @@ const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","
 
 // BottomPaywallCTA removed — all users see content directly
 
-// Ronda 4a.1: SectionCard, ZoneComparisonCards → src/components/analysis/.
+// Ronda 4a.1: SectionCard → src/components/analysis/.
 
 
 export function PremiumResults({
@@ -74,8 +73,6 @@ export function PremiumResults({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   resumenEjecutivo: _resumenEjecutivo,
   ufValue,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  zoneData,
   aiAnalysisInitial,
   aiStale = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -104,7 +101,6 @@ export function PremiumResults({
   freePrecioM2: number;
   resumenEjecutivo: string;
   ufValue: number;
-  zoneData?: MarketDataRow[] | null;
   aiAnalysisInitial?: unknown;
   aiStale?: boolean;
   nombre?: string;
