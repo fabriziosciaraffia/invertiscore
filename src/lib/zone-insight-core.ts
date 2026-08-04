@@ -742,7 +742,17 @@ export async function buildZoneInsightForRow(
     if (precioM2) {
       const tuM2UF = superficie > 0 ? precioUF / superficie : 0;
       precioM2.tuDepto = Math.round(tuM2UF * 100) / 100;
-      if (precioM2.medianaComuna > 0) {
+      // La DESVIACIÓN sale del motor (metrics.precioVsComuna.desviacionPct), no
+      // de un recálculo local. Recalcularla acá daba una cifra distinta de la de
+      // la card por el redondeo del NUMERADOR —el motor redondea el UF/m² del
+      // sujeto a 1 decimal (94,5) y esta función a 2 (94,55)—, y el informe
+      // terminaba mostrando 23% en la card y 24% en la zona para la misma
+      // comparación. Fallback al cálculo local solo si el motor no la trae
+      // (results legacy sin precioVsComuna).
+      const desvMotor = results?.metrics?.precioVsComuna?.desviacionPct;
+      if (typeof desvMotor === "number" && Number.isFinite(desvMotor)) {
+        precioM2.diffPct = desvMotor;
+      } else if (precioM2.medianaComuna > 0) {
         precioM2.diffPct = Math.round(((precioM2.tuDepto - precioM2.medianaComuna) / precioM2.medianaComuna) * 1000) / 10;
       }
     }
