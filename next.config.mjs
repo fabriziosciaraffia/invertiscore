@@ -25,9 +25,19 @@ const nextConfig = {
   async redirects() {
     return [
       // 302: el formulario canónico ahora es el wizard v2. Path exacto: no captura
-      // /analisis/nuevo/revisar (ese sigue vivo para entries antiguas).
+      // /analisis/nuevo/revisar — por eso la entrada de abajo.
       {
         source: '/analisis/nuevo',
+        destination: '/analisis/nuevo-v2',
+        permanent: false,
+      },
+      // 302: el paso "revisar" del wizard v1 se borró el 2026-08-03 junto con el
+      // resto del v1. Sin esta entrada, quien tenga la URL en historial o marcador
+      // cae en 404 (el redirect de arriba es de path exacto y no la cubre). Su
+      // draft en sessionStorage (`franco:revisar:v1`) ya no lo lee nadie, así que
+      // el destino es el wizard vivo, no un intento de rehidratar.
+      {
+        source: '/analisis/nuevo/revisar',
         destination: '/analisis/nuevo-v2',
         permanent: false,
       },
