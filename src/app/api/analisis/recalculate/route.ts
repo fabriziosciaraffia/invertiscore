@@ -120,6 +120,14 @@ export async function POST(request: Request) {
         input_data: safeInput,
         // Re-snapshot al recalcular (mismo shape que la creación, Fase A).
         mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
+        // INVALIDAR el insight de zona. Su prosa cita la mediana comunal y el
+        // % vs esa mediana, tomados del snapshot que esta misma línea acaba de
+        // reemplazar: dejarlo cacheado hace que el informe se contradiga a sí
+        // mismo — la card diciendo "entras barato −4%" y la zona, con la cifra
+        // vieja, "muy sobre la mediana". Pasó en 4daf13eb tras el recalculate
+        // del parque. En null, el GET de zone-insight lo regenera on-demand con
+        // el snapshot nuevo (su cache es lazy).
+        zone_insight: null,
       })
       .eq("id", analysisId);
 

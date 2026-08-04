@@ -161,20 +161,33 @@ export function buildHeroDatosClave(
     const medianaFmt = `UF ${(Math.round(hs.valor.medianaComunaUfM2 * 10) / 10)
       .toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}/m²`;
     const pct = `${desv >= 0 ? "+" : "−"}${desvAbs}%`;
+    // El UNIVERSO de la muestra viaja en el hallazgo desde el fix de segmentación
+    // (ac83e94) y la fraseCanonica ya lo declara. Esta card armaba su propio
+    // subtexto y se lo comía: decía "la mediana de la comuna" cuando la mediana es
+    // de un solo universo — la misma etiqueta imprecisa que el fix vino a matar,
+    // sobreviviendo en el lugar más visible del informe. Ausente (snapshots
+    // pre-segmentación, cuya mediana es mixta) ⇒ redacción previa, byte-idéntica.
+    const univ = hs.valor.universo;
+    const refComuna = univ === "nuevo" ? "de departamentos nuevos de la comuna"
+      : univ === "usado" ? "de departamentos usados de la comuna"
+      : "de la comuna";
+    const refEnLinea = univ === "nuevo" ? "con los departamentos nuevos de la comuna"
+      : univ === "usado" ? "con los departamentos usados de la comuna"
+      : "con la comuna";
     if (desvAbs <= 2) {
       sobreprecioCard = {
         label: "Precio alineado", valor_clp: pct, valor_uf: pct,
-        subtexto: `En línea con la comuna (${medianaFmt})`, isLabel: false, color: "neutral",
+        subtexto: `En línea ${refEnLinea} (${medianaFmt})`, isLabel: false, color: "neutral",
       };
     } else if (desv > 0) {
       sobreprecioCard = {
         label: "Sobreprecio", valor_clp: pct, valor_uf: pct,
-        subtexto: `Sobre la mediana de la comuna (${medianaFmt})`, isLabel: true, color: "red",
+        subtexto: `Sobre la mediana ${refComuna} (${medianaFmt})`, isLabel: true, color: "red",
       };
     } else {
       sobreprecioCard = {
         label: "Ventaja", valor_clp: pct, valor_uf: pct,
-        subtexto: `Bajo la mediana de la comuna (${medianaFmt})`, isLabel: true, color: "green",
+        subtexto: `Bajo la mediana ${refComuna} (${medianaFmt})`, isLabel: true, color: "green",
       };
     }
   } else {

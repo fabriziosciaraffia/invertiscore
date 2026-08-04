@@ -485,6 +485,13 @@ interface InsightAIContext {
   plusvaliaAnual?: number;
   plusvaliaFallback?: boolean;
   precioM2?: { tuDepto: number; medianaComuna: number; diffPct: number } | null;
+  /** Universo de la mediana de precio/m² (nuevo | usado). Desde el fix de
+   *  segmentación (ac83e94) la mediana sale de UN solo universo, y la card y la
+   *  fraseCanonica ya lo declaran. Sin esto, la zona seguía diciendo "la mediana
+   *  de <comuna>" a secas sobre la misma cifra — el usuario leía dos rótulos
+   *  distintos para el mismo número en el mismo informe. Ausente ⇒ mediana mixta
+   *  (snapshot pre-segmentación): la zona no declara universo, como antes. */
+  universoMediana?: "nuevo" | "usado";
   oferta?: { rangoArriendoMin: number; rangoArriendoMax: number; percentilTuDepto: number } | null;
   /** Veredicto del análisis (COMPRAR | AJUSTA SUPUESTOS | BUSCAR OTRA) — disciplina el
    *  TONO de la zona (REGLA 9): la zona nunca empuja contra el veredicto. Censo editorial
@@ -524,8 +531,22 @@ async function generateInsightAI(
   }
   if (ctx.precioM2) {
     const diff = ctx.precioM2.diffPct;
+    // El UNIVERSO va en la misma línea que la cifra, no en una regla aparte: es
+    // el rótulo de ESE número, y separarlos invita a que el modelo cite la cifra
+    // sin la etiqueta. Mismo vocabulario que la fraseCanonica del hallazgo
+    // ("departamentos nuevos/usados de la comuna") para que el informe no use dos
+    // nombres distintos para la misma muestra.
+    const univ = ctx.universoMediana === "nuevo" ? " de departamentos NUEVOS"
+      : ctx.universoMediana === "usado" ? " de departamentos USADOS"
+      : "";
+    // El % se entrega REDONDEADO A ENTERO: es el mismo número que la card y la
+    // fraseCanonica del hallazgo (que redondean a entero), y con un decimal el
+    // informe mostraba "23%" en la card y "23,6%" en la zona para la misma
+    // comparación — el juez editorial lo marcó como cifra que baila.
+    const diffEntero = Math.round(diff);
     finLines.push(
-      `- Precio m² tu depto: UF ${ctx.precioM2.tuDepto.toFixed(1).replace(".", ",")} (mediana ${comuna}: UF ${ctx.precioM2.medianaComuna.toFixed(1).replace(".", ",")}, ${diff >= 0 ? "+" : ""}${diff.toFixed(1).replace(".", ",")}%)`
+      `- Precio m² tu depto: UF ${ctx.precioM2.tuDepto.toFixed(1).replace(".", ",")} (mediana${univ} de ${comuna}: UF ${ctx.precioM2.medianaComuna.toFixed(1).replace(".", ",")}, ${diffEntero >= 0 ? "+" : ""}${diffEntero}%). Cita ESE porcentaje tal cual, sin decimales`
+        + (univ ? `, y nombra el universo: es la mediana${univ.toLowerCase()}, NO la de toda la comuna.` : ".")
     );
   } else {
     // B4-1: cuando no hay data de mediana de precio/m² para esta comuna
@@ -666,6 +687,8 @@ export async function buildZoneInsightForRow(
 
   // 3) Stats — comparable comuna ───────────────────
   let precioM2: ZoneInsightStats["precioM2"] = null;
+  // Universo declarado por el snapshot (si lo trae). Ver el bloque Fase B abajo.
+  let medSnapUniverso: "nuevo" | "usado" | undefined;
   let ofertaComparable: ZoneInsightStats["ofertaComparable"] = null;
   try {
     // Use service role for stats so we can read the full scraped dataset regardless of RLS.
@@ -697,12 +720,16 @@ export async function buildZoneInsightForRow(
     // "sin mediana confiable", no se muestra comparación (congelado al crear).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const medSnap = (row as any).mediana_comuna_snapshot as
-      { mediana: number | null; n: number } | null | undefined;
+      { mediana: number | null; n: number; universo?: "nuevo" | "usado" } | null | undefined;
     if (medSnap != null) {
       if (typeof medSnap.mediana === "number" && medSnap.mediana > 0) {
         precioM2 = precioM2
           ? { ...precioM2, medianaComuna: medSnap.mediana }
           : { tuDepto: 0, medianaComuna: medSnap.mediana, diffPct: 0 };
+        // El universo viaja CON la cifra: si la mediana la manda el snapshot, el
+        // rótulo también — un snapshot pre-segmentación no trae universo y la
+        // zona entonces no lo declara (mediana mixta, sin etiqueta que ponerle).
+        medSnapUniverso = medSnap.universo;
       } else {
         precioM2 = null;
       }
@@ -731,6 +758,10 @@ export async function buildZoneInsightForRow(
     plusvaliaFallback: !histo, // sin dato propio de la comuna → referencia Gran Santiago
     veredicto: typeof results?.veredicto === "string" ? results.veredicto : undefined,
     precioM2: precioM2,
+    // El universo de la mediana que se está citando: del snapshot si lo trae
+    // (fuente única con la card), si no el del sujeto —que es el que
+    // fetchComunaStats usó para su query—. Sin snapshot y sin segmentar, undefined.
+    universoMediana: (medSnapUniverso ?? condicionSujeto) as "nuevo" | "usado" | undefined,
     oferta: ofertaComparable
       ? {
           rangoArriendoMin: ofertaComparable.rangoArriendoMin,
