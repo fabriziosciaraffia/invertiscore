@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { captureApiError } from "@/lib/observabilidad";
+import { respuestaCron } from "@/lib/cron-resultado";
+
+const RUTA = "GET /api/cron/expire-grace";
 
 /**
  * Cron · Expiración de accesos de suscripción vencidos. Dos barridos:
@@ -65,6 +69,7 @@ export async function GET(request: Request) {
 
   if (pdError) {
     console.error("[cron/expire-grace] past_due query error:", pdError);
+    captureApiError(pdError, { ruta: RUTA, operacion: "query-past-due" });
     return NextResponse.json({ error: "Query failed" }, { status: 500 });
   }
 
@@ -86,12 +91,17 @@ export async function GET(request: Request) {
 
   if (cError) {
     console.error("[cron/expire-grace] cancelled query error:", cError);
+    captureApiError(cError, { ruta: RUTA, operacion: "query-cancelled" });
     return NextResponse.json({ error: "Query failed" }, { status: 500 });
   }
 
   let processed = 0;
   let cancelled = 0;
   let unlimitedRevoked = 0;
+  // Una fila que no se actualiza deja plata sobre la mesa en las dos
+  // direcciones: un past_due con gracia vencida sigue con acceso gratis, y un
+  // ilimitado cancelado conserva el free pass. Antes solo iba a console.error.
+  let fallidos = 0;
 
   // past_due vencido → cancelled + apaga is_unlimited + limpia grace.
   //
@@ -118,6 +128,13 @@ export async function GET(request: Request) {
 
       if (updErr) {
         console.error("[cron/expire-grace] past_due update falló para user:", row.user_id, updErr);
+        fallidos++;
+        captureApiError(updErr, {
+          ruta: RUTA,
+          operacion: "cerrar-past-due",
+          userId: row.user_id,
+          tags: { consecuencia: "acceso-vencido-sigue-activo", ilimitado_manual: String(esManual) },
+        });
         continue;
       }
       cancelled++;
@@ -128,6 +145,8 @@ export async function GET(request: Request) {
         row?.user_id,
         e instanceof Error ? e.message : String(e)
       );
+      fallidos++;
+      captureApiError(e, { ruta: RUTA, operacion: "procesar-past-due", userId: row?.user_id });
     }
   }
 
@@ -148,6 +167,13 @@ export async function GET(request: Request) {
 
       if (updErr) {
         console.error("[cron/expire-grace] cancelled update falló para user:", row.user_id, updErr);
+        fallidos++;
+        captureApiError(updErr, {
+          ruta: RUTA,
+          operacion: "revocar-ilimitado",
+          userId: row.user_id,
+          tags: { consecuencia: "free-pass-sobrevive-cancelacion" },
+        });
         continue;
       }
       unlimitedRevoked++;
@@ -158,11 +184,16 @@ export async function GET(request: Request) {
         row?.user_id,
         e instanceof Error ? e.message : String(e)
       );
+      fallidos++;
+      captureApiError(e, { ruta: RUTA, operacion: "procesar-cancelled", userId: row?.user_id });
     }
   }
 
   console.error(
-    `[cron/expire-grace] processed=${processed} cancelled=${cancelled} unlimitedRevoked=${unlimitedRevoked}`
+    `[cron/expire-grace] processed=${processed} cancelled=${cancelled} unlimitedRevoked=${unlimitedRevoked} fallidos=${fallidos}`
   );
-  return NextResponse.json({ processed, cancelled, unlimitedRevoked });
+  return respuestaCron(
+    { procesados: processed, exitosos: processed - fallidos, fallidos },
+    { cancelled, unlimitedRevoked },
+  );
 }
