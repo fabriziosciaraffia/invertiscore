@@ -9,6 +9,7 @@ import {
 import type { FullAnalysisResult } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { fmtAxisMoney, fmtMoney } from "@/components/analysis/utils";
+import { hayAsimetriaDeEntrega } from "@/lib/comparativa-patrimonio";
 
 interface Props {
   ltrResults: FullAnalysisResult;
@@ -39,6 +40,20 @@ interface Props {
 // Capa Cromática: Ink en dos stops (--franco-text para el activo,
 // --franco-text-secondary para las dos riquezas), diferenciadas por grosor y
 // dash. Sin Signal Red — ver nota del bracket más abajo.
+//
+// EXCEPCIÓN · asimetría de entrega. Las tres series de arriba asumen que los dos
+// lados arrancan el mismo día. Cuando el LTR espera la escritura y el STR no
+// (`hayAsimetriaDeEntrega`), esa premisa cae y el chart pasa a dibujar SOLO el
+// lado de renta larga: activo + riqueza larga, sin la punteada del corto y sin
+// el bracket de brecha.
+//
+// Por qué retirar la serie y no separarla en dos: dibujar dos curvas de activo
+// invita justamente a leer la distancia entre ellas como diferencia de
+// modalidad, cuando es diferencia de punto de partida — el error que el finding
+// de patrimonio ya dejó de cometer. Y la riqueza del corto arrastra el mismo
+// vicio, porque se construye sobre su activo. Una línea única es una afirmación
+// que el usuario no puede matizar; dos líneas no comparables son una invitación
+// a restarlas. Se muestra el lado que sí cuenta la espera y se dice cuál es.
 export function PatrimonioChartComparativa(p: Props) {
   // El label del bracket vive en el margen derecho; cuando el chart es angosto
   // ese margen se come el área de plot, así que ahí el bracket se retira y la
@@ -64,6 +79,10 @@ export function PatrimonioChartComparativa(p: Props) {
   }, []);
   // 40px de margen para el label vertical + un área de plot que valga la pena.
   const compact = chartWidth < 340;
+
+  // Los dos lados no arrancan el mismo día ⇒ el chart no compara (ver nota de
+  // arriba). Se deriva del lado LTR, el único que sabe de la entrega.
+  const asimetria = hayAsimetriaDeEntrega(p.ltrResults.projections, p.ltrResults.metrics);
 
   const chartData = useMemo(() => {
     const ltrProj = p.ltrResults.projections ?? [];
@@ -241,19 +260,25 @@ export function PatrimonioChartComparativa(p: Props) {
               name="riquezaLTR"
               connectNulls
             />
-            {/* Riqueza renta corta — fina, Ink secundario punteada. Sin dots. */}
-            <Line
-              type="monotone"
-              dataKey="riquezaSTR"
-              stroke="var(--franco-text-secondary)"
-              strokeWidth={1.5}
-              strokeDasharray="6 4"
-              dot={false}
-              activeDot={{ r: 2.5, fill: "var(--franco-text-secondary)" }}
-              name="riquezaSTR"
-              connectNulls
-            />
-            {!compact && brecha !== 0 && (
+            {/* Riqueza renta corta — fina, Ink secundario punteada. Sin dots.
+                Se retira con asimetría de entrega: su serie arranca a operar en
+                el mes 1 y la del lado largo espera la escritura. */}
+            {!asimetria && (
+              <Line
+                type="monotone"
+                dataKey="riquezaSTR"
+                stroke="var(--franco-text-secondary)"
+                strokeWidth={1.5}
+                strokeDasharray="6 4"
+                dot={false}
+                activeDot={{ r: 2.5, fill: "var(--franco-text-secondary)" }}
+                name="riquezaSTR"
+                connectNulls
+              />
+            )}
+            {/* El bracket mide la brecha ENTRE las dos riquezas: sin la del
+                corto no hay brecha que marcar. */}
+            {!asimetria && !compact && brecha !== 0 && (
               <Customized
                 component={
                   <BracketBrecha
@@ -276,9 +301,9 @@ export function PatrimonioChartComparativa(p: Props) {
         className="flex flex-wrap items-center justify-center gap-5 mt-3.5 pt-3.5"
         style={{ borderTop: "1px solid var(--franco-border)" }}
       >
-        <LegendItem variant="thick" label="Activo · ambas" />
-        <LegendItem variant="thin" label="Riqueza · larga" />
-        <LegendItem variant="dashed" label="Riqueza · corta" />
+        <LegendItem variant="thick" label={asimetria ? "Activo · renta larga" : "Activo · ambas"} />
+        <LegendItem variant="thin" label={asimetria ? "Riqueza · renta larga" : "Riqueza · larga"} />
+        {!asimetria && <LegendItem variant="dashed" label="Riqueza · corta" />}
       </div>
 
       <div
@@ -293,14 +318,28 @@ export function PatrimonioChartComparativa(p: Props) {
           className="font-mono uppercase mb-1"
           style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
         >
-          {`AL AÑO ${lastYear} · EL ACTIVO EMPATA, EL CAMINO NO`}
+          {asimetria
+            ? `AL AÑO ${lastYear} · SOLO RENTA LARGA`
+            : `AL AÑO ${lastYear} · EL ACTIVO EMPATA, EL CAMINO NO`}
         </p>
         <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-snug">
-          El depto se aprecia igual y la deuda se amortiza igual, arriendes corto o largo: {fmtMoney(activoFinal, p.currency, p.ufValue)}{" "}
-          de activo neto de deuda en las dos modalidades. Lo que cambia es cuánto pones de tu bolsillo por el camino.
-          Descontándolo, terminas con {fmtMoney(riquezaLTRFinal, p.currency, p.ufValue)} en renta larga y{" "}
-          {fmtMoney(riquezaSTRFinal, p.currency, p.ufValue)} en renta corta — {fmtMoney(Math.abs(brecha), p.currency, p.ufValue)}{" "}
-          de diferencia a favor de la {ganadora}. Esa brecha es la decisión, no el activo.
+          {asimetria ? (
+            <>
+              Acá va solo la renta larga: {fmtMoney(activoFinal, p.currency, p.ufValue)} de activo neto de deuda
+              al año {lastYear}, y {fmtMoney(riquezaLTRFinal, p.currency, p.ufValue)} descontando lo que pones de
+              tu bolsillo por el camino. La renta corta no se dibuja porque este depto todavía no se entrega: con
+              renta larga el crédito recién empieza a correr cuando lo recibas, y su proyección aún no descuenta
+              esa espera. Superponerlas mostraría una brecha de punto de partida, no de modalidad.
+            </>
+          ) : (
+            <>
+              El depto se aprecia igual y la deuda se amortiza igual, arriendes corto o largo: {fmtMoney(activoFinal, p.currency, p.ufValue)}{" "}
+              de activo neto de deuda en las dos modalidades. Lo que cambia es cuánto pones de tu bolsillo por el camino.
+              Descontándolo, terminas con {fmtMoney(riquezaLTRFinal, p.currency, p.ufValue)} en renta larga y{" "}
+              {fmtMoney(riquezaSTRFinal, p.currency, p.ufValue)} en renta corta — {fmtMoney(Math.abs(brecha), p.currency, p.ufValue)}{" "}
+              de diferencia a favor de la {ganadora}. Esa brecha es la decisión, no el activo.
+            </>
+          )}
         </p>
         <p className="font-body text-[12px] text-[var(--franco-text-secondary)] m-0 mt-2 leading-snug">
           {comisionVentaFinal > 0 ? (

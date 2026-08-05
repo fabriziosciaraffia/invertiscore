@@ -29,6 +29,7 @@ import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-find
 import type { BandaComparativa } from "@/lib/engines/str-universo-santiago";
 import { tieneEstacionalidad } from "@/app/analisis/renta-corta/[id]/documento/FlujoEstacionalChartSVG";
 import { PatrimonioComparativoSVG, FlujoComparadoSVG } from "./ChartsComparativaSVG";
+import { hayAsimetriaDeEntrega, patrimoniosIguales } from "@/lib/comparativa-patrimonio";
 
 const pct = (n: number, d = 1) => n.toFixed(d).replace(".", ",") + "%";
 const dec = (n: number, d = 1) => n.toFixed(d).replace(".", ",");
@@ -113,7 +114,13 @@ export function DocumentoAmbas({
   const idxPat = Math.min(ltrProj.length, strProj.length, 10) - 1;
   const ltrPatY10 = idxPat >= 0 ? (ltrProj[idxPat]?.patrimonioNeto ?? 0) : 0;
   const strPatY10 = idxPat >= 0 ? (strProj[idxPat]?.patrimonioNeto ?? 0) : 0;
-  const patrimonioIgual = Math.abs(strPatY10 - ltrPatY10) < Math.max(1, Math.abs(ltrPatY10) * 0.005);
+  // Asimetría de entrega: los dos lados no arrancan el mismo día, así que el
+  // activo no compara (mismo predicado y mismo criterio que el finding y la web).
+  const asimetriaEntrega = hayAsimetriaDeEntrega(ltrProj, ltrResults?.metrics);
+  // Umbral convergido: antes acá era 0,5% del valor y en el finding $1.000
+  // absolutos. Medido sobre los 54 pares AMBAS del parque, los dos clasifican
+  // idéntico (0 divergencias), así que unificar no mueve ninguna hoja.
+  const patrimonioIgual = !asimetriaEntrega && patrimoniosIguales(ltrPatY10, strPatY10);
 
   // ── Riqueza acumulada = activo + flujo acumulado ─────────────────────────
   // El activo empata por construcción (se aprecia y se amortiza igual arriendes
@@ -150,7 +157,7 @@ export function DocumentoAmbas({
     // "Activo neto de deuda", no "patrimonio": la fila mide el activo, que empata
     // por construcción. El patrimonio que sí separa a las modalidades (la riqueza,
     // con el flujo acumulado adentro) vive en el chart y su anotación.
-    { label: "Activo neto de deuda a 10 años", l: money(ltrPatY10), s: money(strPatY10), win: patrimonioIgual ? "—" : winMoney(ltrPatY10, strPatY10), tie: "igual en las dos" },
+    { label: "Activo neto de deuda a 10 años", l: money(ltrPatY10), s: asimetriaEntrega ? "no comparable" : money(strPatY10), txt: asimetriaEntrega || undefined, win: asimetriaEntrega ? "—" : patrimonioIgual ? "—" : winMoney(ltrPatY10, strPatY10), tie: asimetriaEntrega ? "el corto aún no descuenta la espera" : "igual en las dos" },
   ];
 
   // ── Hallazgos comparativos (builder puro compartido con la web) ──
@@ -297,7 +304,7 @@ export function DocumentoAmbas({
       {/* ═══════════ HOJA 2 · DE UN VISTAZO + EVIDENCIA ═══════════ */}
       <section className="doc-section break-page">
         <p className="eyebrow">De un vistazo · frente a frente</p>
-        <h2 className="title">El destino es el mismo; el camino, distinto</h2>
+        <h2 className="title">{asimetriaEntrega ? "Los caminos se comparan; el destino todavía no" : "El destino es el mismo; el camino, distinto"}</h2>
         <p className="body sec" style={{ marginTop: 6, marginBottom: 12 }}>
           Cada número sale del análisis propio de su modalidad. La columna «mejor» compara la fila, nada más.
         </p>
@@ -323,30 +330,42 @@ export function DocumentoAmbas({
           {/* Footnote del asterisco: una sola línea, antes del cierre narrativo. */}
           {tirNoAplica && <div className="fn">{NO_APLICA_FOOTNOTE_DOC_AMBAS}</div>}
           <div className="foot">
-            {patrimonioIgual
+            {asimetriaEntrega
+              ? `A 10 años el activo no se puede comparar: este depto todavía no se entrega, así que con renta larga el crédito recién empieza a correr cuando lo recibas y la proyección de renta corta aún no descuenta esa espera. Lo que sí compara hoy es el flujo mensual y las horas que te pide cada una.`
+              : patrimonioIgual
               ? `A 10 años el activo es el mismo con cualquiera de las dos: el depto se aprecia igual y la deuda se amortiza igual. Lo que cambia es cuánto pones de tu bolsillo por el camino${brechaRiqueza !== 0 ? ` — y eso abre una diferencia de ${money(Math.abs(brechaRiqueza))} a favor de la ${ganadoraRiqueza}` : ""}.`
               : `A 10 años la diferencia de activo entre las dos es de ${money(Math.abs(strPatY10 - ltrPatY10))}. Lo que más separa a las modalidades no es dónde llegas, sino cuánta caja y cuántas horas te pide llegar.`}
           </div>
         </div>
 
-        <p className="eyebrow" style={{ marginTop: 16 }}>La evidencia · mismo destino, dos caminos</p>
+        <p className="eyebrow" style={{ marginTop: 16 }}>{asimetriaEntrega ? "La evidencia · dos caminos, un solo lado medible" : "La evidencia · mismo destino, dos caminos"}</p>
         <div className="chart-grid">
           <div>
             <p className="sbl">Patrimonio y riqueza · {Math.min(patLtr.length, patStr.length)} años</p>
             {patLtr.length > 1 && patStr.length > 1 ? (
               <>
-                <PatrimonioComparativoSVG ltr={patLtr} str={patStr} valorUF={ufFrozen} />
+                <PatrimonioComparativoSVG ltr={patLtr} str={patStr} valorUF={ufFrozen} soloLtr={asimetriaEntrega} />
                 <div className="chart-legend">
-                  <span><i className="sw line" />Activo · ambas</span>
-                  <span><i className="sw thin" />Riqueza · larga</span>
-                  <span><i className="sw thin-dash" />Riqueza · corta</span>
+                  <span><i className="sw line" />{asimetriaEntrega ? "Activo · renta larga" : "Activo · ambas"}</span>
+                  <span><i className="sw thin" />{asimetriaEntrega ? "Riqueza · renta larga" : "Riqueza · larga"}</span>
+                  {!asimetriaEntrega && <span><i className="sw thin-dash" />Riqueza · corta</span>}
                 </div>
                 <p className="chart-annot">
+                  {asimetriaEntrega ? (
+                    <>
+                      Acá va solo la renta larga: el activo termina en <span className="m">{money(ltrPatY10)}</span>, y{" "}
+                      <span className="m">{money(riquezaLtrY10)}</span> descontando lo que pones de tu bolsillo por el camino.
+                      La renta corta no se dibuja porque su proyección todavía no descuenta la espera hasta la entrega.
+                    </>
+                  ) : (
+                  <>
                   El activo termina en <span className="m">{money(ltrPatY10)}</span> con cualquiera de las dos: el depto se aprecia igual y la deuda se amortiza igual.{" "}
                   {ambosAportan
                     ? "Lo que cambia es cuánto pones de tu bolsillo por el camino. Descontándolo, terminas con "
                     : "Lo que cambia es el flujo que acumula cada una por el camino. Contándolo, terminas con "}
                   <span className="m">{money(riquezaLtrY10)}</span> en renta larga y <span className="m">{money(riquezaStrY10)}</span> en renta corta.
+                  </>
+                  )}
                 </p>
               </>
             ) : (

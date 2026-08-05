@@ -12,6 +12,7 @@ import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
 import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
+import { hayAsimetriaDeEntrega } from "@/lib/comparativa-patrimonio";
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
 import { useComparativaAI } from "@/components/comparativa/use-comparativa-ai";
 import { PiramideComparativa } from "@/components/comparativa/PiramideComparativa";
@@ -283,7 +284,9 @@ export function ComparativaClient(p: Props) {
                 LA EVIDENCIA
               </p>
               <h2 className="font-heading text-[19px] sm:text-[22px] font-bold leading-tight" style={{ color: "var(--franco-text)" }}>
-                El destino es el mismo; el camino, distinto
+                {hayAsimetriaDeEntrega(p.ltrResults?.projections, p.ltrResults?.metrics)
+                  ? "Los caminos se comparan; el destino todavía no"
+                  : "El destino es el mismo; el camino, distinto"}
               </h2>
             </div>
 

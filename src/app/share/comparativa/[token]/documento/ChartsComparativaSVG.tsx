@@ -77,10 +77,19 @@ export function PatrimonioComparativoSVG({
   ltr,
   str,
   valorUF,
+  soloLtr = false,
 }: {
   ltr: PatrimonioPunto[];
   str: PatrimonioPunto[];
   valorUF: number;
+  /**
+   * Asimetría de entrega: el lado LTR espera la escritura y el STR no, así que
+   * las series no arrancan el mismo día. Se dibuja SOLO renta larga (activo +
+   * su riqueza), sin la punteada del corto y sin el bracket de brecha —
+   * superponerlas mostraría una distancia de punto de partida, no de modalidad.
+   * Espejo del mismo estado en la web (PatrimonioChartComparativa).
+   */
+  soloLtr?: boolean;
 }) {
   // Capado a la intersección: comparar manzanas con manzanas. El documento ya
   // recorta a 10 años aguas arriba; esto cubre largos distintos entre motores.
@@ -152,7 +161,7 @@ export function PatrimonioComparativoSVG({
       })}
 
       {/* Orden de pintado: las finas abajo, el activo encima — la gruesa manda. */}
-      {n >= 2 && <polyline points={pts(riquezaStr)} fill="none" stroke="var(--ink-400)" strokeWidth={1.1} strokeDasharray="3 2" />}
+      {!soloLtr && n >= 2 && <polyline points={pts(riquezaStr)} fill="none" stroke="var(--ink-400)" strokeWidth={1.1} strokeDasharray="3 2" />}
       {n >= 2 && <polyline points={pts(riquezaLtr)} fill="none" stroke="var(--ink-400)" strokeWidth={1.1} />}
       {n >= 2 && <polyline points={pts(activo)} fill="none" stroke="var(--text)" strokeWidth={2.2} />}
       {/* Dots SOLO en los extremos del activo (contrato del mockup): con 10 dots
@@ -160,8 +169,9 @@ export function PatrimonioComparativoSVG({
       <circle cx={xFor(0)} cy={yFor(activo[0])} r={1.8} fill="var(--text)" />
       <circle cx={xFor(n - 1)} cy={yFor(activo[n - 1])} r={1.8} fill="var(--text)" />
 
-      {/* Bracket de brecha */}
-      {brecha !== 0 && (
+      {/* Bracket de brecha — mide la distancia ENTRE las dos riquezas: sin la
+          del corto no hay brecha que marcar. */}
+      {!soloLtr && brecha !== 0 && (
         <g>
           <line x1={BR_X} y1={brY[0]} x2={BR_X} y2={brY[1]} stroke="var(--text)" strokeWidth={0.9} />
           <line x1={BR_X - BR_SERIF} y1={brY[0]} x2={BR_X} y2={brY[0]} stroke="var(--text)" strokeWidth={0.9} />
