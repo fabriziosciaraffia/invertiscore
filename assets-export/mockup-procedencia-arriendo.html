@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · procedencia del arriendo en modo lectura</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --franco-bg: #0F0F0F;
+    --franco-card: #1A1A1A;
+    --franco-text: #FAFAF8;
+    --franco-text-secondary: rgba(250,250,248,0.5);
+    --franco-text-muted: rgba(250,250,248,0.35);
+    --franco-text-tertiary: #888780;
+    --franco-border: rgba(250,250,248,0.06);
+    --franco-border-strong: rgba(250,250,248,0.15);
+    --signal-red: #C8323C;
+  }
+  [data-theme="light"] {
+    --franco-bg: #F6F6F7;
+    --franco-card: #FFFFFF;
+    --franco-text: #0F0F0F;
+    --franco-text-secondary: #52525B;
+    --franco-text-muted: #6B6B72;
+    --franco-text-tertiary: #6A6A71;
+    --franco-border: #DDDDE1;
+    --franco-border-strong: #B0B0B8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px;
+    background: var(--franco-bg); color: var(--franco-text);
+    font-family: "IBM Plex Sans", sans-serif;
+    transition: background .2s, color .2s;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-family: "Source Serif 4", serif; font-weight: 700; font-size: 24px; margin: 0 0 6px; }
+  .sub { font-size: 13px; color: var(--franco-text-secondary); margin: 0 0 28px; line-height: 1.55; }
+  .toggle {
+    position: fixed; top: 14px; right: 14px; z-index: 10;
+    font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .08em; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+    background: var(--franco-card); color: var(--franco-text);
+    border: .5px solid var(--franco-border-strong);
+  }
+
+  /* ── chrome real del resumen ── */
+  .card {
+    border: .5px solid var(--franco-border); border-radius: 12px;
+    background: var(--franco-card); padding: 16px 18px; margin-bottom: 14px;
+  }
+  .card-eyebrow {
+    font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .12em; color: var(--franco-text-tertiary); margin: 0 0 10px;
+  }
+  .field { padding: 4px 0; border-bottom: 1px dashed var(--franco-border); }
+  .field:last-child { border-bottom: 0; }
+  .field-label {
+    font-family: "JetBrains Mono", monospace; font-size: 9px; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--franco-text-muted); margin: 0 0 2px;
+  }
+  .val {
+    font-family: "JetBrains Mono", monospace; font-size: 14px; color: var(--franco-text);
+    border-bottom: 1px dashed var(--franco-border-strong); line-height: 1.4;
+    display: inline; cursor: pointer;
+  }
+  .tag { font-size: 11px; color: var(--franco-text-muted); }
+  .pencil { font-size: 11px; color: var(--franco-text-muted); opacity: .6; margin-left: 6px; }
+  /* la línea nueva */
+  .proc {
+    font-family: "JetBrains Mono", monospace; font-size: 10px;
+    color: var(--franco-text-muted); margin: 3px 0 0; line-height: 1.4;
+  }
+  .fuente { /* la que ya existe, solo en edición */
+    font-family: "JetBrains Mono", monospace; font-size: 10px;
+    color: var(--franco-text-muted); margin: 6px 0 0; line-height: 1.45;
+  }
+  .input-inline {
+    display: inline-flex; align-items: center; position: relative;
+  }
+  .input-inline input {
+    width: 130px; height: 36px; border-radius: 8px; padding: 0 26px 0 8px;
+    border: 1.5px solid var(--signal-red); background: var(--franco-card);
+    color: var(--franco-text); font-family: "JetBrains Mono", monospace; font-size: 14px;
+    outline: none;
+  }
+  .input-inline .sfx {
+    position: absolute; right: 8px; font-family: "JetBrains Mono", monospace;
+    font-size: 11px; color: var(--franco-text-muted); pointer-events: none;
+  }
+  .eco { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--franco-text-secondary); margin: 4px 0 0; }
+
+  /* ── andamiaje del mockup (no es producto) ── */
+  .caso { margin: 0 0 26px; }
+  .caso-h {
+    font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--signal-red); margin: 0 0 4px;
+  }
+  .caso-d { font-size: 12px; color: var(--franco-text-secondary); margin: 0 0 10px; line-height: 1.5; }
+  .nota {
+    border-left: 2px solid var(--franco-border-strong); border-radius: 0 8px 8px 0;
+    padding: 10px 14px; margin: 28px 0 0; background: color-mix(in srgb, var(--franco-text) 3%, transparent);
+  }
+  .nota p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.6; color: var(--franco-text-secondary); }
+  .nota p:last-child { margin-bottom: 0; }
+  .nota strong { color: var(--franco-text); font-weight: 500; }
+  .sep { height: 1px; background: var(--franco-border); margin: 34px 0 26px; border: 0; }
+  code {
+    font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+    background: color-mix(in srgb, var(--franco-text) 6%, transparent);
+    padding: 1px 5px; border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<button class="toggle" id="t">tema</button>
+<script>
+  const r = document.documentElement;
+  r.setAttribute("data-theme", "light"); // light es el default del producto
+  document.getElementById("t").onclick = () => {
+    if (r.getAttribute("data-theme") === "light") r.removeAttribute("data-theme");
+    else r.setAttribute("data-theme", "light");
+  };
+</script>
+
+<div class="wrap">
+  <h1>Procedencia del arriendo en modo lectura</h1>
+  <p class="sub">
+    Punto 6 del goal. Hoy la procedencia vive detrás de <code>showFuente={editing}</code>: solo se ve con
+    el editor abierto. La propuesta es una <strong>línea corta permanente</strong> bajo el arriendo, y la
+    frase completa al editar. Los cinco estados que el campo puede tomar, en el chrome real del resumen.
+  </p>
+
+  <!-- A -->
+  <div class="caso">
+    <p class="caso-h">A · muestra robusta (n ≥ 10) — lo más frecuente</p>
+    <p class="caso-d">El nivel 1 resolvió con 29 comparables a 750 m. Antes esto se leía solo “$820.000 · estimado”.</p>
+    <div class="card">
+      <p class="card-eyebrow">Renta larga</p>
+      <div class="field">
+        <p class="field-label">Arriendo mensual</p>
+        <span class="val">$820.000/mes<span class="tag"> · estimado</span></span><span class="pencil">✎</span>
+        <p class="proc">29 arriendos a 750 m</p>
+      </div>
+      <div class="field">
+        <p class="field-label">Vacancia</p>
+        <span class="val">5%</span><span class="pencil">✎</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="caso">
+    <p class="caso-h">B · muestra chica (1 ≤ n &lt; 10)</p>
+    <p class="caso-d">El caveat ya no espera al click: si la mediana salió de 4 avisos, se ve de entrada.</p>
+    <div class="card">
+      <div class="field">
+        <p class="field-label">Arriendo mensual</p>
+        <span class="val">$780.000/mes<span class="tag"> · estimado</span></span><span class="pencil">✎</span>
+        <p class="proc">solo 4 arriendos a 2 km — muestra chica</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="caso">
+    <p class="caso-h">C · sin comparables (source = “sin-dato”)</p>
+    <p class="caso-d">
+      El campo no puede quedar mudo. El número lo puso el usuario porque Franco no tenía con qué estimar,
+      y la línea lo dice sin disculparse.
+    </p>
+    <div class="card">
+      <div class="field">
+        <p class="field-label">Arriendo mensual</p>
+        <span class="val">$650.000/mes<span class="tag"> · lo pusiste tú</span></span><span class="pencil">✎</span>
+        <p class="proc">sin arriendos publicados cerca para comparar</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- D -->
+  <div class="caso">
+    <p class="caso-h">D · corregido por ti (había sugerencia y la cambiaste)</p>
+    <p class="caso-d">
+      Acá la procedencia sigue siendo útil: dice contra qué se está comparando el número que pusiste.
+      El tag lo emite el fix del punto 5, o sea que aparece solo si el valor difiere de verdad.
+    </p>
+    <div class="card">
+      <div class="field">
+        <p class="field-label">Arriendo mensual</p>
+        <span class="val">$950.000/mes<span class="tag"> · corregido por ti</span></span><span class="pencil">✎</span>
+        <p class="proc">29 arriendos a 750 m marcan $820.000</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- E -->
+  <div class="caso">
+    <p class="caso-h">E · en edición — la frase completa</p>
+    <p class="caso-d">
+      Al abrir el editor, la línea corta cede el lugar a <code>fuenteArriendoLine()</code> sin cambios.
+      Es la misma frase que ya se usa en la pantalla del Acto 3: una sola fuente, dos largos.
+    </p>
+    <div class="card">
+      <div class="field">
+        <p class="field-label">Arriendo mensual</p>
+        <span class="input-inline"><input value="820.000"><span class="sfx">$</span></span>
+        <p class="eco">= $820.000/mes</p>
+        <p class="fuente">mediana de 29 arriendos publicados a menos de 750 m de la dirección</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="sep">
+
+  <div class="nota">
+    <p><strong>Lo que hay que decidir, y por qué lo pregunto.</strong></p>
+    <p>
+      1 · <strong>Esto contradice a R7.</strong> El código dice, textual: <em>“la fuente/procedencia aparece
+      SOLO con el editor abierto, no en reposo”</em>. Mi propuesta es acotar la excepción al arriendo y no
+      extenderla a los otros 20 campos, con un criterio: el arriendo es el único cuyo valor sale de una
+      <strong>medición externa con muestra y radio variables</strong>. Los demás son fórmula (contribuciones vía
+      SII), default de mercado (vacancia, GGCC) o dato del usuario — su procedencia no cambia entre análisis,
+      así que no gana nada estando siempre visible. Si preferís R7 estricto, el punto 6 se cae entero.
+    </p>
+    <p>
+      2 · <strong>El tag del caso C.</strong> Propongo <code>· lo pusiste tú</code> en vez de
+      <code>· corregido por ti</code>: cuando no hubo sugerencia, no hay nada que corregir. Es un tag nuevo,
+      no un renombre — “corregido por ti” sigue vivo para el caso D. Si preferís un solo tag para ambos, decilo
+      y unifico.
+    </p>
+    <p>
+      3 · <strong>El caso D muestra la sugerencia descartada</strong> (“29 arriendos a 750 m marcan $820.000”).
+      Me gusta porque deja ver la distancia entre lo que pusiste y lo que dice el mercado, que es justo la
+      tensión que el informe después va a nombrar. Pero agrega una cifra más a una pantalla densa. Alternativa
+      sobria: <code>29 arriendos a 750 m</code> a secas, sin el monto.
+    </p>
+    <p>
+      4 · <strong>Formato de la distancia.</strong> Reuso <code>fmtRadio</code>, que ya existe en derive.ts:
+      metros bajo 1.000 (“750 m”) y kilómetros con coma decimal arriba (“1,5 km”). Sin decisión nueva.
+    </p>
+    <p>
+      5 · <strong>Alcance.</strong> Esto toca solo el arriendo LTR. Tarifa y ocupación de STR vienen de AirROI
+      y tienen su propia procedencia, que hoy tampoco se ve en reposo. Quedan fuera salvo que digas lo contrario.
+    </p>
+  </div>
+</div>
+</body>
+</html>

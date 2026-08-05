@@ -47,7 +47,7 @@ import {
   type Regla,
 } from "@/lib/plausibilidad";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
-import { dormLabel, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, superficieM2, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
+import { dormLabel, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
 import { decimalesUtiles, ecoPorDefecto, estadoNumericInput } from "./NumericInput";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
@@ -403,6 +403,7 @@ function NumField({
   escala,
   tag,
   fuente,
+  procedencia,
   derived,
   highlight,
   onCommit,
@@ -417,6 +418,12 @@ function NumField({
   escala?: (valor: number) => string | null;
   tag?: string;
   fuente?: string;
+  /**
+   * Procedencia comprimida, visible EN REPOSO. Excepción acotada a R7 — hoy solo
+   * el arriendo la pasa. El criterio para sumar otro campo está en
+   * `procedenciaArriendoCorta`; no agregues uno sin leerlo.
+   */
+  procedencia?: string;
   derived?: string;
   /** Anillo Signal Red transitorio cuando la card al-filo apunta a este campo. */
   highlight?: boolean;
@@ -436,7 +443,19 @@ function NumField({
           decimales={decimales}
           formatEco={eco}
           escala={escala}
-          onCommit={(v) => { setEditing(false); onCommit(v); }}
+          onCommit={(v) => {
+            setEditing(false);
+            // Salir del campo no es corregirlo. Ver `esEdicionReal`: el commit
+            // solo se propaga si el valor cambió, y con eso quedan cubiertos de
+            // una sola vez el tag, el evento de PostHog, la nota de cascada y
+            // los patches que fuerzan modo "corregir" en el callsite.
+            //
+            // Ortogonal al aviso de escala: ese lo calcula `estadoNumericInput`
+            // a partir del VALOR —en vivo desde `v`, en reposo desde `raw`—, no
+            // del commit. Si el número no cambió, el aviso que corresponda ya se
+            // estaba mostrando y sigue mostrándose.
+            if (esEdicionReal(v, raw, decimales)) onCommit(v);
+          }}
           onCancel={() => setEditing(false)}
         />
       ) : (
@@ -450,6 +469,14 @@ function NumField({
           {/* En reposo el aviso también se ve: si el valor quedó fuera de escala,
               esconderlo hasta que vuelvan a abrir el editor no ayuda a nadie. */}
           {enReposo.estado === "escala" && <AvisoEscala texto={enReposo.aviso} />}
+          {/* Y debajo la procedencia, si el campo la declara. Primero la alerta,
+              después el contexto: el aviso de escala pide una acción, la
+              procedencia solo explica de dónde salió el número. */}
+          {procedencia && (
+            <p className="font-mono text-[10px] text-[var(--franco-text-muted)] m-0 mt-0.5 leading-snug">
+              {procedencia}
+            </p>
+          )}
         </>
       )}
       {derived && <DerivedLine text={derived} />}
@@ -484,7 +511,8 @@ function ChipsField<T extends string>({
             <button
               key={o.value}
               type="button"
-              onClick={() => { setEditing(false); onCommit(o.value); }}
+              // Reelegir el chip que ya estaba puesto tampoco es corregir.
+              onClick={() => { setEditing(false); if (o.value !== value) onCommit(o.value); }}
               className={`font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] transition-colors ${
                 o.value === value
                   ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
@@ -725,6 +753,19 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const contribDef = estimarContribuciones(pUF * data.ufCLP, a.tipoPropiedad === "nuevo");
   const dorm = Number(a.dormitorios) || 2;
   const costos = getCostosDefault(dorm, "basico");
+
+  // Procedencia del arriendo. Son TRES situaciones, no dos: Franco lo estimó, el
+  // usuario cambió esa estimación, o nunca hubo estimación que cambiar. La tercera
+  // existe desde que se retiraron los niveles de relleno (2026-08-04): sin
+  // comparables cerca, el número lo puso el usuario porque no había alternativa —
+  // no porque haya corregido nada.
+  const arriendoSinDato = data.arriendoFuente === "sin-dato" || data.arriendoN <= 0;
+  const arriendoCorregido = !arriendoSinDato && a.arrModo === "corregir";
+  const arriendoTag = arriendoSinDato
+    ? "lo pusiste tú"
+    : arriendoCorregido
+      ? "corregido por ti"
+      : "estimado";
 
   const esLtr = mod === "ltr" || mod === "both";
   const esStr = mod === "str" || mod === "both";
@@ -1126,8 +1167,13 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
               <NumField
                 label="Arriendo mensual" raw={a.arriendo ?? String(sugArriendo || "")} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
                 decimales={DEC.arriendo} formatEco={ecoPorDefecto("$", "/mes")} escala={escalaArriendo}
-                tag={a.arrModo === "corregir" ? "corregido por ti" : "estimado"}
-                fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed)} highlight={highlight === "arr"}
+                tag={arriendoTag}
+                fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed)}
+                procedencia={procedenciaArriendoCorta(
+                  data.arriendoFuente, data.arriendoN, data.radiusUsed,
+                  data.arriendoSugerido, arriendoCorregido,
+                ) ?? undefined}
+                highlight={highlight === "arr"}
                 onCommit={(v) => commitEdit("arr", { arriendo: v, arrModo: "corregir" })}
               />
               <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={displayNum(a.vacanciaPct ?? "5", DEC.vacancia, (t) => `${t}%`)} suffix="%" decimales={DEC.vacancia} formatEco={ecoPorDefecto("", "% del año")} escala={escalaVacancia} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
