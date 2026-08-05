@@ -9,7 +9,7 @@ import { estimarContribuciones } from "@/lib/contribuciones";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import type { ScreenProps } from "./screensActo1";
-import { escalaArriendo, escalaOcupacion, escalaTarifa } from "./screensActo1";
+import { escalaArriendo, escalaOcupacion, escalaTarifa } from "./avisoEscala";
 import { DEC } from "./wizardV4Nodes";
 import { FuenteLine, GhostBtn, PrimaryBtn } from "./ui";
 import { NumericInput } from "./NumericInput";

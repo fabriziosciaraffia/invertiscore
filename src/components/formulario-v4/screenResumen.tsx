@@ -43,9 +43,19 @@ import {
   formatearNumero,
   formatearPct,
   type Anomalia,
-  type PlausibilidadInput,
   type Regla,
 } from "@/lib/plausibilidad";
+import {
+  escalaArriendo,
+  escalaComision,
+  escalaOcupacion,
+  escalaPie,
+  escalaPrecio,
+  escalaSuperficie,
+  escalaTarifa,
+  escalaTasa,
+  escalaVacancia,
+} from "./avisoEscala";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
 import { dormLabel, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
 import { decimalesUtiles, ecoPorDefecto, estadoNumericInput } from "./NumericInput";
@@ -58,46 +68,6 @@ const LABEL_MOD: Record<string, string> = { ltr: "Renta larga", str: "Renta cort
 const LABEL_GATE: Record<string, string> = { si: "Sí permite", no: "No permite", no_seguro: "No estoy seguro" };
 
 type Wizard = ReturnType<typeof useWizardV4>;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AVISO DE ESCALA EN EL CAMPO
-//
-// El campo entendió el número; lo que falla es su magnitud. Se avisa, no se
-// bloquea: el bloqueo duro sigue siendo el modal y el 422 del servidor.
-//
-// El mensaje NO se escribe acá. Se le pregunta al guard corriendo
-// `evaluarPlausibilidad` con SOLO este campo poblado —el resto en NaN, que es
-// lo que activa su fail-open— y se toma la anomalía de ese campo. Así el aviso
-// temprano dice EXACTAMENTE lo mismo que va a decir el modal si igual se
-// intenta generar, y no hay umbral ni copy duplicado en dos archivos.
-//
-// Solo los campos con regla PROPIA: UF/m² y los dos yields son derivados de dos
-// campos, así que un input suelto no puede evaluarlos — esos se quedan en el
-// modal, que sí los tiene todos.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Nada poblado: cada regla necesita sus insumos finitos, y NaN las apaga. */
-const SIN_INSUMOS: PlausibilidadInput = { precioUF: NaN, superficieM2: NaN, ufCLP: NaN };
-
-function avisoEscala(
-  campo: Anomalia["campo"],
-  soloEste: (valor: number) => Partial<PlausibilidadInput>,
-): (valor: number) => string | null {
-  return (valor) => {
-    const anomalias = evaluarPlausibilidad({ ...SIN_INSUMOS, ...soloEste(valor) });
-    return anomalias.find((x) => x.campo === campo)?.mensaje ?? null;
-  };
-}
-
-const escalaPrecio = avisoEscala("precio", (v) => ({ precioUF: v }));
-const escalaSuperficie = avisoEscala("superficie", (v) => ({ superficieM2: v }));
-const escalaTasa = avisoEscala("tasa", (v) => ({ tasaAnualPct: v }));
-const escalaPie = avisoEscala("pie", (v) => ({ piePct: v }));
-const escalaArriendo = avisoEscala("arriendo", (v) => ({ arriendoMensualCLP: v }));
-const escalaVacancia = avisoEscala("vacancia", (v) => ({ vacanciaPct: v }));
-const escalaComision = avisoEscala("comisionAdmin", (v) => ({ comisionAdminPct: v }));
-const escalaOcupacion = avisoEscala("ocupacion", (v) => ({ str: { ocupacionPct: v } }));
-const escalaTarifa = avisoEscala("tarifaNoche", (v) => ({ str: { tarifaNocheCLP: v } }));
 
 /**
  * Valor guardado → texto del display EN REPOSO. Fuente única del formato de la

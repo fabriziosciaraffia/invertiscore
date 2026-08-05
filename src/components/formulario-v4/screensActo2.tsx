@@ -9,7 +9,7 @@ import { usePostHog } from "posthog-js/react";
 import { trackWizard } from "./track";
 import { mesesHastaEntrega } from "@/components/formulario-v3/wizardV3State";
 import type { ScreenProps } from "./screensActo1";
-import { escalaPie, escalaPrecio, escalaTasa } from "./screensActo1";
+import { escalaPie, escalaPrecio, escalaTasa } from "./avisoEscala";
 import type { PieUnidad } from "./wizardV4Nodes";
 import { DEC, decPie, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
 import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented } from "./ui";
