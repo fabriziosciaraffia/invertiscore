@@ -28,6 +28,37 @@ export function leerNum(texto: string | undefined, decimales: Decimales): number
   return parseNumeroCL(texto ?? "", decimales) ?? 0;
 }
 
+/**
+ * ¿El texto nuevo cambia el VALOR respecto del anterior?
+ *
+ * Los campos del resumen commitean en blur, y el blur ocurre igual cuando el
+ * usuario solo miró el campo y salió con un click o con Tab. Sin esta pregunta,
+ * ese paseo se registraba como edición y con eso: marcaba el tag "corregido por
+ * ti" sobre un número que puso Franco, emitía `wizard4_edit_from_summary` a
+ * PostHog, borraba la nota de cascada de la card y —en arriendo, tarifa,
+ * ocupación y tasa— forzaba el modo a "corregir", que en el dry-run saca a esa
+ * variable del set de sensibles.
+ *
+ * Se comparan valores PARSEADOS, no textos: "820000" y "820.000" son el mismo
+ * arriendo, y reescribir el formato no es corregir. Con la misma precisión de
+ * campo que usa el input, así que 5 y 5,0 tampoco difieren donde `DEC` dice 0.
+ *
+ * Ojo con el 0 de `leerNum`: cubre el vacío y el ilegible por igual. La
+ * consecuencia buscada es que escribir basura sobre un campo vacío no cuente
+ * como edición; borrar un campo que tenía valor SÍ cuenta, porque ahí el valor
+ * cambió de verdad.
+ *
+ * Vive acá, fuera del componente, porque el repo no tiene runner de React: es la
+ * única forma de que los tests corran este código y no una réplica.
+ */
+export function esEdicionReal(
+  nuevo: string,
+  previo: string,
+  decimales: Decimales,
+): boolean {
+  return leerNum(nuevo, decimales) !== leerNum(previo, decimales);
+}
+
 /** Concordancia singular/plural de "dormitorio(s)". */
 export function dormLabel(n: number): string {
   return `${n} ${n === 1 ? "dormitorio" : "dormitorios"}`;

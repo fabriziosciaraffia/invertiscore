@@ -47,7 +47,7 @@ import {
   type Regla,
 } from "@/lib/plausibilidad";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
-import { dormLabel, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, superficieM2, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
+import { dormLabel, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, superficieM2, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
 import { decimalesUtiles, ecoPorDefecto, estadoNumericInput } from "./NumericInput";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
@@ -436,7 +436,19 @@ function NumField({
           decimales={decimales}
           formatEco={eco}
           escala={escala}
-          onCommit={(v) => { setEditing(false); onCommit(v); }}
+          onCommit={(v) => {
+            setEditing(false);
+            // Salir del campo no es corregirlo. Ver `esEdicionReal`: el commit
+            // solo se propaga si el valor cambió, y con eso quedan cubiertos de
+            // una sola vez el tag, el evento de PostHog, la nota de cascada y
+            // los patches que fuerzan modo "corregir" en el callsite.
+            //
+            // Ortogonal al aviso de escala: ese lo calcula `estadoNumericInput`
+            // a partir del VALOR —en vivo desde `v`, en reposo desde `raw`—, no
+            // del commit. Si el número no cambió, el aviso que corresponda ya se
+            // estaba mostrando y sigue mostrándose.
+            if (esEdicionReal(v, raw, decimales)) onCommit(v);
+          }}
           onCancel={() => setEditing(false)}
         />
       ) : (
@@ -484,7 +496,8 @@ function ChipsField<T extends string>({
             <button
               key={o.value}
               type="button"
-              onClick={() => { setEditing(false); onCommit(o.value); }}
+              // Reelegir el chip que ya estaba puesto tampoco es corregir.
+              onClick={() => { setEditing(false); if (o.value !== value) onCommit(o.value); }}
               className={`font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] transition-colors ${
                 o.value === value
                   ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
