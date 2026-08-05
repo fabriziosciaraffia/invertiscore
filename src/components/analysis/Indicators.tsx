@@ -11,7 +11,13 @@ import {
 } from "@/lib/analysis/kpi-calculations";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { fmtPct as fmtPctCL, fmtMult } from "@/components/analysis/utils";
-import { NO_APLICA_VALOR, NO_APLICA_SUBLABEL, NO_APLICA_TOOLTIP } from "@/lib/no-aplica-copy";
+import {
+  NO_APLICA_VALOR,
+  NO_APLICA_SUBLABEL,
+  NO_APLICA_TOOLTIP,
+  noAplicaSublabelPreEntrega,
+  noAplicaTooltipPreEntrega,
+} from "@/lib/no-aplica-copy";
 import { useSimulation } from "@/contexts/SimulationContext";
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
 
@@ -45,13 +51,22 @@ export function Indicators({
   const plazoLabel = `${plazoAnios} ${plazoAnios === 1 ? "AÑO" : "AÑOS"}`;
   const paybackValue = kpis.paybackAnios ? `Año ${kpis.paybackAnios}` : ">30";
 
-  // Modelo B3: la plusvalía solo se acumula desde la entrega. Para depto en
-  // construcción, el tooltip de TIR explica el supuesto.
-  const entregaFutura = inputData?.estadoVenta === "futura";
+  // Caveat de construcción. Predicado ÚNICO: `kpis.aniosPreEntrega`, el mismo
+  // que gatea el payback (prefijo de la serie con deuda 0). Antes era
+  // `estadoVenta === "futura"`, que dejaba sin caveat a "blanco" y "verde" — 15
+  // de los 47 pre-entrega del parque.
+  //
+  // El texto también cambia: decía que la plusvalía "cuenta solo desde la
+  // entrega" (Modelo B3), y ese modelo quedó superado — hoy el valor de mercado
+  // corre continuo desde el año 0 (analysis.ts:722-735), que es justamente la
+  // ventaja del que compra en construcción. Lo que sí se detiene hasta la
+  // escritura es el flujo operativo (analysis.ts:713-717), y eso es lo que le
+  // da forma a la TIR de un depto en verde.
+  const hayPreEntrega = kpis.aniosPreEntrega > 0;
   const tirTooltipBase =
     "Tasa Interna de Retorno: rentabilidad anual proyectada de toda la inversión incluyendo flujo, plusvalía y venta al cierre del horizonte.";
-  const tirTooltip = entregaFutura
-    ? `${tirTooltipBase} En depto en construcción, la plusvalía cuenta solo desde la entrega.`
+  const tirTooltip = hayPreEntrega
+    ? `${tirTooltipBase} En depto en construcción no hay arriendo hasta la entrega; la plusvalía sí corre desde la compra.`
     : tirTooltipBase;
 
   // P1 Fase 24 — guard NaN/Infinity en KPIs derivados de cálculos iterativos.
@@ -63,15 +78,31 @@ export function Indicators({
   // Signal Red (no es criticidad). Tooltip compartido del mockup 98e2319.
   const na = kpis.sinCapitalPropio;
 
+  // Pre-entrega (hermano del anterior, MISMO tratamiento D1): el horizonte del
+  // slider no llega a la escritura, así que no hay venta que modelar y el
+  // payback no se emite. Solo afecta a esa celda — TIR, CoC y Múltiplo no
+  // dependen de poder vender hoy. Sublabel y tooltip propios: ">30" acá sería
+  // mentira (no es que tarde mucho, es que todavía no aplica).
+  const naPayback = na || kpis.paybackPreEntrega;
+  const sublabelD1 = na ? NO_APLICA_SUBLABEL : null;
+
   // Los 4 que reaccionan a los sliders. tono === "bad" → Signal Red (uso #2
   // valores críticos): Cash-on-Cash negativo, TIR/Múltiplo bajo umbral.
-  const cells: Array<{ label: string; value: string; tone: Tone; tooltip: string; na: boolean }> = [
+  const cells: Array<{
+    label: string;
+    value: string;
+    tone: Tone;
+    tooltip: string;
+    na: boolean;
+    sublabel: string | null;
+  }> = [
     {
       label: `TIR a ${plazoLabel}`,
       value: na ? NO_APLICA_VALOR : fmtPct(kpis.tir ?? NaN),
       tone: na ? "neutral" : tonoTIR(kpis.tir ?? 0),
       tooltip: na ? NO_APLICA_TOOLTIP : tirTooltip,
       na,
+      sublabel: sublabelD1,
     },
     {
       label: `Cash-on-Cash a ${plazoLabel}`,
@@ -81,15 +112,25 @@ export function Indicators({
         ? NO_APLICA_TOOLTIP
         : "Flujo anual promedio sobre tu inversión inicial del día uno (pie + gastos de cierre + corretaje).",
       na,
+      sublabel: sublabelD1,
     },
     {
       label: "Payback (con venta)",
-      value: na ? NO_APLICA_VALOR : paybackValue,
-      tone: na ? "neutral" : tonoPayback(kpis.paybackAnios),
+      value: naPayback ? NO_APLICA_VALOR : paybackValue,
+      // Cero Signal Red en los dos estados "no aplica": son decisiones del
+      // análisis, no criticidad.
+      tone: naPayback ? "neutral" : tonoPayback(kpis.paybackAnios),
       tooltip: na
         ? NO_APLICA_TOOLTIP
-        : "Año desde la compra en que el patrimonio neto acumulado iguala tu inversión inicial del día uno (pie + gastos de cierre + corretaje), contando la venta del depto.",
-      na,
+        : kpis.paybackPreEntrega
+          ? noAplicaTooltipPreEntrega(inputData?.fechaEntrega)
+          : "Año desde la compra en que el patrimonio neto acumulado iguala tu inversión inicial del día uno (pie + gastos de cierre + corretaje), contando la venta del depto.",
+      na: naPayback,
+      sublabel: na
+        ? NO_APLICA_SUBLABEL
+        : kpis.paybackPreEntrega
+          ? noAplicaSublabelPreEntrega(inputData?.fechaEntrega)
+          : null,
     },
     {
       label: `Múltiplo a ${plazoLabel}`,
@@ -99,6 +140,7 @@ export function Indicators({
         ? NO_APLICA_TOOLTIP
         : "Cuánto recibes al final por cada peso que pusiste en total — el pie más los aportes que fuiste haciendo por el camino. Múltiplo 2x = recibes el doble.",
       na,
+      sublabel: sublabelD1,
     },
   ];
 
@@ -165,12 +207,12 @@ export function Indicators({
             >
               {c.value}
             </span>
-            {c.na && (
+            {c.sublabel && (
               <span
                 className="font-mono uppercase"
                 style={{ fontSize: 8.5, letterSpacing: "0.05em", color: "var(--franco-text-muted)", marginTop: 5 }}
               >
-                {NO_APLICA_SUBLABEL}
+                {c.sublabel}
               </span>
             )}
           </div>
