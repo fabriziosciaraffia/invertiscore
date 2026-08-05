@@ -1,6 +1,9 @@
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
 import { metricaODefault, metricaValorONull } from "@/lib/types";
 import { calcExitScenario } from "@/lib/analysis";
+// Predicado compartido con la comparativa (src/lib/pre-entrega-serie.ts): vivía
+// acá y se movió para que las dos superficies no puedan divergir.
+import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 
 const GASTOS_CIERRE_PCT = 0.02;
 
@@ -54,36 +57,6 @@ export interface KPIResults {
 }
 
 export type Tone = "good" | "warn" | "bad" | "neutral";
-
-/**
- * Cantidad de años iniciales de la serie que caen antes de la escritura, leída
- * del PREFIJO de años con deuda 0. `calcProjections` deja `saldoCredito = 0`
- * mientras `mesFin < mesesPreEntrega` (el banco no cursa hasta escriturar), así
- * que ese prefijo ES la pre-entrega, medida sobre la misma serie que alimenta el
- * payback. Entrega inmediata ⇒ el año 1 ya trae deuda ⇒ 0.
- *
- * Por qué la serie y no `metrics.preEntrega.aniosEspera`, que es lo que usa
- * patrimonio-series: ese campo se empezó a persistir el 2026-06-29 y falta en 31
- * de los 47 análisis pre-entrega del parque, así que como predicado único dejaría
- * el bug vivo en dos tercios de los casos. Donde ambas fuentes existen marcan la
- * MISMA frontera: el prefijo mide `aniosEspera − 1`, y el primer año que evalúa
- * el payback es `aniosEspera` en las dos (verificado en las 16 filas que traen el
- * campo). Y NUNCA `estadoVenta === "futura"`: deja fuera "blanco" y "verde", que
- * son 15 de los 47.
- *
- * El guard de crédito descarta el falso positivo de una compra sin deuda (pie
- * 100%), donde la serie entera tendría saldo 0 sin haber pre-entrega alguna.
- * Barrido: 0 falsos positivos sobre los 658 análisis de entrega inmediata.
- */
-function contarAniosPreEntrega(projections: YearProjection[], metrics: AnalysisMetrics): number {
-  if (!(metrics.precioCLP > (metrics.pieCLP ?? 0))) return 0;
-  let n = 0;
-  for (const p of projections) {
-    if (p.saldoCredito > 0) break;
-    n++;
-  }
-  return n >= projections.length ? 0 : n;
-}
 
 export function calculateKPIs(inp: KPIInputs): KPIResults {
   const { projections, metrics, plazoAnios, input } = inp;

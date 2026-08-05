@@ -15,6 +15,7 @@
 import type { BandaComparativa } from "./engines/str-universo-santiago";
 import type { FullAnalysisResult } from "./types";
 import type { ShortTermResult } from "./engines/short-term-engine";
+import { contarAniosPreEntrega } from "./pre-entrega-serie";
 
 export type FindingId = "flujo" | "gestion" | "patrimonio" | "breakeven" | "regulatorio" | "capital";
 export type FindingLado = "ltr" | "str" | "neutro";
@@ -75,6 +76,16 @@ export interface FindingsCtx {
   // Patrimonio
   ltrPatY10: number | null;
   strPatY10: number | null;
+  /**
+   * Años que el lado LTR pasa esperando la escritura (0 ⇒ entrega inmediata).
+   * Se lee del lado LTR porque es el ÚNICO que tiene el dato: `buildStrPayload`
+   * no emite `estadoVenta`/`fechaEntrega` y `ShortTermInputs` no tiene los
+   * campos, así que la proyección de renta corta arranca a operar en el mes 1
+   * aunque el depto se entregue en 2031. Mientras eso siga así, los dos
+   * patrimonios a 10 años no miden lo mismo y el finding no puede afirmar
+   * equivalencia — ver `buildPatrimonio`.
+   */
+  ltrAniosPreEntrega: number;
   // Break-even / zona
   breakEvenPctDelMercado: number;
   breakEvenRevenueAnual: number;    // facturación anual necesaria para no perder (derivación F4)
@@ -136,6 +147,10 @@ export function ctxFromResults(
     recomendacionAdmin: vc?.flipGestion?.recomendacionAdmin ?? "",
     ltrPatY10: ltr.projections?.[9]?.patrimonioNeto ?? null,
     strPatY10: str.projections?.[9]?.patrimonioNeto ?? null,
+    ltrAniosPreEntrega: contarAniosPreEntrega(ltr.projections ?? [], {
+      precioCLP: ltr.metrics?.precioCLP ?? 0,
+      pieCLP: ltr.metrics?.pieCLP ?? 0,
+    }),
     breakEvenPctDelMercado: str.breakEvenPctDelMercado ?? 0,
     breakEvenRevenueAnual: str.breakEvenRevenueAnual ?? 0,
     zonaTier: str.zonaSTR?.tierZona,
@@ -241,6 +256,48 @@ function buildGestion(x: FindingsCtx, c: Currency, uf: number): FindingComparati
 function buildPatrimonio(x: FindingsCtx, c: Currency, uf: number): FindingComparativa {
   const lPat = x.ltrPatY10 ?? 0, sPat = x.strPatY10 ?? 0;
   const iguales = Math.abs(lPat - sPat) < 1000;   // homologados en Fase 0b → idénticos
+  // El depto todavía no se entrega y solo el lado LTR lo sabe (ver
+  // `ltrAniosPreEntrega`). Con un lado esperando la escritura y el otro
+  // operando desde el mes 1, los dos patrimonios NO están medidos sobre el
+  // mismo punto de partida: en el parque la brecha mediana salta de $0 (46
+  // pares con entrega inmediata, 30 de ellos idénticos al peso) a $29,5
+  // millones, con casos de hasta $36,8 millones. Acá el finding deja de
+  // afirmar equivalencia. No inventa una cifra corregida —para eso hay que
+  // modelar la espera en renta corta, que es otro trabajo—: solo deja de
+  // decir lo que no es cierto.
+  const asimetrico = x.ltrAniosPreEntrega > 0;
+
+  if (asimetrico) {
+    return {
+      id: "patrimonio",
+      kicker: "PATRIMONIO A 10 AÑOS",
+      titular: "El patrimonio no compara mientras el depto no se entregue: decide por el flujo y el esfuerzo",
+      // La cifra que se muestra es la de renta larga: es el único lado que sí
+      // cuenta la espera. El sublabel lo dice, para que el número no se lea
+      // como "el patrimonio del caso".
+      kpi: money(lPat, c, uf),
+      kpiRed: false,
+      ksub: "SOLO RENTA LARGA · LA CORTA NO COMPARA",
+      cuerpo: `El patrimonio a 10 años es lo que te queda si vendes y saldas el crédito. Acá esas dos cifras no se pueden poner lado a lado: este depto todavía no se entrega, así que con renta larga el crédito recién empieza a correr cuando lo recibas, mientras que la proyección de renta corta aún no descuenta esa espera. La diferencia que aparezca entre las dos es de punto de partida, no de modalidad. Para elegir, quédate con el flujo mensual y con las horas que te pide cada una: ahí sí se comparan parejas.`,
+      lado: "neutro",
+      decisividad: 0.3,
+      procedencia: "Patrimonio neto al año 10 de renta larga (valor de la propiedad menos la deuda). El de renta corta se omite: su proyección todavía no incorpora la espera hasta la entrega",
+      puente: {
+        titulo: "Por qué esta cifra no compara todavía",
+        lead: `El patrimonio neto al año 10 es el valor de la propiedad menos la deuda que te quede. Para que las dos modalidades se puedan restar, las dos tienen que arrancar el mismo día — y acá no arrancan igual:`,
+        filas: [
+          { label: "Patrimonio neto al año 10 (valor − deuda) · renta larga", ltr: money(lPat, c, uf), str: "no comparable", delta: "—" },
+        ],
+        nota: `Con renta larga el crédito parte cuando escrituras, así que a los 10 años llevas menos cuotas pagadas. La proyección de renta corta todavía no toma en cuenta esa espera, y por eso restarlas daría una ventaja que no viene de la modalidad sino del punto de partida. Lo que sí compara hoy: el flujo mensual y las horas que te pide cada una.`,
+        links: [
+          { label: "Ver la proyección de renta larga", hijo: "ltr", seccion: "patrimonio" },
+          { label: "Ver la proyección de renta corta", hijo: "str", seccion: "patrimonio" },
+        ],
+      },
+      valor: { ltrPatY10: Math.round(lPat), strPatY10: Math.round(sPat), iguales: false, asimetriaEntrega: true },
+    };
+  }
+
   return {
     id: "patrimonio",
     kicker: "PATRIMONIO A 10 AÑOS",
@@ -270,7 +327,7 @@ function buildPatrimonio(x: FindingsCtx, c: Currency, uf: number): FindingCompar
         { label: "Ver la proyección de renta corta", hijo: "str", seccion: "patrimonio" },
       ],
     },
-    valor: { ltrPatY10: Math.round(lPat), strPatY10: Math.round(sPat), iguales },
+    valor: { ltrPatY10: Math.round(lPat), strPatY10: Math.round(sPat), iguales, asimetriaEntrega: false },
   };
 }
 
