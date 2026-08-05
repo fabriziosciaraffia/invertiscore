@@ -43,7 +43,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Error ${res.status}: ${text.slice(0, 200)}` }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, result: text.slice(0, 500) });
+    // 207 = parcial (ver el criterio en cron-resultado.ts): la corrida hizo
+    // algo, pero no todo. Colapsarlo en `ok: true` era el motivo por el que el
+    // botón "Actualizar UF/Tasa" mostraba el check verde aunque la UF no se
+    // hubiera escrito — el proxy solo miraba `res.ok`, y 207 es 2xx.
+    //
+    // Se propaga como bandera y no como status propio: el proxy respondió bien,
+    // lo parcial es el resultado de la acción. El cliente decide cómo mostrarlo.
+    const parcial = res.status === 207;
+    return NextResponse.json({ ok: !parcial, parcial, result: text.slice(0, 500) });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Error" },
