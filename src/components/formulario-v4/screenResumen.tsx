@@ -48,7 +48,7 @@ import {
 } from "@/lib/plausibilidad";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
 import { dormLabel, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, superficieM2, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
-import { ecoPorDefecto, estadoNumericInput } from "./NumericInput";
+import { decimalesUtiles, ecoPorDefecto, estadoNumericInput } from "./NumericInput";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
@@ -104,9 +104,12 @@ const escalaTarifa = avisoEscala("tarifaNoche", (v) => ({ str: { tarifaNocheCLP:
  * card, para que no vuelva a pasar lo de la tasa: el eco mostraba "= 4,72%" y la
  * card, debajo, "4.72%" — el texto crudo tal cual se tipeó, sin formatear.
  *
- * Decimales FIJOS (los del campo), no los útiles del eco: el eco muestra lo que
- * se acaba de leer y no puede redondear; la card muestra la forma canónica del
- * campo. `envolver` agrega la unidad.
+ * El `decimales` del campo se usa para PARSEAR (define qué es legible ahí), pero
+ * NO para formatear: la card muestra los decimales que el valor realmente tiene.
+ * Con decimales fijos, una vacancia por defecto de 5 se leía "5,0%" y una
+ * comisión en 0 "0,0%" — un decimal colgando en dos valores que el usuario nunca
+ * tocó. `decimalesUtiles` deja "5%" y "0%", y sigue mostrando "4,72%" y "4,5%"
+ * cuando el decimal existe de verdad. Mismo criterio que el eco.
  */
 function displayNum(
   raw: string | undefined,
@@ -115,7 +118,7 @@ function displayNum(
   vacio = "—",
 ): string {
   const v = parseNumeroCL(raw ?? "", decimales);
-  return v === null ? vacio : envolver(formatNumeroCL(v, decimales));
+  return v === null ? vacio : envolver(formatNumeroCL(v, decimalesUtiles(v)));
 }
 
 function tasaStr(t: number): string {
