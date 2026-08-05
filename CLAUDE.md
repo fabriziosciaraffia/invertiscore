@@ -120,7 +120,6 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
 
 ## Testing
 - **Los tests con shim de storage no modelan el debounce de 500ms.** Cualquier operación que borre y reescriba necesita verificación en navegador midiendo el instante intermedio.
-- **DEUDA DE VALIDACIÓN (pie-cero fase 4, 2026-08-01):** la próxima sesión que toque prosa persistida corre el golden FULL **con el juez semántico Opus incluido** (`runner.ts --full`, sin `--no-semantic`). La fase 4 validó la generación fresca (tier AUTO) y omitió el juez porque este evalúa prosa persistida, que esa fase no tocaba. Al saldarla, borrar esta línea.
 
 ## Entorno y seguridad
 - Variables de entorno: editalas **solo** en VS Code (`.env.local`) o en el dashboard de Vercel. **Nunca en terminal.**
