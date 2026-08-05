@@ -155,3 +155,50 @@ export function fuenteArriendoLine(
     ? `mediana de ${n} arriendos publicados ${donde}`
     : `mediana de solo ${n} ${n === 1 ? "arriendo publicado" : "arriendos publicados"} ${donde} — muestra chica, ajústalo si conoces el arriendo real`;
 }
+
+/**
+ * La misma procedencia, comprimida para verse SIN abrir el editor.
+ *
+ * EXCEPCIÓN JUSTIFICADA A R7. La regla del resumen es que la fuente aparece solo
+ * con el editor abierto (ver `FieldShell`), y sigue vigente para los otros 20
+ * campos. El arriendo es la excepción, con un criterio que hay que poder cumplir
+ * para pedir otra:
+ *
+ *   la procedencia se muestra en reposo SOLO cuando cambia entre análisis.
+ *
+ * El arriendo lo cumple: su valor sale de una medición cuya muestra y radio
+ * varían en cada dirección —29 comparables a 750 m en un caso, 4 a 2 km en otro,
+ * ninguno en el tercero—, así que el número no significa lo mismo de un análisis
+ * a otro y esconderlo detrás de un click esconde justo lo que cambia. Los demás
+ * campos NO lo cumplen: contribuciones sale siempre de la fórmula SII, vacancia y
+ * GGCC son defaults de mercado, el resto lo escribe el usuario. Su procedencia es
+ * la misma frase todas las veces, y ahí R7 tiene razón.
+ *
+ * Quien quiera sumar un campo a la excepción tiene que pasar ese filtro primero.
+ *
+ * `null` = no hay nada que decir (no debería ocurrir con el arriendo; el estado
+ * sin dato tiene su propia frase).
+ */
+export function procedenciaArriendoCorta(
+  fuente: "radio" | "comuna" | "sin-dato",
+  n: number,
+  radio: number | null,
+  /** La sugerencia de Franco, para contrastarla cuando el usuario puso otra. */
+  sugerido: number | null,
+  /** El usuario reemplazó la sugerencia por un valor propio. */
+  corregido: boolean,
+): string | null {
+  if (fuente === "sin-dato" || n <= 0) return "sin arriendos publicados cerca para comparar";
+
+  const donde = fuente === "comuna"
+    ? "de la comuna"
+    : radio ? `a ${fmtRadio(radio)}` : "en la zona";
+  const base = `${n} ${n === 1 ? "arriendo" : "arriendos"} ${donde}`;
+
+  // Con el valor corregido, la línea deja de ser la ficha del número mostrado y
+  // pasa a ser la distancia contra el mercado. Es la misma tensión que el informe
+  // va a nombrar después: mejor verla antes de generarlo que como sorpresa.
+  if (corregido && sugerido && sugerido > 0) return `${base} marcan ${fmtCLP(sugerido)}`;
+
+  return n >= 10 ? base : `solo ${base} — muestra chica`;
+}
