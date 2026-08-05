@@ -9,6 +9,7 @@ import { estimarContribuciones } from "@/lib/contribuciones";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import type { ScreenProps } from "./screensActo1";
+import { escalaArriendo, escalaOcupacion, escalaTarifa } from "./screensActo1";
 import { DEC } from "./wizardV4Nodes";
 import { FuenteLine, GhostBtn, PrimaryBtn } from "./ui";
 import { NumericInput } from "./NumericInput";
@@ -81,6 +82,7 @@ export function ArrScreen({ answers, data, answer, goDetour, patchAnswers }: Scr
             sufijo="$"
             ecoPrefijo="$"
             ecoSufijo="/mes"
+            escala={escalaArriendo}
           />
           <FuenteLine>
             No hay arriendos publicados cerca de esta dirección para comparar. Ingresa el que estimas cobrar.
@@ -140,6 +142,7 @@ export function ArrFixScreen({ answers, data, patchAnswers, answer }: ScreenProp
           sufijo="$"
           ecoPrefijo="$"
           ecoSufijo="/mes"
+          escala={escalaArriendo}
         />
         <FuenteLine>Lo que crees que puedes cobrar de arriendo al mes.</FuenteLine>
       </div>
@@ -233,6 +236,7 @@ export function AdrFixScreen({ answers, data, patchAnswers, answer }: ScreenProp
           sufijo="$"
           ecoPrefijo="$"
           ecoSufijo="/noche"
+          escala={escalaTarifa}
         />
         <NumericInput
           label="Ocupación"
@@ -242,6 +246,7 @@ export function AdrFixScreen({ answers, data, patchAnswers, answer }: ScreenProp
           placeholder={occ > 0 ? String(Math.round(occ * 100)) : "60"}
           sufijo="%"
           ecoSufijo="% de ocupación"
+          escala={escalaOcupacion}
         />
       </div>
       <FuenteLine>Ajusta si tienes datos propios de tarifa u ocupación para este depto.</FuenteLine>

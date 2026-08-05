@@ -14,6 +14,11 @@ import type { WizardV4Data } from "./useWizardV4Data";
 import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, Segmented } from "./ui";
 import { NumericInput } from "./NumericInput";
 import { leerNum } from "./derive";
+import {
+  evaluarPlausibilidad,
+  type Anomalia,
+  type PlausibilidadInput,
+} from "@/lib/plausibilidad";
 
 export interface ScreenProps {
   answers: WizardV4Answers;
@@ -22,6 +27,50 @@ export interface ScreenProps {
   answer: (node: NodeId, patch?: Partial<WizardV4Answers>) => void;
   goDetour: (fix: NodeId, patch?: Partial<WizardV4Answers>) => void;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AVISO DE ESCALA EN EL CAMPO — mismo patrón que el resumen
+//
+// El campo entendió el número; lo que falla es su magnitud. Se AVISA, no se
+// bloquea: el bloqueo duro sigue siendo el modal del resumen y el 422 del
+// servidor. Sin esto, alguien escribe una tasa de 45% en el Acto 2 y se entera
+// tres pantallas después.
+//
+// El mensaje NO se escribe acá. Se le pregunta al guard corriendo
+// `evaluarPlausibilidad` con SOLO ese campo poblado —el resto en NaN, que es lo
+// que activa su fail-open— y se toma la anomalía de ese campo. Así el aviso
+// temprano dice EXACTAMENTE lo mismo que el modal, y no hay umbral ni copy
+// duplicado.
+//
+// Solo los campos con regla PROPIA. UF/m² y los dos yields son derivados de dos
+// campos: un input suelto no puede evaluarlos y siguen viviendo en el modal, que
+// sí los tiene todos.
+//
+// Vive en este archivo porque ya es el módulo compartido de los actos (Acto 2 y
+// 3 le importan `ScreenProps`). El resumen tiene hoy su propia copia; cuando se
+// unifiquen, las dos se mudan juntas a un módulo propio — ver el reporte.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Nada poblado: cada regla necesita sus insumos finitos, y NaN las apaga. */
+const SIN_INSUMOS: PlausibilidadInput = { precioUF: NaN, superficieM2: NaN, ufCLP: NaN };
+
+function avisoEscala(
+  campo: Anomalia["campo"],
+  soloEste: (valor: number) => Partial<PlausibilidadInput>,
+): (valor: number) => string | null {
+  return (valor) => {
+    const anomalias = evaluarPlausibilidad({ ...SIN_INSUMOS, ...soloEste(valor) });
+    return anomalias.find((x) => x.campo === campo)?.mensaje ?? null;
+  };
+}
+
+export const escalaSuperficie = avisoEscala("superficie", (v) => ({ superficieM2: v }));
+export const escalaPrecio = avisoEscala("precio", (v) => ({ precioUF: v }));
+export const escalaTasa = avisoEscala("tasa", (v) => ({ tasaAnualPct: v }));
+export const escalaPie = avisoEscala("pie", (v) => ({ piePct: v }));
+export const escalaArriendo = avisoEscala("arriendo", (v) => ({ arriendoMensualCLP: v }));
+export const escalaTarifa = avisoEscala("tarifaNoche", (v) => ({ str: { tarifaNocheCLP: v } }));
+export const escalaOcupacion = avisoEscala("ocupacion", (v) => ({ str: { ocupacionPct: v } }));
 
 // ── dir ──────────────────────────────────────────────────────────────────────
 
@@ -291,6 +340,7 @@ export function TamanoScreen({ answers, patchAnswers, answer }: ScreenProps) {
         placeholder="50"
         sufijo="m²"
         ecoSufijo=" m²"
+        escala={escalaSuperficie}
       />
 
       <div className="grid grid-cols-2 gap-4">
