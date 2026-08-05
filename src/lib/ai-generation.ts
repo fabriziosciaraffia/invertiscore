@@ -1637,7 +1637,7 @@ INDICADORES CALCULADOS
 - Rentabilidad bruta: ${pct(m.rentabilidadBruta)}%
 - Cap rate: ${pct(m.capRate)}%
 - Rentabilidad neta: ${pct(m.rentabilidadNeta)}%
-- Cash-on-Cash: ${esMetricaNoAplica(m.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(m.cashOnCash, (n) => `${pct(n)}%`)}
+- Cash-on-Cash: ${esMetricaNoAplica(m.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(m.cashOnCash, (n) => `${pct(n)}%`)}${esMetricaNoAplica(m.cashOnCash) || !fechaEntregaFmt || input.estadoVenta === "inmediata" ? "" : ` — es el RÉGIMEN, no el hoy: este depto se entrega en ${fechaEntregaFmt}, así que ese porcentaje es lo que rentará el pie una vez arrendado. Nárralo en futuro ("cuando lo recibas"), nunca en presente ("tu pie está rentando")`}
 ${tirLineaPrompt}- Multiplicador de capital (10 años): ${esMetricaNoAplica(exit.multiplicadorCapital) ? NO_APLICA_PROMPT : metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}
 ${sinCapitalPropio ? `- capitalPropio: no aplica (razonSinCapital: ${razonSinCapitalPrompt(cocNoAplica!.razon)}). APLICA LA DOCTRINA ## 5.bis del system: riesgo estructural, cero celebración de métricas sobre capital, dureza con el precio/m² según la razón declarada.
 ` : ""}- Inversión inicial total: ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})${sinCapitalPropio ? " — SIN pie: son gastos de cierre/puesta a punto, NO capital propio que rente" : ""}

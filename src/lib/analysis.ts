@@ -1543,6 +1543,27 @@ export function calcDecisividades(
 // Pros & Contras
 // =========================================
 
+/**
+ * ¿El análisis está en el periodo de espera de una entrega futura?
+ *
+ * Predicado ÚNICO del tiempo verbal de pros/contras. Es el MISMO de
+ * `calcMesesHastaEntrega` (que ya descarta `estadoVenta === "inmediata"` y la
+ * fecha ausente), así que cubre "blanco" y "verde" igual que "futura" — el
+ * `=== "futura"` pelado deja fuera 15 de los 47 pre-entrega del parque.
+ *
+ * Por qué existe: el CoC del motor (`flujoNetoMensual × 12 / capitalInvertido`)
+ * es una métrica de RÉGIMEN — describe el estado estacionario, no el mes en
+ * curso. Eso es correcto para decidir la compra y NO se toca: apagarlo en
+ * pre-entrega sube un veredicto de AJUSTA a COMPRAR (mide 1 de 47) porque se
+ * pierde el brazo del Gate 2, y recalcularlo sobre el primer año operativo no
+ * mueve ningún veredicto. Lo único falso era decirlo en PRESENTE de un depto que
+ * se entrega en 2031: hoy el pie no renta nada, ni bien ni mal. 43 de los 47
+ * pre-entrega del parque llevan esa frase.
+ */
+function enEsperaDeEntrega(input: AnalisisInput, asOf: Date): boolean {
+  return calcMesesHastaEntrega(input, asOf) > 0;
+}
+
 function generatePros(input: AnalisisInput, metrics: AnalysisMetrics, asOf: Date): string[] {
   const pros: string[] = [];
   const fmtP = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
@@ -1557,9 +1578,18 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics, asOf: Date
     pros.push("Flujo exactamente neutro — el arriendo cubre todos los costos.");
   // Pie cero: con CoC 'no_aplica' no existe "tu pie renta X%" — la frase honesta
   // de 100% financiamiento vive en generateContras (bloque de atención).
+  //
+  // Pre-entrega: el CoC es una métrica de RÉGIMEN — lo que rentará el pie una vez
+  // que el depto esté arrendado — no una foto de hoy. El número es correcto y no
+  // se toca; lo que estaba mal era el TIEMPO VERBAL. Ver el espejo en
+  // generateContras.
   const cocPros = metricaValorONull(metrics.cashOnCash);
   if (cocPros !== null && cocPros > 5)
-    pros.push(`Tu pie renta un ${cocPros.toFixed(1)}% anual (cash-on-cash), mejor que la mayoría de las alternativas de renta fija.`);
+    pros.push(
+      enEsperaDeEntrega(input, asOf)
+        ? `Cuando lo recibas, tu pie va a rentar un ${cocPros.toFixed(1)}% anual (cash-on-cash), mejor que la mayoría de las alternativas de renta fija.`
+        : `Tu pie renta un ${cocPros.toFixed(1)}% anual (cash-on-cash), mejor que la mayoría de las alternativas de renta fija.`,
+    );
   if (input.enConstruccion || input.antiguedad <= 2) {
     pros.push("Al ser nueva o casi nueva, los costos de mantención serán bajos por varios años. Menos sorpresas.");
   } else if (input.antiguedad >= 3 && input.antiguedad <= 8) {
@@ -1612,10 +1642,20 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics, asOf: D
       "Estás financiando el 100% de la propiedad: sin pie, no hay rentabilidad sobre capital propio que medir (cash-on-cash y payback no aplican). Todo el resultado descansa en el flujo mensual y la plusvalía, con el dividendo en su punto más alto.",
     );
   } else if (metrics.cashOnCash.valor < 0) {
+    // Pre-entrega: mismo número, otro tiempo verbal (ver enEsperaDeEntrega).
+    const enEspera = enEsperaDeEntrega(input, asOf);
     if (metrics.flujoNetoMensual >= 0) {
-      contras.push("Cash-on-cash negativo por alta inversión inicial, pero el flujo mensual es positivo.");
+      contras.push(
+        enEspera
+          ? "Cash-on-cash negativo por alta inversión inicial, pero el flujo mensual será positivo cuando lo recibas."
+          : "Cash-on-cash negativo por alta inversión inicial, pero el flujo mensual es positivo.",
+      );
     } else {
-      contras.push(`Tu pie está rentando negativo (${metrics.cashOnCash.valor.toFixed(1)}% anual). El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.`);
+      contras.push(
+        enEspera
+          ? `Cuando lo recibas, tu pie va a rentar negativo (${metrics.cashOnCash.valor.toFixed(1)}% anual): el arriendo no alcanzará a cubrir los costos. La inversión depende 100% de la plusvalía futura.`
+          : `Tu pie está rentando negativo (${metrics.cashOnCash.valor.toFixed(1)}% anual). El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.`,
+      );
     }
   }
   if (input.vacanciaMeses >= 2)
