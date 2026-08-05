@@ -9,6 +9,7 @@ import { usePostHog } from "posthog-js/react";
 import { trackWizard } from "./track";
 import { mesesHastaEntrega } from "@/components/formulario-v3/wizardV3State";
 import type { ScreenProps } from "./screensActo1";
+import { escalaPie, escalaPrecio, escalaTasa } from "./screensActo1";
 import type { PieUnidad } from "./wizardV4Nodes";
 import { DEC, decPie, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
 import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented } from "./ui";
@@ -82,6 +83,16 @@ export function PrecioScreen({ answers, data, patchAnswers, answer }: ScreenProp
         placeholder={unidad === "uf" ? "3.200" : "124.000.000"}
         sufijo={unidad === "uf" ? "UF" : "$"}
         strong
+        // La regla del guard está en UF, así que en modo pesos hay que convertir
+        // antes de preguntar. Sin esto, $124.000.000 se evaluaría como si fueran
+        // 124 millones de UF y avisaría siempre.
+        escala={(v) =>
+          unidad === "uf"
+            ? escalaPrecio(v)
+            : data.ufCLP > 0
+              ? escalaPrecio(v / data.ufCLP)
+              : null
+        }
         // El eco lleva la equivalencia adentro: el número tipeado va exacto y la
         // otra moneda al lado. Antes era una línea aparte, también con "=".
         formatEco={(v) =>
@@ -174,6 +185,16 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
         decimales={decPie(unidad)}
         placeholder={unidad === "pct" ? "20" : unidad === "uf" ? "640" : "24.800.000"}
         sufijo={unidad === "pct" ? "%" : unidad === "uf" ? "UF" : "$"}
+        // La regla mira el PORCENTAJE. En unidad "%" el valor tipeado YA es ese
+        // porcentaje y se pasa crudo; en UF/$ hay que derivarlo, y ahí se usa
+        // `pct`.
+        //
+        // Ojo con la asimetría: `piePct` clampea a 100 (`Math.min(monto, 100)`),
+        // así que por la vía derivada un pie de 125% llega como 100 y el aviso no
+        // puede dispararse. Sacar ese clamp es decisión aparte —lo consumen
+        // `pieUF`, `pieCLP`, `cuotaCLP` y el submit, donde el tope sí tiene
+        // sentido— y `derive.ts` está fuera del alcance de este cambio.
+        escala={(v) => (unidad === "pct" ? escalaPie(v) : escalaPie(pct))}
         // Igual que en precio: el eco lleva las otras dos unidades adentro en vez
         // de repetir una segunda línea con "=".
         formatEco={(v) =>
@@ -188,11 +209,12 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
         <p className="font-mono text-[12px] text-[var(--franco-text-muted)] m-0">{enCuotas}</p>
       )}
 
-      {pieExcede && (
-        <p className="font-body text-[12px] text-signal-red m-0 leading-snug">
-          El pie no puede superar el 100% del precio. Ajústalo para continuar.
-        </p>
-      )}
+      {/* El mensaje del pie >100% lo da ahora el aviso de escala del campo, con
+          el copy del guard (mismo que el modal). Acá quedaba una versión propia
+          en rojo que decía lo mismo: dos mensajes para una condición, y uno de
+          ellos gastando Signal Red en algo que el usuario SÍ entendió.
+          `pieExcede` sigue bloqueando el Continuar — el gate es de QA-1 y no lo
+          toca este cambio; lo que se retira es el texto duplicado. */}
 
       {/* Fase 5b · pie 0 (mockup 5f7c4f9). D2: permiso informado que nombra la
           consecuencia (el dividendo queda en su punto más alto), no solo el
@@ -357,6 +379,7 @@ export function TasaFixScreen({ answers, data, patchAnswers, answer }: ScreenPro
           placeholder={tasaStr(data.tasaMercado)}
           sufijo="%"
           ecoSufijo="% anual"
+          escala={escalaTasa}
         />
         {/* Ya no hace falta enseñar la convención: el campo toma coma o punto y
             el eco muestra cómo lo entendió. */}
