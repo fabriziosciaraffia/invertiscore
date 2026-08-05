@@ -279,6 +279,7 @@ function InlineInput({
   decimales,
   formatEco,
   escala,
+  fuente,
   suffix,
   onCommit,
   onCancel,
@@ -287,6 +288,12 @@ function InlineInput({
   decimales: Decimales;
   formatEco: (valor: number) => string;
   escala?: (valor: number) => string | null;
+  /**
+   * Microcopy de ayuda del campo. Se renderiza ACÁ y no en `FieldShell` porque
+   * el estado en vivo solo se conoce en este componente, y la ayuda tiene que
+   * desaparecer cuando hay error (ver abajo).
+   */
+  fuente?: string;
   suffix?: string;
   onCommit: (v: string) => void;
   onCancel: () => void;
@@ -332,6 +339,14 @@ function InlineInput({
         <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">= {r.eco}</span>
       )}
       {r.estado === "escala" && <AvisoEscala texto={r.aviso} />}
+      {/* La ayuda del campo se apaga SOLO con error: ahí el mensaje rojo ya dice
+          qué pasa y qué hacer, y dejar debajo el microcopy normal obliga a leer
+          dos líneas para entender una sola situación.
+          Con "escala" SÍ se muestra: el número se entendió y la ayuda sigue
+          siendo pertinente — es un aviso de magnitud, no un error de lectura. */}
+      {fuente && r.estado !== "error" && (
+        <span className="font-mono text-[10px] text-[var(--franco-text-muted)] leading-snug">{fuente}</span>
+      )}
     </span>
   );
 }
@@ -405,7 +420,10 @@ function NumField({
 
   return (
     <div className={highlight ? "rounded-lg -mx-1 px-1 ring-2 ring-signal-red transition-shadow duration-300" : ""}>
-    <FieldShell label={label} fuente={fuente} showFuente={editing}>
+    {/* `fuente` NO va a FieldShell: la baja `InlineInput`, que es quien sabe si
+        el texto en vivo se entiende. Sale igual que antes —solo con el editor
+        abierto—, menos cuando hay error. */}
+    <FieldShell label={label}>
       {editing ? (
         <InlineInput
           initial={raw}
@@ -413,6 +431,7 @@ function NumField({
           decimales={decimales}
           formatEco={eco}
           escala={escala}
+          fuente={fuente}
           onCommit={(v) => {
             setEditing(false);
             // Salir del campo no es corregirlo. Ver `esEdicionReal`: el commit
@@ -1035,7 +1054,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             )}
           </FieldShell>
           <NumField
-            label="Precio" raw={a.precio ?? ""} display={pUF > 0 ? fmtUF(pUF) : "—"} suffix="UF"
+            // `fmtUF` redondea a entero (UF 3.200,5 salía "UF 3.201") y es
+            // compartido con v3, así que no se toca: el precio pasa por
+            // `displayNum` como el resto de los campos.
+            label="Precio" raw={a.precio ?? ""} display={displayNum(a.precio, DEC.precioUF, (t) => `UF ${t}`)} suffix="UF"
             decimales={DEC.precioUF} formatEco={ecoPorDefecto("UF ")} escala={escalaPrecio}
             derived={precioCLP} onCommit={(v) => commitEdit("precio", { precio: v })}
           />
