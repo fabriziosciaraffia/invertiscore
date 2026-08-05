@@ -20,8 +20,11 @@ const RUTA = "GET /api/cron/monthly-grants";
  * ya venció, inserta el lote del/los mes(es) debidos y avanza la fecha +1 mes
  * (loop catch-up si el cron se saltó corridas), hasta subscription_ends_at.
  *
- * Idempotente: next_monthly_grant_at se avanza al otorgar, así que una 2da
- * corrida el mismo día ve next > now y no re-otorga.
+ * Idempotente por RECLAMO: cada mes se toma con un compare-and-swap sobre
+ * next_monthly_grant_at (UPDATE con la fecha leída en el WHERE) y el lote se
+ * inserta solo si el reclamo tuvo efecto. Una 2da corrida el mismo día no
+ * encuentra la fecha que esperaba y no otorga — vale igual para dos corridas
+ * simultáneas, que antes podían duplicar. Ver el comentario del loop.
  *
  * Auth: Vercel Cron dispara GET con `Authorization: Bearer ${CRON_SECRET}`.
  */
@@ -75,8 +78,13 @@ export async function GET(request: Request) {
   // Cada fila que no llega a otorgar su lote es un suscriptor que pagó el año y
   // no recibió los análisis del mes. Antes solo quedaba en un console.error.
   let fallidos = 0;
-  // Subconjunto de fallidos: otorgó el lote pero no pudo avanzar la fecha.
-  let fechaNoAvanzada = 0;
+  // Dos subconjuntos de fallidos, con consecuencias distintas:
+  //  · no se pudo reclamar el mes → no se otorgó nada, el mes se reintenta solo
+  //    si la fecha sigue vencida (o lo tomó otra corrida, que sí otorga);
+  //  · se reclamó y el grant falló → la fecha YA avanzó, así que ese mes no
+  //    vuelve solo: hay que otorgarlo a mano.
+  let fechaNoReclamada = 0;
+  let grantTrasReclamo = 0;
 
   for (const row of rows ?? []) {
     try {
@@ -121,6 +129,27 @@ export async function GET(request: Request) {
       const ends = new Date(row.subscription_ends_at);
 
       // Loop catch-up: otorga cada mes vencido aún dentro del ciclo anual.
+      //
+      // RECLAMAR ANTES DE OTORGAR (compare-and-swap). Hasta el 2026-08-05 el
+      // orden era el inverso —otorgar los N meses y recién después avanzar la
+      // fecha, una sola vez, fuera del loop— y eso dejaba dos agujeros:
+      //
+      //   · si el UPDATE final fallaba, los lotes YA estaban insertados y la
+      //     fila quedaba armada para re-otorgarlos TODOS mañana. La idempotencia
+      //     del cron descansa en esa fecha, así que no escribirla es regalar
+      //     créditos en silencio;
+      //   · dos corridas solapadas leían el mismo `next` y ninguna se enteraba
+      //     de la otra.
+      //
+      // El CAS cierra los dos: el UPDATE lleva el valor leído en el WHERE, así
+      // que solo tiene éxito si nadie lo movió desde que se leyó, y si no vuelve
+      // fila es que otro proceso reclamó ese mes. Mismo mecanismo que usa
+      // `chargeAnalysisCredit` para el welcome credit (access.ts) — la única
+      // defensa correcta contra esto que ya existía en el repo.
+      //
+      // El precio de moverlo adentro del loop son N updates en vez de uno (N ≤ 13,
+      // en la práctica 1). A cambio, un fallo cuesta UN mes en vez del catch-up
+      // entero, que era la mitad del problema.
       let next = new Date(row.next_monthly_grant_at as string);
       let iterations = 0;
       while (
@@ -128,64 +157,87 @@ export async function GET(request: Request) {
         next.getTime() < ends.getTime() &&
         iterations < MAX_CATCHUP_MONTHS
       ) {
-        // Devuelve el id del lote, o null si no otorgó. Mismo corte que antes.
+        const siguiente = addOneMonth(next);
+        // Si el mes que viene ya cae fuera del ciclo anual, la fecha queda en
+        // null: deja de otorgar hasta que la renovación la re-arme. Mismo corte
+        // que antes, solo que ahora se decide por iteración.
+        const nuevoNext =
+          siguiente.getTime() >= ends.getTime() ? null : siguiente.toISOString();
+
+        const { data: reclamado, error: casErr } = await supabase
+          .from("user_credits")
+          .update({
+            next_monthly_grant_at: nuevoNext,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", row.user_id)
+          // El guard: la fecha tiene que seguir siendo la que leímos.
+          .eq("next_monthly_grant_at", next.toISOString())
+          .select("user_id")
+          .maybeSingle();
+
+        if (casErr || !reclamado) {
+          // Sin reclamo no se otorga: es exactamente lo que evita el duplicado.
+          // `casErr` es una falla de escritura; `!reclamado` sin error significa
+          // que otro proceso ya avanzó esta fecha (o la fila cambió debajo).
+          console.error(
+            "[cron/monthly-grants] no se pudo reclamar el mes, no se otorga; user:",
+            row.user_id,
+            casErr ?? "(la fecha cambió: otra corrida lo tomó)"
+          );
+          fallidos++;
+          fechaNoReclamada++;
+          captureApiError(
+            casErr ?? new Error("CAS sin efecto — next_monthly_grant_at cambió bajo el cron"),
+            {
+              ruta: RUTA,
+              operacion: "reclamar-mes",
+              userId: row.user_id,
+              tags: {
+                plan: String(row.active_plan),
+                // Sin lote insertado: el usuario NO recibió los créditos de este
+                // mes. Se repara otorgando a mano desde /admin/grants.
+                consecuencia: "mes-no-otorgado",
+                motivo: casErr ? "update-fallido" : "fecha-ya-movida",
+              },
+              extra: { mes_debido: next.toISOString(), lotes_previos_en_esta_fila: iterations },
+            },
+          );
+          break;
+        }
+
+        // Reclamado. Recién ahora se inserta el lote.
         const grantId = await grantCredits(row.user_id, key, capacity, {});
         if (!grantId) {
           console.error(
-            "[cron/monthly-grants] grantCredits falló, corta el catch-up para user:",
+            "[cron/monthly-grants] grantCredits falló DESPUÉS de reclamar el mes; user:",
             row.user_id
           );
           fallidos++;
-          captureApiError(new Error("grantCredits devolvió null — lote no otorgado"), {
+          grantTrasReclamo++;
+          captureApiError(new Error("grantCredits devolvió null tras reclamar el mes"), {
             ruta: RUTA,
             operacion: "otorgar-lote-mensual",
             userId: row.user_id,
-            tags: { plan: String(row.active_plan) },
-            extra: { lotes_otorgados_en_esta_fila: iterations, mes_debido: next.toISOString() },
+            tags: {
+              plan: String(row.active_plan),
+              // El trade-off aceptado del CAS: la fecha ya avanzó, así que este
+              // mes no se reintenta solo. El usuario queda sin sus créditos y hay
+              // que otorgarlos a mano desde /admin/grants — con el user_id y el
+              // mes de acá no hay nada que adivinar.
+              consecuencia: "mes-no-otorgado-requiere-grant-manual",
+            },
+            extra: {
+              mes_debido: next.toISOString(),
+              capacity,
+              lotes_otorgados_en_esta_fila: iterations,
+            },
           });
           break;
         }
         granted++;
-        next = addOneMonth(next);
+        next = siguiente;
         iterations++;
-      }
-
-      // Si ya alcanzó/superó el fin del ciclo anual, deja de otorgar (null) hasta
-      // que la renovación (payment-callback) re-arme la fecha. Si no, persiste la
-      // próxima fecha debida.
-      const newNext = next.getTime() >= ends.getTime() ? null : next.toISOString();
-
-      const { error: updErr } = await supabase
-        .from("user_credits")
-        .update({
-          next_monthly_grant_at: newNext,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", row.user_id);
-
-      if (updErr) {
-        console.error(
-          "[cron/monthly-grants] update next_monthly_grant_at falló para user:",
-          row.user_id,
-          updErr
-        );
-        fallidos++;
-        fechaNoAvanzada++;
-        // El más caro de los cinco: acá el lote YA se otorgó y lo que falló es
-        // avanzar la fecha. La idempotencia de este cron descansa justamente en
-        // esa fecha ("una 2da corrida ve next > now y no re-otorga"), así que la
-        // fila queda armada para volver a otorgar mañana. No se corrige desde
-        // acá —eso sería lógica de negocio— pero deja de ser invisible.
-        captureApiError(updErr, {
-          ruta: RUTA,
-          operacion: "avanzar-next-monthly-grant",
-          userId: row.user_id,
-          tags: { consecuencia: "posible-doble-otorgamiento" },
-          extra: {
-            lotes_otorgados_en_esta_fila: iterations,
-            next_que_no_se_pudo_escribir: newNext,
-          },
-        });
       }
     } catch (e) {
       // Un error en una fila no aborta el resto.
@@ -208,6 +260,6 @@ export async function GET(request: Request) {
   );
   return respuestaCron(
     { procesados: processed, exitosos: processed - fallidos, fallidos },
-    { granted, fechaNoAvanzada },
+    { granted, fechaNoReclamada, grantTrasReclamo },
   );
 }
