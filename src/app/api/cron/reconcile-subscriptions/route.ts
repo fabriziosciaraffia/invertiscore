@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowGet } from "@/lib/flow";
 import { processSubscriptionCharge } from "@/lib/subscriptions/process-charge";
+import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
+import { respuestaCron } from "@/lib/cron-resultado";
+
+const RUTA = "GET /api/cron/reconcile-subscriptions";
 
 /**
  * Cron — Reconciliación de cobros de suscripción (RED DE SEGURIDAD del webhook).
@@ -104,6 +108,12 @@ export async function GET(request: Request) {
           date,
           "— posible reconciliación INCOMPLETA"
         );
+        captureApiWarning(new Error(`Tope de ${MAX_PAGES_PER_DATE} páginas alcanzado — reconciliación incompleta`), {
+          ruta: RUTA,
+          operacion: "paginar-flow",
+          tags: { truncado: "true" },
+          extra: { date },
+        });
         break;
       }
 
@@ -123,6 +133,11 @@ export async function GET(request: Request) {
           ":",
           e instanceof Error ? e.message : String(e)
         );
+        captureApiError(e, {
+          ruta: RUTA,
+          operacion: "flow-get-payments",
+          extra: { date, start },
+        });
         break; // corta esta fecha; sigue con la próxima
       }
 
@@ -170,6 +185,12 @@ export async function GET(request: Request) {
               commerceOrderRow,
               r.reason
             );
+            captureApiWarning(new Error(`Cargo no aplicado: ${String(r.reason)}`), {
+              ruta: RUTA,
+              operacion: "aplicar-cargo",
+              commerceOrder: commerceOrderRow,
+              tags: { motivo: String(r.reason ?? "sin-motivo").slice(0, 32) },
+            });
           }
         } catch (e) {
           chargeErrors++;
@@ -179,6 +200,11 @@ export async function GET(request: Request) {
             ":",
             e instanceof Error ? e.message : String(e)
           );
+          captureApiError(e, {
+            ruta: RUTA,
+            operacion: "procesar-cargo",
+            commerceOrder: commerceOrderRow,
+          });
         }
       }
 
@@ -189,11 +215,17 @@ export async function GET(request: Request) {
     }
   }
 
+  // Los fallidos de este cron son los cargos que no se aplicaron (excepción o
+  // skip) más las fechas que Flow no entregó. El criterio de status vive en
+  // cron-resultado.ts y respeta la intención original de este cron —"nunca 500
+  // para que Vercel no reintente raro"— en todo caso salvo uno: si NINGÚN cargo
+  // se procesó y hubo errores, la corrida no reconcilió nada y eso sí tiene que
+  // verse rojo. Un 207 por errores parciales sigue siendo 2xx.
+  const fallidos = chargeErrors + skipped + flowErrors;
   const summary = {
     dates,
     scanned,
     eligible,
-    processed,
     recovered,
     granted,
     emitted,
@@ -202,6 +234,12 @@ export async function GET(request: Request) {
     errors: { flow: flowErrors, charge: chargeErrors },
     truncated,
   };
-  console.error("[cron/reconcile-subscriptions]", JSON.stringify(summary));
-  return NextResponse.json(summary);
+  console.error(
+    "[cron/reconcile-subscriptions]",
+    JSON.stringify({ ...summary, processed, fallidos })
+  );
+  return respuestaCron(
+    { procesados: processed + fallidos, exitosos: processed, fallidos },
+    summary,
+  );
 }
