@@ -5,6 +5,10 @@ import {
   recurringProductByPlan,
   addOneMonth,
 } from "@/lib/credits-grant";
+import { captureApiError } from "@/lib/observabilidad";
+import { respuestaCron } from "@/lib/cron-resultado";
+
+const RUTA = "GET /api/cron/monthly-grants";
 
 /**
  * Cron 2.8 — Renovación MENSUAL de planes ANUALES.
@@ -62,11 +66,17 @@ export async function GET(request: Request) {
 
   if (error) {
     console.error("[cron/monthly-grants] query error:", error);
+    captureApiError(error, { ruta: RUTA, operacion: "query-subs-anuales" });
     return NextResponse.json({ error: "Query failed" }, { status: 500 });
   }
 
   let processed = 0;
   let granted = 0;
+  // Cada fila que no llega a otorgar su lote es un suscriptor que pagó el año y
+  // no recibió los análisis del mes. Antes solo quedaba en un console.error.
+  let fallidos = 0;
+  // Subconjunto de fallidos: otorgó el lote pero no pudo avanzar la fecha.
+  let fechaNoAvanzada = 0;
 
   for (const row of rows ?? []) {
     try {
@@ -82,6 +92,16 @@ export async function GET(request: Request) {
           "user:",
           row.user_id
         );
+        fallidos++;
+        captureApiError(
+          new Error(`Sin producto/capacity para active_plan="${row.active_plan}"`),
+          {
+            ruta: RUTA,
+            operacion: "resolver-producto",
+            userId: row.user_id,
+            tags: { plan: String(row.active_plan) },
+          },
+        );
         continue;
       }
       const { key } = match;
@@ -90,6 +110,11 @@ export async function GET(request: Request) {
         console.error(
           "[cron/monthly-grants] subscription_ends_at nulo, se omite user:",
           row.user_id
+        );
+        fallidos++;
+        captureApiError(
+          new Error("subscription_ends_at nulo en sub anual activa"),
+          { ruta: RUTA, operacion: "validar-fin-ciclo", userId: row.user_id },
         );
         continue;
       }
@@ -110,6 +135,14 @@ export async function GET(request: Request) {
             "[cron/monthly-grants] grantCredits falló, corta el catch-up para user:",
             row.user_id
           );
+          fallidos++;
+          captureApiError(new Error("grantCredits devolvió null — lote no otorgado"), {
+            ruta: RUTA,
+            operacion: "otorgar-lote-mensual",
+            userId: row.user_id,
+            tags: { plan: String(row.active_plan) },
+            extra: { lotes_otorgados_en_esta_fila: iterations, mes_debido: next.toISOString() },
+          });
           break;
         }
         granted++;
@@ -136,6 +169,23 @@ export async function GET(request: Request) {
           row.user_id,
           updErr
         );
+        fallidos++;
+        fechaNoAvanzada++;
+        // El más caro de los cinco: acá el lote YA se otorgó y lo que falló es
+        // avanzar la fecha. La idempotencia de este cron descansa justamente en
+        // esa fecha ("una 2da corrida ve next > now y no re-otorga"), así que la
+        // fila queda armada para volver a otorgar mañana. No se corrige desde
+        // acá —eso sería lógica de negocio— pero deja de ser invisible.
+        captureApiError(updErr, {
+          ruta: RUTA,
+          operacion: "avanzar-next-monthly-grant",
+          userId: row.user_id,
+          tags: { consecuencia: "posible-doble-otorgamiento" },
+          extra: {
+            lotes_otorgados_en_esta_fila: iterations,
+            next_que_no_se_pudo_escribir: newNext,
+          },
+        });
       }
     } catch (e) {
       // Un error en una fila no aborta el resto.
@@ -144,9 +194,20 @@ export async function GET(request: Request) {
         row?.user_id,
         e instanceof Error ? e.message : String(e)
       );
+      fallidos++;
+      captureApiError(e, {
+        ruta: RUTA,
+        operacion: "procesar-fila",
+        userId: row?.user_id,
+      });
     }
   }
 
-  console.error(`[cron/monthly-grants] processed=${processed} granted=${granted}`);
-  return NextResponse.json({ processed, granted });
+  console.error(
+    `[cron/monthly-grants] processed=${processed} granted=${granted} fallidos=${fallidos}`
+  );
+  return respuestaCron(
+    { procesados: processed, exitosos: processed - fallidos, fallidos },
+    { granted, fechaNoAvanzada },
+  );
 }

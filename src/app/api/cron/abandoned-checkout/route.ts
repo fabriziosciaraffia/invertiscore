@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendCheckoutRecoveryEmail } from "@/lib/email";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
+import { captureApiWarning } from "@/lib/observabilidad";
+import { respuestaCron } from "@/lib/cron-resultado";
+
+const RUTA = "GET /api/cron/abandoned-checkout";
 
 /**
  * Cron · Recuperación de carrito abandonado (ruta A · single · + ruta B · planes).
@@ -111,6 +115,11 @@ export async function GET(request: Request) {
 
   let processed = 0;
   let sent = 0;
+  // Cada correo que no sale es una venta que no se intenta recuperar. Va como
+  // warning, no error: el cron reintenta en la próxima corrida (la fila queda
+  // sin marcar a propósito), así que un fallo aislado no es una emergencia —
+  // pero uno sostenido significa que la recuperación dejó de existir.
+  let fallidos = 0;
 
   for (const row of toRecover) {
     try {
@@ -123,6 +132,12 @@ export async function GET(request: Request) {
           "[cron/abandoned-checkout] sin email para user:",
           row.user_id
         );
+        fallidos++;
+        captureApiWarning(new Error("Usuario sin email en auth — no hay a dónde escribir"), {
+          ruta: RUTA,
+          operacion: "resolver-email",
+          userId: row.user_id,
+        });
         continue;
       }
 
@@ -144,6 +159,14 @@ export async function GET(request: Request) {
           "[cron/abandoned-checkout] envío falló, se reintentará; payment:",
           row.id
         );
+        fallidos++;
+        captureApiWarning(new Error("sendCheckoutRecoveryEmail devolvió false"), {
+          ruta: RUTA,
+          operacion: "enviar-correo-recuperacion",
+          userId: row.user_id,
+          tags: { producto: String(row.product) },
+          extra: { payment_id: row.id, se_reintenta: true },
+        });
         continue;
       }
 
@@ -158,6 +181,16 @@ export async function GET(request: Request) {
           row.id,
           updErr
         );
+        fallidos++;
+        // Acá el correo YA salió y lo que falló es la marca. La fila queda
+        // elegible otra vez, así que el usuario recibe el mismo correo mañana.
+        captureApiWarning(updErr, {
+          ruta: RUTA,
+          operacion: "marcar-correo-enviado",
+          userId: row.user_id,
+          tags: { consecuencia: "posible-correo-repetido" },
+          extra: { payment_id: row.id },
+        });
         continue;
       }
       sent++;
@@ -168,9 +201,21 @@ export async function GET(request: Request) {
         row?.id,
         e instanceof Error ? e.message : String(e)
       );
+      fallidos++;
+      captureApiWarning(e, {
+        ruta: RUTA,
+        operacion: "procesar-fila",
+        userId: row?.user_id,
+        extra: { payment_id: row?.id },
+      });
     }
   }
 
-  console.error(`[cron/abandoned-checkout] processed=${processed} sent=${sent}`);
-  return NextResponse.json({ processed, sent });
+  console.error(
+    `[cron/abandoned-checkout] processed=${processed} sent=${sent} fallidos=${fallidos}`
+  );
+  return respuestaCron(
+    { procesados: processed, exitosos: sent, fallidos },
+    { sent },
+  );
 }
