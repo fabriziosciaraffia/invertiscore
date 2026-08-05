@@ -165,6 +165,17 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
   const dorm = a.esStudio ? 0 : intSafe(a.dormitorios, 2);
   const costos = getCostosDefault(dorm, "basico");
   const corregido = a.adrModo === "corregir";
+  // Entrega — MISMA derivación que buildLtrPayload (líneas ~74 y ~104), no una
+  // paralela: el usuario contesta "¿cuándo lo entregan?" UNA vez, en el Acto 1,
+  // antes de que el wizard se bifurque por modalidad. Hasta acá ese dato llegaba
+  // solo al lado largo y el corto lo perdía en silencio; en AMBAS eso dejaba a
+  // los dos análisis del mismo depto partiendo de supuestos distintos.
+  //
+  // El motor STR TODAVÍA NO lo usa (`buildProjections` sigue con su `void asOf`
+  // y compone desde el mes 1). Este payload es plumbing: el dato viaja, se
+  // persiste en `input_data` y queda disponible para cuando la pre-entrega se
+  // modele en renta corta. Verificado por barrido: cero cambios de output.
+  const esFutura = a.tipoPropiedad === "nuevo" && a.estadoVenta === "futura";
 
   return {
     tipoAnalisis: "short-term" as const,
@@ -181,6 +192,12 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     capacidadHuespedes: Math.max(2, dorm * 2),
     precioCompra: precioCompraCLP,
     precioCompraUF: precioUF,
+    // Forma canónica del motor: fecha absoluta, no meses relativos. El wizard
+    // legacy de renta corta manda `mesesEntrega`, que deriva del momento de
+    // creación y por lo tanto driftea; `fechaEntrega` se congela contra el
+    // `asOf` del análisis, igual que en el lado largo.
+    estadoVenta: esFutura ? ("futura" as const) : ("inmediata" as const),
+    fechaEntrega: esFutura ? `${a.fechaEntregaAnio}-${a.fechaEntregaMes}` : undefined,
     piePct: derivePiePctLocal(a, ctx.ufCLP),
     // Fase 5b: misma razón que el lado LTR — el usuario la declara una vez.
     razonSinPie: derivePiePctLocal(a, ctx.ufCLP) === 0 ? a.pieRazon : undefined,

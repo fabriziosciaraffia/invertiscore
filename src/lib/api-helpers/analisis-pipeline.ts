@@ -501,6 +501,10 @@ export interface ShortTermAnalysisBody {
   piePct: number;
   /** Fase 5b · origen del pie 0 declarado en el wizard (solo con piePct === 0). */
   razonSinPie?: RazonSinCapital;
+  /** Entrega futura declarada en el wizard. El motor todavía NO la usa (paso 3);
+   *  viaja para persistirse en input_data y quedar disponible. */
+  estadoVenta?: "inmediata" | "futura";
+  fechaEntrega?: string;
   tasaInteres: number;
   /** Tasa hipotecaria de mercado vigente (%, ej. 4,72). OPCIONAL: solo v4.
    *  Alimenta subsidioTasa. Ausente ⇒ fallback en el motor (idéntico al previo). */
@@ -630,6 +634,11 @@ export async function buildShortTermAnalysisRow(
     costoAmoblamiento: body.estaAmoblado ? 0 : (body.costoAmoblamiento || 0),
     arriendoLargoMensual: body.arriendoLargoMensual,
     valorUF: ufValue,
+    // Entrega: declarada, no modelada. `calcShortTerm` no la lee todavía —
+    // ver la nota de ShortTermInputs. Se mapea acá para que el contrato quede
+    // completo desde el borde y el paso 3 no tenga que volver a tocarlo.
+    estadoVenta: body.estadoVenta,
+    fechaEntrega: body.fechaEntrega,
   };
 
   const result = calcShortTerm(inputs);

@@ -140,6 +140,32 @@ export interface ShortTermInputs {
    *  piePercent === 0; se propaga a la razón de las métricas sobre capital.
    *  Ausente ⇒ 'sin_pie' (no se preguntó) — análisis previos idénticos. */
   razonSinPie?: RazonSinCapital;
+
+  // ── Entrega futura · DECLARADA, TODAVÍA NO MODELADA ────────────────────────
+  //
+  // El wizard pregunta "¿cuándo lo entregan?" en el Acto 1, antes de bifurcar
+  // por modalidad, así que también se lo pregunta al STR puro. Hasta el paso 2
+  // de esta serie `buildStrPayload` descartaba la respuesta y estos campos no
+  // existían: el motor no es que los ignorara, es que el dato nunca llegaba
+  // (0 de 96 análisis STR del parque traían `fechaEntrega`). En AMBAS eso dejaba
+  // a los dos análisis del mismo depto partiendo de supuestos distintos, y es lo
+  // que obligó a la comparativa a declarar que el patrimonio no compara.
+  //
+  // EL MOTOR NO LOS LEE TODAVÍA. `buildProjections` mantiene su `void asOf` y
+  // compone desde el mes 1. Modelar la espera en renta corta (paso 3) exige
+  // decidir antes tres cosas que no tienen análogo en el arriendo largo: cuándo
+  // se compra el amoblamiento, desde cuándo corre el ramp-up de ocupación, y en
+  // qué punto del año calendario cae la entrega (la estacionalidad no es plana).
+  //
+  // Están acá para que el dato viaje DECLARADO y no colado por el spread del
+  // body, y para que el paso 3 no tenga que tocar el borde.
+
+  /** "inmediata" | "futura". Ausente ⇒ inmediata (análisis previos idénticos). */
+  estadoVenta?: "inmediata" | "futura";
+  /** `AAAA-MM` de la entrega. Fecha ABSOLUTA, no meses relativos: se congela
+   *  contra el `asOf` del análisis igual que en LTR. El wizard legacy de renta
+   *  corta manda `mesesEntrega`, que driftea con la fecha de creación. */
+  fechaEntrega?: string;
 }
 
 export interface EscenarioSTR {
