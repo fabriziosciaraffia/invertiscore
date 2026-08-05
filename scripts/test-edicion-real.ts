@@ -18,7 +18,9 @@
 
 import assert from "node:assert/strict";
 import { esEdicionReal } from "../src/components/formulario-v4/derive";
+import { estadoNumericInput } from "../src/components/formulario-v4/NumericInput";
 import { DEC } from "../src/components/formulario-v4/wizardV4Nodes";
+import { evaluarPlausibilidad } from "../src/lib/plausibilidad";
 
 // ── Runner mínimo ────────────────────────────────────────────────────────────
 
@@ -130,6 +132,42 @@ test("la pregunta es simétrica", () => {
   for (const [a, b, d] of casos) {
     assert.equal(esEdicionReal(a, b, d), esEdicionReal(b, a, d), `asimetría en ${a} vs ${b}`);
   }
+});
+
+// ── Cruce con el aviso de escala ─────────────────────────────────────────────
+//
+// Las dos conductas llegaron por ramas distintas y se tocan en el mismo campo:
+// una decide si el commit se propaga, la otra avisa cuando el número está fuera
+// de escala. La pregunta era si bloquear el commit puede tragarse el aviso.
+//
+// No puede, y esta es la razón, congelada en un test: el aviso es función del
+// VALOR, no del commit. `estadoNumericInput` lo calcula en vivo desde el texto
+// que se está escribiendo y en reposo desde `raw`. Si el número no cambió —el
+// único caso en que `esEdicionReal` bloquea—, el aviso que corresponde es el
+// mismo que ya se estaba mostrando.
+
+test("bloquear el commit NO se traga el aviso de escala", () => {
+  const escalaArriendo = (v: number) =>
+    evaluarPlausibilidad({ precioUF: NaN, superficieM2: NaN, ufCLP: NaN, arriendoMensualCLP: v })
+      .find((x) => x.campo === "arriendo")?.mensaje ?? null;
+  const eco = (v: number) => `$${v}`;
+
+  // Un arriendo bajo el piso, reescrito con otro formato: mismo número.
+  const previo = "40000";
+  const escrito = "40.000";
+
+  assert.equal(esEdicionReal(escrito, previo, DEC.arriendo), false, "el commit debería bloquearse");
+
+  const enVivo = estadoNumericInput(escrito, { decimales: DEC.arriendo, blurred: false, formatEco: eco, escala: escalaArriendo });
+  const enReposo = estadoNumericInput(previo, { decimales: DEC.arriendo, blurred: true, formatEco: eco, escala: escalaArriendo });
+
+  assert.equal(enVivo.estado, "escala", "el aviso debe verse mientras escribe");
+  assert.equal(enReposo.estado, "escala", "y seguir viéndose en reposo pese al commit bloqueado");
+  assert.equal(
+    enVivo.estado === "escala" ? enVivo.aviso : "",
+    enReposo.estado === "escala" ? enReposo.aviso : "",
+    "y ser el mismo aviso en los dos momentos",
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
