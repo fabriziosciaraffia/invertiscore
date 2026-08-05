@@ -20,7 +20,10 @@ const RUTA = "GET /api/cron/abandoned-checkout";
  * compraron un 'single' pagado, y quienes tienen subscription_status='active'
  * (red de seguridad ruta B: al activar, register-callback flipea su pending a paid).
  *
- * Idempotente: recovery_email_sent_at IS NULL en el filtro + se setea al enviar.
+ * Idempotente por RECLAMO: recovery_email_sent_at IS NULL en el filtro y la
+ * marca se toma con un compare-and-swap ANTES de enviar (UPDATE con
+ * `.is(null)` en el WHERE). El correo sale solo si el reclamo tuvo efecto, así
+ * que dos corridas solapadas no pueden mandar dos.
  *
  * Auth: Vercel Cron dispara GET con `Authorization: Bearer ${CRON_SECRET}`.
  */
@@ -116,10 +119,16 @@ export async function GET(request: Request) {
   let processed = 0;
   let sent = 0;
   // Cada correo que no sale es una venta que no se intenta recuperar. Va como
-  // warning, no error: el cron reintenta en la próxima corrida (la fila queda
-  // sin marcar a propósito), así que un fallo aislado no es una emergencia —
-  // pero uno sostenido significa que la recuperación dejó de existir.
+  // warning, no error: un fallo aislado no es una emergencia, pero uno sostenido
+  // significa que la recuperación dejó de existir.
   let fallidos = 0;
+  // Los dos fallos se reparan distinto, así que se cuentan por separado:
+  //  · no reclamado    → nadie recibió nada; si el update falló, la fila sigue
+  //    en NULL y la próxima corrida la vuelve a tomar sola;
+  //  · falló tras reclamo → la fila ya quedó marcada, así que ese correo NO
+  //    vuelve: hay que reenviarlo a mano.
+  let noReclamados = 0;
+  let envioTrasReclamo = 0;
 
   for (const row of toRecover) {
     try {
@@ -150,46 +159,78 @@ export async function GET(request: Request) {
       // (suscripción) → ramifica el copy del email. Derivado del kind del catálogo.
       const productKind = FLOW_PRODUCTS[productKey]?.kind === "recurring" ? "plan" : "single";
 
-      // Marcamos recovery_email_sent_at SOLO si Resend confirmó el envío. Si
-      // falló (o Resend no está configurado), dejamos la fila sin marcar para
-      // reintentar en la próxima corrida (no se pierde la recuperación).
-      const ok = await sendCheckoutRecoveryEmail(u.email, name, productLabel, productKind);
-      if (!ok) {
+      // RECLAMAR ANTES DE ENVIAR (compare-and-swap).
+      //
+      // Antes era al revés —enviar y después marcar— y el comentario decía que
+      // dejar la fila sin marcar era a propósito, "para no perder la
+      // recuperación". La intención era buena pero el orden protegía del caso
+      // menos probable: si la marca fallaba, el correo YA había salido y la fila
+      // volvía a estar elegible, así que el usuario recibía el mismo correo al
+      // día siguiente. Y dos corridas solapadas mandaban dos.
+      //
+      // Ahora la marca va primero, con la condición en el WHERE: solo una
+      // corrida puede pasar de NULL a fecha. Mismo mecanismo que
+      // `chargeAnalysisCredit` (access.ts) y que monthly-grants.
+      const { data: reclamado, error: casErr } = await supabase
+        .from("payments")
+        .update({ recovery_email_sent_at: new Date().toISOString() })
+        .eq("id", row.id)
+        // El guard: la fila tiene que seguir sin correo enviado.
+        .is("recovery_email_sent_at", null)
+        .select("id")
+        .maybeSingle();
+
+      if (casErr || !reclamado) {
         console.error(
-          "[cron/abandoned-checkout] envío falló, se reintentará; payment:",
-          row.id
+          "[cron/abandoned-checkout] no se pudo reclamar la fila, no se envía; payment:",
+          row.id,
+          casErr ?? "(ya estaba marcada: otra corrida la tomó)"
         );
         fallidos++;
-        captureApiWarning(new Error("sendCheckoutRecoveryEmail devolvió false"), {
-          ruta: RUTA,
-          operacion: "enviar-correo-recuperacion",
-          userId: row.user_id,
-          tags: { producto: String(row.product) },
-          extra: { payment_id: row.id, se_reintenta: true },
-        });
+        noReclamados++;
+        captureApiWarning(
+          casErr ?? new Error("CAS sin efecto — la fila ya tenía recovery_email_sent_at"),
+          {
+            ruta: RUTA,
+            operacion: "reclamar-envio",
+            userId: row.user_id,
+            tags: {
+              producto: String(row.product),
+              motivo: casErr ? "update-fallido" : "ya-reclamada",
+              // Nadie recibió nada de más. Si fue update-fallido, la fila sigue
+              // en NULL y la próxima corrida la vuelve a tomar.
+              consecuencia: "correo-no-enviado-se-reintenta",
+            },
+            extra: { payment_id: row.id },
+          },
+        );
         continue;
       }
 
-      const { error: updErr } = await supabase
-        .from("payments")
-        .update({ recovery_email_sent_at: new Date().toISOString() })
-        .eq("id", row.id);
-
-      if (updErr) {
+      // Reclamada. Recién ahora sale el correo.
+      const ok = await sendCheckoutRecoveryEmail(u.email, name, productLabel, productKind);
+      if (!ok) {
         console.error(
-          "[cron/abandoned-checkout] update recovery_email_sent_at falló para payment:",
-          row.id,
-          updErr
+          "[cron/abandoned-checkout] envío falló DESPUÉS de reclamar; payment:",
+          row.id
         );
         fallidos++;
-        // Acá el correo YA salió y lo que falló es la marca. La fila queda
-        // elegible otra vez, así que el usuario recibe el mismo correo mañana.
-        captureApiWarning(updErr, {
+        envioTrasReclamo++;
+        // El trade-off del CAS: la fila ya quedó marcada, así que este correo no
+        // se reintenta solo. Es una venta que no se intenta recuperar — molesta,
+        // no cuesta plata. El reenvío manual necesita a quién y de qué producto:
+        // los dos están acá.
+        captureApiWarning(new Error("sendCheckoutRecoveryEmail devolvió false tras reclamar la fila"), {
           ruta: RUTA,
-          operacion: "marcar-correo-enviado",
+          operacion: "enviar-correo-recuperacion",
           userId: row.user_id,
-          tags: { consecuencia: "posible-correo-repetido" },
-          extra: { payment_id: row.id },
+          tags: {
+            producto: String(row.product),
+            consecuencia: "correo-no-enviado-requiere-reenvio-manual",
+          },
+          // Va el user_id, no el email: con el id se resuelve en auth, y
+          // observabilidad.ts pide identificadores, no contenido.
+          extra: { payment_id: row.id, producto_label: productLabel },
         });
         continue;
       }
@@ -216,6 +257,6 @@ export async function GET(request: Request) {
   );
   return respuestaCron(
     { procesados: processed, exitosos: sent, fallidos },
-    { sent },
+    { sent, noReclamados, envioTrasReclamo },
   );
 }
