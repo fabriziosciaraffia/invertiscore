@@ -29,13 +29,21 @@ export interface KPIResults {
   /** true ⇔ pieCLP === 0: el render muestra el tratamiento D1 en las 4. */
   sinCapitalPropio: boolean;
   /**
-   * Pre-entrega: el horizonte del slider no alcanza la escritura, así que no
-   * hay venta que modelar y el payback NO se emite. `paybackAnios` viene null,
-   * pero la superficie NO puede mostrar ">30" — es un estado distinto, con su
-   * propio sublabel D1. Espeja el guard de SaleRefiBlock ("No puedes vender ni
-   * refinanciar antes de la entrega") sobre la misma AdvancedSection.
+   * El horizonte del slider termina ANTES de la escritura. Las 4 métricas de
+   * arriba salen null y la superficie muestra el tratamiento D1 con sublabel
+   * propio — nunca ">30" ni "0,0%", que serían datos donde no hay dato.
+   *
+   * Aplica a las 4 porque las 4 dependen de algo que todavía no ocurre: la TIR
+   * y el múltiplo liquidan por `equityCLP = valorVenta − saldoCredito − comisión`
+   * con `saldoCredito = 0` (la venta que no puedes hacer), el payback busca el
+   * año en que esa misma caja cubre lo aportado, y el Cash-on-Cash promedia
+   * flujo operativo que aún no empieza. Cap Rate NO entra: sale del motor, no
+   * depende del horizonte y ya se rotula "Fijo".
+   *
+   * Espeja el guard de SaleRefiBlock ("No puedes vender ni refinanciar antes de
+   * la entrega") sobre la misma AdvancedSection.
    */
-  paybackPreEntrega: boolean;
+  horizonteAntesDeEntrega: boolean;
   /**
    * Años de la serie anteriores a la escritura (0 ⇒ entrega inmediata). Fuente
    * ÚNICA del "esto es un depto en construcción" para las superficies de este
@@ -113,9 +121,10 @@ export function calculateKPIs(inp: KPIInputs): KPIResults {
   // calcProjections deja `saldoCredito = 0` mientras `mesFin < mesesPreEntrega`.
   const aniosPreEntrega = contarAniosPreEntrega(projections, metrics);
   // El horizonte elegido no incluye ningún año post-escritura: no hay salida que
-  // modelar. Hermano del `horizonBeforeDelivery` de SaleRefiBlock, medido sobre
-  // la serie en vez de sobre la fecha (ver contarAniosPreEntrega).
-  const paybackPreEntrega = aniosPreEntrega > 0 && plazoAnios <= aniosPreEntrega;
+  // modelar ni arriendo que medir. Hermano del `horizonBeforeDelivery` de
+  // SaleRefiBlock, medido sobre la serie en vez de sobre la fecha (ver
+  // contarAniosPreEntrega). Gatea las 4 métricas — ver KPIResults.
+  const horizonteAntesDeEntrega = aniosPreEntrega > 0 && plazoAnios <= aniosPreEntrega;
 
   // Payback (con venta): año en que el acumulado del flujo operativo +
   // (valorVenta − deuda − comisión 2%) de ese año cubre la inversión inicial.
@@ -151,16 +160,22 @@ export function calculateKPIs(inp: KPIInputs): KPIResults {
   // sobre gastos de cierre. Cap Rate y los montos absolutos no cambian.
   const sinCapitalPropio = metrics.pieCLP === 0;
 
+  // Las 4 se apagan por las MISMAS dos razones (sin capital propio · horizonte
+  // antes de la escritura). Un solo predicado para que no puedan divergir: que
+  // una celda emita mientras sus tres vecinas dicen "No aplica" fue justamente
+  // lo que dejó viva la TIR de 345% al lado del payback ya arreglado.
+  const noAplica = sinCapitalPropio || horizonteAntesDeEntrega;
+
   return {
-    tir: sinCapitalPropio ? null : metricaODefault(exit.tir, 0),
+    tir: noAplica ? null : metricaODefault(exit.tir, 0),
     capRate,
-    cashOnCash: sinCapitalPropio ? null : cashOnCash,
-    paybackAnios: sinCapitalPropio || paybackPreEntrega ? null : paybackAnios,
-    multiplo: sinCapitalPropio ? null : metricaODefault(exit.multiplicadorCapital, 0),
+    cashOnCash: noAplica ? null : cashOnCash,
+    paybackAnios: noAplica ? null : paybackAnios,
+    multiplo: noAplica ? null : metricaODefault(exit.multiplicadorCapital, 0),
     sinCapitalPropio,
     // Sin capital propio manda: la celda ya muestra el D1 de pie cero y no hay
     // dos sublabels que apilar. Con pie > 0 el estado pre-entrega es el suyo.
-    paybackPreEntrega: !sinCapitalPropio && paybackPreEntrega,
+    horizonteAntesDeEntrega: !sinCapitalPropio && horizonteAntesDeEntrega,
     aniosPreEntrega,
     valorVenta: exit.valorVenta,
     saldoCredito: exit.saldoCredito,

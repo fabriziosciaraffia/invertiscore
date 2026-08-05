@@ -76,15 +76,23 @@ export function Indicators({
   // Pie cero (fase 3b · D1): con pie 0 las 4 métricas sobre capital muestran
   // "No aplica" + sublabel — decisión del análisis, no dato faltante. Cero
   // Signal Red (no es criticidad). Tooltip compartido del mockup 98e2319.
-  const na = kpis.sinCapitalPropio;
-
   // Pre-entrega (hermano del anterior, MISMO tratamiento D1): el horizonte del
-  // slider no llega a la escritura, así que no hay venta que modelar y el
-  // payback no se emite. Solo afecta a esa celda — TIR, CoC y Múltiplo no
-  // dependen de poder vender hoy. Sublabel y tooltip propios: ">30" acá sería
-  // mentira (no es que tarde mucho, es que todavía no aplica).
-  const naPayback = na || kpis.paybackPreEntrega;
-  const sublabelD1 = na ? NO_APLICA_SUBLABEL : null;
+  // slider termina antes de la escritura, así que las CUATRO se apagan — la TIR
+  // y el múltiplo liquidan una venta que no puedes hacer, el payback la busca y
+  // el Cash-on-Cash promedia un arriendo que no empezó. Emitirlas ahí no era
+  // "incompleto": la TIR marcaba 345% de mediana contra 6,5% en cuanto el
+  // horizonte cruza la entrega, y el CoC un 0,0% que se lee como dato.
+  const naPie = kpis.sinCapitalPropio;
+  const naPreEntrega = kpis.horizonteAntesDeEntrega;
+  const na = naPie || naPreEntrega;
+
+  // Un solo par sublabel/tooltip para las 4: el pie cero manda si coinciden.
+  const sublabelD1 = naPie
+    ? NO_APLICA_SUBLABEL
+    : naPreEntrega
+      ? noAplicaSublabelPreEntrega(inputData?.fechaEntrega)
+      : null;
+  const tooltipD1 = naPie ? NO_APLICA_TOOLTIP : noAplicaTooltipPreEntrega(inputData?.fechaEntrega);
 
   // Los 4 que reaccionan a los sliders. tono === "bad" → Signal Red (uso #2
   // valores críticos): Cash-on-Cash negativo, TIR/Múltiplo bajo umbral.
@@ -100,7 +108,7 @@ export function Indicators({
       label: `TIR a ${plazoLabel}`,
       value: na ? NO_APLICA_VALOR : fmtPct(kpis.tir ?? NaN),
       tone: na ? "neutral" : tonoTIR(kpis.tir ?? 0),
-      tooltip: na ? NO_APLICA_TOOLTIP : tirTooltip,
+      tooltip: na ? tooltipD1 : tirTooltip,
       na,
       sublabel: sublabelD1,
     },
@@ -109,35 +117,29 @@ export function Indicators({
       value: na ? NO_APLICA_VALOR : fmtPct(kpis.cashOnCash ?? NaN),
       tone: na ? "neutral" : tonoCashOnCash(kpis.cashOnCash ?? 0),
       tooltip: na
-        ? NO_APLICA_TOOLTIP
+        ? tooltipD1
         : "Flujo anual promedio sobre tu inversión inicial del día uno (pie + gastos de cierre + corretaje).",
       na,
       sublabel: sublabelD1,
     },
     {
       label: "Payback (con venta)",
-      value: naPayback ? NO_APLICA_VALOR : paybackValue,
+      value: na ? NO_APLICA_VALOR : paybackValue,
       // Cero Signal Red en los dos estados "no aplica": son decisiones del
       // análisis, no criticidad.
-      tone: naPayback ? "neutral" : tonoPayback(kpis.paybackAnios),
+      tone: na ? "neutral" : tonoPayback(kpis.paybackAnios),
       tooltip: na
-        ? NO_APLICA_TOOLTIP
-        : kpis.paybackPreEntrega
-          ? noAplicaTooltipPreEntrega(inputData?.fechaEntrega)
-          : "Año desde la compra en que el patrimonio neto acumulado iguala tu inversión inicial del día uno (pie + gastos de cierre + corretaje), contando la venta del depto.",
-      na: naPayback,
-      sublabel: na
-        ? NO_APLICA_SUBLABEL
-        : kpis.paybackPreEntrega
-          ? noAplicaSublabelPreEntrega(inputData?.fechaEntrega)
-          : null,
+        ? tooltipD1
+        : "Año desde la compra en que el patrimonio neto acumulado iguala tu inversión inicial del día uno (pie + gastos de cierre + corretaje), contando la venta del depto.",
+      na,
+      sublabel: sublabelD1,
     },
     {
       label: `Múltiplo a ${plazoLabel}`,
       value: na ? NO_APLICA_VALOR : fmtMultiplo(kpis.multiplo ?? NaN),
       tone: na ? "neutral" : tonoMultiplo(kpis.multiplo ?? 0),
       tooltip: na
-        ? NO_APLICA_TOOLTIP
+        ? tooltipD1
         : "Cuánto recibes al final por cada peso que pusiste en total — el pie más los aportes que fuiste haciendo por el camino. Múltiplo 2x = recibes el doble.",
       na,
       sublabel: sublabelD1,

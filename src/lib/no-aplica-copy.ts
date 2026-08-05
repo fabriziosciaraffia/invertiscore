@@ -17,18 +17,25 @@ export const NO_APLICA_TOOLTIP =
   "Compraste con financiamiento del 100%: sin pie, no existe una rentabilidad " +
   "sobre capital propio que medir. Este caso se evalúa por flujo mensual y plusvalía.";
 
-// ─── Pre-entrega: el payback no se emite antes de la escritura ──────────────
+// ─── Pre-entrega: las métricas del simulador no se emiten antes de la escritura ──
 //
 // Estado HERMANO del pie cero: mismo tratamiento D1 (valor "No aplica" en mono
 // peso 500 color secundario + sublabel mono uppercase, CERO Signal Red — es una
 // decisión del análisis, no una alarma) y razón distinta. No falta capital
-// propio: todavía no existe la salida que el payback modela.
+// propio: todavía no existe la operación que la métrica mide.
 //
-// El motor pone `saldoCredito = 0` en los años pre-entrega porque el banco no
-// cursa hasta la escritura (correcto para el flujo), no porque no debas nada —
-// el saldo del precio sigue siendo deuda con la inmobiliaria. Sin ese guard el
-// payback comparaba una inversión inicial de ~22% del precio contra el 98% del
-// valor de venta y se cumplía en el año 1 por construcción.
+// Cubre las 4 métricas del strip cuando el horizonte del slider termina antes
+// de la entrega, porque las 4 se apoyan en algo que aún no ocurre:
+//   · TIR y Múltiplo liquidan por `valorVenta − saldoCredito − comisión`, y el
+//     motor deja `saldoCredito = 0` en esos años porque el banco no cursa hasta
+//     escriturar (correcto para el flujo), no porque no debas nada — el saldo
+//     del precio sigue siendo deuda con la inmobiliaria. Sin guard, esa caja es
+//     el 98% del precio contra una inversión de ~22%: TIR mediana 345% y hasta
+//     741%, contra 6,5% cuando el horizonte sí cruza la entrega.
+//   · Payback busca el año en que esa misma caja cubre lo aportado ⇒ año 1 por
+//     construcción.
+//   · Cash-on-Cash promedia flujo operativo que todavía no empieza ⇒ 0,0% en
+//     36 de 36, indistinguible de un depto entregado que empata justo.
 //
 // Misma doctrina que SaleRefiBlock ("No puedes vender ni refinanciar antes de
 // la entrega") y patrimonio-series (`valorDepto = null` pre-entrega). Si cambia
@@ -56,20 +63,25 @@ function parseFechaEntrega(fechaEntrega?: string | null): { mes: number; anio: n
   return { mes, anio };
 }
 
-/** Sublabel D1 del payback pre-entrega. Mes corto: la celda es angosta en mobile. */
+/** Sublabel D1 pre-entrega. Mes corto: la celda es angosta en mobile. */
 export function noAplicaSublabelPreEntrega(fechaEntrega?: string | null): string {
   const f = parseFechaEntrega(fechaEntrega);
   return f ? `Hasta la entrega · ${MESES_CORTOS[f.mes - 1]} ${f.anio}` : "Hasta la entrega";
 }
 
-/** Tooltip D1 del payback pre-entrega: por qué no aplica y qué hacer para verlo. */
+/**
+ * Tooltip D1 pre-entrega: por qué no aplica y qué hacer para verlo. Uno solo
+ * para las 4 métricas del strip — dice el hecho que las apaga a todas (todavía
+ * no arriendas ni puedes vender), no el detalle de cada una, así que sirve
+ * igual en TIR, Cash-on-Cash, Payback y Múltiplo.
+ */
 export function noAplicaTooltipPreEntrega(fechaEntrega?: string | null): string {
   const f = parseFechaEntrega(fechaEntrega);
   const cuando = f ? ` (${MESES_LARGOS[f.mes - 1]} ${f.anio})` : "";
   return (
-    "Antes de la escritura no puedes vender: el depto todavía no es tuyo y el saldo " +
-    "del precio sigue siendo deuda con la inmobiliaria. Sube el plazo por sobre la " +
-    `entrega${cuando} para ver en qué año recuperas lo que pusiste.`
+    `Tu horizonte termina antes de la escritura${cuando}. Hasta entonces el depto no es ` +
+    "tuyo: no hay arriendo que rente ni depto que vender, y el saldo del precio sigue " +
+    "siendo deuda con la inmobiliaria. Sube el plazo por sobre la entrega para ver esta cifra."
   );
 }
 
