@@ -83,8 +83,13 @@ export function esPrefijoViable(texto: string, decimales: Decimales): boolean {
 }
 
 /**
- * Por qué no se pudo leer. Qué pasó + cómo salir, nunca culpando al usuario
- * (se le fue una tecla, no hizo nada tonto).
+ * Por qué no se pudo leer. Se completa después de "No se entiende ese número —",
+ * así que cada motivo es la SEGUNDA mitad de la frase.
+ *
+ * Copy: dice qué corresponde en el campo, no qué hizo mal el usuario (se le fue
+ * una tecla, no hizo nada tonto). Y dice una cosa sola: el motivo del
+ * agrupamiento decía "revisa los puntos: los miles van de a tres", con dos
+ * dos-puntos en la misma frase y una orden que el ejemplo ya da solo.
  */
 export function motivoError(texto: string, decimales: Decimales): string {
   const cuerpo = texto.trim().replace(/^[-+]/, "");
@@ -99,7 +104,12 @@ export function motivoError(texto: string, decimales: Decimales): string {
         : `este campo toma ${decimales} decimal${decimales === 1 ? "" : "es"}.`;
     }
   }
-  return "revisa los puntos: los miles van de a tres (1.234.567).";
+  return "los miles van de a tres (1.234.567).";
+}
+
+/** Frase completa del error. Un solo lugar arma el "prefijo — motivo". */
+export function fraseError(texto: string, decimales: Decimales): string {
+  return `No se entiende ese número — ${motivoError(texto, decimales)}`;
 }
 
 /**
@@ -284,7 +294,7 @@ export function NumericInput({
         {r.estado === "error" && (
           // Signal Red · uso #6 — indicador de error en formulario.
           <p className="font-body text-[12.5px] text-signal-red m-0 leading-snug">
-            No se entiende ese número: {r.motivo}
+            No se entiende ese número — {r.motivo}
           </p>
         )}
         {(r.estado === "ok" || r.estado === "escala") && (

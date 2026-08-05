@@ -43,12 +43,13 @@ import {
   formatearNumero,
   formatearPct,
   type Anomalia,
+  type PlausibilidadInput,
   type Regla,
 } from "@/lib/plausibilidad";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
 import { dormLabel, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, superficieM2, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
 import { ecoPorDefecto, estadoNumericInput } from "./NumericInput";
-import { formatNumeroCL, type Decimales } from "@/lib/numero-cl";
+import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
@@ -57,6 +58,65 @@ const LABEL_MOD: Record<string, string> = { ltr: "Renta larga", str: "Renta cort
 const LABEL_GATE: Record<string, string> = { si: "Sí permite", no: "No permite", no_seguro: "No estoy seguro" };
 
 type Wizard = ReturnType<typeof useWizardV4>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AVISO DE ESCALA EN EL CAMPO
+//
+// El campo entendió el número; lo que falla es su magnitud. Se avisa, no se
+// bloquea: el bloqueo duro sigue siendo el modal y el 422 del servidor.
+//
+// El mensaje NO se escribe acá. Se le pregunta al guard corriendo
+// `evaluarPlausibilidad` con SOLO este campo poblado —el resto en NaN, que es
+// lo que activa su fail-open— y se toma la anomalía de ese campo. Así el aviso
+// temprano dice EXACTAMENTE lo mismo que va a decir el modal si igual se
+// intenta generar, y no hay umbral ni copy duplicado en dos archivos.
+//
+// Solo los campos con regla PROPIA: UF/m² y los dos yields son derivados de dos
+// campos, así que un input suelto no puede evaluarlos — esos se quedan en el
+// modal, que sí los tiene todos.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Nada poblado: cada regla necesita sus insumos finitos, y NaN las apaga. */
+const SIN_INSUMOS: PlausibilidadInput = { precioUF: NaN, superficieM2: NaN, ufCLP: NaN };
+
+function avisoEscala(
+  campo: Anomalia["campo"],
+  soloEste: (valor: number) => Partial<PlausibilidadInput>,
+): (valor: number) => string | null {
+  return (valor) => {
+    const anomalias = evaluarPlausibilidad({ ...SIN_INSUMOS, ...soloEste(valor) });
+    return anomalias.find((x) => x.campo === campo)?.mensaje ?? null;
+  };
+}
+
+const escalaPrecio = avisoEscala("precio", (v) => ({ precioUF: v }));
+const escalaSuperficie = avisoEscala("superficie", (v) => ({ superficieM2: v }));
+const escalaTasa = avisoEscala("tasa", (v) => ({ tasaAnualPct: v }));
+const escalaPie = avisoEscala("pie", (v) => ({ piePct: v }));
+const escalaArriendo = avisoEscala("arriendo", (v) => ({ arriendoMensualCLP: v }));
+const escalaVacancia = avisoEscala("vacancia", (v) => ({ vacanciaPct: v }));
+const escalaComision = avisoEscala("comisionAdmin", (v) => ({ comisionAdminPct: v }));
+const escalaOcupacion = avisoEscala("ocupacion", (v) => ({ str: { ocupacionPct: v } }));
+const escalaTarifa = avisoEscala("tarifaNoche", (v) => ({ str: { tarifaNocheCLP: v } }));
+
+/**
+ * Valor guardado → texto del display EN REPOSO. Fuente única del formato de la
+ * card, para que no vuelva a pasar lo de la tasa: el eco mostraba "= 4,72%" y la
+ * card, debajo, "4.72%" — el texto crudo tal cual se tipeó, sin formatear.
+ *
+ * Decimales FIJOS (los del campo), no los útiles del eco: el eco muestra lo que
+ * se acaba de leer y no puede redondear; la card muestra la forma canónica del
+ * campo. `envolver` agrega la unidad.
+ */
+function displayNum(
+  raw: string | undefined,
+  decimales: Decimales,
+  envolver: (txt: string) => string,
+  vacio = "—",
+): string {
+  const v = parseNumeroCL(raw ?? "", decimales);
+  return v === null ? vacio : envolver(formatNumeroCL(v, decimales));
+}
 
 function tasaStr(t: number): string {
   return t.toFixed(2).replace(".", ",");
@@ -172,8 +232,10 @@ function TamanoField({ a, patch, onCommit }: { a: WizardV4Answers; patch: (p: Pa
     decimales: DEC.superficie,
     blurred: true,
     formatEco: ecoPorDefecto("", " m²"),
+    escala: escalaSuperficie,
   });
-  const display = sup > 0 ? `${a.superficieUtil} m² · ${a.esStudio ? "Studio" : (a.dormitorios ?? "—") + "D"} · ${a.banos ?? "—"}B` : "—";
+  const supTxt = displayNum(a.superficieUtil, DEC.superficie, (t) => `${t} m²`);
+  const display = sup > 0 ? `${supTxt} · ${a.esStudio ? "Studio" : (a.dormitorios ?? "—") + "D"} · ${a.banos ?? "—"}B` : "—";
   return (
     <FieldShell label="Tamaño">
       {editing ? (
@@ -188,11 +250,12 @@ function TamanoField({ a, patch, onCommit }: { a: WizardV4Answers; patch: (p: Pa
             <span className="font-mono text-[11px] text-[var(--franco-text-muted)]">m²</span>
           </div>
           {supEstado.estado === "error" && (
-            <p className="font-body text-[11px] text-signal-red m-0 leading-snug">No se entiende: {supEstado.motivo}</p>
+            <p className="font-body text-[11px] text-signal-red m-0 leading-snug">No se entiende — {supEstado.motivo}</p>
           )}
           {(supEstado.estado === "ok" || supEstado.estado === "escala") && (
             <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] m-0">= {supEstado.eco}</p>
           )}
+          {supEstado.estado === "escala" && <AvisoEscala texto={supEstado.aviso} />}
           <div className="flex flex-wrap gap-1.5">
             <button type="button" onClick={() => patch({ esStudio: true, dormitorios: "0" })} className={chipCls(!!a.esStudio)}>Studio</button>
             {["1", "2", "3", "4"].map((d) => <button key={d} type="button" onClick={() => patch({ esStudio: false, dormitorios: d })} className={chipCls(!a.esStudio && a.dormitorios === d)}>{d === "4" ? "4+" : d}D</button>)}
@@ -242,6 +305,7 @@ function InlineInput({
   initial,
   decimales,
   formatEco,
+  escala,
   suffix,
   onCommit,
   onCancel,
@@ -249,6 +313,7 @@ function InlineInput({
   initial: string;
   decimales: Decimales;
   formatEco: (valor: number) => string;
+  escala?: (valor: number) => string | null;
   suffix?: string;
   onCommit: (v: string) => void;
   onCancel: () => void;
@@ -262,7 +327,7 @@ function InlineInput({
   const cancel = () => { if (done.current) return; done.current = true; onCancel(); };
   useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
 
-  const r = estadoNumericInput(v, { decimales, blurred: false, formatEco });
+  const r = estadoNumericInput(v, { decimales, blurred: false, formatEco, escala });
   const hayError = r.estado === "error";
 
   return (
@@ -288,11 +353,32 @@ function InlineInput({
         <span className="font-body text-[11px] italic text-[var(--franco-text-muted)]">Seguí escribiendo…</span>
       )}
       {r.estado === "error" && (
-        <span className="font-body text-[11px] text-signal-red leading-snug">No se entiende: {r.motivo}</span>
+        <span className="font-body text-[11px] text-signal-red leading-snug">No se entiende — {r.motivo}</span>
       )}
       {(r.estado === "ok" || r.estado === "escala") && (
         <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">= {r.eco}</span>
       )}
+      {r.estado === "escala" && <AvisoEscala texto={r.aviso} />}
+    </span>
+  );
+}
+
+/**
+ * Aviso de magnitud. Ink + label uppercase + borde lateral — el reemplazo que el
+ * design system define para el ámbar de alerta. NUNCA rojo: el rojo dice "no te
+ * entendí" y esto dice "te entendí y es imposible"; si los dos fueran rojos el
+ * usuario no podría distinguir qué le toca hacer.
+ */
+function AvisoEscala({ texto }: { texto: string }) {
+  return (
+    <span
+      className="block mt-1 border-l-2 border-[var(--franco-border-strong)] rounded-r-lg pl-2.5 pr-2 py-1.5"
+      style={{ background: "color-mix(in srgb, var(--franco-text) 3.5%, transparent)" }}
+    >
+      <span className="block font-mono text-[9px] uppercase tracking-[0.13em] text-[var(--franco-text-tertiary)] mb-0.5">
+        Fuera de escala
+      </span>
+      <span className="block font-body text-[11px] text-[var(--franco-text-secondary)] leading-snug">{texto}</span>
     </span>
   );
 }
@@ -311,6 +397,7 @@ function NumField({
   suffix,
   decimales,
   formatEco,
+  escala,
   tag,
   fuente,
   derived,
@@ -323,6 +410,8 @@ function NumField({
   suffix: string;
   decimales: Decimales;
   formatEco?: (valor: number) => string;
+  /** Aviso de magnitud. Los umbrales y el copy los pone el guard, no este campo. */
+  escala?: (valor: number) => string | null;
   tag?: string;
   fuente?: string;
   derived?: string;
@@ -332,7 +421,7 @@ function NumField({
 }) {
   const [editing, setEditing] = useState(false);
   const eco = formatEco ?? ecoPorDefecto();
-  const enReposo = estadoNumericInput(raw, { decimales, blurred: true, formatEco: eco });
+  const enReposo = estadoNumericInput(raw, { decimales, blurred: true, formatEco: eco, escala });
 
   return (
     <div className={highlight ? "rounded-lg -mx-1 px-1 ring-2 ring-signal-red transition-shadow duration-300" : ""}>
@@ -343,6 +432,7 @@ function NumField({
           suffix={suffix}
           decimales={decimales}
           formatEco={eco}
+          escala={escala}
           onCommit={(v) => { setEditing(false); onCommit(v); }}
           onCancel={() => setEditing(false)}
         />
@@ -351,9 +441,12 @@ function NumField({
           <EditableDisplay text={display} tag={tag} onStart={() => setEditing(true)} />
           {enReposo.estado === "error" && (
             <p className="font-body text-[11px] text-signal-red m-0 mt-0.5 leading-snug">
-              No se entiende ese número: {enReposo.motivo}
+              No se entiende ese número — {enReposo.motivo}
             </p>
           )}
+          {/* En reposo el aviso también se ve: si el valor quedó fuera de escala,
+              esconderlo hasta que vuelvan a abrir el editor no ayuda a nadie. */}
+          {enReposo.estado === "escala" && <AvisoEscala texto={enReposo.aviso} />}
         </>
       )}
       {derived && <DerivedLine text={derived} />}
@@ -623,8 +716,6 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
 
   // Detalle del depto (nivel 3 · card 01).
   const tipoStr = a.tipoPropiedad === "nuevo" ? "Nuevo" : a.tipoPropiedad === "usado" ? "Usado" : "—";
-  const nEstac = leerNum(a.estacionamientos, DEC.estacionamientos);
-  const nBodega = leerNum(a.bodegas, DEC.bodegas);
 
   // Supuestos (nivel 3 · card 03).
   const ggccDef = data.ggccSugerido ?? getGgccFallback(a.comuna ?? "", sup) ?? 0;
@@ -931,7 +1022,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           </FieldShell>
           <NumField
             label="Precio" raw={a.precio ?? ""} display={pUF > 0 ? fmtUF(pUF) : "—"} suffix="UF"
-            decimales={DEC.precioUF} formatEco={ecoPorDefecto("UF ")}
+            decimales={DEC.precioUF} formatEco={ecoPorDefecto("UF ")} escala={escalaPrecio}
             derived={precioCLP} onCommit={(v) => commitEdit("precio", { precio: v })}
           />
           <Nivel3 title="Detalle del depto" open={l3c01 === "detalle"} onToggle={() => openL3c01("detalle")}>
@@ -959,8 +1050,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
                 onCommit={(v) => commitEdit("antiguedad", { antiguedad: v })} />
             )}
             <TamanoField a={a} patch={w.patchAnswers} onCommit={() => commitEdit("tam", {})} />
-            <NumField label="Estacionamientos" raw={a.estacionamientos ?? ""} display={String(nEstac)} suffix="" decimales={DEC.estacionamientos} onCommit={(v) => commitEdit("estac", { estacionamientos: v })} />
-            <NumField label="Bodegas" raw={a.bodegas ?? ""} display={String(nBodega)} suffix="" decimales={DEC.bodegas} onCommit={(v) => commitEdit("bodega", { bodegas: v })} />
+            <NumField label="Estacionamientos" raw={a.estacionamientos ?? ""} display={displayNum(a.estacionamientos, DEC.estacionamientos, (t) => t, "0")} suffix="" decimales={DEC.estacionamientos} onCommit={(v) => commitEdit("estac", { estacionamientos: v })} />
+            <NumField label="Bodegas" raw={a.bodegas ?? ""} display={displayNum(a.bodegas, DEC.bodegas, (t) => t, "0")} suffix="" decimales={DEC.bodegas} onCommit={(v) => commitEdit("bodega", { bodegas: v })} />
           </Nivel3>
           {/* Gastos del depto: GGCC + contribuciones son del inmueble, no de la
               modalidad → viven acá en las 3 modalidades (taxonomía de v3 "Comunes"). */}
@@ -975,7 +1066,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           {cascade["02"] && <CascadeNote text={cascade["02"]} />}
           <NumField
             label="Pie (% del precio)" raw={pct > 0 ? formatNumeroCL(pct, DEC.piePct) : ""} display={pieStr} suffix="%"
-            decimales={DEC.piePct} formatEco={ecoPorDefecto("", "% del precio")}
+            decimales={DEC.piePct} formatEco={ecoPorDefecto("", "% del precio")} escala={escalaPie}
             onCommit={(v) => {
               // Fase 5b: al subir el pie sobre 0, la razón se descarta en
               // SILENCIO (misma regla que el wizard). Al bajarlo a 0 el selector
@@ -1012,8 +1103,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             />
           ) : (
             <NumField
-              label="Tasa" raw={a.tasaInteres ?? ""} display={a.tasaInteres ? `${a.tasaInteres}%` : "—"} suffix="%"
-              decimales={DEC.tasa} formatEco={ecoPorDefecto("", "% anual")}
+              label="Tasa" raw={a.tasaInteres ?? ""} display={displayNum(a.tasaInteres, DEC.tasa, (t) => `${t}%`)} suffix="%"
+              decimales={DEC.tasa} formatEco={ecoPorDefecto("", "% anual")} escala={escalaTasa}
               tag={tasaTag} derived={cuotaStr} highlight={highlight === "tasa"}
               onCommit={(v) => commitEdit("tasa", { tasaModo: "preaprobada", tasaInteres: v })}
             />
@@ -1031,12 +1122,12 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
               {esStr && <Subtitulo>Renta larga</Subtitulo>}
               <NumField
                 label="Arriendo mensual" raw={a.arriendo ?? String(sugArriendo || "")} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
-                decimales={DEC.arriendo} formatEco={ecoPorDefecto("$", "/mes")}
+                decimales={DEC.arriendo} formatEco={ecoPorDefecto("$", "/mes")} escala={escalaArriendo}
                 tag={a.arrModo === "corregir" ? "corregido por ti" : "estimado"}
                 fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed)} highlight={highlight === "arr"}
                 onCommit={(v) => commitEdit("arr", { arriendo: v, arrModo: "corregir" })}
               />
-              <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={`${a.vacanciaPct ?? "5"}%`} suffix="%" decimales={DEC.vacancia} formatEco={ecoPorDefecto("", "% del año")} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
+              <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={displayNum(a.vacanciaPct ?? "5", DEC.vacancia, (t) => `${t}%`)} suffix="%" decimales={DEC.vacancia} formatEco={ecoPorDefecto("", "% del año")} escala={escalaVacancia} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
             </>
           )}
 
@@ -1046,14 +1137,14 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
               {esLtr && <Subtitulo>Renta corta</Subtitulo>}
               <NumField
                 label="Tarifa por noche" raw={a.adrTarifa ?? String(sugTarifa || "")} display={tarifaVal > 0 ? `${fmtCLP(tarifaVal)}/noche` : "—"} suffix="$"
-                decimales={DEC.tarifa} formatEco={ecoPorDefecto("$", "/noche")}
+                decimales={DEC.tarifa} formatEco={ecoPorDefecto("$", "/noche")} escala={escalaTarifa}
                 tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"}
                 fuente="datos de mercado Airbnb de la zona, últimos 90 días" highlight={highlight === "adr"}
                 onCommit={(v) => commitEdit("adr", { adrTarifa: v, adrModo: "corregir" })}
               />
               <NumField
-                label="Ocupación" raw={String(a.adrOcupacion ?? (sugOcc || ""))} display={occVal > 0 ? `${occVal}%` : "—"} suffix="%"
-                decimales={DEC.ocupacion} formatEco={ecoPorDefecto("", "% de ocupación")}
+                label="Ocupación" raw={String(a.adrOcupacion ?? (sugOcc || ""))} display={displayNum(String(a.adrOcupacion ?? (sugOcc || "")), DEC.ocupacion, (t) => `${t}%`)} suffix="%"
+                decimales={DEC.ocupacion} formatEco={ecoPorDefecto("", "% de ocupación")} escala={escalaOcupacion}
                 tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"} highlight={highlight === "adr"}
                 onCommit={(v) => commitEdit("adr", { adrOcupacion: v, adrModo: "corregir" })}
               />
@@ -1063,7 +1154,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           {/* ── Nivel 3 · operación (título "Operación renta larga/corta" siempre) ── */}
           {esLtr && (
             <Nivel3 title="Operación renta larga" open={l3 === "sup"} onToggle={() => openL3("sup")}>
-              <NumField label="Comisión administración" raw={a.comisionAdminPct ?? "0"} display={`${a.comisionAdminPct ?? "0"}%`} suffix="%" decimales={DEC.comisionAdmin} formatEco={ecoPorDefecto("", "% del arriendo")} tag={a.comisionAdminPct ? "corregido por ti" : undefined} fuente="0 = autogestión; corredor típico 7-10%" onCommit={(v) => commitEdit("comisionAdminPct", { comisionAdminPct: v })} />
+              <NumField label="Comisión administración" raw={a.comisionAdminPct ?? "0"} display={displayNum(a.comisionAdminPct ?? "0", DEC.comisionAdmin, (t) => `${t}%`)} suffix="%" decimales={DEC.comisionAdmin} formatEco={ecoPorDefecto("", "% del arriendo")} escala={escalaComision} tag={a.comisionAdminPct ? "corregido por ti" : undefined} fuente="0 = autogestión; corredor típico 7-10%" onCommit={(v) => commitEdit("comisionAdminPct", { comisionAdminPct: v })} />
             </Nivel3>
           )}
           {esStr && (
