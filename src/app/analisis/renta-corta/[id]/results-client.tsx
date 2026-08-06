@@ -353,9 +353,11 @@ export function STRResultsClient({
         {!showCtaWelcome && (
           <div className="mt-6 mb-4 flex items-center justify-center">
             <Link
-              // El wizard legacy de renta corta se retiró; el formulario vivo es
-              // el v2. Apunta directo y no al redirect, para no gastar un salto.
-              href="/analisis/nuevo-v2"
+              // El wizard legacy de renta corta se retiró. El formulario vivo es
+              // el v4 (RUTA_WIZARD en cta-analizar.ts): este link decía v2, que
+              // quedó atrás en el cutover ca3106f y mandaba a la gente al wizard
+              // anterior. Apunta directo y no al redirect, para no gastar un salto.
+              href="/analisis/nuevo-v4"
               className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
             >
               Analizar otra propiedad
