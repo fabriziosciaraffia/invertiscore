@@ -88,6 +88,12 @@ export function recomputeShortTermForLegacy(
     costoAmoblamiento: inputData.estaAmoblado ? 0 : (inputData.costoAmoblamiento || 0),
     arriendoLargoMensual: inputData.arriendoLargoMensual,
     valorUF: ufClp,
+    // Entrega futura. Sin esto el recompute-on-load reconstruía SIEMPRE como
+    // entrega inmediata, así que la pre-entrega del motor no se veía al abrir
+    // un análisis persistido — solo al crearlo. El `asOf` que este helper ya
+    // congela contra created_at es justamente lo que la vuelve estable.
+    estadoVenta: inputData.estadoVenta,
+    fechaEntrega: inputData.fechaEntrega,
   };
 
   const result = calcShortTerm(inputs, asOf);

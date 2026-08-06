@@ -41,3 +41,26 @@ export function contarAniosPreEntrega(
   }
   return n >= projections.length ? 0 : n;
 }
+
+/**
+ * Meses hasta la escritura, congelados contra el `asOf` del análisis.
+ *
+ * Espejo EXACTO de `calcMesesHastaEntrega` (analysis.ts:187), replicado acá y no
+ * importado para no colgar el motor de renta corta del de renta larga. Si uno
+ * cambia, el otro tiene que cambiar — misma aritmética, mismo redondeo de 30
+ * días, mismo `Math.max(0, …)`.
+ *
+ * `estadoVenta !== "inmediata"` y NO `=== "futura"`: los estados "blanco" y
+ * "verde" de las filas viejas también son pre-entrega cuando traen fecha.
+ */
+export function mesesHastaEntregaDesdeFecha(
+  estadoVenta: string | undefined,
+  fechaEntrega: string | undefined,
+  asOf: Date,
+): number {
+  if (estadoVenta === "inmediata" || !fechaEntrega) return 0;
+  const [anio, mes] = fechaEntrega.split("-").map(Number);
+  if (!anio || !mes) return 0;
+  const entrega = new Date(anio, mes - 1);
+  return Math.max(0, Math.round((entrega.getTime() - asOf.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+}

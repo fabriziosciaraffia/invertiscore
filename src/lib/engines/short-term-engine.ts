@@ -19,6 +19,7 @@ import {
   type VeredictoComparativo,
   type ModoGestionAmbas,
 } from "./str-universo-santiago";
+import { mesesHastaEntregaDesdeFecha } from "@/lib/pre-entrega-serie";
 import { calcInversionInicialCLP } from "../inversion-inicial";
 import { PLUSVALIA_PROYECCION_ANUAL } from "../plusvalia-proyeccion";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
@@ -824,10 +825,24 @@ function buildProjections(
   plusvaliaAnual: number = PLUSVALIA_ANUAL_DEFAULT,
 ): YearProjectionSTR[] {
   void capitalInvertido;
-  // asOf threadeado para paridad de firma con LTR (calcProjections) y estabilidad del
-  // recompute-on-load. El modelo pre-entrega (mesesHastaEntrega/aniosEntrega) se difiere
-  // a su rama propia; hoy STR compone desde año 1 (entrega inmediata). Ver of-ambas-rama0.
-  void asOf;
+  // ── Pre-entrega (paso 3) ────────────────────────────────────────────────────
+  // Hasta acá el motor hacía `void asOf` y componía desde el mes 1 aunque el
+  // depto se entregara en 2029. Ahora la espera se modela, homologada con LTR
+  // (calcProjections):
+  //
+  //   · DEUDA — el banco no cursa hasta la escritura, así que el saldo es 0
+  //     mientras el año termine antes de la entrega, y desde ahí amortiza por
+  //     los meses efectivamente transcurridos, no por el calendario.
+  //   · FLUJO — no hay operación sin depto. El año que CRUZA la escritura opera
+  //     solo sus meses posteriores, prorrateados.
+  //   · RAMP-UP — la curva de estabilización arranca EN LA ENTREGA, no en el
+  //     año 1: el reloj de reputación empieza cuando publicas, no cuando
+  //     prometes. Antes castigaba un año en que el depto ni existía.
+  //
+  // El VALOR del activo sí corre continuo desde el año 0 (ya lo hacía): el
+  // precio queda pactado y el mercado se mueve mientras esperas — misma
+  // doctrina que superó al Modelo B3 en LTR.
+  const mesesPreEntrega = mesesHastaEntregaDesdeFecha(input.estadoVenta, input.fechaEntrega, asOf);
   const precioCompra = input.precioCompra;
   const pie = Math.round(precioCompra * input.piePercent);
   const montoCredito = precioCompra - pie;
@@ -840,8 +855,12 @@ function buildProjections(
   for (let year = 1; year <= horizonte; year++) {
     const valorDepto = precioCompra * Math.pow(1 + plusvaliaAnual, year);
 
-    const mesActual = Math.min(year * 12, input.plazoCredito * 12);
-    const saldo = Math.max(0, saldoCreditoSTR(montoCredito, input.tasaCredito, input.plazoCredito, mesActual));
+    // Meses de crédito EFECTIVAMENTE corridos: el reloj parte en la escritura.
+    const mesFin = year * 12;
+    const mesesCredito = Math.max(0, mesFin - mesesPreEntrega);
+    const saldo = mesFin < mesesPreEntrega
+      ? 0
+      : Math.max(0, saldoCreditoSTR(montoCredito, input.tasaCredito, input.plazoCredito, Math.min(mesesCredito, input.plazoCredito * 12)));
 
     // Inflación homologada a LTR (antes flat). El NOI se recompone año a año: ingreso 3,5%,
     // costos 3%, dividendo 3%. La comisión escala con el revenue inflado. En año 1 el NOI
@@ -852,12 +871,25 @@ function buildProjections(
     const noiAnual = revenueAnual - comisionAnual - costosAnual;
     const dividendoAnual = dividendoAnualBase * Math.pow(1 + DIVIDENDO_INFLACION, year - 1);
 
-    // Ramp-up solo año 1: 3 meses parciales restan ingreso bruto
-    // (ya están en perdidaRampUp). Comisión sobre lo perdido también
-    // se ahorra, pero el efecto neto es conservador → restar el bruto.
-    const flujoOperacionalAnual = year === 1
-      ? noiAnual - dividendoAnual - perdidaRampUp
-      : noiAnual - dividendoAnual;
+    // Meses operativos del año: 12 salvo el que cruza la escritura, que opera
+    // solo su cola. Antes de la entrega no hay ni ingreso ni dividendo.
+    const mesesOperativos = Math.min(12, Math.max(0, mesFin - mesesPreEntrega));
+    const proporcion = mesesOperativos / 12;
+
+    // El ramp-up se aplica en el PRIMER año con operación, no en el year 1 del
+    // calendario. Con entrega inmediata (mesesPreEntrega 0) ese año ES el 1 y
+    // el término queda idéntico al previo — sin regresión.
+    const primerAnioOperativo = Math.floor(mesesPreEntrega / 12) + 1;
+    const rampUpDelAnio = year === primerAnioOperativo ? perdidaRampUp : 0;
+
+    // (a) El amoblamiento se compra al recibir el depto: sale del bolsillo en el
+    // primer año operativo, no al firmar la promesa. Con entrega inmediata ya
+    // está en `capitalInvertido` del día 1 y acá vale 0 — sin doble conteo.
+    const amoblamientoDelAnio =
+      mesesPreEntrega > 0 && year === primerAnioOperativo ? (input.costoAmoblamiento || 0) : 0;
+
+    const flujoOperacionalAnual =
+      (noiAnual - dividendoAnual) * proporcion - rampUpDelAnio - amoblamientoDelAnio;
 
     flujoAcumulado += flujoOperacionalAnual;
 
@@ -989,10 +1021,17 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     valorUF: input.valorUF,
     overrideCLP: input.costoPuestaAPuntoCLP,
   });
+  // (a) AMOBLAMIENTO EN LA ENTREGA, no al firmar. Nadie compra sofás para un
+  // edificio que se entrega en 2029. Con pre-entrega el amoblamiento sale del
+  // capital del DÍA 1 y entra como egreso en el año de la escritura (ver
+  // buildProjections). El capital total comprometido es el mismo; lo que cambia
+  // es CUÁNDO. Con entrega inmediata el término queda idéntico al previo.
+  const mesesPreEntregaCap = mesesHastaEntregaDesdeFecha(input.estadoVenta, input.fechaEntrega, asOf);
+  const amoblamientoDia1 = mesesPreEntregaCap > 0 ? 0 : input.costoAmoblamiento;
   const capitalInvertido = calcInversionInicialCLP({
     pieCLP: pie,
     gastosCierreCLP: gastosCierre,
-    costoAmoblamientoCLP: input.costoAmoblamiento,
+    costoAmoblamientoCLP: amoblamientoDia1,
     capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
   });
   const hallazgoPuestaAPunto = buildHallazgoPuestaAPunto({
