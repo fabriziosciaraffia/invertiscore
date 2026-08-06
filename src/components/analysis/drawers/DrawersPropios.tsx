@@ -624,8 +624,9 @@ export function DrawerDistanciaLtr({
       <div>
         <Lead>
           Tu veredicto es {base}. La pregunta honesta no es qué falta, sino si hay algo que
-          alcance: probamos subir el arriendo, bajar el precio y estirar el crédito, cada uno por
-          su cuenta y hasta donde deja de ser un ajuste para ser otro departamento.
+          alcance: probamos {v.pieEsPalanca ? "subir el pie, " : ""}subir el arriendo, bajar el
+          precio y estirar el crédito, cada uno por su cuenta y hasta donde deja de ser un ajuste
+          para ser otro departamento.
         </Lead>
         <Box label="Qué encontramos" tone="red">
           {dm ? (
@@ -650,8 +651,11 @@ export function DrawerDistanciaLtr({
           sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
         </Box>
         <Box label="Qué haces con esto">
-          Guarda el pie para el siguiente. Si igual quieres avanzar por razones que no son
-          financieras, está bien saberlo — pero no te cuentes que los números dan.
+          {/* "Guarda el pie para el siguiente" no aplica sin pie: con financiamiento 100%
+              no hay capital guardado que reasignar (analysis-voice-franco §1.11.1). */}
+          {v.piePctActual === 0
+            ? "Sigue buscando: lo que no cuadra acá es el depto, y con financiamiento 100% no tienes colchón para absorberlo. Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te cuentes que los números dan."
+            : "Guarda el pie para el siguiente. Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te cuentes que los números dan."}
         </Box>
       </div>
     );
@@ -660,6 +664,15 @@ export function DrawerDistanciaLtr({
   const cells = v.palancas.map((l) => {
     if (l.palanca === "plazo") {
       return { k: "Plazo del crédito", v: `${l.objetivo} años`, small: `desde ${l.actual}` };
+    }
+    // El pie se muestra como NIVEL, no como variación: su deltaPct viene en puntos
+    // porcentuales y con pie 0 un "+26%" se leería como aumento sobre cero.
+    if (l.palanca === "pie") {
+      return {
+        k: "Pie",
+        v: `${pctStr(l.objetivo)}`,
+        small: l.actual > 0 ? `desde ${pctStr(l.actual)}` : "hoy sin pie",
+      };
     }
     const valor =
       l.palanca === "arriendo"
@@ -672,6 +685,7 @@ export function DrawerDistanciaLtr({
     };
   });
   const tienePlazo = v.palancas.some((l) => l.palanca === "plazo");
+  const tienePie = v.palancas.some((l) => l.palanca === "pie");
 
   return (
     <div>
@@ -684,9 +698,14 @@ export function DrawerDistanciaLtr({
         label="Las vías, una por una"
         cells={cells}
         foot={
-          tienePlazo
-            ? "Estirar el plazo es la única que no depende de negociar con el vendedor ni de que el mercado de arriendo te acompañe: alarga la deuda y pagas más intereses en total, pero no te cuesta capital hoy."
-            : "Cada valor es el punto exacto donde el veredicto cambia, moviendo esa variable y dejando el resto igual."
+          // "La única que no depende de negociar" deja de ser cierto cuando el pie también
+          // es vía: las dos dependen de ti y no del vendedor. Con ambas, lo que las separa
+          // es el capital — el plazo no te cuesta plata hoy, el pie sí.
+          tienePlazo && tienePie
+            ? "El pie y el plazo son las dos que no dependen de negociar con el vendedor ni de que el mercado de arriendo te acompañe. Se diferencian en el bolsillo: el pie te cuesta capital hoy, el plazo no —alarga la deuda y pagas más intereses en total."
+            : tienePlazo
+              ? "Estirar el plazo es la única que no depende de negociar con el vendedor ni de que el mercado de arriendo te acompañe: alarga la deuda y pagas más intereses en total, pero no te cuesta capital hoy."
+              : "Cada valor es el punto exacto donde el veredicto cambia, moviendo esa variable y dejando el resto igual."
         }
       />
 
@@ -695,14 +714,32 @@ export function DrawerDistanciaLtr({
         negocio que depende de una condición concreta y verificable, en vez de una intuición.
       </Box>
       <Box label="Qué haces con esto">
-        {v.palancas[0]?.palanca === "precio"
-          ? "Llévalo a la mesa: la diferencia está en rango de negociación, no en otro departamento. Si el vendedor no baja, ya sabes exactamente cuánto te separa."
-          : "Antes de descartarlo, confirma ese techo de arriendo contra 2–3 publicaciones comparables de la zona. Si el mercado lo da, la decisión se toma sola."}
+        {v.palancas[0]?.palanca === "pie"
+          ? "Esta no se negocia con nadie: es plata tuya contra menos crédito. Antes de descartar el depto, confirma con el banco cuánto baja la cuota con ese pie y si tienes la liquidez sin quedarte sin colchón."
+          : v.palancas[0]?.palanca === "precio"
+            ? "Llévalo a la mesa: la diferencia está en rango de negociación, no en otro departamento. Si el vendedor no baja, ya sabes exactamente cuánto te separa."
+            : "Antes de descartarlo, confirma ese techo de arriendo contra 2–3 publicaciones comparables de la zona. Si el mercado lo da, la decisión se toma sola."}
       </Box>
+      {v.pieExcluidoPorBono && (
+        <Box label="Por qué el pie no aparece acá">
+          Tu pie lo cubre la inmobiliaria: subirlo no es una palanca, es deshacer el trato que
+          estás evaluando. Por eso las vías de arriba son el precio y el arriendo — y con el pie
+          cubierto, el precio se mira con más dureza, porque alguien está pagando ese bono.
+        </Box>
+      )}
       <Note>
-        {tienePlazo
-          ? "El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen. El pie y la tasa no entran acá: son condiciones de tu bolsillo y del banco, no del depto."
-          : "El pie y la tasa no entran acá: son condiciones de tu bolsillo y del banco, no del depto."}
+        {/* La nota enumera SOLO lo que quedó fuera. Decir "el pie no entra acá" mientras el
+            pie es la primera vía de la tabla de arriba era una contradicción directa. */}
+        {[
+          tienePlazo
+            ? "El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen."
+            : null,
+          tienePie
+            ? "La tasa no entra acá: es condición del banco, no del depto."
+            : "El pie y la tasa no entran acá: son condiciones de tu bolsillo y del banco, no del depto.",
+        ]
+          .filter(Boolean)
+          .join(" ")}
       </Note>
     </div>
   );

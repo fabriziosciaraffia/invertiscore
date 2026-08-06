@@ -145,9 +145,14 @@ export function DocumentoLTR({
     const via =
       l.palanca === "plazo"
         ? `estirando el crédito de ${l.actual} a ${l.objetivo} años, sin poner capital,`
-        : l.palanca === "arriendo"
-          ? `con el arriendo en ${money(l.objetivo)} —${pct(Math.abs(l.deltaPct))} más que el declarado—`
-          : `cerrando en UF ${Math.round(l.objetivo).toLocaleString("es-CL")} —${pct(Math.abs(l.deltaPct))} menos—`;
+        : l.palanca === "pie"
+          // Nivel de pie, no variación: su deltaPct viene en puntos porcentuales.
+          ? (l.actual > 0
+              ? `subiendo el pie de ${pct(l.actual)} a ${pct(l.objetivo)}, sin tocar precio ni arriendo,`
+              : `poniendo un pie de ${pct(l.objetivo)} en vez de financiar el 100%,`)
+          : l.palanca === "arriendo"
+            ? `con el arriendo en ${money(l.objetivo)} —${pct(Math.abs(l.deltaPct))} más que el declarado—`
+            : `cerrando en UF ${Math.round(l.objetivo).toLocaleString("es-CL")} —${pct(Math.abs(l.deltaPct))} menos—`;
     return `Cumplir las tres es condición necesaria para un Comprar. Este caso no está lejos: ${via} el veredicto ya sube a ${objetivo}.`;
   })();
   const gateFoot =

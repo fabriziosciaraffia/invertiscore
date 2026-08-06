@@ -362,15 +362,25 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
       const l = v.palancaMasBarata;
       if (!l) return { kick, title: `Lo que falta para ${objetivo}.`, kpi: "", kpiRed: false, ksub: "" };
       const via =
-        l.palanca === "arriendo" ? "arriendo" : l.palanca === "precio" ? "precio" : "crédito";
+        l.palanca === "arriendo"
+          ? "arriendo"
+          : l.palanca === "precio"
+            ? "precio"
+            : l.palanca === "pie"
+              ? "pie"
+              : "crédito";
       const title =
         l.palanca === "plazo"
           ? `Está a un plazo de distancia de ${objetivo}.`
           : `Está a un ${via} de distancia de ${objetivo}.`;
+      // El pie se cita como NIVEL ("26%"), no como variación: su deltaPct viene en puntos
+      // porcentuales y "+26%" sobre un pie 0 no significaría nada.
       const kpi =
         l.palanca === "plazo"
           ? `${l.objetivo} años`
-          : `${l.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(l.deltaPct))}%`;
+          : l.palanca === "pie"
+            ? `${pct1(l.objetivo)}%`
+            : `${l.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(l.deltaPct))}%`;
       const otras = v.palancas.length - 1;
       return {
         kick,
