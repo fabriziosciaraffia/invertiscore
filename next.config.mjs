@@ -24,11 +24,20 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      // 302: el formulario canónico ahora es el wizard v2. Path exacto: no captura
-      // /analisis/nuevo/revisar — por eso la entrada de abajo.
+      // 302 · Las tres entradas de acá abajo apuntan al wizard VIGENTE, que es el
+      // v4 — la constante canónica es `RUTA_WIZARD` en src/lib/cta-analizar.ts, y
+      // no se puede importar en un config de build, así que si esa cambia hay que
+      // mover estas tres a mano.
+      //
+      // Apuntaban a /analisis/nuevo-v2, que es el v3 y quedó retirado en el
+      // cutover ca3106f (27-jul-2026): sigue montado en su ruta pero ya nadie
+      // debería mandarle gente. Los redirects se habían quedado atrás, así que
+      // quien llegaba desde una URL vieja aterrizaba en el wizard anterior.
+      //
+      // Path exacto: no captura /analisis/nuevo/revisar — por eso la entrada de abajo.
       {
         source: '/analisis/nuevo',
-        destination: '/analisis/nuevo-v2',
+        destination: '/analisis/nuevo-v4',
         permanent: false,
       },
       // 302: el paso "revisar" del wizard v1 se borró el 2026-08-03 junto con el
@@ -38,7 +47,7 @@ const nextConfig = {
       // el destino es el wizard vivo, no un intento de rehidratar.
       {
         source: '/analisis/nuevo/revisar',
-        destination: '/analisis/nuevo-v2',
+        destination: '/analisis/nuevo-v4',
         permanent: false,
       },
       // 302: el wizard legacy de renta corta se borró junto con este redirect. Path
@@ -55,7 +64,7 @@ const nextConfig = {
       // 2026-08-03.
       {
         source: '/analisis/renta-corta',
-        destination: '/analisis/nuevo-v2',
+        destination: '/analisis/nuevo-v4',
         permanent: false,
       },
       // 301: /proximamente fue retirada (waitlist de pre-lanzamiento). La cobertura

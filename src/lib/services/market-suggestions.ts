@@ -2,6 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import { getUFValue } from "../uf";
 import { estimarContribuciones } from "../contribuciones";
 import { getFactorCierre, getComunaMedianaVentaUF } from "@/lib/comuna-stats";
+import { reportarFalloQuery } from "@/lib/observabilidad";
+
+const RUTA = "GET /api/data/suggestions";
 
 function getSupabase() {
   return createClient(
@@ -150,7 +153,7 @@ async function getNearbyPropertiesForMap(
   const supabase = getSupabase();
 
   // Query ALL properties without dormitorios filter for map density
-  const { data: allProps } = await supabase.rpc("properties_within_radius", {
+  const { data: allProps, error: errAll } = await supabase.rpc("properties_within_radius", {
     center_lat: lat,
     center_lng: lng,
     radius_meters: radiusMeters,
@@ -158,6 +161,12 @@ async function getNearbyPropertiesForMap(
     prop_dorms: null,
     prop_comuna: comuna || null,
     prop_condicion: condicion,
+  });
+  reportarFalloQuery(errAll, {
+    ruta: RUTA,
+    operacion: "rpc-radio-mapa",
+    tags: { rpc: "properties_within_radius", tipo: String(propType) },
+    extra: { comuna, radiusMeters, dormitorios: null },
   });
 
   const raw = (allProps || []).map((p: { lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number }) => ({
@@ -172,7 +181,7 @@ async function getNearbyPropertiesForMap(
   // Count filtered by dormitorios via a second RPC call (reliable, doesn't depend on RPC returning dormitorios)
   let filteredCount = all.length;
   if (dormitorios) {
-    const { data: filteredProps } = await supabase.rpc("properties_within_radius", {
+    const { data: filteredProps, error: errFiltered } = await supabase.rpc("properties_within_radius", {
       center_lat: lat,
       center_lng: lng,
       radius_meters: radiusMeters,
@@ -180,6 +189,12 @@ async function getNearbyPropertiesForMap(
       prop_dorms: dormitorios,
       prop_comuna: comuna || null,
       prop_condicion: condicion,
+    });
+    reportarFalloQuery(errFiltered, {
+      ruta: RUTA,
+      operacion: "rpc-radio-conteo-dorms",
+      tags: { rpc: "properties_within_radius", tipo: String(propType) },
+      extra: { comuna, radiusMeters, dormitorios },
     });
     filteredCount = filterOutliers(filteredProps || []).length;
   }
@@ -205,7 +220,7 @@ async function getSugerenciasPorRadio(
     ? getFactorCierre(comuna) : 1;
 
   // Usar la función RPC de PostGIS
-  const { data: arriendos } = await supabase.rpc("properties_within_radius", {
+  const { data: arriendos, error: errMuestra } = await supabase.rpc("properties_within_radius", {
     center_lat: lat,
     center_lng: lng,
     radius_meters: radiusMeters,
@@ -214,13 +229,22 @@ async function getSugerenciasPorRadio(
     prop_comuna: comuna || null,
     prop_condicion: condicion,
   });
+  // El más caro de los cuatro: de acá sale la mediana que el wizard propone. Si
+  // falla, el nivel 1 se declara sin comparables y el usuario ve "sin arriendos
+  // publicados cerca" — un hueco de datos y una caída de la RPC se ven idénticos.
+  reportarFalloQuery(errMuestra, {
+    ruta: RUTA,
+    operacion: "rpc-radio-muestra",
+    tags: { rpc: "properties_within_radius", tipo: String(propType), decide: "mediana" },
+    extra: { comuna, radiusMeters, dormitorios, superficie },
+  });
 
   // Filter outliers, then by surface range ±30%
   const clean = filterBySurface(filterOutliers(arriendos || []), superficie);
   if (clean.length < 5) {
     // Intentar sin filtro de dormitorios (si ya estaba sin filtro, skip)
     if (dormitorios === null) return null;
-    const { data: arriendosGeneral } = await supabase.rpc("properties_within_radius", {
+    const { data: arriendosGeneral, error: errGeneral } = await supabase.rpc("properties_within_radius", {
       center_lat: lat,
       center_lng: lng,
       radius_meters: radiusMeters,
@@ -228,6 +252,12 @@ async function getSugerenciasPorRadio(
       prop_dorms: null,
       prop_comuna: comuna || null,
       prop_condicion: condicion,
+    });
+    reportarFalloQuery(errGeneral, {
+      ruta: RUTA,
+      operacion: "rpc-radio-muestra-sin-dorms",
+      tags: { rpc: "properties_within_radius", tipo: String(propType), decide: "mediana" },
+      extra: { comuna, radiusMeters, superficie },
     });
 
     const cleanGeneral = filterBySurface(filterOutliers(arriendosGeneral || []), superficie);
