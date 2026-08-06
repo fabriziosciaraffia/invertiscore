@@ -41,6 +41,23 @@ const nextConfig = {
         destination: '/analisis/nuevo-v2',
         permanent: false,
       },
+      // 302: el wizard legacy de renta corta se borró junto con este redirect. Path
+      // EXACTO a propósito: NO debe capturar /analisis/renta-corta/{id}, que es la
+      // página de resultados STR y sigue viva —  la referencian el dashboard, la
+      // comparativa, el admin y los dos wizards.
+      //
+      // Se retira y no se unifica porque estaba muerto: cero CTAs apuntaban a él,
+      // los 18 análisis que creó son de abril-mayo de 2026 y ninguno desde el
+      // 2026-05-10. Mantenerlo vivo habría significado sostener un segundo
+      // formulario, con sus propios defaults y su propia forma de declarar la
+      // entrega (`mesesEntrega` relativo contra el `fechaEntrega` absoluto del
+      // wizard v4), para nadie. Mismo tratamiento que el wizard v1, borrado el
+      // 2026-08-03.
+      {
+        source: '/analisis/renta-corta',
+        destination: '/analisis/nuevo-v2',
+        permanent: false,
+      },
       // 301: /proximamente fue retirada (waitlist de pre-lanzamiento). La cobertura
       // ahora vive en /cobertura; mandamos la vieja URL a la home.
       {
