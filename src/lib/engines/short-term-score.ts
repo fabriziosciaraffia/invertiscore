@@ -7,10 +7,114 @@ import { findNearestStation } from '../metro-stations';
 // TIPOS
 // ============================================================
 
+/**
+ * Brazos de los gates STR, evaluados de forma INDEPENDIENTE.
+ *
+ * Espejo de `Gate1Brazos` en LTR (analysis.ts). Antes los gates vivían como una cadena
+ * if/else-if y solo sobrevivía el primer motivo que matcheaba; acá cada brazo se evalúa
+ * por su cuenta y el veredicto sale del OR, de modo que las superficies pueden decir
+ * "no cierra por tres razones" en vez de nombrar una y callar dos.
+ *
+ * Convención de nombres: prefijo `g1_` fuerza BUSCAR OTRA · `g2_` capa COMPRAR a AJUSTA.
+ */
+export interface GatesBrazosSTR {
+  /** El edificio no permite Airbnb: la operación es inviable, no cara. */
+  g1_regulacion: boolean;
+  /** Cash-on-Cash < −30%: pérdida estructural sobre el capital propio. */
+  g1_cocSevero: boolean;
+  /** Break-even > 130% del nivel de la zona: depende de occ/ADR fuera de alcance. */
+  g1_beInviable: boolean;
+  /** Flujo < −$250.000 Y sin ventaja clara sobre el arriendo largo. */
+  g1_flujoSevero: boolean;
+  /** CAP rate < 2%: el NOI no justifica montar la operación. */
+  g1_capRateMinimo: boolean;
+  /** El arriendo largo rinde más neto que el corto. */
+  g2_ltrGana: boolean;
+  /** Cash-on-Cash < −10%: esfuerzo mensual significativo. */
+  g2_cocFuerte: boolean;
+  /** Flujo negativo y el horizonte a 10 años no lo compensa. */
+  g2_flujoSinHorizonte: boolean;
+  /** Break-even > 110% del nivel de la zona: margen operativo apretado. */
+  g2_beApretado: boolean;
+}
+
+export type BrazoSTR = keyof GatesBrazosSTR;
+
+/** Precedencia de GATE 1 — el orden ES el de la cadena if/else-if original. */
+export const G1_BRAZOS = [
+  'g1_regulacion', 'g1_cocSevero', 'g1_beInviable', 'g1_flujoSevero', 'g1_capRateMinimo',
+] as const satisfies readonly BrazoSTR[];
+
+/** Precedencia de GATE 2 — idem. */
+export const G2_BRAZOS = [
+  'g2_ltrGana', 'g2_cocFuerte', 'g2_flujoSinHorizonte', 'g2_beApretado',
+] as const satisfies readonly BrazoSTR[];
+
+/**
+ * Glosa técnica por brazo — texto IDÉNTICO al que la cadena original ponía en
+ * `overrideApplied`, para no mover el contrato de los scripts de auditoría que lo leen.
+ * NO es copy de producto: las superficies usan `no-cierra-copy.ts`.
+ */
+export const GLOSA_BRAZO: Record<BrazoSTR, string> = {
+  g1_regulacion: 'Edificio no permite Airbnb — operación inviable',
+  g1_cocSevero: 'Cash-on-Cash <-30% — pérdida estructural insostenible',
+  g1_beInviable: 'Break-even >130% del mercado — depende de occ/ADR fuera de alcance',
+  g1_flujoSevero: 'Flujo muy negativo sin ventaja clara sobre LTR',
+  g1_capRateMinimo: 'CAP Rate bajo 2% — NOI mínimo, no justifica operación STR',
+  g2_ltrGana: 'LTR genera más que STR — máximo AJUSTA SUPUESTOS',
+  g2_cocFuerte: 'Cash-on-Cash <-10% — esfuerzo mensual significativo',
+  g2_flujoSinHorizonte: 'Flujo mensual negativo sin retorno de horizonte que lo compense (TIR <10% y multiplicador de equity insuficiente)',
+  g2_beApretado: 'Break-even >110% del mercado — margen operativo apretado',
+};
+
+/**
+ * Evalúa los 9 brazos por separado. PURA — no decide veredicto, solo mide condiciones.
+ *
+ * Pie cero: con CoC 'no_aplica' (`coc === null`) los dos brazos de CoC quedan en false —
+ * se OMITEN, ni true ni false conceptualmente, y manda el brazo de flujo. Es la misma
+ * decisión que ya tomaba la cadena original al saltarse el `else if` por el guard
+ * `coc !== null`.
+ */
+export function evalGatesSTR(p: {
+  regulacionEdificio: string;
+  /** Cash-on-Cash en DECIMAL (−0,10 = −10%). null ⇒ no aplica (pie cero). */
+  coc: number | null;
+  beRatio: number;
+  flujoCajaMensual: number;
+  sobreRentaPct: number;
+  capRate: number;
+  horizonteCierraFavorable: boolean;
+}): GatesBrazosSTR {
+  return {
+    g1_regulacion: p.regulacionEdificio === 'no',
+    g1_cocSevero: p.coc !== null && p.coc < -0.30,
+    g1_beInviable: p.beRatio > 1.30,
+    g1_flujoSevero: p.flujoCajaMensual < -250000 && p.sobreRentaPct < 0.10,
+    g1_capRateMinimo: p.capRate < 0.02,
+    g2_ltrGana: p.sobreRentaPct < 0,
+    g2_cocFuerte: p.coc !== null && p.coc < -0.10,
+    g2_flujoSinHorizonte: p.flujoCajaMensual < 0 && !p.horizonteCierraFavorable,
+    g2_beApretado: p.beRatio > 1.10,
+  };
+}
+
 export interface FrancoScoreSTR {
   score: number;
   veredicto: 'COMPRAR' | 'AJUSTA SUPUESTOS' | 'BUSCAR OTRA';
+  /**
+   * Glosa técnica del brazo de mayor precedencia entre los que decidieron. Se conserva
+   * por contrato con los scripts de auditoría. Las superficies NO deben usarlo: dice UN
+   * motivo cuando puede haber varios — usá `gates.motivos`.
+   */
   overrideApplied: string | null;
+  /** Brazos evaluados independientes + todos los motivos que sostienen el veredicto. */
+  gates: {
+    brazos: GatesBrazosSTR;
+    gate1: boolean;
+    gate2: boolean;
+    /** Brazos activos que DECIDIERON el veredicto, en orden de precedencia. */
+    motivos: BrazoSTR[];
+  };
   desglose: {
     rentabilidad: DimensionScore;
     sostenibilidad: DimensionScore;
@@ -381,45 +485,50 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
     tir !== null && Number.isFinite(tir) && tir !== 0 &&
     ((tir >= HORIZONTE_TIR_MINIMO) || (multCap !== null && multCap >= HORIZONTE_MULT_MINIMO));
 
-  // GATE 1 — fuerza BUSCAR OTRA (señales estructurales severas).
-  if (inputs.regulacionEdificio === 'no') {
-    veredicto = 'BUSCAR OTRA';
-    overrideApplied = 'Edificio no permite Airbnb — operación inviable';
-  } else if (coc !== null && coc < -0.30) {
-    veredicto = 'BUSCAR OTRA';
-    overrideApplied = 'Cash-on-Cash <-30% — pérdida estructural insostenible';
-  } else if (beRatio > 1.30) {
-    veredicto = 'BUSCAR OTRA';
-    overrideApplied = 'Break-even >130% del mercado — depende de occ/ADR fuera de alcance';
-  } else if (base.flujoCajaMensual < -250000 && sobreRentaPct < 0.10) {
-    veredicto = 'BUSCAR OTRA';
-    overrideApplied = 'Flujo muy negativo sin ventaja clara sobre LTR';
-  } else if (base.capRate < 0.02) {
-    veredicto = 'BUSCAR OTRA';
-    overrideApplied = 'CAP Rate bajo 2% — NOI mínimo, no justifica operación STR';
-  }
+  // Brazos evaluados de forma INDEPENDIENTE (espejo de evalGate1Brazos en LTR).
+  // Antes esto era una cadena if/else-if: el primer brazo que matcheaba cortaba la
+  // evaluación, así que `overrideApplied` guardaba UNO de varios motivos activos y
+  // el resto quedaba invisible. Medido sobre 96 análisis: 44 tenían el brazo de
+  // break-even inviable prendido pero solo 42 lo mostraban como causa, y 33 de los
+  // 51 BUSCAR OTRA tenían DOS O MÁS brazos de Gate 1 a la vez.
+  // El veredicto NO cambia: se computa con el mismo OR y la misma precedencia.
+  const brazos = evalGatesSTR({
+    regulacionEdificio: inputs.regulacionEdificio,
+    coc,
+    beRatio,
+    flujoCajaMensual: base.flujoCajaMensual,
+    sobreRentaPct,
+    capRate: base.capRate,
+    horizonteCierraFavorable,
+  });
+
+  const gate1 = G1_BRAZOS.some((k) => brazos[k]);
+  if (gate1) veredicto = 'BUSCAR OTRA';
 
   // GATE 2 — máximo AJUSTA SUPUESTOS (degrade COMPRAR; nunca toca BUSCAR).
-  if (veredicto === 'COMPRAR') {
-    if (sobreRentaPct < 0) {
-      veredicto = 'AJUSTA SUPUESTOS';
-      overrideApplied = 'LTR genera más que STR — máximo AJUSTA SUPUESTOS';
-    } else if (coc !== null && coc < -0.10) {
-      veredicto = 'AJUSTA SUPUESTOS';
-      overrideApplied = 'Cash-on-Cash <-10% — esfuerzo mensual significativo';
-    } else if (base.flujoCajaMensual < 0 && !horizonteCierraFavorable) {
-      veredicto = 'AJUSTA SUPUESTOS';
-      overrideApplied = 'Flujo mensual negativo sin retorno de horizonte que lo compense (TIR <10% y multiplicador de equity insuficiente)';
-    } else if (beRatio > 1.10) {
-      veredicto = 'AJUSTA SUPUESTOS';
-      overrideApplied = 'Break-even >110% del mercado — margen operativo apretado';
-    }
-  }
+  const gate2 = veredicto === 'COMPRAR' && G2_BRAZOS.some((k) => brazos[k]);
+  if (gate2) veredicto = 'AJUSTA SUPUESTOS';
+
+  // `overrideApplied` conserva su contrato histórico: UNA glosa, la del brazo de
+  // mayor precedencia entre los que efectivamente decidieron. Se mantiene porque hay
+  // scripts de auditoría que lo leen; las superficies deben usar `gates.motivos`,
+  // que trae TODOS los activos.
+  const decisivos = gate1 ? G1_BRAZOS : gate2 ? G2_BRAZOS : [];
+  const activosDecisivos = decisivos.filter((k) => brazos[k]);
+  overrideApplied = activosDecisivos.length > 0 ? GLOSA_BRAZO[activosDecisivos[0]] : null;
 
   return {
     score,
     veredicto,
     overrideApplied,
+    gates: {
+      brazos,
+      gate1,
+      gate2,
+      // Todos los motivos que sostienen el veredicto, en orden de precedencia. Vacío
+      // cuando el veredicto salió de la banda del score y ningún gate disparó.
+      motivos: activosDecisivos,
+    },
     desglose: { rentabilidad, sostenibilidad, ventaja, factibilidad },
   };
 }
