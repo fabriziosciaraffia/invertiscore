@@ -177,7 +177,7 @@ export function SharedComparativaClient(p: Props) {
                 LA EVIDENCIA
               </p>
               <h2 className="font-heading text-[19px] sm:text-[22px] font-bold leading-tight" style={{ color: "var(--franco-text)" }}>
-                {hayAsimetriaDeEntrega(p.ltrResults?.projections, p.ltrResults?.metrics)
+                {hayAsimetriaDeEntrega(p.ltrResults?.projections, p.ltrResults?.metrics, p.strResults?.projections)
                   ? "Los caminos se comparan; el destino todavía no"
                   : "El destino es el mismo; el camino, distinto"}
               </h2>

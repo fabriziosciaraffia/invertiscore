@@ -116,7 +116,7 @@ export function DocumentoAmbas({
   const strPatY10 = idxPat >= 0 ? (strProj[idxPat]?.patrimonioNeto ?? 0) : 0;
   // Asimetría de entrega: los dos lados no arrancan el mismo día, así que el
   // activo no compara (mismo predicado y mismo criterio que el finding y la web).
-  const asimetriaEntrega = hayAsimetriaDeEntrega(ltrProj, ltrResults?.metrics);
+  const asimetriaEntrega = hayAsimetriaDeEntrega(ltrProj, ltrResults?.metrics, strProj);
   // Umbral convergido: antes acá era 0,5% del valor y en el finding $1.000
   // absolutos. Medido sobre los 54 pares AMBAS del parque, los dos clasifican
   // idéntico (0 divergencias), así que unificar no mueve ninguna hoja.

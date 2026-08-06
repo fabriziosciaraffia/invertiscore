@@ -15,7 +15,7 @@
 import type { BandaComparativa } from "./engines/str-universo-santiago";
 import type { FullAnalysisResult } from "./types";
 import type { ShortTermResult } from "./engines/short-term-engine";
-import { contarAniosPreEntrega } from "./pre-entrega-serie";
+import { hayAsimetriaDeEntrega } from "./comparativa-patrimonio";
 
 export type FindingId = "flujo" | "gestion" | "patrimonio" | "breakeven" | "regulatorio" | "capital";
 export type FindingLado = "ltr" | "str" | "neutro";
@@ -77,15 +77,18 @@ export interface FindingsCtx {
   ltrPatY10: number | null;
   strPatY10: number | null;
   /**
-   * Años que el lado LTR pasa esperando la escritura (0 ⇒ entrega inmediata).
-   * Se lee del lado LTR porque es el ÚNICO que tiene el dato: `buildStrPayload`
-   * no emite `estadoVenta`/`fechaEntrega` y `ShortTermInputs` no tiene los
-   * campos, así que la proyección de renta corta arranca a operar en el mes 1
-   * aunque el depto se entregue en 2031. Mientras eso siga así, los dos
-   * patrimonios a 10 años no miden lo mismo y el finding no puede afirmar
-   * equivalencia — ver `buildPatrimonio`.
+   * Los dos lados NO arrancan el mismo día: uno espera la escritura y el otro
+   * no. Mientras eso pasa, los patrimonios a 10 años no miden lo mismo y el
+   * finding no puede afirmar equivalencia — ver `buildPatrimonio`.
+   *
+   * Se deriva con LAS DOS series (`hayAsimetriaDeEntrega`), no solo con la del
+   * LTR. Desde que el motor de renta corta modela la espera (paso 3), que el
+   * LTR espere ya NO implica asimetría: si el STR también espera, la
+   * comparación vuelve a ser legítima y el guard tiene que apagarse solo.
+   * Verificado: inyectarle al STR la fecha que ya tenía el LTR lleva la brecha
+   * de patrimonio a $0 exacto en los 3 pares afectados.
    */
-  ltrAniosPreEntrega: number;
+  asimetriaEntrega: boolean;
   // Break-even / zona
   breakEvenPctDelMercado: number;
   breakEvenRevenueAnual: number;    // facturación anual necesaria para no perder (derivación F4)
@@ -147,10 +150,7 @@ export function ctxFromResults(
     recomendacionAdmin: vc?.flipGestion?.recomendacionAdmin ?? "",
     ltrPatY10: ltr.projections?.[9]?.patrimonioNeto ?? null,
     strPatY10: str.projections?.[9]?.patrimonioNeto ?? null,
-    ltrAniosPreEntrega: contarAniosPreEntrega(ltr.projections ?? [], {
-      precioCLP: ltr.metrics?.precioCLP ?? 0,
-      pieCLP: ltr.metrics?.pieCLP ?? 0,
-    }),
+    asimetriaEntrega: hayAsimetriaDeEntrega(ltr.projections, ltr.metrics, str.projections),
     breakEvenPctDelMercado: str.breakEvenPctDelMercado ?? 0,
     breakEvenRevenueAnual: str.breakEvenRevenueAnual ?? 0,
     zonaTier: str.zonaSTR?.tierZona,
@@ -265,7 +265,7 @@ function buildPatrimonio(x: FindingsCtx, c: Currency, uf: number): FindingCompar
   // afirmar equivalencia. No inventa una cifra corregida —para eso hay que
   // modelar la espera en renta corta, que es otro trabajo—: solo deja de
   // decir lo que no es cierto.
-  const asimetrico = x.ltrAniosPreEntrega > 0;
+  const asimetrico = x.asimetriaEntrega;
 
   if (asimetrico) {
     return {

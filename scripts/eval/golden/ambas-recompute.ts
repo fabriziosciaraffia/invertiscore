@@ -62,11 +62,11 @@ function findingsOrdenDe(rec: any, d: any): string {
     flipCambiaVeredicto: vc?.flipGestion?.cambiaVeredicto ?? false,
     recomendacionAuto: vc?.flipGestion?.recomendacionAuto ?? "",
     recomendacionAdmin: vc?.flipGestion?.recomendacionAdmin ?? "",
-    // 0 = entrega inmediata. Los seeds AMBAS no ejercitan la asimetría de
-    // entrega (el estado nuevo del finding de patrimonio); lo que este ctx mide
+    // false = los dos lados arrancan el mismo día. Los seeds AMBAS declaran
+    // entrega inmediata, así que no ejercitan la asimetría; lo que este ctx mide
     // es la COMPOSICIÓN y el ORDEN de la pirámide, y ninguno de los dos depende
     // de ese campo — el finding `patrimonio` está siempre presente.
-    ltrPatY10: 0, strPatY10: 0, ltrAniosPreEntrega: 0,
+    ltrPatY10: 0, strPatY10: 0, asimetriaEntrega: false,
     breakEvenPctDelMercado: rec.breakEvenPctDelMercado ?? 0,
     breakEvenRevenueAnual: rec.breakEvenRevenueAnual ?? 0,
     zonaTier: rec.zonaSTR?.tierZona, zonaPercentilADR: rec.zonaSTR?.percentilADR,

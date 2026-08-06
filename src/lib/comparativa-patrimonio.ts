@@ -44,10 +44,39 @@ export function patrimoniosIguales(ltrPat: number, strPat: number): boolean {
 export function hayAsimetriaDeEntrega(
   ltrProjections: YearProjection[] | undefined,
   ltrMetrics: Pick<AnalysisMetrics, "precioCLP" | "pieCLP"> | undefined,
+  // Serie del lado STR. REQUERIDA a propósito: mientras el predicado miraba un
+  // solo lado, un análisis donde LAS DOS modalidades esperan —que es lo que
+  // produce el motor desde el paso 3— se marcaba como asimétrico y la
+  // comparativa se negaba a comparar algo perfectamente comparable. Que el tipo
+  // la exija obliga a cada superficie a decidirlo con los dos lados a la vista.
+  strProjections: Array<{ saldoCredito: number }> | undefined,
 ): boolean {
   if (!ltrProjections?.length || !ltrMetrics) return false;
-  return contarAniosPreEntrega(ltrProjections, {
+  const ltrEspera = contarAniosPreEntrega(ltrProjections, {
     precioCLP: ltrMetrics.precioCLP ?? 0,
     pieCLP: ltrMetrics.pieCLP ?? 0,
   }) > 0;
+  if (!ltrEspera) return false;
+  // Asimetría = uno espera y el otro no. Si los dos esperan, los patrimonios
+  // vuelven a estar medidos sobre el mismo punto de partida y la comparación es
+  // legítima: medido sobre los 3 pares afectados, inyectarle al STR la fecha
+  // que ya tenía el LTR lleva la brecha a $0 EXACTO en los tres.
+  return !esperaSegunSerie(strProjections);
+}
+
+/**
+ * ¿Esta serie arranca con años sin deuda? Mismo criterio que
+ * `contarAniosPreEntrega` pero sobre cualquier serie que exponga `saldoCredito`
+ * —la de renta corta lo hace— y sin el guard de crédito, que acá es redundante:
+ * una compra sin deuda tiene la serie ENTERA en 0 y el `n >= length` la
+ * descarta igual.
+ */
+function esperaSegunSerie(serie: Array<{ saldoCredito: number }> | undefined): boolean {
+  if (!serie?.length) return false;
+  let n = 0;
+  for (const p of serie) {
+    if (p.saldoCredito > 0) break;
+    n++;
+  }
+  return n > 0 && n < serie.length;
 }

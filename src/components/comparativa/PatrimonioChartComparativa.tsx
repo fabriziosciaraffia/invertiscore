@@ -42,7 +42,7 @@ interface Props {
 // dash. Sin Signal Red — ver nota del bracket más abajo.
 //
 // EXCEPCIÓN · asimetría de entrega. Las tres series de arriba asumen que los dos
-// lados arrancan el mismo día. Cuando el LTR espera la escritura y el STR no
+// lados arrancan el mismo día. Cuando UNO espera la escritura y el otro no
 // (`hayAsimetriaDeEntrega`), esa premisa cae y el chart pasa a dibujar SOLO el
 // lado de renta larga: activo + riqueza larga, sin la punteada del corto y sin
 // el bracket de brecha.
@@ -81,8 +81,10 @@ export function PatrimonioChartComparativa(p: Props) {
   const compact = chartWidth < 340;
 
   // Los dos lados no arrancan el mismo día ⇒ el chart no compara (ver nota de
-  // arriba). Se deriva del lado LTR, el único que sabe de la entrega.
-  const asimetria = hayAsimetriaDeEntrega(p.ltrResults.projections, p.ltrResults.metrics);
+  // arriba). Se mide con LAS DOS series: desde que el motor de renta corta
+  // modela la espera, que el LTR espere ya no implica asimetría — si el STR
+  // también espera, la comparación vuelve a ser legítima.
+  const asimetria = hayAsimetriaDeEntrega(p.ltrResults.projections, p.ltrResults.metrics, p.strResults.projections);
 
   const chartData = useMemo(() => {
     const ltrProj = p.ltrResults.projections ?? [];
