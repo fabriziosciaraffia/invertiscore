@@ -1587,7 +1587,13 @@ OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra
 
 TAMBIÉN en \`conviene.respuestaDirecta\`, si el hallazgo NO es estructural: cierra tu continuación con UNA mención breve de esa distancia ("estás a X% de arriendo de que esto sea un Comprar"). Una sola frase corta, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer. Si el hallazgo dice que ningún ajuste realista alcanza, NO menciones distancia en respuestaDirecta: no hay una que prometer y anunciarla sería falso.
 
-REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí (el pie y la tasa NO son palancas de este análisis), NUNCA inventes un valor intermedio.
+REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí${hallazgoDistanciaGen.valor.pieEsPalanca ? " (la tasa NO es palanca de este análisis; el pie SÍ lo es en este caso y viene con su cifra en la frase — úsala tal cual, es un NIVEL de pie, no un aumento porcentual)" : " (el pie y la tasa NO son palancas de este análisis)"}, NUNCA inventes un valor intermedio.${hallazgoDistanciaGen.valor.pieEsPalanca ? `
+
+DOS PIES DISTINTOS EN ESTE INPUT — no los mezcles ni los promedies. Contestan preguntas distintas:
+· \`estructuraFinancieraSugerida.pieSugerido\` (§5 Nivel 3, sección \`reestructuracion\`) es el pie ÓPTIMO de estructura de financiamiento. Baja la cuota, pero NO necesariamente mueve el veredicto.
+· el pie de la DISTANCIA AL VEREDICTO (esta sección) es el que hace que el veredicto SUBA de banda. Es el único que puedes presentar como "con este pie el veredicto pasa a X".
+Si difieren, es porque el óptimo de estructura no alcanza para cruzar. Está PROHIBIDO decir que el pie de la reestructuración cambia el veredicto, y prohibido citar el de la distancia como "el óptimo".` : ""}${hallazgoDistanciaGen.valor.pieExcluidoPorBono ? `
+El pie de este caso lo cubre un bono de la inmobiliaria: NO ofrezcas subir el pie como vía — desarma la compra que se está evaluando. Las vías son las que trae la frase.` : ""}
 
 ${matizPalancaArriendo}
 
@@ -1841,6 +1847,12 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       for (const [campo, txt] of [
         ["respuestaDirecta_clp", aiResult?.conviene?.respuestaDirecta_clp],
         ["cajaAccionable_clp", aiResult?.conviene?.cajaAccionable_clp],
+        // `reestructuracion` entra al barrido desde la 4ª palanca (pie): es la sección que
+        // trae el OTRO pie (el óptimo de estructura, típicamente 25%) y donde se vio la
+        // confusión — prosa afirmando que ese pie mueve el veredicto cuando el que cruza es
+        // otro. Citar el óptimo por su efecto real (bajar la cuota) NO dispara: el guard
+        // solo mira oraciones que afirman brecha de banda.
+        ["reestructuracion.contenido_clp", (aiResult as { reestructuracion?: { contenido_clp?: unknown } })?.reestructuracion?.contenido_clp],
       ] as [string, unknown][]) {
         if (typeof txt !== "string") continue;
         for (const oracion of enOraciones(txt)) {
