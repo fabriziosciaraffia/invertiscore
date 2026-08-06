@@ -40,6 +40,7 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { metricaDisplay, esMetricaNoAplica, metricaValorONull } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
+import { describirMotivosSTR } from "@/lib/no-cierra-copy";
 import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
@@ -501,6 +502,24 @@ export function buildUserPromptSTR(
   const score = fs?.score ?? 50;
   const veredictoMotor: STRVerdict = (fs?.veredicto as STRVerdict) ?? r.veredicto;
 
+  // POR QUÉ NO CIERRA — los motivos que efectivamente decidieron el veredicto.
+  //
+  // Antes el prompt NO recibía nada de los gates: solo score, veredicto y las 4
+  // dimensiones. Con un score de 59 y veredicto BUSCAR OTRA (caso real, 432585ad) la IA
+  // veía una contradicción sin explicación y tenía que inventarle una causa. Medido: 12
+  // de 96 análisis tienen un veredicto que su banda de score no produce.
+  //
+  // Se le entrega la LECTURA ya redactada, no los brazos crudos — patrón de la REGLA 1
+  // de zone-insight (analysis-voice-franco §1.1): si le pasás el concepto-motor, lo
+  // copia; si le pasás la consecuencia, la narra.
+  const motivos = describirMotivosSTR(fs?.gates?.motivos ?? []);
+  const motivosBloque = motivos
+    ? `
+POR QUÉ NO CIERRA (motor · ${motivos.familias.length === 1 ? "una causa" : `${motivos.familias.length} causas simultáneas`}): ${motivos.frase}
+Esta es la razón REAL del veredicto, por sobre el score. Si el score parece alto para el veredicto, es exactamente esto lo que lo explica — nómbralo, no lo esquives ni inventes otra causa.${motivos.familias.length > 1 ? `
+Son causas DISTINTAS y hay que nombrarlas TODAS: presentar una sola deja al lector creyendo que arreglando ese número el caso se salva, y no es así.` : ""}`
+    : "";
+
   // --- Financiamiento / proyección ---
   const pieCLP = Math.round(precioCompraCLP * (piePct / 100));
   const dividendo = r.dividendoMensual;
@@ -584,6 +603,7 @@ ${fs ? `Rentabilidad: ${fs.desglose.rentabilidad.score}/100 — ${fs.desglose.re
 Sostenibilidad: ${fs.desglose.sostenibilidad.score}/100 — ${fs.desglose.sostenibilidad.detail}
 Ventaja vs LTR: ${fs.desglose.ventaja.score}/100 — ${fs.desglose.ventaja.detail}
 Factibilidad: ${fs.desglose.factibilidad.score}/100 — ${fs.desglose.factibilidad.detail}` : "(desglose no disponible)"}
+${motivosBloque}
 
 ${bloqueBaseHeader}
 Ingresos brutos anuales: ${fmtCLP(base.revenueAnual)}
