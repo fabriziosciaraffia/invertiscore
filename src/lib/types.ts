@@ -770,15 +770,23 @@ export interface HallazgoPatrimonio {
 
 /** Una palanca del hallazgo de distancia: el valor que llevaría al veredicto objetivo. */
 export interface PalancaDistancia {
-  /** arriendo (CLP/mes) · precio (UF) · plazo (años del crédito). */
-  palanca: "arriendo" | "precio" | "plazo";
+  /** arriendo (CLP/mes) · precio (UF) · plazo (años del crédito) · pie (% del precio). */
+  palanca: "arriendo" | "precio" | "plazo" | "pie";
   /** Valor que hay que alcanzar para cruzar al veredicto objetivo. */
   objetivo: number;
   /** Valor declarado hoy (misma unidad que `objetivo`). */
   actual: number;
-  /** Cambio relativo con signo: +4,2 = subir 4,2% (arriendo/plazo) · −4,7 = bajar 4,7% (precio). */
+  /**
+   * Cambio con signo: +4,2 = subir 4,2% (arriendo/plazo) · −4,7 = bajar 4,7% (precio).
+   *
+   * EXCEPCIÓN `pie`: acá el número está en PUNTOS PORCENTUALES, no en cambio relativo
+   * (0% → 26% de pie no tiene cambio relativo: sería división por cero). Es seguro
+   * porque la palanca `pie`, cuando se emite, va SIEMPRE primera por prioridad y nunca
+   * entra al sort por |deltaPct| que ordena a las otras tres. Los consumidores que
+   * comparan magnitudes entre palancas deben excluirla o tratarla aparte.
+   */
   deltaPct: number;
-  /** Cambio absoluto con signo, en la unidad de la palanca (CLP · UF · años). */
+  /** Cambio absoluto con signo, en la unidad de la palanca (CLP · UF · años · puntos de pie). */
   deltaAbs: number;
 }
 
@@ -832,6 +840,22 @@ export interface HallazgoDistanciaVeredicto {
     cercaniaUmbral: number;
     /** Cuáles brazos del GATE 1 están activos (solo informativo; vacío si no dispara). */
     brazosGate1Activos: string[];
+    /**
+     * ¿El pie CALIFICABA como palanca en este caso? true cuando el pie está bajo el nivel
+     * "aceptable" y no es bono pie. Es independiente de que haya cruzado: sirve para que el
+     * render y la prosa sepan si el pie se probó, sin re-derivar el umbral.
+     *
+     * Ausente ⇒ false (filas persistidas antes de la 4ª palanca).
+     */
+    pieEsPalanca?: boolean;
+    /**
+     * El pie está en 0 PORQUE lo cubre un bono de la inmobiliaria, así que la palanca se
+     * suprimió a propósito. Habilita el copy que nombra por qué la vía es otra, en vez de
+     * dejar un silencio que se lee como olvido.
+     */
+    pieExcluidoPorBono?: boolean;
+    /** Pie declarado (%). Contexto para el copy del drawer; ausente en filas previas. */
+    piePctActual?: number;
     modalidad: "ltr" | "str" | "ambas";
   };
   // SIEMPRE "neutral". Este hallazgo NO es una señal sobre el deal — es un mapa de la

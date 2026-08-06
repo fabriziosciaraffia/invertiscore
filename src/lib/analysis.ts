@@ -2059,6 +2059,9 @@ export function runAnalysis(
     arriendo: input.arriendo,
     precioUF: input.precio,
     plazoCredito: input.plazoCredito,
+    // 4ª palanca condicional: el builder decide si el pie califica (nivel + origen).
+    piePct: input.piePct,
+    razonSinPie: input.razonSinPie,
     veredictoAtPatch,
     brazosGate1Activos: Object.entries(brazosGate1)
       .filter(([, activo]) => activo)

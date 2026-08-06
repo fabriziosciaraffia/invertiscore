@@ -13,12 +13,16 @@
 // en runAnalysis y no dentro de calcMetrics, esa ruta NO reconstruye hallazgos → sin
 // recursión. Idéntico contrato al de sensibilidad, que usa el mismo closure.
 //
-// TRES PALANCAS, cada una biseccionada por separado hasta el primer valor que cruza:
+// TRES PALANCAS SIEMPRE, cada una biseccionada por separado hasta el primer valor que cruza:
 //   · arriendo — sube (CLP/mes)
 //   · precio   — baja (UF)
 //   · plazo    — sube (años enteros, tope duro 30)
-// Pie y tasa NO se emiten aunque `veredictoAtPatch` los soporte: son condiciones del banco
-// y del bolsillo del comprador, no propiedades del deal (decisión de producto).
+// La TASA no se emite aunque `veredictoAtPatch` la soporte: es condición del banco, no del
+// deal (decisión de producto).
+//
+// CUARTA PALANCA CONDICIONAL — el PIE. Ver `DIST_PIE_*` abajo para el umbral de emisión,
+// el techo y la excepción de bono pie. Cuando se emite va PRIMERA: es la única que no
+// depende de que el vendedor acepte ni de que el mercado de arriendo acompañe.
 //
 // TOPE DE HONESTIDAD: los rangos de búsqueda SON el tope. Si ninguna palanca cruza dentro
 // de su rango realista, `esEstructural = true` y la frase deja de prometer un ajuste. El
@@ -32,8 +36,10 @@
 import type {
   HallazgoDistanciaVeredicto,
   PalancaDistancia,
+  RazonSinCapital,
   Veredicto,
 } from "./types";
+import { classifyPieLevel } from "./financing-health";
 
 // ── Tope de honestidad (calibrado, no inventado) ──────────────────────────────
 // Sweep sobre 315 filas no-COMPRAR de prod (143 AJUSTA + 172 BUSCAR OTRA), midiendo el
@@ -60,6 +66,45 @@ export const DIST_TOPE_BUSCAR_PCT = 15;
 /** Tope aplicable según el veredicto de partida. */
 export const topeParaVeredicto = (v: Veredicto): number =>
   v === "BUSCAR OTRA" ? DIST_TOPE_BUSCAR_PCT : DIST_TOPE_AJUSTA_PCT;
+
+// ── Palanca PIE (condicional) ─────────────────────────────────────────────────
+//
+// UMBRAL DE EMISIÓN: el pie es palanca solo cuando `classifyPieLevel` lo clasifica
+// "mejorable" o "problematico" (< 20%). NO se usa el óptimo (25%) como corte, y la razón
+// es del corpus: de 507 análisis LTR no-COMPRAR, 503 tienen pie bajo 25% — 433 de ellos
+// exactamente en 20%, que es el default del wizard. Con corte en 25% la palanca dispararía
+// en el 99% del parque, y una palanca que sale siempre no es condicional: es una cuarta
+// palanca fija con un nombre equivocado.
+//
+// El corte en 20% además evita que Franco se contradiga dentro del mismo informe: entre
+// 20% y 24% el hallazgo de estructura le dice al usuario "el pie de X% cumple" (nivel
+// `aceptable`). Ofrecerle ahí el pie como la vía sería desdecir esa línea. Bajo 20% el pie
+// ES el punto débil diagnosticado, y la doctrina (analysis-voice-franco §1.5 niveles 2-3)
+// ya enmarca subirlo como la recomendación. Población real: 70 de 507 (14%).
+//
+// TECHO: el pie objetivo no puede pasar de 30%. Sobre el óptimo (25%) queda un escalón de
+// margen; más arriba la frase deja de ser "afirma tu estructura" y pasa a ser "trae mucho
+// más capital" — a alguien con 10% declarado, pedirle 40% es cuadruplicar el capital, que
+// ya no es un ajuste de supuestos. Medido sobre los 66 elegibles: con techo 30 emiten 16
+// (24%); con 40 emiten 23 y la mediana del pedido se va a 37%.
+//
+// El techo es ABSOLUTO (nivel de pie), no relativo al declarado: el pie es un nivel, no un
+// cambio, y con pie 0 un tope relativo ni siquiera está definido.
+export const DIST_PIE_TOPE_PCT = 30;
+
+/**
+ * Excepción BONO PIE: con `razonSinPie === "bono_pie"` la palanca NO se emite. El pie 0 es
+ * la condición de esa compra —la inmobiliaria lo cubre—, así que "sube el pie" es consejo
+ * inútil: desarma el trato que se está evaluando. La doctrina ya manda por otro lado
+ * (analysis-voice-franco §1.11.4: con pie 0 la dureza va al precio).
+ *
+ * Las otras razones SÍ reciben la palanca:
+ *   · "otra_fuente"  — el pie lo cubre el comprador con ahorro/familia/otra propiedad, o
+ *     sea que SÍ puede movilizar capital. Ofrecerle poner más es accionable.
+ *   · "no_declarada" — prefirió no decirlo. Conservador: se trata como sin_pie y se ofrece.
+ *   · "sin_pie"      — no se preguntó (compat). Se ofrece.
+ */
+export const DIST_PIE_RAZON_EXCLUIDA = "bono_pie";
 
 /** Tope duro del plazo del crédito (años). Sobre esto ningún banco chileno presta. */
 export const DIST_PLAZO_TOPE_ANIOS = 30;
@@ -128,8 +173,17 @@ export function buildHallazgoDistanciaVeredicto(p: {
   /** Precio en UF (unidad del input, no CLP). */
   precioUF: number;
   plazoCredito: number;
+  /** Pie declarado como % del precio. Decide si la 4ª palanca se emite (ver DIST_PIE_*). */
+  piePct: number;
+  /** Origen del pie 0. Solo tiene sentido con piePct === 0; ausente ⇒ "sin_pie". */
+  razonSinPie?: RazonSinCapital;
   /** Reevalúa el veredicto sobre un clon del input con el patch aplicado. */
-  veredictoAtPatch: (patch: { arriendo?: number; precio?: number; plazoCredito?: number }) => Veredicto;
+  veredictoAtPatch: (patch: {
+    arriendo?: number;
+    precio?: number;
+    plazoCredito?: number;
+    piePct?: number;
+  }) => Veredicto;
   /** Brazos del GATE 1 activos hoy (nombres). Informativo: no decide esEstructural. */
   brazosGate1Activos: string[];
   modalidad: "ltr" | "str" | "ambas";
@@ -142,6 +196,16 @@ export function buildHallazgoDistanciaVeredicto(p: {
 
   const veredictoObjetivo: Veredicto =
     p.veredictoBase === "BUSCAR OTRA" ? "AJUSTA SUPUESTOS" : "COMPRAR";
+
+  // ── ¿El pie califica como palanca? Dos condiciones independientes ──
+  // 1. Nivel: solo "mejorable"/"problematico" (< 20%). La clasificación se importa de
+  //    financing-health para que este hallazgo y el de estructura no puedan divergir.
+  // 2. Origen: el bono pie queda fuera (ver DIST_PIE_RAZON_EXCLUIDA).
+  const razonPie: RazonSinCapital = p.razonSinPie ?? "sin_pie";
+  const esBonoPie = p.piePct === 0 && razonPie === DIST_PIE_RAZON_EXCLUIDA;
+  const nivelPie = Number.isFinite(p.piePct) ? classifyPieLevel(p.piePct) : "optimo";
+  const pieCalifica =
+    !esBonoPie && (nivelPie === "mejorable" || nivelPie === "problematico");
 
   const alcanzaMeta = (v: Veredicto, meta: Veredicto) => RANK[v] >= RANK[meta];
   // El tope gobierna el SALTO que se está midiendo, no el veredicto de partida: el salto de
@@ -226,9 +290,38 @@ export function buildHallazgoDistanciaVeredicto(p: {
       }
     }
 
-    // Más barata primero: |deltaPct| ascendente. Comparable entre palancas porque las tres
-    // se expresan como cambio relativo sobre el valor declarado.
-    return out.sort((a, b) => Math.abs(a.deltaPct) - Math.abs(b.deltaPct));
+    // Más barata primero: |deltaPct| ascendente. Comparable entre estas tres porque las
+    // tres se expresan como cambio relativo sobre el valor declarado.
+    out.sort((a, b) => Math.abs(a.deltaPct) - Math.abs(b.deltaPct));
+
+    // PIE — cuarta palanca, condicional y PRIORITARIA. Va al frente sin entrar al sort de
+    // arriba: su deltaPct está en puntos porcentuales, no en cambio relativo, así que
+    // compararla contra las otras por |deltaPct| mezclaría unidades. La prioridad no es
+    // cosmética — es la única vía que no depende de que el vendedor acepte bajar el precio
+    // ni de que el mercado de arriendo dé más.
+    //
+    // Barrido lineal por punto porcentual ENTERO (dominio chico, ≤30 evaluaciones) en vez
+    // de bisección: el pie se elige en enteros, no en 26,4%. NO se redondea a múltiplos de
+    // 5 como el plazo — los bancos ofrecen 15/20/25/30 años de plazo, pero el pie es un
+    // monto continuo que el comprador arma. Redondear un 26% a 30% pediría 4 puntos de
+    // capital extra que el caso no necesita (≈ UF 120 en un depto de UF 3.000).
+    if (pieCalifica && p.piePct < DIST_PIE_TOPE_PCT) {
+      for (let pie = Math.floor(p.piePct) + 1; pie <= DIST_PIE_TOPE_PCT; pie++) {
+        if (!alcanzaMeta(p.veredictoAtPatch({ piePct: pie }), meta)) continue;
+        out.unshift({
+          palanca: "pie",
+          objetivo: pie,
+          actual: p.piePct,
+          // PUNTOS porcentuales (ver PalancaDistancia.deltaPct): con pie 0 el cambio
+          // relativo no existe.
+          deltaPct: Math.round((pie - p.piePct) * 10) / 10,
+          deltaAbs: Math.round((pie - p.piePct) * 10) / 10,
+        });
+        break;
+      }
+    }
+
+    return out;
   };
 
   const palancas = palancasHasta(veredictoObjetivo);
@@ -259,6 +352,11 @@ export function buildHallazgoDistanciaVeredicto(p: {
     }
     // El "mínimo" es el de menor esfuerzo relativo; null si ni el rango extendido cruza
     // (existe: hay deals que no llegan ni al +150% de arriendo).
+    //
+    // El PIE queda deliberadamente fuera de este candidato: su delta está en puntos
+    // porcentuales y estos dos en cambio relativo, así que el sort los mezclaría. Un
+    // "delta mínimo de pie fuera de tope" necesitaría campo y copy propios; hoy no se
+    // emite y el caso estructural nombra el pie sin cifra (ver el Lead del drawer).
     candidatos.sort((a, b) => Math.abs(a.deltaPct) - Math.abs(b.deltaPct));
     deltaMinimoFueraDeTope = candidatos[0] ?? null;
   }
@@ -272,8 +370,12 @@ export function buildHallazgoDistanciaVeredicto(p: {
   // Cercanía al umbral (1 = pegado al veredicto de arriba, 0 = en el tope o estructural).
   // Va DENTRO de `valor`, NO en magnitudContinua: ese campo lo leen los comparadores de la
   // pirámide y del hero, donde compite contra |Δscore|/25 — otra escala, otra pregunta.
-  const cercaniaUmbral = palancaMasBarata
-    ? clamp01(1 - Math.abs(palancaMasBarata.deltaPct) / topeAplicado)
+  // Se mide sobre la palanca RELATIVA más barata, no sobre `palancaMasBarata`: el pie va
+  // primero por prioridad y su deltaPct está en puntos porcentuales, así que dividirlo por
+  // un tope expresado en cambio relativo mezclaría unidades y daría una cercanía falsa.
+  const masBarataRelativa = palancas.find((l) => l.palanca !== "pie") ?? null;
+  const cercaniaUmbral = masBarataRelativa
+    ? clamp01(1 - Math.abs(masBarataRelativa.deltaPct) / topeAplicado)
     : 0;
 
   const objetivoNombre = veredictoObjetivo;
@@ -286,6 +388,10 @@ export function buildHallazgoDistanciaVeredicto(p: {
     // umbral ("más de un 15%") — el umbral es nuestra vara, el hecho es del deal. Sin él
     // (rango extendido tampoco cruza) la frase es aún más dura y no necesita número.
     const dm = deltaMinimoFueraDeTope;
+    // Cuando el pie calificaba como palanca y aun así no cruzó dentro del techo, la frase
+    // tiene que decirlo: si no, un lector con pie 10% queda pensando que la vía obvia ni
+    // se probó. Sin cifra a propósito — el pie fuera de techo no tiene delta emitido.
+    const colaPie = pieCalifica ? ` Subir el pie hasta ${DIST_PIE_TOPE_PCT}% tampoco lo cruza.` : "";
     if (dm) {
       const via =
         dm.palanca === "precio"
@@ -293,17 +399,31 @@ export function buildHallazgoDistanciaVeredicto(p: {
           : `subiendo el arriendo un ${fmtPct(Math.abs(dm.deltaPct))}%`;
       fraseCanonica =
         `Ni ${via} este depto llega a ${objetivoNombre}, y estirar el crédito a ${DIST_PLAZO_TOPE_ANIOS} años ` +
-        `tampoco alcanza. La brecha es del deal, no de cómo lo estás mirando.`;
+        `tampoco alcanza.${colaPie} La brecha es del deal, no de cómo lo estás mirando.`;
     } else {
       fraseCanonica =
         `No hay ajuste de supuestos que lleve esto a ${objetivoNombre}: ni subiendo el arriendo a más del ` +
-        `doble, ni pagando un tercio del precio, ni estirando el crédito a ${DIST_PLAZO_TOPE_ANIOS} años. ` +
+        `doble, ni pagando un tercio del precio, ni estirando el crédito a ${DIST_PLAZO_TOPE_ANIOS} años.${colaPie} ` +
         `La brecha es del deal, no de cómo lo estás mirando.`;
     }
   } else {
     const l = palancaMasBarata!;
     const d = fmtPct(Math.abs(l.deltaPct));
-    if (l.palanca === "arriendo") {
+    if (l.palanca === "pie") {
+      // Pie 0 y pie bajo son dos historias distintas (analysis-voice-franco §1.11.1: con
+      // pie 0 no hay "pie chico que subir", hay otra estructura de compra). El monto se
+      // nombra como NIVEL de pie, nunca como "un X% más de pie", que se leería como
+      // aumento relativo sobre un pie que puede ser cero.
+      titular = "Está a un pie de distancia del veredicto de arriba.";
+      fraseCanonica =
+        p.piePct === 0
+          ? `Hoy estás financiando el 100%. Tu veredicto ${p.veredictoBase} pasa a ${objetivoNombre} ` +
+            `poniendo un pie de ${fmtPct(l.objetivo)}%, sin tocar el precio ni el arriendo: menos crédito ` +
+            `es menos cuota, y la cuota es lo que hoy no cierra.`
+          : `Tu veredicto ${p.veredictoBase} pasa a ${objetivoNombre} subiendo el pie de ${fmtPct(l.actual)}% ` +
+            `a ${fmtPct(l.objetivo)}%, sin tocar el precio ni el arriendo. Es la única vía que no depende ` +
+            `de que el vendedor acepte ni de que el mercado de arriendo acompañe: depende de tu liquidez.`;
+    } else if (l.palanca === "arriendo") {
       titular = "Está cerca del veredicto de arriba por el lado del arriendo.";
       fraseCanonica =
         `Tu veredicto ${p.veredictoBase} pasa a ${objetivoNombre} si el arriendo llega a ${fmtCLP(l.objetivo)} ` +
@@ -337,6 +457,9 @@ export function buildHallazgoDistanciaVeredicto(p: {
       topePct: topeAplicado,
       cercaniaUmbral,
       brazosGate1Activos: p.brazosGate1Activos,
+      pieEsPalanca: pieCalifica,
+      pieExcluidoPorBono: esBonoPie,
+      piePctActual: Number.isFinite(p.piePct) ? p.piePct : undefined,
       modalidad: p.modalidad,
     },
     // NEUTRAL: es un mapa de la distancia al umbral, no una señal sobre el deal. Marcarlo
@@ -345,7 +468,9 @@ export function buildHallazgoDistanciaVeredicto(p: {
     decisividad: 0, // SOLO-LECTURA — no entra al ranking de decisividad
     // SIN magnitudContinua: la cercanía vive en valor.cercaniaUmbral (fuera de los sorts).
     procedencia: {
-      base: "Reevaluación del veredicto subiendo el arriendo, bajando el precio y estirando el plazo, una palanca a la vez",
+      base: pieCalifica
+        ? "Reevaluación del veredicto subiendo el pie, subiendo el arriendo, bajando el precio y estirando el plazo, una palanca a la vez"
+        : "Reevaluación del veredicto subiendo el arriendo, bajando el precio y estirando el plazo, una palanca a la vez",
       // alta: recálculo determinístico sobre tus propios datos, no una estimación externa.
       confianza: "alta",
     },

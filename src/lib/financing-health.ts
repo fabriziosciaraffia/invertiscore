@@ -40,7 +40,13 @@ export interface ClassifyFinancingHealthInput {
   plazo_anios: number;
 }
 
-function classifyPieLevel(pie_pct: number): FinancingHealthLevel {
+/**
+ * Nivel del pie contra el estándar. FUENTE ÚNICA de la clasificación — exportada
+ * para que el hallazgo de distancia al veredicto decida si el pie es una palanca
+ * ofrecible sin re-declarar las bandas (y sin poder desalinearse de lo que el
+ * hallazgo de estructura le dice al usuario en el mismo informe).
+ */
+export function classifyPieLevel(pie_pct: number): FinancingHealthLevel {
   if (pie_pct >= 25) return "optimo";
   if (pie_pct >= 20) return "aceptable";
   if (pie_pct >= 15) return "mejorable";
