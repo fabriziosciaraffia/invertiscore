@@ -136,8 +136,14 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       }
 
       // A8·D1 (HARD) — largoPlazo compara con instrumentos (depósito/fondo).
+      // Acepta el PLURAL ("depósitos a plazo", "fondos mutuos"): es la forma
+      // natural en español y el matcher literal en singular la rechazaba, o sea
+      // podía cobrar una falla por gramática y no por doctrina. NO se aceptan
+      // categorías como "renta fija": nombran el género, no el instrumento, y
+      // aflojarían justo lo que la regla protege (la comparación concreta del
+      // Ángulo 3). El prompt pide el instrumento por su nombre — ai-generation.ts:627.
       const lp = norm(ai.largoPlazo?.contenido_clp ?? "");
-      if (lp && !/(dep[óo]sito a plazo|fondo mutuo)/i.test(lp)) bump("A8.D1-instrumentos");
+      if (lp && !/(dep[óo]sitos?\s+a\s+plazo|fondos?\s+mutuos?)/i.test(lp)) bump("A8.D1-instrumentos");
 
       // ── Checks pie-0 (GS-PC* · fase 4, aprobados 2026-08-01) — doctrina ## 5.bis ──
       if (seed.key.startsWith("GS-PC")) {
@@ -202,9 +208,39 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
     }
     const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
     const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~planc-trim", "~aguanta-lectura"];
+
+    // ── Umbral de MAYORÍA para las reglas que juzgan PROSA GENERADA ────────────
+    //
+    // Las `A*` evalúan una salida estocástica: el mismo prompt produce texto
+    // distinto en cada run. Con el `c > 0` anterior, UNA sola generación mala de
+    // las K pintaba el gate de rojo, y con K=2 eso convertía el FULL en una
+    // moneda al aire.
+    //
+    // Medido sobre master (5 corridas × K=2 × 9 seeds = 90 generaciones, más 12
+    // dirigidas): A8.D1-instrumentos falla ~1% de las generaciones. Con 18
+    // generaciones por corrida eso da 16,3% de corridas rojas POR AZAR — y era
+    // justo lo observado (3 rojas en 9 corridas, en cuatro seeds distintos:
+    // GS-4, GS-7, GS-PC1, GS-PC2). A-PC1.doctrina-100pct tiene la misma firma.
+    //
+    // Exigir mayoría (con K=2 ⇒ falla solo si fallan las DOS generaciones) baja
+    // la falsa alarma a 0,09% por corrida sin perder el guard: una regresión real
+    // es sistemática, no aleatoria. Si una regresión lleva la tasa al 50%, el
+    // gate la caza en el 92% de las corridas; si la lleva al 100%, en el 100%.
+    //
+    // `gen.null` y todo lo que NO sea prosa quedan en `c > 0`: una generación que
+    // devuelve null o un timeout de red es un problema real y promediarlo lo
+    // escondería (ya pasó una vez, con un APIConnectionTimeoutError).
+    const esReglaDeProsa = (r: string) => r.startsWith("A");
+    const umbralMayoria = Math.floor(K / 2);
     for (const r of HARD) {
       const c = failCounts[r] ?? 0;
-      if (c > 0) checks.push({ rule: r, pass: false, detail: `falló ${c}/${K} runs` });
+      const limite = esReglaDeProsa(r) ? umbralMayoria : 0;
+      if (c > limite) checks.push({ rule: r, pass: false, detail: `falló ${c}/${K} runs` });
+      else if (c > 0) {
+        // Falla minoritaria: no bloquea, pero se DECLARA. Un guard que absorbe
+        // varianza en silencio es indistinguible de uno que dejó de mirar.
+        console.log(`      · ${seed.key} ${r}: falló ${c}/${K} runs — bajo el umbral de mayoría, no bloquea`);
+      }
     }
     for (const r of SOFT) {
       const c = failCounts[r] ?? 0;
