@@ -25,6 +25,8 @@ export function median(values: number[]): number {
 // Centro del rango chileno ~7% (factor 0.93); comunas premium de alta rotacion ~5% (0.95).
 // TEMPORAL: reemplazar por datos de cierre reales (CBR/SII F2890) cuando esten disponibles.
 // Los NUEVOS no llevan correccion (precio de proyecto es firme).
+import { reportarFalloQuery } from "@/lib/observabilidad";
+
 export const FACTOR_CIERRE_DEFAULT = 0.93;
 export const FACTOR_CIERRE_POR_COMUNA: Record<string, number> = {
   "Las Condes": 0.95,
@@ -204,7 +206,17 @@ export async function getComunaMedianaVentaUF(
     // dormitorios es real. Misma asimetría-por-universo que VENTANAS_DIAS, y por
     // el mismo tipo de razón: la fuente se comporta distinto en cada universo.
     if (dormitorios !== null && condicion === "usado") q = q.eq("dormitorios", dormitorios);
-    const { data } = await q;
+    const { data, error } = await q;
+    // Esta query decide la mediana comunal de venta, que alimenta
+    // valorMercadoFranco y los gates. Si falla, el array vacío la vuelve
+    // indistinguible de "esta comuna no tiene avisos frescos" y la escalera de
+    // frescura baja un peldaño buscando datos que quizá sí estaban.
+    reportarFalloQuery(error, {
+      ruta: "lib/comuna-stats",
+      operacion: "query-ventas-comuna",
+      tags: { tabla: "scraped_properties", universo: condicion },
+      extra: { comuna: comunaNorm, dormitorios, dias, superficie },
+    });
     return Array.isArray(data) ? data : [];
   }
 

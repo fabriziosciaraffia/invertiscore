@@ -104,3 +104,33 @@ function reportar(error: unknown, ctx: ContextoError, nivel: "error" | "warning"
     /* el reporte nunca puede romper el flujo que lo llamó */
   }
 }
+
+/**
+ * Reporta el error de una query de Supabase que el caller IGNORA a propósito.
+ *
+ * EL CASO: media docena de lecturas de la cadena de datos de mercado
+ * destructuran solo `data` y tiran el `error` al piso. Un fallo de query queda
+ * indistinguible de "no hay filas": las dos cosas producen un array vacío y el
+ * código cae al siguiente nivel sin decir nada. Es la misma forma que mantuvo
+ * invisible a `market_data` durante meses — la tabla no existía, cada consulta
+ * fallaba, y el sistema respondía con un seed inventado.
+ *
+ * El comportamiento NO cambia: quien llama a esto ya decidió degradar y sigue
+ * degradando. Lo único que cambia es que el fallo deja rastro.
+ *
+ * CERO FILAS NO ES UN ERROR. `.single()` y `.maybeSingle()` devuelven PGRST116
+ * cuando no hay resultado, que es una respuesta legítima —la clave no existe, la
+ * comuna no tiene avisos— y no una falla. Reportarlo llenaría Sentry de ruido
+ * hasta tapar lo que importa, que es exactamente lo que este módulo intenta
+ * evitar. Por eso se filtra acá, en un solo lugar, y no en cada call-site: el
+ * criterio no se vuelve a decidir siete veces.
+ */
+export function reportarFalloQuery(error: unknown, ctx: ContextoError): void {
+  if (!error) return;
+  const codigo = (error as { code?: string } | null)?.code;
+  if (codigo === "PGRST116") return; // cero filas: respuesta válida, no falla
+  captureApiWarning(error, {
+    ...ctx,
+    tags: { ...ctx.tags, degradado: "true" },
+  });
+}

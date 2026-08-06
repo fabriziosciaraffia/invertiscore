@@ -13,6 +13,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 import { CLAUDE_MODEL } from "@/lib/ai-config";
+import { reportarFalloQuery } from "@/lib/observabilidad";
 import { getNearbyAttractors, type AttractorTipo } from "@/lib/data/attractors";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
@@ -241,7 +242,13 @@ async function runArriendoQuery(
     if (f.dormMin === f.dormMax) q = q.eq("dormitorios", f.dormMin);
     else q = q.gte("dormitorios", f.dormMin).lte("dormitorios", f.dormMax);
   }
-  const { data } = await q;
+  const { data, error } = await q;
+  reportarFalloQuery(error, {
+    ruta: "lib/zone-insight",
+    operacion: "query-arriendos-zona",
+    tags: { tabla: "scraped_properties" },
+    extra: { comuna, supMin: f.supMin, supMax: f.supMax, dormMin: f.dormMin, dormMax: f.dormMax },
+  });
   return Array.isArray(data) ? (data as ArriendoRow[]) : [];
 }
 
