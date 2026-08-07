@@ -15,7 +15,7 @@
 
 import type { FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
-import { normalizeLegacyVerdict, metricaODefault, esMetricaNoAplica } from "@/lib/types";
+import { normalizeLegacyVerdict, metricaODefault, metricaValorONull } from "@/lib/types";
 import { NO_APLICA_VALOR, NO_APLICA_FOOTNOTE_DOC_AMBAS } from "@/lib/no-aplica-copy";
 import { readVeredicto } from "@/lib/results-helpers";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
@@ -95,8 +95,13 @@ export function DocumentoAmbas({
   // compara — las dos celdas dicen "No aplica*" y ninguna gana. El flag va acá y
   // no depende del motor STR: cuando una rama futura migre `tirAnual` a
   // MetricaSobreCapital, esta fila ya se comporta igual.
-  const tirNoAplica = esMetricaNoAplica(ltrResults?.exitScenario?.tir);
-  const ltrTir = metricaODefault(ltrResults?.exitScenario?.tir, 0);
+  //
+  // Generalizado: la fila se apaga por CUALQUIER ausencia, no solo por
+  // 'no_aplica'. Con 'no_calculable' el `metricaODefault(…, 0)` reproducía
+  // exactamente la mentira-con-ganador de arriba, solo que por otra razón.
+  const ltrTirNum = metricaValorONull(ltrResults?.exitScenario?.tir);
+  const tirNoAplica = ltrTirNum === null;
+  const ltrTir = ltrTirNum ?? 0;
   const ltrCap = ltrResults?.metrics?.rentabilidadNeta ?? 0;
 
   const strBase = strResults?.escenarios?.base;

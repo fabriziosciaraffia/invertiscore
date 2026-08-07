@@ -13,7 +13,7 @@ import type {
   HallazgoCapRate,
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice, calcDividendo } from "@/lib/analysis";
-import { metricaODefault } from "@/lib/types";
+import { metricaValorONull } from "@/lib/types";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
@@ -440,7 +440,11 @@ function DrawerNegociacion({
   const esPasada = diferenciaCLP > 0 && pctDiferencia > 2;
   const esSobreprecio = diferenciaCLP < 0 && pctDiferencia > 2;
 
-  const tirActual = metricaODefault(results.exitScenario?.tir, 0);
+  // `metricaValorONull`, no `metricaODefault(…, 0)`: con la TIR ausente el 0 de
+  // relleno se pintaba como una TIR real de 0,0% en Signal Red y alimentaba el
+  // gate `tirActual > 6`. `fmtTir` y `tirColor` ya tratan null como "—" en gris,
+  // así que la ausencia se muestra sin inventarle un número.
+  const tirActual = metricaValorONull(results.exitScenario?.tir);
   // Pie cero (fase 3b · D2, mockup 98e2319): sin capital propio el beneficio de
   // negociar se mide en PLATA MENSUAL, no en TIR — la columna TIR pasa a
   // "Tu flujo/mes", la fila Límite (techo de retorno) se suprime y los
@@ -465,7 +469,7 @@ function DrawerNegociacion({
     // Precio límite por bisección simple solo si la TIR actual es > 6
     let precioLimUF: number | null = null;
     let tirLim: number | null = null;
-    if (!sinPie && tirActual > 6) {
+    if (!sinPie && tirActual !== null && tirActual > 6) {
       let lo = inputData.precio;
       // P2 (Fase 20): rango ampliado a vmFranco × 1.5 (era × 1.3) para que
       // Límite ≥ vmFranco en deals con ventaja extrema (>30% bajo mercado).

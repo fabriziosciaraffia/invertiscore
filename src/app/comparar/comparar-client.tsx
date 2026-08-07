@@ -191,9 +191,12 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
           if (esMetricaNoAplica(a.results?.exitScenario?.tir)) return NO_APLICA_VALOR;
           return formatPct(metricaValorONull(a.results?.exitScenario?.tir));
         }),
-        raw: analisis.map((a) =>
-          esMetricaNoAplica(a.results?.exitScenario?.tir) ? null : metricaODefault(a.results?.exitScenario?.tir, 0),
-        ),
+        // `metricaValorONull`, no `metricaODefault(…, 0)`: esta columna ordena con
+        // `higherIsBetter`, así que un 0 de relleno hacía competir al que NO tiene
+        // TIR como si rindiera 0% — y le ganaba a cualquiera con TIR negativa real.
+        // El display ya decía "—"; el ranking era el que mentía. `null` lo saca de
+        // la comparación en vez de inventarle una posición.
+        raw: analisis.map((a) => metricaValorONull(a.results?.exitScenario?.tir)),
         higherIsBetter: true,
       },
       {
