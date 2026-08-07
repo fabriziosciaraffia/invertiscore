@@ -237,6 +237,7 @@ export function STRResultsClient({
           valorUF={ufValue}
           createdAt={createdAt}
           aiLoading={aiLoading && !aiAnalysis}
+          onOpenDrawer={setActiveDrawer}
         />
 
         {/* Loading IA: el skeleton + copy viven ahora en el slot de prosa del Hero

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { BedDouble, Bath, Ruler, Building2, Scaling, Percent, Wrench } from "lucide-react";
-import type { AIAnalysisSTRv2 } from "@/lib/types";
+import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import { fmtUF } from "@/components/analysis/utils";
@@ -15,6 +15,7 @@ import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { numeroHallazgo } from "@/lib/orden-hallazgos";
 import { describirMotivosSTR } from "@/lib/no-cierra-copy";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
+import type { DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
 
 /**
  * Hero de resultados STR (E.5) — port del patrón HeroLTR al módulo renta corta.
@@ -60,6 +61,7 @@ export function HeroSTR({
   valorUF,
   createdAt,
   aiLoading,
+  onOpenDrawer,
 }: {
   ai: AIAnalysisSTRv2 | null;
   // `francoScore` viaja colgado del results persistido (mismo shape que usa el caller
@@ -75,6 +77,8 @@ export function HeroSTR({
   valorUF: number;
   createdAt?: string;
   aiLoading?: boolean;
+  /** Abre un drawer del informe. Ausente ⇒ la caja de posición no es clickeable. */
+  onOpenDrawer?: (key: DrawerKeySTR) => void;
 }) {
   const v = (normalizeLegacyVerdict(veredicto) as STRVerdict | null) ?? "BUSCAR OTRA";
 
@@ -157,6 +161,27 @@ export function HeroSTR({
 
   const isNeutro = v === "COMPRAR";
   const cajaLabel = isNeutro ? "Considera antes de cerrar" : "La posición de Franco";
+
+  // Destino del drawer de la posición de Franco, por veredicto (espejo de HeroLTR):
+  //  · no-COMPRAR con hallazgo de distancia → "Lo que te separa". El label distingue el
+  //    caso estructural: prometer "vías" donde no las hay sería mentir en el botón.
+  //  · COMPRAR → el margen (sensibilidad), porque ahí la pregunta que sigue no es qué
+  //    falta sino cuánto aguanta antes de dejar de convenir.
+  // Sin destino, la caja queda como estaba: texto sin callback (no un botón muerto).
+  const hallazgosHero = (results?.hallazgos ?? []) as Hallazgo[];
+  const distanciaHero = hallazgosHero.find((h) => h.id === "distancia_veredicto");
+  const posicionDrawer: { key: DrawerKeySTR; label: string } | null = distanciaHero
+    ? {
+        key: "distanciaVeredicto",
+        label:
+          distanciaHero.id === "distancia_veredicto" && distanciaHero.valor.esEstructural
+            ? "Por qué no cierra"
+            : "Ver las vías",
+      }
+    : hallazgosHero.some((h) => h.id === "sensibilidad_str")
+      ? { key: "sensibilidad", label: "Ver el margen" }
+      : null;
+  const posicionClickeable = posicionDrawer != null && onOpenDrawer != null;
 
   // POR QUÉ NO CIERRA — los motivos que decidieron el veredicto, cuando lo decidió un
   // gate y no la banda del score. Sin esto, en 12 de 96 análisis el lector ve un score
@@ -305,12 +330,27 @@ export function HeroSTR({
             }}
           >
             <div className="px-4 py-3.5">
-              <span
-                className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold block mb-1.5"
-                style={{ color: isNeutro ? "var(--franco-text-tertiary)" : "var(--signal-red)" }}
-              >
-                {cajaLabel}
-              </span>
+              <div className="flex items-baseline justify-between gap-3 mb-1.5">
+                <span
+                  className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold"
+                  style={{ color: isNeutro ? "var(--franco-text-tertiary)" : "var(--signal-red)" }}
+                >
+                  {cajaLabel}
+                </span>
+                {/* El destino ya no es un rótulo muerto: la posición de Franco abre el
+                    drawer que la sostiene. Botón real (no un div con onClick) para que
+                    teclado y lectores de pantalla lo alcancen. */}
+                {posicionClickeable && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenDrawer!(posicionDrawer!.key)}
+                    className="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em] font-semibold underline underline-offset-2 decoration-dotted hover:opacity-70 transition-opacity"
+                    style={{ color: isNeutro ? "var(--franco-text-secondary)" : "var(--signal-red)" }}
+                  >
+                    {posicionDrawer!.label} →
+                  </button>
+                )}
+              </div>
               <p
                 className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text)] m-0"
                 style={{ fontStyle: isNeutro ? "normal" : "italic" }}

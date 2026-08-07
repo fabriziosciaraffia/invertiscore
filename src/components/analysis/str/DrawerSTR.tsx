@@ -36,7 +36,11 @@ export type DrawerKeySTR =
   | "retorno"
   | "patrimonio"
   | "plusvalia"
-  | "estructuraCostos";
+  | "estructuraCostos"
+  // Distancia al veredicto: NO es una card de la pirámide (se filtra en
+  // ordenarHallazgosPiramideSTR, igual que LTR). Se abre desde el hero, así que queda
+  // fuera de `sequence` y no tiene flechas prev/next.
+  | "distanciaVeredicto";
 
 // Label humano del header y de las flechas prev/next — nombra la card destino en
 // lenguaje humano, sin numeración (rama drawers-propios: la vieja num 02..07 se
@@ -55,6 +59,7 @@ const DRAWER_META: Record<DrawerKeySTR, { label: string }> = {
   patrimonio: { label: "Patrimonio a 10 años" },
   plusvalia: { label: "Plusvalía de la comuna" },
   estructuraCostos: { label: "Estructura de costos" },
+  distanciaVeredicto: { label: "Lo que te separa" },
 };
 
 export function DrawerSTR({
