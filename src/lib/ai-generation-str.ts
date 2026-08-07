@@ -37,11 +37,11 @@ import {
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import { sobreRentaPctEsConfiable } from "@/lib/engines/str-universo-santiago";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
-import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
+import type { AIAnalysisSTRv2, Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
 import { metricaDisplay, esMetricaNoAplica, metricaValorONull } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
 import { describirMotivosSTR } from "@/lib/no-cierra-copy";
-import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
+import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
@@ -358,8 +358,13 @@ const wordCount = (s: unknown): number =>
 // que consumen el índice del hero, la pirámide y el documento STR. El coronado
 // que ancla el ángulo-lead del hero (§7.bis) es el 01 visible del informe.
 // ─────────────────────────────────────────────────────────────────────────
+// `ordenarHallazgosPiramideSTR` y no `ordenarHallazgosUnico` a secas: el coronado ancla el
+// ángulo-lead del hero contra lo que el usuario VE en la pirámide, y la pirámide filtra
+// `distancia_veredicto` (vive en el hero, no en las cards). Con el sort crudo, un caso sin
+// ningún hallazgo decisivo podría coronar la distancia y el hero abriría hablando de una
+// card que no existe.
 const ordenarHallazgos = (hallazgos: Hallazgo[]): Hallazgo[] =>
-  ordenarHallazgosUnico((Array.isArray(hallazgos) ? hallazgos : []).filter(Boolean));
+  ordenarHallazgosPiramideSTR((Array.isArray(hallazgos) ? hallazgos : []).filter(Boolean));
 
 /** fraseCanónica + titular de una card por id de hallazgo (para "LO QUE LA CARD YA MOSTRÓ" + strip). */
 export interface CardFrasesSTR {
@@ -565,6 +570,49 @@ Son causas DISTINTAS y hay que nombrarlas TODAS: presentar una sola deja al lect
       ? `\n\n=== LO QUE LA CARD YA MOSTRÓ (NO LO REPITAS — §1.bis DRAWER PROFUNDIZA) ===\nEl usuario abre cada drawer DESPUÉS de leer su card. Cada card ya mostró título + KPI + esta frase. Arranca del porqué/qué-hacer, no del qué:\n${parts.join("\n")}`
       : "";
   })();
+  // DISTANCIA AL VEREDICTO — motor-seeded, se LEE de results.hallazgos (su bisección
+  // necesita el closure del veredicto, no se reconstruye acá). Entra al prompt porque es
+  // lo único del informe que responde "¿y ahora qué?", que es justo lo que la prosa cierra.
+  // decisividad 0 ⇒ el orden único lo deja último ⇒ nunca es la apertura fija.
+  const distanciaSTR = (Array.isArray(r.hallazgos) ? r.hallazgos : []).find(
+    (h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto",
+  );
+  const bloqueDistancia = (() => {
+    if (!distanciaSTR) return "";
+    const dv = distanciaSTR.valor;
+    const cab = `\n\n=== LO QUE TE SEPARA DEL VEREDICTO DE ARRIBA (valores YA CALCULADOS) ===\n«${distanciaSTR.titular}» — ${distanciaSTR.fraseCanonica}`;
+
+    if (dv.esEstructural) {
+      return `${cab}
+
+NINGÚN AJUSTE REALISTA ALCANZA. PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues", subir la tarifa o cambiar la gestión como salida: la brecha es del negocio, no de los supuestos. La honestidad acá es cerrar la puerta, no dejarla entornada. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe. NO menciones distancia al veredicto en \`conviene.respuestaDirecta\`: no hay una que prometer.`;
+    }
+
+    // La tarifa es la única vía que pide superar al mercado. Si el modelo la presenta como
+    // un supuesto que se corrige, miente sobre el riesgo — por eso la instrucción es
+    // explícita y no queda a criterio del tono.
+    const esAdr = dv.palancaMasBarata?.palanca === "adr";
+    const avisoAdr = esAdr
+      ? `\n\nLA VÍA MÁS BARATA ES LA TARIFA, y la tarifa NO es un supuesto del usuario: sale de lo que se cobra realmente en su zona. Decilo como lo que es — una APUESTA a rendir sobre la mediana de la zona, sostenida con trabajo de gestión (fotos, calendario, respuesta) — nunca como "ajusta este supuesto" ni como un número que estaba mal.`
+      : "";
+
+    const avisoPuroGate = dv.esPuroGate
+      ? `\n\nOJO — EL PUNTAJE YA ALCANZA la banda de arriba: lo que retiene el veredicto es que la operación todavía no cierra, no que falten puntos. PROHIBIDO escribir "estás cerca del puntaje", "te faltan puntos" o cualquier variante que atribuya el veredicto al Franco Score. Nombra primero, en consecuencia vivida, qué es lo que hoy no cierra, y recién después la vía que lo da vuelta.`
+      : "";
+
+    const avisoPie = dv.pieExcluidoPorBono
+      ? `\n\nEl pie de este caso lo cubre un bono de la inmobiliaria: NO ofrezcas subir el pie como vía — desarma la compra que se está evaluando.`
+      : "";
+
+    return `${cab}
+
+OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra. Es la condición concreta bajo la que tu posición se sostiene (§1.10) y lo único que responde "¿y ahora qué?".
+
+TAMBIÉN en \`conviene.respuestaDirecta\`: cierra con UNA mención breve de esa distancia, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer.
+
+REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase de arriba. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí, NUNCA inventes un valor intermedio. La OCUPACIÓN no es palanca de este análisis (no la fija el propietario y en el cálculo mueve lo mismo que la tarifa); la TASA tampoco (es condición del banco).${avisoPuroGate}${avisoAdr}${avisoPie}`;
+  })();
+
   const bloqueCoronado = cardFrases.coronado
     ? `\n\n=== HALLAZGO QUE LIDERA LA PIRÁMIDE (ancla el ángulo-lead del hero · §7.bis) ===\nEl coronado (más decisivo/adverso) es: «${cardFrases.coronado.titular}» — ${cardFrases.coronado.frase}\n→ \`conviene.respuestaDirecta\` debe alinear su ángulo-lead con este hallazgo. No lo copies (§1.bis); no contradigas la jerarquía visual.`
     : "";
@@ -676,7 +724,7 @@ ${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar: el
 
 === SENSIBILIDAD DE PRECIO (Ángulo 4 — la tabla vive en su propio drawer de datos) ===
 ${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${pct(s.capRate * 100, 2)}%, CoC ${esMetricaNoAplica(s.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(s.cashOnCash, (n) => `${pct(n * 100)}%`)}, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${sinCapitalPropio ? `
-→ Con pie 0 la sensibilidad de precio se narra en FLUJO (## 5.bis.e): cada peso menos de precio es crédito que no tomas — el flujo de cada fila ya trae ese efecto.` : ""}${bloqueCards}${bloqueCoronado}${anomaliasTexto}
+→ Con pie 0 la sensibilidad de precio se narra en FLUJO (## 5.bis.e): cada peso menos de precio es crédito que no tomas — el flujo de cada fila ya trae ese efecto.` : ""}${bloqueCards}${bloqueCoronado}${bloqueDistancia}${anomaliasTexto}
 
 ═══════════════════════════════════════════════════════════════════
 INSTRUCCIÓN FINAL
