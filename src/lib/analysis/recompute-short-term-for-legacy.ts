@@ -155,6 +155,9 @@ export function recomputeShortTermForLegacy(
     mediana,
     valorUF: ufClp,
     incluyeCorretaje: false,
+    // Distancia al veredicto: el MISMO input reconstruido que produjo `result`, así que la
+    // distancia se mide contra el análisis que el usuario tiene en pantalla.
+    veredictoCtx: { inputs, scoreExtras, asOf },
   });
   const hallazgos = [...(result.hallazgos ?? []), ...strHallazgos];
 
