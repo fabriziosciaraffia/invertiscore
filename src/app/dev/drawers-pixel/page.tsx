@@ -15,6 +15,7 @@ import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { HALLAZGO_DRAWER } from "@/components/analysis/GenericFindingCard";
 import { ordenarHallazgosPiramide } from "@/components/analysis/PiramideHallazgos";
 import { DrawerSTR, type DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
+import { HeroSTR } from "@/components/analysis/str/HeroSTR";
 import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/DrawerContentSTR";
 import { ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
 import fixtures from "./fixtures.json";
@@ -65,8 +66,34 @@ function Inner() {
   const initialKey = sp.get("key") ?? (isSTR ? "retorno" : "tir");
   const [ltrKey, setLtrKey] = useState<DrawerKey>((initialKey as DrawerKey) ?? "tir");
   const [strKey, setStrKey] = useState<DrawerKeySTR>((initialKey as DrawerKeySTR) ?? "retorno");
+  const [heroDrawer, setHeroDrawer] = useState<DrawerKeySTR | null>(null);
 
   if (!fix) return <div style={{ padding: 40 }}>fixture ?row=santiagoLtr|santiagoStr|qaStr|selfLiqStr no encontrado</div>;
+
+  // `?comp=hero` monta el HeroSTR de producción con el mismo fixture. Existe para poder
+  // verificar el clickeable de "La posición de Franco" sin sesión: la página de resultados
+  // real exige auth, así que sin esto el botón solo se podía revisar leyendo el código.
+  if (isSTR && sp.get("comp") === "hero") {
+    return (
+      <div style={{ background: "var(--franco-bg, #FAFAF8)", minHeight: "100vh", padding: 16 }}>
+        <p className="font-mono" style={{ fontSize: 12, marginBottom: 12 }}>
+          DEV · {rowKey} · HeroSTR · drawer abierto: {heroDrawer ?? "—"}
+        </p>
+        <HeroSTR
+          ai={{ conviene: { cajaAccionable: "Stub de QA: la caja de posición existe solo cuando hay prosa IA." } } as any}
+          results={results as any}
+          veredicto={(results as any)?.francoScore?.veredicto ?? "BUSCAR OTRA"}
+          score={(results as any)?.francoScore?.score ?? null}
+          inputData={(fix.input_data ?? {}) as any}
+          comuna={fix.comuna}
+          currency={currency}
+          onCurrencyChange={setCurrency}
+          valorUF={valorUF}
+          onOpenDrawer={(k) => setHeroDrawer(k)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: "var(--franco-bg, #FAFAF8)", minHeight: "100vh" }}>

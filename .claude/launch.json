@@ -4,8 +4,21 @@
     {
       "name": "dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000
+    },
+    {
+      "name": "dev-worktree",
+      "runtimeExecutable": "C:/Users/fabri/invertiscore/node_modules/.bin/next.cmd",
+      "runtimeArgs": [
+        "dev",
+        "-p",
+        "3007"
+      ],
+      "port": 3007
     }
   ]
 }
