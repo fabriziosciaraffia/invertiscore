@@ -169,7 +169,9 @@ async function main() {
   const projCtrl = calcProjections({
     input, metrics: m, plazoVenta: 30, plusvaliaAnual: 0.03, ufClp, asOf,
   });
-  const control = calculateKPIs({ projections: projCtrl, metrics: m, plazoAnios: 10, plusvaliaAnual: 0.03, input }).tir;
+  const control = metricaValorONull(
+    calculateKPIs({ projections: projCtrl, metrics: m, plazoAnios: 10, plusvaliaAnual: 0.03, input }).tir,
+  );
 
   console.log("Mapa (columna = plazo 1..30; X = motor ≠ bisección independiente; · = sin TIR)");
   console.log("        | 123456789012345678901234567890");
