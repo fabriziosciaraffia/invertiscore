@@ -15,6 +15,7 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { normalizeLegacyVerdict, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_FOOTNOTE_DOC } from "@/lib/no-aplica-copy";
+import { describirMotivosSTR } from "@/lib/no-cierra-copy";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
 import { findingDisplay } from "@/components/analysis/GenericFindingCard";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
@@ -62,6 +63,8 @@ export function DocumentoSTR({
   const score = fs?.score ?? null;
   const veredicto = normalizeLegacyVerdict((fs?.veredicto ?? results.veredicto) as string) as STRVerdict;
   const d = fs?.desglose;
+  // Motivos del gate — null cuando el veredicto vino de la banda del score (silencio).
+  const motivos = describirMotivosSTR(fs?.gates?.motivos ?? []);
 
   // ── Escenario base + comparativa (motor) ──
   const base = results.escenarios.base;
@@ -253,6 +256,15 @@ export function DocumentoSTR({
             <div className="gauge-axis"><span>0 · Buscar otra</span><span>Ajusta</span><span>Comprar · 100</span></div>
           </div>
         </div>
+
+        {/* Por qué no cierra — va DESPUÉS del score y ANTES de las dimensiones, que es
+            donde el papel deja al lector con la contradicción en la mano: un 59 sobre
+            100 junto a un BUSCAR OTRA. En la web el usuario puede abrir un drawer o
+            leer la prosa contigua; el PDF es el artefacto que se guarda y se manda, y
+            ahí no hay nada más a lo que recurrir. Por eso se muestra también acá. */}
+        {motivos && (
+          <div className="nocierra avoid-break"><p>{motivos.frase}</p></div>
+        )}
 
         {d && (
           <div className="dims avoid-break">

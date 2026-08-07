@@ -13,6 +13,8 @@ import { InfoTooltip } from "@/components/ui/tooltip";
 import { IndiceRow } from "@/components/analysis/IndiceHallazgos";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { numeroHallazgo } from "@/lib/orden-hallazgos";
+import { describirMotivosSTR } from "@/lib/no-cierra-copy";
+import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 
 /**
  * Hero de resultados STR (E.5) — port del patrón HeroLTR al módulo renta corta.
@@ -60,7 +62,9 @@ export function HeroSTR({
   aiLoading,
 }: {
   ai: AIAnalysisSTRv2 | null;
-  results: ShortTermResult;
+  // `francoScore` viaja colgado del results persistido (mismo shape que usa el caller
+  // y ai-generation-str). Se necesita para los motivos del gate — ver `motivos` abajo.
+  results: ShortTermResult & { francoScore?: FrancoScoreSTR };
   veredicto: STRVerdict;
   score: number | null;
   inputData: Record<string, unknown> | null;
@@ -154,6 +158,13 @@ export function HeroSTR({
   const isNeutro = v === "COMPRAR";
   const cajaLabel = isNeutro ? "Considera antes de cerrar" : "La posición de Franco";
 
+  // POR QUÉ NO CIERRA — los motivos que decidieron el veredicto, cuando lo decidió un
+  // gate y no la banda del score. Sin esto, en 12 de 96 análisis el lector ve un score
+  // que no explica su veredicto (el peor: 59 con BUSCAR OTRA) y no tiene dónde
+  // entenderlo. Cuando el veredicto viene de la banda, `motivos` es null y NO se
+  // muestra nada: inventar una causa sería peor que no darla.
+  const motivos = describirMotivosSTR(results.francoScore?.gates?.motivos ?? []);
+
   // ── ÍNDICE del informe: primeros 3 del ORDEN ÚNICO (el MISMO array que renderiza
   // la pirámide STR — fuente única: ordenarHallazgosPiramideSTR). El hero numera
   // 01-03 y cada fila ancla a su card; la pirámide continúa hasta 12. ──
@@ -236,6 +247,19 @@ export function HeroSTR({
           <p className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
             Veredicto
           </p>
+          {/* Por qué no cierra — entre el veredicto y la pregunta, que es donde el
+              lector se pregunta "¿y por qué?". Borde izquierdo en Ink y sin esquinas
+              redondeadas: es una nota al margen del veredicto, no una alerta. Sin wash
+              de Signal Red a propósito — el rojo ya lo carga el badge, y repetirlo acá
+              convertiría una explicación en un segundo golpe. */}
+          {motivos && (
+            <p
+              className="font-body text-[13.5px] md:text-[14px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mb-3.5 pl-3 max-w-[62ch]"
+              style={{ borderLeft: "2px solid var(--franco-border-strong)", borderRadius: 0 }}
+            >
+              {motivos.frase}
+            </p>
+          )}
           <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0">
             {pregunta}
           </h2>
