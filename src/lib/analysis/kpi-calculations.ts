@@ -1,5 +1,5 @@
-import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
-import { metricaODefault, metricaValorONull } from "@/lib/types";
+import type { YearProjection, AnalysisMetrics, AnalisisInput, MetricaTIRSimulador } from "@/lib/types";
+import { metricaODefault, metricaNoAplica, metricaNoAplicaHorizonte } from "@/lib/types";
 import { calcExitScenario } from "@/lib/analysis";
 // Predicado compartido con la comparativa (src/lib/pre-entrega-serie.ts): vivía
 // acá y se movió para que las dos superficies no puedan divergir.
@@ -21,7 +21,15 @@ export interface KPIResults {
   // métricas sobre capital — INCLUIDOS el CoC y el payback que este módulo
   // calcula por su cuenta sobre inversionInicial (con pie 0 esa base son solo
   // los gastos de cierre y daba un CoC −200% falso; hallazgo del mockup 98e2319).
-  tir: number | null;
+  //
+  // La TIR NO se aplana a `number | null`: lleva su razón hasta el render.
+  // Tiene TRES ausencias distintas (pie 0, horizonte antes de la escritura, VPN
+  // sin raíz) y el aplanado las volvía indistinguibles, así que la superficie no
+  // podía hacer más que un "—" pelado. Las otras tres métricas siguen en
+  // `number | null` a propósito: solo tienen DOS ausencias y las dos ya se leen
+  // de `sinCapitalPropio` / `horizonteAntesDeEntrega`. El 'no_calculable' es
+  // exclusivo de la TIR — es el único KPI que sale de un solver.
+  tir: MetricaTIRSimulador;
   capRate: number;
   cashOnCash: number | null;
   paybackAnios: number | null;
@@ -140,12 +148,15 @@ export function calculateKPIs(inp: KPIInputs): KPIResults {
   const noAplica = sinCapitalPropio || horizonteAntesDeEntrega;
 
   return {
-    // Dos razones independientes para no emitir TIR, y las dos mandan:
-    // `noAplica` (pie 0 o horizonte antes de la entrega) y 'no_calculable' (el
-    // VPN del flujo no cruza cero). metricaValorONull en vez de
-    // metricaODefault(...,0) porque el default a 0 sería otro número inventado —
-    // el mismo pecado que producía el 100%. null ⇒ "—" sin badge de tono.
-    tir: noAplica ? null : metricaValorONull(exit.tir),
+    // TRES razones de ausencia, cada una con su nombre. El orden importa y es
+    // el del mockup 98e2319: pie 0 manda sobre horizonte (no hay dos sublabels
+    // que apilar), y si ninguna aplica pasa el estado del motor TAL CUAL —
+    // 'valor' o 'no_calculable'. Nada se aplana acá: aplanar era el bug.
+    tir: sinCapitalPropio
+      ? metricaNoAplica(input?.razonSinPie ?? "sin_pie")
+      : horizonteAntesDeEntrega
+        ? metricaNoAplicaHorizonte(aniosPreEntrega)
+        : exit.tir,
     capRate,
     cashOnCash: noAplica ? null : cashOnCash,
     paybackAnios: noAplica ? null : paybackAnios,

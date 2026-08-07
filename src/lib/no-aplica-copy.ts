@@ -63,6 +63,24 @@ function parseFechaEntrega(fechaEntrega?: string | null): { mes: number; anio: n
   return { mes, anio };
 }
 
+// ─── TIR sin raíz del VPN ('no_calculable') ──────────────────────────────────
+//
+// Tercera razón de ausencia de la TIR, y la única que NO es una decisión del
+// análisis: el flujo simplemente no tiene tasa que lo anule en [−99%, 1000%].
+// Hereda el tratamiento visual D1 (mismo "No aplica", misma escala de grises,
+// CERO Signal Red) porque la ausencia se lee igual; lo que cambia es el porqué.
+//
+// PROVISORIO a propósito. El censo de of-audit-tir.md encontró UN caso en las
+// 710 filas, y es una fila de test (precio 0,1 UF, arriendo 0). Cuando aparezca
+// un caso real, este copy va a su propio mockup con Fabrizio — no se diseña
+// definitivo sobre una población de cero.
+export const NO_CALCULABLE_SUBLABEL = "Sin retorno que calcular";
+
+export const NO_CALCULABLE_TOOLTIP =
+  "Con estos números el retorno no tiene solución: no existe una tasa que haga " +
+  "que lo que pones y lo que recibes se igualen. Suele indicar un dato mal " +
+  "cargado (precio o arriendo). Revisa los supuestos del análisis.";
+
 /** Sublabel D1 pre-entrega. Mes corto: la celda es angosta en mobile. */
 export function noAplicaSublabelPreEntrega(fechaEntrega?: string | null): string {
   const f = parseFechaEntrega(fechaEntrega);

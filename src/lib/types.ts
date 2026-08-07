@@ -150,9 +150,41 @@ export const metricaNoCalculable = (razon: RazonTIRNoCalculable): MetricaTIR => 
  * metricaValorONull, que devuelve null en ambos.
  */
 export function esMetricaNoCalculable(
-  m: MetricaTIR | number | null | undefined,
+  m: MetricaTIRSimulador | number | null | undefined,
 ): m is { tipo: "no_calculable"; razon: RazonTIRNoCalculable } {
   return typeof m === "object" && m !== null && m.tipo === "no_calculable";
+}
+
+// ─── La tercera razón: el horizonte del simulador ────────────────────────────
+//
+// `no_aplica` (pie 0) y `no_calculable` (VPN sin raíz) son propiedades del
+// ANÁLISIS, y por eso las emite el motor. Que el horizonte del slider termine
+// antes de la escritura es una propiedad de LO QUE EL USUARIO ESTÁ MIRANDO: el
+// mismo análisis tiene TIR a 10 años y no la tiene a 2. Por eso vive acá, en la
+// unión que consume el simulador, y el motor nunca la emite.
+//
+// Existe porque `KPIResults.tir` aplanaba a `number | null` y tiraba la razón:
+// al render le llegaban las tres ausencias indistinguibles y no podía hacer más
+// que un "—" pelado. El aplanado era el que mentía, no el cálculo.
+export type MetricaTIRSimulador =
+  | MetricaTIR
+  | { tipo: "no_aplica_horizonte"; aniosPreEntrega: number };
+
+export const metricaNoAplicaHorizonte = (aniosPreEntrega: number): MetricaTIRSimulador => ({
+  tipo: "no_aplica_horizonte",
+  aniosPreEntrega,
+});
+
+/**
+ * Discriminante del estado 'no_aplica_horizonte'. Tercer hermano de
+ * `esMetricaNoAplica` y `esMetricaNoCalculable`: juntos cubren las tres razones
+ * de ausencia, y `metricaValorONull` sigue devolviendo null en las tres para
+ * quien solo necesite saber si hay número.
+ */
+export function esMetricaNoAplicaHorizonte(
+  m: MetricaTIRSimulador | number | null | undefined,
+): m is { tipo: "no_aplica_horizonte"; aniosPreEntrega: number } {
+  return typeof m === "object" && m !== null && m.tipo === "no_aplica_horizonte";
 }
 
 /**
@@ -163,7 +195,7 @@ export function esMetricaNoCalculable(
  * para que un brazo sobre capital se OMITA (ni true ni false) con 'no_aplica'.
  */
 export function metricaValorONull(
-  m: MetricaTIR | number | null | undefined,
+  m: MetricaTIRSimulador | number | null | undefined,
 ): number | null {
   if (typeof m === "number") return Number.isFinite(m) ? m : null;
   if (m == null) return null;
@@ -176,7 +208,7 @@ export function metricaValorONull(
  * number NaN, undefined). Solo lo que ES no_aplica recibe el tratamiento D1.
  */
 export function esMetricaNoAplica(
-  m: MetricaTIR | number | null | undefined,
+  m: MetricaTIRSimulador | number | null | undefined,
 ): m is { tipo: "no_aplica"; razon: RazonSinCapital } {
   return typeof m === "object" && m !== null && m.tipo === "no_aplica";
 }
@@ -189,7 +221,7 @@ export function esMetricaNoAplica(
  * con el D1 del mockup 98e2319 (esMetricaNoAplica + no-aplica-copy.ts).
  */
 export function metricaODefault(
-  m: MetricaTIR | number | null | undefined,
+  m: MetricaTIRSimulador | number | null | undefined,
   fallback: number = 0,
 ): number {
   const v = metricaValorONull(m);
@@ -202,7 +234,7 @@ export function metricaODefault(
  * > 0 el output es byte-idéntico al previo.
  */
 export function metricaDisplay(
-  m: MetricaTIR | number | null | undefined,
+  m: MetricaTIRSimulador | number | null | undefined,
   fmt: (n: number) => string,
 ): string {
   const v = metricaValorONull(m);
