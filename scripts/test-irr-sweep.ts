@@ -23,6 +23,7 @@ import { createClient } from "@supabase/supabase-js";
 import { calcProjections } from "../src/lib/analysis";
 import { calculateKPIs } from "../src/lib/analysis/kpi-calculations";
 import type { AnalisisInput, AnalysisMetrics } from "../src/lib/types";
+import { metricaValorONull } from "../src/lib/types";
 
 const ID = "ab0b2d3a-905e-4133-b65b-9beea2bdc64e";
 const PLAZOS = 30;
@@ -92,7 +93,10 @@ async function main() {
 
     for (let plazo = 1; plazo <= PLAZOS; plazo++) {
       const kpis = calculateKPIs({ projections, metrics: m, plazoAnios: plazo, plusvaliaAnual: pv / 100, input });
-      const tir = kpis.tir;
+      // `kpis.tir` dejó de ser `number | null`: lleva su razón de ausencia (pie 0,
+      // horizonte antes de la escritura, VPN sin raíz). Acá solo interesa el
+      // número, así que se desenvuelve — las razones se auditan en el render.
+      const tir = metricaValorONull(kpis.tir);
 
       // Vector tal cual lo arma calcExitScenario, para el juez independiente.
       const proy = projections[plazo - 1];
@@ -149,7 +153,9 @@ async function main() {
       const projections = calcProjections({
         input, metrics: m, plazoVenta: 30, plusvaliaAnual: pv / 100, ufClp, asOf,
       });
-      const tir = calculateKPIs({ projections, metrics: m, plazoAnios: plazo, plusvaliaAnual: pv / 100, input }).tir;
+      const tir = metricaValorONull(
+        calculateKPIs({ projections, metrics: m, plazoAnios: plazo, plusvaliaAnual: pv / 100, input }).tir,
+      );
       if (tir === null) continue;
       if (previa !== null && tir < previa - 1e-9) {
         noMonotona++;

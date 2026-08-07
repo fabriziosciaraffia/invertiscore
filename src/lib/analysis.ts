@@ -778,7 +778,14 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
       valorVenta: 0, saldoCredito: 0, comisionVenta: 0,
       equityCLP: 0, flujoAcumulado: 0, retornoTotal: 0,
       multiplicadorCapital: sinPie ? metricaNoAplica(razonPie) : metricaValor(0),
-      tir: sinPie ? metricaNoAplica(razonPie) : metricaValor(0),
+      // Sin proyección para el horizonte pedido no hay TIR que calcular, y
+      // `metricaValor(0)` era un fracaso disfrazado de resultado — la misma
+      // familia del clamp que devolvía 1.0 como si fuera una tasa. Hoy este
+      // brazo es inalcanzable por las rutas vivas (el motor pide 10 años sobre
+      // 20, el simulador 1-30 sobre 30), así que el cambio no mueve ninguna
+      // cifra: cierra la trampa para el día que alguien pida un horizonte más
+      // largo que la serie.
+      tir: sinPie ? metricaNoAplica(razonPie) : metricaNoCalculable("flujos-invalidos"),
       inversionInicial: 0, flujoMensualAcumuladoNegativo: 0,
       totalAportado: 0, gananciaSobreTotal: 0, porcentajeGananciaSobreTotal: 0,
     };
