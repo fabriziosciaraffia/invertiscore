@@ -16,7 +16,7 @@
     "GE-2": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 60,
-      "N": 12,
+      "N": 13,
       "tirPct": 7.09,
       "multiplicadorCapital": 1.8442319190335588,
       "equityCLP": 92356962,
@@ -28,7 +28,7 @@
     "GE-3": {
       "veredicto": "BUSCAR OTRA",
       "score": 48,
-      "N": 12,
+      "N": 13,
       "tirPct": 10.87,
       "multiplicadorCapital": 2.565602805878918,
       "equityCLP": 118123768,
@@ -40,7 +40,7 @@
     "GE-4": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 55,
-      "N": 12,
+      "N": 13,
       "tirPct": 13.25,
       "multiplicadorCapital": 2.7994235580433884,
       "equityCLP": 100986565,
@@ -52,7 +52,7 @@
     "GE-5": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 54,
-      "N": 12,
+      "N": 13,
       "tirPct": 8.13,
       "multiplicadorCapital": 1.993810164363924,
       "equityCLP": 93358211,
@@ -64,7 +64,7 @@
     "GE-6": {
       "veredicto": "BUSCAR OTRA",
       "score": 37,
-      "N": 11,
+      "N": 12,
       "tirPct": 4.41,
       "multiplicadorCapital": 1.3834430593221396,
       "equityCLP": 108851097,
@@ -76,7 +76,7 @@
     "GE-PC": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 77,
-      "N": 10,
+      "N": 11,
       "tirPct": null,
       "multiplicadorCapital": null,
       "equityCLP": 58504562,
