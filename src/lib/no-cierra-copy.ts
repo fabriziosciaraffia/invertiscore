@@ -52,22 +52,59 @@ const ORDEN_FAMILIA: FamiliaMotivo[] = ["regulacion", "ingreso", "bolsillo", "vs
  * Lectura de cada familia. Frase corta, en consecuencia vivida, sin cifras: los montos
  * ya viven en las cards y en los hallazgos, y repetirlos acá sería recitación (A1).
  */
-// Ninguna lectura lleva "y" adentro: se concatenan entre sí, y una conjunción interna
-// produciría "… departamento y pones … y el horizonte …", que se lee como una sola idea
-// mal puntuada en vez de dos causas distintas.
-const LECTURA: Record<FamiliaMotivo, string> = {
-  regulacion: "el edificio no permite arriendo corto",
-  ingreso: "lo que el corto factura no alcanza para lo que costó el departamento",
-  bolsillo: "el aporte mensual sale de tu bolsillo sin que el horizonte lo devuelva",
-  vsLargo: "el arriendo tradicional deja más neto con menos trabajo",
+// CRITERIO DE REDACCIÓN: describir el HECHO, no nombrar el CONCEPTO. El lector llega
+// con 30% de atención y no comparte nuestro vocabulario. La versión anterior decía
+// "el corto", "el aporte mensual", "sin que el horizonte lo devuelva" — tres etiquetas
+// internas que obligan a traducir antes de entender. Se reemplazan por lo que
+// efectivamente pasa: "arrendando por día", "pones plata de tu bolsillo todos los
+// meses", "ni la venta a 10 años alcanza a devolvértela".
+//
+// Cláusula = la frase pelada, sin apertura, pensada para concatenarse con otra.
+const CLAUSULA: Record<FamiliaMotivo, string> = {
+  regulacion: "el edificio no permite arriendo por días",
+  ingreso: "lo que puede facturar arrendando por día no da para su precio",
+  bolsillo: "pones plata de tu bolsillo todos los meses que ni la venta a 10 años alcanza a devolverte",
+  vsLargo: "arrendarlo a un arrendatario fijo te dejaría más plata y con menos trabajo",
 };
 
-/** Etiqueta breve para chips/tablas, donde no cabe la lectura completa. */
+/**
+ * Frase COMPLETA cuando la familia es la única causa. No se arma concatenando la
+ * cláusula con una apertura genérica: cada una está escrita entera para que lea bien
+ * sola, que es como la ve el 15% del parque con una sola causa.
+ */
+const FRASE_SOLA: Record<FamiliaMotivo, string> = {
+  regulacion:
+    "Acá no se trata de números: el edificio no permite arriendo por días, así que el negocio no se puede hacer como está planteado.",
+  ingreso:
+    "No cierra por una razón concreta: lo que este depto puede facturar arrendando por día no da para su precio.",
+  bolsillo:
+    "No cierra por una razón concreta: pones plata de tu bolsillo todos los meses, y ni la venta a 10 años alcanza a devolvértela.",
+  vsLargo:
+    "No cierra por una razón concreta: arrendarlo a un arrendatario fijo te deja más plata que arrendarlo por días, y con bastante menos trabajo.",
+};
+
+/**
+ * Frases escritas a medida para las combinaciones que EXISTEN en el parque. Medido
+ * sobre los 96 análisis STR: 48 sin causa · 33 ingreso+bolsillo · 12 ingreso · 3
+ * bolsillo. O sea la única combinación real es `ingreso+bolsillo`, y se merece una
+ * frase propia en vez de dos cláusulas pegadas con "y además".
+ *
+ * Clave = familias activas unidas por "+" en el orden de ORDEN_FAMILIA.
+ */
+const FRASE_COMBINADA: Record<string, string> = {
+  "ingreso+bolsillo":
+    "Lo que este depto puede facturar arrendando por día no da para su precio: la renta que deja es muy baja, y encima pones plata de tu bolsillo todos los meses que ni la venta a 10 años alcanza a devolverte.",
+};
+
+/**
+ * Etiqueta breve para chips/tablas. Mismo filtro: nombra el hecho, no el concepto —
+ * "Aporte mensual" era la etiqueta interna y no le dice nada a quien no la acuñó.
+ */
 const ETIQUETA: Record<FamiliaMotivo, string> = {
   regulacion: "No está permitido",
-  ingreso: "El ingreso no da",
-  bolsillo: "Aporte mensual",
-  vsLargo: "El largo rinde más",
+  ingreso: "No da para su precio",
+  bolsillo: "Pones plata cada mes",
+  vsLargo: "Rinde más con arrendatario fijo",
 };
 
 export interface MotivosDescritos {
@@ -75,9 +112,9 @@ export interface MotivosDescritos {
   familias: FamiliaMotivo[];
   /** Etiquetas breves, mismo orden — para chips. */
   etiquetas: string[];
-  /** Una línea. Con 2+ familias declara que no es un solo número el que falla. */
+  /** La línea que va en pantalla. Una sola frase, sin bullets. */
   frase: string;
-  /** Las lecturas sueltas, por si una superficie quiere listarlas en vez de la frase. */
+  /** Las cláusulas sueltas, por si una superficie quiere listarlas en vez de la frase. */
   lecturas: string[];
 }
 
@@ -97,36 +134,32 @@ export function describirMotivosSTR(motivos: readonly BrazoSTR[]): MotivosDescri
   const familias = ORDEN_FAMILIA.filter((f) => set.has(f));
   if (familias.length === 0) return null;
 
-  const lecturas = familias.map((f) => LECTURA[f]);
+  const lecturas = familias.map((f) => CLAUSULA[f]);
   const etiquetas = familias.map((f) => ETIQUETA[f]);
+  const base = { familias, etiquetas, lecturas };
 
-  // La regulación cierra la puerta sola: cuando está, es LA razón y el resto es
-  // ruido — no se puede "mejorar el flujo" de una operación que no está permitida.
+  // La regulación cierra la puerta sola: cuando está, es LA razón y el resto es ruido
+  // — no tiene sentido hablar de mejorar la caja de algo que no se puede operar.
   if (familias[0] === "regulacion") {
-    return {
-      familias,
-      etiquetas,
-      lecturas,
-      frase: "Acá no se trata de números: el edificio no permite arriendo corto, así que la operación no es viable como está planteada.",
-    };
+    return { ...base, frase: FRASE_SOLA.regulacion };
   }
 
   if (familias.length === 1) {
-    return { familias, etiquetas, lecturas, frase: `No cierra por una razón concreta: ${lecturas[0]}.` };
+    return { ...base, frase: FRASE_SOLA[familias[0]] };
   }
 
-  // Dos o más: lo importante es que el lector sepa que no hay UN supuesto suelto que
-  // arreglar. Prosa unida por comas, no bullets (A8), y el número en palabra —
-  // "son 2" se lee como salida de una máquina; "son dos", como alguien contando.
-  const CUANTOS = ["", "una", "dos", "tres", "cuatro"];
+  // Combinación con frase propia (hoy solo ingreso+bolsillo, que es 33 de 96).
+  const clave = familias.join("+");
+  const aMedida = FRASE_COMBINADA[clave];
+  if (aMedida) return { ...base, frase: aMedida };
+
+  // Fallback para combinaciones que el parque no produce hoy pero el motor puede
+  // generar. Concatena cláusulas — menos fluido que una frase escrita a medida, pero
+  // nunca deja la línea vacía. Si alguna de estas empieza a aparecer seguido, merece
+  // su entrada en FRASE_COMBINADA.
   const unidas =
     lecturas.length === 2
-      ? `${lecturas[0]}, y ${lecturas[1]}`
-      : `${lecturas.slice(0, -1).join("; ")}, y ${lecturas[lecturas.length - 1]}`;
-  return {
-    familias,
-    etiquetas,
-    lecturas,
-    frase: `No es un supuesto el que falla, son ${CUANTOS[familias.length] ?? familias.length}: ${unidas}.`,
-  };
+      ? `${lecturas[0]}, y además ${lecturas[1]}`
+      : `${lecturas.slice(0, -1).join("; ")}, y además ${lecturas[lecturas.length - 1]}`;
+  return { ...base, frase: `No cierra por una sola cosa: ${unidas}.` };
 }
