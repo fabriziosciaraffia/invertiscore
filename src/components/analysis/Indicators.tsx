@@ -17,9 +17,12 @@ import {
   NO_APLICA_TOOLTIP,
   noAplicaSublabelPreEntrega,
   noAplicaTooltipPreEntrega,
+  NO_CALCULABLE_SUBLABEL,
+  NO_CALCULABLE_TOOLTIP,
 } from "@/lib/no-aplica-copy";
 import { useSimulation } from "@/contexts/SimulationContext";
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
+import { metricaValorONull, esMetricaNoCalculable } from "@/lib/types";
 
 /**
  * Strip de indicadores simulados (rediseño extras · D3/D4). Resumen técnico
@@ -94,6 +97,13 @@ export function Indicators({
       : null;
   const tooltipD1 = naPie ? NO_APLICA_TOOLTIP : noAplicaTooltipPreEntrega(inputData?.fechaEntrega);
 
+  // La TIR es el único KPI del strip con TRES razones de ausencia, así que lee
+  // su estado tipado en vez de los booleanos: `no_calculable` no tiene bandera
+  // propia porque no es una decisión del análisis (ver types.ts). Las otras tres
+  // celdas siguen con `na` — sus dos razones ya viven en los booleanos.
+  const tirValorNum = metricaValorONull(kpis.tir);
+  const tirNoCalculable = esMetricaNoCalculable(kpis.tir);
+
   // Los 4 que reaccionan a los sliders. tono === "bad" → Signal Red (uso #2
   // valores críticos): Cash-on-Cash negativo, TIR/Múltiplo bajo umbral.
   const cells: Array<{
@@ -106,15 +116,21 @@ export function Indicators({
   }> = [
     {
       label: `TIR a ${plazoLabel}`,
-      value: na ? NO_APLICA_VALOR : fmtPct(kpis.tir ?? NaN),
-      // Sin TIR (kpis.tir === null: el VPN del flujo no cruza cero) el valor cae
-      // a "—" y el tono queda NEUTRAL. `tonoTIR(kpis.tir ?? 0)` daba "bad" sobre
-      // un cero inventado: Signal Red pintado sobre una ausencia, que es la
-      // misma familia de mentira que el 100%. Ver src/lib/finance/irr.ts.
-      tone: na || kpis.tir === null ? "neutral" : tonoTIR(kpis.tir),
-      tooltip: na ? tooltipD1 : tirTooltip,
-      na,
-      sublabel: sublabelD1,
+      // La TIR lee su propio estado (kpis.tir es MetricaTIRSimulador, no un
+      // number aplanado): las TRES ausencias se distinguen acá y cada una trae
+      // su sublabel. Antes las tres llegaban como `null` y la celda solo podía
+      // decir "—", que no explica nada. `no_calculable` hereda el D1 visual —
+      // misma escala de grises, CERO Signal Red — con su copy provisorio.
+      value: tirValorNum !== null ? fmtPct(tirValorNum) : NO_APLICA_VALOR,
+      tone: tirValorNum !== null ? tonoTIR(tirValorNum) : "neutral",
+      tooltip:
+        tirValorNum !== null
+          ? tirTooltip
+          : tirNoCalculable
+            ? NO_CALCULABLE_TOOLTIP
+            : tooltipD1,
+      na: tirValorNum === null,
+      sublabel: tirNoCalculable ? NO_CALCULABLE_SUBLABEL : sublabelD1,
     },
     {
       label: `Cash-on-Cash a ${plazoLabel}`,

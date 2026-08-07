@@ -462,7 +462,10 @@ export function DocumentoLTR({
             <p className="sbl">08 · Indicadores @ {exit.anios} años</p>
             <div className="kpis">
               {/* Pie cero (D1 texto plano): "No aplica*" + footnote única (mockup). */}
-              <div className="kpi"><p className="kk">TIR</p><div className="kv" style={sinPie ? { fontSize: 11, fontWeight: 500 } : undefined}>{sinPie ? "No aplica*" : metricaDisplay(exit.tir, pct)}</div></div>
+              {/* Sin TIR por VPN sin raíz: mismo tratamiento D1 en texto plano que
+                  el pie 0, pero SIN el asterisco — la footnote habla de capital
+                  propio y acá la razón es otra. Antes caía a un "—" pelado. */}
+              <div className="kpi"><p className="kk">TIR</p><div className="kv" style={sinPie || tirActual === null ? { fontSize: 11, fontWeight: 500 } : undefined}>{sinPie ? "No aplica*" : tirActual === null ? "No aplica" : metricaDisplay(exit.tir, pct)}</div></div>
               <div className="kpi"><p className="kk">Rent. neta</p><div className="kv">{pct(m.rentabilidadNeta)}</div></div>
               <div className="kpi"><p className="kk">Cash-on-cash</p><div className={`kv ${!sinPie && metricaODefault(m.cashOnCash, 0) < 0 ? "neg" : ""}`} style={sinPie ? { fontSize: 11, fontWeight: 500 } : undefined}>{sinPie ? "No aplica*" : metricaDisplay(m.cashOnCash, pct)}</div></div>
               <div className="kpi"><p className="kk">Múltiplo</p><div className="kv" style={sinPie ? { fontSize: 11, fontWeight: 500 } : undefined}>{sinPie ? "No aplica*" : `${metricaDisplay(exit.multiplicadorCapital, dec)}×`}</div></div>

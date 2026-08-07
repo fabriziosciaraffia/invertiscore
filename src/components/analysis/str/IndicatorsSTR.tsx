@@ -3,8 +3,14 @@
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { fmtMoney, fmtPct } from "../utils";
-import { metricaValorONull, esMetricaNoAplica } from "@/lib/types";
-import { NO_APLICA_VALOR, NO_APLICA_SUBLABEL, NO_APLICA_TOOLTIP } from "@/lib/no-aplica-copy";
+import { metricaValorONull, esMetricaNoAplica, esMetricaNoCalculable } from "@/lib/types";
+import {
+  NO_APLICA_VALOR,
+  NO_APLICA_SUBLABEL,
+  NO_APLICA_TOOLTIP,
+  NO_CALCULABLE_SUBLABEL,
+  NO_CALCULABLE_TOOLTIP,
+} from "@/lib/no-aplica-copy";
 
 /**
  * Sub-sección 08 · INDICADORES — variante STR (Patrón 7.B.2).
@@ -36,6 +42,7 @@ export function IndicatorsSTR({
   // para el legacy pre-Ronda 4b, que trae tirAnual 0 crudo y sin él diría "0,0%".
   const tirNA = esMetricaNoAplica(exit?.tirAnual);
   const tirNum = metricaValorONull(exit?.tirAnual);
+  const tirNoCalculable = esMetricaNoCalculable(exit?.tirAnual);
   const hasTir = !tirNA && !!exit && tirNum !== null && tirNum !== 0;
   const tirValue = tirNum ?? 0;
   const yearsExit = exit?.yearVenta ?? 10;
@@ -47,7 +54,17 @@ export function IndicatorsSTR({
   const cocNA = esMetricaNoAplica(base.cashOnCash);
   const cocNum = metricaValorONull(base.cashOnCash);
 
-  const cells: Array<{ label: string; value: string; tone: "bad" | "neutral"; tooltip: string; na?: boolean }> = [
+  // `sublabel` por celda: el strip tenía UN sublabel fijo ("Sin capital propio")
+  // para cualquier `na`, así que la TIR sin raíz del VPN habría dicho que no hay
+  // pie — una razón falsa. Cada celda declara la suya.
+  const cells: Array<{
+    label: string;
+    value: string;
+    tone: "bad" | "neutral";
+    tooltip: string;
+    na?: boolean;
+    sublabel?: string;
+  }> = [
     {
       label: "NOI MENSUAL",
       value: fmtMoney(base.noiMensual, currency, valorUF),
@@ -77,13 +94,20 @@ export function IndicatorsSTR({
     },
     {
       label: `TIR a ${yearsExit} AÑOS`,
-      value: tirNA ? NO_APLICA_VALOR : hasTir ? fmtPct(tirValue, 1) : "—",
+      // 'no_calculable' (VPN sin raíz) hereda el D1 igual que 'no_aplica': el
+      // "—" pelado no distinguía "sin dato" de "sin retorno que calcular". El
+      // guard legacy (`tirValue !== 0`) sigue cayendo a "—" a propósito: ahí
+      // efectivamente no sabemos por qué falta.
+      value: tirNA ? NO_APLICA_VALOR : tirNoCalculable ? NO_APLICA_VALOR : hasTir ? fmtPct(tirValue, 1) : "—",
       // Un "No aplica" nunca hereda Signal Red: no es criticidad, es N/A deliberado.
-      tone: tirNA || !hasTir ? "neutral" : tirValue < 0 ? "bad" : "neutral",
+      tone: tirNA || tirNoCalculable || !hasTir ? "neutral" : tirValue < 0 ? "bad" : "neutral",
       tooltip: tirNA
         ? NO_APLICA_TOOLTIP
-        : "Tasa interna de retorno considerando capital inicial, flujos operativos año a año y venta del activo al año del horizonte.",
-      na: tirNA,
+        : tirNoCalculable
+          ? NO_CALCULABLE_TOOLTIP
+          : "Tasa interna de retorno considerando capital inicial, flujos operativos año a año y venta del activo al año del horizonte.",
+      na: tirNA || tirNoCalculable,
+      sublabel: tirNoCalculable ? NO_CALCULABLE_SUBLABEL : NO_APLICA_SUBLABEL,
     },
   ];
 
@@ -133,7 +157,7 @@ export function IndicatorsSTR({
                 className="font-mono uppercase"
                 style={{ fontSize: 8.5, letterSpacing: "0.05em", color: "var(--franco-text-muted)", marginTop: 5 }}
               >
-                {NO_APLICA_SUBLABEL}
+                {c.sublabel ?? NO_APLICA_SUBLABEL}
               </span>
             )}
           </div>
