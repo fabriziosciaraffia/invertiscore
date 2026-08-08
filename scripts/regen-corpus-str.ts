@@ -65,7 +65,7 @@ interface RecomputeOut { rec: ShortTermResult; score: FrancoScoreSTR; hallazgos:
 async function recompute(d: any, oldResults: any, comuna: string): Promise<RecomputeOut> {
   const uf = d.precioCompra / d.precioCompraUF;
   const airbnbData = buildAirbnbData(oldResults.airbnbRaw, uf); // EXPORTADO, misma transformación que prod
-  const rec = calcShortTerm(buildInputs(d, airbnbData, uf) as any);
+  const rec = calcShortTerm(buildInputs(d, airbnbData, uf) as any);  // (mismos inputs que veredictoCtx abajo)
   const lat = typeof d.lat === "number" ? d.lat : -33.4378;
   const lng = typeof d.lng === "number" ? d.lng : -70.6504;
   const score = calcFrancoScoreSTR({
@@ -76,9 +76,25 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
   // mediana comunal real (sobreprecio) — mismo helper que el prefetch del pipeline.
   let mediana: { mediana: number | null; n: number } = { mediana: null, n: 0 };
   try { mediana = await getComunaMedianaVentaUF(sb, comuna, d.superficieUtil, d.dormitorios ?? null, uf, resolverCondicionMercado({ esNuevo: d.tipoPropiedad === "nuevo", antiguedad: d.antiguedad })); } catch { /* cae a null → sobreprecio omitido, patrón LTR */ }
+  const inputs = buildInputs(d, airbnbData, uf);
   const strHallazgos = buildStrHallazgos({
     result: rec, francoScore: score, comuna: comuna || "", precioUF: d.precioCompraUF, superficieM2: d.superficieUtil,
     piePct: d.piePct, tasaPct: d.tasaInteres, plazoAnios: d.plazoCredito, mediana, valorUF: uf, incluyeCorretaje: false,
+    // Sin veredictoCtx el hallazgo de distancia se OMITE (opcional a propósito para
+    // auditoría) — y este regen lo omitió en su primera corrida: persistió pirámides
+    // sin distancia y generó prosa con un prompt sin el bloque "LO QUE TE SEPARA".
+    // El ctx replica el del pipeline: el MISMO input que produjo `rec`.
+    veredictoCtx: {
+      inputs: inputs as any,
+      scoreExtras: {
+        dormitorios: d.dormitorios, superficie: d.superficieUtil,
+        regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro",
+        lat: typeof d.lat === "number" ? d.lat : -33.4378,
+        lng: typeof d.lng === "number" ? d.lng : -70.6504,
+        revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue,
+      },
+      asOf: new Date(),
+    },
   });
   const hallazgos = [...(rec.hallazgos ?? []), ...strHallazgos];
   const newResults = {
