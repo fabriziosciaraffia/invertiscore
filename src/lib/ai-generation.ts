@@ -48,6 +48,11 @@ import type { Hallazgo } from "@/lib/types";
 import { metricaDisplay, metricaODefault, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
 import { calcDividendo } from "@/lib/analysis";
+import {
+  nuevoRegistroLlamadas,
+  persistGeneracionTiming,
+  type GeneracionTrigger,
+} from "@/lib/pipeline-timing";
 
 const anthropic = new Anthropic();
 
@@ -779,11 +784,33 @@ async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function generateAiAnalysis(analysisId: string, supabase: SupabaseClient, opts: { persist?: boolean } = {}): Promise<any | null> {
+export async function generateAiAnalysis(analysisId: string, supabase: SupabaseClient, opts: { persist?: boolean; trigger?: GeneracionTrigger } = {}): Promise<any | null> {
   // Consumo de tokens de ESTA generación: la llamada principal más todos sus
   // retries. Se acumula en memoria y se escribe una sola vez, colgado del UPDATE
   // de ai_analysis que ya existe al final — cero queries nuevas.
   const usage = nuevoAcumuladorUsage();
+  // Timing de la generación (Goal A): cada messages.create queda cronometrado y
+  // el registro completo se apendea a pipeline_timing.generaciones al salir.
+  // `trigger` distingue background vs fallback-60s (la doble generación que el
+  // polling de 60s puede disparar). Con persist:false (golden/scripts) NO se
+  // persiste nada — esas corridas van contra filas reales.
+  const tGen = Date.now();
+  const reg = nuevoRegistroLlamadas();
+  let prepMs: number | undefined;
+  const persistGen = async (resultado: "ok" | "error") => {
+    if (opts.persist === false) return;
+    await persistGeneracionTiming(supabase, analysisId, {
+      tipo: "ltr",
+      trigger: opts.trigger ?? "manual",
+      inicio_at: new Date(tGen).toISOString(),
+      fin_at: new Date().toISOString(),
+      total_ms: Date.now() - tGen,
+      resultado,
+      prompt_version: PROMPT_VERSION_LTR,
+      ...(prepMs !== undefined ? { prep_ms: prepMs } : {}),
+      llamadas: reg.llamadas,
+    });
+  };
   try {
     // El `select("*")` ya trae las columnas ai_*_tokens de la fila, así que la
     // suma sobre el valor previo (regeneraciones) no necesita releerla.
@@ -1748,18 +1775,22 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       return parsed;
     };
 
-    const message = await anthropic.messages.create({
+    prepMs = Date.now() - tGen;
+    const message = await reg.medir("principal", CLAUDE_MODEL, () => anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 8000,
       messages: [{ role: "user", content: userPrompt }],
       system: SYSTEM_PROMPT,
-    });
+    }));
     acumularUsage(usage, message);
 
     const text = message.content[0].type === "text" ? message.content[0].text : "";
 
     let aiResult = parseAndNormalize(text);
-    if (!aiResult) return null;
+    if (!aiResult) {
+      await persistGen("error");
+      return null;
+    }
 
     // Validación de prosa (solo detección para QA — NO reescribe el texto en esta iteración).
     // Lee la mediana de la FUENTE ÚNICA (hallazgoSobreprecio): la misma que narró el prompt.
@@ -1936,7 +1967,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     const CATCH_ROOTA_MAX_RETRIES = 2;
     if (!precioM2ZonaConfiable && aiResult) {
       try {
-        let deteccion = await detectarFabricacionZona(aiResult, anthropic, usage);
+        let deteccion = await reg.medirSinTokens("micro-check-zona", MICRO_CHECK_MODEL, () => detectarFabricacionZona(aiResult, anthropic, usage));
         if (!deteccion.fabrica) {
           console.warn(`[CATCH-ROOT-A] ${analysisId}: fabrica=false`);
         } else {
@@ -1955,12 +1986,12 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           const userPromptSinAnomalias = anomaliasTexto ? userPrompt.split(anomaliasTexto).join("") : userPrompt;
           for (let intento = 1; intento <= CATCH_ROOTA_MAX_RETRIES && deteccion.fabrica; intento++) {
             const correctivo = `\n\n⚠️ CORRECCIÓN OBLIGATORIA — la versión anterior fabricó un dato que NO existe.\nLa versión anterior afirmó: "${deteccion.cita}".\nEsta comuna NO tiene dato de mediana/promedio/precio de zona (no hay dato de zona). Está PROHIBIDO mencionar una mediana de zona, un promedio de zona, un precio/m² de zona, o un "% sobre/bajo la zona/el promedio". NO inventes esos números ni los back-computes desde precio÷superficie. La negociación se ancla en precioSugerido / TIR / flujo y en palancas no-precio. Reescribí el análisis COMPLETO sin ninguna comparación de precio vs zona.`;
-            const regen = await anthropic.messages.create({
+            const regen = await reg.medir("catch-root-a", CLAUDE_MODEL, () => anthropic.messages.create({
               model: CLAUDE_MODEL,
               max_tokens: 8000,
               messages: [{ role: "user", content: userPromptSinAnomalias + correctivo }],
               system: SYSTEM_PROMPT,
-            });
+            }));
             acumularUsage(usage, regen);
             const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
             const regenResult = parseAndNormalize(regenText);
@@ -1970,7 +2001,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
               break;
             }
             aiResult = regenResult;
-            deteccion = await detectarFabricacionZona(aiResult, anthropic, usage);
+            deteccion = await reg.medirSinTokens("micro-check-zona", MICRO_CHECK_MODEL, () => detectarFabricacionZona(aiResult, anthropic, usage));
             console.warn(`[CATCH-ROOT-A] ${analysisId}: intento ${intento} → fabrica=${deteccion.fabrica}${deteccion.fabrica ? ` cita="${deteccion.cita.slice(0, 160)}"` : ""}`);
           }
           if (deteccion.fabrica) {
@@ -2003,12 +2034,12 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         const noCorregibles = hitsQueExigenReintento(scanVozChilena(aiResult));
         if (noCorregibles.length) {
           console.warn(`[CATCH-VOZ] ${analysisId}: ${noCorregibles.length} forma(s) sin corrección determinística (${noCorregibles.map((h) => h.token).join(", ")}) — 1 reintento`);
-          const regen = await anthropic.messages.create({
+          const regen = await reg.medir("catch-voz", CLAUDE_MODEL, () => anthropic.messages.create({
             model: CLAUDE_MODEL,
             max_tokens: 8000,
             messages: [{ role: "user", content: userPrompt + correctivoVoz(noCorregibles) }],
             system: SYSTEM_PROMPT,
-          });
+          }));
           acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
           const regenResult = parseAndNormalize(regenText);
@@ -2058,7 +2089,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
             : ` Este es el SEGUNDO aviso: la versión anterior también se pasó. Escribí una sola oración de continuación si hace falta — es preferible una línea corta que una que no cabe. Si te vuelves a pasar, el motor recorta por oración y la última idea se pierde entera.`;
         const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu conviene.respuestaDirecta midió ${mejorWC} palabras; el MÁXIMO de la continuación es ${maxContinuacion}. Reescribí el JSON COMPLETO desarrollando UN SOLO matiz (el de mayor consecuencia en plata) en ≤${maxContinuacion} palabras; los demás matices viven en la pirámide — no los encadenes.${insistencia}`;
         try {
-          const regen = await anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 8000, messages: [{ role: "user", content: userPrompt + correctivo }], system: SYSTEM_PROMPT });
+          const regen = await reg.medir("plan-c", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 8000, messages: [{ role: "user", content: userPrompt + correctivo }], system: SYSTEM_PROMPT }));
           acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
           const regenResult = parseAndNormalize(regenText);
@@ -2233,11 +2264,14 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       .eq("id", analysisId);
     if (updateError) {
       console.error(`generateAiAnalysis: fallo al guardar ai_analysis (${analysisId}):`, updateError);
+      await persistGen("error");
       return null;
     }
+    await persistGen("ok");
     return aiResult;
   } catch (error) {
     console.error("generateAiAnalysis error:", error);
+    await persistGen("error");
     return null;
   }
 }

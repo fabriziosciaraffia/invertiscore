@@ -13,6 +13,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 import { CLAUDE_MODEL } from "@/lib/ai-config";
+import type { RegistroLlamadas } from "@/lib/pipeline-timing";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { getNearbyAttractors, type AttractorTipo } from "@/lib/data/attractors";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
@@ -510,6 +511,8 @@ async function generateInsightAI(
   comuna: string,
   pois: ZoneInsightPois,
   ctx: InsightAIContext,
+  /** Colector de timing (Goal A) — opcional, solo medición. */
+  registro?: RegistroLlamadas,
 ): Promise<{ headline_clp: string; headline_uf: string; preview_clp: string; preview_uf: string; narrative_clp: string; narrative_uf: string; accion: string }> {
   const flatTop: Array<{ tipo: string; nombre: string; distancia: number }> = [];
   (Object.keys(pois) as Array<keyof ZoneInsightPois>).forEach((bucket) => {
@@ -593,12 +596,15 @@ Genera tu respuesta como JSON exactamente con esta forma:
 }`;
 
   try {
-    const message = await anthropic.messages.create({
+    const hacerLlamada = () => anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1200,
       system: INSIGHT_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],
     });
+    const message = registro
+      ? await registro.medir("principal", CLAUDE_MODEL, hacerLlamada)
+      : await hacerLlamada();
     const text = message.content[0].type === "text" ? message.content[0].text : "";
     const cleaned = text.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
     const parsed = JSON.parse(cleaned);
@@ -639,6 +645,8 @@ export async function buildZoneInsightForRow(
   // path normal usa createAdminClient con SUPABASE_SERVICE_ROLE_KEY).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
+  /** Colector de timing (Goal A) — opcional, se threadea a la llamada IA. */
+  registro?: RegistroLlamadas,
 ): Promise<{ response: ZoneInsightResponse } | { error: string; status: number }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = (row.input_data ?? {}) as any;
@@ -786,7 +794,7 @@ export async function buildZoneInsightForRow(
           percentilTuDepto: ofertaComparable.percentilTuDepto,
         }
       : null,
-  });
+  }, registro);
 
   const response: ZoneInsightResponse = {
     stats: { plusvaliaHistorica, precioM2, ofertaComparable },

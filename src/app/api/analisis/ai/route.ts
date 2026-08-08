@@ -5,6 +5,11 @@ import { cookies } from "next/headers";
 import { consumeCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
 import { generateAiAnalysis, hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
+import type { GeneracionTrigger } from "@/lib/pipeline-timing";
+
+// Triggers que el cliente puede declarar (Goal A — timing). Cualquier valor
+// fuera de esta lista cae a "manual": el trigger es telemetría, nunca lógica.
+const TRIGGERS_CLIENTE = new Set<GeneracionTrigger>(["fallback-60s", "manual", "stale-regen"]);
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -54,10 +59,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    ({ analysisId } = await request.json());
+    const reqBody = await request.json();
+    ({ analysisId } = reqBody);
     if (!analysisId) {
       return NextResponse.json({ error: "analysisId requerido" }, { status: 400 });
     }
+    // Trigger declarado por el cliente (fallback-60s / stale-regen / manual).
+    // Solo alimenta pipeline_timing — no cambia ninguna decisión del handler.
+    const trigger: GeneracionTrigger = TRIGGERS_CLIENTE.has(reqBody?.trigger) ? reqBody.trigger : "manual";
 
     const { data: analysis } = await supabase
       .from("analisis")
@@ -101,7 +110,7 @@ export async function POST(request: Request) {
       if (!shared) return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
       return NextResponse.json(shared);
     }
-    const task = generateAiAnalysis(analysisId, supabase);
+    const task = generateAiAnalysis(analysisId, supabase, { trigger });
     inflight.set(analysisId, task);
     try {
       const aiResult = await task;

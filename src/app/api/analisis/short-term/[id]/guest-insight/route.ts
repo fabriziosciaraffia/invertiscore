@@ -19,6 +19,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { calcGuestProfile, PERFIL_LABEL, type GuestProfileResult, type PerfilHuespedSTR } from "@/lib/str-guest-profile";
+import { nuevoRegistroLlamadas, persistGeneracionTiming, type RegistroLlamadas } from "@/lib/pipeline-timing";
 
 const anthropic = new Anthropic();
 
@@ -172,16 +173,21 @@ Genera tu respuesta como JSON con la forma del schema. Recordá los topes de lar
 async function generateGuestInsightAI(
   comuna: string,
   profile: GuestProfileResult,
+  /** Colector de timing (Goal A) — opcional, solo medición. */
+  registro?: RegistroLlamadas,
 ): Promise<GuestInsightResponse["insight"]> {
   const userPrompt = buildUserPrompt(comuna, profile);
 
   try {
-    const message = await anthropic.messages.create({
+    const hacerLlamada = () => anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1200,
       system: GUEST_INSIGHT_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],
     });
+    const message = registro
+      ? await registro.medir("principal", CLAUDE_MODEL, hacerLlamada)
+      : await hacerLlamada();
     const text = message.content[0].type === "text" ? message.content[0].text : "";
     const cleaned = text.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
     const parsed = JSON.parse(cleaned);
@@ -253,8 +259,12 @@ export async function GET(
     // 1) Calcular perfiles de huésped + POIs relevantes.
     const profile = calcGuestProfile(lat, lng, comuna);
 
-    // 2) Generar narrativa IA.
-    const insight = await generateGuestInsightAI(comuna, profile);
+    // 2) Generar narrativa IA. Timing (Goal A): igual que zone-insight, esta
+    // generación no registra usage en ai_*_tokens; pipeline_timing es su única
+    // visibilidad de ms + tokens.
+    const tGen = Date.now();
+    const reg = nuevoRegistroLlamadas();
+    const insight = await generateGuestInsightAI(comuna, profile, reg);
 
     const response: GuestInsightResponse = {
       perfil: {
@@ -285,6 +295,16 @@ export async function GET(
     } catch (e) {
       console.warn("guest-insight: cache write failed (column missing?)", e);
     }
+
+    await persistGeneracionTiming(supabase, params.id, {
+      tipo: "guest-insight",
+      trigger: "on-open",
+      inicio_at: new Date(tGen).toISOString(),
+      fin_at: new Date().toISOString(),
+      total_ms: Date.now() - tGen,
+      resultado: "ok",
+      llamadas: reg.llamadas,
+    });
 
     return NextResponse.json(response);
   } catch (error) {

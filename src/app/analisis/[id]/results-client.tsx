@@ -184,7 +184,10 @@ export function PremiumResults({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const generateAiManually = useCallback(async () => {
+  // `trigger` es telemetría de timing (Goal A): declara QUIÉN pidió la
+  // generación (botón manual / regen por versión stale / fallback de 60s).
+  // Viaja en el body y termina en pipeline_timing.generaciones[].trigger.
+  const generateAiManually = useCallback(async (trigger: "manual" | "stale-regen" = "manual") => {
     if (!analysisId) return;
     setAiLoading(true);
     setAiError(null);
@@ -192,7 +195,7 @@ export function PremiumResults({
       const res = await fetch("/api/analisis/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysisId }),
+        body: JSON.stringify({ analysisId, trigger }),
       });
       const data = await res.json();
       if (res.ok && hasAiV2(data)) {
@@ -231,7 +234,7 @@ export function PremiumResults({
     // POST (route no cobra: hadPriorProse). Guard !aiError → un fallo no reintenta; el
     // effect corre una vez ([analysisId]) → sin loop.
     if (aiStale) {
-      if (!aiError) generateAiManually();
+      if (!aiError) generateAiManually("stale-regen");
       return;
     }
 
@@ -260,7 +263,9 @@ export function PremiumResults({
           const aiRes = await fetch("/api/analisis/ai", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ analysisId }),
+            // trigger: telemetría de timing — este POST es la generación
+            // DUPLICADA que dispara el timeout de 60s del polling (Goal A).
+            body: JSON.stringify({ analysisId, trigger: "fallback-60s" }),
           });
           const aiData = await aiRes.json();
           if (cancelled) return;
@@ -922,7 +927,7 @@ export function PremiumResults({
             propiedadTitle={propiedadTitle}
             propiedadSubtitle={propiedadSubtitle}
             metadataItems={metadataItems}
-            onRetry={generateAiManually}
+            onRetry={() => generateAiManually("manual")}
             results={results}
             inputData={inputData}
             valorUF={ufValue}

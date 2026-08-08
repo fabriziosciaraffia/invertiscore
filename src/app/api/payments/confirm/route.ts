@@ -178,7 +178,7 @@ export async function POST(request: Request) {
           // recupera la IA on-demand vía polling /ai-status — no es critical path.
           if (unlocked && unlocked.tipo_analisis === "long-term") {
             try {
-              await generateAiAnalysis(analysisId, supabase);
+              await generateAiAnalysis(analysisId, supabase, { trigger: "post-pago" });
             } catch (e) {
               console.error("[payments/confirm] generateAiAnalysis diferida falló:", e);
               captureApiWarning(e, {

@@ -13,6 +13,7 @@ import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { camposUpdateUsage } from "@/lib/ai-usage";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { persistGeneracionTiming } from "@/lib/pipeline-timing";
 
 const anthropic = new Anthropic();
 
@@ -152,6 +153,11 @@ export async function POST(request: Request) {
       return NextResponse.json(shared);
     }
     const task = (async (): Promise<Record<string, unknown> | null> => {
+      // Timing de la generación (Goal A): fail-soft, se apendea a
+      // pipeline_timing.generaciones tras el UPDATE (o en el catch, con
+      // resultado:"error"). El prep (auth + SELECT + mediana + recompute) se
+      // mide desde la entrada de la task; las llamadas vienen de generateStrProse.
+      const tGen = Date.now();
       try {
         const gen = await generateStrProse({
           anthropic,
@@ -172,10 +178,30 @@ export async function POST(request: Request) {
             ...camposUpdateUsage(gen.usage, analysis, CLAUDE_MODEL),
           })
           .eq("id", analysisId);
+        await persistGeneracionTiming(supabase, analysisId!, {
+          tipo: "str",
+          trigger: "on-open",
+          inicio_at: new Date(tGen).toISOString(),
+          fin_at: new Date().toISOString(),
+          total_ms: Date.now() - tGen,
+          resultado: "ok",
+          prompt_version: PROMPT_VERSION_STR,
+          llamadas: gen.llamadas,
+        });
         return ai;
       } catch (genError) {
         console.error("[STR AI v3] generación falló:", genError);
         captureApiWarning(genError, { ruta: "POST /api/analisis/short-term/ai", operacion: "generar-prosa-str-background", analysisId });
+        await persistGeneracionTiming(supabase, analysisId!, {
+          tipo: "str",
+          trigger: "on-open",
+          inicio_at: new Date(tGen).toISOString(),
+          fin_at: new Date().toISOString(),
+          total_ms: Date.now() - tGen,
+          resultado: "error",
+          prompt_version: PROMPT_VERSION_STR,
+          llamadas: [],
+        });
         return null;
       }
     })();

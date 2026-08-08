@@ -39,6 +39,7 @@ import { resolveUfForAnalysis } from "@/lib/uf";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { nuevoRegistroLlamadas, persistGeneracionTiming } from "@/lib/pipeline-timing";
 
 const anthropic = new Anthropic();
 
@@ -60,6 +61,25 @@ export async function generateComparativaAI(opts: GenerateComparativaOpts): Prom
   // escribe al final, junto al UPDATE de `results` que ya existe.
   const usage = nuevoAcumuladorUsage();
   const log = opts.log ?? ((m: string) => console.warn(`${m} · ${ltrId}`));
+  // Timing de la generación comparativa (Goal A): se apendea a la fila LTR
+  // (donde vive comparativaAI). Con persist:false (golden) no se escribe nada.
+  const tGen = Date.now();
+  const reg = nuevoRegistroLlamadas();
+  const prep: { ms?: number } = {};
+  const persistGen = async (resultado: "ok" | "error") => {
+    if (!persist) return;
+    await persistGeneracionTiming(supabase, ltrId, {
+      tipo: "ambas",
+      trigger: "on-open",
+      inicio_at: new Date(tGen).toISOString(),
+      fin_at: new Date().toISOString(),
+      total_ms: Date.now() - tGen,
+      resultado,
+      prompt_version: PROMPT_VERSION_AMBAS,
+      ...(prep.ms !== undefined ? { prep_ms: prep.ms } : {}),
+      llamadas: reg.llamadas,
+    });
+  };
 
   const [{ data: ltrRow }, { data: strRow }] = await Promise.all([
     supabase.from("analisis").select("*").eq("id", ltrId).single(),
@@ -247,16 +267,20 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
     }
   };
 
-  const msg = await anthropic.messages.create({
+  prep.ms = Date.now() - tGen;
+  const msg = await reg.medir("principal", CLAUDE_MODEL, () => anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 4000,
     messages: [{ role: "user", content: userPrompt }],
     system: SYSTEM_PROMPT_AMBAS,
-  });
+  }));
   acumularUsage(usage, msg);
   const rawText = msg.content[0].type === "text" ? msg.content[0].text : "";
   let aiResult = parse(rawText);
-  if (!aiResult) return null;
+  if (!aiResult) {
+    await persistGen("error");
+    return null;
+  }
 
   // PLANC-BUDGET GUARD — 1 reintento y se acepta lo que venga.
   //
@@ -273,12 +297,12 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
     log(`[AMBAS-PLANC-BUDGET] continuación ${contWC} palabras > máx ${maxTotal} — retry`);
     const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu continuación midió ${contWC} palabras; el MÁXIMO total es ${maxTotal} (quienDeberiasSer ≤${maxQuien}, switchPath ≤${maxSwitch}, cierre ≤${maxCierre}). Reescribí el JSON COMPLETO desarrollando UN matiz por movimiento, dentro del techo. Sin cifras de tarjeta.`;
     try {
-      const regen = await anthropic.messages.create({
+      const regen = await reg.medir("planc-budget", CLAUDE_MODEL, () => anthropic.messages.create({
         model: CLAUDE_MODEL,
         max_tokens: 4000,
         messages: [{ role: "user", content: userPrompt + correctivo }],
         system: SYSTEM_PROMPT_AMBAS,
-      });
+      }));
       acumularUsage(usage, regen);
       const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
       const regenResult = parse(regenText);
@@ -301,12 +325,12 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
     if (noCorregibles.length) {
       log(`[AMBAS-CATCH-VOZ] ${noCorregibles.length} forma(s) sin corrección determinística (${noCorregibles.map((h) => h.token).join(", ")}) — 1 reintento`);
       try {
-        const regen = await anthropic.messages.create({
+        const regen = await reg.medir("catch-voz", CLAUDE_MODEL, () => anthropic.messages.create({
           model: CLAUDE_MODEL,
           max_tokens: 4000,
           messages: [{ role: "user", content: userPrompt + correctivoVoz(noCorregibles) }],
           system: SYSTEM_PROMPT_AMBAS,
-        });
+        }));
         acumularUsage(usage, regen);
         const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
         const regenResult = parse(regenText);
@@ -355,6 +379,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
       })
       .eq("id", ltrId);
   }
+  await persistGen("ok");
 
   return aiResult;
 }

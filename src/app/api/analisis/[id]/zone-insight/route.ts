@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
 import { buildZoneInsightForRow, type ZoneInsightResponse } from "@/lib/zone-insight-core";
+import { nuevoRegistroLlamadas, persistGeneracionTiming } from "@/lib/pipeline-timing";
 
 export async function GET(
   request: Request,
@@ -50,7 +51,11 @@ export async function GET(
     }
 
     // Núcleo extraído (paquete B): POIs + stats + prosa IA, sin HTTP ni persistencia.
-    const built = await buildZoneInsightForRow(row, supabase);
+    // Timing (Goal A): esta generación hoy no registra usage en ai_*_tokens; el
+    // registro de pipeline_timing es su única visibilidad de ms + tokens.
+    const tGen = Date.now();
+    const reg = nuevoRegistroLlamadas();
+    const built = await buildZoneInsightForRow(row, supabase, reg);
     if ("error" in built) {
       return NextResponse.json({ error: built.error }, { status: built.status });
     }
@@ -64,6 +69,16 @@ export async function GET(
     } catch (e) {
       console.warn("zone-insight: cache write failed (column missing?)", e);
     }
+
+    await persistGeneracionTiming(supabase, params.id, {
+      tipo: "zone-insight",
+      trigger: "on-open",
+      inicio_at: new Date(tGen).toISOString(),
+      fin_at: new Date().toISOString(),
+      total_ms: Date.now() - tGen,
+      resultado: "ok",
+      llamadas: reg.llamadas,
+    });
 
     return NextResponse.json(response);
   } catch (error) {

@@ -26,6 +26,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { acumularUsage, nuevoAcumuladorUsage, type AiUsage } from "@/lib/ai-usage";
+import { nuevoRegistroLlamadas, type LlamadaTiming } from "@/lib/pipeline-timing";
 import { findNearestStation } from "@/lib/metro-stations";
 import {
   CLINICAS,
@@ -1015,6 +1016,9 @@ export interface GenerateStrProseResult {
    * persiste el CALLER: esta función genera y devuelve, no toca la base.
    */
   usage: AiUsage;
+  /** Timing por llamada LLM (Goal A). Mismo contrato que usage: lo persiste el
+   *  CALLER (route → pipeline_timing); los scripts pueden ignorarlo. */
+  llamadas: LlamadaTiming[];
 }
 
 function parseStrJson(raw: string): AIAnalysisSTRv2 | null {
@@ -1051,6 +1055,9 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   // Consumo de tokens de todos los intentos. Viaja en el resultado; el caller lo
   // escribe junto con ai_analysis.
   const usage = nuevoAcumuladorUsage();
+  // Timing por llamada (Goal A): mismo contrato que usage — viaja en el
+  // resultado y lo persiste el caller. Solo medición.
+  const reg = nuevoRegistroLlamadas();
 
   let best: AIAnalysisSTRv2 | null = null;
   let bestScore = Number.POSITIVE_INFINITY;
@@ -1074,12 +1081,12 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
     }
     let ai: AIAnalysisSTRv2 | null = null;
     try {
-      const msg = await anthropic.messages.create({
+      const msg = await reg.medir(`quality-try-${t + 1}`, CLAUDE_MODEL, () => anthropic.messages.create({
         model: CLAUDE_MODEL,
         max_tokens: 8000,
         messages: [{ role: "user", content: userPrompt + correctivo }],
         system: SYSTEM_PROMPT_STR,
-      });
+      }));
       acumularUsage(usage, msg);
       const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
       ai = parseStrJson(rawText);
@@ -1105,12 +1112,12 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
     log(`[STR-BUDGET-RETRY] ${grossBest.length} campo(s) >1.3× techo (${grossBest.map((o) => `${o.path}:${o.wc}/${o.max}`).join(", ")}) — 1 reintento`);
     const correctivo = `\n\n⚠️ CORRECCIÓN DE EXTENSIÓN: estos campos superan su máximo de palabras: ${grossBest.map((o) => `${o.path} (${o.wc}, máx ${o.max})`).join("; ")}. Recórtalos a su techo desarrollando UN solo matiz por campo — la card ya mostró el dato, el drawer profundiza sin repetir. Reescribe el JSON COMPLETO respetando la doctrina §0-§14 y los máximos del §13.`;
     try {
-      const msg = await anthropic.messages.create({
+      const msg = await reg.medir("budget-retry", CLAUDE_MODEL, () => anthropic.messages.create({
         model: CLAUDE_MODEL,
         max_tokens: 8000,
         messages: [{ role: "user", content: userPrompt + correctivo }],
         system: SYSTEM_PROMPT_STR,
-      });
+      }));
       acumularUsage(usage, msg);
       usedTries += 1;
       const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
@@ -1157,5 +1164,5 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   // así endpoint y corpus sellan idéntico. Espejo ambas-generate.ts.
   best.promptVersion = PROMPT_VERSION_STR;
 
-  return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, cifrasFuera, tries: usedTries, usage };
+  return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, cifrasFuera, tries: usedTries, usage, llamadas: reg.llamadas };
 }
