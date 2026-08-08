@@ -799,90 +799,10 @@ export function scanStrSoftDrift(ai: unknown): string[] { return scanWith(ai, ST
 /** Todos los hits (hard+soft), para reporte no-bloqueante. */
 export function scanStrDrift(ai: unknown): string[] { return [...scanStrHardDrift(ai), ...scanStrSoftDrift(ai)]; }
 
-// ── Guard STR-CIFRA — la prosa no recalcula números del motor ────────────────
-// Generalización del [DISTANCIA-CIFRA] de LTR a TODA la prosa STR. Censo editorial
-// 2026-08-07: las 4 altas confirmadas eran prosa re-derivando cifras (67% vs 64% de
-// costos, $202.490 vs $182.490, "más de 25%" junto a "10%"). La capa primaria es
-// §1.quater del system; esto es la red que mide si se cumplió.
-//
-// Principio del match: el user prompt CONTIENE todas las cifras tipadas que el modelo
-// recibió, así que el conjunto permitido se extrae del propio prompt. Eso cubre por
-// construcción campos que aún no existen — un umbral nuevo llega al prompt tipado y
-// queda permitido solo — y evita mantener una lista de campos.
-//
-// Anti-falso-positivo (dos guards sobre-gatillados previos en este repo):
-// · solo se auditan cifras CON unidad ($, UF, %, mil/millones) — enteros pelados
-//   (años, dormitorios, m², "P50") quedan fuera del alcance;
-// · tolerancia relativa en montos (el redondeo "$176 millones" calza con $176.2M) y
-//   absoluta+relativa en porcentajes (8% calza con 8,4%; 64% NO calza con 67%);
-// · los montos también calzan contra el set UF y viceversa (un error de unidad no es
-//   recalculo — lo mide otra dimensión del censo, no este guard);
-// · 0 y 100 se toleran siempre (retóricos: "financia el 100%").
-
-interface CifraDetectada { n: number; unidad: "monto" | "uf" | "pct"; raw: string }
-
-const parseNumCL = (raw: string): number => Number(raw.replace(/\./g, "").replace(",", "."));
-
-function extraerCifras(texto: string): CifraDetectada[] {
-  const out: CifraDetectada[] = [];
-  // Montos CLP con sufijo opcional: $176 millones · $3,5M · $513K · $301.772 · $127,7 MM
-  const reClp = /\$\s?([\d.]+(?:,\d+)?)\s?(MM|M(?![A-Za-z])|K(?![A-Za-z])|mill[oó]n(?:es)?|mil(?![a-z]))?/g;
-  let m: RegExpExecArray | null;
-  while ((m = reClp.exec(texto)) !== null) {
-    let n = parseNumCL(m[1]);
-    const suf = (m[2] ?? "").toLowerCase();
-    if (suf === "k" || suf === "mil") n *= 1e3;
-    else if (suf) n *= 1e6; // M / MM / millones
-    if (Number.isFinite(n) && n > 0) out.push({ n, unidad: "monto", raw: m[0].trim() });
-  }
-  const reUf = /UF\s?([\d.]+(?:,\d+)?)/g;
-  while ((m = reUf.exec(texto)) !== null) {
-    const n = parseNumCL(m[1]);
-    if (Number.isFinite(n) && n > 0) out.push({ n, unidad: "uf", raw: m[0] });
-  }
-  const rePct = /(\d+(?:,\d+)?)\s?%/g;
-  while ((m = rePct.exec(texto)) !== null) {
-    const n = parseNumCL(m[1]);
-    if (Number.isFinite(n)) out.push({ n, unidad: "pct", raw: m[0] });
-  }
-  return out;
-}
-
-const calzaMonto = (a: number, b: number): boolean => Math.abs(a - b) / Math.max(a, b) <= 0.025;
-const calzaPct = (a: number, b: number): boolean =>
-  Math.abs(a - b) <= 0.55 || Math.abs(a - b) / Math.max(a, b) <= 0.025;
-
-/**
- * Cifras de la prosa que NO vienen del input (= no aparecen en el user prompt).
- * Devuelve `path="raw"` por violación. Detección — el que llama decide si loguea,
- * reintenta o revierte.
- */
-export function cifrasFueraDeInput(userPrompt: string, ai: unknown): string[] {
-  const permitidas = extraerCifras(userPrompt);
-  const montosOk = permitidas.filter((c) => c.unidad !== "pct").map((c) => c.n);
-  const pctsOk = permitidas.filter((c) => c.unidad === "pct").map((c) => c.n);
-  const strings: { path: string; value: string }[] = [];
-  collectStrings(ai, "", strings);
-  const out: string[] = [];
-  for (const { path, value } of strings) {
-    for (const c of extraerCifras(value)) {
-      if (c.unidad === "pct") {
-        if (c.n === 0 || c.n === 100) continue;
-        if (pctsOk.some((p) => calzaPct(p, c.n))) continue;
-        // un % que coincide con un monto/UF del input no es invento ("un 25%" citando
-        // el pie 25): se tolera para no sobre-gatillar.
-        if (montosOk.some((p) => calzaPct(p, c.n))) continue;
-      } else {
-        if (montosOk.some((p) => calzaMonto(p, c.n))) continue;
-        // cruce de unidad tolerado (monto que cita una cifra UF del input o viceversa)
-        if (permitidas.some((p) => p.unidad !== c.unidad && calzaMonto(p.n, c.n))) continue;
-        if (pctsOk.some((p) => calzaMonto(p, c.n))) continue;
-      }
-      out.push(`${path}="${c.raw}"`);
-    }
-  }
-  return out;
-}
+// Guard de cifras: extraído a módulo compartido al portarlo a LTR (rama
+// prosa-no-recalcula-ltr). Se re-exporta para los consumidores existentes.
+import { cifrasFueraDeInput } from "./cifras-guard";
+export { cifrasFueraDeInput };
 
 /** Secciones sobre presupuesto (por un factor de tolerancia). Devuelve [path, palabras, máximo]. */
 export function sectionsOverBudget(ai: Record<string, unknown> | null | undefined, factor = 1.15): { path: string; wc: number; max: number }[] {

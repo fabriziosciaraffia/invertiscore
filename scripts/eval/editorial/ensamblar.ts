@@ -108,13 +108,26 @@ function ensamblarLTR(fila: FilaAnalisis): InformeEnsamblado {
 
   const respuesta = ai.conviene.respuestaDirecta_clp ?? "";
   const ordenadas = ordenarHallazgosPiramide(results, ai);
-  const top3 = [...ordenadas].sort((a, b) => b.decisividad - a.decisividad || (b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0)).slice(0, 3);
+  // Índice del hero: los PRIMEROS 3 del orden único, igual que HeroLTR (ordenados.slice).
+  // El sort por decisividad que había acá medía OTRO índice que el que el usuario ve —
+  // mismo desvío que se corrigió en STR (censo 2026-08-07); este es el espejo LTR.
+  const top3 = ordenadas.slice(0, 3);
+
+  // LO QUE TE SEPARA — la distancia no es card (la pirámide LTR la filtra): vive en el
+  // drawer que abre "La posición de Franco" y su frase baja al PDF. Espejo del fix STR.
+  const distanciaLtr = ((results?.hallazgos ?? []) as Hallazgo[]).find((h) => h.id === "distancia_veredicto");
 
   const piezas: Array<string | null> = [
     seccion("hero:pregunta", [ai.conviene.pregunta ?? "¿Conviene o no conviene?"]),
     seccion("respuestaDirecta", [respuesta]),
-    seccion("hero:top3 (Lo que define este veredicto)", top3.map((h) => `· ${h.titular || h.fraseCanonica}`)),
+    seccion("hero:indice (Léelo en este orden)", top3.map((h) => `· ${h.titular || h.fraseCanonica}`)),
     seccion("posicion (La posición de Franco)", [ai.conviene.cajaAccionable_clp]),
+    distanciaLtr
+      ? seccion('drawer:distancia (Lo que te separa — se abre desde "La posición de Franco")', [
+          distanciaLtr.titular,
+          distanciaLtr.fraseCanonica,
+        ])
+      : null,
     ...cardsPiramide(ordenadas, respuesta, ufFrozen),
     drawerAISection("costoMensual (¿Cuánto te cuesta al mes?)", ai.costoMensual),
     ai.negociacion

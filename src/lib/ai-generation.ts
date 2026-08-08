@@ -44,6 +44,7 @@ import {
   recortarContinuacion,
 } from "@/lib/prosa-presupuesto";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
+import { cifrasFueraDeInput } from "@/lib/cifras-guard";
 import type { Hallazgo } from "@/lib/types";
 import { metricaDisplay, metricaODefault, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
@@ -688,7 +689,17 @@ Y si ninguno de los umbrales provistos contesta la pregunta que estás por hacer
 
 EL PUENTE OBLIGATORIO (cuando conviven 2+ precios en la misma sección): si \`negociacion.contenido\` o \`estrategiaSugerida\` citan más de uno de estos umbrales (break-even de caja, precio que cambia el veredicto, anclas de oferta), DEBES ordenarlos en una frase-puente que diga qué responde cada uno, en el momento en que aparece el segundo. Patrón: "Son tres números distintos: UF A para que la caja deje de sangrar, UF B para que el veredicto suba, y UF C para abrir la negociación." (Adapta a los que realmente cites — dos o tres.) Esto ORDENA cifras que ya existen en tus bloques; no crea ninguna nueva ni reemplaza las etiquetas propias de cada umbral. Sin el puente, el lector ve dos "descuentos" distintos y concluye que el informe se contradice.
 
-Esta regla vale para todo umbral que el motor emita, incluidos los que aún no existen: si mañana aparece otro precio de referencia, sigue teniendo su propia pregunta y su propia etiqueta.`;
+Esta regla vale para todo umbral que el motor emita, incluidos los que aún no existen: si mañana aparece otro precio de referencia, sigue teniendo su propia pregunta y su propia etiqueta.
+
+## 17. LAS CIFRAS SON DEL ANÁLISIS, TAL CUAL (regla dura de cifras — toda la prosa)
+
+El §16 ordena los umbrales que YA existen; esta regla cierra la otra puerta: producir cifras que no existen. Toda cifra que escribas —monto, porcentaje, múltiplo— ya viene en el input: en los datos del caso, en una fraseCanonica o en un bloque de umbrales. Tu trabajo es ELEGIR la cifra correcta e interpretarla; nunca producirla:
+
+- PROHIBIDO derivar cifras nuevas con aritmética propia: no sumes componentes, no restes flujos, no conviertas un monto en porcentaje ni un porcentaje en monto, no interpoles entre dos escenarios ("si a −5% pasa X, a −12%..."). Si la cifra que tu frase necesita no viene dada, la frase se escribe SIN cifra: nombra los componentes y detente. Una cifra construida que suena plausible es peor que la ausencia de cifra, porque el lector no puede contrastarla.
+- Si una card o un bloque ya mostró una métrica, tu prosa cita EXACTAMENTE ese valor cuando hable de lo mismo. Un "23,2%" tuyo junto al porcentaje tipado del bloque de distancia es una contradicción que el lector no puede resolver — y el bloque gana por definición, porque viene del análisis.
+- Aplica a TODAS las secciones. ÚNICA aritmética sancionada: convertir un monto provisto entre CLP y UF con la tasa monedaUF del input (§12 lo exige para las variantes _uf). Convertir es copiar en otra moneda; cualquier otra operación es producir.
+
+Es la disciplina de §1.4 (solo datos provistos) llevada a su forma dura, hermana de §15 (múltiplos) y §16 (jerarquía): §16 dice CUÁL umbral usar; esta dice que fuera de los provistos no hay ninguno.`;
 
 function fmtCLP(n: number): string {
   return (n < 0 ? "-$" : "$") + Math.round(Math.abs(n)).toLocaleString("es-CL");
@@ -2056,6 +2067,43 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       }
     }
   
+    // ─── CATCH-CIFRA (§17 · la prosa no recalcula) ────────────────────────────
+    // Espejo LTR del guard STR-CIFRA (cifras-guard.ts): las cifras de la prosa deben
+    // venir del propio userPrompt; la conversión CLP↔UF con la tasa monedaUF es la única
+    // aritmética sancionada (§12). Mismo reparto que CATCH-VOZ: 1 reintento con la cita
+    // exacta, se acepta solo si mejora. Corre ANTES de PLANC-BUDGET (el techo de
+    // palabras sigue siendo la última palabra) y ANTES de FASE B (que inyecta bloques
+    // del motor que no son prosa del modelo y no se auditan). Best-effort.
+    if (aiResult) {
+      try {
+        const viol = cifrasFueraDeInput(userPrompt, aiResult, { ufClp: UF_CLP });
+        if (viol.length) {
+          console.warn(`[LTR-CIFRA] ${analysisId}: ${viol.length} cifra(s) fuera del input — ${viol.join(" | ")} — 1 reintento`);
+          const correctivo = `
+
+⚠️ CORRECCIÓN DE CIFRAS (§17): la versión anterior citó cifras que NO vienen del input: ${viol.join(", ")}. Cada monto y porcentaje del texto debe ser EXACTAMENTE uno de los provistos (o su conversión CLP↔UF con la tasa monedaUF) — sin sumas propias, sin restas, sin porcentajes derivados. Donde la cifra que necesitas no exista, escribe la frase sin cifra. Reescribe el JSON COMPLETO respetando la doctrina §1-§17.`;
+          const regen = await anthropic.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 8000,
+            messages: [{ role: "user", content: userPrompt + correctivo }],
+            system: SYSTEM_PROMPT,
+          });
+          acumularUsage(usage, regen);
+          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+          const regenResult = parseAndNormalize(regenText);
+          const quedan = regenResult ? cifrasFueraDeInput(userPrompt, regenResult, { ufClp: UF_CLP }) : null;
+          if (regenResult && quedan && quedan.length < viol.length) {
+            console.warn(`[LTR-CIFRA] ${analysisId}: retry mejoró ${viol.length}→${quedan.length} — aceptado`);
+            aiResult = regenResult;
+          } else {
+            console.warn(`[LTR-CIFRA] ${analysisId}: retry no mejoró o no parseó — conservo la prosa previa`);
+          }
+        }
+      } catch (e) {
+        console.warn(`[LTR-CIFRA] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
     // PLAN C GUARD — enforcement de presupuesto POR CONSTRUCCIÓN. La continuación (lo
     // que escribió el modelo, aún SIN la apertura) no puede superar maxContinuacion.
     // El modelo no cuenta bien, así que medimos acá: sobre maxContinuacion×1.1, hasta
