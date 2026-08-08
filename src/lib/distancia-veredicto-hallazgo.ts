@@ -140,7 +140,7 @@ const fmtUF = (n: number) => "UF " + Math.round(n).toLocaleString("es-CL");
  * alcanzar el objetivo (arriendo) o decrece (precio). Devuelve el factor más cercano a 1
  * que ya cruza, o null si ni el extremo del rango alcanza.
  */
-function biseccionFactor(
+export function biseccionFactor(
   alcanza: (factor: number) => boolean,
   extremo: number,
   subiendo: boolean,

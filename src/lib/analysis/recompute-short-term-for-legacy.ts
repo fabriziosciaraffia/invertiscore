@@ -2,6 +2,7 @@ import { calcShortTerm, type ShortTermInputs, type ShortTermResult } from "@/lib
 import { calcFrancoScoreSTR, type FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { buildStrHallazgos } from "@/lib/str-hallazgos";
 import { buildAirbnbData } from "@/lib/api-helpers/analisis-pipeline";
+import type { ScoreSTRExtras } from "@/lib/analysis/veredicto-str-con-patch";
 
 /**
  * Recompute-on-load STR — espejo de `recomputeResultsForLegacy` (LTR). Reconstruye el
@@ -27,14 +28,21 @@ export type ShortTermResultsPersisted = ShortTermResult & {
   airbnbRaw: unknown;
 };
 
+/**
+ * Reconstrucción de los DOS objetos que deciden el veredicto STR de una fila persistida:
+ * `ShortTermInputs` (motor) y los extras de `ScoreSTRInputs` (dimensión factibilidad).
+ * Extraído de `recomputeShortTermForLegacy` para que el closure `veredictoStrConPatch` y el
+ * recompute-on-load partan del MISMO input reconstruido — si divergieran, el hallazgo de
+ * distancia mediría contra un análisis que no es el que el usuario está leyendo.
+ *
+ * Devuelve `null` con los mismos guards que el recompute (sin airbnbRaw / sin input_data).
+ */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export function recomputeShortTermForLegacy(
+export function buildStrRecomputeCtx(
   inputData: Record<string, any> | null | undefined,
-  persistedResults: { airbnbRaw?: unknown; ocupacionRealizadaComparables?: ShortTermResult["ocupacionRealizadaComparables"] } | null | undefined,
+  persistedResults: { airbnbRaw?: unknown } | null | undefined,
   ufClp: number,
-  asOf: Date,
-  mediana: { mediana: number | null; n: number },
-): ShortTermResultsPersisted | null {
+): { inputs: ShortTermInputs; scoreExtras: ScoreSTRExtras; airbnbRaw: unknown } | null {
   const airbnbRaw = persistedResults?.airbnbRaw;
   if (!airbnbRaw || !inputData || typeof inputData.precioCompra !== "number") return null;
 
@@ -96,23 +104,43 @@ export function recomputeShortTermForLegacy(
     fechaEntrega: inputData.fechaEntrega,
   };
 
-  const result = calcShortTerm(inputs, asOf);
-
   const lat = typeof inputData.lat === "number" ? inputData.lat : -33.4378;
   const lng = typeof inputData.lng === "number" ? inputData.lng : -70.6504;
   const monthlyRevenue = Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [];
   const revenueP50 = airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0;
 
+  return {
+    inputs,
+    airbnbRaw,
+    scoreExtras: {
+      dormitorios: inputData.dormitorios,
+      superficie: inputData.superficieUtil,
+      regulacionEdificio: inputData.edificioPermiteAirbnb || "no_seguro",
+      lat,
+      lng,
+      revenueP50,
+      monthlyRevenue,
+    },
+  };
+}
+
+export function recomputeShortTermForLegacy(
+  inputData: Record<string, any> | null | undefined,
+  persistedResults: { airbnbRaw?: unknown; ocupacionRealizadaComparables?: ShortTermResult["ocupacionRealizadaComparables"] } | null | undefined,
+  ufClp: number,
+  asOf: Date,
+  mediana: { mediana: number | null; n: number },
+): ShortTermResultsPersisted | null {
+  const ctx = buildStrRecomputeCtx(inputData, persistedResults, ufClp);
+  if (!ctx || !inputData) return null;
+  const { inputs, scoreExtras, airbnbRaw } = ctx;
+
+  const result = calcShortTerm(inputs, asOf);
+
   const francoScore = calcFrancoScoreSTR({
+    ...scoreExtras,
     results: result,
-    precioCompra: precioCompraBase,
-    dormitorios: inputData.dormitorios,
-    superficie: inputData.superficieUtil,
-    regulacionEdificio: inputData.edificioPermiteAirbnb || "no_seguro",
-    lat,
-    lng,
-    revenueP50,
-    monthlyRevenue,
+    precioCompra: inputs.precioCompra,
   });
 
   const strHallazgos = buildStrHallazgos({
@@ -127,6 +155,9 @@ export function recomputeShortTermForLegacy(
     mediana,
     valorUF: ufClp,
     incluyeCorretaje: false,
+    // Distancia al veredicto: el MISMO input reconstruido que produjo `result`, así que la
+    // distancia se mide contra el análisis que el usuario tiene en pantalla.
+    veredictoCtx: { inputs, scoreExtras, asOf },
   });
   const hallazgos = [...(result.hallazgos ?? []), ...strHallazgos];
 

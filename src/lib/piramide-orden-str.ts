@@ -17,5 +17,12 @@ import { dedupHallazgos, ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 // verdad: el componente, el índice del hero y la navegación prev/next de los
 // drawers lo consumen tal cual.
 export function ordenarHallazgosPiramideSTR(hallazgos: Hallazgo[] | null | undefined): Hallazgo[] {
-  return ordenarHallazgosUnico(dedupHallazgos(Array.isArray(hallazgos) ? hallazgos.filter(Boolean) : []));
+  const limpios = Array.isArray(hallazgos) ? hallazgos.filter(Boolean) : [];
+  // `distancia_veredicto` NO va en la pirámide, igual que en LTR: no es un hallazgo SOBRE
+  // el departamento sino un mapa de la distancia al umbral de decisión. Su lugar es el hero
+  // y su drawer propio. Sin este filtro se colaría a las cards y correría la numeración
+  // 01-12 de todos los demás.
+  return ordenarHallazgosUnico(
+    dedupHallazgos(limpios).filter((h) => h.id !== "distancia_veredicto"),
+  );
 }

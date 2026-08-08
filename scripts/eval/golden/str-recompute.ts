@@ -143,8 +143,10 @@ function invariantes(hz: Hallazgo[], score: any, rec: any, medianaConfiable: boo
   const oc = byId("ocupacion_vs_banda");
   if (oc && oc.valor.esFallback) out.push({ rule: "BS6.fallback", pass: oc.procedencia.confianza === "baja" && !/ramp-?up/i.test(oc.fraseCanonica) && /no hay datos/i.test(oc.fraseCanonica), detail: `conf=${oc.procedencia.confianza}` });
 
-  // BS7 — N∈[7,12].
-  out.push({ rule: "BS7.N∈[7,12]", pass: hz.length >= 7 && hz.length <= 12, detail: `N=${hz.length}` });
+  // BS7 — N∈[7,13]. El techo subió de 12 a 13 al entrar `distancia_veredicto`: la pirámide
+  // STR pasó a 13 hallazgos posibles, y el nuevo se emite en TODO no-COMPRAR (13) y en
+  // ninguno COMPRAR (12). No es holgura preventiva — es el tamaño real del techo nuevo.
+  out.push({ rule: "BS7.N∈[7,13]", pass: hz.length >= 7 && hz.length <= 13, detail: `N=${hz.length}` });
 
   // BS8 — "revenue" prohibido en output (frases + procedencia).
   const revLeak = hz.some((h) => /revenue/i.test(h.fraseCanonica) || /revenue/i.test(h.procedencia.base));
@@ -185,15 +187,22 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
   // asOf constante fija (determinismo golden). Hoy es no-op en la aritmética (pre-entrega
   // diferido; buildProjections la void-ea) pero fija la firma para cuando el modelo de
   // entrega futura aterrice en su rama.
-  const rec = calcShortTerm(buildInputs(d, airbnbData, fx.uf) as any, new Date("2026-01-01T00:00:00Z"));
-  const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, dormitorios: d.dormitorios,
-    superficie: d.superficieUtil, regulacionEdificio: reg, lat: d.lat ?? -33.4378, lng: d.lng ?? -70.6504,
-    revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue } as any);
+  const asOfGolden = new Date("2026-01-01T00:00:00Z");
+  const inputs = buildInputs(d, airbnbData, fx.uf) as any;
+  const rec = calcShortTerm(inputs, asOfGolden);
+  const scoreExtras = { dormitorios: d.dormitorios, superficie: d.superficieUtil, regulacionEdificio: reg,
+    lat: d.lat ?? -33.4378, lng: d.lng ?? -70.6504,
+    revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue };
+  const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, ...scoreExtras } as any);
   // mediana fake confiable para ejercitar sobreprecio: comuna típica.
   const mediana = { mediana: 3200, n: 12 };
+  // `veredictoCtx` es obligatorio en el golden aunque el assembler lo acepte opcional: sin
+  // él el hallazgo de distancia al veredicto se omite y la red de seguridad mediría una
+  // pirámide más corta que la de producción, en silencio.
   const hz = [...(rec.hallazgos ?? []), ...buildStrHallazgos({ result: rec, francoScore: score, comuna: d.comuna || "",
     precioUF: d.precioCompraUF, superficieM2: d.superficieUtil, piePct: d.piePct, tasaPct: d.tasaInteres,
-    plazoAnios: d.plazoCredito, mediana, valorUF: fx.uf, incluyeCorretaje: false })];
+    plazoAnios: d.plazoCredito, mediana, valorUF: fx.uf, incluyeCorretaje: false,
+    veredictoCtx: { inputs, scoreExtras: scoreExtras as any, asOf: asOfGolden } })];
   return { rec, score, hz, mediana };
 }
 

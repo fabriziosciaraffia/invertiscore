@@ -26,6 +26,9 @@ import { buildHallazgoPlusvalia, getPlusvaliaRef, resolvePlusvaliaComuna, PLUSVA
 import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { classifyFinancingHealth, LEVEL_RANK } from "./financing-health";
+import { buildHallazgoDistanciaVeredictoStr } from "./distancia-veredicto-str-hallazgo";
+import { veredictoStrConPatch, type VeredictoStrCtx } from "./analysis/veredicto-str-con-patch";
+import { COMISION_AIRBNB } from "./engines/short-term-engine";
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 /** decisividad_dim = |dimScore−50|/50: cuánto tira la dimensión el veredicto desde el neutro. */
@@ -46,6 +49,15 @@ export interface BuildStrHallazgosCtx {
   mediana: { mediana: number | null; n: number };
   valorUF: number;  // UF→CLP del momento (patrimonio CLP↔UF, financing)
   incluyeCorretaje: boolean;
+  /**
+   * Contexto para reevaluar el veredicto con una palanca movida (hallazgo de distancia al
+   * veredicto). Se pasa el contexto ENTERO en vez de los campos sueltos para que el
+   * hallazgo no pueda medir contra un input distinto del que produjo el veredicto.
+   *
+   * OPCIONAL: sin él el hallazgo se omite (pirámide N−1), que es el comportamiento correcto
+   * para los call sites de auditoría que reconstruyen el resultado sin el input completo.
+   */
+  veredictoCtx?: VeredictoStrCtx;
 }
 
 /**
@@ -203,6 +215,32 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
         incluyeCorretaje: ctx.incluyeCorretaje,
         modalidad: "str",
         sinCapitalPropio: r.pie === 0,
+      }),
+    );
+  }
+
+  // ── DISTANCIA AL VEREDICTO (solo-lectura, decisividad 0) ──
+  // Espejo STR del hallazgo LTR: mide cuánto tiene que mejorar una palanca para que el
+  // veredicto SUBA. Usa el closure `veredictoStrConPatch`, que NO reconstruye hallazgos →
+  // sin recursión con este assembler. Ausente en COMPRAR (no hay veredicto superior) y
+  // cuando el caller no pasa el contexto ⇒ pirámide N−1.
+  if (ctx.veredictoCtx) {
+    const vc = ctx.veredictoCtx;
+    out.push(
+      buildHallazgoDistanciaVeredictoStr({
+        veredictoBase: fs.veredicto,
+        score: fs.score,
+        precioUF: ctx.precioUF,
+        precioCLP: vc.inputs.precioCompra,
+        adrActual: r.ejesAplicados?.adrFinal ?? NaN,
+        modoGestionActual: vc.inputs.modoGestion === "auto" ? "auto" : "administrador",
+        comisionAutoDec: COMISION_AIRBNB,
+        comisionAdminDec: vc.inputs.comisionAdministrador,
+        plazoCredito: ctx.plazoAnios,
+        piePct: ctx.piePct,
+        razonSinPie: vc.inputs.razonSinPie,
+        motivosGate: fs.gates?.motivos ?? [],
+        veredictoAtPatch: (patch) => veredictoStrConPatch(vc, patch),
       }),
     );
   }

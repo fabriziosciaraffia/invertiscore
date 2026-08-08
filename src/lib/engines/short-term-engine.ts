@@ -439,7 +439,7 @@ const MESES = [
 ] as const;
 
 const GASTOS_CIERRE_PCT = 0.02;
-const COMISION_AIRBNB = 0.03;
+export const COMISION_AIRBNB = 0.03;
 const COMISION_LTR = 0.05;
 // Ramp-up consolidado: ver `STR_RAMP_UP` exportado más abajo. Esta variable
 // queda como alias interno para no tocar callsites legacy.

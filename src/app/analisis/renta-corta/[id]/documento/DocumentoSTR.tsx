@@ -16,6 +16,7 @@ import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { normalizeLegacyVerdict, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_FOOTNOTE_DOC } from "@/lib/no-aplica-copy";
 import { describirMotivosSTR } from "@/lib/no-cierra-copy";
+import type { HallazgoDistanciaVeredicto } from "@/lib/types";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
 import { findingDisplay } from "@/components/analysis/GenericFindingCard";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
@@ -98,6 +99,50 @@ export function DocumentoSTR({
   const occPct = Math.round((ej?.ocupacionFinal ?? base.ocupacionReferencia) * 100);
   const occTargetPct = ej ? Math.round(ej.ocupacionTarget * 100) : null;
   const nochesMes = Math.round((occPct / 100) * 30);
+
+  // ── Lo que te separa (distancia al veredicto) ──
+  // La web lo pone en el drawer que abre "La posición de Franco"; el papel no tiene
+  // drawer, así que la frase baja al bloque "por qué no cierra", que es exactamente
+  // donde la pregunta queda abierta. NO entra a la pirámide del PDF: el filtro de
+  // `ordenarHallazgosPiramideSTR` es el mismo para web y papel, y duplicarlo como card
+  // rompería la numeración del informe.
+  const dist = (results.hallazgos ?? []).find(
+    (h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto",
+  );
+  const distanciaFrase = (() => {
+    if (!dist) return null;
+    const dv = dist.valor;
+    const objetivo = dv.veredictoObjetivo === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
+    if (dv.esEstructural) {
+      const dm = dv.deltaMinimoFueraDeTope;
+      return dm
+        ? `Y no es cuestión de afinar un supuesto: ni ${dm.palanca === "precio" ? "bajando el precio" : "subiendo la tarifa por noche"} un ${pct(Math.abs(dm.deltaPct))} esto llega a ${objetivo}.`
+        : `Y no es cuestión de afinar un supuesto: ninguna vía razonable lo acerca a ${objetivo}.`;
+    }
+    const l = dv.palancaMasBarata;
+    if (!l) return null;
+    const via =
+      l.palanca === "plazo"
+        ? `estirando el crédito de ${l.actual} a ${l.objetivo} años, sin poner capital,`
+        : l.palanca === "pie"
+          ? (l.actual > 0
+              ? `subiendo el pie de ${pct(l.actual)} a ${pct(l.objetivo)}, sin tocar precio ni tarifa,`
+              : `poniendo un pie de ${pct(l.objetivo)} en vez de financiar el 100%,`)
+          : l.palanca === "gestion"
+            ? (l.modoGestionObjetivo === "auto"
+                ? `gestionándolo tú en vez de dejarlo con administrador,`
+                : `dejándolo con un administrador en vez de gestionarlo tú,`)
+            : l.palanca === "adr"
+              ? `con la tarifa en ${money(l.objetivo)} por noche —${pct(Math.abs(l.deltaPct))} sobre lo que hoy rinde la zona—`
+              : `cerrando en UF ${Math.round(l.objetivo).toLocaleString("es-CL")} —${pct(Math.abs(l.deltaPct))} menos—`;
+    // La tarifa se marca como apuesta también en papel: es la única vía que depende de
+    // superar al mercado, y sin la advertencia se lee como un ajuste más.
+    const cola =
+      l.palanca === "adr"
+        ? " Esa tarifa es una apuesta a rendir sobre la mediana de tu zona, no un supuesto que se corrige."
+        : "";
+    return `Pero no está lejos: ${via} el veredicto sube a ${objetivo}.${cola}`;
+  })();
 
   // ── Hallazgos (ORDEN ÚNICO — el mismo del índice del hero y la pirámide web) ──
   const hallazgos = ordenarHallazgosPiramideSTR(results.hallazgos);
@@ -262,8 +307,11 @@ export function DocumentoSTR({
             100 junto a un BUSCAR OTRA. En la web el usuario puede abrir un drawer o
             leer la prosa contigua; el PDF es el artefacto que se guarda y se manda, y
             ahí no hay nada más a lo que recurrir. Por eso se muestra también acá. */}
-        {motivos && (
-          <div className="nocierra avoid-break"><p>{motivos.frase}</p></div>
+        {(motivos || distanciaFrase) && (
+          <div className="nocierra avoid-break">
+            {motivos && <p>{motivos.frase}</p>}
+            {distanciaFrase && <p style={{ marginTop: motivos ? 6 : 0 }}>{distanciaFrase}</p>}
+          </div>
         )}
 
         {d && (

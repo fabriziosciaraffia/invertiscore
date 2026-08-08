@@ -1518,3 +1518,183 @@ export function DrawerEstructuraCostosStr({
     </div>
   );
 }
+
+// ── DISTANCIA AL VEREDICTO STR — "lo que te separa" ──────────────────────────
+// Port del `DrawerDistanciaLtr`. Cambian tres cosas, y ninguna es cosmética:
+//   · dos vías que LTR no tiene (la tarifa por noche y el modo de gestión);
+//   · la tarifa se marca como APUESTA, no como ajuste — el número de referencia sale de
+//     lo que se cobra realmente en la zona, así que pedir superarlo es asumir un riesgo,
+//     no corregir un supuesto optimista del usuario;
+//   · el caso PURO-GATE, que en LTR no existe: cuando el puntaje ya alcanza la banda de
+//     arriba, abrir con "estás cerca del borde" sería falso. Se nombra primero lo que
+//     retiene el veredicto y recién después la vía que lo suelta.
+export function DrawerDistanciaStr({
+  hallazgo,
+  currency,
+  valorUF,
+}: {
+  hallazgo: HallazgoDistanciaVeredicto;
+  currency: Currency;
+  valorUF: number;
+}) {
+  const v = hallazgo.valor;
+  const base = v.veredictoBase;
+  const objetivo = v.veredictoObjetivo;
+
+  if (v.esEstructural) {
+    const dm = v.deltaMinimoFueraDeTope;
+    return (
+      <div>
+        <Lead>
+          Tu veredicto es {base}. La pregunta honesta no es qué falta, sino si hay algo que
+          alcance: probamos {v.pieEsPalanca ? "subir el pie, " : ""}bajar el precio, subir la
+          tarifa por noche, cambiar el modo de gestión y estirar el crédito, cada uno por su
+          cuenta y hasta donde deja de ser un ajuste para ser otro departamento.
+        </Lead>
+        <Box label="Qué encontramos" tone="red">
+          {dm ? (
+            <span style={{ fontSize: 15, lineHeight: 1.55 }}>
+              La vía menos exigente es{" "}
+              {dm.palanca === "precio" ? "bajar el precio" : "subir la tarifa por noche"}, y aun
+              así pide{" "}
+              <b>
+                {dm.deltaPct > 0 ? "+" : "−"}
+                {pctStr(Math.abs(dm.deltaPct))}
+              </b>{" "}
+              para llegar a {objetivo}. Estirar el crédito a 30 años tampoco alcanza.
+            </span>
+          ) : (
+            <span style={{ fontSize: 15, lineHeight: 1.55 }}>
+              Ninguna llega, ni llevándolas a extremos que ya no son negociación: tarifa al
+              doble, precio a un tercio, crédito a 30 años.
+            </span>
+          )}
+        </Box>
+        <Box label="Qué significa">
+          La brecha no está en cómo estás mirando este departamento — está en el departamento.
+          Ajustar supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de
+          otro orden.
+        </Box>
+        <Box label="Qué haces con esto">
+          {v.piePctActual === 0
+            ? "Sigue buscando: lo que no cuadra acá es el departamento, y con financiamiento 100% no tienes colchón para absorberlo. Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te cuentes que los números dan."
+            : "Guarda el pie para el siguiente. Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te cuentes que los números dan."}
+        </Box>
+      </div>
+    );
+  }
+
+  const cells = v.palancas.map((l) => {
+    if (l.palanca === "plazo") {
+      return { k: "Plazo del crédito", v: `${l.objetivo} años`, small: `desde ${l.actual}` };
+    }
+    // Pie y gestión se muestran como NIVEL, no como variación: sus deltas vienen en puntos
+    // porcentuales y un "+26%" se leería como aumento relativo sobre el valor de hoy.
+    if (l.palanca === "pie") {
+      return {
+        k: "Pie",
+        v: pctStr(l.objetivo),
+        small: l.actual > 0 ? `desde ${pctStr(l.actual)}` : "hoy sin pie",
+      };
+    }
+    if (l.palanca === "gestion") {
+      return {
+        k: "Modo de gestión",
+        v: l.modoGestionObjetivo === "auto" ? "Lo gestionas tú" : "Con administrador",
+        small: `comisión ${pctStr(l.objetivo)} en vez de ${pctStr(l.actual)}`,
+      };
+    }
+    const valor =
+      l.palanca === "adr"
+        ? fmtMoney(l.objetivo, currency, valorUF)
+        : `UF ${Math.round(l.objetivo).toLocaleString("es-CL")}`;
+    return {
+      k: l.palanca === "adr" ? "Tarifa por noche" : "Precio de cierre",
+      v: valor,
+      small: `${l.deltaPct > 0 ? "+" : "−"}${pctStr(Math.abs(l.deltaPct))}`,
+    };
+  });
+  const tieneAdr = v.palancas.some((l) => l.palanca === "adr");
+  const tienePlazo = v.palancas.some((l) => l.palanca === "plazo");
+  const tieneGestion = v.palancas.some((l) => l.palanca === "gestion");
+  const tienePie = v.palancas.some((l) => l.palanca === "pie");
+  const primera = v.palancas[0]?.palanca;
+
+  return (
+    <div>
+      <Lead>
+        {v.esPuroGate ? (
+          <>
+            Tu puntaje ya da para {objetivo}: lo que retiene el veredicto en {base} no son
+            puntos, es que la operación todavía no cierra. Estas son las vías que la dan
+            vuelta, cada una por su cuenta: no se suman, cualquiera alcanza.
+          </>
+        ) : (
+          <>
+            Tu veredicto es {base} y está cerca del borde de arriba. Estas son las vías que lo
+            cruzan a {objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.
+          </>
+        )}
+      </Lead>
+
+      <Chips
+        label="Las vías, una por una"
+        cells={cells}
+        foot={
+          tieneGestion
+            ? "Cambiar el modo de gestión es la única que no te cuesta plata ni depende de nadie más: es la misma propiedad con otra estructura de comisión."
+            : tienePlazo
+              ? "Estirar el plazo es la única que no depende de negociar con el vendedor ni de que la zona rinda más: alarga la deuda y pagas más intereses en total, pero no te cuesta capital hoy."
+              : "Cada valor es el punto exacto donde el veredicto cambia, moviendo esa variable y dejando el resto igual."
+        }
+      />
+
+      {/* La tarifa NO es un supuesto que se corrige: es una apuesta contra la zona. Este
+          bloque existe para que no se lea como una palanca más de la tabla. */}
+      {tieneAdr && (
+        <Box label="Ojo con la tarifa" tone="red">
+          La tarifa de referencia no es un supuesto nuestro: sale de lo que se cobra realmente
+          alrededor. Pedirte que la superes no es ajustar un número optimista, es apostar a que
+          vas a rendir sobre la mediana de tu zona. Se puede —mejores fotos, calendario bien
+          manejado, respuesta rápida—, pero es trabajo tuyo sostenido, no un dato que cambia.
+        </Box>
+      )}
+
+      <Box label="Qué significa">
+        Que el veredicto no esté lejos no lo vuelve un buen negocio por sí solo — lo vuelve un
+        negocio que depende de una condición concreta y verificable, en vez de una intuición.
+      </Box>
+      <Box label="Qué haces con esto">
+        {primera === "pie"
+          ? "Esta no se negocia con nadie: es plata tuya contra menos crédito. Antes de descartar el departamento, confirma con el banco cuánto baja la cuota con ese pie y si tienes la liquidez sin quedarte sin colchón."
+          : primera === "gestion"
+            ? "Esta la decides tú y no cuesta capital. Antes de moverla, mira qué estás entregando a cambio: gestionar tú significa responder huéspedes, coordinar aseo y sostener el calendario todas las semanas."
+            : primera === "precio"
+              ? "Llévalo a la mesa: la diferencia está en rango de negociación, no en otro departamento. Si el vendedor no baja, ya sabes exactamente cuánto te separa."
+              : "Antes de decidir, mira qué se cobra hoy por noche en propiedades comparables de tu zona. Si tu departamento no tiene con qué diferenciarse, esa tarifa es una apuesta y no un plan."}
+      </Box>
+      {v.pieExcluidoPorBono && (
+        <Box label="Por qué el pie no aparece acá">
+          Tu pie lo cubre la inmobiliaria: subirlo no es una palanca, es deshacer el trato que
+          estás evaluando. Por eso las vías de arriba son el precio y la operación — y con el
+          pie cubierto, el precio se mira con más dureza, porque alguien está pagando ese bono.
+        </Box>
+      )}
+      <Note>
+        {[
+          tienePlazo
+            ? "El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen."
+            : null,
+          // La ocupación merece explicación propia: es la ausencia que un lector de renta
+          // corta va a notar primero.
+          "La ocupación no entra como vía: no la fijas tú —sale de tarifa, demanda y reseñas— y en el cálculo mueve exactamente lo mismo que la tarifa, así que aparecería dos veces con otro nombre.",
+          tienePie
+            ? "La tasa no entra acá: es condición del banco, no del departamento."
+            : "El pie y la tasa no entran acá: son condiciones de tu bolsillo y del banco, no del departamento.",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      </Note>
+    </div>
+  );
+}

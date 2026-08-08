@@ -29,6 +29,7 @@ import type {
   HallazgoSobreprecio,
   HallazgoEstructuraFinanciamiento,
   HallazgoEstructuraCostosStr,
+  HallazgoDistanciaVeredicto,
 } from "@/lib/types";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
@@ -41,6 +42,7 @@ import {
   DrawerPatrimonioStr,
   DrawerPlusvaliaStr,
   DrawerEstructuraCostosStr,
+  DrawerDistanciaStr,
 } from "@/components/analysis/drawers/DrawersPropios";
 import { FlujoEstacionalChartSTR } from "./FlujoEstacionalChartSTR";
 import { DrawerTipoHuesped } from "./DrawerTipoHuesped";
@@ -78,6 +80,7 @@ export const DRAWER_TITULOS_STR: Record<DrawerKeySTR, string> = {
   patrimonio: "¿Cuánto es tuyo a 10 años?",
   plusvalia: "¿Cuánto se ha valorizado la comuna?",
   estructuraCostos: "¿En qué se va cada peso?",
+  distanciaVeredicto: "¿Qué te separa del veredicto de arriba?",
 };
 
 /* ─── Helpers de presentación ─────────────────────────── */
@@ -383,6 +386,10 @@ export function DrawerContentSTR({
   if (activeKey === "estructuraCostos") {
     const h = hById<HallazgoEstructuraCostosStr>("estructura_costos_str");
     return h ? <DrawerEstructuraCostosStr hallazgo={h} results={results} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
+  }
+  if (activeKey === "distanciaVeredicto") {
+    const h = hById<HallazgoDistanciaVeredicto>("distancia_veredicto");
+    return h ? <DrawerDistanciaStr hallazgo={h} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
   }
 
   // largoPlazo (paridad drawer) — prose-only: JUICIO del horizonte (contrafactual de

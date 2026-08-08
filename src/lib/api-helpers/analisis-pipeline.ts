@@ -641,7 +641,11 @@ export async function buildShortTermAnalysisRow(
     fechaEntrega: body.fechaEntrega,
   };
 
-  const result = calcShortTerm(inputs);
+  // asOf congelada y COMPARTIDA con el closure de distancia al veredicto: si cada uno
+  // llamara a `new Date()` por su cuenta, en un borde de fecha de entrega la distancia se
+  // mediría contra un asOf distinto del que produjo el resultado.
+  const asOfPipeline = new Date();
+  const result = calcShortTerm(inputs, asOfPipeline);
 
   // Default lat/lng a Santiago centro si no vienen (distancias a atractores).
   const lat = typeof body.lat === "number" ? body.lat : -33.4378;
@@ -679,6 +683,21 @@ export async function buildShortTermAnalysisRow(
     mediana: medianaComuna ?? { mediana: null, n: 0 },
     valorUF: ufValue,
     incluyeCorretaje: false, // STR: capitalInvertido = pie + cierre + amoblamiento + capex, sin corretaje
+    // Distancia al veredicto: mismo `inputs` y mismos extras del score que produjeron el
+    // veredicto de arriba — una sola ruta, sin posibilidad de divergencia.
+    veredictoCtx: {
+      inputs,
+      scoreExtras: {
+        dormitorios: scoreInputs.dormitorios,
+        superficie: scoreInputs.superficie,
+        regulacionEdificio: scoreInputs.regulacionEdificio,
+        lat: scoreInputs.lat,
+        lng: scoreInputs.lng,
+        revenueP50: scoreInputs.revenueP50,
+        monthlyRevenue: scoreInputs.monthlyRevenue,
+      },
+      asOf: asOfPipeline,
+    },
   });
   const hallazgosSTR = [...(result.hallazgos ?? []), ...strHallazgos];
 

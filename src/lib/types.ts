@@ -802,8 +802,21 @@ export interface HallazgoPatrimonio {
 
 /** Una palanca del hallazgo de distancia: el valor que llevaría al veredicto objetivo. */
 export interface PalancaDistancia {
-  /** arriendo (CLP/mes) · precio (UF) · plazo (años del crédito) · pie (% del precio). */
-  palanca: "arriendo" | "precio" | "plazo" | "pie";
+  /**
+   * arriendo (CLP/mes, LTR) · precio (UF) · plazo (años del crédito) · pie (% del precio)
+   * · adr (tarifa por noche CLP, STR) · gestion (modo de gestión STR, discreta).
+   *
+   * `arriendo` y `adr` son las dos caras de la misma pregunta —"¿y si el ingreso fuera
+   * mayor?"— pero no son intercambiables: el arriendo lo fija un contrato y el ADR lo fija
+   * el mercado noche a noche, por eso el ADR lleva su propio tope, más estricto.
+   */
+  palanca: "arriendo" | "precio" | "plazo" | "pie" | "adr" | "gestion";
+  /**
+   * Solo `palanca: "gestion"`: a qué modo hay que moverse. Los campos numéricos de esta
+   * palanca expresan la COMISIÓN (puntos porcentuales del ingreso), que es lo que
+   * efectivamente cambia; el modo es lo que el usuario decide.
+   */
+  modoGestionObjetivo?: "auto" | "administrador";
   /** Valor que hay que alcanzar para cruzar al veredicto objetivo. */
   objetivo: number;
   /** Valor declarado hoy (misma unidad que `objetivo`). */
@@ -861,7 +874,7 @@ export interface HallazgoDistanciaVeredicto {
      *  (arriendo +150% · precio −70%), para que la frase dura cite el hecho y no el umbral
      *  ("ni bajando el precio un 34%…" en vez de "más de un 15%"). NO es accionable — por eso
      *  no entra a `palancas`. null si ni el rango extendido cruza, o si no es estructural. */
-    deltaMinimoFueraDeTope: { palanca: "arriendo" | "precio"; deltaPct: number } | null;
+    deltaMinimoFueraDeTope: { palanca: "arriendo" | "precio" | "adr"; deltaPct: number } | null;
     /** Tope de honestidad aplicado a arriendo y precio (%), calibrado sobre el corpus.
      *  30 para AJUSTA SUPUESTOS · 15 para BUSCAR OTRA (el plazo tiene su propio tope: 30 años). */
     topePct: number;
@@ -888,6 +901,26 @@ export interface HallazgoDistanciaVeredicto {
     pieExcluidoPorBono?: boolean;
     /** Pie declarado (%). Contexto para el copy del drawer; ausente en filas previas. */
     piePctActual?: number;
+    /**
+     * STR — tope propio de la palanca ADR (%), más estricto que `topePct`. Superar la
+     * mediana de tarifa de la zona es una apuesta sobre el mercado, no un ajuste de
+     * supuestos, así que se ofrece solo cuando el salto es chico. Ausente en LTR.
+     */
+    topeAdrPct?: number;
+    /**
+     * STR — todos los motivos de gate que sostienen el veredicto (`gates.motivos`),
+     * incluidos los del GATE 2. `brazosGate1Activos` solo cubre los severos; en STR el
+     * copy necesita también los que degradan un COMPRAR. Ausente en LTR.
+     */
+    motivosGate?: string[];
+    /**
+     * PURO-GATE: la banda del score, por sí sola, YA alcanza el veredicto objetivo — lo que
+     * lo retiene es un gate, no el puntaje. Cambia el copy de raíz: decir "estás cerca por
+     * el lado del precio" sería falso sobre el diagnóstico (no falta puntaje), y decir "no
+     * hay nada que hacer" sería falso sobre el remedio (11 de 14 del parque cruzan con menos
+     * de 15% de ajuste). Se nombra el gate que hay que apagar, no la distancia al umbral.
+     */
+    esPuroGate?: boolean;
     modalidad: "ltr" | "str" | "ambas";
   };
   // SIEMPRE "neutral". Este hallazgo NO es una señal sobre el deal — es un mapa de la
