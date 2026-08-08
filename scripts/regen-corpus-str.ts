@@ -97,9 +97,12 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
 // producción, vía generateStrProse). `leaks` = HARD drift residual (revenue /
 // ramp-up / "el|del motor"); si >0 la prosa NO se persiste (invariante del regen).
 // Los engine-isms SOFT son detección-only y NO bloquean persistencia (paridad LTR). ──
-async function generarProsa(inp: any, newResults: any, comuna: string): Promise<{ ai: AIAnalysisSTRv2; leaks: number }> {
-  const gen = await generateStrProse({ anthropic, inp, r: newResults, comuna });
-  return { ai: gen.ai, leaks: gen.hardDriftHits.length };
+async function generarProsa(inp: any, newResults: any, comuna: string): Promise<{ ai: AIAnalysisSTRv2; leaks: number; cifras: string[] }> {
+  const gen = await generateStrProse({ anthropic, inp, r: newResults, comuna, logger: (m) => console.log("   ", m) });
+  // `cifrasFuera` = guard STR-CIFRA residual tras los reintentos internos (hasta 3
+  // intentos = 2 retries). Si quedó >0, el caller NO persiste la prosa (revert a la
+  // cacheada) — mandato del goal prosa-no-recalcula.
+  return { ai: gen.ai, leaks: gen.hardDriftHits.length, cifras: gen.cifrasFuera };
 }
 
 async function main() {
@@ -173,9 +176,9 @@ async function main() {
       try {
         const { newResults, score } = await recompute(r.input_data, r.results, r.comuna as string);
         const oldVer = (r.results as any)?.francoScore?.veredicto ?? (r.results as any)?.veredicto ?? "(null)";
-        const { ai, leaks } = await generarProsa(r.input_data, newResults, r.comuna as string);
+        const { ai, leaks, cifras } = await generarProsa(r.input_data, newResults, r.comuna as string);
         const a = ai as any;
-        fullDump.push({ id: r.id, comuna: r.comuna, oldVer, newVer: score.veredicto, leaks, ai });
+        fullDump.push({ id: r.id, comuna: r.comuna, oldVer, newVer: score.veredicto, leaks, cifras, ai });
         parts.push(`\n---\n\n## ${r.id.slice(0, 8)} · ${r.comuna} · veredicto ${oldVer} → **${score.veredicto}**${leaks ? ` · ⚠️ DRIFT(${leaks})` : ""}\n`);
         if (a.conviene) { parts.push(`**conviene · respuestaDirecta:** ${a.conviene.respuestaDirecta ?? "—"}\n`); parts.push(`**conviene · veredictoFrase:** ${a.conviene.veredictoFrase ?? "—"}\n`); parts.push(`**conviene · reencuadre:** ${a.conviene.reencuadre ?? "—"}\n`); parts.push(`**conviene · cajaAccionable:** ${a.conviene.cajaAccionable ?? "—"}\n`); }
         if (a.rentabilidad?.contenido) parts.push(`**rentabilidad:** ${a.rentabilidad.contenido}${a.rentabilidad.cajaAccionable ? `\n_caja:_ ${a.rentabilidad.cajaAccionable}` : ""}\n`);
@@ -185,7 +188,7 @@ async function main() {
         if (a.riesgos?.contenido) parts.push(`**riesgos:** ${a.riesgos.contenido}\n`);
         if (a.riesgos?.cajaAccionable) parts.push(`**cajaAccionable (§9):** ${a.riesgos.cajaAccionable}\n`);
         if (a.francoCaveat) parts.push(`_francoCaveat (audit-only, no render):_ ${a.francoCaveat}\n`);
-        console.log(`ok${leaks ? ` ⚠️revenue(${leaks})` : ""}`);
+        console.log(`ok${leaks ? ` ⚠️revenue(${leaks})` : ""}${cifras.length ? ` ⚠️cifras(${cifras.length})` : ""}`);
       } catch (e: any) { console.log("FAIL", e.message); parts.push(`\n---\n\n## ${r.id.slice(0, 8)} — FALLO: ${e.message}\n`); }
       await sleep(1000);
     }
@@ -216,10 +219,13 @@ async function main() {
             for (let attempt = 1; attempt <= 3; attempt++) {
               try {
                 // generarProsa ya reintenta hasta 3× por fuga de "revenue" y devuelve la más limpia.
-                const { ai, leaks } = await generarProsa(r.input_data, newResults, r.comuna as string);
-                if (leaks === 0) { update.ai_analysis = ai; prosaStatus = "prosa-ok"; }
-                // Guard invariante: prosa con "revenue" residual NO se persiste (results/hallazgos sí).
-                else { prosaStatus = `prosa-FAIL-REVENUE(${leaks})`; }
+                const { ai, leaks, cifras } = await generarProsa(r.input_data, newResults, r.comuna as string);
+                if (leaks === 0 && cifras.length === 0) { update.ai_analysis = ai; prosaStatus = "prosa-ok"; }
+                // Guard invariante: prosa con "revenue" residual O con cifras fuera del input
+                // (STR-CIFRA sin converger en los reintentos) NO se persiste — queda la
+                // cacheada (revert) y se reporta. results/hallazgos sí se actualizan.
+                else if (leaks > 0) { prosaStatus = `prosa-FAIL-REVENUE(${leaks})`; }
+                else { prosaStatus = `prosa-FAIL-CIFRA(${cifras.length}): ${cifras.slice(0, 3).join("; ")}`; }
                 lastErr = null; break;
               } catch (e: any) { lastErr = e; await sleep(1000 * attempt * attempt); }
             }
@@ -239,12 +245,14 @@ async function main() {
     const fails = log.filter((l) => l.ok.startsWith("✗"));
     const prosaFails = log.filter((l) => l.prosa.startsWith("prosa-FAIL"));
     const prosaLeaks = log.filter((l) => l.prosa.startsWith("prosa-FAIL-REVENUE"));
+    const prosaCifras = log.filter((l) => l.prosa.startsWith("prosa-FAIL-CIFRA"));
     console.log(`\n=== GO RESUMEN ===`);
     console.log(`  filas persistidas (results): ${log.length - fails.length}/${recomputables.length} · fails: ${fails.length}`);
     console.log(`  prosa fresca ok: ${log.filter((l) => l.prosa === "prosa-ok").length}/${conProsa.length} · prosa API-fail: ${prosaFails.length} · prosa NO persistida por "revenue": ${prosaLeaks.length}`);
     if (fails.length) console.log(`  FAILS:`, fails.map((f) => `${f.id}:${f.ok}`).join(" · "));
     if (prosaFails.length) console.log(`  PROSA API-FAILS:`, prosaFails.map((f) => f.id).join(" · "));
     if (prosaLeaks.length) console.log(`  ⚠️ PROSA NO PERSISTIDA (revenue residual tras 3×3 intentos):`, prosaLeaks.map((f) => f.id).join(" · "));
+    if (prosaCifras.length) console.log(`  ⚠️ PROSA NO PERSISTIDA (STR-CIFRA sin converger — queda la cacheada):`, prosaCifras.map((f) => f.id).join(" · "));
     fs.writeFileSync(path.resolve(process.cwd(), "scripts/output/regen-str-go-log-20260710.json"), JSON.stringify(log, null, 2));
   }
 }

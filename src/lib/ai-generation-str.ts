@@ -106,6 +106,16 @@ Regla mnemónica: la card responde "¿qué pasa?"; el drawer responde "¿por qu�
 
 Todo umbral, corte, banda o rango de referencia que menciones (umbral de CAP, punto de equilibrio, rango sano de costos operativos, banda de ocupación de la zona, percentiles) viene SOLO de los datos de ESTE input y de las fraseCanónicas que te paso. PROHIBIDO citar rangos "habituales", "sanos", "razonables" o "de mercado" que no estén explícitos en el input. Si la card ancla el umbral de CAP en 5%, el umbral es 5% — nunca "rangos sanos parten en 6-8%". Inventar un umbral distinto al de la card contradice lo que el usuario acaba de leer y rompe la confianza.
 
+## 1.quater LAS CIFRAS SON DEL MOTOR, TAL CUAL (regla dura de cifras — toda la prosa)
+
+Toda cifra que escribas —monto, porcentaje, múltiplo— ya existe en el input: en los datos del caso, en una fraseCanonica o en un bloque de umbrales. Tu trabajo es ELEGIR la cifra correcta e interpretarla; nunca producirla:
+
+- PROHIBIDO derivar cifras nuevas con aritmética propia: no sumes componentes, no restes flujos, no conviertas un monto en porcentaje ni un porcentaje en monto, no extrapoles ("si a −10% mejora $83K, a −25%..."). Si la cifra que tu frase necesita no viene dada, la frase se escribe SIN cifra: nombra los componentes y detente. Una cifra construida que suena plausible es peor que la ausencia de cifra, porque el lector no puede contrastarla.
+- Si una card ya mostró una métrica, tu prosa cita EXACTAMENTE ese valor cuando hable de lo mismo. Un "64%" tuyo junto al "67%" de la card es una contradicción que el lector no puede resolver — y la card gana por definición, porque viene del motor.
+- Dos cifras del input que suenan parecidas (dos caídas de precio, dos sumas de costos) responden preguntas distintas: cada una se cita con su etiqueta propia y ninguna se presenta en la escala de la otra.
+
+Es la disciplina de §1.4 (solo datos provistos) llevada a su forma dura: vale para TODAS las secciones y para cifras que hoy no existen — si mañana el input trae un umbral nuevo, también llega tipado y también se cita tal cual. (§15 aplica lo mismo a los múltiplos; §1.ter, a los umbrales.)
+
 ## 2. Framework de 4 capas: Diagnóstico → Causa → Recomendación → Alternativa
 
 - Diagnóstico: qué está pasando para el usuario, no para el motor.
@@ -788,6 +798,91 @@ export function scanStrSoftDrift(ai: unknown): string[] { return scanWith(ai, ST
 /** Todos los hits (hard+soft), para reporte no-bloqueante. */
 export function scanStrDrift(ai: unknown): string[] { return [...scanStrHardDrift(ai), ...scanStrSoftDrift(ai)]; }
 
+// ── Guard STR-CIFRA — la prosa no recalcula números del motor ────────────────
+// Generalización del [DISTANCIA-CIFRA] de LTR a TODA la prosa STR. Censo editorial
+// 2026-08-07: las 4 altas confirmadas eran prosa re-derivando cifras (67% vs 64% de
+// costos, $202.490 vs $182.490, "más de 25%" junto a "10%"). La capa primaria es
+// §1.quater del system; esto es la red que mide si se cumplió.
+//
+// Principio del match: el user prompt CONTIENE todas las cifras tipadas que el modelo
+// recibió, así que el conjunto permitido se extrae del propio prompt. Eso cubre por
+// construcción campos que aún no existen — un umbral nuevo llega al prompt tipado y
+// queda permitido solo — y evita mantener una lista de campos.
+//
+// Anti-falso-positivo (dos guards sobre-gatillados previos en este repo):
+// · solo se auditan cifras CON unidad ($, UF, %, mil/millones) — enteros pelados
+//   (años, dormitorios, m², "P50") quedan fuera del alcance;
+// · tolerancia relativa en montos (el redondeo "$176 millones" calza con $176.2M) y
+//   absoluta+relativa en porcentajes (8% calza con 8,4%; 64% NO calza con 67%);
+// · los montos también calzan contra el set UF y viceversa (un error de unidad no es
+//   recalculo — lo mide otra dimensión del censo, no este guard);
+// · 0 y 100 se toleran siempre (retóricos: "financia el 100%").
+
+interface CifraDetectada { n: number; unidad: "monto" | "uf" | "pct"; raw: string }
+
+const parseNumCL = (raw: string): number => Number(raw.replace(/\./g, "").replace(",", "."));
+
+function extraerCifras(texto: string): CifraDetectada[] {
+  const out: CifraDetectada[] = [];
+  // Montos CLP con sufijo opcional: $176 millones · $3,5M · $513K · $301.772 · $127,7 MM
+  const reClp = /\$\s?([\d.]+(?:,\d+)?)\s?(MM|M(?![A-Za-z])|K(?![A-Za-z])|mill[oó]n(?:es)?|mil(?![a-z]))?/g;
+  let m: RegExpExecArray | null;
+  while ((m = reClp.exec(texto)) !== null) {
+    let n = parseNumCL(m[1]);
+    const suf = (m[2] ?? "").toLowerCase();
+    if (suf === "k" || suf === "mil") n *= 1e3;
+    else if (suf) n *= 1e6; // M / MM / millones
+    if (Number.isFinite(n) && n > 0) out.push({ n, unidad: "monto", raw: m[0].trim() });
+  }
+  const reUf = /UF\s?([\d.]+(?:,\d+)?)/g;
+  while ((m = reUf.exec(texto)) !== null) {
+    const n = parseNumCL(m[1]);
+    if (Number.isFinite(n) && n > 0) out.push({ n, unidad: "uf", raw: m[0] });
+  }
+  const rePct = /(\d+(?:,\d+)?)\s?%/g;
+  while ((m = rePct.exec(texto)) !== null) {
+    const n = parseNumCL(m[1]);
+    if (Number.isFinite(n)) out.push({ n, unidad: "pct", raw: m[0] });
+  }
+  return out;
+}
+
+const calzaMonto = (a: number, b: number): boolean => Math.abs(a - b) / Math.max(a, b) <= 0.025;
+const calzaPct = (a: number, b: number): boolean =>
+  Math.abs(a - b) <= 0.55 || Math.abs(a - b) / Math.max(a, b) <= 0.025;
+
+/**
+ * Cifras de la prosa que NO vienen del input (= no aparecen en el user prompt).
+ * Devuelve `path="raw"` por violación. Detección — el que llama decide si loguea,
+ * reintenta o revierte.
+ */
+export function cifrasFueraDeInput(userPrompt: string, ai: unknown): string[] {
+  const permitidas = extraerCifras(userPrompt);
+  const montosOk = permitidas.filter((c) => c.unidad !== "pct").map((c) => c.n);
+  const pctsOk = permitidas.filter((c) => c.unidad === "pct").map((c) => c.n);
+  const strings: { path: string; value: string }[] = [];
+  collectStrings(ai, "", strings);
+  const out: string[] = [];
+  for (const { path, value } of strings) {
+    for (const c of extraerCifras(value)) {
+      if (c.unidad === "pct") {
+        if (c.n === 0 || c.n === 100) continue;
+        if (pctsOk.some((p) => calzaPct(p, c.n))) continue;
+        // un % que coincide con un monto/UF del input no es invento ("un 25%" citando
+        // el pie 25): se tolera para no sobre-gatillar.
+        if (montosOk.some((p) => calzaPct(p, c.n))) continue;
+      } else {
+        if (montosOk.some((p) => calzaMonto(p, c.n))) continue;
+        // cruce de unidad tolerado (monto que cita una cifra UF del input o viceversa)
+        if (permitidas.some((p) => p.unidad !== c.unidad && calzaMonto(p.n, c.n))) continue;
+        if (pctsOk.some((p) => calzaMonto(p, c.n))) continue;
+      }
+      out.push(`${path}="${c.raw}"`);
+    }
+  }
+  return out;
+}
+
 /** Secciones sobre presupuesto (por un factor de tolerancia). Devuelve [path, palabras, máximo]. */
 export function sectionsOverBudget(ai: Record<string, unknown> | null | undefined, factor = 1.15): { path: string; wc: number; max: number }[] {
   if (!ai) return [];
@@ -912,6 +1007,8 @@ export interface GenerateStrProseResult {
   hardDriftHits: string[];    // invariante — si >0, NO persistir
   softDriftHits: string[];    // engine-isms, detección-only
   overBudget: { path: string; wc: number; max: number }[];
+  /** Guard STR-CIFRA: cifras de la prosa que no vienen del input (residual tras reintentos). */
+  cifrasFuera: string[];
   tries: number;
   /**
    * Consumo de tokens de esta generación (intento principal + retries). Lo
@@ -943,8 +1040,13 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   // gastar un reintento. El presupuesto se enforca aparte, en FASE 2 (1 reintento por
   // desborde grosero). Así un caso limpio y dentro de techo hace 1 intento.
   const vozDura = (ai: AIAnalysisSTRv2 | null) => (ai ? hitsQueExigenReintento(scanVozChilena(ai)) : []);
+  // STR-CIFRA entra al score con el MISMO peso que el hard drift: elige la muestra con
+  // menos cifras re-derivadas y gasta reintentos en converger a 0. NO es un gate duro —
+  // si tras los intentos queda residual, se acepta y se reporta (lección del guard
+  // flaky A8: c>0 sobre generación fresca como invariante dura revienta por azar).
+  const cifrasDe = (ai: AIAnalysisSTRv2 | null) => (ai ? cifrasFueraDeInput(userPrompt, ai) : []);
   const scoreOf = (ai: AIAnalysisSTRv2 | null): number =>
-    ai ? scanStrHardDrift(ai).length + vozDura(ai).length : Number.POSITIVE_INFINITY;
+    ai ? scanStrHardDrift(ai).length + vozDura(ai).length + cifrasDe(ai).length : Number.POSITIVE_INFINITY;
 
   // Consumo de tokens de todos los intentos. Viaja en el resultado; el caller lo
   // escribe junto con ai_analysis.
@@ -963,6 +1065,12 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
       }
       const voz = vozDura(best);
       if (voz.length) correctivo += correctivoVoz(voz);
+      const cifras = cifrasDe(best);
+      if (cifras.length) {
+        correctivo += `
+
+⚠️ CORRECCIÓN DE CIFRAS (§1.quater): la versión anterior citó cifras que NO vienen del input: ${cifras.join(", ")}. Cada monto y porcentaje del texto debe ser EXACTAMENTE uno de los provistos en el bloque de datos — sin sumas propias, sin restas, sin convertir montos a porcentajes. Donde la cifra que necesitas no exista, escribe la frase sin cifra. Reescribe el JSON COMPLETO respetando la doctrina §0-§15.`;
+      }
     }
     let ai: AIAnalysisSTRv2 | null = null;
     try {
@@ -1040,10 +1148,14 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   if (softDriftHits.length) log(`[STR-SOFT-DRIFT] ${softDriftHits.length} engine-ism (detección) — ${softDriftHits.join(" | ")}`);
   const overBudget = sectionsOverBudget(best as unknown as Record<string, unknown>, 1.15);
   if (overBudget.length) log(`[STR-BUDGET] ${overBudget.length} campo(s) sobre presupuesto — ${overBudget.map((o) => `${o.path}:${o.wc}/${o.max}`).join(", ")}`);
+  // Los post-procesos de arriba (strip/despersonalizar/sanitize) no tocan números, así
+  // que medir acá equivale a medir sobre lo que se persiste.
+  const cifrasFuera = cifrasDe(best);
+  if (cifrasFuera.length) log(`[STR-CIFRA] ${cifrasFuera.length} cifra(s) fuera del input tras ${usedTries} intento(s) — ${cifrasFuera.join(" | ")}`);
 
   // Sello de versión (F6). El caller (route + regen-corpus) persiste `ai` tal cual,
   // así endpoint y corpus sellan idéntico. Espejo ambas-generate.ts.
   best.promptVersion = PROMPT_VERSION_STR;
 
-  return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, tries: usedTries, usage };
+  return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, cifrasFuera, tries: usedTries, usage };
 }
