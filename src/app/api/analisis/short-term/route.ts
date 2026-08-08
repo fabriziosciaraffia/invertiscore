@@ -14,16 +14,22 @@ import {
   prefetchMedianaComunaVenta,
 } from "@/lib/api-helpers/analisis-pipeline";
 import { desdeBodyStr } from "@/lib/plausibilidad";
+import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 
 // ─── POST handler ──────────────────────────────────────
 
 export async function POST(request: Request) {
   try {
+    // Timing por fase (Goal A): solo medición, persistencia fail-soft post-insert.
+    const t0 = Date.now();
+    const timing: SubmitTiming = { recibido_at: new Date(t0).toISOString(), ruta: "short-term" };
+
     const supabase = createSupabaseServer();
 
     const auth = await requireAuthenticatedUser(supabase);
     if (!auth.ok) return auth.response;
     const { user } = auth;
+    timing.auth_ms = Date.now() - t0;
 
     const body = await request.json();
     const prepaidChargeId: string | undefined = body?.prepaidChargeId;
@@ -37,7 +43,9 @@ export async function POST(request: Request) {
 
     // SUBIDO sobre el cobro (PIEZA A): el guard de plausibilidad necesita la UF
     // para derivar el yield bruto. Lectura cacheada con fallback, sin efectos.
+    const tUf = Date.now();
     const ufValue = await getUFValue();
+    timing.uf_ms = Date.now() - tUf;
 
     // Guard de plausibilidad — ANTES de cobrar. Acá pesa doble: el cobro estaba
     // por delante del fetch a AirROI, así que un input imposible quemaba el
@@ -50,9 +58,11 @@ export async function POST(request: Request) {
     });
     if (!plausible.ok) return plausible.response;
 
+    const tCobro = Date.now();
     const charge = await ensureCreditCharged({ user, prepaidChargeId });
     if (!charge.ok) return charge.response;
     const { prepaidNeedClaim, mode: chargeMode } = charge;
+    timing.cobro_ms = Date.now() - tCobro;
 
     // Bloque medio (AirROI + motor + score + armado del row) compartido con
     // /api/analisis/locked vía buildShortTermAnalysisRow — un solo call-site de
@@ -60,13 +70,15 @@ export async function POST(request: Request) {
     // response } con el mismo contrato HTTP (502 AirROI down / 400 sin datos).
     // Mediana comunal pre-fetcheada para el hallazgo de sobreprecio de la pirámide STR
     // (patrón LTR). No bloquea: cae a { mediana:null } y sobreprecio se omite.
+    const tMediana = Date.now();
     const medianaComuna = await prefetchMedianaComunaVenta(
       supabase,
       { comuna: body.comuna, superficie: body.superficieUtil, dormitorios: body.dormitorios,
         esNuevo: body.tipoPropiedad === "nuevo", antiguedad: body.antiguedad },
       ufValue,
     );
-    const built = await buildShortTermAnalysisRow(body, ufValue, medianaComuna);
+    timing.mediana_ms = Date.now() - tMediana;
+    const built = await buildShortTermAnalysisRow(body, ufValue, medianaComuna, timing);
     if (!built.ok) return built.response;
 
     // 7. Insert en Supabase (misma tabla que LTR). El row computado viene del
@@ -74,6 +86,7 @@ export async function POST(request: Request) {
     // vía markPremiumAndClaimPrepaid abajo).
     const dbClient = supabase;
 
+    const tInsert = Date.now();
     const { data, error } = await dbClient
       .from("analisis")
       .insert({
@@ -100,6 +113,12 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+    timing.insert_ms = Date.now() - tInsert;
+    timing.total_ms = Date.now() - t0;
+
+    // Timing del submit (Goal A): fail-soft, un UPDATE corto vía RPC, diferido
+    // con waitUntil para no sumar latencia al response. No altera nada del handler.
+    if (data?.id) waitUntil(persistSubmitTiming(dbClient, data.id, timing));
 
     // Mark premium + claim prepaid (helper compartido con LTR endpoint).
     if (data?.id) {

@@ -549,9 +549,13 @@ export async function buildShortTermAnalysisRow(
   /** Mediana comunal de venta UF/m² pre-fetcheada (sobreprecio de la pirámide STR). Si el
    *  caller no la resuelve, el hallazgo de sobreprecio se omite (N−1) — patrón LTR. */
   medianaComuna?: { mediana: number | null; n: number },
+  /** Colector de timing (Goal A): objeto mutable del caller. Solo medición —
+   *  esta función escribe airroi_ms/airroi_cache/motor_ms y nada más. */
+  timing?: { airroi_ms?: number; airroi_cache?: "hit" | "miss"; motor_ms?: number },
 ): Promise<BuildShortTermRowResult> {
   // AirROI directo (sin sub-fetch HTTP). Único call-site de getAirbnbEstimate.
   let airbnbResult;
+  const tAirroi = Date.now();
   try {
     airbnbResult = await getAirbnbEstimate(
       body.direccion,
@@ -560,6 +564,10 @@ export async function buildShortTermAnalysisRow(
       body.banos,
       body.capacidadHuespedes || 2,
     );
+    if (timing) {
+      timing.airroi_ms = Date.now() - tAirroi;
+      if (airbnbResult.success) timing.airroi_cache = airbnbResult.cached ? "hit" : "miss";
+    }
   } catch (err) {
     console.error("[short-term] AirROI lib threw:", err);
     return {
@@ -592,6 +600,7 @@ export async function buildShortTermAnalysisRow(
     };
   }
 
+  const tMotor = Date.now();
   const airbnbData = buildAirbnbData(airbnbResult.data, ufValue);
 
   // Antigüedad: real si el payload la trae (nuevo-v2); fallback derivado si no
@@ -700,6 +709,7 @@ export async function buildShortTermAnalysisRow(
     },
   });
   const hallazgosSTR = [...(result.hallazgos ?? []), ...strHallazgos];
+  if (timing) timing.motor_ms = Date.now() - tMotor;
 
   const nombre = `Renta Corta - ${body.direccion || body.comuna}`;
 

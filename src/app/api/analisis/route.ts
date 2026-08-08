@@ -20,6 +20,7 @@ import {
   buildMedianaSnapshot,
 } from "@/lib/api-helpers/analisis-pipeline";
 import { desdeBodyLtr } from "@/lib/plausibilidad";
+import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 
 export async function POST(request: Request) {
   // Declarados FUERA del try para que el catch pueda reportarlos a Sentry: un
@@ -31,12 +32,18 @@ export async function POST(request: Request) {
   let filaCreada = false;
 
   try {
+    // Timing por fase (Goal A): solo medición, se persiste fail-soft en el
+    // waitUntil de abajo. Ninguna de estas marcas altera el flujo.
+    const t0 = Date.now();
+    const timing: SubmitTiming = { recibido_at: new Date(t0).toISOString(), ruta: "analisis" };
+
     const supabase = createSupabaseServer();
 
     const auth = await requireAuthenticatedUser(supabase);
     if (!auth.ok) return auth.response;
     const { user } = auth;
     userId = user.id;
+    timing.auth_ms = Date.now() - t0;
 
     const body: AnalisisInput & { prepaidChargeId?: string; ambasGroupId?: string } = await request.json();
     const prepaidChargeId = body.prepaidChargeId;
@@ -57,7 +64,9 @@ export async function POST(request: Request) {
     // SUBIDO sobre el cobro (PIEZA A): el guard de plausibilidad necesita la UF
     // para derivar el yield bruto. Es una lectura cacheada con fallback, sin
     // efectos: moverla no cambia nada del cálculo posterior.
+    const tUf = Date.now();
     const ufValue = await getUFValue();
+    timing.uf_ms = Date.now() - tUf;
 
     // Guard de plausibilidad — ANTES de cobrar. Input imposible ⇒ 422, sin
     // crédito consumido y sin fila.
@@ -67,20 +76,27 @@ export async function POST(request: Request) {
     });
     if (!plausible.ok) return plausible.response;
 
+    const tCobro = Date.now();
     const charge = await ensureCreditCharged({ user, prepaidChargeId });
     if (!charge.ok) return charge.response;
     const { prepaidNeedClaim, mode: chargeMode } = charge;
+    timing.cobro_ms = Date.now() - tCobro;
 
     // Pre-fetch async de la mediana comunal de venta UF/m² para inyectarla al
     // motor síncrono (patrón cap_rate). Defensivo: cae a null sin romper.
+    const tMediana = Date.now();
     const medianaComuna = await prefetchMedianaComunaVenta(supabase, body, ufValue);
+    timing.mediana_ms = Date.now() - tMediana;
+    const tMotor = Date.now();
     const result = runAnalysis(body, ufValue, medianaComuna);
+    timing.motor_ms = Date.now() - tMotor;
 
     const dbClient = supabase;
 
     // Frontera del INSERT: `filaCreada` (declarada arriba, fuera del try) pasa a
     // true recién después de que este INSERT devuelve fila. Una falla antes de
     // ese punto no deja rastro en `analisis`.
+    const tInsert = Date.now();
     const { data, error } = await dbClient
       .from("analisis")
       .insert({
@@ -140,6 +156,8 @@ export async function POST(request: Request) {
       );
     }
     filaCreada = true;
+    timing.insert_ms = Date.now() - tInsert;
+    timing.total_ms = Date.now() - t0;
 
     // Marcar análisis como premium tras cobro exitoso (o admin bypass).
     // Backlog #3: TODOS los análisis del registrado son premium completos
@@ -164,6 +182,10 @@ export async function POST(request: Request) {
     if (data?.id) {
       const analysisId = data.id;
       waitUntil((async () => {
+        // Timing del submit (Goal A): fail-soft, fuera del response para no
+        // sumarle latencia. Va primero: es un UPDATE corto y así queda escrito
+        // aunque los emails o la IA de abajo fallen.
+        await persistSubmitTiming(dbClient, analysisId, timing);
         // Welcome email idempotente: garantiza que un usuario que llega directo
         // a /analisis/nuevo-v2 (vía deep-link o el héroe del onboarding) sin
         // pasar por /dashboard igual lo reciba. ensureWelcomeEmail usa el claim
@@ -224,7 +246,7 @@ export async function POST(request: Request) {
         // IA al final (no bloquea la notificación). El page la recupera vía
         // polling /ai-status si acá falla. generateAiAnalysis intacto.
         try {
-          await generateAiAnalysis(analysisId, dbClient);
+          await generateAiAnalysis(analysisId, dbClient, { trigger: "background" });
         } catch (e) {
           console.error("Background AI generation failed:", e);
           // La fila existe y el usuario ya tiene su análisis; lo que falta es la

@@ -14,6 +14,8 @@ import {
   type ShortTermAnalysisBody,
 } from "@/lib/api-helpers/analisis-pipeline";
 import { desdeBodyLtr, desdeBodyStr } from "@/lib/plausibilidad";
+import { waitUntil } from "@vercel/functions";
+import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 
 // Crear un análisis BLOQUEADO pre-pago (Camino A, LTR o STR, solo logueado).
 //
@@ -77,6 +79,9 @@ export async function POST(request: Request) {
     // Mide cada paso para distinguir cold start / getUFValue / runAnalysis /
     // insert. Mirar logs con prefix [LOCKED-TIMING].
     const t0 = Date.now();
+    // Timing persistido (Goal A): convive con los console.log [LOCKED-TIMING]
+    // (que son temporales); `ruta` se ajusta por rama antes de persistir.
+    const timing: SubmitTiming = { recibido_at: new Date(t0).toISOString(), ruta: "locked-ltr" };
 
     const supabase = createSupabaseServer();
 
@@ -84,6 +89,7 @@ export async function POST(request: Request) {
     if (!auth.ok) return auth.response;
     const { user } = auth;
     console.log(`[LOCKED-TIMING] auth (createClient + getUser): ${Date.now() - t0}ms`);
+    timing.auth_ms = Date.now() - t0;
 
     const rawBody = await request.json();
 
@@ -113,7 +119,10 @@ export async function POST(request: Request) {
         );
       }
 
+      timing.ruta = "locked-both";
+      const tUfBoth = Date.now();
       const ufBoth = await getUFValue();
+      timing.uf_ms = Date.now() - tUfBoth;
 
       // Guard de plausibilidad — antes de TODO (AirROI, motor, inserts). Acá no
       // se cobra crédito, pero este camino termina en /checkout con pago REAL
@@ -132,17 +141,22 @@ export async function POST(request: Request) {
 
       // STR primero: puede fallar (AirROI caído / sin datos) con su propio
       // contrato HTTP. Si falla, abortamos sin haber insertado el LTR.
+      const tMedianaBoth = Date.now();
       const medianaStrBoth = await prefetchMedianaComunaVenta(
         supabase,
         { comuna: strPayload.comuna ?? "", superficie: strPayload.superficieUtil, dormitorios: strPayload.dormitorios,
           esNuevo: strPayload.tipoPropiedad === "nuevo", antiguedad: strPayload.antiguedad },
         ufBoth,
       );
-      const builtStr = await buildShortTermAnalysisRow(strPayload, ufBoth, medianaStrBoth);
+      timing.mediana_ms = Date.now() - tMedianaBoth;
+      const builtStr = await buildShortTermAnalysisRow(strPayload, ufBoth, medianaStrBoth, timing);
       if (!builtStr.ok) return builtStr.response;
 
       // Mediana comunal pre-fetcheada para inyectar al motor LTR (patrón cap_rate).
+      // Su costo se SUMA a mediana_ms (dos prefetch en esta rama).
+      const tMedianaLtr = Date.now();
       const medianaLtr = await prefetchMedianaComunaVenta(supabase, ltrPayload, ufBoth);
+      timing.mediana_ms = (timing.mediana_ms ?? 0) + (Date.now() - tMedianaLtr);
 
       const creatorName =
         user?.user_metadata?.nombre || user?.user_metadata?.full_name || "Anónimo";
@@ -154,6 +168,7 @@ export async function POST(request: Request) {
       // en el mismo request, así que no hay ventana de huérfano en el flujo locked.
       const ambasGroupId = randomUUID();
 
+      const tInsBoth = Date.now();
       const { data: ltrData, error: ltrErr } = await supabase
         .from("analisis")
         .insert({
@@ -191,6 +206,13 @@ export async function POST(request: Request) {
       }
 
       console.log(`[LOCKED-TIMING] TOTAL handler (BOTH): ${Date.now() - t0}ms`);
+      timing.insert_ms = Date.now() - tInsBoth;
+      timing.total_ms = Date.now() - t0;
+      // Mismo bloque submit a las DOS filas del par (el request fue uno solo).
+      waitUntil(Promise.all([
+        persistSubmitTiming(supabase, ltrData.id, timing),
+        persistSubmitTiming(supabase, strData.id, timing),
+      ]));
       return NextResponse.json({ ltrId: ltrData.id, strId: strData.id });
     }
 
@@ -199,7 +221,10 @@ export async function POST(request: Request) {
 
     // ─── Rama STR: motor compartido (incluye AirROI), fila bloqueada ───
     if (isStr) {
+      timing.ruta = "locked-str";
+      const tUfStr = Date.now();
       const ufStr = await getUFValue();
+      timing.uf_ms = Date.now() - tUfStr;
       const bodyStr = body as unknown as ShortTermAnalysisBody;
 
       // Guard de plausibilidad — antes del fetch a AirROI y del insert.
@@ -209,15 +234,18 @@ export async function POST(request: Request) {
       });
       if (!plausibleStr.ok) return plausibleStr.response;
 
+      const tMedianaStr = Date.now();
       const medianaStr = await prefetchMedianaComunaVenta(
         supabase,
         { comuna: bodyStr.comuna ?? "", superficie: bodyStr.superficieUtil, dormitorios: bodyStr.dormitorios,
           esNuevo: bodyStr.tipoPropiedad === "nuevo", antiguedad: bodyStr.antiguedad },
         ufStr,
       );
-      const built = await buildShortTermAnalysisRow(bodyStr, ufStr, medianaStr);
+      timing.mediana_ms = Date.now() - tMedianaStr;
+      const built = await buildShortTermAnalysisRow(bodyStr, ufStr, medianaStr, timing);
       if (!built.ok) return built.response;
 
+      const tInsStr = Date.now();
       const { data: strData, error: strError } = await supabase
         .from("analisis")
         .insert({
@@ -240,6 +268,9 @@ export async function POST(request: Request) {
       }
 
       console.log(`[LOCKED-TIMING] TOTAL handler (STR): ${Date.now() - t0}ms`);
+      timing.insert_ms = Date.now() - tInsStr;
+      timing.total_ms = Date.now() - t0;
+      waitUntil(persistSubmitTiming(supabase, strData.id, timing));
       return NextResponse.json({ id: strData.id });
     }
 
@@ -250,6 +281,7 @@ export async function POST(request: Request) {
     const tUf = Date.now();
     const ufValue = await getUFValue();
     console.log(`[LOCKED-TIMING] getUFValue: ${Date.now() - tUf}ms`);
+    timing.uf_ms = Date.now() - tUf;
 
     // Guard de plausibilidad — antes de runAnalysis (que corre dentro de
     // buildLockedLtrRow, inline en el insert de abajo) y antes del insert.
@@ -260,19 +292,28 @@ export async function POST(request: Request) {
     if (!plausibleLtr.ok) return plausibleLtr.response;
 
     // Mediana comunal pre-fetcheada para inyectar al motor (patrón cap_rate).
+    const tMedianaLtrSolo = Date.now();
     const medianaLtr = await prefetchMedianaComunaVenta(supabase, body, ufValue);
+    timing.mediana_ms = Date.now() - tMedianaLtrSolo;
+
+    // Hoisteado del insert para medir el motor aparte del write (Goal A) —
+    // misma construcción, mismo orden, cero cambio de comportamiento.
+    const tMotorLtr = Date.now();
+    const ltrRowBuilt = buildLockedLtrRow(body, ufValue, medianaLtr);
+    timing.motor_ms = Date.now() - tMotorLtr;
 
     const tIns = Date.now();
     const { data, error } = await supabase
       .from("analisis")
       .insert({
-        ...buildLockedLtrRow(body, ufValue, medianaLtr),
+        ...ltrRowBuilt,
         user_id: user.id,
         creator_name: user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
       })
       .select("id")
       .single();
     console.log(`[LOCKED-TIMING] insert: ${Date.now() - tIns}ms`);
+    timing.insert_ms = Date.now() - tIns;
 
     if (error) {
       console.error("[analisis/locked] Supabase insert error:", error);
@@ -283,6 +324,8 @@ export async function POST(request: Request) {
     }
 
     console.log(`[LOCKED-TIMING] TOTAL handler: ${Date.now() - t0}ms`);
+    timing.total_ms = Date.now() - t0;
+    waitUntil(persistSubmitTiming(supabase, data.id, timing));
     return NextResponse.json({ id: data.id });
   } catch (error) {
     console.error("[analisis/locked] API error:", error);
