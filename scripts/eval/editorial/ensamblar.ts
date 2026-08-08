@@ -190,8 +190,14 @@ function ensamblarSTR(fila: FilaAnalisis): InformeEnsamblado {
   // está el botón que lo abre.
   const distancia = hallazgos.find((h) => h.id === "distancia_veredicto");
 
-  const drawerStr = (etiqueta: string, s: { contenido?: string; cajaAccionable?: string } | undefined, extra?: Array<string | null>): string | null =>
-    s ? seccion(`drawer:${etiqueta}`, [s.contenido, ...(extra ?? []), s.cajaAccionable ? `Hazte esta pregunta: ${s.cajaAccionable}` : null]) : null;
+  // El rótulo de la caja es POR DRAWER en la web (DrawerContentSTR): rentabilidad
+  // "Hazte esta pregunta:", vsLTR "Guión para decidir:", factibilidad "Si decides
+  // avanzar...", largoPlazo "La apuesta que estás haciendo:". El hardcode único que
+  // había acá le hizo leer al juez una promesa de pregunta que la página no hace —
+  // 2 fallas dim2 del censo 2026-08-07 son artefacto de esto (b826223b largoPlazo,
+  // 8d02902b factibilidad); las de rentabilidad sí son reales.
+  const drawerStr = (etiqueta: string, s: { contenido?: string; cajaAccionable?: string } | undefined, extra?: Array<string | null>, cajaLabel = "Hazte esta pregunta:"): string | null =>
+    s ? seccion(`drawer:${etiqueta}`, [s.contenido, ...(extra ?? []), s.cajaAccionable ? `${cajaLabel} ${s.cajaAccionable}` : null]) : null;
 
   const piezas: Array<string | null> = [
     motivos ? seccion("hero:motivos (Por qué no cierra)", [motivos.frase]) : null,
@@ -208,17 +214,17 @@ function ensamblarSTR(fila: FilaAnalisis): InformeEnsamblado {
       : null,
     ...cardsPiramide(ordenadas, respuesta, ufFrozen),
     drawerStr("rentabilidad", ai.rentabilidad),
-    drawerStr("vsLTR (corto vs largo)", ai.vsLTR, [ai.vsLTR?.estrategiaSugerida]),
+    drawerStr("vsLTR (corto vs largo)", ai.vsLTR, [ai.vsLTR?.estrategiaSugerida], "Guión para decidir:"),
     ai.riesgos || ai.operacion
       ? seccion("drawer:factibilidad (riesgos + operación)", [
           ai.riesgos?.contenido,
           ai.operacion?.contenido,
           ai.riesgos?.cajaAccionable || ai.operacion?.cajaAccionable
-            ? `Hazte esta pregunta: ${ai.riesgos?.cajaAccionable || ai.operacion?.cajaAccionable}`
+            ? `Si decides avanzar, protege estos flancos: ${ai.riesgos?.cajaAccionable || ai.operacion?.cajaAccionable}`
             : null,
         ])
       : null,
-    drawerStr("largoPlazo (análisis a 10 años)", ai.largoPlazo),
+    drawerStr("largoPlazo (análisis a 10 años)", ai.largoPlazo, undefined, "La apuesta que estás haciendo:"),
   ];
 
   const gi = fila.guest_insight?.insight as { perfilDominante?: { descripcionExtendida?: string; implicaciones?: string } } | undefined;
