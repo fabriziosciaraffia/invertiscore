@@ -26,6 +26,7 @@ import { resolveUfForAnalysis } from "../../../src/lib/uf";
 import { ordenarHallazgosPiramide, piramideLayout } from "../../../src/components/analysis/PiramideHallazgos";
 import { ordenarHallazgosPiramideSTR } from "../../../src/lib/piramide-orden-str";
 import { findingDisplay } from "../../../src/components/analysis/GenericFindingCard";
+import { describirMotivosSTR } from "../../../src/lib/no-cierra-copy";
 
 const UF_FALLBACK = 38800; // solo si la fila no permite reconstruir la UF congelada
 
@@ -172,18 +173,39 @@ function ensamblarSTR(fila: FilaAnalisis): InformeEnsamblado {
 
   const hallazgos = (Array.isArray(results?.hallazgos) ? results?.hallazgos : []) as Hallazgo[];
   const ordenadas = ordenarHallazgosPiramideSTR(hallazgos);
-  const top3 = [...ordenadas].sort((a, b) => b.decisividad - a.decisividad || (b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0)).slice(0, 3);
+  // Índice del hero: los PRIMEROS 3 del orden único, igual que HeroSTR (ordenados.slice).
+  // El sort por decisividad que había acá medía OTRO índice que el que el usuario ve.
+  const top3 = ordenadas.slice(0, 3);
   const respuesta = ai.conviene.respuestaDirecta ?? "";
+
+  // POR QUÉ NO CIERRA — la frase determinística de los motivos de gate que el hero
+  // muestra entre el veredicto y la pregunta (HeroSTR:280). Sin ella el juez no puede
+  // medir su coherencia con la distancia ni con las cards.
+  const fsGates = (results as { francoScore?: { gates?: { motivos?: unknown[] } } } | null)?.francoScore?.gates;
+  const motivos = describirMotivosSTR((fsGates?.motivos ?? []) as never);
+
+  // LO QUE TE SEPARA — el hallazgo de distancia NO es card (la pirámide lo filtra):
+  // vive en el drawer que abre "La posición de Franco" y su frase baja al PDF. Se
+  // ensambla como pieza propia inmediatamente después de la posición, que es donde
+  // está el botón que lo abre.
+  const distancia = hallazgos.find((h) => h.id === "distancia_veredicto");
 
   const drawerStr = (etiqueta: string, s: { contenido?: string; cajaAccionable?: string } | undefined, extra?: Array<string | null>): string | null =>
     s ? seccion(`drawer:${etiqueta}`, [s.contenido, ...(extra ?? []), s.cajaAccionable ? `Hazte esta pregunta: ${s.cajaAccionable}` : null]) : null;
 
   const piezas: Array<string | null> = [
+    motivos ? seccion("hero:motivos (Por qué no cierra)", [motivos.frase]) : null,
     seccion("hero:pregunta", [ai.conviene.pregunta ?? "¿Conviene en renta corta?"]),
     seccion("respuestaDirecta", [respuesta]),
     seccion("hero:reencuadre", [ai.conviene.reencuadre]),
-    seccion("hero:top3 (Lo que define este veredicto)", top3.map((h) => `· ${h.titular || h.fraseCanonica}`)),
+    seccion("hero:indice (Léelo en este orden)", top3.map((h) => `· ${h.titular || h.fraseCanonica}`)),
     seccion("posicion (La posición de Franco)", [ai.conviene.cajaAccionable]),
+    distancia
+      ? seccion('drawer:distancia (Lo que te separa — se abre desde "La posición de Franco")', [
+          distancia.titular,
+          distancia.fraseCanonica,
+        ])
+      : null,
     ...cardsPiramide(ordenadas, respuesta, ufFrozen),
     drawerStr("rentabilidad", ai.rentabilidad),
     drawerStr("vsLTR (corto vs largo)", ai.vsLTR, [ai.vsLTR?.estrategiaSugerida]),
