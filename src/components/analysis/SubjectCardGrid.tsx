@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/types";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
@@ -40,6 +40,7 @@ export function SubjectCardGrid({
   comuna,
   createdAt,
   simulationSlot,
+  onInformeVisible,
 }: {
   aiAnalysis: AIAnalysisV2 | null;
   loading: boolean;
@@ -67,6 +68,10 @@ export function SubjectCardGrid({
    *  drawer y el hook de zona viven acá, así que la card zona no se puede sacar afuera
    *  sin levantar ese estado; en cambio la simulación entra como slot. */
   simulationSlot?: ReactNode;
+  /** Goal B — dispara UNA vez cuando el veredicto queda visible (cae el overlay
+   *  editorial, o al montar si la prosa venía cacheada). El caller captura
+   *  `informe_visto` y persiste `informe_visible_at`. */
+  onInformeVisible?: () => void;
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
 
@@ -112,6 +117,18 @@ export function SubjectCardGrid({
   // La transición post-arribo (editorial 1100ms antes de revelar) es solo para la
   // generación fresca; en regen stale ya no hay overlay que desvanecer, se revela directo.
   const showLoading = (loading && !aiAnalysis) || (hasReadyData && !loadingDismissed && !aiStale);
+
+  // Goal B — "veredicto visible": primer render sin overlay y con prosa válida.
+  // Ref y no estado: notificar no re-renderiza, y el guard garantiza una sola
+  // notificación por mount (las re-visitas de la misma página no repiten).
+  const informeVisibleNotificado = useRef(false);
+  const informeVisible = !showLoading && hasReadyData;
+  useEffect(() => {
+    if (informeVisible && !informeVisibleNotificado.current) {
+      informeVisibleNotificado.current = true;
+      onInformeVisible?.();
+    }
+  }, [informeVisible, onInformeVisible]);
 
   if (showLoading) {
     // Regen stale on-open (F6): la data del análisis ya existía; en vez del overlay

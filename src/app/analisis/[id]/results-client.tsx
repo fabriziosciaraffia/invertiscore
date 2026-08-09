@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { usePostHog } from "posthog-js/react";
+import { registrarInformeVisto, leerEsperaMs, type InformeAiEstado } from "@/lib/informe-visto";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { calcFlujoDesglose, getMantencionRate, calcExitScenario, calcProjections } from "@/lib/analysis";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -184,6 +185,12 @@ export function PremiumResults({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  // Goal B — por qué vía llegó la prosa que el usuario está por ver. Ref y no
+  // estado: solo alimenta la telemetría de `informe_visto`, no re-renderiza.
+  // "background" es el default del camino feliz (polling del waitUntil); los
+  // otros caminos lo pisan explícitamente al setear la prosa.
+  const aiViaRef = useRef<InformeAiEstado>(hasAiV2(aiAnalysisInitial) ? "cacheada" : "background");
+
   // `trigger` es telemetría de timing (Goal A): declara QUIÉN pidió la
   // generación (botón manual / regen por versión stale / fallback de 60s).
   // Viaja en el body y termina en pipeline_timing.generaciones[].trigger.
@@ -199,6 +206,7 @@ export function PremiumResults({
       });
       const data = await res.json();
       if (res.ok && hasAiV2(data)) {
+        aiViaRef.current = trigger;
         setAiAnalysis(data);
       } else {
         setAiError(data?.error || "Error al generar análisis");
@@ -209,6 +217,22 @@ export function PremiumResults({
       setAiLoading(false);
     }
   }, [analysisId]);
+
+  // Goal B — el grid avisa cuando el veredicto queda visible (cae el overlay o
+  // monta sin él). Captura `informe_visto` + persiste `informe_visible_at`
+  // (fail-soft, NULL-only en el SQL). El demo (sin analysisId) no registra.
+  const onInformeVisible = useCallback(() => {
+    if (!analysisId) return;
+    registrarInformeVisto({
+      posthog,
+      ids: [analysisId],
+      modalidad: "ltr",
+      aiEstado: aiViaRef.current,
+      esperaMs: leerEsperaMs(),
+      esOwner: !isSharedView && !isSharedLink,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysisId, posthog, isSharedView, isSharedLink]);
 
   // Poll /ai-status for the background-generated analysis. If it doesn't show up
   // in 60s, fall back to a manual POST to /api/analisis/ai.
@@ -270,6 +294,7 @@ export function PremiumResults({
           const aiData = await aiRes.json();
           if (cancelled) return;
           if (aiRes.ok && hasAiV2(aiData)) {
+            aiViaRef.current = "fallback-60s";
             setAiAnalysis(aiData);
             setAiLoading(false);
           } else {
@@ -928,6 +953,7 @@ export function PremiumResults({
             propiedadSubtitle={propiedadSubtitle}
             metadataItems={metadataItems}
             onRetry={() => generateAiManually("manual")}
+            onInformeVisible={onInformeVisible}
             results={results}
             inputData={inputData}
             valorUF={ufValue}

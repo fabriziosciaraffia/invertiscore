@@ -19,6 +19,14 @@ import {
  */
 const ORIGIN_STORAGE_KEY = "franco_origin";
 
+/**
+ * Marker de la person property `test_account` (Goal B): guarda el user_id para
+ * el que ya se seteó, así el check server-side (RPC es_test_account, misma
+ * fuente que el panel admin: public.test_accounts) corre UNA vez por usuario
+ * por navegador, no en cada carga. Las person properties persisten en PostHog.
+ */
+const TEST_FLAG_KEY = "franco_test_flag_set";
+
 interface OrigenGuardado {
   referrer?: string;
   landing_path?: string;
@@ -93,6 +101,22 @@ export function useAttributionSync(): void {
           posthog?.identify(user.id, user.email ? { email: user.email } : undefined);
         } catch {
           /* PostHog sin inicializar (sin key en el env) — no es un problema */
+        }
+
+        // ── PostHog: marcar cuentas internas (Goal B) ──
+        // El identify de arriba NO espera este check: primero se ata la
+        // persona, después se anota si es interna. Fail-soft entero: sin la
+        // RPC aplicada o sin PostHog, no pasa nada.
+        try {
+          if (localStorage.getItem(TEST_FLAG_KEY) !== user.id) {
+            const { data: esTest, error } = await supabase.rpc("es_test_account");
+            if (!error && typeof esTest === "boolean" && !cancelado) {
+              posthog?.setPersonProperties({ test_account: esTest });
+              localStorage.setItem(TEST_FLAG_KEY, user.id);
+            }
+          }
+        } catch {
+          /* sin marca esta vez; se reintenta en la próxima carga */
         }
 
         // ── Atribución: una sola vez por usuario ──

@@ -63,6 +63,7 @@ import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
+import { estamparSubmit } from "@/lib/informe-visto";
 
 const LABEL_MOD: Record<string, string> = { ltr: "Renta larga", str: "Renta corta", both: "Comparativo" };
 const LABEL_GATE: Record<string, string> = { si: "Sí permite", no: "No permite", no_seguro: "No estoy seguro" };
@@ -946,8 +947,19 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     setError(""); setAnomalias([]); setSubmitting(true); onTerminal();
     const esCredito = canAnalyze;
     trackWizard(posthog, esCredito ? "wizard4_submitted" : "wizard4_checkout_initiated", { modalidad: mod });
+    // Stamp del click (Goal B): la página de resultados lo consume para medir
+    // espera_ms de `informe_visto` — la espera COMPLETA percibida, click →
+    // veredicto visible, que el server no puede medir.
+    estamparSubmit();
     const res = esCredito ? await submitConCredito(a, ctx) : await comprarLocked(a, ctx);
-    if (res.ok && res.redirect) { window.location.href = res.redirect; return; }
+    if (res.ok && res.redirect) {
+      // Éxito real del POST (Goal B): cierra el hueco del funnel entre
+      // "submitted" (pre-fetch) y el informe. posthog-js despacha el batch con
+      // sendBeacon al pagehide, así que la navegación no se lo come.
+      trackWizard(posthog, "wizard4_analysis_created", { modalidad: mod, camino: esCredito ? "credito" : "compra-locked" });
+      window.location.href = res.redirect;
+      return;
+    }
     manejarFallo(res, esCredito ? "No pudimos generar el análisis." : "No se pudo crear el análisis.");
     // El 422 NO cierra el modal: cambia de estado limpio a estado anomalía.
     if (res.anomalias?.length) setHuellaBloqueada(huellaActual);
