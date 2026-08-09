@@ -11,6 +11,7 @@ import { InfoTooltip } from "@/components/ui/tooltip";
 import { ordenarHallazgosPiramide } from "./PiramideHallazgos";
 import { IndiceRow } from "./IndiceHallazgos";
 import { numeroHallazgo } from "@/lib/orden-hallazgos";
+import { ProsaGenerando } from "@/components/analysis/ProsaSkeleton";
 
 /**
  * Hero de resultados LTR — rediseño dark (Fase 1a). Referencia visual aprobada:
@@ -37,8 +38,13 @@ export function HeroLTR({
   ciudad,
   valorUF,
   createdAt,
+  prosaError,
+  onRetryProsa,
 }: {
-  data: AIAnalysisV2;
+  /** Prosa IA. `null` mientras se genera (Goal C: veredicto inmediato) — el hero
+   *  renderiza todo lo que viene del motor y muestra ProsaGenerando en el slot
+   *  de prosa hasta que llegue. */
+  data: AIAnalysisV2 | null;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
   veredicto: string;
@@ -53,6 +59,10 @@ export function HeroLTR({
   ciudad?: string;
   valorUF: number;
   createdAt?: string;
+  /** Fallo de la generación de prosa: se muestra inline en el slot (el resto del
+   *  hero sigue vivo) con CTA de reintento. */
+  prosaError?: string | null;
+  onRetryProsa?: () => void;
 }) {
   // ── Identidad (F1): dirección + comuna de inputData; fallback al título legacy ──
   // Solo-calle: el H1 concatena "· {comuna}" aparte (línea ~150), así que NO le
@@ -141,13 +151,16 @@ export function HeroLTR({
   }, [comunaLabel, superficie, dorm, lat, lng]);
 
   // ── Veredicto / findings (F4) ──
+  // Con prosa en vuelo (data null, Goal C) los tres caen a null/default y el
+  // slot de prosa muestra ProsaGenerando o el error inline.
+  const conviene = data?.conviene;
   const respuesta =
-    currency === "CLP" ? data.conviene.respuestaDirecta_clp : data.conviene.respuestaDirecta_uf;
+    (currency === "CLP" ? conviene?.respuestaDirecta_clp : conviene?.respuestaDirecta_uf) ?? null;
   const cajaAccionable =
-    currency === "CLP" ? data.conviene.cajaAccionable_clp : data.conviene.cajaAccionable_uf;
+    (currency === "CLP" ? conviene?.cajaAccionable_clp : conviene?.cajaAccionable_uf) ?? null;
   // veredictoFrase (schema.conviene) ya no se renderiza en el hero compacto — la
   // prosa fundida lo dice. El campo sigue en el schema (Entrega 2 decide su destino).
-  const pregunta = data.conviene.pregunta || "¿Conviene o no conviene?";
+  const pregunta = conviene?.pregunta || "¿Conviene o no conviene?";
   // ÍNDICE del informe: los primeros 3 del ORDEN ÚNICO — el MISMO array que renderiza
   // la pirámide (fuente única: ordenarHallazgosPiramide). El hero los numera 01-03 y
   // cada fila ancla a su card; la pirámide continúa la numeración.
@@ -277,9 +290,33 @@ export function HeroLTR({
             {pregunta}
           </h2>
           {/* A3: alineación izquierda (no justificado), ~65ch, 14-15px */}
-          <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
-            {renderProsaMono(respuesta)}
-          </div>
+          {respuesta ? (
+            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
+              {renderProsaMono(respuesta)}
+            </div>
+          ) : prosaError ? (
+            /* Error de generación inline: el hero (veredicto/score/índice) sigue
+               vivo; solo el slot de prosa reporta y ofrece reintentar. */
+            <div className="max-w-[65ch]">
+              <p className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mb-2">
+                No pudimos completar la redacción del análisis.
+              </p>
+              {onRetryProsa && (
+                <button
+                  type="button"
+                  onClick={onRetryProsa}
+                  className="font-body text-sm font-medium text-signal-red hover:underline"
+                >
+                  Reintentar
+                </button>
+              )}
+            </div>
+          ) : (
+            /* Prosa en vuelo (Goal C): indicador vivo con mensajes progresivos. */
+            <div className="max-w-[65ch]">
+              <ProsaGenerando />
+            </div>
+          )}
         </div>
 
         {/* ÍNDICE — primeros 3 del orden único, numerados y clickeables (ancla a su card) */}

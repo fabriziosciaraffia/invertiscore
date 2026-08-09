@@ -14,14 +14,14 @@
 import type { PostHog } from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 
-/** Cómo llegó (o está llegando) la prosa IA al momento de ver el veredicto. */
+/** Estado de la prosa IA AL MOMENTO en que el veredicto queda visible.
+ *  Goal C: el veredicto LTR se ve al montar (el overlay murió), así que los
+ *  valores de "por qué vía llegó la prosa" (background/fallback/manual) dejaron
+ *  de ser observables en este evento — quedaron solo los estados de mount. */
 export type InformeAiEstado =
   | "cacheada"      // prosa persistida servida por el server component
-  | "generando"     // veredicto visible con la prosa aún en vuelo (STR/AMBAS)
-  | "background"    // LTR: la generación del waitUntil llegó por polling
-  | "fallback-60s"  // LTR: el polling agotó los 60s y regeneró
-  | "stale-regen"   // LTR: regen lazy-on-open por promptVersion viejo
-  | "manual";       // LTR: botón Reintentar
+  | "generando"     // veredicto visible con la prosa aún en vuelo
+  | "stale-regen";  // LTR: prosa vieja invalidada, regen lazy-on-open en vuelo
 
 const SUBMIT_TS_KEY = "franco_submit_ts";
 // Un stamp más viejo que esto no es "la espera del submit" (pestaña olvidada).

@@ -3,29 +3,28 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/types";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { HeroLTR } from "./HeroLTR";
 import { PiramideHallazgos, ordenarHallazgosPiramide } from "./PiramideHallazgos";
 import { HALLAZGO_DRAWER } from "./GenericFindingCard";
 import { hasAiV2 } from "./AIInsightSection";
-import { ProsaSkeleton, SkeletonLine } from "@/components/analysis/ProsaSkeleton";
 
 /**
  * Orquestador del análisis IA: Hero Verdict + Subject Card Grid 2×2 + card
  * Zona Wide Context + ReestructuracionMiniCard (opcional, financingHealth
  * Nivel 3) + drawers de detalle.
  *
- * Maneja 3 estados: loading (LoadingEditorial), error (retry CTA), ready
- * (render completo). Mantiene state interno de drawer activo.
+ * Goal C — veredicto inmediato: el grid renderiza SIEMPRE (todo lo del motor
+ * existe desde el INSERT); la prosa IA es el único slot que espera, dentro del
+ * hero (ProsaGenerando / error inline con retry). El overlay LoadingEditorial
+ * full-page murió de esta superficie.
  *
  * Move verbatim desde results-client.tsx LTR (Ronda 4a.3, ex-DashboardAnalysisSection).
  */
 export function SubjectCardGrid({
   aiAnalysis,
   loading,
-  aiStale = false,
   error,
   currency,
   onCurrencyChange,
@@ -44,10 +43,6 @@ export function SubjectCardGrid({
 }: {
   aiAnalysis: AIAnalysisV2 | null;
   loading: boolean;
-  /** F6 lazy-on-open: la prosa persistida quedó stale (versión vieja) y se está
-   *  regenerando. La data del análisis ya existe → no secuestrar la página con el
-   *  overlay editorial fixed; skeleton inline en el lugar de la prosa. */
-  aiStale?: boolean;
   error: string | null;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
@@ -68,9 +63,9 @@ export function SubjectCardGrid({
    *  drawer y el hook de zona viven acá, así que la card zona no se puede sacar afuera
    *  sin levantar ese estado; en cambio la simulación entra como slot. */
   simulationSlot?: ReactNode;
-  /** Goal B — dispara UNA vez cuando el veredicto queda visible (cae el overlay
-   *  editorial, o al montar si la prosa venía cacheada). El caller captura
-   *  `informe_visto` y persiste `informe_visible_at`. */
+  /** Goal B (anclaje Goal C) — dispara UNA vez al montar el grid: el veredicto
+   *  es visible desde el primer render. El caller captura `informe_visto` y
+   *  persiste `informe_visible_at`. */
   onInformeVisible?: () => void;
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
@@ -105,88 +100,32 @@ export function SubjectCardGrid({
         ? { lat: inputAny.zonaRadio.lat as number, lng: inputAny.zonaRadio.lng as number }
         : null;
 
-  const hasReadyData = !!aiAnalysis && hasAiV2(aiAnalysis);
-  const [loadingDismissed, setLoadingDismissed] = useState(hasReadyData);
-  useEffect(() => {
-    if (hasReadyData && !loadingDismissed) {
-      const t = setTimeout(() => setLoadingDismissed(true), 1100);
-      return () => clearTimeout(t);
-    }
-  }, [hasReadyData, loadingDismissed]);
+  // Goal C — veredicto inmediato: el overlay editorial full-page murió. El grid
+  // renderiza SIEMPRE (hero, veredicto, KPIs, pirámide y zona existen desde el
+  // INSERT); solo el slot de prosa del hero espera a la IA (ProsaGenerando /
+  // error inline). Prosa válida solo si pasa hasAiV2 — un shape a medias no se
+  // renderiza como prosa.
+  const prosaLista = !!aiAnalysis && hasAiV2(aiAnalysis);
+  const prosa = prosaLista ? aiAnalysis : null;
 
-  // La transición post-arribo (editorial 1100ms antes de revelar) es solo para la
-  // generación fresca; en regen stale ya no hay overlay que desvanecer, se revela directo.
-  const showLoading = (loading && !aiAnalysis) || (hasReadyData && !loadingDismissed && !aiStale);
-
-  // Goal B — "veredicto visible": primer render sin overlay y con prosa válida.
-  // Ref y no estado: notificar no re-renderiza, y el guard garantiza una sola
-  // notificación por mount (las re-visitas de la misma página no repiten).
+  // Goal B (anclaje movido por Goal C) — "veredicto visible" = mount del grid:
+  // con el overlay muerto, el veredicto se ve desde el primer render. Ref y no
+  // estado: notificar no re-renderiza; una sola notificación por mount.
   const informeVisibleNotificado = useRef(false);
-  const informeVisible = !showLoading && hasReadyData;
   useEffect(() => {
-    if (informeVisible && !informeVisibleNotificado.current) {
+    if (!informeVisibleNotificado.current) {
       informeVisibleNotificado.current = true;
       onInformeVisible?.();
     }
-  }, [informeVisible, onInformeVisible]);
-
-  if (showLoading) {
-    // Regen stale on-open (F6): la data del análisis ya existía; en vez del overlay
-    // editorial full-page, mostramos la página con el shell del hero (label + título) y
-    // el ProsaSkeleton compartido en el lugar de la prosa. HeroLTR no puede renderizar
-    // sin data (aiAnalysis es null mientras regenera), así que va el placeholder inline.
-    if (aiStale && !aiAnalysis) {
-      return (
-        <div id="informe-pro-section" className="mb-8">
-          <div
-            className="rounded-[16px] overflow-hidden mb-3"
-            style={{ background: "var(--franco-bg)", border: "0.5px solid var(--franco-border-strong)" }}
-          >
-            <div className="px-6 md:px-8 py-6">
-              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
-                Veredicto
-              </p>
-              <div className="mb-3.5"><SkeletonLine width="58%" /></div>
-              <ProsaSkeleton />
-            </div>
-          </div>
-        </div>
-      );
-    }
-    // Generación fresca (sin prosa previa) + transición post-arribo: overlay editorial.
-    return (
-      <div id="informe-pro-section" className="mb-8 rounded-[16px] overflow-hidden">
-        <LoadingEditorial isDataReady={hasReadyData} />
-      </div>
-    );
-  }
-
-  if ((error && !aiAnalysis) || (!aiAnalysis && !loading) || (aiAnalysis && !hasAiV2(aiAnalysis))) {
-    return (
-      <div id="informe-pro-section" className="mb-8">
-        <div className="rounded-2xl bg-[var(--franco-card)] border border-[var(--franco-border)] p-8 text-center">
-          <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-4">
-            No pudimos generar el análisis. Esto puede tardar hasta un minuto.
-          </p>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="font-body text-sm font-medium text-signal-red hover:underline"
-          >
-            Reintentar
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!aiAnalysis) return null;
+  }, [onInformeVisible]);
 
   return (
     <div id="informe-pro-section" className="mb-8">
       <HeroLTR
         onOpenDrawer={setActiveDrawer}
-        data={aiAnalysis}
+        data={prosa}
+        prosaError={!prosa && !loading ? (error ?? null) : null}
+        onRetryProsa={onRetry}
         currency={currency}
         onCurrencyChange={onCurrencyChange}
         veredicto={veredicto}
@@ -258,10 +197,13 @@ export function SubjectCardGrid({
         Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
       </p>
 
-      {activeDrawer && results && inputData && (
+      {/* Limitación deliberada (Goal C): AnalysisDrawer exige prosa no-null (lee
+          glosas IA por sección). Mientras la prosa está en vuelo, las cards se
+          ven pero el drawer no se monta — se habilita solo cuando llega. */}
+      {activeDrawer && results && inputData && prosa && (
         <AnalysisDrawer
           activeKey={activeDrawer}
-          aiAnalysis={aiAnalysis}
+          aiAnalysis={prosa}
           currency={currency}
           results={results}
           inputData={inputData}

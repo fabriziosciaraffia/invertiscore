@@ -185,11 +185,12 @@ export function PremiumResults({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // Goal B — por qué vía llegó la prosa que el usuario está por ver. Ref y no
-  // estado: solo alimenta la telemetría de `informe_visto`, no re-renderiza.
-  // "background" es el default del camino feliz (polling del waitUntil); los
-  // otros caminos lo pisan explícitamente al setear la prosa.
-  const aiViaRef = useRef<InformeAiEstado>(hasAiV2(aiAnalysisInitial) ? "cacheada" : "background");
+  // Goal B (simplificado por Goal C) — estado de la prosa AL MOMENTO en que el
+  // veredicto queda visible (= mount del grid, ahora inmediato). Ya no registra
+  // "por qué vía llegó la prosa": el evento dispara antes de que llegue.
+  const aiEstadoAlMontar = useRef<InformeAiEstado>(
+    hasAiV2(aiAnalysisInitial) ? "cacheada" : aiStale ? "stale-regen" : "generando"
+  );
 
   // `trigger` es telemetría de timing (Goal A): declara QUIÉN pidió la
   // generación (botón manual / regen por versión stale / fallback de 60s).
@@ -206,7 +207,6 @@ export function PremiumResults({
       });
       const data = await res.json();
       if (res.ok && hasAiV2(data)) {
-        aiViaRef.current = trigger;
         setAiAnalysis(data);
       } else {
         setAiError(data?.error || "Error al generar análisis");
@@ -218,8 +218,8 @@ export function PremiumResults({
     }
   }, [analysisId]);
 
-  // Goal B — el grid avisa cuando el veredicto queda visible (cae el overlay o
-  // monta sin él). Captura `informe_visto` + persiste `informe_visible_at`
+  // Goal B — el grid avisa cuando el veredicto queda visible (Goal C: al montar,
+  // el overlay murió). Captura `informe_visto` + persiste `informe_visible_at`
   // (fail-soft, NULL-only en el SQL). El demo (sin analysisId) no registra.
   const onInformeVisible = useCallback(() => {
     if (!analysisId) return;
@@ -227,15 +227,23 @@ export function PremiumResults({
       posthog,
       ids: [analysisId],
       modalidad: "ltr",
-      aiEstado: aiViaRef.current,
+      aiEstado: aiEstadoAlMontar.current,
       esperaMs: leerEsperaMs(),
       esOwner: !isSharedView && !isSharedLink,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysisId, posthog, isSharedView, isSharedLink]);
 
-  // Poll /ai-status for the background-generated analysis. If it doesn't show up
-  // in 60s, fall back to a manual POST to /api/analisis/ai.
+  // Goal C — polling PERSISTENTE de /ai-status. Ya no abandona a los 60s para
+  // regenerar (eso duplicaba la generación completa mientras la background
+  // seguía viva — medido en prod: el usuario pagaba 60s de polling + una
+  // generación entera). Ahora:
+  //   · 5s el primer minuto, 10s después (backoff), sin tope propio.
+  //   · El RESCATE (POST /api/analisis/ai, trigger "rescate") corre UNA vez y
+  //     SOLO cuando el server declara la generación muerta (`puedeRescate`:
+  //     entrada error en pipeline_timing, o >6 min sin prosa — imposible que
+  //     siga viva con maxDuration 300s en /api/analisis).
+  //   · Errores de red transitorios no matan el loop (10 consecutivos sí).
   useEffect(() => {
     // Demo path: no analysisId, use hardcoded demo data.
     if (!analysisId && demoAiData) {
@@ -267,9 +275,19 @@ export function PremiumResults({
     setAiError(null);
 
     const startTime = Date.now();
-    const POLL_INTERVAL = 5000;
-    const MAX_WAIT_BEFORE_MANUAL = 60000;
+    const POLL_INTERVAL_MS = 5000;
+    const POLL_INTERVAL_LARGO_MS = 10000;
+    const BACKOFF_DESDE_MS = 60000;
+    const MAX_ERRORES_CONSECUTIVOS = 10;
+    let erroresConsecutivos = 0;
+    let rescateDisparado = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const reagendar = () => {
+      if (cancelled) return;
+      const interval = Date.now() - startTime > BACKOFF_DESDE_MS ? POLL_INTERVAL_LARGO_MS : POLL_INTERVAL_MS;
+      timer = setTimeout(poll, interval);
+    };
 
     const poll = async () => {
       if (cancelled) return;
@@ -277,24 +295,24 @@ export function PremiumResults({
         const res = await fetch(`/api/analisis/${analysisId}/ai-status`);
         const data = await res.json().catch(() => null);
         if (cancelled) return;
+        erroresConsecutivos = 0;
         if (data?.ready && hasAiV2(data.ai_analysis)) {
           setAiAnalysis(data.ai_analysis);
           setAiLoading(false);
           return;
         }
-        if (Date.now() - startTime > MAX_WAIT_BEFORE_MANUAL) {
-          // Timeout: trigger manual generation via POST /api/analisis/ai
+        if (data?.puedeRescate && !rescateDisparado) {
+          // La generación background está muerta (dictamen del server, no un
+          // timeout del cliente): una regeneración de verdad, una sola vez.
+          rescateDisparado = true;
           const aiRes = await fetch("/api/analisis/ai", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            // trigger: telemetría de timing — este POST es la generación
-            // DUPLICADA que dispara el timeout de 60s del polling (Goal A).
-            body: JSON.stringify({ analysisId, trigger: "fallback-60s" }),
+            body: JSON.stringify({ analysisId, trigger: "rescate" }),
           });
           const aiData = await aiRes.json();
           if (cancelled) return;
           if (aiRes.ok && hasAiV2(aiData)) {
-            aiViaRef.current = "fallback-60s";
             setAiAnalysis(aiData);
             setAiLoading(false);
           } else {
@@ -303,11 +321,18 @@ export function PremiumResults({
           }
           return;
         }
-        timer = setTimeout(poll, POLL_INTERVAL);
+        reagendar();
       } catch {
         if (cancelled) return;
-        setAiError("Error cargando análisis");
-        setAiLoading(false);
+        // Red transitoria (mobile, cambio de red): el polling sigue; recién
+        // tras una racha larga de fallos se declara el error.
+        erroresConsecutivos += 1;
+        if (erroresConsecutivos >= MAX_ERRORES_CONSECUTIVOS) {
+          setAiError("Error cargando análisis");
+          setAiLoading(false);
+          return;
+        }
+        reagendar();
       }
     };
 
@@ -943,7 +968,6 @@ export function PremiumResults({
           <SubjectCardGrid
             aiAnalysis={aiAnalysis}
             loading={aiLoading}
-            aiStale={aiStale}
             error={aiError}
             currency={currency}
             onCurrencyChange={setCurrency}

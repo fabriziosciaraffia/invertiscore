@@ -22,6 +22,12 @@ import {
 import { desdeBodyLtr } from "@/lib/plausibilidad";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 
+// Goal C: techo explícito. El response sale en segundos, pero el waitUntil
+// (emails + generateAiAnalysis con retries) comparte esta invocación. 300s
+// acota la generación background — y es la premisa del criterio "generación
+// muerta a los 6 min" de ai-status: si subes esto, sube UMBRAL_MUERTA_MS.
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
   // Declarados FUERA del try para que el catch pueda reportarlos a Sentry: un
   // error sin user_id ni comuna es un evento que no se puede investigar.

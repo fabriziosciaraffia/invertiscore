@@ -7,9 +7,15 @@ import { isAdminUser } from "@/lib/admin";
 import { generateAiAnalysis, hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
 import type { GeneracionTrigger } from "@/lib/pipeline-timing";
 
-// Triggers que el cliente puede declarar (Goal A — timing). Cualquier valor
-// fuera de esta lista cae a "manual": el trigger es telemetría, nunca lógica.
-const TRIGGERS_CLIENTE = new Set<GeneracionTrigger>(["fallback-60s", "manual", "stale-regen"]);
+// Triggers que el cliente puede declarar (Goal A — timing; Goal C renombra
+// fallback-60s → rescate). Cualquier valor fuera de esta lista cae a "manual":
+// el trigger es telemetría, nunca lógica.
+const TRIGGERS_CLIENTE = new Set<GeneracionTrigger>(["rescate", "manual", "stale-regen"]);
+
+// Goal C: techo explícito para la generación bloqueante (rescate/manual/stale).
+// Peor caso observado en prod: 248s; con prompt caching baja. No 800: una
+// espera bloqueante más larga es peor que fallar y reintentar.
+export const maxDuration = 300;
 
 function createSupabaseServer() {
   const cookieStore = cookies();

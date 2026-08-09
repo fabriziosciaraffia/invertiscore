@@ -15,11 +15,13 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Quién disparó la generación IA — clave para cuantificar la doble generación
- *  (background + fallback-60s sobre el mismo análisis). */
+/** Quién disparó la generación IA. Goal C: "fallback-60s" (el cliente abandonaba
+ *  el polling a los 60s y regeneraba en paralelo con la background viva) murió;
+ *  lo reemplaza "rescate", que corre SOLO cuando ai-status declara la generación
+ *  background muerta (error registrado o >6 min sin prosa). */
 export type GeneracionTrigger =
   | "background"    // waitUntil del POST /api/analisis
-  | "fallback-60s"  // el cliente agotó los 60s de polling y regeneró
+  | "rescate"       // regeneración tras dictamen server de generación muerta
   | "manual"        // botón "Reintentar" del usuario
   | "stale-regen"   // prosa persistida con promptVersion vieja (lazy-on-open)
   | "post-pago"     // payments/confirm (camino locked)
