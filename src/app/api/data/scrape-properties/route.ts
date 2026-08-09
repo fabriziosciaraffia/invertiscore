@@ -116,7 +116,7 @@ export async function POST(request: Request) {
 
   const t2 = Date.now();
 
-  // Stats se recalculan via /api/data/calculate-stats (separado)
+  // (El recálculo de market_stats que vivía aparte se retiró en 2026-08 junto con la tabla.)
   const statsResult = { skipped: "run /api/data/calculate-stats separately" };
 
   const t3 = Date.now();

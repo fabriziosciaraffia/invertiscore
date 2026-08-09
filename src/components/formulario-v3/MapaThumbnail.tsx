@@ -6,7 +6,7 @@ import { francoMapStaticStyleParams, type FrancoMapTheme } from "@/lib/map-style
 
 /**
  * Input "crudo" — lat/lng pueden venir null cuando el backend no geolocalizó
- * la propiedad (una parte de las filas de market_stats puede venir sin coords).
+ * la propiedad (una parte de las filas de scraped_properties puede venir sin coords).
  * Se filtran adentro del componente antes de construir la URL de Static Maps.
  */
 export interface Comparable {

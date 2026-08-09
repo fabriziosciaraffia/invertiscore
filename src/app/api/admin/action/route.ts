@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 
 const ACTIONS = {
   "update-market": "/api/data/update-market",
-  "calculate-stats": "/api/data/calculate-stats",
+  // "calculate-stats" se retiró junto con market_stats (2026-08).
   "geocode": "/api/data/geocode-toctoc",
 } as const;
 
