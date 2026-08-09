@@ -16,6 +16,11 @@ import {
 import { desdeBodyStr } from "@/lib/plausibilidad";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 
+// Goal C: techo explícito. Sin IA en este request; el riesgo es el fetch a
+// AirROI (sin timeout propio) — 120s corta el cuelgue indefinido sin matar un
+// cache-miss lento legítimo.
+export const maxDuration = 120;
+
 // ─── POST handler ──────────────────────────────────────
 
 export async function POST(request: Request) {

@@ -599,7 +599,9 @@ Genera tu respuesta como JSON exactamente con esta forma:
     const hacerLlamada = () => anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1200,
-      system: INSIGHT_SYSTEM_PROMPT,
+      // Prompt caching (Goal C): system compartido entre análisis distintos de
+      // la misma ventana de 5 min. Solo shape del request.
+      system: [{ type: "text" as const, text: INSIGHT_SYSTEM_PROMPT, cache_control: { type: "ephemeral" as const } }],
       messages: [{ role: "user", content: userPrompt }],
     });
     const message = registro

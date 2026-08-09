@@ -23,6 +23,9 @@ import { nuevoRegistroLlamadas, persistGeneracionTiming, type RegistroLlamadas }
 
 const anthropic = new Anthropic();
 
+// Goal C: techo explícito — perfil motor + 1 llamada corta (1200 tokens).
+export const maxDuration = 60;
+
 // ─── Schema de respuesta ──────────────────────────────────────
 export interface GuestInsightResponse {
   /** Resultado motor (scoring de perfiles + POIs relevantes). */
@@ -182,7 +185,9 @@ async function generateGuestInsightAI(
     const hacerLlamada = () => anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1200,
-      system: GUEST_INSIGHT_SYSTEM_PROMPT,
+      // Prompt caching (Goal C): system compartido entre análisis distintos de
+      // la misma ventana de 5 min. Solo shape del request.
+      system: [{ type: "text" as const, text: GUEST_INSIGHT_SYSTEM_PROMPT, cache_control: { type: "ephemeral" as const } }],
       messages: [{ role: "user", content: userPrompt }],
     });
     const message = registro

@@ -13,6 +13,9 @@ import { createClient } from "@/lib/supabase/server";
 import { buildZoneInsightForRow, type ZoneInsightResponse } from "@/lib/zone-insight-core";
 import { nuevoRegistroLlamadas, persistGeneracionTiming } from "@/lib/pipeline-timing";
 
+// Goal C: techo explícito — POIs + stats + 1 llamada corta (1200 tokens).
+export const maxDuration = 60;
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }

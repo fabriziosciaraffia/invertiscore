@@ -796,6 +796,17 @@ async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic
   }
 }
 
+// Prompt caching (Goal C): el system LTR (~19k tokens) es IDÉNTICO en la
+// llamada principal y en todos los retries (catch-root-a / catch-voz / plan-c).
+// cache_control ephemeral lo sirve a 0.1× del costo dentro de la ventana de
+// 5 min — los retries de una misma generación siempre caen adentro. Cambia solo
+// el SHAPE del request; el texto del prompt no cambia un carácter (Golden FULL
+// lo confirma). Los tokens de cache ya se persisten vía ai-usage
+// (ai_cache_read_tokens, hasta hoy siempre 0).
+const SYSTEM_LTR_CACHED = [
+  { type: "text" as const, text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" as const } },
+];
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function generateAiAnalysis(analysisId: string, supabase: SupabaseClient, opts: { persist?: boolean; trigger?: GeneracionTrigger } = {}): Promise<any | null> {
   // Consumo de tokens de ESTA generación: la llamada principal más todos sus
@@ -1793,7 +1804,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       model: CLAUDE_MODEL,
       max_tokens: 8000,
       messages: [{ role: "user", content: userPrompt }],
-      system: SYSTEM_PROMPT,
+      system: SYSTEM_LTR_CACHED,
     }));
     acumularUsage(usage, message);
 
@@ -2003,7 +2014,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
               model: CLAUDE_MODEL,
               max_tokens: 8000,
               messages: [{ role: "user", content: userPromptSinAnomalias + correctivo }],
-              system: SYSTEM_PROMPT,
+              system: SYSTEM_LTR_CACHED,
             }));
             acumularUsage(usage, regen);
             const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
@@ -2051,7 +2062,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
             model: CLAUDE_MODEL,
             max_tokens: 8000,
             messages: [{ role: "user", content: userPrompt + correctivoVoz(noCorregibles) }],
-            system: SYSTEM_PROMPT,
+            system: SYSTEM_LTR_CACHED,
           }));
           acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
@@ -2088,7 +2099,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
             model: CLAUDE_MODEL,
             max_tokens: 8000,
             messages: [{ role: "user", content: userPrompt + correctivo }],
-            system: SYSTEM_PROMPT,
+            system: SYSTEM_LTR_CACHED,
           });
           acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
@@ -2139,7 +2150,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
             : ` Este es el SEGUNDO aviso: la versión anterior también se pasó. Escribí una sola oración de continuación si hace falta — es preferible una línea corta que una que no cabe. Si te vuelves a pasar, el motor recorta por oración y la última idea se pierde entera.`;
         const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu conviene.respuestaDirecta midió ${mejorWC} palabras; el MÁXIMO de la continuación es ${maxContinuacion}. Reescribí el JSON COMPLETO desarrollando UN SOLO matiz (el de mayor consecuencia en plata) en ≤${maxContinuacion} palabras; los demás matices viven en la pirámide — no los encadenes.${insistencia}`;
         try {
-          const regen = await reg.medir("plan-c", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 8000, messages: [{ role: "user", content: userPrompt + correctivo }], system: SYSTEM_PROMPT }));
+          const regen = await reg.medir("plan-c", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 8000, messages: [{ role: "user", content: userPrompt + correctivo }], system: SYSTEM_LTR_CACHED }));
           acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
           const regenResult = parseAndNormalize(regenText);

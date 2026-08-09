@@ -17,6 +17,10 @@ import { persistGeneracionTiming } from "@/lib/pipeline-timing";
 
 const anthropic = new Anthropic();
 
+// Goal C: techo explícito — hasta 4 llamadas Sonnet seriales (loop de calidad
+// + budget-retry); con prompt caching los retries bajan.
+export const maxDuration = 300;
+
 function createSupabaseServer() {
   const cookieStore = cookies();
   return createServerClient(

@@ -963,6 +963,13 @@ function parseStrJson(raw: string): AIAnalysisSTRv2 | null {
   try { return JSON.parse(clean) as AIAnalysisSTRv2; } catch { return null; }
 }
 
+// Prompt caching (Goal C): system STR (~8.7k tokens) idéntico entre los intentos
+// del loop de calidad y el budget-retry — cache_control ephemeral (5 min) los
+// sirve a 0.1×. Solo shape del request; el texto no cambia.
+const SYSTEM_STR_CACHED = [
+  { type: "text" as const, text: SYSTEM_PROMPT_STR, cache_control: { type: "ephemeral" as const } },
+];
+
 export async function generateStrProse(args: GenerateStrProseArgs): Promise<GenerateStrProseResult> {
   const { anthropic, inp, r, comuna } = args;
   const maxTries = args.maxTries ?? 3;
@@ -1018,7 +1025,7 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
         model: CLAUDE_MODEL,
         max_tokens: 8000,
         messages: [{ role: "user", content: userPrompt + correctivo }],
-        system: SYSTEM_PROMPT_STR,
+        system: SYSTEM_STR_CACHED,
       }));
       acumularUsage(usage, msg);
       const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
@@ -1049,7 +1056,7 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
         model: CLAUDE_MODEL,
         max_tokens: 8000,
         messages: [{ role: "user", content: userPrompt + correctivo }],
-        system: SYSTEM_PROMPT_STR,
+        system: SYSTEM_STR_CACHED,
       }));
       acumularUsage(usage, msg);
       usedTries += 1;

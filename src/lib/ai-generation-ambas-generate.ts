@@ -43,6 +43,12 @@ import { nuevoRegistroLlamadas, persistGeneracionTiming } from "@/lib/pipeline-t
 
 const anthropic = new Anthropic();
 
+// Prompt caching (Goal C): system AMBAS (~3.9k tokens) idéntico entre principal
+// y retries — cache_control ephemeral (5 min) los sirve a 0.1×. Solo shape.
+const SYSTEM_AMBAS_CACHED = [
+  { type: "text" as const, text: SYSTEM_PROMPT_AMBAS, cache_control: { type: "ephemeral" as const } },
+];
+
 type LTRResultsWithCache = FullAnalysisResult & { comparativaAI?: AIAnalysisComparativa; tipoAnalisis?: string };
 type STRResultsExtended = ShortTermResult & { tipoAnalisis?: string };
 
@@ -272,7 +278,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
     model: CLAUDE_MODEL,
     max_tokens: 4000,
     messages: [{ role: "user", content: userPrompt }],
-    system: SYSTEM_PROMPT_AMBAS,
+    system: SYSTEM_AMBAS_CACHED,
   }));
   acumularUsage(usage, msg);
   const rawText = msg.content[0].type === "text" ? msg.content[0].text : "";
@@ -301,7 +307,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
         model: CLAUDE_MODEL,
         max_tokens: 4000,
         messages: [{ role: "user", content: userPrompt + correctivo }],
-        system: SYSTEM_PROMPT_AMBAS,
+        system: SYSTEM_AMBAS_CACHED,
       }));
       acumularUsage(usage, regen);
       const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
@@ -329,7 +335,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
           model: CLAUDE_MODEL,
           max_tokens: 4000,
           messages: [{ role: "user", content: userPrompt + correctivoVoz(noCorregibles) }],
-          system: SYSTEM_PROMPT_AMBAS,
+          system: SYSTEM_AMBAS_CACHED,
         }));
         acumularUsage(usage, regen);
         const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";

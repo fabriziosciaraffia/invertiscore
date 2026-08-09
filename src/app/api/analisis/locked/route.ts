@@ -17,6 +17,10 @@ import { desdeBodyLtr, desdeBodyStr } from "@/lib/plausibilidad";
 import { waitUntil } from "@vercel/functions";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 
+// Goal C: mismo perfil que /api/analisis/short-term (sin IA; AirROI en la rama
+// STR es el único fetch externo sin timeout).
+export const maxDuration = 120;
+
 // Crear un análisis BLOQUEADO pre-pago (Camino A, LTR o STR, solo logueado).
 //
 // Hermano de /api/analisis (LTR) y /api/analisis/short-term (STR) pero

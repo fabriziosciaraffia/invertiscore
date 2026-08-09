@@ -8,6 +8,10 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
 import { generateComparativaAI } from "@/lib/ai-generation-ambas-generate";
 
+// Goal C: techo explícito — hasta 3 llamadas Sonnet seriales + 2 recomputes de
+// motor; con prompt caching los retries bajan.
+export const maxDuration = 300;
+
 function createSupabaseServer() {
   const cookieStore = cookies();
   return createServerClient(
