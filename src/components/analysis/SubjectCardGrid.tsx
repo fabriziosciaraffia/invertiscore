@@ -138,15 +138,30 @@ export function SubjectCardGrid({
         createdAt={createdAt}
       />
 
+      {/* Goal D — espera honesta: mientras la prosa se redacta, los drawers no
+          existen (AnalysisDrawer exige prosa). UNA pista breve acá — no un hint
+          por card — y las cards pierden toda afordancia de click (abajo). Con
+          error de prosa no se muestra: el estado es el error inline del hero. */}
+      {!prosa && loading && (
+        <div className="flex items-center gap-2 px-1 pt-1 pb-2.5">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-signal-red animate-pulse shrink-0" aria-hidden />
+          <span className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)]">
+            Franco está redactando el detalle de cada hallazgo — se habilita al terminar.
+          </span>
+        </div>
+      )}
+
       {/* Fase 2 — La pirámide de hallazgos reemplaza el grid 2×2 de dimensiones IA.
           Cada card abre su drawer vía onOpenDrawer (setActiveDrawer, dueño del
-          estado acá). cap_rate no mapea a drawer todavía (llega en Fase 3). */}
+          estado acá). cap_rate no mapea a drawer todavía (llega en Fase 3).
+          Goal D: sin prosa no hay handler → GenericFindingCard apaga cursor,
+          hover y "Ver detalle →" por sí sola (hasDetalle). */}
       <PiramideHallazgos
         results={results}
         aiAnalysis={aiAnalysis}
         currency={currency}
         valorUF={valorUF}
-        onOpenDrawer={setActiveDrawer}
+        onOpenDrawer={prosa ? setActiveDrawer : undefined}
       />
 
       {/* Fase 1b — Las cards Reestructuración (estructura) y Puesta a punto (capex)
@@ -167,7 +182,7 @@ export function SubjectCardGrid({
           que ya abre su drawer fuera de la pirámide con setActiveDrawer. El slot
           AdvancedSection no alcanza este estado (vive un nivel arriba), por eso el trigger
           va en SubjectCardGrid y no dentro del slot. Solo si hay prosa; fuera de prev/next. */}
-      {simulationSlot && aiAnalysis?.largoPlazo?.contenido_clp?.trim() && (
+      {simulationSlot && prosa?.largoPlazo?.contenido_clp?.trim() && (
         <div className="mt-3">
           <button
             type="button"
@@ -189,6 +204,7 @@ export function SubjectCardGrid({
             error={zoneError}
             onClick={() => setActiveDrawer("zona")}
             currency={currency}
+            deshabilitada={!prosa}
           />
         </div>
       )}
