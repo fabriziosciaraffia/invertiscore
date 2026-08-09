@@ -34,9 +34,13 @@ interface Props {
   error?: string | null;
   onClick: () => void;
   currency: "CLP" | "UF";
+  /** Goal D — espera honesta: el drawer de zona vive en AnalysisDrawer, que exige
+   *  la prosa IA; mientras se redacta, la card se apaga (sin hover, sin cursor,
+   *  sin "Explorar →") en vez de parecer clickeable y no abrir nada. */
+  deshabilitada?: boolean;
 }
 
-export function ZoneInsightMiniCard({ data, loading, error, onClick, currency }: Props) {
+export function ZoneInsightMiniCard({ data, loading, error, onClick, currency, deshabilitada = false }: Props) {
   const totalPOIs = countPOIs(data);
   // Degradación DECLARADA: si la zona no cargó (típico: dirección sin coordenadas),
   // la card lo dice en vez de mostrar "0 lugares" + preview genérico. Sigue clickeable —
@@ -56,8 +60,8 @@ export function ZoneInsightMiniCard({ data, loading, error, onClick, currency }:
     <button
       type="button"
       onClick={onClick}
-      disabled={loading && !data}
-      className="franco-card-target w-full text-left transition-colors disabled:cursor-wait"
+      disabled={(loading && !data) || deshabilitada}
+      className={`${deshabilitada ? "" : "franco-card-target "}w-full text-left transition-colors disabled:cursor-wait`}
       style={{
         // Superficie recesiva (rediseño extras · D1): panel hundido bajo los
         // hallazgos sólidos de la pirámide. Murió la franja 3px + el degradé;
@@ -119,12 +123,14 @@ export function ZoneInsightMiniCard({ data, loading, error, onClick, currency }:
           >
             {hasError || (loading && !data) ? "—" : `${totalPOIs} lugares`}
           </span>
-          <span
-            className="font-mono text-[9px] uppercase tracking-[1.3px] hidden md:inline"
-            style={{ color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}
-          >
-            Explorar →
-          </span>
+          {!deshabilitada && (
+            <span
+              className="font-mono text-[9px] uppercase tracking-[1.3px] hidden md:inline"
+              style={{ color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}
+            >
+              Explorar →
+            </span>
+          )}
         </div>
       </div>
     </button>

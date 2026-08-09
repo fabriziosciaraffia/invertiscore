@@ -142,7 +142,9 @@ export function PiramideHallazgos({
   currency: "CLP" | "UF";
   valorUF: number;
   /** Abre el drawer de detalle de un hallazgo (threadeado a cada card). */
-  onOpenDrawer: (key: DrawerKey) => void;
+  /** Goal D — opcional: sin handler, GenericFindingCard apaga solo cursor, hover
+   *  y "Ver detalle →" (espera honesta mientras la prosa se redacta). */
+  onOpenDrawer?: (key: DrawerKey) => void;
 }) {
   const ordered = ordenarHallazgosPiramide(results, aiAnalysis);
   if (ordered.length === 0) return null;

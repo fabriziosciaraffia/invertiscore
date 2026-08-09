@@ -108,3 +108,22 @@ export function cifrasFueraDeInput(userPrompt: string, ai: unknown, opts?: { ufC
   }
   return out;
 }
+
+/**
+ * ¿El candidato introduce cifras fuera del input que la base no tenía?
+ *
+ * Para retries QUIRÚRGICOS (Goal D): cuando un retry reescribe un solo campo de
+ * una prosa que el guard de cifras ya validó, el candidato completo se re-verifica
+ * acá — misma regla, mismo módulo (una regla, un módulo, N consumidores: LTR hoy,
+ * STR cuando adopte el patrón). Se compara por CONTEO contra la base vigente y no
+ * contra cero: una prosa aceptada con violaciones residuales (el guard upstream es
+ * best-effort) no debe bloquear un retry que no las empeora.
+ */
+export function empeoraCifras(
+  userPrompt: string,
+  base: unknown,
+  candidato: unknown,
+  opts?: { ufClp?: number },
+): boolean {
+  return cifrasFueraDeInput(userPrompt, candidato, opts).length > cifrasFueraDeInput(userPrompt, base, opts).length;
+}
