@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { reportarFalloQuery } from "@/lib/observabilidad";
 import { consumeCredit as consumeLedgerCredit, getAvailableCredits } from "@/lib/credits-grant";
 
 function createAdminClient() {
@@ -94,23 +95,30 @@ export async function chargeAnalysisCredit(
 
   // Asegurar row (insert idempotente). Para usuarios nuevos que llegaron al
   // endpoint sin pasar por check-welcome/complete-onboarding aún.
-  await supabase
-    .from("user_credits")
-    .upsert(
-      {
-        user_id: userId,
-        credits: 0,
-        subscription_status: "none",
-        welcome_credit_used: false,
-      },
-      { onConflict: "user_id", ignoreDuplicates: true },
-    );
+  {
+    // Falla del upsert ≠ "fila ya existía": si esto falla de verdad, el select de abajo
+    // también va a fallar y el usuario cae a "sin créditos" sin que nadie lo vea.
+    const { error: upsertError } = await supabase
+      .from("user_credits")
+      .upsert(
+        {
+          user_id: userId,
+          credits: 0,
+          subscription_status: "none",
+          welcome_credit_used: false,
+        },
+        { onConflict: "user_id", ignoreDuplicates: true },
+      );
+    reportarFalloQuery(upsertError, { ruta: "lib/access", operacion: "asegurar-fila-creditos", userId });
+  }
 
-  const { data: row } = await supabase
+  const { data: row, error: rowError } = await supabase
     .from("user_credits")
     .select("credits, subscription_status, welcome_credit_used, is_unlimited, grace_ends_at, subscription_ends_at, active_plan")
     .eq("user_id", userId)
     .single();
+  // Error real ≠ fila ausente: los dos caían al "sin créditos" defensivo sin rastro.
+  reportarFalloQuery(rowError, { ruta: "lib/access", operacion: "leer-creditos-cobro", userId });
 
   if (!row) {
     // Defensivo: el upsert+select debería traer row siempre.
@@ -136,7 +144,7 @@ export async function chargeAnalysisCredit(
   // onboarding_completed=true (UX fix #1b): si el user usa el welcome via
   // análisis está onboardeado de facto — no debería volver a OnboardingClient.
   if (!row.welcome_credit_used) {
-    const { data: claimed } = await supabase
+    const { data: claimed, error: claimedError } = await supabase
       .from("user_credits")
       .update({
         welcome_credit_used: true,
@@ -147,6 +155,9 @@ export async function chargeAnalysisCredit(
       .eq("welcome_credit_used", false)
       .select()
       .maybeSingle();
+    // Un error real acá se leía como "race perdida" y el usuario caía a pagar su
+    // welcome. La race legítima (0 filas) no trae error y sigue sin reportarse.
+    reportarFalloQuery(claimedError, { ruta: "lib/access", operacion: "consumir-welcome", userId });
     if (claimed) {
       return { ok: true, mode: "welcome" };
     }
@@ -160,13 +171,14 @@ export async function chargeAnalysisCredit(
 
   // Legacy: contador user_credits.credits (compras pro/pack3 previas a la migración).
   if (row.credits > 0) {
-    const { data: paid } = await supabase
+    const { data: paid, error: paidError } = await supabase
       .from("user_credits")
       .update({ credits: row.credits - 1, updated_at: new Date().toISOString() })
       .eq("user_id", userId)
       .gt("credits", 0)
       .select()
       .maybeSingle();
+    reportarFalloQuery(paidError, { ruta: "lib/access", operacion: "consumir-credito-legacy", userId });
     if (paid) {
       return { ok: true, mode: "paid" };
     }
@@ -202,11 +214,14 @@ export async function getUserAccessLevel(
   if (!userId) return "guest";
 
   const supabase = createAdminClient();
-  const { data } = await supabase
+  const { data, error: nivelError } = await supabase
     .from("user_credits")
     .select("credits, subscription_status, grace_ends_at, subscription_ends_at")
     .eq("user_id", userId)
     .single();
+  // Error real ≠ usuario sin fila: ambos degradaban a "free" indistinguibles — un
+  // suscriptor con la query caída vería el informe capado sin que nadie lo supiera.
+  reportarFalloQuery(nivelError, { ruta: "lib/access", operacion: "nivel-de-acceso", userId });
 
   if (!data) return "free";
   if (hasSubscriptionAccess(data)) return "subscriber";
@@ -225,20 +240,22 @@ export async function consumeCredit(
   const supabase = createAdminClient();
 
   // Check if analysis is already premium
-  const { data: analysis } = await supabase
+  const { data: analysis, error: analysisError } = await supabase
     .from("analisis")
     .select("is_premium")
     .eq("id", analysisId)
     .single();
+  reportarFalloQuery(analysisError, { ruta: "lib/access", operacion: "leer-analisis-consumo", userId, analysisId });
 
   if (analysis?.is_premium) return true;
 
   // Check subscription
-  const { data: credits } = await supabase
+  const { data: credits, error: creditsError } = await supabase
     .from("user_credits")
     .select("credits, subscription_status, is_unlimited, grace_ends_at, subscription_ends_at")
     .eq("user_id", userId)
     .single();
+  reportarFalloQuery(creditsError, { ruta: "lib/access", operacion: "leer-creditos-consumo", userId, analysisId });
 
   if (!credits) return false;
 
@@ -268,9 +285,15 @@ export async function consumeCredit(
       })
       .eq("user_id", userId);
 
-    if (creditError) return false;
+    if (creditError) {
+      reportarFalloQuery(creditError, { ruta: "lib/access", operacion: "descontar-credito-legacy", userId, analysisId });
+      return false;
+    }
 
-    await supabase.from("analisis").update({ is_premium: true }).eq("id", analysisId);
+    // Si esto falla, el crédito YA se descontó y el análisis queda sin premium — el
+    // peor de los dos mundos, y hasta ahora era invisible.
+    const { error: premiumError } = await supabase.from("analisis").update({ is_premium: true }).eq("id", analysisId);
+    reportarFalloQuery(premiumError, { ruta: "lib/access", operacion: "marcar-premium", userId, analysisId });
     return true;
   }
 

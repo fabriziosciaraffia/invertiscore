@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { reportarFalloQuery } from "@/lib/observabilidad";
 import { slugify } from "@/lib/utils";
 
 function getSupabase() {
@@ -60,7 +61,7 @@ async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, type: "arr
   let hasMore = true;
 
   while (hasMore) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("scraped_properties")
       .select("comuna, dormitorios, precio, moneda, superficie_m2")
       .eq("type", type)
@@ -71,6 +72,9 @@ async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, type: "arr
       .gte("dormitorios", 1)
       .lte("dormitorios", 4)
       .range(offset, offset + pageSize - 1);
+    // Un error a mitad de la paginación cortaba el loop en silencio: las páginas SEO
+    // computaban stats sobre datos PARCIALES sin que nada lo dijera.
+    reportarFalloQuery(error, { ruta: "lib/data/comunas-seo", operacion: `paginar-scraped-${type}`, tags: { offset: String(offset) } });
 
     if (!data || data.length === 0) {
       hasMore = false;
@@ -99,11 +103,12 @@ async function computeAllSegments(): Promise<SegmentResult[]> {
   const supabase = getSupabase();
 
   // Get UF value — config stores CLP value, sanity check it's in expected range
-  const { data: configData } = await supabase
+  const { data: configData, error: configError } = await supabase
     .from("config")
     .select("value")
     .eq("key", "uf_value")
     .single();
+  reportarFalloQuery(configError, { ruta: "lib/data/comunas-seo", operacion: "leer-uf-config" });
   const rawUF = parseFloat(configData?.value || "0");
   const ufValue = rawUF > 30000 && rawUF < 50000 ? rawUF : 38800;
 
