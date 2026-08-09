@@ -16,8 +16,10 @@
  * ProCTABanner) gestionan el upgrade.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
+import { usePostHog } from "posthog-js/react";
+import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import { ArrowRight } from "lucide-react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
@@ -144,6 +146,26 @@ export function STRResultsClient({
       loadAi();
     }
   }, [accessLevel, aiAnalysis, aiLoading, aiError, loadAi]);
+
+  // Goal B — `informe_visto` STR: el veredicto es visible desde el primer
+  // render (HeroSTR lo pinta con la prosa en skeleton inline), así que el
+  // momento es el mount. ai_estado registra si la prosa venía persistida o
+  // sigue en vuelo. Fail-soft entero (capture + RPC NULL-only vía helper).
+  const posthog = usePostHog();
+  const informeVistoRef = useRef(false);
+  useEffect(() => {
+    if (informeVistoRef.current) return;
+    informeVistoRef.current = true;
+    registrarInformeVisto({
+      posthog,
+      ids: [analysisId],
+      modalidad: "str",
+      aiEstado: initialAi ? "cacheada" : "generando",
+      esperaMs: leerEsperaMs(),
+      esOwner: !isSharedView,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Datos derivados ──────────────────────────────
   // Commit E.0 (2026-05-13): eliminado fallback `score ?? 50`. Análisis legacy

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { usePostHog } from "posthog-js/react";
+import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import { Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
@@ -101,6 +103,25 @@ export function ComparativaClient(p: Props) {
   const { ai: comparativaAI, loading: aiLoading } = useComparativaAI(
     p.ltrId, p.strId, p.cachedAI, true,
   );
+
+  // Goal B — `informe_visto` AMBAS: el veredicto comparativo viene server-rendered,
+  // visible desde el mount; la prosa puede seguir en vuelo (skeleton del hero).
+  // Se marcan las DOS filas del par (quedaron visibles en el mismo instante).
+  const posthog = usePostHog();
+  const informeVistoRef = useRef(false);
+  useEffect(() => {
+    if (informeVistoRef.current) return;
+    informeVistoRef.current = true;
+    registrarInformeVisto({
+      posthog,
+      ids: [p.ltrId, p.strId],
+      modalidad: "ambas",
+      aiEstado: p.cachedAI ? "cacheada" : "generando",
+      esperaMs: leerEsperaMs(),
+      esOwner: p.isOwner,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Pirámide diferencial (D3) — findings motor-templated, recomputados por moneda.
   const findings = useMemo(() => {
