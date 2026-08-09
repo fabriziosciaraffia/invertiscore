@@ -44,7 +44,7 @@ import {
   recortarContinuacion,
 } from "@/lib/prosa-presupuesto";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
-import { cifrasFueraDeInput } from "@/lib/cifras-guard";
+import { cifrasFueraDeInput, empeoraCifras } from "@/lib/cifras-guard";
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import type { Hallazgo } from "@/lib/types";
 import { metricaDisplay, metricaODefault, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
@@ -2142,14 +2142,19 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // PLAN C GUARD — enforcement de presupuesto POR CONSTRUCCIÓN. La continuación (lo
     // que escribió el modelo, aún SIN la apertura) no puede superar maxContinuacion.
     // El modelo no cuenta bien, así que medimos acá: sobre maxContinuacion×1.1, hasta
-    // 2 retries con feedback endurecido (patrón CATCH-ROOT-A).
+    // 2 retries QUIRÚRGICOS (Goal D). Antes cada retry regeneraba el JSON COMPLETO
+    // (~24k tokens de input + ~2.9k de output, ~50s) para acortar un campo de ≤66
+    // palabras — medido en prod (a5179ba2): 2 regens = 100s extra para corregir el
+    // 5% de la prosa. Ahora el retry reescribe SOLO conviene.respuestaDirecta:
+    // recibe la apertura fija como ancla y la continuación vigente para COMPRIMIRLA
+    // (mismo matiz, mismas cifras — cero costura: es la unidad editorial completa
+    // que sigue a la apertura, no un fragmento). El resto de la prosa, que los
+    // guards anteriores ya validaron, no se regenera ni se toca.
     //
-    // Y SI NO CONVERGE, NO SE ACEPTA. Antes el tercer strike se logueaba y pasaba
-    // ("sigue > máx, aceptado"): un techo que se reporta pero no se cumple es doctrina
-    // muerta — se desbordaba de forma sistemática y el golden lo cazaba en A6. Ahora se
-    // recorta por ORACIÓN (nunca a media frase) hasta la línea dura, quedándose con la
-    // versión más corta de las tres. Es peor prosa que un retry que converge y mejor
-    // que un techo decorativo; y el desborde ya es raro con presupuesto propio.
+    // Y SI NO CONVERGE, NO SE ACEPTA: recorte por ORACIÓN (nunca a media frase)
+    // hasta la línea dura, quedándose con la versión más corta vista. Sin regen
+    // completa de último recurso — el trim ya garantiza el techo por construcción
+    // y una regen completa reintroduce el costo que este guard mata.
     //
     // Se mide el MÁXIMO de las dos variantes de moneda: el techo aplica a lo que el
     // usuario lee, y el toggle CLP/UF no elige cuál. Corre ANTES de FASE B para que la
@@ -2164,27 +2169,62 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       let mejor = aiResult;
       let mejorWC = wcCont(aiResult);
       const PLANC_MAX_RETRIES = 2;
+      const aperturaFija = String(hallazgosOrdenados[0]?.fraseCanonica ?? "").trim();
       for (let intento = 1; intento <= PLANC_MAX_RETRIES && mejorWC > limiteRetry; intento++) {
-        console.warn(`[PLANC-BUDGET] ${analysisId}: continuación ${mejorWC} palabras > máx ${maxContinuacion} — retry ${intento}/${PLANC_MAX_RETRIES}`);
+        console.warn(`[PLANC-BUDGET] ${analysisId}: continuación ${mejorWC} palabras > máx ${maxContinuacion} — retry quirúrgico ${intento}/${PLANC_MAX_RETRIES}`);
         const insistencia =
           intento === 1
             ? ""
-            : ` Este es el SEGUNDO aviso: la versión anterior también se pasó. Escribí una sola oración de continuación si hace falta — es preferible una línea corta que una que no cabe. Si te vuelves a pasar, el motor recorta por oración y la última idea se pierde entera.`;
-        const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu conviene.respuestaDirecta midió ${mejorWC} palabras; el MÁXIMO de la continuación es ${maxContinuacion}. Reescribí el JSON COMPLETO desarrollando UN SOLO matiz (el de mayor consecuencia en plata) en ≤${maxContinuacion} palabras; los demás matices viven en la pirámide — no los encadenes.${insistencia}`;
+            : ` Este es el SEGUNDO aviso: la versión anterior también se pasó. Deja UNA sola oración si hace falta — es preferible una línea corta que una que no cabe; si te vuelves a pasar, el sistema recorta por oración y la última idea se pierde entera.`;
+        const contClp = typeof mejor?.conviene?.respuestaDirecta_clp === "string" ? mejor.conviene.respuestaDirecta_clp : "";
+        const contUf = typeof mejor?.conviene?.respuestaDirecta_uf === "string" ? mejor.conviene.respuestaDirecta_uf : "";
+        const promptQuirurgico = `Estás corrigiendo SOLO el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
+
+PRIMERA PARTE FIJA del texto — ya está escrita y se antepone automáticamente; tu texto CONTINÚA después de ella. NO la escribas, NO la repitas, NO la parafrasees: «${aperturaFija}»
+
+TU TAREA: la continuación actual mide ${mejorWC} palabras y el MÁXIMO es ${maxContinuacion} por variante. Comprímela conservando el MISMO matiz (el de mayor consecuencia en plata) y usando SOLO cifras que ya aparecen en ella — ninguna cifra nueva. UN solo matiz; los demás viven en las cards.${insistencia}
+
+CONTINUACIÓN ACTUAL (variante CLP):
+${contClp}
+
+CONTINUACIÓN ACTUAL (variante UF):
+${contUf}
+
+Responde SOLO este JSON, sin texto alrededor:
+{"respuestaDirecta_clp": "...", "respuestaDirecta_uf": "..."}`;
         try {
-          const regen = await reg.medir("plan-c", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 8000, messages: [{ role: "user", content: userPrompt + correctivo }], system: SYSTEM_LTR_CACHED }));
+          const regen = await reg.medir("plan-c", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 500, messages: [{ role: "user", content: promptQuirurgico }], system: SYSTEM_LTR_CACHED }));
           acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
-          const regenResult = parseAndNormalize(regenText);
-          if (!regenResult) {
-            console.warn(`[PLANC-BUDGET] ${analysisId}: retry ${intento} no parseó — conservo la continuación previa`);
+          // Parse tolerante (patrón del detector): primer objeto {...} del texto.
+          let nClp = "";
+          let nUf = "";
+          try {
+            const m = regenText.match(/\{[\s\S]*\}/);
+            const obj = JSON.parse(m ? m[0] : regenText);
+            nClp = typeof obj?.respuestaDirecta_clp === "string" ? obj.respuestaDirecta_clp.trim() : "";
+            nUf = typeof obj?.respuestaDirecta_uf === "string" ? obj.respuestaDirecta_uf.trim() : "";
+          } catch {
+            /* no parseó — se maneja abajo */
+          }
+          if (!nClp || !nUf) {
+            console.warn(`[PLANC-BUDGET] ${analysisId}: retry quirúrgico ${intento} no parseó — conservo la continuación previa`);
             break;
           }
-          const wc2 = wcCont(regenResult);
-          console.warn(`[PLANC-BUDGET] ${analysisId}: retry ${intento} → ${wc2} palabras${wc2 <= limiteRetry ? " (OK)" : ""}`);
-          if (wc2 < mejorWC) { mejor = regenResult; mejorWC = wc2; }
+          const candidato = { ...mejor, conviene: { ...mejor.conviene, respuestaDirecta_clp: nClp, respuestaDirecta_uf: nUf } };
+          const wc2 = wcCont(candidato);
+          console.warn(`[PLANC-BUDGET] ${analysisId}: retry quirúrgico ${intento} → ${wc2} palabras${wc2 <= limiteRetry ? " (OK)" : ""}`);
+          // Invariante de cifras sobre el quirúrgico: como ya no se regenera el JSON
+          // que LTR-CIFRA validó, el candidato completo se re-verifica con la regla
+          // compartida (cifras-guard.ts — una regla, un módulo, N consumidores).
+          if (empeoraCifras(userPrompt, mejor, candidato, { ufClp: UF_CLP })) {
+            console.warn(`[PLANC-CIFRA-REJECT] ${analysisId}: el retry quirúrgico introdujo cifras fuera del input — candidato descartado`);
+          } else if (wc2 < mejorWC) {
+            mejor = candidato;
+            mejorWC = wc2;
+          }
         } catch (e) {
-          console.warn(`[PLANC-BUDGET] ${analysisId}: retry ${intento} falló (best-effort): ${(e as Error)?.message ?? e}`);
+          console.warn(`[PLANC-BUDGET] ${analysisId}: retry quirúrgico ${intento} falló (best-effort): ${(e as Error)?.message ?? e}`);
           break;
         }
       }
