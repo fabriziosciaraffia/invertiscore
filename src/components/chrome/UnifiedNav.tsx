@@ -41,6 +41,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import posthog from "posthog-js";
 import { Menu, X, Sun, Moon } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import FrancoLogo from "@/components/franco-logo";
@@ -246,6 +247,13 @@ export function UnifiedNav({
       await supabase.auth.signOut();
     } catch {
       /* sin sesión / sin config — caemos a login igualmente */
+    }
+    // Desatar la persona de PostHog (espejo logout-button.tsx): sin esto el
+    // navegador sigue atribuyendo eventos al usuario que se fue.
+    try {
+      posthog.reset();
+    } catch {
+      /* PostHog sin inicializar — no es un problema */
     }
     router.push("/login");
     router.refresh();

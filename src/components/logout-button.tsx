@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { purgarBorradoresYPestana } from "@/lib/draft-keys";
@@ -15,6 +16,13 @@ export function LogoutButton() {
     // quedan legibles para quien use después el mismo navegador.
     purgarBorradoresYPestana();
     await supabase.auth.signOut();
+    // Desatar la persona de PostHog: sin esto, lo que pase después en este
+    // navegador (otro usuario incluido) sigue atribuido al que se fue.
+    try {
+      posthog.reset();
+    } catch {
+      /* PostHog sin inicializar — no es un problema */
+    }
     router.push("/login");
     router.refresh();
   };
