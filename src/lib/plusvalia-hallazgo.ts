@@ -12,6 +12,7 @@
 
 import type { HallazgoPlusvalia } from "./types";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
+import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 
 // ─── Referencia (umbral absoluto de apreciación real) ─────────────────────
 //
@@ -117,6 +118,9 @@ export function buildHallazgoPlusvalia(p: {
 
   const apFmt = fmt1(anualizadaPct);
   const refFmt = fmt1(p.ref.pct);
+  // Tasa de proyección a futuro (constante única del producto) — SOLO para el puente de
+  // las ramas adversas. Es semánticamente distinta del umbral aunque hoy ambas digan 3.
+  const proyFmt = fmt1(PLUSVALIA_PROYECCION_ANUAL * 100);
   const gapAbs = Math.abs(gapRounded);
   const sujeto = `los departamentos en ${p.comuna.trim()}`;
 
@@ -139,14 +143,24 @@ export function buildHallazgoPlusvalia(p: {
       `Ganaron valor por sobre la inflación; es respaldo histórico, no garantía de que se repita.`;
   } else if (anualizadaPct < 0) {
     titular = "La comuna perdió valor real en la última década.";
+    // EL PUENTE (censos editoriales 2026-08: familia #1 en severidad, ~13 casos): sin esta
+    // frase, la card dice "la historia no respalda" y el drawer de largo plazo "proyectamos
+    // 3%" — dos verdades sin regla que las ordene. El puente declara la relación acá, en la
+    // fuente determinística que llega a TODAS las superficies (card, PDF, prompt, juez).
+    // Rama negativa = copy más duro: proyectar 3% sobre una comuna que CAYÓ es una apuesta
+    // a recuperación, y los números a 10 años del informe la llevan puesta.
     fraseCanonica =
       `En la última década ${sujeto} cayeron ${fmt1(Math.abs(anualizadaPct))}% anual de valor, bajo el umbral de apreciación real (${refFmt}%). ` +
-      `La historia no respalda una apuesta a plusvalía acá.`;
+      `La historia no respalda una apuesta a plusvalía acá. La proyección a 10 años del análisis igual usa ${proyFmt}% anual parejo: ` +
+      `sobre esta comuna, eso es apostar a una recuperación que la década pasada no muestra — y el patrimonio y la TIR del informe llevan esa apuesta puesta.`;
   } else {
     titular = "La comuna no le ganó a la inflación en la década.";
+    // Rama positiva-baja: mismo puente, tono de techo-no-piso (la comuna sube, pero menos
+    // que lo proyectado). Silencio en las ramas favorable/en línea: sin tensión no hay nota.
     fraseCanonica =
       `En la última década ${sujeto} se valorizaron ${apFmt}% anual, bajo el umbral de apreciación real (${refFmt}%). ` +
-      `No le ganaron a la inflación de largo plazo; la plusvalía histórica acá es débil, no garantía futura.`;
+      `No le ganaron a la inflación de largo plazo; la plusvalía histórica acá es débil, no garantía futura. ` +
+      `La proyección a 10 años del análisis usa ${proyFmt}% anual parejo — más que lo que esta comuna rindió: tómala como techo optimista, no como piso.`;
   }
 
   const base = p.tieneData

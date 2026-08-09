@@ -560,6 +560,8 @@ VÁLIDO:
 - "Quilicura subió 5,3% anual histórico — la proyección a ${PROY_PCT} es conservadora versus lo que la comuna ya mostró."
 - "Sin data histórica suficiente para esta comuna — la proyección a ${PROY_PCT} es supuesto puro, sin verificación local."
 
+EL PUENTE ES DE LA CARD: cuando la histórica está BAJO el umbral, la card de plusvalía ya declara la relación entre ambas cifras — la proyección ${PROY_PCT} como "techo optimista, no piso" (histórica positiva-baja) o como "apuesta a recuperación que la década pasada no muestra" (histórica negativa). Si tu prosa toca la proyección en esos casos, REPRODUCE ese marco (mismas ideas, tus palabras): NUNCA lo re-encuadres como "supuesto conservador", "estándar prudente" o "respaldado por el histórico" — "conservadora" solo cabe cuando la histórica es MAYOR O IGUAL que la proyección. Un lector que ve la card decir "techo, no piso" y tu prosa decir "conservador" sobre el mismo ${PROY_PCT} queda sin saber a quién creerle.
+
 El caveat temporal de REGLA 9 (los tramos 2014-2018/2019/2020-2021 que el rango cruza) sigue aplicando cuando cites la histórica. Esta REGLA 10 disciplina la JERARQUÍA entre proyección base (${PROY_PCT}) e histórica (contexto de riesgo).
 
 ## 13. Schema JSON de output
