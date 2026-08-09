@@ -624,6 +624,19 @@ TAMBIÉN en \`conviene.respuestaDirecta\`: cierra con UNA mención breve de esa 
 REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase de arriba. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí, NUNCA inventes un valor intermedio. La OCUPACIÓN no es palanca de este análisis (no la fija el propietario y en el cálculo mueve lo mismo que la tarifa); la TASA tampoco (es condición del banco).${avisoPuroGate}${avisoAdr}${avisoPie}`;
   })();
 
+  // PLUSVALÍA — la card (builder, con el puente histórica↔proyección) entra al prompt.
+  // Sin esto el modelo escribía el "condicional de plusvalía" de largoPlazo SIN el dato
+  // comunal y lo improvisaba — caso ab7d865d: prosa fresca negando un histórico (Ñuñoa
+  // 3,2%) que la card del mismo informe cita. La fuente única es la fraseCanonica.
+  const hallazgoPlusvalia = (Array.isArray(r.hallazgos) ? r.hallazgos : []).find((h) => h.id === "plusvalia");
+  const bloquePlusvalia = hallazgoPlusvalia?.fraseCanonica
+    ? `
+
+=== PLUSVALÍA HISTÓRICA DE LA COMUNA (lectura canónica de la card) ===
+«${hallazgoPlusvalia.fraseCanonica}»
+→ El condicional de plusvalía de \`largoPlazo.contenido\` usa ESTA lectura: mismas cifras, mismo marco. NUNCA afirmes que falta histórico comunal cuando esta línea trae la cifra — y si dice "promedio del Gran Santiago", entonces la comuna NO tiene dato propio y lo dices así.`
+    : "";
+
   const bloqueCoronado = cardFrases.coronado
     ? `\n\n=== HALLAZGO QUE LIDERA LA PIRÁMIDE (ancla el ángulo-lead del hero · §7.bis) ===\nEl coronado (más decisivo/adverso) es: «${cardFrases.coronado.titular}» — ${cardFrases.coronado.frase}\n→ \`conviene.respuestaDirecta\` debe alinear su ángulo-lead con este hallazgo. No lo copies (§1.bis); no contradigas la jerarquía visual.`
     : "";
@@ -735,7 +748,7 @@ ${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar: el
 
 === SENSIBILIDAD DE PRECIO (Ángulo 4 — la tabla vive en su propio drawer de datos) ===
 ${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${pct(s.capRate * 100, 2)}%, CoC ${esMetricaNoAplica(s.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(s.cashOnCash, (n) => `${pct(n * 100)}%`)}, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${sinCapitalPropio ? `
-→ Con pie 0 la sensibilidad de precio se narra en FLUJO (## 5.bis.e): cada peso menos de precio es crédito que no tomas — el flujo de cada fila ya trae ese efecto.` : ""}${bloqueCards}${bloqueCoronado}${bloqueDistancia}${anomaliasTexto}
+→ Con pie 0 la sensibilidad de precio se narra en FLUJO (## 5.bis.e): cada peso menos de precio es crédito que no tomas — el flujo de cada fila ya trae ese efecto.` : ""}${bloqueCards}${bloqueCoronado}${bloqueDistancia}${bloquePlusvalia}${anomaliasTexto}
 
 ═══════════════════════════════════════════════════════════════════
 INSTRUCCIÓN FINAL
