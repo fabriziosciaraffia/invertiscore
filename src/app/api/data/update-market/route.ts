@@ -59,11 +59,10 @@ export async function POST(request: Request) {
   const results: Record<string, { value?: number; date?: string; error?: string; source?: string }> = {};
 
   // 1. Tasa hipotecaria vivienda (serie mensual)
-  // TODO(ops): este pull de BCCh (tasa_hipotecaria) es MANUAL — se dispara desde
-  // el admin ("Actualizar UF/Tasa"), no hay cron que llame esta ruta (el cron de
-  // vercel.json apunta a /api/scraping/update-market-data, que NO toca la tasa).
-  // El valor en config quedó en 4,11 desde mar-2026 y puede estar stale. Cablear
-  // un refresco automático (cron → esta ruta) es proyecto de ops aparte.
+  // (Histórico: hasta 7f27a9b esta ruta no tenía cron — el de vercel.json apuntaba
+  // al fantasma /api/scraping/update-market-data, hoy borrado. Desde entonces el
+  // cron diario de las 10:00 UTC llama ESTA ruta y la UF/tasa se refrescan solas;
+  // el botón del admin queda como disparo manual de respaldo.)
   const tasaObs = await fetchBCCH("F022.VIV.TIP.MA03.UF.Z.M", firstDate, today);
   if (tasaObs && tasaObs.length > 0) {
     const latest = tasaObs[tasaObs.length - 1];
