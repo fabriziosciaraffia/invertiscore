@@ -23,6 +23,7 @@ import type {
 } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import { InfoTooltip } from "@/components/ui/tooltip";
 
 // Proyección estándar Franco a futuro, como texto ("3%") — desde la constante, nunca literal.
@@ -797,6 +798,34 @@ export function DrawerPatrimonioLtr({
         ]}
         foot={`${fmtMoney(patrimonio, currency, valorUF)} contra los ${fmtMoney(aportado, currency, valorUF)} que pusiste entre pie, gastos y aportes del camino.`}
       />
+
+      {/* COMPRA EN VERDE (rama flujo-copy-preentrega): el gráfico de patrimonio ya muestra
+          el salto de la espera sin explicarlo — este Box lo nombra. Doble guard: el valor
+          tipado del motor (metrics.preEntrega) Y el predicado por serie (mandato del goal:
+          nunca estadoVenta). La ventaja hereda el marco del PUENTE de plusvalía: en comuna
+          con historia débil, el "si rinde el 3%" carga el mismo caveat que la card. */}
+      {(() => {
+        const pe = m?.preEntrega;
+        const aniosPre = contarAniosPreEntrega(results.projections ?? [], { precioCLP: m?.precioCLP ?? 0, pieCLP: m?.pieCLP ?? 0 });
+        if (!pe || !(pe.gananciaCLP > 0) || aniosPre === 0) return null;
+        const hp = results.hallazgos?.find((x) => x.id === "plusvalia");
+        const histDebil = hp?.direccion === "adverso";
+        const histNegativa = histDebil && hp?.id === "plusvalia" && hp.valor.anualizadaPct < 0;
+        const tasaPct = pctStr(pe.tasaAnual * 100);
+        const condicion = histNegativa
+          ? ` — si la comuna rinde el ${tasaPct} proyectado, que acá es apostar a una recuperación que la última década no muestra`
+          : histDebil
+            ? ` — si la comuna rinde el ${tasaPct} proyectado, que en esta comuna es techo optimista, no piso`
+            : ` — si la comuna rinde el ${tasaPct} proyectado`;
+        return (
+          <Box label="La compra en verde ya trabajó">
+            Fijaste el precio ahora y escrituras en ~{pe.mesesEspera} meses. En esa espera el
+            depto se valoriza sin que pongas un peso: llegarías a la entrega con{" "}
+            <b>{fmtMoney(pe.gananciaCLP, currency, valorUF)}</b> de ventaja ({pctStr(pe.gananciaPct)}{" "}
+            sobre el precio pactado){condicion}. Es plusvalía de la espera, antes del primer arriendo.
+          </Box>
+        );
+      })()}
 
       {selfLiquidating ? (
         <Box label="La deuda que se paga sola">

@@ -45,6 +45,7 @@ import {
 } from "@/lib/prosa-presupuesto";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { cifrasFueraDeInput } from "@/lib/cifras-guard";
+import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import type { Hallazgo } from "@/lib/types";
 import { metricaDisplay, metricaODefault, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
@@ -1657,6 +1658,27 @@ CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO
     // como NO_APLICA_PROMPT, el input declara capitalPropio + razonSinCapital,
     // la negociación viaja en plata mensual y la doctrina vive en ## 5.bis del
     // system. Copy canónico: no-aplica-copy.ts (fuente única con el render).
+    // COMPRA EN VERDE (rama flujo-copy-preentrega): la plusvalía de la espera es un valor
+    // tipado del motor (metrics.preEntrega) que ninguna prosa narraba. Entra al prompt SOLO
+    // con el doble guard (valor tipado + predicado por serie — nunca estadoVenta), con la
+    // condición explícita y heredando el marco del PUENTE de plusvalía: en comuna con
+    // historia débil, el "si rinde el 3%" carga el mismo caveat que la card.
+    const peGen = results.metrics?.preEntrega;
+    const aniosPreGen = contarAniosPreEntrega(results.projections ?? [], {
+      precioCLP: results.metrics?.precioCLP ?? 0,
+      pieCLP: results.metrics?.pieCLP ?? 0,
+    });
+    const hallazgoPlusvGen = (results.hallazgos as Hallazgo[] | undefined)?.find((h) => h.id === "plusvalia");
+    const marcoPuenteGen =
+      hallazgoPlusvGen?.direccion === "adverso"
+        ? hallazgoPlusvGen.id === "plusvalia" && hallazgoPlusvGen.valor.anualizadaPct < 0
+          ? " El marco del puente aplica: ese 3% acá es apostar a una recuperación que la década pasada no muestra — la ventaja de la espera hereda ese caveat, dilo."
+          : " El marco del puente aplica: ese 3% acá es techo optimista, no piso — la ventaja de la espera hereda ese caveat, dilo."
+        : ""
+    const bloquePreEntrega = peGen && peGen.gananciaCLP > 0 && aniosPreGen > 0
+      ? `- COMPRA EN VERDE (pre-entrega, valores tipados — cítalos tal cual): precio fijado hoy, escritura en ~${peGen.mesesEspera} meses; ventaja proyectada al escriturar: ${fmtCLP(peGen.gananciaCLP)} (${pct(peGen.gananciaPct)}% sobre el precio pactado) SI la comuna rinde el ${pct(peGen.tasaAnual * 100, 0)}% anual proyectado. Es el argumento central de comprar en verde y NINGUNA sección lo narra aún: llévalo a \`largoPlazo.contenido\` (o \`conviene.reencuadre\` si el caso lo pide) SIEMPRE con su condición — nunca como ganancia asegurada.${marcoPuenteGen}
+` : "";
+
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
 
 PERFIL Y ETAPA
@@ -1699,7 +1721,7 @@ ${tirLineaPrompt}- Multiplicador de capital (10 años): ${esMetricaNoAplica(exit
 ${sinCapitalPropio ? `- capitalPropio: no aplica (razonSinCapital: ${razonSinCapitalPrompt(cocNoAplica!.razon)}). APLICA LA DOCTRINA ## 5.bis del system: riesgo estructural, cero celebración de métricas sobre capital, dureza con el precio/m² según la razón declarada.
 ` : ""}- Inversión inicial total: ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})${sinCapitalPropio ? " — SIN pie: son gastos de cierre/puesta a punto, NO capital propio que rente" : ""}
 - Precio máximo de compra para flujo positivo: ${fmtUF(results.valorMaximoCompra)}
-${hallazgosBloque}
+${bloquePreEntrega}${hallazgosBloque}
 
 VARIABLES DE NEGOCIACIÓN (insumos para REGLAS 0-6 del system §12)
 - tipoNegociacion: ${tieneDiferenciaValida ? tipoNegociacion : "INDETERMINADO (NO usar — no hay valor de mercado de referencia, solo el precio pedido; aplica REGLA 0 §12 con SOLO el indicador por m²)"}

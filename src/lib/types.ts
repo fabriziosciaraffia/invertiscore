@@ -534,6 +534,10 @@ export interface HallazgoFlujoMensual {
     // Persistido para que el render de la card reproduzca la MISMA rama (bit-consistencia).
     // Ausente (filas legacy) ⇒ el render cae a "plusvalia" (texto pre-fix, byte-idéntico).
     consuelo?: "plusvalia" | "estable" | "ninguno";
+    // Horizonte de la rama FAVORABLE (rama flujo-copy-preentrega): pre-entrega + primer
+    // tramo de años operativos con flujo anual negativo. Se persiste para que la card
+    // reproduzca la MISMA variante de frase. Ausente (legacy / caso base) ⇒ frase fuerte.
+    horizonte?: { aniosPre: number; negDesde: number | null; negHasta: number | null };
   };
   // favorable si el aporte ≥ 0 (el arriendo cubre todo); adverso si < 0 (pones
   // plata de tu bolsillo). El signo NO determina decisividad — la magnitud sí.

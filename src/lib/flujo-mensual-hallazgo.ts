@@ -12,7 +12,8 @@
 // determinístico (de ahí confianza "alta"). El divisor de la decisividad es el
 // dividendo mensual, otro número que ya vive en el motor, pasado como PARÁMETRO.
 
-import type { HallazgoFlujoMensual } from "./types";
+import type { HallazgoFlujoMensual, YearProjection, AnalysisMetrics } from "./types";
+import { contarAniosPreEntrega } from "./pre-entrega-serie";
 
 const fmtCLP = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
 
@@ -44,15 +45,91 @@ const UMBRAL_DECISIVO = 0.5;
  */
 export type ConsueloFlujo = "plusvalia" | "estable" | "ninguno";
 
+/**
+ * Señal de HORIZONTE para la frase favorable (rama flujo-copy-preentrega): la afirmación
+ * "se sostiene sola desde el día uno" miraba SOLO el snapshot de hoy, y la proyección
+ * año a año puede contradecirla (cruces de banda de mantención) o el "día uno" puede
+ * estar a años (entrega futura). Se computa UNA vez en runAnalysis (cuando la serie ya
+ * existe) y se persiste en valor.horizonte para que la card reproduzca la MISMA rama.
+ */
+export interface HorizonteFlujo {
+  /** Años de espera pre-entrega leídos de la serie (0 = entrega inmediata). */
+  aniosPre: number;
+  /** Primer tramo de años con flujo anual negativo POST-entrega (anio calendario de la
+   *  serie), o null si todos los años operativos son positivos. */
+  negDesde: number | null;
+  negHasta: number | null;
+}
+
+/**
+ * Lee la serie y devuelve el horizonte del flujo. El tramo negativo reportado es el
+ * PRIMERO (contiguo): para la frase basta saber dónde se abre el hoyo; si hay más de
+ * uno, el primero es el que desmiente el "para siempre".
+ */
+export function analizarHorizonteFlujo(
+  projections: YearProjection[],
+  metrics: Pick<AnalysisMetrics, "precioCLP" | "pieCLP">,
+): HorizonteFlujo {
+  const aniosPre = contarAniosPreEntrega(projections, metrics);
+  let negDesde: number | null = null;
+  let negHasta: number | null = null;
+  for (const p of projections.slice(aniosPre)) {
+    if (p.flujoAnual < 0) {
+      if (negDesde === null) { negDesde = p.anio; negHasta = p.anio; }
+      else if (negHasta === p.anio - 1) { negHasta = p.anio; }
+      else break; // segundo tramo: la frase solo carga el primero
+    }
+  }
+  return { aniosPre, negDesde, negHasta };
+}
+
 export function buildFraseFlujo(
   montoFmt: string,
   direccion: "favorable" | "adverso",
   ratio: number,
   consuelo: ConsueloFlujo = "plusvalia",
+  horizonte?: HorizonteFlujo,
 ): { titular: string; fraseCanonica: string } {
   if (direccion === "favorable") {
+    const titular = "El arriendo cubre la cuota y no pones nada.";
+    const pre = (horizonte?.aniosPre ?? 0) > 0;
+    const neg = horizonte?.negDesde != null;
+    // Tramo negativo en palabras: "el año A" o "entre el año A y el B". Causa real de los
+    // cruces observados: la banda de mantención proyectada sube con la antigüedad.
+    const tramo =
+      horizonte?.negDesde != null
+        ? horizonte.negHasta != null && horizonte.negHasta !== horizonte.negDesde
+          ? `entre el año ${horizonte.negDesde} y el ${horizonte.negHasta}`
+          : `el año ${horizonte.negDesde}`
+        : "";
+    if (pre && neg) {
+      return {
+        titular,
+        fraseCanonica:
+          `Cuando el depto se entregue (año ${horizonte!.aniosPre + 1} de la proyección), el arriendo cubre ` +
+          `todos los costos y te deja ${montoFmt} al mes. Dos cosas a la vista: hasta escriturar no hay ` +
+          `arriendo, y ${tramo} la mantención proyectada sube y esos años pones tú la diferencia.`,
+      };
+    }
+    if (pre) {
+      return {
+        titular,
+        fraseCanonica:
+          `El arriendo cubre todos los costos y te deja ${montoFmt} al mes — desde la entrega ` +
+          `(año ${horizonte!.aniosPre + 1} de la proyección), que es cuando este depto empieza a operar. ` +
+          `Hasta escriturar no hay arriendo.`,
+      };
+    }
+    if (neg) {
+      return {
+        titular,
+        fraseCanonica:
+          `Tu arriendo cubre todos los costos y te deja ${montoFmt} al mes en el bolsillo. ` +
+          `Ojo más adelante: ${tramo} la mantención proyectada sube y esos años pones tú la diferencia.`,
+      };
+    }
     return {
-      titular: "El arriendo cubre la cuota y no pones nada.",
+      titular,
       fraseCanonica:
         `Tu arriendo cubre todos los costos y te deja ${montoFmt} al mes en el bolsillo. ` +
         `La propiedad se sostiene sola desde el día uno.`,
@@ -170,6 +247,32 @@ export function buildHallazgoFlujoMensual(p: {
  * con consuelo "ninguno" (misma plantilla, mismos números). En cualquier otro caso devuelve
  * el hallazgo intacto (referencia idéntica — cero churn en COMPRAR/AJUSTA).
  */
+/**
+ * Parche post-proyección (rama flujo-copy-preentrega): el hallazgo se emite en calcMetrics,
+ * ANTES de que exista la serie — por eso el horizonte no puede decidirse en el builder.
+ * runAnalysis llama esto DESPUÉS de calcProjections: solo toca la rama FAVORABLE (las
+ * adversas no prometen sostenibilidad), re-emite la frase con la señal y la persiste en
+ * valor.horizonte para que la card reproduzca la misma variante. Si el horizonte es el
+ * caso base (inmediata, sin años negativos), devuelve el hallazgo intacto — cero churn.
+ */
+export function aplicarHorizonteAFlujo(
+  h: HallazgoFlujoMensual,
+  projections: YearProjection[],
+  metrics: Pick<AnalysisMetrics, "precioCLP" | "pieCLP">,
+): HallazgoFlujoMensual {
+  if (h.direccion !== "favorable") return h;
+  const horizonte = analizarHorizonteFlujo(projections, metrics);
+  if (horizonte.aniosPre === 0 && horizonte.negDesde === null) return h;
+  const { titular, fraseCanonica } = buildFraseFlujo(
+    fmtCLP(h.valor.flujoNetoMensualCLP),
+    h.direccion,
+    h.valor.ratioSobreDividendo,
+    h.valor.consuelo,
+    horizonte,
+  );
+  return { ...h, titular, fraseCanonica, valor: { ...h.valor, horizonte } };
+}
+
 export function aplicarVeredictoAFlujo(
   h: HallazgoFlujoMensual,
   veredicto: string,

@@ -24,7 +24,7 @@ import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
 import { buildHallazgoDistanciaVeredicto } from "./distancia-veredicto-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
-import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo } from "./flujo-mensual-hallazgo";
+import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo, aplicarHorizonteAFlujo, analizarHorizonteFlujo, type HorizonteFlujo } from "./flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import type { MedianaComunaInyectada } from "./comuna-stats";
@@ -1571,7 +1571,32 @@ function enEsperaDeEntrega(input: AnalisisInput, asOf: Date): boolean {
   return calcMesesHastaEntrega(input, asOf) > 0;
 }
 
-function generatePros(input: AnalisisInput, metrics: AnalysisMetrics, asOf: Date): string[] {
+/** Tramo negativo en palabras ("el año 7" / "entre el año 7 y el 9"), o "" si no hay. */
+function tramoNegativo(h?: HorizonteFlujo): string {
+  if (!h || h.negDesde == null) return "";
+  return h.negHasta != null && h.negHasta !== h.negDesde
+    ? `entre el año ${h.negDesde} y el ${h.negHasta}`
+    : `el año ${h.negDesde}`;
+}
+
+/**
+ * Frase del pro de flujo positivo (rama flujo-copy-preentrega): "se paga sola" solo cuando
+ * la SERIE lo respalda. Con años negativos adelante la frase los carga (causa real: la
+ * banda de mantención proyectada sube); con entrega futura el "día uno" es la entrega.
+ */
+function fraseFlujoPro(montoFmt: string, h?: HorizonteFlujo): string {
+  const pre = (h?.aniosPre ?? 0) > 0;
+  const tramo = tramoNegativo(h);
+  if (pre && tramo)
+    return `Una vez entregado (año ${h!.aniosPre + 1} de la proyección), te sobran ${montoFmt} al mes tras dividendo y gastos. Ojo: ${tramo} la mantención proyectada sube y esos años pones tú la diferencia.`;
+  if (pre)
+    return `Una vez entregado (año ${h!.aniosPre + 1} de la proyección), te sobran ${montoFmt} al mes tras dividendo y gastos. La propiedad se paga sola desde la entrega.`;
+  if (tramo)
+    return `Después de pagar dividendo, gastos y todos los costos, te sobran ${montoFmt} al mes. Ojo: ${tramo} la mantención proyectada sube y esos años pones tú la diferencia.`;
+  return `Después de pagar dividendo, gastos y todos los costos, te sobran ${montoFmt} al mes. La propiedad se paga sola.`;
+}
+
+function generatePros(input: AnalisisInput, metrics: AnalysisMetrics, asOf: Date, horizonteFlujo?: HorizonteFlujo): string[] {
   const pros: string[] = [];
   const fmtP = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
 
@@ -1580,7 +1605,7 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics, asOf: Date
   if (metrics.rentabilidadBruta >= 5)
     pros.push(`El arriendo representa un ${metrics.rentabilidadBruta.toFixed(1)}% anual del precio, sobre el promedio chileno (~4%). Buen precio de compra para la renta que genera.`);
   if (metrics.flujoNetoMensual > 0)
-    pros.push(`Después de pagar dividendo, gastos y todos los costos, te sobran ${fmtP(metrics.flujoNetoMensual)} al mes. La propiedad se paga sola.`);
+    pros.push(fraseFlujoPro(fmtP(metrics.flujoNetoMensual), horizonteFlujo));
   else if (metrics.flujoNetoMensual === 0)
     pros.push("Flujo exactamente neutro — el arriendo cubre todos los costos.");
   // Pie cero: con CoC 'no_aplica' no existe "tu pie renta X%" — la frase honesta
@@ -1888,13 +1913,19 @@ export function runAnalysis(
   if (preEntrega) metrics.preEntrega = preEntrega;
   const cashflowYear1 = calcCashflowYear1(input, metrics, asOf);
   const projections = calcProjections({ input, metrics, plazoVenta: 20, ufClp, asOf });
+  // Rama flujo-copy-preentrega: con la serie ya computada, la frase favorable del flujo
+  // deja de mirar solo el snapshot — carga pre-entrega y años negativos si existen.
+  const horizonteFlujo = analizarHorizonteFlujo(projections, metrics);
+  if (metrics.hallazgoFlujoMensual) {
+    metrics.hallazgoFlujoMensual = aplicarHorizonteAFlujo(metrics.hallazgoFlujoMensual, projections, metrics);
+  }
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
   const refinanceScenario = calcRefinanceScenario(input, metrics, projections, 5);
   const score = calcScoreFromMetrics(input, metrics, ufClp, asOf);
   const sensitivity = calcSensitivity(input, score, metrics, ufClp, asOf);
   const breakEvenTasa = calcBreakEvenTasa(input, metrics, ufClp);
   const valorMaximoCompra = calcValorMaximoCompra(input, metrics, ufClp);
-  const pros = generatePros(input, metrics, asOf);
+  const pros = generatePros(input, metrics, asOf, horizonteFlujo);
   const contras = generateContras(input, metrics, asOf);
 
   // Score breakdown by dimension (mirrors calcScoreFromMetrics)
@@ -1970,13 +2001,25 @@ export function runAnalysis(
   const clasificacionColor: string =
     veredicto === "COMPRAR" ? "positive" : veredicto === "BUSCAR OTRA" ? "red" : "yellow";
 
+  // Rama flujo-copy-preentrega: "se paga sola" solo cuando la serie completa lo respalda.
+  // Con años negativos adelante o entrega futura, la frase carga el hecho (mismo criterio
+  // que la card y el pro — una sola política de honestidad del flujo).
+  const preResumen = (horizonteFlujo?.aniosPre ?? 0) > 0;
+  const tramoResumen = tramoNegativo(horizonteFlujo);
+  const colaFlujoResumen = preResumen && tramoResumen
+    ? ` — desde la entrega (año ${horizonteFlujo!.aniosPre + 1} de la proyección); ojo que ${tramoResumen} la mantención proyectada sube y esos años pones tú la diferencia`
+    : preResumen
+      ? ` — desde la entrega (año ${horizonteFlujo!.aniosPre + 1} de la proyección)`
+      : tramoResumen
+        ? ` — ojo que ${tramoResumen} la mantención proyectada sube y esos años pones tú la diferencia`
+        : "";
   let resumenEjecutivo: string;
   if (metrics.flujoNetoMensual === 0) {
-    resumenEjecutivo = `Esta propiedad se paga sola — break-even exacto, sin ganancia ni pérdida. ` +
+    resumenEjecutivo = `Esta propiedad se paga sola${colaFlujoResumen ? colaFlujoResumen : " — break-even exacto, sin ganancia ni pérdida"}. ` +
       `Renta un ${metrics.rentabilidadBruta.toFixed(1)}% bruto anual. ` +
       `${score >= 65 ? "Es una buena oportunidad de inversión." : "Revisa los detalles del informe para evaluar si conviene."}`;
   } else if (metrics.flujoNetoMensual > 0) {
-    resumenEjecutivo = `Esta propiedad se paga sola y te deja ${fmtR(metrics.flujoNetoMensual)} al mes de ganancia. ` +
+    resumenEjecutivo = `Esta propiedad se paga sola y te deja ${fmtR(metrics.flujoNetoMensual)} al mes de ganancia${colaFlujoResumen}. ` +
       `Renta un ${metrics.rentabilidadBruta.toFixed(1)}% bruto anual. ` +
       `${score >= 65 ? "Es una buena oportunidad de inversión." : "Revisa los detalles del informe para evaluar si conviene."}`;
   } else {

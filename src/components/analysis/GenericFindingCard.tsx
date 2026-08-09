@@ -410,7 +410,9 @@ function fraseCanonicaCard(h: Hallazgo, currency: "CLP" | "UF", valorUF: number)
     const ratio = v.dividendoMensualCLP > 0 ? abs / v.dividendoMensualCLP : 0;
     // v.consuelo reproduce la rama seeded (familia 1); ausente (legacy) ⇒ default
     // "plusvalia" dentro de buildFraseFlujo = texto pre-fix, byte-idéntico.
-    return buildFraseFlujo(montoFmt, h.direccion, ratio, v.consuelo).fraseCanonica;
+    // v.horizonte reproduce la variante favorable (pre-entrega / años negativos);
+    // ausente (legacy / caso base) ⇒ frase fuerte, byte-idéntica a la seed.
+    return buildFraseFlujo(montoFmt, h.direccion, ratio, v.consuelo, v.horizonte).fraseCanonica;
   }
   return h.fraseCanonica;
 }
