@@ -5,6 +5,7 @@ import { resolveDisplayName } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
 import { StatusBadge, type StatusBadgeTone } from "@/components/ui/StatusBadge";
 import { fmtCLP, fmtNumber, fmtRelative, fmtDateShort, fmtPlanLabel } from "@/lib/admin-format";
+import { COLUMNAS_USO_IA, fmtUsd, resumirCosto, type UsoIA } from "@/lib/costo-ia";
 import { fmtDec } from "@/components/analysis/utils";
 import { NotaComposer, NotaCard } from "./notas-client";
 import { ReenviarInformeButton, type ReenvioInfo } from "./reenviar-informe-client";
@@ -117,7 +118,10 @@ export default async function AdminUsuarioDetallePage({
       .maybeSingle(),
     sb
       .from("analisis")
-      .select("id, comuna, tipo, dormitorios, banos, superficie, precio, arriendo, tipo_analisis, pending_payment, is_premium, results, created_at, ambas_group_id")
+      .select(
+        "id, comuna, tipo, dormitorios, banos, superficie, precio, arriendo, tipo_analisis, pending_payment, is_premium, results, created_at, ambas_group_id, " +
+          COLUMNAS_USO_IA
+      )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     sb
@@ -195,13 +199,21 @@ export default async function AdminUsuarioDetallePage({
     : { label: "Gratis", tone: "muted" };
 
   // ─── Timeline: fusión de 5 fuentes ordenada por fecha desc ───
-  const analisis = (analisisRes.data ?? []) as Array<{
+  // El doble cast es por el select armado con concatenación (para reusar
+  // COLUMNAS_USO_IA): Supabase infiere los tipos del literal de columnas y con
+  // una expresión no puede, así que devuelve GenericStringError[].
+  const analisis = (analisisRes.data ?? []) as unknown as Array<{
     id: string; comuna: string | null; tipo: string | null; dormitorios: number | null;
     banos: number | null; superficie: number | null; precio: number | null; arriendo: number | null;
     tipo_analisis: string | null; pending_payment: boolean | null; is_premium: boolean | null;
     results: { veredicto?: string; francoVerdict?: string; engineSignal?: string } | null;
     created_at: string; ambas_group_id: string | null;
-  }>;
+  }> & UsoIA[];
+
+  // Costo de IA acumulado del usuario. Sale de las filas que ya trajimos —sin
+  // query extra— y separa medido de no medido: los análisis anteriores a la
+  // instrumentación tienen los ai_* en NULL y no son "gratis", son "sin dato".
+  const costoIaUsuario = resumirCosto(analisis);
   const docs = (docsRes.data ?? []) as Array<{
     id: string; estado: string; folio: number | null; error_mensaje: string | null; created_at: string;
   }>;
@@ -531,6 +543,39 @@ export default async function AdminUsuarioDetallePage({
 
           {/* SIDEBAR */}
           <aside className="order-2 space-y-6">
+            {/* Card COSTO IA — lo que este usuario costó en tokens de Anthropic.
+                Se calcula al leer desde las columnas ai_* (ver costo-ia.ts); el
+                USD es la cifra exacta (es la moneda en que Anthropic factura) y
+                el CLP es orientativo, con el dólar de la constante. */}
+            <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
+              <div className="font-body text-xs text-[var(--franco-text-muted)] mb-1">Costo de IA acumulado</div>
+              {costoIaUsuario.medidos > 0 ? (
+                <>
+                  <div className="font-mono text-3xl font-bold text-[var(--franco-text)]">
+                    {fmtUsd(costoIaUsuario.totalUsd)}
+                  </div>
+                  <div className="font-mono text-[10px] text-[var(--franco-text-muted)] mt-1">
+                    ≈ {fmtCLP(Math.round(costoIaUsuario.totalClp))} · {fmtUsd(costoIaUsuario.promedioUsd ?? 0)} por análisis
+                  </div>
+                  <div className="font-mono text-[10px] text-[var(--franco-text-muted)] mt-1">
+                    {fmtNumber(costoIaUsuario.medidos)} medido{costoIaUsuario.medidos === 1 ? "" : "s"}
+                    {costoIaUsuario.sinMedir > 0 && (
+                      <> · {fmtNumber(costoIaUsuario.sinMedir)} sin medir</>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="font-mono text-lg text-[var(--franco-text-muted)]">sin datos</div>
+                  <div className="font-mono text-[10px] text-[var(--franco-text-muted)] mt-1">
+                    {analisis.length > 0
+                      ? `sus ${analisis.length} análisis son anteriores a la medición de tokens`
+                      : "todavía no generó análisis"}
+                  </div>
+                </>
+              )}
+            </div>
+
             {/* Card SALDO */}
             <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
               <div className="font-body text-xs text-[var(--franco-text-muted)] mb-1">Saldo de análisis</div>
