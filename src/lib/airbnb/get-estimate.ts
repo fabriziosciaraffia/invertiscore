@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { createHash } from "crypto";
+import { contarLlamadaAirroi, type OrigenAirroi } from "./contador-airroi";
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -75,7 +76,12 @@ export async function getAirbnbEstimate(
   bedrooms: number,
   baths: number,
   guests: number,
-  options?: { dbClient?: SupabaseClient },
+  /**
+   * `origen` alimenta el conteo diario de metrics_daily: sin él no se puede
+   * separar lo que gasta el wizard explorando de lo que cuesta un informe. Es
+   * opcional para no romper callers, pero todo call-site vivo lo manda.
+   */
+  options?: { dbClient?: SupabaseClient; origen?: OrigenAirroi },
 ): Promise<AirbnbEstimateResponse> {
   // ── Validate inputs ──────────────────────────────
   if (!address || typeof address !== "string" || address.trim().length === 0) {
@@ -125,6 +131,9 @@ export async function getAirbnbEstimate(
     // Display-only (transparencia 2026-06): occ realizada desde la pool cruda.
     // Lee `comparable_listings` APARTE — NO toca isDirectSource ni el scoring.
     const realizedOccupancy = summarizeRealizedOccupancy(rawResponse?.comparable_listings);
+
+    // El hit no cuesta plata, pero sin contarlo no se sabe si el cache sirve.
+    void contarLlamadaAirroi(db, options?.origen ?? "informe", true);
 
     if (isDirectSource) {
       return {
@@ -200,6 +209,12 @@ export async function getAirbnbEstimate(
     baths: String(baths),
     guests: String(guests),
   });
+
+  // Acá ocurre el gasto: pasado este punto la llamada está facturada, responda
+  // lo que responda AirROI. Se cuenta ANTES del fetch y no después del `ok`
+  // justamente por eso — un 502 de AirROI también se paga, y contarlo solo en el
+  // camino feliz subestimaría la factura.
+  void contarLlamadaAirroi(db, options?.origen ?? "informe", false);
 
   const airroiRes = await fetch(
     `https://api.airroi.com/calculator/estimate?${params}`,

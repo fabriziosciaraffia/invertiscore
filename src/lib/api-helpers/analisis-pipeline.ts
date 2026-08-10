@@ -569,6 +569,7 @@ export async function buildShortTermAnalysisRow(
       body.dormitorios,
       body.banos,
       body.capacidadHuespedes || 2,
+      { origen: "informe" },
     );
     if (timing) {
       timing.airroi_ms = Date.now() - tAirroi;
