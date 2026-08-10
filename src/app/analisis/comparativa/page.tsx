@@ -219,8 +219,9 @@ export default async function ComparativaPage({
       strResults={strResults}
       // Cache VERSION-AWARE (Fase C): pasa la prosa persistida solo si su promptVersion
       // coincide. Prosa v0 o versión vieja → null: el cliente hace fetch → el endpoint
-      // regenera y persiste (invalidación lazy-on-open). Esto SOLO ocurre en la página
-      // del owner; el share renderiza lo persistido tal cual (nunca regenera).
+      // regenera y persiste (invalidación lazy-on-open). El share y el documento hacen
+      // el MISMO chequeo, pero sin regenerar: allá una versión vieja degrada a
+      // motor-only (son públicos, canGenerate=false).
       cachedAI={
         ltrResults?.comparativaAI?.promptVersion === PROMPT_VERSION_AMBAS
           ? ltrResults.comparativaAI

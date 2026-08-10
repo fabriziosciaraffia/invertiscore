@@ -21,6 +21,7 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
 import { DocumentoAmbas } from "./DocumentoAmbas";
 import "./documento.css";
 
@@ -135,7 +136,15 @@ export default async function DocumentoAmbasPage({
       token={params.token}
       ltrResults={ltrResults}
       strResults={strResults}
-      ai={ltrResults?.comparativaAI ?? null}
+      // Cache VERSION-AWARE (espejo de la web logueada y del share). El PDF no
+      // regenera: con una versión vieja los 3 movimientos se omiten y el
+      // documento queda motor-templated completo (Plan C). Sin esto el PDF
+      // imprimía prosa v2 bajo el hero v3.
+      ai={
+        ltrResults?.comparativaAI?.promptVersion === PROMPT_VERSION_AMBAS
+          ? ltrResults.comparativaAI
+          : null
+      }
       ltrInput={(ltr.input_data ?? null) as Record<string, unknown> | null}
       strInput={strInput}
       ltrScore={ltr.score ?? 0}

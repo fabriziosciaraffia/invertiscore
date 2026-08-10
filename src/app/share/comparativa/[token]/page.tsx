@@ -9,6 +9,7 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
 import { SharedComparativaClient } from "./shared-client";
 
 export const metadata: Metadata = {
@@ -144,7 +145,16 @@ export default async function ShareComparativaPage({
       strScore={strResults?.francoScore?.score ?? 0}
       ltrResults={ltrResults}
       strResults={strResults}
-      cachedAI={ltrResults?.comparativaAI ?? null}
+      // Cache VERSION-AWARE (espejo de /analisis/comparativa/page.tsx). El share
+      // NO regenera (público, canGenerate=false), así que una versión vieja no se
+      // "actualiza sola": se OCULTA y la página degrada a motor-only, que es el
+      // diseño Plan C. Sin esto, el bump a v3 dejaba el hero nuevo conviviendo
+      // con prosa v2 que celebra donde el hero ya dejó de hacerlo.
+      cachedAI={
+        ltrResults?.comparativaAI?.promptVersion === PROMPT_VERSION_AMBAS
+          ? ltrResults.comparativaAI
+          : null
+      }
       costoAmoblamiento={costoAmoblamiento}
       modoGestion={modoGestion}
       comisionAdministrador={comisionAdministrador}
