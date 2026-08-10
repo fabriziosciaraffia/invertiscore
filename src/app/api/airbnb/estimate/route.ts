@@ -13,7 +13,7 @@ import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
  * HTML como JSON y tiraba SyntaxError. Eliminado al llamar la lib directo.
  */
 export async function POST(req: NextRequest) {
-  let body: { address?: unknown; comuna?: unknown; bedrooms?: unknown; baths?: unknown; guests?: unknown };
+  let body: { address?: unknown; comuna?: unknown; bedrooms?: unknown; baths?: unknown; guests?: unknown; origen?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -33,7 +33,12 @@ export async function POST(req: NextRequest) {
   const guests = Number(body.guests);
 
   try {
-    const result = await getAirbnbEstimate(address, comuna, bedrooms, baths, guests);
+    // El origen viaja en el body porque este wrapper lo usa SOLO el wizard hoy,
+    // pero es un endpoint público del app y no conviene asumirlo: si llega algo
+    // que no reconocemos, se cuenta como wizard, que es de dónde vienen sus
+    // llamadas. El default de la lib ("informe") sería peor acá.
+    const origen = body.origen === "dry-run" || body.origen === "informe" ? body.origen : "wizard";
+    const result = await getAirbnbEstimate(address, comuna, bedrooms, baths, guests, { origen });
 
     // HTTP status apropiado por shape de la respuesta (mantiene contrato previo).
     if (result.success) {

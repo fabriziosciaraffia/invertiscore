@@ -67,12 +67,18 @@ async function evaluarStrBranch(
   asOf: Date,
   esEstimacion: boolean,
 ): Promise<string[]> {
+  // Mismos valores de comuna y capacidadHuespedes que manda el hook del wizard
+  // (buildStrPayload los deriva igual), así que el hash coincide y esto es cache
+  // HIT cuando el usuario ya pasó por el paso STR — que es el flujo normal. Se
+  // deja el llamado y no se cachea en sesión: el ahorro ya lo da el cache de 90
+  // días, y el conteo por origen ahora permite verificar que así sea.
   const airbnb = await getAirbnbEstimate(
     str.direccion,
     str.comuna ?? "",
     str.dormitorios,
     str.banos,
     str.capacidadHuespedes || 2,
+    { origen: "dry-run" },
   );
   if (!airbnb.success) return []; // AirROI caído o sin datos → sin card
   const airbnbData = buildAirbnbData(airbnb.data, uf);
