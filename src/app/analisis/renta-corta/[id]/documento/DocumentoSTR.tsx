@@ -15,6 +15,7 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { normalizeLegacyVerdict, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_FOOTNOTE_DOC } from "@/lib/no-aplica-copy";
+import { piePctDesdeInputData } from "@/lib/analysis/pie-input-data";
 import { describirMotivosSTR } from "@/lib/no-cierra-copy";
 import type { HallazgoDistanciaVeredicto } from "@/lib/types";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
@@ -87,7 +88,12 @@ export function DocumentoSTR({
   const precioUF = Number(inputData?.precioCompraUF) || (Number(inputData?.precioCompra) || 0) / (ufFrozen || 1);
   const superficie = Number(inputData?.superficieUtil) || Number(inputData?.superficie) || 0;
   const ufM2 = superficie > 0 ? precioUF / superficie : 0;
-  const piePct = Math.round((Number(inputData?.piePercent) || 0) * 100);
+  // Pie: el corpus trae `piePct` (%; pipeline actual) o `piePercent` (fracción;
+  // filas legacy) — la normalización vive en pie-input-data. Leer una sola clave
+  // imprimía "Pie 0%" en todo informe del pipeline actual. `null` = legacy sin
+  // dato → "—", nunca un 0% inventado.
+  const piePctNorm = piePctDesdeInputData(inputData);
+  const piePct = piePctNorm != null ? Math.round(piePctNorm) : null;
   const plazoAnios = Number(inputData?.plazoCredito) || 25;
   const tasaPct = (Number(inputData?.tasaCredito) || 0) * 100;
   const modoGestion = (inputData?.modoGestion as string) === "auto" ? "auto" : "administrador";
@@ -280,7 +286,7 @@ export function DocumentoSTR({
           <div className="cell"><p className="k">Superficie</p><div className="v">{superficie} m²</div></div>
           <div className="cell"><p className="k">Precio</p><div className="v">{fmtUF(precioUF)}</div></div>
           <div className="cell"><p className="k">$/m²</p><div className="v">UF {dec(ufM2)}</div></div>
-          <div className="cell"><p className="k">Pie</p><div className="v">{piePct}%</div></div>
+          <div className="cell"><p className="k">Pie</p><div className="v">{piePct != null ? `${piePct}%` : "—"}</div></div>
           <div className="cell"><p className="k">Financiamiento</p><div className="v">{plazoAnios} años · {dec(tasaPct)}%</div></div>
           <div className="cell"><p className="k">Ingreso bruto</p><div className="v">{money(base.ingresoBrutoMensual)}/mes</div></div>
         </div>

@@ -2,6 +2,7 @@ import { calcShortTerm, type ShortTermInputs, type ShortTermResult } from "@/lib
 import { calcFrancoScoreSTR, type FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { buildStrHallazgos } from "@/lib/str-hallazgos";
 import { buildAirbnbData } from "@/lib/api-helpers/analisis-pipeline";
+import { piePercentDesdeInputData } from "@/lib/analysis/pie-input-data";
 import type { ScoreSTRExtras } from "@/lib/analysis/veredicto-str-con-patch";
 
 /**
@@ -46,6 +47,14 @@ export function buildStrRecomputeCtx(
   const airbnbRaw = persistedResults?.airbnbRaw;
   if (!airbnbRaw || !inputData || typeof inputData.precioCompra !== "number") return null;
 
+  // Pie normalizado (piePct % del pipeline actual | piePercent fracción legacy
+  // — fuente única en pie-input-data). Sin pie en ninguna convención la fila es
+  // irreconstruible: antes `inputData.piePct / 100` daba NaN y envenenaba todo
+  // el recompute en silencio; el `null` cae al `results` persistido, que es el
+  // fallback seguro documentado arriba.
+  const piePercent = piePercentDesdeInputData(inputData);
+  if (piePercent == null) return null;
+
   const airbnbData = buildAirbnbData(airbnbRaw as any, ufClp);
 
   // P2 (Rama 0b): base CLP re-escalada al MISMO `ufClp` que convierte el revenue
@@ -75,7 +84,7 @@ export function buildStrRecomputeCtx(
     antiguedad: antiguedadResuelta,
     antiguedadEsFallback,
     comuna: typeof inputData.comuna === "string" ? inputData.comuna : undefined,
-    piePercent: inputData.piePct / 100,
+    piePercent,
     tasaCredito: inputData.tasaInteres / 100,
     plazoCredito: inputData.plazoCredito,
     airbnbData,
