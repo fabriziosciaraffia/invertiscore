@@ -103,7 +103,7 @@ export function ComparativaClient(p: Props) {
 
   // Prosa comparativa (Fase C) — integrada al hero. canGenerate=true: si el cache
   // está vacío/viejo, el hook hace fetch → el endpoint regenera (lazy-on-open).
-  const { ai: comparativaAI, loading: aiLoading } = useComparativaAI(
+  const { ai: comparativaAI, loading: aiLoading, error: aiError, reintentar: reintentarAi } = useComparativaAI(
     p.ltrId, p.strId, p.cachedAI, true,
   );
 
@@ -317,6 +317,23 @@ export function ComparativaClient(p: Props) {
             childrenBlocked={p.childrenBlocked}
             onOpenChild={p.childrenBlocked ? setModalChild : undefined}
           />
+
+          {/* Goal F3-c — último agujero sin salida: tras los 3 intentos del hook
+              (1 + 2 automáticos con backoff), el error dejaba la comparativa sin
+              prosa y sin acción. Ahora se declara y se puede reintentar. Fuera
+              del hero: el hero recién mergeado no se toca. */}
+          {aiError && !comparativaAI && (
+            <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] mb-3 -mt-4 px-1">
+              ● Análisis comparativo no disponible · {aiError} ·{" "}
+              <button
+                type="button"
+                onClick={reintentarAi}
+                className="font-mono text-[11px] uppercase tracking-[0.04em] text-signal-red hover:underline"
+              >
+                Reintentar
+              </button>
+            </p>
+          )}
 
           {/* ── ACTO 2 · Pirámide diferencial (D3) + drawers puente (D4) ── */}
           {/* id ancla del puente "Cómo pesa cada diferencia ↓" del hero (G8) */}

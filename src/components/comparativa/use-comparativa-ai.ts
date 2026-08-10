@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AIAnalysisComparativa } from "@/lib/types";
 
 // ─── Datos de la prosa comparativa (Fase C) ──────────────────────────────────
@@ -15,10 +15,23 @@ export function useComparativaAI(
   strId: string,
   cached: AIAnalysisComparativa | null,
   canGenerate: boolean,
-): { ai: AIAnalysisComparativa | null; loading: boolean; error: string | null } {
+): {
+  ai: AIAnalysisComparativa | null;
+  loading: boolean;
+  error: string | null;
+  /** Goal F3-c: re-disparo manual tras agotar los reintentos automáticos. */
+  reintentar: () => void;
+} {
   const [ai, setAi] = useState<AIAnalysisComparativa | null>(cached);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Bump manual: cambia la identidad del effect y relanza la cadena de intentos.
+  const [intentoManual, setIntentoManual] = useState(0);
+
+  const reintentar = useCallback(() => {
+    setError(null);
+    setIntentoManual((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     if (ai) return; // ya hay prosa (cache fresca server-side)
@@ -30,8 +43,9 @@ export function useComparativaAI(
     // Goal F (adelanto autorizado, independiente del ciclo del hero AMBAS): el
     // error dejó de ser terminal — reintento AUTOMÁTICO dentro del hook (hasta
     // 2, con backoff), sin cambios en ningún consumidor. La generación es corta
-    // (P50 9,6s medido en pipeline_timing), así que un fallo suele ser red
-    // transitoria y el reintento la cubre; recién el tercer fallo declara error.
+    // (P50 11,1s medido en pipeline_timing), así que un fallo suele ser red
+    // transitoria y el reintento la cubre; recién el tercer fallo declara error
+    // — y ahí el hero ofrece Reintentar (Goal F3-c), que relanza la cadena.
     const MAX_INTENTOS = 3;
     const BACKOFF_MS = [0, 4000, 8000];
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -71,7 +85,7 @@ export function useComparativaAI(
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [ai, ltrId, strId, canGenerate]);
+  }, [ai, ltrId, strId, canGenerate, intentoManual]);
 
-  return { ai, loading, error };
+  return { ai, loading, error, reintentar };
 }
