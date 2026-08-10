@@ -11,7 +11,7 @@ import { InfoTooltip } from "@/components/ui/tooltip";
 import { ordenarHallazgosPiramide } from "./PiramideHallazgos";
 import { IndiceRow } from "./IndiceHallazgos";
 import { numeroHallazgo } from "@/lib/orden-hallazgos";
-import { ProsaSkeleton } from "@/components/analysis/ProsaSkeleton";
+import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 
 /**
  * Hero de resultados LTR — rediseño dark (Fase 1a). Referencia visual aprobada:
@@ -41,9 +41,9 @@ export function HeroLTR({
   prosaError,
   onRetryProsa,
 }: {
-  /** Prosa IA. `null` mientras se genera (Goal C/E: veredicto inmediato) — el
-   *  hero renderiza todo lo que viene del motor y muestra la APERTURA del 01
-   *  estática en el slot de prosa hasta que llegue. */
+  /** Prosa IA. `null` mientras se genera (Goal C/E/E.2: veredicto inmediato) —
+   *  el hero renderiza todo lo que viene del motor y el slot de prosa muestra
+   *  ProgresoGeneracion (skeleton didáctico) hasta que llegue. */
   data: AIAnalysisV2 | null;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
@@ -151,9 +151,8 @@ export function HeroLTR({
   }, [comunaLabel, superficie, dorm, lat, lng]);
 
   // ── Veredicto / findings (F4) ──
-  // Con prosa en vuelo (data null): el slot de prosa muestra la APERTURA del
-  // hallazgo 01 estática (Goal E — Zona 1 sin indicadores de carga), o el error
-  // inline si la generación falló.
+  // Con prosa en vuelo (data null): el slot muestra ProgresoGeneracion (Goal
+  // E.2 — skeleton didáctico), o el error inline si la generación falló.
   const conviene = data?.conviene;
   const respuesta =
     (currency === "CLP" ? conviene?.respuestaDirecta_clp : conviene?.respuestaDirecta_uf) ?? null;
@@ -168,12 +167,10 @@ export function HeroLTR({
   const ordenados = ordenarHallazgosPiramide(results, data);
   const topHallazgos = ordenados.slice(0, 3);
   const restantes = Math.max(0, ordenados.length - topHallazgos.length);
-  // Goal E — la apertura del 01 (fraseCanonica del motor, existe desde el INSERT)
-  // se muestra ESTÁTICA mientras la prosa se redacta: es literalmente la primera
-  // oración de la respuestaDirecta final (contrato Plan C, mismo string que el
-  // ensamblado antepone — no flipea con el toggle de moneda), así que cuando la
-  // prosa llega el texto solo CRECE, sin salto. Aprobado en el mockup del Goal E.
-  const aperturaMotor = ordenados[0]?.fraseCanonica ? String(ordenados[0].fraseCanonica) : null;
+  // Goal E.2 — la apertura estática del 01 MURIÓ (confundía: parecía prosa
+  // cortada, no prosa creciendo — decisión post-deploy). El slot en carga es
+  // ProgresoGeneracion: skeleton didáctico con stepper + barra conservadora +
+  // rango honesto. Contrato: mockup-hero-skeleton-didactico.html.
 
   // Destino del drawer de la posición de Franco, por veredicto:
   //  · no-COMPRAR con hallazgo de distancia → "Lo que te separa" (las vías, o por qué no
@@ -318,18 +315,10 @@ export function HeroLTR({
                 </button>
               )}
             </div>
-          ) : aperturaMotor ? (
-            /* Prosa en vuelo (Goal E): la apertura del 01, estática — misma
-               tipografía que la prosa final; el indicador de trabajo vive en la
-               Zona 2 (BloqueEsperaInforme), no acá. */
-            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
-              {renderProsaMono(aperturaMotor)}
-            </div>
           ) : (
-            /* Borde legacy sin hallazgos (sin apertura del motor): skeleton fijo. */
-            <div className="max-w-[65ch]">
-              <ProsaSkeleton />
-            </div>
+            /* Prosa en vuelo (Goal E.2): skeleton didáctico — inequívoco que se
+               está generando, en qué etapa va y cuánto suele tomar. */
+            <ProgresoGeneracion />
           )}
         </div>
 

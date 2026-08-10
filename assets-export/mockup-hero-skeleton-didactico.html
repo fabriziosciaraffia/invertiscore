@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · slot de prosa del hero — skeleton didáctico con progreso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --franco-bg: #0F0F0F; --franco-card: #1A1A1A; --franco-sunken: rgba(26,26,26,0.55);
+    --franco-text: #FAFAF8; --franco-text-secondary: rgba(250,250,248,0.5);
+    --franco-text-muted: rgba(250,250,248,0.35); --franco-text-tertiary: #888780;
+    --franco-border: rgba(250,250,248,0.06); --franco-border-strong: rgba(250,250,248,0.15);
+    --signal-red: #C8323C; --skeleton: rgba(250,250,248,0.06); --ink-400: #B4B2A9;
+  }
+  [data-theme="light"] {
+    --franco-bg: #F6F6F7; --franco-card: #FFFFFF; --franco-sunken: #F0F0F2;
+    --franco-text: #0F0F0F; --franco-text-secondary: #52525B; --franco-text-muted: #6B6B72;
+    --franco-text-tertiary: #6A6A71; --franco-border: #DDDDE1; --franco-border-strong: #B0B0B8;
+    --skeleton: rgba(15,15,15,0.06); --ink-400: #6E6C66;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 84px 20px 80px; background: var(--franco-bg); color: var(--franco-text);
+    font-family: "IBM Plex Sans", sans-serif; transition: background .2s, color .2s; }
+  .controls { position: fixed; top: 0; left: 0; right: 0; z-index: 20; display: flex; gap: 8px;
+    align-items: center; justify-content: center; padding: 12px; flex-wrap: wrap;
+    background: color-mix(in srgb, var(--franco-bg) 92%, transparent); backdrop-filter: blur(8px);
+    border-bottom: .5px solid var(--franco-border); }
+  .ctl { font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .08em; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+    background: var(--franco-card); color: var(--franco-text); border: .5px solid var(--franco-border-strong); }
+  .ctl.on { background: var(--franco-text); color: var(--franco-bg); }
+  .wrap { max-width: 1120px; margin: 0 auto; transition: max-width .25s; }
+  .wrap.movil { max-width: 390px; }
+  .nota { max-width: 1120px; margin: 0 auto 22px; font-size: 12.5px; line-height: 1.6; color: var(--franco-text-secondary); }
+  .nota b { color: var(--franco-text); font-weight: 500; }
+
+  /* hero (solo lo necesario para el contexto del slot) */
+  .hero { border-radius: 16px; overflow: hidden; background: var(--franco-card); border: .5px solid var(--franco-border-strong); }
+  .hr { height: 1px; background: var(--franco-border); }
+  .h-f1 { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 28px 14px; }
+  .h-title { font-family: "Source Serif 4", serif; font-weight: 700; font-size: 25px; margin: 0; }
+  .h-title span { font-weight: 400; color: var(--franco-text-secondary); }
+  .h-mod { font-family: "JetBrains Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-tertiary); padding-top: 6px; }
+  .h-f3 { display: grid; grid-template-columns: minmax(0,66fr) minmax(0,34fr); gap: 24px; padding: 12px 28px; }
+  .k-label { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-tertiary); }
+  .score-row { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+  .score { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 50px; line-height: .9; }
+  .score small { font-size: 22px; font-weight: 400; color: var(--franco-text-muted); }
+  .badge { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; padding: 6px 12px; border-radius: 6px; background: var(--franco-text); color: var(--franco-bg); }
+  .mapa { border-radius: 10px; height: 150px; background: var(--franco-sunken); border: .5px solid var(--franco-border);
+    display: flex; align-items: center; justify-content: center; }
+  .mapa span { font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase; color: var(--franco-text-muted); }
+  .h-f4 { display: grid; grid-template-columns: minmax(0,52fr) minmax(0,48fr); gap: 32px; padding: 12px 28px 20px; }
+  .preg { font-family: "Source Serif 4", serif; font-weight: 700; font-size: 22px; margin: 12px 0 14px; }
+  .indice-h { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; margin: 12px 0 10px; }
+  .ind-row { display: flex; gap: 10px; padding: 7px 0; border-bottom: .5px solid var(--franco-border); font-size: 13px; color: var(--franco-text-secondary); }
+  .ind-row b { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--franco-text); padding-top: 1px; }
+
+  /* ═══ EL SLOT NUEVO: skeleton didáctico con progreso ═══ */
+  .slot { max-width: 65ch; }
+  .etapas { display: flex; align-items: center; gap: 0; margin: 2px 0 10px; }
+  .etapa { display: flex; align-items: center; gap: 7px; }
+  .etapa .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .etapa.hecha .dot { background: var(--ink-400); }
+  .etapa.activa .dot { background: var(--signal-red); animation: pulso 1.4s ease-in-out infinite; }
+  .etapa.pendiente .dot { background: transparent; border: 1px solid var(--franco-border-strong); }
+  .etapa .lbl { font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+  .etapa.hecha .lbl { color: var(--franco-text-muted); }
+  .etapa.activa .lbl { color: var(--franco-text); }
+  .etapa.pendiente .lbl { color: var(--franco-text-muted); opacity: .55; }
+  .etapa-sep { flex: 1 1 14px; min-width: 10px; height: 1px; background: var(--franco-border-strong); margin: 0 8px; }
+
+  /* barra de progreso conservadora: 3 segmentos; el activo hace shimmer y NUNCA
+     llena — el fin de la barra solo lo produce la llegada real de la prosa. */
+  .barra { display: flex; gap: 4px; height: 4px; margin: 0 0 10px; }
+  .seg { flex: 1; border-radius: 2px; background: var(--skeleton); overflow: hidden; position: relative; }
+  .seg.llena { background: color-mix(in srgb, var(--franco-text) 22%, transparent); }
+  .seg.activa::after { content: ""; position: absolute; inset: 0; width: 62%; border-radius: 2px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--signal-red) 55%, transparent), color-mix(in srgb, var(--signal-red) 20%, transparent));
+    animation: avanza 2.2s ease-in-out infinite; }
+  @keyframes avanza { 0%, 100% { transform: translateX(-12%); } 50% { transform: translateX(10%); } }
+  @keyframes pulso { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .55; } }
+  .tiempo { font-size: 12.5px; color: var(--franco-text-muted); margin: 0 0 12px; }
+  .sk { height: 12px; border-radius: 5px; background: var(--skeleton); animation: shimmer 1.8s ease-in-out infinite; margin-bottom: 9px; }
+  @keyframes shimmer { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .etapa.activa .dot, .seg.activa::after, .sk { animation: none !important; }
+  }
+
+  /* zona 2 abreviada (contexto, sin cambios en este goal) */
+  .z2 { margin-top: 20px; border-radius: 16px; border: .5px dashed var(--franco-border-strong);
+    padding: 16px 20px; color: var(--franco-text-muted); font-size: 12px; font-style: italic; }
+
+  .wrap.movil .h-f1, .wrap.movil .h-f3, .wrap.movil .h-f4 { padding-left: 18px; padding-right: 18px; }
+  .wrap.movil .h-f3, .wrap.movil .h-f4 { grid-template-columns: 1fr; }
+  .wrap.movil .h-title { font-size: 21px; }
+  .wrap.movil .score { font-size: 44px; }
+  .wrap.movil .etapa .lbl { display: none; }           /* móvil: dots + solo el label ACTIVO */
+  .wrap.movil .etapa.activa .lbl { display: inline; }
+</style>
+</head>
+<body>
+<div class="controls">
+  <button class="ctl on" id="e1" onclick="setEtapa(0)">1 · Revisando</button>
+  <button class="ctl" id="e2" onclick="setEtapa(1)">2 · Contrastando</button>
+  <button class="ctl" id="e3" onclick="setEtapa(2)">3 · Redactando</button>
+  <span style="width:14px"></span>
+  <button class="ctl on" id="b-1280" onclick="setVp(false)">1280</button>
+  <button class="ctl" id="b-390" onclick="setVp(true)">390</button>
+  <span style="width:14px"></span>
+  <button class="ctl" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'light' ? '' : 'light'">Tema</button>
+</div>
+
+<div class="nota">
+  <b>Contrato Goal E.2 — slot de prosa del hero en carga.</b> Muere la apertura estática del 01
+  (confundía: parecía prosa cortada). La reemplaza un skeleton didáctico: stepper de 3 etapas
+  (dots Patrón 6: hecha Ink 400 · activa Signal Red pulsante · pendiente hueca), barra segmentada
+  <b>conservadora</b> (el segmento activo hace un barrido que nunca llena — el 100% solo lo produce
+  la prosa real llegando), rango honesto calibrado con prod
+  (<b>P50 126s, máx 132s, n=5 post-Goal-D</b> → "alrededor de dos minutos", jamás cifra fija ni
+  countdown) y skeleton de barras puras. Los botones 1-3 simulan la progresión por temporizador
+  (10s → 30s; la etapa 3 absorbe el mensaje "puliendo" a los 75s como sub-estado del mismo dot).
+  La Zona 2 (BloqueEsperaInforme + siluetas, Goal E) NO se toca. Diseñado para heredarse en
+  STR/comparativa (Goal F): etiquetas de etapas y copy de rango son props.
+</div>
+
+<div class="wrap" id="wrap">
+  <div class="hero">
+    <div class="h-f1">
+      <h1 class="h-title">Marín 0281 <span>· Santiago</span></h1>
+      <div class="h-mod">Análisis renta larga</div>
+    </div>
+    <div class="hr"></div>
+    <div class="h-f3">
+      <div>
+        <span class="k-label">Franco Score</span>
+        <div class="score-row"><div class="score">58<small>/100</small></div><span class="badge">Ajusta supuestos</span></div>
+      </div>
+      <div class="mapa"><span>Mapa · comparables</span></div>
+    </div>
+    <div class="hr"></div>
+    <div class="h-f4">
+      <div>
+        <p class="k-label" style="margin:0">Veredicto</p>
+        <h2 class="preg">¿Conviene o no conviene?</h2>
+
+        <!-- ═══ EL SLOT ═══ -->
+        <div class="slot">
+          <div class="etapas" id="etapas">
+            <div class="etapa activa" data-i="0"><span class="dot"></span><span class="lbl">Revisando los números</span></div>
+            <div class="etapa-sep"></div>
+            <div class="etapa pendiente" data-i="1"><span class="dot"></span><span class="lbl">Contrastando la zona</span></div>
+            <div class="etapa-sep"></div>
+            <div class="etapa pendiente" data-i="2"><span class="dot"></span><span class="lbl">Redactando</span></div>
+          </div>
+          <div class="barra" id="barra">
+            <div class="seg activa"></div><div class="seg"></div><div class="seg"></div>
+          </div>
+          <p class="tiempo">Franco está escribiendo este análisis — suele tomar alrededor de dos minutos.</p>
+          <div class="sk" style="width:70%"></div>
+          <div class="sk" style="width:94%"></div>
+          <div class="sk" style="width:85%"></div>
+          <div class="sk" style="width:52%"></div>
+        </div>
+      </div>
+      <div>
+        <div class="indice-h">Léelo en este orden ↓</div>
+        <div class="ind-row"><b>01</b> Flujo mensual: aportas $86.550 al mes</div>
+        <div class="ind-row"><b>02</b> Sobreprecio: 12% sobre la mediana de Santiago</div>
+        <div class="ind-row"><b>03</b> CAP rate 4,1% — retorno del activo puro</div>
+        <div class="ind-row" style="border-bottom:0; color:var(--franco-text-muted); font-size:11.5px">…y 6 hallazgos más, abajo, en el mismo orden.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="z2">Zona 2 — BloqueEsperaInforme con mensajes progresivos + siluetas (Goal E, sin cambios en este goal).</div>
+</div>
+
+<script>
+  function setEtapa(n) {
+    document.querySelectorAll("#etapas .etapa").forEach((e) => {
+      const i = Number(e.dataset.i);
+      e.className = "etapa " + (i < n ? "hecha" : i === n ? "activa" : "pendiente");
+    });
+    document.querySelectorAll("#barra .seg").forEach((s, i) => {
+      s.className = "seg " + (i < n ? "llena" : i === n ? "activa" : "");
+    });
+    ["e1","e2","e3"].forEach((id, i) => document.getElementById(id).classList.toggle("on", i === n));
+  }
+  function setVp(movil) {
+    document.getElementById("wrap").classList.toggle("movil", movil);
+    document.getElementById("b-1280").classList.toggle("on", !movil);
+    document.getElementById("b-390").classList.toggle("on", movil);
+  }
+</script>
+</body>
+</html>

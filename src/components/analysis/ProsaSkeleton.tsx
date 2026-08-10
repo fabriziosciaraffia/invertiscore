@@ -48,6 +48,163 @@ export function ProsaSkeleton() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// ProgresoGeneracion (Goal E.2) — el slot de prosa del hero mientras se genera.
+// Contrato: mockup-hero-skeleton-didactico.html. Tres piezas:
+//   · Stepper de etapas (gramática Patrón 6: hecha = dot Ink 400 sólido ·
+//     activa = dot Signal Red pulsante · pendiente = dot hueco). En móvil solo
+//     el label de la etapa activa es visible.
+//   · Barra segmentada CONSERVADORA: los segmentos hechos quedan en Ink; el
+//     activo lleva un barrido que oscila y NUNCA llena — el 100% no existe en
+//     pantalla, lo produce la prosa real reemplazando este componente. Sin
+//     countdown, sin porcentaje.
+//   · Línea de tiempo honesta, calibrada a prod (P50 126s post-Goal-D, n=5):
+//     "suele tomar alrededor de dos minutos" — se ajusta hacia abajo si la
+//     generación se optimiza, nunca al revés (decisión Fabrizio, STOP E.2).
+// El avance es por temporizador ciego conservador (mismos triggers que los
+// mensajes de la Zona 2). Parametrizado para heredarse en STR/comparativa
+// (Goal F): etapas, copy y estado estático son props.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface EtapaProgreso {
+  /** Label mono uppercase del stepper. */
+  label: string;
+  /** Desde cuántos ms post-mount esta etapa pasa a activa. La primera va en 0. */
+  desdeMs: number;
+}
+
+/** Etapas LTR (default). La 4ª voz de la Zona 2 ("puliendo") es sub-estado de
+ *  "Redactando" — no agrega columna al stepper (contrato E.2). */
+export const ETAPAS_GENERACION_LTR: EtapaProgreso[] = [
+  { label: "Revisando los números", desdeMs: 0 },
+  { label: "Contrastando la zona", desdeMs: 10000 },
+  { label: "Redactando", desdeMs: 30000 },
+];
+
+export const COPY_TIEMPO_LTR =
+  "Franco está escribiendo este análisis — suele tomar alrededor de dos minutos.";
+
+export function ProgresoGeneracion({
+  etapas = ETAPAS_GENERACION_LTR,
+  copyTiempo = COPY_TIEMPO_LTR,
+  estatico = false,
+}: {
+  etapas?: EtapaProgreso[];
+  copyTiempo?: string;
+  /** Sin animaciones ni avance (p. ej. herederos con estado de error propio). */
+  estatico?: boolean;
+}) {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (estatico) return;
+    const timers = etapas
+      .slice(1)
+      .map((e, i) => setTimeout(() => setIdx(i + 1), e.desdeMs));
+    return () => timers.forEach(clearTimeout);
+  }, [estatico, etapas]);
+
+  return (
+    <div className="max-w-[65ch]">
+      {/* Stepper */}
+      <div className="flex items-center mb-2.5">
+        {etapas.map((e, i) => {
+          const estado = i < idx ? "hecha" : i === idx ? "activa" : "pendiente";
+          return (
+            <div key={e.label} className="contents">
+              {i > 0 && (
+                <div
+                  className="flex-1 h-px mx-2"
+                  style={{ minWidth: 10, background: "var(--franco-border-strong)" }}
+                  aria-hidden
+                />
+              )}
+              <div className="flex items-center gap-[7px] shrink-0">
+                <span
+                  className="w-[7px] h-[7px] rounded-full shrink-0"
+                  style={
+                    estado === "activa"
+                      ? { background: "var(--signal-red)", animation: estatico ? undefined : "progDotPulse 1.4s ease-in-out infinite" }
+                      : estado === "hecha"
+                        ? { background: "var(--ink-400, #B4B2A9)" }
+                        : { background: "transparent", border: "1px solid var(--franco-border-strong)" }
+                  }
+                  aria-hidden
+                />
+                <span
+                  className={`font-mono text-[10px] uppercase tracking-[0.06em] whitespace-nowrap ${
+                    estado === "activa" ? "inline text-[var(--franco-text)]" : "hidden md:inline"
+                  }`}
+                  style={
+                    estado === "hecha"
+                      ? { color: "var(--franco-text-muted)" }
+                      : estado === "pendiente"
+                        ? { color: "var(--franco-text-muted)", opacity: 0.55 }
+                        : undefined
+                  }
+                >
+                  {e.label}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Barra segmentada conservadora — el segmento activo nunca llena */}
+      <div className="flex gap-1 mb-2.5" style={{ height: 4 }} aria-hidden>
+        {etapas.map((e, i) => (
+          <div
+            key={e.label}
+            className="flex-1 rounded-[2px] overflow-hidden"
+            style={{
+              background:
+                i < idx
+                  ? "color-mix(in srgb, var(--franco-text) 22%, transparent)"
+                  : "color-mix(in srgb, var(--franco-text) 6%, transparent)",
+            }}
+          >
+            {i === idx && (
+              <div
+                className="h-full rounded-[2px]"
+                style={{
+                  width: "62%",
+                  background:
+                    "linear-gradient(90deg, color-mix(in srgb, var(--signal-red) 55%, transparent), color-mix(in srgb, var(--signal-red) 20%, transparent))",
+                  animation: estatico ? undefined : "progAvanza 2.2s ease-in-out infinite",
+                }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <p className="font-body text-[12.5px] text-[var(--franco-text-muted)] m-0 mb-3">{copyTiempo}</p>
+
+      {/* Silueta de la prosa — barras puras */}
+      <div className="space-y-2">
+        <SkeletonLine width="70%" />
+        <SkeletonLine width="94%" />
+        <SkeletonLine width="85%" />
+        <SkeletonLine width="52%" />
+      </div>
+
+      <style>{`
+        @keyframes progDotPulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.5); opacity: 0.55; }
+        }
+        @keyframes progAvanza {
+          0%, 100% { transform: translateX(-12%); }
+          50% { transform: translateX(10%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [style*="progDotPulse"], [style*="progAvanza"] { animation: none !important; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // Mensajes honestos: describen las etapas reales del pipeline (lectura de datos,
 // contraste con la zona, redacción, guards de calidad) en voz Franco — tuteo
 // neutro, sin prometer tiempos, sin exponer maquinaria interna. El último cubre
