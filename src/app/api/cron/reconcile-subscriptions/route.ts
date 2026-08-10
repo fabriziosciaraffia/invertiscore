@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowGet } from "@/lib/flow";
 import { processSubscriptionCharge } from "@/lib/subscriptions/process-charge";
+import { sendSubscribeIfFirstCharge } from "@/lib/subscriptions/subscribe-event";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import { respuestaCron } from "@/lib/cron-resultado";
 
@@ -18,6 +19,11 @@ const RUTA = "GET /api/cron/reconcile-subscriptions";
  *
  * Idempotente y barato de re-correr: para los cargos que el webhook YA procesó es
  * un no-op (unos SELECT). Solo hace trabajo real sobre los que el webhook perdió.
+ *
+ * Cubre también el Subscribe de Meta del primer cobro (helper compartido con el
+ * webhook, sendSubscribeIfFirstCharge). Antes no lo hacía: un cargo recuperado acá
+ * dejaba la fila escrita y la conversión sin enviar — y el webhook posterior ya
+ * contaba 1 previa, así que tampoco disparaba.
  *
  * Frecuencia: DIARIA (Vercel Hobby no admite crons sub-diarios). Como backstop
  * alcanza: el webhook es el camino real-time; la ventana de escaneo HOY+AYER (~48h)
@@ -91,6 +97,8 @@ export async function GET(request: Request) {
   let emitted = 0;     // boleta viva al final (emitida ahora o ya existente)
   let notEmitted = 0;  // elegible SIN boleta viva (revisar: kill-switch/sin email/error)
   let skipped = 0;     // helper ok:false (anomalía de mapeo/guards)
+  let subscribeSent = 0;   // Subscribe (Meta) despachado por este cron
+  let subscribeFailed = 0; // el helper de Subscribe devolvió reason='exception'
   let flowErrors = 0;  // fallos de getPayments (Flow caído/rate-limit/red)
   let chargeErrors = 0;// excepciones procesando un cargo puntual
   let truncated = false; // se alcanzó el tope de páginas → reconciliación incompleta
@@ -178,6 +186,7 @@ export async function GET(request: Request) {
           if (r.granted) granted++;
           if (r.emitted) emitted++;
           else notEmitted++;
+
           if (!r.ok) {
             skipped++;
             console.error(
@@ -191,6 +200,36 @@ export async function GET(request: Request) {
               commerceOrder: commerceOrderRow,
               tags: { motivo: String(r.reason ?? "sin-motivo").slice(0, 32) },
             });
+          }
+
+          // Meta CAPI: Subscribe del PRIMER cobro, con el MISMO gate que el webhook
+          // (helper compartido). Sin esto, un cargo recuperado por este cron creaba
+          // fila + grant + boleta pero la conversión nunca salía — y como la fila
+          // franco-sub-pay-* quedaba escrita, un webhook posterior contaba 1 previa y
+          // tampoco disparaba. Fuga silenciosa.
+          //
+          // Va DESPUÉS de processSubscriptionCharge (el conteo excluye la fila del
+          // cargo actual, que ya existe) y POR CARGO, dentro del try del loop: un
+          // fallo de Meta en un cargo no aborta la reconciliación de los demás.
+          // r.userId lo expone el helper del cobro — el mismo user al que se le aplicó
+          // ESTE cargo, sin repetir la query de mapeo.
+          //
+          // Sin gate por r.ok, a propósito: PARIDAD con el webhook, que tampoco lo
+          // mira. Si el cargo está pagado en Flow pero nuestra fila falló, la conversión
+          // es real igual; y el reintento queda acotado por la ventana HOY+AYER.
+          // Si el webhook ya envió, este envío es redundante pero inofensivo: comparte
+          // el event_id sub-<subId> y Meta lo colapsa (≤2 corridas).
+          if (r.userId) {
+            const sub = await sendSubscribeIfFirstCharge({
+              supabase,
+              userId: r.userId,
+              commerceOrder: c.commerceOrder ?? "",
+              amount: Number(c.amount),
+              flowOrder,
+              payerEmail: c.payer,
+            });
+            if (sub.sent) subscribeSent++;
+            else if (sub.reason === "exception") subscribeFailed++;
           }
         } catch (e) {
           chargeErrors++;
@@ -231,6 +270,11 @@ export async function GET(request: Request) {
     emitted,
     notEmitted,
     skipped,
+    // Marketing, no reconciliación: subscribeFailed NO entra en `fallidos` — que Meta
+    // no reciba el evento no significa que el cargo quedó mal aplicado, y este cron no
+    // debe ponerse rojo por eso. Van al summary para poder observarlos igual.
+    subscribeSent,
+    subscribeFailed,
     errors: { flow: flowErrors, charge: chargeErrors },
     truncated,
   };
