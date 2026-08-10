@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · resultados LTR — dos zonas del estado de carga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --franco-bg: #0F0F0F;
+    --franco-card: #1A1A1A;
+    --franco-sunken: rgba(26,26,26,0.55);
+    --franco-text: #FAFAF8;
+    --franco-text-secondary: rgba(250,250,248,0.5);
+    --franco-text-muted: rgba(250,250,248,0.35);
+    --franco-text-tertiary: #888780;
+    --franco-border: rgba(250,250,248,0.06);
+    --franco-border-strong: rgba(250,250,248,0.15);
+    --signal-red: #C8323C;
+    --skeleton: rgba(250,250,248,0.06);
+  }
+  [data-theme="light"] {
+    --franco-bg: #F6F6F7;
+    --franco-card: #FFFFFF;
+    --franco-sunken: #F0F0F2;
+    --franco-text: #0F0F0F;
+    --franco-text-secondary: #52525B;
+    --franco-text-muted: #6B6B72;
+    --franco-text-tertiary: #6A6A71;
+    --franco-border: #DDDDE1;
+    --franco-border-strong: #B0B0B8;
+    --skeleton: rgba(15,15,15,0.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 84px 20px 80px;
+    background: var(--franco-bg); color: var(--franco-text);
+    font-family: "IBM Plex Sans", sans-serif;
+    transition: background .2s, color .2s;
+  }
+  .mono { font-family: "JetBrains Mono", monospace; }
+  .serif { font-family: "Source Serif 4", serif; }
+
+  /* ── andamiaje del mockup (no es producto) ── */
+  .controls {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    display: flex; gap: 8px; align-items: center; justify-content: center;
+    padding: 12px; background: color-mix(in srgb, var(--franco-bg) 92%, transparent);
+    backdrop-filter: blur(8px); border-bottom: .5px solid var(--franco-border);
+    flex-wrap: wrap;
+  }
+  .ctl {
+    font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .08em; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+    background: var(--franco-card); color: var(--franco-text);
+    border: .5px solid var(--franco-border-strong);
+  }
+  .ctl.on { background: var(--franco-text); color: var(--franco-bg); }
+  .wrap { max-width: 1120px; margin: 0 auto; transition: max-width .25s; }
+  .wrap.movil { max-width: 390px; }
+  .nota {
+    max-width: 1120px; margin: 0 auto 22px; font-size: 12.5px; line-height: 1.6;
+    color: var(--franco-text-secondary);
+  }
+  .nota b { color: var(--franco-text); font-weight: 500; }
+  .zona-tag {
+    font-family: "JetBrains Mono", monospace; font-size: 9px; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--signal-red); margin: 26px 0 6px;
+    opacity: .75;
+  }
+
+  /* ═══════════ ZONA 1 · HERO (100% motor, siempre vivo) ═══════════ */
+  .hero {
+    border-radius: 16px; overflow: hidden;
+    background: var(--franco-card);
+    border: .5px solid var(--franco-border-strong);
+  }
+  .hero .hr { height: 1px; background: var(--franco-border); }
+  .h-f1 { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 28px 14px; }
+  .h-title { font-family: "Source Serif 4", serif; font-weight: 700; font-size: 25px; line-height: 1.15; letter-spacing: -.01em; margin: 0; }
+  .h-title span { font-weight: 400; color: var(--franco-text-secondary); }
+  .h-mod { font-family: "JetBrains Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-tertiary); white-space: nowrap; padding-top: 6px; }
+  .h-f3 { display: grid; grid-template-columns: minmax(0,66fr) minmax(0,34fr); gap: 24px; padding: 12px 28px; }
+  .k-label { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-tertiary); }
+  .score-row { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+  .score { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 50px; line-height: .9; letter-spacing: -.02em; }
+  .score small { font-size: 22px; font-weight: 400; color: var(--franco-text-muted); }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em; padding: 6px 12px; border-radius: 6px;
+    background: var(--franco-text); color: var(--franco-bg);
+  }
+  .scorebar { height: 6px; border-radius: 3px; margin-top: 14px; position: relative;
+    background: linear-gradient(90deg, #C8323C 0%, #C8323C 14%, #B9793E 46%, #6E6C66 74%, #4A4A46 100%); }
+  .scorebar .dot { position: absolute; top: -3px; left: 58%; width: 12px; height: 12px; border-radius: 50%; background: var(--franco-text); border: 2px solid var(--franco-card); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+  .chip { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--franco-text-secondary);
+    border: .5px solid var(--franco-border); border-radius: 8px; padding: 5px 9px; background: var(--franco-sunken); }
+  .chip b { color: var(--franco-text); font-weight: 500; }
+  .mapa { border-radius: 10px; height: 196px; background:
+    repeating-linear-gradient(45deg, var(--skeleton), var(--skeleton) 2px, transparent 2px, transparent 12px),
+    var(--franco-sunken);
+    border: .5px solid var(--franco-border); display: flex; align-items: center; justify-content: center; }
+  .mapa span { font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--franco-text-muted); }
+  .h-f4 { display: grid; grid-template-columns: minmax(0,52fr) minmax(0,48fr); gap: 32px; padding: 12px 28px 16px; }
+  .preg { font-family: "Source Serif 4", serif; font-weight: 700; font-size: 22px; line-height: 1.22; letter-spacing: -.01em; margin: 12px 0 14px; }
+  .prosa { font-size: 14.5px; line-height: 1.62; color: var(--franco-text-secondary); max-width: 65ch; margin: 0; }
+  .prosa .ap { color: var(--franco-text); }
+  .indice-h { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; margin: 12px 0 10px; }
+  .ind-row { display: flex; gap: 10px; padding: 7px 0; border-bottom: .5px solid var(--franco-border); font-size: 13px; color: var(--franco-text-secondary); }
+  .ind-row b { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--franco-text); font-weight: 700; padding-top: 1px; }
+  .posicion {
+    margin: 4px 28px 18px; border-left: 3px solid var(--signal-red); border-radius: 0 8px 8px 0;
+    background: color-mix(in srgb, var(--signal-red) 5%, transparent); padding: 14px 16px;
+  }
+  .posicion .pl { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--signal-red); margin-bottom: 6px; }
+  .posicion p { font-size: 13.5px; line-height: 1.55; font-style: italic; margin: 0; }
+
+  /* ═══════════ ZONA 2 · BLOQUE ÚNICO DE ESPERA ═══════════ */
+  .z2-espera {
+    margin-top: 20px; border-radius: 16px; overflow: hidden;
+    background: var(--franco-card); border: .5px solid var(--franco-border);
+    padding: 22px 24px 24px;
+  }
+  .gen-head { display: flex; align-items: center; gap: 9px; margin-bottom: 5px; }
+  .gen-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--signal-red); animation: pulso 1.4s ease-in-out infinite; }
+  .gen-msg { font-family: "JetBrains Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-secondary); animation: msgIn .42s ease-out; }
+  .gen-sub { font-size: 12.5px; color: var(--franco-text-muted); margin: 0 0 18px 16px; }
+  @keyframes pulso { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .55; } }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+  @keyframes shimmer { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+  .sk { border-radius: 5px; background: var(--skeleton); animation: shimmer 1.8s ease-in-out infinite; }
+  .error .sk, .error-static .sk { animation: none; }
+  /* siluetas — cero texto, solo proporción */
+  .sil-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .sil { border: .5px solid var(--franco-border); border-radius: 16px; padding: 24px; background: var(--franco-card); }
+  .sil.ancha { grid-column: 1 / -1; }
+  .sil.hundida { background: var(--franco-sunken); padding: 16px 20px; }
+  .sil .r { height: 9px; margin-bottom: 10px; }
+  .sil .r.eyebrow { width: 34%; height: 8px; }
+  .sil .r.title { width: 62%; height: 15px; margin: 12px 0 14px; }
+  .sil .r.kpi { width: 44%; height: 26px; margin-bottom: 12px; }
+  .sil .r.b1 { width: 92%; } .sil .r.b2 { width: 78%; margin-bottom: 0; }
+  .sil.hundida .r.title { height: 12px; margin: 8px 0 10px; }
+  .sil.hundida .r.kpi { height: 18px; }
+  .chips3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; grid-column: 1 / -1; }
+  .sil-zona { display: grid; grid-template-columns: 44px 1fr auto; gap: 16px; align-items: center; grid-column: 1 / -1;
+    border: .5px solid var(--franco-border); border-radius: 16px; padding: 18px 20px;
+    background: color-mix(in srgb, var(--franco-text) 2.5%, transparent); }
+  .sil-zona .circ { width: 44px; height: 44px; border-radius: 50%; }
+  .sil-zona .pill { width: 72px; height: 20px; border-radius: 6px; }
+
+  /* ═══════════ ZONA 2 · ESTADO COMPLETO (cards reales) ═══════════ */
+  .pir { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+  .fcard { border: .5px solid var(--franco-border); border-radius: 16px; padding: 24px; background: var(--franco-card);
+    cursor: pointer; transition: transform .15s, box-shadow .15s; }
+  .fcard:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+  .fcard.corona { grid-column: 1 / -1; border-color: var(--franco-border-strong); }
+  .fcard .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--franco-text-tertiary); }
+  .fcard .eyebrow b { color: var(--franco-text); }
+  .fcard .dir { float: right; font-family: "JetBrains Mono", monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-tertiary); }
+  .fcard .dir::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--signal-red); margin-right: 6px; }
+  .fcard .dir.fav::before { background: #888780; }
+  .fcard h3 { font-family: "Source Serif 4", serif; font-weight: 700; font-size: 20px; line-height: 1.2; margin: 8px 0 12px; }
+  .fcard .kpi { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 30px; line-height: 1; }
+  .fcard .kpi.rojo { color: var(--signal-red); }
+  .fcard .ksub { font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--franco-text-tertiary); margin-top: 7px; }
+  .fcard p { font-size: 13.5px; line-height: 1.55; color: var(--franco-text-secondary); margin: 12px 0 0; }
+  .fcard .pie { margin-top: 14px; padding-top: 12px; border-top: .5px solid var(--franco-border);
+    display: flex; justify-content: space-between; align-items: center; }
+  .fcard .pie .prov { font-size: 11px; color: var(--franco-text-muted); }
+  .fcard .pie .ver { font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-tertiary); }
+  .zona-card { grid-column: 1 / -1; display: grid; grid-template-columns: 44px 1fr auto; gap: 16px; align-items: center;
+    border: .5px solid var(--franco-border); border-radius: 16px; padding: 18px 20px; cursor: pointer;
+    background: color-mix(in srgb, var(--franco-text) 2.5%, transparent); }
+  .zona-card .circ { width: 44px; height: 44px; border-radius: 50%; background: color-mix(in srgb, #B4B2A9 10%, transparent);
+    display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--franco-text-tertiary); }
+  .zona-card .zt { font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--franco-text-tertiary); }
+  .zona-card .zq { font-style: italic; font-size: 13px; color: var(--franco-text-secondary); margin-top: 4px; }
+  .zona-card .ver { font-family: "JetBrains Mono", monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: var(--franco-text-secondary); }
+
+  /* materialización siluetas → cards (toggle del mockup) */
+  .aparece { animation: aparece .45s ease-out; }
+  @keyframes aparece { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .gen-dot, .gen-msg, .sk, .aparece { animation: none !important; }
+    .fcard, .wrap { transition: none !important; }
+  }
+
+  /* ── responsive 390 ── */
+  @media (max-width: 720px) { .rwd-1col { grid-template-columns: 1fr !important; } }
+  .wrap.movil .h-f3, .wrap.movil .h-f4, .wrap.movil .sil-grid, .wrap.movil .pir,
+  .wrap.movil .chips3 { grid-template-columns: 1fr; }
+  .wrap.movil .sil.ancha, .wrap.movil .fcard.corona, .wrap.movil .zona-card,
+  .wrap.movil .sil-zona, .wrap.movil .chips3 { grid-column: auto; }
+  .wrap.movil .h-f1, .wrap.movil .h-f3, .wrap.movil .h-f4 { padding-left: 18px; padding-right: 18px; }
+  .wrap.movil .posicion { margin-left: 18px; margin-right: 18px; }
+  .wrap.movil .h-title { font-size: 21px; }
+  .wrap.movil .score { font-size: 44px; }
+  .estado { display: none; }
+  .estado.on { display: block; }
+</style>
+</head>
+<body>
+<div class="controls">
+  <button class="ctl on" id="b-cargando" onclick="setEstado('cargando')">a · Cargando</button>
+  <button class="ctl" id="b-completo" onclick="setEstado('completo')">b · Completo</button>
+  <span style="width:14px"></span>
+  <button class="ctl on" id="b-1280" onclick="setVp(false)">1280</button>
+  <button class="ctl" id="b-390" onclick="setVp(true)">390</button>
+  <span style="width:14px"></span>
+  <button class="ctl" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'light' ? '' : 'light'">Tema</button>
+</div>
+
+<div class="nota">
+  <b>Contrato Goal E — dos zonas del estado de carga.</b> Zona 1 (hero completo del motor) no
+  lleva NINGÚN indicador de carga: identidad, score, veredicto, chips, mapa, la apertura del
+  hallazgo 01 (motor, es la primera oración real de la prosa final) y el índice. Zona 2 es UN
+  solo bloque de espera: ProsaGenerando (mensajes progresivos) + siluetas puras — cero texto
+  semi-legible, cero afordancia. El strip "Franco está redactando el detalle…" se absorbe acá.
+  Con error de prosa: el error inline vive en el hero (Goal C) y las siluetas quedan estáticas.
+  Prosa cacheada: se renderiza directo el estado (b), sin flash.
+</div>
+
+<div class="wrap" id="wrap">
+
+  <!-- ═══════════════ ESTADO (a) CARGANDO ═══════════════ -->
+  <div class="estado on" id="e-cargando">
+    <div class="zona-tag">Zona 1 · 100% funcional desde el primer render — sin indicadores de carga</div>
+
+    <div class="hero">
+      <div class="h-f1">
+        <h1 class="h-title">Marín 0281 <span>· Santiago</span></h1>
+        <div class="h-mod">Análisis renta larga</div>
+      </div>
+      <div class="hr"></div>
+      <div class="h-f3 rwd-1col">
+        <div>
+          <span class="k-label">Franco Score</span>
+          <div class="score-row">
+            <div class="score">58<small>/100</small></div>
+            <span class="badge">Ajusta supuestos</span>
+          </div>
+          <div class="scorebar"><span class="dot"></span></div>
+          <div class="chips">
+            <span class="chip"><b>2</b> dorm</span><span class="chip"><b>1</b> baño</span>
+            <span class="chip"><b>48</b> m²</span><span class="chip"><b>4</b> años</span>
+            <span class="chip"><b>UF 3.290</b></span><span class="chip"><b>UF 68,5</b>/m²</span>
+            <span class="chip"><b>20%</b> pie · 25 años · 4,4%</span><span class="chip"><b>$520.000</b> arr.</span>
+          </div>
+        </div>
+        <div class="mapa"><span>Mapa · comparables</span></div>
+      </div>
+      <div class="hr"></div>
+      <div class="h-f4 rwd-1col">
+        <div>
+          <p class="k-label" style="margin:0 0 0">Veredicto</p>
+          <h2 class="preg">¿Conviene o no conviene?</h2>
+          <p class="prosa"><span class="ap">Tienes que poner $86.550 de tu bolsillo cada mes —
+          el arriendo cubre el 86% del dividendo y el resto sale de ti.</span></p>
+        </div>
+        <div>
+          <div class="indice-h">Léelo en este orden ↓</div>
+          <div class="ind-row"><b>01</b> Flujo mensual: aportas $86.550 al mes</div>
+          <div class="ind-row"><b>02</b> Sobreprecio: 12% sobre la mediana de Santiago</div>
+          <div class="ind-row"><b>03</b> CAP rate 4,1% — retorno del activo puro</div>
+          <div class="ind-row" style="border-bottom:0; color:var(--franco-text-muted); font-size:11.5px">…y 6 hallazgos más, abajo, en el mismo orden.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="zona-tag">Zona 2 · un solo bloque de espera — nada a medias, nada clickeable</div>
+
+    <div class="z2-espera">
+      <div class="gen-head">
+        <span class="gen-dot"></span>
+        <span class="gen-msg" id="gen-msg">Franco está revisando los números de este análisis…</span>
+      </div>
+      <p class="gen-sub">El análisis completo por hallazgo se habilita al terminar.</p>
+      <div class="sil-grid">
+        <div class="sil ancha">
+          <div class="sk r eyebrow"></div><div class="sk r title"></div>
+          <div class="sk r kpi"></div><div class="sk r b1"></div><div class="sk r b2"></div>
+        </div>
+        <div class="sil"><div class="sk r eyebrow"></div><div class="sk r title"></div><div class="sk r kpi"></div><div class="sk r b2"></div></div>
+        <div class="sil"><div class="sk r eyebrow"></div><div class="sk r title"></div><div class="sk r kpi"></div><div class="sk r b2"></div></div>
+        <div class="chips3">
+          <div class="sil hundida"><div class="sk r eyebrow"></div><div class="sk r title"></div><div class="sk r kpi"></div></div>
+          <div class="sil hundida"><div class="sk r eyebrow"></div><div class="sk r title"></div><div class="sk r kpi"></div></div>
+          <div class="sil hundida"><div class="sk r eyebrow"></div><div class="sk r title"></div><div class="sk r kpi"></div></div>
+        </div>
+        <div class="sil-zona">
+          <div class="sk circ"></div>
+          <div style="min-width:0"><div class="sk r eyebrow" style="margin-bottom:8px"></div><div class="sk r b1" style="margin:0"></div></div>
+          <div class="sk pill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ESTADO (b) COMPLETO ═══════════════ -->
+  <div class="estado" id="e-completo">
+    <div class="zona-tag">Zona 1 · igual que en (a) — ahora con la prosa completa y la posición de Franco</div>
+
+    <div class="hero">
+      <div class="h-f1">
+        <h1 class="h-title">Marín 0281 <span>· Santiago</span></h1>
+        <div class="h-mod">Análisis renta larga</div>
+      </div>
+      <div class="hr"></div>
+      <div class="h-f3 rwd-1col">
+        <div>
+          <span class="k-label">Franco Score</span>
+          <div class="score-row">
+            <div class="score">58<small>/100</small></div>
+            <span class="badge">Ajusta supuestos</span>
+          </div>
+          <div class="scorebar"><span class="dot"></span></div>
+          <div class="chips">
+            <span class="chip"><b>2</b> dorm</span><span class="chip"><b>1</b> baño</span>
+            <span class="chip"><b>48</b> m²</span><span class="chip"><b>4</b> años</span>
+            <span class="chip"><b>UF 3.290</b></span><span class="chip"><b>UF 68,5</b>/m²</span>
+            <span class="chip"><b>20%</b> pie · 25 años · 4,4%</span><span class="chip"><b>$520.000</b> arr.</span>
+          </div>
+        </div>
+        <div class="mapa"><span>Mapa · comparables</span></div>
+      </div>
+      <div class="hr"></div>
+      <div class="h-f4 rwd-1col">
+        <div>
+          <p class="k-label" style="margin:0 0 0">Veredicto</p>
+          <h2 class="preg">¿Conviene o no conviene?</h2>
+          <p class="prosa"><span class="ap">No conviene con estos supuestos. Tienes que poner
+          $86.550 de tu bolsillo cada mes — el arriendo cubre el 86% del dividendo y el resto
+          sale de ti.</span> Ese aporte suma $10,4M en 10 años, y el precio está 12% sobre la
+          mediana de la zona: negociando a UF 2.940 el flujo casi se neutraliza y la decisión
+          cambia de base.</p>
+        </div>
+        <div>
+          <div class="indice-h">Léelo en este orden ↓</div>
+          <div class="ind-row"><b>01</b> Flujo mensual: aportas $86.550 al mes</div>
+          <div class="ind-row"><b>02</b> Sobreprecio: 12% sobre la mediana de Santiago</div>
+          <div class="ind-row"><b>03</b> CAP rate 4,1% — retorno del activo puro</div>
+          <div class="ind-row" style="border-bottom:0; color:var(--franco-text-muted); font-size:11.5px">…y 6 hallazgos más, abajo, en el mismo orden.</div>
+        </div>
+      </div>
+      <div class="posicion">
+        <div class="pl">La posición de Franco</div>
+        <p>Es buena ubicación al precio equivocado: si no baja a UF 2.940, hay mejor uso
+        para tu pie en la misma comuna.</p>
+      </div>
+    </div>
+
+    <div class="pir aparece">
+      <div class="fcard corona">
+        <span class="dir">En contra</span>
+        <div class="eyebrow"><b>01</b> · Flujo mensual</div>
+        <h3>¿Cuánto pones tú cada mes?</h3>
+        <div class="kpi rojo">−$86.550</div>
+        <div class="ksub">Sale de tu bolsillo cada mes</div>
+        <p>De dónde sale el dato: dividendo $620.400 (20% pie · 25 años · 4,4%) + gastos
+        contra $520.000 de arriendo declarado.</p>
+        <div class="pie"><span class="prov"></span><span class="ver">Ver detalle →</span></div>
+      </div>
+      <div class="fcard">
+        <span class="dir">En contra</span>
+        <div class="eyebrow"><b>02</b> · Sobreprecio</div>
+        <h3>¿Pagas precio de mercado?</h3>
+        <div class="kpi rojo">+12%</div>
+        <div class="ksub">Sobre la mediana de Santiago</div>
+        <div class="pie"><span class="prov">Mediana UF 61,2/m² · 214 ventas</span><span class="ver">Ver detalle →</span></div>
+      </div>
+      <div class="fcard">
+        <span class="dir fav">A favor</span>
+        <div class="eyebrow"><b>03</b> · CAP rate</div>
+        <h3>¿Qué rinde el activo puro?</h3>
+        <div class="kpi">4,1%</div>
+        <div class="ksub">Sin crédito, solo el depto</div>
+        <div class="pie"><span class="prov">Arriendo declarado vs precio</span><span class="ver">Ver detalle →</span></div>
+      </div>
+      <div class="chips3">
+        <div class="fcard" style="background:var(--franco-sunken); padding:16px 20px"><div class="eyebrow"><b>04</b> · Sensibilidad</div><div class="kpi" style="font-size:22px; margin-top:8px">−7%</div><div class="ksub">Margen del veredicto</div></div>
+        <div class="fcard" style="background:var(--franco-sunken); padding:16px 20px"><div class="eyebrow"><b>05</b> · Plusvalía</div><div class="kpi" style="font-size:22px; margin-top:8px">3,0%</div><div class="ksub">Proyección anual</div></div>
+        <div class="fcard" style="background:var(--franco-sunken); padding:16px 20px"><div class="eyebrow"><b>06</b> · Capex</div><div class="kpi" style="font-size:22px; margin-top:8px">UF 46</div><div class="ksub">Puesta a punto</div></div>
+      </div>
+      <div class="zona-card">
+        <div class="circ">◎</div>
+        <div style="min-width:0">
+          <div class="zt">Zona · Santiago</div>
+          <div class="zq">"Metro a 400 m y demanda universitaria sostienen el arriendo — el techo es el sobreprecio de entrada."</div>
+        </div>
+        <span class="ver">Explorar →</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function setEstado(e) {
+    document.getElementById('e-cargando').classList.toggle('on', e === 'cargando');
+    document.getElementById('e-completo').classList.toggle('on', e === 'completo');
+    document.getElementById('b-cargando').classList.toggle('on', e === 'cargando');
+    document.getElementById('b-completo').classList.toggle('on', e === 'completo');
+    if (e === 'completo') {
+      const p = document.querySelector('#e-completo .pir');
+      p.classList.remove('aparece'); void p.offsetWidth; p.classList.add('aparece');
+    }
+  }
+  function setVp(movil) {
+    document.getElementById('wrap').classList.toggle('movil', movil);
+    document.getElementById('b-1280').classList.toggle('on', !movil);
+    document.getElementById('b-390').classList.toggle('on', movil);
+  }
+  // Mensajes progresivos honestos (mismos del ProsaGenerando real, Goal C/D).
+  const MSGS = [
+    "Franco está revisando los números de este análisis…",
+    "Contrastando precio y arriendo contra la zona…",
+    "Redactando el veredicto y las palancas de negociación…",
+    "Puliendo la redacción final — ya casi está…",
+  ];
+  let mi = 0;
+  setInterval(() => {
+    mi = Math.min(mi + 1, MSGS.length - 1);
+    const el = document.getElementById('gen-msg');
+    if (el.textContent !== MSGS[mi]) {
+      el.textContent = MSGS[mi];
+      el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    }
+  }, 6000);
+</script>
+</body>
+</html>

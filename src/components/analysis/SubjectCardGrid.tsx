@@ -9,6 +9,7 @@ import { HeroLTR } from "./HeroLTR";
 import { PiramideHallazgos, ordenarHallazgosPiramide } from "./PiramideHallazgos";
 import { HALLAZGO_DRAWER } from "./GenericFindingCard";
 import { hasAiV2 } from "./AIInsightSection";
+import { BloqueEsperaInforme } from "@/components/analysis/ProsaSkeleton";
 
 /**
  * Orquestador del análisis IA: Hero Verdict + Subject Card Grid 2×2 + card
@@ -100,13 +101,21 @@ export function SubjectCardGrid({
         ? { lat: inputAny.zonaRadio.lat as number, lng: inputAny.zonaRadio.lng as number }
         : null;
 
-  // Goal C — veredicto inmediato: el overlay editorial full-page murió. El grid
-  // renderiza SIEMPRE (hero, veredicto, KPIs, pirámide y zona existen desde el
-  // INSERT); solo el slot de prosa del hero espera a la IA (ProsaGenerando /
-  // error inline). Prosa válida solo si pasa hasAiV2 — un shape a medias no se
-  // renderiza como prosa.
+  // Goal C/E — veredicto inmediato en DOS ZONAS (contrato:
+  // mockup-resultados-dos-zonas.html). Zona 1 = el hero, 100% motor, sin
+  // indicadores de carga (la apertura del 01 hace de prosa estática). Zona 2 =
+  // mientras no hay prosa, UN solo bloque de espera (BloqueEsperaInforme:
+  // mensajes progresivos + siluetas puras) — nada a medias, nada clickeable;
+  // cuando llega, se materializa el contenido real. Prosa válida solo si pasa
+  // hasAiV2 — un shape a medias no se renderiza como prosa.
   const prosaLista = !!aiAnalysis && hasAiV2(aiAnalysis);
   const prosa = prosaLista ? aiAnalysis : null;
+
+  // Materialización (Goal E): la transición siluetas→cards corre SOLO cuando la
+  // prosa llegó DESPUÉS del mount (generación en vivo). Prosa cacheada
+  // (revisitas): el contenido real monta directo, sin flash ni animación.
+  const prosaAusenteAlMontar = useRef(!prosaLista);
+  const materializa = prosaLista && prosaAusenteAlMontar.current;
 
   // Goal B (anclaje movido por Goal C) — "veredicto visible" = mount del grid:
   // con el overlay muerto, el veredicto se ve desde el primer render. Ref y no
@@ -138,74 +147,67 @@ export function SubjectCardGrid({
         createdAt={createdAt}
       />
 
-      {/* Goal D — espera honesta: mientras la prosa se redacta, los drawers no
-          existen (AnalysisDrawer exige prosa). UNA pista breve acá — no un hint
-          por card — y las cards pierden toda afordancia de click (abajo). Con
-          error de prosa no se muestra: el estado es el error inline del hero. */}
-      {!prosa && loading && (
-        <div className="flex items-center gap-2 px-1 pt-1 pb-2.5">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-signal-red animate-pulse shrink-0" aria-hidden />
-          <span className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)]">
-            Franco está redactando el detalle de cada hallazgo — se habilita al terminar.
-          </span>
+      {/* ═══ ZONA 2 (Goal E) ═══ Sin prosa: UN solo bloque de espera — mensajes
+          progresivos + siluetas puras (cero texto a medias, cero afordancia).
+          Con error de prosa el bloque queda estático (el error vive inline en el
+          hero, Goal C). Absorbe el strip "Franco está redactando el detalle…". */}
+      {!prosa ? (
+        <div className="mt-5">
+          <BloqueEsperaInforme estatico={!loading && !!error} />
         </div>
-      )}
-
-      {/* Fase 2 — La pirámide de hallazgos reemplaza el grid 2×2 de dimensiones IA.
-          Cada card abre su drawer vía onOpenDrawer (setActiveDrawer, dueño del
-          estado acá). cap_rate no mapea a drawer todavía (llega en Fase 3).
-          Goal D: sin prosa no hay handler → GenericFindingCard apaga cursor,
-          hover y "Ver detalle →" por sí sola (hasDetalle). */}
-      <PiramideHallazgos
-        results={results}
-        aiAnalysis={aiAnalysis}
-        currency={currency}
-        valorUF={valorUF}
-        onOpenDrawer={prosa ? setActiveDrawer : undefined}
-      />
-
-      {/* Fase 1b — Las cards Reestructuración (estructura) y Puesta a punto (capex)
-          se retiraron: ya son hallazgos DENTRO de la pirámide de arriba; dejarlas
-          duplicaba el dato. Sus drawers siguen existiendo y se reconectan desde la
-          pirámide en el paso siguiente. */}
-
-      {/* A1 — Simulación (AdvancedSection) va ENTRE la pirámide y la card zona:
-          drawers → simulación → zona. El wrapper mt-6 da el respiro que faltaba
-          entre la última fila de la pirámide y la card "Simula plazo y plusvalía"
-          (paridad con el spacer de 24px que STR usa en la misma frontera; ni la
-          pirámide ni el root de AdvancedSection aportan ese margen). */}
-      {simulationSlot && <div className="mt-6">{simulationSlot}</div>}
-
-      {/* paridad drawer — afordance al drawer "A 10 años" (prosa IA largoPlazo). El
-          DrawerLargoPlazo quedó huérfano en la migración grid→pirámide (HALLAZGO_DRAWER
-          es inyectivo y no lo mapea); se re-cablea acá como hermano de ZoneInsightMiniCard,
-          que ya abre su drawer fuera de la pirámide con setActiveDrawer. El slot
-          AdvancedSection no alcanza este estado (vive un nivel arriba), por eso el trigger
-          va en SubjectCardGrid y no dentro del slot. Solo si hay prosa; fuera de prev/next. */}
-      {simulationSlot && prosa?.largoPlazo?.contenido_clp?.trim() && (
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => setActiveDrawer("largoPlazo")}
-            className="font-mono uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
-            style={{ fontSize: 11 }}
-          >
-            Leer el análisis a 10 años →
-          </button>
-        </div>
-      )}
-
-      {/* 5ª tarjeta ancha: Zona / POIs */}
-      {analysisId && (
-        <div className="mt-3">
-          <ZoneInsightMiniCard
-            data={zoneInsight}
-            loading={zoneLoading}
-            error={zoneError}
-            onClick={() => setActiveDrawer("zona")}
+      ) : (
+        <div style={materializa ? { animation: "zona2Aparece 450ms ease-out" } : undefined}>
+          {/* Fase 2 — La pirámide de hallazgos reemplaza el grid 2×2 de dimensiones IA.
+              Cada card abre su drawer vía onOpenDrawer (setActiveDrawer, dueño del
+              estado acá). cap_rate no mapea a drawer todavía (llega en Fase 3). */}
+          <PiramideHallazgos
+            results={results}
+            aiAnalysis={aiAnalysis}
             currency={currency}
-            deshabilitada={!prosa}
+            valorUF={valorUF}
+            onOpenDrawer={setActiveDrawer}
           />
+
+          {/* A1 — Simulación (AdvancedSection) va ENTRE la pirámide y la card zona:
+              drawers → simulación → zona. El wrapper mt-6 da el respiro que faltaba
+              entre la última fila de la pirámide y la card "Simula plazo y plusvalía". */}
+          {simulationSlot && <div className="mt-6">{simulationSlot}</div>}
+
+          {/* paridad drawer — afordance al drawer "A 10 años" (prosa IA largoPlazo). */}
+          {simulationSlot && prosa?.largoPlazo?.contenido_clp?.trim() && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => setActiveDrawer("largoPlazo")}
+                className="font-mono uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
+                style={{ fontSize: 11 }}
+              >
+                Leer el análisis a 10 años →
+              </button>
+            </div>
+          )}
+
+          {/* 5ª tarjeta ancha: Zona / POIs */}
+          {analysisId && (
+            <div className="mt-3">
+              <ZoneInsightMiniCard
+                data={zoneInsight}
+                loading={zoneLoading}
+                error={zoneError}
+                onClick={() => setActiveDrawer("zona")}
+                currency={currency}
+              />
+            </div>
+          )}
+          <style>{`
+            @keyframes zona2Aparece {
+              from { opacity: 0; transform: translateY(6px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+              [style*="zona2Aparece"] { animation: none !important; }
+            }
+          `}</style>
         </div>
       )}
 
