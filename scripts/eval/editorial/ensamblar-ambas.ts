@@ -40,13 +40,9 @@ import { prefetchMedianaComunaVenta } from "../../../src/lib/api-helpers/analisi
 import { resolveUfForAnalysis } from "../../../src/lib/uf";
 import { readVeredicto } from "../../../src/lib/results-helpers";
 import { deriveRecomendacionFallback } from "../../../src/lib/comparativa-recomendacion";
-import {
-  FRAGIL_BANNER,
-  FRANCO_POS,
-  resolverEstado,
-  SUB,
-  VERDICT_LABEL,
-} from "../../../src/lib/comparativa-hero-copy";
+import { buildHeroAmbas, FRAGIL_CHIP, type Verdict } from "../../../src/lib/comparativa-hero-copy";
+import { lineaDistanciaMini } from "../../../src/lib/distancia-copy";
+import type { Hallazgo, HallazgoDistanciaVeredicto } from "../../../src/lib/types";
 import { buildFindingsComparativa, ctxFromResults, type FindingComparativa } from "../../../src/lib/comparativa-findings";
 import { buildNotaFlujoChart, buildNotaPatrimonioChart, notaTexto } from "../../../src/lib/comparativa-chart-notas";
 
@@ -73,7 +69,7 @@ export interface InformeEnsambladoAmbas {
     /** `<ltr8>+<str8>` — el informe es del par, no de una fila. */
     id8: string;
     tipo: "AMBAS";
-    /** Label que el usuario ve como veredicto de modalidad (VERDICT_LABEL). */
+    /** Badge que el usuario ve (hero 3 ejes: LARGA/PAREJAS/CORTA o NO SE SOSTIENE). */
     veredicto: string;
     banda: string;
     comuna: string;
@@ -162,16 +158,36 @@ export async function ensamblarAMBAS(
   const strResults = (recomputeShortTermForLegacy(strInput, strResultsPersisted, ltrUf, strAsOf, strMediana) ??
     strResultsPersisted) as STRResultsWithScore;
 
-  // ── Derivaciones del hero (mismas fuentes que comparativa-client) ──────────
+  // ── Derivaciones del hero 3 ejes (MISMO builder que web/share/documento) ──
   const recomendacion = deriveRecomendacionFallback(strResults);
   const fragil = strResults.veredictoComparativo?.fragil ?? false;
-  const estado = resolverEstado(recomendacion, fragil);
   const banda = strResults.veredictoComparativo?.banda ?? "INDIFERENTE";
 
-  const ltrVerdict = readVeredicto(ltrResults) ?? "?";
-  const strVerdict = (normalizeLegacyVerdict(strResults.veredicto) as string) ?? "?";
+  const ltrVerdict = (readVeredicto(ltrResults) as Verdict | null) ?? null;
+  const strVerdict = (normalizeLegacyVerdict(strResults.veredicto) as Verdict | null) ?? null;
   const ltrScore = ltr.score ?? 0;
   const strScore = strResults.francoScore?.score ?? 0;
+
+  const hero = buildHeroAmbas({
+    recomendacion,
+    fragil,
+    ltrVerdict,
+    strVerdict,
+    ltrFlujoMensual: ltrResults.metrics?.flujoNetoMensual ?? 0,
+    strFlujoMensual: strResults.escenarios?.base?.flujoCajaMensual ?? 0,
+    sobreRentaPct: strResults.comparativa?.sobreRentaPct ?? 0,
+    sobreRentaPctConfiable: strResults.comparativa?.sobreRentaPctConfiable ?? true,
+    sobreRentaCLP: strResults.comparativa?.sobreRenta ?? 0,
+  });
+  const buscarDistancia = (hs: unknown): HallazgoDistanciaVeredicto | null => {
+    const arr = Array.isArray(hs) ? (hs as Hallazgo[]) : [];
+    return (arr.find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined) ?? null;
+  };
+  const ltrDistancia = lineaDistanciaMini(buscarDistancia(ltrResults.hallazgos), ltrVerdict);
+  const strDistancia = lineaDistanciaMini(
+    buscarDistancia((strResults as unknown as { hallazgos?: Hallazgo[] }).hallazgos),
+    strVerdict,
+  );
 
   const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
@@ -190,17 +206,30 @@ export async function ensamblarAMBAS(
   const ai = ltrResultsPersisted.comparativaAI ?? null;
   const sinProsa = !ai?.conviene;
 
-  // ── Piezas en orden de lectura ──────────────────────────────────────────────
+  // ── Piezas en orden de lectura (hero 3 ejes, contrato d25096d) ──────────────
+  const miniLtr = [
+    `RENTA LARGA — Franco Score ${ltrScore} · ${ltrVerdict ?? "?"}`,
+    ltrDistancia ? `Lo que te separa: ${ltrDistancia}` : null,
+  ];
+  const miniStr = [
+    `RENTA CORTA — Franco Score ${strScore} · ${strVerdict ?? "?"}`,
+    strDistancia ? `Lo que te separa: ${strDistancia}` : null,
+  ];
   const piezas: Array<string | null> = [
-    seccion("hero:veredicto (Veredicto de modalidad)", [
-      VERDICT_LABEL[estado],
-      SUB[estado],
+    seccion(`hero:veredicto (${hero.badgeCritico ? "Veredicto" : "Veredicto de modalidad"})`, [
+      hero.badge,
+      hero.sub,
+      hero.margen ? `Margen del ganador: ${hero.margen.texto} · ${hero.margen.escala}` : null,
     ]),
-    fragil ? seccion("hero:banner (Margen frágil)", [FRAGIL_BANNER.cuerpo]) : null,
-    seccion("hero:mini-scores (los dos análisis hijos)", [
-      `RENTA LARGA — Franco Score ${ltrScore} · ${ltrVerdict}`,
-      `RENTA CORTA — Franco Score ${strScore} · ${strVerdict}`,
-    ]),
+    hero.subordinada
+      ? seccion(`hero:subordinada (${hero.subordinada.kicker})`, [hero.subordinada.texto])
+      : null,
+    hero.fragilChip ? seccion("hero:banner (Margen frágil)", [`${FRAGIL_CHIP.kicker}: ${FRAGIL_CHIP.texto}.`]) : null,
+    seccion(
+      "hero:mini-scores (los dos análisis hijos)",
+      // Ganador primero — mismo orden que el render.
+      hero.ganador === "corta" ? [...miniStr, ...miniLtr] : [...miniLtr, ...miniStr],
+    ),
     sinProsa
       ? seccion("prosa (Cuál te conviene)", ["Los datos y la tabla comparativa están disponibles arriba."])
       : seccion("prosa (Cuál te conviene)", [
@@ -213,7 +242,7 @@ export async function ensamblarAMBAS(
       ...top3.map((f, i) => `${String(i + 1).padStart(2, "0")} ${f.titular} · KPI ${f.kpi} (${f.kicker} · ${ladoLabel(f.lado)})`),
     ]),
     seccion("posicion (La posición de Franco)", [
-      FRANCO_POS[estado],
+      hero.posicion,
       ai?.conviene?.cierre?.trim() || null,
     ]),
     ...findings.flatMap((f, i) => [
@@ -252,7 +281,7 @@ export async function ensamblarAMBAS(
     meta: {
       id8: `${ltr.id.slice(0, 8)}+${str.id.slice(0, 8)}`,
       tipo: "AMBAS",
-      veredicto: VERDICT_LABEL[estado],
+      veredicto: hero.badge,
       banda,
       comuna: ltr.comuna ?? str.comuna ?? "?",
       promptVersion: ai?.promptVersion ?? null,

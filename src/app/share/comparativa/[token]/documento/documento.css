@@ -79,10 +79,13 @@
 .franco-doc .reco { margin-top: 14px; padding: 16px 20px; border-radius: 12px; border: 0.5px solid var(--border); background: var(--sunken); break-inside: avoid; }
 .franco-doc .reco .badge { display: inline-block; font-family: var(--mono); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; border-radius: 6px; padding: 5px 11px; }
 /* corta (ventaja clara) → Ink sólido · frágil → outline rojo · larga (LTR preferido) → rojo pleno · parejas → Ink outline */
+/* Hero 3 ejes (contrato d25096d): el ganador va en Ink — Signal Red queda
+   EXCLUSIVO del estado E2 "NO SE SOSTIENE" (veredicto crítico). Antes .larga
+   iba en rojo: violaba la regla del rojo y murió con el contrato. */
 .franco-doc .reco .badge.corta { color: var(--card); background: var(--text); }
-.franco-doc .reco .badge.fragil { color: var(--signal-red); border: 1px solid rgba(200,50,60,.35); background: var(--card); }
-.franco-doc .reco .badge.larga { color: #fff; background: var(--signal-red); }
+.franco-doc .reco .badge.larga { color: var(--card); background: var(--text); }
 .franco-doc .reco .badge.parejas { color: var(--text-secondary); border: 1px solid var(--border-strong); background: var(--card); }
+.franco-doc .reco .badge.e2 { color: #fff; background: var(--signal-red); }
 .franco-doc .reco .headline { font-family: var(--serif); font-weight: 700; font-size: 19px; line-height: 1.28; margin: 12px 0 0; }
 
 /* Segments bar (larga · parejas · frágil · corta) */
@@ -90,14 +93,27 @@
 .franco-doc .segments .track { position: relative; height: 6px; border-radius: 4px; background: var(--ink-400); opacity: .5; }
 .franco-doc .segments .dotwrap { position: relative; height: 0; }
 .franco-doc .segments .dot { position: absolute; top: -9px; width: 12px; height: 12px; border-radius: 50%; background: var(--text); transform: translateX(-50%); box-shadow: 0 0 0 3px var(--card); }
-.franco-doc .segments .dot.fragil { background: var(--signal-red); }
+/* Barra de método de 3 posiciones (la fragilidad dejó de ser banda → chip). */
 .franco-doc .segments .axis { display: flex; justify-content: space-between; margin-top: 8px; font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
 .franco-doc .segments .axis span { flex: 1; }
 .franco-doc .segments .axis span:nth-child(1) { text-align: left; }
-.franco-doc .segments .axis span:nth-child(2), .franco-doc .segments .axis span:nth-child(3) { text-align: center; }
-.franco-doc .segments .axis span:nth-child(4) { text-align: right; }
+.franco-doc .segments .axis span:nth-child(2) { text-align: center; }
+.franco-doc .segments .axis span:nth-child(3) { text-align: right; }
 .franco-doc .segments .axis .on { color: var(--text); font-weight: 700; }
-.franco-doc .segments .axis .on.fragil { color: var(--signal-red); }
+
+/* Eje 1 · margen del ganador (línea mono bajo el headline) */
+.franco-doc .reco .margen-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 10px 0 0; }
+.franco-doc .reco .margen-line .mk { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+.franco-doc .reco .margen-line .mv { font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--text); }
+
+/* E2 · método subordinado a una línea ("Si igual lo compras") */
+.franco-doc .reco .subordinada { margin-top: 12px; border-left: 3px solid var(--text-secondary); border-radius: 0 8px 8px 0; background: rgba(15,15,15,.04); padding: 9px 13px; break-inside: avoid; }
+.franco-doc .reco .subordinada .sk { font-family: var(--mono); font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin: 0 0 3px; }
+.franco-doc .reco .subordinada .st { font-family: var(--sans); font-size: 11.5px; line-height: 1.5; margin: 0; color: var(--text); }
+
+/* Distancia al veredicto bajo cada mini-score */
+.franco-doc .mini .mdist { margin: 8px 0 0; padding-top: 7px; border-top: 0.5px solid var(--border); font-family: var(--sans); font-size: 10.5px; line-height: 1.45; color: var(--text-secondary); }
+.franco-doc .mini .mdist .mdk { display: block; font-family: var(--mono); font-size: 8px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 2px; }
 
 /* Banner de fragilidad (variante D · solo cuando fragil) */
 .franco-doc .fragil-banner { margin-top: 12px; border-left: 3px solid var(--signal-red); background: rgba(200,50,60,.05); border-radius: 0 10px 10px 0; padding: 11px 15px; break-inside: avoid; }

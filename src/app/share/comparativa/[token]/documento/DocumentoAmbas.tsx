@@ -13,7 +13,7 @@
 // veredicto, posición y hallazgos).
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
+import type { FullAnalysisResult, AIAnalysisComparativa, Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict, metricaODefault, metricaValorONull } from "@/lib/types";
 import { NO_APLICA_VALOR, NO_APLICA_FOOTNOTE_DOC_AMBAS } from "@/lib/no-aplica-copy";
@@ -21,9 +21,10 @@ import { readVeredicto } from "@/lib/results-helpers";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
 import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
 import {
-  resolverEstado, VERDICT_LABEL, SUB, FRANCO_POS,
-  SEGMENT_ORDER, SEGMENT_SHORT, SEGMENT_POS, FRAGIL_BANNER,
+  buildHeroAmbas, FRAGIL_CHIP,
+  SEGMENT_ORDER, SEGMENT_SHORT, SEGMENT_POS,
 } from "@/lib/comparativa-hero-copy";
+import { lineaDistanciaMini } from "@/lib/distancia-copy";
 import { buildAperturaComparativa } from "@/lib/comparativa-apertura";
 import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
 import type { BandaComparativa } from "@/lib/engines/str-universo-santiago";
@@ -67,14 +68,12 @@ export function DocumentoAmbas({
   const money = (n: number) => fmtMoney(n, "CLP", ufFrozen);
   const zona = comuna || "tu zona";
 
-  // ── Variante A/B — banda, estado y copy motor-templated ──
+  // ── Variante A/B — banda y copy motor-templated (hero 3 ejes más abajo) ──
   const recomendacion = deriveRecomendacionFallback(strResults);
   const fragil = strResults?.veredictoComparativo?.fragil ?? false;
-  const estado = resolverEstado(recomendacion, fragil);
   const banda: BandaComparativa =
     strResults?.veredictoComparativo?.banda ??
     (fragil ? "STR_FRAGIL" : (recomendacion as BandaComparativa));
-  const apertura = buildAperturaComparativa({ topId: "flujo", topLado: "neutro", banda });
 
   // ── Variante G — veredicto propio de cada modalidad ──
   const ltrVerdict = (readVeredicto(ltrResults) ?? "AJUSTA SUPUESTOS") as Verdict;
@@ -108,6 +107,30 @@ export function DocumentoAmbas({
   const strNOIMensual = strBase?.noiMensual ?? 0;
   const strFlujoMensual = strBase?.flujoCajaMensual ?? 0;
   const strCapital = strResults?.capitalInvertido ?? 0;
+
+  // ── Hero 3 ejes — MISMO builder que la web y el share (fuente única) ──
+  const hero = buildHeroAmbas({
+    recomendacion,
+    fragil,
+    ltrVerdict,
+    strVerdict,
+    ltrFlujoMensual,
+    strFlujoMensual,
+    sobreRentaPct: strResults?.comparativa?.sobreRentaPct ?? 0,
+    sobreRentaPctConfiable: strResults?.comparativa?.sobreRentaPctConfiable ?? true,
+    sobreRentaCLP: strResults?.comparativa?.sobreRenta ?? 0,
+  });
+  const buscarDistancia = (hs: unknown): HallazgoDistanciaVeredicto | null => {
+    const arr = Array.isArray(hs) ? (hs as Hallazgo[]) : [];
+    return (arr.find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined) ?? null;
+  };
+  const ltrDistancia = lineaDistanciaMini(buscarDistancia(ltrResults?.hallazgos), ltrVerdict);
+  const strDistancia = lineaDistanciaMini(
+    buscarDistancia((strResults as unknown as { hallazgos?: Hallazgo[] } | null)?.hallazgos),
+    strVerdict,
+  );
+  // Apertura motor: coherente con el estado del hero (rama E2 propia).
+  const apertura = buildAperturaComparativa({ topId: "flujo", topLado: "neutro", banda, estadoHero: hero.estado });
   // Rama A: `tirAnual` STR pasó a MetricaSobreCapital. Solo se usa en la rama
   // pie > 0 de la fila (con pie 0 la fila entera es "No aplica*"), pero el
   // desenvuelto es obligatorio: la unión no es un number.
@@ -228,47 +251,68 @@ export function DocumentoAmbas({
           <div className="cell"><p className="k">Gestión del corto</p><div className="v">{modoGestion === "auto" ? "Autogestión" : `Admin ${comisionPct}%`}</div></div>
         </div>
 
-        {/* Variantes A + B — badge por estado + barra de segmentos */}
+        {/* Hero 3 ejes — badge por estado + margen + barra de método (contrato d25096d) */}
         <div className="reco avoid-break">
-          <span className={`badge ${estado}`}>{VERDICT_LABEL[estado]}</span>
-          <p className="headline">{SUB[estado]}</p>
-          <div className="segments">
-            <div className="track" />
-            <div className="dotwrap">
-              <div className={`dot ${estado === "fragil" ? "fragil" : ""}`} style={{ left: `${SEGMENT_POS[estado]}%` }} />
+          <span className={`badge ${hero.badgeCritico ? "e2" : hero.ganador}`}>{hero.badge}</span>
+          <p className="headline">{hero.sub}</p>
+          {hero.margen && (
+            <p className="margen-line">
+              <span className="mk">Margen del ganador</span>
+              <span className="mv">{hero.margen.texto} · {hero.margen.escala}</span>
+            </p>
+          )}
+          {hero.mostrarBarra && (
+            <div className="segments">
+              <div className="track" />
+              <div className="dotwrap">
+                <div className="dot" style={{ left: `${SEGMENT_POS[hero.ganador]}%` }} />
+              </div>
+              <div className="axis">
+                {SEGMENT_ORDER.map((s) => (
+                  <span key={s} className={s === hero.ganador ? "on" : ""}>{SEGMENT_SHORT[s]}</span>
+                ))}
+              </div>
             </div>
-            <div className="axis">
-              {SEGMENT_ORDER.map((s) => (
-                <span key={s} className={s === estado ? `on ${s === "fragil" ? "fragil" : ""}` : ""}>{SEGMENT_SHORT[s]}</span>
-              ))}
+          )}
+          {hero.subordinada && (
+            <div className="subordinada">
+              <p className="sk">{hero.subordinada.kicker}</p>
+              <p className="st">{hero.subordinada.texto}</p>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Variante D — banner de fragilidad (condicional) */}
-        {fragil && (
+        {/* Eje 2 — robustez como chip calificador (el banner de fragilidad murió con el contrato) */}
+        {hero.fragilChip && (
           <div className="fragil-banner">
-            <p className="fl">{FRAGIL_BANNER.kicker}</p>
-            <p className="ft">{FRAGIL_BANNER.cuerpo}</p>
+            <p className="fl">{FRAGIL_CHIP.kicker}</p>
+            <p className="ft">{FRAGIL_CHIP.texto.charAt(0).toUpperCase() + FRAGIL_CHIP.texto.slice(1)}.</p>
           </div>
         )}
 
-        {/* Variante G — mini-scores con veredicto propio */}
+        {/* Mini-scores con veredicto propio + distancia al veredicto (ganador primero) */}
         <div className="minis">
-          <div className="mini">
-            <p className="ml">Renta larga (LTR)</p>
-            <div className="mrow">
-              <span className="mscore">{ltrScore}<small>/100</small></span>
-              <span className={`mbadge ${verdictClass(ltrVerdict)}`}>{ltrVerdict}</span>
-            </div>
-          </div>
-          <div className="mini">
-            <p className="ml">Renta corta (STR)</p>
-            <div className="mrow">
-              <span className="mscore">{strScore}<small>/100</small></span>
-              <span className={`mbadge ${verdictClass(strVerdict)}`}>{strVerdict}</span>
-            </div>
-          </div>
+          {(hero.ganador === "corta" ? (["str", "ltr"] as const) : (["ltr", "str"] as const)).map((role) =>
+            role === "ltr" ? (
+              <div className="mini" key="ltr">
+                <p className="ml">Renta larga (LTR)</p>
+                <div className="mrow">
+                  <span className="mscore">{ltrScore}<small>/100</small></span>
+                  <span className={`mbadge ${verdictClass(ltrVerdict)}`}>{ltrVerdict}</span>
+                </div>
+                {ltrDistancia && <p className="mdist"><span className="mdk">Lo que te separa</span>{ltrDistancia}</p>}
+              </div>
+            ) : (
+              <div className="mini" key="str">
+                <p className="ml">Renta corta (STR)</p>
+                <div className="mrow">
+                  <span className="mscore">{strScore}<small>/100</small></span>
+                  <span className={`mbadge ${verdictClass(strVerdict)}`}>{strVerdict}</span>
+                </div>
+                {strDistancia && <p className="mdist"><span className="mdk">Lo que te separa</span>{strDistancia}</p>}
+              </div>
+            ),
+          )}
         </div>
 
         {/* Variante E — apertura motor-templated por banda (afirmable sin IA) */}
@@ -547,10 +591,10 @@ export function DocumentoAmbas({
           </div>
         )}
 
-        {/* Variante E — posición de Franco por estado (motor · afirmable sin IA) */}
+        {/* Variante E — posición de Franco por estado 3-ejes (motor · afirmable sin IA) */}
         <p className="eyebrow" style={{ marginTop: 6 }}>Siendo franco</p>
         <div className="cierre">
-          <p>{FRANCO_POS[estado]}{cierreCondicion ? ` ${cierreCondicion}` : ""}</p>
+          <p>{hero.posicion}{cierreCondicion ? ` ${cierreCondicion}` : ""}</p>
         </div>
 
         <div className="doc-close">

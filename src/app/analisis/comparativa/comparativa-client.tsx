@@ -31,6 +31,9 @@ import {
 } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
 import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
+import { buildHeroAmbas } from "@/lib/comparativa-hero-copy";
+import { lineaDistanciaMini } from "@/lib/distancia-copy";
+import type { Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
 
 type AccessLevel = "guest" | "free" | "premium" | "subscriber";
 type STRVerdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
@@ -190,7 +193,32 @@ export function ComparativaClient(p: Props) {
     : strNOIMensual * 12 * Math.pow(1.03, 4);
   const strCapital = p.strResults?.capitalInvertido ?? 0;
 
-  const deltaNOIMensual = strNOIMensual - ltrNOIMensual;
+  // ── Hero 3 ejes (contrato mockup-hero-ambas-3ejes) — builder puro único ──
+  const ltrFlujoMensual = p.ltrResults?.metrics?.flujoNetoMensual ?? 0;
+  const strFlujoMensual = strBase?.flujoCajaMensual ?? 0;
+  const hero = useMemo(
+    () =>
+      buildHeroAmbas({
+        recomendacion,
+        fragil: p.strResults?.veredictoComparativo?.fragil ?? false,
+        ltrVerdict,
+        strVerdict,
+        ltrFlujoMensual,
+        strFlujoMensual,
+        sobreRentaPct: p.strResults?.comparativa?.sobreRentaPct ?? 0,
+        sobreRentaPctConfiable: p.strResults?.comparativa?.sobreRentaPctConfiable ?? true,
+        sobreRentaCLP: p.strResults?.comparativa?.sobreRenta ?? 0,
+      }),
+    [recomendacion, p.strResults, ltrVerdict, strVerdict, ltrFlujoMensual, strFlujoMensual],
+  );
+
+  // Distancia al veredicto de cada hijo — hallazgo del motor + fallback aprobado.
+  const buscarDistancia = (hallazgos: unknown): HallazgoDistanciaVeredicto | null => {
+    const arr = Array.isArray(hallazgos) ? (hallazgos as Hallazgo[]) : [];
+    return (arr.find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined) ?? null;
+  };
+  const ltrDistancia = lineaDistanciaMini(buscarDistancia(p.ltrResults?.hallazgos), ltrVerdict);
+  const strDistancia = lineaDistanciaMini(buscarDistancia((p.strResults as { hallazgos?: Hallazgo[] } | null)?.hallazgos), strVerdict);
 
   // Chrome
   const footerLinks = (
@@ -259,8 +287,9 @@ export function ComparativaClient(p: Props) {
         <div className="container mx-auto max-w-[1100px] px-4 sm:px-6 py-8">
           {/* ── ACTO 1 · Hero — veredicto + prosa integrada + posición + TOP-3 + toggle (F-C3b) ── */}
           <HeroComparativa
-            recomendacion={recomendacion}
-            fragil={p.strResults?.veredictoComparativo?.fragil ?? false}
+            hero={hero}
+            ltrDistancia={ltrDistancia}
+            strDistancia={strDistancia}
             nombre={p.nombre}
             comuna={p.comuna}
             direccion={p.direccion}
@@ -272,7 +301,6 @@ export function ComparativaClient(p: Props) {
             piePct={p.piePct}
             plazoAnios={p.plazoAnios}
             tasaPct={p.tasaPct}
-            deltaNOIMensual={deltaNOIMensual}
             findings={findings}
             ltrId={p.ltrId}
             strId={p.strId}

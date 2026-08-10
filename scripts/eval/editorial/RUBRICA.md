@@ -257,8 +257,8 @@ Valores de `pieza` — usar EXACTAMENTE el nombre de la etiqueta `[PIEZA: ...]`
 del informe ensamblado (la parte antes del paréntesis), según el tipo:
 
 - **LTR / STR**: `respuestaDirecta | posicion | card:<id> | drawer:<id> | zona | transversal`
-- **AMBAS**: `hero:veredicto | hero:banner | hero:mini-scores | prosa | hero:indice | posicion | card:<id> | drawer:puente:<id> | evidencia | chart:patrimonio:nota | chart:flujo:nota | transversal`
-  (`hero:banner` solo existe en pares con margen frágil.)
+- **AMBAS**: `hero:veredicto | hero:subordinada | hero:banner | hero:mini-scores | prosa | hero:indice | posicion | card:<id> | drawer:puente:<id> | evidencia | chart:patrimonio:nota | chart:flujo:nota | transversal`
+  (`hero:banner` solo existe en pares con margen frágil; `hero:subordinada` solo en estado E2 — doble BUSCAR OTRA.)
 
 (`transversal` en ambos sets se reserva para fallas que cruzan piezas — misma
 regla de la cita con " ⇄ " de abajo. No inventar nombres fuera del set del tipo.)

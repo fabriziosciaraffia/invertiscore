@@ -17,8 +17,11 @@ import type {
 } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
+import type { Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
 import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
+import { buildHeroAmbas } from "@/lib/comparativa-hero-copy";
+import { lineaDistanciaMini } from "@/lib/distancia-copy";
 
 type STRVerdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 
@@ -113,7 +116,31 @@ export function SharedComparativaClient(p: Props) {
     ? (strY5.flujoOperacionalAnual + (p.strResults?.dividendoMensual ?? 0) * 12)
     : strNOIMensual * 12 * Math.pow(1.03, 4);
   const strCapital = p.strResults?.capitalInvertido ?? 0;
-  const deltaNOIMensual = strNOIMensual - ltrNOIMensual;
+
+  // ── Hero 3 ejes — MISMO builder que la vista logueada (fuente única) ──
+  const ltrFlujoMensual = p.ltrResults?.metrics?.flujoNetoMensual ?? 0;
+  const strFlujoMensual = strBase?.flujoCajaMensual ?? 0;
+  const hero = useMemo(
+    () =>
+      buildHeroAmbas({
+        recomendacion,
+        fragil: p.strResults?.veredictoComparativo?.fragil ?? false,
+        ltrVerdict,
+        strVerdict,
+        ltrFlujoMensual,
+        strFlujoMensual,
+        sobreRentaPct: p.strResults?.comparativa?.sobreRentaPct ?? 0,
+        sobreRentaPctConfiable: p.strResults?.comparativa?.sobreRentaPctConfiable ?? true,
+        sobreRentaCLP: p.strResults?.comparativa?.sobreRenta ?? 0,
+      }),
+    [recomendacion, p.strResults, ltrVerdict, strVerdict, ltrFlujoMensual, strFlujoMensual],
+  );
+  const buscarDistancia = (hallazgos: unknown): HallazgoDistanciaVeredicto | null => {
+    const arr = Array.isArray(hallazgos) ? (hallazgos as Hallazgo[]) : [];
+    return (arr.find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined) ?? null;
+  };
+  const ltrDistancia = lineaDistanciaMini(buscarDistancia(p.ltrResults?.hallazgos), ltrVerdict);
+  const strDistancia = lineaDistanciaMini(buscarDistancia((p.strResults as { hallazgos?: Hallazgo[] } | null)?.hallazgos), strVerdict);
 
   const fechaCorta = formatFechaCorta(p.createdAt);
 
@@ -134,8 +161,9 @@ export function SharedComparativaClient(p: Props) {
 
           {/* ── ACTO 1 · Hero — veredicto + prosa integrada + toggle (F-C3b) ── */}
           <HeroComparativa
-            recomendacion={recomendacion}
-            fragil={p.strResults?.veredictoComparativo?.fragil ?? false}
+            hero={hero}
+            ltrDistancia={ltrDistancia}
+            strDistancia={strDistancia}
             nombre={p.nombre}
             comuna={p.comuna}
             direccion={p.direccion}
@@ -147,7 +175,6 @@ export function SharedComparativaClient(p: Props) {
             piePct={p.piePct}
             plazoAnios={p.plazoAnios}
             tasaPct={p.tasaPct}
-            deltaNOIMensual={deltaNOIMensual}
             findings={findings}
             ltrId={p.ltrId}
             strId={p.strId}

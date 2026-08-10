@@ -17,6 +17,7 @@ import type { Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { buildFraseFlujo } from "@/lib/flujo-mensual-hallazgo";
+import { distanciaFindingDisplay } from "@/lib/distancia-copy";
 
 // Mapa hallazgo → drawer de detalle. INYECTIVO: cada card abre un drawer cuyo
 // título calza con ella. Sin entrada ⇒ sin affordance "Ver detalle" (mejor puerta
@@ -340,55 +341,10 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
       };
     }
     case "distancia_veredicto": {
-      const v = h.valor;
-      // Kicker NEUTRO y único para los tres estados (decisión Fabrizio, gate 30-jul):
-      // es un mapa, no un golpe. "Ruta a comprar" se descartó porque necesitaría un
-      // tercer texto en el caso estructural, donde "ruta" sería mentira.
-      const kick = "Lo que te separa";
-      const objetivo = v.veredictoObjetivo === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
-      if (v.esEstructural) {
-        const dm = v.deltaMinimoFueraDeTope;
-        return {
-          kick,
-          title: `Ningún ajuste realista lo mueve de ${v.veredictoBase === "BUSCAR OTRA" ? "Buscar otra" : "Ajusta supuestos"}.`,
-          // El KPI cita el delta mínimo REAL, no el tope. Sin él (ni el rango extendido
-          // cruza) el KPI queda vacío y el título carga solo — más honesto que inventar.
-          kpi: dm ? `${dm.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(dm.deltaPct))}%` : "—",
-          // Ink, nunca Signal Red: no es un negativo crítico, es la distancia a un umbral.
-          kpiRed: false,
-          ksub: dm ? `${dm.palanca} · lo mínimo, y aun así no alcanza` : "fuera de todo rango razonable",
-        };
-      }
-      const l = v.palancaMasBarata;
-      if (!l) return { kick, title: `Lo que falta para ${objetivo}.`, kpi: "", kpiRed: false, ksub: "" };
-      const via =
-        l.palanca === "arriendo"
-          ? "arriendo"
-          : l.palanca === "precio"
-            ? "precio"
-            : l.palanca === "pie"
-              ? "pie"
-              : "crédito";
-      const title =
-        l.palanca === "plazo"
-          ? `Está a un plazo de distancia de ${objetivo}.`
-          : `Está a un ${via} de distancia de ${objetivo}.`;
-      // El pie se cita como NIVEL ("26%"), no como variación: su deltaPct viene en puntos
-      // porcentuales y "+26%" sobre un pie 0 no significaría nada.
-      const kpi =
-        l.palanca === "plazo"
-          ? `${l.objetivo} años`
-          : l.palanca === "pie"
-            ? `${pct1(l.objetivo)}%`
-            : `${l.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(l.deltaPct))}%`;
-      const otras = v.palancas.length - 1;
-      return {
-        kick,
-        title,
-        kpi,
-        kpiRed: false,
-        ksub: otras > 0 ? `${via} · ${otras} vía${otras > 1 ? "s" : ""} más` : via,
-      };
+      // Port verbatim a módulo puro (distancia-copy.ts) para que el hero
+      // comparativo y DocumentoAmbas (server component) consuman el mismo
+      // copy sin importar de este archivo "use client". Cero cambio de texto.
+      return distanciaFindingDisplay(h);
     }
     default: {
       // Exhaustividad defensiva (no debería alcanzarse: todos los ids tienen caso).
