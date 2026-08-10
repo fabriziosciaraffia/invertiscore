@@ -1,6 +1,7 @@
 import { requireAdminPage } from "@/lib/admin-auth";
 import { fmtCLP, fmtNumber } from "@/lib/admin-format";
 import { COLUMNAS_USO_IA, fmtUsd, resumirCosto, type UsoIA } from "@/lib/costo-ia";
+import { COLUMNAS_COMISION, resumirComisiones, type PagoParaComision } from "@/lib/comision-flow";
 import {
   adminOverview,
   adminWeeklyStats,
@@ -56,7 +57,7 @@ export default async function AdminPage({
   const noTest = includeTest ? null : filtroNoTest(testUserIds);
   const testIdSet = new Set(testUserIds);
 
-  const [overview, semanas, checkoutsRow, usoIaRows] = await Promise.all([
+  const [overview, semanas, checkoutsRow, usoIaRows, pagosRows] = await Promise.all([
     adminOverview(sb, includeTest),
     adminWeeklyStats(sb, { weeks: SEMANAS, includeTest }),
     // Los checkouts abandonados se traen como filas (no como conteo) porque con
@@ -82,12 +83,32 @@ export default async function AdminPage({
         .gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString());
       return noTest ? q.or(noTest) : q;
     })(),
+    // Pagos confirmados del período, para el NETO. `ingresos_30d` de la RPC es
+    // bruto —lo que el usuario pagó—, no lo que entró: Flow retiene comisión +
+    // IVA en cada transacción. La retención viene en el propio payment_data
+    // (ver comision-flow.ts), así que se traen las filas y se lee al calcular,
+    // igual que con los tokens de IA.
+    (() => {
+      const q = sb
+        .from("payments")
+        .select(COLUMNAS_COMISION)
+        .eq("status", "paid")
+        .gt("amount", 0)
+        .or(SIN_CONSUMOS)
+        .gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString());
+      return noTest ? q.or(noTest) : q;
+    })(),
   ]);
 
   // Las filas anteriores a la instrumentación tienen los ai_* en NULL, que
   // significa "no medido" y NO "costo cero": resumirCosto las cuenta aparte para
   // que el promedio no se diluya con análisis que sí costaron y nadie midió.
   const costoIa = resumirCosto((usoIaRows.data ?? []) as unknown as UsoIA[]);
+
+  // Neto depositado del período. `resumirComisiones` deja fuera las altas de
+  // suscripción: no son un cobro (el cargo llega después, en su propia fila) y
+  // sumarlas contaría el mismo dinero dos veces.
+  const comisiones = resumirComisiones((pagosRows.data ?? []) as unknown as PagoParaComision[]);
 
   const checkoutRows = (checkoutsRow.data ?? []) as Array<{
     id: string; user_id: string; product: string | null; amount: number | null; created_at: string;
@@ -223,10 +244,27 @@ export default async function AdminPage({
             label="Tasa de activación"
             sub={`${fmtNumber(overview.activaron)} de ${fmtNumber(overview.registrados)} generaron un análisis`}
           />
+          {/* El bruto es lo que pagó el usuario; el neto es lo que entró. La
+              diferencia es la comisión de Flow, que en cada transacción viene en
+              el propio payment_data — así que se muestra medida, no supuesta. */}
           <Kpi
-            valor={fmtCLP(overview.ingresos_30d)}
-            label="Ingresos"
-            sub="pagos confirmados sobre $0"
+            valor={fmtCLP(comisiones.neto)}
+            label="Ingresos netos"
+            sub={
+              <>
+                <div>
+                  {fmtCLP(comisiones.bruto)} bruto · Flow retuvo {fmtCLP(comisiones.retenido)}
+                  {comisiones.tasaEfectiva != null
+                    ? ` (${(comisiones.tasaEfectiva * 100).toFixed(2)}%)`
+                    : ""}
+                </div>
+                <div>
+                  {fmtNumber(comisiones.medidos)} medidos
+                  {comisiones.estimados > 0 ? ` · ${fmtNumber(comisiones.estimados)} estimados` : ""}
+                  {comisiones.sinCobro > 0 ? ` · ${fmtNumber(comisiones.sinCobro)} altas sin cobro` : ""}
+                </div>
+              </>
+            }
           />
           <Kpi
             valor={costoIa.medidos > 0 ? fmtUsd(costoIa.totalUsd) : "sin datos"}
@@ -254,7 +292,7 @@ function Kpi({
 }: {
   valor: string;
   label: string;
-  sub?: string;
+  sub?: React.ReactNode;
   className?: string;
 }) {
   return (
@@ -263,7 +301,7 @@ function Kpi({
         {valor}
       </div>
       <div className="mt-1 font-body text-[13px] text-[var(--franco-text)]">{label}</div>
-      {sub && <div className="mt-0.5 font-mono text-[10px] text-[var(--franco-text-tertiary)]">{sub}</div>}
+      {sub && <div className="mt-0.5 font-mono text-[10px] leading-relaxed text-[var(--franco-text-tertiary)]">{sub}</div>}
     </div>
   );
 }
