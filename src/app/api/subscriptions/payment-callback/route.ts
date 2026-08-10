@@ -4,14 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { recurringProductByAmount, recurringProductByPlan, addOneMonth } from "@/lib/credits-grant";
 import { sendPaymentFailedEmail } from "@/lib/email";
-import { processSubscriptionCharge } from "@/lib/subscriptions/process-charge";
-import { sendMetaCapiEvent } from "@/lib/meta/capi";
+import { processSubscriptionCharge, parseSubscriptionId } from "@/lib/subscriptions/process-charge";
+import { sendSubscribeIfFirstCharge } from "@/lib/subscriptions/subscribe-event";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
-
-// commerceOrder de un cargo de suscripción: "sus_<subId>_<invoiceId>_<ts>".
-// Capturamos el prefijo sus_<subId> para mapear contra user_credits.subscription_id.
-const SUB_ID_RE = /^(sus_[a-zA-Z0-9]+)_/;
 
 function createAdminClient() {
   return createClient(
@@ -39,12 +35,14 @@ export async function POST(request: Request) {
     // Fallbacks legacy: optional.userId y commerceOrder en payments.
     let userId: string | null = null;
 
-    const subMatch = SUB_ID_RE.exec(flowData.commerceOrder || "");
-    if (subMatch) {
+    // parseSubscriptionId (compartido con process-charge y subscribe-event): un solo
+    // parser del `sus_<subId>`, del que salen tanto este mapeo como el event_id de Meta.
+    const subId = parseSubscriptionId(flowData.commerceOrder);
+    if (subId) {
       const { data } = await supabase
         .from("user_credits")
         .select("user_id")
-        .eq("subscription_id", subMatch[1])
+        .eq("subscription_id", subId)
         .maybeSingle();
       userId = data?.user_id ?? null;
     }
@@ -100,44 +98,27 @@ export async function POST(request: Request) {
         JSON.stringify(result)
       );
 
-      // Meta CAPI: Subscribe SOLO en el primer cobro de esta suscripción. Se
-      // cuenta contra el nro de filas de cargo (franco-sub-pay-*) de ESTE user,
-      // EXCLUYENDO la del cargo actual → 0 previas = primer cobro. Las
-      // renovaciones (count ≥ 1) NO disparan nada.
+      // Meta CAPI: Subscribe SOLO en el primer cobro de esta suscripción. El gate
+      // (conteo de filas franco-sub-pay-* del user excluyendo la actual) y toda su
+      // doctrina viven en sendSubscribeIfFirstCharge — COMPARTIDO con el cron
+      // reconciler, que recorre el mismo camino cuando este webhook falla o llega
+      // tarde. Antes esto era inline acá y el reconciler no enviaba nada: la
+      // conversión se perdía en silencio.
       //
-      // SEMÁNTICA DELIBERADA (no es bug — no lo "arregles"): el count es por
-      // user_id, no por subscription_id. Un usuario que canceló y se resuscribe
-      // tiene filas de cargo viejas → su NUEVA suscripción NO dispara Subscribe.
-      // Es intencional: un resuscriptor NO es una adquisición nueva para las
-      // campañas de Meta (ya fue conversión una vez). Si algún día se quiere
-      // contar resuscripciones como conversión, cambiar el .eq(user_id) por un
-      // filtro por subscription_id — pero es una decisión de producto, no un fix.
-      //
-      // event_id = sub-<subscriptionId> (mismo que dispara el browser en
-      // /payments/return) → Meta deduplica. Bloque aislado: una falla de Meta
-      // jamás rompe el 200 que Flow espera. subMatch[1] = "sus_<subId>".
-      if (subMatch) {
+      // Va DESPUÉS de processSubscriptionCharge: el conteo asume que la fila del
+      // cargo actual ya existe. El helper nunca lanza; el try/catch es defensa en
+      // profundidad para que una falla de Meta jamás rompa el 200 que Flow espera.
+      if (subId) {
         try {
-          const currentChargeOrder = `franco-sub-pay-${Number(flowData.flowOrder)}`;
-          const { count } = await supabase
-            .from("payments")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", userId)
-            .like("commerce_order", "franco-sub-pay-%")
-            .neq("commerce_order", currentChargeOrder);
-          const isFirstCharge = (count ?? 0) === 0;
-
-          if (isFirstCharge) {
-            const { data: capiUser } = await supabase.auth.admin.getUserById(userId);
-            await sendMetaCapiEvent({
-              eventName: "Subscribe",
-              eventId: `sub-${subMatch[1]}`,
-              email: capiUser?.user?.email ?? flowData.payer ?? null,
-              value: Number(flowData.amount),
-              currency: "CLP",
-              eventSourceUrl: SITE_URL,
-            });
-          }
+          await sendSubscribeIfFirstCharge({
+            supabase,
+            userId,
+            commerceOrder: flowData.commerceOrder,
+            amount: Number(flowData.amount),
+            flowOrder: Number(flowData.flowOrder),
+            payerEmail: flowData.payer,
+            eventSourceUrl: SITE_URL,
+          });
         } catch (e) {
           console.error("[payment-callback] Meta CAPI Subscribe excepción:", e);
           captureApiWarning(e, {

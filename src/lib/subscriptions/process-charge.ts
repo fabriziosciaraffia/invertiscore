@@ -39,6 +39,25 @@ function createAdminClient() {
 // Capturamos el prefijo `sus_<subId>` para mapear contra user_credits.subscription_id.
 const SUB_ID_RE = /^(sus_[a-zA-Z0-9]+)_/;
 
+/**
+ * Extrae el `sus_<subId>` del commerceOrder de un cargo de suscripción, o null si
+ * el patrón no calza (no es un cargo de suscripción / formato inesperado).
+ *
+ * Fuente ÚNICA del subId. Lo consumen dos cosas con contratos distintos que NO
+ * pueden driftar:
+ *  - el mapeo al dueño (user_credits.subscription_id, acá abajo y en el webhook), y
+ *  - el `event_id` del Subscribe de Meta (`sub-<subId>`, ver subscribe-event.ts),
+ *    que tiene que coincidir CARÁCTER A CARÁCTER con el que dispara el browser en
+ *    /payments/return — si divergen, Meta cuenta la conversión dos veces.
+ * Por eso vive en un solo lugar y no se copia la regex.
+ *
+ * El valor devuelto INCLUYE el prefijo `sus_`: es el mismo string que Flow entrega
+ * como subscriptionId y que register-callback persiste en subscription_id.
+ */
+export function parseSubscriptionId(commerceOrder: string | null | undefined): string | null {
+  return SUB_ID_RE.exec(commerceOrder ?? "")?.[1] ?? null;
+}
+
 // Cutoff del modelo "grant sigue al cobro" (Opción C). Cargos ANTERIORES a esta
 // fecha son PRE-C: su grant del mes 1 ya lo dio el alta (register-callback viejo),
 // así que NO se re-otorga acá (evita doble grant de la canary y de cualquier sub
@@ -108,6 +127,13 @@ export type ProcessChargeResult = {
   granted: boolean;
   /** true si la boleta quedó emitida (folio asignado) en este llamado o ya estaba. */
   emitted: boolean;
+  /**
+   * Dueño de la suscripción resuelto acá (user_credits.subscription_id), o null si
+   * el cargo no se pudo mapear. ADITIVO: lo necesita el reconciler, que a diferencia
+   * del webhook NO resuelve el user por su cuenta — sin esto tendría que repetir la
+   * query y quedarían dos fuentes de verdad para "de quién es este cargo".
+   */
+  userId: string | null;
   reason?: string;
 };
 
@@ -119,10 +145,13 @@ export async function processSubscriptionCharge(
   input: ProcessChargeInput
 ): Promise<ProcessChargeResult> {
   const { flowOrder, commerceOrder, amount, status, payer, chargeDate, flowData } = input;
-  const fail = (reason: string): ProcessChargeResult => ({
+  // userId por defecto null: los guards de arriba fallan ANTES de resolver el dueño.
+  // Los fallos posteriores a la resolución sí lo pasan (el caller puede necesitarlo).
+  const fail = (reason: string, userId: string | null = null): ProcessChargeResult => ({
     ok: false,
     granted: false,
     emitted: false,
+    userId,
     reason,
   });
 
@@ -147,8 +176,8 @@ export async function processSubscriptionCharge(
   // el 100% de los casos reales; el `payer` queda para el correo de la boleta.
   // Un cargo sin sus_ o sin sub mapeable es una ANOMALÍA → siempre se loguea
   // (nunca falla en silencio).
-  const m = SUB_ID_RE.exec(commerceOrder || "");
-  if (!m) {
+  const subId = parseSubscriptionId(commerceOrder);
+  if (!subId) {
     console.error(
       "[processSubscriptionCharge] commerceOrder sin patrón sus_ (anomalía):",
       commerceOrder,
@@ -161,14 +190,14 @@ export async function processSubscriptionCharge(
   const { data: uc } = await supabase
     .from("user_credits")
     .select("user_id, active_plan, billing_period")
-    .eq("subscription_id", m[1])
+    .eq("subscription_id", subId)
     .maybeSingle();
 
   const userId = uc?.user_id ?? null;
   if (!userId) {
     console.error(
       "[processSubscriptionCharge] sub sin user_credits mapeable:",
-      m[1],
+      subId,
       "flowOrder:",
       flowOrder
     );
@@ -211,12 +240,12 @@ export async function processSubscriptionCharge(
       paymentId = existing?.id ?? null;
     } else {
       console.error("[processSubscriptionCharge] payments insert error:", insertErr);
-      return fail("payments_insert_error");
+      return fail("payments_insert_error", userId);
     }
   } else {
     paymentId = inserted?.id ?? null;
   }
-  if (!paymentId) return fail("no_payment_id");
+  if (!paymentId) return fail("no_payment_id", userId);
 
   // freshFila = true solo si ESTE llamado insertó la fila (no un 23505/reproceso).
   // El camino de error de DB no-23505 ya retornó arriba (fail), así que acá freshFila
@@ -302,5 +331,5 @@ export async function processSubscriptionCharge(
     console.error("[processSubscriptionCharge] sin email para boleta, user:", userId);
   }
 
-  return { ok: true, granted, emitted };
+  return { ok: true, granted, emitted, userId };
 }
