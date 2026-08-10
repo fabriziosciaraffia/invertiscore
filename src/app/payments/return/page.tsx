@@ -29,11 +29,21 @@ function PaymentReturnContent() {
     if (type === "subscription") {
       const success = statusParam === "success";
       setPaymentStatus(success ? "paid" : "error");
-      // Meta Pixel: Subscribe browser-side con value real del plan. event_id
-      // sub-<subscriptionId> → dedup con el Subscribe server-side (payment-callback,
-      // solo primer cobro). Ambos llevan value: Meta se queda con el primero que
-      // llega, así que el browser también manda monto para no perder la conversión
-      // por valor si gana la carrera. sub/val vienen del redirect de register-callback.
+      // Meta Pixel: Subscribe browser-side. event_id sub-<subscriptionId> → dedup con
+      // el Subscribe server-side (payment-callback / cron reconciler, solo primer
+      // cobro). sub/val vienen del redirect de register-callback.
+      //
+      // OJO con el `value`: acá es el PRECIO DE CATÁLOGO del plan, no el monto que
+      // cobró Flow. No es un descuido — este evento se dispara en el ALTA, cuando
+      // todavía no ocurrió ningún cargo, así que el monto real no existe aún. El
+      // server manda el monto real cuando llega el primer cobro. Meta se queda con el
+      // PRIMER evento que recibe para un event_id dado y el browser casi siempre gana
+      // la carrera (el redirect es inmediato; el cargo llega después) → en la práctica
+      // Meta registra el precio de catálogo. Hoy coinciden.
+      //
+      // REAPERTURA: si aparece prorrateo, cupón o descuento, el fix es que
+      // register-callback deje de mandar `val` y el server quede como única fuente de
+      // value — no que el browser intente adivinarlo. Ver la nota gemela allá.
       if (success) {
         const sub = searchParams.get("sub");
         const val = searchParams.get("val");

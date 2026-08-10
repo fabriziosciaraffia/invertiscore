@@ -204,26 +204,37 @@ export async function POST(request: Request) {
       });
     }
 
-    // TODO(facturación): aquí sería el punto natural para emitir la boleta del
-    // alta (tenemos paymentRow.id + email), PERO la emisión NO está cableada a
-    // propósito. Razones:
+    // FACTURACIÓN — el alta NO emite boleta, y eso ya no es un pendiente sino la
+    // decisión tomada. Estado confirmado con la suscripción real del 10-ago-2026:
     //  - Esta fila de payments es el ALTA (franco-sub-<subId>) y trae
-    //    flow_order = null → señal de que el alta puede NO ser un cobro real,
-    //    sino el registro de la suscripción / tokenización de la tarjeta.
-    //  - payment-callback (el webhook del cobro recurrente real) NUNCA se ha
-    //    ejercitado en prod, así que no está confirmado si el primer cargo
-    //    materializa una segunda fila (franco-sub-pay-<flowOrder>).
-    //  - Emitir en el alta podría facturar dinero que aún no fue cobrado.
-    // Se resuelve tras entender el modelo de cobro de Flow y observar un cobro
-    // real con túnel. Decisión probable: emitir solo en payment-callback.
+    //    flow_order = null: no es un cobro, es el registro de la suscripción /
+    //    tokenización de la tarjeta. Emitir acá facturaría dinero no cobrado.
+    //  - El primer cargo SÍ materializa una segunda fila,
+    //    `franco-sub-pay-<flowOrder>`, que crea processSubscriptionCharge. Esa fila
+    //    es la del cobro real y es la que lleva la boleta (paso 6 del helper).
+    //  - payment-callback (el webhook del cobro recurrente) quedó ejercitado en prod
+    //    en esa misma fecha: llegó, procesó el cargo y emitió.
+    // NO borrar ni "limpiar" la fila franco-sub-pay-*: además de la boleta, es lo que
+    // sostiene el gate de primer cobro del Subscribe de Meta (subscribe-event.ts).
 
-    // Meta Pixel (browser): pasamos sub=<subscriptionId> + val=<precio plan> al
-    // return para que dispare Subscribe con event_id sub-<subscriptionId> y el
-    // value real → dedup con el Subscribe server-side (payment-callback, solo
-    // primer cobro). Solo en esta activación real: los redirects idempotentes de
-    // arriba (Flow reintentó el callback / reload) NO llevan sub → el browser
-    // Subscribe se omite ahí, y el server-side first-charge Subscribe queda como
-    // fuente de verdad.
+    // Meta Pixel (browser): pasamos sub=<subscriptionId> + val al return para que
+    // dispare Subscribe con event_id sub-<subscriptionId> → dedup con el Subscribe
+    // server-side (payment-callback / cron reconciler, solo primer cobro). Solo en
+    // esta activación real: los redirects idempotentes de arriba (Flow reintentó el
+    // callback / reload) NO llevan sub → el browser Subscribe se omite ahí, y el
+    // server-side first-charge Subscribe queda como fuente de verdad.
+    //
+    // `val` es el PRECIO DE CATÁLOGO (match.product.amount), NO el monto cobrado —
+    // divergencia deliberada y estructural: acá todavía no existe cargo alguno (Flow
+    // recién tokenizó la tarjeta y creó la suscripción), así que el monto real aún no
+    // ocurrió. El server manda el monto real de Flow cuando llega el primer cobro.
+    // Meta se queda con el PRIMER evento que recibe para un event_id dado, y el
+    // browser dispara en este redirect mientras el server espera al cargo → en la
+    // práctica Meta registra el precio de catálogo.
+    //
+    // REAPERTURA: si algún día hay prorrateo, cupón o descuento, el fix es SACAR `val`
+    // de este redirect y dejar al server como única fuente de value. No intentar que
+    // el browser adivine un monto que todavía no existe.
     const returnUrl = new URL("/payments/return?type=subscription&status=success", SITE_URL);
     returnUrl.searchParams.set("sub", subData.subscriptionId);
     returnUrl.searchParams.set("val", String(match.product.amount));
