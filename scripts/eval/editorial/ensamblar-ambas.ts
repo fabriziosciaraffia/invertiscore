@@ -45,6 +45,8 @@ import { lineaDistanciaMini } from "../../../src/lib/distancia-copy";
 import type { Hallazgo, HallazgoDistanciaVeredicto } from "../../../src/lib/types";
 import { buildFindingsComparativa, ctxFromResults, type FindingComparativa } from "../../../src/lib/comparativa-findings";
 import { buildNotaFlujoChart, buildNotaPatrimonioChart, notaTexto } from "../../../src/lib/comparativa-chart-notas";
+import { buildAperturaComparativa } from "../../../src/lib/comparativa-apertura";
+import type { BandaComparativa } from "../../../src/lib/engines/str-universo-santiago";
 
 const UF_FALLBACK = 38800; // mismo fallback que ai-generation-ambas-generate.ts
 
@@ -231,7 +233,17 @@ export async function ensamblarAMBAS(
       hero.ganador === "corta" ? [...miniStr, ...miniLtr] : [...miniLtr, ...miniStr],
     ),
     sinProsa
-      ? seccion("prosa (Cuál te conviene)", ["Los datos y la tabla comparativa están disponibles arriba."])
+      // Sin prosa IA el bloque ya NO muestra un placeholder que promete y no
+      // entrega: lo carga la apertura del motor (misma función que la web y el
+      // documento). El censo lo midió como D1/D2 ALTA en 7 pares.
+      ? seccion("prosa (Cuál te conviene)", [
+          buildAperturaComparativa({
+            topId: findings[0]?.id ?? "flujo",
+            topLado: findings[0]?.lado ?? "neutro",
+            banda: banda as BandaComparativa,
+            estadoHero: hero.estado,
+          }),
+        ])
       : seccion("prosa (Cuál te conviene)", [
           ai?.apertura ?? ai?.headline ?? null,
           ai?.conviene?.quienDeberiasSer ? `Quién tienes que ser: ${ai.conviene.quienDeberiasSer}` : null,

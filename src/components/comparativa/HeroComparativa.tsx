@@ -60,6 +60,14 @@ interface Props {
   // Prosa comparativa (Fase C) — integrada al hero (G1)
   ai: AIAnalysisComparativa | null;
   aiLoading: boolean;
+  /**
+   * Apertura escrita por el MOTOR (buildAperturaComparativa). Es la respuesta
+   * literal a "Cuál te conviene" y no depende de la IA: cuando no hay prosa
+   * (par sin generar, o versión vieja ocultada por el version-check) el bloque
+   * se monta igual con esto en vez del placeholder que prometía y no entregaba.
+   * Mismo patrón que el documento comparativo, que ya la afirma sin IA.
+   */
+  aperturaMotor: string;
   // Pie firma (G6)
   createdAt?: string;
   // UI · toggle integrado al header (G7). onCurrencyChange ausente ⇒ toggle oculto (print).
@@ -260,9 +268,11 @@ export function HeroComparativa(p: Props) {
               )}
             </div>
           ) : (
-            <p className="font-body text-[13px] italic m-0" style={{ color: "var(--franco-text-muted)" }}>
-              Los datos y la tabla comparativa están disponibles arriba.
-            </p>
+            // Sin prosa IA: el bloque NO se vacía ni promete de más — lo carga la
+            // apertura del motor, que responde exactamente la pregunta del título.
+            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
+              {renderProsaMono(p.aperturaMotor)}
+            </div>
           )}
         </div>
 

@@ -21,6 +21,7 @@ import type { Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
 import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
 import { buildHeroAmbas } from "@/lib/comparativa-hero-copy";
+import { buildAperturaComparativa } from "@/lib/comparativa-apertura";
 import { lineaDistanciaMini } from "@/lib/distancia-copy";
 
 type STRVerdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
@@ -142,6 +143,19 @@ export function SharedComparativaClient(p: Props) {
   const ltrDistancia = lineaDistanciaMini(buscarDistancia(p.ltrResults?.hallazgos), ltrVerdict);
   const strDistancia = lineaDistanciaMini(buscarDistancia((p.strResults as { hallazgos?: Hallazgo[] } | null)?.hallazgos), strVerdict);
 
+  // Apertura del motor (ver comparativa-client): en el share pesa más — acá la
+  // prosa vieja se OCULTA sin regenerar, así que este es el cuerpo que queda.
+  const aperturaMotor = useMemo(
+    () =>
+      buildAperturaComparativa({
+        topId: findings[0]?.id ?? "flujo",
+        topLado: findings[0]?.lado ?? "neutro",
+        banda: p.strResults?.veredictoComparativo?.banda ?? "INDIFERENTE",
+        estadoHero: hero.estado,
+      }),
+    [findings, p.strResults, hero.estado],
+  );
+
   const fechaCorta = formatFechaCorta(p.createdAt);
 
   return (
@@ -184,6 +198,7 @@ export function SharedComparativaClient(p: Props) {
             strVerdict={strVerdict}
             ai={comparativaAI}
             aiLoading={aiLoading}
+            aperturaMotor={aperturaMotor}
             createdAt={p.createdAt}
             currency={currency}
             onCurrencyChange={setCurrency}

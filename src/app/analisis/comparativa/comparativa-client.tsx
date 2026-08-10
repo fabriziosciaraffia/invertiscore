@@ -32,6 +32,7 @@ import {
 import { readVeredicto } from "@/lib/results-helpers";
 import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
 import { buildHeroAmbas } from "@/lib/comparativa-hero-copy";
+import { buildAperturaComparativa } from "@/lib/comparativa-apertura";
 import { lineaDistanciaMini } from "@/lib/distancia-copy";
 import type { Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
 
@@ -220,6 +221,19 @@ export function ComparativaClient(p: Props) {
   const ltrDistancia = lineaDistanciaMini(buscarDistancia(p.ltrResults?.hallazgos), ltrVerdict);
   const strDistancia = lineaDistanciaMini(buscarDistancia((p.strResults as { hallazgos?: Hallazgo[] } | null)?.hallazgos), strVerdict);
 
+  // Apertura del motor — cuerpo del bloque "Cuál te conviene" cuando no hay prosa
+  // IA (par sin generar o versión vieja ocultada). Misma función que el documento.
+  const aperturaMotor = useMemo(
+    () =>
+      buildAperturaComparativa({
+        topId: findings[0]?.id ?? "flujo",
+        topLado: findings[0]?.lado ?? "neutro",
+        banda: p.strResults?.veredictoComparativo?.banda ?? "INDIFERENTE",
+        estadoHero: hero.estado,
+      }),
+    [findings, p.strResults, hero.estado],
+  );
+
   // Chrome
   const footerLinks = (
     <div className="flex items-center gap-4">
@@ -310,6 +324,7 @@ export function ComparativaClient(p: Props) {
             strVerdict={strVerdict}
             ai={comparativaAI}
             aiLoading={aiLoading}
+            aperturaMotor={aperturaMotor}
             createdAt={p.createdAt}
             currency={currency}
             onCurrencyChange={setCurrency}
