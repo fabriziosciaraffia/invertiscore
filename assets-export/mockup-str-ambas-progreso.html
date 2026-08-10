@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · STR y comparativa — slot de prosa con progreso (Goal F)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --franco-bg: #0F0F0F; --franco-card: #1A1A1A; --franco-sunken: rgba(26,26,26,0.55);
+    --franco-text: #FAFAF8; --franco-text-secondary: rgba(250,250,248,0.5);
+    --franco-text-muted: rgba(250,250,248,0.35); --franco-text-tertiary: #888780;
+    --franco-border: rgba(250,250,248,0.06); --franco-border-strong: rgba(250,250,248,0.15);
+    --signal-red: #C8323C; --skeleton: rgba(250,250,248,0.06); --ink-400: #B4B2A9;
+  }
+  [data-theme="light"] {
+    --franco-bg: #F6F6F7; --franco-card: #FFFFFF; --franco-sunken: #F0F0F2;
+    --franco-text: #0F0F0F; --franco-text-secondary: #52525B; --franco-text-muted: #6B6B72;
+    --franco-text-tertiary: #6A6A71; --franco-border: #DDDDE1; --franco-border-strong: #B0B0B8;
+    --skeleton: rgba(15,15,15,0.06); --ink-400: #6E6C66;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 84px 20px 80px; background: var(--franco-bg); color: var(--franco-text);
+    font-family: "IBM Plex Sans", sans-serif; transition: background .2s, color .2s; }
+  .controls { position: fixed; top: 0; left: 0; right: 0; z-index: 20; display: flex; gap: 8px;
+    align-items: center; justify-content: center; padding: 12px; flex-wrap: wrap;
+    background: color-mix(in srgb, var(--franco-bg) 92%, transparent); backdrop-filter: blur(8px);
+    border-bottom: .5px solid var(--franco-border); }
+  .ctl { font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .08em; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+    background: var(--franco-card); color: var(--franco-text); border: .5px solid var(--franco-border-strong); }
+  .ctl.on { background: var(--franco-text); color: var(--franco-bg); }
+  .wrap { max-width: 1120px; margin: 0 auto; transition: max-width .25s; }
+  .wrap.movil { max-width: 390px; }
+  .nota { max-width: 1120px; margin: 0 auto 22px; font-size: 12.5px; line-height: 1.6; color: var(--franco-text-secondary); }
+  .nota b { color: var(--franco-text); font-weight: 500; }
+  .tag { font-family: "JetBrains Mono", monospace; font-size: 9px; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--signal-red); margin: 26px 0 6px; opacity: .75; }
+
+  .hero { border-radius: 16px; overflow: hidden; background: var(--franco-card); border: .5px solid var(--franco-border-strong); }
+  .hr { height: 1px; background: var(--franco-border); }
+  .h-f1 { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 28px 14px; }
+  .h-title { font-family: "Source Serif 4", serif; font-weight: 700; font-size: 25px; margin: 0; }
+  .h-title span { font-weight: 400; color: var(--franco-text-secondary); }
+  .h-mod { font-family: "JetBrains Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-tertiary); padding-top: 6px; }
+  .h-body { display: grid; grid-template-columns: minmax(0,52fr) minmax(0,48fr); gap: 32px; padding: 14px 28px 20px; }
+  .k-label { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-tertiary); }
+  .score-row { display: flex; align-items: center; gap: 16px; margin: 10px 0 14px; }
+  .score { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 44px; line-height: .9; }
+  .score small { font-size: 20px; font-weight: 400; color: var(--franco-text-muted); }
+  .badge { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; padding: 6px 12px; border-radius: 6px; background: var(--franco-text); color: var(--franco-bg); }
+  .preg { font-family: "Source Serif 4", serif; font-weight: 700; font-size: 22px; margin: 0 0 14px; }
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi-card { border: .5px solid var(--franco-border); border-radius: 12px; padding: 12px 14px; background: var(--franco-sunken); }
+  .kpi-card .l { font-family: "JetBrains Mono", monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: var(--franco-text-tertiary); }
+  .kpi-card .v { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 20px; margin-top: 5px; }
+
+  /* ═══ ProgresoGeneracion (idéntico al de LTR, con props propias) ═══ */
+  .slot { max-width: 65ch; }
+  .etapas { display: flex; align-items: center; margin: 0 0 10px; }
+  .etapa { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+  .etapa .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .etapa.hecha .dot { background: var(--ink-400); }
+  .etapa.activa .dot { background: var(--signal-red); animation: pulso 1.4s ease-in-out infinite; }
+  .etapa.pendiente .dot { background: transparent; border: 1px solid var(--franco-border-strong); }
+  .etapa .lbl { font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+  .etapa.hecha .lbl { color: var(--franco-text-muted); }
+  .etapa.activa .lbl { color: var(--franco-text); }
+  .etapa.pendiente .lbl { color: var(--franco-text-muted); opacity: .55; }
+  .sep { flex: 1 1 14px; min-width: 10px; height: 1px; background: var(--franco-border-strong); margin: 0 8px; }
+  .barra { display: flex; gap: 4px; height: 4px; margin: 0 0 10px; }
+  .seg { flex: 1; border-radius: 2px; background: var(--skeleton); overflow: hidden; }
+  .seg.llena { background: color-mix(in srgb, var(--franco-text) 22%, transparent); }
+  .seg.activa > i { display: block; width: 62%; height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--signal-red) 55%, transparent), color-mix(in srgb, var(--signal-red) 20%, transparent));
+    animation: avanza 2.2s ease-in-out infinite; }
+  @keyframes avanza { 0%,100% { transform: translateX(-12%); } 50% { transform: translateX(10%); } }
+  @keyframes pulso { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .55; } }
+  .tiempo { font-size: 12.5px; color: var(--franco-text-muted); margin: 0 0 12px; }
+  .sk { height: 12px; border-radius: 5px; background: var(--skeleton); animation: shimmer 1.8s ease-in-out infinite; margin-bottom: 9px; }
+  @keyframes shimmer { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .etapa.activa .dot, .seg.activa > i, .sk { animation: none !important; } }
+
+  .contexto { margin-top: 14px; border-radius: 12px; border: .5px dashed var(--franco-border-strong);
+    padding: 12px 16px; color: var(--franco-text-muted); font-size: 12px; font-style: italic; }
+
+  .wrap.movil .h-body { grid-template-columns: 1fr; }
+  .wrap.movil .h-f1, .wrap.movil .h-body { padding-left: 18px; padding-right: 18px; }
+  .wrap.movil .h-title { font-size: 21px; }
+  .wrap.movil .etapa .lbl { display: none; }
+  .wrap.movil .etapa.activa .lbl { display: inline; }
+</style>
+</head>
+<body>
+<div class="controls">
+  <button class="ctl on" id="b-1280" onclick="setVp(false)">1280</button>
+  <button class="ctl" id="b-390" onclick="setVp(true)">390</button>
+  <span style="width:14px"></span>
+  <button class="ctl" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'light' ? '' : 'light'">Tema</button>
+</div>
+
+<div class="nota">
+  <b>Contrato Goal F (F3) — STR y comparativa heredan ProgresoGeneracion</b> (mismo componente
+  del hero LTR, con etapas y copy propios). <b>Sin dos-zonas ni BloqueEsperaInforme acá</b>: la
+  página STR es 100% motor salvo el slot de prosa (pirámide persistida, drawers null-tolerantes
+  que abren con contenido motor y suman su sección IA al llegar), y la comparativa es igual
+  (tabla/charts/pirámide diferencial son motor). Forzar siluetas sería teatro. Copys calibrados
+  con pipeline_timing: <b>STR "entre dos y cuatro minutos"</b> (n=1 real: 222s con el peor caso
+  de 3 quality-tries + budget-retry — se recalibra con datos, nunca hacia arriba del observado) ·
+  <b>AMBAS "menos de un minuto"</b> (P50 9,6s · máx 12,5s · n=4 — holgado a propósito).
+</div>
+
+<div class="wrap" id="wrap">
+
+  <div class="tag">STR · hero renta corta — slot de prosa en carga (el resto de la página, intacto y vivo)</div>
+  <div class="hero">
+    <div class="h-f1">
+      <h1 class="h-title">Renta Corta — Marín 0281 <span>· Santiago</span></h1>
+      <div class="h-mod">Análisis renta corta</div>
+    </div>
+    <div class="hr"></div>
+    <div class="h-body">
+      <div>
+        <span class="k-label">Franco Score</span>
+        <div class="score-row"><div class="score">64<small>/100</small></div><span class="badge">Ajusta supuestos</span></div>
+        <h2 class="preg">¿Conviene operarlo en renta corta?</h2>
+        <div class="slot">
+          <div class="etapas">
+            <div class="etapa hecha"><span class="dot"></span><span class="lbl">Revisando tarifa y ocupación</span></div>
+            <div class="sep"></div>
+            <div class="etapa activa"><span class="dot"></span><span class="lbl">Contrastando con la renta larga</span></div>
+            <div class="sep"></div>
+            <div class="etapa pendiente"><span class="dot"></span><span class="lbl">Redactando</span></div>
+          </div>
+          <div class="barra"><div class="seg llena"></div><div class="seg activa"><i></i></div><div class="seg"></div></div>
+          <p class="tiempo">Franco está escribiendo este análisis — suele tomar entre dos y cuatro minutos.</p>
+          <div class="sk" style="width:70%"></div>
+          <div class="sk" style="width:94%"></div>
+          <div class="sk" style="width:85%"></div>
+          <div class="sk" style="width:52%"></div>
+        </div>
+      </div>
+      <div>
+        <div class="kpis">
+          <div class="kpi-card"><div class="l">ADR estimado</div><div class="v">$68.500</div></div>
+          <div class="kpi-card"><div class="l">Ocupación</div><div class="v">71%</div></div>
+          <div class="kpi-card"><div class="l">Flujo mensual</div><div class="v" style="color:var(--signal-red)">−$112.000</div></div>
+          <div class="kpi-card"><div class="l">vs renta larga</div><div class="v">+18%</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="contexto">Debajo: EjesAplicados + pirámide STR (persistida, motor) + simulación + zona — todo funcional
+  durante la carga; los drawers abren con su contenido motor y suman la sección IA cuando la prosa llega.</div>
+
+  <div class="tag">Comparativa · hero AMBAS — slot de prosa en carga (~10 segundos reales)</div>
+  <div class="hero">
+    <div class="h-f1">
+      <h1 class="h-title">¿Larga o corta? <span>· Marín 0281</span></h1>
+      <div class="h-mod">Comparativa</div>
+    </div>
+    <div class="hr"></div>
+    <div class="h-body">
+      <div>
+        <span class="k-label">Recomendación</span>
+        <div class="score-row"><span class="badge">Renta larga</span></div>
+        <h2 class="preg">¿Quién deberías ser tú para cada camino?</h2>
+        <div class="slot">
+          <div class="etapas">
+            <div class="etapa activa"><span class="dot"></span><span class="lbl">Comparando las dos rentas</span></div>
+            <div class="sep"></div>
+            <div class="etapa pendiente"><span class="dot"></span><span class="lbl">Redactando la recomendación</span></div>
+          </div>
+          <div class="barra"><div class="seg activa"><i></i></div><div class="seg"></div></div>
+          <p class="tiempo">Franco está comparando las dos rentas — suele estar listo en menos de un minuto.</p>
+          <div class="sk" style="width:82%"></div>
+          <div class="sk" style="width:90%"></div>
+          <div class="sk" style="width:58%"></div>
+        </div>
+      </div>
+      <div>
+        <div class="kpis">
+          <div class="kpi-card"><div class="l">Flujo larga</div><div class="v" style="color:var(--signal-red)">−$86.550</div></div>
+          <div class="kpi-card"><div class="l">Flujo corta</div><div class="v" style="color:var(--signal-red)">−$112.000</div></div>
+          <div class="kpi-card"><div class="l">Esfuerzo corta</div><div class="v">8-12 h/sem</div></div>
+          <div class="kpi-card"><div class="l">Capital extra corta</div><div class="v">UF 120</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="contexto">Debajo: tabla side-by-side + charts de flujo y patrimonio + pirámide diferencial — todo motor,
+  vivo durante los ~10s de la prosa.</div>
+
+</div>
+
+<script>
+  function setVp(movil) {
+    document.getElementById("wrap").classList.toggle("movil", movil);
+    document.getElementById("b-1280").classList.toggle("on", !movil);
+    document.getElementById("b-390").classList.toggle("on", movil);
+  }
+</script>
+</body>
+</html>

@@ -8,7 +8,7 @@ import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engin
 import { fmtUF } from "@/components/analysis/utils";
 import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
-import { ProsaSkeleton } from "@/components/analysis/ProsaSkeleton";
+import { ProgresoGeneracion, ETAPAS_GENERACION_STR, COPY_TIEMPO_STR } from "@/components/analysis/ProsaSkeleton";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { IndiceRow } from "@/components/analysis/IndiceHallazgos";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
@@ -289,7 +289,9 @@ export function HeroSTR({
             {pregunta}
           </h2>
           <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
-            {respuesta ? renderProsaMono(respuesta) : aiLoading ? <ProsaSkeleton /> : null}
+            {/* Goal F: la espera hereda ProgresoGeneracion (E.2) con etapas y
+                copy STR propios — skeleton didáctico en vez del mensaje fijo. */}
+            {respuesta ? renderProsaMono(respuesta) : aiLoading ? <ProgresoGeneracion etapas={ETAPAS_GENERACION_STR} copyTiempo={COPY_TIEMPO_STR} /> : null}
             {reencuadre && <div className="mt-3">{renderProsaMono(reencuadre)}</div>}
           </div>
         </div>

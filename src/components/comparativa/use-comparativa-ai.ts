@@ -26,32 +26,50 @@ export function useComparativaAI(
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch("/api/analisis/comparativa/ai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ltrId, strId }),
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const d = await res.json().catch(() => ({}));
-          throw new Error(d.error || `HTTP ${res.status}`);
-        }
-        return res.json() as Promise<AIAnalysisComparativa>;
+
+    // Goal F (adelanto autorizado, independiente del ciclo del hero AMBAS): el
+    // error dejó de ser terminal — reintento AUTOMÁTICO dentro del hook (hasta
+    // 2, con backoff), sin cambios en ningún consumidor. La generación es corta
+    // (P50 9,6s medido en pipeline_timing), así que un fallo suele ser red
+    // transitoria y el reintento la cubre; recién el tercer fallo declara error.
+    const MAX_INTENTOS = 3;
+    const BACKOFF_MS = [0, 4000, 8000];
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const intentar = (intento: number) => {
+      fetch("/api/analisis/comparativa/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ltrId, strId }),
       })
-      .then((data) => {
-        if (!cancelled) {
-          setAi(data);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
+        .then(async (res) => {
+          if (!res.ok) {
+            const d = await res.json().catch(() => ({}));
+            throw new Error(d.error || `HTTP ${res.status}`);
+          }
+          return res.json() as Promise<AIAnalysisComparativa>;
+        })
+        .then((data) => {
+          if (!cancelled) {
+            setAi(data);
+            setLoading(false);
+          }
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          if (intento + 1 < MAX_INTENTOS) {
+            timer = setTimeout(() => intentar(intento + 1), BACKOFF_MS[intento + 1]);
+            return;
+          }
           setError(err.message || "Error generando análisis");
           setLoading(false);
-        }
-      });
+        });
+    };
+
+    intentar(0);
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
   }, [ai, ltrId, strId, canGenerate]);
 

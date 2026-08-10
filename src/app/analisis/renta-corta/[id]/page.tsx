@@ -221,6 +221,9 @@ export default async function STRResultPage({
     userCredits,
     welcomeAvailable,
     aiAnalysisInitial: strAiFresh ? data.ai_analysis : null,
+    // Goal F: prosa persistida con versión vieja → el cliente NO pollea (el
+    // status la devolvería como ready) y regenera directo (stale-regen, gratis).
+    aiStaleInitial: !!strAiPersisted && !strAiFresh,
     subordinatedHref,
     showCtaWelcome,
   };
