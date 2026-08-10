@@ -15,11 +15,17 @@ import {
 } from "@/lib/api-helpers/analisis-pipeline";
 import { desdeBodyStr } from "@/lib/plausibilidad";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
+import Anthropic from "@anthropic-ai/sdk";
+import { generarYPersistirProsaStr } from "@/lib/str-prosa-persist";
 
-// Goal C: techo explícito. Sin IA en este request; el riesgo es el fetch a
-// AirROI (sin timeout propio) — 120s corta el cuelgue indefinido sin matar un
-// cache-miss lento legítimo.
-export const maxDuration = 120;
+const anthropic = new Anthropic();
+
+// Goal F: techo explícito 300s — desde este goal la generación de prosa STR
+// corre en el waitUntil de ESTA invocación (patrón LTR, Goal C), así que el
+// techo pasa de 120 (solo AirROI) a 300. ACOPLADO al criterio de "generación
+// muerta" del ai-status STR (UMBRAL_MUERTA_MS = 6 min > 300s): si subes esto,
+// sube el umbral allá.
+export const maxDuration = 300;
 
 // ─── POST handler ──────────────────────────────────────
 
@@ -134,6 +140,25 @@ export async function POST(request: Request) {
         prepaidNeedClaim,
       });
       data.is_premium = true;
+
+      // Goal F — generación de prosa en BACKGROUND (patrón LTR, Goal C): corre
+      // en el waitUntil de esta invocación, el response no espera. El cliente
+      // la recupera por polling a /short-term/[id]/ai-status; si esto muere,
+      // el rescate con dictamen server regenera. Un fallo acá NUNCA rompe la
+      // creación (el helper captura y registra en pipeline_timing).
+      {
+        const analysisRow = data as Record<string, unknown>;
+        const analysisIdBg = data.id as string;
+        waitUntil(
+          generarYPersistirProsaStr({
+            analysisId: analysisIdBg,
+            analysis: analysisRow,
+            supabase: dbClient,
+            anthropic,
+            trigger: "background",
+          }).then(() => undefined),
+        );
+      }
 
       // Calibración v1 — captura del operador del edificio (opcional).
       // Falla silenciosamente si `operadores_str_reportados` aún no existe.
