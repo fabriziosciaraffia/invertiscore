@@ -176,6 +176,10 @@ function buildFlujo(x: FindingsCtx, c: Currency, uf: number): FindingComparativa
   const ambasNegativas = x.ltrFlujoMensual < 0 && x.strFlujoMensual < 0;
   const ambasPositivas = x.ltrFlujoMensual >= 0 && x.strFlujoMensual >= 0;
   const cortoGana = lado === "str";
+  // Lado que gana ANTES del dividendo (fila 1 del puente). Puede no coincidir con
+  // el que gana en caja (fila 2) — pasa en 3 de los 71 pares del parque.
+  const deltaNOI = Math.round(x.strNOIMensual - x.ltrNOIMensual);
+  const ladoNOI: FindingLado = deltaNOI > 0 ? "str" : "ltr";
   // C5: titular AFIRMA la conclusión decisional en positivo, legible sin leer el cuerpo.
   const titular = ambasNegativas
     ? `Este depto pide plata de tu bolsillo en las dos — con ${gana} pones menos`
@@ -201,7 +205,17 @@ function buildFlujo(x: FindingsCtx, c: Currency, uf: number): FindingComparativa
         { label: "Lo que renta antes del dividendo", ltr: money(x.ltrNOIMensual, c, uf), str: money(x.strNOIMensual, c, uf), delta: signed(x.strNOIMensual - x.ltrNOIMensual, c, uf) },
         { label: "Lo que queda ya con el dividendo", ltr: signed(x.ltrFlujoMensual, c, uf), str: signed(x.strFlujoMensual, c, uf), delta: signed(delta, c, uf) },
       ],
-      nota: `Renta corta parte con menos renta operativa y encima carga un dividendo mayor —el amoblamiento y los meses de estabilización suman capital a financiar—, así que la diferencia de caja termina en ${money(abs, c, uf)} al mes a favor de ${gana}.`,
+      // La nota se DERIVA de las dos filas de arriba. La versión fija afirmaba que
+      // "renta corta parte con menos renta operativa y encima carga un dividendo
+      // mayor": medido sobre los 71 pares del parque, eso es falso en los 71 —
+      // en 38 la corta renta MÁS antes del dividendo, y en ninguno su dividendo
+      // resulta mayor (el amoblamiento entra como capital propio, no como deuda).
+      // Acá solo se lee lo que las filas muestran, sin inventarle causa.
+      nota: deltaNOI === 0
+        ? `Las dos rentan lo mismo antes del dividendo; lo que separa la caja es cuánto se lleva el dividendo en cada una: ${money(abs, c, uf)} al mes a favor de ${gana}.`
+        : ladoNOI === lado
+          ? `Las dos filas apuntan al mismo lado: ${gana} renta ${money(Math.abs(deltaNOI), c, uf)} más al mes antes del dividendo, y también es la que deja más después de pagarlo. La diferencia de caja termina en ${money(abs, c, uf)} al mes a favor de ${gana}.`
+          : `Acá las dos filas no apuntan al mismo lado: ${nombreLado(ladoNOI)} renta ${money(Math.abs(deltaNOI), c, uf)} más al mes antes del dividendo, pero ${gana} es la que deja más en tu bolsillo después de pagarlo, porque el dividendo y los gastos pesan distinto en cada una. La diferencia de caja termina en ${money(abs, c, uf)} al mes a favor de ${gana}.`,
       links: [
         { label: "Ver el flujo mes a mes del corto", hijo: "str", seccion: "estacionalidad" },
         { label: "Ver el flujo de renta larga", hijo: "ltr", seccion: "flujo" },
@@ -302,16 +316,21 @@ function buildPatrimonio(x: FindingsCtx, c: Currency, uf: number): FindingCompar
     id: "patrimonio",
     kicker: "PATRIMONIO A 10 AÑOS",
     // C5: titular = el remate decisional (traído del drawer). Sin triple repetición aguas abajo.
+    // La card habla del ACTIVO (valor − deuda) y el gráfico de la riqueza YA
+    // descontado lo que pones del bolsillo: son dos cifras distintas con el mismo
+    // apellido. Medido: en 61 de 71 pares la card decía "no decide" mientras el
+    // gráfico mostraba una brecha >$1MM llamada "la decisión". Ahora la card
+    // nombra lo suyo y ANTICIPA el puente en vez de cerrar la puerta.
     titular: iguales
-      ? "El patrimonio no decide: es el mismo con las dos, la decisión está en el flujo y el esfuerzo"
-      : "El patrimonio casi no separa a las dos: la decisión está en el flujo y el esfuerzo",
+      ? "El activo termina igual con las dos: lo que cambia es cuánto pones para llegar ahí"
+      : "El activo casi no separa a las dos: lo que cambia es cuánto pones para llegar ahí",
     kpi: money(lPat, c, uf),
     kpiRed: false,
     ksub: iguales ? "IGUAL EN LAS DOS · A 10 AÑOS" : `LARGA ${money(lPat, c, uf)} · CORTA ${money(sPat, c, uf)}`,
     // C5: concepto → evidencia (mismo número) → por qué. El "entonces qué" ya está en el titular; no repetir.
     cuerpo: iguales
-      ? `El patrimonio a 10 años es lo que te queda si vendes y saldas el crédito: acá, ${money(lPat, c, uf)} en las dos modalidades. Es idéntico porque la propiedad se valoriza y la deuda se amortiza igual, la arriendes corto o largo — arrendar es lo que haces con el activo, no lo que lo construye.`
-      : `El patrimonio a 10 años es lo que te queda si vendes y saldas el crédito: ${money(lPat, c, uf)} en renta larga y ${money(sPat, c, uf)} en renta corta. La propiedad se valoriza y la deuda se amortiza casi igual en las dos, así que la modalidad apenas mueve esta cifra.`,
+      ? `El patrimonio a 10 años es lo que vale la propiedad menos lo que debes: acá, ${money(lPat, c, uf)} en las dos modalidades. Es idéntico porque la propiedad se valoriza y la deuda se amortiza igual, la arriendes corto o largo — arrendar es lo que haces con el activo, no lo que lo construye. Por eso esta cifra no separa a las dos: lo que sí las separa es cuánto sale de tu bolsillo por el camino, y eso lo ves en el gráfico de patrimonio y riqueza.`
+      : `El patrimonio a 10 años es lo que vale la propiedad menos lo que debes: ${money(lPat, c, uf)} en renta larga y ${money(sPat, c, uf)} en renta corta. La propiedad se valoriza y la deuda se amortiza casi igual en las dos, así que la modalidad apenas mueve esta cifra. Lo que sí las separa es cuánto sale de tu bolsillo por el camino, y eso lo ves en el gráfico de patrimonio y riqueza.`,
     lado: "neutro",
     decisividad: 0.3,
     procedencia: "Patrimonio neto al año 10 de cada modalidad (valor de la propiedad menos la deuda)",
@@ -321,7 +340,7 @@ function buildPatrimonio(x: FindingsCtx, c: Currency, uf: number): FindingCompar
       filas: [
         { label: "Patrimonio neto al año 10 (valor − deuda)", ltr: money(lPat, c, uf), str: money(sPat, c, uf), delta: signed(sPat - lPat, c, uf) },
       ],
-      nota: `Los dos lados dependen del precio de compra y del crédito —no del tipo de arriendo—, por eso el resultado es ${iguales ? "el mismo" : "casi el mismo"}. La consecuencia para tu decisión es directa: al elegir entre las dos, esta cifra no aporta nada. Compáralas por el flujo mensual y por las horas que te pide cada una — ahí, y no acá, se juega cuál conviene.`,
+      nota: `Los dos lados dependen del precio de compra y del crédito —no del tipo de arriendo—, por eso el resultado es ${iguales ? "el mismo" : "casi el mismo"}. Ojo con la lectura: esta cifra es el activo, todavía sin descontar lo que pusiste de tu bolsillo mes a mes. Descontarlo sí abre una diferencia entre las dos, y está en el gráfico de patrimonio y riqueza — junto con el flujo mensual y las horas que pide cada una, ahí se juega cuál conviene.`,
       links: [
         { label: "Ver la proyección de renta larga", hijo: "ltr", seccion: "patrimonio" },
         { label: "Ver la proyección de renta corta", hijo: "str", seccion: "patrimonio" },

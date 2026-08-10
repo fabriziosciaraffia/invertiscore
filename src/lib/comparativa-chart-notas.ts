@@ -17,6 +17,7 @@ import type { FullAnalysisResult } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { fmtMoney } from "@/components/analysis/utils";
 import { hayAsimetriaDeEntrega } from "@/lib/comparativa-patrimonio";
+import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
 
 export interface NotaSegmento {
   t: string;
@@ -35,6 +36,43 @@ export interface NotaPatrimonioChart {
   kicker: string;        // "AL AÑO N · …"
   cuerpo: string;        // párrafo principal (sin tramos mono en el render actual)
   glosa: NotaSegmento[]; // línea "patrimonio bruto / comisión de venta"
+}
+
+// ── Puente esfuerzo-vs-plata (D11) ───────────────────────────────────────────
+// Cuando la riqueza favorece a la corta pero el veredicto NO va a la corta, la
+// nota afirmaba "esa brecha es la decisión" empujando contra el veredicto que el
+// usuario acaba de leer, sin ninguna pieza que reconciliara las dos cosas. Acá
+// se hace la cuenta que faltaba: la ventaja repartida entre las horas que el
+// corto pide (auto-gestión) o contra lo que cuesta delegarlas (administrador).
+// Rango 8-12 hrs/semana = el mismo dato canónico que usa el finding de gestión.
+const HRS_SEMANA_MIN = 8;
+const HRS_SEMANA_MAX = 12;
+
+function buildPuenteEsfuerzo(
+  strResults: ShortTermResult,
+  brechaAFavorCorta: number,
+  anios: number,
+  currency: Currency,
+  ufValue: number,
+): string {
+  const m = (v: number) => fmtMoney(v, currency, ufValue);
+  const modoGestion = strResults.veredictoComparativo?.flipGestion?.modoActual ?? "auto";
+
+  if (modoGestion === "admin") {
+    // Con administrador no pones las horas: pagas por no ponerlas. El costo de
+    // delegar sale de los dos modos que el motor ya calcula.
+    const costoMensual = (strResults.comparativa?.str_auto?.noiMensual ?? 0) - (strResults.comparativa?.str_admin?.noiMensual ?? 0);
+    if (costoMensual <= 0) return "";
+    const costoHorizonte = costoMensual * 12 * anios;
+    return ` Ojo con de dónde sale esa ventaja: cuenta con que un administrador opere el corto, y su comisión se lleva ${m(costoHorizonte)} en los mismos ${anios} años. Puesto uno contra otro, la ventaja se achica hasta donde ya no manda en la decisión.`;
+  }
+
+  const horasMin = HRS_SEMANA_MIN * 52 * anios;
+  const horasMax = HRS_SEMANA_MAX * 52 * anios;
+  const porHoraAlto = brechaAFavorCorta / horasMin;
+  const porHoraBajo = brechaAFavorCorta / horasMax;
+  if (!Number.isFinite(porHoraAlto) || porHoraAlto <= 0) return "";
+  return ` Esa ventaja no es gratis: operar el corto tú mismo son entre ${horasMin.toLocaleString("es-CL")} y ${horasMax.toLocaleString("es-CL")} horas en ${anios} años. Repartida ahí, la diferencia queda entre ${m(porHoraBajo)} y ${m(porHoraAlto)} por cada hora que le pones — con eso en la mano, el veredicto de arriba deja de sonar contradictorio.`;
 }
 
 /**
@@ -73,13 +111,24 @@ export function buildNotaPatrimonioChart(
 
   const m = (v: number) => fmtMoney(v, currency, ufValue);
 
+  // D11 — el puente solo aparece cuando hay tensión REAL: la riqueza favorece a
+  // la corta y el veredicto de modalidad no la corona. Si ambos apuntan al mismo
+  // lado no hay nada que reconciliar y la nota se queda corta, como estaba.
+  const recomendacion = deriveRecomendacionFallback(strResults);
+  const brechaFavoreceCorta = brecha < 0;
+  const hayTension = brechaFavoreceCorta && recomendacion !== "STR_VENTAJA_CLARA";
+  const puenteEsfuerzo =
+    !asimetria && hayTension
+      ? buildPuenteEsfuerzo(strResults, Math.abs(brecha), lastYear, currency, ufValue)
+      : "";
+
   return {
     kicker: asimetria
       ? `AL AÑO ${lastYear} · SOLO RENTA LARGA`
       : `AL AÑO ${lastYear} · EL ACTIVO EMPATA, EL CAMINO NO`,
     cuerpo: asimetria
       ? `Acá va solo la renta larga: ${m(activoFinal)} de activo neto de deuda al año ${lastYear}, y ${m(riquezaLTRFinal)} descontando lo que pones de tu bolsillo por el camino. La renta corta no se dibuja porque este depto todavía no se entrega: con renta larga el crédito recién empieza a correr cuando lo recibas, y su proyección aún no descuenta esa espera. Superponerlas mostraría una brecha de punto de partida, no de modalidad.`
-      : `El depto se aprecia igual y la deuda se amortiza igual, arriendes corto o largo: ${m(activoFinal)} de activo neto de deuda en las dos modalidades. Lo que cambia es cuánto pones de tu bolsillo por el camino. Descontándolo, terminas con ${m(riquezaLTRFinal)} en renta larga y ${m(riquezaSTRFinal)} en renta corta — ${m(Math.abs(brecha))} de diferencia a favor de la ${ganadora}. Esa brecha es la decisión, no el activo.`,
+      : `El depto se aprecia igual y la deuda se amortiza igual, arriendes corto o largo: ${m(activoFinal)} de activo neto de deuda en las dos modalidades. Lo que cambia es cuánto pones de tu bolsillo por el camino. Descontándolo, terminas con ${m(riquezaLTRFinal)} en renta larga y ${m(riquezaSTRFinal)} en renta corta — ${m(Math.abs(brecha))} de diferencia a favor de la ${ganadora}. Eso es lo que te queda descontando lo que pusiste: la otra cara de la misma compra, no un patrimonio distinto.${puenteEsfuerzo}`,
     glosa: comisionVentaFinal > 0
       ? [
           { t: "Es patrimonio bruto: el activo menos la deuda. Si vendes, la comisión de venta (2%) resta " },
@@ -114,15 +163,53 @@ export function buildNotaFlujoChart(
 
   const m = (v: number) => fmtMoney(v, currency, ufValue);
 
+  // Voz de las cards: con flujo negativo se dice "pones $X", nunca "$-X".
+  // fmtMoney deja el signo dentro del monto ("$-206.961") y contradecía a la card
+  // hermana, que en el mismo caso dice "pones $206.961" (68 de 71 pares del
+  // parque tienen algún flujo negativo). fmtMoney no se toca: lo usa medio
+  // producto; se corrige la voz acá, que es donde vive la contradicción.
+  const pone = (v: number) => m(Math.abs(v));
+  const negL = ltrFlujo < 0;
+  const negProm = promedioSTR < 0;
+  // Sin signo, el mes MEJOR y el PEOR se ordenan al revés: con flujos negativos
+  // el máximo (menos negativo) es el mes bueno. Se nombran por lo que son, así el
+  // rango se lee de menor a mayor esfuerzo en vez de "entre $193.462 y $97.870".
+  const ambosNeg = maxSTR < 0;
+  const ambosPos = minSTR >= 0;
+
+  const rangoSegs: NotaSegmento[] = ambosNeg
+    ? [
+        { t: " Por día pones entre " },
+        { t: pone(maxSTR), mono: true },
+        { t: " en el mejor mes y " },
+        { t: pone(minSTR), mono: true },
+        { t: " en el peor" },
+      ]
+    : ambosPos
+      ? [
+          { t: " Por día te deja entre " },
+          { t: pone(minSTR), mono: true },
+          { t: " en el peor mes y " },
+          { t: pone(maxSTR), mono: true },
+          { t: " en el mejor" },
+        ]
+      : [
+          { t: " Por día va desde poner " },
+          { t: pone(minSTR), mono: true },
+          { t: " en el peor mes hasta quedarte con " },
+          { t: pone(maxSTR), mono: true },
+          { t: " en el mejor" },
+        ];
+
   return [
-    { t: "LTR mantiene " },
-    { t: m(ltrFlujo), mono: true },
-    { t: " casi constante mes a mes. STR fluctúa entre " },
-    { t: m(minSTR), mono: true },
-    { t: " y " },
-    { t: m(maxSTR), mono: true },
-    { t: ` (${m(rangoSTR)} de rango) con promedio ` },
-    { t: m(promedioSTR), mono: true },
-    { t: ". La estacionalidad de Santiago (peak julio · valle febrero) exige fondo de reserva 3-4 meses si vas por STR." },
+    // Siglas fuera (lector-30%): el usuario no sabe qué es "LTR"/"STR".
+    { t: negL ? "Arrendarlo por mes te pide " : "Arrendarlo por mes te deja " },
+    { t: pone(ltrFlujo), mono: true },
+    { t: negL ? " de tu bolsillo casi todos los meses, parejo." : " casi constante mes a mes." },
+    ...rangoSegs,
+    { t: ` — ${m(rangoSTR)} de diferencia — con un promedio de ` },
+    { t: pone(promedioSTR), mono: true },
+    { t: negProm ? " de tu bolsillo." : " a tu favor." },
+    { t: " La temporada manda: julio llena y febrero vacía, así que arrendar por día pide un colchón de 3 a 4 meses de gastos guardado." },
   ];
 }
