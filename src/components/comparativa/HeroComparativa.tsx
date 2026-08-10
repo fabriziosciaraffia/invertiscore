@@ -17,7 +17,7 @@ import type { AIAnalysisComparativa } from "@/lib/types";
 import type { FindingComparativa } from "@/lib/comparativa-findings";
 import { fmtUF } from "@/components/analysis/utils";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
-import { ProsaSkeleton, SkeletonLine } from "@/components/analysis/ProsaSkeleton";
+import { ProgresoGeneracion, ETAPAS_GENERACION_AMBAS, COPY_TIEMPO_AMBAS, SkeletonLine } from "@/components/analysis/ProsaSkeleton";
 import {
   type GanadorMetodo,
   type HeroAmbas,
@@ -238,7 +238,11 @@ export function HeroComparativa(p: Props) {
           </p>
 
           {p.aiLoading && !p.ai ? (
-            <ProsaSkeleton />
+            /* Goal F3-c: la espera hereda ProgresoGeneracion (E.2) con etapas y
+               copy AMBAS propios. El segundo slot (cierre-condición, dentro de
+               "La posición de Franco") conserva su SkeletonLine: un solo
+               indicador de trabajo por hero — nada de avisos duplicados. */
+            <ProgresoGeneracion etapas={ETAPAS_GENERACION_AMBAS} copyTiempo={COPY_TIEMPO_AMBAS} />
           ) : p.ai ? (
             <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
               {/* Apertura (motor) como lead — mismo formato de prosa que los

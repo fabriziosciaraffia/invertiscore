@@ -98,6 +98,21 @@ export const ETAPAS_GENERACION_STR: EtapaProgreso[] = [
 export const COPY_TIEMPO_STR =
   "Franco está escribiendo este análisis — suele tomar entre dos y cuatro minutos.";
 
+/** Etapas AMBAS (Goal F3-c). Solo 2: la prosa comparativa es una llamada corta
+ *  (P50 11,1s medido en pipeline_timing, n=6 con el prompt v3) — tres etapas
+ *  serían teatro. Trigger a 5s ≈ mitad del P50. */
+export const ETAPAS_GENERACION_AMBAS: EtapaProgreso[] = [
+  { label: "Comparando las dos rentas", desdeMs: 0 },
+  { label: "Redactando la recomendación", desdeMs: 5000 },
+];
+
+/** Copy AMBAS calibrado a pipeline_timing: P50 11,1s · máx 12,5s (n=6, ya con
+ *  el bump de PROMPT_VERSION_AMBAS a 3 — la versión no movió la duración).
+ *  "Menos de un minuto" deja 5× de holgura sobre el máximo observado sin
+ *  prometer una precisión que n=6 no sostiene. Recalibrar solo hacia abajo. */
+export const COPY_TIEMPO_AMBAS =
+  "Franco está comparando las dos rentas — suele estar listo en menos de un minuto.";
+
 export function ProgresoGeneracion({
   etapas = ETAPAS_GENERACION_LTR,
   copyTiempo = COPY_TIEMPO_LTR,
