@@ -84,6 +84,20 @@ export const ETAPAS_GENERACION_LTR: EtapaProgreso[] = [
 export const COPY_TIEMPO_LTR =
   "Franco está escribiendo este análisis — suele tomar alrededor de dos minutos.";
 
+/** Etapas STR (Goal F). Triggers conservadores contra el peor caso observado
+ *  (222s con 3 quality-tries + budget-retry). */
+export const ETAPAS_GENERACION_STR: EtapaProgreso[] = [
+  { label: "Revisando tarifa y ocupación", desdeMs: 0 },
+  { label: "Contrastando con la renta larga", desdeMs: 15000 },
+  { label: "Redactando", desdeMs: 45000 },
+];
+
+/** Copy STR calibrado a pipeline_timing (n=1 real: 222s, el peor caso completo
+ *  — rango ancho a propósito; FLAGGED para recalibrar hacia ABAJO con n
+ *  decente, nunca hacia arriba). */
+export const COPY_TIEMPO_STR =
+  "Franco está escribiendo este análisis — suele tomar entre dos y cuatro minutos.";
+
 export function ProgresoGeneracion({
   etapas = ETAPAS_GENERACION_LTR,
   copyTiempo = COPY_TIEMPO_LTR,

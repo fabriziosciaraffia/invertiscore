@@ -814,7 +814,7 @@ export function scanStrDrift(ai: unknown): string[] { return [...scanStrHardDrif
 
 // Guard de cifras: extraído a módulo compartido al portarlo a LTR (rama
 // prosa-no-recalcula-ltr). Se re-exporta para los consumidores existentes.
-import { cifrasFueraDeInput } from "./cifras-guard";
+import { cifrasFueraDeInput, empeoraCifras } from "./cifras-guard";
 export { cifrasFueraDeInput };
 
 /** Secciones sobre presupuesto (por un factor de tolerancia). Devuelve [path, palabras, máximo]. */
@@ -1040,36 +1040,82 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
 
   if (!best) throw new Error("generateStrProse: ningún intento parseó JSON válido");
 
-  // FASE 2 — reintento ÚNICO de presupuesto (patrón PLANC-BUDGET). Los techos son
-  // longitud sana observada; se enforca SOLO el desborde grosero (>1.3× del techo). 1
-  // reintento, se acepta si mejora y no reintrodujo HARD drift. Barato: el desborde
-  // grosero es raro con los techos recalibrados. No corre si el mejor aún tiene HARD
-  // drift (ese problema domina y lo captura la invariante de leaks).
+  // FASE 2 — reintento QUIRÚRGICO de presupuesto (Goal F, patrón Goal D). Antes el
+  // retry regeneraba el JSON COMPLETO (~12-14k tokens de input + ~3k de output,
+  // ~50s) para acortar campos puntuales. Ahora reescribe SOLO los campos sobre
+  // presupuesto: cada uno es prosa autocontenida de su drawer (paths seccion.campo
+  // de SECTION_BUDGETS_STR) — sin costura alguna, ni siquiera la apertura del LTR.
+  // Se enforca SOLO el desborde grosero (>1.3× del techo), 1 reintento, y se
+  // acepta bajo el MISMO estándar de antes (menos campos desbordados, sin hard
+  // drift ni voz dura nuevos) + el invariante de cifras delegado al módulo
+  // compartido (empeoraCifras, cifras-guard.ts). Fallback: conservar el previo
+  // (conducta de siempre — STR no tiene trim determinístico y crearlo cambiaría
+  // el estándar). No corre si el mejor aún tiene HARD drift.
   const grossOf = (ai: AIAnalysisSTRv2): { path: string; wc: number; max: number }[] =>
     sectionsOverBudget(ai as unknown as Record<string, unknown>, 1.3);
   const grossBest = grossOf(best);
   if (grossBest.length > 0 && scanStrHardDrift(best).length === 0) {
-    log(`[STR-BUDGET-RETRY] ${grossBest.length} campo(s) >1.3× techo (${grossBest.map((o) => `${o.path}:${o.wc}/${o.max}`).join(", ")}) — 1 reintento`);
-    const correctivo = `\n\n⚠️ CORRECCIÓN DE EXTENSIÓN: estos campos superan su máximo de palabras: ${grossBest.map((o) => `${o.path} (${o.wc}, máx ${o.max})`).join("; ")}. Recórtalos a su techo desarrollando UN solo matiz por campo — la card ya mostró el dato, el drawer profundiza sin repetir. Reescribe el JSON COMPLETO respetando la doctrina §0-§14 y los máximos del §13.`;
-    try {
-      const msg = await reg.medir("budget-retry", CLAUDE_MODEL, () => anthropic.messages.create({
-        model: CLAUDE_MODEL,
-        max_tokens: 8000,
-        messages: [{ role: "user", content: userPrompt + correctivo }],
-        system: SYSTEM_STR_CACHED,
-      }));
-      acumularUsage(usage, msg);
-      usedTries += 1;
-      const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
-      const retryAi = parseStrJson(rawText);
-      if (retryAi && scanStrHardDrift(retryAi).length === 0 && vozDura(retryAi).length === 0 && grossOf(retryAi).length < grossBest.length) {
-        log(`[STR-BUDGET-RETRY] retry mejoró: ${grossBest.length}→${grossOf(retryAi).length} campo(s) >1.3× — aceptado`);
-        best = retryAi;
-      } else {
-        log(`[STR-BUDGET-RETRY] retry no mejoró o reintrodujo drift — conservo el previo`);
+    log(`[STR-BUDGET-RETRY] ${grossBest.length} campo(s) >1.3× techo (${grossBest.map((o) => `${o.path}:${o.wc}/${o.max}`).join(", ")}) — retry quirúrgico`);
+    const bestRec = best as unknown as Record<string, Record<string, unknown>>;
+    const campos = grossBest
+      .map((o) => {
+        const [sec, field] = o.path.split(".");
+        const actual = bestRec[sec]?.[field];
+        return { ...o, sec, field, actual: typeof actual === "string" ? actual : "" };
+      })
+      .filter((c) => c.actual);
+    if (campos.length > 0) {
+      const promptQuirurgico = `Estás corrigiendo SOLO ${campos.length} campo(s) de un análisis de renta corta YA generado y validado. El resto de la prosa no se toca y no lo verás.
+
+${campos.map((c) => `CAMPO ${c.path} — mide ${c.wc} palabras, máximo ${c.max}:\n${c.actual}`).join("\n\n")}
+
+TU TAREA: comprime cada campo a su máximo conservando el MISMO contenido — mismas cifras (ninguna cifra nueva), UN solo matiz por campo; la card ya mostró el dato, el drawer profundiza sin repetir.
+
+Responde SOLO este JSON, sin texto alrededor:
+{${campos.map((c) => `"${c.path}": "..."`).join(", ")}}`;
+      try {
+        const msg = await reg.medir("budget-retry", CLAUDE_MODEL, () => anthropic.messages.create({
+          model: CLAUDE_MODEL,
+          max_tokens: 1000,
+          messages: [{ role: "user", content: promptQuirurgico }],
+          system: SYSTEM_STR_CACHED,
+        }));
+        acumularUsage(usage, msg);
+        usedTries += 1;
+        const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
+        // Parse tolerante: primer objeto {...} del texto; claves "seccion.campo".
+        let reemplazos: Record<string, unknown> = {};
+        try {
+          const m = rawText.match(/\{[\s\S]*\}/);
+          reemplazos = JSON.parse(m ? m[0] : rawText) as Record<string, unknown>;
+        } catch {
+          /* no parseó — candidato vacío, se conserva el previo */
+        }
+        const candidato = JSON.parse(JSON.stringify(best)) as AIAnalysisSTRv2;
+        const candidatoRec = candidato as unknown as Record<string, Record<string, unknown>>;
+        let aplicados = 0;
+        for (const c of campos) {
+          const nuevo = reemplazos[c.path];
+          if (typeof nuevo === "string" && nuevo.trim() && candidatoRec[c.sec]) {
+            candidatoRec[c.sec][c.field] = nuevo.trim();
+            aplicados++;
+          }
+        }
+        if (
+          aplicados > 0 &&
+          scanStrHardDrift(candidato).length === 0 &&
+          vozDura(candidato).length === 0 &&
+          grossOf(candidato).length < grossBest.length &&
+          !empeoraCifras(userPrompt, best, candidato)
+        ) {
+          log(`[STR-BUDGET-RETRY] quirúrgico mejoró: ${grossBest.length}→${grossOf(candidato).length} campo(s) >1.3× (${aplicados} reescritos) — aceptado`);
+          best = candidato;
+        } else {
+          log(`[STR-BUDGET-RETRY] quirúrgico no mejoró, reintrodujo drift o empeoró cifras — conservo el previo`);
+        }
+      } catch (e) {
+        log(`[STR-BUDGET-RETRY] falló (best-effort, conservo el previo): ${(e as Error)?.message ?? e}`);
       }
-    } catch (e) {
-      log(`[STR-BUDGET-RETRY] falló (best-effort, conservo el previo): ${(e as Error)?.message ?? e}`);
     }
   }
 

@@ -68,6 +68,10 @@ interface STRResultsProps {
   userCredits: number;
   welcomeAvailable?: boolean;
   aiAnalysisInitial?: unknown;
+  /** Goal F (espejo LTR): la prosa persistida quedó con promptVersion vieja —
+   *  el server no la pasó como inicial; el cliente NO pollea (el status la
+   *  devolvería como ready) y regenera directo vía POST (stale-regen, gratis). */
+  aiStaleInitial?: boolean;
   /** Hijo subordinado de un AMBAS: link al comparativo. Si viene, se oculta el
    * Compartir propio y se muestra el banner de subordinación (migración 20260715). */
   subordinatedHref?: string | null;
@@ -90,6 +94,7 @@ export function STRResultsClient({
   userCredits,
   welcomeAvailable = true,
   aiAnalysisInitial,
+  aiStaleInitial = false,
   subordinatedHref = null,
   showCtaWelcome = false,
 }: STRResultsProps) {
@@ -116,15 +121,18 @@ export function STRResultsClient({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const loadAi = useCallback(async () => {
-    if (aiLoading || !analysisId || aiAnalysis) return;
+  // Goal F — generación bajo demanda SOLO para rescate/stale/manual (la normal
+  // corre en el waitUntil del submit STR, patrón LTR). El trigger es telemetría
+  // de pipeline_timing, nunca lógica.
+  const generarProsa = useCallback(async (trigger: "rescate" | "stale-regen" | "manual") => {
+    if (!analysisId) return;
     setAiLoading(true);
     setAiError(null);
     try {
       const res = await fetch("/api/analisis/short-term/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysisId }),
+        body: JSON.stringify({ analysisId, trigger }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -137,15 +145,82 @@ export function STRResultsClient({
     } finally {
       setAiLoading(false);
     }
-  }, [analysisId, aiLoading, aiAnalysis]);
+  }, [analysisId]);
 
-  // Carga lazy: si premium y aún no hay AI, dispara una vez al montar.
+  // Goal F — polling PERSISTENTE de /short-term/[id]/ai-status (espejo LTR,
+  // Goal C): la prosa se genera en background desde el submit; acá solo se
+  // espera. 5s el primer minuto, 10s después; errores de red transitorios no
+  // matan el loop (10 consecutivos sí). El RESCATE corre UNA vez y SOLO con
+  // dictamen del server (`puedeRescate`: error registrado en pipeline_timing,
+  // o >6 min sin prosa — imposible viva con maxDuration 300s del submit).
+  // Filas stale (versión vieja): sin polling, regen directa gratis.
   useEffect(() => {
+    if (!analysisId) return;
+    if (aiAnalysis) return;
     const isPaid = accessLevel === "premium" || accessLevel === "subscriber";
-    if (isPaid && !aiAnalysis && !aiLoading && !aiError) {
-      loadAi();
+    if (!isPaid) return;
+
+    if (aiStaleInitial) {
+      if (!aiError) generarProsa("stale-regen");
+      return;
     }
-  }, [accessLevel, aiAnalysis, aiLoading, aiError, loadAi]);
+
+    let cancelled = false;
+    setAiLoading(true);
+    setAiError(null);
+
+    const startTime = Date.now();
+    const POLL_INTERVAL_MS = 5000;
+    const POLL_INTERVAL_LARGO_MS = 10000;
+    const BACKOFF_DESDE_MS = 60000;
+    const MAX_ERRORES_CONSECUTIVOS = 10;
+    let erroresConsecutivos = 0;
+    let rescateDisparado = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const reagendar = () => {
+      if (cancelled) return;
+      const interval = Date.now() - startTime > BACKOFF_DESDE_MS ? POLL_INTERVAL_LARGO_MS : POLL_INTERVAL_MS;
+      timer = setTimeout(poll, interval);
+    };
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch(`/api/analisis/short-term/${analysisId}/ai-status`);
+        const data = await res.json().catch(() => null);
+        if (cancelled) return;
+        erroresConsecutivos = 0;
+        if (data?.ready && data.ai_analysis && typeof data.ai_analysis === "object") {
+          setAiAnalysis(data.ai_analysis as Record<string, unknown>);
+          setAiLoading(false);
+          return;
+        }
+        if (data?.puedeRescate && !rescateDisparado) {
+          rescateDisparado = true;
+          await generarProsa("rescate");
+          return;
+        }
+        reagendar();
+      } catch {
+        if (cancelled) return;
+        erroresConsecutivos += 1;
+        if (erroresConsecutivos >= MAX_ERRORES_CONSECUTIVOS) {
+          setAiError("Error cargando análisis");
+          setAiLoading(false);
+          return;
+        }
+        reagendar();
+      }
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysisId]);
 
   // Goal B — `informe_visto` STR: el veredicto es visible desde el primer
   // render (HeroSTR lo pinta con la prosa en skeleton inline), así que el
@@ -160,7 +235,7 @@ export function STRResultsClient({
       posthog,
       ids: [analysisId],
       modalidad: "str",
-      aiEstado: initialAi ? "cacheada" : "generando",
+      aiEstado: initialAi ? "cacheada" : aiStaleInitial ? "stale-regen" : "generando",
       esperaMs: leerEsperaMs(),
       esOwner: !isSharedView,
     });
@@ -262,11 +337,19 @@ export function STRResultsClient({
           onOpenDrawer={setActiveDrawer}
         />
 
-        {/* Loading IA: el skeleton + copy viven ahora en el slot de prosa del Hero
-            (ProsaSkeleton). Acá abajo solo queda el indicador de error. */}
+        {/* Loading IA: el progreso vive en el slot de prosa del Hero
+            (ProgresoGeneracion). Acá abajo solo queda el indicador de error,
+            ahora CON reintento (Goal F — antes el error era terminal). */}
         {aiError && !aiAnalysis && (
           <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] mb-3 mt-1 px-1">
-            ● Análisis IA no disponible · {aiError}
+            ● Análisis IA no disponible · {aiError} ·{" "}
+            <button
+              type="button"
+              onClick={() => generarProsa("manual")}
+              className="font-mono text-[11px] uppercase tracking-[0.04em] text-signal-red hover:underline"
+            >
+              Reintentar
+            </button>
           </p>
         )}
 
