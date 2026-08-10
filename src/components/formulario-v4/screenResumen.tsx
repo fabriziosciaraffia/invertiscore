@@ -57,7 +57,7 @@ import {
   escalaVacancia,
 } from "./avisoEscala";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
-import { dormLabel, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
+import { dormLabel, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieTexto, pieUF, precioUF } from "./derive";
 import { decimalesUtiles, ecoPorDefecto, estadoNumericInput } from "./NumericInput";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
@@ -1134,7 +1134,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         <ActCard num="02" title="Cómo lo financias" summaryLine={summary02} open={openCard === "02"} onToggle={() => toggleCard("02")}>
           {cascade["02"] && <CascadeNote text={cascade["02"]} />}
           <NumField
-            label="Pie (% del precio)" raw={pct > 0 ? formatNumeroCL(pct, DEC.piePct) : pieDeclarado ? "0" : ""} display={pieStr} suffix="%"
+            label="Pie (% del precio)" raw={pct > 0 ? pieTexto(pct) : pieDeclarado ? "0" : ""} display={pieStr} suffix="%"
             decimales={DEC.piePct} formatEco={ecoPorDefecto("", "% del precio")} escala={escalaPie}
             commitCeroDesdeVacio
             onCommit={(v) => {

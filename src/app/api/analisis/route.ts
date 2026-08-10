@@ -20,6 +20,7 @@ import {
   buildMedianaSnapshot,
 } from "@/lib/api-helpers/analisis-pipeline";
 import { desdeBodyLtr } from "@/lib/plausibilidad";
+import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 
 // Goal C: techo explícito. El response sale en segundos, pero el waitUntil
@@ -52,6 +53,11 @@ export async function POST(request: Request) {
     timing.auth_ms = Date.now() - t0;
 
     const body: AnalisisInput & { prepaidChargeId?: string; ambasGroupId?: string } = await request.json();
+    // Precisión canónica del pie (fix pie-redondeo, defensa en profundidad): el
+    // wizard ya redondea, pero este body es lo que corre el motor Y se persiste
+    // en input_data — cualquier cliente que mande el float crudo lo deja sucio
+    // para siempre. Se normaliza en el borde, antes de ambas cosas.
+    if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
     const prepaidChargeId = body.prepaidChargeId;
     comuna = body.comuna;
     // Enlace AMBAS (flujo crédito/welcome): el wizard genera el group_id y lo

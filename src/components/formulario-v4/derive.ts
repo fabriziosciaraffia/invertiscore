@@ -10,7 +10,9 @@
 // v3 y v1 siguen con los suyos: no se tocan en esta fase.
 
 import { calcDividendo, fmtCLP, fmtUF } from "@/components/formulario-v3/wizardV3State";
-import { parseNumeroCL, type Decimales } from "@/lib/numero-cl";
+import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
+import { redondearPiePct } from "@/lib/analysis/pie-input-data";
+import { decimalesUtiles } from "./NumericInput";
 import { DEC, decPie, type PieUnidad, type WizardV4Answers } from "./wizardV4Nodes";
 
 export { fmtCLP, fmtUF };
@@ -98,10 +100,13 @@ export function piePct(a: WizardV4Answers, ufCLP: number): number {
   const monto = leerNum(a.pieMonto, decPie(unit));
   const pUF = precioUF(a);
   if (monto <= 0) return 0;
-  if (unit === "pct") return Math.min(monto, 100);
+  if (unit === "pct") return redondearPiePct(Math.min(monto, 100));
   if (pUF <= 0 || ufCLP <= 0) return 0;
   const pieEnUF = unit === "uf" ? monto : monto / ufCLP;
-  return Math.min((pieEnUF / pUF) * 100, 100);
+  // Redondeo canónico (fix pie-redondeo): el % derivado de $ o UF arrastra el
+  // float crudo de la división (19.999999875756398 en producción) y este valor
+  // ES el payload — se limpia donde se produce, no en el display.
+  return redondearPiePct(Math.min((pieEnUF / pUF) * 100, 100));
 }
 
 /**
@@ -127,6 +132,43 @@ export function factorPie(
   const haciaUF = desde === "pct" ? pUF / 100 : desde === "uf" ? 1 : 1 / ufCLP;
   const desdeUF = hasta === "pct" ? 100 / pUF : hasta === "uf" ? 1 : ufCLP;
   return haciaUF * desdeUF;
+}
+
+/**
+ * Texto de un pie en % para escribir en el campo: precisión canónica (2
+ * decimales máx) SIN ceros de relleno — "20", no "20,00"; "20,5"; "20,62".
+ * Lo usan el toggle (al convertir hacia %) y el editor del resumen.
+ */
+export function pieTexto(pct: number): string {
+  const r = redondearPiePct(pct);
+  return formatNumeroCL(r, decimalesUtiles(r));
+}
+
+/**
+ * Texto del monto del pie reexpresado en otra unidad — lo que el toggle escribe
+ * en el campo (fix pie-redondeo). Redondea a la precisión de la unidad DESTINO
+ * (% 2 dec · UF 2 dec · $ entero) ANTES de formatear, sin ceros de relleno, así
+ * el texto escrito y el valor que después lee `piePct` son el mismo número: el
+ * redondeo ocurre donde se produce el valor, no en el display.
+ *
+ * `null` si el texto no se lee o falta la base de conversión (mismo contrato
+ * que `convertirUnidad`): el llamador conserva valor y unidad, nunca borra.
+ */
+export function convertirPieTexto(
+  monto: string,
+  desde: PieUnidad,
+  hasta: PieUnidad,
+  pUF: number,
+  ufCLP: number,
+): string | null {
+  const factor = factorPie(desde, hasta, pUF, ufCLP);
+  if (factor == null) return null;
+  const valor = parseNumeroCL(monto, decPie(desde));
+  if (valor == null) return null;
+  const dec = decPie(hasta);
+  const pow = Math.pow(10, dec);
+  const redondeado = Math.round(valor * factor * pow) / pow;
+  return formatNumeroCL(redondeado, decimalesUtiles(redondeado));
 }
 
 /** Pie en UF a partir de la unidad escrita. */

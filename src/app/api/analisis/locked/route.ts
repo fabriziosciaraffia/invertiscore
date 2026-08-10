@@ -14,6 +14,7 @@ import {
   type ShortTermAnalysisBody,
 } from "@/lib/api-helpers/analisis-pipeline";
 import { desdeBodyLtr, desdeBodyStr } from "@/lib/plausibilidad";
+import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import { waitUntil } from "@vercel/functions";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 
@@ -49,6 +50,10 @@ function buildLockedLtrRow(
   ufValue: number,
   medianaComuna?: { mediana: number | null; n: number }
 ) {
+  // Precisión canónica del pie (fix pie-redondeo, defensa en profundidad):
+  // mismo criterio que /api/analisis — se normaliza antes del motor y del
+  // input_data. Único punto para las ramas LTR-single y AMBAS.
+  if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
   const result = runAnalysis(body, ufValue, medianaComuna);
   return {
     nombre: body.nombre,

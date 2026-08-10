@@ -22,6 +22,21 @@
 const num = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
 
+// ─── Precisión canónica del pie en % ─────────────────────────────────────────
+//
+// El pie como PORCENTAJE viaja y se persiste con 2 decimales máximo. La regla
+// vive acá (lib compartida cliente/server) porque el valor se produce en más de
+// un lugar: `piePct`/`derivePiePctLocal` en el wizard, y los bordes de API como
+// defensa en profundidad. Sin esto, un pie tipeado en $ o convertido por el
+// toggle persiste el float crudo — pasó en producción: `piePct:
+// 19.999999875756398` en el chip del hero ($32.194.817 redondeado a peso y
+// devuelto a %; el display mostraba "20,0" pero el payload nunca se limpió).
+
+/** Redondea un pie en % a la precisión canónica (2 decimales). */
+export function redondearPiePct(pct: number): number {
+  return Math.round(pct * 100) / 100;
+}
+
 /** Pie como FRACCIÓN (0.2 = 20%), la unidad del motor STR (`piePercent`). */
 export function piePercentDesdeInputData(
   inp: Record<string, unknown> | null | undefined,

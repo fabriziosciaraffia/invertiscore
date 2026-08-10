@@ -23,6 +23,7 @@ import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { parseNumeroCL, type Decimales } from "@/lib/numero-cl";
+import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import type { Anomalia, PlausibilidadInput } from "@/lib/plausibilidad";
 import { DEC, decPie, type WizardV4Answers } from "./wizardV4Nodes";
 import { leerNum } from "./derive";
@@ -144,15 +145,19 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
 }
 
 // Pie % derivado (mismo criterio que derive.ts, inline para no crear ciclo).
+// Redondeo canónico incluido (fix pie-redondeo): ESTE es el valor que se
+// persiste en input_data.piePct — sin él, el % derivado de $ o UF viajaba con
+// el float crudo (19.999999875756398 en producción) aunque el display dijera
+// "20,0".
 function derivePiePctLocal(a: WizardV4Answers, ufCLP: number): number {
   const unit = a.pieUnidad ?? "pct";
   const monto = leerNum(a.pieMonto, decPie(unit));
   const pUF = leerNum(a.precio, DEC.precioUF);
   if (monto <= 0) return 0;
-  if (unit === "pct") return Math.min(monto, 100);
+  if (unit === "pct") return redondearPiePct(Math.min(monto, 100));
   if (pUF <= 0 || ufCLP <= 0) return 0;
   const pieEnUF = unit === "uf" ? monto : monto / ufCLP;
-  return Math.min((pieEnUF / pUF) * 100, 100);
+  return redondearPiePct(Math.min((pieEnUF / pUF) * 100, 100));
 }
 
 // ── STR ───────────────────────────────────────────────────────────────────────

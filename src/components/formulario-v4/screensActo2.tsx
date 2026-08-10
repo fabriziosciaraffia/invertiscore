@@ -15,7 +15,7 @@ import { DEC, decPie, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
 import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented } from "./ui";
 import { NumericInput, convertirUnidad, decimalesUtiles } from "./NumericInput";
 import { formatNumeroCL } from "@/lib/numero-cl";
-import { factorPie, fmtCLP, fmtUF, leerNum, piePct, pieUF, pieCLP, precioUF } from "./derive";
+import { convertirPieTexto, fmtCLP, fmtUF, leerNum, piePct, pieUF, pieCLP, precioUF } from "./derive";
 import { calificaSubsidioV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 
 const MES_ABBR = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -174,19 +174,18 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
             // F1 (fix pie-cero): el toggle CONVIERTE el monto a la nueva unidad.
             // Antes lo vaciaba (`pieMonto: ""`), y ese vacío pasaba el gate como
             // pie 0 silencioso — la vía por la que un pie bien tipeado terminaba
-            // en un informe con financiamiento 100%. Mismo gesto que el toggle
-            // UF/$ del precio: `convertirUnidad` reexpresa el VALOR (no el
-            // string) y devuelve null si el texto no se lee o falta la base de
-            // conversión — en ese caso se conservan valor y unidad, nunca se
-            // borra ni se reinterpreta.
+            // en un informe con financiamiento 100%. `convertirPieTexto`
+            // (fix pie-redondeo) reexpresa el VALOR redondeado a la precisión de
+            // la unidad destino — sin eso, la ida y vuelta %→$→% persistía
+            // 19.999999875756398 aunque el display dijera "20,0" — y devuelve
+            // null si el texto no se lee o falta la base de conversión: ahí se
+            // conservan valor y unidad, nunca se borra ni se reinterpreta.
             if (u === unidad) return;
             if (monto.trim() === "") {
               patchAnswers({ pieUnidad: u });
               return;
             }
-            const factor = factorPie(unidad, u, precioUF(answers), data.ufCLP);
-            const convertido =
-              factor != null ? convertirUnidad(monto, decPie(unidad), decPie(u), factor) : null;
+            const convertido = convertirPieTexto(monto, unidad, u, precioUF(answers), data.ufCLP);
             if (convertido != null) patchAnswers({ pieUnidad: u, pieMonto: convertido });
           }}
         />

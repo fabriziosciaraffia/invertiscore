@@ -79,7 +79,11 @@ export const DEC = {
   bodegas: 0,
   precioUF: 2,
   precioCLP: 0,
-  piePct: 1,
+  // 2 y no 1 (fix pie-redondeo): la precisión canónica del pie en % es 2
+  // decimales — un pie tipeado en $ y convertido a % por el toggle puede caer
+  // legítimamente en "20,62", y con 1 decimal ese texto sería ilegible
+  // (parseNumeroCL regla 4 → null → 0).
+  piePct: 2,
   pieUF: 2,
   pieCLP: 0,
   tasa: 2,

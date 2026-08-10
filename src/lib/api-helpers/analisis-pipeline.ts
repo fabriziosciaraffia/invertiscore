@@ -26,6 +26,7 @@ import {
   type MedianaComunaVenta,
 } from "@/lib/comuna-stats";
 import { evaluarPlausibilidad, type Anomalia, type PlausibilidadInput } from "@/lib/plausibilidad";
+import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import type { AnalisisInput, RazonSinCapital } from "@/lib/types";
 import {
   calcShortTerm,
@@ -553,6 +554,11 @@ export async function buildShortTermAnalysisRow(
    *  esta función escribe airroi_ms/airroi_cache/motor_ms y nada más. */
   timing?: { airroi_ms?: number; airroi_cache?: "hit" | "miss"; motor_ms?: number },
 ): Promise<BuildShortTermRowResult> {
+  // Precisión canónica del pie (fix pie-redondeo, defensa en profundidad): este
+  // body alimenta el motor (piePercent) y se persiste crudo en input_data. El
+  // wizard ya redondea; acá se cubre cualquier otro cliente. Único punto para
+  // los dos callers (short-term y locked STR).
+  if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
   // AirROI directo (sin sub-fetch HTTP). Único call-site de getAirbnbEstimate.
   let airbnbResult;
   const tAirroi = Date.now();
