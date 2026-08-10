@@ -11,7 +11,7 @@
 
 import { calcDividendo, fmtCLP, fmtUF } from "@/components/formulario-v3/wizardV3State";
 import { parseNumeroCL, type Decimales } from "@/lib/numero-cl";
-import { DEC, decPie, type WizardV4Answers } from "./wizardV4Nodes";
+import { DEC, decPie, type PieUnidad, type WizardV4Answers } from "./wizardV4Nodes";
 
 export { fmtCLP, fmtUF };
 
@@ -102,6 +102,31 @@ export function piePct(a: WizardV4Answers, ufCLP: number): number {
   if (pUF <= 0 || ufCLP <= 0) return 0;
   const pieEnUF = unit === "uf" ? monto : monto / ufCLP;
   return Math.min((pieEnUF / pUF) * 100, 100);
+}
+
+/**
+ * Factor multiplicativo para reexpresar el pie entre unidades ($ / UF / %).
+ * Es lo que corre el toggle de unidad de PieScreen junto a `convertirUnidad`
+ * (fix pie-cero: el toggle convierte el monto, ya no lo vacía).
+ *
+ * `null` cuando falta la base de conversión (precio en UF, o UF del día para
+ * pesos): sin base no se convierte — el llamador conserva el valor y la unidad
+ * anteriores en vez de inventar o borrar. Vive acá, no en el componente, para
+ * que los tests ejerciten este código y no una réplica.
+ */
+export function factorPie(
+  desde: PieUnidad,
+  hasta: PieUnidad,
+  pUF: number,
+  ufCLP: number,
+): number | null {
+  if (desde === hasta) return 1;
+  const tocaPct = desde === "pct" || hasta === "pct";
+  const tocaClp = desde === "clp" || hasta === "clp";
+  if ((tocaPct && pUF <= 0) || (tocaClp && ufCLP <= 0)) return null;
+  const haciaUF = desde === "pct" ? pUF / 100 : desde === "uf" ? 1 : 1 / ufCLP;
+  const desdeUF = hasta === "pct" ? 100 / pUF : hasta === "uf" ? 1 : ufCLP;
+  return haciaUF * desdeUF;
 }
 
 /** Pie en UF a partir de la unidad escrita. */

@@ -332,9 +332,34 @@ async function postJson(url: string, body: unknown): Promise<{ id: string }> {
   return res.json();
 }
 
+/**
+ * Guard del cero silencioso (fix pie-cero): no se arma ni se postea un payload
+ * con `piePct: 0` sin `razonSinPie`. El wizard ya lo bloquea en PieScreen y en
+ * el resumen, y el server lo rechaza con 422 (regla `pie_cero_sin_razon` de
+ * plausibilidad) — este es el borde intermedio, para que ningún camino de
+ * submit futuro lo salte. Vive FUERA de los builders a propósito: el dry-run y
+ * el pre-chequeo de plausibilidad también los llaman con estados transitorios
+ * legítimos (pie recién vaciado, razón aún sin elegir) y no deben reventar.
+ *
+ * Devuelve el SubmitResult de error, o null si el pie está declarado.
+ */
+function guardPieDeclarado(a: WizardV4Answers, ctx: SubmitContext): SubmitResult | null {
+  const montoVacio = (a.pieMonto ?? "").trim() === "";
+  const pct = derivePiePctLocal(a, ctx.ufCLP);
+  if (montoVacio || (pct === 0 && !a.pieRazon)) {
+    return {
+      ok: false,
+      error: "Falta el pie: escribe el monto en el paso de financiamiento — y si va en $0, elige cómo se cubre.",
+    };
+  }
+  return null;
+}
+
 /** Genera el análisis con crédito (contratos v3). Devuelve el redirect destino. */
 export async function submitConCredito(a: WizardV4Answers, ctx: SubmitContext): Promise<SubmitResult> {
   const mod = a.modalidad;
+  const sinPie = guardPieDeclarado(a, ctx);
+  if (sinPie) return sinPie;
   try {
     if (mod === "ltr") {
       const { id } = await postJson("/api/analisis", buildLtrPayload(a, ctx));
@@ -394,6 +419,8 @@ export async function submitConCredito(a: WizardV4Answers, ctx: SubmitContext): 
 /** Compra pre-pago (logueado sin créditos): crea fila(s) locked y va a checkout. */
 export async function comprarLocked(a: WizardV4Answers, ctx: SubmitContext): Promise<SubmitResult> {
   const mod = a.modalidad;
+  const sinPie = guardPieDeclarado(a, ctx);
+  if (sinPie) return sinPie;
   try {
     if (mod === "both") {
       const res = await fetch("/api/analisis/locked", {

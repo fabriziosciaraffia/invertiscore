@@ -15,7 +15,7 @@ import { DEC, decPie, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
 import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented } from "./ui";
 import { NumericInput, convertirUnidad, decimalesUtiles } from "./NumericInput";
 import { formatNumeroCL } from "@/lib/numero-cl";
-import { fmtCLP, fmtUF, leerNum, piePct, pieUF, pieCLP, precioUF } from "./derive";
+import { factorPie, fmtCLP, fmtUF, leerNum, piePct, pieUF, pieCLP, precioUF } from "./derive";
 import { calificaSubsidioV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 
 const MES_ABBR = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -135,6 +135,12 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
   // ESCRITO (no el campo vacío): sin eso, la pantalla mostraría el bloque y el
   // selector antes de que el usuario tipee nada.
   const pieCero = monto.trim() !== "" && pct === 0;
+  // Fix pie-cero: el campo VACÍO vuelve a bloquear. Son tres estados distintos:
+  // vacío (bloquea — no hay dato), 0 escrito con razón (pasa — pie 0 declarado,
+  // fase 5b intacta), monto > 0 (pasa). El gate anterior (`pct < 0`) confundía
+  // "vacío" con "no es cero" y dejaba pasar el cero silencioso que producción
+  // midió en ~18% de los análisis desde la fase 5b.
+  const pieVacio = monto.trim() === "";
 
   // Equivalencias en vivo: las otras dos unidades respecto a la que escribe.
   const equiv: string[] = [];
@@ -164,7 +170,25 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
         <Segmented
           options={PIE_UNITS}
           value={unidad}
-          onChange={(u) => patchAnswers({ pieUnidad: u, pieMonto: "" })}
+          onChange={(u) => {
+            // F1 (fix pie-cero): el toggle CONVIERTE el monto a la nueva unidad.
+            // Antes lo vaciaba (`pieMonto: ""`), y ese vacío pasaba el gate como
+            // pie 0 silencioso — la vía por la que un pie bien tipeado terminaba
+            // en un informe con financiamiento 100%. Mismo gesto que el toggle
+            // UF/$ del precio: `convertirUnidad` reexpresa el VALOR (no el
+            // string) y devuelve null si el texto no se lee o falta la base de
+            // conversión — en ese caso se conservan valor y unidad, nunca se
+            // borra ni se reinterpreta.
+            if (u === unidad) return;
+            if (monto.trim() === "") {
+              patchAnswers({ pieUnidad: u });
+              return;
+            }
+            const factor = factorPie(unidad, u, precioUF(answers), data.ufCLP);
+            const convertido =
+              factor != null ? convertirUnidad(monto, decPie(unidad), decPie(u), factor) : null;
+            if (convertido != null) patchAnswers({ pieUnidad: u, pieMonto: convertido });
+          }}
         />
       </div>
 
@@ -268,7 +292,7 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
             }
             answer("pie");
           }}
-          disabled={pct < 0 || pieExcede || (pieCero && !answers.pieRazon)}
+          disabled={pieVacio || pct < 0 || pieExcede || (pieCero && !answers.pieRazon)}
         >
           Continuar →
         </PrimaryBtn>

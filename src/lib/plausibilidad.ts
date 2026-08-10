@@ -76,6 +76,8 @@ export type Regla =
   | "arriendo_fuera_rango"
   | "tasa_fuera_rango"
   | "pie_fuera_rango"
+  | "pie_ausente"
+  | "pie_cero_sin_razon"
   | "str_ocupacion_fuera_rango"
   | "str_tarifa_fuera_rango"
   | "str_yield_imposible"
@@ -94,6 +96,20 @@ export interface PlausibilidadInput {
   /** Pie en PORCENTAJE del precio (0-100). Fase 5b: el 0 es LEGÍTIMO
    *  (financiamiento 100%); lo que esta regla caza es el rango imposible. */
   piePct?: number;
+  /**
+   * Origen del pie 0 declarado en el wizard (`bono_pie` | `otra_fuente` |
+   * `no_declarada`). Solo pesa junto a `piePct === 0`: un cero SIN razón es el
+   * "cero silencioso" (fix pie-cero) — un pie que el usuario nunca declaró y
+   * que produce un informe con financiamiento 100% que no pidió.
+   */
+  razonSinPie?: string;
+  /**
+   * true SOLO en los adaptadores de body COMPLETO (`desdeBodyLtr`/`desdeBodyStr`):
+   * en un body de creación el pie es obligatorio y su ausencia se rechaza. El
+   * input PARCIAL de la alerta temprana no lo setea, así que el fail-open por
+   * regla sigue intacto pantalla a pantalla.
+   */
+  pieObligatorio?: boolean;
   /** Arriendo largo mensual en CLP. Solo se evalúa si es > 0. */
   arriendoMensualCLP?: number;
   /**
@@ -162,6 +178,11 @@ export const RANGO_COMISION_ADMIN_PCT: [number, number] = [0, 30];
 export const RANGO_ARRIENDO_CLP: [number, number] = [80_000, Infinity];
 export const RANGO_STR_TARIFA_CLP: [number, number] = [5_000, Infinity];
 
+// Razones que hacen del pie 0 un dato DECLARADO (mismos valores que el selector
+// del wizard, `PIE_RAZON_OPCIONES`). `sin_pie` queda fuera a propósito: en el
+// tipo del motor significa "no se preguntó" — el cero silencioso, no el declarado.
+const RAZONES_PIE_CERO = new Set(["bono_pie", "otra_fuente", "no_declarada"]);
+
 /**
  * Orden de presentación. El cliente muestra `anomalias[0].mensaje`, así que el
  * primero tiene que ser el MÁS EXPLICATIVO — el que le hace entender al usuario
@@ -182,6 +203,8 @@ const PRIORIDAD_REGLA: readonly Regla[] = [
   "str_ocupacion_fuera_rango",
   "tasa_fuera_rango",
   "pie_fuera_rango",
+  "pie_ausente",
+  "pie_cero_sin_razon",
   "vacancia_fuera_rango",
   "comision_admin_fuera_rango",
 ];
@@ -210,6 +233,8 @@ export const META_REGLA: Record<Regla, { deriva: boolean; unidad: string }> = {
   arriendo_fuera_rango: { deriva: false, unidad: "al mes" },
   tasa_fuera_rango: { deriva: false, unidad: "anual" },
   pie_fuera_rango: { deriva: false, unidad: "del precio" },
+  pie_ausente: { deriva: false, unidad: "del precio" },
+  pie_cero_sin_razon: { deriva: false, unidad: "del precio" },
   str_ocupacion_fuera_rango: { deriva: false, unidad: "de ocupación" },
   str_tarifa_fuera_rango: { deriva: false, unidad: "por noche" },
   vacancia_fuera_rango: { deriva: false, unidad: "del año" },
@@ -223,6 +248,8 @@ const REGLAS_PCT_DIRECTO = new Set<Regla>([
   "tasa_fuera_rango",
   "str_ocupacion_fuera_rango",
   "pie_fuera_rango",
+  "pie_ausente",
+  "pie_cero_sin_razon",
   "vacancia_fuera_rango",
   "comision_admin_fuera_rango",
 ]);
@@ -501,6 +528,18 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
   // se nombra en el mensaje (misma excepción que la ocupación >100%: es una
   // verdad aritmética, no un umbral elegido por nosotros).
   const pie = input.piePct;
+  if (input.pieObligatorio && !finito(pie)) {
+    // Un body de creación sin pie no es un dato parcial: es un cliente que va a
+    // hacer calcular el motor con NaN. Antes esto pasaba en silencio (el guard
+    // solo validaba rango SI el pie venía).
+    out.push({
+      campo: "pie",
+      regla: "pie_ausente",
+      valor: 0,
+      rango: RANGO_PIE_PCT,
+      mensaje: `Falta el pie. Escribe el monto en el paso de financiamiento — y si va en $0, indica cómo se cubre.`,
+    });
+  }
   if (finito(pie)) {
     const [min, max] = RANGO_PIE_PCT;
     if (pie < min || pie > max) {
@@ -513,6 +552,19 @@ export function evaluarPlausibilidad(input: PlausibilidadInput): Anomalia[] {
           pie > max
             ? `Un pie de ${num(pie, "alto", max)}% no existe: el máximo es ${max}%, o sea pagar el depto completo al contado.`
             : `El pie no puede ser negativo. Revisa el monto.`,
+      });
+    }
+    // Cero silencioso (fix pie-cero): pie 0 sigue siendo legítimo, pero SOLO
+    // declarado — con una razón del wizard. `sin_pie` NO califica: es el estado
+    // "no se preguntó", exactamente lo que esta regla mata. Producción mostró
+    // ~18% de análisis con este estado desde que el 0 dejó de bloquear (fase 5b).
+    if (pie === 0 && !RAZONES_PIE_CERO.has(String(input.razonSinPie))) {
+      out.push({
+        campo: "pie",
+        regla: "pie_cero_sin_razon",
+        valor: 0,
+        rango: RANGO_PIE_PCT,
+        mensaje: `El pie quedó en $0 sin indicar cómo se cubre. Vuelve al pie: escribe el monto real, o declara por qué va en cero.`,
       });
     }
   }
@@ -652,6 +704,7 @@ export function desdeBodyLtr(
     arriendo?: unknown;
     tasaInteres?: unknown;
     piePct?: unknown;
+    razonSinPie?: unknown;
     vacanciaMeses?: unknown;
     comisionAdministrador?: unknown;
   },
@@ -670,6 +723,9 @@ export function desdeBodyLtr(
     tasaAnualPct: numOrNaN(body?.tasaInteres),
     arriendoMensualCLP: numOrNaN(body?.arriendo),
     piePct: numOrNaN(body?.piePct),
+    razonSinPie: typeof body?.razonSinPie === "string" ? body.razonSinPie : undefined,
+    // Body completo de creación → el pie es obligatorio (fix pie-cero).
+    pieObligatorio: true,
     vacanciaPct: (vacanciaMeses * 100) / 12,
     // LTR ya viaja en porcentaje (0-100) y llega `undefined` cuando es 0.
     comisionAdminPct: numOrNaN(body?.comisionAdministrador),
@@ -687,6 +743,7 @@ export function desdeBodyStr(
     adrOverride?: unknown;
     occOverride?: unknown;
     piePct?: unknown;
+    razonSinPie?: unknown;
     comisionAdministrador?: unknown;
   },
   ufCLP: number,
@@ -715,6 +772,9 @@ export function desdeBodyStr(
     tasaAnualPct: numOrNaN(body?.tasaInteres),
     arriendoMensualCLP: numOrNaN(body?.arriendoLargoMensual),
     piePct: numOrNaN(body?.piePct),
+    razonSinPie: typeof body?.razonSinPie === "string" ? body.razonSinPie : undefined,
+    // Body completo de creación → el pie es obligatorio (fix pie-cero).
+    pieObligatorio: true,
     // El body STR manda la comisión como FRACCIÓN (0.20 = 20%; así lo declara
     // `ShortTermInput` en short-term-engine.ts y así la dividen los tres
     // emisores). Se pasa a porcentaje, mismo criterio que `occOverride`.

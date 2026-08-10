@@ -135,6 +135,8 @@ const ORIGENES_POR_REGLA: Record<Regla, string[]> = {
   arriendo_fuera_rango: ["arriendo"],
   tasa_fuera_rango: ["tasa"],
   pie_fuera_rango: ["pie"],
+  pie_ausente: ["pie"],
+  pie_cero_sin_razon: ["pie"],
   str_ocupacion_fuera_rango: ["ocupacion"],
   str_tarifa_fuera_rango: ["tarifa"],
   vacancia_fuera_rango: ["vacancia"],
@@ -392,6 +394,7 @@ function NumField({
   procedencia,
   derived,
   highlight,
+  commitCeroDesdeVacio,
   onCommit,
 }: {
   label: string;
@@ -413,6 +416,14 @@ function NumField({
   derived?: string;
   /** Anillo Signal Red transitorio cuando la card al-filo apunta a este campo. */
   highlight?: boolean;
+  /**
+   * Fix pie-cero: tratar lo escrito sobre un campo VACÍO como edición real
+   * aunque `esEdicionReal` lea el mismo valor ("" y "0" son ambos 0 vía
+   * `leerNum`). Para el pie, escribir "0" sobre el vacío ES la declaración —
+   * sin esto, un draft sin pie no podía declarar el 0 desde el resumen. Solo el
+   * pie lo pasa; el resto conserva el contrato "mirar no es editar".
+   */
+  commitCeroDesdeVacio?: boolean;
   onCommit: (v: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -444,7 +455,7 @@ function NumField({
             // a partir del VALOR —en vivo desde `v`, en reposo desde `raw`—, no
             // del commit. Si el número no cambió, el aviso que corresponda ya se
             // estaba mostrando y sigue mostrándose.
-            if (esEdicionReal(v, raw, decimales)) onCommit(v);
+            if (esEdicionReal(v, raw, decimales) || (commitCeroDesdeVacio && raw.trim() === "" && v.trim() !== "")) onCommit(v);
           }}
           onCancel={() => setEditing(false)}
         />
@@ -773,7 +784,17 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   // POR COMPLETAR (R3): tras cambiar de modalidad, la rama STR exige el gate
   // (sin estimación posible). Bloquea generar hasta responderlo.
   const gatePorCompletar = esStr && !a.edificioPermiteAirbnb;
-  const incompleto = gatePorCompletar;
+  // Fix pie-cero: el pie tiene que estar DECLARADO para generar — monto escrito,
+  // y si es exactamente 0, con su razón. Cubre el agujero del resumen: acá se
+  // puede vaciar el pie editándolo (o llegar con un draft viejo sin pie), y sin
+  // este gate el submit salía con piePct 0 silencioso.
+  const pieIncompleto = !pieDeclarado || (pct === 0 && !a.pieRazon);
+  const incompleto = gatePorCompletar || pieIncompleto;
+  const lineaIncompleto = gatePorCompletar
+    ? "Completa la card 03 para generar."
+    : pieIncompleto
+      ? "Falta el pie — complétalo en la card 02 para generar."
+      : null;
 
   // ── Datos del modal de plausibilidad ──────────────────────────────────────
   const huellaActual = [a.precio, a.superficieUtil, a.arriendo, a.tasaInteres, a.adrTarifa, a.adrOcupacion].join("|");
@@ -1113,9 +1134,16 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         <ActCard num="02" title="Cómo lo financias" summaryLine={summary02} open={openCard === "02"} onToggle={() => toggleCard("02")}>
           {cascade["02"] && <CascadeNote text={cascade["02"]} />}
           <NumField
-            label="Pie (% del precio)" raw={pct > 0 ? formatNumeroCL(pct, DEC.piePct) : ""} display={pieStr} suffix="%"
+            label="Pie (% del precio)" raw={pct > 0 ? formatNumeroCL(pct, DEC.piePct) : pieDeclarado ? "0" : ""} display={pieStr} suffix="%"
             decimales={DEC.piePct} formatEco={ecoPorDefecto("", "% del precio")} escala={escalaPie}
+            commitCeroDesdeVacio
             onCommit={(v) => {
+              // Fix pie-cero: borrar el campo NO es declarar cero — el vacío se
+              // ignora y el valor anterior queda. El cero se declara escribiendo
+              // "0" (y eligiendo la razón abajo). Este era el agujero del
+              // resumen: un clear acá dejaba pieMonto vacío y el submit salía
+              // con pie 0 silencioso.
+              if (v.trim() === "") return;
               // Fase 5b: al subir el pie sobre 0, la razón se descarta en
               // SILENCIO (misma regla que el wizard). Al bajarlo a 0 el selector
               // aparece acá para que el usuario la declare sin volver atrás.
@@ -1270,8 +1298,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         )}
         <div className="w-full max-w-[360px] shrink-0 flex flex-col justify-end gap-1.5">
           <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
-          {(incompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
-            <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
+          {(lineaIncompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
+            <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{lineaIncompleto ?? lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
           )}
         </div>
       </div>
@@ -1297,8 +1325,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-bg)_92%,transparent)] backdrop-blur px-4 py-3">
         <div className="max-w-3xl mx-auto flex flex-col items-stretch gap-1.5">
           <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
-          {(incompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
-            <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
+          {(lineaIncompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
+            <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{lineaIncompleto ?? lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
           )}
         </div>
       </div>
