@@ -13,6 +13,7 @@ import { OtorgarAnalisisForm, RevertirGrantButton } from "./grants-client";
 import { UnlimitedToggle, type UnlimitedEstado } from "./unlimited-client";
 import { hasSubscriptionAccess } from "@/lib/access";
 import { leerAtribucion, fmtFuente } from "@/lib/attribution";
+import { leerComision } from "@/lib/comision-flow";
 
 export const dynamic = "force-dynamic";
 
@@ -126,7 +127,7 @@ export default async function AdminUsuarioDetallePage({
       .order("created_at", { ascending: false }),
     sb
       .from("payments")
-      .select("id, amount, product, status, flow_order, created_at")
+      .select("id, amount, product, status, flow_order, created_at, payment_data, commerce_order")
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     sb
@@ -188,6 +189,7 @@ export default async function AdminUsuarioDetallePage({
   const payments = (paymentsRes.data ?? []) as Array<{
     id: string; amount: number | null; product: string | null; status: string | null;
     flow_order: number | null; created_at: string;
+    payment_data: unknown; commerce_order: string | null;
   }>;
   const tienePagoPaid = payments.some((p) => p.status === "paid");
   const estadoBadge: { label: string; tone: StatusBadgeTone } = isUnlimited
@@ -372,6 +374,11 @@ export default async function AdminUsuarioDetallePage({
   for (const p of payments) {
     const statusLabel =
       p.status === "paid" ? "pagado" : p.status === "rejected" ? "rechazado" : p.status === "cancelled" ? "cancelado" : "pendiente";
+    // La comisión solo tiene sentido sobre un cobro efectivo. `leerComision`
+    // marca su propia procedencia: medido (bloque de Flow), estimado (tasa de
+    // respaldo) o sin-cobro (alta de suscripción, ver comision-flow.ts). Se
+    // muestra la etiqueta SIEMPRE, para no pasar un estimado por un dato.
+    const comision = p.status === "paid" ? leerComision(p) : null;
     events.push({
       key: `pay-${p.id}`,
       ms: toMs(p.created_at),
@@ -386,6 +393,38 @@ export default async function AdminUsuarioDetallePage({
           <div className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1">
             {[p.product, p.flow_order != null ? `Flow ${p.flow_order}` : null].filter(Boolean).join(" · ") || "—"}
           </div>
+          {comision && (
+            <div className="mt-2 border-t border-dashed border-[var(--franco-border)] pt-2">
+              {comision.fuente === "sin-cobro" ? (
+                <div className="font-mono text-[10px] text-[var(--franco-text-muted)]">
+                  ALTA DE SUSCRIPCIÓN · SIN COBRO PROPIO
+                  <span className="ml-1 font-body normal-case">
+                    — el cobro y su comisión van en su propia fila
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
+                    <span className="text-[var(--franco-text-muted)]">
+                      Comisión Flow{comision.medio ? ` · ${comision.medio}` : ""}
+                    </span>
+                    <span className="shrink-0 text-[var(--franco-text-secondary)]">
+                      −{fmtCLP(comision.retenido)}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 flex items-baseline justify-between gap-3 font-mono text-[11px]">
+                    <span className="text-[var(--franco-text-muted)]">Neto depositado</span>
+                    <span className="shrink-0 text-[var(--franco-text)]">{fmtCLP(comision.neto)}</span>
+                  </div>
+                  <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
+                    {comision.fuente === "medido"
+                      ? `Medido · ${fmtCLP(comision.fee)} + IVA ${fmtCLP(comision.iva)}`
+                      : "Estimado · la fila no trae el desglose de Flow"}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           <div className="font-mono text-[10px] text-[var(--franco-text-muted)] mt-2">
             {fmtDateShort(p.created_at)} · {fmtRelative(p.created_at)}
           </div>
