@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · hero AMBAS 3 ejes — E1/E2/E3 + distancia al veredicto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&display=swap" rel="stylesheet">
+<style>
+  /* Tokens espejo de globals.css — dark :root, light GALERÍA. */
+  :root {
+    --franco-bg: #0F0F0F;
+    --franco-card: #1A1A1A;
+    --franco-elevated: #222222;
+    --franco-sunken: rgba(26,26,26,0.55);
+    --franco-text: #FAFAF8;
+    --franco-text-secondary: rgba(250,250,248,0.5);
+    --franco-text-muted: rgba(250,250,248,0.35);
+    --franco-text-tertiary: #888780;
+    --franco-border: rgba(250,250,248,0.06);
+    --franco-border-strong: rgba(250,250,248,0.15);
+    --signal-red: #C8323C;
+    --v-avoid-bg: rgba(200,50,60,0.07);
+  }
+  [data-theme="light"] {
+    --franco-bg: #F6F6F7;
+    --franco-card: #FFFFFF;
+    --franco-elevated: #FFFFFF;
+    --franco-sunken: #F0F0F2;
+    --franco-text: #0F0F0F;
+    --franco-text-secondary: #52525B;
+    --franco-text-muted: #6B6B72;
+    --franco-text-tertiary: #6A6A71;
+    --franco-border: #DDDDE1;
+    --franco-border-strong: #B0B0B8;
+    --v-avoid-bg: rgba(200,50,60,0.05);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 86px 20px 80px;
+    background: var(--franco-bg); color: var(--franco-text);
+    font-family: "IBM Plex Sans", sans-serif;
+    transition: background .2s, color .2s;
+  }
+  .mono { font-family: "JetBrains Mono", monospace; }
+  .serif { font-family: "Source Serif 4", serif; }
+
+  /* ── andamiaje del mockup (no es producto) ── */
+  .controls {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    display: flex; gap: 8px; align-items: center; justify-content: center;
+    padding: 12px; background: color-mix(in srgb, var(--franco-bg) 92%, transparent);
+    backdrop-filter: blur(8px); border-bottom: .5px solid var(--franco-border);
+    flex-wrap: wrap;
+  }
+  .ctl {
+    font-family: "JetBrains Mono", monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .08em; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+    background: var(--franco-card); color: var(--franco-text);
+    border: .5px solid var(--franco-border-strong);
+  }
+  .ctl.on { background: var(--franco-text); color: var(--franco-bg); }
+  .sep { width: 1px; height: 18px; background: var(--franco-border-strong); }
+  .wrap { max-width: 1120px; margin: 0 auto; transition: max-width .25s; }
+  .wrap.movil { max-width: 390px; }
+  .nota {
+    max-width: 1120px; margin: 0 auto 20px; font-size: 12.5px; line-height: 1.6;
+    color: var(--franco-text-secondary);
+  }
+  .nota b { color: var(--franco-text); font-weight: 500; }
+  .prop-nota {
+    border: .5px dashed var(--franco-border-strong); border-radius: 10px;
+    padding: 10px 14px; margin: 18px 0 0; font-size: 11.5px; line-height: 1.55;
+    color: var(--franco-text-secondary);
+  }
+  .prop-nota .tag {
+    font-family: "JetBrains Mono", monospace; font-size: 9px; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--franco-text-tertiary); display: block; margin-bottom: 4px;
+  }
+  .estado { display: none; }
+  .estado.on { display: block; }
+
+  /* ═══════════ HERO ═══════════ */
+  .hero {
+    border-radius: 16px; overflow: hidden;
+    background: var(--franco-card);
+    border: .5px solid var(--franco-border-strong);
+  }
+  .hero.critico {
+    background: linear-gradient(var(--v-avoid-bg), var(--v-avoid-bg)), var(--franco-card);
+    border-color: color-mix(in srgb, var(--signal-red) 35%, transparent);
+  }
+  .hr { height: 1px; background: var(--franco-border); }
+  .frow {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    padding: 16px 28px 13px;
+  }
+  .frow h1 {
+    font-family: "Source Serif 4", serif; font-weight: 700; font-size: 24px;
+    line-height: 1.15; letter-spacing: -0.01em; margin: 0;
+  }
+  .frow h1 .comuna { font-weight: 400; color: var(--franco-text-secondary); }
+  .frow .ctx {
+    font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-tertiary);
+    white-space: nowrap; padding-top: 6px;
+  }
+
+  .fgrid {
+    display: grid; grid-template-columns: minmax(0,62fr) minmax(0,38fr);
+    gap: 24px 32px; padding: 14px 28px 20px;
+  }
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--franco-text-tertiary);
+  }
+  .badge-v {
+    font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 38px;
+    line-height: .98; letter-spacing: -0.01em; margin-top: 8px; color: var(--franco-text);
+  }
+  .badge-v.rojo { color: var(--signal-red); }
+  .subv { font-size: 13.5px; line-height: 1.5; margin: 10px 0 0; color: var(--franco-text-secondary); max-width: 56ch; }
+  .subv b { color: var(--franco-text); font-weight: 500; }
+
+  /* Eje 1 · margen del ganador */
+  .margen { margin-top: 16px; }
+  .margen .lbl {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    font-family: "JetBrains Mono", monospace; font-size: 9.5px; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--franco-text-tertiary); margin-bottom: 6px;
+  }
+  .margen .lbl .val { font-size: 12px; font-weight: 700; color: var(--franco-text); letter-spacing: 0; text-transform: none; }
+  .margen .track { position: relative; height: 6px; border-radius: 3px; background: var(--franco-sunken); overflow: hidden; }
+  .margen .fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--franco-text-secondary); }
+  .margen .ticks {
+    display: flex; justify-content: space-between; margin-top: 4px;
+    font-family: "JetBrains Mono", monospace; font-size: 8.5px; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--franco-text-muted);
+  }
+
+  /* Eje del método (3 posiciones — la fragilidad ya no es banda) */
+  .segments { display: flex; gap: 4px; margin-top: 14px; }
+  .seg {
+    flex: 1; text-align: center; padding: 6px 4px; border-radius: 6px;
+    font-family: "JetBrains Mono", monospace; font-size: 9.5px; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--franco-text-muted);
+    background: var(--franco-sunken); border: .5px solid transparent;
+  }
+  .seg.on { color: var(--franco-bg); background: var(--franco-text); font-weight: 700; }
+
+  /* Eje 2 · robustez como chip calificador */
+  .chip-fragil {
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 12px;
+    border: .5px solid color-mix(in srgb, var(--signal-red) 35%, transparent);
+    background: var(--v-avoid-bg); border-radius: 999px; padding: 5px 12px;
+  }
+  .chip-fragil .k {
+    font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .1em; color: var(--signal-red);
+  }
+  .chip-fragil .t { font-size: 11px; color: var(--franco-text-secondary); }
+
+  /* chip de método subordinado (E2) */
+  .chip-metodo {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-top: 16px;
+    border-left: 3px solid var(--franco-text-secondary); border-radius: 0 8px 8px 0;
+    background: color-mix(in srgb, var(--franco-text) 4%, transparent);
+    padding: 10px 14px;
+  }
+  .chip-metodo .k {
+    font-family: "JetBrains Mono", monospace; font-size: 9px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--franco-text-tertiary);
+  }
+  .chip-metodo .t { font-size: 12.5px; color: var(--franco-text); }
+  .chip-metodo .t .mono { font-weight: 500; }
+
+  /* chips físicos */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+  .chip {
+    font-family: "JetBrains Mono", monospace; font-size: 10.5px;
+    border: .5px solid var(--franco-border); border-radius: 999px;
+    padding: 4px 10px; color: var(--franco-text-secondary); background: var(--franco-card);
+  }
+
+  /* mini-scores + distancia */
+  .minis { display: flex; flex-direction: column; gap: 10px; }
+  .mini {
+    border: .5px solid var(--franco-border); border-radius: 12px;
+    background: var(--franco-card); padding: 12px 14px;
+  }
+  .mini.destacada { border-color: var(--franco-border-strong); }
+  .mini .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .mini .lbl {
+    font-family: "JetBrains Mono", monospace; font-size: 9.5px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--franco-text-tertiary);
+  }
+  .mini .ver { font-family: "JetBrains Mono", monospace; font-size: 9.5px; color: var(--franco-text-muted); text-transform: uppercase; letter-spacing: .06em; }
+  .mini .row2 { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
+  .mini .score { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 24px; }
+  .mini .verdict { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+  .mini .verdict.rojo { color: var(--signal-red); }
+  .mini .dist {
+    margin-top: 8px; padding-top: 8px; border-top: .5px solid var(--franco-border);
+    font-size: 11.5px; line-height: 1.45; color: var(--franco-text-secondary);
+  }
+  .mini .dist .k {
+    font-family: "JetBrains Mono", monospace; font-size: 8.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--franco-text-tertiary);
+    display: block; margin-bottom: 2px;
+  }
+  .mini .dist .n { font-family: "JetBrains Mono", monospace; font-weight: 500; color: var(--franco-text); }
+
+  /* posición de Franco */
+  .posicion { padding: 0 28px 18px; }
+  .pos-box {
+    border-left: 3px solid var(--signal-red); border-radius: 0 8px 8px 0;
+    background: color-mix(in srgb, var(--signal-red) 5%, transparent);
+    padding: 14px 16px;
+  }
+  .pos-box .k {
+    font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--signal-red);
+    display: block; margin-bottom: 6px;
+  }
+  .pos-box p { font-size: 13.5px; line-height: 1.55; font-style: italic; margin: 0; color: var(--franco-text); }
+
+  .pie-firma {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 9px 28px; border-top: 1px solid var(--franco-border);
+    font-size: 11px; color: var(--franco-text-muted);
+  }
+  .wordmark { font-family: "Source Serif 4", serif; font-size: 14px; color: var(--franco-text); }
+  .wordmark .re { font-weight: 300; opacity: .28; font-style: italic; }
+  .wordmark .ai { font-family: "IBM Plex Sans", sans-serif; font-weight: 600; font-size: 11px; color: var(--signal-red); }
+
+  /* ── responsive 390 ── */
+  .wrap.movil .fgrid { grid-template-columns: 1fr; gap: 18px; padding: 14px 18px 18px; }
+  .wrap.movil .frow { padding: 14px 18px 12px; flex-direction: column; gap: 4px; }
+  .wrap.movil .frow h1 { font-size: 20px; }
+  .wrap.movil .badge-v { font-size: 30px; }
+  .wrap.movil .posicion { padding: 0 18px 16px; }
+  .wrap.movil .pie-firma { padding: 9px 18px; }
+  .wrap.movil .subv { max-width: none; }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <button class="ctl on" id="b-e1" onclick="setEstado('e1')">E1 · Ñuñoa</button>
+  <button class="ctl" id="b-e2" onclick="setEstado('e2')">E2 · Santiago</button>
+  <button class="ctl" id="b-e3" onclick="setEstado('e3')">E3 · Providencia</button>
+  <div class="sep"></div>
+  <button class="ctl on" id="b-1280" onclick="setVp(false)">1280</button>
+  <button class="ctl" id="b-390" onclick="setVp(true)">390</button>
+  <div class="sep"></div>
+  <button class="ctl on" id="b-dark" onclick="setTheme('dark')">Dark</button>
+  <button class="ctl" id="b-light" onclick="setTheme('light')">Light</button>
+</div>
+
+<div class="nota">
+  <b>Contrato propuesto · hero AMBAS sobre 3 ejes.</b> Eje 1: ganador del método <b>con margen visible</b>
+  (hoy ganar por 2% y por 40% se ven igual). Eje 2: la robustez (margen frágil) sale del eje de bandas y
+  pasa a <b>chip calificador</b>. Eje 3: la viabilidad de compra de los hijos gatilla los 3 estados
+  (E1 legítimo · E2 doble BUSCAR OTRA cambia la pregunta · E3 subordinación parcial). Distancia al
+  veredicto bajo cada mini-score, en los 3 estados. Datos <b>reales</b> del censo (recompute homologado).
+  Todo el copy es propuesta vetable.
+</div>
+
+<div class="wrap" id="wrap">
+
+  <!-- ═══════════════ E1 · Ñuñoa — al menos un hijo sostiene (AJUSTA en lado ganador) ═══════════════ -->
+  <div class="estado on" id="e-e1">
+    <div class="hero">
+      <div class="frow">
+        <h1 class="serif">San Eugenio 1485 <span class="comuna">· Ñuñoa</span></h1>
+        <span class="ctx">Comparativa · Ambas</span>
+      </div>
+      <div class="hr"></div>
+      <div class="fgrid">
+        <div>
+          <span class="eyebrow">Veredicto de modalidad</span>
+          <div class="badge-v">RENTA LARGA</div>
+          <p class="subv">
+            Arrendarlo por mes es la jugada acá: pones menos plata cada mes y no te pide horas.
+            <b>Ojo con el otro plano: como compra, este depto pide ajustar supuestos</b> — la modalidad
+            no arregla el precio.
+          </p>
+
+          <!-- Eje 1 · margen visible -->
+          <div class="margen">
+            <div class="lbl">
+              <span>Margen del ganador</span>
+              <span class="val">$34.886/mes · 4,1%</span>
+            </div>
+            <div class="track"><div class="fill" style="width:14%"></div></div>
+            <div class="ticks"><span>Estrecho &lt;10%</span><span>Claro</span><span>Amplio &gt;30%</span></div>
+          </div>
+
+          <!-- Eje del método: 3 posiciones (la fragilidad ya no es banda) -->
+          <div class="segments">
+            <div class="seg on">Larga</div>
+            <div class="seg">Parejas</div>
+            <div class="seg">Corta</div>
+          </div>
+
+          <div class="chips">
+            <span class="chip">1D1B</span><span class="chip">33,5 m²</span>
+            <span class="chip">UF 2.781</span><span class="chip">15% pie</span>
+          </div>
+        </div>
+
+        <div class="minis">
+          <div class="mini">
+            <div class="top"><span class="lbl">Renta larga</span><span class="ver">Ver →</span></div>
+            <div class="row2"><span class="score">57</span><span class="verdict">AJUSTA SUPUESTOS</span></div>
+            <div class="dist">
+              <span class="k">Lo que te separa</span>
+              A un precio de COMPRAR: <span class="n">UF 2.171</span> (−21,9%) · 1 vía más
+            </div>
+          </div>
+          <div class="mini">
+            <div class="top"><span class="lbl">Renta corta</span><span class="ver">Ver →</span></div>
+            <div class="row2"><span class="score">42</span><span class="verdict rojo">BUSCAR OTRA</span></div>
+            <div class="dist">
+              <span class="k">Lo que te separa</span>
+              A una tarifa de AJUSTA SUPUESTOS: <span class="n">$36.292</span> por noche (+2,5%)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="posicion">
+        <div class="pos-box">
+          <span class="k">La posición de Franco</span>
+          <p>
+            Renta larga es la mejor forma de arrendar este depto: por día te pide más plata de entrada,
+            más horas cada semana y más estómago, para terminar con casi el mismo patrimonio y menos caja.
+            Pero el margen es estrecho y la compra es otra conversación: con el precio actual, el análisis
+            pide ajustar supuestos antes de firmar — la palanca concreta está en "Lo que te separa".
+          </p>
+        </div>
+      </div>
+
+      <div class="pie-firma">
+        <span>Análisis generado por IA · 3 ago 2026</span>
+        <span class="wordmark"><span class="re">re</span>franco<span class="ai">.ai</span></span>
+      </div>
+    </div>
+
+    <div class="prop-nota">
+      <span class="tag">Qué cambia vs hoy · E1</span>
+      Hoy el sub dice "el corto no paga su esfuerzo" y nada más. La propuesta agrega: (1) el margen con
+      monto y escala — acá el ganador gana por poco y se dice; (2) el matiz de compra cuando el hijo
+      ganador es AJUSTA; (3) la barra baja de 4 a 3 posiciones (frágil deja de ser banda); (4) distancia
+      al veredicto bajo cada mini-score. Chip de robustez (especímen, ningún par de los 3 es frágil):
+      <span style="white-space:nowrap; display:inline-flex; align-items:center; gap:6px; border:.5px solid color-mix(in srgb,var(--signal-red) 35%,transparent); background:var(--v-avoid-bg); border-radius:999px; padding:2px 10px; vertical-align:middle;">
+        <span class="mono" style="font-size:8.5px; font-weight:700; letter-spacing:.1em; color:var(--signal-red); text-transform:uppercase;">Margen frágil</span>
+        <span style="font-size:10.5px; color:var(--franco-text-secondary);">un mal mes se come la ventaja</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ E2 · Santiago — doble BUSCAR OTRA: cambia la pregunta ═══════════════ -->
+  <div class="estado" id="e-e2">
+    <div class="hero critico">
+      <div class="frow">
+        <h1 class="serif">Moneda 1342 <span class="comuna">· Santiago</span></h1>
+        <span class="ctx">Comparativa · Ambas</span>
+      </div>
+      <div class="hr"></div>
+      <div class="fgrid">
+        <div>
+          <span class="eyebrow">Veredicto</span>
+          <div class="badge-v rojo">NO SE SOSTIENE</div>
+          <p class="subv">
+            <b>Este depto no se sostiene en ninguna de las dos.</b> Arrendarlo por mes o por día,
+            en los dos casos pones plata de tu bolsillo todos los meses y el análisis de cada lado
+            dice BUSCAR OTRA. La pregunta ya no es cómo arrendarlo — es si comprarlo.
+          </p>
+
+          <!-- método SUBORDINADO: segunda línea, sin badge ni celebración -->
+          <div class="chip-metodo">
+            <span class="k">Si igual lo compras</span>
+            <span class="t">arrendarlo por día pierde menos: <span class="mono">$47.294</span> menos de tu bolsillo al mes ($195.262 contra $242.556).</span>
+          </div>
+
+          <div class="chips">
+            <span class="chip">2D1B</span><span class="chip">50 m²</span>
+            <span class="chip">UF 3.200</span><span class="chip">20% pie</span>
+          </div>
+        </div>
+
+        <div class="minis">
+          <div class="mini destacada">
+            <div class="top"><span class="lbl">Renta larga</span><span class="ver">Ver →</span></div>
+            <div class="row2"><span class="score">45</span><span class="verdict rojo">BUSCAR OTRA</span></div>
+            <div class="dist">
+              <span class="k">Lo que te separa</span>
+              A un arriendo de AJUSTA SUPUESTOS: <span class="n">$465.591</span> (+9,6%) · 2 vías más
+            </div>
+          </div>
+          <div class="mini destacada">
+            <div class="top"><span class="lbl">Renta corta</span><span class="ver">Ver →</span></div>
+            <div class="row2"><span class="score">49</span><span class="verdict rojo">BUSCAR OTRA</span></div>
+            <div class="dist">
+              <span class="k">Lo que te separa</span>
+              A una tarifa de AJUSTA SUPUESTOS: <span class="n">$47.216</span> por noche (+3,7%)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="posicion">
+        <div class="pos-box">
+          <span class="k">La posición de Franco</span>
+          <p>
+            Buscar otra. Las dos formas de arrendarlo te piden plata cada mes y ninguna paga el esfuerzo.
+            Si este depto te importa por algo que no es la inversión, está bien — pero no te cuentes la
+            historia de que la modalidad lo arregla: lo que falla es la compra, y las palancas para darla
+            vuelta están en cada análisis, abajo.
+          </p>
+        </div>
+      </div>
+
+      <div class="pie-firma">
+        <span>Análisis generado por IA · 4 may 2026</span>
+        <span class="wordmark"><span class="re">re</span>franco<span class="ai">.ai</span></span>
+      </div>
+    </div>
+
+    <div class="prop-nota">
+      <span class="tag">Qué cambia vs hoy · E2 (rojo canónico Director 5963)</span>
+      Hoy este par titula "PAREJAS · no hay respuesta equivocada acá, hay preferencia" con dos hijos en
+      BUSCAR OTRA — luz verde falsa. La propuesta: el hero <b>cambia de pregunta</b> — badge propio en
+      Signal Red (uso permitido: veredicto crítico), tratamiento visual de BUSCAR OTRA (wash 5-7%), el
+      método degradado a una línea subordinada sin celebración, y los mini-scores suben de jerarquía
+      (son la noticia). La barra de método se retira: afirmar una posición en el eje sería re-celebrar.
+    </div>
+  </div>
+
+  <!-- ═══════════════ E3 · Providencia — mixto: subordinación parcial ═══════════════ -->
+  <div class="estado" id="e-e3">
+    <div class="hero">
+      <div class="frow">
+        <h1 class="serif">Av. Providencia 1234 <span class="comuna">· Providencia</span></h1>
+        <span class="ctx">Comparativa · Ambas</span>
+      </div>
+      <div class="hr"></div>
+      <div class="fgrid">
+        <div>
+          <span class="eyebrow">Veredicto de modalidad</span>
+          <div class="badge-v">RENTA CORTA</div>
+          <p class="subv">
+            Arrendarlo por día rinde lejos más que por mes acá. <b>Como compra, se sostiene solo si
+            ajustas supuestos — y arrendarlo por mes no se sostiene ni así</b>: la vía larga es un
+            pozo de $701.237 al mes.
+          </p>
+
+          <!-- Eje 1 · margen visible (ratio no confiable → se declara en plata) -->
+          <div class="margen">
+            <div class="lbl">
+              <span>Margen del ganador</span>
+              <span class="val">$696.678/mes de renta operativa</span>
+            </div>
+            <div class="track"><div class="fill" style="width:92%"></div></div>
+            <div class="ticks"><span>Estrecho &lt;10%</span><span>Claro</span><span>Amplio &gt;30%</span></div>
+          </div>
+
+          <div class="segments">
+            <div class="seg">Larga</div>
+            <div class="seg">Parejas</div>
+            <div class="seg on">Corta</div>
+          </div>
+
+          <div class="chips">
+            <span class="chip">2D1B</span><span class="chip">45 m²</span>
+            <span class="chip">UF 3.499</span><span class="chip">20% pie</span>
+          </div>
+        </div>
+
+        <div class="minis">
+          <div class="mini">
+            <div class="top"><span class="lbl">Renta corta</span><span class="ver">Ver →</span></div>
+            <div class="row2"><span class="score">52</span><span class="verdict">AJUSTA SUPUESTOS</span></div>
+            <div class="dist">
+              <span class="k">Lo que te separa</span>
+              Ningún ajuste realista lo mueve de AJUSTA SUPUESTOS — fuera de todo rango razonable
+            </div>
+          </div>
+          <div class="mini">
+            <div class="top"><span class="lbl">Renta larga</span><span class="ver">Ver →</span></div>
+            <div class="row2"><span class="score">29</span><span class="verdict rojo">BUSCAR OTRA</span></div>
+            <div class="dist">
+              <span class="k">Lo que te separa</span>
+              Ningún ajuste realista lo saca de BUSCAR OTRA
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="posicion">
+        <div class="pos-box">
+          <span class="k">La posición de Franco</span>
+          <p>
+            Si este depto entra a tu cartera, es por día y con las horas puestas: la ventaja sobre el
+            arriendo mensual es grande y aguanta un traspié. Pero que el margen no te apure la firma —
+            como compra sigue pidiendo ajustar supuestos, y acá ningún ajuste realista alcanza para
+            llegar a COMPRAR. La modalidad correcta no convierte un precio equivocado en buena inversión.
+          </p>
+        </div>
+      </div>
+
+      <div class="pie-firma">
+        <span>Análisis generado por IA · 7 jun 2026</span>
+        <span class="wordmark"><span class="re">re</span>franco<span class="ai">.ai</span></span>
+      </div>
+    </div>
+
+    <div class="prop-nota">
+      <span class="tag">Qué cambia vs hoy · E3 (subordinación parcial) + 2 hallazgos de datos</span>
+      Hoy este par celebra "la ventaja es real, no de papel" con la larga en 29 · BUSCAR OTRA. La
+      propuesta mantiene el badge del ganador (la ventaja ES grande: margen amplio visible) pero el sub
+      y la posición condicionan la compra en la misma respiración. <b>Hallazgo 1:</b> en los datos
+      reales el hijo 29·BUSCAR OTRA es el PERDEDOR (la corta ganadora tiene 52·AJUSTA) — el "mixto
+      invertido" estricto (ganador con hijo BUSCAR OTRA) no existe en este par; si aparece en el parque,
+      cae en la regla E3 con el sub aún más duro. <b>Hallazgo 2:</b> el motor LTR no emite hallazgo de
+      distancia para este hijo (score 29): la línea "ningún ajuste lo saca" es fallback propuesto, no
+      copy del motor. El ganador corta sí trae el estructural real ("fuera de todo rango razonable").
+      El orden de los mini-scores pone al ganador primero.
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function setEstado(e) {
+    for (const k of ['e1','e2','e3']) {
+      document.getElementById('e-' + k).classList.toggle('on', k === e);
+      document.getElementById('b-' + k).classList.toggle('on', k === e);
+    }
+  }
+  function setVp(movil) {
+    document.getElementById('wrap').classList.toggle('movil', movil);
+    document.getElementById('b-1280').classList.toggle('on', !movil);
+    document.getElementById('b-390').classList.toggle('on', movil);
+  }
+  function setTheme(t) {
+    if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+    document.getElementById('b-dark').classList.toggle('on', t === 'dark');
+    document.getElementById('b-light').classList.toggle('on', t === 'light');
+  }
+</script>
+</body>
+</html>
