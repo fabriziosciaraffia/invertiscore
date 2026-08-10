@@ -62,7 +62,7 @@ export function buildEmailRemediacion(d: DatosRemediacion): {
     ``,
     `Usar mi análisis: ${CTA_URL}`,
     ``,
-    `Perdón por el rodeo.`,
+    `Saludos.`,
     `Equipo Franco · refranco.ai`,
   ].join("\n");
 
@@ -136,7 +136,7 @@ export function buildEmailRemediacion(d: DatosRemediacion): {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="padding-top:20px; font-family:${SANS}; font-size:15px; color:#D4D4D8; line-height:1.65;">
-                    Perdón por el rodeo.
+                    Saludos.
                   </td>
                 </tr>
                 <tr>
