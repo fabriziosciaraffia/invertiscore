@@ -1,5 +1,6 @@
 import { requireAdminPage } from "@/lib/admin-auth";
 import { fmtCLP, fmtNumber } from "@/lib/admin-format";
+import { COLUMNAS_USO_IA, fmtUsd, resumirCosto, type UsoIA } from "@/lib/costo-ia";
 import {
   adminOverview,
   adminWeeklyStats,
@@ -55,7 +56,7 @@ export default async function AdminPage({
   const noTest = includeTest ? null : filtroNoTest(testUserIds);
   const testIdSet = new Set(testUserIds);
 
-  const [overview, semanas, checkoutsRow] = await Promise.all([
+  const [overview, semanas, checkoutsRow, usoIaRows] = await Promise.all([
     adminOverview(sb, includeTest),
     adminWeeklyStats(sb, { weeks: SEMANAS, includeTest }),
     // Los checkouts abandonados se traen como filas (no como conteo) porque con
@@ -71,7 +72,22 @@ export default async function AdminPage({
         .limit(20);
       return noTest ? q.or(noTest) : q;
     })(),
+    // Consumo de IA de los análisis del período. Se traen las filas y el costo se
+    // calcula al leer (ver costo-ia.ts): las tarifas cambian, los tokens no.
+    // Mismo filtro de cuentas de test que el resto de la página.
+    (() => {
+      const q = sb
+        .from("analisis")
+        .select(COLUMNAS_USO_IA)
+        .gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString());
+      return noTest ? q.or(noTest) : q;
+    })(),
   ]);
+
+  // Las filas anteriores a la instrumentación tienen los ai_* en NULL, que
+  // significa "no medido" y NO "costo cero": resumirCosto las cuenta aparte para
+  // que el promedio no se diluya con análisis que sí costaron y nadie midió.
+  const costoIa = resumirCosto((usoIaRows.data ?? []) as unknown as UsoIA[]);
 
   const checkoutRows = (checkoutsRow.data ?? []) as Array<{
     id: string; user_id: string; product: string | null; amount: number | null; created_at: string;
@@ -187,12 +203,12 @@ export default async function AdminPage({
       {/* ─── 4 · KPIs ─── */}
       <section>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Los tres números</h2>
+          <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Los cuatro números</h2>
           <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
             Últimos 30 días
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Kpi
             valor={fmtNumber(overview.nuevos_30d)}
             label="Usuarios nuevos"
@@ -211,6 +227,17 @@ export default async function AdminPage({
             valor={fmtCLP(overview.ingresos_30d)}
             label="Ingresos"
             sub="pagos confirmados sobre $0"
+          />
+          <Kpi
+            valor={costoIa.medidos > 0 ? fmtUsd(costoIa.totalUsd) : "sin datos"}
+            label="Costo IA"
+            sub={
+              costoIa.medidos > 0
+                ? `${fmtUsd(costoIa.promedioUsd ?? 0)} por análisis · ${fmtNumber(costoIa.medidos)} medidos${
+                    costoIa.sinMedir > 0 ? ` · ${fmtNumber(costoIa.sinMedir)} sin medir` : ""
+                  }`
+                : "ningún análisis del período tiene tokens registrados"
+            }
             className="col-span-2 lg:col-span-1"
           />
         </div>
