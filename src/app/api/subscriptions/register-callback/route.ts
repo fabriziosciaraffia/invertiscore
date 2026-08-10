@@ -94,13 +94,39 @@ export async function POST(request: Request) {
     const paidOrder = `franco-sub-${subData.subscriptionId}`;
     const { data: pendingRow } = await supabase
       .from("payments")
-      .select("id")
+      .select("id, payment_data")
       .eq("user_id", userCredit.user_id)
       .eq("product", match.key)
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // POR QUÉ ACÁ NO SE CONSULTA `payment/getStatus`
+    //
+    // En `payments/confirm` y en `subscriptions/payment-callback` el token es de
+    // un PAGO, así que getStatus devuelve el bloque `paymentData` con fee/taxes/
+    // balance (la comisión de Flow; ver src/lib/comision-flow.ts). Acá no: el
+    // token es el del registro de la TARJETA, y en este instante el cobro todavía
+    // no ocurrió — la primera invoice que devuelve `subscription/create` viene en
+    // `status: 1` (pendiente), `attemped: 0` y sin flowOrder. No hay transacción
+    // que consultar, y por lo tanto no hay comisión que guardar.
+    //
+    // El fee del primer cobro sí queda medido: llega minutos u horas después por
+    // `subscriptions/payment-callback`, que crea su propia fila
+    // `franco-sub-pay-<flowOrder>` con el bloque completo. Esta fila es el ALTA,
+    // no el cobro — `esAltaSuscripcion` la reconoce y la deja fuera de los
+    // totales para que el mismo dinero no se cuente dos veces.
+    //
+    // Lo que sí se arregla acá: `payment_data` se FUSIONA sobre lo que hubiera
+    // dejado `subscriptions/create` en vez de pisarlo (mismo patrón que
+    // `preservedPaymentData` en payments/confirm). subData va encima porque es el
+    // dato fresco de Flow.
+    const prevPaymentData =
+      pendingRow?.payment_data && typeof pendingRow.payment_data === "object" && !Array.isArray(pendingRow.payment_data)
+        ? (pendingRow.payment_data as Record<string, unknown>)
+        : {};
+    const paymentDataAlta = { ...prevPaymentData, ...subData };
 
     // La fila de alta (franco-sub-<subId>) se crea/flipea igual; ya no capturamos su
     // id porque bajo modelo C el grant NO se ata a la fila del alta sino a la del
@@ -112,7 +138,7 @@ export async function POST(request: Request) {
           commerce_order: paidOrder,
           amount: match.product.amount,
           status: "paid",
-          payment_data: subData,
+          payment_data: paymentDataAlta,
         })
         .eq("id", pendingRow.id);
     } else {
@@ -129,7 +155,7 @@ export async function POST(request: Request) {
             product: match.key,
             amount: match.product.amount,
             status: "paid",
-            payment_data: subData,
+            payment_data: paymentDataAlta,
           },
           { onConflict: "commerce_order", ignoreDuplicates: true },
         )
