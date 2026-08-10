@@ -35,6 +35,9 @@ import { deriveRecomendacionModalidad } from "@/lib/engines/str-universo-santiag
 import type { BandaComparativa } from "@/lib/engines/str-universo-santiago";
 import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
 import { buildAperturaComparativa, aperturaWordCount } from "@/lib/comparativa-apertura";
+import { derivarEstadoHero, type EstadoHero, type Verdict } from "@/lib/comparativa-hero-copy";
+import { readVeredicto } from "@/lib/results-helpers";
+import { normalizeLegacyVerdict } from "@/lib/types";
 import { resolveUfForAnalysis } from "@/lib/uf";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
@@ -184,6 +187,20 @@ export async function generateComparativaAI(opts: GenerateComparativaOpts): Prom
   const flip = strResults.veredictoComparativo?.flipGestion;
   const flipCambia = flip?.cambiaVeredicto ?? false;
 
+  // Viabilidad de compra (hero 3 ejes, contrato d25096d): los veredictos de los
+  // hijos ENTRAN al prompt — su ausencia era la causa raíz del D8 del censo.
+  // MISMO derivador que el render (derivarEstadoHero): cero copia de lógica.
+  const ltrVerdict = (readVeredicto(ltrResults) as Verdict | null) ?? null;
+  const strVerdict = (normalizeLegacyVerdict(strResults.veredicto) as Verdict | null) ?? null;
+  const estadoHero: EstadoHero = derivarEstadoHero(ltrVerdict, strVerdict);
+  const ltrScoreHijo = (ltrRow.score as number | null) ?? 0;
+  const strScoreHijo = (strResults as { francoScore?: { score?: number } }).francoScore?.score ?? 0;
+  const estadoHeroLabel: Record<EstadoHero, string> = {
+    e1: "E1 — los dos análisis sostienen la compra",
+    e2: "E2 — NINGUNA vía se sostiene (doble BUSCAR OTRA): marco «si igual lo compras», cero celebración del método",
+    e3: "E3 — un lado no se sostiene: subordinación parcial (la compra pide ajustar supuestos; la otra vía no se sostiene)",
+  };
+
   const modoGestion = (strInput?.modoGestion as string) ?? "auto";
   const comisionAdminDec = (strInput?.comisionAdministrador as number) ?? 0.2;
   const comisionAdmin = Math.round(comisionAdminDec * 100);
@@ -198,7 +215,7 @@ export async function generateComparativaAI(opts: GenerateComparativaOpts): Prom
   const findings = ctxFindings ? buildFindingsComparativa(ctxFindings, "CLP", ltrUf) : [];
   const top = findings[0];
 
-  const apertura = buildAperturaComparativa({ topId: top?.id ?? "flujo", topLado: top?.lado ?? "neutro", banda });
+  const apertura = buildAperturaComparativa({ topId: top?.id ?? "flujo", topLado: top?.lado ?? "neutro", banda, estadoHero });
   const aperturaWC = aperturaWordCount(apertura);
   const cardCifras = findings.flatMap((f) => [f.kpi, ...extractCifras(f.ksub), ...extractCifras(f.cuerpo)]);
 
@@ -224,6 +241,12 @@ estadoVeredicto: ${estadoLabel[banda]}
 recomendacion (cópiala EXACTO al JSON): ${reco}
 ${flipCambia ? `flipGestion: SÍ — administrarlo tú vs delegarlo CAMBIA el veredicto (auto→${flip?.recomendacionAuto}, admin→${flip?.recomendacionAdmin}). Recanócelo en el cierre.` : "flipGestion: no cambia el veredicto."}
 ${zona ? `zona: ${zona.tierZona} (score ${zona.score}/100)${zona.comunaNoListada ? " · comuna no listada en el universo benchmark — atenúa" : ""}` : "zona STR no calculada"}
+
+=== VIABILIDAD DE COMPRA (ver sección homónima del system) ===
+estadoHero: ${estadoHeroLabel[estadoHero]}
+análisis renta larga: ${ltrVerdict ?? "sin veredicto"} (score ${ltrScoreHijo})
+análisis renta corta: ${strVerdict ?? "sin veredicto"} (score ${strScoreHijo})
+Tu prosa NUNCA contradice estos veredictos de compra.
 
 === APERTURA YA ESCRITA POR EL MOTOR (${aperturaWC} palabras) ===
 Se antepone automáticamente. NO la escribas, NO la parafrasees. Tu movimiento 1 CONTINÚA después de ella:

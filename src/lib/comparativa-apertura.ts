@@ -25,6 +25,11 @@ export interface AperturaCtx {
   topId: string;              // id del finding #1 (flujo | breakeven | …)
   topLado: "ltr" | "str" | "neutro";
   banda: BandaComparativa;
+  /** Estado del hero 3 ejes (contrato d25096d). Solo "e2" cambia la apertura:
+   *  con doble BUSCAR OTRA la variante por banda ("la plata no decide", "la
+   *  jugada acá") contradiría al hero "NO SE SOSTIENE" en la misma pantalla.
+   *  Ausente ⇒ conducta por banda (E1/E3 y todos los callers previos). */
+  estadoHero?: "e1" | "e2" | "e3";
 }
 
 // Voz: tuteo neutro chileno (§2.1). Cifra-free: la aritmética vive en las cards.
@@ -32,6 +37,12 @@ export interface AperturaCtx {
 // natural. 1-2 oraciones.
 export function buildAperturaComparativa(ctx: AperturaCtx): string {
   const { banda, topId, topLado } = ctx;
+
+  // E2 — coherencia apertura↔hero: la comparación sirve para saber cuál pierde
+  // menos, no para elegir una jugada. Cortocircuita antes que la banda.
+  if (ctx.estadoHero === "e2") {
+    return "Puestas las dos lado a lado, ninguna sostiene la compra: la comparación sirve para saber cuál pierde menos, no cuál te enriquece. Lo que queda por resolver no es el método — es si este depto merece tu firma.";
+  }
 
   // Rama frágil: el #1 es el break-even; el insight es el MARGEN, no el monto.
   if (banda === "STR_FRAGIL") {
