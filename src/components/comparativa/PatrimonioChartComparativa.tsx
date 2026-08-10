@@ -10,6 +10,7 @@ import type { FullAnalysisResult } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { fmtAxisMoney, fmtMoney } from "@/components/analysis/utils";
 import { hayAsimetriaDeEntrega } from "@/lib/comparativa-patrimonio";
+import { buildNotaPatrimonioChart, type NotaSegmento } from "@/lib/comparativa-chart-notas";
 
 interface Props {
   ltrResults: FullAnalysisResult;
@@ -164,20 +165,16 @@ export function PatrimonioChartComparativa(p: Props) {
 
   const last = chartData[chartData.length - 1];
   const lastYear = last.year;
-  const activoFinal = last.activo ?? 0;
   const riquezaLTRFinal = last.riquezaLTR ?? 0;
   const riquezaSTRFinal = last.riquezaSTR ?? 0;
   const brecha = riquezaLTRFinal - riquezaSTRFinal;
-  const ganadora = brecha >= 0 ? "renta larga" : "renta corta";
 
-  // Desambiguación bruto vs neto. La línea del activo es patrimonio BRUTO (activo
-  // − deuda); "tu parte al vender" del detalle ya descuenta el 2% de comisión +
-  // costos de cierre (short-term-engine `GASTOS_CIERRE_VENTA` · analysis.ts
-  // `comisionVenta`). Sin glosa quedaban dos cifras separadas ~4% conviviendo en
-  // la app sin explicación.
-  const idxFinal = chartData.length - 1;
-  const valorActivoFinal = p.ltrResults.projections?.[idxFinal]?.valorPropiedad ?? 0;
-  const comisionVentaFinal = Math.round(valorActivoFinal * 0.02);
+  // Anotación bajo el chart (kicker + cuerpo + glosa bruto/comisión): fuente
+  // única en @/lib/comparativa-chart-notas — el ensamblador editorial lee el
+  // mismo texto por el mismo builder (regla espejo). La glosa desambigua
+  // patrimonio bruto vs "tu parte al vender" (que ya descuenta el 2% de
+  // comisión + costos de cierre).
+  const nota = buildNotaPatrimonioChart(p.ltrResults, p.strResults, p.currency, p.ufValue);
 
   return (
     <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 mb-6">
@@ -308,52 +305,29 @@ export function PatrimonioChartComparativa(p: Props) {
         {!asimetria && <LegendItem variant="dashed" label="Riqueza · corta" />}
       </div>
 
-      <div
-        className="mt-5 p-4"
-        style={{
-          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-          borderLeft: "3px solid var(--franco-text-secondary)",
-          borderRadius: "0 8px 8px 0",
-        }}
-      >
-        <p
-          className="font-mono uppercase mb-1"
-          style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
+      {nota && (
+        <div
+          className="mt-5 p-4"
+          style={{
+            background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+            borderLeft: "3px solid var(--franco-text-secondary)",
+            borderRadius: "0 8px 8px 0",
+          }}
         >
-          {asimetria
-            ? `AL AÑO ${lastYear} · SOLO RENTA LARGA`
-            : `AL AÑO ${lastYear} · EL ACTIVO EMPATA, EL CAMINO NO`}
-        </p>
-        <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-snug">
-          {asimetria ? (
-            <>
-              Acá va solo la renta larga: {fmtMoney(activoFinal, p.currency, p.ufValue)} de activo neto de deuda
-              al año {lastYear}, y {fmtMoney(riquezaLTRFinal, p.currency, p.ufValue)} descontando lo que pones de
-              tu bolsillo por el camino. La renta corta no se dibuja porque este depto todavía no se entrega: con
-              renta larga el crédito recién empieza a correr cuando lo recibas, y su proyección aún no descuenta
-              esa espera. Superponerlas mostraría una brecha de punto de partida, no de modalidad.
-            </>
-          ) : (
-            <>
-              El depto se aprecia igual y la deuda se amortiza igual, arriendes corto o largo: {fmtMoney(activoFinal, p.currency, p.ufValue)}{" "}
-              de activo neto de deuda en las dos modalidades. Lo que cambia es cuánto pones de tu bolsillo por el camino.
-              Descontándolo, terminas con {fmtMoney(riquezaLTRFinal, p.currency, p.ufValue)} en renta larga y{" "}
-              {fmtMoney(riquezaSTRFinal, p.currency, p.ufValue)} en renta corta — {fmtMoney(Math.abs(brecha), p.currency, p.ufValue)}{" "}
-              de diferencia a favor de la {ganadora}. Esa brecha es la decisión, no el activo.
-            </>
-          )}
-        </p>
-        <p className="font-body text-[12px] text-[var(--franco-text-secondary)] m-0 mt-2 leading-snug">
-          {comisionVentaFinal > 0 ? (
-            <>
-              Es patrimonio bruto: el activo menos la deuda. Si vendes, la comisión de venta (2%) resta{" "}
-              <span className="font-mono">{fmtMoney(comisionVentaFinal, p.currency, p.ufValue)}</span> de esa cifra.
-            </>
-          ) : (
-            <>Es patrimonio bruto: el activo menos la deuda. La comisión de venta (2%) no está descontada.</>
-          )}
-        </p>
-      </div>
+          <p
+            className="font-mono uppercase mb-1"
+            style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
+          >
+            {nota.kicker}
+          </p>
+          <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-snug">
+            {nota.cuerpo}
+          </p>
+          <p className="font-body text-[12px] text-[var(--franco-text-secondary)] m-0 mt-2 leading-snug">
+            <Segmentos segs={nota.glosa} />
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -445,6 +419,22 @@ function BracketBrecha({ top, bottom, label, yMax }: BracketProps) {
         {label}
       </text>
     </g>
+  );
+}
+
+// Segmentos de la anotación: los tramos `mono` van en font-mono, igual que el
+// JSX inline que este builder reemplazó.
+function Segmentos({ segs }: { segs: NotaSegmento[] }) {
+  return (
+    <>
+      {segs.map((s, i) =>
+        s.mono ? (
+          <span key={i} className="font-mono">{s.t}</span>
+        ) : (
+          <span key={i}>{s.t}</span>
+        ),
+      )}
+    </>
   );
 }
 

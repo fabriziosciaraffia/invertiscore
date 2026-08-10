@@ -8,6 +8,7 @@ import {
 import type { FullAnalysisResult } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { fmtAxisMoney, fmtMoney } from "@/components/analysis/utils";
+import { buildNotaFlujoChart } from "@/lib/comparativa-chart-notas";
 
 interface Props {
   ltrResults: FullAnalysisResult;
@@ -41,11 +42,10 @@ export function FlujoMensualChart(p: Props) {
     return null;
   }
 
-  const minSTR = Math.min(...chartData.map((d) => d.str));
-  const maxSTR = Math.max(...chartData.map((d) => d.str));
-  const rangoSTR = maxSTR - minSTR;
-  const ltrFlujo = chartData[0].ltr;
-  const promedioSTR = chartData.reduce((s, d) => s + d.str, 0) / chartData.length;
+  // Caption bajo el chart (rango STR, promedio, fondo de reserva): fuente única
+  // en @/lib/comparativa-chart-notas — el ensamblador editorial lee el mismo
+  // texto por el mismo builder (regla espejo).
+  const nota = buildNotaFlujoChart(p.ltrResults, p.strResults, p.currency, p.ufValue);
 
   return (
     <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 mb-6">
@@ -122,21 +122,26 @@ export function FlujoMensualChart(p: Props) {
         <LegendItem dashed={true} color="var(--franco-text-tertiary)" label="Renta corta" />
       </div>
 
-      <div
-        className="mt-5 p-4"
-        style={{
-          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-          borderLeft: "3px solid var(--franco-text-secondary)",
-          borderRadius: "0 8px 8px 0",
-        }}
-      >
-        <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-snug">
-          LTR mantiene <span className="font-mono">{fmtMoney(ltrFlujo, p.currency, p.ufValue)}</span> casi constante mes a mes.
-          STR fluctúa entre <span className="font-mono">{fmtMoney(minSTR, p.currency, p.ufValue)}</span> y <span className="font-mono">{fmtMoney(maxSTR, p.currency, p.ufValue)}</span> ({fmtMoney(rangoSTR, p.currency, p.ufValue)} de rango)
-          con promedio <span className="font-mono">{fmtMoney(promedioSTR, p.currency, p.ufValue)}</span>. La estacionalidad de Santiago
-          (peak julio · valle febrero) exige fondo de reserva 3-4 meses si vas por STR.
-        </p>
-      </div>
+      {nota && (
+        <div
+          className="mt-5 p-4"
+          style={{
+            background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+            borderLeft: "3px solid var(--franco-text-secondary)",
+            borderRadius: "0 8px 8px 0",
+          }}
+        >
+          <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-snug">
+            {nota.map((s, i) =>
+              s.mono ? (
+                <span key={i} className="font-mono">{s.t}</span>
+              ) : (
+                <span key={i}>{s.t}</span>
+              ),
+            )}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
