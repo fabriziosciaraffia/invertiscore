@@ -132,6 +132,108 @@ El lector objetivo es un comprador chileno inteligente pero **no financiero**.
 
 ---
 
+## SOLO AMBAS — dimensiones 8-13 (informe comparativo)
+
+> Estas seis dimensiones aplican **únicamente** cuando el informe evaluado es un
+> comparativo AMBAS (`meta.tipo: "AMBAS"`): la pieza que compara renta larga vs
+> renta corta de un mismo depto. Las 7 dimensiones generales aplican igual y
+> completas; estas seis miden lo que solo puede fallar en un comparativo. Para
+> informes LTR o STR, ignorarlas.
+>
+> Contexto de objeto: el veredicto del comparativo es de **método** (cuál
+> modalidad de arriendo conviene), no de compra. Los dos análisis hijos tienen
+> su propio Franco Score y veredicto de compra (COMPRAR / AJUSTA SUPUESTOS /
+> BUSCAR OTRA), visibles en la pieza `hero:mini-scores`.
+
+## 8. Test de la pregunta (techo: ALTA)
+
+El informe responde "¿cuál MÉTODO de arriendo conviene?" y el lector nunca debe
+poder leerlo como "¿conviene COMPRAR este depto?". Si los dos hijos dicen
+BUSCAR OTRA, un comparativo que celebra a la ganadora sin recordar que la
+compra misma no se sostiene está desinformando.
+
+**Rojo canónico** (caso Director 5963): mini-scores con **doble BUSCAR OTRA** y
+el hero titulando "la jugada sólida acá" sin ninguna pieza que aclare que
+sólida es la *modalidad relativa*, no la compra. El lector con atención parcial
+sale creyendo que tiene luz verde.
+
+No es falla: celebrar a la ganadora cuando al menos un hijo sostiene la compra,
+o cuando alguna pieza explicita el marco ("de las dos formas de arrendarlo, esta;
+otra cosa es si el depto conviene").
+
+## 9. Test lector-30% (techo: MEDIA)
+
+Un lector que retiene el 30% del informe debe poder recontar la conclusión con
+hechos, no con jerga. La prosa describe el **hecho** antes que el **concepto**:
+"arrendando por día" antes que "el corto"; "lo que te queda cada mes" antes que
+"el flujo"; "cuánto tiene que facturar para no perder" antes que "el break-even".
+
+Falla cuando una pieza usa el apodo o el concepto **sin que el hecho se haya
+descrito antes en la pieza de lectura**. No es falla el apodo ya introducido
+(la repetición posterior de "el corto" tras describir qué es, es economía, no
+opacidad).
+
+## 10. Cifra sin ancla (techo: ALTA)
+
+Todo número del comparativo declara **de dónde sale**, en la misma pieza o en
+su drawer-puente. El lector nunca debe encontrarse un monto que no pueda
+rastrear a un origen nombrado.
+
+- Un "~$320.000 al mes" debe poder desglosarse (ej.: arriendo $650.000 →
+  neto $334.000 después de gastos); si ninguna pieza da el desglose ni nombra
+  la base, es falla.
+- Si una curva o serie "parte en $58 millones", esa cifra debe estar anclada a
+  su concepto (capital de entrada: pie + cierre + amoblamiento), no confundible
+  con otro monto vecino (el pie solo, $39 millones).
+- El drawer-puente de cada card ES el ancla esperada: si la card muestra el KPI
+  y el puente muestra la resta que lo produce, está anclado. La falla es la
+  cifra cuyo puente no existe o no la explica.
+
+## 11. Tensión numérica sin resolver (techo: ALTA)
+
+Cuando las cifras empujan hacia un lado y el veredicto va hacia el otro, el
+informe debe mostrar el **puente aritmético** que resuelve la tensión — no
+basta afirmarla resuelta.
+
+Ejemplo canónico: flujo y riqueza acumulada favorecen al corto, y el veredicto
+es renta larga por el esfuerzo. El puente existe si alguna pieza hace la
+cuenta: la ventaja de $15,6 millones a 10 años ÷ ~5.200 horas de operación ≈
+$3.000 por hora — menos que el sueldo mínimo; el lector ve POR QUÉ el esfuerzo
+se come la ventaja. Sin esa aritmética (o una equivalente), el veredicto queda
+afirmado contra los números visibles: falla ALTA.
+
+No es falla: tensión menor ya cubierta por la dimensión 3 (coherencia), ni la
+tensión nombrada Y cuantificada aunque sea en el drawer.
+
+## 12. Coherencia veredicto ↔ pirámide (techo: ALTA)
+
+Los hallazgos de la pirámide diferencial, leídos en orden, **sostienen** el
+veredicto del hero. Vigilar:
+
+- El hallazgo que lidera la pirámide no puede empujar contra el veredicto sin
+  que ninguna pieza medie (si gana la larga pero la card #1 celebra la caja del
+  corto a secas, el lector queda sin piso).
+- Los lados declarados de las cards ("a favor renta larga/corta") deben sumar
+  una historia compatible con el ganador; si la mayoría favorece al perdedor,
+  alguna pieza debe explicar por qué gana igual (esa explicación puede ser la
+  dimensión 11 bien resuelta).
+- El TOP-3 del hero es un subconjunto de la pirámide: mismo orden, mismos
+  titulares, sin contradicción entre el índice y las cards de abajo.
+
+## 13. No-recitación de cards (techo: MEDIA)
+
+La prosa IA ("Cuál te conviene", "Quién tienes que ser", "¿Y si migro
+después?", el cierre) **narra lo que las cards no pueden**: perfil, condición,
+costo emocional. Falla cuando repite literal —o casi literal— el titular, el
+KPI o el cuerpo de una card visible en la misma página: el lector paga dos
+veces por el mismo contenido.
+
+No es falla: retomar un concepto de card para argumentar sobre él (eso es
+progresión), ni que el cierre nombre la condición que una card cuantifica —
+la falla es el eco textual sin valor narrativo agregado.
+
+---
+
 ## Formato de salida del evaluador
 
 Por informe, un JSON:
@@ -143,13 +245,23 @@ Por informe, un JSON:
     {
       "dimension": 1,
       "severidad": "alta | media | baja",
-      "pieza": "respuestaDirecta | posicion | card:<id> | drawer:<id> | zona | transversal",
+      "pieza": "ver sets por tipo de informe, abajo",
       "cita": "fragmento textual literal donde ocurre la falla",
       "explicacion": "1 línea: qué está roto y por qué"
     }
   ]
 }
 ```
+
+Valores de `pieza` — usar EXACTAMENTE el nombre de la etiqueta `[PIEZA: ...]`
+del informe ensamblado (la parte antes del paréntesis), según el tipo:
+
+- **LTR / STR**: `respuestaDirecta | posicion | card:<id> | drawer:<id> | zona | transversal`
+- **AMBAS**: `hero:veredicto | hero:banner | hero:mini-scores | prosa | hero:indice | posicion | card:<id> | drawer:puente:<id> | evidencia | chart:patrimonio:nota | chart:flujo:nota | transversal`
+  (`hero:banner` solo existe en pares con margen frágil.)
+
+(`transversal` en ambos sets se reserva para fallas que cruzan piezas — misma
+regla de la cita con " ⇄ " de abajo. No inventar nombres fuera del set del tipo.)
 
 Reglas de salida:
 - **Solo fallas.** Nada de confirmaciones, "OK", "bien logrado". Si algo está bien,

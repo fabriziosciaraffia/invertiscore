@@ -75,7 +75,11 @@ export async function evaluarInforme(args: {
   systemPrompt: string;
   meta: { id8: string; tipo: string; veredicto: string; comuna: string; promptVersion: number | null };
   informeTexto: string;
+  // Instrucción de alcance de dimensiones. Default: las 7 generales (LTR/STR).
+  // El censo AMBAS pasa la suya (1-7 + 8-13 "SOLO AMBAS" de la rúbrica).
+  dimensiones?: string;
 }): Promise<EvalEditorial> {
+  const dims = args.dimensiones ?? "las 7 dimensiones de la rúbrica";
   const userPrompt = `METADATOS DEL CASO (contexto, no es texto a evaluar): ${JSON.stringify(args.meta)}
 
 ═══ INFORME COMPLETO (ensamblado en orden de lectura) ═══
@@ -84,7 +88,7 @@ ${args.informeTexto}
 
 ═══ FIN DEL INFORME ═══
 
-Evalúa el informe contra las 7 dimensiones de la rúbrica y devuelve SOLO el JSON.`;
+Evalúa el informe contra ${dims} y devuelve SOLO el JSON.`;
 
   const t0 = Date.now();
   const msg = await anthropic.messages.create({
