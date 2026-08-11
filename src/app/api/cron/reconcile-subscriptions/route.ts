@@ -25,9 +25,18 @@ const RUTA = "GET /api/cron/reconcile-subscriptions";
  * dejaba la fila escrita y la conversión sin enviar — y el webhook posterior ya
  * contaba 1 previa, así que tampoco disparaba.
  *
- * Frecuencia: DIARIA (Vercel Hobby no admite crons sub-diarios). Como backstop
- * alcanza: el webhook es el camino real-time; la ventana de escaneo HOY+AYER (~48h)
- * garantiza recuperar cualquier cobro perdido dentro de <24h pese al ritmo diario.
+ * Frecuencia: HORARIA. Era diaria (09:00 CLT) porque Vercel Hobby topa los crons a
+ * una corrida por día; con la cuenta en Pro esa restricción no aplica.
+ *
+ * El cambio no fue cosmético: el cobro perdido del 9-ago-2026 ocurrió a las 23:56
+ * CLT, o sea 9 horas después de la corrida del día y 9 antes de la siguiente. El
+ * reconciler no falló —todavía no le tocaba correr—, y en el peor caso la latencia
+ * de detección era de 24h. Con ritmo horario baja a ≤1h. Las corridas sin trabajo
+ * son no-ops de un par de SELECT: el helper deduplica por las tres capas de
+ * idempotencia, así que reprocesar lo ya procesado no cuesta ni escribe.
+ *
+ * La ventana de escaneo sigue siendo HOY+AYER (~48h): cubre de sobra el hueco entre
+ * corridas y protege ante horas salteadas.
  *
  * Canary: el cargo del 22-jun se protege por el cutoff SUBSCRIPTION_GRANT_CUTOFF
  * (su grant se suspende por ser pre-C); además la ventana hoy/ayer deja de
@@ -351,28 +360,76 @@ export async function GET(request: Request) {
   // se procesó y hubo errores, la corrida no reconcilió nada y eso sí tiene que
   // verse rojo. Un 207 por errores parciales sigue siendo 2xx.
   // PUNTO CIEGO que costó el diagnóstico del 9-ago: una corrida que escanea pagos
-  // pero no encuentra NINGÚN cargo de suscripción devuelve 200 con todo en cero —
-  // idéntica a un día sano sin cobros. Así no se puede distinguir "no había nada
-  // que hacer" de "getPayments no lista los cargos de suscripción" o "el filtro no
-  // matchea". Si vimos pagos y ninguno calificó, lo decimos en voz alta.
+  // y no encuentra NINGÚN cargo de suscripción devuelve 200 con todo en cero —
+  // idéntica a un día sano sin cobros.
   //
-  // Warning y no error a propósito: hay días legítimamente sin cobros recurrentes.
-  // Lo que interesa es la RACHA, visible en Sentry.
+  // POR QUÉ NO ALCANZA CON `eligible === 0` POR CORRIDA, ni con una racha de
+  // corridas. Con el cron horario, la enorme mayoría de las horas NO tiene cobros:
+  // la facturación es MENSUAL. Una racha contada en corridas tendría que valer
+  // ~700 (29 días × 24) para no ser ruido, y se rompería sola al cambiar la
+  // frecuencia del cron.
+  //
+  // La racha se mide en TIEMPO, y el reloj ya existe: la fila de cargo más reciente
+  // (`franco-sub-pay-*`) en nuestra propia base. Cero estado nuevo que mantener,
+  // inmune a la frecuencia del cron y a los redeploys.
+  //
+  // N = 40 DÍAS: el ciclo mensual más largo son 31 días y la gracia de past_due
+  // suma 7 (38). 40 deja margen sin volverse laxo. Con al menos una suscripción
+  // MENSUAL activa, 40 días sin un solo cargo registrado no es un mes tranquilo:
+  // es que dejamos de ver los cobros.
+  //
+  // Las suscripciones anuales quedan fuera del guard a propósito — cobran una vez
+  // al año y dispararían el aviso todos los meses.
+  const DIAS_SIN_CARGOS_ANOMALO = 40;
   if (!dryRun && scanned > 0 && eligible === 0) {
-    console.error(
-      "[cron/reconcile-subscriptions] escaneó",
-      scanned,
-      "pagos y NINGUNO calificó como cargo de suscripción — revisar si getPayments los lista"
-    );
-    captureApiWarning(
-      new Error("Reconciliación sin cargos de suscripción elegibles"),
-      {
-        ruta: RUTA,
-        operacion: "escanear-cargos",
-        tags: { sin_elegibles: "true" },
-        extra: { dates, scanned },
-      }
-    );
+    const [{ data: ultimoCargo }, { count: subsMensuales }] = await Promise.all([
+      supabase
+        .from("payments")
+        .select("created_at")
+        .like("commerce_order", "franco-sub-pay-%")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("user_credits")
+        .select("user_id", { count: "exact", head: true })
+        .eq("subscription_status", "active")
+        .eq("billing_period", "monthly"),
+    ]);
+
+    const msSinCargos = ultimoCargo?.created_at
+      ? Date.now() - new Date(ultimoCargo.created_at).getTime()
+      : Infinity;
+    const diasSinCargos = msSinCargos / (24 * 60 * 60 * 1000);
+
+    // count null = "no sé" (fallo de la query), NUNCA 0: sin el dato no afirmamos
+    // que no hay suscripciones activas ni disparamos un aviso a ciegas.
+    if ((subsMensuales ?? 0) > 0 && diasSinCargos > DIAS_SIN_CARGOS_ANOMALO) {
+      console.error(
+        "[cron/reconcile-subscriptions] hay",
+        subsMensuales,
+        "suscripciones mensuales activas y el último cargo registrado tiene",
+        Math.floor(diasSinCargos),
+        "días — revisar si getPayments sigue listando los cargos de suscripción"
+      );
+      captureApiWarning(
+        new Error(
+          `Sin cargos de suscripción hace ${Math.floor(diasSinCargos)} días con ${subsMensuales} suscripciones mensuales activas`
+        ),
+        {
+          ruta: RUTA,
+          operacion: "escanear-cargos",
+          tags: { sin_elegibles: "true" },
+          extra: {
+            dates,
+            scanned,
+            diasSinCargos: Math.floor(diasSinCargos),
+            subsMensualesActivas: subsMensuales,
+            umbralDias: DIAS_SIN_CARGOS_ANOMALO,
+          },
+        }
+      );
+    }
   }
 
   const fallidos = chargeErrors + skipped + flowErrors;
