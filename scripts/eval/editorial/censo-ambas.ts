@@ -28,6 +28,7 @@ import { mkdirSync, writeFileSync } from "fs";
 import path from "path";
 import { ensamblarAMBAS, type FilaParAmbas, type InformeEnsambladoAmbas } from "./ensamblar-ambas";
 import { buildSystemPrompt, evaluarInforme, leerRubrica, EVAL_MODEL, type EvalEditorial, type FallaEditorial } from "./juez";
+import { PROMPT_VERSION_AMBAS } from "../../../src/lib/ai-generation-ambas";
 
 const MERGE_MODEL = "claude-sonnet-5";
 const BUDGET_USD = 30;
@@ -46,7 +47,12 @@ const flag = (name: string): string | null => {
 const limit = flag("limit") ? Number(flag("limit")) : Infinity;
 const solo = flag("solo")?.split(",").map((s) => s.trim()).filter(Boolean) ?? null;
 const dry = args.includes("--dry");
-const outDir = path.join(__dirname, "out-censo-ambas");
+// Genera la prosa con el prompt vigente (persist:false) en vez de leer la
+// persistida. Necesario cuando el parque guarda prosa de versiones anteriores:
+// sin esto el censo solo puede medir lo motor-templated.
+const prosaFresca = args.includes("--prosa-fresca");
+// Subdirectorio propio para no pisar los .informe.txt de la corrida motor-only.
+const outDir = path.join(__dirname, prosaFresca ? "out-censo-ambas-fresca" : "out-censo-ambas");
 
 interface FallaMerged extends FallaEditorial {
   confirmada?: boolean;
@@ -151,7 +157,7 @@ async function procesar(par: Par, sb: SupabaseClient, systemPrompt: string): Pro
 
   let informe: InformeEnsambladoAmbas;
   try {
-    informe = await ensamblarAMBAS(par.ltr, par.str, sb);
+    informe = await ensamblarAMBAS(par.ltr, par.str, sb, { prosaFresca });
   } catch (e) {
     return { ...base, ...vacio, ms: Date.now() - t0, error: `ensamblado: ${(e as Error)?.message ?? e}` };
   }
@@ -243,7 +249,7 @@ async function main() {
   if (solo) pares = pares.filter((p) => solo.some((pref) => p.ltr.id.startsWith(pref)));
   pares = pares.slice(0, limit);
   console.log(
-    `Censo AMBAS: ${pares.length} pares · ${dry ? "DRY (solo ensamblado)" : `juez ${EVAL_MODEL} ×2 + merge ${MERGE_MODEL} · presupuesto USD ${BUDGET_USD} (freno duro ${BUDGET_HARD_STOP_USD})`}`,
+    `Censo AMBAS: ${pares.length} pares · prosa ${prosaFresca ? `FRESCA v${PROMPT_VERSION_AMBAS} (persist:false)` : `persistida con version-check (=== v${PROMPT_VERSION_AMBAS})`} · ${dry ? "DRY (solo ensamblado)" : `juez ${EVAL_MODEL} ×2 + merge ${MERGE_MODEL} · presupuesto USD ${BUDGET_USD} (freno duro ${BUDGET_HARD_STOP_USD})`}`,
   );
 
   const resumenes: ResumenPar[] = [];
@@ -271,7 +277,7 @@ async function main() {
 
   const totalMin = (Date.now() - t0) / 60000;
   writeFileSync(path.join(outDir, "_censo-ambas.json"), JSON.stringify({
-    corrida: { pares: resumenes.length, dry, frenado, usd: usd(), minutos: totalMin, gasto },
+    corrida: { pares: resumenes.length, dry, frenado, prosaFresca, promptVersion: PROMPT_VERSION_AMBAS, usd: usd(), minutos: totalMin, gasto },
     resumenes,
   }, null, 2), "utf-8");
 
