@@ -50,6 +50,120 @@ export interface ContextoError {
   extra?: Record<string, unknown>;
 }
 
+/** Tope de largo de cualquier texto derivado de un error no-`Error`. */
+const MAX_LARGO_MENSAJE = 500;
+
+/** Qué forma tenía lo que llegó. Tag de baja cardinalidad (4 valores). */
+type FormaError = "error" | "postgrest" | "objeto" | "primitivo";
+
+function recortar(texto: string): string {
+  return texto.length > MAX_LARGO_MENSAJE
+    ? `${texto.slice(0, MAX_LARGO_MENSAJE)}…`
+    : texto;
+}
+
+/** ¿Tiene la forma de un PostgrestError? (objeto plano con `message` y `code`) */
+function esPostgrestError(x: object): x is { message: string; code: string; hint?: string | null } {
+  const o = x as Record<string, unknown>;
+  return typeof o.message === "string" && typeof o.code === "string";
+}
+
+/**
+ * Convierte cualquier cosa en un `Error` legible, sin perder el original.
+ *
+ * EL BUG QUE ARREGLA: acá vivía `new Error(String(error))`. Un `PostgrestError`
+ * de Supabase NO es un `Error` —es un objeto plano `{code, details, hint,
+ * message}`— así que `String()` lo aplastaba a la cadena literal
+ * "[object Object]". Tres issues de Sentry (suggestions, POST /api/analisis y la
+ * comparativa) llegaron a producción diciendo exactamente eso: sin mensaje, sin
+ * código, indiagnosticables. El de /api/analisis era además la ÚNICA evidencia
+ * de que un usuario real intentó crear un análisis y no quedó fila.
+ *
+ * Se normaliza acá, en el embudo, y no en cada call site: los 19
+ * `reportarFalloQuery` y los 69 `captureApi*` pasan todos por `reportar()`, así
+ * que esto es enforcement por construcción y no disciplina de quien escribe el
+ * próximo catch.
+ *
+ * SOBRE `details` — EXCLUIDO A PROPÓSITO. PostgrestError trae un cuarto campo,
+ * `details`, que NO se manda a Sentry: es justo donde Postgres escribe valores
+ * de fila ante una violación de constraint ("Key (email)=(x@y.com) already
+ * exists"), o sea PII. Con `code` + `message` + `hint` se diagnostica igual de
+ * bien, y si alguna vez hace falta el detalle exacto, se reproduce la query
+ * contra Supabase con el `code` en la mano. No metemos datos de usuarios en
+ * Sentry para ahorrarnos ese salto.
+ */
+export function normalizarError(error: unknown): {
+  error: Error;
+  forma: FormaError;
+  original?: Record<string, unknown>;
+} {
+  // 1 · Ya es un Error: se pasa intacto. Tocarlo perdería stack y `name`.
+  if (error instanceof Error) return { error, forma: "error" };
+
+  if (error !== null && typeof error === "object") {
+    // 2 · PostgrestError. El `name` se setea para que Sentry titule el evento
+    // "PostgrestError: PGRST205: …" en vez de un "Error" genérico.
+    if (esPostgrestError(error)) {
+      const { message, code, hint } = error;
+      const err = new Error(recortar(`${code}: ${message}`));
+      err.name = "PostgrestError";
+      return {
+        error: err,
+        forma: "postgrest",
+        original: { code, message: recortar(message), hint: hint ?? null },
+      };
+    }
+
+    // 3 · Cualquier objeto con `message` legible (errores de librerías, fetch).
+    const o = error as Record<string, unknown>;
+    if (typeof o.message === "string") {
+      return { error: new Error(recortar(o.message)), forma: "objeto", original: serializar(o) };
+    }
+
+    // 4 · Objeto sin `message`: lo mejor disponible es su contenido.
+    const texto = serializarATexto(o);
+    return { error: new Error(recortar(texto)), forma: "objeto", original: serializar(o) };
+  }
+
+  // 5 · string, number, boolean, null, undefined: acá String() SÍ es correcto.
+  return { error: new Error(String(error)), forma: "primitivo" };
+}
+
+/**
+ * Copia acotada y SEGURA DE SERIALIZAR para mandar como contexto.
+ *
+ * Los valores anidados se aplanan a texto en vez de pasarse por referencia. Una
+ * copia superficial parece suficiente y no lo es: si el objeto tiene un ciclo
+ * (`o.self = o`), la copia se lo lleva puesto y el contexto queda imposible de
+ * serializar. Como `reportar()` traga sus propias excepciones, eso no se vería
+ * como un error: se vería como un evento que nunca llegó a Sentry — el mismo
+ * silencio que este módulo existe para romper.
+ */
+function serializar(o: Record<string, unknown>): Record<string, unknown> {
+  const salida: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o).slice(0, 20)) {
+    if (v === null || ["string", "number", "boolean"].includes(typeof v)) {
+      salida[k] = typeof v === "string" ? recortar(v) : v;
+      continue;
+    }
+    try {
+      salida[k] = recortar(JSON.stringify(v) ?? String(v));
+    } catch {
+      salida[k] = "[no serializable]";
+    }
+  }
+  return salida;
+}
+
+/** JSON del objeto, o su lista de claves si no se puede serializar (ciclos). */
+function serializarATexto(o: Record<string, unknown>): string {
+  try {
+    return JSON.stringify(o) ?? String(o);
+  } catch {
+    return `objeto sin mensaje (claves: ${Object.keys(o).join(", ")})`;
+  }
+}
+
 /**
  * Reporta una falla que ROMPIÓ la operación — el usuario se llevó un error o la
  * request terminó mal. Nivel `error`: son las que deberían disparar alertas.
@@ -76,10 +190,15 @@ function reportar(error: unknown, ctx: ContextoError, nivel: "error" | "warning"
   // NUNCA propaga: si el reporte falla, el caller no se entera. Un catch que se
   // rompe reportando su propio error sería peor que el error original.
   try {
+    const { error: normalizado, forma, original } = normalizarError(error);
+
     Sentry.withScope((scope) => {
       scope.setLevel(nivel);
       scope.setTag("ruta", ctx.ruta);
       scope.setTag("operacion", ctx.operacion);
+      // Qué forma tenía lo capturado. Cuatro valores posibles → sirve para
+      // encontrar cualquier camino que todavía llegue sin normalizar.
+      scope.setTag("error_forma", forma);
       // Agrupa por ruta + operación en vez de por el mensaje del error: dos
       // fallas distintas del mismo punto quedan juntas, que es como se leen.
       scope.setFingerprint([ctx.ruta, ctx.operacion]);
@@ -93,12 +212,13 @@ function reportar(error: unknown, ctx: ContextoError, nivel: "error" | "warning"
       if (ctx.commerceOrder) datos.commerce_order = ctx.commerceOrder;
       if (Object.keys(datos).length > 0) scope.setContext("franco", datos);
 
+      // Contexto APARTE del de `franco`: los campos del error no pueden pisarle
+      // claves al caller (ni al revés).
+      if (original) scope.setContext("error_original", original);
+
       for (const [k, v] of Object.entries(ctx.tags ?? {})) scope.setTag(k, v);
 
-      // Un throw de un string o de un objeto plano llegaría a Sentry sin stack y
-      // sin agrupar. Se envuelve en Error para que siempre haya algo legible.
-      scope.setLevel(nivel);
-      Sentry.captureException(error instanceof Error ? error : new Error(String(error)));
+      Sentry.captureException(normalizado);
     });
   } catch {
     /* el reporte nunca puede romper el flujo que lo llamó */
