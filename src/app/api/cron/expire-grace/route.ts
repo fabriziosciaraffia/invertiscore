@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { captureApiError } from "@/lib/observabilidad";
 import { respuestaCron } from "@/lib/cron-resultado";
+import { latirCron } from "@/lib/cron-heartbeat";
 
 const RUTA = "GET /api/cron/expire-grace";
 
@@ -51,6 +52,10 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
+  // Latido ANTES del trabajo: registra "corrió", no "terminó bien". Ver la
+  // doctrina completa en cron-heartbeat.ts.
+  await latirCron(supabase, "expire-grace");
+
   const nowIso = new Date().toISOString();
 
   // Dos queries separadas (no un OR): cada caso tiene filtro distinto Y update

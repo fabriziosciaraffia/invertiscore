@@ -6,6 +6,7 @@ import {
   addOneMonth,
 } from "@/lib/credits-grant";
 import { captureApiError } from "@/lib/observabilidad";
+import { latirCron } from "@/lib/cron-heartbeat";
 import { respuestaCron } from "@/lib/cron-resultado";
 
 const RUTA = "GET /api/cron/monthly-grants";
@@ -53,6 +54,10 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
+  // Latido ANTES del trabajo: registra "corrió", no "terminó bien". Ver la
+  // doctrina completa en cron-heartbeat.ts.
+  await latirCron(supabase, "monthly-grants");
+
   const now = new Date();
   const nowIso = now.toISOString();
 

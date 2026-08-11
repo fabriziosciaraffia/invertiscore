@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { captureApiWarning } from "@/lib/observabilidad";
 import { FUENTE_SENTRY, METRICA_ERRORES_1D, guardarMetrica } from "@/lib/metrics-daily";
+import { latirCron } from "@/lib/cron-heartbeat";
 
 /**
  * Cron · Conteo diario de errores de Sentry → metrics_daily.
@@ -70,6 +71,11 @@ export async function POST(request: Request) {
   if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Latido ANTES del trabajo: registra "corrió", no "terminó bien" — importa
+  // sobre todo acá, donde la falta de config sale por un camino que no escribe
+  // ninguna métrica. Ver la doctrina en cron-heartbeat.ts.
+  await latirCron(createAdminClient(), "sentry-metrics");
 
   const token = process.env.SENTRY_AUTH_TOKEN;
   const org = process.env.SENTRY_ORG;

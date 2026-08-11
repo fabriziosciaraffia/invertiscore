@@ -5,6 +5,7 @@ import { processSubscriptionCharge, parseSubscriptionId } from "@/lib/subscripti
 import { sendSubscribeIfFirstCharge } from "@/lib/subscriptions/subscribe-event";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import { respuestaCron } from "@/lib/cron-resultado";
+import { latirCron } from "@/lib/cron-heartbeat";
 
 const RUTA = "GET /api/cron/reconcile-subscriptions";
 
@@ -146,6 +147,12 @@ export async function GET(request: Request) {
   const dryRun = url.searchParams.get("dry") === "1";
 
   const supabase = createAdminClient();
+  // Latido ANTES del trabajo: registra "corrió", no "terminó bien". El 10-ago
+  // este cron no se ejecutó y no quedó rastro en ningún lado — esta línea es la
+  // que habría delatado el hueco. Ver la doctrina en cron-heartbeat.ts.
+  // El dry-run NO late: es una corrida manual de inspección, no la del cron, y
+  // contarla enmascararía justo la ausencia que queremos ver.
+  if (!dryRun) await latirCron(supabase, "reconcile-subscriptions");
 
   // Detalle por cargo elegible. Solo se llena en dry-run: en modo normal serían
   // cientos de filas en el body sin que nadie las lea.

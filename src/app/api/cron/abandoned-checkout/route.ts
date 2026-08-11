@@ -4,6 +4,7 @@ import { sendCheckoutRecoveryEmail } from "@/lib/email";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { captureApiWarning } from "@/lib/observabilidad";
 import { respuestaCron } from "@/lib/cron-resultado";
+import { latirCron } from "@/lib/cron-heartbeat";
 
 const RUTA = "GET /api/cron/abandoned-checkout";
 
@@ -56,6 +57,10 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
+  // Latido ANTES del trabajo: registra "corrió", no "terminó bien". Ver la
+  // doctrina completa en cron-heartbeat.ts.
+  await latirCron(supabase, "abandoned-checkout");
+
   const cutoffIso = new Date(Date.now() - ABANDON_THRESHOLD_MS).toISOString();
 
   // Candidatos: compras únicas iniciadas y no pagadas, viejas, sin email previo.

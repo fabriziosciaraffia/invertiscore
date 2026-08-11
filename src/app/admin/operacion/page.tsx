@@ -17,6 +17,7 @@ import {
   leerSerie,
   resumirSerie,
 } from "@/lib/metrics-daily";
+import { leerLatidos } from "@/lib/cron-heartbeat";
 import { AdminActions } from "../admin-actions";
 import { RetryButton } from "../retry-button";
 import { TestToggle } from "../test-toggle";
@@ -94,6 +95,7 @@ export default async function AdminOperacionPage({
     overviewReal,
     overviewTotal,
     serieErrores,
+    latidos,
   ] = await Promise.all([
     sb.from("analisis").select("*", { count: "exact", head: true }),
     sb.from("scraped_properties").select("*", { count: "exact", head: true }).eq("is_active", true),
@@ -118,6 +120,7 @@ export default async function AdminOperacionPage({
     // timeout de un tercero no puede dejar esta página colgada — el cron diario
     // (/api/cron/sentry-metrics) es el único que habla con Sentry.
     leerSerie(sb, FUENTE_SENTRY, METRICA_ERRORES_1D, DIAS_VENTANA_ERRORES),
+    leerLatidos(sb),
   ]);
 
   // ─── UF y tasa ───
@@ -164,6 +167,16 @@ export default async function AdminOperacionPage({
     : `${fmtNumber(errores.ultimoDia!)} · 24h  ·  ${fmtNumber(errores.suma7d)} · ${errores.diasConDato === DIAS_VENTANA_ERRORES ? "7d" : `${errores.diasConDato}d`}`;
 
   const hayAlertaErrores = estadoErrores === "error";
+
+  // ─── LATIDO DE LOS CRONS ───
+  // Un cron que no corre no deja rastro: ni log, ni error, ni fila. El 10-ago-2026
+  // el reconciliador de cobros no se ejecutó (los deploys a producción reemplazan
+  // el registro de crons) y el hueco solo apareció en el post-mortem. Acá se ve.
+  const cronsAtrasados = latidos.filter((l) => l.atrasado);
+  const latidoMasReciente = latidos.reduce<string | null>(
+    (max, l) => (l.ultimaCorrida && (!max || l.ultimaCorrida > max) ? l.ultimaCorrida : max),
+    null
+  );
 
   const pills: Array<{ label: string; value: string; estado: "ok" | "warn" | "error" }> = [
     {
@@ -213,6 +226,17 @@ export default async function AdminOperacionPage({
       label: "Cron: Geocode",
       value: geocodeAt ? fmtRelative(geocodeAt) : "sin datos",
       estado: geocodeAt ? "ok" : "warn",
+    },
+    {
+      // Los crons de negocio, en UNA pastilla. Individualizarlos serían cinco
+      // pastillas más en una fila que ya scrollea; el bloque de abajo nombra los
+      // atrasados cuando los hay, que es cuando importa saber cuál.
+      label: `Crons de negocio (${latidos.length})`,
+      value:
+        cronsAtrasados.length === 0
+          ? `al día · ${fmtRelative(latidoMasReciente)}`
+          : `${cronsAtrasados.length} sin correr`,
+      estado: cronsAtrasados.length === 0 ? "ok" : "error",
     },
     {
       label: "Errores (Sentry)",
@@ -372,6 +396,33 @@ export default async function AdminOperacionPage({
               )}{" "}
               Los análisis no usan este valor —toman la UF de mindicador.cl al momento de calcular—, así que no hay
               informes afectados.
+            </p>
+          </div>
+        )}
+
+        {/* Mismo criterio: el punto rojo dice que algo pasa, acá va CUÁL cron y
+            desde cuándo. Sin esto, "3 sin correr" no dice a qué mirarle. */}
+        {cronsAtrasados.length > 0 && (
+          <div className="mt-3 rounded-xl border p-4" style={{ borderColor: "rgba(200,50,60,.35)" }}>
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-[var(--signal-red)]">
+              Crons sin correr
+            </div>
+            <ul className="mb-2 space-y-1">
+              {cronsAtrasados.map((c) => (
+                <li key={c.nombre} className="font-body text-[13px] text-[var(--franco-text-secondary)]">
+                  <b className="font-medium text-[var(--franco-text)]">{c.label}</b>{" "}
+                  <span className="font-mono text-xs">/api/cron/{c.nombre}</span> —{" "}
+                  {c.ultimaCorrida
+                    ? `última corrida ${fmtRelative(c.ultimaCorrida)} (se espera cada ${c.intervaloHoras}h)`
+                    : "sin ninguna corrida registrada"}
+                </li>
+              ))}
+            </ul>
+            <p className="font-body text-[13px] leading-relaxed text-[var(--franco-text-secondary)]">
+              Un cron que no corre no deja rastro: ni log, ni error, ni fila. La causa más probable es un deploy a
+              producción dentro de su ventana de disparo — cada deploy reemplaza el registro de crons, y el 10-ago-2026
+              eso dejó al reconciliador de cobros sin ejecutarse en todo el día. Si recién se desplegó el latido, es
+              normal que figuren acá hasta que cada uno corra una vez.
             </p>
           </div>
         )}
