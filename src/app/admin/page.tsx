@@ -2,6 +2,7 @@ import { requireAdminPage } from "@/lib/admin-auth";
 import { fmtCLP, fmtNumber } from "@/lib/admin-format";
 import { COLUMNAS_USO_IA, fmtUsd, resumirCosto, type UsoIA } from "@/lib/costo-ia";
 import { COLUMNAS_COMISION, resumirComisiones, type PagoParaComision } from "@/lib/comision-flow";
+import { leerGastoMeta } from "@/lib/meta-ads";
 import {
   adminOverview,
   adminWeeklyStats,
@@ -13,12 +14,17 @@ import {
 import { AdminTitular } from "./admin-titular";
 import { AdminFunnel, type CheckoutAbandonado } from "./admin-funnel";
 import { AdminTendencia } from "./admin-tendencia";
+import { AdminCac } from "./admin-cac";
 import { ContextoBar } from "./test-toggle";
 
 export const dynamic = "force-dynamic";
 
 /** Semanas de la serie de tendencia. */
 const SEMANAS = 12;
+
+/** Ventana de los KPIs y del CAC. Una sola constante: si el bloque de costos
+ *  mirara 30 días y el de gasto 7, el cociente no significaría nada. */
+const DIAS_KPI = 30;
 
 /** `product <> 'analysis_charge'` sin comerse los NULL (en SQL `<>` sobre NULL da NULL). */
 const SIN_CONSUMOS = `product.is.null,product.neq.${PRODUCTO_CONSUMO}`;
@@ -56,8 +62,11 @@ export default async function AdminPage({
   const testUserIds = await getTestAccountIds(sb);
   const noTest = includeTest ? null : filtroNoTest(testUserIds);
   const testIdSet = new Set(testUserIds);
+  /** Corte de la ventana, compartido por todas las queries del período. */
+  const desdeKpi = new Date(Date.now() - DIAS_KPI * 864e5).toISOString();
 
-  const [overview, semanas, checkoutsRow, usoIaRows, pagosRows] = await Promise.all([
+  const [overview, semanas, checkoutsRow, usoIaRows, pagosRows, gastoMeta, analisisRows, atribucionRows] =
+    await Promise.all([
     adminOverview(sb, includeTest),
     adminWeeklyStats(sb, { weeks: SEMANAS, includeTest }),
     // Los checkouts abandonados se traen como filas (no como conteo) porque con
@@ -80,7 +89,7 @@ export default async function AdminPage({
       const q = sb
         .from("analisis")
         .select(COLUMNAS_USO_IA)
-        .gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString());
+        .gte("created_at", desdeKpi);
       return noTest ? q.or(noTest) : q;
     })(),
     // Pagos confirmados del período, para el NETO. `ingresos_30d` de la RPC es
@@ -95,9 +104,27 @@ export default async function AdminPage({
         .eq("status", "paid")
         .gt("amount", 0)
         .or(SIN_CONSUMOS)
-        .gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString());
+        .gte("created_at", desdeKpi);
       return noTest ? q.or(noTest) : q;
     })(),
+    // Gasto de Meta del período. Sale de metrics_daily (lo escribe el cron
+    // meta-ads), NUNCA de una llamada en vivo a la Graph API: el panel no puede
+    // depender de un tercero para renderizar.
+    leerGastoMeta(sb, DIAS_KPI),
+    // Para "activaciones del período" hace falta el PRIMER análisis de cada
+    // usuario, y eso no se puede filtrar por fecha en la query: un análisis de
+    // agosto puede ser el quinto de alguien que activó en marzo. Se traen dos
+    // columnas de todo el histórico (volumen chico) y el primero se calcula acá.
+    (() => {
+      const q = sb.from("analisis").select("user_id, created_at");
+      return noTest ? q.or(noTest) : q;
+    })(),
+    // Atribución de los registros del período. Sin esto, el CAC se presentaría
+    // como "costo de Meta" cuando en realidad es el costo sobre TODO el tráfico.
+    sb
+      .from("user_attribution")
+      .select("user_id, utm_source, created_at")
+      .gte("created_at", desdeKpi),
   ]);
 
   // Las filas anteriores a la instrumentación tienen los ai_* en NULL, que
@@ -141,6 +168,34 @@ export default async function AdminPage({
 
   const tasaActivacion =
     overview.registrados > 0 ? Math.round((overview.activaron / overview.registrados) * 100) : 0;
+
+  // ─── CAC: gasto de Meta ÷ conversiones NUESTRAS ───
+  // Activaciones del período = usuarios cuyo PRIMER análisis cae dentro de la
+  // ventana. Contar análisis del período contaría de nuevo a quien ya estaba
+  // activado, y el costo por activación saldría más barato de lo que es.
+  const primerAnalisisPorUsuario = new Map<string, string>();
+  for (const a of (analisisRows.data ?? []) as Array<{ user_id: string | null; created_at: string }>) {
+    if (!a.user_id) continue;
+    const previo = primerAnalisisPorUsuario.get(a.user_id);
+    if (!previo || a.created_at < previo) primerAnalisisPorUsuario.set(a.user_id, a.created_at);
+  }
+  const activaciones = Array.from(primerAnalisisPorUsuario.values()).filter((f) => f >= desdeKpi).length;
+
+  // Pagos reales del período: los mismos que alimentan el neto, sin las altas de
+  // suscripción (que no son un cobro — ver comision-flow.ts).
+  const pagosPeriodo = comisiones.medidos + comisiones.estimados;
+
+  const atribuciones = (atribucionRows.data ?? []) as Array<{ utm_source: string | null }>;
+  const conteoFuente = new Map<string, number>();
+  for (const a of atribuciones) {
+    // Sin utm_source la visita existió pero no declaró canal: se muestra como
+    // "directo/sin UTM" en vez de asignarla a Meta por descarte.
+    const k = a.utm_source?.trim() || "directo/sin UTM";
+    conteoFuente.set(k, (conteoFuente.get(k) ?? 0) + 1);
+  }
+  const porFuente = Array.from(conteoFuente, ([fuente, usuarios]) => ({ fuente, usuarios })).sort(
+    (a, b) => b.usuarios - a.usuarios
+  );
 
   return (
     <>
@@ -221,12 +276,33 @@ export default async function AdminPage({
         <AdminTendencia semanas={semanas} />
       </section>
 
-      {/* ─── 4 · KPIs ─── */}
+      {/* ─── 4 · CAC ─── */}
+      <section className="mb-8">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Qué cuesta traer a alguien</h2>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
+            Últimos {DIAS_KPI} días
+          </span>
+        </div>
+        <AdminCac
+          datos={{
+            gasto: gastoMeta,
+            registros: overview.nuevos_30d,
+            activaciones,
+            pagos: pagosPeriodo,
+            dias: DIAS_KPI,
+            conAtribucion: atribuciones.length,
+            porFuente,
+          }}
+        />
+      </section>
+
+      {/* ─── 5 · KPIs ─── */}
       <section>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Los cuatro números</h2>
           <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
-            Últimos 30 días
+            Últimos {DIAS_KPI} días
           </span>
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
