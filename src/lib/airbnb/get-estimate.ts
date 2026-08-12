@@ -188,6 +188,9 @@ export async function getAirbnbEstimate(
         top_comparables: (rawResponse as unknown as AirROIResponse)?.comparables
           ? getTopComparables(filterComparables((rawResponse as unknown as AirROIResponse).comparables))
           : [],
+        // La moneda viaja para que buildAirbnbData no tenga que adivinarla (ver
+        // el bug de conversión anotado en AirbnbEstimateData.currency).
+        currency: (rawResponse?.currency as string) ?? "USD",
         expires_at: cached.expires_at,
       },
     };
@@ -235,9 +238,59 @@ export async function getAirbnbEstimate(
   // Display-only (transparencia 2026-06): occ realizada desde la pool cruda
   // `comparable_listings`. DELIBERADAMENTE separado de `rawComparables` de abajo
   // — NO se agrega a esa lista de alias para no flipear el path a "comparables".
+  // El porqué, con los números medidos, está en el bloque largo de más abajo
+  // (justo antes del resolver de alias). No re-midas: ya está hecho.
   const realizedOccupancy = summarizeRealizedOccupancy(
     (airroiRaw as Record<string, unknown>)?.comparable_listings,
   );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // POR QUÉ `comparable_listings` NO ESTÁ EN LA LISTA DE ALIAS DE ABAJO
+  // (medido el 2026-08-12 — no hace falta volver a medirlo)
+  //
+  // AirROI SÍ manda comparables, en CADA respuesta, bajo la clave
+  // `comparable_listings`: 14 a 25 listings, mediana 25, verificado en 40 de 40
+  // raw_response guardadas. Traen el shape exacto que espera `filterComparables`
+  // (performance_metrics.ttm_*, ratings, host_info), y `processComparables`
+  // devuelve resultado en 40/40 — ningún filtro los descarta. Las claves
+  // top-level reales son: revenue, currency, location, occupancy, percentiles,
+  // average_daily_rate, comparable_listings, monthly_revenue_distributions.
+  // Ninguno de los seis alias de abajo existe, así que el array cae a [] y el
+  // flujo se va al Path B. Por eso las 8 columnas de comparables de
+  // `airbnb_estimates` están en cero en las 1.000 filas.
+  //
+  // NO es un olvido: agregar la clave acá cambia los NÚMEROS del producto, y la
+  // medición dice que los cambia mucho. Comparables vs calculador, medianas:
+  //
+  //     ADR       0,89×   (p25 0,77 · p75 1,09)
+  //     ocupación 0,70×   (p25 0,59 · p75 0,86)
+  //     revenue   0,62×
+  //
+  // Recomputado con el motor real sobre los 6 seeds GE del golden STR: los SEIS
+  // terminan en BUSCAR OTRA, con scores entre −13 y −38 puntos. GE-1 cae de
+  // COMPRAR/78 a BUSCAR OTRA/58. En la práctica, Franco STR dejaría de
+  // recomendar comprar casi nunca.
+  //
+  // Y el flip tiene dos costos que van en contra de su propio objetivo:
+  //   · se pierde la curva estacional — la rama comparables de buildAirbnbData
+  //     setea FLAT_MONTHLY, así que el gráfico de 12 meses queda plano;
+  //   · los percentiles dejan de ser los de AirROI y pasan a sintetizarse desde
+  //     premium/standard con multiplicadores fijos (×1,15, ×1,20). La tabla
+  //     P25–P90 del drawer de sensibilidad sería MENOS empírica que hoy.
+  //
+  // LO QUE FALTA PARA DECIDIR (pendiente con AirROI): qué mide exactamente el
+  // `occupancy` de /calculator/estimate frente al `ttm_occupancy` de los
+  // listings, y cuál recomiendan para evaluar una compra. No son el mismo número
+  // mal calculado: son dos cosas distintas —potencial de zona vs realizado de 12
+  // meses, con listings mal gestionados y recién publicados adentro— y cuál es
+  // el benchmark correcto para un comprador no se resuelve leyendo código.
+  //
+  // Mientras tanto los comparables SÍ se usan, pero solo para display:
+  // `summarizeRealizedOccupancy` (abajo) calcula la ocupación realizada y su n,
+  // que el informe muestra bajo la ocupación estimada. Eso no toca el scoring.
+  //
+  // Ver: memoria `airroi-comparables-flip-bloqueado`.
+  // ─────────────────────────────────────────────────────────────────────────
 
   // ── Resolve comparables array (multiple shape variants) ─
   const rawComparables: unknown[] =
@@ -302,6 +355,8 @@ export async function getAirbnbEstimate(
         premium: processed.premium,
         standard: processed.standard,
         top_comparables: processed.top_comparables,
+        // Ídem: la moneda cruda de AirROI, sin asumir USD.
+        currency: (airroiRaw.currency as string) ?? "USD",
         expires_at: expiresAt,
       },
     };
