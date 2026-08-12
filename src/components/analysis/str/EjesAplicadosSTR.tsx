@@ -69,6 +69,11 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
 
   if (!ejes) return null;
 
+  // Misma condición que la fila de ocupación realizada de abajo: el caveat solo
+  // cita un n cuando ese n es el que el informe ya mostró. Si no llega a la
+  // muestra mínima, la frase lo dice en vez de citar otro número.
+  const hayPoolRealizada = !!occRealizada && occRealizada.n >= MIN_N_REALIZADA;
+
   const occPct = (ejes.ocupacionTarget * 100).toFixed(0);
   const adrFinal = ejes.adrFinal ?? ejes.adrAjustado;
   const ocupacionFinal = ejes.ocupacionFinal ?? ejes.ocupacionTarget;
@@ -274,11 +279,22 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
             </p>
           )}
 
-          {/* Caveat general */}
+          {/* Caveat general.
+              La versión anterior citaba "análisis de 149 propiedades comparables
+              de la zona". Esas 149 existieron —el experimento de calibración de
+              mayo 2026— pero eran de Lastarria, Providencia y Las Condes, y la
+              frase se mostraba igual en un informe de cualquier comuna: un número
+              real de otro lugar, presentado como si describiera esta dirección.
+              Ahora la calibración se declara por lo que es (de Santiago, no de
+              acá) y el único n que se cita es el de ESTA zona, el mismo de la
+              fila de arriba. Sin pool suficiente, se dice — no se pide prestado
+              un número. */}
           <p className="mt-4 font-body text-[11px] italic text-[var(--franco-text-muted)] leading-relaxed">
             {(adrEsOverride || occEsOverride)
               ? "Ajustaste uno o más valores manualmente. Los ejes operativos siguen mostrados como referencia, pero el motor está usando tus valores en el cálculo."
-              : "Estas estimaciones se basan en datos de operadores reales en Santiago (proforma de operador profesional Providencia 2025 + análisis de 149 propiedades comparables de la zona). Calibración en mejora continua a medida que más usuarios usan Franco STR."}
+              : hayPoolRealizada
+                ? `Los ajustes de tarifa vienen de la calibración de Franco con operadores profesionales de Santiago, no de esta dirección. Lo propio de esta zona son los ${occRealizada!.n} arriendos cortos activos de arriba. Calibración en mejora continua.`
+                : "Los ajustes de tarifa vienen de la calibración de Franco con operadores profesionales de Santiago, no de esta dirección. Para esta zona no hay arriendos cortos activos suficientes con los que contrastarlos. Calibración en mejora continua."}
           </p>
         </div>
       )}

@@ -446,9 +446,24 @@ export function buildAirbnbData(
   const stdOcc = raw.standard.median_occupancy || occ * 0.85;
   const stdRev = raw.standard.median_annual_revenue || rev * 0.75;
 
-  // Values are already in the AirROI currency (typically USD for comparables)
-  // Convert to CLP — comparables-based data is in USD
-  const toCLP = (v: number) => Math.round(v * ufValue);
+  // Conversión a CLP — MISMA regla que la rama direct de arriba.
+  //
+  // Acá había un bug dormido: la versión anterior decía "comparables-based data
+  // is in USD" y multiplicaba SIEMPRE por ufValue. AirROI devuelve CLP en la
+  // enorme mayoría de las respuestas (100 de 120 medidas el 2026-08-12), así que
+  // esa rama habría convertido pesos a pesos-por-UF: un ADR de $58.005 se
+  // transformaba en $2.175.502.000 (×39.500). Nunca se notó porque la rama no se
+  // ejecuta —`comparable_listings` no está cableado al scoring, ver la nota larga
+  // en get-estimate.ts—, pero quedaba armada para el día que alguien la encienda.
+  //
+  // LIMITACIÓN CONOCIDA, heredada de la rama direct: cuando AirROI responde en
+  // una moneda que no es CLP ni CLP-equivalente (se observaron DOP, MXN, EUR,
+  // BRL, ARS, PEN, SEK, MAD, USD en ~17% de las respuestas, casi siempre porque
+  // no geolocalizó la dirección en Chile), el ×ufValue tampoco es correcto: trata
+  // esa unidad como si fuera UF. No se arregla acá para no cambiar la conducta de
+  // la rama viva; queda anotado como pendiente propio.
+  const isCLP = (raw.currency ?? "USD") === "CLP";
+  const toCLP = (v: number) => (isCLP ? v : Math.round(v * ufValue));
 
   return {
     estimated_adr: toCLP(adr),

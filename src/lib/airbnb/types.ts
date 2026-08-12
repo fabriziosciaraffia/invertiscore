@@ -73,6 +73,17 @@ export interface AirbnbEstimateData {
   standard: TierMetrics;
   top_comparables: TopComparable[];
   expires_at: string;
+  /**
+   * Moneda en que vienen los montos, tal como la declara AirROI.
+   *
+   * Faltaba, y esa ausencia ERA el bug: sin el campo, `buildAirbnbData` asumía
+   * USD en la rama de comparables y multiplicaba por el valor de la UF. Como
+   * AirROI devuelve CLP en la enorme mayoría de las respuestas, esa rama
+   * convertía pesos a pesos-por-UF (×39.500). Nunca explotó porque la rama no
+   * se ejecuta —los comparables no están cableados al scoring—, pero quedaba
+   * armada. Ver la nota de `get-estimate.ts`.
+   */
+  currency?: string;
 }
 
 export interface AirbnbEstimateDirectData {
