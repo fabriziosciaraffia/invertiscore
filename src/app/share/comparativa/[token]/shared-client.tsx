@@ -19,7 +19,6 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import type { Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
-import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
 import { buildHeroAmbas } from "@/lib/comparativa-hero-copy";
 import { buildAperturaComparativa } from "@/lib/comparativa-apertura";
 import { lineaDistanciaMini } from "@/lib/distancia-copy";
@@ -83,10 +82,6 @@ export function SharedComparativaClient(p: Props) {
     return ctx ? buildFindingsComparativa(ctx, currency, uf) : [];
   }, [p.ltrResults, p.strResults, p.modoGestion, p.comisionAdministrador, p.costoAmoblamiento, p.edificioPermiteAirbnb, currency, uf]);
 
-  const recomendacion = useMemo(
-    () => deriveRecomendacionFallback(p.strResults),
-    [p.strResults],
-  );
   const ltrVerdict = useMemo(
     () => readVeredicto(p.ltrResults) ?? null,
     [p.ltrResults],
@@ -134,7 +129,7 @@ export function SharedComparativaClient(p: Props) {
         sobreRentaPctConfiable: p.strResults?.comparativa?.sobreRentaPctConfiable ?? true,
         sobreRentaCLP: p.strResults?.comparativa?.sobreRenta ?? 0,
       }),
-    [recomendacion, p.strResults, ltrVerdict, strVerdict, ltrFlujoMensual, strFlujoMensual],
+    [p.strResults, ltrVerdict, strVerdict, ltrFlujoMensual, strFlujoMensual],
   );
   const buscarDistancia = (hallazgos: unknown): HallazgoDistanciaVeredicto | null => {
     const arr = Array.isArray(hallazgos) ? (hallazgos as Hallazgo[]) : [];

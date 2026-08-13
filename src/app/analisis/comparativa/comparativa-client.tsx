@@ -30,7 +30,6 @@ import {
   normalizeLegacyVerdict,
 } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
-import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
 import { buildHeroAmbas } from "@/lib/comparativa-hero-copy";
 import { buildAperturaComparativa } from "@/lib/comparativa-apertura";
 import { lineaDistanciaMini } from "@/lib/distancia-copy";
@@ -85,8 +84,8 @@ interface Props {
   initialVer: "ltr" | "str" | null;
 }
 
-// `deriveRecomendacionFallback` vive en @/lib/comparativa-recomendacion (módulo
-// puro): lo comparten esta vista, la pública y el documento comparativo.
+// El hero comparativo deriva su ganador de la BANDA (comparativa-hero-copy);
+// el documento y el ensamblador usan el mismo builder. Fuente única.
 
 // ─── Componente principal ───────────────────────────────────────────────
 export function ComparativaClient(p: Props) {
@@ -155,12 +154,6 @@ export function ComparativaClient(p: Props) {
     router.refresh();
   };
 
-  // Recomendación driver
-  const recomendacion = useMemo(
-    () => deriveRecomendacionFallback(p.strResults),
-    [p.strResults],
-  );
-
   // Veredictos individuales
   const ltrVerdict = useMemo(
     () => readVeredicto(p.ltrResults) ?? null,
@@ -212,7 +205,7 @@ export function ComparativaClient(p: Props) {
         sobreRentaPctConfiable: p.strResults?.comparativa?.sobreRentaPctConfiable ?? true,
         sobreRentaCLP: p.strResults?.comparativa?.sobreRenta ?? 0,
       }),
-    [recomendacion, p.strResults, ltrVerdict, strVerdict, ltrFlujoMensual, strFlujoMensual],
+    [p.strResults, ltrVerdict, strVerdict, ltrFlujoMensual, strFlujoMensual],
   );
 
   // Distancia al veredicto de cada hijo — hallazgo del motor + fallback aprobado.
