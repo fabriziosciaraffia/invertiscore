@@ -16,7 +16,7 @@
 import type { FullAnalysisResult } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { fmtMoney } from "@/components/analysis/utils";
-import { hayAsimetriaDeEntrega } from "@/lib/comparativa-patrimonio";
+import { hayAsimetriaDeEntrega, patrimoniosIguales } from "@/lib/comparativa-patrimonio";
 import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
 
 export interface NotaSegmento {
@@ -99,6 +99,11 @@ export function buildNotaPatrimonioChart(
   const activoLTR = ltrRow?.patrimonioNeto ?? null;
   const activoSTR = strRow?.patrimonioNeto ?? null;
   const activoFinal = activoLTR ?? 0;
+  const activoSTRFinal = activoSTR ?? 0;
+  // "En las dos modalidades" solo es cierto cuando el activo COINCIDE. Con
+  // patrimonios distintos la frase contradecía a la card, que en ese caso
+  // muestra "LARGA X · CORTA Y" (mismo criterio de igualdad que el finding).
+  const activoIgual = activoSTR == null || patrimoniosIguales(activoFinal, activoSTRFinal);
   const riquezaLTRFinal = activoLTR !== null ? activoLTR + (ltrRow?.flujoAcumulado ?? 0) : 0;
   const riquezaSTRFinal = activoSTR != null ? activoSTR + (strRow?.flujoAcumulado ?? 0) : 0;
   const brecha = riquezaLTRFinal - riquezaSTRFinal;
@@ -128,7 +133,10 @@ export function buildNotaPatrimonioChart(
       : `AL AÑO ${lastYear} · EL ACTIVO EMPATA, EL CAMINO NO`,
     cuerpo: asimetria
       ? `Acá va solo la renta larga: ${m(activoFinal)} de activo neto de deuda al año ${lastYear}, y ${m(riquezaLTRFinal)} descontando lo que pones de tu bolsillo por el camino. La renta corta no se dibuja porque este depto todavía no se entrega: con renta larga el crédito recién empieza a correr cuando lo recibas, y su proyección aún no descuenta esa espera. Superponerlas mostraría una brecha de punto de partida, no de modalidad.`
-      : `El depto se aprecia igual y la deuda se amortiza igual, arriendes corto o largo: ${m(activoFinal)} de activo neto de deuda en las dos modalidades. Lo que cambia es cuánto pones de tu bolsillo por el camino. Descontándolo, terminas con ${m(riquezaLTRFinal)} en renta larga y ${m(riquezaSTRFinal)} en renta corta — ${m(Math.abs(brecha))} de diferencia a favor de la ${ganadora}. Eso es lo que te queda descontando lo que pusiste: la otra cara de la misma compra, no un patrimonio distinto.${puenteEsfuerzo}`,
+      : `${activoIgual
+          ? `El depto se aprecia igual y la deuda se amortiza igual, arriendes corto o largo: ${m(activoFinal)} de activo neto de deuda en las dos modalidades.`
+          : `El depto se aprecia casi igual arriendes corto o largo: ${m(activoFinal)} de activo neto de deuda en renta larga y ${m(activoSTRFinal)} en renta corta, una diferencia que la modalidad apenas mueve.`
+        } Lo que cambia es cuánto pones de tu bolsillo por el camino. Descontándolo, terminas con ${m(riquezaLTRFinal)} en renta larga y ${m(riquezaSTRFinal)} en renta corta — ${m(Math.abs(brecha))} de diferencia a favor de la ${ganadora}. Eso es lo que te queda descontando lo que pusiste: la otra cara de la misma compra, no un patrimonio distinto.${puenteEsfuerzo}`,
     glosa: comisionVentaFinal > 0
       ? [
           { t: "Es patrimonio bruto: el activo menos la deuda. Si vendes, la comisión de venta (2%) resta " },

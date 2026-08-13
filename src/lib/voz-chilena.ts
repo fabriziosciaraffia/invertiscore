@@ -204,6 +204,40 @@ export const VOSEO_A_TUTEO: Readonly<Record<string, string>> = {
   validá: "valida",
   vendé: "vende",
   vení: "ven",
+
+  // ── Voseo SIN TILDE (el modelo lo desliza y el acento no llega) ──
+  //
+  // Solo verbos que DIPTONGAN en tuteo (e→ie, o→ue): ahí la forma sin tilde no
+  // existe en español, así que la entrada no puede pisar prosa correcta. El caso
+  // que lo destapó fue "perdes meses de estabilización" en una prosa v4, que la
+  // capa morfológica no ve (busca terminaciones acentuadas) y el léxico no tenía.
+  //
+  // Los verbos que NO diptongan quedan FUERA a propósito: "compras", "miras" o
+  // "aportas" son tuteo impecable, y una entrada así rompería prosa buena —
+  // mismo criterio que la nota de arriba sobre la regla genérica -ás.
+  // "costas" también queda fuera: es sustantivo ("las costas", "la costa").
+  contenes: "contienes",
+  devolves: "devuelves",
+  dormis: "duermes",
+  empezas: "empiezas",
+  encontras: "encuentras",
+  entendes: "entiendes",
+  invertis: "inviertes",
+  mantenes: "mantienes",
+  moves: "mueves",
+  obtenes: "obtienes",
+  pensas: "piensas",
+  perdes: "pierdes",
+  podes: "puedes",
+  preferis: "prefieres",
+  queres: "quieres",
+  recordas: "recuerdas",
+  resolves: "resuelves",
+  sentis: "sientes",
+  sostenes: "sostienes",
+  tenes: "tienes",
+  venis: "vienes",
+  volves: "vuelves",
 };
 
 // ── Typos recurrentes con corrección conocida ────────────────────────────────

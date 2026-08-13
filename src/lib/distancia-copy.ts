@@ -112,19 +112,23 @@ export function lineaDistanciaMini(
   if (!l) return null;
   const otras = v.palancas.length - 1;
   const cola = otras > 0 ? ` · ${otras} vía${otras > 1 ? "s" : ""} más` : "";
+  // La MAGNITUD primero y el veredicto objetivo al final. La plantilla anterior
+  // interpolaba el veredicto donde va el sustantivo y producía frases que el
+  // lector no puede parsear: "A un arriendo de AJUSTA SUPUESTOS: $906.297".
+  const delta = `${signo(l.deltaPct)}${pct1(Math.abs(l.deltaPct))}%`;
   switch (l.palanca) {
     case "arriendo":
-      return `A un arriendo de ${objetivo}: $${fmtMiles(l.objetivo)} (${signo(l.deltaPct)}${pct1(Math.abs(l.deltaPct))}%)${cola}`;
+      return `Con $${fmtMiles(l.objetivo)} de arriendo (${delta}) llega a ${objetivo}${cola}`;
     case "precio":
-      return `A un precio de ${objetivo}: UF ${fmtMiles(l.objetivo)} (${signo(l.deltaPct)}${pct1(Math.abs(l.deltaPct))}%)${cola}`;
+      return `Con un precio de UF ${fmtMiles(l.objetivo)} (${delta}) llega a ${objetivo}${cola}`;
     case "adr":
-      return `A una tarifa de ${objetivo}: $${fmtMiles(l.objetivo)} por noche (${signo(l.deltaPct)}${pct1(Math.abs(l.deltaPct))}%)${cola}`;
+      return `Con una tarifa de $${fmtMiles(l.objetivo)} por noche (${delta}) llega a ${objetivo}${cola}`;
     case "pie":
-      return `A un pie de ${objetivo}: ${pct1(l.objetivo)}% de pie${cola}`;
+      return `Con un pie de ${pct1(l.objetivo)}% llega a ${objetivo}${cola}`;
     case "plazo":
-      return `A un plazo de ${objetivo}: ${l.objetivo} años${cola}`;
+      return `Con un plazo de ${l.objetivo} años llega a ${objetivo}${cola}`;
     default:
-      return `A un ajuste de ${objetivo} (${signo(l.deltaPct)}${pct1(Math.abs(l.deltaPct))}%)${cola}`;
+      return `Con un ajuste de ${delta} llega a ${objetivo}${cola}`;
   }
 }
 
