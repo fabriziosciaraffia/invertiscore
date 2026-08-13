@@ -124,7 +124,7 @@ export function SharedComparativaClient(p: Props) {
   const hero = useMemo(
     () =>
       buildHeroAmbas({
-        recomendacion,
+        banda: p.strResults?.veredictoComparativo?.banda ?? "INDIFERENTE",
         fragil: p.strResults?.veredictoComparativo?.fragil ?? false,
         ltrVerdict,
         strVerdict,

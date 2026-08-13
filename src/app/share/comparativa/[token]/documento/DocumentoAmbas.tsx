@@ -110,7 +110,7 @@ export function DocumentoAmbas({
 
   // ── Hero 3 ejes — MISMO builder que la web y el share (fuente única) ──
   const hero = buildHeroAmbas({
-    recomendacion,
+    banda,
     fragil,
     ltrVerdict,
     strVerdict,
@@ -258,7 +258,7 @@ export function DocumentoAmbas({
           {hero.margen && (
             <p className="margen-line">
               <span className="mk">Margen del ganador</span>
-              <span className="mv">{hero.margen.texto} · {hero.margen.escala}</span>
+              <span className="mv">{hero.margen.texto}{hero.margen.mostrarRotulo ? ` · ${hero.margen.escala}` : ""}</span>
             </p>
           )}
           {hero.mostrarBarra && (

@@ -415,11 +415,16 @@ function MargenBar({ margen }: { margen: NonNullable<HeroAmbas["margen"]> }) {
       <div className="relative h-[6px] rounded-[3px] overflow-hidden" style={{ background: "var(--franco-sunken, rgba(255,255,255,0.05))" }}>
         <div className="absolute inset-y-0 left-0 rounded-[3px]" style={{ width: `${margen.fillPct}%`, background: "var(--franco-text-secondary)" }} />
       </div>
-      <div className="flex justify-between mt-1 font-mono text-[8.5px] uppercase tracking-[0.06em]" style={{ color: "var(--franco-text-muted)" }}>
-        <span style={margen.escala === "estrecho" ? { color: "var(--franco-text)", fontWeight: 700 } : undefined}>Estrecho &lt;10%</span>
-        <span style={margen.escala === "claro" ? { color: "var(--franco-text)", fontWeight: 700 } : undefined}>Claro</span>
-        <span style={margen.escala === "amplio" ? { color: "var(--franco-text)", fontWeight: 700 } : undefined}>Amplio &gt;30%</span>
-      </div>
+      {/* El rótulo cualitativo se calla cuando otro eje ya calificó la ventaja
+          (chip de fragilidad o ventaja inoperable): una sola voz por caso. La
+          cifra de arriba se mantiene siempre. */}
+      {margen.mostrarRotulo && (
+        <div className="flex justify-between mt-1 font-mono text-[8.5px] uppercase tracking-[0.06em]" style={{ color: "var(--franco-text-muted)" }}>
+          <span style={margen.escala === "estrecho" ? { color: "var(--franco-text)", fontWeight: 700 } : undefined}>Estrecho &lt;10%</span>
+          <span style={margen.escala === "claro" ? { color: "var(--franco-text)", fontWeight: 700 } : undefined}>Claro</span>
+          <span style={margen.escala === "amplio" ? { color: "var(--franco-text)", fontWeight: 700 } : undefined}>Amplio &gt;30%</span>
+        </div>
+      )}
     </div>
   );
 }

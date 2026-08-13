@@ -200,7 +200,9 @@ export function ComparativaClient(p: Props) {
   const hero = useMemo(
     () =>
       buildHeroAmbas({
-        recomendacion,
+        // Banda de 4 estados: STR_FRAGIL es "gana el corto con margen frágil",
+        // no un empate — la reco colapsada perdía esa distinción.
+        banda: p.strResults?.veredictoComparativo?.banda ?? "INDIFERENTE",
         fragil: p.strResults?.veredictoComparativo?.fragil ?? false,
         ltrVerdict,
         strVerdict,

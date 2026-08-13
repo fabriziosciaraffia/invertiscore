@@ -39,7 +39,6 @@ import { recomputeShortTermForLegacy } from "../../../src/lib/analysis/recompute
 import { prefetchMedianaComunaVenta } from "../../../src/lib/api-helpers/analisis-pipeline";
 import { resolveUfForAnalysis } from "../../../src/lib/uf";
 import { readVeredicto } from "../../../src/lib/results-helpers";
-import { deriveRecomendacionFallback } from "../../../src/lib/comparativa-recomendacion";
 import { buildHeroAmbas, FRAGIL_CHIP, type Verdict } from "../../../src/lib/comparativa-hero-copy";
 import { lineaDistanciaMini } from "../../../src/lib/distancia-copy";
 import type { Hallazgo, HallazgoDistanciaVeredicto } from "../../../src/lib/types";
@@ -174,7 +173,8 @@ export async function ensamblarAMBAS(
     strResultsPersisted) as STRResultsWithScore;
 
   // ── Derivaciones del hero 3 ejes (MISMO builder que web/share/documento) ──
-  const recomendacion = deriveRecomendacionFallback(strResults);
+  // La banda de 4 estados manda: la reco colapsada ya no se usa acá (ver
+  // `ganadorDeBanda` — STR_FRAGIL no es un empate).
   const fragil = strResults.veredictoComparativo?.fragil ?? false;
   const banda = strResults.veredictoComparativo?.banda ?? "INDIFERENTE";
 
@@ -184,7 +184,7 @@ export async function ensamblarAMBAS(
   const strScore = strResults.francoScore?.score ?? 0;
 
   const hero = buildHeroAmbas({
-    recomendacion,
+    banda: banda as BandaComparativa,
     fragil,
     ltrVerdict,
     strVerdict,
@@ -252,7 +252,7 @@ export async function ensamblarAMBAS(
     seccion(`hero:veredicto (${hero.badgeCritico ? "Veredicto" : "Veredicto de modalidad"})`, [
       hero.badge,
       hero.sub,
-      hero.margen ? `Margen del ganador: ${hero.margen.texto} · ${hero.margen.escala}` : null,
+      hero.margen ? `Margen del ganador: ${hero.margen.texto}${hero.margen.mostrarRotulo ? ` · ${hero.margen.escala}` : ""}` : null,
     ]),
     hero.subordinada
       ? seccion(`hero:subordinada (${hero.subordinada.kicker})`, [hero.subordinada.texto])

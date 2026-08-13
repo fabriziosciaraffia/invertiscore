@@ -27,7 +27,7 @@
 // El veredicto de cada hijo lo emite su motor; acá solo se narra (§1.7).
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { RecomendacionModalidadAmbas } from "@/lib/types";
+import type { BandaComparativa } from "@/lib/engines/str-universo-santiago";
 
 export type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 export type EstadoHero = "e1" | "e2" | "e3";
@@ -47,9 +47,20 @@ const NOMBRE: Record<"larga" | "corta", string> = { larga: "renta larga", corta:
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const otro = (l: "larga" | "corta"): "larga" | "corta" => (l === "larga" ? "corta" : "larga");
 
-export function ganadorDeReco(reco: RecomendacionModalidadAmbas): GanadorMetodo {
-  if (reco === "LTR_PREFERIDO") return "larga";
-  if (reco === "STR_VENTAJA_CLARA") return "corta";
+/**
+ * Ganador del método a partir de la BANDA de 4 estados, no de la recomendación
+ * colapsada de 3. `bandaAReco` aplasta STR_FRAGIL dentro de INDIFERENTE porque
+ * el resto del sistema consume 3 valores — pero en el modelo de 3 ejes la
+ * fragilidad es un CALIFICADOR (el chip), no un empate: STR_FRAGIL significa
+ * que el corto GANA con un margen que no aguanta. Leer el estado colapsado hacía
+ * que 10 pares con sobre-renta de 15% a 94% se anunciaran como "rinden casi
+ * igual" mientras el chip decía "margen frágil" al lado — la contradicción que
+ * el censo marcó. La información existía (el hero ya recibía `fragil` aparte);
+ * lo que faltaba era mirarla acá.
+ */
+export function ganadorDeBanda(banda: BandaComparativa): GanadorMetodo {
+  if (banda === "LTR_PREFERIDO") return "larga";
+  if (banda === "STR_VENTAJA_CLARA" || banda === "STR_FRAGIL") return "corta";
   return "parejas";
 }
 
@@ -64,7 +75,8 @@ export function derivarEstadoHero(ltrVerdict: Verdict | null, strVerdict: Verdic
 }
 
 export interface HeroAmbasInput {
-  recomendacion: RecomendacionModalidadAmbas;
+  /** Banda de 4 estados del motor — manda sobre la reco colapsada (ver ganadorDeBanda). */
+  banda: BandaComparativa;
   fragil: boolean;
   ltrVerdict: Verdict | null;
   strVerdict: Verdict | null;
@@ -78,6 +90,21 @@ export interface HeroAmbasInput {
   sobreRentaCLP: number;
 }
 
+/**
+ * INDIFERENTE tiene DOS rutas en `clasificarBanda` y significan cosas distintas:
+ *   · sobre-renta 5-15% → empate real ("rinden casi igual" es cierto).
+ *   · sobre-renta ≥15% con break-even > 110% → el corto rinde MÁS pero no cubre
+ *     costos ni facturando lo que da la zona. No es empate: es ventaja inoperable.
+ * En el parque son 22 pares de la segunda clase, con sobre-renta de 15% a 77% —
+ * y todos anunciaban "rinden casi igual". Se distinguen por la magnitud, que es
+ * el mismo dato que el motor usó para llegar acá.
+ */
+const UMBRAL_VENTAJA_MOTOR = 0.15;
+const esVentajaInoperable = (input: HeroAmbasInput): boolean =>
+  input.banda === "INDIFERENTE" &&
+  input.sobreRentaPctConfiable &&
+  input.sobreRentaPct >= UMBRAL_VENTAJA_MOTOR;
+
 export interface MargenGanador {
   /** "$34.886/mes · 4,1%" — plata = delta de flujo (ancla con la card de flujo);
    *  % = sobre-renta NOI. Ratio degenerado ⇒ solo plata de renta operativa. */
@@ -85,6 +112,9 @@ export interface MargenGanador {
   escala: EscalaMargen;
   /** 0-100 para la barra del render. */
   fillPct: number;
+  /** false ⇒ el render muestra la cifra pero NO el rótulo estrecho/claro/amplio
+   *  (otro eje ya calificó la ventaja: fragilidad o ventaja inoperable). */
+  mostrarRotulo: boolean;
 }
 
 export interface HeroAmbas {
@@ -112,13 +142,19 @@ export interface HeroAmbas {
 // operativa y se rotula amplio — la degeneración solo ocurre con ventajas enormes.
 function buildMargen(input: HeroAmbasInput): MargenGanador {
   const deltaFlujo = Math.abs(input.strFlujoMensual - input.ltrFlujoMensual);
+  // Red secundaria (opción A): el rótulo cualitativo SE CALLA cuando otro eje ya
+  // calificó la ventaja — el chip de fragilidad o la ventaja inoperable. La cifra
+  // se mantiene siempre; lo que desaparece es "estrecho/claro/amplio", para que
+  // haya una sola voz por caso. Con el ganador ya corregido esto casi no dispara,
+  // pero evita que dos ejes vuelvan a discutir en la misma línea.
+  const rotuloCallado = input.fragil || esVentajaInoperable(input);
   if (!input.sobreRentaPctConfiable) {
-    return { texto: `${fmtCLP(input.sobreRentaCLP)}/mes de renta operativa`, escala: "amplio", fillPct: 92 };
+    return { texto: `${fmtCLP(input.sobreRentaCLP)}/mes de renta operativa`, escala: "amplio", fillPct: 92, mostrarRotulo: !rotuloCallado };
   }
   const pct = Math.abs(input.sobreRentaPct);
   const escala: EscalaMargen = pct < 0.10 ? "estrecho" : pct <= 0.30 ? "claro" : "amplio";
   const fillPct = Math.min(96, Math.max(6, Math.round(pct * 100 * 2.2)));
-  return { texto: `${fmtCLP(deltaFlujo)}/mes · ${pct1(pct * 100)}%`, escala, fillPct };
+  return { texto: `${fmtCLP(deltaFlujo)}/mes · ${pct1(pct * 100)}%`, escala, fillPct, mostrarRotulo: !rotuloCallado };
 }
 
 const VENTAJA_TXT: Record<EscalaMargen, string> = {
@@ -171,9 +207,31 @@ const E1_POS: Record<GanadorMetodo, string> = {
 const MATIZ_SUB = " Ojo con el otro plano: como compra, este depto pide ajustar supuestos — la modalidad no arregla el precio.";
 const MATIZ_POS = " Eso sí: como compra, este depto pide ajustar supuestos antes de firmar — la palanca concreta está en «Lo que te separa», bajo cada análisis.";
 
+// ── Voz propia del INDIFERENTE por ventaja inoperable ────────────────────────
+// El corto rinde MÁS pero no cubre sus costos ni facturando lo que da la zona,
+// así que el motor no lo corona. Decir "rinden casi igual" borra las dos mitades
+// del hecho: que rinde más Y que no alcanza. Estos textos reemplazan al de
+// parejas cuando `esVentajaInoperable`; el resto del hero no cambia.
+const INOPERABLE_SUB =
+  "Arrendarlo por día rinde más que por mes acá, pero no lo suficiente para cubrir sus propios costos: ni facturando lo que da la zona el corto llega a equilibrio. Por eso ninguna de las dos se corona.";
+const INOPERABLE_POS =
+  "Acá la renta corta rinde más y aun así no conviene: el punto de equilibrio le queda por encima de lo que la zona realmente factura, así que esa ventaja vive en el papel y no en la caja. La larga rinde menos, pero lo que rinde lo sostiene. Si vas al corto, que sea sabiendo que estás apostando a superar a tu propia zona.";
+
+// ── Ganador con margen FRÁGIL (STR_FRAGIL) ───────────────────────────────────
+// El corto gana, y el chip de robustez ya dice que el margen no aguanta. El copy
+// del ganador no puede afirmar lo contrario: "rinde más y el margen aguanta un
+// traspié" junto a "Margen frágil" es la misma contradicción que este goal vino
+// a cerrar, movida de lugar. Acá la ventaja se afirma y se condiciona a la vez.
+const FRAGIL_SUB =
+  "Arrendarlo por día rinde más que por mes acá, pero con un margen que no aguanta un mal mes: la ventaja es real y a la vez delicada.";
+const FRAGIL_POS =
+  "El corto gana, pero por un pelo. La pregunta no es cuál rinde más — es si aguantas una temporada floja sin que la ventaja se dé vuelta. Si vas a operarlo tú, con un colchón de reserva, tiene sentido; si no, la larga te deja dormir tranquilo por casi la misma plata.";
+
 // ── Builder principal ────────────────────────────────────────────────────────
 export function buildHeroAmbas(input: HeroAmbasInput): HeroAmbas {
-  const ganador = ganadorDeReco(input.recomendacion);
+  // Ganador desde la BANDA de 4 estados (no la reco colapsada): STR_FRAGIL es
+  // "gana el corto, con margen frágil", no un empate.
+  const ganador = ganadorDeBanda(input.banda);
   const estado = derivarEstadoHero(input.ltrVerdict, input.strVerdict);
   const margen = buildMargen(input);
 
@@ -204,15 +262,24 @@ function buildE1(input: HeroAmbasInput, ganador: GanadorMetodo, margen: MargenGa
     ? ` Y ${HECHO[perdedor]} no está sobre la mesa: como compra no se sostiene.`
     : "";
 
+  // Ventaja inoperable: el corto rinde más y no cubre costos. Reemplaza el copy
+  // de parejas, que afirmaría un empate que los números niegan.
+  const inoperable = esVentajaInoperable(input);
+  // Margen frágil: el ganador se afirma sin prometer que aguanta (ver FRAGIL_SUB).
+  const fragilGanaCorta = input.fragil && ganador === "corta";
+
+  const subBase = inoperable ? INOPERABLE_SUB : fragilGanaCorta ? FRAGIL_SUB : E1_SUB[ganador];
+  const posBase = inoperable ? INOPERABLE_POS : fragilGanaCorta ? FRAGIL_POS : E1_POS[ganador];
+
   return {
     estado: "e1",
     ganador,
     fragilChip: input.fragil,
     badge: BADGE[ganador],
     badgeCritico: false,
-    sub: E1_SUB[ganador] + (conMatiz ? MATIZ_SUB : "") + mencionSub,
+    sub: subBase + (conMatiz ? MATIZ_SUB : "") + mencionSub,
     subordinada: null,
-    posicion: E1_POS[ganador] + (conMatiz ? MATIZ_POS : "") + mencionPos,
+    posicion: posBase + (conMatiz ? MATIZ_POS : "") + mencionPos,
     mostrarBarra: true,
     margen,
   };
@@ -270,15 +337,24 @@ function buildE3(input: HeroAmbasInput, ganador: GanadorMetodo, margen: MargenGa
     const lado: "larga" | "corta" = sostiene(input.ltrVerdict) ? "larga" : "corta";
     const vLado = lado === "larga" ? input.ltrVerdict : input.strVerdict;
     const ajustando = vLado === "AJUSTA SUPUESTOS" ? ", y ajustando supuestos" : "";
+    // La ventaja inoperable también aparece en E3: el corto rinde más, no cubre
+    // costos, y encima solo un lado sostiene la compra. Se dice entero.
+    const inoperable = esVentajaInoperable(input);
+    const aperturaSub = inoperable
+      ? "Arrendarlo por día rinde más que por mes, pero no alcanza a cubrir sus costos ni facturando lo que da la zona"
+      : "Arrendarlo por mes o por día rinde casi igual acá";
+    const aperturaPos = inoperable
+      ? "La renta corta rinde más y aun así no se sostiene sola: su punto de equilibrio queda por encima de lo que la zona factura"
+      : "Ninguna de las dos gana por rendimiento";
     return {
       estado: "e3",
       ganador,
       fragilChip: input.fragil,
       badge: BADGE.parejas,
       badgeCritico: false,
-      sub: `Arrendarlo por mes o por día rinde casi igual acá — pero como compra solo se sostiene ${HECHO[lado]}${ajustando}; ${HECHO[otro(lado)]} no se sostiene.`,
+      sub: `${aperturaSub} — y como compra solo se sostiene ${HECHO[lado]}${ajustando}; ${HECHO[otro(lado)]} no se sostiene.`,
       subordinada: null,
-      posicion: `Ninguna de las dos gana por rendimiento; la única que se sostiene como compra${vLado === "AJUSTA SUPUESTOS" ? " — ajustando supuestos —" : ""} es ${NOMBRE[lado]}. Si avanzas, es por ahí; ${HECHO[otro(lado)]} queda fuera de la mesa.`,
+      posicion: `${aperturaPos}; la única que se sostiene como compra${vLado === "AJUSTA SUPUESTOS" ? " — ajustando supuestos —" : ""} es ${NOMBRE[lado]}. Si avanzas, es por ahí; ${HECHO[otro(lado)]} queda fuera de la mesa.`,
       mostrarBarra: true,
       margen,
     };
@@ -311,15 +387,21 @@ function buildE3(input: HeroAmbasInput, ganador: GanadorMetodo, margen: MargenGa
       ? `: la vía ${HECHO_CORTO[perdedor]} es un pozo de ${fmtCLP(flujoPerdedor)} al mes`
       : "";
   const horas = ganador === "corta" ? " y con las horas puestas" : "";
+  // Con margen frágil la ventaja NO se declara sostenida: el chip dice lo
+  // contrario en la misma pantalla (mismo criterio que FRAGIL_SUB en E1).
+  const fragilGanaCorta = input.fragil && ganador === "corta";
+  const ventajaFrase = fragilGanaCorta
+    ? "es real pero frágil: un mal mes la da vuelta"
+    : `es ${ventaja} y los números la sostienen`;
   return {
     estado: "e3",
     ganador,
     fragilChip: input.fragil,
     badge: BADGE[ganador],
     badgeCritico: false,
-    sub: `${cap(HECHO[ganador])} rinde más que ${HECHO_CORTO[perdedor]} acá. Como compra, se sostiene solo si ajustas supuestos — y ${HECHO[perdedor]} no se sostiene ni así${pozo}.`,
+    sub: `${cap(HECHO[ganador])} rinde más que ${HECHO_CORTO[perdedor]} acá${fragilGanaCorta ? ", aunque con un margen que no aguanta un mal mes" : ""}. Como compra, se sostiene solo si ajustas supuestos — y ${HECHO[perdedor]} no se sostiene ni así${pozo}.`,
     subordinada: null,
-    posicion: `Si este depto entra a tu cartera, es ${HECHO_CORTO[ganador]}${horas}: la ventaja sobre ${HECHO_CORTO[perdedor]} es ${ventaja} y los números la sostienen. Pero que el margen no te apure la firma — como compra sigue pidiendo ajustar supuestos, y la otra vía no se sostiene. La modalidad correcta no convierte un precio equivocado en buena inversión.`,
+    posicion: `Si este depto entra a tu cartera, es ${HECHO_CORTO[ganador]}${horas}: la ventaja sobre ${HECHO_CORTO[perdedor]} ${ventajaFrase}. Pero que el margen no te apure la firma — como compra sigue pidiendo ajustar supuestos, y la otra vía no se sostiene. La modalidad correcta no convierte un precio equivocado en buena inversión.`,
     mostrarBarra: true,
     margen,
   };
