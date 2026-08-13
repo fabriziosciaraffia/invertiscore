@@ -1,8 +1,10 @@
 // ============================================================================
-// CENSO EDITORIAL — Fase 2 (corrida completa con doble voto en ALTAs)
+// CENSO EDITORIAL LTR/STR — corrida completa con doble voto en ALTAs
 // ============================================================================
-// Corre el instrumento calibrado de Fase 1 sobre TODOS los informes con prosa
-// IA (LTR + STR; AMBAS/comparativa fuera de alcance). Por informe:
+// Corre el instrumento sobre los informes LTR y STR con prosa IA VIGENTE
+// (promptVersion === PROMPT_VERSION_LTR / PROMPT_VERSION_STR; prosa de
+// versiones anteriores queda fuera: el censo mide lo que el usuario ve hoy).
+// AMBAS/comparativa tiene su propio censo (censo-ambas.ts). Por informe:
 //   1. Ensambla la pieza de lectura (ensamblar.ts) UNA vez.
 //   2. DOS corridas independientes del juez (juez.ts) — el muestreo del modelo
 //      es la fuente de independencia.
@@ -10,28 +12,41 @@
 //      ambas corridas la reportan (matching semántico por dimensión + pieza +
 //      concepto, no string exacto). Las ALTAs de una sola corrida bajan a
 //      "señal débil". MEDIAs/BAJAs: unión deduplicada (basta una corrida).
+// Dimensiones: 1-7 generales + 9-13 extendidas (re-scoping 2026-08-13).
+// D8 queda fuera: es exclusiva del comparativo AMBAS.
 // Solo mide: NO escribe en la base, NO corrige informes.
 //
 // Uso:
-//   node --env-file=.env.local --import tsx scripts/eval/editorial/censo.ts [--limit N] [--solo id1,id2]
+//   node --env-file=.env.local --import tsx scripts/eval/editorial/censo.ts
+//     [--limit N] [--solo id1,id2] [--tipo ltr|str] [--dry] [--presupuesto USD]
+//   --dry: solo arma la cohorte y ensambla (escribe .informe.txt; cero llamadas
+//          al juez). Sirve para validar el ensamblador y dimensionar la corrida.
+//   --presupuesto: presupuesto esperado en USD para esta corrida (default 30).
+//          El freno duro sigue siendo 2x el presupuesto.
 // Outputs (untracked): scripts/eval/editorial/out-censo/
 //   <id8>.informe.txt · <id8>.v1.json · <id8>.v2.json · <id8>.merged.json
 //   _censo.json (resumen por informe + todas las fallas consolidadas, para el análisis)
 //
-// Guard de presupuesto: presupuesto esperado ~USD 30; si el gasto proyectado
-// supera 2x (USD 60), el script FRENA y reporta (mandato del goal).
+// Guard de presupuesto: si el gasto supera 2x el presupuesto, el script FRENA
+// y reporta (mandato del goal).
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, writeFileSync } from "fs";
 import path from "path";
 import { ensamblarInforme, type FilaAnalisis } from "./ensamblar";
 import { buildSystemPrompt, evaluarInforme, leerRubrica, EVAL_MODEL, type EvalEditorial, type FallaEditorial } from "./juez";
+import { PROMPT_VERSION_LTR } from "../../../src/lib/ai-generation";
+import { PROMPT_VERSION_STR } from "../../../src/lib/ai-generation-str";
 
 const MERGE_MODEL = "claude-sonnet-5";
-const BUDGET_USD = 30;
-const BUDGET_HARD_STOP_USD = BUDGET_USD * 2;
 // Precios por MTok
 const P = { opusIn: 15, opusOut: 75, sonnetIn: 3, sonnetOut: 15 };
+
+// Alcance de dimensiones para informes simples (LTR/STR): las generales más las
+// extendidas re-scopeadas. D8 se excluye explícitamente — el juez no debe
+// buscar mini-scores ni marco comparativo en un informe que no los tiene.
+const DIMENSIONES_LTR_STR =
+  "las dimensiones 1-7 (generales) y 9-13 (extendidas a LTR/STR/AMBAS) de la rúbrica. La dimensión 8 NO aplica: es exclusiva del comparativo AMBAS y este informe es simple (LTR o STR)";
 
 const anthropic = new Anthropic();
 const args = process.argv.slice(2);
@@ -41,6 +56,10 @@ const flag = (name: string): string | null => {
 };
 const limit = flag("limit") ? Number(flag("limit")) : Infinity;
 const solo = flag("solo")?.split(",").map((s) => s.trim()).filter(Boolean) ?? null;
+const soloTipo = flag("tipo"); // "ltr" | "str" | null (ambas modalidades)
+const dry = args.includes("--dry");
+const BUDGET_USD = flag("presupuesto") ? Number(flag("presupuesto")) : 30;
+const BUDGET_HARD_STOP_USD = BUDGET_USD * 2;
 const outDir = path.join(__dirname, "out-censo");
 
 interface FallaMerged extends FallaEditorial {
@@ -112,12 +131,20 @@ async function procesar(fila: FilaAnalisis, systemPrompt: string): Promise<Resum
   }
   writeFileSync(path.join(outDir, `${informe.meta.id8}.informe.txt`), informe.texto, "utf-8");
 
+  if (dry) {
+    // Solo ensamblado: valida el instrumento y dimensiona la cohorte sin gastar.
+    return {
+      ...base, id8: informe.meta.id8, tipo: informe.meta.tipo, veredicto: informe.meta.veredicto,
+      pv: informe.meta.promptVersion, comuna: informe.meta.comuna, ...vacio, ms: Date.now() - t0,
+    };
+  }
+
   const tokAntes = { ...gasto };
   let v1: EvalEditorial, v2: EvalEditorial;
   try {
     [v1, v2] = await Promise.all([
-      evaluarInforme({ systemPrompt, meta: informe.meta, informeTexto: informe.texto }),
-      evaluarInforme({ systemPrompt, meta: informe.meta, informeTexto: informe.texto }),
+      evaluarInforme({ systemPrompt, meta: informe.meta, informeTexto: informe.texto, dimensiones: DIMENSIONES_LTR_STR }),
+      evaluarInforme({ systemPrompt, meta: informe.meta, informeTexto: informe.texto, dimensiones: DIMENSIONES_LTR_STR }),
     ]);
   } catch (e) {
     return { ...base, ...informe.meta, ...vacio, error: `juez: ${(e as Error)?.message ?? e}` };
@@ -164,10 +191,39 @@ async function main() {
     .limit(2000);
   if (error) { console.error(error.message); process.exit(1); }
 
-  let filas = (data as FilaAnalisis[]).filter((r) => r.ai_analysis);
+  // ── Cohorte: prosa IA con la PROMPT_VERSION vigente de su modalidad ──────
+  // El censo mide lo que el usuario ve HOY. Prosa de versiones anteriores queda
+  // fuera (misma regla que la invalidación lazy-on-open del producto).
+  const tipoDe = (r: FilaAnalisis): "ltr" | "str" => {
+    const t = r.tipo_analisis ?? (r.results as { tipoAnalisis?: string } | null)?.tipoAnalisis ?? "long-term";
+    return t === "short-term" ? "str" : "ltr";
+  };
+  const pvDe = (r: FilaAnalisis): number | null => {
+    const pv = (r.ai_analysis as { promptVersion?: unknown } | null)?.promptVersion;
+    return typeof pv === "number" ? pv : null;
+  };
+  const pvVigente = { ltr: PROMPT_VERSION_LTR, str: PROMPT_VERSION_STR } as const;
+
+  const conProsa = (data as FilaAnalisis[]).filter((r) => r.ai_analysis);
+  const excluidasPv: Record<string, number> = {};
+  let filas = conProsa.filter((r) => {
+    const tipo = tipoDe(r);
+    const pv = pvDe(r);
+    if (pv === pvVigente[tipo]) return true;
+    const k = `${tipo} pv=${pv ?? "null"}`;
+    excluidasPv[k] = (excluidasPv[k] ?? 0) + 1;
+    return false;
+  });
+  if (soloTipo) filas = filas.filter((r) => tipoDe(r) === soloTipo);
   if (solo) filas = filas.filter((r) => solo.some((p) => r.id.startsWith(p)));
   filas = filas.slice(0, limit);
-  console.log(`Censo: ${filas.length} informes con prosa IA · juez ${EVAL_MODEL} ×2 + merge ${MERGE_MODEL} · presupuesto USD ${BUDGET_USD} (freno duro ${BUDGET_HARD_STOP_USD})`);
+
+  const nLtr = filas.filter((r) => tipoDe(r) === "ltr").length;
+  console.log(`Cohorte: ${filas.length} informes (LTR ${nLtr} · STR ${filas.length - nLtr}) de ${conProsa.length} con prosa IA`);
+  console.log(`Excluidos por promptVersion no vigente (LTR=${PROMPT_VERSION_LTR}, STR=${PROMPT_VERSION_STR}): ${JSON.stringify(excluidasPv)}`);
+  console.log(dry
+    ? "Modo --dry: solo ensamblado, cero llamadas al juez."
+    : `Juez ${EVAL_MODEL} ×2 + merge ${MERGE_MODEL} · dimensiones 1-7 + 9-13 (D8 excluida) · presupuesto USD ${BUDGET_USD} (freno duro ${BUDGET_HARD_STOP_USD})`);
 
   const resumenes: ResumenInforme[] = [];
   const t0 = Date.now();
@@ -189,7 +245,10 @@ async function main() {
 
   const totalMin = (Date.now() - t0) / 60000;
   writeFileSync(path.join(outDir, "_censo.json"), JSON.stringify({
-    corrida: { informes: resumenes.length, frenado, usd: usd(), minutos: totalMin, gasto },
+    corrida: {
+      informes: resumenes.length, frenado, usd: usd(), minutos: totalMin, gasto, dry,
+      cohorte: { pvVigente, excluidasPv, conProsa: conProsa.length },
+    },
     resumenes,
   }, null, 2), "utf-8");
 

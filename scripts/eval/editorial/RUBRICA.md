@@ -132,20 +132,24 @@ El lector objetivo es un comprador chileno inteligente pero **no financiero**.
 
 ---
 
-## SOLO AMBAS — dimensiones 8-13 (informe comparativo)
+## Dimensiones 8-13 (extendidas)
 
-> Estas seis dimensiones aplican **únicamente** cuando el informe evaluado es un
-> comparativo AMBAS (`meta.tipo: "AMBAS"`): la pieza que compara renta larga vs
-> renta corta de un mismo depto. Las 7 dimensiones generales aplican igual y
-> completas; estas seis miden lo que solo puede fallar en un comparativo. Para
-> informes LTR o STR, ignorarlas.
+> Alcance por dimensión (re-scoping 2026-08-13; antes las seis eran "SOLO AMBAS"):
 >
-> Contexto de objeto: el veredicto del comparativo es de **método** (cuál
-> modalidad de arriendo conviene), no de compra. Los dos análisis hijos tienen
-> su propio Franco Score y veredicto de compra (COMPRAR / AJUSTA SUPUESTOS /
-> BUSCAR OTRA), visibles en la pieza `hero:mini-scores`.
+> - **D8: SOLO AMBAS.** Aplica únicamente al comparativo (`meta.tipo: "AMBAS"`).
+>   Para informes LTR o STR, ignorarla.
+> - **D9, D10, D11, D12, D13: LTR, STR y AMBAS.** Miden patrones que también
+>   fallan en un informe simple. Donde una dimensión trae ejemplo o vocabulario
+>   comparativo, el criterio se aplica al equivalente del informe simple según
+>   se indica en cada una — el patrón medido es el mismo.
+>
+> Contexto de objeto AMBAS (solo aplica al comparativo): su veredicto es de
+> **método** (cuál modalidad de arriendo conviene), no de compra. Los dos
+> análisis hijos tienen su propio Franco Score y veredicto de compra
+> (COMPRAR / AJUSTA SUPUESTOS / BUSCAR OTRA), visibles en `hero:mini-scores`.
+> En LTR y STR el veredicto sí es de compra, único, y sale del motor.
 
-## 8. Test de la pregunta (techo: ALTA)
+## 8. Test de la pregunta (techo: ALTA · SOLO AMBAS)
 
 El informe responde "¿cuál MÉTODO de arriendo conviene?" y el lector nunca debe
 poder leerlo como "¿conviene COMPRAR este depto?". Si los dos hijos dicen
@@ -161,22 +165,24 @@ No es falla: celebrar a la ganadora cuando al menos un hijo sostiene la compra,
 o cuando alguna pieza explicita el marco ("de las dos formas de arrendarlo, esta;
 otra cosa es si el depto conviene").
 
-## 9. Test lector-30% (techo: MEDIA)
+## 9. Test lector-30% (techo: MEDIA · LTR/STR/AMBAS)
 
 Un lector que retiene el 30% del informe debe poder recontar la conclusión con
 hechos, no con jerga. La prosa describe el **hecho** antes que el **concepto**:
 "arrendando por día" antes que "el corto"; "lo que te queda cada mes" antes que
-"el flujo"; "cuánto tiene que facturar para no perder" antes que "el break-even".
+"el flujo"; "cuánto tiene que facturar para no perder" antes que "el break-even";
+"lo que pones de tu bolsillo cada mes" antes que "el aporte"; "el precio al que
+el veredicto cambia" antes que "el umbral".
 
 Falla cuando una pieza usa el apodo o el concepto **sin que el hecho se haya
 descrito antes en la pieza de lectura**. No es falla el apodo ya introducido
 (la repetición posterior de "el corto" tras describir qué es, es economía, no
 opacidad).
 
-## 10. Cifra sin ancla (techo: ALTA)
+## 10. Cifra sin ancla (techo: ALTA · LTR/STR/AMBAS)
 
-Todo número del comparativo declara **de dónde sale**, en la misma pieza o en
-su drawer-puente. El lector nunca debe encontrarse un monto que no pueda
+Todo número del informe declara **de dónde sale**, en la misma pieza o en la
+pieza que lo expande. El lector nunca debe encontrarse un monto que no pueda
 rastrear a un origen nombrado.
 
 - Un "~$320.000 al mes" debe poder desglosarse (ej.: arriendo $650.000 →
@@ -185,48 +191,68 @@ rastrear a un origen nombrado.
 - Si una curva o serie "parte en $58 millones", esa cifra debe estar anclada a
   su concepto (capital de entrada: pie + cierre + amoblamiento), no confundible
   con otro monto vecino (el pie solo, $39 millones).
-- El drawer-puente de cada card ES el ancla esperada: si la card muestra el KPI
-  y el puente muestra la resta que lo produce, está anclado. La falla es la
-  cifra cuyo puente no existe o no la explica.
+- El ancla esperada por tipo: en AMBAS, el drawer-puente de cada card; en LTR y
+  STR, la card o el drawer donde la cifra vive (si la card muestra el KPI y su
+  frase o su drawer nombran la base que lo produce, está anclado). La falla es
+  la cifra cuyo origen no existe en ninguna pieza o no la explica.
+- Los precios sugeridos de negociación (primera oferta, techo, walk-away) y los
+  umbrales de palanca ("con X% menos el veredicto sube") también son cifras: si
+  aparecen sin que ninguna pieza diga qué los produce (qué se rompe por encima,
+  qué cambia al cruzarlos), es falla acá.
 
-## 11. Tensión numérica sin resolver (techo: ALTA)
+## 11. Tensión numérica sin resolver (techo: ALTA · LTR/STR/AMBAS)
 
 Cuando las cifras empujan hacia un lado y el veredicto va hacia el otro, el
 informe debe mostrar el **puente aritmético** que resuelve la tensión — no
 basta afirmarla resuelta.
 
-Ejemplo canónico: flujo y riqueza acumulada favorecen al corto, y el veredicto
-es renta larga por el esfuerzo. El puente existe si alguna pieza hace la
-cuenta: la ventaja de $15,6 millones a 10 años ÷ ~5.200 horas de operación ≈
+Ejemplo canónico AMBAS: flujo y riqueza acumulada favorecen al corto, y el
+veredicto es renta larga por el esfuerzo. El puente existe si alguna pieza hace
+la cuenta: la ventaja de $15,6 millones a 10 años ÷ ~5.200 horas de operación ≈
 $3.000 por hora — menos que el sueldo mínimo; el lector ve POR QUÉ el esfuerzo
 se come la ventaja. Sin esa aritmética (o una equivalente), el veredicto queda
 afirmado contra los números visibles: falla ALTA.
 
+Ejemplo canónico LTR/STR: las cifras visibles se ven sanas — precio alineado
+con la zona, arriendo dentro de lo que muestran los comparables, score alto — y
+el veredicto es AJUSTA SUPUESTOS o BUSCAR OTRA. El puente existe si alguna
+pieza hace la cuenta que explica el contrapeso (ej.: "a este precio y este
+arriendo, igual pones $X de tu bolsillo cada mes porque la cuota a la tasa
+actual es $Y"); sin esa aritmética el lector ve números "a mercado" y un
+veredicto que los contradice sin explicación. Mismo patrón con score alto y
+veredicto degradado: si ninguna pieza dice qué retiene el veredicto, es falla.
+
 No es falla: tensión menor ya cubierta por la dimensión 3 (coherencia), ni la
 tensión nombrada Y cuantificada aunque sea en el drawer.
 
-## 12. Coherencia veredicto ↔ pirámide (techo: ALTA)
+## 12. Coherencia veredicto ↔ pirámide (techo: ALTA · LTR/STR/AMBAS)
 
-Los hallazgos de la pirámide diferencial, leídos en orden, **sostienen** el
-veredicto del hero. Vigilar:
+Los hallazgos de la pirámide, leídos en orden, **sostienen** el veredicto del
+hero (en AMBAS, la pirámide diferencial y el veredicto de método; en LTR/STR,
+la pirámide de hallazgos y el veredicto de compra). Vigilar:
 
 - El hallazgo que lidera la pirámide no puede empujar contra el veredicto sin
-  que ninguna pieza medie (si gana la larga pero la card #1 celebra la caja del
-  corto a secas, el lector queda sin piso).
-- Los lados declarados de las cards ("a favor renta larga/corta") deben sumar
-  una historia compatible con el ganador; si la mayoría favorece al perdedor,
-  alguna pieza debe explicar por qué gana igual (esa explicación puede ser la
-  dimensión 11 bien resuelta).
-- El TOP-3 del hero es un subconjunto de la pirámide: mismo orden, mismos
-  titulares, sin contradicción entre el índice y las cards de abajo.
+  que ninguna pieza medie (AMBAS: gana la larga pero la card #1 celebra la caja
+  del corto a secas; LTR/STR: veredicto AJUSTA/BUSCAR con card #1 celebratoria
+  a secas, o COMPRAR con card #1 adversa sin puente — el lector queda sin piso).
+- Los lados declarados de las cards (AMBAS: "a favor renta larga/corta";
+  LTR/STR: "A favor / En contra / Leve") deben sumar una historia compatible
+  con el veredicto; si la mayoría empuja al lado contrario, alguna pieza debe
+  explicar por qué el veredicto se sostiene igual (esa explicación puede ser la
+  dimensión 11 bien resuelta — típico en LTR/STR cuando el veredicto viene de
+  una condición dura del negocio y no del balance de las cards).
+- El índice del hero (TOP-3 / "Léelo en este orden") es un subconjunto de la
+  pirámide: mismo orden, mismos titulares, sin contradicción entre el índice y
+  las cards de abajo.
 
-## 13. No-recitación de cards (techo: MEDIA)
+## 13. No-recitación de cards (techo: MEDIA · LTR/STR/AMBAS)
 
-La prosa IA ("Cuál te conviene", "Quién tienes que ser", "¿Y si migro
-después?", el cierre) **narra lo que las cards no pueden**: perfil, condición,
-costo emocional. Falla cuando repite literal —o casi literal— el titular, el
-KPI o el cuerpo de una card visible en la misma página: el lector paga dos
-veces por el mismo contenido.
+La prosa IA (AMBAS: "Cuál te conviene", "Quién tienes que ser", "¿Y si migro
+después?", el cierre; LTR/STR: respuestaDirecta, posición de Franco y los
+drawers con prosa) **narra lo que las cards no pueden**: causa, condición,
+perfil, costo emocional. Falla cuando repite literal —o casi literal— el
+titular, el KPI o el cuerpo de una card visible en la misma página: el lector
+paga dos veces por el mismo contenido.
 
 No es falla: retomar un concepto de card para argumentar sobre él (eso es
 progresión), ni que el cierre nombre la condición que una card cuantifica —
