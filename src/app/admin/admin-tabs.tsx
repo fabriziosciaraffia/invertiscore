@@ -7,13 +7,15 @@ import { usePathname } from "next/navigation";
  * Pestañas del panel. Cliente porque necesita `usePathname` para marcar la activa
  * (el layout que la monta sigue siendo server component).
  *
- * "Finanzas" está declarada y deshabilitada a propósito: deja el patrón visible
- * para la próxima pestaña sin fingir que ya existe.
+ * "Finanzas" estuvo declarada y apagada hasta que hubo con qué llenarla: costo de
+ * IA por tokens reales, comisión de Flow leída del webhook, gasto de Meta y
+ * gastos fijos. Ahora es una pestaña como las demás.
  */
 const TABS = [
   { href: "/admin", label: "Resumen" },
   { href: "/admin/usuarios", label: "Usuarios" },
   { href: "/admin/operacion", label: "Operación" },
+  { href: "/admin/finanzas", label: "Finanzas" },
 ] as const;
 
 export function AdminTabs() {
@@ -40,15 +42,6 @@ export function AdminTabs() {
           </Link>
         );
       })}
-      <span
-        aria-disabled="true"
-        className="shrink-0 cursor-default border-b-2 border-transparent px-3.5 py-3 font-mono text-[11px] uppercase tracking-wider text-[var(--franco-border-strong)]"
-      >
-        Finanzas
-        <span className="ml-1.5 rounded border border-[var(--franco-border)] px-1 py-px text-[8px] tracking-wider">
-          Pronto
-        </span>
-      </span>
     </nav>
   );
 }
