@@ -47,6 +47,8 @@ import { buildFindingsComparativa, ctxFromResults, type FindingComparativa } fro
 import { buildNotaFlujoChart, buildNotaPatrimonioChart, notaTexto } from "../../../src/lib/comparativa-chart-notas";
 import { buildAperturaComparativa } from "../../../src/lib/comparativa-apertura";
 import type { BandaComparativa } from "../../../src/lib/engines/str-universo-santiago";
+import { PROMPT_VERSION_AMBAS } from "../../../src/lib/ai-generation-ambas";
+import { generateComparativaAI } from "../../../src/lib/ai-generation-ambas-generate";
 
 const UF_FALLBACK = 38800; // mismo fallback que ai-generation-ambas-generate.ts
 
@@ -116,11 +118,22 @@ export function esParRoto38800(strInput: Record<string, unknown> | null): boolea
   return Math.abs(clp / uf - 38800) < 1;
 }
 
+export interface EnsamblarAmbasOpts {
+  /**
+   * Genera la prosa con el prompt VIGENTE en vez de leer la persistida
+   * (`persist: false` — cero writes). Sirve para medir el informe que el usuario
+   * verá cuando abra el suyo, en un parque donde la prosa guardada quedó de
+   * versiones anteriores. Sin esto solo se puede medir lo motor-templated.
+   */
+  prosaFresca?: boolean;
+}
+
 // ── ensamblado ────────────────────────────────────────────────────────────────
 export async function ensamblarAMBAS(
   ltr: FilaParAmbas,
   str: FilaParAmbas,
   sb: SupabaseClient,
+  opts?: EnsamblarAmbasOpts,
 ): Promise<InformeEnsambladoAmbas> {
   const ltrResultsPersisted = (ltr.results ?? null) as LTRResultsWithCache | null;
   const strResultsPersisted = (str.results ?? null) as STRResultsWithScore | null;
@@ -205,7 +218,25 @@ export async function ensamblarAMBAS(
   const findings = ctx ? buildFindingsComparativa(ctx, "CLP", ltrUf) : [];
   const top3 = findings.slice(0, 3);
 
-  const ai = ltrResultsPersisted.comparativaAI ?? null;
+  // ── Prosa: lo que el usuario VE, no lo que está guardado ──────────────────
+  // Las tres superficies de producción (web logueada, share y documento) ocultan
+  // la prosa cuyo `promptVersion` no es el vigente: la logueada regenera y las
+  // públicas degradan a motor-only. Sin este mismo chequeo el censo mediría
+  // prosa v1/v2 que hoy no ve nadie — exactamente el error que el instrumento
+  // existe para no cometer. `opts.prosaFresca` es la otra mitad: genera la prosa
+  // del prompt vigente SIN persistir, para medir el informe que el usuario verá
+  // cuando abra el suyo.
+  let ai: AIAnalysisComparativa | null = null;
+  if (opts?.prosaFresca) {
+    try {
+      ai = await generateComparativaAI({ ltrId: ltr.id, strId: str.id, supabase: sb, persist: false, log: () => {} });
+    } catch {
+      ai = null; // el par se censa motor-only y queda declarado en el reporte
+    }
+  } else {
+    const persistida = ltrResultsPersisted.comparativaAI ?? null;
+    ai = persistida?.promptVersion === PROMPT_VERSION_AMBAS ? persistida : null;
+  }
   const sinProsa = !ai?.conviene;
 
   // ── Piezas en orden de lectura (hero 3 ejes, contrato d25096d) ──────────────
