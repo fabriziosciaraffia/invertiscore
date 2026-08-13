@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup · /admin/finanzas — contrato</title>
+<!--
+  MOCKUP CONTRATO · pestaña Finanzas del panel admin · 2026-08-13
+
+  Todas las cifras de este mockup son REALES, medidas contra la base el
+  2026-08-13 sobre la ventana de 30 días. No hay un solo número inventado:
+  si un dato no existe, el mockup muestra el estado "sin dato" que la
+  implementación debe mostrar, no un placeholder bonito.
+
+  Fuentes por bloque:
+    · ingresos y comisión → payments + comision-flow.ts (leerComision)
+    · costo IA           → analisis.ai_* + costo-ia.ts
+    · AirROI             → metrics_daily fuente='airroi'
+    · pauta              → metrics_daily fuente='meta_ads'
+    · gastos fijos       → tabla gastos_fijos (4 filas)
+
+  Design system: Ink + Signal Red. El rojo aparece SOLO en el resultado
+  negativo (uso permitido #2: valor monetario negativo crítico). Ningún otro
+  bloque lo usa — la jerarquía va por escala tipográfica y grises.
+-->
+<style>
+  :root {
+    --franco-bg:#F6F6F7; --franco-card:#FFFFFF; --franco-elevated:#FFFFFF;
+    --franco-sunken:#F0F0F2; --franco-text:#0F0F0F; --franco-text-secondary:#52525B;
+    --franco-text-muted:#6B6B72; --franco-text-tertiary:#6A6A71;
+    --franco-border:#DDDDE1; --franco-border-strong:#B0B0B8; --signal-red:#C8323C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --franco-bg:#0F0F0F; --franco-card:#1A1A1A; --franco-elevated:#222222;
+      --franco-sunken:#161616; --franco-text:#FAFAF8;
+      --franco-text-secondary:rgba(250,250,248,.5); --franco-text-muted:rgba(250,250,248,.35);
+      --franco-text-tertiary:#888780; --franco-border:rgba(250,250,248,.08);
+      --franco-border-strong:rgba(250,250,248,.15);
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--franco-bg);color:var(--franco-text);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.5;padding-bottom:60px}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  h1,h2,h3{font-family:"Source Serif 4",Georgia,serif;font-weight:700}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 16px}
+  @media(min-width:640px){.wrap{padding:0 24px}}
+
+  /* chrome */
+  .topbar{border-bottom:.5px solid var(--franco-border);background:var(--franco-card)}
+  .tabs{display:flex;gap:2px;overflow-x:auto;align-items:flex-end}
+  .tab{flex-shrink:0;border-bottom:2px solid transparent;padding:12px 14px;
+    font-family:"JetBrains Mono",monospace;font-size:11px;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--franco-text-muted);text-decoration:none}
+  .tab.on{border-bottom-color:var(--signal-red);color:var(--franco-text)}
+
+  section{margin-top:32px}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--franco-text-tertiary)}
+  .card{background:var(--franco-card);border:.5px solid var(--franco-border);
+    border-radius:16px;padding:16px}
+  .sechead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
+    gap:12px;margin-bottom:12px}
+  .sechead h2{font-size:18px}
+
+  /* badges de procedencia — el corazón del contrato */
+  .b{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:9px;
+    text-transform:uppercase;letter-spacing:.08em;padding:2px 6px;border-radius:3px;
+    border:.5px solid var(--franco-border);color:var(--franco-text-tertiary);
+    vertical-align:middle;white-space:nowrap}
+  .b.med{border-color:var(--franco-border-strong);color:var(--franco-text-secondary)}
+  .b.est{border-style:dashed}
+  .b.nada{border-style:dotted;opacity:.75}
+
+  /* resultado */
+  .resultado{border:.5px solid var(--franco-border);border-radius:16px;overflow:hidden}
+  .resultado .top{padding:20px 16px;background:var(--franco-card)}
+  .big{font-family:"JetBrains Mono",monospace;font-size:34px;font-weight:700;
+    letter-spacing:-.02em;line-height:1.1}
+  .big.neg{color:var(--signal-red)}
+  .lineas{border-top:.5px solid var(--franco-border);background:var(--franco-sunken)}
+  .linea{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+    padding:9px 16px;border-bottom:.5px solid var(--franco-border);font-size:13px}
+  .linea:last-child{border-bottom:0}
+  .linea .v{font-family:"JetBrains Mono",monospace;font-size:13px;white-space:nowrap}
+  .linea.total{background:var(--franco-card);font-weight:500}
+  .lbl{color:var(--franco-text-secondary)}
+  .sub{font-size:11px;color:var(--franco-text-muted);margin-top:2px}
+
+  /* cascada del margen */
+  .casc{display:grid;gap:0}
+  .casc .row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;
+    border-bottom:.5px dashed var(--franco-border);font-size:13px}
+  .casc .row:last-child{border-bottom:0;border-top:.5px solid var(--franco-border-strong);
+    margin-top:4px;padding-top:10px;font-weight:500}
+  .casc .row .v{font-family:"JetBrains Mono",monospace;white-space:nowrap}
+  .dos{display:grid;gap:12px}
+  @media(min-width:820px){.dos{grid-template-columns:1fr 1fr}}
+
+  /* tabla → cards en mobile */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-family:"JetBrains Mono",monospace;font-size:9px;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--franco-text-tertiary);text-align:left;
+    padding:0 0 8px;font-weight:500}
+  td{padding:9px 0;border-top:.5px solid var(--franco-border);vertical-align:top}
+  td.n{font-family:"JetBrains Mono",monospace;text-align:right;white-space:nowrap}
+  @media(max-width:700px){
+    table,thead,tbody,tr,td{display:block;width:100%}
+    thead{display:none}
+    tr{border:.5px solid var(--franco-border);border-radius:10px;padding:10px;margin-bottom:8px;
+      background:var(--franco-card)}
+    td{border-top:0;display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+    td::before{content:attr(data-l);font-family:"JetBrains Mono",monospace;font-size:9px;
+      text-transform:uppercase;letter-spacing:.08em;color:var(--franco-text-tertiary);
+      flex-shrink:0;padding-top:2px}
+    td.n{text-align:right}
+  }
+  .nota{font-size:11px;color:var(--franco-text-muted);margin-top:10px;line-height:1.55}
+  .celdas{display:grid;gap:1px;background:var(--franco-border);border:.5px solid var(--franco-border);
+    border-radius:10px;overflow:hidden;margin-top:14px}
+  @media(min-width:640px){.celdas{grid-template-columns:repeat(3,1fr)}}
+  .celda{background:var(--franco-card);padding:12px}
+  .celda .v{font-family:"JetBrains Mono",monospace;font-size:17px;font-weight:700}
+  .aviso{border-left:3px solid var(--franco-border-strong);border-radius:0 8px 8px 0;
+    background:var(--franco-sunken);padding:10px 12px;margin-top:12px;font-size:12px;
+    color:var(--franco-text-secondary)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <nav class="tabs">
+      <a class="tab" href="#">Resumen</a>
+      <a class="tab" href="#">Usuarios</a>
+      <a class="tab" href="#">Operación</a>
+      <a class="tab on" href="#">Finanzas</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div style="margin-top:24px;display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:8px">
+    <div>
+      <h1 style="font-size:24px">Finanzas</h1>
+      <p class="mono" style="font-size:13px;color:var(--franco-text-muted);margin-top:4px">13 de agosto de 2026 · últimos 30 días</p>
+    </div>
+    <div class="eyebrow">Sin cuentas de prueba</div>
+  </div>
+
+  <!-- ═══ 1 · RESULTADO — pirámide invertida: el número que duele, primero ═══ -->
+  <section>
+    <div class="sechead">
+      <h2>Resultado del período</h2>
+      <span class="eyebrow">Ingresos reales menos todo</span>
+    </div>
+
+    <div class="resultado">
+      <div class="top">
+        <div class="eyebrow">Resultado · 30 días</div>
+        <div class="big neg" style="margin-top:4px">−$146.120</div>
+        <div class="sub">Sobre 3 cobros externos. El período no cubre los costos: falta facturar
+          <strong>$146.120</strong> para quedar en cero.</div>
+      </div>
+
+      <div class="lineas">
+        <div class="linea">
+          <span class="lbl">Ingreso neto <span class="b med">Medido</span></span>
+          <span class="v">$48.661</span>
+        </div>
+        <div class="linea">
+          <span class="lbl">− Costo IA <span class="b med">Medido</span></span>
+          <span class="v">−$19.473</span>
+        </div>
+        <div class="linea">
+          <span class="lbl">− AirROI <span class="b est">Estimado</span></span>
+          <span class="v">−$37.620</span>
+        </div>
+        <div class="linea">
+          <span class="lbl">− Gastos fijos <span class="b med">Medido</span></span>
+          <span class="v">−$96.701</span>
+        </div>
+        <div class="linea">
+          <span class="lbl">− Pauta (Meta) <span class="b est">Parcial</span></span>
+          <span class="v">−$40.987</span>
+        </div>
+        <div class="linea total">
+          <span>Resultado</span>
+          <span class="v" style="color:var(--signal-red)">−$146.120</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="aviso">
+      <strong>Dos de las cinco líneas están incompletas y el resultado real es peor.</strong>
+      AirROI tiene 3 de 30 días medidos y la pauta 1 de 30. Con serie completa, ambos costos suben.
+      El resultado de arriba es el <em>techo optimista</em>, no el piso.
+    </div>
+  </section>
+
+  <!-- ═══ 2 · MARGEN POR INFORME ═══ -->
+  <section>
+    <div class="sechead">
+      <h2>Margen por informe</h2>
+      <span class="eyebrow">Cascada sobre los cobros reales del período</span>
+    </div>
+
+    <div class="dos">
+      <div class="card">
+        <div class="eyebrow">Análisis individual · 2 cobros</div>
+        <div class="casc" style="margin-top:10px">
+          <div class="row"><span>Precio de lista</span><span class="v">$9.990</span></div>
+          <div class="row"><span class="lbl">− IVA (19%)</span><span class="v">−$1.595</span></div>
+          <div class="row"><span>Ingreso neto</span><span class="v">$8.395</span></div>
+          <div class="row"><span class="lbl">− Comisión Flow <span class="b med">Medido</span></span><span class="v">−$289</span></div>
+          <div class="row"><span class="lbl">− Costo IA <span class="b med">Medido</span></span><span class="v">−$223</span></div>
+          <div class="row"><span>Margen</span><span class="v">$7.883 · 93,9%</span></div>
+        </div>
+        <p class="nota">Comisión leída del dato de Flow (2,89% + IVA; el IVA de la comisión no resta
+          acá porque es crédito fiscal). IA a la mediana medida de US$0,235 × $950.</p>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Plan 10 mensual · 1 cobro</div>
+        <div class="casc" style="margin-top:10px">
+          <div class="row"><span>Precio de lista</span><span class="v">$39.990</span></div>
+          <div class="row"><span class="lbl">− IVA (19%)</span><span class="v">−$6.385</span></div>
+          <div class="row"><span>Ingreso neto</span><span class="v">$33.605</span></div>
+          <div class="row"><span class="lbl">− Comisión Flow <span class="b med">Medido</span></span><span class="v">−$1.156</span></div>
+          <div class="row"><span class="lbl">− Costo IA si usa los 10 <span class="b est">Estimado</span></span><span class="v">−$2.230</span></div>
+          <div class="row"><span>Margen en el peor caso</span><span class="v">$30.219 · 89,9%</span></div>
+        </div>
+        <p class="nota">El costo de IA depende del consumo real: si el suscriptor no usa los 10
+          análisis, el margen sube. Se muestra el peor caso para no inflarlo.</p>
+      </div>
+    </div>
+
+    <div class="aviso">
+      El margen unitario no es el problema del negocio: es alto en los dos productos.
+      Lo que no se cubre son los fijos y la pauta.
+    </div>
+  </section>
+
+  <!-- ═══ 3 · COSTOS VARIABLES ═══ -->
+  <section>
+    <div class="sechead">
+      <h2>Costos variables</h2>
+      <span class="eyebrow">Escalan con el uso</span>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Concepto</th><th style="text-align:right">Volumen</th><th style="text-align:right">Costo</th><th style="text-align:right">Procedencia</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-l="Concepto">IA (Claude)<div class="sub">88 análisis medidos · 53 sin medir</div></td>
+            <td class="n" data-l="Volumen">US$20,50</td>
+            <td class="n" data-l="Costo">$19.473</td>
+            <td class="n" data-l="Procedencia"><span class="b med">Medido</span></td>
+          </tr>
+          <tr>
+            <td data-l="Concepto">AirROI — wizard<div class="sub">129 llamadas en 3 días medidos</div></td>
+            <td class="n" data-l="Volumen">US$38,70</td>
+            <td class="n" data-l="Costo">$36.765</td>
+            <td class="n" data-l="Procedencia"><span class="b est">Estimado</span></td>
+          </tr>
+          <tr>
+            <td data-l="Concepto">AirROI — dry-run<div class="sub">3 llamadas</div></td>
+            <td class="n" data-l="Volumen">US$0,90</td>
+            <td class="n" data-l="Costo">$855</td>
+            <td class="n" data-l="Procedencia"><span class="b est">Estimado</span></td>
+          </tr>
+          <tr>
+            <td data-l="Concepto">AirROI — informe<div class="sub">sin mediciones en el período</div></td>
+            <td class="n" data-l="Volumen">—</td>
+            <td class="n" data-l="Costo">sin dato</td>
+            <td class="n" data-l="Procedencia"><span class="b nada">Sin dato</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="celdas">
+        <div class="celda"><div class="v">31</div><div class="sub">hits de caché AirROI · llamadas que no se pagaron</div></div>
+        <div class="celda"><div class="v">US$0,30</div><div class="sub">tarifa por llamada — <em>de un comentario del código, no de una factura</em></div></div>
+        <div class="celda"><div class="v">$950</div><div class="sub">dólar usado (USD_CLP)</div></div>
+      </div>
+
+      <p class="nota">
+        <strong>El costo de AirROI no está medido, está inferido.</strong> Sale de multiplicar el
+        conteo de llamadas por una tarifa que nadie confirmó contra una factura. Mientras sea así,
+        va marcado como estimado y no se mezcla con el costo de IA, que sí sale de tokens reales.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ 4 · GASTOS FIJOS ═══ -->
+  <section>
+    <div class="sechead">
+      <h2>Gastos fijos</h2>
+      <span class="eyebrow">Prorrateados a mes</span>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Servicio</th><th>Se paga</th><th style="text-align:right">Monto original</th><th style="text-align:right">Equivale al mes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-l="Servicio">Contador externo<div class="sub">admin · exento</div></td>
+            <td data-l="Se paga">mensual</td>
+            <td class="n" data-l="Monto">$35.000</td>
+            <td class="n" data-l="Al mes">$35.000</td>
+          </tr>
+          <tr>
+            <td data-l="Servicio">Haulmer / OpenFactura<div class="sub">facturación · + IVA</div></td>
+            <td data-l="Se paga">anual</td>
+            <td class="n" data-l="Monto">$322.822</td>
+            <td class="n" data-l="Al mes">$32.013</td>
+          </tr>
+          <tr>
+            <td data-l="Servicio">Vercel Pro<div class="sub">infra · base, sube con uso</div></td>
+            <td data-l="Se paga">mensual</td>
+            <td class="n" data-l="Monto">US$20,00</td>
+            <td class="n" data-l="Al mes">$19.000</td>
+          </tr>
+          <tr>
+            <td data-l="Servicio">Decodo<div class="sub">infra · proxy de scraping</div></td>
+            <td data-l="Se paga">mensual</td>
+            <td class="n" data-l="Monto">US$11,25</td>
+            <td class="n" data-l="Al mes">$10.688</td>
+          </tr>
+          <tr>
+            <td data-l="Servicio"><strong>Total mensual</strong></td>
+            <td data-l="Se paga"></td>
+            <td class="n" data-l="Monto"></td>
+            <td class="n" data-l="Al mes"><strong>$96.701</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="nota">
+        El anual de Haulmer se guarda como anual y se divide por 12 <em>al leer</em>: la tabla
+        conserva lo que realmente se paga y cuándo. Los montos en dólares se convierten con
+        USD_CLP ($950) también al leer — si el dólar cambia, cambian solos.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ 5 · CAC (movido desde Resumen) ═══ -->
+  <section>
+    <div class="sechead">
+      <h2>Qué cuesta traer a alguien</h2>
+      <span class="eyebrow">Gasto de Meta ÷ conversiones nuestras</span>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px">
+        <div class="eyebrow">Gasto Meta Ads · 30 días</div>
+        <div class="eyebrow">1 de 30 días medidos · CLP</div>
+      </div>
+      <div class="mono" style="font-size:26px;font-weight:700;margin-top:4px">$40.987</div>
+      <div class="sub">Faltan 29 días de medición: el gasto real del período es mayor y los costos
+        de abajo quedan subestimados.</div>
+
+      <div class="celdas">
+        <div class="celda"><div class="v">$383</div><div class="sub">Por registro · 107 registros</div></div>
+        <div class="celda"><div class="v">$525</div><div class="sub">Por activación · 78 activaron</div></div>
+        <div class="celda"><div class="v">$13.662</div><div class="sub">Por pago · 3 pagos reales</div></div>
+      </div>
+
+      <p class="nota">
+        <strong>De dónde llegaron:</strong> ig 32 · directo/sin UTM 24 · fb 2 · test 1.
+        55% de los registros del período tiene atribución — al 45% restante no se le puede asignar
+        canal, así que los costos de arriba se calculan sobre todos los registros y no solo sobre
+        los de Meta.
+      </p>
+    </div>
+  </section>
+
+  <div class="aviso" style="margin-top:32px">
+    <strong>Nota del mockup.</strong> Todas las cifras son reales al 13-ago-2026. El bloque de
+    ingresos excluye la fila de alta de suscripción (<span class="mono">franco-sub-sus_*</span>):
+    contarla duplicaría $39.990 y llevaría el bruto del período de $59.970 a $99.960.
+  </div>
+
+</div>
+</body>
+</html>
