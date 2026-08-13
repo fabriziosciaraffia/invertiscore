@@ -159,10 +159,27 @@
 
     <div class="resultado">
       <div class="top">
-        <div class="eyebrow">Resultado · 30 días</div>
-        <div class="big neg" style="margin-top:4px">−$146.120</div>
-        <div class="sub">Sobre 3 cobros externos. El período no cubre los costos: falta facturar
+        <div class="eyebrow">Resultado del período</div>
+        <!-- El resultado NO es un número cerrado: dos de las cinco líneas tienen
+             serie incompleta y las dos subestiman el rojo. Por eso la cifra se
+             presenta como un PISO ("o peor") y la advertencia sube a banner
+             callout — mismo peso visual que el KPI, no nota al pie. -->
+        <div style="margin-top:4px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px">
+          <span class="big neg">−$146.120</span>
+          <span class="mono neg" style="font-size:20px;font-weight:700;color:var(--signal-red)">o peor</span>
+        </div>
+        <div class="sub">El período no cubre los costos: falta facturar
           <strong>$146.120</strong> para quedar en cero.</div>
+
+        <div style="margin-top:16px;border-left:3px solid var(--franco-border-strong);
+                    border-radius:0 8px 8px 0;background:var(--franco-sunken);padding:12px">
+          <div class="eyebrow" style="color:var(--franco-text-secondary)">Cobertura incompleta · el rojo real es mayor</div>
+          <p style="margin-top:4px;font-size:13px;line-height:1.55">
+            AirROI tiene 3 de 30 días medidos y Pauta (Meta) tiene 1 de 30 días medidos. Con la serie
+            completa esos costos suben, así que la cifra de arriba es el <strong>techo optimista</strong>,
+            no el piso.
+          </p>
+        </div>
       </div>
 
       <div class="lineas">
@@ -175,7 +192,7 @@
           <span class="v">−$19.473</span>
         </div>
         <div class="linea">
-          <span class="lbl">− AirROI <span class="b est">Estimado</span></span>
+          <span class="lbl">− AirROI <span class="b est">Estimado · 3 de 30 días</span></span>
           <span class="v">−$37.620</span>
         </div>
         <div class="linea">
@@ -183,7 +200,7 @@
           <span class="v">−$96.701</span>
         </div>
         <div class="linea">
-          <span class="lbl">− Pauta (Meta) <span class="b est">Parcial</span></span>
+          <span class="lbl">− Pauta (Meta) <span class="b est">Estimado · 1 de 30 días</span></span>
           <span class="v">−$40.987</span>
         </div>
         <div class="linea total">
@@ -193,11 +210,6 @@
       </div>
     </div>
 
-    <div class="aviso">
-      <strong>Dos de las cinco líneas están incompletas y el resultado real es peor.</strong>
-      AirROI tiene 3 de 30 días medidos y la pauta 1 de 30. Con serie completa, ambos costos suben.
-      El resultado de arriba es el <em>techo optimista</em>, no el piso.
-    </div>
   </section>
 
   <!-- ═══ 2 · MARGEN POR INFORME ═══ -->
