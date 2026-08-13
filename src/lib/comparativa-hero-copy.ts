@@ -98,12 +98,24 @@ export interface HeroAmbasInput {
  * En el parque son 22 pares de la segunda clase, con sobre-renta de 15% a 77% —
  * y todos anunciaban "rinden casi igual". Se distinguen por la magnitud, que es
  * el mismo dato que el motor usó para llegar acá.
+ *
+ * PREDICADO COMPARTIDO: el hero y la apertura del motor tienen que partir
+ * INDIFERENTE por el MISMO corte. Vive acá y se exporta; `comparativa-apertura`
+ * lo consume en vez de redefinir el umbral (dos definiciones = dos verdades
+ * el día que una se mueva).
  */
 const UMBRAL_VENTAJA_MOTOR = 0.15;
+
+export function esVentajaInoperableDe(
+  banda: BandaComparativa,
+  sobreRentaPct: number,
+  sobreRentaPctConfiable: boolean,
+): boolean {
+  return banda === "INDIFERENTE" && sobreRentaPctConfiable && sobreRentaPct >= UMBRAL_VENTAJA_MOTOR;
+}
+
 const esVentajaInoperable = (input: HeroAmbasInput): boolean =>
-  input.banda === "INDIFERENTE" &&
-  input.sobreRentaPctConfiable &&
-  input.sobreRentaPct >= UMBRAL_VENTAJA_MOTOR;
+  esVentajaInoperableDe(input.banda, input.sobreRentaPct, input.sobreRentaPctConfiable);
 
 export interface MargenGanador {
   /** "$34.886/mes · 4,1%" — plata = delta de flujo (ancla con la card de flujo);

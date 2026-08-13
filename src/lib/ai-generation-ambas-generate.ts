@@ -215,7 +215,14 @@ export async function generateComparativaAI(opts: GenerateComparativaOpts): Prom
   const findings = ctxFindings ? buildFindingsComparativa(ctxFindings, "CLP", ltrUf) : [];
   const top = findings[0];
 
-  const apertura = buildAperturaComparativa({ topId: top?.id ?? "flujo", topLado: top?.lado ?? "neutro", banda, estadoHero });
+  const apertura = buildAperturaComparativa({
+    topId: top?.id ?? "flujo",
+    topLado: top?.lado ?? "neutro",
+    banda,
+    estadoHero,
+    sobreRentaPct,
+    sobreRentaPctConfiable,
+  });
   const aperturaWC = aperturaWordCount(apertura);
   const cardCifras = findings.flatMap((f) => [f.kpi, ...extractCifras(f.ksub), ...extractCifras(f.cuerpo)]);
 

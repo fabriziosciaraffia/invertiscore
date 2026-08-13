@@ -17,6 +17,7 @@
 // ============================================================================
 
 import type { BandaComparativa } from "./engines/str-universo-santiago";
+import { esVentajaInoperableDe } from "./comparativa-hero-copy";
 
 // El builder solo necesita el id + lado del #1 diferencial y la banda; se mantiene
 // desacoplado de FindingComparativa para poder invocarse desde el golden con un
@@ -30,6 +31,12 @@ export interface AperturaCtx {
    *  jugada acá") contradiría al hero "NO SE SOSTIENE" en la misma pantalla.
    *  Ausente ⇒ conducta por banda (E1/E3 y todos los callers previos). */
   estadoHero?: "e1" | "e2" | "e3";
+  /** Sobre-renta del corto (decimal) + si el ratio es interpretable. Parten
+   *  INDIFERENTE en sus dos casos reales con el MISMO predicado que el hero
+   *  (`esVentajaInoperableDe`). Ausentes ⇒ se asume empate real, que es la
+   *  conducta previa de la rama. */
+  sobreRentaPct?: number;
+  sobreRentaPctConfiable?: boolean;
 }
 
 // Voz: tuteo neutro chileno (§2.1). Cifra-free: la aritmética vive en las cards.
@@ -57,10 +64,23 @@ export function buildAperturaComparativa(ctx: AperturaCtx): string {
     return "Puestas las dos lado a lado, la renta corta es la que más te deja en caja mes a mes y su margen aguanta un traspié: acá el esfuerzo extra sí se paga. Lo que falta por resolver no es cuál rinde más, sino si estás hecho para operarla.";
   }
 
-  // INDIFERENTE (PAREJAS)
-  // El #1 suele ser flujo, pero la diferencia es chica: el eje decisional se corre al tiempo.
+  // INDIFERENTE — el motor lo emite por DOS rutas que significan cosas opuestas
+  // (mismo hallazgo que partió el copy del hero): empate real, o el corto rinde
+  // más y su break-even queda sobre el 110%. Medido en el parque, solo 2 de 79
+  // pares son empates reales; los otros 7 de esta rama tenían sobre-rentas de
+  // 15% a 77% anunciadas como "rinden casi lo mismo". El corte lo decide el
+  // predicado COMPARTIDO con el hero, no una copia del umbral.
   void topId;
   void topLado;
+  // El sub del hero ya dice que no cubre costos ni facturando lo que da la zona;
+  // esta pieza NO lo repite (D13). Toma el otro ángulo —la ventaja existe en la
+  // planilla y se deshace al operar— y cierra en el pivote hacia "quién", que es
+  // la función de la apertura.
+  if (esVentajaInoperableDe(banda, ctx.sobreRentaPct ?? 0, ctx.sobreRentaPctConfiable ?? false)) {
+    return "Puestas las dos lado a lado, el corto deja más cada mes y aun así no se paga solo: la ventaja existe en la planilla y se deshace en la operación. Lo que queda por resolver no es cuál rinde más, sino si estás dispuesto a apostar a que este depto le gane a su propio mercado.";
+  }
+
+  // Empate real (sobre-renta 5-15%): el eje decisional se corre al tiempo.
   return "Puestas las dos lado a lado, rinden casi lo mismo, así que la plata no es la que decide: lo hace cuánto tiempo estás dispuesto a ponerle a la operación. La pregunta deja de ser cuál conviene y pasa a ser cuál va contigo.";
 }
 

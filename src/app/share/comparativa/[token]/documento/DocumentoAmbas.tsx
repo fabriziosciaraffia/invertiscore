@@ -129,8 +129,16 @@ export function DocumentoAmbas({
     buscarDistancia((strResults as unknown as { hallazgos?: Hallazgo[] } | null)?.hallazgos),
     strVerdict,
   );
-  // Apertura motor: coherente con el estado del hero (rama E2 propia).
-  const apertura = buildAperturaComparativa({ topId: "flujo", topLado: "neutro", banda, estadoHero: hero.estado });
+  // Apertura motor: coherente con el estado del hero (rama E2) y con el corte
+  // que parte INDIFERENTE en empate real vs ventaja inoperable.
+  const apertura = buildAperturaComparativa({
+    topId: "flujo",
+    topLado: "neutro",
+    banda,
+    estadoHero: hero.estado,
+    sobreRentaPct: strResults?.comparativa?.sobreRentaPct ?? 0,
+    sobreRentaPctConfiable: strResults?.comparativa?.sobreRentaPctConfiable ?? true,
+  });
   // Rama A: `tirAnual` STR pasó a MetricaSobreCapital. Solo se usa en la rama
   // pie > 0 de la fila (con pie 0 la fila entera es "No aplica*"), pero el
   // desenvuelto es obligatorio: la unión no es un number.

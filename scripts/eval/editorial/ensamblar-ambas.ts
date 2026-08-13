@@ -273,6 +273,8 @@ export async function ensamblarAMBAS(
             topLado: findings[0]?.lado ?? "neutro",
             banda: banda as BandaComparativa,
             estadoHero: hero.estado,
+            sobreRentaPct: strResults.comparativa?.sobreRentaPct ?? 0,
+            sobreRentaPctConfiable: strResults.comparativa?.sobreRentaPctConfiable ?? true,
           }),
         ])
       : seccion("prosa (Cuál te conviene)", [

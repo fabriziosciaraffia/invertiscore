@@ -225,6 +225,8 @@ export function ComparativaClient(p: Props) {
         topLado: findings[0]?.lado ?? "neutro",
         banda: p.strResults?.veredictoComparativo?.banda ?? "INDIFERENTE",
         estadoHero: hero.estado,
+        sobreRentaPct: p.strResults?.comparativa?.sobreRentaPct ?? 0,
+        sobreRentaPctConfiable: p.strResults?.comparativa?.sobreRentaPctConfiable ?? true,
       }),
     [findings, p.strResults, hero.estado],
   );
