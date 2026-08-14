@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Analisis } from "@/lib/types";
 import { CompararClient } from "./comparar-client";
+
+// Herramienta con auth (redirige a /login sin sesión) sobre análisis del
+// usuario: nunca indexable. No lleva canonical — no es página de marketing.
+export const metadata: Metadata = {
+  title: "Comparar análisis",
+  robots: { index: false, follow: false },
+};
 
 export default async function CompararPage({
   searchParams,

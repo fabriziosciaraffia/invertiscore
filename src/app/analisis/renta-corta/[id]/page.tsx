@@ -22,7 +22,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     .single();
 
   if (!data) {
-    return { title: "Franco — Análisis de renta corta" };
+    return {
+      title: "Franco — Análisis de renta corta",
+      robots: { index: false, follow: false },
+    };
   }
 
   const results = data.results as ShortTermResult | null;
@@ -37,6 +40,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   return {
     title,
     description,
+    // Informes de usuarios: nunca indexables (misma regla que el LTR).
+    robots: { index: false, follow: false },
     openGraph: {
       title,
       description,

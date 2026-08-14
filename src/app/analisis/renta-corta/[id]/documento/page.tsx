@@ -6,6 +6,7 @@
 // /analisis/renta-corta/[id] (recomputeShortTermForLegacy) — cero recálculo propio.
 // ─────────────────────────────────────────────────────────────────────────
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUFValue } from "@/lib/uf";
@@ -20,6 +21,11 @@ import { DocumentoSTR } from "./DocumentoSTR";
 import "./documento.css";
 
 export const dynamic = "force-dynamic";
+
+// Informe de usuario en vista documento: nunca indexable (misma regla que el LTR).
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function DocumentoSTRPage({ params }: { params: { id: string } }) {
   const supabase = createClient();

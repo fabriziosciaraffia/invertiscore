@@ -13,11 +13,11 @@ export default function robots(): MetadataRoute.Robots {
         "/auth/",
         "/checkout",
         "/payments/",
-        // Las reglas de robots.txt son por PREFIJO: esta línea no cubre solo la
-        // ruta literal /analisis/nuevo (borrada el 2026-08-03 con el wizard v1)
-        // sino también /analisis/nuevo-v2 y /analisis/nuevo-v4, que están vivos.
-        // Por eso queda: sacarla abriría los wizards a indexación.
-        "/analisis/nuevo",
+        // Prefijo: cubre wizards (/analisis/nuevo*), informes de usuarios
+        // (/analisis/[id], /analisis/renta-corta/[id]), vistas /documento y la
+        // comparativa. Los informes además llevan noindex por página — robots.txt
+        // bloquea el crawl, no la indexación de URLs descubiertas por links.
+        "/analisis/",
       ],
     },
     sitemap: "https://refranco.ai/sitemap.xml",

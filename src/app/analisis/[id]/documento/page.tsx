@@ -10,6 +10,7 @@
 // recálculo ni lógica nueva de motor. Tema claro estructural (no lee el theme).
 // ─────────────────────────────────────────────────────────────────────────
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
@@ -24,6 +25,11 @@ import { DocumentoLTR } from "./DocumentoLTR";
 import "./documento.css";
 
 export const dynamic = "force-dynamic";
+
+// Informe de usuario en vista documento: nunca indexable.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function DocumentoLTRPage({
   params,

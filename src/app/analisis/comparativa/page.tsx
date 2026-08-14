@@ -19,6 +19,8 @@ import { ComparativaClient } from "./comparativa-client";
 export const metadata: Metadata = {
   title: "Franco — Comparativa Renta Larga vs Renta Corta",
   description: "Compara qué modalidad de renta conviene más para tu departamento.",
+  // Resultados de usuarios: nunca indexables.
+  robots: { index: false, follow: false },
 };
 
 type LTRResultsWithCache = FullAnalysisResult & {

@@ -34,7 +34,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     .single();
 
   if (!data) {
-    return { title: "Franco — Análisis de inversión inmobiliaria" };
+    return {
+      title: "Franco — Análisis de inversión inmobiliaria",
+      robots: { index: false, follow: false },
+    };
   }
 
   // La comuna manda: `nombre` es texto libre y editable, así que el título se
@@ -50,6 +53,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   return {
     title,
     description,
+    // Informes de usuarios: nunca indexables. robots.txt bloquea el crawl de
+    // /analisis/, pero el noindex por página es la garantía real para URLs
+    // descubiertas por links compartidos.
+    robots: { index: false, follow: false },
     openGraph: {
       title,
       description,
