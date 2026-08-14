@@ -723,10 +723,16 @@ function pct(n: number, decimals = 1): string {
  * Línea de dato del "precio flujo-neutro" para el user prompt — pre-digerida en
  * el builder (doctrina §1.1: la lectura se resuelve en la FUENTE, no se le pide
  * al modelo que interprete un signo). El signo de `descuentoParaNeutro` cambia
- * la SEMÁNTICA del número: con flujo mensual ya positivo, el precio de
- * equilibrio queda EN o SOBRE el precio pedido y el "descuento" sale ≤ 0 —
- * narrado como rebaja producía "si el precio bajara a UF 2.767, un 113% menos"
- * (caso real 1ad769d4: neutro UF 2.767,55 vs precio UF 1.300, descuento −112,9%).
+ * la SEMÁNTICA del número: con equilibrio EN o SOBRE el precio pedido el
+ * "descuento" sale ≤ 0 — narrado como rebaja producía "si el precio bajara a
+ * UF 2.767, un 113% menos" (caso real 1ad769d4: neutro UF 2.767,55 vs precio
+ * UF 1.300, descuento −112,9%).
+ *
+ * La línea NO afirma el signo del flujo mensual: `precioFlujoNeutro` sale de
+ * calcPrecioParaFlujo, cuyo modelo de gastos (recambio+correctivo = arriendo/24)
+ * difiere del de flujoNetoMensual (provisionMantencionAjustada), así que
+ * descuento ≤ 0 NO garantiza flujo ≥ 0 (caso real 6db7a9ac: flujo −$94.855 con
+ * descuento −2%). El signo del flujo viaja SOLO en lecturaFlujo.
  * Exportada para el test de regresión (scripts/test-descuento-neutro.ts).
  */
 export function lecturaPrecioFlujoNeutro(
@@ -740,12 +746,13 @@ export function lecturaPrecioFlujoNeutro(
     return `${fmtUF(precioFlujoNeutroUF)} (descuento ${descuentoParaNeutro.toFixed(1)}%)`;
   }
   const margenSubidaPct = Math.abs(descuentoParaNeutro);
-  const colaSubida =
+  const posicion =
     margenSubidaPct >= 0.1
-      ? ` NO es un descuento: es cuánto podría subir el precio (un ${pct(margenSubidaPct)}% más) antes de que el flujo llegue a cero.`
-      : ` El arriendo cubre exacto la cuota al precio actual — no hay descuento asociado.`;
+      ? `queda un ${pct(margenSubidaPct)}% SOBRE él`
+      : `coincide con él`;
   return (
-    `${fmtUF(precioFlujoNeutroUF)} — OJO: está en o sobre el precio pedido, porque el flujo ya es positivo al precio actual.${colaSubida}` +
+    `${fmtUF(precioFlujoNeutroUF)} — OJO: este equilibrio NO está bajo el precio pedido (${posicion}): no existe un descuento de precio asociado.` +
+    ` El signo del flujo mensual es el que dice lecturaFlujo — no lo deduzcas de esta línea.` +
     ` PROHIBIDO narrarlo como rebaja, como "X% menos" o como "si el precio bajara".`
   );
 }

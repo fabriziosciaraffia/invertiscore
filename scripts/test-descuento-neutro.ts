@@ -41,9 +41,20 @@ test("1ad769d4: descuento negativo NO se narra como rebaja", () => {
   const linea = lecturaPrecioFlujoNeutro(2767.55, -112.9);
   assert.doesNotMatch(linea, /\(descuento/, "no debe emitir '(descuento ...%)'");
   assert.doesNotMatch(linea, /-112|113% menos/, "no debe emitir el % negativo como cifra de rebaja");
-  assert.match(linea, /en o sobre el precio pedido/, "debe declarar que el neutro está sobre el precio");
+  assert.match(linea, /NO está bajo el precio pedido/, "debe declarar que el equilibrio no está bajo el precio");
   assert.match(linea, /PROHIBIDO/, "debe prohibir la narración como rebaja");
-  assert.match(linea, /112,9% más/, "el margen de subida se declara como subida, en coma chilena");
+  assert.match(linea, /112,9% SOBRE/, "la posición se declara sobre el precio, en coma chilena");
+});
+
+// El signo del flujo NO se puede deducir del signo del descuento: el modelo de
+// gastos de calcPrecioParaFlujo (arriendo/24) difiere del de flujoNetoMensual
+// (provisionMantencionAjustada). Caso real 6db7a9ac: flujo −$94.855 con
+// descuento −2% — la línea no puede afirmar "el flujo ya es positivo".
+test("6db7a9ac: la línea NO afirma el signo del flujo mensual", () => {
+  const linea = lecturaPrecioFlujoNeutro(3262.65, -2);
+  assert.doesNotMatch(linea, /flujo ya es positivo/, "no debe afirmar flujo positivo");
+  assert.match(linea, /lecturaFlujo/, "debe delegar el signo del flujo a lecturaFlujo");
+  assert.match(linea, /2,0% SOBRE/, "declara la posición relativa al precio");
 });
 
 test("1ad769d4: la línea sigue trayendo el monto UF del neutro", () => {
@@ -71,17 +82,17 @@ test("neutro inexistente (≤ 0): mensaje 'no existe' intacto", () => {
   );
 });
 
-test("descuento exactamente 0 (neutro == precio): sin '(0% más)' sin sentido", () => {
+test("descuento exactamente 0 (neutro == precio): sin '(0% SOBRE)' sin sentido", () => {
   const linea = lecturaPrecioFlujoNeutro(1300, 0);
   assert.doesNotMatch(linea, /\(descuento/);
-  assert.match(linea, /cubre exacto la cuota al precio actual/);
-  assert.doesNotMatch(linea, /0% más/);
+  assert.match(linea, /coincide con él/);
+  assert.doesNotMatch(linea, /0% SOBRE/);
 });
 
-test("descuento negativo chico (−0,05%): trata como equilibrio exacto, no como subida", () => {
+test("descuento negativo chico (−0,05%): trata como coincidencia, no como subida", () => {
   const linea = lecturaPrecioFlujoNeutro(1300.5, -0.05);
-  assert.match(linea, /cubre exacto la cuota/);
-  assert.doesNotMatch(linea, /más antes de que el flujo/);
+  assert.match(linea, /coincide con él/);
+  assert.doesNotMatch(linea, /SOBRE él/);
 });
 
 // ── Resumen ──────────────────────────────────────────────────────────────────
