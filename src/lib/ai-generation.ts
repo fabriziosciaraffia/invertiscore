@@ -1505,8 +1505,19 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
     // INVARIANTE: el número que narra el prompt == el que el render recomputa.
     // El MOTOR calcula la decisividad (Tipo 1, determinístico); acá solo ordenamos
     // y la traducimos a peso cualitativo — la IA la consume, no la asigna.
+    // (e) round-una-vez compartido con el render (censo D3, familia CAP): la card
+    // redondea el capRate CRUDO una sola vez (cap-rate-hallazgo.ts:116), pero
+    // m.capRate ya viene redondeado a 2 decimales por calcMetrics — re-redondear
+    // ESE valor a 1 decimal puede cruzar la frontera .x5 al lado contrario del
+    // render (crudo 2,8493 → card "2,8"; m.capRate 2,85 → prompt "2,9"; casos
+    // bbcb0448/71512dec/23b9cb27/c09c2ebf, los cuatro exactos en frontera). El
+    // prompt cita SIEMPRE el número de la card: el valor 1-decimal del hallazgo
+    // recomputado. m.capRate queda solo de fallback (hallazgo no emitido).
+    const capRateCard =
+      ((results.hallazgos as Hallazgo[] | undefined)?.find((h) => h.id === "cap_rate")
+        ?.valor as { capRatePct?: number } | undefined)?.capRatePct ?? m.capRate;
     const hallazgoCapRateGen = buildHallazgoCapRate({
-      capRatePct: m.capRate,
+      capRatePct: capRateCard,
       ref: getCapRefComuna(input.comuna),
       comuna: input.comuna,
       modalidad: "ltr",
@@ -1756,7 +1767,7 @@ INDICADORES CALCULADOS
 - veredicto (dado — úsalo como tal, no lo contradigas — §7): ${veredictoMotor}
 - subscores (referenciar como "sub-score de X" si los mencionas; el score total es ${results.score}, único): rentabilidad ${Math.round(d.rentabilidad)}/100 · flujo caja ${Math.round(d.flujoCaja)}/100 · plusvalia ${Math.round(d.plusvalia)}/100 · eficiencia ${Math.round(d.eficiencia)}/100
 - Rentabilidad bruta: ${pct(m.rentabilidadBruta)}%
-- Cap rate: ${pct(m.capRate)}%
+- Cap rate: ${pct(capRateCard)}%
 - Rentabilidad neta: ${pct(m.rentabilidadNeta)}%
 - Cash-on-Cash: ${esMetricaNoAplica(m.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(m.cashOnCash, (n) => `${pct(n)}%`)}${esMetricaNoAplica(m.cashOnCash) || !fechaEntregaFmt || input.estadoVenta === "inmediata" ? "" : ` — es el RÉGIMEN, no el hoy: este depto se entrega en ${fechaEntregaFmt}, así que ese porcentaje es lo que rentará el pie una vez arrendado. Nárralo en futuro ("cuando lo recibas"), nunca en presente ("tu pie está rentando")`}
 ${tirLineaPrompt}- Multiplicador de capital (10 años): ${esMetricaNoAplica(exit.multiplicadorCapital) ? NO_APLICA_PROMPT : metricaDisplay(exit.multiplicadorCapital, (n) => `${pct(n, 2)}x`)}

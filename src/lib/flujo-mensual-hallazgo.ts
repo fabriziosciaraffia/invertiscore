@@ -146,20 +146,27 @@ export function buildFraseFlujo(
           `del caso no lo compensa.`,
       };
     }
+    // Censo D3 (13-ago): "acotado … sostenible" a secas se leía como consuelo mientras la
+    // prosa del mismo informe describe el aporte como recurrente sin fecha de término —
+    // la card celebraba lo que el resto advertía (f5fe1780, b6ea6535, 1b622c91, 7881dbce).
+    // El fix carga la dimensión que faltaba (RECURRENCIA: mes a mes, no una vez) sin
+    // afirmar duración total — un flujo hoy negativo puede cruzar a positivo dentro del
+    // horizonte, y esa lectura vive en la prosa (lecturaFlujo), no acá.
     if (consuelo === "estable") {
       return {
         titular,
         fraseCanonica:
-          `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte acotado frente al dividendo. ` +
-          `Sostenible si tu flujo es estable; eso sí, la plusvalía histórica de la comuna no está ` +
-          `para compensarlo.`,
+          `Tienes que poner ${montoFmt} al mes de tu bolsillo — acotado frente al dividendo, ` +
+          `pero recurrente: sale mes a mes, no una sola vez. Sostenible solo si tu flujo lo ` +
+          `aguanta sin apuro; eso sí, la plusvalía histórica de la comuna no está para compensarlo.`,
       };
     }
     return {
       titular,
       fraseCanonica:
-        `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte acotado frente al dividendo. ` +
-        `Sostenible si tu flujo es estable; la plusvalía puede compensarlo.`,
+        `Tienes que poner ${montoFmt} al mes de tu bolsillo — acotado frente al dividendo, ` +
+        `pero recurrente: sale mes a mes, no una sola vez. Sostenible solo si tu flujo lo ` +
+        `aguanta sin apuro; la plusvalía puede compensarlo.`,
     };
   }
   return {
