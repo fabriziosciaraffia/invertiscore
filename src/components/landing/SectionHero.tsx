@@ -502,7 +502,9 @@ function CopySTR({ mobile }: { mobile: boolean }) {
       >
         Análisis Airbnb
       </p>
-      <h1
+      {/* h2, no h1: ambas variantes del hero conviven en el DOM (crossfade) y
+          la página debe tener UN solo h1 — el del copy LTR. Mismos estilos. */}
+      <h2
         className="font-heading font-bold leading-[1.02] tracking-[-0.02em] text-[var(--landing-text)]"
         style={{
           fontSize: mobile
@@ -511,7 +513,7 @@ function CopySTR({ mobile }: { mobile: boolean }) {
         }}
       >
         ¿<span className="text-[#C8323C]">Airbnb</span> o arriendo tradicional?
-      </h1>
+      </h2>
       <p
         className={`${mobile ? "mt-5" : "mt-8"} max-w-[540px] font-body text-[var(--landing-text-secondary)]`}
         style={{ fontSize: mobile ? 14 : 18, lineHeight: 1.5 }}
