@@ -11,6 +11,7 @@ import { InfoTooltip } from "@/components/ui/tooltip";
 import { ordenarHallazgosPiramide } from "./PiramideHallazgos";
 import { IndiceRow } from "./IndiceHallazgos";
 import { numeroHallazgo } from "@/lib/orden-hallazgos";
+import { describirMotivosLTR } from "@/lib/no-cierra-copy";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 
 /**
@@ -192,6 +193,18 @@ export function HeroLTR({
     : hallazgosRow.some((h) => h.id === "sensibilidad")
       ? { key: "sensibilidad", label: "Ver el margen" }
       : null;
+  // POR QUÉ NO CIERRA (LTR) — puerto del patrón STR (§1.12.8): la glosa de los
+  // motivos que decidieron el veredicto, SOLO cuando lo decidió un gate y no la
+  // banda del score. Los brazos del Gate 1 viajan en el hallazgo de distancia
+  // (recomputado — misma fuente que su drawer); la capa del Gate 2 no tiene
+  // brazo persistido y se deriva: score en banda COMPRAR (≥70) con veredicto
+  // AJUSTA ⇒ el gate capó. Veredicto de banda pura → null y no se muestra nada:
+  // inventar una causa sería peor que no darla (§1.9.3).
+  const gate2Capo = (results?.score ?? 0) >= 70 && veredicto === "AJUSTA SUPUESTOS";
+  const motivosLTR = describirMotivosLTR(
+    (distanciaRow?.valor as { brazosGate1Activos?: string[] } | undefined)?.brazosGate1Activos ?? [],
+    gate2Capo,
+  );
   const fechaFirma = formatFecha(createdAt);
 
   return (
@@ -290,6 +303,17 @@ export function HeroLTR({
           <p className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
             Veredicto
           </p>
+          {/* Por qué no cierra — puerto literal del patrón STR: entre el veredicto y
+              la pregunta, borde izquierdo neutro, sin wash de Signal Red (el rojo ya
+              lo carga el badge; repetirlo convertiría una explicación en un golpe). */}
+          {motivosLTR && (
+            <p
+              className="font-body text-[13.5px] md:text-[14px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mb-3.5 pl-3 max-w-[62ch]"
+              style={{ borderLeft: "2px solid var(--franco-border-strong)", borderRadius: 0 }}
+            >
+              {motivosLTR.frase}
+            </p>
+          )}
           <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0">
             {pregunta}
           </h2>

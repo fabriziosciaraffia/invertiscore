@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
+import { bandaEsfuerzoDescuento } from "@/lib/distancia-veredicto-hallazgo";
+import { describirMotivosLTR } from "@/lib/no-cierra-copy";
 import { CLAUDE_MODEL, MICRO_CHECK_MODEL } from "@/lib/ai-config";
 import {
   acumularLlamadaSinTokens,
@@ -67,7 +69,7 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // la prosa cacheada con `promptVersion` < este número (o ausente ⇒ prosa pre-F6) se
 // regenera al abrir el análisis del owner. BUMP cada vez que cambie el prompt, el schema
 // o la doctrina de esta prosa. Espejo de PROMPT_VERSION_AMBAS (ai-generation-ambas.ts).
-export const PROMPT_VERSION_LTR = 3;
+export const PROMPT_VERSION_LTR = 4;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -116,7 +118,7 @@ Ejemplo de forma (NO uses estos números — usa SIEMPRE precioM2Zona y sobrepre
 REGLA DURA — origen de las cifras de la comuna: los valores de precio/m² de la comuna, mediana y sobreprecio SOLO pueden salir de las variables \`precioM2Zona\` y \`sobreprecioPorM2\` que recibes en el caso. NUNCA cites una mediana de memoria por nombre de comuna. Si el número que vas a escribir no está en los datos del caso, no lo escribas.
 
 **Ángulo 2 — Inter-comuna (otras comunas):**
-OBLIGATORIO cuando veredicto = "BUSCAR OTRA". Sin excepciones.
+OBLIGATORIO cuando veredicto = "BUSCAR OTRA". Sin excepciones. TAMBIÉN obligatorio cuando el caso llega marcado como CASO PRECIO-JUSTO (bloque propio del user prompt), sea AJUSTA o BUSCAR: si la zona no rinde a precios de mercado, la respuesta útil es mostrar dónde sí (§1.12.4).
 Va en \`conviene.respuestaDirecta\`.
 
 DEBE nombrar al menos 1 comuna alternativa concreta de Santiago. Lista de referencia (usar la que aplique al perfil del usuario):
@@ -413,7 +415,7 @@ Cuando tieneDiferenciaValida=true: puedes usar libremente el monto absoluto. Ver
 
 REGLA 1 — Reconocer ventaja o sobreprecio explícitamente.
 - PASADA: "comprarías X% bajo mercado" (etapa=evaluando, ver §1.6) o "compraste X% bajo mercado" (etapa cerrada). Usa la palabra "ventaja", no "pasada", en la narrativa visible al usuario.
-- SOBREPRECIO: "pagarías X% sobre mercado".
+- SOBREPRECIO: "pagarías X% sobre mercado". REGLA DE ORO de prominencia (§1.12.5): la pérdida por sobreprecio se trata con la MISMA vara que una ventaja — si la ganancia iría en el hero cuando existe, la pérdida va en el hero cuando existe; prohibido celebrar fuerte y advertir bajito. Cuando el caso trae el bloque SIMETRÍA DEL SOBREPRECIO, sus cifras (pérdida en UF, años de recuperación) son EL dato.
 - PRECIO_ALINEADO: "el precio está cerca del valor estimado de mercado (±2%)".
 
 REGLA 2 — Abordar la tensión veredicto×negociación.
@@ -450,14 +452,14 @@ Tu trabajo: 1-3 frases en \`estrategiaSugerida\` + 1 glosa por slot en \`negocia
 
 GLOSAS CON OBJETIVO DEL NIVEL (no descripción del número):
 
-\`glosaPrimeraOferta\`: explica el OBJETIVO de partir en este número. Por qué este precio es el "abrir conversación".
+\`glosaPrimeraOferta\`: explica el OBJETIVO de partir en este número. Por qué este precio es el "abrir conversación". §1.12.2: la primera oferta ES una posición de apertura respecto del techo (techo menos ~5%), no una cifra con origen propio — el caso trae ese dato mecánico; dilo en fácil, nunca la presentes como un cálculo aparte.
 - BIEN: "Abre la conversación con margen para subir sin perder el caso económico."
 - BIEN: "Ancla el rango bajo: si rechazan, todavía tienes 5% de margen para llegar al techo."
 - MAL: "Reconoce ventaja pero pide aire operacional." (no explica QUÉ buscas)
 - MAL: "Partir agresivo justificado por sobreprecio." (describe el número, no el objetivo)
 - Cuando primeraOferta == techo (modo cerrar_actual): "Cierra al precio actual — ya estás bajo mercado y la matemática cierra."
 
-\`glosaTecho\`: explica POR QUÉ este es el máximo. Qué se rompe sobre este precio.
+\`glosaTecho\`: explica POR QUÉ este es el máximo. Qué se rompe sobre este precio. §1.12.2: OBLIGATORIO nombrar el umbral que se rompe (viene en razonSugerido/anclas del caso) — "es el máximo" a secas es una cifra sin argumento, no un consejo. Cada ancla declara qué la produce.
 - BIEN: "Es el último precio donde tu aporte mensual sigue bajo $250K y mantienes ventaja vs comparables."
 - BIEN: "Sobre este número la TIR cae bajo 8% y el flujo deja de cerrar a 10 años."
 - MAL: "Matemática mejora, ventaja se mantiene." (genérica, no dice QUÉ se rompe sobre)
@@ -499,6 +501,9 @@ El lector es un comprador chileno inteligente pero NO financiero. Todo término 
 - "no cruza a positivo" / "flujo no cruza" PROHIBIDO. Usa "sigues aportando de tu bolsillo todos los meses de la proyección" o "el arriendo nunca alcanza a cubrir el dividendo dentro de los X años proyectados".
 - Otros prohibidos sin definición: VAN, cap rate, LTV, yield bruto, yield neto, breakeven literal, amortización pelada.
 - "ganancia neta" PROHIBIDO para el patrimonio/equity a la venta. "Tu parte al vender" (valor de venta − deuda − comisión + flujos acumulados) es lo que te QUEDA en la mano al liquidar, NO la ganancia por encima de lo que pusiste. Nombrarlo "ganancia neta" miente: incluye recuperar tu propio capital. Di "tu parte", "lo que te queda a la venta", "lo tuyo al liquidar" — coherente con la card y el drawer de patrimonio. Si necesitas hablar de la ganancia real (por encima de lo aportado), es otra cifra y otra palabra; nunca uses "ganancia" para el equity total.
+
+REGLA 8 — Un precio protagonista por pieza (§1.12.6).
+Conviven hasta cuatro precios por análisis (sugerido/techo de negociación, flujo-neutro, límite de TIR, umbral de veredicto) y cada uno responde una pregunta distinta. Cada pieza tiene UN precio protagonista — el de su función: \`negociacion\` manda el sugerido/techo; la distancia al veredicto manda su umbral; el flujo-neutro es referencia de caja. Si citas un segundo precio en la misma pieza, preséntalo como lo que es y di explícitamente cuál manda ("tu piso absoluto es X; el número que cambia el veredicto es Y — pelea por Y"). PROHIBIDO listar dos umbrales a menos de ~2% de distancia sin decir cuál importa y por qué; cuando el caso trae la línea "DOS UMBRALES A MENOS DE 2%", su arbitraje es EL dato — úsalo tal cual.
 
 REGLA 9 — Plusvalía histórica: caveat temporal obligatorio (v13 — evento como período, no como causa).
 El dataset de plusvalía cubre 2014-2024. Ese rango CRUZA tres tramos atípicos que lo vuelven un promedio ruidoso — no un predictor limpio. Son el marco temporal del dato (CUÁNDO ocurrió), NO causas cuantificables (CUÁNTO movió la cifra):
@@ -1419,7 +1424,20 @@ ANCLAS DE NEGOCIACIÓN (REGLA 5 v10 — usar EXACTOS, no recalcular):
         ? `null (${veredictoMotor === "BUSCAR OTRA" ? "—" : "el techo ya es el límite duro, no duplicar"})`
         : walkAwayAncla.precio_uf === null
           ? `{ precio_uf: null, razon: "${walkAwayAncla.razon}" } — la salida es buscar otra propiedad`
-          : `{ precio_uf: ${walkAwayAncla.precio_uf} (${fmtCLP(walkAwayAncla.precio_clp!)}), razon: "${walkAwayAncla.razon}" }`}`;
+          : `{ precio_uf: ${walkAwayAncla.precio_uf} (${fmtCLP(walkAwayAncla.precio_clp!)}), razon: "${walkAwayAncla.razon}" }`}${(() => {
+      // §1.12.1 — banda de esfuerzo del descuento del techo, pre-digerida (la IA
+      // narra el lenguaje canónico, nunca clasifica). Sin banda en cerrar_actual
+      // (no hay descuento que pedir) ni con techo sobre el precio pedido.
+      const descTechoPct = input.precio > 0 ? ((input.precio - techoUF) / input.precio) * 100 : 0;
+      if (modoSugerido === "cerrar_actual" || descTechoPct <= 0) return "";
+      return `
+- bandaEsfuerzoTecho (§1.12.1 — dato del motor; narra el descuento del techo CON este lenguaje, nunca lo reclasifiques): pedir el techo es un descuento de ${pct(descTechoPct)}% → ${bandaEsfuerzoDescuento(descTechoPct).lectura}`;
+    })()}
+- casoNegociador (§1.12.2 — los argumentos van EN LA MISMA PIEZA que el número, en este orden de fuerza; SOLO estos — señales que no vienen acá NO existen: nada de urgencia del vendedor, días en mercado ni pre-aprobación del comprador):${pvc.desviacionPct != null && pvc.desviacionPct > 2 ? `
+  1) sobreprecio vs mediana comunal: pides UF ${pvc.sujetoUfM2.toLocaleString("es-CL")}/m² donde la mediana confiable de la comuna está ${pct(pvc.desviacionPct)}% más abajo — el ancla de comparables
+  2) ` : `
+  1) `}umbral económico propio: "${razonSugerido}" — sobre el techo el negocio no se sostiene para el comprador; no es regateo, es aritmética
+- glosaPrimeraOferta (dato mecánico): la primera oferta ES el techo menos ~5% — una posición de apertura con margen para subir, no una cifra con origen propio. Se explica así, en fácil.`;
 
     // Bloque opcional de subsidio — datos puros, sin instrucciones (las reglas
     // viven en el system prompt + nota de compliance al final).
@@ -1675,6 +1693,78 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
         ? `EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: el arriendo de la palanca es la estimación de Franco, así que la advertencia va sobre la estimación y sobre el mundo, no sobre el usuario — la mediana sale de ${arriendoReferencia.n > 0 ? `${arriendoReferencia.n} avisos publicados` : "los avisos publicados"} y lo que se firma puede quedar por debajo. Nombra la distancia Y advierte que el arriendo efectivo es lo que hay que confirmar con el arrendatario real.`
         : "EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: si el arriendo declarado ya viene alto contra los comparables publicados, decirlo es MÁS honesto que celebrar que faltan pocos puntos — nombra la distancia Y advierte que esa palanca se apoya en un supuesto que hay que verificar.";
 
+    // ── §1.12 — pre-digestiones (la clasificación se resuelve acá; la IA narra) ──
+    const dvGen = hallazgoDistanciaGen?.valor;
+    // (1) Banda de esfuerzo de la palanca precio emitida — dato, nunca criterio IA.
+    const palancaPrecioGen = dvGen?.palancas.find((l) => l.palanca === "precio");
+    const bandaPrecio = palancaPrecioGen ? bandaEsfuerzoDescuento(Math.abs(palancaPrecioGen.deltaPct)) : null;
+    // (3) Corte del copy-apuesta del arriendo: (a) el objetivo SUPERA los comparables
+    // publicados — pedir más que lo que la zona muestra es apostar contra el mercado,
+    // a cualquier %; (b) sin referencia, delta > +10% (el mismo umbral con que la
+    // tarifa STR pasa de ajuste a apuesta). Bajo el corte sigue el matiz de verificación.
+    const palancaArriendoGen = dvGen?.palancas.find((l) => l.palanca === "arriendo");
+    const arriendoEsApuesta =
+      !!palancaArriendoGen &&
+      (arriendoReferencia
+        ? palancaArriendoGen.objetivo > arriendoReferencia.valorCLP
+        : Math.abs(palancaArriendoGen.deltaPct) > 10);
+    // (7) Driver no accionable: la plusvalía adversa corona el orden único — nada de
+    // lo negociable la mueve, y el marco va ANTES de las palancas.
+    const driverNoAccionable =
+      hallazgosOrdenados[0]?.id === "plusvalia" && hallazgosOrdenados[0]?.direccion === "adverso";
+    // (8) El veredicto viene de gate: brazos del hallazgo + capa del Gate 2 derivada
+    // (score en banda COMPRAR con veredicto AJUSTA ⇒ el gate capó — patrón puro-gate).
+    const gate2CapoGen = (results.score ?? 0) >= 70 && veredictoMotor === "AJUSTA SUPUESTOS";
+    const motivosLTRGen = describirMotivosLTR(dvGen?.brazosGate1Activos ?? [], gate2CapoGen);
+    // (4) Caso precio-justo: detectado por el motor (condición dura Y-ada, runAnalysis).
+    const casoPrecioJustoGen = dvGen?.casoPrecioJusto === true;
+    // (5) Simetría ganancia/pérdida: sobreprecio confiable → pérdida concreta en UF y
+    // años de recuperación vía plusvalía histórica (orden de magnitud condicionado).
+    const perdidaSobreprecio = (() => {
+      const desv = pvc.desviacionPct;
+      const sobreUfM2 = pvc.sobreprecioUfM2;
+      if (desv == null || sobreUfM2 == null || desv <= 5 || !(input.superficie > 0)) return null;
+      const totalUF = Math.round(sobreUfM2 * input.superficie);
+      const anios = historica && historica.anualizada > 0 ? Math.max(1, Math.round(desv / historica.anualizada)) : null;
+      return totalUF > 0 ? { totalUF, desv, anios } : null;
+    })();
+    // (6) Dos umbrales a <2%: el arbitraje se pre-digiere — nunca lo decide la IA.
+    const parCercano = (a: number, b: number) => a > 0 && b > 0 && Math.abs(a - b) / Math.max(a, b) < 0.02;
+    const umbralVeredictoUFGen = neg?.precioUmbralVeredictoUF ?? null;
+    const arbitrajeUmbrales =
+      precioFlujoNeutroUF > 0 && umbralVeredictoUFGen && parCercano(precioFlujoNeutroUF, umbralVeredictoUFGen)
+        ? `DOS UMBRALES A MENOS DE 2% ENTRE SÍ: el precio al que el arriendo cubre la cuota (${fmtUF(precioFlujoNeutroUF)}) y el que cambia el veredicto (${fmtUF(umbralVeredictoUFGen)}) casi coinciden. EL QUE MANDA es el del veredicto (${fmtUF(umbralVeredictoUFGen)}): cambia la conclusión del análisis, no solo la caja. El otro se nombra SOLO pegado a él, como el punto donde la caja queda en cero — nunca como un segundo objetivo de negociación.`
+        : precioFlujoNeutroUF > 0 && parCercano(precioFlujoNeutroUF, techoUF)
+          ? `DOS UMBRALES A MENOS DE 2% ENTRE SÍ: el precio al que el arriendo cubre la cuota (${fmtUF(precioFlujoNeutroUF)}) y el techo de negociación (${fmtUF(techoUF)}) casi coinciden. EL QUE MANDA es el techo (${fmtUF(techoUF)}): es el número de la mesa. El flujo-neutro se menciona solo como referencia de caja, en la misma frase.`
+          : "";
+
+    const bloquePrecioJusto = casoPrecioJustoGen ? `
+
+=== CASO PRECIO-JUSTO (§1.12.4 — TODO A MERCADO, VEREDICTO ${veredictoMotor}) ===
+El precio está alineado con la mediana comunal (dato confiable) Y el arriendo está dentro de los comparables. El problema NO es la propiedad — es que, a precios y arriendos actuales, esta zona no remunera al inversionista. Marco de lectura (no hecho por-caso): el precio de mercado lo sostiene quien compra para vivir, y ese comprador no paga por rentabilidad.
+REENCUADRE OBLIGATORIO (lenguaje canónico; adáptalo lo mínimo): "este depto está bien tasado para alguien que quiera vivir en él; para inversión, esta comuna hoy paga precios que los arriendos no sostienen".
+ÁNGULO 2 OBLIGATORIO TAMBIÉN EN ESTE CASO (no solo en BUSCAR OTRA): nombra al menos 1 comuna alternativa concreta — si la zona no rinde, la respuesta útil es mostrar dónde sí.
+PROHIBIDO resolver este caso pidiendo un descuento cosmético "por matemática propia" sin este reencuadre. Si el descuento que arreglaría el caso excede lo plausible, se dice — no se maquilla.` : "";
+
+    const bloqueMotivosGateLTR = motivosLTRGen ? `
+
+=== POR QUÉ NO CIERRA (glosa canónica del motor — el veredicto lo decidió esta condición, no el puntaje) ===
+«${motivosLTRGen.frase}»
+Esta glosa es la CAUSA del veredicto: úsala, no la re-derives ni la contradigas. Cuando las cards favorables dominen la pirámide, la pieza que resuelve la tensión (POR QUÉ lo bueno no salva el caso) es OBLIGATORIA y va ARRIBA — en conviene.respuestaDirecta o inmediatamente después de la apertura — nunca enterrada en un drawer. PROHIBIDO atribuir el veredicto al puntaje ("le faltan puntos"): el puntaje mide calidad; esta condición decide.` : "";
+
+    const bloqueDriverNoAccionable = driverNoAccionable ? `
+
+=== DRIVER NO ACCIONABLE (§1.12.7) ===
+Lo que más pesa en esta lectura es la plusvalía histórica de la comuna — una dimensión que el usuario NO controla. ANTES de ofrecer cualquier palanca, dilo con el marco canónico (adáptalo lo mínimo): "lo que más pesa acá no se negocia con nadie — es la historia de apreciación de la comuna. Las palancas de abajo mejoran el flujo, pero no cambian ese hecho". Ofrecer precio/arriendo/pie sin ese marco vende la ilusión de que todo se arregla negociando.` : "";
+
+    const bloqueSimetriaSobreprecio = perdidaSobreprecio ? `
+
+=== SIMETRÍA DEL SOBREPRECIO (§1.12.5 — misma vara que la ganancia) ===
+- Pérdida patrimonial concreta: estás pagando ~UF ${perdidaSobreprecio.totalUF.toLocaleString("es-CL")} sobre el valor estimado de la zona (${pct(perdidaSobreprecio.desv)}%) — plata que entregas el día de la firma. Tradúcela así, nunca como porcentaje seco.${perdidaSobreprecio.anios !== null ? `
+- Tiempo de recuperación (orden de magnitud condicionado, NUNCA fecha): a la plusvalía histórica de esta comuna, tardarías ~${perdidaSobreprecio.anios} año${perdidaSobreprecio.anios === 1 ? "" : "s"} solo en recuperar el sobreprecio, antes de ganar tu primer peso de apreciación. Aplica el caveat temporal de la REGLA 9 (el histórico es un período atípico, no una proyección).` : `
+- Sin histórico comunal positivo no se estima tiempo de recuperación — no lo inventes.`}
+- REGLA DE ORO — misma prominencia: si una ventaja de compra de este tamaño iría en el hero, esta pérdida va en el hero. Prohibido celebrar fuerte y advertir bajito.` : "";
+
     const hallazgosBloque = hallazgosOrdenados.length > 0
       ? `
 HALLAZGOS DEL ANÁLISIS (vienen en el ORDEN DEL INFORME: el 1º es el que abre la lectura — el adverso más determinante cuando lo hay, o el de más peso — y el resto va por cuánto pesa en la decisión). Narralos en pirámide con TU voz. NO copies la frase literal, NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostené la tensión con honestidad — no la aplanes.
@@ -1698,12 +1788,18 @@ REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase. 
 DOS PIES DISTINTOS EN ESTE INPUT — no los mezcles ni los promedies. Contestan preguntas distintas:
 · \`estructuraFinancieraSugerida.pieSugerido\` (§5 Nivel 3, sección \`reestructuracion\`) es el pie ÓPTIMO de estructura de financiamiento. Baja la cuota, pero NO necesariamente mueve el veredicto.
 · el pie de la DISTANCIA AL VEREDICTO (esta sección) es el que hace que el veredicto SUBA de banda. Es el único que puedes presentar como "con este pie el veredicto pasa a X".
-Si difieren, es porque el óptimo de estructura no alcanza para cruzar. Está PROHIBIDO decir que el pie de la reestructuración cambia el veredicto, y prohibido citar el de la distancia como "el óptimo".` : ""}${hallazgoDistanciaGen.valor.pieExcluidoPorBono ? `
-El pie de este caso lo cubre un bono de la inmobiliaria: NO ofrezcas subir el pie como vía — desarma la compra que se está evaluando. Las vías son las que trae la frase.` : ""}
+Si difieren, es porque el óptimo de estructura no alcanza para cruzar. Está PROHIBIDO decir que el pie de la reestructuración cambia el veredicto, y prohibido citar el de la distancia como "el óptimo".
+
+HONESTIDAD DE DOBLE FILO DEL PIE (§1.12.3 — obligatoria al recomendarlo): "más pie mejora el flujo, pero también significa poner más plata tuya para que el mismo negocio se vea mejor — tapa el síntoma, no convierte una mala compra en buena". El pie sano nunca se presenta como mérito de la propiedad. (Con pie 0 rige la doctrina ## 5.bis.)` : ""}${hallazgoDistanciaGen.valor.pieExcluidoPorBono ? `
+El pie de este caso lo cubre un bono de la inmobiliaria: NO ofrezcas subir el pie como vía — desarma la compra que se está evaluando. Las vías son las que trae la frase.` : ""}${bandaPrecio ? `
+
+BANDA DE ESFUERZO del descuento de la palanca precio (§1.12.1 — dato del motor; nárrala con este lenguaje, NUNCA la reclasifiques): ${bandaPrecio.lectura}.` : ""}${arriendoEsApuesta ? `
+
+LA PALANCA DE ARRIENDO ES UNA APUESTA, NO UN AJUSTE (§1.12.3): ${arriendoReferencia ? `el objetivo (${fmtCLP(palancaArriendoGen!.objetivo)}) SUPERA los comparables publicados (${fmtCLP(arriendoReferencia.valorCLP)}) — pedir más que lo que la zona muestra es apostar contra el mercado, cualquiera sea el porcentaje` : `el salto pedido (+${pct(Math.abs(palancaArriendoGen!.deltaPct))}%) excede lo que un supuesto corrige`}. Lenguaje canónico (adáptalo lo mínimo): "subir el arriendo no se negocia con nadie — se testea publicando, y el costo de equivocarse se llama vacancia". Preséntala SIEMPRE así, nunca como "ajusta este supuesto".` : ""}
 
 ${matizPalancaArriendo}
 
-SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues" o cualquier ajuste como salida. La honestidad acá es cerrar la puerta, no dejarla entornada: la brecha es del deal. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe.
+SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues" o cualquier ajuste como salida. La honestidad acá es cerrar la puerta, no dejarla entornada: ${casoPrecioJustoGen ? "la brecha no es de este depto ni de su precio — es de lo que la zona rinde hoy (ver CASO PRECIO-JUSTO)" : "la brecha es del deal"}. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe.
 ` : ""}
 CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras — es TU presupuesto, entero, y no se descuenta de las ${aperturaWC + respuestaWC} que el motor ya antepuso (el total ensamblado no pasa de ${techoTotal}); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
@@ -1829,7 +1925,8 @@ ${metroInfo}
 ${plusvaliaHistoricaInfo}
 ${esFueraGranSantiago ? "ADVERTENCIA: propiedad fuera del Gran Santiago. Datos de metro, plusvalía y comparables pueden ser imprecisos — mencionar limitación al usuario." : ""}
 ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}${subsidioBloque}${capexBloque}
-${anclasBloque}
+${anclasBloque}${arbitrajeUmbrales ? `
+${arbitrajeUmbrales}` : ""}${bloqueSimetriaSobreprecio}${bloquePrecioJusto}${bloqueDriverNoAccionable}${bloqueMotivosGateLTR}
 
 negociacion.precioSugerido (este caso): "${fmtUF(techoUF)}" ← EXACTO techo_uf de las anclas (REGLA 6 v9)
 

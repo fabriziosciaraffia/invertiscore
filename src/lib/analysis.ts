@@ -25,6 +25,7 @@ import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
 import { buildHallazgoDistanciaVeredicto } from "./distancia-veredicto-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo, aplicarHorizonteAFlujo, analizarHorizonteFlujo, type HorizonteFlujo } from "./flujo-mensual-hallazgo";
+import { resolverArriendoReferencia, resolverProcedenciaArriendo } from "./arriendo-referencia";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import type { MedianaComunaInyectada } from "./comuna-stats";
@@ -2123,6 +2124,29 @@ export function runAnalysis(
   // lógica de gates) y los brazos de Gate 1 ya evaluados por evalGate1Brazos, sin duplicar
   // condiciones. Ausente en COMPRAR (no hay veredicto superior) → pirámide N−1.
   const brazosGate1 = evalGate1Brazos(metrics, breakEvenTasa);
+  // ── CASO PRECIO-JUSTO (§1.12.4) — condición dura Y-ada, nunca "o" ──────────
+  // (1) precio ≈ mediana comunal CON mediana confiable (desviacionPct no-null;
+  //     |desv| ≤ 5 = la banda "alineado" de la REGLA 0 del prompt);
+  // (2) diferencia VÁLIDA contra el valor estimado de mercado (> $1M CLP —
+  //     excluye el fallback vmFranco = precio, que es "sin dato", no "alineado");
+  // (3) arriendo dentro de banda de comparables (±10%, conservador frente al
+  //     ±30% de la anomalía) o procedencia estimación propia (brecha 0 por
+  //     construcción); SIN referencia de comparables la condición NO se cumple;
+  // (4) veredicto degradado. Un PRECIO_ALINEADO solo NUNCA activa esto.
+  const arrRefPJ = resolverArriendoReferencia(input);
+  const arriendoEnBandaPJ =
+    arrRefPJ !== null &&
+    (resolverProcedenciaArriendo(input.arriendo, arrRefPJ) === "estimacion_franco" ||
+      (arrRefPJ.valorCLP > 0 && Math.abs(input.arriendo / arrRefPJ.valorCLP - 1) <= 0.10));
+  const desvPJ = metrics.precioVsComuna?.desviacionPct;
+  const difMercadoCLP = Math.abs(((input.valorMercadoFranco || input.precio) - input.precio) * ufClp);
+  const casoPrecioJusto =
+    desvPJ != null &&
+    Math.abs(desvPJ) <= 5 &&
+    difMercadoCLP > 1_000_000 &&
+    arriendoEnBandaPJ &&
+    (veredicto === "AJUSTA SUPUESTOS" || veredicto === "BUSCAR OTRA");
+
   const hallazgoDistancia = buildHallazgoDistanciaVeredicto({
     veredictoBase: veredicto,
     arriendo: input.arriendo,
@@ -2136,6 +2160,7 @@ export function runAnalysis(
       .filter(([, activo]) => activo)
       .map(([nombre]) => nombre),
     modalidad: "ltr",
+    casoPrecioJusto,
   });
 
   // Negociación DESPUÉS del hallazgo de distancia (antes se calculaba junto al exit):
