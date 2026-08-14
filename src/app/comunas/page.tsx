@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: "Rentabilidad por Comuna — Franco",
   description:
     "Datos reales de rentabilidad de departamentos en las principales comunas de Santiago. Actualizado semanalmente.",
+  alternates: { canonical: "/comunas" },
   openGraph: {
     title: "Rentabilidad por Comuna — Franco",
     description:

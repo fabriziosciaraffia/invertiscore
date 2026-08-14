@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+
+export const metadata: Metadata = {
+  title: "Política de privacidad",
+  description:
+    "Cómo Franco trata tus datos: qué información guarda, para qué la usa y qué no hace nunca con ella. Explicado claro y directo, como todo lo que dice Franco.",
+  alternates: { canonical: "/privacy" },
+};
 
 export default function PrivacyPage() {
   return (

@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
+
+export const metadata: Metadata = {
+  title: "Sobre Franco",
+  description:
+    "Qué es Franco: análisis independiente de inversión inmobiliaria en Chile, sin conflictos de interés. Franco gana cuando decides bien, no cuando compras.",
+  alternates: { canonical: "/about" },
+};
 
 export default function AboutPage() {
   return (

@@ -35,6 +35,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  // Base para resolver metadata relativa (canonicals, OG images) en absoluta.
+  metadataBase: new URL("https://refranco.ai"),
   title: {
     default: "Franco — ¿Ese depto es buena inversión? Análisis con datos reales",
     template: "%s | Franco",
@@ -70,9 +72,10 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  alternates: {
-    canonical: "https://refranco.ai",
-  },
+  // Sin `alternates.canonical` acá: Next hereda la metadata del root en toda
+  // página que no la sobreescriba, y un canonical absoluto en el root declaraba
+  // a cada página "copia de la homepage" (bug Fase 0 SEO). El canonical va por
+  // página, relativo, resuelto contra metadataBase.
 };
 
 export default function RootLayout({
@@ -105,7 +108,7 @@ export default function RootLayout({
               description: "Analiza departamentos como inversión en Santiago con datos reales. Franco Score, rentabilidad, flujo de caja y análisis con IA.",
               offers: {
                 "@type": "Offer",
-                price: "0",
+                price: "9990",
                 priceCurrency: "CLP",
               },
             }),

@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+
+export const metadata: Metadata = {
+  title: "Contacto",
+  description:
+    "Habla con el equipo detrás de Franco: dudas sobre tu análisis, los planes o los datos. Escríbenos y te respondemos directo, con la misma franqueza del análisis.",
+  alternates: { canonical: "/contact" },
+};
 
 export default function ContactPage() {
   return (

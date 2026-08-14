@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import LeverageSection from "@/components/leverage-section";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
+
+export const metadata: Metadata = {
+  title: "Aprende a invertir en departamentos",
+  description:
+    "Guías prácticas para invertir en departamentos en Chile: rentabilidad, flujo de caja, plusvalía y apalancamiento. Explicado claro, con números reales, sin humo.",
+  alternates: { canonical: "/aprende" },
+};
 
 export default function AprendePage() {
   return (

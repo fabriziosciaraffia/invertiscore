@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+
+export const metadata: Metadata = {
+  title: "Términos de uso",
+  description:
+    "Las condiciones de uso de Franco sin letra chica: qué incluye el análisis, qué no garantiza y cuáles son tus derechos al usar la plataforma. Sin sorpresas.",
+  alternates: { canonical: "/terms" },
+};
 
 export default function TermsPage() {
   return (

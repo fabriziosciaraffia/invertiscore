@@ -18,8 +18,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!stats) return { title: "Comuna no encontrada — Franco" };
 
   return {
-    title: `Invertir en ${stats.nombre} — Rentabilidad y datos reales | Franco`,
+    // Sin "| Franco" acá: la marca la agrega el template del root layout
+    // (%s | Franco); con ella adentro el <title> salía "… | Franco | Franco".
+    title: `Invertir en ${stats.nombre} — Rentabilidad y datos reales`,
     description: `Rentabilidad bruta promedio ${stats.rentabilidadBruta}% en ${stats.nombre}. Arriendo promedio ${fmtCLP(stats.arriendoRepresentativo)}/mes. Basado en ${stats.totalPropiedades} propiedades reales.`,
+    alternates: { canonical: `/comunas/${stats.slug}` },
     openGraph: {
       title: `Departamentos en ${stats.nombre} — ¿Vale la pena invertir?`,
       description: `Franco analiza ${stats.totalPropiedades} propiedades en ${stats.nombre}. Rentabilidad promedio: ${stats.rentabilidadBruta}%`,
