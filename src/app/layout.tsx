@@ -3,6 +3,7 @@ import { Source_Serif_4, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google"
 import "./globals.css";
 import { PHProvider } from "./providers";
 import { PROPERTIES_COUNT } from "@/lib/stats";
+import { buildSiteJsonLd } from "@/lib/seo/jsonld";
 
 const sourceSerif = Source_Serif_4({
   subsets: ["latin", "latin-ext"],
@@ -99,22 +100,7 @@ export default function RootLayout({
       <body className={`${sourceSerif.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} font-body antialiased`}>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebApplication",
-              name: "Franco",
-              url: "https://refranco.ai",
-              applicationCategory: "FinanceApplication",
-              operatingSystem: "Web",
-              description: "Analiza departamentos como inversión en Santiago con datos reales. Franco Score, rentabilidad, flujo de caja y análisis con IA.",
-              offers: {
-                "@type": "Offer",
-                price: "9990",
-                priceCurrency: "CLP",
-              },
-            }),
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildSiteJsonLd()) }}
         />
         <PHProvider>
           {children}
