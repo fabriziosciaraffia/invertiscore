@@ -720,6 +720,37 @@ function pct(n: number, decimals = 1): string {
 }
 
 /**
+ * Línea de dato del "precio flujo-neutro" para el user prompt — pre-digerida en
+ * el builder (doctrina §1.1: la lectura se resuelve en la FUENTE, no se le pide
+ * al modelo que interprete un signo). El signo de `descuentoParaNeutro` cambia
+ * la SEMÁNTICA del número: con flujo mensual ya positivo, el precio de
+ * equilibrio queda EN o SOBRE el precio pedido y el "descuento" sale ≤ 0 —
+ * narrado como rebaja producía "si el precio bajara a UF 2.767, un 113% menos"
+ * (caso real 1ad769d4: neutro UF 2.767,55 vs precio UF 1.300, descuento −112,9%).
+ * Exportada para el test de regresión (scripts/test-descuento-neutro.ts).
+ */
+export function lecturaPrecioFlujoNeutro(
+  precioFlujoNeutroUF: number,
+  descuentoParaNeutro: number,
+): string {
+  if (!(precioFlujoNeutroUF > 0)) {
+    return "no existe — arriendo no cubre gastos fijos con esta estructura";
+  }
+  if (descuentoParaNeutro > 0) {
+    return `${fmtUF(precioFlujoNeutroUF)} (descuento ${descuentoParaNeutro.toFixed(1)}%)`;
+  }
+  const margenSubidaPct = Math.abs(descuentoParaNeutro);
+  const colaSubida =
+    margenSubidaPct >= 0.1
+      ? ` NO es un descuento: es cuánto podría subir el precio (un ${pct(margenSubidaPct)}% más) antes de que el flujo llegue a cero.`
+      : ` El arriendo cubre exacto la cuota al precio actual — no hay descuento asociado.`;
+  return (
+    `${fmtUF(precioFlujoNeutroUF)} — OJO: está en o sobre el precio pedido, porque el flujo ya es positivo al precio actual.${colaSubida}` +
+    ` PROHIBIDO narrarlo como rebaja, como "X% menos" o como "si el precio bajara".`
+  );
+}
+
+/**
  * Detects whether an ai_analysis object already uses the new structure. If so,
  * callers can skip regeneration.
  *
@@ -1318,9 +1349,13 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];
     const esFueraGranSantiago = comunaNorm ? !COMUNAS_GRAN_SANTIAGO.includes(comunaNorm) : false;
 
+    // `descuentoParaNeutro > 0` es parte del guard: con flujo ya positivo el
+    // neutro queda SOBRE el precio pedido (descuento negativo) y este fallback
+    // legacy habría "sugerido" un precio MAYOR al pedido (misma familia que el
+    // caso 1ad769d4). Solo es sugerible un neutro que sea efectivamente rebaja.
     const precioSugeridoUF = plusvaliaFrancoPct > 15
       ? Math.round(input.precio)
-      : precioFlujoNeutroUF > 0 && descuentoParaNeutro <= 10
+      : precioFlujoNeutroUF > 0 && descuentoParaNeutro > 0 && descuentoParaNeutro <= 10
         ? Math.round(precioFlujoNeutroUF)
         : Math.round(input.precio * 0.9);
 
@@ -1742,7 +1777,7 @@ ${sinCapitalPropio
 - Cambio de TIR si negociás: ${deltaTirSugerido !== null ? (deltaTirSugerido >= 0 ? "+" : "") + deltaTirSugerido.toFixed(1) + " pp" : "sin dato"}
 - lecturaTIR (narrá esta idea con tus palabras): ${tirAlSugeridoNeg !== null && deltaTirSugerido !== null ? `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido; al precio sugerido sería ${tirAlSugeridoNeg.toFixed(1)}% (${deltaTirSugerido >= 0 ? "+" : ""}${deltaTirSugerido.toFixed(1)} pp)` : `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido`}
 - Precio límite (TIR baja a 6%): ${precioLimiteCLPNeg !== null ? fmtCLP(precioLimiteCLPNeg) : "sin dato / TIR actual ya ≤ 6%"}`}
-- Precio al que el arriendo cubre exacto la cuota: ${precioFlujoNeutroUF > 0 ? fmtUF(precioFlujoNeutroUF) + ` (descuento ${descuentoParaNeutro.toFixed(1)}%)` : "no existe — arriendo no cubre gastos fijos con esta estructura"}
+- Precio al que el arriendo cubre exacto la cuota: ${lecturaPrecioFlujoNeutro(precioFlujoNeutroUF, descuentoParaNeutro)}
 - Plusvalía inmediata estimada: ${pct(plusvaliaFrancoPct)}% (${plusvaliaFranco >= 0 ? "+" : ""}${fmtCLP(plusvaliaFranco)})
 - lecturaFlujo (narrá esta idea con tus palabras): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
 - Plazo del crédito: ${input.plazoCredito} años (NO confundir con mesesDeFlujoNegativo)
