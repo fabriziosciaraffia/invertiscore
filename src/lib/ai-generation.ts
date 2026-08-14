@@ -728,11 +728,12 @@ function pct(n: number, decimals = 1): string {
  * UF 2.767, un 113% menos" (caso real 1ad769d4: neutro UF 2.767,55 vs precio
  * UF 1.300, descuento −112,9%).
  *
- * La línea NO afirma el signo del flujo mensual: `precioFlujoNeutro` sale de
- * calcPrecioParaFlujo, cuyo modelo de gastos (recambio+correctivo = arriendo/24)
- * difiere del de flujoNetoMensual (provisionMantencionAjustada), así que
- * descuento ≤ 0 NO garantiza flujo ≥ 0 (caso real 6db7a9ac: flujo −$94.855 con
- * descuento −2%). El signo del flujo viaja SOLO en lecturaFlujo.
+ * La línea NO afirma el signo del flujo mensual. Con el modelo de gastos ya
+ * unificado (calcPrecioParaFlujo incluye mantención), descuento ≤ 0 sí implica
+ * flujo ≥ 0 módulo redondeos — pero el signo del flujo tiene su fuente única en
+ * lecturaFlujo, y esta línea no la duplica: en el borde (descuento ≈ 0 con
+ * flujo levemente negativo por redondeo) afirmar el signo acá volvería a abrir
+ * la contradicción que este helper cerró.
  * Exportada para el test de regresión (scripts/test-descuento-neutro.ts).
  */
 export function lecturaPrecioFlujoNeutro(

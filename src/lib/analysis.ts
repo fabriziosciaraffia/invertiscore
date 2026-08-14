@@ -219,11 +219,26 @@ export function calcPreEntrega(p: {
 /**
  * Calcula el precio máximo de compra (CLP) para lograr un flujo mensual objetivo.
  * Despeja precio de: flujo = arriendo - dividendo(precio) - todos_los_gastos.
- * Mantención se omite (depende del precio, efecto pequeño vs dividendo).
+ *
+ * MANTENCIÓN INCLUIDA (unificación 2026-08, goal modelo-de-gastos): la versión
+ * original la omitía "por depender del precio y pesar poco", y ninguna de las
+ * dos cosas resistió los datos — declarada NO depende del precio, y el sweep
+ * sobre 660 filas midió p50 −13% en el neutro y 31 inversiones de signo del
+ * descuento (la demo 6db7a9ac afirmaba flujo −$94.855 y "neutro sobre el
+ * precio" a la vez). El término entra en la MISMA forma que el resto:
+ *   · declarada  → monto fijo al numerador (mantencionFijaCLP);
+ *   · derivada   → es lineal en el precio (P × tasa/12), así que va al
+ *     denominador junto al factor de amortización (mantencionTasaAnual).
+ * Contribuciones siguen CONGELADAS al precio actual (comportamiento vigente:
+ * su fallback por tramos no es lineal en P y el error de segundo orden es
+ * menor que el del término que faltaba). Invariante que esto garantiza:
+ * descuentoParaNeutro <= 0 ⟺ flujoNetoMensual >= 0, módulo redondeos
+ * (test: scripts/test-neutro-invariante.ts).
  */
 function calcPrecioParaFlujo(
   flujoObjetivo: number, arriendo: number, ggcc: number, contribucionesAnual: number,
-  vacanciaPct: number, gestionPct: number, piePct: number, tasaAnual: number, plazoAnios: number
+  vacanciaPct: number, gestionPct: number, piePct: number, tasaAnual: number, plazoAnios: number,
+  mantencionFijaCLP: number, mantencionTasaAnual: number
 ): number {
   const r = tasaAnual / 100 / 12;
   const n = plazoAnios * 12;
@@ -232,7 +247,7 @@ function calcPrecioParaFlujo(
   const financiamiento = (100 - piePct) / 100;
   if (financiamiento <= 0) return 0;
 
-  // Mirror calcFlujoDesglose exactly (except dividendo which depends on price)
+  // Mirror calcFlujoDesglose exactly (except the price-dependent terms, despejados abajo)
   const vacMeses = vacanciaPct / 100 * 12;
   const ggccVac = Math.round(ggcc * vacMeses / 12);
   const contribMes = Math.round(contribucionesAnual / 4 / 3);
@@ -241,12 +256,13 @@ function calcPrecioParaFlujo(
   const recamb = Math.round(arriendo * 0.5 / 24);
   const corr = Math.round(arriendo * 0.5 / 24);
 
-  const disponibleParaDividendo = arriendo - ggccVac - contribMes - vacProrrata - corr - recamb - admin - flujoObjetivo;
+  const disponibleParaDividendo =
+    arriendo - ggccVac - contribMes - vacProrrata - corr - recamb - admin - mantencionFijaCLP - flujoObjetivo;
   if (disponibleParaDividendo <= 0) return 0;
 
-  // dividendo = precioCLP * financiamiento * factorAmort
-  // precioCLP = disponibleParaDividendo / (financiamiento * factorAmort)
-  return disponibleParaDividendo / (financiamiento * factorAmort);
+  // dividendo + mantención derivada = precioCLP × (financiamiento × factorAmort + tasaMant/12)
+  // precioCLP = disponibleParaDividendo / ese factor
+  return disponibleParaDividendo / (financiamiento * factorAmort + mantencionTasaAnual / 12);
 }
 
 function calcMetrics(
@@ -475,9 +491,12 @@ function calcMetrics(
   const plusvaliaUsuario = vmUsuarioCLP - precioCLP;
   const plusvaliaUsuarioPct = vmUsuarioCLP > 0 ? ((vmUsuarioCLP - precioCLP) / vmUsuarioCLP) * 100 : 0;
 
-  // Precios de equilibrio
-  const precioFlujoNeutroCLP = calcPrecioParaFlujo(0, ingresoMensual, gastosValor, contribucionesValor * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito);
-  const precioFlujoPositivoCLP = calcPrecioParaFlujo(50000, ingresoMensual, gastosValor, contribucionesValor * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito);
+  // Precios de equilibrio — mantención en la misma forma que el flujo real:
+  // declarada = término fijo; derivada = lineal en el precio (ver calcPrecioParaFlujo).
+  const mantencionFijaEq = input.provisionMantencion ? provisionMantencionAjustada : 0;
+  const mantencionTasaEq = input.provisionMantencion ? 0 : getMantencionRate(input.antiguedad);
+  const precioFlujoNeutroCLP = calcPrecioParaFlujo(0, ingresoMensual, gastosValor, contribucionesValor * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito, mantencionFijaEq, mantencionTasaEq);
+  const precioFlujoPositivoCLP = calcPrecioParaFlujo(50000, ingresoMensual, gastosValor, contribucionesValor * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito, mantencionFijaEq, mantencionTasaEq);
   const descuentoParaNeutro = precioCLP > 0 && precioFlujoNeutroCLP > 0 ? ((precioCLP - precioFlujoNeutroCLP) / precioCLP) * 100 : 0;
 
   return {
