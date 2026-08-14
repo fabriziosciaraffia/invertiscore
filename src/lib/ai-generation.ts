@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
-import { bandaEsfuerzoDescuento } from "@/lib/distancia-veredicto-hallazgo";
+import { bandaEsfuerzoDescuento, esCasoPrecioJusto } from "@/lib/distancia-veredicto-hallazgo";
 import { describirMotivosLTR } from "@/lib/no-cierra-copy";
 import { CLAUDE_MODEL, MICRO_CHECK_MODEL } from "@/lib/ai-config";
 import {
@@ -1716,8 +1716,21 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
     // (score en banda COMPRAR con veredicto AJUSTA ⇒ el gate capó — patrón puro-gate).
     const gate2CapoGen = (results.score ?? 0) >= 70 && veredictoMotor === "AJUSTA SUPUESTOS";
     const motivosLTRGen = describirMotivosLTR(dvGen?.brazosGate1Activos ?? [], gate2CapoGen);
-    // (4) Caso precio-justo: detectado por el motor (condición dura Y-ada, runAnalysis).
-    const casoPrecioJustoGen = dvGen?.casoPrecioJusto === true;
+    // (4) Caso precio-justo: MISMA función de detección que el motor (fuente única).
+    // No se lee del hallazgo recomputado: el recompute de generación corre sin
+    // mediana (línea ~902) y ahí desviacionPct es null por construcción — el flag
+    // del hallazgo queda false siempre en este scope. Acá el pvc SÍ tiene la
+    // mediana async resuelta.
+    const casoPrecioJustoGen = esCasoPrecioJusto({
+      desviacionPct: pvc.desviacionPct,
+      precioUF: input.precio,
+      vmFrancoUF: input.valorMercadoFranco || input.precio,
+      ufClp: UF_CLP,
+      arriendoCLP: input.arriendo,
+      arriendoRefCLP: arriendoReferencia?.valorCLP ?? null,
+      arriendoEsEstimacionFranco: procedenciaArriendo === "estimacion_franco",
+      veredicto: veredictoMotor,
+    });
     // (5) Simetría ganancia/pérdida: sobreprecio confiable → pérdida concreta en UF y
     // años de recuperación vía plusvalía histórica (orden de magnitud condicionado).
     const perdidaSobreprecio = (() => {

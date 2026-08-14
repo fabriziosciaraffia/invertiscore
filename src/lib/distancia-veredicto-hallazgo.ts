@@ -100,6 +100,40 @@ export function bandaEsfuerzoDescuento(deltaPctAbs: number): {
   };
 }
 
+// ── Caso precio-justo (§1.12.4) — FUENTE ÚNICA de la detección ────────────────
+// Condición dura Y-ada, nunca "o". La comparten runAnalysis (siembra el flag en
+// el hallazgo → cierre estructural + render) y el builder del prompt LTR (que NO
+// puede leer el flag del hallazgo recomputado: su recompute corre sin mediana —
+// ai-generation.ts:902 — y ahí desviacionPct es null por construcción).
+// La alineación se exige contra LAS DOS referencias de precio: la validación pv4
+// cazó un caso (4daf13eb) con mediana "alineada" y vmFranco +69% — referencias
+// contradictorias (dualidad D10); eso NO es precio-justo, es datos en pugna.
+export function esCasoPrecioJusto(p: {
+  /** metrics.precioVsComuna.desviacionPct — null sin mediana confiable. */
+  desviacionPct: number | null | undefined;
+  precioUF: number;
+  /** valorMercadoFranco resuelto (con fallback al precio ya aplicado). */
+  vmFrancoUF: number;
+  ufClp: number;
+  arriendoCLP: number;
+  /** Referencia de comparables (null = sin dato ⇒ la condición NO se cumple). */
+  arriendoRefCLP: number | null;
+  /** Procedencia estimación propia ⇒ brecha 0 por construcción. */
+  arriendoEsEstimacionFranco: boolean;
+  veredicto: Veredicto;
+}): boolean {
+  if (p.desviacionPct == null || Math.abs(p.desviacionPct) > 5) return false;
+  // Diferencia VÁLIDA contra el vm (> $1M CLP): excluye el fallback vm = precio,
+  // que es "sin dato", no "alineado".
+  if (Math.abs((p.vmFrancoUF - p.precioUF) * p.ufClp) <= 1_000_000) return false;
+  if (!(p.precioUF > 0) || Math.abs(p.vmFrancoUF / p.precioUF - 1) > 0.05) return false;
+  const arriendoEnBanda =
+    p.arriendoEsEstimacionFranco ||
+    (p.arriendoRefCLP != null && p.arriendoRefCLP > 0 && Math.abs(p.arriendoCLP / p.arriendoRefCLP - 1) <= 0.10);
+  if (!arriendoEnBanda) return false;
+  return p.veredicto === "AJUSTA SUPUESTOS" || p.veredicto === "BUSCAR OTRA";
+}
+
 // ── Palanca PIE (condicional) ─────────────────────────────────────────────────
 //
 // UMBRAL DE EMISIÓN: el pie es palanca solo cuando `classifyPieLevel` lo clasifica

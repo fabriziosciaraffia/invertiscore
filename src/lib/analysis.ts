@@ -22,7 +22,7 @@ import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta
 import { getCapRefComuna, buildHallazgoCapRate, CAP_RATE_REF_NACIONAL } from "./cap-rate-hallazgo";
 import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
-import { buildHallazgoDistanciaVeredicto } from "./distancia-veredicto-hallazgo";
+import { buildHallazgoDistanciaVeredicto, esCasoPrecioJusto } from "./distancia-veredicto-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo, aplicarHorizonteAFlujo, analizarHorizonteFlujo, type HorizonteFlujo } from "./flujo-mensual-hallazgo";
 import { resolverArriendoReferencia, resolverProcedenciaArriendo } from "./arriendo-referencia";
@@ -2124,28 +2124,21 @@ export function runAnalysis(
   // lógica de gates) y los brazos de Gate 1 ya evaluados por evalGate1Brazos, sin duplicar
   // condiciones. Ausente en COMPRAR (no hay veredicto superior) → pirámide N−1.
   const brazosGate1 = evalGate1Brazos(metrics, breakEvenTasa);
-  // ── CASO PRECIO-JUSTO (§1.12.4) — condición dura Y-ada, nunca "o" ──────────
-  // (1) precio ≈ mediana comunal CON mediana confiable (desviacionPct no-null;
-  //     |desv| ≤ 5 = la banda "alineado" de la REGLA 0 del prompt);
-  // (2) diferencia VÁLIDA contra el valor estimado de mercado (> $1M CLP —
-  //     excluye el fallback vmFranco = precio, que es "sin dato", no "alineado");
-  // (3) arriendo dentro de banda de comparables (±10%, conservador frente al
-  //     ±30% de la anomalía) o procedencia estimación propia (brecha 0 por
-  //     construcción); SIN referencia de comparables la condición NO se cumple;
-  // (4) veredicto degradado. Un PRECIO_ALINEADO solo NUNCA activa esto.
+  // ── CASO PRECIO-JUSTO (§1.12.4) — detección de FUENTE ÚNICA (esCasoPrecioJusto,
+  // condición dura Y-ada documentada en distancia-veredicto-hallazgo.ts). El
+  // builder del prompt LTR evalúa la MISMA función con sus señales de generación.
   const arrRefPJ = resolverArriendoReferencia(input);
-  const arriendoEnBandaPJ =
-    arrRefPJ !== null &&
-    (resolverProcedenciaArriendo(input.arriendo, arrRefPJ) === "estimacion_franco" ||
-      (arrRefPJ.valorCLP > 0 && Math.abs(input.arriendo / arrRefPJ.valorCLP - 1) <= 0.10));
-  const desvPJ = metrics.precioVsComuna?.desviacionPct;
-  const difMercadoCLP = Math.abs(((input.valorMercadoFranco || input.precio) - input.precio) * ufClp);
-  const casoPrecioJusto =
-    desvPJ != null &&
-    Math.abs(desvPJ) <= 5 &&
-    difMercadoCLP > 1_000_000 &&
-    arriendoEnBandaPJ &&
-    (veredicto === "AJUSTA SUPUESTOS" || veredicto === "BUSCAR OTRA");
+  const casoPrecioJusto = esCasoPrecioJusto({
+    desviacionPct: metrics.precioVsComuna?.desviacionPct,
+    precioUF: input.precio,
+    vmFrancoUF: input.valorMercadoFranco || input.precio,
+    ufClp,
+    arriendoCLP: input.arriendo,
+    arriendoRefCLP: arrRefPJ?.valorCLP ?? null,
+    arriendoEsEstimacionFranco:
+      resolverProcedenciaArriendo(input.arriendo, arrRefPJ) === "estimacion_franco",
+    veredicto,
+  });
 
   const hallazgoDistancia = buildHallazgoDistanciaVeredicto({
     veredictoBase: veredicto,
