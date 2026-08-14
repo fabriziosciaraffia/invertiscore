@@ -18,8 +18,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: "https://refranco.ai/faq", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: "https://refranco.ai/comunas", lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: "https://refranco.ai/cobertura", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: "https://refranco.ai/login", lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
-    { url: "https://refranco.ai/register", lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
+    { url: "https://refranco.ai/aprende", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
+    { url: "https://refranco.ai/about", lastModified: new Date(), changeFrequency: "yearly", priority: 0.4 },
+    { url: "https://refranco.ai/contact", lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: "https://refranco.ai/privacy", lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
+    { url: "https://refranco.ai/terms", lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
     ...comunaUrls,
   ];
 }
