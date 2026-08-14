@@ -16,6 +16,8 @@ export const metadata: Metadata = {
     url: "https://refranco.ai/cobertura",
     siteName: "Franco",
     locale: "es_CL",
+    // openGraph propio reemplaza al del root → la imagen va explícita.
+    images: ["/opengraph-image"],
   },
 };
 

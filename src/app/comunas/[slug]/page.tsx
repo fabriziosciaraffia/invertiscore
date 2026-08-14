@@ -29,6 +29,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       url: `https://refranco.ai/comunas/${stats.slug}`,
       siteName: "Franco",
       locale: "es_CL",
+      // Un openGraph propio REEMPLAZA completo al del root (merge shallow de
+      // Next) y con él se pierde la imagen file-based — se referencia explícita.
+      images: ["/opengraph-image"],
     },
   };
 }

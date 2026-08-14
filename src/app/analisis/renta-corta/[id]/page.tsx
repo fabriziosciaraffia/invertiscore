@@ -48,6 +48,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       type: "article",
       url: `${siteUrl}/analisis/renta-corta/${params.id}`,
       siteName: "Franco",
+      // El informe STR no tiene OG personalizado (el /api/og es solo LTR):
+      // va la imagen de marca para que el share en WhatsApp no salga pelado.
+      images: ["/opengraph-image"],
     },
     twitter: { card: "summary", title, description },
   };

@@ -59,14 +59,16 @@ export const metadata: Metadata = {
     url: "https://refranco.ai",
     siteName: "Franco",
     locale: "es_CL",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Franco — Análisis de inversión inmobiliaria" }],
+    // Sin `images` acá: la imagen la aporta la convención de archivo
+    // src/app/opengraph-image.tsx (el /og-image.png referenciado antes era un
+    // 404 desde abr-2026). Twitter/X cae al og:image cuando no hay
+    // twitter:image explícito.
   },
   twitter: {
     card: "summary_large_image",
     title: "Franco — ¿Ese depto es buena inversión?",
     description:
       "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad y análisis con IA. Gratis.",
-    images: ["/og-image.png"],
   },
   robots: {
     index: true,
