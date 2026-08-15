@@ -134,6 +134,33 @@ export function esCasoPrecioJusto(p: {
   return p.veredicto === "AJUSTA SUPUESTOS" || p.veredicto === "BUSCAR OTRA";
 }
 
+/**
+ * Variante STR de la detección (función HERMANA, documentada junto a la LTR a
+ * propósito — parametrizar una sola ocultaría qué pata aplica a qué modalidad).
+ * STR no tiene `valorMercadoFranco` en su input, así que la pata "dos
+ * referencias" de LTR no es replicable; la robustez viene de exigir:
+ *   (1) precio a mercado: |desviación| ≤ 5 contra mediana comunal CONFIABLE
+ *       (misma banda que LTR; el dato sale del hallazgo de sobreprecio STR);
+ *   (2) ingreso a mercado: tarifa Y ocupación ancladas a la mediana observada —
+ *       CERO overrides del usuario (con override el caso corre sobre un
+ *       supuesto humano, no sobre el mercado, y ese caveat ya tiene dueño:
+ *       §3-override del prompt STR);
+ *   (3) veredicto degradado.
+ * Reencuadre canónico STR: "esta zona no sostiene renta corta a los precios de
+ * compra actuales".
+ */
+export function esCasoPrecioJustoStr(p: {
+  /** desviacionPct del hallazgo de sobreprecio STR — null sin mediana confiable. */
+  desviacionPct: number | null | undefined;
+  adrOverride: number | null | undefined;
+  occOverride: number | null | undefined;
+  veredicto: Veredicto;
+}): boolean {
+  if (p.desviacionPct == null || Math.abs(p.desviacionPct) > 5) return false;
+  if (p.adrOverride != null || p.occOverride != null) return false;
+  return p.veredicto === "AJUSTA SUPUESTOS" || p.veredicto === "BUSCAR OTRA";
+}
+
 // ── Palanca PIE (condicional) ─────────────────────────────────────────────────
 //
 // UMBRAL DE EMISIÓN: el pie es palanca solo cuando `classifyPieLevel` lo clasifica

@@ -27,6 +27,7 @@ import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { classifyFinancingHealth, LEVEL_RANK } from "./financing-health";
 import { buildHallazgoDistanciaVeredictoStr } from "./distancia-veredicto-str-hallazgo";
+import { esCasoPrecioJustoStr } from "./distancia-veredicto-hallazgo";
 import { veredictoStrConPatch, type VeredictoStrCtx } from "./analysis/veredicto-str-con-patch";
 import { COMISION_AIRBNB } from "./engines/short-term-engine";
 
@@ -226,6 +227,16 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
   // cuando el caller no pasa el contexto ⇒ pirámide N−1.
   if (ctx.veredictoCtx) {
     const vc = ctx.veredictoCtx;
+    // CASO PRECIO-JUSTO STR (§1.12.4) — detección de fuente única
+    // (esCasoPrecioJustoStr): el sobreprecio ya viene sembrado en la lista con la
+    // mediana confiable; los overrides salen del MISMO input del closure.
+    const sobre = out.find((h) => h?.id === "sobreprecio");
+    const casoPrecioJusto = esCasoPrecioJustoStr({
+      desviacionPct: (sobre?.valor as { desviacionPct?: number } | undefined)?.desviacionPct,
+      adrOverride: vc.inputs.adrOverride,
+      occOverride: vc.inputs.occOverride,
+      veredicto: fs.veredicto,
+    });
     out.push(
       buildHallazgoDistanciaVeredictoStr({
         veredictoBase: fs.veredicto,
@@ -241,6 +252,7 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
         razonSinPie: vc.inputs.razonSinPie,
         motivosGate: fs.gates?.motivos ?? [],
         veredictoAtPatch: (patch) => veredictoStrConPatch(vc, patch),
+        casoPrecioJusto,
       }),
     );
   }

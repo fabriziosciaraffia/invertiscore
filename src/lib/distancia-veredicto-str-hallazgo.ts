@@ -143,6 +143,13 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   veredictoAtPatch: (patch: StrPatch) => Veredicto;
   /** Todos los motivos de gate que sostienen el veredicto (`francoScore.gates.motivos`). */
   motivosGate: string[];
+  /**
+   * Caso precio-justo STR (§1.12.4, detección `esCasoPrecioJustoStr`): precio a
+   * mercado + tarifa/ocupación ancladas a la mediana observada + veredicto
+   * degradado. Cambia el CIERRE del caso estructural — la brecha no es del
+   * departamento, es de lo que la zona rinde en corto a estos precios de compra.
+   */
+  casoPrecioJusto?: boolean;
 }): HallazgoDistanciaVeredicto | null {
   if (p.veredictoBase === "COMPRAR") return null;
   if (!Number.isFinite(p.precioUF) || p.precioUF <= 0) return null;
@@ -328,6 +335,13 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     titular = "Ningún ajuste realista lo lleva al veredicto de arriba.";
     const dm = deltaMinimoFueraDeTope;
     const colaPie = pieCalifica ? ` Subir el pie hasta ${DIST_PIE_TOPE_PCT}% tampoco lo cruza.` : "";
+    // Cierre del estructural (§1.12.4): con precio a mercado y tarifa/ocupación
+    // ancladas a la mediana observada, "la brecha es del negocio" apunta mal —
+    // el negocio está a mercado; lo que no rinde en corto a estos precios de
+    // compra es la zona. Variante canónica STR.
+    const cierreBrecha = p.casoPrecioJusto
+      ? "La brecha no es de este departamento ni de su precio — esta zona no sostiene renta corta a los precios de compra actuales. Otro depto igual, acá mismo, tendría el mismo problema."
+      : "La brecha es del negocio, no de cómo lo estás mirando.";
     if (dm) {
       const via =
         dm.palanca === "precio"
@@ -335,12 +349,12 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
           : `cobrando un ${fmtPct(Math.abs(dm.deltaPct))}% más por noche que la zona`;
       fraseCanonica =
         `Ni ${via} este departamento llega a ${objetivoNombre}, y estirar el crédito a ${DIST_PLAZO_TOPE_ANIOS} años ` +
-        `tampoco alcanza.${colaPie} La brecha es del negocio, no de cómo lo estás mirando.`;
+        `tampoco alcanza.${colaPie} ${cierreBrecha}`;
     } else {
       fraseCanonica =
         `No hay ajuste de supuestos que lleve esto a ${objetivoNombre}: ni cobrando más del doble por noche, ` +
         `ni pagando un tercio del precio, ni estirando el crédito a ${DIST_PLAZO_TOPE_ANIOS} años.${colaPie} ` +
-        `La brecha es del negocio, no de cómo lo estás mirando.`;
+        `${cierreBrecha}`;
     }
   } else {
     const l = palancaMasBarata!;
@@ -421,6 +435,7 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
       pieEsPalanca: pieCalifica,
       pieExcluidoPorBono: esBonoPie,
       piePctActual: Number.isFinite(p.piePct) ? p.piePct : undefined,
+      casoPrecioJusto: p.casoPrecioJusto === true,
       modalidad: "str",
     },
     // NEUTRAL: es un mapa de la distancia al umbral, no una señal sobre el deal.

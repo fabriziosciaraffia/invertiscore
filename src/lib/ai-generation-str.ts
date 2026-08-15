@@ -42,6 +42,7 @@ import type { AIAnalysisSTRv2, Hallazgo, HallazgoDistanciaVeredicto } from "@/li
 import { metricaDisplay, esMetricaNoAplica, metricaValorONull } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
 import { describirMotivosSTR } from "@/lib/no-cierra-copy";
+import { bandaEsfuerzoDescuento } from "@/lib/distancia-veredicto-hallazgo";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
@@ -55,7 +56,7 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // la prosa cacheada con `promptVersion` < este número (o ausente ⇒ prosa pre-F6) se regenera
 // al abrir el análisis del owner. BUMP cada vez que cambie el prompt, el schema o la doctrina.
 // Espejo de PROMPT_VERSION_AMBAS (ai-generation-ambas.ts).
-export const PROMPT_VERSION_STR = 3;
+export const PROMPT_VERSION_STR = 4;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -533,7 +534,8 @@ export function buildUserPromptSTR(
     ? `
 POR QUÉ NO CIERRA (motor · ${motivos.familias.length === 1 ? "una causa" : `${motivos.familias.length} causas simultáneas`}): ${motivos.frase}
 Esta es la razón REAL del veredicto, por sobre el score. Si el score parece alto para el veredicto, es exactamente esto lo que lo explica — nómbralo, no lo esquives ni inventes otra causa.${motivos.familias.length > 1 ? `
-Son causas DISTINTAS y hay que nombrarlas TODAS: presentar una sola deja al lector creyendo que arreglando ese número el caso se salva, y no es así.` : ""}`
+Son causas DISTINTAS y hay que nombrarlas TODAS: presentar una sola deja al lector creyendo que arreglando ese número el caso se salva, y no es así.` : ""}
+Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards favorables dominan la pirámide y este gate decidió el veredicto, \`conviene.respuestaDirecta\` DEBE resolver la tensión — POR QUÉ lo bueno no salva el caso — alineada con esta causa, nunca enterrada en un drawer. La glosa del hero sola no basta si el resto de la página sigue celebrando.`
     : "";
 
   // --- Financiamiento / proyección ---
@@ -596,7 +598,7 @@ Son causas DISTINTAS y hay que nombrarlas TODAS: presentar una sola deja al lect
     if (dv.esEstructural) {
       return `${cab}
 
-NINGÚN AJUSTE REALISTA ALCANZA. PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues", subir la tarifa o cambiar la gestión como salida: la brecha es del negocio, no de los supuestos. La honestidad acá es cerrar la puerta, no dejarla entornada. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe. NO menciones distancia al veredicto en \`conviene.respuestaDirecta\`: no hay una que prometer.`;
+NINGÚN AJUSTE REALISTA ALCANZA. PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues", subir la tarifa o cambiar la gestión como salida: ${dv.casoPrecioJusto ? "esta zona no sostiene renta corta a los precios de compra actuales — la brecha es de la zona, no del departamento (ver CASO PRECIO-JUSTO STR)" : "la brecha es del negocio, no de los supuestos"}. La honestidad acá es cerrar la puerta, no dejarla entornada. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe. NO menciones distancia al veredicto en \`conviene.respuestaDirecta\`: no hay una que prometer.`;
     }
 
     // La tarifa es la única vía que pide superar al mercado. Si el modelo la presenta como
@@ -615,13 +617,51 @@ NINGÚN AJUSTE REALISTA ALCANZA. PROHIBIDO ofrecer negociación, descuento, "si 
       ? `\n\nEl pie de este caso lo cubre un bono de la inmobiliaria: NO ofrezcas subir el pie como vía — desarma la compra que se está evaluando.`
       : "";
 
+    // §1.12.1 — banda de esfuerzo de la palanca precio, pre-digerida (helper
+    // compartido con LTR; los cortes 5/12 son doctrinales y conviven con los
+    // topes propios STR — la banda describe el esfuerzo del delta emitido).
+    const palancaPrecioStr = dv.palancas.find((l) => l.palanca === "precio");
+    const avisoBandaPrecio = palancaPrecioStr
+      ? `\n\nBANDA DE ESFUERZO del descuento de la palanca precio (§1.12.1 — dato del motor; nárrala con este lenguaje, NUNCA la reclasifiques): ${bandaEsfuerzoDescuento(Math.abs(palancaPrecioStr.deltaPct)).lectura}.`
+      : "";
+
+    // §1.12.3 — doble filo del pie, obligatorio al recomendarlo como palanca.
+    const avisoDobleFiloPie = dv.palancas.some((l) => l.palanca === "pie")
+      ? `\n\nHONESTIDAD DE DOBLE FILO DEL PIE (§1.12.3 — obligatoria al recomendarlo): "más pie mejora el flujo, pero también significa poner más plata tuya para que el mismo negocio se vea mejor — tapa el síntoma, no convierte una mala compra en buena". El pie sano nunca se presenta como mérito de la propiedad. (Con pie 0 rige ## 5.bis.)`
+      : "";
+
+    // §1.12.2 (alcance STR, SIN anclas — el motor no las produce): caso negociador
+    // de la palanca precio, con los argumentos que el análisis ya tiene.
+    const sobreNeg = (Array.isArray(r.hallazgos) ? r.hallazgos : []).find((h) => h.id === "sobreprecio");
+    const sobreNegV = sobreNeg?.valor as { desviacionPct?: number; sujetoUfM2?: number } | undefined;
+    const casoNegociador = palancaPrecioStr
+      ? `\n\nCASO NEGOCIADOR de la palanca precio (§1.12.2 — los argumentos van EN LA MISMA PIEZA que el número, en este orden de fuerza; SOLO estos — señales que no vienen acá NO existen: nada de urgencia del vendedor, días en mercado ni pre-aprobación del comprador):${sobreNegV?.desviacionPct != null && sobreNegV.desviacionPct > 2 ? `
+  1) sobreprecio vs mediana comunal: pides UF ${(sobreNegV.sujetoUfM2 ?? 0).toLocaleString("es-CL")}/m² donde la mediana confiable de la comuna está ${pct(sobreNegV.desviacionPct)}% más abajo — el ancla de comparables
+  2) ` : `
+  1) `}umbral del análisis: bajo ${fmtUF(palancaPrecioStr.objetivo)} el veredicto sube a ${dv.veredictoObjetivo} — no es regateo, es la conclusión del análisis`
+      : "";
+
+    // §1.12.6 — un precio protagonista + arbitraje pre-digerido cuando una fila
+    // de la tabla de sensibilidad queda a <2% del umbral de veredicto.
+    const ufValorStr = precioCompraUF > 0 ? precioCompraCLP / precioCompraUF : 0;
+    const filaCercana =
+      palancaPrecioStr && ufValorStr > 0 && Array.isArray(r.sensibilidadPrecio)
+        ? r.sensibilidadPrecio.find(
+            (s) => s.label !== "actual" && s.precioCLP > 0 &&
+              Math.abs(s.precioCLP / ufValorStr - palancaPrecioStr.objetivo) / palancaPrecioStr.objetivo < 0.02,
+          )
+        : undefined;
+    const avisoJerarquia = palancaPrecioStr
+      ? `\n\nUN PRECIO PROTAGONISTA (§1.12.6): el número de esta sección es el UMBRAL DE VEREDICTO (${fmtUF(palancaPrecioStr.objetivo)}); las filas de la tabla de sensibilidad de precio son escenarios ilustrativos, no objetivos. Si citas dos precios en la misma pieza, di explícitamente cuál manda y por qué.${filaCercana ? ` OJO — la fila "${filaCercana.label}" de sensibilidad (${fmtCLP(filaCercana.precioCLP)}) queda a MENOS de 2% del umbral: EL QUE MANDA es el umbral (cambia la conclusión del análisis); la fila se menciona solo pegada a él, nunca como un segundo objetivo.` : ""}`
+      : "";
+
     return `${cab}
 
 OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra. Es la condición concreta bajo la que tu posición se sostiene (§1.10) y lo único que responde "¿y ahora qué?".
 
 TAMBIÉN en \`conviene.respuestaDirecta\`: cierra con UNA mención breve de esa distancia, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer.
 
-REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase de arriba. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí, NUNCA inventes un valor intermedio. La OCUPACIÓN no es palanca de este análisis (no la fija el propietario y en el cálculo mueve lo mismo que la tarifa); la TASA tampoco (es condición del banco).${avisoPuroGate}${avisoAdr}${avisoPie}`;
+REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase de arriba. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí, NUNCA inventes un valor intermedio. La OCUPACIÓN no es palanca de este análisis (no la fija el propietario y en el cálculo mueve lo mismo que la tarifa); la TASA tampoco (es condición del banco).${avisoPuroGate}${avisoAdr}${avisoPie}${avisoDobleFiloPie}${avisoBandaPrecio}${casoNegociador}${avisoJerarquia}`;
   })();
 
   // PLUSVALÍA — la card (builder, con el puente histórica↔proyección) entra al prompt.
@@ -640,6 +680,50 @@ REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase d
   const bloqueCoronado = cardFrases.coronado
     ? `\n\n=== HALLAZGO QUE LIDERA LA PIRÁMIDE (ancla el ángulo-lead del hero · §7.bis) ===\nEl coronado (más decisivo/adverso) es: «${cardFrases.coronado.titular}» — ${cardFrases.coronado.frase}\n→ \`conviene.respuestaDirecta\` debe alinear su ángulo-lead con este hallazgo. No lo copies (§1.bis); no contradigas la jerarquía visual.`
     : "";
+
+  // §1.12.4 — caso precio-justo STR: el flag viaja en el hallazgo de distancia
+  // (el recompute de la persistencia STR SÍ corre con mediana — str-prosa-persist).
+  const bloquePrecioJustoStr = distanciaSTR?.valor.casoPrecioJusto
+    ? `
+
+=== CASO PRECIO-JUSTO STR (§1.12.4 — PRECIO E INGRESOS A MERCADO, VEREDICTO ${String(r.francoScore?.veredicto ?? "")}) ===
+El precio está alineado con la mediana comunal (dato confiable) Y la tarifa/ocupación corren ancladas a la mediana observada de la zona (sin overrides del usuario). El problema NO es el departamento — es la zona.
+REENCUADRE OBLIGATORIO (lenguaje canónico; adáptalo lo mínimo): "esta zona no sostiene renta corta a los precios de compra actuales".
+SALIDA CONSTRUCTIVA: no un descuento cosmético — la comparación honesta con el arriendo largo (sección vsLTR / recomendación de modalidad) y, si el dato lo permite, dónde el corto sí rinde.
+PROHIBIDO resolver este caso pidiendo un descuento chico "por matemática propia" sin este reencuadre. Si el descuento que arreglaría el caso excede lo plausible, se dice — no se maquilla.`
+    : "";
+
+  // §1.12.5 — simetría del sobreprecio (pérdida concreta + años de recuperación,
+  // con el mismo caveat temporal del puente de plusvalía; nunca fecha).
+  const bloqueSimetriaStr = (() => {
+    const sobre = (Array.isArray(r.hallazgos) ? r.hallazgos : []).find((h) => h.id === "sobreprecio");
+    const v = sobre?.valor as { desviacionPct?: number; sobreprecioUfM2?: number } | undefined;
+    if (!v || v.desviacionPct == null || v.sobreprecioUfM2 == null || v.desviacionPct <= 5 || !(superficie > 0)) return "";
+    const totalUF = Math.round(v.sobreprecioUfM2 * superficie);
+    if (!(totalUF > 0)) return "";
+    const plusV = hallazgoPlusvalia?.valor as { anualizadaPct?: number } | undefined;
+    const anios = plusV?.anualizadaPct != null && plusV.anualizadaPct > 0
+      ? Math.max(1, Math.round(v.desviacionPct / plusV.anualizadaPct))
+      : null;
+    return `
+
+=== SIMETRÍA DEL SOBREPRECIO (§1.12.5 — misma vara que la ganancia) ===
+- Pérdida patrimonial concreta: estás pagando ~UF ${totalUF.toLocaleString("es-CL")} sobre el valor estimado de la zona (${pct(v.desviacionPct)}%) — plata que entregas el día de la firma. Tradúcela así, nunca como porcentaje seco.${anios !== null ? `
+- Tiempo de recuperación (orden de magnitud condicionado, NUNCA fecha): a la plusvalía histórica de esta comuna, tardarías ~${anios} año${anios === 1 ? "" : "s"} solo en recuperar el sobreprecio, antes de ganar tu primer peso de apreciación — con el MISMO caveat temporal de la lectura de plusvalía (histórico atípico, no proyección).` : `
+- Sin histórico comunal positivo no se estima tiempo de recuperación — no lo inventes.`}
+- REGLA DE ORO — misma prominencia: si una ventaja de compra de este tamaño iría en el hero, esta pérdida va en el hero. Prohibido celebrar fuerte y advertir bajito.`;
+  })();
+
+  // §1.12.7 — driver no accionable: la plusvalía adversa corona el orden único.
+  const ordenDriver = ordenarHallazgosPiramideSTR((Array.isArray(r.hallazgos) ? r.hallazgos : []).filter(Boolean));
+  const bloqueDriverNoAccionableStr =
+    ordenDriver[0]?.id === "plusvalia" && ordenDriver[0]?.direccion === "adverso"
+      ? `
+
+=== DRIVER NO ACCIONABLE (§1.12.7) ===
+Lo que más pesa en esta lectura es la plusvalía histórica de la comuna — una dimensión que el usuario NO controla. ANTES de ofrecer cualquier palanca, dilo con el marco canónico (adáptalo lo mínimo): "lo que más pesa acá no se negocia con nadie — es la historia de apreciación de la comuna. Las palancas de abajo mejoran el flujo, pero no cambian ese hecho". Ofrecer precio/tarifa/pie sin ese marco vende la ilusión de que todo se arregla negociando.`
+      : "";
+
 
   // Pie cero (RESUELTO fase 4): con pie 0 las métricas sobre capital llegan como
   // NO_APLICA_PROMPT, el input declara la razón (enum RazonSinCapital, extensible)
@@ -748,7 +832,7 @@ ${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar: el
 
 === SENSIBILIDAD DE PRECIO (Ángulo 4 — la tabla vive en su propio drawer de datos) ===
 ${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${pct(s.capRate * 100, 2)}%, CoC ${esMetricaNoAplica(s.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(s.cashOnCash, (n) => `${pct(n * 100)}%`)}, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${sinCapitalPropio ? `
-→ Con pie 0 la sensibilidad de precio se narra en FLUJO (## 5.bis.e): cada peso menos de precio es crédito que no tomas — el flujo de cada fila ya trae ese efecto.` : ""}${bloqueCards}${bloqueCoronado}${bloqueDistancia}${bloquePlusvalia}${anomaliasTexto}
+→ Con pie 0 la sensibilidad de precio se narra en FLUJO (## 5.bis.e): cada peso menos de precio es crédito que no tomas — el flujo de cada fila ya trae ese efecto.` : ""}${bloqueCards}${bloqueCoronado}${bloqueDistancia}${bloquePlusvalia}${bloqueSimetriaStr}${bloquePrecioJustoStr}${bloqueDriverNoAccionableStr}${anomaliasTexto}
 
 ═══════════════════════════════════════════════════════════════════
 INSTRUCCIÓN FINAL
