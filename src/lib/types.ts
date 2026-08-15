@@ -906,6 +906,13 @@ export interface HallazgoDistanciaVeredicto {
     /** Pie declarado (%). Contexto para el copy del drawer; ausente en filas previas. */
     piePctActual?: number;
     /**
+     * LTR — caso precio-justo (§1.12.4): precio Y arriendo a mercado con veredicto
+     * degradado. Detección dura Y-ada en runAnalysis (desviación comunal ≈ 0 con
+     * mediana confiable + diferencia válida de mercado + arriendo en banda). Cambia
+     * el cierre del caso estructural y activa el reencuadre canónico en el prompt.
+     */
+    casoPrecioJusto?: boolean;
+    /**
      * STR — tope propio de la palanca ADR (%), más estricto que `topePct`. Superar la
      * mediana de tarifa de la zona es una apuesta sobre el mercado, no un ajuste de
      * supuestos, así que se ofrece solo cuando el salto es chico. Ausente en LTR.

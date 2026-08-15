@@ -67,6 +67,73 @@ export const DIST_TOPE_BUSCAR_PCT = 15;
 export const topeParaVeredicto = (v: Veredicto): number =>
   v === "BUSCAR OTRA" ? DIST_TOPE_BUSCAR_PCT : DIST_TOPE_AJUSTA_PCT;
 
+// ── Bandas de esfuerzo del descuento de precio (doctrina §1.12.1) ─────────────
+// La banda se calcula ACÁ (función pura del delta — patrón §1.1: la clasificación
+// se resuelve en la fuente) y llega al prompt como DATO con su lenguaje canónico;
+// la IA la narra, nunca la clasifica. Los cortes 5/12 son doctrinales (lenguaje);
+// los topes duros siguen siendo los DIST_TOPE_* de arriba. Sobre el tope no hay
+// banda: es el caso estructural, que cierra la puerta con su propia frase.
+export type BandaEsfuerzo = "normal" | "con_argumentos" | "dificil";
+
+export function bandaEsfuerzoDescuento(deltaPctAbs: number): {
+  banda: BandaEsfuerzo;
+  lectura: string;
+} {
+  if (deltaPctAbs <= 5) {
+    return {
+      banda: "normal",
+      lectura:
+        "negociación normal — esto es lo que se conversa en cualquier compraventa; parte natural del cierre, sin épica",
+    };
+  }
+  if (deltaPctAbs <= 12) {
+    return {
+      banda: "con_argumentos",
+      lectura:
+        "alcanzable con argumentos — exigente pero dentro de lo que se negocia cuando hay razones, y los argumentos van en la MISMA pieza",
+    };
+  }
+  return {
+    banda: "dificil",
+    lectura:
+      "difícil, requiere vendedor motivado — posible solo si el vendedor necesita vender; si no cede, la respuesta honesta es mirar otra propiedad, no forzar esta. Va SIEMPRE acompañado del plan B (la alternativa inter-comuna o esperar)",
+  };
+}
+
+// ── Caso precio-justo (§1.12.4) — FUENTE ÚNICA de la detección ────────────────
+// Condición dura Y-ada, nunca "o". La comparten runAnalysis (siembra el flag en
+// el hallazgo → cierre estructural + render) y el builder del prompt LTR (que NO
+// puede leer el flag del hallazgo recomputado: su recompute corre sin mediana —
+// ai-generation.ts:902 — y ahí desviacionPct es null por construcción).
+// La alineación se exige contra LAS DOS referencias de precio: la validación pv4
+// cazó un caso (4daf13eb) con mediana "alineada" y vmFranco +69% — referencias
+// contradictorias (dualidad D10); eso NO es precio-justo, es datos en pugna.
+export function esCasoPrecioJusto(p: {
+  /** metrics.precioVsComuna.desviacionPct — null sin mediana confiable. */
+  desviacionPct: number | null | undefined;
+  precioUF: number;
+  /** valorMercadoFranco resuelto (con fallback al precio ya aplicado). */
+  vmFrancoUF: number;
+  ufClp: number;
+  arriendoCLP: number;
+  /** Referencia de comparables (null = sin dato ⇒ la condición NO se cumple). */
+  arriendoRefCLP: number | null;
+  /** Procedencia estimación propia ⇒ brecha 0 por construcción. */
+  arriendoEsEstimacionFranco: boolean;
+  veredicto: Veredicto;
+}): boolean {
+  if (p.desviacionPct == null || Math.abs(p.desviacionPct) > 5) return false;
+  // Diferencia VÁLIDA contra el vm (> $1M CLP): excluye el fallback vm = precio,
+  // que es "sin dato", no "alineado".
+  if (Math.abs((p.vmFrancoUF - p.precioUF) * p.ufClp) <= 1_000_000) return false;
+  if (!(p.precioUF > 0) || Math.abs(p.vmFrancoUF / p.precioUF - 1) > 0.05) return false;
+  const arriendoEnBanda =
+    p.arriendoEsEstimacionFranco ||
+    (p.arriendoRefCLP != null && p.arriendoRefCLP > 0 && Math.abs(p.arriendoCLP / p.arriendoRefCLP - 1) <= 0.10);
+  if (!arriendoEnBanda) return false;
+  return p.veredicto === "AJUSTA SUPUESTOS" || p.veredicto === "BUSCAR OTRA";
+}
+
 // ── Palanca PIE (condicional) ─────────────────────────────────────────────────
 //
 // UMBRAL DE EMISIÓN: el pie es palanca solo cuando `classifyPieLevel` lo clasifica
@@ -187,6 +254,13 @@ export function buildHallazgoDistanciaVeredicto(p: {
   /** Brazos del GATE 1 activos hoy (nombres). Informativo: no decide esEstructural. */
   brazosGate1Activos: string[];
   modalidad: "ltr" | "str" | "ambas";
+  /**
+   * Caso precio-justo (§1.12.4): precio Y arriendo a mercado con veredicto
+   * degradado. Lo detecta runAnalysis con la condición dura Y-ada; acá solo
+   * cambia el CIERRE del caso estructural — "la brecha es del deal" es falsa
+   * cuando el deal está a mercado: la brecha es de lo que rinde la zona.
+   */
+  casoPrecioJusto?: boolean;
 }): HallazgoDistanciaVeredicto | null {
   // Caso de omisión 1: COMPRAR ⇒ no hay veredicto superior.
   if (p.veredictoBase === "COMPRAR") return null;
@@ -392,6 +466,12 @@ export function buildHallazgoDistanciaVeredicto(p: {
     // tiene que decirlo: si no, un lector con pie 10% queda pensando que la vía obvia ni
     // se probó. Sin cifra a propósito — el pie fuera de techo no tiene delta emitido.
     const colaPie = pieCalifica ? ` Subir el pie hasta ${DIST_PIE_TOPE_PCT}% tampoco lo cruza.` : "";
+    // Cierre del estructural (§1.12.4): con precio Y arriendo a mercado, "la
+    // brecha es del deal" es falsa — el deal está a mercado; lo que no rinde a
+    // estos precios es la zona. Variante canónica del skill.
+    const cierreBrecha = p.casoPrecioJusto
+      ? "La brecha no es de este depto ni del precio que pide — es de lo que esta zona rinde hoy. Otro depto igual, acá mismo, tendría el mismo problema."
+      : "La brecha es del deal, no de cómo lo estás mirando.";
     if (dm) {
       const via =
         dm.palanca === "precio"
@@ -399,12 +479,12 @@ export function buildHallazgoDistanciaVeredicto(p: {
           : `subiendo el arriendo un ${fmtPct(Math.abs(dm.deltaPct))}%`;
       fraseCanonica =
         `Ni ${via} este depto llega a ${objetivoNombre}, y estirar el crédito a ${DIST_PLAZO_TOPE_ANIOS} años ` +
-        `tampoco alcanza.${colaPie} La brecha es del deal, no de cómo lo estás mirando.`;
+        `tampoco alcanza.${colaPie} ${cierreBrecha}`;
     } else {
       fraseCanonica =
         `No hay ajuste de supuestos que lleve esto a ${objetivoNombre}: ni subiendo el arriendo a más del ` +
         `doble, ni pagando un tercio del precio, ni estirando el crédito a ${DIST_PLAZO_TOPE_ANIOS} años.${colaPie} ` +
-        `La brecha es del deal, no de cómo lo estás mirando.`;
+        `${cierreBrecha}`;
     }
   } else {
     const l = palancaMasBarata!;
@@ -460,6 +540,7 @@ export function buildHallazgoDistanciaVeredicto(p: {
       pieEsPalanca: pieCalifica,
       pieExcluidoPorBono: esBonoPie,
       piePctActual: Number.isFinite(p.piePct) ? p.piePct : undefined,
+      casoPrecioJusto: p.casoPrecioJusto === true,
       modalidad: p.modalidad,
     },
     // NEUTRAL: es un mapa de la distancia al umbral, no una señal sobre el deal. Marcarlo

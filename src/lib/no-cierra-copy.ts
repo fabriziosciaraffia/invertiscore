@@ -109,7 +109,7 @@ const ETIQUETA: Record<FamiliaMotivo, string> = {
 
 export interface MotivosDescritos {
   /** Familias activas, en orden de presentación. Siempre ≥ 1. */
-  familias: FamiliaMotivo[];
+  familias: (FamiliaMotivo | FamiliaMotivoLTR)[];
   /** Etiquetas breves, mismo orden — para chips. */
   etiquetas: string[];
   /** La línea que va en pantalla. Una sola frase, sin bullets. */
@@ -157,6 +157,94 @@ export function describirMotivosSTR(motivos: readonly BrazoSTR[]): MotivosDescri
   // generar. Concatena cláusulas — menos fluido que una frase escrita a medida, pero
   // nunca deja la línea vacía. Si alguna de estas empieza a aparecer seguido, merece
   // su entrada en FRASE_COMBINADA.
+  const unidas =
+    lecturas.length === 2
+      ? `${lecturas[0]}, y además ${lecturas[1]}`
+      : `${lecturas.slice(0, -1).join("; ")}, y además ${lecturas[lecturas.length - 1]}`;
+  return { ...base, frase: `No cierra por una sola cosa: ${unidas}.` };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// POR QUÉ NO CIERRA (LTR) — espejo del bloque STR para los brazos del Gate 1
+// LTR (`Gate1Brazos`, analysis.ts) y la capa del Gate 2. Mismo criterio: se
+// narran FAMILIAS en consecuencia vivida, nunca la mecánica (§1.12.8 / A11).
+// Los nombres de brazo llegan como strings (`brazosGate1Activos` del hallazgo
+// de distancia); la capa del Gate 2 no tiene brazo persistido y se DERIVA en el
+// consumidor (score ≥ 70 con veredicto AJUSTA ⇒ el gate capó — patrón puro-gate
+// STR), por eso entra como flag aparte.
+// ═════════════════════════════════════════════════════════════════════════════
+
+export type FamiliaMotivoLTR = "ingresoLTR" | "bolsilloLTR" | "capitalLTR" | "caroConAporte" | "aporteSobreCapital";
+
+const FAMILIA_DE_LTR: Record<string, FamiliaMotivoLTR> = {
+  breakEvenImposible: "ingresoLTR",
+  flujoSevero: "bolsilloLTR",
+  cocSevero: "capitalLTR",
+  plusvaliaConFlujo: "caroConAporte",
+};
+
+/** Primero lo que cierra la puerta sola, después lo que aprieta. */
+const ORDEN_FAMILIA_LTR: FamiliaMotivoLTR[] = [
+  "ingresoLTR",
+  "bolsilloLTR",
+  "capitalLTR",
+  "caroConAporte",
+  "aporteSobreCapital",
+];
+
+const CLAUSULA_LTR: Record<FamiliaMotivoLTR, string> = {
+  ingresoLTR: "el arriendo no alcanza a cubrir la cuota ni con la tasa de interés en cero",
+  bolsilloLTR: "cada mes pones de tu bolsillo más de la mitad de lo que pagas de cuota",
+  capitalLTR: "lo que pones de tu bolsillo cada año se come más de un tercio del capital que aportaste",
+  caroConAporte: "pagarías sobre el valor estimado de la zona y además pondrías plata de tu bolsillo todos los meses",
+  aporteSobreCapital: "lo que pones de tu bolsillo pesa sobre el capital que aportaste",
+};
+
+const FRASE_SOLA_LTR: Record<FamiliaMotivoLTR, string> = {
+  ingresoLTR:
+    "No cierra por una razón concreta: el arriendo no alcanza a cubrir la cuota ni con la tasa de interés en cero.",
+  bolsilloLTR:
+    "No cierra por una razón concreta: cada mes pones de tu bolsillo más de la mitad de lo que pagas de cuota.",
+  capitalLTR:
+    "No cierra por una razón concreta: lo que pones de tu bolsillo cada año se come más de un tercio del capital que aportaste.",
+  caroConAporte:
+    "No cierra por una razón concreta: pagarías sobre el valor estimado de la zona y además pondrías plata de tu bolsillo todos los meses.",
+  aporteSobreCapital:
+    "Los números de calidad dan, pero la operación te exige poner de tu bolsillo un peso que el capital aportado no justifica todavía.",
+};
+
+/**
+ * Traduce los brazos LTR activos (+ la capa del Gate 2 derivada) a copy. Devuelve
+ * null sin motivos — veredicto de banda pura, y el silencio es lo correcto (§1.9.3).
+ */
+export function describirMotivosLTR(
+  brazosGate1Activos: readonly string[],
+  gate2Capo: boolean,
+): MotivosDescritos | null {
+  const set = new Set<FamiliaMotivoLTR>();
+  for (const b of brazosGate1Activos ?? []) {
+    const f = FAMILIA_DE_LTR[b];
+    if (f) set.add(f);
+  }
+  if (gate2Capo && set.size === 0) set.add("aporteSobreCapital");
+  const familias = ORDEN_FAMILIA_LTR.filter((f) => set.has(f));
+  if (familias.length === 0) return null;
+
+  const lecturas = familias.map((f) => CLAUSULA_LTR[f]);
+  // Etiquetas breves para chips (mismo filtro que STR: el hecho, no el concepto).
+  const ETIQUETA_LTR: Record<FamiliaMotivoLTR, string> = {
+    ingresoLTR: "No da ni con tasa cero",
+    bolsilloLTR: "Pones más de media cuota",
+    capitalLTR: "Se come tu capital",
+    caroConAporte: "Caro y con aporte",
+    aporteSobreCapital: "El aporte pesa sobre tu capital",
+  };
+  const etiquetas = familias.map((f) => ETIQUETA_LTR[f]);
+  const base = { familias, etiquetas, lecturas };
+
+  if (familias.length === 1) {
+    return { ...base, frase: FRASE_SOLA_LTR[familias[0]] };
+  }
   const unidas =
     lecturas.length === 2
       ? `${lecturas[0]}, y además ${lecturas[1]}`

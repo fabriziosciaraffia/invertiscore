@@ -22,9 +22,10 @@ import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta
 import { getCapRefComuna, buildHallazgoCapRate, CAP_RATE_REF_NACIONAL } from "./cap-rate-hallazgo";
 import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
-import { buildHallazgoDistanciaVeredicto } from "./distancia-veredicto-hallazgo";
+import { buildHallazgoDistanciaVeredicto, esCasoPrecioJusto } from "./distancia-veredicto-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo, aplicarHorizonteAFlujo, analizarHorizonteFlujo, type HorizonteFlujo } from "./flujo-mensual-hallazgo";
+import { resolverArriendoReferencia, resolverProcedenciaArriendo } from "./arriendo-referencia";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import type { MedianaComunaInyectada } from "./comuna-stats";
@@ -2123,6 +2124,22 @@ export function runAnalysis(
   // lógica de gates) y los brazos de Gate 1 ya evaluados por evalGate1Brazos, sin duplicar
   // condiciones. Ausente en COMPRAR (no hay veredicto superior) → pirámide N−1.
   const brazosGate1 = evalGate1Brazos(metrics, breakEvenTasa);
+  // ── CASO PRECIO-JUSTO (§1.12.4) — detección de FUENTE ÚNICA (esCasoPrecioJusto,
+  // condición dura Y-ada documentada en distancia-veredicto-hallazgo.ts). El
+  // builder del prompt LTR evalúa la MISMA función con sus señales de generación.
+  const arrRefPJ = resolverArriendoReferencia(input);
+  const casoPrecioJusto = esCasoPrecioJusto({
+    desviacionPct: metrics.precioVsComuna?.desviacionPct,
+    precioUF: input.precio,
+    vmFrancoUF: input.valorMercadoFranco || input.precio,
+    ufClp,
+    arriendoCLP: input.arriendo,
+    arriendoRefCLP: arrRefPJ?.valorCLP ?? null,
+    arriendoEsEstimacionFranco:
+      resolverProcedenciaArriendo(input.arriendo, arrRefPJ) === "estimacion_franco",
+    veredicto,
+  });
+
   const hallazgoDistancia = buildHallazgoDistanciaVeredicto({
     veredictoBase: veredicto,
     arriendo: input.arriendo,
@@ -2136,6 +2153,7 @@ export function runAnalysis(
       .filter(([, activo]) => activo)
       .map(([nombre]) => nombre),
     modalidad: "ltr",
+    casoPrecioJusto,
   });
 
   // Negociación DESPUÉS del hallazgo de distancia (antes se calculaba junto al exit):
