@@ -10,11 +10,30 @@
 import { NextResponse } from "next/server";
 import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
+import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
 import { buildZoneInsightForRow, type ZoneInsightResponse } from "@/lib/zone-insight-core";
 import { nuevoRegistroLlamadas, persistGeneracionTiming } from "@/lib/pipeline-timing";
 
 // Goal C: techo explícito — POIs + stats + 1 llamada corta (1200 tokens).
 export const maxDuration = 60;
+
+// Rate-limit del CACHE-MISS (F2-1 decisión 3): la única rama que dispara una
+// llamada Claude. Endpoint sin auth (la vista guest/anónima también muestra
+// zona), así que un drive-by podía quemar tokens a voluntad — con el cap
+// anónimo el tráfico sin sesión sube y esto lo acota. Mismo patrón in-memory
+// best-effort de /api/analisis/dry-run, keyed por user.id ?? IP. El cache-hit
+// (lo normal) no paga nada.
+const RL_MAX = 10;
+const RL_WINDOW_MS = 60_000;
+const rlHits = new Map<string, number[]>();
+
+function generacionRateLimited(key: string): boolean {
+  const now = Date.now();
+  const arr = (rlHits.get(key) ?? []).filter((t) => now - t < RL_WINDOW_MS);
+  arr.push(now);
+  rlHits.set(key, arr);
+  return arr.length > RL_MAX;
+}
 
 export async function GET(
   request: Request,
@@ -53,6 +72,18 @@ export async function GET(
       return NextResponse.json(cached);
     }
 
+    // Rate-limit SOLO acá (post cache-miss): la generación cuesta tokens.
+    const { data: { user: rlUser } } = await supabase.auth.getUser();
+    const rlKey = rlUser?.id ??
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      request.headers.get("x-real-ip") ?? "sin-ip";
+    if (generacionRateLimited(rlKey)) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." },
+        { status: 429 },
+      );
+    }
+
     // Núcleo extraído (paquete B): POIs + stats + prosa IA, sin HTTP ni persistencia.
     // Timing (Goal A): esta generación hoy no registra usage en ai_*_tokens; el
     // registro de pipeline_timing es su única visibilidad de ms + tokens.
@@ -67,8 +98,13 @@ export async function GET(
     // Cache ─────────────────────────────────────────
     // Best-effort: if the column doesn't exist yet, swallow the error so the user
     // still gets the response.
+    // Fila anónima (cap F2-2): el write va por service-role — el client del
+    // request no tiene sesión y el cache no se persistía, o sea CADA apertura
+    // del anónimo-dueño regeneraba (tokens al viento, y el rate-limit de arriba
+    // castigaba a quien mira su propia zona).
+    const writeClient = row.user_id === null ? createAnonPipelineClient() : supabase;
     try {
-      await supabase.from("analisis").update({ zone_insight: response }).eq("id", params.id);
+      await writeClient.from("analisis").update({ zone_insight: response }).eq("id", params.id);
     } catch (e) {
       console.warn("zone-insight: cache write failed (column missing?)", e);
     }
