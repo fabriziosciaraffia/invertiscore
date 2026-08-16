@@ -46,6 +46,7 @@ import {
   recortarContinuacion,
 } from "@/lib/prosa-presupuesto";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
+import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico } from "@/lib/precio-jerarquia";
 import { cifrasFueraDeInput, empeoraCifras } from "@/lib/cifras-guard";
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import type { Hallazgo } from "@/lib/types";
@@ -69,7 +70,11 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // la prosa cacheada con `promptVersion` < este número (o ausente ⇒ prosa pre-F6) se
 // regenera al abrir el análisis del owner. BUMP cada vez que cambie el prompt, el schema
 // o la doctrina de esta prosa. Espejo de PROMPT_VERSION_AMBAS (ai-generation-ambas.ts).
-export const PROMPT_VERSION_LTR = 4;
+// v5 (2026-08-16): enforcement del precio protagonista (§1.12.6) — bloque
+// JERARQUÍA DE PRECIOS pre-digerido + guard JERARQUIA-PRECIOS post-parse;
+// retiradas las líneas crudas que sembraban colisión (precioSugerido duplicado,
+// "10% de descuento", límite-TIR y flujo-neutro sueltos del CONTEXTO).
+export const PROMPT_VERSION_LTR = 5;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -502,8 +507,8 @@ El lector es un comprador chileno inteligente pero NO financiero. Todo término 
 - Otros prohibidos sin definición: VAN, cap rate, LTV, yield bruto, yield neto, breakeven literal, amortización pelada.
 - "ganancia neta" PROHIBIDO para el patrimonio/equity a la venta. "Tu parte al vender" (valor de venta − deuda − comisión + flujos acumulados) es lo que te QUEDA en la mano al liquidar, NO la ganancia por encima de lo que pusiste. Nombrarlo "ganancia neta" miente: incluye recuperar tu propio capital. Di "tu parte", "lo que te queda a la venta", "lo tuyo al liquidar" — coherente con la card y el drawer de patrimonio. Si necesitas hablar de la ganancia real (por encima de lo aportado), es otra cifra y otra palabra; nunca uses "ganancia" para el equity total.
 
-REGLA 8 — Un precio protagonista por pieza (§1.12.6).
-Conviven hasta cuatro precios por análisis (sugerido/techo de negociación, flujo-neutro, límite de TIR, umbral de veredicto) y cada uno responde una pregunta distinta. Cada pieza tiene UN precio protagonista — el de su función: \`negociacion\` manda el sugerido/techo; la distancia al veredicto manda su umbral; el flujo-neutro es referencia de caja. Si citas un segundo precio en la misma pieza, preséntalo como lo que es y di explícitamente cuál manda ("tu piso absoluto es X; el número que cambia el veredicto es Y — pelea por Y"). PROHIBIDO listar dos umbrales a menos de ~2% de distancia sin decir cuál importa y por qué; cuando el caso trae la línea "DOS UMBRALES A MENOS DE 2%", su arbitraje es EL dato — úsalo tal cual.
+REGLA 8 — Un precio protagonista por pieza (§1.12.6) — el bloque JERARQUÍA DE PRECIOS es la fuente.
+Conviven hasta cuatro precios por análisis (sugerido/techo de negociación, flujo-neutro, límite de TIR, umbral de veredicto) y cada uno responde una pregunta distinta. El user prompt trae el bloque "JERARQUÍA DE PRECIOS DE ESTE CASO" con los precios ACTIVOS de este caso: una sola cifra canónica por rol, el protagonista de cada pieza asignado y las líneas de subordinación YA escritas. Ese bloque es LA fuente: cada pieza cita SU protagonista con la cifra exacta del bloque; cualquier otro precio de la lista solo puede aparecer acompañado de su línea de subordinación (adáptala lo mínimo — la frase debe decir cuál manda). PROHIBIDO: derivar % de descuento propios, recalcular un precio de la lista, rotular dos cifras con la misma banda de esfuerzo, o presentar flujo-neutro/límite-TIR como objetivos de negociación. Un guard verifica esto post-generación: dos precios de roles distintos en una pieza sin frase de subordinación fuerzan reintento.
 
 REGLA 9 — Plusvalía histórica: caveat temporal obligatorio (v13 — evento como período, no como causa).
 El dataset de plusvalía cubre 2014-2024. Ese rango CRUZA tres tramos atípicos que lo vuelven un promedio ruidoso — no un predictor limpio. Son el marco temporal del dato (CUÁNDO ocurrió), NO causas cuantificables (CUÁNTO movió la cifra):
@@ -1082,7 +1087,6 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       ? (() => { const [a, me] = input.fechaEntrega.split("-").map(Number); return `${mesesEs[(me || 1) - 1]} ${a}`; })()
       : "";
 
-    const precioConDescuento10 = Math.round(input.precio * 0.9);
     const projections = results.projections as { flujoAcumulado: number; flujoAnual: number }[] | undefined;
 
     // ── APORTE: fuente única `exitScenario.totalAportado` ──────────────────────
@@ -1741,15 +1745,26 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       const anios = historica && historica.anualizada > 0 ? Math.max(1, Math.round(desv / historica.anualizada)) : null;
       return totalUF > 0 ? { totalUF, desv, anios } : null;
     })();
-    // (6) Dos umbrales a <2%: el arbitraje se pre-digiere — nunca lo decide la IA.
-    const parCercano = (a: number, b: number) => a > 0 && b > 0 && Math.abs(a - b) / Math.max(a, b) < 0.02;
+    // (6) JERARQUÍA DE PRECIOS (§1.12.6) — colapso pre-digerido. Generaliza el
+    // viejo arbitraje "<2%" (que solo cubría dos pares) a un bloque único con
+    // TODOS los precios activos del caso, protagonista por pieza y las
+    // subordinaciones ya escritas. Sus `precios` canónicos alimentan además el
+    // guard post-parse (JERARQUIA-PRECIOS). Reemplaza las líneas crudas de
+    // límite-TIR y flujo-neutro del CONTEXTO — una sola fuente.
     const umbralVeredictoUFGen = neg?.precioUmbralVeredictoUF ?? null;
-    const arbitrajeUmbrales =
-      precioFlujoNeutroUF > 0 && umbralVeredictoUFGen && parCercano(precioFlujoNeutroUF, umbralVeredictoUFGen)
-        ? `DOS UMBRALES A MENOS DE 2% ENTRE SÍ: el precio al que el arriendo cubre la cuota (${fmtUF(precioFlujoNeutroUF)}) y el que cambia el veredicto (${fmtUF(umbralVeredictoUFGen)}) casi coinciden. EL QUE MANDA es el del veredicto (${fmtUF(umbralVeredictoUFGen)}): cambia la conclusión del análisis, no solo la caja. El otro se nombra SOLO pegado a él, como el punto donde la caja queda en cero — nunca como un segundo objetivo de negociación.`
-        : precioFlujoNeutroUF > 0 && parCercano(precioFlujoNeutroUF, techoUF)
-          ? `DOS UMBRALES A MENOS DE 2% ENTRE SÍ: el precio al que el arriendo cubre la cuota (${fmtUF(precioFlujoNeutroUF)}) y el techo de negociación (${fmtUF(techoUF)}) casi coinciden. EL QUE MANDA es el techo (${fmtUF(techoUF)}): es el número de la mesa. El flujo-neutro se menciona solo como referencia de caja, en la misma frase.`
-          : "";
+    const jerarquiaPrecios = construirJerarquiaPrecios({
+      precioPedidoUF: input.precio,
+      techoUF,
+      modoSugerido,
+      umbralVeredictoUF: umbralVeredictoUFGen,
+      veredictoAlUmbral: neg?.veredictoAlUmbral ?? null,
+      sugeridoMandadoPorVeredicto: neg?.sugeridoMandadoPorVeredicto === true,
+      precioFlujoNeutroUF,
+      descuentoParaNeutro,
+      lecturaFlujoNeutro: lecturaPrecioFlujoNeutro(precioFlujoNeutroUF, descuentoParaNeutro),
+      limiteTirUF: precioLimiteCLPNeg !== null ? precioLimiteCLPNeg / UF_CLP : null,
+      sinCapitalPropio,
+    });
 
     const bloquePrecioJusto = casoPrecioJustoGen ? `
 
@@ -1893,19 +1908,15 @@ VARIABLES DE NEGOCIACIÓN (insumos para REGLAS 0-6 del system §12)
 - Diferencia vs referencia: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pct(pctDiferencia)}%)${tieneDiferenciaValida ? "" : " ← INVÁLIDO: no hay valor de mercado de referencia"}
 ${!tieneDiferenciaValida ? `- lecturaSinReferencia (narrá ESTA idea con tus palabras, NO nombres ninguna maquinaria): ${sobreprecioPorM2UF !== null ? "no hay comparables directos suficientes para fijar un valor de mercado total de este depto; la lectura de precio se apoya solo en el ratio por m² frente a la mediana de la comuna, y la decisión en el flujo, la TIR y la plusvalía." : "no hay un valor de mercado ni un dato comunal confiable para este depto; la decisión se apoya solo en el flujo, la TIR y la plusvalía — no afirmes nada sobre precio vs comuna."}\n` : ""}- tieneDiferenciaValida: ${tieneDiferenciaValida}
 - sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${pct(sobreprecioPorM2UF)} UF/m² (tu ${pct(pvc.sujetoUfM2)} vs comuna ${pct(precioM2Zona)})` : "sin dato"}
-- precioSugerido: ${fmtUF(precioSugeridoUF)} (${fmtCLP(precioSugeridoCLPNeg)})
-- Precio con 10% de descuento: ${fmtUF(precioConDescuento10)}
 ${sinCapitalPropio
   ? `- tirActual: ${NO_APLICA_PROMPT} — el beneficio de negociar se lee en dividendo, no en TIR (## 5.bis.e)
 - bajaDividendoAlSugerido: −${fmtCLP(bajaDividendoSugerido)}/mes (crédito que no tomas al cerrar en el precio sugerido)
-- lecturaNegociacionSinPie (narrá ESTA idea con tus palabras): sin pie, cada peso menos de precio es crédito que no tomas — cerrando en ${fmtUF(precioSugeridoUF)} el dividendo baja ${fmtCLP(bajaDividendoSugerido)} al mes y tu flujo mejora exactamente eso
+- lecturaNegociacionSinPie (narrá ESTA idea con tus palabras): sin pie, cada peso menos de precio es crédito que no tomas — cerrando en ${fmtUF(techoUF)} el dividendo baja ${fmtCLP(bajaDividendoSugerido)} al mes y tu flujo mejora exactamente eso
 - Precio límite (TIR baja a 6%): no aplica sin capital propio — el techo por retorno no tiene base; el límite de este caso lo pone tu flujo`
   : `- tirActual: ${pct(tirActual)}%
 - tirAlSugerido: ${tirAlSugeridoNeg !== null ? tirAlSugeridoNeg.toFixed(1) + "%" : "sin dato"}
 - Cambio de TIR si negociás: ${deltaTirSugerido !== null ? (deltaTirSugerido >= 0 ? "+" : "") + deltaTirSugerido.toFixed(1) + " pp" : "sin dato"}
-- lecturaTIR (narrá esta idea con tus palabras): ${tirAlSugeridoNeg !== null && deltaTirSugerido !== null ? `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido; al precio sugerido sería ${tirAlSugeridoNeg.toFixed(1)}% (${deltaTirSugerido >= 0 ? "+" : ""}${deltaTirSugerido.toFixed(1)} pp)` : `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido`}
-- Precio límite (TIR baja a 6%): ${precioLimiteCLPNeg !== null ? fmtCLP(precioLimiteCLPNeg) : "sin dato / TIR actual ya ≤ 6%"}`}
-- Precio al que el arriendo cubre exacto la cuota: ${lecturaPrecioFlujoNeutro(precioFlujoNeutroUF, descuentoParaNeutro)}
+- lecturaTIR (narrá esta idea con tus palabras): ${tirAlSugeridoNeg !== null && deltaTirSugerido !== null ? `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido; al precio sugerido sería ${tirAlSugeridoNeg.toFixed(1)}% (${deltaTirSugerido >= 0 ? "+" : ""}${deltaTirSugerido.toFixed(1)} pp)` : `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido`}`}
 - Plusvalía inmediata estimada: ${pct(plusvaliaFrancoPct)}% (${plusvaliaFranco >= 0 ? "+" : ""}${fmtCLP(plusvaliaFranco)})
 - lecturaFlujo (narrá esta idea con tus palabras): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
 - Plazo del crédito: ${input.plazoCredito} años (NO confundir con mesesDeFlujoNegativo)
@@ -1938,8 +1949,7 @@ ${metroInfo}
 ${plusvaliaHistoricaInfo}
 ${esFueraGranSantiago ? "ADVERTENCIA: propiedad fuera del Gran Santiago. Datos de metro, plusvalía y comparables pueden ser imprecisos — mencionar limitación al usuario." : ""}
 ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}${subsidioBloque}${capexBloque}
-${anclasBloque}${arbitrajeUmbrales ? `
-${arbitrajeUmbrales}` : ""}${bloqueSimetriaSobreprecio}${bloquePrecioJusto}${bloqueDriverNoAccionable}${bloqueMotivosGateLTR}
+${anclasBloque}${jerarquiaPrecios.bloque}${bloqueSimetriaSobreprecio}${bloquePrecioJusto}${bloqueDriverNoAccionable}${bloqueMotivosGateLTR}
 
 negociacion.precioSugerido (este caso): "${fmtUF(techoUF)}" ← EXACTO techo_uf de las anclas (REGLA 6 v9)
 
@@ -2300,6 +2310,48 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         }
       } catch (e) {
         console.warn(`[LTR-CIFRA] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
+    // ─── JERARQUIA-PRECIOS (§1.12.6 · un precio protagonista) ─────────────────
+    // Enforcement de la REGLA 8: la instrucción sola es estocástica (re-censo
+    // 2026-08-16: 33 AC D3 de descuentos conviviendo sin jerarquía, CON la regla
+    // ya en el prompt). Anclado a las cifras canónicas del bloque JERARQUÍA (no
+    // conteo lexical de "%": medido inservible en ambos extremos). Hasta 2
+    // reintentos con el correctivo; si persiste, fallback determinístico: se
+    // appendea la línea de arbitraje canónica a la pieza ofensora. Corre después
+    // de LTR-CIFRA (cifras ya saneadas) y ANTES de PLANC-BUDGET (el techo de
+    // palabras sigue siendo la última palabra). Best-effort en try/catch.
+    if (aiResult && jerarquiaPrecios.precios.length >= 2) {
+      try {
+        let colisiones = detectarColisionesJerarquia(aiResult, jerarquiaPrecios.precios);
+        const JERARQUIA_MAX_RETRIES = 2;
+        for (let intento = 1; intento <= JERARQUIA_MAX_RETRIES && colisiones.length > 0; intento++) {
+          console.warn(`[JERARQUIA-PRECIOS] ${analysisId}: ${colisiones.length} colisión(es) — ${colisiones.map((c) => `${c.pieza}[${c.roles.join("+")}]`).join(", ")} — retry ${intento}/${JERARQUIA_MAX_RETRIES}`);
+          const regen = await reg.medir("jerarquia-precios", CLAUDE_MODEL, () => anthropic.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 8000,
+            messages: [{ role: "user", content: userPrompt + correctivoJerarquia(colisiones, jerarquiaPrecios.precios) }],
+            system: SYSTEM_LTR_CACHED,
+          }));
+          acumularUsage(usage, regen);
+          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+          const regenResult = parseAndNormalize(regenText);
+          const quedan = regenResult ? detectarColisionesJerarquia(regenResult, jerarquiaPrecios.precios) : null;
+          if (regenResult && quedan && quedan.length < colisiones.length) {
+            console.warn(`[JERARQUIA-PRECIOS] ${analysisId}: retry mejoró ${colisiones.length}→${quedan.length} — aceptado`);
+            aiResult = regenResult;
+            colisiones = quedan;
+          } else {
+            console.warn(`[JERARQUIA-PRECIOS] ${analysisId}: retry no mejoró o no parseó — conservo la prosa previa`);
+          }
+        }
+        if (colisiones.length > 0) {
+          const tocados = appendArbitrajeCanonico(aiResult, colisiones, jerarquiaPrecios.precios);
+          console.warn(`[JERARQUIA-PRECIOS] ${analysisId}: agotó reintentos — fallback determinístico: línea de arbitraje appendeada en ${tocados} campo(s)`);
+        }
+      } catch (e) {
+        console.warn(`[JERARQUIA-PRECIOS] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
       }
     }
 
