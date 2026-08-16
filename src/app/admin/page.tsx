@@ -11,9 +11,12 @@ import {
   PRODUCTO_CONSUMO,
 } from "@/lib/admin-rpc";
 import { AdminTitular } from "./admin-titular";
-import { AdminFunnel, type CheckoutAbandonado } from "./admin-funnel";
+import { AdminFunnel, type CheckoutAbandonado, type EtapaFunnel } from "./admin-funnel";
 import { AdminTendencia } from "./admin-tendencia";
 import { ContextoBar } from "./test-toggle";
+import { pasosPostHog } from "@/lib/posthog-admin";
+import { funnelSupabase, leerPeriodo, rangoPeriodo, type PeriodoFunnel } from "@/lib/admin-funnel-data";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +66,12 @@ export default async function AdminPage({
   /** Corte de la ventana, compartido por todas las queries del período. */
   const desdeKpi = new Date(Date.now() - DIAS_KPI * 864e5).toISOString();
 
-  const [overview, semanas, checkoutsRow, usoIaRows, pagosRows] = await Promise.all([
+  // Funnel 7 pasos (Fase B): período con corte en el deploy del cap. Default
+  // "post" — mezclar mundo-muro con mundo-cap ensucia toda tasa.
+  const periodo = leerPeriodo(searchParams.periodo);
+  const rango = rangoPeriodo(periodo);
+
+  const [overview, semanas, checkoutsRow, usoIaRows, pagosRows, pasosPh, funnel7] = await Promise.all([
     adminOverview(sb, includeTest),
     adminWeeklyStats(sb, { weeks: SEMANAS, includeTest }),
     // Los checkouts abandonados se traen como filas (no como conteo) porque con
@@ -107,6 +115,10 @@ export default async function AdminPage({
     // El gasto de Meta, el histórico de análisis y la atribución se fueron con
     // el CAC a /admin/finanzas — esta pantalla ya no los necesita y son tres
     // queries menos por visita.
+    // Pasos 1-2 del funnel (PostHog, cacheado 24 h, fail-soft a "sin datos") y
+    // pasos 3-7 (Supabase directo). Nada de esto puede tirar la página.
+    pasosPostHog(rango.desde ?? "2025-01-01T00:00:00.000Z", rango.hasta, includeTest),
+    funnelSupabase(sb, { periodo, testUserIds, includeTest }),
   ]);
 
   // Las filas anteriores a la instrumentación tienen los ai_* en NULL, que
@@ -151,6 +163,67 @@ export default async function AdminPage({
   const tasaActivacion =
     overview.registrados > 0 ? Math.round((overview.activaron / overview.registrados) * 100) : 0;
 
+  // ── Funnel 7 pasos (Fase B, estructura ratificada) ──
+  const etapas7: EtapaFunnel[] = [
+    {
+      valor: pasosPh.visitas ?? 0,
+      sinDatos: pasosPh.visitas === null,
+      nombre: "Visitas",
+      detalle: "Sesiones únicas · PostHog, sin bots",
+      caida: "",
+    },
+    {
+      valor: pasosPh.iniciaronWizard ?? 0,
+      sinDatos: pasosPh.iniciaronWizard === null,
+      nombre: "Iniciaron análisis",
+      detalle: "Vieron el primer paso del wizard · PostHog",
+      caida: "visitaron y no abrieron el wizard",
+    },
+    {
+      valor: funnel7.gratisTotal,
+      nombre: "Análisis gratis creado",
+      detalle: "anon_cap + welcome · par AMBAS cuenta 1",
+      desglose: `${fmtNumber(funnel7.gratisAnonCap)} anónimos · ${fmtNumber(funnel7.gratisWelcome)} welcome`,
+      caida: "entraron al wizard y no generaron",
+    },
+    {
+      valor: funnel7.cuentasTotal,
+      nombre: "Cuenta creada",
+      detalle: "Altas del período",
+      desglose: `${fmtNumber(funnel7.cuentasOrganico)} orgánicas · ${fmtNumber(funnel7.cuentasClaim)} vía claim`,
+      caida: "generaron gratis y no se registraron",
+    },
+    {
+      valor: funnel7.iniciaronPago,
+      nombre: "Iniciaron pago",
+      detalle: "Usuarios con pago creado sobre $0",
+      caida: "no abrieron el checkout",
+    },
+    {
+      valor: funnel7.pagaron,
+      nombre: "Pagaron",
+      detalle: "Pago confirmado sobre $0",
+      caida: "abandonaron el checkout",
+    },
+    {
+      valor: funnel7.recompraron,
+      nombre: "Recompraron",
+      detalle: "2+ pagos confirmados en el período",
+      caida: "pagaron una vez y no volvieron",
+    },
+  ];
+  const visitasPorCompra =
+    pasosPh.visitas != null && funnel7.pagaron > 0
+      ? Math.round(pasosPh.visitas / funnel7.pagaron)
+      : null;
+  const PERIODOS: Array<{ id: PeriodoFunnel; label: string }> = [
+    { id: "post", label: "Desde el cap (16 ago)" },
+    { id: "pre", label: "Pre-cap" },
+    { id: "todo", label: "Todo" },
+  ];
+  const hrefPeriodo = (p: PeriodoFunnel) =>
+    `/admin?periodo=${p}${includeTest ? "&test=1" : ""}`;
+
   return (
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
@@ -179,44 +252,45 @@ export default async function AdminPage({
         />
       </section>
 
-      {/* ─── 2 · FUNNEL ─── */}
+      {/* ─── 2 · FUNNEL 7 PASOS (mundo post-cap) ─── */}
       <section className="mb-8">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Dónde se cae</h2>
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
-            Todo el histórico{includeTest ? " · con cuentas de prueba" : " · sin cuentas de prueba"}
-          </span>
+          {/* Filtro de período con corte en el deploy del cap: mezclar
+              mundo-muro con mundo-cap ensucia toda tasa. Default: post. */}
+          <div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider">
+            {PERIODOS.map((p) => (
+              <Link
+                key={p.id}
+                href={hrefPeriodo(p.id)}
+                className={`rounded border px-2 py-1 transition-colors ${
+                  periodo === p.id
+                    ? "border-[var(--franco-text)] bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                    : "border-[var(--franco-border)] text-[var(--franco-text-muted)] hover:text-[var(--franco-text)]"
+                }`}
+              >
+                {p.label}
+              </Link>
+            ))}
+          </div>
         </div>
-        <AdminFunnel
-          includeTest={includeTest}
-          abandonados={abandonados}
-          etapas={[
-            {
-              valor: overview.registrados,
-              nombre: "Registrados",
-              detalle: "Cuentas creadas",
-              caida: "",
-            },
-            {
-              valor: overview.activaron,
-              nombre: "Activaron",
-              detalle: "Generaron su primer análisis",
-              caida: "se registraron y nunca generaron un análisis",
-            },
-            {
-              valor: overview.iniciaron_checkout,
-              nombre: "Iniciaron checkout",
-              detalle: "Pago pendiente sobre $0",
-              caida: "no abrieron el checkout",
-            },
-            {
-              valor: overview.pagaron,
-              nombre: "Pagaron",
-              detalle: "Pago confirmado sobre $0",
-              caida: "abandonaron el checkout",
-            },
-          ]}
-        />
+
+        {/* El número grande: cuántas visitas cuesta una compra en el período. */}
+        <div className="mb-3 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] px-4 py-3.5">
+          <div className="font-mono text-[26px] font-bold tracking-tight text-[var(--franco-text)]">
+            {visitasPorCompra != null ? fmtNumber(visitasPorCompra) : "—"}
+          </div>
+          <div className="mt-0.5 font-body text-[13px] text-[var(--franco-text)]">visitas por compra</div>
+          <div className="mt-0.5 font-mono text-[10px] text-[var(--franco-text-tertiary)]">
+            {visitasPorCompra != null
+              ? `${fmtNumber(pasosPh.visitas ?? 0)} visitas ÷ ${fmtNumber(funnel7.pagaron)} ${funnel7.pagaron === 1 ? "compra" : "compras"}`
+              : pasosPh.visitas == null
+                ? "sin datos de PostHog para el numerador"
+                : "sin compras en el período todavía"}
+          </div>
+        </div>
+
+        <AdminFunnel includeTest={includeTest} abandonados={abandonados} etapas={etapas7} />
       </section>
 
       {/* ─── 3 · TENDENCIA ─── */}

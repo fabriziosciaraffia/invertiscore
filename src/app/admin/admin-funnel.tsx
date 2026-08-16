@@ -17,6 +17,12 @@ export interface EtapaFunnel {
   detalle: string;
   /** Qué hizo (o no hizo) la gente que se cayó acá. Se muestra en la banda de caída. */
   caida: string;
+  /** Fase B (funnel 7 pasos): la fuente externa no respondió — se pinta "—" y
+   *  la etapa queda fuera de barras y caídas. Fail-soft de PostHog: el funnel
+   *  3-7 vive aunque 1-2 estén mudos. */
+  sinDatos?: boolean;
+  /** Desglose bajo el detalle (ej: "12 anónimos · 3 welcome"). */
+  desglose?: string;
 }
 
 export interface CheckoutAbandonado {
@@ -37,27 +43,35 @@ export function AdminFunnel({
   abandonados: CheckoutAbandonado[];
   includeTest: boolean;
 }) {
-  // La barra es proporcional a la PRIMERA etapa, no al máximo: el funnel se lee
-  // como fracción del total que entró, que es lo que la forma tiene que contar.
-  const base = Math.max(etapas[0]?.valor ?? 0, 1);
+  // La barra es proporcional a la primera etapa CON DATOS, no al máximo: el
+  // funnel se lee como fracción del total que entró. Con PostHog mudo (1-2 en
+  // sinDatos), la base cae a la primera etapa Supabase y la forma sigue viva.
+  const primeraConDatos = etapas.find((e) => !e.sinDatos);
+  const base = Math.max(primeraConDatos?.valor ?? 0, 1);
 
   return (
     <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)]">
       {etapas.map((e, i) => {
-        const anterior = i > 0 ? etapas[i - 1].valor : null;
-        const perdidos = anterior != null ? anterior - e.valor : null;
-        const pctCaida = anterior != null && anterior > 0 ? Math.round((perdidos! / anterior) * 100) : null;
-        const enCero = e.valor === 0;
+        const etapaAnterior = i > 0 ? etapas[i - 1] : null;
+        const anterior = etapaAnterior && !etapaAnterior.sinDatos ? etapaAnterior.valor : null;
+        const caidaMedible = anterior != null && !e.sinDatos;
+        const perdidos = caidaMedible ? anterior - e.valor : null;
+        const pctCaida = caidaMedible && anterior > 0 ? Math.round((perdidos! / anterior) * 100) : null;
+        const enCero = !e.sinDatos && e.valor === 0;
 
         return (
           <div key={e.nombre}>
             {/* Banda de caída, entre la etapa anterior y esta */}
-            {anterior != null && (
+            {etapaAnterior != null && (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-[var(--franco-border)] bg-[var(--franco-sunken)] px-4 py-1.5 font-mono text-[11px] text-[var(--franco-text-secondary)]">
                 <span aria-hidden="true" className="text-[var(--franco-text-muted)]">
                   ↓
                 </span>
-                {anterior === 0 ? (
+                {!caidaMedible ? (
+                  <span className="text-[var(--franco-text-muted)]">
+                    caída no medible: falta el dato de una de las dos etapas
+                  </span>
+                ) : anterior === 0 ? (
                   <span className="text-[var(--franco-text-muted)]">
                     sin caída que medir: la etapa anterior está en cero
                   </span>
@@ -76,26 +90,32 @@ export function AdminFunnel({
               <div className="flex items-baseline justify-between gap-3.5">
                 <div className="min-w-0">
                   <div
-                    className={`font-body text-sm ${enCero ? "text-[var(--franco-text-muted)]" : "text-[var(--franco-text)]"}`}
+                    className={`font-body text-sm ${enCero || e.sinDatos ? "text-[var(--franco-text-muted)]" : "text-[var(--franco-text)]"}`}
                   >
                     {e.nombre}
                   </div>
                   <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
                     {e.detalle}
                   </div>
+                  {e.desglose && (
+                    <div className="mt-0.5 font-mono text-[11px] text-[var(--franco-text-secondary)]">
+                      {e.desglose}
+                    </div>
+                  )}
                 </div>
                 <div
                   className={`shrink-0 font-mono text-[22px] font-bold tracking-tight ${
-                    enCero ? "text-[var(--franco-text-muted)]" : "text-[var(--franco-text)]"
+                    enCero || e.sinDatos ? "text-[var(--franco-text-muted)]" : "text-[var(--franco-text)]"
                   }`}
+                  title={e.sinDatos ? "PostHog no respondió — el resto del funnel no depende de este dato" : undefined}
                 >
-                  {fmtNumber(e.valor)}
+                  {e.sinDatos ? "—" : fmtNumber(e.valor)}
                 </div>
               </div>
               <div className="mt-2 h-[26px] overflow-hidden rounded bg-[var(--franco-sunken)]">
                 <span
-                  className={`block h-full rounded ${enCero ? "bg-[var(--franco-border-strong)]" : "bg-[var(--franco-text)]"}`}
-                  style={{ width: `${(e.valor / base) * 100}%` }}
+                  className={`block h-full rounded ${enCero || e.sinDatos ? "bg-[var(--franco-border-strong)]" : "bg-[var(--franco-text)]"}`}
+                  style={{ width: e.sinDatos ? "0%" : `${Math.min((e.valor / base) * 100, 100)}%` }}
                 />
               </div>
             </div>
@@ -111,7 +131,7 @@ export function AdminFunnel({
           <p className="font-body text-[13px] text-[var(--franco-text-muted)]">
             {includeTest
               ? "No hay pagos pendientes con monto."
-              : "Ningún usuario real llegó al checkout todavía. Los pagos pendientes de la base son de cuentas internas — activá el toggle de arriba para verlos."}
+              : "Ningún usuario real llegó al checkout todavía. Los pagos pendientes de la base son de cuentas internas — activa el toggle de arriba para verlos."}
           </p>
         ) : (
           <div className="overflow-x-auto">
