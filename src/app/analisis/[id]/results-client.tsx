@@ -12,6 +12,7 @@ import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
+import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
 // Ronda 4a.1: leaf components extraídos a src/components/analysis/.
 import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/components/analysis/utils";
 // Ronda 4a.2: Advanced Section.
@@ -83,13 +84,13 @@ export function PremiumResults({
   creatorName,
   isSharedView = false,
   isSharedLink = false,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   userCredits = 0,
   welcomeAvailable = true,
   ownerFirstName = "",
   analysesCount = 0,
   isLoggedIn = false,
   showCtaWelcome = false,
+  isAnonOwner = false,
 }: {
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium" | "subscriber";
@@ -121,6 +122,11 @@ export function PremiumResults({
   /** Gate server-side (input_data.chargeMode === "welcome" + dueño): monta el
    * CTA post-análisis welcome (banda inline + popup). */
   showCtaWelcome?: boolean;
+  /** Anónimo-DUEÑO (cap F2-2): ve el informe completo pero SIN sesión — los
+   * POST de regeneración IA (stale-regen / rescate) exigen login y saldrían
+   * 401, así que se suprimen; el polling público a /ai-status queda. Si la
+   * generación de creación murió, su recovery es registrarse (claim → regen). */
+  isAnonOwner?: boolean;
 }) {
   const posthog = usePostHog();
   const [horizonYears, setHorizonYears] = useState(10);
@@ -266,7 +272,10 @@ export function PremiumResults({
     // POST (route no cobra: hadPriorProse). Guard !aiError → un fallo no reintenta; el
     // effect corre una vez ([analysisId]) → sin loop.
     if (aiStale) {
-      if (!aiError) generateAiManually("stale-regen");
+      // Anónimo-dueño: el POST exige login → sin regen; se muestra la vía de
+      // registro (el claim regenera con el flujo normal). En la práctica una
+      // fila anónima nace con promptVersion fresca, así que este caso es raro.
+      if (!aiError && !isAnonOwner) generateAiManually("stale-regen");
       return;
     }
 
@@ -301,7 +310,7 @@ export function PremiumResults({
           setAiLoading(false);
           return;
         }
-        if (data?.puedeRescate && !rescateDisparado) {
+        if (data?.puedeRescate && !rescateDisparado && !isAnonOwner) {
           // La generación background está muerta (dictamen del server, no un
           // timeout del cliente): una regeneración de verdad, una sola vez.
           rescateDisparado = true;
@@ -345,6 +354,21 @@ export function PremiumResults({
   }, [analysisId]);
 
   const m = normalizeMetrics(results?.metrics);
+
+  // F2-2 — CTA contextual "siguiente análisis" (copy A). Una sola fuente de
+  // props: el mount (dentro del cuerpo, antes de la Advanced Section) y la
+  // regla de exclusión del pie (WalletStatusCTA no repite el estado rojo).
+  const nextCtaProps = {
+    isLoggedIn,
+    isAnonOwner,
+    isSubscriber: accessLevel === "subscriber",
+    credits: userCredits,
+    welcomeAvailable,
+    isSharedView: isSharedView || isSharedLink,
+    source: "ltr" as const,
+    registerNext: analysisId ? `/analisis/${analysisId}` : undefined,
+  };
+  const nextCtaEsCompra = nextCtaState(nextCtaProps) === "no_credits";
 
   // Top-level pre-delivery months calculation
   const mesesPreEntregaTop = useMemo(() => {
@@ -987,6 +1011,13 @@ export function PremiumResults({
             simulationSlot={
               /* ═══ CAPA 3 · SIMULACIÓN — A1: la renderiza SubjectCardGrid ENTRE la
                  pirámide y la card zona (drawers → simulación → zona → footer) ═══ */
+              <>
+              {/* F2-2 — CTA contextual: cierre de los hallazgos, antes de la
+                  Advanced Section. El slot es el único punto entre ambas
+                  secciones que no exige tocar SubjectCardGrid. */}
+              <div className="mb-6">
+                <NextAnalysisCTA {...nextCtaProps} />
+              </div>
               <SimulationProvider
                 plazoAnios={horizonYears}
                 plusvaliaAnual={plusvaliaRate}
@@ -1005,6 +1036,7 @@ export function PremiumResults({
                   />
                 )}
               </SimulationProvider>
+              </>
             }
           />
         </>
@@ -1079,6 +1111,7 @@ export function PremiumResults({
             isAdmin={false /* admin → accessLevel="subscriber" en este componente */}
             isSharedView={isSharedView}
             source="ltr"
+            suppressNoCredits={nextCtaEsCompra}
           />
         </div>
       </div>

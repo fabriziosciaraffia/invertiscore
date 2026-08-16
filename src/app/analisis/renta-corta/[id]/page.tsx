@@ -10,6 +10,7 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
 
@@ -137,6 +138,13 @@ export default async function STRResultPage({
   const isLoggedIn = !!user;
   const isOwner = user?.id === data.user_id && data.user_id !== null;
   const isSharedView = isLoggedIn && !isOwner && !isAdmin;
+  // Anónimo-DUEÑO (cap F2-2): espejo de /analisis/[id] — cookie httpOnly de
+  // este navegador calza con el hash de la fila sin dueño.
+  const anonToken = !isLoggedIn ? tokenAnonDelRequest() : null;
+  const anonHash = (data as Record<string, unknown>).anon_claim_token_hash as string | null | undefined;
+  const isAnonOwner =
+    !isLoggedIn && data.user_id === null && !!anonToken && !!anonHash &&
+    sha256Hex(anonToken) === anonHash;
   const isPremium = isAdmin || !!data.is_premium;
 
   const userTier = user ? await getUserAccessLevel(user.id) : "guest";
@@ -158,6 +166,9 @@ export default async function STRResultPage({
   let accessLevel: "guest" | "free" | "premium" | "subscriber";
   if (isAdmin) {
     accessLevel = "subscriber";
+  } else if (isAnonOwner) {
+    // Anónimo-dueño: informe completo (el cap entrega el análisis entero).
+    accessLevel = "premium";
   } else if (!isLoggedIn) {
     accessLevel = "guest";
   } else if (userTier === "subscriber") {
@@ -234,6 +245,7 @@ export default async function STRResultPage({
     aiStaleInitial: !!strAiPersisted && !strAiFresh,
     subordinatedHref,
     showCtaWelcome,
+    isAnonOwner,
   };
 
   return <STRResultsClient {...sharedProps} />;

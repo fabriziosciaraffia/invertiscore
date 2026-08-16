@@ -8,9 +8,11 @@ import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
 import { Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import { ShareButton } from "@/components/chrome/ShareButton";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
+import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
 import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
 import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
@@ -70,6 +72,8 @@ interface Props {
   ufValue: number;
   accessLevel: AccessLevel;
   isOwner: boolean;
+  /** Anónimo-DUEÑO del par (cap F2-2): chrome de guardado en vez del nav de app. */
+  isAnonOwner?: boolean;
   isSharedView: boolean;
   userCredits: number;
   welcomeAvailable: boolean;
@@ -231,6 +235,21 @@ export function ComparativaClient(p: Props) {
     [findings, p.strResults, hero.estado],
   );
 
+  // F2-2 — CTA contextual "siguiente análisis" (copy A): cierre de la
+  // pirámide diferencial, antes de La Evidencia. Una sola fuente de props para
+  // el mount y la exclusión del estado rojo en el pie.
+  const nextCtaProps = {
+    isLoggedIn: p.accessLevel !== "guest" && !p.isAnonOwner,
+    isAnonOwner: p.isAnonOwner ?? false,
+    isSubscriber: p.accessLevel === "subscriber",
+    credits: p.userCredits,
+    welcomeAvailable: p.welcomeAvailable,
+    isSharedView: p.isSharedView,
+    source: "comparativa" as const,
+    registerNext: `/analisis/comparativa?ltr=${p.ltrId}&str=${p.strId}`,
+  };
+  const nextCtaEsCompra = nextCtaState(nextCtaProps) === "no_credits";
+
   // Chrome
   const footerLinks = (
     <div className="flex items-center gap-4">
@@ -248,6 +267,14 @@ export function ComparativaClient(p: Props) {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] flex flex-col">
+      {/* Anónimo-dueño (cap F2-2): el nav de app no le sirve (no tiene
+          dashboard) — chrome de guardado, espejo de la vista LTR/STR. */}
+      {p.isAnonOwner ? (
+        <PublicShareHeader
+          anonOwner
+          registerNext={`/analisis/comparativa?ltr=${p.ltrId}&str=${p.strId}`}
+        />
+      ) : (
       <UnifiedNav
         variant="app"
         actionsSlot={
@@ -278,6 +305,7 @@ export function ComparativaClient(p: Props) {
           </div>
         }
       />
+      )}
 
       {/* Fase D — modal del resumen de un hijo bloqueado (contenido premium sobre
           el comparativo; diferenciado de los drawers laterales). */}
@@ -355,6 +383,11 @@ export function ComparativaClient(p: Props) {
             </div>
           )}
 
+          {/* F2-2 — CTA contextual: cierre de la pirámide, antes de la evidencia. */}
+          <div className="mb-8 mt-8">
+            <NextAnalysisCTA {...nextCtaProps} />
+          </div>
+
           {/* ── ACTO 3 · La evidencia — superficie recesiva que respalda la pirámide ── */}
           <div className="mb-8">
             <div className="mb-4">
@@ -419,6 +452,7 @@ export function ComparativaClient(p: Props) {
               isAdmin={false}
               isSharedView={p.isSharedView}
               source="comparativa"
+              suppressNoCredits={nextCtaEsCompra}
             />
           </div>
 

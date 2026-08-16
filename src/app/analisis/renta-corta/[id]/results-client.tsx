@@ -28,6 +28,7 @@ import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConv
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
+import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
@@ -78,6 +79,9 @@ interface STRResultsProps {
   /** Gate server-side (input_data.chargeMode === "welcome" + dueño): monta el
    * CTA post-análisis welcome (banda inline + popup). */
   showCtaWelcome?: boolean;
+  /** Anónimo-DUEÑO (cap F2-2): informe completo sin sesión — se suprimen los
+   * POST de regen IA (exigen login) y el header pasa a la variante de guardado. */
+  isAnonOwner?: boolean;
 }
 
 export function STRResultsClient({
@@ -97,6 +101,7 @@ export function STRResultsClient({
   aiStaleInitial = false,
   subordinatedHref = null,
   showCtaWelcome = false,
+  isAnonOwner = false,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
@@ -161,7 +166,8 @@ export function STRResultsClient({
     if (!isPaid) return;
 
     if (aiStaleInitial) {
-      if (!aiError) generarProsa("stale-regen");
+      // Anónimo-dueño: el POST exige login → sin regen (espejo LTR).
+      if (!aiError && !isAnonOwner) generarProsa("stale-regen");
       return;
     }
 
@@ -196,7 +202,7 @@ export function STRResultsClient({
           setAiLoading(false);
           return;
         }
-        if (data?.puedeRescate && !rescateDisparado) {
+        if (data?.puedeRescate && !rescateDisparado && !isAnonOwner) {
           rescateDisparado = true;
           await generarProsa("rescate");
           return;
@@ -261,13 +267,31 @@ export function STRResultsClient({
   const propiedadTitle = nombre || `Depto en ${comuna}`;
 
   const isSubscriber = accessLevel === "subscriber";
+
+  // F2-2 — CTA contextual: una sola fuente de props para el mount y la regla
+  // de exclusión del pie (WalletStatusCTA no repite el estado rojo de compra).
+  const nextCtaProps = {
+    isLoggedIn: accessLevel !== "guest" && !isAnonOwner,
+    isAnonOwner,
+    isSubscriber,
+    credits: userCredits,
+    welcomeAvailable,
+    isSharedView,
+    source: "str" as const,
+    registerNext: `/analisis/renta-corta/${analysisId}`,
+  };
+  const nextCtaEsCompra = nextCtaState(nextCtaProps) === "no_credits";
   const isAdmin = false; // El page.tsx ya resuelve admin a "subscriber"
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Chrome de nav/header — el PDF usa la vista documento aparte, no esta página. */}
-      {accessLevel === "guest" ? (
-        <PublicShareHeader date={formatFechaCorta(createdAt)} />
+      {accessLevel === "guest" || isAnonOwner ? (
+        <PublicShareHeader
+          date={formatFechaCorta(createdAt)}
+          anonOwner={isAnonOwner}
+          registerNext={`/analisis/renta-corta/${analysisId}`}
+        />
       ) : (
         <UnifiedNav
           variant="app"
@@ -387,6 +411,11 @@ export function STRResultsClient({
         />
         <div style={{ height: 24 }} />
 
+        {/* F2-2 — CTA contextual "siguiente análisis" (copy A): cierre de los
+            hallazgos, antes de la Advanced Section. */}
+        <NextAnalysisCTA {...nextCtaProps} />
+        <div style={{ height: 24 }} />
+
         {/* ESCENARIOS Y PROYECCIÓN (07-10). La prosa ai.largoPlazo dejó de ir inline
             (str-paridad2) y ahora vive en su drawer "A 10 años", abierto desde una
             afordance en la columna Patrimonio (fuera de la secuencia de pirámide, como
@@ -450,6 +479,7 @@ export function STRResultsClient({
               isAdmin={isAdmin}
               isSharedView={isSharedView}
               source="str"
+              suppressNoCredits={nextCtaEsCompra}
             />
           </>
         )}

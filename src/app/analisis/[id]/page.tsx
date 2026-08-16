@@ -15,6 +15,7 @@ import { etiquetaAnalisis } from "@/lib/format-direccion";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
 import { prefetchMedianaComunaVenta, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
+import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -191,6 +192,15 @@ export default async function AnalisisDetallePage({
   const isOwner = user?.id === analisis.user_id && analisis.user_id !== null;
   const isSharedView = isLoggedIn && !isOwner && !isAdmin;
   const isSharedLink = !isLoggedIn && !!analisis.user_id;
+  // Anónimo-DUEÑO (cap anónimo F2-2): sin sesión, fila sin dueño, y el token de
+  // la cookie httpOnly de ESTE navegador calza con el hash de la fila. Ve SU
+  // análisis completo; cualquier otro anónimo sobre la misma URL sigue siendo
+  // guest capado (el hash no calza — la cookie es el secreto).
+  const anonToken = !isLoggedIn ? tokenAnonDelRequest() : null;
+  const anonHash = (data as Record<string, unknown>).anon_claim_token_hash as string | null | undefined;
+  const isAnonOwner =
+    !isLoggedIn && analisis.user_id === null && !!anonToken && !!anonHash &&
+    sha256Hex(anonToken) === anonHash;
   const isPremium = isAdmin || isDemo || !!analisis.is_premium;
 
   // CTA post-análisis welcome: el cobro de ESTE análisis fue el crédito de
@@ -237,6 +247,10 @@ export default async function AnalisisDetallePage({
   if (isAdmin) {
     accessLevel = "subscriber";
   } else if (isDemo) {
+    accessLevel = "premium";
+  } else if (isAnonOwner) {
+    // Anónimo-dueño: informe completo (decisión F2 — el cap entrega el
+    // análisis entero; el registro es para GUARDARLO, no para verlo).
     accessLevel = "premium";
   } else if (!isLoggedIn) {
     accessLevel = "guest";
@@ -292,8 +306,12 @@ export default async function AnalisisDetallePage({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      {accessLevel === "guest" ? (
-        <PublicShareHeader date={formatFechaCorta(analisis.created_at)} />
+      {accessLevel === "guest" || isAnonOwner ? (
+        <PublicShareHeader
+          date={formatFechaCorta(analisis.created_at)}
+          anonOwner={isAnonOwner}
+          registerNext={`/analisis/${analisis.id}`}
+        />
       ) : (
         <AnalysisNav
           userId={user?.id ?? null}
@@ -338,6 +356,7 @@ export default async function AnalisisDetallePage({
           analysesCount={analysesCount}
           isLoggedIn={isLoggedIn}
           showCtaWelcome={showCtaWelcome}
+          isAnonOwner={isAnonOwner}
         />
 
         {/* Fallback for old analyses without full results */}

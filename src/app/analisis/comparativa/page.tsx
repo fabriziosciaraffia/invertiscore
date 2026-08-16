@@ -12,6 +12,7 @@ import { encodeShareToken } from "@/lib/share-token";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
 import { buildResumenLTR, buildResumenSTR } from "@/lib/resumen-anexo";
 import { ComparativaClient } from "./comparativa-client";
@@ -86,6 +87,17 @@ export default async function ComparativaPage({
   const userTier = user ? await getUserAccessLevel(user.id) : "guest";
   const isOwner = user?.id === ltr.user_id && ltr.user_id !== null;
   const isSharedView = isLoggedIn && !isOwner && !isAdmin;
+  // Anónimo-DUEÑO del par (cap F2-2): la cookie httpOnly calza con el hash de
+  // AMBAS filas sin dueño. Ve el comparativo completo; el modal de hijos
+  // bloqueados se comporta igual que para un dueño logueado con welcome.
+  const anonToken = !isLoggedIn ? tokenAnonDelRequest() : null;
+  const hashCookie = anonToken ? sha256Hex(anonToken) : null;
+  const ltrAnonHash = (ltrRow as Record<string, unknown>).anon_claim_token_hash as string | null | undefined;
+  const strAnonHash = (strRow as Record<string, unknown>).anon_claim_token_hash as string | null | undefined;
+  const isAnonOwner =
+    !isLoggedIn && !!hashCookie &&
+    ltr.user_id === null && str.user_id === null &&
+    ltrAnonHash === hashCookie && strAnonHash === hashCookie;
 
   // Wallet status (in-line CTA al cierre)
   let userCredits = 0;
@@ -104,6 +116,7 @@ export default async function ComparativaPage({
 
   let accessLevel: "guest" | "free" | "premium" | "subscriber";
   if (isAdmin) accessLevel = "subscriber";
+  else if (isAnonOwner) accessLevel = "premium"; // cap F2-2: SU comparativo, completo
   else if (!isLoggedIn) accessLevel = "guest";
   else if (userTier === "subscriber") accessLevel = "subscriber";
   else accessLevel = (ltr.is_premium || str.is_premium) ? "premium" : "free";
@@ -237,6 +250,7 @@ export default async function ComparativaPage({
       ufValue={ufValue}
       accessLevel={accessLevel}
       isOwner={isOwner}
+      isAnonOwner={isAnonOwner}
       isSharedView={isSharedView}
       userCredits={userCredits}
       welcomeAvailable={welcomeAvailable}

@@ -13,6 +13,11 @@ export interface WalletStatusCTAProps {
   isAdmin: boolean;
   isSharedView: boolean;
   source?: "ltr" | "str" | "comparativa";
+  /** Regla de exclusión (F2-2): cuando `NextAnalysisCTA` (cuerpo del informe)
+   * ya muestra la variante de compra, el pie no repite el estado rojo — un
+   * solo aviso de "sin análisis" por página. Los estados neutros no compiten
+   * (mensajes distintos) y se conservan. */
+  suppressNoCredits?: boolean;
 }
 
 type WalletState = "subscriber" | "credits" | "no_credits";
@@ -50,16 +55,18 @@ export function WalletStatusCTA({
   isAdmin,
   isSharedView,
   source = "ltr",
+  suppressNoCredits = false,
 }: WalletStatusCTAProps) {
   const posthog = usePostHog();
 
-  const variant = resolveVariant({
+  const variantBase = resolveVariant({
     welcomeAvailable,
     credits,
     isSubscriber,
     isAdmin,
     isSharedView,
   });
+  const variant = suppressNoCredits && variantBase?.state === "no_credits" ? null : variantBase;
 
   useEffect(() => {
     if (!variant) return;
