@@ -202,13 +202,15 @@ export interface PlausibilidadErr {
  */
 export function guardPlausibilidad(
   input: PlausibilidadInput,
-  ctx: { userId: string; ruta: string },
+  // `userId` opcional (cap anónimo F2-2): la rama anónima valida igual que la
+  // logueada — el guard no depende de la identidad, solo la loguea.
+  ctx: { userId: string | undefined; ruta: string },
 ): PlausibilidadOk | PlausibilidadErr {
   const anomalias: Anomalia[] = evaluarPlausibilidad(input);
   if (anomalias.length === 0) return { ok: true };
 
   console.error(
-    `[PLAUSIBILIDAD] rechazo ${ctx.ruta} · user=${ctx.userId} · reglas=${anomalias
+    `[PLAUSIBILIDAD] rechazo ${ctx.ruta} · user=${ctx.userId ?? "anon"} · reglas=${anomalias
       .map((a) => a.regla)
       .join(",")}`,
     JSON.stringify(anomalias.map((a) => ({ regla: a.regla, campo: a.campo, valor: a.valor }))),

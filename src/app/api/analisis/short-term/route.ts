@@ -6,13 +6,18 @@ import { getUFValue } from "@/lib/uf";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import {
   createSupabaseServer,
-  requireAuthenticatedUser,
   guardPlausibilidad,
   ensureCreditCharged,
   markPremiumAndClaimPrepaid,
   buildShortTermAnalysisRow,
   prefetchMedianaComunaVenta,
 } from "@/lib/api-helpers/analisis-pipeline";
+import {
+  resolveActor,
+  emitirCookieAnon,
+  createAnonPipelineClient,
+  CHARGE_MODE_ANON,
+} from "@/lib/api-helpers/anon-cap";
 import { desdeBodyStr } from "@/lib/plausibilidad";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 import Anthropic from "@anthropic-ai/sdk";
@@ -37,11 +42,8 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseServer();
 
-    const auth = await requireAuthenticatedUser(supabase);
-    if (!auth.ok) return auth.response;
-    const { user } = auth;
-    timing.auth_ms = Date.now() - t0;
-
+    // Body ANTES del actor (cap anónimo F2-2): la rama anónima necesita
+    // `turnstileToken` y `ambasGroupId`. Ver comentario gemelo en /api/analisis.
     const body = await request.json();
     const prepaidChargeId: string | undefined = body?.prepaidChargeId;
     // Enlace AMBAS (flujo crédito/welcome): lado STR → rol 'str'. Ver comentario
@@ -51,6 +53,19 @@ export async function POST(request: Request) {
       typeof body?.ambasGroupId === "string" && UUID_RE.test(body.ambasGroupId)
         ? body.ambasGroupId
         : null;
+
+    // En AMBAS anónimo este es el SEGUNDO POST del par serializado: la cookie
+    // emitida por el POST LTR ya viaja acá, y resolveActor la reconoce como
+    // hermano (mismo token + mismo group_id) en vez de rechazarla como cap
+    // consumido. STR suelto anónimo cae en la rama "anon" normal.
+    const actor = await resolveActor(supabase, request, {
+      turnstileToken: body?.turnstileToken,
+      ambasGroupId,
+    });
+    if (actor.tipo === "rechazado") return actor.response;
+    const user = actor.tipo === "user" ? actor.user : null;
+    const esAnon = actor.tipo !== "user";
+    timing.auth_ms = Date.now() - t0;
 
     // SUBIDO sobre el cobro (PIEZA A): el guard de plausibilidad necesita la UF
     // para derivar el yield bruto. Lectura cacheada con fallback, sin efectos.
@@ -64,15 +79,22 @@ export async function POST(request: Request) {
     // cuando el usuario las CORRIGIÓ (overrides no nulos); con la estimación de
     // AirROI no hay input humano que juzgar.
     const plausible = guardPlausibilidad(desdeBodyStr(body, ufValue), {
-      userId: user.id,
+      userId: user?.id,
       ruta: "POST /api/analisis/short-term",
     });
     if (!plausible.ok) return plausible.response;
 
+    // Cobro: solo con sesión (espejo LTR). La rama anónima no cobra — su vía
+    // es el cap; el welcome se consume en el claim.
     const tCobro = Date.now();
-    const charge = await ensureCreditCharged({ user, prepaidChargeId });
-    if (!charge.ok) return charge.response;
-    const { prepaidNeedClaim, mode: chargeMode } = charge;
+    let prepaidNeedClaim = false;
+    let chargeMode: string = CHARGE_MODE_ANON;
+    if (user) {
+      const charge = await ensureCreditCharged({ user, prepaidChargeId });
+      if (!charge.ok) return charge.response;
+      prepaidNeedClaim = charge.prepaidNeedClaim;
+      chargeMode = charge.mode;
+    }
     timing.cobro_ms = Date.now() - tCobro;
 
     // Bloque medio (AirROI + motor + score + armado del row) compartido con
@@ -95,7 +117,8 @@ export async function POST(request: Request) {
     // 7. Insert en Supabase (misma tabla que LTR). El row computado viene del
     // helper; acá decidimos user_id/creator_name/is_premium (cobrado → premium
     // vía markPremiumAndClaimPrepaid abajo).
-    const dbClient = supabase;
+    // Rama anónima: service-role (espejo LTR — RLS no contempla escrituras anon).
+    const dbClient = esAnon ? createAnonPipelineClient() : supabase;
 
     const tInsert = Date.now();
     const { data, error } = await dbClient
@@ -105,12 +128,17 @@ export async function POST(request: Request) {
         // Vía de cobro (opción B, espejo LTR): columna top-level, no en
         // input_data. /api/analisis/locked no la escribe (pre-pago → NULL).
         charge_mode: chargeMode,
-        user_id: user.id,
+        user_id: user?.id ?? null,
         creator_name:
           user?.user_metadata?.nombre ||
           user?.user_metadata?.full_name ||
-          'Anónimo',
+          (user ? 'Anónimo' : null),
         is_premium: false,
+        // Cap anónimo: hash del token de la cookie (ventana de claim). En el
+        // hermano AMBAS es el MISMO hash del LTR — el claim adopta el par junto.
+        ...(actor.tipo === "anon" || actor.tipo === "anon-hermano"
+          ? { anon_claim_token_hash: actor.tokenHash }
+          : {}),
         // Enlace AMBAS: solo cuando el wizard pasó un group_id válido (lado STR).
         ...(ambasGroupId ? { ambas_group_id: ambasGroupId, ambas_role: "str" } : {}),
       })
@@ -126,6 +154,10 @@ export async function POST(request: Request) {
     }
     timing.insert_ms = Date.now() - tInsert;
     timing.total_ms = Date.now() - t0;
+
+    // Cookie del cap — tras el INSERT exitoso (espejo LTR). Solo el STR SUELTO
+    // anónimo la emite; el hermano AMBAS ya la tiene del POST LTR.
+    if (actor.tipo === "anon") emitirCookieAnon(actor.token);
 
     // Timing del submit (Goal A): fail-soft, un UPDATE corto vía RPC, diferido
     // con waitUntil para no sumar latencia al response. No altera nada del handler.
@@ -164,7 +196,10 @@ export async function POST(request: Request) {
       // Falla silenciosamente si `operadores_str_reportados` aún no existe.
       const operadorReportado: string | undefined =
         typeof body.operadorNombre === "string" ? body.operadorNombre.trim() : undefined;
-      if (body.tipoEdificio === "dedicado" && operadorReportado) {
+      // Solo con sesión: el reporte lleva `reportado_por_usuario_id` y un
+      // anónimo no tiene id que poner (el wizard v4 además no llega acá con
+      // tipoEdificio "dedicado" — el campo es del wizard STR legacy).
+      if (user && body.tipoEdificio === "dedicado" && operadorReportado) {
         try {
           await dbClient.from("operadores_str_reportados").insert({
             analisis_id: data.id,
@@ -188,7 +223,7 @@ export async function POST(request: Request) {
     // de /api/analisis: event_id = id del análisis, email hasheado en el helper,
     // sin value, waitUntil propio con su try/catch — Meta jamás rompe ni demora
     // la creación.
-    if (data?.id && chargeMode === "welcome" && !ambasGroupId && user.email) {
+    if (data?.id && chargeMode === "welcome" && !ambasGroupId && user?.email) {
       const leadId = data.id as string;
       const leadEmail = user.email;
       const cookieStore = cookies();

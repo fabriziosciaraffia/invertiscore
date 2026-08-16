@@ -12,13 +12,18 @@ import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import {
   createSupabaseServer,
-  requireAuthenticatedUser,
   guardPlausibilidad,
   ensureCreditCharged,
   markPremiumAndClaimPrepaid,
   prefetchMedianaComunaVenta,
   buildMedianaSnapshot,
 } from "@/lib/api-helpers/analisis-pipeline";
+import {
+  resolveActor,
+  emitirCookieAnon,
+  createAnonPipelineClient,
+  CHARGE_MODE_ANON,
+} from "@/lib/api-helpers/anon-cap";
 import { desdeBodyLtr } from "@/lib/plausibilidad";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
@@ -46,13 +51,24 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseServer();
 
-    const auth = await requireAuthenticatedUser(supabase);
-    if (!auth.ok) return auth.response;
-    const { user } = auth;
-    userId = user.id;
-    timing.auth_ms = Date.now() - t0;
+    // El body se parsea ANTES de resolver el actor (cap anónimo F2-2): la rama
+    // anónima necesita `turnstileToken` y `ambasGroupId` para decidir. Para el
+    // logueado nada cambia — resolveActor devuelve su user igual que antes.
+    const body: AnalisisInput & {
+      prepaidChargeId?: string;
+      ambasGroupId?: string;
+      turnstileToken?: string;
+    } = await request.json();
 
-    const body: AnalisisInput & { prepaidChargeId?: string; ambasGroupId?: string } = await request.json();
+    const actor = await resolveActor(supabase, request, {
+      turnstileToken: body.turnstileToken,
+      ambasGroupId: typeof body.ambasGroupId === "string" ? body.ambasGroupId : null,
+    });
+    if (actor.tipo === "rechazado") return actor.response;
+    const user = actor.tipo === "user" ? actor.user : null;
+    const esAnon = actor.tipo !== "user";
+    userId = user?.id;
+    timing.auth_ms = Date.now() - t0;
     // Precisión canónica del pie (fix pie-redondeo, defensa en profundidad): el
     // wizard ya redondea, pero este body es lo que corre el motor Y se persiste
     // en input_data — cualquier cliente que mande el float crudo lo deja sucio
@@ -83,15 +99,22 @@ export async function POST(request: Request) {
     // Guard de plausibilidad — ANTES de cobrar. Input imposible ⇒ 422, sin
     // crédito consumido y sin fila.
     const plausible = guardPlausibilidad(desdeBodyLtr(body, ufValue), {
-      userId: user.id,
+      userId: user?.id,
       ruta: "POST /api/analisis",
     });
     if (!plausible.ok) return plausible.response;
 
+    // Cobro: solo con sesión. La rama anónima NO cobra — su "vía de cobro" es
+    // el cap ('anon_cap'), y el welcome se consume recién en el claim.
     const tCobro = Date.now();
-    const charge = await ensureCreditCharged({ user, prepaidChargeId });
-    if (!charge.ok) return charge.response;
-    const { prepaidNeedClaim, mode: chargeMode } = charge;
+    let prepaidNeedClaim = false;
+    let chargeMode: string = CHARGE_MODE_ANON;
+    if (user) {
+      const charge = await ensureCreditCharged({ user, prepaidChargeId });
+      if (!charge.ok) return charge.response;
+      prepaidNeedClaim = charge.prepaidNeedClaim;
+      chargeMode = charge.mode;
+    }
     timing.cobro_ms = Date.now() - tCobro;
 
     // Pre-fetch async de la mediana comunal de venta UF/m² para inyectarla al
@@ -103,7 +126,10 @@ export async function POST(request: Request) {
     const result = runAnalysis(body, ufValue, medianaComuna);
     timing.motor_ms = Date.now() - tMotor;
 
-    const dbClient = supabase;
+    // Rama anónima: service-role. Sin sesión, el client anon-key queda sujeto a
+    // RLS (que no contempla — ni debe contemplar — escrituras anónimas). El
+    // INSERT, la prosa IA del waitUntil y el timing corren con este client.
+    const dbClient = esAnon ? createAnonPipelineClient() : supabase;
 
     // Frontera del INSERT: `filaCreada` (declarada arriba, fuera del try) pasa a
     // true recién después de que este INSERT devuelve fila. Una falla antes de
@@ -112,7 +138,7 @@ export async function POST(request: Request) {
     const { data, error } = await dbClient
       .from("analisis")
       .insert({
-        user_id: user.id,
+        user_id: user?.id ?? null,
         nombre: body.nombre,
         comuna: body.comuna,
         ciudad: body.ciudad,
@@ -145,6 +171,11 @@ export async function POST(request: Request) {
         // sobreprecio/hero/prosa/zona. Nadie lo lee aún (Fase B cablea lecturas).
         mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
         creator_name: user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
+        // Cap anónimo: el hash del token de la cookie es la ventana de claim.
+        // `charge_mode` (arriba) queda en 'anon_cap' como marca de origen
+        // permanente; este hash lo limpia el claim o el cron a los 30 días.
+        ...(actor.tipo === "anon" ? { anon_claim_token_hash: actor.tokenHash } : {}),
+        ...(actor.tipo === "anon-hermano" ? { anon_claim_token_hash: actor.tokenHash } : {}),
         // Enlace AMBAS: solo cuando el wizard pasó un group_id válido (lado LTR).
         ...(ambasGroupId ? { ambas_group_id: ambasGroupId, ambas_role: "ltr" } : {}),
       })
@@ -158,7 +189,7 @@ export async function POST(request: Request) {
       captureApiError(error, {
         ruta: "POST /api/analisis",
         operacion: "insert-analisis",
-        userId: user.id,
+        userId: user?.id,
         tags: { fase: "insert-rechazado", fila_creada: "no" },
         extra: { comuna: body.comuna, tipo_analisis: "long-term" },
       });
@@ -170,6 +201,11 @@ export async function POST(request: Request) {
     filaCreada = true;
     timing.insert_ms = Date.now() - tInsert;
     timing.total_ms = Date.now() - t0;
+
+    // Cookie del cap — DESPUÉS del INSERT exitoso: si la creación falla, el
+    // anónimo no queda con el cap quemado y las manos vacías. El hermano AMBAS
+    // (segundo POST serializado) no re-emite: su cookie ya existe.
+    if (actor.tipo === "anon") emitirCookieAnon(actor.token);
 
     // Marcar análisis como premium tras cobro exitoso (o admin bypass).
     // Backlog #3: TODOS los análisis del registrado son premium completos
@@ -203,14 +239,16 @@ export async function POST(request: Request) {
         // pasar por /dashboard igual lo reciba. ensureWelcomeEmail usa el claim
         // atómico de welcome_email_sent, así que es seguro dispararlo también
         // acá: envía a lo sumo una vez por usuario (no duplica con /dashboard).
-        if (user.email) {
+        // Rama anónima (`user` null): ambos bloques de correo se saltan solos —
+        // no hay destinatario. La prosa IA de abajo SÍ corre igual.
+        if (user?.email) {
           await ensureWelcomeEmail(
             user.id,
             user.email,
             resolveDisplayName(user.user_metadata, user.email),
           );
         }
-        if (user.email) {
+        if (user?.email) {
           try {
             // Variante AMBAS: si esta fila (LTR) pertenece a un par, resolvemos el
             // hermano STR por ambas_group_id para que el correo anuncie la
@@ -287,7 +325,7 @@ export async function POST(request: Request) {
     // Este request SÍ viene del navegador (fetch del wizard), así que a diferencia
     // de los webhooks de Flow lleva IP/UA/_fbp/_fbc → mejor match (patrón
     // auth/callback). Se leen ACÁ, dentro del request, no dentro del deferred.
-    if (data?.id && chargeMode === "welcome" && user.email) {
+    if (data?.id && chargeMode === "welcome" && user?.email) {
       const leadId = data.id as string;
       const leadEmail = user.email;
       const cookieStore = cookies();
