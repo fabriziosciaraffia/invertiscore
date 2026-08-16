@@ -13,7 +13,7 @@ import { join } from "path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { recomputeResultsForLegacy } from "../../../src/lib/analysis/recompute-results-for-legacy";
 import { GOLDEN_SEEDS, BORDE_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
-import { extractFacts } from "./extract";
+import { extractFacts, gatherHallazgos } from "./extract";
 import { checkClassA, checkClassB, type Baseline, type Check } from "./invariants";
 import { BE_UUID } from "./ids";
 
@@ -80,6 +80,13 @@ export async function runRecomputeTier(sb: SupabaseClient): Promise<SeedReport[]
 
     // B8 — veredicto persistido == recompute (idempotencia del motor sobre la fila real).
     checks.push({ rule: "B8.persist==recompute", pass: row.results?.veredicto === recomputed.veredicto, detail: `persist=${row.results?.veredicto} recompute=${recomputed.veredicto}` });
+
+    // B-PJ — GS-PJ existe para fijar la detección §1.12: si esCasoPrecioJusto deja
+    // de disparar sobre este perfil, el seed seguiría VERDE midiendo un caso común.
+    if (key === "GS-PJ") {
+      const dv = gatherHallazgos(recomputed).find((h) => h.id === "distancia_veredicto") as any;
+      checks.push({ rule: "B-PJ.casoPrecioJusto", pass: dv?.valor?.casoPrecioJusto === true, detail: `casoPrecioJusto=${String(dv?.valor?.casoPrecioJusto)}` });
+    }
 
     const hardFail = checks.filter((c) => !c.pass && !c.rebaseline).length;
     const rebaseline = checks.filter((c) => !c.pass && c.rebaseline).length;

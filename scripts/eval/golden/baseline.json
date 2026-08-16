@@ -192,6 +192,29 @@
       "tirPct": null,
       "patrimonioMult": 29.27
     },
+    "GS-PJ": {
+      "veredicto": "AJUSTA SUPUESTOS",
+      "score": 63,
+      "N": 10,
+      "corona": "flujo_mensual",
+      "hallazgoIds": [
+        "cap_rate",
+        "capex_puesta_a_punto",
+        "distancia_veredicto",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sensibilidad",
+        "sobreprecio",
+        "tir"
+      ],
+      "capRatePct": 5.33,
+      "sobreprecioPct": 0,
+      "flujoNetoMensual": -56341,
+      "tirPct": 7.32,
+      "patrimonioMult": 1.84
+    },
     "BE-caprate": {
       "veredicto": "COMPRAR",
       "score": 76,

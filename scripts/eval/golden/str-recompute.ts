@@ -283,6 +283,14 @@ export function runStrTier(): { hard: number; drift: number } {
     const r = recomputeStrSeed(seed, frozen);
     if (!r) { console.log(`  ⚠️  ${seed.key}  sin fixture frozen`); hard++; continue; }
     const bad = invariantes(r.hz, r.score, r.rec, r.mediana.mediana != null).filter((c) => !c.pass);
+    // BS-PJ — GE-PJ existe para fijar la detección §1.12.4 STR: si esCasoPrecioJustoStr
+    // deja de disparar sobre este perfil, el seed seguiría VERDE midiendo un caso común.
+    if (seed.key === "GE-PJ") {
+      const dv = r.hz.find((h) => h.id === "distancia_veredicto") as any;
+      if (dv?.valor?.casoPrecioJusto !== true) {
+        bad.push({ rule: "BS-PJ.casoPrecioJusto", pass: false, detail: `casoPrecioJusto=${String(dv?.valor?.casoPrecioJusto)}` });
+      }
+    }
     let a = { hard: 0, drift: 0, lines: [] as string[] };
     if (baseline && baseline[seed.key]) a = checkClassAStr(strFactsFromSeed(r), baseline[seed.key]);
     const seedHard = bad.length + a.hard;

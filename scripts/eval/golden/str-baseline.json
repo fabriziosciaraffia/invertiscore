@@ -84,6 +84,18 @@
       "capitalInvertido": 5723318,
       "patrimonioCLP": 58504562,
       "patrimonioMult": 5.43
+    },
+    "GE-PJ": {
+      "veredicto": "AJUSTA SUPUESTOS",
+      "score": 60,
+      "N": 13,
+      "tirPct": 7.09,
+      "multiplicadorCapital": 1.8442319190335588,
+      "equityCLP": 92356962,
+      "valorVenta": 166860658,
+      "capitalInvertido": 37284200,
+      "patrimonioCLP": 92356962,
+      "patrimonioMult": 1.84
     }
   }
 }
