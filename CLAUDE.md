@@ -76,6 +76,7 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
 
 ## Reglas de formato de texto
 - Todos los textos en **español chileno**. Tutea, sin chilenismos ni garabatos.
+- **Los REPORTES de agentes (finales e intermedios) también van en tuteo chileno neutro — cero voseo.** No es solo copy de producto: aplica a todo texto dirigido a Fabrizio. Quinta detección acumulada (la última: "activá" en el empty-state del panel admin, 16-ago).
 - Caracteres **UTF-8 directos**, nunca secuencias de escape `\uXXXX`.
 - Separador de miles con punto: `$420.000` (no `$420000`). Formato UF: `UF 3.200` (símbolo antes del número).
 - **No** mencionar Portal Inmobiliario ni TocToc como fuentes. Sí: Banco Central, SII, CMF (fuentes públicas).
@@ -132,7 +133,7 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
 - **Un paso a la vez**: ejecutá, reportá el output, esperá antes de continuar. No encadenar acciones irreversibles.
 - **Validá empíricamente** (sandbox, mediciones reales) antes de optimizar. No confíes en supuestos ni en docs sin verificar.
 - Mostrá el diff antes de que se apruebe un commit.
-- **Los reportes de los agentes también van en tuteo chileno, sin voseo.** Aplica al texto que el agente escribe para el usuario, no solo al copy del producto (ya se coló voseo 3 veces).
+- **Los reportes de los agentes también van en tuteo chileno, sin voseo.** Aplica al texto que el agente escribe para el usuario, no solo al copy del producto (ya se coló voseo 5 veces — regla también en "Reglas de formato de texto").
 - **QA vía browser: cada cifra reportada va con la URL exacta desde donde se leyó.** Sin URL la cifra no cuenta. Un mockup abierto en otra pestaña ya generó un bloqueante falso que costó un goal completo de diagnóstico.
 - **Al mover un dato entre keys de storage: copiar primero, borrar después.** Nunca borrar y después escribir. El shim de los tests es instantáneo; el navegador real tiene debounce, y en esa ventana el dato no existe en ningún lado. Apareció dos veces: en `adoptarDraftInvitado` (invitado→registro) y en `adoptarEnEstaPestana` ("Retomar"). La segunda la cazó el paseo por el navegador, no los 25 tests.
 - **Constraints y esquema se verifican LEYENDO el catálogo** (`pg_constraint`, `information_schema.columns`, `pg_indexes`), nunca insertando filas de prueba: dev y prod comparten base, así que una fila de prueba es una fila en producción.
