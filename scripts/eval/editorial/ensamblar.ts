@@ -26,7 +26,7 @@ import { resolveUfForAnalysis } from "../../../src/lib/uf";
 import { ordenarHallazgosPiramide, piramideLayout } from "../../../src/components/analysis/PiramideHallazgos";
 import { ordenarHallazgosPiramideSTR } from "../../../src/lib/piramide-orden-str";
 import { findingDisplay } from "../../../src/components/analysis/GenericFindingCard";
-import { describirMotivosSTR } from "../../../src/lib/no-cierra-copy";
+import { describirMotivosSTR, describirMotivosLTR } from "../../../src/lib/no-cierra-copy";
 
 const UF_FALLBACK = 38800; // solo si la fila no permite reconstruir la UF congelada
 
@@ -117,7 +117,19 @@ function ensamblarLTR(fila: FilaAnalisis): InformeEnsamblado {
   // drawer que abre "La posición de Franco" y su frase baja al PDF. Espejo del fix STR.
   const distanciaLtr = ((results?.hallazgos ?? []) as Hallazgo[]).find((h) => h.id === "distancia_veredicto");
 
+  // POR QUÉ NO CIERRA (LTR, pv4) — puerto del patrón STR al HeroLTR: la glosa de
+  // los motivos cuando el veredicto lo decidió un gate. MISMA derivación que el
+  // componente (brazos del hallazgo de distancia + capa Gate 2 derivada:
+  // score >= 70 con AJUSTA). Sin motivos → sin pieza, igual que la página.
+  const gate2CapoLtr = ((results?.score as number | undefined) ?? 0) >= 70 &&
+    (results as { veredicto?: string } | null)?.veredicto === "AJUSTA SUPUESTOS";
+  const motivosLtr = describirMotivosLTR(
+    (distanciaLtr?.valor as { brazosGate1Activos?: string[] } | undefined)?.brazosGate1Activos ?? [],
+    gate2CapoLtr,
+  );
+
   const piezas: Array<string | null> = [
+    motivosLtr ? seccion("hero:motivos (Por qué no cierra)", [motivosLtr.frase]) : null,
     seccion("hero:pregunta", [ai.conviene.pregunta ?? "¿Conviene o no conviene?"]),
     seccion("respuestaDirecta", [respuesta]),
     seccion("hero:indice (Léelo en este orden)", top3.map((h) => `· ${h.titular || h.fraseCanonica}`)),

@@ -282,7 +282,11 @@ Por informe, un JSON:
 Valores de `pieza` — usar EXACTAMENTE el nombre de la etiqueta `[PIEZA: ...]`
 del informe ensamblado (la parte antes del paréntesis), según el tipo:
 
-- **LTR / STR**: `respuestaDirecta | posicion | card:<id> | drawer:<id> | zona | transversal`
+- **LTR / STR**: `hero:motivos | respuestaDirecta | posicion | card:<id> | drawer:<id> | zona | transversal`
+  (`hero:motivos` — glosa determinística de los motivos del veredicto cuando lo
+  decidió un gate, entre el veredicto y la pregunta; en LTR existe desde pv4.
+  Es copy del MOTOR: se evalúa su coherencia con el resto, no su redacción como
+  si fuera prosa IA.)
 - **AMBAS**: `hero:veredicto | hero:subordinada | hero:banner | hero:mini-scores | prosa | hero:indice | posicion | card:<id> | drawer:puente:<id> | evidencia | chart:patrimonio:nota | chart:flujo:nota | transversal`
   (`hero:banner` solo existe en pares con margen frágil; `hero:subordinada` solo en estado E2 — doble BUSCAR OTRA.)
 
