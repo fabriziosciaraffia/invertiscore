@@ -1033,6 +1033,14 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         modalidad: mod,
         camino: esAnonimo ? "anonimo" : esCredito ? "credito" : "compra-locked",
       });
+      // Meta · AnonAnalysisCreated (medición post-F2): NO se dispara acá — el
+      // window.location.href de abajo es navegación completa y el request del
+      // pixel puede morir en el unload (fbq no usa sendBeacon). Se deja la
+      // marca y MetaPixel (global, ya montado en la página destino) la consume
+      // y dispara DESPUÉS de navegar. sessionStorage sobrevive same-tab.
+      if (esAnonimo) {
+        try { sessionStorage.setItem("meta_anon_created", "1"); } catch { /* sin marca, sin evento */ }
+      }
       window.location.href = res.redirect;
       return;
     }

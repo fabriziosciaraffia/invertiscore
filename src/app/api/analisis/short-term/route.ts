@@ -220,11 +220,12 @@ export async function POST(request: Request) {
     // en un STR SUELTO. `ambasGroupId === null` es el gate de dedup: en AMBAS el
     // cobro es uno solo y lo reporta el lado LTR (mismo criterio que el correo
     // analysis-ready), así que este lado se calla. Resto del contrato idéntico al
-    // de /api/analisis: event_id = id del análisis, email hasheado en el helper,
-    // sin value, waitUntil propio con su try/catch — Meta jamás rompe ni demora
-    // la creación.
+    // de /api/analisis: event_id = `lead-<userId>` (unificado post-F2 con el
+    // Lead del claim — un usuario, un Lead, dedup por id compartido), email
+    // hasheado en el helper, sin value, waitUntil propio con su try/catch —
+    // Meta jamás rompe ni demora la creación.
     if (data?.id && chargeMode === "welcome" && !ambasGroupId && user?.email) {
-      const leadId = data.id as string;
+      const leadId = `lead-${user.id}`;
       const leadEmail = user.email;
       const cookieStore = cookies();
       const leadCtx = {

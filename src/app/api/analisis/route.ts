@@ -315,10 +315,15 @@ export async function POST(request: Request) {
     // Meta CAPI: Lead server-side — el usuario ESTRENÓ su análisis de bienvenida.
     // Gate: chargeMode === 'welcome', la única vía por la que se consume el gratis
     // (admin → 'admin', ilimitado → 'subscription', ledger/legacy → 'paid').
-    // event_id = id del análisis → idempotente si el POST se reintenta. Sin value:
-    // el gratis no factura. En AMBAS dispara SOLO este lado (LTR): el POST STR
-    // comparte el mismo cobro y duplicaría el evento — mismo criterio que el correo
-    // analysis-ready de arriba.
+    // event_id = `lead-<userId>` (unificado post-F2 con el Lead del claim, que
+    // ya usaba este formato): un usuario = un Lead, venga por donde venga. El
+    // caso mixto real —análisis anónimo en un navegador + registro orgánico en
+    // otro, y la red de seguridad del claim disparando después— emitía dos
+    // Leads con ids distintos; con el id compartido Meta deduplica. Sigue
+    // siendo idempotente ante retry del POST (mismo user = mismo id). Sin
+    // value: el gratis no factura. En AMBAS dispara SOLO este lado (LTR): el
+    // POST STR comparte el mismo cobro y duplicaría el evento — mismo criterio
+    // que el correo analysis-ready de arriba.
     //
     // waitUntil PROPIO, separado del bloque de arriba: el timeout de Meta (5s) no
     // debe meterse delante del correo ni de la IA. Corre después del response.
@@ -326,7 +331,7 @@ export async function POST(request: Request) {
     // de los webhooks de Flow lleva IP/UA/_fbp/_fbc → mejor match (patrón
     // auth/callback). Se leen ACÁ, dentro del request, no dentro del deferred.
     if (data?.id && chargeMode === "welcome" && user?.email) {
-      const leadId = data.id as string;
+      const leadId = `lead-${user.id}`;
       const leadEmail = user.email;
       const cookieStore = cookies();
       const leadCtx = {

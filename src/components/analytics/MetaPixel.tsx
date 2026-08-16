@@ -14,9 +14,15 @@
  */
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { metaTrack } from "@/lib/meta/pixel";
+import { metaTrack, metaTrackCustom } from "@/lib/meta/pixel";
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+
+/** Marca que deja el wizard cuando un ANÓNIMO crea su análisis (cap F2). El
+ *  submit navega con window.location.href (unload completo) y un fbq disparado
+ *  ahí puede perderse — la marca sobrevive en sessionStorage y este componente
+ *  global la consume en la página destino. */
+const ANON_CREATED_KEY = "meta_anon_created";
 
 export function MetaPixel() {
   const pathname = usePathname();
@@ -59,6 +65,23 @@ export function MetaPixel() {
     if (!PIXEL_ID) return;
     metaTrack("PageView");
   }, [pathname, searchParams]);
+
+  // AnonAnalysisCreated (custom, medición post-F2): señal de optimización de
+  // campaña mientras Lead escasea — el anónimo creó su análisis completo sin
+  // registro. Se consume la marca del wizard UNA vez (leer y borrar antes de
+  // disparar: un fallo del fbq no debe re-emitir en la próxima navegación).
+  // Sin PII: evento pelado, el match lo hacen las cookies del pixel.
+  useEffect(() => {
+    if (!PIXEL_ID) return;
+    try {
+      if (sessionStorage.getItem(ANON_CREATED_KEY)) {
+        sessionStorage.removeItem(ANON_CREATED_KEY);
+        metaTrackCustom("AnonAnalysisCreated");
+      }
+    } catch {
+      /* sessionStorage no disponible — se pierde el evento, no la página */
+    }
+  }, []);
 
   return null;
 }

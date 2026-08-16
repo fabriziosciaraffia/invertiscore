@@ -138,10 +138,17 @@ export function WizardV4({
   // Sin event_id: no hay contraparte CAPI que deduplicar. Gate de infra
   // heredado: sin NEXT_PUBLIC_META_PIXEL_ID no existe fbq y metaTrackCustom es
   // no-op (mismo trato que PageView e InitiateCheckout).
+  //
+  // Post-F2 (cap anónimo): el ANÓNIMO con cap disponible también cumple el
+  // espíritu del evento — es un usuario nuevo entrando al wizard con su gratis
+  // por delante, solo que ya no necesita registrarse primero. Mismo evento
+  // (Meta ya lo conoce y las campañas lo referencian), mismo guard de sesión:
+  // si después se registra y vuelve, sessionStorage ya lo marcó y no re-dispara.
   const sfaFired = useRef(false);
   useEffect(() => {
     if (sfaFired.current) return;
-    if (!esNuevoConAnalisisGratis(tier)) return;
+    const anonConCap = tier?.tier === "guest" && tier.anonCapAvailable === true;
+    if (!esNuevoConAnalisisGratis(tier) && !anonConCap) return;
     try {
       if (sessionStorage.getItem(SFA_SESSION_KEY)) {
         sfaFired.current = true;
