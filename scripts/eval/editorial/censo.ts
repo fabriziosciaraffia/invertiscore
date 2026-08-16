@@ -19,6 +19,11 @@
 // Uso:
 //   node --env-file=.env.local --import tsx scripts/eval/editorial/censo.ts
 //     [--limit N] [--solo id1,id2] [--tipo ltr|str] [--dry] [--presupuesto USD]
+//     [--prosa-fresca] [--hasta ISO]
+//   --prosa-fresca: genera la prosa con el prompt VIGENTE (persist:false, cero
+//          writes) en vez de leer la persistida; el filtro de pv no aplica.
+//          Outputs van a out-censo-fresca/. Para re-censos contra línea base.
+//   --hasta: corte de cohorte por created_at (solo con --prosa-fresca).
 //   --dry: solo arma la cohorte y ensambla (escribe .informe.txt; cero llamadas
 //          al juez). Sirve para validar el ensamblador y dimensionar la corrida.
 //   --presupuesto: presupuesto esperado en USD para esta corrida (default 30).
@@ -30,10 +35,11 @@
 // Guard de presupuesto: si el gasto supera 2x el presupuesto, el script FRENA
 // y reporta (mandato del goal).
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { mkdirSync, writeFileSync } from "fs";
 import path from "path";
 import { ensamblarInforme, type FilaAnalisis } from "./ensamblar";
+import { prosaFrescaLtr, prosaFrescaStr } from "./prosa-fresca";
 import { buildSystemPrompt, evaluarInforme, leerRubrica, EVAL_MODEL, type EvalEditorial, type FallaEditorial } from "./juez";
 import { PROMPT_VERSION_LTR } from "../../../src/lib/ai-generation";
 import { PROMPT_VERSION_STR } from "../../../src/lib/ai-generation-str";
@@ -58,14 +64,25 @@ const limit = flag("limit") ? Number(flag("limit")) : Infinity;
 const solo = flag("solo")?.split(",").map((s) => s.trim()).filter(Boolean) ?? null;
 const soloTipo = flag("tipo"); // "ltr" | "str" | null (ambas modalidades)
 const dry = args.includes("--dry");
+// --prosa-fresca (re-censo): genera la prosa con el prompt VIGENTE (persist:false,
+// cero writes) en vez de leer la persistida. Con este modo el filtro de
+// promptVersion NO aplica (la prosa se regenera); la cohorte se acota por fecha
+// con --hasta <ISO> (created_at <= corte) para reproducir una línea base.
+const prosaFresca = args.includes("--prosa-fresca");
+const hasta = flag("hasta"); // p.ej. --hasta 2026-08-13T23:59:59Z
 const BUDGET_USD = flag("presupuesto") ? Number(flag("presupuesto")) : 30;
 const BUDGET_HARD_STOP_USD = BUDGET_USD * 2;
-const outDir = path.join(__dirname, "out-censo");
+const outDir = path.join(__dirname, prosaFresca ? "out-censo-fresca" : "out-censo");
+// generateAiAnalysis no expone usage con persist:false — se contabiliza un
+// estimado por generación LTR (medido en el regen de 26: ~24k in / ~4k out).
+const LTR_GEN_EST = { in: 24_000, out: 4_000 };
 
 interface FallaMerged extends FallaEditorial {
   confirmada?: boolean; // ALTAs: true si ambas corridas la vieron
 }
 interface ResumenInforme {
+  /** UUID completo — el roster committeado debe permitir delta 1:1 futuro (lección del roster perdido del censo 2026-08-13). */
+  id: string;
   id8: string; tipo: string; veredicto: string; pv: number | null; comuna: string;
   altasConfirmadas: number; altasDebiles: number; medias: number; bajas: number;
   fallas: FallaMerged[];
@@ -116,12 +133,34 @@ async function consolidar(a: FallaEditorial[], b: FallaEditorial[]): Promise<Fal
 }
 
 // ── Un informe ──────────────────────────────────────────────────────────────
-async function procesar(fila: FilaAnalisis, systemPrompt: string): Promise<ResumenInforme> {
+async function procesar(fila: FilaAnalisis, systemPrompt: string, sb: SupabaseClient): Promise<ResumenInforme> {
   const t0 = Date.now();
   const base: Omit<ResumenInforme, "fallas" | "altasConfirmadas" | "altasDebiles" | "medias" | "bajas" | "tokens" | "ms"> = {
-    id8: fila.id.slice(0, 8), tipo: "?", veredicto: "?", pv: null, comuna: fila.comuna ?? "?",
+    id: fila.id, id8: fila.id.slice(0, 8), tipo: "?", veredicto: "?", pv: null, comuna: fila.comuna ?? "?",
   };
   const vacio = { altasConfirmadas: 0, altasDebiles: 0, medias: 0, bajas: 0, fallas: [], tokens: { opusIn: 0, opusOut: 0, sonnetIn: 0, sonnetOut: 0 }, ms: 0 };
+
+  // Prosa fresca (re-censo): reemplaza ai_analysis por la generación del prompt
+  // vigente ANTES de ensamblar. persist:false — la fila de la base no se toca.
+  if (prosaFresca && !dry) {
+    try {
+      const esStr = (fila.tipo_analisis ?? (fila.results as { tipoAnalisis?: string } | null)?.tipoAnalisis) === "short-term";
+      if (esStr) {
+        const gen = await prosaFrescaStr(sb, anthropic, fila);
+        gasto.sonnetIn += gen.usage.inputTokens + gen.usage.cacheReadTokens + gen.usage.cacheCreationTokens;
+        gasto.sonnetOut += gen.usage.outputTokens;
+        fila = { ...fila, ai_analysis: gen.ai as unknown as Record<string, unknown> };
+      } else {
+        const ai = await prosaFrescaLtr(sb, fila.id);
+        if (!ai) throw new Error("generateAiAnalysis devolvió null");
+        gasto.sonnetIn += LTR_GEN_EST.in;
+        gasto.sonnetOut += LTR_GEN_EST.out;
+        fila = { ...fila, ai_analysis: ai };
+      }
+    } catch (e) {
+      return { ...base, ...vacio, error: `prosa-fresca: ${(e as Error)?.message ?? e}` };
+    }
+  }
 
   let informe;
   try {
@@ -162,7 +201,7 @@ async function procesar(fila: FilaAnalisis, systemPrompt: string): Promise<Resum
   }
 
   const resumen: ResumenInforme = {
-    id8: informe.meta.id8, tipo: informe.meta.tipo, veredicto: informe.meta.veredicto,
+    id: fila.id, id8: informe.meta.id8, tipo: informe.meta.tipo, veredicto: informe.meta.veredicto,
     pv: informe.meta.promptVersion, comuna: informe.meta.comuna,
     altasConfirmadas: fallas.filter((f) => f.severidad === "alta" && f.confirmada === true).length,
     altasDebiles: fallas.filter((f) => f.severidad === "alta" && f.confirmada !== true).length,
@@ -206,21 +245,27 @@ async function main() {
 
   const conProsa = (data as FilaAnalisis[]).filter((r) => r.ai_analysis);
   const excluidasPv: Record<string, number> = {};
-  let filas = conProsa.filter((r) => {
-    const tipo = tipoDe(r);
-    const pv = pvDe(r);
-    if (pv === pvVigente[tipo]) return true;
-    const k = `${tipo} pv=${pv ?? "null"}`;
-    excluidasPv[k] = (excluidasPv[k] ?? 0) + 1;
-    return false;
-  });
+  // Con --prosa-fresca el filtro de pv NO aplica (la prosa se regenera con el
+  // prompt vigente); la cohorte se acota por fecha si vino --hasta.
+  let filas = prosaFresca
+    ? conProsa.filter((r) => !hasta || ((r as { created_at?: string }).created_at ?? "") <= hasta)
+    : conProsa.filter((r) => {
+        const tipo = tipoDe(r);
+        const pv = pvDe(r);
+        if (pv === pvVigente[tipo]) return true;
+        const k = `${tipo} pv=${pv ?? "null"}`;
+        excluidasPv[k] = (excluidasPv[k] ?? 0) + 1;
+        return false;
+      });
   if (soloTipo) filas = filas.filter((r) => tipoDe(r) === soloTipo);
   if (solo) filas = filas.filter((r) => solo.some((p) => r.id.startsWith(p)));
   filas = filas.slice(0, limit);
 
   const nLtr = filas.filter((r) => tipoDe(r) === "ltr").length;
   console.log(`Cohorte: ${filas.length} informes (LTR ${nLtr} · STR ${filas.length - nLtr}) de ${conProsa.length} con prosa IA`);
-  console.log(`Excluidos por promptVersion no vigente (LTR=${PROMPT_VERSION_LTR}, STR=${PROMPT_VERSION_STR}): ${JSON.stringify(excluidasPv)}`);
+  console.log(prosaFresca
+    ? `Prosa FRESCA (persist:false) con prompt vigente LTR=${PROMPT_VERSION_LTR} / STR=${PROMPT_VERSION_STR}${hasta ? ` · cohorte hasta ${hasta}` : ""}`
+    : `Excluidos por promptVersion no vigente (LTR=${PROMPT_VERSION_LTR}, STR=${PROMPT_VERSION_STR}): ${JSON.stringify(excluidasPv)}`);
   console.log(dry
     ? "Modo --dry: solo ensamblado, cero llamadas al juez."
     : `Juez ${EVAL_MODEL} ×2 + merge ${MERGE_MODEL} · dimensiones 1-7 + 9-13 (D8 excluida) · presupuesto USD ${BUDGET_USD} (freno duro ${BUDGET_HARD_STOP_USD})`);
@@ -235,7 +280,7 @@ async function main() {
     while (idx < filas.length) {
       if (usd() > BUDGET_HARD_STOP_USD) { frenado = true; return; }
       const fila = filas[idx++];
-      const r = await procesar(fila, systemPrompt);
+      const r = await procesar(fila, systemPrompt, sb);
       resumenes.push(r);
       const marca = r.error ? `✗ ${r.error.slice(0, 60)}` : `A✓${r.altasConfirmadas} A?${r.altasDebiles} M${r.medias} B${r.bajas}`;
       console.log(`[${resumenes.length}/${filas.length}] ${r.id8} ${r.tipo} ${r.veredicto.padEnd(16)} pv=${r.pv ?? "-"} · ${marca} · USD ${usd().toFixed(2)}`);
@@ -247,6 +292,7 @@ async function main() {
   writeFileSync(path.join(outDir, "_censo.json"), JSON.stringify({
     corrida: {
       informes: resumenes.length, frenado, usd: usd(), minutos: totalMin, gasto, dry,
+      prosaFresca, hasta: hasta ?? null,
       cohorte: { pvVigente, excluidasPv, conProsa: conProsa.length },
     },
     resumenes,
