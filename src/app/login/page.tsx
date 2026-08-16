@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePostHog } from "posthog-js/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { marcarOAuthPendiente } from "@/lib/auth-analytics";
 import FrancoLogo from "@/components/franco-logo";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
@@ -12,6 +14,7 @@ import { esDestinoSeguro } from "@/lib/auth-next";
 
 export default function LoginPage() {
   const router = useRouter();
+  const posthog = usePostHog();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -62,6 +65,11 @@ export default function LoginPage() {
       return;
     }
 
+    // Espejo de `signup_completed`: sin este evento, el usuario que ya tiene
+    // cuenta y vuelve al gate del wizard a loguearse era invisible en el funnel
+    // — se veía la salida (`wizard4_analysis_created`) sin la entrada.
+    posthog?.capture("login_completed", { method: "email" });
+
     // Destino tras login: ?next= (intención de compra, ej /checkout?product=X, o
     // el round-trip del wizard) o dashboard.
     //
@@ -79,6 +87,10 @@ export default function LoginPage() {
     const callbackUrl = next
       ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
       : `${window.location.origin}/auth/callback`;
+    // La vuelta de OAuth entra por un route handler: no hay componente cliente
+    // donde capturar el éxito. Se marca la intención y el provider global la
+    // consume cuando ya existe sesión.
+    marcarOAuthPendiente("login");
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",

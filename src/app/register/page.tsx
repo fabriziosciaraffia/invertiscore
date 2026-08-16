@@ -9,6 +9,7 @@ import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { LinkAuth } from "@/components/auth/LinkAuth";
 import { esDestinoSeguro } from "@/lib/auth-next";
+import { marcarOAuthPendiente } from "@/lib/auth-analytics";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -85,6 +86,10 @@ export default function RegisterPage() {
     const callbackUrl = next
       ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
       : `${window.location.origin}/auth/callback`;
+    // El `capture` de más arriba cuelga del signUp por email; este camino se va
+    // en redirect antes de llegar ahí, así que el alta con Google no emitía
+    // NADA. Se marca la intención y el provider global emite al volver.
+    marcarOAuthPendiente("signup");
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",

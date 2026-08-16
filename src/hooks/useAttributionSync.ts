@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
+import { consumirOAuthPendiente } from "@/lib/auth-analytics";
 import {
   ATTRIBUTION_SYNCED_KEY,
   UTM_KEYS,
@@ -86,6 +87,12 @@ export function useAttributionSync(): void {
 
     anotarPrimeraVisita();
 
+    // Vuelta de OAuth: se lee y BORRA la marca acá, sincrónicamente, antes de
+    // cualquier await. Si el usuario abandonó el flujo de Google, la marca
+    // muere en esta carga en vez de quedar esperando a la próxima sesión y
+    // atribuirle a Google un login que fue por email.
+    const oauthPendiente = consumirOAuthPendiente();
+
     let cancelado = false;
 
     (async () => {
@@ -101,6 +108,20 @@ export function useAttributionSync(): void {
           posthog?.identify(user.id, user.email ? { email: user.email } : undefined);
         } catch {
           /* PostHog sin inicializar (sin key en el env) — no es un problema */
+        }
+
+        // ── Auth por OAuth: el evento que la pantalla no pudo emitir ──
+        // Va DESPUÉS del identify a propósito: así el evento cae en la persona
+        // ya atada al user_id y no en la anónima que venía de antes.
+        if (oauthPendiente) {
+          try {
+            posthog?.capture(
+              oauthPendiente === "signup" ? "signup_completed" : "login_completed",
+              { method: "google" },
+            );
+          } catch {
+            /* mismo trato que el identify: sin PostHog no pasa nada */
+          }
         }
 
         // ── PostHog: marcar cuentas internas (Goal B) ──
