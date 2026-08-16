@@ -65,6 +65,19 @@ import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
 import { estamparSubmit } from "@/lib/informe-visto";
 
+/**
+ * Variante del gate de auth que ve el anónimo al llegar al resumen. Viaja como
+ * propiedad de `wizard4_gate_auth_shown` para poder comparar conversión entre
+ * variantes SIN inventar eventos nuevos (el funnel gate→signup sigue siendo el
+ * mismo, solo se parte por esta propiedad).
+ *
+ * Hoy `"muro"`: el anónimo ve el resumen completo y editable, y el CTA final le
+ * pide crear cuenta antes de entregar cualquier conclusión. Cuando entre el
+ * veredicto parcial, esta constante pasa a `"teaser"` y es el único lugar donde
+ * se cambia.
+ */
+export const GATE_VARIANT = "muro";
+
 const LABEL_MOD: Record<string, string> = { ltr: "Renta larga", str: "Renta corta", both: "Comparativo" };
 const LABEL_GATE: Record<string, string> = { si: "Sí permite", no: "No permite", no_seguro: "No estoy seguro" };
 
@@ -706,10 +719,28 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     ggccSugerido: data.ggccSugerido,
   };
 
+  // Gate mostrado: UN disparo por montaje del resumen y por tipo de gate.
+  //
+  // El momento ya era el correcto —`ResumenScreen` solo se monta en el nodo
+  // `resumen`, así que el evento marca la llegada real, no el mount del wizard
+  // (verificado en PostHog: 276/276 con `step_viewed node='resumen'` previo,
+  // mediana de 147 s desde el primer paso). Lo que estaba mal era el CONTEO: las
+  // deps re-disparaban con cada cambio de modalidad inline y con cada cambio de
+  // identidad de `tier` — 330 eventos para 277 usuarios en 30 días, hasta 7 por
+  // persona. El funnel por usuario único lo aguantaba; cualquier métrica por
+  // conteo de eventos, no. El ref lo cierra sin tocar el momento del disparo.
+  const gateEmitido = useRef<{ auth?: boolean; credits?: boolean }>({});
   useEffect(() => {
     if (tier == null || !mod) return;
-    if (!isLoggedIn) trackWizard(posthog, "wizard4_gate_auth_shown", { modalidad: mod });
-    else if (!canAnalyze) trackWizard(posthog, "wizard4_gate_credits_shown", { modalidad: mod });
+    if (!isLoggedIn) {
+      if (gateEmitido.current.auth) return;
+      gateEmitido.current.auth = true;
+      trackWizard(posthog, "wizard4_gate_auth_shown", { modalidad: mod, gate_variant: GATE_VARIANT });
+    } else if (!canAnalyze) {
+      if (gateEmitido.current.credits) return;
+      gateEmitido.current.credits = true;
+      trackWizard(posthog, "wizard4_gate_credits_shown", { modalidad: mod });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tier, isLoggedIn, canAnalyze, mod]);
 
