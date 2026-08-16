@@ -191,6 +191,26 @@ export const GOLDEN_SEEDS: GoldenSeed[] = [
     mediana: { mediana: null, n: 0 },
     nota: "El lado positivo del pie 0: flujo +$54K → COMPRAR por G3 (flujo+neta+plusvalía, cero métricas sobre capital). La lectura correcta es 'aguanta su propio financiamiento completo', nunca retorno sobre capital (A-PC3).",
   },
+  {
+    key: "GS-PJ",
+    uuid: "90111111-0000-4000-a000-0000000000c1",
+    label: "AJUSTA · precio-justo (todo a mercado, veredicto degradado) · Santiago",
+    ejes: ["veredicto:AJUSTA", "precioJusto:sí", "VM:alineado", "mediana:confiable", "arriendo:en-banda", "flujo:-", "gate:banda"],
+    // zonaRadio va por spread (ltr() no lo enumera): arriendo == arriendoPromedio
+    // ⇒ procedencia estimación-franco ⇒ pata "ingreso a mercado" de la detección.
+    input: {
+      ...ltr({
+        comuna: "Santiago", ciudad: "Santiago", nombre: "GOLDEN GS-PJ Santiago",
+        precio: 2080, arriendo: 420000, superficie: 40, superficieTotal: 40,
+        dormitorios: 2, banos: 1, antiguedad: 8, piePct: 20, tasaInteres: 4.6,
+        plazoCredito: 25, gastos: 90000, vacanciaMeses: 1,
+        valorMercadoFranco: 2140,
+      }),
+      zonaRadio: { arriendoPromedio: 420000, sampleSizeArriendo: 18, radioMetros: 750 },
+    } as GoldenSeed["input"],
+    mediana: { mediana: 52, n: 300 },
+    nota: "§1.12.4: precio/m² = mediana (desv 0), vm 2140 vs precio 2080 (+2,9%, dif > $1M), arriendo = comparables (estimación franco) → casoPrecioJusto = true con AJUSTA (score ~63, flujo ~-$56K, banda pura). Fija: detección + reencuadre canónico + Ángulo 2 obligatorio + prohibición del descuento cosmético. Calibrado 15-ago-2026.",
+  },
 ];
 
 // ── 3 casos-borde deterministas (solo motor, sin LLM) ───────────────────────

@@ -42,7 +42,7 @@ function buildInputs(d: any, airbnbData: any, uf: number) {
 }
 
 /** Seeds sin fixture propia y la fila base sobre la que se sintetizan. */
-export const FILA_BASE: Record<string, string> = { "GE-PC": "GE-1" };
+export const FILA_BASE: Record<string, string> = { "GE-PC": "GE-1", "GE-PJ": "GE-2" };
 
 /**
  * Transformación pie-cero-banda (GE-PC · rama B). Sobre GE-1: precio ×0,7 y
@@ -73,6 +73,13 @@ function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any; reg: string 
   if (s === "occ_strip") {
     // Quita toda señal de ocupación → resolveOccObservada cae a fallback 0,45.
     raw = { ...fx.airbnbRaw, estimated_occupancy: 0, percentiles: { ...fx.airbnbRaw.percentiles, occupancy: { p25: 0, p50: 0, p75: 0, p90: 0, avg: 0 } } };
+  }
+  if (s === "precio_justo") {
+    // GE-PJ (§1.12.4): tarifa y ocupación ancladas a la mediana observada — CERO
+    // overrides del usuario. La otra pata (mediana comunal ALINEADA) se resuelve
+    // en recomputeStrSeed, que es donde vive la mediana del golden.
+    d.adrOverride = null;
+    d.occOverride = null;
   }
   return { d, raw, reg };
 }
@@ -194,8 +201,13 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
     lat: d.lat ?? -33.4378, lng: d.lng ?? -70.6504,
     revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue };
   const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, ...scoreExtras } as any);
-  // mediana fake confiable para ejercitar sobreprecio: comuna típica.
-  const mediana = { mediana: 3200, n: 12 };
+  // mediana fake confiable para ejercitar sobreprecio: comuna típica. Para el
+  // seed precio-justo (GE-PJ) la mediana va ALINEADA al precio/m² del sujeto
+  // (desv 0, confiable) — es la pata de la detección esCasoPrecioJustoStr.
+  const mediana =
+    seed.sintesis === "precio_justo"
+      ? { mediana: Math.round((d.precioCompra / fx.uf / d.superficieUtil) * 10) / 10, n: 25 }
+      : { mediana: 3200, n: 12 };
   // `veredictoCtx` es obligatorio en el golden aunque el assembler lo acepte opcional: sin
   // él el hallazgo de distancia al veredicto se omite y la red de seguridad mediría una
   // pirámide más corta que la de producción, en silencio.

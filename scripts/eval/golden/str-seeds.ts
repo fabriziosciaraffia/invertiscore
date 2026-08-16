@@ -14,7 +14,7 @@
 import fs from "fs";
 import path from "path";
 
-export type Sintesis = "reg_no" | "occ_strip" | "pie_cero_banda" | null;
+export type Sintesis = "reg_no" | "occ_strip" | "pie_cero_banda" | "precio_justo" | null;
 
 export interface StrGeSeed {
   key: string;         // "GE-1"
@@ -53,6 +53,13 @@ export const STR_GE_SEEDS: StrGeSeed[] = [
       "Replica el perfil del único caso real del corpus (Las Condes, medido en el recompute de " +
       "banda) sin congelar su fila. Invariante BS-PC: con pie 0 ningún COMPRAR puede descansar en " +
       "TIR ni multiplicador. Su control es el MISMO perfil con pie 20%: COMPRAR con flujo positivo." },
+  { key: "GE-PJ", label: "AJUSTA · precio-justo STR (mediana alineada + cero overrides)", sintesis: "precio_justo",
+    ejes: ["E1:AJUSTA", "precioJusto:sí", "mediana:alineada", "overrides:cero"],
+    nota: "§1.12.4 STR: sintetizado sobre GE-2 (AJUSTA) anulando adrOverride/occOverride (tarifa y " +
+      "ocupación ancladas a la mediana observada) y con la mediana comunal ALINEADA al precio/m² " +
+      "del sujeto (desv 0, confiable) → esCasoPrecioJustoStr = true. Fija la detección y — si el " +
+      "caso cae estructural — la variante del cierre 'esta zona no sostiene renta corta a los " +
+      "precios de compra actuales'. Calibrado 15-ago-2026 (AJUSTA score ~64, recuperable)." },
 ];
 
 // ── 3 razor-edges a nivel de builder (frontera exacta del corte) ─────────────
