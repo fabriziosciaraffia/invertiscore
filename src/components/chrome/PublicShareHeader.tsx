@@ -39,7 +39,9 @@ export function PublicShareHeader({
         borderBottom: "0.5px solid var(--franco-border)",
       }}
     >
-      <div className="mx-auto flex max-w-[900px] items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5">
+      {/* flex-wrap: en mobile la variante anonOwner trae un CTA largo — sin
+          wrap se montaba sobre el wordmark (visto en la validación F2-2). */}
+      <div className="mx-auto flex max-w-[900px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:px-6 sm:py-5">
         {/* IZQ — logo + marcador */}
         <div className="flex min-w-0 items-center gap-4">
           <FrancoLogo inverted size="header" href="/" />
