@@ -59,6 +59,11 @@ export interface TierInfo {
   activePlan?: string | null;
   isUnlimited?: boolean;
   nextCharge?: string | null;
+  /** Cap anónimo (F2-2): true cuando el guest de ESTE navegador todavía puede
+   *  generar su análisis gratis sin registro (no existe la cookie franco_anon).
+   *  Solo viene en la rama guest de /api/me/tier; lectura, NO gating — el
+   *  enforcement real es server-side en las rutas de creación. */
+  anonCapAvailable?: boolean;
 }
 
 /** ¿Plan FINITO (plan10/plan50, NO ilimitado)? Estos consumen saldo del ledger. */

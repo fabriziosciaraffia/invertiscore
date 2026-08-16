@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserAccessLevel } from "@/lib/access";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
+import { anonCapDisponible } from "@/lib/api-helpers/anon-cap";
 
 export async function GET() {
   try {
@@ -19,6 +20,10 @@ export async function GET() {
         activePlan: null,
         isUnlimited: false,
         nextCharge: null,
+        // Cap anónimo (F2-2): esta ruta es la única superficie client-facing
+        // que puede ver la cookie httpOnly. Señal de UX para el CTA del wizard;
+        // el enforcement real vive en las rutas de creación.
+        anonCapAvailable: anonCapDisponible(),
       });
     }
 

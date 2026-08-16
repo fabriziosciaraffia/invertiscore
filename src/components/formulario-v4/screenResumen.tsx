@@ -35,7 +35,8 @@ import type { WizardV4Answers, Antiguedad } from "./wizardV4Nodes";
 import { DEC, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
-import { buildLtrPayload, buildStrPayload, comprarLocked, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
+import { buildLtrPayload, buildStrPayload, comprarLocked, submitAnonimo, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
+import { obtenerTokenTurnstile } from "./turnstile";
 import {
   evaluarPlausibilidad,
   desdeBodyLtr,
@@ -71,12 +72,14 @@ import { estamparSubmit } from "@/lib/informe-visto";
  * variantes SIN inventar eventos nuevos (el funnel gate→signup sigue siendo el
  * mismo, solo se parte por esta propiedad).
  *
- * Hoy `"muro"`: el anónimo ve el resumen completo y editable, y el CTA final le
- * pide crear cuenta antes de entregar cualquier conclusión. Cuando entre el
- * veredicto parcial, esta constante pasa a `"teaser"` y es el único lugar donde
- * se cambia.
+ * Historia: `"muro"` fue el baseline (CTA de registro sin entregar nada). Con
+ * el cap anónimo (F2-2) el anónimo ya no choca un muro:
+ *  · `"anonimo_cap"` — cap disponible: el CTA es "Generar mi análisis gratis".
+ *  · `"anonimo_cap_consumido"` — segundo intento: muro de registro.
  */
-export const GATE_VARIANT = "muro";
+export function gateVariant(anonCap: boolean): string {
+  return anonCap ? "anonimo_cap" : "anonimo_cap_consumido";
+}
 
 const LABEL_MOD: Record<string, string> = { ltr: "Renta larga", str: "Renta corta", both: "Comparativo" };
 const LABEL_GATE: Record<string, string> = { si: "Sí permite", no: "No permite", no_seguro: "No estoy seguro" };
@@ -709,6 +712,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   }, [alfiloKey]);
 
   const canAnalyze = canAnalyzeFromTier(tier);
+  // Cap anónimo (F2-2): ¿este navegador todavía puede generar su análisis
+  // gratis sin registro? Señal de UX (/api/me/tier lee la cookie httpOnly);
+  // el enforcement real es server-side en las rutas de creación.
+  const anonCap = !isLoggedIn && tier?.anonCapAvailable === true;
   const ctx: SubmitContext = {
     ufCLP: data.ufCLP,
     tasaMercado: data.tasaMercado,
@@ -735,7 +742,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     if (!isLoggedIn) {
       if (gateEmitido.current.auth) return;
       gateEmitido.current.auth = true;
-      trackWizard(posthog, "wizard4_gate_auth_shown", { modalidad: mod, gate_variant: GATE_VARIANT });
+      trackWizard(posthog, "wizard4_gate_auth_shown", { modalidad: mod, gate_variant: gateVariant(anonCap) });
     } else if (!canAnalyze) {
       if (gateEmitido.current.credits) return;
       gateEmitido.current.credits = true;
@@ -990,29 +997,46 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         modalidad: mod, reglas: locales.map((x) => x.regla), origen: "cliente",
       });
     } else {
-      trackWizard(posthog, "wizard4_confirm_shown", { modalidad: mod, camino: canAnalyze ? "credito" : "compra" });
+      trackWizard(posthog, "wizard4_confirm_shown", {
+        modalidad: mod,
+        camino: !isLoggedIn ? "anonimo" : canAnalyze ? "credito" : "compra",
+      });
     }
   }
 
   /** Primario del modal: recién acá sale el POST. */
   async function confirmarYEnviar() {
     setError(""); setAnomalias([]); setSubmitting(true); onTerminal();
-    const esCredito = canAnalyze;
-    trackWizard(posthog, esCredito ? "wizard4_submitted" : "wizard4_checkout_initiated", { modalidad: mod });
+    // Tres caminos: anónimo con cap (F2-2) → genera gratis sin sesión;
+    // logueado con saldo → crédito; logueado sin saldo → compra locked.
+    const esAnonimo = !isLoggedIn;
+    const esCredito = !esAnonimo && canAnalyze;
+    trackWizard(
+      posthog,
+      esAnonimo || esCredito ? "wizard4_submitted" : "wizard4_checkout_initiated",
+      { modalidad: mod, ...(esAnonimo ? { camino: "anonimo" } : {}) },
+    );
     // Stamp del click (Goal B): la página de resultados lo consume para medir
     // espera_ms de `informe_visto` — la espera COMPLETA percibida, click →
     // veredicto visible, que el server no puede medir.
     estamparSubmit();
-    const res = esCredito ? await submitConCredito(a, ctx) : await comprarLocked(a, ctx);
+    const res = esAnonimo
+      ? await submitAnonimo(a, ctx, await obtenerTokenTurnstile())
+      : esCredito
+        ? await submitConCredito(a, ctx)
+        : await comprarLocked(a, ctx);
     if (res.ok && res.redirect) {
       // Éxito real del POST (Goal B): cierra el hueco del funnel entre
       // "submitted" (pre-fetch) y el informe. posthog-js despacha el batch con
       // sendBeacon al pagehide, así que la navegación no se lo come.
-      trackWizard(posthog, "wizard4_analysis_created", { modalidad: mod, camino: esCredito ? "credito" : "compra-locked" });
+      trackWizard(posthog, "wizard4_analysis_created", {
+        modalidad: mod,
+        camino: esAnonimo ? "anonimo" : esCredito ? "credito" : "compra-locked",
+      });
       window.location.href = res.redirect;
       return;
     }
-    manejarFallo(res, esCredito ? "No pudimos generar el análisis." : "No se pudo crear el análisis.");
+    manejarFallo(res, esCredito || esAnonimo ? "No pudimos generar el análisis." : "No se pudo crear el análisis.");
     // El 422 NO cierra el modal: cambia de estado limpio a estado anomalía.
     if (res.anomalias?.length) setHuellaBloqueada(huellaActual);
     else setModalAbierto(false);
@@ -1328,7 +1352,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           </button>
         )}
         <div className="w-full max-w-[360px] shrink-0 flex flex-col justify-end gap-1.5">
-          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
+          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} anonCap={anonCap} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
           {(lineaIncompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
             <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{lineaIncompleto ?? lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
           )}
@@ -1345,7 +1369,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           derivados: derivadosResumen,
         }}
         consumo={consumo}
-        labelConfirmar={canAnalyze ? "Generar el análisis" : `Ir a pagar · ${fmtCLP(SINGLE_PRICE)}`}
+        labelConfirmar={!isLoggedIn ? "Generar mi análisis gratis" : canAnalyze ? "Generar el análisis" : `Ir a pagar · ${fmtCLP(SINGLE_PRICE)}`}
         submitting={submitting}
         onOrigen={irAOrigen}
         onConfirmar={confirmarYEnviar}
@@ -1355,7 +1379,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
       {/* Mobile: CTA sticky. */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-bg)_92%,transparent)] backdrop-blur px-4 py-3">
         <div className="max-w-3xl mx-auto flex flex-col items-stretch gap-1.5">
-          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
+          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} anonCap={anonCap} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto || bloqueadoPorAnomalia} onAbrir={abrirConfirmacion} onTerminal={onTerminal} />
           {(lineaIncompleto || lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)) && (
             <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{lineaIncompleto ?? lineaConsumo(tier, isLoggedIn, canAnalyze, mod, a.comuna)}</p>
           )}
@@ -1385,9 +1409,14 @@ export function lineaConsumo(
 ): string | null {
   const sufijoMod = mod === "both" ? " comparativo" : "";
 
-  // Guest: rama propia. Antes caía en "Después de esto, el informe es final."
-  // bajo un botón que dice "Crear cuenta gratis" — dos mensajes que no se hablan.
-  if (!isLoggedIn) return "Creas tu cuenta y el primero va por cuenta de Franco.";
+  // Guest: rama propia, partida por el cap anónimo (F2-2). Con cap disponible
+  // el CTA genera de verdad — la línea lo dice sin pedir cuenta. Con cap
+  // consumido, el CTA es registro y la línea no promete recuperar nada.
+  if (!isLoggedIn) {
+    return tier?.anonCapAvailable === true
+      ? "El primero va por cuenta de Franco — sin crear cuenta."
+      : "Tu análisis gratis ya lo usaste. Crea tu cuenta para seguir.";
+  }
 
   // Sin saldo: compra directa.
   if (!canAnalyze) {
@@ -1410,9 +1439,9 @@ export function lineaConsumo(
   return `Esto usa uno de tus análisis. ${quedan}${totalPlan ? ` de ${totalPlan}` : ""}.`;
 }
 
-function FinalCTA({ mod, isLoggedIn, canAnalyze, submitting, incompleto, onAbrir, onTerminal }: { mod: string | undefined; isLoggedIn: boolean; canAnalyze: boolean; submitting: boolean; incompleto: boolean; onAbrir: () => void; onTerminal: () => void }) {
+function FinalCTA({ mod, isLoggedIn, anonCap, canAnalyze, submitting, incompleto, onAbrir, onTerminal }: { mod: string | undefined; isLoggedIn: boolean; anonCap: boolean; canAnalyze: boolean; submitting: boolean; incompleto: boolean; onAbrir: () => void; onTerminal: () => void }) {
   const cls = "font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed";
-  if (canAnalyze) {
+  if (isLoggedIn && canAnalyze) {
     // Sin "· 1 crédito": era falso para ilimitados y admins, y el consumo real
     // lo dice `lineaConsumo` según el tier. El botón solo nombra la acción.
     return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</> : <>✦ Generar el análisis</>}</button>;
@@ -1420,8 +1449,15 @@ function FinalCTA({ mod, isLoggedIn, canAnalyze, submitting, incompleto, onAbrir
   if (isLoggedIn) {
     return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}</button>;
   }
-  if (incompleto) {
-    return <span className={`${cls} opacity-60 cursor-not-allowed`}>Crear cuenta gratis <ArrowRight size={14} /></span>;
+  // Anónimo con cap disponible (F2-2): el CTA genera DE VERDAD — mismo camino
+  // del modal de confirmación; el submit sale sin sesión y el server emite la
+  // cookie del cap con el response.
+  if (anonCap) {
+    return <button type="button" onClick={onAbrir} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</> : <>✦ Generar mi análisis gratis</>}</button>;
   }
-  return <Link href={`/register?next=${encodeURIComponent("/analisis/nuevo-v4?resume=1")}`} onClick={onTerminal} className={cls}>Crear cuenta gratis <ArrowRight size={14} /></Link>;
+  // Anónimo con cap consumido: muro de registro (baseline del funnel).
+  if (incompleto) {
+    return <span className={`${cls} opacity-60 cursor-not-allowed`}>Regístrate para continuar <ArrowRight size={14} /></span>;
+  }
+  return <Link href={`/register?next=${encodeURIComponent("/analisis/nuevo-v4?resume=1")}`} onClick={onTerminal} className={cls}>Regístrate para continuar <ArrowRight size={14} /></Link>;
 }

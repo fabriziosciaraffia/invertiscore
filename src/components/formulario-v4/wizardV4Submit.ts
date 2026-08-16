@@ -421,6 +421,68 @@ export async function submitConCredito(a: WizardV4Answers, ctx: SubmitContext): 
   }
 }
 
+/**
+ * Cap anónimo (F2-2): genera el análisis SIN sesión contra las mismas rutas del
+ * flujo con crédito — el server resuelve el actor por ausencia de sesión, valida
+ * cap/IP/Turnstile y emite la cookie `franco_anon` con el response.
+ *
+ * AMBAS va SERIALIZADO a propósito (decisión F2-1 #4): el POST LTR emite la
+ * cookie y el POST STR viaja después CON ella — el server la reconoce como
+ * hermano del par por el ambasGroupId. El Promise.allSettled del flujo con
+ * crédito queda intacto; los 2-3 s extra son una vez en la vida del anónimo.
+ */
+export async function submitAnonimo(
+  a: WizardV4Answers,
+  ctx: SubmitContext,
+  turnstileToken: string | null,
+): Promise<SubmitResult> {
+  const mod = a.modalidad;
+  const sinPie = guardPieDeclarado(a, ctx);
+  if (sinPie) return sinPie;
+  const extra = turnstileToken ? { turnstileToken } : {};
+  try {
+    if (mod === "ltr") {
+      const { id } = await postJson("/api/analisis", { ...buildLtrPayload(a, ctx), ...extra });
+      return { ok: true, redirect: `/analisis/${id}` };
+    }
+    if (mod === "str") {
+      const { id } = await postJson("/api/analisis/short-term", { ...buildStrPayload(a, ctx), ...extra });
+      return { ok: true, redirect: `/analisis/renta-corta/${id}` };
+    }
+    // AMBAS serializado. Si el STR falla con el LTR ya creado, se degrada al
+    // LTR suelto con la misma marca de parcial que usa el flujo con crédito.
+    const ambasGroupId = crypto.randomUUID();
+    const { id: ltrId } = await postJson("/api/analisis", {
+      ...buildLtrPayload(a, ctx),
+      ...extra,
+      ambasGroupId,
+    });
+    try {
+      const { id: strId } = await postJson("/api/analisis/short-term", {
+        ...buildStrPayload(a, ctx),
+        ambasGroupId,
+      });
+      return { ok: true, redirect: `/analisis/comparativa?ltr=${ltrId}&str=${strId}` };
+    } catch {
+      try { sessionStorage.setItem("franco_both_partial", JSON.stringify({ ok: "ltr", failed: "str" })); } catch { /* ignore */ }
+      return { ok: true, redirect: `/analisis/${ltrId}` };
+    }
+  } catch (err) {
+    // Ids de máquina del server anónimo → mensaje legible. El 403 del cap
+    // llega si la señal de UX (anonCapAvailable) quedó stale — p. ej. dos
+    // pestañas: una generó y la otra tenía el resumen abierto de antes.
+    const crudo = err instanceof Error ? err.message : "Error inesperado";
+    const error = crudo === "cap_anonimo_consumido"
+      ? "Tu análisis gratis ya lo usaste. Crea tu cuenta para seguir."
+      : crudo;
+    return {
+      ok: false,
+      error,
+      anomalias: err instanceof ApiError ? err.anomalias : undefined,
+    };
+  }
+}
+
 /** Compra pre-pago (logueado sin créditos): crea fila(s) locked y va a checkout. */
 export async function comprarLocked(a: WizardV4Answers, ctx: SubmitContext): Promise<SubmitResult> {
   const mod = a.modalidad;
