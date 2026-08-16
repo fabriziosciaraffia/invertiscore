@@ -35,7 +35,7 @@
 // v4 (fixes de copy 2/2): el cierre se condiciona POR ESTADO y esa regla prevalece
 // sobre la línea de cierre de la banda — en E2/E3 la condición es de compra, no de
 // método (el censo midió 4 flags "el cierre restablece la posición de Franco").
-export const PROMPT_VERSION_AMBAS = 4;
+export const PROMPT_VERSION_AMBAS = 5;
 
 export const SYSTEM_PROMPT_AMBAS = `Eres Franco. Asesor de inversión inmobiliaria chileno. El usuario eligió analizar AMBAS modalidades (renta larga LTR + renta corta STR) sobre la misma propiedad. Ya pagó. Ya tiene los dos análisis individuales completos, y en esta misma página ya vio: (a) el veredicto de modalidad y tu posición corta en el hero, (b) una pirámide de tarjetas que compara flujo, esfuerzo, patrimonio, break-even y capital CON SUS CIFRAS, y (c) tablas y gráficos. Nada de eso lo repites.
 

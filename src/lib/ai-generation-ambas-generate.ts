@@ -201,6 +201,41 @@ export async function generateComparativaAI(opts: GenerateComparativaOpts): Prom
     e3: "E3 — un lado no se sostiene: subordinación parcial (la compra pide ajustar supuestos; la otra vía no se sostiene)",
   };
 
+  // §1.12.4 — herencia mínima del precio-justo de los hijos (matriz 15-ago-2026:
+  // la UBICACIÓN la dicta el estado del hero, nunca la IA; sin flag = SILENCIO).
+  // Los flags vienen pre-digeridos por los motores de cada hijo (esCasoPrecioJusto
+  // LTR / esCasoPrecioJustoStr STR) en el hallazgo de distancia recomputado.
+  const pjDe = (hs: unknown): boolean =>
+    Array.isArray(hs) &&
+    (hs as { id?: string; valor?: { casoPrecioJusto?: boolean } }[]).some(
+      (h) => h?.id === "distancia_veredicto" && h.valor?.casoPrecioJusto === true,
+    );
+  const pjLtr = pjDe((ltrResults as { hallazgos?: unknown }).hallazgos);
+  const pjStr = pjDe((strResults as { hallazgos?: unknown }).hallazgos);
+  const bloquePrecioJustoAmbas = (() => {
+    if (!pjLtr && !pjStr) return "";
+    const ubicacion =
+      estadoHero === "e2"
+        ? "ARRIBA — fundida con el marco «si igual lo compras»; refuerza la subordinación, cero celebración del método"
+        : estadoHero === "e3"
+          ? "subordinada al lado que no se sostiene"
+          : "como CONDICIÓN del cierre (la comparación de método sigue; ajustar la entrada beneficia a las dos)";
+    const linea =
+      pjLtr && pjStr
+        ? `"a precios de compra actuales, esta zona no remunera ni la renta larga ni la corta — el problema no es la modalidad, es la entrada"`
+        : pjLtr
+          ? `"la renta larga acá no falla por el depto ni por su precio — a precios de compra actuales esta zona no la remunera; es un problema de entrada, no de modalidad"`
+          : `"el corto acá no falla por gestión ni por tarifa — esta zona no sostiene renta corta a los precios de compra actuales; es un problema de entrada, no de modalidad"`;
+    const alcance = pjLtr && pjStr ? "AMBOS hijos" : pjLtr ? "el hijo de renta larga" : "el hijo de renta corta";
+    return `
+
+=== PRECIO-JUSTO (herencia de los hijos · §1.12.4) ===
+${alcance} detectó caso precio-justo: precio e ingresos a mercado con veredicto degradado — el problema es la ENTRADA (lo que cuesta comprar acá), no la modalidad ni la ejecución.
+LÍNEA CANÓNICA (adáptala lo mínimo): ${linea}.
+UBICACIÓN (la dicta el estado del hero, no tú): ${ubicacion}.
+PROHIBIDO: resolverlo con un descuento cosmético, culpar la ejecución (gestión/tarifa/arriendo declarado) del lado marcado, o presentar a la ganadora como si la compra quedara validada.`;
+  })();
+
   const modoGestion = (strInput?.modoGestion as string) ?? "auto";
   const comisionAdminDec = (strInput?.comisionAdministrador as number) ?? 0.2;
   const comisionAdmin = Math.round(comisionAdminDec * 100);
@@ -253,7 +288,7 @@ ${zona ? `zona: ${zona.tierZona} (score ${zona.score}/100)${zona.comunaNoListada
 estadoHero: ${estadoHeroLabel[estadoHero]}
 análisis renta larga: ${ltrVerdict ?? "sin veredicto"} (score ${ltrScoreHijo})
 análisis renta corta: ${strVerdict ?? "sin veredicto"} (score ${strScoreHijo})
-Tu prosa NUNCA contradice estos veredictos de compra.
+Tu prosa NUNCA contradice estos veredictos de compra.${bloquePrecioJustoAmbas}
 
 === APERTURA YA ESCRITA POR EL MOTOR (${aperturaWC} palabras) ===
 Se antepone automáticamente. NO la escribas, NO la parafrasees. Tu movimiento 1 CONTINÚA después de ella:
