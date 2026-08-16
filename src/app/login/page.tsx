@@ -5,7 +5,7 @@ import { usePostHog } from "posthog-js/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { marcarOAuthPendiente } from "@/lib/auth-analytics";
+import { marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
 import FrancoLogo from "@/components/franco-logo";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
@@ -69,6 +69,11 @@ export default function LoginPage() {
     // cuenta y vuelve al gate del wizard a loguearse era invisible en el funnel
     // — se veía la salida (`wizard4_analysis_created`) sin la entrada.
     posthog?.capture("login_completed", { method: "email" });
+
+    // Claim de análisis anónimos (F2-2): ANTES del push — el destino (dashboard
+    // o el análisis vía ?next=) debe nacer con la fila ya adoptada. Fail-soft:
+    // un claim caído no frena el login.
+    await reclamarAnalisisAnonimos(posthog, "login");
 
     // Destino tras login: ?next= (intención de compra, ej /checkout?product=X, o
     // el round-trip del wizard) o dashboard.

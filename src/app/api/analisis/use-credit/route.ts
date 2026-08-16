@@ -66,7 +66,9 @@ export async function POST(request: Request) {
     }
 
     const isAdmin = isAdminUser(user.email);
-    if (analysis.user_id && analysis.user_id !== user.id && !isAdmin) {
+    // Fix guard-NULL (F2-2): desbloquear con crédito una fila sin dueño era
+    // adoptarla de facto. La adopción legítima es el claim con token.
+    if (analysis.user_id !== user.id && !isAdmin) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 

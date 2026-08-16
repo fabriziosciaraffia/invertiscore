@@ -9,7 +9,7 @@ import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { LinkAuth } from "@/components/auth/LinkAuth";
 import { esDestinoSeguro } from "@/lib/auth-next";
-import { marcarOAuthPendiente } from "@/lib/auth-analytics";
+import { marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -77,6 +77,10 @@ export default function RegisterPage() {
     // Caso con confirmación desactivada (o usuario ya confirmado): sesión
     // directa al destino solicitado (intención de compra) o al dashboard.
     // Validado igual que en login: `router.push` navega a donde le digan.
+    // Claim de análisis anónimos (F2-2) ANTES del push — mismo criterio que
+    // login. El camino CON confirmación de email no pasa por acá: su claim
+    // vive en /auth/callback.
+    await reclamarAnalisisAnonimos(posthog, "register");
     router.push(esDestinoSeguro(next) ? next : "/dashboard");
     router.refresh();
   };

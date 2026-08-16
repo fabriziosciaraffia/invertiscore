@@ -28,6 +28,15 @@ const ORIGIN_STORAGE_KEY = "franco_origin";
  */
 const TEST_FLAG_KEY = "franco_test_flag_set";
 
+/**
+ * Marker del claim anónimo (F2-2): guarda el user_id para el que la red de
+ * seguridad ya llamó a /api/analisis/claim. La cookie es httpOnly (el client no
+ * puede verla), así que sin marker cada carga pagaría un POST a ciegas. Las
+ * capas primarias (login/register/callback) son las que casi siempre reclaman;
+ * esta capa solo caza sesiones que se las saltaron.
+ */
+const CLAIM_CHECK_KEY = "franco_claim_checked";
+
 interface OrigenGuardado {
   referrer?: string;
   landing_path?: string;
@@ -135,6 +144,19 @@ export function useAttributionSync(): void {
               posthog?.setPersonProperties({ test_account: esTest });
               localStorage.setItem(TEST_FLAG_KEY, user.id);
             }
+          }
+        } catch {
+          /* sin marca esta vez; se reintenta en la próxima carga */
+        }
+
+        // ── Claim anónimo (F2-2), red de seguridad ──
+        // Una vez por usuario por navegador. Va DESPUÉS del identify: el evento
+        // anon_analysis_claimed debe caer en la persona ya atada al user_id.
+        try {
+          if (localStorage.getItem(CLAIM_CHECK_KEY) !== user.id) {
+            const { reclamarAnalisisAnonimos } = await import("@/lib/auth-analytics");
+            await reclamarAnalisisAnonimos(posthog, "sync");
+            localStorage.setItem(CLAIM_CHECK_KEY, user.id);
           }
         } catch {
           /* sin marca esta vez; se reintenta en la próxima carga */

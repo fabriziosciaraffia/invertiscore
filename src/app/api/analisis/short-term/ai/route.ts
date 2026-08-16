@@ -92,7 +92,9 @@ export async function POST(request: Request) {
 
     const isAdmin = isAdminUser(user.email);
 
-    if (analysis.user_id && analysis.user_id !== user.id && !isAdmin) {
+    // Fix guard-NULL (F2-2): `user_id NULL` ya no pasa para cualquier logueado.
+    // La vía hacia una fila anónima es el claim, nunca esta ruta.
+    if (analysis.user_id !== user.id && !isAdmin) {
       return NextResponse.json({ error: "No autorizado para analizar este registro" }, { status: 403 });
     }
 

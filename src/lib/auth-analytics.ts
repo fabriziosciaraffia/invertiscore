@@ -26,6 +26,8 @@
 // de ESTA pestaña y de ESTE viaje, y sobrevive la vuelta desde otro origen.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { PostHog } from "posthog-js";
+
 const OAUTH_PENDIENTE_KEY = "franco_oauth_pendiente";
 
 /**
@@ -51,6 +53,33 @@ export function marcarOAuthPendiente(tipo: AuthTipo): void {
     sessionStorage.setItem(OAUTH_PENDIENTE_KEY, JSON.stringify(marca));
   } catch {
     /* sessionStorage puede fallar en modo privado — se pierde el evento, no el login */
+  }
+}
+
+/**
+ * Claim de análisis anónimos (F2-2), lado client. La cookie `franco_anon` es
+ * httpOnly — el client NO puede saber si existe, así que llama a ciegas: sin
+ * cookie el endpoint responde { claimed: 0 } al tiro. Fail-soft total: un
+ * claim caído jamás rompe un login (la red de seguridad del provider
+ * reintenta en la próxima carga).
+ *
+ * `via` alimenta el evento `anon_analysis_claimed` para saber qué capa lo
+ * capturó (login / register / sync — el camino callback emite server-side el
+ * Lead pero no este evento; la capa sync lo recupera).
+ */
+export async function reclamarAnalisisAnonimos(
+  posthog: PostHog | null | undefined,
+  via: "login" | "register" | "sync",
+): Promise<void> {
+  try {
+    const res = await fetch("/api/analisis/claim", { method: "POST" });
+    if (!res.ok) return;
+    const data = (await res.json()) as { claimed?: number };
+    if (typeof data.claimed === "number" && data.claimed > 0) {
+      posthog?.capture("anon_analysis_claimed", { claimed_count: data.claimed, via });
+    }
+  } catch {
+    /* claim perdido > login roto: nunca propagamos */
   }
 }
 

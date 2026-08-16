@@ -5,6 +5,8 @@ import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import { conNext, esDestinoSeguro } from "@/lib/auth-next";
 import { guardarAtribucion } from "@/lib/attribution";
 import { createAdminServiceClient } from "@/lib/admin-auth";
+import { ANON_COOKIE } from "@/lib/api-helpers/anon-cap";
+import { claimAnalisisAnonimos, enviarLeadClaim } from "@/lib/anon-claim";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -107,6 +109,38 @@ export async function GET(request: Request) {
       }
     } catch (e) {
       console.error("[auth/callback] atribución excepción:", e);
+    }
+
+    // Claim de análisis anónimos (F2-2): si este navegador creó un análisis
+    // sin registro, la sesión recién creada lo adopta ANTES del redirect — el
+    // destino (dashboard o el análisis vía ?next=) ya nace con la fila a su
+    // nombre. Cubre OAuth y confirmación de email; los logins por password lo
+    // hacen client-side. Mismo criterio de aislamiento que CAPI/atribución:
+    // perder un claim acá es recuperable (red de seguridad del provider),
+    // romper un login no.
+    try {
+      const user = sessionData?.user;
+      const anonToken = cookieStore.get(ANON_COOKIE)?.value;
+      if (user?.id && anonToken) {
+        const result = await claimAnalisisAnonimos(createAdminServiceClient(), user, anonToken);
+        if (result.claimed > 0) {
+          // Lead de Meta (decisión 3 F2-1): el gratis se estrenó al reclamar.
+          // Awaiteado (route handler sin waitUntil importado acá no lo
+          // necesita: enviarLeadClaim ya traga sus errores y Meta tiene
+          // timeout corto en el helper).
+          await enviarLeadClaim(user, {
+            eventSourceUrl: requestUrl.origin,
+            clientIp:
+              request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+              request.headers.get("x-real-ip"),
+            userAgent: request.headers.get("user-agent"),
+            fbp: cookieStore.get("_fbp")?.value ?? null,
+            fbc: cookieStore.get("_fbc")?.value ?? null,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[auth/callback] claim anónimo excepción:", e);
     }
   }
 

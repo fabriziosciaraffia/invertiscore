@@ -7,6 +7,7 @@ import type { FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
 import { generateComparativaAI } from "@/lib/ai-generation-ambas-generate";
+import { createAnonPipelineClient, sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 
 // Goal C: techo explícito — hasta 3 llamadas Sonnet seriales + 2 recomputes de
 // motor; con prompt caching los retries bajan.
@@ -62,9 +63,6 @@ export async function POST(request: Request) {
   try {
     const supabase = createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
     const body = (await request.json()) as { ltrId?: string; strId?: string };
     const ltrId = body.ltrId;
@@ -82,12 +80,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Análisis no encontrados" }, { status: 404 });
     }
 
-    const isAdmin = isAdminUser(user.email);
-    if (ltrRow.user_id && ltrRow.user_id !== user.id && !isAdmin) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-    }
-    if (strRow.user_id && strRow.user_id !== user.id && !isAdmin) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    // Anónimo-DUEÑO del par (cap F2-2): sin sesión, la prosa comparativa
+    // igual se puede generar SI la cookie httpOnly de este navegador calza con
+    // el hash de AMBAS filas anónimas — el comparativo ES el análisis que el
+    // cap le entregó, y su prosa se genera on-demand (no en el submit). El
+    // write del cache pasa a service-role (sin sesión no hay RLS que valga).
+    let esAnonDueno = false;
+    if (!user) {
+      const anonToken = tokenAnonDelRequest();
+      const hashCookie = anonToken ? sha256Hex(anonToken) : null;
+      esAnonDueno =
+        !!hashCookie &&
+        ltrRow.user_id === null && strRow.user_id === null &&
+        ltrRow.anon_claim_token_hash === hashCookie &&
+        strRow.anon_claim_token_hash === hashCookie;
+      if (!esAnonDueno) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+      }
+    } else {
+      const isAdmin = isAdminUser(user.email);
+      // Fix guard-NULL (F2-2): `user_id NULL` ya no pasa para cualquier logueado.
+      // El par anónimo se adopta vía claim, nunca por esta ruta.
+      if (ltrRow.user_id !== user.id && !isAdmin) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+      }
+      if (strRow.user_id !== user.id && !isAdmin) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+      }
     }
 
     const ltrResultsPersisted = (ltrRow.results ?? null) as LTRResultsWithCache | null;
@@ -111,7 +130,14 @@ export async function POST(request: Request) {
       if (!shared) return NextResponse.json({ error: "Error generando narrativa IA" }, { status: 500 });
       return NextResponse.json(shared);
     }
-    const task = generateComparativaAI({ ltrId, strId, supabase, persist: true });
+    const task = generateComparativaAI({
+      ltrId,
+      strId,
+      // Anónimo-dueño: el persist del cache escribe en `analisis.results` de una
+      // fila sin dueño — el client con cookies de sesión no existe, va service-role.
+      supabase: esAnonDueno ? createAnonPipelineClient() : supabase,
+      persist: true,
+    });
     inflight.set(ltrId, task);
     try {
       const aiResult = await task;

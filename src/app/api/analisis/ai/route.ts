@@ -86,7 +86,11 @@ export async function POST(request: Request) {
 
     const isAdmin = isAdminUser(user.email);
 
-    if (analysis.user_id && analysis.user_id !== user.id && !isAdmin) {
+    // Fix guard-NULL (F2-2, junto con el claim): antes `user_id NULL` pasaba
+    // para CUALQUIER logueado — con análisis anónimos reales eso era adoptar/
+    // regenerar lo ajeno. La vía legítima hacia una fila anónima es el claim
+    // (POST /api/analisis/claim, exige el token de la cookie), nunca esta ruta.
+    if (analysis.user_id !== user.id && !isAdmin) {
       return NextResponse.json({ error: "No autorizado para analizar este registro" }, { status: 403 });
     }
 
