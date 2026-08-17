@@ -23,16 +23,33 @@
 //     reescribir sería inventar. Estos hits son los que DISPARAN REINTENTO
 //     (patrón del catch de "revenue" en ai-generation-str.ts).
 //
-// POR QUÉ NO HAY REGLA GENÉRICA -ás (decisión, no olvido)
-// ───────────────────────────────────────────────────────
-// El futuro de tuteo termina igual que el presente de voseo: "comprarás",
-// "tendrás", "pagarás", "verás" son tuteo IMPECABLE. Distinguir "comprás"
-// (voseo) de "comprarás" (tuteo) sin diccionario no se puede — la raíz de un
-// -ar acabada en "r" ("compr-", "gener-", "entr-") vuelve la morfología
-// ambigua. Una regla /-ás\b/ dispararía sobre prosa correcta y quemaría un
-// reintento por acierto: exactamente el destino de los dos guards
-// sobre-gatillados que este repo ya pagó. El voseo en -ás se caza por LÉXICO,
-// que es donde tiene coste cero.
+// LA REGLA -ás: EXISTE, PERO CON DISCRIMINADOR (revisión 2026-08-17)
+// ──────────────────────────────────────────────────────────────────
+// La versión original de este módulo descartó toda regla -ás porque el futuro
+// de tuteo termina igual que el presente de voseo: "comprarás", "tendrás",
+// "verás" son tuteo IMPECABLE. El costo de esa decisión se midió en el re-censo
+// del 16-ago-2026: el voseo -ás fuera del léxico escapaba ENTERO ("descartás",
+// "eliminás", "fijás"), y 8 de las 10 ALTAs de voz del parque eran voseo.
+//
+// El discriminador que faltaba es morfológico y no necesita diccionario: el
+// futuro es INFINITIVO + ás, así que SIEMPRE lleva "r" inmediatamente antes
+// ("compra-r-ás", "tend-r-ás", "ve-r-ás", "sald-r-ás"). Excluir /rás$/ retira el
+// futuro completo. Lo que queda —"descartás", "eliminás", "pensás"— es voseo o
+// no es verbo, y los no-verbos son una lista corta y cerrada (NO_VERBOS_AS).
+//
+// El precio de la exclusión: el voseo cuya RAÍZ termina en "r" ("cerrás",
+// "agarrás", "ahorrás") cae dentro de /rás$/ y el patrón no lo ve. Esos van por
+// LÉXICO, donde además se corrigen sin pagar reintento. Medición sobre las 212
+// prosas frescas del re-censo + mini-censo: recall 12/12 sobre el corpus real,
+// 0 falsos positivos, 0 hits no corregibles.
+//
+// Lo que NO se hace (decisión de Fabrizio, 17-ago-2026): un último recurso que
+// "quite la tilde" para el -ás desconocido. Sería correcto en los verbos que no
+// diptongan y agramatical en los que sí ("pensás" → "pensas" en vez de
+// "piensas"); la garantía se erosiona en cuanto entre un diptongante que no
+// esté en tabla. Para el -ás desconocido el comportamiento correcto es DETECTAR
+// y REINTENTAR: mejor un [VOZ-RESIDUAL] ruidoso en el log que una corrección
+// silenciosa que publique otro error.
 //
 // LÍMITE CONOCIDO de la capa morfológica: si un -és/-ís desconocido viene
 // precedido de determinante ("los parqués", "unos bebés") se omite por regla
@@ -69,19 +86,29 @@ export const VOSEO_A_TUTEO: Readonly<Record<string, string>> = {
   alquilás: "alquilas",
   apalancás: "apalancas",
   aportás: "aportas",
+  apostás: "apuestas",
   aprendés: "aprendes",
   arreglás: "arreglas",
   arrendás: "arriendas",
   arriendás: "arriendas",
+  arriesgás: "arriesgas",
   armás: "armas",
   asumís: "asumes",
   bajás: "bajas",
   buscás: "buscas",
   calculás: "calculas",
+  // Raíz terminada en "r": /rás$/ (el discriminador del futuro) no las ve, así
+  // que el léxico es su ÚNICA red. Corpus del re-censo: "cerrás" (d2a5b32e).
+  cerrás: "cierras",
+  chequeás: "chequeas",
   cobrás: "cobras",
   comparás: "comparas",
   completás: "completas",
   comprás: "compras",
+  // Corpus del re-censo (7710a017, e42f9e9f): la capa morfológica SÍ la veía
+  // (-és), pero sin entrada de léxico no había swap — solo un reintento que, al
+  // no mejorar, publicaba el voseo. Acá se vuelve corrección de coste cero.
+  comprometés: "comprometes",
   conseguís: "consigues",
   considerás: "consideras",
   consultás: "consultas",
@@ -100,7 +127,15 @@ export const VOSEO_A_TUTEO: Readonly<Record<string, string>> = {
   definís: "defines",
   dejás: "dejas",
   describís: "describes",
+  descartás: "descartas",
+  // Observadas EN VIVO por la capa -ás nueva durante el Golden FULL del
+  // 17-ago-2026 (GS-3 las emitió las tres): la capa las cazó y el reintento las
+  // limpió. Pasan al léxico para que la próxima cuesten un swap y no una
+  // regeneración de 8.000 tokens — el ciclo de vida que el módulo prescribe.
+  descontás: "descuentas",
+  desembolsás: "desembolsas",
   elegís: "eliges",
+  eliminás: "eliminas",
   empezás: "empiezas",
   encontrás: "encuentras",
   entendés: "entiendes",
@@ -110,6 +145,7 @@ export const VOSEO_A_TUTEO: Readonly<Record<string, string>> = {
   estimás: "estimas",
   evaluás: "evalúas",
   exigís: "exiges",
+  fijás: "fijas",
   financiás: "financias",
   firmás: "firmas",
   ganás: "ganas",
@@ -157,6 +193,7 @@ export const VOSEO_A_TUTEO: Readonly<Record<string, string>> = {
   subís: "subes",
   sumás: "sumas",
   tenés: "tienes",
+  terminás: "terminas",
   // "tomás" NO entra: colisiona con el nombre propio Tomás y el swap lo
   // renombraría en pantalla. El imperativo "tomá" sí, que es inequívoco.
   transferís: "transfieres",
@@ -176,16 +213,22 @@ export const VOSEO_A_TUTEO: Readonly<Record<string, string>> = {
   bajá: "baja",
   buscá: "busca",
   calculá: "calcula",
+  cerrá: "cierra",
+  chequeá: "chequea",
   comprá: "compra",
   compará: "compara",
+  comprometé: "compromete",
   conseguí: "consigue",
   considerá: "considera",
   cotizá: "cotiza",
   decí: "di",
   dejá: "deja",
+  descartá: "descarta",
+  eliminá: "elimina",
   esperá: "espera",
   evaluá: "evalúa",
   exigí: "exige",
+  fijá: "fija",
   fijate: "fíjate",
   firmá: "firma",
   guardá: "guarda",
@@ -202,6 +245,10 @@ export const VOSEO_A_TUTEO: Readonly<Record<string, string>> = {
   subí: "sube",
   tomá: "toma",
   validá: "valida",
+  // Corpus del mini-censo (7710a017, "Verificá"): el presente "verificás" estaba
+  // en tabla desde el inicio; el imperativo faltaba y es la forma que más aparece
+  // en las cajas accionables.
+  verificá: "verifica",
   vendé: "vende",
   vení: "ven",
 
@@ -271,7 +318,21 @@ const EXCEPCIONES_MORFOLOGIA: ReadonlySet<string> = new Set([
   "inglés", "francés", "japonés", "portugués", "holandés", "escocés",
   "irlandés", "danés", "finlandés", "libanés", "aragonés", "montañés",
   // nombres propios
-  "andrés", "inés", "ginés", "moisés",
+  "andrés", "inés", "ginés", "moisés", "valdés",
+  // subjuntivo de tuteo terminado en -és: correcto, no voseo. Medido como falso
+  // positivo real sobre las prosas del re-censo (432585ad).
+  "estés", "dés",
+]);
+
+/**
+ * -ás que NO son verbo. Lista cerrada y corta: con /rás$/ ya fuera (el futuro de
+ * tuteo completo), lo único que queda por excluir son adverbios, preposiciones y
+ * un par de sustantivos. "estás" entra acá porque es idéntico en tuteo y voseo
+ * (irregular), igual que el criterio con que "estás" quedó fuera del léxico.
+ */
+const NO_VERBOS_AS: ReadonlySet<string> = new Set([
+  "quizás", "jamás", "además", "atrás", "detrás", "demás", "compás", "estás",
+  "vas", "das", "más", "gas", "tras", "sacapuntás",
 ]);
 
 /** Determinantes: si preceden al candidato, es sustantivo plural, no verbo. */
@@ -344,7 +405,7 @@ export function scanVozChilenaTexto(texto: string, path = ""): VozHit[] {
     });
   }
 
-  // Capa 2 — morfología -és/-ís desconocida + pronombre "vos" (NO corregibles).
+  // Capa 2 — morfología -és/-ís/-ás desconocida + pronombre "vos" (NO corregibles).
   const tokens: { t: string; idx: number }[] = [];
   TOKEN_RE.lastIndex = 0;
   for (let m = TOKEN_RE.exec(texto); m !== null; m = TOKEN_RE.exec(texto)) {
@@ -358,7 +419,10 @@ export function scanVozChilenaTexto(texto: string, path = ""): VozHit[] {
       continue;
     }
     if (low in SWAPS) continue;                      // ya lo tomó la capa 1
-    if (!/(és|ís)$/.test(low) || low.length < 5) continue;
+    // -ás: voseo salvo futuro de tuteo (/rás$/ = infinitivo + ás) y no-verbos.
+    // Ver la nota de cabecera "LA REGLA -ás".
+    const esVoseoAs = /ás$/.test(low) && low.length >= 5 && !/rás$/.test(low) && !NO_VERBOS_AS.has(low);
+    if (!esVoseoAs && (!/(és|ís)$/.test(low) || low.length < 5)) continue;
     if (EXCEPCIONES_MORFOLOGIA.has(low)) continue;
     const previo = i > 0 ? tokens[i - 1].t.toLowerCase() : "";
     if (DETERMINANTES.has(previo)) continue;         // "los parqués" = sustantivo
