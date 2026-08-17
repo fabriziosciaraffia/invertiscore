@@ -13,12 +13,12 @@ import {
 import { AdminTitular } from "./admin-titular";
 import { AdminCheckoutsAbandonados, type CheckoutAbandonado } from "./admin-funnel";
 import { AdminSankey, type MetricaSankey } from "./admin-sankey";
-import { AdminTasasChart, HITOS_FUNNEL, type PuntoTasa } from "./admin-tasas-chart";
+import { AdminTasasChart, type PuntoTasa } from "./admin-tasas-chart";
+import { HITOS_FUNNEL, tramoApagado } from "@/lib/admin-funnel-hitos";
 import { AdminTendencia } from "./admin-tendencia";
 import { ContextoBar } from "./test-toggle";
 import { pasosPostHog, seriePostHog } from "@/lib/posthog-admin";
 import {
-  CAP_CUTOVER_ISO,
   funnelSupabase,
   leerPeriodo,
   rangoPeriodo,
@@ -38,6 +38,9 @@ const DIAS_KPI = 30;
 
 /** Ventana de la serie de tasas. Corta a propósito: es "cómo venimos", no historia. */
 const DIAS_SERIE = 14;
+
+/** Denominador por debajo del cual una tasa diaria es ruido y no se dibuja. */
+const DENOMINADOR_MINIMO = 20;
 
 /** "2026-08-16" → "16 ago". El eje del gráfico no tiene lugar para más. */
 function fmtDiaCorto(dia: string): string {
@@ -272,7 +275,12 @@ export default async function AdminPage({
   const diasSerie = Array.from(
     new Set(Array.from(phPorDia.keys()).concat(Array.from(sbPorDia.keys()))),
   ).sort();
-  const cutoverDia = CAP_CUTOVER_ISO.slice(0, 10);
+
+  // Un día con 4 visitas produce tasas de 75% que son ruido, no señal: con
+  // denominador chico un solo usuario mueve la línea decenas de puntos. Debajo
+  // del piso el punto se apaga (null) en vez de dibujarse como si midiera algo.
+  const conBase = (num: number, den: number | null) =>
+    den != null && den >= DENOMINADOR_MINIMO ? pct(num, den) : null;
 
   const datosTasas: PuntoTasa[] = diasSerie.map((dia) => {
     const ph = phPorDia.get(dia);
@@ -281,15 +289,16 @@ export default async function AdminPage({
     const wiz = ph?.iniciaronWizard ?? null;
     const gratis = sbd?.gratis ?? 0;
     const cuentas = sbd?.cuentas ?? 0;
+    // Cada hito apaga los tramos que lista en `invalida` para los días
+    // anteriores a su fecha: el corte vive en el hito, no acá, así que agregar
+    // un hito nuevo no obliga a tocar esta función.
+    const apagado = (tramo: Parameters<typeof tramoApagado>[0]) => tramoApagado(tramo, dia);
     return {
       dia,
       label: fmtDiaCorto(dia),
-      visitaWizard: visitas && wiz != null ? pct(wiz, visitas) : null,
-      wizardAnalisis: wiz ? pct(gratis, wiz) : null,
-      // Antes del cap este tramo era 100% POR DEFINICIÓN: no se podía analizar
-      // sin cuenta. Se deja en null para que la línea NO se dibuje — ver la
-      // justificación completa en admin-tasas-chart.tsx.
-      analisisCuenta: dia < cutoverDia ? null : gratis > 0 ? pct(cuentas, gratis) : null,
+      visitaWizard: apagado("visitaWizard") ? null : conBase(wiz ?? 0, visitas),
+      wizardAnalisis: apagado("wizardAnalisis") ? null : conBase(gratis, wiz),
+      analisisCuenta: apagado("analisisCuenta") ? null : conBase(cuentas, gratis),
     };
   });
 
@@ -414,8 +423,11 @@ export default async function AdminPage({
                   poder ver la curva. Es lo que lee un lector de pantalla. */}
               <table className="sr-only">
                 <caption>
-                  Tasas de conversión diarias de los últimos {DIAS_SERIE} días. Hitos:{" "}
-                  {HITOS_FUNNEL.map((h) => `${h.etiqueta} el ${h.fecha}`).join("; ")}.
+                  Tasas de conversión diarias de los últimos {DIAS_SERIE} días. Los tramos no se
+                  informan antes del hito que los hace comparables:{" "}
+                  {HITOS_FUNNEL.map((h) => `${h.etiqueta} (${h.fecha}) — ${h.motivo}`).join("; ")}.
+                  Tampoco se informan los días con menos de {DENOMINADOR_MINIMO} en el
+                  denominador, donde la tasa sería ruido.
                 </caption>
                 <thead>
                   <tr>
@@ -431,13 +443,7 @@ export default async function AdminPage({
                       <th scope="row">{d.label}</th>
                       <td>{d.visitaWizard != null ? `${d.visitaWizard}%` : "sin dato"}</td>
                       <td>{d.wizardAnalisis != null ? `${d.wizardAnalisis}%` : "sin dato"}</td>
-                      <td>
-                        {d.analisisCuenta != null
-                          ? `${d.analisisCuenta}%`
-                          : d.dia < CAP_CUTOVER_ISO.slice(0, 10)
-                            ? "no aplica: antes del cap era 100% por definición"
-                            : "sin dato"}
-                      </td>
+                      <td>{d.analisisCuenta != null ? `${d.analisisCuenta}%` : "no comparable"}</td>
                     </tr>
                   ))}
                 </tbody>

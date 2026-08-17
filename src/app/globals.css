@@ -39,6 +39,31 @@
      */
     --signal-red: #C8323C;
 
+    /* ── Paleta de VISUALIZACIÓN — solo panel admin, NO producto ──
+     * El panel interno no es superficie de marca: acá manda la claridad
+     * analítica, no la doctrina Ink + Signal Red. El color CODIFICA CATEGORÍA
+     * (qué camino, qué tramo), nunca decora, y una categoría conserva su color
+     * entre el Sankey y el gráfico de líneas para que la lectura sea continua.
+     *
+     * Hues tomados de la paleta Okabe-Ito, segura para daltonismo: son
+     * distinguibles también en deuteranopía y protanopía, que es la falla que
+     * arruina el clásico azul-contra-verde.
+     *
+     * Continuidad entre vistas:
+     *   entrada  → tramo "visita → wizard"
+     *   anonimo  → nodo "anónimos" y tramo "wizard → análisis"
+     *   cuenta   → nodo "cuentas", flujo de claim y tramo "análisis → cuenta"
+     *   abandono → todos los nodos y bandas de abandono
+     *
+     * Estos valores son los del tema OSCURO (aclarados para no apagarse sobre
+     * fondo oscuro); el bloque [data-theme="light"] los baja a los Okabe-Ito
+     * canónicos, calibrados contra blanco.
+     */
+    --viz-entrada: #E39FC4;
+    --viz-anonimo: #4BA3DC;
+    --viz-cuenta: #35C79A;
+    --viz-abandono: #9A9AA2;
+
     --background: 40 20% 98%;
     --foreground: 0 0% 6%;
     --card: 40 20% 98%;
@@ -144,6 +169,13 @@
     --franco-input-bg: #FFFFFF;
     /* Superficie hundida (nivel-3). Light-only + fallback inline → dark intacto. */
     --franco-sunken: #F0F0F2;
+
+    /* Paleta de visualización del panel admin, valores Okabe-Ito canónicos
+     * (calibrados contra blanco). Ver la nota completa en :root. */
+    --viz-entrada: #CC79A7;
+    --viz-anonimo: #0072B2;
+    --viz-cuenta: #009E73;
+    --viz-abandono: #8E8E96;
     --franco-wm-re: rgba(0,0,0,0.2);
     --franco-wm-franco: #0F0F0F;
     --franco-bar-track: #ECECEF;

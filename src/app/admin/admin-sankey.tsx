@@ -1,49 +1,45 @@
 import { fmtNumber } from "@/lib/admin-format";
 import {
-  ALTO_VIEWBOX,
-  ANCHO_VIEWBOX,
-  COLUMNAS_X,
-  ANCHO_NODO,
   construirSankey,
   type Camino,
   type EntradaSankey,
+  type Orientacion,
 } from "@/lib/admin-sankey-modelo";
 
 /**
  * Sankey de dos caminos: cómo estamos AHORA. Reemplaza las barras del funnel de
- * 7 pasos, que mostraban la secuencia pero no la bifurcación — y la bifurcación
+ * 7 pasos, que mostraban la secuencia pero no la BIFURCACIÓN — y la bifurcación
  * es el hecho central del mundo post-cap: se puede probar el producto sin
  * cuenta, así que el embudo dejó de ser una fila india.
  *
- * SVG a mano y no una librería de Sankey: cuatro columnas fijas, diez nodos y
+ * SVG a mano y no una librería de Sankey: cuatro etapas fijas, diez nodos y
  * doce flujos no justifican una dependencia. La geometría vive en
  * `admin-sankey-modelo.ts` (puro); acá solo se pinta.
  *
  * ── Color ──
- * La paleta de Franco son dos colores (Ink + Signal Red), así que los caminos NO
- * se distinguen por matiz sino por VALOR en la escala Ink: camino anónimo en
- * Ink sólido (es el dominante), camino con cuenta en ink-500, abandono en
- * punteado sin relleno. Signal Red queda para las CIFRAS de abandono — misma
- * semántica que la banda de caída que este componente reemplaza, donde el
- * "−N usuarios" ya iba en rojo.
+ * El panel admin NO es superficie de producto: acá manda la claridad analítica,
+ * no la doctrina Ink + Signal Red. El color CODIFICA CATEGORÍA (qué camino),
+ * nunca decora, y cada categoría conserva su color en el gráfico de tasas para
+ * que la lectura sea continua entre las dos vistas. Los hues salen de la paleta
+ * Okabe-Ito (segura para daltonismo) y viven en globals.css como --viz-*.
  *
- * Server component: no hay interacción, y el SVG se sirve ya resuelto.
+ * Server component: no hay interacción y el SVG se sirve ya resuelto.
  */
 
-const TRAZO: Record<Camino, string> = {
-  anonimo: "var(--franco-text)",
-  cuenta: "var(--ink-500)",
-  abandono: "var(--franco-border-strong)",
+const COLOR: Record<Camino, string> = {
+  entrada: "var(--viz-entrada)",
+  anonimo: "var(--viz-anonimo)",
+  cuenta: "var(--viz-cuenta)",
+  abandono: "var(--viz-abandono)",
 };
 
-/** Opacidad de las bandas. El abandono va más tenue: es el resto, no el hecho. */
-const OPACIDAD: Record<Camino, number> = {
-  anonimo: 0.26,
-  cuenta: 0.3,
-  abandono: 0.14,
+/** Las bandas van translúcidas para que se lean los cruces; el abandono más. */
+const OPACIDAD_BANDA: Record<Camino, number> = {
+  entrada: 0.42,
+  anonimo: 0.46,
+  cuenta: 0.46,
+  abandono: 0.2,
 };
-
-const TITULOS_COLUMNA = ["origen", "wizard", "análisis gratis", "cuenta y pago"];
 
 export interface MetricaSankey {
   titulo: string;
@@ -56,143 +52,143 @@ export function AdminSankey({
   metricas,
   frescura,
   nota,
+  orientacion = "vertical",
 }: {
   entrada: EntradaSankey;
   metricas: MetricaSankey[];
-  /** "actualizado hace X min" de PostHog. Vacío si la fuente está muda. */
   frescura?: string;
-  /** Aclaración de unidades bajo el diagrama. */
   nota: string;
+  orientacion?: Orientacion;
 }) {
-  const { nodos, flujos, descripcion } = construirSankey(entrada);
+  const { nodos, flujos, etapas, ancho, alto, descripcion } = construirSankey(entrada, orientacion);
+  const vertical = orientacion === "vertical";
 
   return (
     <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)]">
-      {/* Bajo 900px el diagrama no se comprime: se scrollea. Apretar cuatro
-          columnas en un teléfono produce un dibujo ilegible, y este panel se
-          mira en desktop — el scroll es la degradación honesta. */}
-      <div className="overflow-x-auto p-4">
+      {/* En vertical el diagrama crece hacia abajo, que es la dimensión libre de
+          una página: no necesita scroll lateral ni siquiera en 900px. En
+          horizontal el ancho es la restricción y hay que scrollear. */}
+      <div className={`p-4 ${vertical ? "" : "overflow-x-auto"}`}>
         <svg
-          viewBox={`0 0 ${ANCHO_VIEWBOX} ${ALTO_VIEWBOX}`}
-          className="block h-auto w-full min-w-[860px]"
+          viewBox={`0 0 ${ancho} ${alto}`}
+          className={`block h-auto w-full ${vertical ? "" : "min-w-[900px]"}`}
           role="img"
           aria-labelledby="sankey-titulo sankey-desc"
         >
-          <title id="sankey-titulo">Flujo del embudo por camino: anónimo, con cuenta y abandono</title>
+          <title id="sankey-titulo">
+            Flujo del embudo por camino: entrada, anónimo, con cuenta y abandono
+          </title>
           <desc id="sankey-desc">{descripcion}</desc>
 
-          {/* Headers de columna */}
-          {TITULOS_COLUMNA.map((t, i) => (
+          {etapas.map((et) => (
             <text
-              key={t}
-              x={COLUMNAS_X[i] + ANCHO_NODO / 2}
-              y={26}
-              textAnchor="middle"
+              key={et.titulo}
+              x={et.x}
+              y={et.y}
+              textAnchor={et.anchor}
               className="fill-[var(--franco-text-tertiary)] font-mono text-[11px] uppercase tracking-wider"
             >
-              {t}
+              {et.titulo}
             </text>
           ))}
 
-          {/* Bandas primero: los nodos van encima */}
           {flujos.map((f) => (
-            <path
-              key={f.id}
-              d={f.d}
-              fill={TRAZO[f.camino]}
-              fillOpacity={OPACIDAD[f.camino]}
-              stroke="none"
-            />
+            <path key={f.id} d={f.d} fill={COLOR[f.camino]} fillOpacity={OPACIDAD_BANDA[f.camino]} />
           ))}
 
-          {/* Etiquetas sobre las bandas que las llevan */}
+          {/* Etiquetas de flujo. Van con halo (paint-order stroke) para que
+              nunca queden ilegibles sobre una banda oscura. */}
           {flujos
             .filter((f) => f.etiqueta)
             .map((f) => (
               <text
                 key={`lbl-${f.id}`}
                 x={f.labelX}
-                y={f.labelY - 6}
-                textAnchor="middle"
+                y={f.labelY}
+                textAnchor={f.labelAnchor}
+                paintOrder="stroke"
+                stroke="var(--franco-card)"
+                strokeWidth={3.5}
+                strokeLinejoin="round"
                 className="fill-[var(--franco-text-secondary)] font-mono text-[11px]"
               >
                 {f.etiqueta}
               </text>
             ))}
 
-          {/* Nodos */}
-          {nodos.map((n) => {
-            const centroY = n.y + n.alto / 2;
-            const compacto = n.alto < 44;
-            return (
-              <g key={n.id}>
-                <rect
-                  x={n.x}
-                  y={n.y}
-                  width={n.ancho}
-                  height={n.alto}
-                  rx={4}
-                  fill={n.esAbandono ? "transparent" : "var(--franco-sunken)"}
-                  stroke={n.esAbandono ? "var(--franco-border-strong)" : TRAZO[n.camino]}
-                  strokeWidth={n.esAbandono ? 1 : 1.5}
-                  strokeDasharray={n.esAbandono ? "4 3" : undefined}
-                />
-                {/* El número SIEMPRE visible: con piso mínimo de grosor, el
-                    tamaño ya no es fuente fiable de magnitud — la cifra sí. */}
-                <text
-                  x={n.x + n.ancho / 2}
-                  y={compacto ? centroY + 4 : centroY - 3}
-                  textAnchor="middle"
-                  className={`font-mono text-[17px] font-bold ${
-                    n.esAbandono ? "fill-[var(--signal-red)]" : "fill-[var(--franco-text)]"
-                  }`}
-                >
-                  {fmtNumber(n.valor)}
-                </text>
-                {!compacto && (
-                  <text
-                    x={n.x + n.ancho / 2}
-                    y={centroY + 13}
-                    textAnchor="middle"
-                    className="fill-[var(--franco-text-secondary)] font-mono text-[10px]"
-                  >
-                    {n.etiqueta}
-                  </text>
-                )}
-                {/* Nodo bajo: la etiqueta no cabe adentro, va al costado */}
-                {compacto && (
-                  <text
-                    x={n.x + n.ancho + 7}
-                    y={centroY + 4}
-                    className="fill-[var(--franco-text-secondary)] font-mono text-[10px]"
-                  >
-                    {n.etiqueta}
-                  </text>
-                )}
-              </g>
-            );
-          })}
+          {nodos.map((n) => (
+            <g key={n.id}>
+              <rect
+                x={n.x}
+                y={n.y}
+                width={n.ancho}
+                height={n.alto}
+                rx={4}
+                fill={n.esAbandono ? "transparent" : COLOR[n.camino]}
+                fillOpacity={n.esAbandono ? 0 : 0.16}
+                stroke={COLOR[n.camino]}
+                strokeWidth={n.esAbandono ? 1 : 1.75}
+                strokeDasharray={n.esAbandono ? "4 3" : undefined}
+              />
+              {/* La cifra SIEMPRE visible y dentro del nodo: con piso mínimo de
+                  grosor el tamaño ya no es fuente fiable de magnitud, la cifra
+                  sí. Nunca baja de 11px — el requisito prohíbe achicar texto
+                  para resolver espacio. */}
+              <text
+                x={n.x + n.ancho / 2}
+                y={n.y + n.alto / 2 + 6}
+                textAnchor="middle"
+                paintOrder="stroke"
+                stroke="var(--franco-card)"
+                strokeWidth={3}
+                strokeLinejoin="round"
+                className="fill-[var(--franco-text)] font-mono text-[16px] font-bold"
+              >
+                {fmtNumber(n.valor)}
+              </text>
+              <text
+                x={n.labelX}
+                y={n.labelY}
+                textAnchor={n.labelAnchor}
+                paintOrder="stroke"
+                stroke="var(--franco-card)"
+                strokeWidth={3.5}
+                strokeLinejoin="round"
+                className="fill-[var(--franco-text-secondary)] font-mono text-[11px]"
+              >
+                {n.etiqueta}
+              </text>
+            </g>
+          ))}
         </svg>
       </div>
 
-      {/* Leyenda */}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--franco-border)] px-4 py-2.5 font-mono text-[11px] text-[var(--franco-text-secondary)]">
+        {(
+          [
+            ["entrada", "entrada"],
+            ["anonimo", "camino anónimo"],
+            ["cuenta", "camino con cuenta"],
+          ] as Array<[Camino, string]>
+        ).map(([c, texto]) => (
+          <span key={c} className="flex items-center gap-1.5">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-[2px]"
+              style={{ background: COLOR[c] }}
+            />
+            {texto}
+          </span>
+        ))}
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-[2px] bg-[var(--franco-text)]" />
-          camino anónimo
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-[2px] bg-[var(--ink-500)]" />
-          camino con cuenta
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-[2px] border border-dashed border-[var(--franco-border-strong)]" />
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-[2px] border border-dashed"
+            style={{ borderColor: COLOR.abandono }}
+          />
           abandono
         </span>
         {frescura && <span className="text-[var(--franco-text-muted)]">· {frescura}</span>}
       </div>
 
-      {/* Fila de métricas */}
       <div className="grid grid-cols-1 gap-px border-t border-[var(--franco-border)] bg-[var(--franco-border)] sm:grid-cols-3">
         {metricas.map((m) => (
           <div key={m.titulo} className="bg-[var(--franco-card)] px-4 py-3.5">
@@ -202,7 +198,9 @@ export function AdminSankey({
             <div className="mt-1 font-mono text-[26px] font-bold tracking-tight text-[var(--franco-text)]">
               {m.valor}
             </div>
-            <div className="mt-0.5 font-body text-[12px] text-[var(--franco-text-muted)]">{m.detalle}</div>
+            <div className="mt-0.5 font-body text-[12px] text-[var(--franco-text-muted)]">
+              {m.detalle}
+            </div>
           </div>
         ))}
       </div>

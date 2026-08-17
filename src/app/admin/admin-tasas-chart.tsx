@@ -12,75 +12,87 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { HITOS_FUNNEL } from "@/lib/admin-funnel-hitos";
 
 /**
  * Evolución de las tasas de conversión: ¿vamos mejorando o no?
  *
  * Recharts y no SVG propio ni una dependencia nueva: ya está en el bundle y el
  * panel lo usa en `admin-tendencia-chart.tsx`, de donde sale la estética de ejes
- * y tooltip. Sumar Chart.js habría sido una segunda librería de gráficos para
- * el mismo panel.
+ * y tooltip. Sumar Chart.js habría sido una segunda librería de gráficos para el
+ * mismo panel.
  *
- * ── El tramo que NO se dibuja antes del 16-ago ──
- * Hasta la apertura del cap no se podía generar un análisis sin cuenta, así que
- * "análisis → cuenta creada" era 100% POR DEFINICIÓN, no por mérito. Dibujarlo
- * crudo hace leer un desplome donde hubo una apertura deliberada.
+ * ── Color ──
+ * Cada tramo conserva el color de la categoría que produce en el Sankey, para
+ * que las dos vistas se lean como una sola: "wizard → análisis" va en el hue de
+ * los anónimos, "análisis → cuenta" en el de las cuentas, y "visita → wizard"
+ * en el de la entrada. Tokens --viz-* de globals.css (Okabe-Ito).
  *
- * Se resuelve NO dibujando la línea antes del hito (los puntos van en null con
- * connectNulls desactivado), y explicando el hueco DENTRO del área del gráfico,
- * no al pie: el gris fantasma seguiría invitando a comparar —que es justo lo que
- * hay que impedir— y una nota al pie se lee después del daño.
+ * ── Los tramos que NO se dibujan antes de su hito ──
+ * Dos veces pasa lo mismo: un cambio de plataforma redefine el numerador o el
+ * denominador, y comparar los dos lados hace leer como mérito (o como desplome)
+ * lo que fue un deploy.
+ *
+ *  · 16-ago, apertura del cap: hasta ahí no se podía generar un análisis sin
+ *    cuenta, así que "análisis → cuenta" era 100% POR DEFINICIÓN.
+ *  · 14-ago, identidad anónima: con el cap, cada visitante sin cuenta pasó a
+ *    tener su propio person_id en PostHog; antes muchos colapsaban en pocos.
+ *    Los EVENTOS del wizard casi no se movieron (387 → 534 del 13 al 14-ago)
+ *    pero las PERSONAS se multiplicaron por ocho (33 → 112, y 266 el 16). Las
+ *    tasas con denominador de personas cambiaron de significado, no de valor.
+ *
+ * En los dos casos la línea no se dibuja antes de su hito (null + connectNulls
+ * desactivado) y el hueco se explica DENTRO del área: el gris fantasma seguiría
+ * invitando a comparar —que es justo lo que hay que impedir— y una nota al pie
+ * se lee después del daño.
  */
 
-/** Hitos del producto. Agregar uno acá lo dibuja en el gráfico; no hay más nada que tocar. */
-export const HITOS_FUNNEL: Array<{ fecha: string; etiqueta: string }> = [
-  { fecha: "2026-08-16", etiqueta: "apertura del cap" },
-];
-
 export interface PuntoTasa {
-  /** YYYY-MM-DD, la clave del eje X. */
   dia: string;
   /** Etiqueta corta ya formateada por el server ("16 ago"). */
   label: string;
-  /** % visita → abre wizard. null = PostHog mudo ese día. */
   visitaWizard: number | null;
-  /** % wizard → análisis creado. null = PostHog mudo. */
   wizardAnalisis: number | null;
-  /** % análisis → cuenta creada. null antes del hito, a propósito. */
   analisisCuenta: number | null;
 }
 
+const TRAMOS = [
+  { key: "visitaWizard", nombre: "visita → wizard", color: "var(--viz-entrada)", dash: undefined },
+  { key: "wizardAnalisis", nombre: "wizard → análisis", color: "var(--viz-anonimo)", dash: undefined },
+  { key: "analisisCuenta", nombre: "análisis → cuenta", color: "var(--viz-cuenta)", dash: "5 3" },
+] as const;
+
 export function AdminTasasChart({ datos }: { datos: PuntoTasa[] }) {
+  // La zona anterior al primer hito se sombrea y lleva la explicación adentro.
   const primerHito = HITOS_FUNNEL[0]?.fecha;
-  // La zona previa al primer hito se sombrea apenas y lleva la explicación
-  // adentro. Si no hay días previos en la ventana, no se dibuja nada.
-  const hayPrevios = primerHito != null && datos.some((d) => d.dia < primerHito);
-  const primerDia = datos[0]?.label;
-  const labelHito = datos.find((d) => d.dia === primerHito)?.label;
+  const previos = primerHito ? datos.filter((d) => d.dia < primerHito) : [];
+  const labelPrimerHito = datos.find((d) => d.dia === primerHito)?.label;
 
   return (
-    <div className="h-[300px] w-full sm:h-[340px]">
+    <div className="h-[320px] w-full sm:h-[360px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={datos} margin={{ top: 12, right: 16, bottom: 0, left: -14 }}>
+        <LineChart data={datos} margin={{ top: 14, right: 18, bottom: 0, left: -14 }}>
           <CartesianGrid stroke="var(--franco-border)" vertical={false} />
 
-          {hayPrevios && labelHito && primerDia && (
+          {/* La zona muerta se pinta ANTES de las líneas para quedar por
+              debajo. El fill necesita ir explícito: heredado quedaba invisible. */}
+          {previos.length > 0 && labelPrimerHito && (
             <ReferenceArea
-              x1={primerDia}
-              x2={labelHito}
-              fill="var(--franco-sunken)"
-              fillOpacity={0.7}
+              x1={previos[0].label}
+              x2={labelPrimerHito}
+              fill="var(--franco-text)"
+              fillOpacity={0.05}
               label={{
-                value: "antes del cap, análisis → cuenta era 100% por definición",
+                value: "sin base comparable",
                 position: "insideTop",
                 fill: "var(--franco-text-muted)",
-                fontSize: 10,
+                fontSize: 11,
                 fontFamily: "var(--font-mono, monospace)",
               }}
             />
           )}
 
-          {HITOS_FUNNEL.map((h) => {
+          {HITOS_FUNNEL.map((h, i) => {
             const label = datos.find((d) => d.dia === h.fecha)?.label;
             if (!label) return null;
             return (
@@ -91,9 +103,11 @@ export function AdminTasasChart({ datos }: { datos: PuntoTasa[] }) {
                 strokeDasharray="4 3"
                 label={{
                   value: h.etiqueta,
-                  position: "insideTopRight",
+                  // Se alternan arriba y abajo: dos hitos a cuatro días de
+                  // distancia con la etiqueta en la misma altura se pisarían.
+                  position: i % 2 === 0 ? "insideTopLeft" : "insideBottomRight",
                   fill: "var(--franco-text-secondary)",
-                  fontSize: 10,
+                  fontSize: 11,
                   fontFamily: "var(--font-mono, monospace)",
                 }}
               />
@@ -102,19 +116,19 @@ export function AdminTasasChart({ datos }: { datos: PuntoTasa[] }) {
 
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fontFamily: "var(--font-mono, monospace)", fill: "var(--franco-text-tertiary)" }}
+            tick={{ fontSize: 11, fontFamily: "var(--font-mono, monospace)", fill: "var(--franco-text-tertiary)" }}
             tickLine={false}
             axisLine={{ stroke: "var(--franco-border-strong)" }}
             interval="preserveStartEnd"
-            minTickGap={8}
+            minTickGap={10}
           />
           <YAxis
             unit="%"
             domain={[0, 100]}
-            tick={{ fontSize: 10, fontFamily: "var(--font-mono, monospace)", fill: "var(--franco-text-tertiary)" }}
+            tick={{ fontSize: 11, fontFamily: "var(--font-mono, monospace)", fill: "var(--franco-text-tertiary)" }}
             tickLine={false}
             axisLine={false}
-            width={44}
+            width={46}
           />
           <Tooltip
             formatter={(v) => (typeof v === "number" ? `${v}%` : "—")}
@@ -133,36 +147,28 @@ export function AdminTasasChart({ datos }: { datos: PuntoTasa[] }) {
             wrapperStyle={{ fontSize: 11, fontFamily: "var(--font-mono, monospace)" }}
           />
 
-          {/* connectNulls en false: un hueco es un hueco, no una recta inventada
-              entre los dos días que lo rodean. */}
-          <Line
-            type="monotone"
-            dataKey="visitaWizard"
-            name="visita → wizard"
-            stroke="var(--franco-text)"
-            strokeWidth={2}
-            dot={false}
-            connectNulls={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="wizardAnalisis"
-            name="wizard → análisis"
-            stroke="var(--ink-500)"
-            strokeWidth={2}
-            dot={false}
-            connectNulls={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="analisisCuenta"
-            name="análisis → cuenta"
-            stroke="var(--signal-red)"
-            strokeWidth={2}
-            strokeDasharray="5 3"
-            dot={false}
-            connectNulls={false}
-          />
+          {/* El orden de <Line> fija el orden de la leyenda: se declaran en el
+              orden del embudo, no al azar. connectNulls en false — un hueco es
+              un hueco, no una recta inventada entre los días que lo rodean. */}
+          {TRAMOS.map((t) => (
+            <Line
+              key={t.key}
+              type="monotone"
+              dataKey={t.key}
+              name={t.nombre}
+              stroke={t.color}
+              strokeWidth={2.25}
+              strokeDasharray={t.dash}
+              dot={false}
+              connectNulls={false}
+              // Sin animación de entrada: Recharts dibuja la línea animando su
+              // stroke-dasharray, así que durante el primer segundo el gráfico
+              // está literalmente vacío. En un panel que se abre para mirar un
+              // número, eso es un parpadeo sin ganancia — y hace que cualquier
+              // captura automática salga en blanco.
+              isAnimationActive={false}
+            />
+          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>
