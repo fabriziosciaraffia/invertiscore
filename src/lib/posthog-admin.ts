@@ -49,8 +49,18 @@ export interface PasosPostHog {
   visitasPagada: number | null;
   /** Sesiones restantes (sin utm o con otro medium). null = sin dato. */
   visitasOrganico: number | null;
+  /** Apertura del tráfico pagado por utm_source (ig, fb, …). [] = sin dato. */
+  origenPorFuente: ItemApertura[];
+  /** Apertura de quienes abren el wizard por tipo de dispositivo. */
+  wizardPorDispositivo: ItemApertura[];
   /** ISO del instante en que PostHog respondió esta foto. null = fail-soft. */
   medidoEn: string | null;
+}
+
+/** Una fila del desglose de un nodo. */
+export interface ItemApertura {
+  etiqueta: string;
+  valor: number;
 }
 
 const SIN_DATOS: PasosPostHog = {
@@ -58,6 +68,8 @@ const SIN_DATOS: PasosPostHog = {
   iniciaronWizard: null,
   visitasPagada: null,
   visitasOrganico: null,
+  origenPorFuente: [],
+  wizardPorDispositivo: [],
   medidoEn: null,
 };
 
@@ -148,7 +160,7 @@ async function pasosSinCache(
   includeTest: boolean,
 ): Promise<PasosPostHog> {
   const where = clausulas(desdeIso, hastaIso, includeTest);
-  const [visitas, iniciaronWizard, origen] = await Promise.all([
+  const [visitas, iniciaronWizard, origen, porFuente, porDispositivo] = await Promise.all([
     queryHogqlNumero(
       `SELECT uniq(properties.$session_id) FROM events WHERE event = '$pageview' AND ${where}`,
     ),
@@ -166,6 +178,22 @@ async function pasosSinCache(
         `argMin(coalesce(nullIf(properties.utm_medium, ''), ''), timestamp) AS origen ` +
         `FROM events WHERE event = '$pageview' AND ${where} GROUP BY sid)`,
     ),
+    // Apertura del pagado por utm_source. Mismo criterio: la fuente sale del
+    // PRIMER pageview de la sesión, así una sesión pertenece a una sola fuente.
+    queryHogqlFilas(
+      `SELECT fuente, count() AS sesiones FROM (` +
+        `SELECT properties.$session_id AS sid, ` +
+        `argMin(coalesce(nullIf(properties.utm_medium, ''), ''), timestamp) AS medio, ` +
+        `argMin(coalesce(nullIf(properties.utm_source, ''), 'sin fuente'), timestamp) AS fuente ` +
+        `FROM events WHERE event = '$pageview' AND ${where} GROUP BY sid) ` +
+        `WHERE medio = 'paid' GROUP BY fuente ORDER BY sesiones DESC`,
+    ),
+    // Apertura del wizard por dispositivo.
+    queryHogqlFilas(
+      `SELECT coalesce(nullIf(properties.$device_type, ''), 'sin dato') AS disp, uniq(person_id) AS personas ` +
+        `FROM events WHERE event = 'wizard4_step_viewed' AND properties.node = 'mod' AND ${where} ` +
+        `GROUP BY disp ORDER BY personas DESC`,
+    ),
   ]);
   const fila = origen?.[0];
   const pagada = typeof fila?.[0] === "number" ? (fila[0] as number) : null;
@@ -182,8 +210,20 @@ async function pasosSinCache(
     iniciaronWizard,
     visitasPagada: pagada,
     visitasOrganico: organico,
+    origenPorFuente: aItems(porFuente),
+    wizardPorDispositivo: aItems(porDispositivo),
     medidoEn: new Date().toISOString(),
   };
+}
+
+/** Grilla [etiqueta, valor] → items tipados, descartando filas de shape raro. */
+function aItems(filas: unknown[][] | null): ItemApertura[] {
+  if (!filas) return [];
+  return filas.flatMap((f) =>
+    typeof f[0] === "string" && typeof f[1] === "number"
+      ? [{ etiqueta: f[0], valor: f[1] }]
+      : [],
+  );
 }
 
 /**

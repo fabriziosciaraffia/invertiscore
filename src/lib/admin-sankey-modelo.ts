@@ -29,6 +29,20 @@ export const PISO_FLUJO_PX = 7;
 export const PISO_NODO_PX = 34;
 
 export type Orientacion = "horizontal" | "vertical";
+/**
+ * Cuánto aire tiene el diagrama entre etapas.
+ *
+ *  · "comoda"   — la que se venía usando. Cada etapa a 300px. Se lee sola pero
+ *                 mide ~1370px de alto: en desktop obliga a scrollear el panel
+ *                 entero para ver un diagrama, que es lo contrario de un
+ *                 resumen. Sigue siendo la correcta en mobile, donde la página
+ *                 se scrollea igual y el ancho es el recurso escaso.
+ *  · "compacta" — desktop. Etapas a 108px, y las etiquetas de flujo salen a una
+ *                 COLUMNA LATERAL fija en vez de flotar sobre las bandas: a esta
+ *                 altura el corredor entre etapas no da para texto encima, y la
+ *                 salida no puede ser achicar la fuente.
+ */
+export type Densidad = "comoda" | "compacta";
 export type Camino = "entrada" | "anonimo" | "cuenta" | "abandono";
 
 export interface NodoSankey {
@@ -46,6 +60,10 @@ export interface NodoSankey {
   labelX: number;
   labelY: number;
   labelAnchor: "start" | "middle" | "end";
+  /** % sobre el total que entró al embudo. */
+  pctEntrada: number;
+  /** % sobre lo que SIGUE vivo en la etapa anterior (sin contar su abandono). */
+  pctEtapaPrevia: number;
 }
 
 export interface FlujoSankey {
@@ -58,6 +76,15 @@ export interface FlujoSankey {
   labelY: number;
   labelAnchor: "start" | "middle" | "end";
   grosor: number;
+  /** Nodos que une, para el tooltip. */
+  desde: string;
+  hacia: string;
+  /** % sobre el nodo del que sale. */
+  pctOrigen: number;
+  /** % sobre el total que entró al embudo. */
+  pctEntrada: number;
+  /** Conector punteado hacia la etiqueta lateral. Vacío si la etiqueta flota. */
+  guia: string;
 }
 
 export interface EntradaSankey {
@@ -115,6 +142,7 @@ const H = {
   repartoInicio: 58,
   repartoLargo: 470,
   gap: 20,
+  lateralX: 0,
 };
 // El ancho del viewBox vertical NO es decorativo: un SVG con viewBox escala su
 // texto junto al contenedor, así que si el viewBox es más ancho que el espacio
@@ -130,8 +158,26 @@ const V = {
   repartoInicio: 140,
   repartoLargo: 650,
   gap: 22,
+  /** x donde arranca la columna lateral de etiquetas. 0 = las etiquetas flotan. */
+  lateralX: 0,
 };
 
+// Desktop. Objetivo declarado: que el diagrama entero entre en pantalla junto al
+// encabezado, o sea ~560px de alto para cinco etapas. Se comprime el ESPACIADO
+// (pasoAvance 300 → 108, grosorNodo 54 → 34), nunca el texto: el piso de 11px
+// sigue firme y por eso las etiquetas de flujo se mudan a la columna lateral —
+// a 108px de paso, el corredor entre etapas ya no da para texto encima.
+const V_COMPACTA = {
+  ancho: 1000,
+  alto: 566,
+  avanceInicio: 46,
+  pasoAvance: 108,
+  grosorNodo: 34,
+  repartoInicio: 116,
+  repartoLargo: 620,
+  gap: 14,
+  lateralX: 772,
+};
 /** Banda entre dos bordes. `vertical` cambia el eje sobre el que curva. */
 function bandaPath(
   a0: number,
@@ -181,9 +227,11 @@ function separar<T extends { pos: number }>(items: T[], minimo: number): T[] {
 export function construirSankey(
   e: EntradaSankey,
   orientacion: Orientacion = "vertical",
+  densidad: Densidad = "comoda",
 ): ModeloSankey {
   const vertical = orientacion === "vertical";
-  const M = vertical ? V : H;
+  const M = vertical ? (densidad === "compacta" ? V_COMPACTA : V) : H;
+  const lateral = vertical && M.lateralX > 0;
   const totalEntrada = Math.max(e.visitasPagada + e.visitasOrganico, 1);
 
   const escala = (M.repartoLargo - M.gap * 2) / totalEntrada;
@@ -213,6 +261,17 @@ export function construirSankey(
   // ── Apilado por etapa ──
   // El abandono va SIEMPRE al final de su etapa: el ojo lee la banda de
   // adelante como "lo que sigue" y la de atrás como "lo que se pierde".
+  // Denominador de "% respecto a la etapa anterior": lo que sigue VIVO en esa
+  // etapa, sin su abandono. Medir contra el total de la etapa daría 43/462 para
+  // los anónimos —comparándolos con gente que nunca abrió el wizard— en vez del
+  // 43/429 que responde la pregunta real.
+  const vivosPorEtapa = new Map<number, number>();
+  for (const n of spec) {
+    if (n.esAbandono) continue;
+    vivosPorEtapa.set(n.etapa, (vivosPorEtapa.get(n.etapa) ?? 0) + n.valor);
+  }
+  const pctDe = (v: number, base: number) => (base > 0 ? Math.round((v / base) * 1000) / 10 : 0);
+
   const nodos: NodoSankey[] = [];
   for (let et = 0; et < ETAPAS; et++) {
     const enEtapa = spec
@@ -248,6 +307,8 @@ export function construirSankey(
       }
       nodos.push({
         ...n,
+        pctEntrada: pctDe(n.valor, totalEntrada),
+        pctEtapaPrevia: pctDe(n.valor, vivosPorEtapa.get(et - 1) ?? totalEntrada),
         x,
         y,
         ancho,
@@ -291,6 +352,11 @@ export function construirSankey(
     const salta = Math.abs(b.etapa - a.etapa) > 1;
     crudos.push({
       id: `${desde}->${hacia}`,
+      desde,
+      hacia,
+      pctOrigen: pctDe(valor, a.valor),
+      pctEntrada: pctDe(valor, totalEntrada),
+      guia: "",
       valor,
       camino,
       etiqueta,
@@ -346,21 +412,44 @@ export function construirSankey(
     }
   });
 
+  // En compacta las etiquetas NO flotan: van a una columna lateral fija, con un
+  // conector punteado desde el punto medio de su banda. Con etapas a 108px no
+  // hay corredor donde poner texto encima, y encogerlo está prohibido.
+  const lateralOrdenadas = lateral
+    ? separar(
+        crudos
+          .filter((f) => f.etiqueta)
+          .map((f) => ({ id: f.id, pos: f.avanceMedio }))
+          .sort((a, b) => a.pos - b.pos),
+        17,
+      )
+    : [];
+  const lateralY = new Map(lateralOrdenadas.map((l) => [l.id, l.pos]));
+
   const flujos: FlujoSankey[] = crudos.map((f) => {
     const pos = posPorId.get(f.id) ?? f.repartoMedio;
+    const yLat = lateralY.get(f.id);
     return {
       id: f.id,
+      desde: f.desde,
+      hacia: f.hacia,
+      pctOrigen: f.pctOrigen,
+      pctEntrada: f.pctEntrada,
+      guia:
+        lateral && yLat != null && f.etiqueta
+          ? `M ${f.repartoMedio} ${f.avanceMedio} L ${M.lateralX - 8} ${yLat - 4}`
+          : "",
       valor: f.valor,
       camino: f.camino,
       etiqueta: f.etiqueta,
       d: f.d,
       grosor: f.grosor,
-      // En vertical la etiqueta cae en la franja horizontal entre etapas, que
-      // es ancha y está vacía. En horizontal cae en el corredor entre columnas,
-      // que es estrecho — de ahí el encimamiento que motivó probar vertical.
-      labelX: vertical ? pos : f.avanceMedio,
-      labelY: vertical ? f.avanceMedio : pos - 7,
-      labelAnchor: "middle",
+      // Compacta: columna lateral, ancladas a la izquierda para que arranquen
+      // todas en la misma x. Cómoda: en la franja entre etapas, que ahí es
+      // ancha y está vacía. Horizontal: el corredor entre columnas.
+      labelX: lateral && yLat != null ? M.lateralX : vertical ? pos : f.avanceMedio,
+      labelY: lateral && yLat != null ? yLat : vertical ? f.avanceMedio : pos - 7,
+      labelAnchor: lateral && yLat != null ? ("start" as const) : ("middle" as const),
     };
   });
 

@@ -12,7 +12,7 @@ import {
 } from "@/lib/admin-rpc";
 import { AdminTitular } from "./admin-titular";
 import { AdminCheckoutsAbandonados, type CheckoutAbandonado } from "./admin-funnel";
-import { AdminSankey, type MetricaSankey } from "./admin-sankey";
+import { AdminSankey, type AperturaNodo, type MetricaSankey } from "./admin-sankey";
 import { AdminTasasChart, type PuntoTasa } from "./admin-tasas-chart";
 import { HITOS_FUNNEL, tramoApagado } from "@/lib/admin-funnel-hitos";
 import { AdminTendencia } from "./admin-tendencia";
@@ -234,6 +234,16 @@ export default async function AdminPage({
       ? Math.round(pasosPh.visitas / funnel7.cuentasTotal)
       : null;
 
+  // Desglose por nodo. Solo los nodos con una dimensión medible aparecen acá;
+  // el resto no es clickeable. El componente decide si hay volumen suficiente
+  // para mostrar porcentajes o si corresponde el estado vacío honesto.
+  const aperturas: Record<string, AperturaNodo> = {
+    pagada: { titulo: "por fuente", items: pasosPh.origenPorFuente },
+    abren: { titulo: "por dispositivo", items: pasosPh.wizardPorDispositivo },
+    anonimos: { titulo: "por modalidad", items: funnel7.gratisPorTipoAnon },
+    concuenta: { titulo: "por modalidad", items: funnel7.gratisPorTipoWelcome },
+  };
+
   const metricasSankey: MetricaSankey[] = [
     {
       titulo: "Prueban el producto",
@@ -384,6 +394,7 @@ export default async function AdminPage({
           <AdminSankey
             entrada={entradaSankey}
             metricas={metricasSankey}
+            aperturas={aperturas}
             frescura={frescuraPh}
             nota="Las etapas no comparten unidad: origen y wizard cuentan sesiones y personas de PostHog; análisis, cuentas y pagos cuentan identidades de la base (el par AMBAS vale 1). El reparto de “se van” entre pagado y orgánico es proporcional al peso de cada origen — no hay dato de abandono por origen. “Con cuenta” no desemboca en cuentas creadas: esos análisis los hicieron cuentas que ya existían."
           />

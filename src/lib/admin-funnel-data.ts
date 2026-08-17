@@ -55,6 +55,23 @@ export interface FunnelSupabase {
   iniciaronPago: number;
   pagaron: number;
   recompraron: number;
+  /** Apertura por modalidad (LTR / STR / AMBAS), en unidades, por rama. Van
+   *  separadas porque cada nodo del Sankey abre SU propio desglose: un solo
+   *  arreglo del total haría que "anónimos" y "con cuenta" mostraran lo mismo. */
+  gratisPorTipoAnon: Array<{ etiqueta: string; valor: number }>;
+  gratisPorTipoWelcome: Array<{ etiqueta: string; valor: number }>;
+}
+
+/**
+ * Etiqueta de UI para `analisis.tipo_analisis`. La columna guarda
+ * `long-term`/`short-term`; el panel habla en LTR/STR como el resto del repo.
+ * AMBAS no vive en la columna: se deduce de tener `ambas_group_id`, porque el
+ * par son dos filas (una LTR y una STR) que valen una sola unidad.
+ */
+function etiquetaTipo(tipo: string | null): string {
+  if (tipo === "long-term") return "LTR";
+  if (tipo === "short-term") return "STR";
+  return "sin dato";
 }
 
 /**
@@ -182,23 +199,38 @@ export async function funnelSupabase(
   // tienen user_id NULL — esas son de usuarios reales por definición (las
   // cuentas internas están logueadas). Se filtra en JS para no pelear con el
   // NULL-en-.neq de PostgREST (regla de la casa).
-  const gratisRows = await paginar<{ id: string; charge_mode: string; ambas_group_id: string | null; user_id: string | null }>(
+  const gratisRows = await paginar<{ id: string; charge_mode: string; ambas_group_id: string | null; user_id: string | null; tipo_analisis: string | null }>(
     (d, h) =>
       conPeriodo(
         sb
           .from("analisis")
-          .select("id, charge_mode, ambas_group_id, user_id")
+          .select("id, charge_mode, ambas_group_id, user_id, tipo_analisis")
           .in("charge_mode", ["anon_cap", "welcome"]),
         rango,
       ).range(d, h),
   );
   const unidadesAnon = new Set<string>();
   const unidadesWelcome = new Set<string>();
+  // Modalidad por UNIDAD, no por fila: el par AMBAS son dos filas (una LTR y
+  // una STR) que valen una sola unidad, y contarlas por separado inflaría los
+  // dos extremos y haría desaparecer la categoría AMBAS.
+  const tipoPorUnidad = new Map<string, string>();
   for (const r of gratisRows) {
     if (r.user_id && testSet.has(r.user_id)) continue;
     const unidad = r.ambas_group_id ?? r.id;
     (r.charge_mode === "anon_cap" ? unidadesAnon : unidadesWelcome).add(unidad);
+    tipoPorUnidad.set(unidad, r.ambas_group_id ? "AMBAS" : etiquetaTipo(r.tipo_analisis));
   }
+  const contar = (unidades: Set<string>) => {
+    const conteo = new Map<string, number>();
+    unidades.forEach((u) => {
+      const tipo = tipoPorUnidad.get(u) ?? "sin dato";
+      conteo.set(tipo, (conteo.get(tipo) ?? 0) + 1);
+    });
+    return Array.from(conteo.entries())
+      .map(([etiqueta, valor]) => ({ etiqueta, valor }))
+      .sort((a, b) => b.valor - a.valor);
+  };
 
   // ── Paso 4 · cuentas creadas (auth.users vía admin API, paginado) ──
   // No hay RPC con filtro de fecha y auth.users no es queryable por PostgREST;
@@ -274,5 +306,7 @@ export async function funnelSupabase(
     iniciaronPago: iniciaron.size,
     pagaron,
     recompraron,
+    gratisPorTipoAnon: contar(unidadesAnon),
+    gratisPorTipoWelcome: contar(unidadesWelcome),
   };
 }
