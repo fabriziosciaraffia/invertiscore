@@ -11,11 +11,20 @@ import {
   PRODUCTO_CONSUMO,
 } from "@/lib/admin-rpc";
 import { AdminTitular } from "./admin-titular";
-import { AdminFunnel, type CheckoutAbandonado, type EtapaFunnel } from "./admin-funnel";
+import { AdminCheckoutsAbandonados, type CheckoutAbandonado } from "./admin-funnel";
+import { AdminSankey, type MetricaSankey } from "./admin-sankey";
+import { AdminTasasChart, HITOS_FUNNEL, type PuntoTasa } from "./admin-tasas-chart";
 import { AdminTendencia } from "./admin-tendencia";
 import { ContextoBar } from "./test-toggle";
-import { pasosPostHog } from "@/lib/posthog-admin";
-import { funnelSupabase, leerPeriodo, rangoPeriodo, type PeriodoFunnel } from "@/lib/admin-funnel-data";
+import { pasosPostHog, seriePostHog } from "@/lib/posthog-admin";
+import {
+  CAP_CUTOVER_ISO,
+  funnelSupabase,
+  leerPeriodo,
+  rangoPeriodo,
+  serieSupabase,
+  type PeriodoFunnel,
+} from "@/lib/admin-funnel-data";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +35,15 @@ const SEMANAS = 12;
 /** Ventana de los KPIs y del CAC. Una sola constante: si el bloque de costos
  *  mirara 30 días y el de gasto 7, el cociente no significaría nada. */
 const DIAS_KPI = 30;
+
+/** Ventana de la serie de tasas. Corta a propósito: es "cómo venimos", no historia. */
+const DIAS_SERIE = 14;
+
+/** "2026-08-16" → "16 ago". El eje del gráfico no tiene lugar para más. */
+function fmtDiaCorto(dia: string): string {
+  const d = new Date(`${dia}T00:00:00Z`);
+  return d.toLocaleDateString("es-CL", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", "");
+}
 
 /** `product <> 'analysis_charge'` sin comerse los NULL (en SQL `<>` sobre NULL da NULL). */
 const SIN_CONSUMOS = `product.is.null,product.neq.${PRODUCTO_CONSUMO}`;
@@ -180,61 +198,101 @@ export default async function AdminPage({
   const tasaActivacion =
     overview.registrados > 0 ? Math.round((overview.activaron / overview.registrados) * 100) : 0;
 
-  // ── Funnel 7 pasos (Fase B, estructura ratificada) ──
-  // Los pasos 1-2 salen de una foto cacheada; los 3-7 son de Supabase en vivo.
-  // La etiqueta de edad hace visible esa asimetría: sin ella, un paso 1 quieto
-  // mientras el resto se mueve se lee como dato roto (pasó, 17-ago).
+  // Los pasos de PostHog salen de una foto cacheada; los de Supabase son en
+  // vivo. La etiqueta de edad hace visible esa asimetría: sin ella, un número
+  // quieto mientras el resto se mueve se lee como dato roto (pasó, 17-ago).
   const frescuraPh = etiquetaFrescura(pasosPh.medidoEn);
-  const etapas7: EtapaFunnel[] = [
+
+  // ── Vista 1 · Sankey de dos caminos ──
+  // El Sankey necesita las columnas 1-2 (origen y wizard), que son de PostHog.
+  // Sin ellas no hay diagrama que dibujar: se degrada a un aviso sobrio y el
+  // resto del bloque (métricas calculables, tabla de abandonados) sigue vivo.
+  const hayPostHog =
+    pasosPh.visitas != null && pasosPh.iniciaronWizard != null && pasosPh.visitasPagada != null;
+
+  const entradaSankey = hayPostHog
+    ? {
+        visitasPagada: pasosPh.visitasPagada!,
+        visitasOrganico: pasosPh.visitasOrganico ?? 0,
+        abrenWizard: pasosPh.iniciaronWizard!,
+        gratisAnonimos: funnel7.gratisAnonCap,
+        gratisConCuenta: funnel7.gratisWelcome,
+        cuentasClaim: funnel7.cuentasClaim,
+        cuentasDirecto: funnel7.cuentasOrganico,
+        pagos: funnel7.pagaron,
+      }
+    : null;
+
+  const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : null);
+  const pruebanPct = pasosPh.visitas != null ? pct(funnel7.gratisTotal, pasosPh.visitas) : null;
+  const claimPct = pct(funnel7.cuentasClaim, funnel7.gratisAnonCap);
+  const visitasPorCuenta =
+    pasosPh.visitas != null && funnel7.cuentasTotal > 0
+      ? Math.round(pasosPh.visitas / funnel7.cuentasTotal)
+      : null;
+
+  const metricasSankey: MetricaSankey[] = [
     {
-      valor: pasosPh.visitas ?? 0,
-      sinDatos: pasosPh.visitas === null,
-      nombre: "Visitas",
-      detalle: "Sesiones únicas · PostHog, sin bots",
-      frescura: frescuraPh,
-      caida: "",
+      titulo: "Prueban el producto",
+      valor: pruebanPct != null ? `${pruebanPct}%` : "—",
+      detalle:
+        pruebanPct != null
+          ? `${fmtNumber(funnel7.gratisTotal)} de ${fmtNumber(pasosPh.visitas!)} visitas`
+          : "sin datos de PostHog para el denominador",
     },
     {
-      valor: pasosPh.iniciaronWizard ?? 0,
-      sinDatos: pasosPh.iniciaronWizard === null,
-      nombre: "Iniciaron análisis",
-      detalle: "Vieron el primer paso del wizard · PostHog",
-      frescura: frescuraPh,
-      caida: "visitaron y no abrieron el wizard",
+      titulo: "Anónimo → cuenta",
+      valor: claimPct != null ? `${claimPct}%` : "—",
+      detalle:
+        claimPct != null
+          ? `${fmtNumber(funnel7.cuentasClaim)} de ${fmtNumber(funnel7.gratisAnonCap)} reclamaron`
+          : "todavía no hay análisis anónimos",
     },
     {
-      valor: funnel7.gratisTotal,
-      nombre: "Análisis gratis creado",
-      detalle: "anon_cap + welcome · par AMBAS cuenta 1",
-      desglose: `${fmtNumber(funnel7.gratisAnonCap)} anónimos · ${fmtNumber(funnel7.gratisWelcome)} welcome`,
-      caida: "entraron al wizard y no generaron",
-    },
-    {
-      valor: funnel7.cuentasTotal,
-      nombre: "Cuenta creada",
-      detalle: "Altas del período",
-      desglose: `${fmtNumber(funnel7.cuentasOrganico)} orgánicas · ${fmtNumber(funnel7.cuentasClaim)} vía claim`,
-      caida: "generaron gratis y no se registraron",
-    },
-    {
-      valor: funnel7.iniciaronPago,
-      nombre: "Iniciaron pago",
-      detalle: "Usuarios con pago creado sobre $0",
-      caida: "no abrieron el checkout",
-    },
-    {
-      valor: funnel7.pagaron,
-      nombre: "Pagaron",
-      detalle: "Pago confirmado sobre $0",
-      caida: "abandonaron el checkout",
-    },
-    {
-      valor: funnel7.recompraron,
-      nombre: "Recompraron",
-      detalle: "2+ pagos confirmados en el período",
-      caida: "pagaron una vez y no volvieron",
+      titulo: "Visitas por cuenta",
+      valor: visitasPorCuenta != null ? fmtNumber(visitasPorCuenta) : "—",
+      detalle:
+        visitasPorCuenta != null
+          ? `${fmtNumber(pasosPh.visitas!)} ÷ ${fmtNumber(funnel7.cuentasTotal)}`
+          : "sin cuentas en el período todavía",
     },
   ];
+
+  // ── Vista 2 · Evolución de tasas ──
+  // Ventana móvil propia de 14 días: la evolución se lee sobre un tramo corto y
+  // reciente. El filtro de período manda en el Sankey, no acá — si no, elegir
+  // "pre-cap" dejaría el gráfico sin el hito que le da sentido.
+  const desdeSerie = new Date(Date.now() - DIAS_SERIE * 86_400_000).toISOString();
+  const [serPh, serSb] = await Promise.all([
+    seriePostHog(desdeSerie, includeTest),
+    serieSupabase(sb, { desdeIso: desdeSerie, testUserIds, includeTest }),
+  ]);
+  const phPorDia = new Map(serPh.map((d) => [d.dia, d]));
+  const sbPorDia = new Map(serSb.map((d) => [d.dia, d]));
+  const diasSerie = Array.from(
+    new Set(Array.from(phPorDia.keys()).concat(Array.from(sbPorDia.keys()))),
+  ).sort();
+  const cutoverDia = CAP_CUTOVER_ISO.slice(0, 10);
+
+  const datosTasas: PuntoTasa[] = diasSerie.map((dia) => {
+    const ph = phPorDia.get(dia);
+    const sbd = sbPorDia.get(dia);
+    const visitas = ph?.visitas ?? null;
+    const wiz = ph?.iniciaronWizard ?? null;
+    const gratis = sbd?.gratis ?? 0;
+    const cuentas = sbd?.cuentas ?? 0;
+    return {
+      dia,
+      label: fmtDiaCorto(dia),
+      visitaWizard: visitas && wiz != null ? pct(wiz, visitas) : null,
+      wizardAnalisis: wiz ? pct(gratis, wiz) : null,
+      // Antes del cap este tramo era 100% POR DEFINICIÓN: no se podía analizar
+      // sin cuenta. Se deja en null para que la línea NO se dibuje — ver la
+      // justificación completa en admin-tasas-chart.tsx.
+      analisisCuenta: dia < cutoverDia ? null : gratis > 0 ? pct(cuentas, gratis) : null,
+    };
+  });
+
   const visitasPorCompra =
     pasosPh.visitas != null && funnel7.pagaron > 0
       ? Math.round(pasosPh.visitas / funnel7.pagaron)
@@ -313,7 +371,80 @@ export default async function AdminPage({
           </div>
         </div>
 
-        <AdminFunnel includeTest={includeTest} abandonados={abandonados} etapas={etapas7} />
+        {entradaSankey ? (
+          <AdminSankey
+            entrada={entradaSankey}
+            metricas={metricasSankey}
+            frescura={frescuraPh}
+            nota="Las columnas no comparten unidad: origen y wizard cuentan sesiones y personas de PostHog; análisis, cuentas y pagos cuentan identidades de la base (el par AMBAS vale 1). El reparto de “se van” entre pagado y orgánico es proporcional al peso de cada origen — no hay dato de abandono por origen. “Con cuenta” no desemboca en cuentas creadas: esos análisis los hicieron cuentas que ya existían."
+          />
+        ) : (
+          <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] px-4 py-6">
+            <p className="font-body text-[13px] text-[var(--franco-text-muted)]">
+              PostHog no respondió, así que faltan las columnas de origen y wizard — sin ellas el
+              diagrama de flujo no se puede dibujar. Los datos de la base siguen abajo.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-3">
+          <AdminCheckoutsAbandonados includeTest={includeTest} abandonados={abandonados} />
+        </div>
+      </section>
+
+      {/* ─── 2b · EVOLUCIÓN DE TASAS ─── */}
+      <section className="mb-8">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">
+            ¿Vamos mejorando?
+          </h2>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
+            últimos {DIAS_SERIE} días · día UTC
+          </span>
+        </div>
+        <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
+          {datosTasas.length === 0 ? (
+            <p className="font-body text-[13px] text-[var(--franco-text-muted)]">
+              Todavía no hay días con datos en la ventana.
+            </p>
+          ) : (
+            <>
+              <AdminTasasChart datos={datosTasas} />
+              {/* Respaldo en texto del gráfico: mismos números, sin depender de
+                  poder ver la curva. Es lo que lee un lector de pantalla. */}
+              <table className="sr-only">
+                <caption>
+                  Tasas de conversión diarias de los últimos {DIAS_SERIE} días. Hitos:{" "}
+                  {HITOS_FUNNEL.map((h) => `${h.etiqueta} el ${h.fecha}`).join("; ")}.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Día</th>
+                    <th scope="col">Visita a wizard</th>
+                    <th scope="col">Wizard a análisis</th>
+                    <th scope="col">Análisis a cuenta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datosTasas.map((d) => (
+                    <tr key={d.dia}>
+                      <th scope="row">{d.label}</th>
+                      <td>{d.visitaWizard != null ? `${d.visitaWizard}%` : "sin dato"}</td>
+                      <td>{d.wizardAnalisis != null ? `${d.wizardAnalisis}%` : "sin dato"}</td>
+                      <td>
+                        {d.analisisCuenta != null
+                          ? `${d.analisisCuenta}%`
+                          : d.dia < CAP_CUTOVER_ISO.slice(0, 10)
+                            ? "no aplica: antes del cap era 100% por definición"
+                            : "sin dato"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </div>
       </section>
 
       {/* ─── 3 · TENDENCIA ─── */}

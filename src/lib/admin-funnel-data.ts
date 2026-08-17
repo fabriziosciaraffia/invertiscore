@@ -93,6 +93,83 @@ function conPeriodo<Q extends { gte: (c: string, v: string) => Q; lt: (c: string
   return out;
 }
 
+/** Un día de la serie de tasas, lado Supabase. */
+export interface DiaSupabase {
+  /** YYYY-MM-DD en UTC, para casar con el `toStartOfDay` de HogQL. */
+  dia: string;
+  /** Unidades de análisis gratis creadas ese día (par AMBAS = 1). */
+  gratis: number;
+  /** Cuentas creadas ese día. */
+  cuentas: number;
+}
+
+/**
+ * Serie diaria de los tramos que salen de Supabase, desde `desdeIso`.
+ *
+ * El día se corta en UTC a propósito: HogQL agrupa con `toStartOfDay` sobre
+ * timestamps UTC, y si un lado cortara en hora de Chile las tasas mezclarían
+ * numerador y denominador de días distintos — un desfase de 4 h basta para
+ * inventar picos que no existen.
+ */
+export async function serieSupabase(
+  sb: SupabaseClient,
+  opts: { desdeIso: string; testUserIds: string[]; includeTest: boolean },
+): Promise<DiaSupabase[]> {
+  const testSet = new Set(opts.includeTest ? [] : opts.testUserIds);
+
+  const gratisRows = await paginar<{
+    id: string;
+    ambas_group_id: string | null;
+    user_id: string | null;
+    created_at: string;
+  }>((d, h) =>
+    sb
+      .from("analisis")
+      .select("id, ambas_group_id, user_id, created_at")
+      .in("charge_mode", ["anon_cap", "welcome"])
+      .gte("created_at", opts.desdeIso)
+      .range(d, h),
+  );
+
+  // Set por día: el par AMBAS son dos filas que valen una unidad, igual que en
+  // el funnel. Se deduplica DENTRO del día — un par que cruzara medianoche
+  // contaría dos veces, pero las dos filas de un par nacen en la misma request.
+  const gratisPorDia = new Map<string, Set<string>>();
+  for (const r of gratisRows) {
+    if (r.user_id && testSet.has(r.user_id)) continue;
+    const dia = r.created_at.slice(0, 10);
+    if (!gratisPorDia.has(dia)) gratisPorDia.set(dia, new Set());
+    gratisPorDia.get(dia)!.add(r.ambas_group_id ?? r.id);
+  }
+
+  const usuarios: Array<{ id: string; created_at: string }> = [];
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) {
+      console.error("[admin-funnel-data] listUsers falló (serie):", error.message);
+      break;
+    }
+    for (const u of data.users) usuarios.push({ id: u.id, created_at: u.created_at });
+    if (data.users.length < 1000) break;
+  }
+  const cuentasPorDia = new Map<string, number>();
+  for (const u of usuarios) {
+    if (testSet.has(u.id)) continue;
+    if (u.created_at < opts.desdeIso) continue;
+    const dia = u.created_at.slice(0, 10);
+    cuentasPorDia.set(dia, (cuentasPorDia.get(dia) ?? 0) + 1);
+  }
+
+  const dias = new Set(Array.from(gratisPorDia.keys()).concat(Array.from(cuentasPorDia.keys())));
+  return Array.from(dias)
+    .sort()
+    .map((dia) => ({
+      dia,
+      gratis: gratisPorDia.get(dia)?.size ?? 0,
+      cuentas: cuentasPorDia.get(dia) ?? 0,
+    }));
+}
+
 export async function funnelSupabase(
   sb: SupabaseClient,
   opts: { periodo: PeriodoFunnel; testUserIds: string[]; includeTest: boolean },
