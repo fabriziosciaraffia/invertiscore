@@ -23,6 +23,10 @@ export interface EtapaFunnel {
   sinDatos?: boolean;
   /** Desglose bajo el detalle (ej: "12 anónimos · 3 welcome"). */
   desglose?: string;
+  /** Edad del dato para las etapas de fuente cacheada (ej: "actualizado hace
+   *  3 min"). Sin etiqueta, un número cacheado se lee como número congelado —
+   *  que es exactamente la confusión que originó este campo. */
+  frescura?: string;
 }
 
 export interface CheckoutAbandonado {
@@ -97,6 +101,11 @@ export function AdminFunnel({
                   <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
                     {e.detalle}
                   </div>
+                  {e.frescura && (
+                    <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-muted)]">
+                      {e.frescura}
+                    </div>
+                  )}
                   {e.desglose && (
                     <div className="mt-0.5 font-mono text-[11px] text-[var(--franco-text-secondary)]">
                       {e.desglose}

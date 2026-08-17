@@ -10,10 +10,18 @@
 //  · FAIL-SOFT TOTAL: sin key, timeout, 4xx/5xx o shape inesperado → null.
 //    El panel muestra "sin datos" en 1-2 y el funnel 3-7 vive igual. Jamás
 //    se propaga un error de PostHog a la página.
-//  · CACHÉ DIARIO vía unstable_cache (86400 s), keyed por período+toggle. El
-//    fallo NO se cachea: la función interna lanza y unstable_cache no guarda
-//    errores — un hipo transitorio de PostHog no deja al panel 24 h en "sin
-//    datos".
+//  · CACHÉ DE 15 MIN vía unstable_cache, keyed por período+toggle. El fallo NO
+//    se cachea: la función interna lanza y unstable_cache no guarda errores —
+//    un hipo transitorio de PostHog no deja al panel pegado en "sin datos".
+//    Era diario (86400 s) y el panel se veía muerto: con el funnel 3-7 en vivo
+//    desde Supabase, un paso 1 congelado horas se lee como número roto, no como
+//    número cacheado. 15 min protegen la API de PostHog de sobra para una
+//    página que mira una persona.
+//  · FRESCURA VISIBLE: la foto viaja con su `medidoEn` (ISO del instante en que
+//    PostHog respondió), guardado DENTRO del payload cacheado. Es la única
+//    manera de saber la edad del dato: unstable_cache no expone cuándo llenó la
+//    entrada. El panel lo pinta como "hace X min" — un dato cacheado sin
+//    etiqueta parece un dato roto.
 //  · Anti-bot: properties.$virt_traffic_type = 'Regular'. Es una propiedad
 //    VIRTUAL (no aparece en la taxonomía del proyecto pero se computa en
 //    query) — verificada contra el proyecto real el 16-ago: 2.664/2.667
@@ -37,9 +45,14 @@ export interface PasosPostHog {
   visitas: number | null;
   /** Personas únicas que vieron el primer paso del wizard (node 'mod'). */
   iniciaronWizard: number | null;
+  /** ISO del instante en que PostHog respondió esta foto. null = fail-soft. */
+  medidoEn: string | null;
 }
 
-const SIN_DATOS: PasosPostHog = { visitas: null, iniciaronWizard: null };
+const SIN_DATOS: PasosPostHog = { visitas: null, iniciaronWizard: null, medidoEn: null };
+
+/** Frescura del caché de los pasos 1-2. */
+export const REVALIDATE_POSTHOG_S = 900;
 
 async function queryHogqlNumero(sql: string): Promise<number | null> {
   const key = process.env.POSTHOG_PERSONAL_API_KEY;
@@ -102,15 +115,15 @@ async function pasosSinCache(
   if (visitas === null && iniciaronWizard === null) {
     throw new Error("posthog sin respuesta");
   }
-  return { visitas, iniciaronWizard };
+  return { visitas, iniciaronWizard, medidoEn: new Date().toISOString() };
 }
 
 const pasosCacheados = unstable_cache(pasosSinCache, ["admin-funnel-posthog"], {
-  revalidate: 86_400,
+  revalidate: REVALIDATE_POSTHOG_S,
 });
 
 /**
- * Pasos 1-2 del funnel, cacheados un día por (período × toggle). Nunca lanza:
+ * Pasos 1-2 del funnel, cacheados 15 min por (período × toggle). Nunca lanza:
  * el fallo degrada a { null, null } y el caller pinta "sin datos".
  */
 export async function pasosPostHog(

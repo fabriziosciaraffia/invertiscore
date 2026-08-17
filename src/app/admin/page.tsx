@@ -30,6 +30,23 @@ const DIAS_KPI = 30;
 /** `product <> 'analysis_charge'` sin comerse los NULL (en SQL `<>` sobre NULL da NULL). */
 const SIN_CONSUMOS = `product.is.null,product.neq.${PRODUCTO_CONSUMO}`;
 
+/**
+ * Edad de la foto de PostHog, en texto. `null` (fail-soft) → sin etiqueta: el
+ * paso ya se pinta "—" y una marca de tiempo sobre un dato ausente confunde
+ * más de lo que informa. Se calcula en el server al renderizar, que es el
+ * mismo instante en que se lee el número — la página es force-dynamic.
+ */
+function etiquetaFrescura(medidoEn: string | null): string | undefined {
+  if (!medidoEn) return undefined;
+  const ms = Date.now() - new Date(medidoEn).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return undefined;
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return "actualizado recién";
+  if (min < 60) return `actualizado hace ${min} min`;
+  const h = Math.floor(min / 60);
+  return `actualizado hace ${h} h`;
+}
+
 function fmtToday(): string {
   return new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
 }
@@ -115,7 +132,7 @@ export default async function AdminPage({
     // El gasto de Meta, el histórico de análisis y la atribución se fueron con
     // el CAC a /admin/finanzas — esta pantalla ya no los necesita y son tres
     // queries menos por visita.
-    // Pasos 1-2 del funnel (PostHog, cacheado 24 h, fail-soft a "sin datos") y
+    // Pasos 1-2 del funnel (PostHog, cacheado 15 min, fail-soft a "sin datos") y
     // pasos 3-7 (Supabase directo). Nada de esto puede tirar la página.
     pasosPostHog(rango.desde ?? "2025-01-01T00:00:00.000Z", rango.hasta, includeTest),
     funnelSupabase(sb, { periodo, testUserIds, includeTest }),
@@ -164,12 +181,17 @@ export default async function AdminPage({
     overview.registrados > 0 ? Math.round((overview.activaron / overview.registrados) * 100) : 0;
 
   // ── Funnel 7 pasos (Fase B, estructura ratificada) ──
+  // Los pasos 1-2 salen de una foto cacheada; los 3-7 son de Supabase en vivo.
+  // La etiqueta de edad hace visible esa asimetría: sin ella, un paso 1 quieto
+  // mientras el resto se mueve se lee como dato roto (pasó, 17-ago).
+  const frescuraPh = etiquetaFrescura(pasosPh.medidoEn);
   const etapas7: EtapaFunnel[] = [
     {
       valor: pasosPh.visitas ?? 0,
       sinDatos: pasosPh.visitas === null,
       nombre: "Visitas",
       detalle: "Sesiones únicas · PostHog, sin bots",
+      frescura: frescuraPh,
       caida: "",
     },
     {
@@ -177,6 +199,7 @@ export default async function AdminPage({
       sinDatos: pasosPh.iniciaronWizard === null,
       nombre: "Iniciaron análisis",
       detalle: "Vieron el primer paso del wizard · PostHog",
+      frescura: frescuraPh,
       caida: "visitaron y no abrieron el wizard",
     },
     {
