@@ -128,6 +128,12 @@ export const VOSEO_A_TUTEO: Readonly<Record<string, string>> = {
   dejás: "dejas",
   describís: "describes",
   descartás: "descartas",
+  // Observadas EN VIVO por la capa -ás nueva durante el Golden FULL del
+  // 17-ago-2026 (GS-3 las emitió las tres): la capa las cazó y el reintento las
+  // limpió. Pasan al léxico para que la próxima cuesten un swap y no una
+  // regeneración de 8.000 tokens — el ciclo de vida que el módulo prescribe.
+  descontás: "descuentas",
+  desembolsás: "desembolsas",
   elegís: "eliges",
   eliminás: "eliminas",
   empezás: "empiezas",
@@ -187,6 +193,7 @@ export const VOSEO_A_TUTEO: Readonly<Record<string, string>> = {
   subís: "subes",
   sumás: "sumas",
   tenés: "tienes",
+  terminás: "terminas",
   // "tomás" NO entra: colisiona con el nombre propio Tomás y el swap lo
   // renombraría en pantalla. El imperativo "tomá" sí, que es inequívoco.
   transferís: "transfieres",
