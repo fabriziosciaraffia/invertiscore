@@ -4,6 +4,7 @@
 // dir (Places + mapa + gate de cobertura), tipo, entrega, antigüedad, tamaño.
 
 import { useEffect, useRef } from "react";
+import { usePostHog } from "posthog-js/react";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
@@ -15,6 +16,9 @@ import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, Segmented } from "./ui"
 import { NumericInput } from "./NumericInput";
 import { leerNum } from "./derive";
 import { escalaSuperficie } from "./avisoEscala";
+import { trackWizard } from "./track";
+import { rangoChars, registrarSondaSalida, reportarValidacionRechazo } from "./stepTelemetry";
+import { WaitlistZonaInline } from "./WaitlistZonaInline";
 
 export interface ScreenProps {
   answers: WizardV4Answers;
@@ -30,6 +34,30 @@ export function DireccionScreen({ answers, data, patchAnswers, answer }: ScreenP
   const inputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const acRef = useRef<any>(null);
+  const posthog = usePostHog();
+
+  // ── Sonda de `dir` (I-2) ──
+  // La segunda fuga del wizard (~26% en mobile) mezcla dos historias distintas:
+  // quien rebota sin tipear nada y quien tipea una dirección de región y choca
+  // con el rechazo de cobertura. Estas señales las separan. El evento sale al
+  // DESMONTAR (salir del paso): uno por visita.
+  const charsMax = useRef(0);
+  const sugerenciaSeleccionada = useRef(false);
+  const regionRef = useRef<string | null>(null);
+  // Espejo del texto/confirmación para leerlos en el cleanup sin re-suscribir.
+  const estadoSalida = useRef({ conTexto: false, confirmada: false });
+
+  registrarSondaSalida("dir", () => ({
+    name: "wizard4_dir_tipeo",
+    props: {
+      chars_rango: rangoChars(charsMax.current),
+      sugerencia_seleccionada: sugerenciaSeleccionada.current,
+      // Tipeó algo y se fue sin elegir de la lista: o no entendió que hay que
+      // seleccionar, o su dirección no aparece. Ambas son accionables.
+      salio_con_texto_sin_seleccion:
+        estadoSalida.current.conTexto && !estadoSalida.current.confirmada,
+    },
+  }));
 
   useEffect(() => {
     loadGoogleMaps()
@@ -59,6 +87,19 @@ export function DireccionScreen({ answers, data, patchAnswers, answer }: ScreenP
           const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comunaRaw.toLowerCase());
           const comunaFinal = match?.comuna || comunaRaw;
           const cubierta = isComunaDisponible(comunaFinal);
+          // Región normalizada POR PLACES (no texto libre del usuario): es el
+          // mapa de expansión — de dónde viene la demanda que hoy se rechaza.
+          const regionRaw =
+            comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name || "";
+          sugerenciaSeleccionada.current = true;
+          regionRef.current = regionRaw || null;
+          if (!cubierta) {
+            trackWizard(posthog, "wizard4_dir_rechazo_cobertura", {
+              comuna: comunaFinal || "sin_dato",
+              region: regionRaw || "sin_dato",
+            });
+            reportarValidacionRechazo(posthog, "cobertura", "dir");
+          }
           // REGRESIÓN-7: Google rellena el input con un texto distinto al
           // formatted_address, y su `input` event (onChange de React) puede correr
           // DESPUÉS de este handler → direccion (input) ≠ direccionConfirmada
@@ -82,12 +123,18 @@ export function DireccionScreen({ answers, data, patchAnswers, answer }: ScreenP
         acRef.current = ac;
       })
       .catch(() => { /* ignore */ });
+    // `posthog` (usePostHog) es estable y solo se usa dentro del listener de
+    // Places: re-suscribir el Autocomplete por él re-crearía el widget.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patchAnswers]);
 
   const { direccion, direccionConfirmada, comuna, ciudad, lat, lng } = answers;
   const confirmada = !!direccionConfirmada && direccion === direccionConfirmada;
   const fueraDeZona = !!comuna && !isComunaDisponible(comuna);
   const puedeSeguir = confirmada && !!comuna && !fueraDeZona;
+  // Espejo para el evento de salida (leído en el cleanup del desmontaje).
+  estadoSalida.current = { conTexto: !!direccion?.trim(), confirmada };
+  charsMax.current = Math.max(charsMax.current, direccion?.trim().length ?? 0);
 
   return (
     <div className="flex flex-col gap-5">
@@ -108,10 +155,14 @@ export function DireccionScreen({ answers, data, patchAnswers, answer }: ScreenP
             fuera del Gran Santiago se muestra el mensaje de cobertura aunque el
             estado "confirmado" no se haya seteado (BUG-1: antes ganaba el genérico). */}
         {fueraDeZona ? (
-          <p className="font-body text-[12px] mt-1.5 text-signal-red leading-snug">
-            {comuna} está fuera del Gran Santiago — por ahora Franco no tiene datos suficientes acá.
-            Prueba con otra comuna de la Región Metropolitana.
-          </p>
+          <>
+            <p className="font-body text-[12px] mt-1.5 text-signal-red leading-snug">
+              {comuna} está fuera del Gran Santiago — por ahora Franco no tiene datos suficientes acá.
+              Prueba con otra comuna de la Región Metropolitana.
+            </p>
+            {/* Aditivo (I-2): el rechazo no cambia, pero la demanda deja rastro. */}
+            <WaitlistZonaInline comuna={comuna} region={regionRef.current} />
+          </>
         ) : direccion && !confirmada ? (
           <p className="font-body text-[11px] mt-1.5 text-signal-red">
             Selecciona la dirección de la lista de sugerencias.
