@@ -54,9 +54,11 @@
 // al mismo código que corre en producción.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { usePostHog } from "posthog-js/react";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { FieldLabel } from "./ui";
+import { reportarValidacionRechazo } from "./stepTelemetry";
 
 // ── Conducta pura ────────────────────────────────────────────────────────────
 
@@ -235,6 +237,7 @@ export function NumericInput({
 }: NumericInputProps) {
   const [blurred, setBlurred] = useState(iniciaEvaluado);
   const idEco = useId();
+  const posthog = usePostHog();
 
   const r = estadoNumericInput(value, {
     decimales,
@@ -243,6 +246,17 @@ export function NumericInput({
     escala,
   });
   const hayError = r.estado === "error";
+
+  // Rechazo por ESCALA (I-1): punto único donde el aviso de magnitud se le
+  // muestra al usuario, así que acá se reporta — una vez por ENTRADA al estado,
+  // no en cada tecla mientras el valor sigue fuera de escala. El nodo lo pone
+  // `stepTelemetry` (paso vigente): este componente es genérico y no lo conoce.
+  const escalaPrevia = useRef(false);
+  useEffect(() => {
+    const enEscala = r.estado === "escala";
+    if (enEscala && !escalaPrevia.current) reportarValidacionRechazo(posthog, "escala");
+    escalaPrevia.current = enEscala;
+  }, [r.estado, posthog]);
 
   // `inputMode` por defecto según la precisión: un campo entero no necesita
   // ofrecer la coma en el teclado móvil.

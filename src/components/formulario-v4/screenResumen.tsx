@@ -64,6 +64,7 @@ import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
+import { reportarValidacionRechazo } from "./stepTelemetry";
 import { estamparSubmit } from "@/lib/informe-visto";
 
 /**
@@ -828,6 +829,16 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   // este gate el submit salía con piePct 0 silencioso.
   const pieIncompleto = !pieDeclarado || (pct === 0 && !a.pieRazon);
   const incompleto = gatePorCompletar || pieIncompleto;
+  // Rechazo por pie incompleto (I-1): el CTA queda bloqueado con la línea de
+  // aviso. Un disparo por ENTRADA al estado, no por render.
+  const pieIncompletoPrevio = useRef(false);
+  useEffect(() => {
+    if (pieIncompleto && !pieIncompletoPrevio.current) {
+      reportarValidacionRechazo(posthog, "pie_incompleto", "resumen");
+    }
+    pieIncompletoPrevio.current = pieIncompleto;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pieIncompleto]);
   const lineaIncompleto = gatePorCompletar
     ? "Completa la card 03 para generar."
     : pieIncompleto

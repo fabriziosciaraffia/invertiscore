@@ -17,6 +17,7 @@ import { usePostHog } from "posthog-js/react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { trackWizard } from "./track";
 import { useWizardV4 } from "./useWizardV4";
+import { useStepTelemetry, reportarValidacionRechazo } from "./stepTelemetry";
 import { useWizardV4Data } from "./useWizardV4Data";
 import { useWizardV4Tier, esNuevoConAnalisisGratis } from "./useWizardV4Tier";
 import { useWizardV4Owner } from "./useWizardV4Owner";
@@ -122,6 +123,34 @@ export function WizardV4({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.current, posthog]);
 
+  // Terminal (generar / pagar / crear cuenta): lo marca la CTA final. Lo leen
+  // el `wizard4_abandoned` de más abajo y la telemetría de paso (un submit no
+  // es un abandono). Declarado acá arriba porque ambos lo necesitan.
+  const terminatedRef = useRef(false);
+  const markTerminal = useCallback(() => { terminatedRef.current = true; }, []);
+
+  // Rechazo por reglamento (I-1): llegar a `gateNo` ES el rechazo — el edificio
+  // no permite renta corta y la rama STR muere ahí. Un disparo por llegada.
+  useEffect(() => {
+    if (nav.current === "gateNo") reportarValidacionRechazo(posthog, "gate_reglamento", "gateNo");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nav.current]);
+
+  // Ciclo de vida por paso (I-1): `wizard4_step_left` con dwell, interacciones,
+  // rechazos de validación y la VÍA de salida. Vive acá porque este componente
+  // es el dueño del nav y del contenedor de pantalla — cero cambios en las
+  // pantallas. Ver stepTelemetry.ts para las seis causas que separa.
+  const screenRef = useRef<HTMLDivElement>(null);
+  useStepTelemetry({
+    posthog,
+    node: nav.current,
+    dir: nav.dir,
+    answers: nav.answers,
+    completed: nav.completed,
+    contenedorRef: screenRef,
+    terminadoRef: terminatedRef,
+  });
+
   // Meta Pixel · StartFreeAnalysis (custom, browser-only): "usuario elegible
   // entró al wizard". Se evalúa al montar y de nuevo cuando llega /api/me/tier
   // (el gate necesita el tier; mientras sea null no se decide nada). NO depende
@@ -163,10 +192,10 @@ export function WizardV4({
   }, [tier]);
 
   // abandoned (best-effort): pagehide sin haber llegado a terminal (generar /
-  // pagar / crear cuenta), y solo si el usuario ya arrancó. terminatedRef lo
-  // marca la CTA final; navSnap da el nodo/modalidad al momento de salir.
-  const terminatedRef = useRef(false);
-  const markTerminal = useCallback(() => { terminatedRef.current = true; }, []);
+  // pagar / crear cuenta), y solo si el usuario ya arrancó. Se CONSERVA tal cual
+  // por continuidad histórica de los funnels — `wizard4_step_left` convive con
+  // él y lo supera en detalle, pero no lo reemplaza.
+  // navSnap da el nodo/modalidad al momento de salir.
   const navSnap = useRef(nav);
   useEffect(() => { navSnap.current = nav; }, [nav]);
   useEffect(() => {
@@ -315,7 +344,7 @@ export function WizardV4({
 
         {/* Contenido de pantalla con transición slide+fade */}
         <div className="overflow-hidden">
-          <div key={nav.current} className="wizard4-screen" data-dir={nav.dir}>
+          <div key={nav.current} ref={screenRef} className="wizard4-screen" data-dir={nav.dir}>
             {reaction && <FrancoReaction>{reaction}</FrancoReaction>}
 
             <h1 className={`wizard4-steptitle font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 leading-tight ${esResumen ? "mb-2" : "mb-6"}`}>
