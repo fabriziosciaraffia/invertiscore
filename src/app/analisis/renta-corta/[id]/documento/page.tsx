@@ -19,6 +19,7 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2 } from "@/lib/types";
 import { DocumentoSTR } from "./DocumentoSTR";
 import "./documento.css";
+import { evaluarAccesoDocumento, logDenegacion } from "@/lib/pdf/documento-access";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,25 @@ export default async function DocumentoSTRPage({ params }: { params: { id: strin
 
   if (!data) {
     redirect(user ? "/dashboard" : "/");
+  }
+
+  // ── Gating dueño-only (D-1) ── espejo verbatim del LTR. Ver documento-access.
+  const acceso = evaluarAccesoDocumento({
+    fila: {
+      user_id: (data as Record<string, unknown>).user_id as string | null,
+      anon_claim_token_hash: (data as Record<string, unknown>).anon_claim_token_hash as string | null,
+    },
+    user: user ?? null,
+    permitirRenderer: true,
+  });
+  if (!acceso.ok) {
+    logDenegacion({
+      ruta: "/analisis/renta-corta/[id]/documento",
+      analisisId: params.id,
+      motivo: acceso.motivo,
+      logueado: !!user,
+    });
+    redirect(`/analisis/renta-corta/${params.id}?desde=documento`);
   }
 
   const persistedResults = data.results as (ShortTermResult & { tipoAnalisis?: string }) | null;

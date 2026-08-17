@@ -22,6 +22,7 @@ import { NextResponse } from "next/server";
 import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
 import { renderPdf } from "@/lib/pdf/render-pdf";
+import { accesoPdf, logDenegacion } from "@/lib/pdf/documento-access";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 
 export const runtime = "nodejs";
@@ -39,11 +40,22 @@ export async function GET(
     const supabase = createClient();
     const { data: row } = await supabase
       .from("analisis")
-      .select("id, comuna, direccion, ai_analysis, ambas_role, ambas_group_id")
+      .select("id, comuna, direccion, ai_analysis, ambas_role, ambas_group_id, user_id, anon_claim_token_hash")
       .eq("id", id)
       .single();
     if (!row) {
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
+    }
+
+    // Gating dueño-only (D-1), espejo del LTR: el secreto del renderer NO abre
+    // esta puerta — acá el solicitante tiene que ser dueño. Ver documento-access.
+    const acceso = await accesoPdf(supabase, {
+      user_id: (row as Record<string, unknown>).user_id as string | null,
+      anon_claim_token_hash: (row as Record<string, unknown>).anon_claim_token_hash as string | null,
+    });
+    if (!acceso.ok) {
+      logDenegacion({ ruta: "GET /api/analisis/renta-corta/[id]/pdf", analisisId: id, motivo: acceso.motivo, logueado: acceso.motivo === "sesion_ajena" });
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     // Subordinación AMBAS (migración 20260715): hijo STR de un comparativo → sin

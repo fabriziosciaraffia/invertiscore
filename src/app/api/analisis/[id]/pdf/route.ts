@@ -22,6 +22,7 @@ import { NextResponse } from "next/server";
 import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
 import { renderPdf } from "@/lib/pdf/render-pdf";
+import { accesoPdf, logDenegacion } from "@/lib/pdf/documento-access";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 
 export const runtime = "nodejs";
@@ -39,11 +40,25 @@ export async function GET(
     const supabase = createClient();
     const { data: row } = await supabase
       .from("analisis")
-      .select("id, comuna, direccion, ai_analysis, ambas_role, ambas_group_id")
+      .select("id, comuna, direccion, ai_analysis, ambas_role, ambas_group_id, user_id, anon_claim_token_hash")
       .eq("id", id)
       .single();
     if (!row) {
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
+    }
+
+    // Gating dueño-only (D-1). Va ANTES de todo lo demás: sin esto, gatear la
+    // vista documento sería decorativo — cualquiera con el UUID pediría el PDF
+    // y el pipeline, que sí tiene el secreto del renderer, le entregaría el
+    // informe completo. Acá el solicitante tiene que ser dueño de verdad; el
+    // secreto NO abre esta puerta.
+    const acceso = await accesoPdf(supabase, {
+      user_id: (row as Record<string, unknown>).user_id as string | null,
+      anon_claim_token_hash: (row as Record<string, unknown>).anon_claim_token_hash as string | null,
+    });
+    if (!acceso.ok) {
+      logDenegacion({ ruta: "GET /api/analisis/[id]/pdf", analisisId: id, motivo: acceso.motivo, logueado: acceso.motivo === "sesion_ajena" });
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     // Subordinación AMBAS (migración 20260715): un hijo de un comparativo no tiene

@@ -19,6 +19,7 @@ import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
 import { prefetchMedianaComunaVenta, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
+import { evaluarAccesoDocumento, logDenegacion } from "@/lib/pdf/documento-access";
 import { readVeredicto } from "@/lib/results-helpers";
 import type { Analisis, AnalisisInput, FullAnalysisResult, AIAnalysisV2 } from "@/lib/types";
 import { DocumentoLTR } from "./DocumentoLTR";
@@ -51,6 +52,28 @@ export default async function DocumentoLTRPage({
 
   if (!data) {
     redirect(user ? "/dashboard" : "/");
+  }
+
+  // ── Gating dueño-only (D-1) ──
+  // Antes de cualquier cómputo: quien no es dueño (ni admin, ni el renderer de
+  // PDFs) no tiene por qué gastar el recompute. Va a `/analisis/[id]`, la vista
+  // pública diseñada para compartir, con marca para medir el rebote.
+  const acceso = evaluarAccesoDocumento({
+    fila: {
+      user_id: (data as Record<string, unknown>).user_id as string | null,
+      anon_claim_token_hash: (data as Record<string, unknown>).anon_claim_token_hash as string | null,
+    },
+    user: user ?? null,
+    permitirRenderer: true,
+  });
+  if (!acceso.ok) {
+    logDenegacion({
+      ruta: "/analisis/[id]/documento",
+      analisisId: params.id,
+      motivo: acceso.motivo,
+      logueado: !!user,
+    });
+    redirect(`/analisis/${params.id}?desde=documento`);
   }
 
   // Guard STR (espejo de page.tsx:101-108): un análisis short-term no tiene
