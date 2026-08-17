@@ -87,7 +87,19 @@ export interface ModeloSankey {
   descripcion: string;
 }
 
-const TITULOS_ETAPA = ["origen", "wizard", "análisis gratis", "cuenta y pago"];
+/**
+ * Cinco etapas, no cuatro. "cuenta y pago" empezó siendo una sola, y con cero
+ * pagos parecía funcionar; apenas hubo un pago se vio el problema: el flujo
+ * cuentas → pagos nacía y moría en la MISMA etapa, o sea una banda de largo
+ * cero, y los pagos aparecían de la nada sin nada que los conectara. Un Sankey
+ * no puede dibujar un flujo dentro de una etapa — eso es una fila de la grilla,
+ * no una transición.
+ *
+ * Separarlas además destapa el abandono que faltaba: los que crean cuenta y no
+ * pagan. Con cuatro etapas ese grupo no existía en ningún lado.
+ */
+const TITULOS_ETAPA = ["origen", "wizard", "análisis gratis", "cuenta", "pago"];
+const ETAPAS = TITULOS_ETAPA.length;
 
 // ── Medidas por orientación ──
 // Horizontal: el ANCHO es la restricción (el panel da 680-900 px útiles), así
@@ -95,11 +107,11 @@ const TITULOS_ETAPA = ["origen", "wizard", "análisis gratis", "cuenta y pago"];
 // Vertical: el alto es libre — se puede scrollear —, así que cada etapa respira
 // y las etiquetas caben al costado sin competir.
 const H = {
-  ancho: 1000,
+  ancho: 1244,
   alto: 560,
   avanceInicio: 40,
-  pasoAvance: 256,
-  grosorNodo: 116,
+  pasoAvance: 246,
+  grosorNodo: 112,
   repartoInicio: 58,
   repartoLargo: 470,
   gap: 20,
@@ -111,7 +123,7 @@ const H = {
 // resolución el render es 1:1. Más ancho escala hacia arriba, que no molesta.
 const V = {
   ancho: 820,
-  alto: 1080,
+  alto: 1370,
   avanceInicio: 74,
   pasoAvance: 300,
   grosorNodo: 54,
@@ -182,6 +194,7 @@ export function construirSankey(
   const abandonanWizard = Math.max(e.abrenWizard - e.gratisAnonimos - e.gratisConCuenta, 0);
   const sinCuenta = Math.max(e.gratisAnonimos - e.cuentasClaim, 0);
   const cuentasTotal = e.cuentasClaim + e.cuentasDirecto;
+  const noPagan = Math.max(cuentasTotal - e.pagos, 0);
 
   const spec = [
     { id: "pagada", etapa: 0, valor: e.visitasPagada, etiqueta: "campaña pagada", camino: "entrada" as Camino, esAbandono: false },
@@ -192,15 +205,16 @@ export function construirSankey(
     { id: "concuenta", etapa: 2, valor: e.gratisConCuenta, etiqueta: "con cuenta", camino: "cuenta" as Camino, esAbandono: false },
     { id: "abandonan", etapa: 2, valor: abandonanWizard, etiqueta: "abandonan", camino: "abandono" as Camino, esAbandono: true },
     { id: "cuentas", etapa: 3, valor: cuentasTotal, etiqueta: cuentasTotal === 1 ? "cuenta" : "cuentas", camino: "cuenta" as Camino, esAbandono: false },
-    { id: "pagos", etapa: 3, valor: e.pagos, etiqueta: e.pagos === 1 ? "pago" : "pagos", camino: "cuenta" as Camino, esAbandono: false },
     { id: "sincuenta", etapa: 3, valor: sinCuenta, etiqueta: "sin cuenta", camino: "abandono" as Camino, esAbandono: true },
+    { id: "pagos", etapa: 4, valor: e.pagos, etiqueta: e.pagos === 1 ? "pago" : "pagos", camino: "cuenta" as Camino, esAbandono: false },
+    { id: "nopagan", etapa: 4, valor: noPagan, etiqueta: "no pagan", camino: "abandono" as Camino, esAbandono: true },
   ];
 
   // ── Apilado por etapa ──
   // El abandono va SIEMPRE al final de su etapa: el ojo lee la banda de
   // adelante como "lo que sigue" y la de atrás como "lo que se pierde".
   const nodos: NodoSankey[] = [];
-  for (let et = 0; et < 4; et++) {
+  for (let et = 0; et < ETAPAS; et++) {
     const enEtapa = spec
       .filter((n) => n.etapa === et)
       .sort((a, b) => Number(a.esAbandono) - Number(b.esAbandono));
@@ -304,16 +318,33 @@ export function construirSankey(
   conectar("anonimos", "cuentas", e.cuentasClaim, "cuenta", `${e.cuentasClaim} reclaman`);
   conectar("anonimos", "sincuenta", sinCuenta, "abandono");
   conectar("abren", "cuentas", e.cuentasDirecto, "cuenta", `${e.cuentasDirecto} se registran directo`);
-  conectar("cuentas", "pagos", e.pagos, "cuenta");
+  // Etapa 5. Con "pago" dentro de la etapa de "cuenta" esta banda medía cero de
+  // largo y los pagos aparecían sin nada que los conectara.
+  conectar("cuentas", "pagos", e.pagos, "cuenta", e.pagos > 0 ? `${e.pagos} pagan` : "");
+  conectar("cuentas", "nopagan", noPagan, "abandono");
 
   // ── Etiquetas de flujo, separadas para que no se pisen ──
   // Solo las etiquetadas compiten por espacio; el resto no lleva texto.
-  const conTexto = crudos.filter((f) => f.etiqueta);
-  const separadas = separar(
-    conTexto.map((f) => ({ id: f.id, pos: f.repartoMedio })),
-    vertical ? 190 : 22,
-  );
-  const posPorId = new Map(separadas.map((s) => [s.id, s.pos]));
+  //
+  // Se separan SOLO entre las que además están cerca en el eje de avance: dos
+  // etiquetas a distinta altura no compiten por nada, y empujarlas igual manda
+  // una lejos de la banda que nombra —que es peor que el choque que evita—.
+  const BANDA_AVANCE = 60;
+  const posPorId = new Map<string, number>();
+  const grupos = new Map<number, typeof crudos>();
+  for (const f of crudos.filter((x) => x.etiqueta)) {
+    const banda = Math.round(f.avanceMedio / BANDA_AVANCE);
+    if (!grupos.has(banda)) grupos.set(banda, []);
+    grupos.get(banda)!.push(f);
+  }
+  grupos.forEach((grupo) => {
+    for (const s of separar(
+      grupo.map((f) => ({ id: f.id, pos: f.repartoMedio })),
+      vertical ? 190 : 22,
+    )) {
+      posPorId.set(s.id, s.pos);
+    }
+  });
 
   const flujos: FlujoSankey[] = crudos.map((f) => {
     const pos = posPorId.get(f.id) ?? f.repartoMedio;
@@ -347,7 +378,8 @@ export function construirSankey(
     `Se crean ${e.gratisAnonimos + e.gratisConCuenta} análisis gratis: ${e.gratisAnonimos} anónimos y ` +
     `${e.gratisConCuenta} de cuentas que ya existían; ${abandonanWizard} abandonan el wizard sin generar. ` +
     `Se crean ${cuentasTotal} cuentas: ${e.cuentasClaim} reclamando un análisis anónimo y ${e.cuentasDirecto} ` +
-    `registrándose directo; ${sinCuenta} probaron anónimo y no reclamaron. ${e.pagos} llegan a pago. ` +
+    `registrándose directo; ${sinCuenta} probaron anónimo y no reclamaron. ` +
+    `De esas cuentas, ${e.pagos} pagan y ${noPagan} no. ` +
     `El reparto de quienes se van entre pagado y orgánico es proporcional al peso de cada origen. ` +
     `El grosor de cada banda es proporcional al volumen, con un piso mínimo para que los flujos chicos sigan siendo visibles.`;
 

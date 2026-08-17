@@ -385,7 +385,7 @@ export default async function AdminPage({
             entrada={entradaSankey}
             metricas={metricasSankey}
             frescura={frescuraPh}
-            nota="Las columnas no comparten unidad: origen y wizard cuentan sesiones y personas de PostHog; análisis, cuentas y pagos cuentan identidades de la base (el par AMBAS vale 1). El reparto de “se van” entre pagado y orgánico es proporcional al peso de cada origen — no hay dato de abandono por origen. “Con cuenta” no desemboca en cuentas creadas: esos análisis los hicieron cuentas que ya existían."
+            nota="Las etapas no comparten unidad: origen y wizard cuentan sesiones y personas de PostHog; análisis, cuentas y pagos cuentan identidades de la base (el par AMBAS vale 1). El reparto de “se van” entre pagado y orgánico es proporcional al peso de cada origen — no hay dato de abandono por origen. “Con cuenta” no desemboca en cuentas creadas: esos análisis los hicieron cuentas que ya existían."
           />
         ) : (
           <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] px-4 py-6">
