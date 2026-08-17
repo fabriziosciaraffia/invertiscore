@@ -1,0 +1,44 @@
+-- BACKFILL PENDIENTE — políticas RLS y triggers de las tablas del dominio.
+--
+-- Este archivo está DELIBERADAMENTE INCOMPLETO y no debe aplicarse todavía.
+--
+-- Por qué existe vacío en vez de lleno: PostgREST (la única vía de lectura del
+-- esquema que tiene el agente) expone tablas, columnas y defaults, pero NO
+-- `pg_policies`, `pg_constraint` ni `information_schema.triggers`. Escribir acá
+-- las políticas "de memoria" sería reemplazar una mentira por otra — y el
+-- objetivo del backfill es justamente que el repo deje de mentir sobre el
+-- esquema. La lección del 16-ago (el CHECK de `charge_mode` que existía solo en
+-- la base y rebotó el INSERT anónimo con 23514) es que lo que no se leyó del
+-- catálogo, no se sabe.
+--
+-- QUÉ FALTA DOCUMENTAR, con evidencia de que existe:
+--
+--  1. Políticas RLS de `public.analisis` para el rol authenticated.
+--     Evidencia: el flujo logueado inserta y actualiza análisis con el client
+--     anon-key (sujeto a RLS) y funciona en producción. La única policy
+--     versionada es el SELECT público de 20260306_analisis_public_read.sql, que
+--     no habilita escritura.
+--  2. Triggers de `updated_at` en `analisis`, `payments` y `user_credits`.
+--     Evidencia: las tres tienen columna `updated_at` con DEFAULT now() y su
+--     valor cambia en updates que no la setean explícitamente.
+--  3. CHECK constraints del dominio distintos de `analisis_charge_mode_check`
+--     (ese ya quedó documentado en 20260816b) y de
+--     `payments_product_check` (documentado en 20260719).
+--
+-- CÓMO COMPLETARLO (correr en el SQL editor de Supabase y pegar el output):
+--
+--   SELECT 'POLICY' AS tipo, schemaname||'.'||tablename AS objeto, policyname AS nombre,
+--          cmd||' TO '||array_to_string(roles,',')||' USING '||coalesce(qual,'-')||
+--          ' CHECK '||coalesce(with_check,'-') AS definicion
+--   FROM pg_policies WHERE schemaname = 'public'
+--   UNION ALL
+--   SELECT 'TRIGGER', event_object_table, trigger_name, action_statement
+--   FROM information_schema.triggers WHERE trigger_schema = 'public'
+--   UNION ALL
+--   SELECT 'CHECK', conrelid::regclass::text, conname, pg_get_constraintdef(oid)
+--   FROM pg_constraint WHERE connamespace = 'public'::regnamespace AND contype = 'c'
+--   ORDER BY 1, 2, 3;
+--
+-- Con ese output, cada objeto se transcribe acá con guarda idempotente
+-- (CREATE POLICY IF NOT EXISTS no existe en Postgres: usar DROP POLICY IF EXISTS
+-- + CREATE, o un DO $$ ... $$ que consulte pg_policies antes de crear).

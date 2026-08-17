@@ -29,7 +29,8 @@ Next.js 14 + App Router + TypeScript + Tailwind + shadcn/ui + Supabase + Claude 
 - `user_credits`: user_id (PK), credits (contador legacy), subscription_status, is_unlimited, active_plan, billing_period, welcome_credit_used, grace_ends_at, subscription_ends_at, flow_customer_id
 - `credit_grants`: ledger de créditos comprados (FIFO por expiración). id, user_id, amount, remaining, source, payment_id, granted_at, expires_at, consumed
 - `documentos_tributarios`: boletas electrónicas (DTE 39). id, payment_id, user_id, tipo_dte, folio, monto_total/neto/iva, estado (pendiente|emitido|error|anulado), ambiente (dev|prod), token, autoservicio_url, openfactura_response (jsonb)
-- `market_data`: datos de referencia por comuna · `config`: key-value global · `scraped_properties`: propiedades scrapeadas
+- `config`: key-value global · `scraped_properties`: propiedades scrapeadas · `test_accounts`: cuentas internas (filtro del panel admin) · `waitlist_zonas`: demanda por comuna fuera de cobertura
+- **`market_data` NO EXISTE** — nunca se aplicó su migración y sus lectores caían a un seed que subestimaba el precio/m² entre 17% y 30%. Retirada del código el 03-ago-2026 junto con `market_stats` y `market_data_v2`. Si aparece en un comentario o en un plan, es un fantasma: la fuente viva de referencia por comuna es `scraped_properties`.
 - **NULL en filtros de exclusión**: en SQL `columna <> 'x'` devuelve NULL —no `true`— cuando la columna es NULL, así que un `.neq('columna','x')` pelado en Supabase **descarta también las filas con NULL**. Para "todo lo que no sea x, incluidos los sin valor" va `.or('columna.is.null,columna.neq.x')`. Esto casi rompe la cancelación de suscripciones `past_due` en el fix del cron `expire-grace`: el `.neq` se habría comido las filas sin procedencia, que son la mayoría.
 
 ## Modelo de acceso y precios
