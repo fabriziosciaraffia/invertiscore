@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/types";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
+import { useDrawerAbierto } from "./informeTelemetry";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { HeroLTR } from "./HeroLTR";
@@ -70,6 +71,8 @@ export function SubjectCardGrid({
   onInformeVisible?: () => void;
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
+  // I-3: apertura de drawer (todas las cards entran por acá).
+  useDrawerAbierto(activeDrawer, "ltr");
 
 
   // Secuencia de drawers = orden VISUAL de la pirámide (mismo array que renderiza),

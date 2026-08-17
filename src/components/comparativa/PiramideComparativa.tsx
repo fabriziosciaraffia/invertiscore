@@ -12,6 +12,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import type { FindingComparativa, FindingLado } from "@/lib/comparativa-findings";
+import { useDrawerAbierto } from "@/components/analysis/informeTelemetry";
 
 interface Props {
   findings: FindingComparativa[];
@@ -36,6 +37,9 @@ export function PiramideComparativa({ findings, ltrId, strId }: Props) {
   // A7: índice (no el finding) para derivar prev/next desde el ORDEN de la pirámide
   // (fuente única, mismo patrón que AnalysisDrawer.sequence).
   const [puenteIdx, setPuenteIdx] = useState<number | null>(null);
+  // I-3: apertura del drawer puente (antes del early return: los hooks no
+  // pueden quedar detrás de una condición).
+  useDrawerAbierto(puenteIdx, "comparativa");
   if (findings.length === 0) return null;
 
   const nivel1 = findings[0];

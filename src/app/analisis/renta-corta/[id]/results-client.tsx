@@ -29,6 +29,7 @@ import { AppFooter } from "@/components/chrome/AppFooter";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
+import { MarcaSeccion, useDrawerAbierto } from "@/components/analysis/informeTelemetry";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
@@ -107,6 +108,8 @@ export function STRResultsClient({
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
   // SubjectCardGrid): lo abre la pirámide (hallazgos) y la card zona (tipoHuesped).
   const [activeDrawer, setActiveDrawer] = useState<DrawerKeySTR | null>(null);
+  // I-3: apertura de drawer (pirámide + zona entran por acá).
+  useDrawerAbierto(activeDrawer, "str");
 
   // Secuencia de drawers = orden VISUAL de la pirámide STR (mismo array que renderiza),
   // filtrando las cards con drawer y dedup. La navegación prev/next se deriva de acá.
@@ -403,6 +406,7 @@ export function STRResultsClient({
         {/* EL DETALLE — Pirámide de hallazgos STR. Orden Filosofía 1 sobre
             results.hallazgos. E.2: la pirámide ES el detalle; sus cards abren los
             drawers (HALLAZGO_DRAWER_STR) que antes colgaban del grid muerto. */}
+        <MarcaSeccion seccion="piramide" tipo="str" accessLevel={accessLevel} />
         <PiramideHallazgosSTR
           hallazgos={results.hallazgos}
           currency={currency}
@@ -413,6 +417,7 @@ export function STRResultsClient({
 
         {/* F2-2 — CTA contextual "siguiente análisis" (copy A): cierre de los
             hallazgos, antes de la Advanced Section. */}
+        <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
         <NextAnalysisCTA {...nextCtaProps} />
         <div style={{ height: 24 }} />
 
@@ -420,6 +425,7 @@ export function STRResultsClient({
             (str-paridad2) y ahora vive en su drawer "A 10 años", abierto desde una
             afordance en la columna Patrimonio (fuera de la secuencia de pirámide, como
             ZonaCardSTR→tipoHuesped). Solo se pasa el handler si hay prosa. */}
+        <MarcaSeccion seccion="advanced" tipo="str" accessLevel={accessLevel} />
         <AdvancedSectionSTR
           results={results}
           currency={currency}
@@ -437,6 +443,7 @@ export function STRResultsClient({
 
         {/* ZONA (destino) — card recesiva. E.2: la ex-card 06 "Tipo de huésped"
             se reancla acá (E.1a), abre el drawer tipoHuesped. */}
+        <MarcaSeccion seccion="zona" tipo="str" accessLevel={accessLevel} />
         <ZonaCardSTR
           lat={(inputData?.lat as number) ?? ((inputData?.zonaRadio as { lat?: number } | undefined)?.lat) ?? null}
           lng={(inputData?.lng as number) ?? ((inputData?.zonaRadio as { lng?: number } | undefined)?.lng) ?? null}
@@ -472,6 +479,7 @@ export function STRResultsClient({
 
             {/* Wallet status */}
             <div style={{ height: 16 }} />
+            <MarcaSeccion seccion="wallet_cta" tipo="str" accessLevel={accessLevel} />
             <WalletStatusCTA
               welcomeAvailable={welcomeAvailable}
               credits={userCredits}

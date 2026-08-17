@@ -13,6 +13,7 @@ import { ShareButton } from "@/components/chrome/ShareButton";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
+import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
 import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
@@ -324,6 +325,7 @@ export function ComparativaClient(p: Props) {
 
       <main className="flex-1">
         <div className="container mx-auto max-w-[1100px] px-4 sm:px-6 py-8">
+          <MarcaSeccion seccion="hero" tipo="comparativa" accessLevel={p.accessLevel} />
           {/* ── ACTO 1 · Hero — veredicto + prosa integrada + posición + TOP-3 + toggle (F-C3b) ── */}
           <HeroComparativa
             hero={hero}
@@ -379,17 +381,20 @@ export function ComparativaClient(p: Props) {
           {/* id ancla del puente "Cómo pesa cada diferencia ↓" del hero (G8) */}
           {findings.length > 0 && (
             <div id="piramide-comparativa" className="scroll-mt-20">
+              <MarcaSeccion seccion="piramide" tipo="comparativa" accessLevel={p.accessLevel} />
               <PiramideComparativa findings={findings} ltrId={p.ltrId} strId={p.strId} />
             </div>
           )}
 
           {/* F2-2 — CTA contextual: cierre de la pirámide, antes de la evidencia. */}
           <div className="mb-8 mt-8">
+            <MarcaSeccion seccion="next_cta" tipo="comparativa" accessLevel={p.accessLevel} />
             <NextAnalysisCTA {...nextCtaProps} />
           </div>
 
           {/* ── ACTO 3 · La evidencia — superficie recesiva que respalda la pirámide ── */}
           <div className="mb-8">
+            <MarcaSeccion seccion="evidencia" tipo="comparativa" accessLevel={p.accessLevel} />
             <div className="mb-4">
               <p className="font-mono text-[10px] uppercase tracking-[3px] mb-1" style={{ color: "var(--franco-text-secondary)" }}>
                 LA EVIDENCIA
@@ -445,6 +450,7 @@ export function ComparativaClient(p: Props) {
 
           {/* WalletStatusCTA */}
           <div className="mb-6">
+            <MarcaSeccion seccion="wallet_cta" tipo="comparativa" accessLevel={p.accessLevel} />
             <WalletStatusCTA
               welcomeAvailable={p.welcomeAvailable}
               credits={p.userCredits}

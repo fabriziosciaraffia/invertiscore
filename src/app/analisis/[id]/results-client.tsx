@@ -13,6 +13,7 @@ import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
+import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 // Ronda 4a.1: leaf components extraídos a src/components/analysis/.
 import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/components/analysis/utils";
 // Ronda 4a.2: Advanced Section.
@@ -988,6 +989,7 @@ export function PremiumResults({
       {/* ═══════ DETAIL SECTIONS ═══════ */}
       {results && m && (
         <>
+          <MarcaSeccion seccion="hero" tipo="ltr" accessLevel={accessLevel} />
           {/* 1. AI Analysis — dashboard (hero + 2×2 + drawer) */}
           <SubjectCardGrid
             aiAnalysis={aiAnalysis}
@@ -1015,9 +1017,11 @@ export function PremiumResults({
               {/* F2-2 — CTA contextual: cierre de los hallazgos, antes de la
                   Advanced Section. El slot es el único punto entre ambas
                   secciones que no exige tocar SubjectCardGrid. */}
+              <MarcaSeccion seccion="next_cta" tipo="ltr" accessLevel={accessLevel} />
               <div className="mb-6">
                 <NextAnalysisCTA {...nextCtaProps} />
               </div>
+              <MarcaSeccion seccion="advanced" tipo="ltr" accessLevel={accessLevel} />
               <SimulationProvider
                 plazoAnios={horizonYears}
                 plusvaliaAnual={plusvaliaRate}
@@ -1104,6 +1108,7 @@ export function PremiumResults({
         {/* WalletStatusCTA in-line al cierre — refleja estado del wallet
             del user logueado. Excluye admin/sharedView/welcomeDisponible. */}
         <div className="mt-8">
+          <MarcaSeccion seccion="wallet_cta" tipo="ltr" accessLevel={accessLevel} />
           <WalletStatusCTA
             welcomeAvailable={welcomeAvailable}
             credits={userCredits}
