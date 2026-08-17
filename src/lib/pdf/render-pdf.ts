@@ -18,6 +18,7 @@ import chromium from "@sparticuz/chromium";
 import puppeteer, { type Browser } from "puppeteer-core";
 import { DOC_CHROME_FONT_FACES } from "./doc-chrome-fonts";
 import { DOC_WORDMARK_LIGHT_DATA_URI } from "./doc-wordmark";
+import { RENDER_SECRET_HEADER, secretoRenderer } from "./documento-access";
 
 export function getOrigin(request: Request): string {
   const url = new URL(request.url);
@@ -79,6 +80,13 @@ export async function renderPdf(opts: {
     browser = await launchBrowser();
     const page = await browser.newPage();
     await page.setViewport({ width: 1024, height: 1400, deviceScaleFactor: 2 });
+
+    // Paso del gating dueño-only (D-1): Chromium nace sin cookies ni sesión, así
+    // que la vista documento lo vería como visitante anónimo y lo redirigiría.
+    // Este header es su credencial. Con el kill-switch apagado (sin
+    // RENDER_PDF_SECRET) no se manda nada y la vista está abierta como siempre.
+    const secreto = secretoRenderer();
+    if (secreto) await page.setExtraHTTPHeaders({ [RENDER_SECRET_HEADER]: secreto });
 
     // Espera DETERMINÍSTICA (documento server-rendered, sin Recharts ni IA en
     // cliente): carga de recursos + sentinel presente en el HTML inicial +
