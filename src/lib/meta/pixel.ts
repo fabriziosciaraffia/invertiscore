@@ -32,11 +32,15 @@ export function metaTrack(
  * El snippet de Meta define `window.fbq` como un stub que hace
  * `queue.push(arguments)`; `callMethod` recién aparece cuando fbevents.js
  * terminó de cargar y tomó el control. Un `typeof fbq === "function"` no
- * distingue los dos estados, y un evento entregado al stub puede no llegar
- * nunca — es lo que se midió con AnonAnalysisCreated (ver MetaPixel.tsx).
+ * distingue los dos estados.
  *
  * Quien necesite la garantía fuerte —un disparo único, sin segunda
  * oportunidad— tiene que consultar esto antes de llamar.
+ *
+ * Nació investigando por qué AnonAnalysisCreated no llegaba a Meta. Esa causa
+ * resultó ser otra —el nombre estaba bloqueado en el Administrador de eventos,
+ * ver MetaPixel.tsx— pero el guard se conserva: el modo de fallo que cubre es
+ * real y no tenía red.
  */
 export function metaPixelOperativo(): boolean {
   if (typeof window === "undefined") return false;

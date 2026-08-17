@@ -120,21 +120,41 @@ export function MetaPixel() {
   // campaña mientras Lead escasea — el anónimo creó su análisis completo sin
   // registro. Sin PII: evento pelado, el match lo hacen las cookies del pixel.
   //
-  // ── Por qué esto no es un simple leer-y-disparar ──
-  // La versión anterior borraba la marca ANTES de llamar a fbq, para que un
-  // fallo no re-emitiera en la próxima navegación. El costo era el opuesto y
-  // peor: medido en producción el 17-ago, la marca se consumía en las cuatro
-  // pruebas y el request a facebook.com/tr NUNCA salía. Con la marca ya
-  // borrada, cada evento perdido lo estaba para siempre.
+  // ── La causa por la que este evento no llegaba a Meta: NO era el código ──
+  // El 17-ago el evento no aparecía en el Administrador de eventos. Estaba
+  // BLOQUEADO en Meta, del lado del pixel: la config que baja de
+  // connect.facebook.net suprimía ese nombre exacto antes de emitir el request.
   //
-  // La causa medida es de estado del pixel, no de la marca: los eventos que SÍ
-  // llegan (PageView, StartFreeAnalysis) se disparan TARDE —el primero porque
-  // su effect se re-ejecuta con la ruta, el segundo porque espera el fetch del
-  // tier—, mientras que este disparaba una única vez en el primer commit,
-  // cuando `fbq` puede ser todavía el stub que solo encola.
+  // La prueba que lo aisló, disparando cuatro variantes en la MISMA línea, con
+  // el mismo fbq ya operativo:
+  //     AnonAnalysisCreated   → no sale
+  //     AnonAnalysisCreadoV2  → sale
+  //     AnonAnalysis          → sale
+  //     AnalysisCreated       → sale
+  // No es el prefijo ni el largo: es la cadena exacta. Fabrizio lo desbloqueó en
+  // el Administrador y el evento pasó a salir en la misma sesión, sin tocar una
+  // línea. Si algún día vuelve a "desaparecer", mirar ahí ANTES que acá.
+  //
+  // ── Por qué igual esto no es un simple leer-y-disparar ──
+  // La versión anterior borraba la marca ANTES de llamar a fbq, para que un
+  // fallo no re-emitiera en la próxima navegación. El costo era el opuesto:
+  // cada evento no emitido se perdía para siempre. Eso se conserva arreglado
+  // aunque la causa fuera otra, porque el modo de fallo es real: `fbq` puede
+  // ser todavía el stub que solo encola cuando este effect corre una única vez
+  // en el primer commit. Los eventos que sí llegaban se disparan tarde por
+  // motivos ajenos —PageView porque su effect se re-ejecuta con la ruta,
+  // StartFreeAnalysis porque espera el fetch del tier—, y esa asimetría fue la
+  // pista falsa que costó un ciclo entero.
   //
   // Entonces: (1) se espera a que el pixel esté OPERATIVO de verdad, no apenas
   // definido; (2) la marca se borra solo tras un disparo confirmado.
+  //
+  // PUNTO CIEGO conocido: `metaTrackCustom` confirma la ENTREGA a fbq, no la
+  // EMISIÓN. Con el nombre bloqueado devolvía true igual, así que la marca se
+  // borraba y el evento no salía — el mismo síntoma que el bug original, por
+  // otra razón. Desde el navegador no hay forma de saber si Meta emitió; para
+  // eso está "Probar eventos" del Administrador. Si aparece un caso donde la
+  // marca se consume y el evento no llega, sospechar supresión antes que código.
   //
   // Y como una marca que sobrevive es una marca que reintenta, lleva tope
   // doble: MAX_INTENTOS navegaciones y VENTANA_MS de vida. Un evento perdido es
