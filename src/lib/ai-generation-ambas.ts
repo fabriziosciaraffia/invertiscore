@@ -247,23 +247,27 @@ export function sanitizeVoseo(text: string): string {
   return sanitizeVozChilenaTexto(text);
 }
 
-import { sanitizeVozChilenaTexto } from "./voz-chilena";
+import { sanitizeVozChilena, sanitizeVozChilenaTexto } from "./voz-chilena";
 
 
 import type { AIAnalysisComparativa } from "./types";
 
+/**
+ * Red de voz del canal comparativo. Usa el WALKER GENÉRICO (el mismo que LTR y
+ * STR), no una lista de campos a mano.
+ *
+ * La versión anterior enumeraba `conviene.{quienDeberiasSer,switchPath,cierre}`
+ * + `francoCaveat`: correcta el día que se escribió y silenciosamente incompleta
+ * el día que el schema comparativo sumara un campo de prosa — el campo nuevo
+ * pasaría sin sanitizar y nadie se enteraría. El walker recorre TODOS los
+ * strings del objeto, así que la cobertura deja de depender de que alguien se
+ * acuerde de actualizar esta función.
+ *
+ * Los campos no-prosa (`recomendacion`, `promptVersion`, `apertura` del motor)
+ * atraviesan el walker sin cambio: el swap solo toca tokens del léxico de voseo.
+ */
 export function sanitizeComparativaAI(ai: AIAnalysisComparativa): AIAnalysisComparativa {
-  return {
-    ...ai,
-    conviene: {
-      quienDeberiasSer: sanitizeVoseo(ai.conviene?.quienDeberiasSer ?? ""),
-      switchPath: sanitizeVoseo(ai.conviene?.switchPath ?? ""),
-      cierre: sanitizeVoseo(ai.conviene?.cierre ?? ""),
-    },
-    francoCaveat: ai.francoCaveat
-      ? sanitizeVoseo(ai.francoCaveat)
-      : undefined,
-  };
+  return sanitizeVozChilena(ai);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

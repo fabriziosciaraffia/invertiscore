@@ -16,6 +16,7 @@ import {
   hitsQueExigenReintento,
   VOSEO_A_TUTEO,
 } from "../../../src/lib/voz-chilena";
+import { sanitizeComparativaAI } from "../../../src/lib/ai-generation-ambas";
 
 let fallas = 0;
 const check = (nombre: string, cond: boolean, detalle = "") => {
@@ -86,6 +87,28 @@ const sinTilde = Object.keys(VOSEO_A_TUTEO).filter((k) => !/[áéí]/.test(k) &&
 check("toda entrada sin tilde diptonga en tuteo", sinTilde.every((k) => /ie|ue/.test(VOSEO_A_TUTEO[k])), sinTilde.filter((k) => !/ie|ue/.test(VOSEO_A_TUTEO[k])).join(","));
 check("ninguna entrada se mapea a sí misma", Object.entries(VOSEO_A_TUTEO).every(([k, v]) => k !== v));
 check("swap idempotente", sanitizeVozChilenaTexto(sanitizeVozChilenaTexto("Si tenés y comprometés, cerrás.")) === sanitizeVozChilenaTexto("Si tenés y comprometés, cerrás."));
+
+// -- (6) AMBAS: cobertura por WALKER, no por lista de campos --
+// El canal comparativo enumeraba sus campos a mano; un campo de prosa nuevo
+// escapaba al swap en silencio. Este check falla si alguien vuelve a la lista.
+console.log("-- AMBAS: cobertura generica --");
+{
+  const ai = {
+    apertura: "Apertura del motor.",
+    conviene: { quienDeberiasSer: "Si tenes pie, mira el flujo.", switchPath: "Después podes migrar.", cierre: "Cerrá solo si aguantas." },
+    // Campo de prosa HIPOTETICO: el walker debe cubrirlo sin que nadie lo liste.
+    campoNuevoDeProsa: "Verificá el arriendo antes.",
+    recomendacion: "LTR_PREFERIDO",
+    promptVersion: 5,
+    francoCaveat: "Sabes que el analisis puede errar.",
+  } as unknown as Parameters<typeof sanitizeComparativaAI>[0];
+  const out = sanitizeComparativaAI(ai) as unknown as Record<string, unknown>;
+  const conv = out.conviene as Record<string, string>;
+  check("conviene sanitizado", conv.quienDeberiasSer.includes("tienes") && conv.switchPath.includes("puedes") && conv.cierre.includes("Cierra"));
+  check("francoCaveat sanitizado", String(out.francoCaveat).includes("Sabes"));
+  check("campo de prosa NUEVO cubierto por el walker", String(out.campoNuevoDeProsa).includes("Verifica"));
+  check("no-prosa intacta", out.recomendacion === "LTR_PREFERIDO" && out.promptVersion === 5 && out.apertura === "Apertura del motor.");
+}
 
 console.log(fallas === 0 ? "\n✓ VERDE — guard de voseo caza el corpus real y calla en prosa chilena" : `\n✗ ${fallas} falla(s)`);
 process.exit(fallas === 0 ? 0 : 1);
