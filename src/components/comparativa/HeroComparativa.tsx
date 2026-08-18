@@ -70,6 +70,11 @@ interface Props {
   aperturaMotor: string;
   // Pie firma (G6)
   createdAt?: string;
+  /** Fecha de la PROSA vigente (`fin_at` de la última generación exitosa).
+   *  El pie del informe la prefiere sobre `createdAt`: con lazy-regen por bump
+   *  de PROMPT_VERSION, la fila puede ser de abril y la prosa de agosto.
+   *  Ausente en filas anteriores a la instrumentación → cae a `createdAt`. */
+  fechaProsa?: string;
   // UI · toggle integrado al header (G7). onCurrencyChange ausente ⇒ toggle oculto (print).
   currency: "CLP" | "UF";
   onCurrencyChange?: (c: "CLP" | "UF") => void;
@@ -89,7 +94,7 @@ export function HeroComparativa(p: Props) {
 
   const precioM2UF = p.superficie > 0 ? p.precioUF / p.superficie : 0;
   const cierreCondicion = p.ai?.conviene?.cierre?.trim() || "";
-  const fechaFirma = formatFecha(p.createdAt);
+  const fechaFirma = formatFecha(p.fechaProsa ?? p.createdAt);
   // A1 · título canon "Dirección corta · Comuna" (formatDireccionDisplay = calle+número
   // antes de la 1ª coma, sin código postal/región). Fallback al nombre / "Depto NDNB".
   const direccionCorta = formatDireccionDisplay(p.direccion);

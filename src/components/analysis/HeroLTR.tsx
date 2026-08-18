@@ -39,6 +39,7 @@ export function HeroLTR({
   ciudad,
   valorUF,
   createdAt,
+  fechaProsa,
   prosaError,
   onRetryProsa,
 }: {
@@ -60,6 +61,11 @@ export function HeroLTR({
   ciudad?: string;
   valorUF: number;
   createdAt?: string;
+  /** Fecha de la PROSA vigente (`fin_at` de la última generación exitosa).
+   *  El pie del informe la prefiere sobre `createdAt`: con lazy-regen por bump
+   *  de PROMPT_VERSION, la fila puede ser de abril y la prosa de agosto.
+   *  Ausente en filas anteriores a la instrumentación → cae a `createdAt`. */
+  fechaProsa?: string;
   /** Fallo de la generación de prosa: se muestra inline en el slot (el resto del
    *  hero sigue vivo) con CTA de reintento. */
   prosaError?: string | null;
@@ -205,7 +211,7 @@ export function HeroLTR({
     (distanciaRow?.valor as { brazosGate1Activos?: string[] } | undefined)?.brazosGate1Activos ?? [],
     gate2Capo,
   );
-  const fechaFirma = formatFecha(createdAt);
+  const fechaFirma = formatFecha(fechaProsa ?? createdAt);
 
   return (
     <div

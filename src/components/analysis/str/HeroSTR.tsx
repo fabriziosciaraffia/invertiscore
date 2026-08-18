@@ -60,6 +60,7 @@ export function HeroSTR({
   onCurrencyChange,
   valorUF,
   createdAt,
+  fechaProsa,
   aiLoading,
   onOpenDrawer,
 }: {
@@ -76,6 +77,11 @@ export function HeroSTR({
   onCurrencyChange: (c: "CLP" | "UF") => void;
   valorUF: number;
   createdAt?: string;
+  /** Fecha de la PROSA vigente (`fin_at` de la última generación exitosa).
+   *  El pie del informe la prefiere sobre `createdAt`: con lazy-regen por bump
+   *  de PROMPT_VERSION, la fila puede ser de abril y la prosa de agosto.
+   *  Ausente en filas anteriores a la instrumentación → cae a `createdAt`. */
+  fechaProsa?: string;
   aiLoading?: boolean;
   /** Abre un drawer del informe. Ausente ⇒ la caja de posición no es clickeable. */
   onOpenDrawer?: (key: DrawerKeySTR) => void;
@@ -196,7 +202,7 @@ export function HeroSTR({
   const ordenados = ordenarHallazgosPiramideSTR(results.hallazgos);
   const top3 = ordenados.slice(0, 3);
   const restantes = Math.max(0, ordenados.length - top3.length);
-  const fechaFirma = formatFecha(createdAt);
+  const fechaFirma = formatFecha(fechaProsa ?? createdAt);
 
   return (
     <div

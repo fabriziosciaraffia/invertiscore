@@ -40,6 +40,7 @@ export function SubjectCardGrid({
   analysisId,
   comuna,
   createdAt,
+  fechaProsa,
   simulationSlot,
   onInformeVisible,
 }: {
@@ -60,6 +61,9 @@ export function SubjectCardGrid({
   analysisId?: string;
   comuna?: string;
   createdAt?: string;
+  /** Fecha de la PROSA vigente; el pie la prefiere sobre `createdAt`. Ver
+   *  fechaProsaVigente() en pipeline-timing.ts. */
+  fechaProsa?: string;
   /** A1 — sección Simulación (AdvancedSection). Se renderiza ENTRE la pirámide y la
    *  card Zona para lograr el orden "drawers → simulación → zona". El estado del
    *  drawer y el hook de zona viven acá, así que la card zona no se puede sacar afuera
@@ -148,6 +152,7 @@ export function SubjectCardGrid({
         comuna={comuna}
         valorUF={valorUF}
         createdAt={createdAt}
+        fechaProsa={fechaProsa}
       />
 
       {/* ═══ ZONA 2 (Goal E) ═══ Sin prosa: UN solo bloque de espera — mensajes

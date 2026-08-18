@@ -68,6 +68,37 @@ export interface GeneracionTiming {
   llamadas: LlamadaTiming[];
 }
 
+/**
+ * Fecha de la prosa que el usuario está leyendo: `fin_at` de la última
+ * generación EXITOSA del tipo pedido.
+ *
+ * El pie del informe dice "Análisis generado por IA · <fecha>" y hasta el
+ * 17-ago-2026 mostraba `created_at` — la fecha en que se creó la FILA, no en que
+ * se generó la prosa. Con la invalidación lazy-on-open (bump de PROMPT_VERSION)
+ * las dos fechas divergen: medido sobre el parque, 31 de 168 filas
+ * instrumentadas tienen la prosa generada más de 24 h después de crearse, y el
+ * pie mentía en todas.
+ *
+ * Devuelve null cuando no hay dato (filas anteriores a la instrumentación de
+ * `pipeline_timing`, o sin generación exitosa registrada): el caller cae a
+ * `created_at`, que para esas filas es la mejor aproximación disponible — se
+ * generaban al crearse.
+ */
+export function fechaProsaVigente(
+  pipelineTiming: unknown,
+  tipo: GeneracionTipo,
+): string | null {
+  const gens = (pipelineTiming as { generaciones?: unknown } | null)?.generaciones;
+  if (!Array.isArray(gens)) return null;
+  let ultima: string | null = null;
+  for (const g of gens as GeneracionTiming[]) {
+    if (g?.tipo !== tipo || g?.resultado !== "ok" || typeof g?.fin_at !== "string") continue;
+    // El array se apendea en orden, pero no se asume: gana el fin_at mayor.
+    if (ultima === null || g.fin_at > ultima) ultima = g.fin_at;
+  }
+  return ultima;
+}
+
 interface ConUsage {
   usage?: { input_tokens?: number | null; output_tokens?: number | null };
 }

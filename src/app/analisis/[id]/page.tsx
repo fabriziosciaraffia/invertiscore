@@ -1,3 +1,4 @@
+import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
@@ -345,6 +346,7 @@ export default async function AnalisisDetallePage({
           nombre={analisis.nombre}
           ciudad={analisis.ciudad}
           createdAt={analisis.created_at}
+          fechaProsa={fechaProsaVigente((data as Record<string, unknown>).pipeline_timing, "ltr") ?? undefined}
           superficie={analisis.superficie}
           precioUF={analisis.precio}
           creatorName={(data as Record<string, unknown>).creator_name as string | undefined}

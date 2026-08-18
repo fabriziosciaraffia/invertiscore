@@ -51,6 +51,9 @@ interface Props {
   edificioPermiteAirbnb: string;
   ufValue: number;
   createdAt: string;
+  /** Fecha de la PROSA vigente; el pie la prefiere sobre `createdAt`. Ver
+   *  fechaProsaVigente() en pipeline-timing.ts. */
+  fechaProsa?: string;
 }
 
 function formatFechaCorta(iso: string): string {
@@ -197,6 +200,7 @@ export function SharedComparativaClient(p: Props) {
             aiLoading={aiLoading}
             aperturaMotor={aperturaMotor}
             createdAt={p.createdAt}
+            fechaProsa={p.fechaProsa}
             currency={currency}
             onCurrencyChange={setCurrency}
             ufValue={uf}

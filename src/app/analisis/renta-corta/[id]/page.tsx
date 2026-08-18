@@ -1,3 +1,4 @@
+import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
@@ -235,6 +236,7 @@ export default async function STRResultPage({
     ciudad: data.ciudad ?? "",
     superficie: data.superficie ?? 0,
     createdAt: data.created_at ?? "",
+    fechaProsa: fechaProsaVigente((data as Record<string, unknown>).pipeline_timing, "str") ?? undefined,
     userId: user?.id ?? null,
     isSharedView,
     userCredits,

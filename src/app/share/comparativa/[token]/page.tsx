@@ -1,3 +1,4 @@
+import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
@@ -161,6 +162,7 @@ export default async function ShareComparativaPage({
       edificioPermiteAirbnb={edificioPermiteAirbnb}
       ufValue={ufValue}
       createdAt={ltr.created_at ?? str.created_at ?? new Date().toISOString()}
+      fechaProsa={fechaProsaVigente((ltr as unknown as Record<string, unknown>).pipeline_timing, "ambas") ?? undefined}
     />
   );
 }

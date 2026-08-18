@@ -1,3 +1,4 @@
+import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
@@ -243,6 +244,7 @@ export default async function ComparativaPage({
           : null
       }
       createdAt={ltr.created_at ?? undefined}
+      fechaProsa={fechaProsaVigente((ltr as unknown as Record<string, unknown>).pipeline_timing, "ambas") ?? undefined}
       costoAmoblamiento={costoAmoblamiento}
       modoGestion={modoGestion}
       comisionAdministrador={comisionAdministrador}

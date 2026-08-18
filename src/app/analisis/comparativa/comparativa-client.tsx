@@ -64,6 +64,7 @@ interface Props {
   strResults: ShortTermResult | null;
   cachedAI: AIAnalysisComparativa | null;
   createdAt?: string;
+  fechaProsa?: string;
   // Inputs específicos (necesarios para tabla + pirámide)
   costoAmoblamiento: number;
   modoGestion: "auto" | "admin";
@@ -353,6 +354,7 @@ export function ComparativaClient(p: Props) {
             aiLoading={aiLoading}
             aperturaMotor={aperturaMotor}
             createdAt={p.createdAt}
+            fechaProsa={p.fechaProsa}
             currency={currency}
             onCurrencyChange={setCurrency}
             ufValue={uf}

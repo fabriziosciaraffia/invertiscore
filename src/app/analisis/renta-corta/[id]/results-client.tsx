@@ -65,6 +65,7 @@ interface STRResultsProps {
   ciudad: string;
   superficie: number;
   createdAt: string;
+  fechaProsa?: string;
   userId: string | null;
   isSharedView: boolean;
   userCredits: number;
@@ -95,6 +96,7 @@ export function STRResultsClient({
   comuna,
   ciudad,
   createdAt,
+  fechaProsa,
   isSharedView,
   userCredits,
   welcomeAvailable = true,
@@ -360,6 +362,7 @@ export function STRResultsClient({
           onCurrencyChange={setCurrency}
           valorUF={ufValue}
           createdAt={createdAt}
+          fechaProsa={fechaProsa}
           aiLoading={aiLoading && !aiAnalysis}
           onOpenDrawer={setActiveDrawer}
         />

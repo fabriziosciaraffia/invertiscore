@@ -79,7 +79,7 @@ export function PremiumResults({
   aiAnalysisInitial,
   aiStale = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  nombre = "", ciudad = "", createdAt = "", superficie = 0, precioUF = 0,
+  nombre = "", ciudad = "", createdAt = "", fechaProsa, superficie = 0, precioUF = 0,
   demoAiData,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   creatorName,
@@ -109,6 +109,7 @@ export function PremiumResults({
   nombre?: string;
   ciudad?: string;
   createdAt?: string;
+  fechaProsa?: string;
   superficie?: number;
   precioUF?: number;
   demoAiData?: import("@/lib/types").AIAnalysisV2;
@@ -1010,6 +1011,7 @@ export function PremiumResults({
             analysisId={analysisId}
             comuna={comuna}
             createdAt={createdAt}
+            fechaProsa={fechaProsa}
             simulationSlot={
               /* ═══ CAPA 3 · SIMULACIÓN — A1: la renderiza SubjectCardGrid ENTRE la
                  pirámide y la card zona (drawers → simulación → zona → footer) ═══ */
