@@ -497,7 +497,6 @@ function calcMetrics(
   const mantencionFijaEq = input.provisionMantencion ? provisionMantencionAjustada : 0;
   const mantencionTasaEq = input.provisionMantencion ? 0 : getMantencionRate(input.antiguedad);
   const precioFlujoNeutroCLP = calcPrecioParaFlujo(0, ingresoMensual, gastosValor, contribucionesValor * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito, mantencionFijaEq, mantencionTasaEq);
-  const precioFlujoPositivoCLP = calcPrecioParaFlujo(50000, ingresoMensual, gastosValor, contribucionesValor * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito, mantencionFijaEq, mantencionTasaEq);
   const descuentoParaNeutro = precioCLP > 0 && precioFlujoNeutroCLP > 0 ? ((precioCLP - precioFlujoNeutroCLP) / precioCLP) * 100 : 0;
 
   return {
@@ -525,8 +524,6 @@ function calcMetrics(
     plusvaliaInmediataUsuarioPct: Math.round(plusvaliaUsuarioPct * 10) / 10,
     precioFlujoNeutroCLP: Math.round(precioFlujoNeutroCLP),
     precioFlujoNeutroUF: Math.round(precioFlujoNeutroCLP / ufClp * 100) / 100,
-    precioFlujoPositivoCLP: Math.round(precioFlujoPositivoCLP),
-    precioFlujoPositivoUF: Math.round(precioFlujoPositivoCLP / ufClp * 100) / 100,
     descuentoParaNeutro: Math.round(descuentoParaNeutro * 10) / 10,
     subsidioTasa: (() => {
       // Gate de subsidio: la fuente de verdad de "nuevo" es la respuesta explícita

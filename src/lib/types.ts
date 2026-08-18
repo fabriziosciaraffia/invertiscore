@@ -378,8 +378,6 @@ export interface AnalysisMetrics {
   // Precios de equilibrio
   precioFlujoNeutroCLP?: number;
   precioFlujoNeutroUF?: number;
-  precioFlujoPositivoCLP?: number;
-  precioFlujoPositivoUF?: number;
   descuentoParaNeutro?: number;     // %
   // Subsidio a la tasa (Ley 21.748)
   subsidioTasa?: {

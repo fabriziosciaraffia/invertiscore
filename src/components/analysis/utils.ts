@@ -34,8 +34,6 @@ export function normalizeMetrics(metrics: any): AnalysisMetrics | null {
     plusvaliaInmediataUsuarioPct: metrics.plusvaliaInmediataUsuarioPct ?? metrics.plusvaliaInmediataPct ?? 0,
     precioFlujoNeutroCLP: metrics.precioFlujoNeutroCLP ?? 0,
     precioFlujoNeutroUF: metrics.precioFlujoNeutroUF ?? 0,
-    precioFlujoPositivoCLP: metrics.precioFlujoPositivoCLP ?? 0,
-    precioFlujoPositivoUF: metrics.precioFlujoPositivoUF ?? 0,
     descuentoParaNeutro: metrics.descuentoParaNeutro ?? 0,
   };
 }
