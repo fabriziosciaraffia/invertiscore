@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { randomUUID } from "crypto";
 import { chargeAnalysisCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
+import { AMBAS_ENABLED, AMBAS_OFF_ERROR } from "@/lib/ambas-flag";
 import { getUFValue } from "@/lib/uf";
 import {
   evaluarPlausibilidad,
@@ -66,6 +67,27 @@ const VALID_INTENTS: readonly Intent[] = ["ltr", "str", "both"] as const;
 
 export async function POST(request: Request) {
   try {
+    const body = await request.json().catch(() => ({}));
+    const intent = body?.intent as Intent | undefined;
+    if (!intent || !VALID_INTENTS.includes(intent)) {
+      return NextResponse.json(
+        { error: "intent inválido (debe ser ltr, str o both)" },
+        { status: 400 },
+      );
+    }
+
+    // Interruptor de AMBAS. Va ANTES de resolver la sesión a propósito: apagar
+    // el comparativo es una decisión de PRODUCTO, no de autorización — la
+    // respuesta es la misma para todos, así que preguntar quién eres primero
+    // solo agrega una consulta y hace el gate imposible de verificar sin una
+    // sesión. No filtra nada: `NEXT_PUBLIC_AMBAS_ENABLED` ya viaja en el bundle.
+    //
+    // Esto es lo que cierra la puerta al v3 de /analisis/nuevo-v2 —servido y sin
+    // enlaces, pero con su camino AMBAS completo— y a cualquier POST a mano.
+    if (intent === "both" && !AMBAS_ENABLED) {
+      return NextResponse.json({ error: AMBAS_OFF_ERROR }, { status: 400 });
+    }
+
     const supabase = createSupabaseServer();
     const {
       data: { user },
@@ -75,15 +97,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Debes iniciar sesión para crear un análisis" },
         { status: 401 },
-      );
-    }
-
-    const body = await request.json().catch(() => ({}));
-    const intent = body?.intent as Intent | undefined;
-    if (!intent || !VALID_INTENTS.includes(intent)) {
-      return NextResponse.json(
-        { error: "intent inválido (debe ser ltr, str o both)" },
-        { status: 400 },
       );
     }
 

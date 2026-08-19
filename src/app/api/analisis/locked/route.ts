@@ -14,6 +14,7 @@ import {
   type ShortTermAnalysisBody,
 } from "@/lib/api-helpers/analisis-pipeline";
 import { desdeBodyLtr, desdeBodyStr } from "@/lib/plausibilidad";
+import { AMBAS_ENABLED, AMBAS_OFF_ERROR } from "@/lib/ambas-flag";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import { waitUntil } from "@vercel/functions";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
@@ -94,12 +95,6 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseServer();
 
-    const auth = await requireAuthenticatedUser(supabase);
-    if (!auth.ok) return auth.response;
-    const { user } = auth;
-    console.log(`[LOCKED-TIMING] auth (createClient + getUser): ${Date.now() - t0}ms`);
-    timing.auth_ms = Date.now() - t0;
-
     const rawBody = await request.json();
 
     // Discriminador de modalidad. LTR vs STR (single): el payload STR trae
@@ -112,6 +107,25 @@ export async function POST(request: Request) {
       ltr?: unknown;
       str?: unknown;
     };
+
+    // Interruptor de AMBAS — antes de la sesión, de la UF, del motor y de
+    // cualquier insert. Igual que en /api/credits/charge: es una decisión de
+    // producto, no de autorización, y ponerlo delante lo hace verificable sin
+    // sesión. Pesa más acá que en ningún otro punto: este camino termina en
+    // /checkout con pago real por Flow, así que una fila pending_payment de un
+    // producto que ya no se ofrece exigiría reembolso manual.
+    if (
+      (maybeMod.tipoAnalisis === "both" || maybeMod.modalidad === "both") &&
+      !AMBAS_ENABLED
+    ) {
+      return NextResponse.json({ error: AMBAS_OFF_ERROR }, { status: 400 });
+    }
+
+    const auth = await requireAuthenticatedUser(supabase);
+    if (!auth.ok) return auth.response;
+    const { user } = auth;
+    console.log(`[LOCKED-TIMING] auth (createClient + getUser): ${Date.now() - t0}ms`);
+    timing.auth_ms = Date.now() - t0;
 
     // ─── Rama AMBAS: dos filas locked (LTR + STR), sin cobro ───
     // Body { tipoAnalisis:"both", ltr:<payload LTR>, str:<payload STR> }. Ambas

@@ -18,6 +18,7 @@ import {
   createAnonPipelineClient,
   CHARGE_MODE_ANON,
 } from "@/lib/api-helpers/anon-cap";
+import { AMBAS_ENABLED } from "@/lib/ambas-flag";
 import { desdeBodyStr } from "@/lib/plausibilidad";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 import Anthropic from "@anthropic-ai/sdk";
@@ -48,9 +49,14 @@ export async function POST(request: Request) {
     const prepaidChargeId: string | undefined = body?.prepaidChargeId;
     // Enlace AMBAS (flujo crédito/welcome): lado STR → rol 'str'. Ver comentario
     // gemelo en /api/analisis (LTR). uuid válido o se ignora (fila suelta).
+    // Con el interruptor de AMBAS apagado se IGNORA (ver comentario gemelo en
+    // /api/analisis): la fila queda como STR suelto. Efecto lateral buscado —
+    // `ambasGroupId === null` es también el gate de dedup del email de
+    // bienvenida más abajo, así que el STR vuelve a comportarse como uno suelto
+    // de punta a punta.
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const ambasGroupId =
-      typeof body?.ambasGroupId === "string" && UUID_RE.test(body.ambasGroupId)
+      AMBAS_ENABLED && typeof body?.ambasGroupId === "string" && UUID_RE.test(body.ambasGroupId)
         ? body.ambasGroupId
         : null;
 

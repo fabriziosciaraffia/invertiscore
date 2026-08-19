@@ -24,6 +24,7 @@ import {
   createAnonPipelineClient,
   CHARGE_MODE_ANON,
 } from "@/lib/api-helpers/anon-cap";
+import { AMBAS_ENABLED } from "@/lib/ambas-flag";
 import { desdeBodyLtr } from "@/lib/plausibilidad";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
@@ -62,7 +63,12 @@ export async function POST(request: Request) {
 
     const actor = await resolveActor(supabase, request, {
       turnstileToken: body.turnstileToken,
-      ambasGroupId: typeof body.ambasGroupId === "string" ? body.ambasGroupId : null,
+      // Mismo gate que abajo: con AMBAS apagado el cap anónimo no debe reconocer
+      // "hermanos" de un par que ya no se puede crear. Sin esto, dos POSTs con
+      // el mismo group_id inventado se colarían como par y consumirían un solo
+      // cap para dos análisis.
+      ambasGroupId:
+        AMBAS_ENABLED && typeof body.ambasGroupId === "string" ? body.ambasGroupId : null,
     });
     if (actor.tipo === "rechazado") return actor.response;
     const user = actor.tipo === "user" ? actor.user : null;
@@ -81,9 +87,15 @@ export async function POST(request: Request) {
     // como uuid; junk se ignora (fila queda suelta). El hermano se resuelve por
     // group_id en el dashboard y las páginas hijas — un fallo parcial (STR no se
     // crea) deja este group_id sin hermano y esas lecturas lo degradan a suelto.
+    //
+    // Con el interruptor de AMBAS apagado el group_id entrante se IGNORA en vez
+    // de rechazarse: el LTR es un análisis válido por sí mismo y la fila queda
+    // suelta, que es el mismo estado degradado que ya manejan el dashboard y las
+    // páginas hijas cuando un lado del par falla. Rechazar acá le negaría su
+    // análisis a alguien que pidió algo legítimo.
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const ambasGroupId =
-      typeof body.ambasGroupId === "string" && UUID_RE.test(body.ambasGroupId)
+      AMBAS_ENABLED && typeof body.ambasGroupId === "string" && UUID_RE.test(body.ambasGroupId)
         ? body.ambasGroupId
         : null;
 

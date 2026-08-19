@@ -14,6 +14,24 @@ import { useEffect, useRef } from "react";
 import type { ScreenProps } from "./screensActo1";
 import type { Modalidad } from "./wizardV4Nodes";
 import { rangoViewportH, registrarSondaSalida } from "./stepTelemetry";
+import { AMBAS_ENABLED } from "@/lib/ambas-flag";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COPY DE LA PANTALLA — por qué dice lo que dice
+//
+// El eyebrow Signal Red ("empieza aquí") apuntaba al Comparativo. Al apagarse
+// AMBAS ese rol pasa a RENTA LARGA, y el argumento cambia de "no sabes, llévate
+// las dos" a uno honesto: es lo que busca la mayoría y lo más simple de
+// proyectar. No es la opción más cara disfrazada de default.
+//
+// Las dos descripciones explican la modalidad en lenguaje del usuario —le
+// arriendas a alguien que vive ahí / lo publicas en Airbnb— y no en lenguaje de
+// producto ("LTR", "STR", "modalidad de explotación").
+//
+// SOBRE EL SEGUNDO ANÁLISIS: no se promete nada implícito. Si se menciona que
+// después puedes analizar la otra modalidad, va con su precio real y sin decir
+// "el primero es gratis" (solo lo es con el welcome disponible). Ver `PIE_NOTA`.
+// ─────────────────────────────────────────────────────────────────────────────
 
 const OPCIONES: Array<{
   value: Modalidad;
@@ -28,24 +46,48 @@ const OPCIONES: Array<{
     n: "01",
     nombre: "Renta larga",
     beneficio:
-      "El arriendo tradicional, mes a mes. Te digo si cubre la cuota, cuánto sale de tu bolsillo y cuánto patrimonio construyes con los años.",
+      "Le arriendas a alguien que vive ahí: contrato y pago todos los meses. Es lo más común y lo más simple de proyectar. Te digo si el arriendo cubre la cuota, cuánto sale de tu bolsillo y cuánto patrimonio construyes.",
+    // El destacado es de quien lleva el rol de "empieza acá", y ese rol depende
+    // del interruptor: con AMBAS encendido lo tiene el Comparativo (conducta de
+    // hoy, intacta); apagado pasa a renta larga. Así encender el flag devuelve
+    // la pantalla exactamente a como estaba, sin tocar código.
+    accent: !AMBAS_ENABLED,
+    eyebrow: AMBAS_ENABLED ? undefined : "La mayoría empieza acá",
   },
   {
     value: "str",
     n: "02",
     nombre: "Renta corta",
     beneficio:
-      "Airbnb y similares. Te digo cuánto puede rendir por noche, qué ocupación necesita para funcionar y desde cuándo empieza a convenir.",
+      "Lo publicas en Airbnb y cobras por noche. Puede rendir más, pero vive de la ocupación. Te digo cuánto puede rendir, qué tan lleno necesita estar y desde cuándo empieza a convenir.",
   },
   {
     value: "both",
     n: "03",
     nombre: "Comparativo",
     beneficio: "Franco calcula las dos y te da un solo veredicto: cuál gana para este depto, y por cuánto.",
-    accent: true,
-    eyebrow: "Si no sabes, empieza aquí",
+    accent: AMBAS_ENABLED,
+    eyebrow: AMBAS_ENABLED ? "Si no sabes, empieza aquí" : undefined,
   },
 ];
+
+/**
+ * Nota al pie, solo con AMBAS apagado: quien quería el comparativo ahora tiene
+ * que elegir, y merece saber qué cuesta ver la otra. El precio va explícito y
+ * condicionado a los créditos — es lo único cierto para todos los tiers (el
+ * suscriptor no paga, y prometerle "$9.990" sería tan falso como prometerle
+ * "gratis" a quien ya gastó su welcome).
+ */
+const PIE_NOTA =
+  "¿Quieres ver las dos? Analiza una ahora y la otra después: es un análisis aparte y vale $9.990 si no te quedan créditos.";
+
+/**
+ * Opciones visibles. Con `NEXT_PUBLIC_AMBAS_ENABLED="false"` el Comparativo no
+ * se renderiza — no queda deshabilitado ni con un "próximamente": deja de
+ * existir para el usuario. El objeto se conserva arriba para que volver a
+ * encenderlo sea la variable de entorno y nada más.
+ */
+const OPCIONES_VISIBLES = AMBAS_ENABLED ? OPCIONES : OPCIONES.filter((o) => o.value !== "both");
 
 export function InformeScreen({ answers, answer }: ScreenProps) {
   // Sonda de `mod` (I-2). La pantalla donde más se cae (59% en tráfico pagado):
@@ -73,12 +115,20 @@ export function InformeScreen({ answers, answer }: ScreenProps) {
       n_cambios: clicks.current,
       hubo_scroll: scrolleo.current,
       viewport_h_rango: rangoViewportH(typeof window === "undefined" ? 0 : window.innerHeight),
+      // Instrumentación del apagado (mínima, sin eventos nuevos): esta propiedad
+      // parte en dos la serie de `mod_interaccion` sin romperla. Con ella,
+      // "seleccion", "hubo_scroll" y el abandono de `mod` se pueden comparar
+      // entre el período de 3 opciones y el de 2 — que es exactamente la
+      // pregunta que este goal deja abierta. `n_opciones` va además del booleano
+      // porque sobrevive a que el flag cambie de nombre o de semántica.
+      ambas_activo: AMBAS_ENABLED,
+      n_opciones: OPCIONES_VISIBLES.length,
     },
   }));
 
   return (
     <div className="flex flex-col gap-3">
-      {OPCIONES.map((o) => {
+      {OPCIONES_VISIBLES.map((o) => {
         const selected = answers.modalidad === o.value;
         const cls = selected
           ? "border-[1.5px] border-signal-red"
@@ -122,6 +172,11 @@ export function InformeScreen({ answers, answer }: ScreenProps) {
           </button>
         );
       })}
+      {!AMBAS_ENABLED && (
+        <p className="font-body text-[12px] text-[var(--franco-text-muted)] mt-1 mb-0 leading-relaxed">
+          {PIE_NOTA}
+        </p>
+      )}
     </div>
   );
 }
