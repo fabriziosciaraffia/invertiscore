@@ -28,9 +28,12 @@ import { AMBAS_ENABLED } from "@/lib/ambas-flag";
 // arriendas a alguien que vive ahí / lo publicas en Airbnb— y no en lenguaje de
 // producto ("LTR", "STR", "modalidad de explotación").
 //
-// SOBRE EL SEGUNDO ANÁLISIS: no se promete nada implícito. Si se menciona que
-// después puedes analizar la otra modalidad, va con su precio real y sin decir
-// "el primero es gratis" (solo lo es con el welcome disponible). Ver `PIE_NOTA`.
+// SOBRE EL SEGUNDO ANÁLISIS: la pantalla NO lo menciona. Hubo una nota al pie
+// que ofrecía analizar la otra modalidad después por $9.990 y se retiró: esta es
+// la pantalla de mayor fuga del wizard (29% de abandono) y meter un precio antes
+// de que el usuario haya recibido nada es cobrarle la entrada. Cero mención,
+// cero promesa que romper. Si alguna vez vuelve, va con su precio real y sin
+// "el primero es gratis" — solo lo es con el welcome disponible.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const OPCIONES: Array<{
@@ -70,16 +73,6 @@ const OPCIONES: Array<{
     eyebrow: AMBAS_ENABLED ? "Si no sabes, empieza aquí" : undefined,
   },
 ];
-
-/**
- * Nota al pie, solo con AMBAS apagado: quien quería el comparativo ahora tiene
- * que elegir, y merece saber qué cuesta ver la otra. El precio va explícito y
- * condicionado a los créditos — es lo único cierto para todos los tiers (el
- * suscriptor no paga, y prometerle "$9.990" sería tan falso como prometerle
- * "gratis" a quien ya gastó su welcome).
- */
-const PIE_NOTA =
-  "¿Quieres ver las dos? Analiza una ahora y la otra después: es un análisis aparte y vale $9.990 si no te quedan créditos.";
 
 /**
  * Opciones visibles. Con `NEXT_PUBLIC_AMBAS_ENABLED="false"` el Comparativo no
@@ -172,11 +165,6 @@ export function InformeScreen({ answers, answer }: ScreenProps) {
           </button>
         );
       })}
-      {!AMBAS_ENABLED && (
-        <p className="font-body text-[12px] text-[var(--franco-text-muted)] mt-1 mb-0 leading-relaxed">
-          {PIE_NOTA}
-        </p>
-      )}
     </div>
   );
 }
