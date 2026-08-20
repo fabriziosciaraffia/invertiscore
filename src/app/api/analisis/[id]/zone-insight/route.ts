@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
 import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
 import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
-import { buildZoneInsightForRow, type ZoneInsightResponse } from "@/lib/zone-insight-core";
+import { buildZoneInsightForRow, PROMPT_VERSION_ZONA, type ZoneInsightResponse } from "@/lib/zone-insight-core";
 import { nuevoRegistroLlamadas, persistGeneracionTiming } from "@/lib/pipeline-timing";
 
 // Goal C: techo explícito — POIs + stats + 1 llamada corta (1200 tokens).
@@ -54,8 +54,15 @@ export async function GET(
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
     }
 
-    // Cache hit — unless forced.
-    if (!force && row.zone_insight && typeof row.zone_insight === "object") {
+    // Cache hit — unless forced o la version del prompt quedo atras.
+    // Espejo de la invalidacion lazy-on-open de ai_analysis: un cache con
+    // `promptVersion` menor que la vigente (o sin el campo, = pre-versionado) se
+    // trata como MISS y se regenera al abrir. Sin esto, un arreglo de doctrina de
+    // zona no llegaba nunca al parque: medido, 21 de 102 informes BUSCAR OTRA
+    // seguian con lenguaje celebratorio pese a que la REGLA 9 ya estaba escrita.
+    const cacheVersion = (row.zone_insight as { promptVersion?: number } | null)?.promptVersion;
+    const cacheVigente = cacheVersion === PROMPT_VERSION_ZONA;
+    if (!force && cacheVigente && row.zone_insight && typeof row.zone_insight === "object") {
       const cached = row.zone_insight as ZoneInsightResponse & {
         insight: { preview_clp?: string; preview_uf?: string; accion?: string };
       };

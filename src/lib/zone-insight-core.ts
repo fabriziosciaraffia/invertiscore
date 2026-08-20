@@ -91,7 +91,32 @@ export interface ZoneInsightResponse {
     accion: string;
   };
   valorUF: number;
+  /**
+   * Version del prompt/doctrina con que se genero esta zona. Driver de la
+   * invalidacion lazy-on-open, espejo de `promptVersion` en ai_analysis: si el
+   * cache trae una version menor que PROMPT_VERSION_ZONA (o no la trae), el
+   * endpoint la trata como cache-miss y regenera. Ausente => cache pre-versionado.
+   */
+  promptVersion?: number;
 }
+
+/**
+ * Version del prompt de zona. BUMP cada vez que cambie el prompt, el schema o la
+ * doctrina de esta pieza.
+ *
+ * Existe porque la zona era la unica prosa del producto SIN invalidacion: la
+ * prosa LTR/STR/AMBAS se regenera sola al abrir cuando su `promptVersion` quedo
+ * atras, pero un `zone_insight` cacheado no se tocaba nunca (solo `recalculate`
+ * lo anulaba). Efecto medido en el parque: la REGLA 9 (la zona no empuja contra
+ * el veredicto) ya vivia en el prompt y 21 de 102 informes BUSCAR OTRA seguian
+ * mostrando lenguaje celebratorio en cache -- doctrina escrita que no llegaba.
+ *
+ * La invalidacion es por VERSION, NO por edad (decision 2026-08-17). El informe
+ * congela UF, `asOf` y mediana comunal al crearse; un TTL volveria a mover la
+ * zona bajo una prosa que no se mueve y reintroduciria la divergencia que el fix
+ * de coherencia cierra, ademas de regenerar el parque sin ganancia editorial.
+ */
+export const PROMPT_VERSION_ZONA = 1;
 
 // ─── Stats helpers ──────────────────────────────────
 // median() vive ahora en @/lib/comuna-stats (compartido con ai-generation).
@@ -844,6 +869,7 @@ export async function buildZoneInsightForRow(
     pois,
     insight,
     valorUF: ufValue,
+    promptVersion: PROMPT_VERSION_ZONA,
   };
   return { response };
 }
