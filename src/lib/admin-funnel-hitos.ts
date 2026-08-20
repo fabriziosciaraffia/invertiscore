@@ -45,6 +45,13 @@ export const HITOS_FUNNEL: HitoFunnel[] = [
       "hasta acá no se podía generar un análisis sin cuenta, así que este tramo era 100% por definición",
     invalida: ["analisisCuenta"],
   },
+  {
+    fecha: "2026-08-19",
+    etiqueta: "rediseño del wizard",
+    motivo:
+      "la primera pantalla dejó de ser la elección de modalidad y pasó a ser la portada del producto (comuna + dirección), y la modalidad se mudó al final; el wizard que empieza acá no es una versión mejorada del anterior sino otro flujo, así que su tasa de entrada mide otra cosa",
+    invalida: ["visitaWizard", "wizardAnalisis"],
+  },
 ];
 
 /** ¿Este tramo es comparable ese día, o cae antes del hito que lo habilita? */
