@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
-import { getAllComunasStats } from "@/lib/data/comunas-seo";
+import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const comunas = await getAllComunasStats();
-
-  const comunaUrls: MetadataRoute.Sitemap = comunas.map((c) => ({
+export default function sitemap(): MetadataRoute.Sitemap {
+  // Del roster, no del cómputo de umbrales: una semana de scraping flojo no
+  // puede sacar del sitemap una URL que Google ya indexó. De paso, el sitemap
+  // deja de paginar la tabla entera de propiedades para armarse.
+  const comunaUrls: MetadataRoute.Sitemap = COMUNAS_ROSTER.map((c) => ({
     url: `https://refranco.ai/comunas/${c.slug}`,
     lastModified: new Date(),
     changeFrequency: "monthly",
