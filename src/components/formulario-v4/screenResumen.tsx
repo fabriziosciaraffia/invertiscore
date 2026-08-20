@@ -59,6 +59,7 @@ import {
   type AvisoEscala,
 } from "./avisoEscala";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
+import { CAJA_COBERTURA } from "@/lib/comuna-bounds";
 import { dormLabel, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieTexto, pieUF, precioUF } from "./derive";
 import { decimalesUtiles, ecoPorDefecto, estadoNumericInput } from "./NumericInput";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
@@ -582,8 +583,18 @@ function DireccionEdit({ initial, onConfirm, onCancel }: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const google = (window as any).google;
       if (!google?.maps?.places) return;
+      // PISO DURO regional (mismo criterio que la portada): sin esto el editor
+      // ofrece direcciones de Ovalle, Valdivia o Arica, que Franco no puede
+      // analizar. Acá se usa la caja de la RM y no la de una comuna: este editor
+      // sirve justamente para CORREGIR la comuna, así que acotarlo a la comuna
+      // vigente impediría lo único que viene a hacer.
       const ac = new google.maps.places.Autocomplete(inputRef.current, {
         types: ["address"], componentRestrictions: { country: "cl" },
+        bounds: new google.maps.LatLngBounds(
+          new google.maps.LatLng(CAJA_COBERTURA[0], CAJA_COBERTURA[1]),
+          new google.maps.LatLng(CAJA_COBERTURA[2], CAJA_COBERTURA[3]),
+        ),
+        strictBounds: true,
         fields: ["geometry", "formatted_address", "address_components"],
       });
       ac.addListener("place_changed", () => {

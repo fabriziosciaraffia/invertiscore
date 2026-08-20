@@ -49,6 +49,7 @@ import { trackWizard } from "./track";
 import { rangoChars, registrarSondaSalida, reportarValidacionRechazo } from "./stepTelemetry";
 import { WaitlistZonaInline } from "./WaitlistZonaInline";
 import { decidirEnganche, derivarComuna, plano } from "./entradaPlaces";
+import { cajaParaComuna, type Caja } from "@/lib/comuna-bounds";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CHIPS DE COMUNA — las cinco más analizadas, medidas
@@ -88,6 +89,16 @@ interface ComunaStats {
   plusvaliaAnualizada: number | null;
 }
 
+/** `Caja` → el `LatLngBounds` que espera Places. Un solo lugar arma el objeto. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function aLatLngBounds(google: any, caja: Caja) {
+  const [sur, oeste, norte, este] = caja;
+  return new google.maps.LatLngBounds(
+    new google.maps.LatLng(sur, oeste),
+    new google.maps.LatLng(norte, este),
+  );
+}
+
 const fmtCLP = (n: number) => `$${Math.round(n).toLocaleString("es-CL")}`;
 const fmtPct = (n: number) => `${n.toFixed(1).replace(".", ",")}%`;
 
@@ -98,6 +109,9 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
   const acRef = useRef<any>(null);
   /** Nodo al que está atado `acRef`. Si cambia, hay que re-atar (ver el efecto). */
   const nodoAtado = useRef<HTMLInputElement | null>(null);
+  /** Comuna vigente, para leerla al crear el widget sin meterla en las deps del
+   *  efecto (meterla ahí re-crearía el widget de Places en cada corrección). */
+  const comunaRef = useRef<string | undefined>(undefined);
 
   /** Estado 3, local: no es una respuesta del wizard, es un desvío de lectura. */
   const [sinDepto, setSinDepto] = useState(false);
@@ -111,6 +125,7 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
   const fueraDeZona = !!comuna && !isComunaDisponible(comuna);
   const puedeSeguir = confirmada && !!comuna && !fueraDeZona;
   const estado: 1 | 2 | 3 = !comuna ? 1 : sinDepto ? 3 : 2;
+  comunaRef.current = comuna;
 
   // ── Sonda de salida (I-2) ──
   // Se conserva el nombre `wizard4_dir_tipeo` para no cortar la serie del campo
@@ -191,9 +206,21 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
           // vive en otra pantalla y nunca coexisten).
           document.querySelectorAll(".pac-container").forEach((n) => n.remove());
         }
+        // ── FILTRO DURO: la comuna elegida (y con ella, la RM) ──
+        // `componentRestrictions` solo admite país — no hay restricción por
+        // región ni por comuna en esta API. `bounds` a secas es solo un SESGO
+        // (medido: con la caja de la RM sin `strictBounds` seguían saliendo
+        // Ovalle, Valdivia y hasta Linares). `strictBounds` es el único filtro
+        // que EXCLUYE de verdad, y es el que se usa acá.
+        //
+        // Toda caja comunal viene recortada contra la de la RM, así que el piso
+        // regional no depende de que haya comuna elegida: `cajaParaComuna(null)`
+        // devuelve la RM. Nunca se vuelve a "todo Chile".
         const ac = new google.maps.places.Autocomplete(input, {
           types: ["address"],
           componentRestrictions: { country: "cl" },
+          bounds: aLatLngBounds(google, cajaParaComuna(comunaRef.current)),
+          strictBounds: true,
           fields: ["geometry", "formatted_address", "address_components"],
         });
         ac.addListener("place_changed", () => {
@@ -249,6 +276,18 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
     // él re-crearía el widget de Places.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patchAnswers, estado]);
+
+  // La comuna puede cambiar SIN que el input se remonte: pasa cuando Places
+  // corrige el chip (se tocó Providencia y la dirección resultó de Ñuñoa). Ahí
+  // el widget ya existe, así que se le mueve la caja en vez de re-crearlo — con
+  // `setBounds`, que es la API que el propio widget expone para esto.
+  useEffect(() => {
+    const ac = acRef.current;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const google = (window as any).google;
+    if (!ac || !google?.maps) return;
+    ac.setBounds(aLatLngBounds(google, cajaParaComuna(comuna)));
+  }, [comuna]);
 
   function elegirComuna(nombre: string, origen: "chip" | "buscador") {
     const match = COMUNAS.find((c) => c.comuna === nombre);
@@ -460,19 +499,39 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
             ) : direccion && !confirmada ? (
               <div className="mt-1.5">
                 <p className="font-body text-[11px] text-signal-red m-0">
-                  Elige la dirección de la lista de sugerencias.
+                  No encuentro esa dirección en {comuna}.
                 </p>
-                {/* La salida. El copy no culpa al usuario ni promete que el
-                    desplegable va a aparecer: le ofrece seguir con lo que ya
-                    escribió. */}
-                <button
-                  type="button"
-                  onClick={usarDireccionEscrita}
-                  disabled={fallback === "buscando"}
-                  className="font-body text-[12px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-4 decoration-[var(--franco-border-strong)] mt-1.5 transition-colors disabled:opacity-50"
-                >
-                  {fallback === "buscando" ? "Buscando…" : "¿No aparece? Usa la dirección que escribiste"}
-                </button>
+                {/* ── LA CONDICIÓN PARA PODER FILTRAR DURO ──
+                    Ahora las sugerencias están acotadas a la comuna, así que la
+                    causa más probable de "no aparece nada" ya no es un error de
+                    tipeo: es que la dirección está en OTRA comuna. El mensaje lo
+                    dice y ofrece las dos salidas reales, en ese orden.
+
+                    Sin esto, filtrar duro reintroduce exactamente el callejón
+                    que se cerró el 20-ago: exigirle al usuario elegir de una
+                    lista que no ve. Un ~1% de las direcciones legítimas cae
+                    fuera de la caja de su comuna (medido) — para ese 1%, esta
+                    es la puerta. */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trackWizard(posthog, "wizard4_entrada_cambiar_desde_error", { comuna });
+                      cambiarComuna();
+                    }}
+                    className="font-body text-[12px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-4 decoration-[var(--franco-border-strong)] transition-colors"
+                  >
+                    ¿Está en otra comuna?
+                  </button>
+                  <button
+                    type="button"
+                    onClick={usarDireccionEscrita}
+                    disabled={fallback === "buscando"}
+                    className="font-body text-[12px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-4 decoration-[var(--franco-border-strong)] transition-colors disabled:opacity-50"
+                  >
+                    {fallback === "buscando" ? "Buscando…" : "Usar la dirección que escribí"}
+                  </button>
+                </div>
                 {fallback === "fallo" && (
                   <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-1 mb-0 leading-snug">
                     No pude ubicar esa dirección. Revisa que tenga calle y número.
