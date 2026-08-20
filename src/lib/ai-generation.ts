@@ -46,8 +46,8 @@ import {
   recortarContinuacion,
 } from "@/lib/prosa-presupuesto";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
-import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico } from "@/lib/precio-jerarquia";
-import { construirReferenciasZona } from "@/lib/referencias-zona";
+import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico, piezasDeAiLtr } from "@/lib/precio-jerarquia";
+import { construirReferenciasZona, faltaReconciliacion, appendReconciliacion } from "@/lib/referencias-zona";
 import { cifrasFueraDeInput, empeoraCifras } from "@/lib/cifras-guard";
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import type { Hallazgo } from "@/lib/types";
@@ -86,7 +86,14 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // cupos son 80.000. Además la rebaja se declara como PISO, no como cifra exacta.
 // El bump regenera la prosa de los análisis que pasan a calificar con el techo
 // nuevo: sin él, la card diría "califica" y la narración no lo mencionaría.
-export const PROMPT_VERSION_LTR = 7;
+// v8 (2026-08-17): guard AMBITOS-ZONA — el bloque REFERENCIAS DE ZONA suma
+// piso de magnitud (>=5% cada lectura y >=20 pts de separacion) y solo pide la
+// frase que reconcilia los dos ambitos cuando el conflicto es material; un
+// guard post-parse verifica que este y la appendea si falta. Prompt y guard
+// piden exactamente lo mismo. (Numerado 8 y no 7 porque el bump del subsidio
+// llego antes a master: la rama que llega segunda cede, no se renumera historia
+// ya mergeada.)
+export const PROMPT_VERSION_LTR = 8;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -2384,6 +2391,24 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         }
       } catch (e) {
         console.warn(`[JERARQUIA-PRECIOS] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
+    // ─── AMBITOS-ZONA (enforcement del bloque REFERENCIAS DE ZONA) ───────────
+    // Requisito de PRESENCIA: si las dos referencias de valor apuntan a lados
+    // opuestos de forma material, la prosa tiene que traer el puente que las
+    // reconcilia. Sin reintento: la frase ya viene escrita del builder, asi que
+    // appendearla cuesta 0 tokens y es determinista (mismo criterio que el
+    // append de arbitraje del guard de jerarquia). Best-effort.
+    if (aiResult && referenciasZona.signosOpuestos) {
+      try {
+        const piezas = piezasDeAiLtr(aiResult).map((p) => ({ pieza: p.pieza, texto: p.texto }));
+        if (faltaReconciliacion(piezas, referenciasZona)) {
+          const tocados = appendReconciliacion(aiResult, referenciasZona);
+          console.warn(`[AMBITOS-ZONA] ${analysisId}: sin frase de reconciliacion — appendeada en ${tocados} campo(s)`);
+        }
+      } catch (e) {
+        console.warn(`[AMBITOS-ZONA] ${analysisId}: fallo (best-effort): ${(e as Error)?.message ?? e}`);
       }
     }
 
