@@ -48,6 +48,7 @@ import { FieldLabel, PrimaryBtn } from "./ui";
 import { trackWizard } from "./track";
 import { rangoChars, registrarSondaSalida, reportarValidacionRechazo } from "./stepTelemetry";
 import { WaitlistZonaInline } from "./WaitlistZonaInline";
+import { decidirEnganche, derivarComuna, plano } from "./entradaPlaces";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CHIPS DE COMUNA — las cinco más analizadas, medidas
@@ -95,11 +96,15 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
   const inputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const acRef = useRef<any>(null);
+  /** Nodo al que está atado `acRef`. Si cambia, hay que re-atar (ver el efecto). */
+  const nodoAtado = useRef<HTMLInputElement | null>(null);
 
   /** Estado 3, local: no es una respuesta del wizard, es un desvío de lectura. */
   const [sinDepto, setSinDepto] = useState(false);
   const [buscador, setBuscador] = useState(false);
   const [query, setQuery] = useState("");
+  /** Salida de emergencia del campo (ver `usarDireccionEscrita`). */
+  const [fallback, setFallback] = useState<null | "buscando" | "fallo">(null);
 
   const { direccion, direccionConfirmada, comuna, ciudad, lat, lng } = answers;
   const confirmada = !!direccionConfirmada && direccion === direccionConfirmada;
@@ -133,17 +138,60 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
   }));
 
   // ── Places sobre el campo de dirección (estado 2) ──
-  // El efecto depende de `estado` porque el input no existe en el DOM hasta que
-  // hay comuna elegida: montar el Autocomplete antes no engancharía nada.
+  //
+  // EL ENGANCHE SIGUE AL NODO VIVO, NO A UN REF GLOBAL (fix 20-ago-2026)
+  // ────────────────────────────────────────────────────────────────────
+  // El input SOLO existe en el estado 2, así que volver al 1 (cambiar de comuna)
+  // o al 3 ("todavía no tengo uno elegido") lo desmonta, y al volver React crea
+  // un nodo NUEVO. El guard original era `if (acRef.current) return`, que
+  // sobrevive al desmontaje: en el segundo montaje el efecto se iba por el
+  // return y el Autocomplete quedaba escuchando a un `<input>` que ya no estaba
+  // en el DOM. El campo que el usuario veía no estaba conectado a nada.
+  //
+  // Consecuencia medida en producción: no aparece el desplegable → nunca se
+  // setea `direccionConfirmada` → sale "Selecciona la dirección de la lista" y
+  // Continuar queda bloqueado. Camino principal roto para el ~19% de quienes
+  // tipearon (8 de 43 sesiones el 20-ago).
+  //
+  // La pantalla anterior no podía tener este bug porque su input era
+  // incondicional: vivía montado toda la visita. Es regresión de la portada.
+  //
+  // Ahora se recuerda a QUÉ NODO se ató. Si el nodo cambió, se desatan los
+  // listeners del instance viejo y se vuelve a atar al vivo.
   useEffect(() => {
     if (estado !== 2) return;
+    let cancelado = false;
     loadGoogleMaps()
       .then(() => {
-        if (!inputRef.current || acRef.current) return;
+        if (cancelado) return;
+        const input = inputRef.current;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const google = (window as any).google;
         if (!google?.maps?.places) return;
-        const ac = new google.maps.places.Autocomplete(inputRef.current, {
+        // La decisión vive en `entradaPlaces.ts` y está testeada: acá solo se
+        // ejecuta. "ya-atado" evita re-crear el widget en cada render, que era
+        // lo único que el guard viejo protegía bien.
+        const accion = decidirEnganche({
+          tieneInstancia: !!acRef.current,
+          nodoAtado: nodoAtado.current,
+          nodoVivo: input,
+        });
+        if (accion === "sin-nodo" || accion === "ya-atado") return;
+        if (accion === "reatar") {
+          // Atado a un nodo muerto. `Autocomplete` no tiene destroy(), así que
+          // lo más cerca es soltarle los listeners y abandonar el instance.
+          google.maps.event.clearInstanceListeners(acRef.current);
+          acRef.current = null;
+          nodoAtado.current = null;
+          // El instance viejo dejó su `.pac-container` colgado del <body> —
+          // Google los crea ahí y nunca los recoge. Sin esto queda un
+          // desplegable huérfano, con sugerencias rancias, que puede aparecer
+          // sobre el campo nuevo. Se pueden borrar TODOS sin riesgo: esta
+          // pantalla es la única con un Autocomplete montado (la del resumen
+          // vive en otra pantalla y nunca coexisten).
+          document.querySelectorAll(".pac-container").forEach((n) => n.remove());
+        }
+        const ac = new google.maps.places.Autocomplete(input, {
           types: ["address"],
           componentRestrictions: { country: "cl" },
           fields: ["geometry", "formatted_address", "address_components"],
@@ -193,8 +241,10 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
           });
         });
         acRef.current = ac;
+        nodoAtado.current = input;
       })
       .catch(() => { /* ignore */ });
+    return () => { cancelado = true; };
     // `posthog` es estable y solo se usa dentro del listener: re-suscribir por
     // él re-crearía el widget de Places.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -210,7 +260,83 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
     setBuscador(false);
     setQuery("");
     setSinDepto(false);
-    patchAnswers({ comuna: nombre, ciudad: match?.ciudad || "Santiago" });
+    // Cambiar de comuna INVALIDA la dirección anterior. Sin esto, "Cambiar"
+    // dejaba `direccion` y `direccionConfirmada` de la comuna vieja: el input
+    // (no controlado, con `defaultValue`) reaparecía con el texto anterior, el
+    // usuario escribía encima y quedaba concatenado —"Irarrazaval 2100Av.
+    // Providencia 1234"—, y `confirmada` seguía apuntando a una dirección que
+    // ya no correspondía. Medido en producción el 20-ago.
+    patchAnswers({
+      comuna: nombre,
+      ciudad: match?.ciudad || "Santiago",
+      direccion: undefined,
+      direccionConfirmada: undefined,
+      lat: undefined,
+      lng: undefined,
+    });
+    setFallback(null);
+  }
+
+  /** Vuelve al estado 1 sin arrastrar la dirección de la comuna anterior. */
+  function cambiarComuna() {
+    patchAnswers({
+      comuna: undefined,
+      direccion: undefined,
+      direccionConfirmada: undefined,
+      lat: undefined,
+      lng: undefined,
+    });
+    setFallback(null);
+  }
+
+  // ── SALIDA SIN BLOQUEO ────────────────────────────────────────────────────
+  // El campo exige elegir de la lista de Places, y si Places no responde —API
+  // caída, cuota, red mala, o el bug que este commit arregla— el usuario queda
+  // encerrado: se le pide seleccionar de una lista que no ve. Un camino
+  // principal no puede tener un callejón sin salida.
+  //
+  // Acá se geocodifica lo que ESCRIBIÓ contra `/api/geocode` (endpoint que ya
+  // existía, público, con Google del lado servidor y Nominatim de respaldo).
+  // No reemplaza a Places: es lo que se ofrece recién cuando Places ya falló.
+  //
+  // La comuna se deriva del `formattedAddress` que devuelve el geocodificador,
+  // no del chip: alguien que tocó "Providencia" y escribió Irarrázaval 2100
+  // está en Ñuñoa, y así lo resuelve (verificado contra el endpoint en prod).
+  // Si la comuna derivada no está cubierta, se guarda igual y la pantalla cae
+  // en el mismo rechazo de cobertura que el camino de Places — con su captura
+  // de correo. Nunca se inventa una cobertura que no existe.
+  async function usarDireccionEscrita() {
+    const q = direccion?.trim();
+    if (!q || !comuna) return;
+    setFallback("buscando");
+    trackWizard(posthog, "wizard4_entrada_fallback_geocode", { comuna });
+    try {
+      const r = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&comuna=${encodeURIComponent(comuna)}`);
+      const j = (await r.json()) as { lat: number | null; lng: number | null; formattedAddress?: string };
+      if (!r.ok || j.lat == null || j.lng == null) {
+        setFallback("fallo");
+        return;
+      }
+      const fmt = j.formattedAddress ?? q;
+      const d = derivarComuna(fmt, comuna);
+      trackWizard(posthog, "wizard4_entrada_fallback_resuelto", {
+        comuna: d.comuna,
+        cubierta: d.cubierta,
+        corrigio_al_chip: d.corrigioAlChip,
+      });
+      setFallback(null);
+      if (inputRef.current) inputRef.current.value = fmt;
+      patchAnswers({
+        direccion: fmt,
+        comuna: d.comuna,
+        ciudad: d.ciudad,
+        ...(d.cubierta
+          ? { direccionConfirmada: fmt, lat: j.lat, lng: j.lng }
+          : { direccionConfirmada: undefined, lat: undefined, lng: undefined }),
+      });
+    } catch {
+      setFallback("fallo");
+    }
   }
 
   function verEjemplo() {
@@ -292,11 +418,19 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
       ) : (
         // ── Estado 2 ──
         <div className="mt-6 flex flex-col gap-4">
+          {/* El chip elegido NO es un botón: es la confirmación de lo que
+              elegiste. Antes borraba la comuna al tocarlo —se ve como etiqueta,
+              está justo sobre el campo de dirección y en mobile se toca sin
+              querer—, y eso mandaba al estado 1 y de vuelta, que es el camino
+              que dejaba el Autocomplete muerto. Deshacer se hace en un solo
+              lugar, y ese lugar dice "Cambiar". */}
           <div className="flex flex-wrap gap-2">
-            <ChipComuna elegido onClick={() => patchAnswers({ comuna: undefined })}>
+            <span
+              className="font-body text-[14px] px-4 py-2.5 rounded-xl min-h-[44px] flex items-center bg-[var(--franco-text)] text-[var(--franco-bg)] border-[0.5px] border-[var(--franco-text)]"
+            >
               {comuna}
-            </ChipComuna>
-            <ChipComuna punteado onClick={() => patchAnswers({ comuna: undefined })}>
+            </span>
+            <ChipComuna punteado onClick={cambiarComuna}>
               Cambiar
             </ChipComuna>
           </div>
@@ -324,9 +458,27 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
                 <WaitlistZonaInline comuna={comuna!} region={regionRef.current} />
               </>
             ) : direccion && !confirmada ? (
-              <p className="font-body text-[11px] mt-1.5 text-signal-red">
-                Selecciona la dirección de la lista de sugerencias.
-              </p>
+              <div className="mt-1.5">
+                <p className="font-body text-[11px] text-signal-red m-0">
+                  Elige la dirección de la lista de sugerencias.
+                </p>
+                {/* La salida. El copy no culpa al usuario ni promete que el
+                    desplegable va a aparecer: le ofrece seguir con lo que ya
+                    escribió. */}
+                <button
+                  type="button"
+                  onClick={usarDireccionEscrita}
+                  disabled={fallback === "buscando"}
+                  className="font-body text-[12px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-4 decoration-[var(--franco-border-strong)] mt-1.5 transition-colors disabled:opacity-50"
+                >
+                  {fallback === "buscando" ? "Buscando…" : "¿No aparece? Usa la dirección que escribiste"}
+                </button>
+                {fallback === "fallo" && (
+                  <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-1 mb-0 leading-snug">
+                    No pude ubicar esa dirección. Revisa que tenga calle y número.
+                  </p>
+                )}
+              </div>
             ) : (
               <button
                 type="button"
@@ -371,36 +523,25 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
 function ChipComuna({
   children,
   onClick,
-  elegido,
   punteado,
 }: {
   children: React.ReactNode;
   onClick: () => void;
-  elegido?: boolean;
   punteado?: boolean;
 }) {
   const base =
     "font-body text-[14px] px-4 py-2.5 rounded-xl transition-colors min-h-[44px] flex items-center";
-  const cls = elegido
-    ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[0.5px] border-[var(--franco-text)]"
-    : punteado
-      ? "franco-tile-target border border-dashed border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] bg-[var(--franco-card)]"
-      : "franco-tile-target border-[0.5px] border-[var(--franco-border)] text-[var(--franco-text)] bg-[var(--franco-card)]";
+  const cls = punteado
+    ? "franco-tile-target border border-dashed border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] bg-[var(--franco-card)]"
+    : "franco-tile-target border-[0.5px] border-[var(--franco-border)] text-[var(--franco-text)] bg-[var(--franco-card)]";
   return (
-    <button type="button" onClick={onClick} aria-pressed={elegido} className={`${base} ${cls}`}>
+    <button type="button" onClick={onClick} className={`${base} ${cls}`}>
       {children}
     </button>
   );
 }
 
 // ── Buscador de "Otra comuna…" ───────────────────────────────────────────────
-
-/** Minúsculas sin acentos, para comparar lo tipeado con el nombre canónico. El
- *  rango ̀-ͯ va escapado a propósito: son combining marks invisibles
- *  y la versión literal es imposible de revisar (misma regla que
- *  `comunas-disponibles.ts`). */
-const plano = (s: string) =>
-  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 function BuscadorComuna({
   query,
