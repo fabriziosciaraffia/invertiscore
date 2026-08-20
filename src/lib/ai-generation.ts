@@ -47,6 +47,7 @@ import {
 } from "@/lib/prosa-presupuesto";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico } from "@/lib/precio-jerarquia";
+import { construirReferenciasZona } from "@/lib/referencias-zona";
 import { cifrasFueraDeInput, empeoraCifras } from "@/lib/cifras-guard";
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import type { Hallazgo } from "@/lib/types";
@@ -74,7 +75,11 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // JERARQUÍA DE PRECIOS pre-digerido + guard JERARQUIA-PRECIOS post-parse;
 // retiradas las líneas crudas que sembraban colisión (precioSugerido duplicado,
 // "10% de descuento", límite-TIR y flujo-neutro sueltos del CONTEXTO).
-export const PROMPT_VERSION_LTR = 5;
+// v6 (2026-08-17): coherencia zona-prosa — bloque REFERENCIAS DE ZONA con el
+// AMBITO declarado de cada referencia de valor (radio vs comuna) y el encuadre
+// pre-escrito para cuando apuntan a lados opuestos; retirado el fallback al
+// cache de zona que resucitaba comparaciones comunales apagadas por el motor.
+export const PROMPT_VERSION_LTR = 6;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -950,16 +955,15 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         nZona = n;
       }
     }
-    // 2º (si !confiable): zone_insight cacheado (medianaComuna, misma fuente scraped).
-    if (!precioM2ZonaConfiable) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const zi = (analysis as any).zone_insight as { stats?: { precioM2?: { medianaComuna?: number } } } | null | undefined;
-      const medianaComunaUF = zi?.stats?.precioM2?.medianaComuna;
-      if (typeof medianaComunaUF === "number" && medianaComunaUF > 0) {
-        precioM2Zona = medianaComunaUF;
-        precioM2ZonaConfiable = true;
-      }
-    }
+    // 2º nivel RETIRADO (2026-08-17): era el cache de `zone_insight`, y con la
+    // zona acatando el veredicto del motor (resolverMedianaZona) el fallback se
+    // volvio CIRCULAR — el motor preguntaba a la zona y la zona respondia lo que
+    // el motor le habia dicho, o peor, una mediana vieja que el motor ya habia
+    // descartado. Ademas resucitaba comparaciones comunales que `precioVsComuna`
+    // habia apagado: exactamente el bypass de REGLA 0 que este ciclo cierra, solo
+    // que del lado de la prosa. Ahora la cadena es aciclica: el motor decide y la
+    // zona sigue. Sin dato en el 1er nivel, no hay mediana comunal y el guard de
+    // mas abajo impide que el modelo cite una.
     // NO hay 3º nivel. Lo hubo hasta el 2026-08-03: getMarketDataForComuna, que
     // consultaba una tabla `market_data` que nunca existió y caía a un seed
     // hardcodeado de marzo. Ese seed subestimaba el precio/m² entre 17% y 30%
@@ -1133,7 +1137,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // --- Anomalías ---
     const anomalias: string[] = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const zonaRadio = (input as any).zonaRadio as { precioM2VentaCLP?: number; arriendoPromedio?: number } | undefined;
+    const zonaRadio = (input as any).zonaRadio as { precioM2VentaCLP?: number; arriendoPromedio?: number; radioMetros?: number; sampleSizeVenta?: number } | undefined;
     // Referencia de arriendo: fuente única (arriendo-referencia.ts), SIN fallback
     // al seed. Antes esta puerta hacía `zonaRadio?.arriendoPromedio || arriendoZona`
     // — priorizaba bien, pero cuando no había dato scraped caía al seed y emitía
@@ -1261,6 +1265,26 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // de zona no es confiable — el builder lo garantiza. La IA no inventa el
     // absoluto cuando no hay dato.
     const sobreprecioPorM2UF = pvc.sobreprecioUfM2;
+
+    // §Coherencia zona: las DOS referencias de valor con su ambito declarado.
+    // vm mide el activo en su cuadra (radio); la mediana mide el m2 de la comuna
+    // entera. Divergen 12% en mediana sobre el parque y el prompt las entregaba
+    // sin decir de que era cada una, asi que la prosa las cruzaba ("entras barato"
+    // + "107% sobre el valor de zona" en el mismo informe, testigo 05462488).
+    const referenciasZona = construirReferenciasZona({
+      precioPedidoUF: input.precio,
+      superficieM2: input.superficie,
+      vmFrancoUF: vmFrancoUF,
+      tieneDiferenciaValida,
+      radioMetros: zonaRadio?.radioMetros ?? null,
+      sampleSizeVenta: zonaRadio?.sampleSizeVenta ?? null,
+      medianaComunaUfM2: pvc.medianaComunaUfM2,
+      desviacionPct: pvc.desviacionPct,
+      medianaConfiable: pvc.confiable === true,
+      nComuna: pvc.n ?? 0,
+      universo: hallazgoSobreprecio?.valor.universo,
+      sujetoUfM2: pvc.sujetoUfM2,
+    });
 
     const neg = results.negociacion;
     const precioSugeridoCLPNeg = neg?.precioSugeridoCLP ?? Math.round(Math.min(input.precio, vmFrancoUF) * 0.97 * UF_CLP);
@@ -1949,7 +1973,7 @@ ${metroInfo}
 ${plusvaliaHistoricaInfo}
 ${esFueraGranSantiago ? "ADVERTENCIA: propiedad fuera del Gran Santiago. Datos de metro, plusvalía y comparables pueden ser imprecisos — mencionar limitación al usuario." : ""}
 ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}${subsidioBloque}${capexBloque}
-${anclasBloque}${jerarquiaPrecios.bloque}${bloqueSimetriaSobreprecio}${bloquePrecioJusto}${bloqueDriverNoAccionable}${bloqueMotivosGateLTR}
+${anclasBloque}${jerarquiaPrecios.bloque}${referenciasZona.bloque}${bloqueSimetriaSobreprecio}${bloquePrecioJusto}${bloqueDriverNoAccionable}${bloqueMotivosGateLTR}
 
 negociacion.precioSugerido (este caso): "${fmtUF(techoUF)}" ← EXACTO techo_uf de las anclas (REGLA 6 v9)
 
