@@ -415,6 +415,27 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
 
       {estado === 1 ? (
         <>
+          {/* Transición hacia la única acción de la pantalla. Decorativa de
+              punta a punta: `aria-hidden` para que ningún lector de pantalla la
+              anuncie —no dice nada que el texto no diga— y el gesto vive en CSS
+              (ver `.wizard4-entrada-*` en globals.css), no en estado de React.
+              Signal Red porque conduce al CTA, que es el uso permitido. */}
+          <div aria-hidden="true" className="flex flex-col items-center mt-[18px] mb-[15px]">
+            <span className="block w-[1.5px] h-7 rounded-[2px] bg-signal-red origin-top wizard4-entrada-trazo" />
+            <svg
+              width="14" height="9" viewBox="0 0 14 9" fill="none"
+              className="mt-1 wizard4-entrada-chevron"
+            >
+              <path
+                d="M1 1L7 7L13 1"
+                stroke="var(--signal-red)"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+
           <div className="mt-6">
             <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--franco-text-tertiary)] block mb-2.5">
               Partamos por la comuna

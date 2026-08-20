@@ -797,6 +797,32 @@ input[type="number"] {
     to   { opacity: 1; transform: none; }
   }
   .wizard4-reaction { animation: wizard4-reaction-in 360ms ease-out 90ms both; }
+
+  /* Portada — transición entre la bajada y los chips de comuna.
+     El trazo BAJA (scaleY desde el borde superior) y el chevron aterriza
+     después: el gesto lleva el ojo desde la promesa hasta la única acción de la
+     pantalla, en vez de dejarlo saltar de un bloque al otro.
+
+     UNA SOLA VEZ, nunca en bucle: es un elemento de entrada, y algo que se
+     repite en el lugar donde el usuario tiene que decidir compite con la
+     decisión. Total 1.040ms (620 de retardo + 420 del chevron).
+
+     Bajo `reduce` este bloque no aplica y el elemento se ve directamente en su
+     estado final — que es el estado base del CSS de abajo, no un override. */
+  @keyframes wizard4-entrada-trazo {
+    from { transform: scaleY(0); }
+    to   { transform: scaleY(1); }
+  }
+  @keyframes wizard4-entrada-chevron {
+    from { opacity: 0; transform: translateY(-5px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .wizard4-entrada-trazo {
+    animation: wizard4-entrada-trazo 700ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+  .wizard4-entrada-chevron {
+    animation: wizard4-entrada-chevron 420ms ease-out 620ms both;
+  }
 }
 
 /* Regla de layout: en desktop cada pantalla del wizard cabe sin scroll vertical.
