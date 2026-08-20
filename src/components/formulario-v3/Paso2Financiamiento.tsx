@@ -559,7 +559,7 @@ export function Paso2Financiamiento({
 
         {ajustePlazoTasaOpen && (
           <div className="mt-3 flex flex-col gap-3">
-            {/* Card subsidio — solo si Nuevo + precio ≤ 4.000 UF (Ley 21.748).
+            {/* Card subsidio — solo si Nuevo + precio dentro del techo (Ley 21.748).
                 StateBox info Ink-only (Capa 1 binaria, cero Signal Red en bg/border).
                 CTA "Usar X%" usa el patrón mono uppercase del trigger Fase 11. */}
             {calificaSubsidio && (
@@ -580,7 +580,7 @@ export function Paso2Financiamiento({
                       Usar {fmtTasa(tasaConSubsidio)}%
                     </button>
                     <span className="font-body text-[11px] text-[var(--franco-text-secondary)]">
-                      Vigente hasta mayo 2027 · Requiere primera vivienda
+                      Hasta el 31-may-2028 · Vivienda nueva en primera venta
                     </span>
                   </div>
                   <a

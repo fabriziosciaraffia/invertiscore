@@ -695,9 +695,11 @@ export function DrawerContentSTR({
         {results.subsidioTasa?.califica && !results.subsidioTasa.aplicado && (
           <DrawerSection label="Subsidio a la tasa hipotecaria (Ley 21.748)">
             <p className="font-body text-[13px] text-[var(--franco-text)] mb-2 m-0 leading-[1.55]">
-              Tu depto califica para el subsidio del MINVU: vivienda nueva
-              bajo 4.000 UF + primera vivienda. Te baja la tasa hipotecaria
-              en ~0,6 puntos (a {fmtPct(results.subsidioTasa.tasaConSubsidio, 1)} aprox).
+              Tu depto califica para el subsidio del MINVU: vivienda nueva en
+              primera venta hasta 6.000 UF. Te baja la tasa hipotecaria desde
+              0,6 puntos —{" "}
+              {fmtPct(results.subsidioTasa.tasaConSubsidio, 1)} en el escenario
+              más conservador; cuánto más, lo define tu banco.
             </p>
             <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mb-0 m-0 leading-[1.55] italic">
               No está reflejado en este cálculo — la tasa que ingresaste no

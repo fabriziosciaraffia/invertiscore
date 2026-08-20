@@ -344,7 +344,8 @@ export interface ShortTermResult {
   // legacy con cualquiera de las tres llaves via `readVeredicto()`.
 
   // Commit 3a · 2026-05-12 — Subsidio Ley 21.748 (paridad con LTR).
-  // Aplica a viviendas nuevas ≤ 4.000 UF (primera vivienda). Rebaja la tasa
+  // Aplica a viviendas nuevas en primera venta dentro del techo vigente
+  // (NO se exige primera vivienda del comprador). Rebaja la tasa
   // hipotecaria en ~0,6 pp respecto al mercado. Estructura espejo de LTR
   // (analysis.ts:307-311 metrics.subsidioTasa).
   // Opcional para back-compat con análisis legacy pre-3a.
@@ -1247,6 +1248,17 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   const precioUF = input.valorUF > 0 ? input.precioCompra / input.valorUF : 0;
   const tasaIngresadaPct = input.tasaCredito * 100;
   const subsidioTasa = (() => {
+    // POR QUÉ ACÁ ES `tipoPropiedad` Y EN LTR ES `esNuevo` (revisado 20-ago-2026)
+    // Parece una asimetría y no lo es: los dos salen del MISMO campo del wizard.
+    // `buildLtrPayload` deriva `esNuevo: a.tipoPropiedad === "nuevo"` porque el
+    // input LTR tiene además un `tipo` que siempre vale "Departamento" y no
+    // sirve para decidir; el input STR no tiene ese campo ambiguo y lleva el
+    // `tipoPropiedad` crudo, así que acá no hace falta el rodeo.
+    //
+    // Unificar hacia `esNuevo` exigiría agregar el campo al tipo del input STR,
+    // al payload y al pipeline, para llegar exactamente al mismo booleano. Se
+    // evaluó y se descartó: cero ganancia de conducta, y tocar el borde del
+    // motor STR por prolijidad es como se rompen las cosas.
     const califica = calificaSubsidio(input.tipoPropiedad ?? "", precioUF);
     // Tasa de mercado real (wizard v4, decimal → %) o fallback (legacy → idéntico al previo).
     const tasaMercadoPct = input.tasaMercado && input.tasaMercado > 0 ? input.tasaMercado * 100 : TASA_MERCADO_FALLBACK;

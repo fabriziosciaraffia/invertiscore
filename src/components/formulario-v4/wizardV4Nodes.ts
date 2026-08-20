@@ -466,7 +466,7 @@ export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLi
       // Aviso anticipado de subsidio: solo programa + rango, JAMÁS el valor
       // estimado del depto (regla de copy dura).
       return a.tipoPropiedad === "nuevo" && live?.subsidioAviso
-        ? "Ojo: los departamentos nuevos hasta UF 4.000 pueden entrar al Subsidio a la Tasa (Ley 21.748) si es tu primera vivienda. Si el tuyo entra en rango, te lo ofrezco cuando pongas el precio."
+        ? "Ojo: los departamentos nuevos hasta UF 6.000 pueden entrar al Subsidio a la Tasa (Ley 21.748). Si el tuyo entra en rango, te lo ofrezco cuando pongas el precio."
         : null;
     default:
       return null;

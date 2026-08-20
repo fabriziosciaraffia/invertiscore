@@ -56,7 +56,10 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // la prosa cacheada con `promptVersion` < este número (o ausente ⇒ prosa pre-F6) se regenera
 // al abrir el análisis del owner. BUMP cada vez que cambie el prompt, el schema o la doctrina.
 // Espejo de PROMPT_VERSION_AMBAS (ai-generation-ambas.ts).
-export const PROMPT_VERSION_STR = 4;
+// v5 (2026-08-20): espejo del bump LTR v7 — subsidio con techo 6.000 UF, la
+// rebaja declarada como piso y el requisito corregido a vivienda nueva en
+// primera venta (no "primera vivienda", que nunca fue condición de la ley).
+export const PROMPT_VERSION_STR = 5;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -150,7 +153,7 @@ Activa los que sumen al caso. Si el ángulo cambia o refuerza la decisión, va. 
 
 **Patrimonio = EQUITY (valor − deuda, SIN flujo).** El "patrimonio a 10 años" es el valor del activo menos la deuda, SIN el flujo operativo acumulado. "Tu parte al vender" es el equity al liquidar (valor de venta − deuda − comisión), también SIN flujo: lo que te queda en la mano DEL ACTIVO, NO la ganancia por encima del capital. El flujo operativo acumulado es un dato APARTE (ya lo embolsaste durante los años); el "retorno total" suma equity + flujo. El multiplicador es equity/aportado → ×1 = recuperas lo puesto, ≥2 = doblas. NUNCA lo llames "ganancia neta" ni digas "recuperas el capital y te llevas ganancia encima": di "tu parte", "lo que es tuyo a la venta", coherente con la card y el drawer de patrimonio (SaleBlockSTR dice lo mismo).
 
-**Ángulo 4 — Negociación del precio y subsidio.** Si la rentabilidad es marginal y el precio tiene grasa, sugiere un descuento concreto (usa la tabla de sensibilidad de precio del input) en \`vsLTR.estrategiaSugerida\`. Subsidio Ley 21.748: si el input trae \`subsidioTasa.califica=true\` Y \`aplicado=false\`, OBLIGATORIO mencionar la palanca en \`vsLTR.estrategiaSugerida\` u \`operacion.contenido\` ("califica para el subsidio MINVU: la tasa baja ~0,6 pp, el dividendo baja unos $X, el flujo mejora en la misma magnitud"). Sin inventar montos exactos.
+**Ángulo 4 — Negociación del precio y subsidio.** Si la rentabilidad es marginal y el precio tiene grasa, sugiere un descuento concreto (usa la tabla de sensibilidad de precio del input) en \`vsLTR.estrategiaSugerida\`. Subsidio Ley 21.748: si el input trae \`subsidioTasa.califica=true\` Y \`aplicado=false\`, OBLIGATORIO mencionar la palanca en \`vsLTR.estrategiaSugerida\` u \`operacion.contenido\` ("califica para el subsidio MINVU: la tasa baja desde 0,6 pp, el dividendo baja unos $X, el flujo mejora en la misma magnitud"). Sin inventar montos exactos. La rebaja de 0,6 pp es el PISO —la ley fija "hasta 60 pb" y lo efectivo va de 0,61 a 1,16 pp según el banco—: nunca la presentes como cifra exacta ni prometas más.
 
 **Ángulo 5 — Errores típicos del primer operador STR.** Activar en \`riesgos.contenido\` cuando el caso lo amerite (regulación incierta, primer Airbnb): subestimar costos de rotación (5-8% del bruto, no 3%), no tener fondo de reserva para los primeros meses de operación, tarifa fija todo el año, amoblamiento de mala calidad que arrastra reseñas bajas.
 
@@ -828,7 +831,7 @@ ${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ OBLIGATORIO en \`vsLTR.con
 
 === SUBSIDIO LEY 21.748 (palanca financiera externa · Ángulo 4) ===
 ${r.subsidioTasa ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioTasa.aplicado} | tasaConSubsidio=${pct(r.subsidioTasa.tasaConSubsidio)}%
-${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar: el usuario puede pedir tasa subsidiada al banco (~0,6 pp menos). BAJA el dividendo y MEJORA el flujo. No está reflejado en este cálculo.` : r.subsidioTasa.califica && r.subsidioTasa.aplicado ? `→ Ya aplicado (la tasa ingresada coincide con la subsidiada). No lo menciones como mejora.` : `→ No califica. NO mencionar el subsidio.`}` : "(subsidio no calculado)"}
+${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar: el usuario puede pedir tasa subsidiada al banco (desde 0,6 pp menos; el banco define cuánto más). BAJA el dividendo y MEJORA el flujo. No está reflejado en este cálculo. Requisito: vivienda NUEVA EN PRIMERA VENTA hasta UF 6.000 — NO se exige que sea la primera vivienda del comprador.` : r.subsidioTasa.califica && r.subsidioTasa.aplicado ? `→ Ya aplicado (la tasa ingresada coincide con la subsidiada). No lo menciones como mejora.` : `→ No califica. NO mencionar el subsidio.`}` : "(subsidio no calculado)"}
 
 === SENSIBILIDAD DE PRECIO (Ángulo 4 — la tabla vive en su propio drawer de datos) ===
 ${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${pct(s.capRate * 100, 2)}%, CoC ${esMetricaNoAplica(s.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(s.cashOnCash, (n) => `${pct(n * 100)}%`)}, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${sinCapitalPropio ? `

@@ -315,9 +315,15 @@ export function TasaScreen({ answers, data, answer, goDetour }: ScreenProps) {
   const posthog = usePostHog();
   const t = data.tasaMercado;
 
-  // Capa aplicación del subsidio: si el precio real + tipo califican (nuevo ≤ UF
-  // 4.000), se ofrece la tasa subsidiada como opción explícita (destacada, NO
-  // preseleccionada). El delta fluye por tasaInteres, idéntico a v3.
+  // Capa aplicación del subsidio: si el precio real + tipo califican (nuevo en
+  // primera venta, dentro del techo), se ofrece la tasa subsidiada como opción
+  // explícita (destacada, NO preseleccionada). El delta fluye por tasaInteres,
+  // idéntico a v3.
+  //
+  // El copy dice "esta es la mínima" y no "aplica solo a primera vivienda": la
+  // ley no exige primera vivienda (eso era un error nuestro, ver
+  // lib/constants/subsidio.ts) y la rebaja real va de 0,61% a 1,16% según el
+  // banco, así que 0,6 es un piso.
   if (calificaSubsidioV4(answers)) {
     const tSub = tasaConSubsidioV4(t);
     return (
@@ -335,10 +341,10 @@ export function TasaScreen({ answers, data, answer, goDetour }: ScreenProps) {
           </span>
           <span className="font-mono text-[26px] font-bold text-[var(--franco-text)] leading-none">{tasaStr(tSub)}%</span>
           <span className="block font-body text-[12px] text-[var(--franco-text-secondary)] mt-2">
-            aplica solo a primera vivienda — verifica tu elegibilidad
+            la rebaja exacta la fija tu banco — esta es la mínima
           </span>
           <span className="block font-mono text-[11px] text-[var(--franco-text-muted)] mt-1">
-            subsidio estatal a la tasa para viviendas nuevas hasta UF 4.000 (Ley 21.748)
+            subsidio estatal a la tasa · vivienda nueva en primera venta hasta UF 6.000 (Ley 21.748)
           </span>
         </button>
 

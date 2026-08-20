@@ -1261,7 +1261,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
               tag={tasaTag}
               options={[{ value: "sub", label: `Subsidio ${tasaStr(tasaConSubsidioV4(data.tasaMercado))}%` }, { value: "mer", label: `Mercado ${tasaStr(data.tasaMercado)}%` }]}
               onCommit={(v) => commitEdit("tasa", { tasaModo: "estimada", tasaInteres: tasaStr(v === "sub" ? tasaConSubsidioV4(data.tasaMercado) : data.tasaMercado) })}
-              fuente={conSubsidio ? "subsidio estatal a la tasa (Ley 21.748) — solo primera vivienda" : undefined}
+              fuente={conSubsidio ? "subsidio estatal a la tasa (Ley 21.748) — vivienda nueva en primera venta" : undefined}
             />
           ) : (
             <NumField

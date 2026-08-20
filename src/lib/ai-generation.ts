@@ -79,7 +79,14 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // AMBITO declarado de cada referencia de valor (radio vs comuna) y el encuadre
 // pre-escrito para cuando apuntan a lados opuestos; retirado el fallback al
 // cache de zona que resucitaba comparaciones comunales apagadas por el motor.
-export const PROMPT_VERSION_LTR = 6;
+// v7 (2026-08-20): subsidio a la tasa — techo 6.000 UF (ampliación despachada el
+// 11-ago-2026) y corrección de tres hechos que el prompt venía inyectando mal:
+// "primera vivienda" nunca fue requisito (la ley pide vivienda nueva en PRIMERA
+// VENTA, condición del inmueble), la vigencia es hasta el 31-may-2028 y los
+// cupos son 80.000. Además la rebaja se declara como PISO, no como cifra exacta.
+// El bump regenera la prosa de los análisis que pasan a calificar con el techo
+// nuevo: sin él, la card diría "califica" y la narración no lo mencionaría.
+export const PROMPT_VERSION_LTR = 7;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -1489,7 +1496,7 @@ ANCLAS DE NEGOCIACIÓN (REGLA 5 v10 — usar EXACTOS, no recalcular):
       // (ai-generation-str.ts) con voz LTR; "DEBES mencionar" es instrucción al modelo,
       // el tono al usuario sigue siendo NO imperativo (regulatorio).
       const palancaDirectiva = usoTasaSubsidio
-        ? `→ Ya aplicado: la tasa ingresada YA es la subsidiada y el dividendo la incorpora (ahorro ~0). NO la narres como mejora ni ahorro; a lo sumo, respaldo si las condiciones de financiamiento cambian antes de mayo 2027.`
+        ? `→ Ya aplicado: la tasa ingresada YA es la subsidiada y el dividendo la incorpora (ahorro ~0). NO la narres como mejora ni ahorro; a lo sumo, respaldo si las condiciones de financiamiento cambian antes del 31-may-2028.`
         : (veredictoMotor === "COMPRAR" || veredictoMotor === "AJUSTA SUPUESTOS")
           ? `→ DEBES mencionar la palanca (veredicto ${veredictoMotor}, subsidio NO aplicado aún): el depto califica y la tasa subsidiada es ~${tasaConSubsidio}%. Pedirla al banco baja la cuota de ${fmtCLP(m.dividendo)} a ${fmtCLP(dividendoConSubsidio)} (~${fmtCLP(ahorroDividendo)}/mes menos), lo que mejora el flujo. Dato concreto, sin hype. Tono al usuario NO imperativo (regulatorio): "podrías pedirla", no "pídela".`
           : `→ NO menciones el subsidio: el veredicto es BUSCAR OTRA y una rebaja de 0,6pp no arregla un depto que no conviene.`;
@@ -1498,7 +1505,8 @@ SUBSIDIO LEY 21.748 (depto califica):
 - usoTasaSubsidio: ${usoTasaSubsidio}
 - tasaConSubsidio: ~${tasaConSubsidio}%
 - dividendoConSubsidio: ${fmtCLP(dividendoConSubsidio)} (vs actual ${fmtCLP(m.dividendo)}, ahorro ~${fmtCLP(ahorroDividendo)}/mes)
-- requisitos: primera vivienda, promesa firmada desde 2025, vigente hasta mayo 2027 o hasta agotar 50.000 cupos.
+- requisitos: vivienda NUEVA EN PRIMERA VENTA (NO se exige que sea la primera vivienda del comprador) hasta UF 6.000, promesa firmada desde 2025. Vigente para solicitar hasta el 31-may-2028 o hasta agotar 80.000 cupos.
+- la rebaja de ~0,6 pp es el PISO: la ley fija "hasta 60 pb" y la rebaja efectiva va de 0,61 a 1,16 pp según el banco. Nunca la presentes como cifra exacta ni prometas más de 0,6.
 ${palancaDirectiva}`;
     })();
 

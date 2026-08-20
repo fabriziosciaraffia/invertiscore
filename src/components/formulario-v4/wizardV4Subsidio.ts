@@ -1,7 +1,8 @@
-// Subsidio a la Tasa (Ley 21.748) — helpers v4. Reusa la fuente de verdad
-// (lib/constants/subsidio). Nuevo ≤ UF 4.000, rebaja 0,6pp. El aviso anticipado
-// usa un margen calibrable sobre la estimación interna de valor (NUNCA se muestra
-// el número al usuario — regla de copy dura).
+// Subsidio a la Tasa (Ley 21.748 + ampliación 11-ago-2026) — helpers v4. Reusa
+// la fuente de verdad (lib/constants/subsidio): vivienda nueva en primera venta
+// dentro del techo vigente, rebaja desde 0,6 pp. El aviso anticipado usa un
+// margen calibrable sobre la estimación interna de valor (NUNCA se muestra el
+// número al usuario — regla de copy dura).
 
 import {
   TECHO_UF_SUBSIDIO,
@@ -13,8 +14,23 @@ import { DEC } from "./wizardV4Nodes";
 import { leerNum } from "./derive";
 import type { WizardV4Answers } from "./wizardV4Nodes";
 
-/** Margen del aviso anticipado sobre el techo (UF 4.400, calibrable). */
-export const AVISO_MARGEN_UF = 4400;
+/**
+ * Margen del aviso anticipado: 10% sobre el techo vigente.
+ *
+ * DERIVADO A PROPÓSITO. Era el literal 4400 (techo 4.000 + 10%), y cuando el
+ * techo subió a 6.000 ese literal habría apagado el aviso anticipado para TODO
+ * el tramo nuevo — sin error, sin log, sin que nadie se enterara. El aviso
+ * simplemente habría dejado de aparecer.
+ *
+ * El margen existe porque acá todavía no hay precio: se compara contra una
+ * estimación interna (UF/m² de zona × superficie), que puede quedar corta. El
+ * 10% es la holgura para no perderse casos que sí van a calificar cuando el
+ * usuario ponga el precio real.
+ */
+// `* 11 / 10` y no `* 1.1`: en binario 6000 * 1.1 da 6600.000000000001, y un
+// umbral con cola de flotante es exactamente el tipo de detalle que después
+// nadie entiende al leer un log.
+export const AVISO_MARGEN_UF = (TECHO_UF_SUBSIDIO * 11) / 10;
 
 export { TECHO_UF_SUBSIDIO, calcTasaConSubsidio };
 
@@ -31,7 +47,7 @@ export function avisoSubsidioAplica(a: WizardV4Answers, precioM2UF: number | nul
   return precioM2UF * sup <= AVISO_MARGEN_UF;
 }
 
-/** ¿El precio real + tipo califican al subsidio? (nuevo ≤ UF 4.000). */
+/** ¿El precio real + tipo califican al subsidio? (nuevo, dentro del techo). */
 export function calificaSubsidioV4(a: WizardV4Answers): boolean {
   return calificaSubsidio(a.tipoPropiedad ?? "", leerNum(a.precio, DEC.precioUF));
 }

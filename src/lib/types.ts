@@ -381,8 +381,8 @@ export interface AnalysisMetrics {
   descuentoParaNeutro?: number;     // %
   // Subsidio a la tasa (Ley 21.748)
   subsidioTasa?: {
-    califica: boolean;        // tipo Nuevo && precio <= 4000 UF
-    tasaConSubsidio: number;  // tasa mercado - 0.6
+    califica: boolean;        // nuevo en primera venta && precio <= TECHO_UF_SUBSIDIO
+    tasaConSubsidio: number;  // tasa mercado − REBAJA_SUBSIDIO (piso: el banco puede dar más)
     aplicado: boolean;        // si la tasa ingresada <= tasaConSubsidio + 0.2
   };
   // CapEx de puesta a punto (usados) — ya incorporado a capitalInvertido.
