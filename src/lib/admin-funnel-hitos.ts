@@ -46,10 +46,20 @@ export const HITOS_FUNNEL: HitoFunnel[] = [
     invalida: ["analisisCuenta"],
   },
   {
-    fecha: "2026-08-19",
+    // El corte REAL fue el 20-ago a las 15:00 UTC — medido: hasta las 14:00 todos
+    // los `wizard4_step_left` traen node='mod' en posición 1 (wizard viejo) y
+    // desde las 15:00 traen node='dir' en posición 1 con 'mod' en la 9.
+    //
+    // Pero esta serie es DIARIA y `fecha` hace doble función: apaga los días
+    // anteriores Y posiciona el marcador. El 20 mezcla catorce horas de wizard
+    // viejo con seis del nuevo, así que no pertenece a ninguna de las dos series
+    // — el primer día íntegramente comparable es el 21. Fecharlo el 19 (como
+    // estaba) metía un día completo de wizard viejo adentro de la serie nueva;
+    // fecharlo el 20 metería más de medio día.
+    fecha: "2026-08-21",
     etiqueta: "rediseño del wizard",
     motivo:
-      "la primera pantalla dejó de ser la elección de modalidad y pasó a ser la portada del producto (comuna + dirección), y la modalidad se mudó al final; el wizard que empieza acá no es una versión mejorada del anterior sino otro flujo, así que su tasa de entrada mide otra cosa",
+      "la primera pantalla dejó de ser la elección de modalidad y pasó a ser la portada del producto (comuna + dirección), y la modalidad se mudó al final; el wizard que empieza acá no es una versión mejorada del anterior sino otro flujo, así que su tasa de entrada mide otra cosa. El cambio empezó a servir tráfico el 20-ago a las 15:00 UTC: ese día mezcla las dos versiones y por eso queda fuera, y el primer día comparable es el 21",
     invalida: ["visitaWizard", "wizardAnalisis"],
   },
 ];
