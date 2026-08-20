@@ -38,7 +38,6 @@ import { avisoSubsidioAplica } from "./wizardV4Subsidio";
 import { ChoiceTile, FrancoReaction, GhostBtn, PrimaryBtn } from "./ui";
 import {
   AntiguedadScreen,
-  DireccionScreen,
   EntregaScreen,
   TamanoScreen,
   TipoScreen,
@@ -47,6 +46,7 @@ import {
 import { PieScreen, PlazoScreen, PrecioScreen, TasaFixScreen, TasaScreen } from "./screensActo2";
 import { AdrFixScreen, AdrScreen, ArrFixScreen, ArrScreen } from "./screensActo3";
 import { InformeScreen } from "./screenInforme";
+import { EntradaScreen } from "./screenEntrada";
 import { ModalPlausibilidad } from "./ModalPlausibilidad";
 import { buildPlausibilidadParcial } from "./wizardV4Submit";
 import { evaluarPlausibilidad, type Anomalia, type Regla } from "@/lib/plausibilidad";
@@ -283,6 +283,13 @@ export function WizardV4({
   // ~100px de margen por lado en 1366) para que las 3 cards respiren y no hagan
   // wrap agresivo. Las pantallas de pregunta siguen angostas (foco en 1 decisión).
   const esResumen = nav.current === "resumen";
+  // La PORTADA (nodo `dir`) se dibuja su propio encabezado: título grande con el
+  // fragmento en Signal Red, bajada de dos líneas y chips. El headcard genérico
+  // —rótulo de acto + barra en 0% + chevron sin historial— no aporta nada ahí y
+  // sí cuesta lo único escaso: los píxeles sobre el pliegue. Cero de 214
+  // sesiones scrollearon en esta pantalla, así que cada bloque que se cuela
+  // arriba desaparece la acción de la vista.
+  const esPortada = nav.current === "dir";
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
@@ -290,7 +297,9 @@ export function WizardV4({
 
       <main className={`wizard4-main mx-auto px-4 md:px-8 ${esResumen ? "pt-6 pb-1 max-w-[1160px]" : "py-6 md:py-12 max-w-3xl"}`}>
         {/* Header: chevron + acto + progreso. Superficie card atenuada (dec. D v3).
-            En el resumen (ancho, denso) se compacta el margen para caber en 1366x768. */}
+            En el resumen (ancho, denso) se compacta el margen para caber en 1366x768.
+            En la portada no se dibuja (ver `esPortada`). */}
+        {!esPortada && (
         <div className={`wizard4-headcard rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm ${esResumen ? "p-4 mb-3" : "p-5 md:p-6 mb-8"}`}>
           <div className="flex items-center gap-3 mb-4 min-w-0">
             {w.canGoBack && (
@@ -319,6 +328,7 @@ export function WizardV4({
             />
           </div>
         </div>
+        )}
 
         {/* Banner de retomar draft. Vive en el layout del <main>, fuera del
             router de pantallas → sin el gate se renderiza en las 12 pantallas. */}
@@ -348,9 +358,11 @@ export function WizardV4({
           <div key={nav.current} ref={screenRef} className="wizard4-screen" data-dir={nav.dir}>
             {reaction && <FrancoReaction>{reaction}</FrancoReaction>}
 
-            <h1 className={`wizard4-steptitle font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 leading-tight ${esResumen ? "mb-2" : "mb-6"}`}>
-              {NODE_TITLE[nav.current]}
-            </h1>
+            {!esPortada && (
+              <h1 className={`wizard4-steptitle font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 leading-tight ${esResumen ? "mb-2" : "mb-6"}`}>
+                {NODE_TITLE[nav.current]}
+              </h1>
+            )}
 
             <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={markTerminal} />
           </div>
@@ -404,7 +416,7 @@ function Screen({
   switch (node) {
     // ── Acto 1 ──
     case "dir":
-      return <DireccionScreen {...screenProps} />;
+      return <EntradaScreen {...screenProps} />;
     case "tipo":
       return <TipoScreen {...screenProps} />;
     case "ent":

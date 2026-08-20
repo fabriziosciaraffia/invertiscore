@@ -149,8 +149,16 @@ export function useWizardV4({
     const d = candidate.draft;
     if (resume) {
       draftVersion.current = d.version ?? 0;
+      // `?resume=1` es la vuelta del registro, y ese enlace solo existe EN el
+      // resumen — así que quien llega acá ya pasó por todas las preguntas. El
+      // fallback a `mod` cubre el caso en que esa premisa deje de ser cierta:
+      // con la modalidad al final, aterrizar en el resumen sin haberla elegido
+      // dejaría el informe en "—". Antes esto no podía pasar (la modalidad era
+      // la primera pantalla), así que la premisa pasó a ser load-bearing y
+      // conviene no dejarla implícita.
+      const sinModalidad = !(d.answers as WizardV4Answers | undefined)?.modalidad;
       setNav({
-        current: "resumen",
+        current: sinModalidad ? "mod" : "resumen",
         history: d.history ?? [],
         answers: d.answers ?? {},
         completed: d.completed ?? {},

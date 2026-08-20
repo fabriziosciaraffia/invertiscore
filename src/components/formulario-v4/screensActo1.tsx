@@ -1,14 +1,9 @@
 "use client";
 
 // Wizard v4 — Pantallas del Acto 1 (QUÉ COMPRAS).
-// dir (Places + mapa + gate de cobertura), tipo, entrega, antigüedad, tamaño.
+// tipo, entrega, antigüedad, tamaño. La dirección vive en `screenEntrada.tsx`
+// (es la pantalla de entrada, no un paso más del acto).
 
-import { useEffect, useRef } from "react";
-import { usePostHog } from "posthog-js/react";
-import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
-import { COMUNAS } from "@/lib/comunas";
-import { isComunaDisponible } from "@/lib/comunas-disponibles";
-import { MapaThumbnail } from "@/components/formulario-v3/MapaThumbnail";
 import type { WizardV4Answers, NodeId, Antiguedad } from "./wizardV4Nodes";
 import { DEC } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
@@ -16,9 +11,6 @@ import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, Segmented } from "./ui"
 import { NumericInput } from "./NumericInput";
 import { leerNum } from "./derive";
 import { escalaSuperficie } from "./avisoEscala";
-import { trackWizard } from "./track";
-import { rangoChars, registrarSondaSalida, reportarValidacionRechazo } from "./stepTelemetry";
-import { WaitlistZonaInline } from "./WaitlistZonaInline";
 
 export interface ScreenProps {
   answers: WizardV4Answers;
@@ -28,175 +20,9 @@ export interface ScreenProps {
   goDetour: (fix: NodeId, patch?: Partial<WizardV4Answers>) => void;
 }
 
-// ── dir ──────────────────────────────────────────────────────────────────────
-
-export function DireccionScreen({ answers, data, patchAnswers, answer }: ScreenProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const acRef = useRef<any>(null);
-  const posthog = usePostHog();
-
-  // ── Sonda de `dir` (I-2) ──
-  // La segunda fuga del wizard (~26% en mobile) mezcla dos historias distintas:
-  // quien rebota sin tipear nada y quien tipea una dirección de región y choca
-  // con el rechazo de cobertura. Estas señales las separan. El evento sale al
-  // DESMONTAR (salir del paso): uno por visita.
-  const charsMax = useRef(0);
-  const sugerenciaSeleccionada = useRef(false);
-  const regionRef = useRef<string | null>(null);
-  // Espejo del texto/confirmación para leerlos en el cleanup sin re-suscribir.
-  const estadoSalida = useRef({ conTexto: false, confirmada: false });
-
-  registrarSondaSalida("dir", () => ({
-    name: "wizard4_dir_tipeo",
-    props: {
-      chars_rango: rangoChars(charsMax.current),
-      sugerencia_seleccionada: sugerenciaSeleccionada.current,
-      // Tipeó algo y se fue sin elegir de la lista: o no entendió que hay que
-      // seleccionar, o su dirección no aparece. Ambas son accionables.
-      salio_con_texto_sin_seleccion:
-        estadoSalida.current.conTexto && !estadoSalida.current.confirmada,
-    },
-  }));
-
-  useEffect(() => {
-    loadGoogleMaps()
-      .then(() => {
-        if (!inputRef.current || acRef.current) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const google = (window as any).google;
-        if (!google?.maps?.places) return;
-        const ac = new google.maps.places.Autocomplete(inputRef.current, {
-          types: ["address"],
-          componentRestrictions: { country: "cl" },
-          fields: ["geometry", "formatted_address", "address_components"],
-        });
-        ac.addListener("place_changed", () => {
-          const place = ac.getPlace();
-          if (!place?.geometry?.location) return;
-          const lat = place.geometry.location.lat();
-          const lng = place.geometry.location.lng();
-          const addr = place.formatted_address || inputRef.current?.value || "";
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const comps = (place.address_components || []) as any[];
-          // En la RM, Google mapea la comuna a `locality` (fallback admin_level_3).
-          const comunaRaw =
-            comps.find((c) => c.types.includes("locality"))?.long_name ||
-            comps.find((c) => c.types.includes("administrative_area_level_3"))?.long_name ||
-            "";
-          const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comunaRaw.toLowerCase());
-          const comunaFinal = match?.comuna || comunaRaw;
-          const cubierta = isComunaDisponible(comunaFinal);
-          // Región normalizada POR PLACES (no texto libre del usuario): es el
-          // mapa de expansión — de dónde viene la demanda que hoy se rechaza.
-          const regionRaw =
-            comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name || "";
-          sugerenciaSeleccionada.current = true;
-          regionRef.current = regionRaw || null;
-          if (!cubierta) {
-            trackWizard(posthog, "wizard4_dir_rechazo_cobertura", {
-              comuna: comunaFinal || "sin_dato",
-              region: regionRaw || "sin_dato",
-            });
-            reportarValidacionRechazo(posthog, "cobertura", "dir");
-          }
-          // REGRESIÓN-7: Google rellena el input con un texto distinto al
-          // formatted_address, y su `input` event (onChange de React) puede correr
-          // DESPUÉS de este handler → direccion (input) ≠ direccionConfirmada
-          // (formatted) → "no confirmada". Sincronizamos el input a la dirección
-          // canónica y usamos ESA misma cadena para ambos, de modo que un onChange
-          // posterior lea el mismo valor y no desincronice. También cura el caso en
-          // que Google no autocompleta el input (queda el texto tipeado).
-          if (inputRef.current) inputRef.current.value = addr;
-          // Fuera de cobertura: registramos la comuna (para el mensaje explícito)
-          // pero NO confirmamos ni guardamos coords → el draft no persiste una
-          // dirección fuera de cobertura como válida y Continuar queda bloqueado.
-          patchAnswers({
-            direccion: addr,
-            comuna: comunaFinal,
-            ciudad: match?.ciudad || "Santiago",
-            ...(cubierta
-              ? { direccionConfirmada: addr, lat, lng }
-              : { direccionConfirmada: undefined, lat: undefined, lng: undefined }),
-          });
-        });
-        acRef.current = ac;
-      })
-      .catch(() => { /* ignore */ });
-    // `posthog` (usePostHog) es estable y solo se usa dentro del listener de
-    // Places: re-suscribir el Autocomplete por él re-crearía el widget.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patchAnswers]);
-
-  const { direccion, direccionConfirmada, comuna, ciudad, lat, lng } = answers;
-  const confirmada = !!direccionConfirmada && direccion === direccionConfirmada;
-  const fueraDeZona = !!comuna && !isComunaDisponible(comuna);
-  const puedeSeguir = confirmada && !!comuna && !fueraDeZona;
-  // Espejo para el evento de salida (leído en el cleanup del desmontaje).
-  estadoSalida.current = { conTexto: !!direccion?.trim(), confirmada };
-  charsMax.current = Math.max(charsMax.current, direccion?.trim().length ?? 0);
-
-  return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <FieldLabel tooltip="La ubicación define los comparables, cercanía a metro y servicios. Escribe y elige una opción del dropdown.">
-          Dirección
-        </FieldLabel>
-        <input
-          ref={inputRef}
-          type="text"
-          autoComplete="off"
-          placeholder="Ej: Av. Providencia 1234, Providencia"
-          defaultValue={direccion}
-          onChange={(e) => patchAnswers({ direccion: e.target.value })}
-          className="w-full h-11 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[15px] font-body text-[var(--franco-text)] focus:border-signal-red focus:outline-none focus:ring-1 focus:ring-signal-red/20 transition-colors"
-        />
-        {/* Prioridad del mensaje: la cobertura manda. Si la comuna elegida está
-            fuera del Gran Santiago se muestra el mensaje de cobertura aunque el
-            estado "confirmado" no se haya seteado (BUG-1: antes ganaba el genérico). */}
-        {fueraDeZona ? (
-          <>
-            <p className="font-body text-[12px] mt-1.5 text-signal-red leading-snug">
-              {comuna} está fuera del Gran Santiago — por ahora Franco no tiene datos suficientes acá.
-              Prueba con otra comuna de la Región Metropolitana.
-            </p>
-            {/* Aditivo (I-2): el rechazo no cambia, pero la demanda deja rastro. */}
-            <WaitlistZonaInline comuna={comuna} region={regionRef.current} />
-          </>
-        ) : direccion && !confirmada ? (
-          <p className="font-body text-[11px] mt-1.5 text-signal-red">
-            Selecciona la dirección de la lista de sugerencias.
-          </p>
-        ) : comuna ? (
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-1.5">
-            {comuna}
-            {ciudad ? ` · ${ciudad}` : ""}
-          </p>
-        ) : null}
-      </div>
-
-      {lat && lng && !fueraDeZona && (
-        <div>
-          <FieldLabel>Ubicación en el mapa</FieldLabel>
-          <MapaThumbnail
-            lat={lat}
-            lng={lng}
-            comparables={data.comparables}
-            comparablesCount={data.comparablesCount}
-            locationLabel={[comuna, ciudad].filter(Boolean).join(" · ")}
-            countLabel="propiedades en el sector"
-          />
-        </div>
-      )}
-
-      <div className="mt-1">
-        <PrimaryBtn onClick={() => answer("dir")} disabled={!puedeSeguir}>
-          Continuar →
-        </PrimaryBtn>
-      </div>
-    </div>
-  );
-}
+// La pantalla de `dir` se mudó a `screenEntrada.tsx` (19-ago-2026): dejó de ser
+// "un campo de dirección" y pasó a ser la portada del producto, con sus tres
+// estados. Este archivo se queda con el resto del Acto 1.
 
 // ── tipo ─────────────────────────────────────────────────────────────────────
 
