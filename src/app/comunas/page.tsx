@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllComunasStats, fmtCLP } from "@/lib/data/comunas-seo";
+import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
@@ -31,7 +32,18 @@ function rentColor(r: number) {
 }
 
 export default async function ComunasIndexPage() {
-  const comunas = await getAllComunasStats();
+  const stats = await getAllComunasStats();
+  const porSlug = new Map(stats.map((c) => [c.slug, c]));
+
+  // El índice lista SIEMPRE el roster completo: si una comuna se queda sin
+  // muestra esta semana, su card queda sin cifras pero el enlace interno sigue
+  // ahí. Sacarla dejaría su página huérfana justo cuando Google la acaba de
+  // indexar. Las que tienen datos van primero, ordenadas por rentabilidad.
+  const conDatos = COMUNAS_ROSTER
+    .map((c) => porSlug.get(c.slug))
+    .filter((c): c is NonNullable<typeof c> => !!c)
+    .sort((a, b) => b.rentabilidadBruta - a.rentabilidadBruta);
+  const sinDatos = COMUNAS_ROSTER.filter((c) => !porSlug.has(c.slug));
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
@@ -44,13 +56,13 @@ export default async function ComunasIndexPage() {
           ¿En qué comuna conviene más invertir en un departamento?
         </h1>
         <p className="mt-3 font-body text-base text-[var(--franco-text-secondary)]">
-          Ranking de rentabilidad — las {comunas.length} comunas con muestra de
-          mercado suficiente para comparar.
+          Ranking de rentabilidad en {COMUNAS_ROSTER.length} comunas del Gran
+          Santiago, con datos reales de mercado actualizados cada semana.
         </p>
 
         {/* Grid */}
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {comunas.map((c) => (
+          {conDatos.map((c) => (
             <Link
               key={c.slug}
               href={`/comunas/${c.slug}`}
@@ -89,6 +101,22 @@ export default async function ComunasIndexPage() {
                   </div>
                 )}
               </div>
+            </Link>
+          ))}
+
+          {/* Sin muestra suficiente esta semana: card sin cifras, link vivo. */}
+          {sinDatos.map((c) => (
+            <Link
+              key={c.slug}
+              href={`/comunas/${c.slug}`}
+              className="group rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 transition-colors hover:border-[var(--franco-border-hover)]"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">{c.nombre}</h2>
+              </div>
+              <p className="mt-0.5 font-body text-xs text-[var(--franco-text-muted)]">
+                Sin muestra suficiente esta semana
+              </p>
             </Link>
           ))}
         </div>

@@ -2,20 +2,41 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getComunaStats, getAllComunasStats, fmtCLP, fmtUF, UF_CLP } from "@/lib/data/comunas-seo";
+import { COMUNAS_ROSTER, esComunaDelRoster, nombreDeComuna } from "@/lib/data/comunas-roster";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 
 export const revalidate = 86400;
 
-export async function generateStaticParams() {
-  const comunas = await getAllComunasStats();
-  return comunas.map((c) => ({ slug: c.slug }));
+// El roster manda: qué páginas existen no lo decide el scraping de la semana.
+export function generateStaticParams() {
+  return COMUNAS_ROSTER.map((c) => ({ slug: c.slug }));
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const nombre = nombreDeComuna(params.slug);
+  if (!nombre) return { title: "Comuna no encontrada — Franco" };
+
   const stats = await getComunaStats(params.slug);
-  if (!stats) return { title: "Comuna no encontrada — Franco" };
+
+  // Comuna del roster sin datos suficientes esta semana: la página igual existe
+  // (200), así que necesita metadata propia — sin cifras que no tenemos.
+  if (!stats) {
+    return {
+      title: `Invertir en ${nombre} — Rentabilidad y datos reales`,
+      description: `Qué rinde hoy un departamento en ${nombre}. Franco analiza precio, arriendo y flujo de caja con datos reales del mercado.`,
+      alternates: { canonical: `/comunas/${params.slug}` },
+      openGraph: {
+        title: `Departamentos en ${nombre} — ¿Vale la pena invertir?`,
+        description: `Analiza si un departamento en ${nombre} conviene como inversión.`,
+        url: `https://refranco.ai/comunas/${params.slug}`,
+        siteName: "Franco",
+        locale: "es_CL",
+        images: ["/opengraph-image"],
+      },
+    };
+  }
 
   return {
     // Sin "| Franco" acá: la marca la agrega el template del root layout
@@ -42,9 +63,79 @@ function rentColor(r: number) {
   return "#C8323C";
 }
 
+/**
+ * Comuna del roster sin muestra suficiente esta semana. Responde 200 con lo que
+ * sí es cierto —que la comuna se analiza— y omite las cifras. Nunca rellena ni
+ * interpola: un número inventado es peor que un número ausente.
+ */
+function ComunaSinDatos({ nombre }: { nombre: string }) {
+  return (
+    <div className="min-h-screen bg-[var(--franco-bg)]">
+      <UnifiedNav variant="marketing" />
+
+      <main className="mx-auto max-w-[1100px] px-6 py-12">
+        <nav className="mb-6 font-body text-xs text-[var(--franco-text-muted)]">
+          <Link href="/" className="hover:text-[var(--franco-text-secondary)]">Inicio</Link>
+          {" → "}
+          <Link href="/comunas" className="hover:text-[var(--franco-text-secondary)]">Comunas</Link>
+          {" → "}
+          <span className="text-[var(--franco-text-secondary)]">{nombre}</span>
+        </nav>
+
+        <h1 className="font-heading text-3xl font-bold text-[var(--franco-text)] sm:text-4xl">
+          Invertir en {nombre} — ¿Vale la pena en {new Date().getFullYear()}?
+        </h1>
+
+        <div className="mt-8 rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 shadow-sm">
+          <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+            Esta semana no hay suficientes avisos activos en {nombre} para publicar
+            promedios que se sostengan. Franco prefiere no darte un número antes que
+            darte uno malo: los datos se actualizan semanalmente y las cifras vuelven
+            apenas la muestra alcance.
+          </p>
+          <p className="mt-4 font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+            Mientras tanto, si tienes un departamento concreto en la mira, el análisis
+            no depende de estos promedios: Franco lo evalúa con los datos de esa
+            propiedad.
+          </p>
+        </div>
+
+        <section className="mt-14">
+          <div className="rounded-2xl border border-[#C8323C]/20 bg-[#C8323C]/[0.06] p-10 text-center">
+            <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">¿Tienes un departamento en {nombre}?</h2>
+            <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
+              Analízalo en 2 minutos. Franco te dice si comprar, negociar o seguir buscando.
+            </p>
+            <CtaAnalizar origen="comuna_detalle" comuna={nombre}
+              className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
+            >
+              Analizar depto en {nombre}
+            </CtaAnalizar>
+          </div>
+        </section>
+
+        <section className="mt-14">
+          <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">Otras comunas</h2>
+          <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
+            Mira el <Link href="/comunas" className="underline hover:text-[var(--franco-text)]">ranking de rentabilidad por comuna</Link> con los datos que sí están disponibles.
+          </p>
+        </section>
+      </main>
+
+      <AppFooter variant="minimal" />
+    </div>
+  );
+}
+
 export default async function ComunaPage({ params }: { params: { slug: string } }) {
+  // 404 solo para slugs que NUNCA fueron página (una comuna inventada en la
+  // URL). Las del roster responden 200 siempre — si esta semana no hay datos
+  // suficientes, la página degrada más abajo en vez de desaparecer.
+  if (!esComunaDelRoster(params.slug)) notFound();
+  const nombreRoster = nombreDeComuna(params.slug)!;
+
   const stats = await getComunaStats(params.slug);
-  if (!stats) notFound();
+  if (!stats) return <ComunaSinDatos nombre={nombreRoster} />;
 
   const allComunas = await getAllComunasStats();
 
@@ -63,7 +154,13 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
 
   const precioM2CLP = Math.round(stats.precioM2Promedio * UF_CLP);
   const year = new Date().getFullYear();
-  const lowData = stats.totalPropiedades < 10;
+  // Aviso de muestra chica. El umbral viejo (<10 propiedades) era inalcanzable:
+  // la comuna ni siquiera publicaba bajo 50, así que el aviso nunca se mostró.
+  // Ahora avisa cuando los números descansan en poco: una sola tipología con
+  // muestra válida (el "promedio de la comuna" es en realidad el de UN segmento)
+  // o menos de 300 avisos utilizables — el corte cae en el salto natural de la
+  // distribución (la cola va 156·213·237·237·266·271, y de ahí salta a 393).
+  const lowData = stats.nSegmentos <= 1 || stats.totalPropiedades < 300;
 
   // Badge
   const badge = stats.rentabilidadBruta >= 5
@@ -137,7 +234,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
         {lowData && (
           <div className="mt-4 rounded-lg border border-[var(--franco-v-adjust-bg)] bg-[var(--franco-v-adjust-bg)] px-4 py-3">
             <p className="font-body text-xs text-[var(--franco-warning)]">
-              Datos limitados — menos de 10 propiedades analizadas en esta comuna.
+              Muestra limitada — los números de esta comuna salen de menos avisos que el resto. Tómalos como referencia, no como precisión.
             </p>
           </div>
         )}
