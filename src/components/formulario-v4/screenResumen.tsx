@@ -56,6 +56,7 @@ import {
   escalaTarifa,
   escalaTasa,
   escalaVacancia,
+  type AvisoEscala,
 } from "./avisoEscala";
 import { ModalPlausibilidad, type OrigenCampo } from "./ModalPlausibilidad";
 import { dormLabel, esEdicionReal, fmtCLP, fmtUF, fuenteArriendoLine, leerNum, procedenciaArriendoCorta, superficieM2, cuotaCLP, piePct, pieTexto, pieUF, precioUF } from "./derive";
@@ -307,7 +308,7 @@ function InlineInput({
   initial: string;
   decimales: Decimales;
   formatEco: (valor: number) => string;
-  escala?: (valor: number) => string | null;
+  escala?: (valor: number) => AvisoEscala | null;
   /**
    * Microcopy de ayuda del campo. Se renderiza ACÁ y no en `FieldShell` porque
    * el estado en vivo solo se conoce en este componente, y la ayuda tiene que
@@ -421,7 +422,7 @@ function NumField({
   decimales: Decimales;
   formatEco?: (valor: number) => string;
   /** Aviso de magnitud. Los umbrales y el copy los pone el guard, no este campo. */
-  escala?: (valor: number) => string | null;
+  escala?: (valor: number) => AvisoEscala | null;
   tag?: string;
   fuente?: string;
   /**

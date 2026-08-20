@@ -147,9 +147,11 @@ test("la pregunta es simétrica", () => {
 // mismo que ya se estaba mostrando.
 
 test("bloquear el commit NO se traga el aviso de escala", () => {
-  const escalaArriendo = (v: number) =>
-    evaluarPlausibilidad({ precioUF: NaN, superficieM2: NaN, ufCLP: NaN, arriendoMensualCLP: v })
-      .find((x) => x.campo === "arriendo")?.mensaje ?? null;
+  const escalaArriendo = (v: number) => {
+    const a = evaluarPlausibilidad({ precioUF: NaN, superficieM2: NaN, ufCLP: NaN, arriendoMensualCLP: v })
+      .find((x) => x.campo === "arriendo");
+    return a ? { mensaje: a.mensaje, sobreMaximo: a.valor > a.rango[1] } : null;
+  };
   const eco = (v: number) => `$${v}`;
 
   // Un arriendo bajo el piso, reescrito con otro formato: mismo número.
@@ -161,12 +163,18 @@ test("bloquear el commit NO se traga el aviso de escala", () => {
   const enVivo = estadoNumericInput(escrito, { decimales: DEC.arriendo, blurred: false, formatEco: eco, escala: escalaArriendo });
   const enReposo = estadoNumericInput(previo, { decimales: DEC.arriendo, blurred: true, formatEco: eco, escala: escalaArriendo });
 
-  assert.equal(enVivo.estado, "escala", "el aviso debe verse mientras escribe");
-  assert.equal(enReposo.estado, "escala", "y seguir viéndose en reposo pese al commit bloqueado");
+  // Desde el fix del prefijo (19-ago-2026) los dos momentos ya NO son iguales, y
+  // esa asimetría es la conducta buscada: $40.000 está bajo el piso del arriendo,
+  // así que mientras se escribe puede ser todavía el prefijo de $400.000 y el
+  // campo se calla. El commit sigue bloqueado igual — son dos mecanismos
+  // distintos— y al soltar el campo el aviso aparece, que es lo que este test
+  // protege: bloquear el commit no puede hacer desaparecer el aviso EN REPOSO.
+  assert.equal(enVivo.estado, "ok", "mientras escribe, un valor bajo el piso puede ser un prefijo");
+  assert.equal(enReposo.estado, "escala", "en reposo el aviso aparece pese al commit bloqueado");
   assert.equal(
-    enVivo.estado === "escala" ? enVivo.aviso : "",
     enReposo.estado === "escala" ? enReposo.aviso : "",
-    "y ser el mismo aviso en los dos momentos",
+    escalaArriendo(40000)?.mensaje ?? "",
+    "y es exactamente el aviso del guard, sin copy duplicado",
   );
 });
 

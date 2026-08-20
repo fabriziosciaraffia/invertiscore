@@ -28,6 +28,7 @@ import {
   type EstadoNumericInput,
 } from "../src/components/formulario-v4/NumericInput";
 import type { Decimales } from "../src/lib/numero-cl";
+import type { AvisoEscala } from "../src/components/formulario-v4/avisoEscala";
 
 // ── Runner mínimo ────────────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ function seccion(titulo: string) {
 function est(
   texto: string,
   decimales: Decimales,
-  opts: { blurred?: boolean; escala?: (v: number) => string | null } = {},
+  opts: { blurred?: boolean; escala?: (v: number) => AvisoEscala | null } = {},
 ): EstadoNumericInput {
   return estadoNumericInput(texto, {
     decimales,
@@ -96,7 +97,7 @@ test("error — null y ninguna tecla lo salva", () => {
 });
 
 test("escala — se entendió, pero la magnitud es imposible", () => {
-  const r = est("45", 2, { escala: (v) => (v > 20 ? "Una tasa de 45% no existe." : null) });
+  const r = est("45", 2, { escala: (v) => (v > 20 ? { mensaje: "Una tasa de 45% no existe.", sobreMaximo: true } : null) });
   assert.equal(r.estado, "escala");
   assert.equal(r.estado === "escala" && r.valor, 45);
   assert.equal(r.estado === "escala" && r.aviso, "Una tasa de 45% no existe.");
@@ -110,14 +111,48 @@ test("ni vacío, ni en curso, ni ok, ni escala marcan el campo", () => {
   assert.equal(marcado(est("", 2)), false);
   assert.equal(marcado(est("3.2", 0)), false);
   assert.equal(marcado(est("3.200", 2)), false);
-  assert.equal(marcado(est("45", 2, { escala: () => "fuera de escala" })), false);
+  assert.equal(marcado(est("45", 2, { escala: () => ({ mensaje: "fuera de escala", sobreMaximo: true }) })), false);
 });
 
 test("el aviso de escala NO es un error — convive con el eco", () => {
-  const r = est("999", 0, { escala: () => "imposible" });
+  const r = est("999", 0, { escala: () => ({ mensaje: "imposible", sobreMaximo: true }) });
   assert.equal(r.estado, "escala");
   assert.equal(r.estado === "escala" && r.eco, "999", "el eco tiene que seguir encendido");
   assert.equal(marcado(r), false, "escala nunca marca en rojo");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+seccion("El prefijo incompleto no es un valor fuera de escala");
+// Estos cuatro son la red del fix del 19-ago-2026. Antes, el 100% de los
+// usuarios veía "Fuera de escala" en `tam` y `precio` por teclear el primer
+// dígito de un número perfectamente normal.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Regla real de superficie: mínimo 12 m², sin techo que importe acá. */
+const bajoMinimo12 = (v: number): AvisoEscala | null =>
+  v < 12 ? { mensaje: "12 m² es muy poco.", sobreMaximo: false } : null;
+
+test("debajo del mínimo y escribiendo — se calla (el 6 de '65 m²')", () => {
+  assert.equal(est("6", 1, { escala: bajoMinimo12 }).estado, "ok");
+});
+
+test("debajo del mínimo pero YA soltó el campo — avisa", () => {
+  const r = est("6", 1, { blurred: true, escala: bajoMinimo12 });
+  assert.equal(r.estado, "escala");
+  assert.equal(r.estado === "escala" && r.aviso, "12 m² es muy poco.");
+});
+
+test("terminar de escribir lo saca solo del aviso", () => {
+  assert.equal(est("65", 1, { escala: bajoMinimo12 }).estado, "ok");
+  assert.equal(est("65", 1, { blurred: true, escala: bajoMinimo12 }).estado, "ok");
+});
+
+test("sobre el máximo avisa EN EL ACTO — ninguna tecla lo rescata", () => {
+  // La razón de ser del aviso temprano: la tasa de 45% que se descubría tres
+  // pantallas después. Agregarle dígitos solo la aleja más del rango.
+  const sobreTecho = (v: number): AvisoEscala | null =>
+    v > 20 ? { mensaje: "Una tasa así no existe.", sobreMaximo: true } : null;
+  assert.equal(est("45", 2, { escala: sobreTecho }).estado, "escala");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

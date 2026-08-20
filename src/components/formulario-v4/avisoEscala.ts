@@ -40,13 +40,37 @@ import {
 /** Nada poblado: cada regla necesita sus insumos finitos, y NaN las apaga. */
 const SIN_INSUMOS: PlausibilidadInput = { precioUF: NaN, superficieM2: NaN, ufCLP: NaN };
 
+/**
+ * Aviso de magnitud de UN campo.
+ *
+ * `sobreMaximo` no es decoración: es lo que le permite a `estadoNumericInput`
+ * distinguir un valor imposible de un PREFIJO todavía incompleto.
+ *
+ *   · Por DEBAJO del mínimo, cualquier tecla más puede salvarlo — el `6` de
+ *     "65 m²" vale 6 m² por un instante, y avisar ahí es avisar de nada.
+ *   · Por ENCIMA del máximo no hay tecla que lo rescate: agregar dígitos solo
+ *     aleja más el valor. Ese aviso sí se puede dar de inmediato, que es
+ *     justamente para lo que se construyó este módulo (la tasa de 45% que se
+ *     descubría tres pantallas después).
+ *
+ * La dirección se deriva del rango de la propia anomalía, no de un umbral
+ * duplicado acá.
+ */
+export interface AvisoEscala {
+  mensaje: string;
+  /** El valor pasó el TECHO del rango. Ninguna tecla adicional lo devuelve. */
+  sobreMaximo: boolean;
+}
+
 function avisoEscala(
   campo: Anomalia["campo"],
   soloEste: (valor: number) => Partial<PlausibilidadInput>,
-): (valor: number) => string | null {
+): (valor: number) => AvisoEscala | null {
   return (valor) => {
     const anomalias = evaluarPlausibilidad({ ...SIN_INSUMOS, ...soloEste(valor) });
-    return anomalias.find((x) => x.campo === campo)?.mensaje ?? null;
+    const a = anomalias.find((x) => x.campo === campo);
+    if (!a) return null;
+    return { mensaje: a.mensaje, sobreMaximo: a.valor > a.rango[1] };
   };
 }
 

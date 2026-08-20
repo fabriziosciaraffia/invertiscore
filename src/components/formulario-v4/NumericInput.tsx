@@ -59,6 +59,7 @@ import { usePostHog } from "posthog-js/react";
 import { formatNumeroCL, parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { FieldLabel } from "./ui";
 import { reportarValidacionRechazo } from "./stepTelemetry";
+import type { AvisoEscala } from "./avisoEscala";
 
 // ── Conducta pura ────────────────────────────────────────────────────────────
 
@@ -159,7 +160,7 @@ export interface OpcionesEstado {
    * Aviso de magnitud, o `null` si el valor está en escala. Los umbrales los
    * pone el llamador desde `plausibilidad.ts` — acá no vive ninguno.
    */
-  escala?: (valor: number) => string | null;
+  escala?: (valor: number) => AvisoEscala | null;
 }
 
 /** Estado completo del campo para un texto dado. Puro y determinístico. */
@@ -178,7 +179,25 @@ export function estadoNumericInput(texto: string, opts: OpcionesEstado): EstadoN
 
   const eco = opts.formatEco(valor);
   const aviso = opts.escala?.(valor) ?? null;
-  if (aviso) return { estado: "escala", valor, eco, aviso };
+  // ── El prefijo incompleto NO es un valor fuera de escala (fix 19-ago-2026) ──
+  //
+  // Este es el mismo principio que ya gobierna `encurso` —"todavía no se puede
+  // leer" ≠ "no se va a poder leer"— aplicado al eslabón que se había quedado
+  // afuera. `escala` sí podía leer el número: lo que no podía era saber que
+  // todavía le faltaban teclas.
+  //
+  // Al teclear el `6` de "65 m²" el guard leía 6 m² < 12 y avisaba. Medido: el
+  // 100% de los usuarios veía "Fuera de escala" en `tam` y en `precio`, ~1,4
+  // veces cada uno. Los umbrales (12 m², 300 UF) están bien; lo que estaba mal
+  // era CUÁNDO se evaluaban.
+  //
+  // Debajo del mínimo y sin haber soltado el campo → se calla, porque cualquier
+  // tecla lo puede salvar. Sobre el máximo → avisa igual, en el acto: ahí no hay
+  // continuación que lo rescate y ese aviso temprano es la razón de ser del
+  // módulo. Al blur se evalúa todo, sin excepciones.
+  if (aviso && (opts.blurred || aviso.sobreMaximo)) {
+    return { estado: "escala", valor, eco, aviso: aviso.mensaje };
+  }
   return { estado: "ok", valor, eco };
 }
 
@@ -206,7 +225,7 @@ export interface NumericInputProps {
   /** Eco a medida (pluralización, unidades compuestas). Gana sobre los de arriba. */
   formatEco?: (valor: number) => string;
   /** Aviso de magnitud. Los umbrales los pone el llamador. */
-  escala?: (valor: number) => string | null;
+  escala?: (valor: number) => AvisoEscala | null;
   /** Borde Ink 1.5px — el campo protagonista de la pantalla (precio). */
   strong?: boolean;
   autoFocus?: boolean;
