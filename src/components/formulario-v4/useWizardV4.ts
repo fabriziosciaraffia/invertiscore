@@ -49,7 +49,7 @@ export interface WizardV4Nav {
 }
 
 const DEFAULT_NAV: WizardV4Nav = {
-  current: "mod",
+  current: "dir",
   history: [],
   answers: {},
   completed: {},

@@ -163,6 +163,18 @@ export function useStepTelemetry(opts: {
     trackWizard(posthog, "wizard4_step_left", {
       node: paso.node,
       salida,
+      // ── `rama` es "sin_definir" en TODO el wizard salvo el tramo final ──
+      // Desde que la modalidad se mudó al final (19-ago-2026) nadie la ha
+      // elegido antes de `mod`, así que los pasos dir…plazo salen todos sin
+      // rama. Es una CONSECUENCIA ACEPTADA del reordenamiento, no un bug: el
+      // dato "abandonó en `precio` siendo STR" dejó de existir por construcción,
+      // no por instrumentación rota.
+      //
+      // Se puede reconstruir en la query cuando haga falta: los eventos de los
+      // pasos previos comparten `person_id` con el `wizard4_answered` de `mod`,
+      // así que un argMax por persona recupera la rama. Lo que NO se puede es
+      // comparar la serie contra la anterior — ver el hito del 19-ago en
+      // `src/lib/admin-funnel-hitos.ts`.
       rama: a.modalidad ?? "sin_definir",
       rama_tipo: a.tipoPropiedad ?? "sin_definir",
       posicion: idx >= 0 ? idx + 1 : null,

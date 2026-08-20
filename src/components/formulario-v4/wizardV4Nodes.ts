@@ -3,17 +3,27 @@
 //
 // Doctrina: una pregunta por pantalla (GOV.UK one-thing-per-page). Cada nodo es
 // una pantalla. Los "actos" son solo rótulo de contexto + barra de progreso; NO
-// son páginas. La modalidad (EL INFORME) es la PRIMERA pantalla (selección de
-// producto). El gate del edificio sigue en el Acto 3. El grafo con ramas:
+// son páginas. El gate del edificio sigue en el Acto 3. El grafo con ramas:
 //
-//   mod → dir → tipo ─(usado)→ ant → tam → precio → pie → tasa → plazo → [rama]
-//                    └(nuevo)→ ent → tam
+//   dir → tipo ─(usado)→ ant → tam → precio → pie → tasa → plazo → mod → [rama]
+//              └(nuevo)→ ent → tam
 //
-//   plazo ─(ltr)→ arr → resumen
-//         ├(str)→ gate ─(sí/no-seguro)→ adr → resumen
-//         │        └(no)→ gateNo ─(cambiar a ltr)→ arr → resumen  (arr pendiente)
-//         └(both)→ arr → gate ─(sí/no-seguro)→ adr → resumen      (agrupado por modalidad)
-//                          └(no)→ gateNo ─(seguir ltr)→ resumen   (arr ya listo)
+//   mod ─(ltr)→ arr → resumen
+//       ├(str)→ gate ─(sí/no-seguro)→ adr → resumen
+//       │        └(no)→ gateNo ─(cambiar a ltr)→ arr → resumen  (arr pendiente)
+//       └(both)→ arr → gate ─(sí/no-seguro)→ adr → resumen      (agrupado por modalidad)
+//                        └(no)→ gateNo ─(seguir ltr)→ resumen   (arr ya listo)
+//
+// LA MODALIDAD VA AL FINAL (19-ago-2026). Estuvo de primera pantalla y era la
+// mayor fuga del wizard: 29% de abandono, 214 salidas, 61 personas que se iban
+// SIN TOCAR NADA. No era una pregunta difícil —1,0 toques promedio, cero cambios
+// de opción en 30 días— sino una pregunta puesta antes de que existiera contexto
+// para responderla: se le pedía elegir un producto a alguien que todavía no
+// había dicho ni dónde queda el depto.
+//
+// Moverla es barato porque NO bifurca nada hasta acá: ninguna pantalla de los
+// actos 1 y 2 lee `modalidad`. La bifurcación real siempre ocurrió recién
+// después de `plazo`, así que el nodo se mudó al lugar donde ya estaba el corte.
 //
 // tasaFix / arrFix / adrFix = detours de corrección inline (se entran con botón,
 // no por computeNext; su "siguiente" es el mismo que el de su pantalla padre).
@@ -197,7 +207,7 @@ export const BRANCH_ACTO3: readonly NodeId[] = ["gate", "gateNo", "arr", "arrFix
 export const ACTO_LABEL: Record<Acto, string> = {
   compra: "ACTO 1 · QUÉ COMPRAS",
   finanza: "ACTO 2 · CÓMO LO FINANCIAS",
-  informe: "EL INFORME",
+  informe: "ÚLTIMA PREGUNTA",
   renta: "ACTO 3 · CÓMO LO RENTABILIZAS",
   resumen: "RESUMEN",
 };
@@ -238,7 +248,7 @@ export const NODE_TITLE: Record<NodeId, string> = {
   tasa: "Tu tasa hipotecaria",
   tasaFix: "Ingresa tu tasa pre-aprobada",
   plazo: "¿A cuántos años el crédito?",
-  mod: "¿Qué informe quieres?",
+  mod: "¿A quién le vas a arrendar?",
   gate: "¿El edificio permite arriendo por noche?",
   gateNo: "El edificio no permite arriendo por noche",
   arr: "¿En cuánto lo arriendas al mes?",
@@ -257,7 +267,9 @@ export const NODE_TITLE: Record<NodeId, string> = {
 export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
   switch (node) {
     case "mod":
-      return "dir"; // modalidad es la primera pantalla; el flujo sigue con la propiedad
+      // Acto 3 agrupado por modalidad: ltr y both empiezan por arr (renta larga
+      // primero); str va directo al gate (ahí el permiso mata todo el análisis).
+      return a.modalidad === "str" ? "gate" : "arr";
     case "dir":
       return "tipo";
     case "tipo":
@@ -277,9 +289,7 @@ export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
     case "tasaFix":
       return "plazo";
     case "plazo":
-      // Acto 3 agrupado por modalidad: ltr y both empiezan por arr (renta larga
-      // primero); str va directo al gate (ahí el permiso mata todo el análisis).
-      return a.modalidad === "str" ? "gate" : "arr";
+      return "mod"; // última pregunta: recién acá la modalidad bifurca algo
     case "gate":
       if (a.edificioPermiteAirbnb === "no") return "gateNo";
       // sí | no_seguro → str y both van a adr (en both, arr ya se respondió antes)
@@ -309,7 +319,7 @@ export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
 export function computePlannedPath(a: WizardV4Answers): NodeId[] {
   const path: NodeId[] = [];
   const guard = new Set<NodeId>();
-  let n: NodeId | null = "mod";
+  let n: NodeId | null = "dir";
   while (n && !guard.has(n)) {
     guard.add(n);
     path.push(n);
@@ -322,7 +332,7 @@ export function computePlannedPath(a: WizardV4Answers): NodeId[] {
 function plannedNext(node: NodeId, a: WizardV4Answers): NodeId | null {
   switch (node) {
     case "mod":
-      return "dir";
+      return a.modalidad === "str" ? "gate" : "arr";
     case "dir":
       return "tipo";
     case "tipo":
@@ -339,7 +349,7 @@ function plannedNext(node: NodeId, a: WizardV4Answers): NodeId | null {
     case "tasa":
       return "plazo";
     case "plazo":
-      return a.modalidad === "str" ? "gate" : "arr";
+      return "mod";
     case "gate":
       return "adr";
     case "arr":

@@ -98,8 +98,9 @@ export function WizardV4({
 
   const acto = ACTO_BY_NODE[nav.current];
   const actoLabel = ACTO_LABEL[acto];
-  // Chip de modalidad: persistente desde que se elige el informe, para que el
-  // usuario nunca olvide qué está armando. Ink (no Signal Red — no es atención).
+  // Chip de modalidad: aparece recién en el tramo final (la modalidad se elige
+  // después de `plazo`), y ahí sirve de confirmación de lo recién elegido en las
+  // pantallas de renta y el resumen. Ink (no Signal Red — no es atención).
   const modLabel = nav.answers.modalidad ? MOD_CHIP[nav.answers.modalidad] : null;
   const progress = w.progress;
 

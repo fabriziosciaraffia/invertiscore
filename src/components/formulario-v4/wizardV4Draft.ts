@@ -36,7 +36,13 @@ const TTL_MS = 24 * 60 * 60 * 1000; // 24h
 // hay forma de distinguirlos. `isCoherent` descarta todo draft con otro `v`, así
 // que subir el número los invalida a todos de una. El radio está acotado por el
 // TTL: solo alcanza a los de menos de 24h.
-const VERSION = 5;
+// v6 — la modalidad se mudó al final del wizard (19-ago-2026). El invariante de
+// coherencia se dio vuelta: antes "current ≠ mod ⇒ hay modalidad", ahora es al
+// revés. Un borrador escrito por la versión anterior tiene la modalidad elegida
+// en el paso 1 y un `current` que ya no significa lo mismo en el grafo nuevo, así
+// que no se puede migrar: subir el número los invalida a todos de una. El radio
+// está acotado por el TTL — solo alcanza a los de menos de 24h.
+const VERSION = 6;
 
 export interface PersistedDraft {
   v: number;
@@ -92,11 +98,13 @@ function isCoherent(d: unknown): d is PersistedDraft {
   if (typeof x.current !== "string" || !ALL_NODES.has(x.current as NodeId)) return false;
   if (!Array.isArray(x.history)) return false;
   if (!x.completed || typeof x.completed !== "object") return false;
-  // `mod` es la primera pantalla → cualquier `current` posterior implica modalidad
-  // elegida. Un draft con current ≠ "mod" y sin modalidad es incoherente
-  // (típico desync de dos pestañas pisándose) → se descarta.
+  // `mod` es ahora la ÚLTIMA pregunta (después de `plazo`) → un draft que ya
+  // pasó de ese punto tiene que traer la modalidad elegida, y ninguno anterior
+  // puede traerla. Las dos mitades son el mismo desync de dos pestañas
+  // pisándose que cazaba el invariante viejo, leído en el grafo nuevo.
   const modalidad = (x.answers as WizardV4Answers).modalidad;
-  if (x.current !== "mod" && !modalidad) return false;
+  const yaPasoLaModalidad = x.current !== "mod" && x.completed && (x.completed as Record<string, boolean>).mod === true;
+  if (yaPasoLaModalidad && !modalidad) return false;
   return true;
 }
 
@@ -253,7 +261,7 @@ export function mostrarBannerDraft(
   nav: { current: NodeId; history: NodeId[] },
 ): boolean {
   if (!draftPendiente) return false;
-  return nav.current === "mod" && nav.history.length === 0;
+  return nav.current === "dir" && nav.history.length === 0;
 }
 
 /**
