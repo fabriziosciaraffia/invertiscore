@@ -160,6 +160,53 @@ function buildPoisTopN(nearby: NearbyAttractor[]): ZoneInsightPois {
   };
 }
 
+// --- Mediana comunal de la zona: quien manda -------------------------------
+/**
+ * Resuelve QUE mediana comunal publica la seccion de zona -- o si NO publica
+ * ninguna. Tres fuentes posibles y una jerarquia:
+ *
+ *  1. `mediana_comuna_snapshot` (Fase A, congelado al crear el analisis) MANDA
+ *     cuando existe: es la misma cifra que la card de sobreprecio y la prosa.
+ *     Con `mediana: null` el snapshot dice "aca no hay mediana confiable" y la
+ *     zona no compara.
+ *  2. Sin snapshot (filas pre-Fase A), manda el veredicto de confiabilidad del
+ *     MOTOR: `precioVsComuna.confiable === false` significa que el motor miro
+ *     esta comuna, no encontro muestra suficiente, apago la card de sobreprecio
+ *     y le prohibio a la prosa hablar de la comuna (REGLA 0). Antes la zona se
+ *     quedaba con su propia query viva y quedaba como UNICA voz haciendo una
+ *     comparacion comunal vedada al resto del informe -- contradiciendo ademas
+ *     la lectura por radio (`valorMercadoFranco`) que la prosa si hace. Medido:
+ *     10 de 119 informes con zona (e42f9e9f: prosa "25% bajo" vs zona "en linea";
+ *     8bda5e13: "19% bajo" vs "muy sobre").
+ *  3. Sin snapshot y sin opinion del motor (results legacy), queda la query viva
+ *     de la zona -- el fallback historico, intacto.
+ */
+export function resolverMedianaZona(p: {
+  medSnap: { mediana: number | null; n: number; universo?: "nuevo" | "usado" } | null | undefined;
+  pvcMotor: { confiable?: boolean; desviacionPct?: number | null } | null | undefined;
+  precioM2Live: ZoneInsightStats["precioM2"];
+}): { precioM2: ZoneInsightStats["precioM2"]; universo: "nuevo" | "usado" | undefined } {
+  const { medSnap, pvcMotor, precioM2Live } = p;
+  if (medSnap != null) {
+    if (typeof medSnap.mediana === "number" && medSnap.mediana > 0) {
+      return {
+        precioM2: precioM2Live
+          ? { ...precioM2Live, medianaComuna: medSnap.mediana }
+          : { tuDepto: 0, medianaComuna: medSnap.mediana, diffPct: 0 },
+        // El universo viaja CON la cifra: si la mediana la manda el snapshot, el
+        // rotulo tambien -- un snapshot pre-segmentacion no trae universo y la
+        // zona entonces no lo declara (mediana mixta, sin etiqueta que ponerle).
+        universo: medSnap.universo,
+      };
+    }
+    return { precioM2: null, universo: undefined };
+  }
+  if (pvcMotor != null && pvcMotor.confiable !== true) {
+    return { precioM2: null, universo: undefined };
+  }
+  return { precioM2: precioM2Live, universo: undefined };
+}
+
 // ─── Comparable market stats from scraped_properties ──
 async function fetchComunaStats(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -738,19 +785,13 @@ export async function buildZoneInsightForRow(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const medSnap = (row as any).mediana_comuna_snapshot as
       { mediana: number | null; n: number; universo?: "nuevo" | "usado" } | null | undefined;
-    if (medSnap != null) {
-      if (typeof medSnap.mediana === "number" && medSnap.mediana > 0) {
-        precioM2 = precioM2
-          ? { ...precioM2, medianaComuna: medSnap.mediana }
-          : { tuDepto: 0, medianaComuna: medSnap.mediana, diffPct: 0 };
-        // El universo viaja CON la cifra: si la mediana la manda el snapshot, el
-        // rótulo también — un snapshot pre-segmentación no trae universo y la
-        // zona entonces no lo declara (mediana mixta, sin etiqueta que ponerle).
-        medSnapUniverso = medSnap.universo;
-      } else {
-        precioM2 = null;
-      }
-    }
+    // Veredicto de confiabilidad del motor sobre la mediana comunal. `undefined`
+    // en results legacy sin precioVsComuna: ahí no hay opinión que acatar.
+    const pvcMotor = results?.metrics?.precioVsComuna as
+      { confiable?: boolean; desviacionPct?: number | null } | null | undefined;
+    const resuelta = resolverMedianaZona({ medSnap, pvcMotor, precioM2Live: precioM2 });
+    precioM2 = resuelta.precioM2;
+    medSnapUniverso = resuelta.universo;
 
     // Fill in tuDepto using precioUF / superficie directly (in UF).
     // We deliberately ignore results.metrics.precioM2 (it can add optional parking
