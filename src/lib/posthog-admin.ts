@@ -164,8 +164,23 @@ async function pasosSinCache(
     queryHogqlNumero(
       `SELECT uniq(properties.$session_id) FROM events WHERE event = '$pageview' AND ${where}`,
     ),
+    // PRIMERA pantalla del wizard, que desde el rediseño del 20-ago-2026 es
+    // `dir` (la portada) y ya no `mod`.
+    //
+    // Contaba `mod` porque la elección de modalidad ERA el paso 1. El rediseño
+    // la mudó al noveno y nadie movió esta query, así que el panel pasó a llamar
+    // "iniciaron el wizard" a los que llegaban hasta la modalidad: el 21-ago
+    // reportó 48 cuando habían entrado 262. Subestimaba la entrada en ~82%, y
+    // corrompía los dos tramos en direcciones opuestas — `visitaWizard` se
+    // desplomaba y `wizardAnalisis` se inflaba, porque comparten este número
+    // como denominador.
+    //
+    // Los días anteriores al 21-ago ya los apaga el hito del rediseño para estos
+    // dos tramos (`admin-funnel-hitos.ts`), así que no hace falta un hito nuevo:
+    // lo único que se dibuja son días donde `dir` es de verdad la primera
+    // pantalla.
     queryHogqlNumero(
-      `SELECT uniq(person_id) FROM events WHERE event = 'wizard4_step_viewed' AND properties.node = 'mod' AND ${where}`,
+      `SELECT uniq(person_id) FROM events WHERE event = 'wizard4_step_viewed' AND properties.node = 'dir' AND ${where}`,
     ),
     // Origen por sesión: se clasifica por el utm_medium del PRIMER pageview
     // (argMin por timestamp), no por el de cada evento. `utm_medium` viaja solo
@@ -188,10 +203,12 @@ async function pasosSinCache(
         `FROM events WHERE event = '$pageview' AND ${where} GROUP BY sid) ` +
         `WHERE medio = 'paid' GROUP BY fuente ORDER BY sesiones DESC`,
     ),
-    // Apertura del wizard por dispositivo.
+    // Apertura del wizard por dispositivo. `dir` = primera pantalla (ver el
+    // comentario de `iniciaronWizard`): con `mod` esto medía "llegaron a la
+    // modalidad por dispositivo", que es otra pregunta.
     queryHogqlFilas(
       `SELECT coalesce(nullIf(properties.$device_type, ''), 'sin dato') AS disp, uniq(person_id) AS personas ` +
-        `FROM events WHERE event = 'wizard4_step_viewed' AND properties.node = 'mod' AND ${where} ` +
+        `FROM events WHERE event = 'wizard4_step_viewed' AND properties.node = 'dir' AND ${where} ` +
         `GROUP BY disp ORDER BY personas DESC`,
     ),
   ]);
@@ -243,7 +260,10 @@ async function serieSinCache(desdeIso: string, includeTest: boolean): Promise<Di
   const filas = await queryHogqlFilas(
     `SELECT toStartOfDay(timestamp) AS dia, ` +
       `uniqIf(properties.$session_id, event = '$pageview') AS visitas, ` +
-      `uniqIf(person_id, event = 'wizard4_step_viewed' AND properties.node = 'mod') AS wiz ` +
+      // `dir` = primera pantalla desde el rediseño del 20-ago-2026. Esta es la
+      // que alimenta el gráfico de tasas: con `mod` los dos tramos se movían
+      // en direcciones opuestas y ninguno decía la verdad.
+      `uniqIf(person_id, event = 'wizard4_step_viewed' AND properties.node = 'dir') AS wiz ` +
       `FROM events WHERE ${where} AND event IN ('$pageview', 'wizard4_step_viewed') ` +
       `GROUP BY dia ORDER BY dia`,
   );
