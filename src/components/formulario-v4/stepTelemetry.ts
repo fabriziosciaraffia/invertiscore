@@ -12,17 +12,26 @@
 //   · tocó y se atascó      → interactuo=true, control_principal_usado=false
 //   · rechazo de validación → validacion_rechazos > 0
 //   · completó y se arrepintió → salida="retrocedio" con control_principal_usado=true
-//   · interrupción externa  → salida="tab_oculta_sin_retorno"
+//   · interrupción externa  → salida="tab_oculta_sin_retorno" + props de visibilidad
 //
 // La emisión vive en WizardV4 (dueño del nav): las pantallas no se tocan.
 // `wizard4_step_viewed` NO cambia (continuidad histórica de los funnels) y
 // `wizard4_abandoned` se conserva; step_left convive con ambos.
 //
 // UN step_left por VISITA a un paso: el primero que se emite gana y marca el
-// paso como cerrado. Consecuencia asumida: si un paso emite
-// `tab_oculta_sin_retorno` y el usuario vuelve y avanza, ese "avanzo" no se
-// emite — el `step_viewed` del paso siguiente conserva el funnel intacto y el
-// evento de interrupción es la señal más informativa de las dos.
+// paso como cerrado.
+//
+// Eso convivía con un timer de 30 s que emitía `tab_oculta_sin_retorno` apenas
+// la pestaña se ocultaba, y la combinación resultó cara: quien atendía un
+// WhatsApp de 31 segundos quedaba archivado como abandono, y quien volvía y
+// DESPUÉS se iba de verdad era inmedible —el paso ya estaba cerrado cuando
+// pasaba lo interesante—. Medido: 44 de los 45 abandonos de la portada eran de
+// ese timer, contra UNO de navegación.
+//
+// Desde el 21-ago-2026 el timer ya no decide: ocultar/mostrar solo acumula, y
+// el evento sale al cerrar el paso de verdad, con cuánto estuvo oculta la
+// pestaña. El timer queda para el único caso sin cierre posible —el que nunca
+// vuelve— con umbral de 3 minutos. Ver `visibilidadPaso.ts`.
 //
 // Fire-and-forget: todo pasa por `trackWizard` (capture envuelto), nada bloquea
 // ni lanza. Cardinalidad acotada: cero texto libre del usuario.
@@ -32,6 +41,15 @@ import { useCallback, useEffect, useRef } from "react";
 import type { PostHog } from "posthog-js";
 import { trackWizard } from "./track";
 import { computePlannedPath, type NodeId, type WizardV4Answers } from "./wizardV4Nodes";
+import {
+  ESQUEMA_SALIDA,
+  MS_OCULTA_NO_VOLVIO,
+  alMostrar,
+  alOcultar,
+  nuevaVisibilidad,
+  propsVisibilidad,
+  type VisibilidadPaso,
+} from "./visibilidadPaso";
 
 export type SalidaPaso =
   | "avanzo"
@@ -50,9 +68,6 @@ export type SalidaPaso =
  * cliente+server y `wizard4_alerta_temprana`) y duplicarla ensuciaría ambos.
  */
 export type ReglaValidacion = "cobertura" | "gate_reglamento" | "escala" | "pie_incompleto";
-
-/** Segundos que la pestaña debe estar oculta SIN volver para contarlo como interrupción. */
-const MS_TAB_OCULTA = 30_000;
 
 /**
  * Rechazos sufridos en el paso VIGENTE. Vive a nivel de módulo a propósito: las
@@ -126,6 +141,8 @@ interface PasoEnCurso {
   /** Timestamp de la primera interacción; null si nunca tocó nada. */
   primera: number | null;
   emitido: boolean;
+  /** Contabilidad de ocultaciones de la pestaña DURANTE este paso. */
+  visibilidad: VisibilidadPaso;
 }
 
 export function useStepTelemetry(opts: {
@@ -178,7 +195,15 @@ export function useStepTelemetry(opts: {
       rama: a.modalidad ?? "sin_definir",
       rama_tipo: a.tipoPropiedad ?? "sin_definir",
       posicion: idx >= 0 ? idx + 1 : null,
-      dwell_ms: Date.now() - paso.inicio,
+      // Versión del esquema: los valores de `salida` significan otra cosa antes
+      // del 21-ago-2026 (umbral de 30 s, decisión al vencer el timer). Va en el
+      // evento para no tener que adivinar por fecha en la query.
+      esquema_salida: ESQUEMA_SALIDA,
+      // `dwell_ms` NO cambia de significado —sigue siendo reloj de pared— y
+      // `dwell_activo_ms` descuenta el rato en que la pestaña estuvo oculta.
+      // Las dos juntas: la vieja no rompe la serie, la nueva es la comparable
+      // entre pantallas. Ver `visibilidadPaso.ts`.
+      ...propsVisibilidad(paso.inicio, Date.now(), paso.visibilidad),
       t_primera_interaccion_ms: paso.primera != null ? paso.primera - paso.inicio : null,
       interactuo: paso.interacciones > 0,
       n_interacciones: paso.interacciones,
@@ -201,7 +226,12 @@ export function useStepTelemetry(opts: {
     const prev = pasoRef.current;
     if (prev && prev.node === node) return;
     if (prev) emitir(prev, dirRef.current === "back" ? "retrocedio" : "avanzo");
-    pasoRef.current = { node, inicio: Date.now(), interacciones: 0, primera: null, emitido: false };
+    pasoRef.current = {
+      node, inicio: Date.now(), interacciones: 0, primera: null, emitido: false,
+      // Contabilidad POR PASO: si el usuario se distrae en `precio` eso no debe
+      // contaminar el dwell de `pie`.
+      visibilidad: nuevaVisibilidad(),
+    };
     rechazosPasoActual = 0;
     nodoVigente = node;
   }, [node, emitir]);
@@ -239,17 +269,34 @@ export function useStepTelemetry(opts: {
       emitir(p, terminadoRef.current ? "avanzo" : "abandono_navegacion");
     };
 
+    // LA DECISIÓN SE TOMA AL CERRAR EL PASO, NO AL VENCER EL TIMER.
+    //
+    // Antes el timer emitía y marcaba el paso como cerrado, así que "se ausentó
+    // y después volvió a completar" quedaba archivado como abandono y "volvió y
+    // DESPUÉS se fue de verdad" era inmedible con cualquier umbral: el paso ya
+    // estaba cerrado cuando pasaba lo interesante.
+    //
+    // Ahora cada ciclo ocultar/mostrar solo ACUMULA, y el cierre real —avanzó,
+    // retrocedió, cerró la pestaña— sale con la historia completa. El timer
+    // sobrevive únicamente para el caso donde no hay cierre posible: el que
+    // nunca vuelve.
     const onVisibility = () => {
+      const p = pasoRef.current;
+      if (!p || p.emitido) return;
       if (document.visibilityState === "hidden") {
+        p.visibilidad = alOcultar(p.visibilidad, Date.now());
         if (timerOculta) clearTimeout(timerOculta);
         timerOculta = setTimeout(() => {
-          const p = pasoRef.current;
-          if (p) emitir(p, "tab_oculta_sin_retorno");
-        }, MS_TAB_OCULTA);
-      } else if (timerOculta) {
-        // Volvió dentro de la ventana: no hubo interrupción que reportar.
-        clearTimeout(timerOculta);
-        timerOculta = null;
+          const actual = pasoRef.current;
+          // Sigue oculta y sigue siendo el mismo paso: no volvió.
+          if (actual === p && !actual.emitido) emitir(actual, "tab_oculta_sin_retorno");
+        }, MS_OCULTA_NO_VOLVIO);
+      } else {
+        // Volvió: se cierra la ocultación y el paso SIGUE VIVO. No se emite
+        // nada — el evento saldrá cuando el paso se cierre de verdad, y llevará
+        // cuánto estuvo afuera.
+        p.visibilidad = alMostrar(p.visibilidad, Date.now());
+        if (timerOculta) { clearTimeout(timerOculta); timerOculta = null; }
       }
     };
 
