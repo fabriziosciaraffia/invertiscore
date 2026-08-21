@@ -39,10 +39,15 @@ export const HITOS_FUNNEL: HitoFunnel[] = [
     invalida: ["visitaWizard", "wizardAnalisis"],
   },
   {
-    fecha: "2026-08-16",
+    // El primer análisis anónimo de la base es del 16-ago 20:26 UTC. El 16 es un
+    // día MIXTO —20 horas y media con el cap cerrado contra 3 y media abierto— y
+    // como `fecha` no apaga su propio día, fecharlo el 16 lo metía entero dentro
+    // de la serie nueva. Misma regla que el hito del rediseño: con un corte a
+    // media jornada, el hito va al primer día íntegramente posterior.
+    fecha: "2026-08-17",
     etiqueta: "apertura del cap",
     motivo:
-      "hasta acá no se podía generar un análisis sin cuenta, así que este tramo era 100% por definición",
+      "hasta acá no se podía generar un análisis sin cuenta, así que este tramo era 100% por definición. El cap se abrió el 16-ago a las 20:26 UTC: ese día mezcla las dos épocas y queda fuera, así que el primer día comparable es el 17",
     invalida: ["analisisCuenta"],
   },
   {

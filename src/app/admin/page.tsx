@@ -31,6 +31,8 @@ export const dynamic = "force-dynamic";
 
 /** Semanas de la serie de tendencia. */
 const SEMANAS = 12;
+/** Ventana de la tabla de checkouts abandonados: lo accionable, no el archivo. */
+const DIAS_CHECKOUT_ABANDONADO = 30;
 
 /** Ventana de los KPIs y del CAC. Una sola constante: si el bloque de costos
  *  mirara 30 días y el de gasto 7, el cociente no significaría nada. */
@@ -114,12 +116,20 @@ export default async function AdminPage({
     adminWeeklyStats(sb, { weeks: SEMANAS, includeTest }),
     // Los checkouts abandonados se traen como filas (no como conteo) porque con
     // este volumen cada caso es información: quién, qué producto y cuándo.
+    //
+    // VENTANA DE 30 DÍAS. Sin ella la tabla ponía al lado un abandono de
+    // anteayer y cuatro de abril —hace más de cuatro meses— con los productos
+    // `pro` y `pack3`, que ya ni existen en `FLOW_PRODUCTS`. Un carrito
+    // abandonado en abril no es una acción pendiente: es arqueología, y lo
+    // único que hacía era enterrar los dos casos de la semana.
     (() => {
+      const desde = new Date(Date.now() - DIAS_CHECKOUT_ABANDONADO * 86_400_000).toISOString();
       const q = sb
         .from("payments")
         .select("id, user_id, product, amount, created_at")
         .eq("status", "pending")
         .gt("amount", 0)
+        .gte("created_at", desde)
         .or(SIN_CONSUMOS)
         .order("created_at", { ascending: false })
         .limit(20);

@@ -71,7 +71,11 @@ export function AdminTasasChart({ datos }: { datos: PuntoTasa[] }) {
   return (
     <div className="h-[320px] w-full sm:h-[360px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={datos} margin={{ top: 14, right: 18, bottom: 0, left: -14 }}>
+        {/* Márgenes: el `left: -14` de antes empujaba el "100%" del eje Y FUERA
+            del área pintada —medido a 390 y 360 px: se cortaba— y el `right: 18`
+            no alcanzaba para el último día del eje X, que perdía 2 px. En
+            desktop sobra ancho y no se notaba; en un teléfono se ve. */}
+        <LineChart data={datos} margin={{ top: 14, right: 26, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="var(--franco-border)" vertical={false} />
 
           {/* La zona muerta se pinta ANTES de las líneas para quedar por
