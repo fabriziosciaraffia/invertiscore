@@ -1,0 +1,849 @@
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  MOCKUP VINCULANTE · PÁGINAS DE COMUNA — enriquecimiento v1
+  Revisión 3 — honestidad de muestra por tipología · h1 · label del total
+  ═══════════════════════════════════════════════════════════════════════════
+  Diagnóstico (audit 674c748): las páginas tienen ~234-242 palabras y son 77,8%
+  idénticas entre sí. Google rechazó /comunas/providencia y /comunas/nunoa
+  ("Rastreada: actualmente sin indexar"); las de baja competencia sí entraron.
+
+  QUÉ CAMBIÓ EN LA REVISIÓN 2
+  ---------------------------
+  El hero terminaba en el diagnóstico ("no se paga solo"), que es un veredicto
+  binario disfrazado. Franco tiene AJUSTA SUPUESTOS en el medio. Ahora cada
+  tipología trae su PRECIO DE EQUILIBRIO y qué falta para llegar (descuento o
+  pie), y el CTA nace de ese número.
+
+  QUÉ CAMBIÓ EN LA REVISIÓN 3
+  ---------------------------
+  1 · HONESTIDAD DE MUESTRA POR TIPOLOGÍA. El 4D de Providencia (la cifra más
+      optimista de la página) se apoya en 34 arriendos, la muestra más flaca de
+      la comuna — y estaba sin advertencia en hero, FAQ y CTA. Umbral definido:
+      < 50 arriendos publicados ⇒ la tipología lleva la marca "muestra chica"
+      donde aparezca. Dispara en 13 de las 25 comunas. Se marca con Ink +
+      tipografía, NUNCA con Signal Red: una advertencia de calidad de dato no
+      es uno de los usos permitidos del rojo (Capa 1).
+  2 · H1. Se evaluó llevar el veredicto al h1 y se DESCARTÓ con dato (ver tab D):
+      13 de 25 comunas flipean su veredicto comunal con menos de 5% de
+      movimiento en la mediana de arriendo — Providencia con 1,4%. El h1 nuevo
+      conserva la keyword y el año, y diferencia con un número que deriva sin
+      flipear: el rango de rentabilidad.
+  3 · LABEL DEL TOTAL. "Avisos activos en la muestra" se leía como el tamaño del
+      mercado comunal. Pasa a "Avisos que entran en el cálculo", con la
+      descomposición explícita.
+
+  Esto NO es código de la app. Es contrato de diseño: nada se implementa hasta
+  aprobar.
+
+  LEYENDA DE PROCEDENCIA
+  ----------------------
+  · TOKENS / TIPOGRAFÍA = reales (franco-design-system Capa 5, columna LIGHT
+    — light es el default del producto, §5.3).
+  · CIFRAS = REALES, leídas de prod replicando exactamente los filtros y
+    umbrales de `comunas-seo.ts` (activas, precio>0, 0<sup<=300, 1<=dorms<=4,
+    n>=20 por lado del segmento). Providencia y Peñalolén: lectura del
+    20-ago-2026. Renca: 24-ago-2026 — el scraper volvió a pasar por la comuna
+    y sus conteos se movieron (1D 35→38 arriendos, 2D 44→48), así que se
+    refrescó la tabla entera de esa comuna. Las medianas de Providencia y
+    Peñalolén no cambiaron entre ambas lecturas.
+    NOTA: estas cifras son una FOTO. Al implementar, los números salen del
+    cálculo vivo — lo que el contrato fija es la estructura, las reglas y los
+    umbrales, no los valores puntuales.
+  · DIVIDENDO = `calcDividendo()` de `src/lib/analysis.ts` — función del motor.
+  · PRECIO DE EQUILIBRIO = `calcPrecioParaFlujo()` de `src/lib/analysis.ts:239`,
+    el solver de precio que YA EXISTE en el motor, invocado con los gastos en 0
+    (que es lo único que una página de comuna conoce). Con gastos en 0 la
+    función se reduce al mismo `factorAmort` de `calcDividendo`, así que el
+    número es el inverso exacto de la columna "Dividendo est.".
+    VERIFICADO: recalcular el dividendo al precio de equilibrio devuelve el
+    arriendo mediana al peso. NO se escribió ninguna fórmula nueva.
+  · BANDAS DE ESFUERZO = las de `analysis-voice-franco` §1.12 (≤5% negociación
+    normal · 5-12% alcanzable con argumentos · 12-25% difícil · >25%
+    estructural). No se inventó un umbral propio.
+  · TASA = 4,0% real, `config.tasa_hipotecaria`, refrescada por el cron
+    /api/data/update-market (BCCh serie F022.VIV.TIP.MA03.UF.Z.M) el
+    2026-08-20T10:00Z. UF = 40.859 de la misma tabla.
+  · PLUSVALÍA = NO va en v1 (hueco previsto). El bloque punteado marca dónde
+    iría y por qué no está.
+  · PÁRRAFO IA = texto de MUESTRA escrito a mano siguiendo analysis-voice-franco.
+    Marca la forma y el largo del contrato, no el contenido final.
+
+  ⚠️ TRAMPA DE COHERENCIA A RESOLVER ANTES DE IMPLEMENTAR (ver tab D)
+  El precio de equilibrio de esta página responde "¿el arriendo cubre la
+  CUOTA?". El `precioFlujoNeutroUF` que muestra el informe de un depto concreto
+  responde "¿el arriendo cubre TODO el flujo?" (incluye gastos comunes,
+  contribuciones, vacancia y mantención) y por eso SIEMPRE pide más descuento.
+  Los dos números son correctos y distintos. Hay que decidir cómo se nombran
+  para que un usuario que ve ambos no lea una contradicción.
+
+  SECCIONES
+  ---------
+  A · Providencia — rica · 0 de 4 se pagan solas · PERO el 4D está a −1,4%
+  B · Peñalolén — muestra limitada · caso estructural: la palanca NO es el precio
+  C · Renca — sin plusvalía · veredicto invertido · margen de +44%
+  D · Contraste, evidencia de diferenciación y notas de implementación
+-->
+<meta charset="utf-8" />
+<title>Mockup · Comunas enriquecido — Franco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap"
+  rel="stylesheet"
+/>
+
+<style>
+  :root {
+    --franco-bg: #F6F6F7;
+    --franco-card: #FFFFFF;
+    --franco-text: #0F0F0F;
+    --franco-text-secondary: #52525B;
+    --franco-text-muted: #6B6B72;
+    --franco-text-tertiary: #6A6A71;
+    --franco-border: #DDDDE1;
+    --franco-border-hover: #CBCBD1;
+    --franco-sunken: #F0F0F2;
+    --signal: #C8323C;
+    --serif: "Source Serif 4", Georgia, serif;
+    --sans: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--franco-bg); color: var(--franco-text);
+    font-family: var(--sans); font-size: 15px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Chrome del mockup (no es parte de la página) ───────────────── */
+  .mk-bar { background: #0F0F0F; color: #FAFAF8; padding: 14px 0; }
+  .mk-bar .wrap { display: flex; gap: 20px; align-items: baseline; flex-wrap: wrap; }
+  .mk-title { font-family: var(--serif); font-weight: 700; font-size: 15px; }
+  .mk-sub { font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
+            text-transform: uppercase; color: rgba(250,250,248,.55); }
+  .tabs { border-bottom: 1px solid var(--franco-border);
+          background: var(--franco-card); position: sticky; top: 0; z-index: 5; }
+  .tabs .wrap { display: flex; gap: 4px; }
+  .tab { appearance: none; border: 0; background: none; cursor: pointer;
+         font-family: var(--mono); font-size: 11px; font-weight: 500;
+         letter-spacing: .08em; text-transform: uppercase; color: var(--franco-text-muted);
+         padding: 16px 14px; border-bottom: 2px solid transparent; }
+  .tab[aria-selected="true"] { color: var(--franco-text); border-bottom-color: var(--signal); }
+  .panel { display: none; padding: 40px 0 72px; }
+  .panel[data-active="true"] { display: block; }
+
+  /* ── Anatomía de la página ──────────────────────────────────────── */
+  .crumb { font-size: 12px; color: var(--franco-text-muted); margin-bottom: 22px; }
+  .crumb a { color: inherit; }
+  h1 { font-family: var(--serif); font-weight: 700; font-size: 40px; line-height: 1.1;
+       letter-spacing: -.02em; margin: 0; }
+  h2 { font-family: var(--serif); font-weight: 700; font-size: 24px; margin: 0 0 4px; }
+  .eyebrow { font-family: var(--mono); font-size: 10px; font-weight: 500;
+             letter-spacing: .14em; text-transform: uppercase;
+             color: var(--franco-text-tertiary); margin: 0 0 10px; }
+  section { margin-top: 56px; }
+
+  /* Veredicto de comuna — el bloque que cambia de signo */
+  .verdict { margin-top: 28px; border: 1px solid var(--franco-border);
+             border-left: 3px solid var(--franco-text); border-radius: 0 16px 16px 0;
+             background: var(--franco-card); padding: 26px 30px;
+             box-shadow: 0 1px 2px rgba(15,15,15,.04), 0 8px 24px rgba(15,15,15,.04); }
+  .verdict.is-negative { border-left-color: var(--signal); }
+  .verdict-q { font-family: var(--mono); font-size: 10px; font-weight: 700;
+               letter-spacing: .14em; text-transform: uppercase;
+               color: var(--franco-text-tertiary); margin: 0 0 12px; }
+  .verdict-line { font-family: var(--serif); font-weight: 700; font-size: 27px;
+                  line-height: 1.22; margin: 0; letter-spacing: -.01em; }
+  .verdict-line .neg { color: var(--signal); }
+  .verdict-note { margin: 14px 0 0; font-size: 14px; color: var(--franco-text-secondary);
+                  max-width: 66ch; }
+
+  /* Palanca — la capa nueva dentro del hero */
+  .lever { margin-top: 22px; padding-top: 20px; border-top: 1px dashed var(--franco-border); }
+  .lever-h { font-family: var(--mono); font-size: 10px; font-weight: 700;
+             letter-spacing: .14em; text-transform: uppercase;
+             color: var(--franco-text-tertiary); margin: 0 0 12px; }
+  .lever-main { font-family: var(--serif); font-weight: 700; font-size: 19px;
+                line-height: 1.35; margin: 0; }
+  .lever-nums { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 16px; }
+  .lever-num { font-size: 12px; color: var(--franco-text-muted); }
+  .lever-num b { display: block; font-family: var(--mono); font-size: 19px; font-weight: 700;
+                 color: var(--franco-text); margin-top: 3px; }
+  .lever-num.is-signal b { color: var(--signal); }
+  .lever-note { margin: 16px 0 0; font-size: 13px; color: var(--franco-text-secondary);
+                max-width: 68ch; }
+  .band { display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 500;
+          letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px;
+          border-radius: 999px; background: var(--franco-sunken);
+          color: var(--franco-text-secondary); margin-top: 14px; }
+  .band.is-hard { color: var(--signal); background: rgba(200,50,60,.07); }
+
+  /* Tabla por tipología */
+  .tablewrap { margin-top: 18px; border: 1px solid var(--franco-border);
+               border-radius: 14px; overflow-x: auto; background: var(--franco-card); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 820px; }
+  th { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .08em;
+       text-transform: uppercase; color: var(--franco-text-tertiary);
+       text-align: right; padding: 14px 16px; border-bottom: 1px solid var(--franco-border);
+       white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th.lead, td.lead { background: var(--franco-sunken); }
+  td { padding: 15px 16px; text-align: right; border-bottom: 1px solid var(--franco-border);
+       font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  .tipo { font-family: var(--sans); font-weight: 500; font-size: 14px; }
+  .muestra { font-family: var(--mono); font-size: 10px; color: var(--franco-text-muted);
+             display: block; font-weight: 400; margin-top: 3px; letter-spacing: .04em; }
+  .gap-neg { color: var(--signal); font-weight: 700; }
+  .gap-pos { color: var(--franco-text); font-weight: 700; }
+  .cover { font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+           text-transform: uppercase; display: block; margin-top: 3px; font-weight: 500; }
+  .cover.no { color: var(--signal); }
+  .cover.si { color: var(--franco-text-secondary); }
+  .falta { font-family: var(--mono); font-size: 10px; display: block; margin-top: 3px;
+           font-weight: 500; letter-spacing: .04em; color: var(--franco-text-secondary); }
+  /* Muestra chica: Ink + tipografía, nunca Signal Red — una advertencia de
+     calidad de dato no es ninguno de los usos permitidos del rojo (Capa 1). */
+  .thin-chip { display: inline-block; font-family: var(--mono); font-size: 9px;
+               font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+               color: var(--franco-text-secondary); background: var(--franco-sunken);
+               border: 1px solid var(--franco-border); border-radius: 999px;
+               padding: 2px 8px; margin-left: 8px; vertical-align: middle; }
+  .thin-inline { font-style: italic; color: var(--franco-text-muted); }
+
+  /* Supuestos — visibles, nunca letra chica */
+  .assump { margin-top: 14px; border: 1px solid var(--franco-border); border-radius: 14px;
+            background: var(--franco-sunken); padding: 18px 20px; }
+  .assump-h { font-family: var(--mono); font-size: 10px; font-weight: 700;
+              letter-spacing: .12em; text-transform: uppercase;
+              color: var(--franco-text-tertiary); margin: 0 0 12px; }
+  .assump-grid { display: flex; flex-wrap: wrap; gap: 28px; }
+  .assump-item { font-size: 13px; color: var(--franco-text-secondary); }
+  .assump-item b { display: block; font-family: var(--mono); font-size: 14px;
+                   font-weight: 700; color: var(--franco-text); margin-top: 2px; }
+  .assump-src { margin: 14px 0 0; font-size: 12px; color: var(--franco-text-muted);
+                max-width: 78ch; }
+
+  /* Párrafo Franco (IA) */
+  .ai { border: 1px solid var(--franco-border); border-left: 3px solid var(--franco-text);
+        border-radius: 0 16px 16px 0; background: var(--franco-card); padding: 24px 28px; }
+  .ai-tag { display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 500;
+            letter-spacing: .1em; text-transform: uppercase; color: var(--franco-text-secondary);
+            background: var(--franco-sunken); border-radius: 999px; padding: 5px 11px;
+            margin-bottom: 14px; }
+  .ai p { font-size: 15px; line-height: 1.65; font-style: italic;
+          color: var(--franco-text-secondary); margin: 0; max-width: 68ch; }
+
+  /* Muestra y frescura */
+  .fresh { display: flex; flex-wrap: wrap; gap: 32px; border: 1px solid var(--franco-border);
+           border-radius: 14px; background: var(--franco-card); padding: 20px 24px; margin-top: 18px; }
+  .fresh div { font-size: 12px; color: var(--franco-text-muted); }
+  .fresh b { display: block; font-family: var(--mono); font-size: 17px; font-weight: 700;
+             color: var(--franco-text); margin-top: 3px; }
+
+  /* Hueco de plusvalía */
+  .hole { border: 1px dashed var(--franco-border-hover); border-radius: 14px;
+          padding: 22px 24px; background: transparent; }
+  .hole-h { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .12em;
+            text-transform: uppercase; color: var(--franco-text-tertiary); margin: 0 0 10px; }
+  .hole p { margin: 0; font-size: 13px; color: var(--franco-text-muted); max-width: 72ch; }
+
+  /* Aviso muestra limitada (ya vive en prod) */
+  .lowdata { margin-top: 22px; border: 1px solid var(--franco-border);
+             background: var(--franco-sunken); border-radius: 12px; padding: 14px 18px; }
+  .lowdata p { margin: 0; font-size: 13px; color: var(--franco-text-secondary); }
+
+  /* FAQ */
+  .faq { display: grid; gap: 12px; margin-top: 18px; }
+  .faq-item { border: 1px solid var(--franco-border); border-radius: 14px;
+              background: var(--franco-card); padding: 20px 24px; }
+  .faq-item h3 { font-family: var(--sans); font-weight: 500; font-size: 15px; margin: 0 0 8px; }
+  .faq-item p { margin: 0; font-size: 14px; color: var(--franco-text-secondary); max-width: 74ch; }
+
+  /* CTA */
+  .cta { margin-top: 56px; border: 1px solid rgba(200,50,60,.2);
+         background: rgba(200,50,60,.06); border-radius: 18px; padding: 40px; text-align: center; }
+  .cta h2 { margin-bottom: 8px; }
+  .cta p { margin: 0 auto; font-size: 14px; color: var(--franco-text-secondary); max-width: 62ch; }
+  .cta .num { font-family: var(--mono); font-weight: 700; color: var(--franco-text); }
+  .btn { display: inline-block; margin-top: 20px; background: var(--signal); color: #fff;
+         font-weight: 700; font-size: 14px; border-radius: 9px; padding: 13px 30px;
+         text-decoration: none; }
+
+  /* Notas del mockup */
+  .note { margin-top: 26px; border-left: 3px solid var(--franco-border);
+          padding: 4px 0 4px 18px; font-size: 13px; color: var(--franco-text-muted);
+          max-width: 82ch; }
+  .note b { color: var(--franco-text-secondary); }
+  .note.is-warn { border-left-color: var(--signal); }
+  code { font-family: var(--mono); font-size: 12px; }
+
+  /* Contraste (sección D) */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+  @media (max-width: 860px) { .split { grid-template-columns: 1fr; } h1 { font-size: 31px; } }
+  .eviwrap { margin-top: 18px; border: 1px solid var(--franco-border); border-radius: 14px;
+             overflow-x: auto; background: var(--franco-card); }
+  .evi { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 620px; }
+  .evi th, .evi td { text-align: left; padding: 12px 16px;
+                     border-bottom: 1px solid var(--franco-border); }
+  .evi td:first-child { font-family: var(--mono); font-weight: 500; white-space: nowrap; }
+  .evi td:last-child { font-family: var(--sans); color: var(--franco-text-secondary); }
+  .evi tbody tr:last-child td { border-bottom: 0; }
+</style>
+
+<div class="mk-bar">
+  <div class="wrap">
+    <span class="mk-title">Mockup · Páginas de comuna enriquecidas</span>
+    <span class="mk-sub">Rev. 2 · con capa de palanca · cifras reales 20-ago-2026 · nada implementado</span>
+  </div>
+</div>
+
+<nav class="tabs">
+  <div class="wrap">
+    <button class="tab" aria-selected="true" data-tab="a">A · Providencia</button>
+    <button class="tab" aria-selected="false" data-tab="b">B · Peñalolén</button>
+    <button class="tab" aria-selected="false" data-tab="c">C · Renca</button>
+    <button class="tab" aria-selected="false" data-tab="d">D · Contraste</button>
+  </div>
+</nav>
+
+<!-- ══════════ A · PROVIDENCIA ══════════ -->
+<div class="panel" data-active="true" data-panel="a">
+  <div class="wrap">
+    <p class="crumb"><a href="#">Inicio</a> → <a href="#">Comunas</a> → Providencia</p>
+    <h1>Invertir en Providencia en 2026 — rentabilidad de 3,4% a 4,5%</h1>
+
+    <div class="verdict is-negative">
+      <p class="verdict-q">¿El arriendo paga el dividendo?</p>
+      <p class="verdict-line">En Providencia, <span class="neg">ninguna de las cuatro tipologías se paga sola</span> al precio de lista.</p>
+      <p class="verdict-note">Comprar acá para arrendar significa poner plata de tu bolsillo todos los meses. Cuánta, depende de qué compres y a qué precio lo compres.</p>
+
+      <div class="lever">
+        <p class="lever-h">A qué precio sí se paga sola</p>
+        <p class="lever-main">El 4 dormitorios está a un 1,4% de lograrlo: comprando a <strong>UF 10.381</strong> en vez de la mediana de UF 10.531, el arriendo cubre la cuota completa.<span class="thin-chip">Muestra chica · 34 arriendos</span></p>
+        <div class="lever-nums">
+          <div class="lever-num">Precio de equilibrio · 4D<b>UF 10.381</b></div>
+          <div class="lever-num">Bajo la mediana<b>−1,4%</b></div>
+          <div class="lever-num">O bien, pie de<b>21%</b></div>
+        </div>
+        <span class="band">Banda 1 · negociación normal</span>
+        <p class="lever-note">Un 1,4% es lo que se conversa en cualquier compraventa, no una ganga. La otra vía es igual de concreta: con 21% de pie en lugar de 20%, ese mismo 4D se paga solo sin tocar el precio. Las demás tipologías necesitan más: el 3D pide 15% bajo la mediana, el 1D 18% y el 2D 25%.</p>
+        <p class="lever-note thin-inline">Ojo con el respaldo de este número: el 4D es la tipología con menos avisos de arriendo de la comuna (34, contra 445 del 1D). Con esa muestra, la mediana se mueve más — y un 1,4% de distancia se cruza en cualquier dirección. Tómalo como una señal de que vale la pena mirar 4D en Providencia, no como una promesa.</p>
+      </div>
+    </div>
+
+    <section>
+      <p class="eyebrow">Los números de Providencia</p>
+      <h2>Qué cuesta, qué renta y a qué precio se equilibra</h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tipología</th><th>Arriendo mediana</th><th>Precio mediana</th>
+              <th>Rentab. bruta</th><th>Dividendo est.</th><th>Diferencia</th>
+              <th class="lead">Precio de equilibrio</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tipo">1 dormitorio<span class="muestra">445 arriendos · 244 ventas</span></td>
+              <td>$650.000</td><td>UF 5.056</td><td>3,8%</td><td>$789.003</td>
+              <td><span class="gap-neg">−$139.003</span><span class="cover no">No se paga solo</span></td>
+              <td class="lead">UF 4.165<span class="falta">−17,6% · o pie 34%</span></td>
+            </tr>
+            <tr>
+              <td class="tipo">2 dormitorios<span class="muestra">413 arriendos · 689 ventas</span></td>
+              <td>$935.994</td><td>UF 7.984</td><td>3,4%</td><td>$1.245.937</td>
+              <td><span class="gap-neg">−$309.943</span><span class="cover no">No se paga solo</span></td>
+              <td class="lead">UF 5.998<span class="falta">−24,9% · o pie 40%</span></td>
+            </tr>
+            <tr>
+              <td class="tipo">3 dormitorios<span class="muestra">123 arriendos · 479 ventas</span></td>
+              <td>$1.380.000</td><td>UF 10.392</td><td>3,9%</td><td>$1.621.710</td>
+              <td><span class="gap-neg">−$241.710</span><span class="cover no">No se paga solo</span></td>
+              <td class="lead">UF 8.843<span class="falta">−14,9% · o pie 32%</span></td>
+            </tr>
+            <tr>
+              <td class="tipo">4 dormitorios<span class="muestra">34 arriendos · 124 ventas — muestra chica</span></td>
+              <td>$1.620.000</td><td>UF 10.531</td><td>4,5%</td><td>$1.643.418</td>
+              <td><span class="gap-neg">−$23.418</span><span class="cover no">No se paga solo</span></td>
+              <td class="lead">UF 10.381<span class="falta">−1,4% · o pie 21%</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="assump">
+        <p class="assump-h">Con qué supuestos está calculado</p>
+        <div class="assump-grid">
+          <div class="assump-item">Pie<b>20%</b></div>
+          <div class="assump-item">Plazo<b>30 años</b></div>
+          <div class="assump-item">Tasa<b>4,0% anual</b></div>
+          <div class="assump-item">UF<b>$40.859</b></div>
+        </div>
+        <p class="assump-src">La tasa es la promedio de créditos de vivienda que publica el Banco Central, actualizada el 20 de agosto de 2026. El dividendo es solo la cuota del crédito: no incluye seguros ni gastos comunes. El precio de equilibrio es el precio de compra al que ese dividendo iguala al arriendo mediana — cambia el pie o el plazo y cambia el número, por eso los supuestos van acá arriba y no en letra chica.</p>
+      </div>
+
+      <p class="note"><b>Regla de omisión.</b> Solo aparecen las tipologías con al menos 20 arriendos y 20 ventas publicadas. Si un segmento no llega, la fila no existe: no se interpola ni se promedia con el vecino.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">La lectura de Franco</p>
+      <div class="ai">
+        <span class="ai-tag">★ Análisis generado por Franco IA</span>
+        <p>Providencia es la comuna donde la brecha entre lo que cuesta comprar y lo que paga el arriendo se abre más, pero no está pareja: el 2D es el peor negocio de los cuatro y el 4D es el único que llega al borde. Si vas a comprar acá para arrendar, el 4D es la conversación corta —un 1,4% de descuento o un punto más de pie y la cuota queda cubierta—; el 2D exige un cuarto del precio, que ya no es negociar sino esperar a un vendedor apurado. Lo que ninguna tipología te da hoy en Providencia es que el depto se pague solo al precio de lista.</p>
+      </div>
+      <p class="note"><b>Contrato del párrafo.</b> 4 a 6 frases, 70-110 palabras. Debe cerrar con recomendación, no con diagnóstico (analysis-voice-franco §1.2, capa 3). Se genera <b>una sola vez por comuna</b> y se persiste junto al snapshot de los números que narró — igual que <code>mediana_comuna_snapshot</code>. Nunca on-the-fly en render.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Plusvalía · pendiente</p>
+      <div class="hole">
+        <p class="hole-h">Acá va la plusvalía 2014-2024 — no en v1</p>
+        <p>La serie histórica existe para 23 de las 25 comunas, pero en Providencia y Ñuñoa el porcentaje declarado no cuadra con el par de precios de la propia fuente (Providencia dice 34% acumulado sobre un par que da 4,5%). Publicar eso en las dos comunas que más importan sería un autogol. El bloque entra cuando la fuente esté reconciliada.</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">De dónde salen estos números</p>
+      <div class="fresh">
+        <div>Avisos que entran en el cálculo<b>2.551</b></div>
+        <div>Última actualización<b>16 de agosto de 2026</b></div>
+        <div>Tipologías con muestra suficiente<b>4 de 4</b></div>
+      </div>
+      <p class="note"><b>Qué cuenta ese número.</b> Providencia tiene 3.474 avisos activos; 2.551 entran en el cálculo. Los 923 restantes quedaron fuera porque no publican superficie (886) o están fuera del rango de 1 a 4 dormitorios (70) — hay avisos que fallan las dos cosas. En esta comuna ninguna tipología quedó fuera por muestra insuficiente. El label dice "que entran en el cálculo" justamente para no leerse como el tamaño del mercado de la comuna.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Preguntas frecuentes</p>
+      <h2>Sobre invertir en Providencia</h2>
+      <div class="faq">
+        <div class="faq-item">
+          <h3>¿A qué precio se paga solo un departamento en Providencia?</h3>
+          <p>Un 4 dormitorios se paga solo desde UF 10.381, un 1,4% bajo la mediana de la comuna — aunque esa cifra se apoya en solo 34 arriendos publicados, la muestra más chica de Providencia. Un 2 dormitorios necesita bajar a UF 5.998, que es un 25% bajo la mediana y se apoya en 413 arriendos.</p>
+        </div>
+        <div class="faq-item">
+          <h3>¿Cuánto se arrienda un departamento de 2 dormitorios en Providencia?</h3>
+          <p>La mediana de los 413 arriendos publicados hoy en Providencia es $935.994 al mes.</p>
+        </div>
+        <div class="faq-item">
+          <h3>¿Qué tipología rinde más en Providencia?</h3>
+          <p>El 4 dormitorios, con 4,5% de rentabilidad bruta, y es también el único que queda a distancia de negociación de pagarse solo — con la salvedad de que es la tipología con menos avisos de la comuna. El 2 dormitorios es el que menos rinde, con 3,4%, y es el mejor respaldado.</p>
+        </div>
+      </div>
+      <p class="note"><b>La FAQ se rehace.</b> Las tres preguntas de hoy son idénticas en las 25 páginas y la tercera respuesta ni siquiera cambia los números. Estas tienen respuestas que cambian por comuna — precio de equilibrio, cifra, signo y tipología ganadora — así que la <code>FAQPage</code> deja de ser contenido calcado.</p>
+    </section>
+
+    <div class="cta">
+      <h2>¿Viste un 4D en Providencia bajo <span class="num">UF 10.381</span>?</h2>
+      <p>Ese es el precio al que se paga solo con pie de 20% a 30 años, calculado sobre 34 arriendos publicados: una muestra chica para una comuna de este tamaño. Si encontraste uno cerca, analízalo con sus números reales — gastos comunes, contribuciones y estado incluidos — y Franco te dice si de verdad cierra.</p>
+      <a class="btn" href="#">Analizar ese depto</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ B · PEÑALOLÉN ══════════ -->
+<div class="panel" data-panel="b">
+  <div class="wrap">
+    <p class="crumb"><a href="#">Inicio</a> → <a href="#">Comunas</a> → Peñalolén</p>
+    <h1>Invertir en Peñalolén en 2026 — 3,1% de rentabilidad bruta</h1>
+
+    <div class="lowdata">
+      <p>Muestra limitada — los números de esta comuna salen de menos avisos que el resto. Tómalos como referencia, no como precisión.</p>
+    </div>
+
+    <div class="verdict is-negative">
+      <p class="verdict-q">¿El arriendo paga el dividendo?</p>
+      <p class="verdict-line">En Peñalolén solo hay muestra suficiente de 2 dormitorios, y <span class="neg">no se paga solo</span>: faltan $367.536 cada mes.</p>
+      <p class="verdict-note">Con 30 arriendos publicados, esta cifra se mueve más que en comunas con miles de avisos — por eso está el aviso de arriba.<span class="thin-chip">Muestra chica · 30 arriendos</span></p>
+
+      <div class="lever">
+        <p class="lever-h">Acá la palanca no es el precio</p>
+        <p class="lever-main">Para que un 2D se pagara solo habría que comprarlo a <strong>UF 4.794</strong>, un 33% bajo la mediana de la comuna. Con estos supuestos, eso no es negociar: es esperar una liquidación.</p>
+        <div class="lever-nums">
+          <div class="lever-num">Precio de equilibrio · 2D<b>UF 4.794</b></div>
+          <div class="lever-num is-signal">Bajo la mediana<b>−32,9%</b></div>
+          <div class="lever-num is-signal">O bien, pie de<b>46%</b></div>
+        </div>
+        <span class="band is-hard">Banda 4 · estructural</span>
+        <p class="lever-note">Ni el precio ni el pie son palancas razonables acá: 46% de pie es más del doble de lo habitual. Lo que dicen estos números no es que este depto esté caro, sino que hoy Peñalolén se vende a precios que sus arriendos no sostienen. Si buscas que el arriendo cubra la cuota, la palanca real es mirar otra comuna — <a href="#">Renca y Puente Alto</a> lo logran en todas sus tipologías.</p>
+      </div>
+    </div>
+
+    <section>
+      <p class="eyebrow">Los números de Peñalolén</p>
+      <h2>Qué cuesta, qué renta y a qué precio se equilibra</h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tipología</th><th>Arriendo mediana</th><th>Precio mediana</th>
+              <th>Rentab. bruta</th><th>Dividendo est.</th><th>Diferencia</th>
+              <th class="lead">Precio de equilibrio</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tipo">2 dormitorios<span class="muestra">30 arriendos · 236 ventas — muestra chica</span></td>
+              <td>$748.092</td><td>UF 7.149</td><td>3,1%</td><td>$1.115.628</td>
+              <td><span class="gap-neg">−$367.536</span><span class="cover no">No se paga solo</span></td>
+              <td class="lead">UF 4.794<span class="falta">−32,9% · o pie 46%</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="assump">
+        <p class="assump-h">Con qué supuestos está calculado</p>
+        <div class="assump-grid">
+          <div class="assump-item">Pie<b>20%</b></div>
+          <div class="assump-item">Plazo<b>30 años</b></div>
+          <div class="assump-item">Tasa<b>4,0% anual</b></div>
+          <div class="assump-item">UF<b>$40.859</b></div>
+        </div>
+        <p class="assump-src">La tasa es la promedio de créditos de vivienda que publica el Banco Central, actualizada el 20 de agosto de 2026. El dividendo es solo la cuota del crédito: no incluye seguros ni gastos comunes.</p>
+      </div>
+
+      <p class="note"><b>La tabla de una fila es el punto.</b> En Peñalolén los 1D y 3D no llegan a 20 arriendos publicados, así que esas filas no existen. La página no las rellena ni las promedia: la forma de la tabla ya dice algo real sobre el mercado de la comuna.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">La lectura de Franco</p>
+      <div class="ai">
+        <span class="ai-tag">★ Análisis generado por Franco IA</span>
+        <p>En Peñalolén el mercado de arriendo de departamentos es angosto: hay ocho veces más avisos de venta que de arriendo, y solo los 2D reúnen muestra suficiente para hablar en serio. Con la brecha actual, ningún descuento razonable arregla el caso: harían falta 33% bajo la mediana o un pie de 46%, y ninguna de las dos cosas es una negociación. Eso no dice que los deptos de Peñalolén estén malos — dice que hoy los compra gente que va a vivir en ellos, y ese comprador no paga por rentabilidad. Si tu objetivo es que el arriendo cubra la cuota, esta comuna hoy no es el lugar.</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">De dónde salen estos números</p>
+      <div class="fresh">
+        <div>Avisos que entran en el cálculo<b>266</b></div>
+        <div>Última actualización<b>10 de agosto de 2026</b></div>
+        <div>Tipologías con muestra suficiente<b>1 de 4</b></div>
+      </div>
+      <p class="note"><b>Sin bloque de plusvalía y sin hueco visible.</b> Peñalolén no está en las 27 comunas de la serie histórica, así que la sección simplemente no se renderiza. La página termina en la FAQ y el CTA, y no se ve incompleta.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Preguntas frecuentes</p>
+      <h2>Sobre invertir en Peñalolén</h2>
+      <div class="faq">
+        <div class="faq-item">
+          <h3>¿A qué precio se paga solo un departamento en Peñalolén?</h3>
+          <p>Un 2 dormitorios tendría que costar UF 4.794 para que el arriendo cubra la cuota, un 33% bajo la mediana de la comuna. Es una diferencia demasiado grande para cerrarse negociando.</p>
+        </div>
+        <div class="faq-item">
+          <h3>¿El arriendo alcanza para pagar el dividendo en Peñalolén?</h3>
+          <p>No. En un 2D faltan $367.536 al mes con pie de 20% a 30 años.</p>
+        </div>
+        <div class="faq-item">
+          <h3>¿Por qué hay menos datos de Peñalolén que de otras comunas?</h3>
+          <p>Porque se publican muchos menos arriendos: 30 avisos activos de 2D, contra 413 en Providencia. Franco prefiere mostrar una tipología con respaldo que cuatro inventadas.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="cta">
+      <h2>¿Tienes un departamento en Peñalolén en la mira?</h2>
+      <p>Los promedios de la comuna no deciden por ti: un depto concreto puede tener otro precio, otro arriendo y otros gastos. Analízalo con sus números reales y Franco te dice si conviene, aunque la comuna en promedio no lo haga.</p>
+      <a class="btn" href="#">Analizar ese depto</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ C · RENCA ══════════ -->
+<div class="panel" data-panel="c">
+  <div class="wrap">
+    <p class="crumb"><a href="#">Inicio</a> → <a href="#">Comunas</a> → Renca</p>
+    <h1>Invertir en Renca en 2026 — rentabilidad de 5,6% a 6,6%</h1>
+
+    <div class="lowdata">
+      <p>Muestra limitada — los números de esta comuna salen de menos avisos que el resto. Tómalos como referencia, no como precisión.</p>
+    </div>
+
+    <div class="verdict">
+      <p class="verdict-q">¿El arriendo paga el dividendo?</p>
+      <p class="verdict-line">En Renca, las dos tipologías con muestra <strong>se pagan solas</strong>. Un 1D deja $117.647 al mes por sobre la cuota.</p>
+      <p class="verdict-note">Es la situación inversa a la del centro-oriente: acá el arriendo cubre el dividendo y sobra. Lo que compras a cambio es una comuna con menos profundidad de mercado y sin serie histórica de plusvalía.</p>
+
+      <div class="lever">
+        <p class="lever-h">Cuánto margen tienes antes de que deje de pagarse sola</p>
+        <p class="lever-main">Un 1D deja de pagarse solo recién sobre <strong>UF 2.467</strong>. La mediana de la comuna es UF 1.713, así que tienes un 44% de margen sobre el precio de lista.<span class="thin-chip">Muestra chica · 38 arriendos</span></p>
+        <div class="lever-nums">
+          <div class="lever-num">Precio de equilibrio · 1D<b>UF 2.467</b></div>
+          <div class="lever-num">Margen sobre la mediana<b>+44,0%</b></div>
+          <div class="lever-num">Margen · 2D<b>+22,4%</b></div>
+        </div>
+        <span class="band">Sin palanca necesaria</span>
+        <p class="lever-note">Acá el precio de equilibrio deja de ser un objetivo de negociación y pasa a ser un techo: es hasta cuánto podrías pagar de más y aun así mantener la cuota cubierta. Ese colchón es lo que te protege si el arriendo baja o la tasa sube — y en el 2D, con 22,4%, es la mitad de grueso que en el 1D.</p>
+        <p class="lever-note thin-inline">Las dos tipologías de Renca se apoyan en menos de 50 arriendos publicados (38 y 48), así que estas medianas se mueven más que las de una comuna grande. El margen es lo bastante ancho como para aguantar ese ruido, pero no lo leas al peso.</p>
+      </div>
+    </div>
+
+    <section>
+      <p class="eyebrow">Los números de Renca</p>
+      <h2>Qué cuesta, qué renta y hasta qué precio aguanta</h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tipología</th><th>Arriendo mediana</th><th>Precio mediana</th>
+              <th>Rentab. bruta</th><th>Dividendo est.</th><th>Diferencia</th>
+              <th class="lead">Precio de equilibrio</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tipo">1 dormitorio<span class="muestra">38 arriendos · 51 ventas — muestra chica</span></td>
+              <td>$385.000</td><td>UF 1.713</td><td>6,6%</td><td>$267.353</td>
+              <td><span class="gap-pos">+$117.647</span><span class="cover si">Se paga solo</span></td>
+              <td class="lead">UF 2.467<span class="falta">+44,0% de margen</span></td>
+            </tr>
+            <tr>
+              <td class="tipo">2 dormitorios<span class="muestra">48 arriendos · 30 ventas — muestra chica</span></td>
+              <td>$402.000</td><td>UF 2.105</td><td>5,6%</td><td>$328.462</td>
+              <td><span class="gap-pos">+$73.538</span><span class="cover si">Se paga solo</span></td>
+              <td class="lead">UF 2.576<span class="falta">+22,4% de margen</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="assump">
+        <p class="assump-h">Con qué supuestos está calculado</p>
+        <div class="assump-grid">
+          <div class="assump-item">Pie<b>20%</b></div>
+          <div class="assump-item">Plazo<b>30 años</b></div>
+          <div class="assump-item">Tasa<b>4,0% anual</b></div>
+          <div class="assump-item">UF<b>$40.859</b></div>
+        </div>
+        <p class="assump-src">La tasa es la promedio de créditos de vivienda que publica el Banco Central, actualizada el 20 de agosto de 2026. El dividendo es solo la cuota del crédito: no incluye seguros ni gastos comunes — y en una comuna que se paga sola, son justamente esos gastos los que se comen parte del margen.</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">La lectura de Franco</p>
+      <div class="ai">
+        <span class="ai-tag">★ Análisis generado por Franco IA</span>
+        <p>Renca es de las pocas comunas donde el arriendo cubre la cuota en las dos tipologías con muestra, y el 1D es el que más colchón deja: recién sobre UF 2.467 dejaría de pagarse solo, un 44% arriba de lo que pide el mercado hoy. Antes de leer eso como ganga, mira el otro lado: son 167 avisos activos en total, así que la mediana se mueve con pocos datos, y no hay serie histórica para saber cómo se ha comportado la comuna en la década. Lo que estos números te dicen con confianza es que el flujo mensual no va a ser tu problema acá; lo que no te dicen es cuánto va a valer el depto en diez años.</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">De dónde salen estos números</p>
+      <div class="fresh">
+        <div>Avisos que entran en el cálculo<b>167</b></div>
+        <div>Última actualización<b>24 de agosto de 2026</b></div>
+        <div>Tipologías con muestra suficiente<b>2 de 4</b></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">Preguntas frecuentes</p>
+      <h2>Sobre invertir en Renca</h2>
+      <div class="faq">
+        <div class="faq-item">
+          <h3>¿El arriendo alcanza para pagar el dividendo en Renca?</h3>
+          <p>Sí, en las dos tipologías con muestra. En un 1D sobran $117.647 al mes y en un 2D, $73.538, con pie de 20% a 30 años.</p>
+        </div>
+        <div class="faq-item">
+          <h3>¿Hasta qué precio conviene pagar un departamento en Renca?</h3>
+          <p>Un 1 dormitorio deja de pagarse solo sobre UF 2.467 y un 2 dormitorios sobre UF 2.576. Las medianas de la comuna hoy están bastante por debajo: UF 1.713 y UF 2.105.</p>
+        </div>
+        <div class="faq-item">
+          <h3>¿Qué tipología rinde más en Renca?</h3>
+          <p>El 1 dormitorio, con 6,6% de rentabilidad bruta — una de las más altas del Gran Santiago.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="cta">
+      <h2>¿Viste un 1D en Renca bajo <span class="num">UF 2.467</span>?</h2>
+      <p>Sobre ese precio deja de pagarse solo con pie de 20% a 30 años, calculado sobre 38 arriendos publicados. Casi todo lo que se publica en la comuna está bajo ese techo — analiza el que tienes en la mira con sus gastos comunes y contribuciones reales, que es donde se descuenta el margen.</p>
+      <a class="btn" href="#">Analizar ese depto</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ D · CONTRASTE ══════════ -->
+<div class="panel" data-panel="d">
+  <div class="wrap">
+    <h1>¿Se ven distintas dos comunas?</h1>
+    <p class="note" style="margin-top:16px"><b>La pregunta del goal.</b> Si las 25 páginas reciben la misma estructura, seguimos en template — más gordo, pero template. Esto es lo que separa una página de otra, medido sobre las 25 comunas del roster con los datos reales del 20-ago-2026.</p>
+
+    <section>
+      <p class="eyebrow">El bloque que cambia de signo</p>
+      <h2>Mismo componente, tres funciones distintas</h2>
+      <div class="split">
+        <div class="verdict is-negative" style="margin-top:0">
+          <p class="verdict-q">Providencia · palanca corta</p>
+          <p class="verdict-line" style="font-size:21px">Ninguna <span class="neg">se paga sola</span>, pero el 4D está a −1,4%.</p>
+          <div class="lever" style="margin-top:16px; padding-top:16px">
+            <div class="lever-nums">
+              <div class="lever-num">Equilibrio · 4D<b>UF 10.381</b></div>
+              <div class="lever-num">Falta<b>−1,4%</b></div>
+            </div>
+            <span class="band">Banda 1 · negociación normal</span>
+          </div>
+        </div>
+        <div class="verdict is-negative" style="margin-top:0">
+          <p class="verdict-q">Peñalolén · sin palanca de precio</p>
+          <p class="verdict-line" style="font-size:21px">El único 2D con muestra pide <span class="neg">−33%</span> para equilibrarse.</p>
+          <div class="lever" style="margin-top:16px; padding-top:16px">
+            <div class="lever-nums">
+              <div class="lever-num">Equilibrio · 2D<b>UF 4.794</b></div>
+              <div class="lever-num is-signal">Falta<b>−32,9%</b></div>
+            </div>
+            <span class="band is-hard">Banda 4 · estructural</span>
+          </div>
+        </div>
+      </div>
+      <div class="split" style="grid-template-columns:1fr">
+        <div class="verdict" style="margin-top:0">
+          <p class="verdict-q">Renca · el equilibrio es un techo, no una meta</p>
+          <p class="verdict-line" style="font-size:21px">Las dos tipologías <strong>se pagan solas</strong>; el 1D aguanta hasta UF 2.467.</p>
+          <div class="lever" style="margin-top:16px; padding-top:16px">
+            <div class="lever-nums">
+              <div class="lever-num">Equilibrio · 1D<b>UF 2.467</b></div>
+              <div class="lever-num">Margen<b>+44,0%</b></div>
+              <div class="lever-num">Margen · 2D<b>+22,4%</b></div>
+            </div>
+            <span class="band">Sin palanca necesaria</span>
+          </div>
+        </div>
+      </div>
+      <p class="note">La misma columna cambia de función según la comuna: en Providencia es un objetivo de negociación, en Peñalolén es la prueba de que negociar no alcanza, y en Renca es un techo de protección. No es el mismo texto con otro número.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Evidencia 1 · el esfuerzo que pide cada comuna</p>
+      <h2>Las 67 tipologías, repartidas en las bandas de la doctrina</h2>
+      <div class="eviwrap">
+        <table class="evi">
+          <thead><tr><th>Banda (§1.12)</th><th>Tipologías</th><th>Qué significa</th></tr></thead>
+          <tbody>
+            <tr><td>Se paga sola</td><td>24</td><td>El arriendo ya cubre la cuota al precio de lista</td></tr>
+            <tr><td>≤ 5% · normal</td><td>11</td><td>Lo que se conversa en cualquier compraventa</td></tr>
+            <tr><td>5-12% · con argumentos</td><td>11</td><td>Exigente, pero se negocia cuando hay razones</td></tr>
+            <tr><td>12-25% · difícil</td><td>19</td><td>Requiere un vendedor motivado</td></tr>
+            <tr><td>&gt; 25% · estructural</td><td>2</td><td>La palanca deja de ser el precio</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Solo dos tipologías de las 67 caen en banda estructural: <b>Peñalolén 2D (−33%)</b> e <b>Independencia 3D (−25%)</b>. Es decir, la rama "acá el precio no es la palanca" existe y hay que diseñarla, pero hoy dispara en un caso de cada 33. En el resto, la página siempre tiene algo accionable que decir.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Evidencia 2 · la tipología que está más cerca</p>
+      <h2>De las 9 comunas donde ninguna se paga sola</h2>
+      <div class="eviwrap">
+        <table class="evi">
+          <thead><tr><th>Comuna</th><th>Más cerca</th><th>Banda</th></tr></thead>
+          <tbody>
+            <tr><td>Providencia</td><td>4D a −1,4% (o pie 21%)</td><td>normal</td></tr>
+            <tr><td>Las Condes</td><td>2D a −4,0% (o pie 23%)</td><td>normal</td></tr>
+            <tr><td>Conchalí</td><td>2D a −7,8% (o pie 26%)</td><td>con argumentos</td></tr>
+            <tr><td>Huechuraba</td><td>2D a −8,7% (o pie 27%)</td><td>con argumentos</td></tr>
+            <tr><td>La Florida</td><td>3D a −10,0% (o pie 28%)</td><td>con argumentos</td></tr>
+            <tr><td>Ñuñoa</td><td>2D a −11,9% (o pie 30%)</td><td>con argumentos</td></tr>
+            <tr><td>Macul</td><td>1D a −12,2% (o pie 30%)</td><td>difícil</td></tr>
+            <tr><td>Santiago</td><td>3D a −12,6% (o pie 30%)</td><td>difícil</td></tr>
+            <tr><td>Peñalolén</td><td>2D a −32,9% (o pie 46%)</td><td>estructural</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Ocho de las nueve comunas "negativas" tienen una tipología a distancia de negociación. Eso convierte el dato negativo en un AJUSTA SUPUESTOS con número, en vez de un "ándate de acá" — que era justamente el problema de la revisión 1.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Evidencia 3 · forma de la tabla y plusvalía</p>
+      <h2>Lo que ya estaba en la revisión 1</h2>
+      <div class="eviwrap">
+        <table class="evi">
+          <thead><tr><th>Mix de tipologías</th><th>N°</th><th>Cuáles</th></tr></thead>
+          <tbody>
+            <tr><td>1D + 2D + 3D + 4D</td><td>4</td><td>Las Condes, Providencia, Lo Barnechea, Vitacura</td></tr>
+            <tr><td>1D + 2D + 3D</td><td>11</td><td>Santiago, Ñuñoa, La Florida, San Miguel, Macul, Independencia, La Cisterna, San Joaquín, Quinta Normal, Recoleta, Maipú</td></tr>
+            <tr><td>1D + 2D</td><td>8</td><td>Estación Central, Conchalí, Cerrillos, Pudahuel, Puente Alto, La Reina, Renca, Quilicura</td></tr>
+            <tr><td>Solo 2D</td><td>2</td><td>Peñalolén, Huechuraba</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Y la cobertura reparte a las 25 en <b>11 combinaciones distintas</b> (de 0 de 1 hasta 3 de 3). Plusvalía: 23 de 25 la tendrán, Peñalolén y Renca nunca. Providencia y Ñuñoa —las dos que Google rechazó— son exactamente las dos con la fuente inconsistente.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Decisión · el h1</p>
+      <h2>Por qué el veredicto NO va en el h1</h2>
+      <p class="note" style="margin-top:12px">El h1 de hoy es 100% plantilla y eso es real. Pero llevar el veredicto ahí lo ata a un dato que cruza el cero con nada: medí cuánto tiene que moverse la mediana de arriendo para que el veredicto comunal cambie de signo.</p>
+      <div class="eviwrap">
+        <table class="evi">
+          <thead><tr><th>Movimiento que flipea el veredicto</th><th>Comunas</th><th>Ejemplos</th></tr></thead>
+          <tbody>
+            <tr><td>menos de 5%</td><td>13 de 25</td><td>Lo Barnechea 0,2% · Pudahuel 0,7% · <b>Providencia 1,4%</b> · Cerrillos 1,3%</td></tr>
+            <tr><td>5% a 15%</td><td>10 de 25</td><td>Quinta Normal 5,7% · Ñuñoa 13,5% · Santiago 14,4%</td></tr>
+            <tr><td>más de 15%</td><td>2 de 25</td><td>Renca 18,3% · Peñalolén 49,1%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note"><b>Trece de veinticinco páginas tendrían un h1 que puede decir lo contrario entre dos crawls de Google.</b> Un h1 que alterna entre "ninguna se paga sola" y "una se paga sola" cada vez que se refresca el scraping es peor para la identidad de la página que un h1 estable: le dice al clasificador que la página no sabe de qué trata. Y el veredicto no se pierde — sigue en el hero, en el h2 de la tabla, en la FAQ y en el párrafo de Franco, que es donde el lector lo lee igual.</p>
+      <p class="note"><b>La propuesta:</b> conservar la keyword y el año, y diferenciar con un número que <b>deriva sin flipear</b>. Que la rentabilidad pase de 3,4% a 3,5% no cambia de qué trata la página; que el veredicto cambie de signo, sí.</p>
+      <div class="eviwrap">
+        <table class="evi">
+          <thead><tr><th>Comuna</th><th>h1 propuesto</th><th>Largo</th></tr></thead>
+          <tbody>
+            <tr><td>Providencia</td><td>Invertir en Providencia en 2026 — rentabilidad de 3,4% a 4,5%</td><td>61</td></tr>
+            <tr><td>Renca</td><td>Invertir en Renca en 2026 — rentabilidad de 5,6% a 6,6%</td><td>55</td></tr>
+            <tr><td>Peñalolén</td><td>Invertir en Peñalolén en 2026 — 3,1% de rentabilidad bruta</td><td>58</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">La keyword "invertir en {comuna}" queda al frente e intacta; el año se conserva como señal de frescura; y el rango ya diferencia de verdad (Renca 5,6-6,6% contra Providencia 3,4-4,5%). Las comunas de una sola tipología usan la variante sin rango. Nota aparte: el <code>&lt;title&gt;</code> es otro campo y no cambia acá, así que esto no toca la truncación en el SERP.</p>
+      <p class="note"><b>Si prefieres el veredicto igual</b>, la salida intermedia es condicionarlo: veredicto en el h1 solo para las 12 comunas que necesitan más de 5% de movimiento para flipear, y rango para las 13 frágiles. Funciona, pero deja dos identidades de página conviviendo y no arregla el h1 de Providencia, que es justamente la que queremos que Google reconsidere.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Decisión · muestra chica</p>
+      <h2>Cuándo una tipología lleva la marca</h2>
+      <p class="note" style="margin-top:12px"><b>Umbral: menos de 50 arriendos publicados.</b> Es el doble del mínimo que ya exige el motor para que el segmento exista (20), y el punto donde la mediana deja de moverse con cada aviso que entra o sale. Reparto real de las 67 tipologías: 6 tienen entre 20 y 34 arriendos, 14 entre 35 y 49, 13 entre 50 y 99, y 34 superan los 100.</p>
+      <div class="eviwrap">
+        <table class="evi">
+          <thead><tr><th>Dónde aparece</th><th>Tratamiento</th></tr></thead>
+          <tbody>
+            <tr><td>Fila de la tabla</td><td>"34 arriendos · 124 ventas — muestra chica"</td></tr>
+            <tr><td>Hero, si la tipología lidera</td><td>Chip junto al número + una frase que dice qué significa</td></tr>
+            <tr><td>FAQ</td><td>Inline en la respuesta que usa esa cifra</td></tr>
+            <tr><td>CTA</td><td>Inline, sin bajarle el volumen a la acción</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Dispara en <b>13 de las 25 comunas</b> — es más de la mitad, y está bien que así sea: Providencia 4D (34), Vitacura 1D (28), Peñalolén 2D (30), Recoleta 3D (33), y Renca en sus dos tipologías (38 y 48). La marca no diluye el hallazgo, lo califica; y de paso es un diferenciador más entre páginas, porque las comunas grandes no la llevan.</p>
+      <p class="note"><b>Ojo con el color:</b> la marca va en Ink y tipografía, nunca en Signal Red. Una advertencia sobre la calidad del dato no es ninguno de los usos permitidos del rojo, y usarlo ahí competiría con la brecha negativa, que sí lo es.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Notas de implementación</p>
+      <h2>Lo que hay que resolver antes de escribir código</h2>
+      <p class="note is-warn" style="margin-top:12px"><b>1 · Dos break-even que no se contradicen pero lo parecen.</b> El precio de equilibrio de esta página responde "¿el arriendo cubre la <b>cuota</b>?". El <code>precioFlujoNeutroUF</code> del informe de un depto concreto responde "¿el arriendo cubre <b>todo el flujo</b>?" — incluye gastos comunes, contribuciones, vacancia y mantención — y por eso siempre pide más descuento. Un usuario que ve UF 10.381 acá y un número menor en su informe va a leer una contradicción. Hay que decidir el nombre de cada uno antes de publicar. Propuesta: acá "precio al que el arriendo cubre la cuota" y en el informe "precio de flujo neutro"; y que el CTA de la comuna diga explícitamente que el análisis del depto suma los gastos.</p>
+      <p class="note"><b>2 · La función existe, falta exportarla.</b> <code>calcPrecioParaFlujo</code> vive en <code>analysis.ts:239</code> sin <code>export</code>. Con los gastos en 0 se reduce al mismo <code>factorAmort</code> de <code>calcDividendo</code>, así que devuelve el inverso exacto de la columna del dividendo — verificado al peso. No hay que escribir solver nuevo ni tocar <code>irr.ts</code>.</p>
+      <p class="note"><b>3 · El pie que cierra la brecha es la misma inversión.</b> Sale de despejar el pie en vez del precio sobre el mismo factor, así que tampoco es fórmula nueva. Vale la pena mostrarlo porque es la única palanca que no depende de un tercero (analysis-voice-franco §1.12 punto 3), pero con la honestidad de doble filo que pide la doctrina: más pie mejora el flujo poniendo más plata tuya, no mejora el negocio.</p>
+      <p class="note"><b>4 · Honestidad sobre el límite.</b> El esqueleto se repite entre páginas: mismo h1, mismos encabezados, mismo bloque de supuestos. Lo que cambia es la forma de la tabla, el signo del veredicto, la magnitud, la banda de esfuerzo, la presencia de plusvalía y el párrafo de Franco. Para un lector, dos páginas se leen distinto. Para un clasificador de contenido duplicado, el ~78% de plantilla de hoy baja bastante, pero no a cero — y ninguna estructura lo lleva a cero. La palanca que este mockup no toca es la autoridad del dominio.</p>
+    </section>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll(".tab").forEach(function (t) {
+    t.addEventListener("click", function () {
+      document.querySelectorAll(".tab").forEach(function (x) { x.setAttribute("aria-selected", "false"); });
+      t.setAttribute("aria-selected", "true");
+      var id = t.getAttribute("data-tab");
+      document.querySelectorAll(".panel").forEach(function (p) {
+        p.setAttribute("data-active", p.getAttribute("data-panel") === id ? "true" : "false");
+      });
+      window.scrollTo(0, 0);
+    });
+  });
+</script>
