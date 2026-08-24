@@ -16,6 +16,13 @@ export interface HitoFunnel {
   /** YYYY-MM-DD, día UTC. */
   fecha: string;
   etiqueta: string;
+  /**
+   * Versión corta para pantallas angostas. En un teléfono "rediseño del wizard"
+   * se sale 112px del área del gráfico — medido a 390 y 360 px. Sin esto la
+   * línea del hito queda sin nombre justo en el hito más reciente, que es el que
+   * más interesa. El texto completo sigue vivo en el respaldo accesible.
+   */
+  etiquetaCorta?: string;
   /** Por qué invalida la comparación previa. Va al respaldo accesible. */
   motivo: string;
   /** Tramos que NO se dibujan antes de este hito. */
@@ -34,6 +41,7 @@ export const HITOS_FUNNEL: HitoFunnel[] = [
   {
     fecha: "2026-08-14",
     etiqueta: "identidad anónima",
+    etiquetaCorta: "identidad",
     motivo:
       "cada visitante sin cuenta pasó a tener su propio person_id; antes muchos colapsaban en pocos, así que el denominador de estas tasas cambió de significado, no de valor",
     invalida: ["visitaWizard", "wizardAnalisis"],
@@ -46,6 +54,7 @@ export const HITOS_FUNNEL: HitoFunnel[] = [
     // media jornada, el hito va al primer día íntegramente posterior.
     fecha: "2026-08-17",
     etiqueta: "apertura del cap",
+    etiquetaCorta: "cap",
     motivo:
       "hasta acá no se podía generar un análisis sin cuenta, así que este tramo era 100% por definición. El cap se abrió el 16-ago a las 20:26 UTC: ese día mezcla las dos épocas y queda fuera, así que el primer día comparable es el 17",
     invalida: ["analisisCuenta"],
@@ -63,6 +72,7 @@ export const HITOS_FUNNEL: HitoFunnel[] = [
     // fecharlo el 20 metería más de medio día.
     fecha: "2026-08-21",
     etiqueta: "rediseño del wizard",
+    etiquetaCorta: "rediseño",
     motivo:
       "la primera pantalla dejó de ser la elección de modalidad y pasó a ser la portada del producto (comuna + dirección), y la modalidad se mudó al final; el wizard que empieza acá no es una versión mejorada del anterior sino otro flujo, así que su tasa de entrada mide otra cosa. El cambio empezó a servir tráfico el 20-ago a las 15:00 UTC: ese día mezcla las dos versiones y por eso queda fuera, y el primer día comparable es el 21",
     invalida: ["visitaWizard", "wizardAnalisis"],

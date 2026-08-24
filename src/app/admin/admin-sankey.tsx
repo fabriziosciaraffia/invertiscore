@@ -118,10 +118,28 @@ export function AdminSankey({
           que es la degradación honesta en un viewport de 390.
           Desktop: compacta, que entra entera en pantalla sin scroll de ningún
           tipo — el objetivo de este ciclo. */}
-      <div className="overflow-x-auto p-4 md:hidden">
-        <div className="min-w-[820px]">
-          <Diagrama modelo={comoda} densidad="comoda" {...props} />
+      {/* El scroll lateral necesita ANUNCIARSE. A 390px se ve el 44% del
+          diagrama y a 360px el 40%; sin señal, un diagrama cortado por el borde
+          no se lee como "hay más a la derecha", se lee como roto. El degradado
+          marca el corte y el rótulo dice qué hacer. Los dos son decorativos
+          (`aria-hidden`): quien navega por lector de pantalla tiene el respaldo
+          en texto, y anunciar "desliza" ahí no significa nada. */}
+      <div className="relative md:hidden">
+        <div className="overflow-x-auto p-4">
+          <div className="min-w-[820px]">
+            <Diagrama modelo={comoda} densidad="comoda" {...props} />
+          </div>
         </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[var(--franco-card)] to-transparent"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-1 right-2 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-muted)]"
+        >
+          desliza →
+        </span>
       </div>
       <div className="hidden p-4 md:block">
         <Diagrama modelo={compacta} densidad="compacta" {...props} />

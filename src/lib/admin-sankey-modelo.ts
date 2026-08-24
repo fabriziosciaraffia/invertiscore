@@ -32,11 +32,13 @@ export type Orientacion = "horizontal" | "vertical";
 /**
  * Cuánto aire tiene el diagrama entre etapas.
  *
- *  · "comoda"   — la que se venía usando. Cada etapa a 300px. Se lee sola pero
- *                 mide ~1370px de alto: en desktop obliga a scrollear el panel
- *                 entero para ver un diagrama, que es lo contrario de un
- *                 resumen. Sigue siendo la correcta en mobile, donde la página
- *                 se scrollea igual y el ancho es el recurso escaso.
+ *  · "comoda"   — mobile. Las etiquetas de flujo FLOTAN sobre los corredores,
+ *                 así que necesita más aire entre etapas que la compacta.
+ *                 Estuvo en 300px por etapa (1.370 de alto) con el argumento de
+ *                 que en mobile la página se scrollea igual: falso en la
+ *                 práctica, porque el diagrama TAMBIÉN se sale de ancho, y
+ *                 scrollear en dos ejes a la vez es no poder leerlo. Bajó a
+ *                 170px (850 de alto, −38%) comprimiendo SOLO el espaciado.
  *  · "compacta" — desktop. Etapas a 108px, y las etiquetas de flujo salen a una
  *                 COLUMNA LATERAL fija en vez de flotar sobre las bandas: a esta
  *                 altura el corredor entre etapas no da para texto encima, y la
@@ -151,9 +153,14 @@ const H = {
 // resolución el render es 1:1. Más ancho escala hacia arriba, que no molesta.
 const V = {
   ancho: 820,
-  alto: 1370,
+  // 74 (inicio) + 4 × 170 (pasos) + 54 (grosor del último nodo) + 42 de margen.
+  alto: 850,
   avanceInicio: 74,
-  pasoAvance: 300,
+  // Corredor entre etapas = pasoAvance − grosorNodo = 116px. Verificado en el
+  // navegador a 390 y 360: con las etiquetas de flujo flotando, cero colisiones
+  // de texto. Si alguien lo baja más, hay que volver a medir — el piso de 11px
+  // no se toca, así que el margen que queda es el espacio, no la fuente.
+  pasoAvance: 170,
   grosorNodo: 54,
   repartoInicio: 140,
   repartoLargo: 650,
@@ -296,9 +303,14 @@ export function construirSankey(
       // En vertical la etiqueta va DEBAJO del nodo, centrada; en horizontal al
       // costado derecho, que es donde queda aire.
       const centro = x + ancho / 2;
-      // Mono de 11px mide ~6.2px por carácter. Alcanza para detectar el choque
-      // sin medir texto de verdad (que en el server no se puede).
-      const mitadTexto = (n.etiqueta.length * 6.2) / 2;
+      // Mono de 11px, MEDIDO en el navegador: "con cuenta ▸" son 12 caracteres
+      // y ocupa 79px (6,6 por carácter), no 74 — el ▸ es más ancho que un
+      // glifo mono normal. Con 6,2 el estimador daba dos píxeles de aire donde
+      // había SIETE de superposición, y "anónimos ▸" se pisaba con
+      // "con cuenta ▸" en mobile. No se puede medir texto de verdad en el
+      // server, así que el estimador se calibra por arriba: sobrar un escalón es
+      // barato, pisarse no.
+      const mitadTexto = (n.etiqueta.length * 6.6) / 2;
       const choca = vertical && centro - mitadTexto < finEtiquetaPrevia + 6;
       const escalon = choca && !escalonPrevio;
       if (vertical) {

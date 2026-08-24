@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -62,7 +63,29 @@ const TRAMOS = [
   { key: "analisisCuenta", nombre: "análisis → cuenta", color: "var(--viz-cuenta)", dash: "5 3" },
 ] as const;
 
+/**
+ * ¿Pantalla angosta? Decide si los hitos usan su etiqueta corta.
+ *
+ * `matchMedia` y no un breakpoint de CSS porque la etiqueta viaja como PROP a
+ * Recharts, que la pinta dentro del SVG: no hay clase que la pueda cambiar
+ * desde afuera. Arranca en false (desktop) y el efecto corrige tras montar —
+ * el gráfico es client-only de todos modos, así que no hay HTML del server que
+ * pueda quedar desincronizado.
+ */
+function usePantallaAngosta(): boolean {
+  const [angosta, setAngosta] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const leer = () => setAngosta(mq.matches);
+    leer();
+    mq.addEventListener("change", leer);
+    return () => mq.removeEventListener("change", leer);
+  }, []);
+  return angosta;
+}
+
 export function AdminTasasChart({ datos }: { datos: PuntoTasa[] }) {
+  const angosta = usePantallaAngosta();
   // La zona anterior al primer hito se sombrea y lleva la explicación adentro.
   const primerHito = HITOS_FUNNEL[0]?.fecha;
   const previos = primerHito ? datos.filter((d) => d.dia < primerHito) : [];
@@ -87,7 +110,11 @@ export function AdminTasasChart({ datos }: { datos: PuntoTasa[] }) {
               fill="var(--franco-text)"
               fillOpacity={0.05}
               label={{
-                value: "sin base comparable",
+                // En un teléfono la zona muerta ocupa tres días y su rótulo
+                // largo se mete 27px adentro del primer hito ("identidad") —
+                // medido a 390 y a 360. La frase entera vive en el respaldo
+                // accesible de abajo, así que acá se recorta.
+                value: angosta ? "sin base" : "sin base comparable",
                 position: "insideTop",
                 fill: "var(--franco-text-muted)",
                 fontSize: 11,
@@ -106,7 +133,7 @@ export function AdminTasasChart({ datos }: { datos: PuntoTasa[] }) {
                 stroke="var(--franco-text)"
                 strokeDasharray="4 3"
                 label={{
-                  value: h.etiqueta,
+                  value: angosta ? (h.etiquetaCorta ?? h.etiqueta) : h.etiqueta,
                   // Se alternan arriba y abajo: dos hitos a cuatro días de
                   // distancia con la etiqueta en la misma altura se pisarían.
                   position: i % 2 === 0 ? "insideTopLeft" : "insideBottomRight",
