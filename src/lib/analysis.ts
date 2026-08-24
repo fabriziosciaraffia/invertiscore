@@ -15,6 +15,7 @@ import type {
   PreEntregaGanancia,
 } from "./types";
 import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "./types";
+import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
 import { calcIRRPct } from "./finance/irr";
 import { estimarContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
@@ -2206,7 +2207,7 @@ export function runAnalysis(
     // (siempre) + sobreprecio vs comuna (cuando hay mediana inyectada) +
     // estructura de financiamiento (pie+tasa, siempre que los pcts sean finitos).
     // Sin ordenamiento ni rendering acá.
-    hallazgos: [
+    hallazgos: aplicarEncuadreVeredicto([
       ...(metrics.hallazgoPuestaAPunto ? [metrics.hallazgoPuestaAPunto] : []),
       ...(metrics.hallazgoCapRate ? [metrics.hallazgoCapRate] : []),
       ...(metrics.hallazgoFlujoMensual ? [metrics.hallazgoFlujoMensual] : []),
@@ -2217,6 +2218,9 @@ export function runAnalysis(
       ...(hallazgoSensibilidad ? [hallazgoSensibilidad] : []),
       ...(hallazgoPatrimonio ? [hallazgoPatrimonio] : []),
       ...(hallazgoDistancia ? [hallazgoDistancia] : []),
-    ],
+    // §1.12.8 — con el veredicto YA derivado, los favorables que dicen decidir
+    // llegan a la card con su clausula de subordinacion. No cambia el dato ni la
+    // direccion: solo el encuadre. Ver encuadre-veredicto.ts.
+    ], veredicto),
   };
 }

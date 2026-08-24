@@ -59,7 +59,11 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // v5 (2026-08-20): espejo del bump LTR v7 — subsidio con techo 6.000 UF, la
 // rebaja declarada como piso y el requisito corregido a vivienda nueva en
 // primera venta (no "primera vivienda", que nunca fue condición de la ley).
-export const PROMPT_VERSION_STR = 5;
+// v6 (2026-08-17): mediacion de cards (§1.12.8) — clausula de subordinacion en
+// los favorables que dicen decidir, mas el hallazgo del gate cuando la piramide
+// no tiene ninguna card adversa (caso 04dafb00: BUSCAR OTRA con once favorables
+// y cero adversas). Cambia `fraseCanonica` y el N de la piramide.
+export const PROMPT_VERSION_STR = 6;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 

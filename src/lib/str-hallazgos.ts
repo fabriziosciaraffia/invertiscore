@@ -9,6 +9,9 @@
 // magnitud para el sort. No se construye un calcDecisividades STR.
 
 import type { Hallazgo } from "./types";
+import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
+import { buildHallazgoGateVeredicto } from "./gate-veredicto-hallazgo";
+import { GLOSA_BRAZO } from "./engines/short-term-score";
 import { metricaValorONull } from "./types";
 import type { ShortTermResult } from "./engines/short-term-engine";
 import type { FrancoScoreSTR } from "./engines/short-term-score";
@@ -257,5 +260,21 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
     );
   }
 
-  return out.filter((h): h is Hallazgo => h != null);
+  // §1.12.8 — cuando un gate decide y NINGUNA card es adversa, la causa del
+  // veredicto no existe en la piramide y el orden no tiene donde anclar. Ese
+  // hueco se cierra con el hallazgo del gate (decisividad medida, no asignada).
+  const vivos = out.filter((h): h is Hallazgo => h != null);
+  const gateHallazgo = buildHallazgoGateVeredicto({
+    motivos: fs.gates?.motivos ?? [],
+    glosas: GLOSA_BRAZO,
+    score: fs.score,
+    veredictoFinal: fs.veredicto,
+    hayAdverso: vivos.some((h) => h.direccion === "adverso"),
+  });
+  if (gateHallazgo) vivos.push(gateHallazgo);
+
+  // §1.12.8 — el encuadre por veredicto se aplica a la piramide STR con el
+  // mismo criterio que LTR: los favorables que dicen decidir llegan con su
+  // clausula cuando el veredicto esta degradado. Ver encuadre-veredicto.ts.
+  return aplicarEncuadreVeredicto(vivos, fs.veredicto);
 }

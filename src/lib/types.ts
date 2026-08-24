@@ -1102,6 +1102,27 @@ export interface HallazgoEstructuraCostosStr {
 // cuando recibe la mediana comunal inyectada (prefetchMedianaComunaVenta). Sigue
 // persistiéndose en ai_analysis por ahora (limpieza del viejo = paso aparte).
 // Los 6 STR PROPIOS (E.1b) se suman al final; los 6 heredados reusan los tipos LTR.
+/**
+ * Hallazgo de la CAUSA del veredicto (gate). Se emite solo cuando un gate decide
+ * y ninguna otra card es adversa — ver gate-veredicto-hallazgo.ts. Sin drawer
+ * asociado a proposito: la card cuenta el hecho completa y no abre detalle.
+ */
+export interface HallazgoGateVeredicto {
+  id: "gate_veredicto";
+  tipo: "gate_veredicto";
+  titular: string;
+  fraseCanonica: string;
+  valor: {
+    motivos: string[];
+    veredictoDeBanda: string;
+    veredictoFinal: string;
+  };
+  direccion: "adverso";
+  decisividad: number;
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+}
+
 export type Hallazgo =
   | HallazgoPuestaAPunto
   | HallazgoCapRate
@@ -1113,6 +1134,7 @@ export type Hallazgo =
   | HallazgoSensibilidad
   | HallazgoPatrimonio
   | HallazgoDistanciaVeredicto
+  | HallazgoGateVeredicto
   | HallazgoRentabilidadStr
   | HallazgoFlujoStr
   | HallazgoOcupacionVsBanda

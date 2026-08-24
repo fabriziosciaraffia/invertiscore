@@ -93,7 +93,12 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // piden exactamente lo mismo. (Numerado 8 y no 7 porque el bump del subsidio
 // llego antes a master: la rama que llega segunda cede, no se renumera historia
 // ya mergeada.)
-export const PROMPT_VERSION_LTR = 8;
+// v9 (2026-08-17): mediacion de cards (§1.12.8) — con el veredicto ya derivado,
+// los hallazgos favorables que dicen decidir llegan con su clausula de
+// subordinacion. Cambia `fraseCanonica`, y la prosa cita esa frase (la apertura
+// fija sale del hallazgo 01): sin bump, la narracion describiria cards que ya no
+// dicen lo mismo.
+export const PROMPT_VERSION_LTR = 9;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
