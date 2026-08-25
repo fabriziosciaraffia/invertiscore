@@ -52,7 +52,16 @@ function trackInforme(
   }
 }
 
-/** Secciones instrumentadas. Enum cerrado: cardinalidad acotada. */
+/** Secciones instrumentadas. Enum cerrado: cardinalidad acotada.
+ *
+ *  Cobertura por superficie (fix FASE 1 rediseño-dictamen, 25-ago-2026): hasta
+ *  ese día LTR NO montaba `piramide` ni `zona`, y STR no montaba `hero` — el
+ *  agregado global de esas secciones mezclaba superficies con y sin sentinel
+ *  (52% "vio advanced sin piramide" = sesiones LTR sin la marca, no lectores
+ *  que saltaron). Desde el fix las tres se emiten en LTR y STR con la MISMA
+ *  key de evento: la serie no se rompe, se completa — pero para `piramide`/
+ *  `zona` en LTR y `hero` en STR el alcance solo es comparable desde el deploy
+ *  del fix en adelante. */
 export type SeccionInforme =
   | "hero"
   | "piramide"
@@ -103,14 +112,41 @@ export function MarcaSeccion({
  * Se le pasa la key activa del estado que YA existe en cada superficie (los tres
  * informes centralizan sus drawers en un único `useState`), así que no hay que
  * tocar ningún punto de apertura.
+ *
+ * FASE 1 rediseño-dictamen — serie NUEVA en paralelo: si el caller pasa
+ * `resolverHallazgo` y la key abierta corresponde a un hallazgo de la pirámide,
+ * se emite ADEMÁS `informe_hallazgo_abierto {n, id_hallazgo, tipo}`. Es el
+ * evento que en el layout nuevo (hallazgos acordeón, FASE 4) reemplaza al de
+ * drawer; nace ahora para tener línea base de "% expand por hallazgo y por
+ * posición" ANTES del rediseño. `informe_drawer_abierto` sigue emitiéndose
+ * igual hasta que el drawer muera — dos series paralelas, sin hueco.
+ * Drawers que no cuelgan de un hallazgo (zona, tipoHuesped, largoPlazo) no
+ * emiten el evento nuevo: el resolver devuelve null.
  */
-export function useDrawerAbierto(activeKey: string | number | null, tipo: TipoInforme): void {
+export function useDrawerAbierto(
+  activeKey: string | number | null,
+  tipo: TipoInforme,
+  resolverHallazgo?: (key: string | number) => { n: number; id: string } | null,
+): void {
   const posthog = usePostHog();
   const previa = useRef<string | number | null>(null);
+  // Ref y no dep: el resolver llega como closure inline (cambia por render) y
+  // meterlo en las deps re-correría el efecto sin aportar — la emisión ya está
+  // limitada a la transición cerrado→abierto por `previa`.
+  const resolverRef = useRef(resolverHallazgo);
+  resolverRef.current = resolverHallazgo;
   useEffect(() => {
     const antes = previa.current;
     previa.current = activeKey;
     if (activeKey == null || antes != null) return;
     trackInforme(posthog, "informe_drawer_abierto", { drawer: String(activeKey), tipo });
+    const hallazgo = resolverRef.current?.(activeKey) ?? null;
+    if (hallazgo) {
+      trackInforme(posthog, "informe_hallazgo_abierto", {
+        n: hallazgo.n,
+        id_hallazgo: hallazgo.id,
+        tipo,
+      });
+    }
   }, [activeKey, tipo, posthog]);
 }

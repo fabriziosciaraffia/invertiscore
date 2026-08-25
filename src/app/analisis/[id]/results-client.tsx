@@ -996,6 +996,7 @@ export function PremiumResults({
             aiAnalysis={aiAnalysis}
             loading={aiLoading}
             error={aiError}
+            accessLevel={accessLevel}
             currency={currency}
             onCurrencyChange={setCurrency}
             veredicto={resolvedVeredicto}
