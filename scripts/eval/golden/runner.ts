@@ -26,6 +26,7 @@ import { runCatchTest } from "./catch-test";
 import { runGenerateTier } from "./generate";
 import { runSemanticTier } from "./semantic";
 import { runStrTier } from "./str-recompute";
+import { runStrGenerateTier } from "./str-generate";
 import { runAmbasTier } from "./ambas-recompute";
 import { runAmbasSemanticTier } from "./ambas-semantic";
 import { runStrSemanticTier } from "./str-semantic";
@@ -134,6 +135,14 @@ async function printStrSemantic() {
     gen.forEach(printSeed);
     totalHard += gen.reduce((n, r) => n + r.hardFail, 0);
     totalDrift += gen.reduce((n, r) => n + r.rebaseline, 0);
+
+    // Tier STR generación fresca (FASE 2 dictamen · refuerzo 1) — BLOQUEANTE:
+    // GE-1 + GE-2, checks AUTO duros. Antes la única gen STR era el tier
+    // modo-gestión, no-bloqueante — un cambio de prompt STR corría sin red.
+    console.log(`\n─── TIER FULL · generación fresca STR AUTO (K=${K}, BLOQUEANTE) ───`);
+    const genStr = await runStrGenerateTier(K);
+    genStr.forEach(printSeed);
+    totalHard += genStr.reduce((n, r) => n + r.hardFail, 0);
 
     if (!NO_SEM) {
       console.log("\n─── TIER FULL · checklist semántico (juez Opus) ───");
