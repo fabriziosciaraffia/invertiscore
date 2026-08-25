@@ -756,6 +756,7 @@ FÓRMULA DURA: [el veredicto en palabras del usuario] + [LA razón más fuerte d
 - ≤15 palabras — LÍMITE DURO, cuéntalas: un titular de 16 se DESCARTA ENTERO y la portada queda sin titular. Si dudas entre dos razones, va SOLO la más fuerte; el matiz vive en la respuestaDirecta, no aquí. UNA oración; se admite estructura de dos cláusulas con \`:\` o \`—\`.
 - Exactamente UNA marca \`**…**\` sobre el NÚCLEO — máximo 7 palabras marcadas, cuéntalas: 8 marcadas y el titular entero se descarta. La marca cubre el corazón de la razón, NO la frase completa ("pagas caro y **el arriendo no cubre la cuota**", nunca "**pagas caro y el arriendo no cubre la cuota del crédito**"). No cruza puntuación de cierre ni parte una cifra.
 - SIN montos en CLP ni UF. Porcentajes y magnitudes sin moneda ("20% de más", "la mitad de la cuota") SÍ se permiten cuando son LA razón.
+- Si el titular cita una referencia de precio, DECLARA su ámbito (§1.12.9): "sobre el valor estimado de tu cuadra" o "sobre la mediana de la comuna" — nunca "de la zona" a secas.
 - SIN jerga: prohibidos CAP rate, NOI, TIR, UF/m², percentil, spread, yield y "plusvalía" como término pelado. Todo en términos de bolsillo, arriendo, cuota, precio, zona.
 - CONSISTENCIA TERNARIA con el veredicto dado: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS nombra la palanca REAL del caso (la del bloque de distancia — no copies la palanca de los ejemplos); COMPRAR afirma sin triunfalismo.
 - Toda afirmación se completa sola: nada de elipsis ambiguas ("un arriendo que no llega" — ¿a dónde?).
