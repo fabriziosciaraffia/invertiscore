@@ -17,6 +17,7 @@ import { formatDireccionDisplay } from "@/lib/format-direccion";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2 } from "@/lib/types";
+import { stripMarcasDeep } from "@/lib/prosa-marcas";
 import { DocumentoSTR } from "./DocumentoSTR";
 import "./documento.css";
 import { evaluarAccesoDocumento, logDenegacion } from "@/lib/pdf/documento-access";
@@ -110,7 +111,10 @@ export default async function DocumentoSTRPage({ params }: { params: { id: strin
     !!strAiPersisted &&
     typeof strAiPersisted === "object" &&
     (strAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_STR;
-  const ai = strAiFresh ? (strAiPersisted as unknown as AIAnalysisSTRv2) : null;
+  // stripMarcasDeep: la prosa v7 trae destacadores `**…**` para el informe web
+  // (FASE 2 dictamen); el PDF queda FUERA del rediseño y los pinta crudos si no
+  // se strippean. Mismo render tolerante que la raíz web.
+  const ai = strAiFresh ? stripMarcasDeep(strAiPersisted as unknown as AIAnalysisSTRv2) : null;
 
   const direccionLabel = data.direccion
     ? formatDireccionDisplay(data.direccion as string, data.comuna as string | null)

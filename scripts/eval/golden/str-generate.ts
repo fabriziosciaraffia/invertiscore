@@ -25,7 +25,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Anthropic from "@anthropic-ai/sdk";
 import { generateStrProse } from "../../../src/lib/ai-generation-str";
-import { marcasBalanceadas } from "../../../src/lib/prosa-marcas";
+import { marcasBalanceadas, validarTitular } from "../../../src/lib/prosa-marcas";
 import { STR_GE_SEEDS, loadFrozen } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
 import type { Check } from "./invariants";
@@ -91,6 +91,8 @@ export async function runStrGenerateTier(K: number): Promise<SeedReport[]> {
         collectStrings(ai, strings);
         const desbalance = strings.find((x) => !marcasBalanceadas(x.s));
         if (desbalance) bump("AS3.marcas-balanceadas");
+        // AS4 — titular §7.ter presente y bien formado (espejo A9 LTR).
+        if (!validarTitular(ai.titular).ok) bump("AS4.titular");
       } catch {
         process.stderr.write(` ERROR\n`);
         bump("gen.null");
@@ -98,7 +100,7 @@ export async function runStrGenerateTier(K: number): Promise<SeedReport[]> {
     }
 
     checks.push({ rule: `gen.runs(K=${K})`, pass: genOk === K, detail: `${genOk}/${K} generaciones OK` });
-    const HARD = ["AS1.respuestaDirecta", "AS2.§9-cajaAccionable", "AS3.marcas-balanceadas", "gen.null"];
+    const HARD = ["AS1.respuestaDirecta", "AS2.§9-cajaAccionable", "AS3.marcas-balanceadas", "AS4.titular", "gen.null"];
     const esReglaDeProsa = (r: string) => r.startsWith("AS");
     const umbralMayoria = Math.floor(K / 2);
     for (const r of HARD) {
