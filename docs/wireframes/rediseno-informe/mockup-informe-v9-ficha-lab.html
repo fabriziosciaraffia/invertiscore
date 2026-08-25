@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light" data-view="desktop" data-spec="franja" data-gstyle="abierta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup v9 · Laboratorio de ficha — refranco.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --serif:'Source Serif 4', Georgia, serif;
+    --sans:'IBM Plex Sans', system-ui, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+    --signal:#C8323C;
+  }
+  [data-theme="light"]{
+    --bg:#E9E6DF; --paper:#FAF8F3; --paper2:#F1EEE7;
+    --line:#DAD6CC; --line2:#C4BFB2;
+    --tx:#141311; --tx2:#3B3A36; --tx3:#75726A; --tx4:#A39F94;
+    --shadow:0 24px 60px rgba(20,19,17,.14);
+  }
+  [data-theme="dark"]{
+    --bg:#0A0A0A; --paper:#141414; --paper2:#1B1B1B;
+    --line:#282828; --line2:#3A3A3A;
+    --tx:#EDEBE6; --tx2:#C4C2BC; --tx3:#8C8A84; --tx4:#5C5A55;
+    --shadow:0 24px 60px rgba(0,0,0,.6);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);min-height:100vh;padding:28px 16px 90px;transition:background .2s}
+
+  .lab{max-width:1040px;margin:0 auto}
+  .lab-head h1{font-family:var(--serif);font-size:21px;font-weight:600;margin-bottom:4px}
+  .lab-head h1 em{font-style:italic;font-weight:400;color:var(--tx3)}
+  .lab-head .ai{color:var(--signal)}
+  .lab-sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:20px}
+  .controls{display:flex;flex-wrap:wrap;gap:12px 20px;margin-bottom:30px}
+  .ctrl{display:flex;align-items:center;gap:8px}
+  .ctrl .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;flex-wrap:wrap}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;padding:8px 11px;
+    background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button + button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+
+  /* ============ LA FICHA ============ */
+  .stage{display:flex;justify-content:center}
+  .sheet{width:100%;max-width:520px;background:var(--paper);border:1px solid var(--line2);box-shadow:var(--shadow);transition:max-width .25s}
+  [data-view="mobile"] .sheet{max-width:390px}
+  .sheet-inner{padding:26px 30px 24px}
+  [data-view="mobile"] .sheet-inner{padding:22px 20px 20px}
+  .sheet-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+  .sheet h2{font-family:var(--serif);font-size:19px;font-weight:700}
+  .sheet-close{background:none;border:none;color:var(--tx3);font-family:var(--mono);font-size:13px;cursor:pointer;padding:4px}
+  .sheet-sub{font-size:12.5px;color:var(--tx3);margin-bottom:18px}
+
+  /* ---------- SPECS: 2 tratamientos ---------- */
+  .spec-franja,.spec-titular{display:none}
+  /* A · Franja: cada dato con micro-etiqueta arriba, separados por hairlines */
+  [data-spec="franja"] .spec-franja{display:flex;flex-wrap:wrap;border-top:2px solid var(--tx);
+    border-bottom:1px solid var(--line);margin-bottom:22px}
+  .spec-franja .sp{flex:1 1 auto;padding:12px 16px 12px 0;margin-right:16px;border-right:1px solid var(--line)}
+  .spec-franja .sp:last-child{border-right:none;margin-right:0}
+  [data-view="mobile"] .spec-franja .sp{flex:1 1 30%;padding-right:10px;margin-right:10px}
+  .spec-franja .sk{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:4px}
+  .spec-franja .sv{font-family:var(--mono);font-size:14.5px;font-weight:700;color:var(--tx);white-space:nowrap}
+  [data-view="mobile"] .spec-franja .sv{font-size:13px}
+  /* B · Titular: los specs como subtítulo serif fuerte */
+  [data-spec="titular"] .spec-titular{display:block;font-family:var(--serif);font-size:19px;font-weight:600;
+    line-height:1.5;padding:10px 0 16px;margin-bottom:20px;border-bottom:1px solid var(--line)}
+  .spec-titular .dot{color:var(--signal);margin:0 9px;font-weight:700}
+
+  /* ---------- TÍTULO DE GRUPO con presencia ---------- */
+  .f-grp{margin-bottom:24px}
+  .f-grp:last-child{margin-bottom:4px}
+  .f-grp-t{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .f-grp-t .tick{width:14px;height:3px;background:var(--signal)}
+  .f-grp-t .txt{font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--tx)}
+  .f-grp-t .rule{flex:1;height:1px;background:var(--line)}
+
+  /* ---------- GRILLA: 3 estilos ---------- */
+  .g-celdas .f-cells{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border:1px solid var(--line)}
+  .g-celdas .f-cell{flex:1 1 30%;min-width:31%;background:var(--paper);padding:11px 12px}
+  [data-view="mobile"] .g-celdas .f-cell{min-width:46%}
+
+  .g-abierta .f-cells{display:flex;flex-wrap:wrap;row-gap:18px}
+  .g-abierta .f-cell{flex:1 1 33%;min-width:33%;padding-right:14px}
+  [data-view="mobile"] .g-abierta .f-cell{min-width:50%}
+
+  .g-filas .f-cells{display:flex;flex-wrap:wrap}
+  .g-filas .f-cell{flex:1 1 33%;min-width:33%;padding:10px 14px 10px 0;border-bottom:1px solid var(--line)}
+  [data-view="mobile"] .g-filas .f-cell{min-width:50%}
+
+  .f-cell .f-k{font-family:var(--sans);font-size:11px;color:var(--tx3);margin-bottom:3px}
+  .f-cell .f-v{font-family:var(--mono);font-size:13.5px;color:var(--tx)}
+  .g-celdas,.g-abierta,.g-filas{display:none}
+  [data-gstyle="celdas"] .g-celdas{display:block}
+  [data-gstyle="abierta"] .g-abierta{display:block}
+  [data-gstyle="filas"] .g-filas{display:block}
+
+  .sheet-note{font-size:12px;color:var(--tx3);line-height:1.55;padding:14px 30px 20px;border-top:1px solid var(--line)}
+  [data-view="mobile"] .sheet-note{padding:12px 20px 16px}
+  .sheet-note a{color:var(--signal);cursor:pointer}
+</style>
+</head>
+<body>
+<div class="lab">
+  <div class="lab-head"><h1><em>re</em>franco<span class="ai">.ai</span> — <em>mockup v9 · laboratorio de ficha</em></h1></div>
+  <div class="lab-sub">Specs destacadas en orden modalidad → estado → tipología · títulos de grupo con presencia · 3 estilos de grilla</div>
+
+  <div class="controls">
+    <div class="ctrl"><span class="lbl">Demo</span>
+      <div class="seg" id="seg-ficha">
+        <button class="on" data-v="usado">Usado · LTR</button>
+        <button data-v="nuevo">Nuevo · futura</button>
+        <button data-v="str">STR</button>
+      </div>
+    </div>
+    <div class="ctrl"><span class="lbl">Specs</span>
+      <div class="seg" id="seg-spec">
+        <button class="on" data-v="franja">A · Franja</button>
+        <button data-v="titular">B · Titular</button>
+      </div>
+    </div>
+    <div class="ctrl"><span class="lbl">Grilla</span>
+      <div class="seg" id="seg-gstyle">
+        <button data-v="celdas">G1 · Celdas</button>
+        <button class="on" data-v="abierta">G2 · Abierta</button>
+        <button data-v="filas">G3 · Filas</button>
+      </div>
+    </div>
+    <div class="ctrl"><span class="lbl">Tema</span>
+      <div class="seg" id="seg-theme"><button class="on" data-v="light">Light</button><button data-v="dark">Dark</button></div>
+    </div>
+    <div class="ctrl"><span class="lbl">Vista</span>
+      <div class="seg" id="seg-view"><button class="on" data-v="desktop">PC</button><button data-v="mobile">Mobile</button></div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="sheet">
+      <div class="sheet-inner">
+        <div class="sheet-head"><h2>Ficha del depto evaluado</h2><button class="sheet-close">✕</button></div>
+        <p class="sheet-sub" id="s-sub"></p>
+
+        <!-- SPECS A · Franja -->
+        <div class="spec-franja" id="spec-franja"></div>
+        <!-- SPECS B · Titular -->
+        <div class="spec-titular" id="spec-titular"></div>
+
+        <!-- GRUPOS (se renderizan en los 3 estilos, visible según toggle) -->
+        <div class="g-celdas" id="g-celdas"></div>
+        <div class="g-abierta" id="g-abierta"></div>
+        <div class="g-filas" id="g-filas"></div>
+      </div>
+      <p class="sheet-note">Supuestos con los que Franco corrió el análisis. Si alguno no calza con tu realidad, <a>ajústalos</a> y el dictamen se recalcula.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Specs en el orden pedido: modalidad → estado → tipología → superficie → entrega (+capacidad STR) */
+const FICHA = {
+  usado: {
+    sub:'El Vergel 2200 · Providencia',
+    spec:[['Modalidad','Renta larga'],['Estado','Usado · 15a'],['Tipología','2D · 2B'],['Superficie','62 m²'],['Entrega','Inmediata']],
+    groups:[
+      {t:'Precio & renta', cells:[
+        ['Precio de venta','$271,2 MM'],['Precio unitario','UF 107,1/m²'],['Mediana de la zona','UF 89,2/m²'],
+        ['Arriendo estimado','$980 mil/mes'],['Gastos comunes','$85 mil/mes'],['Vacancia de la zona','2,1%']
+      ]},
+      {t:'Financiamiento', cells:[
+        ['Pie','20% · $54,2 MM'],['Tasa','4,0%'],['Plazo','25 años']
+      ]}
+    ]
+  },
+  nuevo: {
+    sub:'Ejemplo 1234 · Ñuñoa',
+    spec:[['Modalidad','Renta larga'],['Estado','Nuevo'],['Tipología','1D · 1B'],['Superficie','38 m²'],['Entrega','Jun 2027']],
+    groups:[
+      {t:'Precio & renta', cells:[
+        ['Precio de venta','$128,5 MM'],['Precio unitario','UF 84,0/m²'],['Mediana de la zona','UF 79,5/m²'],
+        ['Arriendo estimado','$430 mil/mes'],['Gastos comunes est.','$62 mil/mes'],['Vacancia de la zona','3,0%']
+      ]},
+      {t:'Financiamiento', cells:[
+        ['Pie','15% · $19,3 MM'],['Cuotas del pie','22 × $876 mil'],['Tasa','4,3%'],
+        ['Plazo','30 años'],['Beneficio','DFL-2']
+      ]}
+    ]
+  },
+  str: {
+    sub:'Av. Providencia 1500 · Providencia',
+    spec:[['Modalidad','Renta corta'],['Estado','Usado · 4a'],['Tipología','2D · 1B'],['Superficie','50 m²'],['Capacidad','4 huésp.'],['Entrega','Inmediata']],
+    groups:[
+      {t:'Precio & tarifa', cells:[
+        ['Precio de venta','$195,7 MM'],['Precio unitario','UF 100,9/m²'],['Puesta a punto','$4,5 MM'],
+        ['Tarifa por noche','$42 mil'],['Ocupación de la zona','48%'],['Operación','Admin · 25%']
+      ]},
+      {t:'Financiamiento', cells:[
+        ['Pie','20% · $39,1 MM'],['Tasa','4,1%'],['Plazo','25 años']
+      ]}
+    ]
+  }
+};
+let state = {ficha:'usado'};
+function grpHTML(g){
+  return `<div class="f-grp">
+    <div class="f-grp-t"><span class="tick"></span><span class="txt">${g.t}</span><span class="rule"></span></div>
+    <div class="f-cells">` +
+    g.cells.map(c=>`<div class="f-cell"><div class="f-k">${c[0]}</div><div class="f-v">${c[1]}</div></div>`).join('') +
+    `</div></div>`;
+}
+function render(){
+  const f = FICHA[state.ficha];
+  document.getElementById('s-sub').textContent = f.sub;
+  document.getElementById('spec-franja').innerHTML = f.spec.map(s=>
+    `<div class="sp"><div class="sk">${s[0]}</div><div class="sv">${s[1]}</div></div>`).join('');
+  document.getElementById('spec-titular').innerHTML = f.spec.map(s=>s[1]).join('<span class="dot">·</span>');
+  const groups = f.groups.map(grpHTML).join('');
+  document.getElementById('g-celdas').innerHTML = groups;
+  document.getElementById('g-abierta').innerHTML = groups;
+  document.getElementById('g-filas').innerHTML = groups;
+}
+function wireSeg(id, fn){
+  document.querySelectorAll('#'+id+' button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); fn(b.dataset.v);
+    });
+  });
+}
+wireSeg('seg-ficha', v=>{state.ficha=v; render();});
+wireSeg('seg-spec', v=>document.documentElement.dataset.spec=v);
+wireSeg('seg-gstyle', v=>document.documentElement.dataset.gstyle=v);
+wireSeg('seg-theme', v=>document.documentElement.dataset.theme=v);
+wireSeg('seg-view', v=>document.documentElement.dataset.view=v);
+render();
+</script>
+</body>
+</html>

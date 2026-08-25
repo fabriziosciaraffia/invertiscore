@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light" data-view="desktop" data-stamp="etiqueta" data-score="s2" data-color="m2">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup v5 · Laboratorio de decisión — refranco.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;0,8..60,900;1,8..60,400;1,8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --serif:'Source Serif 4', Georgia, serif;
+    --sans:'IBM Plex Sans', system-ui, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+    --signal:#C8323C;
+  }
+  [data-theme="light"]{
+    --bg:#E9E6DF; --paper:#FAF8F3; --paper2:#F1EEE7;
+    --line:#DAD6CC; --line2:#C4BFB2;
+    --tx:#141311; --tx2:#3B3A36; --tx3:#75726A; --tx4:#A39F94;
+    --hl:rgba(224,67,80,.26); --hl-tx:#141311;
+    --fnote:#B02B35;
+    --shadow:0 24px 60px rgba(20,19,17,.14);
+    --v-buscar:#C8323C; --v-ajusta:#A96F1B; --v-comprar:#2F7D55;
+    --ink-solid:#141311;
+  }
+  [data-theme="dark"]{
+    --bg:#0A0A0A; --paper:#141414; --paper2:#1B1B1B;
+    --line:#282828; --line2:#3A3A3A;
+    --tx:#EDEBE6; --tx2:#C4C2BC; --tx3:#8C8A84; --tx4:#5C5A55;
+    --hl:rgba(216,67,77,.38); --hl-tx:#FFFFFF;
+    --fnote:#E8848B;
+    --shadow:0 24px 60px rgba(0,0,0,.6);
+    --v-buscar:#D8434D; --v-ajusta:#DFA34F; --v-comprar:#57B98A;
+    --ink-solid:#EDEBE6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);min-height:100vh;padding:28px 16px 90px;transition:background .2s}
+
+  .lab{max-width:1040px;margin:0 auto}
+  .lab-head h1{font-family:var(--serif);font-size:21px;font-weight:600;margin-bottom:4px}
+  .lab-head h1 em{font-style:italic;font-weight:400;color:var(--tx3)}
+  .lab-head .ai{color:var(--signal)}
+  .lab-sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:20px}
+  .controls{display:flex;flex-wrap:wrap;gap:12px 20px;margin-bottom:26px}
+  .ctrl{display:flex;align-items:center;gap:8px}
+  .ctrl .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;flex-wrap:wrap}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;padding:8px 11px;
+    background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button + button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+  .seg button:focus-visible{outline:2px solid var(--signal);outline-offset:-2px}
+
+  .stage{display:flex;justify-content:center}
+  .doc{width:100%;max-width:820px;background:var(--paper);border:1px solid var(--line);
+    box-shadow:var(--shadow);transition:max-width .25s;position:relative}
+  [data-view="mobile"] .doc{max-width:400px}
+  .doc::before{content:'';display:block;height:5px;background:var(--topbar-c,var(--signal))}
+  .doc-head{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--line)}
+  [data-view="mobile"] .doc-head{padding:14px 20px}
+  .wordmark{font-family:var(--serif);font-size:16px;font-weight:700}
+  .wordmark em{font-style:italic;font-weight:400;color:var(--tx3)}
+  .wordmark .ai{color:var(--signal);font-weight:700}
+  .folio{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx4)}
+  .page{padding:40px 64px 44px;position:relative}
+  [data-view="mobile"] .page{padding:26px 22px 32px}
+
+  /* ============ PORTADA ============ */
+  .cover{padding-bottom:28px;border-bottom:1px solid var(--line);margin-bottom:28px;position:relative}
+  .cover-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tx3);margin-bottom:22px}
+  .cover-eyebrow b{color:var(--tx2);font-weight:500}
+  .cover-eyebrow .sep{margin:0 8px;color:var(--tx4)}
+
+  /* ---- MARCADORES DE VEREDICTO (6 tratamientos) ---- */
+  .mk{margin-bottom:20px}
+  .mk-a,.mk-b,.mk-c,.mk-d,.mk-e,.mk-f{display:none}
+  /* A · timbre rotado */
+  [data-stamp="timbre"] .mk-a{display:inline-block;transform:rotate(-3.5deg);
+    border:3px solid var(--mkc);border-radius:6px;padding:8px 16px;position:relative;
+    font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--mkc)}
+  [data-stamp="timbre"] .mk-a::after{content:'';position:absolute;inset:-7px;border:1px solid var(--mkc);border-radius:9px;opacity:.35}
+  /* B · banda */
+  [data-stamp="banda"] .mk-b{display:flex;align-items:center;gap:12px;
+    font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--mkc)}
+  [data-stamp="banda"] .mk-b::before{content:'';width:26px;height:3px;background:var(--mkc)}
+  [data-stamp="banda"] .mk-b::after{content:'';flex:1;height:1px;background:var(--mkc);opacity:.3}
+  /* C · etiqueta sólida */
+  [data-stamp="etiqueta"] .mk-c{display:inline-block;background:var(--mkc);color:var(--mktx,#fff);
+    font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+    padding:8px 14px;border-radius:3px}
+  .mk-c.outline{background:none !important;color:var(--mkc) !important;box-shadow:inset 0 0 0 2px var(--mkc)}
+  /* D · etiqueta + glifo */
+  [data-stamp="glifo"] .mk-d{display:inline-flex;align-items:center;gap:0;border-radius:3px;overflow:hidden}
+  .mk-d .g{background:var(--mkc);color:var(--mktx,#fff);font-family:var(--mono);font-size:14px;font-weight:700;padding:8px 11px}
+  .mk-d .t{background:var(--paper2);color:var(--mkc);box-shadow:inset 0 0 0 1px var(--mkc);
+    font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:8px 14px}
+  .mk-d.outline .g{background:none;color:var(--mkc);box-shadow:inset 0 0 0 2px var(--mkc)}
+  /* E · cinta marcadora (bookmark) */
+  [data-stamp="cinta"] .mk-e{display:inline-block;position:relative;left:-64px;
+    background:var(--mkc);color:var(--mktx,#fff);
+    font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+    padding:9px 18px 9px 64px;
+    clip-path:polygon(0 0, 100% 0, calc(100% - 12px) 50%, 100% 100%, 0 100%)}
+  [data-view="mobile"] [data-stamp="cinta"] .mk-e{left:-22px;padding-left:22px}
+  .mk-e.outline{background:var(--paper2) !important;color:var(--mkc) !important;box-shadow:inset 0 0 0 2px var(--mkc)}
+  /* F · plumón */
+  [data-stamp="plumon"] .mk-f{display:inline-block;font-family:var(--serif);font-size:22px;font-weight:900;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--tx);
+    background:linear-gradient(transparent 30%, var(--mk-hl) 30%, var(--mk-hl) 96%, transparent 96%);padding:0 6px}
+
+  .headline{font-family:var(--serif);font-size:38px;line-height:1.14;font-weight:700;
+    letter-spacing:-.01em;max-width:16ch;margin-bottom:16px}
+  [data-view="mobile"] .headline{font-size:27px;max-width:none;margin-bottom:12px}
+  .headline mark, .prose mark, .hall-body mark, .firma p mark, .closer p mark{
+    background:linear-gradient(transparent 42%, var(--hl) 42%, var(--hl) 94%, transparent 94%);
+    color:var(--hl-tx);padding:0 2px;font-weight:500}
+
+  .keyfig{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+  .keyfig .fig{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--acc)}
+  .keyfig .cap{font-size:13.5px;color:var(--tx3)}
+  [data-view="mobile"] .keyfig .fig{font-size:19px}
+
+  /* ---- SCORE: 4 tratamientos ---- */
+  .sc-s1,.sc-s2,.sc-s3,.sc-s4{display:none}
+  /* S1 · línea discreta (en cover-foot) */
+  [data-score="s1"] .sc-s1{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--tx3)}
+  .sc-s1 b{color:var(--tx);font-weight:700}
+  /* S2 · medallón compacto arriba a la derecha */
+  [data-score="s2"] .sc-s2{display:flex;position:absolute;top:0;right:0;flex-direction:column;align-items:center;
+    border:1.5px solid var(--tx);padding:9px 13px 7px;border-radius:2px}
+  .sc-s2 .n{font-family:var(--mono);font-size:25px;font-weight:700;line-height:1}
+  .sc-s2 .n small{font-size:12px;color:var(--tx3);font-weight:400}
+  .sc-s2 .t{font-family:var(--mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx3);margin-top:4px}
+  [data-view="mobile"] [data-score="s2"] .sc-s2{position:static;flex-direction:row;gap:8px;align-items:baseline;
+    border:none;padding:0;margin-bottom:14px}
+  [data-view="mobile"] .sc-s2 .t{font-size:9px}
+  /* S3 · barra fina bajo el headline */
+  [data-score="s3"] .sc-s3{display:flex;align-items:center;gap:12px;margin:2px 0 20px;max-width:420px}
+  .sc-s3 .bar{flex:1;position:relative;height:3px;background:var(--line2);border-radius:2px}
+  .sc-s3 .fill{position:absolute;left:0;top:0;bottom:0;background:var(--tx);border-radius:2px}
+  .sc-s3 .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--tx3);text-transform:uppercase;white-space:nowrap}
+  .sc-s3 .lbl b{color:var(--tx)}
+  /* S4 · integrado al marcador */
+  [data-score="s4"] .sc-s4{display:inline-block;margin-left:10px;font-family:var(--mono);font-size:12.5px;
+    font-weight:700;color:var(--tx);vertical-align:middle;border:1.5px solid var(--line2);border-radius:3px;padding:7px 10px}
+  .sc-s4 small{color:var(--tx3);font-weight:400}
+
+  .cover-foot{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+  .props-link{display:inline-flex;align-items:center;gap:9px;background:none;border:none;cursor:pointer;
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);
+    border-bottom:1px dashed var(--line2);padding-bottom:3px;transition:color .15s,border-color .15s}
+  .props-link:hover{color:var(--signal);border-color:var(--signal)}
+
+  /* ============ PROSA ============ */
+  .grid{display:grid;grid-template-columns:56px 1fr;gap:0 22px}
+  [data-view="mobile"] .grid{grid-template-columns:1fr}
+  .margin-col{position:relative}
+  [data-view="mobile"] .margin-col{display:none}
+  .fmark{position:sticky;top:20px;width:34px;height:34px;border-radius:50%;background:var(--signal);
+    color:#fff;font-family:var(--serif);font-weight:700;font-size:15px;
+    display:flex;align-items:center;justify-content:center}
+  .fmark::after{content:'f.'}
+  .prose h2{font-family:var(--serif);font-size:23px;font-weight:700;margin-bottom:14px;line-height:1.2}
+  [data-view="mobile"] .prose h2{font-size:20px}
+  .prose p{font-size:14.5px;line-height:1.78;color:var(--tx2);margin-bottom:14px;max-width:62ch}
+  .fnote{font-family:var(--serif);font-style:italic;font-size:13.5px;color:var(--fnote);
+    border-left:2px solid var(--fnote);padding:2px 0 2px 12px;margin:16px 0 18px;max-width:48ch}
+  .fnote::before{content:'f. — ';font-weight:700;font-style:normal}
+
+  /* ============ POSICIÓN DE FRANCO (ahora antes de hallazgos) ============ */
+  .firma{background:var(--paper2);border:1px solid var(--line);border-radius:3px;padding:22px 26px 18px;position:relative;margin:26px 0 6px}
+  [data-view="mobile"] .firma{padding:18px 18px 14px}
+  .firma::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--signal)}
+  .firma .t{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:11px}
+  .firma p{font-family:var(--serif);font-style:italic;font-size:15.5px;line-height:1.72;color:var(--tx2);max-width:60ch}
+  .firma-foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:12px;flex-wrap:wrap}
+  .sig{display:flex;align-items:center;gap:10px}
+  .sig .favatar{width:32px;height:32px;border-radius:50%;background:var(--signal);color:#fff;
+    font-family:var(--serif);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .sig .favatar::after{content:'f.'}
+  .sig .who{font-family:var(--serif);font-weight:600;font-size:14px}
+  .sig .who small{display:block;font-family:var(--mono);font-weight:400;font-size:8.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--tx4);margin-top:1px}
+  .firma-cta{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--signal);cursor:pointer;border-bottom:1px solid transparent}
+  .firma-cta:hover{border-bottom-color:var(--signal)}
+
+  /* ============ HALLAZGOS ============ */
+  .chapters{margin:26px 0 32px;border-top:1px solid var(--line)}
+  .chapters-eyebrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx3);padding:16px 0 8px}
+  .chapters-eyebrow .hint{letter-spacing:.06em;color:var(--tx4);text-transform:none;font-size:10.5px}
+  .hall{border-bottom:1px solid var(--line)}
+  .hall-head{display:flex;align-items:baseline;gap:16px;padding:14px 0;cursor:pointer;transition:padding-left .15s}
+  .hall-head:hover{padding-left:6px}
+  .hall .num{font-family:var(--serif);font-size:28px;font-weight:900;color:var(--line2);
+    font-variant-numeric:tabular-nums;min-width:46px;transition:color .15s}
+  .hall.open .num, .hall-head:hover .num{color:var(--acc)}
+  [data-view="mobile"] .hall .num{font-size:22px;min-width:36px}
+  .hall .q{flex:1;font-family:var(--serif);font-size:16px;font-weight:600;line-height:1.35}
+  [data-view="mobile"] .hall .q{font-size:14.5px}
+  .hall .val{font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--acc);white-space:nowrap}
+  .hall .chev{font-family:var(--mono);font-size:13px;color:var(--tx4);transition:transform .2s}
+  .hall.open .chev{transform:rotate(180deg)}
+  .hall-body{display:none;padding:2px 0 18px 62px;max-width:60ch}
+  [data-view="mobile"] .hall-body{padding-left:0}
+  .hall.open .hall-body{display:block;animation:fadeIn .2s ease-out}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .hall-body p{font-size:14px;line-height:1.75;color:var(--tx2);margin-bottom:10px}
+
+  /* ============ CIERRE ============ */
+  .closer{margin-bottom:26px}
+  .closer .sec-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--tx3);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+  .closer .sec-eyebrow::after{content:'';flex:1;height:1px;background:var(--line)}
+  .closer h3{font-family:var(--serif);font-size:19px;font-weight:700;margin-bottom:10px}
+  .closer p{font-size:14px;line-height:1.75;color:var(--tx2);max-width:62ch;margin-bottom:10px}
+  .sim-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+  .sim-chip{flex:1;min-width:150px;background:var(--paper2);border:1px solid var(--line);border-radius:3px;padding:12px 14px}
+  .sim-chip .k{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4);margin-bottom:5px}
+  .sim-chip .v{font-family:var(--mono);font-size:15px;font-weight:700}
+  .zona-map{height:120px;border:1px solid var(--line);border-radius:3px;background:
+    repeating-linear-gradient(45deg, var(--paper2), var(--paper2) 10px, var(--paper) 10px, var(--paper) 20px);
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--tx4);margin-bottom:10px}
+  .cta-park{border:1px dashed var(--line2);border-radius:3px;padding:14px;text-align:center;
+    font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx4)}
+
+  .doc-foot{display:flex;justify-content:space-between;padding:14px 64px 20px;font-family:var(--mono);
+    font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4)}
+  [data-view="mobile"] .doc-foot{padding:12px 22px 18px}
+  .doc-foot .wm{font-family:var(--serif);font-size:11px;text-transform:none;letter-spacing:0;color:var(--tx3);font-weight:700}
+  .doc-foot .wm em{font-style:italic;font-weight:400}
+  .doc-foot .wm .ai{color:var(--signal)}
+
+  /* ---------- modal ficha ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(10,10,10,.6);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;z-index:60;padding:16px}
+  .overlay.open{display:flex}
+  .sheet{width:100%;max-width:430px;max-height:84vh;overflow-y:auto;background:var(--paper);
+    border:1px solid var(--line2);padding:24px 24px 20px;position:relative}
+  .sheet::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--signal)}
+  .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .sheet h2{font-family:var(--serif);font-size:18px;font-weight:700}
+  .sheet-close{background:none;border:1px solid var(--line2);border-radius:6px;color:var(--tx3);
+    font-family:var(--mono);font-size:12px;padding:6px 10px;cursor:pointer}
+  .sheet-sub{font-size:12.5px;color:var(--tx3);margin-bottom:14px}
+  .grp-title{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--tx3);padding-bottom:7px;border-bottom:1px solid var(--line);margin-top:14px;margin-bottom:2px}
+  .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:none}
+  .row .k{font-size:13px;color:var(--tx3)}
+  .row .v{font-family:var(--mono);font-size:13px;color:var(--tx)}
+  .sheet-note{font-size:11.5px;color:var(--tx3);margin-top:12px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="lab">
+  <div class="lab-head"><h1><em>re</em>franco<span class="ai">.ai</span> — <em>mockup v5 · laboratorio de decisión</em></h1></div>
+  <div class="lab-sub">6 marcadores × 4 scores × 3 modos de color · posición de Franco al inicio · CTA final estacionado</div>
+
+  <div class="controls">
+    <div class="ctrl"><span class="lbl">Análisis</span>
+      <div class="seg" id="seg-tipo"><button class="on" data-v="ltr">LTR</button><button data-v="str">STR</button></div>
+    </div>
+    <div class="ctrl"><span class="lbl">Veredicto</span>
+      <div class="seg" id="seg-verdict"><button class="on" data-v="buscar">Buscar otra</button><button data-v="ajusta">Ajusta</button><button data-v="comprar">Comprar</button></div>
+    </div>
+    <div class="ctrl"><span class="lbl">Marcador</span>
+      <div class="seg" id="seg-stamp">
+        <button data-v="etiqueta" class="on">C · Etiqueta</button>
+        <button data-v="glifo">D · Glifo</button>
+        <button data-v="cinta">E · Cinta</button>
+        <button data-v="plumon">F · Plumón</button>
+        <button data-v="timbre">A · Timbre</button>
+        <button data-v="banda">B · Banda</button>
+      </div>
+    </div>
+    <div class="ctrl"><span class="lbl">Score</span>
+      <div class="seg" id="seg-score">
+        <button data-v="s2" class="on">S2 · Medallón</button>
+        <button data-v="s3">S3 · Barra</button>
+        <button data-v="s4">S4 · Junto al marcador</button>
+        <button data-v="s1">S1 · Línea</button>
+      </div>
+    </div>
+    <div class="ctrl"><span class="lbl">Color</span>
+      <div class="seg" id="seg-color">
+        <button data-v="m2" class="on">M2 · Solo veredicto</button>
+        <button data-v="m3">M3 · Monocromo marca</button>
+        <button data-v="m1">M1 · Semántico total</button>
+      </div>
+    </div>
+    <div class="ctrl"><span class="lbl">Tema</span>
+      <div class="seg" id="seg-theme"><button class="on" data-v="light">Light</button><button data-v="dark">Dark</button></div>
+    </div>
+    <div class="ctrl"><span class="lbl">Vista</span>
+      <div class="seg" id="seg-view"><button class="on" data-v="desktop">PC</button><button data-v="mobile">Mobile</button></div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="doc" id="doc">
+      <div class="doc-head">
+        <div class="wordmark"><em>re</em>franco<span class="ai">.ai</span></div>
+        <div class="folio" id="folio"></div>
+      </div>
+
+      <div class="page">
+        <!-- PORTADA -->
+        <section class="cover">
+          <div class="sc-s2"><span class="n"><span id="sn2"></span><small>/100</small></span><span class="t">Franco Score</span></div>
+          <div class="cover-eyebrow">
+            <b id="cv-street"></b><span class="sep">·</span><span id="cv-comuna"></span><span class="sep">·</span><span id="cv-mode"></span>
+          </div>
+          <div class="mk">
+            <span class="mk-a" id="mk-a"></span>
+            <span class="mk-b" id="mk-b"></span>
+            <span class="mk-c" id="mk-c"></span>
+            <span class="mk-d" id="mk-d"><span class="g" id="mk-d-g"></span><span class="t" id="mk-d-t"></span></span>
+            <span class="mk-e" id="mk-e"></span>
+            <span class="mk-f" id="mk-f"></span>
+            <span class="sc-s4"><span id="sn4"></span><small>/100 · Franco Score</small></span>
+          </div>
+          <h1 class="headline" id="cv-headline"></h1>
+          <div class="sc-s3"><span class="lbl">Franco Score</span><div class="bar"><div class="fill" id="sn3-fill"></div></div><span class="lbl"><b id="sn3"></b>/100</span></div>
+          <div class="keyfig"><span class="fig" id="cv-fig"></span><span class="cap" id="cv-cap"></span></div>
+          <div class="cover-foot">
+            <button class="props-link" id="open-props">🏢 Ficha del depto evaluado →</button>
+            <span class="sc-s1">Franco Score <b id="sn1"></b>/100 ⓘ</span>
+          </div>
+        </section>
+
+        <!-- PROSA -->
+        <div class="grid">
+          <div class="margin-col"><div class="fmark"></div></div>
+          <div class="prose"><h2 id="c-title"></h2><div id="c-body"></div></div>
+        </div>
+
+        <!-- POSICIÓN DE FRANCO — subida, antes de hallazgos -->
+        <section class="firma">
+          <div class="t">La posición de Franco</div>
+          <p id="p-body"></p>
+          <div class="firma-foot">
+            <div class="sig"><span class="favatar"></span><span class="who">Franco<small>Análisis generado por IA · 24 ago 2026</small></span></div>
+            <a class="firma-cta" id="p-cta"><span id="p-cta-txt"></span> →</a>
+          </div>
+        </section>
+
+        <!-- HALLAZGOS -->
+        <section class="chapters">
+          <div class="chapters-eyebrow"><span>Los hallazgos, en el orden en que pesan ↓</span><span class="hint">toca para profundizar</span></div>
+          <div id="hall-list"></div>
+        </section>
+
+        <!-- SIMULACIÓN -->
+        <section class="closer">
+          <div class="sec-eyebrow">La simulación</div>
+          <h3 id="sim-title"></h3>
+          <p id="sim-body"></p>
+          <div class="sim-row" id="sim-chips"></div>
+        </section>
+
+        <!-- ZONA -->
+        <section class="closer">
+          <div class="sec-eyebrow">La zona</div>
+          <div class="zona-map" id="zona-map"></div>
+          <p id="zona-body"></p>
+        </section>
+
+        <div class="cta-park">[ CTA final dirigido — estacionado · idea de Fabrizio, trabajo aparte ]</div>
+      </div>
+
+      <div class="doc-foot">
+        <span>Real estate en su estado más franco</span>
+        <span class="wm"><em>re</em>franco<span class="ai">.ai</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ficha -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-head"><h2>Ficha del depto evaluado</h2><button class="sheet-close" id="close-props">Cerrar ✕</button></div>
+    <p class="sheet-sub" id="s-sub"></p>
+    <div class="grp-title">Propiedad</div>
+    <div class="row"><span class="k">Dormitorios</span><span class="v" id="s-dorm"></span></div>
+    <div class="row"><span class="k">Baños</span><span class="v" id="s-banos"></span></div>
+    <div class="row"><span class="k">Superficie</span><span class="v" id="s-m2"></span></div>
+    <div class="row"><span class="k">Antigüedad</span><span class="v" id="s-anos"></span></div>
+    <div class="grp-title">Números de la operación</div>
+    <div class="row"><span class="k">Precio</span><span class="v" id="s-precio"></span></div>
+    <div class="row"><span class="k">Financiamiento</span><span class="v" id="s-fin"></span></div>
+    <div class="row"><span class="k" id="s-extra-k"></span><span class="v" id="s-extra-v"></span></div>
+    <p class="sheet-note">Estos son los supuestos del análisis. Si alguno no calza con tu realidad, ajústalos y el dictamen se recalcula.</p>
+  </div>
+</div>
+
+<script>
+const TIPO = {
+  ltr: {
+    street:'El Vergel 2200', comuna:'Providencia', mode:'Renta larga', folio:'Dictamen № 2E05 · 24 ago 2026',
+    cTitle:'¿Conviene o no conviene?',
+    cBody:`<p>No conviene. Tu CAP rate —lo que el arriendo te deja al año sobre el precio, ya descontados los gastos— es <mark>2,8%, 1,2 puntos bajo la referencia de mercado</mark> (4,0%). Rinde bajo el promedio; el precio pide ajuste o conviene comparar con opciones más rentables en la zona.</p>
+<div class="fnote">con la tasa de interés en cero, igual no alcanza. Eso te dice todo.</div>
+<p><mark>El arriendo no alcanza a cubrir la cuota ni con tasa cero</mark> — cada mes pones de tu bolsillo más de la mitad del dividendo. Y tu precio por m² (UF 107,1) está <mark>20% sobre la mediana de la comuna</mark> (UF 89,2): estás pagando caro el metro en Providencia sin que el arriendo lo justifique.</p>`,
+    hallazgos:[
+      {q:'Lo que renta hoy vs lo que debería', val:'2,8%', body:`<p>Tu CAP rate es <mark>2,8% contra un 4,0% de referencia</mark> en la zona. Cada peso invertido acá rinde un 30% menos que el promedio de Providencia. El precio tendría que bajar a ~UF 89/m² para cerrar la brecha.</p>`},
+      {q:'Lo que sale de tu bolsillo cada mes', val:'-$601.588', body:`<p>El arriendo estimado ($980 mil) cubre menos de la mitad del dividendo + gastos. <mark>Aportas $601.588 al mes, todos los meses</mark> — no es un imprevisto, es la estructura del deal.</p>`},
+      {q:'Estás pagando de más por el metro cuadrado', val:'+20%', body:`<p>UF 107,1/m² contra una mediana comunal de UF 89,2. <mark>Pagas 20% de sobreprecio</mark> sin que el arriendo de la zona lo respalde.</p>`},
+      {q:'La plusvalía histórica no compensa', val:'3,1%', body:`<p>Providencia crece 3,1% anual histórico — sólido, pero <mark>no alcanza a compensar un flujo tan negativo</mark> en la proyección a 10 años.</p>`},
+      {q:'Tu pie trabaja por debajo de su potencial', val:'TIR 4,2%', body:`<p>Los $54M del pie rinden menos acá que en un depósito UF. <mark>Estás cobrando cero prima por el riesgo</mark> de vacancia y gestión.</p>`},
+      {q:'Sensibilidad: ni el mejor escenario lo salva', val:'esc. base', body:`<p>Incluso con arriendo +10% y tasa -1pt, <mark>el flujo sigue negativo</mark>. La brecha no es de supuestos, es estructural.</p>`},
+      {q:'Gastos comunes dentro de rango', val:'ok', body:`<p>$85 mil declarados, consistentes con edificios similares de la zona. <mark>Sin señales de alerta</mark> en este frente.</p>`},
+      {q:'Vacancia de la zona: normal', val:'ok', body:`<p>Providencia arrienda rápido para 2D2B. La vacancia esperada <mark>no es el problema de este deal</mark>.</p>`}
+    ],
+    sim:{title:'¿Y si negocias el precio?',
+      body:`Para que este depto llegue a <mark>AJUSTA SUPUESTOS</mark> necesitas comprarlo a UF 89/m² — un 17% bajo el precio publicado. A ese precio, tu aporte mensual baja a la mitad y el CAP rate entra en rango de mercado.`,
+      chips:[{k:'Precio publicado',v:'$271,2 MM'},{k:'Precio que cierra',v:'$225,0 MM'},{k:'Descuento requerido',v:'-17%'}]},
+    zona:{map:'248 comparables cerca · mapa',
+      body:`Providencia para 2D2B: arriendo mediano <mark>$620 mil para 62 m²</mark>, precio mediano UF 89,2/m². Este depto está caro para lo que la zona paga en arriendo — el problema no es la comuna, es este precio.`},
+    pBody:`La brecha es estructural: ni bajando el arriendo ni estirando el crédito este deal llega a AJUSTA SUPUESTOS. Antes de seguir evaluando este depto, <mark>revisa opciones en Ñuñoa o Macul</mark> — perfil residencial similar al de Providencia, con precio por m² históricamente 15-20% menor y mejores condiciones para que el arriendo cubra la cuota.`,
+    pCta:'Por qué no cierra',
+    modal:{dorm:'2',banos:'2',m2:'62 m²',anos:'15 años',precio:'$271,2 MM · UF 107,1/m²',fin:'20% pie · 25 años · 4%',extraK:'Arriendo estimado',extraV:'$980 mil/mes'}
+  },
+  str: {
+    street:'Av. Providencia 1500', comuna:'Providencia', mode:'Renta corta', folio:'Dictamen № 143B · 24 ago 2026',
+    cTitle:'¿Conviene operar este depto en renta corta?',
+    cBody:`<p><mark>El arriendo largo rinde más neto que el corto en este depto</mark>, y eso ya sería suficiente para descartar el STR. Con el 48% de ocupación que muestra la zona, el NOI STR queda <mark>$73.884 al mes por debajo del NOI del arriendo largo</mark>.</p>
+<div class="fnote">el problema no es tu gestión — es la zona a este precio de entrada.</div>
+<p>El problema no es el departamento ni la gestión: es que <mark>Providencia a este precio de entrada no genera suficiente renta corta</mark>. El arriendo largo es la estrategia que le corresponde a esta propiedad en esta zona.</p>`,
+    hallazgos:[
+      {q:'El arriendo largo te rendiría más', val:'-13%', body:`<p>El NOI del corto queda <mark>13% bajo el NOI del arriendo largo</mark> en el escenario base. Operar en corta acá es trabajar más para ganar menos.</p>`},
+      {q:'Pones plata de tu bolsillo todos los meses', val:'-$331.685', body:`<p>Con administrador y la ocupación típica de la zona, <mark>aportas $331.685 mensuales</mark> — ni la venta a 10 años alcanza a devolvértelo.</p>`},
+      {q:'Necesitas llenar más que la zona típica', val:'48%', body:`<p>La zona ocupa 48%. Para empatar el arriendo largo necesitas <mark>una ocupación que la zona no muestra</mark> ni en temporada alta.</p>`},
+      {q:'La tarifa por noche está en el piso del rango', val:'$42 mil', body:`<p>Los comparables cierran entre $40-58 mil la noche. <mark>Este depto compite por precio, no por atributos</mark>.</p>`},
+      {q:'Autogestión recorta pero no salva', val:'+$237.722', body:`<p>Sin administrador ahorras el 25% de comisión, <mark>la brecha se recorta pero el flujo sigue negativo</mark>.</p>`},
+      {q:'Puesta a punto STR: inversión extra', val:'$4,5 MM', body:`<p>Amoblar y equipar a estándar de plataforma suma <mark>$4,5 MM al desembolso inicial</mark> — capital que el flujo no devuelve.</p>`}
+    ],
+    sim:{title:'¿Y si lo autogestionas?',
+      body:`Autogestionar te ahorra la comisión del administrador y genera <mark>$237.722 más al mes</mark>. El veredicto sube un peldaño… pero el flujo sigue en rojo.`,
+      chips:[{k:'Con administrador',v:'-$331.685'},{k:'Autogestión',v:'-$93.963'},{k:'Para cerrar en 0',v:'ocupación 61%'}]},
+    zona:{map:'298 comparables cerca · mapa',
+      body:`Barrio con oferta STR densa y <mark>ocupación mediana de 48%</mark>. Los que ganan acá compraron barato o tienen atributos únicos. Este depto no trae ninguna de las dos ventajas.`},
+    pBody:`La única palanca que mueve el veredicto está en <mark>gestión propia en vez de administrador</mark>: autogestionar te ahorra el 25% de comisión y genera $237.722 más al mes. Aun así, el flujo sigue negativo. Antes de comprometerte, <mark>compara con otras zonas donde el corto sí cierre</mark>.`,
+    pCta:'Ver las vías',
+    modal:{dorm:'2',banos:'1',m2:'50 m²',anos:'4 años',precio:'$195,7 MM · UF 100,9/m²',fin:'20% pie · 25 años · 4,1%',extraK:'Gestión',extraV:'Con administrador'}
+  }
+};
+const VERDICT = {
+  buscar:{label:'Buscar otra', glyph:'✕', vvar:'--v-buscar', score:47,
+    headline:'Este depto no conviene: <mark>pagas caro un arriendo que no llega</mark>.',
+    fig:'-$601.588', cap:'saldría de tu bolsillo cada mes'},
+  ajusta:{label:'Ajusta supuestos', glyph:'±', vvar:'--v-ajusta', score:70,
+    headline:'Buen depto, mal negocio como está: <mark>con más pie, sí conviene</mark>.',
+    fig:'-$186.496', cap:'de tu bolsillo al mes — se corrige subiendo el pie'},
+  comprar:{label:'Comprar', glyph:'✓', vvar:'--v-comprar', score:84,
+    headline:'Conviene: compras <mark>bajo el precio de la zona</mark> y el arriendo paga el dividendo.',
+    fig:'+$84.200', cap:'te sobra cada mes después de pagar todo'}
+};
+let state = {tipo:'ltr', verdict:'buscar', color:'m2'};
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function render(){
+  const d = TIPO[state.tipo], v = VERDICT[state.verdict], doc = document.getElementById('doc');
+  /* ---- modos de color ---- */
+  const vcol = css(v.vvar), signal = css('--signal'), ink = css('--ink-solid');
+  let mkc, mktx = '#fff', outline = false, acc, topbar;
+  if (state.color === 'm1'){ mkc = vcol; acc = vcol; topbar = vcol; }
+  else if (state.color === 'm2'){ mkc = vcol; acc = signal; topbar = signal; }
+  else { /* m3 monocromo: buscar=rojo sólido, ajusta=rojo contorno, comprar=tinta sólida */
+    acc = signal; topbar = signal;
+    if (state.verdict==='buscar'){ mkc = signal; }
+    else if (state.verdict==='ajusta'){ mkc = signal; outline = true; }
+    else { mkc = ink; mktx = css('--paper'); }
+  }
+  doc.style.setProperty('--mkc', mkc);
+  doc.style.setProperty('--mktx', mktx);
+  doc.style.setProperty('--acc', acc);
+  doc.style.setProperty('--topbar-c', topbar);
+  doc.style.setProperty('--mk-hl', state.color==='m1' ? vcol+'55' : 'var(--hl)');
+  ['mk-c','mk-e'].forEach(id=>document.getElementById(id).classList.toggle('outline', outline));
+  document.getElementById('mk-d').classList.toggle('outline', outline);
+  /* ---- textos ---- */
+  const label = state.color==='m3' && state.verdict==='comprar' ? '✓ ' + v.label : v.label;
+  ['mk-a','mk-b','mk-c','mk-e','mk-f'].forEach(id=>document.getElementById(id).textContent = id==='mk-a'||id==='mk-b'||id==='mk-c'||id==='mk-e' ? v.label : v.label);
+  document.getElementById('mk-c').textContent = label;
+  document.getElementById('mk-d-g').textContent = v.glyph;
+  document.getElementById('mk-d-t').textContent = v.label;
+  document.getElementById('cv-headline').innerHTML = v.headline;
+  document.getElementById('cv-fig').textContent = v.fig;
+  document.getElementById('cv-cap').textContent = v.cap;
+  ['sn1','sn2','sn3','sn4'].forEach(id=>document.getElementById(id).textContent = v.score);
+  document.getElementById('sn3-fill').style.width = v.score + '%';
+  document.getElementById('folio').textContent = d.folio;
+  document.getElementById('cv-street').textContent = d.street;
+  document.getElementById('cv-comuna').textContent = d.comuna;
+  document.getElementById('cv-mode').textContent = d.mode;
+  document.getElementById('c-title').textContent = d.cTitle;
+  document.getElementById('c-body').innerHTML = d.cBody;
+  document.getElementById('p-body').innerHTML = d.pBody;
+  document.getElementById('p-cta-txt').textContent = d.pCta;
+  document.getElementById('hall-list').innerHTML = d.hallazgos.map((h,i)=>{
+    const n = String(i+1).padStart(2,'0');
+    return `<div class="hall"><div class="hall-head"><span class="num">${n}</span><span class="q">${h.q}</span><span class="val">${h.val}</span><span class="chev">↓</span></div><div class="hall-body">${h.body}</div></div>`;
+  }).join('');
+  document.querySelectorAll('.hall-head').forEach(hd=>hd.addEventListener('click',()=>hd.parentElement.classList.toggle('open')));
+  document.getElementById('sim-title').textContent = d.sim.title;
+  document.getElementById('sim-body').innerHTML = d.sim.body;
+  document.getElementById('sim-chips').innerHTML = d.sim.chips.map(c=>`<div class="sim-chip"><div class="k">${c.k}</div><div class="v">${c.v}</div></div>`).join('');
+  document.getElementById('zona-map').textContent = d.zona.map;
+  document.getElementById('zona-body').innerHTML = d.zona.body;
+  const m = d.modal;
+  document.getElementById('s-sub').textContent = d.street + ' · ' + d.comuna;
+  ['dorm','banos','m2','anos','precio','fin'].forEach(k=>document.getElementById('s-'+k).textContent=m[k]);
+  document.getElementById('s-extra-k').textContent = m.extraK;
+  document.getElementById('s-extra-v').textContent = m.extraV;
+}
+function wireSeg(id, fn){
+  document.querySelectorAll('#'+id+' button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); fn(b.dataset.v);
+    });
+  });
+}
+wireSeg('seg-tipo', v=>{state.tipo=v; render();});
+wireSeg('seg-verdict', v=>{state.verdict=v; render();});
+wireSeg('seg-stamp', v=>document.documentElement.dataset.stamp=v);
+wireSeg('seg-score', v=>document.documentElement.dataset.score=v);
+wireSeg('seg-color', v=>{state.color=v; render();});
+wireSeg('seg-theme', v=>{document.documentElement.dataset.theme=v; render();});
+wireSeg('seg-view', v=>document.documentElement.dataset.view=v);
+const ov = document.getElementById('overlay');
+document.getElementById('open-props').addEventListener('click',()=>ov.classList.add('open'));
+document.getElementById('close-props').addEventListener('click',()=>ov.classList.remove('open'));
+ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open')});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')ov.classList.remove('open')});
+render();
+</script>
+</body>
+</html>

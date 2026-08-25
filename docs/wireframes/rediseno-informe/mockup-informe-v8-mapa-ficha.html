@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light" data-view="desktop">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup v8 · Mapa + Ficha final — refranco.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;0,8..60,900;1,8..60,400;1,8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --serif:'Source Serif 4', Georgia, serif;
+    --sans:'IBM Plex Sans', system-ui, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+    --signal:#C8323C;
+  }
+  [data-theme="light"]{
+    --bg:#E9E6DF; --paper:#FAF8F3; --paper2:#F1EEE7;
+    --line:#DAD6CC; --line2:#C4BFB2;
+    --tx:#141311; --tx2:#3B3A36; --tx3:#75726A; --tx4:#A39F94;
+    --hl:rgba(224,67,80,.26); --hl-tx:#141311;
+    --shadow:0 24px 60px rgba(20,19,17,.14);
+    --v-buscar:#C8323C; --v-ajusta:#A96F1B; --v-comprar:#2F7D55;
+    --map-bg:#EFEDE6; --map-line:#DDD9CE;
+  }
+  [data-theme="dark"]{
+    --bg:#0A0A0A; --paper:#141414; --paper2:#1B1B1B;
+    --line:#282828; --line2:#3A3A3A;
+    --tx:#EDEBE6; --tx2:#C4C2BC; --tx3:#8C8A84; --tx4:#5C5A55;
+    --hl:rgba(216,67,77,.38); --hl-tx:#FFFFFF;
+    --shadow:0 24px 60px rgba(0,0,0,.6);
+    --v-buscar:#D8434D; --v-ajusta:#DFA34F; --v-comprar:#57B98A;
+    --map-bg:#1A1A1A; --map-line:#2A2A2A;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);min-height:100vh;padding:28px 16px 90px;transition:background .2s}
+
+  .lab{max-width:1040px;margin:0 auto}
+  .lab-head h1{font-family:var(--serif);font-size:21px;font-weight:600;margin-bottom:4px}
+  .lab-head h1 em{font-style:italic;font-weight:400;color:var(--tx3)}
+  .lab-head .ai{color:var(--signal)}
+  .lab-sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:20px}
+  .controls{display:flex;flex-wrap:wrap;gap:12px 20px;margin-bottom:26px}
+  .ctrl{display:flex;align-items:center;gap:8px}
+  .ctrl .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;flex-wrap:wrap}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;padding:8px 11px;
+    background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button + button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+
+  .stage{display:flex;justify-content:center}
+  .doc{width:100%;max-width:820px;background:var(--paper);border:1px solid var(--line);
+    box-shadow:var(--shadow);transition:max-width .25s;position:relative}
+  [data-view="mobile"] .doc{max-width:400px}
+  .doc::before{content:'';display:block;height:5px;background:var(--signal)}
+  .doc-head{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--line)}
+  [data-view="mobile"] .doc-head{padding:14px 20px}
+  .wordmark{font-family:var(--serif);font-size:16px;font-weight:700}
+  .wordmark em{font-style:italic;font-weight:400;color:var(--tx3)}
+  .wordmark .ai{color:var(--signal);font-weight:700}
+  .folio{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx4)}
+  .page{padding:36px 64px 44px}
+  [data-view="mobile"] .page{padding:24px 22px 32px}
+
+  /* ============ PORTADA con mapa (PC) ============ */
+  .cover{padding-bottom:26px;border-bottom:1px solid var(--line);margin-bottom:26px}
+  .cover-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tx3);margin-bottom:18px}
+  .cover-eyebrow b{color:var(--tx2);font-weight:500}
+  .cover-eyebrow .sep{margin:0 8px;color:var(--tx4)}
+
+  .banda{position:relative;left:-65px;width:calc(100% + 130px);margin-bottom:18px}
+  [data-view="mobile"] .banda{left:-23px;width:calc(100% + 46px)}
+  .banda .band{display:block;background:var(--mkc);color:#fff;
+    font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+    padding:10px 20px 10px 65px}
+  [data-view="mobile"] .banda .band{padding-left:23px;font-size:11.5px;letter-spacing:.16em}
+
+  /* score bajo cinta (congelado) */
+  .sbar{display:flex;align-items:center;gap:12px;max-width:420px;margin:0 0 20px}
+  .sbar .bar{flex:1;position:relative;height:3px;background:var(--line2);border-radius:2px}
+  .sbar .fill{position:absolute;left:0;top:0;bottom:0;background:var(--tx);border-radius:2px}
+  .sbar .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--tx3);text-transform:uppercase;white-space:nowrap}
+  .sbar .lbl b{color:var(--tx)}
+
+  /* grid portada: contenido + mapa (mapa solo PC) */
+  .cover-grid{display:grid;grid-template-columns:1fr 236px;gap:30px;align-items:start}
+  [data-view="mobile"] .cover-grid{grid-template-columns:1fr}
+  .headline{font-family:var(--serif);font-size:36px;line-height:1.15;font-weight:700;
+    letter-spacing:-.01em;margin-bottom:16px}
+  [data-view="mobile"] .headline{font-size:27px;margin-bottom:12px}
+  .headline mark, .prose mark{
+    background:linear-gradient(transparent 42%, var(--hl) 42%, var(--hl) 94%, transparent 94%);
+    color:var(--hl-tx);padding:0 2px;font-weight:500}
+  .keyfig{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .keyfig .fig{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--signal)}
+  .keyfig .cap{font-size:13.5px;color:var(--tx3)}
+  [data-view="mobile"] .keyfig .fig{font-size:19px}
+  .props-link{display:inline-flex;align-items:center;gap:9px;background:none;border:none;cursor:pointer;
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);
+    border-bottom:1px dashed var(--line2);padding-bottom:3px;transition:color .15s,border-color .15s}
+  .props-link:hover{color:var(--signal);border-color:var(--signal)}
+
+  /* mapa comparables — solo PC */
+  .mapbox{position:relative;height:210px;border:1px solid var(--line);background:var(--map-bg);overflow:hidden}
+  [data-view="mobile"] .mapbox{display:none}
+  .mapbox .streets{position:absolute;inset:0;
+    background:
+      linear-gradient(0deg, transparent 48%, var(--map-line) 48%, var(--map-line) 50%, transparent 50%),
+      linear-gradient(90deg, transparent 30%, var(--map-line) 30%, var(--map-line) 31.5%, transparent 31.5%),
+      linear-gradient(90deg, transparent 68%, var(--map-line) 68%, var(--map-line) 69.5%, transparent 69.5%),
+      linear-gradient(28deg, transparent 63%, var(--map-line) 63%, var(--map-line) 64.5%, transparent 64.5%)}
+  .mapbox .dot{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--tx4);opacity:.55}
+  .mapbox .pin{position:absolute;left:50%;top:44%;transform:translate(-50%,-100%);width:16px;height:16px;
+    background:var(--signal);border-radius:50% 50% 50% 0;rotate:-45deg}
+  .mapbox .pin::after{content:'';position:absolute;inset:4px;background:#fff;border-radius:50%}
+  .mapbox .tag{position:absolute;right:8px;bottom:8px;background:var(--tx);color:var(--paper);
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;padding:5px 9px;border-radius:2px}
+
+  .grid{display:grid;grid-template-columns:56px 1fr;gap:0 22px}
+  [data-view="mobile"] .grid{grid-template-columns:1fr}
+  .margin-col{position:relative}
+  [data-view="mobile"] .margin-col{display:none}
+  .fmark{position:sticky;top:20px;width:34px;height:34px;border-radius:50%;background:var(--signal);
+    color:#fff;font-family:var(--serif);font-weight:700;font-size:15px;
+    display:flex;align-items:center;justify-content:center}
+  .fmark::after{content:'f.'}
+  .prose h2{font-family:var(--serif);font-size:23px;font-weight:700;margin-bottom:14px;line-height:1.2}
+  .prose p{font-size:14.5px;line-height:1.78;color:var(--tx2);margin-bottom:14px;max-width:62ch}
+  .trunc{padding:20px 0 4px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx4);text-align:center}
+
+  .doc-foot{display:flex;justify-content:space-between;padding:14px 64px 20px;font-family:var(--mono);
+    font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4)}
+  [data-view="mobile"] .doc-foot{padding:12px 22px 18px}
+  .doc-foot .wm{font-family:var(--serif);font-size:11px;text-transform:none;letter-spacing:0;color:var(--tx3);font-weight:700}
+  .doc-foot .wm em{font-style:italic;font-weight:400}
+  .doc-foot .wm .ai{color:var(--signal)}
+
+  /* ============ FICHA v3: specs base + grilla flex sin huecos ============ */
+  .overlay{position:fixed;inset:0;background:rgba(10,10,10,.6);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;z-index:60;padding:16px}
+  .overlay.open{display:flex}
+  .sheet{width:100%;max-width:480px;max-height:86vh;overflow-y:auto;background:var(--paper);border:1px solid var(--line2)}
+  .sheet-inner{padding:24px 28px 22px}
+  [data-view="mobile"] .sheet-inner{padding:20px 20px 18px}
+  .sheet-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+  .sheet h2{font-family:var(--serif);font-size:18px;font-weight:700}
+  .sheet-close{background:none;border:none;color:var(--tx3);font-family:var(--mono);font-size:12px;cursor:pointer;padding:4px}
+  .sheet-close:hover{color:var(--tx)}
+  .sheet-sub{font-size:12.5px;color:var(--tx3)}
+
+  /* línea de specs base: lo que define al depto, fuera de la grilla */
+  .specline{font-family:var(--mono);font-size:12px;color:var(--tx);letter-spacing:.02em;
+    padding:12px 0 14px;margin-bottom:16px;border-bottom:1px solid var(--line);line-height:1.9}
+  .specline span{white-space:nowrap}
+  .specline .dot{color:var(--tx4);margin:0 7px}
+
+  .f-grp{margin-bottom:18px}
+  .f-grp:last-child{margin-bottom:0}
+  .f-grp-t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--tx4);margin-bottom:8px}
+  /* flex-grilla: las celdas crecen y la última fila SIEMPRE llena el ancho */
+  .f-cells{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border:1px solid var(--line)}
+  .f-cell{flex:1 1 30%;min-width:31%;background:var(--paper);padding:10px 12px}
+  [data-view="mobile"] .f-cell{min-width:46%}
+  .f-cell .f-k{font-family:var(--sans);font-size:11px;color:var(--tx3);margin-bottom:3px}
+  .f-cell .f-v{font-family:var(--mono);font-size:13px;color:var(--tx)}
+  .sheet-note{font-size:12px;color:var(--tx3);line-height:1.55;padding:14px 28px 20px;border-top:1px solid var(--line)}
+  [data-view="mobile"] .sheet-note{padding:12px 20px 16px}
+  .sheet-note a{color:var(--signal);cursor:pointer}
+</style>
+</head>
+<body>
+<div class="lab">
+  <div class="lab-head"><h1><em>re</em>franco<span class="ai">.ai</span> — <em>mockup v8 · mapa + ficha final</em></h1></div>
+  <div class="lab-sub">Score bajo cinta congelado · mapa solo en PC · ficha: specs base + grilla sin huecos</div>
+
+  <div class="controls">
+    <div class="ctrl"><span class="lbl">Veredicto</span>
+      <div class="seg" id="seg-verdict"><button class="on" data-v="buscar">Buscar otra</button><button data-v="ajusta">Ajusta</button><button data-v="comprar">Comprar</button></div>
+    </div>
+    <div class="ctrl"><span class="lbl">Ficha demo</span>
+      <div class="seg" id="seg-ficha">
+        <button class="on" data-v="usado">Usado · LTR</button>
+        <button data-v="nuevo">Nuevo · futura</button>
+        <button data-v="str">STR</button>
+      </div>
+    </div>
+    <div class="ctrl"><span class="lbl">Tema</span>
+      <div class="seg" id="seg-theme"><button class="on" data-v="light">Light</button><button data-v="dark">Dark</button></div>
+    </div>
+    <div class="ctrl"><span class="lbl">Vista</span>
+      <div class="seg" id="seg-view"><button class="on" data-v="desktop">PC</button><button data-v="mobile">Mobile</button></div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="doc" id="doc">
+      <div class="doc-head">
+        <div class="wordmark"><em>re</em>franco<span class="ai">.ai</span></div>
+        <div class="folio">Dictamen № 2E05 · 24 ago 2026</div>
+      </div>
+      <div class="page">
+        <section class="cover">
+          <div class="cover-eyebrow"><b>El Vergel 2200</b><span class="sep">·</span>Providencia<span class="sep">·</span>Renta larga</div>
+          <div class="banda"><span class="band mkt"></span></div>
+          <div class="sbar"><span class="lbl">Franco Score</span><div class="bar"><div class="fill f"></div></div><span class="lbl"><b class="sn"></b>/100</span></div>
+
+          <div class="cover-grid">
+            <div>
+              <h1 class="headline" id="cv-headline"></h1>
+              <div class="keyfig"><span class="fig" id="cv-fig"></span><span class="cap" id="cv-cap"></span></div>
+              <button class="props-link" id="open-props">🏢 Ficha del depto evaluado →</button>
+            </div>
+            <div class="mapbox" title="Mapa de comparables — solo PC">
+              <div class="streets"></div>
+              <div class="dot" style="left:22%;top:30%"></div><div class="dot" style="left:34%;top:55%"></div>
+              <div class="dot" style="left:41%;top:24%"></div><div class="dot" style="left:58%;top:62%"></div>
+              <div class="dot" style="left:63%;top:35%"></div><div class="dot" style="left:71%;top:52%"></div>
+              <div class="dot" style="left:47%;top:70%"></div><div class="dot" style="left:78%;top:26%"></div>
+              <div class="dot" style="left:27%;top:74%"></div><div class="dot" style="left:55%;top:18%"></div>
+              <div class="pin"></div>
+              <div class="tag">248 comparables cerca</div>
+            </div>
+          </div>
+        </section>
+
+        <div class="grid">
+          <div class="margin-col"><div class="fmark"></div></div>
+          <div class="prose">
+            <h2>¿Conviene o no conviene?</h2>
+            <p>No conviene. Tu CAP rate —lo que el arriendo te deja al año sobre el precio— es <mark>2,8%, 1,2 puntos bajo la referencia de mercado</mark> (4,0%). Rinde bajo el promedio; el precio pide ajuste o conviene comparar con opciones más rentables en la zona.</p>
+          </div>
+        </div>
+        <div class="trunc">[ …resto del documento igual a v5 — esta v8 se enfoca en mapa y ficha ]</div>
+      </div>
+      <div class="doc-foot">
+        <span>Real estate en su estado más franco</span>
+        <span class="wm"><em>re</em>franco<span class="ai">.ai</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FICHA v3 ============ -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-inner">
+      <div class="sheet-head"><h2>Ficha del depto evaluado</h2><button class="sheet-close" id="close-props">✕</button></div>
+      <p class="sheet-sub" id="s-sub"></p>
+      <div class="specline" id="s-spec"></div>
+      <div id="s-groups"></div>
+    </div>
+    <p class="sheet-note">Supuestos con los que Franco corrió el análisis. Si alguno no calza con tu realidad, <a>ajústalos</a> y el dictamen se recalcula.</p>
+  </div>
+</div>
+
+<script>
+const VERDICT = {
+  buscar:{label:'Buscar otra', vvar:'--v-buscar', score:47,
+    headline:'Este depto no conviene: <mark>pagas caro un arriendo que no llega</mark>.',
+    fig:'-$601.588', cap:'saldría de tu bolsillo cada mes'},
+  ajusta:{label:'Ajusta supuestos', vvar:'--v-ajusta', score:70,
+    headline:'Buen depto, mal negocio como está: <mark>con más pie, sí conviene</mark>.',
+    fig:'-$186.496', cap:'de tu bolsillo al mes — se corrige subiendo el pie'},
+  comprar:{label:'Comprar', vvar:'--v-comprar', score:84,
+    headline:'Conviene: compras <mark>bajo el precio de la zona</mark> y el arriendo paga el dividendo.',
+    fig:'+$84.200', cap:'te sobra cada mes después de pagar todo'}
+};
+/* Ficha v3: specline = identidad del depto (base). Grilla = solo números del análisis. */
+const FICHA = {
+  usado: {
+    sub:'El Vergel 2200 · Providencia',
+    spec:['Renta larga','2D · 2B','62 m²','Usado · 15 años','Entrega inmediata'],
+    groups:[
+      {t:'Precio & renta', cells:[
+        ['Precio de venta','$271,2 MM'],['Precio unitario','UF 107,1/m²'],['Mediana de la zona','UF 89,2/m²'],
+        ['Arriendo estimado','$980 mil/mes'],['Gastos comunes','$85 mil/mes'],['Vacancia de la zona','2,1%']
+      ]},
+      {t:'Financiamiento', cells:[
+        ['Pie','20% · $54,2 MM'],['Tasa','4,0%'],['Plazo','25 años']
+      ]}
+    ]
+  },
+  nuevo: {
+    sub:'Ejemplo 1234 · Ñuñoa',
+    spec:['Renta larga','1D · 1B','38 m²','Nuevo · en verde','Entrega jun 2027'],
+    groups:[
+      {t:'Precio & renta', cells:[
+        ['Precio de venta','$128,5 MM'],['Precio unitario','UF 84,0/m²'],['Mediana de la zona','UF 79,5/m²'],
+        ['Arriendo estimado','$430 mil/mes'],['Gastos comunes est.','$62 mil/mes'],['Vacancia de la zona','3,0%']
+      ]},
+      {t:'Financiamiento', cells:[
+        ['Pie','15% · $19,3 MM'],['Cuotas del pie','22 × $876 mil'],['Tasa','4,3%'],
+        ['Plazo','30 años'],['Beneficio','DFL-2']
+      ]}
+    ]
+  },
+  str: {
+    sub:'Av. Providencia 1500 · Providencia',
+    spec:['Renta corta','2D · 1B','50 m²','Usado · 4 años','4 huéspedes','Entrega inmediata'],
+    groups:[
+      {t:'Precio & tarifa', cells:[
+        ['Precio de venta','$195,7 MM'],['Precio unitario','UF 100,9/m²'],['Puesta a punto','$4,5 MM'],
+        ['Tarifa por noche','$42 mil'],['Ocupación de la zona','48%'],['Operación','Admin · 25%']
+      ]},
+      {t:'Financiamiento', cells:[
+        ['Pie','20% · $39,1 MM'],['Tasa','4,1%'],['Plazo','25 años']
+      ]}
+    ]
+  }
+};
+let state = {verdict:'buscar', ficha:'usado'};
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function render(){
+  const v = VERDICT[state.verdict];
+  document.getElementById('doc').style.setProperty('--mkc', css(v.vvar));
+  document.querySelectorAll('.mkt').forEach(el=>el.textContent=v.label);
+  document.getElementById('cv-headline').innerHTML = v.headline;
+  document.getElementById('cv-fig').textContent = v.fig;
+  document.getElementById('cv-cap').textContent = v.cap;
+  document.querySelectorAll('.sn').forEach(el=>el.textContent=v.score);
+  document.querySelectorAll('.sbar .f').forEach(el=>el.style.width=v.score+'%');
+  renderFicha();
+}
+function renderFicha(){
+  const f = FICHA[state.ficha];
+  document.getElementById('s-sub').textContent = f.sub;
+  document.getElementById('s-spec').innerHTML = f.spec.map(s=>`<span>${s}</span>`).join('<span class="dot">·</span>');
+  document.getElementById('s-groups').innerHTML = f.groups.map(g=>
+    `<div class="f-grp"><div class="f-grp-t">${g.t}</div><div class="f-cells">` +
+    g.cells.map(c=>`<div class="f-cell"><div class="f-k">${c[0]}</div><div class="f-v">${c[1]}</div></div>`).join('') +
+    `</div></div>`).join('');
+}
+function wireSeg(id, fn){
+  document.querySelectorAll('#'+id+' button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); fn(b.dataset.v);
+    });
+  });
+}
+wireSeg('seg-verdict', v=>{state.verdict=v; render();});
+wireSeg('seg-ficha', v=>{state.ficha=v; renderFicha();});
+wireSeg('seg-theme', v=>{document.documentElement.dataset.theme=v; render();});
+wireSeg('seg-view', v=>document.documentElement.dataset.view=v);
+const ov = document.getElementById('overlay');
+document.getElementById('open-props').addEventListener('click',()=>{renderFicha();ov.classList.add('open');});
+document.getElementById('close-props').addEventListener('click',()=>ov.classList.remove('open'));
+ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open')});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')ov.classList.remove('open')});
+render();
+</script>
+</body>
+</html>
