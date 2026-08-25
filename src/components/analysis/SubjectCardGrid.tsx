@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/types";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { useDrawerAbierto } from "./informeTelemetry";
+import { MarcaSeccion, useDrawerAbierto } from "./informeTelemetry";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { HeroLTR } from "./HeroLTR";
@@ -43,6 +43,7 @@ export function SubjectCardGrid({
   fechaProsa,
   simulationSlot,
   onInformeVisible,
+  accessLevel = "free",
 }: {
   aiAnalysis: AIAnalysisV2 | null;
   loading: boolean;
@@ -73,11 +74,23 @@ export function SubjectCardGrid({
    *  es visible desde el primer render. El caller captura `informe_visto` y
    *  persiste `informe_visible_at`. */
   onInformeVisible?: () => void;
+  /** I-3 (fix FASE 1 rediseño-dictamen): viaja en `informe_seccion_vista` de las
+   *  marcas `piramide`/`zona`, que hasta ahora no existían en LTR. */
+  accessLevel?: string;
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
-  // I-3: apertura de drawer (todas las cards entran por acá).
-  useDrawerAbierto(activeDrawer, "ltr");
 
+  // Orden único de la pirámide — se calcula UNA vez acá y alimenta la secuencia
+  // de drawers y el resolver de telemetría (mismo array que renderiza).
+  const hallazgosOrdenados = ordenarHallazgosPiramide(results, aiAnalysis);
+
+  // I-3: apertura de drawer (todas las cards entran por acá). El resolver emite
+  // en paralelo `informe_hallazgo_abierto {n, id_hallazgo}` cuando el drawer
+  // corresponde a un hallazgo de la pirámide (línea base pre-rediseño).
+  useDrawerAbierto(activeDrawer, "ltr", (key) => {
+    const idx = hallazgosOrdenados.findIndex((h) => HALLAZGO_DRAWER[h.id] === key);
+    return idx >= 0 ? { n: idx + 1, id: hallazgosOrdenados[idx].id } : null;
+  });
 
   // Secuencia de drawers = orden VISUAL de la pirámide (mismo array que renderiza),
   // filtrando las cards que tienen drawer y dedup por si dos cayeran al mismo. La
@@ -85,7 +98,7 @@ export function SubjectCardGrid({
   // de la pirámide. Un solo orden de verdad. `zona` NO entra (se abre solo desde su
   // MiniCard) → queda fuera de las flechas.
   const drawerSequence: DrawerKey[] = [];
-  for (const h of ordenarHallazgosPiramide(results, aiAnalysis)) {
+  for (const h of hallazgosOrdenados) {
     const key = HALLAZGO_DRAWER[h.id];
     if (key && !drawerSequence.includes(key)) drawerSequence.push(key);
   }
@@ -168,6 +181,10 @@ export function SubjectCardGrid({
           {/* Fase 2 — La pirámide de hallazgos reemplaza el grid 2×2 de dimensiones IA.
               Cada card abre su drawer vía onOpenDrawer (setActiveDrawer, dueño del
               estado acá). cap_rate no mapea a drawer todavía (llega en Fase 3). */}
+          {/* I-3 fix FASE 1: LTR nunca emitió `piramide` (solo STR/comparativa) y el
+              agregado global daba alcance imposible. La marca vive en la rama con
+              prosa porque la pirámide solo se renderiza con prosa. */}
+          <MarcaSeccion seccion="piramide" tipo="ltr" accessLevel={accessLevel} />
           <PiramideHallazgos
             results={results}
             aiAnalysis={aiAnalysis}
@@ -198,6 +215,9 @@ export function SubjectCardGrid({
           {/* 5ª tarjeta ancha: Zona / POIs */}
           {analysisId && (
             <div className="mt-3">
+              {/* I-3 fix FASE 1: `zona` tampoco existía en LTR. Dentro del guard
+                  analysisId — sin card de zona (demo) no hay nada que medir. */}
+              <MarcaSeccion seccion="zona" tipo="ltr" accessLevel={accessLevel} />
               <ZoneInsightMiniCard
                 data={zoneInsight}
                 loading={zoneLoading}

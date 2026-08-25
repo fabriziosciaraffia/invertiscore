@@ -110,14 +110,24 @@ export function STRResultsClient({
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
   // SubjectCardGrid): lo abre la pirámide (hallazgos) y la card zona (tipoHuesped).
   const [activeDrawer, setActiveDrawer] = useState<DrawerKeySTR | null>(null);
-  // I-3: apertura de drawer (pirámide + zona entran por acá).
-  useDrawerAbierto(activeDrawer, "str");
+
+  // Orden único de la pirámide STR — una sola pasada para la secuencia de drawers
+  // y el resolver de telemetría (mismo array que renderiza).
+  const hallazgosOrdenadosSTR = ordenarHallazgosPiramideSTR(results?.hallazgos);
+
+  // I-3: apertura de drawer (pirámide + zona entran por acá). El resolver emite
+  // en paralelo `informe_hallazgo_abierto {n, id_hallazgo}` cuando el drawer
+  // corresponde a un hallazgo (línea base pre-rediseño, fix FASE 1).
+  useDrawerAbierto(activeDrawer, "str", (key) => {
+    const idx = hallazgosOrdenadosSTR.findIndex((h) => HALLAZGO_DRAWER_STR[h.id] === key);
+    return idx >= 0 ? { n: idx + 1, id: hallazgosOrdenadosSTR[idx].id } : null;
+  });
 
   // Secuencia de drawers = orden VISUAL de la pirámide STR (mismo array que renderiza),
   // filtrando las cards con drawer y dedup. La navegación prev/next se deriva de acá.
   // `tipoHuesped` NO entra (se abre solo desde ZonaCardSTR) → queda fuera de las flechas.
   const drawerSequenceSTR: DrawerKeySTR[] = [];
-  for (const h of ordenarHallazgosPiramideSTR(results?.hallazgos)) {
+  for (const h of hallazgosOrdenadosSTR) {
     const key = HALLAZGO_DRAWER_STR[h.id];
     if (key && !drawerSequenceSTR.includes(key)) drawerSequenceSTR.push(key);
   }
@@ -350,6 +360,9 @@ export function STRResultsClient({
             conviene.{respuestaDirecta, reencuadre, cajaAccionable}) · TOP-3 hallazgos
             con puente a la pirámide. veredictoFrase ya no se renderiza; título por
             conviene.pregunta ?? hardcode (v3 podó el campo). */}
+        {/* I-3 fix FASE 1: STR nunca emitió `hero` (solo LTR/comparativa) — el
+            embudo por modalidad quedaba cojo al revés que piramide/zona. */}
+        <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
         <HeroSTR
           ai={aiAnalysis as unknown as AIAnalysisSTRv2 | null}
           results={results}
