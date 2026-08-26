@@ -93,6 +93,10 @@ export async function runStrGenerateTier(K: number): Promise<SeedReport[]> {
         if (desbalance) bump("AS3.marcas-balanceadas");
         // AS4 — titular §7.ter presente y bien formado (espejo A9 LTR).
         if (!validarTitular(ai.titular).ok) bump("AS4.titular");
+        // Métricas BLANDAS del titular (decisión PARÁ 2) — espejo LTR.
+        if (ai.titular === null) bump("~titular-null");
+        const nucleoTit = typeof ai.titular === "string" ? (ai.titular.match(/\*\*([\s\S]+?)\*\*/)?.[1] ?? "") : "";
+        if ((nucleoTit.trim().match(/\S+/g) || []).length > 7) bump("~titular-nucleo-largo");
       } catch {
         process.stderr.write(` ERROR\n`);
         bump("gen.null");
@@ -101,6 +105,7 @@ export async function runStrGenerateTier(K: number): Promise<SeedReport[]> {
 
     checks.push({ rule: `gen.runs(K=${K})`, pass: genOk === K, detail: `${genOk}/${K} generaciones OK` });
     const HARD = ["AS1.respuestaDirecta", "AS2.§9-cajaAccionable", "AS3.marcas-balanceadas", "AS4.titular", "gen.null"];
+    const SOFT = ["~titular-null", "~titular-nucleo-largo"];
     const esReglaDeProsa = (r: string) => r.startsWith("AS");
     const umbralMayoria = Math.floor(K / 2);
     for (const r of HARD) {
@@ -109,10 +114,15 @@ export async function runStrGenerateTier(K: number): Promise<SeedReport[]> {
       if (c > limite) checks.push({ rule: r, pass: false, detail: `falló ${c}/${K} runs` });
       else if (c > 0) console.log(`      · ${key}-gen ${r}: falló ${c}/${K} runs — bajo el umbral de mayoría, no bloquea`);
     }
+    for (const r of SOFT) {
+      const c = failCounts[r] ?? 0;
+      if (c > 0) checks.push({ rule: r, pass: false, rebaseline: true, detail: `${c}/${K} runs (soft — métrica blanda, no bloquea)` });
+    }
     if (checks.filter((c) => !c.pass).length === 0) checks.push({ rule: "AUTO-STR", pass: true, detail: `checks AUTO STR verdes (K=${K})` });
 
     const hardFail = checks.filter((c) => !c.pass && !c.rebaseline).length;
-    reports.push({ key: `${key}-gen`, checks, hardFail, rebaseline: 0 });
+    const soft = checks.filter((c) => !c.pass && c.rebaseline).length;
+    reports.push({ key: `${key}-gen`, checks, hardFail, rebaseline: soft });
   }
   return reports;
 }

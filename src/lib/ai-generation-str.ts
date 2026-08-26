@@ -246,17 +246,20 @@ FÓRMULA DURA: [el veredicto en palabras del usuario] + [LA razón más fuerte d
 - Si el titular cita una referencia de precio, DECLARA su ámbito: "la mediana de la comuna" o el benchmark de la zona STR — nunca "la zona" a secas como referencia de precio.
 - SIN jerga: prohibidos CAP rate, NOI, TIR, ADR, percentil, spread, yield, "ocupación" como término técnico pelado. Todo en términos de bolsillo, tarifa, noches, cuota, precio, zona.
 - REGLA STR PROPIA (§1.ter del contrato, decisión 25-ago): el titular responde la pregunta STR en TÉRMINOS ABSOLUTOS — el bolsillo del usuario operando por día — y NUNCA lidera con la comparación contra el arriendo largo. La comparación vive en su hallazgo, su drawer y la glosa del gate; convertirla en titular volvería el informe una mini-comparativa.
-- CONSISTENCIA TERNARIA con el veredicto dado: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS nombra la palanca REAL del caso; COMPRAR afirma sin triunfalismo.
+- CONSISTENCIA TERNARIA con el veredicto dado — REGLA DURA: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS SIEMPRE contiene la palanca o condición que movería el veredicto (la del bloque de distancia) y, cuando el bloque provee su magnitud (la tarifa objetivo, las noches, el modo de gestión), la INCLUYE — un titular AJUSTA que solo describe por qué no funciona SIN nombrar qué lo arregla suena a BUSCAR OTRA y contradice el veredicto que el usuario ve al lado. Si el caso no trae palanca discreta, el titular nombra el SUPUESTO que decide (las noches/ocupación asumidas, la tarifa): "Funciona solo si sostienes X" es AJUSTA; "los números no cierran" a secas es BUSCAR y está PROHIBIDO con veredicto AJUSTA. EXCEPCIÓN (AJUSTA estructural): si el bloque de distancia declara que NINGUNA palanca cruza dentro de los topes, el titular describe el techo del caso sin prometer vía — NUNCA inventes una palanca que el análisis no dio. COMPRAR afirma sin triunfalismo.
 - Toda afirmación se completa sola: nada de elipsis ambiguas ni jerga interna disfrazada de coloquialismo ("la zona llena" no significa nada para un neófito).
 
 ANTI-OLOR-IA (además de §10): prohibidos en el titular "oportunidad", "potencial", "optimizar", "interesante", "atractivo", "sólido" como adjetivo pelado, "clave", "estratégico"; aperturas con gerundio; "no solo… sino también"; exclamaciones. TEST DE LA CONVERSACIÓN: debe poder decirse en voz alta a un amigo sin sonar a informe.
 
-EJEMPLOS CALIBRADOS (genera uno NUEVO para el caso siguiendo el patrón — no los copies):
+EJEMPLOS CALIBRADOS (genera uno NUEVO para el caso siguiendo el patrón — no los copies; los dos ✅ por veredicto muestran que hay MÁS de una estructura válida, no calques ninguna):
 - BUSCAR OTRA ✅ "No conviene operarlo por día: **pones plata todos los meses**."
 - BUSCAR OTRA ❌ "No cierra: el CAP rate queda 1,2 pts bajo la referencia." (jerga)
 - AJUSTA ✅ "En renta corta funciona solo si **lo administras tú**: con administrador, pierdes plata." (la palanca del ejemplo es la gestión; usa LA TUYA)
+- AJUSTA ✅ "Con administrador no cierra: **autogestiónalo y los números cambian**."
 - AJUSTA ❌ "El deal presenta oportunidades de optimización en la estructura de financiamiento." (no nombra palanca, voz consultor)
+- AJUSTA ❌ "Funciona solo en el papel: la zona no da las noches para cubrir la cuota." (describe el problema sin la palanca — suena a BUSCAR OTRA)
 - COMPRAR ✅ "Este depto **sí gana arrendándose por día**: hay demanda y la tarifa acompaña."
+- COMPRAR ✅ "Conviene arrendarlo por día: **te deja plata todos los meses**, pagado todo."
 - COMPRAR ❌ "…la zona llena y la tarifa acompaña." (jerga interna de ocupación disfrazada de coloquialismo)
 
 ## 8. Anomalías del input

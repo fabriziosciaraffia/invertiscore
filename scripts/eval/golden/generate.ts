@@ -188,6 +188,12 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       // sistemáticamente, esto se pone rojo.
       const vTit = validarTitular((ai as any).titular);
       if (!vTit.ok) bump("A9.titular");
+      // Métricas BLANDAS del titular (decisión PARÁ 2, 25-ago): tasa de núcleos
+      // sobre las 7 palabras (regla de prompt, no de check) y de titular null
+      // (el fallback del retry) — visibles en cada FULL, sin bloquear.
+      if ((ai as any).titular === null) bump("~titular-null");
+      const nucleoTit = typeof (ai as any).titular === "string" ? ((ai as any).titular.match(/\*\*([\s\S]+?)\*\*/)?.[1] ?? "") : "";
+      if ((nucleoTit.trim().match(/\S+/g) || []).length > 7) bump("~titular-nucleo-largo");
 
       // A10 (HARD) — tokens `**` balanceados en toda la prosa final (FASE 2
       // dictamen · refuerzo 3): los sanitizers recortan por ORACIÓN entera
@@ -223,7 +229,7 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       );
     }
     const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
-    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~planc-trim", "~aguanta-lectura"];
+    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~planc-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo"];
 
     // ── Umbral de MAYORÍA para las reglas que juzgan PROSA GENERADA ────────────
     //

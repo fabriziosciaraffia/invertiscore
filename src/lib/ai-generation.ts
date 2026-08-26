@@ -758,7 +758,7 @@ FÓRMULA DURA: [el veredicto en palabras del usuario] + [LA razón más fuerte d
 - SIN montos en CLP ni UF. Porcentajes y magnitudes sin moneda ("20% de más", "la mitad de la cuota") SÍ se permiten cuando son LA razón.
 - Si el titular cita una referencia de precio, DECLARA su ámbito (§1.12.9): "sobre el valor estimado de tu cuadra" o "sobre la mediana de la comuna" — nunca "de la zona" a secas.
 - SIN jerga: prohibidos CAP rate, NOI, TIR, UF/m², percentil, spread, yield y "plusvalía" como término pelado. Todo en términos de bolsillo, arriendo, cuota, precio, zona.
-- CONSISTENCIA TERNARIA con el veredicto dado: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS nombra la palanca REAL del caso (la del bloque de distancia — no copies la palanca de los ejemplos); COMPRAR afirma sin triunfalismo.
+- CONSISTENCIA TERNARIA con el veredicto dado: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS nombra la palanca REAL del caso (la del bloque de distancia — no copies la palanca de los ejemplos) Y, cuando el bloque provee su magnitud, la INCLUYE — una palanca sin número es una vaguedad, no una vía. La magnitud de la palanca PRECIO se expresa como % de descuento (el del bloque de distancia), NUNCA como monto UF/CLP (prohibidos en el titular); la del pie, como % objetivo. COMPRAR afirma sin triunfalismo.
 - Toda afirmación se completa sola: nada de elipsis ambiguas ("un arriendo que no llega" — ¿a dónde?).
 
 ANTI-OLOR-IA (además de §2.1/§2.2): prohibidos en el titular "oportunidad", "potencial", "optimizar", "interesante", "atractivo", "sólido" como adjetivo pelado, "clave", "estratégico"; aperturas con gerundio ("Considerando…"); construcciones "no solo… sino también"; signos de exclamación. TEST DE LA CONVERSACIÓN: el titular debe poder decirse en voz alta a un amigo sin sonar a informe. "Este depto no conviene: pagas caro y el arriendo no cubre la cuota" pasa; "El activo presenta un desalineamiento entre precio y renta" no pasa.
@@ -769,6 +769,7 @@ EJEMPLOS CALIBRADOS (genera uno NUEVO para el caso siguiendo el patrón — no l
 - BUSCAR OTRA ❌ "Este depto no conviene: pagas caro un arriendo que no llega." (elipsis ambigua)
 - AJUSTA ✅ "Buen depto, mal negocio como está: **con más pie, sí conviene**." (la palanca del ejemplo es el pie; usa LA TUYA)
 - AJUSTA ❌ "El deal presenta oportunidades de optimización en la estructura de financiamiento." (no nombra palanca, voz consultor)
+- AJUSTA ❌ "Buen depto en Ñuñoa, pero **el precio no convence**: hay que negociar fuerte." (palanca sin cuantificar — el motor provee el % o el objetivo: inclúyelo)
 - COMPRAR ✅ "Conviene: compras **bajo el precio de mercado** y el arriendo cubre el dividendo."
 - COMPRAR ❌ "¡Excelente oportunidad de inversión!" (triunfalismo vacío, sin razón)`;
 
