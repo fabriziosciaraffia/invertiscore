@@ -308,8 +308,11 @@ export function STRResultsClient({
   const precioCompraCLP = Number(inputData?.precioCompra) || 0;
   const precioCompraUFIn = Number(inputData?.precioCompraUF) || 0;
   const ufStr = precioCompraUFIn > 0 ? precioCompraCLP / precioCompraUFIn : ufValue;
-  const strAuto = rAny?.escenarios?.strAuto ?? rAny?.strAuto;
-  const strAdmin = rAny?.escenarios?.strAdmin ?? rAny?.strAdmin;
+  // Los escenarios por modo viven en comparativa.str_auto/str_admin (verificado
+  // contra el results persistido de bcc7af00 — los paths escenarios.strAuto no
+  // existen y dejaban el ahorro de autogestión en null).
+  const strAuto = rAny?.comparativa?.str_auto ?? rAny?.escenarios?.strAuto ?? rAny?.strAuto;
+  const strAdmin = rAny?.comparativa?.str_admin ?? rAny?.escenarios?.strAdmin ?? rAny?.strAdmin;
   const difAutoAdmin =
     strAuto && strAdmin ? (Number(strAuto.flujoCajaMensual) || 0) - (Number(strAdmin.flujoCajaMensual) || 0) : null;
   const cifraPortada = derivarCifraClaveStr({
@@ -322,7 +325,9 @@ export function STRResultsClient({
   });
   const fichaPortada = buildFichaStr({
     input: inputData,
-    adrNoche: Number(rAny?.adrAjustado) || null,
+    // adrReferencia del escenario BASE = la tarifa efectiva (override incluido);
+    // `adrAjustado` vive en ejesAplicados y no siempre es la tarifa del caso.
+    adrNoche: Number(rAny?.escenarios?.base?.adrReferencia) || null,
     ocupacionZona: Number(rAny?.escenarios?.base?.ocupacionReferencia) || null,
     direccion: direccionPortada,
     comuna,

@@ -50,7 +50,7 @@ import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerar
 import { construirReferenciasZona, faltaReconciliacion, appendReconciliacion } from "@/lib/referencias-zona";
 import { cifrasFueraDeInput, empeoraCifras } from "@/lib/cifras-guard";
 import { derivarCifraClaveLtr, captionDeCifraClave } from "@/lib/cifra-clave";
-import { validarTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
+import { validarTitular, evaluarTitular, normalizarMarcasTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
 import { reescribirTitular } from "@/lib/titular-retry";
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import type { Hallazgo } from "@/lib/types";
@@ -2729,8 +2729,22 @@ Responde SOLO este JSON, sin texto alrededor:
           console.warn(`[TITULAR-REESCRITO] ${analysisId}: ${v.motivo} — corregido por retry dirigido`);
           (aiResult as { titular?: string | null }).titular = reescrito;
         } else {
-          console.warn(`[TITULAR-INVALIDO] ${analysisId}: ${v.motivo} — titular descartado (portada sin titular)`);
-          (aiResult as { titular?: string | null }).titular = null;
+          // ESCALÓN (decisión PARÁ 3 — mostrar largo gana a callar): el retry no
+          // convergió al ≤15; el original se evalúa escalonado — 16-20 palabras
+          // sin montos SE RENDERIZA (violación blanda visible), marcas rotas se
+          // normalizan sin anular; montos o >20 → null.
+          const ev = evaluarTitular(t);
+          if (ev.nivel !== "invalido" && typeof t === "string") {
+            if (ev.nivel === "largo_renderizable") {
+              console.warn(`[TITULAR-LARGO-RENDERIZADO] ${analysisId}: ${ev.motivo}`);
+            } else {
+              console.warn(`[TITULAR-MARCAS-NORMALIZADAS] ${analysisId}: ${v.motivo} — se renderiza normalizado`);
+            }
+            (aiResult as { titular?: string | null }).titular = normalizarMarcasTitular(t.trim());
+          } else {
+            console.warn(`[TITULAR-INVALIDO] ${analysisId}: ${ev.motivo ?? v.motivo} — titular descartado (portada sin titular)`);
+            (aiResult as { titular?: string | null }).titular = null;
+          }
         }
       }
       const stripDesbalance = (nodo: Record<string, unknown>): void => {

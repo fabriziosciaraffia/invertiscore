@@ -969,7 +969,7 @@ export function scanStrDrift(ai: unknown): string[] { return [...scanStrHardDrif
 // prosa-no-recalcula-ltr). Se re-exporta para los consumidores existentes.
 import { cifrasFueraDeInput, empeoraCifras } from "./cifras-guard";
 import { derivarCifraClaveStr, captionDeCifraClave } from "./cifra-clave";
-import { validarTitular, marcasBalanceadas, stripMarcas } from "./prosa-marcas";
+import { validarTitular, evaluarTitular, normalizarMarcasTitular, marcasBalanceadas, stripMarcas } from "./prosa-marcas";
 import { reescribirTitular } from "./titular-retry";
 export { cifrasFueraDeInput };
 
@@ -1325,8 +1325,18 @@ Responde SOLO este JSON, sin texto alrededor:
         log(`[TITULAR-REESCRITO] ${v.motivo} — corregido por retry dirigido`);
         (best as { titular?: string | null }).titular = reescrito;
       } else {
-        log(`[TITULAR-INVALIDO] ${v.motivo} — titular descartado (portada sin titular)`);
-        (best as { titular?: string | null }).titular = null;
+        // ESCALÓN (decisión PARÁ 3) — espejo LTR: 16-20 palabras sin montos se
+        // renderiza con violación blanda; marcas rotas se normalizan; montos o
+        // >20 → null.
+        const ev = evaluarTitular(t);
+        if (ev.nivel !== "invalido" && typeof t === "string") {
+          if (ev.nivel === "largo_renderizable") log(`[TITULAR-LARGO-RENDERIZADO] ${ev.motivo}`);
+          else log(`[TITULAR-MARCAS-NORMALIZADAS] ${v.motivo} — se renderiza normalizado`);
+          (best as { titular?: string | null }).titular = normalizarMarcasTitular(t.trim());
+        } else {
+          log(`[TITULAR-INVALIDO] ${ev.motivo ?? v.motivo} — titular descartado (portada sin titular)`);
+          (best as { titular?: string | null }).titular = null;
+        }
       }
     }
     const stripDesbalance = (nodo: Record<string, unknown>): void => {

@@ -17,7 +17,7 @@
 
 import { useState, type ReactNode } from "react";
 import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
-import { stripMarcas } from "@/lib/prosa-marcas";
+import { stripMarcas, normalizarMarcasTitular } from "@/lib/prosa-marcas";
 import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import type { FichaDepto } from "@/lib/ficha-depto";
 import { FichaModal } from "./FichaModal";
@@ -29,9 +29,11 @@ const BANDA: Record<string, { light: string; dark: string; label: string }> = {
   COMPRAR: { light: "#2F7D55", dark: "#57B98A", label: "Comprar" },
 };
 
-/** Titular con marcas `**…**` → <mark> plumón (exactamente un par por contrato). */
+/** Titular con marcas `**…**` → <mark> plumón. Normaliza defensivamente
+ *  (marcas rotas en prosa persistida: sin plumón o con el primer par — el
+ *  escalón del guard ya persiste limpio, esto cubre filas raras). */
 function renderTitular(titular: string): ReactNode {
-  const partes = titular.split(/(\*\*[^*]+\*\*)/g);
+  const partes = normalizarMarcasTitular(titular).split(/(\*\*[^*]+\*\*)/g);
   return partes.map((p, i) =>
     p.startsWith("**") && p.endsWith("**") ? <mark key={i}>{p.slice(2, -2)}</mark> : <span key={i}>{p}</span>,
   );
@@ -291,9 +293,12 @@ function DocTokens() {
       .doc-headline{font-family:var(--font-heading, Georgia, serif);font-size:36px;line-height:1.15;font-weight:700;
         letter-spacing:-.01em;margin:0 0 16px;color:var(--doc-tx)}
       @media (max-width: 767px){ .doc-headline{font-size:27px;margin-bottom:12px} }
+      /* El mark del TITULAR hereda el weight 700 del h1 — aporta SOLO el fondo
+         de plumón (corrección PARÁ 3; con 500 el destacado se veía más delgado
+         que el resto). Las marcas de PROSA (FASE 4) mantienen su 500. */
       .doc-headline mark{
         background:linear-gradient(transparent 42%, var(--doc-hl) 42%, var(--doc-hl) 94%, transparent 94%);
-        color:var(--doc-hl-tx);padding:0 2px;font-weight:500}
+        color:var(--doc-hl-tx);padding:0 2px;font-weight:inherit}
       .doc-keyfig-fig{font-family:var(--font-mono, ui-monospace);font-size:23px;font-weight:700;color:var(--signal-red)}
       @media (max-width: 767px){ .doc-keyfig-fig{font-size:19px} }
       .doc-props-link{display:inline-flex;align-items:center;gap:9px;background:none;border:none;cursor:pointer;

@@ -25,7 +25,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Anthropic from "@anthropic-ai/sdk";
 import { generateStrProse } from "../../../src/lib/ai-generation-str";
-import { marcasBalanceadas, validarTitular } from "../../../src/lib/prosa-marcas";
+import { marcasBalanceadas, evaluarTitular } from "../../../src/lib/prosa-marcas";
 import { STR_GE_SEEDS, loadFrozen } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
 import type { Check } from "./invariants";
@@ -91,8 +91,11 @@ export async function runStrGenerateTier(K: number): Promise<SeedReport[]> {
         collectStrings(ai, strings);
         const desbalance = strings.find((x) => !marcasBalanceadas(x.s));
         if (desbalance) bump("AS3.marcas-balanceadas");
-        // AS4 — titular §7.ter presente y bien formado (espejo A9 LTR).
-        if (!validarTitular(ai.titular).ok) bump("AS4.titular");
+        // AS4 — DOS NIVELES (decisión PARÁ 3, espejo A9): duro = renderizable;
+        // 16-20 palabras = soft ~titular-largo-renderizado.
+        const evTit = evaluarTitular(ai.titular);
+        if (evTit.nivel === "invalido") bump("AS4.titular");
+        if (evTit.nivel === "largo_renderizable") bump("~titular-largo-renderizado");
         // Métricas BLANDAS del titular (decisión PARÁ 2) — espejo LTR.
         if (ai.titular === null) bump("~titular-null");
         const nucleoTit = typeof ai.titular === "string" ? (ai.titular.match(/\*\*([\s\S]+?)\*\*/)?.[1] ?? "") : "";
@@ -105,7 +108,7 @@ export async function runStrGenerateTier(K: number): Promise<SeedReport[]> {
 
     checks.push({ rule: `gen.runs(K=${K})`, pass: genOk === K, detail: `${genOk}/${K} generaciones OK` });
     const HARD = ["AS1.respuestaDirecta", "AS2.§9-cajaAccionable", "AS3.marcas-balanceadas", "AS4.titular", "gen.null"];
-    const SOFT = ["~titular-null", "~titular-nucleo-largo"];
+    const SOFT = ["~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado"];
     const esReglaDeProsa = (r: string) => r.startsWith("AS");
     const umbralMayoria = Math.floor(K / 2);
     for (const r of HARD) {

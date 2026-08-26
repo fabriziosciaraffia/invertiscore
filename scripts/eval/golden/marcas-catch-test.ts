@@ -13,7 +13,7 @@
 //   node --import tsx scripts/eval/golden/marcas-catch-test.ts
 // ============================================================================
 
-import { contarTokensMarca, marcasBalanceadas, stripMarcas, stripMarcasDeep, validarTitular } from "../../../src/lib/prosa-marcas";
+import { contarTokensMarca, marcasBalanceadas, stripMarcas, stripMarcasDeep, validarTitular, evaluarTitular, normalizarMarcasTitular } from "../../../src/lib/prosa-marcas";
 import { stripCardEcho } from "../../../src/lib/ai-generation-str";
 
 let fallas = 0;
@@ -97,6 +97,24 @@ check("núcleo >7 palabras NO bloquea (regla de prompt)", validarTitular("No con
 check("monto $ se caza", !validarTitular("No conviene: pierdes **$600.000 cada mes** operando.").ok);
 check("monto UF se caza", !validarTitular("No conviene: pagas **UF 300 de más** por este depto.").ok);
 check("porcentaje SÍ pasa (decisión i)", validarTitular("No conviene: pagas **20% sobre el precio de mercado**.").ok);
+
+// ── (4b) evaluarTitular — el ESCALÓN (decisión PARÁ 3) ──
+console.log("── evaluarTitular (escalonado) ──");
+const T16 = "Este depto realmente no conviene para nada: pagas demasiado caro y además **el arriendo no cubre**."; // 16 palabras
+check("≤15 → valido", evaluarTitular("No conviene: **el arriendo no cubre la cuota**.").nivel === "valido");
+check("16-20 → largo_renderizable (se muestra)", evaluarTitular(T16).nivel === "largo_renderizable");
+check(">20 → invalido", evaluarTitular("Una frase larguísima que sigue y sigue con muchas palabras de relleno para superar con claridad el tope duro de veinte palabras contadas.").nivel === "invalido");
+check("monto $ → invalido SIEMPRE (aunque ≤15)", evaluarTitular("Pierdes **$600.000 cada mes** operando.").nivel === "invalido");
+check("marcas rotas NO invalidan (≤15 sin marca → valido)", evaluarTitular("Sin marca pero corto y sin montos.").nivel === "valido");
+check("ausente → invalido", evaluarTitular(null).nivel === "invalido");
+
+// ── (4c) normalizarMarcasTitular ──
+console.log("── normalizarMarcasTitular ──");
+check("un par queda intacto", normalizarMarcasTitular("a **b** c") === "a **b** c");
+check("sin marcas queda intacto", normalizarMarcasTitular("a b c") === "a b c");
+check("token impar → strip (sin plumón)", normalizarMarcasTitular("a **b c") === "a b c");
+check("dos pares → conserva SOLO el primero", normalizarMarcasTitular("**a** y **b**") === "**a** y b");
+check("par + huérfano → primer par, resto plano", normalizarMarcasTitular("**a** y **b") === "**a** y b");
 
 // ── (5) stripMarcasDeep (render tolerante en la raíz) ──
 console.log("── stripMarcasDeep ──");
