@@ -12,7 +12,8 @@
  * Shape de cada entry (B4-2):
  * - plusvalia10a: % ACUMULADO en la década (ej: 37 = 37% en 10 años)
  * - anualizada: % ANUAL equivalente (ej: 3.2 = 3,2% anual)
- * - precio2014, precio2024: UF/m² al inicio y fin del rango
+ * - precio2014, precio2024: precio promedio del DEPTO en UF (valor total) al inicio y fin
+ *   del rango — el rótulo histórico "UF/m²" era incorrecto (Recoleta 2.432→3.100 no es m²)
  *
  * Conversión: anualizada = ((1 + plusvalia10a/100)^(1/10) - 1) × 100. Ej: 37%
  * acumulado → ((1.37)^0.1 − 1) × 100 ≈ 3.2% anual.
