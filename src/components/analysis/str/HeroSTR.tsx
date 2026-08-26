@@ -1,10 +1,11 @@
 "use client";
 
-import { type ReactNode } from "react";
+
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import { ProgresoGeneracion, ETAPAS_GENERACION_STR, COPY_TIEMPO_STR } from "@/components/analysis/ProsaSkeleton";
+import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
 import { IndiceRow } from "@/components/analysis/IndiceHallazgos";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { numeroHallazgo } from "@/lib/orden-hallazgos";
@@ -154,8 +155,8 @@ export function HeroSTR({
           <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
             {/* Goal F: la espera hereda ProgresoGeneracion (E.2) con etapas y
                 copy STR propios — skeleton didáctico en vez del mensaje fijo. */}
-            {respuesta ? renderProsaMono(respuesta) : aiLoading ? <ProgresoGeneracion etapas={ETAPAS_GENERACION_STR} copyTiempo={COPY_TIEMPO_STR} /> : null}
-            {reencuadre && <div className="mt-3">{renderProsaMono(reencuadre)}</div>}
+            {respuesta ? renderPlumon(respuesta) : aiLoading ? <ProgresoGeneracion etapas={ETAPAS_GENERACION_STR} copyTiempo={COPY_TIEMPO_STR} /> : null}
+            {reencuadre && <div className="mt-3">{renderPlumon(reencuadre)}</div>}
           </div>
         </div>
 
@@ -220,7 +221,7 @@ export function HeroSTR({
                 className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text)] m-0"
                 style={{ fontStyle: isNeutro ? "normal" : "italic" }}
               >
-                {cajaAccionable}
+                {plumonInline(cajaAccionable)}
               </p>
             </div>
           </div>
@@ -251,22 +252,6 @@ function Wordmark() {
   );
 }
 
-// ── Badge veredicto (3 valores canónicos STR) ──
-function renderProsaMono(texto: string): ReactNode {
-  if (!texto) return null;
-  const RE = /((?:−|-)?\$\s?[\d.]+(?:,\d+)?|UF\s?[\d.]+(?:,\d+)?|(?:\+|−|-)?\d+(?:[.,]\d+)?\s?%)/g;
-  return texto.split(/\n\n+/).map((par, i) => (
-    <p key={i} className={i > 0 ? "mt-3 mb-0" : "m-0"}>
-      {par.split(RE).map((part, j) =>
-        j % 2 === 1 ? (
-          <span key={j} className="font-mono text-[13px] text-[var(--franco-text)] px-1 rounded" style={{ background: "rgba(250,250,248,0.05)" }}>{part}</span>
-        ) : (
-          <span key={j}>{part}</span>
-        ),
-      )}
-    </p>
-  ));
-}
 
 // Fecha firma "3 jul 2026" (es-CL).
 function formatFecha(iso?: string): string {

@@ -26,6 +26,7 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import { InfoTooltip } from "@/components/ui/tooltip";
+import { VProsa, VViz, VCierre, VFuente, Fall, type FallRow } from "@/components/analysis/hallazgos/vocabulario";
 
 // Proyección estándar Franco a futuro, como texto ("3%") — desde la constante, nunca literal.
 const PROYECCION_FRANCO_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
@@ -104,15 +105,14 @@ const fmtMoneySigned = (n: number, currency: Currency, valorUF: number) =>
   (n < 0 ? "−" : "+") + fmtMoney(n, currency, valorUF);
 
 // ── Primitivas de presentación ─────────────────────────────────────────────────
+// FASE 4: estas primitivas YA NO dibujan lo suyo — rinden el VOCABULARIO ÚNICO
+// (vocabulario.tsx). Mantienen su firma a propósito: así los 12 cuerpos de
+// drawer que las usan migran al vocabulario sin tocar una línea de su lógica,
+// y los dos vocabularios que convivían (Chips/DataRow · Box/CajaFranco ·
+// Lead/NarrativeIA) colapsan en uno solo. Ver mockup v12 CONGELADO.
+
 export function Lead({ children }: { children: ReactNode }) {
-  return (
-    <p
-      className="font-body"
-      style={{ fontSize: 14, lineHeight: 1.65, color: "var(--franco-text)", margin: "0 0 16px" }}
-    >
-      {children}
-    </p>
-  );
+  return <VProsa>{children}</VProsa>;
 }
 
 // Término con traducción pegada (jerga → paréntesis con glosa + tooltip).
@@ -120,7 +120,7 @@ export function Jerga({ term, gloss, tip }: { term: string; gloss: string; tip: 
   return (
     <span className="inline-flex items-baseline gap-1">
       <span>
-        {term} <span style={{ color: "var(--franco-text-tertiary)" }}>({gloss})</span>
+        {term} <span style={{ color: "var(--doc-tx3)" }}>({gloss})</span>
       </span>
       <InfoTooltip content={tip} />
     </span>
@@ -129,32 +129,19 @@ export function Jerga({ term, gloss, tip }: { term: string; gloss: string; tip: 
 
 type Cell = { k: string; v: string; tone?: "pos" | "red" | "plain"; small?: string };
 
+/** Grid de KPIs — pasa a ser un BLOQUE VISUAL del vocabulario (VViz). */
 export function Chips({ label, cells, foot }: { label: string; cells: Cell[]; foot?: ReactNode }) {
   const cols = cells.length === 2 ? "repeat(2,1fr)" : "repeat(3,1fr)";
   const toneColor = (t?: Cell["tone"]) =>
-    t === "red" ? "var(--signal-red)" : t === "pos" ? "var(--franco-pos-text, var(--ink-400))" : "var(--franco-text)";
+    t === "red" ? "var(--signal-red)" : t === "pos" ? "var(--doc-good)" : "var(--doc-tx)";
   return (
-    <div
-      style={{
-        background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-        border: "0.5px solid var(--franco-border)",
-        borderRadius: 8,
-        padding: 16,
-        marginBottom: 16,
-      }}
-    >
-      <p
-        className="font-mono uppercase m-0"
-        style={{ fontSize: 10, letterSpacing: "0.1em", color: "var(--franco-text-secondary)", marginBottom: 12 }}
-      >
-        {label}
-      </p>
+    <VViz t={label}>
       <div style={{ display: "grid", gridTemplateColumns: cols, gap: 12 }}>
         {cells.map((c) => (
           <div key={c.k}>
             <p
               className="font-mono uppercase m-0"
-              style={{ fontSize: 10, letterSpacing: "0.04em", color: "var(--franco-text-secondary)", marginBottom: 4 }}
+              style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}
             >
               {c.k}
             </p>
@@ -166,83 +153,37 @@ export function Chips({ label, cells, foot }: { label: string; cells: Cell[]; fo
         ))}
       </div>
       {foot && (
-        <p className="font-body m-0" style={{ fontSize: 11, color: "var(--franco-text-secondary)", marginTop: 12 }}>
+        <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--doc-tx3)", marginTop: 12, lineHeight: 1.5 }}>
           {foot}
         </p>
       )}
-    </div>
+    </VViz>
   );
 }
 
 type DecompRow = { label: string; value: string; widthPct: number; tone: "strong" | "mid" | "weak" | "red" };
 
+/** Descomposición — pasa a la primitiva WATERFALL (Fall) dentro de un VViz. */
 export function Decomp({ rows, net }: { rows: DecompRow[]; net?: { label: string; value: string } }) {
-  const fill = (t: DecompRow["tone"]) =>
-    t === "red"
-      ? "var(--signal-red)"
-      : t === "strong"
-        ? "var(--ink-400)"
-        : t === "mid"
-          ? "color-mix(in srgb, var(--ink-400) 55%, transparent)"
-          : "color-mix(in srgb, var(--ink-400) 30%, transparent)";
+  const tono = (t: DecompRow["tone"]): FallRow["tone"] =>
+    t === "red" ? "red" : t === "strong" ? "neutral" : t === "mid" ? "warn" : "muted";
   return (
-    <div style={{ marginBottom: 16 }}>
-      {rows.map((r) => (
-        <div key={r.label} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
-          <span
-            className="font-mono uppercase"
-            style={{ fontSize: 10, letterSpacing: "0.04em", color: "var(--franco-text-secondary)", width: 92, flexShrink: 0 }}
-          >
-            {r.label}
-          </span>
-          <div
-            style={{
-              flex: 1,
-              height: 22,
-              background: "color-mix(in srgb, var(--franco-text) 6%, transparent)",
-              borderRadius: 4,
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: `${r.widthPct}%`, borderRadius: 4, background: fill(r.tone) }}
-            />
-          </div>
-          <span
-            className="font-mono font-bold text-right"
-            style={{ fontSize: 12, width: 104, flexShrink: 0, color: r.tone === "red" ? "var(--signal-red)" : "var(--franco-text)" }}
-          >
-            {r.value}
-          </span>
-        </div>
-      ))}
-      {net && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "baseline",
-            borderTop: "0.5px solid var(--franco-border-strong)",
-            marginTop: 4,
-            paddingTop: 10,
-          }}
-        >
-          <span
-            className="font-mono uppercase"
-            style={{ fontSize: 10, letterSpacing: "0.04em", color: "var(--franco-text-secondary)" }}
-          >
-            {net.label}
-          </span>
-          <span className="font-mono font-bold" style={{ fontSize: 13, color: "var(--franco-text)" }}>
-            {net.value}
-          </span>
-        </div>
-      )}
-    </div>
+    <VViz t="De dónde sale cada parte">
+      <Fall
+        rows={rows.map((r) => ({ k: r.label, v: r.value, pct: Math.max(0, r.widthPct), tone: tono(r.tone) }))}
+        total={net ? { k: net.label, v: net.value } : undefined}
+      />
+    </VViz>
   );
 }
 
+/**
+ * Caja de cierre — pasa al CIERRE ÚNICO del vocabulario. El label decide la
+ * pieza: "De dónde sale" es procedencia (VFuente), todo lo demás es cierre
+ * (VCierre, cuyo título rota entre interpretación y acción). Cuando un cuerpo
+ * heredado apila varios cierres, el CSS del acordeón degrada los previos y deja
+ * el último como la caja — el cierre es uno.
+ */
 export function Box({
   label,
   tone = "neutral",
@@ -254,87 +195,73 @@ export function Box({
   big?: string;
   children: ReactNode;
 }) {
-  const red = tone === "red";
+  if (/^de d[oó]nde sale/i.test(label)) {
+    return (
+      <VFuente>
+        {label} · {children}
+      </VFuente>
+    );
+  }
   return (
-    <div
-      style={{
-        borderLeft: `3px solid ${red ? "var(--signal-red)" : "var(--franco-text-secondary)"}`,
-        background: red
-          ? "color-mix(in srgb, var(--signal-red) 7%, transparent)"
-          : "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-        borderRadius: "0 8px 8px 0",
-        padding: "14px 16px",
-        marginBottom: 14,
-      }}
-    >
-      <p
-        className="font-mono uppercase m-0"
-        style={{ fontSize: 10, letterSpacing: "0.1em", color: "var(--franco-text-secondary)", marginBottom: big ? 3 : 5 }}
-      >
-        {label}
-      </p>
+    <VCierre titulo={label}>
       {big && (
-        <p className="font-mono font-bold m-0" style={{ fontSize: 24, lineHeight: 1.1, color: "var(--franco-pos-text, var(--ink-400))", marginBottom: 3 }}>
+        <span
+          className="font-mono font-bold"
+          style={{ fontSize: 20, color: tone === "red" ? "var(--signal-red)" : "var(--doc-tx)", fontStyle: "normal", marginRight: 8 }}
+        >
           {big}
-        </p>
+        </span>
       )}
-      <p className="font-body m-0" style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--franco-text)" }}>
-        {children}
-      </p>
-    </div>
+      {children}
+    </VCierre>
   );
 }
 
-// Cadena causal (una sola, números encadenados) — Financiamiento STR.
+/** Cadena causal (Financiamiento STR) — bloque visual del vocabulario. */
 export function Chain({ steps }: { steps: Array<{ v: string; k: ReactNode; pos?: boolean }> }) {
   return (
-    <div style={{ display: "flex", alignItems: "stretch", gap: 8, margin: "2px 0 12px", flexWrap: "wrap" }}>
-      {steps.map((s, i) => (
-        <div key={i} style={{ display: "contents" }}>
-          <div
-            style={{
-              flex: 1,
-              minWidth: 96,
-              background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-              border: "0.5px solid var(--franco-border)",
-              borderRadius: 8,
-              padding: "10px 12px",
-              textAlign: "center",
-            }}
-          >
-            <span
-              className="font-mono font-bold"
-              style={{ display: "block", fontSize: 15, lineHeight: 1.1, marginBottom: 4, color: s.pos ? "var(--ink-400)" : "var(--franco-text)" }}
+    <VViz t="La palanca, paso a paso">
+      <div style={{ display: "flex", alignItems: "stretch", gap: 8, flexWrap: "wrap" }}>
+        {steps.map((s, i) => (
+          <div key={i} style={{ display: "contents" }}>
+            <div
+              style={{
+                flex: 1,
+                minWidth: 96,
+                background: "var(--doc-paper2)",
+                border: "1px solid var(--doc-line)",
+                borderRadius: 3,
+                padding: "10px 12px",
+              }}
             >
-              {s.v}
-            </span>
-            <span
-              className="font-mono uppercase"
-              style={{ display: "block", fontSize: 9, letterSpacing: "0.04em", color: "var(--franco-text-secondary)", lineHeight: 1.35 }}
-            >
-              {s.k}
-            </span>
+              <p
+                className="font-mono font-bold m-0"
+                style={{ fontSize: 17, lineHeight: 1.1, color: s.pos ? "var(--doc-good)" : "var(--doc-tx)" }}
+              >
+                {s.v}
+              </p>
+              <p className="font-body m-0" style={{ fontSize: 11, color: "var(--doc-tx3)", marginTop: 3 }}>
+                {s.k}
+              </p>
+            </div>
+            {i < steps.length - 1 && (
+              <span
+                aria-hidden="true"
+                className="font-mono"
+                style={{ alignSelf: "center", color: "var(--doc-tx4)", fontSize: 13 }}
+              >
+                →
+              </span>
+            )}
           </div>
-          {i < steps.length - 1 && (
-            <span className="font-mono" style={{ alignSelf: "center", color: "var(--franco-text-tertiary)", fontSize: 15, flexShrink: 0 }}>
-              →
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </VViz>
   );
 }
 
 export function Note({ children }: { children: ReactNode }) {
-  return (
-    <p
-      className="font-mono uppercase m-0"
-      style={{ fontSize: 10, letterSpacing: "0.04em", color: "color-mix(in srgb, var(--franco-text) 35%, transparent)", marginTop: 6 }}
-    >
-      {children}
-    </p>
-  );
+  return <VFuente>{children}</VFuente>;
 }
 
 // Fallback breve cuando falta el dato crítico de un cuerpo (GRUPO B) — patrón STR-TIR

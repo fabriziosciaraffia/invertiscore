@@ -249,6 +249,7 @@ function DocTokens() {
         --doc-line:#282828; --doc-line2:#3A3A3A;
         --doc-tx:#EDEBE6; --doc-tx2:#C4C2BC; --doc-tx3:#8C8A84; --doc-tx4:#5C5A55;
         --doc-hl:rgba(216,67,77,.38); --doc-hl-tx:#FFFFFF;
+        --doc-paper3:#232323; --doc-neutral:#6E6A63; --doc-good:#57B98A; --doc-warn:#DFA34F;
         --doc-shadow:0 24px 60px rgba(0,0,0,.6);
         --doc-banda:var(--banda-dark, #DFA34F);
         background:var(--doc-paper);
@@ -261,6 +262,7 @@ function DocTokens() {
         --doc-line:#DAD6CC; --doc-line2:#C4BFB2;
         --doc-tx:#141311; --doc-tx2:#3B3A36; --doc-tx3:#75726A; --doc-tx4:#A39F94;
         --doc-hl:rgba(224,67,80,.26); --doc-hl-tx:#141311;
+        --doc-paper3:#EAE7DF; --doc-neutral:#8C8880; --doc-good:#2F7D55; --doc-warn:#A96F1B;
         --doc-shadow:0 24px 60px rgba(20,19,17,.14);
       }
       .doc-toprule{height:5px;background:var(--signal-red)}
@@ -325,6 +327,34 @@ function DocTokens() {
       @media (max-width: 480px){ .doc-g2 .cell{min-width:50%} }
       .doc-g2 .k{font-size:11px;color:var(--doc-tx3);margin-bottom:3px}
       .doc-g2 .v{font-family:var(--font-mono, ui-monospace);font-size:13.5px;color:var(--doc-tx)}
+      /* ═══ CUERPO DEL DOCUMENTO (FASE 4) ═══ */
+      /* Grilla con columna de margen para el ísotipo f. sticky — SOLO PC
+         (decisión 16 del goal: en mobile no hay margen que lo sostenga). */
+      .doc-cuerpo{display:grid;grid-template-columns:56px minmax(0,1fr);gap:0 22px}
+      .doc-cuerpo-margen{position:relative}
+      .doc-fmark{position:sticky;top:20px;width:34px;height:34px;border-radius:50%;background:var(--signal-red);
+        color:#fff;font-family:var(--font-heading, Georgia, serif);font-weight:700;font-size:15px;
+        display:flex;align-items:center;justify-content:center;user-select:none}
+      @media (max-width: 767px){
+        .doc-cuerpo{grid-template-columns:minmax(0,1fr)}
+        .doc-cuerpo-margen{display:none}
+      }
+      /* Nota al margen "f. —": apunte serif itálico en rojo entre párrafos.
+         Curaduría (decisión b del PARÁ 0): sale de las cajaAccionable que la
+         prosa YA trae; ningún campo IA nuevo. */
+      .doc-fnote{font-family:var(--font-heading, Georgia, serif);font-style:italic;font-size:13.5px;line-height:1.6;
+        color:var(--signal-red);margin:14px 0 16px;padding-left:14px;border-left:2px solid var(--signal-red);max-width:56ch}
+      .doc-fnote::before{content:'f. — ';font-style:normal;font-weight:700;letter-spacing:.02em}
+      /* Capítulos de cierre (La simulación · La zona) */
+      .doc-capitulo{margin-top:34px;padding-top:18px;border-top:1px solid var(--doc-line)}
+      .doc-cap-eyebrow{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+        color:var(--doc-tx3);margin-bottom:14px}
+      .doc-cap-sub{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+        color:var(--doc-tx4);margin-bottom:10px}
+      /* Plumón de la prosa FUERA del acordeón (hero): mismo gesto, weight 500. */
+      .doc-portada + div mark,.doc-cuerpo mark{
+        background:linear-gradient(transparent 42%,var(--doc-hl) 42%,var(--doc-hl) 94%,transparent 94%);
+        color:var(--doc-hl-tx);padding:0 2px;font-weight:500}
       @media (prefers-reduced-motion: reduce){
         .doc-props-link{transition:none}
       }

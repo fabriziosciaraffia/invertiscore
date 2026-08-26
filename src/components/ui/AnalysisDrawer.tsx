@@ -20,7 +20,8 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, nunca literal.
 const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { StateBox } from "@/components/ui/StateBox";
+import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
+import { VProsa, VViz, VCierre, VFuente, Thermo, Fall } from "@/components/analysis/hallazgos/vocabulario";
 import {
   DrawerTIRLtr,
   DrawerSensibilidadLtr,
@@ -78,6 +79,11 @@ interface DrawerProps {
   zoneCenter?: { lat: number; lng: number } | null;
   comuna?: string;
   arriendoUsuarioCLP?: number;
+  /** FASE 4 — modo INLINE: renderiza SOLO el cuerpo, sin overlay, panel, header
+   *  ni navegación prev/next. Es lo que consume el acordeón de hallazgos, donde
+   *  el chrome del drawer murió. Extiende, no muta: sin la prop el componente se
+   *  comporta exactamente como antes (lo usa /dev/drawers-pixel). */
+  inline?: boolean;
   /** created_at de la fila (ISO). Fecha de análisis CONGELADA para el recompute
    *  cliente de TIR en negociación (tirForPrice) — no la fecha viva del navegador.
    *  Ver of-datedrift-design.md. */
@@ -163,7 +169,6 @@ function DrawerCostoMensual({
 
   const arriendo = desglose.arriendo;
   const flujo = desglose.flujoNeto;
-  const totalSale = Math.round(desglose.totalEgresos);
   const isNeg = flujo < 0;
   const fmt = (v: number) => fmtMoney(v, currency, valorUF);
 
@@ -210,25 +215,6 @@ function DrawerCostoMensual({
       tooltip: "Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). 0% si autogestionas. Distinto de gastos comunes del edificio.",
     },
   ];
-  const maxSale = Math.max(...saleItems.map((s) => s.value), 1);
-  const resultLabel = isNeg ? "SALE DE TU BOLSILLO" : "ENTRA A TU BOLSILLO";
-  const resultSub = isNeg ? "Tienes que poner este dinero tú" : "Entra cada mes después de cubrir todos los gastos";
-  // Bloque conclusivo Patrón 3 — treatment condicional según naturaleza del KPI:
-  // - Negativo crítico: wash Signal Red 6% + borderLeft Signal Red + label/KPI Signal Red
-  // - Positivo o neutro: wash Ink 3% + borderLeft Ink secundario + label Ink secundario
-  //   + KPI Ink primary + sin border outline
-  // Regla del sistema (formalizada Fase 4.9 Commit 4): el rojo solo aparece cuando
-  // el dato comunica criticidad real. KPIs positivos/neutros usan Ink.
-  const blockBg = isNeg
-    ? "color-mix(in srgb, var(--signal-red) 6%, transparent)"
-    : "color-mix(in srgb, var(--franco-text) 3%, transparent)";
-  const blockBorder = isNeg
-    ? "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)"
-    : "none";
-  const blockBorderLeftColor = isNeg ? "var(--signal-red)" : "var(--franco-text-secondary)";
-  const blockLabelColor = isNeg ? "var(--signal-red)" : "var(--franco-text-secondary)";
-  const blockKPIColor = isNeg ? "var(--signal-red)" : "var(--franco-text)";
-
   // Items SALE ordenados por value desc; los zero al final (manteniendo
   // grayed-out). Tooltips se asocian por nombre (no por posición), así que
   // un sort no rompe el mapeo.
@@ -243,7 +229,7 @@ function DrawerCostoMensual({
   return (
     <div>
       <p className="font-body text-[14px] leading-[1.65] text-[var(--franco-text)] mb-4 whitespace-pre-wrap">
-        {currency === "CLP" ? data.contenido_clp : data.contenido_uf}
+        {renderPlumon(currency === "CLP" ? data.contenido_clp : data.contenido_uf)}
       </p>
 
       {/* Mensaje educativo (dot pattern Fase 4.8): justifica por qué incluimos
@@ -252,164 +238,27 @@ function DrawerCostoMensual({
         ● A diferencia de otros análisis, Franco considera todos los gastos que impactan tu flujo real: vacancia, mantención, corretaje, recambio y gestión. Una evaluación honesta los incluye.
       </p>
 
-      {/* GRUPO "ENTRA" */}
-      <div className="mb-4">
-        <div
-          className="flex items-baseline justify-between pb-1.5 mb-2"
-          style={{ borderBottom: "0.5px solid color-mix(in srgb, var(--ink-400) 35%, transparent)" }}
-        >
-          <span
-            className="font-mono uppercase font-semibold"
-            style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--ink-400)" }}
-          >
-            Entra
-          </span>
-          <span
-            className="font-mono font-bold"
-            style={{ fontSize: 13, color: "var(--ink-400)" }}
-          >
-            +{fmt(arriendo)}
-          </span>
-        </div>
-        <div
-          className="grid items-center gap-3 py-1"
-          style={{ gridTemplateColumns: "1fr 1fr 120px" }}
-          role="img"
-          aria-label={`Arriendo mensual ${fmt(arriendo)}`}
-        >
-          <span
-            className="font-body"
-            style={{ fontSize: 12, color: "color-mix(in srgb, var(--franco-text) 85%, transparent)" }}
-          >
-            Arriendo mensual
-          </span>
-          <div
-            className="relative rounded-[2px]"
-            style={{ height: 8, background: "color-mix(in srgb, var(--franco-text) 5%, transparent)" }}
-          >
-            <div
-              className="absolute top-0 left-0 h-full rounded-[2px]"
-              style={{ width: "100%", background: "var(--ink-400)" }}
-            />
-          </div>
-          <span
-            className="font-mono font-bold text-right"
-            style={{ fontSize: 12, color: "var(--ink-400)" }}
-          >
-            +{fmt(arriendo)}
-          </span>
-        </div>
-      </div>
+      {/* FASE 4 — el flujo mensual pasa al WATERFALL del vocabulario: el arriendo
+          entero como banda y cada egreso comiéndose su parte, con el resultado
+          como total. Reemplaza los dos grupos de barras ENTRA/SALE. */}
+      <VViz t={`Qué pasa con los ${fmt(arriendo)} del arriendo`}>
+        <Fall
+          rows={saleItemsSorted
+            .filter((r) => r.value > 0)
+            .map((r, i) => ({
+              k: r.name,
+              v: `−${fmt(r.value)}`,
+              pct: r.value,
+              tone: i === 0 ? "neutral" : i === 1 ? "warn" : i === 2 ? "muted" : "red",
+            }))}
+          total={{
+            k: isNeg ? "Sale de tu bolsillo" : "Te queda cada mes",
+            v: `${isNeg ? "−" : "+"}${fmt(Math.abs(flujo))}`,
+          }}
+        />
+      </VViz>
 
-      {/* GRUPO "SALE" */}
-      <div className="mb-4">
-        <div
-          className="flex items-baseline justify-between pb-1.5 mb-2"
-          style={{ borderBottom: "0.5px solid color-mix(in srgb, var(--signal-red) 35%, transparent)" }}
-        >
-          <span
-            className="font-mono uppercase font-semibold"
-            style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--signal-red)" }}
-          >
-            Sale
-          </span>
-          <span
-            className="font-mono font-bold"
-            style={{ fontSize: 13, color: "var(--signal-red)" }}
-          >
-            −{fmt(totalSale)}
-          </span>
-        </div>
-        <div className="flex flex-col">
-          {saleItemsSorted.map((it) => {
-            const zero = it.value <= 0;
-            const widthPct = zero ? 0 : Math.max((it.value / maxSale) * 100, 2);
-            return (
-              <div
-                key={it.name}
-                className="grid items-center gap-3 py-[3px]"
-                style={{ gridTemplateColumns: "1fr 1fr 120px" }}
-                role="img"
-                aria-label={`${it.name} ${zero ? "cero" : fmt(it.value)}`}
-              >
-                <span
-                  className="inline-flex items-center gap-1 font-body"
-                  style={{
-                    fontSize: 12,
-                    color: zero
-                      ? "color-mix(in srgb, var(--franco-text) 40%, transparent)"
-                      : "color-mix(in srgb, var(--franco-text) 82%, transparent)",
-                  }}
-                >
-                  <span>{it.name}</span>
-                  <InfoTooltip content={it.tooltip} />
-                </span>
-                <div
-                  className="relative rounded-[2px]"
-                  style={{ height: 8, background: "color-mix(in srgb, var(--franco-text) 5%, transparent)" }}
-                >
-                  <div
-                    className="absolute top-0 left-0 h-full rounded-[2px]"
-                    style={{ width: `${widthPct}%`, background: "var(--signal-red)", opacity: 0.85 }}
-                  />
-                </div>
-                <span
-                  className="font-mono font-bold text-right"
-                  style={{
-                    fontSize: 12,
-                    color: zero ? "color-mix(in srgb, var(--franco-text) 40%, transparent)" : "var(--signal-red)",
-                  }}
-                >
-                  {zero ? fmt(0) : `−${fmt(it.value)}`}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* CAJA RESULTADO — bloque conclusivo Patrón 3 condicional pos/neg */}
-      <div
-        className="mt-4 grid items-center gap-3"
-        style={{
-          gridTemplateColumns: "1fr auto",
-          background: blockBg,
-          border: blockBorder,
-          borderLeft: `3px solid ${blockBorderLeftColor}`,
-          borderRadius: "0 8px 8px 0",
-          padding: "14px 16px",
-        }}
-      >
-        <div>
-          <p
-            className="font-mono uppercase font-semibold m-0"
-            style={{ fontSize: 10, letterSpacing: "0.06em", color: blockLabelColor }}
-          >
-            = {resultLabel}
-          </p>
-          <p
-            className="font-body italic m-0 mt-1"
-            style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)" }}
-          >
-            {resultSub}
-          </p>
-        </div>
-        <p
-          className="font-mono font-bold m-0 text-right"
-          style={{ fontSize: 24, color: blockKPIColor, lineHeight: 1 }}
-        >
-          {isNeg ? "−" : "+"}{fmt(Math.abs(flujo))}
-        </p>
-      </div>
-
-      <StateBox
-        variant="left-border"
-        state="info"
-        label={data.cajaLabel || "Hazte esta pregunta:"}
-        className="mt-5"
-      >
-        {currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf}
-      </StateBox>
+      <VCierre titulo={data.cajaLabel || "Hazte esta pregunta:"}>{plumonInline(currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf)}</VCierre>
     </div>
   );
 }
@@ -1005,7 +854,7 @@ function DrawerNegociacion({
             className="font-body m-0 whitespace-pre-wrap"
             style={{ fontSize: 12.5, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)", lineHeight: 1.55 }}
           >
-            {currency === "CLP" ? data.contenido_clp : data.contenido_uf}
+            {renderPlumon(currency === "CLP" ? data.contenido_clp : data.contenido_uf)}
           </p>
         </div>
       )}
@@ -1056,13 +905,9 @@ function DrawerNegociacion({
 
       {/* data.cajaAccionable (IA) si existe — mantener el guión editorial */}
       {(currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf) && (
-        <StateBox
-          variant="left-border"
-          state="neutral"
-          label={data.cajaLabel || "Guión para la contraoferta:"}
-        >
-          {currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf}
-        </StateBox>
+        <VCierre titulo={data.cajaLabel || "Qué haces con esto"}>
+          {plumonInline(currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf)}
+        </VCierre>
       )}
     </div>
   );
@@ -1229,19 +1074,12 @@ function DrawerLargoPlazo({
           className="font-body m-0 whitespace-pre-wrap"
           style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 78%, transparent)", lineHeight: 1.6 }}
         >
-          {contenido}
+          {renderPlumon(contenido)}
         </p>
       </div>
 
       {/* ─── La apuesta que haces (narrativa IA editorial) ─── */}
-      <StateBox
-        variant="left-border"
-        state="info"
-        label={data.cajaLabel || "La apuesta que haces:"}
-        className="mt-1"
-      >
-        {caja}
-      </StateBox>
+      <VCierre titulo={data.cajaLabel || "La apuesta que haces"}>{plumonInline(caja)}</VCierre>
     </div>
   );
 }
@@ -1362,7 +1200,7 @@ function DrawerReestructuracion({
       </p>
 
       <div className="font-body text-[13px] leading-[1.65] text-[var(--franco-text)] my-4 whitespace-pre-line">
-        {content}
+        {renderPlumon(content)}
       </div>
 
       {/* Estructura sugerida — 3 chips numéricos en mono */}
@@ -1616,7 +1454,7 @@ function DrawerEstructuraSana({
 
 // Drawer del hallazgo CapEx puesta a punto (motor, no IA). Muestra los montos
 // precomputados + decisividad + procedencia visible (no audit-only).
-function DrawerCapexPuestaAPunto({
+export function DrawerCapexPuestaAPunto({
   hallazgo,
   currency,
   valorUF,
@@ -1634,73 +1472,50 @@ function DrawerCapexPuestaAPunto({
   // la "Δdecisión" calibrada. Esta cifra es display: "X% de tu plata día 1".
   const pctInversion = Math.round(hallazgo.valor.fraccionInversion * 100);
 
+  // FASE 4 — migrado al VOCABULARIO ÚNICO (2º de los 3 cuerpos con markup a mano).
   return (
     <div>
-      <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
-        <span>No es remodelar para revender: es dejar el depto en estándar de arriendo para captar el precio de mercado.</span>
-        <InfoTooltip content="Pintura, pisos, cocina/baño al día. Un usado sin puesta a punto suele arrendar bajo el precio de mercado de la zona." />
-      </p>
-
-      {/* Cifras del hallazgo — chips numéricos en mono */}
-      <div
-        className="rounded-[8px] p-4 mb-4"
-        style={{ background: "var(--franco-elevated)", border: "0.5px solid var(--franco-border)" }}
-      >
-        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-3">
-          Puesta a punto estimada
+      <VProsa>
+        <p className="inline-flex items-center gap-1 m-0">
+          <span>No es remodelar para revender: es dejar el depto en estándar de arriendo para captar el precio de mercado.</span>
+          <InfoTooltip content="Pintura, pisos, cocina/baño al día. Un usado sin puesta a punto suele arrendar bajo el precio de mercado de la zona." />
         </p>
-        {/* Stack en móvil: el monto CLP (largo) se monta sobre los otros chips
-            si se fuerzan 3 columnas a 380px. 3 cols recién desde sm. */}
+      </VProsa>
+
+      <VViz t="Puesta a punto estimada">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+            <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>
               Inversión
             </p>
-            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
-              {montoFmt}
-            </p>
+            <p className="font-mono font-bold m-0" style={{ fontSize: 20, lineHeight: 1.05, color: "var(--doc-tx)" }}>{montoFmt}</p>
           </div>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+            <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>
               Por m²
             </p>
-            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
-              {ufM2.toFixed(1).replace(".", ",")} <span className="text-[14px] font-medium">UF/m²</span>
+            <p className="font-mono font-bold m-0" style={{ fontSize: 20, lineHeight: 1.05, color: "var(--doc-tx)" }}>
+              {ufM2.toFixed(1).replace(".", ",")} <span style={{ fontSize: 13, fontWeight: 500 }}>UF/m²</span>
             </p>
           </div>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+            <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>
               De tu plata día 1
             </p>
             <p
-              className={`font-mono font-bold text-[20px] m-0 leading-tight ${
-                hallazgo.valor.fraccionInversion > 0.2 ? "text-signal-red" : "text-[var(--franco-text)]"
-              }`}
+              className="font-mono font-bold m-0"
+              style={{ fontSize: 20, lineHeight: 1.05, color: hallazgo.valor.fraccionInversion > 0.2 ? "var(--signal-red)" : "var(--doc-tx)" }}
             >
               {pctInversion}%
             </p>
           </div>
         </div>
-        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-3">
+        <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--doc-tx3)", marginTop: 12 }}>
           Depto de {antiguedadAnios} años · {superficieUtilM2} m² útiles.
         </p>
-      </div>
+      </VViz>
 
-      {/* Procedencia visible */}
-      <div
-        className="rounded-r-[8px] p-4"
-        style={{
-          borderLeft: "3px solid var(--franco-text)",
-          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-        }}
-      >
-        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-          De dónde sale
-        </p>
-        <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-          {procedenciaExtendida(hallazgo, currency, valorUF)}
-        </p>
-      </div>
+      <VFuente>{procedenciaExtendida(hallazgo, currency, valorUF)}</VFuente>
     </div>
   );
 }
@@ -1740,105 +1555,59 @@ function DrawerCapRate({
   const fmt = (n: number) => fmtMoney(n, currency, valorUF);
   const pct = (n: number) => n.toFixed(1).replace(".", ",");
 
+  // FASE 4 — migrado al VOCABULARIO ÚNICO (era uno de los 3 cuerpos con markup
+  // duplicado a mano). Mantra visual-first: el termómetro muestra dónde cae el
+  // cap rate frente a la referencia; la prosa deja de contar lo que se ve.
+  const rango = Math.max(capRatePct, capRefPct) * 1.35 || 1;
   return (
     <div>
-      <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
-        <span>El cap rate es lo que el depto renta al año, como % del precio, antes de la deuda.</span>
-        <InfoTooltip content="Cap rate = arriendo anual neto (tras gastos operativos, antes de la cuota del crédito) ÷ precio. Mide la rentabilidad del activo, sin el efecto del crédito." />
-      </p>
-
-      {/* Cap rate vs referencia — chips numéricos en mono */}
-      <div
-        className="rounded-[8px] p-4 mb-4"
-        style={{ background: "var(--franco-elevated)", border: "0.5px solid var(--franco-border)" }}
-      >
-        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-3">
-          Rendimiento operativo
+      <VProsa>
+        <p className="inline-flex items-center gap-1 m-0">
+          <span>El cap rate es lo que el depto renta al año, como % del precio, antes de la deuda.</span>
+          <InfoTooltip content="Cap rate = arriendo anual neto (tras gastos operativos, antes de la cuota del crédito) ÷ precio. Mide la rentabilidad del activo, sin el efecto del crédito." />
         </p>
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
-              Tu cap rate
-            </p>
-            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
-              {pct(capRatePct)}%
-            </p>
-          </div>
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
-              Referencia
-            </p>
-            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
-              {pct(capRefPct)}%
-            </p>
-          </div>
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
-              Brecha
-            </p>
-            <p
-              className={`font-mono font-bold text-[20px] m-0 leading-tight ${
-                adverso ? "text-signal-red" : "text-[var(--franco-text)]"
-              }`}
-            >
-              {gapPts > 0 ? "+" : gapPts < 0 ? "−" : ""}
-              {pct(Math.abs(gapPts))} pts
-            </p>
-          </div>
-        </div>
-        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-3">
+      </VProsa>
+
+      <VViz t="Dónde cae tu rendimiento frente a la referencia">
+        <Thermo
+          pct={(capRatePct / rango) * 100}
+          refPct={(capRefPct / rango) * 100}
+          legend={[
+            { k: "Tu cap rate", v: `${pct(capRatePct)}%` },
+            { k: "Referencia", v: `${pct(capRefPct)}%` },
+            { k: "Brecha", v: `${gapPts > 0 ? "+" : gapPts < 0 ? "−" : ""}${pct(Math.abs(gapPts))} pts` },
+          ]}
+        />
+        <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--doc-tx3)", marginTop: 12 }}>
           Hoy: {fmt(noiAnual)} netos al año sobre un precio de {fmt(precioCLP)}.
         </p>
-      </div>
+      </VViz>
 
-      {/* Procedencia — de dónde sale el dato (builder determinístico, reemplaza el
-          eco de fraseCanonica que ya mostró la card) */}
-      <div
-        className="rounded-r-[8px] p-4 mb-4"
-        style={{
-          borderLeft: "3px solid var(--franco-text)",
-          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-        }}
+      <VCierre
+        titulo={adverso ? "Qué haces con esto" : enLinea ? "Qué significa" : "Qué significa"}
       >
-        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-          De dónde sale
-        </p>
-        <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-          {procedenciaExtendida(hallazgo, currency, valorUF)}
-        </p>
-      </div>
-
-      {/* Bloque conclusivo — arriendo que pediría la referencia (cálculo directo) */}
-      <div
-        className="rounded-r-[8px] p-4"
-        style={{
-          borderLeft: "3px solid var(--franco-text)",
-          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-        }}
-      >
-        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-          {adverso ? "Para rendir como el mercado" : enLinea ? "Rinde en línea con el mercado" : "Ya rinde sobre el mercado"}
-        </p>
         {adverso ? (
           <>
-            <p className="font-mono font-bold text-[24px] text-[var(--franco-text)] m-0 leading-tight">
-              {fmt(arriendoObjetivo)}
-              <span className="text-[14px] font-medium"> /mes</span>
-            </p>
-            <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mt-1">
-              Hoy arriendas en {fmt(arriendoActual)}. Para rendir como la referencia de mercado ({pct(capRefPct)}%) necesitarías arrendar en torno a {fmt(arriendoObjetivo)} al mes — o pagar menos por el depto.
-            </p>
+            <span className="font-mono font-bold" style={{ fontSize: 20, fontStyle: "normal", marginRight: 8 }}>
+              {fmt(arriendoObjetivo)}/mes
+            </span>
+            Hoy arriendas en {fmt(arriendoActual)}. Para rendir como la referencia de mercado ({pct(capRefPct)}%)
+            necesitarías arrendar en torno a {fmt(arriendoObjetivo)} al mes — o pagar menos por el depto.
           </>
         ) : enLinea ? (
-          <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-            Tu arriendo de {fmt(arriendoActual)} al mes renta lo esperable para la referencia de mercado ({pct(capRefPct)}%). Ni ventaja ni castigo por este lado: el caso se decide en las otras piezas.
-          </p>
+          <>
+            Tu arriendo de {fmt(arriendoActual)} al mes renta lo esperable para la referencia de mercado (
+            {pct(capRefPct)}%). Ni ventaja ni castigo por este lado: el caso se decide en las otras piezas.
+          </>
         ) : (
-          <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-            Tu arriendo de {fmt(arriendoActual)} al mes ya renta por sobre la referencia de mercado ({pct(capRefPct)}%). El activo trabaja a tu favor.
-          </p>
+          <>
+            Tu arriendo de {fmt(arriendoActual)} al mes ya renta por sobre la referencia de mercado (
+            {pct(capRefPct)}%). El activo trabaja a tu favor.
+          </>
         )}
-      </div>
+      </VCierre>
+
+      <VFuente>{procedenciaExtendida(hallazgo, currency, valorUF)}</VFuente>
     </div>
   );
 }
@@ -1948,6 +1717,7 @@ export function AnalysisDrawer({
   onClose,
   onNavigate,
   sequence,
+  inline = false,
   zoneInsight,
   zoneLoading,
   zoneError,
@@ -2086,6 +1856,7 @@ export function AnalysisDrawer({
   })();
 
   useEffect(() => {
+    if (inline) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowRight" && nextKey) onNavigate(nextKey);
@@ -2093,15 +1864,130 @@ export function AnalysisDrawer({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose, onNavigate, nextKey, prevKey]);
+  }, [onClose, onNavigate, nextKey, prevKey, inline]);
 
   useEffect(() => {
+    if (inline) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, []);
+  }, [inline]);
+
+  // Cuerpo del drawer — lo comparten el modo overlay (histórico) y el modo
+  // INLINE del acordeón de hallazgos (FASE 4).
+  const cuerpoDrawer = (
+    <>
+      {activeKey === "costoMensual" && (
+        <DrawerCostoMensual
+          data={section as AISection}
+          currency={currency}
+          results={results}
+          inputData={inputData}
+          valorUF={valorUF}
+        />
+      )}
+      {activeKey === "negociacion" && (
+        <DrawerNegociacion
+          data={section as AINegociacionSection}
+          currency={currency}
+          inputData={inputData}
+          results={results}
+          valorUF={valorUF}
+          createdAt={createdAt}
+        />
+      )}
+      {activeKey === "reestructuracion" &&
+        (aiAnalysis.reestructuracion ? (
+          <DrawerReestructuracion
+            data={aiAnalysis.reestructuracion}
+            currency={currency}
+            results={results}
+            valorUF={valorUF}
+          />
+        ) : estructuraHallazgo ? (
+          <DrawerEstructuraSana
+            hallazgo={estructuraHallazgo}
+            results={results}
+            currency={currency}
+            valorUF={valorUF}
+          />
+        ) : null)}
+      {activeKey === "capexPuestaAPunto" && capexHallazgo && (
+        <DrawerCapexPuestaAPunto
+          hallazgo={capexHallazgo}
+          currency={currency}
+          valorUF={valorUF}
+        />
+      )}
+      {activeKey === "capRate" && capRateHallazgo && (
+        <DrawerCapRate
+          hallazgo={capRateHallazgo}
+          results={results}
+          currency={currency}
+          valorUF={valorUF}
+        />
+      )}
+      {activeKey === "largoPlazo" && (
+        <DrawerLargoPlazo
+          data={section as AISection}
+          currency={currency}
+        />
+      )}
+      {activeKey === "zona" && (
+        <DrawerZona
+          zoneInsight={zoneInsight}
+          zoneLoading={zoneLoading}
+          zoneError={zoneError}
+          zoneCenter={zoneCenter ?? null}
+          currency={currency}
+          comuna={comuna ?? (inputData.comuna || "tu comuna")}
+          arriendoUsuarioCLP={arriendoUsuarioCLP ?? Number(inputData.arriendo) ?? 0}
+          valorUF={valorUF}
+        />
+      )}
+      {activeKey === "tir" &&
+        (tirHallazgo ? (
+          <DrawerTIRLtr hallazgo={tirHallazgo} results={results} currency={currency} valorUF={valorUF} />
+        ) : (
+          faltaHallazgoLtr
+        ))}
+      {activeKey === "sensibilidad" &&
+        (sensibilidadHallazgo ? (
+          <DrawerSensibilidadLtr hallazgo={sensibilidadHallazgo} results={results} currency={currency} valorUF={valorUF} />
+        ) : (
+          faltaHallazgoLtr
+        ))}
+      {activeKey === "distanciaVeredicto" &&
+        (distanciaHallazgo ? (
+          <DrawerDistanciaLtr hallazgo={distanciaHallazgo} currency={currency} valorUF={valorUF} />
+        ) : (
+          faltaHallazgoLtr
+        ))}
+      {activeKey === "patrimonio" &&
+        (patrimonioHallazgo ? (
+          <DrawerPatrimonioLtr hallazgo={patrimonioHallazgo} results={results} currency={currency} valorUF={valorUF} />
+        ) : (
+          faltaHallazgoLtr
+        ))}
+      {activeKey === "plusvalia" &&
+        (plusvaliaHallazgo ? (
+          <DrawerPlusvaliaLtr
+            hallazgo={plusvaliaHallazgo}
+            results={results}
+            valorUF={valorUF}
+            comuna={comuna ?? (inputData.comuna || "la comuna")}
+          />
+        ) : (
+          faltaHallazgoLtr
+        ))}
+
+    </>
+  );
+
+  // Modo INLINE: el acordeón ya aporta encabezado, ancla y cierre.
+  if (inline) return cuerpoDrawer;
 
   return (
     <>
@@ -2139,109 +2025,7 @@ export function AnalysisDrawer({
             </button>
           </div>
 
-          {activeKey === "costoMensual" && (
-            <DrawerCostoMensual
-              data={section as AISection}
-              currency={currency}
-              results={results}
-              inputData={inputData}
-              valorUF={valorUF}
-            />
-          )}
-          {activeKey === "negociacion" && (
-            <DrawerNegociacion
-              data={section as AINegociacionSection}
-              currency={currency}
-              inputData={inputData}
-              results={results}
-              valorUF={valorUF}
-              createdAt={createdAt}
-            />
-          )}
-          {activeKey === "reestructuracion" &&
-            (aiAnalysis.reestructuracion ? (
-              <DrawerReestructuracion
-                data={aiAnalysis.reestructuracion}
-                currency={currency}
-                results={results}
-                valorUF={valorUF}
-              />
-            ) : estructuraHallazgo ? (
-              <DrawerEstructuraSana
-                hallazgo={estructuraHallazgo}
-                results={results}
-                currency={currency}
-                valorUF={valorUF}
-              />
-            ) : null)}
-          {activeKey === "capexPuestaAPunto" && capexHallazgo && (
-            <DrawerCapexPuestaAPunto
-              hallazgo={capexHallazgo}
-              currency={currency}
-              valorUF={valorUF}
-            />
-          )}
-          {activeKey === "capRate" && capRateHallazgo && (
-            <DrawerCapRate
-              hallazgo={capRateHallazgo}
-              results={results}
-              currency={currency}
-              valorUF={valorUF}
-            />
-          )}
-          {activeKey === "largoPlazo" && (
-            <DrawerLargoPlazo
-              data={section as AISection}
-              currency={currency}
-            />
-          )}
-          {activeKey === "zona" && (
-            <DrawerZona
-              zoneInsight={zoneInsight}
-              zoneLoading={zoneLoading}
-              zoneError={zoneError}
-              zoneCenter={zoneCenter ?? null}
-              currency={currency}
-              comuna={comuna ?? (inputData.comuna || "tu comuna")}
-              arriendoUsuarioCLP={arriendoUsuarioCLP ?? Number(inputData.arriendo) ?? 0}
-              valorUF={valorUF}
-            />
-          )}
-          {activeKey === "tir" &&
-            (tirHallazgo ? (
-              <DrawerTIRLtr hallazgo={tirHallazgo} results={results} currency={currency} valorUF={valorUF} />
-            ) : (
-              faltaHallazgoLtr
-            ))}
-          {activeKey === "sensibilidad" &&
-            (sensibilidadHallazgo ? (
-              <DrawerSensibilidadLtr hallazgo={sensibilidadHallazgo} results={results} currency={currency} valorUF={valorUF} />
-            ) : (
-              faltaHallazgoLtr
-            ))}
-          {activeKey === "distanciaVeredicto" &&
-            (distanciaHallazgo ? (
-              <DrawerDistanciaLtr hallazgo={distanciaHallazgo} currency={currency} valorUF={valorUF} />
-            ) : (
-              faltaHallazgoLtr
-            ))}
-          {activeKey === "patrimonio" &&
-            (patrimonioHallazgo ? (
-              <DrawerPatrimonioLtr hallazgo={patrimonioHallazgo} results={results} currency={currency} valorUF={valorUF} />
-            ) : (
-              faltaHallazgoLtr
-            ))}
-          {activeKey === "plusvalia" &&
-            (plusvaliaHallazgo ? (
-              <DrawerPlusvaliaLtr
-                hallazgo={plusvaliaHallazgo}
-                results={results}
-                valorUF={valorUF}
-                comuna={comuna ?? (inputData.comuna || "la comuna")}
-              />
-            ) : (
-              faltaHallazgoLtr
-            ))}
+          {cuerpoDrawer}
 
           <div className="flex justify-between gap-2 mt-6 pt-4 border-t border-[var(--franco-border)]">
             {prevKey ? (

@@ -30,10 +30,13 @@ import type {
   HallazgoEstructuraFinanciamiento,
   HallazgoEstructuraCostosStr,
   HallazgoDistanciaVeredicto,
+  HallazgoPuestaAPunto,
 } from "@/lib/types";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
-import { extractRiesgos } from "@/components/ui/AnalysisDrawer";
+import { extractRiesgos, DrawerCapexPuestaAPunto } from "@/components/ui/AnalysisDrawer";
+import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
+import { Tabla } from "@/components/analysis/hallazgos/vocabulario";
 import { DrawerKeySTR } from "./DrawerSTR";
 import {
   DrawerFinanciamientoStr,
@@ -66,6 +69,7 @@ export interface InputDataSTR {
 
 /** Títulos del header de cada drawer (usados por DrawerSTR). */
 export const DRAWER_TITULOS_STR: Record<DrawerKeySTR, string> = {
+  capexPuestaAPunto: "Dejarlo listo para arrendar",
   rentabilidad: "Detalle de retorno y rentabilidad",
   sostenibilidad: "Flujo mensual y estacionalidad",
   sensibilidad: "Sensibilidad a ocupación y mercado",
@@ -129,9 +133,9 @@ function NarrativeIA({ text }: { text: string | null | undefined }) {
     );
   }
   return (
-    <p className="font-body text-[14px] text-[var(--franco-text)] leading-[1.65] mb-5 m-0 whitespace-pre-wrap">
-      {text}
-    </p>
+    <div className="font-body text-[14px] text-[var(--franco-text)] leading-[1.65] mb-5">
+      {renderPlumon(text)}
+    </div>
   );
 }
 
@@ -156,7 +160,7 @@ function EstrategiaSugerida({ text }: { text: string | null | undefined }) {
         ESTRATEGIA SUGERIDA
       </p>
       <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-[1.55]">
-        {text}
+        {plumonInline(text)}
       </p>
     </div>
   );
@@ -215,7 +219,7 @@ function CajaFranco({ text, label, variant = "info" }: { text: string | null | u
   if (!text || !text.trim()) return null;
   return (
     <StateBox variant="left-border" state={variant} label={label} className="mt-5">
-      {text}
+      {plumonInline(text)}
     </StateBox>
   );
 }
@@ -386,6 +390,13 @@ export function DrawerContentSTR({
   if (activeKey === "estructuraCostos") {
     const h = hById<HallazgoEstructuraCostosStr>("estructura_costos_str");
     return h ? <DrawerEstructuraCostosStr hallazgo={h} results={results} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
+  }
+  if (activeKey === "capexPuestaAPunto") {
+    // FASE 4 — cuerpo propio (antes: card sin drawer). Reusa el cuerpo LTR: el
+    // hallazgo es el MISMO tipo y la lectura es idéntica (qué cuesta dejarlo
+    // listo y qué fracción del desembolso inicial se lleva). Cero fork.
+    const h = hById<HallazgoPuestaAPunto>("capex_puesta_a_punto");
+    return h ? <DrawerCapexPuestaAPunto hallazgo={h} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
   }
   if (activeKey === "distanciaVeredicto") {
     const h = hById<HallazgoDistanciaVeredicto>("distancia_veredicto");
@@ -579,42 +590,21 @@ export function DrawerContentSTR({
           <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5] italic">
             Estimación de mercado (AirROI), no transacciones cerradas.
           </p>
-          <div className="grid grid-cols-1 gap-0">
-            <div className="flex items-center font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] py-1.5 border-b-[0.5px] border-[var(--franco-border)]">
-              <span className="flex-1">Escenario</span>
-              <span className="w-24 text-right">NOI/mes</span>
-              <span className="w-24 text-right">vs LTR</span>
-            </div>
-            {rows.map((r) => {
-              const isBase = r.label === "P50";
-              const isNeg = r.noiMensual < 0;
-              return (
-                <div
-                  key={r.label}
-                  className="flex items-center py-2 border-b-[0.5px] border-[var(--franco-border)]"
-                  style={isBase ? { background: "color-mix(in srgb, var(--franco-text) 4%, transparent)", padding: "8px 8px", borderRadius: 4 } : undefined}
-                >
-                  <span className="flex-1 font-body text-[13px] text-[var(--franco-text)]" style={{ fontWeight: isBase ? 600 : 400 }}>
-                    {r.label}
-                    {isBase ? " · base" : null}
-                  </span>
-                  <span
-                    className="w-24 text-right font-mono text-[13px] font-medium"
-                    style={{ color: isNeg ? "var(--signal-red)" : "var(--franco-text)" }}
-                  >
-                    {fmtMoney(r.noiMensual, currency, valorUF)}
-                  </span>
-                  <span
-                    className="w-24 text-right font-mono text-[12px]"
-                    style={{ color: r.sobreRenta < 0 ? "var(--signal-red)" : "var(--franco-text-secondary)" }}
-                  >
-                    {(r.sobreRenta >= 0 ? "+" : "")}
-                    {fmtMoney(r.sobreRenta, currency, valorUF)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          {/* FASE 4 — tabla del VOCABULARIO: scroll horizontal CONTENIDO + cue.
+              Es el arquetipo "datos pesados": la matriz nunca empuja el ancho
+              del documento, se desliza dentro de su caja. */}
+          <Tabla
+            headers={["Escenario", "NOI/mes", "vs LTR"]}
+            filas={rows.map((r) => ({
+              celdas: [
+                r.label === "P50" ? `${r.label} · base` : r.label,
+                fmtMoney(r.noiMensual, currency, valorUF),
+                `${r.sobreRenta >= 0 ? "+" : ""}${fmtMoney(r.sobreRenta, currency, valorUF)}`,
+              ],
+              destacada: r.label === "P50",
+              tonos: [null, r.noiMensual < 0 ? "neg" : null, r.sobreRenta < 0 ? "neg" : null],
+            }))}
+          />
         </DrawerSection>
 
         <DrawerSection label="Punto de equilibrio">

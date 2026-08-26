@@ -37,6 +37,10 @@ export type DrawerKeySTR =
   | "patrimonio"
   | "plusvalia"
   | "estructuraCostos"
+  // FASE 4: capex_puesta_a_punto estaba en el 55% de los informes STR y era la
+  // ÚNICA card que no abría nada (asimetría con LTR, que sí lo tenía). Recibe
+  // cuerpo propio: en el acordeón, una fila que no expande es una fila rota.
+  | "capexPuestaAPunto"
   // Distancia al veredicto: NO es una card de la pirámide (se filtra en
   // ordenarHallazgosPiramideSTR, igual que LTR). Se abre desde el hero, así que queda
   // fuera de `sequence` y no tiene flechas prev/next.
@@ -59,6 +63,7 @@ const DRAWER_META: Record<DrawerKeySTR, { label: string }> = {
   patrimonio: { label: "Patrimonio a 10 años" },
   plusvalia: { label: "Plusvalía de la comuna" },
   estructuraCostos: { label: "Estructura de costos" },
+  capexPuestaAPunto: { label: "Puesta a punto" },
   distanciaVeredicto: { label: "Lo que te separa" },
 };
 
