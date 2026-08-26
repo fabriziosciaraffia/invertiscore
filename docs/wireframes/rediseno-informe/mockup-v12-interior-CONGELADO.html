@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light" data-view="desktop">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup v12 CONGELADO · Interior de hallazgos — refranco.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;0,8..60,900;1,8..60,400;1,8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!--
+  ============================================================
+  REFERENCIA CONGELADA — FASE 4 (aprobada por Fabrizio, 26-ago-2026)
+  ------------------------------------------------------------
+  DECISIONES:
+  1. Patrón: ACORDEÓN EXCLUSIVO (uno abierto a la vez). Descartados: drawer,
+     hoja completa, foco progresivo (comparados en v11).
+  2. Al abrir: ANCLAR ARRIBA con scroll SUAVE; el encabezado del hallazgo
+     queda visible durante el desplazamiento.
+  3. Cierre: DOBLE — encabezado sigue siendo toggle + botón al pie "↑ Cerrar".
+  4. MANTRA: si un dato se puede mostrar, no se cuenta. Diagrama antes que párrafo.
+  5. VOCABULARIO ÚNICO (reemplaza los 2 que conviven hoy en los 26 drawers):
+     a) .v-prosa      — prosa (IA o motor), con <mark> de plumón a weight 500
+     b) .v-viz        — contenedor canónico de TODO diagrama, con .v-viz-t (etiqueta mono)
+     c) .v-cierre     — UNA sola caja de cierre (fusiona "caja accionable" y
+                        "qué haces con esto"); el título rota: "Qué significa"
+                        (interpretación) o "Qué haces con esto" (acción)
+     d) .v-fuente     — línea de procedencia
+     No existe ningún otro bloque. Los 3 drawers con markup duplicado
+     (capRate, capex, estructura-sana) se migran a estas primitivas.
+  6. PRIMITIVAS DE DIAGRAMA disponibles: .thermo (posición en rango),
+     .fall (waterfall de descomposición), .bars (comparativa), .spark (serie),
+     .tbl (tabla-heatmap con scroll horizontal + cue "↔ desliza la tabla").
+  7. Los 3 arquetipos (ver más abajo): motor-templated 58% · IA+evidencia 23%
+     (aquí vive el plumón) · datos pesados (caso límite).
+  8. capex_puesta_a_punto STR recibe cuerpo propio (hoy no tiene drawer, 55% de informes).
+  9. distancia_veredicto NO es fila: es destino del CTA de la posición de Franco.
+  NOTA: los números de este archivo son placeholder. Todo dato viene del motor.
+  ============================================================
+-->
+<style>
+  :root{
+    --serif:'Source Serif 4', Georgia, serif;
+    --sans:'IBM Plex Sans', system-ui, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+    --signal:#C8323C;
+  }
+  [data-theme="light"]{
+    --bg:#E9E6DF; --paper:#FAF8F3; --paper2:#F1EEE7; --paper3:#EAE7DF;
+    --line:#DAD6CC; --line2:#C4BFB2;
+    --tx:#141311; --tx2:#3B3A36; --tx3:#75726A; --tx4:#A39F94;
+    --hl:rgba(224,67,80,.26); --hl-tx:#141311;
+    --neutral:#8C8880; --good:#2F7D55; --warn:#A96F1B;
+    --shadow:0 24px 60px rgba(20,19,17,.14);
+  }
+  [data-theme="dark"]{
+    --bg:#0A0A0A; --paper:#141414; --paper2:#1B1B1B; --paper3:#232323;
+    --line:#282828; --line2:#3A3A3A;
+    --tx:#EDEBE6; --tx2:#C4C2BC; --tx3:#8C8A84; --tx4:#5C5A55;
+    --hl:rgba(216,67,77,.38); --hl-tx:#FFFFFF;
+    --neutral:#6E6A63; --good:#57B98A; --warn:#DFA34F;
+    --shadow:0 24px 60px rgba(0,0,0,.6);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);min-height:100vh;padding:28px 16px 90px}
+  .lab{max-width:1040px;margin:0 auto}
+  .lab-head h1{font-family:var(--serif);font-size:21px;font-weight:600;margin-bottom:4px}
+  .lab-head h1 em{font-style:italic;font-weight:400;color:var(--tx3)}
+  .lab-head .ai{color:var(--signal)}
+  .lab-sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:18px}
+  .frozen{border:1px solid var(--signal);border-left:3px solid var(--signal);background:var(--paper2);
+    padding:12px 16px;margin-bottom:20px;font-size:12.5px;color:var(--tx2);line-height:1.6;max-width:74ch}
+  .frozen b{color:var(--signal);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:5px}
+  .controls{display:flex;flex-wrap:wrap;gap:12px 20px;margin-bottom:24px}
+  .ctrl{display:flex;align-items:center;gap:8px}
+  .ctrl .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;padding:8px 12px;background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+
+  .stage{display:flex;justify-content:center}
+  .doc{width:100%;max-width:820px;background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);transition:max-width .25s}
+  [data-view="mobile"] .doc{max-width:400px}
+  .page{padding:30px 64px 40px}
+  [data-view="mobile"] .page{padding:22px 20px 30px}
+  .chapters-eyebrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx3);
+    padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:2px}
+  .chapters-eyebrow .h{letter-spacing:.06em;color:var(--tx4);text-transform:none;font-size:10.5px}
+
+  /* ===== FILA ===== */
+  .hall{border-bottom:1px solid var(--line)}
+  .hall-head{display:flex;align-items:baseline;gap:16px;padding:15px 0;cursor:pointer;transition:padding-left .15s;
+    width:100%;background:none;border:none;text-align:left;color:inherit}
+  .hall-head:hover{padding-left:6px}
+  .hall-head:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .hall .num{font-family:var(--serif);font-size:28px;font-weight:900;color:var(--line2);min-width:46px;font-variant-numeric:tabular-nums;transition:color .15s}
+  .hall.open .num,.hall-head:hover .num{color:var(--signal)}
+  [data-view="mobile"] .hall .num{font-size:22px;min-width:36px}
+  .hall .q{flex:1;font-family:var(--serif);font-size:16px;font-weight:600;line-height:1.35}
+  [data-view="mobile"] .hall .q{font-size:14.5px}
+  .hall .val{font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--signal);white-space:nowrap}
+  .hall .chev{font-family:var(--mono);font-size:13px;color:var(--tx4);transition:transform .2s}
+  .hall.open .chev{transform:rotate(180deg)}
+  .hall-body{display:none;padding:4px 0 20px 62px}
+  [data-view="mobile"] .hall-body{padding-left:0}
+  .hall.open .hall-body{display:block;animation:fade .22s ease-out}
+  @keyframes fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.hall.open .hall-body{animation:none}}
+
+  /* ===== VOCABULARIO ÚNICO ===== */
+  .v-prosa{font-size:14px;line-height:1.75;color:var(--tx2);margin-bottom:16px;max-width:60ch}
+  .v-prosa mark{background:linear-gradient(transparent 42%,var(--hl) 42%,var(--hl) 94%,transparent 94%);color:var(--hl-tx);padding:0 2px;font-weight:500}
+  .v-viz{margin:0 0 18px}
+  .v-viz-t{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:10px}
+  .v-cierre{background:var(--paper2);border:1px solid var(--line);border-left:3px solid var(--signal);border-radius:3px;padding:16px 18px;margin-top:4px}
+  .v-cierre .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:8px}
+  .v-cierre p{font-family:var(--serif);font-style:italic;font-size:14.5px;line-height:1.7;color:var(--tx2);max-width:58ch}
+  .v-cierre p mark{background:linear-gradient(transparent 42%,var(--hl) 42%,var(--hl) 94%,transparent 94%);color:var(--hl-tx);padding:0 2px}
+  .v-fuente{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--tx4);margin-top:12px}
+  .v-collapse{margin-top:18px;width:100%;background:none;border:1px dashed var(--line2);border-radius:3px;padding:10px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);cursor:pointer}
+  .v-collapse:hover{color:var(--tx);border-color:var(--tx4)}
+
+  /* ===== PRIMITIVAS DE DIAGRAMA ===== */
+  .thermo{padding:6px 0 2px}
+  .thermo-track{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--good),var(--warn),var(--signal))}
+  .thermo-mark{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--tx);border:3px solid var(--paper);transform:translate(-50%,-50%)}
+  .thermo-ref{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--tx3)}
+  .thermo-legend{display:flex;justify-content:space-between;margin-top:9px;font-family:var(--mono);font-size:9.5px;color:var(--tx4);letter-spacing:.06em}
+  .thermo-legend b{color:var(--tx2);display:block;font-size:12px;margin-top:2px}
+  .fall-visual{display:flex;height:26px;border-radius:2px;overflow:hidden;margin-bottom:12px}
+  .fall-visual span{height:100%}
+  .fall-row{display:grid;grid-template-columns:1fr 130px;align-items:center;gap:12px;padding:7px 0;border-bottom:1px dotted var(--line)}
+  [data-view="mobile"] .fall-row{grid-template-columns:1fr 108px;gap:8px}
+  .fall-row:last-child{border-bottom:none}
+  .fall-row .fk{font-size:12.5px;color:var(--tx3);display:flex;align-items:center;gap:8px}
+  .fall-row .fk::before{content:'';width:8px;height:8px;border-radius:2px;background:var(--c,var(--neutral));flex-shrink:0}
+  .fall-row .fv{font-family:var(--mono);font-size:12.5px;text-align:right}
+  .fall-row.total{border-top:2px solid var(--tx);margin-top:6px;padding-top:10px}
+  .fall-row.total .fk{color:var(--tx);font-weight:600;font-size:13px}
+  .fall-row.total .fk::before{display:none}
+  .fall-row.total .fv{font-weight:700;font-size:14.5px;color:var(--signal)}
+  .bars{display:flex;flex-direction:column;gap:9px}
+  .bar-row{display:grid;grid-template-columns:120px 1fr auto;align-items:center;gap:12px}
+  [data-view="mobile"] .bar-row{grid-template-columns:88px 1fr auto;gap:8px}
+  .bar-row .bk{font-size:12px;color:var(--tx3);text-align:right}
+  [data-view="mobile"] .bar-row .bk{font-size:11px}
+  .bar-track{height:16px;background:var(--paper3);border-radius:2px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:2px}
+  .bar-row .bv{font-family:var(--mono);font-size:12.5px;font-weight:700;white-space:nowrap}
+  .spark{width:100%;height:110px;display:block}
+  [data-view="mobile"] .spark{height:96px}
+  .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:6px}
+  .tbl{border-collapse:collapse;width:100%;min-width:390px}
+  .tbl th{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4);padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);font-weight:400}
+  .tbl th:first-child{text-align:left}
+  .tbl td{font-family:var(--mono);font-size:12.5px;padding:9px 10px;text-align:right;border-bottom:1px solid var(--line)}
+  .tbl td:first-child{text-align:left;font-family:var(--sans);color:var(--tx3);white-space:nowrap}
+  .tbl tr.hl td{background:var(--paper3)}
+  .cell-neg{color:var(--signal)} .cell-pos{color:var(--good)}
+  .tbl-scrollcue{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4);margin-bottom:16px}
+  .doc-foot{padding:14px 64px 20px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4);text-align:center}
+</style>
+</head>
+<body>
+<div class="lab">
+  <div class="lab-head"><h1><em>re</em>franco<span class="ai">.ai</span> — <em>mockup v12 · interior CONGELADO</em></h1></div>
+  <div class="lab-sub">Referencia de implementación FASE 4 · aprobada 26-ago-2026</div>
+  <div class="frozen"><b>Decisiones congeladas</b>
+    Acordeón exclusivo (uno a la vez) · al abrir ancla arriba con scroll suave · cierre doble (encabezado + botón "↑ Cerrar" al pie) · vocabulario único de 4 piezas (prosa · bloque visual · cierre único · fuente) · mantra visual-first: si un dato se puede mostrar, no se cuenta. Los hallazgos 01-03 son los tres arquetipos.
+  </div>
+
+  <div class="controls">
+    <div class="ctrl"><span class="lbl">Tema</span>
+      <div class="seg" id="seg-theme"><button class="on" data-v="light">Light</button><button data-v="dark">Dark</button></div>
+    </div>
+    <div class="ctrl"><span class="lbl">Vista</span>
+      <div class="seg" id="seg-view"><button class="on" data-v="desktop">PC</button><button data-v="mobile">Mobile</button></div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="doc">
+      <div class="page">
+        <div class="chapters-eyebrow"><span>Los hallazgos, en el orden en que pesan ↓</span><span class="h">toca para profundizar</span></div>
+        <div id="list"></div>
+      </div>
+      <div class="doc-foot">Informe de ejemplo · 12 hallazgos</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ARQUETIPO 1 · MOTOR-TEMPLATED (58%) — termómetro + waterfall + cierre. Cero párrafo de relleno. */
+const A1=`
+  <div class="v-viz"><div class="v-viz-t">Dónde caes en el rango de la comuna</div>
+    <div class="thermo"><div class="thermo-track"><div class="thermo-ref" style="left:62%"></div><div class="thermo-mark" style="left:82%"></div></div>
+      <div class="thermo-legend"><span>Barato<b>UF 74</b></span><span style="text-align:center">Mediana<b>UF 89,2</b></span><span style="text-align:right">Caro<b>UF 112</b></span></div>
+    </div></div>
+  <div class="v-viz"><div class="v-viz-t">Qué pasa con los $980.000 del arriendo</div>
+    <div class="fall-visual"><span style="width:58%;background:var(--neutral)"></span><span style="width:14%;background:var(--warn)"></span><span style="width:9%;background:var(--tx4)"></span><span style="width:19%;background:var(--signal)"></span></div>
+    <div><div class="fall-row"><span class="fk" style="--c:var(--neutral)">Dividendo</span><span class="fv">-$1.184.000</span></div>
+    <div class="fall-row"><span class="fk" style="--c:var(--warn)">Gastos comunes</span><span class="fv">-$85.000</span></div>
+    <div class="fall-row"><span class="fk" style="--c:var(--tx4)">Contribuciones + seguros</span><span class="fv">-$54.000</span></div>
+    <div class="fall-row"><span class="fk" style="--c:var(--signal)">Vacancia y mantención</span><span class="fv">-$78.588</span></div>
+    <div class="fall-row total"><span class="fk">Sale de tu bolsillo</span><span class="fv">-$601.588</span></div></div></div>
+  <div class="v-cierre"><div class="t">Qué significa</div><p>Con el arriendo de mercado, <mark>el dividendo se come todo y sobra deuda</mark>. Para que cierre, o el precio baja 17% o pones 35% de pie.</p></div>
+  <div class="v-fuente">Motor Franco · arriendo estimado de 248 comparables · agosto 2026</div>`;
+
+/* ARQUETIPO 2 · IA + EVIDENCIA + CIERRE (23%) — aquí vive el plumón */
+const A2=`
+  <p class="v-prosa">Tu precio por m² está <mark>20% sobre la mediana de la comuna</mark> y el arriendo de la zona no acompaña ese premio. Los cuatro comparables más parecidos —mismo rango de superficie, mismos años— se cerraron entre UF 86 y UF 93.</p>
+  <div class="v-viz"><div class="v-viz-t">Tu precio contra los comparables directos</div>
+    <div class="bars">
+      <div class="bar-row"><span class="bk">Este depto</span><div class="bar-track"><div class="bar-fill" style="width:96%;background:var(--signal)"></div></div><span class="bv" style="color:var(--signal)">UF 107,1</span></div>
+      <div class="bar-row"><span class="bk">El Vergel 2180</span><div class="bar-track"><div class="bar-fill" style="width:83%;background:var(--neutral)"></div></div><span class="bv">UF 93,0</span></div>
+      <div class="bar-row"><span class="bk">Los Leones 1120</span><div class="bar-track"><div class="bar-fill" style="width:80%;background:var(--neutral)"></div></div><span class="bv">UF 89,4</span></div>
+      <div class="bar-row"><span class="bk">Pocuro 2350</span><div class="bar-track"><div class="bar-fill" style="width:77%;background:var(--neutral)"></div></div><span class="bv">UF 86,1</span></div>
+      <div class="bar-row"><span class="bk">Mediana comuna</span><div class="bar-track"><div class="bar-fill" style="width:80%;background:var(--tx4)"></div></div><span class="bv">UF 89,2</span></div>
+    </div></div>
+  <div class="v-cierre"><div class="t">Qué haces con esto</div><p>Llega a la mesa con estos cuatro cierres: <mark>el premio que pagas no tiene respaldo en arriendo</mark>. Bajar a UF 92 deja el negocio en zona de ajuste.</p></div>
+  <div class="v-fuente">Comparables publicados · radio 800 m · últimos 90 días</div>`;
+
+/* ARQUETIPO 3 · DATOS PESADOS — caso límite: serie + tabla con scroll contenido */
+const A3=`
+  <div class="v-viz"><div class="v-viz-t">Ocupación mes a mes en la zona</div>
+    <svg class="spark" viewBox="0 0 600 150" preserveAspectRatio="none" aria-label="Ocupación mensual">
+      <line x1="0" y1="75" x2="600" y2="75" stroke="var(--line2)" stroke-width="1" stroke-dasharray="4 4"/>
+      <polygon fill="var(--hl)" points="10,40 60,32 110,55 160,88 210,110 260,124 310,118 360,96 410,72 460,58 510,44 560,36 560,150 10,150"/>
+      <polyline fill="none" stroke="var(--signal)" stroke-width="3" points="10,40 60,32 110,55 160,88 210,110 260,124 310,118 360,96 410,72 460,58 510,44 560,36"/>
+    </svg>
+    <div class="thermo-legend" style="margin-top:4px"><span>Ene</span><span>Abr</span><span>Jul</span><span style="text-align:right">Dic</span></div></div>
+  <div class="v-viz"><div class="v-viz-t">Tu flujo según cuán lleno llegues</div>
+    <div class="tblwrap"><table class="tbl">
+      <thead><tr><th>Escenario</th><th>Ocupación</th><th>Ingreso/mes</th><th>Tu flujo</th></tr></thead>
+      <tbody>
+        <tr><td>Pesimista · P25</td><td>38%</td><td>$479.000</td><td class="cell-neg">-$512.000</td></tr>
+        <tr class="hl"><td>Zona típica · P50</td><td>48%</td><td>$605.000</td><td class="cell-neg">-$331.685</td></tr>
+        <tr><td>Bueno · P75</td><td>57%</td><td>$719.000</td><td class="cell-neg">-$186.000</td></tr>
+        <tr><td>Excelente · P90</td><td>66%</td><td>$832.000</td><td class="cell-pos">+$21.000</td></tr>
+      </tbody></table></div>
+    <div class="tbl-scrollcue">↔ desliza la tabla</div></div>
+  <div class="v-cierre"><div class="t">Qué significa</div><p>Solo en el escenario excelente el flujo se da vuelta: <mark>necesitas superar al 90% de la zona</mark> para no poner plata. Eso no es un supuesto, es una meta.</p></div>
+  <div class="v-fuente">AirROI · 298 listings activos · ventana 12 meses</div>`;
+
+const H=[
+  {q:'El arriendo largo te rendiría más',val:'-13%',body:A1},
+  {q:'Estás pagando de más por el metro cuadrado',val:'+20%',body:A2},
+  {q:'Necesitas llenar más que la zona típica',val:'48%',body:A3},
+  {q:'Pones plata de tu bolsillo todos los meses',val:'-$331.685',body:A1},
+  {q:'La tarifa por noche está en el piso del rango',val:'$42 mil',body:A2},
+  {q:'Puesta a punto: inversión que el flujo no devuelve',val:'$4,5 MM',body:A1},
+  {q:'Autogestión recorta pero no salva',val:'+$237.722',body:A1},
+  {q:'Tu pie trabaja por debajo de su potencial',val:'TIR 3,1%',body:A2},
+  {q:'La plusvalía histórica no compensa',val:'3,1%',body:A1},
+  {q:'Estructura de financiamiento',val:'20% pie',body:A1},
+  {q:'Patrimonio a 10 años',val:'$96 MM',body:A2},
+  {q:'Gastos de operación dentro de rango',val:'ok',body:A1}
+];
+document.getElementById('list').innerHTML=H.map((h,i)=>{
+  const n=String(i+1).padStart(2,'0');
+  return `<div class="hall"><button class="hall-head" aria-expanded="false"><span class="num">${n}</span><span class="q">${h.q}</span><span class="val">${h.val}</span><span class="chev">↓</span></button>
+  <div class="hall-body">${h.body}<button class="v-collapse">↑ Cerrar</button></div></div>`;
+}).join('');
+
+function cerrar(hall,volver){
+  hall.classList.remove('open');
+  hall.querySelector('.hall-head').setAttribute('aria-expanded','false');
+  if(volver) hall.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function toggle(el){
+  const abierto=el.classList.contains('open');
+  document.querySelectorAll('.hall.open').forEach(o=>cerrar(o,false));
+  if(!abierto){
+    el.classList.add('open');
+    el.querySelector('.hall-head').setAttribute('aria-expanded','true');
+    setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),60);
+  }
+}
+document.querySelectorAll('.hall-head').forEach(h=>h.addEventListener('click',()=>toggle(h.parentElement)));
+document.querySelectorAll('.v-collapse').forEach(b=>b.addEventListener('click',()=>cerrar(b.closest('.hall'),true)));
+function wireSeg(id,fn){document.querySelectorAll('#'+id+' button').forEach(b=>{
+  b.addEventListener('click',()=>{document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fn(b.dataset.v)})})}
+wireSeg('seg-theme',v=>document.documentElement.dataset.theme=v);
+wireSeg('seg-view',v=>document.documentElement.dataset.view=v);
+</script>
+</body>
+</html>
