@@ -11,6 +11,12 @@ import { PiramideHallazgos, ordenarHallazgosPiramide } from "./PiramideHallazgos
 import { HALLAZGO_DRAWER } from "./GenericFindingCard";
 import { hasAiV2 } from "./AIInsightSection";
 import { stripMarcasDeep } from "@/lib/prosa-marcas";
+import { derivarCifraClaveLtr } from "@/lib/cifra-clave";
+import { buildFichaLtr } from "@/lib/ficha-depto";
+import { formatDireccionDisplay } from "@/lib/format-direccion";
+import { DocumentoFrame, PortadaInforme } from "./portada/PortadaInforme";
+import { useComparablesCercanos } from "./portada/useComparablesCercanos";
+import type { HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
 import { BloqueEsperaInforme } from "@/components/analysis/ProsaSkeleton";
 
 /**
@@ -153,8 +159,89 @@ export function SubjectCardGrid({
     }
   }, [onInformeVisible]);
 
+  // ═══ PORTADA (FASE 3 rediseño Dictamen — mockups v8/v9) ═══
+  // Los datos se arman acá (motor + input); la IA solo aporta el titular, que
+  // llega CRUDO (con `**…**`) desde aiAnalysis — el plumón se pinta en la
+  // portada, mientras el resto de la prosa sigue strippeada (stripMarcasDeep).
+  const direccionPortada = formatDireccionDisplay(inputData?.direccion);
+  const comunaPortada = comuna || inputData?.comuna || "";
+  const titularCrudo = (aiAnalysis as { titular?: string | null } | null)?.titular ?? null;
+  const distanciaPortada =
+    ((results?.hallazgos as { id: string }[] | undefined)?.find((h) => h.id === "distancia_veredicto") as
+      | HallazgoDistanciaVeredicto
+      | undefined) ?? null;
+  const cifraPortada =
+    results?.metrics && inputData
+      ? derivarCifraClaveLtr({
+          veredicto,
+          flujoNetoMensual: (results.metrics as { flujoNetoMensual?: number }).flujoNetoMensual ?? NaN,
+          distancia: distanciaPortada,
+          ufValue: valorUF,
+        })
+      : null;
+  const sobreprecioPortada =
+    ((results?.metrics as { hallazgoSobreprecio?: HallazgoSobreprecio | null } | undefined)?.hallazgoSobreprecio ??
+      aiAnalysis?.hallazgoSobreprecio) || null;
+  const fichaPortada = inputData
+    ? buildFichaLtr({
+        input: inputData,
+        results,
+        medianaUfM2: sobreprecioPortada?.valor.medianaComunaUfM2 ?? null,
+        universoMediana: sobreprecioPortada?.valor.universo ?? null,
+        direccion: direccionPortada,
+        comuna: comunaPortada,
+        ufValue: valorUF,
+        moneda: currency,
+      })
+    : null;
+  // Coords para el mapa de portada (misma fuente que zoneCenter, ya derivada arriba).
+  const compCercanos = useComparablesCercanos({
+    comuna: comunaPortada,
+    superficie: Number(inputData?.superficie) || 0,
+    dormitorios: inputData?.dormitorios,
+    lat: zoneCenter?.lat ?? null,
+    lng: zoneCenter?.lng ?? null,
+  });
+  const fechaCorta = (() => {
+    const d = new Date(fechaProsa ?? createdAt ?? "");
+    return Number.isNaN(d.getTime())
+      ? ""
+      : d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
+  })();
+  const scrollASimulacion = () => {
+    document.getElementById("simulacion-interactiva")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div id="informe-pro-section" className="mb-8">
+      <DocumentoFrame>
+      {fichaPortada && (
+        <PortadaInforme
+          veredicto={veredicto}
+          score={score}
+          direccion={direccionPortada}
+          comuna={comunaPortada}
+          modalidadLabel="Renta larga"
+          fecha={fechaCorta}
+          titular={titularCrudo}
+          cifra={cifraPortada}
+          ficha={fichaPortada}
+          currency={currency}
+          onCurrencyChange={onCurrencyChange}
+          mapa={
+            zoneCenter
+              ? {
+                  lat: zoneCenter.lat,
+                  lng: zoneCenter.lng,
+                  comparables: compCercanos.comparables,
+                  count: compCercanos.count,
+                  label: direccionPortada || comunaPortada,
+                }
+              : null
+          }
+          onAjustarSupuestos={scrollASimulacion}
+        />
+      )}
       <HeroLTR
         onOpenDrawer={setActiveDrawer}
         data={prosa}
@@ -203,7 +290,7 @@ export function SubjectCardGrid({
           {/* A1 — Simulación (AdvancedSection) va ENTRE la pirámide y la card zona:
               drawers → simulación → zona. El wrapper mt-6 da el respiro que faltaba
               entre la última fila de la pirámide y la card "Simula plazo y plusvalía". */}
-          {simulationSlot && <div className="mt-6">{simulationSlot}</div>}
+          {simulationSlot && <div className="mt-6" id="simulacion-interactiva">{simulationSlot}</div>}
 
           {/* paridad drawer — afordance al drawer "A 10 años" (prosa IA largoPlazo). */}
           {simulationSlot && prosa?.largoPlazo?.contenido_clp?.trim() && (
@@ -245,6 +332,8 @@ export function SubjectCardGrid({
           `}</style>
         </div>
       )}
+
+      </DocumentoFrame>
 
       <p className="text-center text-[10px] text-[var(--franco-text-muted)] mt-4">
         Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.

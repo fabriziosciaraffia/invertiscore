@@ -43,8 +43,13 @@ import { DrawerSTR, type DrawerKeySTR } from "@/components/analysis/str/DrawerST
 import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/DrawerContentSTR";
 import { ZonaCardSTR } from "@/components/analysis/str/ZonaCardSTR";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
-import type { AIAnalysisSTRv2 } from "@/lib/types";
+import type { AIAnalysisSTRv2, HallazgoDistanciaVeredicto } from "@/lib/types";
 import { stripMarcasDeep } from "@/lib/prosa-marcas";
+import { derivarCifraClaveStr } from "@/lib/cifra-clave";
+import { buildFichaStr } from "@/lib/ficha-depto";
+import { formatDireccionDisplay } from "@/lib/format-direccion";
+import { DocumentoFrame, PortadaInforme } from "@/components/analysis/portada/PortadaInforme";
+import { useComparablesCercanos } from "@/components/analysis/portada/useComparablesCercanos";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -291,6 +296,57 @@ export function STRResultsClient({
   // porque lo usa el ShareButton.
   const propiedadTitle = nombre || `Depto en ${comuna}`;
 
+  // ═══ PORTADA (FASE 3 rediseño Dictamen — espejo LTR) ═══
+  const direccionPortada = formatDireccionDisplay((inputData?.direccion as string) ?? "");
+  const titularCrudo = (aiAnalysis as { titular?: string | null } | null)?.titular ?? null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rAny = results as any;
+  const distanciaPortada =
+    ((results?.hallazgos as { id: string }[] | undefined)?.find((h) => h.id === "distancia_veredicto") as
+      | HallazgoDistanciaVeredicto
+      | undefined) ?? null;
+  const precioCompraCLP = Number(inputData?.precioCompra) || 0;
+  const precioCompraUFIn = Number(inputData?.precioCompraUF) || 0;
+  const ufStr = precioCompraUFIn > 0 ? precioCompraCLP / precioCompraUFIn : ufValue;
+  const strAuto = rAny?.escenarios?.strAuto ?? rAny?.strAuto;
+  const strAdmin = rAny?.escenarios?.strAdmin ?? rAny?.strAdmin;
+  const difAutoAdmin =
+    strAuto && strAdmin ? (Number(strAuto.flujoCajaMensual) || 0) - (Number(strAdmin.flujoCajaMensual) || 0) : null;
+  const cifraPortada = derivarCifraClaveStr({
+    veredicto,
+    flujoBaseMensual: Number(rAny?.escenarios?.base?.flujoCajaMensual ?? NaN),
+    ahorroAutogestionClpMes:
+      inputData?.modoGestion === "administrador" && difAutoAdmin != null && difAutoAdmin > 0 ? difAutoAdmin : null,
+    distancia: distanciaPortada,
+    ufValue: ufStr,
+  });
+  const fichaPortada = buildFichaStr({
+    input: inputData,
+    adrNoche: Number(rAny?.adrAjustado) || null,
+    ocupacionZona: Number(rAny?.escenarios?.base?.ocupacionReferencia) || null,
+    direccion: direccionPortada,
+    comuna,
+    moneda: currency,
+  });
+  const latPortada = typeof inputData?.lat === "number" ? (inputData.lat as number) : null;
+  const lngPortada = typeof inputData?.lng === "number" ? (inputData.lng as number) : null;
+  const compCercanos = useComparablesCercanos({
+    comuna,
+    superficie: Number(inputData?.superficieUtil) || 0,
+    dormitorios: (inputData?.dormitorios as number) ?? null,
+    lat: latPortada,
+    lng: lngPortada,
+  });
+  const fechaCorta = (() => {
+    const d = new Date(fechaProsa ?? createdAt ?? "");
+    return Number.isNaN(d.getTime())
+      ? ""
+      : d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
+  })();
+  const scrollASimulacion = () => {
+    document.getElementById("simulacion-interactiva-str")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const isSubscriber = accessLevel === "subscriber";
 
   // F2-2 — CTA contextual: una sola fuente de props para el mount y la regla
@@ -370,6 +426,34 @@ export function STRResultsClient({
             conviene.{respuestaDirecta, reencuadre, cajaAccionable}) · TOP-3 hallazgos
             con puente a la pirámide. veredictoFrase ya no se renderiza; título por
             conviene.pregunta ?? hardcode (v3 podó el campo). */}
+        {/* ═══ DOCUMENTO (FASE 3 rediseño Dictamen): papel + portada; el interior
+            se transforma en FASE 4 ═══ */}
+        <DocumentoFrame>
+        <PortadaInforme
+          veredicto={veredicto}
+          score={score}
+          direccion={direccionPortada}
+          comuna={comuna}
+          modalidadLabel="Renta corta"
+          fecha={fechaCorta}
+          titular={titularCrudo}
+          cifra={cifraPortada}
+          ficha={fichaPortada}
+          currency={currency}
+          onCurrencyChange={setCurrency}
+          mapa={
+            latPortada != null && lngPortada != null
+              ? {
+                  lat: latPortada,
+                  lng: lngPortada,
+                  comparables: compCercanos.comparables,
+                  count: compCercanos.count,
+                  label: direccionPortada || comuna,
+                }
+              : null
+          }
+          onAjustarSupuestos={scrollASimulacion}
+        />
         {/* I-3 fix FASE 1: STR nunca emitió `hero` (solo LTR/comparativa) — el
             embudo por modalidad quedaba cojo al revés que piramide/zona. */}
         <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
@@ -452,6 +536,7 @@ export function STRResultsClient({
             afordance en la columna Patrimonio (fuera de la secuencia de pirámide, como
             ZonaCardSTR→tipoHuesped). Solo se pasa el handler si hay prosa. */}
         <MarcaSeccion seccion="advanced" tipo="str" accessLevel={accessLevel} />
+        <div id="simulacion-interactiva-str">
         <AdvancedSectionSTR
           results={results}
           currency={currency}
@@ -463,6 +548,7 @@ export function STRResultsClient({
               : undefined
           }
         />
+        </div>
 
         {/* gap — Simulación → Zona */}
         <div style={{ height: 24 }} />
@@ -476,6 +562,7 @@ export function STRResultsClient({
           comuna={comuna}
           onOpen={() => setActiveDrawer("tipoHuesped")}
         />
+        </DocumentoFrame>
 
         {/* CTA post-análisis welcome — banda inline al cierre del informe +
             popup (trigger IntersectionObserver + dwell). Solo cobro welcome.
