@@ -19,9 +19,9 @@
 // F1 26-ago); el detalle metodológico por fuente se difiere a la página de
 // metodología v2 (F2). La procedencia POR COMUNA (fuente + rango) sigue viva
 // en el módulo generado aunque la UI no la verbalice — F2 la necesita.
-// DOCTRINA F2 (tramo estimado, no implementar acá): el 2025 entra como cierre
-// estimado y se dibuja SÓLIDO; el 2026 entra como proyección y se dibuja
-// PUNTEADO. Solo el tramo 2026 lleva punteado.
+// DOCTRINA del tramo estimado (F2, implementada): el 2025 es cierre de año
+// terminado y se dibuja SÓLIDO, sin marca propia (F2.1); el 2026 entraría como
+// proyección y ahí sí PUNTEADO. Solo el tramo no transcurrido lleva punteado.
 // Server component puro (SVG server-side, patrón PatrimonioChartSVG).
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -65,10 +65,12 @@ function SerieGfkSVG({
   valores: number[];
   /**
    * Cierre del año siguiente al último observado (F2). Es un año TERMINADO
-   * compuesto de trimestres observados, no una proyección — por eso su tramo va
-   * SÓLIDO igual que la serie, y solo se distingue por el punto hueco y el
-   * "est." del eje. El punteado está reservado para el tramo NO transcurrido
-   * (2026 en adelante), que hoy no se dibuja porque no hay data por comuna.
+   * compuesto de trimestres observados, no una proyección — por eso su tramo y
+   * su punto van SÓLIDOS e idénticos al resto de la serie, sin distintivo
+   * propio (F2.1): toda la serie es construcción de Franco sobre fuentes
+   * públicas, y la línea de fuente al pie ya lo declara para el conjunto.
+   * El punteado está reservado para el tramo NO transcurrido (2026 en
+   * adelante), que hoy no se dibuja porque no hay data por comuna.
    */
   estimado?: { ufM2: number; bandaMin: number; bandaMax: number } | null;
 }) {
@@ -98,7 +100,7 @@ function SerieGfkSVG({
   const grid = [yLo + span * 0.0, yLo + span * 0.5, yLo + span * 1.0];
   // Labels de año: primero, medio y último. Con estimado, el último observado se
   // omite: cae pegado al punto estimado (son años consecutivos) y los dos textos
-  // se pisaban. El eje queda 2015 · 2019 · 2025 est., que es la lectura completa.
+  // se pisaban. El eje queda 2015 · 2019 · 2025, que es la lectura completa.
   const labelIdx = estimado
     ? [0, Math.floor((valores.length - 1) / 2)]
     : [0, Math.floor((valores.length - 1) / 2), valores.length - 1];
@@ -147,20 +149,24 @@ function SerieGfkSVG({
       {valores.map((v, i) => (
         <circle key={i} cx={xFor(i)} cy={yFor(v)} r={3} fill="var(--franco-card)" stroke="var(--franco-text)" strokeWidth={1.6} />
       ))}
-      {/* Punto del estimado: hueco, para distinguirlo de los observados. */}
+      {/* Punto del cierre: sólido, idéntico al resto de la serie (F2.1). Toda la
+          serie es construcción de Franco a partir de fuentes públicas —la línea
+          de fuente al pie lo declara—, así que marcar solo el último punto
+          sugería que los demás no lo eran. */}
       {estimado && (
-        <circle cx={xFor(iEst)} cy={yFor(estimado.ufM2)} r={3.5} fill="var(--franco-card)" stroke="var(--franco-text)" strokeWidth={1.6} strokeDasharray="2 1.5" />
+        <circle cx={xFor(iEst)} cy={yFor(estimado.ufM2)} r={3} fill="var(--franco-card)" stroke="var(--franco-text)" strokeWidth={1.6} />
       )}
       {labelIdx.map((i) => (
         <text key={i} x={xFor(i)} y={LABEL_Y} textAnchor="middle" fontSize={11} fontFamily="var(--font-mono, monospace)" fill="var(--franco-text-muted)">
           {desde + i}
         </text>
       ))}
-      {/* El punto estimado cae en el borde derecho del área de plot, así que su
-          label se ancla al final: centrado se cortaba fuera del viewBox. */}
+      {/* El último punto cae en el borde derecho del área de plot, así que su
+          label se ancla al final: centrado se cortaba fuera del viewBox. Sin
+          "est." (F2.1): el año a secas, como los demás del eje. */}
       {estimado && (
         <text x={VB_W - 2} y={LABEL_Y} textAnchor="end" fontSize={11} fontFamily="var(--font-mono, monospace)" fill="var(--franco-text-muted)">
-          {anioEst} est.
+          {anioEst}
         </text>
       )}
       <text x={PLOT_X0 - 8} y={PLOT_TOP - 4} textAnchor="start" fontSize={10} fontFamily="var(--font-mono, monospace)" fill="var(--franco-text-muted)">
@@ -231,9 +237,15 @@ export function PlusvaliaComunaSection({ comuna }: { comuna: string }) {
             <SerieGfkSVG comuna={comuna} desde={serie.desde} valores={serie.valores} estimado={estimadoGrafico} />
           </div>
           <p className="mt-3 font-body text-xs text-[var(--franco-text-muted)]">
+            {/* F2.1 · las dos ramas son parejas: sin "no es proyección" en
+                ninguna. El eje ya dice años y la línea de fuente al pie declara
+                la construcción; dejar la advertencia solo en la rama con cierre
+                hacía parecer que a esa comuna le pasa algo que a la otra no. La
+                guarda de histórico ≠ proyección vive donde decide algo: el
+                drawer y el informe. */}
             {estimadoGrafico
-              ? `Histórico observado — no es proyección. El cierre ${ANIO_ESTIMADO} es estimado: se compone de los trimestres ya publicados de ese año.`
-              : "Histórico observado — no es proyección."}
+              ? `Precios observados año a año. El ${ANIO_ESTIMADO} lo cerramos con los trimestres publicados de ese año.`
+              : "Precios observados año a año."}
           </p>
         </div>
       )}
