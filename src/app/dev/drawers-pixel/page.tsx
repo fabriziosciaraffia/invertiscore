@@ -5,7 +5,8 @@
 
 // Página DEV — pixel de los DRAWERS PROPIOS (⛔#3). Monta AnalysisDrawer (LTR) o
 // DrawerSTR+DrawerContentSTR (STR) con fixtures REALES (fixtures.json, sin DB/auth).
-// Controlado por query: ?row=santiagoLtr|santiagoStr|qaStr|selfLiqStr &key=<drawerKey> &cur=CLP|UF
+// Controlado por query: ?row=santiagoLtr|penalolenLtr|santiagoStr|qaStr|selfLiqStr &key=<drawerKey> &cur=CLP|UF
+// penalolenLtr (F2): comuna con cobertura solo_nivel — precio actual sin trayectoria propia.
 // prev/next funcionan (onNavigate actualiza estado). Ruta temporal, untracked.
 
 import { Suspense, useMemo, useState } from "react";
@@ -24,7 +25,7 @@ import fixtures from "./fixtures.json";
 // menos de lo que pusiste" no tiene fila REAL en el corpus post-flip (F2: 0 STR pierde plata),
 // así que se valida sintético, como los razor-edges del golden. El resto son filas reales.
 type FixKey =
-  | "santiagoLtr" | "qaLtr" | "fallbackLtr"
+  | "santiagoLtr" | "qaLtr" | "fallbackLtr" | "penalolenLtr"
   | "santiagoStr" | "qaStr" | "selfLiqStr" | "fallbackStr" | "costosAltosStr" | "bajoStr";
 
 function seqLtr(results: FullAnalysisResult, ai: AIAnalysisV2): DrawerKey[] {

@@ -10788,5 +10788,657 @@
         }
       ]
     }
+  },
+  "penalolenLtr": {
+    "id": "90111111-0000-4000-a000-000000000007",
+    "comuna": "Peñalolén",
+    "tipo": "long-term",
+    "input_data": {
+      "lat": -33.4432,
+      "lng": -70.6387,
+      "piso": 5,
+      "tipo": "Departamento",
+      "banos": 1,
+      "bodega": false,
+      "ciudad": "Santiago",
+      "comuna": "Peñalolén",
+      "gastos": 65000,
+      "nombre": "GOLDEN GS-7 Santiago",
+      "piePct": 10,
+      "precio": 3187,
+      "arriendo": 350000,
+      "cuotasPie": 0,
+      "tipoRenta": "larga",
+      "antiguedad": 0,
+      "montoCuota": 0,
+      "superficie": 36,
+      "dormitorios": 1,
+      "estadoVenta": "futura",
+      "tasaInteres": 4.11,
+      "fechaEntrega": "2028-05",
+      "plazoCredito": 25,
+      "tipoAnalisis": "long-term",
+      "vacanciaMeses": 0.48,
+      "arriendoBodega": 0,
+      "contribuciones": 68946,
+      "enConstruccion": true,
+      "estacionamiento": "no",
+      "superficieTotal": 36,
+      "valorMercadoFranco": 3041,
+      "provisionMantencion": 30914,
+      "precioEstacionamiento": 0,
+      "arriendoEstacionamiento": 0
+    },
+    "results": {
+      "pros": [
+        "Al ser nueva o casi nueva, los costos de mantención serán bajos por varios años. Menos sorpresas.",
+        "Comprando con entrega futura, acumulas 22 meses de plusvalía (4%/año) antes de la entrega. El valor estimado al recibir sería 3425 UF."
+      ],
+      "score": 36,
+      "contras": [
+        "La rentabilidad operativa (CAP rate 2.9%) está bajo el promedio. Podrías ajustar el precio de compra o buscar una propiedad más rentable en la zona.",
+        "Cada mes tendrás que poner $329.290 de tu bolsillo para cubrir los costos. Asegúrate de tener ese flujo disponible de forma estable.",
+        "Tu pie está rentando negativo (-26.6% anual). El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.",
+        "El precio por m² (88.5 UF) es elevado para la zona. El margen de plusvalía es menor. Compara con propiedades similares antes de decidir.",
+        "Tendrás 22 meses pagando cuotas del pie sin generar arriendo. Asegúrate de tener liquidez para cubrir esas cuotas."
+      ],
+      "metrics": {
+        "noi": 3522048,
+        "gastos": 65000,
+        "pieCLP": 12365560,
+        "capRate": 2.85,
+        "precioM2": 88.5,
+        "dividendo": 594210,
+        "precioCLP": 123655600,
+        "cashOnCash": -26.63,
+        "subsidioTasa": {
+          "aplicado": false,
+          "califica": false,
+          "tasaConSubsidio": 3.5
+        },
+        "contribuciones": 68946,
+        "ingresoMensual": 350000,
+        "precioVsComuna": {
+          "n": 60,
+          "confiable": true,
+          "sujetoUfM2": 88.5,
+          "desviacionPct": 59,
+          "sobreprecioUfM2": 32.8,
+          "medianaComunaUfM2": 55.7
+        },
+        "hallazgoCapRate": {
+          "id": "cap_rate",
+          "tipo": "rentabilidad_operativa",
+          "valor": {
+            "banda": 2,
+            "scope": "nacional",
+            "fuente": "promedio neto residencial Santiago 3–4,5% (Houm/Assetplan, may-2026)",
+            "gapPts": -1.2,
+            "capRefPct": 4,
+            "modalidad": "ltr",
+            "capRatePct": 2.8
+          },
+          "titular": "Rinde bajo lo que el mercado exige acá.",
+          "direccion": "adverso",
+          "decisividad": 0.85,
+          "procedencia": {
+            "base": "CAP rate neto (NOI) sobre tu arriendo y precio declarados, neto de gastos operativos",
+            "confianza": "baja"
+          },
+          "fraseCanonica": "Tu CAP rate es 2,8% — 1,2 pts bajo la referencia de mercado (4,0%). Rinde bajo el promedio; el precio pide ajuste o conviene comparar con opciones más rentables en la zona.",
+          "magnitudContinua": 0.52
+        },
+        "mesesPaybackPie": 999,
+        "egresosMensuales": 679290,
+        "flujoNetoMensual": -329290,
+        "rentabilidadNeta": 2.57,
+        "hallazgoPlusvalia": {
+          "id": "plusvalia",
+          "tipo": "apreciacion_historica",
+          "valor": {
+            "banda": 2,
+            "scope": "absoluta",
+            "fuente": "umbral de apreciación real de largo plazo sobre inflación en Chile (~3% anual)",
+            "gapPts": -4.1,
+            "refPct": 3,
+            "modalidad": "ltr",
+            "tieneData": true,
+            "anualizadaPct": -1.1
+          },
+          "titular": "La comuna perdió valor real en la última década.",
+          "direccion": "adverso",
+          "decisividad": 0.16,
+          "procedencia": {
+            "base": "apreciación histórica de la comuna 2014-2024 (Arenas & Cayo, Tinsa, Propital), no garantía de apreciación futura",
+            "confianza": "media"
+          },
+          "fraseCanonica": "En la última década los departamentos en Santiago cayeron 1,1% anual de valor, bajo el umbral de apreciación real (3,0%). La historia no respalda una apuesta a plusvalía acá.",
+          "magnitudContinua": 0.16
+        },
+        "rentabilidadBruta": 3.4,
+        "corretajeInicialCLP": 0,
+        "descuentoParaNeutro": 50.2,
+        "hallazgoSobreprecio": {
+          "id": "sobreprecio",
+          "tipo": "precio_vs_comuna",
+          "valor": {
+            "n": 60,
+            "banda": 30,
+            "comuna": "Santiago",
+            "sujetoUfM2": 88.5,
+            "desviacionPct": 59,
+            "sobreprecioUfM2": 32.8,
+            "medianaComunaUfM2": 55.7
+          },
+          "titular": "Estás pagando caro el metro para esta comuna.",
+          "direccion": "adverso",
+          "decisividad": 0.96,
+          "procedencia": {
+            "base": "mediana de precios de PUBLICACIÓN de venta de la comuna (scraped), no transacción",
+            "confianza": "media"
+          },
+          "fraseCanonica": "Tu precio por m² (UF 88,5) está 59% sobre la mediana de la comuna (UF 55,7). Estás pagando caro el metro para esta comuna.",
+          "magnitudContinua": 0.96
+        },
+        "precioFlujoNeutroUF": 1586.68,
+        "capexPuestaAPuntoCLP": 0,
+        "hallazgoFlujoMensual": {
+          "id": "flujo_mensual",
+          "tipo": "aporte_mensual",
+          "valor": {
+            "modalidad": "ltr",
+            "dividendoMensualCLP": 594210,
+            "flujoNetoMensualCLP": -329290,
+            "ratioSobreDividendo": 0.55
+          },
+          "titular": "Pones plata de tu bolsillo todos los meses.",
+          "direccion": "adverso",
+          "decisividad": 0.85,
+          "procedencia": {
+            "base": "aporte mensual neto sobre tus datos declarados, tras dividendo y todos los gastos operativos",
+            "confianza": "alta"
+          },
+          "fraseCanonica": "Tienes que poner $329.290 al mes de tu bolsillo — un aporte fuerte respecto al dividendo. Antes de avanzar, confirma que puedes sostenerlo de forma estable mes a mes: es plata que sale de tu bolsillo todos los meses, no del arriendo.",
+          "magnitudContinua": 0.68
+        },
+        "hallazgoPuestaAPunto": null,
+        "precioFlujoNeutroCLP": 61563274,
+        "valorMercadoFrancoUF": 3041,
+        "precioFlujoPositivoUF": 1318.51,
+        "valorMercadoUsuarioUF": 3187,
+        "precioFlujoPositivoCLP": 51158237,
+        "plusvaliaInmediataFranco": -5664800,
+        "plusvaliaInmediataUsuario": 0,
+        "plusvaliaInmediataFrancoPct": -4.8,
+        "provisionMantencionAjustada": 30914,
+        "plusvaliaInmediataUsuarioPct": 0
+      },
+      "resumen": "El arriendo genera $350.000 al mes y los costos totales (dividendo + gastos + mantención) suman $679.290. Falta cubrir $329.290 al mes de tu bolsillo. La rentabilidad bruta es de 3.4% y la rentabilidad operativa (CAP rate) es 2.9%. La rentabilidad está bajo el promedio — vale la pena ajustar el precio o buscar otras opciones. Al ser nueva, los costos de mantención serán bajos por años. Antes de decidir, verifica los gastos comunes reales y el estado de la administración del edificio.",
+      "desglose": {
+        "flujoCaja": 12.070999999999998,
+        "plusvalia": 68,
+        "eficiencia": 50,
+        "rentabilidad": 32.599999999999994
+      },
+      "hallazgos": [
+        {
+          "id": "cap_rate",
+          "tipo": "rentabilidad_operativa",
+          "valor": {
+            "banda": 2,
+            "scope": "nacional",
+            "fuente": "promedio neto residencial Santiago 3–4,5% (Houm/Assetplan, may-2026)",
+            "gapPts": -1.2,
+            "capRefPct": 4,
+            "modalidad": "ltr",
+            "capRatePct": 2.8
+          },
+          "titular": "Rinde bajo lo que el mercado exige acá.",
+          "direccion": "adverso",
+          "decisividad": 0.85,
+          "procedencia": {
+            "base": "CAP rate neto (NOI) sobre tu arriendo y precio declarados, neto de gastos operativos",
+            "confianza": "baja"
+          },
+          "fraseCanonica": "Tu CAP rate es 2,8% — 1,2 pts bajo la referencia de mercado (4,0%). Rinde bajo el promedio; el precio pide ajuste o conviene comparar con opciones más rentables en la zona.",
+          "magnitudContinua": 0.52
+        },
+        {
+          "id": "flujo_mensual",
+          "tipo": "aporte_mensual",
+          "valor": {
+            "modalidad": "ltr",
+            "dividendoMensualCLP": 594210,
+            "flujoNetoMensualCLP": -329290,
+            "ratioSobreDividendo": 0.55
+          },
+          "titular": "Pones plata de tu bolsillo todos los meses.",
+          "direccion": "adverso",
+          "decisividad": 0.85,
+          "procedencia": {
+            "base": "aporte mensual neto sobre tus datos declarados, tras dividendo y todos los gastos operativos",
+            "confianza": "alta"
+          },
+          "fraseCanonica": "Tienes que poner $329.290 al mes de tu bolsillo — un aporte fuerte respecto al dividendo. Antes de avanzar, confirma que puedes sostenerlo de forma estable mes a mes: es plata que sale de tu bolsillo todos los meses, no del arriendo.",
+          "magnitudContinua": 0.68
+        },
+        {
+          "id": "plusvalia",
+          "tipo": "apreciacion_historica",
+          "valor": {
+            "anualizadaPct": 3,
+            "refPct": 3,
+            "gapPts": 0,
+            "banda": 2,
+            "fuente": "Promedio histórico Gran Santiago 2014-2024",
+            "scope": "absoluta",
+            "tieneData": false,
+            "cobertura": "solo_nivel",
+            "nivelUfM2": 69.8,
+            "nivelPeriodo": "1T-2025",
+            "modalidad": "ltr"
+          },
+          "direccion": "favorable",
+          "decisividad": 0.4,
+          "magnitudContinua": 0.2,
+          "procedencia": {
+            "base": "promedio histórico del Gran Santiago, sin datos propios de la comuna — no garantía futura",
+            "confianza": "baja"
+          },
+          "titular": "La comuna subió parejo con la inflación, histórico normal.",
+          "fraseCanonica": "En la última década los departamentos en Peñalolén se valorizaron 3,0% anual, en línea con el umbral de apreciación real (3,0%). Plusvalía histórica normal: referencia, no garantía futura."
+        },
+        {
+          "id": "sobreprecio",
+          "tipo": "precio_vs_comuna",
+          "valor": {
+            "n": 60,
+            "banda": 30,
+            "comuna": "Santiago",
+            "sujetoUfM2": 88.5,
+            "desviacionPct": 59,
+            "sobreprecioUfM2": 32.8,
+            "medianaComunaUfM2": 55.7
+          },
+          "titular": "Estás pagando caro el metro para esta comuna.",
+          "direccion": "adverso",
+          "decisividad": 0.96,
+          "procedencia": {
+            "base": "mediana de precios de PUBLICACIÓN de venta de la comuna (scraped), no transacción",
+            "confianza": "media"
+          },
+          "fraseCanonica": "Tu precio por m² (UF 88,5) está 59% sobre la mediana de la comuna (UF 55,7). Estás pagando caro el metro para esta comuna.",
+          "magnitudContinua": 0.96
+        },
+        {
+          "id": "estructura_financiamiento",
+          "tipo": "salud_financiamiento",
+          "valor": {
+            "driver": "pie",
+            "piePct": 10,
+            "overall": "problematico",
+            "tasaPct": 4.11,
+            "pieLevel": "problematico",
+            "modalidad": "ltr",
+            "spreadBps": 1,
+            "tasaLevel": "optimo",
+            "tasaMarketPct": 4.1
+          },
+          "titular": "Tu financiamiento tiene un problema de fondo por el pie.",
+          "direccion": "adverso",
+          "decisividad": 0.08,
+          "procedencia": {
+            "base": "Estructura de financiamiento (pie + tasa) sobre tus datos declarados. El pie se evalúa contra un umbral fijo (25% óptimo, sólido); la tasa se compara contra un promedio de mercado de referencia (UF 4,1%), no en tiempo real — pull manual, puede estar desactualizado.",
+            "confianza": "media"
+          },
+          "fraseCanonica": "Tu estructura de financiamiento tiene un problema de fondo, principalmente por el pie: 10% está muy bajo el óptimo de 25% y dispara el crédito y la cuota. La tasa (4,1%) está en mejor nivel.",
+          "magnitudContinua": 0.08
+        },
+        {
+          "id": "tir",
+          "tipo": "retorno_total",
+          "valor": {
+            "banda": 10,
+            "gapPts": -1.8,
+            "tirPct": 4.2,
+            "modalidad": "ltr",
+            "umbralPct": 6
+          },
+          "titular": "Puesto todo junto, el retorno anual se queda corto.",
+          "direccion": "adverso",
+          "decisividad": 0,
+          "procedencia": {
+            "base": "TIR del exit scenario a 10 años sobre tu inversión inicial, tus aportes mensuales y la venta proyectada",
+            "confianza": "media"
+          },
+          "fraseCanonica": "Tu TIR —la rentabilidad anual de toda tu inversión— es 4,2%, bajo el mínimo de 6% que un deal apalancado debería rendir para justificar el capital y el riesgo. Ese número ya integra el arriendo, tus aportes y la venta a 10 años: no lo levanta la plusvalía.",
+          "magnitudContinua": 0.18
+        },
+        {
+          "id": "patrimonio",
+          "tipo": "patrimonio_neto",
+          "valor": {
+            "banda": 2,
+            "modalidad": "ltr",
+            "aportadoCLP": 57596564,
+            "corteAdverso": 1,
+            "multiplicador": 1.25,
+            "patrimonioCLP": 71718293,
+            "corteFavorable": 2,
+            "incluyeCorretaje": false
+          },
+          "titular": "A 10 años tu parte vale algo más de lo aportado.",
+          "direccion": "favorable",
+          "decisividad": 0,
+          "procedencia": {
+            "base": "Patrimonio a 10 años sobre lo que aportaste, del escenario de venta",
+            "confianza": "media"
+          },
+          "fraseCanonica": "A 10 años, tras vender y saldar el crédito, tu parte vale UF 1.848 contra las UF 1.484 que aportaste — un multiplicador de ×1,3. Terminas con más de lo que pusiste, pero el margen es acotado: buena parte de ese resultado depende de que la plusvalía proyectada se cumpla.",
+          "magnitudContinua": 0.125
+        }
+      ],
+      "veredicto": "BUSCAR OTRA",
+      "negociacion": {
+        "modo": "alinear_mercado",
+        "razon": "Pagas sobre el valor estimado de mercado de la zona. Este precio te alinea con comparables y mejora la matemática.",
+        "tirAlLimite": null,
+        "tirAlSugerido": 7.94,
+        "tirAlVmFranco": 6.52,
+        "precioLimiteUF": null,
+        "precioLimiteCLP": null,
+        "precioSugeridoUF": 2949.8,
+        "precioSugeridoCLP": 114452240
+      },
+      "projections": [
+        {
+          "anio": 1,
+          "flujoAnual": 0,
+          "saldoCredito": 0,
+          "flujoAcumulado": 0,
+          "patrimonioNeto": 117990800,
+          "valorPropiedad": 117990800,
+          "arriendoMensual": 350000
+        },
+        {
+          "anio": 2,
+          "flujoAnual": -696086,
+          "saldoCredito": 110863227,
+          "flujoAcumulado": -696086,
+          "patrimonioNeto": 7127573,
+          "valorPropiedad": 117990800,
+          "arriendoMensual": 350000
+        },
+        {
+          "anio": 3,
+          "flujoAnual": -4544892,
+          "saldoCredito": 108240135,
+          "flujoAcumulado": -5240978,
+          "patrimonioNeto": 14470297,
+          "valorPropiedad": 122710432,
+          "arriendoMensual": 362250
+        },
+        {
+          "anio": 4,
+          "flujoAnual": -4661283,
+          "saldoCredito": 105507181,
+          "flujoAcumulado": -9902261,
+          "patrimonioNeto": 22111669,
+          "valorPropiedad": 127618849,
+          "arriendoMensual": 374929
+        },
+        {
+          "anio": 5,
+          "flujoAnual": -4780461,
+          "saldoCredito": 102659761,
+          "flujoAcumulado": -14682722,
+          "patrimonioNeto": 30063842,
+          "valorPropiedad": 132723603,
+          "arriendoMensual": 388051
+        },
+        {
+          "anio": 6,
+          "flujoAnual": -5332523,
+          "saldoCredito": 99693083,
+          "flujoAcumulado": -20015245,
+          "patrimonioNeto": 38339464,
+          "valorPropiedad": 138032547,
+          "arriendoMensual": 401633
+        },
+        {
+          "anio": 7,
+          "flujoAnual": -5470390,
+          "saldoCredito": 96602152,
+          "flujoAcumulado": -25485635,
+          "patrimonioNeto": 46951698,
+          "valorPropiedad": 143553849,
+          "arriendoMensual": 415690
+        },
+        {
+          "anio": 8,
+          "flujoAnual": -5611604,
+          "saldoCredito": 93381762,
+          "flujoAcumulado": -31097238,
+          "patrimonioNeto": 55914241,
+          "valorPropiedad": 149296003,
+          "arriendoMensual": 430239
+        },
+        {
+          "anio": 9,
+          "flujoAnual": -5756247,
+          "saldoCredito": 90026492,
+          "flujoAcumulado": -36853486,
+          "patrimonioNeto": 65241351,
+          "valorPropiedad": 155267843,
+          "arriendoMensual": 445298
+        },
+        {
+          "anio": 10,
+          "flujoAnual": -5904406,
+          "saldoCredito": 86530693,
+          "flujoAcumulado": -42757892,
+          "patrimonioNeto": 74947864,
+          "valorPropiedad": 161478557,
+          "arriendoMensual": 460883
+        },
+        {
+          "anio": 11,
+          "flujoAnual": -6388499,
+          "saldoCredito": 82888479,
+          "flujoAcumulado": -49146391,
+          "patrimonioNeto": 85049220,
+          "valorPropiedad": 167937699,
+          "arriendoMensual": 477014
+        },
+        {
+          "anio": 12,
+          "flujoAnual": -6553877,
+          "saldoCredito": 79093718,
+          "flujoAcumulado": -55700268,
+          "patrimonioNeto": 95561489,
+          "valorPropiedad": 174655207,
+          "arriendoMensual": 493710
+        },
+        {
+          "anio": 13,
+          "flujoAnual": -6723283,
+          "saldoCredito": 75140020,
+          "flujoAcumulado": -62423551,
+          "patrimonioNeto": 106501395,
+          "valorPropiedad": 181641416,
+          "arriendoMensual": 510989
+        },
+        {
+          "anio": 14,
+          "flujoAnual": -6896820,
+          "saldoCredito": 71020730,
+          "flujoAcumulado": -69320371,
+          "patrimonioNeto": 117886343,
+          "valorPropiedad": 188907072,
+          "arriendoMensual": 528874
+        },
+        {
+          "anio": 15,
+          "flujoAnual": -7074581,
+          "saldoCredito": 66728910,
+          "flujoAcumulado": -76394951,
+          "patrimonioNeto": 129734445,
+          "valorPropiedad": 196463355,
+          "arriendoMensual": 547385
+        },
+        {
+          "anio": 16,
+          "flujoAnual": -7834619,
+          "saldoCredito": 62257335,
+          "flujoAcumulado": -84229570,
+          "patrimonioNeto": 142064554,
+          "valorPropiedad": 204321889,
+          "arriendoMensual": 566543
+        },
+        {
+          "anio": 17,
+          "flujoAnual": -8038439,
+          "saldoCredito": 57598477,
+          "flujoAcumulado": -92268009,
+          "patrimonioNeto": 154896288,
+          "valorPropiedad": 212494765,
+          "arriendoMensual": 586372
+        },
+        {
+          "anio": 18,
+          "flujoAnual": -8247287,
+          "saldoCredito": 52744492,
+          "flujoAcumulado": -100515296,
+          "patrimonioNeto": 168250064,
+          "valorPropiedad": 220994556,
+          "arriendoMensual": 606895
+        },
+        {
+          "anio": 19,
+          "flujoAnual": -8461255,
+          "saldoCredito": 47687206,
+          "flujoAcumulado": -108976551,
+          "patrimonioNeto": 182147132,
+          "valorPropiedad": 229834338,
+          "arriendoMensual": 628136
+        },
+        {
+          "anio": 20,
+          "flujoAnual": -8680485,
+          "saldoCredito": 42418105,
+          "flujoAcumulado": -117657036,
+          "patrimonioNeto": 196609606,
+          "valorPropiedad": 239027711,
+          "arriendoMensual": 650121
+        }
+      ],
+      "sensitivity": [
+        {
+          "delta": -1,
+          "variable": "Tasa interés",
+          "variacion": "+1%",
+          "nuevoFlujo": -392823,
+          "nuevoScore": 35
+        },
+        {
+          "delta": 1,
+          "variable": "Tasa interés",
+          "variacion": "-1%",
+          "nuevoFlujo": -269219,
+          "nuevoScore": 37
+        },
+        {
+          "delta": 3,
+          "variable": "Arriendo",
+          "variacion": "+10%",
+          "nuevoFlujo": -297148,
+          "nuevoScore": 39
+        },
+        {
+          "delta": -3,
+          "variable": "Arriendo",
+          "variacion": "-10%",
+          "nuevoFlujo": -361432,
+          "nuevoScore": 33
+        },
+        {
+          "delta": -1,
+          "variable": "Vacancia",
+          "variacion": "+1 mes",
+          "nuevoFlujo": -363874,
+          "nuevoScore": 35
+        },
+        {
+          "delta": -3,
+          "variable": "Vacancia",
+          "variacion": "+2 meses",
+          "nuevoFlujo": -398456,
+          "nuevoScore": 33
+        }
+      ],
+      "exitScenario": {
+        "tir": 4.2,
+        "anios": 10,
+        "valorVenta": 161478557,
+        "gananciaNeta": 71718293,
+        "retornoTotal": 28960401,
+        "saldoCredito": 86530693,
+        "comisionVenta": 3229571,
+        "totalAportado": 57596564,
+        "flujoAcumulado": -42757892,
+        "inversionInicial": 14838672,
+        "gananciaSobreTotal": 14121729,
+        "multiplicadorCapital": 0.5,
+        "porcentajeGananciaSobreTotal": 24.52,
+        "flujoMensualAcumuladoNegativo": 42757892
+      },
+      "tipoAnalisis": "long-term",
+      "breakEvenTasa": -1,
+      "cashflowYear1": [
+        {
+          "mes": 0,
+          "gastos": 0,
+          "ingreso": 0,
+          "vacancia": 0,
+          "acumulado": 0,
+          "corretaje": 0,
+          "dividendo": 0,
+          "flujoNeto": 0,
+          "mantencion": 0,
+          "egresoTotal": 0,
+          "administracion": 0,
+          "contribuciones": 0
+        }
+      ],
+      "clasificacion": "BUSCAR OTRA",
+      "financingHealth": {
+        "pie": {
+          "level": "problematico",
+          "actual_pct": 10,
+          "impact_message": "subir el pie a 25% baja la cuota en $99.035 al mes",
+          "recommended_pct": 25
+        },
+        "tasa": {
+          "level": "optimo",
+          "actual_pct": 4.11,
+          "spread_bps": 1,
+          "market_avg_pct": 4.1,
+          "recommended_pct": 4.1
+        },
+        "overall": "problematico"
+      },
+      "resumenEjecutivo": "Necesitas poner $329.290 de tu bolsillo cada mes. El arriendo cubre el 52% de los costos. Evalúa si puedes mantener ese aporte mensual y si la plusvalía lo justifica.",
+      "refinanceScenario": {
+        "nuevoAvaluo": 132723603,
+        "nuevoCredito": 106178882,
+        "nuevoDividendo": 566920,
+        "nuevoFlujoNeto": -267055,
+        "capitalLiberado": 3519121
+      },
+      "valorMaximoCompra": 1815,
+      "clasificacionColor": "red",
+      "comuna": "Peñalolén"
+    },
+    "uf": 38800
   }
 }

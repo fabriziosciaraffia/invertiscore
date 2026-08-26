@@ -937,6 +937,16 @@ export function DrawerPlusvaliaLtr({
           <>
             No hay histórico propio de {comunaLabel}: usamos el <b>promedio del Gran Santiago</b> (~{pctStr(anual)}{" "}
             real) como referencia — supuesto conservador, sin dato comunal.
+            {/* F2 · cobertura "solo_nivel": la comuna SÍ tiene precio actual aunque no
+                tenga historia. Decirlo evita que el lector concluya "no hay datos de
+                esta comuna". El nivel va como frase aparte — nunca fundido con el %
+                de arriba, que mide otra cosa. Tolera undefined (filas pre-F2). */}
+            {v.cobertura === "solo_nivel" && v.nivelUfM2 != null && (
+              <>
+                {" "}Sí sabemos a qué precio se está vendiendo hoy: <b>UF {dec1(v.nivelUfM2)}/m²</b>{" "}
+                en departamentos nuevos ({v.nivelPeriodo}). Es el precio de hoy, no una trayectoria.
+              </>
+            )}
           </>
         )}{" "}
         Hacia adelante es otra cosa: la proyección de patrimonio y TIR usa{" "}
@@ -1435,6 +1445,13 @@ export function DrawerPlusvaliaStr({
           <>
             No hay histórico propio de {comunaLabel}: usamos el <b>promedio del Gran Santiago</b> (~{pctStr(anual)}{" "}
             real) como referencia — supuesto conservador, sin dato comunal.
+            {/* F2 · espejo exacto del drawer LTR (misma cobertura, mismo copy). */}
+            {v.cobertura === "solo_nivel" && v.nivelUfM2 != null && (
+              <>
+                {" "}Sí sabemos a qué precio se está vendiendo hoy: <b>UF {dec1(v.nivelUfM2)}/m²</b>{" "}
+                en departamentos nuevos ({v.nivelPeriodo}). Es el precio de hoy, no una trayectoria.
+              </>
+            )}
           </>
         )}{" "}
         Hacia adelante, la proyección de patrimonio y TIR usa <b>{PROYECCION_FRANCO_PCT} anual parejo</b> (la

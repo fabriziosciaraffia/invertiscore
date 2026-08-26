@@ -29,6 +29,8 @@ import {
   GFK_SERIE,
   GFK_NIVEL,
   PLUSVALIA_ESTIMADO,
+  PLUSVALIA_ESTIMADO_2025,
+  ANIO_ESTIMADO,
   coberturaPlusvaliaDe,
 } from "@/lib/plusvalia-estimado.gen";
 
@@ -52,13 +54,33 @@ const PLOT_H = BASELINE - PLOT_TOP;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-function SerieGfkSVG({ comuna, desde, valores }: { comuna: string; desde: number; valores: number[] }) {
+function SerieGfkSVG({
+  comuna,
+  desde,
+  valores,
+  estimado,
+}: {
+  comuna: string;
+  desde: number;
+  valores: number[];
+  /**
+   * Cierre del año siguiente al último observado (F2). Es un año TERMINADO
+   * compuesto de trimestres observados, no una proyección — por eso su tramo va
+   * SÓLIDO igual que la serie, y solo se distingue por el punto hueco y el
+   * "est." del eje. El punteado está reservado para el tramo NO transcurrido
+   * (2026 en adelante), que hoy no se dibuja porque no hay data por comuna.
+   */
+  estimado?: { ufM2: number; bandaMin: number; bandaMax: number } | null;
+}) {
   // Guarda path-plano: con <2 puntos o serie degenerada (todos iguales, rango 0)
   // no hay curva que dibujar — se omite el gráfico en vez de renderizar una
   // línea horizontal que aparenta medición.
   if (valores.length < 2) return null;
-  const vMin = Math.min(...valores);
-  const vMax = Math.max(...valores);
+  // El estimado entra al dominio de la escala (con su banda) para que no se
+  // salga del área de plot.
+  const todos = estimado ? [...valores, estimado.bandaMin, estimado.bandaMax] : valores;
+  const vMin = Math.min(...todos);
+  const vMax = Math.max(...todos);
   if (vMax - vMin <= 0) return null;
 
   // Escala con piso bajo el mínimo (10% del rango) para que la curva no nazca
@@ -68,12 +90,20 @@ function SerieGfkSVG({ comuna, desde, valores }: { comuna: string; desde: number
   const yHi = vMax + pad;
   const span = yHi - yLo || 1;
   const yFor = (v: number) => clamp(BASELINE - ((v - yLo) / span) * PLOT_H, PLOT_TOP, BASELINE);
-  const xFor = (i: number) => PLOT_X0 + (PLOT_W * i) / (valores.length - 1);
+  // El eje X cuenta un punto más cuando hay estimado (el año de cierre).
+  const nPuntos = valores.length + (estimado ? 1 : 0);
+  const xFor = (i: number) => PLOT_X0 + (PLOT_W * i) / (nPuntos - 1);
 
   const pts = valores.map((v, i) => `${xFor(i).toFixed(1)},${yFor(v).toFixed(1)}`).join(" ");
   const grid = [yLo + span * 0.0, yLo + span * 0.5, yLo + span * 1.0];
-  // Labels de año: primero, medio y último (10 puntos → 2015 · 2019/20 · 2024).
-  const labelIdx = [0, Math.floor((valores.length - 1) / 2), valores.length - 1];
+  // Labels de año: primero, medio y último. Con estimado, el último observado se
+  // omite: cae pegado al punto estimado (son años consecutivos) y los dos textos
+  // se pisaban. El eje queda 2015 · 2019 · 2025 est., que es la lectura completa.
+  const labelIdx = estimado
+    ? [0, Math.floor((valores.length - 1) / 2)]
+    : [0, Math.floor((valores.length - 1) / 2), valores.length - 1];
+  const iEst = valores.length; // índice del punto estimado en el eje
+  const anioEst = desde + valores.length;
 
   return (
     <svg
@@ -91,15 +121,48 @@ function SerieGfkSVG({ comuna, desde, valores }: { comuna: string; desde: number
           </text>
         </g>
       ))}
+      {/* Banda del estimado: rectángulo sutil que muestra el rango, detrás de la línea. */}
+      {estimado && (
+        <rect
+          x={xFor(iEst) - 5}
+          y={yFor(estimado.bandaMax)}
+          width={10}
+          height={Math.max(1, yFor(estimado.bandaMin) - yFor(estimado.bandaMax))}
+          fill="var(--franco-text)"
+          fillOpacity={0.12}
+        />
+      )}
       <polyline points={pts} fill="none" stroke="var(--franco-text)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      {/* Tramo hasta el cierre estimado: SÓLIDO (año terminado, compuesto de
+          observado). El punteado queda reservado al tramo no transcurrido. */}
+      {estimado && (
+        <polyline
+          points={`${xFor(valores.length - 1).toFixed(1)},${yFor(valores[valores.length - 1]).toFixed(1)} ${xFor(iEst).toFixed(1)},${yFor(estimado.ufM2).toFixed(1)}`}
+          fill="none"
+          stroke="var(--franco-text)"
+          strokeWidth={2}
+          strokeLinecap="round"
+        />
+      )}
       {valores.map((v, i) => (
         <circle key={i} cx={xFor(i)} cy={yFor(v)} r={3} fill="var(--franco-card)" stroke="var(--franco-text)" strokeWidth={1.6} />
       ))}
+      {/* Punto del estimado: hueco, para distinguirlo de los observados. */}
+      {estimado && (
+        <circle cx={xFor(iEst)} cy={yFor(estimado.ufM2)} r={3.5} fill="var(--franco-card)" stroke="var(--franco-text)" strokeWidth={1.6} strokeDasharray="2 1.5" />
+      )}
       {labelIdx.map((i) => (
         <text key={i} x={xFor(i)} y={LABEL_Y} textAnchor="middle" fontSize={11} fontFamily="var(--font-mono, monospace)" fill="var(--franco-text-muted)">
           {desde + i}
         </text>
       ))}
+      {/* El punto estimado cae en el borde derecho del área de plot, así que su
+          label se ancla al final: centrado se cortaba fuera del viewBox. */}
+      {estimado && (
+        <text x={VB_W - 2} y={LABEL_Y} textAnchor="end" fontSize={11} fontFamily="var(--font-mono, monospace)" fill="var(--franco-text-muted)">
+          {anioEst} est.
+        </text>
+      )}
       <text x={PLOT_X0 - 8} y={PLOT_TOP - 4} textAnchor="start" fontSize={10} fontFamily="var(--font-mono, monospace)" fill="var(--franco-text-muted)">
         UF/m²
       </text>
@@ -133,6 +196,12 @@ export function PlusvaliaComunaSection({ comuna }: { comuna: string }) {
 
   const serie = GFK_SERIE[comuna];
   const ac = PLUSVALIA_ESTIMADO[comuna];
+  // F2 · cierre estimado del año siguiente al último observado. Solo se dibuja
+  // si el job lo produjo para ESTA comuna (las guardas degradan al resto) y si
+  // encadena con la serie — un estimado suelto sin serie no se grafica.
+  const est = PLUSVALIA_ESTIMADO_2025[comuna];
+  const estEncadena = !!serie && !!est && ANIO_ESTIMADO === serie.desde + serie.valores.length;
+  const estimadoGrafico = estEncadena ? est : null;
 
   return (
     <section className="mt-14">
@@ -159,10 +228,12 @@ export function PlusvaliaComunaSection({ comuna }: { comuna: string }) {
             </div>
           </div>
           <div className="mt-4">
-            <SerieGfkSVG comuna={comuna} desde={serie.desde} valores={serie.valores} />
+            <SerieGfkSVG comuna={comuna} desde={serie.desde} valores={serie.valores} estimado={estimadoGrafico} />
           </div>
           <p className="mt-3 font-body text-xs text-[var(--franco-text-muted)]">
-            Histórico observado — no es proyección.
+            {estimadoGrafico
+              ? `Histórico observado — no es proyección. El cierre ${ANIO_ESTIMADO} es estimado: se compone de los trimestres ya publicados de ese año.`
+              : "Histórico observado — no es proyección."}
           </p>
         </div>
       )}
