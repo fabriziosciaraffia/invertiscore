@@ -10,8 +10,8 @@
 // NUNCA es "alta" — proyectar futuro desde pasado es incierto aunque la data sea
 // buena (Franco es pro-honestidad: no vender plusvalía histórica como futura).
 
-import type { HallazgoPlusvalia } from "./types";
-import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO } from "./plusvalia-estimado.gen";
+import type { HallazgoPlusvalia, CoberturaHallazgo } from "./types";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO, GFK_NIVEL } from "./plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 
 // ─── Referencia (umbral absoluto de apreciación real) ─────────────────────
@@ -65,11 +65,31 @@ export function getPlusvaliaRef(): PlusvaliaRef {
  * NO deriva otra tasa. Devuelve `tieneData` para graduar la confianza: dato propio
  * ⇒ "media"; caída al promedio Gran Santiago (sin dato propio) ⇒ "baja".
  */
-export function resolvePlusvaliaComuna(comuna: string): { anualizada: number; tieneData: boolean } {
-  const historica = PLUSVALIA_HISTORICA[comuna.trim()] || null;
-  return historica
-    ? { anualizada: historica.anualizada, tieneData: true }
-    : { anualizada: PLUSVALIA_DEFAULT.anualizada, tieneData: false };
+export function resolvePlusvaliaComuna(comuna: string): {
+  anualizada: number;
+  tieneData: boolean;
+  cobertura: CoberturaHallazgo;
+  nivelUfM2?: number;
+  nivelPeriodo?: string;
+} {
+  const c = comuna.trim();
+  const historica = PLUSVALIA_HISTORICA[c] || null;
+  const nivel = GFK_NIVEL[c] || null;
+  // F2: la cobertura NO cambia la tasa que devuelve esta función — el score y la
+  // trayectoria siguen saliendo de PLUSVALIA_HISTORICA hasta F3. Solo agrega el
+  // rótulo de QUÉ tenemos, y el nivel, que viaja por un carril aparte para que
+  // la prosa nunca lo confunda con trayectoria.
+  const cobertura: CoberturaHallazgo = historica
+    ? "trayectoria_propia"
+    : nivel
+      ? "solo_nivel"
+      : "fallback_gs";
+  return {
+    anualizada: historica ? historica.anualizada : PLUSVALIA_DEFAULT.anualizada,
+    tieneData: !!historica,
+    cobertura,
+    ...(nivel ? { nivelUfM2: nivel.ufM2, nivelPeriodo: nivel.periodo } : {}),
+  };
 }
 
 // ─── Builder del hallazgo ─────────────────────────────────────────────────
@@ -90,6 +110,11 @@ export function buildHallazgoPlusvalia(p: {
   anualizadaPct: number;
   /** True si la comuna tiene dato propio (⇒ confianza media); false ⇒ default (baja). */
   tieneData: boolean;
+  /** Cobertura de la comuna (F2). Opcional: los llamadores viejos siguen andando. */
+  cobertura?: CoberturaHallazgo;
+  /** Nivel de precio actual (UF/m², deptos nuevos) — carril SEPARADO de la trayectoria. */
+  nivelUfM2?: number;
+  nivelPeriodo?: string;
   /** Referencia ya resuelta (getPlusvaliaRef). */
   ref: PlusvaliaRef;
   comuna: string;
@@ -188,6 +213,10 @@ export function buildHallazgoPlusvalia(p: {
       fuente: fuenteHistorica,
       scope: p.ref.scope,
       tieneData: p.tieneData,
+      // F2: cobertura y nivel viajan JUNTO a tieneData, no en su lugar. El nivel
+      // solo se emite si existe — nunca se inventa ni se hereda de otra comuna.
+      ...(p.cobertura ? { cobertura: p.cobertura } : {}),
+      ...(p.nivelUfM2 != null ? { nivelUfM2: p.nivelUfM2, nivelPeriodo: p.nivelPeriodo } : {}),
       modalidad: p.modalidad,
     },
     direccion,

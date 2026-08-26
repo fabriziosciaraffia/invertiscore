@@ -1,8 +1,8 @@
-// Generador del módulo de plusvalía consumido por el motor y las páginas (F0/F1).
+// Generador del módulo de plusvalía consumido por el motor y las páginas (F0/F1/F2).
 //
-//   node --import tsx scripts/data/generar-plusvalia-estimado.ts
+//   node --env-file=.env.local --import tsx scripts/data/generar-plusvalia-estimado.ts
 //
-// Emite src/lib/plusvalia-estimado.gen.ts. Dos bloques:
+// Emite src/lib/plusvalia-estimado.gen.ts. Tres bloques:
 //   · F0 — trayectoria del MOTOR: la constante PLUSVALIA_HISTORICA (Arenas &
 //     Cayo) tal cual, mismos valores, mismo DEFAULT. El swap a la cascada
 //     GFK→A&C en el score es F3 (exige recalibrar historicaScore) — NO acá.
@@ -10,29 +10,42 @@
 //     serie completa), nivel GFK 2024/2025-Q1 y CAGR punta a punta, leídos de
 //     scripts/data/franco-fuentes-2025.csv (committeado). 'PROMEDIO GS' queda
 //     en export propio, nunca mezclado en las vistas por comuna.
+//   · F2 — ESTIMADO 2025: lee la tabla derivada `plusvalia_estimado` (filas
+//     vigentes) en BUILD TIME y la emite con banda, versión y método. El
+//     runtime jamás consulta la tabla. Sin filas (job no corrido) emite el
+//     mapa vacío y la página degrada sola.
 //
-// La tabla plusvalia_fuentes_raw (forensics) NUNCA se lee en runtime; este
-// módulo generado es la única fuente. Cuando exista la tabla derivada
-// `plusvalia_estimado` (F2+), este script pasa a leer de ahí y el resto del
-// producto no se toca.
+// POR QUÉ FALTAN 5 COMUNAS EN EL ESTIMADO 2025 (corrida del 26-ago-2026, 25 de
+// 30). No es un bug ni data perdida: son las guardas del job haciendo su
+// trabajo. Queda escrito acá para que nadie tenga que recalcular para saberlo.
+//   · Peñalolén      — Δincoin intra-año +18,0% > 8%: delta implausible, la
+//                      zona oriente de INCOIN mezcla casas y departamentos.
+//   · Pudahuel       — estimado 78,1 se aleja +20,3% del anual GfK 2024 (64,9).
+//   · Quilicura      — estimado 51,2 se aleja −11,6% del 2024 (57,9).
+//   · Padre Hurtado  — estimado 45,6 se aleja −11,1% del 2024 (51,3).
+//   · Maipú          — estimado 62,0 se aleja −10,4% del 2024 (69,2).
+// Estas comunas muestran su último dato observado y nada más. Antes que
+// rellenar con el promedio del Gran Santiago, se declara que no hay estimado.
+//
+// La tabla plusvalia_fuentes_raw (forensics) NUNCA se lee, ni en runtime ni acá:
+// el estimado ya viene compuesto por el job (scripts/data/calcular-plusvalia-estimado.ts).
 //
 // Determinístico: mismo input ⇒ mismo archivo byte a byte (el header lleva el
-// hash de los inputs, no un timestamp).
+// hash de los inputs — CSV, constante A&C y estado de la derivada —, nunca un
+// timestamp). La lectura de la derivada se ordena por comuna por lo mismo.
 
 import { writeFileSync, readFileSync } from "fs";
 import { join } from "path";
 import { createHash } from "crypto";
+import { createClient } from "@supabase/supabase-js";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "../../src/lib/plusvalia-historica";
 
 const SALIDA = join(__dirname, "../../src/lib/plusvalia-estimado.gen.ts");
 const CSV_PATH = join(__dirname, "franco-fuentes-2025.csv");
 const RANGO_F0 = "2014-2024"; // rango A&C; con la cascada GFK pasa a ser per-comuna de verdad
+const ANIO_ESTIMADO = 2025;
 
 const csvCrudo = readFileSync(CSV_PATH, "utf8");
-const hashInput = createHash("sha256")
-  .update(readFileSync(join(__dirname, "../../src/lib/plusvalia-historica.ts"), "utf8"))
-  .update(csvCrudo)
-  .digest("hex").slice(0, 12);
 
 // ── F1: series y niveles GFK desde el CSV ──────────────────────────────────
 const GS_SENTINEL = "PROMEDIO GS";
@@ -91,16 +104,61 @@ const filas = Object.entries(PLUSVALIA_HISTORICA)
   })
   .join("\n");
 
-const contenido = `// GENERADO — no editar a mano. Regenerar con:
-//   node --import tsx scripts/data/generar-plusvalia-estimado.ts
-// Fuentes: PLUSVALIA_HISTORICA (arenas_cayo) + franco-fuentes-2025.csv (GFK) · input ${hashInput}
+// ── F2: estimado desde la tabla derivada ───────────────────────────────────
+interface FilaEstimado {
+  comuna: string;
+  uf_m2: number;
+  banda_min: number;
+  banda_max: number;
+  version: number;
+  vigente_desde: string;
+  metodo: string;
+}
+
+async function leerEstimado(): Promise<FilaEstimado[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error("Faltan NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (correr con --env-file=.env.local)");
+  }
+  const supabase = createClient(url, key);
+  const { data, error } = await supabase
+    .from("plusvalia_estimado")
+    .select("comuna, uf_m2, banda_min, banda_max, version, vigente_desde, metodo")
+    .eq("anio", ANIO_ESTIMADO)
+    .eq("vigente", true);
+  if (error) throw new Error(`Lectura de plusvalia_estimado falló: ${error.message}`);
+  // Orden estable por comuna: mismo estado de la tabla ⇒ mismo archivo byte a byte.
+  return (data ?? []).sort((a, b) => a.comuna.localeCompare(b.comuna, "es")) as FilaEstimado[];
+}
+
+async function main() {
+  const est = await leerEstimado();
+
+  const filasEst = est
+    .map((e) => `  ${JSON.stringify(e.comuna).padEnd(23)}: { ufM2: ${Number(e.uf_m2)}, bandaMin: ${Number(e.banda_min)}, bandaMax: ${Number(e.banda_max)}, version: ${e.version}, vigenteDesde: ${JSON.stringify(e.vigente_desde)} },`)
+    .join("\n");
+  // Método para la página de metodología: textos únicos (hoy varían solo por zona INCOIN).
+  const metodosUnicos = [...new Set(est.map((e) => e.metodo))].sort();
+
+  const hashInput = createHash("sha256")
+    .update(readFileSync(join(__dirname, "../../src/lib/plusvalia-historica.ts"), "utf8"))
+    .update(csvCrudo)
+    .update(JSON.stringify(est))
+    .digest("hex")
+    .slice(0, 12);
+
+  const contenido = `// GENERADO — no editar a mano. Regenerar con:
+//   node --env-file=.env.local --import tsx scripts/data/generar-plusvalia-estimado.ts
+// Fuentes: PLUSVALIA_HISTORICA (arenas_cayo) + franco-fuentes-2025.csv (GFK) +
+// tabla derivada plusvalia_estimado (F2) · input ${hashInput}
 //
 // Módulo de plusvalía que consume el motor (score, hallazgo, prompt,
-// zone-insight, wizard, UI de procedencia) y la página /comunas (F1). Es la
-// FUENTE ÚNICA en runtime: nadie lee la tabla plusvalia_fuentes_raw (forensics)
-// ni constantes paralelas. La cascada futura del MOTOR (GFK → A&C → DEFAULT, F3)
-// entra por el generador, cambiando \`fuente\`/\`rangoHist\` por comuna sin tocar a
-// los consumidores.
+// zone-insight, wizard, UI de procedencia) y la página /comunas (F1/F2). Es la
+// FUENTE ÚNICA en runtime: nadie lee las tablas plusvalia_fuentes_raw
+// (forensics) ni plusvalia_estimado (derivada) ni constantes paralelas. La
+// cascada futura del MOTOR (GFK → A&C → DEFAULT, F3) entra por el generador,
+// cambiando \\\`fuente\\\`/\\\`rangoHist\\\` por comuna sin tocar a los consumidores.
 
 /** Trayectoria histórica de una comuna, con procedencia declarada. */
 export interface PlusvaliaComunaEntry {
@@ -171,6 +229,42 @@ export const GFK_GRAN_SANTIAGO = {
   nivel: ${gsNivel ? `{ ufM2: ${gsNivel.ufM2}, periodo: ${JSON.stringify(gsNivel.periodo)} }` : "null"},
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// F2 — ESTIMADO ${ANIO_ESTIMADO} (tabla derivada plusvalia_estimado, filas vigentes).
+// Cierre de año COMPUESTO DE OBSERVADO (ancla GfK 1T × trayectoria intra-año
+// INCOIN medida sobre la propia fuente), NO una proyección: ${ANIO_ESTIMADO} es pasado.
+// La banda es la única incertidumbre declarada.
+//
+// 2026 NO se emite por comuna, a propósito. CONDICIÓN PARA ENCENDERLO: que
+// exista al menos un trimestre 2026 observado POR COMUNA en la cruda y su fila
+// correspondiente en la derivada. Recién ahí el año corriente entra como
+// parcial observado (sólido) + cierre con banda (punteado) — y el punteado va
+// SOLO en el tramo no transcurrido. Mientras tanto la página termina en
+// "${ANIO_ESTIMADO} est." sólido.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Estimado anual con banda y versión (auditable contra plusvalia_estimado). */
+export interface EstimadoAnual {
+  /** UF/m² estimado del año (promedio anual, misma base que la serie GFK). */
+  ufM2: number;
+  bandaMin: number;
+  bandaMax: number;
+  /** Versión vigente en la derivada — las cifras citadas quedan auditables. */
+  version: number;
+  vigenteDesde: string;
+}
+
+/** Cierre ${ANIO_ESTIMADO} estimado por comuna (${est.length} comunas; las guardas del job degradan al resto). */
+export const PLUSVALIA_ESTIMADO_2025: Record<string, EstimadoAnual> = {
+${filasEst}
+};
+
+/** Año del estimado emitido. */
+export const ANIO_ESTIMADO = ${ANIO_ESTIMADO};
+
+/** Textos de método del estimado (campo \\\`metodo\\\` de la derivada), para la página de metodología. */
+export const METODOS_ESTIMADO: string[] = ${JSON.stringify(metodosUnicos, null, 2)};
+
 /** Estado de cobertura de plusvalía de una comuna en la superficie pública. */
 export type CoberturaPlusvalia =
   /** Serie anual GFK completa ${SERIE_DESDE}-${SERIE_HASTA}. */
@@ -196,5 +290,13 @@ export function coberturaPlusvaliaDe(comuna: string): CoberturaPlusvalia {
 }
 `;
 
-writeFileSync(SALIDA, contenido, "utf8");
-console.log(`Escrito ${SALIDA} (${Object.keys(PLUSVALIA_HISTORICA).length} comunas A&C · ${comunasSerie.length} series GFK · ${comunasNivel.length} niveles GFK · input ${hashInput})`);
+  writeFileSync(SALIDA, contenido, "utf8");
+  console.log(
+    `Escrito ${SALIDA} (${Object.keys(PLUSVALIA_HISTORICA).length} comunas A&C · ${comunasSerie.length} series GFK · ${comunasNivel.length} niveles GFK · ${est.length} estimados ${ANIO_ESTIMADO} · input ${hashInput})`,
+  );
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

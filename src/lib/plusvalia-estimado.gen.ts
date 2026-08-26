@@ -1,13 +1,14 @@
 // GENERADO — no editar a mano. Regenerar con:
-//   node --import tsx scripts/data/generar-plusvalia-estimado.ts
-// Fuentes: PLUSVALIA_HISTORICA (arenas_cayo) + franco-fuentes-2025.csv (GFK) · input 3ea769353239
+//   node --env-file=.env.local --import tsx scripts/data/generar-plusvalia-estimado.ts
+// Fuentes: PLUSVALIA_HISTORICA (arenas_cayo) + franco-fuentes-2025.csv (GFK) +
+// tabla derivada plusvalia_estimado (F2) · input b426a149e403
 //
 // Módulo de plusvalía que consume el motor (score, hallazgo, prompt,
-// zone-insight, wizard, UI de procedencia) y la página /comunas (F1). Es la
-// FUENTE ÚNICA en runtime: nadie lee la tabla plusvalia_fuentes_raw (forensics)
-// ni constantes paralelas. La cascada futura del MOTOR (GFK → A&C → DEFAULT, F3)
-// entra por el generador, cambiando `fuente`/`rangoHist` por comuna sin tocar a
-// los consumidores.
+// zone-insight, wizard, UI de procedencia) y la página /comunas (F1/F2). Es la
+// FUENTE ÚNICA en runtime: nadie lee las tablas plusvalia_fuentes_raw
+// (forensics) ni plusvalia_estimado (derivada) ni constantes paralelas. La
+// cascada futura del MOTOR (GFK → A&C → DEFAULT, F3) entra por el generador,
+// cambiando \`fuente\`/\`rangoHist\` por comuna sin tocar a los consumidores.
 
 /** Trayectoria histórica de una comuna, con procedencia declarada. */
 export interface PlusvaliaComunaEntry {
@@ -146,6 +147,70 @@ export const GFK_GRAN_SANTIAGO = {
   serie: { desde: 2015, valores: [62.2, 65.2, 67.4, 70.1, 75.5, 78, 82, 83.1, 83.7, 83.9], cagrPct: 3.4 },
   nivel: { ufM2: 83.3, periodo: "1T-2025" },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// F2 — ESTIMADO 2025 (tabla derivada plusvalia_estimado, filas vigentes).
+// Cierre de año COMPUESTO DE OBSERVADO (ancla GfK 1T × trayectoria intra-año
+// INCOIN medida sobre la propia fuente), NO una proyección: 2025 es pasado.
+// La banda es la única incertidumbre declarada.
+//
+// 2026 NO se emite por comuna, a propósito. CONDICIÓN PARA ENCENDERLO: que
+// exista al menos un trimestre 2026 observado POR COMUNA en la cruda y su fila
+// correspondiente en la derivada. Recién ahí el año corriente entra como
+// parcial observado (sólido) + cierre con banda (punteado) — y el punteado va
+// SOLO en el tramo no transcurrido. Mientras tanto la página termina en
+// "2025 est." sólido.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Estimado anual con banda y versión (auditable contra plusvalia_estimado). */
+export interface EstimadoAnual {
+  /** UF/m² estimado del año (promedio anual, misma base que la serie GFK). */
+  ufM2: number;
+  bandaMin: number;
+  bandaMax: number;
+  /** Versión vigente en la derivada — las cifras citadas quedan auditables. */
+  version: number;
+  vigenteDesde: string;
+}
+
+/** Cierre 2025 estimado por comuna (25 comunas; las guardas del job degradan al resto). */
+export const PLUSVALIA_ESTIMADO_2025: Record<string, EstimadoAnual> = {
+  "Buin"                 : { ufM2: 50.2, bandaMin: 48.9, bandaMax: 51.6, version: 1, vigenteDesde: "2026-08-26" },
+  "Cerrillos"            : { ufM2: 69.1, bandaMin: 66.5, bandaMax: 71.8, version: 1, vigenteDesde: "2026-08-26" },
+  "Colina"               : { ufM2: 77.8, bandaMin: 76.2, bandaMax: 79.3, version: 1, vigenteDesde: "2026-08-26" },
+  "Conchalí"             : { ufM2: 74.9, bandaMin: 73.4, bandaMax: 76.4, version: 1, vigenteDesde: "2026-08-26" },
+  "Estación Central"     : { ufM2: 59.9, bandaMin: 58.4, bandaMax: 61.5, version: 1, vigenteDesde: "2026-08-26" },
+  "Huechuraba"           : { ufM2: 72.2, bandaMin: 70.5, bandaMax: 74, version: 1, vigenteDesde: "2026-08-26" },
+  "Independencia"        : { ufM2: 65.2, bandaMin: 63.9, bandaMax: 66.5, version: 1, vigenteDesde: "2026-08-26" },
+  "La Cisterna"          : { ufM2: 64.6, bandaMin: 63.3, bandaMax: 65.9, version: 1, vigenteDesde: "2026-08-26" },
+  "La Florida"           : { ufM2: 72.9, bandaMin: 71.5, bandaMax: 74.4, version: 1, vigenteDesde: "2026-08-26" },
+  "La Reina"             : { ufM2: 88.4, bandaMin: 86.6, bandaMax: 90.1, version: 1, vigenteDesde: "2026-08-26" },
+  "Lampa"                : { ufM2: 41.2, bandaMin: 40.4, bandaMax: 42, version: 1, vigenteDesde: "2026-08-26" },
+  "Las Condes"           : { ufM2: 112.1, bandaMin: 109.8, bandaMax: 114.3, version: 1, vigenteDesde: "2026-08-26" },
+  "Lo Barnechea"         : { ufM2: 103.5, bandaMin: 101.5, bandaMax: 105.6, version: 1, vigenteDesde: "2026-08-26" },
+  "Macul"                : { ufM2: 71.4, bandaMin: 70, bandaMax: 72.9, version: 1, vigenteDesde: "2026-08-26" },
+  "Ñuñoa"                : { ufM2: 85.8, bandaMin: 81.5, bandaMax: 90.2, version: 1, vigenteDesde: "2026-08-26" },
+  "Providencia"          : { ufM2: 106.5, bandaMin: 104.4, bandaMax: 108.6, version: 1, vigenteDesde: "2026-08-26" },
+  "Puente Alto"          : { ufM2: 52, bandaMin: 51, bandaMax: 53.1, version: 1, vigenteDesde: "2026-08-26" },
+  "Quinta Normal"        : { ufM2: 70.9, bandaMin: 69.5, bandaMax: 72.3, version: 1, vigenteDesde: "2026-08-26" },
+  "Recoleta"             : { ufM2: 71.4, bandaMin: 70, bandaMax: 72.8, version: 1, vigenteDesde: "2026-08-26" },
+  "Renca"                : { ufM2: 52.7, bandaMin: 51.7, bandaMax: 53.8, version: 1, vigenteDesde: "2026-08-26" },
+  "San Bernardo"         : { ufM2: 57, bandaMin: 54.2, bandaMax: 59.8, version: 1, vigenteDesde: "2026-08-26" },
+  "San Joaquín"          : { ufM2: 69.3, bandaMin: 68, bandaMax: 70.7, version: 1, vigenteDesde: "2026-08-26" },
+  "San Miguel"           : { ufM2: 69.2, bandaMin: 66.3, bandaMax: 72.2, version: 1, vigenteDesde: "2026-08-26" },
+  "Santiago"             : { ufM2: 79.1, bandaMin: 75.2, bandaMax: 83, version: 1, vigenteDesde: "2026-08-26" },
+  "Vitacura"             : { ufM2: 122.9, bandaMin: 120.4, bandaMax: 125.4, version: 1, vigenteDesde: "2026-08-26" },
+};
+
+/** Año del estimado emitido. */
+export const ANIO_ESTIMADO = 2025;
+
+/** Textos de método del estimado (campo \`metodo\` de la derivada), para la página de metodología. */
+export const METODOS_ESTIMADO: string[] = [
+  "Cierre 2025 estimado, compuesto de datos observados del propio año: ancla de nivel GfK/NielsenIQ 1T-2025 (precio de oferta, deptos nuevos) ajustada por la trayectoria intra-año de INCOIN (Tinsa) — factor = promedio de los 4 trimestres 2025 de la comuna dividido por su 1T, medido sobre la misma fuente (nunca se mezclan niveles entre fuentes). Banda: ± el mayor entre la divergencia con la trayectoria GfK del Gran Santiago y 2 puntos porcentuales. Guardas: se descarta el estimado si el delta intra-año supera 8% o si el resultado se aleja más de 10% del anual GfK 2024. La zona INCOIN de esta comuna (centro) es 100% departamentos. Los precios de lista de deptos nuevos 2025-2026 pueden estar afectados por cambios tributarios (beneficios/IVA a la vivienda); el estimado refleja precios publicados, sin ajuste por ese efecto. Es un estimado de año terminado, no una proyección.",
+  "Cierre 2025 estimado, compuesto de datos observados del propio año: ancla de nivel GfK/NielsenIQ 1T-2025 (precio de oferta, deptos nuevos) ajustada por la trayectoria intra-año de INCOIN (Tinsa) — factor = promedio de los 4 trimestres 2025 de la comuna dividido por su 1T, medido sobre la misma fuente (nunca se mezclan niveles entre fuentes). Banda: ± el mayor entre la divergencia con la trayectoria GfK del Gran Santiago y 2 puntos porcentuales. Guardas: se descarta el estimado si el delta intra-año supera 8% o si el resultado se aleja más de 10% del anual GfK 2024. La zona INCOIN de esta comuna (oriente) mezcla casas y departamentos; el factor se usa igual porque es relativo, pero se declara. Los precios de lista de deptos nuevos 2025-2026 pueden estar afectados por cambios tributarios (beneficios/IVA a la vivienda); el estimado refleja precios publicados, sin ajuste por ese efecto. Es un estimado de año terminado, no una proyección.",
+  "Cierre 2025 estimado, compuesto de datos observados del propio año: ancla de nivel GfK/NielsenIQ 1T-2025 (precio de oferta, deptos nuevos) ajustada por la trayectoria intra-año de INCOIN (Tinsa) — factor = promedio de los 4 trimestres 2025 de la comuna dividido por su 1T, medido sobre la misma fuente (nunca se mezclan niveles entre fuentes). Banda: ± el mayor entre la divergencia con la trayectoria GfK del Gran Santiago y 2 puntos porcentuales. Guardas: se descarta el estimado si el delta intra-año supera 8% o si el resultado se aleja más de 10% del anual GfK 2024. La zona INCOIN de esta comuna (periferia) mezcla casas y departamentos; el factor se usa igual porque es relativo, pero se declara. Los precios de lista de deptos nuevos 2025-2026 pueden estar afectados por cambios tributarios (beneficios/IVA a la vivienda); el estimado refleja precios publicados, sin ajuste por ese efecto. Es un estimado de año terminado, no una proyección."
+];
 
 /** Estado de cobertura de plusvalía de una comuna en la superficie pública. */
 export type CoberturaPlusvalia =

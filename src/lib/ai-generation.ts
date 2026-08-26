@@ -11,7 +11,7 @@ import {
   nuevoAcumuladorUsage,
   type AiUsage,
 } from "@/lib/ai-usage";
-import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO, rangoHistDe } from "@/lib/plusvalia-estimado.gen";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO, rangoHistDe, GFK_NIVEL } from "@/lib/plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { calcInversionInicialCLP } from "@/lib/inversion-inicial";
@@ -1446,6 +1446,17 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       plusvaliaHistoricaInfo = `Sin histórico propio de ${comunaNorm}: la comuna NO está en la serie ${RANGO_HIST}. Referencia usada: promedio del Gran Santiago, ${PLUSVALIA_DEFAULT.anualizada}% anual. IMPORTANTE: ese ${PLUSVALIA_DEFAULT.anualizada}% NO es la historia de ${comunaNorm} — PROHIBIDO escribir "${comunaNorm} promedió/subió/creció X%". Dilo como fallback honesto: "sin dato histórico propio de ${comunaNorm}, usamos el promedio del Gran Santiago (${pct(PLUSVALIA_DEFAULT.anualizada)}% anual) como referencia".`;
     }
 
+    // F2 — NIVEL de precio de la comuna, en línea APARTE de la trayectoria.
+    // Van separados a propósito: son dos mediciones distintas (cuánto vale hoy
+    // el m² vs cuánto se movió en el tiempo) y el riesgo identificado en el
+    // audit es que la prosa las funda en una sola afirmación. La línea lo
+    // prohíbe explícito. La cifra entra al prompt, así que el guard §17
+    // (cifras-guard) la valida igual que la trayectoria — ambas quedan cubiertas.
+    const nivelGen = GFK_NIVEL[comunaNorm];
+    const plusvaliaNivelInfo = nivelGen
+      ? `Nivel de precio actual de ${comunaNorm}: UF ${pct(nivelGen.ufM2)}/m² de departamentos NUEVOS (${nivelGen.periodo}, precios de oferta). Es el precio de HOY, NO una trayectoria: PROHIBIDO mezclarlo con la plusvalía histórica en una misma afirmación (nunca "subió a UF X" ni "la plusvalía la llevó a UF X"). Úsalo solo para situar cuán caro está el m² de la comuna; el % histórico responde otra pregunta.`
+      : "";
+
     const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];
     const esFueraGranSantiago = comunaNorm ? !COMUNAS_GRAN_SANTIAGO.includes(comunaNorm) : false;
 
@@ -1648,6 +1659,9 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
     const hallazgoPlusvaliaGen = buildHallazgoPlusvalia({
       anualizadaPct: plusvaliaComunaGen.anualizada,
       tieneData: plusvaliaComunaGen.tieneData,
+      cobertura: plusvaliaComunaGen.cobertura,
+      nivelUfM2: plusvaliaComunaGen.nivelUfM2,
+      nivelPeriodo: plusvaliaComunaGen.nivelPeriodo,
       ref: getPlusvaliaRef(),
       comuna: input.comuna,
       modalidad: "ltr",
@@ -2031,6 +2045,7 @@ ${arriendoReferenciaBloque}
 UBICACIÓN Y PLUSVALÍA
 ${metroInfo}
 ${plusvaliaHistoricaInfo}
+${plusvaliaNivelInfo}
 ${esFueraGranSantiago ? "ADVERTENCIA: propiedad fuera del Gran Santiago. Datos de metro, plusvalía y comparables pueden ser imprecisos — mencionar limitación al usuario." : ""}
 ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}${subsidioBloque}${capexBloque}
 ${anclasBloque}${jerarquiaPrecios.bloque}${referenciasZona.bloque}${bloqueSimetriaSobreprecio}${bloquePrecioJusto}${bloqueDriverNoAccionable}${bloqueMotivosGateLTR}

@@ -182,13 +182,16 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
   }
   // plusvalia — histórica comunal idéntica a LTR.
   {
-    const { anualizada, tieneData } = resolvePlusvaliaComuna(ctx.comuna || "");
+    const { anualizada, tieneData, cobertura, nivelUfM2, nivelPeriodo } = resolvePlusvaliaComuna(ctx.comuna || "");
     const ref = getPlusvaliaRef();
     const mag = clamp01(Math.abs(anualizada - ref.pct) / PLUSVALIA_BANDA_DEFAULT);
     out.push(
       buildHallazgoPlusvalia({
         anualizadaPct: anualizada,
         tieneData,
+        cobertura,
+        nivelUfM2,
+        nivelPeriodo,
         ref,
         comuna: ctx.comuna || "",
         modalidad: "str",

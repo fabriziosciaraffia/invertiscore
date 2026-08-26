@@ -432,6 +432,9 @@ function calcMetrics(
   const hallazgoPlusvalia = buildHallazgoPlusvalia({
     anualizadaPct: plusvaliaComuna.anualizada,
     tieneData: plusvaliaComuna.tieneData,
+    cobertura: plusvaliaComuna.cobertura,
+    nivelUfM2: plusvaliaComuna.nivelUfM2,
+    nivelPeriodo: plusvaliaComuna.nivelPeriodo,
     ref: getPlusvaliaRef(),
     comuna: input.comuna,
     modalidad: "ltr",

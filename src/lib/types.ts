@@ -602,6 +602,16 @@ export interface HallazgoSobreprecio {
 // tumba/salva sola, aporta al patrimonio. HISTÓRICA (2014-2024), NO garantía
 // futura — por eso la confianza nunca es "alta". La IA lo narra aguas abajo.
 // Ver plusvalia-hallazgo.ts.
+/**
+ * Cobertura de plusvalía de la comuna (F2). Tres estados, deliberadamente
+ * distintos de `tieneData` (bool) al que acompañan sin reemplazar:
+ *  · trayectoria_propia — la comuna tiene su propia historia de precios.
+ *  · solo_nivel — hay precio actual pero NINGUNA trayectoria propia; el % que
+ *    se muestra es referencia regional y NO se le puede atribuir a la comuna.
+ *  · fallback_gs — ni trayectoria ni nivel propios: promedio Gran Santiago.
+ */
+export type CoberturaHallazgo = "trayectoria_propia" | "solo_nivel" | "fallback_gs";
+
 export interface HallazgoPlusvalia {
   id: "plusvalia";
   tipo: "apreciacion_historica";
@@ -613,6 +623,17 @@ export interface HallazgoPlusvalia {
     fuente: string;         // procedencia del umbral (auditoría de la brecha)
     scope: "absoluta" | "comuna";
     tieneData: boolean;     // true si la comuna tiene dato propio; false ⇒ default
+    // ── F2: cobertura y nivel ───────────────────────────────────────────────
+    // Campos NUEVOS junto a `tieneData`, que se mantiene y sigue siendo la
+    // señal derivable de siempre: hay filas jsonb persistidas que solo traen el
+    // bool, así que todo consumidor tolera `undefined` acá.
+    // La cobertura distingue lo que el bool no podía: tener NIVEL fresco no es
+    // tener TRAYECTORIA. Son dos mediciones distintas y la prosa no las mezcla.
+    cobertura?: CoberturaHallazgo;
+    // Nivel de precio actual de la comuna (UF/m² de deptos nuevos) y su período,
+    // SEPARADOS de la trayectoria a propósito (guarda anti-mezcla del audit).
+    nivelUfM2?: number;
+    nivelPeriodo?: string;
     modalidad: "ltr" | "str" | "ambas";
   };
   // favorable si la comuna apreció ≥ umbral real (ganó valor real); adverso si <
