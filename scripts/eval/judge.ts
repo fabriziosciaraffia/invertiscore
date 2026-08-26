@@ -12,7 +12,7 @@ import type {
 import { esMetricaNoAplica, metricaValorONull } from "../../src/lib/types";
 import { NO_APLICA_PROMPT } from "../../src/lib/no-aplica-copy";
 import { METRO_STATIONS, haversineDistance, findNearestStation } from "../../src/lib/metro-stations";
-import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "../../src/lib/plusvalia-historica";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT } from "../../src/lib/plusvalia-estimado.gen";
 import { generateAiAnalysis } from "../../src/lib/ai-generation";
 import { generateStrProse } from "../../src/lib/ai-generation-str";
 import { generateComparativaAI } from "../../src/lib/ai-generation-ambas-generate";

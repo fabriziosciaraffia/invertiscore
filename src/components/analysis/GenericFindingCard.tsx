@@ -16,6 +16,7 @@
 import type { Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
+import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
 import { buildFraseFlujo } from "@/lib/flujo-mensual-hallazgo";
 import { distanciaFindingDisplay } from "@/lib/distancia-copy";
 
@@ -162,11 +163,11 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         title: "Cuánto se ha valorizado la comuna",
         kpi: `${pct1(v.anualizadaPct)}%`,
         kpiRed: false,
-        ksub: `anual · 2014-2024 · umbral real ${pct1(v.refPct)}%`,
+        ksub: `anual · ${PLUSVALIA_DEFAULT_RANGO} · umbral real ${pct1(v.refPct)}%`,
         // F4 — lee v.fuente (procedencia histórica real, fuente única) con fallback defensivo al
         // literal para filas pre-regen (v.fuente con texto del umbral). Fallback GS → sin footer.
         procedencia: v.tieneData
-          ? ((v.fuente && !/umbral/i.test(v.fuente)) ? v.fuente : "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital, Activo Más")
+          ? ((v.fuente && !/umbral/i.test(v.fuente)) ? v.fuente : `Histórico ${PLUSVALIA_DEFAULT_RANGO} · Arenas & Cayo, Tinsa, Propital, Activo Más`)
           : undefined,
       };
     }

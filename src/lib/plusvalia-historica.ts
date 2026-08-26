@@ -1,3 +1,9 @@
+// DEPRECADO (F0 plusvalía, 2026-08-25): la fuente en runtime es el módulo GENERADO
+// src/lib/plusvalia-estimado.gen.ts (regenerar con scripts/data/generar-plusvalia-estimado.ts).
+// Este archivo queda solo como input del generador y del importador
+// (scripts/data/importar-plusvalia-fuentes.ts → tabla plusvalia_fuentes_raw).
+// NO importar desde código de producto. Se retira cuando el generador lea de la
+// tabla derivada plusvalia_estimado (F2+).
 /**
  * Plusvalía histórica de departamentos por comuna 2014-2024
  * Fuente: Arenas & Cayo, Propital, Tinsa, Activo Más Inversiones

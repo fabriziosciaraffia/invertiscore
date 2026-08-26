@@ -50,6 +50,7 @@ import { rangoChars, registrarSondaSalida, reportarValidacionRechazo } from "./s
 import { WaitlistZonaInline } from "./WaitlistZonaInline";
 import { decidirEnganche, derivarComuna, plano } from "./entradaPlaces";
 import { cajaParaComuna, type Caja } from "@/lib/comuna-bounds";
+import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CHIPS DE COMUNA — las cinco más analizadas, medidas
@@ -740,7 +741,7 @@ function SinDeptoScreen({
               <Dato
                 label="Plusvalía anual"
                 valor={stats.plusvaliaAnualizada != null ? fmtPct(stats.plusvaliaAnualizada) : "sin dato"}
-                sub={stats.plusvaliaAnualizada != null ? "observado 2014-2024" : undefined}
+                sub={stats.plusvaliaAnualizada != null ? `observado ${PLUSVALIA_DEFAULT_RANGO}` : undefined}
               />
             </div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-muted)] mt-5 mb-0">

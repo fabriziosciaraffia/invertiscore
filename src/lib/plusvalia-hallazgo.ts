@@ -11,7 +11,7 @@
 // buena (Franco es pro-honestidad: no vender plusvalía histórica como futura).
 
 import type { HallazgoPlusvalia } from "./types";
-import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO } from "./plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 
 // ─── Referencia (umbral absoluto de apreciación real) ─────────────────────
@@ -164,7 +164,7 @@ export function buildHallazgoPlusvalia(p: {
   }
 
   const base = p.tieneData
-    ? "apreciación histórica de la comuna 2014-2024 (Arenas & Cayo, Tinsa, Propital, Activo Más), no garantía de apreciación futura"
+    ? `apreciación histórica de la comuna ${PLUSVALIA_DEFAULT_RANGO} (Arenas & Cayo, Tinsa, Propital, Activo Más), no garantía de apreciación futura`
     : "promedio histórico del Gran Santiago, sin datos propios de la comuna — no garantía futura";
 
   // v.fuente carga la PROCEDENCIA HISTÓRICA REAL (rama motor-supuestos F4), no el umbral. Es
@@ -174,8 +174,8 @@ export function buildHallazgoPlusvalia(p: {
   // Propital, Tinsa, Activo Más Inversiones"). Los 3 literales de fallback (drawers LTR/STR +
   // card) son idénticos a este string.
   const fuenteHistorica = p.tieneData
-    ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital, Activo Más"
-    : "Promedio histórico Gran Santiago 2014-2024";
+    ? `Histórico ${PLUSVALIA_DEFAULT_RANGO} · Arenas & Cayo, Tinsa, Propital, Activo Más`
+    : `Promedio histórico Gran Santiago ${PLUSVALIA_DEFAULT_RANGO}`;
 
   return {
     id: "plusvalia",

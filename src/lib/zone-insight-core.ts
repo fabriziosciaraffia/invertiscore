@@ -16,12 +16,13 @@ import { CLAUDE_MODEL } from "@/lib/ai-config";
 import type { RegistroLlamadas } from "@/lib/pipeline-timing";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { getNearbyAttractors, type AttractorTipo } from "@/lib/data/attractors";
-import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
 // que el render y REGLA 10 del prompt LTR. Nunca literal tipeado.
 const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
+const RANGO_HIST = PLUSVALIA_DEFAULT_RANGO; // rótulo centralizado del rango histórico
 import {
   getComunaMedianaVentaUF,
   resolverCondicionMercado,
@@ -42,7 +43,7 @@ interface PoiBasic {
 
 interface ZoneInsightStats {
   plusvaliaHistorica: {
-    /** Acumulado 10 años (2014-2024). Ej: 37 = 37% en la década. Fuente: Arenas & Cayo, Propital, Tinsa. */
+    /** Acumulado 10 años (rango histórico A&C, ver rangoHist del módulo generado). Ej: 37 = 37% en la década. Fuente: Arenas & Cayo, Propital, Tinsa. */
     valor: number;
     /** Anualizado (la misma serie convertida a tasa anual). Ej: 3.2 = 3,2% anual. */
     anualizada: number;
@@ -449,7 +450,7 @@ percentilTuDepto (percentil del arriendo dentro del rango local):
   P75–P90 → "caro para la zona"
   > P90 → "muy caro para la zona"
 
-plusvaliaAnual (histórica anualizada 2014-2024 de la comuna):
+plusvaliaAnual (histórica anualizada ${RANGO_HIST} de la comuna):
   < ${PROY_PCT} → "débil vs la proyección de plusvalía a futuro de ${PROY_PCT} (la proyección estándar Franco)"
   ${PROY_PCT}–5% → "alineada o sobre la proyección de plusvalía a futuro de ${PROY_PCT}"
   > 5% → "fuerte vs la proyección de plusvalía a futuro de ${PROY_PCT}"
@@ -643,7 +644,7 @@ async function generateInsightAI(
     // La tasa de proyección de los umbrales (REGLA 1/8, hoy 3%) es la PROYECCIÓN
     // estándar Franco a futuro, no la histórica observada — aunque coincidan en el número.
     finLines.push(ctx.plusvaliaFallback
-      ? `- Sin histórico propio de ${comuna}: la comuna NO está en la serie 2014-2024. Referencia usada: promedio del Gran Santiago, ${ctx.plusvaliaAnual.toFixed(1).replace(".", ",")}% anual. PROHIBIDO atribuir ese % a ${comuna} ("${comuna} promedió/subió X%") — es referencia regional, no la historia de la comuna.`
+      ? `- Sin histórico propio de ${comuna}: la comuna NO está en la serie ${RANGO_HIST}. Referencia usada: promedio del Gran Santiago, ${ctx.plusvaliaAnual.toFixed(1).replace(".", ",")}% anual. PROHIBIDO atribuir ese % a ${comuna} ("${comuna} promedió/subió X%") — es referencia regional, no la historia de la comuna.`
       : `- Plusvalía histórica anualizada ${comuna}: ${ctx.plusvaliaAnual.toFixed(1).replace(".", ",")}% (cifra ANUAL, no acumulada 10 años).`);
   }
 

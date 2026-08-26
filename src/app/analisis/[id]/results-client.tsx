@@ -22,7 +22,7 @@ import { AdvancedSection } from "@/components/analysis/AdvancedSection";
 import { SubjectCardGrid } from "@/components/analysis/SubjectCardGrid";
 import { hasAiV2 } from "@/components/analysis/AIInsightSection";
 import { SimulationProvider } from "@/contexts/SimulationContext";
-import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT } from "@/lib/plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 

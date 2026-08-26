@@ -32,7 +32,7 @@ import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import type { MedianaComunaInyectada } from "./comuna-stats";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
 import { findNearestStation } from "./metro-stations";
-import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT } from "./plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 import {
   TASA_MERCADO_FALLBACK,

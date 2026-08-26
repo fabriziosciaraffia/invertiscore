@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getComunaStats, UF_CLP } from "@/lib/data/comunas-seo";
-import { PLUSVALIA_HISTORICA } from "@/lib/plusvalia-historica";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA } from "@/lib/plusvalia-estimado.gen";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 
 // ─────────────────────────────────────────────────────────────────────────────

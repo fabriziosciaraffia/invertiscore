@@ -11,7 +11,7 @@ import {
   nuevoAcumuladorUsage,
   type AiUsage,
 } from "@/lib/ai-usage";
-import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO, rangoHistDe } from "@/lib/plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { calcInversionInicialCLP } from "@/lib/inversion-inicial";
@@ -66,6 +66,11 @@ const anthropic = new Anthropic();
 // El prompt debe decir lo mismo que el render (drawer de plusvalía): proyección base parejo,
 // histórica como contexto de riesgo. Si cambia la constante, cambian prompt y render juntos.
 const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
+// Rótulo del rango histórico de plusvalía — fuente única (módulo generado). OJO:
+// el contenido NARRATIVO de la regla doctrinal (boom pre-2019 / estallido /
+// pandemia, bloque "dataset de plusvalía") es específico del rango 2014-2024;
+// si el rango cambia (cascada GFK per-comuna), esos tramos se revisan A MANO.
+const RANGO_HIST = PLUSVALIA_DEFAULT_RANGO;
 
 // Versión del prompt LTR. Driver de la invalidación lazy-on-open (analisis/ai/route.ts):
 // la prosa cacheada con `promptVersion` < este número (o ausente ⇒ prosa pre-F6) se
@@ -535,7 +540,7 @@ REGLA 8 — Un precio protagonista por pieza (§1.12.6) — el bloque JERARQUÍA
 Conviven hasta cuatro precios por análisis (sugerido/techo de negociación, flujo-neutro, límite de TIR, umbral de veredicto) y cada uno responde una pregunta distinta. El user prompt trae el bloque "JERARQUÍA DE PRECIOS DE ESTE CASO" con los precios ACTIVOS de este caso: una sola cifra canónica por rol, el protagonista de cada pieza asignado y las líneas de subordinación YA escritas. Ese bloque es LA fuente: cada pieza cita SU protagonista con la cifra exacta del bloque; cualquier otro precio de la lista solo puede aparecer acompañado de su línea de subordinación (adáptala lo mínimo — la frase debe decir cuál manda). PROHIBIDO: derivar % de descuento propios, recalcular un precio de la lista, rotular dos cifras con la misma banda de esfuerzo, o presentar flujo-neutro/límite-TIR como objetivos de negociación. Un guard verifica esto post-generación: dos precios de roles distintos en una pieza sin frase de subordinación fuerzan reintento.
 
 REGLA 9 — Plusvalía histórica: caveat temporal obligatorio (v13 — evento como período, no como causa).
-El dataset de plusvalía cubre 2014-2024. Ese rango CRUZA tres tramos atípicos que lo vuelven un promedio ruidoso — no un predictor limpio. Son el marco temporal del dato (CUÁNDO ocurrió), NO causas cuantificables (CUÁNTO movió la cifra):
+El dataset de plusvalía cubre ${RANGO_HIST}. Ese rango CRUZA tres tramos atípicos que lo vuelven un promedio ruidoso — no un predictor limpio. Son el marco temporal del dato (CUÁNDO ocurrió), NO causas cuantificables (CUÁNTO movió la cifra):
 - Boom de densificación 2014-2018: tramo de fuerte alza en comunas en densificación (Ñuñoa, Maipú, San Miguel, Quilicura, San Bernardo).
 - Estallido social, octubre 2019.
 - Pandemia, 2020-2021.
@@ -552,9 +557,9 @@ EL CAVEAT APLICA EN AMBAS DIRECCIONES — no solo cuando la histórica es baja o
 - Histórica alta (Quilicura 5,3%, San Bernardo 4,9%, Lo Prado 4,3%): el número cruza el boom 2014-2018; por eso no es piso — ese ritmo pudo no repetirse. Una histórica positiva alta NO es predictor limpio del futuro: buena parte del rango cae en el boom y no se sabe si se repite.
 
 Ejemplos válidos (el tramo es el período que el promedio cruza, no una causa):
-- "[comuna] promedió [X]% anual 2014-2024 — pero ese número cruza el boom pre-2019, el estallido y la pandemia, así que es ruidoso: tómalo como referencia de un período atípico, no como proyección." (usa el dato real de plusvaliaHistoricaInfo del caso, no estos placeholders)
+- "[comuna] promedió [X]% anual ${RANGO_HIST} — pero ese número cruza el boom pre-2019, el estallido y la pandemia, así que es ruidoso: tómalo como referencia de un período atípico, no como proyección." (usa el dato real de plusvaliaHistoricaInfo del caso, no estos placeholders)
 - "Santiago centro promedió -1% anual en la década — un rango que atraviesa el estallido y la pandemia, demasiado ruidoso para leerlo como tendencia."
-- "Ñuñoa promedió 3,2% anual 2014-2024, un tramo que cruza el boom 2014-2018 y lo posterior — mezcla períodos muy distintos, no proyecta limpio."
+- "Ñuñoa promedió 3,2% anual ${RANGO_HIST}, un tramo que cruza el boom 2014-2018 y lo posterior — mezcla períodos muy distintos, no proyecta limpio."
 - "Quilicura subió 5,3% anual histórico — buena parte del rango cae en el boom 2014-2018; ese ritmo no necesariamente se mantiene." (comuna ganadora con caveat)
 
 Ejemplos INVÁLIDOS:
@@ -571,7 +576,7 @@ REGLA 10 — Plusvalía: jerarquía de la proyección base.
 
 La proyección base es ${PROY_PCT} anual flat — la proyección estándar Franco a futuro. Esa cifra es la que usan todos los cálculos: TIR, Cash-on-Cash, Múltiplo, valor venta a N años, payback. Tu trabajo es interpretar esa proyección, no contradecirla ni ofrecer una proyección alternativa. NUNCA digas "tu comuna se aprecia ${PROY_PCT}": es un supuesto parejo del modelo, no una afirmación sobre la comuna.
 
-La plusvalía histórica de la comuna (2014-2024) es CONTEXTO DE RIESGO sobre la apuesta del ${PROY_PCT}, no una proyección sustituta. Sirve para explicar al usuario qué está aceptando cuando proyecta a ${PROY_PCT}:
+La plusvalía histórica de la comuna (${RANGO_HIST}) es CONTEXTO DE RIESGO sobre la apuesta del ${PROY_PCT}, no una proyección sustituta. Sirve para explicar al usuario qué está aceptando cuando proyecta a ${PROY_PCT}:
 - Histórica > ${PROY_PCT} (ej. Quilicura 5,3%, Maipú 4,1%): la proyección es conservadora vs lo que la comuna ya mostró.
 - Histórica ≈ ${PROY_PCT} (ej. Providencia 3,0%, Huechuraba 3,0%): la proyección está alineada con la trayectoria observada.
 - Histórica < ${PROY_PCT} pero positiva (ej. Las Condes 2,7%, San Miguel 2,2%): la proyección descansa en una densificación o cambio de zona distinto a la década pasada.
@@ -590,7 +595,7 @@ PROHIBIDO:
 La diferencia entre RIESGO (válido) y CONTRADICCIÓN (prohibido) es escenario condicional vs afirmación: "si la comuna se estanca, tu TIR cae" es válido (riesgo); "la comuna no sostiene la proyección ${PROY_PCT}" es prohibido (afirmación).
 
 VÁLIDO:
-- "Santiago centro perdió 1% anual en 2014-2024 — la proyección a ${PROY_PCT} es una apuesta a recuperación que la comuna aún no muestra."
+- "Santiago centro perdió 1% anual en ${RANGO_HIST} — la proyección a ${PROY_PCT} es una apuesta a recuperación que la comuna aún no muestra."
 - "[comuna] creció [X]% anual histórico — la proyección a ${PROY_PCT} queda ligeramente más optimista que la trayectoria observada." (usa el dato real de plusvaliaHistoricaInfo del caso, no estos placeholders)
 - "Quilicura subió 5,3% anual histórico — la proyección a ${PROY_PCT} es conservadora versus lo que la comuna ya mostró."
 - "Sin data histórica suficiente para esta comuna — la proyección a ${PROY_PCT} es supuesto puro, sin verificación local."
@@ -1397,13 +1402,13 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     const historica = PLUSVALIA_HISTORICA[comunaNorm];
     let plusvaliaHistoricaInfo = "";
     if (historica) {
-      plusvaliaHistoricaInfo = `Plusvalía histórica de ${comunaNorm} (2014-2024): ${historica.plusvalia10a}% en 10 años (${historica.anualizada}% anual). Precio promedio depto pasó de UF ${historica.precio2014.toLocaleString()} a UF ${historica.precio2024.toLocaleString()}.`;
+      plusvaliaHistoricaInfo = `Plusvalía histórica de ${comunaNorm} (${rangoHistDe(comunaNorm)}): ${historica.plusvalia10a}% en 10 años (${historica.anualizada}% anual). Precio promedio depto pasó de UF ${historica.precio2014.toLocaleString()} a UF ${historica.precio2024.toLocaleString()}.`;
       if (historica.anualizada >= 4.5) plusvaliaHistoricaInfo += " Comuna con plusvalía ALTA.";
       else if (historica.anualizada >= 3.0) plusvaliaHistoricaInfo += " Comuna con plusvalía MODERADA.";
       else if (historica.anualizada >= 1.5) plusvaliaHistoricaInfo += " Comuna con plusvalía BAJA.";
       else plusvaliaHistoricaInfo += " Comuna con plusvalía MUY BAJA o NEGATIVA — cuidado.";
     } else {
-      plusvaliaHistoricaInfo = `Sin histórico propio de ${comunaNorm}: la comuna NO está en la serie 2014-2024. Referencia usada: promedio del Gran Santiago, ${PLUSVALIA_DEFAULT.anualizada}% anual. IMPORTANTE: ese ${PLUSVALIA_DEFAULT.anualizada}% NO es la historia de ${comunaNorm} — PROHIBIDO escribir "${comunaNorm} promedió/subió/creció X%". Dilo como fallback honesto: "sin dato histórico propio de ${comunaNorm}, usamos el promedio del Gran Santiago (${pct(PLUSVALIA_DEFAULT.anualizada)}% anual) como referencia".`;
+      plusvaliaHistoricaInfo = `Sin histórico propio de ${comunaNorm}: la comuna NO está en la serie ${RANGO_HIST}. Referencia usada: promedio del Gran Santiago, ${PLUSVALIA_DEFAULT.anualizada}% anual. IMPORTANTE: ese ${PLUSVALIA_DEFAULT.anualizada}% NO es la historia de ${comunaNorm} — PROHIBIDO escribir "${comunaNorm} promedió/subió/creció X%". Dilo como fallback honesto: "sin dato histórico propio de ${comunaNorm}, usamos el promedio del Gran Santiago (${pct(PLUSVALIA_DEFAULT.anualizada)}% anual) como referencia".`;
     }
 
     const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];

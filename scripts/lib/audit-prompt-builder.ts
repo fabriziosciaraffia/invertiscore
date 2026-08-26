@@ -14,7 +14,7 @@
 
 import { SYSTEM_PROMPT } from "../../src/lib/ai-generation";
 import { findNearestStation } from "../../src/lib/metro-stations";
-import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "../../src/lib/plusvalia-historica";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, rangoHistDe } from "../../src/lib/plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "../../src/lib/plusvalia-proyeccion";
 import { estimarContribuciones } from "../../src/lib/contribuciones";
 import {
@@ -211,7 +211,7 @@ export async function buildLtrPrompts(
   const historica = PLUSVALIA_HISTORICA[comunaNorm];
   let plusvaliaHistoricaInfo = "";
   if (historica) {
-    plusvaliaHistoricaInfo = `Plusvalía histórica de ${comunaNorm} (2014-2024): ${historica.plusvalia10a}% en 10 años (${historica.anualizada}% anual).`;
+    plusvaliaHistoricaInfo = `Plusvalía histórica de ${comunaNorm} (${rangoHistDe(comunaNorm)}): ${historica.plusvalia10a}% en 10 años (${historica.anualizada}% anual).`;
     if (historica.anualizada >= 4.5) plusvaliaHistoricaInfo += " Comuna con plusvalía ALTA.";
     else if (historica.anualizada >= 3.0) plusvaliaHistoricaInfo += " Comuna con plusvalía MODERADA.";
     else if (historica.anualizada >= 1.5) plusvaliaHistoricaInfo += " Comuna con plusvalía BAJA.";
