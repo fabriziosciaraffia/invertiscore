@@ -6,6 +6,8 @@ import { COMUNAS_ROSTER, esComunaDelRoster, nombreDeComuna } from "@/lib/data/co
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { PlusvaliaComunaSection } from "@/components/comunas/PlusvaliaComunaSection";
+import { GFK_SERIE, PLUSVALIA_ESTIMADO, coberturaPlusvaliaDe } from "@/lib/plusvalia-estimado.gen";
 
 export const revalidate = 86400;
 
@@ -114,6 +116,10 @@ function ComunaSinDatos({ nombre }: { nombre: string }) {
           </div>
         </section>
 
+        {/* La plusvalía histórica no depende de la muestra scraped de la semana:
+            la página degradada igual publica la data histórica que sí existe. */}
+        <PlusvaliaComunaSection comuna={nombre} />
+
         <section className="mt-14">
           <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">Otras comunas</h2>
           <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
@@ -169,6 +175,32 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
     ? { text: "Rentabilidad por debajo del promedio de Santiago", color: "#C8323C" }
     : null;
 
+  // FAQ de plusvalía: solo cuando hay trayectoria REAL que citar (serie GFK o
+  // par A&C). Con solo-nivel no se afirma valorización — degradación honesta.
+  const coberturaPlus = coberturaPlusvaliaDe(stats.nombre);
+  const serieGfk = GFK_SERIE[stats.nombre];
+  const acPlus = PLUSVALIA_ESTIMADO[stats.nombre];
+  const faqPlusvalia =
+    coberturaPlus === "trayectoria_gfk" && serieGfk
+      ? {
+          "@type": "Question",
+          name: `¿Cuánto se ha valorizado ${stats.nombre}?`,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: `El m² de departamentos nuevos en ${stats.nombre} pasó de UF ${String(serieGfk.valores[0]).replace(".", ",")} a UF ${String(serieGfk.valores[serieGfk.valores.length - 1]).replace(".", ",")} entre ${serieGfk.desde} y ${serieGfk.desde + serieGfk.valores.length - 1} — un ${String(serieGfk.cagrPct).replace(".", ",")}% anual promedio (fuente: GfK/NielsenIQ, precios de oferta de deptos nuevos). Es historia observada, no proyección.`,
+          },
+        }
+      : (coberturaPlus === "nivel_mas_ac" || coberturaPlus === "solo_ac") && acPlus
+        ? {
+            "@type": "Question",
+            name: `¿Cuánto se ha valorizado ${stats.nombre}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Entre 2014 y 2024 el precio promedio de departamentos en ${stats.nombre} subió ${acPlus.plusvalia10a}% acumulado (${String(acPlus.anualizada).replace(".", ",")}% anual), según Arenas & Cayo con Tinsa, Propital y Activo Más. Es historia observada, no proyección.`,
+            },
+          }
+        : null;
+
   // FAQ Schema
   const faqSchema = {
     "@context": "https://schema.org",
@@ -198,6 +230,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
           text: "Franco analiza cada propiedad individualmente considerando precio, arriendo estimado, gastos y condiciones del mercado. El análisis es gratuito en refranco.ai.",
         },
       },
+      ...(faqPlusvalia ? [faqPlusvalia] : []),
     ],
   };
 
@@ -270,6 +303,8 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
           </div>
         </section>
 
+        <PlusvaliaComunaSection comuna={stats.nombre} />
+
         {/* Comparativa */}
         {similares.length > 0 && (
           <section className="mt-14">
@@ -306,6 +341,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
             </div>
           </section>
         )}
+
 
         {/* CTA */}
         <section className="mt-14">
