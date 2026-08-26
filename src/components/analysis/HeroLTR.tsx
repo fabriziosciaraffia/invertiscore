@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent, Wallet } from "lucide-react";
-import { fmtUF } from "@/components/analysis/utils";
-import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
-import { formatDireccionDisplay } from "@/lib/format-direccion";
-import { InfoTooltip } from "@/components/ui/tooltip";
 import { ordenarHallazgosPiramide } from "./PiramideHallazgos";
 import { IndiceRow } from "./IndiceHallazgos";
 import { numeroHallazgo } from "@/lib/orden-hallazgos";
@@ -28,15 +23,9 @@ import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 export function HeroLTR({
   data,
   currency,
-  onCurrencyChange,
   onOpenDrawer,
   veredicto,
-  score,
-  propiedadTitle,
-  inputData,
   results,
-  comuna,
-  ciudad,
   valorUF,
   createdAt,
   fechaProsa,
@@ -71,91 +60,8 @@ export function HeroLTR({
   prosaError?: string | null;
   onRetryProsa?: () => void;
 }) {
-  // ── Identidad (F1): dirección + comuna de inputData; fallback al título legacy ──
-  // Solo-calle: el H1 concatena "· {comuna}" aparte (línea ~150), así que NO le
-  // pasamos comuna al helper para no duplicarla.
-  const direccion = formatDireccionDisplay(inputData?.direccion);
-  const comunaLabel = comuna || inputData?.comuna || ciudad || "";
-  const hasDireccion = direccion.length > 0;
-  const dorm = inputData?.dormitorios;
-  const banos = inputData?.banos;
-
-  // ── Chips financieros (F2): respetan el toggle CLP/UF (regla "cambia todos los valores") ──
-  const precioUF = Number(inputData?.precio) || 0;
-  const superficie = Number(inputData?.superficie) || 0;
-  const precioM2UF = superficie > 0 ? precioUF / superficie : 0;
-  const piePct = inputData?.piePct ?? 20;
-  const plazoAnios = Number(inputData?.plazoCredito) || 25;
-  const tasaPct = Number(inputData?.tasaInteres) || 4.5;
-  const tasaStr = tasaPct.toLocaleString("es-CL", { maximumFractionDigits: 2 });
-  const arriendoCLP = Number(inputData?.arriendo) || 0;
-
-  // Chips financieros — UNA moneda según el toggle (el mismo que rige la prosa).
-  // CLP en millones abreviados ("$139,7 MM"); bajo $1 MM en miles ("$600 mil"),
-  // porque "$0,6 MM" para un arriendo lee mal. UF en su valor pleno ("UF 3.500").
-  // fmtM de utils usa sufijo "M"/"K" (otra convención) — acá va "MM" (millones).
-  const fmtMM = (clp: number) => {
-    if (Math.abs(clp) < 1_000_000) return "$" + Math.round(clp / 1000).toLocaleString("es-CL") + " mil";
-    return "$" + (clp / 1_000_000).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " MM";
-  };
-  const precioChip = currency === "UF" ? fmtUF(precioUF) : fmtMM(precioUF * valorUF);
-  // UF/m² SIEMPRE en UF: es la métrica de comparación contra la mediana de la
-  // comuna (el finding "Precio/m² vs comuna" también la expresa en UF). No flipea
-  // con el toggle — en CLP el $/m² sería un número enorme e inconsistente.
-  const m2Main = `UF ${(Math.round(precioM2UF * 10) / 10).toLocaleString("es-CL")}`;
-  const arriendoChip = arriendoCLP > 0
-    ? (currency === "UF" ? fmtUF(arriendoCLP / valorUF) : fmtMM(arriendoCLP))
-    : "—";
-
-  // ── Score / mapa (F3) ──
-  // Coords desde input_data (misma fuente que el resto de la página).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const inputAny = inputData as any;
-  // Fallback a zonaRadio.lat/lng: el payload LTR (buildLtrPayload) persiste las
-  // coords anidadas en input_data.zonaRadio, NO top-level (a diferencia del STR,
-  // que sí las escribe top-level). Sin este fallback el mapa desaparecía en todo
-  // LTR con coords capturadas (118 filas del corpus, incluida Cerro Colorado).
-  const lat = typeof inputAny?.lat === "number" ? (inputAny.lat as number)
-    : typeof inputAny?.zonaRadio?.lat === "number" ? (inputAny.zonaRadio.lat as number) : null;
-  const lng = typeof inputAny?.lng === "number" ? (inputAny.lng as number)
-    : typeof inputAny?.zonaRadio?.lng === "number" ? (inputAny.zonaRadio.lng as number) : null;
-  const mapLabel = hasDireccion ? direccion : comunaLabel;
-
-  // Comparables cercanos (venta) para el mapa — mismo endpoint que el wizard.
-  const [comparables, setComparables] = useState<Comparable[]>([]);
-  const [comparablesCount, setComparablesCount] = useState(0);
-  useEffect(() => {
-    if (!comunaLabel || lat === null || lng === null) return;
-    const ctrl = new AbortController();
-    const params = new URLSearchParams({
-      comuna: comunaLabel,
-      superficie: String(superficie > 0 ? superficie : 50),
-      dormitorios: String(dorm ?? 2),
-      lat: String(lat),
-      lng: String(lng),
-      type: "venta",
-    });
-    fetch(`/api/data/suggestions?${params}`, { signal: ctrl.signal })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!d) return;
-        const np: unknown = d.nearbyProperties;
-        const list = Array.isArray(np) ? np : [];
-        setComparables(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          list.map((p: any) => ({ lat: p?.lat ?? null, lng: p?.lng ?? null })),
-        );
-        setComparablesCount(
-          typeof d.totalInRadius === "number"
-            ? d.totalInRadius
-            : typeof d.filteredInRadius === "number"
-              ? d.filteredInRadius
-              : list.length,
-        );
-      })
-      .catch(() => {});
-    return () => ctrl.abort();
-  }, [comunaLabel, superficie, dorm, lat, lng]);
+  // FASE 3: F1/F2/F3 murieron — identidad, chips, score y mapa viven en la
+  // PORTADA (PortadaInforme + useComparablesCercanos). Acá queda solo F4.
 
   // ── Veredicto / findings (F4) ──
   // Con prosa en vuelo (data null): el slot muestra ProgresoGeneracion (Goal
@@ -213,95 +119,14 @@ export function HeroLTR({
   );
   const fechaFirma = formatFecha(fechaProsa ?? createdAt);
 
+  // FASE 3 rediseño Dictamen: F1 (identidad+toggle), F2/F3 (chips, score 48px,
+  // gauge, badge, mapa) MURIERON — la portada nueva (PortadaInforme) los absorbe:
+  // eyebrow, banda semántica (M2: único color de estado), barra fina de score,
+  // link de ficha y mapa. El hero conserva F4 (veredicto narrado + prosa +
+  // índice), la posición de Franco y el pie de firma. Sin data-verdict: el wash
+  // por veredicto del hero-block contradecía M2.
   return (
-    <div
-      className="rounded-[16px] overflow-hidden mb-3 franco-hero-block"
-      data-verdict={veredicto}
-    >
-      {/* ═══ F1 · IDENTIDAD (compacto: sin subtítulo · rótulo modalidad a la derecha) ═══ */}
-      <div className="flex items-start justify-between gap-6 px-6 md:px-8 pt-4 pb-3.5">
-        <div className="min-w-0">
-          <h1 className="franco-hero-title font-heading font-bold text-[23px] md:text-[27px] leading-[1.15] tracking-[-0.01em] text-[var(--franco-text)] m-0">
-            {hasDireccion ? (
-              <>
-                {direccion}
-                {comunaLabel && (
-                  <span className="font-normal text-[var(--franco-text-secondary)]"> · {comunaLabel}</span>
-                )}
-              </>
-            ) : (
-              propiedadTitle
-            )}
-          </h1>
-        </div>
-        {/* Rótulo de modalidad (Ink 500) + toggle — 0px de altura extra (comparten fila) */}
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="hidden sm:inline font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] whitespace-nowrap">
-            Análisis renta larga
-          </span>
-          <CurrencyToggle currency={currency} onCurrencyChange={onCurrencyChange} />
-        </div>
-      </div>
-
-      <div className="h-px" style={{ background: "var(--franco-border)" }} />
-
-      {/* ═══ F3 · SCORE+CHIPS | MAPA (grilla propia 66/34; chips fundidos bajo el score) ═══ */}
-      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,66fr)_minmax(0,34fr)] gap-x-8 gap-y-6 px-6 md:px-8 py-3">
-        {/* Score + chips */}
-        <div>
-          <span className="inline-flex items-center gap-1 font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
-            Franco Score
-            <InfoTooltip content="Resume la calidad de la inversión en un número del 0 al 100: rentabilidad, flujo, plusvalía y riesgo juntos. De ahí sale el veredicto — sobre 70 conviene, bajo 45 no." />
-          </span>
-
-          <div className="flex items-center gap-4 mt-3">
-            <div className="franco-hero-score font-mono font-bold text-[48px] md:text-[52px] leading-[0.9] tracking-[-0.02em] text-[var(--franco-text)]">
-              {score}
-              <span className="text-[22px] font-normal text-[var(--franco-text-muted)]">/100</span>
-            </div>
-            <VerdictBadge veredicto={veredicto} />
-          </div>
-
-          <ScoreBar score={score} />
-
-          {/* Chips fundidos: físicos / financieros, 2 filas envueltas (sin divisor) */}
-          <div className="mt-4 flex flex-col gap-1.5">
-            <div className="flex flex-wrap gap-1.5">
-              <Chip icon={<BedDouble />} k={dorm != null ? String(dorm) : "—"} unit="dorm" />
-              <Chip icon={<Bath />} k={banos != null ? String(banos) : "—"} unit="baño" />
-              <Chip icon={<Ruler />} k={superficie > 0 ? String(superficie) : "—"} unit="m²" />
-              <Chip
-                icon={<Clock />}
-                k={inputData?.antiguedad != null ? String(inputData.antiguedad) : "—"}
-                unit="años"
-              />
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              <Chip icon={<Building2 />} k={precioChip} />
-              <Chip icon={<Scaling />} k={m2Main} unit="/m²" />
-              <Chip icon={<Percent />} k={`${piePct}%`} unit="pie" sub={`· ${plazoAnios} años · ${tasaStr}%`} />
-              <Chip icon={<Wallet />} k={arriendoChip} unit="arr." />
-            </div>
-          </div>
-        </div>
-
-        {/* Mapa — altura fija igualada a la col izquierda (score+chips) */}
-        <div className="flex">
-          <div className="flex-1">
-            <MapaThumbnail
-              lat={lat}
-              lng={lng}
-              comparables={comparables}
-              comparablesCount={comparablesCount}
-              locationLabel={mapLabel}
-              height={196}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="h-px" style={{ background: "var(--franco-border)" }} />
-
+    <div className="rounded-[16px] overflow-hidden mb-3 franco-hero-block">
       {/* ═══ F4 · VEREDICTO | FINDINGS (misma grilla 52/48; sin borde vertical — A1) ═══ */}
       <div className={`grid grid-cols-1 ${SHARED_GRID} gap-x-8 gap-y-8 px-6 md:px-8 py-[9px]`}>
         {/* Veredicto */}
@@ -467,137 +292,6 @@ function Wordmark() {
       >
         .ai
       </span>
-    </span>
-  );
-}
-
-// ── Badge veredicto en línea con el score ──
-function VerdictBadge({ veredicto }: { veredicto: string }) {
-  const isCompra = veredicto === "COMPRAR";
-  const isAjusta = veredicto === "AJUSTA SUPUESTOS";
-  const bg = isCompra ? "var(--franco-text)" : isAjusta ? "transparent" : "var(--signal-red)";
-  const color = isCompra ? "var(--franco-bg)" : isAjusta ? "var(--signal-red)" : "#fff";
-  const border = isAjusta ? "0.5px solid color-mix(in srgb, var(--signal-red) 40%, transparent)" : undefined;
-  return (
-    <span
-      className="font-mono text-[12px] font-bold uppercase tracking-[0.06em] px-3 py-1.5 rounded-md whitespace-nowrap"
-      style={{ background: bg, color, border }}
-    >
-      {veredicto}
-    </span>
-  );
-}
-
-// ── Barra de score con degradé (rojo→ámbar→neutro) + marcador ──
-// El ámbar del medidor es una excepción DOCUMENTADA del sistema cromático
-// (franco-design-system §"Excepción medidor de score"): el degradé del gauge es
-// más legible que Signal Red→Ink puro. No es color de marca ni decoración; es la
-// escala del propio medidor. SIN verde.
-function ScoreBar({ score }: { score: number }) {
-  const pct = Math.max(0, Math.min(100, score));
-  return (
-    <div className="mt-5">
-      <div
-        className="relative h-[7px] rounded-[4px]"
-        style={{
-          background:
-            "linear-gradient(90deg,#C8323C 0%, #C8323C 14%, #B9793E 46%, #6E6C66 74%, #4A4A46 100%)",
-        }}
-      >
-        <div
-          className="absolute top-1/2 w-[14px] h-[14px] rounded-full"
-          style={{
-            left: `${pct}%`,
-            transform: "translate(-50%,-50%)",
-            background: "var(--franco-text)",
-            border: "3px solid var(--franco-bg)",
-            boxShadow: "0 0 0 1px var(--franco-border-strong)",
-          }}
-        />
-      </div>
-      <div className="flex justify-between mt-2.5">
-        <span className="font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-secondary)]">
-          Buscar otra
-        </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)]">
-          Ajusta supuestos
-        </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)]">
-          Comprar
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ── Toggle CLP/UF ──
-function CurrencyToggle({
-  currency,
-  onCurrencyChange,
-}: {
-  currency: "CLP" | "UF";
-  onCurrencyChange: (c: "CLP" | "UF") => void;
-}) {
-  return (
-    <div
-      className="inline-flex rounded-lg overflow-hidden shrink-0"
-      style={{ border: "0.5px solid var(--franco-border-strong)" }}
-      role="group"
-      aria-label="Moneda"
-    >
-      {(["CLP", "UF"] as const).map((c) => {
-        const on = currency === c;
-        return (
-          <button
-            key={c}
-            type="button"
-            onClick={() => onCurrencyChange(c)}
-            className="font-mono text-[11px] font-medium tracking-[0.06em] px-3 py-1.5 transition-colors"
-            style={{
-              background: on ? "var(--franco-text)" : "transparent",
-              color: on ? "var(--franco-bg)" : "var(--franco-text-muted)",
-            }}
-          >
-            {c}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Chip fino con ícono ──
-function Chip({
-  icon,
-  k,
-  unit,
-  sub,
-}: {
-  icon: ReactNode;
-  k: string;
-  unit?: string;
-  sub?: string;
-}) {
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 whitespace-nowrap flex-none"
-      style={{
-        border: "0.5px solid var(--franco-border)",
-        background: "var(--franco-bg-alt)",
-      }}
-    >
-      <span className="w-3 h-3 shrink-0 text-[var(--franco-text-tertiary)] [&>svg]:w-3 [&>svg]:h-3">
-        {icon}
-      </span>
-      <span className="font-mono text-[12px] font-medium text-[var(--franco-text)]">{k}</span>
-      {unit && (
-        <span className="font-mono text-[10px] text-[var(--franco-text-muted)] tracking-[0.02em]">
-          {unit}
-        </span>
-      )}
-      {sub && (
-        <span className="font-mono text-[9.5px] text-[var(--franco-text-muted)]">{sub}</span>
-      )}
     </span>
   );
 }

@@ -12,7 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateAiAnalysis } from "../../../src/lib/ai-generation";
 import { runAnalysis } from "../../../src/lib/analysis";
 import { TECHO_CONTINUACION_DURO } from "../../../src/lib/prosa-presupuesto";
-import { marcasBalanceadas, validarTitular } from "../../../src/lib/prosa-marcas";
+import { marcasBalanceadas, evaluarTitular } from "../../../src/lib/prosa-marcas";
 import { GOLDEN_SEEDS, GOLDEN_UF } from "./seeds";
 import { gatherHallazgos, aperturaSource } from "./extract";
 import type { Check } from "./invariants";
@@ -186,8 +186,13 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       // con núcleo ≤7, sin montos en moneda). Es la clase "campo nuevo ausente"
       // del contrato FASE 2: si el prompt deja de emitirlo o el guard lo anula
       // sistemáticamente, esto se pone rojo.
-      const vTit = validarTitular((ai as any).titular);
-      if (!vTit.ok) bump("A9.titular");
+      // A9 (HARD) — DOS NIVELES (decisión PARÁ 3): el duro exige un titular
+      // RENDERIZABLE (evaluarTitular ≠ invalido: presente, sin montos, ≤20
+      // palabras). El estricto ≤15+un-par pasa a medirse como soft
+      // ~titular-largo-renderizado cuando cae en 16-20.
+      const evTit = evaluarTitular((ai as any).titular);
+      if (evTit.nivel === "invalido") bump("A9.titular");
+      if (evTit.nivel === "largo_renderizable") bump("~titular-largo-renderizado");
       // Métricas BLANDAS del titular (decisión PARÁ 2, 25-ago): tasa de núcleos
       // sobre las 7 palabras (regla de prompt, no de check) y de titular null
       // (el fallback del retry) — visibles en cada FULL, sin bloquear.
@@ -229,7 +234,7 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       );
     }
     const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
-    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~planc-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo"];
+    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~planc-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado"];
 
     // ── Umbral de MAYORÍA para las reglas que juzgan PROSA GENERADA ────────────
     //

@@ -58,6 +58,44 @@ export function validarTitular(titular: unknown): { ok: boolean; motivo: string 
 }
 
 /**
+ * Normaliza las marcas de un titular renderizable: un par queda tal cual; cero
+ * marcas queda tal cual (sin plumón); tokens impares o pares extra conservan
+ * SOLO el primer par completo y strippean el resto (decisión PARÁ 3: marcas
+ * rotas nunca anulan un titular — "sin plumón o con el primero, nunca null").
+ */
+export function normalizarMarcasTitular(titular: string): string {
+  const tokens = contarTokensMarca(titular);
+  if (tokens === 0 || tokens === 2) return titular;
+  const m = titular.match(/\*\*([\s\S]+?)\*\*/);
+  if (!m) return stripMarcas(titular);
+  const antes = titular.slice(0, m.index ?? 0);
+  const despues = titular.slice((m.index ?? 0) + m[0].length);
+  return stripMarcas(antes) + m[0] + stripMarcas(despues);
+}
+
+export type NivelTitular = "valido" | "largo_renderizable" | "invalido";
+
+/**
+ * Evaluación ESCALONADA del titular (decisión PARÁ 3 — mostrar largo gana a
+ * callar): ≤15 palabras → válido; 16-20 → se renderiza igual, marcado como
+ * violación blanda; >20 → null; montos en moneda → null SIEMPRE (rompen el
+ * toggle CLP/UF); marcas rotas no bloquean en ningún nivel (se normalizan).
+ * `validarTitular` sigue siendo el contrato ESTRICTO (objetivo del retry y
+ * métrica de forma); esta función decide qué llega a la portada.
+ */
+export function evaluarTitular(titular: unknown): { nivel: NivelTitular; motivo: string | null } {
+  if (typeof titular !== "string" || !titular.trim()) return { nivel: "invalido", motivo: "ausente" };
+  const plano = stripMarcas(titular.trim());
+  if (/\$\s?\d/.test(plano) || /\bUF\s?[\d.]/i.test(plano)) {
+    return { nivel: "invalido", motivo: "trae monto en moneda (rompe el toggle CLP/UF)" };
+  }
+  const palabras = (plano.match(/\S+/g) || []).length;
+  if (palabras > 20) return { nivel: "invalido", motivo: `${palabras} palabras (tope duro: 20)` };
+  if (palabras > 15) return { nivel: "largo_renderizable", motivo: `${palabras} palabras (ideal ≤15) — se renderiza igual` };
+  return { nivel: "valido", motivo: null };
+}
+
+/**
  * Elimina los tokens `**` dejando el texto plano (el contenido marcado queda).
  * Render tolerante FASE 2: cero cambio visual frente a la prosa sin marcas.
  * En FASE 4 el punto de consumo pasa de strip a plumón — mismo módulo.
