@@ -10,6 +10,7 @@ import { HeroLTR } from "./HeroLTR";
 import { PiramideHallazgos, ordenarHallazgosPiramide } from "./PiramideHallazgos";
 import { HALLAZGO_DRAWER } from "./GenericFindingCard";
 import { hasAiV2 } from "./AIInsightSection";
+import { stripMarcasDeep } from "@/lib/prosa-marcas";
 import { BloqueEsperaInforme } from "@/components/analysis/ProsaSkeleton";
 
 /**
@@ -129,7 +130,11 @@ export function SubjectCardGrid({
   // cuando llega, se materializa el contenido real. Prosa válida solo si pasa
   // hasAiV2 — un shape a medias no se renderiza como prosa.
   const prosaLista = !!aiAnalysis && hasAiV2(aiAnalysis);
-  const prosa = prosaLista ? aiAnalysis : null;
+  // Render tolerante FASE 2 (rediseño Dictamen): la prosa v10 trae marcas de
+  // destacador `**…**` que la UI actual no pinta — se strippean en la RAÍZ (un
+  // solo punto para hero + pirámide + drawers; nunca `**` crudos en pantalla).
+  // FASE 4 reemplaza este strip por el render con plumón, acá mismo.
+  const prosa = prosaLista ? stripMarcasDeep(aiAnalysis) : null;
 
   // Materialización (Goal E): la transición siluetas→cards corre SOLO cuando la
   // prosa llegó DESPUÉS del mount (generación en vivo). Prosa cacheada
@@ -185,9 +190,11 @@ export function SubjectCardGrid({
               agregado global daba alcance imposible. La marca vive en la rama con
               prosa porque la pirámide solo se renderiza con prosa. */}
           <MarcaSeccion seccion="piramide" tipo="ltr" accessLevel={accessLevel} />
+          {/* prosa (strippeada), no aiAnalysis crudo: el eco-check apertura↔01 de la
+              pirámide compara texto y debe ver lo MISMO que muestra el hero. */}
           <PiramideHallazgos
             results={results}
-            aiAnalysis={aiAnalysis}
+            aiAnalysis={prosa}
             currency={currency}
             valorUF={valorUF}
             onOpenDrawer={setActiveDrawer}

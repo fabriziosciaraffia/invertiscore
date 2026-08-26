@@ -16,7 +16,7 @@
  * ProCTABanner) gestionan el upgrade.
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { usePostHog } from "posthog-js/react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
@@ -44,6 +44,7 @@ import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/
 import { ZonaCardSTR } from "@/components/analysis/str/ZonaCardSTR";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import type { AIAnalysisSTRv2 } from "@/lib/types";
+import { stripMarcasDeep } from "@/lib/prosa-marcas";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -263,6 +264,15 @@ export function STRResultsClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Render tolerante FASE 2 (rediseño Dictamen): la prosa v7 trae marcas de
+  // destacador `**…**` que la UI actual no pinta — se strippean UNA vez acá (un
+  // solo punto para hero + drawers; nunca `**` crudos). FASE 4 reemplaza este
+  // strip por el render con plumón, acá mismo.
+  const aiParaRender = useMemo(
+    () => (aiAnalysis ? stripMarcasDeep(aiAnalysis) : null),
+    [aiAnalysis],
+  );
+
   // ─── Datos derivados ──────────────────────────────
   // Commit E.0 (2026-05-13): eliminado fallback `score ?? 50`. Análisis legacy
   // sin FrancoScoreSTR persistido pasan score=null al Hero (renderiza "—") y
@@ -364,7 +374,7 @@ export function STRResultsClient({
             embudo por modalidad quedaba cojo al revés que piramide/zona. */}
         <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
         <HeroSTR
-          ai={aiAnalysis as unknown as AIAnalysisSTRv2 | null}
+          ai={aiParaRender as unknown as AIAnalysisSTRv2 | null}
           results={results}
           veredicto={veredicto}
           score={score}
@@ -448,7 +458,7 @@ export function STRResultsClient({
           valorUF={ufValue}
           forceOpen={false}
           onOpenLargoPlazo={
-            (aiAnalysis as unknown as AIAnalysisSTRv2 | null)?.largoPlazo?.contenido?.trim()
+            (aiParaRender as unknown as AIAnalysisSTRv2 | null)?.largoPlazo?.contenido?.trim()
               ? () => setActiveDrawer("largoPlazo")
               : undefined
           }
@@ -563,7 +573,7 @@ export function STRResultsClient({
               comuna={comuna}
               currency={currency}
               valorUF={ufValue}
-              ai={aiAnalysis as never}
+              ai={aiParaRender as never}
             />
           </DrawerSTR>
         )}

@@ -49,6 +49,9 @@ import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChile
 import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico, piezasDeAiLtr } from "@/lib/precio-jerarquia";
 import { construirReferenciasZona, faltaReconciliacion, appendReconciliacion } from "@/lib/referencias-zona";
 import { cifrasFueraDeInput, empeoraCifras } from "@/lib/cifras-guard";
+import { derivarCifraClaveLtr, captionDeCifraClave } from "@/lib/cifra-clave";
+import { validarTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
+import { reescribirTitular } from "@/lib/titular-retry";
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import type { Hallazgo } from "@/lib/types";
 import { metricaDisplay, metricaODefault, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
@@ -103,7 +106,11 @@ const RANGO_HIST = PLUSVALIA_DEFAULT_RANGO;
 // subordinacion. Cambia `fraseCanonica`, y la prosa cita esa frase (la apertura
 // fija sale del hallazgo 01): sin bump, la narracion describiria cards que ya no
 // dicen lo mismo.
-export const PROMPT_VERSION_LTR = 9;
+// v10 (2026-08-25): FASE 2 rediseño Dictamen — campo `titular` nuevo (portada:
+// veredicto + LA razón, ≤15 palabras, un destacador `**…**`, sin montos en
+// moneda — §18) + destacadores en prosa (máx 2/párrafo, la regla anti-bold se
+// invirtió) + bloque CIFRA CLAVE del motor en el user prompt (cifra-clave.ts).
+export const PROMPT_VERSION_LTR = 10;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -614,6 +621,9 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
                             // Si crees que el veredicto es incorrecto,
                             // explica 1-2 frases por qué. Si concuerdas, omite el campo.
 
+  "titular": string,        // TITULAR de portada — contrato completo en §18.
+                            // Campo ÚNICO (sin _clp/_uf): no lleva montos en moneda.
+
   "conviene": {
     "pregunta": "¿Conviene o no conviene?",
     "respuestaDirecta_clp": string,
@@ -693,7 +703,7 @@ Labels y preguntas constantes (no derivar — usar EXACTAMENTE estos strings):
 
 Reglas universales del output:
 - Todo monto formateado a la chilena. Decimal con coma, miles con punto.
-- No usar markdown bold (**) en ningún campo de contenido. El renderer no lo respeta.
+- DESTACADORES \`**…**\` (único markdown permitido; el render los pinta con plumón): marca las frases clave de la prosa. Máximo 2 marcas por párrafo. Cada marca envuelve una FRASE COMPLETA con predicado que se lee sola como mini-hallazgo (el lector que solo lee lo marcado entiende el análisis) — nunca un número pelado ni un fragmento sin verbo. Una marca JAMÁS cruza un punto ni parte un token de cifra ($X.XXX, UF X, X%): la cifra queda entera dentro o entera fuera. Aplica a conviene, costoMensual, negociacion, largoPlazo y reestructuracion; en el \`titular\` rige §18 (exactamente UNA marca). Ningún otro markdown (sin cursivas, sin listas, sin encabezados).
 - No inventar datos del input. Si falta un dato, omítelo o di "sin dato".
 - NUNCA emitas un veredicto en el JSON. El veredicto viene dado (\`veredicto\` en input). Tu narrativa lo asume. Si discrepas, usa \`francoCaveat\` audit-only.
 
@@ -741,7 +751,32 @@ El §16 ordena los umbrales que YA existen; esta regla cierra la otra puerta: pr
 - Si una card o un bloque ya mostró una métrica, tu prosa cita EXACTAMENTE ese valor cuando hable de lo mismo. Un "23,2%" tuyo junto al porcentaje tipado del bloque de distancia es una contradicción que el lector no puede resolver — y el bloque gana por definición, porque viene del análisis.
 - Aplica a TODAS las secciones. ÚNICA aritmética sancionada: convertir un monto provisto entre CLP y UF con la tasa monedaUF del input (§12 lo exige para las variantes _uf). Convertir es copiar en otra moneda; cualquier otra operación es producir.
 
-Es la disciplina de §1.4 (solo datos provistos) llevada a su forma dura, hermana de §15 (múltiplos) y §16 (jerarquía): §16 dice CUÁL umbral usar; esta dice que fuera de los provistos no hay ninguno.`;
+Es la disciplina de §1.4 (solo datos provistos) llevada a su forma dura, hermana de §15 (múltiplos) y §16 (jerarquía): §16 dice CUÁL umbral usar; esta dice que fuera de los provistos no hay ninguno.
+
+## 18. TITULAR — la primera frase del informe
+
+El \`titular\` es lo primero que el usuario lee, en serif grande, con su núcleo pintado con plumón. Al lado ve UNA cifra grande que emite el análisis (bloque CIFRA CLAVE del caso) — por eso el titular NO lleva montos: la cifra ya está ahí, tu titular la encuadra sin contradecirla.
+
+FÓRMULA DURA: [el veredicto en palabras del usuario] + [LA razón más fuerte del caso]. Nada más.
+- ≤15 palabras — LÍMITE DURO, cuéntalas: un titular de 16 se DESCARTA ENTERO y la portada queda sin titular. Si dudas entre dos razones, va SOLO la más fuerte; el matiz vive en la respuestaDirecta, no aquí. UNA oración; se admite estructura de dos cláusulas con \`:\` o \`—\`.
+- Exactamente UNA marca \`**…**\` sobre el NÚCLEO — máximo 7 palabras marcadas, cuéntalas: 8 marcadas y el titular entero se descarta. La marca cubre el corazón de la razón, NO la frase completa ("pagas caro y **el arriendo no cubre la cuota**", nunca "**pagas caro y el arriendo no cubre la cuota del crédito**"). No cruza puntuación de cierre ni parte una cifra.
+- SIN montos en CLP ni UF. Porcentajes y magnitudes sin moneda ("20% de más", "la mitad de la cuota") SÍ se permiten cuando son LA razón.
+- Si el titular cita una referencia de precio, DECLARA su ámbito (§1.12.9): "sobre el valor estimado de tu cuadra" o "sobre la mediana de la comuna" — nunca "de la zona" a secas.
+- SIN jerga: prohibidos CAP rate, NOI, TIR, UF/m², percentil, spread, yield y "plusvalía" como término pelado. Todo en términos de bolsillo, arriendo, cuota, precio, zona.
+- CONSISTENCIA TERNARIA con el veredicto dado: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS nombra la palanca REAL del caso (la del bloque de distancia — no copies la palanca de los ejemplos) Y, cuando el bloque provee su magnitud, la INCLUYE — una palanca sin número es una vaguedad, no una vía. La magnitud de la palanca PRECIO se expresa como % de descuento (el del bloque de distancia), NUNCA como monto UF/CLP (prohibidos en el titular); la del pie, como % objetivo. COMPRAR afirma sin triunfalismo.
+- Toda afirmación se completa sola: nada de elipsis ambiguas ("un arriendo que no llega" — ¿a dónde?).
+
+ANTI-OLOR-IA (además de §2.1/§2.2): prohibidos en el titular "oportunidad", "potencial", "optimizar", "interesante", "atractivo", "sólido" como adjetivo pelado, "clave", "estratégico"; aperturas con gerundio ("Considerando…"); construcciones "no solo… sino también"; signos de exclamación. TEST DE LA CONVERSACIÓN: el titular debe poder decirse en voz alta a un amigo sin sonar a informe. "Este depto no conviene: pagas caro y el arriendo no cubre la cuota" pasa; "El activo presenta un desalineamiento entre precio y renta" no pasa.
+
+EJEMPLOS CALIBRADOS (genera uno NUEVO para el caso siguiendo el patrón — no los copies):
+- BUSCAR OTRA ✅ "Este depto no conviene: pagas caro y **el arriendo no cubre la cuota**."
+- BUSCAR OTRA ❌ "No cierra: el CAP rate queda 1,2 pts bajo la referencia." (jerga)
+- BUSCAR OTRA ❌ "Este depto no conviene: pagas caro un arriendo que no llega." (elipsis ambigua)
+- AJUSTA ✅ "Buen depto, mal negocio como está: **con más pie, sí conviene**." (la palanca del ejemplo es el pie; usa LA TUYA)
+- AJUSTA ❌ "El deal presenta oportunidades de optimización en la estructura de financiamiento." (no nombra palanca, voz consultor)
+- AJUSTA ❌ "Buen depto en Ñuñoa, pero **el precio no convence**: hay que negociar fuerte." (palanca sin cuantificar — el motor provee el % o el objetivo: inclúyelo)
+- COMPRAR ✅ "Conviene: compras **bajo el precio de mercado** y el arriendo cubre el dividendo."
+- COMPRAR ❌ "¡Excelente oportunidad de inversión!" (triunfalismo vacío, sin razón)`;
 
 function fmtCLP(n: number): string {
   return (n < 0 ? "-$" : "$") + Math.round(Math.abs(n)).toLocaleString("es-CL");
@@ -2001,6 +2036,26 @@ ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}${subsidioBloque}${cap
 ${anclasBloque}${jerarquiaPrecios.bloque}${referenciasZona.bloque}${bloqueSimetriaSobreprecio}${bloquePrecioJusto}${bloqueDriverNoAccionable}${bloqueMotivosGateLTR}
 
 negociacion.precioSugerido (este caso): "${fmtUF(techoUF)}" ← EXACTO techo_uf de las anclas (REGLA 6 v9)
+${(() => {
+      // §18 — CIFRA CLAVE de portada: la deriva el MOTOR (cifra-clave.ts), la IA
+      // solo la conoce para que el titular la encuadre sin contradecirla. El
+      // caption es de catálogo cerrado — no se le pide al modelo.
+      const cifra = derivarCifraClaveLtr({
+        veredicto: veredictoMotor,
+        flujoNetoMensual: m.flujoNetoMensual,
+        distancia: hallazgoDistanciaGen?.id === "distancia_veredicto" ? hallazgoDistanciaGen : null,
+        ufValue: UF_CLP,
+      });
+      if (!cifra) return `
+CIFRA CLAVE DE PORTADA (§18): este caso NO tiene cifra clave — el titular carga solo.`;
+      const valorTxt = cifra.tipo === "pct"
+        ? `${cifra.valorPct}%`
+        : `${cifra.signo < 0 ? "-" : ""}${fmtCLP(cifra.valorClp)}/mes`;
+      return `
+CIFRA CLAVE DE PORTADA (§18 — la emite el análisis; el lector la ve como cifra grande JUNTO a tu titular):
+- valor: ${valorTxt} · caption fijo (no lo escribas tú): "${captionDeCifraClave(cifra)}"
+- Tu titular la ENCUADRA: no la repite, no la contradice, no cita otro monto en su lugar.`;
+    })()}
 
 Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arriba.`;
 
@@ -2645,6 +2700,50 @@ Responde SOLO este JSON, sin texto alrededor:
       if (vozResidual.length) {
         console.warn(`[VOZ-RESIDUAL] ${analysisId}: ${vozResidual.length} forma(s) sin corrección tras el reintento — ${vozResidual.map((h) => `"${h.token}"`).join(", ")}`);
       }
+    }
+
+    // GUARD DEL TITULAR (§18, v10) — validación de FORMA (validarTitular,
+    // fuente única con el golden A9). Inválido ⇒ null + warn, SIN reintento:
+    // el render tolera titular ausente (portada sin titular, nunca placeholder)
+    // y el golden mide la tasa — si sube, el fix es el prompt, no un retry acá.
+    // Marcas desbalanceadas en el resto de la prosa (un `**` huérfano tras un
+    // recorte por oración) se resuelven strippeando las marcas de ESE campo:
+    // pierde el plumón, nunca muestra `**` crudo.
+    if (aiResult && typeof aiResult === "object") {
+      const t = (aiResult as { titular?: unknown }).titular;
+      const v = validarTitular(t);
+      if (!v.ok) {
+        // Retry dirigido (titular-retry.ts): mini-llamada que reescribe SOLO el
+        // titular — medido: el modelo cuenta mal dentro de la generación grande
+        // (~18-19 palabras en seeds con matices) pero acierta en la tarea sola.
+        const reescrito = typeof t === "string" && t.trim()
+          ? await reescribirTitular({
+              anthropic,
+              model: CLAUDE_MODEL,
+              titularInvalido: t,
+              motivo: v.motivo ?? "",
+              veredicto: veredictoMotor,
+            })
+          : null;
+        if (reescrito) {
+          console.warn(`[TITULAR-REESCRITO] ${analysisId}: ${v.motivo} — corregido por retry dirigido`);
+          (aiResult as { titular?: string | null }).titular = reescrito;
+        } else {
+          console.warn(`[TITULAR-INVALIDO] ${analysisId}: ${v.motivo} — titular descartado (portada sin titular)`);
+          (aiResult as { titular?: string | null }).titular = null;
+        }
+      }
+      const stripDesbalance = (nodo: Record<string, unknown>): void => {
+        for (const [k, val] of Object.entries(nodo)) {
+          if (typeof val === "string") {
+            if (!marcasBalanceadas(val)) {
+              console.warn(`[MARCAS-DESBALANCE] ${analysisId}: campo ${k} con \`**\` impar — marcas strippeadas`);
+              nodo[k] = stripMarcas(val);
+            }
+          } else if (val && typeof val === "object") stripDesbalance(val as Record<string, unknown>);
+        }
+      };
+      stripDesbalance(aiResult as Record<string, unknown>);
     }
 
     // Sello de versión (F6). Antes del early-return de persist:false para que el

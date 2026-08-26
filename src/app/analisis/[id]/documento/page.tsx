@@ -22,6 +22,7 @@ import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { evaluarAccesoDocumento, logDenegacion } from "@/lib/pdf/documento-access";
 import { readVeredicto } from "@/lib/results-helpers";
 import type { Analisis, AnalisisInput, FullAnalysisResult, AIAnalysisV2 } from "@/lib/types";
+import { stripMarcasDeep } from "@/lib/prosa-marcas";
 import { DocumentoLTR } from "./DocumentoLTR";
 import "./documento.css";
 
@@ -123,7 +124,12 @@ export default async function DocumentoLTRPage({
   const ltrAiFresh =
     hasNewAiStructure(ltrAiPersisted) &&
     (ltrAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_LTR;
-  const ai: AIAnalysisV2 | null = ltrAiFresh ? (ltrAiPersisted as unknown as AIAnalysisV2) : null;
+  // stripMarcasDeep: la prosa v10 trae destacadores `**…**` para el informe web
+  // (FASE 2 dictamen); el PDF queda FUERA del rediseño y los pinta crudos si no
+  // se strippean. Mismo render tolerante que la raíz web.
+  const ai: AIAnalysisV2 | null = ltrAiFresh
+    ? stripMarcasDeep(ltrAiPersisted as unknown as AIAnalysisV2)
+    : null;
 
   const veredicto = readVeredicto(results) ??
     (analisis.score >= 70 ? "COMPRAR" : analisis.score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");

@@ -12,6 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateAiAnalysis } from "../../../src/lib/ai-generation";
 import { runAnalysis } from "../../../src/lib/analysis";
 import { TECHO_CONTINUACION_DURO } from "../../../src/lib/prosa-presupuesto";
+import { marcasBalanceadas, validarTitular } from "../../../src/lib/prosa-marcas";
 import { GOLDEN_SEEDS, GOLDEN_UF } from "./seeds";
 import { gatherHallazgos, aperturaSource } from "./extract";
 import type { Check } from "./invariants";
@@ -180,6 +181,27 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
         }
       }
 
+      // A9 (HARD) — titular §18 presente y bien formado (validarTitular, fuente
+      // única con el guard de generación: ≤15 palabras, exactamente un par `**`
+      // con núcleo ≤7, sin montos en moneda). Es la clase "campo nuevo ausente"
+      // del contrato FASE 2: si el prompt deja de emitirlo o el guard lo anula
+      // sistemáticamente, esto se pone rojo.
+      const vTit = validarTitular((ai as any).titular);
+      if (!vTit.ok) bump("A9.titular");
+      // Métricas BLANDAS del titular (decisión PARÁ 2, 25-ago): tasa de núcleos
+      // sobre las 7 palabras (regla de prompt, no de check) y de titular null
+      // (el fallback del retry) — visibles en cada FULL, sin bloquear.
+      if ((ai as any).titular === null) bump("~titular-null");
+      const nucleoTit = typeof (ai as any).titular === "string" ? ((ai as any).titular.match(/\*\*([\s\S]+?)\*\*/)?.[1] ?? "") : "";
+      if ((nucleoTit.trim().match(/\S+/g) || []).length > 7) bump("~titular-nucleo-largo");
+
+      // A10 (HARD) — tokens `**` balanceados en toda la prosa final (FASE 2
+      // dictamen · refuerzo 3): los sanitizers recortan por ORACIÓN entera
+      // (PLANC-BUDGET-TRIM, PLANC-DUAL-STRIPPED) y un par de destacador que
+      // cruce el punto queda mutilado en un `**` impar. Verde trivial mientras
+      // el prompt no emita marcas; caza la clase entera cuando las emita.
+      if (strings.some((x) => !marcasBalanceadas(x.s))) bump("A10.marcas-balanceadas");
+
       // SOFT (reporta TASA, NO bloquea) — detectores de FRASEO estocásticos. El producto
       // mismo trata engine-ism como detección no-bloqueante; hard-gatear sobre variación
       // rara del LLM (engine-ism ~1/6 runs) volvería flaky al golden. Una REGRESIÓN de
@@ -206,8 +228,8 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
           ` [apertura fija ${WORDS(coronaFrase)} + respuesta + continuación ≤${techoContinuacion}] · corridas: ${totalesWC.join("·")}`,
       );
     }
-    const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
-    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~planc-trim", "~aguanta-lectura"];
+    const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
+    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~planc-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo"];
 
     // ── Umbral de MAYORÍA para las reglas que juzgan PROSA GENERADA ────────────
     //

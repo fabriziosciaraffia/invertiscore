@@ -1404,6 +1404,14 @@ export interface AIReestructuracionSection {
 }
 
 export interface AIAnalysisV2 {
+  // FASE 2 rediseño Dictamen (v10): titular de portada — [veredicto en palabras
+  // del usuario] + [LA razón más fuerte], ≤15 palabras, exactamente un par
+  // `**…**` (núcleo ≤7 palabras, el render lo pinta con plumón), SIN montos en
+  // moneda (la cifra vive en cifraClave, que emite el motor — cifra-clave.ts).
+  // Campo ÚNICO sin _clp/_uf por construcción. Opcional: prosa ≤v9 no lo trae
+  // (el render cae a portada sin titular); null cuando la generación lo emitió
+  // inválido y el guard lo descartó ([TITULAR-INVALIDO]).
+  titular?: string | null;
   // Opcionales: el prompt LTR dejó de emitirlos (campos huérfanos, sin consumidor
   // de render — el hero usa chips de inputData y conviene.respuestaDirecta). Se
   // conservan en el tipo para análisis viejos persistidos que sí los traen.
@@ -1454,7 +1462,10 @@ export interface AISectionSTRv2 {
 export interface AIConvieneSTRv2 {
   pregunta?: string;            // opcional · fallback del título del hero
   respuestaDirecta: string;
-  veredictoFrase: string;
+  // v4 (FASE 2 dictamen) la PODÓ del schema: se generaba (≤22 palabras) y no se
+  // renderizaba desde E.5 — tokens pagados en vano. El `titular` top-level la
+  // reemplaza. Opcional para leer prosa ≤v3 persistida sin romper.
+  veredictoFrase?: string;
   reencuadre: string;
   cajaAccionable: string;
 }
@@ -1473,6 +1484,10 @@ import type { STRVerdict as STRVerdictEngine } from "./engines/short-term-engine
 export type STRVerdict = STRVerdictEngine;
 
 export interface AIAnalysisSTRv2 {
+  // FASE 2 rediseño Dictamen (v4): titular de portada — mismo contrato que el
+  // LTR (types AIAnalysisV2.titular). Regla propia STR: NUNCA lidera con la
+  // comparación contra arriendo largo (§1.ter, decisión B-extendida 25-ago).
+  titular?: string | null;
   // v2 legacy · v3 NO lo emite (nunca se renderizó — solo mock en /demo). Opcional
   // para leer prosa v2 persistida sin romper.
   siendoFrancoHeadline_clp?: string;
