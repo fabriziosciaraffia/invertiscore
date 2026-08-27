@@ -224,7 +224,7 @@ export function PlusvaliaComunaSection({ comuna }: { comuna: string }) {
             </p>
             <div className="text-right">
               <p className="font-mono text-lg font-bold text-[var(--franco-text)]">
-                {fmt1(serie.cagrPct)}%<span className="ml-1 font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">anual promedio</span>
+                {fmt1(serie.anualPct)}%<span className="ml-1 font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">anual promedio</span>
               </p>
               {GFK_NIVEL[comuna] && (
                 <p className="mt-0.5 font-mono text-xs text-[var(--franco-text-secondary)]">

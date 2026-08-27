@@ -187,7 +187,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
           name: `¿Cuánto se ha valorizado ${stats.nombre}?`,
           acceptedAnswer: {
             "@type": "Answer",
-            text: `El m² de departamentos nuevos en ${stats.nombre} pasó de UF ${String(serieGfk.valores[0]).replace(".", ",")} a UF ${String(serieGfk.valores[serieGfk.valores.length - 1]).replace(".", ",")} entre ${serieGfk.desde} y ${serieGfk.desde + serieGfk.valores.length - 1} — un ${String(serieGfk.cagrPct).replace(".", ",")}% anual promedio (fuente: GfK/NielsenIQ, precios de oferta de deptos nuevos). Es historia observada, no proyección.`,
+            text: `El m² de departamentos nuevos en ${stats.nombre} pasó de UF ${String(serieGfk.valores[0]).replace(".", ",")} a UF ${String(serieGfk.valores[serieGfk.valores.length - 1]).replace(".", ",")} entre ${serieGfk.desde} y ${serieGfk.desde + serieGfk.valores.length - 1} — un ${String(serieGfk.anualPct).replace(".", ",")}% anual promedio (fuente: GfK/NielsenIQ, precios de oferta de deptos nuevos). Es historia observada, no proyección.`,
           },
         }
       : (coberturaPlus === "nivel_mas_ac" || coberturaPlus === "solo_ac") && acPlus

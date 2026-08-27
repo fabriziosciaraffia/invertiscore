@@ -7,7 +7,7 @@
 //     Cayo) tal cual, mismos valores, mismo DEFAULT. El swap a la cascada
 //     GFK→A&C en el score es F3 (exige recalibrar historicaScore) — NO acá.
 //   · F1 — data de PÁGINA (/comunas): serie anual GFK 2015-2024 (comunas con
-//     serie completa), nivel GFK 2024/2025-Q1 y CAGR punta a punta, leídos de
+//     serie completa), nivel GFK 2024/2025-Q1 y anualizada log-lineal, leídos de
 //     scripts/data/franco-fuentes-2025.csv (committeado). 'PROMEDIO GS' queda
 //     en export propio, nunca mezclado en las vistas por comuna.
 //   · F2 — ESTIMADO 2025: lee la tabla derivada `plusvalia_estimado` (filas
@@ -72,17 +72,52 @@ for (const linea of csvCrudo.trim().split(/\r?\n/).slice(1)) {
 const SERIE_DESDE = 2015;
 const SERIE_HASTA = 2024;
 
-function filaSerie(comuna: string): string | null {
+/**
+ * Anualizada de una serie por PENDIENTE LOG-LINEAL (mínimos cuadrados sobre
+ * ln(precio) vs año). Reemplaza al CAGR punta a punta (F3, decisión 26-ago).
+ *
+ * Por qué: el punta a punta descansa en dos observaciones —la primera y la
+ * última— y hereda todo el ruido de esos dos años; teniendo diez puntos, usar
+ * ocho de ellos solo para dibujar es desperdiciarlos. La pendiente log-lineal
+ * usa la serie completa y amortigua los extremos.
+ *
+ * Cuánto mueve (medido sobre las 15 series): Δ medio +0,4 pts, máximo +1,1
+ * (Puente Alto 6,0 → 7,1). Es casi siempre al alza porque las series son
+ * cóncavas —crecieron más al principio— y el punta a punta subpondera ese
+ * tramo. La Reina es la única que baja (3,1 → 2,8).
+ */
+function anualizadaLogLineal(valores: number[]): number {
+  const n = valores.length;
+  const xs = valores.map((_, i) => i);
+  const ys = valores.map((p) => Math.log(p));
+  const mx = xs.reduce((a, b) => a + b, 0) / n;
+  const my = ys.reduce((a, b) => a + b, 0) / n;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (xs[i] - mx) * (ys[i] - my);
+    den += (xs[i] - mx) ** 2;
+  }
+  return (Math.exp(num / den) - 1) * 100;
+}
+
+/** Valores de la serie de una comuna, solo si está COMPLETA. */
+function valoresSerie(comuna: string): number[] | null {
   const s = serieGfk.get(comuna);
   if (!s) return null;
   const anios: number[] = [];
   for (let a = SERIE_DESDE; a <= SERIE_HASTA; a++) if (s.has(a)) anios.push(a);
-  // Serie de página solo si está COMPLETA 2015-2024 (10 puntos): una serie con
-  // huecos dibujada como continua miente. Las comunas 2024-only quedan en nivel.
+  // Serie solo si está COMPLETA 2015-2024 (10 puntos): una serie con huecos
+  // dibujada como continua miente. Las comunas 2024-only quedan en nivel.
   if (anios.length !== SERIE_HASTA - SERIE_DESDE + 1) return null;
-  const valores = anios.map((a) => s.get(a)!);
-  const cagr = (Math.pow(valores[valores.length - 1] / valores[0], 1 / (SERIE_HASTA - SERIE_DESDE)) - 1) * 100;
-  return `{ desde: ${SERIE_DESDE}, valores: [${valores.join(", ")}], cagrPct: ${cagr.toFixed(1)} }`;
+  return anios.map((a) => s.get(a)!);
+}
+
+function filaSerie(comuna: string): string | null {
+  const valores = valoresSerie(comuna);
+  if (!valores) return null;
+  const anual = anualizadaLogLineal(valores);
+  return `{ desde: ${SERIE_DESDE}, valores: [${valores.join(", ")}], anualPct: ${anual.toFixed(1)} }`;
 }
 
 const comunasSerie = [...serieGfk.keys()].filter((c) => c !== GS_SENTINEL && filaSerie(c) !== null).sort((a, b) => a.localeCompare(b, "es"));
@@ -209,8 +244,12 @@ export interface SerieGfk {
   desde: number;
   /** UF/m² por año (deptos nuevos, precio de oferta, promedio anual). */
   valores: number[];
-  /** % anual punta a punta de la serie (CAGR ${SERIE_DESDE}→${SERIE_HASTA}), 1 decimal. */
-  cagrPct: number;
+  /**
+   * % anual de la serie ${SERIE_DESDE}→${SERIE_HASTA}, 1 decimal, por PENDIENTE LOG-LINEAL
+   * sobre los ${SERIE_HASTA - SERIE_DESDE + 1} puntos (F3) — no es un CAGR punta a punta: ese
+   * descansaba solo en el primer y el último año.
+   */
+  anualPct: number;
 }
 
 /** Serie GFK ${SERIE_DESDE}-${SERIE_HASTA} por comuna (${comunasSerie.length} comunas con serie completa). */
