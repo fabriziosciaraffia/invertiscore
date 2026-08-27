@@ -16,7 +16,7 @@ import { CLAUDE_MODEL } from "@/lib/ai-config";
 import type { RegistroLlamadas } from "@/lib/pipeline-timing";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { getNearbyAttractors, type AttractorTipo } from "@/lib/data/attractors";
-import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO, rangoHistDe } from "@/lib/plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
@@ -117,7 +117,11 @@ export interface ZoneInsightResponse {
  * zona bajo una prosa que no se mueve y reintroduciria la divergencia que el fix
  * de coherencia cierra, ademas de regenerar el parque sin ganancia editorial.
  */
-export const PROMPT_VERSION_ZONA = 1;
+// v2 (2026-08-27, F4.1): el período de la plusvalía pasa a viajar con la cifra
+// en el bloque del caso, porque con la cascada cada comuna tiene el suyo
+// (2015-2025 / 2015-2024 / 2014-2024) y el system prompt, estático, no puede
+// nombrar uno fijo. La prosa cacheada databa el número con el rango del DEFAULT.
+export const PROMPT_VERSION_ZONA = 2;
 
 // ─── Stats helpers ──────────────────────────────────
 // median() vive ahora en @/lib/comuna-stats (compartido con ai-generation).
@@ -450,7 +454,7 @@ percentilTuDepto (percentil del arriendo dentro del rango local):
   P75–P90 → "caro para la zona"
   > P90 → "muy caro para la zona"
 
-plusvaliaAnual (histórica anualizada ${RANGO_HIST} de la comuna):
+plusvaliaAnual (histórica anualizada de la comuna, en el período que el bloque del caso declara — cada comuna tiene el suyo):
   < ${PROY_PCT} → "débil vs la proyección de plusvalía a futuro de ${PROY_PCT} (la proyección estándar Franco)"
   ${PROY_PCT}–5% → "alineada o sobre la proyección de plusvalía a futuro de ${PROY_PCT}"
   > 5% → "fuerte vs la proyección de plusvalía a futuro de ${PROY_PCT}"
@@ -645,7 +649,11 @@ async function generateInsightAI(
     // estándar Franco a futuro, no la histórica observada — aunque coincidan en el número.
     finLines.push(ctx.plusvaliaFallback
       ? `- Sin histórico propio de ${comuna}: la comuna NO está en la serie ${RANGO_HIST}. Referencia usada: promedio del Gran Santiago, ${ctx.plusvaliaAnual.toFixed(1).replace(".", ",")}% anual. PROHIBIDO atribuir ese % a ${comuna} ("${comuna} promedió/subió X%") — es referencia regional, no la historia de la comuna.`
-      : `- Plusvalía histórica anualizada ${comuna}: ${ctx.plusvaliaAnual.toFixed(1).replace(".", ",")}% (cifra ANUAL, no acumulada 10 años).`);
+      // F4.1 — el período va JUNTO a la cifra: cada comuna tiene el suyo
+      // (2015-2025 / 2015-2024 / 2014-2024) y el system prompt, que es estático,
+      // ya no puede nombrar uno fijo. Sin esto la prosa de zona databa el número
+      // con el rango del DEFAULT aunque la comuna tuviera otro.
+      : `- Plusvalía histórica anualizada ${comuna} (${rangoHistDe(comuna)}): ${ctx.plusvaliaAnual.toFixed(1).replace(".", ",")}% (cifra ANUAL, no acumulada 10 años).`);
   }
 
   const finBlock = finLines.length > 0 ? `\n\nContexto financiero del depto (usar solo montos presentes acá):\n${finLines.join("\n")}` : "";
