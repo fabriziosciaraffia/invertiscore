@@ -73,7 +73,10 @@ export type DrawerKey =
 
 interface DrawerProps {
   activeKey: DrawerKey;
-  aiAnalysis: AIAnalysisV2;
+  /** La prosa PUEDE faltar: un informe sin redacción IA sigue mostrando sus
+   *  hallazgos (todos deterministas del motor). Los cuerpos que la necesitan
+   *  traen su propio guard. */
+  aiAnalysis: AIAnalysisV2 | null;
   currency: "CLP" | "UF";
   results: FullAnalysisResult;
   inputData: AnalisisInput;
@@ -241,9 +244,9 @@ function DrawerCostoMensual({
 
   return (
     <div>
-      <p className="font-body text-[14px] leading-[1.65] text-[var(--franco-text)] mb-4 whitespace-pre-wrap">
+      <div className="font-body text-[14px] leading-[1.65] text-[var(--franco-text)] mb-4 whitespace-pre-wrap">
         {renderPlumon(currency === "CLP" ? data.contenido_clp : data.contenido_uf)}
-      </p>
+      </div>
 
       {/* Mensaje educativo (dot pattern Fase 4.8): justifica por qué incluimos
           gastos que otros análisis omiten. */}
@@ -656,12 +659,12 @@ function DrawerNegociacion({
           >
             Aunque negocies al máximo
           </span>
-          <p
+          <div
             className="font-body m-0 whitespace-pre-wrap"
             style={{ fontSize: 12.5, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)", lineHeight: 1.55 }}
           >
             {renderPlumon(currency === "CLP" ? data.contenido_clp : data.contenido_uf)}
-          </p>
+          </div>
         </div>
       )}
 
@@ -876,12 +879,12 @@ function DrawerLargoPlazo({
             Vs. poner la misma plata en otro lado
           </span>
         </div>
-        <p
+        <div
           className="font-body m-0 whitespace-pre-wrap"
           style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 78%, transparent)", lineHeight: 1.6 }}
         >
           {renderPlumon(contenido)}
-        </p>
+        </div>
       </div>
 
       {/* ─── La apuesta que haces (narrativa IA editorial) ─── */}
@@ -1630,7 +1633,7 @@ export function AnalysisDrawer({
   const zonaTitle = "Lo que no ves a simple vista";
   // Sin IA de reestructuración (estructura sana), el título del fallback no debe
   // insinuar una palanca que mover.
-  const reestructuracionTitle = aiAnalysis.reestructuracion
+  const reestructuracionTitle = aiAnalysis?.reestructuracion
     ? "¿Y si cambias la estructura?"
     : "¿Cómo está tu estructura?";
   const capexTitle = "Dejarlo listo para arrendar";
@@ -1673,7 +1676,7 @@ export function AnalysisDrawer({
                     ? ({ pregunta: plusvaliaTitle } as { pregunta: string })
                     : activeKey === "distanciaVeredicto"
                       ? ({ pregunta: distanciaTitle } as { pregunta: string })
-                      : aiAnalysis[activeKey];
+                      : aiAnalysis?.[activeKey];
 
   // Override de pregunta por drawer + estado. La pregunta IA es genérica;
   // hardcoded varía según el "veredicto numérico" del bloque para evitar
@@ -1706,7 +1709,10 @@ export function AnalysisDrawer({
       const tp = tirHallazgo.valor.tirPct.toFixed(1).replace(".", ",");
       return `¿Por qué tu ${tp}% no es el ${tp}% de un depósito?`;
     }
-    return section.pregunta;
+    // Sin prosa no hay `section`: el header cae al label del drawer (DRAWER_META),
+    // que es determinista. En modo inline este título ni se usa — lo muestra la
+    // fila del acordeón — pero el overlay de zona sí lo necesita.
+    return section?.pregunta ?? meta.label;
   })();
 
   useEffect(() => {
@@ -1753,7 +1759,7 @@ export function AnalysisDrawer({
         />
       )}
       {activeKey === "reestructuracion" &&
-        (aiAnalysis.reestructuracion ? (
+        (aiAnalysis?.reestructuracion ? (
           <DrawerReestructuracion
             data={aiAnalysis.reestructuracion}
             currency={currency}

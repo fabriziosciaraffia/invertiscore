@@ -163,7 +163,23 @@ export function SubjectCardGrid({
   // Una fila por hallazgo del orden único; el cuerpo es el drawer en modo
   // INLINE (sin chrome). `distancia_veredicto` no está acá por diseño: ya lo
   // excluye ordenarHallazgosPiramide — es el destino del CTA de la posición.
-  const ctxDrawer = results && inputData && prosa ? { results, inputData, prosa } : null;
+  // MITIGACIÓN 27-ago-2026 — los hallazgos NO dependen de la prosa.
+  //
+  // Hasta acá el contexto exigía `prosa`, así que un informe sin redacción IA se
+  // renderizaba con portada y CERO filas: cuerpo vacío. Se vio en producción cuando
+  // PROMPT_VERSION_LTR saltó a 12 y dejó al parque entero en stale: el visitante
+  // anónimo no puede regenerar (POST /api/analisis/ai → 401) y el informe quedaba
+  // mudo, el demo de la landing incluido.
+  //
+  // Los hallazgos son datos DETERMINÍSTICOS del motor (`results.metrics.hallazgo*` +
+  // `results.hallazgos`); `gatherHallazgos` ya los arma sin mirar la IA. Que su
+  // RENDER dependiera de que el modelo escribiera era un acoplamiento sin razón, y
+  // frágil ante cualquier caída futura de la IA, no solo ante este bump de versión.
+  //
+  // Con prosa ausente: portada + hallazgos completos + el aviso de redacción que el
+  // hero ya muestra. Cada cuerpo que sí necesita prosa trae su propio guard
+  // (`SinDatos`, o el placeholder "Franco está preparando este detalle…").
+  const ctxDrawer = results && inputData ? { results, inputData, prosa } : null;
   const filasHallazgos: FilaHallazgo[] = ctxDrawer
     ? hallazgosOrdenados.map((h, i) => {
         const d = findingDisplay(h, currency, valorUF);
@@ -203,7 +219,7 @@ export function SubjectCardGrid({
   // El análisis a 10 años cierra el capítulo de simulación (ya no es un botón
   // que abre un drawer: es el juicio del horizonte, en su lugar).
   const cuerpoLargoPlazo =
-    ctxDrawer && ctxDrawer.prosa.largoPlazo?.contenido_clp?.trim() ? (
+    ctxDrawer && ctxDrawer.prosa?.largoPlazo?.contenido_clp?.trim() ? (
       <div className="mt-5">
         <div className="doc-cap-sub">El análisis a 10 años</div>
         <AnalysisDrawer
@@ -333,9 +349,19 @@ export function SubjectCardGrid({
           progresivos + siluetas puras (cero texto a medias, cero afordancia).
           Con error de prosa el bloque queda estático (el error vive inline en el
           hero, Goal C). Absorbe el strip "Franco está redactando el detalle…". */}
-      {!prosa ? (
+      {/* MITIGACIÓN 27-ago-2026 — el bloque de espera solo se muestra MIENTRAS la
+          prosa viene en camino. Antes cubría todo el caso `!prosa`, así que un
+          informe cuya redacción NUNCA va a llegar —el anónimo no puede regenerar:
+          POST /api/analisis/ai → 401— quedaba con siluetas para siempre y el
+          lector no veía un solo hallazgo. Es lo que pasó en producción cuando
+          PROMPT_VERSION_LTR saltó a 12 y dejó al parque en stale, el demo de la
+          landing incluido.
+          Sin esperanza de prosa se muestran los hallazgos del motor, que son
+          deterministas y no dependen de que el modelo haya escrito. El aviso de
+          redacción sigue donde estaba (inline en el hero, Goal C). */}
+      {!prosa && loading ? (
         <div className="mt-5">
-          <BloqueEsperaInforme estatico={!loading && !!error} />
+          <BloqueEsperaInforme estatico={false} />
         </div>
       ) : (
         <div style={materializa ? { animation: "zona2Aparece 450ms ease-out" } : undefined}>
