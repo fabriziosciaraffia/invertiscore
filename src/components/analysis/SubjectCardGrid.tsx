@@ -83,7 +83,8 @@ export function SubjectCardGrid({
    *  persiste `informe_visible_at`. */
   onInformeVisible?: () => void;
   /** I-3 (fix FASE 1 rediseño-dictamen): viaja en `informe_seccion_vista` de las
-   *  marcas `piramide`/`zona`, que hasta ahora no existían en LTR. */
+   *  marcas `piramide`/`zona`, que hasta ahora no existían en LTR. Desde FASE 5
+   *  también en `informe_hallazgo_abierto` (como `access_level`). */
   accessLevel?: string;
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
@@ -95,10 +96,15 @@ export function SubjectCardGrid({
   // I-3: apertura de drawer (todas las cards entran por acá). El resolver emite
   // en paralelo `informe_hallazgo_abierto {n, id_hallazgo}` cuando el drawer
   // corresponde a un hallazgo de la pirámide (línea base pre-rediseño).
-  useDrawerAbierto(activeDrawer, "ltr", (key) => {
-    const idx = hallazgosOrdenados.findIndex((h) => HALLAZGO_DRAWER[h.id] === key);
-    return idx >= 0 ? { n: idx + 1, id: hallazgosOrdenados[idx].id } : null;
-  });
+  useDrawerAbierto(
+    activeDrawer,
+    "ltr",
+    (key) => {
+      const idx = hallazgosOrdenados.findIndex((h) => HALLAZGO_DRAWER[h.id] === key);
+      return idx >= 0 ? { n: idx + 1, id: hallazgosOrdenados[idx].id } : null;
+    },
+    { veredicto, accessLevel },
+  );
 
   // Secuencia de drawers = orden VISUAL de la pirámide (mismo array que renderiza),
   // filtrando las cards que tienen drawer y dedup por si dos cayeran al mismo. La
@@ -374,6 +380,8 @@ export function SubjectCardGrid({
             tipo="ltr"
             total={filasHallazgos.length}
             filas={filasHallazgos}
+            veredicto={veredicto}
+            accessLevel={accessLevel}
           />
 
           {/* ═══ CAPÍTULO · La simulación ═══ */}

@@ -122,19 +122,29 @@ export function MarcaSeccion({
  * igual hasta que el drawer muera — dos series paralelas, sin hueco.
  * Drawers que no cuelgan de un hallazgo (zona, tipoHuesped, largoPlazo) no
  * emiten el evento nuevo: el resolver devuelve null.
+ *
+ * FASE 5 (tablero): `contexto` agrega `veredicto` + `access_level` SOLO al
+ * evento de hallazgo — mismo payload que el emisor del acordeón (FASE 4), que
+ * es el otro punto vivo de esta serie. Esta ruta sigue alcanzable vía "La
+ * posición de Franco" del hero (distanciaVeredicto/sensibilidad) y las
+ * flechas prev/next del drawer. `informe_drawer_abierto` no cambia.
  */
 export function useDrawerAbierto(
   activeKey: string | number | null,
   tipo: TipoInforme,
   resolverHallazgo?: (key: string | number) => { n: number; id: string } | null,
+  contexto?: { veredicto: string; accessLevel: string },
 ): void {
   const posthog = usePostHog();
   const previa = useRef<string | number | null>(null);
   // Ref y no dep: el resolver llega como closure inline (cambia por render) y
   // meterlo en las deps re-correría el efecto sin aportar — la emisión ya está
-  // limitada a la transición cerrado→abierto por `previa`.
+  // limitada a la transición cerrado→abierto por `previa`. Mismo trato para
+  // `contexto` (objeto literal nuevo en cada render).
   const resolverRef = useRef(resolverHallazgo);
   resolverRef.current = resolverHallazgo;
+  const contextoRef = useRef(contexto);
+  contextoRef.current = contexto;
   useEffect(() => {
     const antes = previa.current;
     previa.current = activeKey;
@@ -142,10 +152,12 @@ export function useDrawerAbierto(
     trackInforme(posthog, "informe_drawer_abierto", { drawer: String(activeKey), tipo });
     const hallazgo = resolverRef.current?.(activeKey) ?? null;
     if (hallazgo) {
+      const ctx = contextoRef.current;
       trackInforme(posthog, "informe_hallazgo_abierto", {
         n: hallazgo.n,
         id_hallazgo: hallazgo.id,
         tipo,
+        ...(ctx ? { veredicto: ctx.veredicto, access_level: ctx.accessLevel } : {}),
       });
     }
   }, [activeKey, tipo, posthog]);

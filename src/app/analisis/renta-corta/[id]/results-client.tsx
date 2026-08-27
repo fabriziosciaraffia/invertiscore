@@ -128,14 +128,6 @@ export function STRResultsClient({
   // y el resolver de telemetría (mismo array que renderiza).
   const hallazgosOrdenadosSTR = ordenarHallazgosPiramideSTR(results?.hallazgos);
 
-  // I-3: apertura de drawer (pirámide + zona entran por acá). El resolver emite
-  // en paralelo `informe_hallazgo_abierto {n, id_hallazgo}` cuando el drawer
-  // corresponde a un hallazgo (línea base pre-rediseño, fix FASE 1).
-  useDrawerAbierto(activeDrawer, "str", (key) => {
-    const idx = hallazgosOrdenadosSTR.findIndex((h) => HALLAZGO_DRAWER_STR[h.id] === key);
-    return idx >= 0 ? { n: idx + 1, id: hallazgosOrdenadosSTR[idx].id } : null;
-  });
-
   // Secuencia de drawers = orden VISUAL de la pirámide STR (mismo array que renderiza),
   // filtrando las cards con drawer y dedup. La navegación prev/next se deriva de acá.
   // `tipoHuesped` NO entra (se abre solo desde ZonaCardSTR) → queda fuera de las flechas.
@@ -292,6 +284,21 @@ export function STRResultsClient({
   const isIncompleteScore = score === null;
   const veredicto: STRVerdict =
     (francoScore?.veredicto as STRVerdict) ?? results.veredicto;
+
+  // I-3: apertura de drawer (pirámide + zona entran por acá). El resolver emite
+  // en paralelo `informe_hallazgo_abierto {n, id_hallazgo}` cuando el drawer
+  // corresponde a un hallazgo (línea base pre-rediseño, fix FASE 1). El hook
+  // vive DESPUÉS de derivar `veredicto` porque el contexto FASE 5 lo necesita;
+  // como derivación pura del prop `results`, el orden de hooks no varía.
+  useDrawerAbierto(
+    activeDrawer,
+    "str",
+    (key) => {
+      const idx = hallazgosOrdenadosSTR.findIndex((h) => HALLAZGO_DRAWER_STR[h.id] === key);
+      return idx >= 0 ? { n: idx + 1, id: hallazgosOrdenadosSTR[idx].id } : null;
+    },
+    { veredicto, accessLevel },
+  );
 
   // E.5 — el HeroSTR lee los chips (dorm/baño/m²/precio/pie/gestión) directamente
   // de input_data; ya no se arma metadataItems/subtitle acá. propiedadTitle queda
@@ -554,7 +561,13 @@ export function STRResultsClient({
 
         {/* ═══ LOS HALLAZGOS — acordeón (FASE 4, mockup v12) ═══ */}
         <MarcaSeccion seccion="piramide" tipo="str" accessLevel={accessLevel} />
-        <HallazgosAcordeon tipo="str" total={filasHallazgosStr.length} filas={filasHallazgosStr} />
+        <HallazgosAcordeon
+          tipo="str"
+          total={filasHallazgosStr.length}
+          filas={filasHallazgosStr}
+          veredicto={veredicto}
+          accessLevel={accessLevel}
+        />
 
         {/* ESCENARIOS Y PROYECCIÓN (07-10). La prosa ai.largoPlazo dejó de ir inline
             (str-paridad2) y ahora vive en su drawer "A 10 años", abierto desde una

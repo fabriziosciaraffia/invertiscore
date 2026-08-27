@@ -17,10 +17,12 @@
 //     (que además devuelve la fila al centro para no dejar al lector perdido).
 //  5. Vocabulario único de 4 piezas (ver vocabulario.tsx).
 //
-// Telemetría: `informe_hallazgo_abierto {n, id_hallazgo, tipo}` pasa a medir
-// EXPANSIONES REALES (la serie nació en FASE 1 colgada de la apertura de drawer,
-// como línea base). Un disparo por fila por montaje: reabrir la misma fila no
-// vuelve a contar, así el % de expansión es de lectores, no de clics.
+// Telemetría: `informe_hallazgo_abierto {n, id_hallazgo, tipo, veredicto,
+// access_level}` pasa a medir EXPANSIONES REALES (la serie nació en FASE 1
+// colgada de la apertura de drawer, como línea base). Un disparo por fila por
+// montaje: reabrir la misma fila no vuelve a contar, así el % de expansión es
+// de lectores, no de clics. `veredicto`/`access_level` son los cortes del
+// tablero FASE 5 (lectura 10-sep-2026).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useRef, useState, type ReactNode } from "react";
@@ -48,11 +50,16 @@ export function HallazgosAcordeon({
   filas,
   tipo,
   total,
+  veredicto,
+  accessLevel,
 }: {
   filas: FilaHallazgo[];
   tipo: TipoInforme;
   /** Rótulo del pie ("12 hallazgos"). */
   total?: number;
+  /** Cortes del tablero FASE 5 — viajan en `informe_hallazgo_abierto`. */
+  veredicto: string;
+  accessLevel: string;
 }) {
   const posthog = usePostHog();
   const [abierta, setAbierta] = useState<string | null>(null);
@@ -68,16 +75,20 @@ export function HallazgosAcordeon({
 
       if (!medidas.current.has(fila.id)) {
         medidas.current.add(fila.id);
+        const props = {
+          n: indice + 1,
+          id_hallazgo: fila.id,
+          tipo,
+          veredicto,
+          access_level: accessLevel,
+        };
         try {
-          posthog?.capture("informe_hallazgo_abierto", { n: indice + 1, id_hallazgo: fila.id, tipo });
+          posthog?.capture("informe_hallazgo_abierto", props);
         } catch {
           /* la telemetría jamás rompe la lectura */
         }
         if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
-          (window.__informeEvents ??= []).push({
-            name: "informe_hallazgo_abierto",
-            props: { n: indice + 1, id_hallazgo: fila.id, tipo },
-          });
+          (window.__informeEvents ??= []).push({ name: "informe_hallazgo_abierto", props });
         }
       }
       // Decisión 2: anclar arriba con scroll suave, dejando el encabezado a la
@@ -86,7 +97,7 @@ export function HallazgosAcordeon({
         refs.current[fila.id]?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 60);
     },
-    [abierta, posthog, tipo],
+    [abierta, posthog, tipo, veredicto, accessLevel],
   );
 
   const cerrarYVolver = useCallback((fila: FilaHallazgo) => {
