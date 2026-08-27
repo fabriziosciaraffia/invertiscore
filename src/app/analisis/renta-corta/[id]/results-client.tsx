@@ -563,13 +563,30 @@ export function STRResultsClient({
           currency={currency}
           valorUF={ufValue}
           forceOpen={false}
-          onOpenLargoPlazo={
-            (aiParaRender as unknown as AIAnalysisSTRv2 | null)?.largoPlazo?.contenido?.trim()
-              ? () => setActiveDrawer("largoPlazo")
-              : undefined
-          }
         />
         </div>
+        {/* (a) FASE 4.1 · EL ANÁLISIS A 10 AÑOS — espejo exacto del LTR
+            (SubjectCardGrid: "el juicio del horizonte, en su lugar"). Antes su única
+            puerta era `onOpenLargoPlazo`, un afordance dentro de AdvancedSectionSTR que
+            abría el overlay: quedaba detrás del gate del simulador y a dos clics. Como
+            cuerpo del capítulo se lee sin abrir nada, igual que en renta larga.
+            No es fila del acordeón a propósito: no tiene hallazgo ni valor que poner en
+            la columna derecha — fabricárselo sería inventar. */}
+        {(aiParaRender as unknown as AIAnalysisSTRv2 | null)?.largoPlazo?.contenido?.trim() && (
+          <div className="mt-5">
+            <div className="doc-cap-sub">El análisis a 10 años</div>
+            <DrawerContentSTR
+              activeKey="largoPlazo"
+              analysisId={analysisId}
+              results={results}
+              inputData={inputData as never}
+              comuna={comuna}
+              currency={currency}
+              valorUF={ufValue}
+              ai={aiParaRender as never}
+            />
+          </div>
+        )}
         </section>
 
         {/* ═══ CAPÍTULO · La zona ═══ card recesiva. E.2: la ex-card 06 "Tipo de huésped"

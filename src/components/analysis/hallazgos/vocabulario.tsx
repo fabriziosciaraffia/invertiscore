@@ -92,7 +92,19 @@ export function Thermo({
   );
 }
 
-export type FallRow = { k: string; v: string; pct: number; tone?: "neutral" | "warn" | "muted" | "red" };
+export type FallRow = {
+  k: string;
+  v: string;
+  pct: number;
+  tone?: "neutral" | "warn" | "muted" | "red";
+  /** CORRECCIÓN 5 (FASE 4.1) — glosa de la fila. La migración de `costoMensual` al
+   *  waterfall dejó de pasar el `tooltip` de cada `saleItem` al mapear a `Fall`: ~150
+   *  palabras de explicación real ("Impuesto territorial trimestral del SII, prorrateado
+   *  a mensual"…) quedaron vivas en el código y muertas en pantalla. Vuelven acá, en la
+   *  pieza que ya existe, sin inventar un bloque nuevo. Se recibe montado para que el
+   *  vocabulario no dependa del componente de tooltip. */
+  tip?: ReactNode;
+};
 
 /** Waterfall de descomposición: banda proporcional + filas + total. */
 export function Fall({ rows, total }: { rows: FallRow[]; total?: { k: string; v: string } }) {
@@ -117,6 +129,7 @@ export function Fall({ rows, total }: { rows: FallRow[]; total?: { k: string; v:
           <div key={i} className="fall-row">
             <span className="fk" style={{ ["--c" as string]: color(r.tone) }}>
               {r.k}
+              {r.tip}
             </span>
             <span className="fv">{r.v}</span>
           </div>
@@ -221,5 +234,276 @@ export function Tabla({ headers, filas, cue = true }: { headers: string[]; filas
       </div>
       {cue && <div className="tbl-scrollcue">↔ desliza la tabla</div>}
     </>
+  );
+}
+
+// ═══════════ PRIMITIVAS DE FASE 4.1 (conversiones aprobadas) ═══════════
+//
+// REGLA DE ETIQUETAS (vinculante para las cuatro): una etiqueta de REFERENCIA
+// (banda, zona, umbral) y una de MARCA (el dato del usuario) nunca comparten
+// línea cuando su posición depende de datos — se solapan en cuanto los valores
+// se acercan. La referencia ancla a su propio borde; la marca va en otra línea.
+
+export type FilaPalanca = {
+  nombre: string;
+  /** Delta ya formateado por el caller ("+11,0%", "−40%", "+5 años"). */
+  delta: string;
+  /** true ⇒ cruza el umbral dentro del tope de honestidad. */
+  alcanza: boolean;
+  origen?: string;
+  destino?: string;
+  /** Razón corta de por qué no basta. Catálogo determinista del motor, nunca IA. */
+  razon?: string;
+};
+
+/** Matriz de palancas: una fila por palanca, con delta, veredicto y magnitudes
+ *  origen→destino. Lista vacía ⇒ no se dibuja (el caller cae a prosa). */
+export function Palancas({ filas, pie }: { filas: FilaPalanca[]; pie?: ReactNode }) {
+  if (!filas.length) return null;
+  return (
+    <div className="pal">
+      {filas.map((f, i) => (
+        <div key={i} className={`pal-row${f.alcanza ? " si" : ""}`}>
+          <div className="pal-name">
+            {f.nombre}
+            <span className={`pal-delta ${f.alcanza ? "si" : "no"}`}>{f.delta}</span>
+          </div>
+          <div className={`pal-verdict ${f.alcanza ? "si" : "no"}`}>{f.alcanza ? "✓" : "✕"}</div>
+          {(f.origen || f.razon) && (
+            <div className="pal-detail">
+              {f.origen && (
+                <>
+                  {f.origen}
+                  {f.destino && (
+                    <>
+                      <span className="pal-arrow">→</span>
+                      {f.destino}
+                    </>
+                  )}
+                </>
+              )}
+              {f.razon && (
+                <span className="pal-why">
+                  {f.origen ? " · " : ""}
+                  {f.razon}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+      {pie && <div className="pal-pie">{pie}</div>}
+    </div>
+  );
+}
+
+export type ZonaDial = { k: string; pct: number; tono: "buscar" | "ajusta" | "comprar" };
+export type BordeDial = { pos: number; delta: string; v: string; k: string; dir: "abajo" | "arriba" };
+
+/** Dial de veredicto: zonas + aguja del valor declarado + bordes con su delta.
+ *  Solo se pintan las zonas y los bordes que el caller puede posicionar con
+ *  datos reales: sin veredicto de destino NO hay corte (corrección 7). */
+export function Dial({
+  zonas,
+  marcaPct,
+  marcaK,
+  marcaV,
+  bordes,
+}: {
+  zonas: ZonaDial[];
+  marcaPct: number;
+  marcaK: string;
+  marcaV: string;
+  bordes: BordeDial[];
+}) {
+  const clamp = (n: number) => Math.max(0, Math.min(100, n));
+  return (
+    <div className="dial">
+      {/* Línea 1 · SOLO la marca (regla de etiquetas). */}
+      <div className="dial-marklbl" style={{ left: `${clamp(marcaPct)}%` }}>
+        <span className="k">{marcaK}</span>
+        <span className="v">{marcaV}</span>
+      </div>
+      <div className="dial-track">
+        {zonas.map((z, i) => (
+          <div key={i} className={`dial-zone ${z.tono}`} style={{ width: `${clamp(z.pct)}%` }}>
+            <span>{z.k}</span>
+          </div>
+        ))}
+      </div>
+      <div className="dial-mark" style={{ left: `${clamp(marcaPct)}%` }} />
+      {/* Línea 2 · SOLO los bordes, cada uno anclado a su lado. */}
+      {bordes.length > 0 && (
+        <div className="dial-edges">
+          {bordes.map((b, i) => (
+            <div key={i} className={`dial-edge ${b.dir}`} style={{ left: `${clamp(b.pos)}%` }}>
+              <span className="d">{b.delta}</span>
+              <span className="v">{b.v}</span>
+              <span className="k">{b.k}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export type SegComposicion = {
+  k: string;
+  sub?: string;
+  v: string;
+  pct: number;
+  tono: "pie" | "amort" | "plus" | "aporte";
+  /** Rayado: depende de una proyección, no de un contrato. */
+  proyectado?: boolean;
+};
+
+/** Barra de composición con llaves opcionales. Se usa SOLO cuando los segmentos
+ *  suman el total; cuando no suman (multiplicador < 1) el caller compara con
+ *  `Bars` en vez de forzar una composición que no cierra. */
+export function Composicion({
+  segmentos,
+  llaves,
+  total,
+}: {
+  segmentos: SegComposicion[];
+  llaves?: { k: string; pct: number }[];
+  total?: { k: string; v: string };
+}) {
+  const suma = segmentos.reduce((a, s) => a + Math.max(0, s.pct), 0) || 1;
+  return (
+    <div className="compo-wrap">
+      {llaves && llaves.length > 0 && (
+        <div className="compo-brackets">
+          {llaves.map((l, i) => (
+            <div key={i} className="compo-bracket" style={{ width: `${Math.max(0, Math.min(100, l.pct))}%` }}>
+              {l.k} · <b>{Math.round(l.pct)}%</b>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="compo-track">
+        {segmentos.map((s, i) => (
+          <div
+            key={i}
+            className={`compo-seg ${s.tono}${s.proyectado ? " proy" : ""}`}
+            style={{ width: `${(Math.max(0, s.pct) / suma) * 100}%` }}
+          />
+        ))}
+      </div>
+      <div className="compo-leg">
+        {segmentos.map((s, i) => (
+          <div key={i} className="compo-leg-row">
+            <span className={`compo-sw ${s.tono}${s.proyectado ? " proy" : ""}`} />
+            <span className="compo-k">
+              {s.k}
+              {s.sub && <small>{s.sub}</small>}
+            </span>
+            <span className="compo-v">{s.v}</span>
+          </div>
+        ))}
+      </div>
+      {total && (
+        <div className="compo-total">
+          <span className="k">{total.k}</span>
+          <span className="v">{total.v}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Barra de $100 con banda de referencia y corte marcado. `desborde` ⇒ el corte
+ *  real excede 100: la barra se corta en 100 y la cifra va afuera; nunca se
+ *  dibuja un segmento negativo. */
+export function Cien({
+  segmentos,
+  banda,
+  cortePct,
+  corteLabel,
+  desborde,
+}: {
+  segmentos: { k: string; v: string; sub?: string; pct: number; tono: "oper" | "com" | "util" }[];
+  banda?: { desde: number; hasta: number; label: string } | null;
+  cortePct: number;
+  corteLabel: string;
+  desborde?: boolean;
+}) {
+  const clamp = (n: number) => Math.max(0, Math.min(100, n));
+  const corte = clamp(cortePct);
+  // Regla de etiquetas: la banda ancla al borde MÁS LEJANO del corte, para que
+  // las dos se separen en vez de encimarse cuando el corte cae dentro o al lado.
+  const bandaIzq = banda ? clamp(banda.desde) : 0;
+  const bandaDer = banda ? clamp(banda.hasta) : 0;
+  const bandaAncla = banda && corte >= bandaDer ? "izq" : "der";
+  return (
+    <div className="cien">
+      {banda && (
+        <>
+          <div
+            className="cien-banda"
+            style={{ left: `${bandaIzq}%`, width: `${Math.max(0, bandaDer - bandaIzq)}%` }}
+          />
+          <div
+            className={`cien-banda-lbl ${bandaAncla}`}
+            style={bandaAncla === "izq" ? { left: `${bandaIzq}%` } : { left: `${bandaDer}%` }}
+          >
+            {banda.label}
+          </div>
+        </>
+      )}
+      <div className="cien-track">
+        {segmentos.map((s, i) => (
+          <div key={i} className={`cien-seg ${s.tono}`} style={{ width: `${clamp(s.pct)}%` }} />
+        ))}
+        {desborde && <div className="cien-desborde" />}
+      </div>
+      <div className="cien-corte" style={{ left: `${corte}%` }} />
+      <div className="cien-corte-lbl" style={{ left: `${corte}%` }}>
+        {corteLabel}
+      </div>
+      <div className="compo-leg">
+        {segmentos.map((s, i) => (
+          <div key={i} className="compo-leg-row">
+            <span className={`compo-sw ${s.tono}`} />
+            <span className="compo-k">
+              {s.k}
+              {s.sub && <small>{s.sub}</small>}
+            </span>
+            <span className="compo-v">{s.v}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export type FilaPar = { k: string; consecuencia: string; v: string; pct: number; destacada?: boolean };
+
+/** Par de barras con consecuencia: compara dos modos y muestra qué resulta de
+ *  cada uno. La consecuencia va arriba de la barra, nunca sobre el track. */
+export function ParBarras({ filas, cap }: { filas: FilaPar[]; cap?: ReactNode }) {
+  if (!filas.length) return null;
+  return (
+    <div className="par">
+      {cap && <div className="par-cap">{cap}</div>}
+      {filas.map((f, i) => (
+        <div key={i} className="par-row">
+          <div className="par-top">
+            <span className="par-k">{f.k}</span>
+            <span className="par-cons">{f.consecuencia}</span>
+          </div>
+          <div className="par-bar">
+            <div className="par-track">
+              <div
+                className={`par-fill${f.destacada ? " alta" : ""}`}
+                style={{ width: `${Math.max(0, Math.min(100, f.pct))}%` }}
+              />
+            </div>
+            <span className="par-v">{f.v}</span>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

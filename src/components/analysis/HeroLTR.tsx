@@ -210,7 +210,13 @@ export function HeroLTR({
           en la pirámide (franco-card-target + link mono al pie); cero primitivas nuevas.
           Qué abre depende del veredicto y el link SIEMPRE lo anuncia — la inconsistencia
           de destino no molesta si el label dice a dónde vas. */}
-      {cajaAccionable && (
+      {/* (b) FASE 4.1 — el bloque YA NO cuelga de `cajaAccionable`. Antes, si la IA no
+          producía caja accionable desaparecía el bloque entero y con él la ÚNICA puerta a
+          `distanciaVeredicto`, el cuerpo más denso del informe. Ahora la caja es una parte
+          opcional adentro: basta con que haya algo de posición que mostrar (la caja, el
+          destino, o ambos). Sin ninguno de los dos no hay bloque — ahí de verdad no hay
+          nada que decir ni a dónde ir. */}
+      {(cajaAccionable || posicionDrawer) && (
         <div className="px-6 md:px-8 pb-4">
           <div
             className={posicionDrawer ? "franco-card-target cursor-pointer" : undefined}
@@ -238,22 +244,39 @@ export function HeroLTR({
               : {})}
           >
             <div className="px-4 py-3.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
-                La posición de Franco
-              </span>
-              <div className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)]">
-                {renderPlumon(cajaAccionable)}
-              </div>
-              {posicionDrawer && (
-                /* Divisor en Signal Red al 20%: dentro de un bloque con wash rojo el
-                   hairline neutro se ve sucio. Único ajuste de token del cambio. */
-                <div
-                  className="mt-3 pt-2.5 flex justify-end"
-                  style={{ borderTop: "1px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}
-                >
-                  <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
-                    {posicionDrawer.label} →
+              {cajaAccionable ? (
+                <>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
+                    La posición de Franco
                   </span>
+                  <div className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)]">
+                    {renderPlumon(cajaAccionable)}
+                  </div>
+                  {posicionDrawer && (
+                    /* Divisor en Signal Red al 20%: dentro de un bloque con wash rojo el
+                       hairline neutro se ve sucio. Único ajuste de token del cambio. */
+                    <div
+                      className="mt-3 pt-2.5 flex justify-end"
+                      style={{ borderTop: "1px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}
+                    >
+                      <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
+                        {posicionDrawer.label} →
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Sin caja el bloque COLAPSA a una línea: label y destino en la misma fila.
+                   Dejar el divisor con el párrafo vacío en medio abría un hueco muerto. */
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)]">
+                    La posición de Franco
+                  </span>
+                  {posicionDrawer && (
+                    <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
+                      {posicionDrawer.label} →
+                    </span>
+                  )}
                 </div>
               )}
             </div>

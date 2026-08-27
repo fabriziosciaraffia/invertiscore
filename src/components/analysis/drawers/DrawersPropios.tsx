@@ -20,13 +20,31 @@ import type {
   HallazgoSobreprecio,
   HallazgoEstructuraFinanciamiento,
   HallazgoEstructuraCostosStr,
+  PalancaDistancia,
 } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { VProsa, VViz, VCierre, VFuente, Fall, type FallRow } from "@/components/analysis/hallazgos/vocabulario";
+import {
+  VProsa,
+  VViz,
+  VCierre,
+  VFuente,
+  Fall,
+  type FallRow,
+  Palancas,
+  type FilaPalanca,
+  Dial,
+  type ZonaDial,
+  type BordeDial,
+  Composicion,
+  type SegComposicion,
+  Bars,
+  Cien,
+  ParBarras,
+} from "@/components/analysis/hallazgos/vocabulario";
 
 // Proyección estándar Franco a futuro, como texto ("3%") — desde la constante, nunca literal.
 const PROYECCION_FRANCO_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
@@ -177,12 +195,27 @@ export function Decomp({ rows, net }: { rows: DecompRow[]; net?: { label: string
   );
 }
 
+/** Pie de diagrama (FASE 4.1) — el texto que DESCRIBE el gráfico de arriba deja de ser
+ *  una caja de cierre y pasa a colgar del diagrama, que es lo que explica. Nace de los
+ *  dos Box de 80/78 palabras de tir/retorno, que narraban en prosa el mismo waterfall
+ *  dibujado cinco líneas antes. */
+export function VizPie({ children }: { children: ReactNode }) {
+  return <div className="viz-pie">{children}</div>;
+}
+
 /**
- * Caja de cierre — pasa al CIERRE ÚNICO del vocabulario. El label decide la
- * pieza: "De dónde sale" es procedencia (VFuente), todo lo demás es cierre
- * (VCierre, cuyo título rota entre interpretación y acción). Cuando un cuerpo
- * heredado apila varios cierres, el CSS del acordeón degrada los previos y deja
- * el último como la caja — el cierre es uno.
+ * Caja de cierre — CIERRE ÚNICO del vocabulario. Cuando un cuerpo heredado apila
+ * varios cierres, el CSS del acordeón degrada los previos y deja el último como
+ * la caja: el cierre es uno.
+ *
+ * CORRECCIÓN 7 (FASE 4.1) — antes esto mapeaba por LABEL: un `Box` cuyo título
+ * empezara con "De dónde sale" se renderizaba como `VFuente`. El criterio era
+ * adivinatorio y se equivocaba en los tres únicos casos que lo activaban
+ * (plusvalía LTR ~106 palabras, plusvalía STR ~93, precio STR ~46): ninguno es
+ * una línea de procedencia, así que quedaban párrafos largos pintados de nota al
+ * pie. Con el regex muerto, `Box` es SIEMPRE cierre y `VFuente` se usa donde se
+ * declara de verdad — `Note` y las dos `procedenciaExtendida()` de capex y
+ * capRate, que sí son líneas.
  */
 export function Box({
   label,
@@ -195,13 +228,6 @@ export function Box({
   big?: string;
   children: ReactNode;
 }) {
-  if (/^de d[oó]nde sale/i.test(label)) {
-    return (
-      <VFuente>
-        {label} · {children}
-      </VFuente>
-    );
-  }
   return (
     <VCierre titulo={label}>
       {big && (
@@ -386,7 +412,7 @@ export function DrawerTIRLtr({
       )}
 
       {flujoResta ? (
-        <Box label="Qué significa">
+        <VizPie>
           Tu {pctStr(tirPct)} no viene de la caja — la caja <b>resta</b> {fmtCompact(Math.abs(flujoAcum), currency, valorUF)} en
           el camino, porque el arriendo no cubre la cuota todos los años. Lo levantan la plusvalía ({fmtCompact(plusvaliaProj, currency, valorUF)})
           y la amortización ({fmtCompact(amortizacion, currency, valorUF)}): juntas suman {fmtCompact(brutoSinFlujo, currency, valorUF)},
@@ -394,15 +420,15 @@ export function DrawerTIRLtr({
           sobre lo que queda al final —tras esa resta y los costos de vender—, no antes. Sin la resta de la caja,
           lo que terminas teniendo pasaría de <b>~{fmtCompact(net, currency, valorUF)} a ~{fmtCompact(netSinResta, currency, valorUF)}</b> — de{" "}
           {multStr(multActual)} a {multStr(multSinResta)} sobre lo que pusiste.
-        </Box>
+        </VizPie>
       ) : (
-        <Box label="Qué significa">
+        <VizPie>
           {cargaShare >= 50 ? "Más de la mitad" : `El grueso (${cargaShare}%)`} de tu retorno lo carga la{" "}
           <b>{carga.label.toLowerCase()}</b> ({fmtCompact(carga.value, currency, valorUF)}) — un supuesto a
           futuro, no plata en la mano. El arriendo que te queda ({fmtCompact(flujoAcum, currency, valorUF)}) y la
           deuda que amortizas ({fmtCompact(amortizacion, currency, valorUF)}) son más firmes: dependen de que el
           depto se arriende, no de que la comuna siga subiendo.
-        </Box>
+        </VizPie>
       )}
       {flujoResta ? (
         <Box label="Qué pasa si falla" tone="red">
@@ -426,6 +452,99 @@ export function DrawerTIRLtr({
 }
 
 // 2 · SENSIBILIDAD LTR — "cuánto aguanta tu veredicto" (KPI en positivo, capas separadas)
+// ═══════════ MATRIZ DE PALANCAS (FASE 4.1) ═══════════
+// Compartida por distanciaVeredicto LTR y STR.
+//
+// LO QUE EL MOTOR PERSISTE — y lo que por lo tanto se puede dibujar: `palancas` trae
+// SOLO las que cruzan dentro del tope de honestidad. Las que se probaron y NO alcanzan
+// no guardan su delta, así que se nombran sin magnitud en el pie de la matriz. En la
+// rama estructural `palancas` viene vacío y el único número real es
+// `deltaMinimoFueraDeTope`: una fila, marcada como que no alcanza.
+// (Persistir el delta de las que no cruzan es cambio de motor y tiene su propio goal.)
+
+/** Techo de plausibilidad del cost-stack STR (% del bruto). Sobre esto el dato es de
+ *  escala corrupta —el parque tiene un caso de 16.176%— y la barra de $100 no se dibuja:
+ *  darle forma de medición a un número roto es peor que no mostrarlo. Entre 100 y este
+ *  techo sí se dibuja, cortada en 100 y con marca de desborde. */
+const TECHO_COSTSTACK = 150;
+
+const NOMBRE_PALANCA: Record<string, string> = {
+  arriendo: "Arriendo mensual",
+  adr: "Tarifa por noche",
+  precio: "Precio de compra",
+  plazo: "Plazo del crédito",
+  pie: "Pie",
+  gestion: "Modo de gestión",
+};
+
+// Catálogo DETERMINISTA de razones — mismo criterio que los captions de cifraClave:
+// lo escribe el motor, nunca la IA.
+const RAZON_NO_ALCANZA: Record<string, string> = {
+  precio: "ese descuento no existe en el mercado",
+  arriendo: "ningún arriendo de la zona llega a ese nivel",
+  adr: "esa tarifa está sobre lo que paga el mercado",
+  plazo: "es el máximo del mercado y no basta",
+  pie: "aun poniendo más pie no cierra la brecha",
+  gestion: "ahorra, pero no cierra la brecha",
+};
+
+function textoPalanca(p: PalancaDistancia, currency: Currency, valorUF: number) {
+  const money = (n: number) => fmtMoney(n, currency, valorUF);
+  switch (p.palanca) {
+    case "plazo":
+      return { origen: `${Math.round(p.actual)} años`, destino: `${Math.round(p.objetivo)} años`, delta: `+${Math.round(p.deltaAbs)} años` };
+    case "pie":
+      // `deltaPct` en PUNTOS porcentuales (documentado en el tipo), no cambio relativo.
+      return { origen: `${pctStr(p.actual)}`, destino: `${pctStr(p.objetivo)}`, delta: `+${pctStr(Math.abs(p.deltaPct))} pts` };
+    case "gestion":
+      return {
+        origen: p.modoGestionObjetivo === "auto" ? "Administrador" : "Autogestión",
+        destino: p.modoGestionObjetivo === "auto" ? "autogestión" : "administrador",
+        delta: `−${pctStr(Math.abs(p.deltaPct))} comisión`,
+      };
+    case "precio":
+      // El precio viaja en UF; se muestra en la moneda activa.
+      return {
+        origen: money(p.actual * valorUF),
+        destino: money(p.objetivo * valorUF),
+        delta: `−${pctStr(Math.abs(p.deltaPct))}`,
+      };
+    default:
+      return { origen: money(p.actual), destino: money(p.objetivo), delta: `+${pctStr(Math.abs(p.deltaPct))}` };
+  }
+}
+
+function construirPalancas(
+  v: HallazgoDistanciaVeredicto["valor"],
+  currency: Currency,
+  valorUF: number,
+  esStr: boolean,
+): { filas: FilaPalanca[]; noProbadas: string[] } {
+  const filas: FilaPalanca[] = [];
+  if (v.esEstructural) {
+    const d = v.deltaMinimoFueraDeTope;
+    // Sin delta mínimo (5 filas del parque) NO hay matriz: el caller cae a prosa.
+    if (d) {
+      filas.push({
+        nombre: NOMBRE_PALANCA[d.palanca] ?? d.palanca,
+        delta: `${d.deltaPct < 0 ? "−" : "+"}${pctStr(Math.abs(d.deltaPct))}`,
+        alcanza: false,
+        razon: RAZON_NO_ALCANZA[d.palanca] ?? "queda fuera de lo razonable",
+      });
+    }
+    return { filas, noProbadas: [] };
+  }
+  for (const p of v.palancas) {
+    const t = textoPalanca(p, currency, valorUF);
+    filas.push({ nombre: NOMBRE_PALANCA[p.palanca] ?? p.palanca, delta: t.delta, alcanza: true, origen: t.origen, destino: t.destino });
+  }
+  const universo = esStr ? ["adr", "precio", "plazo", "gestion"] : ["arriendo", "precio", "plazo"];
+  if (v.pieEsPalanca) universo.push("pie");
+  const cruzaron = new Set(v.palancas.map((p) => p.palanca));
+  const noProbadas = universo.filter((p) => !cruzaron.has(p as PalancaDistancia["palanca"])).map((p) => (NOMBRE_PALANCA[p] ?? p).toLowerCase());
+  return { filas, noProbadas };
+}
+
 export function DrawerSensibilidadLtr({
   hallazgo,
   results,
@@ -447,7 +566,12 @@ export function DrawerSensibilidadLtr({
   const colchon = arriendo * margenFrac;
   const piso = arriendo * (1 - margenFrac);
   const base = v.veredictoBase;
-  const nuevo = v.veredictoNuevo ?? "AJUSTA SUPUESTOS";
+  // CORRECCIÓN 7 (FASE 4.1) — antes acá vivía `v.veredictoNuevo ?? "AJUSTA SUPUESTOS"`.
+  // Cuando el margen es `firme` el motor NO emite veredicto de destino (no cambia ni a
+  // −50%), y el fallback inventaba uno: la prosa afirmaba un cruce que nunca calculó y
+  // el dial habría dibujado un corte donde no hay ninguno. Sin destino real no hay
+  // corte y la prosa tampoco lo nombra (doctrina: no se fabrican estados).
+  const nuevo = v.veredictoNuevo;
   const arriendoStr = fmtMoney(arriendo, currency, valorUF);
   const pisoStr = fmtMoney(piso, currency, valorUF);
   const colchonStr = fmtMoney(colchon, currency, valorUF);
@@ -455,78 +579,117 @@ export function DrawerSensibilidadLtr({
   // muestra) y contra el corte del motor (v.corteFavorable), no un literal 15.
   const amplio = round1(v.marginPct) >= v.corteFavorable;
 
+  // ── BORDE DE ARRIBA ── solo es un punto DEL MISMO EJE cuando la palanca más barata
+  // es el arriendo. Si lo más barato es bajar el precio o estirar el plazo, ese borde
+  // existe pero vive en otro eje: se nombra en prosa y NO se dibuja en el dial.
+  const dist = results.hallazgos?.find(
+    (h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto",
+  );
+  const palancaArriba = dist && !dist.valor.esEstructural ? dist.valor.palancaMasBarata : null;
+  const objetivoArriba =
+    palancaArriba && dist ? (dist.valor.veredictoObjetivo === "COMPRAR" ? "COMPRAR" : "AJUSTA SUPUESTOS") : null;
+  const arribaEsArriendo = palancaArriba?.palanca === "arriendo" && (palancaArriba.objetivo ?? 0) > 0;
+  const arribaX = arribaEsArriendo ? (palancaArriba!.objetivo as number) : null;
+
+  // ── EJE DEL DIAL ── arriendo mensual. Los extremos se derivan de los puntos reales
+  // (piso, declarado y borde de arriba si aplica) con 8% de aire a cada lado, para que
+  // ninguna marca quede pegada al canto.
+  const puntos = [arriendo, piso, ...(arribaX ? [arribaX] : [])];
+  const ejeMin = Math.min(...puntos) * 0.92;
+  const ejeMax = Math.max(...puntos) * 1.08;
+  const pos = (x: number) => ((x - ejeMin) / (ejeMax - ejeMin)) * 100;
+
+  // ── ZONAS ── solo las que se pueden posicionar con datos del motor. `firme` ⇒ una
+  // sola zona (el veredicto no cambia en todo el rango probado).
+  const tonoDe = (ver: string): "buscar" | "ajusta" | "comprar" =>
+    ver === "BUSCAR OTRA" ? "buscar" : ver === "COMPRAR" ? "comprar" : "ajusta";
+  const zonas: ZonaDial[] = [];
+  const bordes: BordeDial[] = [];
+  if (v.firme || !nuevo) {
+    zonas.push({ k: base, pct: 100, tono: tonoDe(base) });
+  } else {
+    zonas.push({ k: nuevo, pct: pos(piso), tono: tonoDe(nuevo) });
+    const finBase = arribaX ? pos(arribaX) : 100;
+    zonas.push({ k: base, pct: finBase - pos(piso), tono: tonoDe(base) });
+    if (arribaX && objetivoArriba) zonas.push({ k: objetivoArriba, pct: 100 - finBase, tono: tonoDe(objetivoArriba) });
+    bordes.push({
+      pos: pos(piso),
+      delta: `−${pctStr(v.marginPct)}`,
+      v: pisoStr,
+      k: `y cae a ${nuevo}`,
+      dir: "abajo",
+    });
+    if (arribaX && objetivoArriba) {
+      bordes.push({
+        pos: pos(arribaX),
+        delta: `+${pctStr(Math.abs(palancaArriba!.deltaPct))}`,
+        v: fmtMoney(arribaX, currency, valorUF),
+        k: `y sube a ${objetivoArriba}`,
+        dir: "arriba",
+      });
+    }
+  }
+
   return (
     <div>
-      <Lead>
-        Tu veredicto es {base} con el arriendo que declaraste ({arriendoStr}). La pregunta honesta es cuánto
-        puede fallar ese número antes de que la conclusión cambie. El dial que probamos es el arriendo: lo
-        bajamos hasta que el veredicto se mueve.
-      </Lead>
+      <VProsa>
+        Bajamos el arriendo hasta que el veredicto se mueve: esto es lo que aguanta antes de cambiar
+        {arribaX ? " — y lo que le falta para subir" : ""}.
+      </VProsa>
 
-      <Box label="Cuánto aguanta">
-        <span style={{ fontSize: 15, lineHeight: 1.55 }}>
-          Tu arriendo puede caer hasta <b>{pisoStr}</b> —un <b>{pctStr(v.marginPct)} menos</b> que los{" "}
-          {arriendoStr} que declaraste— antes de que el veredicto pase de {base} a {nuevo}. Todo lo que quede por
-          encima de ese piso, aguanta.
-        </span>
-      </Box>
-
-      <Chips
-        label="Los tres números, por separado"
-        cells={[
-          { k: "Arriendo hoy", v: arriendoStr },
-          { k: "Piso antes de cambiar", v: pisoStr },
-          { k: "Colchón", v: colchonStr, tone: "pos", small: "/mes" },
-        ]}
-        foot={`Entre lo que declaraste y el piso hay ${colchonStr} al mes de holgura. Recién bajo ${pisoStr} el veredicto se movería a ${nuevo}.`}
-      />
-
-      <Box label="Qué significa">
-        {amplio
-          ? "Es un colchón amplio. Aunque te hayas pasado de optimista en el arriendo por un cuarto largo, la conclusión no se cae: tendrías que estar equivocado por casi un tercio para que "
-          : "El colchón es acotado. No hace falta mucho error en el arriendo para que "}
-        {base} deje de tenerse en pie. La decisión {amplio ? "no cuelga" : "cuelga bastante"} de que
-        el arriendo declarado sea exacto al peso.
-      </Box>
-      <Box label="Qué haces con esto">
-        {amplio
-          ? "Con este margen, no necesitas afinar el arriendo antes de decidir. Igual conviene validarlo con 2–3 publicaciones comparables de la zona — no para salvar el veredicto, sino para saber con qué flujo real vas a vivir mes a mes."
-          : "Antes de decidir, valida el arriendo con 2–3 publicaciones comparables de la zona: el veredicto es sensible a ese número, así que conviene apretarlo antes de firmar."}
-      </Box>
-
-      {/* Espejo bidireccional: hasta acá el drawer solo miró hacia ABAJO (cuánto puede
-          caer el arriendo antes de bajar de veredicto). Cuando existe el hallazgo de
-          distancia, el otro borde también tiene número y mostrar uno solo daría una
-          lectura sesgada — "aguanta 25%" suena holgado hasta que ves que el borde de
-          arriba está a 4,3%. En COMPRAR el hallazgo no se emite y este bloque no aparece. */}
-      {(() => {
-        const dist = results.hallazgos?.find(
-          (h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto",
-        );
-        if (!dist || dist.valor.esEstructural) return null;
-        const l = dist.valor.palancaMasBarata;
-        if (!l) return null;
-        const objetivo =
-          dist.valor.veredictoObjetivo === "COMPRAR" ? "COMPRAR" : "AJUSTA SUPUESTOS";
-        const haciaArriba =
-          l.palanca === "plazo"
-            ? `estirar el crédito a ${l.objetivo} años`
-            : l.palanca === "arriendo"
-              ? `un arriendo ${pctStr(Math.abs(l.deltaPct))} mayor`
-              : `un precio ${pctStr(Math.abs(l.deltaPct))} menor`;
-        const masCerca = Math.abs(l.deltaPct) < round1(v.marginPct);
-        return (
-          <Box label="Y hacia el otro lado">
-            <span style={{ fontSize: 15, lineHeight: 1.55 }}>
-              El arriendo tendría que caer <b>{pctStr(v.marginPct)}</b> para que esto baje a{" "}
-              {nuevo}, y basta <b>{haciaArriba}</b> para que suba a {objetivo}.{" "}
-              {masCerca
-                ? "Estás más cerca del borde de arriba que del de abajo: la conclusión de hoy es la más pesimista de las dos que tienes a mano."
-                : "El colchón hacia abajo es más ancho que la distancia hacia arriba, así que el veredicto de hoy es una lectura estable."}
+      <VViz t="Tu veredicto según el arriendo mensual">
+        <Dial
+          zonas={zonas}
+          marcaPct={pos(arriendo)}
+          marcaK="Declaraste"
+          marcaV={arriendoStr}
+          bordes={bordes}
+        />
+        {!v.firme && nuevo ? (
+          <div className="compo-total">
+            <span className="k">Colchón hasta el borde de abajo</span>
+            <span className="v">
+              {colchonStr}
+              <small>/mes</small>
             </span>
-          </Box>
-        );
-      })()}
+          </div>
+        ) : (
+          <div className="compo-total">
+            <span className="k">No hay borde dentro del rango probado</span>
+            <span className="v">{base}</span>
+          </div>
+        )}
+      </VViz>
+
+      {/* El borde de arriba existe pero NO es un punto de este eje (la palanca más
+          barata es el precio o el plazo, no el arriendo): se nombra, no se dibuja. */}
+      {palancaArriba && objetivoArriba && !arribaEsArriendo && (
+        <VProsa>
+          Hacia arriba la vía no es el arriendo:{" "}
+          {palancaArriba.palanca === "plazo"
+            ? `estirar el crédito a ${palancaArriba.objetivo} años`
+            : `un precio ${pctStr(Math.abs(palancaArriba.deltaPct))} menor`}{" "}
+          bastaría para llegar a {objetivoArriba}. Esa palanca se mide en su propio hallazgo.
+        </VProsa>
+      )}
+
+      {/* CIERRE ÚNICO — absorbe "Qué significa", "Qué haces con esto" y la lectura
+          bidireccional que antes eran tres cajas: el dial ya muestra las posiciones,
+          acá queda solo lo que el diagrama no puede decir. */}
+      <VCierre titulo="Qué significa">
+        {v.firme || !nuevo
+          ? `El veredicto aguanta todo el rango que probamos: ni con el arriendo a la mitad cambia la conclusión. `
+          : amplio
+            ? `Es un colchón amplio: el arriendo tendría que caer ${pctStr(v.marginPct)} para que ${base} deje de tenerse en pie, así que no necesitas afinar ese número antes de decidir. `
+            : `El colchón es acotado: basta que el arriendo caiga ${pctStr(v.marginPct)} para que ${base} deje de tenerse en pie, así que la decisión cuelga bastante de que el arriendo declarado sea exacto. `}
+        {palancaArriba && objetivoArriba && Math.abs(palancaArriba.deltaPct) < round1(v.marginPct)
+          ? "Estás más cerca del borde de arriba que del de abajo: la conclusión de hoy es la más pesimista de las dos que tienes a mano. "
+          : ""}
+        Igual conviene validarlo con 2–3 publicaciones comparables de la zona — no para salvar el veredicto,
+        sino para saber con qué flujo real vas a vivir mes a mes.
+      </VCierre>
+
+      <Note>Motor Franco · solo se mueve el arriendo; el resto de los supuestos queda fijo.</Note>
     </div>
   );
 }
@@ -546,123 +709,82 @@ export function DrawerDistanciaLtr({
   const v = hallazgo.valor;
   const base = v.veredictoBase;
   const objetivo = v.veredictoObjetivo;
+  const { filas, noProbadas } = construirPalancas(v, currency, valorUF, false);
+  const tienePlazo = v.palancas.some((l) => l.palanca === "plazo");
+  const tienePie = v.palancas.some((l) => l.palanca === "pie");
 
-  if (v.esEstructural) {
-    const dm = v.deltaMinimoFueraDeTope;
+  // ── ESTRUCTURAL SIN DELTA MÍNIMO ── no hay una sola magnitud real que dibujar
+  // (5 filas en todo el parque). La matriz no se inventa: queda la prosa.
+  if (v.esEstructural && filas.length === 0) {
     return (
       <div>
-        <Lead>
-          Tu veredicto es {base}. La pregunta honesta no es qué falta, sino si hay algo que
-          alcance: probamos {v.pieEsPalanca ? "subir el pie, " : ""}subir el arriendo, bajar el
-          precio y estirar el crédito, cada uno por su cuenta y hasta donde deja de ser un ajuste
-          para ser otro departamento.
-        </Lead>
-        <Box label="Qué encontramos" tone="red">
-          {dm ? (
-            <span style={{ fontSize: 15, lineHeight: 1.55 }}>
-              La vía menos exigente de las tres es{" "}
-              {dm.palanca === "precio" ? "bajar el precio" : "subir el arriendo"}, y aun así pide{" "}
-              <b>
-                {dm.deltaPct > 0 ? "+" : "−"}
-                {pctStr(Math.abs(dm.deltaPct))}
-              </b>{" "}
-              para que esto llegue a {objetivo}. Estirar el crédito a 30 años tampoco alcanza.
-            </span>
-          ) : (
-            <span style={{ fontSize: 15, lineHeight: 1.55 }}>
-              Ninguna de las tres llega, ni llevándolas a extremos que ya no son negociación:
-              arriendo al doble, precio a un tercio, crédito a 30 años.
-            </span>
-          )}
-        </Box>
-        <Box label="Qué significa">
-          La brecha no está en cómo estás mirando este depto — está en el depto. Ajustar supuestos
-          sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
-        </Box>
-        <Box label="Qué haces con esto">
-          {/* "Guarda el pie para el siguiente" no aplica sin pie: con financiamiento 100%
-              no hay capital guardado que reasignar (analysis-voice-franco §1.11.1). */}
-          {v.piePctActual === 0
-            ? "Sigue buscando: lo que no cuadra acá es el depto, y con financiamiento 100% no tienes colchón para absorberlo. Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te cuentes que los números dan."
-            : "Guarda el pie para el siguiente. Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te cuentes que los números dan."}
-        </Box>
+        <VProsa>
+          Tu veredicto es {base}. Probamos las vías una por una y ninguna llega a {objetivo}, ni
+          llevándolas a extremos que ya no son negociación: arriendo al doble, precio a un tercio,
+          crédito a 30 años.
+        </VProsa>
+        <VCierre titulo="Qué significa">
+          La brecha no está en cómo estás mirando este depto — está en el depto. Ajustar supuestos sirve
+          cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
+        </VCierre>
       </div>
     );
   }
 
-  const cells = v.palancas.map((l) => {
-    if (l.palanca === "plazo") {
-      return { k: "Plazo del crédito", v: `${l.objetivo} años`, small: `desde ${l.actual}` };
-    }
-    // El pie se muestra como NIVEL, no como variación: su deltaPct viene en puntos
-    // porcentuales y con pie 0 un "+26%" se leería como aumento sobre cero.
-    if (l.palanca === "pie") {
-      return {
-        k: "Pie",
-        v: `${pctStr(l.objetivo)}`,
-        small: l.actual > 0 ? `desde ${pctStr(l.actual)}` : "hoy sin pie",
-      };
-    }
-    const valor =
-      l.palanca === "arriendo"
-        ? fmtMoney(l.objetivo, currency, valorUF)
-        : `UF ${Math.round(l.objetivo).toLocaleString("es-CL")}`;
-    return {
-      k: l.palanca === "arriendo" ? "Arriendo mensual" : "Precio de cierre",
-      v: valor,
-      small: `${l.deltaPct > 0 ? "+" : "−"}${pctStr(Math.abs(l.deltaPct))}`,
-    };
-  });
-  const tienePlazo = v.palancas.some((l) => l.palanca === "plazo");
-  const tienePie = v.palancas.some((l) => l.palanca === "pie");
-
   return (
     <div>
-      <Lead>
-        Tu veredicto es {base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a{" "}
-        {objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.
-      </Lead>
+      <VProsa>
+        {v.esEstructural
+          ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: probamos las palancas una por una, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
+          : `Tu veredicto es ${base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`}
+      </VProsa>
 
-      <Chips
-        label="Las vías, una por una"
-        cells={cells}
-        foot={
-          // "La única que no depende de negociar" deja de ser cierto cuando el pie también
-          // es vía: las dos dependen de ti y no del vendedor. Con ambas, lo que las separa
-          // es el capital — el plazo no te cuesta plata hoy, el pie sí.
-          tienePlazo && tienePie
-            ? "El pie y el plazo son las dos que no dependen de negociar con el vendedor ni de que el mercado de arriendo te acompañe. Se diferencian en el bolsillo: el pie te cuesta capital hoy, el plazo no —alarga la deuda y pagas más intereses en total."
-            : tienePlazo
-              ? "Estirar el plazo es la única que no depende de negociar con el vendedor ni de que el mercado de arriendo te acompañe: alarga la deuda y pagas más intereses en total, pero no te cuesta capital hoy."
-              : "Cada valor es el punto exacto donde el veredicto cambia, moviendo esa variable y dejando el resto igual."
-        }
-      />
+      <VViz t={`Qué pediría cada palanca para llegar a ${objetivo}`}>
+        <Palancas
+          filas={filas}
+          pie={
+            v.esEstructural
+              ? "Es la vía menos exigente de todas las que probamos, y aun así queda fuera de rango. Las demás piden más."
+              : noProbadas.length > 0
+                ? `Probamos también ${noProbadas.join(", ")}: ninguna cruza dentro de lo razonable.`
+                : undefined
+          }
+        />
+      </VViz>
 
-      <Box label="Qué significa">
-        Que el veredicto no está lejos no lo vuelve un buen negocio por sí solo — lo vuelve un
-        negocio que depende de una condición concreta y verificable, en vez de una intuición.
-      </Box>
-      <Box label="Qué haces con esto">
-        {v.palancas[0]?.palanca === "pie"
-          ? "Esta no se negocia con nadie: es plata tuya contra menos crédito. Antes de descartar el depto, confirma con el banco cuánto baja la cuota con ese pie y si tienes la liquidez sin quedarte sin colchón."
-          : v.palancas[0]?.palanca === "precio"
-            ? "Llévalo a la mesa: la diferencia está en rango de negociación, no en otro departamento. Si el vendedor no baja, ya sabes exactamente cuánto te separa."
-            : "Antes de descartarlo, confirma ese techo de arriendo contra 2–3 publicaciones comparables de la zona. Si el mercado lo da, la decisión se toma sola."}
-      </Box>
+      {/* CIERRE ÚNICO — el "qué haces con esto" por palanca dominante, que es la
+          pregunta que queda cuando la matriz ya mostró los números. */}
+      <VCierre titulo={v.esEstructural ? "Qué significa" : "Qué haces con esto"}>
+        {v.esEstructural ? (
+          <>
+            La brecha no está en cómo estás mirando este depto — está en el depto. Ajustar supuestos sirve
+            cuando el número está cerca; acá el esfuerzo que pide es de otro orden.{" "}
+            {v.piePctActual === 0
+              ? "Sigue buscando: con financiamiento 100% no tienes colchón para absorberlo."
+              : "Guarda el pie para el siguiente."}{" "}
+            Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te
+            cuentes que los números dan.
+          </>
+        ) : v.palancas[0]?.palanca === "pie" ? (
+          "Esta no se negocia con nadie: es plata tuya contra menos crédito. Antes de descartar el depto, confirma con el banco cuánto baja la cuota con ese pie y si tienes la liquidez sin quedarte sin colchón."
+        ) : v.palancas[0]?.palanca === "precio" ? (
+          "Llévalo a la mesa: la diferencia está en rango de negociación, no en otro departamento. Si el vendedor no baja, ya sabes exactamente cuánto te separa."
+        ) : (
+          "Antes de descartarlo, confirma ese techo de arriendo contra 2–3 publicaciones comparables de la zona. Si el mercado lo da, la decisión se toma sola."
+        )}
+      </VCierre>
+
       {v.pieExcluidoPorBono && (
-        <Box label="Por qué el pie no aparece acá">
-          Tu pie lo cubre la inmobiliaria: subirlo no es una palanca, es deshacer el trato que
-          estás evaluando. Por eso las vías de arriba son el precio y el arriendo — y con el pie
-          cubierto, el precio se mira con más dureza, porque alguien está pagando ese bono.
-        </Box>
+        <VProsa>
+          El pie no aparece entre las vías porque lo cubre la inmobiliaria: subirlo no es una palanca, es
+          deshacer el trato que estás evaluando. Con el pie cubierto, el precio se mira con más dureza,
+          porque alguien está pagando ese bono.
+        </VProsa>
       )}
+
       <Note>
-        {/* La nota enumera SOLO lo que quedó fuera. Decir "el pie no entra acá" mientras el
-            pie es la primera vía de la tabla de arriba era una contradicción directa. */}
         {[
-          tienePlazo
-            ? "El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen."
-            : null,
+          tienePlazo ? "El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen." : null,
           tienePie
             ? "La tasa no entra acá: es condición del banco, no del depto."
             : "El pie y la tasa no entran acá: son condiciones de tu bolsillo y del banco, no del depto.",
@@ -709,23 +831,104 @@ export function DrawerPatrimonioLtr({
     (results.projections ?? []).slice(0, aniosPlazo).filter((p) => p.flujoAnual < 0).length * 12;
   const bolsilloMes = mesesNegativos > 0 ? bolsillo / mesesNegativos : 0;
 
+  // ── COMPOSICIÓN DEL EQUITY (FASE 4.1) ──────────────────────────────────────
+  // Identidad del motor, verificada contra el parque (808 filas con datos completos,
+  // desvío máximo $0):  equityCLP = pie + amortización + (plusvalía − comisión de venta).
+  // Dos consecuencias que mandan sobre el diagrama:
+  //  · el residuo NO es "plusvalía proyectada" a secas — trae descontada la comisión de
+  //    venta, así que se rotula por lo que es (rotularlo "plusvalía" sería falso);
+  //  · los aportes mensuales NO forman parte del equity (viven en `totalAportado`), así
+  //    que no son un segmento de esta barra: se muestran aparte, que es su lugar.
+  const pieCLP = m?.pieCLP ?? 0;
+  const comisionVenta = exit?.comisionVenta ?? 0;
+  const plusvaliaNeta = patrimonio - pieCLP - amortizacion;
+  // La composición solo se dibuja si CIERRA: todos los tramos ≥ 0 sobre un total > 0.
+  const composicionCierra = patrimonio > 0 && pieCLP >= 0 && amortizacion >= 0 && plusvaliaNeta >= 0;
+  // Multiplicador < 1 ⇒ terminas con menos de lo que pusiste: una barra de composición
+  // no puede expresar eso (los segmentos suman el equity, no lo aportado). Ahí se
+  // comparan los dos totales en vez de forzar una composición que no dice lo que pasa.
+  const terminaAbajo = mult < 1;
+  const segmentos: SegComposicion[] = [
+    {
+      k: "Pie",
+      sub: "lo que desembolsaste el día 1",
+      v: fmtMoney(pieCLP, currency, valorUF),
+      pct: pieCLP,
+      tono: "pie",
+    },
+    {
+      k: "Deuda que amortizó el arriendo",
+      sub: "firme: sale del contrato, no de una proyección",
+      v: fmtMoney(amortizacion, currency, valorUF),
+      pct: amortizacion,
+      tono: "amort",
+    },
+    {
+      k: "Plusvalía proyectada, neta de comisión de venta",
+      sub: `depende de que la comuna suba · ya descontados ${fmtMoney(comisionVenta, currency, valorUF)} de corretaje`,
+      v: fmtMoney(plusvaliaNeta, currency, valorUF),
+      pct: plusvaliaNeta,
+      tono: "plus",
+      proyectado: true,
+    },
+  ];
+  const pctTuyo = patrimonio > 0 ? (pieCLP / patrimonio) * 100 : 0;
+
   return (
     <div>
-      <Lead>
+      <VProsa>
         El depto vale una cosa; lo tuyo es esa cifra menos la deuda que aún le debes al banco. A {aniosPlazo}{" "}
-        años, tras vender y saldar el crédito, esto es lo que te queda en la mano frente a lo que fuiste
-        poniendo.
-      </Lead>
+        años, tras vender y saldar el crédito, esto es lo que te queda en la mano — y de dónde salió cada peso.
+      </VProsa>
 
-      <Chips
-        label="Lo tuyo vs lo que pusiste"
-        cells={[
-          { k: "Tu parte", v: fmtMoney(patrimonio, currency, valorUF) },
-          { k: "Aportaste", v: fmtMoney(aportado, currency, valorUF) },
-          { k: "Multiplicador", v: multStr(mult), tone: mult >= 2 ? "pos" : "plain" },
-        ]}
-        foot={`${fmtMoney(patrimonio, currency, valorUF)} contra los ${fmtMoney(aportado, currency, valorUF)} que pusiste entre pie, gastos y aportes del camino.`}
-      />
+      {composicionCierra && !terminaAbajo ? (
+        <VViz t={`De dónde salen tus ${fmtCompact(patrimonio, currency, valorUF)}`}>
+          <Composicion
+            segmentos={segmentos}
+            llaves={[
+              { k: "Lo pusiste tú", pct: pctTuyo },
+              { k: "Lo puso el negocio", pct: 100 - pctTuyo },
+            ]}
+            total={{ k: `Tu parte a ${aniosPlazo} años`, v: fmtMoney(patrimonio, currency, valorUF) }}
+          />
+        </VViz>
+      ) : (
+        /* Multiplicador < 1: los segmentos suman el equity, no lo aportado — una barra de
+           composición no puede decir "terminas con menos de lo que pusiste". Se comparan
+           los dos totales, que es exactamente lo que pasa. */
+        <VViz t="Lo que pusiste contra lo que te queda">
+          <Bars
+            rows={[
+              {
+                k: "Pusiste",
+                v: fmtMoney(aportado, currency, valorUF),
+                pct: aportado >= patrimonio ? 100 : (aportado / Math.max(patrimonio, 1)) * 100,
+              },
+              {
+                k: `Te queda a ${aniosPlazo} años`,
+                v: fmtMoney(patrimonio, currency, valorUF),
+                pct: patrimonio >= aportado ? 100 : (patrimonio / Math.max(aportado, 1)) * 100,
+                destacada: terminaAbajo,
+              },
+            ]}
+          />
+        </VViz>
+      )}
+
+      {/* Los aportes mensuales NO están en el equity (viven en `totalAportado`): van
+          fuera de la barra, nombrados como lo que son. */}
+      {bolsillo > 0 && (
+        <div className="compo-total" style={{ marginBottom: 18 }}>
+          <span className="k">Y aportaste de tu bolsillo en el camino</span>
+          <span className="v">{fmtMoney(bolsillo, currency, valorUF)}</span>
+        </div>
+      )}
+      {!v.sinCapitalPropio && (
+        <div className="compo-total" style={{ marginBottom: 18, borderTopWidth: 1 }}>
+          <span className="k">Multiplicas lo que pusiste por</span>
+          <span className="v">{multStr(mult)}</span>
+        </div>
+      )}
 
       {/* COMPRA EN VERDE (rama flujo-copy-preentrega): el gráfico de patrimonio ya muestra
           el salto de la espera sin explicarlo — este Box lo nombra. Doble guard: el valor
@@ -755,31 +958,24 @@ export function DrawerPatrimonioLtr({
         );
       })()}
 
-      {selfLiquidating ? (
-        <Box label="La deuda que se paga sola">
-          En estos {aniosPlazo} años amortizas <b>{fmtCompact(amortizacion, currency, valorUF)}</b> del crédito —
-          y acá el arriendo la paga entera por ti: como el flujo te queda a favor todos los años, no pusiste un
-          peso extra para bajar la deuda. Eso es apalancamiento sano: el inquilino te construye patrimonio
-          mientras tú no aportas de tu bolsillo.
-        </Box>
-      ) : (
-        <Box label="La deuda no se paga sola del todo" tone="red">
-          El arriendo amortiza <b>{fmtCompact(amortizacion, currency, valorUF)}</b> del crédito, pero no alcanza a
-          cubrir toda la cuota: pusiste <b>{fmtCompact(bolsillo, currency, valorUF)}</b> de tu bolsillo en el
-          camino
-          {mesesNegativos > 0 && (
-            <> (unos {fmtMoney(bolsilloMes, currency, valorUF)} al mes durante los años de flujo negativo)</>
-          )}
-          . La deuda baja, sí, pero en parte la pagas tú, no solo el inquilino.
-        </Box>
-      )}
-      <Box label="Qué significa">
-        {mult >= 2
-          ? `Multiplicas por ${dec1(mult).replace(",0", "")} lo que pusiste, apalancado por dos motores: la deuda que el arriendo amortiza y la plusvalía proyectada. `
-          : `Terminas con más de lo que pusiste (${multStr(mult)}), pero el margen es acotado y buena parte se apoya en la plusvalía proyectada. `}
-        La parte que depende de que la comuna suba la ves en detalle en el drawer de plusvalía — acá lo que
-        importa es de dónde sale tu parte y cuánto de eso ya es firme.
-      </Box>
+      {/* CIERRE ÚNICO — la barra ya muestra el reparto y las magnitudes; acá queda lo
+          que el diagrama no puede decir: qué parte es firme y qué parte es apuesta. */}
+      <VCierre titulo="Qué significa">
+        {terminaAbajo
+          ? `Terminas con menos de lo que pusiste (${multStr(mult)}): en el horizonte proyectado el negocio no alcanza a devolverte el capital. `
+          : pctTuyo < 50
+            ? `Más de la mitad de tu parte no salió de tu bolsillo: la puso el arriendo amortizando deuda y la plusvalía. `
+            : `La mayor parte de tu parte la pusiste tú: el pie pesa más que lo que aportaron el arriendo y la plusvalía juntos. `}
+        Ojo con el reparto: la amortización es firme —sale del contrato— y la plusvalía es proyección.
+        {selfLiquidating
+          ? ` Además, acá el arriendo paga la cuota entera: no pusiste un peso extra para bajar la deuda.`
+          : ` Y la deuda no se paga sola del todo: en los años de flujo negativo pusiste ${fmtCompact(bolsillo, currency, valorUF)} de tu bolsillo${mesesNegativos > 0 ? ` (unos ${fmtMoney(bolsilloMes, currency, valorUF)} al mes)` : ""}.`}
+      </VCierre>
+
+      <Note>
+        Motor Franco · valor de venta a {aniosPlazo} años menos deuda remanente y comisión · la plusvalía se
+        detalla en su propio hallazgo.
+      </Note>
     </div>
   );
 }
@@ -1163,7 +1359,7 @@ export function DrawerTIRStr({
 
       <Decomp rows={rows} net={{ label: "Suma de los tres, en bruto", value: fmtCompact(bruto, currency, valorUF) }} />
 
-      <Box label="Qué significa">
+      <VizPie>
         {flujoResta ? (
           <>
             Tu {pctStr(tirPct)} no viene de la caja — la caja <b>resta</b> {fmtCompact(Math.abs(flujo), currency, valorUF)} en
@@ -1181,7 +1377,7 @@ export function DrawerTIRStr({
             retorno con base operativa, no solo de valorización.
           </>
         )}
-      </Box>
+      </VizPie>
       <Box label="Qué pasa si falla" tone="red">
         Si la comuna no se aprecia, el {pctStr(tirPct)} se desploma: te quedas apoyado {flujoResta ? "solo en la amortización, con una caja que ya es negativa" : "en la amortización y una caja ajustada"}. A
         diferencia de una renta larga sana, este retorno depende fuerte de un supuesto a futuro — vale entrarle
@@ -1228,21 +1424,42 @@ export function DrawerPatrimonioStr({
 
   return (
     <div>
-      <Lead>
+      <VProsa>
         El depto vale una cosa; lo tuyo es esa cifra menos la deuda que aún le debes al banco. A {anios}{" "}
         años, tras vender y saldar el crédito, esto es lo que te queda en la mano frente a lo que fuiste
         poniendo.
-      </Lead>
+      </VProsa>
 
-      <Chips
-        label="Lo tuyo vs lo que pusiste"
-        cells={[
-          { k: "Tu parte", v: fmtMoney(patrimonio, currency, valorUF) },
-          { k: "Aportaste", v: fmtMoney(aportado, currency, valorUF) },
-          { k: "Multiplicador", v: multStr(mult), tone: mult >= 2 ? "pos" : mult < 1 ? "red" : "plain" },
-        ]}
-        foot={`${fmtMoney(patrimonio, currency, valorUF)} contra los ${fmtMoney(aportado, currency, valorUF)} que pusiste entre pie, gastos y aportes del camino.`}
-      />
+      {/* HERENCIA PARCIAL del diagrama de patrimonio LTR — medido, no supuesto. La barra de
+          COMPOSICIÓN no se puede portar a STR por tres razones del shape persistido:
+           · `metrics.pieCLP` no existe en STR (210/210 filas) ⇒ falta el primer segmento;
+           · el equity STR incorpora `flujoAcumuladoAlVender`, negativo en 173 de 210 ⇒ el
+             segmento sería negativo y la barra no cerraría;
+           · la identidad no es estable entre filas: 168 cierran SIN el flujo acumulado y 39
+             CON él, o sea hay dos convenciones conviviendo en lo ya persistido.
+          Queda la comparación de dos totales, que sí es afirmable con estos datos y es la
+          misma forma aprobada para el caso multiplicador < 1 en LTR. */}
+      <VViz t="Lo que pusiste contra lo que te queda">
+        <Bars
+          rows={[
+            {
+              k: "Pusiste",
+              v: fmtMoney(aportado, currency, valorUF),
+              pct: aportado >= patrimonio ? 100 : (aportado / Math.max(patrimonio, 1)) * 100,
+            },
+            {
+              k: `Te queda a ${anios} años`,
+              v: fmtMoney(patrimonio, currency, valorUF),
+              pct: patrimonio >= aportado ? 100 : (patrimonio / Math.max(aportado, 1)) * 100,
+              destacada: mult < 1,
+            },
+          ]}
+        />
+        <div className="compo-total" style={{ marginTop: 10 }}>
+          <span className="k">Multiplicas lo que pusiste por</span>
+          <span className="v">{multStr(mult)}</span>
+        </div>
+      </VViz>
 
       {selfLiquidating ? (
         <Box label="La deuda que se paga sola">
@@ -1433,27 +1650,95 @@ export function DrawerEstructuraCostosStr({
   const strAuto = results.comparativa?.str_auto;
   const strAdmin = results.comparativa?.str_admin;
   const gestionComparable = !!strAuto && !!strAdmin;
+  // Reparto real sobre el bruto (no el redondeo de `seVa`, que es el total mostrado).
+  const pctOper = (costosOp / bruto) * 100;
+  const pctCom = (comision / bruto) * 100;
+  const comisionMax = Math.max(strAuto?.comisionMensual ?? 0, strAdmin?.comisionMensual ?? 0);
 
   return (
     <div>
-      <Lead>
+      <VProsa>
         De cada $100 que entran por noches arrendadas, una parte se va en operar el depto antes de que veas un
         peso de utilidad. Cuánto se va decide si el corto respira o no.
-      </Lead>
+      </VProsa>
 
-      <Chips
-        label="De cada $100 brutos"
-        cells={[
-          { k: "Se va en costos", v: `$${seVa}`, tone: dentroDeVara ? "plain" : "red" },
-          { k: "Vara típica", v: `$${v.bandaFavPct}–$${v.bandaAdvPct}` },
-          { k: "Queda operativo", v: `$${queda}` },
-        ]}
-        foot={`Sobre ${fmtMoney(bruto, currency, valorUF)} brutos al mes: ${fmtMoney(costosOp, currency, valorUF)} de operación (aseo, servicios, insumos) + ${fmtMoney(comision, currency, valorUF)} de comisión.`}
-      />
+      {/* TECHO DE PLAUSIBILIDAD — con un costStack sobre 150 el dato es de escala corrupta
+          (el parque tiene un caso de 16.176%): dibujar una barra de $100 le daría apariencia
+          de medición a un número roto. El techo es paliativo de RENDER, no arregla el dato:
+          la calidad de ese input se mira aparte. */}
+      {seVa > TECHO_COSTSTACK ? (
+        <VProsa>
+          El desglose de costos de este análisis da {seVa}% del ingreso bruto, una cifra que no es plausible
+          para una renta corta: hay un problema en los datos de entrada, no en el negocio. No mostramos el
+          reparto hasta poder verificarlo.
+        </VProsa>
+      ) : (
+        <VViz t="De cada $100 brutos que factura al mes">
+          <Cien
+            segmentos={[
+              {
+                k: "Operación",
+                sub: "aseo, servicios, insumos",
+                v: `$${Math.round(pctOper)}`,
+                pct: pctOper,
+                tono: "oper",
+              },
+              {
+                k: "Comisión de gestión",
+                sub: gestionComparable && strAuto ? "administrándolo tú" : undefined,
+                v: `$${Math.round(pctCom)}`,
+                pct: pctCom,
+                tono: "com",
+              },
+              ...(queda > 0
+                ? [
+                    {
+                      k: "Queda operativo",
+                      sub: "antes del dividendo",
+                      v: `$${queda}`,
+                      pct: queda,
+                      tono: "util" as const,
+                    },
+                  ]
+                : []),
+            ]}
+            banda={{ desde: v.bandaFavPct, hasta: v.bandaAdvPct, label: `vara típica $${v.bandaFavPct}–$${v.bandaAdvPct}` }}
+            cortePct={Math.min(seVa, 100)}
+            corteLabel={`$${seVa}`}
+            desborde={seVa >= 100}
+          />
+        </VViz>
+      )}
 
-      <Box label="Qué significa">
-        {seVa}% está {dentroDeVara ? "dentro de lo típico" : "sobre la vara típica"} para una renta corta — {dentroDeVara ? "no es acá donde se rompe el deal" : "acá sí hay grasa que recortar"}.
-        {/* FIX-4 · matriz 2×2 (vara × flujo) */}
+      {/* Segundo diagrama: la palanca de gestión. Sin los dos escenarios NO se dibuja
+          (el guard ya existía) — no se mezclan fuentes para completar una comparación. */}
+      {gestionComparable && strAuto && strAdmin && (
+        <VViz t="La única palanca real: quién administra">
+          <ParBarras
+            cap="Comisión mensual · y el flujo que resulta"
+            filas={[
+              {
+                k: "Lo administras tú",
+                consecuencia: `${fmtMoneySigned(strAuto.flujoCajaMensual, currency, valorUF)}/mes`,
+                v: fmtMoney(strAuto.comisionMensual, currency, valorUF),
+                pct: comisionMax > 0 ? (strAuto.comisionMensual / comisionMax) * 100 : 0,
+              },
+              {
+                k: "Administrador profesional",
+                consecuencia: `${fmtMoneySigned(strAdmin.flujoCajaMensual, currency, valorUF)}/mes`,
+                v: fmtMoney(strAdmin.comisionMensual, currency, valorUF),
+                pct: comisionMax > 0 ? (strAdmin.comisionMensual / comisionMax) * 100 : 0,
+                destacada: true,
+              },
+            ]}
+          />
+        </VViz>
+      )}
+
+      <VCierre titulo="Qué significa">
+        {seVa <= TECHO_COSTSTACK
+          ? `${seVa}% está ${dentroDeVara ? "dentro de lo típico" : "sobre la vara típica"} para una renta corta — ${dentroDeVara ? "no es acá donde se rompe el deal" : "acá sí hay grasa que recortar"}.`
+          : "Con el desglose en duda, lo único afirmable es el flujo del escenario base."}
         {flujoHoy < 0
           ? dentroDeVara
             ? " El problema del flujo negativo viene de la ocupación y la cuota, no de costos inflados. Cada punto que bajes de comisión o servicios va directo a tu bolsillo, pero no esperes que un recorte de costos dé vuelta el mes."
@@ -1461,17 +1746,12 @@ export function DrawerEstructuraCostosStr({
           : dentroDeVara
             ? " Cada punto que bajes de comisión o servicios va directo a tu bolsillo."
             : " Los costos están sobre la vara: recortarlos mejora directo tu bolsillo — es la palanca más limpia acá."}
-      </Box>
-      {gestionComparable && (
-        <Box label="La única palanca real: cómo lo gestionas">
-          La diferencia grande no está en los insumos, está en quién administra. Gestionándolo tú, el flujo es{" "}
-          <b>{fmtMoneySigned(strAuto.flujoCajaMensual, currency, valorUF)}/mes</b>. Con administrador profesional, la
-          comisión sube de {fmtMoney(strAuto.comisionMensual, currency, valorUF)} a{" "}
-          {fmtMoney(strAdmin.comisionMensual, currency, valorUF)} y el flujo cae a{" "}
-          <b>{fmtMoneySigned(strAdmin.flujoCajaMensual, currency, valorUF)}/mes</b>. En un corto tan apretado, tercerizar
-          la gestión se come la operación: si no vas a administrarlo tú, los números no dan.
-        </Box>
-      )}
+        {gestionComparable && strAuto && strAdmin
+          ? ` Y la gestión sí mueve la aguja: tercerizarla se come ${fmtMoney(Math.abs(strAdmin.comisionMensual - strAuto.comisionMensual), currency, valorUF)} al mes.`
+          : ""}
+      </VCierre>
+
+      <Note>Motor Franco · sobre {fmtMoney(bruto, currency, valorUF)} brutos al mes en el escenario base.</Note>
     </div>
   );
 }
@@ -1498,144 +1778,96 @@ export function DrawerDistanciaStr({
   const base = v.veredictoBase;
   const objetivo = v.veredictoObjetivo;
 
-  if (v.esEstructural) {
-    const dm = v.deltaMinimoFueraDeTope;
-    return (
-      <div>
-        <Lead>
-          Tu veredicto es {base}. La pregunta honesta no es qué falta, sino si hay algo que
-          alcance: probamos {v.pieEsPalanca ? "subir el pie, " : ""}bajar el precio, subir la
-          tarifa por noche, cambiar el modo de gestión y estirar el crédito, cada uno por su
-          cuenta y hasta donde deja de ser un ajuste para ser otro departamento.
-        </Lead>
-        <Box label="Qué encontramos" tone="red">
-          {dm ? (
-            <span style={{ fontSize: 15, lineHeight: 1.55 }}>
-              La vía menos exigente es{" "}
-              {dm.palanca === "precio" ? "bajar el precio" : "subir la tarifa por noche"}, y aun
-              así pide{" "}
-              <b>
-                {dm.deltaPct > 0 ? "+" : "−"}
-                {pctStr(Math.abs(dm.deltaPct))}
-              </b>{" "}
-              para llegar a {objetivo}. Estirar el crédito a 30 años tampoco alcanza.
-            </span>
-          ) : (
-            <span style={{ fontSize: 15, lineHeight: 1.55 }}>
-              Ninguna llega, ni llevándolas a extremos que ya no son negociación: tarifa al
-              doble, precio a un tercio, crédito a 30 años.
-            </span>
-          )}
-        </Box>
-        <Box label="Qué significa">
-          La brecha no está en cómo estás mirando este departamento — está en el departamento.
-          Ajustar supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de
-          otro orden.
-        </Box>
-        <Box label="Qué haces con esto">
-          {v.piePctActual === 0
-            ? "Sigue buscando: lo que no cuadra acá es el departamento, y con financiamiento 100% no tienes colchón para absorberlo. Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te cuentes que los números dan."
-            : "Guarda el pie para el siguiente. Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te cuentes que los números dan."}
-        </Box>
-      </div>
-    );
-  }
-
-  const cells = v.palancas.map((l) => {
-    if (l.palanca === "plazo") {
-      return { k: "Plazo del crédito", v: `${l.objetivo} años`, small: `desde ${l.actual}` };
-    }
-    // Pie y gestión se muestran como NIVEL, no como variación: sus deltas vienen en puntos
-    // porcentuales y un "+26%" se leería como aumento relativo sobre el valor de hoy.
-    if (l.palanca === "pie") {
-      return {
-        k: "Pie",
-        v: pctStr(l.objetivo),
-        small: l.actual > 0 ? `desde ${pctStr(l.actual)}` : "hoy sin pie",
-      };
-    }
-    if (l.palanca === "gestion") {
-      return {
-        k: "Modo de gestión",
-        v: l.modoGestionObjetivo === "auto" ? "Lo gestionas tú" : "Con administrador",
-        small: `comisión ${pctStr(l.objetivo)} en vez de ${pctStr(l.actual)}`,
-      };
-    }
-    const valor =
-      l.palanca === "adr"
-        ? fmtMoney(l.objetivo, currency, valorUF)
-        : `UF ${Math.round(l.objetivo).toLocaleString("es-CL")}`;
-    return {
-      k: l.palanca === "adr" ? "Tarifa por noche" : "Precio de cierre",
-      v: valor,
-      small: `${l.deltaPct > 0 ? "+" : "−"}${pctStr(Math.abs(l.deltaPct))}`,
-    };
-  });
+  const { filas, noProbadas } = construirPalancas(v, currency, valorUF, true);
   const tieneAdr = v.palancas.some((l) => l.palanca === "adr");
   const tienePlazo = v.palancas.some((l) => l.palanca === "plazo");
   const tieneGestion = v.palancas.some((l) => l.palanca === "gestion");
   const tienePie = v.palancas.some((l) => l.palanca === "pie");
   const primera = v.palancas[0]?.palanca;
 
+  // ── ESTRUCTURAL SIN DELTA MÍNIMO ── ni una magnitud real que dibujar (2 filas STR
+  // en el parque). No se inventa matriz: queda la prosa.
+  if (v.esEstructural && filas.length === 0) {
+    return (
+      <div>
+        <VProsa>
+          Tu veredicto es {base}. Probamos las vías una por una y ninguna llega a {objetivo}, ni
+          llevándolas a extremos que ya no son negociación: tarifa al doble, precio a un tercio, crédito a
+          30 años.
+        </VProsa>
+        <VCierre titulo="Qué significa">
+          La brecha no está en cómo estás mirando este departamento — está en el departamento. Ajustar
+          supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
+        </VCierre>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <Lead>
-        {v.esPuroGate ? (
-          <>
-            Tu puntaje ya da para {objetivo}: lo que retiene el veredicto en {base} no son
-            puntos, es que la operación todavía no cierra. Estas son las vías que la dan
-            vuelta, cada una por su cuenta: no se suman, cualquiera alcanza.
-          </>
-        ) : (
-          <>
-            Tu veredicto es {base} y está cerca del borde de arriba. Estas son las vías que lo
-            cruzan a {objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.
-          </>
-        )}
-      </Lead>
+      <VProsa>
+        {v.esEstructural
+          ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: probamos las palancas una por una, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
+          : v.esPuroGate
+            ? `Tu puntaje ya da para ${objetivo}: lo que retiene el veredicto en ${base} no son puntos, es que la operación todavía no cierra. Estas son las vías que la dan vuelta, cada una por su cuenta: no se suman, cualquiera alcanza.`
+            : `Tu veredicto es ${base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`}
+      </VProsa>
 
-      <Chips
-        label="Las vías, una por una"
-        cells={cells}
-        foot={
-          tieneGestion
-            ? "Cambiar el modo de gestión es la única que no te cuesta plata ni depende de nadie más: es la misma propiedad con otra estructura de comisión."
-            : tienePlazo
-              ? "Estirar el plazo es la única que no depende de negociar con el vendedor ni de que la zona rinda más: alarga la deuda y pagas más intereses en total, pero no te cuesta capital hoy."
-              : "Cada valor es el punto exacto donde el veredicto cambia, moviendo esa variable y dejando el resto igual."
-        }
-      />
+      <VViz t={`Qué pediría cada palanca para llegar a ${objetivo}`}>
+        <Palancas
+          filas={filas}
+          pie={
+            v.esEstructural
+              ? "Es la vía menos exigente de todas las que probamos, y aun así queda fuera de rango. Las demás piden más."
+              : noProbadas.length > 0
+                ? `Probamos también ${noProbadas.join(", ")}: ninguna cruza dentro de lo razonable.`
+                : tieneGestion
+                  ? "Cambiar el modo de gestión es la única que no te cuesta plata ni depende de nadie más: es la misma propiedad con otra estructura de comisión."
+                  : undefined
+          }
+        />
+      </VViz>
 
-      {/* La tarifa NO es un supuesto que se corrige: es una apuesta contra la zona. Este
-          bloque existe para que no se lea como una palanca más de la tabla. */}
-      {tieneAdr && (
-        <Box label="Ojo con la tarifa" tone="red">
-          La tarifa de referencia no es un supuesto nuestro: sale de lo que se cobra realmente
-          alrededor. Pedirte que la superes no es ajustar un número optimista, es apostar a que
-          vas a rendir sobre la mediana de tu zona. Se puede —mejores fotos, calendario bien
-          manejado, respuesta rápida—, pero es trabajo tuyo sostenido, no un dato que cambia.
-        </Box>
+      {/* La tarifa NO es un supuesto que se corrige: es una apuesta contra la zona. Prosa
+          legítima — no hay diagrama que diga esto, y sin ella la tarifa se lee como una
+          palanca más de la matriz. */}
+      {tieneAdr && !v.esEstructural && (
+        <VProsa>
+          Ojo con la tarifa: la de referencia no es un supuesto nuestro, sale de lo que se cobra realmente
+          alrededor. Pedirte que la superes no es ajustar un número optimista, es apostar a que vas a rendir
+          sobre la mediana de tu zona. Se puede —mejores fotos, calendario bien manejado, respuesta rápida—,
+          pero es trabajo tuyo sostenido, no un dato que cambia.
+        </VProsa>
       )}
 
-      <Box label="Qué significa">
-        Que el veredicto no esté lejos no lo vuelve un buen negocio por sí solo — lo vuelve un
-        negocio que depende de una condición concreta y verificable, en vez de una intuición.
-      </Box>
-      <Box label="Qué haces con esto">
-        {primera === "pie"
-          ? "Esta no se negocia con nadie: es plata tuya contra menos crédito. Antes de descartar el departamento, confirma con el banco cuánto baja la cuota con ese pie y si tienes la liquidez sin quedarte sin colchón."
-          : primera === "gestion"
-            ? "Esta la decides tú y no cuesta capital. Antes de moverla, mira qué estás entregando a cambio: gestionar tú significa responder huéspedes, coordinar aseo y sostener el calendario todas las semanas."
-            : primera === "precio"
-              ? "Llévalo a la mesa: la diferencia está en rango de negociación, no en otro departamento. Si el vendedor no baja, ya sabes exactamente cuánto te separa."
-              : "Antes de decidir, mira qué se cobra hoy por noche en propiedades comparables de tu zona. Si tu departamento no tiene con qué diferenciarse, esa tarifa es una apuesta y no un plan."}
-      </Box>
+      <VCierre titulo={v.esEstructural ? "Qué significa" : "Qué haces con esto"}>
+        {v.esEstructural ? (
+          <>
+            La brecha no está en cómo estás mirando este departamento — está en el departamento. Ajustar
+            supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.{" "}
+            {v.piePctActual === 0
+              ? "Sigue buscando: con financiamiento 100% no tienes colchón para absorberlo."
+              : "Guarda el pie para el siguiente."}{" "}
+            Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te
+            cuentes que los números dan.
+          </>
+        ) : primera === "pie" ? (
+          "Esta no se negocia con nadie: es plata tuya contra menos crédito. Antes de descartar el departamento, confirma con el banco cuánto baja la cuota con ese pie y si tienes la liquidez sin quedarte sin colchón."
+        ) : primera === "gestion" ? (
+          "Esta la decides tú y no cuesta capital. Antes de moverla, mira qué estás entregando a cambio: gestionar tú significa responder huéspedes, coordinar aseo y sostener el calendario todas las semanas."
+        ) : primera === "precio" ? (
+          "Llévalo a la mesa: la diferencia está en rango de negociación, no en otro departamento. Si el vendedor no baja, ya sabes exactamente cuánto te separa."
+        ) : (
+          "Antes de decidir, mira qué se cobra hoy por noche en propiedades comparables de tu zona. Si tu departamento no tiene con qué diferenciarse, esa tarifa es una apuesta y no un plan."
+        )}
+      </VCierre>
+
       {v.pieExcluidoPorBono && (
-        <Box label="Por qué el pie no aparece acá">
-          Tu pie lo cubre la inmobiliaria: subirlo no es una palanca, es deshacer el trato que
-          estás evaluando. Por eso las vías de arriba son el precio y la operación — y con el
-          pie cubierto, el precio se mira con más dureza, porque alguien está pagando ese bono.
-        </Box>
+        <VProsa>
+          El pie no aparece entre las vías porque lo cubre la inmobiliaria: subirlo no es una palanca, es
+          deshacer el trato que estás evaluando. Con el pie cubierto, el precio se mira con más dureza,
+          porque alguien está pagando ese bono.
+        </VProsa>
       )}
       <Note>
         {[

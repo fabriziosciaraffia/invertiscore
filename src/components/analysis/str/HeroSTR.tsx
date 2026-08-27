@@ -1,6 +1,7 @@
 "use client";
 
-
+import { useRef } from "react";
+import { usePostHog } from "posthog-js/react";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
@@ -113,6 +114,30 @@ export function HeroSTR({
       : null;
   const posicionClickeable = posicionDrawer != null && onOpenDrawer != null;
 
+  // (c) FASE 4.1 — la apertura de la posición de Franco se mide también en STR. El evento
+  // existía solo en LTR, así que el 55% del parque abría `distanciaVeredicto` —el cuerpo
+  // más denso del informe— sin dejar rastro. Mismo nombre, mismo shape y mismo disparo
+  // único por montaje que HeroLTR, para que las dos series se lean juntas.
+  const posthog = usePostHog();
+  const posicionMedida = useRef(false);
+  const abrirPosicion = () => {
+    if (!posicionMedida.current) {
+      posicionMedida.current = true;
+      try {
+        posthog?.capture("informe_posicion_abierta", { veredicto: v, tipo: "str", destino: posicionDrawer?.key });
+      } catch {
+        /* la telemetría jamás rompe la lectura */
+      }
+      if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+        (window.__informeEvents ??= []).push({
+          name: "informe_posicion_abierta",
+          props: { veredicto: v, tipo: "str", destino: posicionDrawer?.key },
+        });
+      }
+    }
+    if (posicionDrawer) onOpenDrawer?.(posicionDrawer.key);
+  };
+
   // POR QUÉ NO CIERRA — los motivos que decidieron el veredicto, cuando lo decidió un
   // gate y no la banda del score. Sin esto, en 12 de 96 análisis el lector ve un score
   // que no explica su veredicto (el peor: 59 con BUSCAR OTRA) y no tiene dónde
@@ -186,7 +211,10 @@ export function HeroSTR({
       </div>
 
       {/* ═══ POSICIÓN DE FRANCO — full-width, ambas columnas (A5) · isNeutro preservado ═══ */}
-      {cajaAccionable && (
+      {/* (b) FASE 4.1 — el bloque ya no cuelga de `cajaAccionable`: sin caja seguía habiendo
+          destino, y perderlo cerraba la única puerta a `distanciaVeredicto`. La caja pasa a
+          ser opcional adentro; el bloque existe si hay algo de posición que mostrar. */}
+      {(cajaAccionable || posicionClickeable) && (
         <div className="px-6 md:px-8 pb-4">
           <div
             style={{
@@ -209,7 +237,7 @@ export function HeroSTR({
                 {posicionClickeable && (
                   <button
                     type="button"
-                    onClick={() => onOpenDrawer!(posicionDrawer!.key)}
+                    onClick={abrirPosicion}
                     className="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em] font-semibold underline underline-offset-2 decoration-dotted hover:opacity-70 transition-opacity"
                     style={{ color: isNeutro ? "var(--franco-text-secondary)" : "var(--signal-red)" }}
                   >
@@ -217,12 +245,16 @@ export function HeroSTR({
                   </button>
                 )}
               </div>
-              <p
-                className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text)] m-0"
-                style={{ fontStyle: isNeutro ? "normal" : "italic" }}
-              >
-                {plumonInline(cajaAccionable)}
-              </p>
+              {/* Sin caja el bloque queda en su fila de arriba (label + destino), que ya es
+                  una línea: no hay párrafo vacío que deje hueco. */}
+              {cajaAccionable && (
+                <p
+                  className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text)] m-0"
+                  style={{ fontStyle: isNeutro ? "normal" : "italic" }}
+                >
+                  {plumonInline(cajaAccionable)}
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -21,7 +21,7 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
-import { VProsa, VViz, VCierre, VFuente, Thermo, Fall } from "@/components/analysis/hallazgos/vocabulario";
+import { VProsa, VViz, VCierre, VFuente, Thermo, Fall, type FallRow } from "@/components/analysis/hallazgos/vocabulario";
 import {
   DrawerTIRLtr,
   DrawerSensibilidadLtr,
@@ -249,7 +249,10 @@ function DrawerCostoMensual({
               k: r.name,
               v: `−${fmt(r.value)}`,
               pct: r.value,
-              tone: i === 0 ? "neutral" : i === 1 ? "warn" : i === 2 ? "muted" : "red",
+              tone: (i === 0 ? "neutral" : i === 1 ? "warn" : i === 2 ? "muted" : "red") as FallRow["tone"],
+              // CORRECCIÓN 5 — el mapeo al waterfall descartaba `tooltip` y se perdían las
+              // glosas de cada egreso (contribuciones, provisión de mantención, etc.).
+              tip: r.tooltip ? <InfoTooltip content={r.tooltip} /> : undefined,
             }))}
           total={{
             k: isNeg ? "Sale de tu bolsillo" : "Te queda cada mes",
