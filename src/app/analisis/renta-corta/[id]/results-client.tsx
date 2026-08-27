@@ -16,7 +16,7 @@
  * ProCTABanner) gestionan el upgrade.
  */
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePostHog } from "posthog-js/react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
@@ -37,14 +37,16 @@ import { HeroSTR } from "@/components/analysis/str/HeroSTR";
 import { StateBox } from "@/components/ui/StateBox";
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
-import { PiramideHallazgosSTR, ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
+import { ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
+import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
+import { findingDisplay } from "@/components/analysis/GenericFindingCard";
+import { anchorHallazgo, numeroHallazgo } from "@/lib/orden-hallazgos";
 import { EjesAplicadosSTR } from "@/components/analysis/str/EjesAplicadosSTR";
 import { DrawerSTR, type DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
 import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/DrawerContentSTR";
 import { ZonaCardSTR } from "@/components/analysis/str/ZonaCardSTR";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import type { AIAnalysisSTRv2, HallazgoDistanciaVeredicto } from "@/lib/types";
-import { stripMarcasDeep } from "@/lib/prosa-marcas";
 import { derivarCifraClaveStr } from "@/lib/cifra-clave";
 import { buildFichaStr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
@@ -269,14 +271,9 @@ export function STRResultsClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Render tolerante FASE 2 (rediseño Dictamen): la prosa v7 trae marcas de
-  // destacador `**…**` que la UI actual no pinta — se strippean UNA vez acá (un
-  // solo punto para hero + drawers; nunca `**` crudos). FASE 4 reemplaza este
-  // strip por el render con plumón, acá mismo.
-  const aiParaRender = useMemo(
-    () => (aiAnalysis ? stripMarcasDeep(aiAnalysis) : null),
-    [aiAnalysis],
-  );
+  // FASE 4: la prosa llega CRUDA (con `**…**`) — el plumón se pinta en los
+  // puntos de render. El strip sobrevive SOLO en /documento (el PDF no cambia).
+  const aiParaRender = aiAnalysis;
 
   // ─── Datos derivados ──────────────────────────────
   // Commit E.0 (2026-05-13): eliminado fallback `score ?? 50`. Análisis legacy
@@ -348,6 +345,33 @@ export function STRResultsClient({
       ? ""
       : d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
   })();
+  // ═══ FILAS DEL ACORDEÓN (FASE 4) ═══ el cuerpo es DrawerContentSTR, que ya
+  // era solo-cuerpo (el shell DrawerSTR aportaba el chrome que ahora muere).
+  const filasHallazgosStr: FilaHallazgo[] = hallazgosOrdenadosSTR.map((h, i) => {
+    const d = findingDisplay(h, currency, ufValue);
+    const key = HALLAZGO_DRAWER_STR[h.id];
+    return {
+      id: h.id,
+      numero: numeroHallazgo(i),
+      pregunta: d.title || h.titular,
+      valor: d.kpi,
+      valorRojo: d.kpiRed,
+      anchorId: anchorHallazgo(h),
+      cuerpo: key ? (
+        <DrawerContentSTR
+          activeKey={key}
+          analysisId={analysisId}
+          results={results}
+          inputData={inputData as never}
+          comuna={comuna}
+          currency={currency}
+          valorUF={ufValue}
+          ai={aiParaRender as never}
+        />
+      ) : null,
+    };
+  });
+
   const scrollASimulacion = () => {
     document.getElementById("simulacion-interactiva-str")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -459,6 +483,10 @@ export function STRResultsClient({
           }
           onAjustarSupuestos={scrollASimulacion}
         />
+        {/* ═══ CUERPO — grilla con el ísotipo f. sticky en el margen (solo PC) ═══ */}
+        <div className="doc-cuerpo">
+        <div className="doc-cuerpo-margen" aria-hidden="true"><div className="doc-fmark">f.</div></div>
+        <div className="min-w-0">
         {/* I-3 fix FASE 1: STR nunca emitió `hero` (solo LTR/comparativa) — el
             embudo por modalidad quedaba cojo al revés que piramide/zona. */}
         <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
@@ -518,48 +546,53 @@ export function STRResultsClient({
           </>
         )}
 
-        {/* EL DETALLE — Pirámide de hallazgos STR. Orden Filosofía 1 sobre
-            results.hallazgos. E.2: la pirámide ES el detalle; sus cards abren los
-            drawers (HALLAZGO_DRAWER_STR) que antes colgaban del grid muerto. */}
+        {/* ═══ LOS HALLAZGOS — acordeón (FASE 4, mockup v12) ═══ */}
         <MarcaSeccion seccion="piramide" tipo="str" accessLevel={accessLevel} />
-        <PiramideHallazgosSTR
-          hallazgos={results.hallazgos}
-          currency={currency}
-          valorUF={ufValue}
-          onOpenDrawer={setActiveDrawer}
-        />
-        <div style={{ height: 24 }} />
-
-        {/* F2-2 — CTA contextual "siguiente análisis" (copy A): cierre de los
-            hallazgos, antes de la Advanced Section. */}
-        <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
-        <NextAnalysisCTA {...nextCtaProps} />
-        <div style={{ height: 24 }} />
+        <HallazgosAcordeon tipo="str" total={filasHallazgosStr.length} filas={filasHallazgosStr} />
 
         {/* ESCENARIOS Y PROYECCIÓN (07-10). La prosa ai.largoPlazo dejó de ir inline
             (str-paridad2) y ahora vive en su drawer "A 10 años", abierto desde una
             afordance en la columna Patrimonio (fuera de la secuencia de pirámide, como
             ZonaCardSTR→tipoHuesped). Solo se pasa el handler si hay prosa. */}
+        <section className="doc-capitulo" id="simulacion-interactiva-str">
+        <div className="doc-cap-eyebrow">La simulación</div>
         <MarcaSeccion seccion="advanced" tipo="str" accessLevel={accessLevel} />
-        <div id="simulacion-interactiva-str">
+        <div>
         <AdvancedSectionSTR
           results={results}
           currency={currency}
           valorUF={ufValue}
           forceOpen={false}
-          onOpenLargoPlazo={
-            (aiParaRender as unknown as AIAnalysisSTRv2 | null)?.largoPlazo?.contenido?.trim()
-              ? () => setActiveDrawer("largoPlazo")
-              : undefined
-          }
         />
         </div>
+        {/* (a) FASE 4.1 · EL ANÁLISIS A 10 AÑOS — espejo exacto del LTR
+            (SubjectCardGrid: "el juicio del horizonte, en su lugar"). Antes su única
+            puerta era `onOpenLargoPlazo`, un afordance dentro de AdvancedSectionSTR que
+            abría el overlay: quedaba detrás del gate del simulador y a dos clics. Como
+            cuerpo del capítulo se lee sin abrir nada, igual que en renta larga.
+            No es fila del acordeón a propósito: no tiene hallazgo ni valor que poner en
+            la columna derecha — fabricárselo sería inventar. */}
+        {(aiParaRender as unknown as AIAnalysisSTRv2 | null)?.largoPlazo?.contenido?.trim() && (
+          <div className="mt-5">
+            <div className="doc-cap-sub">El análisis a 10 años</div>
+            <DrawerContentSTR
+              activeKey="largoPlazo"
+              analysisId={analysisId}
+              results={results}
+              inputData={inputData as never}
+              comuna={comuna}
+              currency={currency}
+              valorUF={ufValue}
+              ai={aiParaRender as never}
+            />
+          </div>
+        )}
+        </section>
 
-        {/* gap — Simulación → Zona */}
-        <div style={{ height: 24 }} />
-
-        {/* ZONA (destino) — card recesiva. E.2: la ex-card 06 "Tipo de huésped"
+        {/* ═══ CAPÍTULO · La zona ═══ card recesiva. E.2: la ex-card 06 "Tipo de huésped"
             se reancla acá (E.1a), abre el drawer tipoHuesped. */}
+        <section className="doc-capitulo">
+        <div className="doc-cap-eyebrow">La zona</div>
         <MarcaSeccion seccion="zona" tipo="str" accessLevel={accessLevel} />
         <ZonaCardSTR
           lat={(inputData?.lat as number) ?? ((inputData?.zonaRadio as { lat?: number } | undefined)?.lat) ?? null}
@@ -567,6 +600,9 @@ export function STRResultsClient({
           comuna={comuna}
           onOpen={() => setActiveDrawer("tipoHuesped")}
         />
+        </section>
+        </div>
+        </div>
         </DocumentoFrame>
 
         {/* CTA post-análisis welcome — banda inline al cierre del informe +
@@ -594,6 +630,11 @@ export function STRResultsClient({
               isSharedView={isSharedView}
               source="str_v2"
             />
+
+            {/* CTA contextual — FUERA del documento (FASE 4). */}
+            <div style={{ height: 16 }} />
+            <MarcaSeccion seccion="next_cta" tipo="str" accessLevel={accessLevel} />
+            <NextAnalysisCTA {...nextCtaProps} />
 
             {/* Wallet status */}
             <div style={{ height: 16 }} />

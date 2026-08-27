@@ -1,11 +1,10 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useRef } from "react";
+import { usePostHog } from "posthog-js/react";
+import { renderPlumon } from "./hallazgos/plumon";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { ordenarHallazgosPiramide } from "./PiramideHallazgos";
-import { IndiceRow } from "./IndiceHallazgos";
-import { numeroHallazgo } from "@/lib/orden-hallazgos";
 import { describirMotivosLTR } from "@/lib/no-cierra-copy";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 
@@ -26,7 +25,6 @@ export function HeroLTR({
   onOpenDrawer,
   veredicto,
   results,
-  valorUF,
   createdAt,
   fechaProsa,
   prosaError,
@@ -71,39 +69,44 @@ export function HeroLTR({
     (currency === "CLP" ? conviene?.respuestaDirecta_clp : conviene?.respuestaDirecta_uf) ?? null;
   const cajaAccionable =
     (currency === "CLP" ? conviene?.cajaAccionable_clp : conviene?.cajaAccionable_uf) ?? null;
+  // FNOTE por CURADURÍA (decisión b del PARÁ 0): la nota al margen no es un campo
+  // IA nuevo — es la primera oración de una cajaAccionable que la prosa YA trae, y
+  // se elige la de costoMensual (la más cercana al bolsillo). Si mide más de ~18
+  // palabras no se muestra: una nota larga deja de ser nota.
+  const fnote = (() => {
+    const fuente = (currency === "CLP" ? data?.costoMensual?.cajaAccionable_clp : data?.costoMensual?.cajaAccionable_uf) ?? "";
+    const primera = fuente.split(/(?<=[.?!])\s/)[0]?.trim() ?? "";
+    const palabras = (primera.match(/\S+/g) || []).length;
+    return primera && palabras <= 18 ? primera : null;
+  })();
   // veredictoFrase (schema.conviene) ya no se renderiza en el hero compacto — la
   // prosa fundida lo dice. El campo sigue en el schema (Entrega 2 decide su destino).
   const pregunta = conviene?.pregunta || "¿Conviene o no conviene?";
   // ÍNDICE del informe: los primeros 3 del ORDEN ÚNICO — el MISMO array que renderiza
   // la pirámide (fuente única: ordenarHallazgosPiramide). El hero los numera 01-03 y
   // cada fila ancla a su card; la pirámide continúa la numeración.
-  const ordenados = ordenarHallazgosPiramide(results, data);
-  const topHallazgos = ordenados.slice(0, 3);
-  const restantes = Math.max(0, ordenados.length - topHallazgos.length);
   // Goal E.2 — la apertura estática del 01 MURIÓ (confundía: parecía prosa
   // cortada, no prosa creciendo — decisión post-deploy). El slot en carga es
   // ProgresoGeneracion: skeleton didáctico con stepper + barra conservadora +
   // rango honesto. Contrato: mockup-hero-skeleton-didactico.html.
 
-  // Destino del drawer de la posición de Franco, por veredicto:
-  //  · no-COMPRAR con hallazgo de distancia → "Lo que te separa" (las vías, o por qué no
-  //    cierra si es estructural). El label distingue: prometer "vías" donde no las hay
-  //    sería el mismo error que ya se corrigió en el kicker de la card.
-  //  · COMPRAR → "Margen del veredicto". Acá la pregunta que sigue no es qué falta sino
-  //    cuánto aguanta antes de dejar de convenir, y ese drawer ya existe (sensibilidad se
-  //    emite en todo COMPRAR). Decisión de Fabrizio en el gate del mockup.
+  // CTA contextual de la posición de Franco — por VEREDICTO (contrato FASE 2 §4),
+  // no por qué hallazgo exista: BUSCAR OTRA → "Por qué no cierra" · AJUSTA → "Ver
+  // las vías" · COMPRAR → "Qué verificar antes de firmar". El destino sigue siendo
+  // el drawer de distancia (o sensibilidad en COMPRAR), que es donde vive la
+  // respuesta; lo que se fija es el LABEL, que antes prometía cosas distintas
+  // según el inventario de hallazgos.
   const hallazgosRow = (results?.hallazgos ?? []) as Hallazgo[];
   const distanciaRow = hallazgosRow.find((h) => h.id === "distancia_veredicto");
+  const CTA_POR_VEREDICTO: Record<string, string> = {
+    "BUSCAR OTRA": "Por qué no cierra",
+    "AJUSTA SUPUESTOS": "Ver las vías",
+    COMPRAR: "Qué verificar antes de firmar",
+  };
   const posicionDrawer: { key: DrawerKey; label: string } | null = distanciaRow
-    ? {
-        key: "distanciaVeredicto",
-        label:
-          distanciaRow.id === "distancia_veredicto" && distanciaRow.valor.esEstructural
-            ? "Por qué no cierra"
-            : "Ver las vías",
-      }
+    ? { key: "distanciaVeredicto", label: CTA_POR_VEREDICTO[veredicto] ?? "Ver el detalle" }
     : hallazgosRow.some((h) => h.id === "sensibilidad")
-      ? { key: "sensibilidad", label: "Ver el margen" }
+      ? { key: "sensibilidad", label: CTA_POR_VEREDICTO[veredicto] ?? "Ver el margen" }
       : null;
   // POR QUÉ NO CIERRA (LTR) — puerto del patrón STR (§1.12.8): la glosa de los
   // motivos que decidieron el veredicto, SOLO cuando lo decidió un gate y no la
@@ -118,6 +121,28 @@ export function HeroLTR({
     gate2Capo,
   );
   const fechaFirma = formatFecha(fechaProsa ?? createdAt);
+
+  // Evento propio de la posición de Franco: su apertura NO es un hallazgo (la
+  // distancia al veredicto está excluida de la pirámide por diseño), así que
+  // colgaba de `informe_drawer_abierto` sin par de hallazgo — el falso hueco que
+  // Claude chat cazó en la línea base. Ahora tiene su propia serie.
+  const posthog = usePostHog();
+  const posicionMedida = useRef(false);
+  const abrirPosicion = () => {
+    if (posicionMedida.current) return;
+    posicionMedida.current = true;
+    try {
+      posthog?.capture("informe_posicion_abierta", { veredicto, tipo: "ltr", destino: posicionDrawer?.key });
+    } catch {
+      /* la telemetría jamás rompe la lectura */
+    }
+    if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+      (window.__informeEvents ??= []).push({
+        name: "informe_posicion_abierta",
+        props: { veredicto, tipo: "ltr", destino: posicionDrawer?.key },
+      });
+    }
+  };
 
   // FASE 3 rediseño Dictamen: F1 (identidad+toggle), F2/F3 (chips, score 48px,
   // gauge, badge, mapa) MURIERON — la portada nueva (PortadaInforme) los absorbe:
@@ -151,7 +176,8 @@ export function HeroLTR({
           {/* A3: alineación izquierda (no justificado), ~65ch, 14-15px */}
           {respuesta ? (
             <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
-              {renderProsaMono(respuesta)}
+              {renderPlumon(respuesta)}
+              {fnote && <p className="doc-fnote">{fnote}</p>}
             </div>
           ) : prosaError ? (
             /* Error de generación inline: el hero (veredicto/score/índice) sigue
@@ -177,39 +203,20 @@ export function HeroLTR({
           )}
         </div>
 
-        {/* ÍNDICE — primeros 3 del orden único, numerados y clickeables (ancla a su card) */}
-        <div>
-          {topHallazgos.length > 0 && (
-            <>
-              <div className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text)] mb-2.5">
-                Léelo en este orden ↓
-              </div>
-              {topHallazgos.map((h, i) => (
-                <IndiceRow key={h.id} rank={numeroHallazgo(i)} h={h} currency={currency} valorUF={valorUF} />
-              ))}
-              {restantes > 0 && (
-                <div className="font-body text-[11.5px] text-[var(--franco-text-muted)] mt-2">
-                  …y {restantes} hallazgos más, abajo, en el mismo orden.
-                </div>
-              )}
-              {/* Puente a la pirámide (veredictoFrase ya no se renderiza) */}
-              <div className="mt-3 pt-2.5 border-t border-[var(--franco-border)]">
-                <span className="block font-mono text-[10.5px] uppercase tracking-[0.05em] text-[var(--franco-text-tertiary)]">
-                  Cómo pesa cada hallazgo ↓
-                </span>
-              </div>
-            </>
-          )}
-        </div>
       </div>
-
       {/* ═══ POSICIÓN DE FRANCO — full-width, ambas columnas (A5) ═══
           Gana affordance de drawer: es donde vive la salida del análisis, así que es el
           lugar natural para abrir el detalle. Reusa el lenguaje que el usuario ya aprendió
           en la pirámide (franco-card-target + link mono al pie); cero primitivas nuevas.
           Qué abre depende del veredicto y el link SIEMPRE lo anuncia — la inconsistencia
           de destino no molesta si el label dice a dónde vas. */}
-      {cajaAccionable && (
+      {/* (b) FASE 4.1 — el bloque YA NO cuelga de `cajaAccionable`. Antes, si la IA no
+          producía caja accionable desaparecía el bloque entero y con él la ÚNICA puerta a
+          `distanciaVeredicto`, el cuerpo más denso del informe. Ahora la caja es una parte
+          opcional adentro: basta con que haya algo de posición que mostrar (la caja, el
+          destino, o ambos). Sin ninguno de los dos no hay bloque — ahí de verdad no hay
+          nada que decir ni a dónde ir. */}
+      {(cajaAccionable || posicionDrawer) && (
         <div className="px-6 md:px-8 pb-4">
           <div
             className={posicionDrawer ? "franco-card-target cursor-pointer" : undefined}
@@ -222,10 +229,14 @@ export function HeroLTR({
               ? {
                   role: "button" as const,
                   tabIndex: 0,
-                  onClick: () => onOpenDrawer?.(posicionDrawer.key),
+                  onClick: () => {
+                    abrirPosicion();
+                    onOpenDrawer?.(posicionDrawer.key);
+                  },
                   onKeyDown: (e: React.KeyboardEvent) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
+                      abrirPosicion();
                       onOpenDrawer?.(posicionDrawer.key);
                     }
                   },
@@ -233,22 +244,39 @@ export function HeroLTR({
               : {})}
           >
             <div className="px-4 py-3.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
-                La posición de Franco
-              </span>
-              <p className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)] m-0">
-                {cajaAccionable}
-              </p>
-              {posicionDrawer && (
-                /* Divisor en Signal Red al 20%: dentro de un bloque con wash rojo el
-                   hairline neutro se ve sucio. Único ajuste de token del cambio. */
-                <div
-                  className="mt-3 pt-2.5 flex justify-end"
-                  style={{ borderTop: "1px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}
-                >
-                  <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
-                    {posicionDrawer.label} →
+              {cajaAccionable ? (
+                <>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
+                    La posición de Franco
                   </span>
+                  <div className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)]">
+                    {renderPlumon(cajaAccionable)}
+                  </div>
+                  {posicionDrawer && (
+                    /* Divisor en Signal Red al 20%: dentro de un bloque con wash rojo el
+                       hairline neutro se ve sucio. Único ajuste de token del cambio. */
+                    <div
+                      className="mt-3 pt-2.5 flex justify-end"
+                      style={{ borderTop: "1px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}
+                    >
+                      <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
+                        {posicionDrawer.label} →
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Sin caja el bloque COLAPSA a una línea: label y destino en la misma fila.
+                   Dejar el divisor con el párrafo vacío en medio abría un hueco muerto. */
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)]">
+                    La posición de Franco
+                  </span>
+                  {posicionDrawer && (
+                    <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
+                      {posicionDrawer.label} →
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -308,30 +336,4 @@ function formatFecha(iso?: string): string {
   return d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
 }
 
-/**
- * Renderiza prosa con los números (montos $/UF y porcentajes) en JetBrains Mono
- * inline. Split con grupo de captura: los tokens numéricos caen en índices impares.
- */
-function renderProsaMono(texto: string): ReactNode {
-  if (!texto) return null;
-  const RE =
-    /((?:−|-)?\$\s?[\d.]+(?:,\d+)?|UF\s?[\d.]+(?:,\d+)?|(?:\+|−|-)?\d+(?:[.,]\d+)?\s?%)/g;
-  return texto.split(/\n\n+/).map((par, i) => (
-    <p key={i} className={i > 0 ? "mt-3 mb-0" : "m-0"}>
-      {par.split(RE).map((part, j) =>
-        j % 2 === 1 ? (
-          <span
-            key={j}
-            className="font-mono text-[13px] text-[var(--franco-text)] px-1 rounded"
-            style={{ background: "color-mix(in srgb, var(--franco-text) 5%, transparent)" }}
-          >
-            {part}
-          </span>
-        ) : (
-          <span key={j}>{part}</span>
-        ),
-      )}
-    </p>
-  ));
-}
 

@@ -1017,13 +1017,9 @@ export function PremiumResults({
               /* ═══ CAPA 3 · SIMULACIÓN — A1: la renderiza SubjectCardGrid ENTRE la
                  pirámide y la card zona (drawers → simulación → zona → footer) ═══ */
               <>
-              {/* F2-2 — CTA contextual: cierre de los hallazgos, antes de la
-                  Advanced Section. El slot es el único punto entre ambas
-                  secciones que no exige tocar SubjectCardGrid. */}
-              <MarcaSeccion seccion="next_cta" tipo="ltr" accessLevel={accessLevel} />
-              <div className="mb-6">
-                <NextAnalysisCTA {...nextCtaProps} />
-              </div>
+              {/* FASE 4: el CTA contextual SALIÓ del documento — el cierre del
+                  informe queda limpio (decisión 20 del goal; el CTA final es un
+                  trabajo aparte). Vive ahora bajo el documento, con el wallet. */}
               <MarcaSeccion seccion="advanced" tipo="ltr" accessLevel={accessLevel} />
               <SimulationProvider
                 plazoAnios={horizonYears}
@@ -1107,6 +1103,13 @@ export function PremiumResults({
             <CtaWelcome analysisId={analysisId} />
           </div>
         )}
+
+        {/* CTAs FUERA del documento (FASE 4): el informe termina en su footer;
+            lo comercial vive después, en el flujo de la página. */}
+        <div className="mt-8">
+          <MarcaSeccion seccion="next_cta" tipo="ltr" accessLevel={accessLevel} />
+          <NextAnalysisCTA {...nextCtaProps} />
+        </div>
 
         {/* WalletStatusCTA in-line al cierre — refleja estado del wallet
             del user logueado. Excluye admin/sharedView/welcomeDisponible. */}

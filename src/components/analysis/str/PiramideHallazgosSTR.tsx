@@ -39,6 +39,8 @@ export const HALLAZGO_DRAWER_STR: Partial<Record<Hallazgo["id"], DrawerKeySTR>> 
   patrimonio: "patrimonio",
   plusvalia: "plusvalia",
   estructura_costos_str: "estructuraCostos",
+  // FASE 4: deja de ser la única card sin destino (55% de los informes STR).
+  capex_puesta_a_punto: "capexPuestaAPunto",
 };
 
 

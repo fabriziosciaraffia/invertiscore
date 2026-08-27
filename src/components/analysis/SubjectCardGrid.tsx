@@ -7,10 +7,11 @@ import { MarcaSeccion, useDrawerAbierto } from "./informeTelemetry";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { HeroLTR } from "./HeroLTR";
-import { PiramideHallazgos, ordenarHallazgosPiramide } from "./PiramideHallazgos";
-import { HALLAZGO_DRAWER } from "./GenericFindingCard";
+import { ordenarHallazgosPiramide } from "./PiramideHallazgos";
+import { HALLAZGO_DRAWER, findingDisplay } from "./GenericFindingCard";
+import { HallazgosAcordeon, type FilaHallazgo } from "./hallazgos/HallazgosAcordeon";
+import { anchorHallazgo, numeroHallazgo } from "@/lib/orden-hallazgos";
 import { hasAiV2 } from "./AIInsightSection";
-import { stripMarcasDeep } from "@/lib/prosa-marcas";
 import { derivarCifraClaveLtr } from "@/lib/cifra-clave";
 import { buildFichaLtr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
@@ -136,11 +137,10 @@ export function SubjectCardGrid({
   // cuando llega, se materializa el contenido real. Prosa válida solo si pasa
   // hasAiV2 — un shape a medias no se renderiza como prosa.
   const prosaLista = !!aiAnalysis && hasAiV2(aiAnalysis);
-  // Render tolerante FASE 2 (rediseño Dictamen): la prosa v10 trae marcas de
-  // destacador `**…**` que la UI actual no pinta — se strippean en la RAÍZ (un
-  // solo punto para hero + pirámide + drawers; nunca `**` crudos en pantalla).
-  // FASE 4 reemplaza este strip por el render con plumón, acá mismo.
-  const prosa = prosaLista ? stripMarcasDeep(aiAnalysis) : null;
+  // FASE 4: la prosa llega CRUDA (con `**…**`) — el plumón se pinta de verdad
+  // en los puntos de render (renderPlumon). El strip sigue vivo SOLO donde el
+  // rediseño no llega: las dos vistas /documento (PDF).
+  const prosa = prosaLista ? aiAnalysis : null;
 
   // Materialización (Goal E): la transición siluetas→cards corre SOLO cuando la
   // prosa llegó DESPUÉS del mount (generación en vivo). Prosa cacheada
@@ -158,6 +158,69 @@ export function SubjectCardGrid({
       onInformeVisible?.();
     }
   }, [onInformeVisible]);
+
+  // ═══ FILAS DEL ACORDEÓN (FASE 4) ═══
+  // Una fila por hallazgo del orden único; el cuerpo es el drawer en modo
+  // INLINE (sin chrome). `distancia_veredicto` no está acá por diseño: ya lo
+  // excluye ordenarHallazgosPiramide — es el destino del CTA de la posición.
+  const ctxDrawer = results && inputData && prosa ? { results, inputData, prosa } : null;
+  const filasHallazgos: FilaHallazgo[] = ctxDrawer
+    ? hallazgosOrdenados.map((h, i) => {
+        const d = findingDisplay(h, currency, valorUF);
+        const key = HALLAZGO_DRAWER[h.id];
+        return {
+          id: h.id,
+          numero: numeroHallazgo(i),
+          pregunta: d.title || h.titular,
+          valor: d.kpi,
+          valorRojo: d.kpiRed,
+          anchorId: anchorHallazgo(h),
+          cuerpo: key ? (
+            <AnalysisDrawer
+              inline
+              activeKey={key}
+              aiAnalysis={ctxDrawer.prosa}
+              currency={currency}
+              results={ctxDrawer.results}
+              inputData={ctxDrawer.inputData}
+              valorUF={valorUF}
+              onClose={() => {}}
+              onNavigate={() => {}}
+              sequence={[]}
+              zoneInsight={zoneInsight}
+              zoneLoading={zoneLoading}
+              zoneError={zoneError}
+              zoneCenter={zoneCenter}
+              comuna={comuna ?? ctxDrawer.inputData.comuna}
+              arriendoUsuarioCLP={Number(ctxDrawer.inputData.arriendo) || 0}
+              createdAt={createdAt}
+            />
+          ) : null,
+        };
+      })
+    : [];
+
+  // El análisis a 10 años cierra el capítulo de simulación (ya no es un botón
+  // que abre un drawer: es el juicio del horizonte, en su lugar).
+  const cuerpoLargoPlazo =
+    ctxDrawer && ctxDrawer.prosa.largoPlazo?.contenido_clp?.trim() ? (
+      <div className="mt-5">
+        <div className="doc-cap-sub">El análisis a 10 años</div>
+        <AnalysisDrawer
+          inline
+          activeKey="largoPlazo"
+          aiAnalysis={ctxDrawer.prosa}
+          currency={currency}
+          results={ctxDrawer.results}
+          inputData={ctxDrawer.inputData}
+          valorUF={valorUF}
+          onClose={() => {}}
+          onNavigate={() => {}}
+          sequence={[]}
+          createdAt={createdAt}
+        />
+      </div>
+    ) : null;
 
   // ═══ PORTADA (FASE 3 rediseño Dictamen — mockups v8/v9) ═══
   // Los datos se arman acá (motor + input); la IA solo aporta el titular, que
@@ -242,6 +305,12 @@ export function SubjectCardGrid({
           onAjustarSupuestos={scrollASimulacion}
         />
       )}
+      {/* ═══ CUERPO — grilla con el ísotipo f. sticky en el margen (solo PC) ═══ */}
+      <div className="doc-cuerpo">
+        <div className="doc-cuerpo-margen" aria-hidden="true">
+          <div className="doc-fmark">f.</div>
+        </div>
+        <div className="min-w-0">
       <HeroLTR
         onOpenDrawer={setActiveDrawer}
         data={prosa}
@@ -270,47 +339,32 @@ export function SubjectCardGrid({
         </div>
       ) : (
         <div style={materializa ? { animation: "zona2Aparece 450ms ease-out" } : undefined}>
-          {/* Fase 2 — La pirámide de hallazgos reemplaza el grid 2×2 de dimensiones IA.
-              Cada card abre su drawer vía onOpenDrawer (setActiveDrawer, dueño del
-              estado acá). cap_rate no mapea a drawer todavía (llega en Fase 3). */}
-          {/* I-3 fix FASE 1: LTR nunca emitió `piramide` (solo STR/comparativa) y el
-              agregado global daba alcance imposible. La marca vive en la rama con
-              prosa porque la pirámide solo se renderiza con prosa. */}
+          {/* ═══ LOS HALLAZGOS — acordeón (FASE 4, mockup v12) ═══
+              La fusión: la línea visible es el resumen (ex-pirámide) y el tap
+              despliega el cuerpo del drawer in-place (modo inline). Murieron el
+              overlay, el header con ✕, las flechas prev/next y los 3 niveles. */}
           <MarcaSeccion seccion="piramide" tipo="ltr" accessLevel={accessLevel} />
-          {/* prosa (strippeada), no aiAnalysis crudo: el eco-check apertura↔01 de la
-              pirámide compara texto y debe ver lo MISMO que muestra el hero. */}
-          <PiramideHallazgos
-            results={results}
-            aiAnalysis={prosa}
-            currency={currency}
-            valorUF={valorUF}
-            onOpenDrawer={setActiveDrawer}
+          <HallazgosAcordeon
+            tipo="ltr"
+            total={filasHallazgos.length}
+            filas={filasHallazgos}
           />
 
-          {/* A1 — Simulación (AdvancedSection) va ENTRE la pirámide y la card zona:
-              drawers → simulación → zona. El wrapper mt-6 da el respiro que faltaba
-              entre la última fila de la pirámide y la card "Simula plazo y plusvalía". */}
-          {simulationSlot && <div className="mt-6" id="simulacion-interactiva">{simulationSlot}</div>}
-
-          {/* paridad drawer — afordance al drawer "A 10 años" (prosa IA largoPlazo). */}
-          {simulationSlot && prosa?.largoPlazo?.contenido_clp?.trim() && (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setActiveDrawer("largoPlazo")}
-                className="font-mono uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
-                style={{ fontSize: 11 }}
-              >
-                Leer el análisis a 10 años →
-              </button>
-            </div>
+          {/* ═══ CAPÍTULO · La simulación ═══ */}
+          {simulationSlot && (
+            <section className="doc-capitulo" id="simulacion-interactiva">
+              <div className="doc-cap-eyebrow">La simulación</div>
+              {simulationSlot}
+              {/* El análisis a 10 años (prosa IA largoPlazo) cierra el capítulo:
+                  es el juicio del horizonte que la simulación deja abierto. */}
+              {cuerpoLargoPlazo}
+            </section>
           )}
 
-          {/* 5ª tarjeta ancha: Zona / POIs */}
+          {/* ═══ CAPÍTULO · La zona ═══ */}
           {analysisId && (
-            <div className="mt-3">
-              {/* I-3 fix FASE 1: `zona` tampoco existía en LTR. Dentro del guard
-                  analysisId — sin card de zona (demo) no hay nada que medir. */}
+            <section className="doc-capitulo">
+              <div className="doc-cap-eyebrow">La zona</div>
               <MarcaSeccion seccion="zona" tipo="ltr" accessLevel={accessLevel} />
               <ZoneInsightMiniCard
                 data={zoneInsight}
@@ -319,7 +373,7 @@ export function SubjectCardGrid({
                 onClick={() => setActiveDrawer("zona")}
                 currency={currency}
               />
-            </div>
+            </section>
           )}
           <style>{`
             @keyframes zona2Aparece {
@@ -333,6 +387,8 @@ export function SubjectCardGrid({
         </div>
       )}
 
+        </div>
+      </div>
       </DocumentoFrame>
 
       <p className="text-center text-[10px] text-[var(--franco-text-muted)] mt-4">
