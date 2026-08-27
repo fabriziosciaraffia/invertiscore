@@ -216,15 +216,22 @@ export function PlusvaliaComunaSection({ comuna }: { comuna: string }) {
         Cuánto se ha valorizado {comuna}
       </h2>
 
-      {cobertura === "trayectoria_gfk" && serie && (
+      {cobertura === "trayectoria_gfk" && serie && ac && (
         <div className="mt-4 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
+            {/* F4.1 — la cifra y el período salen de la TRAYECTORIA (`ac`), que es
+                la fuente única del producto, no de la serie del gráfico. La página
+                calculaba su propia anualizada sobre los puntos observados y por eso
+                mostraba 5,8% / "2015-2024" mientras el informe decía 5,0% /
+                "2015-2025" para la misma comuna: dos cifras con la misma semántica
+                divergen apenas una de las dos incorpora un punto nuevo. GFK_SERIE
+                queda para DIBUJAR los puntos y nada más. */}
             <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-              El m² de departamentos nuevos en {comuna} pasó de UF {fmt1(serie.valores[0])} a UF {fmt1(serie.valores[serie.valores.length - 1])} entre {serie.desde} y {serie.desde + serie.valores.length - 1}.
+              El m² de departamentos nuevos en {comuna} pasó de UF {fmt1(ac.precioInicio)} a UF {fmt1(ac.precioFin)} entre {ac.rangoHist.replace("-", " y ")}.
             </p>
             <div className="text-right">
               <p className="font-mono text-lg font-bold text-[var(--franco-text)]">
-                {fmt1(serie.anualPct)}%<span className="ml-1 font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">anual promedio</span>
+                {fmt1(ac.anualizada)}%<span className="ml-1 font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">anual promedio</span>
               </p>
               {GFK_NIVEL[comuna] && (
                 <p className="mt-0.5 font-mono text-xs text-[var(--franco-text-secondary)]">

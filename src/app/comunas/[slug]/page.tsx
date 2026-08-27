@@ -180,14 +180,19 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
   const coberturaPlus = coberturaPlusvaliaDe(stats.nombre);
   const serieGfk = GFK_SERIE[stats.nombre];
   const acPlus = PLUSVALIA_ESTIMADO[stats.nombre];
+  // F4.1 — la cifra y el período salen de la TRAYECTORIA (acPlus), igual que el
+  // bloque visible y que el informe. El FAQ los tomaba de la serie del gráfico y
+  // por eso publicaba en el JSON-LD un rango y un porcentaje distintos de los
+  // que decía el informe de la misma comuna.
+  const num = (n: number) => String(n).replace(".", ",");
   const faqPlusvalia =
-    coberturaPlus === "trayectoria_gfk" && serieGfk
+    coberturaPlus === "trayectoria_gfk" && serieGfk && acPlus
       ? {
           "@type": "Question",
           name: `¿Cuánto se ha valorizado ${stats.nombre}?`,
           acceptedAnswer: {
             "@type": "Answer",
-            text: `El m² de departamentos nuevos en ${stats.nombre} pasó de UF ${String(serieGfk.valores[0]).replace(".", ",")} a UF ${String(serieGfk.valores[serieGfk.valores.length - 1]).replace(".", ",")} entre ${serieGfk.desde} y ${serieGfk.desde + serieGfk.valores.length - 1} — un ${String(serieGfk.anualPct).replace(".", ",")}% anual promedio (fuente: GfK/NielsenIQ, precios de oferta de deptos nuevos). Es historia observada, no proyección.`,
+            text: `El m² de departamentos nuevos en ${stats.nombre} pasó de UF ${num(acPlus.precioInicio)} a UF ${num(acPlus.precioFin)} entre ${acPlus.rangoHist.replace("-", " y ")} — un ${num(acPlus.anualizada)}% anual promedio (fuente: GfK/NielsenIQ, precios de oferta de deptos nuevos). Es historia observada, no proyección.`,
           },
         }
       : (coberturaPlus === "nivel_mas_ac" || coberturaPlus === "solo_ac") && acPlus
@@ -196,7 +201,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
             name: `¿Cuánto se ha valorizado ${stats.nombre}?`,
             acceptedAnswer: {
               "@type": "Answer",
-              text: `Entre 2014 y 2024 el precio promedio de departamentos en ${stats.nombre} subió ${acPlus.plusvalia10a}% acumulado (${String(acPlus.anualizada).replace(".", ",")}% anual), según Arenas & Cayo con Tinsa, Propital y Activo Más. Es historia observada, no proyección.`,
+              text: `Entre ${acPlus.rangoHist.replace("-", " y ")} el precio promedio de departamentos en ${stats.nombre} subió ${acPlus.plusvalia10a}% acumulado (${num(acPlus.anualizada)}% anual), según Arenas & Cayo con Tinsa, Propital y Activo Más. Es historia observada, no proyección.`,
             },
           }
         : null;
