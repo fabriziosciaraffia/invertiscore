@@ -34,6 +34,7 @@ import {
   VFuente,
   Fall,
   type FallRow,
+  CmpPares,
   Palancas,
   type FilaPalanca,
   Dial,
@@ -461,6 +462,14 @@ export function DrawerTIRLtr({
 // rama estructural `palancas` viene vacío y el único número real es
 // `deltaMinimoFueraDeTope`: una fila, marcada como que no alcanza.
 // (Persistir el delta de las que no cruzan es cambio de motor y tiene su propio goal.)
+
+/** Escala de un par comparado: el mayor ocupa el 100% y el otro queda proporcional, así
+ *  la diferencia se lee en el escalón entre los dos bordes derechos. Con valores no
+ *  positivos devuelve 0 (no se dibuja una barra sobre una base inválida). */
+function escalaPar(valor: number, contra: number): number {
+  const max = Math.max(valor, contra);
+  return max > 0 ? (valor / max) * 100 : 0;
+}
 
 /** Techo de plausibilidad del cost-stack STR (% del bruto). Sobre esto el dato es de
  *  escala corrupta —el parque tiene un caso de 16.176%— y la barra de $100 no se dibuja:
@@ -1245,42 +1254,54 @@ export function DrawerPrecioStr({
 
   return (
     <div>
-      <Lead>
-        Dos maneras de mirar lo mismo: cuánto pagas por metro cuadrado frente a {comuna}, y cuánto pagas por el
-        depto entero frente a su valor estimado de mercado. Ambas apuntan al mismo lado.
-      </Lead>
+      <VProsa>
+        Dos maneras de mirar lo mismo: el metro cuadrado y el depto entero. Ambas apuntan al mismo lado.
+      </VProsa>
 
-      <Chips
-        label="Lente 1 · por metro cuadrado"
-        cells={[
-          { k: "Tu m²", v: fmtUF(v.sujetoUfM2), tone: bajoMercado ? "pos" : "red" },
-          { k: `Mediana ${comuna}`, v: fmtUF(v.medianaComunaUfM2) },
-          { k: "Diferencia", v: `${v.desviacionPct >= 0 ? "+" : "−"}${Math.abs(v.desviacionPct)}%`, tone: bajoMercado ? "pos" : "red" },
-        ]}
-        foot={`${bajoMercado ? "Entras" : "Pagas"} ${Math.abs(v.desviacionPct)}% ${bajoMercado ? "bajo" : "sobre"} la mediana de publicación de ${comuna}${v.n > 0 ? ` (${v.n} avisos comparables)` : ""}.`}
-      />
+      {/* CONVERSIÓN 12 — las dos lentes eran dos grupos de Chips que obligaban a
+          reconstruir la comparación de cabeza. Apareadas contra su referencia, la
+          diferencia se lee en el borde de la barra aunque sea de un dígito (ver la
+          regla de uso de `Bars`: acá una barra desde cero no serviría). */}
+      <VViz t="Tu precio contra la referencia de mercado">
+        <CmpPares
+          filas={[
+            {
+              k: "Por metro cuadrado",
+              sub: `contra la mediana de ${comuna}`,
+              tag:
+                Math.abs(v.desviacionPct) <= 2
+                  ? { texto: "a la par", tono: "par" }
+                  : bajoMercado
+                    ? { texto: `${pctStr(Math.abs(v.desviacionPct))} bajo`, tono: "ok" }
+                    : { texto: `${pctStr(Math.abs(v.desviacionPct))} sobre`, tono: "flojo" },
+              tuyo: { lbl: "tuyo", v: fmtUF(v.sujetoUfM2), pct: escalaPar(v.sujetoUfM2, v.medianaComunaUfM2) },
+              ref: { lbl: "mediana", v: fmtUF(v.medianaComunaUfM2), pct: escalaPar(v.medianaComunaUfM2, v.sujetoUfM2) },
+            },
+            {
+              k: "El depto entero",
+              sub: "contra su valor estimado",
+              tag:
+                margenCLP >= 0
+                  ? { texto: `${fmtCompact(margenCLP, currency, valorUF)} a favor`, tono: "ok" }
+                  : { texto: `${fmtCompact(Math.abs(margenCLP), currency, valorUF)} de más`, tono: "flojo" },
+              tuyo: { lbl: "tu precio", v: fmtUF(precioUF), pct: escalaPar(precioUF, valorEstimadoUF) },
+              ref: { lbl: "estimado", v: fmtUF(valorEstimadoUF), pct: escalaPar(valorEstimadoUF, precioUF) },
+            },
+          ]}
+          pie={`Sobre tus ${Math.round(superficie)} m² a mediana comunal, el mercado estimaría ~${fmtUF(valorEstimadoUF)}.`}
+        />
+      </VViz>
 
-      <Chips
-        label="Lente 2 · el depto entero"
-        cells={[
-          { k: "Tu precio", v: fmtUF(precioUF), tone: bajoMercado ? "pos" : "plain" },
-          { k: "Valor estimado", v: fmtUF(valorEstimadoUF) },
-          { k: "Margen", v: signCompact(margenCLP, currency, valorUF), tone: margenCLP >= 0 ? "pos" : "red" },
-        ]}
-        foot={`Sobre tus ${Math.round(superficie)} m² a mediana comunal, el mercado estimaría ~${fmtUF(valorEstimadoUF)}. ${margenCLP >= 0 ? `Pagas ~${fmtCompact(margenCLP, currency, valorUF)} menos` : `Pagas ~${fmtCompact(margenCLP, currency, valorUF)} de más`}.`}
-      />
-
-      <Box label="De dónde sale (sin adornos)">
-        El &ldquo;valor estimado de mercado&rdquo; es la <b>mediana de publicaciones</b> de venta de la comuna
-        ajustada hacia precio de cierre por un factor asumido — <b>no son transacciones cerradas medidas</b>. Es
-        una estimación de referencia, no un valor de tasación. Por eso decimos &ldquo;estimado&rdquo;, nunca
-        &ldquo;vale menos&rdquo;.
-      </Box>
-      <Box label="Tu palanca de negociación">
+      <VCierre titulo="Tu palanca de negociación">
         {bajoMercado
-          ? `Entrar bajo mercado ya te da una ventaja de compra de ~${fmtCompact(margenCLP, currency, valorUF)} el día uno — es parte de por qué tu patrimonio a 10 años cierra a favor pese al flujo negativo. No hay urgencia de bajar más el precio; la palanca de este deal está en el flujo (pie y gestión), no en el precio de entrada.`
-          : `Pagas sobre la referencia de mercado, así que acá sí hay espacio para negociar: cada peso que bajes del precio entra directo a tu patrimonio y mejora el flujo (menos crédito, menos cuota).`}
-      </Box>
+          ? `Entrar bajo mercado ya te da una ventaja de compra de ~${fmtCompact(margenCLP, currency, valorUF)} el día uno — es parte de por qué tu patrimonio a 10 años cierra a favor pese al flujo negativo. No hay urgencia de bajar más el precio: la palanca de este deal está en el flujo (pie y gestión), no en el precio de entrada.`
+          : `Pagas sobre la referencia de mercado, así que acá sí hay espacio para negociar: cada peso que bajes del precio entra directo a tu patrimonio y mejora el flujo — menos crédito, menos cuota.`}
+      </VCierre>
+
+      <Note>
+        {v.n > 0 ? `Mediana de ${v.n} avisos comparables de ${comuna}` : `Mediana de publicaciones de ${comuna}`},
+        ajustada a precio de cierre por un factor asumido. Es una estimación de referencia, no una tasación.
+      </Note>
     </div>
   );
 }

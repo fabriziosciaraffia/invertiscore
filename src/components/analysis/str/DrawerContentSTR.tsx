@@ -36,7 +36,15 @@ import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
 import { extractRiesgos, DrawerCapexPuestaAPunto } from "@/components/ui/AnalysisDrawer";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
-import { Tabla } from "@/components/analysis/hallazgos/vocabulario";
+import {
+  Tabla,
+  VViz,
+  Palancas,
+  type FilaPalanca,
+  Escenarios,
+  Bars,
+} from "@/components/analysis/hallazgos/vocabulario";
+
 import { DrawerKeySTR } from "./DrawerSTR";
 import {
   DrawerFinanciamientoStr,
@@ -51,7 +59,18 @@ import { FlujoEstacionalChartSTR } from "./FlujoEstacionalChartSTR";
 import { DrawerTipoHuesped } from "./DrawerTipoHuesped";
 import { fmtMoney, fmtPct, fmtDec } from "../utils";
 import { metricaValorONull, esMetricaNoAplica } from "@/lib/types";
-import { NO_APLICA_VALOR, NO_APLICA_SUBLABEL, NO_APLICA_TOOLTIP } from "@/lib/no-aplica-copy";
+import { NO_APLICA_VALOR, NO_APLICA_SUBLABEL } from "@/lib/no-aplica-copy";
+
+/** Escala del rango de escenarios: el mayor (optimista) ocupa el 100%. */
+function escalaNoi(v: number, techo: number): number {
+  return techo > 0 ? Math.max(0, Math.min(100, (v / techo) * 100)) : 0;
+}
+
+/** % con un decimal y coma chilena, sin el signo (lo pone el caller). */
+function pct1Str(n: number): string {
+  return n.toFixed(1).replace(".", ",");
+}
+
 
 export interface InputDataSTR {
   edificioPermiteAirbnb?: "si" | "no" | "no_seguro";
@@ -419,9 +438,109 @@ export function DrawerContentSTR({
 
   if (activeKey === "rentabilidad") {
     const seccion = ai?.rentabilidad;
+    // ═══ CONVERSIÓN 15 (FASE 4.2) ═══
+    // La referencia del CAP rate NO se inventa: sale de `rentabilidad_str.valor.umbralPct`
+    // (umbral STR del motor, con su propia procedencia). Sin el hallazgo no se dibuja la
+    // matriz — el mismo criterio que cerró el "óptimo de pie" sin fundamento.
+    const hRent = results.hallazgos?.find((h) => h.id === "rentabilidad_str");
+    const vRent = hRent && hRent.id === "rentabilidad_str" ? hRent.valor : null;
+    const occBase = base.ocupacionReferencia;
+    const occTecho = agresivo.ocupacionReferencia;
+    // `cashOnCash` viaja como FRACCIÓN (0,097 = 9,7%): se escala acá, igual que en el
+    // DataRow de más abajo. Usarlo crudo mostraba −0,1% donde el dato dice −9,7%.
+    const cocFrac = metricaValorONull(base.cashOnCash);
+    const coc = cocFrac != null ? cocFrac * 100 : null;
+    const filasRent: FilaPalanca[] = [];
+    if (vRent) {
+      filasRent.push({
+        nombre: "CAP rate",
+        delta: `${vRent.gapPts >= 0 ? "+" : "−"}${pct1Str(Math.abs(vRent.gapPts))} pt`,
+        alcanza: vRent.gapPts >= 0,
+        origen: `${pct1Str(vRent.capRatePct)}%`,
+        destino: `${pct1Str(vRent.umbralPct)}% de referencia`,
+        razon: vRent.gapPts >= 0 ? "rinde sobre la referencia" : "rinde bajo la referencia",
+      });
+    }
+    // Pie cero (fase 3b · D1): sin capital propio el retorno sobre capital NO APLICA —
+    // se dice, no se omite en silencio. La fila viajaba en el DataRow que la matriz
+    // absorbió; recuperarla acá evita perder la explicación honesta.
+    if (esMetricaNoAplica(base.cashOnCash)) {
+      filasRent.push({
+        nombre: "Retorno sobre tu capital",
+        delta: NO_APLICA_VALOR,
+        alcanza: false,
+        razon: NO_APLICA_SUBLABEL.toLowerCase(),
+      });
+    } else if (coc != null) {
+      filasRent.push({
+        nombre: "Retorno sobre tu capital",
+        delta: `${coc >= 0 ? "+" : "−"}${pct1Str(Math.abs(coc))}%`,
+        alcanza: coc >= 0,
+        // En negativo se dice en plata, que es lo que se entiende: "por cada $100 que
+        // pusiste, este año pones $X más" en vez de un "0% para no perder" abstracto.
+        razon:
+          coc >= 0
+            ? `por cada $100 que pusiste, este año recibes $${pct1Str(Math.abs(coc))}`
+            : `por cada $100 que pusiste, este año pones $${pct1Str(Math.abs(coc))} más`,
+      });
+    }
+    if (occTecho > occBase) {
+      filasRent.push({
+        nombre: "Ocupación",
+        delta: `+${Math.round((occTecho - occBase) * 100)} pts posibles`,
+        alcanza: true,
+        origen: `${Math.round(occBase * 100)}% hoy en la zona`,
+        destino: `${Math.round(occTecho * 100)}% con gestión pro`,
+        razon: "es la palanca real",
+      });
+    }
     return (
       <>
         <NarrativeIA text={seccion?.contenido} />
+
+        {filasRent.length > 0 && (
+          <VViz t="Tus números contra su referencia">
+            <Palancas filas={filasRent} />
+          </VViz>
+        )}
+
+        {/* ESCENARIOS — la asimetría se DECLARA (§2.2 A12 del skill: el supuesto va en
+            palabras, nunca "P25"/"P50", que quedan reservados para la tabla de
+            percentiles de sensibilidad). El conservador mueve DOS variables (ocupación
+            y tarifa al cuartil bajo) y el optimista solo UNA (ocupación): un lector que
+            ve tres barras asume el mismo experimento en tres intensidades, así que si
+            no se dice, el diagrama engaña por omisión. */}
+        <VViz t="Cuánto puede variar tu ingreso neto mensual">
+          <Escenarios
+            filas={[
+              {
+                k: "Pesimista",
+                supuesto: "cuartil bajo observado · ocupación y tarifa",
+                v: fmtMoney(conservador.noiMensual, currency, valorUF),
+                pct: escalaNoi(conservador.noiMensual, agresivo.noiMensual),
+                tono: "pes",
+              },
+              {
+                k: "Base",
+                supuesto: occEsOverride
+                  ? `ocupación ${occBasePct}% definida por ti`
+                  : "mediana observada de la zona · solo ocupación",
+                v: fmtMoney(base.noiMensual, currency, valorUF),
+                pct: escalaNoi(base.noiMensual, agresivo.noiMensual),
+                tono: "base",
+              },
+              {
+                k: "Optimista",
+                supuesto: "estabilizado con gestión profesional · solo ocupación",
+                v: fmtMoney(agresivo.noiMensual, currency, valorUF),
+                pct: escalaNoi(agresivo.noiMensual, agresivo.noiMensual),
+                tono: "opt",
+              },
+            ]}
+            pie="Los tres escenarios no mueven las mismas variables: el pesimista baja ocupación y tarifa a la vez; el optimista sube solo la ocupación."
+          />
+        </VViz>
+
         <DrawerSection label={occEsOverride ? "Escenario base (ocupación definida por ti)" : "Escenario base (mediana observada de la zona · P50)"}>
           {results.occFuente && (
             <DataRow
@@ -457,51 +576,9 @@ export function DrawerContentSTR({
             tooltip="Ingresos del Airbnb menos costos operativos (limpieza, comisiones, suministros, administrador), antes de la cuota del crédito."
           />
           <DataRow
-            label="CAP Rate (rendimiento neto sobre precio)"
-            value={fmtPct(base.capRate * 100, 2)}
-            tooltip="NOI anual dividido por precio de compra. En STR saludable: 6-8%. Bajo 5% indica precio alto vs lo que el activo genera."
-          />
-          {/* Pie cero (fase 3b · D1): 'no_aplica' → "No aplica — sin capital propio
-              (pie $0)", nunca crítico ni Signal Red (mockup 98e2319). */}
-          <DataRow
-            label="Cash-on-Cash (retorno sobre capital invertido)"
-            value={
-              esMetricaNoAplica(base.cashOnCash)
-                ? `${NO_APLICA_VALOR} — ${NO_APLICA_SUBLABEL.toLowerCase()}`
-                : metricaValorONull(base.cashOnCash) !== null
-                  ? fmtPct((metricaValorONull(base.cashOnCash) as number) * 100, 1)
-                  : "—"
-            }
-            isCritical={(metricaValorONull(base.cashOnCash) ?? 0) < 0}
-            tooltip={
-              esMetricaNoAplica(base.cashOnCash)
-                ? NO_APLICA_TOOLTIP
-                : "Retorno anual sobre el capital efectivamente invertido (pie + gastos de cierre + amoblamiento + puesta a punto). Si es negativo, pones plata extra cada mes."
-            }
-          />
-          <DataRow
             label="Rentabilidad bruta"
             value={fmtPct(base.rentabilidadBruta * 100, 2)}
             tooltip="Ingresos brutos anuales divididos por precio de compra, sin descontar nada. Útil sólo como referencia rápida — es el número de portada."
-          />
-        </DrawerSection>
-        <DrawerSection label="Escenarios calibrados a tu propiedad">
-          <DataRow
-            label="Pesimista"
-            value={fmtMoney(conservador.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="NOI si la operación rinde por debajo de tu base — mala temporada, reseñas flojas o competencia agresiva. Ya incluye el factor de tu edificio y nivel de amoblamiento."
-          />
-          <DataRow
-            label="Base"
-            value={fmtMoney(base.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip={occEsOverride
-              ? "Escenario base con la ocupación que definiste tú (no la observada de la zona). Solo el ADR lleva uplift por tipo de edificio + habilitación."
-              : "Escenario más probable: ocupación = mediana observada de la zona (no ajustada por los ejes ni por la gestión). Solo el ADR lleva uplift por tipo de edificio + habilitación."}
-          />
-          <DataRow
-            label="Optimista"
-            value={fmtMoney(agresivo.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="Potencial con gestión profesional, estabilizado: el techo de ocupación alcanzable con operación pro ya rodada. No es el percentil 75 del mercado — depende de la gestión, no del mercado."
           />
         </DrawerSection>
         <CostosBreakdown inputData={inputData} currency={currency} valorUF={valorUF} />
@@ -574,15 +651,45 @@ export function DrawerContentSTR({
     const breakEvenAnual = results.breakEvenRevenueAnual;
     return (
       <>
+        {/* ═══ CONVERSIÓN 11 (FASE 4.2) — el equilibrio, antes de la tabla ═══
+            La pregunta que la tabla responde en frío ("¿alcanza?") se muestra primero
+            como comparación directa: lo que la zona mediana factura contra lo que este
+            deal necesita para no pedir plata. Acá las dos magnitudes SÍ difieren en
+            orden visible, así que la barra desde cero es la forma correcta. */}
+        {(() => {
+          const necesitas = breakEvenAnual;
+          const zonaMediana = breakEvenPct > 0 ? necesitas / (breakEvenPct / 100) : 0;
+          if (!(necesitas > 0) || !(zonaMediana > 0)) return null;
+          const techo = Math.max(necesitas, zonaMediana);
+          return (
+            <VViz t="Lo que necesitas contra lo que rinde la zona">
+              <Bars
+                rows={[
+                  {
+                    k: "Genera la zona mediana",
+                    v: fmtMoney(zonaMediana, currency, valorUF),
+                    pct: (zonaMediana / techo) * 100,
+                  },
+                  {
+                    k: "Necesitas para no poner plata",
+                    v: fmtMoney(necesitas, currency, valorUF),
+                    pct: (necesitas / techo) * 100,
+                    destacada: necesitas > zonaMediana,
+                  },
+                ]}
+              />
+              <div className="compo-total" style={{ marginTop: 10 }}>
+                <span className="k">Necesitas facturar</span>
+                <span className="v">{Math.round(breakEvenPct)}% de lo que factura la zona mediana</span>
+              </div>
+            </VViz>
+          );
+        })()}
+
         <DrawerSection label="¿Qué pasa si el mercado se mueve?">
           <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
-            Esta tabla muestra tu NOI mensual si la zona rinde a distintos
-            percentiles de los ingresos brutos del mercado sin ajustes,
-            desde la cuarta parte más baja (p25) hasta el 10% más alto del
-            mercado (p90), sin factor de tu propiedad. La mediana del
-            mercado (p50) es la base. Distinto del drawer “Rentabilidad”, que
-            ya aplica el factor de tu edificio y nivel de amoblamiento sobre
-            la base.
+            Tu NOI mensual si la zona rinde a distintos percentiles del mercado, sin el factor de tu
+            propiedad — a diferencia del drawer “Rentabilidad”, que sí lo aplica.
           </p>
           {/* E.5 caveat (b) — procedencia de los percentiles narrados como "del
               mercado" (texto-solo; el plumbing de `source` comparables vs
