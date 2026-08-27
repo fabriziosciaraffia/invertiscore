@@ -147,7 +147,14 @@ export function Fall({ rows, total }: { rows: FallRow[]; total?: { k: string; v:
 
 export type BarRow = { k: string; v: string; pct: number; destacada?: boolean };
 
-/** Barras comparativas: una fila por término de comparación. */
+/** Barras comparativas: una fila por término de comparación.
+ *
+ *  REGLA DE USO (FASE 4.2) — una barra que arranca en CERO solo comunica cuando las
+ *  magnitudes difieren en órdenes visibles. Para diferencias porcentuales pequeñas no
+ *  sirve: la tabla de negociación comparaba cuatro precios que difieren ~10% y las
+ *  cuatro barras caían entre el 65% y el 95% del ancho, así que la diferencia que
+ *  decide el veredicto era indistinguible del ruido. Para esos casos va un eje
+ *  posicional (`Dial`) o la comparación explícita del par (`CmpPares`). */
 export function Bars({ rows }: { rows: BarRow[] }) {
   return (
     <div className="bars">
@@ -474,6 +481,129 @@ export function Cien({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+export type ParCmp = {
+  /** Concepto comparado ("Por metro cuadrado", "Tasa de interés"). */
+  k: string;
+  sub?: string;
+  /** Estado del par, ya resuelto por el caller: es juicio del motor, no del render. */
+  tag?: { texto: string; tono: "ok" | "flojo" | "par" };
+  tuyo: { lbl: string; v: string; pct: number };
+  ref: { lbl: string; v: string; pct: number };
+};
+
+/** Comparación explícita tuyo-contra-referencia: dos barras apareadas por concepto.
+ *  Es la forma correcta cuando los dos términos difieren poco (ver la regla de uso de
+ *  `Bars`): al ponerlos uno sobre otro en la misma escala, la diferencia se lee aunque
+ *  sea de un dígito, porque el ojo compara los extremos y no el largo absoluto. */
+export function CmpPares({ filas, pie }: { filas: ParCmp[]; pie?: ReactNode }) {
+  if (!filas.length) return null;
+  return (
+    <div className="cmp">
+      {filas.map((f, i) => (
+        <div key={i} className="cmp-row">
+          <div className="cmp-top">
+            <span className="cmp-k">
+              {f.k}
+              {f.sub && <small>{f.sub}</small>}
+            </span>
+            {f.tag && <span className={`cmp-tag ${f.tag.tono}`}>{f.tag.texto}</span>}
+          </div>
+          {[f.tuyo, f.ref].map((b, j) => (
+            <div key={j} className="cmp-line">
+              <span className="cmp-lbl">{b.lbl}</span>
+              <div className="cmp-track">
+                <div
+                  className={`cmp-fill ${j === 0 ? "tuyo" : "ref"}${j === 0 && f.tag?.tono === "ok" ? " ok" : ""}`}
+                  style={{ width: `${Math.max(0, Math.min(100, b.pct))}%` }}
+                />
+              </div>
+              <span className="cmp-v">{b.v}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+      {pie && <div className="cmp-pie">{pie}</div>}
+    </div>
+  );
+}
+
+export type FilaEscenario = {
+  k: string;
+  /** Supuesto EN PALABRAS (§2.2 A12 del skill: nunca "P25"/"P50" fuera de la tabla de
+   *  percentiles). Si los escenarios no mueven las mismas variables, acá se declara. */
+  supuesto: string;
+  v: string;
+  pct: number;
+  tono: "pes" | "base" | "opt";
+};
+
+/** Rango de escenarios: una barra por escenario con su supuesto declarado. */
+export function Escenarios({ filas, pie }: { filas: FilaEscenario[]; pie?: ReactNode }) {
+  if (!filas.length) return null;
+  return (
+    <div className="esc">
+      {filas.map((f, i) => (
+        <div key={i} className={`esc-row${f.tono === "base" ? " base" : ""}`}>
+          <span className="esc-k">
+            {f.k}
+            <small>{f.supuesto}</small>
+          </span>
+          <div className="esc-track">
+            <div className={`esc-fill ${f.tono}`} style={{ width: `${Math.max(0, Math.min(100, f.pct))}%` }} />
+          </div>
+          <span className="esc-v">{f.v}</span>
+        </div>
+      ))}
+      {pie && <div className="esc-foot">{pie}</div>}
+    </div>
+  );
+}
+
+export type FilaEscalera = {
+  pie: string;
+  pieMonto: string;
+  esActual: boolean;
+  flujo: string;
+  flujoNegativo: boolean;
+  /** Delta contra el nivel actual ("+$52K mejor"). Vacío en la fila actual. */
+  flujoDelta?: string;
+  /** Columna rotulada TIR explícitamente: "retorno anual" es ambiguo entre TIR y CoC. */
+  tir: string;
+};
+
+/** Escalera del pie: el trade-off completo, un nivel por fila. Las DOS columnas son
+ *  obligatorias — con flujo y sin TIR muestra media verdad ("más pie siempre mejor"),
+ *  el mismo sesgo que tenía el "óptimo fijo 25%" que esto reemplaza. */
+export function Escalera({ filas, pie }: { filas: FilaEscalera[]; pie?: ReactNode }) {
+  if (!filas.length) return null;
+  return (
+    <div className="esca">
+      <div className="esca-head">
+        <span>Pie</span>
+        <span>Tu flujo mensual</span>
+        <span>TIR</span>
+      </div>
+      {filas.map((f, i) => (
+        <div key={i} className={`esca-row${f.esActual ? " hoy" : ""}`}>
+          <span className="esca-pie">
+            {f.pie}
+            <small>
+              {f.pieMonto}
+              {f.esActual ? " · hoy" : ""}
+            </small>
+          </span>
+          <span className={`esca-v${f.flujoNegativo ? " neg" : " pos"}`}>
+            {f.flujo}
+            {f.flujoDelta && <small>{f.flujoDelta}</small>}
+          </span>
+          <span className="esca-v">{f.tir}</span>
+        </div>
+      ))}
+      {pie && <div className="esca-foot">{pie}</div>}
     </div>
   );
 }

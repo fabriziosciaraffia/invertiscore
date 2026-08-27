@@ -21,7 +21,20 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
-import { VProsa, VViz, VCierre, VFuente, Thermo, Fall, type FallRow } from "@/components/analysis/hallazgos/vocabulario";
+import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
+import { simularPie } from "@/lib/analysis";
+import {
+  VProsa,
+  VViz,
+  VCierre,
+  VFuente,
+  Thermo,
+  Fall,
+  type FallRow,
+  Dial,
+  type ZonaDial,
+  type BordeDial,
+} from "@/components/analysis/hallazgos/vocabulario";
 import {
   DrawerTIRLtr,
   DrawerSensibilidadLtr,
@@ -370,7 +383,6 @@ function DrawerNegociacion({
 
   const precioSugeridoCLP = negData.precioSugeridoCLP;
   const tirAlSugerido = negData.tirAlSugerido;
-  const tirAlVmFranco = negData.tirAlVmFranco;
   const precioLimiteCLP = negData.precioLimiteCLP;
   // Jerarquía de precios (motor decide, drawer obedece): si el sugerido quedó fijado por
   // el umbral de veredicto, la escalera lo nombra como tal. Valores TIPADOS del motor.
@@ -401,26 +413,6 @@ function DrawerNegociacion({
       inputData.tasaInteres,
       inputData.plazoCredito,
     );
-  const flujoMesAt = (precioCLPTarget: number): number | null =>
-    mtr ? mtr.flujoNetoMensual + (mtr.dividendo - dividendoAt(precioCLPTarget)) : null;
-  const fmtFlujoMes = (v: number | null | undefined) => {
-    if (typeof v !== "number" || isNaN(v)) return "—";
-    return (v < 0 ? "−" : "+") + fmtFull(Math.abs(v));
-  };
-  const flujoMesColor = (v: number | null | undefined) => {
-    if (typeof v !== "number" || isNaN(v)) return "color-mix(in srgb, var(--franco-text) 45%, transparent)";
-    return v < 0 ? "var(--signal-red)" : "var(--franco-text)";
-  };
-  const tirColor = (t: number | null | undefined) => {
-    if (typeof t !== "number" || isNaN(t)) return "color-mix(in srgb, var(--franco-text) 45%, transparent)";
-    if (t >= 9) return "var(--ink-400)";
-    // TODO(franco-design): rama intermedia 7-9% (antes ámbar) mapeada a Ink 500
-    // como "ni positivo ni crítico". Skill colapsa la escala 3-niveles a binaria
-    // Ink/Signal Red — la distinción semántica fina TIR aceptable vs TIR aprobada
-    // se pierde. Evaluar si recuperarla por composición (peso/border) en futura ronda.
-    if (t >= 7) return "var(--ink-500)";
-    return "var(--signal-red)";
-  };
 
   // Veredicto styling
   let veredictoLabel: string;
@@ -464,90 +456,9 @@ function DrawerNegociacion({
   const estrategia = estrategiaIA?.trim()
     || "Intenta cerrar en el precio sugerido. Si el corredor no cede, evalúa según tu veredicto base.";
 
-  // Tabla comparativa: 4 filas
-  const maxPrecio = Math.max(precioCLP, vmFrancoCLP, precioSugeridoCLP, precioLimiteCLP ?? 0) * 1.05;
-  const barW = (v: number) => (maxPrecio > 0 ? (v / maxPrecio) * 100 : 0);
-
-  // Confianza del VM: cuando vmFranco ≈ precio no hay un valor de mercado total
-  // independiente (cayó al precio pedido por falta de comparables directos). Es la
-  // MISMA señal que condiciona el caveat de negociacion.contenido en la prosa
-  // (ai-generation.ts:980, tieneDiferenciaValida = |vmFranco − precio| > $1M ≈ UF 25):
-  // así la fila de la tabla baja a la honestidad de la prosa en vez de mostrar el
-  // precio pedido como un "valor estimado" a secas. VM sólido → fila intacta.
-  const vmDebil = Math.abs(vmFrancoCLP - precioCLP) <= 1_000_000;
-
-  const filas = [
-    {
-      key: "tu",
-      nombre: "Tu precio",
-      sub: "lo que pide el corredor",
-      precio: precioCLP,
-      tir: tirActual,
-      flujoMes: mtr?.flujoNetoMensual ?? null,
-      barColor: "rgba(250,250,248,0.55)",
-      highlight: false,
-      tooltip: "Precio publicado por el corredor que estás analizando.",
-    },
-    {
-      key: "vm",
-      nombre: "Valor estimado de mercado",
-      sub: vmDebil
-        ? "pocos comparables directos · referencia firme: precio/m²"
-        : "estimado según comparables de zona",
-      precio: vmFrancoCLP,
-      tir: tirAlVmFranco ?? tirActual,
-      flujoMes: flujoMesAt(vmFrancoCLP),
-      barColor: "var(--ink-400)",
-      highlight: false,
-      tooltip: vmDebil
-        ? "No hay comparables directos suficientes para un valor de mercado total confiable de este depto. La referencia sólida es el precio por m² de la zona, no este valor total."
-        : "Valor estimado de mercado calculado por Franco según comparables de la zona, no según el precio publicado.",
-    },
-    {
-      key: "sug",
-      nombre: "Sugerido",
-      // Cuando el motor fijó el sugerido por el UMBRAL DE VEREDICTO, el sub y el tooltip lo
-      // dicen: no es "un precio mejor", es el precio que cambia la conclusión. Se lee del
-      // campo tipado (negData) — cero recálculo en superficie.
-      sub: mandadoPorVeredicto
-        ? `acá el veredicto sube a ${destinoUmbral}`
-        : "cierra acá si puedes",
-      precio: precioSugeridoCLP,
-      tir: tirAlSugerido,
-      flujoMes: flujoMesAt(precioSugeridoCLP),
-      barColor: "var(--franco-text)",
-      highlight: true,
-      tooltip: mandadoPorVeredicto
-        ? `Cerrando en este precio el veredicto pasa a ${destinoUmbral}. Es el umbral donde cambia la conclusión del análisis, no una referencia de mercado — por eso manda sobre cualquier otro precio sugerido.`
-        : "Precio recomendado por Franco para que la inversión cierre con TIR razonable. Punto de partida para negociar.",
-    },
-    {
-      key: "lim",
-      nombre: "Límite",
-      // Sub varía: si esSobreprecio + null → fila se oculta directamente más abajo.
-      // Si null + no-sobreprecio → reescritura clara. Default: "máximo que conviene pagar".
-      sub: precioLimiteCLP === null
-        ? "sin límite definido — tu precio ya rinde bajo el umbral 6%"
-        : "máximo que conviene pagar por retorno",
-      precio: precioLimiteCLP,
-      tir: tirAlLimite,
-      flujoMes: null,
-      barColor: "var(--signal-red)",
-      highlight: false,
-      // Semántica EXPLÍCITAMENTE distinta del Sugerido cuando ese viene del umbral de
-      // veredicto: uno es techo de RETORNO (TIR 6%), el otro es umbral de CONCLUSIÓN.
-      // Nombrarlas igual era la raíz de tener tres precios sin regla entre ellos.
-      tooltip: "Precio máximo bajo el cual la TIR cae bajo 6%. Es un techo de RETORNO, no el precio que cambia el veredicto: sobre 6% es el mínimo para que la inversión sea más atractiva que instrumentos de bajo riesgo (depósitos a plazo, fondos mutuos conservadores).",
-    },
-  ].filter((f) => {
-    // Pie cero (D2): la fila Límite se suprime SIEMPRE — su semántica es techo
-    // de RETORNO (TIR 6%) y sin capital propio no tiene base. El bloque
-    // conclusivo del sugerido toma su lugar (mockup 98e2319).
-    if (f.key === "lim" && sinPie) return false;
-    // PARTE 7.1: ocultar fila Límite cuando esSobreprecio + null (combo ilógico).
-    if (f.key === "lim" && esSobreprecio && precioLimiteCLP === null) return false;
-    return true;
-  });
+  // La tabla comparativa de 4 filas y su escala (`maxPrecio`/`barW`) murieron con la
+  // conversión 16: codificaban precio absoluto desde cero y no podían mostrar una
+  // diferencia de un dígito porcentual. El eje de veredicto ocupa su lugar.
 
   return (
     <div className="flex flex-col gap-5">
@@ -618,168 +529,60 @@ function DrawerNegociacion({
       </p>
 
       {/* BLOQUE B · TABLA COMPARATIVA */}
-      <div
-        style={{
-          background: "color-mix(in srgb, var(--franco-text) 2%, transparent)",
-          border: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
-          borderRadius: 10,
-          padding: "16px 18px",
-        }}
-      >
-        <p
-          className="font-mono uppercase m-0 mb-3"
-          style={{ fontSize: 10, letterSpacing: "0.06em", color: "color-mix(in srgb, var(--franco-text) 55%, transparent)", fontWeight: 600 }}
-        >
-          Comparativa de precios
-        </p>
-
-        {/* Pie cero (D2): intro de la lectura plata-mensual, antes de la tabla. */}
-        {sinPie && (
-          <p
-            className="font-body m-0 mb-3"
-            style={{ fontSize: 12.5, lineHeight: 1.55, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)" }}
-          >
-            Sin pie, el beneficio de negociar se mide en plata mensual: cada peso menos de precio es crédito que no tomas, y eso baja el dividendo desde el día uno.
-          </p>
-        )}
-
-        {/* Header de columnas — solo desktop (mobile muestra precio+tir apilados) */}
-        <div
-          className="hidden sm:grid items-center gap-3 pb-2 mb-1 font-mono uppercase"
-          style={{
-            gridTemplateColumns: sinPie
-              ? "minmax(160px, 1.4fr) 1fr 90px 92px"
-              : "minmax(160px, 1.4fr) 1fr 90px 60px",
-            fontSize: 9,
-            letterSpacing: "0.06em",
-            color: "color-mix(in srgb, var(--franco-text) 45%, transparent)",
-            borderBottom: "0.5px dashed color-mix(in srgb, var(--franco-text) 15%, transparent)",
-          }}
-        >
-          <span></span>
-          <span></span>
-          <span className="text-right">Precio</span>
-          <span className="inline-flex items-center justify-end gap-1">
-            <span>{sinPie ? "Tu flujo/mes" : "TIR"}</span>
-            <InfoTooltip
-              content={
-                sinPie
-                  ? "Flujo mensual estimado si cierras a ese precio, con tu misma estructura (crédito por el 100% del precio). Sin capital propio, la TIR no aplica."
-                  : "Tasa Interna de Retorno: rentabilidad anual proyectada de la inversión incluyendo flujo, plusvalía y venta a 10 años."
-              }
+      {/* ═══ CONVERSIÓN 16 (FASE 4.2) — el eje de veredicto reemplaza la tabla ═══
+          La tabla de cuatro barras codificaba PRECIO ABSOLUTO desde cero
+          (barW = v / maxPrecio). Con cuatro precios que difieren ~10% entre sí, las
+          cuatro barras caían entre el 65% y el 95% del ancho: la diferencia que decide
+          el veredicto quedaba indistinguible del ruido. Una barra desde cero no puede
+          mostrar una diferencia de un dígito porcentual. El eje posicional sí codifica
+          lo que cambia — en qué veredicto cae cada precio. */}
+      {(() => {
+        const umbral = precioSugeridoCLP > 0 ? precioSugeridoCLP : null;
+        const limite = precioLimiteCLP != null && precioLimiteCLP > 0 ? precioLimiteCLP : null;
+        if (!umbral || !(precioCLP > 0)) return null;
+        const puntos = [precioCLP, umbral, ...(limite ? [limite] : [])];
+        const ejeMin = Math.min(...puntos) * 0.94;
+        const ejeMax = Math.max(...puntos) * 1.06;
+        const pos = (x: number) => ((x - ejeMin) / (ejeMax - ejeMin)) * 100;
+        const pUmbral = pos(umbral);
+        const pLimite = limite ? pos(limite) : 100;
+        const zonas: ZonaDial[] = [
+          { k: destinoUmbral, pct: pUmbral, tono: "comprar" },
+          { k: "Como está hoy", pct: pLimite - pUmbral, tono: "ajusta" },
+          ...(limite ? [{ k: "", pct: 100 - pLimite, tono: "buscar" as const }] : []),
+        ];
+        const bordes: BordeDial[] = [
+          {
+            pos: pUmbral,
+            delta: `−${(((precioCLP - umbral) / precioCLP) * 100).toFixed(1).replace(".", ",")}%`,
+            v: fmtPrecio(umbral),
+            k: `bajo esto sube a ${destinoUmbral}${tirAlSugerido != null ? ` · TIR ${fmtTir(tirAlSugerido)}` : ""}`,
+            dir: "abajo",
+          },
+          ...(limite
+            ? [
+                {
+                  pos: pLimite,
+                  delta: `+${(((limite - precioCLP) / precioCLP) * 100).toFixed(1).replace(".", ",")}%`,
+                  v: fmtPrecio(limite),
+                  k: `sobre esto no compensa${tirAlLimite != null ? ` · TIR ${fmtTir(tirAlLimite)}` : ""}`,
+                  dir: "arriba" as const,
+                },
+              ]
+            : []),
+        ];
+        return (
+          <VViz t="Qué veredicto tiene este depto según el precio">
+            <Dial
+              zonas={zonas}
+              marcaPct={pos(precioCLP)}
+              marcaK="Tu precio"
+              marcaV={fmtPrecio(precioCLP)}
+              bordes={bordes}
             />
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-1.5 mt-2">
-          {filas.map((f) => {
-            const isNull = f.precio === null;
-            const rowBg = f.highlight ? "color-mix(in srgb, var(--franco-text) 4%, transparent)" : "transparent";
-            const rowBorder = f.highlight ? "0.5px solid color-mix(in srgb, var(--franco-text) 15%, transparent)" : "0.5px solid transparent";
-            return (
-              <div
-                key={f.key}
-                className="rounded py-1.5 px-2"
-                style={{ background: rowBg, border: rowBorder }}
-              >
-                {/* Desktop: 4 columnas */}
-                <div
-                  className="hidden sm:grid items-center gap-3"
-                  style={{
-                    gridTemplateColumns: sinPie
-                      ? "minmax(160px, 1.4fr) 1fr 90px 92px"
-                      : "minmax(160px, 1.4fr) 1fr 90px 60px",
-                  }}
-                >
-                  <div className="flex flex-col min-w-0">
-                    <span
-                      className="inline-flex items-center gap-1 font-body font-medium"
-                      style={{ fontSize: 13, color: "var(--franco-text)" }}
-                    >
-                      <span className="truncate">{f.nombre}</span>
-                      {f.tooltip && <InfoTooltip content={f.tooltip} />}
-                    </span>
-                    <span
-                      className="font-heading italic"
-                      style={{ fontSize: 10, lineHeight: 1.3, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
-                    >
-                      {f.sub}
-                    </span>
-                  </div>
-                  <div
-                    className="relative rounded-[3px]"
-                    style={{
-                      height: 14,
-                      background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
-                    }}
-                  >
-                    {!isNull && f.precio !== null && (
-                      <div
-                        className="absolute top-0 left-0 rounded-[3px]"
-                        style={{
-                          width: `${barW(f.precio)}%`,
-                          height: "100%",
-                          background: f.barColor,
-                        }}
-                      />
-                    )}
-                  </div>
-                  <span
-                    className="font-mono font-semibold text-right whitespace-nowrap"
-                    style={{
-                      fontSize: 12,
-                      color: isNull ? "color-mix(in srgb, var(--franco-text) 45%, transparent)" : "var(--franco-text)",
-                    }}
-                  >
-                    {isNull ? "—" : fmtPrecio(f.precio as number)}
-                  </span>
-                  <span
-                    className="font-mono font-bold text-right whitespace-nowrap"
-                    style={{ fontSize: 12, color: sinPie ? flujoMesColor(f.flujoMes) : tirColor(f.tir) }}
-                  >
-                    {sinPie ? fmtFlujoMes(f.flujoMes) : fmtTir(f.tir)}
-                  </span>
-                </div>
-
-                {/* Mobile: 2 columnas, sin barra, precio+TIR apilados a la derecha */}
-                <div className="flex sm:hidden items-start justify-between gap-3">
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span
-                      className="font-body font-medium truncate"
-                      style={{ fontSize: 13, color: "var(--franco-text)" }}
-                    >
-                      {f.nombre}
-                    </span>
-                    <span
-                      className="font-heading italic"
-                      style={{ fontSize: 10, lineHeight: 1.3, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
-                    >
-                      {f.sub}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end gap-0.5 shrink-0">
-                    <span
-                      className="font-mono font-semibold whitespace-nowrap"
-                      style={{
-                        fontSize: 14,
-                        color: isNull ? "color-mix(in srgb, var(--franco-text) 45%, transparent)" : "var(--franco-text)",
-                      }}
-                    >
-                      {isNull ? "—" : fmtPrecio(f.precio as number)}
-                    </span>
-                    <span
-                      className="font-mono font-bold whitespace-nowrap"
-                      style={{ fontSize: 12, color: sinPie ? flujoMesColor(f.flujoMes) : tirColor(f.tir) }}
-                    >
-                      {sinPie ? fmtFlujoMes(f.flujoMes) : fmtTir(f.tir)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+          </VViz>
+        );
+      })()}
 
       {/* Pie cero (D2): escenarios −5%/−10% en plata mensual + el número que
           cambia la conclusión. Motor real (calcDividendo), sin cifras fijas. */}
@@ -1182,12 +985,23 @@ function DrawerReestructuracion({
   currency,
   results,
   valorUF,
+  inputData,
+  createdAt,
 }: {
   data: AIReestructuracionSection;
   currency: "CLP" | "UF";
   results: FullAnalysisResult;
   valorUF: number;
+  inputData?: AnalisisInput;
+  createdAt?: string;
 }) {
+  const nivelesPie = useMemo(() => {
+    if (!inputData || !createdAt || !(inputData.precio > 0)) return [];
+    const precioCLP = results.metrics?.precioCLP ?? 0;
+    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
+    return simularPie(inputData, ufCongelado, new Date(createdAt));
+  }, [inputData, createdAt, results.metrics?.precioCLP, valorUF]);
+
   const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
   const est = data.estructuraSugerida;
 
@@ -1265,6 +1079,16 @@ function DrawerReestructuracion({
           </p>
         </div>
       )}
+
+      {/* CONVERSIÓN 17 · la escalera va también en la rama con prosa IA: es el mismo
+          hallazgo ("cómo estás financiando") y el trade-off del pie no depende de que
+          la IA haya escrito su bloque. */}
+      <EscaleraPie
+        niveles={nivelesPie}
+        valorUF={valorUF}
+        flujoPersistido={results.metrics?.flujoNetoMensual}
+        currency={currency}
+      />
     </div>
   );
 }
@@ -1281,12 +1105,25 @@ function DrawerEstructuraSana({
   results,
   currency,
   valorUF,
+  inputData,
+  createdAt,
 }: {
   hallazgo: HallazgoEstructuraFinanciamiento;
   results: FullAnalysisResult;
   currency: "CLP" | "UF";
   valorUF: number;
+  // La escalera del pie recompute sobre un clon del input: necesita el input y la
+  // fecha del análisis (sin ella los meses hasta la entrega saldrían de "hoy").
+  inputData?: AnalisisInput;
+  createdAt?: string;
 }) {
+  const nivelesPie = useMemo(() => {
+    if (!inputData || !createdAt || !(inputData.precio > 0)) return [];
+    const precioCLP = results.metrics?.precioCLP ?? 0;
+    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
+    return simularPie(inputData, ufCongelado, new Date(createdAt));
+  }, [inputData, createdAt, results.metrics?.precioCLP, valorUF]);
+
   const { piePct, tasaPct, tasaMarketPct, driver } = hallazgo.valor;
   const cuotaActual = results.metrics?.dividendo ?? 0;
   const pieFmt = Number.isInteger(piePct) ? String(piePct) : piePct.toFixed(1).replace(".", ",");
@@ -1366,9 +1203,23 @@ function DrawerEstructuraSana({
         <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-3">
           {sinPie && creditoCLP !== null
             ? `Financiamiento 100% · tasa de mercado ${tasaMarketPct.toFixed(1).replace(".", ",")}%${tasaSobreMercado ? ` (+${spreadDisplayPts} pts)` : ""} · crédito ${fmtMoney(creditoCLP, currency, valorUF)}.`
-            : `Óptimo de pie 25% · tasa de mercado ${tasaMarketPct.toFixed(1).replace(".", ",")}%.`}
+            : `Tasa de mercado ${tasaMarketPct.toFixed(1).replace(".", ",")}%.`}
         </p>
       </div>
+
+      {/* ═══ CONVERSIÓN 17 (FASE 4.2) · ESCALERA DEL PIE ═══
+          Reemplaza la referencia de "óptimo de pie 25%". Ese 25 se rastreó hasta el
+          fondo y no tiene fundamento: no marca umbral de mejora de tasa, ni el punto
+          donde el flujo cruza a neutro, ni un requisito bancario — es una convención
+          adoptada en may-2026 y nunca cuestionada. Dibujarla como referencia le habría
+          dado autoridad de dato. Acá no se declara ningún óptimo: se muestra el
+          intercambio calculado y el lector decide según su liquidez. */}
+      <EscaleraPie
+        niveles={nivelesPie}
+        valorUF={valorUF}
+        flujoPersistido={results.metrics?.flujoNetoMensual}
+        currency={currency}
+      />
 
       {/* Procedencia — de dónde sale el dato (builder determinístico, reemplaza el
           eco de fraseCanonica que ya mostró la card) */}
@@ -1908,6 +1759,8 @@ export function AnalysisDrawer({
             currency={currency}
             results={results}
             valorUF={valorUF}
+            inputData={inputData}
+            createdAt={createdAt}
           />
         ) : estructuraHallazgo ? (
           <DrawerEstructuraSana
@@ -1915,6 +1768,8 @@ export function AnalysisDrawer({
             results={results}
             currency={currency}
             valorUF={valorUF}
+            inputData={inputData}
+            createdAt={createdAt}
           />
         ) : null)}
       {activeKey === "capexPuestaAPunto" && capexHallazgo && (

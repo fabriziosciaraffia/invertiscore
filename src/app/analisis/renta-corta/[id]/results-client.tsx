@@ -47,6 +47,7 @@ import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/
 import { ZonaCardSTR } from "@/components/analysis/str/ZonaCardSTR";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import type { AIAnalysisSTRv2, HallazgoDistanciaVeredicto } from "@/lib/types";
+import type { NivelPie } from "@/lib/analysis";
 import { derivarCifraClaveStr } from "@/lib/cifra-clave";
 import { buildFichaStr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
@@ -92,6 +93,9 @@ interface STRResultsProps {
   /** Anónimo-DUEÑO (cap F2-2): informe completo sin sesión — se suprimen los
    * POST de regen IA (exigen login) y el header pasa a la variante de guardado. */
   isAnonOwner?: boolean;
+  /** Escalera del pie precalculada en el server (`simularPieStr`): el reconstructor
+   *  del input arrastra `next/headers` y no puede importarse desde el cliente. */
+  nivelesPie?: NivelPie[];
 }
 
 export function STRResultsClient({
@@ -113,6 +117,7 @@ export function STRResultsClient({
   subordinatedHref = null,
   showCtaWelcome = false,
   isAnonOwner = false,
+  nivelesPie = [],
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
@@ -367,6 +372,7 @@ export function STRResultsClient({
           currency={currency}
           valorUF={ufValue}
           ai={aiParaRender as never}
+          nivelesPie={nivelesPie}
         />
       ) : null,
     };

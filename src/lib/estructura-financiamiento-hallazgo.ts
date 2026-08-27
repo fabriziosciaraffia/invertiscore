@@ -9,10 +9,19 @@
 // discretas (pie vs tasa), no una brecha. La decisividad se mapea por NIVEL, no con
 // clamp(|gap|/banda) como cap_rate/plusvalia.
 //
-// Procedencia honesta sobre la TASA DE REFERENCIA: el pie se evalúa contra un umbral
-// fijo (25% óptimo, sólido); la tasa se compara contra MARKET_AVG_TASA_UF, un
-// promedio de mercado de referencia NO en tiempo real (pull manual, puede estar
-// desactualizado). Por eso la confianza es "media", no "alta".
+// Procedencia honesta sobre la TASA DE REFERENCIA: se compara contra MARKET_AVG_TASA_UF,
+// un promedio de mercado NO en tiempo real (pull manual, puede estar desactualizado).
+// Por eso la confianza es "media", no "alta".
+//
+// EL PIE NO SE COMPARA CONTRA UN ÓPTIMO (FASE 4.2). Hasta acá las frases y la
+// procedencia citaban "el óptimo de 25%". Ese 25 se rastreó y no tiene fundamento: no
+// marca umbral de mejora de tasa, ni el punto donde el flujo cruza a neutro, ni un
+// requisito bancario — es una convención de may-2026 nunca cuestionada. Las frases
+// describen ahora el EFECTO real del pie (más crédito, más cuota) y el detalle lo
+// muestra calculado nivel por nivel (escalera del pie, `simularPie`).
+// OJO: la clasificación en bandas (classifyPieLevel, 25/20/15) sigue viva en
+// financing-health.ts y sigue decidiendo el `overall` — lo que se retiró es la
+// AFIRMACIÓN de que 25 es un óptimo, no el clasificador.
 
 import { LEVEL_RANK, type FinancingHealth, type FinancingHealthLevel } from "./financing-health";
 import type { HallazgoEstructuraFinanciamiento } from "./types";
@@ -32,8 +41,6 @@ function deriveDriver(
   if (rt > rp) return "tasa";
   return "ambos";
 }
-
-const PIE_OPTIMO_PCT = 25;
 
 // ─── Formato (tuteo neutro chileno, coma decimal) ─────────────────────────────
 const fmtTasa = (n: number) => n.toFixed(1).replace(".", ",");
@@ -96,7 +103,7 @@ function buildFrase(p: {
       if (p.driver === "pie")
         return (
           `Tu estructura de financiamiento está bien: la tasa (${tasa}%) está en buen nivel y el ` +
-          `pie de ${pie}% cumple. Si puedes acercarlo al óptimo de ${PIE_OPTIMO_PCT}%, la dejas sólida.`
+          `pie de ${pie}% cumple. Subirlo baja crédito y cuota; cuánto, lo ves nivel por nivel en el detalle.`
         );
       if (p.driver === "tasa")
         return (
@@ -113,7 +120,7 @@ function buildFrase(p: {
       if (p.driver === "pie")
         return (
           `Tu estructura de financiamiento tiene margen de mejora, principalmente por el pie: ` +
-          `${pie}% queda bajo el óptimo de ${PIE_OPTIMO_PCT}% y te deja con más crédito. La tasa (${tasa}%) acompaña en buen nivel.`
+          `${pie}% te deja con más crédito y una cuota más alta. La tasa (${tasa}%) acompaña en buen nivel.`
         );
       if (p.driver === "tasa")
         return (
@@ -129,7 +136,7 @@ function buildFrase(p: {
       if (p.driver === "pie")
         return (
           `Tu estructura de financiamiento tiene un problema de fondo, principalmente por el pie: ` +
-          `${pie}% está muy bajo el óptimo de ${PIE_OPTIMO_PCT}% y dispara el crédito y la cuota. La tasa (${tasa}%) está en mejor nivel.`
+          `${pie}% dispara el crédito y con él la cuota. La tasa (${tasa}%) está en mejor nivel.`
         );
       if (p.driver === "tasa")
         return (
@@ -235,10 +242,19 @@ export function buildHallazgoEstructuraFinanciamiento(p: {
     decisividad: p.decisividad,
     magnitudContinua: p.magnitudContinua,
     procedencia: {
+      // FASE 4.2 — antes esta línea decía que el pie se evalúa "contra un umbral fijo
+      // (25% óptimo, sólido)". Ese 25 se rastreó hasta el fondo y no tiene fundamento:
+      // no marca umbral de mejora de tasa, ni el punto donde el flujo cruza a neutro,
+      // ni un requisito bancario. Declararlo como óptimo le daba autoridad de dato a
+      // una convención — y quedaba contradiciendo, en la misma pantalla, a la escalera
+      // que muestra el efecto calculado sin declarar ningún óptimo.
+      // La tasa SÍ conserva su referencia porque tiene fuente (promedio de mercado),
+      // con su caveat de actualización intacto.
       base:
-        `Estructura de financiamiento (pie + tasa) sobre tus datos declarados. El pie se evalúa ` +
-        `contra un umbral fijo (${PIE_OPTIMO_PCT}% óptimo, sólido); la tasa se compara contra un promedio de ` +
-        `mercado de referencia (UF ${fmtTasa(fh.tasa.market_avg_pct)}%), no en tiempo real — pull manual, puede estar desactualizado.`,
+        `Estructura de financiamiento (pie + tasa) sobre tus datos declarados. La tasa se compara contra ` +
+        `un promedio de mercado de referencia (UF ${fmtTasa(fh.tasa.market_avg_pct)}%), no en tiempo real — ` +
+        `pull manual, puede estar desactualizado. El pie no se mide contra un óptimo: su efecto se muestra ` +
+        `calculado, nivel por nivel.`,
       confianza: "media",
     },
     titular,
