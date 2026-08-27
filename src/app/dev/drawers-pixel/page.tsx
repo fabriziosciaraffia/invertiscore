@@ -7,7 +7,8 @@
 // DrawerSTR+DrawerContentSTR (STR) con fixtures REALES (fixtures.json, sin DB/auth).
 // Controlado por query: ?row=santiagoLtr|penalolenLtr|santiagoStr|qaStr|selfLiqStr &key=<drawerKey> &cur=CLP|UF
 // penalolenLtr (F2): cobertura solo_nivel — precio actual sin trayectoria propia.
-// santiagoLtr / recoletaLtr (F3): los dos lados de la cascada — GfK 2015-2024 vs A&C 2014-2024.
+// santiagoLtr / recoletaLtr / maipuLtr (F3-F4): las tres variantes de rango —
+// GfK hasta 2025, A&C 2014-2024, y GfK sin cierre (2015-2024).
 // prev/next funcionan (onNavigate actualiza estado). Ruta temporal, untracked.
 
 import { Suspense, useMemo, useState } from "react";
@@ -26,7 +27,7 @@ import fixtures from "./fixtures.json";
 // menos de lo que pusiste" no tiene fila REAL en el corpus post-flip (F2: 0 STR pierde plata),
 // así que se valida sintético, como los razor-edges del golden. El resto son filas reales.
 type FixKey =
-  | "santiagoLtr" | "qaLtr" | "fallbackLtr" | "penalolenLtr" | "recoletaLtr"
+  | "santiagoLtr" | "qaLtr" | "fallbackLtr" | "penalolenLtr" | "recoletaLtr" | "maipuLtr"
   | "santiagoStr" | "qaStr" | "selfLiqStr" | "fallbackStr" | "costosAltosStr" | "bajoStr";
 
 function seqLtr(results: FullAnalysisResult, ai: AIAnalysisV2): DrawerKey[] {
