@@ -18,14 +18,34 @@
 // POR QUÉ FALTAN 5 COMUNAS EN EL ESTIMADO 2025 (corrida del 26-ago-2026, 25 de
 // 30). No es un bug ni data perdida: son las guardas del job haciendo su
 // trabajo. Queda escrito acá para que nadie tenga que recalcular para saberlo.
-//   · Peñalolén      — Δincoin intra-año +18,0% > 8%: delta implausible, la
-//                      zona oriente de INCOIN mezcla casas y departamentos.
-//   · Pudahuel       — estimado 78,1 se aleja +20,3% del anual GfK 2024 (64,9).
-//   · Quilicura      — estimado 51,2 se aleja −11,6% del 2024 (57,9).
-//   · Padre Hurtado  — estimado 45,6 se aleja −11,1% del 2024 (51,3).
-//   · Maipú          — estimado 62,0 se aleja −10,4% del 2024 (69,2).
-// Estas comunas muestran su último dato observado y nada más. Antes que
-// rellenar con el promedio del Gran Santiago, se declara que no hay estimado.
+// Son DOS motivos distintos, y la diferencia importa (medida el 27-ago-2026):
+//
+//   TERMÓMETRO contaminado — el deflactor INCOIN no sirve para esa comuna:
+//   · Peñalolén      — Δincoin intra-año +18,0% > 8%: la zona oriente de
+//                      INCOIN mezcla casas y departamentos.
+//
+//   ANCLA descuadrada — el 1T-2025 de GfK ya no cuadra con el anual 2024 de la
+//   PROPIA GfK, así que ningún termómetro lo arregla: el factor multiplica un
+//   ancla que ya salió de rango. Salto dentro de GfK, misma canasta:
+//   · Pudahuel       — 64,9 → 76,9  (+18,5%)
+//   · Padre Hurtado  — 51,3 → 45,4  (−11,5%)
+//   · Quilicura      — 57,9 → 51,8  (−10,5%)
+//   contra mediana 0% (rango −8,4% a +6,1%) en las otras 24 comunas: es cambio
+//   de canasta de GfK, no ruido de INCOIN.
+//
+//   BORDE — el ancla pasa raspando y el deflactor la empuja afuera:
+//   · Maipú          — ancla 69,2 → 62,3 (−9,97%, dentro de la guarda por 0,03
+//                      puntos) y el estimado queda en −10,4%. El job la reporta
+//                      como DEFLACTOR, no como ANCLA: con un deflactor apenas
+//                      menos negativo entraría. No se forzó — la guarda no se
+//                      relaja para conseguir el número.
+//
+// NO buscar más termómetros para las de ancla descuadrada — evaluación cerrada
+// (se probaron base propia, promedio GS de GfK y zonas INCOIN alternativas: las
+// tres siguen reprobando con todos). El detalle vive en
+// calcular-plusvalia-estimado.ts, junto a las guardas. Estas comunas muestran
+// su último dato observado y nada más: antes que rellenar con el promedio del
+// Gran Santiago, se declara que no hay estimado.
 //
 // La tabla plusvalia_fuentes_raw (forensics) NUNCA se lee, ni en runtime ni acá:
 // el estimado ya viene compuesto por el job (scripts/data/calcular-plusvalia-estimado.ts).

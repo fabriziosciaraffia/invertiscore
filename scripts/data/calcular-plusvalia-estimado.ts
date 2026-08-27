@@ -33,6 +33,38 @@ const PISO_BANDA_PP = 2;      // piso de la banda, en puntos porcentuales
 const MAX_DELTA_PCT = 8;      // guarda: |Δincoin Q1→Q4| sobre esto degrada
 const MAX_DESVIO_2024_PCT = 10; // guarda: estimado vs anual GFK 2024
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LAS DOS GUARDAS RECHAZAN POR MOTIVOS DISTINTOS — no las confundas.
+//
+// MAX_DELTA_PCT mira el TERMÓMETRO: un delta intra-año implausible viene de una
+// zona INCOIN que mezcla casas y departamentos. Ese es el caso de Peñalolén
+// (Δ +18% en zona oriente) y ahí sí tiene sentido preguntarse por otro
+// deflactor.
+//
+// MAX_DESVIO_2024_PCT mira el ANCLA, y ahí un termómetro nuevo NO ARREGLA NADA:
+// si el 1T-2025 de GfK ya llega descuadrado contra el anual 2024 de la propia
+// GfK, cualquier factor cercano a 1 deja el resultado fuera de rango. Medido el
+// 27-ago-2026, el salto 2024 → 1T-2025 DENTRO de GfK (misma fuente, misma
+// canasta) para las tres que rechazan por esta guarda:
+//     Pudahuel       64,9 → 76,9   +18,5%
+//     Padre Hurtado  51,3 → 45,4   −11,5%
+//     Quilicura      57,9 → 51,8   −10,5%
+// contra una mediana de 0% (rango −8,4% a +6,1%) en las otras 24 comunas. Eso
+// es cambio de canasta de GfK —entró o salió obra nueva de otro segmento—, no
+// ruido de INCOIN.
+//
+// CONCLUSIÓN OPERATIVA (evaluación cerrada el 27-ago-2026, decisión de
+// Fabrizio): NO buscar más termómetros para estas tres. Se evaluaron la base
+// propia (imposible: scraped_properties no tiene filas anteriores a 2026), el
+// promedio GS de GfK y los deltas de otras zonas INCOIN; las tres siguen
+// reprobando con todos, porque el problema no es el que se estaba buscando.
+// Se quedan con su último dato observado (2024) hasta que GfK publique más
+// trimestres por comuna. Peñalolén y Maipú sí pasarían con un deflactor
+// genérico, pero se descartó rescatarlas: su cierre sería un solo trimestre
+// propio más un ajuste del agregado, de naturaleza distinta al de las otras 25
+// bajo el mismo rótulo de página.
+// ─────────────────────────────────────────────────────────────────────────────
+
 function metodoTexto(zonaIncoin: string): string {
   return (
     `Cierre ${ANIO} estimado, compuesto de datos observados del propio año: ` +
@@ -98,12 +130,32 @@ async function main() {
     if (!inc || q.some((v) => v == null)) { degradadas.push(`${comuna}: sin serie INCOIN completa`); continue; }
     const [q1, q2, q3, q4] = q as number[];
     const deltaPct = (q4 / q1 - 1) * 100;
-    if (Math.abs(deltaPct) > MAX_DELTA_PCT) { degradadas.push(`${comuna}: Δincoin ${deltaPct.toFixed(1)}% > ${MAX_DELTA_PCT}%`); continue; }
+    if (Math.abs(deltaPct) > MAX_DELTA_PCT) {
+      degradadas.push(
+        `${comuna}: TERMÓMETRO — Δincoin intra-año ${deltaPct.toFixed(1)}% supera ${MAX_DELTA_PCT}%` +
+          (inc.zona && inc.zona !== "centro" ? ` (zona ${inc.zona}: mezcla casas y deptos)` : ""),
+      );
+      continue;
+    }
     const factor = (q1 + q2 + q3 + q4) / 4 / q1; // promedio anual / Q1, medido
     const est = ancla * factor;
     const base2024 = gfk2024.get(comuna);
     if (base2024 != null && Math.abs(est / base2024 - 1) * 100 > MAX_DESVIO_2024_PCT) {
-      degradadas.push(`${comuna}: estimado ${est.toFixed(1)} se aleja ${((est / base2024 - 1) * 100).toFixed(1)}% del 2024 (${base2024})`);
+      // El motivo del rechazo se nombra según DÓNDE está el descuadre, porque
+      // determina si vale la pena buscar otro termómetro o no. Si el ancla
+      // (1T-2025 de GfK) ya no cuadra con el anual 2024 de la PROPIA GfK, el
+      // deflactor es inocente: multiplica un valor que ya salió de rango, y
+      // ningún factor cercano a 1 lo devuelve adentro. Verificado el
+      // 27-ago-2026 sobre Pudahuel, Padre Hurtado y Quilicura. Maipú cae del
+      // otro lado por poco —ancla a −9,97%, dentro de la guarda por 0,03
+      // puntos— y por eso se reporta como DEFLACTOR: ahí el termómetro sí es
+      // el que empuja el resultado afuera.
+      const saltoAncla = (ancla / base2024 - 1) * 100;
+      degradadas.push(
+        Math.abs(saltoAncla) > MAX_DESVIO_2024_PCT
+          ? `${comuna}: ANCLA — el 1T-${ANIO} de GfK (${ancla}) ya está ${saltoAncla > 0 ? "+" : ""}${saltoAncla.toFixed(1)}% respecto del anual 2024 de la propia GfK (${base2024}); ningún deflactor lo corrige (cambio de canasta, no ruido del termómetro)`
+          : `${comuna}: DEFLACTOR — el estimado ${est.toFixed(1)} se aleja ${((est / base2024 - 1) * 100).toFixed(1)}% del 2024 (${base2024}) pese a que el ancla (${ancla}) sí cuadra`,
+      );
       continue;
     }
     const bandaPct = Math.max(deltaGsPct != null ? Math.abs(deltaPct - deltaGsPct) : 0, PISO_BANDA_PP);
