@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light" data-view="mobile" data-caso="rent">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Propuestas v3 · rentabilidad + escalera del pie</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--serif:'Source Serif 4',Georgia,serif;--sans:'IBM Plex Sans',sans-serif;--mono:'JetBrains Mono',monospace;--signal:#C8323C}
+  [data-theme="light"]{--bg:#E9E6DF;--paper:#FAF8F3;--paper2:#F1EEE7;--paper3:#EAE7DF;--line:#DAD6CC;--line2:#C4BFB2;
+    --tx:#141311;--tx2:#3B3A36;--tx3:#75726A;--tx4:#A39F94;--hl:rgba(224,67,80,.26);--good:#2F7D55;--warn:#A96F1B;--neutral:#8C8880}
+  [data-theme="dark"]{--bg:#0A0A0A;--paper:#141414;--paper2:#1B1B1B;--paper3:#232323;--line:#282828;--line2:#3A3A3A;
+    --tx:#EDEBE6;--tx2:#C4C2BC;--tx3:#8C8A84;--tx4:#5C5A55;--hl:rgba(216,67,77,.38);--good:#57B98A;--warn:#DFA34F;--neutral:#6E6A63}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);padding:24px 16px 70px}
+  .lab{max-width:900px;margin:0 auto}
+  h1{font-family:var(--serif);font-size:19px;font-weight:600;margin-bottom:12px}
+  .controls{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:8px 12px;background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+  .stage{display:flex;justify-content:center}
+  .card{width:100%;max-width:820px;background:var(--paper);border:1px solid var(--line);padding:24px 30px 26px;transition:max-width .25s}
+  [data-view="mobile"] .card{max-width:380px;padding:20px 18px 22px}
+  .row-head{display:flex;align-items:baseline;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:18px}
+  .row-head .num{font-family:var(--serif);font-size:26px;font-weight:900;color:var(--signal);min-width:36px}
+  .row-head .q{flex:1;font-family:var(--serif);font-size:15.5px;font-weight:600;line-height:1.3}
+  .row-head .v{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--signal)}
+  .prosa{font-size:13.8px;line-height:1.7;color:var(--tx2);max-width:60ch;margin-bottom:22px}
+  .viz{margin-bottom:26px}
+  .viz-t{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:12px}
+  .caso{display:none} html[data-caso="rent"] #c-rent{display:block} html[data-caso="pie"] #c-pie{display:block}
+
+  /* matriz con fila destacada (degradado, igual que la matriz de palancas) */
+  .mx{border-top:1px solid var(--line)}
+  .mx-row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:start}
+  .mx-row.dest{background:linear-gradient(90deg,color-mix(in srgb,var(--good) 8%,transparent),transparent 72%);
+    margin:0 -10px;padding-left:10px;padding-right:10px}
+  [data-view="mobile"] .mx-row.dest{margin:0 -8px;padding-left:8px;padding-right:8px}
+  .mx-name{font-size:13px;font-weight:600;color:var(--tx);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .mx-name small{font-weight:400;font-size:11px;color:var(--tx3);flex-basis:100%;margin-top:1px}
+  .mx-badge{font-family:var(--mono);font-size:11.5px;font-weight:700;padding:2px 6px;border-radius:3px}
+  .mx-badge.mal{color:var(--signal);background:color-mix(in srgb,var(--signal) 12%,transparent)}
+  .mx-badge.ok{color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent)}
+  .mx-v{grid-row:span 2;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-size:14px;font-weight:700;flex-shrink:0}
+  .mx-v.mal{color:var(--signal);box-shadow:inset 0 0 0 1.5px var(--signal)}
+  .mx-v.ok{color:var(--good);box-shadow:inset 0 0 0 1.5px var(--good)}
+  .mx-det{grid-column:1;font-family:var(--mono);font-size:12px;color:var(--tx2);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .mx-det .vs{color:var(--tx4)}
+  .mx-det .why{font-family:var(--sans);font-size:11.5px;color:var(--tx3);font-style:italic}
+
+  /* escenarios */
+  .esc-row{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)}
+  [data-view="mobile"] .esc-row{grid-template-columns:80px 1fr auto;gap:8px}
+  .esc-row:last-child{border-bottom:none}
+  .esc-row.base{background:linear-gradient(90deg,color-mix(in srgb,var(--tx) 6%,transparent),transparent 72%);
+    margin:0 -10px;padding-left:10px;padding-right:10px}
+  .esc-k{font-size:12px;color:var(--tx2)}
+  .esc-k small{display:block;font-family:var(--mono);font-size:9.5px;color:var(--tx4);margin-top:1px}
+  .esc-track{height:15px;background:var(--paper3);border-radius:2px;overflow:hidden}
+  .esc-fill{height:100%;border-radius:2px}
+  .esc-fill.pes{background:var(--signal)} .esc-fill.base{background:var(--tx)} .esc-fill.opt{background:var(--good)}
+  .esc-v{font-family:var(--mono);font-size:12px;font-weight:700;text-align:right;white-space:nowrap}
+  .esc-foot{margin-top:11px;font-family:var(--mono);font-size:10.5px;color:var(--tx2);letter-spacing:.03em}
+
+  /* escalera del pie */
+  .esc2{border-top:1px solid var(--line)}
+  .esc2-head{display:grid;grid-template-columns:74px 1fr 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  [data-view="mobile"] .esc2-head{grid-template-columns:58px 1fr 1fr;gap:8px}
+  .esc2-head span{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4)}
+  .esc2-head span:nth-child(n+2){text-align:right}
+  .esc2-row{display:grid;grid-template-columns:74px 1fr 1fr;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);align-items:baseline}
+  [data-view="mobile"] .esc2-row{grid-template-columns:58px 1fr 1fr;gap:8px}
+  .esc2-row.hoy{background:linear-gradient(90deg,color-mix(in srgb,var(--warn) 12%,transparent),transparent 78%);
+    margin:0 -10px;padding-left:10px;padding-right:10px}
+  .esc2-pie{font-family:var(--mono);font-size:14px;font-weight:700}
+  .esc2-pie small{display:block;font-family:var(--sans);font-size:10px;font-weight:400;color:var(--tx3);margin-top:1px}
+  .esc2-v{font-family:var(--mono);font-size:13px;font-weight:700;text-align:right}
+  .esc2-v small{display:block;font-family:var(--mono);font-size:9.5px;font-weight:400;color:var(--tx4);margin-top:2px}
+  .esc2-v.neg{color:var(--signal)} .esc2-v.pos{color:var(--good)}
+  .esc2-foot{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px}
+  .esc2-foot div{font-family:var(--mono);font-size:10px;letter-spacing:.03em;color:var(--tx3);display:flex;align-items:center;gap:6px}
+  .esc2-foot b{color:var(--tx2)}
+
+  .cierre{background:var(--paper2);border:1px solid var(--line);border-left:3px solid var(--signal);border-radius:3px;padding:15px 17px;margin-top:8px}
+  .cierre .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:8px}
+  .cierre p{font-family:var(--serif);font-style:italic;font-size:14px;line-height:1.7;color:var(--tx2);max-width:58ch}
+  .cierre p mark{background:linear-gradient(transparent 42%,var(--hl) 42%,var(--hl) 94%,transparent 94%);padding:0 2px;color:var(--tx)}
+  .nota{font-family:var(--mono);font-size:9.5px;color:var(--tx4);margin-top:11px;line-height:1.5}
+  .metric{max-width:820px;margin:18px auto 0;font-family:var(--mono);font-size:10.5px;color:var(--tx3);line-height:1.6}
+  .metric b{color:var(--signal)} .q{color:var(--signal)}
+</style>
+</head>
+<body>
+<div class="lab">
+  <h1>Propuestas v3 · 15 rentabilidad / escalera del pie</h1>
+  <div class="controls">
+    <div class="seg" id="seg-caso"><button class="on" data-v="rent">15 · Rentabilidad</button><button data-v="pie">13/17 · Escalera del pie</button></div>
+    <div class="seg" id="seg-view"><button class="on" data-v="mobile">Mobile</button><button data-v="desktop">PC</button></div>
+    <div class="seg" id="seg-theme"><button class="on" data-v="light">Light</button><button data-v="dark">Dark</button></div>
+  </div>
+
+  <div class="stage">
+    <!-- ===== 15 · RENTABILIDAD ===== -->
+    <div class="card caso" id="c-rent">
+      <div class="row-head"><span class="num">03</span><span class="q">La rentabilidad operativa se queda corta</span><span class="v">3,0%</span></div>
+      <p class="prosa">Con la ocupación que muestra la zona, esto es lo que el depto rinde — y contra qué se compara.</p>
+
+      <div class="viz">
+        <div class="viz-t">Tus tres números contra su referencia</div>
+        <div class="mx">
+          <div class="mx-row">
+            <div class="mx-name">CAP rate <span class="mx-badge mal">−1,0 pt</span>
+              <small>lo que el arriendo deja al año sobre el precio, ya descontados los gastos</small></div>
+            <div class="mx-v mal">✕</div>
+            <div class="mx-det">2,96% <span class="vs">contra</span> 4,00% de mercado <span class="why">· rinde bajo el promedio</span></div>
+          </div>
+          <div class="mx-row">
+            <div class="mx-name">Retorno sobre tu capital <span class="mx-badge mal">−8,8%</span>
+              <small>lo que rinde al año la plata que pusiste</small></div>
+            <div class="mx-v mal">✕</div>
+            <div class="mx-det">Por cada $100 que pusiste, <span class="vs">este año</span> pones $8,80 más <span class="why">· en vez de recibir</span></div>
+          </div>
+          <div class="mx-row dest">
+            <div class="mx-name">Ocupación <span class="mx-badge ok">+8 pts posibles</span>
+              <small>cuántas noches del mes se llenan</small></div>
+            <div class="mx-v ok">✓</div>
+            <div class="mx-det">47% hoy en la zona <span class="vs">→</span> 55% con gestión pro <span class="why">· es la palanca real</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="viz">
+        <div class="viz-t">Cuánto puede variar tu ingreso neto mensual</div>
+        <div class="esc-row">
+          <span class="esc-k">Pesimista<small class="q">ocupación ¿?%</small></span>
+          <div class="esc-track"><div class="esc-fill pes" style="width:24%"></div></div>
+          <span class="esc-v">$193.687</span>
+        </div>
+        <div class="esc-row base">
+          <span class="esc-k">Base<small>ocupación 47%</small></span>
+          <div class="esc-track"><div class="esc-fill base" style="width:80%"></div></div>
+          <span class="esc-v">$655.737</span>
+        </div>
+        <div class="esc-row">
+          <span class="esc-k">Optimista<small class="q">ocupación ¿?%</small></span>
+          <div class="esc-track"><div class="esc-fill opt" style="width:100%"></div></div>
+          <span class="esc-v">$819.095</span>
+        </div>
+        <div class="esc-foot">El escenario base está cerca del techo: hay más que perder que ganar.</div>
+      </div>
+
+      <div class="cierre">
+        <div class="t">Qué significa</div>
+        <p>El depto rinde <mark>un punto bajo la referencia de mercado</mark> y en vez de recibir por tu capital, pones más cada año. Tu habilitación es básica: subirla no cambia la tarifa por noche, solo el capital que pones al inicio — es palanca del capex, no del ingreso.</p>
+      </div>
+      <div class="nota">AirROI · ocupación observada de la zona (mediana P50) · costos operativos $362.268/mes</div>
+    </div>
+
+    <!-- ===== ESCALERA DEL PIE ===== -->
+    <div class="card caso" id="c-pie">
+      <div class="row-head"><span class="num">04</span><span class="q">Cuánto pie te conviene poner</span><span class="v">Pie 20%</span></div>
+      <p class="prosa">No hay un pie correcto para todos: más pie alivia el mes, menos pie rinde más sobre tu plata. Esto es lo que cambia en tu caso.</p>
+
+      <div class="viz">
+        <div class="viz-t">Tu deal con distintos niveles de pie</div>
+        <div class="esc2">
+          <div class="esc2-head"><span>Pie</span><span>Tu flujo mensual</span><span>Retorno anual</span></div>
+          <div class="esc2-row">
+            <span class="esc2-pie">15%<small>$40,7 MM</small></span>
+            <span class="esc2-v neg">−$121.400<small>+$52K peor</small></span>
+            <span class="esc2-v pos">9,4%</span>
+          </div>
+          <div class="esc2-row hoy">
+            <span class="esc2-pie">20%<small>$54,2 MM · hoy</small></span>
+            <span class="esc2-v neg">−$69.100</span>
+            <span class="esc2-v">8,1%</span>
+          </div>
+          <div class="esc2-row">
+            <span class="esc2-pie">25%<small>$67,8 MM</small></span>
+            <span class="esc2-v neg">−$16.800<small>+$52K mejor</small></span>
+            <span class="esc2-v">7,2%</span>
+          </div>
+          <div class="esc2-row">
+            <span class="esc2-pie">30%<small>$81,4 MM</small></span>
+            <span class="esc2-v pos">+$35.500<small>el mes cierra en verde</small></span>
+            <span class="esc2-v">6,5%</span>
+          </div>
+        </div>
+        <div class="esc2-foot">
+          <div>↑ más pie · <b>el mes respira</b>, el retorno baja</div>
+          <div>↓ menos pie · <b>rinde más</b>, el mes aprieta</div>
+        </div>
+      </div>
+
+      <div class="cierre">
+        <div class="t">Qué haces con esto</div>
+        <p>Con tu pie actual el mes queda apenas negativo. <mark>Desde 30% el flujo cierra en verde</mark>, pero cada punto de pie te cuesta retorno: es el precio de dormir tranquilo. Si tu flujo aguanta el aporte mensual, el pie bajo trabaja a tu favor.</p>
+      </div>
+      <div class="nota">Motor Franco · mismo precio, plazo y tasa; solo cambia el pie. Los bancos financian en tramos de 5%.</div>
+    </div>
+  </div>
+
+  <div class="metric" id="metric"></div>
+</div>
+<script>
+const M={
+ rent:'Correcciones: la fila de <b>ocupación va con degradado</b> (es la palanca real, mismo tratamiento que la fila que alcanza en la matriz de palancas) · y el retorno sobre capital deja el confuso "0% para no perder" y pasa a pesos: <b>"por cada $100 que pusiste, este año pones $8,80 más"</b>. <span class="q">Los supuestos de pesimista y optimista quedan marcados: hay que verificar en el motor qué ocupación usan.</span>',
+ pie:'Reemplaza el "óptimo fijo 25%" por el <b>trade-off real</b>, según tu explicación: el pie correcto depende de cuánto aguanta el flujo del deal. Cuatro niveles (los bancos financian en tramos de 5%), cada uno con su flujo mensual y su retorno anual — se ve que más pie alivia el mes y baja el retorno, y dónde el flujo cruza a verde. Nadie declara un óptimo: Franco muestra el intercambio y el usuario decide según su liquidez. <span class="q">Números ilustrativos: el motor debe calcular los cuatro escenarios (mismo cálculo que ya hace para 20→25).</span>'};
+function set(v){document.documentElement.dataset.caso=v;document.getElementById('metric').innerHTML=M[v]}
+function wire(id,fn){document.querySelectorAll('#'+id+' button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fn(b.dataset.v)}))}
+wire('seg-caso',set);
+wire('seg-view',v=>document.documentElement.dataset.view=v);
+wire('seg-theme',v=>document.documentElement.dataset.theme=v);
+set('rent');
+</script>
+</body>
+</html>

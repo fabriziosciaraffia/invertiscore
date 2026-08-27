@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light" data-view="mobile" data-caso="precio">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Propuestas · 12 precio STR / 17 reestructuración LTR</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--serif:'Source Serif 4',Georgia,serif;--sans:'IBM Plex Sans',sans-serif;--mono:'JetBrains Mono',monospace;--signal:#C8323C}
+  [data-theme="light"]{--bg:#E9E6DF;--paper:#FAF8F3;--paper2:#F1EEE7;--paper3:#EAE7DF;--line:#DAD6CC;--line2:#C4BFB2;
+    --tx:#141311;--tx2:#3B3A36;--tx3:#75726A;--tx4:#A39F94;--hl:rgba(224,67,80,.26);--good:#2F7D55;--warn:#A96F1B;--neutral:#8C8880}
+  [data-theme="dark"]{--bg:#0A0A0A;--paper:#141414;--paper2:#1B1B1B;--paper3:#232323;--line:#282828;--line2:#3A3A3A;
+    --tx:#EDEBE6;--tx2:#C4C2BC;--tx3:#8C8A84;--tx4:#5C5A55;--hl:rgba(216,67,77,.38);--good:#57B98A;--warn:#DFA34F;--neutral:#6E6A63}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);padding:24px 16px 70px}
+  .lab{max-width:900px;margin:0 auto}
+  h1{font-family:var(--serif);font-size:19px;font-weight:600;margin-bottom:12px}
+  .controls{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:8px 12px;background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+  .stage{display:flex;justify-content:center}
+  .card{width:100%;max-width:820px;background:var(--paper);border:1px solid var(--line);padding:24px 30px 26px;transition:max-width .25s}
+  [data-view="mobile"] .card{max-width:380px;padding:20px 18px 22px}
+  .row-head{display:flex;align-items:baseline;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:18px}
+  .row-head .num{font-family:var(--serif);font-size:26px;font-weight:900;color:var(--signal);min-width:36px}
+  .row-head .q{flex:1;font-family:var(--serif);font-size:15.5px;font-weight:600;line-height:1.3}
+  .row-head .v{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--signal)}
+  .prosa{font-size:13.8px;line-height:1.7;color:var(--tx2);max-width:60ch;margin-bottom:22px}
+  .viz{margin-bottom:24px}
+  .viz-t{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:14px}
+  .caso{display:none} html[data-caso="precio"] #c-precio{display:block} html[data-caso="rees"] #c-rees{display:block}
+
+  /* comparación tuyo vs referencia (primitiva compartida) */
+  .cmp-row{padding:11px 0;border-bottom:1px solid var(--line)}
+  .cmp-row:last-child{border-bottom:none}
+  .cmp-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+  .cmp-k{font-size:12.5px;font-weight:600;color:var(--tx)}
+  .cmp-k small{display:block;font-weight:400;font-size:11px;color:var(--tx3);margin-top:1px}
+  .cmp-tag{font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:2px 7px;border-radius:3px;white-space:nowrap}
+  .cmp-tag.ok{color:var(--good);background:color-mix(in srgb,var(--good) 13%,transparent)}
+  .cmp-tag.flojo{color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent)}
+  .cmp-tag.par{color:var(--tx3);background:var(--paper3)}
+  .cmp-bars{display:flex;flex-direction:column;gap:5px}
+  .cmp-line{display:grid;grid-template-columns:64px 1fr 66px;align-items:center;gap:9px}
+  [data-view="mobile"] .cmp-line{grid-template-columns:56px 1fr 62px;gap:7px}
+  .cmp-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);text-align:right}
+  .cmp-track{height:13px;background:var(--paper3);border-radius:2px;overflow:hidden}
+  .cmp-fill{height:100%;border-radius:2px}
+  .cmp-fill.tuyo{background:var(--warn)} .cmp-fill.tuyo.ok{background:var(--good)} .cmp-fill.tuyo.par{background:var(--neutral)}
+  .cmp-fill.ref{background:var(--neutral);opacity:.5}
+  .cmp-v{font-family:var(--mono);font-size:11.5px;font-weight:700;text-align:right}
+
+  /* waterfall vacancia */
+  .fall-visual{display:flex;height:24px;border-radius:2px;overflow:hidden;margin-bottom:11px}
+  .fall-visual span{height:100%}
+  .fall-row{display:grid;grid-template-columns:1fr 112px;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dotted var(--line)}
+  .fall-row:last-child{border-bottom:none}
+  .fall-row .fk{font-size:12.5px;color:var(--tx3);display:flex;align-items:center;gap:8px}
+  .fall-row .fk::before{content:'';width:8px;height:8px;border-radius:2px;background:var(--c,var(--neutral));flex-shrink:0}
+  .fall-row .fv{font-family:var(--mono);font-size:12.5px;text-align:right}
+  .fall-row.total{border-top:2px solid var(--tx);margin-top:6px;padding-top:10px}
+  .fall-row.total .fk{color:var(--tx);font-weight:600}
+  .fall-row.total .fk::before{display:none}
+  .fall-row.total .fv{font-weight:700;font-size:14.5px;color:var(--signal)}
+
+  .cierre{background:var(--paper2);border:1px solid var(--line);border-left:3px solid var(--signal);border-radius:3px;padding:15px 17px;margin-top:8px}
+  .cierre .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:8px}
+  .cierre p{font-family:var(--serif);font-style:italic;font-size:14px;line-height:1.7;color:var(--tx2);max-width:58ch}
+  .cierre p mark{background:linear-gradient(transparent 42%,var(--hl) 42%,var(--hl) 94%,transparent 94%);padding:0 2px;color:var(--tx)}
+  .nota{font-family:var(--mono);font-size:9.5px;color:var(--tx4);margin-top:11px;line-height:1.5}
+  .metric{max-width:820px;margin:18px auto 0;font-family:var(--mono);font-size:10.5px;color:var(--tx3);line-height:1.6}
+  .metric b{color:var(--signal)}
+</style>
+</head>
+<body>
+<div class="lab">
+  <h1>Propuestas · 12 precio STR / 17 reestructuración LTR</h1>
+  <div class="controls">
+    <div class="seg" id="seg-caso"><button class="on" data-v="precio">12 · Precio</button><button data-v="rees">17 · Reestructuración</button></div>
+    <div class="seg" id="seg-view"><button class="on" data-v="mobile">Mobile</button><button data-v="desktop">PC</button></div>
+    <div class="seg" id="seg-theme"><button class="on" data-v="light">Light</button><button data-v="dark">Dark</button></div>
+  </div>
+
+  <div class="stage">
+    <!-- ===== 12 · PRECIO STR ===== -->
+    <div class="card caso" id="c-precio">
+      <div class="row-head"><span class="num">12</span><span class="q">Pagas el metro a precio de comuna</span><span class="v">0%</span></div>
+      <p class="prosa">Dos maneras de mirar lo mismo: el metro cuadrado y el depto entero. Ambas apuntan al mismo lado.</p>
+
+      <div class="viz">
+        <div class="viz-t">Tu precio contra la referencia de mercado</div>
+        <div class="cmp-row">
+          <div class="cmp-top"><span class="cmp-k">Por metro cuadrado<small>contra la mediana de Las Condes</small></span><span class="cmp-tag par">a la par</span></div>
+          <div class="cmp-bars">
+            <div class="cmp-line"><span class="cmp-lbl">tuyo</span><div class="cmp-track"><div class="cmp-fill tuyo par" style="width:88%"></div></div><span class="cmp-v">UF 118</span></div>
+            <div class="cmp-line"><span class="cmp-lbl">mediana</span><div class="cmp-track"><div class="cmp-fill ref" style="width:88%"></div></div><span class="cmp-v">UF 118</span></div>
+          </div>
+        </div>
+        <div class="cmp-row">
+          <div class="cmp-top"><span class="cmp-k">El depto entero<small>contra su valor estimado</small></span><span class="cmp-tag flojo">+$1,3 MM</span></div>
+          <div class="cmp-bars">
+            <div class="cmp-line"><span class="cmp-lbl">tu precio</span><div class="cmp-track"><div class="cmp-fill tuyo" style="width:89%"></div></div><span class="cmp-v">UF 6.500</span></div>
+            <div class="cmp-line"><span class="cmp-lbl">estimado</span><div class="cmp-track"><div class="cmp-fill ref" style="width:88,5%"></div></div><span class="cmp-v">UF 6.467</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cierre">
+        <div class="t">Tu palanca de negociación</div>
+        <p>Pagas justo sobre la referencia, así que <mark>acá sí hay espacio para negociar</mark>: cada peso que bajes entra directo a tu patrimonio y mejora el flujo — menos crédito, menos cuota.</p>
+      </div>
+      <div class="nota">Mediana de 47 avisos comparables de Las Condes, ajustada a precio de cierre. Es una estimación de referencia, no una tasación.</div>
+    </div>
+
+    <!-- ===== 17 · REESTRUCTURACIÓN LTR ===== -->
+    <div class="card caso" id="c-rees">
+      <div class="row-head"><span class="num">04</span><span class="q">Cómo estás financiando</span><span class="v">Tasa 4,7%</span></div>
+      <p class="prosa">Cómo armas el crédito define cuánta cuota cargas cada mes. Estas son tus dos palancas contra la referencia.</p>
+
+      <div class="viz">
+        <div class="viz-t">Tu estructura contra la referencia</div>
+        <div class="cmp-row">
+          <div class="cmp-top"><span class="cmp-k">Tasa de interés</span><span class="cmp-tag flojo">+0,6 pts · el punto flojo</span></div>
+          <div class="cmp-bars">
+            <div class="cmp-line"><span class="cmp-lbl">tuya</span><div class="cmp-track"><div class="cmp-fill tuyo" style="width:94%"></div></div><span class="cmp-v">4,7%</span></div>
+            <div class="cmp-line"><span class="cmp-lbl">mercado</span><div class="cmp-track"><div class="cmp-fill ref" style="width:82%"></div></div><span class="cmp-v">4,1%</span></div>
+          </div>
+        </div>
+        <div class="cmp-row">
+          <div class="cmp-top"><span class="cmp-k">Pie</span><span class="cmp-tag ok">en nivel adecuado</span></div>
+          <div class="cmp-bars">
+            <div class="cmp-line"><span class="cmp-lbl">tuyo</span><div class="cmp-track"><div class="cmp-fill tuyo ok" style="width:80%"></div></div><span class="cmp-v">20%</span></div>
+            <div class="cmp-line"><span class="cmp-lbl">óptimo</span><div class="cmp-track"><div class="cmp-fill ref" style="width:100%"></div></div><span class="cmp-v">25%</span></div>
+          </div>
+        </div>
+        <div class="cmp-row">
+          <div class="cmp-top"><span class="cmp-k">Cuota mensual</span></div>
+          <div class="cmp-line"><span class="cmp-lbl">hoy</span><div class="cmp-track"><div class="cmp-fill tuyo" style="width:100%"></div></div><span class="cmp-v">$579.488</span></div>
+        </div>
+      </div>
+
+      <div class="viz">
+        <div class="viz-t">Un mes sin arrendatario, en plata</div>
+        <div class="fall-visual">
+          <span style="width:82.3%;background:var(--neutral)"></span>
+          <span style="width:9,2%;background:var(--warn)"></span>
+          <span style="width:8.5%;background:var(--tx4)"></span>
+        </div>
+        <div>
+          <div class="fall-row"><span class="fk" style="--c:var(--neutral)">Dividendo</span><span class="fv">$579.488</span></div>
+          <div class="fall-row"><span class="fk" style="--c:var(--warn)">Gastos comunes</span><span class="fv">$65.000</span></div>
+          <div class="fall-row"><span class="fk" style="--c:var(--tx4)">Contribuciones</span><span class="fv">$60.000</span></div>
+          <div class="fall-row total"><span class="fk">Pagas de tu bolsillo</span><span class="fv">$704.488</span></div>
+        </div>
+      </div>
+
+      <div class="cierre">
+        <div class="t">Dónde está la palanca</div>
+        <p>La palanca acá es la tasa: <mark>cotizar en otro banco puede bajar la cuota</mark>. Con la cuota en este nivel, una vacancia prolongada o un alza de tasa al renovar pegan directo en tu flujo.</p>
+      </div>
+      <div class="nota">Pie contra un óptimo de 25% · tasa contra el promedio de mercado de referencia, actualizado manualmente</div>
+    </div>
+  </div>
+
+  <div class="metric" id="metric"></div>
+</div>
+<script>
+const M={
+ precio:'De <b>163 palabras y 0 diagramas</b> a <b>~45 palabras + 1 diagrama + 1 cierre</b>. Los dos "lentes" pasan a ser dos comparaciones con la misma gramática: cuando estás a la par, las barras miden igual y se ve sin leer. El bloque "de dónde sale" de 46 palabras vuelve a ser una línea de fuente real.',
+ rees:'De <b>97 palabras y 0 bloques del vocabulario</b> a <b>~40 palabras + 2 diagramas + 1 cierre</b>. Usa <b>el mismo diagrama de estructura que financiamiento STR</b> y marca la palanca floja que corresponda: acá es la tasa (+0,6 pts), allá era el pie. Y "un mes de vacancia" pasa a ser un waterfall de tres tramos.'};
+function set(v){document.documentElement.dataset.caso=v;document.getElementById('metric').innerHTML=M[v]}
+function wire(id,fn){document.querySelectorAll('#'+id+' button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fn(b.dataset.v)}))}
+wire('seg-caso',set);
+wire('seg-view',v=>document.documentElement.dataset.view=v);
+wire('seg-theme',v=>document.documentElement.dataset.theme=v);
+set('precio');
+</script>
+</body>
+</html>
