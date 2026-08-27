@@ -184,7 +184,9 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
   // bloque visible y que el informe. El FAQ los tomaba de la serie del gráfico y
   // por eso publicaba en el JSON-LD un rango y un porcentaje distintos de los
   // que decía el informe de la misma comuna.
-  const num = (n: number) => String(n).replace(".", ",");
+  // Un decimal fijo, igual que el bloque visible (fmt1): con String() un 5,0
+  // se publicaba como "5" y el JSON-LD quedaba con otra precisión que la página.
+  const num = (n: number) => n.toFixed(1).replace(".", ",");
   const faqPlusvalia =
     coberturaPlus === "trayectoria_gfk" && serieGfk && acPlus
       ? {
