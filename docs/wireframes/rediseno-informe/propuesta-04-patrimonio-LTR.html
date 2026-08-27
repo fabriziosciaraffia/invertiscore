@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light" data-view="mobile">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Propuesta · patrimonio LTR</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--serif:'Source Serif 4',Georgia,serif;--sans:'IBM Plex Sans',sans-serif;--mono:'JetBrains Mono',monospace;--signal:#C8323C}
+  [data-theme="light"]{--bg:#E9E6DF;--paper:#FAF8F3;--paper2:#F1EEE7;--paper3:#EAE7DF;--line:#DAD6CC;--line2:#C4BFB2;
+    --tx:#141311;--tx2:#3B3A36;--tx3:#75726A;--tx4:#A39F94;--hl:rgba(224,67,80,.26);--good:#2F7D55;--warn:#A96F1B;--neutral:#8C8880}
+  [data-theme="dark"]{--bg:#0A0A0A;--paper:#141414;--paper2:#1B1B1B;--paper3:#232323;--line:#282828;--line2:#3A3A3A;
+    --tx:#EDEBE6;--tx2:#C4C2BC;--tx3:#8C8A84;--tx4:#5C5A55;--hl:rgba(216,67,77,.38);--good:#57B98A;--warn:#DFA34F;--neutral:#6E6A63}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);padding:24px 16px 70px}
+  .lab{max-width:900px;margin:0 auto}
+  h1{font-family:var(--serif);font-size:19px;font-weight:600;margin-bottom:12px}
+  .controls{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:8px 12px;background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+  .stage{display:flex;justify-content:center}
+  .card{width:100%;max-width:820px;background:var(--paper);border:1px solid var(--line);padding:24px 30px 26px;transition:max-width .25s}
+  [data-view="mobile"] .card{max-width:380px;padding:20px 18px 22px}
+  .row-head{display:flex;align-items:baseline;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:18px}
+  .row-head .num{font-family:var(--serif);font-size:26px;font-weight:900;color:var(--signal);min-width:36px}
+  .row-head .q{flex:1;font-family:var(--serif);font-size:15.5px;font-weight:600;line-height:1.3}
+  .row-head .v{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--signal)}
+  .prosa{font-size:13.8px;line-height:1.7;color:var(--tx2);max-width:60ch;margin-bottom:22px}
+  .viz-t{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:12px}
+
+  /* ===== BARRA DE COMPOSICIÓN ===== */
+  .brackets{display:flex;margin-bottom:5px}
+  .bracket{position:relative;text-align:center;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--tx3);padding-bottom:7px}
+  .bracket::after{content:'';position:absolute;left:3px;right:3px;bottom:0;height:5px;
+    border:1px solid var(--line2);border-bottom:none;border-radius:3px 3px 0 0}
+  .bracket b{color:var(--tx);font-size:11px}
+  .compo{display:flex;height:38px;border-radius:3px;overflow:hidden}
+  .seg-c{height:100%;position:relative}
+  .seg-c.pie{background:var(--neutral)}
+  .seg-c.aportes{background:var(--warn)}
+  .seg-c.amort{background:var(--good)}
+  .seg-c.plus{background:var(--good);opacity:.45}
+  .seg-c.plus::after{content:'';position:absolute;inset:0;
+    background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.35) 5px,rgba(255,255,255,.35) 10px)}
+  .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:11px;border-top:2px solid var(--tx)}
+  .total .k{font-size:13px;font-weight:600;color:var(--tx)}
+  .total .v{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--tx)}
+  [data-view="mobile"] .total .v{font-size:17px}
+
+  .leg{margin-top:14px}
+  .leg-row{display:grid;grid-template-columns:12px 1fr auto;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .leg-row:last-child{border-bottom:none}
+  .leg-sw{width:12px;height:12px;border-radius:2px;position:relative;top:2px}
+  .leg-sw.pie{background:var(--neutral)}
+  .leg-sw.aportes{background:var(--warn)}
+  .leg-sw.amort{background:var(--good)}
+  .leg-sw.plus{background:var(--good);opacity:.45}
+  .leg-sw.plus::after{content:'';position:absolute;inset:0;
+    background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.4) 3px,rgba(255,255,255,.4) 6px)}
+  .leg-k{font-size:12.5px;color:var(--tx2)}
+  .leg-k small{display:block;font-size:11px;color:var(--tx3);margin-top:1px}
+  .leg-v{font-family:var(--mono);font-size:12.5px;font-weight:700;white-space:nowrap;text-align:right}
+  .leg-v small{display:block;font-family:var(--mono);font-size:9.5px;color:var(--tx4);font-weight:400;margin-top:1px}
+
+  .mult{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--paper2);border:1px solid var(--line);border-radius:3px;margin-top:16px}
+  .mult .k{font-size:12.5px;color:var(--tx3);flex:1}
+  .mult .v{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--good)}
+
+  .cierre{background:var(--paper2);border:1px solid var(--line);border-left:3px solid var(--signal);border-radius:3px;padding:15px 17px;margin-top:18px}
+  .cierre .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:8px}
+  .cierre p{font-family:var(--serif);font-style:italic;font-size:14px;line-height:1.7;color:var(--tx2);max-width:58ch}
+  .cierre p mark{background:linear-gradient(transparent 42%,var(--hl) 42%,var(--hl) 94%,transparent 94%);padding:0 2px;color:var(--tx)}
+  .nota{font-family:var(--mono);font-size:9.5px;color:var(--tx4);margin-top:11px}
+  .metric{max-width:820px;margin:18px auto 0;font-family:var(--mono);font-size:10.5px;color:var(--tx3);line-height:1.6}
+  .metric b{color:var(--signal)}
+</style>
+</head>
+<body>
+<div class="lab">
+  <h1>04 · patrimonio LTR — propuesta</h1>
+  <div class="controls">
+    <div class="seg" id="seg-view"><button class="on" data-v="mobile">Mobile</button><button data-v="desktop">PC</button></div>
+    <div class="seg" id="seg-theme"><button class="on" data-v="light">Light</button><button data-v="dark">Dark</button></div>
+  </div>
+
+  <div class="stage">
+    <div class="card">
+      <div class="row-head"><span class="num">05</span><span class="q">Tu parte vale bastante más de lo aportado</span><span class="v">$93,2 MM</span></div>
+
+      <p class="prosa">A 10 años, tras vender y saldar el crédito, esto es lo que te queda en la mano — y de dónde salió cada peso.</p>
+
+      <div class="viz-t">De dónde salen tus $93,2 millones</div>
+      <div class="brackets">
+        <div class="bracket" style="width:43.9%">Lo pusiste tú · <b>44%</b></div>
+        <div class="bracket" style="width:56.1%">Lo puso el negocio · <b>56%</b></div>
+      </div>
+      <div class="compo">
+        <div class="seg-c pie" style="width:33.6%"></div>
+        <div class="seg-c aportes" style="width:10.3%"></div>
+        <div class="seg-c amort" style="width:29.3%"></div>
+        <div class="seg-c plus" style="width:26.8%"></div>
+      </div>
+
+      <div class="leg">
+        <div class="leg-row"><span class="leg-sw pie"></span>
+          <span class="leg-k">Pie y gastos de compra<small>lo que desembolsaste el día 1</small></span>
+          <span class="leg-v">$31,3 MM</span></div>
+        <div class="leg-row"><span class="leg-sw aportes"></span>
+          <span class="leg-k">Aportes mensuales<small>$79.908/mes en los años de flujo negativo</small></span>
+          <span class="leg-v">$9,6 MM</span></div>
+        <div class="leg-row"><span class="leg-sw amort"></span>
+          <span class="leg-k">Deuda que amortizó el arriendo<small>firme: sale del contrato, no de una proyección</small></span>
+          <span class="leg-v">$27,3 MM<small>firme</small></span></div>
+        <div class="leg-row"><span class="leg-sw plus"></span>
+          <span class="leg-k">Plusvalía proyectada<small>depende de que la comuna suba</small></span>
+          <span class="leg-v">$25,0 MM<small>proyectado</small></span></div>
+      </div>
+
+      <div class="total"><span class="k">Tu parte a 10 años</span><span class="v">$93.194.403</span></div>
+
+      <div class="mult"><span class="k">Multiplicas lo que pusiste por</span><span class="v">×2,28</span></div>
+
+      <div class="cierre">
+        <div class="t">Qué significa</div>
+        <p>Más de la mitad de tu parte <mark>no salió de tu bolsillo</mark>: la puso el arriendo pagando deuda y la plusvalía. Pero ojo con el reparto: la amortización es firme —sale del contrato— y la plusvalía es proyección. La deuda tampoco se paga sola del todo: en los años de flujo negativo, parte de la cuota la pusiste tú.</p>
+      </div>
+      <div class="nota">Motor Franco · valor de venta a 10 años menos deuda remanente · la plusvalía se detalla en su propio hallazgo</div>
+    </div>
+  </div>
+
+  <div class="metric">De <b>219 palabras y 0 diagramas</b> (el waterfall se perdió en la migración) a <b>~75 palabras + barra de composición + 1 cierre</b>. Responde la pregunta que hoy no se responde: cuánto de los $93,2 MM lo puso el inversionista y cuánto el negocio — y cuánto de eso ya es firme.</div>
+</div>
+<script>
+function wire(id,fn){document.querySelectorAll('#'+id+' button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fn(b.dataset.v)}))}
+wire('seg-view',v=>document.documentElement.dataset.view=v);
+wire('seg-theme',v=>document.documentElement.dataset.theme=v);
+</script>
+</body>
+</html>
