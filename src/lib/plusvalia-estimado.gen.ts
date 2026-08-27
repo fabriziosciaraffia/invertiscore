@@ -93,36 +93,39 @@ export const PLUSVALIA_ESTIMADO_DEFAULT = { plusvalia10a: 35, anualizada: 3 };
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Serie anual GFK de UF/m² (deptos nuevos, oferta). Solo series COMPLETAS. */
+/**
+ * Puntos OBSERVADOS de la serie, para DIBUJAR el gráfico y nada más.
+ *
+ * No trae anualizada a propósito (F4.1): la única del producto vive en
+ * \`PLUSVALIA_ESTIMADO[comuna].anualizada\`, que además incorpora el cierre
+ * estimado cuando existe. Mientras hubo dos campos con la misma semántica,
+ * divergieron — la página titulaba 5,8% para Santiago con el informe diciendo
+ * 5,0%. Si necesitas el % de una comuna, léelo de la trayectoria.
+ */
 export interface SerieGfk {
   /** Primer año de la serie. Los valores son años consecutivos desde aquí. */
   desde: number;
   /** UF/m² por año (deptos nuevos, precio de oferta, promedio anual). */
   valores: number[];
-  /**
-   * % anual de la serie 2015→2024, 1 decimal, por PENDIENTE LOG-LINEAL
-   * sobre los 10 puntos (F3) — no es un CAGR punta a punta: ese
-   * descansaba solo en el primer y el último año.
-   */
-  anualPct: number;
 }
 
 /** Serie GFK 2015-2024 por comuna (15 comunas con serie completa). */
 export const GFK_SERIE: Record<string, SerieGfk> = {
-  "Conchalí"             : { desde: 2015, valores: [31, 35, 41.7, 50.1, 54.8, 58, 63.1, 66.3, 74.3, 75.2], anualPct: 10.4 },
-  "Estación Central"     : { desde: 2015, valores: [45.4, 46.8, 48.2, 50.5, 54.8, 57.3, 59.8, 61.2, 63.5, 64.3], anualPct: 4.3 },
-  "La Florida"           : { desde: 2015, valores: [43.9, 45.8, 48.9, 50.6, 56, 60.5, 65.7, 67.9, 71.2, 71.9], anualPct: 6.3 },
-  "La Reina"             : { desde: 2015, valores: [65.7, 69.8, 74.2, 79.2, 79, 81.3, 83.4, 84, 84.5, 86.3], anualPct: 2.8 },
-  "Las Condes"           : { desde: 2015, valores: [82.6, 86.7, 88.3, 92.7, 98.3, 102.8, 107.1, 109.3, 110.3, 111.1], anualPct: 3.6 },
-  "Lo Barnechea"         : { desde: 2015, valores: [82.4, 82.8, 85.2, 90.9, 96.3, 100.1, 103.7, 104.6, 104.9, 105.7], anualPct: 3.3 },
-  "Macul"                : { desde: 2015, valores: [46.6, 47.2, 49.3, 52, 54.9, 59.1, 63.2, 67.2, 72.1, 72.9], anualPct: 5.7 },
-  "Maipú"                : { desde: 2015, valores: [45.3, 46.8, 48, 52.5, 54.3, 60.4, 63.5, 65.4, 67.1, 69.2], anualPct: 5.3 },
-  "Ñuñoa"                : { desde: 2015, valores: [65, 69.2, 72.4, 77, 81.6, 83.6, 86.4, 87.1, 87.8, 88.7], anualPct: 3.6 },
-  "Providencia"          : { desde: 2015, valores: [81.9, 84.7, 85.1, 89.3, 93.8, 98.2, 101.4, 103.3, 103.9, 105], anualPct: 3.1 },
-  "Puente Alto"          : { desde: 2015, valores: [33.9, 34.2, 36.6, 38.9, 43.5, 46.9, 52.3, 55.6, 56.9, 57.2], anualPct: 7.1 },
-  "Quilicura"            : { desde: 2015, valores: [28.6, 34.7, 36.5, 38.9, 43, 47.5, 52.8, 55.3, 57.2, 57.9], anualPct: 8.2 },
-  "San Miguel"           : { desde: 2015, valores: [45.3, 49.3, 51.4, 54.7, 57.9, 58.2, 65.1, 69.1, 70.4, 71], anualPct: 5.3 },
-  "Santiago"             : { desde: 2015, valores: [52.8, 55.3, 57.1, 61.6, 69.2, 72.3, 78.3, 81.4, 80.5, 84], anualPct: 5.8 },
-  "Vitacura"             : { desde: 2015, valores: [87.1, 90.9, 92.2, 101.1, 106.8, 109.1, 115.7, 117.7, 119.5, 120.8], anualPct: 4.0 },
+  "Conchalí"             : { desde: 2015, valores: [31, 35, 41.7, 50.1, 54.8, 58, 63.1, 66.3, 74.3, 75.2] },
+  "Estación Central"     : { desde: 2015, valores: [45.4, 46.8, 48.2, 50.5, 54.8, 57.3, 59.8, 61.2, 63.5, 64.3] },
+  "La Florida"           : { desde: 2015, valores: [43.9, 45.8, 48.9, 50.6, 56, 60.5, 65.7, 67.9, 71.2, 71.9] },
+  "La Reina"             : { desde: 2015, valores: [65.7, 69.8, 74.2, 79.2, 79, 81.3, 83.4, 84, 84.5, 86.3] },
+  "Las Condes"           : { desde: 2015, valores: [82.6, 86.7, 88.3, 92.7, 98.3, 102.8, 107.1, 109.3, 110.3, 111.1] },
+  "Lo Barnechea"         : { desde: 2015, valores: [82.4, 82.8, 85.2, 90.9, 96.3, 100.1, 103.7, 104.6, 104.9, 105.7] },
+  "Macul"                : { desde: 2015, valores: [46.6, 47.2, 49.3, 52, 54.9, 59.1, 63.2, 67.2, 72.1, 72.9] },
+  "Maipú"                : { desde: 2015, valores: [45.3, 46.8, 48, 52.5, 54.3, 60.4, 63.5, 65.4, 67.1, 69.2] },
+  "Ñuñoa"                : { desde: 2015, valores: [65, 69.2, 72.4, 77, 81.6, 83.6, 86.4, 87.1, 87.8, 88.7] },
+  "Providencia"          : { desde: 2015, valores: [81.9, 84.7, 85.1, 89.3, 93.8, 98.2, 101.4, 103.3, 103.9, 105] },
+  "Puente Alto"          : { desde: 2015, valores: [33.9, 34.2, 36.6, 38.9, 43.5, 46.9, 52.3, 55.6, 56.9, 57.2] },
+  "Quilicura"            : { desde: 2015, valores: [28.6, 34.7, 36.5, 38.9, 43, 47.5, 52.8, 55.3, 57.2, 57.9] },
+  "San Miguel"           : { desde: 2015, valores: [45.3, 49.3, 51.4, 54.7, 57.9, 58.2, 65.1, 69.1, 70.4, 71] },
+  "Santiago"             : { desde: 2015, valores: [52.8, 55.3, 57.1, 61.6, 69.2, 72.3, 78.3, 81.4, 80.5, 84] },
+  "Vitacura"             : { desde: 2015, valores: [87.1, 90.9, 92.2, 101.1, 106.8, 109.1, 115.7, 117.7, 119.5, 120.8] },
 };
 
 /** Nivel GFK más fresco por comuna (1T-2025 si existe; si no, 2024). */
@@ -161,7 +164,7 @@ export const GFK_NIVEL: Record<string, { ufM2: number; periodo: string }> = {
 
 /** Agregado Gran Santiago (sentinel 'PROMEDIO GS' del CSV) — nunca por comuna. */
 export const GFK_GRAN_SANTIAGO = {
-  serie: { desde: 2015, valores: [62.2, 65.2, 67.4, 70.1, 75.5, 78, 82, 83.1, 83.7, 83.9], anualPct: 3.7 },
+  serie: { desde: 2015, valores: [62.2, 65.2, 67.4, 70.1, 75.5, 78, 82, 83.1, 83.7, 83.9] },
   nivel: { ufM2: 83.3, periodo: "1T-2025" },
 };
 

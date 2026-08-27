@@ -133,11 +133,21 @@ function valoresSerie(comuna: string): number[] | null {
   return anios.map((a) => s.get(a)!);
 }
 
+/**
+ * Fila de GFK_SERIE: SOLO los puntos para dibujar. No lleva anualizada.
+ *
+ * Tenía un `anualPct` calculado sobre estos mismos valores, y la página lo
+ * usaba para titular el gráfico. Cuando F4 sumó el cierre 2025 a la
+ * trayectoria, esa segunda cifra se quedó atrás: /comunas mostraba 5,8% para
+ * Santiago mientras el informe decía 5,0%. Dos campos con la misma semántica
+ * divergen apenas uno de los dos incorpora un punto nuevo, así que el campo se
+ * elimina en vez de recalcularse: la anualizada vive en PLUSVALIA_ESTIMADO y
+ * en ningún otro lugar.
+ */
 function filaSerie(comuna: string): string | null {
   const valores = valoresSerie(comuna);
   if (!valores) return null;
-  const anual = anualizadaLogLineal(valores);
-  return `{ desde: ${SERIE_DESDE}, valores: [${valores.join(", ")}], anualPct: ${anual.toFixed(1)} }`;
+  return `{ desde: ${SERIE_DESDE}, valores: [${valores.join(", ")}] }`;
 }
 
 const comunasSerie = [...serieGfk.keys()].filter((c) => c !== GS_SENTINEL && filaSerie(c) !== null).sort((a, b) => a.localeCompare(b, "es"));
@@ -327,17 +337,20 @@ export const PLUSVALIA_ESTIMADO_DEFAULT = { plusvalia10a: ${PLUSVALIA_DEFAULT.pl
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Serie anual GFK de UF/m² (deptos nuevos, oferta). Solo series COMPLETAS. */
+/**
+ * Puntos OBSERVADOS de la serie, para DIBUJAR el gráfico y nada más.
+ *
+ * No trae anualizada a propósito (F4.1): la única del producto vive en
+ * \\\`PLUSVALIA_ESTIMADO[comuna].anualizada\\\`, que además incorpora el cierre
+ * estimado cuando existe. Mientras hubo dos campos con la misma semántica,
+ * divergieron — la página titulaba 5,8% para Santiago con el informe diciendo
+ * 5,0%. Si necesitas el % de una comuna, léelo de la trayectoria.
+ */
 export interface SerieGfk {
   /** Primer año de la serie. Los valores son años consecutivos desde aquí. */
   desde: number;
   /** UF/m² por año (deptos nuevos, precio de oferta, promedio anual). */
   valores: number[];
-  /**
-   * % anual de la serie ${SERIE_DESDE}→${SERIE_HASTA}, 1 decimal, por PENDIENTE LOG-LINEAL
-   * sobre los ${SERIE_HASTA - SERIE_DESDE + 1} puntos (F3) — no es un CAGR punta a punta: ese
-   * descansaba solo en el primer y el último año.
-   */
-  anualPct: number;
 }
 
 /** Serie GFK ${SERIE_DESDE}-${SERIE_HASTA} por comuna (${comunasSerie.length} comunas con serie completa). */
