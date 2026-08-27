@@ -16,8 +16,7 @@
 // entre sí en ese sentido) y para que las dos superficies no puedan divergir.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { simularPie } from "@/lib/analysis";
-import type { AnalisisInput } from "@/lib/types";
+import type { NivelPie } from "@/lib/analysis";
 import { VViz, Escalera, type FilaEscalera } from "./vocabulario";
 // `fmtAxisMoney` es la forma compacta canónica del repo ($54,2M / UF 1,3K); no se
 // replica un formateador nuevo para esto.
@@ -29,36 +28,22 @@ type Currency = "CLP" | "UF";
 const TOLERANCIA_FLUJO = 1000;
 
 export function EscaleraPie({
-  input,
+  niveles,
   valorUF,
-  asOf,
   flujoPersistido,
-  precioCLPPersistido,
   currency,
 }: {
-  input: AnalisisInput | undefined;
+  /** Ya calculados por el helper de SU motor: `simularPie` (LTR) o
+   *  `simularPieStr` (STR). El render es uno solo para las dos modalidades. */
+  niveles: NivelPie[];
   valorUF: number;
-  /** Fecha del análisis. Sin ella la proyección usaría "hoy" y los meses hasta la
-   *  entrega saldrían mal en compra en verde, así que sin fecha NO se dibuja. */
-  asOf: Date | undefined;
   /** Flujo mensual que el informe ya muestra en el resto de la página. */
   flujoPersistido: number | undefined;
-  /** `metrics.precioCLP` persistido: de ahí sale el UF congelado del análisis. */
-  precioCLPPersistido: number | undefined;
   currency: Currency;
 }) {
-  if (!input || !asOf || !(valorUF > 0) || typeof flujoPersistido !== "number") return null;
-
-  // ── EL UF DEL RECOMPUTE ES EL CONGELADO DEL ANÁLISIS, NO EL DE HOY ──
-  // `valorUF` es el UF vigente de la página (sirve para formatear y para el toggle
-  // CLP/UF), pero el análisis se calculó con el UF de su fecha. Recomputar con el de
-  // hoy cambia el precio en pesos y por lo tanto el flujo: el invariante lo detectaba
-  // y apagaba la escalera entera. El congelado se deriva exacto de lo persistido.
-  const ufCongelado = precioCLPPersistido && input.precio > 0 ? precioCLPPersistido / input.precio : valorUF;
-
-  const niveles = simularPie(input, ufCongelado, asOf);
-  // Vacío ⇒ pie 0 (lo cubre un bono: subirlo es deshacer el trato) o compra al
-  // contado. La decisión vive en el motor; acá solo se obedece.
+  if (!(valorUF > 0) || typeof flujoPersistido !== "number") return null;
+  // Vacío ⇒ pie 0 (lo cubre un bono: subirlo es deshacer el trato), compra al contado,
+  // o contexto irreconstruible. La decisión vive en el motor; acá solo se obedece.
   if (niveles.length === 0) return null;
 
   const actual = niveles.find((n) => n.esActual);

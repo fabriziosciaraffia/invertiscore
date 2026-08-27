@@ -10,6 +10,8 @@
 // Primitivas de presentación (espejo del mockup): Lead · Chips/Cell · Decomp · Box · Chain · Note.
 
 import type { ReactNode } from "react";
+import type { NivelPie } from "@/lib/analysis";
+import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
 import type {
   FullAnalysisResult,
   HallazgoTIR,
@@ -1124,11 +1126,18 @@ export function DrawerFinanciamientoStr({
   results,
   currency,
   valorUF,
+  nivelesPie = [],
 }: {
   hallazgo: HallazgoEstructuraFinanciamiento;
   results: ShortTermResult;
   currency: Currency;
   valorUF: number;
+  // Escalera del pie STR: los niveles llegan YA CALCULADOS desde el servidor.
+  // No se calculan acá porque el reconstructor del input (`buildStrRecomputeCtx`)
+  // arrastra `analisis-pipeline`, que usa `next/headers` — importarlo desde un
+  // componente cliente tira 500 y el tsc no lo ve. Además el recompute (4 ×
+  // calcShortTerm) no tiene por qué correr en el teléfono del lector.
+  nivelesPie?: NivelPie[];
 }) {
   const v = hallazgo.valor;
   // GRUPO B — guard por dato crítico: sin crédito no hay cuota ni palanca del pie.
@@ -1208,6 +1217,19 @@ export function DrawerFinanciamientoStr({
               — y es lo único que no depende del mercado ni de la ocupación, solo de cuánto pones día uno.
             </p>
           </div>
+      {/* ═══ CONVERSIÓN 13 (FASE 4.2) · ESCALERA DEL PIE ═══
+          Espejo exacto del LTR: mismos niveles relativos, mismas dos columnas y el
+          mismo invariante. La paridad no es cosmética — LTR con escalera y STR sin
+          ella es justo la divergencia que el vocabulario único vino a eliminar. El
+          recompute usa `calcShortTerm` sobre el input reconstruido por
+          `buildStrRecomputeCtx`, que ya alimenta la bisección de distancia STR. */}
+      <EscaleraPie
+        niveles={nivelesPie}
+        valorUF={valorUF}
+        flujoPersistido={results.escenarios?.base?.flujoCajaMensual}
+        currency={currency}
+      />
+
           <Box label="Qué haces con esto">
             Si tienes la liquidez para subir el pie, es el ajuste de mayor impacto y menor riesgo. Si no la
             tienes, el flujo negativo es un dato a asumir, no un error a esconder.

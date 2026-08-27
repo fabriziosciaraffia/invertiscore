@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
+import { simularPieStr } from "@/lib/analysis/simular-pie-str";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import { STRResultsClient } from "./results-client";
@@ -225,6 +226,25 @@ export default async function STRResultPage({
     isOwner &&
     (data as Record<string, unknown>).charge_mode === "welcome";
 
+  // ESCALERA DEL PIE (conversión 13) — se calcula ACÁ, en el server: el
+  // reconstructor del input STR (`buildStrRecomputeCtx`) arrastra
+  // `analisis-pipeline`, que usa `next/headers`, así que no puede importarse desde
+  // un componente cliente (tira 500 y el tsc no lo ve). De paso, el recompute
+  // —4 × calcShortTerm— deja de correr en el teléfono del lector.
+  // El UF es el CONGELADO del análisis, no el vigente: con el de hoy el precio en
+  // pesos cambia y el invariante del render apaga la escalera.
+  const nivelesPie = (() => {
+    const raw = data.input_data as Record<string, unknown> | null;
+    const uf = Number(raw?.ufCongelada) || ufFrozen;
+    if (!raw || !data.created_at || !(uf > 0)) return [];
+    try {
+      return simularPieStr(raw, results as unknown as { airbnbRaw?: unknown }, uf, new Date(data.created_at));
+    } catch {
+      // Un fallo del recompute NUNCA rompe el informe: sin niveles, no hay escalera.
+      return [];
+    }
+  })();
+
   const sharedProps = {
     analysisId: data.id,
     results,
@@ -248,6 +268,7 @@ export default async function STRResultPage({
     subordinatedHref,
     showCtaWelcome,
     isAnonOwner,
+    nivelesPie,
   };
 
   return <STRResultsClient {...sharedProps} />;

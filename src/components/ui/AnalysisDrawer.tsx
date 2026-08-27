@@ -22,6 +22,7 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
 import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
+import { simularPie } from "@/lib/analysis";
 import {
   VProsa,
   VViz,
@@ -994,6 +995,13 @@ function DrawerReestructuracion({
   inputData?: AnalisisInput;
   createdAt?: string;
 }) {
+  const nivelesPie = useMemo(() => {
+    if (!inputData || !createdAt || !(inputData.precio > 0)) return [];
+    const precioCLP = results.metrics?.precioCLP ?? 0;
+    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
+    return simularPie(inputData, ufCongelado, new Date(createdAt));
+  }, [inputData, createdAt, results.metrics?.precioCLP, valorUF]);
+
   const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
   const est = data.estructuraSugerida;
 
@@ -1076,11 +1084,9 @@ function DrawerReestructuracion({
           hallazgo ("cómo estás financiando") y el trade-off del pie no depende de que
           la IA haya escrito su bloque. */}
       <EscaleraPie
-        input={inputData}
+        niveles={nivelesPie}
         valorUF={valorUF}
-        asOf={createdAt ? new Date(createdAt) : undefined}
         flujoPersistido={results.metrics?.flujoNetoMensual}
-        precioCLPPersistido={results.metrics?.precioCLP}
         currency={currency}
       />
     </div>
@@ -1111,6 +1117,13 @@ function DrawerEstructuraSana({
   inputData?: AnalisisInput;
   createdAt?: string;
 }) {
+  const nivelesPie = useMemo(() => {
+    if (!inputData || !createdAt || !(inputData.precio > 0)) return [];
+    const precioCLP = results.metrics?.precioCLP ?? 0;
+    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
+    return simularPie(inputData, ufCongelado, new Date(createdAt));
+  }, [inputData, createdAt, results.metrics?.precioCLP, valorUF]);
+
   const { piePct, tasaPct, tasaMarketPct, driver } = hallazgo.valor;
   const cuotaActual = results.metrics?.dividendo ?? 0;
   const pieFmt = Number.isInteger(piePct) ? String(piePct) : piePct.toFixed(1).replace(".", ",");
@@ -1202,11 +1215,9 @@ function DrawerEstructuraSana({
           dado autoridad de dato. Acá no se declara ningún óptimo: se muestra el
           intercambio calculado y el lector decide según su liquidez. */}
       <EscaleraPie
-        input={inputData}
+        niveles={nivelesPie}
         valorUF={valorUF}
-        asOf={createdAt ? new Date(createdAt) : undefined}
         flujoPersistido={results.metrics?.flujoNetoMensual}
-        precioCLPPersistido={results.metrics?.precioCLP}
         currency={currency}
       />
 

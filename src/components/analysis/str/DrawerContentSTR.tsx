@@ -59,6 +59,7 @@ import { FlujoEstacionalChartSTR } from "./FlujoEstacionalChartSTR";
 import { DrawerTipoHuesped } from "./DrawerTipoHuesped";
 import { fmtMoney, fmtPct, fmtDec } from "../utils";
 import { metricaValorONull, esMetricaNoAplica } from "@/lib/types";
+import type { NivelPie } from "@/lib/analysis";
 import { NO_APLICA_VALOR, NO_APLICA_SUBLABEL } from "@/lib/no-aplica-copy";
 
 /** Escala del rango de escenarios: el mayor (optimista) ocupa el 100%. */
@@ -349,6 +350,7 @@ export function DrawerContentSTR({
   currency,
   valorUF,
   ai,
+  nivelesPie,
 }: {
   activeKey: DrawerKeySTR;
   analysisId: string;
@@ -357,6 +359,8 @@ export function DrawerContentSTR({
   comuna: string;
   currency: "CLP" | "UF";
   valorUF: number;
+  /** Escalera del pie, calculada en el SERVIDOR (ver DrawerFinanciamientoStr). */
+  nivelesPie?: NivelPie[];
   ai: AIAnalysisSTRv2 | null;
 }) {
   const base = results.escenarios.base;
@@ -388,7 +392,17 @@ export function DrawerContentSTR({
   );
   if (activeKey === "financiamiento") {
     const h = hById<HallazgoEstructuraFinanciamiento>("estructura_financiamiento");
-    return h ? <DrawerFinanciamientoStr hallazgo={h} results={results} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
+    return h ? (
+      <DrawerFinanciamientoStr
+        hallazgo={h}
+        results={results}
+        currency={currency}
+        valorUF={valorUF}
+        nivelesPie={nivelesPie}
+      />
+    ) : (
+      faltaHallazgo
+    );
   }
   if (activeKey === "precio") {
     const h = hById<HallazgoSobreprecio>("sobreprecio");
