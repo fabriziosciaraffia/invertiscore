@@ -1437,7 +1437,14 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     const historica = PLUSVALIA_HISTORICA[comunaNorm];
     let plusvaliaHistoricaInfo = "";
     if (historica) {
-      plusvaliaHistoricaInfo = `Plusvalía histórica de ${comunaNorm} (${rangoHistDe(comunaNorm)}): ${historica.plusvalia10a}% en 10 años (${historica.anualizada}% anual). Precio promedio depto pasó de UF ${historica.precio2014.toLocaleString()} a UF ${historica.precio2024.toLocaleString()}.`;
+      // El par de precios cambia de UNIDAD según la fuente de la comuna (F3):
+      // GfK mide UF por m² de deptos nuevos y Arenas & Cayo el precio del depto
+      // completo. Se rotula por `unidadPrecio`; nunca se presentan como lo mismo.
+      const precioFrase =
+        historica.unidadPrecio === "uf_m2"
+          ? `El m² de departamentos nuevos pasó de UF ${historica.precioInicio.toLocaleString()} a UF ${historica.precioFin.toLocaleString()}.`
+          : `El precio promedio del depto pasó de UF ${historica.precioInicio.toLocaleString()} a UF ${historica.precioFin.toLocaleString()}.`;
+      plusvaliaHistoricaInfo = `Plusvalía histórica de ${comunaNorm} (${rangoHistDe(comunaNorm)}): ${historica.plusvalia10a}% acumulado en el período (${historica.anualizada}% anual). ${precioFrase}`;
       if (historica.anualizada >= 4.5) plusvaliaHistoricaInfo += " Comuna con plusvalía ALTA.";
       else if (historica.anualizada >= 3.0) plusvaliaHistoricaInfo += " Comuna con plusvalía MODERADA.";
       else if (historica.anualizada >= 1.5) plusvaliaHistoricaInfo += " Comuna con plusvalía BAJA.";

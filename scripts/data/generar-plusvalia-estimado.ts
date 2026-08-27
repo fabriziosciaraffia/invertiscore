@@ -131,11 +131,34 @@ const filasNivel = comunasNivel
 const gsSerie = filaSerie(GS_SENTINEL);
 const gsNivel = nivelGfk.get(GS_SENTINEL);
 
-// ── F0: trayectoria A&C (idéntica, movimiento cero en el motor) ────────────
-const filas = Object.entries(PLUSVALIA_HISTORICA)
-  .map(([comuna, d]) => {
-    const k = JSON.stringify(comuna);
-    return `  ${k.padEnd(23)}: { plusvalia10a: ${d.plusvalia10a}, anualizada: ${d.anualizada}, precio2014: ${d.precio2014}, precio2024: ${d.precio2024}, fuente: "arenas_cayo", rangoHist: ${JSON.stringify(RANGO_F0)} },`;
+// ── F3: CASCADA DE TRAYECTORIA ─────────────────────────────────────────────
+// Una sola trayectoria vigente por comuna, resuelta ACÁ (build time) para que
+// el motor y la superficie lean exactamente lo mismo:
+//   1. serie anual GfK completa 2015-2024 → anualizada log-lineal (15 comunas)
+//   2. Arenas & Cayo 2014-2024 → su anualizada de dos puntos (fallback)
+//   3. sin ninguna de las dos → DEFAULT declarado, nunca heredado en silencio
+// Nunca conviven dos trayectorias para la misma comuna: `fuente` y `rangoHist`
+// dicen cuál quedó, y la superficie rotula por ese campo.
+//
+// Las unidades NO son las mismas entre fuentes —GfK mide UF por m² de deptos
+// nuevos y A&C el precio del depto completo—, así que el par de precios viaja
+// con `unidadPrecio` y los consumidores rotulan según ese campo. Por eso los
+// campos se llaman precioInicio/precioFin y no precio2014/precio2024: para una
+// comuna GfK el inicio es 2015.
+const comunasCascada = new Set([...Object.keys(PLUSVALIA_HISTORICA), ...comunasSerie]);
+const filas = [...comunasCascada]
+  .sort((a, b) => a.localeCompare(b, "es"))
+  .map((comuna) => {
+    const k = JSON.stringify(comuna).padEnd(23);
+    const serie = valoresSerie(comuna);
+    if (serie) {
+      const anual = anualizadaLogLineal(serie);
+      const acum = (serie[serie.length - 1] / serie[0] - 1) * 100;
+      const rango = `${SERIE_DESDE}-${SERIE_HASTA}`;
+      return `  ${k}: { plusvalia10a: ${acum.toFixed(0)}, anualizada: ${anual.toFixed(1)}, precioInicio: ${serie[0]}, precioFin: ${serie[serie.length - 1]}, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: ${JSON.stringify(rango)} },`;
+    }
+    const d = PLUSVALIA_HISTORICA[comuna];
+    return `  ${k}: { plusvalia10a: ${d.plusvalia10a}, anualizada: ${d.anualizada}, precioInicio: ${d.precio2014}, precioFin: ${d.precio2024}, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: ${JSON.stringify(RANGO_F0)} },`;
   })
   .join("\n");
 
@@ -192,19 +215,32 @@ async function main() {
 // zone-insight, wizard, UI de procedencia) y la página /comunas (F1/F2). Es la
 // FUENTE ÚNICA en runtime: nadie lee las tablas plusvalia_fuentes_raw
 // (forensics) ni plusvalia_estimado (derivada) ni constantes paralelas. La
-// cascada futura del MOTOR (GFK → A&C → DEFAULT, F3) entra por el generador,
-// cambiando \\\`fuente\\\`/\\\`rangoHist\\\` por comuna sin tocar a los consumidores.
+// cascada del MOTOR (GfK → A&C → DEFAULT, F3) se resuelve en el generador: una
+// sola trayectoria vigente por comuna, con su procedencia declarada.
 
-/** Trayectoria histórica de una comuna, con procedencia declarada. */
+/**
+ * Trayectoria histórica VIGENTE de una comuna, ya resuelta por la cascada.
+ * Nunca conviven dos: \\\`fuente\\\` dice cuál quedó y \\\`rangoHist\\\` su período.
+ */
 export interface PlusvaliaComunaEntry {
-  /** % acumulado en el rango histórico (ej: 37 = 37% en 10 años). */
+  /** % acumulado en el rango histórico (ej: 37 = 37% en el período). */
   plusvalia10a: number;
-  /** % anual equivalente. */
+  /**
+   * % anual. Con \\\`fuente: "gfk"\\\` es la pendiente log-lineal de la serie;
+   * con \\\`"arenas_cayo"\\\`, la anualizada de dos puntos del estudio.
+   */
   anualizada: number;
-  /** Precio promedio del depto (UF, valor total) al inicio del rango — NO es UF/m², pese al header histórico de plusvalia-historica.ts (Recoleta 2.432→3.100 no puede ser m²). */
-  precio2014: number;
-  /** Precio promedio del depto (UF, valor total) al fin del rango. */
-  precio2024: number;
+  /** Precio al inicio del rango. La UNIDAD la declara \\\`unidadPrecio\\\`. */
+  precioInicio: number;
+  /** Precio al fin del rango, en la misma unidad. */
+  precioFin: number;
+  /**
+   * Qué miden precioInicio/precioFin — las fuentes NO coinciden en unidad:
+   * · "uf_m2"    → UF por m² de deptos nuevos (GfK).
+   * · "uf_depto" → precio del depto completo en UF (Arenas & Cayo).
+   * Todo consumidor que muestre estos precios rotula por este campo.
+   */
+  unidadPrecio: "uf_m2" | "uf_depto";
   /** Procedencia de la trayectoria de ESTA comuna. */
   fuente: "arenas_cayo" | "gfk";
   /** Rango del dato histórico de ESTA comuna (rótulo de período). */

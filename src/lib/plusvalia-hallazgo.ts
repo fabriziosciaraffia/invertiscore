@@ -188,18 +188,28 @@ export function buildHallazgoPlusvalia(p: {
       `La proyección a 10 años del análisis usa ${proyFmt}% anual parejo — más que lo que esta comuna rindió: tómala como techo optimista, no como piso.`;
   }
 
+  // ── Procedencia POR COMUNA (F3) ─────────────────────────────────────────
+  // Con la cascada, dos comunas del mismo informe pueden tener fuentes y rangos
+  // distintos: Santiago se sirve de la serie GfK 2015-2024 y Recoleta del
+  // estudio Arenas & Cayo 2014-2024. El rótulo sale de la entry de ESTA comuna,
+  // nunca de un literal global — que era lo que hacía decir "Arenas & Cayo" a
+  // una comuna cuya trayectoria ya no viene de ahí.
+  const entry = PLUSVALIA_HISTORICA[p.comuna.trim()];
+  const rango = entry?.rangoHist ?? PLUSVALIA_DEFAULT_RANGO;
+  const atribucion =
+    entry?.fuente === "gfk"
+      ? "GfK/NielsenIQ, precios de oferta de deptos nuevos"
+      : "Arenas & Cayo, Tinsa, Propital, Activo Más";
+
   const base = p.tieneData
-    ? `apreciación histórica de la comuna ${PLUSVALIA_DEFAULT_RANGO} (Arenas & Cayo, Tinsa, Propital, Activo Más), no garantía de apreciación futura`
+    ? `apreciación histórica de la comuna ${rango} (${atribucion}), no garantía de apreciación futura`
     : "promedio histórico del Gran Santiago, sin datos propios de la comuna — no garantía futura";
 
   // v.fuente carga la PROCEDENCIA HISTÓRICA REAL (rama motor-supuestos F4), no el umbral. Es
   // la fuente única de verdad que los drawers leen (con fallback defensivo al literal para
-  // filas persistidas pre-regen, cuya v.fuente aún trae el texto del umbral). Atribución = las
-  // 4 fuentes que el header del dataset declara (plusvalia-historica.ts: "Arenas & Cayo,
-  // Propital, Tinsa, Activo Más Inversiones"). Los 3 literales de fallback (drawers LTR/STR +
-  // card) son idénticos a este string.
+  // filas persistidas pre-regen, cuya v.fuente aún trae el texto del umbral).
   const fuenteHistorica = p.tieneData
-    ? `Histórico ${PLUSVALIA_DEFAULT_RANGO} · Arenas & Cayo, Tinsa, Propital, Activo Más`
+    ? `Histórico ${rango} · ${atribucion}`
     : `Promedio histórico Gran Santiago ${PLUSVALIA_DEFAULT_RANGO}`;
 
   return {
