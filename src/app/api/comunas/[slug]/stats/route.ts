@@ -36,7 +36,13 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     if (!stats) {
       return NextResponse.json({ error: "sin_datos" }, { status: 404 });
     }
-    const plusvalia = PLUSVALIA_HISTORICA[stats.nombre]?.anualizada ?? null;
+    // F4.1 — la cifra y SU período viajan juntos. Antes solo salía el número y
+    // el wizard lo rotulaba con el rango del DEFAULT, así que las comunas con
+    // serie GfK mostraban su anualizada real bajo un "observado 2014-2024" que
+    // no era el suyo. Resolverlo en el cliente tampoco servía: si el nombre no
+    // matchea exacto, el lookup cae al DEFAULT en silencio — acá el lookup ya
+    // está hecho y es el mismo que produce la cifra.
+    const entry = PLUSVALIA_HISTORICA[stats.nombre];
     return NextResponse.json({
       nombre: stats.nombre,
       cubierta: isComunaDisponible(stats.nombre),
@@ -45,8 +51,10 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
       precioM2CLP: Math.round(stats.precioM2Promedio * UF_CLP),
       arriendoCLP: stats.arriendoRepresentativo,
       rentabilidadBruta: stats.rentabilidadBruta,
-      /** % anual observado 2014-2024. `null` si la comuna no está en la serie. */
-      plusvaliaAnualizada: plusvalia,
+      /** % anual observado de la comuna. `null` si no tiene trayectoria propia. */
+      plusvaliaAnualizada: entry?.anualizada ?? null,
+      /** Período de ESA cifra (2015-2025 / 2015-2024 / 2014-2024). `null` con la cifra. */
+      plusvaliaRango: entry?.rangoHist ?? null,
     });
   } catch {
     // Fail-soft: esta pantalla es informativa y opcional. Un 500 acá no puede

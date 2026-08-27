@@ -88,6 +88,8 @@ interface ComunaStats {
   arriendoCLP: number;
   rentabilidadBruta: number;
   plusvaliaAnualizada: number | null;
+  /** Período de esa cifra; viaja con ella para no rotularla con un rango ajeno. */
+  plusvaliaRango: string | null;
 }
 
 /** `Caja` → el `LatLngBounds` que espera Places. Un solo lugar arma el objeto. */
@@ -741,7 +743,7 @@ function SinDeptoScreen({
               <Dato
                 label="Plusvalía anual"
                 valor={stats.plusvaliaAnualizada != null ? fmtPct(stats.plusvaliaAnualizada) : "sin dato"}
-                sub={stats.plusvaliaAnualizada != null ? `observado ${PLUSVALIA_DEFAULT_RANGO}` : undefined}
+                sub={stats.plusvaliaAnualizada != null ? `observado ${stats.plusvaliaRango ?? PLUSVALIA_DEFAULT_RANGO}` : undefined}
               />
             </div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-muted)] mt-5 mb-0">
