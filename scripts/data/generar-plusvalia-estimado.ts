@@ -151,36 +151,65 @@ const filasNivel = comunasNivel
 const gsSerie = filaSerie(GS_SENTINEL);
 const gsNivel = nivelGfk.get(GS_SENTINEL);
 
-// ── F3: CASCADA DE TRAYECTORIA ─────────────────────────────────────────────
+// ── F3/F4: CASCADA DE TRAYECTORIA ──────────────────────────────────────────
 // Una sola trayectoria vigente por comuna, resuelta ACÁ (build time) para que
 // el motor y la superficie lean exactamente lo mismo:
-//   1. serie anual GfK completa 2015-2024 → anualizada log-lineal (15 comunas)
+//   1. serie anual GfK, extendida con el cierre estimado del año siguiente
+//      cuando ese cierre existe (F4) → anualizada log-lineal
 //   2. Arenas & Cayo 2014-2024 → su anualizada de dos puntos (fallback)
 //   3. sin ninguna de las dos → DEFAULT declarado, nunca heredado en silencio
 // Nunca conviven dos trayectorias para la misma comuna: `fuente` y `rangoHist`
 // dicen cuál quedó, y la superficie rotula por ese campo.
 //
+// F4 — LA SERIE LLEGA HASTA DONDE HAY DATO, Y ESO ES ASIMÉTRICO A PROPÓSITO.
+// La serie de Franco es UNA sola en todo el producto (/comunas, score,
+// informe): donde hay cierre estimado la trayectoria lo incluye, donde no,
+// llega al último año observado. Sobre las 24 comunas del roster quedan tres
+// rangos conviviendo — 2015-2025 (13), 2015-2024 (2: Maipú y Quilicura, sin
+// cierre porque sus guardas lo rechazaron) y 2014-2024 (9: las A&C más
+// Peñalolén). Es asimetría de COBERTURA declarada por comuna, no de método:
+// todas se calculan igual, unas tienen un año más de dato que otras.
+//
+// POR QUÉ AL SUMAR 2025 TODAS LAS ANUALIZADAS BAJAN (Δ medio −0,5 pts, máx
+// −1,1 en Puente Alto; ninguna sube). No es un efecto del método ni un bug del
+// cierre estimado: 2025 es el año en que el mercado se frenó. El agregado GfK
+// del Gran Santiago pasó de 83,9 (2024) a ~84,0 (2025) —prácticamente plano—
+// mientras las series venían subiendo, así que incorporar ese punto aplana la
+// pendiente de todas. Medido el 27-ago-2026. La curva de score NO se
+// recalibró: la mediana de la distribución quedó clavada en 3,6 y la del
+// sub-score en 55, así que los cortes de F3 siguen sirviendo tal cual.
+//
 // Las unidades NO son las mismas entre fuentes —GfK mide UF por m² de deptos
 // nuevos y A&C el precio del depto completo—, así que el par de precios viaja
 // con `unidadPrecio` y los consumidores rotulan según ese campo. Por eso los
 // campos se llaman precioInicio/precioFin y no precio2014/precio2024: para una
-// comuna GfK el inicio es 2015.
+// comuna GfK el inicio es 2015 y el fin puede ser 2024 o 2025.
 const comunasCascada = new Set([...Object.keys(PLUSVALIA_HISTORICA), ...comunasSerie]);
-const filas = [...comunasCascada]
-  .sort((a, b) => a.localeCompare(b, "es"))
-  .map((comuna) => {
-    const k = JSON.stringify(comuna).padEnd(23);
-    const serie = valoresSerie(comuna);
-    if (serie) {
-      const anual = anualizadaLogLineal(serie);
-      const acum = (serie[serie.length - 1] / serie[0] - 1) * 100;
-      const rango = `${SERIE_DESDE}-${SERIE_HASTA}`;
-      return `  ${k}: { plusvalia10a: ${acum.toFixed(0)}, anualizada: ${anual.toFixed(1)}, precioInicio: ${serie[0]}, precioFin: ${serie[serie.length - 1]}, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: ${JSON.stringify(rango)} },`;
-    }
-    const d = PLUSVALIA_HISTORICA[comuna];
-    return `  ${k}: { plusvalia10a: ${d.plusvalia10a}, anualizada: ${d.anualizada}, precioInicio: ${d.precio2014}, precioFin: ${d.precio2024}, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: ${JSON.stringify(RANGO_F0)} },`;
-  })
-  .join("\n");
+
+/** Filas de la cascada. Necesita el estimado, así que se arma dentro de main(). */
+function filasCascada(estimadoPorComuna: Map<string, number>): string {
+  return [...comunasCascada]
+    .sort((a, b) => a.localeCompare(b, "es"))
+    .map((comuna) => {
+      const k = JSON.stringify(comuna).padEnd(23);
+      const serie = valoresSerie(comuna);
+      if (serie) {
+        // El cierre del año siguiente entra como un punto más de la serie —es
+        // el mismo dato que /comunas ya dibuja—, y con él el rango declarado
+        // avanza un año. Sin cierre, la serie termina donde termina lo
+        // observado: no se rellena (decisión cerrada, ver el bloque de las 5).
+        const cierre = estimadoPorComuna.get(comuna);
+        const vals = cierre != null ? [...serie, cierre] : serie;
+        const hasta = SERIE_DESDE + vals.length - 1;
+        const anual = anualizadaLogLineal(vals);
+        const acum = (vals[vals.length - 1] / vals[0] - 1) * 100;
+        return `  ${k}: { plusvalia10a: ${acum.toFixed(0)}, anualizada: ${anual.toFixed(1)}, precioInicio: ${vals[0]}, precioFin: ${vals[vals.length - 1]}, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: ${JSON.stringify(`${SERIE_DESDE}-${hasta}`)} },`;
+      }
+      const d = PLUSVALIA_HISTORICA[comuna];
+      return `  ${k}: { plusvalia10a: ${d.plusvalia10a}, anualizada: ${d.anualizada}, precioInicio: ${d.precio2014}, precioFin: ${d.precio2024}, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: ${JSON.stringify(RANGO_F0)} },`;
+    })
+    .join("\n");
+}
 
 // ── F2: estimado desde la tabla derivada ───────────────────────────────────
 interface FilaEstimado {
@@ -218,6 +247,9 @@ async function main() {
     .join("\n");
   // Método para la página de metodología: textos únicos (hoy varían solo por zona INCOIN).
   const metodosUnicos = [...new Set(est.map((e) => e.metodo))].sort();
+  // El cierre alimenta DOS cosas: el bloque F2 (que la página dibuja como
+  // último punto) y la trayectoria de la cascada (F4). Es el mismo número.
+  const filas = filasCascada(new Map(est.map((e) => [e.comuna, Number(e.uf_m2)])));
 
   const hashInput = createHash("sha256")
     .update(readFileSync(join(__dirname, "../../src/lib/plusvalia-historica.ts"), "utf8"))
