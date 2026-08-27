@@ -375,6 +375,28 @@ function TokensHallazgos() {
       .cmp-v{font-family:var(--font-mono, ui-monospace);font-size:12px;font-weight:700;color:var(--doc-tx);white-space:nowrap}
       .cmp-pie{font-size:11.5px;line-height:1.6;color:var(--doc-tx4);margin-top:2px}
 
+      /* ===== ESCALERA DEL PIE (trade-off flujo ↔ TIR) ===== */
+      .esca{border:1px solid var(--doc-line);border-radius:3px;overflow:hidden}
+      .esca-head,.esca-row{display:grid;grid-template-columns:1fr 1.15fr 62px;gap:10px;align-items:baseline;
+        padding:9px 12px}
+      .esca-head{font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+        color:var(--doc-tx4);background:var(--doc-paper2);border-bottom:1px solid var(--doc-line)}
+      .esca-head span:not(:first-child),.esca-row .esca-v{text-align:right}
+      .esca-row{border-bottom:1px dotted var(--doc-line)}
+      .esca-row:last-child{border-bottom:none}
+      .esca-row.hoy{background:var(--doc-paper3)}
+      .esca-pie{font-family:var(--font-mono, ui-monospace);font-size:13px;font-weight:700;color:var(--doc-tx)}
+      .esca-pie small{display:block;font-family:var(--font-body, sans-serif);font-size:10px;font-weight:400;
+        color:var(--doc-tx4);margin-top:2px;letter-spacing:0}
+      .esca-row.hoy .esca-pie small{color:var(--doc-tx3)}
+      .esca-v{font-family:var(--font-mono, ui-monospace);font-size:12.5px;font-weight:700;color:var(--doc-tx);white-space:nowrap}
+      .esca-v.neg{color:var(--signal-red)}
+      .esca-v.pos{color:var(--doc-good)}
+      .esca-v small{display:block;font-family:var(--font-body, sans-serif);font-size:10px;font-weight:400;
+        color:var(--doc-tx4);margin-top:2px}
+      .esca-foot{padding:10px 12px;font-size:11.5px;line-height:1.6;color:var(--doc-tx4);
+        border-top:1px solid var(--doc-line);background:var(--doc-paper2)}
+
       /* ===== ESCENARIOS (rango con supuesto declarado) ===== */
       .esc{display:flex;flex-direction:column;gap:10px}
       .esc-row{display:grid;grid-template-columns:132px 1fr auto;align-items:center;gap:12px}

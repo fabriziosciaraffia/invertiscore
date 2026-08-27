@@ -563,6 +563,51 @@ export function Escenarios({ filas, pie }: { filas: FilaEscenario[]; pie?: React
   );
 }
 
+export type FilaEscalera = {
+  pie: string;
+  pieMonto: string;
+  esActual: boolean;
+  flujo: string;
+  flujoNegativo: boolean;
+  /** Delta contra el nivel actual ("+$52K mejor"). Vacío en la fila actual. */
+  flujoDelta?: string;
+  /** Columna rotulada TIR explícitamente: "retorno anual" es ambiguo entre TIR y CoC. */
+  tir: string;
+};
+
+/** Escalera del pie: el trade-off completo, un nivel por fila. Las DOS columnas son
+ *  obligatorias — con flujo y sin TIR muestra media verdad ("más pie siempre mejor"),
+ *  el mismo sesgo que tenía el "óptimo fijo 25%" que esto reemplaza. */
+export function Escalera({ filas, pie }: { filas: FilaEscalera[]; pie?: ReactNode }) {
+  if (!filas.length) return null;
+  return (
+    <div className="esca">
+      <div className="esca-head">
+        <span>Pie</span>
+        <span>Tu flujo mensual</span>
+        <span>TIR</span>
+      </div>
+      {filas.map((f, i) => (
+        <div key={i} className={`esca-row${f.esActual ? " hoy" : ""}`}>
+          <span className="esca-pie">
+            {f.pie}
+            <small>
+              {f.pieMonto}
+              {f.esActual ? " · hoy" : ""}
+            </small>
+          </span>
+          <span className={`esca-v${f.flujoNegativo ? " neg" : " pos"}`}>
+            {f.flujo}
+            {f.flujoDelta && <small>{f.flujoDelta}</small>}
+          </span>
+          <span className="esca-v">{f.tir}</span>
+        </div>
+      ))}
+      {pie && <div className="esca-foot">{pie}</div>}
+    </div>
+  );
+}
+
 export type FilaPar = { k: string; consecuencia: string; v: string; pct: number; destacada?: boolean };
 
 /** Par de barras con consecuencia: compara dos modos y muestra qué resulta de

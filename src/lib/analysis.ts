@@ -1335,6 +1335,79 @@ export function deriveVeredicto(
   return evalVeredicto(score, metrics, breakEvenTasa).veredicto;
 }
 
+/** Un nivel de la escalera del pie: el trade-off completo en una fila. */
+export interface NivelPie {
+  piePct: number;
+  /** El pie declarado en el análisis. Siempre presente en el resultado. */
+  esActual: boolean;
+  pieCLP: number;
+  /** Flujo mensual neto con ese pie (signed). */
+  flujoMensual: number;
+  /** TIR a 10 años con ese pie. null si el VPN no cruza cero (no calculable). */
+  tirPct: number | null;
+}
+
+/**
+ * ESCALERA DEL PIE — el trade-off de cuánto pie poner, calculado por la MISMA ruta
+ * que el análisis canónico (calcMetrics → calcProjections → calcExitScenario) sobre
+ * un clon del input con `piePct` parcheado. Mismo mecanismo que `veredictoConPatch`,
+ * que ya clona y recomputa para las palancas del hallazgo de distancia.
+ *
+ * POR QUÉ EXISTE: reemplaza la referencia de "óptimo de pie 25%", que era un valor
+ * convencional sin cálculo detrás (ni umbral de mejora de tasa, ni punto donde el
+ * flujo cruza a neutro, ni requisito bancario — se rastreó y no había ninguno).
+ * Dibujar esa referencia como barra le habría dado autoridad de dato a una
+ * convención. Acá no se declara ningún óptimo: se muestra el intercambio —más pie
+ * alivia el mes y baja el retorno— y el lector decide según su liquidez.
+ *
+ * LAS DOS COLUMNAS SON OBLIGATORIAS. Con flujo y sin TIR la escalera muestra media
+ * verdad ("más pie siempre mejor"), que es el mismo sesgo que el óptimo fijo.
+ *
+ * NIVELES RELATIVOS al pie declarado, en tramos de 5 (−5 / actual / +5 / +10), no
+ * absolutos: en el parque el 19% de los análisis tiene pie bajo 15% y el 6% sobre
+ * 30%, así que una escalera fija 15/20/25/30 dejaría fuera el pie actual de uno de
+ * cada cuatro. Los bancos financian en tramos de 5%.
+ *
+ * DEVUELVE VACÍO —y el render no dibuja nada— en los dos casos donde la escalera no
+ * significa nada: pie 0 (lo cubre un bono de la inmobiliaria: subirlo no es una
+ * palanca, es deshacer el trato que se está evaluando) y pie 100% (compra al
+ * contado: no hay crédito ni cuota que mover). La decisión vive acá y no en el
+ * render, para que las dos superficies que la usan no puedan divergir.
+ */
+export function simularPie(
+  input: AnalisisInput,
+  ufClp: number,
+  asOf: Date,
+  medianaComunaVentaUF?: MedianaComunaInyectada,
+): NivelPie[] {
+  const actual = input.piePct;
+  if (!Number.isFinite(actual) || actual <= 0 || actual >= 100) return [];
+  const precioCLP = input.precio * ufClp;
+  if (!(precioCLP > 0)) return [];
+
+  const niveles = [actual - 5, actual, actual + 5, actual + 10]
+    .filter((p) => p > 0 && p < 100)
+    // Redondeo a 1 decimal: con pies fraccionarios (18,7%) los tramos de 5 arrastran
+    // colas largas que no aportan y ensucian la etiqueta.
+    .map((p) => Math.round(p * 10) / 10);
+
+  const salida: NivelPie[] = [];
+  for (const piePct of niveles) {
+    const clone: AnalisisInput = { ...input, piePct };
+    const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
+    const proj = calcProjections({ input: clone, metrics: m, ufClp, asOf });
+    const exit = calcExitScenario(clone, m, proj);
+    salida.push({
+      piePct,
+      esActual: piePct === actual,
+      pieCLP: precioCLP * (piePct / 100),
+      flujoMensual: m.flujoNetoMensual,
+      tirPct: metricaValorONull(exit.tir),
+    });
+  }
+  return salida;
+}
+
 /**
  * Reevalúa SOLO el veredicto sobre un clon del input con `patch` aplicado, por la
  * MISMA ruta que produce el veredicto canónico en runAnalysis (calcMetrics → score

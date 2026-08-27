@@ -21,6 +21,7 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
+import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
 import {
   VProsa,
   VViz,
@@ -983,11 +984,15 @@ function DrawerReestructuracion({
   currency,
   results,
   valorUF,
+  inputData,
+  createdAt,
 }: {
   data: AIReestructuracionSection;
   currency: "CLP" | "UF";
   results: FullAnalysisResult;
   valorUF: number;
+  inputData?: AnalisisInput;
+  createdAt?: string;
 }) {
   const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
   const est = data.estructuraSugerida;
@@ -1066,6 +1071,18 @@ function DrawerReestructuracion({
           </p>
         </div>
       )}
+
+      {/* CONVERSIÓN 17 · la escalera va también en la rama con prosa IA: es el mismo
+          hallazgo ("cómo estás financiando") y el trade-off del pie no depende de que
+          la IA haya escrito su bloque. */}
+      <EscaleraPie
+        input={inputData}
+        valorUF={valorUF}
+        asOf={createdAt ? new Date(createdAt) : undefined}
+        flujoPersistido={results.metrics?.flujoNetoMensual}
+        precioCLPPersistido={results.metrics?.precioCLP}
+        currency={currency}
+      />
     </div>
   );
 }
@@ -1082,11 +1099,17 @@ function DrawerEstructuraSana({
   results,
   currency,
   valorUF,
+  inputData,
+  createdAt,
 }: {
   hallazgo: HallazgoEstructuraFinanciamiento;
   results: FullAnalysisResult;
   currency: "CLP" | "UF";
   valorUF: number;
+  // La escalera del pie recompute sobre un clon del input: necesita el input y la
+  // fecha del análisis (sin ella los meses hasta la entrega saldrían de "hoy").
+  inputData?: AnalisisInput;
+  createdAt?: string;
 }) {
   const { piePct, tasaPct, tasaMarketPct, driver } = hallazgo.valor;
   const cuotaActual = results.metrics?.dividendo ?? 0;
@@ -1167,9 +1190,25 @@ function DrawerEstructuraSana({
         <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-3">
           {sinPie && creditoCLP !== null
             ? `Financiamiento 100% · tasa de mercado ${tasaMarketPct.toFixed(1).replace(".", ",")}%${tasaSobreMercado ? ` (+${spreadDisplayPts} pts)` : ""} · crédito ${fmtMoney(creditoCLP, currency, valorUF)}.`
-            : `Óptimo de pie 25% · tasa de mercado ${tasaMarketPct.toFixed(1).replace(".", ",")}%.`}
+            : `Tasa de mercado ${tasaMarketPct.toFixed(1).replace(".", ",")}%.`}
         </p>
       </div>
+
+      {/* ═══ CONVERSIÓN 17 (FASE 4.2) · ESCALERA DEL PIE ═══
+          Reemplaza la referencia de "óptimo de pie 25%". Ese 25 se rastreó hasta el
+          fondo y no tiene fundamento: no marca umbral de mejora de tasa, ni el punto
+          donde el flujo cruza a neutro, ni un requisito bancario — es una convención
+          adoptada en may-2026 y nunca cuestionada. Dibujarla como referencia le habría
+          dado autoridad de dato. Acá no se declara ningún óptimo: se muestra el
+          intercambio calculado y el lector decide según su liquidez. */}
+      <EscaleraPie
+        input={inputData}
+        valorUF={valorUF}
+        asOf={createdAt ? new Date(createdAt) : undefined}
+        flujoPersistido={results.metrics?.flujoNetoMensual}
+        precioCLPPersistido={results.metrics?.precioCLP}
+        currency={currency}
+      />
 
       {/* Procedencia — de dónde sale el dato (builder determinístico, reemplaza el
           eco de fraseCanonica que ya mostró la card) */}
@@ -1709,6 +1748,8 @@ export function AnalysisDrawer({
             currency={currency}
             results={results}
             valorUF={valorUF}
+            inputData={inputData}
+            createdAt={createdAt}
           />
         ) : estructuraHallazgo ? (
           <DrawerEstructuraSana
@@ -1716,6 +1757,8 @@ export function AnalysisDrawer({
             results={results}
             currency={currency}
             valorUF={valorUF}
+            inputData={inputData}
+            createdAt={createdAt}
           />
         ) : null)}
       {activeKey === "capexPuestaAPunto" && capexHallazgo && (
