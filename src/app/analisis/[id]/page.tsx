@@ -1,4 +1,5 @@
 import { fechaProsaVigente } from "@/lib/pipeline-timing";
+import { DEMO_ANALYSIS_ID } from "@/lib/demo";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
@@ -186,7 +187,7 @@ export default async function AnalisisDetallePage({
       : rawResults);
 
   // Access level: "guest" | "free" | "premium" | "subscriber"
-  const DEMO_ANALYSIS_ID = "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";
+
   const isAdmin = isAdminUser(user?.email);
   const isLoggedIn = !!user;
   const isDemo = analisis.id === DEMO_ANALYSIS_ID;
@@ -301,8 +302,23 @@ export default async function AnalisisDetallePage({
   // aiStale → el client regenera al abrir vía POST (el server NO cobra: hadPriorProse).
   // hasNewAiStructure filtra shapes legacy; PROMPT_VERSION_LTR filtra versión.
   const ltrAiPersisted = (data as Record<string, unknown>).ai_analysis;
+  // PINNEO DEL DEMO (27-ago-2026) — el demo NO caduca por versión de prompt.
+  //
+  // No es una excepción a la regla del versionado: el demo es contenido de
+  // demostración curado, no el análisis de un usuario que espera su lectura. La
+  // regla existe para que a NADIE se le muestre un texto redactado bajo un contrato
+  // viejo como si fuera su informe; acá el texto ES la pieza, fija a propósito.
+  //
+  // Lo que resuelve: el demo es la única superficie del informe que se ve SIN
+  // sesión, y el anónimo no puede regenerar (POST /api/analisis/ai → 401). Sin
+  // pinneo, cada bump de PROMPT_VERSION lo dejaba mudo hasta que alguien lo
+  // regenerara a mano — que fue exactamente el incidente del 27-ago.
+  //
+  // Cuando el demo necesite prosa nueva se regenera explícitamente (una vez), no
+  // por caducidad automática.
   const ltrAiFresh = hasNewAiStructure(ltrAiPersisted)
-    && (ltrAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_LTR;
+    && (isDemo
+      || (ltrAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_LTR);
   const ltrAiStale = !!ltrAiPersisted && typeof ltrAiPersisted === "object" && !ltrAiFresh;
 
   return (
