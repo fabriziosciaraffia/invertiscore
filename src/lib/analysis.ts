@@ -1069,13 +1069,27 @@ function calcPlusvaliaScore(
     historicaOverride != null
       ? historicaOverride
       : historica ? historica.anualizada : PLUSVALIA_DEFAULT.anualizada;
+  // Cortes RECALIBRADOS para la distribución de la cascada (F3). Van en el
+  // mismo commit que el swap de fuente y no se separan: la curva anterior se
+  // calibró sobre la distribución de Arenas & Cayo (mediana 3,0 · máx 5,3) y la
+  // cascada entrega otra (mediana 3,6 · máx 10,4, porque las series GfK de las
+  // comunas periféricas corren muy por encima). Aplicar una sobre la otra
+  // inflaba el sub-componente parejo y le quitaba poder de discriminación.
+  //
+  // Criterio: NEUTRAL. Los seis tramos y sus rangos de salida son los mismos;
+  // solo se desplazan los cortes de entrada para que la mediana de la
+  // distribución nueva (3,6) caiga donde caía la de la vieja (~55) y las colas
+  // sigan separándose. Medido sobre las 24 comunas del roster: Δ Franco Score
+  // medio +0,2 (mín −2,4 La Reina · máx +5,0 Santiago), σ del sub-score 17,4 →
+  // 16,4. UNA sola curva para todas las comunas, sea cual sea su fuente: dos
+  // curvas según procedencia sería la dualidad que la cascada vino a evitar.
   let historicaScore: number;
-  if (anualizada >= 5) historicaScore = lerp(anualizada, 5, 7, 90, 100);
-  else if (anualizada >= 4) historicaScore = lerp(anualizada, 4, 5, 75, 89);
-  else if (anualizada >= 3) historicaScore = lerp(anualizada, 3, 4, 55, 74);
-  else if (anualizada >= 2) historicaScore = lerp(anualizada, 2, 3, 35, 54);
-  else if (anualizada >= 1) historicaScore = lerp(anualizada, 1, 2, 20, 34);
-  else historicaScore = lerp(anualizada, -2, 1, 0, 19);
+  if (anualizada >= 8) historicaScore = lerp(anualizada, 8, 11, 90, 100);
+  else if (anualizada >= 6) historicaScore = lerp(anualizada, 6, 8, 75, 89);
+  else if (anualizada >= 3.6) historicaScore = lerp(anualizada, 3.6, 6, 55, 74);
+  else if (anualizada >= 2.5) historicaScore = lerp(anualizada, 2.5, 3.6, 35, 54);
+  else if (anualizada >= 1.5) historicaScore = lerp(anualizada, 1.5, 2.5, 20, 34);
+  else historicaScore = lerp(anualizada, -2, 1.5, 0, 19);
   historicaScore = clamp(historicaScore, 0, 100);
 
   // Sub-componente 4: Antigüedad (20%)

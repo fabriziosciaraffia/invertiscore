@@ -7,7 +7,7 @@
 //     Cayo) tal cual, mismos valores, mismo DEFAULT. El swap a la cascada
 //     GFK→A&C en el score es F3 (exige recalibrar historicaScore) — NO acá.
 //   · F1 — data de PÁGINA (/comunas): serie anual GFK 2015-2024 (comunas con
-//     serie completa), nivel GFK 2024/2025-Q1 y CAGR punta a punta, leídos de
+//     serie completa), nivel GFK 2024/2025-Q1 y anualizada log-lineal, leídos de
 //     scripts/data/franco-fuentes-2025.csv (committeado). 'PROMEDIO GS' queda
 //     en export propio, nunca mezclado en las vistas por comuna.
 //   · F2 — ESTIMADO 2025: lee la tabla derivada `plusvalia_estimado` (filas
@@ -72,17 +72,52 @@ for (const linea of csvCrudo.trim().split(/\r?\n/).slice(1)) {
 const SERIE_DESDE = 2015;
 const SERIE_HASTA = 2024;
 
-function filaSerie(comuna: string): string | null {
+/**
+ * Anualizada de una serie por PENDIENTE LOG-LINEAL (mínimos cuadrados sobre
+ * ln(precio) vs año). Reemplaza al CAGR punta a punta (F3, decisión 26-ago).
+ *
+ * Por qué: el punta a punta descansa en dos observaciones —la primera y la
+ * última— y hereda todo el ruido de esos dos años; teniendo diez puntos, usar
+ * ocho de ellos solo para dibujar es desperdiciarlos. La pendiente log-lineal
+ * usa la serie completa y amortigua los extremos.
+ *
+ * Cuánto mueve (medido sobre las 15 series): Δ medio +0,4 pts, máximo +1,1
+ * (Puente Alto 6,0 → 7,1). Es casi siempre al alza porque las series son
+ * cóncavas —crecieron más al principio— y el punta a punta subpondera ese
+ * tramo. La Reina es la única que baja (3,1 → 2,8).
+ */
+function anualizadaLogLineal(valores: number[]): number {
+  const n = valores.length;
+  const xs = valores.map((_, i) => i);
+  const ys = valores.map((p) => Math.log(p));
+  const mx = xs.reduce((a, b) => a + b, 0) / n;
+  const my = ys.reduce((a, b) => a + b, 0) / n;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (xs[i] - mx) * (ys[i] - my);
+    den += (xs[i] - mx) ** 2;
+  }
+  return (Math.exp(num / den) - 1) * 100;
+}
+
+/** Valores de la serie de una comuna, solo si está COMPLETA. */
+function valoresSerie(comuna: string): number[] | null {
   const s = serieGfk.get(comuna);
   if (!s) return null;
   const anios: number[] = [];
   for (let a = SERIE_DESDE; a <= SERIE_HASTA; a++) if (s.has(a)) anios.push(a);
-  // Serie de página solo si está COMPLETA 2015-2024 (10 puntos): una serie con
-  // huecos dibujada como continua miente. Las comunas 2024-only quedan en nivel.
+  // Serie solo si está COMPLETA 2015-2024 (10 puntos): una serie con huecos
+  // dibujada como continua miente. Las comunas 2024-only quedan en nivel.
   if (anios.length !== SERIE_HASTA - SERIE_DESDE + 1) return null;
-  const valores = anios.map((a) => s.get(a)!);
-  const cagr = (Math.pow(valores[valores.length - 1] / valores[0], 1 / (SERIE_HASTA - SERIE_DESDE)) - 1) * 100;
-  return `{ desde: ${SERIE_DESDE}, valores: [${valores.join(", ")}], cagrPct: ${cagr.toFixed(1)} }`;
+  return anios.map((a) => s.get(a)!);
+}
+
+function filaSerie(comuna: string): string | null {
+  const valores = valoresSerie(comuna);
+  if (!valores) return null;
+  const anual = anualizadaLogLineal(valores);
+  return `{ desde: ${SERIE_DESDE}, valores: [${valores.join(", ")}], anualPct: ${anual.toFixed(1)} }`;
 }
 
 const comunasSerie = [...serieGfk.keys()].filter((c) => c !== GS_SENTINEL && filaSerie(c) !== null).sort((a, b) => a.localeCompare(b, "es"));
@@ -96,11 +131,34 @@ const filasNivel = comunasNivel
 const gsSerie = filaSerie(GS_SENTINEL);
 const gsNivel = nivelGfk.get(GS_SENTINEL);
 
-// ── F0: trayectoria A&C (idéntica, movimiento cero en el motor) ────────────
-const filas = Object.entries(PLUSVALIA_HISTORICA)
-  .map(([comuna, d]) => {
-    const k = JSON.stringify(comuna);
-    return `  ${k.padEnd(23)}: { plusvalia10a: ${d.plusvalia10a}, anualizada: ${d.anualizada}, precio2014: ${d.precio2014}, precio2024: ${d.precio2024}, fuente: "arenas_cayo", rangoHist: ${JSON.stringify(RANGO_F0)} },`;
+// ── F3: CASCADA DE TRAYECTORIA ─────────────────────────────────────────────
+// Una sola trayectoria vigente por comuna, resuelta ACÁ (build time) para que
+// el motor y la superficie lean exactamente lo mismo:
+//   1. serie anual GfK completa 2015-2024 → anualizada log-lineal (15 comunas)
+//   2. Arenas & Cayo 2014-2024 → su anualizada de dos puntos (fallback)
+//   3. sin ninguna de las dos → DEFAULT declarado, nunca heredado en silencio
+// Nunca conviven dos trayectorias para la misma comuna: `fuente` y `rangoHist`
+// dicen cuál quedó, y la superficie rotula por ese campo.
+//
+// Las unidades NO son las mismas entre fuentes —GfK mide UF por m² de deptos
+// nuevos y A&C el precio del depto completo—, así que el par de precios viaja
+// con `unidadPrecio` y los consumidores rotulan según ese campo. Por eso los
+// campos se llaman precioInicio/precioFin y no precio2014/precio2024: para una
+// comuna GfK el inicio es 2015.
+const comunasCascada = new Set([...Object.keys(PLUSVALIA_HISTORICA), ...comunasSerie]);
+const filas = [...comunasCascada]
+  .sort((a, b) => a.localeCompare(b, "es"))
+  .map((comuna) => {
+    const k = JSON.stringify(comuna).padEnd(23);
+    const serie = valoresSerie(comuna);
+    if (serie) {
+      const anual = anualizadaLogLineal(serie);
+      const acum = (serie[serie.length - 1] / serie[0] - 1) * 100;
+      const rango = `${SERIE_DESDE}-${SERIE_HASTA}`;
+      return `  ${k}: { plusvalia10a: ${acum.toFixed(0)}, anualizada: ${anual.toFixed(1)}, precioInicio: ${serie[0]}, precioFin: ${serie[serie.length - 1]}, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: ${JSON.stringify(rango)} },`;
+    }
+    const d = PLUSVALIA_HISTORICA[comuna];
+    return `  ${k}: { plusvalia10a: ${d.plusvalia10a}, anualizada: ${d.anualizada}, precioInicio: ${d.precio2014}, precioFin: ${d.precio2024}, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: ${JSON.stringify(RANGO_F0)} },`;
   })
   .join("\n");
 
@@ -157,19 +215,32 @@ async function main() {
 // zone-insight, wizard, UI de procedencia) y la página /comunas (F1/F2). Es la
 // FUENTE ÚNICA en runtime: nadie lee las tablas plusvalia_fuentes_raw
 // (forensics) ni plusvalia_estimado (derivada) ni constantes paralelas. La
-// cascada futura del MOTOR (GFK → A&C → DEFAULT, F3) entra por el generador,
-// cambiando \\\`fuente\\\`/\\\`rangoHist\\\` por comuna sin tocar a los consumidores.
+// cascada del MOTOR (GfK → A&C → DEFAULT, F3) se resuelve en el generador: una
+// sola trayectoria vigente por comuna, con su procedencia declarada.
 
-/** Trayectoria histórica de una comuna, con procedencia declarada. */
+/**
+ * Trayectoria histórica VIGENTE de una comuna, ya resuelta por la cascada.
+ * Nunca conviven dos: \\\`fuente\\\` dice cuál quedó y \\\`rangoHist\\\` su período.
+ */
 export interface PlusvaliaComunaEntry {
-  /** % acumulado en el rango histórico (ej: 37 = 37% en 10 años). */
+  /** % acumulado en el rango histórico (ej: 37 = 37% en el período). */
   plusvalia10a: number;
-  /** % anual equivalente. */
+  /**
+   * % anual. Con \\\`fuente: "gfk"\\\` es la pendiente log-lineal de la serie;
+   * con \\\`"arenas_cayo"\\\`, la anualizada de dos puntos del estudio.
+   */
   anualizada: number;
-  /** Precio promedio del depto (UF, valor total) al inicio del rango — NO es UF/m², pese al header histórico de plusvalia-historica.ts (Recoleta 2.432→3.100 no puede ser m²). */
-  precio2014: number;
-  /** Precio promedio del depto (UF, valor total) al fin del rango. */
-  precio2024: number;
+  /** Precio al inicio del rango. La UNIDAD la declara \\\`unidadPrecio\\\`. */
+  precioInicio: number;
+  /** Precio al fin del rango, en la misma unidad. */
+  precioFin: number;
+  /**
+   * Qué miden precioInicio/precioFin — las fuentes NO coinciden en unidad:
+   * · "uf_m2"    → UF por m² de deptos nuevos (GfK).
+   * · "uf_depto" → precio del depto completo en UF (Arenas & Cayo).
+   * Todo consumidor que muestre estos precios rotula por este campo.
+   */
+  unidadPrecio: "uf_m2" | "uf_depto";
   /** Procedencia de la trayectoria de ESTA comuna. */
   fuente: "arenas_cayo" | "gfk";
   /** Rango del dato histórico de ESTA comuna (rótulo de período). */
@@ -209,8 +280,12 @@ export interface SerieGfk {
   desde: number;
   /** UF/m² por año (deptos nuevos, precio de oferta, promedio anual). */
   valores: number[];
-  /** % anual punta a punta de la serie (CAGR ${SERIE_DESDE}→${SERIE_HASTA}), 1 decimal. */
-  cagrPct: number;
+  /**
+   * % anual de la serie ${SERIE_DESDE}→${SERIE_HASTA}, 1 decimal, por PENDIENTE LOG-LINEAL
+   * sobre los ${SERIE_HASTA - SERIE_DESDE + 1} puntos (F3) — no es un CAGR punta a punta: ese
+   * descansaba solo en el primer y el último año.
+   */
+  anualPct: number;
 }
 
 /** Serie GFK ${SERIE_DESDE}-${SERIE_HASTA} por comuna (${comunasSerie.length} comunas con serie completa). */

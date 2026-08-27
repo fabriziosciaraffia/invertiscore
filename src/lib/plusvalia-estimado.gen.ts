@@ -7,19 +7,32 @@
 // zone-insight, wizard, UI de procedencia) y la página /comunas (F1/F2). Es la
 // FUENTE ÚNICA en runtime: nadie lee las tablas plusvalia_fuentes_raw
 // (forensics) ni plusvalia_estimado (derivada) ni constantes paralelas. La
-// cascada futura del MOTOR (GFK → A&C → DEFAULT, F3) entra por el generador,
-// cambiando \`fuente\`/\`rangoHist\` por comuna sin tocar a los consumidores.
+// cascada del MOTOR (GfK → A&C → DEFAULT, F3) se resuelve en el generador: una
+// sola trayectoria vigente por comuna, con su procedencia declarada.
 
-/** Trayectoria histórica de una comuna, con procedencia declarada. */
+/**
+ * Trayectoria histórica VIGENTE de una comuna, ya resuelta por la cascada.
+ * Nunca conviven dos: \`fuente\` dice cuál quedó y \`rangoHist\` su período.
+ */
 export interface PlusvaliaComunaEntry {
-  /** % acumulado en el rango histórico (ej: 37 = 37% en 10 años). */
+  /** % acumulado en el rango histórico (ej: 37 = 37% en el período). */
   plusvalia10a: number;
-  /** % anual equivalente. */
+  /**
+   * % anual. Con \`fuente: "gfk"\` es la pendiente log-lineal de la serie;
+   * con \`"arenas_cayo"\`, la anualizada de dos puntos del estudio.
+   */
   anualizada: number;
-  /** Precio promedio del depto (UF, valor total) al inicio del rango — NO es UF/m², pese al header histórico de plusvalia-historica.ts (Recoleta 2.432→3.100 no puede ser m²). */
-  precio2014: number;
-  /** Precio promedio del depto (UF, valor total) al fin del rango. */
-  precio2024: number;
+  /** Precio al inicio del rango. La UNIDAD la declara \`unidadPrecio\`. */
+  precioInicio: number;
+  /** Precio al fin del rango, en la misma unidad. */
+  precioFin: number;
+  /**
+   * Qué miden precioInicio/precioFin — las fuentes NO coinciden en unidad:
+   * · "uf_m2"    → UF por m² de deptos nuevos (GfK).
+   * · "uf_depto" → precio del depto completo en UF (Arenas & Cayo).
+   * Todo consumidor que muestre estos precios rotula por este campo.
+   */
+  unidadPrecio: "uf_m2" | "uf_depto";
   /** Procedencia de la trayectoria de ESTA comuna. */
   fuente: "arenas_cayo" | "gfk";
   /** Rango del dato histórico de ESTA comuna (rótulo de período). */
@@ -27,33 +40,33 @@ export interface PlusvaliaComunaEntry {
 }
 
 export const PLUSVALIA_ESTIMADO: Record<string, PlusvaliaComunaEntry> = {
-  "Quilicura"            : { plusvalia10a: 68, anualizada: 5.3, precio2014: 1077, precio2024: 1813, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "San Bernardo"         : { plusvalia10a: 61, anualizada: 4.9, precio2014: 1309, precio2024: 2109, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Lo Prado"             : { plusvalia10a: 52, anualizada: 4.3, precio2014: 1138, precio2024: 1729, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Conchalí"             : { plusvalia10a: 51, anualizada: 4.2, precio2014: 1461, precio2024: 2195, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Maipú"                : { plusvalia10a: 50, anualizada: 4.1, precio2014: 1752, precio2024: 2653, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "La Reina"             : { plusvalia10a: 46, anualizada: 3.9, precio2014: 4950, precio2024: 7237, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Cerrillos"            : { plusvalia10a: 45, anualizada: 3.8, precio2014: 1479, precio2024: 2151, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "La Florida"           : { plusvalia10a: 42, anualizada: 3.6, precio2014: 2239, precio2024: 3170, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Macul"                : { plusvalia10a: 42, anualizada: 3.6, precio2014: 2585, precio2024: 3670, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Quinta Normal"        : { plusvalia10a: 42, anualizada: 3.6, precio2014: 1453, precio2024: 2069, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "La Cisterna"          : { plusvalia10a: 42, anualizada: 3.6, precio2014: 1694, precio2024: 2410, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "San Joaquín"          : { plusvalia10a: 40, anualizada: 3.4, precio2014: 2041, precio2024: 2858, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Pudahuel"             : { plusvalia10a: 40, anualizada: 3.4, precio2014: 1535, precio2024: 2143, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Ñuñoa"                : { plusvalia10a: 37, anualizada: 3.2, precio2014: 4013, precio2024: 5900, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Huechuraba"           : { plusvalia10a: 34, anualizada: 3, precio2014: 4403, precio2024: 5900, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Providencia"          : { plusvalia10a: 34, anualizada: 3, precio2014: 5645, precio2024: 5900, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Las Condes"           : { plusvalia10a: 31, anualizada: 2.7, precio2014: 7154, precio2024: 9400, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Vitacura"             : { plusvalia10a: 31, anualizada: 2.7, precio2014: 9597, precio2024: 12574, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Lo Barnechea"         : { plusvalia10a: 30, anualizada: 2.7, precio2014: 8596, precio2024: 11200, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Independencia"        : { plusvalia10a: 29, anualizada: 2.6, precio2014: 1685, precio2024: 2175, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Recoleta"             : { plusvalia10a: 27, anualizada: 2.4, precio2014: 2432, precio2024: 3100, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "San Miguel"           : { plusvalia10a: 24, anualizada: 2.2, precio2014: 2676, precio2024: 3320, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Estación Central"     : { plusvalia10a: 24, anualizada: 2.2, precio2014: 1809, precio2024: 2240, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Puente Alto"          : { plusvalia10a: 21, anualizada: 1.9, precio2014: 1791, precio2024: 2167, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Pedro Aguirre Cerda"  : { plusvalia10a: 18, anualizada: 1.7, precio2014: 1472, precio2024: 1740, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "Santiago"             : { plusvalia10a: -10, anualizada: -1.1, precio2014: 3040, precio2024: 2730, fuente: "arenas_cayo", rangoHist: "2014-2024" },
-  "El Bosque"            : { plusvalia10a: -7, anualizada: -0.7, precio2014: 1737, precio2024: 1612, fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "Cerrillos"            : { plusvalia10a: 45, anualizada: 3.8, precioInicio: 1479, precioFin: 2151, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "Conchalí"             : { plusvalia10a: 143, anualizada: 10.4, precioInicio: 31, precioFin: 75.2, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "El Bosque"            : { plusvalia10a: -7, anualizada: -0.7, precioInicio: 1737, precioFin: 1612, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "Estación Central"     : { plusvalia10a: 42, anualizada: 4.3, precioInicio: 45.4, precioFin: 64.3, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Huechuraba"           : { plusvalia10a: 34, anualizada: 3, precioInicio: 4403, precioFin: 5900, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "Independencia"        : { plusvalia10a: 29, anualizada: 2.6, precioInicio: 1685, precioFin: 2175, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "La Cisterna"          : { plusvalia10a: 42, anualizada: 3.6, precioInicio: 1694, precioFin: 2410, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "La Florida"           : { plusvalia10a: 64, anualizada: 6.3, precioInicio: 43.9, precioFin: 71.9, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "La Reina"             : { plusvalia10a: 31, anualizada: 2.8, precioInicio: 65.7, precioFin: 86.3, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Las Condes"           : { plusvalia10a: 35, anualizada: 3.6, precioInicio: 82.6, precioFin: 111.1, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Lo Barnechea"         : { plusvalia10a: 28, anualizada: 3.3, precioInicio: 82.4, precioFin: 105.7, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Lo Prado"             : { plusvalia10a: 52, anualizada: 4.3, precioInicio: 1138, precioFin: 1729, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "Macul"                : { plusvalia10a: 56, anualizada: 5.7, precioInicio: 46.6, precioFin: 72.9, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Maipú"                : { plusvalia10a: 53, anualizada: 5.3, precioInicio: 45.3, precioFin: 69.2, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Ñuñoa"                : { plusvalia10a: 36, anualizada: 3.6, precioInicio: 65, precioFin: 88.7, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Pedro Aguirre Cerda"  : { plusvalia10a: 18, anualizada: 1.7, precioInicio: 1472, precioFin: 1740, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "Providencia"          : { plusvalia10a: 28, anualizada: 3.1, precioInicio: 81.9, precioFin: 105, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Pudahuel"             : { plusvalia10a: 40, anualizada: 3.4, precioInicio: 1535, precioFin: 2143, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "Puente Alto"          : { plusvalia10a: 69, anualizada: 7.1, precioInicio: 33.9, precioFin: 57.2, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Quilicura"            : { plusvalia10a: 102, anualizada: 8.2, precioInicio: 28.6, precioFin: 57.9, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Quinta Normal"        : { plusvalia10a: 42, anualizada: 3.6, precioInicio: 1453, precioFin: 2069, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "Recoleta"             : { plusvalia10a: 27, anualizada: 2.4, precioInicio: 2432, precioFin: 3100, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "San Bernardo"         : { plusvalia10a: 61, anualizada: 4.9, precioInicio: 1309, precioFin: 2109, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "San Joaquín"          : { plusvalia10a: 40, anualizada: 3.4, precioInicio: 2041, precioFin: 2858, unidadPrecio: "uf_depto", fuente: "arenas_cayo", rangoHist: "2014-2024" },
+  "San Miguel"           : { plusvalia10a: 57, anualizada: 5.3, precioInicio: 45.3, precioFin: 71, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Santiago"             : { plusvalia10a: 59, anualizada: 5.8, precioInicio: 52.8, precioFin: 84, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
+  "Vitacura"             : { plusvalia10a: 39, anualizada: 4.0, precioInicio: 87.1, precioFin: 120.8, unidadPrecio: "uf_m2", fuente: "gfk", rangoHist: "2015-2024" },
 };
 
 /**
@@ -85,27 +98,31 @@ export interface SerieGfk {
   desde: number;
   /** UF/m² por año (deptos nuevos, precio de oferta, promedio anual). */
   valores: number[];
-  /** % anual punta a punta de la serie (CAGR 2015→2024), 1 decimal. */
-  cagrPct: number;
+  /**
+   * % anual de la serie 2015→2024, 1 decimal, por PENDIENTE LOG-LINEAL
+   * sobre los 10 puntos (F3) — no es un CAGR punta a punta: ese
+   * descansaba solo en el primer y el último año.
+   */
+  anualPct: number;
 }
 
 /** Serie GFK 2015-2024 por comuna (15 comunas con serie completa). */
 export const GFK_SERIE: Record<string, SerieGfk> = {
-  "Conchalí"             : { desde: 2015, valores: [31, 35, 41.7, 50.1, 54.8, 58, 63.1, 66.3, 74.3, 75.2], cagrPct: 10.3 },
-  "Estación Central"     : { desde: 2015, valores: [45.4, 46.8, 48.2, 50.5, 54.8, 57.3, 59.8, 61.2, 63.5, 64.3], cagrPct: 3.9 },
-  "La Florida"           : { desde: 2015, valores: [43.9, 45.8, 48.9, 50.6, 56, 60.5, 65.7, 67.9, 71.2, 71.9], cagrPct: 5.6 },
-  "La Reina"             : { desde: 2015, valores: [65.7, 69.8, 74.2, 79.2, 79, 81.3, 83.4, 84, 84.5, 86.3], cagrPct: 3.1 },
-  "Las Condes"           : { desde: 2015, valores: [82.6, 86.7, 88.3, 92.7, 98.3, 102.8, 107.1, 109.3, 110.3, 111.1], cagrPct: 3.3 },
-  "Lo Barnechea"         : { desde: 2015, valores: [82.4, 82.8, 85.2, 90.9, 96.3, 100.1, 103.7, 104.6, 104.9, 105.7], cagrPct: 2.8 },
-  "Macul"                : { desde: 2015, valores: [46.6, 47.2, 49.3, 52, 54.9, 59.1, 63.2, 67.2, 72.1, 72.9], cagrPct: 5.1 },
-  "Maipú"                : { desde: 2015, valores: [45.3, 46.8, 48, 52.5, 54.3, 60.4, 63.5, 65.4, 67.1, 69.2], cagrPct: 4.8 },
-  "Ñuñoa"                : { desde: 2015, valores: [65, 69.2, 72.4, 77, 81.6, 83.6, 86.4, 87.1, 87.8, 88.7], cagrPct: 3.5 },
-  "Providencia"          : { desde: 2015, valores: [81.9, 84.7, 85.1, 89.3, 93.8, 98.2, 101.4, 103.3, 103.9, 105], cagrPct: 2.8 },
-  "Puente Alto"          : { desde: 2015, valores: [33.9, 34.2, 36.6, 38.9, 43.5, 46.9, 52.3, 55.6, 56.9, 57.2], cagrPct: 6.0 },
-  "Quilicura"            : { desde: 2015, valores: [28.6, 34.7, 36.5, 38.9, 43, 47.5, 52.8, 55.3, 57.2, 57.9], cagrPct: 8.2 },
-  "San Miguel"           : { desde: 2015, valores: [45.3, 49.3, 51.4, 54.7, 57.9, 58.2, 65.1, 69.1, 70.4, 71], cagrPct: 5.1 },
-  "Santiago"             : { desde: 2015, valores: [52.8, 55.3, 57.1, 61.6, 69.2, 72.3, 78.3, 81.4, 80.5, 84], cagrPct: 5.3 },
-  "Vitacura"             : { desde: 2015, valores: [87.1, 90.9, 92.2, 101.1, 106.8, 109.1, 115.7, 117.7, 119.5, 120.8], cagrPct: 3.7 },
+  "Conchalí"             : { desde: 2015, valores: [31, 35, 41.7, 50.1, 54.8, 58, 63.1, 66.3, 74.3, 75.2], anualPct: 10.4 },
+  "Estación Central"     : { desde: 2015, valores: [45.4, 46.8, 48.2, 50.5, 54.8, 57.3, 59.8, 61.2, 63.5, 64.3], anualPct: 4.3 },
+  "La Florida"           : { desde: 2015, valores: [43.9, 45.8, 48.9, 50.6, 56, 60.5, 65.7, 67.9, 71.2, 71.9], anualPct: 6.3 },
+  "La Reina"             : { desde: 2015, valores: [65.7, 69.8, 74.2, 79.2, 79, 81.3, 83.4, 84, 84.5, 86.3], anualPct: 2.8 },
+  "Las Condes"           : { desde: 2015, valores: [82.6, 86.7, 88.3, 92.7, 98.3, 102.8, 107.1, 109.3, 110.3, 111.1], anualPct: 3.6 },
+  "Lo Barnechea"         : { desde: 2015, valores: [82.4, 82.8, 85.2, 90.9, 96.3, 100.1, 103.7, 104.6, 104.9, 105.7], anualPct: 3.3 },
+  "Macul"                : { desde: 2015, valores: [46.6, 47.2, 49.3, 52, 54.9, 59.1, 63.2, 67.2, 72.1, 72.9], anualPct: 5.7 },
+  "Maipú"                : { desde: 2015, valores: [45.3, 46.8, 48, 52.5, 54.3, 60.4, 63.5, 65.4, 67.1, 69.2], anualPct: 5.3 },
+  "Ñuñoa"                : { desde: 2015, valores: [65, 69.2, 72.4, 77, 81.6, 83.6, 86.4, 87.1, 87.8, 88.7], anualPct: 3.6 },
+  "Providencia"          : { desde: 2015, valores: [81.9, 84.7, 85.1, 89.3, 93.8, 98.2, 101.4, 103.3, 103.9, 105], anualPct: 3.1 },
+  "Puente Alto"          : { desde: 2015, valores: [33.9, 34.2, 36.6, 38.9, 43.5, 46.9, 52.3, 55.6, 56.9, 57.2], anualPct: 7.1 },
+  "Quilicura"            : { desde: 2015, valores: [28.6, 34.7, 36.5, 38.9, 43, 47.5, 52.8, 55.3, 57.2, 57.9], anualPct: 8.2 },
+  "San Miguel"           : { desde: 2015, valores: [45.3, 49.3, 51.4, 54.7, 57.9, 58.2, 65.1, 69.1, 70.4, 71], anualPct: 5.3 },
+  "Santiago"             : { desde: 2015, valores: [52.8, 55.3, 57.1, 61.6, 69.2, 72.3, 78.3, 81.4, 80.5, 84], anualPct: 5.8 },
+  "Vitacura"             : { desde: 2015, valores: [87.1, 90.9, 92.2, 101.1, 106.8, 109.1, 115.7, 117.7, 119.5, 120.8], anualPct: 4.0 },
 };
 
 /** Nivel GFK más fresco por comuna (1T-2025 si existe; si no, 2024). */
@@ -144,7 +161,7 @@ export const GFK_NIVEL: Record<string, { ufM2: number; periodo: string }> = {
 
 /** Agregado Gran Santiago (sentinel 'PROMEDIO GS' del CSV) — nunca por comuna. */
 export const GFK_GRAN_SANTIAGO = {
-  serie: { desde: 2015, valores: [62.2, 65.2, 67.4, 70.1, 75.5, 78, 82, 83.1, 83.7, 83.9], cagrPct: 3.4 },
+  serie: { desde: 2015, valores: [62.2, 65.2, 67.4, 70.1, 75.5, 78, 82, 83.1, 83.7, 83.9], anualPct: 3.7 },
   nivel: { ufM2: 83.3, periodo: "1T-2025" },
 };
 

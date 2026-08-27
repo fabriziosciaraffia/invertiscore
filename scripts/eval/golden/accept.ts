@@ -12,18 +12,26 @@
 import { writeFileSync } from "fs";
 import { join } from "path";
 import { runAnalysis } from "../../../src/lib/analysis";
-import { GOLDEN_SEEDS, BORDE_SEEDS, GOLDEN_UF } from "./seeds";
+import { GOLDEN_SEEDS, BORDE_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 import { extractFacts } from "./extract";
 import { factsToBaseline, type Baseline } from "./invariants";
 
+// GOLDEN_ASOF explícito, igual que el recompute que después verifica contra
+// este archivo. Sin él, runAnalysis caía a su default `new Date()` y el
+// bootstrap congelaba el baseline con la fecha del día en que se corriera:
+// los seeds con entrega futura (GS-7, GS-2) miden meses-hasta-entrega desde
+// ahí, así que el baseline nacía con un drift que el verificador reportaría
+// para siempre. Latente desde que se fijó GOLDEN_ASOF —el baseline se generó
+// el mismo día y coincidían—, se destapó al re-baselinear 48 días después:
+// GS-7 daba 42 acá y 41 en el recompute. Misma clase que regen-corpus-ltr.
 const baseline: Record<string, Baseline> = {};
 
 for (const s of GOLDEN_SEEDS) {
-  const res = runAnalysis(s.input, GOLDEN_UF, s.mediana);
+  const res = runAnalysis(s.input, GOLDEN_UF, s.mediana, GOLDEN_ASOF);
   baseline[s.key] = factsToBaseline(extractFacts(res, s.input.precio));
 }
 for (const s of BORDE_SEEDS) {
-  const res = runAnalysis(s.input, GOLDEN_UF, s.mediana);
+  const res = runAnalysis(s.input, GOLDEN_UF, s.mediana, GOLDEN_ASOF);
   baseline[s.key] = factsToBaseline(extractFacts(res, s.input.precio));
 }
 
