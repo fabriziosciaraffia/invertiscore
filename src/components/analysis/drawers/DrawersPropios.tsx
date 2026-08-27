@@ -966,7 +966,13 @@ export function DrawerPatrimonioLtr({
           : pctTuyo < 50
             ? `Más de la mitad de tu parte no salió de tu bolsillo: la puso el arriendo amortizando deuda y la plusvalía. `
             : `La mayor parte de tu parte la pusiste tú: el pie pesa más que lo que aportaron el arriendo y la plusvalía juntos. `}
-        Ojo con el reparto: la amortización es firme —sale del contrato— y la plusvalía es proyección.
+        {/* El reparto solo se nombra cuando la barra de composición lo MUESTRA. Con
+            multiplicador < 1 el cuerpo dibuja dos barras comparadas y no hay segmentos:
+            hablar ahí de "el reparto" manda a mirar algo que no está en pantalla — la
+            misma clase de afirmación sin respaldo que cerró la corrección (7). */}
+        {!terminaAbajo && composicionCierra
+          ? "Ojo con el reparto: la amortización es firme —sale del contrato— y la plusvalía es proyección."
+          : "De lo que sí recuperas, la parte que amortizó el arriendo es firme —sale del contrato—; la plusvalía es proyección."}
         {selfLiquidating
           ? ` Además, acá el arriendo paga la cuota entera: no pusiste un peso extra para bajar la deuda.`
           : ` Y la deuda no se paga sola del todo: en los años de flujo negativo pusiste ${fmtCompact(bolsillo, currency, valorUF)} de tu bolsillo${mesesNegativos > 0 ? ` (unos ${fmtMoney(bolsilloMes, currency, valorUF)} al mes)` : ""}.`}
