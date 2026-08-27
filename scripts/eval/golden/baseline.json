@@ -25,7 +25,7 @@
     },
     "GS-2": {
       "veredicto": "COMPRAR",
-      "score": 71,
+      "score": 70,
       "N": 8,
       "corona": "cap_rate",
       "hallazgoIds": [
@@ -113,7 +113,7 @@
     },
     "GS-6": {
       "veredicto": "BUSCAR OTRA",
-      "score": 36,
+      "score": 35,
       "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -135,7 +135,7 @@
     },
     "GS-7": {
       "veredicto": "BUSCAR OTRA",
-      "score": 41,
+      "score": 40,
       "N": 8,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -175,7 +175,7 @@
     },
     "GS-PC2": {
       "veredicto": "COMPRAR",
-      "score": 76,
+      "score": 75,
       "N": 6,
       "corona": "cap_rate",
       "hallazgoIds": [
