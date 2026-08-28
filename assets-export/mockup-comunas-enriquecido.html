@@ -1,7 +1,7 @@
 <!--
   ═══════════════════════════════════════════════════════════════════════════
   MOCKUP VINCULANTE · PÁGINAS DE COMUNA — enriquecimiento v1
-  Revisión 3 — honestidad de muestra por tipología · h1 · label del total
+  Revisión 4 — la plusvalía DEJÓ de ser un hueco: master la implementó
   ═══════════════════════════════════════════════════════════════════════════
   Diagnóstico (audit 674c748): las páginas tienen ~234-242 palabras y son 77,8%
   idénticas entre sí. Google rechazó /comunas/providencia y /comunas/nunoa
@@ -63,8 +63,15 @@
   · TASA = 4,0% real, `config.tasa_hipotecaria`, refrescada por el cron
     /api/data/update-market (BCCh serie F022.VIV.TIP.MA03.UF.Z.M) el
     2026-08-20T10:00Z. UF = 40.859 de la misma tabla.
-  · PLUSVALÍA = NO va en v1 (hueco previsto). El bloque punteado marca dónde
-    iría y por qué no está.
+  · PLUSVALÍA = YA IMPLEMENTADA EN MASTER (serie F1→F4.1, commits b0f4e4c a
+    4661b4f). Cuando se aprobó la rev. 3 no existía y el mockup prescribía un
+    hueco punteado; ese bloque se retiró. La sección real es
+    `PlusvaliaComunaSection` y su propio comentario dice que sigue el patrón de
+    sección de ESTE contrato. El enriquecimiento se integra alrededor.
+    La inconsistencia que motivaba dejarla fuera (Providencia 34% sobre un par
+    que daba 4,5%; Ñuñoa 37% sobre uno que daba 47%) quedó RESUELTA: ambas
+    pasaron a la serie GfK con pendiente log-lineal y ahora cuadran al decimal.
+    Verificado sobre las 25 del roster: 0 inconsistencias.
   · PÁRRAFO IA = texto de MUESTRA escrito a mano siguiendo analysis-voice-franco.
     Marca la forma y el largo del contrato, no el contenido final.
 
@@ -79,8 +86,11 @@
   SECCIONES
   ---------
   A · Providencia — rica · 0 de 4 se pagan solas · PERO el 4D está a −1,4%
+      (plusvalía con trayectoria GfK completa 2015-2025)
   B · Peñalolén — muestra limitada · caso estructural: la palanca NO es el precio
-  C · Renca — sin plusvalía · veredicto invertido · margen de +44%
+      (plusvalía: solo nivel, sin trayectoria propia)
+  C · Renca — veredicto invertido · margen de +44%
+      (plusvalía: solo nivel, sin trayectoria propia)
   D · Contraste, evidencia de diferenciación y notas de implementación
 -->
 <meta charset="utf-8" />
@@ -398,11 +408,16 @@
     </section>
 
     <section>
-      <p class="eyebrow">Plusvalía · pendiente</p>
-      <div class="hole">
-        <p class="hole-h">Acá va la plusvalía 2014-2024 — no en v1</p>
-        <p>La serie histórica existe para 23 de las 25 comunas, pero en Providencia y Ñuñoa el porcentaje declarado no cuadra con el par de precios de la propia fuente (Providencia dice 34% acumulado sobre un par que da 4,5%). Publicar eso en las dos comunas que más importan sería un autogol. El bloque entra cuando la fuente esté reconciliada.</p>
+      <p class="eyebrow">Plusvalía · qué ha hecho el precio</p>
+      <h2>Trayectoria histórica</h2>
+      <div class="fresh" style="margin-top:18px">
+        <div>Valorización observada 2015-2025<b>+30%</b></div>
+        <div>Anual promedio<b>2,9%</b></div>
+        <div>Precio del m² de deptos nuevos<b>UF 106 / m²</b></div>
+        <div>Procedencia<b>Serie GfK</b></div>
       </div>
+      <p class="note"><b>Esta sección YA EXISTE en producción</b> — la implementó la serie F1→F4.1 mientras este mockup estaba en revisión, y su código declara que sigue el patrón de sección de este contrato. Acá se dibuja en su posición para fijar cómo convive con lo nuevo: va después del párrafo de Franco y antes de la procedencia de la muestra, que es donde el mockup tenía el hueco. El componente resuelve solo sus cinco ramas de cobertura y degrada sin inventar.</p>
+      <p class="note"><b>Cuidado de unidades al integrar.</b> La trayectoria de Providencia viene de GfK y sus precios son <b>UF por m² de deptos nuevos</b> (81,9 → 106,5). Las 8 comunas que siguen en Arenas &amp; Cayo traen <b>UF del depto completo</b> (ej. Huechuraba 4.403 → 5.900). Los porcentajes se comparan entre sí; los precios NO. El campo <code>unidadPrecio</code> existe justamente para rotularlos, y la tabla de tipologías de más arriba habla en UF de depto — dos unidades en la misma página, cada una rotulada.</p>
     </section>
 
     <section>
@@ -523,7 +538,7 @@
         <div>Última actualización<b>10 de agosto de 2026</b></div>
         <div>Tipologías con muestra suficiente<b>1 de 4</b></div>
       </div>
-      <p class="note"><b>Sin bloque de plusvalía y sin hueco visible.</b> Peñalolén no está en las 27 comunas de la serie histórica, así que la sección simplemente no se renderiza. La página termina en la FAQ y el CTA, y no se ve incompleta.</p>
+      <p class="note"><b>Plusvalía: solo nivel, sin trayectoria.</b> Peñalolén no tiene serie histórica propia en ninguna fuente, pero sí nivel GfK fresco: <b>UF 69,8/m²</b> (1T-2025). La sección se renderiza con ese dato y declara explícitamente que no hay serie para citar — no se rellena con el promedio del Gran Santiago. Es la rama <code>solo_nivel</code> de la cascada, y cubre también a Renca. Antes de la serie F1→F4.1 estas dos comunas no tenían dato alguno; ahora ninguna de las 25 queda en <code>sin_dato</code>.</p>
     </section>
 
     <section>
@@ -629,6 +644,16 @@
         <span class="ai-tag">★ Análisis generado por Franco IA</span>
         <p>Renca es de las pocas comunas donde el arriendo cubre la cuota en las dos tipologías con muestra, y el 1D es el que más colchón deja: recién sobre UF 2.467 dejaría de pagarse solo, un 44% arriba de lo que pide el mercado hoy. Antes de leer eso como ganga, mira el otro lado: son 167 avisos activos en total, así que la mediana se mueve con pocos datos, y no hay serie histórica para saber cómo se ha comportado la comuna en la década. Lo que estos números te dicen con confianza es que el flujo mensual no va a ser tu problema acá; lo que no te dicen es cuánto va a valer el depto en diez años.</p>
       </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">Plusvalía · qué ha hecho el precio</p>
+      <h2>Trayectoria histórica</h2>
+      <div class="fresh" style="margin-top:18px">
+        <div>Precio del m² de deptos nuevos<b>UF 52,7 / m²</b></div>
+        <div>Trayectoria propia<b>Sin serie</b></div>
+      </div>
+      <p class="note"><b>La rama honesta de la cascada.</b> Renca tiene nivel GfK pero ninguna fuente le da serie histórica, así que la sección muestra el nivel y dice que no hay trayectoria — sin interpolar ni prestarle la del Gran Santiago. La página no se ve con un hueco: se ve con menos dato, que es la verdad.</p>
     </section>
 
     <section>
@@ -771,7 +796,21 @@
           </tbody>
         </table>
       </div>
-      <p class="note">Y la cobertura reparte a las 25 en <b>11 combinaciones distintas</b> (de 0 de 1 hasta 3 de 3). Plusvalía: 23 de 25 la tendrán, Peñalolén y Renca nunca. Providencia y Ñuñoa —las dos que Google rechazó— son exactamente las dos con la fuente inconsistente.</p>
+      <p class="note">Y la cobertura reparte a las 25 en <b>11 combinaciones distintas</b> (de 0 de 1 hasta 3 de 3).</p>
+      <p class="note"><b>Plusvalía · actualizado en la rev. 4.</b> Cuando se aprobó la rev. 3 quedaba fuera por una inconsistencia: Providencia declaraba 34% acumulado sobre un par de precios que daba 4,5%, y Ñuñoa 37% sobre uno que daba 47% — justo las dos comunas que Google rechazó. La serie F1→F4.1 la <b>resolvió</b>: ambas pasaron a la serie GfK con anualizada por pendiente log-lineal y hoy cuadran al decimal (Providencia 30,0% declarado vs 30,0% del par; Ñuñoa 32,0% vs 32,0%). Verificado sobre las 25 del roster: <b>0 inconsistencias</b>. La sección ya está en producción y el enriquecimiento se integra alrededor.</p>
+      <div class="eviwrap">
+        <table class="evi">
+          <thead><tr><th>Cobertura de plusvalía</th><th>N°</th><th>Qué muestra la página</th></tr></thead>
+          <tbody>
+            <tr><td>trayectoria_gfk</td><td>15</td><td>Serie anual completa + gráfico + anualizada</td></tr>
+            <tr><td>nivel_mas_ac</td><td>8</td><td>Nivel GfK fresco + trayectoria Arenas &amp; Cayo de dos puntos</td></tr>
+            <tr><td>solo_nivel</td><td>2</td><td>Nivel GfK y declaración de que no hay serie (Peñalolén, Renca)</td></tr>
+            <tr><td>sin_dato</td><td>0</td><td>— ninguna de las 25 queda sin dato</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note"><b>Sigue en pie un olor a captura, aunque ya no toca a Providencia ni a Ñuñoa.</b> En la fuente cruda tres comunas compartían <code>precio2024 = 5.900</code> exacto; hoy dos migraron a GfK y solo <b>Huechuraba</b> conserva ese valor (su par 4.403→5.900 es internamente consistente, así que no rompe nada). Aparece además una duplicación nueva en la fuente vigente: <b>Maipú y San Miguel comparten los dos extremos de su serie</b> (45,3 → 69,2 UF/m²) declarando períodos distintos (2015-2024 y 2015-2025). Dos comunas idénticas al decimal en ambos extremos es improbable — vale revisarlo en el generador antes de que el enriquecimiento le dé más visibilidad a ese número.</p>
+      <p class="note"><b>Dos unidades conviviendo.</b> Las 15 comunas con serie GfK traen <b>UF por m² de deptos nuevos</b>; las 8 de Arenas &amp; Cayo, <b>UF del depto completo</b>. Los porcentajes se comparan; los precios no. El campo <code>unidadPrecio</code> los rotula, y la tabla de tipologías de este mockup habla en UF de depto: la página va a mostrar las dos unidades y cada una tiene que decir cuál es.</p>
     </section>
 
     <section>
