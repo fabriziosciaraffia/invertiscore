@@ -5,9 +5,9 @@
   "description": "Reels de refranco.ai en Remotion. Proyecto aislado del app Next.",
   "scripts": {
     "dev": "remotion studio",
-    "render": "remotion render BarRacePlusvalia out/reel-plusvalia.mp4",
+    "render": "node scripts/render-limpio.mjs BarRacePlusvalia out/reel-plusvalia.mp4",
     "still": "remotion still BarRacePlusvalia out/frame.png",
-    "render:lineas": "remotion render LineasTop5 out/reel-lineas-top5.mp4",
+    "render:lineas": "node scripts/render-limpio.mjs LineasTop5 out/reel-lineas-top5.mp4",
     "still:lineas": "remotion still LineasTop5 out/lineas-final.png --frame=719",
     "render:portada": "remotion still PortadaLineas out/portada-reel.png"
   },
