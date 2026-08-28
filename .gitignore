@@ -147,3 +147,10 @@ tmp/
 # nombre en vez de sacrificar el patrón entero.
 !scripts/of-ambas-calib-*
 !scripts/of-calib-poc.ts
+# Proyecto Remotion de los reels (tools/reels): dependencias, renders y los
+# prototipos HTML de referencia. El código del reel y su dataset SÍ se versionan;
+# lo pesado y lo ajeno, no.
+tools/**/node_modules
+tools/reels/out/
+tools/reels/ref/
+*.mp4
