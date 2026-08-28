@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getComunaStats, getAllComunasStats, fmtCLP, fmtUF, UF_CLP } from "@/lib/data/comunas-seo";
+import { getComunaStats, getAllComunasStats, fmtCLP, fmtUF, UF_CLP, tipologiaLider } from "@/lib/data/comunas-seo";
+import { VeredictoCuota } from "@/components/comunas/VeredictoCuota";
+import { TablaTipologias, ProcedenciaMuestraBloque } from "@/components/comunas/TablaTipologias";
+import { getProsaComuna } from "@/lib/data/comuna-prosa";
 import { COMUNAS_ROSTER, esComunaDelRoster, nombreDeComuna } from "@/lib/data/comunas-roster";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
@@ -151,15 +154,32 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
     .sort((a, b) => Math.abs(a.precioM2Promedio - stats.precioM2Promedio) - Math.abs(b.precioM2Promedio - stats.precioM2Promedio))
     .slice(0, 5);
 
-  const avgSantiago = 3.8;
-  const evaluacion = stats.rentabilidadBruta >= avgSantiago + 1
-    ? "está por encima del promedio de Santiago (3,8%)"
-    : stats.rentabilidadBruta >= avgSantiago - 0.5
-    ? "está en línea con el promedio de Santiago"
-    : "está por debajo del promedio de Santiago (3,8%)";
-
+  // El "promedio de Santiago (3,8%)" era una constante hardcodeada que la página
+  // presentaba como dato de mercado. Murió: la comparación honesta que queda es
+  // la del arriendo contra la cuota, que sale del cálculo y cambia por comuna.
   const precioM2CLP = Math.round(stats.precioM2Promedio * UF_CLP);
   const year = new Date().getFullYear();
+
+  // Titular: rango de rentabilidad, NO el veredicto. Se midió que 13 de 25
+  // comunas dan vuelta su veredicto con menos de 5% de movimiento en la mediana
+  // de arriendo (Providencia con 1,4%), y un h1 que se contradice entre crawls
+  // es peor para la identidad de la página que uno estable. El rango deriva sin
+  // flipear. Ver el contrato, tab D.
+  const rents = stats.tipologias.map((t) => t.rentabilidadBruta);
+  const rentMin = rents.length ? Math.min(...rents) : stats.rentabilidadBruta;
+  const rentMax = rents.length ? Math.max(...rents) : stats.rentabilidadBruta;
+  const n1 = (n: number) => n.toFixed(1).replace(".", ",");
+  const tituloRent = rentMin === rentMax
+    ? `${n1(rentMin)}% de rentabilidad bruta`
+    : `rentabilidad de ${n1(rentMin)}% a ${n1(rentMax)}%`;
+
+  const lider = tipologiaLider(stats.tipologias);
+
+  // Prosa de Franco: se genera UNA vez por comuna y se persiste con el snapshot
+  // de los números que narró (scripts/data/generar-prosa-comunas.ts). Acá SOLO
+  // se lee — nunca se genera en render. Sin fila, la página cae a su síntesis
+  // calculada: dice menos, pero no inventa.
+  const prosaComuna = await getProsaComuna(params.slug);
   // Aviso de muestra chica. El umbral viejo (<10 propiedades) era inalcanzable:
   // la comuna ni siquiera publicaba bajo 50, así que el aviso nunca se mostró.
   // Ahora avisa cuando los números descansan en poco: una sola tipología con
@@ -208,35 +228,80 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
           }
         : null;
 
+  // FAQ — las tres preguntas cambian de RESPUESTA por comuna (cifra, signo y
+  // tipología ganadora), no solo de nombre. Las tres de antes eran idénticas en
+  // las 25 páginas y la tercera ni siquiera cambiaba los números: una FAQPage
+  // calcada es peor que ninguna. La tercera se adapta cuando la muestra es
+  // chica, que es lo que esa comuna necesita explicar.
+  const nDorm = (d: number) => `${d} dormitorio${d === 1 ? "" : "s"}`;
+  const mejorRent = stats.tipologias.length
+    ? stats.tipologias.reduce((a2, b2) => (b2.rentabilidadBruta > a2.rentabilidadBruta ? b2 : a2))
+    : null;
+  const peorRent = stats.tipologias.length
+    ? stats.tipologias.reduce((a2, b2) => (b2.rentabilidadBruta < a2.rentabilidadBruta ? b2 : a2))
+    : null;
+  const cubrenN = stats.tipologias.filter((t) => t.cubre).length;
+  const chicasN = stats.tipologias.filter((t) => t.muestraChica).length;
+
+  const faqEquilibrio = lider
+    ? {
+        "@type": "Question",
+        name: `¿A qué precio se paga solo un departamento en ${stats.nombre}?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: lider.cubre
+            ? `Un ${nDorm(lider.dorms)} en ${stats.nombre} se paga solo hasta UF ${lider.precioCuotaUF.toLocaleString("es-CL")}: sobre ese precio el arriendo deja de cubrir la cuota, con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años. La mediana de la comuna hoy está en UF ${lider.ventaUF.toLocaleString("es-CL")}.${lider.muestraChica ? ` Esa cifra se apoya en ${lider.nArriendos} arriendos publicados, una muestra chica para la comuna.` : ""}`
+            : `Un ${nDorm(lider.dorms)} tendría que costar UF ${lider.precioCuotaUF.toLocaleString("es-CL")} para que el arriendo cubra la cuota, un ${Math.abs(lider.deltaPct).toFixed(1).replace(".", ",")}% bajo la mediana de la comuna (UF ${lider.ventaUF.toLocaleString("es-CL")}), con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años. Es la tipología que queda más cerca.${lider.muestraChica ? ` Esa cifra se apoya en ${lider.nArriendos} arriendos publicados, una muestra chica para la comuna.` : ""}`,
+        },
+      }
+    : null;
+
+  const faqDividendo = lider
+    ? {
+        "@type": "Question",
+        name: `¿El arriendo alcanza para pagar el dividendo en ${stats.nombre}?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text:
+            cubrenN === 0
+              ? `No, en ninguna de las ${stats.tipologias.length === 1 ? "tipologías con muestra" : `${stats.tipologias.length} tipologías`}. En un ${nDorm(lider.dorms)}, que es el que queda más cerca, faltan ${fmtCLP(Math.abs(lider.brechaCLP))} al mes con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años.`
+              : cubrenN === stats.tipologias.length
+                ? `Sí, en ${stats.tipologias.length === 1 ? "la única tipología con muestra" : `las ${stats.tipologias.length} tipologías con muestra`}. En un ${nDorm(lider.dorms)} sobran ${fmtCLP(lider.brechaCLP)} al mes con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años.`
+                : `En ${cubrenN} de ${stats.tipologias.length} tipologías sí. En un ${nDorm(lider.dorms)} sobran ${fmtCLP(lider.brechaCLP)} al mes; en las demás el arriendo no alcanza a cubrir la cuota.`,
+        },
+      }
+    : null;
+
+  const faqTercera = chicasN >= Math.max(1, Math.ceil(stats.tipologias.length / 2))
+    ? {
+        "@type": "Question",
+        name: `¿Por qué hay menos datos de ${stats.nombre} que de otras comunas?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: `Porque se publican menos arriendos: ${stats.tipologias.map((t) => `${t.nArriendos} avisos de ${t.dorms}D`).join(", ")}. Franco prefiere mostrar las tipologías que tienen respaldo antes que rellenar las que no — por eso la tabla tiene ${stats.tipologias.length} de 4 filas.`,
+        },
+      }
+    : mejorRent && peorRent
+      ? {
+          "@type": "Question",
+          name: `¿Qué tipología rinde más en ${stats.nombre}?`,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: mejorRent.dorms === peorRent.dorms
+              ? `El ${nDorm(mejorRent.dorms)}, con ${mejorRent.rentabilidadBruta.toFixed(1).replace(".", ",")}% de rentabilidad bruta. Es la única tipología con muestra suficiente en ${stats.nombre}.`
+              : `El ${nDorm(mejorRent.dorms)}, con ${mejorRent.rentabilidadBruta.toFixed(1).replace(".", ",")}% de rentabilidad bruta${mejorRent.muestraChica ? " —aunque es la tipología con menos avisos de la comuna—" : ""}. El que menos rinde es el ${nDorm(peorRent.dorms)}, con ${peorRent.rentabilidadBruta.toFixed(1).replace(".", ",")}%.`,
+          },
+        }
+      : null;
+
   // FAQ Schema
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     mainEntity: [
-      {
-        "@type": "Question",
-        name: `¿Cuánto rinde un departamento en ${stats.nombre}?`,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: `La rentabilidad bruta promedio en ${stats.nombre} es de ${stats.rentabilidadBruta}%, basado en ${stats.totalPropiedades} propiedades analizadas.`,
-        },
-      },
-      {
-        "@type": "Question",
-        name: `¿Cuál es el precio del metro cuadrado en ${stats.nombre}?`,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: `El precio promedio por m² en ${stats.nombre} es de ${fmtUF(stats.precioM2Promedio)} (${fmtCLP(precioM2CLP)}), según datos actualizados de propiedades en venta.`,
-        },
-      },
-      {
-        "@type": "Question",
-        name: `¿Conviene invertir en departamentos en ${stats.nombre}?`,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Franco analiza cada propiedad individualmente considerando precio, arriendo estimado, gastos y condiciones del mercado. El análisis es gratuito en refranco.ai.",
-        },
-      },
+      ...(faqEquilibrio ? [faqEquilibrio] : []),
+      ...(faqDividendo ? [faqDividendo] : []),
+      ...(faqTercera ? [faqTercera] : []),
       ...(faqPlusvalia ? [faqPlusvalia] : []),
     ],
   };
@@ -260,7 +325,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
 
         {/* Hero */}
         <h1 className="font-heading text-3xl font-bold text-[var(--franco-text)] sm:text-4xl">
-          Invertir en {stats.nombre} — ¿Vale la pena en {year}?
+          Invertir en {stats.nombre} en {year} — {tituloRent}
         </h1>
 
         {badge && (
@@ -279,38 +344,50 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
           </div>
         )}
 
-        {/* 4 Metric Cards */}
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: "Rentabilidad bruta", value: `${stats.rentabilidadBruta.toFixed(1).replace(".", ",")}%`, color: rentColor(stats.rentabilidadBruta) },
-            { label: "Arriendo promedio", value: `${fmtCLP(stats.arriendoRepresentativo)}/mes`, color: "var(--franco-text)" },
-            { label: "Precio/m² promedio", value: fmtUF(stats.precioM2Promedio), color: "var(--franco-text)" },
-            { label: "Propiedades analizadas", value: stats.totalPropiedades.toLocaleString("es-CL"), sub: "actualizado esta semana", color: "var(--franco-text)" },
-          ].map((m) => (
-            <div key={m.label} className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5">
-              <p className="font-body text-xs text-[var(--franco-text-secondary)]">{m.label}</p>
-              <p className="mt-1 font-mono text-xl font-bold" style={{ color: m.color }}>{m.value}</p>
-              {"sub" in m && m.sub && <p className="mt-0.5 font-body text-[10px] text-[var(--franco-text-muted)]">{m.sub}</p>}
-            </div>
-          ))}
-        </div>
+        {/* 01 · Veredicto de la comuna + capa de palanca */}
+        <VeredictoCuota stats={stats} />
 
-        {/* Análisis de Franco */}
+        {/* 02 · Los números por tipología + supuestos */}
+        <TablaTipologias stats={stats} />
+
+        {/* 03 · La lectura de Franco. Si hay prosa generada, va esa; si no, la
+            síntesis calculada. Los precios de este bloque son UF/m² y están
+            rotulados — la tabla de arriba habla en UF de depto. */}
         <section className="mt-14">
           <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">Qué dicen los datos</h2>
-          <div className="mt-4 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
-            <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-              En {stats.nombre}, el precio promedio por m² es de {fmtUF(stats.precioM2Promedio)} ({fmtCLP(precioM2CLP)}).
-              El arriendo mensual promedio es de {fmtCLP(stats.arriendoRepresentativo)}/mes, lo que resulta en una
-              rentabilidad bruta de {stats.rentabilidadBruta.toFixed(1).replace(".", ",")}% — {evaluacion}.
-            </p>
-            <p className="mt-4 font-body text-[11px] italic text-[var(--franco-text-muted)]">
-              Este análisis es informativo y no constituye asesoría de inversión. Los datos se actualizan semanalmente desde fuentes públicas.
-            </p>
-          </div>
+          {prosaComuna ? (
+            <div className="mt-4 rounded-r-2xl border border-[var(--franco-border)] border-l-[3px] border-l-[var(--franco-text)] bg-[var(--franco-card)] p-6">
+              <span className="inline-block rounded-full bg-[var(--franco-sunken,var(--franco-bg))] px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--franco-text-secondary)]">
+                ★ Análisis generado por Franco IA
+              </span>
+              <p className="mt-3.5 max-w-[68ch] font-body text-[15px] italic leading-[1.65] text-[var(--franco-text-secondary)]">
+                {prosaComuna.prosa}
+              </p>
+              <p className="mt-4 font-body text-[11px] italic text-[var(--franco-text-muted)]">
+                Este análisis es informativo y no constituye asesoría de inversión. Los datos se actualizan semanalmente desde fuentes públicas.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
+              <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+                En {stats.nombre}, el metro cuadrado de los departamentos publicados está en {fmtUF(stats.precioM2Promedio)}/m²
+                ({fmtCLP(precioM2CLP)} por m²) y el arriendo mediano en {fmtCLP(stats.arriendoRepresentativo)} al mes,
+                lo que deja una rentabilidad bruta de {n1(stats.rentabilidadBruta)}%.
+                {lider && (lider.cubre
+                  ? ` A los supuestos de arriba, el ${lider.dorms}D es el que más margen deja: el arriendo cubre la cuota y sobran ${fmtCLP(lider.brechaCLP)} al mes.`
+                  : ` A los supuestos de arriba, ni siquiera el ${lider.dorms}D —el que queda más cerca— alcanza a cubrir la cuota: le faltan ${fmtCLP(Math.abs(lider.brechaCLP))} al mes.`)}
+              </p>
+              <p className="mt-4 font-body text-[11px] italic text-[var(--franco-text-muted)]">
+                Este análisis es informativo y no constituye asesoría de inversión. Los datos se actualizan semanalmente desde fuentes públicas.
+              </p>
+            </div>
+          )}
         </section>
 
         <PlusvaliaComunaSection comuna={stats.nombre} />
+
+        {/* 04 · Procedencia de la muestra: qué cuenta el número que publicamos */}
+        <ProcedenciaMuestraBloque stats={stats} />
 
         {/* Comparativa */}
         {similares.length > 0 && (
@@ -350,21 +427,6 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
         )}
 
 
-        {/* CTA */}
-        <section className="mt-14">
-          <div className="rounded-2xl border border-[#C8323C]/20 bg-[#C8323C]/[0.06] p-10 text-center">
-            <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">¿Tienes un departamento en {stats.nombre}?</h2>
-            <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
-              Analízalo en 2 minutos. Franco te dice si comprar, negociar o seguir buscando.
-            </p>
-            <CtaAnalizar origen="comuna_detalle" comuna={stats.nombre}
-              className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
-            >
-              Analizar depto en {stats.nombre}
-            </CtaAnalizar>
-          </div>
-        </section>
-
         {/* FAQ */}
         <section className="mt-14">
           <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">Preguntas frecuentes</h2>
@@ -375,6 +437,44 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
                 <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">{q.acceptedAnswer.text}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* CTA — nace del dato, no pegado al final. El precio de equilibrio es el
+            gancho, y el propio CTA aclara que el análisis del depto suma los
+            gastos que esta página no conoce: es el puente entre los dos
+            break-even, para que nadie lea una contradicción. */}
+        <section className="mt-14">
+          <div className="rounded-2xl border border-[#C8323C]/20 bg-[#C8323C]/[0.06] p-10 text-center">
+            {lider ? (
+              <>
+                <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">
+                  ¿Viste un {lider.dorms}D en {stats.nombre}{" "}
+                  {lider.cubre ? "bajo" : "cerca de"}{" "}
+                  <span className="font-mono">UF {lider.precioCuotaUF.toLocaleString("es-CL")}</span>?
+                </h2>
+                <p className="mx-auto mt-2 max-w-[62ch] font-body text-sm text-[var(--franco-text-secondary)]">
+                  {lider.cubre
+                    ? `Sobre ese precio deja de pagarse solo con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años`
+                    : `Ese es el precio al que el arriendo cubriría la cuota con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años`}
+                  {lider.muestraChica ? `, calculado sobre ${lider.nArriendos} arriendos publicados` : ""}.
+                  Analiza el que tienes en la mira con sus números reales — gastos comunes, contribuciones y
+                  estado incluidos — y Franco te dice si de verdad cierra.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">¿Tienes un departamento en {stats.nombre}?</h2>
+                <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
+                  Analízalo en 2 minutos. Franco te dice si comprar, ajustar supuestos o buscar otra.
+                </p>
+              </>
+            )}
+            <CtaAnalizar origen="comuna_detalle" comuna={stats.nombre}
+              className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
+            >
+              Analizar depto en {stats.nombre}
+            </CtaAnalizar>
           </div>
         </section>
       </main>
