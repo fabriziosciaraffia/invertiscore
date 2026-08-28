@@ -39,6 +39,9 @@ import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plum
 import {
   Tabla,
   VViz,
+  VProsa,
+  VCierre,
+  VFuente,
   Palancas,
   type FilaPalanca,
   Escenarios,
@@ -57,7 +60,7 @@ import {
 } from "@/components/analysis/drawers/DrawersPropios";
 import { FlujoEstacionalChartSTR } from "./FlujoEstacionalChartSTR";
 import { DrawerTipoHuesped } from "./DrawerTipoHuesped";
-import { fmtMoney, fmtPct, fmtDec } from "../utils";
+import { fmtMoney, fmtPct, fmtDec, fmtAxisMoney} from "../utils";
 import { metricaValorONull, esMetricaNoAplica } from "@/lib/types";
 import type { NivelPie } from "@/lib/analysis";
 import { NO_APLICA_VALOR, NO_APLICA_SUBLABEL } from "@/lib/no-aplica-copy";
@@ -329,13 +332,14 @@ function HabilitacionContext({ ejes }: { ejes: ShortTermResult["ejesAplicados"] 
   const efecto = factor > 1
     ? `escala tu amoblamiento inicial ×${fmtDec(factor, factor % 1 === 0 ? 0 : 1)} sobre el nivel básico`
     : "usa el amoblamiento base, sin recargo";
+  // AUDITORÍA fase42 (8) — era una DrawerSection apilada entre el breakdown y el
+  // cierre (tres cajas seguidas). El contenido es una sola idea de contexto: va como
+  // prosa del cuerpo, y el cierre queda uno (la caja de Franco).
   return (
-    <DrawerSection label="Nivel de habilitación">
-      <p className="font-body text-[12.5px] text-[var(--franco-text-secondary)] m-0 italic leading-[1.55]">
-        Tu habilitación es {label}: {efecto}. No cambia la tarifa diaria — sube (o no) el
-        capital que pones al inicio, y con eso el Cash-on-Cash. Es la palanca del capex, no del ingreso.
-      </p>
-    </DrawerSection>
+    <p className="font-body text-[12.5px] text-[var(--franco-text-secondary)] m-0 mb-4 italic leading-[1.55]">
+      Tu habilitación es {label}: {efecto}. No cambia la tarifa diaria — sube (o no) el
+      capital que pones al inicio, y con eso el Cash-on-Cash. Es la palanca del capex, no del ingreso.
+    </p>
   );
 }
 
@@ -468,6 +472,7 @@ export function DrawerContentSTR({
     if (vRent) {
       filasRent.push({
         nombre: "CAP rate",
+        glosa: "lo que el arriendo deja al año sobre el precio, ya descontados los gastos",
         delta: `${vRent.gapPts >= 0 ? "+" : "−"}${pct1Str(Math.abs(vRent.gapPts))} pt`,
         alcanza: vRent.gapPts >= 0,
         origen: `${pct1Str(vRent.capRatePct)}%`,
@@ -481,6 +486,7 @@ export function DrawerContentSTR({
     if (esMetricaNoAplica(base.cashOnCash)) {
       filasRent.push({
         nombre: "Retorno sobre tu capital",
+        glosa: "lo que rinde al año la plata que pusiste",
         delta: NO_APLICA_VALOR,
         alcanza: false,
         razon: NO_APLICA_SUBLABEL.toLowerCase(),
@@ -488,6 +494,7 @@ export function DrawerContentSTR({
     } else if (coc != null) {
       filasRent.push({
         nombre: "Retorno sobre tu capital",
+        glosa: "lo que rinde al año la plata que pusiste",
         delta: `${coc >= 0 ? "+" : "−"}${pct1Str(Math.abs(coc))}%`,
         alcanza: coc >= 0,
         // En negativo se dice en plata, que es lo que se entiende: "por cada $100 que
@@ -501,11 +508,18 @@ export function DrawerContentSTR({
     if (occTecho > occBase) {
       filasRent.push({
         nombre: "Ocupación",
+        glosa: "cuántas noches del mes se llenan",
         delta: `+${Math.round((occTecho - occBase) * 100)} pts posibles`,
         alcanza: true,
-        origen: `${Math.round(occBase * 100)}% hoy en la zona`,
+        // AUDITORÍA fase42 (7b): la lista de DataRows que duplicaba esta fila murió;
+        // el matiz del override (ocupación definida a mano, no observada) sube acá.
+        origen: occEsOverride
+          ? `${Math.round(occBase * 100)}% definida por ti`
+          : `${Math.round(occBase * 100)}% hoy en la zona`,
         destino: `${Math.round(occTecho * 100)}% con gestión pro`,
         razon: "es la palanca real",
+        // Degradado aprobado (propuesta-15-pie-v3): la palanca real, en verde.
+        wash: "good",
       });
     }
     return (
@@ -514,7 +528,16 @@ export function DrawerContentSTR({
 
         {filasRent.length > 0 && (
           <VViz t="Tus números contra su referencia">
-            <Palancas filas={filasRent} />
+            <Palancas
+              filas={filasRent}
+              pie={
+                occEsOverride
+                  ? `Definiste la ocupación a mano (${occBasePct}%). No es un dato observado de la zona (donde se observa ${occObsPct}%); trátalo como un supuesto que confirmas recién operando.`
+                  : results.occFuente === "fallback_mercado"
+                    ? "No hubo ocupación observada para esta dirección; se usó la mediana de Santiago (~45%). Tómalo como referencia, no como dato propio de la zona."
+                    : undefined
+              }
+            />
           </VViz>
         )}
 
@@ -555,39 +578,17 @@ export function DrawerContentSTR({
           />
         </VViz>
 
+        {/* AUDITORÍA fase42 (7b) — la matriz REEMPLAZA la lista, no convive con
+            ella: la ocupación salía dos veces (matriz + DataRow) y el NOI base ya es
+            la fila Base de los escenarios. Sobreviven los dos datos que ningún
+            diagrama muestra; los caveats del override subieron a la matriz. */}
         <DrawerSection label={occEsOverride ? "Escenario base (ocupación definida por ti)" : "Escenario base (mediana observada de la zona · P50)"}>
-          {results.occFuente && (
-            <DataRow
-              label={occEsOverride ? "Ocupación (definida por ti)" : "Ocupación observada de la zona"}
-              value={occEsOverride
-                ? `${occBasePct}% · Observada de la zona ${occObsPct}% · Potencial con gestión pro ${Math.round(agresivo.ocupacionReferencia * 100)}%`
-                : `${occBasePct}% · Potencial con gestión pro ${Math.round(agresivo.ocupacionReferencia * 100)}% (+${Math.round((agresivo.ocupacionReferencia - base.ocupacionReferencia) * 100)} pts)`}
-              tooltip={occEsOverride
-                ? "Ocupación que definiste tú, no un dato observado. El cálculo usa tu supuesto; la observada de la zona se muestra al lado como referencia de mercado."
-                : "Ocupación mediana efectivamente observada en la zona — el caso central esperable. El potencial es el techo alcanzable con gestión profesional ya estabilizada; depende de la operación, no del mercado."}
-            />
-          )}
-          {occEsOverride && (
-            <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mt-2 mb-3 m-0 italic leading-[1.5]">
-              Definiste la ocupación a mano ({occBasePct}%). No es un dato observado de la zona (donde se observa {occObsPct}%); trátalo como un supuesto que confirmas recién operando.
-            </p>
-          )}
-          {results.occFuente === "fallback_mercado" && (
-            <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mt-2 mb-3 m-0 italic leading-[1.5]">
-              No hubo ocupación observada para esta dirección; se usó la mediana de Santiago (~45%). Tómalo como referencia, no como dato propio de la zona.
-            </p>
-          )}
           <DataRow
             label="Ingresos brutos anuales"
             value={fmtMoney(base.revenueAnual, currency, valorUF)}
             tooltip={occEsOverride
               ? "Total de ingresos del año asumiendo la ocupación que definiste. Sin descontar costos."
               : "Total de ingresos del año asumiendo la mediana observada de la zona. Sin descontar costos."}
-          />
-          <DataRow
-            label="NOI mensual (ingreso neto operativo)"
-            value={fmtMoney(base.noiMensual, currency, valorUF)}
-            tooltip="Ingresos del Airbnb menos costos operativos (limpieza, comisiones, suministros, administrador), antes de la cuota del crédito."
           />
           <DataRow
             label="Rentabilidad bruta"
@@ -597,11 +598,16 @@ export function DrawerContentSTR({
         </DrawerSection>
         <CostosBreakdown inputData={inputData} currency={currency} valorUF={valorUF} />
         <HabilitacionContext ejes={results.ejesAplicados} />
-        <CajaFranco
-          text={seccion?.cajaAccionable}
-          label="Hazte esta pregunta:"
-          variant="info"
-        />
+        {/* D-15(a) — "HAZTE ESTA PREGUNTA:" no existe en el v12: el cierre es el
+            VCierre con título rotativo. Contenido IA → sin destacado nuestro (T2);
+            los plumones que la IA traiga los pinta plumonInline. */}
+        {seccion?.cajaAccionable?.trim() && (
+          <VCierre titulo="Qué significa">{plumonInline(seccion.cajaAccionable)}</VCierre>
+        )}
+        {/* T1 — línea de fuente al pie del cuerpo. */}
+        <VFuente>
+          AirROI · {occEsOverride ? "ocupación definida por ti" : "ocupación observada de la zona (mediana P50)"} · costos operativos {fmtMoney(base.costosOperativos, currency, valorUF)}/mes
+        </VFuente>
       </>
     );
   }
@@ -670,23 +676,37 @@ export function DrawerContentSTR({
             como comparación directa: lo que la zona mediana factura contra lo que este
             deal necesita para no pedir plata. Acá las dos magnitudes SÍ difieren en
             orden visible, así que la barra desde cero es la forma correcta. */}
+        {/* D-11(b) — apertura del cuerpo (mockup 13-11): encuadre determinista. */}
+        <VProsa>
+          Tu flujo depende de cuánto rinda la zona. Esto es lo que necesitas — y lo que la zona
+          realmente da.
+        </VProsa>
+
         {(() => {
+          // AUDITORÍA fase42 (1) — acá vivía un bug de ESCALA: `breakEvenPct` viaja
+          // como FRACCIÓN (1,44 = 144%) y el código la dividía por 100 como si fuera
+          // porcentaje. Efecto doble en la misma pantalla: la barra de la zona quedaba
+          // inflada ×100 (mezcla mensual/anual aparente) y el pie decía "necesitas
+          // facturar 1%" (Math.round(1,44)) junto a un encabezado que decía 144%.
+          // Ambas magnitudes son ANUALES y se rotulan "/año" (propuesta-13-11).
           const necesitas = breakEvenAnual;
-          const zonaMediana = breakEvenPct > 0 ? necesitas / (breakEvenPct / 100) : 0;
+          const zonaMediana = breakEvenPct > 0 ? necesitas / breakEvenPct : 0;
           if (!(necesitas > 0) || !(zonaMediana > 0)) return null;
           const techo = Math.max(necesitas, zonaMediana);
           return (
             <VViz t="Lo que necesitas contra lo que rinde la zona">
               <Bars
                 rows={[
+                  // T3 — compacto: el valor cuelga del borde de la barra (posición
+                  // dependiente del dato), así que va en forma corta ($9,7M/año).
                   {
-                    k: "Genera la zona mediana",
-                    v: fmtMoney(zonaMediana, currency, valorUF),
+                    k: "Lo que genera la zona mediana",
+                    v: `${fmtAxisMoney(zonaMediana, currency, valorUF)}/año`,
                     pct: (zonaMediana / techo) * 100,
                   },
                   {
-                    k: "Necesitas para no poner plata",
-                    v: fmtMoney(necesitas, currency, valorUF),
+                    k: "Lo que necesitas para no poner plata",
+                    v: `${fmtAxisMoney(necesitas, currency, valorUF)}/año`,
                     pct: (necesitas / techo) * 100,
                     destacada: necesitas > zonaMediana,
                   },
@@ -694,40 +714,56 @@ export function DrawerContentSTR({
               />
               <div className="compo-total" style={{ marginTop: 10 }}>
                 <span className="k">Necesitas facturar</span>
-                <span className="v">{Math.round(breakEvenPct)}% de lo que factura la zona mediana</span>
+                {/* CROSS-CHECK de pantalla: misma derivación que la cifra del encabezado
+                    del hallazgo (sensibilidad-str-hallazgo.ts: round(fracción × 100)),
+                    sobre el MISMO snapshot persistido — coinciden por construcción. */}
+                <span className="v">{Math.round(breakEvenPct * 100)}% de lo que factura la zona mediana</span>
               </div>
             </VViz>
           );
         })()}
 
-        <DrawerSection label="¿Qué pasa si el mercado se mueve?">
-          <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
-            Tu NOI mensual si la zona rinde a distintos percentiles del mercado, sin el factor de tu
-            propiedad — a diferencia del drawer “Rentabilidad”, que sí lo aplica.
-          </p>
-          {/* E.5 caveat (b) — procedencia de los percentiles narrados como "del
-              mercado" (texto-solo; el plumbing de `source` comparables vs
-              calculator_direct queda en backlog str-source-procedencia). */}
-          <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5] italic">
-            Estimación de mercado (AirROI), no transacciones cerradas.
-          </p>
+        {/* D-11(a) — la etiqueta absorbe el párrafo ("Tu NOI mensual si…" era la
+            etiqueta con otras palabras); el matiz de procedencia (AirROI, sin factor
+            de tu propiedad) baja al VFuente del pie (T1). */}
+        <DrawerSection label="Tu NOI mensual según cuánto rinda el mercado">
           {/* FASE 4 — tabla del VOCABULARIO: scroll horizontal CONTENIDO + cue.
               Es el arquetipo "datos pesados": la matriz nunca empuja el ancho
               del documento, se desliza dentro de su caja. */}
-          <Tabla
-            headers={["Escenario", "NOI/mes", "vs LTR"]}
-            filas={rows.map((r) => ({
-              celdas: [
-                r.label === "P50" ? `${r.label} · base` : r.label,
-                fmtMoney(r.noiMensual, currency, valorUF),
-                `${r.sobreRenta >= 0 ? "+" : ""}${fmtMoney(r.sobreRenta, currency, valorUF)}`,
-              ],
-              destacada: r.label === "P50",
-              tonos: [null, r.noiMensual < 0 ? "neg" : null, r.sobreRenta < 0 ? "neg" : null],
-            }))}
-          />
+          {(() => {
+            // Traducción aprobada de los percentiles (propuesta-13-11): el rótulo
+            // estadístico queda, la glosa lo vuelve legible.
+            const GLOSA_PCT: Record<string, string> = {
+              P25: "P25 · cuarta parte más baja",
+              P50: "P50 · mediana del mercado",
+              P75: "P75 · cuarta parte más alta",
+              P90: "P90 · 10% más alto",
+            };
+            // El CRUCE: primera fila donde el corto le gana al largo, marcada solo si
+            // hay cambio de signo real (si todo es positivo o todo negativo, no hay
+            // frontera que señalar).
+            const idxCruce = rows.findIndex((r) => r.sobreRenta >= 0);
+            const hayCruce = idxCruce > 0;
+            return (
+              <Tabla
+                headers={["Escenario", "NOI/mes", "vs arriendo largo"]}
+                filas={rows.map((r, i) => ({
+                  celdas: [
+                    GLOSA_PCT[r.label] ?? r.label,
+                    fmtMoney(r.noiMensual, currency, valorUF),
+                    `${r.sobreRenta >= 0 ? "+" : ""}${fmtMoney(r.sobreRenta, currency, valorUF)}`,
+                  ],
+                  destacada: r.label === "P50",
+                  cruce: hayCruce && i === idxCruce,
+                  tonos: [null, r.noiMensual < 0 ? "neg" : null, r.sobreRenta < 0 ? "neg" : "pos"],
+                }))}
+                cruceLbl={hayCruce ? `↑ recién sobre ${rows[idxCruce].label} el corto le gana al arriendo largo` : undefined}
+              />
+            );
+          })()}
         </DrawerSection>
 
+        {!(breakEvenAnual > 0 && breakEvenPct > 0) && (
         <DrawerSection label="Punto de equilibrio">
           <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
             Para que tu flujo no quede en aporte mensual, necesitas generar
@@ -745,14 +781,10 @@ export function DrawerContentSTR({
             tooltip="Si esta cifra es >100%, ni siquiera operando al nivel mediano del mercado cubres costos. Riesgo estructural — la operación depende de superar al mercado típico."
           />
         </DrawerSection>
+        )}
 
         {results.sensibilidadPrecio && results.sensibilidadPrecio.length > 0 && (
           <DrawerSection label="¿Y si negocias el precio?">
-            <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
-              Cuánto mejoran CAP, Cash-on-Cash y flujo si rebajas el precio
-              de compra. El ingreso del Airbnb no cambia; lo que baja es el
-              crédito + la cuota + capital invertido.
-            </p>
             <div className="grid grid-cols-1 gap-0">
               <div className="flex items-center font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] py-1.5 border-b-[0.5px] border-[var(--franco-border)]">
                 <span className="flex-1">Precio</span>
@@ -770,7 +802,10 @@ export function DrawerContentSTR({
                     style={isActual ? { background: "color-mix(in srgb, var(--franco-text) 4%, transparent)", padding: "8px 8px", borderRadius: 4 } : undefined}
                   >
                     <span className="flex-1 font-body text-[13px] text-[var(--franco-text)]" style={{ fontWeight: isActual ? 600 : 400 }}>
-                      {isActual ? "Precio actual" : `${r.label} ${fmtMoney(r.precioCLP, currency, valorUF)}`}
+                      {/* T3 — compacto (mockup: "−5% · $252,2 MM"), el completo desbordaba. */}
+                      {isActual
+                        ? `Actual · ${fmtAxisMoney(r.precioCLP, currency, valorUF)}`
+                        : `${r.label} · ${fmtAxisMoney(r.precioCLP, currency, valorUF)}`}
                     </span>
                     <span className="w-20 text-right font-mono text-[13px] font-medium">
                       {fmtPct(r.capRate * 100, 2)}
@@ -803,23 +838,71 @@ export function DrawerContentSTR({
           </DrawerSection>
         )}
 
+        {/* AUDITORÍA fase42 (8) — el subsidio deja de ser caja apilada y pasa a
+            VProsa del cuerpo (texto verbatim del trabajo paralelo Ley 21.748). */}
         {results.subsidioTasa?.califica && !results.subsidioTasa.aplicado && (
-          <DrawerSection label="Subsidio a la tasa hipotecaria (Ley 21.748)">
-            <p className="font-body text-[13px] text-[var(--franco-text)] mb-2 m-0 leading-[1.55]">
-              Tu depto califica para el subsidio del MINVU: vivienda nueva en
-              primera venta hasta 6.000 UF. Te baja la tasa hipotecaria desde
-              0,6 puntos —{" "}
-              {fmtPct(results.subsidioTasa.tasaConSubsidio, 1)} en el escenario
-              más conservador; cuánto más, lo define tu banco.
-            </p>
-            <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mb-0 m-0 leading-[1.55] italic">
-              No está reflejado en este cálculo — la tasa que ingresaste no
-              corresponde a la subsidiada. Si la negocias con el banco, el
-              flujo mensual mejora porque baja la cuota. Pídela como
-              “subsidio al crédito hipotecario Ley 21.748”.
-            </p>
-          </DrawerSection>
+          <VProsa>
+            Tu depto califica para el subsidio del MINVU (Ley 21.748): vivienda nueva en
+            primera venta hasta 6.000 UF. Te baja la tasa hipotecaria desde 0,6 puntos —{" "}
+            {fmtPct(results.subsidioTasa.tasaConSubsidio, 1)} en el escenario más
+            conservador; cuánto más, lo define tu banco. No está reflejado en este
+            cálculo — la tasa que ingresaste no corresponde a la subsidiada. Si la
+            negocias con el banco, el flujo mensual mejora porque baja la cuota. Pídela
+            como “subsidio al crédito hipotecario Ley 21.748”.
+          </VProsa>
         )}
+
+        {/* AUDITORÍA fase42 (6) — el cuerpo terminaba EN FRÍO (arquetipo 3: datos
+            pesados sin conclusión — justo lo que la conversión 11 venía a corregir).
+            Cierre derivado del dato, rama por rama; nada de IA. */}
+        {(() => {
+          if (!(breakEvenPct > 0)) return null;
+          const veces = (Math.round(breakEvenPct * 10) / 10).toLocaleString("es-CL", { minimumFractionDigits: 1 });
+          const idxCruce = rows.findIndex((r) => r.sobreRenta >= 0);
+          const hayCruce = idxCruce > 0;
+          const nadiePositivo = idxCruce < 0;
+          // T2 — cada rama declara su frase-fuerza (cierre determinista → mark).
+          const fraseEquilibrio =
+            breakEvenPct > 1 ? (
+              <>
+                <mark>Necesitas rendir {veces} veces lo que rinde la zona mediana</mark> solo para no
+                poner plata cada mes
+              </>
+            ) : (
+              <>
+                <mark>Te basta el {Math.round(breakEvenPct * 100)}% de lo que rinde la zona mediana</mark>{" "}
+                para no poner plata — hay colchón
+              </>
+            );
+          const fraseCruce = nadiePositivo
+            ? ", y ni en el escenario del 10% más alto el corto le gana al arriendo largo"
+            : hayCruce
+              ? `, y el corto recién le gana al arriendo largo sobre el ${rows[idxCruce].label}`
+              : ", y el corto le gana al arriendo largo en todos los escenarios";
+          const ultimaNeg = results.sensibilidadPrecio && results.sensibilidadPrecio.length > 0
+            ? results.sensibilidadPrecio[results.sensibilidadPrecio.length - 1]
+            : null;
+          // La magnitud sale del label del motor ("-10%" → "10%"), no de una constante.
+          const magNeg = ultimaNeg && ultimaNeg.label !== "actual" ? ultimaNeg.label.replace(/^-/, "") : null;
+          const fraseNegocia = ultimaNeg && magNeg
+            ? ultimaNeg.flujoCajaMensual < 0
+              ? ` Ni negociando ${magNeg} del precio el flujo se da vuelta: la brecha no está en el precio, está en lo que la zona factura por noche.`
+              : ` Negociando ${magNeg} del precio el flujo alcanza a darse vuelta — ahí hay una palanca real.`
+            : "";
+          return (
+            <VCierre titulo="Qué significa">
+              {fraseEquilibrio}
+              {fraseCruce}.{fraseNegocia}
+            </VCierre>
+          );
+        })()}
+
+        {/* T1 — línea de fuente al pie, posición única del v12 (absorbe el matiz
+            "sin factor de tu propiedad" que vivía como párrafo sobre la tabla). */}
+        <VFuente>
+          AirROI · estimación de mercado, no transacciones cerradas · sin el factor de tu propiedad
+          (a diferencia del cuerpo de rentabilidad, que sí lo aplica)
+        </VFuente>
       </>
     );
   }

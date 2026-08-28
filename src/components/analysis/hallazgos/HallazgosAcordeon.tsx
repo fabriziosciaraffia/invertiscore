@@ -268,6 +268,9 @@ function TokensHallazgos() {
         border-bottom:1px solid var(--doc-line);color:var(--doc-tx)}
       .tbl td:first-child{text-align:left;font-family:var(--font-body, sans-serif);color:var(--doc-tx3);white-space:nowrap}
       .tbl tr.hl td{background:var(--doc-paper3)}
+      .tbl tr.cruce td{border-top:2px solid var(--doc-good)}
+      .tbl-crucelbl{display:block;font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.08em;
+        text-transform:uppercase;color:var(--doc-good);padding-top:7px}
       .cell-neg{color:var(--signal-red)} .cell-pos{color:var(--doc-good)}
       .tbl-scrollcue{font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
         color:var(--doc-tx4);margin-bottom:16px}
@@ -280,6 +283,9 @@ function TokensHallazgos() {
         border-radius:3px;overflow:hidden}
       .pal-row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;background:var(--doc-paper);padding:11px 13px}
       .pal-row.si{background:var(--doc-paper2)}
+      .pal-glosa{flex-basis:100%;font-size:11px;font-weight:400;color:var(--doc-tx3);margin-top:1px}
+      .pal-row.wash-warn{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-warn) 7%,transparent),transparent 70%)}
+      .pal-row.wash-good{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-good) 8%,transparent),transparent 72%)}
       .pal-name{font-size:13px;color:var(--doc-tx);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
       .pal-delta{font-family:var(--font-mono, ui-monospace);font-size:11.5px;font-weight:700;padding:1px 5px;border-radius:2px}
       .pal-delta.si{color:var(--doc-good);background:color-mix(in srgb,var(--doc-good) 12%,transparent)}
@@ -380,7 +386,11 @@ function TokensHallazgos() {
         color:var(--doc-tx4);text-align:right}
       .cmp-track{height:14px;background:var(--doc-paper3);border-radius:2px;overflow:hidden}
       .cmp-fill{height:100%;border-radius:2px}
-      .cmp-fill.tuyo{background:var(--signal-red)}
+      /* fase42 pasada-marco — el mockup canónico (13-11) pinta la barra propia en
+         ámbar, no en Signal Red: el rojo quedaba en filas neutras (pie, cuota) y
+         viola la regla del color (rojo = solo atención). Toca también las barras
+         de precio STR (K1), que heredaban el rojo por defecto. */
+      .cmp-fill.tuyo{background:var(--doc-warn)}
       .cmp-fill.tuyo.ok{background:var(--doc-good)}
       .cmp-fill.ref{background:var(--doc-tx4)}
       .cmp-v{font-family:var(--font-mono, ui-monospace);font-size:12px;font-weight:700;color:var(--doc-tx);white-space:nowrap}
@@ -395,7 +405,7 @@ function TokensHallazgos() {
       .esca-head span:not(:first-child),.esca-row .esca-v{text-align:right}
       .esca-row{border-bottom:1px dotted var(--doc-line)}
       .esca-row:last-child{border-bottom:none}
-      .esca-row.hoy{background:var(--doc-paper3)}
+      .esca-row.hoy{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-warn) 12%,transparent),transparent 78%)}
       .esca-pie{font-family:var(--font-mono, ui-monospace);font-size:13px;font-weight:700;color:var(--doc-tx)}
       .esca-pie small{display:block;font-family:var(--font-body, sans-serif);font-size:10px;font-weight:400;
         color:var(--doc-tx4);margin-top:2px;letter-spacing:0}
@@ -412,6 +422,10 @@ function TokensHallazgos() {
       .esc{display:flex;flex-direction:column;gap:10px}
       .esc-row{display:grid;grid-template-columns:132px 1fr auto;align-items:center;gap:12px}
       .esc-k{font-size:12px;color:var(--doc-tx3);line-height:1.3}
+      /* T3 — el wash va SIN margen negativo: -8px empujaba la grilla fuera del
+         cuerpo y recortaba los valores del borde derecho (medido: 790 vs 782px). */
+      .esc-row.base{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-tx) 6%,transparent),transparent 72%);
+        border-radius:3px;padding:6px 0}
       .esc-row.base .esc-k{color:var(--doc-tx);font-weight:600}
       .esc-k small{display:block;font-size:10px;color:var(--doc-tx4);margin-top:2px;line-height:1.35}
       .esc-track{height:15px;background:var(--doc-paper3);border-radius:2px;overflow:hidden}

@@ -11,7 +11,8 @@
 
 import type { ReactNode } from "react";
 import type { NivelPie } from "@/lib/analysis";
-import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
+import { EscaleraPie, nivelActualValidado } from "@/components/analysis/hallazgos/escalera-pie";
+import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
 import type {
   FullAnalysisResult,
   HallazgoTIR,
@@ -246,8 +247,10 @@ export function Box({
   );
 }
 
-/** Cadena causal (Financiamiento STR) — bloque visual del vocabulario. */
-export function Chain({ steps }: { steps: Array<{ v: string; k: ReactNode; pos?: boolean }> }) {
+/** Cadena causal (Financiamiento STR) — bloque visual del vocabulario.
+ *  `foot`: el dato que NO está en los pasos cuelga del diagrama (propuesta-13-11);
+ *  narrar la cadena en un párrafo aparte era la duplicación que la conversión mató. */
+export function Chain({ steps, foot }: { steps: Array<{ v: string; k: ReactNode; pos?: boolean }>; foot?: ReactNode }) {
   return (
     <VViz t="La palanca, paso a paso">
       <div style={{ display: "flex", alignItems: "stretch", gap: 8, flexWrap: "wrap" }}>
@@ -285,6 +288,14 @@ export function Chain({ steps }: { steps: Array<{ v: string; k: ReactNode; pos?:
           </div>
         ))}
       </div>
+      {foot && (
+        <p
+          className="font-mono m-0"
+          style={{ fontSize: 10.5, letterSpacing: "0.03em", color: "var(--doc-tx2)", marginTop: 11, lineHeight: 1.5 }}
+        >
+          {foot}
+        </p>
+      )}
     </VViz>
   );
 }
@@ -545,9 +556,13 @@ function construirPalancas(
     }
     return { filas, noProbadas: [] };
   }
+  // D-01(a) — razón corta de CATÁLOGO también para las que alcanzan (el mockup la
+  // trae: "· la única que alcanza"). Con varias, el porqué es que cada una basta sola.
+  const razonAlcanza = v.palancas.length === 1 ? "la única que alcanza" : "alcanza por sí sola";
   for (const p of v.palancas) {
     const t = textoPalanca(p, currency, valorUF);
-    filas.push({ nombre: NOMBRE_PALANCA[p.palanca] ?? p.palanca, delta: t.delta, alcanza: true, origen: t.origen, destino: t.destino });
+    // Degradado aprobado (propuesta-01-v2): la fila que alcanza lleva lavado ámbar.
+    filas.push({ nombre: NOMBRE_PALANCA[p.palanca] ?? p.palanca, delta: t.delta, alcanza: true, origen: t.origen, destino: t.destino, razon: razonAlcanza, wash: "warn" });
   }
   const universo = esStr ? ["adr", "precio", "plazo", "gestion"] : ["arriendo", "precio", "plazo"];
   if (v.pieEsPalanca) universo.push("pie");
@@ -735,8 +750,8 @@ export function DrawerDistanciaLtr({
           crédito a 30 años.
         </VProsa>
         <VCierre titulo="Qué significa">
-          La brecha no está en cómo estás mirando este depto — está en el depto. Ajustar supuestos sirve
-          cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
+          <mark>La brecha no está en cómo estás mirando este depto — está en el depto.</mark> Ajustar
+          supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
         </VCierre>
       </div>
     );
@@ -749,6 +764,14 @@ export function DrawerDistanciaLtr({
           ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: probamos las palancas una por una, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
           : `Tu veredicto es ${base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`}
       </VProsa>
+
+      {v.pieExcluidoPorBono && (
+        <VProsa>
+          El pie no aparece entre las vías porque lo cubre la inmobiliaria: subirlo no es una palanca, es
+          deshacer el trato que estás evaluando. Con el pie cubierto, el precio se mira con más dureza,
+          porque alguien está pagando ese bono.
+        </VProsa>
+      )}
 
       <VViz t={`Qué pediría cada palanca para llegar a ${objetivo}`}>
         <Palancas
@@ -768,8 +791,8 @@ export function DrawerDistanciaLtr({
       <VCierre titulo={v.esEstructural ? "Qué significa" : "Qué haces con esto"}>
         {v.esEstructural ? (
           <>
-            La brecha no está en cómo estás mirando este depto — está en el depto. Ajustar supuestos sirve
-            cuando el número está cerca; acá el esfuerzo que pide es de otro orden.{" "}
+            <mark>La brecha no está en cómo estás mirando este depto — está en el depto.</mark> Ajustar
+            supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.{" "}
             {v.piePctActual === 0
               ? "Sigue buscando: con financiamiento 100% no tienes colchón para absorberlo."
               : "Guarda el pie para el siguiente."}{" "}
@@ -777,24 +800,22 @@ export function DrawerDistanciaLtr({
             cuentes que los números dan.
           </>
         ) : v.palancas[0]?.palanca === "pie" ? (
-          "Esta no se negocia con nadie: es plata tuya contra menos crédito. Antes de descartar el depto, confirma con el banco cuánto baja la cuota con ese pie y si tienes la liquidez sin quedarte sin colchón."
+          <><mark>Esta no se negocia con nadie: es plata tuya contra menos crédito.</mark> Antes de
+          descartar el depto, confirma con el banco cuánto baja la cuota con ese pie y si tienes la
+          liquidez sin quedarte sin colchón.</>
         ) : v.palancas[0]?.palanca === "precio" ? (
-          "Llévalo a la mesa: la diferencia está en rango de negociación, no en otro departamento. Si el vendedor no baja, ya sabes exactamente cuánto te separa."
+          <>Llévalo a la mesa: <mark>la diferencia está en rango de negociación, no en otro
+          departamento</mark>. Si el vendedor no baja, ya sabes exactamente cuánto te separa.</>
         ) : (
-          "Antes de descartarlo, confirma ese techo de arriendo contra 2–3 publicaciones comparables de la zona. Si el mercado lo da, la decisión se toma sola."
+          <>Antes de descartarlo, <mark>confirma ese techo de arriendo contra 2–3 publicaciones
+          comparables de la zona</mark>. Si el mercado lo da, la decisión se toma sola.</>
         )}
       </VCierre>
 
-      {v.pieExcluidoPorBono && (
-        <VProsa>
-          El pie no aparece entre las vías porque lo cubre la inmobiliaria: subirlo no es una palanca, es
-          deshacer el trato que estás evaluando. Con el pie cubierto, el precio se mira con más dureza,
-          porque alguien está pagando ese bono.
-        </VProsa>
-      )}
 
       <Note>
         {[
+          "Motor Franco · cada palanca probada por separado, con el resto de los supuestos fijos.",
           tienePlazo ? "El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen." : null,
           tienePie
             ? "La tasa no entra acá: es condición del banco, no del depto."
@@ -1156,27 +1177,29 @@ export function DrawerFinanciamientoStr({
   }
   const cuota = results.dividendoMensual;
   const flujo = results.escenarios?.base?.flujoCajaMensual ?? 0;
-  const oldPieFrac = v.piePct / 100;
-  const OPTIMO = 25;
-  const hayPalanca = v.piePct < OPTIMO && results.montoCredito > 0;
 
-  // Palanca determinística: subir el pie al óptimo (25%) baja crédito → cuota → sube flujo.
-  const newPieFrac = OPTIMO / 100;
-  const precio = oldPieFrac < 1 ? results.montoCredito / (1 - oldPieFrac) : 0;
-  const extraPie = precio * (newPieFrac - oldPieFrac);
-  const creditoRatio = (1 - newPieFrac) / (1 - oldPieFrac);
-  const deltaCuota = Math.max(cuota - cuota * creditoRatio, 0);
-  const newFlujo = flujo + deltaCuota;
-  // FIX-5 — adjetivo → número: qué % de la sangría recorta el ahorro de cuota.
-  const recorte = flujo < 0 ? Math.round((deltaCuota / Math.abs(flujo)) * 100) : 0;
-
-  const spread = v.spreadBps;
-  const tasaMsg =
-    Math.abs(spread) <= 25
-      ? `La tasa (${pctStr(v.tasaPct)}) está en buen nivel — prácticamente en el promedio de mercado (${pctStr(v.tasaMarketPct)}). El punto flojo es el pie.`
-      : spread > 0
-        ? `Tu tasa (${pctStr(v.tasaPct)}) está sobre el promedio de mercado (${pctStr(v.tasaMarketPct)}): hay margen para renegociarla.`
-        : `Tu tasa (${pctStr(v.tasaPct)}) está bajo el promedio de mercado (${pctStr(v.tasaMarketPct)}) — buen nivel.`;
+  // AUDITORÍA fase42 (punto 1) — acá moría la última constante 25 del componente:
+  // la cadena calculaba a mano el salto "pie → 25%". Ahora el salto se DERIVA de los
+  // niveles de la escalera (simularPieStr, calculados server-side y validados por la
+  // guarda compartida del invariante): destino = primer nivel sobre el actual (+5).
+  // Entre niveles lo único que cambia es la cuota, así que el ahorro de cuota ES la
+  // diferencia de flujo — y la cadena y la fila +5 de la escalera muestran el mismo
+  // delta POR CONSTRUCCIÓN, no por casualidad de dos aritméticas paralelas.
+  const palanca = (() => {
+    const actual = nivelActualValidado(nivelesPie, flujo);
+    const destino = actual ? nivelesPie?.find((n) => n.piePct > actual.piePct) : undefined;
+    if (!actual || !destino) return null;
+    const ahorroCuota = Math.max(destino.flujoMensual - actual.flujoMensual, 0);
+    return {
+      actual,
+      destino,
+      extraPie: destino.pieCLP - actual.pieCLP,
+      ahorroCuota,
+      // FIX-5 — adjetivo → número: qué % de la sangría recorta el ahorro de cuota.
+      recorte: actual.flujoMensual < 0 ? Math.round((ahorroCuota / Math.abs(actual.flujoMensual)) * 100) : 0,
+    };
+  })();
+  const hayPalanca = palanca != null;
 
   return (
     <div>
@@ -1185,17 +1208,20 @@ export function DrawerFinanciamientoStr({
         mueve la aguja. Tu pie y tu tasa hoy dejan {hayPalanca ? "un margen menor" : "poco espacio de mejora"}.
       </Lead>
 
-      <Chips
-        label="Tu estructura actual"
-        cells={[
-          { k: "Pie", v: `${v.piePct}%`, small: `· óptimo ${OPTIMO}%` },
-          { k: "Tasa", v: pctStr(v.tasaPct) },
-          { k: "Cuota / mes", v: fmtMoney(cuota, currency, valorUF) },
-        ]}
-        foot={tasaMsg}
-      />
+      {/* AUDITORÍA fase42 D-13 — los KPIs pelados + la prosa que narraba el juicio
+          de la tasa se reemplazan por la comparación DIBUJADA (propuesta-13-11):
+          tasa contra el promedio de mercado con su chip; pie como barra propia,
+          cuyo contexto lo da la escalera de abajo. */}
+      <VViz t="Tu estructura contra la referencia">
+        <EstructuraComparada
+          piePct={v.piePct}
+          tasaPct={v.tasaPct}
+          tasaMarketPct={v.tasaMarketPct}
+          cuotaFmt={fmtMoney(cuota, currency, valorUF)}
+        />
+      </VViz>
 
-      {hayPalanca ? (
+      {palanca ? (
         <>
           <div
             style={{
@@ -1212,20 +1238,30 @@ export function DrawerFinanciamientoStr({
             >
               La palanca real: el pie
             </p>
+            {/* AUDITORÍA fase42 (7a) — murió el párrafo que narraba paso a paso la
+                cadena dibujada cinco líneas más arriba (duplicación literal). Su único
+                dato nuevo — el % de recorte a la sangría — cuelga del diagrama. */}
             <Chain
               steps={[
-                { v: "+" + fmtCompact(extraPie, currency, valorUF), k: <>de pie hoy<br />({v.piePct}% → {OPTIMO}%)</> },
-                { v: "−" + fmtMoney(deltaCuota, currency, valorUF), k: <>de cuota<br />al mes</> },
-                { v: `${signCompact(flujo, currency, valorUF)} → ${signCompact(newFlujo, currency, valorUF)}`, k: <>tu flujo<br />mensual</>, pos: true },
+                { v: "+" + fmtCompact(palanca.extraPie, currency, valorUF), k: <>de pie hoy<br />({palanca.actual.piePct}% → {palanca.destino.piePct}%)</> },
+                { v: "−" + fmtMoney(palanca.ahorroCuota, currency, valorUF), k: <>de cuota<br />al mes</> },
+                { v: `${signCompact(palanca.actual.flujoMensual, currency, valorUF)} → ${signCompact(palanca.destino.flujoMensual, currency, valorUF)}`, k: <>tu flujo<br />mensual</>, pos: true },
               ]}
+              foot={
+                <>
+                  {/* Misma guarda que la escalera (FASE 4.2): "se da vuelta" solo si
+                      el mes VENÍA negativo — con flujo ya positivo esa frase miente. */}
+                  <b style={{ color: "var(--doc-good)" }}>
+                    {palanca.destino.flujoMensual < 0
+                      ? `Le recorta ~${palanca.recorte}% a la sangría`
+                      : palanca.actual.flujoMensual < 0
+                        ? "Con esto el flujo se da vuelta"
+                        : "El mes ya cierra a favor — con más pie queda aún más holgado"}
+                  </b>{" "}
+                  — y es lo único que no depende del mercado ni de la ocupación.
+                </>
+              }
             />
-            <p className="font-body m-0" style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--franco-text)" }}>
-              Un solo movimiento, tres efectos encadenados: pones ~{fmtCompact(extraPie, currency, valorUF)} más de
-              pie el día uno, la cuota baja ~{fmtMoney(deltaCuota, currency, valorUF)} al mes, y con eso tu flujo
-              mejora de {fmtMoneySigned(flujo, currency, valorUF)} a {fmtMoneySigned(newFlujo, currency, valorUF)} mensuales.
-              {newFlujo < 0 ? ` No lo deja neutro, pero le recorta un ~${recorte}% a la sangría` : " Con eso el flujo se da vuelta"}{" "}
-              — y es lo único que no depende del mercado ni de la ocupación, solo de cuánto pones día uno.
-            </p>
           </div>
       {/* ═══ CONVERSIÓN 13 (FASE 4.2) · ESCALERA DEL PIE ═══
           Espejo exacto del LTR: mismos niveles relativos, mismas dos columnas y el
@@ -1240,17 +1276,38 @@ export function DrawerFinanciamientoStr({
         currency={currency}
       />
 
-          <Box label="Qué haces con esto">
-            Si tienes la liquidez para subir el pie, es el ajuste de mayor impacto y menor riesgo. Si no la
-            tienes, el flujo negativo es un dato a asumir, no un error a esconder.
-          </Box>
+          {/* AUDITORÍA fase42 D-pie10 — el cierre RAMIFICA por signo del flujo (la
+              misma lección del copy de la escalera): con mes en verde, "el flujo
+              negativo es un dato a asumir" contradecía el dato, y "mayor impacto y
+              menor riesgo" tampoco aplica — ahí el trade-off se invierte: holgura a
+              cambio de TIR. */}
+          {palanca.actual.flujoMensual < 0 ? (
+            <Box label="Qué haces con esto">
+              Si tienes la liquidez para subir el pie, <mark>es el ajuste de mayor impacto y menor riesgo</mark>.
+              Si no la tienes, el flujo negativo es un dato a asumir, no un error a esconder.
+            </Box>
+          ) : (
+            <Box label="Qué haces con esto">
+              El mes ya cierra a favor, así que subir el pie no rescata nada: <mark>compra holgura mensual a
+              cambio de retorno</mark>
+              {palanca.actual.tirPct != null && palanca.destino.tirPct != null
+                ? ` — la TIR baja de ${pctStr(palanca.actual.tirPct)} a ${pctStr(palanca.destino.tirPct)}, la escalera lo muestra`
+                : " — la escalera muestra el intercambio"}
+              . Si valoras el colchón, es una opción; si buscas rendimiento por peso puesto, no la necesitas.
+            </Box>
+          )}
         </>
       ) : (
         <Box label="Qué haces con esto">
-          Tu pie ya está en el óptimo ({OPTIMO}% o más), así que la palanca del financiamiento está agotada: el
-          flujo se resuelve por el lado de la ocupación y la gestión, no del crédito.
+          El efecto de mover el pie no se pudo calcular nivel por nivel para este análisis, así que no lo
+          mostramos a ciegas. Como regla: <mark>más pie baja la cuota y alivia el mes, pero rinde menos
+          sobre tu plata</mark>; menos pie hace lo contrario. El resto del flujo se juega en la ocupación y
+          la gestión.
         </Box>
       )}
+
+      {/* T1 — línea de fuente al pie del cuerpo, posición única del v12. */}
+      <Note>Motor Franco · tasa de mercado referencial a la fecha del análisis — actualización manual, no en tiempo real.</Note>
     </div>
   );
 }
@@ -1862,8 +1919,8 @@ export function DrawerDistanciaStr({
           30 años.
         </VProsa>
         <VCierre titulo="Qué significa">
-          La brecha no está en cómo estás mirando este departamento — está en el departamento. Ajustar
-          supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
+          <mark>La brecha no está en cómo estás mirando este departamento — está en el departamento.</mark>{" "}
+          Ajustar supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
         </VCierre>
       </div>
     );
@@ -1878,6 +1935,27 @@ export function DrawerDistanciaStr({
             ? `Tu puntaje ya da para ${objetivo}: lo que retiene el veredicto en ${base} no son puntos, es que la operación todavía no cierra. Estas son las vías que la dan vuelta, cada una por su cuenta: no se suman, cualquiera alcanza.`
             : `Tu veredicto es ${base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`}
       </VProsa>
+
+      {/* D-01(c) — el v12 congelado NO admite prosa entre VViz y VCierre (las
+          secuencias del mockup son [prosa] → viz → cierre → fuente): este caveat de
+          la tarifa sube ANTES de la matriz. Sigue siendo prosa legítima — ningún
+          diagrama dice esto. */}
+      {tieneAdr && !v.esEstructural && (
+        <VProsa>
+          Ojo con la tarifa: la de referencia no es un supuesto nuestro, sale de lo que se cobra realmente
+          alrededor. Pedirte que la superes no es ajustar un número optimista, es apostar a que vas a rendir
+          sobre la mediana de tu zona. Se puede —mejores fotos, calendario bien manejado, respuesta rápida—,
+          pero es trabajo tuyo sostenido, no un dato que cambia.
+        </VProsa>
+      )}
+
+      {v.pieExcluidoPorBono && (
+        <VProsa>
+          El pie no aparece entre las vías porque lo cubre la inmobiliaria: subirlo no es una palanca, es
+          deshacer el trato que estás evaluando. Con el pie cubierto, el precio se mira con más dureza,
+          porque alguien está pagando ese bono.
+        </VProsa>
+      )}
 
       <VViz t={`Qué pediría cada palanca para llegar a ${objetivo}`}>
         <Palancas
@@ -1894,23 +1972,11 @@ export function DrawerDistanciaStr({
         />
       </VViz>
 
-      {/* La tarifa NO es un supuesto que se corrige: es una apuesta contra la zona. Prosa
-          legítima — no hay diagrama que diga esto, y sin ella la tarifa se lee como una
-          palanca más de la matriz. */}
-      {tieneAdr && !v.esEstructural && (
-        <VProsa>
-          Ojo con la tarifa: la de referencia no es un supuesto nuestro, sale de lo que se cobra realmente
-          alrededor. Pedirte que la superes no es ajustar un número optimista, es apostar a que vas a rendir
-          sobre la mediana de tu zona. Se puede —mejores fotos, calendario bien manejado, respuesta rápida—,
-          pero es trabajo tuyo sostenido, no un dato que cambia.
-        </VProsa>
-      )}
-
       <VCierre titulo={v.esEstructural ? "Qué significa" : "Qué haces con esto"}>
         {v.esEstructural ? (
           <>
-            La brecha no está en cómo estás mirando este departamento — está en el departamento. Ajustar
-            supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.{" "}
+            <mark>La brecha no está en cómo estás mirando este departamento — está en el departamento.</mark>{" "}
+            Ajustar supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.{" "}
             {v.piePctActual === 0
               ? "Sigue buscando: con financiamiento 100% no tienes colchón para absorberlo."
               : "Guarda el pie para el siguiente."}{" "}
@@ -1918,25 +1984,26 @@ export function DrawerDistanciaStr({
             cuentes que los números dan.
           </>
         ) : primera === "pie" ? (
-          "Esta no se negocia con nadie: es plata tuya contra menos crédito. Antes de descartar el departamento, confirma con el banco cuánto baja la cuota con ese pie y si tienes la liquidez sin quedarte sin colchón."
+          <><mark>Esta no se negocia con nadie: es plata tuya contra menos crédito.</mark> Antes de
+          descartar el departamento, confirma con el banco cuánto baja la cuota con ese pie y si tienes
+          la liquidez sin quedarte sin colchón.</>
         ) : primera === "gestion" ? (
-          "Esta la decides tú y no cuesta capital. Antes de moverla, mira qué estás entregando a cambio: gestionar tú significa responder huéspedes, coordinar aseo y sostener el calendario todas las semanas."
+          <><mark>Esta la decides tú y no cuesta capital.</mark> Antes de moverla, mira qué estás
+          entregando a cambio: gestionar tú significa responder huéspedes, coordinar aseo y sostener el
+          calendario todas las semanas.</>
         ) : primera === "precio" ? (
-          "Llévalo a la mesa: la diferencia está en rango de negociación, no en otro departamento. Si el vendedor no baja, ya sabes exactamente cuánto te separa."
+          <>Llévalo a la mesa: <mark>la diferencia está en rango de negociación, no en otro
+          departamento</mark>. Si el vendedor no baja, ya sabes exactamente cuánto te separa.</>
         ) : (
-          "Antes de decidir, mira qué se cobra hoy por noche en propiedades comparables de tu zona. Si tu departamento no tiene con qué diferenciarse, esa tarifa es una apuesta y no un plan."
+          <>Antes de decidir, mira qué se cobra hoy por noche en propiedades comparables de tu zona.
+          Si tu departamento no tiene con qué diferenciarse, <mark>esa tarifa es una apuesta y no un
+          plan</mark>.</>
         )}
       </VCierre>
 
-      {v.pieExcluidoPorBono && (
-        <VProsa>
-          El pie no aparece entre las vías porque lo cubre la inmobiliaria: subirlo no es una palanca, es
-          deshacer el trato que estás evaluando. Con el pie cubierto, el precio se mira con más dureza,
-          porque alguien está pagando ese bono.
-        </VProsa>
-      )}
       <Note>
         {[
+          "Motor Franco · cada palanca probada por separado, con el resto de los supuestos fijos.",
           tienePlazo
             ? "El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen."
             : null,

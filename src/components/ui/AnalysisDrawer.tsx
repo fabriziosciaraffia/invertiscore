@@ -22,6 +22,7 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
 import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
+import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
 import { simularPie } from "@/lib/analysis";
 import {
   VProsa,
@@ -526,11 +527,6 @@ function DrawerNegociacion({
         )}
       </div>
 
-      {/* Mensaje educativo dot Fase 4.8 — explica la lógica de comparación. */}
-      <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-        ● Franco compara contra un valor estimado de mercado (mediana de avisos ajustada a precio de cierre estimado), no contra el precio publicado. La &ldquo;ventaja&rdquo; o &ldquo;sobreprecio&rdquo; es una estimación, no una tasación.
-      </p>
-
       {/* BLOQUE B · TABLA COMPARATIVA */}
       {/* ═══ CONVERSIÓN 16 (FASE 4.2) — el eje de veredicto reemplaza la tabla ═══
           La tabla de cuatro barras codificaba PRECIO ABSOLUTO desde cero
@@ -549,10 +545,16 @@ function DrawerNegociacion({
         const pos = (x: number) => ((x - ejeMin) / (ejeMax - ejeMin)) * 100;
         const pUmbral = pos(umbral);
         const pLimite = limite ? pos(limite) : 100;
+        // AUDITORÍA fase42 (3) — las zonas nombran su VEREDICTO, no la posición
+        // ("Como está hoy" no decía qué veredicto rige ahí). La del medio es el
+        // veredicto de esa banda: AJUSTA cuando bajo el sugerido se llega a COMPRAR;
+        // si el sugerido solo alcanza AJUSTA, la banda del medio es BUSCAR OTRA (y su
+        // tono acompaña). La roja lleva su nombre; en zonas angostas el Dial lo oculta.
+        const kMedio = destinoUmbral === "Comprar" ? "Ajusta supuestos" : "Buscar otra";
         const zonas: ZonaDial[] = [
           { k: destinoUmbral, pct: pUmbral, tono: "comprar" },
-          { k: "Como está hoy", pct: pLimite - pUmbral, tono: "ajusta" },
-          ...(limite ? [{ k: "", pct: 100 - pLimite, tono: "buscar" as const }] : []),
+          { k: kMedio, pct: pLimite - pUmbral, tono: destinoUmbral === "Comprar" ? "ajusta" : "buscar" },
+          ...(limite ? [{ k: "Buscar otra", pct: 100 - pLimite, tono: "buscar" as const }] : []),
         ];
         const bordes: BordeDial[] = [
           {
@@ -668,56 +670,31 @@ function DrawerNegociacion({
         </div>
       )}
 
-      {/* BLOQUE C · ESTRATEGIA — wash condicional (Fase 20 PARTE 6).
-          Signal Red SOLO cuando esSobreprecio (caso que requiere atención).
-          Ventaja y Alineado: Ink wash neutro. Capa 1 binaria respetada. */}
-      <div
-        style={{
-          background: esSobreprecio
-            ? "color-mix(in srgb, var(--signal-red) 6%, var(--franco-card))"
-            : "color-mix(in srgb, var(--franco-text) 3%, transparent)",
-          border: esSobreprecio
-            ? "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)"
-            : "none",
-          borderLeft: esSobreprecio
-            ? "3px solid var(--signal-red)"
-            : "3px solid var(--franco-text-secondary)",
-          borderRadius: "0 8px 8px 0",
-          padding: "14px 18px",
-        }}
-      >
-        <p
-          className="font-mono uppercase m-0 mb-2"
-          style={{
-            fontSize: 10,
-            letterSpacing: "0.06em",
-            color: esSobreprecio ? "var(--signal-red)" : "var(--franco-text-secondary)",
-            fontWeight: 600,
-          }}
-        >
-          Estrategia sugerida
-        </p>
-        <p
-          className="font-body italic m-0"
-          style={{ fontSize: 13, color: "var(--franco-text)", lineHeight: 1.6 }}
-        >
-          {estrategia}
-        </p>
-      </div>
-
-      {/* Fase 3.6 v9 — Plan de negociación (3 slots discretos).
-          Solo se renderiza si data.precios viene del motor v9. Cache pre-v9 cae
-          al bloque "Estrategia sugerida" arriba como fallback. */}
+      {/* AUDITORÍA fase42 (7c) — la caja "Estrategia sugerida" murió: narraba los
+          mismos montos del plan impreso debajo (duplicación literal). El cierre es
+          UNO: la cajaAccionable de la IA si existe; si no (cache pre-v9 o IA muda),
+          la estrategia ocupa su lugar como cierre — nunca las dos apiladas. */}
       {data.precios && (
-        <PlanNegociacion precios={data.precios} currency={currency} />
+        <PlanNegociacion precios={data.precios} currency={currency} precioActualCLP={precioCLP} />
       )}
 
-      {/* data.cajaAccionable (IA) si existe — mantener el guión editorial */}
-      {(currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf) && (
-        <VCierre titulo={data.cajaLabel || "Qué haces con esto"}>
-          {plumonInline(currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf)}
-        </VCierre>
-      )}
+      {/* T1 — la línea de fuente (el bullet educativo de Fase 4.8) baja al pie del
+          cuerpo, formato del v12. */}
+      {(() => {
+        const caja = currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf;
+        // D-16 — el título del cierre va sin ":" final (la IA a veces lo trae).
+        const tituloCierre = (data.cajaLabel || "Qué haces con esto").replace(/\s*:\s*$/, "");
+        return caja ? (
+          <VCierre titulo={tituloCierre}>{plumonInline(caja)}</VCierre>
+        ) : (
+          <VCierre titulo="Qué haces con esto">{estrategia}</VCierre>
+        );
+      })()}
+
+      <VFuente>
+        Compara contra un valor estimado de mercado (mediana de avisos ajustada a precio de cierre
+        estimado), no contra el precio publicado. Es una estimación, no una tasación.
+      </VFuente>
     </div>
   );
 }
@@ -728,9 +705,12 @@ function DrawerNegociacion({
 function PlanNegociacion({
   precios,
   currency,
+  precioActualCLP,
 }: {
   precios: NonNullable<AINegociacionSection["precios"]>;
   currency: "CLP" | "UF";
+  /** Tu precio (el del análisis): ancla de los deltas del plan (fase42 (4)). */
+  precioActualCLP: number;
 }) {
   const fmtPrecio = (clp: number, uf: number) => {
     if (currency === "UF") return `UF ${Math.round(uf).toLocaleString("es-CL")}`;
@@ -741,15 +721,27 @@ function PlanNegociacion({
   const glosaTecho = (currency === "CLP" ? precios.glosaTecho_clp : precios.glosaTecho_uf) || "";
   const glosaWalk = (currency === "CLP" ? precios.glosaWalkAway_clp : precios.glosaWalkAway_uf) || "";
 
+  // AUDITORÍA fase42 (4) — cada precio del plan lleva sus descuentos (aprobado en
+  // propuesta-16-15-v2): contra tu precio, y la primera oferta además contra el
+  // techo. Ahí se ve la estrategia que era invisible: cuánto margen deja la
+  // apertura antes de tocar el techo. El % es el mismo en CLP y UF, así que se
+  // calcula una vez sobre CLP.
+  const deltaPct = (menor: number, mayor: number) =>
+    mayor > 0 && menor > 0 && menor < mayor ? ((1 - menor / mayor) * 100).toFixed(1).replace(".", ",") : null;
+  const chip = (b: string | null, resto: string) => (b ? { b: `−${b}%`, resto } : null);
+  const noNulos = (xs: Array<{ b: string; resto: string } | null>) =>
+    xs.filter((x): x is { b: string; resto: string } => x !== null);
+
   // Item 1 Sesión B2: cuando primeraOferta == techo (modo cerrar_actual del
   // motor), ambos slots muestran el mismo número. Fusionamos en uno solo.
   const slotsUnificados = precios.primeraOferta_uf === precios.techo_uf;
-  const slots: Array<{ label: string; valor: string; glosa: string; razon?: string }> = slotsUnificados
+  const slots: Array<{ label: string; valor: string; glosa: string; razon?: string; deltas?: Array<{ b: string; resto: string }> }> = slotsUnificados
     ? [
         {
           label: "Oferta única",
           valor: fmtPrecio(precios.techo_clp, precios.techo_uf),
           glosa: glosaTecho || glosaPrimera || "Cierra a este precio — no hay margen para negociar a la baja.",
+          deltas: noNulos([chip(deltaPct(precios.techo_clp, precioActualCLP), "de tu precio")]),
         },
       ]
     : [
@@ -757,11 +749,16 @@ function PlanNegociacion({
           label: "Primera oferta",
           valor: fmtPrecio(precios.primeraOferta_clp, precios.primeraOferta_uf),
           glosa: glosaPrimera || "Con qué número partir.",
+          deltas: noNulos([
+            chip(deltaPct(precios.primeraOferta_clp, precioActualCLP), "de tu precio"),
+            chip(deltaPct(precios.primeraOferta_clp, precios.techo_clp), "bajo tu techo"),
+          ]),
         },
         {
           label: "Techo",
           valor: fmtPrecio(precios.techo_clp, precios.techo_uf),
           glosa: glosaTecho || "Hasta dónde subir si rechazan.",
+          deltas: noNulos([chip(deltaPct(precios.techo_clp, precioActualCLP), "de tu precio")]),
         },
       ];
 
@@ -792,7 +789,7 @@ function PlanNegociacion({
           fontWeight: 600,
         }}
       >
-        Plan de negociación
+        Tu plan de negociación
       </p>
       {slots.map((s, i) => (
         <div
@@ -823,6 +820,26 @@ function PlanNegociacion({
               {s.valor}
             </span>
           </div>
+          {s.deltas && s.deltas.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {s.deltas.map((d, j) => (
+                <span
+                  key={j}
+                  className="font-mono"
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: "0.03em",
+                    padding: "3px 7px",
+                    borderRadius: 3,
+                    background: "color-mix(in srgb, var(--franco-text) 5%, transparent)",
+                    color: "var(--franco-text-secondary)",
+                  }}
+                >
+                  <b style={{ color: "var(--franco-text)" }}>{d.b}</b> {d.resto}
+                </span>
+              ))}
+            </div>
+          )}
           {s.glosa && (
             <p
               className="font-body m-0"
@@ -1129,7 +1146,6 @@ function DrawerEstructuraSana({
 
   const { piePct, tasaPct, tasaMarketPct, driver } = hallazgo.valor;
   const cuotaActual = results.metrics?.dividendo ?? 0;
-  const pieFmt = Number.isInteger(piePct) ? String(piePct) : piePct.toFixed(1).replace(".", ",");
 
   // Pie cero (fase 3b · D4, mockup 98e2319): el drawer deja de ser fallback
   // ciego y BIFURCA por direccion del hallazgo. Favorable → texto "sana" de
@@ -1143,12 +1159,6 @@ function DrawerEstructuraSana({
   const contribMes = m ? Math.round(m.contribuciones / 3) : 0;
   const vacanciaMes = m ? Math.round(m.dividendo + m.gastos + contribMes) : null;
   const creditoCLP = m ? m.precioCLP - m.pieCLP : null;
-  // Spread de display sobre tasas ya redondeadas (round-una-vez, misma
-  // convención que la fraseCanonica del hallazgo).
-  const spreadDisplayPts = Math.abs(
-    Math.round((Math.round(tasaPct * 10) / 10 - Math.round(tasaMarketPct * 10) / 10) * 100),
-  );
-  const tasaSobreMercado = Math.round(tasaPct * 10) / 10 > Math.round(tasaMarketPct * 10) / 10;
 
   return (
     <div>
@@ -1169,46 +1179,21 @@ function DrawerEstructuraSana({
         />
       </p>
 
-      {/* Estructura actual — chips numéricos en mono */}
-      <div
-        className="rounded-[8px] p-4 mb-4"
-        style={{ background: "var(--franco-elevated)", border: "0.5px solid var(--franco-border)" }}
-      >
-        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-3">
-          Tu estructura actual
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
-              Pie
-            </p>
-            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
-              {pieFmt}%
-            </p>
-          </div>
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
-              Tasa
-            </p>
-            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
-              {tasaPct.toFixed(1).replace(".", ",")}%
-            </p>
-          </div>
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
-              Cuota mensual
-            </p>
-            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
-              {fmtMoney(cuotaActual, currency, valorUF)}
-            </p>
-          </div>
-        </div>
-        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-3">
-          {sinPie && creditoCLP !== null
-            ? `Financiamiento 100% · tasa de mercado ${tasaMarketPct.toFixed(1).replace(".", ",")}%${tasaSobreMercado ? ` (+${spreadDisplayPts} pts)` : ""} · crédito ${fmtMoney(creditoCLP, currency, valorUF)}.`
-            : `Tasa de mercado ${tasaMarketPct.toFixed(1).replace(".", ",")}%.`}
-        </p>
-      </div>
+      {/* AUDITORÍA fase42 D-L2 — los chips pelados se reemplazan por la MISMA
+          comparación dibujada del 13 (componente compartido): tasa contra el
+          promedio de mercado con chip de juicio (acá 4,7 vs 4,1 es justamente la
+          floja), pie como barra propia con la escalera de contexto. */}
+      <VViz t="Tu estructura contra la referencia">
+        <EstructuraComparada
+          piePct={piePct}
+          tasaPct={tasaPct}
+          tasaMarketPct={tasaMarketPct}
+          cuotaFmt={fmtMoney(cuotaActual, currency, valorUF)}
+          pie={sinPie && creditoCLP !== null
+            ? `Financiamiento 100% · crédito ${fmtMoney(creditoCLP, currency, valorUF)}.`
+            : undefined}
+        />
+      </VViz>
 
       {/* ═══ CONVERSIÓN 17 (FASE 4.2) · ESCALERA DEL PIE ═══
           Reemplaza la referencia de "óptimo de pie 25%". Ese 25 se rastreó hasta el
@@ -1224,87 +1209,58 @@ function DrawerEstructuraSana({
         currency={currency}
       />
 
-      {/* Procedencia — de dónde sale el dato (builder determinístico, reemplaza el
-          eco de fraseCanonica que ya mostró la card) */}
-      <div
-        className="rounded-r-[8px] p-4 mb-4"
-        style={{
-          borderLeft: "3px solid var(--franco-text)",
-          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-        }}
-      >
-        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-          De dónde sale
-        </p>
-        <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-          {procedenciaExtendida(hallazgo, currency, valorUF)}
-        </p>
-      </div>
-
       {!adverso ? (
-        /* Bloque conclusivo — sin palanca urgente (estado a favor, texto de siempre) */
-        <div
-          className="rounded-r-[8px] p-4"
-          style={{
-            borderLeft: "3px solid var(--franco-text)",
-            background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-          }}
-        >
-          <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-            Sin palanca urgente
-          </p>
-          <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-            No hay una palanca de financiamiento urgente que mover. Si este deal necesita ajuste, está en el precio o el flujo, no en cómo lo financias.
-          </p>
-        </div>
+        /* fase42 D-L2 — VCierre del vocabulario en vez de caja ad-hoc. */
+        <VCierre titulo="Qué haces con esto">
+          No hay una palanca de financiamiento urgente que mover. <mark>Si este deal necesita ajuste, está
+          en el precio o el flujo</mark>, no en cómo lo financias.
+        </VCierre>
       ) : (
         /* Estado en contra (D4): la vacancia en plata + dónde está la palanca.
            Signal Red legítimo: monto negativo crítico que sale del bolsillo (uso #2). */
         <>
-          {vacanciaMes !== null && m && (
-            <div
-              className="rounded-r-[8px] p-4 mb-4"
-              style={{
-                borderLeft: "3px solid var(--signal-red)",
-                background: "color-mix(in srgb, var(--signal-red) 7%, transparent)",
-              }}
-            >
-              <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--signal-red)] m-0 mb-1">
-                Un mes de vacancia, en plata
-              </p>
-              <p className="font-mono font-bold text-[22px] leading-[1.1] text-[var(--signal-red)] m-0 mb-1">
-                {fmtMoney(vacanciaMes, currency, valorUF)}
-              </p>
-              <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-                Sin arrendatario pagas el mes completo de tu bolsillo: dividendo {fmtMoney(m.dividendo, currency, valorUF)} + gastos comunes {fmtMoney(m.gastos, currency, valorUF)} + contribuciones {fmtMoney(contribMes, currency, valorUF)}.{" "}
-                {sinPie
-                  ? "Sin colchón de capital, no tienes margen ante vacancia prolongada o un alza de tasa al renovar."
-                  : "Con la cuota en este nivel, una vacancia prolongada o un alza de tasa al renovar pegan directo en tu flujo."}
-              </p>
-            </div>
+          {/* fase42 D-L2 (decisión A) — la suma narrada era un waterfall contado:
+              pasa a Fall de 3 filas + total, la forma del 17. La advertencia
+              condicional baja al cierre (el orden v12 no admite prosa entre viz y
+              cierre). Signal Red legítimo: plata que sale del bolsillo (uso #2). */}
+          {vacanciaMes !== null && m && vacanciaMes > 0 && (
+            <VViz t="Un mes de vacancia, en plata">
+              <Fall
+                rows={([
+                  { k: "Dividendo", v: fmtMoney(m.dividendo, currency, valorUF), pct: (m.dividendo / vacanciaMes) * 100, tone: "red" },
+                  { k: "Gastos comunes", v: fmtMoney(m.gastos, currency, valorUF), pct: (m.gastos / vacanciaMes) * 100, tone: "red" },
+                  { k: "Contribuciones (mes)", v: fmtMoney(contribMes, currency, valorUF), pct: (contribMes / vacanciaMes) * 100, tone: "red" },
+                ] as FallRow[])}
+                total={{ k: "Un mes vacío, de tu bolsillo", v: fmtMoney(vacanciaMes, currency, valorUF) }}
+              />
+            </VViz>
           )}
-          <div
-            className="rounded-r-[8px] p-4"
-            style={{
-              borderLeft: "3px solid var(--franco-text)",
-              background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-            }}
-          >
-            <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-              Dónde está la palanca
-            </p>
-            <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-              {sinPie
-                ? "Acá la palanca no es subir el pie que no tienes: es el precio (cada peso menos es crédito que no tomas) y asegurar flujo estable antes de firmar."
-                : driver === "tasa"
-                  ? "La palanca acá es la tasa: cotizar en otro banco puede bajar la cuota."
-                  : driver === "ambos"
-                    ? "Hay palanca en el pie y en la tasa: subir el pie y cotizar la tasa en otro banco bajan la cuota."
-                    : "La palanca acá es el pie: subirlo baja el crédito y la cuota, y te acerca al rango sano."}
-            </p>
-          </div>
+          {/* fase42 D-L2 — las tres cajas apiladas quedan en UNA de cierre: "Dónde
+              está la palanca" ES el "qué haces con esto" del cuerpo. */}
+          <VCierre titulo="Qué haces con esto">
+            {sinPie ? (
+              <>Acá la palanca no es subir el pie que no tienes: <mark>es el precio — cada peso menos es
+              crédito que no tomas</mark> — y asegurar flujo estable antes de firmar. Sin colchón de
+              capital, no tienes margen ante vacancia prolongada o un alza de tasa al renovar.</>
+            ) : driver === "tasa" ? (
+              <>La palanca acá es la tasa: <mark>cotizar en otro banco puede bajar la cuota</mark>. Con la
+              cuota en este nivel, una vacancia prolongada o un alza de tasa al renovar pegan directo en
+              tu flujo.</>
+            ) : driver === "ambos" ? (
+              <>Hay palanca en el pie y en la tasa: <mark>subir el pie y cotizar la tasa en otro banco
+              bajan la cuota</mark>. Con la cuota en este nivel, una vacancia prolongada o un alza de tasa
+              al renovar pegan directo en tu flujo.</>
+            ) : (
+              <>La palanca acá es el pie: <mark>subirlo baja el crédito y la cuota</mark>, y te acerca al
+              rango sano. Con la cuota en este nivel, una vacancia prolongada pega directo en tu flujo.</>
+            )}
+          </VCierre>
         </>
       )}
+
+      {/* T1 — línea de fuente al pie, posición única del v12 (absorbe la frase de
+          actualización manual que vivía en "De dónde sale"). */}
+      <VFuente>Motor Franco · tasa de mercado referencial a la fecha del análisis — actualización manual, no en tiempo real.</VFuente>
     </div>
   );
 }
@@ -1864,7 +1820,7 @@ export function AnalysisDrawer({
         role="dialog"
         aria-modal="true"
         className="
-          fixed z-50 bg-[var(--franco-card)] overflow-y-auto
+          doc-tokens fixed z-50 bg-[var(--franco-card)] overflow-y-auto
           md:top-0 md:right-0 md:bottom-0 md:w-[75vw] lg:w-[70vw] xl:w-[min(960px,65vw)] md:border-l md:border-[var(--franco-border)] md:animate-slideInRight
           max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:h-[85vh] max-md:rounded-t-2xl max-md:border-t max-md:border-[var(--franco-border)] max-md:animate-slideInUp
         "

@@ -27,6 +27,24 @@ type Currency = "CLP" | "UF";
 /** Tolerancia del invariante, en pesos. */
 const TOLERANCIA_FLUJO = 1000;
 
+/**
+ * Guarda compartida del invariante: devuelve el nivel actual SOLO si reproduce el
+ * flujo que el informe ya muestra. La cadena del 13 (financiamiento STR) deriva su
+ * salto de estos mismos niveles, así que depende de la MISMA verdad: si la escalera
+ * se calla, la cadena también — nunca una dibujada y la otra muda sobre datos
+ * distintos del mismo mes.
+ */
+export function nivelActualValidado(
+  niveles: NivelPie[] | undefined,
+  flujoPersistido: number | undefined,
+): NivelPie | null {
+  if (!niveles || niveles.length === 0 || typeof flujoPersistido !== "number") return null;
+  const actual = niveles.find((n) => n.esActual);
+  if (!actual) return null;
+  if (Math.abs(actual.flujoMensual - flujoPersistido) > TOLERANCIA_FLUJO) return null;
+  return actual;
+}
+
 export function EscaleraPie({
   niveles,
   valorUF,
@@ -41,18 +59,13 @@ export function EscaleraPie({
   flujoPersistido: number | undefined;
   currency: Currency;
 }) {
-  if (!(valorUF > 0) || typeof flujoPersistido !== "number") return null;
+  if (!(valorUF > 0)) return null;
   // Vacío ⇒ pie 0 (lo cubre un bono: subirlo es deshacer el trato), compra al contado,
   // o contexto irreconstruible. La decisión vive en el motor; acá solo se obedece.
-  if (niveles.length === 0) return null;
-
-  const actual = niveles.find((n) => n.esActual);
+  // ── INVARIANTE (guarda compartida) ── el nivel "actual" tiene que reproducir el
+  // flujo que el informe ya muestra; si diverge, la escalera se calla.
+  const actual = nivelActualValidado(niveles, flujoPersistido);
   if (!actual) return null;
-
-  // ── INVARIANTE ── el nivel "actual" tiene que reproducir el flujo que el informe
-  // ya muestra. Si diverge, la escalera estaría describiendo otro deal que el resto
-  // de la página: se calla en vez de mostrar dos cifras del mismo mes.
-  if (Math.abs(actual.flujoMensual - flujoPersistido) > TOLERANCIA_FLUJO) return null;
 
   const money = (n: number) => fmtMoney(n, currency, valorUF);
   const signo = (n: number) => (n < 0 ? "−" : "+") + money(Math.abs(n));

@@ -48,7 +48,7 @@ const FIXTURE = {
       id: "estructura_financiamiento", tipo: "salud_financiamiento",
       valor: { overall: "problematico", driver: "pie", pieLevel: "problematico", piePct: 10, tasaLevel: "aceptable", tasaPct: 4.5, tasaMarketPct: 4.1, spreadBps: 40, modalidad: "ltr" },
       direccion: "adverso", decisividad: 0.08, magnitudContinua: 0.08,
-      procedencia: { base: "Estructura de financiamiento (pie + tasa) sobre tus datos declarados. El pie se evalúa contra un umbral fijo (25% óptimo, sólido); la tasa se compara contra un promedio de mercado de referencia (UF 4,1%), no en tiempo real — pull manual, puede estar desactualizado.", confianza: "media" },
+      procedencia: { base: "Estructura de financiamiento (pie + tasa) sobre tus datos declarados. La tasa se compara contra un promedio de mercado de referencia (UF 4,1%), no en tiempo real — pull manual, puede estar desactualizado. El pie no se mide contra un óptimo: su efecto se muestra calculado, nivel por nivel.", confianza: "media" },
       fraseCanonica: "Tu estructura de financiamiento tiene un problema de fondo, principalmente por el pie: 10% está muy bajo el óptimo de 25% y dispara el crédito y la cuota. La tasa (4,5%) está en mejor nivel.",
     },
     {

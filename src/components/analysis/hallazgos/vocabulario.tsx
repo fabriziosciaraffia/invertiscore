@@ -208,10 +208,28 @@ export function Spark({ puntos, ejeX, aria }: { puntos: number[]; ejeX: string[]
   );
 }
 
-export type TablaFila = { celdas: string[]; destacada?: boolean; tonos?: (("neg" | "pos") | null)[] };
+export type TablaFila = {
+  celdas: string[];
+  destacada?: boolean;
+  tonos?: (("neg" | "pos") | null)[];
+  /** Marca el CRUCE: borde superior en tono good. La fila donde la comparación
+   *  cambia de signo (aprobado: "recién sobre P75 el corto le gana al largo"). */
+  cruce?: boolean;
+};
 
 /** Tabla con scroll horizontal CONTENIDO + cue. El scroll nunca es del documento. */
-export function Tabla({ headers, filas, cue = true }: { headers: string[]; filas: TablaFila[]; cue?: boolean }) {
+export function Tabla({
+  headers,
+  filas,
+  cue = true,
+  cruceLbl,
+}: {
+  headers: string[];
+  filas: TablaFila[];
+  cue?: boolean;
+  /** Etiqueta del cruce, colgada bajo la tabla ("↑ recién sobre P75 …"). */
+  cruceLbl?: ReactNode;
+}) {
   return (
     <>
       <div className="tblwrap">
@@ -225,7 +243,7 @@ export function Tabla({ headers, filas, cue = true }: { headers: string[]; filas
           </thead>
           <tbody>
             {filas.map((f, i) => (
-              <tr key={i} className={f.destacada ? "hl" : undefined}>
+              <tr key={i} className={[f.destacada && "hl", f.cruce && "cruce"].filter(Boolean).join(" ") || undefined}>
                 {f.celdas.map((c, j) => (
                   <td
                     key={j}
@@ -239,6 +257,7 @@ export function Tabla({ headers, filas, cue = true }: { headers: string[]; filas
           </tbody>
         </table>
       </div>
+      {cruceLbl && <span className="tbl-crucelbl">{cruceLbl}</span>}
       {cue && <div className="tbl-scrollcue">↔ desliza la tabla</div>}
     </>
   );
@@ -261,6 +280,13 @@ export type FilaPalanca = {
   destino?: string;
   /** Razón corta de por qué no basta. Catálogo determinista del motor, nunca IA. */
   razon?: string;
+  /** Lavado de la fila (degradado aprobado): "warn" = la palanca que alcanza en
+   *  distancia (propuesta-01-v2) · "good" = la palanca real en rentabilidad
+   *  (propuesta-15-pie-v3). Explícito por caller: la primitiva no adivina. */
+  wash?: "warn" | "good";
+  /** Traducción de la jerga bajo el nombre (fase42 D-15c): "cuántas noches del
+   *  mes se llenan". Determinista del caller, nunca IA. */
+  glosa?: string;
 };
 
 /** Matriz de palancas: una fila por palanca, con delta, veredicto y magnitudes
@@ -270,10 +296,11 @@ export function Palancas({ filas, pie }: { filas: FilaPalanca[]; pie?: ReactNode
   return (
     <div className="pal">
       {filas.map((f, i) => (
-        <div key={i} className={`pal-row${f.alcanza ? " si" : ""}`}>
+        <div key={i} className={`pal-row${f.alcanza ? " si" : ""}${f.wash ? ` wash-${f.wash}` : ""}`}>
           <div className="pal-name">
             {f.nombre}
             <span className={`pal-delta ${f.alcanza ? "si" : "no"}`}>{f.delta}</span>
+            {f.glosa && <small className="pal-glosa">{f.glosa}</small>}
           </div>
           <div className={`pal-verdict ${f.alcanza ? "si" : "no"}`}>{f.alcanza ? "✓" : "✕"}</div>
           {(f.origen || f.razon) && (
@@ -334,7 +361,7 @@ export function Dial({
       <div className="dial-track">
         {zonas.map((z, i) => (
           <div key={i} className={`dial-zone ${z.tono}`} style={{ width: `${clamp(z.pct)}%` }}>
-            <span>{z.k}</span>
+            {z.pct >= 14 && <span>{z.k}</span>}
           </div>
         ))}
       </div>
@@ -492,7 +519,10 @@ export type ParCmp = {
   /** Estado del par, ya resuelto por el caller: es juicio del motor, no del render. */
   tag?: { texto: string; tono: "ok" | "flojo" | "par" };
   tuyo: { lbl: string; v: string; pct: number };
-  ref: { lbl: string; v: string; pct: number };
+  /** Opcional (fase42 D-13/L2): una fila sin referencia dibuja solo la barra
+   *  propia — para magnitudes cuyo contexto vive en otro diagrama (el pie y su
+   *  escalera) o cuya escala es natural (pie = % del precio). */
+  ref?: { lbl: string; v: string; pct: number };
 };
 
 /** Comparación explícita tuyo-contra-referencia: dos barras apareadas por concepto.
@@ -512,7 +542,7 @@ export function CmpPares({ filas, pie }: { filas: ParCmp[]; pie?: ReactNode }) {
             </span>
             {f.tag && <span className={`cmp-tag ${f.tag.tono}`}>{f.tag.texto}</span>}
           </div>
-          {[f.tuyo, f.ref].map((b, j) => (
+          {[f.tuyo, ...(f.ref ? [f.ref] : [])].map((b, j) => (
             <div key={j} className="cmp-line">
               <span className="cmp-lbl">{b.lbl}</span>
               <div className="cmp-track">

@@ -130,7 +130,7 @@ export function DrawerSTR({
         role="dialog"
         aria-modal="true"
         className="
-          fixed z-50 bg-[var(--franco-card)] overflow-hidden flex flex-col
+          doc-tokens fixed z-50 bg-[var(--franco-card)] overflow-hidden flex flex-col
           md:top-0 md:right-0 md:bottom-0 md:w-[75vw] lg:w-[70vw] xl:w-[min(960px,65vw)] md:border-l md:border-[var(--franco-border)] md:animate-slideInRight
           max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:h-[85vh] max-md:rounded-t-2xl max-md:border-t max-md:border-[var(--franco-border)] max-md:animate-slideInUp
         "

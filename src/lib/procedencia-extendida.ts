@@ -73,7 +73,11 @@ export function procedenciaExtendida(
     }
     case "estructura_financiamiento": {
       const v = h.valor;
-      return `Miramos dos palancas de tu financiamiento: el pie (${intOrPct1(v.piePct)}%) contra un óptimo fijo de 25%, y tu tasa (${pct1(v.tasaPct)}%) contra un promedio de mercado de referencia (${pct1(v.tasaMarketPct)}%). La tasa de referencia se actualiza manualmente con el promedio de mercado, no en tiempo real.`;
+      // AUDITORÍA fase42 (2) — espejo del retiro hecho en la fuente del motor
+      // (estructura-financiamiento-hallazgo.ts, FASE 4.2): el pie NO se mide contra
+      // un óptimo (el 25% era convención sin fundamento); su efecto se muestra
+      // calculado nivel por nivel en la escalera. La tasa sí conserva referencia.
+      return `Miramos dos palancas de tu financiamiento: tu tasa (${pct1(v.tasaPct)}%) contra un promedio de mercado de referencia (${pct1(v.tasaMarketPct)}%), y tu pie (${intOrPct1(v.piePct)}%), cuyo efecto se muestra calculado nivel por nivel — no contra un óptimo fijo. La tasa de referencia se actualiza manualmente, no en tiempo real.`;
     }
     case "capex_puesta_a_punto": {
       const v = h.valor;

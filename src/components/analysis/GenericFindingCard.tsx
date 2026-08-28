@@ -138,7 +138,10 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         title: "Cómo estás financiando",
         kpi: `Pie ${pieFmt}%`,
         kpiRed: false,
-        ksub: `tasa ${pct1(v.tasaPct)}% · óptimo de pie 25%`,
+        // AUDITORÍA fase42 (2) — el "óptimo de pie 25%" se retiró del motor en FASE
+        // 4.2 (no tiene fundamento) pero este ksub componente-side sobrevivió. La tasa
+        // sí conserva referencia porque tiene fuente real (promedio de mercado).
+        ksub: `tasa ${pct1(v.tasaPct)}% · mercado ${pct1(v.tasaMarketPct)}%`,
         procedencia: "Tasa comparada contra referencia de mercado, no en tiempo real",
       };
     }

@@ -243,7 +243,11 @@ function Wordmark({ small = false }: { small?: boolean }) {
 function DocTokens() {
   return (
     <style dangerouslySetInnerHTML={{ __html: `
-      .doc-dictamen{
+      /* AUDITORÍA fase42 (9) — los tokens también viven en .doc-tokens: los
+         DRAWERS (vías, STR) montan FUERA de .doc-dictamen y todo estilo --doc-*
+         de sus cuerpos (matriz de palancas incluida) resolvía a nada en silencio.
+         El wash del degradado lo hizo visible; el hueco venía de FASE 4.1. */
+      .doc-dictamen,.doc-tokens{
         /* dark (default del app: data-theme ausente) */
         --doc-paper:#141414; --doc-paper2:#1B1B1B;
         --doc-line:#282828; --doc-line2:#3A3A3A;
@@ -252,12 +256,14 @@ function DocTokens() {
         --doc-paper3:#232323; --doc-neutral:#6E6A63; --doc-good:#57B98A; --doc-warn:#DFA34F;
         --doc-shadow:0 24px 60px rgba(0,0,0,.6);
         --doc-banda:var(--banda-dark, #DFA34F);
+      }
+      .doc-dictamen{
         background:var(--doc-paper);
         border:1px solid var(--doc-line);
         box-shadow:var(--doc-shadow);
         position:relative;
       }
-      [data-theme="light"] .doc-dictamen{
+      [data-theme="light"] .doc-dictamen,[data-theme="light"] .doc-tokens{
         --doc-paper:#FAF8F3; --doc-paper2:#F1EEE7;
         --doc-line:#DAD6CC; --doc-line2:#C4BFB2;
         --doc-tx:#141311; --doc-tx2:#3B3A36; --doc-tx3:#75726A; --doc-tx4:#A39F94;
