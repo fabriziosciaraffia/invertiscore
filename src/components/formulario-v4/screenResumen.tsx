@@ -352,7 +352,7 @@ function InlineInput({
       </span>
       {/* Eco en vivo, igual que en las pantallas del wizard. */}
       {r.estado === "encurso" && (
-        <span className="font-body text-[11px] italic text-[var(--franco-text-muted)]">Seguí escribiendo…</span>
+        <span className="font-body text-[11px] italic text-[var(--franco-text-muted)]">Sigue escribiendo…</span>
       )}
       {r.estado === "error" && (
         <span className="font-body text-[11px] text-signal-red leading-snug">No se entiende — {r.motivo}</span>

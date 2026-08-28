@@ -321,7 +321,7 @@ export function NumericInput({
       <div id={idEco} className="min-h-[22px] mt-1.5" aria-live="polite">
         {r.estado === "encurso" && (
           <p className="font-body text-[12.5px] italic text-[var(--franco-text-muted)] m-0">
-            Seguí escribiendo — todavía no se puede leer.
+            Sigue escribiendo — todavía no se puede leer.
           </p>
         )}
         {r.estado === "error" && (

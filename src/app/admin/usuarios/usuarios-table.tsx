@@ -67,7 +67,7 @@ export function UsuariosTable({ rows }: { rows: UsuarioRow[] }) {
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 font-body text-sm text-[var(--franco-text-muted)]">
-        Sin usuarios para este filtro. Probá con otro segmento, limpiá la búsqueda o incluí las cuentas de prueba.
+        Sin usuarios para este filtro. Prueba con otro segmento, limpia la búsqueda o incluye las cuentas de prueba.
       </div>
     );
   }

@@ -24,7 +24,7 @@ export default function NotFound() {
           Esta página no existe
         </h1>
         <p className="font-body text-[15px] max-w-sm text-[var(--franco-text-secondary)]">
-          El enlace que seguiste no lleva a ninguna parte. Volvé al inicio y
+          El enlace que seguiste no lleva a ninguna parte. Vuelve al inicio y
           seguimos.
         </p>
       </div>
