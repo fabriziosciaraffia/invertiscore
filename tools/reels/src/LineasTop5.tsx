@@ -41,7 +41,7 @@ const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
  * 25 a 33. Vive acá con nombre propio porque puede volver a bajar en el OK visual, y
  * entonces el cambio es esta línea y nada más.
  */
-const TITULO_FS = 33;
+const TITULO_FS = 25;
 const TITULO_LH = 1.12;
 const ANTETITULO_FS = 11.5;
 /** Techo del gráfico. Bajó de 150 a 168 al crecer el titular. */
