@@ -7,6 +7,7 @@ import {
   COLOR_L,
   CTA_DELAY_L1,
   CTA_DELAY_L2,
+  CTA_DELAY_L3,
   CTA_FADE,
   CTA_SUBIDA,
   DUR,
@@ -17,6 +18,8 @@ import {
   PADL,
   PADR,
   PALETA,
+  TRAZO_REFERENCIA,
+  TRAZO_SERIE,
   W,
   XMIN,
   ejeAmortiguado,
@@ -36,16 +39,17 @@ const { fontFamily: MONO } = cargarMono();
 /** La curva `ease` de CSS, que es la que usa el prototipo en sus transiciones. */
 const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
 
-/**
- * Cuerpo del titular, en escala del prototipo. Decisión de diseño reciente: subió de
- * 25 a 33. Vive acá con nombre propio porque puede volver a bajar en el OK visual, y
- * entonces el cambio es esta línea y nada más.
- */
+// Layout del prototipo SAFEZONE, en escala del prototipo. El bloque entero bajó para
+// despejar la franja superior que tapa la UI de Instagram, y el pie subió por lo mismo.
 const TITULO_FS = 25;
-const TITULO_LH = 1.12;
+const TITULO_LH = 1.16;
 const ANTETITULO_FS = 11.5;
-/** Techo del gráfico. Bajó de 150 a 168 al crecer el titular. */
-const STAGE_TOP = 168;
+const HOOK_TOP = 100;
+/** Techo y piso del gráfico. */
+const STAGE_TOP = 206;
+const STAGE_BOTTOM = 118;
+/** Distancia del pie al borde inferior. */
+const FOOT_BOTTOM = 48;
 
 export type PropsLineas = {
   dataset: DatasetLineas;
@@ -118,6 +122,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
     });
   const opL1 = entrada(CTA_DELAY_L1);
   const opL2 = entrada(CTA_DELAY_L2);
+  const opL3 = entrada(CTA_DELAY_L3);
   const subir = (op: number) => `translateY(${px(CTA_SUBIDA) * (1 - op)}px)`;
 
   return (
@@ -130,7 +135,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
       <div
         style={{
           position: "absolute",
-          top: px(40),
+          top: px(HOOK_TOP),
           left: px(28),
           right: px(28),
           opacity: opContenido,
@@ -174,7 +179,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
           top: px(STAGE_TOP),
           left: px(26),
           right: px(26),
-          bottom: px(112),
+          bottom: px(STAGE_BOTTOM),
           opacity: opContenido,
         }}
       >
@@ -263,7 +268,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 stroke={colores[i % colores.length]}
-                strokeWidth={2.4}
+                strokeWidth={TRAZO_SERIE}
                 d={pathRecto(f.valores, tt, n, X, Y)}
               />
             ),
@@ -277,7 +282,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 stroke={COLOR_L.tx3}
-                strokeWidth={1.5}
+                strokeWidth={TRAZO_REFERENCIA}
                 strokeDasharray="5 4"
                 d={pathRecto(f.valores, tt, n, X, Y)}
               />
@@ -380,10 +385,25 @@ export const LineasTop5: React.FC<PropsLineas> = ({
           {cta.sub.split(cta.subResaltado)[1]}{" "}
           <span style={{ fontSize: px(27) }}>{cta.emoji}</span>
         </div>
+        {/* Tercer escalón de la cascada: la firma cierra el acto. */}
+        <div
+          style={{
+            marginTop: px(30),
+            fontFamily: SERIF,
+            fontSize: px(19),
+            color: COLOR_L.ink,
+            opacity: opL3,
+            transform: subir(opL3),
+          }}
+        >
+          <span style={{ fontStyle: "italic", fontWeight: 400, color: COLOR_L.tx3 }}>re</span>
+          <b style={{ fontWeight: 700 }}>franco</b>
+          <span style={{ color: COLOR_L.rojo, fontSize: px(12), fontWeight: 600 }}>.ai</span>
+        </div>
       </div>
 
       {/* ---------- PIE ---------- */}
-      <div style={{ position: "absolute", left: px(28), right: px(28), bottom: px(36) }}>
+      <div style={{ position: "absolute", left: px(28), right: px(28), bottom: px(FOOT_BOTTOM) }}>
         <div style={{ fontFamily: SERIF, fontSize: px(14), color: COLOR_L.ink }}>
           <span style={{ fontStyle: "italic", fontWeight: 400, color: COLOR_L.tx3 }}>re</span>
           <b style={{ fontWeight: 700 }}>franco</b>

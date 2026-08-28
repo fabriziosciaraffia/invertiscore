@@ -15,6 +15,13 @@
 //
 // La limpieza es `-c copy`: no recomprime, y toca únicamente el comentario. Los tags de
 // encoder estándar (`Lavf`, handler_name, brands) quedan donde están.
+//
+// COLOR: el mismo paso termina de etiquetar BT.709. `Config.setColorSpace("bt709")`
+// convierte y marca la matriz, pero deja `color_primaries` y `color_trc` en unspecified
+// —el filtro zscale que aplica Remotion fija solo `matrix`, y su salida pisa los flags—
+// y esos dos viven en el VUI del bitstream, donde `-c copy` no llega. El filtro de
+// bitstream `h264_metadata` reescribe el VUI sin recomprimir. Sin los tres campos el
+// reproductor del celular adivina el espacio de color, y ahí aparece el video lavado.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync } from "node:fs";
@@ -76,31 +83,74 @@ if (!correr(process.execPath, [cliRemotion, "render", composicion, tmp], "el ren
 // vacío borra la clave; no se usa `-map_metadata -1` porque eso se llevaría también los
 // tags de encoder, que sí queremos conservar.
 if (existsSync(join(RAIZ, salida))) rmSync(join(RAIZ, salida));
-if (!correr(ffmpeg, ["-y", "-i", tmp, "-c", "copy", "-metadata", "comment=", salida], "la limpieza de metadata")) {
+const argsFfmpeg = [
+  "-y",
+  "-i",
+  tmp,
+  "-c",
+  "copy",
+  "-metadata",
+  "comment=",
+  "-bsf:v",
+  "h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1",
+  salida,
+];
+if (!correr(ffmpeg, argsFfmpeg, "la limpieza de metadata")) {
   if (existsSync(join(RAIZ, salida))) rmSync(join(RAIZ, salida));
   limpiar();
   process.exit(1);
 }
 
-// 3 — verificación: el archivo final no puede salir con el comentario puesto. Si el
-// comportamiento de ffmpeg o de Remotion cambia, esto se entera acá y no en el reporte.
-const sonda = spawnSync(ffprobe, ["-v", "error", "-show_entries", "format_tags", "-of", "default", salida], {
-  cwd: RAIZ,
-  encoding: "utf8",
-});
-if (sonda.status !== 0) {
-  console.error("\n✗ no se pudo verificar la metadata del archivo final");
-  rmSync(join(RAIZ, salida));
+// 3 — verificación del archivo final: ni comentario de herramienta, ni color sin
+// etiquetar. Si el comportamiento de ffmpeg o de Remotion cambia, se entera acá y no
+// en el reporte.
+const fallar = (msg, detalle) => {
+  console.error(`\n✗ ${msg}`);
+  if (detalle) console.error(detalle);
+  if (existsSync(join(RAIZ, salida))) rmSync(join(RAIZ, salida));
   limpiar();
   process.exit(1);
-}
+};
+
+const CAMPOS_COLOR = ["color_space", "color_primaries", "color_transfer"];
+const sonda = spawnSync(
+  ffprobe,
+  [
+    "-v",
+    "error",
+    "-show_entries",
+    `format_tags:stream=${CAMPOS_COLOR.join(",")}`,
+    "-of",
+    "default",
+    salida,
+  ],
+  { cwd: RAIZ, encoding: "utf8" },
+);
+if (sonda.status !== 0) fallar("no se pudo verificar la metadata del archivo final");
+
 if (/^TAG:comment=.+$/im.test(sonda.stdout)) {
-  console.error("\n✗ el archivo final TODAVÍA lleva un comentario en la metadata:");
-  console.error(sonda.stdout.split(/\r?\n/).filter((l) => /comment/i.test(l)).join("\n"));
-  rmSync(join(RAIZ, salida));
-  limpiar();
-  process.exit(1);
+  fallar(
+    "el archivo final TODAVÍA lleva un comentario en la metadata:",
+    sonda.stdout
+      .split(/\r?\n/)
+      .filter((l) => /comment/i.test(l))
+      .join("\n"),
+  );
+}
+
+const color = Object.fromEntries(
+  sonda.stdout
+    .split(/\r?\n/)
+    .filter((l) => l.includes("="))
+    .map((l) => l.split("=")),
+);
+const sinEtiquetar = CAMPOS_COLOR.filter((k) => color[k] !== "bt709");
+if (sinEtiquetar.length) {
+  fallar(
+    `el archivo final no quedó etiquetado BT.709 en: ${sinEtiquetar.join(", ")}`,
+    CAMPOS_COLOR.map((k) => `  ${k}=${color[k]}`).join("\n"),
+  );
 }
 
 limpiar();
-console.log(`\n✓ ${salida} — renderizado y sin comentario de herramienta en la metadata`);
+console.log(`\n✓ ${salida} — sin comentario de herramienta, BT.709 en los tres campos`);

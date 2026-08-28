@@ -43,6 +43,7 @@ export const CTA = 4.0;
 export const CTA_FADE = 0.7;
 export const CTA_DELAY_L1 = 0.5;
 export const CTA_DELAY_L2 = 1.05;
+export const CTA_DELAY_L3 = 1.6;
 /** Desplazamiento vertical de entrada, en escala del prototipo. */
 export const CTA_SUBIDA = 26;
 export const PAUSE = 1.4;
@@ -54,22 +55,29 @@ export const S = 1080 / 405;
 export const px = (n: number) => n * S;
 
 /** Carbón degradado del prototipo. Lo comparten el video y la portada. */
-export const FONDO_LINEAS = "linear-gradient(178deg,#201E1B 0%,#141311 55%,#0B0A09 100%)";
+export const FONDO_LINEAS = "linear-gradient(178deg,#2B2620 0%,#151310 52%,#070606 100%)";
 
 /** Inercia del eje Y. El eje persigue su objetivo, no salta. */
 export const INERCIA = 0.06;
 
+// Paleta viva del prototipo SAFEZONE: blanco puro en vez de hueso, rojo más saturado y
+// neutros más claros. El reel se ve en un celular a brillo alto y compitiendo con el
+// resto del feed; los tonos apagados del papel no sobreviven a eso.
 export const COLOR_L = {
-  ink: "#F2EEE6",
-  tx3: "#9B9587",
-  grid: "#26241F",
-  eje: "#4A463E",
-  rojo: "#E0525C",
-  fondoSrc: "#8A8578",
+  ink: "#FFFFFF",
+  tx3: "#B4AC9C",
+  grid: "#2E2B25",
+  eje: "#5C574D",
+  rojo: "#FF4D5A",
+  fondoSrc: "#9A9385",
 } as const;
 
 /** Paleta de series, por posición. El prototipo la fija en este orden. */
-export const PALETA = ["#E0525C", "#F2EEE6", "#6E9BD8", "#D9A648", "#43B3A4"];
+export const PALETA = ["#FF5A66", "#FFFFFF", "#7FB0FF", "#FFB84D", "#3DDBC4"];
+
+/** Grosor de trazo: las series y la referencia punteada. */
+export const TRAZO_SERIE = 2.8;
+export const TRAZO_REFERENCIA = 1.7;
 
 export const EMOJI_POR_DEFECTO: Record<string, string> = {
   Providencia: "🌳",

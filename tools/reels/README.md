@@ -81,7 +81,7 @@ recalculan solas.
 ## Reel 2 — "Diez años de plusvalía" (líneas top-5)
 
 Composición `LineasTop5`: 1080×1920, 30fps, 720 frames (24 s) — 20 s de gráfico más un
-acto CTA de 4 s. Réplica de `ref/lineas-top5-FINAL-cta3.html`.
+acto CTA de 4 s. Réplica de `ref/lineas-top5-SAFEZONE-t25.html`.
 
 ```bash
 cd tools/reels && npm run render:lineas    # MP4 del reel
@@ -89,7 +89,7 @@ cd tools/reels && npm run still:lineas     # PNG del frame final (719)
 cd tools/reels && npm run render:portada   # PNG de la portada
 ```
 
-La portada es la composición `PortadaLineas`, réplica de `ref/portada-reel-v3.html`. Es
+La portada es la composición `PortadaLineas`, réplica de `ref/portada-reel-SAFEZONE.html`. Es
 estática: se exporta con `remotion still`, no se renderiza a video.
 
 Su dataset se genera aparte del de la carrera:
@@ -104,11 +104,22 @@ código: los colores se asignan por posición y los emojis por nombre, ambos com
 
 ### Notas de réplica
 
-- El tamaño del titular vive en `TITULO_FS` (`src/LineasTop5.tsx`). Subió de 25 a 33 en
-  el prototipo cta3; a 33 el titular ocupa tres líneas en vez de dos.
+- Layout de zonas seguras: el bloque entero baja (hook en 100, gráfico en 206/118) y el
+  pie sube a 48, para despejar las franjas donde Instagram monta su interfaz.
+- Paleta viva (blanco puro, rojo `#FF4D5A`, neutros más claros): el reel compite con el
+  resto del feed en un celular a brillo alto, donde los tonos de papel se apagan.
+- El tamaño del titular vive en `TITULO_FS` (`src/LineasTop5.tsx`); a 33 ocupaba tres
+  líneas, a 25 entra en dos.
 - El acto CTA replica transiciones CSS en frames: fundido de 0,7 s sobre gráfico y hook,
   y dos líneas que entran desde abajo con 0,5 s y 1,05 s de retardo, con la curva `ease`
   de CSS (`Easing.bezier(0.25, 0.1, 0.25, 1)`). El pie NO se desvanece: en el prototipo
   el `.dim` solo alcanza a `.stage` y `.hook`.
+- El CTA cierra con una cascada de tres escalones (0,5 s / 1,05 s / 1,6 s), el último de
+  los cuales es el wordmark. Como el pie tampoco se desvanece, durante el cierre hay dos
+  wordmarks en pantalla: es lo que hace el prototipo.
 - Los emojis (los de comuna y el 🚀 del CTA) salen de la fuente de emoji del sistema, no
   de Remotion. Verificado en el entorno de render.
+- Color: `Config.setColorSpace("bt709")` NO alcanza — deja `color_primaries` y
+  `color_trc` sin especificar. El paso de limpieza los completa con el filtro de
+  bitstream `h264_metadata`, sin recomprimir, y verifica los tres campos antes de
+  escribir el archivo final. Ver `scripts/render-limpio.mjs`.
