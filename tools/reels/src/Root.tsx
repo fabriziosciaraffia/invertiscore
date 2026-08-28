@@ -4,6 +4,9 @@ import { BarRace, type PropsBarRace, type TrozoPayoff } from "./BarRace";
 import { FPS, GUION, LIENZO } from "./canon";
 import type { Dataset, Evento } from "./carrera";
 import bruto from "../data/dataset-plusvalia-2015-2025.json";
+import { LineasTop5, PROPS_LINEAS_POR_DEFECTO } from "./LineasTop5";
+import { DUR, type DatasetLineas } from "./lineas";
+import brutoLineas from "../data/dataset-lineas-top5.json";
 
 const dataset = bruto as Dataset;
 
@@ -64,20 +67,35 @@ const beats: Evento[] = [
   { nombre: "Las Condes", anio: 2025, tipo: "entra" },
 ];
 
+const datasetLineas = brutoLineas as DatasetLineas;
+
 export const RemotionRoot: React.FC = () => (
-  <Composition
-    id="BarRacePlusvalia"
-    component={BarRace}
-    durationInFrames={GUION.total}
-    fps={FPS}
-    width={LIENZO.w}
-    height={LIENZO.h}
-    defaultProps={{
-      dataset,
-      titular,
-      payoff,
-      beats,
-      pieDerecho: `plusvalía acumulada ${dataset.meta.subtitulo}`,
-    }}
-  />
+  <>
+    {/* Reel 1 — carrera de barras. */}
+    <Composition
+      id="BarRacePlusvalia"
+      component={BarRace}
+      durationInFrames={GUION.total}
+      fps={FPS}
+      width={LIENZO.w}
+      height={LIENZO.h}
+      defaultProps={{
+        dataset,
+        titular,
+        payoff,
+        beats,
+        pieDerecho: `plusvalía acumulada ${dataset.meta.subtitulo}`,
+      }}
+    />
+    {/* Reel 2 — réplica del prototipo congelado ref/lineas-top5-FINAL.html. */}
+    <Composition
+      id="LineasTop5"
+      component={LineasTop5}
+      durationInFrames={DUR * FPS}
+      fps={FPS}
+      width={LIENZO.w}
+      height={LIENZO.h}
+      defaultProps={{ dataset: datasetLineas, ...PROPS_LINEAS_POR_DEFECTO }}
+    />
+  </>
 );
