@@ -35,10 +35,26 @@ export const PADB = 26;
 export const YFLOOR = 16;
 export const XMIN = 2.2;
 
-/** Segundos totales, pausa inicial y hold final. */
+/** Segundos del gráfico, pausa inicial y hold final. */
 export const DUR = 20;
+/** Segundos del acto CTA, después del gráfico. Total del reel: DUR + CTA. */
+export const CTA = 4.0;
+/** Duración de las transiciones del CTA y sus dos retardos escalonados. */
+export const CTA_FADE = 0.7;
+export const CTA_DELAY_L1 = 0.5;
+export const CTA_DELAY_L2 = 1.05;
+/** Desplazamiento vertical de entrada, en escala del prototipo. */
+export const CTA_SUBIDA = 26;
 export const PAUSE = 1.4;
 export const HOLD = 1.5;
+
+/** El prototipo se diseñó a 405×720; el reel sale a 1080×1920. */
+export const S = 1080 / 405;
+/** Convierte una medida del prototipo al lienzo final. */
+export const px = (n: number) => n * S;
+
+/** Carbón degradado del prototipo. Lo comparten el video y la portada. */
+export const FONDO_LINEAS = "linear-gradient(178deg,#201E1B 0%,#141311 55%,#0B0A09 100%)";
 
 /** Inercia del eje Y. El eje persigue su objetivo, no salta. */
 export const INERCIA = 0.06;

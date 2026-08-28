@@ -1,11 +1,17 @@
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { loadFont as cargarSerif } from "@remotion/google-fonts/SourceSerif4";
 import { loadFont as cargarSans } from "@remotion/google-fonts/IBMPlexSans";
 import { loadFont as cargarMono } from "@remotion/google-fonts/JetBrainsMono";
 import {
   COLOR_L,
+  CTA_DELAY_L1,
+  CTA_DELAY_L2,
+  CTA_FADE,
+  CTA_SUBIDA,
+  DUR,
   EMOJI_POR_DEFECTO,
+  FONDO_LINEAS,
   H,
   PADB,
   PADL,
@@ -16,6 +22,7 @@ import {
   ejeAmortiguado,
   pathRecto,
   puntas,
+  px,
   tEnSegundo,
   type DatasetLineas,
 } from "./lineas";
@@ -26,10 +33,8 @@ const { fontFamily: SERIF } = cargarSerif();
 const { fontFamily: SANS } = cargarSans();
 const { fontFamily: MONO } = cargarMono();
 
-/** El prototipo se diseñó a 405×720; el reel sale a 1080×1920. */
-const S = 1080 / 405;
-/** Convierte una medida del prototipo al lienzo final. */
-const px = (n: number) => n * S;
+/** La curva `ease` de CSS, que es la que usa el prototipo en sus transiciones. */
+const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
 
 /**
  * Cuerpo del titular, en escala del prototipo. Decisión de diseño reciente: subió de
@@ -51,6 +56,15 @@ export type PropsLineas = {
   resaltado: string;
   colores: string[];
   emojis: Record<string, string>;
+  /** Acto de cierre: las tres líneas del titular y el subtítulo. */
+  cta: {
+    lineas: string[];
+    /** Trozo de la última línea que va en rojo. */
+    resaltado: string;
+    sub: string;
+    subResaltado: string;
+    emoji: string;
+  };
 };
 
 export const LineasTop5: React.FC<PropsLineas> = ({
@@ -60,6 +74,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
   resaltado,
   colores,
   emojis,
+  cta,
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -84,14 +99,43 @@ export const LineasTop5: React.FC<PropsLineas> = ({
 
   const [antes, despues] = titulo[0].split(resaltado);
 
+  // ── Acto CTA ──
+  // A los DUR segundos el gráfico y el hook se van en un fundido de 0,7s, y las dos
+  // líneas del cierre entran desde abajo con 0,5s y 1,05s de retardo. En CSS opacidad y
+  // transform comparten la misma transición, así que el desplazamiento es el
+  // complemento exacto de la opacidad: una sola progresión por línea.
+  const el = frame / fps;
+  const opContenido = interpolate(el, [DUR, DUR + CTA_FADE], [1, 0], {
+    easing: EASE,
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const entrada = (retardo: number) =>
+    interpolate(el, [DUR + retardo, DUR + retardo + CTA_FADE], [0, 1], {
+      easing: EASE,
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
+  const opL1 = entrada(CTA_DELAY_L1);
+  const opL2 = entrada(CTA_DELAY_L2);
+  const subir = (op: number) => `translateY(${px(CTA_SUBIDA) * (1 - op)}px)`;
+
   return (
     <AbsoluteFill
       style={{
-        background: "linear-gradient(178deg,#201E1B 0%,#141311 55%,#0B0A09 100%)",
+        background: FONDO_LINEAS,
       }}
     >
       {/* ---------- TÍTULO ---------- */}
-      <div style={{ position: "absolute", top: px(40), left: px(28), right: px(28) }}>
+      <div
+        style={{
+          position: "absolute",
+          top: px(40),
+          left: px(28),
+          right: px(28),
+          opacity: opContenido,
+        }}
+      >
         <div
           style={{
             fontFamily: SANS,
@@ -100,7 +144,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
             letterSpacing: "0.20em",
             textTransform: "uppercase",
             color: COLOR_L.tx3,
-            marginBottom: px(8),
+            marginBottom: px(9),
           }}
         >
           {antetitulo}
@@ -131,6 +175,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
           left: px(26),
           right: px(26),
           bottom: px(112),
+          opacity: opContenido,
         }}
       >
         <svg
@@ -275,6 +320,68 @@ export const LineasTop5: React.FC<PropsLineas> = ({
         </svg>
       </div>
 
+      {/* ---------- ACTO CTA ----------
+          Entra cuando el gráfico se va. El pie NO se desvanece: en el prototipo el
+          `.dim` solo alcanza a `.stage` y `.hook`, así que la firma queda en pantalla
+          todo el cierre. */}
+      <div
+        style={{
+          position: "absolute",
+          left: px(26),
+          right: px(22),
+          top: "50%",
+          transform: "translateY(-50%)",
+          textAlign: "left",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: SERIF,
+            fontWeight: 700,
+            fontSize: px(44),
+            lineHeight: 1.1,
+            color: COLOR_L.ink,
+            opacity: opL1,
+            transform: subir(opL1),
+          }}
+        >
+          {cta.lineas.map((linea, i) => {
+            const [ini, fin] = linea.split(cta.resaltado);
+            const parte = linea.includes(cta.resaltado);
+            return (
+              <React.Fragment key={i}>
+                {i > 0 && <br />}
+                {parte ? (
+                  <>
+                    {ini}
+                    <span style={{ color: COLOR_L.rojo, fontWeight: 700 }}>{cta.resaltado}</span>
+                    {fin}
+                  </>
+                ) : (
+                  linea
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+        <div
+          style={{
+            marginTop: px(26),
+            fontFamily: SANS,
+            fontSize: px(26),
+            fontWeight: 600,
+            color: COLOR_L.ink,
+            opacity: opL2,
+            transform: subir(opL2),
+          }}
+        >
+          {cta.sub.split(cta.subResaltado)[0]}
+          <span style={{ color: COLOR_L.rojo }}>{cta.subResaltado}</span>
+          {cta.sub.split(cta.subResaltado)[1]}{" "}
+          <span style={{ fontSize: px(27) }}>{cta.emoji}</span>
+        </div>
+      </div>
+
       {/* ---------- PIE ---------- */}
       <div style={{ position: "absolute", left: px(28), right: px(28), bottom: px(36) }}>
         <div style={{ fontFamily: SERIF, fontSize: px(14), color: COLOR_L.ink }}>
@@ -300,6 +407,13 @@ export const LineasTop5: React.FC<PropsLineas> = ({
 
 export const PROPS_LINEAS_POR_DEFECTO = {
   antetitulo: "Las 5 comunas más analizadas en Franco",
+  cta: {
+    lineas: ["Analiza tu depto", "de inversión", "con Franco."],
+    resaltado: "Franco",
+    sub: "El primero es gratis",
+    subResaltado: "gratis",
+    emoji: "🚀",
+  },
   titulo: ["Diez años de plusvalía.", "¿Cuál ganó?"] as [string, string],
   resaltado: "plusvalía",
   colores: PALETA,

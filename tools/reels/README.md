@@ -77,3 +77,38 @@ recalculan solas.
 - Ninguna animación usa transiciones CSS: Remotion renderiza cada cuadro por separado y
   una transición temporal saldría congelada. Todo es función pura del frame
   (`src/carrera.ts`).
+
+## Reel 2 — "Diez años de plusvalía" (líneas top-5)
+
+Composición `LineasTop5`: 1080×1920, 30fps, 720 frames (24 s) — 20 s de gráfico más un
+acto CTA de 4 s. Réplica de `ref/lineas-top5-FINAL-cta3.html`.
+
+```bash
+cd tools/reels && npm run render:lineas    # MP4 del reel
+cd tools/reels && npm run still:lineas     # PNG del frame final (719)
+cd tools/reels && npm run render:portada   # PNG de la portada
+```
+
+La portada es la composición `PortadaLineas`, réplica de `ref/portada-reel-v3.html`. Es
+estática: se exporta con `remotion still`, no se renderiza a video.
+
+Su dataset se genera aparte del de la carrera:
+
+```bash
+node --import tsx scripts/data/generar-dataset-lineas.ts
+node --import tsx scripts/data/generar-dataset-lineas.ts "Recoleta,Macul,Renca,Buin,Colina"
+```
+
+Sin argumento usa el top-5 del mes. Con lista propia, el reel del mes siguiente no toca
+código: los colores se asignan por posición y los emojis por nombre, ambos como props.
+
+### Notas de réplica
+
+- El tamaño del titular vive en `TITULO_FS` (`src/LineasTop5.tsx`). Subió de 25 a 33 en
+  el prototipo cta3; a 33 el titular ocupa tres líneas en vez de dos.
+- El acto CTA replica transiciones CSS en frames: fundido de 0,7 s sobre gráfico y hook,
+  y dos líneas que entran desde abajo con 0,5 s y 1,05 s de retardo, con la curva `ease`
+  de CSS (`Easing.bezier(0.25, 0.1, 0.25, 1)`). El pie NO se desvanece: en el prototipo
+  el `.dim` solo alcanza a `.stage` y `.hook`.
+- Los emojis (los de comuna y el 🚀 del CTA) salen de la fuente de emoji del sistema, no
+  de Remotion. Verificado en el entorno de render.

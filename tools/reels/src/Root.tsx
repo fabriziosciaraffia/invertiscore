@@ -5,7 +5,8 @@ import { FPS, GUION, LIENZO } from "./canon";
 import type { Dataset, Evento } from "./carrera";
 import bruto from "../data/dataset-plusvalia-2015-2025.json";
 import { LineasTop5, PROPS_LINEAS_POR_DEFECTO } from "./LineasTop5";
-import { DUR, type DatasetLineas } from "./lineas";
+import { CTA, DUR, type DatasetLineas } from "./lineas";
+import { PortadaLineas, PROPS_PORTADA_POR_DEFECTO } from "./PortadaLineas";
 import brutoLineas from "../data/dataset-lineas-top5.json";
 
 const dataset = bruto as Dataset;
@@ -91,11 +92,21 @@ export const RemotionRoot: React.FC = () => (
     <Composition
       id="LineasTop5"
       component={LineasTop5}
-      durationInFrames={DUR * FPS}
+      durationInFrames={(DUR + CTA) * FPS}
       fps={FPS}
       width={LIENZO.w}
       height={LIENZO.h}
       defaultProps={{ dataset: datasetLineas, ...PROPS_LINEAS_POR_DEFECTO }}
+    />
+    {/* Portada estática del reel 2 — se exporta con `remotion still`. */}
+    <Composition
+      id="PortadaLineas"
+      component={PortadaLineas}
+      durationInFrames={1}
+      fps={FPS}
+      width={LIENZO.w}
+      height={LIENZO.h}
+      defaultProps={PROPS_PORTADA_POR_DEFECTO}
     />
   </>
 );
