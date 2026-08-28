@@ -31,6 +31,17 @@ const S = 1080 / 405;
 /** Convierte una medida del prototipo al lienzo final. */
 const px = (n: number) => n * S;
 
+/**
+ * Cuerpo del titular, en escala del prototipo. Decisión de diseño reciente: subió de
+ * 25 a 33. Vive acá con nombre propio porque puede volver a bajar en el OK visual, y
+ * entonces el cambio es esta línea y nada más.
+ */
+const TITULO_FS = 33;
+const TITULO_LH = 1.12;
+const ANTETITULO_FS = 11.5;
+/** Techo del gráfico. Bajó de 150 a 168 al crecer el titular. */
+const STAGE_TOP = 168;
+
 export type PropsLineas = {
   dataset: DatasetLineas;
   antetitulo: string;
@@ -84,7 +95,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
         <div
           style={{
             fontFamily: SANS,
-            fontSize: px(10.5),
+            fontSize: px(ANTETITULO_FS),
             fontWeight: 600,
             letterSpacing: "0.20em",
             textTransform: "uppercase",
@@ -98,8 +109,8 @@ export const LineasTop5: React.FC<PropsLineas> = ({
           style={{
             fontFamily: SERIF,
             fontWeight: 700,
-            fontSize: px(25),
-            lineHeight: 1.16,
+            fontSize: px(TITULO_FS),
+            lineHeight: TITULO_LH,
             color: COLOR_L.ink,
           }}
         >
@@ -116,7 +127,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
       <div
         style={{
           position: "absolute",
-          top: px(150),
+          top: px(STAGE_TOP),
           left: px(26),
           right: px(26),
           bottom: px(112),

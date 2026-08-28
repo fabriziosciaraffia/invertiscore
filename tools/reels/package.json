@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "remotion studio",
     "render": "remotion render BarRacePlusvalia out/reel-plusvalia.mp4",
-    "still": "remotion still BarRacePlusvalia out/frame.png"
+    "still": "remotion still BarRacePlusvalia out/frame.png",
+    "render:lineas": "remotion render LineasTop5 out/reel-lineas-top5.mp4",
+    "still:lineas": "remotion still LineasTop5 out/lineas-final.png --frame=599"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.0",
