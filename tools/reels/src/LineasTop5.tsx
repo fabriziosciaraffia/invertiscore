@@ -4,7 +4,6 @@ import { loadFont as cargarSerif } from "@remotion/google-fonts/SourceSerif4";
 import { loadFont as cargarSans } from "@remotion/google-fonts/IBMPlexSans";
 import { loadFont as cargarMono } from "@remotion/google-fonts/JetBrainsMono";
 import {
-  COLOR_L,
   CTA_DELAY_L1,
   CTA_DELAY_L2,
   CTA_DELAY_L3,
@@ -12,12 +11,11 @@ import {
   CTA_SUBIDA,
   DUR,
   EMOJI_POR_DEFECTO,
-  FONDO_LINEAS,
   H,
   PADB,
   PADL,
   PADR,
-  PALETA,
+  TEMAS,
   TRAZO_REFERENCIA,
   TRAZO_SERIE,
   W,
@@ -28,6 +26,7 @@ import {
   px,
   tEnSegundo,
   type DatasetLineas,
+  type Tema,
 } from "./lineas";
 
 // Las tres familias las carga Remotion (SIL OFL 1.1), no el sistema: el render headless
@@ -58,7 +57,8 @@ export type PropsLineas = {
   titulo: [string, string];
   /** Trozo exacto de `titulo[0]` que va en rojo. */
   resaltado: string;
-  colores: string[];
+  /** Toda la decisión de color, incluida la paleta de series. */
+  tema: Tema;
   emojis: Record<string, string>;
   /** Acto de cierre: las tres líneas del titular y el subtítulo. */
   cta: {
@@ -76,7 +76,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
   antetitulo,
   titulo,
   resaltado,
-  colores,
+  tema,
   emojis,
   cta,
 }) => {
@@ -96,7 +96,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
   const Y = (v: number) => H - PADB - (v / ymax) * (H - PADB - 16);
   const y0 = Y(0);
 
-  const tips = puntas(dataset.filas, colores, tt, n, Y);
+  const tips = puntas(dataset.filas, tema.series, tema.tx3Grafico, tt, n, Y);
   const paso = xmax > 7 ? 2 : 1;
   const anios: number[] = [];
   for (let yr = 0; yr <= Math.floor(xmax) && yr <= n - 1; yr += paso) anios.push(yr);
@@ -128,7 +128,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
   return (
     <AbsoluteFill
       style={{
-        background: FONDO_LINEAS,
+        background: tema.fondo,
       }}
     >
       {/* ---------- TÍTULO ---------- */}
@@ -148,7 +148,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
             fontWeight: 600,
             letterSpacing: "0.20em",
             textTransform: "uppercase",
-            color: COLOR_L.tx3,
+            color: tema.tx3,
             marginBottom: px(9),
           }}
         >
@@ -160,11 +160,11 @@ export const LineasTop5: React.FC<PropsLineas> = ({
             fontWeight: 700,
             fontSize: px(TITULO_FS),
             lineHeight: TITULO_LH,
-            color: COLOR_L.ink,
+            color: tema.ink,
           }}
         >
           {antes}
-          <span style={{ color: COLOR_L.rojo }}>{resaltado}</span>
+          <span style={{ color: tema.rojo }}>{resaltado}</span>
           {despues}
           <br />
           {titulo[1]}
@@ -196,11 +196,11 @@ export const LineasTop5: React.FC<PropsLineas> = ({
             const y = Y(vv);
             return (
               <g key={`g${k}`}>
-                <line x1={PADL} x2={W - PADR} y1={y} y2={y} stroke={COLOR_L.grid} strokeWidth={1} />
+                <line x1={PADL} x2={W - PADR} y1={y} y2={y} stroke={tema.grid} strokeWidth={1} />
                 <text
                   x={PADL - 6}
                   y={y + 3}
-                  fill={COLOR_L.tx3}
+                  fill={tema.tx3Grafico}
                   fontFamily={MONO}
                   fontSize={9}
                   textAnchor="end"
@@ -212,29 +212,29 @@ export const LineasTop5: React.FC<PropsLineas> = ({
           })}
 
           {/* ejes */}
-          <line x1={PADL} x2={W - PADR} y1={y0} y2={y0} stroke={COLOR_L.eje} strokeWidth={1.2} />
+          <line x1={PADL} x2={W - PADR} y1={y0} y2={y0} stroke={tema.eje} strokeWidth={1.2} />
           <text
             x={PADL - 6}
             y={y0 + 3}
-            fill={COLOR_L.tx3}
+            fill={tema.tx3Grafico}
             fontFamily={MONO}
             fontSize={9}
             textAnchor="end"
           >
             0%
           </text>
-          <line x1={PADL} x2={PADL} y1={Y(ymax)} y2={y0} stroke={COLOR_L.eje} strokeWidth={1.2} />
+          <line x1={PADL} x2={PADL} y1={Y(ymax)} y2={y0} stroke={tema.eje} strokeWidth={1.2} />
 
           {/* años */}
           {anios.map((yr) => {
             const x = X(yr);
             return (
               <g key={`a${yr}`}>
-                <line x1={x} x2={x} y1={y0} y2={y0 + 4} stroke={COLOR_L.eje} />
+                <line x1={x} x2={x} y1={y0} y2={y0 + 4} stroke={tema.eje} />
                 <text
                   x={x}
                   y={y0 + 14}
-                  fill={COLOR_L.tx3}
+                  fill={tema.tx3Grafico}
                   fontFamily={MONO}
                   fontSize={9}
                   textAnchor="middle"
@@ -249,7 +249,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
           <text
             x={W - PADR - 6}
             y={y0 - 12}
-            fill={COLOR_L.ink}
+            fill={tema.marcaAgua}
             opacity={0.15}
             fontFamily={MONO}
             fontWeight={700}
@@ -267,7 +267,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                stroke={colores[i % colores.length]}
+                stroke={tema.series[i % tema.series.length]}
                 strokeWidth={TRAZO_SERIE}
                 d={pathRecto(f.valores, tt, n, X, Y)}
               />
@@ -281,7 +281,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                stroke={COLOR_L.tx3}
+                stroke={tema.tx3Grafico}
                 strokeWidth={TRAZO_REFERENCIA}
                 strokeDasharray="5 4"
                 d={pathRecto(f.valores, tt, n, X, Y)}
@@ -345,7 +345,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
             fontWeight: 700,
             fontSize: px(44),
             lineHeight: 1.1,
-            color: COLOR_L.ink,
+            color: tema.ink,
             opacity: opL1,
             transform: subir(opL1),
           }}
@@ -359,7 +359,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
                 {parte ? (
                   <>
                     {ini}
-                    <span style={{ color: COLOR_L.rojo, fontWeight: 700 }}>{cta.resaltado}</span>
+                    <span style={{ color: tema.rojo, fontWeight: 700 }}>{cta.resaltado}</span>
                     {fin}
                   </>
                 ) : (
@@ -375,13 +375,13 @@ export const LineasTop5: React.FC<PropsLineas> = ({
             fontFamily: SANS,
             fontSize: px(26),
             fontWeight: 600,
-            color: COLOR_L.ink,
+            color: tema.ink,
             opacity: opL2,
             transform: subir(opL2),
           }}
         >
           {cta.sub.split(cta.subResaltado)[0]}
-          <span style={{ color: COLOR_L.rojo }}>{cta.subResaltado}</span>
+          <span style={{ color: tema.rojo }}>{cta.subResaltado}</span>
           {cta.sub.split(cta.subResaltado)[1]}{" "}
           <span style={{ fontSize: px(27) }}>{cta.emoji}</span>
         </div>
@@ -391,14 +391,14 @@ export const LineasTop5: React.FC<PropsLineas> = ({
             marginTop: px(30),
             fontFamily: SERIF,
             fontSize: px(19),
-            color: COLOR_L.ink,
+            color: tema.ink,
             opacity: opL3,
             transform: subir(opL3),
           }}
         >
-          <span style={{ fontStyle: "italic", fontWeight: 400, color: COLOR_L.tx3 }}>re</span>
+          <span style={{ fontStyle: "italic", fontWeight: 400, color: tema.tx3 }}>re</span>
           <b style={{ fontWeight: 700 }}>franco</b>
-          <span style={{ color: COLOR_L.rojo, fontSize: px(12), fontWeight: 600 }}>.ai</span>
+          <span style={{ color: tema.rojo, fontSize: px(12), fontWeight: 600 }}>.ai</span>
         </div>
       </div>
 
@@ -408,17 +408,17 @@ export const LineasTop5: React.FC<PropsLineas> = ({
             escalón de la cascada, y dos wordmarks a la vez se estorban. La línea de
             fuente NO se desvanece — la atribución del dato queda en pantalla. */}
         <div
-          style={{ fontFamily: SERIF, fontSize: px(14), color: COLOR_L.ink, opacity: opContenido }}
+          style={{ fontFamily: SERIF, fontSize: px(14), color: tema.ink, opacity: opContenido }}
         >
-          <span style={{ fontStyle: "italic", fontWeight: 400, color: COLOR_L.tx3 }}>re</span>
+          <span style={{ fontStyle: "italic", fontWeight: 400, color: tema.tx3 }}>re</span>
           <b style={{ fontWeight: 700 }}>franco</b>
-          <span style={{ color: COLOR_L.rojo, fontSize: px(9.5), fontWeight: 600 }}>.ai</span>
+          <span style={{ color: tema.rojo, fontSize: px(9.5), fontWeight: 600 }}>.ai</span>
         </div>
         <div
           style={{
             fontFamily: SANS,
             fontSize: px(7.2),
-            color: COLOR_L.fondoSrc,
+            color: tema.fondoSrc,
             marginTop: px(3),
             lineHeight: 1.4,
           }}
@@ -432,6 +432,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
 
 export const PROPS_LINEAS_POR_DEFECTO = {
   antetitulo: "Las 5 comunas más analizadas en Franco",
+  tema: TEMAS.neon,
   cta: {
     lineas: ["Analiza tu depto", "de inversión", "con Franco."],
     resaltado: "Franco",
@@ -441,6 +442,5 @@ export const PROPS_LINEAS_POR_DEFECTO = {
   },
   titulo: ["Diez años de plusvalía.", "¿Cuál ganó?"] as [string, string],
   resaltado: "plusvalía",
-  colores: PALETA,
   emojis: EMOJI_POR_DEFECTO,
 };

@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill } from "remotion";
 import { loadFont as cargarSerif } from "@remotion/google-fonts/SourceSerif4";
-import { COLOR_L, FONDO_LINEAS, px } from "./lineas";
+import { TEMAS, px, type Tema } from "./lineas";
 
 const { fontFamily: SERIF } = cargarSerif();
 
@@ -9,16 +9,18 @@ export type PropsPortada = {
   /** El resaltado se pinta en rojo donde aparezca dentro del texto. */
   texto: string;
   resaltado: string;
+  /** La portada hereda el tema del video: no hay HTML de portada por variante. */
+  tema: Tema;
 };
 
 /**
  * Portada estática del reel — réplica de `ref/portada-reel-v3.html`. Es una composición
  * de un cuadro: se exporta con `remotion still`, no se renderiza a video.
  */
-export const PortadaLineas: React.FC<PropsPortada> = ({ texto, resaltado }) => {
+export const PortadaLineas: React.FC<PropsPortada> = ({ texto, resaltado, tema }) => {
   const [antes, despues] = texto.split(resaltado);
   return (
-    <AbsoluteFill style={{ background: FONDO_LINEAS }}>
+    <AbsoluteFill style={{ background: tema.fondo }}>
       <div
         style={{
           position: "absolute",
@@ -31,11 +33,11 @@ export const PortadaLineas: React.FC<PropsPortada> = ({ texto, resaltado }) => {
           fontSize: px(56),
           lineHeight: 1.1,
           letterSpacing: "-0.015em",
-          color: COLOR_L.ink,
+          color: tema.ink,
         }}
       >
         {antes}
-        <span style={{ color: COLOR_L.rojo }}>{resaltado}</span>
+        <span style={{ color: tema.rojo }}>{resaltado}</span>
         {despues}
       </div>
       <div
@@ -45,13 +47,13 @@ export const PortadaLineas: React.FC<PropsPortada> = ({ texto, resaltado }) => {
           bottom: px(26),
           fontFamily: SERIF,
           fontSize: px(13),
-          color: COLOR_L.ink,
+          color: tema.ink,
           opacity: 0.85,
         }}
       >
-        <span style={{ fontStyle: "italic", fontWeight: 400, color: COLOR_L.tx3 }}>re</span>
+        <span style={{ fontStyle: "italic", fontWeight: 400, color: tema.tx3 }}>re</span>
         <b style={{ fontWeight: 700 }}>franco</b>
-        <span style={{ color: COLOR_L.rojo, fontSize: px(9), fontWeight: 600 }}>.ai</span>
+        <span style={{ color: tema.rojo, fontSize: px(9), fontWeight: 600 }}>.ai</span>
       </div>
     </AbsoluteFill>
   );
@@ -60,4 +62,5 @@ export const PortadaLineas: React.FC<PropsPortada> = ({ texto, resaltado }) => {
 export const PROPS_PORTADA_POR_DEFECTO = {
   texto: "La comuna que más rindió por plusvalía en la última década.",
   resaltado: "plusvalía",
+  tema: TEMAS.neon,
 };
