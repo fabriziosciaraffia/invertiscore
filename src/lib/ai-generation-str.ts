@@ -70,7 +70,12 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // abre por el bolsillo absoluto), destacadores `**…**` en prosa, bloque CIFRA
 // CLAVE del motor en el user prompt, y PARTE 0 corregida (el hero E.5 no
 // muestra los 3 KPIs que el texto v6 afirmaba).
-export const PROMPT_VERSION_STR = 7;
+// v8 (2026-08-27): auditoría fase42 D-15(b) — `rentabilidad.contenido` pasa a
+// encuadre de 2-3 frases (el cuerpo ya dibuja matriz/escenarios/desglose; la
+// prosa de ~95 palabras que narraba la matriz era el mismo defecto de A1 a
+// escala de sección) y su destacador `**…**` se muda a `cajaAccionable`, que el
+// render muestra como cierre del cuerpo.
+export const PROMPT_VERSION_STR = 8;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -113,7 +118,7 @@ Test rápido por párrafo: si un lector lo puede reemplazar por una tabla sin p�
 La prosa de los drawers vive DETRÁS de una card que YA mostró título + KPI + una frase (la "fraseCanónica"). El user prompt te pasa, por cada drawer, la frase EXACTA que el usuario ya leyó en la card (bloque "LO QUE LA CARD YA MOSTRÓ"). Tu trabajo NO es re-enunciar ese dato: es lo que viene DESPUÉS.
 
 - ASUME la card leída. Arranca del PORQUÉ (la causa) o del QUÉ HACER (la palanca), nunca del QUÉ (el dato que la card ya declaró).
-- \`rentabilidad.contenido\`: la card ya dijo "CAP rate X% [sobre/bajo] el umbral". PROHIBIDO abrir con "El CAP rate de X% está…". Arranca por la causa (el precio de entrada por m², el stack de costos operativos) o por la consecuencia sobre el flujo.
+- \`rentabilidad.contenido\`: la card ya dijo "CAP rate X% [sobre/bajo] el umbral". PROHIBIDO abrir con "El CAP rate de X% está…". Y desde v8 el cuerpo del hallazgo ya DIBUJA la comparación (matriz CAP/retorno/ocupación contra su referencia), el rango de escenarios y el desglose de costos: tu prosa es el ENCUADRE de 2-3 frases que orienta la lectura — la causa raíz en una frase y dónde mirar — y NUNCA narra fila por fila lo que los diagramas ya muestran (ni la matriz, ni los escenarios, ni el desglose). Sin destacador acá: la frase-fuerza de esta sección vive en \`rentabilidad.cajaAccionable\`, que es el cierre del cuerpo.
 - \`vsLTR.contenido\`: la card ya dijo la dirección (LTR gana / STR gana) y la sobre-renta%. PROHIBIDO abrir re-enunciando "En esta zona LTR/STR rinde más". Arranca por el NOI absoluto ($ LTR vs $ STR), la brecha auto-vs-administrador, o la palanca.
 - \`riesgos.contenido\`: la card ya mostró la ocupación vs banda. No abras el primer riesgo repitiendo el % de ocupación.
 
@@ -142,7 +147,7 @@ Es la disciplina de §1.4 (solo datos provistos) llevada a su forma dura: vale p
 
 Distribución por sección JSON (topología v3):
 - conviene.respuestaDirecta: capas 1+2+3 — es el lead del hero, alineado al hallazgo coronado (ver §7.bis).
-- rentabilidad.contenido: capas 2+3 (la card ya hizo la capa 1). Causa del CAP + palanca.
+- rentabilidad.contenido: capa 2 en 2-3 frases (la card hizo la capa 1; los diagramas del cuerpo muestran el resto). La capa 3 vive en su cajaAccionable.
 - vsLTR.contenido: capas 1+3, arrancando del dato que la card NO tiene (NOI absoluto, auto-vs-admin).
 - largoPlazo.contenido: capas 3+4. Ángulo 3 (instrumentos) + condicional de plusvalía + posición. NO recita las cifras que ya muestran las cards de Escenarios y Proyección ni los drawers de patrimonio/plusvalía.
 - riesgos.contenido: capas 1+2 por riesgo (la 3 va en cajaAccionable).
@@ -314,7 +319,7 @@ Devuelve EXACTAMENTE esta estructura. Sin campos extra, sin texto fuera del JSON
     "cajaAccionable": string      // (≤75) StateBox de cierre del hero · posición o acción
   },
   "rentabilidad": {
-    "contenido": string,          // (≤130) abre el drawer · NO repitas CAP/umbral (§1.bis) · causa + palanca
+    "contenido": string,          // (≤55) ENCUADRE de 2-3 frases (§1.bis v8): causa raíz + dónde mirar · los diagramas del cuerpo ya muestran matriz/escenarios/desglose — NO los narres · sin destacador (va en cajaAccionable)
     "cajaAccionable": string      // (≤75) cierra el drawer
   },
   "vsLTR": {
@@ -374,7 +379,11 @@ export const SECTION_BUDGETS_STR: Record<string, number> = {
   "conviene.respuestaDirecta": 85,
   "conviene.reencuadre": 55,
   "conviene.cajaAccionable": 75,
-  "rentabilidad.contenido": 130,
+  // v8: 130 → 55. El contrato nuevo (encuadre de 2-3 frases) salió como guía y la
+  // primera generación real lo ignoró (107 palabras narrando los escenarios): el
+  // presupuesto es ENFORCEMENT, no guía — con 55 el desborde dispara el retry
+  // quirúrgico que ya existe.
+  "rentabilidad.contenido": 55,
   "rentabilidad.cajaAccionable": 75,
   "vsLTR.contenido": 120,
   "vsLTR.estrategiaSugerida": 75,

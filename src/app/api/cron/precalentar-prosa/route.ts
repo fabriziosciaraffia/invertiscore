@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { captureApiError } from "@/lib/observabilidad";
 import { latirCron } from "@/lib/cron-heartbeat";
+import Anthropic from "@anthropic-ai/sdk";
 import { generateAiAnalysis, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
+import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
+import { generarYPersistirProsaStr } from "@/lib/str-prosa-persist";
 import { DEMO_ANALYSIS_ID } from "@/lib/demo";
 
 const RUTA = "GET /api/cron/precalentar-prosa";
@@ -42,6 +45,17 @@ const RUTA = "GET /api/cron/precalentar-prosa";
  *
  * IDEMPOTENTE por construcción: solo toca filas cuya `promptVersion` no es la
  * vigente, así que una corrida sobre un parque fresco no genera nada.
+ *
+ * STR (extensión 28-ago, mitigación del bump v8 de PROMPT_VERSION_STR): el
+ * mismo cron drena también la prosa STR — el predicado de frescura es POR TIPO
+ * (short-term contra PROMPT_VERSION_STR, el resto contra PROMPT_VERSION_LTR) y
+ * la generación va por el camino compartido de producción
+ * (`generarYPersistirProsaStr`, el mismo del submit y del on-demand). El
+ * presupuesto de tiempo es el mismo: si una generación STR resulta más corta
+ * que el p90 LTR, sobra margen; nunca al revés.
+ *
+ * DRY-RUN: `?dry=1` devuelve el triage (stale por tipo + primeros ids) sin
+ * generar nada — para verificar el cableado sin gastar tokens ni escribir.
  */
 
 export const maxDuration = 300;
@@ -67,6 +81,7 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
+    const dry = new URL(request.url).searchParams.get("dry") === "1";
 
     const desde = new Date(Date.now() - DIAS_RECIENTES * 86400_000).toISOString();
     // Se proyecta SOLO la versión del jsonb (no el `ai_analysis` entero, que es
@@ -90,11 +105,11 @@ export async function GET(request: Request) {
     // prosa fresca y pagándola. Con Number, ambas formas coinciden y el null
     // (prosa sin versionar) sigue cayendo del lado correcto.
     type FilaPrecalentado = { id: string; tipo_analisis: string | null; pv: number | string | null };
-    const stale = ((filas ?? []) as unknown as FilaPrecalentado[]).filter(
-      (f) =>
-        f.tipo_analisis !== "short-term" &&
-        (f.pv == null || Number(f.pv) !== PROMPT_VERSION_LTR),
-    );
+    // Predicado de frescura POR TIPO: cada modalidad contra SU versión vigente.
+    const esStale = (f: FilaPrecalentado) =>
+      f.pv == null ||
+      Number(f.pv) !== (f.tipo_analisis === "short-term" ? PROMPT_VERSION_STR : PROMPT_VERSION_LTR);
+    const stale = ((filas ?? []) as unknown as FilaPrecalentado[]).filter(esStale);
     let ok = 0;
     let fallidos = 0;
     let cortadoPorTiempo = false;
@@ -108,15 +123,42 @@ export async function GET(request: Request) {
       ...stale.filter((f) => f.id !== DEMO_ANALYSIS_ID),
     ];
 
+    if (dry) {
+      return NextResponse.json({
+        dry: true,
+        staleDetectados: stale.length,
+        staleLtr: stale.filter((f) => f.tipo_analisis !== "short-term").length,
+        staleStr: stale.filter((f) => f.tipo_analisis === "short-term").length,
+        primeros: orden.slice(0, LIMITE_POR_CORRIDA).map((f) => ({ id: f.id, tipo: f.tipo_analisis ?? "long-term" })),
+      });
+    }
+
+    const anthropic = new Anthropic();
     for (const fila of orden.slice(0, LIMITE_POR_CORRIDA)) {
       if (Date.now() - t0 + MARGEN_GENERACION_MS > PRESUPUESTO_MS) {
         cortadoPorTiempo = true;
         break;
       }
       try {
-        const r = await generateAiAnalysis(fila.id, supabase, { trigger: "precalentado" });
-        if (r) ok++;
-        else fallidos++;
+        if (fila.tipo_analisis === "short-term") {
+          // El camino compartido pide la fila completa; un select extra por
+          // generación es nada contra los ~2 min de la generación misma.
+          const { data: row } = await supabase.from("analisis").select("*").eq("id", fila.id).single();
+          if (!row) { fallidos++; continue; }
+          const r = await generarYPersistirProsaStr({
+            analysisId: fila.id,
+            analysis: row as Record<string, unknown>,
+            supabase,
+            anthropic,
+            trigger: "precalentado",
+          });
+          if (r) ok++;
+          else fallidos++;
+        } else {
+          const r = await generateAiAnalysis(fila.id, supabase, { trigger: "precalentado" });
+          if (r) ok++;
+          else fallidos++;
+        }
       } catch {
         // Una generación que falla NO corta la corrida: lo que quede de
         // presupuesto se usa en la siguiente.
