@@ -40,6 +40,15 @@ cd tools/reels && node_modules/.bin/remotion still BarRacePlusvalia out/f300.png
 La carpeta `out/` y los `.mp4` están en el `.gitignore`: el video es un entregable, no
 un archivo del repo.
 
+## Doctrina de dirección de arte
+
+- **Fondo PLANO, sin degradés, desde el próximo reel.** Decisión post-test en celular
+  (28-ago-2026): los degradés oscuros sufren banding con la compresión de Instagram.
+  El reel de líneas salió con el degradé neón porque se aprobó antes de la regla; no
+  sienta precedente. Ya está parametrizado: el campo `fondo` del tema acepta un color
+  plano (`"#16161E"`) igual que un `linear-gradient(...)` — aplanar un tema nuevo es
+  escribir un hex, sin tocar componentes.
+
 ## De dónde salen los números
 
 De ningún lado que se pueda editar a mano. El dataset se genera:
@@ -83,10 +92,11 @@ recalculan solas.
 Composición `LineasTop5`: 1080×1920, 30fps, 720 frames (24 s) — 20 s de gráfico más un
 acto CTA de 4 s. Layout y timing de `ref/lineas-top5-SAFEZONE-t25.html`.
 
-El color vive aparte, como TEMA (`TEMAS` en `src/lineas.ts`): dos variantes en
-evaluación, `neon` (`ref/color-A-neon.html`) y `light` (`ref/color-C-light.html`). La
-dirección se decide viendo ambos MP4 en el celular; la ganadora quedará como default.
-Cada variante es una composición con nombre propio:
+El color vive aparte, como TEMA (`TEMAS` en `src/lineas.ts`): `neon`
+(`ref/color-A-neon.html`) y `light` (`ref/color-C-light.html`). Tras el test en celular
+**ganó neón** — es `TEMA_POR_DEFECTO` y el default de las props; light sigue
+renderizable por su composición, pero no es default. Cada variante es una composición
+con nombre propio:
 
 ```bash
 cd tools/reels && npm run render:lineas:neon     # out/reel-lineas-neon.mp4

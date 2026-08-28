@@ -15,7 +15,7 @@ import {
   PADB,
   PADL,
   PADR,
-  TEMAS,
+  TEMA_POR_DEFECTO,
   TRAZO_REFERENCIA,
   TRAZO_SERIE,
   W,
@@ -432,7 +432,7 @@ export const LineasTop5: React.FC<PropsLineas> = ({
 
 export const PROPS_LINEAS_POR_DEFECTO = {
   antetitulo: "Las 5 comunas más analizadas en Franco",
-  tema: TEMAS.neon,
+  tema: TEMA_POR_DEFECTO,
   cta: {
     lineas: ["Analiza tu depto", "de inversión", "con Franco."],
     resaltado: "Franco",

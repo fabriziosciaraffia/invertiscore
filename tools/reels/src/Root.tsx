@@ -88,10 +88,9 @@ export const RemotionRoot: React.FC = () => (
         pieDerecho: `plusvalía acumulada ${dataset.meta.subtitulo}`,
       }}
     />
-    {/* Reel 2 en sus dos variantes de color (ref/color-A-neon.html y
-        ref/color-C-light.html). Mismo layout, timing y dataset; solo cambia el tema.
-        La dirección se decide viendo ambos MP4 en el celular; la ganadora quedará
-        como default y la otra seguirá disponible. */}
+    {/* Reel 2. La dirección de color se decidió en celular: ganó NEÓN, que es el
+        tema por defecto (TEMA_POR_DEFECTO). Light queda renderizable por su
+        composición, pero no es default. */}
     <Composition
       id="LineasNeon"
       component={LineasTop5}

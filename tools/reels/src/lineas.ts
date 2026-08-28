@@ -60,11 +60,16 @@ export const INERCIA = 0.06;
 /**
  * Un tema es TODA la decisión de color del reel; el layout, el timing y los textos no
  * saben de temas. Los dos que existen replican los prototipos `ref/color-A-neon.html`
- * y `ref/color-C-light.html` valor por valor — la dirección final se decide viendo los
- * dos MP4 en un celular, y la ganadora quedará como default.
+ * y `ref/color-C-light.html` valor por valor. Tras el test en celular ganó `neon`
+ * (TEMA_POR_DEFECTO); `light` sigue renderizable por su composición.
  */
 export type Tema = {
-  /** Degradado de fondo. Lo comparten el video y la portada. */
+  /**
+   * Fondo del video y la portada. Acepta un degradado o un COLOR PLANO — y desde el
+   * próximo reel va plano por doctrina (ver README): los degradés oscuros sufren
+   * banding con la compresión de Instagram. Este reel salió con degradé, aprobado
+   * antes de la regla.
+   */
   fondo: string;
   /** Texto principal: hook, CTA, wordmark, etiquetas fuera de barra. */
   ink: string;
@@ -121,6 +126,9 @@ export const TEMAS = {
 } as const satisfies Record<string, Tema>;
 
 export type NombreTema = keyof typeof TEMAS;
+
+/** La dirección ganadora del test en celular (28-ago-2026): neón. */
+export const TEMA_POR_DEFECTO: Tema = TEMAS.neon;
 
 /** Grosor de trazo: las series y la referencia punteada. */
 export const TRAZO_SERIE = 2.8;

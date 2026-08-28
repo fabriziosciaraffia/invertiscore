@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill } from "remotion";
 import { loadFont as cargarSerif } from "@remotion/google-fonts/SourceSerif4";
-import { TEMAS, px, type Tema } from "./lineas";
+import { TEMA_POR_DEFECTO, px, type Tema } from "./lineas";
 
 const { fontFamily: SERIF } = cargarSerif();
 
@@ -62,5 +62,5 @@ export const PortadaLineas: React.FC<PropsPortada> = ({ texto, resaltado, tema }
 export const PROPS_PORTADA_POR_DEFECTO = {
   texto: "La comuna que más rindió por plusvalía en la última década.",
   resaltado: "plusvalía",
-  tema: TEMAS.neon,
+  tema: TEMA_POR_DEFECTO,
 };
