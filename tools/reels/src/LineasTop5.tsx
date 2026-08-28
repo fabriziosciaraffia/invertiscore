@@ -404,7 +404,12 @@ export const LineasTop5: React.FC<PropsLineas> = ({
 
       {/* ---------- PIE ---------- */}
       <div style={{ position: "absolute", left: px(28), right: px(28), bottom: px(FOOT_BOTTOM) }}>
-        <div style={{ fontFamily: SERIF, fontSize: px(14), color: COLOR_L.ink }}>
+        {/* Se va con el gráfico: en el acto de cierre la firma la pone el tercer
+            escalón de la cascada, y dos wordmarks a la vez se estorban. La línea de
+            fuente NO se desvanece — la atribución del dato queda en pantalla. */}
+        <div
+          style={{ fontFamily: SERIF, fontSize: px(14), color: COLOR_L.ink, opacity: opContenido }}
+        >
           <span style={{ fontStyle: "italic", fontWeight: 400, color: COLOR_L.tx3 }}>re</span>
           <b style={{ fontWeight: 700 }}>franco</b>
           <span style={{ color: COLOR_L.rojo, fontSize: px(9.5), fontWeight: 600 }}>.ai</span>

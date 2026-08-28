@@ -115,8 +115,9 @@ código: los colores se asignan por posición y los emojis por nombre, ambos com
   de CSS (`Easing.bezier(0.25, 0.1, 0.25, 1)`). El pie NO se desvanece: en el prototipo
   el `.dim` solo alcanza a `.stage` y `.hook`.
 - El CTA cierra con una cascada de tres escalones (0,5 s / 1,05 s / 1,6 s), el último de
-  los cuales es el wordmark. Como el pie tampoco se desvanece, durante el cierre hay dos
-  wordmarks en pantalla: es lo que hace el prototipo.
+  los cuales es el wordmark. El wordmark del pie se desvanece con el gráfico para no
+  duplicarlo — desviación deliberada del prototipo, que los mostraba a los dos. La línea
+  de fuente NO se desvanece: la atribución del dato queda en pantalla todo el cierre.
 - Los emojis (los de comuna y el 🚀 del CTA) salen de la fuente de emoji del sistema, no
   de Remotion. Verificado en el entorno de render.
 - Color: `Config.setColorSpace("bt709")` NO alcanza — deja `color_primaries` y
