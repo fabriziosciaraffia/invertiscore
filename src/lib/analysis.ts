@@ -87,6 +87,43 @@ export function calcDividendo(creditoCLP: number, tasaAnual: number, plazoAnos: 
   return Math.round((creditoCLP * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n)));
 }
 
+/**
+ * Inverso algebraico de `calcDividendo`: a qué precio de compra la cuota del
+ * crédito queda igual al arriendo, con el pie y el plazo dados. Responde la
+ * pregunta de las páginas de comuna — "¿el arriendo cubre la cuota?" —, donde
+ * el único egreso declarado es el dividendo.
+ *
+ * POR QUÉ NO SE USA `calcPrecioParaFlujo` PARA ESTO. Esa función responde por el
+ * flujo COMPLETO y descuenta corretaje y recambio de forma incondicional
+ * (`arriendo × 0,5/24` cada uno = `arriendo/24` ≈ 4,17%), aun con todos sus
+ * parámetros de gasto en cero. Sirve para el precio de flujo neutro del informe
+ * de un depto; acá rompía la promesa visible de la página, porque el dividendo
+ * al precio devuelto quedaba 4,17% BAJO el arriendo. Medido sobre 24
+ * combinaciones de tasa y arriendo: las 24 fallaban con ese mismo sesgo.
+ *
+ * Invariante que defiende `scripts/test-precio-para-cuota.ts`:
+ *   calcDividendo(precio × (1 − pie/100), tasa, plazo) === arriendo,
+ * módulo el redondeo a peso que hace `calcDividendo`.
+ *
+ * Devuelve CLP sin redondear (igual que `calcPrecioParaFlujo`): el redondeo es
+ * decisión de quien presenta, no del motor. 0 cuando la pregunta no tiene
+ * sentido (arriendo o plazo no positivos, o pie de 100% — sin crédito no hay
+ * cuota que igualar).
+ */
+export function calcPrecioParaCuota(
+  arriendoCLP: number, piePct: number, tasaAnual: number, plazoAnos: number
+): number {
+  if (!(arriendoCLP > 0) || !(plazoAnos > 0)) return 0;
+  const financiamiento = (100 - piePct) / 100;
+  if (financiamiento <= 0) return 0;
+  const tasaMensual = tasaAnual / 100 / 12;
+  const n = plazoAnos * 12;
+  // Espejo de las dos ramas de calcDividendo, despejando el crédito.
+  if (tasaMensual === 0) return (arriendoCLP * n) / financiamiento;
+  const factorAmort = tasaMensual / (1 - Math.pow(1 + tasaMensual, -n));
+  return arriendoCLP / (financiamiento * factorAmort);
+}
+
 function saldoCredito(creditoInicial: number, tasaAnual: number, plazoAnos: number, mesActual: number): number {
   const tasaMensual = tasaAnual / 100 / 12;
   const n = plazoAnos * 12;
@@ -237,7 +274,11 @@ export function calcPreEntrega(p: {
  * descuentoParaNeutro <= 0 ⟺ flujoNetoMensual >= 0, módulo redondeos
  * (test: scripts/test-neutro-invariante.ts).
  */
-function calcPrecioParaFlujo(
+// Exportada para que `scripts/test-precio-para-cuota.ts` fije el contraste
+// contra `calcPrecioParaCuota`: son dos preguntas distintas y el test documenta
+// por qué esta no sirve para la página de comuna. Único consumidor de
+// producción: `calcMetrics`, más abajo en este mismo archivo.
+export function calcPrecioParaFlujo(
   flujoObjetivo: number, arriendo: number, ggcc: number, contribucionesAnual: number,
   vacanciaPct: number, gestionPct: number, piePct: number, tasaAnual: number, plazoAnios: number,
   mantencionFijaCLP: number, mantencionTasaAnual: number
