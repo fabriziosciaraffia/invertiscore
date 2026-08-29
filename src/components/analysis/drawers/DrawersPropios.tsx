@@ -35,6 +35,7 @@ import {
   VViz,
   VCierre,
   VFuente,
+  Thermo,
   Fall,
   type FallRow,
   CmpPares,
@@ -84,15 +85,9 @@ function cmpMostrado(a: number, b: number): "sobre" | "en" | "bajo" {
   const rb = round1(b);
   return ra > rb ? "sobre" : ra < rb ? "bajo" : "en";
 }
-// Consecuencia del multiplicador tras el stress "0% plano", por round1(mult) — tres salidas.
-// UNA sola semántica desde F2 (motor-supuestos): EQUITY para LTR y STR. multiplicador =
-// equity/aportado → ×1 = break-even (recuperas lo puesto), <1 terminas con menos, <0 en rojo.
-function consecuenciaMultEquity(m: number): string {
-  const r = round1(m);
-  if (r >= 1) return "seguirías cerrando a favor, pero buena parte de la ganancia se apoya en ese supuesto";
-  if (r >= 0) return "terminarías con menos de lo que pusiste";
-  return "no recuperarías ni lo aportado: el resultado neto queda en rojo";
-}
+// (consecuenciaMultEquity murió con la conversión de plusvalía: era el único consumidor
+// y traducía un MULTIPLICADOR a palabras. Los dos cierres ahora hablan en pesos contra
+// lo aportado — la misma vara que dibujan las barras —, así que la traducción sobra.)
 
 // Monto completo respetando toggle CLP/UF.
 function fmtMoney(n: number, currency: Currency, valorUF: number): string {
@@ -1018,15 +1013,169 @@ export function DrawerPatrimonioLtr({
   );
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// PLUSVALÍA · las dos viz compartidas (LTR y STR son gemelos: misma forma, mismo
+// dato, distinta derivación del aporte). Viven acá arriba para que no puedan
+// divergir — misma razón que EscaleraPie y EstructuraComparada.
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * VIZ 1 · el histórico de la comuna contra el benchmark real, en un EJE.
+ *
+ * Por qué eje y no dos barras (verificado contra el parque, 684 hallazgos):
+ *  · El umbral es 3,0% en el 100% de los casos y la proyección Franco es
+ *    también 3% (PLUSVALIA_REF_REAL vs PLUSVALIA_PROYECCION_ANUAL: conceptos
+ *    distintos que HOY coinciden). Dibujar "proyección" y "umbral" como dos
+ *    cosas sería dibujar dos veces la misma línea.
+ *  · 163/684 (24%) tienen histórico NEGATIVO: una barra desde cero no puede
+ *    representarlo.
+ *  · 343/684 (50%) caen a ±0,35 pts del 3%: desde cero, 2,9 y 3,0 son la misma
+ *    barra — es la regla de uso de `Bars` escrita en FASE 4.2.
+ * El eje resuelve los tres: posición legible con diferencias de un dígito,
+ * dominio que baja bajo cero, y UNA sola referencia.
+ */
+function PlusvaliaEje({
+  anual,
+  umbral,
+  gapPts,
+  tieneData,
+  comunaLabel,
+  cobertura,
+  nivelUfM2,
+  nivelPeriodo,
+}: {
+  anual: number;
+  umbral: number;
+  gapPts: number;
+  tieneData: boolean;
+  comunaLabel: string;
+  cobertura?: string;
+  nivelUfM2?: number;
+  nivelPeriodo?: string;
+}) {
+  // Dominio: siempre incluye el cero y la referencia, con aire a los dos lados.
+  const lo = Math.min(anual, 0) - 0.7;
+  const hi = Math.max(anual, umbral) + 0.9;
+  const pos = (x: number) => ((x - lo) / (hi - lo)) * 100;
+  const negativo = round1(anual) < 0;
+  const g = round1(gapPts);
+  // GRUPO A — la palabra sale de la aritmética sobre lo MOSTRADO (ambas a 1 decimal),
+  // no del crudo: con 2,96% vs 3,0% el eje dibuja "3,0 vs 3,0" y el texto debe
+  // concordar con lo que el lector ve.
+  const rel = cmpMostrado(anual, umbral);
+
+  return (
+    <VViz t="Lo que hizo tu comuna contra el benchmark de largo plazo">
+      <Thermo
+        invertido
+        pct={pos(anual)}
+        refPct={pos(umbral)}
+        ceroPct={pos(0)}
+        legend={[
+          { k: tieneData ? comunaLabel : "referencia GS", v: pctStr(anual) },
+          { k: "apreciación real (Chile)", v: pctStr(umbral) },
+          { k: "brecha", v: `${g > 0 ? "+" : ""}${dec1(g)} pts` },
+        ]}
+      />
+      <VizPie>
+        Cifras en UF: ambas ya son reales, con la inflación descontada. El {pctStr(umbral)} es el
+        benchmark histórico de largo plazo
+        {negativo
+          ? " — y tu comuna quedó bajo cero: no es que ganara menos que el mercado, es que perdió valor real."
+          : rel === "bajo"
+            ? " — bajo él, tu comuna igual ganó valor real, solo menos que el mercado."
+            : rel === "en"
+              ? " — y tu comuna se movió justo en esa línea."
+              : " — y tu comuna lo superó: ganó valor real por sobre el promedio del mercado."}{" "}
+        Franco proyecta ese mismo {pctStr(umbral)} hacia adelante: ni premia ni castiga a tu comuna
+        por su historia.
+        {!tieneData && (
+          <>
+            {" "}No hay histórico propio de {comunaLabel}: la marca es el promedio del Gran Santiago,
+            un supuesto conservador sin dato comunal.
+            {cobertura === "solo_nivel" && nivelUfM2 != null && (
+              <>
+                {" "}Sí sabemos a qué precio se vende hoy: UF {dec1(nivelUfM2)}/m² en departamentos
+                nuevos ({nivelPeriodo}) — precio de hoy, no trayectoria.
+              </>
+            )}
+          </>
+        )}
+      </VizPie>
+    </VViz>
+  );
+}
+
+/**
+ * VIZ 2 · el retorno con y sin plusvalía, contra lo que pusiste — EN PESOS.
+ *
+ * Reemplaza el multiplicador abstracto (×1,5) por magnitudes comparables con algo
+ * que el lector reconoce: su propio aporte. Acá las barras desde cero SÍ
+ * corresponden — medido sobre el parque, patrimonio/aportado va de 0,75 a 29,3
+ * con mediana 1,51 (órdenes visibles). En el 8% de los casos el ratio cae entre
+ * 0,88 y 1,12 y las barras quedan casi iguales: ahí la lectura la carga el valor
+ * impreso al costado, no el largo.
+ */
+function PlusvaliaRetorno({
+  aportadoCLP,
+  patrimonioCLP,
+  plusvaliaProj,
+  currency,
+  valorUF,
+}: {
+  aportadoCLP: number;
+  patrimonioCLP: number;
+  plusvaliaProj: number;
+  currency: Currency;
+  valorUF: number;
+}) {
+  if (!(aportadoCLP > 0)) return null;
+  const sinPlus = patrimonioCLP - plusvaliaProj;
+  // Sin plusvalía proyectada (o con proyección nula), la tercera barra sería un
+  // clon de la segunda: no se dibuja en vez de fingir un contrafáctico.
+  const hayContrafactual = plusvaliaProj > 0;
+  const techo = Math.max(aportadoCLP, patrimonioCLP, hayContrafactual ? sinPlus : 0);
+  if (!(techo > 0)) return null;
+  // Un contrafáctico NEGATIVO (sin la valorización proyectada terminas en rojo) es un
+  // caso real del parque: la barra no puede bajar de cero, pero el VALOR sí dice la
+  // verdad — clamparlo a "$0" lo disfrazaría de break-even.
+  const money = (n: number) => (n < 0 ? "−" : "") + fmtCompact(Math.abs(n), currency, valorUF);
+  const barra = (n: number) => (Math.max(n, 0) / techo) * 100;
+
+  return (
+    <VViz t="Tu parte a 10 años, contra lo que pusiste">
+      <Bars
+        rows={[
+          { k: "Lo que pusiste", v: money(aportadoCLP), pct: barra(aportadoCLP), neg: aportadoCLP < 0 },
+          // Sin `destacada`: el fill rojo era destaque de SERIE, y sobre una cifra de
+          // patrimonio POSITIVA el Signal Red contradice la Capa 1 (rojo = negativo
+          // crítico). El peso de la fila lo lleva el dato, no el color.
+          {
+            k: "Con la plusvalía proyectada",
+            v: money(patrimonioCLP),
+            pct: barra(patrimonioCLP),
+            neg: patrimonioCLP < 0,
+          },
+          ...(hayContrafactual
+            ? [{ k: "Si la comuna no se aprecia", v: money(sinPlus), pct: barra(sinPlus), neg: sinPlus < 0 }]
+            : []),
+        ]}
+      />
+    </VViz>
+  );
+}
+
 // 4 · PLUSVALÍA LTR — procedencia sin eufemismo + stress "si fuera 0%" (multiplicador, no TIR recomputada)
 export function DrawerPlusvaliaLtr({
   hallazgo,
   results,
+  currency,
   valorUF,
   comuna,
 }: {
   hallazgo: HallazgoPlusvalia;
   results: FullAnalysisResult;
+  currency: Currency;
   valorUF: number;
   comuna: string;
 }) {
@@ -1043,7 +1192,6 @@ export function DrawerPlusvaliaLtr({
   const anual = v.anualizadaPct;
   const umbral = v.refPct;
   const comunaLabel = comuna || "la comuna";
-  const cmp = cmpMostrado(anual, umbral); // GRUPO A — palabra desde la aritmética sobre lo mostrado
   const historicoNegativo = round1(anual) < 0; // GRUPO C — el histórico ya está cayendo
 
   // Stress "si 0%": quitar plusvalía_proj. multActual = estado (hallazgo); multSinPlus = escenario
@@ -1052,6 +1200,9 @@ export function DrawerPlusvaliaLtr({
   const plusvaliaProj = Math.max((exit?.valorVenta ?? 0) - vmFrancoCLP, 0);
   const multActual = pat.valor.multiplicador;
   const multSinPlus = pat.valor.aportadoCLP > 0 ? (pat.valor.patrimonioCLP - plusvaliaProj) / pat.valor.aportadoCLP : 0;
+  // El cierre habla en PESOS (misma vara que las barras); los multiplicadores siguen
+  // vivos solo como gate anti-no-op del contrafáctico.
+  const sinPlusCLP = pat.valor.patrimonioCLP - plusvaliaProj;
   // GRUPO C anti-no-op: si el contrafáctico no mueve el multiplicador a 1 decimal, NO se
   // narra "cae de X a Y" — se reemplaza por la constatación de que el retorno no descansa ahí.
   const contrafactualVisible = round1(multActual) !== round1(multSinPlus);
@@ -1065,7 +1216,7 @@ export function DrawerPlusvaliaLtr({
 
   return (
     <div>
-      <Lead>
+      <VProsa>
         La{" "}
         <Jerga
           term="plusvalía"
@@ -1075,72 +1226,77 @@ export function DrawerPlusvaliaLtr({
         {historicoNegativo
           ? `suele ser el motor grande del retorno a largo plazo — pero acá el histórico juega en contra: ${comunaLabel} viene retrocediendo un ${pctStr(Math.abs(anual))} real anual.`
           : "es el motor que más pesa en tu retorno a largo plazo. Por eso conviene mirar de dónde sale el número y qué tan garantizado está."}
-      </Lead>
+      </VProsa>
 
-      <Chips
-        label={tieneData ? `Histórico de ${comunaLabel}` : "Apreciación de referencia"}
-        cells={[
-          { k: tieneData ? "Se valorizó" : "Referencia (GS)", v: pctStr(anual), small: "anual" },
-          { k: "Umbral real", v: pctStr(umbral), small: "anual" },
-        ]}
-        foot={`${pctStr(anual)} anual — ${cmp} el ${pctStr(umbral)} que marca la apreciación real (valor por sobre inflación).`}
+      <PlusvaliaEje
+        anual={anual}
+        umbral={umbral}
+        gapPts={v.gapPts}
+        tieneData={tieneData}
+        comunaLabel={comunaLabel}
+        cobertura={v.cobertura}
+        nivelUfM2={v.nivelUfM2}
+        nivelPeriodo={v.nivelPeriodo}
       />
 
-      <Box label="De dónde sale">
-        {tieneData ? (
+      <PlusvaliaRetorno
+        aportadoCLP={pat.valor.aportadoCLP}
+        patrimonioCLP={pat.valor.patrimonioCLP}
+        plusvaliaProj={plusvaliaProj}
+        currency={currency}
+        valorUF={valorUF}
+      />
+
+      {/* CIERRE ÚNICO — antes eran DOS Box apilados ("De dónde sale" + el stress).
+          La procedencia bajó al VFuente, la advertencia de referencia-no-garantía al
+          pie del eje, y el stress queda como el cierre. En PESOS, no en
+          multiplicador: es la misma vara que muestran las barras de arriba. */}
+      {/* Título ROTATIVO del vocabulario: "Ojo con el supuesto" / "Qué pasa si se
+          detiene" eran los rótulos de las cajas viejas. Las dos ramas INTERPRETAN
+          (no accionan), así que ambas son "Qué significa". */}
+      <VCierre titulo="Qué significa">
+        {contrafactualVisible ? (
           <>
-            {fuenteHist} (de {comunaLabel}). Es una{" "}
-            <b>referencia histórica, no una garantía a futuro</b>: {comunaLabel}{" "}
-            {historicoNegativo ? "venía cayendo a ese ritmo" : "se movió con ese ritmo"} la última década, y nada
-            asegura que {historicoNegativo ? "revierta la tendencia" : "lo repita"} los próximos diez años.
+            {historicoNegativo
+              ? `Pese al retroceso histórico, la proyección a 10 años igual valoriza el depto — es un supuesto del modelo, no el histórico de ${comunaLabel}. `
+              : ""}
+            {sinPlusCLP <= 0 ? (
+              <>
+                <mark>
+                  Si {comunaLabel} deja de apreciarse, no recuperas ni lo aportado
+                </mark>
+                : de los {fmtCompact(pat.valor.aportadoCLP, currency, valorUF)} que pusiste, el
+                resultado neto queda en rojo.
+              </>
+            ) : (
+              <>
+                <mark>
+                  Si {comunaLabel} deja de apreciarse, tu parte cae a{" "}
+                  {fmtCompact(sinPlusCLP, currency, valorUF)} sobre los{" "}
+                  {fmtCompact(pat.valor.aportadoCLP, currency, valorUF)} que pusiste
+                </mark>
+                {sinPlusCLP < pat.valor.aportadoCLP
+                  ? " — terminarías con menos de lo que aportaste."
+                  : ", y buena parte de lo que ganas se apoya en ese supuesto."}
+              </>
+            )}
+            {historicoNegativo
+              ? " Y quedarse plana ya sería mejor que su tendencia real: no compres asumiendo que la comuna se da vuelta."
+              : " Es el supuesto más frágil de todo el análisis."}
           </>
         ) : (
           <>
-            No hay histórico propio de {comunaLabel}: usamos el <b>promedio del Gran Santiago</b> (~{pctStr(anual)}{" "}
-            real) como referencia — supuesto conservador, sin dato comunal.
-            {/* F2 · cobertura "solo_nivel": la comuna SÍ tiene precio actual aunque no
-                tenga historia. Decirlo evita que el lector concluya "no hay datos de
-                esta comuna". El nivel va como frase aparte — nunca fundido con el %
-                de arriba, que mide otra cosa. Tolera undefined (filas pre-F2). */}
-            {v.cobertura === "solo_nivel" && v.nivelUfM2 != null && (
-              <>
-                {" "}Sí sabemos a qué precio se está vendiendo hoy: <b>UF {dec1(v.nivelUfM2)}/m²</b>{" "}
-                en departamentos nuevos ({v.nivelPeriodo}). Es el precio de hoy, no una trayectoria.
-              </>
-            )}
+            <mark>La proyección no le carga retorno relevante a la valorización</mark>: lo que ves en
+            TIR y patrimonio se sostiene del arriendo y la amortización.
           </>
-        )}{" "}
-        Hacia adelante es otra cosa: la proyección de patrimonio y TIR usa{" "}
-        <b>{PROYECCION_FRANCO_PCT} anual parejo</b> (la proyección estándar Franco a futuro), no este histórico —
-        el histórico es el contexto de riesgo sobre esa apuesta.
-      </Box>
+        )}
+      </VCierre>
 
-      {historicoNegativo ? (
-        <Box label="Ojo con el supuesto" tone="red">
-          {contrafactualVisible ? (
-            <>
-              Pese al retroceso histórico, la proyección a 10 años igual valoriza el depto — es un supuesto del
-              modelo, no el histórico de {comunaLabel}. Si la comuna solo se queda plana (0% real), tu
-              multiplicador cae de <b>{multStr(multActual)} a {multStr(multSinPlus)}</b>: {consecuenciaMultEquity(multSinPlus)}.
-              Y quedarse plana ya sería mejor que su tendencia real. No compres asumiendo que la comuna se da vuelta.
-            </>
-          ) : (
-            <>La proyección no le carga retorno relevante a la valorización: lo que ves en TIR y patrimonio se sostiene del arriendo y la amortización.</>
-          )}
-        </Box>
-      ) : (
-        <Box label="Qué pasa si se detiene" tone="red">
-          {contrafactualVisible ? (
-            <>
-              Si la comuna dejara de apreciarse (0% real), tu multiplicador a 10 años cae de{" "}
-              <b>{multStr(multActual)} a {multStr(multSinPlus)}</b>: {consecuenciaMultEquity(multSinPlus)}. Es el
-              supuesto más frágil de todo el análisis.
-            </>
-          ) : (
-            <>La proyección no le carga retorno relevante a la valorización: lo que ves en TIR y patrimonio se sostiene del arriendo y la amortización.</>
-          )}
-        </Box>
-      )}
+      <VFuente>
+        {fuenteHist}
+        {tieneData ? ` · ${comunaLabel}` : ""} · referencia histórica, no garantía futura · la
+        proyección a futuro usa {PROYECCION_FRANCO_PCT} anual parejo
+      </VFuente>
     </div>
   );
 }
@@ -1608,10 +1764,14 @@ export function DrawerPatrimonioStr({
 export function DrawerPlusvaliaStr({
   hallazgo,
   results,
+  currency,
+  valorUF,
   comuna,
 }: {
   hallazgo: HallazgoPlusvalia;
   results: ShortTermResult;
+  currency: Currency;
+  valorUF: number;
   comuna: string;
 }) {
   const v = hallazgo.valor;
@@ -1628,13 +1788,15 @@ export function DrawerPlusvaliaStr({
   const umbral = v.refPct;
   const comunaLabel = comuna || "la comuna";
   const cajaNegativa = exit.flujoAcumuladoAlVender < 0;
-  const cmp = cmpMostrado(anual, umbral); // GRUPO A
   const historicoNegativo = round1(anual) < 0; // GRUPO C
 
   const precioCLP = results.pie + results.montoCredito;
   const plusvaliaProj = Math.max(exit.valorVenta - precioCLP, 0);
   const multActual = pat.valor.multiplicador; // estado (hallazgo)
   const multSinPlus = pat.valor.aportadoCLP > 0 ? (pat.valor.patrimonioCLP - plusvaliaProj) / pat.valor.aportadoCLP : 0; // escenario derivado (misma base cruda)
+  // El cierre habla en PESOS (misma vara que las barras); los multiplicadores siguen
+  // vivos solo como gate anti-no-op del contrafáctico.
+  const sinPlusCLP = pat.valor.patrimonioCLP - plusvaliaProj;
   // GRUPO C anti-no-op: round1(hallazgo) vs round1(derivado).
   const contrafactualVisible = round1(multActual) !== round1(multSinPlus);
   const tieneData = v.tieneData;
@@ -1655,7 +1817,7 @@ export function DrawerPlusvaliaStr({
 
   return (
     <div>
-      <Lead>
+      <VProsa>
         {historicoNegativo ? (
           <>
             La{" "}
@@ -1673,68 +1835,75 @@ export function DrawerPlusvaliaStr({
               : "aporta al retorno a largo plazo. Conviene mirar de dónde sale el número y qué tan garantizado está."}
           </>
         )}
-      </Lead>
+      </VProsa>
 
-      <Chips
-        label={tieneData ? `Histórico de ${comunaLabel}` : "Apreciación de referencia"}
-        cells={[
-          { k: tieneData ? "Se valorizó" : "Referencia (GS)", v: pctStr(anual), small: "anual" },
-          { k: "Umbral real", v: pctStr(umbral), small: "anual" },
-        ]}
-        foot={`${pctStr(anual)} anual — ${cmp} el ${pctStr(umbral)} que marca la apreciación real (valor por sobre inflación).`}
+      <PlusvaliaEje
+        anual={anual}
+        umbral={umbral}
+        gapPts={v.gapPts}
+        tieneData={tieneData}
+        comunaLabel={comunaLabel}
+        cobertura={v.cobertura}
+        nivelUfM2={v.nivelUfM2}
+        nivelPeriodo={v.nivelPeriodo}
       />
 
-      <Box label="De dónde sale">
-        {tieneData ? (
+      <PlusvaliaRetorno
+        aportadoCLP={pat.valor.aportadoCLP}
+        patrimonioCLP={pat.valor.patrimonioCLP}
+        plusvaliaProj={plusvaliaProj}
+        currency={currency}
+        valorUF={valorUF}
+      />
+
+      {/* CIERRE ÚNICO — espejo exacto del LTR: la procedencia al VFuente, la
+          advertencia al pie del eje, el stress en PESOS como cierre. */}
+      {/* Título ROTATIVO del vocabulario: "Ojo con el supuesto" / "Qué pasa si se
+          detiene" eran los rótulos de las cajas viejas. Las dos ramas INTERPRETAN
+          (no accionan), así que ambas son "Qué significa". */}
+      <VCierre titulo="Qué significa">
+        {contrafactualVisible ? (
           <>
-            {fuenteHist} (de {comunaLabel}). <b>Referencia histórica, no garantía futura.</b>{" "}
-            {comunaLabel} {historicoNegativo ? "venía cayendo a ese ritmo" : "se movió con ese ritmo"}{" "}
-            la última década; el modelo asume que {historicoNegativo ? "se revierte" : "lo repite"}, pero es un supuesto.
+            {historicoNegativo
+              ? `Pese al retroceso histórico, la proyección a 10 años igual valoriza el depto — es un supuesto del modelo, no el histórico de ${comunaLabel}. `
+              : cajaNegativa
+                ? "Acá está el nervio del deal: "
+                : ""}
+            {sinPlusCLP <= 0 ? (
+              <>
+                <mark>
+                  Si {comunaLabel} deja de apreciarse, no recuperas ni lo aportado
+                </mark>
+                : de los {fmtCompact(pat.valor.aportadoCLP, currency, valorUF)} que pusiste, el
+                resultado neto queda en rojo.
+              </>
+            ) : (
+              <>
+                <mark>
+                  Si {comunaLabel} deja de apreciarse, tu parte cae a{" "}
+                  {fmtCompact(sinPlusCLP, currency, valorUF)} sobre los{" "}
+                  {fmtCompact(pat.valor.aportadoCLP, currency, valorUF)} que pusiste
+                </mark>
+                {sinPlusCLP < pat.valor.aportadoCLP
+                  ? " — terminarías con menos de lo que aportaste."
+                  : ", y buena parte de lo que ganas se apoya en ese supuesto."}
+              </>
+            )}
+            {cierreCaja}
           </>
         ) : (
           <>
-            No hay histórico propio de {comunaLabel}: usamos el <b>promedio del Gran Santiago</b> (~{pctStr(anual)}{" "}
-            real) como referencia — supuesto conservador, sin dato comunal.
-            {/* F2 · espejo exacto del drawer LTR (misma cobertura, mismo copy). */}
-            {v.cobertura === "solo_nivel" && v.nivelUfM2 != null && (
-              <>
-                {" "}Sí sabemos a qué precio se está vendiendo hoy: <b>UF {dec1(v.nivelUfM2)}/m²</b>{" "}
-                en departamentos nuevos ({v.nivelPeriodo}). Es el precio de hoy, no una trayectoria.
-              </>
-            )}
+            <mark>La proyección no le carga retorno relevante a la valorización</mark>: lo que ves en
+            TIR y patrimonio se sostiene del arriendo y la amortización.
           </>
-        )}{" "}
-        Hacia adelante, la proyección de patrimonio y TIR usa <b>{PROYECCION_FRANCO_PCT} anual parejo</b> (la
-        proyección estándar Franco a futuro), no este histórico — el histórico es el contexto de riesgo sobre esa apuesta.
-      </Box>
+        )}
+      </VCierre>
 
-      {historicoNegativo ? (
-        <Box label="Ojo con el supuesto" tone="red">
-          {contrafactualVisible ? (
-            <>
-              Pese al retroceso histórico, la proyección a 10 años igual valoriza el depto — es un supuesto del
-              modelo, no el histórico de {comunaLabel}. Si la comuna solo se queda plana (0% real), tu
-              multiplicador cae de <b>{multStr(multActual)} a {multStr(multSinPlus)}</b>: {consecuenciaMultEquity(multSinPlus)}.
-              Y quedarse plana ya sería mejor que su tendencia real. No compres asumiendo que la comuna se da vuelta.
-              {cierreCaja}
-            </>
-          ) : (
-            <>La proyección no le carga retorno relevante a la valorización: lo que ves en TIR y patrimonio se sostiene del arriendo y la amortización.</>
-          )}
-        </Box>
-      ) : (
-        <Box label="Qué pasa si se detiene" tone="red">
-          {contrafactualVisible ? (
-            <>
-              {cajaNegativa ? "Acá está el nervio del deal: si" : "Si"} la comuna no se aprecia (0% real), tu
-              multiplicador cae de <b>{multStr(multActual)} a {multStr(multSinPlus)}</b>: {consecuenciaMultEquity(multSinPlus)}.
-              {cierreCaja}
-            </>
-          ) : (
-            <>La proyección no le carga retorno relevante a la valorización: lo que ves en TIR y patrimonio se sostiene del arriendo y la amortización.</>
-          )}
-        </Box>
-      )}
+      <VFuente>
+        {fuenteHist}
+        {tieneData ? ` · ${comunaLabel}` : ""} · referencia histórica, no garantía futura · la
+        proyección a futuro usa {PROYECCION_FRANCO_PCT} anual parejo
+      </VFuente>
     </div>
   );
 }

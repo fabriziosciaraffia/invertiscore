@@ -397,7 +397,7 @@ export function DrawerContentSTR({
   }
   if (activeKey === "plusvalia") {
     const h = hById<HallazgoPlusvalia>("plusvalia");
-    return h ? <DrawerPlusvaliaStr hallazgo={h} results={results} comuna={comuna} /> : faltaHallazgo;
+    return h ? <DrawerPlusvaliaStr hallazgo={h} results={results} currency={currency} valorUF={valorUF} comuna={comuna} /> : faltaHallazgo;
   }
   if (activeKey === "estructuraCostos") {
     const h = hById<HallazgoEstructuraCostosStr>("estructura_costos_str");

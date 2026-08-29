@@ -1829,6 +1829,7 @@ export function AnalysisDrawer({
           <DrawerPlusvaliaLtr
             hallazgo={plusvaliaHallazgo}
             results={results}
+            currency={currency}
             valorUF={valorUF}
             comuna={comuna ?? (inputData.comuna || "la comuna")}
           />

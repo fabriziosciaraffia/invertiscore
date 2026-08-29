@@ -61,11 +61,17 @@ export function VFuente({ children }: { children: ReactNode }) {
 export function Thermo({
   pct,
   refPct,
+  ceroPct,
   legend,
   invertido,
 }: {
   pct: number;
   refPct?: number | null;
+  /** Posición del CERO cuando la escala baja bajo cero (goal plusvalía): sin este
+   *  hito, una marca a la izquierda de la referencia no distingue "creció menos"
+   *  de "retrocedió". Se omite cuando el dominio arranca en 0 — ahí el cero es el
+   *  borde y dibujarlo sería ruido. */
+  ceroPct?: number | null;
   legend: [{ k: string; v: string }, { k: string; v: string }, { k: string; v: string }];
   /** true ⇒ el degradado corre rojo→ámbar→verde (la calidad CRECE hacia la
    *  derecha: ocupación, ingresos). El default (verde a la izquierda) es para
@@ -77,6 +83,7 @@ export function Thermo({
   return (
     <div className="thermo">
       <div className={`thermo-track${invertido ? " inv" : ""}`}>
+        {ceroPct != null && <div className="thermo-cero" style={{ left: `${clamp(ceroPct)}%` }} />}
         {refPct != null && <div className="thermo-ref" style={{ left: `${clamp(refPct)}%` }} />}
         <div className="thermo-mark" style={{ left: `${clamp(pct)}%` }} />
       </div>
@@ -151,7 +158,18 @@ export function Fall({ rows, total }: { rows: FallRow[]; total?: { k: string; v:
   );
 }
 
-export type BarRow = { k: string; v: string; pct: number; destacada?: boolean };
+export type BarRow = {
+  k: string;
+  v: string;
+  pct: number;
+  /** Destaca el FILL de la barra (Signal Red). Es criticidad de la SERIE — la usa
+   *  el equilibrio STR para "lo que necesitas". Ya NO pinta el numeral. */
+  destacada?: boolean;
+  /** El NUMERAL en Signal Red. Lo decide el SIGNO (Capa 1, uso #2: monetario
+   *  negativo), no el destaque: una serie destacada con valor positivo mantiene su
+   *  cifra en Ink. */
+  neg?: boolean;
+};
 
 /** Barras comparativas: una fila por término de comparación.
  *
@@ -176,9 +194,7 @@ export function Bars({ rows }: { rows: BarRow[] }) {
               }}
             />
           </div>
-          <span className="bv" style={r.destacada ? { color: "var(--signal-red)" } : undefined}>
-            {r.v}
-          </span>
+          <span className={`bv${r.neg ? " neg" : ""}`}>{r.v}</span>
         </div>
       ))}
     </div>

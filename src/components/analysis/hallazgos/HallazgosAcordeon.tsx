@@ -164,7 +164,7 @@ export function HallazgosAcordeon({
 /** CSS del acordeón + vocabulario + primitivas. `dangerouslySetInnerHTML` por la
  *  misma razón que DocTokens: un template literal como children hidrata distinto
  *  server/cliente. Los tokens `--doc-*` los aporta el DocumentoFrame. */
-function TokensHallazgos() {
+export function TokensHallazgos() {
   return (
     <style
       dangerouslySetInnerHTML={{
@@ -240,6 +240,9 @@ function TokensHallazgos() {
       .thermo-mark{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--doc-tx);
         border:3px solid var(--doc-paper);transform:translate(-50%,-50%)}
       .thermo-ref{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--doc-tx3)}
+      /* Hito del CERO (goal plusvalía): más tenue que la referencia — es un punto de
+         lectura, no el umbral contra el que se compara. */
+      .thermo-cero{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--doc-tx4)}
       .thermo-legend{display:flex;justify-content:space-between;margin-top:9px;font-family:var(--font-mono, ui-monospace);
         font-size:9.5px;color:var(--doc-tx4);letter-spacing:.06em}
       .thermo-legend b{color:var(--doc-tx2);display:block;font-size:12px;margin-top:2px}
@@ -261,6 +264,9 @@ function TokensHallazgos() {
       .bar-track{height:16px;background:var(--doc-paper3);border-radius:2px;overflow:hidden}
       .bar-fill{height:100%;border-radius:2px}
       .bar-row .bv{font-family:var(--font-mono, ui-monospace);font-size:12.5px;font-weight:700;white-space:nowrap;color:var(--doc-tx)}
+      /* Convención del informe (Capa 1): el rojo del NUMERAL lo decide el signo, no
+         el destaque de la serie. */
+      .bar-row .bv.neg{color:var(--signal-red)}
       .spark{width:100%;height:110px;display:block}
       .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:6px}
       .tbl{border-collapse:collapse;width:100%;min-width:390px}
@@ -279,6 +285,11 @@ function TokensHallazgos() {
         color:var(--doc-tx4);margin-bottom:16px}
       /* Pie de diagrama: el texto que describe el gráfico cuelga de él, no es un cierre. */
       .viz-pie{margin:-10px 0 18px;font-size:12.5px;line-height:1.7;color:var(--doc-tx3);max-width:62ch}
+      /* El −10px de arriba existe para que el pie CUELGUE del diagrama (waterfall,
+         cadena). Bajo un Thermo no sirve: su leyenda es de dos líneas y el pie se
+         metía dentro de la fila de valores (el 3,0% central quedaba en el párrafo).
+         Se neutraliza SOLO en ese vecindario, sin tocar los cuerpos donde funciona. */
+      .thermo + .viz-pie{margin-top:8px}
       .viz-pie b{color:var(--doc-tx2);font-weight:600}
 
       /* ===== FASE 4.1 · MATRIZ DE PALANCAS ===== */
