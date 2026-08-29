@@ -51,6 +51,14 @@ const F_TAG = px(9.5) / 29;
  *  útil (factor ≈ 2,67) → ~91 px, opacidad 0,15, anclada a la derecha DENTRO del
  *  gráfico. Reemplaza el 150 px centrado de la v8. */
 const AGUA_FS = 91;
+/**
+ * Cierre destacado, calibrado contra las etiquetas de línea: el valor más grande de
+ * las etiquetas mide 33 (mono 700) y el hook chico 67 — el rótulo va a 58 (domina el
+ * freeze sin disputarle el rango al hook) y el corchete a 7 (más grueso que la línea
+ * sin crédito, 6, y por debajo de la protagonista, 9: cierra sin tapar cifras).
+ */
+const ROTULO_FS = 58;
+const CORCHETE_TRAZO = 7;
 
 export type PropsReel2 = {
   /** Todo sale del dataset del backtest — ninguna cifra se escribe acá. */
@@ -66,8 +74,6 @@ export type PropsReel2 = {
   tirSinCreditoPct: number;
   fuente: string;
   tema: Tema;
-  /** true = el eje X arranca en ~2 años y se comprime con la carrera (reel 1). */
-  ejeMovil: boolean;
 };
 
 export const Reel2Palanca: React.FC<PropsReel2> = ({
@@ -82,7 +88,6 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   tirSinCreditoPct,
   fuente,
   tema,
-  ejeMovil,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -105,9 +110,9 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   );
   const yMax = ysEje[Math.min(Math.round(el * 60), ysEje.length - 1)];
 
-  // Dominio X: fijo (v8) o móvil con la mecánica del reel 1 — la punta de las líneas
-  // cabalga el borde derecho mientras el eje se comprime.
-  const xmax = ejeMovil ? Math.max(t, XMIN_MESES) : NM;
+  // Dominio X móvil, la mecánica del reel 1: la punta de las líneas cabalga el borde
+  // derecho mientras el eje se comprime. Única versión tras el A/B.
+  const xmax = Math.max(t, XMIN_MESES);
   const X = (tt: number) => PLOT.x0 + (tt / xmax) * (PLOT.x1 - PLOT.x0);
   const Y = (v: number) => PLOT.y1 - (v / yMax) * (PLOT.y1 - PLOT.y0);
 
@@ -125,8 +130,11 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   const pSube = interpolate(el, [T_HOOK_SUBE, T_HOOK_SUBE + DUR_SUBIDA], [0, 1], {
     easing: SUAVE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
-  const hookTopFinal = HOOK_TOP_CHICO + px(11.5) + px(9); // bajo el antetítulo
-  const hookTop = 845 + (hookTopFinal - 845) * pSube;
+  // 4 líneas de 78 px × 1.24 ≈ 387 de alto: el centrado vertical parte en ~766.
+  const hookTop = 766 + (HOOK_TOP_CHICO - 766) * pSube;
+  // Las líneas 3-4 ya fueron leídas en los 3,5 s: se desvanecen durante la subida
+  // para no competir con la carrera desde la safe zone.
+  const opLineas34 = 1 - pSube;
   const hookFs = 78 + (HOOK_FS_CHICO - 78) * pSube;
   const hookLh = 1.24 + (HOOK_LH_CHICO - 1.24) * pSube;
 
@@ -159,11 +167,13 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
     if (tags[i].y - tags[i - 1].y < minGap) tags[i].y = tags[i - 1].y + minGap;
   }
 
-  const opCorchete = interpolate(el, [T_FIN, T_FIN + 0.6], [0, 1], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  // Cierre: el corchete se DIBUJA (crece del centro a los extremos, 0,5 s) y el
+  // rótulo entra después con fade + escala leve 0,92 → 1. Registro sobrio.
+  const pCorchete = interpolate(el, [T_FIN, T_FIN + 0.5], [0, 1], {
+    easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
-  const opPalancaLbl = interpolate(el, [T_FIN + 0.4, T_FIN + 1.1], [0, 0.92], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  const pRotulo = interpolate(el, [T_FIN + 0.55, T_FIN + 1.05], [0, 1], {
+    easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
   const opMarca = el > T_HOOK_SUBE + 0.5 && t < 6 ? 1 : 0;
 
@@ -185,7 +195,8 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   const xCorchete = X(NM) + 12;
   const yT = Y(deptoEn(NM));
   const yB = Y(puroEn(NM));
-  const tl = 100;
+  const yMedio = (yT + yB) / 2;
+  const semiAlto = (yB - yT) / 2;
 
   // Grilla con el desvanecido superior de la v8.
   const grilla: { v: number; y: number; op: number }[] = [];
@@ -199,18 +210,6 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
     <AbsoluteFill style={{ backgroundColor: tema.fondo }}>
       {/* ---------- ESCENA ---------- */}
       <div style={{ position: "absolute", inset: 0, opacity: opEscena }}>
-        {/* Título del gráfico en el slot del ANTETÍTULO del reel 1 (mono-espaciado del
-            patrón editorial: sans 600, mayúsculas, tracking 0.2em). */}
-        <div
-          style={{
-            position: "absolute", left: px(28), right: px(28), top: HOOK_TOP_CHICO,
-            textAlign: "left", fontFamily: SANS, fontWeight: 600, fontSize: ANTETITULO_FS,
-            letterSpacing: "0.20em", textTransform: "uppercase", color: tema.tx3,
-          }}
-        >
-          El efecto amplificador del crédito
-        </div>
-
         <svg width={1080} height={1920} viewBox="0 0 1080 1920" style={{ position: "absolute", top: 0, left: 0 }}>
           {/* grilla */}
           {grilla.map(({ v, y, op }) => (
@@ -262,24 +261,45 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
           <path d={pathCurva(fantEn, t, X, Y)} fill="none" stroke={tema.series[2]} strokeWidth={5} strokeDasharray="14 16" strokeLinejoin="round" strokeLinecap="round" />
           <path d={pathCurva(puroEn, t, X, Y)} fill="none" stroke={tema.series[1]} strokeWidth={6} strokeLinejoin="round" strokeLinecap="round" />
           <path d={pathCurva(deptoEn, t, X, Y)} fill="none" stroke={tema.series[0]} strokeWidth={9} strokeLinejoin="round" strokeLinecap="round" />
-          {/* corchete del freeze */}
-          <g opacity={opCorchete}>
-            <line x1={xCorchete} x2={xCorchete} y1={yT} y2={yB} stroke={tema.ink} strokeWidth={4} />
-            <line x1={xCorchete} x2={xCorchete - 16} y1={yT} y2={yT} stroke={tema.ink} strokeWidth={4} />
-            <line x1={xCorchete} x2={xCorchete - 16} y1={yB} y2={yB} stroke={tema.ink} strokeWidth={4} />
-          </g>
+          {/* corchete del freeze: el trazo crece desde el centro hacia los extremos */}
+          {pCorchete > 0 && (
+            <g>
+              <line
+                x1={xCorchete}
+                x2={xCorchete}
+                y1={yMedio - semiAlto * pCorchete}
+                y2={yMedio + semiAlto * pCorchete}
+                stroke={tema.ink}
+                strokeWidth={CORCHETE_TRAZO}
+              />
+              {pCorchete >= 1 && (
+                <>
+                  <line x1={xCorchete} x2={xCorchete - 22} y1={yT} y2={yT} stroke={tema.ink} strokeWidth={CORCHETE_TRAZO} />
+                  <line x1={xCorchete} x2={xCorchete - 22} y1={yB} y2={yB} stroke={tema.ink} strokeWidth={CORCHETE_TRAZO} />
+                </>
+              )}
+            </g>
+          )}
         </svg>
 
-        {/* rótulo de la palanca — sin equivalente en el reel 1: se deriva del titular
-            (px(25) × 0,72 ≈ 48, el mismo valor de la v8, que queda validado). */}
+        {/* rótulo del cierre — centrado respecto del corchete (vertical) y del área
+            de ploteo (horizontal), con fade + escala 0,92 → 1 */}
         <div
           style={{
-            position: "absolute", left: X(tl), top: (Y(deptoEn(tl)) + Y(puroEn(tl))) / 2,
-            transform: "translate(-50%,-50%)", fontFamily: SERIF, fontStyle: "italic",
-            fontWeight: 600, fontSize: 48, color: tema.rojo, opacity: opPalancaLbl,
+            position: "absolute",
+            left: (PLOT.x0 + PLOT.x1) / 2,
+            top: yMedio,
+            transform: `translate(-50%,-50%) scale(${0.92 + 0.08 * pRotulo})`,
+            fontFamily: SERIF,
+            fontStyle: "italic",
+            fontWeight: 600,
+            fontSize: ROTULO_FS,
+            color: tema.rojo,
+            opacity: 0.95 * pRotulo,
+            whiteSpace: "nowrap",
           }}
         >
-          la palanca
+          efecto del crédito
         </div>
 
         {/* marca del aporte inicial */}
@@ -333,7 +353,7 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
         </div>
       </div>
 
-      {/* ---------- HOOK ---------- */}
+      {/* ---------- HOOK: 4 líneas, quiebres fijos ---------- */}
       <div
         style={{
           position: "absolute", left: px(28), right: px(28), top: hookTop, textAlign: "left",
@@ -341,9 +361,14 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
           color: tema.ink, opacity: opHook,
         }}
       >
-        Pagó UF {fmtUF(capitalRedondoUF)} y ganó{" "}
-        <span style={{ color: tema.rojo, fontWeight: 700 }}>UF {fmtUF(gananciaNetaUF)}</span>
-        {" "}en 10 años.
+        Pagó UF {fmtUF(capitalRedondoUF)} y ganó
+        <br />
+        <span style={{ color: tema.rojo }}>UF {fmtUF(gananciaNetaUF)}</span> en 10 años.
+        <div style={{ opacity: opLineas34 }}>
+          El efecto amplificador
+          <br />
+          del crédito hipotecario
+        </div>
       </div>
 
       {/* ---------- CTA: layout del reel 1 (cascada izquierda) ---------- */}

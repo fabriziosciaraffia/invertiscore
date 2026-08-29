@@ -153,30 +153,6 @@ export const RemotionRoot: React.FC = () => (
         tirSinCreditoPct: backtest.meta.tir.deptoSinCreditoPct,
         fuente: backtest.meta.fuente,
         tema: TEMA_REEL2,
-        ejeMovil: true,
-      }}
-    />
-    {/* Variante de comparación: mismo reel con el eje X fijo de la v8. */}
-    <Composition
-      id="Reel2PalancaEjeFijo"
-      component={Reel2Palanca}
-      durationInFrames={T_TOTAL * FPS}
-      fps={FPS}
-      width={LIENZO.w}
-      height={LIENZO.h}
-      defaultProps={{
-        anios: backtest.anios,
-        depto: backtest.series.depto,
-        deptoSinCredito: backtest.series.deptoSinCredito,
-        plataAportada: backtest.series.plataAportada,
-        aporteInicialUF: backtest.meta.aporteInicialUF,
-        capitalRedondoUF: backtest.meta.capitalRedondoUF,
-        gananciaNetaUF: backtest.meta.gananciaNetaUF,
-        tirDeptoPct: backtest.meta.tir.deptoPct,
-        tirSinCreditoPct: backtest.meta.tir.deptoSinCreditoPct,
-        fuente: backtest.meta.fuente,
-        tema: TEMA_REEL2,
-        ejeMovil: false,
       }}
     />
   </>
