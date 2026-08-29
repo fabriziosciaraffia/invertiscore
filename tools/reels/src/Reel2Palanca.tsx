@@ -261,7 +261,7 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
             {anioAgua}
           </text>
           {/* área de la palanca + las tres líneas */}
-          <path d={pathArea(deptoEn, puroEn, t, X, Y)} fill={tema.rojo} opacity={0.14} />
+          <path d={pathArea(deptoEn, puroEn, t, X, Y)} fill={tema.rojo} opacity={0.18} />
           <path d={pathCurva(fantEn, t, X, Y)} fill="none" stroke={tema.series[2]} strokeWidth={5} strokeDasharray="14 16" strokeLinejoin="round" strokeLinecap="round" />
           <path d={pathCurva(puroEn, t, X, Y)} fill="none" stroke={tema.series[1]} strokeWidth={6} strokeLinejoin="round" strokeLinecap="round" />
           <path d={pathCurva(deptoEn, t, X, Y)} fill="none" stroke={tema.series[0]} strokeWidth={9} strokeLinejoin="round" strokeLinecap="round" />
@@ -325,7 +325,7 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
           style={{
             position: "absolute", left: X(0), top: Y(aporteInicialUF),
             transform: "translate(-50%,-140%)", fontFamily: MONO, fontSize: 26,
-            color: "#9A9AB4", opacity: opMarca,
+            color: tema.tx3, opacity: opMarca,
           }}
         >
           {fmtUF(aporteInicialUF)} UF

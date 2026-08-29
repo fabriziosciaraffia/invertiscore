@@ -8,18 +8,25 @@
 
 import type { Tema } from "./lineas";
 
-/** Tema propio del reel 2 — paleta de la v8, fondo PLANO (doctrina post-banding). */
+/**
+ * Tema propio del reel 2 — fondo PLANO (doctrina post-banding) con la PALETA VIVA del
+ * reel 1 publicado. La v8 traía la versión "de papel" (ink hueso #EDEDF2, grises
+ * #8A8AA4/#3E3E52, fuente #4A4A5A casi invisible) y en el feed se apagaba — el mismo
+ * problema que el reel 1 resolvió en su pase de color: blanco puro y neutros del tema
+ * neón. El rojo ya era el mismo (#FF3D50).
+ */
 export const TEMA_REEL2: Tema = {
   fondo: "#0C0C12",
-  ink: "#EDEDF2",
-  tx3: "#8A8AA4",
-  tx3Grafico: "#8A8AA4",
-  grid: "#20202B",
-  eje: "#3E3E52",
+  ink: "#FFFFFF",
+  tx3: "#9C9DB2",
+  tx3Grafico: "#8E8FA3",
+  grid: "#20212C",
+  eje: "#4A4C5E",
   rojo: "#FF3D50",
-  fondoSrc: "#4A4A5A",
-  // [depto con crédito, depto sin crédito, plata aportada]
-  series: ["#FF3D50", "#FF9AA6", "#6A6A78"],
+  fondoSrc: "#8E8FA3",
+  // [depto con crédito, depto sin crédito, plata aportada] — la punteada sube de
+  // #6A6A78 a #8E8FA3: fantasma, pero visible.
+  series: ["#FF3D50", "#FF9AA6", "#8E8FA3"],
   marcaAgua: "#FFFFFF",
 };
 
