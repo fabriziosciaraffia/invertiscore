@@ -392,8 +392,15 @@ export function validarCoherenciaNumerica(texto: string, stats: ComunaStats): st
  * correcto. Por eso solo se aceptan los conectores atributivos.
  */
 const MARGEN_CON_PRECIO = /(margen|colch[óo]n|holgura)\s+(de|del|es|:)\s*UF\s?[\d.]+/i;
-/** El precio de equilibrio expresado como monto mensual o como porcentaje. */
-const EQUILIBRIO_SIN_PRECIO = /precio de equilibrio[^.;]{0,15}?(\$\s?[\d.]+|[\d]+(?:[.,]\d+)?\s?%)/i;
+/**
+ * El precio de equilibrio expresado como monto mensual o como porcentaje.
+ * Rige el MISMO criterio de conector que la regla del margen, y por la misma
+ * razón: "el precio de equilibrio ES 19,7%" está mal, pero "el precio de
+ * equilibrio QUEDA 19,7% bajo la mediana" es correcto —ahí el porcentaje
+ * describe DÓNDE está el precio, no qué es—. La primera versión no distinguía
+ * y rechazó a Ñuñoa y San Joaquín por frases bien escritas.
+ */
+const EQUILIBRIO_SIN_PRECIO = /precio de equilibrio\s+(de|del|es|:)\s*(\$\s?[\d.]+|[\d]+(?:[.,]\d+)?\s?%)/i;
 
 export function validarRolesDeCifras(texto: string): string[] {
   const errores: string[] = [];

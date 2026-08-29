@@ -241,6 +241,18 @@ test("el precio de equilibrio expresado como porcentaje se rechaza", () => {
   assert.equal(e.length, 1, e.join(" · "));
 });
 
+// Falsos positivos que la primera versión de la regla sí marcaba: costaron dos
+// comunas del lote (Ñuñoa y San Joaquín) por frases correctamente escritas.
+test("pero \"el precio de equilibrio QUEDA X% bajo la mediana\" es correcto", () => {
+  assert.deepEqual(
+    validarRolesDeCifras("El precio de equilibrio queda 19,7% bajo la mediana."), []);
+});
+
+test("y \"ESTÁ apenas X% sobre la mediana\" también", () => {
+  assert.deepEqual(
+    validarRolesDeCifras("El precio de equilibrio está apenas 2,3% sobre la mediana."), []);
+});
+
 
 console.log(`\n${"─".repeat(60)}`);
 console.log(`  ${pass} OK · ${fail} FAIL`);
