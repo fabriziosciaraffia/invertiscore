@@ -10,6 +10,7 @@ import {
   GRID_PASO,
   NM,
   PLOT,
+  XMIN_MESES,
   T_CARRERA_INI,
   T_CTA,
   T_FIN,
@@ -65,6 +66,8 @@ export type PropsReel2 = {
   tirSinCreditoPct: number;
   fuente: string;
   tema: Tema;
+  /** true = el eje X arranca en ~2 años y se comprime con la carrera (reel 1). */
+  ejeMovil: boolean;
 };
 
 export const Reel2Palanca: React.FC<PropsReel2> = ({
@@ -79,6 +82,7 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   tirSinCreditoPct,
   fuente,
   tema,
+  ejeMovil,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -101,7 +105,10 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   );
   const yMax = ysEje[Math.min(Math.round(el * 60), ysEje.length - 1)];
 
-  const X = (tt: number) => PLOT.x0 + (tt / NM) * (PLOT.x1 - PLOT.x0);
+  // Dominio X: fijo (v8) o móvil con la mecánica del reel 1 — la punta de las líneas
+  // cabalga el borde derecho mientras el eje se comprime.
+  const xmax = ejeMovil ? Math.max(t, XMIN_MESES) : NM;
+  const X = (tt: number) => PLOT.x0 + (tt / xmax) * (PLOT.x1 - PLOT.x0);
   const Y = (v: number) => PLOT.y1 - (v / yMax) * (PLOT.y1 - PLOT.y0);
 
   // ── Hook: 3,5 s protagonista, luego sube a la safe zone del reel 1 ──
@@ -140,12 +147,15 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   // recalculados acá.
   const tags = [
     { nombre: "🏠 Depto con crédito", v: deptoEn(t), color: tema.series[0], alto: Math.round(104 * F_TAG), fsN: Math.round(29 * F_TAG), fsV: Math.round(38 * F_TAG), fsA: Math.round(26 * F_TAG), pct: tirDeptoPct },
-    { nombre: "Sin crédito (misma plata)", v: puroEn(t), color: tema.series[1], alto: Math.round(88 * F_TAG), fsN: Math.round(25 * F_TAG), fsV: Math.round(32 * F_TAG), fsA: Math.round(23 * F_TAG), pct: tirSinCreditoPct },
+    // alto 118 (no 88): el nombre envuelve a DOS líneas con maxWidth 250 y el alto de
+    // la v8 era de nombre corto — con 88 el anti-colisión dejaba que el %/año se
+    // montara sobre la etiqueta vecina en la ventana comprimida del eje móvil.
+    { nombre: "Sin crédito (misma plata)", v: puroEn(t), color: tema.series[1], alto: Math.round(118 * F_TAG), fsN: Math.round(25 * F_TAG), fsV: Math.round(32 * F_TAG), fsA: Math.round(23 * F_TAG), pct: tirSinCreditoPct },
     { nombre: "plata aportada", v: fantEn(t), color: tema.series[2], alto: Math.round(58 * F_TAG), fsN: Math.round(23 * F_TAG), fsV: Math.round(27 * F_TAG), fsA: 0, pct: null as number | null },
   ].map((tg) => ({ ...tg, y: Y(tg.v) }));
   tags.sort((a, b) => a.y - b.y);
   for (let i = 1; i < tags.length; i++) {
-    const minGap = (tags[i - 1].alto + tags[i].alto) / 2 + 8;
+    const minGap = (tags[i - 1].alto + tags[i].alto) / 2 + 14;
     if (tags[i].y - tags[i - 1].y < minGap) tags[i].y = tags[i - 1].y + minGap;
   }
 

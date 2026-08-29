@@ -44,6 +44,12 @@ export const T_TOTAL = 24.0;
 export const PLOT = { x0: 155, x1: 775, y0: 550, y1: 1545 } as const;
 
 export const NM = 132;
+/**
+ * Ventana inicial del eje X móvil: la MISMA mecánica del reel 1 (xmax = max(t, XMIN),
+ * sin amortiguación — la inercia del reel 1 es solo del eje Y), adaptada de años a
+ * meses: 2,2 años × 12 = 26,4 meses (~primeros 2-3 años en pantalla al partir).
+ */
+export const XMIN_MESES = 26.4;
 export const INERCIA = 0.06;
 export const GRID_PASO = 250;
 export const GRID_MAX = 2500;

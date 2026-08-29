@@ -13,8 +13,9 @@
     "still:lineas:light": "remotion still LineasLight out/lineas-final-light.png --frame=719",
     "render:portada:neon": "remotion still PortadaNeon out/portada-neon.png",
     "render:portada:light": "remotion still PortadaLight out/portada-light.png",
-    "render:reel2": "node scripts/render-limpio.mjs Reel2Palanca out/reel2-palanca.mp4",
-    "still:reel2": "remotion still Reel2Palanca out/reel2-frame.png"
+    "still:reel2": "remotion still Reel2Palanca out/reel2-frame.png",
+    "render:reel2:movil": "node scripts/render-limpio.mjs Reel2Palanca out/reel2-eje-movil.mp4",
+    "render:reel2:fijo": "node scripts/render-limpio.mjs Reel2PalancaEjeFijo out/reel2-eje-fijo.mp4"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.0",
