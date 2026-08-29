@@ -164,33 +164,6 @@ function NarrativeIA({ text }: { text: string | null | undefined }) {
 }
 
 /**
- * Estrategia sugerida (drawer Ventaja vs LTR).
- */
-function EstrategiaSugerida({ text }: { text: string | null | undefined }) {
-  if (!text || !text.trim()) return null;
-  return (
-    <div
-      className="mt-4 mb-2 p-3"
-      style={{
-        background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-        borderLeft: "3px solid var(--franco-text)",
-        borderRadius: "0 8px 8px 0",
-      }}
-    >
-      <p
-        className="font-mono uppercase mb-1.5 m-0"
-        style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
-      >
-        ESTRATEGIA SUGERIDA
-      </p>
-      <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-[1.55]">
-        {plumonInline(text)}
-      </p>
-    </div>
-  );
-}
-
-/**
  * Lista de riesgos parseada — paralelo al DrawerRiesgos LTR.
  */
 function RiesgosLista({ contenido }: { contenido: string | null | undefined }) {
@@ -618,6 +591,13 @@ export function DrawerContentSTR({
     const isCritical = base.flujoCajaMensual < 0;
     return (
       <>
+        {/* Apertura determinista (decisión 29-ago): el cuerpo entraba directo a los
+            DataRows, sin encuadre. */}
+        <VProsa>
+          Lo que entra por noche contra todo lo que sale, ya con la cuota del crédito adentro. El
+          promedio del año primero; el mes a mes, más abajo.
+        </VProsa>
+
         <DrawerSection label="Flujo mensual promedio">
           <DataRow
             label="Ingreso bruto mensual"
@@ -627,7 +607,7 @@ export function DrawerContentSTR({
           <DataRow
             label="Comisión gestión"
             value={"-" + fmtMoney(base.comisionMensual, currency, valorUF)}
-            tooltip="Lo que cobra la plataforma o el administrador. Auto-gestión: 3% (Airbnb). Administrador profesional: 18-22% del bruto."
+            tooltip="Lo que cobra la plataforma o el administrador, según tu modo de gestión."
           />
           <DataRow
             label="Costos operativos (suma)"
@@ -662,6 +642,53 @@ export function DrawerContentSTR({
             />
           </DrawerSection>
         )}
+
+        {/* CIERRE ÚNICO (decisión 29-ago) — el cuerpo terminaba en frío, en el
+            gráfico de estacionalidad: mismo arquetipo 3 que se corrigió en el 11.
+            Derivado del dato, rama por signo del flujo, y nombra el mes más flojo
+            del año: el gráfico lo dibuja pero nadie lo dice. */}
+        {(() => {
+          const meses = results.flujoEstacional ?? [];
+          const peor = meses.length > 0
+            ? meses.reduce((a, b) => (b.flujo < a.flujo ? b : a))
+            : null;
+          const money = (n: number) => fmtMoney(Math.abs(n), currency, valorUF);
+          const flujo = base.flujoCajaMensual;
+          if (flujo < 0) {
+            return (
+              <VCierre titulo="Qué significa">
+                <mark>Este depto te saca {money(flujo)} del bolsillo cada mes</mark>, y ese es el
+                promedio del año.
+                {peor && peor.flujo < flujo
+                  ? ` En ${peor.mes}, el mes más flojo, el aporte sube a ${money(peor.flujo)}: es el número que tiene que caber en tu presupuesto, no el promedio.`
+                  : " La estacionalidad reparte ese aporte de forma despareja entre los meses."}
+              </VCierre>
+            );
+          }
+          if (peor && peor.flujo < 0) {
+            return (
+              <VCierre titulo="Qué significa">
+                En el promedio del año <mark>la operación se sostiene sola</mark> y te deja{" "}
+                {money(flujo)} al mes, pero no todos los meses cierran a favor: en {peor.mes} pones{" "}
+                {money(peor.flujo)} de tu bolsillo. Ten ese colchón disponible antes de partir.
+              </VCierre>
+            );
+          }
+          return (
+            <VCierre titulo="Qué significa">
+              <mark>La operación se sostiene sola todos los meses del año</mark> y te deja{" "}
+              {money(flujo)} mensuales en promedio. El riesgo acá no es el flujo: es que la ocupación
+              que lo sostiene siga siendo la que muestra la zona.
+            </VCierre>
+          );
+        })()}
+
+        {/* #4 pasada tooltips — las tasas de referencia de la comisión salen del
+            hover: son datos que cambian la lectura de la fila. VFuente del v12. */}
+        <VFuente>
+          Comisión de gestión de referencia: autogestión 3% (Airbnb) · administrador profesional
+          18–22% del bruto.
+        </VFuente>
       </>
     );
   }
@@ -780,8 +807,11 @@ export function DrawerContentSTR({
             label="% de los ingresos brutos medianos (p50)"
             value={fmtPct(breakEvenPct * 100, 0)}
             isCritical={breakEvenPct > 1}
-            tooltip="Si esta cifra es >100%, ni siquiera operando al nivel mediano del mercado cubres costos. Riesgo estructural — la operación depende de superar al mercado típico."
           />
+          {/* #9 pasada tooltips — el umbral que cambia la lectura sale del hover. */}
+          <p className="font-mono text-[11px] mt-2 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+            ● Sobre 100%, ni operando al nivel mediano del mercado se cubren los costos.
+          </p>
         </DrawerSection>
         )}
 
@@ -915,7 +945,17 @@ export function DrawerContentSTR({
     const seccion = ai?.vsLTR;
     return (
       <>
-        <NarrativeIA text={seccion?.contenido} />
+        {/* CIERRE ÚNICO (decisión 29-ago) — el cuerpo apilaba DOS cajas IA:
+            `estrategiaSugerida` (prosa sustantiva: recomienda con cifra) y
+            `cajaAccionable` (el cierre real, que desde v9 ya trae su destacador).
+            La estrategia no es un cierre, así que sube a la prosa de apertura —
+            el v12 no admite prosa entre VViz y VCierre — y el cierre queda uno. */}
+        {(seccion?.contenido?.trim() || seccion?.estrategiaSugerida?.trim()) && (
+          <VProsa>
+            {seccion?.contenido?.trim() ? renderPlumon(seccion.contenido) : null}
+            {seccion?.estrategiaSugerida?.trim() ? renderPlumon(seccion.estrategiaSugerida) : null}
+          </VProsa>
+        )}
         <DrawerSection label="Comparativa NOI mensual">
           <DataRow
             label="Largo plazo (LTR)"
@@ -925,19 +965,24 @@ export function DrawerContentSTR({
           <DataRow
             label="Renta corta (Auto)"
             value={fmtMoney(results.comparativa.str_auto.noiMensual, currency, valorUF)}
-            tooltip="NOI con auto-gestión: pagas sólo 3% de comisión Airbnb pero requiere ~8-12 hrs semanales tuyas."
+            tooltip="NOI mensual operando el arriendo corto tú mismo."
           />
           <DataRow
             label="Renta corta (Admin)"
             value={fmtMoney(results.comparativa.str_admin.noiMensual, currency, valorUF)}
-            tooltip="NOI con administrador profesional: pagas 18-22% de comisión pero la operación es 100% pasiva."
+            tooltip="NOI mensual con un administrador profesional a cargo de la operación."
           />
           <DataRow
             label="Sobre-renta vs LTR"
             value={(results.comparativa.sobreRenta >= 0 ? "+" : "") + fmtMoney(results.comparativa.sobreRenta, currency, valorUF)}
             isCritical={isCritical}
-            tooltip="Cuánto más genera STR vs LTR cada mes. Bajo 30% suele no compensar el esfuerzo operativo adicional."
+            tooltip="Cuánto más genera la renta corta que el arriendo largo, cada mes."
           />
+          {/* #13 pasada tooltips — el 30% es DOCTRINA (regla de pulgar del skill),
+              no un umbral del motor: la redacción conserva el "suele" a propósito. */}
+          <p className="font-mono text-[11px] mt-2 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+            ● Bajo un +30% de sobre-renta, el esfuerzo operativo extra no suele compensar.
+          </p>
         </DrawerSection>
         <DrawerSection label="Recuperación amoblamiento">
           <DataRow
@@ -953,12 +998,15 @@ export function DrawerContentSTR({
             tooltip="Meses de sobre-renta necesarios para recuperar la inversión inicial en muebles, electrodomésticos y decoración."
           />
         </DrawerSection>
-        <EstrategiaSugerida text={seccion?.estrategiaSugerida} />
-        <CajaFranco
-          text={seccion?.cajaAccionable}
-          label="Guión para decidir:"
-          variant="info"
-        />
+        {seccion?.cajaAccionable?.trim() && (
+          <VCierre titulo="Guión para decidir">{plumonInline(seccion.cajaAccionable)}</VCierre>
+        )}
+        {/* #11/#12 pasada tooltips — las condiciones que separan Auto de Admin
+            (comisión y horas) salen del hover: cambian la lectura de la comparación. */}
+        <VFuente>
+          Autogestión: 3% de comisión y ~8–12 h semanales tuyas · Administrador: 18–22% de comisión,
+          operación pasiva.
+        </VFuente>
       </>
     );
   }
@@ -978,13 +1026,13 @@ export function DrawerContentSTR({
           label="Regulación edificio"
           value={
             regulacion === "si"
-              ? "Permitido"
+              ? "Permitido (modificable por asamblea)"
               : regulacion === "no"
                 ? "Prohibido"
                 : "No verificado"
           }
           isCritical={isCriticalReg}
-          tooltip="Si el reglamento de copropiedad del edificio permite arriendo corto plazo. 'Permitido' no garantiza permanencia — la asamblea puede modificarlo."
+          tooltip="Si el reglamento de copropiedad del edificio permite arriendo corto plazo."
         />
         <DataRow
           label="Zona"

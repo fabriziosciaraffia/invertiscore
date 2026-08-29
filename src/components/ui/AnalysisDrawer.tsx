@@ -214,7 +214,9 @@ function DrawerCostoMensual({
     {
       name: "Mantención",
       value: desglose.mantencion,
-      tooltip: "Provisión mensual para reparaciones y mantenimiento del depto. Calculada como % anual del precio según antigüedad (0,3% en deptos nuevos hasta 1,5% en sobre 20 años).",
+      // #17 pasada tooltips — el supuesto del modelo (0,3-1,5% según antigüedad)
+      // subió al VFuente del cuerpo; el ⓘ queda como definición.
+      tooltip: "Provisión mensual para reparaciones y mantenimiento del depto.",
     },
     {
       name: "Corretaje",
@@ -224,7 +226,7 @@ function DrawerCostoMensual({
     {
       name: "Recambio",
       value: desglose.recambio,
-      tooltip: "Costo de turnover entre arrendatarios: pintura, limpieza profunda y reparaciones menores. Estimado en medio mes de arriendo cada 2 años, prorrateado al mes.",
+      tooltip: "Costo de turnover entre arrendatarios: pintura, limpieza profunda y reparaciones menores.",
     },
     {
       name: "Gestión del arriendo",
@@ -279,6 +281,13 @@ function DrawerCostoMensual({
       </VViz>
 
       <VCierre titulo={data.cajaLabel || "Hazte esta pregunta:"}>{plumonInline(currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf)}</VCierre>
+
+      {/* #17 pasada tooltips — los SUPUESTOS del modelo salen del hover y quedan a
+          la vista: eran datos que cambian la lectura de dos filas del waterfall. */}
+      <VFuente>
+        Supuestos del modelo: mantención 0,3–1,5% anual del precio según antigüedad · recambio ½ mes
+        de arriendo cada 2 años, prorrateado.
+      </VFuente>
     </div>
   );
 }
