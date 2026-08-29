@@ -142,6 +142,19 @@ exacta con aportes en sus fechas) — nada se recalcula en componentes. La serie
 "depto sin crédito" es un CONTRAFACTUAL ILUSTRATIVO declarado en meta: las mismas UF
 compran al contado una fracción del mismo inmueble, para aislar el efecto del crédito.
 
+Paridad editorial con el reel 1 (sus constantes mandan sobre la v8, que fue hecha a
+ojo): hook chico = titular del reel 1 (px(25), lh 1.16, 700, top px(100)); título del
+gráfico en el slot del ANTETÍTULO (sans 600 px(11.5), mayúsculas, tracking 0.2em);
+etiquetas de línea escaladas por px(9.5)/29; marca de agua del año a ~91 px / 0,15
+anclada a la derecha dentro del gráfico; pie de fuentes izquierdo (px(7.2), bottom
+px(48)); CTA completo del reel 1 (cascada izquierda, rojos en Franco/gratis/.ai,
+delays 0,5/1,05/1,6 y subida px(26)). Sin equivalente y derivados por proporción:
+corchete (v8 tal cual) y rótulo "la palanca" (48 ≈ titular×0,72). El hook queda
+CENTRADO en ambos estados (cambiar la alineación a mitad del vuelo saltaría) y ocupa
+pantalla completa 3,5 s con subida de 0,5 s. El rótulo del contrafactual es
+"Sin crédito (misma plata)": la línea es la fracción comprada al contado, no un
+departamento entero sin deuda.
+
 Desviaciones de la v8, cazadas por los stills de verificación:
 - Los pares de años adyacentes del eje X (2015/2016 y 2024/2025) se separan con
   anclas end/start — a fuente 28 se montaban.

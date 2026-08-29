@@ -23,16 +23,25 @@ export const TEMA_REEL2: Tema = {
   marcaAgua: "#FFFFFF",
 };
 
-// ─── Timing de la v8 (segundos) ──────────────────────────────────────────────
+// ─── Timing (segundos). Base v8, reformado por decisión editorial: el hook ocupa la
+// pantalla completa 3,5 s (0,0–3,5) y sube en 0,5 s — más seco que el 1,1 s de la v8,
+// para que en el segundo 4 ya esté arriba y chico, que es el criterio de verificación.
+// El total sigue en 24 s: se recorta de la carrera (15,8 → 14,3 s), del freeze
+// (2,0 → 1,8 s) y del acto CTA (3,8 → 3,6 s), que es donde menos duele.
 export const T_HOOK_VISIBLE = 0.3;
-export const T_HOOK_SUBE = 1.6;
-export const T_CARRERA_INI = 2.4;
-export const T_FIN = 18.2;
-export const T_CTA = 20.2;
+export const T_HOOK_SUBE = 3.5;
+export const DUR_SUBIDA = 0.5;
+export const T_CARRERA_INI = 4.3;
+export const T_FIN = 18.6;
+export const T_CTA = 20.4;
 export const T_TOTAL = 24.0;
 
-/** Área de ploteo de la v8, en píxeles del lienzo 1080×1920. */
-export const PLOT = { x0: 155, x1: 775, y0: 430, y1: 1545 } as const;
+/**
+ * Área de ploteo. x de la v8; y0 baja de 430 a 550 porque el bloque editorial superior
+ * adopta el patrón del reel 1 (antetítulo + titular en la safe zone, top px(100)) y a
+ * ese tamaño el titular de dos líneas termina ~480 — el gráfico parte debajo.
+ */
+export const PLOT = { x0: 155, x1: 775, y0: 550, y1: 1545 } as const;
 
 export const NM = 132;
 export const INERCIA = 0.06;

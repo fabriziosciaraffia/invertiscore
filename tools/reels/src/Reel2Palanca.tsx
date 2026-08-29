@@ -5,11 +5,11 @@ import { loadFont as cargarSans } from "@remotion/google-fonts/IBMPlexSans";
 import { loadFont as cargarMono } from "@remotion/google-fonts/JetBrainsMono";
 import {
   ANIOS_EJE_X,
+  DUR_SUBIDA,
   GRID_MAX,
   GRID_PASO,
   NM,
   PLOT,
-  TEMA_REEL2,
   T_CARRERA_INI,
   T_CTA,
   T_FIN,
@@ -24,7 +24,7 @@ import {
   pathCurva,
   tCarrera,
 } from "./reel2";
-import type { Tema } from "./lineas";
+import { CTA_DELAY_L1, CTA_DELAY_L2, CTA_DELAY_L3, CTA_FADE, CTA_SUBIDA, px, type Tema } from "./lineas";
 
 const { fontFamily: SERIF } = cargarSerif();
 const { fontFamily: SANS } = cargarSans();
@@ -33,6 +33,23 @@ const { fontFamily: MONO } = cargarMono();
 /** Las curvas de la v8: cubic-bezier(.4,0,.2,1) para el hook, ease para el resto. */
 const SUAVE = Easing.bezier(0.4, 0, 0.2, 1);
 const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
+
+// ── PARIDAD EDITORIAL CON EL REEL 1 ──
+// El reel 1 es el estándar publicado; sus constantes tipográficas (en unidades de
+// prototipo 405, convertidas con px()) mandan sobre las que trajo la v8, que fue
+// hecha a ojo en HTML. Lo que no tiene equivalente en el reel 1 se deriva por
+// proporción y queda anotado.
+const HOOK_TOP_CHICO = px(100); // safe zone del titular del reel 1
+const HOOK_FS_CHICO = px(25); // TITULO_FS del reel 1
+const HOOK_LH_CHICO = 1.16;
+const ANTETITULO_FS = px(11.5);
+/** Factor de las etiquetas de línea: el rótulo del reel 1 es px(9.5) ≈ 25 y el de la
+ *  v8 era 29 — todos los tamaños de etiqueta se escalan por 25/29. */
+const F_TAG = px(9.5) / 29;
+/** Marca de agua del año: el reel 1 la dibuja a 34 unidades de SVG que ocupan el ancho
+ *  útil (factor ≈ 2,67) → ~91 px, opacidad 0,15, anclada a la derecha DENTRO del
+ *  gráfico. Reemplaza el 150 px centrado de la v8. */
+const AGUA_FS = 91;
 
 export type PropsReel2 = {
   /** Todo sale del dataset del backtest — ninguna cifra se escribe acá. */
@@ -87,7 +104,10 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   const X = (tt: number) => PLOT.x0 + (tt / NM) * (PLOT.x1 - PLOT.x0);
   const Y = (v: number) => PLOT.y1 - (v / yMax) * (PLOT.y1 - PLOT.y0);
 
-  // ── Hook: nace protagonista al centro, sube a la safe zone y se achica ──
+  // ── Hook: 3,5 s protagonista al centro, luego sube a la safe zone del reel 1 ──
+  // El estado chico usa las métricas del titular del reel 1 (px(25), lh 1.16, 700).
+  // Se mantiene centrado en ambos estados: cambiar la alineación a mitad del vuelo
+  // daría un salto — desviación declarada del titular izquierdo del reel 1.
   const opHook =
     interpolate(el, [T_HOOK_VISIBLE, T_HOOK_VISIBLE + 0.9], [0, 1], {
       easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
@@ -95,12 +115,13 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
     interpolate(el, [T_CTA, T_CTA + 1.1], [1, 0], {
       easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
     });
-  const pSube = interpolate(el, [T_HOOK_SUBE, T_HOOK_SUBE + 1.1], [0, 1], {
+  const pSube = interpolate(el, [T_HOOK_SUBE, T_HOOK_SUBE + DUR_SUBIDA], [0, 1], {
     easing: SUAVE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
-  // v8: top 44% (845px) → 130px · font 78 → 60.
-  const hookTop = 845 + (130 - 845) * pSube;
-  const hookFs = 78 + (60 - 78) * pSube;
+  const hookTopFinal = HOOK_TOP_CHICO + px(11.5) + px(9); // bajo el antetítulo
+  const hookTop = 845 + (hookTopFinal - 845) * pSube;
+  const hookFs = 78 + (HOOK_FS_CHICO - 78) * pSube;
+  const hookLh = 1.24 + (HOOK_LH_CHICO - 1.24) * pSube;
 
   // ── Escena: fade-in al subir el hook, fade-out al CTA ──
   const opEscena =
@@ -114,12 +135,13 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   const enFreeze = el > T_FIN;
   const xTags = X(Math.min(t, NM)) + 26 + (enFreeze ? 22 : 0);
 
-  // Etiquetas con anti-colisión de la v8. Los % son los de meta.tir (estáticos, desde
-  // el año 1 de carrera como gatea la v8) — jamás recalculados acá.
+  // Etiquetas con anti-colisión de la v8, tipografía a escala del reel 1 (F_TAG).
+  // Los % son los de meta.tir (estáticos, desde el año 1 como gatea la v8) — jamás
+  // recalculados acá.
   const tags = [
-    { nombre: "🏠 Depto con crédito", v: deptoEn(t), color: tema.series[0], alto: 104, fsN: 29, fsV: 38, fsA: 26, pct: tirDeptoPct },
-    { nombre: "Depto sin crédito", v: puroEn(t), color: tema.series[1], alto: 88, fsN: 25, fsV: 32, fsA: 23, pct: tirSinCreditoPct },
-    { nombre: "plata aportada", v: fantEn(t), color: tema.series[2], alto: 58, fsN: 23, fsV: 27, fsA: 0, pct: null as number | null },
+    { nombre: "🏠 Depto con crédito", v: deptoEn(t), color: tema.series[0], alto: Math.round(104 * F_TAG), fsN: Math.round(29 * F_TAG), fsV: Math.round(38 * F_TAG), fsA: Math.round(26 * F_TAG), pct: tirDeptoPct },
+    { nombre: "Sin crédito (misma plata)", v: puroEn(t), color: tema.series[1], alto: Math.round(88 * F_TAG), fsN: Math.round(25 * F_TAG), fsV: Math.round(32 * F_TAG), fsA: Math.round(23 * F_TAG), pct: tirSinCreditoPct },
+    { nombre: "plata aportada", v: fantEn(t), color: tema.series[2], alto: Math.round(58 * F_TAG), fsN: Math.round(23 * F_TAG), fsV: Math.round(27 * F_TAG), fsA: 0, pct: null as number | null },
   ].map((tg) => ({ ...tg, y: Y(tg.v) }));
   tags.sort((a, b) => a.y - b.y);
   for (let i = 1; i < tags.length; i++) {
@@ -135,17 +157,18 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   });
   const opMarca = el > T_HOOK_SUBE + 0.5 && t < 6 ? 1 : 0;
 
-  // ── CTA: crossfade + cascada de la v8 ──
+  // ── CTA: crossfade de la v8, layout y cascada del reel 1 ──
   const opCta = interpolate(el, [T_CTA, T_CTA + 1.1], [0, 1], {
     easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
   const entradaCta = (delay: number) =>
-    interpolate(el, [T_CTA + delay, T_CTA + delay + 0.7], [0, 1], {
+    interpolate(el, [T_CTA + delay, T_CTA + delay + CTA_FADE], [0, 1], {
       easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
     });
-  const opL1 = entradaCta(0.7);
-  const opL2 = entradaCta(1.6);
-  const opWm = entradaCta(2.5);
+  const opL1 = entradaCta(CTA_DELAY_L1);
+  const opL2 = entradaCta(CTA_DELAY_L2);
+  const opL3 = entradaCta(CTA_DELAY_L3);
+  const subir = (op: number) => `translateY(${px(CTA_SUBIDA) * (1 - op)}px)`;
 
   const anioAgua = 2015 + Math.max(0, Math.min(Math.floor((t - 0.01) / 12), anios.length - 1));
 
@@ -162,18 +185,17 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
     grilla.push({ v, y, op: Math.max(0, Math.min(1, (y - (PLOT.y0 - 120)) / 140)) });
   }
 
-  const [hookPre, hookPost] = ["Pagó ", ` en 10 años.`];
-
   return (
     <AbsoluteFill style={{ backgroundColor: tema.fondo }}>
       {/* ---------- ESCENA ---------- */}
       <div style={{ position: "absolute", inset: 0, opacity: opEscena }}>
-        {/* Título del gráfico, bajo el hook: chico y sobrio. */}
+        {/* Título del gráfico en el slot del ANTETÍTULO del reel 1 (mono-espaciado del
+            patrón editorial: sans 600, mayúsculas, tracking 0.2em). */}
         <div
           style={{
-            position: "absolute", left: 70, right: 70, top: 292, textAlign: "center",
-            fontFamily: SANS, fontWeight: 500, fontSize: 30, letterSpacing: "0.04em",
-            color: tema.tx3,
+            position: "absolute", left: px(28), right: px(28), top: HOOK_TOP_CHICO,
+            textAlign: "center", fontFamily: SANS, fontWeight: 600, fontSize: ANTETITULO_FS,
+            letterSpacing: "0.20em", textTransform: "uppercase", color: tema.tx3,
           }}
         >
           El efecto amplificador del crédito
@@ -199,7 +221,6 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
             const x = X((a - 2014) * 12);
             // Años ADYACENTES del subset (2015/2016 y 2024/2025) quedan a 56 px y una
             // etiqueta mono de 28 mide ~67: el par se separa con anclas end/start.
-            // Lo cazó el still de verificación, no el prototipo (que los montaba).
             const vecinoDespues = ANIOS_EJE_X.includes(a + 1);
             const vecinoAntes = ANIOS_EJE_X.includes(a - 1);
             const ancla = vecinoDespues ? "end" : vecinoAntes ? "start" : "middle";
@@ -212,6 +233,20 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
               </g>
             );
           })}
+          {/* año marca de agua: métrica del reel 1 (≈91 px, 0,15, mono 700, anclada a
+              la derecha DENTRO del gráfico) en vez del 150 centrado de la v8 */}
+          <text
+            x={PLOT.x1 + 34}
+            y={PLOT.y1 - 24}
+            textAnchor="end"
+            fill={tema.marcaAgua}
+            opacity={0.15}
+            fontFamily={MONO}
+            fontWeight={700}
+            fontSize={AGUA_FS}
+          >
+            {anioAgua}
+          </text>
           {/* área de la palanca + las tres líneas */}
           <path d={pathArea(deptoEn, puroEn, t, X, Y)} fill={tema.rojo} opacity={0.14} />
           <path d={pathCurva(fantEn, t, X, Y)} fill="none" stroke={tema.series[2]} strokeWidth={5} strokeDasharray="14 16" strokeLinejoin="round" strokeLinecap="round" />
@@ -225,7 +260,8 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
           </g>
         </svg>
 
-        {/* rótulo de la palanca */}
+        {/* rótulo de la palanca — sin equivalente en el reel 1: se deriva del titular
+            (px(25) × 0,72 ≈ 48, el mismo valor de la v8, que queda validado). */}
         <div
           style={{
             position: "absolute", left: X(tl), top: (Y(deptoEn(tl)) + Y(puroEn(tl))) / 2,
@@ -257,10 +293,8 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
               opacity: t > 0.2 ? 1 : 0,
             }}
           >
-            {/* La v8 los dejaba en nowrap y el lienzo cortaba "con crédito" en el
-                freeze — acá envuelven a dos líneas dentro del borde. */}
-            <div style={{ fontFamily: SANS, fontWeight: tg.fsA ? 600 : 500, fontSize: tg.fsN, maxWidth: 250, lineHeight: 1.15 }}>{tg.nombre}</div>
-            <div style={{ fontFamily: MONO, fontWeight: tg.fsA ? 700 : 500, fontSize: tg.fsV, whiteSpace: "nowrap" }}>{fmtUF(tg.v)} UF</div>
+            <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: tg.fsN, maxWidth: 250, lineHeight: 1.15 }}>{tg.nombre}</div>
+            <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: tg.fsV, whiteSpace: "nowrap" }}>{fmtUF(tg.v)} UF</div>
             {tg.pct !== null && t >= 12 && (
               <div style={{ fontFamily: MONO, fontWeight: 500, fontSize: tg.fsA, whiteSpace: "nowrap", opacity: 0.85 }}>
                 {fmtPct(tg.pct)}
@@ -269,22 +303,13 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
           </div>
         ))}
 
-        {/* año marca de agua */}
+        {/* fuente — métricas del pie del reel 1: alineada a la izquierda, px(7.2),
+            bottom px(48) */}
         <div
           style={{
-            position: "absolute", left: 0, right: 0, bottom: 200, textAlign: "center",
-            fontFamily: MONO, fontWeight: 700, fontSize: 150, color: tema.marcaAgua,
-            opacity: 0.1, letterSpacing: 6,
-          }}
-        >
-          {anioAgua}
-        </div>
-
-        {/* fuente */}
-        <div
-          style={{
-            position: "absolute", bottom: 58, left: 70, right: 70, textAlign: "center",
-            fontFamily: SANS, fontSize: 19, lineHeight: 1.4, color: tema.fondoSrc,
+            position: "absolute", bottom: px(48), left: px(28), right: px(28),
+            textAlign: "left", fontFamily: SANS, fontSize: px(7.2), lineHeight: 1.4,
+            color: tema.fondoSrc,
           }}
         >
           {fuente}
@@ -294,33 +319,53 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
       {/* ---------- HOOK ---------- */}
       <div
         style={{
-          position: "absolute", left: 70, right: 70, top: hookTop, textAlign: "center",
-          fontFamily: SERIF, fontWeight: 600, fontSize: hookFs, lineHeight: 1.24,
+          position: "absolute", left: px(28), right: px(28), top: hookTop, textAlign: "center",
+          fontFamily: SERIF, fontWeight: 700, fontSize: hookFs, lineHeight: hookLh,
           color: tema.ink, opacity: opHook,
         }}
       >
-        {hookPre}UF {fmtUF(capitalRedondoUF)} y ganó{" "}
+        Pagó UF {fmtUF(capitalRedondoUF)} y ganó{" "}
         <span style={{ color: tema.rojo, fontWeight: 700 }}>UF {fmtUF(gananciaNetaUF)}</span>
-        {hookPost}
+        {" "}en 10 años.
       </div>
 
-      {/* ---------- CTA ---------- */}
+      {/* ---------- CTA: layout del reel 1 (cascada izquierda) ---------- */}
       <div
         style={{
-          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center", gap: 36, opacity: opCta,
+          position: "absolute", left: px(26), right: px(22), top: "50%",
+          transform: "translateY(-50%)", textAlign: "left", opacity: opCta,
         }}
       >
-        <div style={{ fontFamily: SERIF, color: tema.ink, fontSize: 56, fontWeight: 600, textAlign: "center", lineHeight: 1.3, maxWidth: 820, opacity: opL1, transform: `translateY(${24 * (1 - opL1)}px)` }}>
-          Analiza tu depto de inversión con Franco.
+        <div
+          style={{
+            fontFamily: SERIF, fontWeight: 700, fontSize: px(44), lineHeight: 1.1,
+            color: tema.ink, opacity: opL1, transform: subir(opL1),
+          }}
+        >
+          Analiza tu depto
+          <br />
+          de inversión
+          <br />
+          con <span style={{ color: tema.rojo, fontWeight: 700 }}>Franco</span>.
         </div>
-        <div style={{ fontFamily: SERIF, color: tema.ink, fontSize: 48, fontWeight: 600, textAlign: "center", lineHeight: 1.3, opacity: opL2, transform: `translateY(${24 * (1 - opL2)}px)` }}>
-          El primero es gratis 🚀
+        <div
+          style={{
+            marginTop: px(26), fontFamily: SANS, fontSize: px(26), fontWeight: 600,
+            color: tema.ink, opacity: opL2, transform: subir(opL2),
+          }}
+        >
+          El primero es <span style={{ color: tema.rojo }}>gratis</span>{" "}
+          <span style={{ fontSize: px(27) }}>🚀</span>
         </div>
-        <div style={{ fontFamily: SERIF, fontSize: 74, color: tema.ink, marginTop: 20, opacity: opWm }}>
-          <span style={{ fontStyle: "italic", fontWeight: 400, opacity: 0.45 }}>re</span>
-          <span style={{ fontWeight: 700 }}>franco</span>
-          <span style={{ color: tema.rojo, fontSize: 40, fontWeight: 600 }}>.ai</span>
+        <div
+          style={{
+            marginTop: px(30), fontFamily: SERIF, fontSize: px(19), color: tema.ink,
+            opacity: opL3, transform: subir(opL3),
+          }}
+        >
+          <span style={{ fontStyle: "italic", fontWeight: 400, color: tema.tx3 }}>re</span>
+          <b style={{ fontWeight: 700 }}>franco</b>
+          <span style={{ color: tema.rojo, fontSize: px(12), fontWeight: 600 }}>.ai</span>
         </div>
       </div>
     </AbsoluteFill>
