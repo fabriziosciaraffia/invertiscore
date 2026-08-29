@@ -100,7 +100,9 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   const puroEn = monotona(knotX, [aporteInicialUF, ...deptoSinCredito]);
   const fantEn = escalonLineal(knotX, [aporteInicialUF, ...plataAportada]);
 
-  const yInicial = aporteInicialUF * 1.28;
+  // 1,8× el aporte (la v8 usaba 1,28×): con 1,28 las líneas partían pegadas al techo
+  // del gráfico — con 1,8 el arranque queda bajo la mitad y el despegue tiene cielo.
+  const yInicial = aporteInicialUF * 1.8;
   const yTarget = (tt: number) =>
     Math.max(yInicial, Math.max(aporteInicialUF, deptoEn(tt), puroEn(tt), fantEn(tt)) * 1.15);
   const ysEje = React.useMemo(
@@ -130,15 +132,13 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   const pSube = interpolate(el, [T_HOOK_SUBE, T_HOOK_SUBE + DUR_SUBIDA], [0, 1], {
     easing: SUAVE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
-  // Hook grande a 72 px: "Ganó UF 1.220 en 10 años." (26 caracteres, la línea más
-  // larga tras el cambio de texto) quebraba a 82. Bloque ≈ 4×72×1.24 + media línea
-  // de aire ≈ 393 → centrado vertical parte en ~764.
-  const hookTop = 764 + (HOOK_TOP_CHICO - 764) * pSube;
-  // Las líneas 3-4 ya fueron leídas en los 3,5 s: se desvanecen durante la subida
-  // para no competir con la carrera desde la safe zone.
-  const opLineas34 = 1 - pSube;
-  const hookFs = 72 + (HOOK_FS_CHICO - 72) * pSube;
-  const hookLh = 1.24 + (HOOK_LH_CHICO - 1.24) * pSube;
+  // El hook grande imita la PORTADA del reel 1: cuerpo px(56) ≈ 149 con líneas
+  // cortas que quiebran a mitad de frase (la portada hace lo mismo). Con los
+  // quiebres largos anteriores el cuerpo topaba en 72 y quedaba chico. Como los
+  // quiebres del estado grande y del chico son distintos, los estados se CRUZAN
+  // (crossfade en la subida de 0,5 s) en vez de morfear.
+  const opGrande = opHook * (1 - pSube);
+  const opChico = opHook * pSube;
 
   // ── Escena: fade-in al subir el hook, fade-out al CTA ──
   const opEscena =
@@ -371,16 +371,46 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
         </div>
       </div>
 
-      {/* ---------- HOOK: 4 líneas, quiebres fijos ---------- */}
+      {/* ---------- HOOK GRANDE: escala de la portada del reel 1 ---------- */}
       <div
         style={{
-          position: "absolute", left: px(28), right: px(28), top: hookTop, textAlign: "left",
-          fontFamily: SERIF, fontWeight: 700, fontSize: hookFs, lineHeight: hookLh,
-          color: tema.ink, opacity: opHook,
+          position: "absolute", left: px(28), right: px(28), top: 470, textAlign: "left",
+          fontFamily: SERIF, fontWeight: 700, fontSize: px(56), lineHeight: 1.12,
+          letterSpacing: "-0.015em", color: tema.ink, opacity: opGrande,
         }}
       >
-        {/* Comuna del caso, en el slot del antetítulo del reel 1. OJO: el dataset es
-            comuna SANTIAGO (GfK 52,8 UF/m² 2015) — ver reporte. */}
+        <div
+          style={{
+            fontFamily: SANS, fontWeight: 600, fontSize: ANTETITULO_FS,
+            letterSpacing: "0.20em", textTransform: "uppercase", color: tema.tx3,
+            marginBottom: px(9),
+          }}
+        >
+          En Santiago
+        </div>
+        Puso UF {fmtUF(capitalRedondoUF)}
+        <br />
+        de pie. Ganó
+        <br />
+        <span style={{ color: tema.rojo }}>UF {fmtUF(gananciaNetaUF)}</span> en
+        <br />
+        10 años.
+        <div style={{ marginTop: "0.55em", fontSize: px(23), lineHeight: 1.2 }}>
+          El efecto amplificador
+          <br />
+          del <span style={{ color: tema.rojo }}>crédito hipotecario</span>
+        </div>
+      </div>
+
+      {/* ---------- HOOK CHICO: safe zone del reel 1 (2 líneas) ---------- */}
+      <div
+        style={{
+          position: "absolute", left: px(28), right: px(28), top: HOOK_TOP_CHICO,
+          textAlign: "left", fontFamily: SERIF, fontWeight: 700,
+          fontSize: HOOK_FS_CHICO, lineHeight: HOOK_LH_CHICO, color: tema.ink,
+          opacity: opChico,
+        }}
+      >
         <div
           style={{
             fontFamily: SANS, fontWeight: 600, fontSize: ANTETITULO_FS,
@@ -393,12 +423,6 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
         Puso UF {fmtUF(capitalRedondoUF)} de pie.
         <br />
         Ganó <span style={{ color: tema.rojo }}>UF {fmtUF(gananciaNetaUF)}</span> en 10 años.
-        {/* Separación extra antes de la segunda oración (media línea del cuerpo). */}
-        <div style={{ opacity: opLineas34, marginTop: "0.5em" }}>
-          El efecto amplificador
-          <br />
-          del <span style={{ color: tema.rojo }}>crédito hipotecario</span>
-        </div>
       </div>
 
       {/* Wordmark del hook a pantalla completa, abajo a la izquierda; se despide con
@@ -406,7 +430,7 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
       <div
         style={{
           position: "absolute", left: px(28), bottom: px(48), fontFamily: SERIF,
-          fontSize: px(14), color: tema.ink, opacity: opHook * opLineas34,
+          fontSize: px(14), color: tema.ink, opacity: opGrande,
         }}
       >
         <span style={{ fontStyle: "italic", fontWeight: 400, color: tema.tx3 }}>re</span>
