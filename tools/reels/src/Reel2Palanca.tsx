@@ -130,13 +130,14 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   const pSube = interpolate(el, [T_HOOK_SUBE, T_HOOK_SUBE + DUR_SUBIDA], [0, 1], {
     easing: SUAVE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
-  // Hook grande a 82 px (antes 78; 86 quebraba "del crédito hipotecario" en dos).
-  // 4 líneas × 82 × 1.24 ≈ 407 de alto → centrado vertical parte en ~756.
-  const hookTop = 756 + (HOOK_TOP_CHICO - 756) * pSube;
+  // Hook grande a 72 px: "Ganó UF 1.220 en 10 años." (26 caracteres, la línea más
+  // larga tras el cambio de texto) quebraba a 82. Bloque ≈ 4×72×1.24 + media línea
+  // de aire ≈ 393 → centrado vertical parte en ~764.
+  const hookTop = 764 + (HOOK_TOP_CHICO - 764) * pSube;
   // Las líneas 3-4 ya fueron leídas en los 3,5 s: se desvanecen durante la subida
   // para no competir con la carrera desde la safe zone.
   const opLineas34 = 1 - pSube;
-  const hookFs = 82 + (HOOK_FS_CHICO - 82) * pSube;
+  const hookFs = 72 + (HOOK_FS_CHICO - 72) * pSube;
   const hookLh = 1.24 + (HOOK_LH_CHICO - 1.24) * pSube;
 
   // ── Escena: fade-in al subir el hook, fade-out al CTA ──
@@ -160,7 +161,9 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
     // la v8 era de nombre corto — con 88 el anti-colisión dejaba que el %/año se
     // montara sobre la etiqueta vecina en la ventana comprimida del eje móvil.
     { nombre: "Sin crédito (misma plata)", v: puroEn(t), color: tema.series[1], alto: Math.round(118 * F_TAG), fsN: Math.round(25 * F_TAG), fsV: Math.round(32 * F_TAG), fsA: Math.round(23 * F_TAG), pct: tirSinCreditoPct },
-    { nombre: "plata aportada", v: fantEn(t), color: tema.series[2], alto: Math.round(58 * F_TAG), fsN: Math.round(23 * F_TAG), fsV: Math.round(27 * F_TAG), fsA: 0, pct: null as number | null },
+    // "lo que puso de su bolsillo" envuelve a dos líneas con el maxWidth de 250 —
+    // mismo tratamiento que "Sin crédito (misma plata)"; alto 92 (58 + una línea).
+    { nombre: "lo que puso de su bolsillo", v: fantEn(t), color: tema.series[2], alto: Math.round(92 * F_TAG), fsN: Math.round(23 * F_TAG), fsV: Math.round(27 * F_TAG), fsA: 0, pct: null as number | null },
   ].map((tg) => ({ ...tg, y: Y(tg.v) }));
   tags.sort((a, b) => a.y - b.y);
   for (let i = 1; i < tags.length; i++) {
@@ -301,6 +304,20 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
           }}
         >
           efecto del crédito
+          <div
+            style={{
+              marginTop: 10,
+              textAlign: "center",
+              fontFamily: MONO,
+              fontStyle: "normal",
+              fontWeight: 700,
+              fontSize: 36,
+              opacity: 0.85,
+            }}
+          >
+            {/* Derivada de meta.tir (12,1 − 7,1), jamás escrita a mano. */}
+            +{Math.round(tirDeptoPct - tirSinCreditoPct)} puntos al año
+          </div>
         </div>
 
         {/* marca del aporte inicial */}
@@ -373,9 +390,9 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
         >
           En Santiago
         </div>
-        Pagó UF {fmtUF(capitalRedondoUF)} y ganó
+        Puso UF {fmtUF(capitalRedondoUF)} de pie.
         <br />
-        <span style={{ color: tema.rojo }}>UF {fmtUF(gananciaNetaUF)}</span> en 10 años.
+        Ganó <span style={{ color: tema.rojo }}>UF {fmtUF(gananciaNetaUF)}</span> en 10 años.
         {/* Separación extra antes de la segunda oración (media línea del cuerpo). */}
         <div style={{ opacity: opLineas34, marginTop: "0.5em" }}>
           El efecto amplificador
