@@ -72,6 +72,18 @@ const insumos: FilaInsumo[] = leerCsv("backtest-insumos-oficiales.csv")
   .slice(1)
   .map(([serie, clave, fecha, valor]) => ({ serie, clave, fecha, valor: Number(valor) }));
 
+const cuotaMes = (afp: string, anio: number, mes: number): number => {
+  const pref = `${anio}-${String(mes).padStart(2, "0")}`;
+  const f = insumos.find((i) => i.serie === "cuota" && i.clave === afp && i.fecha.startsWith(pref));
+  if (!f) throw new Error(`sin cuota ${afp} ${pref}`);
+  return f.valor;
+};
+const ufMes = (anio: number, mes: number): number => {
+  const pref = `${anio}-${String(mes).padStart(2, "0")}`;
+  const f = insumos.find((i) => i.serie === "uf_mes" && i.fecha.startsWith(pref));
+  if (!f) throw new Error(`sin UF mensual ${pref}`);
+  return f.valor;
+};
 const cuotaDic = (afp: string, anio: number): number => {
   const f = insumos.find((i) => i.serie === "cuota" && i.clave === afp && i.fecha.startsWith(`${anio}-12`));
   if (!f) throw new Error(`sin cuota ${afp} dic-${anio}`);
@@ -159,45 +171,115 @@ for (let i = 0; i < 11; i++) {
   }
 }
 
-// ─── Proyecciones reales: valor GfK + flujo con arriendo/vacancia del año ───
+// ─── El caso como función de los supuestos discutibles (GGCC y contribuciones) ──
+// El caso principal usa los valores declarados arriba; la mini-sensibilidad corre la
+// MISMA maquinaria con otros supuestos y reporta solo el año del cruce. La regla de
+// "misma plata" se respeta dentro de cada celda: si el flujo cambia, cambian también
+// los aportes que reciben el fondo y el depósito.
 
-const proyecciones: YearProjection[] = [];
-const flujosAnualesUF: number[] = [];
-let flujoAcumulado = 0;
+// Pie + gastos de cierre + CapEx puesta a punto, exactamente como lo cuenta el motor
+// (el mismo `inversionInicial` que usa el exit del informe). No depende de GGCC.
+const aporteInicialUF = resultado.exitScenario.inversionInicial / UF_CLP;
 
-ANIOS.forEach((anio, idx) => {
-  const n = idx + 1;
-  const arriendoMes = Math.round(ARRIENDO_APROBADO[anio] * M2 * UF_CLP);
-  const vacanciaMeses = (VACANCIA_APROBADA[anio] * 12) / 100;
-  // Mantención por el motor: tasa según la edad del año, sobre el precio de compra.
-  // Convención del motor (calcProjections): en el año n el inmueble ya cumplió
-  // antiguedad + n — el año 1 de un depto de 5 años se mantiene como uno de 6.
-  const mantencion = Math.round((PRECIO_UF * UF_CLP * getMantencionRate(ANTIGUEDAD_COMPRA + n)) / 12);
-  const flujoMes = calcFlujoDesglose({
-    arriendo: arriendoMes,
-    // En UF el dividendo es constante — no se aplica INFLACION_UF, que es nominal.
-    dividendo: metrics.dividendo,
-    ggcc: input.gastos,
-    contribuciones: input.contribuciones,
-    mantencion,
-    vacanciaMeses,
-    usaAdministrador: false,
+type Carrera = {
+  proyecciones: YearProjection[];
+  flujosAnualesUF: number[];
+  aportesUF: Record<number, number>;
+  deptoUF: number[];
+  fondoHabitatUF: number[];
+  fondoCuprumUF: number[];
+  depositoUF: number[];
+  cruce: number | null;
+};
+
+function correrCaso(ggccUfMes: number, contribucionesUfTrim: number): Carrera {
+  const proyecciones: YearProjection[] = [];
+  const flujosAnualesUF: number[] = [];
+  let flujoAcumulado = 0;
+
+  ANIOS.forEach((anio, idx) => {
+    const n = idx + 1;
+    const arriendoMes = Math.round(ARRIENDO_APROBADO[anio] * M2 * UF_CLP);
+    const vacanciaMeses = (VACANCIA_APROBADA[anio] * 12) / 100;
+    // Mantención por el motor. Convención de calcProjections: en el año n el inmueble
+    // ya cumplió antiguedad + n (el año 1 de un depto de 5 años se mantiene como uno
+    // de 6 — cruza la banda 0,5% → 0,8%).
+    const mantencion = Math.round((PRECIO_UF * UF_CLP * getMantencionRate(ANTIGUEDAD_COMPRA + n)) / 12);
+    const flujoMes = calcFlujoDesglose({
+      arriendo: arriendoMes,
+      // En UF el dividendo es constante — no se aplica INFLACION_UF, que es nominal.
+      dividendo: metrics.dividendo,
+      ggcc: Math.round(ggccUfMes * UF_CLP),
+      contribuciones: Math.round(contribucionesUfTrim * UF_CLP),
+      mantencion,
+      vacanciaMeses,
+      usaAdministrador: false,
+    });
+    const flujoAnual = flujoMes.flujoNeto * 12;
+    flujoAcumulado += flujoAnual;
+    flujosAnualesUF.push(flujoAnual / UF_CLP);
+    const valorPropiedad = Math.round(serieUfM2[anio] * M2 * UF_CLP);
+    const saldoCredito = proyA[idx].saldoCredito;
+    proyecciones.push({
+      anio: n,
+      arriendoMensual: arriendoMes,
+      flujoAnual: Math.round(flujoAnual),
+      flujoAcumulado: Math.round(flujoAcumulado),
+      valorPropiedad,
+      saldoCredito,
+      patrimonioNeto: valorPropiedad - saldoCredito,
+    });
   });
-  const flujoAnual = flujoMes.flujoNeto * 12;
-  flujoAcumulado += flujoAnual;
-  flujosAnualesUF.push(flujoAnual / UF_CLP);
-  const valorPropiedad = Math.round(serieUfM2[anio] * M2 * UF_CLP);
-  const saldoCredito = proyA[idx].saldoCredito;
-  proyecciones.push({
-    anio: n,
-    arriendoMensual: arriendoMes,
-    flujoAnual: Math.round(flujoAnual),
-    flujoAcumulado: Math.round(flujoAcumulado),
-    valorPropiedad,
-    saldoCredito,
-    patrimonioNeto: valorPropiedad - saldoCredito,
+
+  // Carrera 1: depto, liquidación por el motor año a año.
+  const deptoUF = ANIOS.map((_, idx) => calcExitScenario(input, metrics, proyecciones, idx + 1).retornoTotal / UF_CLP);
+
+  // Aportes extra: cada año con flujo negativo, el dueño puso la diferencia.
+  const aportesUF: Record<number, number> = {};
+  ANIOS.forEach((anio, idx) => {
+    aportesUF[anio] = flujosAnualesUF[idx] < 0 ? -flujosAnualesUF[idx] : 0;
   });
-});
+
+  // Carrera 2: Fondo A. El aporte extra de un año con flujo negativo ocurre MES A MES
+  // (es el déficit mensual del dueño), así que cada doceavo compra cuota al valor del
+  // fin de ese mes, convertido a UF con la UF de la misma fecha. Para eso se capturó
+  // la serie mensual. El aporte inicial va a cuota del 31-dic-2014 (compra 1-ene-2015).
+  const carreraFondo = (afp: string): number[] => {
+    const cuotaUFDic = (anio: number) => cuotaDic(afp, anio) / ufDic(anio);
+    let unidades = aporteInicialUF / cuotaUFDic(2014);
+    const serie: number[] = [];
+    ANIOS.forEach((anio, idx) => {
+      const deficitMensualUF = flujosAnualesUF[idx] < 0 ? -flujosAnualesUF[idx] / 12 : 0;
+      if (deficitMensualUF > 0) {
+        for (let mes = 1; mes <= 12; mes++) {
+          const cuotaUF = cuotaMes(afp, anio, mes) / ufMes(anio, mes);
+          unidades += deficitMensualUF / cuotaUF;
+        }
+      }
+      serie.push(unidades * cuotaUFDic(anio));
+    });
+    return serie;
+  };
+  const fondoHabitatUF = carreraFondo("HABITAT");
+  const fondoCuprumUF = carreraFondo("CUPRUM");
+
+  // Carrera 3: depósito UF, renovación anual a la tasa BCCh del año. El aporte del
+  // año entra al cierre (un depósito no recibe doceavos a mitad de renovación sin
+  // partir el instrumento; simplificación declarada, conservadora contra el depósito).
+  const depositoUF: number[] = [];
+  let w = aporteInicialUF;
+  for (const anio of ANIOS) {
+    w = w * (1 + tasaDeposito(anio)) + aportesUF[anio];
+    depositoUF.push(w);
+  }
+
+  const cruce = ANIOS.find((_, i) => deptoUF[i] >= fondoHabitatUF[i]) ?? null;
+  return { proyecciones, flujosAnualesUF, aportesUF, deptoUF, fondoHabitatUF, fondoCuprumUF, depositoUF, cruce };
+}
+
+// Caso principal: los supuestos declarados.
+const caso = correrCaso(GGCC_UF_MES, CONTRIBUCIONES_UF_TRIM);
+const { proyecciones, flujosAnualesUF, aportesUF, deptoUF, fondoHabitatUF, fondoCuprumUF, depositoUF } = caso;
 
 // Verificación de coherencia contra el flujo normal del producto: el año 1 del
 // backtest usa el mismo arriendo/vacancia que el input, así que el flujo anual debe
@@ -209,48 +291,12 @@ if (divergenciaAno1 > 0.01) {
   throw new Error(`coherencia año 1: informe=${flujoInforme / UF_CLP} UF ≠ backtest=${flujoBacktest / UF_CLP} UF`);
 }
 
-// ─── Carrera 1: depto (liquidación por el motor, año a año) ─────────────────
-
-const deptoUF: number[] = ANIOS.map((_, idx) => {
-  const exit = calcExitScenario(input, metrics, proyecciones, idx + 1);
-  return exit.retornoTotal / UF_CLP;
-});
-
-// Pie + gastos de cierre + CapEx puesta a punto, exactamente como lo cuenta el motor
-// (el mismo `inversionInicial` que usa el exit del informe).
-const aporteInicialUF = resultado.exitScenario.inversionInicial / UF_CLP;
-// Aportes extra: cada año con flujo negativo, el dueño puso la diferencia. Esa misma
-// plata entra a las carreras 2 y 3 al cierre de ese año.
-const aportesUF: Record<number, number> = {};
-ANIOS.forEach((anio, idx) => {
-  aportesUF[anio] = flujosAnualesUF[idx] < 0 ? -flujosAnualesUF[idx] : 0;
-});
-
-// ─── Carrera 2: Fondo A (unidades de cuota, en UF) ──────────────────────────
-
-function carreraFondo(afp: string): number[] {
-  const cuotaUF = (anio: number) => cuotaDic(afp, anio) / ufDic(anio);
-  let unidades = aporteInicialUF / cuotaUF(2014); // compra 1-ene-2015 a cuota 31-dic-2014
-  const serie: number[] = [];
-  for (const anio of ANIOS) {
-    unidades += aportesUF[anio] / cuotaUF(anio); // aporte al cierre del año del flujo negativo
-    serie.push(unidades * cuotaUF(anio));
-  }
-  return serie;
-}
-const fondoHabitatUF = carreraFondo("HABITAT");
-const fondoCuprumUF = carreraFondo("CUPRUM");
-
-// ─── Carrera 3: depósito UF, renovación anual a la tasa BCCh del año ────────
-
-const depositoUF: number[] = [];
-{
-  let w = aporteInicialUF;
-  for (const anio of ANIOS) {
-    w = w * (1 + tasaDeposito(anio)) + aportesUF[anio];
-    depositoUF.push(w);
-  }
-}
+// Mini-sensibilidad del año del cruce: GGCC × contribuciones, solo el cruce por celda.
+const GRILLA_GGCC = [1.5, 2.0, 2.5];
+const GRILLA_CONTRIB = [0.6, 1.2];
+const sensibilidadCruce = GRILLA_GGCC.map((g) =>
+  GRILLA_CONTRIB.map((c) => ({ ggcc: g, contrib: c, cruce: correrCaso(g, c).cruce })),
+).flat();
 
 // ─── Resultados ─────────────────────────────────────────────────────────────
 
@@ -282,6 +328,7 @@ const dataset = {
     deposito: depositoUF.map(r1),
   },
   cruceDeptoSuperaFondoA: cruce,
+  sensibilidadCruce,
   control: {
     fondoACuprum: fondoCuprumUF.map(r1),
     divergenciaMaxHabitatCuprumPct: Math.round(divergenciaCuprum * 100) / 100,
@@ -297,5 +344,6 @@ console.log(`aporte inicial: ${r1(aporteInicialUF)} UF · aportes extra: ${ANIOS
 console.log(`año      depto    fondoA  depósito`);
 ANIOS.forEach((a, i) => console.log(`${a}  ${String(r1(deptoUF[i])).padStart(8)} ${String(r1(fondoHabitatUF[i])).padStart(8)} ${String(r1(depositoUF[i])).padStart(8)}`));
 console.log(`cruce (depto ≥ fondo A): ${cruce ?? "no ocurre en la ventana"}`);
+console.log(`sensibilidad del cruce (GGCC × contrib): ${sensibilidadCruce.map((c) => `[${c.ggcc}/${c.contrib}→${c.cruce}]`).join(" ")}`);
 console.log(`divergencia máx Habitat vs Cuprum: ${dataset.control.divergenciaMaxHabitatCuprumPct}%`);
 console.log(`coherencia año 1 (flujo anual UF): informe=${dataset.control.coherenciaAno1UF.informe} backtest=${dataset.control.coherenciaAno1UF.backtest}`);

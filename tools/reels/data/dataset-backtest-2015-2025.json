@@ -54,16 +54,16 @@
     ],
     "fondoA": [
       551.1,
-      553.7,
-      642.3,
-      606.5,
-      707.8,
-      738.3,
-      853.7,
-      676.3,
-      728.6,
-      808.5,
-      944.9
+      553.8,
+      642.4,
+      606.6,
+      707.9,
+      739.6,
+      856,
+      678.1,
+      730.7,
+      811.1,
+      949.2
     ],
     "deposito": [
       535.4,
@@ -80,21 +80,53 @@
     ]
   },
   "cruceDeptoSuperaFondoA": 2016,
+  "sensibilidadCruce": [
+    {
+      "ggcc": 1.5,
+      "contrib": 0.6,
+      "cruce": 2016
+    },
+    {
+      "ggcc": 1.5,
+      "contrib": 1.2,
+      "cruce": 2016
+    },
+    {
+      "ggcc": 2,
+      "contrib": 0.6,
+      "cruce": 2016
+    },
+    {
+      "ggcc": 2,
+      "contrib": 1.2,
+      "cruce": 2016
+    },
+    {
+      "ggcc": 2.5,
+      "contrib": 0.6,
+      "cruce": 2016
+    },
+    {
+      "ggcc": 2.5,
+      "contrib": 1.2,
+      "cruce": 2017
+    }
+  ],
   "control": {
     "fondoACuprum": [
       550.2,
       549.7,
-      637.2,
-      600.8,
-      702.2,
-      726.4,
-      843.6,
-      669.7,
-      720.6,
-      794.8,
-      929.7
+      637.3,
+      600.9,
+      702.3,
+      727.6,
+      845.9,
+      671.5,
+      722.7,
+      797.3,
+      933.9
     ],
-    "divergenciaMaxHabitatCuprumPct": 1.69,
+    "divergenciaMaxHabitatCuprumPct": 1.7,
     "coherenciaAno1UF": {
       "informe": -5.2,
       "backtest": -5.2
