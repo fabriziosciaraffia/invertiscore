@@ -130,12 +130,13 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   const pSube = interpolate(el, [T_HOOK_SUBE, T_HOOK_SUBE + DUR_SUBIDA], [0, 1], {
     easing: SUAVE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
-  // 4 líneas de 78 px × 1.24 ≈ 387 de alto: el centrado vertical parte en ~766.
-  const hookTop = 766 + (HOOK_TOP_CHICO - 766) * pSube;
+  // Hook grande a 82 px (antes 78; 86 quebraba "del crédito hipotecario" en dos).
+  // 4 líneas × 82 × 1.24 ≈ 407 de alto → centrado vertical parte en ~756.
+  const hookTop = 756 + (HOOK_TOP_CHICO - 756) * pSube;
   // Las líneas 3-4 ya fueron leídas en los 3,5 s: se desvanecen durante la subida
   // para no competir con la carrera desde la safe zone.
   const opLineas34 = 1 - pSube;
-  const hookFs = 78 + (HOOK_FS_CHICO - 78) * pSube;
+  const hookFs = 82 + (HOOK_FS_CHICO - 82) * pSube;
   const hookLh = 1.24 + (HOOK_LH_CHICO - 1.24) * pSube;
 
   // ── Escena: fade-in al subir el hook, fade-out al CTA ──
@@ -294,7 +295,7 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
             fontStyle: "italic",
             fontWeight: 600,
             fontSize: ROTULO_FS,
-            color: tema.rojo,
+            color: tema.ink,
             opacity: 0.95 * pRotulo,
             whiteSpace: "nowrap",
           }}
@@ -361,14 +362,38 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
           color: tema.ink, opacity: opHook,
         }}
       >
+        {/* Comuna del caso, en el slot del antetítulo del reel 1. OJO: el dataset es
+            comuna SANTIAGO (GfK 52,8 UF/m² 2015) — ver reporte. */}
+        <div
+          style={{
+            fontFamily: SANS, fontWeight: 600, fontSize: ANTETITULO_FS,
+            letterSpacing: "0.20em", textTransform: "uppercase", color: tema.tx3,
+            marginBottom: px(9),
+          }}
+        >
+          En Santiago
+        </div>
         Pagó UF {fmtUF(capitalRedondoUF)} y ganó
         <br />
         <span style={{ color: tema.rojo }}>UF {fmtUF(gananciaNetaUF)}</span> en 10 años.
         <div style={{ opacity: opLineas34 }}>
           El efecto amplificador
           <br />
-          del crédito hipotecario
+          <span style={{ color: tema.rojo }}>del crédito hipotecario</span>
         </div>
+      </div>
+
+      {/* Wordmark del hook a pantalla completa, abajo a la izquierda; se despide con
+          las líneas 3-4 (la escena trae el suyo en el pie). */}
+      <div
+        style={{
+          position: "absolute", left: px(28), bottom: px(48), fontFamily: SERIF,
+          fontSize: px(14), color: tema.ink, opacity: opHook * opLineas34,
+        }}
+      >
+        <span style={{ fontStyle: "italic", fontWeight: 400, color: tema.tx3 }}>re</span>
+        <b style={{ fontWeight: 700 }}>franco</b>
+        <span style={{ color: tema.rojo, fontSize: px(9.5), fontWeight: 600 }}>.ai</span>
       </div>
 
       {/* ---------- CTA: layout del reel 1 (cascada izquierda) ---------- */}

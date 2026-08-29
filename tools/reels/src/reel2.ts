@@ -32,7 +32,9 @@ export const T_HOOK_VISIBLE = 0.3;
 export const T_HOOK_SUBE = 3.5;
 export const DUR_SUBIDA = 0.5;
 export const T_CARRERA_INI = 4.3;
-export const T_FIN = 18.6;
+// El freeze gana 1 s a costa de la carrera (petición: "efecto del crédito" queda un
+// segundo más en pantalla sin comprimir el CTA, cuya cascada es del reel 1).
+export const T_FIN = 17.6;
 export const T_CTA = 20.4;
 export const T_TOTAL = 24.0;
 
