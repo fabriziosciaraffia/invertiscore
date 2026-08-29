@@ -240,7 +240,7 @@ function Wordmark({ small = false }: { small?: boolean }) {
  *  dangerouslySetInnerHTML: un template literal como children se serializa con
  *  comillas escapadas en SSR y crudas en cliente → hydration mismatch (misma
  *  clase que el style de zona2Aparece). Con innerHTML ambos lados son idénticos. */
-function DocTokens() {
+export function DocTokens() {
   return (
     <style dangerouslySetInnerHTML={{ __html: `
       /* AUDITORÍA fase42 (9) — los tokens también viven en .doc-tokens: los

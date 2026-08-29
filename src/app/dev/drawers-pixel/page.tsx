@@ -5,7 +5,7 @@
 
 // Página DEV — pixel de los DRAWERS PROPIOS (⛔#3). Monta AnalysisDrawer (LTR) o
 // DrawerSTR+DrawerContentSTR (STR) con fixtures REALES (fixtures.json, sin DB/auth).
-// Controlado por query: ?row=santiagoLtr|penalolenLtr|santiagoStr|qaStr|selfLiqStr &key=<drawerKey> &cur=CLP|UF
+// Controlado por query: ?row=santiagoLtr|penalolenLtr|santiagoStr|qaStr|selfLiqStr|elBosqueLtr|elBosqueStr &key=<drawerKey> &cur=CLP|UF
 // penalolenLtr (F2): cobertura solo_nivel — precio actual sin trayectoria propia.
 // santiagoLtr / recoletaLtr / maipuLtr (F3-F4): las tres variantes de rango —
 // GfK hasta 2025, A&C 2014-2024, y GfK sin cierre (2015-2024).
@@ -21,6 +21,8 @@ import { DrawerSTR, type DrawerKeySTR } from "@/components/analysis/str/DrawerST
 import { HeroSTR } from "@/components/analysis/str/HeroSTR";
 import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/DrawerContentSTR";
 import { ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
+import { TokensHallazgos } from "@/components/analysis/hallazgos/HallazgosAcordeon";
+import { DocTokens } from "@/components/analysis/portada/PortadaInforme";
 import fixtures from "./fixtures.json";
 
 // `bajoStr`: fixture SINTÉTICO (equity < capital, mult ≈ 0,70) — el tramo <1 "terminas con
@@ -28,7 +30,14 @@ import fixtures from "./fixtures.json";
 // así que se valida sintético, como los razor-edges del golden. El resto son filas reales.
 type FixKey =
   | "santiagoLtr" | "qaLtr" | "fallbackLtr" | "penalolenLtr" | "recoletaLtr" | "maipuLtr"
-  | "santiagoStr" | "qaStr" | "selfLiqStr" | "fallbackStr" | "costosAltosStr" | "bajoStr";
+  | "santiagoStr" | "qaStr" | "selfLiqStr" | "fallbackStr" | "costosAltosStr" | "bajoStr"
+  // elBosqueLtr/elBosqueStr: histórico NEGATIVO (−0,7%). El Bosque es la única comuna
+  // con trayectoria negativa en el módulo vigente y NO tiene ni un análisis real en el
+  // parque, así que la rama roja del cuerpo de plusvalía —escala bajo cero y cierre
+  // "no recuperas ni lo aportado"— solo se puede validar por fixture. Derivados de los
+  // santiago* reales: se parchea la comuna y el bloque plusvalia con los valores
+  // exactos de PLUSVALIA_ESTIMADO["El Bosque"].
+  | "elBosqueLtr" | "elBosqueStr";
 
 function seqLtr(results: FullAnalysisResult, ai: AIAnalysisV2): DrawerKey[] {
   const seq: DrawerKey[] = [];
@@ -100,6 +109,15 @@ function Inner() {
 
   return (
     <div style={{ background: "var(--franco-bg, #FAFAF8)", minHeight: "100vh" }}>
+      {/* El CSS del vocabulario (.thermo, .bars, .v-cierre, .viz-pie…) lo inyecta el
+          acordeón, que acá no se monta: sin esto los cuerpos salen SIN estilo y el
+          shot QA no muestra el diseño real — el hueco que hacía inservible esta ruta
+          para capturas. Los tokens --doc-* los aporta el shell del drawer. */}
+      {/* Los dos bloques que el informe real aporta y esta ruta no montaba: los tokens
+          --doc-* (portada) y el CSS del vocabulario (acordeón). Sin ellos los cuerpos
+          se ven sin diseño y el shot QA no sirve de evidencia visual. */}
+      <DocTokens />
+      <TokensHallazgos />
       <div style={{ padding: "16px 24px", display: "flex", gap: 12, alignItems: "center" }}>
         <span className="font-mono" style={{ fontSize: 12 }}>
           DEV · {rowKey} · {fix.comuna} · {isSTR ? "STR" : "LTR"} · key={isSTR ? strKey : ltrKey}
