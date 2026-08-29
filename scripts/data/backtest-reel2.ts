@@ -27,6 +27,7 @@ import {
   getMantencionRate,
   runAnalysis,
 } from "../../src/lib/analysis";
+import { calcIRR } from "../../src/lib/finance/irr";
 import type { AnalisisInput, YearProjection } from "../../src/lib/types";
 import { GFK_SERIE, PLUSVALIA_ESTIMADO_2025 } from "../../src/lib/plusvalia-estimado.gen";
 
@@ -358,6 +359,116 @@ ANIOS.forEach((anio, i) => {
   }
 });
 
+// ─── Reel 2 final: depto sin crédito, TIR y ganancia neta ───
+//
+// CONTRAFACTUAL ILUSTRATIVO, no carrera real: las mismas 496,82 UF compran AL CONTADO
+// una fracción del mismo depto (misma plusvalía GfK, mismos arriendos, gastos y
+// vacancia, misma liquidación por el motor), prorrateada para que ambas líneas partan
+// del mismo punto. Nadie compra un cuarto de depto — la línea existe para aislar el
+// efecto del crédito, y así se declara en meta.
+
+const inputSinCredito: AnalisisInput = { ...input, piePct: 100 };
+const resSC = runAnalysis(inputSinCredito, UF_CLP, undefined, ASOF);
+const metricsSC = resSC.metrics;
+if (metricsSC.dividendo !== 0) {
+  throw new Error(`sin crédito con dividendo ${metricsSC.dividendo} — pie 100% no está siendo contado`);
+}
+// Fracción del inmueble que el capital compra al contado, con los MISMOS costos
+// proporcionales del motor (precio + cierre + puesta a punto).
+const inversionContadoFullUF = resSC.exitScenario.inversionInicial / UF_CLP;
+const FRACCION_CONTADO = aporteInicialUF / inversionContadoFullUF;
+
+// Proyecciones del depto completo sin crédito: mismo valor GfK, flujo sin dividendo.
+const proyeccionesSC: YearProjection[] = [];
+const flujosAnualesSCUF: number[] = [];
+{
+  let acum = 0;
+  ANIOS.forEach((anio, idx) => {
+    const n = idx + 1;
+    const arriendoMes = Math.round(ARRIENDO_APROBADO[anio] * M2 * UF_CLP);
+    const vacanciaMeses = (VACANCIA_APROBADA[anio] * 12) / 100;
+    const mantencion = Math.round((PRECIO_UF * UF_CLP * getMantencionRate(ANTIGUEDAD_COMPRA + n)) / 12);
+    const flujoMes = calcFlujoDesglose({
+      arriendo: arriendoMes,
+      dividendo: metricsSC.dividendo, // 0, verificado arriba
+      ggcc: input.gastos,
+      contribuciones: input.contribuciones,
+      mantencion,
+      vacanciaMeses,
+      usaAdministrador: false,
+    });
+    const flujoAnual = flujoMes.flujoNeto * 12;
+    acum += flujoAnual;
+    flujosAnualesSCUF.push(flujoAnual / UF_CLP);
+    const valorPropiedad = Math.round(serieUfM2[anio] * M2 * UF_CLP);
+    proyeccionesSC.push({
+      anio: n,
+      arriendoMensual: arriendoMes,
+      flujoAnual: Math.round(flujoAnual),
+      flujoAcumulado: Math.round(acum),
+      valorPropiedad,
+      saldoCredito: 0,
+      patrimonioNeto: valorPropiedad,
+    });
+  });
+}
+
+// Liquidación por el motor sobre el depto completo, prorrateada — todos los términos
+// del exit (valor, comisión de venta, flujos) son lineales en la fracción.
+const deptoSinCreditoUF: number[] = ANIOS.map(
+  (_, idx) => (calcExitScenario(inputSinCredito, metricsSC, proyeccionesSC, idx + 1).retornoTotal / UF_CLP) * FRACCION_CONTADO,
+);
+
+// Plata aportada acumulada (la punteada del reel): inicial + extras al cierre de cada
+// año con flujo negativo.
+const plataAportadaUF: number[] = [];
+{
+  let acum = aporteInicialUF;
+  ANIOS.forEach((anio) => {
+    acum += aportesUF[anio];
+    plataAportadaUF.push(acum);
+  });
+}
+const totalAportadoUF = plataAportadaUF[plataAportadaUF.length - 1];
+
+// ─── TIR anual exacta, aportes en sus fechas (mensual → anualizada) ───
+//
+// Flujos reales del inversionista: t0 el aporte inicial; cada mes el flujo neto (los
+// años deficitarios son salidas mensuales, las mismas fechas en que el backtest las
+// aporta); al mes final se suma la liquidación NETA de comisión (equity), no el
+// retornoTotal, porque los flujos ya viajaron mes a mes. Solver: calcIRR del motor.
+function tirAnual(flujosMensualesUF: number[]): number {
+  const r = calcIRR(flujosMensualesUF);
+  if (!r.ok) throw new Error(`TIR sin solución: ${r.reason}`);
+  return (Math.pow(1 + r.rate, 12) - 1) * 100;
+}
+
+const exitFinal = calcExitScenario(input, metrics, proyecciones, ANIOS.length);
+const exitFinalSC = calcExitScenario(inputSinCredito, metricsSC, proyeccionesSC, ANIOS.length);
+
+const flujosDepto: number[] = [-aporteInicialUF];
+const flujosSC: number[] = [-aporteInicialUF];
+ANIOS.forEach((_, idx) => {
+  for (let m = 1; m <= 12; m++) {
+    flujosDepto.push(caso.flujosAnualesUF[idx] / 12);
+    flujosSC.push((flujosAnualesSCUF[idx] / 12) * FRACCION_CONTADO);
+  }
+});
+flujosDepto[flujosDepto.length - 1] += exitFinal.equityCLP / UF_CLP;
+flujosSC[flujosSC.length - 1] += (exitFinalSC.equityCLP / UF_CLP) * FRACCION_CONTADO;
+
+const tirDeptoPct = Math.round(tirAnual(flujosDepto) * 10) / 10;
+const tirSinCreditoPct = Math.round(tirAnual(flujosSC) * 10) / 10;
+
+// GUARDA: la tesis del reel es que el crédito amplifica. Si el motor dice lo
+// contrario, el reel no se publica con este caso — revienta con ambas cifras.
+if (tirDeptoPct <= tirSinCreditoPct) {
+  throw new Error(`la palanca no amplifica: TIR con crédito ${tirDeptoPct}% ≤ sin crédito ${tirSinCreditoPct}%`);
+}
+
+// Ganancia neta del depto con crédito: patrimonio final menos TODO lo aportado.
+const gananciaNetaUF = Math.round((deptoUF[deptoUF.length - 1] - totalAportadoUF) * 10) / 10;
+
 // ─── Resultados ─────────────────────────────────────────────────────────────
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -381,11 +492,22 @@ const dataset = {
       arriendoVacancia: "serie Fase 0.5 con rótulos por tramo (backtest-arriendo-vacancia.candidato.csv)",
     },
     fuente: "Fuente: elaboración propia en base a datos públicos de GfK/NielsenIQ, Superintendencia de Pensiones, Banco Central de Chile, INE y Observatorio de Arriendo UC.",
+    /** TIR anual exacta (flujos mensuales en sus fechas, liquidación al cierre). */
+    tir: { deptoPct: tirDeptoPct, deptoSinCreditoPct: tirSinCreditoPct },
+    /** Patrimonio final del depto con crédito menos todo lo aportado. */
+    gananciaNetaUF,
+    totalAportadoUF: r1(totalAportadoUF),
+    /** deptoSinCredito es CONTRAFACTUAL ILUSTRATIVO: las mismas UF al contado compran
+     *  una fracción del mismo inmueble (misma serie GfK, arriendos, gastos, vacancia
+     *  y liquidación del motor). Aísla el efecto del crédito; no es carrera real. */
+    fraccionContado: Math.round(FRACCION_CONTADO * 10000) / 10000,
     generadoPor: "scripts/data/backtest-reel2.ts",
   },
   anios: ANIOS,
   series: {
     depto: deptoUF.map(r1),
+    deptoSinCredito: deptoSinCreditoUF.map(r1),
+    plataAportada: plataAportadaUF.map(r1),
     fondoA: fondoHabitatUF.map(r1),
     deposito: depositoUF.map(r1),
   },
@@ -414,3 +536,6 @@ console.log(`cruce (depto ≥ fondo A): ${cruce ?? "no ocurre en la ventana"}`);
 console.log(`sensibilidad del cruce (GGCC × contrib): ${sensibilidadCruce.map((c) => `[${c.ggcc}/${c.contrib}→${c.cruce}]`).join(" ")}`);
 console.log(`divergencia máx Habitat vs Cuprum: ${dataset.control.divergenciaMaxHabitatCuprumPct}%`);
 console.log(`coherencia año 1 (flujo anual UF): informe=${dataset.control.coherenciaAno1UF.informe} backtest=${dataset.control.coherenciaAno1UF.backtest}`);
+console.log(`sin crédito: fracción ${(FRACCION_CONTADO * 100).toFixed(2)}% · serie ${deptoSinCreditoUF.map(r1).join(" ")}`);
+console.log(`TIR: con crédito ${tirDeptoPct}% · sin crédito ${tirSinCreditoPct}%`);
+console.log(`ganancia neta depto: ${gananciaNetaUF} UF (aportado ${r1(totalAportadoUF)} UF)`);

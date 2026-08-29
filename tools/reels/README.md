@@ -121,6 +121,35 @@ node --import tsx scripts/data/generar-dataset-lineas.ts "Recoleta,Macul,Renca,B
 Sin argumento usa el top-5 del mes. Con lista propia, el reel del mes siguiente no toca
 código: los colores se asignan por posición y los emojis por nombre, ambos como props.
 
+## Reel 2 final — "El efecto amplificador del crédito"
+
+Composición `Reel2Palanca`: 1080×1920, 30fps, 720 frames (24 s). Réplica de
+`ref/reel2-prototipo-v8.html` con los cambios de alcance decididos: Fondo A y depósito
+salen del cuadro (sus series siguen en el JSON para el Reel 3), hook con la ganancia
+neta, título sobrio y eje X con años seleccionados. Fondo PLANO `#0C0C12` (doctrina),
+tema propio `TEMA_REEL2` en `src/reel2.ts` — el neón del reel 1 queda intacto.
+
+```bash
+cd tools/reels && npm run render:reel2    # out/reel2-palanca.mp4 (por render-limpio)
+cd tools/reels && npm run still:reel2     # un frame de control
+node --import tsx scripts/data/backtest-reel2.ts   # regenera el dataset (motor real)
+```
+
+Todas las cifras salen de `data/dataset-backtest-2015-2025.json`: las series de las
+tres líneas, el aporte inicial (496,82 UF), el capital redondo del hook (500), la
+ganancia neta (1.219,7 → "UF 1.220") y los % de las etiquetas (`meta.tir`, TIR anual
+exacta con aportes en sus fechas) — nada se recalcula en componentes. La serie
+"depto sin crédito" es un CONTRAFACTUAL ILUSTRATIVO declarado en meta: las mismas UF
+compran al contado una fracción del mismo inmueble, para aislar el efecto del crédito.
+
+Desviaciones de la v8, cazadas por los stills de verificación:
+- Los pares de años adyacentes del eje X (2015/2016 y 2024/2025) se separan con
+  anclas end/start — a fuente 28 se montaban.
+- Los nombres de las etiquetas envuelven a dos líneas: la v8 los dejaba en `nowrap`
+  y el lienzo cortaba "Depto con crédito" en el freeze.
+- Los %/año son estáticos (meta.tir); la v8 los recalculaba cuadro a cuadro contra
+  la plata aportada.
+
 ### Notas de réplica
 
 - Layout de zonas seguras: el bloque entero baja (hook en 100, gráfico en 206/118) y el
