@@ -1,4 +1,40 @@
-# Vocabulario visual del rediseño Dictamen: el CSS nunca se escribió
+# ⛔ CADUCADO — Vocabulario visual del rediseño Dictamen: el CSS nunca se escribió
+
+> **Este diagnóstico fue REFUTADO el 29-ago-2026. No lo tomes como tarea.**
+> Se conserva completo a propósito: el error de método vale más que el resultado.
+>
+> **Qué era falso.** El CSS del vocabulario **sí existe**. Vive en un `<style>`
+> inyectado con `dangerouslySetInnerHTML` dentro de
+> `src/components/analysis/hallazgos/HallazgosAcordeon.tsx` — **199 reglas**, con
+> las familias que este documento da por no escritas ya presentes: `compo-*` 24 ·
+> `esca-*` 14 · `cien-*` 11 · `par-*` 9 · `dial-*` 16 · `pal-*` 16.
+> **El backlog de "37 clases sin diseño de referencia" y las dos decisiones de
+> diseño declaradas bloqueantes no existen.**
+>
+> **Por qué falló la verificación.** El `git log --all -S ".v-cierre" -- "*.css"`
+> que da cero más abajo se acotó al formato equivocado: el CSS no está en un
+> `.css`. La misma búsqueda sobre `*.tsx` devuelve **`d9c4dd7`** — el mismo commit
+> que este documento acusa de mergearse sin su CSS — y
+> `git show d9c4dd7:…/HallazgosAcordeon.tsx | grep -c "v-cierre{"` da **1**. El CSS
+> viajó con el componente. **Un cero con filtro de ruta no es evidencia de
+> ausencia.**
+>
+> **Y la reproducción medía el instrumento.** `/dev/drawers-pixel` no montaba el
+> acordeón (quien inyecta el `<style>`) ni la portada (quien define `--doc-*`), así
+> que ahí las clases resolvían a nada de verdad. La ruta quedó reparada en
+> `4c0642d`.
+>
+> **El síntoma en producción sí era real, con otra causa**: los drawers montan
+> fuera de `.doc-dictamen`, así que `--doc-*` no resolvía. Arreglado en la auditoría
+> fase42 — la regla de tokens se separó en `.doc-dictamen,.doc-tokens` y los dos
+> shells de drawer ganaron la clase `doc-tokens`.
+>
+> Detalle y lección en la memoria `vocabulario-dictamen-sin-css`.
+
+---
+
+## Documento original (28-ago-2026) — conservado sin editar
+
 
 **Estado**: diagnóstico cerrado, sin fix. Traspaso a quien retome el rediseño Dictamen.
 **Fecha**: 28-ago-2026 · **Medido sobre**: `fed1442`
