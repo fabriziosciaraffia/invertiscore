@@ -24,9 +24,11 @@ export const TEMA_REEL2: Tema = {
   eje: "#4A4C5E",
   rojo: "#FF3D50",
   fondoSrc: "#8E8FA3",
-  // [depto con crédito, depto sin crédito, plata aportada] — la punteada sube de
-  // #6A6A78 a #8E8FA3: fantasma, pero visible.
-  series: ["#FF3D50", "#FF9AA6", "#8E8FA3"],
+  // [depto con crédito, depto sin crédito, plata aportada]. El sin-crédito era un
+  // rosado pálido (#FF9AA6, v8) que dejaba el reel monocromo; pasa al turquesa NEÓN
+  // de la paleta de series del reel 1 (#00E5C3) — el contraste rojo/turquesa es lo
+  // que hace "neón" al reel 1, y el color frío lee "mismo activo, sin el turbo".
+  series: ["#FF3D50", "#00E5C3", "#8E8FA3"],
   marcaAgua: "#FFFFFF",
 };
 
