@@ -16,7 +16,10 @@ import type { Tema } from "./lineas";
  * neón. El rojo ya era el mismo (#FF3D50).
  */
 export const TEMA_REEL2: Tema = {
-  fondo: "#0C0C12",
+  // PLANO (doctrina anti-banding) pero con el COLOR del reel 1: #16161E es el tono
+  // azulado que domina la mitad superior de su degradé y el que hace saltar los
+  // neones. El #0C0C12 anterior era el punto medio, casi negro puro, y apagaba.
+  fondo: "#16161E",
   ink: "#FFFFFF",
   tx3: "#9C9DB2",
   tx3Grafico: "#8E8FA3",
@@ -52,7 +55,10 @@ export const T_TOTAL = 24.0;
  * adopta el patrón del reel 1 (antetítulo + titular en la safe zone, top px(100)) y a
  * ese tamaño el titular de dos líneas termina ~480 — el gráfico parte debajo.
  */
-export const PLOT = { x0: 155, x1: 775, y0: 550, y1: 1545 } as const;
+// y0 600 (antes 550): los rótulos del eje Y aparecen con fade desde y0−120 y a 550
+// rozaban la última línea del titular en la safe zone. Con 600 el primer rótulo
+// visible nace bajo ~480, despejado del bloque editorial.
+export const PLOT = { x0: 155, x1: 775, y0: 600, y1: 1545 } as const;
 
 export const NM = 132;
 /**
