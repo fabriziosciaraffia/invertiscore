@@ -1,0 +1,36 @@
+serie,ambito,periodo,valor,unidad,fuente_doc,url,nota
+meta,RM viviendas usadas,2007q1-2025q2,,indice base 100 = 2007q1,pagina indicador CLAPES UC,https://clapesuc.cl/indicadores/indice-inmobiliario-clapes-uc-real-data,capturado 29-ago-2026; trimestral; transacciones CBR en UF (variaciones reales); modelos hedonicos; casas y deptos separados; 1 indice RM + 4 zonales (Oriente / Centro-Norte / Sur-Poniente / Sur-Oriente)
+meta,serie completa deptos,2007q1-2025q2,,xlsx descarga directa,adjunto "Indice Departamentos" de la pagina,https://s3.us-east-2.amazonaws.com/assets.clapesuc.cl/index_deptos_255_252b3ce5fc.xlsx,DESCARGAR A MANO y guardar junto a este CSV; unica fuente de la serie completa
+meta,serie completa casas,2007q1-2025q2,,xlsx descarga directa,adjunto "Indice Casas" de la pagina,https://s3.us-east-2.amazonaws.com/assets.clapesuc.cl/index_casas_255_2ffe46eae4.xlsx,opcional; mismo formato
+ancla_acumulada,RM deptos,2007q1-2025q2,87.8,% acumulado real UF,informe 2T2025 pag.2,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,equivale a 3.5% real anual promedio; casas identico 87.8%
+ancla_acumulada,Oriente deptos,2007q1-2025q2,101.1,% acumulado real UF,informe 2T2025 pag.4,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,3.8% real anual
+ancla_acumulada,Centro-Norte deptos,2007q1-2025q2,72.7,% acumulado real UF,informe 2T2025 pag.4,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,3.0% real anual; Centro-Norte incluye comuna Santiago (zona no comuna)
+ancla_acumulada,Sur-Poniente deptos,2007q1-2025q2,66.4,% acumulado real UF,informe 2T2025 pag.4,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,2.8% real anual
+ancla_acumulada,Sur-Oriente deptos,2007q1-2025q2,80.2,% acumulado real UF,informe 2T2025 pag.4,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,3.3% real anual
+indice,RM deptos,2020q2,213.9,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,3291 transacciones
+indice,RM deptos,2020q3,206.1,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2020q4,205.1,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2021q1,211.8,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2021q2,221.3,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,peak de la ventana 2020-2025
+indice,RM deptos,2021q3,219.8,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2021q4,216.4,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2022q1,213.8,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2022q2,207.9,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2022q3,207.1,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2022q4,205.2,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2023q1,201.9,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2023q2,200.8,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2023q3,203.0,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2023q4,206.3,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2024q1,204.7,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2024q2,199.9,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2024q3,189.4,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2024q4,190.2,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2025q1,190.7,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,RM deptos,2025q2,187.8,indice 2007q1=100,informe 2T2025 tabla 1,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,-6.0% interanual; quinta caida interanual consecutiva
+indice,Centro-Norte deptos,2020q2,204.2,indice 2007q1=100,informe 2T2025 tabla 3,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,zona que incluye comuna Santiago
+indice,Centro-Norte deptos,2021q2,211.2,indice 2007q1=100,informe 2T2025 tabla 3,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,peak de la ventana
+indice,Centro-Norte deptos,2022q2,198.4,indice 2007q1=100,informe 2T2025 tabla 3,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,Centro-Norte deptos,2023q2,187.6,indice 2007q1=100,informe 2T2025 tabla 3,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,Centro-Norte deptos,2024q2,182.8,indice 2007q1=100,informe 2T2025 tabla 3,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,
+indice,Centro-Norte deptos,2025q2,172.7,indice 2007q1=100,informe 2T2025 tabla 3,https://assets.clapesuc.cl/Real_Data_Indices_Report_2025q2_101183bcaf.pdf,13 caidas interanuales consecutivas en deptos Centro-Norte
