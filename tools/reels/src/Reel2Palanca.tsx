@@ -376,10 +376,11 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
         Pagó UF {fmtUF(capitalRedondoUF)} y ganó
         <br />
         <span style={{ color: tema.rojo }}>UF {fmtUF(gananciaNetaUF)}</span> en 10 años.
-        <div style={{ opacity: opLineas34 }}>
+        {/* Separación extra antes de la segunda oración (media línea del cuerpo). */}
+        <div style={{ opacity: opLineas34, marginTop: "0.5em" }}>
           El efecto amplificador
           <br />
-          <span style={{ color: tema.rojo }}>del crédito hipotecario</span>
+          del <span style={{ color: tema.rojo }}>crédito hipotecario</span>
         </div>
       </div>
 
