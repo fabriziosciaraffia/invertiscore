@@ -100,9 +100,10 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   const puroEn = monotona(knotX, [aporteInicialUF, ...deptoSinCredito]);
   const fantEn = escalonLineal(knotX, [aporteInicialUF, ...plataAportada]);
 
-  // 1,8× el aporte (la v8 usaba 1,28×): con 1,28 las líneas partían pegadas al techo
-  // del gráfico — con 1,8 el arranque queda bajo la mitad y el despegue tiene cielo.
-  const yInicial = aporteInicialUF * 1.8;
+  // 2,6× el aporte (v8: 1,28×; primer ajuste: 1,8×): las 500 UF de partida quedan a
+  // ~38% del piso del gráfico — abajo de verdad, con todo el cielo para el despegue.
+  // El eje amortiguado crece recién cuando la línea roja supera ~1.120 UF (≈2019).
+  const yInicial = aporteInicialUF * 2.6;
   const yTarget = (tt: number) =>
     Math.max(yInicial, Math.max(aporteInicialUF, deptoEn(tt), puroEn(tt), fantEn(tt)) * 1.15);
   const ysEje = React.useMemo(
