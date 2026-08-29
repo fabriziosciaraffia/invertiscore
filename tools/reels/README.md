@@ -121,6 +121,50 @@ node --import tsx scripts/data/generar-dataset-lineas.ts "Recoleta,Macul,Renca,B
 Sin argumento usa el top-5 del mes. Con lista propia, el reel del mes siguiente no toca
 código: los colores se asignan por posición y los emojis por nombre, ambos como props.
 
+## Reel 2 final — "El efecto amplificador del crédito"
+
+Composición `Reel2Palanca`: 1080×1920, 30fps, 720 frames (24 s). Réplica de
+`ref/reel2-prototipo-v8.html` con los cambios de alcance decididos: Fondo A y depósito
+salen del cuadro (sus series siguen en el JSON para el Reel 3), hook con la ganancia
+neta, título sobrio y eje X con años seleccionados. Fondo PLANO `#0C0C12` (doctrina),
+tema propio `TEMA_REEL2` en `src/reel2.ts` — el neón del reel 1 queda intacto.
+
+```bash
+cd tools/reels && npm run render:reel2    # out/reel2-palanca.mp4 (por render-limpio)
+cd tools/reels && npm run still:reel2     # un frame de control
+node --import tsx scripts/data/backtest-reel2.ts   # regenera el dataset (motor real)
+```
+
+Todas las cifras salen de `data/dataset-backtest-2015-2025.json`: las series de las
+tres líneas, el aporte inicial (496,82 UF), el capital redondo del hook (500), la
+ganancia neta (1.219,7 → "UF 1.220") y los % de las etiquetas (`meta.tir`, TIR anual
+exacta con aportes en sus fechas) — nada se recalcula en componentes. La serie
+"depto sin crédito" es un CONTRAFACTUAL ILUSTRATIVO declarado en meta: las mismas UF
+compran al contado una fracción del mismo inmueble, para aislar el efecto del crédito.
+
+Paridad editorial con el reel 1 (sus constantes mandan sobre la v8, que fue hecha a
+ojo): hook chico = titular del reel 1 (px(25), lh 1.16, 700, top px(100)); título del
+gráfico en el slot del ANTETÍTULO (sans 600 px(11.5), mayúsculas, tracking 0.2em);
+etiquetas de línea escaladas por px(9.5)/29; marca de agua del año a ~91 px / 0,15
+anclada a la derecha dentro del gráfico; pie de fuentes izquierdo (px(7.2), bottom
+px(48)); CTA completo del reel 1 (cascada izquierda, rojos en Franco/gratis/.ai,
+delays 0,5/1,05/1,6 y subida px(26)). Sin equivalente y derivados por proporción:
+corchete (v8 tal cual) y rótulo "la palanca" (48 ≈ titular×0,72). El hook va ALINEADO A LA
+IZQUIERDA en ambos estados, como el bloque editorial del reel 1 publicado (verificado
+contra el post de Instagram) — así la transición es continua sin morfear la
+alineación; ocupa pantalla completa 3,5 s con subida de 0,5 s. El pie lleva wordmark
+sobre la línea de fuente, como el reel 1. El rótulo del contrafactual es
+"Sin crédito (misma plata)": la línea es la fracción comprada al contado, no un
+departamento entero sin deuda.
+
+Desviaciones de la v8, cazadas por los stills de verificación:
+- Los pares de años adyacentes del eje X (2015/2016 y 2024/2025) se separan con
+  anclas end/start — a fuente 28 se montaban.
+- Los nombres de las etiquetas envuelven a dos líneas: la v8 los dejaba en `nowrap`
+  y el lienzo cortaba "Depto con crédito" en el freeze.
+- Los %/año son estáticos (meta.tir); la v8 los recalculaba cuadro a cuadro contra
+  la plata aportada.
+
 ### Notas de réplica
 
 - Layout de zonas seguras: el bloque entero baja (hook en 100, gráfico en 206/118) y el

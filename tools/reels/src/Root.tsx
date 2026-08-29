@@ -8,6 +8,9 @@ import { LineasTop5, PROPS_LINEAS_POR_DEFECTO } from "./LineasTop5";
 import { CTA, DUR, TEMAS, type DatasetLineas } from "./lineas";
 import { PortadaLineas, PROPS_PORTADA_POR_DEFECTO } from "./PortadaLineas";
 import brutoLineas from "../data/dataset-lineas-top5.json";
+import { Reel2Palanca } from "./Reel2Palanca";
+import { TEMA_REEL2, T_TOTAL } from "./reel2";
+import backtest from "../data/dataset-backtest-2015-2025.json";
 
 const dataset = bruto as Dataset;
 
@@ -127,6 +130,30 @@ export const RemotionRoot: React.FC = () => (
       width={LIENZO.w}
       height={LIENZO.h}
       defaultProps={{ ...PROPS_PORTADA_POR_DEFECTO, tema: TEMAS.light }}
+    />
+    {/* Reel 2 — el efecto amplificador del crédito. Réplica de
+        ref/reel2-prototipo-v8.html; todas las cifras salen del dataset del backtest
+        (motor real), incluidos los % de las etiquetas (meta.tir). */}
+    <Composition
+      id="Reel2Palanca"
+      component={Reel2Palanca}
+      durationInFrames={T_TOTAL * FPS}
+      fps={FPS}
+      width={LIENZO.w}
+      height={LIENZO.h}
+      defaultProps={{
+        anios: backtest.anios,
+        depto: backtest.series.depto,
+        deptoSinCredito: backtest.series.deptoSinCredito,
+        plataAportada: backtest.series.plataAportada,
+        aporteInicialUF: backtest.meta.aporteInicialUF,
+        capitalRedondoUF: backtest.meta.capitalRedondoUF,
+        gananciaNetaUF: backtest.meta.gananciaNetaUF,
+        tirDeptoPct: backtest.meta.tir.deptoPct,
+        tirSinCreditoPct: backtest.meta.tir.deptoSinCreditoPct,
+        fuente: backtest.meta.fuente,
+        tema: TEMA_REEL2,
+      }}
     />
   </>
 );

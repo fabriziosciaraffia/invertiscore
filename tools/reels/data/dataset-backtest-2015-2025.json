@@ -24,6 +24,13 @@
       "arriendoVacancia": "serie Fase 0.5 con rótulos por tramo (backtest-arriendo-vacancia.candidato.csv)"
     },
     "fuente": "Fuente: elaboración propia en base a datos públicos de GfK/NielsenIQ, Superintendencia de Pensiones, Banco Central de Chile, INE y Observatorio de Arriendo UC.",
+    "tir": {
+      "deptoPct": 12.1,
+      "deptoSinCreditoPct": 7.1
+    },
+    "gananciaNetaUF": 1219.7,
+    "totalAportadoUF": 572.9,
+    "fraccionContado": 0.2369,
     "generadoPor": "scripts/data/backtest-reel2.ts"
   },
   "anios": [
@@ -52,6 +59,32 @@
       1757.8,
       1933.3,
       1792.6
+    ],
+    "deptoSinCredito": [
+      486.4,
+      530.6,
+      569.3,
+      632.2,
+      722.9,
+      769.4,
+      840.9,
+      891.2,
+      905.9,
+      957.5,
+      933.8
+    ],
+    "plataAportada": [
+      502.1,
+      506.1,
+      507.7,
+      507.7,
+      507.7,
+      524.3,
+      543.4,
+      544.3,
+      546.8,
+      556.7,
+      572.9
     ],
     "fondoA": [
       522.2,
