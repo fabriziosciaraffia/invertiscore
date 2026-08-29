@@ -75,7 +75,15 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // prosa de ~95 palabras que narraba la matriz era el mismo defecto de A1 a
 // escala de sección) y su destacador `**…**` se muda a `cajaAccionable`, que el
 // render muestra como cierre del cuerpo.
-export const PROMPT_VERSION_STR = 8;
+// v9 (2026-08-28): cuerpo 14 (decisión Fabrizio) — (a) presupuesto POR RIESGO
+// (BUDGET_POR_RIESGO 65 = título + 45-55 palabras, total 195) porque el truncado
+// de 220 caracteres del render murió y el largo se controla en generación; el
+// dato duro de cada riesgo sobrevive completo por contrato. (b) Los destacadores
+// llegan a TODOS los cierres IA (cajaAccionable: exactamente una frase-fuerza) —
+// salda la acumulación pendiente anotada tras v8. (c) Dieta de re-narración:
+// break-even/tarifa/umbral de precio = referencia de una línea (ya tienen
+// diagrama en 11/vías/negociación) y perdidaRampUp en UNA sola sección.
+export const PROMPT_VERSION_STR = 9;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -346,7 +354,9 @@ Devuelve EXACTAMENTE esta estructura. Sin campos extra, sin texto fuera del JSON
 
 REGLA DURA: \`veredicto\` = EXACTAMENTE el valor del bloque "FRANCO SCORE STR". Cópialo. Si discrepas, va a \`francoCaveat\`.
 
-REGLA DURA — \`riesgos.contenido\`: EXACTO 3 riesgos, separados por DOBLE SALTO DE LÍNEA (\\n\\n). Cada riesgo: 1ª oración = título corto ≤60 caracteres terminado en punto (se extrae como heading); 1-2 frases de explicación (interpretar, no recitar). PROHIBIDO bullets, "•", "-", "1.", **bold**, *italic*. El render parsea los headings desde esta estructura; cualquier desviación rompe la presentación.
+REGLA DURA — \`riesgos.contenido\`: EXACTO 3 riesgos, separados por DOBLE SALTO DE LÍNEA (\\n\\n). Cada riesgo: 1ª oración = título corto de ≤60 caracteres ESTRICTOS terminado en punto (se extrae como heading y se muestra ÍNTEGRO — un título largo queda largo en pantalla, nadie lo recorta por ti); PROHIBIDO terminar un título en puntos suspensivos («…» o «...»), imitan un texto cortado. Después del título: explicación de 45-55 PALABRAS (interpretar, no recitar). Desde v9 el render muestra cada explicación ÍNTEGRA — no hay truncado: un riesgo pasado de largo se lee entero y pesado. EL DATO DURO DE CADA RIESGO SOBREVIVE COMPLETO: si el riesgo se apoya en una cifra del input (un flujo en escenario bajo, una tarifa objetivo contra su mediana, la pérdida de estabilización), esa cifra va DENTRO de las 45-55 palabras — un riesgo sin su número es adjetivo (A3). El título y su explicación van en el MISMO bloque (salto SIMPLE entre ellos, o seguido): el doble salto \n\n separa RIESGOS, nunca un título de su explicación — una línea en blanco ahí parte el riesgo en dos y rompe el parseo. PROHIBIDO bullets, "•", "-", "1.", **bold**, *italic* en \`contenido\`. El render parsea los headings desde esta estructura; cualquier desviación rompe la presentación.
+
+DIETA DE RE-NARRACIÓN (v9) — el break-even como % del mercado, la tarifa objetivo vs su mediana y el umbral de precio del veredicto YA tienen su diagrama en otros cuerpos del informe (sensibilidad, vías, negociación): en \`riesgos\` y \`operacion\` se citan como REFERENCIA de una línea, nunca como argumento desarrollado — desarrollarlos acá es repetir con palabras lo que otro cuerpo muestra dibujado. Y la pérdida de estabilización (\`perdidaRampUp\`) se cita en UNA SOLA sección: en \`riesgos\` si es uno de los 3 flancos dominantes, si no en \`operacion\` — PROHIBIDO en ambas (hoy sale duplicada casi con la misma frase).
 
 ## 14. Verificación numérica obligatoria
 
@@ -392,7 +402,10 @@ export const SECTION_BUDGETS_STR: Record<string, number> = {
   "operacion.cajaAccionable": 75,
   "largoPlazo.contenido": 95,
   "largoPlazo.cajaAccionable": 75,
-  "riesgos.contenido": 230,
+  // v9: 230 → 195 = 3 bloques × BUDGET_POR_RIESGO. El truncado de 220 caracteres
+  // del render MURIÓ (mostraba "…" y escondía el dato duro): desde v9 el largo se
+  // controla acá, en generación — misma lección del v8 (enforcement, no guía).
+  "riesgos.contenido": 195,
   "riesgos.cajaAccionable": 75,
 };
 
@@ -854,6 +867,7 @@ Para no poner plata de tu bolsillo, este depto necesita ingresos brutos de ${fmt
 
 === ESTABILIZACIÓN INICIAL (no "ramp-up" en el output) ===
 Los primeros ~6 meses el listing opera bajo su ocupación normal mientras gana reseñas; pérdida estimada acumulada de ese período: ${fmtCLP(r.perdidaRampUp)}.
+DUEÑO DE ESTA CIFRA: el monto ${fmtCLP(r.perdidaRampUp)} se escribe en EXACTAMENTE UNA sección — ni dos veces ni cero. En \`riesgos\` si la estabilización es uno de tus 3 flancos (y entonces SU explicación lleva el monto completo: un riesgo de estabilización sin su cifra es adjetivo); si no es flanco, en \`operacion\`. La otra sección, si la menciona, la referencia SIN monto ("la pérdida de estabilización ya dimensionada en los riesgos"). Duplicarlo es el defecto que el rediseño eliminó del render; omitirlo en todas partes es esconderle al lector la única cifra que dimensiona el arranque.
 
 === PROYECCIÓN LARGO PLAZO (plusvalía proyectada: ${PROY_PCT} anual flat, proyección estándar Franco) ===
 ${projY10 && exit ? `Patrimonio neto al año ${exit.yearVenta} (valor del activo − deuda, SIN flujo): ${fmtCLP(projY10.patrimonioNeto)} (valor depto ${fmtCLP(projY10.valorDepto)} - saldo crédito ${fmtCLP(projY10.saldoCredito)})
@@ -925,7 +939,7 @@ INSTRUCCIÓN FINAL
 8. \`riesgos.contenido\`: EXACTO 3 riesgos en prosa, separados por \\n\\n. Sin bullets.
 9. Respeta los MÁXIMOS de palabras por campo del §13. Un guard los mide.
 10. JSON válido y completo. Sin texto fuera del JSON, sin backticks.
-11. DESTACADORES \`**…**\` (único markdown permitido; el render los pinta con plumón): marca las frases clave. Máximo 2 marcas por párrafo; cada marca envuelve una FRASE COMPLETA con predicado que se lee sola como mini-hallazgo — nunca un número pelado ni un fragmento sin verbo. Una marca JAMÁS cruza un punto ni parte un token de cifra. En el \`titular\` rige §7.ter (exactamente UNA marca).
+11. DESTACADORES \`**…**\` (único markdown permitido; el render los pinta con plumón): marca las frases clave. Máximo 2 marcas por párrafo; cada marca envuelve una FRASE COMPLETA con predicado que se lee sola como mini-hallazgo — nunca un número pelado ni un fragmento sin verbo. Una marca JAMÁS cruza un punto ni parte un token de cifra. En el \`titular\` rige §7.ter (exactamente UNA marca). Desde v9, CADA \`cajaAccionable\` lleva EXACTAMENTE UNA marca sobre su frase-fuerza (el render las muestra como cierre del cuerpo, y un cierre sin frase-fuerza destacada se lee plano); \`riesgos.contenido\` sigue SIN marcas (regla propia).
 
 Responde SOLO con el JSON.`;
 
@@ -982,7 +996,15 @@ import { validarTitular, evaluarTitular, normalizarMarcasTitular, marcasBalancea
 import { reescribirTitular } from "./titular-retry";
 export { cifrasFueraDeInput };
 
-/** Secciones sobre presupuesto (por un factor de tolerancia). Devuelve [path, palabras, máximo]. */
+/** Techo POR RIESGO (v9): título (~10) + explicación de 45-55 palabras. El render
+ *  muestra el texto ÍNTEGRO desde v9 — un bloque pasado de este techo ya no lo
+ *  salva ningún truncado. */
+export const BUDGET_POR_RIESGO = 65;
+
+/** Secciones sobre presupuesto (por un factor de tolerancia). Devuelve [path, palabras, máximo].
+ *  Caso especial `riesgos.contenido` (v9): además del total, cada bloque \n\n se mide
+ *  contra BUDGET_POR_RIESGO — un solo riesgo desbordado dispara el retry quirúrgico
+ *  del campo completo (el rewriter direcciona por sec.field, no por bloque). */
 export function sectionsOverBudget(ai: Record<string, unknown> | null | undefined, factor = 1.15): { path: string; wc: number; max: number }[] {
   if (!ai) return [];
   const out: { path: string; wc: number; max: number }[] = [];
@@ -991,7 +1013,15 @@ export function sectionsOverBudget(ai: Record<string, unknown> | null | undefine
     const section = ai[sec] as Record<string, unknown> | undefined;
     const val = section?.[field];
     const wc = wordCount(val);
-    if (wc > max * factor) out.push({ path, wc, max });
+    if (wc > max * factor) {
+      out.push({ path, wc, max });
+      continue;
+    }
+    if (path === "riesgos.contenido" && typeof val === "string") {
+      const bloques = val.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+      const peor = Math.max(0, ...bloques.map((b) => wordCount(b)));
+      if (peor > BUDGET_POR_RIESGO * factor) out.push({ path, wc, max });
+    }
   }
   return out;
 }
@@ -1280,6 +1310,101 @@ Responde SOLO este JSON, sin texto alrededor:
         }
       } catch (e) {
         log(`[STR-BUDGET-RETRY] falló (best-effort, conservo el previo): ${(e as Error)?.message ?? e}`);
+      }
+    }
+  }
+
+  // ── RETRY SEMÁNTICO · dueño de la cifra de estabilización (decisión 28-ago) ──
+  // La instrucción del prompt reduce pero no garantiza: medido sobre 4 corridas v9,
+  // 1 duplicó el monto (riesgos + operación) y 1 lo omitió en todas partes. Este es
+  // el enforcement por construcción, con la forma del budget-retry: la cifra
+  // formateada de perdidaRampUp debe aparecer en EXACTAMENTE UNA sección de prosa.
+  // Duplicada → se reescribe cada NO-dueño referenciando sin monto; omitida → se
+  // reescribe operación para incluirla (dueño por defecto cuando riesgos no la
+  // tomó). Una sola llamada, best-effort: si el candidato no queda en exactamente
+  // una, se conserva el previo y el monitor lo reporta.
+  const rampDigits = r.perdidaRampUp > 0 ? fmtCLP(r.perdidaRampUp).replace(/^\$/, "") : null;
+  if (rampDigits && best && scanStrHardDrift(best).length === 0) {
+    const PROSA_PATHS = [
+      "riesgos.contenido", "operacion.contenido", "rentabilidad.contenido",
+      "conviene.respuestaDirecta", "conviene.reencuadre", "largoPlazo.contenido", "vsLTR.contenido",
+      "riesgos.cajaAccionable", "operacion.cajaAccionable",
+    ];
+    const conRamp = (ai: AIAnalysisSTRv2): string[] => {
+      const rec = ai as unknown as Record<string, Record<string, unknown>>;
+      return PROSA_PATHS.filter((path) => {
+        const [sec, field] = path.split(".");
+        const val = rec[sec]?.[field];
+        return typeof val === "string" && val.includes(rampDigits);
+      });
+    };
+    const donde = conRamp(best);
+    if (donde.length !== 1) {
+      const bestRec = best as unknown as Record<string, Record<string, unknown>>;
+      const dueno = donde.includes("riesgos.contenido") ? "riesgos.contenido" : donde[0];
+      const targets = donde.length === 0
+        ? ["operacion.contenido"]
+        : donde.filter((pth) => pth !== dueno);
+      const campos = targets
+        .map((path) => {
+          const [sec, field] = path.split(".");
+          const actual = bestRec[sec]?.[field];
+          return { path, sec, field, actual: typeof actual === "string" ? actual : "" };
+        })
+        .filter((c) => c.actual);
+      if (campos.length > 0) {
+        log(`[STR-RAMP-DUENO] cifra de estabilización en ${donde.length} sección(es) (${donde.join(", ") || "ninguna"}) — retry quirúrgico sobre ${campos.map((c) => c.path).join(", ")}`);
+        const instruccion = donde.length === 0
+          ? `TU TAREA: reescribe cada campo conservando su contenido e integrando el monto de la pérdida de estabilización inicial (${fmtCLP(r.perdidaRampUp)}) donde el texto ya habla de los primeros meses de operación. Ninguna otra cifra nueva.`
+          : `TU TAREA: reescribe cada campo conservando su contenido pero SIN el monto ${fmtCLP(r.perdidaRampUp)} — esa cifra ya vive en otra sección del análisis; si el campo la necesita, referénciala sin número ("la pérdida de estabilización ya dimensionada en los riesgos"). Ninguna cifra nueva.`;
+        const promptDueno = `Estás corrigiendo SOLO ${campos.length} campo(s) de un análisis de renta corta YA generado y validado. El resto de la prosa no se toca y no lo verás.
+
+${campos.map((c) => `CAMPO ${c.path}:\n${c.actual}`).join("\n\n")}
+
+${instruccion}
+
+Responde SOLO este JSON, sin texto alrededor:
+{${campos.map((c) => `"${c.path}": "..."`).join(", ")}}`;
+        try {
+          const msg = await reg.medir("ramp-dueno-retry", CLAUDE_MODEL, () => anthropic.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 1000,
+            messages: [{ role: "user", content: promptDueno }],
+            system: SYSTEM_STR_CACHED,
+          }));
+          acumularUsage(usage, msg);
+          usedTries += 1;
+          const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
+          let reemplazos: Record<string, unknown> = {};
+          try {
+            const m = rawText.match(/\{[\s\S]*\}/);
+            reemplazos = JSON.parse(m ? m[0] : rawText) as Record<string, unknown>;
+          } catch { /* no parseó — se conserva el previo */ }
+          const candidato = JSON.parse(JSON.stringify(best)) as AIAnalysisSTRv2;
+          const candidatoRec = candidato as unknown as Record<string, Record<string, unknown>>;
+          let aplicados = 0;
+          for (const c of campos) {
+            const nuevo = reemplazos[c.path];
+            if (typeof nuevo === "string" && nuevo.trim() && candidatoRec[c.sec]) {
+              candidatoRec[c.sec][c.field] = nuevo.trim();
+              aplicados++;
+            }
+          }
+          if (
+            aplicados > 0 &&
+            conRamp(candidato).length === 1 &&
+            scanStrHardDrift(candidato).length === 0 &&
+            vozDura(candidato).length === 0 &&
+            !empeoraCifras(userPrompt, best, candidato)
+          ) {
+            log(`[STR-RAMP-DUENO] quirúrgico dejó la cifra en exactamente una sección (${conRamp(candidato)[0]}) — aceptado`);
+            best = candidato;
+          } else {
+            log(`[STR-RAMP-DUENO] quirúrgico no convergió a una sección (o reintrodujo drift/cifras) — conservo el previo; queda para el monitor`);
+          }
+        } catch (e) {
+          log(`[STR-RAMP-DUENO] falló (best-effort, conservo el previo): ${(e as Error)?.message ?? e}`);
+        }
       }
     }
   }
