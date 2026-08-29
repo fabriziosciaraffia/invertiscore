@@ -46,6 +46,7 @@ import {
   type FilaPalanca,
   Escenarios,
   Bars,
+  Thermo,
 } from "@/components/analysis/hallazgos/vocabulario";
 
 import { DrawerKeySTR } from "./DrawerSTR";
@@ -225,7 +226,8 @@ function RiesgosLista({ contenido }: { contenido: string | null | undefined }) {
             <h4 className="font-body font-medium text-[13px] mb-1 m-0" style={{ color: "var(--signal-red)" }}>
               {r.titulo}
             </h4>
-            <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 leading-[1.45]">
+            {/* v9 — texto íntegro (el truncado murió) y tokens --doc-* del documento. */}
+            <p className="font-body text-[11.5px] text-[var(--doc-tx2)] m-0 leading-[1.5]">
               {r.descripcion}
             </p>
           </div>
@@ -991,8 +993,35 @@ export function DrawerContentSTR({
         />
       </DrawerSection>
 
+      {/* CUERPO 14 · VIZ ÚNICA (decisión 28-ago) — ocupación observada contra la
+          banda comunal: el 42% del encabezado por fin tiene contra qué leerse. Eje
+          posicional (la forma aprobada para diferencias de un dígito), escala real
+          0-100 de la ocupación — sin barras desde cero. Solo se dibuja con dato
+          observado o supuesto declarado: en fallback (sin dato, supuesto 45%) una
+          comparación "observada vs banda" mentiría. */}
+      {(() => {
+        const hOcc = results.hallazgos?.find((h) => h.id === "ocupacion_vs_banda");
+        const v = hOcc && hOcc.id === "ocupacion_vs_banda" ? hOcc.valor : null;
+        if (!v || v.esFallback || !(v.bandaComunalPct > 0)) return null;
+        const gap = Math.round(v.gapPts);
+        return (
+          <VViz t="Tu ocupación contra la banda de la comuna">
+            <Thermo
+              invertido
+              pct={v.ocupacionPct}
+              refPct={v.bandaComunalPct}
+              legend={[
+                { k: v.esOverride ? "tu supuesto" : "tu ocupación", v: `${Math.round(v.ocupacionPct)}%` },
+                { k: "banda comunal", v: `${Math.round(v.bandaComunalPct)}%` },
+                { k: "brecha", v: `${gap >= 0 ? "+" : "−"}${Math.abs(gap)} pts` },
+              ]}
+            />
+          </VViz>
+        );
+      })()}
+
       <DrawerSection label="Riesgos identificados">
-        <p className="font-mono text-[11px] mt-1 mb-3 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        <p className="font-mono text-[11px] mt-1 mb-3 m-0 leading-[1.5] text-[var(--doc-tx3)]">
           ● Toda inversión STR tiene flancos. Los más relevantes para este depto:
         </p>
         <RiesgosLista contenido={riesgosSec?.contenido} />
@@ -1000,17 +1029,34 @@ export function DrawerContentSTR({
 
       {riesgosSec?.contenido && operacionSec?.contenido && (
         <DrawerSection label="Contexto operativo">
-          <p className="font-body text-[14px] text-[var(--franco-text)] leading-[1.65] m-0 whitespace-pre-wrap">
+          <p className="font-body text-[14px] text-[var(--doc-tx2)] leading-[1.65] m-0 whitespace-pre-wrap">
             {operacionSec.contenido}
           </p>
         </DrawerSection>
       )}
 
-      <CajaFranco
-        text={riesgosSec?.cajaAccionable || operacionSec?.cajaAccionable}
-        label="Si decides avanzar, protege estos flancos:"
-        variant={isCriticalReg ? "negative" : "attention"}
-      />
+      {/* Decisión 28-ago — el último cuerpo fuera del vocabulario entra: el StateBox
+          pasa a VCierre con título rotativo; la prosa (IA) conserva su tono y el
+          destacador lo trae la propia caja desde v9 (plumonInline lo pinta). */}
+      {(riesgosSec?.cajaAccionable || operacionSec?.cajaAccionable)?.trim() && (
+        <VCierre titulo="Si decides avanzar">
+          {plumonInline(riesgosSec?.cajaAccionable || operacionSec?.cajaAccionable)}
+        </VCierre>
+      )}
+
+      {/* T1 — el matiz del tooltip de regulación sube a la línea de fuente; el ⓘ
+          queda como profundidad. La cláusula de ocupación dice la verdad del caso
+          (observada / definida por ti / supuesto sin dato). */}
+      <VFuente>
+        Motor Franco · regulación declarada por el usuario, no verificada ·{" "}
+        {(() => {
+          const hOcc = results.hallazgos?.find((h) => h.id === "ocupacion_vs_banda");
+          const v = hOcc && hOcc.id === "ocupacion_vs_banda" ? hOcc.valor : null;
+          if (v?.esOverride) return "ocupación definida por ti, no observada";
+          if (v?.esFallback) return "ocupación supuesta (45%, sin dato observado)";
+          return "ocupación observada de la zona (AirROI)";
+        })()}
+      </VFuente>
     </>
   );
 }

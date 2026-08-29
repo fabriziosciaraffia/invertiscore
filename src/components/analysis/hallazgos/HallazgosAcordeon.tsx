@@ -234,6 +234,9 @@ function TokensHallazgos() {
       .thermo{padding:6px 0 2px}
       .thermo-track{position:relative;height:6px;border-radius:3px;
         background:linear-gradient(90deg,var(--doc-good),var(--doc-warn),var(--signal-red))}
+      /* v9b — eje donde la calidad crece hacia la derecha (ocupación): el color
+         codifica calidad, no posición. */
+      .thermo-track.inv{background:linear-gradient(90deg,var(--signal-red),var(--doc-warn),var(--doc-good))}
       .thermo-mark{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--doc-tx);
         border:3px solid var(--doc-paper);transform:translate(-50%,-50%)}
       .thermo-ref{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--doc-tx3)}

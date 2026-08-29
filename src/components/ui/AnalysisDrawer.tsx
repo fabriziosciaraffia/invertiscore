@@ -942,21 +942,45 @@ export function extractRiesgos(
   if (!content || typeof content !== "string") return [];
 
   // Fase 3.6 v9 — primero intentar split por doble newline (formato v9 §R8).
-  const dobleSalto = content
+  let dobleSalto = content
     .split(/\n\s*\n/)
     .map((b) => b.trim())
     .filter((b) => b.length > 20);
+  // Hardening prompt-v9 — el modelo a veces mete línea en blanco entre el título
+  // y su explicación (visto en la primera generación v9): el split produce bloques
+  // alternados título/explicación y el parseo de headings quedaba basura. Si un
+  // bloque parece SOLO-título (una oración corta terminada en punto) y le sigue
+  // una explicación, se re-aparean antes de parsear.
+  if (dobleSalto.length > 3) {
+    const esSoloTitulo = (b: string) => b.length <= 90 && /^[^.!?\n]+[.!?]$/.test(b);
+    const emparejados: string[] = [];
+    for (let i = 0; i < dobleSalto.length; i++) {
+      if (esSoloTitulo(dobleSalto[i]) && i + 1 < dobleSalto.length && !esSoloTitulo(dobleSalto[i + 1])) {
+        emparejados.push(dobleSalto[i] + "\n" + dobleSalto[i + 1]);
+        i++;
+      } else {
+        emparejados.push(dobleSalto[i]);
+      }
+    }
+    dobleSalto = emparejados;
+  }
   if (dobleSalto.length >= 2) {
     return dobleSalto.slice(0, 3).map((block, i) => {
       // Primera oración como título (separada por ". " o ".\n").
       const firstSentenceMatch = block.match(/^([^.!?]+[.!?])/);
+      // v9b — muere el corte del título a 60 con "…" (imitaba el truncado recién
+      // eliminado de las descripciones). El ≤60 se exige en el CONTRATO del prompt;
+      // si un título llega largo, se muestra entero y envuelve — nunca cortado.
       const titulo = firstSentenceMatch
-        ? truncateClean(firstSentenceMatch[1].replace(/[.:]$/, "").trim(), 60)
+        ? firstSentenceMatch[1].replace(/[.:]$/, "").trim()
         : truncateClean(block, 60) || `Riesgo ${i + 1}`;
       const rest = firstSentenceMatch
         ? block.slice(firstSentenceMatch[0].length).trim()
         : "";
-      const descripcion = truncateClean(rest || block, 220);
+      // v9 — el truncado de 220 murió: escondía el dato duro del riesgo detrás de
+      // un "…" sin ninguna vía para leerlo. El largo se controla en GENERACIÓN
+      // (BUDGET_POR_RIESGO, ai-generation-str v9); acá se muestra íntegro.
+      const descripcion = (rest || block).trim();
       return { titulo, descripcion };
     });
   }

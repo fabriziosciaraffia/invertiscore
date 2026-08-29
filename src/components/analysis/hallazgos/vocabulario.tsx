@@ -62,15 +62,21 @@ export function Thermo({
   pct,
   refPct,
   legend,
+  invertido,
 }: {
   pct: number;
   refPct?: number | null;
   legend: [{ k: string; v: string }, { k: string; v: string }, { k: string; v: string }];
+  /** true ⇒ el degradado corre rojo→ámbar→verde (la calidad CRECE hacia la
+   *  derecha: ocupación, ingresos). El default (verde a la izquierda) es para
+   *  ejes donde crecer es empeorar (caída de arriendo que aguanta el veredicto).
+   *  El color codifica CALIDAD, no posición — misma semántica que el Dial. */
+  invertido?: boolean;
 }) {
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
   return (
     <div className="thermo">
-      <div className="thermo-track">
+      <div className={`thermo-track${invertido ? " inv" : ""}`}>
         {refPct != null && <div className="thermo-ref" style={{ left: `${clamp(refPct)}%` }} />}
         <div className="thermo-mark" style={{ left: `${clamp(pct)}%` }} />
       </div>
