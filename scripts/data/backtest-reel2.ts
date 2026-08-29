@@ -279,7 +279,7 @@ function correrCaso(ggccUfMes: number, contribucionesUfTrim: number): Carrera {
 
 // Caso principal: los supuestos declarados.
 const caso = correrCaso(GGCC_UF_MES, CONTRIBUCIONES_UF_TRIM);
-const { proyecciones, flujosAnualesUF, aportesUF, deptoUF, fondoHabitatUF, fondoCuprumUF, depositoUF } = caso;
+const { proyecciones, aportesUF, deptoUF, fondoHabitatUF, fondoCuprumUF, depositoUF } = caso;
 
 // Verificación de coherencia contra el flujo normal del producto: el año 1 del
 // backtest usa el mismo arriendo/vacancia que el input, así que el flujo anual debe
