@@ -37,10 +37,19 @@ const SALIDA = join(DIR, "../../tools/reels/data/dataset-backtest-2015-2025.json
 
 /** 1e6: el motor corre en micro-UF. */
 const UF_CLP = 1e6;
-const M2 = 40;
 /** Promedio GfK comuna Santiago 2015 — coincide con GFK_SERIE por construcción. */
 const UFM2_COMPRA = 52.8;
-const PRECIO_UF = UFM2_COMPRA * M2; // 2.112 UF
+/**
+ * Capital redondo de la serie de reels: el caso se diseña desde el capital (500 UF de
+ * bolsillo) hacia el depto, no al revés. Precio 2.000 UF con pie 20% = 400; el aporte
+ * inicial REAL que arroja el motor (pie + cierre + puesta a punto) es 496,82 UF — se
+ * declara aparte y NO se fuerza a 500 (decisión de Fabrizio, lectura 1: las tres
+ * carreras corren con 496,82 exactas y el hook redondea honesto hacia arriba).
+ */
+const CAPITAL_REDONDO_UF = 500;
+const PRECIO_UF = 2000;
+/** La superficie RESULTA del ancla de precio: 2.000 / 52,8 ≈ 37,9 m² (1D1B mediano). */
+const M2 = PRECIO_UF / UFM2_COMPRA;
 const PIE_PCT = 20;
 
 /**
@@ -134,7 +143,7 @@ const serieUfM2: Record<number, number> = {};
   s.valores.forEach((v, i) => { serieUfM2[s.desde + i] = v; });
   serieUfM2[2025] = PLUSVALIA_ESTIMADO_2025["Santiago"].ufM2;
   if (serieUfM2[2015] !== UFM2_COMPRA) {
-    throw new Error(`GfK Santiago 2015 = ${serieUfM2[2015]} ≠ precio de compra ${UFM2_COMPRA}`);
+    throw new Error(`GfK Santiago 2015 = ${serieUfM2[2015]} ≠ ancla de compra ${UFM2_COMPRA}`);
   }
 }
 
@@ -298,6 +307,57 @@ const sensibilidadCruce = GRILLA_GGCC.map((g) =>
   GRILLA_CONTRIB.map((c) => ({ ggcc: g, contrib: c, cruce: correrCaso(g, c).cruce })),
 ).flat();
 
+// ─── Series mensuales (para la animación del reel) ──────────────────────────
+//
+// La MISMA aritmética validada de las carreras, muestreada al fin de cada mes. El
+// depto NO lleva serie mensual: no existe el dato (GfK es anual) y la suavización es
+// visual, se hace en el reel.
+
+const MESES = ANIOS.flatMap((anio) => Array.from({ length: 12 }, (_, m) => ({ anio, mes: m + 1 })));
+const etiquetaMes = (x: { anio: number; mes: number }) => `${x.anio}-${String(x.mes).padStart(2, "0")}`;
+
+// Fondo A mensual: unidades acumuladas con los mismos dozavos del backtest anual,
+// valuadas a la cuota UF del fin de cada mes.
+function fondoMensual(afp: string): number[] {
+  const cuotaUFDicBase = cuotaDic(afp, 2014) / ufDic(2014);
+  let unidades = aporteInicialUF / cuotaUFDicBase;
+  return MESES.map(({ anio, mes }) => {
+    const idx = anio - 2015;
+    const deficitMensualUF = caso.flujosAnualesUF[idx] < 0 ? -caso.flujosAnualesUF[idx] / 12 : 0;
+    const cuotaUF = cuotaMes(afp, anio, mes) / ufMes(anio, mes);
+    unidades += deficitMensualUF / cuotaUF;
+    return unidades * cuotaUF;
+  });
+}
+const fondoAMensual = fondoMensual("HABITAT");
+
+// Depósito mensual: la tasa anual del año en curso capitaliza como equivalente
+// mensual compuesto; el aporte del año entra al cierre, igual que en el anual.
+const depositoMensual: number[] = [];
+{
+  let w = aporteInicialUF;
+  for (const { anio, mes } of MESES) {
+    w *= Math.pow(1 + tasaDeposito(anio), 1 / 12);
+    if (mes === 12) w += aportesUF[anio];
+    depositoMensual.push(w);
+  }
+}
+
+// GUARDA diciembre-vs-anual: el muestreo mensual no puede contar otra historia que la
+// serie anual ya publicada. Fondo A comparte hasta el orden de las sumas => exige 0
+// (tolerancia de punto flotante); el depósito compone por mes => tolera 0,1 UF.
+ANIOS.forEach((anio, i) => {
+  const iDic = i * 12 + 11;
+  const dFondo = Math.abs(fondoAMensual[iDic] - fondoHabitatUF[i]);
+  if (dFondo > 1e-6) {
+    throw new Error(`serie mensual Fondo A ${anio}: dic=${fondoAMensual[iDic]} ≠ anual=${fondoHabitatUF[i]} (Δ ${dFondo} UF)`);
+  }
+  const dDep = Math.abs(depositoMensual[iDic] - depositoUF[i]);
+  if (dDep > 0.1) {
+    throw new Error(`serie mensual depósito ${anio}: dic=${depositoMensual[iDic]} ≠ anual=${depositoUF[i]} (Δ ${dDep.toFixed(4)} UF)`);
+  }
+});
+
 // ─── Resultados ─────────────────────────────────────────────────────────────
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -307,9 +367,11 @@ const divergenciaCuprum = Math.max(...ANIOS.map((_, i) => Math.abs(fondoHabitatU
 const dataset = {
   meta: {
     titulo: "La misma plata, tres destinos: 2015–2025",
-    caso: `Depto 1D1B ${M2} m² comuna Santiago, compra 1-ene-2015 a ${UFM2_COMPRA} UF/m² (${PRECIO_UF} UF), pie ${PIE_PCT}% + gastos de cierre del motor, crédito ${PLAZO_CREDITO_ANOS} años al ${TASA_HIPOTECARIA_2015_UF}% UF`,
+    caso: `Depto 1D1B de ${M2.toFixed(1)} m² comuna Santiago, compra 1-ene-2015 a ${UFM2_COMPRA} UF/m² (${PRECIO_UF} UF), pie ${PIE_PCT}% + cierre y puesta a punto del motor, crédito ${PLAZO_CREDITO_ANOS} años al ${TASA_HIPOTECARIA_2015_UF}% UF`,
     unidad: "UF",
-    aporteInicialUF: r1(aporteInicialUF),
+    /** El hook habla de capital redondo; el gráfico usa el aporte real del motor. */
+    capitalRedondoUF: CAPITAL_REDONDO_UF,
+    aporteInicialUF: Math.round(aporteInicialUF * 100) / 100,
     aportesExtraUF: Object.fromEntries(ANIOS.filter((a) => aportesUF[a] > 0).map((a) => [a, r1(aportesUF[a])])),
     supuestosDeclarados: {
       plazoCreditoAnos: PLAZO_CREDITO_ANOS,
@@ -329,6 +391,11 @@ const dataset = {
   },
   cruceDeptoSuperaFondoA: cruce,
   sensibilidadCruce,
+  seriesMensuales: {
+    meses: MESES.map(etiquetaMes),
+    fondoA: fondoAMensual.map(r1),
+    deposito: depositoMensual.map(r1),
+  },
   control: {
     fondoACuprum: fondoCuprumUF.map(r1),
     divergenciaMaxHabitatCuprumPct: Math.round(divergenciaCuprum * 100) / 100,
