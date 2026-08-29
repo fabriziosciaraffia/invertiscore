@@ -149,9 +149,11 @@ etiquetas de línea escaladas por px(9.5)/29; marca de agua del año a ~91 px / 
 anclada a la derecha dentro del gráfico; pie de fuentes izquierdo (px(7.2), bottom
 px(48)); CTA completo del reel 1 (cascada izquierda, rojos en Franco/gratis/.ai,
 delays 0,5/1,05/1,6 y subida px(26)). Sin equivalente y derivados por proporción:
-corchete (v8 tal cual) y rótulo "la palanca" (48 ≈ titular×0,72). El hook queda
-CENTRADO en ambos estados (cambiar la alineación a mitad del vuelo saltaría) y ocupa
-pantalla completa 3,5 s con subida de 0,5 s. El rótulo del contrafactual es
+corchete (v8 tal cual) y rótulo "la palanca" (48 ≈ titular×0,72). El hook va ALINEADO A LA
+IZQUIERDA en ambos estados, como el bloque editorial del reel 1 publicado (verificado
+contra el post de Instagram) — así la transición es continua sin morfear la
+alineación; ocupa pantalla completa 3,5 s con subida de 0,5 s. El pie lleva wordmark
+sobre la línea de fuente, como el reel 1. El rótulo del contrafactual es
 "Sin crédito (misma plata)": la línea es la fracción comprada al contado, no un
 departamento entero sin deuda.
 

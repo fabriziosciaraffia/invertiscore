@@ -104,10 +104,10 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
   const X = (tt: number) => PLOT.x0 + (tt / NM) * (PLOT.x1 - PLOT.x0);
   const Y = (v: number) => PLOT.y1 - (v / yMax) * (PLOT.y1 - PLOT.y0);
 
-  // ── Hook: 3,5 s protagonista al centro, luego sube a la safe zone del reel 1 ──
-  // El estado chico usa las métricas del titular del reel 1 (px(25), lh 1.16, 700).
-  // Se mantiene centrado en ambos estados: cambiar la alineación a mitad del vuelo
-  // daría un salto — desviación declarada del titular izquierdo del reel 1.
+  // ── Hook: 3,5 s protagonista, luego sube a la safe zone del reel 1 ──
+  // ALINEADO A LA IZQUIERDA en ambos estados, como el bloque editorial del reel 1
+  // publicado (verificado contra el post de Instagram): así la transición es continua
+  // sin morfear la alineación a mitad del vuelo.
   const opHook =
     interpolate(el, [T_HOOK_VISIBLE, T_HOOK_VISIBLE + 0.9], [0, 1], {
       easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp",
@@ -194,7 +194,7 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
         <div
           style={{
             position: "absolute", left: px(28), right: px(28), top: HOOK_TOP_CHICO,
-            textAlign: "center", fontFamily: SANS, fontWeight: 600, fontSize: ANTETITULO_FS,
+            textAlign: "left", fontFamily: SANS, fontWeight: 600, fontSize: ANTETITULO_FS,
             letterSpacing: "0.20em", textTransform: "uppercase", color: tema.tx3,
           }}
         >
@@ -303,23 +303,30 @@ export const Reel2Palanca: React.FC<PropsReel2> = ({
           </div>
         ))}
 
-        {/* fuente — métricas del pie del reel 1: alineada a la izquierda, px(7.2),
-            bottom px(48) */}
-        <div
-          style={{
-            position: "absolute", bottom: px(48), left: px(28), right: px(28),
-            textAlign: "left", fontFamily: SANS, fontSize: px(7.2), lineHeight: 1.4,
-            color: tema.fondoSrc,
-          }}
-        >
-          {fuente}
+        {/* pie del reel 1 publicado: wordmark y, debajo, la línea de fuente — ambos a
+            la izquierda, bottom px(48). El wordmark se va con la escena (en el CTA lo
+            pone la cascada, no se duplica). */}
+        <div style={{ position: "absolute", bottom: px(48), left: px(28), right: px(28), textAlign: "left" }}>
+          <div style={{ fontFamily: SERIF, fontSize: px(14), color: tema.ink }}>
+            <span style={{ fontStyle: "italic", fontWeight: 400, color: tema.tx3 }}>re</span>
+            <b style={{ fontWeight: 700 }}>franco</b>
+            <span style={{ color: tema.rojo, fontSize: px(9.5), fontWeight: 600 }}>.ai</span>
+          </div>
+          <div
+            style={{
+              marginTop: px(3), fontFamily: SANS, fontSize: px(7.2), lineHeight: 1.4,
+              color: tema.fondoSrc,
+            }}
+          >
+            {fuente}
+          </div>
         </div>
       </div>
 
       {/* ---------- HOOK ---------- */}
       <div
         style={{
-          position: "absolute", left: px(28), right: px(28), top: hookTop, textAlign: "center",
+          position: "absolute", left: px(28), right: px(28), top: hookTop, textAlign: "left",
           fontFamily: SERIF, fontWeight: 700, fontSize: hookFs, lineHeight: hookLh,
           color: tema.ink, opacity: opHook,
         }}
