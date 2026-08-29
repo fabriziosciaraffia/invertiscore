@@ -54,26 +54,81 @@ export const S = 1080 / 405;
 /** Convierte una medida del prototipo al lienzo final. */
 export const px = (n: number) => n * S;
 
-/** Carbón degradado del prototipo. Lo comparten el video y la portada. */
-export const FONDO_LINEAS = "linear-gradient(178deg,#2B2620 0%,#151310 52%,#070606 100%)";
-
 /** Inercia del eje Y. El eje persigue su objetivo, no salta. */
 export const INERCIA = 0.06;
 
-// Paleta viva del prototipo SAFEZONE: blanco puro en vez de hueso, rojo más saturado y
-// neutros más claros. El reel se ve en un celular a brillo alto y compitiendo con el
-// resto del feed; los tonos apagados del papel no sobreviven a eso.
-export const COLOR_L = {
-  ink: "#FFFFFF",
-  tx3: "#B4AC9C",
-  grid: "#2E2B25",
-  eje: "#5C574D",
-  rojo: "#FF4D5A",
-  fondoSrc: "#9A9385",
-} as const;
+/**
+ * Un tema es TODA la decisión de color del reel; el layout, el timing y los textos no
+ * saben de temas. Los dos que existen replican los prototipos `ref/color-A-neon.html`
+ * y `ref/color-C-light.html` valor por valor. Tras el test en celular ganó `neon`
+ * (TEMA_POR_DEFECTO); `light` sigue renderizable por su composición.
+ */
+export type Tema = {
+  /**
+   * Fondo del video y la portada. Acepta un degradado o un COLOR PLANO — y desde el
+   * próximo reel va plano por doctrina (ver README): los degradés oscuros sufren
+   * banding con la compresión de Instagram. Este reel salió con degradé, aprobado
+   * antes de la regla.
+   */
+  fondo: string;
+  /** Texto principal: hook, CTA, wordmark, etiquetas fuera de barra. */
+  ink: string;
+  /** Texto secundario del CSS: antetítulo y "re" del wordmark. */
+  tx3: string;
+  /**
+   * Gris del GRÁFICO: rótulos del eje, años y la referencia punteada. En neón el
+   * prototipo usa un gris distinto dentro del SVG que fuera de él (#8E8FA3 vs
+   * #9C9DB2); en light coinciden. Lo cazó el gate de valores, no el ojo.
+   */
+  tx3Grafico: string;
+  grid: string;
+  eje: string;
+  /** Highlight: palabra resaltada, "Franco", "gratis", ".ai". */
+  rojo: string;
+  /** La línea de fuente del pie. */
+  fondoSrc: string;
+  /** Series por posición, en el orden fijo del prototipo. */
+  series: string[];
+  /** El año gigante detrás de las series (opacidad 0,15). */
+  marcaAgua: string;
+};
 
-/** Paleta de series, por posición. El prototipo la fija en este orden. */
-export const PALETA = ["#FF5A66", "#FFFFFF", "#7FB0FF", "#FFB84D", "#3DDBC4"];
+export const TEMAS = {
+  neon: {
+    fondo: "linear-gradient(178deg,#16161E 0%,#0C0C12 52%,#050508 100%)",
+    ink: "#FFFFFF",
+    tx3: "#9C9DB2",
+    tx3Grafico: "#8E8FA3",
+    grid: "#20212C",
+    eje: "#4A4C5E",
+    rojo: "#FF3D50",
+    fondoSrc: "#8E8FA3",
+    series: ["#FF3D50", "#FFFFFF", "#4D9FFF", "#FFC42E", "#00E5C3"],
+    marcaAgua: "#FFFFFF",
+  },
+  // Ojo: el antetítulo/eje del prototipo light usa #6E685C pero su .src usa #7E7869 —
+  // son DOS grises distintos, no un typo.
+  light: {
+    fondo: "linear-gradient(178deg,#FFFFFF 0%,#F6F2EA 52%,#EDE6D8 100%)",
+    ink: "#0F0F0F",
+    tx3: "#6E685C",
+    tx3Grafico: "#6E685C",
+    grid: "#E0DACC",
+    eje: "#A39C8C",
+    rojo: "#E01B2C",
+    fondoSrc: "#7E7869",
+    series: ["#E01B2C", "#0F0F0F", "#0D5BD9", "#E88A00", "#00A88A"],
+    // El HTML dejó INK='#FFFFFF' (resto stale del tema oscuro): blanco al 15% sobre
+    // crema es invisible. La marca de agua pasa a tinta, que es la intención declarada
+    // del tema — desviación deliberada del literal del prototipo.
+    marcaAgua: "#0F0F0F",
+  },
+} as const satisfies Record<string, Tema>;
+
+export type NombreTema = keyof typeof TEMAS;
+
+/** La dirección ganadora del test en celular (28-ago-2026): neón. */
+export const TEMA_POR_DEFECTO: Tema = TEMAS.neon;
 
 /** Grosor de trazo: las series y la referencia punteada. */
 export const TRAZO_SERIE = 2.8;
@@ -180,6 +235,7 @@ export type Punta = {
 export function puntas(
   filas: FilaLinea[],
   colores: string[],
+  colorReferencia: string,
   tt: number,
   n: number,
   Y: (v: number) => number,
@@ -187,7 +243,7 @@ export function puntas(
   const lista = filas.map((f, i) => ({
     nombre: f.referencia ? "Prom. GS" : f.nombre,
     v: valAt(f.valores, tt, n),
-    color: f.referencia ? COLOR_L.tx3 : colores[i % colores.length],
+    color: f.referencia ? colorReferencia : colores[i % colores.length],
     referencia: f.referencia,
   }));
   lista.sort((a, b) => b.v - a.v);

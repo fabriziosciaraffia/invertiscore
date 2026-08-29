@@ -7,9 +7,12 @@
     "dev": "remotion studio",
     "render": "node scripts/render-limpio.mjs BarRacePlusvalia out/reel-plusvalia.mp4",
     "still": "remotion still BarRacePlusvalia out/frame.png",
-    "render:lineas": "node scripts/render-limpio.mjs LineasTop5 out/reel-lineas-top5.mp4",
-    "still:lineas": "remotion still LineasTop5 out/lineas-final.png --frame=719",
-    "render:portada": "remotion still PortadaLineas out/portada-reel.png"
+    "render:lineas:neon": "node scripts/render-limpio.mjs LineasNeon out/reel-lineas-neon.mp4",
+    "render:lineas:light": "node scripts/render-limpio.mjs LineasLight out/reel-lineas-light.mp4",
+    "still:lineas:neon": "remotion still LineasNeon out/lineas-final-neon.png --frame=719",
+    "still:lineas:light": "remotion still LineasLight out/lineas-final-light.png --frame=719",
+    "render:portada:neon": "remotion still PortadaNeon out/portada-neon.png",
+    "render:portada:light": "remotion still PortadaLight out/portada-light.png"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.0",

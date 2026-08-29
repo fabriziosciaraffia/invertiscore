@@ -40,6 +40,15 @@ cd tools/reels && node_modules/.bin/remotion still BarRacePlusvalia out/f300.png
 La carpeta `out/` y los `.mp4` están en el `.gitignore`: el video es un entregable, no
 un archivo del repo.
 
+## Doctrina de dirección de arte
+
+- **Fondo PLANO, sin degradés, desde el próximo reel.** Decisión post-test en celular
+  (28-ago-2026): los degradés oscuros sufren banding con la compresión de Instagram.
+  El reel de líneas salió con el degradé neón porque se aprobó antes de la regla; no
+  sienta precedente. Ya está parametrizado: el campo `fondo` del tema acepta un color
+  plano (`"#16161E"`) igual que un `linear-gradient(...)` — aplanar un tema nuevo es
+  escribir un hex, sin tocar componentes.
+
 ## De dónde salen los números
 
 De ningún lado que se pueda editar a mano. El dataset se genera:
@@ -81,16 +90,26 @@ recalculan solas.
 ## Reel 2 — "Diez años de plusvalía" (líneas top-5)
 
 Composición `LineasTop5`: 1080×1920, 30fps, 720 frames (24 s) — 20 s de gráfico más un
-acto CTA de 4 s. Réplica de `ref/lineas-top5-SAFEZONE-t25.html`.
+acto CTA de 4 s. Layout y timing de `ref/lineas-top5-SAFEZONE-t25.html`.
+
+El color vive aparte, como TEMA (`TEMAS` en `src/lineas.ts`): `neon`
+(`ref/color-A-neon.html`) y `light` (`ref/color-C-light.html`). Tras el test en celular
+**ganó neón** — es `TEMA_POR_DEFECTO` y el default de las props; light sigue
+renderizable por su composición, pero no es default. Cada variante es una composición
+con nombre propio:
 
 ```bash
-cd tools/reels && npm run render:lineas    # MP4 del reel
-cd tools/reels && npm run still:lineas     # PNG del frame final (719)
-cd tools/reels && npm run render:portada   # PNG de la portada
+cd tools/reels && npm run render:lineas:neon     # out/reel-lineas-neon.mp4
+cd tools/reels && npm run render:lineas:light    # out/reel-lineas-light.mp4
+cd tools/reels && npm run still:lineas:neon      # frame final (719) de cada una
+cd tools/reels && npm run still:lineas:light
+cd tools/reels && npm run render:portada:neon    # out/portada-neon.png
+cd tools/reels && npm run render:portada:light   # out/portada-light.png
 ```
 
-La portada es la composición `PortadaLineas`, réplica de `ref/portada-reel-SAFEZONE.html`. Es
-estática: se exporta con `remotion still`, no se renderiza a video.
+La portada es la composición `PortadaLineas` y HEREDA el tema del video — no hay HTML de
+portada por variante. Es estática: se exporta con `remotion still`, no se renderiza a
+video.
 
 Su dataset se genera aparte del de la carrera:
 
@@ -106,8 +125,11 @@ código: los colores se asignan por posición y los emojis por nombre, ambos com
 
 - Layout de zonas seguras: el bloque entero baja (hook en 100, gráfico en 206/118) y el
   pie sube a 48, para despejar las franjas donde Instagram monta su interfaz.
-- Paleta viva (blanco puro, rojo `#FF4D5A`, neutros más claros): el reel compite con el
-  resto del feed en un celular a brillo alto, donde los tonos de papel se apagan.
+- En el tema `neon` el prototipo usa DOS grises secundarios: uno en el CSS (antetítulo,
+  "re" del wordmark) y otro dentro del SVG (eje, años, referencia). Por eso el tema
+  tiene `tx3` y `tx3Grafico`. Lo detectó el gate de valores contra el HTML, no el ojo.
+- En `light` la marca de agua del año va en tinta, no en el `INK='#FFFFFF'` que el HTML
+  dejó de resto del tema oscuro (blanco al 15% sobre crema sería invisible).
 - El tamaño del titular vive en `TITULO_FS` (`src/LineasTop5.tsx`); a 33 ocupaba tres
   líneas, a 25 entra en dos.
 - El acto CTA replica transiciones CSS en frames: fundido de 0,7 s sobre gráfico y hook,

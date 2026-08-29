@@ -5,7 +5,7 @@ import { FPS, GUION, LIENZO } from "./canon";
 import type { Dataset, Evento } from "./carrera";
 import bruto from "../data/dataset-plusvalia-2015-2025.json";
 import { LineasTop5, PROPS_LINEAS_POR_DEFECTO } from "./LineasTop5";
-import { CTA, DUR, type DatasetLineas } from "./lineas";
+import { CTA, DUR, TEMAS, type DatasetLineas } from "./lineas";
 import { PortadaLineas, PROPS_PORTADA_POR_DEFECTO } from "./PortadaLineas";
 import brutoLineas from "../data/dataset-lineas-top5.json";
 
@@ -88,25 +88,45 @@ export const RemotionRoot: React.FC = () => (
         pieDerecho: `plusvalía acumulada ${dataset.meta.subtitulo}`,
       }}
     />
-    {/* Reel 2 — réplica del prototipo congelado ref/lineas-top5-FINAL.html. */}
+    {/* Reel 2. La dirección de color se decidió en celular: ganó NEÓN, que es el
+        tema por defecto (TEMA_POR_DEFECTO). Light queda renderizable por su
+        composición, pero no es default. */}
     <Composition
-      id="LineasTop5"
+      id="LineasNeon"
       component={LineasTop5}
       durationInFrames={(DUR + CTA) * FPS}
       fps={FPS}
       width={LIENZO.w}
       height={LIENZO.h}
-      defaultProps={{ dataset: datasetLineas, ...PROPS_LINEAS_POR_DEFECTO }}
+      defaultProps={{ dataset: datasetLineas, ...PROPS_LINEAS_POR_DEFECTO, tema: TEMAS.neon }}
     />
-    {/* Portada estática del reel 2 — se exporta con `remotion still`. */}
     <Composition
-      id="PortadaLineas"
+      id="LineasLight"
+      component={LineasTop5}
+      durationInFrames={(DUR + CTA) * FPS}
+      fps={FPS}
+      width={LIENZO.w}
+      height={LIENZO.h}
+      defaultProps={{ dataset: datasetLineas, ...PROPS_LINEAS_POR_DEFECTO, tema: TEMAS.light }}
+    />
+    {/* Portadas: heredan el tema del video — no hay HTML de portada por variante. */}
+    <Composition
+      id="PortadaNeon"
       component={PortadaLineas}
       durationInFrames={1}
       fps={FPS}
       width={LIENZO.w}
       height={LIENZO.h}
-      defaultProps={PROPS_PORTADA_POR_DEFECTO}
+      defaultProps={{ ...PROPS_PORTADA_POR_DEFECTO, tema: TEMAS.neon }}
+    />
+    <Composition
+      id="PortadaLight"
+      component={PortadaLineas}
+      durationInFrames={1}
+      fps={FPS}
+      width={LIENZO.w}
+      height={LIENZO.h}
+      defaultProps={{ ...PROPS_PORTADA_POR_DEFECTO, tema: TEMAS.light }}
     />
   </>
 );
