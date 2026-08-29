@@ -18,7 +18,7 @@
  */
 
 import assert from "node:assert/strict";
-import { detectarDrift, snapshotDe, PROMPT_VERSION_COMUNA, type ProsaComuna } from "../src/lib/data/comuna-prosa";
+import { detectarDrift, snapshotDe, validarCoherenciaNumerica, validarRolesDeCifras, PROMPT_VERSION_COMUNA, type ProsaComuna } from "../src/lib/data/comuna-prosa";
 import type { ComunaStats, TipologiaStats } from "../src/lib/data/comunas-seo";
 
 let pass = 0, fail = 0;
@@ -152,6 +152,95 @@ test("los motivos no se repiten aunque los gatille más de una tipología", () =
   const d = detectarDrift(p, s2, 2);
   assert.equal(new Set(d.motivos).size, d.motivos.length);
 });
+
+// ── Coherencia numérica: los errores REALES del primer lote ─────────────────
+
+console.log("\nCoherencia numérica · los errores que se colaron en el lote v1");
+
+// Macul, tal como salió: la brecha mensual está en PESOS, no en UF.
+const macul = stats([
+  tip({ dorms: 1, arriendoCLP: 400_000, ventaUF: 2_921, dividendoCLP: 574_210,
+        brechaCLP: -174_210, cubre: false, precioCuotaUF: 2_034, deltaPct: -30.4,
+        rentabilidadBruta: 4.0, pieNecesarioPct: 43 }),
+]);
+
+test("EL CASO MACUL: una brecha mensual escrita en UF se rechaza", () => {
+  const e = validarCoherenciaNumerica("La brecha llega a UF 174.210 mensuales.", macul);
+  assert.ok(e.length > 0, "no detectó nada");
+  assert.ok(e[0].includes("está en pesos"), `mensaje poco claro: ${e[0]}`);
+});
+
+test("la misma cifra en pesos SÍ pasa", () => {
+  assert.deepEqual(validarCoherenciaNumerica("Faltan $174.210 al mes.", macul), []);
+});
+
+// Cerrillos: dos precios de equilibrio distintos para la misma tipología.
+const cerrillos = stats([
+  tip({ dorms: 2, arriendoCLP: 440_000, ventaUF: 2_808, dividendoCLP: 438_199,
+        brechaCLP: 1_801, cubre: true, precioCuotaUF: 2_814, deltaPct: 0.2,
+        rentabilidadBruta: 4.6, pieNecesarioPct: null }),
+]);
+
+test("EL CASO CERRILLOS: el segundo precio de equilibrio inventado se rechaza", () => {
+  const e = validarCoherenciaNumerica(
+    "Se paga solo sobre UF 2.851, y deja de hacerlo cuando supera UF 2.814.", cerrillos);
+  assert.equal(e.length, 1, `esperaba 1 error, hubo ${e.length}: ${e.join(" · ")}`);
+  assert.ok(e[0].includes("2.851"));
+});
+
+test("un porcentaje que no está en los datos se rechaza", () => {
+  const e = validarCoherenciaNumerica("La rentabilidad llega a 9,9%.", cerrillos);
+  assert.equal(e.length, 1, e.join(" · "));
+});
+
+test("los porcentajes de los supuestos (pie, tasa) sí pasan", () => {
+  assert.deepEqual(validarCoherenciaNumerica("Con pie de 20% y tasa de 4%.", cerrillos), []);
+});
+
+test("un párrafo correcto no levanta nada", () => {
+  const e = validarCoherenciaNumerica(
+    "El 2D se paga solo: el arriendo mediano de $440.000 cubre la cuota de $438.199 y deja UF 2.814 de techo antes de dejar de hacerlo, con 4,6% de rentabilidad bruta.",
+    cerrillos);
+  assert.deepEqual(e, []);
+});
+
+
+// ── Roles: número correcto, papel equivocado ────────────────────────────────
+
+console.log("\nRoles de las cifras · el error que los dos guards anteriores dejaron pasar");
+
+test("EL CASO PUDAHUEL: un margen expresado como precio en UF se rechaza", () => {
+  const e = validarRolesDeCifras(
+    "El 1D tiene un margen de UF 2.883 antes de dejar de ser autosustentable, un 57,1% sobre la mediana.");
+  assert.equal(e.length, 1, `esperaba 1, hubo ${e.length}`);
+  assert.ok(e[0].includes("no un precio en UF"), e[0]);
+});
+
+test("pero \"margen HASTA UF X\" es correcto y NO se marca", () => {
+  // La holgura llega hasta ese precio: el conector cambia el significado.
+  assert.deepEqual(
+    validarRolesDeCifras("Tiene margen hasta UF 1.787 antes de dejar de pagarse sola."), []);
+});
+
+test("el margen como porcentaje pasa", () => {
+  assert.deepEqual(
+    validarRolesDeCifras("Un margen de 22,5% hasta el precio de equilibrio en UF 2.498."), []);
+});
+
+test("el margen como monto mensual en pesos pasa", () => {
+  assert.deepEqual(validarRolesDeCifras("Margen de $70.737 al mes sobre la cuota."), []);
+});
+
+test("el precio de equilibrio expresado en pesos se rechaza", () => {
+  const e = validarRolesDeCifras("Su precio de equilibrio es $2.883.000.");
+  assert.equal(e.length, 1, e.join(" · "));
+});
+
+test("el precio de equilibrio expresado como porcentaje se rechaza", () => {
+  const e = validarRolesDeCifras("El precio de equilibrio de 57,1% sobre la mediana.");
+  assert.equal(e.length, 1, e.join(" · "));
+});
+
 
 console.log(`\n${"─".repeat(60)}`);
 console.log(`  ${pass} OK · ${fail} FAIL`);

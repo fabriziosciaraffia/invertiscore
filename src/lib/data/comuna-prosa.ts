@@ -21,9 +21,14 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import type { ComunaStats } from "@/lib/data/comunas-seo";
+import { PLUSVALIA_ESTIMADO, coberturaPlusvaliaDe } from "@/lib/plusvalia-estimado.gen";
 
-/** Versión del prompt. Un bump obliga a regenerar el parque completo. */
-export const PROMPT_VERSION_COMUNA = 1;
+/** Versión del prompt. Un bump obliga a regenerar el parque completo.
+ *  v2: unidades explícitas por cifra + guard de coherencia numérica. La v1
+ *  producía errores de unidad que el guard de forma no veía — Macul publicó
+ *  "UF 174.210 mensuales" por una brecha que estaba en PESOS, y Cerrillos dio
+ *  dos precios de equilibrio distintos para la misma tipología. */
+export const PROMPT_VERSION_COMUNA = 2;
 
 /** Lo que la prosa narró, por tipología. Solo lo citable. */
 export interface SnapshotTipologia {
@@ -232,4 +237,177 @@ export async function getTodasLasProsas(): Promise<Map<string, ProsaComuna>> {
   const m = new Map<string, ProsaComuna>();
   for (const f of (data ?? []) as FilaProsa[]) m.set(f.slug, aProsa(f));
   return m;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Guard de coherencia numérica
+//
+// El guard de forma (largo, voseo, markdown) valida CÓMO está escrito el
+// párrafo, no si dice la verdad. En el primer lote se colaron errores de
+// unidad que ninguna regla de forma podía ver:
+//   · Macul: "una brecha de UF 174.210 mensuales" — ese número existe, pero en
+//     PESOS. En UF serían ~7.000 millones al mes.
+//   · Cerrillos: dos precios de equilibrio distintos para el mismo 2D en el
+//     mismo párrafo ("sobre UF 2.851" y "supera UF 2.814"). Uno estaba mal.
+//
+// La defensa es la misma idea del test de propiedad del helper: atar la salida
+// a la fuente en vez de confiar en que salga bien. Toda cifra en pesos, UF o
+// porcentaje que aparezca en la prosa tiene que EXISTIR en los datos que se le
+// pasaron al modelo, con SU unidad. Si un valor existe pero en otra unidad, el
+// error lo dice — es el caso Macul y el más fácil de cometer.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Las cifras que el prompt entrega, agrupadas por unidad. */
+export interface CifrasCitables {
+  clp: Set<number>;
+  uf: Set<number>;
+  pct: Set<number>;
+  /** Conteos y años: no se validan como magnitud, pero sirven al prompt. */
+  enteros: Set<number>;
+}
+
+/**
+ * Qué puede citar la prosa. Se construye de las MISMAS stats que alimentan el
+ * prompt, así que si el prompt cambia lo que muestra, esto lo sigue.
+ */
+export function cifrasCitables(stats: ComunaStats): CifrasCitables {
+  const clp = new Set<number>();
+  const uf = new Set<number>();
+  const pct = new Set<number>();
+  const enteros = new Set<number>();
+
+  for (const t of stats.tipologias) {
+    clp.add(t.arriendoCLP);
+    clp.add(t.dividendoCLP);
+    clp.add(Math.abs(t.brechaCLP));
+    uf.add(t.ventaUF);
+    uf.add(t.precioCuotaUF);
+    pct.add(t.rentabilidadBruta);
+    pct.add(Math.abs(Math.round(t.deltaPct * 10) / 10));
+    if (t.pieNecesarioPct !== null) pct.add(t.pieNecesarioPct);
+    enteros.add(t.nArriendos);
+    enteros.add(t.nVentas);
+    enteros.add(t.dorms);
+  }
+  pct.add(stats.supuestos.piePct);
+  pct.add(stats.supuestos.tasaAnual);
+
+  // Plusvalía: el prompt la entrega cuando la comuna tiene trayectoria, así que
+  // el modelo la cita con razón. Sin esto el guard rechazaba párrafos correctos
+  // — el conjunto permitido tiene que cubrir TODO lo que el prompt muestra.
+  const cob = coberturaPlusvaliaDe(stats.nombre);
+  const pv = PLUSVALIA_ESTIMADO[stats.nombre];
+  if (pv && (cob === "trayectoria_gfk" || cob === "nivel_mas_ac" || cob === "solo_ac")) {
+    pct.add(pv.plusvalia10a);
+    pct.add(pv.anualizada);
+    uf.add(pv.precioInicio);
+    uf.add(pv.precioFin);
+    for (const anio of pv.rangoHist.split("-")) enteros.add(Number(anio));
+  }
+  enteros.add(stats.supuestos.plazoAnos);
+  enteros.add(stats.tipologias.length);
+  enteros.add(stats.tipologias.filter((t) => t.cubre).length);
+  enteros.add(stats.procedencia.enCalculo);
+  enteros.add(stats.procedencia.activosTotales);
+
+  return { clp, uf, pct, enteros };
+}
+
+/** "1.234.567" → 1234567 · "3,5" → 3.5 */
+function aNumero(bruto: string): number {
+  return parseFloat(bruto.replace(/\./g, "").replace(",", "."));
+}
+
+/** Un porcentaje calza si coincide al decimal, con o sin el ",0". */
+function calzaPct(valor: number, permitidos: Set<number>): boolean {
+  for (const p of Array.from(permitidos)) {
+    if (Math.abs(p - valor) < 0.05) return true;
+  }
+  return false;
+}
+
+/**
+ * Toda cifra en $, UF o % del párrafo tiene que existir en los datos con su
+ * unidad. Devuelve la lista de problemas; vacía = coherente.
+ */
+export function validarCoherenciaNumerica(texto: string, stats: ComunaStats): string[] {
+  const c = cifrasCitables(stats);
+  const errores: string[] = [];
+
+  // Pesos: $1.234.567
+  for (const m of Array.from(texto.matchAll(/\$\s?([\d.]+)/g))) {
+    const v = aNumero(m[1]);
+    if (c.clp.has(v)) continue;
+    errores.push(
+      c.uf.has(v)
+        ? `"$${m[1]}" no existe en pesos — ese valor está en UF (unidad cambiada)`
+        : `"$${m[1]}" no está en los datos`
+    );
+  }
+
+  // UF: UF 1.234 (y "UF 1.234,5" por si acaso)
+  for (const m of Array.from(texto.matchAll(/UF\s?([\d.,]+)/gi))) {
+    const v = aNumero(m[1].replace(/[.,]$/, ""));
+    if (!Number.isFinite(v)) continue;
+    if (c.uf.has(v)) continue;
+    errores.push(
+      c.clp.has(v)
+        ? `"UF ${m[1]}" no existe en UF — ese valor está en pesos (unidad cambiada)`
+        : `"UF ${m[1]}" no está en los datos`
+    );
+  }
+
+  // Porcentajes: 3,5% · 33%
+  for (const m of Array.from(texto.matchAll(/([\d]+(?:[.,]\d+)?)\s?%/g))) {
+    const v = aNumero(m[1]);
+    if (calzaPct(v, c.pct)) continue;
+    errores.push(`"${m[1]}%" no está en los datos`);
+  }
+
+  return errores;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Guard de ROLES
+//
+// El guard de coherencia verifica que cada cifra EXISTA con su unidad. No ve
+// si está en el papel correcto. Pudahuel pasó los dos guards anteriores con
+// esto: "un margen de UF 2.883 antes de dejar de ser autosustentable, un 57,1%
+// sobre la mediana". Las dos cifras existen y con su unidad correcta — pero
+// UF 2.883 es el PRECIO DE EQUILIBRIO, no el margen; el margen es el 57,1%.
+// Número correcto, rol equivocado: el error de Macul en otra forma.
+//
+// ALCANCE — a propósito estrecho. Esto NO es un verificador semántico: caza la
+// confusión concreta que ocurrió (un sustantivo de porcentaje introduciendo un
+// precio, y al revés), con una ventana corta para no castigar frases legítimas
+// como "margen de 22,5% hasta el precio de equilibrio en UF 2.498". Verificado
+// sobre el corpus de 24 párrafos: cero falsos positivos. Los errores de rol que
+// esta regla no cubre viven en el prompt y en la revisión humana, no acá.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Un sustantivo de PORCENTAJE al que se le ATRIBUYE un precio en UF.
+ * El conector importa: "margen DE UF 2.883" dice que el margen ES ese precio y
+ * está mal; "margen HASTA UF 1.787" dice hasta qué precio llega la holgura y es
+ * correcto. Por eso solo se aceptan los conectores atributivos.
+ */
+const MARGEN_CON_PRECIO = /(margen|colch[óo]n|holgura)\s+(de|del|es|:)\s*UF\s?[\d.]+/i;
+/** El precio de equilibrio expresado como monto mensual o como porcentaje. */
+const EQUILIBRIO_SIN_PRECIO = /precio de equilibrio[^.;]{0,15}?(\$\s?[\d.]+|[\d]+(?:[.,]\d+)?\s?%)/i;
+
+export function validarRolesDeCifras(texto: string): string[] {
+  const errores: string[] = [];
+  const m1 = texto.match(MARGEN_CON_PRECIO);
+  if (m1) {
+    errores.push(
+      `rol equivocado: "${m1[0].trim()}" — el margen es un porcentaje, no un precio en UF`
+    );
+  }
+  const m2 = texto.match(EQUILIBRIO_SIN_PRECIO);
+  if (m2) {
+    errores.push(
+      `rol equivocado: "${m2[0].trim()}" — el precio de equilibrio es un precio en UF`
+    );
+  }
+  return errores;
 }
