@@ -1,0 +1,96 @@
+{
+  "meta": {
+    "pregunta": "¿Cuánto rinde de menos comprar para arrendar que comprar para vivir, con el mismo depto y el mismo crédito?",
+    "caso": "Depto 1D1B de 37.9 m² comuna Santiago, compra 1-ene-2015 a 52.8 UF/m² (2000 UF), capital 496.8 UF, crédito 25 años al 3.68% UF — idéntico al Reel 2",
+    "unidad": "UF",
+    "supuestos": {
+      "impuestos": "Exención DFL-2 asumida para AMBOS perfiles: sin impuesto a la renta sobre el arriendo ni a la ganancia de capital.",
+      "ggccMesesOcupados": "Fuera de los dos flujos: lo paga el arrendatario del inversionista (y él paga el equivalente donde vive) o el habitante sobre el suyo. Se cancela. El GGCC del mes vacío sí entra, solo al inversionista.",
+      "vivienda": "El inversionista arrienda un equivalente en la misma comuna: el arriendo que cobra y el que paga se cancelan.",
+      "administrador": "El caso corre SIN administrador (igual que el Reel 2)."
+    },
+    "generadoPor": "scripts/data/explorar-invertir-vs-vivir.ts"
+  },
+  "anios": [
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "patrimonioUF": {
+    "inversionista": [
+      394.5,
+      524.5,
+      632.6,
+      844.6,
+      1175.4,
+      1321.6,
+      1574.8,
+      1740.4,
+      1757.8,
+      1933.3,
+      1792.6
+    ],
+    "habitante": [
+      406.4,
+      548.5,
+      668.9,
+      893.4,
+      1236.9,
+      1395.2,
+      1657.9,
+      1832,
+      1857.9,
+      2041.3,
+      1908.5
+    ]
+  },
+  "tir": {
+    "inversionistaPct": 12.1,
+    "habitantePct": 13.5,
+    "brechaPuntos": 1.4
+  },
+  "brechaFinalUF": 115.9,
+  "descomposicionUF": {
+    "vacanciaArriendo": 49,
+    "ggccMesVacio": 9.4,
+    "corretaje": 28.7,
+    "recambio": 28.7,
+    "administracion": 0,
+    "total": 115.9
+  },
+  "sensibilidadVacancia": [
+    {
+      "vacanciaPct": 2,
+      "tirInversionistaPct": 12.4,
+      "tirHabitantePct": 13.5,
+      "brechaPuntos": 1.1,
+      "brechaFinalUF": 90.4
+    },
+    {
+      "vacanciaPct": 4,
+      "tirInversionistaPct": 12.1,
+      "tirHabitantePct": 13.5,
+      "brechaPuntos": 1.4,
+      "brechaFinalUF": 123.2
+    },
+    {
+      "vacanciaPct": 6,
+      "tirInversionistaPct": 11.7,
+      "tirHabitantePct": 13.5,
+      "brechaPuntos": 1.8,
+      "brechaFinalUF": 156.1
+    }
+  ],
+  "extraNoDelCaso": {
+    "administracionSiHubieraAdministradorUF": 93.1,
+    "nota": "7% es el default del motor, no un supuesto nuevo. El caso corre sin administrador."
+  }
+}
