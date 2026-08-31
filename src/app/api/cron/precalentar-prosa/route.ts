@@ -106,9 +106,24 @@ export async function GET(request: Request) {
     // (prosa sin versionar) sigue cayendo del lado correcto.
     type FilaPrecalentado = { id: string; tipo_analisis: string | null; pv: number | string | null };
     // Predicado de frescura POR TIPO: cada modalidad contra SU versión vigente.
-    const esStale = (f: FilaPrecalentado) =>
-      f.pv == null ||
-      Number(f.pv) !== (f.tipo_analisis === "short-term" ? PROMPT_VERSION_STR : PROMPT_VERSION_LTR);
+    // `<` Y NO `!==`: una versión SUPERIOR a la vigente es prosa de una rama que
+    // todavía no mergea, y regenerarla la pisa. Pasó tres bumps seguidos — en el
+    // último sobrevivió UNA de las filas regeneradas para QA, y solo porque caía
+    // fuera de la ventana de 14 días. Cada pisada cuesta una generación y obliga
+    // a rehacer los shots.
+    //
+    // El riesgo simétrico —revertir un bump y quedarse con prosa de una versión
+    // que ya no existe— no se ha dado en 13 bumps, y la salida natural de un mal
+    // bump es subir a la siguiente, no volver atrás: con eso el predicado vuelve
+    // a cubrirlas.
+    //
+    // El guard de NaN es necesario: sin él un `pv` no numérico daría `NaN < X` =
+    // false y pasaría por fresco. Desconocido tiene que seguir contando stale.
+    const esStale = (f: FilaPrecalentado) => {
+      const vigente = f.tipo_analisis === "short-term" ? PROMPT_VERSION_STR : PROMPT_VERSION_LTR;
+      const n = Number(f.pv);
+      return f.pv == null || !Number.isFinite(n) || n < vigente;
+    };
     const stale = ((filas ?? []) as unknown as FilaPrecalentado[]).filter(esStale);
     let ok = 0;
     let fallidos = 0;
