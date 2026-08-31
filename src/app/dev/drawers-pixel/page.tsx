@@ -37,7 +37,16 @@ type FixKey =
   // "no recuperas ni lo aportado"— solo se puede validar por fixture. Derivados de los
   // santiago* reales: se parchea la comuna y el bloque plusvalia con los valores
   // exactos de PLUSVALIA_ESTIMADO["El Bosque"].
-  | "elBosqueLtr" | "elBosqueStr";
+  | "elBosqueLtr" | "elBosqueStr"
+  // pieCruzaLtr/pieNoCruzaLtr: las DOS ramas de la palanca del pie en el cuerpo de
+  // distancia, que ningún fixture cubría (los cuatro con hallazgo de distancia eran
+  // STR y ninguno tenía `pieEsPalanca`). Análisis REALES copiados tal cual:
+  //   · pieCruzaLtr   — pie 10%, la palanca cruza en 17% ⇒ fila con razón propia
+  //     ("no depende del vendedor, depende de tu liquidez").
+  //   · pieNoCruzaLtr — pie 15%, califica pero NO cruza ⇒ línea del tope
+  //     ("Probamos también … pie hasta 30%"), que es el remedio del caso donde una
+  //     prosa pidió subir el pie a 30% mientras el motor ya había probado y fallado.
+  | "pieCruzaLtr" | "pieNoCruzaLtr";
 
 function seqLtr(results: FullAnalysisResult, ai: AIAnalysisV2): DrawerKey[] {
   const seq: DrawerKey[] = [];
