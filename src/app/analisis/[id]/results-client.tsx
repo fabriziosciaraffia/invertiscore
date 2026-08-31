@@ -78,6 +78,8 @@ export function PremiumResults({
   ufValue,
   aiAnalysisInitial,
   aiStale = false,
+  puedeRegenerarProsa = true,
+  prosaDesactualizada = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   nombre = "", ciudad = "", createdAt = "", fechaProsa, superficie = 0, precioUF = 0,
   demoAiData,
@@ -106,6 +108,10 @@ export function PremiumResults({
   ufValue: number;
   aiAnalysisInitial?: unknown;
   aiStale?: boolean;
+  /** El POST de regeneración exige sesión Y dueño: sin eso no se intenta. */
+  puedeRegenerarProsa?: boolean;
+  /** Se está mostrando prosa de una versión anterior (el lector no puede regenerar). */
+  prosaDesactualizada?: boolean;
   nombre?: string;
   ciudad?: string;
   createdAt?: string;
@@ -274,10 +280,12 @@ export function PremiumResults({
     // POST (route no cobra: hadPriorProse). Guard !aiError → un fallo no reintenta; el
     // effect corre una vez ([analysisId]) → sin loop.
     if (aiStale) {
-      // Anónimo-dueño: el POST exige login → sin regen; se muestra la vía de
-      // registro (el claim regenera con el flujo normal). En la práctica una
-      // fila anónima nace con promptVersion fresca, así que este caso es raro.
-      if (!aiError && !isAnonOwner) generateAiManually("stale-regen");
+      // Solo el DUEÑO con sesión (o admin) puede regenerar: el POST responde 401
+      // sin sesión y 403 sobre una fila ajena. Antes se disparaba igual desde un
+      // link compartido y el request moría en 401, dejando el informe sin prosa y
+      // con un error a cuestas. Ahora al que no puede regenerar el server le mandó
+      // la prosa vieja con su fecha, y acá no se intenta nada.
+      if (!aiError && puedeRegenerarProsa && !isAnonOwner) generateAiManually("stale-regen");
       return;
     }
 
@@ -1013,6 +1021,7 @@ export function PremiumResults({
             comuna={comuna}
             createdAt={createdAt}
             fechaProsa={fechaProsa}
+            prosaDesactualizada={prosaDesactualizada}
             simulationSlot={
               /* ═══ CAPA 3 · SIMULACIÓN — A1: la renderiza SubjectCardGrid ENTRE la
                  pirámide y la card zona (drawers → simulación → zona → footer) ═══ */

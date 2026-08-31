@@ -321,6 +321,27 @@ export default async function AnalisisDetallePage({
       || (ltrAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_LTR);
   const ltrAiStale = !!ltrAiPersisted && typeof ltrAiPersisted === "object" && !ltrAiFresh;
 
+  // PROSA VIEJA ANTES QUE NADA (31-ago-2026) — cambio de regla editorial.
+  //
+  // La regla anterior decía que a nadie se le muestra un texto redactado bajo un
+  // contrato viejo. Vale para el DUEÑO, que al abrir dispara la regeneración y en
+  // dos minutos tiene el texto nuevo. No vale para quien NO puede regenerar:
+  // `POST /api/analisis/ai` exige sesión y dueño (401/403), así que para un
+  // anónimo o un link compartido la alternativa a la prosa vieja no es prosa
+  // nueva — es NADA. Eso es el informe mudo del 27-ago, y hoy alcanza a 353 filas
+  // anónimas con prosa stale: un incidente vivo, no un riesgo teórico.
+  //
+  // Lo que lo hace aceptable ahora y no antes: tras el rediseño Dictamen el
+  // informe se sostiene en sus cuerpos DETERMINISTAS (eje de veredicto, chip,
+  // plan, escalera, índice) y la prosa es la capa de interpretación. Un texto
+  // redactado con un contrato anterior sigue siendo verdadero sobre el caso;
+  // envejece en forma, no en hechos. El pinneo del demo ya era este precedente.
+  //
+  // Se muestra con su fecha —la portada ya la imprime vía `fechaProsa`— para que
+  // el lector sepa cuándo se escribió lo que está leyendo.
+  const puedeRegenerarProsa = isOwner || isAdmin;
+  const mostrarProsaStale = ltrAiStale && !puedeRegenerarProsa;
+
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {accessLevel === "guest" || isAnonOwner ? (
@@ -357,8 +378,10 @@ export default async function AnalisisDetallePage({
           freePrecioM2={precioM2}
           resumenEjecutivo={resumenEjecutivo}
           ufValue={ufFrozen}
-          aiAnalysisInitial={ltrAiFresh ? (ltrAiPersisted as Record<string, unknown>) : undefined}
+          aiAnalysisInitial={ltrAiFresh || mostrarProsaStale ? (ltrAiPersisted as Record<string, unknown>) : undefined}
           aiStale={ltrAiStale}
+          puedeRegenerarProsa={puedeRegenerarProsa}
+          prosaDesactualizada={mostrarProsaStale}
           nombre={analisis.nombre}
           ciudad={analisis.ciudad}
           createdAt={analisis.created_at}

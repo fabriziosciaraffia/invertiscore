@@ -49,6 +49,7 @@ export function SubjectCardGrid({
   comuna,
   createdAt,
   fechaProsa,
+  prosaDesactualizada = false,
   simulationSlot,
   onInformeVisible,
   accessLevel = "free",
@@ -73,6 +74,10 @@ export function SubjectCardGrid({
   /** Fecha de la PROSA vigente; el pie la prefiere sobre `createdAt`. Ver
    *  fechaProsaVigente() en pipeline-timing.ts. */
   fechaProsa?: string;
+  /** La prosa que se muestra viene de una versión anterior del análisis y este
+   *  lector no puede regenerarla (sin sesión, o no es el dueño). Se declara al
+   *  pie del acordeón con su fecha: es preferible texto fechado a nada. */
+  prosaDesactualizada?: boolean;
   /** A1 — sección Simulación (AdvancedSection). Se renderiza ENTRE la pirámide y la
    *  card Zona para lograr el orden "drawers → simulación → zona". El estado del
    *  drawer y el hook de zona viven acá, así que la card zona no se puede sacar afuera
@@ -384,6 +389,15 @@ export function SubjectCardGrid({
             veredicto={veredicto}
             accessLevel={accessLevel}
           />
+          {prosaDesactualizada && fechaCorta && (
+            <p
+              className="font-mono m-0 mt-2"
+              style={{ fontSize: 10.5, lineHeight: 1.5, color: "var(--franco-text-muted)" }}
+            >
+              Análisis redactado el {fechaCorta}. Los números de arriba se recalculan en cada
+              visita; el texto es el de esa fecha.
+            </p>
+          )}
 
           {/* ═══ CAPÍTULO · La simulación ═══ */}
           {simulationSlot && (
