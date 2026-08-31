@@ -593,7 +593,12 @@ function DrawerNegociacion({
         // tono acompaña). La roja lleva su nombre; en zonas angostas el Dial lo oculta.
         const kMedio = destinoUmbral === "Comprar" ? "Ajusta supuestos" : "Buscar otra";
         const zonas: ZonaDial[] = [
-          { k: destinoUmbral, pct: pUmbral, tono: "comprar" },
+          // El TONO sigue al veredicto, no a la posición. fase42 (3) arregló las
+          // etiquetas y dejó este `tono` fijo en "comprar": la primera zona se
+          // pintaba verde por ser la mejor del eje, aunque su veredicto fuera
+          // AJUSTA SUPUESTOS (visto en Peñalolén — banda rotulada AJUSTA y pintada
+          // de COMPRAR). Verde es el color de COMPRAR, no el de "la zona buena".
+          { k: destinoUmbral, pct: pUmbral, tono: destinoUmbral === "Comprar" ? "comprar" : "ajusta" },
           { k: kMedio, pct: pLimite - pUmbral, tono: destinoUmbral === "Comprar" ? "ajusta" : "buscar" },
           ...(limite ? [{ k: "Buscar otra", pct: 100 - pLimite, tono: "buscar" as const }] : []),
         ];
@@ -895,7 +900,13 @@ function PlanNegociacion({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="flex items-baseline justify-between gap-3 mb-1 flex-wrap">
+      {/* `paddingRight` = el padding horizontal del slot (16px). Sin él, el chip
+          cuelga del borde del CONTENEDOR mientras los montos de los slots cuelgan
+          del borde interior de su caja, y el chip sobresalía esos 16px hacia la
+          derecha en toda la columna. Con el padding, chip y montos comparten línea
+          de fuga. El rótulo de la izquierda NO se mueve: alinea con la glosa y con
+          el resto de los encabezados de sección. */}
+      <div className="flex items-baseline justify-between gap-3 mb-1 flex-wrap" style={{ paddingRight: 16 }}>
         <p
           className="font-mono uppercase m-0"
           style={{
