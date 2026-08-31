@@ -38,6 +38,15 @@ export type FilaHallazgo = {
   pregunta: string;
   /** Valor mono a la derecha (KPI del hallazgo). */
   valor: string;
+  /** Sub-label del KPI (`findingDisplay().ksub`): la unidad y el contraste que el
+   *  KPI solo no dice — "bajo la mediana de Ñuñoa · UF 78,4 vs UF 93,1 /m²".
+   *  GOAL 16 (c): hasta acá `findingDisplay` lo construía y NINGUNA superficie lo
+   *  renderizaba. El rediseño Dictamen reemplazó las cards de la pirámide por este
+   *  acordeón y el sub-label quedó huérfano en el camino — medido sobre
+   *  /analisis/1920fd35-… : "/m²" aparecía 0 veces en todo el DOM. El par
+   *  sujeto-vs-mediana solo vivía dentro del párrafo IA del cuerpo 16, el mismo que
+   *  este goal desarma; sin este consumidor el dato desaparecía del informe. */
+  ksub?: string;
   /** El valor pide Signal Red (adverso). */
   valorRojo?: boolean;
   /** Ancla estable para deep-link desde otras superficies. */
@@ -134,7 +143,10 @@ export function HallazgosAcordeon({
               onClick={() => f.cuerpo && toggle(f, i)}
             >
               <span className="num">{f.numero}</span>
-              <span className="q">{f.pregunta}</span>
+              <span className="q">
+                {f.pregunta}
+                {f.ksub && <span className="ksub">{f.ksub}</span>}
+              </span>
               <span className="val" style={f.valorRojo === false ? { color: "var(--doc-tx2)" } : undefined}>
                 {f.valor}
               </span>
@@ -290,6 +302,10 @@ export function TokensHallazgos() {
          metía dentro de la fila de valores (el 3,0% central quedaba en el párrafo).
          Se neutraliza SOLO en ese vecindario, sin tocar los cuerpos donde funciona. */
       .thermo + .viz-pie{margin-top:8px}
+      /* GOAL 16 (c) — sub-label del KPI en la fila del acordeón. Mono chico y en
+         tx3 para que no compita con la pregunta: es la unidad del número de la
+         derecha, no un segundo titular. */
+      .hall-head .q .ksub{display:block;margin-top:3px;font-family:var(--font-mono, ui-monospace);font-size:10px;line-height:1.35;color:var(--doc-tx3);font-weight:400;letter-spacing:0.01em}
       .viz-pie b{color:var(--doc-tx2);font-weight:600}
 
       /* ===== FASE 4.1 · MATRIZ DE PALANCAS ===== */

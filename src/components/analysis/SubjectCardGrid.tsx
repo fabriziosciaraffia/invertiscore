@@ -196,6 +196,7 @@ export function SubjectCardGrid({
           pregunta: d.title || h.titular,
           valor: d.kpi,
           valorRojo: d.kpiRed,
+          ksub: d.ksub,
           anchorId: anchorHallazgo(h),
           cuerpo: key ? (
             <AnalysisDrawer
