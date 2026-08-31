@@ -87,11 +87,32 @@ export const TOLERANCIA_PRESUPUESTO = 1.1;
  *
  * Y va ENFORCADO, no sugerido: el modelo no cuenta bien, y un techo que solo se
  * pide es un techo que se pasa (lección del PLAN C, arriba).
+ *
+ * SE PROBÓ SUBIRLO A 50 Y SE VOLVIÓ A 40 (31-ago). La hipótesis era razonable:
+ * sin cifras el mismo argumento cuesta más palabras, y con techo 40 los casos
+ * salían en 45-53. Pero medido, **el techo declarado funciona como OBJETIVO y no
+ * como límite**: al subirlo a 50 la mediana de salida pasó de ~47 a ~61 palabras
+ * —el modelo lo excede ~20% en ambos casos— y la dispersión se duplicó. Declarar
+ * un número más alto no contiene el largo, lo empuja. El largo se contiene con el
+ * guard; el techo se fija por lo que se quiere LEER, no por lo que el modelo
+ * suele escribir.
  */
 export const NEGOCIACION_MAX = 40;
 
 /** Techo DURO de negociacion.contenido. Sobre esto se recorta por oración. */
 export const TECHO_NEGOCIACION_DURO = Math.ceil(NEGOCIACION_MAX * TOLERANCIA_PRESUPUESTO); // 44
+
+/**
+ * PISO de `negociacion.contenido`. Sin cifras que lo engorden, el campo puede
+ * encogerse hasta la trivialidad: en la validación del v13, dos de nueve
+ * regeneraciones quedaron en 15 y 22 palabras y decían poco más que el hero.
+ *
+ * Va con retry propio y NO con advertencia: el pedido de alargar corre ANTES del
+ * detector de numerales, a propósito. Pedirle al modelo que desarrolle mientras
+ * tiene prohibidas las magnitudes lo tienta a rellenar con ellas; alargar primero
+ * y limpiar después deja el orden correcto — el detector es la última palabra.
+ */
+export const NEGOCIACION_MIN = 20;
 
 /** Techo DURO de la continuación. Sobre esto no se acepta: se recorta. */
 export const TECHO_CONTINUACION_DURO = Math.ceil(CONTINUACION_MAX * TOLERANCIA_PRESUPUESTO); // 66
