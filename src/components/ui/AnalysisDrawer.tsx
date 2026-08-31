@@ -1228,15 +1228,18 @@ function DrawerReestructuracion({
         <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-3">
           Estructura sugerida
         </p>
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
-              Pie
-            </p>
-            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
-              {est.pieSugerido_pct}%
-            </p>
-          </div>
+        {/* GOAL 2 · TRAMO 1 — el chip "Pie" se retiró. Mostraba
+            `estructuraFinancieraSugerida.pieSugerido`, que es una CONSTANTE (25%)
+            y no un óptimo calculado: salía 25 en 238 de las 239 filas del parque
+            con reestructuración. Peor, se contradecía con la escalera que este
+            mismo drawer dibuja diez líneas más abajo, cuyos escalones reales casi
+            nunca incluyen el 25.
+            No hace falta reemplazo: la escalera YA responde la pregunta del pie, y
+            la responde como trade-off en vez de como punto. Quedan las dos
+            variables que sí tienen un valor verdadero — el plazo (passthrough del
+            usuario) y la tasa objetivo (MARKET_AVG_TASA_UF, referencia de
+            mercado). */}
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
               Plazo
@@ -1265,8 +1268,14 @@ function DrawerReestructuracion({
             background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
           }}
         >
+          {/* La causa vuelve al rótulo. `impactoCuotaMensual_clp` NO es un efecto
+              mixto pie+tasa como sugiere su nombre: medido sobre 343 filas del
+              parque con impacto > 0, el pie aporta el 97% y en 316 de ellas (92%)
+              es lo ÚNICO que se mueve. Retirado el chip, el número quedaba sin
+              causa visible; nombrarla acá la restituye sin inventar un pie óptimo.
+              Recalcularlo o retirarlo es decisión de producto — tramo 2. */}
           <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-            Cuota mensual baja en
+            Poniendo más pie y con la tasa en la referencia, la cuota baja en
           </p>
           <p className="font-mono font-bold text-[24px] text-[var(--franco-text)] m-0 leading-tight">
             {fmtMoney(est.impactoCuotaMensual_clp, currency, valorUF)}

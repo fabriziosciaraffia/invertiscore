@@ -554,15 +554,43 @@ function construirPalancas(
   // D-01(a) — razón corta de CATÁLOGO también para las que alcanzan (el mockup la
   // trae: "· la única que alcanza"). Con varias, el porqué es que cada una basta sola.
   const razonAlcanza = v.palancas.length === 1 ? "la única que alcanza" : "alcanza por sí sola";
+  // GOAL 2 · el PIE que cruza lleva razón PROPIA, no la genérica. Las otras
+  // palancas dependen de un tercero —que el vendedor baje, que el arrendatario
+  // pague más, que el banco estire— y el pie no: depende de cuánta plata puede
+  // poner el comprador. Esa diferencia es la que decide si la vía es accionable
+  // hoy o es una espera, y la genérica ("alcanza por sí sola") no la dice.
+  const RAZON_ALCANZA_PIE = "no depende del vendedor, depende de tu liquidez";
   for (const p of v.palancas) {
     const t = textoPalanca(p, currency, valorUF);
     // Degradado aprobado (propuesta-01-v2): la fila que alcanza lleva lavado ámbar.
-    filas.push({ nombre: NOMBRE_PALANCA[p.palanca] ?? p.palanca, delta: t.delta, alcanza: true, origen: t.origen, destino: t.destino, razon: razonAlcanza, wash: "warn" });
+    filas.push({
+      nombre: NOMBRE_PALANCA[p.palanca] ?? p.palanca,
+      delta: t.delta,
+      alcanza: true,
+      origen: t.origen,
+      destino: t.destino,
+      razon: p.palanca === "pie" ? RAZON_ALCANZA_PIE : razonAlcanza,
+      wash: "warn",
+    });
   }
   const universo = esStr ? ["adr", "precio", "plazo", "gestion"] : ["arriendo", "precio", "plazo"];
   if (v.pieEsPalanca) universo.push("pie");
   const cruzaron = new Set(v.palancas.map((p) => p.palanca));
-  const noProbadas = universo.filter((p) => !cruzaron.has(p as PalancaDistancia["palanca"])).map((p) => (NOMBRE_PALANCA[p] ?? p).toLowerCase());
+  // GOAL 2 · el pie que NO cruza dice HASTA DÓNDE se probó. Sin el tope, la línea
+  // decía "probamos también el pie" y el lector no sabía con qué límite: nada en
+  // pantalla contradecía a una prosa que pidiera un pie mayor. Fue el hueco por el
+  // que se coló "mientras no subas el pie a 30%" en un caso donde el motor había
+  // escrito, en el mismo objeto, "subir el pie hasta 30% tampoco lo cruza".
+  const noProbadas = universo
+    .filter((p) => !cruzaron.has(p as PalancaDistancia["palanca"]))
+    .map((p) => {
+      const nombre = (NOMBRE_PALANCA[p] ?? p).toLowerCase();
+      // El tope viaja en el hallazgo persistido (`topePct`), así que no se importa
+      // la constante del motor: se dibuja lo que ESTE análisis probó.
+      // Entero: el tope es un NIVEL de pie (30%), no un delta medido — "30,0%" le
+      // da una precisión que el número no tiene.
+      return p === "pie" && typeof v.topePct === "number" ? `${nombre} hasta ${Math.round(v.topePct)}%` : nombre;
+    });
   return { filas, noProbadas };
 }
 
