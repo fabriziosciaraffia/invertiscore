@@ -73,6 +73,26 @@ export const CONTINUACION_MAX = 60;
 /** Holgura del guard: por debajo NO se gasta una regeneración. */
 export const TOLERANCIA_PRESUPUESTO = 1.1;
 
+/**
+ * Presupuesto de `negociacion.contenido` (GOAL 16, prompt LTR v13).
+ *
+ * POR QUÉ 40 Y NO "2-3 FRASES". El contrato v12 no traía número y el campo medía
+ * **88 palabras de promedio** sobre las 318 prosas v12 del parque. Con ese aire el
+ * modelo llenaba: 65% citaba el techo del plan (impreso a dos centímetros), 63%
+ * narraba el break-even de caja (ahora chip determinista) y un 6% arrastraba
+ * además una frase-puente que solo existía para desambiguar su propia
+ * duplicación. Sacadas las dos cifras que ya tienen forma propia, lo que queda
+ * —el argumento negociador y, condicional, la palanca de financiamiento— cabe en
+ * dos frases.
+ *
+ * Y va ENFORCADO, no sugerido: el modelo no cuenta bien, y un techo que solo se
+ * pide es un techo que se pasa (lección del PLAN C, arriba).
+ */
+export const NEGOCIACION_MAX = 40;
+
+/** Techo DURO de negociacion.contenido. Sobre esto se recorta por oración. */
+export const TECHO_NEGOCIACION_DURO = Math.ceil(NEGOCIACION_MAX * TOLERANCIA_PRESUPUESTO); // 44
+
 /** Techo DURO de la continuación. Sobre esto no se acepta: se recorta. */
 export const TECHO_CONTINUACION_DURO = Math.ceil(CONTINUACION_MAX * TOLERANCIA_PRESUPUESTO); // 66
 

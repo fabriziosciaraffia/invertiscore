@@ -40,7 +40,9 @@ import { calcDecisividades } from "@/lib/analysis";
 import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 import {
   CONTINUACION_MAX,
+  NEGOCIACION_MAX,
   TECHO_CONTINUACION_DURO,
+  TECHO_NEGOCIACION_DURO,
   TOLERANCIA_PRESUPUESTO,
   contarPalabras,
   recortarContinuacion,
@@ -146,7 +148,7 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // entregarle al modelo una conclusión apoyada en una cifra nuestra — a
 // diferencia del estallido o la pandemia, que son eventos externos
 // verificables. La regla da ese criterio, no una lista de palabras prohibidas.
-export const PROMPT_VERSION_LTR = 12;
+export const PROMPT_VERSION_LTR = 13;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -174,8 +176,8 @@ Toda intervención sustantiva pasa internamente por estas 4 capas, aunque el out
 
 - Diagnóstico: qué está pasando para el usuario, en consecuencias concretas — no una métrica sin interpretar. ("Aportas $262K cada mes durante toda la proyección, sin que el arriendo llegue nunca a cubrir el dividendo") — no ("TIR 9.7% bajo el umbral 12%").
 - Causa: por qué. ("Tasa al 4,11% genera una cuota que el arriendo de Providencia para 60 m² no cubre.")
-- Recomendación: qué hacer. Concreta, cuantificada, con número. ("Sube el pie de 20% a 25% — la cuota baja de $854K a $801K.")
-- Alternativa: qué pasa si no segui la recomendación. ("Si avanzas con la estructura actual, asume mentalmente $94M de aporte total durante 30 años.")
+- Recomendación: qué hacer. Concreta, cuantificada, con número. ("Renegocia la tasa con tu banco antes de firmar — [cifra del motor] menos al mes.") El ejemplo va con PLACEHOLDER a propósito: cualquier cifra concreta acá la copiarías tal cual en casos donde no corresponde, y toda palanca cuantificable del informe ya tiene su propio diagrama, así que un ejemplo con número real te enseñaría a duplicarlo. Poné la cifra que el caso traiga; si el caso no la trae, no inventes uno.
+- Alternativa: qué pasa si no sigues la recomendación. ("Si avanzas con la estructura actual, asume mentalmente $94M de aporte total durante 30 años.")
 
 Distribución por sección:
 - conviene.respuestaDirecta: capas 1+2+3.
@@ -384,7 +386,7 @@ Reglas:
 \`conviene.cajaAccionable\` cierra el análisis con UNA POSICIÓN PERSONAL de Franco. No es una checklist genérica. Es lo que tu pondrías por escrito si tu reputación dependiera de la recomendación.
 
 Mal (genérica):
-> "Mantén un fondo de reserva, compará tasas, revisá el estado del edificio."
+> "Mantén un fondo de reserva, compara tasas, revisa el estado del edificio."
 
 Bien (posición sobria):
 > "Si confías en la trayectoria de tu comuna y tu flujo permite el aporte mensual sin presión, esta operación tiene sentido. La ventaja de compra ya hace parte del trabajo. El resto es disciplina y paciencia."
@@ -443,7 +445,7 @@ NO hacer:
 - A8. Bullet points como muletilla estructural. Listas con bullets para 3+ items concretos están bien. Listas con bullets de 2 items o de oraciones largas convierten prosa en formulario. Default: prosa con conectores ("además", "en cambio", "sin embargo").
 - A9. Sugerir consultar a un asesor externo, salvo en casos operativos específicos (abogado para escrituración, ingeniero estructural, contador para impuestos personales). Nunca "consulta a un asesor financiero antes de decidir" — eso lo haces ya.
 - A10. Inventar montos absolutos cuando no hay dato confiable. Ver §12 regla DIFERENCIA ABSOLUTA vs POR M².
-- A11. Engine-ism temporal — PROHIBIDO. Nunca escribas que el flujo "cruza a positivo", "se da vuelta", "no cruza", "cruza jamás", "se vuelve positivo", "se revierte" ni "flujo neutro" (en cualquier conjugación o negación). Es mecánica interna del modelo, no consecuencia para el usuario. SUSTITUTO obligatorio: describí qué pasa entre arriendo y cuota — "el arriendo no alcanza a cubrir la cuota durante toda la proyección" / "recién el año X el arriendo cubre la cuota". Regla dura, sin excepción, todos los tiers.
+- A11. Engine-ism temporal — PROHIBIDO. Nunca escribas que el flujo "cruza a positivo", "se da vuelta", "no cruza", "cruza jamás", "se vuelve positivo", "se revierte" ni "flujo neutro" (en cualquier conjugación o negación). Es mecánica interna del modelo, no consecuencia para el usuario. SUSTITUTO obligatorio: describe qué pasa entre arriendo y cuota — "el arriendo no alcanza a cubrir la cuota durante toda la proyección" / "recién el año X el arriendo cubre la cuota". Regla dura, sin excepción, todos los tiers.
 - A12. No exponer la entidad "el motor" al usuario: "el motor sugiere/recomienda no comprar" → "no conviene comprar"; "proyección del motor" → "proyección de plusvalía a futuro". El veredicto es de Franco, no del motor.
 
 SÍ hacer:
@@ -705,14 +707,19 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 \`\`\`
 
 Largos por campo:
-- conviene.respuestaDirecta: escribís SOLO la CONTINUACIÓN. El motor antepone DOS cosas por su cuenta: la RESPUESTA al veredicto ("Conviene." / "Todavía no: tienes que ajustar los supuestos." / "No conviene.") y después la PRIMERA ORACIÓN FIJA que narra el #1. NO escribas ninguna de las dos ni las repitas — tampoco abras tu continuación afirmando o negando la conveniencia, porque quedaría dicho dos veces. Tu continuación:
+- conviene.respuestaDirecta: escribes SOLO la CONTINUACIÓN. El motor antepone DOS cosas por su cuenta: la RESPUESTA al veredicto ("Conviene." / "Todavía no: tienes que ajustar los supuestos." / "No conviene.") y después la PRIMERA ORACIÓN FIJA que narra el #1. NO escribas ninguna de las dos ni las repitas — tampoco abras tu continuación afirmando o negando la conveniencia, porque quedaría dicho dos veces. Tu continuación:
   (1) UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona al #1, y SOLO si cambia la decisión: el supuesto de arriendo que sostiene el caso (con el encuadre que fija §8.bis según su procedencia), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Termina en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
-  (2) PRESUPUESTO: tu continuación tiene un máximo PROPIO de ${CONTINUACION_MAX} palabras, y no depende de cuánto ocupe lo que el motor antepone — el techo total escala con eso. Escribí para ese presupuesto, no para el total. Un guard lo mide, puede pedirte recortar y, si insistís, RECORTA ÉL por oración: la última idea que no quepa se pierde entera, así que poné lo que importa primero.
+  (2) PRESUPUESTO: tu continuación tiene un máximo PROPIO de ${CONTINUACION_MAX} palabras, y no depende de cuánto ocupe lo que el motor antepone — el techo total escala con eso. Escribí para ese presupuesto, no para el total. Un guard lo mide, puede pedirte recortar y, si insistís, RECORTA ÉL por oración: la última idea que no quepa se pierde entera, así que pon lo que importa primero.
   PROHIBIDO: repetir la apertura fija; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones de magnitud fuera de §15 (con el % o múltiplo provisto, o los dos montos absolutos, nunca como aproximación verbal); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
 - conviene.cajaAccionable: 1-2 frases — la POSICIÓN PERSONAL de Franco que cierra el análisis (§9): síntesis + condición bajo la que se sostiene + costo de avanzar contra el análisis si aplica. Cierra con un próximo paso concreto. NO checklist genérica, NO pregunta retórica sin respuesta.
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números.
-- negociacion.contenido: 2-3 frases, y contiene SOLO dos cosas — nada más entra a este campo. (1) TU PRIMERA FRASE es el break-even del arriendo, SIN preámbulo: a qué precio el arriendo cubriría exacto el dividendo y el % de descuento sobre el precio pedido que implica; traduce a consecuencia (A11): "el arriendo recién cubriría la cuota si el precio bajara a UF X, un Y% menos". (2) Solo si el pie es muy bajo o la tasa está sobre la referencia: que la palanca de mayor impacto es la estructura de financiamiento, no el precio — se trabaja con el banco, en paralelo (§1.5). El sobreprecio/m² y el veredicto ya se narran en la tabla, el apex y estrategiaSugerida; este campo aporta lo que ninguno de esos dice — el break-even y la palanca — y arranca directo por ahí.
-- negociacion.estrategiaSugerida: 1-3 frases, máx 60 palabras. Es la ESTRATEGIA DE NEGOCIACIÓN CONCRETA: con qué precio abrir, hasta qué techo subir y con qué argumento (el sobreprecio/m² documentado es el ancla válida). Todo con número específico — arrancá por la jugada, no por el contexto de precios.
+- negociacion.contenido: 1-2 frases, MÁXIMO ${NEGOCIACION_MAX} palabras por variante. Un guard lo mide, puede pedirte recortar y, si insistís, recorta él por oración: la última idea que no quepa se pierde entera.
+  ES EL ARGUMENTO CON EL QUE SE NEGOCIA (§1.12.2): por qué el vendedor debería moverse, dicho en una razón que el comprador pueda poner sobre la mesa. Y, SOLO si el pie es muy bajo o la tasa está sobre la referencia, la segunda frase dice que la palanca de mayor impacto es la estructura de financiamiento y no el precio — se trabaja con el banco, en paralelo (§1.5).
+  PROHIBIDO CITAR NINGÚN PRECIO DEL PLAN — ni el techo, ni la primera oferta, ni el walk-away. Se imprimen como bloque propio a dos centímetros de este párrafo y repetirlos es decir dos veces la misma cifra.
+  PROHIBIDO EL PRECIO DE CAJA EN CERO (break-even de flujo) EN CUALQUIER FORMA: ni su monto, ni su porcentaje, ni "el arriendo recién cubriría…", ni "si el precio bajara a…". Es un CHIP determinista que el informe ya dibuja con la cifra del análisis; escribirlo acá lo duplica, y cuando el equilibrio queda EN o SOBRE el precio pedido, narrarlo como rebaja es directamente falso.
+  PROHIBIDAS LAS CIFRAS DE LA PALANCA DE FINANCIAMIENTO: ni el pie sugerido, ni su porcentaje, ni la baja de cuota que produce (pasar de X% a Y% baja la cuota en Z). Tienen su propia sección con diagrama. Nombrá la palanca —"la estructura mueve más que el precio"— sin ninguno de sus números.
+  EL PRECIO/m² ES TU ARGUMENTO, pero NO REPITAS EL PAR DE CIFRAS: la fila del índice ya muestra "UF X vs UF Y /m²" a dos centímetros. Nómbralo por su consecuencia ("entras bajo la mediana de la comuna", "pagas sobre lo que se paga en tu cuadra"), sin volver a escribir los dos valores ni el porcentaje.
+- negociacion.estrategiaSugerida: 1-3 frases, máx 60 palabras. Es la ESTRATEGIA DE NEGOCIACIÓN CONCRETA: con qué precio abrir, hasta qué techo subir y con qué argumento (el sobreprecio/m² documentado es el ancla válida). Todo con número específico — arranca por la jugada, no por el contexto de precios.
 - negociacion.cajaAccionable: 1 frase con guión de contraoferta CONCRETO. DEBE incluir el monto de \`negociacion.precioSugerido\` como referencia citable (no pregunta retórica abstracta).
   Ejemplos correctos:
   - "Ofrece UF 4.500. Si rechaza, pide 30 días para evaluar."
@@ -741,7 +748,7 @@ Labels y preguntas constantes (no derivar — usar EXACTAMENTE estos strings):
 
 Reglas universales del output:
 - Todo monto formateado a la chilena. Decimal con coma, miles con punto.
-- DESTACADORES \`**…**\` (único markdown permitido; el render los pinta con plumón): marca las frases clave de la prosa. Máximo 2 marcas por párrafo. Cada marca envuelve una FRASE COMPLETA con predicado que se lee sola como mini-hallazgo (el lector que solo lee lo marcado entiende el análisis) — nunca un número pelado ni un fragmento sin verbo. Una marca JAMÁS cruza un punto ni parte un token de cifra ($X.XXX, UF X, X%): la cifra queda entera dentro o entera fuera. Aplica a conviene, costoMensual, negociacion, largoPlazo y reestructuracion; en el \`titular\` rige §18 (exactamente UNA marca). Ningún otro markdown (sin cursivas, sin listas, sin encabezados).
+- DESTACADORES \`**…**\` (único markdown permitido; el render los pinta con plumón): marca las frases clave de la prosa. Máximo 2 marcas por párrafo. Cada marca envuelve una FRASE COMPLETA con predicado que se lee sola como mini-hallazgo (el lector que solo lee lo marcado entiende el análisis) — nunca un número pelado ni un fragmento sin verbo. Una marca JAMÁS cruza un punto ni parte un token de cifra ($X.XXX, UF X, X%): la cifra queda entera dentro o entera fuera. Aplica a conviene, costoMensual, negociacion, largoPlazo y reestructuracion; en el \`titular\` rige §18 (exactamente UNA marca). Y en CADA \`cajaAccionable\` va EXACTAMENTE UNA marca — ni dos ni cero: es el cierre del cuerpo y el lector que solo barre lo marcado tiene que poder quedarse con la frase-fuerza de ese cierre. (STR ya lo cumple desde su v9; esto lo iguala en LTR.) Ningún otro markdown (sin cursivas, sin listas, sin encabezados).
 - No inventar datos del input. Si falta un dato, omítelo o di "sin dato".
 - NUNCA emitas un veredicto en el JSON. El veredicto viene dado (\`veredicto\` en input). Tu narrativa lo asume. Si discrepas, usa \`francoCaveat\` audit-only.
 
@@ -777,7 +784,7 @@ REGLA: cuando cites uno de los otros umbrales, va SIEMPRE con su etiqueta propia
 
 Y si ninguno de los umbrales provistos contesta la pregunta que estás por hacer, NO interpoles una cifra intermedia: describe la situación sin número. Una cifra inventada que suena plausible es peor que la ausencia de cifra, porque es incontrastable.
 
-EL PUENTE OBLIGATORIO (cuando conviven 2+ precios en la misma sección): si \`negociacion.contenido\` o \`estrategiaSugerida\` citan más de uno de estos umbrales (break-even de caja, precio que cambia el veredicto, anclas de oferta), DEBES ordenarlos en una frase-puente que diga qué responde cada uno, en el momento en que aparece el segundo. Patrón: "Son tres números distintos: UF A para que la caja deje de sangrar, UF B para que el veredicto suba, y UF C para abrir la negociación." (Adapta a los que realmente cites — dos o tres.) Esto ORDENA cifras que ya existen en tus bloques; no crea ninguna nueva ni reemplaza las etiquetas propias de cada umbral. Sin el puente, el lector ve dos "descuentos" distintos y concluye que el informe se contradice.
+EL PUENTE OBLIGATORIO (cuando conviven 2+ precios en la misma sección): si \`estrategiaSugerida\` o \`posicion\` citan más de uno de estos umbrales (precio que cambia el veredicto, anclas de oferta, límite de retorno), DEBES ordenarlos en una frase-puente que diga qué responde cada uno, en el momento en que aparece el segundo. (El break-even de caja YA NO participa: dejó de ser prosa y es un chip determinista del plan, así que no puede colisionar con nada. Y \`negociacion.contenido\` tiene prohibido citar precios del plan, con lo cual no puede tener dos.) Patrón: "Son tres números distintos: UF A para que la caja deje de sangrar, UF B para que el veredicto suba, y UF C para abrir la negociación." (Adapta a los que realmente cites — dos o tres.) Esto ORDENA cifras que ya existen en tus bloques; no crea ninguna nueva ni reemplaza las etiquetas propias de cada umbral. Sin el puente, el lector ve dos "descuentos" distintos y concluye que el informe se contradice.
 
 Esta regla vale para todo umbral que el motor emita, incluidos los que aún no existen: si mañana aparece otro precio de referencia, sigue teniendo su propia pregunta y su propia etiqueta.
 
@@ -1312,7 +1319,12 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
 
     const anomaliasFinanciamiento: string[] = [];
     if (input.piePct < 15) {
-      anomaliasFinanciamiento.push(`PIE BAJO: ${input.piePct}% de pie es bajo. El estándar es 20-25%. Con menos pie, el dividendo es más alto y el riesgo aumenta.`);
+      // Sin adjetivar: nada de "estándar", "óptimo" ni "rango sano". El pie que el
+      // motor sugiere sale de `financingHealth` y HOY es una constante fija, que es
+      // justo lo que el goal de reconciliación viene a matar. Describir el campo y
+      // no la convención hace que esta línea sobreviva intacta cuando cambie su
+      // origen: lo único que afirma es de dónde sale el número.
+      anomaliasFinanciamiento.push(`PIE BAJO: ${input.piePct}% de pie deja un crédito mayor, y con eso un dividendo más alto. El pie que el análisis sugiere para este caso viene en \`estructuraFinancieraSugerida.pieSugerido\`, con su efecto sobre la cuota ya calculado — usá ese número, no una referencia general.`);
     }
     if (input.tasaInteres > 5.5) {
       anomaliasFinanciamiento.push(`TASA ALTA: ${input.tasaInteres}% es alta. El mercado actual está en ~4.1%. Con esta tasa el dividendo es significativamente mayor y el flujo se deteriora.`);
@@ -1938,7 +1950,7 @@ Lo que más pesa en esta lectura es la plusvalía histórica de la comuna — un
 
     const hallazgosBloque = hallazgosOrdenados.length > 0
       ? `
-HALLAZGOS DEL ANÁLISIS (vienen en el ORDEN DEL INFORME: el 1º es el que abre la lectura — el adverso más determinante cuando lo hay, o el de más peso — y el resto va por cuánto pesa en la decisión). Narralos en pirámide con TU voz. NO copies la frase literal, NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostené la tensión con honestidad — no la aplanes.
+HALLAZGOS DEL ANÁLISIS (vienen en el ORDEN DEL INFORME: el 1º es el que abre la lectura — el adverso más determinante cuando lo hay, o el de más peso — y el resto va por cuánto pesa en la decisión). Nárralos en pirámide con TU voz. NO copies la frase literal, NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostén la tensión con honestidad — no la aplanes.
 
 PRIMERA ORACIÓN FIJA de conviene.respuestaDirecta (consume ${aperturaWC} palabras) — YA está escrita y se antepone automáticamente. NO la escribas, NO la repitas, NO la parafrasees; tu texto CONTINÚA después de ella: «${hallazgosOrdenados[0].fraseCanonica}»
 
@@ -1972,7 +1984,7 @@ ${matizPalancaArriendo}
 
 SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues" o cualquier ajuste como salida. La honestidad acá es cerrar la puerta, no dejarla entornada: ${casoPrecioJustoGen ? "la brecha no es de este depto ni de su precio — es de lo que la zona rinde hoy (ver CASO PRECIO-JUSTO)" : "la brecha es del deal"}. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe.
 ` : ""}
-CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras — es TU presupuesto, entero, y no se descuenta de las ${aperturaWC + respuestaWC} que el motor ya antepuso (el total ensamblado no pasa de ${techoTotal}); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
+CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrolla UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras — es TU presupuesto, entero, y no se descuenta de las ${aperturaWC + respuestaWC} que el motor ya antepuso (el total ensamblado no pasa de ${techoTotal}); arranca donde termina la apertura, sin repetir su métrica ni sus palabras. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
     // Pie cero (RESUELTO fase 4): con pie 0 las métricas sobre capital llegan
@@ -2049,19 +2061,19 @@ VARIABLES DE NEGOCIACIÓN (insumos para REGLAS 0-6 del system §12)
 - Precio de compra: ${fmtUF(input.precio)} (${fmtCLP(precioCompraCLP)})
 - Valor de referencia estimado: ${fmtUF(vmFrancoUF)} (${fmtCLP(vmFrancoCLP)})${tieneDiferenciaValida ? "" : " ← no es valor de mercado real (solo el precio pedido)"}
 - Diferencia vs referencia: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pct(pctDiferencia)}%)${tieneDiferenciaValida ? "" : " ← INVÁLIDO: no hay valor de mercado de referencia"}
-${!tieneDiferenciaValida ? `- lecturaSinReferencia (narrá ESTA idea con tus palabras, NO nombres ninguna maquinaria): ${sobreprecioPorM2UF !== null ? "no hay comparables directos suficientes para fijar un valor de mercado total de este depto; la lectura de precio se apoya solo en el ratio por m² frente a la mediana de la comuna, y la decisión en el flujo, la TIR y la plusvalía." : "no hay un valor de mercado ni un dato comunal confiable para este depto; la decisión se apoya solo en el flujo, la TIR y la plusvalía — no afirmes nada sobre precio vs comuna."}\n` : ""}- tieneDiferenciaValida: ${tieneDiferenciaValida}
+${!tieneDiferenciaValida ? `- lecturaSinReferencia (narra ESTA idea con tus palabras, NO nombres ninguna maquinaria): ${sobreprecioPorM2UF !== null ? "no hay comparables directos suficientes para fijar un valor de mercado total de este depto; la lectura de precio se apoya solo en el ratio por m² frente a la mediana de la comuna, y la decisión en el flujo, la TIR y la plusvalía." : "no hay un valor de mercado ni un dato comunal confiable para este depto; la decisión se apoya solo en el flujo, la TIR y la plusvalía — no afirmes nada sobre precio vs comuna."}\n` : ""}- tieneDiferenciaValida: ${tieneDiferenciaValida}
 - sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${pct(sobreprecioPorM2UF)} UF/m² (tu ${pct(pvc.sujetoUfM2)} vs comuna ${pct(precioM2Zona)})` : "sin dato"}
 ${sinCapitalPropio
   ? `- tirActual: ${NO_APLICA_PROMPT} — el beneficio de negociar se lee en dividendo, no en TIR (## 5.bis.e)
 - bajaDividendoAlSugerido: −${fmtCLP(bajaDividendoSugerido)}/mes (crédito que no tomas al cerrar en el precio sugerido)
-- lecturaNegociacionSinPie (narrá ESTA idea con tus palabras): sin pie, cada peso menos de precio es crédito que no tomas — cerrando en ${fmtUF(techoUF)} el dividendo baja ${fmtCLP(bajaDividendoSugerido)} al mes y tu flujo mejora exactamente eso
+- lecturaNegociacionSinPie (narra ESTA idea con tus palabras): sin pie, cada peso menos de precio es crédito que no tomas — cerrando en ${fmtUF(techoUF)} el dividendo baja ${fmtCLP(bajaDividendoSugerido)} al mes y tu flujo mejora exactamente eso
 - Precio límite (TIR baja a 6%): no aplica sin capital propio — el techo por retorno no tiene base; el límite de este caso lo pone tu flujo`
   : `- tirActual: ${pct(tirActual)}%
 - tirAlSugerido: ${tirAlSugeridoNeg !== null ? tirAlSugeridoNeg.toFixed(1) + "%" : "sin dato"}
 - Cambio de TIR si negociás: ${deltaTirSugerido !== null ? (deltaTirSugerido >= 0 ? "+" : "") + deltaTirSugerido.toFixed(1) + " pp" : "sin dato"}
-- lecturaTIR (narrá esta idea con tus palabras): ${tirAlSugeridoNeg !== null && deltaTirSugerido !== null ? `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido; al precio sugerido sería ${tirAlSugeridoNeg.toFixed(1)}% (${deltaTirSugerido >= 0 ? "+" : ""}${deltaTirSugerido.toFixed(1)} pp)` : `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido`}`}
+- lecturaTIR (narra esta idea con tus palabras): ${tirAlSugeridoNeg !== null && deltaTirSugerido !== null ? `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido; al precio sugerido sería ${tirAlSugeridoNeg.toFixed(1)}% (${deltaTirSugerido >= 0 ? "+" : ""}${deltaTirSugerido.toFixed(1)} pp)` : `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido`}`}
 - Plusvalía inmediata estimada: ${pct(plusvaliaFrancoPct)}% (${plusvaliaFranco >= 0 ? "+" : ""}${fmtCLP(plusvaliaFranco)})
-- lecturaFlujo (narrá esta idea con tus palabras): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
+- lecturaFlujo (narra esta idea con tus palabras): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
 - Plazo del crédito: ${input.plazoCredito} años (NO confundir con mesesDeFlujoNegativo)
 
 PROYECCIÓN Y ALTERNATIVAS
@@ -2072,13 +2084,13 @@ PROYECCIÓN Y ALTERNATIVAS
 - lecturaPatrimonio (narra esta idea con tus palabras): en 10 años pones ${fmtUF(aporteTotal10/UF_CLP)} de tu bolsillo; si vendes, tu parte al liquidar (valor de venta − deuda − comisión) es ${fmtUF(exitEquityCLP/UF_CLP)}: un monto único, lo que es tuyo del activo a la venta. Preséntala así, como tu parte — no como "ganancia neta"
 - Valor proyectado de la propiedad a 5 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp5)}
 - Valor proyectado de la propiedad a 10 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp10)}
-- lecturaPlusvalia (narrá esta idea con tus palabras): de ${fmtUF(m.precioCLP/UF_CLP)} hoy a ${fmtUF(valorProp10/UF_CLP)} en 10 años — +${Math.round((valorProp10/m.precioCLP - 1)*100)}% acumulado por la proyección base de ${PROY_PCT} anual (a 5 años, ${fmtUF(valorProp5/UF_CLP)}, +${Math.round((valorProp5/m.precioCLP - 1)*100)}%)
+- lecturaPlusvalia (narra esta idea con tus palabras): de ${fmtUF(m.precioCLP/UF_CLP)} hoy a ${fmtUF(valorProp10/UF_CLP)} en 10 años — +${Math.round((valorProp10/m.precioCLP - 1)*100)}% acumulado por la proyección base de ${PROY_PCT} anual (a 5 años, ${fmtUF(valorProp5/UF_CLP)}, +${Math.round((valorProp5/m.precioCLP - 1)*100)}%)
 - Tu parte al vender a 10 años (equity: valor de venta − deuda − comisión, lo que te queda): ${fmtCLP(exitEquityCLP)}
 - Depósito a plazo (UF+5%) a 10 años: ${fmtCLP(datoDP)}${sinCapitalPropio ? " — OJO: base = solo gastos de cierre (sin pie); con pie 0 la comparación con instrumentos se hace en flujo y esfuerzo, no sobre capital inicial (## 5.bis.c)" : ""}
 - Fondo mutuo (7%) a 10 años: ${fmtCLP(datoFM)}${sinCapitalPropio ? " — misma advertencia" : ""}
 - Dividendo si la tasa sube 1 punto: ${fmtCLP(dividendoSiTasaSube1)} (vs actual ${fmtCLP(m.dividendo)})
 - Dividendo si la tasa sube 2 puntos: ${fmtCLP(dividendoSiTasaSube2)}
-- lecturaSensibilidadTasa (narrá esta idea con tus palabras): ${creditoCLP > 0 ? `si la tasa sube 1 punto tu dividendo pasa de ${fmtCLP(m.dividendo)} a ${fmtCLP(dividendoSiTasaSube1)}; con 2 puntos, a ${fmtCLP(dividendoSiTasaSube2)}` : "sin crédito, la tasa no afecta tu dividendo"}
+- lecturaSensibilidadTasa (narra esta idea con tus palabras): ${creditoCLP > 0 ? `si la tasa sube 1 punto tu dividendo pasa de ${fmtCLP(m.dividendo)} a ${fmtCLP(dividendoSiTasaSube1)}; con 2 puntos, a ${fmtCLP(dividendoSiTasaSube2)}` : "sin crédito, la tasa no afecta tu dividendo"}
 
 COMPARACIÓN DE PRECIO POR M² (fuente única — NO recalcules ni estimes de memoria)
 - Precio/m² de este depto: ${fmtUF(pvc.sujetoUfM2)}
@@ -2263,7 +2275,8 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         ["respuestaDirecta_clp", aiResult?.conviene?.respuestaDirecta_clp],
         ["cajaAccionable_clp", aiResult?.conviene?.cajaAccionable_clp],
         // `reestructuracion` entra al barrido desde la 4ª palanca (pie): es la sección que
-        // trae el OTRO pie (el óptimo de estructura, típicamente 25%) y donde se vio la
+        // trae el OTRO pie (`financingHealth.pieSugerido_pct`, hoy una constante fija que
+        // NO es un óptimo calculado — ver el goal de reconciliación) y donde se vio la
         // confusión — prosa afirmando que ese pie mueve el veredicto cuando el que cruza es
         // otro. Citar el óptimo por su efecto real (bajar la cuota) NO dispara: el guard
         // solo mira oraciones que afirman brecha de banda.
@@ -2639,6 +2652,177 @@ Responde SOLO este JSON, sin texto alrededor:
         aiResult.conviene.respuestaDirecta_uf = uf;
         console.warn(
           `[PLANC-BUDGET-TRIM] ${analysisId}: no convergió en ${PLANC_MAX_RETRIES} reintentos (${mejorWC} > ${TECHO_CONTINUACION_DURO}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras${clp ? "" : " (continuación vacía: queda la apertura del motor sola)"}`,
+        );
+      }
+    }
+
+    // NEG-BUDGET GUARD (GOAL 16) — mismo patrón que PLAN C, otro campo.
+    //
+    // POR QUÉ HACE FALTA. `negociacion.contenido` no tenía número en el contrato
+    // v12 ("2-3 frases") y medía 88 palabras de promedio en el parque. El v13 le
+    // saca sus dos cifras (el techo, que se imprime debajo; el break-even, que
+    // ahora es chip) y le pone techo de ${NEGOCIACION_MAX} — pero un presupuesto
+    // solo instruido es un presupuesto que se pasa: es la lección del PLAN C, y
+    // la razón de que esto se mida acá y no se le pida al modelo.
+    //
+    // El retry es QUIRÚRGICO (reescribe solo este campo, no el JSON entero) y
+    // re-verifica cifras con la regla compartida, porque LTR-CIFRA ya corrió sobre
+    // el JSON previo y no vuelve a correr. Si no converge, recorte por ORACIÓN:
+    // este campo no tiene apertura determinista que lo sostenga, así que quedarse
+    // sin él es aceptable —el cuerpo conserva el eje, el plan y el cierre— pero
+    // publicar un techo que no se cumple, no.
+    if (aiResult?.negociacion) {
+      const wcNeg = (ai: typeof aiResult): number =>
+        Math.max(contarPalabras(ai?.negociacion?.contenido_clp), contarPalabras(ai?.negociacion?.contenido_uf));
+      // GUARD DETERMINÍSTICO DE PRECIOS DEL PLAN. La prohibición del contrato no
+      // alcanza sola: en la primera validación del v13 el modelo la respetó en 2
+      // de 3 casos y en el tercero (el demo) volvió a citar el techo — "sobre
+      // UF 2.883 el negocio deja de convenir"— con el número impreso a dos
+      // centímetros. Es la misma lección del presupuesto: lo que solo se pide, se
+      // pasa; lo que se mide, no. Se detecta el número FORMATEADO como lo escribe
+      // la prosa (miles con punto), que es la única forma en que puede aparecer.
+      const preciosPlan = [
+        aiResult?.negociacion?.precios?.techo_uf,
+        aiResult?.negociacion?.precios?.primeraOferta_uf,
+        aiResult?.negociacion?.precios?.walkAway?.precio_uf,
+      ].filter((n): n is number => typeof n === "number" && n > 0);
+      // …Y LAS CIFRAS DE LA PALANCA DE FINANCIAMIENTO. La primera versión de este
+      // guard solo miraba el plan y se le escapó "Subir el pie a 25% baja la cuota
+      // $87.547/mes" en `negociacion.contenido`. Diagnosticado: ese $87.547 es
+      // EXACTAMENTE `impactoCuotaMensual_clp` y el 25% es `pieSugerido_pct` — los
+      // dos salen de `financingHealth`, el motor se los entrega al prompt y tienen
+      // su propia sección (`reestructuracion`) con su propio diagrama. O sea, la
+      // misma duplicación que el techo, con otra fuente.
+      //
+      // (Buscarlos en `simularPie` no habría servido: su escalera para ese caso va
+      // de 5% a 20% y no contiene ni el 25% ni los $87.547. Son dos superficies del
+      // motor que hoy no coinciden sobre el pie — ver el goal de reconciliación.)
+      const cifrasPalanca = [
+        reestructuracionFinanciera?.impactoCuotaMensual_clp,
+        reestructuracionFinanciera?.pieSugerido_pct,
+      ].filter((n): n is number => typeof n === "number" && n > 0);
+      const citaPlan = (ai: typeof aiResult): string[] => {
+        const texto = `${ai?.negociacion?.contenido_clp ?? ""}\n${ai?.negociacion?.contenido_uf ?? ""}`;
+        const hits = preciosPlan
+          .map((n) => Math.round(n).toLocaleString("es-CL"))
+          .filter((fmt) => texto.includes(fmt));
+        // El pie va como "25%" (entero + signo de porcentaje), no como miles: sin el
+        // "%" un 25 suelto cazaría cualquier "25 m²" o "2025".
+        for (const n of cifrasPalanca) {
+          const comoMiles = Math.round(n).toLocaleString("es-CL");
+          const comoPct = `${Math.round(n)}%`;
+          if (n > 1000 && texto.includes(comoMiles)) hits.push(comoMiles);
+          else if (n <= 100 && texto.includes(comoPct)) hits.push(comoPct);
+        }
+        return hits;
+      };
+      const limiteNeg = NEGOCIACION_MAX * TOLERANCIA_PRESUPUESTO;
+      let mejorNeg = aiResult;
+      let mejorNegWC = wcNeg(aiResult);
+      let mejorNegPlan = citaPlan(aiResult);
+      const NEG_MAX_RETRIES = 2;
+      for (
+        let intento = 1;
+        intento <= NEG_MAX_RETRIES && (mejorNegWC > limiteNeg || mejorNegPlan.length > 0);
+        intento++
+      ) {
+        if (mejorNegPlan.length > 0) {
+          console.warn(`[NEG-PLAN] ${analysisId}: negociacion.contenido cita ${mejorNegPlan.length} precio(s) del plan (${mejorNegPlan.join(", ")}) — retry quirúrgico ${intento}/${NEG_MAX_RETRIES}`);
+        }
+        console.warn(`[NEG-BUDGET] ${analysisId}: negociacion.contenido ${mejorNegWC} palabras > máx ${NEGOCIACION_MAX} — retry quirúrgico ${intento}/${NEG_MAX_RETRIES}`);
+        const negClp = typeof mejorNeg?.negociacion?.contenido_clp === "string" ? mejorNeg.negociacion.contenido_clp : "";
+        const negUf = typeof mejorNeg?.negociacion?.contenido_uf === "string" ? mejorNeg.negociacion.contenido_uf : "";
+        const insistenciaNeg =
+          intento === 1
+            ? ""
+            : ` Este es el SEGUNDO aviso. Deja UNA sola oración: es preferible una línea corta que una que no cabe; si te vuelves a pasar, el sistema recorta por oración y la última idea se pierde entera.`;
+        const promptNeg = `Estás corrigiendo SOLO el campo negociacion.contenido de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
+
+QUÉ ES ESTE CAMPO: el ARGUMENTO con el que se negocia — por qué el vendedor debería moverse, dicho en una razón que el comprador pueda poner sobre la mesa. Si la versión actual trae además la palanca de estructura de financiamiento (pie/tasa), conservala.
+
+TU TAREA: mide ${mejorNegWC} palabras y el MÁXIMO es ${NEGOCIACION_MAX} por variante. Comprímelo conservando el argumento, con las MISMAS cifras que ya aparecen — ninguna cifra nueva.${mejorNegPlan.length ? ` Y ADEMÁS: saca ${mejorNegPlan.length === 1 ? "la cifra" : "las cifras"} ${mejorNegPlan.join(", ")} — ${mejorNegPlan.length === 1 ? "es un precio" : "son precios"} del plan de negociación, que se imprime como bloque propio justo debajo. Di la idea sin ese número.` : ""}${insistenciaNeg}
+
+PROHIBIDO al reescribir: citar el techo, la primera oferta o el walk-away (se imprimen como bloque propio justo debajo); citar el precio de caja en cero o break-even de flujo en cualquier forma (monto, porcentaje, "si el precio bajara a…") — es un chip que el informe ya dibuja; el pie sugerido y su efecto sobre la cuota, que tienen su propia sección de reestructuración. La palanca de financiamiento SÍ se puede nombrar — sin sus cifras.
+
+VERSIÓN ACTUAL (variante CLP):
+${negClp}
+
+VERSIÓN ACTUAL (variante UF):
+${negUf}
+
+Responde SOLO este JSON, sin texto alrededor:
+{"contenido_clp": "...", "contenido_uf": "..."}`;
+        try {
+          const regen = await reg.medir("neg-budget", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 500, messages: [{ role: "user", content: promptNeg }], system: SYSTEM_LTR_CACHED }));
+          acumularUsage(usage, regen);
+          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+          let nClp = "";
+          let nUf = "";
+          try {
+            const m = regenText.match(/\{[\s\S]*\}/);
+            const obj = JSON.parse(m ? m[0] : regenText);
+            nClp = typeof obj?.contenido_clp === "string" ? obj.contenido_clp.trim() : "";
+            nUf = typeof obj?.contenido_uf === "string" ? obj.contenido_uf.trim() : "";
+          } catch {
+            /* no parseó — se maneja abajo */
+          }
+          if (!nClp || !nUf) {
+            console.warn(`[NEG-BUDGET] ${analysisId}: retry quirúrgico ${intento} no parseó — conservo la versión previa`);
+            break;
+          }
+          const candidato = { ...mejorNeg, negociacion: { ...mejorNeg.negociacion, contenido_clp: nClp, contenido_uf: nUf } };
+          const wc2 = wcNeg(candidato);
+          const plan2 = citaPlan(candidato);
+          console.warn(`[NEG-BUDGET] ${analysisId}: retry quirúrgico ${intento} → ${wc2} palabras${wc2 <= limiteNeg && plan2.length === 0 ? " (OK)" : ""}${plan2.length ? ` · sigue citando ${plan2.join(", ")}` : ""}`);
+          if (empeoraCifras(userPrompt, mejorNeg, candidato, { ufClp: UF_CLP })) {
+            console.warn(`[NEG-CIFRA-REJECT] ${analysisId}: el retry quirúrgico introdujo cifras fuera del input — candidato descartado`);
+          } else if (
+            // Mejora si acorta, o si deja de citar el plan sin alargarse: son dos
+            // ejes y el candidato tiene que ganar en alguno sin perder en el otro.
+            (wc2 < mejorNegWC && plan2.length <= mejorNegPlan.length) ||
+            (plan2.length < mejorNegPlan.length && wc2 <= Math.max(mejorNegWC, limiteNeg))
+          ) {
+            mejorNeg = candidato;
+            mejorNegWC = wc2;
+            mejorNegPlan = plan2;
+          }
+        } catch (e) {
+          console.warn(`[NEG-BUDGET] ${analysisId}: retry quirúrgico ${intento} falló (best-effort): ${(e as Error)?.message ?? e}`);
+          break;
+        }
+      }
+      aiResult = mejorNeg;
+      // Si el retry no logró sacar el precio del plan, cae la ORACIÓN que lo trae
+      // — nunca a media frase, y las dos variantes pierden el mismo índice para
+      // que el toggle de moneda no cambie el contenido. Publicar el número dos
+      // veces es peor que publicar una oración menos: la duplicación es el
+      // defecto entero que este goal viene a cerrar.
+      if (mejorNegPlan.length > 0 && aiResult?.negociacion) {
+        const partir = (t: string): string[] => t.split(/(?<=[.;])\s+/).map((x) => x.trim()).filter(Boolean);
+        const oracionesClp = partir(typeof aiResult.negociacion.contenido_clp === "string" ? aiResult.negociacion.contenido_clp : "");
+        const oracionesUf = partir(typeof aiResult.negociacion.contenido_uf === "string" ? aiResult.negociacion.contenido_uf : "");
+        const sucia = (i: number) =>
+          mejorNegPlan.some((fmt) => (oracionesClp[i] ?? "").includes(fmt) || (oracionesUf[i] ?? "").includes(fmt));
+        const total = Math.max(oracionesClp.length, oracionesUf.length);
+        const limpias: number[] = [];
+        for (let i = 0; i < total; i++) if (!sucia(i)) limpias.push(i);
+        aiResult.negociacion.contenido_clp = limpias.map((i) => oracionesClp[i] ?? "").join(" ").trim();
+        aiResult.negociacion.contenido_uf = limpias.map((i) => oracionesUf[i] ?? "").join(" ").trim();
+        mejorNegWC = wcNeg(aiResult);
+        console.warn(
+          `[NEG-PLAN-TRIM] ${analysisId}: no convergió en ${NEG_MAX_RETRIES} reintentos — descartada(s) ${total - limpias.length} oración(es) con precios del plan (${mejorNegPlan.join(", ")}), quedan ${mejorNegWC} palabras`,
+        );
+      }
+      if (mejorNegWC > TECHO_NEGOCIACION_DURO && aiResult?.negociacion) {
+        const { clp, uf, oracionesDescartadas } = recortarContinuacion(
+          typeof aiResult.negociacion.contenido_clp === "string" ? aiResult.negociacion.contenido_clp : "",
+          typeof aiResult.negociacion.contenido_uf === "string" ? aiResult.negociacion.contenido_uf : "",
+          TECHO_NEGOCIACION_DURO,
+        );
+        aiResult.negociacion.contenido_clp = clp;
+        aiResult.negociacion.contenido_uf = uf;
+        console.warn(
+          `[NEG-BUDGET-TRIM] ${analysisId}: no convergió en ${NEG_MAX_RETRIES} reintentos (${mejorNegWC} > ${TECHO_NEGOCIACION_DURO}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras`,
         );
       }
     }
