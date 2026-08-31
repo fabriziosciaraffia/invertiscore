@@ -11,7 +11,11 @@ import { DEMO_ANALYSIS_ID } from "@/lib/demo";
 const RUTA = "GET /api/cron/precalentar-prosa";
 
 /**
- * Cron · PRECALENTADO DE PROSA tras un bump de PROMPT_VERSION.
+ * Cron · PRECALENTADO SELECTIVO DE PROSA tras un bump de PROMPT_VERSION.
+ *
+ * ALCANCE (31-ago-2026): ya NO barre el parque. Cubre solo las filas SIN DUEÑO de
+ * las últimas 48 h, más el demo — la población que no puede regenerar por su
+ * cuenta. Todo lo demás pasó a regeneración bajo demanda al abrir el informe.
  *
  * POR QUÉ EXISTE. Subir `PROMPT_VERSION_*` deja stale al parque entero de golpe:
  * el informe descarta la prosa vieja y la regenera al abrirse. Eso funciona para
@@ -32,7 +36,10 @@ const RUTA = "GET /api/cron/precalentar-prosa";
  * por eso el loop lleva presupuesto de tiempo y no arranca una generación que no
  * alcanza a terminar. Un tope alto de filas sería decorativo.
  *
- * CADENCIA cada 10 min (`vercel.json`), deliberadamente mayor que `maxDuration`:
+ * CADENCIA HORARIA (`vercel.json`) desde el 31-ago-2026. Con el barrido apagado la
+ * cola es de unas pocas filas anónimas de 48 h, así que las 144 corridas diarias
+ * de la cadencia anterior encontraban trabajo en una fracción: 24 alcanzan de
+ * sobra. Sigue siendo mayor que `maxDuration`, que era la razón original:
  * dos corridas solapadas elegirían las mismas filas —ambas leen el mismo tope de
  * la lista antes de que la primera persista— y se pagaría dos veces la misma
  * generación. Ritmo resultante ~12/hora: drenar un parque recién bumpeado toma
@@ -66,8 +73,29 @@ const LIMITE_POR_CORRIDA = 3;
 const PRESUPUESTO_MS = 240_000;
 /** No se arranca una generación sin margen para el p90 (157 s) más su cola. */
 const MARGEN_GENERACION_MS = 175_000;
-/** Solo análisis recientes: son los que se revisitan. */
-const DIAS_RECIENTES = 14;
+/**
+ * VENTANA DEL PRECALENTADO SELECTIVO — 48 horas, no 14 días.
+ *
+ * EL BARRIDO POR ANTIGÜEDAD SE APAGÓ (31-ago-2026). Precalentar 14 días de parque
+ * regeneraba cientos de informes por si alguien los reabría, y la regeneración
+ * bajo demanda ya cubre a quien puede dispararla: el dueño con sesión abre, el
+ * cliente regenera, dos minutos y tiene texto nuevo.
+ *
+ * QUÉ QUEDA Y POR QUÉ. El precalentado sobrevive SOLO donde la regeneración bajo
+ * demanda no existe: `POST /api/analisis/ai` exige sesión y dueño, así que un
+ * anónimo nunca puede regenerar. Para ellos el informe ahora muestra la prosa
+ * vieja fechada (ver `mostrarProsaStale` en la página del análisis), que es la
+ * red de seguridad; el precalentado de 48 h es lo que hace que la mayoría ni
+ * llegue a necesitarla, porque es la ventana en que un comprador vuelve a mirar
+ * el análisis que acaba de hacer.
+ *
+ * POR QUÉ NO SE USA `informe_visible_at` como criterio, que sería lo obvio: la
+ * RPC que lo escribe es NULL-only y SECURITY INVOKER, o sea que **solo el dueño
+ * la escribe** — para una fila anónima el campo es estructuralmente NULL. Filtrar
+ * por "ya abierto" habría excluido exactamente a la población que se quiere
+ * cubrir. Medido: 120 marcas sobre 769 filas con prosa.
+ */
+const DIAS_RECIENTES = 2;
 
 export async function GET(request: Request) {
   const t0 = Date.now();
@@ -92,7 +120,7 @@ export async function GET(request: Request) {
     // que no tiene `promptVersion` y es la más stale de todas.
     const { data: filas, error } = await supabase
       .from("analisis")
-      .select("id, created_at, tipo_analisis, pv:ai_analysis->promptVersion")
+      .select("id, created_at, tipo_analisis, user_id, pv:ai_analysis->promptVersion")
       .not("ai_analysis", "is", null)
       .or(`created_at.gte.${desde},id.eq.${DEMO_ANALYSIS_ID}`)
       .order("created_at", { ascending: false })
@@ -104,7 +132,7 @@ export async function GET(request: Request) {
     // contra la forma equivocada daría TODAS las filas por stale — regenerando
     // prosa fresca y pagándola. Con Number, ambas formas coinciden y el null
     // (prosa sin versionar) sigue cayendo del lado correcto.
-    type FilaPrecalentado = { id: string; tipo_analisis: string | null; pv: number | string | null };
+    type FilaPrecalentado = { id: string; tipo_analisis: string | null; user_id: string | null; pv: number | string | null };
     // Predicado de frescura POR TIPO: cada modalidad contra SU versión vigente.
     // `<` Y NO `!==`: una versión SUPERIOR a la vigente es prosa de una rama que
     // todavía no mergea, y regenerarla la pisa. Pasó tres bumps seguidos — en el
@@ -124,7 +152,11 @@ export async function GET(request: Request) {
       const n = Number(f.pv);
       return f.pv == null || !Number.isFinite(n) || n < vigente;
     };
-    const stale = ((filas ?? []) as unknown as FilaPrecalentado[]).filter(esStale);
+    // SOLO LO QUE NADIE MÁS PUEDE ARREGLAR: filas SIN dueño (el anónimo no puede
+    // regenerar) más el demo. Una fila con dueño se regenera sola cuando él la
+    // abre, y precalentarla es pagar dos veces por el mismo texto.
+    const soloSinDueno = (f: FilaPrecalentado) => f.user_id === null || f.id === DEMO_ANALYSIS_ID;
+    const stale = ((filas ?? []) as unknown as FilaPrecalentado[]).filter(esStale).filter(soloSinDueno);
     let ok = 0;
     let fallidos = 0;
     let cortadoPorTiempo = false;

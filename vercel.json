@@ -54,7 +54,7 @@
     },
     {
       "path": "/api/cron/precalentar-prosa",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }
