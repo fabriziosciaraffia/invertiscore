@@ -295,20 +295,40 @@ function DrawerCostoMensual({
 // ─── Negociación drawer ─────────────────────────────
 
 function DrawerNegociacion({
-  data,
+  data: dataProp,
   currency,
   inputData,
   results,
   valorUF,
   createdAt,
 }: {
-  data: AINegociacionSection;
+  /** Puede llegar UNDEFINED: ver el guard de abajo. */
+  data: AINegociacionSection | undefined;
   currency: "CLP" | "UF";
   inputData: AnalisisInput;
   results: FullAnalysisResult;
   valorUF: number;
   createdAt?: string;
 }) {
+  // GUARD DE PROSA AUSENTE (GOAL 16). El caller pasa `aiAnalysis?.[activeKey]`
+  // SIN comprobar que exista —a diferencia de `reestructuracion`, que sí tiene su
+  // ternario— y este cuerpo leía `data.estrategiaSugerida_*` de entrada: con la
+  // prosa ausente reventaba con "Cannot read properties of undefined" y el
+  // ErrorBoundary se comía la PÁGINA ENTERA, no solo el cuerpo.
+  //
+  // Latente hasta hoy porque `negociacion` está en toda prosa persistida. Lo
+  // destapó el bump a v13: mientras el informe regenera su prosa stale, la
+  // sección no está, y el bump deja stale al parque LTR completo — o sea que sin
+  // este guard el crash pasaba de imposible a garantizado durante toda la ventana
+  // de drenado. Reproducido en /analisis/1920fd35-… con el motor en v13.
+  //
+  // Degrada a objeto vacío en vez de a un placeholder: casi todo este cuerpo es
+  // DETERMINISTA (hero de veredicto, eje del Dial, escenarios de pie cero) y sale
+  // de `results`, no de la IA. Con `{}` el lector conserva el diagrama y pierde
+  // solo lo que de verdad depende del texto; las piezas IA ya se auto-guardan
+  // (`data.precios &&`, el fallback de `estrategia`, el ternario del cierre).
+  const data = dataProp ?? ({} as AINegociacionSection);
+
   const precioCLP = (inputData.precio || 0) * valorUF;
   const vmFrancoUF = results.metrics?.valorMercadoFrancoUF ?? (inputData.precio || 0);
   const vmFrancoCLP = vmFrancoUF * valorUF;
@@ -536,6 +556,18 @@ function DrawerNegociacion({
         )}
       </div>
 
+      {/* GOAL 16 — el ARGUMENTO, en su lugar del v12. Lo que sobrevive de
+          `negociacion.contenido` tras el recorte es la razón que el comprador pone
+          sobre la mesa (y, condicional, la palanca de financiamiento): eso es
+          prosa de encuadre, así que va PRIMERO y como `VProsa`, respetando el
+          orden congelado [prosa] → viz⁺ → cierre → fuente. La caja "Aunque
+          negocies al máximo" murió con su rótulo y su marco; el argumento no.
+          Un guard de presupuesto (40 palabras) y otro de precios del plan lo
+          mantienen en una o dos frases que no repiten nada de abajo. */}
+      {(currency === "CLP" ? data.contenido_clp : data.contenido_uf)?.trim() && (
+        <VProsa>{plumonInline(currency === "CLP" ? data.contenido_clp : data.contenido_uf)}</VProsa>
+      )}
+
       {/* BLOQUE B · TABLA COMPARATIVA */}
       {/* ═══ CONVERSIÓN 16 (FASE 4.2) — el eje de veredicto reemplaza la tabla ═══
           La tabla de cuatro barras codificaba PRECIO ABSOLUTO desde cero
@@ -651,40 +683,35 @@ function DrawerNegociacion({
         </>
       )}
 
-      {/* Aunque negocies al máximo (negociacion.contenido — Entrega B).
-          break-even del arriendo + palanca de financiamiento. Contrato reescrito
-          (:561): no repite sobreprecio/m², ni la tesis "buscar otra", ni afirma/
-          niega el valor de mercado — la tabla de arriba ya lo muestra. */}
-      {(currency === "CLP" ? data.contenido_clp : data.contenido_uf)?.trim() && (
-        <div
-          style={{
-            borderLeft: "3px solid var(--franco-text-secondary)",
-            background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
-            borderRadius: "0 8px 8px 0",
-            padding: "12px 16px",
-          }}
-        >
-          <span
-            className="font-mono uppercase block mb-1.5"
-            style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
-          >
-            Aunque negocies al máximo
-          </span>
-          <div
-            className="font-body m-0 whitespace-pre-wrap"
-            style={{ fontSize: 12.5, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)", lineHeight: 1.55 }}
-          >
-            {renderPlumon(currency === "CLP" ? data.contenido_clp : data.contenido_uf)}
-          </div>
-        </div>
-      )}
+      {/* GOAL 16 — "Aunque negocies al máximo" se desarmó. El bloque narraba dos
+          cifras que ya viven abajo con forma propia: el break-even de caja (ahora
+          CHIP determinista del plan, leído del motor) y el techo (slot del plan,
+          impreso a dos centímetros). Medido sobre las 318 prosas v12 del parque:
+          65% citaba el techo, 63% narraba el break-even y un 6% arrastraba además
+          la frase-puente que solo existía para desambiguar su propia duplicación.
+          Peor que la duplicación: en la rama sin descuento (28 casos) 9 narraban
+          una rebaja que el motor prohíbe, y en el demo de la landing la cifra
+          estaba FABRICADA (UF 2.676 contra UF 3.262,65 del motor, con el signo
+          invertido). Lo que el campo sí aporta —el argumento negociador y la
+          palanca de financiamiento— sigue vivo en el contrato del prompt v13, que
+          ahora tiene prohibido citar los precios del plan.
+          El párrafo IA ya no se renderiza acá. */}
 
       {/* AUDITORÍA fase42 (7c) — la caja "Estrategia sugerida" murió: narraba los
           mismos montos del plan impreso debajo (duplicación literal). El cierre es
           UNO: la cajaAccionable de la IA si existe; si no (cache pre-v9 o IA muda),
           la estrategia ocupa su lugar como cierre — nunca las dos apiladas. */}
       {data.precios && (
-        <PlanNegociacion precios={data.precios} currency={currency} precioActualCLP={precioCLP} />
+        <PlanNegociacion
+          precios={data.precios}
+          currency={currency}
+          precioActualCLP={precioCLP}
+          valorUF={valorUF}
+          neutroUF={mtr?.precioFlujoNeutroUF}
+          neutroCLP={mtr?.precioFlujoNeutroCLP}
+          descuentoNeutroPct={mtr?.descuentoParaNeutro}
+          sinCredito={(inputData.piePct ?? 0) >= 100}
+        />
       )}
 
       {/* T1 — la línea de fuente (el bullet educativo de Fase 4.8) baja al pie del
@@ -715,11 +742,27 @@ function PlanNegociacion({
   precios,
   currency,
   precioActualCLP,
+  valorUF,
+  neutroUF,
+  neutroCLP,
+  descuentoNeutroPct,
+  sinCredito,
 }: {
   precios: NonNullable<AINegociacionSection["precios"]>;
   currency: "CLP" | "UF";
   /** Tu precio (el del análisis): ancla de los deltas del plan (fase42 (4)). */
   precioActualCLP: number;
+  /** Para la forma compacta del chip. */
+  valorUF: number;
+  /** Precio al que la CAJA queda en cero (`calcPrecioParaFlujo(0,…)` del motor,
+   *  persistido en metrics). Opcional: los análisis anteriores al campo no lo
+   *  traen y el chip no se dibuja. */
+  neutroUF?: number;
+  neutroCLP?: number;
+  /** `(precio − neutro)/precio × 100`. Su SIGNO decide la rama del chip. */
+  descuentoNeutroPct?: number;
+  /** Pie 100%: no hay crédito, así que no hay cuota que cubrir. */
+  sinCredito?: boolean;
 }) {
   const fmtPrecio = (clp: number, uf: number) => {
     if (currency === "UF") return `UF ${Math.round(uf).toLocaleString("es-CL")}`;
@@ -787,19 +830,109 @@ function PlanNegociacion({
     }
   }
 
+  // ── CHIP DE CAJA EN CERO (GOAL 16) ───────────────────────────────────────
+  // El número sale del motor (`metrics.precioFlujoNeutro*`), no de la IA ni de un
+  // recálculo en cliente: `calcMetrics` ya lo persiste y leerlo acá es la única
+  // forma de que el chip y el motor no puedan divergir.
+  //
+  // NO ES UN SLOT, y por eso cuelga del rótulo en vez de sumarse a la lista: un
+  // cuarto slot lo leería como "un precio más para ofrecer", que es exactamente lo
+  // que la glosa viene a desmentir. Colgado del encabezado queda como el MARCO
+  // dentro del cual se leen los tres precios que sí se ofrecen.
+  //
+  // TRES RAMAS, porque el motor tiene tres (espejo de `lecturaPrecioFlujoNeutro`):
+  // el equilibrio bajo el precio (91% del parque), en o sobre el precio (9%) y el
+  // que no existe. La rama del medio NUNCA muestra el número como delta: un
+  // "+2,0%" junto a "−14,4% de tu precio" se lee como otra oferta posible, cuando
+  // dice justo lo contrario — que ningún descuento llega hasta ahí.
+  const chipCaja = (() => {
+    // Pie 100% ⇒ NO HAY CHIP. `calcPrecioParaFlujo` devuelve 0 cuando el
+    // financiamiento es 0, igual que cuando el arriendo no cubre los gastos
+    // fijos — pero son dos cosas distintas y una sola glosa mentía en una de
+    // ellas. Medido sobre el parque: de las 16 filas sin equilibrio, **15 son
+    // pie 100%** y solo 1 es el caso del arriendo insuficiente. Sin crédito no
+    // hay cuota que cubrir, así que la pregunta "¿a qué precio la caja queda en
+    // cero?" no aplica; dibujar "no existe" la respondería con una causa falsa.
+    if (sinCredito) return null;
+    const dto = descuentoNeutroPct;
+    const hayNeutro = typeof neutroUF === "number" && neutroUF > 0 && typeof neutroCLP === "number" && neutroCLP > 0;
+    if (!hayNeutro || typeof dto !== "number") {
+      // Sin dato (análisis anterior al campo) el chip no se dibuja: distinto de
+      // "no existe", que sí es una respuesta del motor.
+      if (!hayNeutro && typeof dto === "number") {
+        return {
+          valor: "no existe",
+          delta: null,
+          glosa: "Con esta estructura el arriendo no cubre los gastos fijos a ningún precio.",
+        };
+      }
+      return null;
+    }
+    // Compacto ($106,6M), no completo: el chip comparte fila con el rótulo y el
+    // monto entero desbordaba el contenedor en desktop (medido en el shot del
+    // demo). Los slots sí van completos — ahí el número es el protagonista.
+    const valor = currency === "UF"
+      ? `UF ${Math.round(neutroUF!).toLocaleString("es-CL")}`
+      : fmtCompact(neutroCLP!, currency, valorUF);
+    if (dto > 0) {
+      return {
+        valor,
+        delta: `−${dto.toFixed(1).replace(".", ",")}%`,
+        glosa: "No es el número a pelear: es dónde el arriendo alcanza a cubrirlo todo.",
+      };
+    }
+    return {
+      valor,
+      // Sin delta: la magnitud va en palabras dentro de la glosa, para que no
+      // comparta forma con los descuentos negociables de los slots.
+      delta: null,
+      glosa:
+        Math.abs(dto) >= 0.1
+          ? `Está ${Math.abs(dto).toFixed(1).replace(".", ",")}% arriba de tu precio: ningún descuento lo alcanza — la caja no se arregla bajando el precio.`
+          : "Coincide con tu precio: la caja no se arregla bajando el precio.",
+    };
+  })();
+
   return (
     <div className="flex flex-col gap-2.5">
-      <p
-        className="font-mono uppercase m-0 mb-1"
-        style={{
-          fontSize: 10,
-          letterSpacing: "0.06em",
-          color: "var(--franco-text-secondary)",
-          fontWeight: 600,
-        }}
-      >
-        Tu plan de negociación
-      </p>
+      <div className="flex items-baseline justify-between gap-3 mb-1 flex-wrap">
+        <p
+          className="font-mono uppercase m-0"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.06em",
+            color: "var(--franco-text-secondary)",
+            fontWeight: 600,
+          }}
+        >
+          Tu plan de negociación
+        </p>
+        {chipCaja && (
+          <span
+            className="font-mono"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.03em",
+              padding: "3px 7px",
+              borderRadius: 3,
+              background: "color-mix(in srgb, var(--franco-text) 5%, transparent)",
+              color: "var(--franco-text-secondary)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Caja en cero <b style={{ color: "var(--franco-text)" }}>{chipCaja.valor}</b>
+            {chipCaja.delta ? <> · <b style={{ color: "var(--franco-text)" }}>{chipCaja.delta}</b></> : null}
+          </span>
+        )}
+      </div>
+      {chipCaja && (
+        <p
+          className="font-body m-0 mb-1"
+          style={{ fontSize: 11.5, lineHeight: 1.5, color: "color-mix(in srgb, var(--franco-text) 65%, transparent)" }}
+        >
+          {chipCaja.glosa}
+        </p>
+      )}
       {slots.map((s, i) => (
         <div
           key={i}
@@ -1739,7 +1872,7 @@ export function AnalysisDrawer({
       )}
       {activeKey === "negociacion" && (
         <DrawerNegociacion
-          data={section as AINegociacionSection}
+          data={section as AINegociacionSection | undefined}
           currency={currency}
           inputData={inputData}
           results={results}
