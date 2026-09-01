@@ -7,7 +7,6 @@ import { normalizeLegacyVerdict } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import { ProgresoGeneracion, ETAPAS_GENERACION_STR, COPY_TIEMPO_STR } from "@/components/analysis/ProsaSkeleton";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
-import { describirMotivosSTR } from "@/lib/no-cierra-copy";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
 
@@ -140,7 +139,6 @@ export function HeroSTR({
   // que no explica su veredicto (el peor: 59 con BUSCAR OTRA) y no tiene dónde
   // entenderlo. Cuando el veredicto viene de la banda, `motivos` es null y NO se
   // muestra nada: inventar una causa sería peor que no darla.
-  const motivos = describirMotivosSTR(results.francoScore?.gates?.motivos ?? []);
 
   const fechaFirma = formatFecha(fechaProsa ?? createdAt);
 
@@ -153,21 +151,25 @@ export function HeroSTR({
   // Lo unico exclusivo que se pierde es el atajo de navegacion por ancla.
   return (
     <div className="mb-3">
-      <div className="px-6 md:px-8 py-[9px]">
+      {/* SIN PADDING HORIZONTAL. El `px-6 md:px-8` era el padding INTERNO de la
+          card: al retirarla quedo empujando el texto 32px hacia adentro, y el
+          bloque dejo de alinear con el acordeon. Medido en prod: el contenedor
+          esta en x=216, el mismo que el acordeon, pero el contenido caia en 248.
+          El acordeon tiene padding 0; el bloque tambien, ahora. */}
+      <div className="py-[9px]">
         <div>
-          {/* Por qué no cierra — entre el veredicto y la pregunta, que es donde el
-              lector se pregunta "¿y por qué?". Borde izquierdo en Ink y sin esquinas
-              redondeadas: es una nota al margen del veredicto, no una alerta. Sin wash
-              de Signal Red a propósito — el rojo ya lo carga el badge, y repetirlo acá
-              convertiría una explicación en un segundo golpe. */}
-          {motivos && (
-            <p
-              className="font-body text-[13.5px] md:text-[14px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mb-3.5 pl-3 max-w-[62ch]"
-              style={{ borderLeft: "2px solid var(--franco-border-strong)", borderRadius: 0 }}
-            >
-              {motivos.frase}
-            </p>
-          )}
+          {/* EL PÁRRAFO DE MOTIVOS SALIÓ DEL HERO (la glosa SIGUE yendo al prompt).
+              Espejo de HeroLTR. `no-cierra-copy.ts` nació el 06-ago-2026 para ALIMENTAR EL PROMPT —"si le
+              pasas el concepto-motor lo copia; si le pasas la consecuencia, la narra"—
+              y el render en el hero llegó ocho días después. El prompt sigue recibiendo
+              la glosa con la instrucción "úsala, no la re-derives ni la contradigas",
+              así que el mismo texto aparecía DOS VECES por diseño: narrado por la prosa
+              y literal encima.
+              Medido sobre 200 análisis: el 88,2% de los hechos que afirmaba el párrafo
+              ya estaban en la prosa o el titular, y en el 78,4% de los casos NO aportaba
+              ningún hecho nuevo. Encima se contradecía —abría con "No cierra por una
+              sola cosa" y enumeraba tres— y repetía el hecho del bolsillo dos veces.
+              Lo que decía no se pierde: la prosa lo narra, que es su trabajo. */}
           {/* Chip `f.` en el titulo -- espejo de HeroLTR. */}
           <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
             <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
@@ -203,7 +205,7 @@ export function HeroSTR({
           destino, y perderlo cerraba la única puerta a `distanciaVeredicto`. La caja pasa a
           ser opcional adentro; el bloque existe si hay algo de posición que mostrar. */}
       {(cajaAccionable || posicionClickeable) && (
-        <div className="px-6 md:px-8 pb-4">
+        <div className="pb-4">
           <div
             style={{
               borderLeft: `3px solid ${isNeutro ? "var(--franco-text-secondary)" : "var(--signal-red)"}`,
@@ -219,19 +221,6 @@ export function HeroSTR({
                 >
                   {cajaLabel}
                 </span>
-                {/* El destino ya no es un rótulo muerto: la posición de Franco abre el
-                    drawer que la sostiene. Botón real (no un div con onClick) para que
-                    teclado y lectores de pantalla lo alcancen. */}
-                {posicionClickeable && (
-                  <button
-                    type="button"
-                    onClick={abrirPosicion}
-                    className="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em] font-semibold underline underline-offset-2 decoration-dotted hover:opacity-70 transition-opacity"
-                    style={{ color: isNeutro ? "var(--franco-text-secondary)" : "var(--signal-red)" }}
-                  >
-                    {posicionDrawer!.label} →
-                  </button>
-                )}
               </div>
               {/* Sin caja el bloque queda en su fila de arriba (label + destino), que ya es
                   una línea: no hay párrafo vacío que deje hueco. */}
@@ -243,6 +232,43 @@ export function HeroSTR({
                   {plumonInline(cajaAccionable)}
                 </p>
               )}
+              {/* FIRMA DENTRO DE LA CAJA — espejo de HeroLTR. La línea "Análisis
+                  generado por IA" nunca estuvo acá: era el pie del hero, y la card que
+                  envolvía todo la hacía PARECER parte del bloque. Sin card quedaba
+                  huérfana sobre el papel. El destino del drawer sube desde la fila del
+                  label a esta misma línea, que es donde el mockup lo pone. */}
+              <div
+                className="mt-3 pt-2.5 flex items-center justify-between gap-3"
+                style={{
+                  borderTop: `1px solid ${isNeutro ? "var(--franco-border)" : "color-mix(in srgb, var(--signal-red) 20%, transparent)"}`,
+                }}
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
+                    f.
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-body text-[11.5px] font-semibold text-[var(--franco-text)] leading-tight">
+                      Franco
+                    </span>
+                    <span className="block font-mono text-[9.5px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] leading-tight">
+                      Análisis generado por IA{fechaFirma ? ` · ${fechaFirma}` : ""}
+                    </span>
+                  </span>
+                </span>
+                {posicionClickeable && (
+                  /* Botón real (no un div con onClick) para que teclado y lectores de
+                     pantalla lo alcancen. */
+                  <button
+                    type="button"
+                    onClick={abrirPosicion}
+                    className="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em] font-semibold underline underline-offset-2 decoration-dotted hover:opacity-70 transition-opacity"
+                    style={{ color: isNeutro ? "var(--franco-text-secondary)" : "var(--signal-red)" }}
+                  >
+                    {posicionDrawer!.label} →
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -250,11 +276,10 @@ export function HeroSTR({
 
       <div className="h-px" style={{ background: "var(--franco-border)" }} />
 
-      {/* PIE · FIRMA */}
-      <div className="flex items-center justify-between gap-3 px-6 md:px-8 py-2">
-        <span className="font-body text-[11px] text-[var(--franco-text-muted)]">
-          Análisis generado por IA{fechaFirma ? ` · ${fechaFirma}` : ""}
-        </span>
+      {/* PIE · solo el wordmark. El disclaimer de IA se mudo DENTRO de la caja de
+          posicion, junto a la firma: sin la card que envolvia el bloque, una linea
+          suelta sobre el papel no se leia como parte de nada. */}
+      <div className="flex items-center justify-end gap-3 py-2">
         <Wordmark />
       </div>
     </div>

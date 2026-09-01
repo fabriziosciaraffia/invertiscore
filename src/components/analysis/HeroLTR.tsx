@@ -5,7 +5,6 @@ import { usePostHog } from "posthog-js/react";
 import { renderPlumon } from "./hallazgos/plumon";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { describirMotivosLTR } from "@/lib/no-cierra-copy";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 
 /**
@@ -115,11 +114,6 @@ export function HeroLTR({
   // brazo persistido y se deriva: score en banda COMPRAR (≥70) con veredicto
   // AJUSTA ⇒ el gate capó. Veredicto de banda pura → null y no se muestra nada:
   // inventar una causa sería peor que no darla (§1.9.3).
-  const gate2Capo = (results?.score ?? 0) >= 70 && veredicto === "AJUSTA SUPUESTOS";
-  const motivosLTR = describirMotivosLTR(
-    (distanciaRow?.valor as { brazosGate1Activos?: string[] } | undefined)?.brazosGate1Activos ?? [],
-    gate2Capo,
-  );
   const fechaFirma = formatFecha(fechaProsa ?? createdAt);
 
   // Evento propio de la posición de Franco: su apertura NO es un hallazgo (la
@@ -164,19 +158,25 @@ export function HeroLTR({
   // repetirlo era etiquetar lo obvio. En su lugar, la pregunta la firma Franco.
   return (
     <div className="mb-3">
-      <div className="px-6 md:px-8 py-[9px]">
+      {/* SIN PADDING HORIZONTAL. El `px-6 md:px-8` era el padding INTERNO de la
+          card: al retirarla quedo empujando el texto 32px hacia adentro, y el
+          bloque dejo de alinear con el acordeon. Medido en prod: el contenedor
+          esta en x=216, el mismo que el acordeon, pero el contenido caia en 248.
+          El acordeon tiene padding 0; el bloque tambien, ahora. */}
+      <div className="py-[9px]">
         <div>
-          {/* Por qué no cierra — puerto literal del patrón STR: entre el veredicto y
-              la pregunta, borde izquierdo neutro, sin wash de Signal Red (el rojo ya
-              lo carga el badge; repetirlo convertiría una explicación en un golpe). */}
-          {motivosLTR && (
-            <p
-              className="font-body text-[13.5px] md:text-[14px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mb-3.5 pl-3 max-w-[62ch]"
-              style={{ borderLeft: "2px solid var(--franco-border-strong)", borderRadius: 0 }}
-            >
-              {motivosLTR.frase}
-            </p>
-          )}
+          {/* EL PÁRRAFO DE MOTIVOS SALIÓ DEL HERO (la glosa SIGUE yendo al prompt).
+              `no-cierra-copy.ts` nació el 06-ago-2026 para ALIMENTAR EL PROMPT —"si le
+              pasas el concepto-motor lo copia; si le pasas la consecuencia, la narra"—
+              y el render en el hero llegó ocho días después. El prompt sigue recibiendo
+              la glosa con la instrucción "úsala, no la re-derives ni la contradigas",
+              así que el mismo texto aparecía DOS VECES por diseño: narrado por la prosa
+              y literal encima.
+              Medido sobre 200 análisis: el 88,2% de los hechos que afirmaba el párrafo
+              ya estaban en la prosa o el titular, y en el 78,4% de los casos NO aportaba
+              ningún hecho nuevo. Encima se contradecía —abría con "No cierra por una
+              sola cosa" y enumeraba tres— y repetía el hecho del bolsillo dos veces.
+              Lo que decía no se pierde: la prosa lo narra, que es su trabajo. */}
           {/* El chip `f.` entra al TITULO -- mismo isotipo que el sticky del margen, inline. */}
           <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
             <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
@@ -228,7 +228,7 @@ export function HeroLTR({
           destino, o ambos). Sin ninguno de los dos no hay bloque — ahí de verdad no hay
           nada que decir ni a dónde ir. */}
       {(cajaAccionable || posicionDrawer) && (
-        <div className="px-6 md:px-8 pb-4">
+        <div className="pb-4">
           <div
             className={posicionDrawer ? "franco-card-target cursor-pointer" : undefined}
             style={{
@@ -263,18 +263,35 @@ export function HeroLTR({
                   <div className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)]">
                     {renderPlumon(cajaAccionable)}
                   </div>
-                  {posicionDrawer && (
-                    /* Divisor en Signal Red al 20%: dentro de un bloque con wash rojo el
-                       hairline neutro se ve sucio. Único ajuste de token del cambio. */
                     <div
-                      className="mt-3 pt-2.5 flex justify-end"
+                      className="mt-3 pt-2.5 flex items-center justify-between gap-3"
                       style={{ borderTop: "1px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}
                     >
-                      <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
-                        {posicionDrawer.label} →
+                      {/* FIRMA DENTRO DE LA CAJA. La línea "Análisis generado por IA"
+                          nunca estuvo acá: era el pie del hero, y la card que envolvía
+                          todo la hacía PARECER parte del bloque. Sin card quedó
+                          huérfana sobre el papel, así que baja a donde el mockup la
+                          pone — junto al ísotipo y el nombre, a la izquierda, con el
+                          destino del drawer a la derecha en la misma línea. */}
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
+                          f.
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-body text-[11.5px] font-semibold text-[var(--franco-text)] leading-tight">
+                            Franco
+                          </span>
+                          <span className="block font-mono text-[9.5px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] leading-tight">
+                            Análisis generado por IA{fechaFirma ? ` · ${fechaFirma}` : ""}
+                          </span>
+                        </span>
                       </span>
+                      {posicionDrawer && (
+                        <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
+                          {posicionDrawer.label} →
+                        </span>
+                      )}
                     </div>
-                  )}
                 </>
               ) : (
                 /* Sin caja el bloque COLAPSA a una línea: label y destino en la misma fila.
@@ -297,11 +314,10 @@ export function HeroLTR({
 
       <div className="h-px" style={{ background: "var(--franco-border)" }} />
 
-      {/* ═══ PIE · FIRMA (absorbe el disclaimer IA) ═══ */}
-      <div className="flex items-center justify-between gap-3 px-6 md:px-8 py-2">
-        <span className="font-body text-[11px] text-[var(--franco-text-muted)]">
-          Análisis generado por IA{fechaFirma ? ` · ${fechaFirma}` : ""}
-        </span>
+      {/* PIE · solo el wordmark. El disclaimer de IA se mudo DENTRO de la caja de
+          posicion, junto a la firma: sin la card que envolvia el bloque, una linea
+          suelta sobre el papel no se leia como parte de nada. */}
+      <div className="flex items-center justify-end gap-3 py-2">
         <Wordmark />
       </div>
     </div>
