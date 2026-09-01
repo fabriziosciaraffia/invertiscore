@@ -516,37 +516,58 @@ export function buildHallazgoDistanciaVeredicto(p: {
   } else {
     const l = palancaMasBarata!;
     const d = fmtPct(Math.abs(l.deltaPct));
+    // ¿CUÁNTAS MÁS CRUZAN? La frase se redacta para la palanca más barata, y hasta
+    // acá afirmaba exclusividad ("es la única vía") aunque el hallazgo listara
+    // cuatro. No era una licencia del modelo: la prosa copiaba esta oración tal
+    // cual —medido en un caso con pie, arriendo, precio y plazo cruzando, donde el
+    // informe terminó diciendo "la condición concreta es una sola"—. El motor
+    // emite datos; cuando además redacta afirmaciones, el modelo las repite sin
+    // poder verificarlas.
+    const otrasVias = palancas.length - 1;
+    const hayMas = otrasVias > 0;
+    /** Cola honesta para la rama con varias vías: nombra la pluralidad sin
+     *  adjetivar exclusividad y remite a la tabla, que es donde se comparan. */
+    const colaOtrasVias = otrasVias === 1
+      ? " Hay otra vía que también cruza; la tabla las compara."
+      : ` Hay ${otrasVias} vías más que también cruzan; la tabla las compara.`;
     if (l.palanca === "pie") {
       // Pie 0 y pie bajo son dos historias distintas (analysis-voice-franco §1.11.1: con
       // pie 0 no hay "pie chico que subir", hay otra estructura de compra). El monto se
       // nombra como NIVEL de pie, nunca como "un X% más de pie", que se leería como
       // aumento relativo sobre un pie que puede ser cero.
-      titular = "Está a un pie de distancia del veredicto de arriba.";
+      titular = hayMas
+        ? "Hay más de una vía al veredicto de arriba."
+        : "Está a un pie de distancia del veredicto de arriba.";
+      // La cláusula de exclusividad SOLO cuando es cierta. Con más vías, el pie
+      // conserva lo que sí lo distingue —es el que menos depende de terceros— sin
+      // afirmar que es el único.
+      const rasgoPie = hayMas
+        ? `Es la que menos depende de terceros: no necesita que el vendedor acepte ni que el arriendo acompañe.${colaOtrasVias}`
+        : `Es la única vía que no depende de que el vendedor acepte ni de que el mercado de arriendo acompañe: depende de tu liquidez.`;
       fraseCanonica =
         p.piePct === 0
           ? `Hoy estás financiando el 100%. Tu veredicto ${p.veredictoBase} pasa a ${objetivoNombre} ` +
             `poniendo un pie de ${fmtPct(l.objetivo)}%, sin tocar el precio ni el arriendo: menos crédito ` +
-            `es menos cuota, y la cuota es lo que hoy no cierra.`
+            `es menos cuota, y la cuota es lo que hoy no cierra.${hayMas ? colaOtrasVias : ""}`
           : `Tu veredicto ${p.veredictoBase} pasa a ${objetivoNombre} subiendo el pie de ${fmtPct(l.actual)}% ` +
-            `a ${fmtPct(l.objetivo)}%, sin tocar el precio ni el arriendo. Es la única vía que no depende ` +
-            `de que el vendedor acepte ni de que el mercado de arriendo acompañe: depende de tu liquidez.`;
+            `a ${fmtPct(l.objetivo)}%, sin tocar el precio ni el arriendo. ${rasgoPie}`;
     } else if (l.palanca === "arriendo") {
       titular = "Está cerca del veredicto de arriba por el lado del arriendo.";
       fraseCanonica =
         `Tu veredicto ${p.veredictoBase} pasa a ${objetivoNombre} si el arriendo llega a ${fmtCLP(l.objetivo)} ` +
         `al mes —un ${d}% sobre los ${fmtCLP(l.actual)} que declaraste—. Antes de descartarlo, confirma ese ` +
-        `techo de arriendo contra publicaciones reales de la zona.`;
+        `techo de arriendo contra publicaciones reales de la zona.${hayMas ? colaOtrasVias : ""}`;
     } else if (l.palanca === "precio") {
       titular = "Está cerca del veredicto de arriba por el lado del precio.";
       fraseCanonica =
         `Tu veredicto ${p.veredictoBase} pasa a ${objetivoNombre} si cierras en ${fmtUF(l.objetivo)} en vez de ` +
-        `${fmtUF(l.actual)} —un ${d}% menos—. Es una diferencia de negociación, no de otro departamento.`;
+        `${fmtUF(l.actual)} —un ${d}% menos—. Es una diferencia de negociación, no de otro departamento.${hayMas ? colaOtrasVias : ""}`;
     } else {
       titular = "Está cerca del veredicto de arriba por el lado del crédito.";
       fraseCanonica =
         `Tu veredicto ${p.veredictoBase} pasa a ${objetivoNombre} estirando el crédito de ${l.actual} a ` +
         `${l.objetivo} años, sin cambiar el precio ni el arriendo. Alarga la deuda y pagas más intereses en total; ` +
-        `a cambio, el aporte mensual baja lo suficiente para cruzar.`;
+        `a cambio, el aporte mensual baja lo suficiente para cruzar.${hayMas ? colaOtrasVias : ""}`;
     }
   }
 
