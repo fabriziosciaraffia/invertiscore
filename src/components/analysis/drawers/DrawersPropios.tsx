@@ -1,5 +1,7 @@
 "use client";
 
+import { DIST_PIE_TOPE_PCT } from "@/lib/distancia-veredicto-hallazgo";
+
 // Drawers propios (rama drawers-propios · F2) — plantillas DETERMINÍSTICAS motor-templated.
 // Cero prosa IA, cero prompt, cero regen: cada cifra deriva de results/exit/projections/
 // metrics + hallazgo.valor persistidos. El contrato visual es mockup-drawers-propios.html
@@ -585,11 +587,14 @@ function construirPalancas(
     .filter((p) => !cruzaron.has(p as PalancaDistancia["palanca"]))
     .map((p) => {
       const nombre = (NOMBRE_PALANCA[p] ?? p).toLowerCase();
-      // El tope viaja en el hallazgo persistido (`topePct`), así que no se importa
-      // la constante del motor: se dibuja lo que ESTE análisis probó.
-      // Entero: el tope es un NIVEL de pie (30%), no un delta medido — "30,0%" le
-      // da una precisión que el número no tiene.
-      return p === "pie" && typeof v.topePct === "number" ? `${nombre} hasta ${Math.round(v.topePct)}%` : nombre;
+      // OJO: el tope del PIE **no** es `v.topePct`. Ese es el de las palancas
+      // genéricas (precio/arriendo/plazo) y vale 15 o 30 según el salto de banda;
+      // el pie tiene el suyo, ABSOLUTO y siempre 30, porque el pie es un NIVEL y no
+      // un cambio porcentual. Usar `topePct` imprimía "pie hasta 15%" en filas donde
+      // el motor había probado hasta 30 — se cazó midiendo la métrica del goal:
+      // una prosa citó bien el 30 y el instrumento la marcó como inventada, los dos
+      // comparando contra el campo equivocado.
+      return p === "pie" ? `${nombre} hasta ${DIST_PIE_TOPE_PCT}%` : nombre;
     });
   return { filas, noProbadas };
 }

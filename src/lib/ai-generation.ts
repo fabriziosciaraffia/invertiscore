@@ -59,7 +59,7 @@ import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import type { Hallazgo } from "@/lib/types";
 import { metricaDisplay, metricaODefault, metricaValorONull, esMetricaNoAplica } from "@/lib/types";
 import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
-import { calcDividendo } from "@/lib/analysis";
+import { calcDividendo, simularPie } from "@/lib/analysis";
 import {
   nuevoRegistroLlamadas,
   persistGeneracionTiming,
@@ -149,7 +149,7 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // entregarle al modelo una conclusión apoyada en una cifra nuestra — a
 // diferencia del estallido o la pandemia, que son eventos externos
 // verificables. La regla da ese criterio, no una lista de palabras prohibidas.
-export const PROMPT_VERSION_LTR = 13;
+export const PROMPT_VERSION_LTR = 14;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -275,7 +275,7 @@ Forma: una sola frase integrada en \`conviene.respuestaDirecta\` o en \`largoPla
 
 NIVEL 2 — Observación táctica.
 Cuándo: \`overall\` === "mejorable".
-Forma: una observación corta + el impacto cuantificado, en \`conviene.respuestaDirecta\` (si condiciona la decisión) o como nota en \`negociacion.contenido\`. Sin sección dedicada. Sin \`reestructuracion\`. Usá el \`impact_message\` que viene en \`financingHealth.pie\` o \`financingHealth.tasa\`. Ejemplo:
+Forma: una observación corta + el impacto cuantificado, en \`conviene.respuestaDirecta\` (si condiciona la decisión) o como nota en \`negociacion.contenido\`. Sin sección dedicada. Sin \`reestructuracion\`. Los datos vienen en \`financingHealth\` (nivel, actual, y para la tasa el mercado y el ahorro mensual): REDACTALO vos con esas cifras. Para el pie NO hay meta que citar — si el pie es el problema, la magnitud sale de la ESCALERA. Ejemplo:
 > "Tu tasa al 4,5% está ~0,4 puntos porcentuales sobre el mercado. Cotiza en 2-3 bancos antes de firmar — bajar a 4,1% reduce la cuota mensual ~$48K."
 
 NIVEL 3 — Reestructuración recomendada.
@@ -287,7 +287,7 @@ Forma: completa el campo \`reestructuracion\` del JSON output con contenido_clp,
 
 Cuando completas \`reestructuracion\`:
 - contenido_clp/uf: 3-5 frases. Diagnóstico de por qué la estructura actual no funciona + recomendación concreta + simulación del impacto. Tono honesto sobre el esfuerzo.
-- estructuraSugerida: NO la calcules. Los 4 números (pieSugerido_pct, plazoSugerido_anios, tasaObjetivo_pct, impactoCuotaMensual_clp) vienen ya calculados en \`estructuraFinancieraSugerida\` (bloque de salud del financiamiento del input). Copialos tal cual: son la fuente única y se sobrescriben de todas formas. Tu prosa (contenido_clp/uf) DEBE ser coherente con esos números — no menciones un pie, una tasa o un ahorro de cuota distintos a esos números.
+- estructuraSugerida: NO la calcules. Los DOS números (plazoSugerido_anios, tasaObjetivo_pct) vienen ya calculados en \`estructuraFinancieraSugerida\`. Copialos tal cual: son la fuente única y se sobrescriben de todas formas. Tu prosa (contenido_clp/uf) DEBE ser coherente con ellos. Y NO hay pie sugerido ni ahorro de cuota que copiar: si tu prosa habla del pie, la magnitud sale de la ESCALERA y se dice como intercambio.
 
 ## 5.bis Pie 0 — financiamiento 100% (SOLO si el input trae \`capitalPropio: no aplica\`)
 
@@ -695,11 +695,9 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
   "reestructuracion": {  // OPCIONAL — solo si Nivel 3 (§5)
     "contenido_clp": string,
     "contenido_uf": string,
-    "estructuraSugerida": {             // copiar de estructuraFinancieraSugerida (input) — NO inventar; se sobrescriben de todas formas
-      "pieSugerido_pct": number,        // = estructuraFinancieraSugerida.pieSugerido
+    "estructuraSugerida": {             // copiar de estructuraFinancieraSugerida (input) — NO inventar; se sobrescriben de todas formas. SIN pie ni impacto: no existen.
       "plazoSugerido_anios": number,    // = estructuraFinancieraSugerida.plazoSugerido (igual al actual)
       "tasaObjetivo_pct": number,       // = estructuraFinancieraSugerida.tasaObjetivo
-      "impactoCuotaMensual_clp": number // = estructuraFinancieraSugerida.impactoCuotaMensual
     }
   },
 
@@ -713,6 +711,8 @@ Largos por campo:
   (2) PRESUPUESTO: tu continuación tiene un máximo PROPIO de ${CONTINUACION_MAX} palabras, y no depende de cuánto ocupe lo que el motor antepone — el techo total escala con eso. Escribí para ese presupuesto, no para el total. Un guard lo mide, puede pedirte recortar y, si insistís, RECORTA ÉL por oración: la última idea que no quepa se pierde entera, así que pon lo que importa primero.
   PROHIBIDO: repetir la apertura fija; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones de magnitud fuera de §15 (con el % o múltiplo provisto, o los dos montos absolutos, nunca como aproximación verbal); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
 - conviene.cajaAccionable: 1-2 frases — la POSICIÓN PERSONAL de Franco que cierra el análisis (§9): síntesis + condición bajo la que se sostiene + costo de avanzar contra el análisis si aplica. Cierra con un próximo paso concreto. NO checklist genérica, NO pregunta retórica sin respuesta.
+  LAS VÍAS SON LAS QUE SON. Si el caso trae el bloque VÍAS QUE CRUZAN AL VEREDICTO DE ARRIBA, tu posición se escribe SOBRE ESA LISTA: cada una alcanza por sí sola y todas están medidas. Puedes recomendar una —la más accionable para este comprador— pero no puedes dejar creyendo que es la única disponible.
+  LA PRUEBA NO ES LA LITERALIDAD, ES LO QUE QUEDA CREYENDO QUIEN LEE. "La única palanca que depende solo de ti" puede ser cierta palabra por palabra y aun así dejar al lector convencido de que no hay otra vía — cuando estirar el plazo tampoco depende del vendedor, depende del banco, igual que la tasa. Una frase técnicamente correcta que produce una creencia falsa es un error, no un matiz.
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números.
 - negociacion.contenido: 1-2 frases, entre ${NEGOCIACION_MIN} y ${NEGOCIACION_MAX} palabras por variante. Dos guards lo miden —uno te pide desarrollar si te quedas corto, otro recorta si te pasas— así que escribe para ese rango.
   ES EL ARGUMENTO CON EL QUE SE NEGOCIA (§1.12.2): por qué el vendedor debería moverse, dicho en una razón que el comprador pueda poner sobre la mesa. Y, SOLO si el pie es muy bajo o la tasa está sobre la referencia, la segunda frase dice que la palanca de mayor impacto es la estructura de financiamiento y no el precio — se trabaja con el banco, en paralelo (§1.5).
@@ -814,7 +814,7 @@ FÓRMULA DURA: [el veredicto en palabras del usuario] + [LA razón más fuerte d
 - SIN montos en CLP ni UF. Porcentajes y magnitudes sin moneda ("20% de más", "la mitad de la cuota") SÍ se permiten cuando son LA razón.
 - Si el titular cita una referencia de precio, DECLARA su ámbito (§1.12.9): "sobre el valor estimado de tu cuadra" o "sobre la mediana de la comuna" — nunca "de la zona" a secas.
 - SIN jerga: prohibidos CAP rate, NOI, TIR, UF/m², percentil, spread, yield y "plusvalía" como término pelado. Todo en términos de bolsillo, arriendo, cuota, precio, zona.
-- CONSISTENCIA TERNARIA con el veredicto dado: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS nombra la palanca REAL del caso (la del bloque de distancia — no copies la palanca de los ejemplos) Y, cuando el bloque provee su magnitud, la INCLUYE — una palanca sin número es una vaguedad, no una vía. La magnitud de la palanca PRECIO se expresa como % de descuento (el del bloque de distancia), NUNCA como monto UF/CLP (prohibidos en el titular); la del pie, como % objetivo. COMPRAR afirma sin triunfalismo.
+- CONSISTENCIA TERNARIA con el veredicto dado: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS nombra la palanca REAL del caso (la del bloque VÍAS QUE CRUZAN — no copies la palanca de los ejemplos, y si hay varias elige una sin dar a entender que es la única) Y, cuando el bloque provee su magnitud, la INCLUYE — una palanca sin número es una vaguedad, no una vía. La magnitud de la palanca PRECIO se expresa como % de descuento (el del bloque de distancia), NUNCA como monto UF/CLP (prohibidos en el titular); la del pie, como % objetivo. COMPRAR afirma sin triunfalismo.
 - Toda afirmación se completa sola: nada de elipsis ambiguas ("un arriendo que no llega" — ¿a dónde?).
 
 ANTI-OLOR-IA (además de §2.1/§2.2): prohibidos en el titular "oportunidad", "potencial", "optimizar", "interesante", "atractivo", "sólido" como adjetivo pelado, "clave", "estratégico"; aperturas con gerundio ("Considerando…"); construcciones "no solo… sino también"; signos de exclamación. TEST DE LA CONVERSACIÓN: el titular debe poder decirse en voz alta a un amigo sin sonar a informe. "Este depto no conviene: pagas caro y el arriendo no cubre la cuota" pasa; "El activo presenta un desalineamiento entre precio y renta" no pasa.
@@ -1667,20 +1667,91 @@ CAPEX PUESTA A PUNTO (depto usado de ${hallazgoCapex.valor.antiguedadAnios} año
             precio_uf: input.precio,
             plazo_anios: input.plazoCredito,
           },
-          UF_CLP,
         )
       : null;
+    // ── ESCALERA DEL PIE ─────────────────────────────────────────────────
+    // La única fuente de pie que el LECTOR ve —el cuerpo 13 la dibuja— y hasta
+    // v14 la única que el modelo NO recibía. Estaba al revés: el prompt entregaba
+    // cuatro anclas de pie (el declarado, la constante dos veces con dos nombres,
+    // y el pie de la distancia) y ninguna era la de la pantalla, así que el modelo
+    // interpolaba entre ellas. Medido antes del cambio: **22% de las prosas citan
+    // un pie que el motor no emitió**, presentado como la palanca decisiva.
+    //
+    // Con la escalera adentro, un pie inventado deja de ser posible POR
+    // CONSTRUCCIÓN y no por advertencia: los escalones son los que se dibujan.
+    // Mismas columnas que `EscaleraPie` para que prompt y pantalla no puedan
+    // divergir. Vacío cuando `simularPie` no aplica (pie 0 o 100%).
+    // ── VÍAS AL VEREDICTO DE ARRIBA ──────────────────────────────────────
+    // El prompt recibía la distancia SOLO como `fraseCanonica` —una oración— y no
+    // las palancas. Con eso el modelo no podía saber cuántas vías cruzan: en un
+    // caso con cuatro (pie, arriendo, precio, plazo) escribió "la condición
+    // concreta es una sola", copiando la oración del motor. Ahora recibe la lista
+    // entera y puede nombrarlas o elegir; la oración quedó además corregida en el
+    // builder para no afirmar exclusividad cuando no la hay.
+    const viasBloque = (() => {
+      // Se lee de results.hallazgos acá mismo: `hallazgoDistanciaGen` se declara
+      // más abajo, junto al gather de la pirámide, y este bloque va arriba con el
+      // resto de la estructura financiera.
+      const dv = (results.hallazgos as Hallazgo[] | undefined)?.find(
+        (h) => h.id === "distancia_veredicto",
+      );
+      if (!dv || dv.id !== "distancia_veredicto" || dv.valor.esEstructural) return "";
+      const pals = dv.valor.palancas ?? [];
+      if (pals.length === 0) return "";
+      const NOMBRE: Record<string, string> = {
+        pie: "pie", arriendo: "arriendo", precio: "precio de compra", plazo: "plazo del crédito",
+      };
+      // FORMATEADAS con los mismos helpers que el resto del prompt. Antes iban
+      // crudas ("de 280000 a 298540") y eso las volvía INUTILIZABLES: `LTR-CIFRA`
+      // valida que toda cifra de la prosa esté en el input, así que para citar el
+      // arriendo el modelo tendría que reformatear 298540 → $298.540, y
+      // reformatear es, desde su lado, arriesgarse a inventar. El sistema le
+      // enseñó a no hacerlo. Se notó midiendo: de las cuatro vías, la única que la
+      // prosa nombraba era la del pie — la única que ya venía con su unidad.
+      const fmtValor = (palanca: string, v: number): string =>
+        palanca === "pie" ? `${Number.isInteger(v) ? v : v.toFixed(1).replace(".", ",")}%`
+        : palanca === "plazo" ? `${v} años`
+        : palanca === "precio" ? fmtUF(v)
+        : fmtCLP(v);
+      const filas = pals
+        .map((x) => {
+          const signo = x.deltaPct < 0 ? "−" : "+";
+          return `- ${NOMBRE[x.palanca] ?? x.palanca}: de ${fmtValor(x.palanca, x.actual)} a ${fmtValor(x.palanca, x.objetivo)} (${signo}${Math.abs(x.deltaPct).toFixed(1).replace(".", ",")}%)`;
+        })
+        .join("\n");
+      return `
+VÍAS QUE CRUZAN AL VEREDICTO DE ARRIBA (${pals.length}) — cada una alcanza POR SÍ SOLA:
+${filas}
+  ⚠ Son ${pals.length}. Si dices "la única vía" o "la condición es una sola" cuando hay más de una, es falso. Puedes elegir la más accionable y decir por qué, pero sin negar las otras.`;
+    })();
+
+    const escaleraBloque = (() => {
+      const niveles = simularPie(input, UF_CLP, asOfFrozen);
+      if (niveles.length === 0) return "";
+      const filas = niveles
+        .map((n) => {
+          const tir = n.tirPct != null ? `TIR ${n.tirPct.toFixed(1).replace(".", ",")}%` : "TIR n/d";
+          const marca = n.esActual ? "   ← el tuyo" : "";
+          return `- ${n.piePct}% · pie ${fmtCLP(n.pieCLP)} · flujo ${fmtCLP(n.flujoMensual)}/mes · ${tir}${marca}`;
+        })
+        .join("\n");
+      return `
+ESCALERA DEL PIE (lo que el informe DIBUJA — únicos niveles nombrables):
+${filas}
+  ⚠ NO existe ningún otro nivel de pie. Si nombras uno, tiene que estar en esta lista.
+  ⚠ Más pie alivia el mes y baja el retorno: es un INTERCAMBIO, no una mejora. El informe NO declara un pie óptimo, así que no lo presentes como "el pie que deberías tener".`;
+    })();
+
     const financingHealthBloque = fh ? `
 financingHealth:
 - overall: ${fh.overall}
-- pie: ${fh.pie.level} (actual ${fh.pie.actual_pct}%, recomendado ${fh.pie.recommended_pct}%)${fh.pie.impact_message ? ` — ${fh.pie.impact_message}` : ""}
-- tasa: ${fh.tasa.level} (actual ${fh.tasa.actual_pct}%, mercado ${fh.tasa.market_avg_pct}%, spread ${fh.tasa.spread_bps >= 0 ? "+" : ""}${(fh.tasa.spread_bps / 100).toFixed(2).replace(".", ",")} puntos porcentuales)${fh.tasa.impact_message ? ` — ${fh.tasa.impact_message}` : ""}${reestructuracionFinanciera ? `
+- pie: ${fh.pie.level} (actual ${fh.pie.actual_pct}%) — es una CLASIFICACIÓN, no una meta: no existe un pie recomendado. El trade-off del pie está en la ESCALERA, más abajo.
+- tasa: ${fh.tasa.level} (actual ${fh.tasa.actual_pct}%, mercado ${fh.tasa.market_avg_pct}%, spread ${fh.tasa.spread_bps >= 0 ? "+" : ""}${(fh.tasa.spread_bps / 100).toFixed(2).replace(".", ",")} puntos porcentuales)${fh.tasa.ahorro_mensual_clp ? ` · ahorro si baja al mercado: ${fmtCLP(fh.tasa.ahorro_mensual_clp)}/mes` : ""}${reestructuracionFinanciera ? `
 estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS EXACTOS — NO los inventes ni recalcules; se sobrescriben con estos de todas formas):
-- pieSugerido: ${reestructuracionFinanciera.pieSugerido_pct}%
 - tasaObjetivo: ${reestructuracionFinanciera.tasaObjetivo_pct}%
 - plazoSugerido: ${reestructuracionFinanciera.plazoSugerido_anios} años (igual al actual — no se recomienda cambiar el plazo)
-- impactoCuotaMensual: ${fmtCLP(reestructuracionFinanciera.impactoCuotaMensual_clp)}/mes (baja de la cuota con el pie y la tasa sugeridos, plazo fijo)
-  ⚠ NINGUNA de estas cifras entra en \`negociacion.contenido\`: la sección de reestructuración las dibuja. Ahí la palanca se NOMBRA ("trabajar la estructura con tu banco mueve más que el precio"), sin su pie ni su baja de cuota.` : ""}` : "";
+  ⚠ NO HAY PIE SUGERIDO, y no es un dato que falte: no existe. Si la reestructuración habla del pie, la magnitud sale de la ESCALERA y se dice como intercambio, nunca como meta.
+  ⚠ NINGUNA de estas cifras entra en \`negociacion.contenido\`: la sección de reestructuración las dibuja. Ahí la palanca se NOMBRA ("trabajar la estructura con tu banco mueve más que el precio"), sin sus números.` : ""}` : "";
 
     // FINDINGS LAYER — ensamblado de los 6 hallazgos tipados desde el scope de
     // generación (objetos VIVOS: hallazgoCapex/hallazgoSobreprecio ya construidos
@@ -1976,10 +2047,10 @@ TAMBIÉN en \`conviene.respuestaDirecta\`, si el hallazgo NO es estructural: cie
 
 REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí${hallazgoDistanciaGen.valor.pieEsPalanca ? " (la tasa NO es palanca de este análisis; el pie SÍ lo es en este caso y viene con su cifra en la frase — úsala tal cual, es un NIVEL de pie, no un aumento porcentual)" : " (el pie y la tasa NO son palancas de este análisis)"}, NUNCA inventes un valor intermedio.${hallazgoDistanciaGen.valor.pieEsPalanca ? `
 
-DOS PIES DISTINTOS EN ESTE INPUT — no los mezcles ni los promedies. Contestan preguntas distintas:
-· \`estructuraFinancieraSugerida.pieSugerido\` (§5 Nivel 3, sección \`reestructuracion\`) es el pie ÓPTIMO de estructura de financiamiento. Baja la cuota, pero NO necesariamente mueve el veredicto.
-· el pie de la DISTANCIA AL VEREDICTO (esta sección) es el que hace que el veredicto SUBA de banda. Es el único que puedes presentar como "con este pie el veredicto pasa a X".
-Si difieren, es porque el óptimo de estructura no alcanza para cruzar. Está PROHIBIDO decir que el pie de la reestructuración cambia el veredicto, y prohibido citar el de la distancia como "el óptimo".
+DOS PIES, DOS PREGUNTAS — no los mezcles ni los promedies:
+· La ESCALERA responde "¿qué me cuesta y qué me rinde según cuánto pie ponga?". Es un INTERCAMBIO —más pie alivia el mes y baja el retorno— y NO declara ningún óptimo. Ya no existe un "pie recomendado": si buscas uno, no está.
+· El pie de la DISTANCIA AL VEREDICTO (esta sección) responde "¿con qué pie el veredicto SUBE de banda?". Es el único que puedes presentar como "con este pie el veredicto pasa a X".
+Si el caso no trae pie de distancia, ese pie NO EXISTE: no lo interpoles desde la escalera ni lo inventes.
 
 HONESTIDAD DE DOBLE FILO DEL PIE (§1.12.3 — obligatoria al recomendarlo): "más pie mejora el flujo, pero también significa poner más plata tuya para que el mismo negocio se vea mejor — tapa el síntoma, no convierte una mala compra en buena". El pie sano nunca se presenta como mérito de la propiedad. (Con pie 0 rige la doctrina ## 5.bis.)` : ""}${hallazgoDistanciaGen.valor.pieExcluidoPorBono ? `
 El pie de este caso lo cubre un bono de la inmobiliaria: NO ofrezcas subir el pie como vía — desarma la compra que se está evaluando. Las vías son las que trae la frase.` : ""}${bandaPrecio ? `
@@ -2040,6 +2111,8 @@ ESTRUCTURA FINANCIERA DEL USUARIO
 - pie: ${input.piePct}% = ${fmtCLP(m.pieCLP)} (${fmtUF(m.pieCLP / UF_CLP)})
 - credito: ${fmtCLP(creditoCLP)} a ${input.tasaInteres}% en ${input.plazoCredito} años
 - Dividendo mensual: ${fmtCLP(m.dividendo)} (${fmtUF(m.dividendo / UF_CLP)})
+${viasBloque}
+${escaleraBloque}
 ${financingHealthBloque}
 
 OPERACIÓN MENSUAL

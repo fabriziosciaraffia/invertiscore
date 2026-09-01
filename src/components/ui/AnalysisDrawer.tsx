@@ -24,6 +24,7 @@ import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plum
 import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
 import { simularPie } from "@/lib/analysis";
+import { MARKET_AVG_TASA_UF } from "@/lib/financing-health";
 import {
   VProsa,
   VViz,
@@ -1200,11 +1201,12 @@ function DrawerReestructuracion({
   }, [inputData, createdAt, results.metrics?.precioCLP, valorUF]);
 
   const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
-  const est = data.estructuraSugerida;
+  // RESIDUO ANOTADO: con la caja muerta, `data.estructuraSugerida` ya no lo lee
+  // NADIE en el render. El motor lo sigue sobrescribiendo determinísticamente
+  // (`ai-generation.ts`, FASE A) y el prompt le sigue pidiendo al modelo que lo
+  // copie. Retirarlo del contrato toca tipo + schema + filas persistidas: va al
+  // backlog, no de rebote acá.
 
-  // Cuota actual desde el motor para el contraste con la sugerida.
-  const cuotaActual = results.metrics?.dividendo ?? 0;
-  const cuotaSugerida = Math.max(0, cuotaActual - (est.impactoCuotaMensual_clp || 0));
 
   return (
     <div>
@@ -1217,75 +1219,25 @@ function DrawerReestructuracion({
         {renderPlumon(content)}
       </div>
 
-      {/* Estructura sugerida — 3 chips numéricos en mono */}
-      <div
-        className="rounded-[8px] p-4 mb-4"
-        style={{
-          background: "var(--franco-elevated)",
-          border: "0.5px solid var(--franco-border)",
-        }}
-      >
-        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-3">
-          Estructura sugerida
-        </p>
-        {/* GOAL 2 · TRAMO 1 — el chip "Pie" se retiró. Mostraba
-            `estructuraFinancieraSugerida.pieSugerido`, que es una CONSTANTE (25%)
-            y no un óptimo calculado: salía 25 en 238 de las 239 filas del parque
-            con reestructuración. Peor, se contradecía con la escalera que este
-            mismo drawer dibuja diez líneas más abajo, cuyos escalones reales casi
-            nunca incluyen el 25.
-            No hace falta reemplazo: la escalera YA responde la pregunta del pie, y
-            la responde como trade-off en vez de como punto. Quedan las dos
-            variables que sí tienen un valor verdadero — el plazo (passthrough del
-            usuario) y la tasa objetivo (MARKET_AVG_TASA_UF, referencia de
-            mercado). */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
-              Plazo
-            </p>
-            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
-              {est.plazoSugerido_anios} <span className="text-[14px] font-medium">años</span>
-            </p>
-          </div>
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
-              Tasa objetivo
-            </p>
-            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
-              {est.tasaObjetivo_pct.toFixed(1).replace(".", ",")}%
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Bloque conclusivo destacado — KPI ahorro mensual */}
-      {est.impactoCuotaMensual_clp > 0 && (
-        <div
-          className="rounded-r-[8px] p-4 mb-4"
-          style={{
-            borderLeft: "3px solid var(--franco-text)",
-            background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-          }}
-        >
-          {/* La causa vuelve al rótulo. `impactoCuotaMensual_clp` NO es un efecto
-              mixto pie+tasa como sugiere su nombre: medido sobre 343 filas del
-              parque con impacto > 0, el pie aporta el 97% y en 316 de ellas (92%)
-              es lo ÚNICO que se mueve. Retirado el chip, el número quedaba sin
-              causa visible; nombrarla acá la restituye sin inventar un pie óptimo.
-              Recalcularlo o retirarlo es decisión de producto — tramo 2. */}
-          <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-            Poniendo más pie y con la tasa en la referencia, la cuota baja en
-          </p>
-          <p className="font-mono font-bold text-[24px] text-[var(--franco-text)] m-0 leading-tight">
-            {fmtMoney(est.impactoCuotaMensual_clp, currency, valorUF)}
-          </p>
-          <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-1">
-            de {fmtMoney(cuotaActual, currency, valorUF)} a {fmtMoney(cuotaSugerida, currency, valorUF)}
-          </p>
-        </div>
-      )}
-
+      {/* LA CAJA "ESTRUCTURA SUGERIDA" MURIÓ (v14). Nació con tres chips —pie,
+          plazo, tasa—. El pie salió en el tramo 1 (era la constante de 25%, no un
+          óptimo) y el plazo salió acá (passthrough puro del input). Quedaba la
+          tasa sola en una grilla de una columna: un número grande en mono, con
+          borde y rótulo de recomendación, para un valor que no recomienda nada.
+          Peor: `tasaObjetivo_pct` es `min(tu tasa, MARKET_AVG_TASA_UF)`, así que
+          al comprador que ya negoció bien le devolvía SU PROPIA TASA rotulada
+          como sugerencia — el mismo vicio del chip del plazo.
+          La tasa no es una recomendación, es una REFERENCIA: contra qué se
+          compara lo que tienes. Ese es exactamente el lugar de VFuente en el
+          vocabulario, y ahí baja — al pie del drawer, junto a la escalera, que es
+          la que sí muestra un trade-off. */}
+      {/* EL BLOQUE DE AHORRO SALIÓ (v14). Mostraba `impactoCuotaMensual_clp`, que
+          medido sobre 343 filas del parque era **97% efecto del pie** — y el pie
+          que asumía era la constante de 25%, no un óptimo calculado. Muerta la
+          constante, el número perdió su causa y no había forma honesta de
+          recalcularlo: sobre la tasa sola daba 0 en el 92% de los casos.
+          La escalera, justo abajo, ya muestra el delta de cuota por escalón y con
+          niveles que el lector puede encontrar. Esto es una resta, no un hueco. */}
       {/* CONVERSIÓN 17 · la escalera va también en la rama con prosa IA: es el mismo
           hallazgo ("cómo estás financiando") y el trade-off del pie no depende de que
           la IA haya escrito su bloque. */}
@@ -1295,8 +1247,27 @@ function DrawerReestructuracion({
         flujoPersistido={results.metrics?.flujoNetoMensual}
         currency={currency}
       />
+
+      <VFuente>{referenciaTasa(inputData?.tasaInteres)}</VFuente>
     </div>
   );
+}
+
+/** Procedencia de la tasa: qué es la referencia y dónde cae la del usuario contra
+ *  ella. Reemplaza al chip "Tasa objetivo", que presentaba como recomendación un
+ *  `min(tu tasa, referencia)` — y por lo tanto le repetía su propia tasa a quien
+ *  ya estaba bajo el promedio. Acá la referencia se nombra una vez y la
+ *  comparación se dice, que es lo que el lector necesita para saber si tiene
+ *  margen que pedir. */
+function referenciaTasa(tasaUsuario?: number): string {
+  const ref = `Tasa de referencia: ${MARKET_AVG_TASA_UF.toFixed(1).replace(".", ",")}% anual en UF, promedio de mercado a la fecha del análisis — Motor Franco, actualización manual, no en tiempo real.`;
+  if (typeof tasaUsuario !== "number" || !Number.isFinite(tasaUsuario)) return ref;
+  const tuya = `${tasaUsuario.toFixed(1).replace(".", ",")}%`;
+  if (tasaUsuario > MARKET_AVG_TASA_UF) {
+    const brecha = (tasaUsuario - MARKET_AVG_TASA_UF).toFixed(1).replace(".", ",");
+    return `${ref} La tuya, ${tuya}, está ${brecha} puntos por encima: ahí hay margen para pedir.`;
+  }
+  return `${ref} La tuya, ${tuya}, ya está en esa referencia o por debajo.`;
 }
 
 // Fallback del drawer de estructura/financiamiento: cuando NO existe

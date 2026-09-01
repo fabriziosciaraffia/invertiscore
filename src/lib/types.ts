@@ -1416,11 +1416,14 @@ export interface AINegociacionWalkAway {
 export interface AIReestructuracionSection {
   contenido_clp: string;
   contenido_uf: string;
+  /** Los números DETERMINISTAS de la reestructuración. Perdió `pieSugerido_pct` e
+   *  `impactoCuotaMensual_clp` (v14): el primero era una constante convencional
+   *  disfrazada de óptimo y el segundo su efecto, 97% atribuible a ese pie. Las
+   *  filas persistidas conservan los campos viejos y conviven — el render y la
+   *  reinyección usan solo estos dos. */
   estructuraSugerida: {
-    pieSugerido_pct: number;
     plazoSugerido_anios: number;
     tasaObjetivo_pct: number;
-    impactoCuotaMensual_clp: number;
   };
 }
 

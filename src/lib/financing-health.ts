@@ -9,10 +9,19 @@ import { calcDividendo } from "./analysis";
 // (BCCh, CMF, o tabla `market_data`/`config`). Hardcoded por ahora.
 export const MARKET_AVG_TASA_UF = 4.1;
 
-// Si pie >= 25% el impacto que se reporta es "subir 5pp más".
-// Si está bajo, se reporta el impacto de subirlo a 25% (el óptimo).
-const PIE_RECOMMENDED_PCT = 25;
-const PIE_IMPROVEMENT_STEP_PCT = 5;
+// EL ÓPTIMO FIJO DEL PIE MURIÓ (31-ago-2026). Era una constante convencional sin
+// cálculo detrás —FASE 4.2 ya lo había retirado como referencia DIBUJADA, pero
+// sobrevivió acá, que es la capa que alimenta a las de arriba— y contradecía a
+// `simularPie`, cuya escalera casi nunca contiene el 25.
+//
+// Con él muere lo que derivaba: el pie sugerido de la reestructuración, su
+// impacto en la cuota, y el `impact_message` del pie, que era la constante
+// entregada al modelo YA REDACTADA ("subir el pie a 25% baja la cuota en $X al
+// mes") — la forma más pura del problema, porque el modelo no la componía: la
+// copiaba, y el prompt le mandaba usarla.
+//
+// La banda de `classifyPieLevel` NO cambia: clasificar no es sugerir, y su
+// calibración es una pregunta aparte con su propia medición pendiente.
 
 // Si la tasa está bajo el promedio, se reporta el impacto de bajarla 30 bps.
 // Si está sobre, el impacto de bajarla al promedio.
@@ -23,8 +32,14 @@ export type FinancingHealthLevel = "optimo" | "aceptable" | "mejorable" | "probl
 export interface FinancingHealthDimension {
   level: FinancingHealthLevel;
   actual_pct: number;
-  recommended_pct: number;
-  impact_message?: string;
+  /** Referencia EXTERNA de la dimensión. Solo la tasa tiene una real (el promedio
+   *  de mercado); el pie ya no tiene "recomendado" porque no existe tal cosa. */
+  recommended_pct?: number;
+  /** Cuánto baja la cuota al llevar esta dimensión a su referencia. Es un DATO,
+   *  no una oración: antes acá viajaba `impact_message` con la frase ya escrita y
+   *  el prompt mandaba usarla tal cual, que es cómo un número del motor terminaba
+   *  copiado literal en secciones que lo tenían prohibido. */
+  ahorro_mensual_clp?: number;
 }
 
 export interface FinancingHealth {
@@ -75,9 +90,6 @@ function worstLevel(a: FinancingHealthLevel, b: FinancingHealthLevel): Financing
   return LEVEL_RANK[a] >= LEVEL_RANK[b] ? a : b;
 }
 
-function fmtCLP(n: number): string {
-  return "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
-}
 
 export function classifyFinancingHealth(input: ClassifyFinancingHealthInput, ufClp: number): FinancingHealth {
   const { pie_pct, tasa_pct, precio_uf, plazo_anios } = input;
@@ -87,45 +99,29 @@ export function classifyFinancingHealth(input: ClassifyFinancingHealthInput, ufC
   const dividendoActual = calcDividendo(creditoActualCLP, tasa_pct, plazo_anios);
 
   // ── PIE ─────────────────────────────────────────────────────────────────
+  // El pie solo se CLASIFICA. Ni recomendación ni impacto: el trade-off del pie lo
+  // muestra la escalera de `simularPie`, con escalones reales y sin declarar un
+  // óptimo, y esa escalera es lo que ve el lector.
   const pieLevel = classifyPieLevel(pie_pct);
-  let piePctImprovement: number;
-  if (pieLevel === "optimo") {
-    piePctImprovement = pie_pct + PIE_IMPROVEMENT_STEP_PCT;
-  } else {
-    piePctImprovement = PIE_RECOMMENDED_PCT;
-  }
-
-  let pieImpactMessage: string | undefined;
-  if (pieLevel !== "optimo") {
-    const creditoMejorCLP = precioCLP * (1 - piePctImprovement / 100);
-    const dividendoMejor = calcDividendo(creditoMejorCLP, tasa_pct, plazo_anios);
-    const ahorroMensual = dividendoActual - dividendoMejor;
-    if (ahorroMensual > 0) {
-      pieImpactMessage = `subir el pie a ${piePctImprovement}% baja la cuota en ${fmtCLP(ahorroMensual)} al mes`;
-    }
-  }
-
   const pie: FinancingHealthDimension = {
     level: pieLevel,
     actual_pct: pie_pct,
-    recommended_pct: PIE_RECOMMENDED_PCT,
-    impact_message: pieImpactMessage,
   };
 
   // ── TASA ────────────────────────────────────────────────────────────────
   const spreadBps = Math.round((tasa_pct - MARKET_AVG_TASA_UF) * 100);
   const tasaLevel = classifyTasaLevel(spreadBps);
 
-  let tasaImpactMessage: string | undefined;
+  let tasaAhorroMensual: number | undefined;
   if (tasaLevel !== "optimo") {
     // Bajar al promedio del mercado (caso común cuando hay spread sustantivo)
     const tasaMejor = Math.max(MARKET_AVG_TASA_UF, tasa_pct - TASA_IMPROVEMENT_STEP_PCT);
     const dividendoMejor = calcDividendo(creditoActualCLP, tasaMejor, plazo_anios);
     const ahorroMensual = dividendoActual - dividendoMejor;
-    if (ahorroMensual > 0) {
-      const tasaFmt = tasaMejor.toFixed(2).replace(".", ",");
-      tasaImpactMessage = `bajar la tasa a ${tasaFmt}% reduce la cuota en ${fmtCLP(ahorroMensual)} al mes`;
-    }
+    // DATO, no oración: el prompt recibe el ahorro y la referencia como campos y
+    // el modelo redacta. La referencia de la tasa (MARKET_AVG_TASA_UF) es real y
+    // se queda; lo que muere es entregar la frase hecha.
+    if (ahorroMensual > 0) tasaAhorroMensual = Math.round(ahorroMensual);
   }
 
   const tasa: FinancingHealth["tasa"] = {
@@ -134,7 +130,7 @@ export function classifyFinancingHealth(input: ClassifyFinancingHealthInput, ufC
     recommended_pct: MARKET_AVG_TASA_UF,
     market_avg_pct: MARKET_AVG_TASA_UF,
     spread_bps: spreadBps,
-    impact_message: tasaImpactMessage,
+    ahorro_mensual_clp: tasaAhorroMensual,
   };
 
   return {
@@ -161,48 +157,35 @@ export function classifyFinancingHealth(input: ClassifyFinancingHealthInput, ufC
 //     impacto se calcula SOLO sobre pie+tasa.
 
 export interface ReestructuracionFinanciera {
-  pieSugerido_pct: number;
   plazoSugerido_anios: number;
   tasaObjetivo_pct: number;
-  impactoCuotaMensual_clp: number;
 }
 
 /**
  * Calcula los 4 números deterministas de la reestructuración sugerida reusando
- * `calcDividendo` del motor. Puro y síncrono. Cuando pie y tasa ya están en o
- * mejor que el óptimo, no hay palanca: impactoCuotaMensual_clp = 0 y los
- * sugeridos quedan iguales a los actuales.
+ * Puro y síncrono. Desde v14 devuelve SOLO plazo y tasa objetivo: el pie sugerido
+ * y su impacto en la cuota murieron con la constante que los producía.
  */
 export function buildReestructuracionFinanciera(
   input: ClassifyFinancingHealthInput,
-  ufClp: number,
 ): ReestructuracionFinanciera {
-  const { pie_pct, tasa_pct, precio_uf, plazo_anios } = input;
-  const precioCLP = precio_uf * ufClp;
+  const { tasa_pct, plazo_anios } = input;
 
-  // Pie: subir al óptimo si está por debajo; si ya está en o sobre el óptimo, no
-  // se sugiere cambio (el pie no es la palanca en ese caso).
-  const pieSugerido = pie_pct < PIE_RECOMMENDED_PCT ? PIE_RECOMMENDED_PCT : pie_pct;
-
-  // Tasa: bajar al promedio de mercado si está por encima; si ya está en o bajo
-  // el mercado, no se sugiere cambio. Fuente única del 4.1: MARKET_AVG_TASA_UF.
+  // SIN PIE SUGERIDO. Era `pie < 25 ? 25 : pie`, o sea la constante convencional,
+  // y arrastraba consigo `impactoCuotaMensual_clp` — que medido sobre 343 filas
+  // del parque resultó ser **97% efecto del pie**, en 92% de los casos lo único
+  // que se movía. Sin un pie que sugerir ese impacto no tiene causa, así que
+  // muere con él; el trade-off del pie lo muestra la escalera con escalones
+  // reales.
+  //
+  // Tasa: bajar al promedio de mercado si está por encima. Fuente única: MARKET_AVG_TASA_UF.
   const tasaObjetivo = tasa_pct > MARKET_AVG_TASA_UF ? MARKET_AVG_TASA_UF : tasa_pct;
 
   // Plazo neutral: passthrough del valor del usuario (ver doctrina arriba).
   const plazoSugerido = plazo_anios;
 
-  // Impacto = baja de cuota al pasar a la estructura sugerida (pie+tasa), con el
-  // plazo fijo. Resta de dividendos; clamp a 0 por si no hay palanca.
-  const creditoActualCLP = precioCLP * (1 - pie_pct / 100);
-  const creditoSugeridoCLP = precioCLP * (1 - pieSugerido / 100);
-  const dividendoActual = calcDividendo(creditoActualCLP, tasa_pct, plazo_anios);
-  const dividendoSugerido = calcDividendo(creditoSugeridoCLP, tasaObjetivo, plazo_anios);
-  const impacto = Math.max(0, dividendoActual - dividendoSugerido);
-
   return {
-    pieSugerido_pct: pieSugerido,
     plazoSugerido_anios: plazoSugerido,
     tasaObjetivo_pct: tasaObjetivo,
-    impactoCuotaMensual_clp: Math.round(impacto),
   };
 }
