@@ -137,13 +137,24 @@ export function PortadaInforme({
           {titular && (
             <h1 className="doc-headline">{renderTitular(titular)}</h1>
           )}
+          {/* UN SOLO PARRAFO CON EL MONTO ADENTRO — no dos columnas.
+              Historia corta: era `flex-wrap` con la glosa como span rigido, asi que
+              o cabia entera en la linea del monto o saltaba ENTERA a un bloque
+              debajo. El primer arreglo la hizo envolver (`min-w-0 flex-1`), pero en
+              390px seguia leyendose como parrafo aparte: al ser una COLUMNA de flex,
+              sus lineas 2 y 3 volvian al margen de esa columna —alineadas entre si,
+              a la derecha del monto— y el ojo las leia como otro bloque.
+              Ahora es UN parrafo y el monto es un `<span>` INLINE: el texto arranca a
+              su lado y las lineas siguientes envuelven por debajo, como si el monto
+              fuera la primera palabra de la frase. La baseline sale gratis —estan en
+              la misma linea de texto— y no hay que alinearla a mano.
+              El catalogo de glosas es cerrado (6) y va de 321px a 503px en una sola
+              linea; el ancho disponible manda cuantas lineas ocupa. */}
           {cifra && (
-            <div className="flex items-baseline gap-3 flex-wrap mb-[18px]">
-              <span className="doc-keyfig-fig">{fmtCifra(cifra, currency)}</span>
-              <span className="text-[13.5px]" style={{ color: "var(--doc-tx3)" }}>
-                {captionDeCifraClave(cifra)}
-              </span>
-            </div>
+            <p className="doc-keyfig">
+              <span className="doc-keyfig-fig">{fmtCifra(cifra, currency)}</span>{" "}
+              <span className="doc-keyfig-cap">{captionDeCifraClave(cifra)}</span>
+            </p>
           )}
           {/* Línea de utilidades: link ficha + toggle CLP/UF (decisión e del PARÁ 0) */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -292,9 +303,26 @@ export function DocTokens() {
         .doc-banda{left:-22px;width:calc(100% + 44px)}
         .doc-banda-band{padding-left:22px;font-size:11.5px;letter-spacing:.16em}
       }
+      /* EL MAPA CEDE PRIMERO. La columna del mapa era 236px FIJOS a cualquier
+         ancho >=768, asi que el contenido absorbia toda la compresion: a 820px de
+         viewport la columna de texto caia a 377px y las glosas largas se partian.
+         El orden de degradacion ahora es explicito: primero el mapa se angosta,
+         despues baja, y solo al final desaparece. */
       .doc-cover-grid{display:grid;grid-template-columns:minmax(0,1fr) 236px;gap:30px;align-items:start}
       .doc-mapcol{display:block}
-      @media (max-width: 767px){
+      /* 1 - el mapa se angosta en vez de robarle ancho al texto. El piso del
+         clamp es 176px: medido, por debajo de ~170px la etiqueta de la direccion
+         empieza a partirse en tres lineas y el pin queda apretado contra el borde
+         — un mapa que no se entiende es peor que no tenerlo. */
+      @media (max-width: 1039px){
+        .doc-cover-grid{grid-template-columns:minmax(0,1fr) clamp(176px, 22vw, 236px);gap:20px}
+      }
+      /* 2 - DESAPARECE justo cuando tocaria ese piso, sin estado intermedio. El
+         clamp llega a 176px cuando 22vw = 176, o sea a 800px de viewport: por eso
+         el corte va en 799 y no antes — cortar mas arriba tiraria un mapa que
+         todavia se lee. Se probo bajarlo bajo el contenido y se descarto: a ancho
+         casi completo domina la portada y empuja ficha y toggle fuera de vista. */
+      @media (max-width: 799px){
         .doc-cover-grid{grid-template-columns:minmax(0,1fr)}
         .doc-mapcol{display:none}
       }
@@ -307,7 +335,14 @@ export function DocTokens() {
       .doc-headline mark{
         background:linear-gradient(transparent 42%, var(--doc-hl) 42%, var(--doc-hl) 94%, transparent 94%);
         color:var(--doc-hl-tx);padding:0 2px;font-weight:inherit}
+      /* Parrafo unico: el monto inline arrastra la altura de linea, asi que el
+         interlineado se fija aca y no en el span grande. */
+      /* El margen inferior vive ACA y no en una clase de Tailwind: el bloque de
+         estilo inyectado del componente gana por orden, y un margin cero aca se
+         comia el mb-[18px] de la clase, dejando la ficha pegada al parrafo. */
+      .doc-keyfig{margin:0 0 18px;line-height:1.55}
       .doc-keyfig-fig{font-family:var(--font-mono, ui-monospace);font-size:23px;font-weight:700;color:var(--signal-red)}
+      .doc-keyfig-cap{font-size:13.5px;color:var(--doc-tx3)}
       @media (max-width: 767px){ .doc-keyfig-fig{font-size:19px} }
       .doc-props-link{display:inline-flex;align-items:center;gap:9px;background:none;border:none;cursor:pointer;
         font-family:var(--font-mono, ui-monospace);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx2);
