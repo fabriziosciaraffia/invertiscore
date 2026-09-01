@@ -433,6 +433,9 @@ export function TokensHallazgos() {
       .esca-head{font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
         color:var(--doc-tx4);background:var(--doc-paper2);border-bottom:1px solid var(--doc-line)}
       .esca-head span:not(:first-child),.esca-row .esca-v{text-align:right}
+      /* Variante ANCHA — escalera del plazo: la tercera columna lleva un monto
+         (interés total del crédito), no un porcentaje de 5 caracteres. */
+      .esca.ancha .esca-head,.esca.ancha .esca-row{grid-template-columns:0.85fr 1.1fr 1.05fr}
       .esca-row{border-bottom:1px dotted var(--doc-line)}
       .esca-row:last-child{border-bottom:none}
       .esca-row.hoy{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-warn) 12%,transparent),transparent 78%)}

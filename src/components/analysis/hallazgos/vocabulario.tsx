@@ -20,7 +20,7 @@
 // mismo documento que la portada.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 /** 1 · Prosa. El <mark> del plumón lo pinta el CSS del acordeón. */
 export function VProsa({ children }: { children: ReactNode }) {
@@ -615,36 +615,59 @@ export function Escenarios({ filas, pie }: { filas: FilaEscenario[]; pie?: React
   );
 }
 
+/** Una fila de escalera. Campos NEUTROS a propósito: la primitiva la comparten la
+ *  escalera del pie (nivel = pie · costo = TIR) y la del plazo (nivel = años ·
+ *  costo = interés total del crédito). Nombrarlos `pie`/`tir` obligaba al segundo
+ *  llamador a usar campos que mienten sobre lo que llevan. */
 export type FilaEscalera = {
-  pie: string;
-  pieMonto: string;
+  /** Columna 1: el nivel ("20%", "25 años"). */
+  nivel: string;
+  /** Subtexto del nivel ("$19,0M", "hoy"). */
+  nivelSub: string;
   esActual: boolean;
+  /** Columna 2: el efecto en el mes. Compartida por las dos escaleras. */
   flujo: string;
   flujoNegativo: boolean;
   /** Delta contra el nivel actual ("+$52K mejor"). Vacío en la fila actual. */
   flujoDelta?: string;
-  /** Columna rotulada TIR explícitamente: "retorno anual" es ambiguo entre TIR y CoC. */
-  tir: string;
+  /** Columna 3: el COSTO propio de esa palanca — TIR en el pie, interés total en el
+   *  plazo. Sin ella la escalera muestra media verdad ("más siempre mejor"), que es
+   *  el sesgo del óptimo fijo que este diagrama reemplazó. */
+  costo: string;
+  /** Subtexto del costo. En el plazo lleva el horizonte de ESA fila ("a 25 años"),
+   *  que es la única cifra del informe que no habla a 10 años. */
+  costoSub?: string;
 };
 
-/** Escalera del pie: el trade-off completo, un nivel por fila. Las DOS columnas son
- *  obligatorias — con flujo y sin TIR muestra media verdad ("más pie siempre mejor"),
- *  el mismo sesgo que tenía el "óptimo fijo 25%" que esto reemplaza. */
-export function Escalera({ filas, pie }: { filas: FilaEscalera[]; pie?: ReactNode }) {
+/** Escalera: el trade-off completo, un nivel por fila. Las DOS columnas de valor son
+ *  obligatorias. `cols` rota los rótulos entre las dos palancas; `ancha` da a la
+ *  tercera columna el espacio que necesita un monto (la del pie lleva un porcentaje
+ *  y le bastan 62px). */
+export function Escalera({
+  filas,
+  pie,
+  cols = ["Pie", "Tu flujo mensual", "TIR"],
+  ancha,
+}: {
+  filas: FilaEscalera[];
+  pie?: ReactNode;
+  cols?: [string, string, string];
+  ancha?: boolean;
+}) {
   if (!filas.length) return null;
   return (
-    <div className="esca">
+    <div className={`esca${ancha ? " ancha" : ""}`}>
       <div className="esca-head">
-        <span>Pie</span>
-        <span>Tu flujo mensual</span>
-        <span>TIR</span>
+        <span>{cols[0]}</span>
+        <span>{cols[1]}</span>
+        <span>{cols[2]}</span>
       </div>
       {filas.map((f, i) => (
         <div key={i} className={`esca-row${f.esActual ? " hoy" : ""}`}>
           <span className="esca-pie">
-            {f.pie}
+            {f.nivel}
             <small>
-              {f.pieMonto}
+              {f.nivelSub}
               {f.esActual ? " · hoy" : ""}
             </small>
           </span>
@@ -652,11 +675,29 @@ export function Escalera({ filas, pie }: { filas: FilaEscalera[]; pie?: ReactNod
             {f.flujo}
             {f.flujoDelta && <small>{f.flujoDelta}</small>}
           </span>
-          <span className="esca-v">{f.tir}</span>
+          <span className="esca-v">
+            {f.costo}
+            {f.costoSub && <small>{f.costoSub}</small>}
+          </span>
         </div>
       ))}
       {pie && <div className="esca-foot">{pie}</div>}
     </div>
+  );
+}
+
+/** Plegable del vocabulario. El CSS (`.v-collapse`) existía desde el rediseño y no
+ *  tenía llamador: se escribió para exactamente esto — una segunda lectura que no
+ *  debe competir con la principal del cuerpo. */
+export function VCollapse({ t, children }: { t: string; children: ReactNode }) {
+  const [abierto, setAbierto] = useState(false);
+  return (
+    <>
+      {abierto && children}
+      <button type="button" className="v-collapse" onClick={() => setAbierto((v) => !v)}>
+        {abierto ? "↑ Ocultar" : t}
+      </button>
+    </>
   );
 }
 

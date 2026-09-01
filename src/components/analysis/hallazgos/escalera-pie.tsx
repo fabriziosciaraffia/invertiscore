@@ -73,15 +73,17 @@ export function EscaleraPie({
   const filas: FilaEscalera[] = niveles.map((n) => {
     const delta = n.flujoMensual - actual.flujoMensual;
     return {
-      pie: `${n.piePct}%`,
-      pieMonto: fmtAxisMoney(n.pieCLP, currency, valorUF),
+      // Campos NEUTROS desde el tramo 3: la primitiva la comparte con la escalera del
+      // plazo, cuyo "nivel" son años y cuyo "costo" es el interés del crédito.
+      nivel: `${n.piePct}%`,
+      nivelSub: fmtAxisMoney(n.pieCLP, currency, valorUF),
       esActual: n.esActual,
       flujo: signo(n.flujoMensual),
       flujoNegativo: n.flujoMensual < 0,
       flujoDelta: n.esActual
         ? undefined
         : `${fmtAxisMoney(Math.abs(delta), currency, valorUF)} ${delta > 0 ? "mejor" : "peor"}`,
-      tir: n.tirPct != null ? `${n.tirPct.toFixed(1).replace(".", ",")}%` : "—",
+      costo: n.tirPct != null ? `${n.tirPct.toFixed(1).replace(".", ",")}%` : "—",
     };
   });
 
