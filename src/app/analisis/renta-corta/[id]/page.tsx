@@ -220,6 +220,22 @@ export default async function STRResultPage({
   const strAiFresh = !!strAiPersisted && typeof strAiPersisted === "object"
     && (strAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_STR;
 
+  // PROSA STALE PARA QUIEN NO PUEDE REGENERARLA — port literal de la decisión que ya
+  // rige en LTR (`analisis/[id]/page.tsx`).
+  //
+  // Sin esto, un bump de PROMPT_VERSION_STR deja MUDO el informe de todo el que no sea
+  // dueño ni admin: el server no pasa la prosa vieja, el cliente intenta regenerar, el
+  // POST responde 401 desde un link compartido, y queda el hueco. Medido al bumpear a
+  // v10: las 159 filas del parque STR se quedaban sin prosa en vista de invitado.
+  //
+  // El criterio es el mismo de LTR: los números se recalculan en cada visita (motor),
+  // la prosa es la capa de interpretación. Un texto redactado con un contrato anterior
+  // sigue siendo verdadero sobre el caso: envejece en forma, no en hechos. Se muestra
+  // con su fecha para que el lector sepa cuándo se escribió lo que lee.
+  const strPuedeRegenerarProsa = isOwner || isAdmin;
+  const strAiStale = !!strAiPersisted && !strAiFresh;
+  const mostrarProsaStaleStr = strAiStale && !strPuedeRegenerarProsa;
+
   // CTA post-análisis welcome: espejo del gate LTR — columna charge_mode
   // escrita al crear (opción B; históricos NULL → false). Solo dueño.
   const showCtaWelcome =
@@ -261,10 +277,12 @@ export default async function STRResultPage({
     isSharedView,
     userCredits,
     welcomeAvailable,
-    aiAnalysisInitial: strAiFresh ? data.ai_analysis : null,
+    aiAnalysisInitial: strAiFresh || mostrarProsaStaleStr ? data.ai_analysis : null,
     // Goal F: prosa persistida con versión vieja → el cliente NO pollea (el
     // status la devolvería como ready) y regenera directo (stale-regen, gratis).
-    aiStaleInitial: !!strAiPersisted && !strAiFresh,
+    aiStaleInitial: strAiStale,
+    puedeRegenerarProsa: strPuedeRegenerarProsa,
+    prosaDesactualizada: mostrarProsaStaleStr,
     subordinatedHref,
     showCtaWelcome,
     isAnonOwner,

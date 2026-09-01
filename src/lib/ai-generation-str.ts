@@ -83,7 +83,7 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // salda la acumulación pendiente anotada tras v8. (c) Dieta de re-narración:
 // break-even/tarifa/umbral de precio = referencia de una línea (ya tienen
 // diagrama en 11/vías/negociación) y perdidaRampUp en UNA sola sección.
-export const PROMPT_VERSION_STR = 9;
+export const PROMPT_VERSION_STR = 10;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -323,6 +323,7 @@ Devuelve EXACTAMENTE esta estructura. Sin campos extra, sin texto fuera del JSON
   "titular": string,              // portada · contrato §7.ter · campo ÚNICO, sin montos en moneda
   "conviene": {
     "respuestaDirecta": string,   // (≤85) lead del hero · capas 1+2+3 · alineado al coronado (§7.bis)
+    "veredictoFrase": string,     // (≤12) CÁPSULA de Franco — ver §CÁPSULA. Conclusión en primera persona, NO resumen
     "reencuadre": string,         // (≤55) bajo los KPIs del hero · contexto de inversor
     "cajaAccionable": string      // (≤75) StateBox de cierre del hero · posición o acción
   },
@@ -387,6 +388,11 @@ export const SECTION_BUDGETS_STR: Record<string, number> = {
   // v7: "conviene.veredictoFrase" salió del schema (podada — no se renderizaba).
   // El titular top-level NO entra acá (paths sec.field): lo valida validarTitular.
   "conviene.respuestaDirecta": 85,
+  // v10: la cápsula vuelve. Fue podada en v7 "porque no se renderizaba" y ahora sí:
+  // es la línea corta de Franco DENTRO de la prosa del veredicto. El techo es 12 y no
+  // 22 (el viejo) porque el registro es de conclusión, no de resumen — las 57 filas
+  // v3/v4/v6 que la traen miden 10,8 palabras de media y esas leen bien.
+  "conviene.veredictoFrase": 12,
   "conviene.reencuadre": 55,
   "conviene.cajaAccionable": 75,
   // v8: 130 → 55. El contrato nuevo (encuadre de 2-3 frases) salió como guía y la
@@ -791,7 +797,6 @@ PROHIBIDO resolver este caso pidiendo un descuento chico "por matemática propia
 Lo que más pesa en esta lectura es la plusvalía histórica de la comuna — una dimensión que el usuario NO controla. ANTES de ofrecer cualquier palanca, dilo con el marco canónico (adáptalo lo mínimo): "lo que más pesa acá no se negocia con nadie — es la historia de apreciación de la comuna. Las palancas de abajo mejoran el flujo, pero no cambian ese hecho". Ofrecer precio/tarifa/pie sin ese marco vende la ilusión de que todo se arregla negociando.`
       : "";
 
-
   // Pie cero (RESUELTO fase 4): con pie 0 las métricas sobre capital llegan como
   // NO_APLICA_PROMPT, el input declara la razón (enum RazonSinCapital, extensible)
   // y la comparación de múltiplos del Ángulo 3 se reemplaza por la lectura en
@@ -922,10 +927,23 @@ Este caso NO tiene cifra clave — el titular carga solo.`;
     return `
 === CIFRA CLAVE DE PORTADA (§7.ter — el lector la ve como cifra grande JUNTO a tu titular) ===
 valor: ${valorTxt} · caption fijo (no lo escribas tú): "${captionDeCifraClave(cifra)}"
-Tu titular la ENCUADRA: no la repite, no la contradice, no cita otro monto en su lugar.`;
+Tu titular la ENCUADRA: no la repite, no la contradice, no cita otro monto en su lugar.
+`;
   })()}
 
-═══════════════════════════════════════════════════════════════════
+═══════════=== §CÁPSULA — \`conviene.veredictoFrase\` (≤12 palabras) ===
+UNA línea de Franco DENTRO de la prosa del veredicto, en primera persona y en rojo.
+Es CONCLUSIÓN, no resumen: la frase que dirías mirando al comprador a los ojos después
+de haber leído todo. Si se puede reemplazar por un encabezado, está mal escrita.
+- NO recita cifras (la prosa y la cifra clave ya las tienen).
+- NO repite el titular ni la primera oración de \`respuestaDirecta\`.
+- NO es un consejo genérico ("evalúa bien"): es el juicio de este caso.
+Del registro que se busca, tres ejemplos REALES de análisis del parque:
+> "Flujo negativo estructural: ajusta supuestos antes de comprometerte."
+> "STR gana al largo, pero ninguno llega al dividendo."
+> "Ajusta la gestión o el precio antes de firmar."
+
+════════════════════════════════════════════════════════
 INSTRUCCIÓN FINAL
 ═══════════════════════════════════════════════════════════════════
 
