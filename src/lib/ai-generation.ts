@@ -389,11 +389,15 @@ Reglas:
 Mal (genérica):
 > "Mantén un fondo de reserva, compara tasas, revisa el estado del edificio."
 
-Bien (posición sobria):
-> "Si confías en la trayectoria de tu comuna y tu flujo permite el aporte mensual sin presión, esta operación tiene sentido. La ventaja de compra ya hace parte del trabajo. El resto es disciplina y paciencia."
+Los dos ejemplos de abajo son ESQUEMAS DE FORMA, no plantillas: muestran el TONO y el
+orden de las piezas. NO los copies literal — escribe tu propio cierre con los datos de
+ESTE caso, y donde va \`[cifra del caso]\` pon la cifra que corresponda del bloque.
 
-Bien (posición incómoda) — NO copies esta frase literal: es ilustrativa del TONO y la ESTRUCTURA, no una plantilla. Escribe tu propio cierre con los datos del caso.
-> "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros (te gustó, está cerca de tu trabajo), está bien — pero no te cuentes la historia de que es buena inversión. Es buena ubicación al precio equivocado."
+Bien (posición sobria):
+> "Si confías en la trayectoria de tu comuna y tu flujo permite el aporte mensual sin presión, esta operación tiene sentido: la condición es [cifra del caso]. La ventaja de compra ya hace parte del trabajo."
+
+Bien (posición incómoda):
+> "Honestamente, hay mejores oportunidades. Si te aferras a este depto por motivos no financieros, está bien — pero no te cuentes la historia de que es buena inversión: a [cifra del caso] el análisis cambia, y por sobre eso es buena ubicación al precio equivocado."
 
 Estructura: síntesis en una frase + condición bajo la que la posición se sostiene + cuando hay tensión real (AJUSTA SUPUESTOS o BUSCAR OTRA), el costo emocional o financiero de avanzar contra el análisis.
 
