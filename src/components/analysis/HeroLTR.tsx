@@ -151,7 +151,7 @@ export function HeroLTR({
   //
   // SIN GRID 52/48: la columna derecha estaba VACIA (un solo hijo en una grilla de
   // dos), asi que el hero desperdiciaba el 48% de su ancho y la prosa se leia en una
-  // columna angosta sin razon. Pasa a ancho completo con su `max-w-[65ch]`, que es lo
+  // columna angosta sin razon. Pasa a ancho completo con su ``, que es lo
   // que gobierna la medida de lectura.
   //
   // FUERA el rotulo "Veredicto": la banda de la portada ya lo dice a ancho completo y
@@ -186,14 +186,14 @@ export function HeroLTR({
           </h2>
           {/* A3: alineación izquierda (no justificado), ~65ch, 14-15px */}
           {respuesta ? (
-            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
+            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch]">
               {renderPlumon(respuesta)}
               {fnote && <p className="doc-fnote">{fnote}</p>}
             </div>
           ) : prosaError ? (
             /* Error de generación inline: el hero (veredicto/score/índice) sigue
                vivo; solo el slot de prosa reporta y ofrece reintentar. */
-            <div className="max-w-[65ch]">
+            <div className="">
               <p className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mb-2">
                 No pudimos completar la redacción del análisis.
               </p>

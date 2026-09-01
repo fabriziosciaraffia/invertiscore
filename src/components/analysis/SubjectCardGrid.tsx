@@ -335,9 +335,6 @@ export function SubjectCardGrid({
       )}
       {/* ═══ CUERPO — grilla con el ísotipo f. sticky en el margen (solo PC) ═══ */}
       <div className="doc-cuerpo">
-        <div className="doc-cuerpo-margen" aria-hidden="true">
-          <div className="doc-fmark">f.</div>
-        </div>
         <div className="min-w-0">
       <HeroLTR
         onOpenDrawer={setActiveDrawer}

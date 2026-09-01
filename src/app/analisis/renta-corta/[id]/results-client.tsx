@@ -510,7 +510,6 @@ export function STRResultsClient({
         />
         {/* ═══ CUERPO — grilla con el ísotipo f. sticky en el margen (solo PC) ═══ */}
         <div className="doc-cuerpo">
-        <div className="doc-cuerpo-margen" aria-hidden="true"><div className="doc-fmark">f.</div></div>
         <div className="min-w-0">
         {/* I-3 fix FASE 1: STR nunca emitió `hero` (solo LTR/comparativa) — el
             embudo por modalidad quedaba cojo al revés que piramide/zona. */}

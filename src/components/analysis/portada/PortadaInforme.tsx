@@ -369,17 +369,18 @@ export function DocTokens() {
       .doc-g2 .k{font-size:11px;color:var(--doc-tx3);margin-bottom:3px}
       .doc-g2 .v{font-family:var(--font-mono, ui-monospace);font-size:13.5px;color:var(--doc-tx)}
       /* ═══ CUERPO DEL DOCUMENTO (FASE 4) ═══ */
-      /* Grilla con columna de margen para el ísotipo f. sticky — SOLO PC
-         (decisión 16 del goal: en mobile no hay margen que lo sostenga). */
-      .doc-cuerpo{display:grid;grid-template-columns:56px minmax(0,1fr);gap:0 22px}
-      .doc-cuerpo-margen{position:relative}
-      .doc-fmark{position:sticky;top:20px;width:34px;height:34px;border-radius:50%;background:var(--signal-red);
-        color:#fff;font-family:var(--font-heading, Georgia, serif);font-weight:700;font-size:15px;
-        display:flex;align-items:center;justify-content:center;user-select:none}
-      @media (max-width: 767px){
-        .doc-cuerpo{grid-template-columns:minmax(0,1fr)}
-        .doc-cuerpo-margen{display:none}
-      }
+      /* SIN COLUMNA DE MARGEN. Tenía 56px reservados para el isotipo f. sticky, y
+         eso hacía tres cosas a la vez, todas malas desde que el bloque de veredicto
+         perdió su card:
+           · DOS chips f. seguidos — el sticky del margen y el inline del título,
+             medidos a 16px de distancia vertical uno del otro;
+           · el cuerpo arrancaba en x=216 mientras la portada arrancaba en x=138, o
+             sea NUNCA alinearon;
+           · la franja vacía a la izquierda del texto.
+         El ísotipo queda SOLO donde la referencia lo pone: pegado al titulo, inline
+         (.doc-fmark-inline). El cuerpo pasa a una columna y comparte margen y ancho
+         con la portada. */
+      .doc-cuerpo{display:grid;grid-template-columns:minmax(0,1fr)}
       /* Nota al margen "f. —": apunte serif itálico en rojo entre párrafos.
          Curaduría (decisión b del PARÁ 0): sale de las cajaAccionable que la
          prosa YA trae; ningún campo IA nuevo. */

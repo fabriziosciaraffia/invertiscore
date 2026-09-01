@@ -177,7 +177,7 @@ export function HeroSTR({
             </span>
             <span className="min-w-0">{pregunta}</span>
           </h2>
-          <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
+          <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch]">
             {/* Goal F: la espera hereda ProgresoGeneracion (E.2) con etapas y
                 copy STR propios — skeleton didáctico en vez del mensaje fijo. */}
             {respuesta ? renderPlumon(respuesta) : aiLoading ? <ProgresoGeneracion etapas={ETAPAS_GENERACION_STR} copyTiempo={COPY_TIEMPO_STR} /> : null}
