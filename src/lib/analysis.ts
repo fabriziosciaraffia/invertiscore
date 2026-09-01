@@ -1405,6 +1405,100 @@ export interface NivelPie {
   tirPct: number | null;
 }
 
+/** Un nivel de la escalera del plazo: el trade-off completo en una fila. */
+export interface NivelPlazo {
+  plazoAnios: number;
+  /** El plazo declarado en el analisis. Siempre presente en el resultado. */
+  esActual: boolean;
+  /** Flujo mensual neto con ese plazo (signed). Misma columna que `NivelPie`. */
+  flujoMensual: number;
+  /** Cuota mensual (dividendo) con ese plazo. */
+  cuotaMensual: number;
+  /**
+   * Interes total pagado a lo largo de TODO el credito, EN UF.
+   *
+   * SE CALCULA EN UF Y SE CONVIERTE PARA MOSTRAR - NUNCA AL REVES. El motor tiene
+   * convencion MIXTA de unidades y derivar este numero desde el lado CLP mezcla dos
+   * relojes distintos:
+   *   - `saldoCredito()` amortiza en CLP NOMINALES DEL DIA 0 (no infla).
+   *   - `calcProjections` infla el pago: `dividendoAnio = dividendo x 1,03^(anio-1)`,
+   *     porque el dividendo es constante en UF y la UF sigue a la inflacion.
+   * Restar pagos inflados menos capital sin inflar da un "interes" que ni siquiera es
+   * monotono en el plazo: medido sobre el parque, un caso daba 64M a 15 anios y 59M a
+   * 30 - o sea, estirar el credito "ahorraba" interes. Es artefacto de unidades.
+   * En UF el dividendo es constante por definicion, asi que
+   * `interes = cuota_UF x 12 x plazo - credito_UF` es exacto y monotono.
+   *
+   * NO LO "ARREGLES" pasandolo a CLP aca: la conversion es del render, con la UF que
+   * ya usa el resto de la pagina.
+   */
+  interesTotalUF: number;
+}
+
+/** Tramos comerciales del plazo. Mismos que `DIST_PLAZO_TOPE_ANIOS` (tope 30) y que
+ *  el slider del wizard (min 15, max 30, step 5). */
+export const PLAZOS_COMERCIALES = [15, 20, 25, 30] as const;
+
+/**
+ * ESCALERA DEL PLAZO - el segundo trade-off del financiamiento, hermano de
+ * `simularPie` y calculado por la misma ruta (clon del input + `calcMetrics`).
+ *
+ * POR QUE NO REUSA LAS COLUMNAS DEL PIE. La escalera del pie muestra flujo y TIR
+ * porque ahi el intercambio es real: mas pie alivia el mes y baja el retorno. En el
+ * plazo esa segunda columna MIENTE. Medido sobre 300 analisis del parque, de los 169
+ * que pueden estirar, la TIR a 10 anios al pasar a 30 **sube en 127 (75%)**, queda
+ * plana en 35 y baja en 7. Dentro del horizonte del informe estirar mejora el flujo
+ * Y el retorno: con flujo+TIR el diagrama diria "estira siempre", con cara de dato.
+ *
+ * El costo del plazo vive FUERA de los 10 anios que proyecta el informe, y el interes
+ * pagado a 10 anios tampoco lo captura (baja al estirar en varios casos, porque a esa
+ * altura llevas menos cuotas pagadas). Por eso la columna es el interes del credito
+ * COMPLETO - la unica cifra donde el intercambio existe - y su rotulo lleva el
+ * horizonte encima, porque es el unico numero del informe que no habla a 10 anios.
+ *
+ * NIVELES ABSOLUTOS 15/20/25/30, no relativos como el pie: son los tramos
+ * comerciales y en el parque las 400 filas medidas caen exactamente en esos cuatro
+ * valores. Se devuelven los cuatro SIEMPRE, tambien para quien ya esta en 30 (42,3%
+ * del parque): ahi la lectura es hacia arriba -que cuota pagarias y cuanto interes te
+ * ahorrarias acortando- y callarla dejaria la palanca muda para cuatro de cada diez
+ * lectores.
+ *
+ * DEVUELVE VACIO cuando no hay credito que mover: compra al contado, o plazo
+ * declarado fuera de los tramos comerciales (no hay escalera que dibujar sobre un
+ * valor que el diagrama no contiene).
+ */
+export function simularPlazo(
+  input: AnalisisInput,
+  ufClp: number,
+  medianaComunaVentaUF?: MedianaComunaInyectada,
+): NivelPlazo[] {
+  const actual = input.plazoCredito;
+  if (!Number.isFinite(actual)) return [];
+  if (!PLAZOS_COMERCIALES.includes(actual as (typeof PLAZOS_COMERCIALES)[number])) return [];
+  const precioCLP = input.precio * ufClp;
+  if (!(precioCLP > 0) || !(ufClp > 0)) return [];
+
+  const salida: NivelPlazo[] = [];
+  for (const plazoAnios of PLAZOS_COMERCIALES) {
+    const clone: AnalisisInput = { ...input, plazoCredito: plazoAnios };
+    const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
+    // Sin credito no hay interes ni escalera (compra al contado).
+    const creditoCLP = m.precioCLP - m.pieCLP;
+    if (!(creditoCLP > 0)) return [];
+    // Ver el aviso de unidades en `NivelPlazo.interesTotalUF`: TODO en UF.
+    const cuotaUF = m.dividendo / ufClp;
+    const creditoUF = creditoCLP / ufClp;
+    salida.push({
+      plazoAnios,
+      esActual: plazoAnios === actual,
+      flujoMensual: m.flujoNetoMensual,
+      cuotaMensual: m.dividendo,
+      interesTotalUF: cuotaUF * 12 * plazoAnios - creditoUF,
+    });
+  }
+  return salida;
+}
+
 /**
  * ESCALERA DEL PIE — el trade-off de cuánto pie poner, calculado por la MISMA ruta
  * que el análisis canónico (calcMetrics → calcProjections → calcExitScenario) sobre
