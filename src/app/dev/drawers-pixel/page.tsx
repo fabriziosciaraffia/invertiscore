@@ -46,6 +46,11 @@ type FixKey =
   //   · pieNoCruzaLtr — pie 15%, califica pero NO cruza ⇒ línea del tope
   //     ("Probamos también … pie hasta 30%"), que es el remedio del caso donde una
   //     prosa pidió subir el pie a 30% mientras el motor ya había probado y fallado.
+  //   TRAMO 3 — estos dos fijan además LAS DOS RAMAS DE LA ESCALERA DEL PLAZO, que
+  //   se leen al revés una de otra: `pieCruzaLtr` tiene plazo 15 (puede estirar) y
+  //   `pieNoCruzaLtr` tiene plazo 30 (ya en el tope, lectura hacia arriba: qué
+  //   ahorras acortando). Es la única rama del informe sin precedente, así que NO
+  //   les cambies el `plazoCredito` sin reponer la cobertura en otro fixture.
   | "pieCruzaLtr" | "pieNoCruzaLtr";
 
 function seqLtr(results: FullAnalysisResult, ai: AIAnalysisV2): DrawerKey[] {

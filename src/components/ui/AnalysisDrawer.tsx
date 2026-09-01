@@ -22,13 +22,15 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
 import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
+import { EscaleraPlazo } from "@/components/analysis/hallazgos/escalera-plazo";
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
-import { simularPie } from "@/lib/analysis";
+import { simularPie, simularPlazo } from "@/lib/analysis";
 import { MARKET_AVG_TASA_UF } from "@/lib/financing-health";
 import {
   VProsa,
   VViz,
   VCierre,
+  VCollapse,
   VFuente,
   Thermo,
   Fall,
@@ -1200,6 +1202,15 @@ function DrawerReestructuracion({
     return simularPie(inputData, ufCongelado, new Date(createdAt));
   }, [inputData, createdAt, results.metrics?.precioCLP, valorUF]);
 
+  // Escalera del plazo — segunda palanca del mismo cuerpo. `simularPlazo` no necesita
+  // `asOf`: no proyecta ni calcula TIR, solo cuota, flujo e interés del crédito.
+  const nivelesPlazo = useMemo(() => {
+    if (!inputData || !(inputData.precio > 0)) return [];
+    const precioCLP = results.metrics?.precioCLP ?? 0;
+    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
+    return simularPlazo(inputData, ufCongelado);
+  }, [inputData, results.metrics?.precioCLP, valorUF]);
+
   const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
   // RESIDUO ANOTADO: con la caja muerta, `data.estructuraSugerida` ya no lo lee
   // NADIE en el render. El motor lo sigue sobrescribiendo determinísticamente
@@ -1247,6 +1258,21 @@ function DrawerReestructuracion({
         flujoPersistido={results.metrics?.flujoNetoMensual}
         currency={currency}
       />
+
+      {/* SEGUNDA LECTURA, PLEGADA. Las dos escaleras comparten la columna de flujo y
+          se leen como dos maneras de mover el mismo número con costos distintos: el
+          pie cuesta retorno, el plazo cuesta interés. Va colapsada porque el pie es la
+          palanca dominante del cuerpo y dos tablas abiertas compiten. */}
+      {nivelesPlazo.length > 0 && (
+        <VCollapse t="↓ Ver qué pasa si cambias el plazo">
+          <EscaleraPlazo
+            niveles={nivelesPlazo}
+            valorUF={valorUF}
+            flujoPersistido={results.metrics?.flujoNetoMensual}
+            currency={currency}
+          />
+        </VCollapse>
+      )}
 
       <VFuente>{referenciaTasa(inputData?.tasaInteres)}</VFuente>
     </div>
@@ -1300,6 +1326,15 @@ function DrawerEstructuraSana({
     const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
     return simularPie(inputData, ufCongelado, new Date(createdAt));
   }, [inputData, createdAt, results.metrics?.precioCLP, valorUF]);
+
+  // Escalera del plazo — segunda palanca del mismo cuerpo. `simularPlazo` no necesita
+  // `asOf`: no proyecta ni calcula TIR, solo cuota, flujo e interés del crédito.
+  const nivelesPlazo = useMemo(() => {
+    if (!inputData || !(inputData.precio > 0)) return [];
+    const precioCLP = results.metrics?.precioCLP ?? 0;
+    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
+    return simularPlazo(inputData, ufCongelado);
+  }, [inputData, results.metrics?.precioCLP, valorUF]);
 
   const { piePct, tasaPct, tasaMarketPct, driver } = hallazgo.valor;
   const cuotaActual = results.metrics?.dividendo ?? 0;
@@ -1365,6 +1400,21 @@ function DrawerEstructuraSana({
         flujoPersistido={results.metrics?.flujoNetoMensual}
         currency={currency}
       />
+
+      {/* SEGUNDA LECTURA, PLEGADA. Las dos escaleras comparten la columna de flujo y
+          se leen como dos maneras de mover el mismo número con costos distintos: el
+          pie cuesta retorno, el plazo cuesta interés. Va colapsada porque el pie es la
+          palanca dominante del cuerpo y dos tablas abiertas compiten. */}
+      {nivelesPlazo.length > 0 && (
+        <VCollapse t="↓ Ver qué pasa si cambias el plazo">
+          <EscaleraPlazo
+            niveles={nivelesPlazo}
+            valorUF={valorUF}
+            flujoPersistido={results.metrics?.flujoNetoMensual}
+            currency={currency}
+          />
+        </VCollapse>
+      )}
 
       {!adverso ? (
         /* fase42 D-L2 — VCierre del vocabulario en vez de caja ad-hoc. */
