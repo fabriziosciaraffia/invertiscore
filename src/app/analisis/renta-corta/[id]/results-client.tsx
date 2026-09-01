@@ -84,6 +84,12 @@ interface STRResultsProps {
    *  el server no la pasó como inicial; el cliente NO pollea (el status la
    *  devolvería como ready) y regenera directo vía POST (stale-regen, gratis). */
   aiStaleInitial?: boolean;
+  /** Solo el dueño con sesión (o admin) puede regenerar: el POST responde 401 sin
+   *  sesión y 403 sobre una fila ajena. Sin este guard, un link compartido dispara
+   *  un request que muere en 401 y deja el informe sin prosa Y con un error. */
+  puedeRegenerarProsa?: boolean;
+  /** La prosa mostrada viene de un contrato anterior: se rotula con su fecha. */
+  prosaDesactualizada?: boolean;
   /** Hijo subordinado de un AMBAS: link al comparativo. Si viene, se oculta el
    * Compartir propio y se muestra el banner de subordinación (migración 20260715). */
   subordinatedHref?: string | null;
@@ -114,6 +120,8 @@ export function STRResultsClient({
   welcomeAvailable = true,
   aiAnalysisInitial,
   aiStaleInitial = false,
+  puedeRegenerarProsa = true,
+  prosaDesactualizada = false,
   subordinatedHref = null,
   showCtaWelcome = false,
   isAnonOwner = false,
@@ -187,7 +195,10 @@ export function STRResultsClient({
 
     if (aiStaleInitial) {
       // Anónimo-dueño: el POST exige login → sin regen (espejo LTR).
-      if (!aiError && !isAnonOwner) generarProsa("stale-regen");
+      // Y quien NO puede regenerar (link compartido, invitado) tampoco lo intenta: el
+      // server ya le mandó la prosa vieja con su fecha, así que no hay nada que pedir
+      // y el request moriría en 401 dejando el informe mudo. Port literal de LTR.
+      if (!aiError && puedeRegenerarProsa && !isAnonOwner) generarProsa("stale-regen");
       return;
     }
 
@@ -512,9 +523,6 @@ export function STRResultsClient({
           inputData={inputData}
           comuna={comuna}
           ciudad={ciudad}
-          currency={currency}
-          onCurrencyChange={setCurrency}
-          valorUF={ufValue}
           createdAt={createdAt}
           fechaProsa={fechaProsa}
           aiLoading={aiLoading && !aiAnalysis}
@@ -569,6 +577,18 @@ export function STRResultsClient({
           veredicto={veredicto}
           accessLevel={accessLevel}
         />
+        {/* Procedencia de la prosa vieja — texto y ubicación idénticos a LTR
+            (`SubjectCardGrid.tsx`), para que la misma situación se lea igual en las
+            dos modalidades. */}
+        {prosaDesactualizada && fechaCorta && (
+          <p
+            className="font-mono m-0 mt-2"
+            style={{ fontSize: 10.5, lineHeight: 1.5, color: "var(--franco-text-muted)" }}
+          >
+            Análisis redactado el {fechaCorta}. Los números de arriba se recalculan en cada
+            visita; el texto es el de esa fecha.
+          </p>
+        )}
 
         {/* ESCENARIOS Y PROYECCIÓN (07-10). La prosa ai.largoPlazo dejó de ir inline
             (str-paridad2) y ahora vive en su drawer "A 10 años", abierto desde una

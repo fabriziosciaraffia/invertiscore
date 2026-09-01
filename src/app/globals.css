@@ -870,6 +870,28 @@ input[type="number"] {
 
 /* Bump de escala — ambos temas (scope al bloque para ganar specificity a las
    utilidades text-[…] de Tailwind, que empatan a .clase sola). */
+/* Isotipo `f.` INLINE — version del `.doc-fmark` sticky del margen, para firmar la
+   pregunta del bloque de veredicto. Mismo circulo, mismo rojo, escala de texto: es el
+   mismo gesto de primera persona, no una primitiva nueva. `position:relative` +
+   `top` lo baja hasta la baseline optica del titulo serif (el circulo alinea por su
+   caja, no por su letra). */
+.doc-fmark-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--signal-red);
+  color: #FFFFFF;
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  position: relative;
+  top: 3px;
+}
+
 .franco-hero-block .franco-hero-score { font-size: 58px; }
 .franco-hero-block .franco-hero-title { font-size: 30px; }
 

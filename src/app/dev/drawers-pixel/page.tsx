@@ -112,9 +112,6 @@ function Inner() {
           score={(results as any)?.francoScore?.score ?? null}
           inputData={(fix.input_data ?? {}) as any}
           comuna={fix.comuna}
-          currency={currency}
-          onCurrencyChange={setCurrency}
-          valorUF={valorUF}
           onOpenDrawer={(k) => setHeroDrawer(k)}
         />
       </div>

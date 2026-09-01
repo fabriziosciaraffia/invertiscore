@@ -150,15 +150,22 @@ export function HeroLTR({
   // link de ficha y mapa. El hero conserva F4 (veredicto narrado + prosa +
   // índice), la posición de Franco y el pie de firma. Sin data-verdict: el wash
   // por veredicto del hero-block contradecía M2.
+  // SIN CARD. El bloque era una card gris flotante (`franco-hero-block`: gradiente,
+  // borde y sombra) sobre el papel del informe. Ahora es texto directo sobre el fondo,
+  // como ya lo era "La posicion de Franco" -- que queda como la UNICA caja del bloque,
+  // y por eso vuelve a significar algo.
+  //
+  // SIN GRID 52/48: la columna derecha estaba VACIA (un solo hijo en una grilla de
+  // dos), asi que el hero desperdiciaba el 48% de su ancho y la prosa se leia en una
+  // columna angosta sin razon. Pasa a ancho completo con su `max-w-[65ch]`, que es lo
+  // que gobierna la medida de lectura.
+  //
+  // FUERA el rotulo "Veredicto": la banda de la portada ya lo dice a ancho completo y
+  // repetirlo era etiquetar lo obvio. En su lugar, la pregunta la firma Franco.
   return (
-    <div className="rounded-[16px] overflow-hidden mb-3 franco-hero-block">
-      {/* ═══ F4 · VEREDICTO | FINDINGS (misma grilla 52/48; sin borde vertical — A1) ═══ */}
-      <div className={`grid grid-cols-1 ${SHARED_GRID} gap-x-8 gap-y-8 px-6 md:px-8 py-[9px]`}>
-        {/* Veredicto */}
+    <div className="mb-3">
+      <div className="px-6 md:px-8 py-[9px]">
         <div>
-          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
-            Veredicto
-          </p>
           {/* Por qué no cierra — puerto literal del patrón STR: entre el veredicto y
               la pregunta, borde izquierdo neutro, sin wash de Signal Red (el rojo ya
               lo carga el badge; repetirlo convertiría una explicación en un golpe). */}
@@ -170,8 +177,12 @@ export function HeroLTR({
               {motivosLTR.frase}
             </p>
           )}
-          <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0">
-            {pregunta}
+          {/* El chip `f.` entra al TITULO -- mismo isotipo que el sticky del margen, inline. */}
+          <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
+            <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
+              f.
+            </span>
+            <span className="min-w-0">{pregunta}</span>
           </h2>
           {/* A3: alineación izquierda (no justificado), ~65ch, 14-15px */}
           {respuesta ? (
@@ -299,7 +310,6 @@ export function HeroLTR({
 
 // Split compartido entre F3 (score|mapa) y F4 (veredicto|findings) — riel derecho
 // continuo. ~52/48 (A2). Definido una sola vez para que ambas filas coincidan.
-const SHARED_GRID = "md:grid-cols-[minmax(0,52fr)_minmax(0,48fr)]";
 
 // ── Wordmark refranco.ai (mismo tratamiento que FrancoLogo/UnifiedNav) ──
 function Wordmark() {

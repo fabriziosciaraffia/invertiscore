@@ -7,9 +7,6 @@ import { normalizeLegacyVerdict } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import { ProgresoGeneracion, ETAPAS_GENERACION_STR, COPY_TIEMPO_STR } from "@/components/analysis/ProsaSkeleton";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
-import { IndiceRow } from "@/components/analysis/IndiceHallazgos";
-import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
-import { numeroHallazgo } from "@/lib/orden-hallazgos";
 import { describirMotivosSTR } from "@/lib/no-cierra-copy";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
@@ -42,8 +39,6 @@ export function HeroSTR({
   ai,
   results,
   veredicto,
-  currency,
-  valorUF,
   createdAt,
   fechaProsa,
   aiLoading,
@@ -58,9 +53,6 @@ export function HeroSTR({
   inputData: Record<string, unknown> | null;
   comuna: string;
   ciudad?: string;
-  currency: "CLP" | "UF";
-  onCurrencyChange: (c: "CLP" | "UF") => void;
-  valorUF: number;
   createdAt?: string;
   /** Fecha de la PROSA vigente (`fin_at` de la última generación exitosa).
    *  El pie del informe la prefiere sobre `createdAt`: con lazy-regen por bump
@@ -80,6 +72,11 @@ export function HeroSTR({
   const conviene = ai?.conviene;
   const respuesta = conviene?.respuestaDirecta?.trim() || null;
   const reencuadre = conviene?.reencuadre?.trim() || null;
+  // CÁPSULA (v10). El campo existió hasta v6 y se podó en v7 con una razón textual:
+  // "se generaba y no se renderizaba". Vuelve CON su render — si no, se repite
+  // exactamente el motivo por el que murió. Las filas viejas que lo traen (57 en el
+  // parque) siguen leyéndose sin regenerar.
+  const capsula = conviene?.veredictoFrase?.trim() || null;
   const cajaAccionable = conviene?.cajaAccionable?.trim() || null;
   // v3 podó `pregunta` → fallback hardcode por veredicto es el caso dominante.
   const pregunta =
@@ -145,22 +142,19 @@ export function HeroSTR({
   // muestra nada: inventar una causa sería peor que no darla.
   const motivos = describirMotivosSTR(results.francoScore?.gates?.motivos ?? []);
 
-  // ── ÍNDICE del informe: primeros 3 del ORDEN ÚNICO (el MISMO array que renderiza
-  // la pirámide STR — fuente única: ordenarHallazgosPiramideSTR). El hero numera
-  // 01-03 y cada fila ancla a su card; la pirámide continúa hasta 12. ──
-  const ordenados = ordenarHallazgosPiramideSTR(results.hallazgos);
-  const top3 = ordenados.slice(0, 3);
-  const restantes = Math.max(0, ordenados.length - top3.length);
   const fechaFirma = formatFecha(fechaProsa ?? createdAt);
 
+  // SIN CARD y SIN GRID 52/48 -- mismo cambio que HeroLTR. Aca la columna derecha SI
+  // tenia contenido, el indice "Leelo en este orden", y se RETIRO: duplicaba el
+  // acordeon que arranca ~30px mas abajo. Medido: mismo array
+  // (`ordenarHallazgosPiramideSTR`), mismos strings (`findingDisplay`), mismo orden, y
+  // el acordeon ademas trae el `ksub` que el indice no mostraba -- o sea el indice era
+  // un SUBCONJUNTO. LTR ya vivia sin el, asi que esto alinea las dos modalidades.
+  // Lo unico exclusivo que se pierde es el atajo de navegacion por ancla.
   return (
-    <div className="rounded-[16px] overflow-hidden mb-3 franco-hero-block">
-      {/* F4 · VEREDICTO | FINDINGS (52/48) */}
-      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,52fr)_minmax(0,48fr)] gap-x-8 gap-y-8 px-6 md:px-8 py-[9px]">
+    <div className="mb-3">
+      <div className="px-6 md:px-8 py-[9px]">
         <div>
-          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
-            Veredicto
-          </p>
           {/* Por qué no cierra — entre el veredicto y la pregunta, que es donde el
               lector se pregunta "¿y por qué?". Borde izquierdo en Ink y sin esquinas
               redondeadas: es una nota al margen del veredicto, no una alerta. Sin wash
@@ -174,40 +168,34 @@ export function HeroSTR({
               {motivos.frase}
             </p>
           )}
-          <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0">
-            {pregunta}
+          {/* Chip `f.` en el titulo -- espejo de HeroLTR. */}
+          <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
+            <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
+              f.
+            </span>
+            <span className="min-w-0">{pregunta}</span>
           </h2>
           <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
             {/* Goal F: la espera hereda ProgresoGeneracion (E.2) con etapas y
                 copy STR propios — skeleton didáctico en vez del mensaje fijo. */}
             {respuesta ? renderPlumon(respuesta) : aiLoading ? <ProgresoGeneracion etapas={ETAPAS_GENERACION_STR} copyTiempo={COPY_TIEMPO_STR} /> : null}
+            {/* La cápsula va DENTRO de la prosa, entre la respuesta y el reencuadre:
+                es la voz de Franco interrumpiendo su propio análisis. Barra roja a la
+                izquierda + itálica, el mismo tratamiento que ya tiene "La posición de
+                Franco" al cierre — no una primitiva nueva. */}
+            {capsula && (
+              <p
+                className="font-body italic text-[13.5px] leading-[1.5] mt-3 mb-0 pl-3"
+                style={{ borderLeft: "2px solid var(--signal-red)", color: "var(--signal-red)" }}
+              >
+                <span className="font-mono not-italic font-semibold mr-1">f.</span>—{" "}
+                {capsula}
+              </p>
+            )}
             {reencuadre && <div className="mt-3">{renderPlumon(reencuadre)}</div>}
           </div>
         </div>
 
-        {/* ÍNDICE — primeros 3 del orden único, numerados y clickeables (ancla a su card) */}
-        <div>
-          {top3.length > 0 && (
-            <>
-              <div className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text)] mb-2.5">
-                Léelo en este orden ↓
-              </div>
-              {top3.map((h, i) => (
-                <IndiceRow key={h.id} rank={numeroHallazgo(i)} h={h} currency={currency} valorUF={valorUF} />
-              ))}
-              {restantes > 0 && (
-                <div className="font-body text-[11.5px] text-[var(--franco-text-muted)] mt-2">
-                  …y {restantes} hallazgos más, abajo, en el mismo orden.
-                </div>
-              )}
-              <div className="mt-3 pt-2.5 border-t border-[var(--franco-border)]">
-                <span className="block font-mono text-[10.5px] uppercase tracking-[0.05em] text-[var(--franco-text-tertiary)]">
-                  Cómo pesa cada hallazgo ↓
-                </span>
-              </div>
-            </>
-          )}
-        </div>
       </div>
 
       {/* ═══ POSICIÓN DE FRANCO — full-width, ambas columnas (A5) · isNeutro preservado ═══ */}
