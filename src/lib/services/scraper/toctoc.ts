@@ -231,13 +231,15 @@ async function fetchMapRaw(
  *  Cerrillos pierden avisos con su caja propia).
  *
  *  Cobertura verificada comuna por comuna contra el total del listado
- *  (gw-lista-seo, 02-sep-2026): con el borde este en -70,40 Lo Barnechea perdía
- *  58 ventas ubicadas entre -70,31 y -70,25 (sector cordillera); el borde se
- *  corrió a -70,24 y el resto de las franjas (norte, sur, oeste) solo aportan
- *  comunas fuera del roster. El déficit residual de 1 a 5% por comuna no es de
- *  caja: son avisos publicados hace menos de un día que el índice del mapa aún
- *  no tiene, ids repetidos entre páginas del listado y avisos con id 0. */
-export const VIEWPORT_GRAN_SANTIAGO = "-33.70,-70.95,-33.25,-70.24";
+ *  (gw-lista-seo, 02-sep-2026). El borde este queda en -70,40 A PROPÓSITO:
+ *  entre -70,31 y -70,25 hay 58 ventas de Lo Barnechea que son departamentos
+ *  de La Parva, Valle Nevado y Farellones — un mercado distinto que no debe
+ *  entrar a la mediana de la comuna (decisión de Fabrizio, 02-sep-2026). Las
+ *  otras franjas (norte, sur, oeste) solo aportan comunas fuera del roster.
+ *  El déficit residual de 1 a 5% por comuna no es de caja: son avisos
+ *  publicados hace menos de un día que el índice del mapa aún no tiene, ids
+ *  repetidos entre páginas del listado y avisos con id 0. */
+export const VIEWPORT_GRAN_SANTIAGO = "-33.70,-70.95,-33.25,-70.40";
 
 /** Tope real por página del GetProps (pedir más devuelve exactamente esto). */
 export const GETPROPS_MAX_POR_PAGINA = 600;
