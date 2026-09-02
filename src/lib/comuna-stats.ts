@@ -103,6 +103,11 @@ const VENTANAS_DIAS: Record<CondicionMercado, number[]> = {
 /** Muestra mínima de ventas válidas para publicar una mediana. */
 export const MIN_VENTAS_MEDIANA = 15;
 
+/** Tope de filas por respuesta de PostgREST en este proyecto (config del API,
+ *  no del rol: `.limit(N)` con N > 1000 devuelve 1000 igual). Toda lectura que
+ *  pueda superarlo pagina con `.range`. */
+export const PAGINA_POSTGREST = 1000;
+
 /**
  * Mediana YA RESUELTA tal como la recibe el motor síncrono (calcMetrics /
  * runAnalysis / calcDecisividades) y como viaja en el snapshot persistido.
@@ -166,25 +171,34 @@ export async function getComunaMedianaVentaUF(
 
   // Ventana de frescura: descartar avisos no refrescados hace >N dias (el scraper solo
   // hace upsert, is_active queda true para siempre y sesga la mediana con precios añejos).
+  //
+  // PAGINADO, no `.limit(2000)`: PostgREST capa cada respuesta en PAGINA_POSTGREST
+  // filas (verificado el 02-sep-2026: `.limit(2000)` sobre Santiago 1D usado 90 días
+  // devolvía 1.000 de 1.230). Con el universo completo (backfill) Santiago 1D en
+  // banda pasa a ~2.400 y 2D a ~1.850, y la mediana habría salido de las primeras
+  // 1.000 filas en orden físico. `.order("id")` fija el orden entre páginas.
   async function fetchVentas(dias: number) {
     const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
-    let q = supabase
-      .from("scraped_properties")
-      .select("precio, moneda, superficie_m2, dormitorios, condicion")
-      .eq("comuna", comunaNorm)
-      .eq("type", "venta")
-      .eq("is_active", true)
-      .gte("scraped_at", desde)
-      .gte("superficie_m2", supMinV)
-      .lte("superficie_m2", supMaxV)
-      .limit(2000);
-    // Universo. Para "usado" NO va un .eq pelado: en SQL `condicion <> 'x'` y las
-    // comparaciones con NULL devuelven NULL, y un .eq("condicion","usado") deja fuera
-    // las filas sin valor. El insert defaultea a "usado" (scrape-properties/route.ts),
-    // así que las filas pre-columna pertenecen a ese universo — el .or las recupera.
-    q = condicion === "nuevo"
-      ? q.eq("condicion", "nuevo")
-      : q.or("condicion.is.null,condicion.eq.usado");
+    const out: Array<Record<string, unknown>> = [];
+    for (let off = 0; ; off += PAGINA_POSTGREST) {
+      let q = supabase
+        .from("scraped_properties")
+        .select("precio, moneda, superficie_m2, dormitorios, condicion")
+        .eq("comuna", comunaNorm)
+        .eq("type", "venta")
+        .eq("is_active", true)
+        .gte("scraped_at", desde)
+        .gte("superficie_m2", supMinV)
+        .lte("superficie_m2", supMaxV)
+        .order("id", { ascending: true })
+        .range(off, off + PAGINA_POSTGREST - 1);
+      // Universo. Para "usado" NO va un .eq pelado: en SQL `condicion <> 'x'` y las
+      // comparaciones con NULL devuelven NULL, y un .eq("condicion","usado") deja fuera
+      // las filas sin valor. El insert defaultea a "usado" (scrape-properties/route.ts),
+      // así que las filas pre-columna pertenecen a ese universo — el .or las recupera.
+      q = condicion === "nuevo"
+        ? q.eq("condicion", "nuevo")
+        : q.or("condicion.is.null,condicion.eq.usado");
     // Dormitorios: filtro EXACTO en usado, NINGUNO en obra nueva.
     //
     // No es una relajación para ganar cobertura — es que en obra nueva el campo
@@ -205,19 +219,23 @@ export async function getComunaMedianaVentaUF(
     // En USADO el filtro se mantiene: ahí la fila es de una unidad y el dato de
     // dormitorios es real. Misma asimetría-por-universo que VENTANAS_DIAS, y por
     // el mismo tipo de razón: la fuente se comporta distinto en cada universo.
-    if (dormitorios !== null && condicion === "usado") q = q.eq("dormitorios", dormitorios);
-    const { data, error } = await q;
-    // Esta query decide la mediana comunal de venta, que alimenta
-    // valorMercadoFranco y los gates. Si falla, el array vacío la vuelve
-    // indistinguible de "esta comuna no tiene avisos frescos" y la escalera de
-    // frescura baja un peldaño buscando datos que quizá sí estaban.
-    reportarFalloQuery(error, {
-      ruta: "lib/comuna-stats",
-      operacion: "query-ventas-comuna",
-      tags: { tabla: "scraped_properties", universo: condicion },
-      extra: { comuna: comunaNorm, dormitorios, dias, superficie },
-    });
-    return Array.isArray(data) ? data : [];
+      if (dormitorios !== null && condicion === "usado") q = q.eq("dormitorios", dormitorios);
+      const { data, error } = await q;
+      // Esta query decide la mediana comunal de venta, que alimenta
+      // valorMercadoFranco y los gates. Si falla, el array vacío la vuelve
+      // indistinguible de "esta comuna no tiene avisos frescos" y la escalera de
+      // frescura baja un peldaño buscando datos que quizá sí estaban.
+      reportarFalloQuery(error, {
+        ruta: "lib/comuna-stats",
+        operacion: "query-ventas-comuna",
+        tags: { tabla: "scraped_properties", universo: condicion },
+        extra: { comuna: comunaNorm, dormitorios, dias, superficie, offset: off },
+      });
+      if (!Array.isArray(data) || data.length === 0) break;
+      out.push(...data);
+      if (data.length < PAGINA_POSTGREST) break;
+    }
+    return out;
   }
 
   // Escalera de frescura por universo: se sube un peldaño solo si el universo
