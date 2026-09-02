@@ -121,8 +121,10 @@ export function DocumentoSTR({
     const objetivo = dv.veredictoObjetivo === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
     if (dv.esEstructural) {
       const dm = dv.deltaMinimoFueraDeTope;
+      // `deltaMinimoFueraDeTope` es lo MÍNIMO que SÍ cruza (fuera del tope): se cita como lo
+      // que recién cruzaría, no como algo que "no llega" (fix del signo, 02-sep-2026).
       return dm
-        ? `Y no es cuestión de afinar un supuesto: ni ${dm.palanca === "precio" ? "bajando el precio" : "subiendo la tarifa por noche"} un ${pct(Math.abs(dm.deltaPct))} esto llega a ${objetivo}.`
+        ? `Y no es cuestión de afinar un supuesto: esto llegaría a ${objetivo} recién ${dm.palanca === "precio" ? "bajando el precio" : "subiendo la tarifa por noche"} un ${pct(Math.abs(dm.deltaPct))}, fuera de lo que un ajuste puede dar.`
         : `Y no es cuestión de afinar un supuesto: ninguna vía razonable lo acerca a ${objetivo}.`;
     }
     const l = dv.palancaMasBarata;
