@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { scrapeTocTocMap, scrapeTocTocAPI, scrapeTocToc, getComunasBatch, TOTAL_BATCHES, ScrapedProperty } from "@/lib/services/scraper/toctoc";
 // Mapeo a fila compartido con /api/data/scrape-nuevos (pase de obra nueva), para
 // que las dos rutas escriban el mismo shape.
-import { propertyToRow } from "@/lib/services/scraper/property-row";
+import { propertyToRow, filaSinPisarCoords, upsertSinPisarCoords } from "@/lib/services/scraper/property-row";
 
 // Hobby con Fluid Compute permite hasta 300s (el "60s" de antes quedó obsoleto
 // cuando Vercel subió el default). 60 le sobra a este pase (~11s por corrida);
@@ -100,18 +100,14 @@ export async function POST(request: Request) {
   // Dedup por source+source_id (un aviso puede repetirse entre paginas); ultima ocurrencia gana.
   const rowsByKey = new Map<string, typeof allRows[number]>();
   for (const r of allRows) rowsByKey.set(`${r.source}|${r.source_id}`, r);
-  const rows = Array.from(rowsByKey.values());
+  // Sin pisar coordenadas: una fila que llega sin lat/lng no borra la que ya
+  // tiene la tabla (ver property-row.ts).
+  const rows = Array.from(rowsByKey.values()).map(filaSinPisarCoords);
 
   if (rows.length > 0) {
-    const { error } = await supabase
-      .from("scraped_properties")
-      .upsert(rows, { onConflict: "source,source_id" });
-
-    if (error) {
-      allErrors.push(`Bulk upsert error: ${error.message}`);
-    } else {
-      inserted = rows.length;
-    }
+    const { escritas, errores } = await upsertSinPisarCoords(supabase, rows);
+    allErrors.push(...errores.map((e) => `Bulk upsert error: ${e}`));
+    inserted = escritas;
   }
 
   const t2 = Date.now();
