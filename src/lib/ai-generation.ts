@@ -149,7 +149,10 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // entregarle al modelo una conclusión apoyada en una cifra nuestra — a
 // diferencia del estallido o la pandemia, que son eventos externos
 // verificables. La regla da ese criterio, no una lista de palabras prohibidas.
-export const PROMPT_VERSION_LTR = 15;
+// v16 (02-sep-2026): bloque VÍAS con las cuatro palancas y su estado (Tramo B del goal
+// "cuatro palancas siempre"). Sube para que la prosa nueva llegue por lazy a quien abra un
+// informe con prosa anterior. Solo LTR; el prompt STR no cambió.
+export const PROMPT_VERSION_LTR = 16;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
