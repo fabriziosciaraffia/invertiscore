@@ -312,7 +312,7 @@ export async function fetchMapPaginado(opts: {
   return { total, paginas, properties, errors };
 }
 
-function parseMapProperty(
+export function parseMapProperty(
   arr: unknown[],
   comunaSlug: string,
   type: "arriendo" | "venta"
@@ -358,27 +358,27 @@ function parseMapProperty(
     // solo 2.343 (cuando dorms y baños coinciden); en la tabla, el 100% de las
     // filas vía mapa tenía dormitorios = banos. En obra nueva pasa lo mismo
     // ([8] = dormitorios mínimos, 239/239), pero ese universo se deja
-    // byte-idéntico acá a propósito (regla del goal: scrape-nuevos intacto) y se
-    // corrige en su propio goal.
+    // byte-idéntico acá a propósito (regla del goal backfill: scrape-nuevos
+    // intacto) y se corrige en su propio goal — junto con el filtro de dorms que
+    // comuna-stats sacó en nuevo creyendo que [4] era el mínimo del rango.
     const dormitorios = (esObraNueva ? arr[4] : arr[8]) as number;
 
-    // Superficie. En USADO la fila es de UNA unidad y las posiciones coinciden;
-    // el orden [27,28,33,34,31,32] prioriza la útil y deja total/construida de
-    // fallback para los avisos con útil en 0.0.
+    // Superficie. Contra el listado gw-lista-seo (3.979 avisos usados
+    // emparejados por id, 02-sep-2026) la superficie que publica el aviso es
+    // [33]/[34] (ÚTIL) en 3.940; [27]/[28] es la construida (coincide con la
+    // útil solo en el 33% de las filas) y [29]/[30] la terraza. Hasta ese día el
+    // usado leía [27] primero, así que la tabla mezclaba construida (vía mapa)
+    // con útil (vía listado, que guarda `superficie[0]` = [33]). Canónica:
+    // ÚTIL, con construida/total de fallback para los avisos con útil en 0.
     //
     // En OBRA NUEVA la fila es del PROYECTO, no de una unidad: el precio de [22]
-    // es el "desde" (verificado contra el "desde UF X" del listado) y [4] son los
-    // dormitorios MÍNIMOS del rango, pero [27] NO es la superficie mínima —
-    // mediana 14,6% sobre [33], hasta 137%. Dividir un precio "desde" por una
-    // superficie que no es la del mínimo daba un UF/m² incoherente: medido sobre
-    // 311 proyectos, el orden viejo subestimaba la mediana en 13,6%
-    // (UF 92,9 vs 107,5). Para obra nueva se toma la tripleta del MISMO extremo
-    // —precio desde + [33] superficie mínima + [4] dormitorios mínimos—, que
-    // describe la unidad de entrada del proyecto y es verificable contra la ficha.
-    // En usado el orden queda intacto (su sesgo medido es 2,7% y sus 25k filas no
-    // se tocan).
+    // es el "desde" (verificado contra el "desde UF X" del listado) y [33] la
+    // superficie mínima del rango. Medido sobre 311 proyectos, leer [27] primero
+    // subestimaba la mediana en 13,6% (UF 92,9 vs 107,5). Se toma la tripleta
+    // del MISMO extremo —precio desde + [33] superficie mínima + dormitorios
+    // mínimos—, que describe la unidad de entrada del proyecto.
     let superficieM2: number | undefined;
-    const posiciones = esObraNueva ? [33, 27, 28, 34, 31, 32] : [27, 28, 33, 34, 31, 32];
+    const posiciones = [33, 34, 27, 28, 31, 32];
     for (const pos of posiciones) {
       const val = parseFloat(String(arr[pos]));
       if (val > 15 && val < 500) { superficieM2 = val; break; }
@@ -482,13 +482,27 @@ export async function fetchCoordinates(url: string): Promise<{ lat: number; lng:
 
 // ─── Reusable property parser (shared by API and __NEXT_DATA__) ───
 
-function parsePropertyFromResult(
+export function parsePropertyFromResult(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   item: any,
   type: "arriendo" | "venta",
   comunaFallback: string
 ): ScrapedProperty | null {
   try {
+    // Coordenadas. El listado SIEMPRE las trajo (`latitud`/`longitud`, 3.977 de
+    // 3.979 avisos iguales a las del mapa) y este parser no las leía: por eso las
+    // 11.400 filas que entraron por acá quedaron sin coordenada, esperando a un
+    // geocoder que ya no puede acertar (la ficha HTML dejó de traerlas). Misma
+    // validación de rango que parseMapProperty.
+    let lat: number | undefined;
+    let lng: number | undefined;
+    const latRaw = parseFloat(String(item.latitud ?? ""));
+    const lngRaw = parseFloat(String(item.longitud ?? ""));
+    if (Number.isFinite(latRaw) && Number.isFinite(lngRaw) && latRaw <= -17 && latRaw >= -56 && lngRaw <= -66 && lngRaw >= -76) {
+      lat = latRaw;
+      lng = lngRaw;
+    }
+
     let precioCLP: number | null = null;
     let precioUF: number | null = null;
 
@@ -545,6 +559,8 @@ function parsePropertyFromResult(
       type,
       comuna: item.comuna || comunaFallback,
       direccion,
+      lat,
+      lng,
       precio,
       moneda: precioCLP ? "CLP" : "UF",
       superficieM2,
