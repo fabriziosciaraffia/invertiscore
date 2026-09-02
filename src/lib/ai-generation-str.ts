@@ -83,7 +83,10 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // salda la acumulación pendiente anotada tras v8. (c) Dieta de re-narración:
 // break-even/tarifa/umbral de precio = referencia de una línea (ya tienen
 // diagrama en 11/vías/negociación) y perdidaRampUp en UNA sola sección.
-export const PROMPT_VERSION_STR = 11;
+// v12 (02-sep-2026): la fraseCanonica estructural de distancia_veredicto —que entra al
+// prompt como regla espejo— dejó de invertir el signo del mínimo fuera de tope. Sube para
+// que la prosa nueva llegue por lazy a quien abra un informe STR con prosa anterior.
+export const PROMPT_VERSION_STR = 12;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
