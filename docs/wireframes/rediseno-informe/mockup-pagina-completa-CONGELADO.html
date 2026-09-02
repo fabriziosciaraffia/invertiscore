@@ -10,6 +10,9 @@
   projections; la matriz pie × plazo son 16 recomputes con ambos parches.
 
   ESTE ARCHIVO ES EL CONTRATO VINCULANTE para la implementación en src/.
+  Corrección 02-sep-2026 (revisión de T2): la decisividad NO se muestra como
+  cifra — doctrina de la pirámide: solo orden, tamaño y color. Y el símbolo de la
+  cobertura va pegado (1,05×).
   Los mockups anteriores de la serie (v1, v2, v3 y los propuesta-*) quedan como
   historia; ante cualquier diferencia, manda este.
 
@@ -259,7 +262,7 @@
   .num-cell .v{font-family:var(--mono);font-size:23px;font-weight:700;line-height:1;color:var(--tx);letter-spacing:-.01em}
   [data-view="mobile"] .num-cell .v{font-size:19px}
   .num-cell .v.neg{color:var(--signal)}
-  .num-cell .v small{font-size:11px;font-weight:400;color:var(--tx4);letter-spacing:0;margin-left:4px}
+  .num-cell .v small{font-size:11px;font-weight:400;color:var(--tx4);letter-spacing:0;margin-left:1px}
   .num-cell .tr{font-size:12px;line-height:1.5;color:var(--tx3);margin-top:8px}
   .num-cell .tr b{color:var(--tx2);font-weight:500}
   .nums-foot{display:flex;justify-content:flex-end;margin-top:12px}
@@ -517,22 +520,22 @@
         <h2 class="t">Qué determina el veredicto en este departamento</h2>
         <p class="sec-intent">Franco analizó los factores que pesan en la decisión. Estos son los cuatro que la mueven.</p>
         <div class="hz">
-          <div class="hz-head"><span class="num">01</span><span class="q"><span class="dot-dir adv"></span>Lo que sale de tu bolsillo cada mes<small>flujo mensual · decisividad 0,20 · en contra</small></span><span class="val">−$160.476</span></div>
+          <div class="hz-head"><span class="num">01</span><span class="q"><span class="dot-dir adv"></span>Lo que sale de tu bolsillo cada mes<small>flujo mensual · en contra</small></span><span class="val">−$160.476</span></div>
           <p class="hz-cierre"><mark>Acotado frente al dividendo, pero recurrente: sale mes a mes, no una sola vez.</mark> Sostenible solo si tu flujo lo aguanta sin apuro — y la plusvalía histórica de la comuna no está para compensarlo.</p>
           <div class="hz-foot"><a class="lnk" href="#flujo">↓ Ver detalle</a></div>
         </div>
         <div class="hz">
-          <div class="hz-head"><span class="num">02</span><span class="q"><span class="dot-dir adv"></span>Estás pagando de más por el metro cuadrado<small>precio · decisividad 0,16 · en contra</small></span><span class="val">+7%</span></div>
+          <div class="hz-head"><span class="num">02</span><span class="q"><span class="dot-dir adv"></span>Estás pagando de más por el metro cuadrado<small>precio · en contra</small></span><span class="val">+7%</span></div>
           <p class="hz-cierre">UF 92,4 contra una mediana de UF 86,0 en 69 publicaciones de la comuna. <mark>Los comparables no sostienen este valor: el vendedor tiene que explicar qué justifica la diferencia antes de que tú firmes.</mark></p>
           <div class="hz-foot"><a class="lnk" href="#pagas">↓ Ver detalle</a></div>
         </div>
         <div class="hz">
-          <div class="hz-head"><span class="num">03</span><span class="q"><span class="dot-dir adv"></span>Lo que renta hoy vs lo que debería<small>cap rate neto · decisividad 0,12 · en contra</small></span><span class="val ink">3,7%</span></div>
+          <div class="hz-head"><span class="num">03</span><span class="q"><span class="dot-dir adv"></span>Lo que renta hoy vs lo que debería<small>cap rate neto · en contra</small></span><span class="val ink">3,7%</span></div>
           <p class="hz-cierre">Tres décimas bajo la referencia de mercado (4,0%): <mark>rinde bajo el promedio. El precio pide ajuste, o conviene comparar con opciones más rentables en la zona.</mark></p>
           <div class="hz-foot"><a class="lnk" href="#renta">↓ Ver detalle</a></div>
         </div>
         <div class="hz">
-          <div class="hz-head"><span class="num">04</span><span class="q"><span class="dot-dir fav"></span>Cómo estás financiando<small>financiamiento · decisividad 0,04 · a favor</small></span><span class="val ink">Pie 20%</span></div>
+          <div class="hz-head"><span class="num">04</span><span class="q"><span class="dot-dir fav"></span>Cómo estás financiando<small>financiamiento · a favor</small></span><span class="val ink">Pie 20%</span></div>
           <p class="hz-cierre">La tasa (3,4%) está en buen nivel y el pie de 20% cumple. <mark>Suma a favor, pero por sí solo no alcanza para mover el veredicto.</mark></p>
           <div class="hz-foot"><a class="lnk" href="#pagas">↓ Ver detalle</a></div>
         </div>
