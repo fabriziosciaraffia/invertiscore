@@ -51,3 +51,9 @@ export function useSimulation() {
   if (!ctx) throw new Error("useSimulation must be used within SimulationProvider");
   return ctx;
 }
+
+/** Lectura SIN provider: null cuando no hay simulación montada. Lo usa el
+ *  PatrimonioChart del capítulo V (T3), que vive fijo a 10 años. */
+export function useSimulationOpcional() {
+  return useContext(SimulationContext);
+}

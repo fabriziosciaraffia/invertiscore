@@ -25,7 +25,7 @@
 // tablero FASE 5 (lectura 10-sep-2026).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePostHog } from "posthog-js/react";
 import type { TipoInforme } from "@/components/analysis/informeTelemetry";
 
@@ -61,6 +61,8 @@ export function HallazgosAcordeon({
   total,
   veredicto,
   accessLevel,
+  variante = "hallazgo",
+  abrir,
 }: {
   filas: FilaHallazgo[];
   tipo: TipoInforme;
@@ -69,45 +71,74 @@ export function HallazgosAcordeon({
   /** Cortes del tablero FASE 5 — viajan en `informe_hallazgo_abierto`. */
   veredicto: string;
   accessLevel: string;
+  /** T3 (contrato CONGELADO): `capitulo` = los cinco capítulos de La inversión.
+   *  Mismo acordeón, otra piel (numeral romano, cuerpo como extensión de la fila,
+   *  chip «↑ Cerrar» a la derecha, sin eyebrow) y OTRA serie de telemetría:
+   *  `informe_capitulo_abierto {capitulo, id_capitulo, tipo, veredicto,
+   *  access_level}`. La serie vieja `informe_hallazgo_abierto` muere en LTR con
+   *  el acordeón de hallazgos; STR la sigue emitiendo. */
+  variante?: "hallazgo" | "capitulo";
+  /** Apertura pedida desde afuera («↓ Ver detalle» de Principales hallazgos):
+   *  abre esa fila, la mide como expansión y ancla arriba. `nonce` cambia en cada
+   *  pedido para que dos clics seguidos al mismo capítulo lo reabran. */
+  abrir?: { id: string; nonce: number } | null;
 }) {
   const posthog = usePostHog();
   const [abierta, setAbierta] = useState<string | null>(null);
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
   // Un disparo por fila por montaje (ver cabecera).
   const medidas = useRef<Set<string>>(new Set());
+  const esCapitulo = variante === "capitulo";
+
+  const medir = useCallback(
+    (fila: FilaHallazgo, indice: number) => {
+      if (medidas.current.has(fila.id)) return;
+      medidas.current.add(fila.id);
+      const name = esCapitulo ? "informe_capitulo_abierto" : "informe_hallazgo_abierto";
+      const props = esCapitulo
+        ? { capitulo: fila.numero, id_capitulo: fila.id, n: indice + 1, tipo, veredicto, access_level: accessLevel }
+        : { n: indice + 1, id_hallazgo: fila.id, tipo, veredicto, access_level: accessLevel };
+      try {
+        posthog?.capture(name, props);
+      } catch {
+        /* la telemetría jamás rompe la lectura */
+      }
+      if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+        (window.__informeEvents ??= []).push({ name, props });
+      }
+    },
+    [esCapitulo, posthog, tipo, veredicto, accessLevel],
+  );
 
   const toggle = useCallback(
     (fila: FilaHallazgo, indice: number) => {
       const yaAbierta = abierta === fila.id;
       setAbierta(yaAbierta ? null : fila.id);
       if (yaAbierta) return;
-
-      if (!medidas.current.has(fila.id)) {
-        medidas.current.add(fila.id);
-        const props = {
-          n: indice + 1,
-          id_hallazgo: fila.id,
-          tipo,
-          veredicto,
-          access_level: accessLevel,
-        };
-        try {
-          posthog?.capture("informe_hallazgo_abierto", props);
-        } catch {
-          /* la telemetría jamás rompe la lectura */
-        }
-        if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
-          (window.__informeEvents ??= []).push({ name: "informe_hallazgo_abierto", props });
-        }
-      }
+      medir(fila, indice);
       // Decisión 2: anclar arriba con scroll suave, dejando el encabezado a la
       // vista. El timeout deja que el cuerpo monte antes de medir la posición.
       setTimeout(() => {
         refs.current[fila.id]?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 60);
     },
-    [abierta, posthog, tipo, veredicto, accessLevel],
+    [abierta, medir],
   );
+
+  // Apertura externa (capítulos): mismo camino que el tap, sin pasar por el botón.
+  useEffect(() => {
+    if (!abrir) return;
+    const i = filas.findIndex((f) => f.id === abrir.id);
+    const fila = filas[i];
+    if (!fila || !fila.cuerpo) return;
+    setAbierta(fila.id);
+    medir(fila, i);
+    const t = setTimeout(() => {
+      refs.current[fila.id]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrir?.id, abrir?.nonce]);
 
   const cerrarYVolver = useCallback((fila: FilaHallazgo) => {
     setAbierta(null);
@@ -119,10 +150,12 @@ export function HallazgosAcordeon({
   return (
     <section className="hall-list">
       <TokensHallazgos />
-      <div className="chapters-eyebrow">
-        <span>Los hallazgos, en el orden en que pesan ↓</span>
-        <span className="h">toca para profundizar</span>
-      </div>
+      {!esCapitulo && (
+        <div className="chapters-eyebrow">
+          <span>Los hallazgos, en el orden en que pesan ↓</span>
+          <span className="h">toca para profundizar</span>
+        </div>
+      )}
 
       {filas.map((f, i) => {
         const open = abierta === f.id;
@@ -133,7 +166,7 @@ export function HallazgosAcordeon({
             ref={(el) => {
               refs.current[f.id] = el;
             }}
-            className={`hall${open ? " open" : ""}`}
+            className={`hall${esCapitulo ? " cap" : ""}${open ? " open" : ""}`}
           >
             <button
               type="button"
@@ -159,9 +192,17 @@ export function HallazgosAcordeon({
             {open && f.cuerpo && (
               <div className="hall-body">
                 {f.cuerpo}
-                <button type="button" className="v-collapse" onClick={() => cerrarYVolver(f)}>
-                  ↑ Cerrar
-                </button>
+                {esCapitulo ? (
+                  <div className="hall-end">
+                    <button type="button" className="hall-close" onClick={() => cerrarYVolver(f)}>
+                      ↑ Cerrar
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" className="v-collapse" onClick={() => cerrarYVolver(f)}>
+                    ↑ Cerrar
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -244,6 +285,17 @@ export function TokensHallazgos() {
 
       /* ===== PRIMITIVAS DE DIAGRAMA ===== */
       .thermo{padding:6px 0 2px}
+      .thermo.con-marca{padding-top:28px}
+      .thermo-you{position:absolute;top:-24px;transform:translateX(-50%);font-family:var(--font-mono, ui-monospace);font-size:11px;font-weight:700;
+        color:var(--doc-tx);white-space:nowrap}
+      /* T3 · capítulo V: la misma plata en otro lado + venta/refinanciamiento */
+      .oport{margin-top:18px;padding:14px 16px;border:1px solid var(--doc-line);border-radius:3px;background:var(--doc-paper2)}
+      .oport .bt{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--doc-tx4);margin-bottom:6px}
+      .oport .nota{font-size:12px;line-height:1.6;color:var(--doc-tx3);margin:10px 0 0}
+      .venta{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+      .venta h4{font-family:var(--font-heading, Georgia, serif);font-size:15px;font-weight:600;margin:0 0 4px;color:var(--doc-tx)}
+      .venta .ex{font-size:12px;line-height:1.55;color:var(--doc-tx3);margin:0 0 8px}
+      @media (max-width: 767px){ .venta{grid-template-columns:1fr;gap:18px} .hall.cap .num{font-size:20px} }
       .thermo-track{position:relative;height:6px;border-radius:3px;
         background:linear-gradient(90deg,var(--doc-good),var(--doc-warn),var(--signal-red))}
       /* v9b — eje donde la calidad crece hacia la derecha (ocupación): el color
@@ -571,6 +623,12 @@ export function TokensHallazgos() {
         .dial-zone{font-size:7px;letter-spacing:.04em}
         .dial-marklbl .v{font-size:11.5px}
         .dial-edge .d{font-size:11px}
+        /* T3 · a 390px los dos bordes posicionados en % se pisaban (dial de precio):
+           pasan a una fila flex con cada borde en su lado, sin coordenadas. */
+        .dial-edges{position:static;height:auto;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:12px}
+        .dial-edge{position:static;transform:none !important;left:auto !important;max-width:48%;white-space:normal}
+        .dial-edge.arriba{text-align:right;margin-left:auto}
+        .dial-edge .k{white-space:normal;line-height:1.35}
         .compo-leg-row{grid-template-columns:10px 1fr auto;gap:8px}
         .compo-k{font-size:12px}
         .compo-bracket{font-size:8px;letter-spacing:.04em}

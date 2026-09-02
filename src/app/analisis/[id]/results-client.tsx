@@ -17,12 +17,9 @@ import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 // Ronda 4a.1: leaf components extraídos a src/components/analysis/.
 import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/components/analysis/utils";
 // Ronda 4a.2: Advanced Section.
-import { AdvancedSection } from "@/components/analysis/AdvancedSection";
 // Ronda 4a.3: Hero + Subject Cards + AI section helpers.
 import { SubjectCardGrid } from "@/components/analysis/SubjectCardGrid";
 import { hasAiV2 } from "@/components/analysis/AIInsightSection";
-import { SimulationProvider } from "@/contexts/SimulationContext";
-import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT } from "@/lib/plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 
@@ -137,12 +134,13 @@ export function PremiumResults({
   isAnonOwner?: boolean;
 }) {
   const posthog = usePostHog();
-  const [horizonYears, setHorizonYears] = useState(10);
+  // T3: sin sliders el horizonte y la plusvalía quedan fijos (los del motor).
+  const horizonYears = 10;
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   // Default del slider = la MISMA tasa que proyecta el motor (PLUSVALIA_PROYECCION_ANUAL,
   // 3%). Así la simulación abre coincidiendo con el análisis estático de arriba; mover el
   // slider es explorar, no corregir. Math.round evita el float de 0.03*100.
-  const [plusvaliaRate, setPlusvaliaRate] = useState(Math.round(PLUSVALIA_PROYECCION_ANUAL * 100));
+  const plusvaliaRate = Math.round(PLUSVALIA_PROYECCION_ANUAL * 100);
   // P5 Fase 24 — Sliders huérfanos eliminados (Opción A). Estos valores
   // afectan dynamicProjections pero el user nunca pudo modificarlos. Si se
   // expone en el futuro, rehacer limpio en SliderSimulacion bajo "Avanzado".
@@ -695,217 +693,10 @@ export function PremiumResults({
 
   // dynamicExit removed — exit section now reads directly from projData
 
-  interface PatrimonioRow {
-    name: string;
-    _x: number; // month number (0=T0, 12=Año 1, etc.)
-    piePagado: number;
-    capitalAmortizado: number;
-    plusvalia: number;
-    flujoAcumulado: number; // accumulated cash flow (negative = out of pocket)
-    saldoCredito: number | null;
-    patrimonioNeto: number;
-    valorPropiedad: number;
-    valorPropArea?: number | null; // null pre-entrega (futura), valorPropiedad post-entrega
-    isEntrega?: boolean;
-    isPreEntrega?: boolean;
-  }
-
-  // Label helper for annual patrimonio X axis
-  function annualPatrimonioLabel(month: number, preEntrega: number): string {
-    if (month === 0) return "T0";
-    // Hide the transition point label (month before delivery) to keep axis clean
-    if (preEntrega > 1 && month === preEntrega - 1) return "";
-    if (preEntrega > 0 && month === preEntrega && month % 12 !== 0) return "Entrega";
-    if (month % 12 === 0) return `Año ${month / 12}`;
-    return `M${month}`;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const projData = useMemo((): PatrimonioRow[] => {
-    if (!results || !m || !inputData) return [];
-    const precioCLP = inputData.precio * ufValue;
-    const creditoCLP = precioCLP * (1 - inputData.piePct / 100);
-    const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
-      ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
-      : 0;
-    const cuotasPie = inputData.cuotasPie > 0 ? inputData.cuotasPie : mesesPreEntrega;
-    const montoCuotaPie = inputData.montoCuota > 0 ? inputData.montoCuota : (cuotasPie > 0 ? Math.round(m.pieCLP / cuotasPie) : 0);
-    const plusvaliaDec = plusvaliaRate / 100;
-    const plusvaliaMensual = Math.pow(1 + plusvaliaDec, 1 / 12) - 1;
-
-    // Fix #1: usar valor de mercado Franco como base de plusvalía
-    const valorMercadoFrancoCLP = m.valorMercadoFrancoUF ? m.valorMercadoFrancoUF * ufValue : null;
-    const valorBase = valorMercadoFrancoCLP || precioCLP;
-
-    // Fix #2: gastos de cierre (~2% del precio de compra)
-    const gastosCierre = precioCLP * 0.02;
-
-    // Flujo acumulado: compute month-by-month with growing arriendo/costs (same logic as cashflowData)
-    const costGrowthDec = costGrowth / 100;
-    const flujoAcumByMonth: number[] = [0]; // index 0 = T0
-    {
-      let arriendoAct = inputData.arriendo;
-      let gastosAct = m.gastos;
-      let contribucionesAct = m.contribuciones;
-      let acum = 0;
-      const esPreEntregaFlow = mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata";
-      for (let mo = 1; mo <= horizonYears * 12; mo++) {
-        if (esPreEntregaFlow) {
-          if (mo > mesesPreEntrega + 1 && (mo - 1) % 12 === 0) {
-            arriendoAct *= (1 + arriendoGrowth / 100);
-            gastosAct *= (1 + costGrowthDec);
-            contribucionesAct *= (1 + costGrowthDec);
-          }
-        } else {
-          if (mo > 1 && (mo - 1) % 12 === 0) {
-            arriendoAct *= (1 + arriendoGrowth / 100);
-            gastosAct *= (1 + costGrowthDec);
-            contribucionesAct *= (1 + costGrowthDec);
-          }
-        }
-        if (esPreEntregaFlow && mo <= mesesPreEntrega) {
-          flujoAcumByMonth.push(0);
-        } else {
-          const anioProyeccion = Math.ceil(mo / 12);
-          const antiguedadActual = inputData.antiguedad + anioProyeccion;
-          // Fórmula canónica del motor; antes `inputData.provisionMantencion ||`
-          // mantenía el snapshot año-1 como constante (fork residual Sesión A).
-          const mantencionBase = Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
-          const mantencion = Math.round(mantencionBase * Math.pow(1 + costGrowthDec, anioProyeccion - 1));
-          const fd = calcFlujoDesglose({
-            arriendo: arriendoAct,
-            dividendo: m.dividendo,
-            ggcc: gastosAct,
-            contribuciones: contribucionesAct,
-            mantencion,
-            vacanciaMeses: inputData.vacanciaMeses ?? 1,
-            usaAdministrador: inputData.usaAdministrador,
-            comisionAdministrador: inputData.comisionAdministrador,
-          });
-          acum += fd.flujoNeto;
-          flujoAcumByMonth.push(acum);
-        }
-      }
-    }
-
-    const calcSaldo = (mesActual: number) => {
-      if (creditoCLP <= 0) return 0;
-      const tasaMensual = inputData.tasaInteres / 100 / 12;
-      const n = inputData.plazoCredito * 12;
-      if (tasaMensual === 0) return creditoCLP * (1 - mesActual / n);
-      const div = (creditoCLP * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n));
-      return Math.max(0, creditoCLP * Math.pow(1 + tasaMensual, mesActual) - div * ((Math.pow(1 + tasaMensual, mesActual) - 1) / tasaMensual));
-    };
-
-    // Always calculate month by month
-    const totalMonths = horizonYears * 12;
-    const allData: PatrimonioRow[] = [];
-
-    if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
-      allData.push({ name: "T0", _x: 0, piePagado: 0, capitalAmortizado: 0, plusvalia: 0, flujoAcumulado: 0, saldoCredito: null, patrimonioNeto: 0, valorPropiedad: 0, isPreEntrega: true });
-
-      for (let mo = 1; mo <= totalMonths; mo++) {
-        const valorProp = valorBase * Math.pow(1 + plusvaliaMensual, mo);
-        const plusvaliaAcum = valorProp - precioCLP;
-
-        if (mo < mesesPreEntrega) {
-          // Pre-entrega: sin deuda ni valor propiedad, sin flujo operativo, sin gastos cierre
-          // El mes justo antes de entrega usa 0 (no null) para que la línea suba DESDE cero
-          const piePagado = Math.min(montoCuotaPie * mo, m.pieCLP);
-          const esAntesDentrega = mo === mesesPreEntrega - 1;
-          allData.push({
-            name: `M${mo}`, _x: mo,
-            piePagado: Math.round(piePagado),
-            capitalAmortizado: 0,
-            plusvalia: Math.round(plusvaliaAcum),
-            flujoAcumulado: 0,
-            saldoCredito: esAntesDentrega ? 0 : null,
-            patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
-            valorPropiedad: 0,
-            isPreEntrega: true,
-          });
-        } else if (mo === mesesPreEntrega) {
-          // Mes de entrega: deuda y valor propiedad aparecen, gastos cierre se pagan
-          allData.push({
-            name: `M${mo}`, _x: mo,
-            piePagado: m.pieCLP,
-            capitalAmortizado: 0,
-            plusvalia: Math.round(plusvaliaAcum),
-            flujoAcumulado: 0,
-            saldoCredito: Math.round(creditoCLP),
-            patrimonioNeto: Math.round(valorProp - creditoCLP - gastosCierre + 0 - m.pieCLP),
-            valorPropiedad: Math.round(valorProp),
-            isEntrega: true,
-          });
-        } else {
-          const flujoAcum = (flujoAcumByMonth[mo] ?? 0);
-          const mesesCredito = mo - mesesPreEntrega;
-          const saldo = calcSaldo(mesesCredito);
-          const capitalAmort = creditoCLP - saldo;
-          allData.push({
-            name: `M${mo}`, _x: mo,
-            piePagado: m.pieCLP,
-            capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
-            plusvalia: Math.round(plusvaliaAcum),
-            flujoAcumulado: Math.round(flujoAcum),
-            saldoCredito: Math.round(saldo),
-            patrimonioNeto: Math.round(valorProp - saldo - gastosCierre + flujoAcum - m.pieCLP),
-            valorPropiedad: Math.round(valorProp),
-          });
-        }
-      }
-    } else {
-      // Entrega inmediata: gastos cierre desde T0, flujo acumula desde mes 1
-      const plusvaliaInmediata = valorBase - precioCLP;
-      allData.push({ name: "T0", _x: 0, piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: Math.round(plusvaliaInmediata), flujoAcumulado: 0, saldoCredito: creditoCLP, patrimonioNeto: Math.round(valorBase - creditoCLP - gastosCierre + 0 - m.pieCLP), valorPropiedad: Math.round(valorBase) });
-
-      for (let mo = 1; mo <= totalMonths; mo++) {
-        const flujoAcum = (flujoAcumByMonth[mo] ?? 0);
-        const valorProp = valorBase * Math.pow(1 + plusvaliaMensual, mo);
-        const plusvaliaAcum = valorProp - precioCLP;
-        const saldo = calcSaldo(mo);
-        const capitalAmort = creditoCLP - saldo;
-        allData.push({
-          name: `M${mo}`, _x: mo,
-          piePagado: m.pieCLP,
-          capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
-          plusvalia: Math.round(plusvaliaAcum),
-          flujoAcumulado: Math.round(flujoAcum),
-          saldoCredito: Math.round(saldo),
-          patrimonioNeto: Math.round(valorProp - saldo - gastosCierre + flujoAcum - m.pieCLP),
-          valorPropiedad: Math.round(valorProp),
-        });
-      }
-    }
-
-    // valorPropArea: null pre-entrega (Recharts skips null), 0 for month before delivery (transition point), value post-entrega
-    const mesAnteEntrega = mesesPreEntrega > 1 ? mesesPreEntrega - 1 : -1;
-    for (const row of allData) {
-      if (row.isPreEntrega) {
-        row.valorPropArea = row._x === mesAnteEntrega ? 0 : null;
-      } else {
-        row.valorPropArea = row.valorPropiedad;
-      }
-    }
-
-    if (isMonthlyView) return allData;
-
-    // Annual view: sample at T0 + year boundaries + month before delivery + delivery month
-    const sampleSet = new Set<number>();
-    sampleSet.add(0);
-    for (let y = 1; y <= horizonYears; y++) sampleSet.add(y * 12);
-    if (mesesPreEntrega > 0 && mesesPreEntrega <= totalMonths) {
-      if (mesesPreEntrega % 12 !== 0) sampleSet.add(mesesPreEntrega);
-      // Add month before delivery as transition point (line rises from 0)
-      const pre = mesesPreEntrega - 1;
-      if (pre > 0 && !sampleSet.has(pre)) sampleSet.add(pre);
-    }
-    const sampleArr = Array.from(sampleSet).sort((a, b) => a - b);
-
-    return allData
-      .filter((row) => sampleArr.includes(row._x))
-      .map((row) => ({ ...row, name: annualPatrimonioLabel(row._x, mesesPreEntrega) }));
-  }, [results, m, inputData, horizonYears, plusvaliaRate, isMonthlyView, arriendoGrowth, costGrowth]);
+  // T3 (02-sep-2026): murió acá `projData`, un useMemo de ~180 líneas sin
+  // consumidor (eslint-disable unused) cuyas deps no incluían `ufValue` — la deuda
+  // anotada en memoria. El patrimonio año a año lo dibuja el capítulo V desde
+  // `buildPatrimonioSeries`, la fuente única compartida con el PDF.
 
   const mapQuery = inputData?.direccion
     ? `${inputData.direccion}, ${comuna || inputData?.comuna}, Chile`
@@ -1022,34 +813,6 @@ export function PremiumResults({
             createdAt={createdAt}
             fechaProsa={fechaProsa}
             prosaDesactualizada={prosaDesactualizada}
-            simulationSlot={
-              /* ═══ CAPA 3 · SIMULACIÓN — A1: la renderiza SubjectCardGrid ENTRE la
-                 pirámide y la card zona (drawers → simulación → zona → footer) ═══ */
-              <>
-              {/* FASE 4: el CTA contextual SALIÓ del documento — el cierre del
-                  informe queda limpio (decisión 20 del goal; el CTA final es un
-                  trabajo aparte). Vive ahora bajo el documento, con el wallet. */}
-              <MarcaSeccion seccion="advanced" tipo="ltr" accessLevel={accessLevel} />
-              <SimulationProvider
-                plazoAnios={horizonYears}
-                plusvaliaAnual={plusvaliaRate}
-                setPlazoAnios={setHorizonYears}
-                setPlusvaliaAnual={setPlusvaliaRate}
-                plazoBase={10}
-                plusvaliaBase={PLUSVALIA_HISTORICA[comuna ?? ""]?.anualizada ?? PLUSVALIA_DEFAULT.anualizada}
-              >
-                {m && inputData && (
-                  <AdvancedSection
-                    projections={dynamicProjections}
-                    metrics={m}
-                    inputData={inputData}
-                    currency={currency}
-                    valorUF={ufValue}
-                  />
-                )}
-              </SimulationProvider>
-              </>
-            }
           />
         </>
       )}

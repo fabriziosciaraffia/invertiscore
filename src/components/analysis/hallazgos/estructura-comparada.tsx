@@ -32,6 +32,7 @@ export function EstructuraComparada({
   tasaMarketPct,
   cuotaFmt,
   pie,
+  soloTasa,
 }: {
   piePct: number;
   tasaPct: number;
@@ -40,6 +41,9 @@ export function EstructuraComparada({
   cuotaFmt: string;
   /** Nota al pie del diagrama (opcional). */
   pie?: string;
+  /** T3 (capítulo III): solo la fila de la tasa — pie y cuota van como DataRow,
+   *  porque son datos sin referencia y una barra les mentiría una. */
+  soloTasa?: boolean;
 }) {
   // Juicio de la tasa con la MISMA convención round-una-vez de la fraseCanonica
   // del hallazgo: spread sobre tasas ya redondeadas a 1 decimal.
@@ -76,5 +80,5 @@ export function EstructuraComparada({
     },
   ];
 
-  return <CmpPares filas={filas} pie={pie} />;
+  return <CmpPares filas={soloTasa ? filas.filter((f) => f.k === "Tasa") : filas} pie={pie} />;
 }

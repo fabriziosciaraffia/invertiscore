@@ -593,38 +593,21 @@ function construirPalancas(
   return { filas, noProbadas };
 }
 
-export function DrawerSensibilidadLtr({
-  hallazgo,
-  results,
-  currency,
-  valorUF,
-}: {
-  hallazgo: HallazgoSensibilidad;
-  results: FullAnalysisResult;
-  currency: Currency;
-  valorUF: number;
-}) {
+/** Derivación del dial de sensibilidad — compartida por el drawer y el capítulo I
+ *  (T3): eje, zonas, bordes y colchón salen de acá, una sola vez. */
+function derivarSensibilidad(hallazgo: HallazgoSensibilidad, results: FullAnalysisResult, currency: Currency, valorUF: number) {
   const v = hallazgo.valor;
   const arriendo = results.metrics?.ingresoMensual ?? 0;
-  // GRUPO B — guard por dato crítico: sin arriendo declarado no hay piso/colchón que mostrar.
-  if (!(arriendo > 0)) {
-    return <SinDatos>Datos insuficientes para el margen del veredicto (falta el arriendo declarado).</SinDatos>;
-  }
   const margenFrac = v.marginPct / 100;
   const colchon = arriendo * margenFrac;
   const piso = arriendo * (1 - margenFrac);
   const base = v.veredictoBase;
-  // CORRECCIÓN 7 (FASE 4.1) — antes acá vivía `v.veredictoNuevo ?? "AJUSTA SUPUESTOS"`.
-  // Cuando el margen es `firme` el motor NO emite veredicto de destino (no cambia ni a
-  // −50%), y el fallback inventaba uno: la prosa afirmaba un cruce que nunca calculó y
-  // el dial habría dibujado un corte donde no hay ninguno. Sin destino real no hay
-  // corte y la prosa tampoco lo nombra (doctrina: no se fabrican estados).
+  // CORRECCIÓN 7 (FASE 4.1) — sin veredicto de destino (firme) no hay corte ni se inventa.
   const nuevo = v.veredictoNuevo;
   const arriendoStr = fmtMoney(arriendo, currency, valorUF);
   const pisoStr = fmtMoney(piso, currency, valorUF);
   const colchonStr = fmtMoney(colchon, currency, valorUF);
-  // GRUPO A — clasifica sobre marginPct redondeado a 1 decimal (mismo formato que se
-  // muestra) y contra el corte del motor (v.corteFavorable), no un literal 15.
+  // GRUPO A — clasifica sobre marginPct redondeado a 1 decimal contra el corte del motor.
   const amplio = round1(v.marginPct) >= v.corteFavorable;
 
   // ── BORDE DE ARRIBA ── solo es un punto DEL MISMO EJE cuando la palanca más barata
@@ -639,16 +622,12 @@ export function DrawerSensibilidadLtr({
   const arribaEsArriendo = palancaArriba?.palanca === "arriendo" && (palancaArriba.objetivo ?? 0) > 0;
   const arribaX = arribaEsArriendo ? (palancaArriba!.objetivo as number) : null;
 
-  // ── EJE DEL DIAL ── arriendo mensual. Los extremos se derivan de los puntos reales
-  // (piso, declarado y borde de arriba si aplica) con 8% de aire a cada lado, para que
-  // ninguna marca quede pegada al canto.
+  // ── EJE DEL DIAL ── arriendo mensual, extremos con 8% de aire.
   const puntos = [arriendo, piso, ...(arribaX ? [arribaX] : [])];
   const ejeMin = Math.min(...puntos) * 0.92;
   const ejeMax = Math.max(...puntos) * 1.08;
   const pos = (x: number) => ((x - ejeMin) / (ejeMax - ejeMin)) * 100;
 
-  // ── ZONAS ── solo las que se pueden posicionar con datos del motor. `firme` ⇒ una
-  // sola zona (el veredicto no cambia en todo el rango probado).
   const tonoDe = (ver: string): "buscar" | "ajusta" | "comprar" =>
     ver === "BUSCAR OTRA" ? "buscar" : ver === "COMPRAR" ? "comprar" : "ajusta";
   const zonas: ZonaDial[] = [];
@@ -660,13 +639,7 @@ export function DrawerSensibilidadLtr({
     const finBase = arribaX ? pos(arribaX) : 100;
     zonas.push({ k: base, pct: finBase - pos(piso), tono: tonoDe(base) });
     if (arribaX && objetivoArriba) zonas.push({ k: objetivoArriba, pct: 100 - finBase, tono: tonoDe(objetivoArriba) });
-    bordes.push({
-      pos: pos(piso),
-      delta: `−${pctStr(v.marginPct)}`,
-      v: pisoStr,
-      k: `y cae a ${nuevo}`,
-      dir: "abajo",
-    });
+    bordes.push({ pos: pos(piso), delta: `−${pctStr(v.marginPct)}`, v: pisoStr, k: `y cae a ${nuevo}`, dir: "abajo" });
     if (arribaX && objetivoArriba) {
       bordes.push({
         pos: pos(arribaX),
@@ -677,6 +650,61 @@ export function DrawerSensibilidadLtr({
       });
     }
   }
+  return { v, arriendo, base, nuevo, arriendoStr, colchonStr, amplio, palancaArriba, objetivoArriba, arribaEsArriendo, arribaX, zonas, bordes, marcaPct: pos(arriendo) };
+}
+
+/** El Dial de sensibilidad con su colchón — la viz del drawer y del capítulo I. */
+export function SensibilidadDial({
+  hallazgo,
+  results,
+  currency,
+  valorUF,
+}: {
+  hallazgo: HallazgoSensibilidad;
+  results: FullAnalysisResult;
+  currency: Currency;
+  valorUF: number;
+}) {
+  const d = derivarSensibilidad(hallazgo, results, currency, valorUF);
+  if (!(d.arriendo > 0)) return null;
+  return (
+    <>
+      <Dial zonas={d.zonas} marcaPct={d.marcaPct} marcaK="Declaraste" marcaV={d.arriendoStr} bordes={d.bordes} />
+      {!d.v.firme && d.nuevo ? (
+        <div className="compo-total">
+          <span className="k">Colchón hasta el borde de abajo</span>
+          <span className="v">
+            {d.colchonStr}
+            <small>/mes</small>
+          </span>
+        </div>
+      ) : (
+        <div className="compo-total">
+          <span className="k">No hay borde dentro del rango probado</span>
+          <span className="v">{d.base}</span>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function DrawerSensibilidadLtr({
+  hallazgo,
+  results,
+  currency,
+  valorUF,
+}: {
+  hallazgo: HallazgoSensibilidad;
+  results: FullAnalysisResult;
+  currency: Currency;
+  valorUF: number;
+}) {
+  const d = derivarSensibilidad(hallazgo, results, currency, valorUF);
+  // GRUPO B — guard por dato crítico: sin arriendo declarado no hay piso/colchón que mostrar.
+  if (!(d.arriendo > 0)) {
+    return <SinDatos>Datos insuficientes para el margen del veredicto (falta el arriendo declarado).</SinDatos>;
+  }
+  const { v, base, nuevo, amplio, palancaArriba, objetivoArriba, arribaEsArriendo, arribaX } = d;
 
   return (
     <div>
@@ -686,27 +714,7 @@ export function DrawerSensibilidadLtr({
       </VProsa>
 
       <VViz t="Tu veredicto según el arriendo mensual">
-        <Dial
-          zonas={zonas}
-          marcaPct={pos(arriendo)}
-          marcaK="Declaraste"
-          marcaV={arriendoStr}
-          bordes={bordes}
-        />
-        {!v.firme && nuevo ? (
-          <div className="compo-total">
-            <span className="k">Colchón hasta el borde de abajo</span>
-            <span className="v">
-              {colchonStr}
-              <small>/mes</small>
-            </span>
-          </div>
-        ) : (
-          <div className="compo-total">
-            <span className="k">No hay borde dentro del rango probado</span>
-            <span className="v">{base}</span>
-          </div>
-        )}
+        <SensibilidadDial hallazgo={hallazgo} results={results} currency={currency} valorUF={valorUF} />
       </VViz>
 
       {/* El borde de arriba existe pero NO es un punto de este eje (la palanca más

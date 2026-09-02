@@ -9,6 +9,10 @@
 //     Advanced Section?
 //   · `informe_drawer_abierto` — qué profundiza. Hoy NO existe ningún evento de
 //     apertura de drawer en el producto, así que esto no duplica nada.
+//   · `informe_capitulo_abierto` — T3 del rediseño (02-sep-2026): expansión de
+//     uno de los cinco capítulos de La inversión en LTR. Lo emite el acordeón en
+//     su variante `capitulo` (HallazgosAcordeon.tsx); `informe_hallazgo_abierto`
+//     deja de emitirse en LTR y sigue viva en STR.
 //
 // Mecánica de sección: un sentinel de 1px al inicio de cada bloque, observado
 // con IntersectionObserver (threshold 0 — con un sentinel de 1px "entró al

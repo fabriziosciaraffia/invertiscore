@@ -5,7 +5,7 @@ import {
   Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, ComposedChart, ReferenceLine,
 } from "recharts";
-import { useSimulation } from "@/contexts/SimulationContext";
+import { useSimulationOpcional } from "@/contexts/SimulationContext";
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
 import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
 import { fmtAxisMoney, fmtMoney } from "./utils";
@@ -37,14 +37,22 @@ export function PatrimonioChart({
   inputData,
   currency,
   valorUF,
+  plazoFijo,
+  capitulo = false,
 }: {
   projections: YearProjection[];
   metrics: AnalysisMetrics;
   inputData: AnalisisInput;
   currency: "CLP" | "UF";
   valorUF: number;
+  /** T3: horizonte fijo (capítulo V, 10 años) — sin SimulationProvider. */
+  plazoFijo?: number;
+  /** T3: dentro de un capítulo el checkpoint final sobra (el total vive en la
+   *  composición de abajo). */
+  capitulo?: boolean;
 }) {
-  const { plazoAnios } = useSimulation();
+  const sim = useSimulationOpcional();
+  const plazoAnios = plazoFijo ?? sim?.plazoAnios ?? 10;
 
   // Serie extraída a builder puro (src/lib/patrimonio-series.ts) — fuente única
   // compartida con la vista documento (SVG estático). Comportamiento idéntico.
@@ -243,7 +251,7 @@ export function PatrimonioChart({
       </div>
 
       {/* Checkpoint final — chart conclusive box (skill 7.B.3) */}
-      {last && (
+      {last && !capitulo && (
         <div
           className="flex justify-between items-start gap-3"
           style={{

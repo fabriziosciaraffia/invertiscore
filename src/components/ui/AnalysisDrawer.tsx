@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import type {
   AIAnalysisV2,
   AISection,
@@ -30,6 +30,7 @@ import {
   VCierre,
   VCollapse,
   VFuente,
+  VSub,
   Thermo,
   Fall,
   type FallRow,
@@ -159,18 +160,23 @@ function fmtCompact(n: number, currency: "CLP" | "UF", valorUF: number): string 
 }
 
 // ─── Costo mensual drawer ───────────────────────────
-function DrawerCostoMensual({
+export function DrawerCostoMensual({
   data,
   currency,
   results,
   inputData,
   valorUF,
+  capitulo,
 }: {
-  data: AISection;
+  /** Prosa IA de la sección; puede faltar (informe sin redacción). */
+  data?: AISection;
   currency: "CLP" | "UF";
   results: FullAnalysisResult;
   inputData: AnalisisInput;
   valorUF: number;
+  /** T3 (capítulo II del CONGELADO): intro fija en vez del párrafo IA, sin la nota
+   *  educativa, subtítulo serif de tramo y la fuente con la UF del análisis. */
+  capitulo?: { intro: ReactNode; fuente: ReactNode };
 }) {
   const desglose = calcFlujoDesglose({
     arriendo: results.metrics?.ingresoMensual ?? inputData.arriendo ?? 0,
@@ -244,22 +250,33 @@ function DrawerCostoMensual({
     return b.value - a.value;
   });
 
+  const caja = data ? (currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf) : "";
+  const contenido = data ? (currency === "CLP" ? data.contenido_clp : data.contenido_uf) : "";
   return (
     <div>
-      <div className="font-body text-[14px] leading-[1.65] text-[var(--franco-text)] mb-4 whitespace-pre-wrap">
-        {renderPlumon(currency === "CLP" ? data.contenido_clp : data.contenido_uf)}
-      </div>
+      {capitulo ? (
+        <VProsa>{capitulo.intro}</VProsa>
+      ) : (
+        <>
+          {contenido && (
+            <div className="font-body text-[14px] leading-[1.65] text-[var(--franco-text)] mb-4 whitespace-pre-wrap">
+              {renderPlumon(contenido)}
+            </div>
+          )}
 
-      {/* Mensaje educativo (dot pattern Fase 4.8): justifica por qué incluimos
-          gastos que otros análisis omiten. */}
-      <p className="font-mono text-[11px] mt-1 mb-4 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-        ● A diferencia de otros análisis, Franco considera todos los gastos que impactan tu flujo real: vacancia, mantención, corretaje, recambio y gestión. Una evaluación honesta los incluye.
-      </p>
+          {/* Mensaje educativo (dot pattern Fase 4.8): justifica por qué incluimos
+              gastos que otros análisis omiten. */}
+          <p className="font-mono text-[11px] mt-1 mb-4 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+            ● A diferencia de otros análisis, Franco considera todos los gastos que impactan tu flujo real: vacancia, mantención, corretaje, recambio y gestión. Una evaluación honesta los incluye.
+          </p>
+        </>
+      )}
 
       {/* FASE 4 — el flujo mensual pasa al WATERFALL del vocabulario: el arriendo
           entero como banda y cada egreso comiéndose su parte, con el resultado
           como total. Reemplaza los dos grupos de barras ENTRA/SALE. */}
       <VViz t={`Qué pasa con los ${fmt(arriendo)} del arriendo`}>
+        {capitulo && <VSub>Lo que entra y lo que sale cada mes</VSub>}
         <Fall
           rows={saleItemsSorted
             .filter((r) => r.value > 0)
@@ -279,24 +296,33 @@ function DrawerCostoMensual({
         />
       </VViz>
 
-      <VCierre titulo={data.cajaLabel || "Hazte esta pregunta:"}>{plumonInline(currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf)}</VCierre>
+      {caja ? (
+        <VCierre titulo={capitulo ? "Qué haces con esto" : data?.cajaLabel || "Hazte esta pregunta:"}>{plumonInline(caja)}</VCierre>
+      ) : (
+        <VCierre titulo="Qué haces con esto">
+          {isNeg
+            ? `¿Tienes ${fmt(Math.abs(flujo))} disponibles cada mes sin comprometer otro gasto fijo? Un mes sin arrendatario son ${fmt(desglose.dividendo)} de dividendo, completos de tu bolsillo.`
+            : `El arriendo cubre la cuota y los gastos y deja ${fmt(flujo)} al mes. Un mes sin arrendatario son ${fmt(desglose.dividendo)} de dividendo, completos de tu bolsillo.`}
+        </VCierre>
+      )}
 
       {/* T4 (contrato CONGELADO): la fuente cita, no explica. Los supuestos del
           modelo (mantención por antigüedad, recambio) viven en "Cómo se calcula". */}
-      <VFuente>Motor Franco · flujo mensual del análisis</VFuente>
+      <VFuente>{capitulo ? capitulo.fuente : "Motor Franco · flujo mensual del análisis"}</VFuente>
     </div>
   );
 }
 
 // ─── Negociación drawer ─────────────────────────────
 
-function DrawerNegociacion({
+export function DrawerNegociacion({
   data: dataProp,
   currency,
   inputData,
   results,
   valorUF,
   createdAt,
+  capitulo,
 }: {
   /** Puede llegar UNDEFINED: ver el guard de abajo. */
   data: AINegociacionSection | undefined;
@@ -305,6 +331,11 @@ function DrawerNegociacion({
   results: FullAnalysisResult;
   valorUF: number;
   createdAt?: string;
+  /** T3 (capítulo III del CONGELADO): sin el hero de veredicto, intro fija (+ el
+   *  argumento IA como segundo párrafo), subtítulos serif de tramo, y entre el plan
+   *  y el cierre entra el crédito (estructura + matriz) que pasa el caller. El
+   *  cierre es el guión para la contraoferta. */
+  capitulo?: { intro: ReactNode; entreMedio: ReactNode; fuente: ReactNode };
 }) {
   // GUARD DE PROSA AUSENTE (GOAL 16). El caller pasa `aiAnalysis?.[activeKey]`
   // SIN comprobar que exista —a diferencia de `reestructuracion`, que sí tiene su
@@ -489,8 +520,15 @@ function DrawerNegociacion({
   // conversión 16: codificaban precio absoluto desde cero y no podían mostrar una
   // diferencia de un dígito porcentual. El eje de veredicto ocupa su lugar.
 
+  const argumento = (currency === "CLP" ? data.contenido_clp : data.contenido_uf)?.trim();
   return (
-    <div className="flex flex-col gap-5">
+    <div className={capitulo ? undefined : "flex flex-col gap-5"}>
+      {capitulo && (
+        <VProsa>
+          <p>{capitulo.intro}</p>
+          {argumento && <p>{plumonInline(argumento)}</p>}
+        </VProsa>
+      )}
       {/* BLOQUE A · HERO VEREDICTO — bloque conclusivo Patrón 3 condicional */}
       {/* Regla pos/neg formalizada Fase 4.9 Commit 4:
           - esSobreprecio (KPI negativo crítico): wash Signal Red 6% + borderLeft
@@ -499,6 +537,7 @@ function DrawerNegociacion({
             borderLeft Ink secundario + label Ink secundario + KPI Ink primary
             + sin border outline
           Sub-KPI veredictoSub mantiene veredictoColor (existing logic) per scope. */}
+      {!capitulo && (
       <div
         style={{
           background: esSobreprecio
@@ -552,6 +591,8 @@ function DrawerNegociacion({
         )}
       </div>
 
+      )}
+
       {/* GOAL 16 — el ARGUMENTO, en su lugar del v12. Lo que sobrevive de
           `negociacion.contenido` tras el recorte es la razón que el comprador pone
           sobre la mesa (y, condicional, la palanca de financiamiento): eso es
@@ -560,9 +601,7 @@ function DrawerNegociacion({
           negocies al máximo" murió con su rótulo y su marco; el argumento no.
           Un guard de presupuesto (40 palabras) y otro de precios del plan lo
           mantienen en una o dos frases que no repiten nada de abajo. */}
-      {(currency === "CLP" ? data.contenido_clp : data.contenido_uf)?.trim() && (
-        <VProsa>{plumonInline(currency === "CLP" ? data.contenido_clp : data.contenido_uf)}</VProsa>
-      )}
+      {!capitulo && argumento && <VProsa>{plumonInline(argumento)}</VProsa>}
 
       {/* BLOQUE B · TABLA COMPARATIVA */}
       {/* ═══ CONVERSIÓN 16 (FASE 4.2) — el eje de veredicto reemplaza la tabla ═══
@@ -573,7 +612,17 @@ function DrawerNegociacion({
           mostrar una diferencia de un dígito porcentual. El eje posicional sí codifica
           lo que cambia — en qué veredicto cae cada precio. */}
       {(() => {
-        const umbral = precioSugeridoCLP > 0 ? precioSugeridoCLP : null;
+        // T3 (02-sep-2026): el borde de la izquierda es el UMBRAL DE VEREDICTO
+        // (`precioUmbralVeredictoUF`, el mismo número que emite distancia_veredicto),
+        // no el precio sugerido. Hasta acá el dial ponía el techo de negociación
+        // (sugerido = techo de TIR, UF 3.827 en cb0e8f46) con el rótulo "bajo esto
+        // sube a Comprar" que corresponde al umbral (UF 3.945): dos precios que
+        // responden preguntas distintas, mezclados en un solo borde. Con el umbral
+        // ausente (filas viejas) o mandando sobre el sugerido, cae al sugerido
+        // como antes.
+        const umbralVerUF = negData.precioUmbralVeredictoUF;
+        const hayUmbralVeredicto = typeof umbralVerUF === "number" && umbralVerUF > 0 && !!negData.veredictoAlUmbral;
+        const umbral = hayUmbralVeredicto ? Math.round(umbralVerUF * valorUF) : precioSugeridoCLP > 0 ? precioSugeridoCLP : null;
         const limite = precioLimiteCLP != null && precioLimiteCLP > 0 ? precioLimiteCLP : null;
         if (!umbral || !(precioCLP > 0)) return null;
         const puntos = [precioCLP, umbral, ...(limite ? [limite] : [])];
@@ -603,7 +652,9 @@ function DrawerNegociacion({
             pos: pUmbral,
             delta: `−${(((precioCLP - umbral) / precioCLP) * 100).toFixed(1).replace(".", ",")}%`,
             v: fmtPrecio(umbral),
-            k: `bajo esto sube a ${destinoUmbral}${tirAlSugerido != null ? ` · TIR ${fmtTir(tirAlSugerido)}` : ""}`,
+            k: hayUmbralVeredicto
+              ? `bajo esto sube a ${destinoUmbral}`
+              : `bajo esto sube a ${destinoUmbral}${tirAlSugerido != null ? ` · TIR ${fmtTir(tirAlSugerido)}` : ""}`,
             dir: "abajo",
           },
           ...(limite
@@ -620,6 +671,7 @@ function DrawerNegociacion({
         ];
         return (
           <VViz t="Qué veredicto tiene este depto según el precio">
+            {capitulo && <VSub>A qué precio conviene cerrar</VSub>}
             <Dial
               zonas={zonas}
               marcaPct={pos(precioCLP)}
@@ -703,32 +755,37 @@ function DrawerNegociacion({
           UNO: la cajaAccionable de la IA si existe; si no (cache pre-v9 o IA muda),
           la estrategia ocupa su lugar como cierre — nunca las dos apiladas. */}
       {data.precios && (
-        <PlanNegociacion
-          precios={data.precios}
-          currency={currency}
-          precioActualCLP={precioCLP}
-          valorUF={valorUF}
-          neutroUF={mtr?.precioFlujoNeutroUF}
-          neutroCLP={mtr?.precioFlujoNeutroCLP}
-          descuentoNeutroPct={mtr?.descuentoParaNeutro}
-          sinCredito={(inputData.piePct ?? 0) >= 100}
-        />
+        <div style={capitulo ? { marginBottom: 18 } : undefined}>
+          {capitulo && <VSub>Cómo negociarlo: tu plan</VSub>}
+          <PlanNegociacion
+            precios={data.precios}
+            currency={currency}
+            precioActualCLP={precioCLP}
+            valorUF={valorUF}
+            neutroUF={mtr?.precioFlujoNeutroUF}
+            neutroCLP={mtr?.precioFlujoNeutroCLP}
+            descuentoNeutroPct={mtr?.descuentoParaNeutro}
+            sinCredito={(inputData.piePct ?? 0) >= 100}
+          />
+        </div>
       )}
+
+      {capitulo?.entreMedio}
 
       {/* T1 — la línea de fuente (el bullet educativo de Fase 4.8) baja al pie del
           cuerpo, formato del v12. */}
       {(() => {
         const caja = currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf;
         // D-16 — el título del cierre va sin ":" final (la IA a veces lo trae).
-        const tituloCierre = (data.cajaLabel || "Qué haces con esto").replace(/\s*:\s*$/, "");
+        const tituloCierre = capitulo ? "Guión para la contraoferta" : (data.cajaLabel || "Qué haces con esto").replace(/\s*:\s*$/, "");
         return caja ? (
           <VCierre titulo={tituloCierre}>{plumonInline(caja)}</VCierre>
         ) : (
-          <VCierre titulo="Qué haces con esto">{estrategia}</VCierre>
+          <VCierre titulo={capitulo ? "Guión para la contraoferta" : "Qué haces con esto"}>{estrategia}</VCierre>
         );
       })()}
 
-      <VFuente>Mediana de publicaciones de venta en {inputData.comuna || "la comuna"} · avisos, no transacciones</VFuente>
+      <VFuente>{capitulo ? capitulo.fuente : <>Mediana de publicaciones de venta en {inputData.comuna || "la comuna"} · avisos, no transacciones</>}</VFuente>
     </div>
   );
 }

@@ -20,7 +20,7 @@
 // mismo documento que la portada.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 
 /** 1 · Prosa. El <mark> del plumón lo pinta el CSS del acordeón. */
 export function VProsa({ children }: { children: ReactNode }) {
@@ -64,6 +64,7 @@ export function Thermo({
   ceroPct,
   legend,
   invertido,
+  marca,
 }: {
   pct: number;
   refPct?: number | null;
@@ -73,6 +74,9 @@ export function Thermo({
    *  borde y dibujarlo sería ruido. */
   ceroPct?: number | null;
   legend: [{ k: string; v: string }, { k: string; v: string }, { k: string; v: string }];
+  /** Etiqueta sobre la marca ("Tú · 3,7%") — el CONGELADO la pone en los
+   *  termómetros de capítulo, donde la leyenda son los extremos del eje. */
+  marca?: string;
   /** true ⇒ el degradado corre rojo→ámbar→verde (la calidad CRECE hacia la
    *  derecha: ocupación, ingresos). El default (verde a la izquierda) es para
    *  ejes donde crecer es empeorar (caída de arriendo que aguanta el veredicto).
@@ -81,8 +85,9 @@ export function Thermo({
 }) {
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
   return (
-    <div className="thermo">
+    <div className={`thermo${marca ? " con-marca" : ""}`}>
       <div className={`thermo-track${invertido ? " inv" : ""}`}>
+        {marca && <div className="thermo-you" style={{ left: `${clamp(pct)}%` }}>{marca}</div>}
         {ceroPct != null && <div className="thermo-cero" style={{ left: `${clamp(ceroPct)}%` }} />}
         {refPct != null && <div className="thermo-ref" style={{ left: `${clamp(refPct)}%` }} />}
         <div className="thermo-mark" style={{ left: `${clamp(pct)}%` }} />
@@ -873,19 +878,19 @@ export function LineaTiempo({ hitos, deltas, lectura }: { hitos: HitoLinea[]; de
     <>
       <div className="tl" style={{ gridTemplateColumns: hitos.map(() => "1fr").join(" auto ") }}>
         {hitos.map((h, i) => (
-          <>
-            <div key={`h${i}`} className={`hito ${h.tono ?? (i === 0 ? "base" : i === hitos.length - 1 ? "end" : "mid")}`}>
+          <Fragment key={`h${i}`}>
+            <div className={`hito ${h.tono ?? (i === 0 ? "base" : i === hitos.length - 1 ? "end" : "mid")}`}>
               <span className="k">{h.k}</span>
               {h.sub && <span className="d">{h.sub}</span>}
               <span className="v">{h.v}</span>
             </div>
             {i < hitos.length - 1 && deltas[i] && (
-              <div key={`d${i}`} className="tl-delta">
+              <div className="tl-delta">
                 <b>{deltas[i].v}</b>
                 {deltas[i].k}
               </div>
             )}
-          </>
+          </Fragment>
         ))}
       </div>
       {lectura && <p className="lectura">{lectura}</p>}

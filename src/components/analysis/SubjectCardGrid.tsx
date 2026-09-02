@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/types";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { MarcaSeccion, useDrawerAbierto } from "./informeTelemetry";
@@ -8,14 +8,14 @@ import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { HeroLTR } from "./HeroLTR";
 import { ordenarHallazgosPiramide } from "./PiramideHallazgos";
-import { HALLAZGO_DRAWER, findingDisplay } from "./GenericFindingCard";
-import { HallazgosAcordeon, TokensHallazgos, type FilaHallazgo } from "./hallazgos/HallazgosAcordeon";
+import { HALLAZGO_DRAWER } from "./GenericFindingCard";
+import { TokensHallazgos } from "./hallazgos/HallazgosAcordeon";
+import { CapitulosInversion, CAPITULO_DE_HALLAZGO, type CapituloId } from "./CapitulosInversion";
 import { SeccionInforme } from "./SeccionInforme";
 import { PrincipalesHallazgos } from "./PrincipalesHallazgos";
 import { LosNumeros } from "./LosNumeros";
 import { ModalCalculo } from "./ModalCalculo";
 import { getCapRefComuna } from "@/lib/cap-rate-hallazgo";
-import { anchorHallazgo, numeroHallazgo } from "@/lib/orden-hallazgos";
 import { hasAiV2 } from "./AIInsightSection";
 import { derivarCifraClaveLtr } from "@/lib/cifra-clave";
 import { buildFichaLtr } from "@/lib/ficha-depto";
@@ -55,7 +55,6 @@ export function SubjectCardGrid({
   createdAt,
   fechaProsa,
   prosaDesactualizada = false,
-  simulationSlot,
   onInformeVisible,
   accessLevel = "free",
 }: {
@@ -83,11 +82,6 @@ export function SubjectCardGrid({
    *  lector no puede regenerarla (sin sesión, o no es el dueño). Se declara al
    *  pie del acordeón con su fecha: es preferible texto fechado a nada. */
   prosaDesactualizada?: boolean;
-  /** A1 — sección Simulación (AdvancedSection). Se renderiza ENTRE la pirámide y la
-   *  card Zona para lograr el orden "drawers → simulación → zona". El estado del
-   *  drawer y el hook de zona viven acá, así que la card zona no se puede sacar afuera
-   *  sin levantar ese estado; en cambio la simulación entra como slot. */
-  simulationSlot?: ReactNode;
   /** Goal B (anclaje Goal C) — dispara UNA vez al montar el grid: el veredicto
    *  es visible desde el primer render. El caller captura `informe_visto` y
    *  persiste `informe_visible_at`. */
@@ -99,6 +93,8 @@ export function SubjectCardGrid({
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
   const [calculoAbierto, setCalculoAbierto] = useState(false);
+  // T3: apertura de un capítulo pedida desde «↓ Ver detalle» o desde la portada.
+  const [capituloAbrir, setCapituloAbrir] = useState<{ id: CapituloId; nonce: number } | null>(null);
 
   // Orden único de la pirámide — se calcula UNA vez acá y alimenta la secuencia
   // de drawers y el resolver de telemetría (mismo array que renderiza).
@@ -176,85 +172,11 @@ export function SubjectCardGrid({
     }
   }, [onInformeVisible]);
 
-  // ═══ FILAS DEL ACORDEÓN (FASE 4) ═══
-  // Una fila por hallazgo del orden único; el cuerpo es el drawer en modo
-  // INLINE (sin chrome). `distancia_veredicto` no está acá por diseño: ya lo
-  // excluye ordenarHallazgosPiramide — es el destino del CTA de la posición.
-  // MITIGACIÓN 27-ago-2026 — los hallazgos NO dependen de la prosa.
-  //
-  // Hasta acá el contexto exigía `prosa`, así que un informe sin redacción IA se
-  // renderizaba con portada y CERO filas: cuerpo vacío. Se vio en producción cuando
-  // PROMPT_VERSION_LTR saltó a 12 y dejó al parque entero en stale: el visitante
-  // anónimo no puede regenerar (POST /api/analisis/ai → 401) y el informe quedaba
-  // mudo, el demo de la landing incluido.
-  //
-  // Los hallazgos son datos DETERMINÍSTICOS del motor (`results.metrics.hallazgo*` +
-  // `results.hallazgos`); `gatherHallazgos` ya los arma sin mirar la IA. Que su
-  // RENDER dependiera de que el modelo escribiera era un acoplamiento sin razón, y
-  // frágil ante cualquier caída futura de la IA, no solo ante este bump de versión.
-  //
-  // Con prosa ausente: portada + hallazgos completos + el aviso de redacción que el
-  // hero ya muestra. Cada cuerpo que sí necesita prosa trae su propio guard
-  // (`SinDatos`, o el placeholder "Franco está preparando este detalle…").
+  // ═══ T3 (contrato CONGELADO): La inversión son cinco capítulos ═══
+  // Murió acá el acordeón de hallazgos con sus cuerpos de drawer inline, la
+  // simulación con sus sliders y el análisis a 10 años de la IA. Los hallazgos
+  // siguen siendo datos deterministas del motor; los capítulos los leen directo.
   const ctxDrawer = results && inputData ? { results, inputData, prosa } : null;
-  const filasHallazgos: FilaHallazgo[] = ctxDrawer
-    ? hallazgosOrdenados.map((h, i) => {
-        const d = findingDisplay(h, currency, valorUF);
-        const key = HALLAZGO_DRAWER[h.id];
-        return {
-          id: h.id,
-          numero: numeroHallazgo(i),
-          pregunta: d.title || h.titular,
-          valor: d.kpi,
-          valorRojo: d.kpiRed,
-          ksub: d.ksub,
-          anchorId: anchorHallazgo(h),
-          cuerpo: key ? (
-            <AnalysisDrawer
-              inline
-              activeKey={key}
-              aiAnalysis={ctxDrawer.prosa}
-              currency={currency}
-              results={ctxDrawer.results}
-              inputData={ctxDrawer.inputData}
-              valorUF={valorUF}
-              onClose={() => {}}
-              onNavigate={() => {}}
-              sequence={[]}
-              zoneInsight={zoneInsight}
-              zoneLoading={zoneLoading}
-              zoneError={zoneError}
-              zoneCenter={zoneCenter}
-              comuna={comuna ?? ctxDrawer.inputData.comuna}
-              arriendoUsuarioCLP={Number(ctxDrawer.inputData.arriendo) || 0}
-              createdAt={createdAt}
-            />
-          ) : null,
-        };
-      })
-    : [];
-
-  // El análisis a 10 años cierra el capítulo de simulación (ya no es un botón
-  // que abre un drawer: es el juicio del horizonte, en su lugar).
-  const cuerpoLargoPlazo =
-    ctxDrawer && ctxDrawer.prosa?.largoPlazo?.contenido_clp?.trim() ? (
-      <div className="mt-5">
-        <div className="doc-cap-sub">El análisis a 10 años</div>
-        <AnalysisDrawer
-          inline
-          activeKey="largoPlazo"
-          aiAnalysis={ctxDrawer.prosa}
-          currency={currency}
-          results={ctxDrawer.results}
-          inputData={ctxDrawer.inputData}
-          valorUF={valorUF}
-          onClose={() => {}}
-          onNavigate={() => {}}
-          sequence={[]}
-          createdAt={createdAt}
-        />
-      </div>
-    ) : null;
 
   // ═══ PORTADA (FASE 3 rediseño Dictamen — mockups v8/v9) ═══
   // Los datos se arman acá (motor + input); la IA solo aporta el titular, que
@@ -312,12 +234,17 @@ export function SubjectCardGrid({
     const ref = getCapRefComuna(comunaPortada);
     return { pct: ref.pct, fuente: ref.fuente };
   })();
+  // «↓ Ver detalle» abre el capítulo donde vive el desarrollo del hallazgo (el
+  // acordeón lo ancla arriba). Sin capítulo mapeado, cae a la sección entera.
+  const abrirCapitulo = (id: CapituloId) => setCapituloAbrir({ id, nonce: Date.now() });
   const scrollAHallazgo = (h: Pick<Hallazgo, "id">) => {
-    document.getElementById(anchorHallazgo(h))?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const cap = CAPITULO_DE_HALLAZGO[h.id];
+    if (cap) abrirCapitulo(cap);
+    else document.getElementById("la-inversion")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
-  const scrollASimulacion = () => {
-    document.getElementById("simulacion-interactiva")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  // La portada: «Ajustar supuestos» lleva a "Cómo lo pagas" (precio, crédito y la
+  // matriz pie×plazo son los supuestos que se pueden mover).
+  const scrollASimulacion = () => abrirCapitulo("pagas");
 
   return (
     <div id="informe-pro-section" className="mb-8">
@@ -439,9 +366,7 @@ export function SubjectCardGrid({
               />
             </SeccionInforme>
           )}
-          {/* ═══ 5 · LA INVERSIÓN (paper) — TRANSICIÓN T2: el acordeón actual y la
-              simulación se quedan acá tal cual hasta que T3 los reemplace por los
-              cinco capítulos. La sección ya tiene su forma; solo cambia el cuerpo. */}
+          {/* ═══ 5 · LA INVERSIÓN (paper) — T3: los cinco capítulos del CONGELADO ═══ */}
           <SeccionInforme
             id="la-inversion"
             tono="paper"
@@ -450,13 +375,20 @@ export function SubjectCardGrid({
             intent="Cómo funciona este departamento como inversión, paso a paso: lo que entra, lo que sale, lo que queda y lo que crece."
           >
           <MarcaSeccion seccion="piramide" tipo="ltr" accessLevel={accessLevel} />
-          <HallazgosAcordeon
-            tipo="ltr"
-            total={filasHallazgos.length}
-            filas={filasHallazgos}
-            veredicto={veredicto}
-            accessLevel={accessLevel}
-          />
+          {ctxDrawer && (
+            <CapitulosInversion
+              results={ctxDrawer.results}
+              inputData={ctxDrawer.inputData}
+              prosa={ctxDrawer.prosa}
+              currency={currency}
+              valorUF={valorUF}
+              comuna={comunaPortada || "la comuna"}
+              createdAt={createdAt}
+              veredicto={veredicto}
+              accessLevel={accessLevel}
+              abrir={capituloAbrir}
+            />
+          )}
           {prosaDesactualizada && fechaCorta && (
             <p
               className="font-mono m-0 mt-2"
@@ -465,16 +397,6 @@ export function SubjectCardGrid({
               Análisis redactado el {fechaCorta}. Los números de arriba se recalculan en cada
               visita; el texto es el de esa fecha.
             </p>
-          )}
-          {/* ═══ CAPÍTULO · La simulación ═══ */}
-          {simulationSlot && (
-            <section className="doc-capitulo" id="simulacion-interactiva">
-              <div className="doc-cap-eyebrow">La simulación</div>
-              {simulationSlot}
-              {/* El análisis a 10 años (prosa IA largoPlazo) cierra el capítulo:
-                  es el juicio del horizonte que la simulación deja abierto. */}
-              {cuerpoLargoPlazo}
-            </section>
           )}
           </SeccionInforme>
           {/* ═══ 6 · LA ZONA (paper2) ═══ */}
