@@ -81,6 +81,13 @@ function verificar(tag: string, input: AnalisisInput, dv: HallazgoDistanciaVered
     }
     if (x.estado === "noAplica" && !x.razon) f(`${x.palanca} noAplica sin razón`);
   }
+  // 3b. prioridad: un pie ≥ 20% que cruza no es palancaMasBarata si hay otra que cruza
+  if (pie.estado === "cruza" && input.piePct >= 20 && v.palancas.length > 1 && v.palancaMasBarata?.palanca === "pie") {
+    f(`pie ${input.piePct}% cruza y quedó como palancaMasBarata teniendo otra vía que cruza`);
+  }
+  if (pie.estado === "cruza" && input.piePct >= 20 && v.palancas[v.palancas.length - 1]?.palanca !== "pie") {
+    f(`pie ${input.piePct}% cruza y no está al final de palancas`);
+  }
   // 4. pieEsPalanca ≡ se exploró
   const pieExplorado = pie.estado !== "noAplica";
   if (!!v.pieEsPalanca !== pieExplorado) f(`pieEsPalanca=${v.pieEsPalanca} pero el pie ${pieExplorado ? "sí" : "no"} se exploró`);

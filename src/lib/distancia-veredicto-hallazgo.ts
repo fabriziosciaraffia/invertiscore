@@ -45,6 +45,7 @@ import type {
   Veredicto,
   ViaDistancia,
 } from "./types";
+import { classifyPieLevel } from "./financing-health";
 
 // ── Tope de honestidad (calibrado, no inventado) ──────────────────────────────
 // Sweep sobre 315 filas no-COMPRAR de prod (143 AJUSTA + 172 BUSCAR OTRA), midiendo el
@@ -312,6 +313,10 @@ export function buildHallazgoDistanciaVeredicto(p: {
   const esBonoPie = p.piePct === 0 && razonPie === DIST_PIE_RAZON_EXCLUIDA;
   const pieEnTecho = !Number.isFinite(p.piePct) || p.piePct >= DIST_PIE_TOPE_PCT;
   const pieCalifica = !esBonoPie && !pieEnTecho;
+  // ¿El pie tiene PRIORIDAD sobre las otras palancas cuando cruza? Solo bajo el nivel
+  // aceptable (misma clasificación que el hallazgo de estructura, fuente única).
+  const nivelPie = Number.isFinite(p.piePct) ? classifyPieLevel(p.piePct) : "optimo";
+  const piePrioritario = nivelPie === "mejorable" || nivelPie === "problematico";
 
   const alcanzaMeta = (v: Veredicto, meta: Veredicto) => RANK[v] >= RANK[meta];
   // El tope gobierna el SALTO que se está midiendo, no el veredicto de partida: el salto de
@@ -479,7 +484,17 @@ export function buildHallazgoDistanciaVeredicto(p: {
           deltaPct: Math.round((pie - p.piePct) * 10) / 10,
           deltaAbs: Math.round((pie - p.piePct) * 10) / 10,
         };
-        out.unshift(pal);
+        // PRIORIDAD (decisión Fabrizio 02-sep-2026): el pie va PRIMERO —y por lo tanto es
+        // `palancaMasBarata`, el titular del hero— solo cuando el pie actual está bajo el
+        // nivel aceptable (< 20%, `classifyPieLevel` mejorable/problemático), que es donde
+        // el pie ES el punto débil diagnosticado. Con pie ≥ 20% que igual cruza, la vía
+        // existe y la matriz la muestra como `cruza`, pero va al FINAL: un pie que ya
+        // cumple no debe desplazar al arriendo o al precio como la palanca del titular.
+        // Medido en el parque antes de esta regla: 129 filas con pie 20-29 pasaban a
+        // titular por el pie teniendo otra palanca que también cruzaba.
+        // Si es la ÚNICA que cruza, queda como palancaMasBarata igual (no hay otra).
+        if (piePrioritario) out.unshift(pal);
+        else out.push(pal);
         viaPie = { estado: "cruza", ...pal };
         break;
       }
