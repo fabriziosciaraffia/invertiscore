@@ -154,6 +154,30 @@ async function fetchMapProperties(
   token: string,
   estado: number = ESTADO_TODO
 ): Promise<unknown[] | null> {
+  const raw = await fetchMapRaw(comunaSlug, operacion, viewport, cookies, token, estado, 1, 510);
+  return raw ? raw.propiedades : null;
+}
+
+/**
+ * Llamada cruda al GetProps con paginación. Medido en vivo (02-sep-2026):
+ *  · `resultados.Total` trae el universo del viewport; `pagina` funciona y las
+ *    páginas son disjuntas (Santiago, 3 páginas → 1.800 ids únicos, 0 repetidos).
+ *  · `limite` se capa en GETPROPS_MAX_POR_PAGINA (600): pedir 5.000 devuelve 600.
+ *  · Más allá del total devuelve 0 filas; el orden es estable entre llamadas.
+ *  · El campo `comuna` del body NO filtra: filtra el viewport. La comuna real
+ *    viene en cada fila ([7]).
+ * Devuelve null si la fuente no responde 200.
+ */
+async function fetchMapRaw(
+  comunaSlug: string,
+  operacion: number,
+  viewport: string,
+  cookies: string,
+  token: string,
+  estado: number,
+  pagina: number,
+  limite: number
+): Promise<{ propiedades: unknown[]; total: number } | null> {
   const body = {
     region: "metropolitana", comuna: comunaSlug, barrio: "", poi: "",
     tipoVista: "mapa", operacion, idPoligono: null, moneda: 2,
@@ -164,9 +188,9 @@ async function fetchMapProperties(
     superficieDesdeConstruida: 0, superficieHastaConstruida: 0,
     superficieDesdeTerraza: 0, superficieHastaTerraza: 0,
     superficieDesdeTerreno: 0, superficieHastaTerreno: 0,
-    ordenarPor: 0, pagina: 1, paginaInterna: 1, zoom: 12, idZonaHomogenea: 0,
+    ordenarPor: 0, pagina, paginaInterna: 1, zoom: 12, idZonaHomogenea: 0,
     busqueda: "", viewport, atributos: [], publicador: 0, temporalidad: 0,
-    limite: 510, cargaBanner: false, primeraCarga: false, santander: false,
+    limite, cargaBanner: false, primeraCarga: false, santander: false,
   };
 
   const typeSlug = operacion === 2 ? "arrienda" : "compra";
@@ -192,7 +216,100 @@ async function fetchMapProperties(
   if (!response.ok) return null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = await response.json() as any;
-  return data?.resultados?.Propiedades || null;
+  const propiedades = data?.resultados?.Propiedades;
+  if (!Array.isArray(propiedades)) return null;
+  const total = Number(data?.resultados?.Total);
+  return { propiedades, total: Number.isFinite(total) ? total : propiedades.length };
+}
+
+// ─── Universo completo por paginación del GetProps ───
+
+/** Viewport que cubre el Gran Santiago entero. Con él, un solo recorrido
+ *  paginado trae el universo de las 25 comunas del roster (medido 02-sep-2026:
+ *  26.088 ventas usadas y 9.264 arriendos en 44 + 16 páginas), sin el solape
+ *  ni el recorte de los viewports por comuna (Huechuraba, La Reina, Quilicura y
+ *  Cerrillos pierden avisos con su caja propia). */
+export const VIEWPORT_GRAN_SANTIAGO = "-33.70,-70.95,-33.25,-70.40";
+
+/** Tope real por página del GetProps (pedir más devuelve exactamente esto). */
+export const GETPROPS_MAX_POR_PAGINA = 600;
+
+export interface PaginaMapa {
+  pagina: number;
+  /** Universo del viewport según la fuente. */
+  total: number;
+  /** Filas crudas que trajo la página (antes del parser). */
+  crudas: number;
+  properties: ScrapedProperty[];
+}
+
+export interface ResultadoMapaPaginado {
+  total: number;
+  paginas: number;
+  properties: ScrapedProperty[];
+  errors: string[];
+}
+
+/**
+ * Recorre el GetProps página a página hasta agotar `Total`. NO toca la ficha
+ * HTML (bloquea la IP a los ~36 GETs); todo sale del listado, coordenadas
+ * incluidas. `onPagina` permite persistir por página (checkpoint) sin retener
+ * el universo entero en memoria; si se entrega, `properties` vuelve vacío.
+ */
+export async function fetchMapPaginado(opts: {
+  type: "arriendo" | "venta";
+  estado: number;
+  viewport?: string;
+  desdePagina?: number;
+  maxPaginas?: number;
+  pausaMs?: number;
+  onPagina?: (p: PaginaMapa) => Promise<void> | void;
+}): Promise<ResultadoMapaPaginado> {
+  const viewport = opts.viewport ?? VIEWPORT_GRAN_SANTIAGO;
+  const pausaMs = opts.pausaMs ?? 1000;
+  const operacion = opts.type === "arriendo" ? 2 : 1;
+  const errors: string[] = [];
+  const properties: ScrapedProperty[] = [];
+
+  let cookies = "";
+  let token = "";
+  try {
+    const session = await getTocTocSession();
+    cookies = session.cookies;
+    token = session.token;
+  } catch (e) {
+    errors.push(`Map session error: ${e}`);
+    return { total: 0, paginas: 0, properties, errors };
+  }
+  if (!token) errors.push("Map: token vacio");
+
+  let total = 0;
+  let paginas = 0;
+  let pagina = Math.max(1, opts.desdePagina ?? 1);
+  for (;;) {
+    const raw = await fetchMapRaw("santiago", operacion, viewport, cookies, token, opts.estado, pagina, GETPROPS_MAX_POR_PAGINA);
+    if (!raw) {
+      errors.push(`Map p${pagina}: sin respuesta`);
+      break;
+    }
+    total = raw.total;
+    if (raw.propiedades.length === 0) break;
+
+    const parsed: ScrapedProperty[] = [];
+    for (const propArr of raw.propiedades) {
+      const prop = parseMapProperty(propArr as unknown[], "santiago", opts.type);
+      if (prop) parsed.push(prop);
+    }
+    paginas++;
+    if (opts.onPagina) await opts.onPagina({ pagina, total, crudas: raw.propiedades.length, properties: parsed });
+    else properties.push(...parsed);
+
+    if (opts.maxPaginas && paginas >= opts.maxPaginas) break;
+    if (pagina * GETPROPS_MAX_POR_PAGINA >= total) break;
+    pagina++;
+    if (pausaMs > 0) await new Promise((r) => setTimeout(r, pausaMs));
+  }
+  return { total, paginas, properties, errors };
 }
 
 function parseMapProperty(
@@ -206,7 +323,6 @@ function parseMapProperty(
     const idProperty = arr[1] as number;
     const lng = arr[2] as number;
     const lat = arr[3] as number;
-    const dormitorios = arr[4] as number;
     const banos = arr[5] as number;
     const comuna = (arr[7] as string) || formatComuna(comunaSlug);
 
@@ -234,6 +350,17 @@ function parseMapProperty(
     // La URL distingue obra nueva: .../compranuevo/... -> "nuevo". Sin URL o sin
     // ese marcador -> "usado" (la mayoria del inventario).
     const esObraNueva = !!url && url.includes("compranuevo");
+
+    // Dormitorios. La fila del GetProps trae [4]/[5] = baños (mín/máx) y
+    // [8]/[9] = dormitorios (mín/máx). Hasta el 02-sep-2026 se leía [4], así que
+    // todo lo que entró por el mapa quedó con dormitorios = baños: medido contra
+    // el listado gw-lista-seo sobre 3.979 avisos usados, [8] acierta 3.977 y [4]
+    // solo 2.343 (cuando dorms y baños coinciden); en la tabla, el 100% de las
+    // filas vía mapa tenía dormitorios = banos. En obra nueva pasa lo mismo
+    // ([8] = dormitorios mínimos, 239/239), pero ese universo se deja
+    // byte-idéntico acá a propósito (regla del goal: scrape-nuevos intacto) y se
+    // corrige en su propio goal.
+    const dormitorios = (esObraNueva ? arr[4] : arr[8]) as number;
 
     // Superficie. En USADO la fila es de UNA unidad y las posiciones coinciden;
     // el orden [27,28,33,34,31,32] prioriza la útil y deja total/construida de

@@ -124,6 +124,8 @@ scripts/eval/editorial/out*.log
 
 # dumps de auditoría
 audit/
+# scripts de auditoría versionados (read-only, se corren a mano)
+!scripts/audit/
 .env.local
 
 # ── Artefactos de agente ────────────────────────────────────────────────────
