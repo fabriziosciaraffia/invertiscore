@@ -13,14 +13,6 @@
       "schedule": "0 14 * * *"
     },
     {
-      "path": "/api/data/geocode-toctoc",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/data/enrich-coords",
-      "schedule": "0 12 * * *"
-    },
-    {
       "path": "/api/data/update-market",
       "schedule": "0 10 * * *"
     },
