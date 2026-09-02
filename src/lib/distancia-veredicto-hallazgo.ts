@@ -570,34 +570,44 @@ export function buildHallazgoDistanciaVeredicto(p: {
 
   if (esEstructural) {
     titular = "Ningún ajuste realista lo lleva al veredicto de arriba.";
-    // Con delta mínimo real, la frase cita el HECHO ("ni bajando el precio un 34%") en vez del
-    // umbral ("más de un 15%") — el umbral es nuestra vara, el hecho es del deal. Sin él
-    // (rango extendido tampoco cruza) la frase es aún más dura y no necesita número.
+    // FRASE ESTRUCTURAL (fix 02-sep-2026): dice lo que el motor sabe, sin invertir el
+    // signo. Hasta acá decía "Ni bajando el precio un X% llega…" con X =
+    // deltaMinimoFueraDeTope, que es justo lo MÍNIMO que SÍ cruza (bisección en rango
+    // extendido): el juez lo cazó en GS-7 y la prosa lo copiaba (459 filas del parque).
+    // Ahora: (1) los topes probados sin cruzar y la cifra que recién cruzaría, ambos
+    // leídos de `vias` (nunca literales); (2) plazo y pie según su estado en `vias`;
+    // (3) el cierre de brecha. Sin mínimo (ni el rango extendido cruza) la primera
+    // oración va solo con los topes, sin inventar cifra.
     const dm = deltaMinimoFueraDeTope;
-    // Cuando el pie calificaba como palanca y aun así no cruzó dentro del techo, la frase
-    // tiene que decirlo: si no, un lector con pie 10% queda pensando que la vía obvia ni
-    // se probó. Sin cifra a propósito — el pie fuera de techo no tiene delta emitido.
-    const colaPie = pieCalifica ? ` Subir el pie hasta ${DIST_PIE_TOPE_PCT}% tampoco lo cruza.` : "";
+    const vPrecio = vias.find((v) => v.palanca === "precio");
+    const vArr = vias.find((v) => v.palanca === "arriendo");
+    const vPlazo = vias.find((v) => v.palanca === "plazo");
+    const vPie = vias.find((v) => v.palanca === "pie");
+    const topeP = vPrecio?.estado === "noCruza" ? vPrecio.topeExplorado : topeAplicado;
+    const topeA = vArr?.estado === "noCruza" ? vArr.topeExplorado : topeAplicado;
+    const hecho = `Bajar el precio hasta −${fmtPct(topeP)}% o subir el arriendo hasta +${fmtPct(topeA)}% no cambia el veredicto`;
+    const primera = dm
+      ? `${hecho}; recién con ${
+          dm.palanca === "precio"
+            ? `−${fmtPct(Math.abs(dm.deltaPct))}% de precio`
+            : `+${fmtPct(Math.abs(dm.deltaPct))}% de arriendo`
+        } cruzaría a ${objetivoNombre}, y eso ya no es un ajuste.`
+      : `${hecho}, y tampoco lo hace ningún ajuste en rango.`;
+    // Segunda oración: plazo y pie por su estado. `noAplica` se omite (o lleva su razón si
+    // es la única); con las dos `noAplica` no hay segunda oración.
+    const tramos: string[] = [];
+    if (vPlazo?.estado === "noCruza") tramos.push(`a ${vPlazo.topeExplorado} años`);
+    if (vPie?.estado === "noCruza") tramos.push(`con pie ${fmtPct(vPie.topeExplorado)}%`);
+    let segunda = "";
+    if (tramos.length === 2) segunda = ` Ni ${tramos[0]} ni ${tramos[1]} cambia.`;
+    else if (tramos.length === 1) segunda = ` Ni ${tramos[0]} cambia.`;
     // Cierre del estructural (§1.12.4): con precio Y arriendo a mercado, "la
     // brecha es del deal" es falsa — el deal está a mercado; lo que no rinde a
     // estos precios es la zona. Variante canónica del skill.
     const cierreBrecha = p.casoPrecioJusto
       ? "La brecha no es de este depto ni del precio que pide — es de lo que esta zona rinde hoy. Otro depto igual, acá mismo, tendría el mismo problema."
       : "La brecha es del deal, no de cómo lo estás mirando.";
-    if (dm) {
-      const via =
-        dm.palanca === "precio"
-          ? `bajando el precio un ${fmtPct(Math.abs(dm.deltaPct))}%`
-          : `subiendo el arriendo un ${fmtPct(Math.abs(dm.deltaPct))}%`;
-      fraseCanonica =
-        `Ni ${via} este depto llega a ${objetivoNombre}, y estirar el crédito a ${DIST_PLAZO_TOPE_ANIOS} años ` +
-        `tampoco alcanza.${colaPie} ${cierreBrecha}`;
-    } else {
-      fraseCanonica =
-        `No hay ajuste de supuestos que lleve esto a ${objetivoNombre}: ni subiendo el arriendo a más del ` +
-        `doble, ni pagando un tercio del precio, ni estirando el crédito a ${DIST_PLAZO_TOPE_ANIOS} años.${colaPie} ` +
-        `${cierreBrecha}`;
-    }
+    fraseCanonica = `${primera}${segunda} ${cierreBrecha}`;
   } else {
     const l = palancaMasBarata!;
     const d = fmtPct(Math.abs(l.deltaPct));

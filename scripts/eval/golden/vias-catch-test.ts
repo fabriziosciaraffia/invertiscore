@@ -30,7 +30,35 @@ import type { AnalisisInput, FullAnalysisResult, HallazgoDistanciaVeredicto, Via
 import { GOLDEN_SEEDS, GOLDEN_ASOF } from "./seeds";
 
 const CASO_CONTRATO_ID = "cb0e8f46-8dc5-4fc0-b24b-e68e2a927f2d";
-const SEEDS = ["GS-5", "GS-6"];
+const SEEDS = ["GS-5", "GS-6", "GS-7"];
+/** Estructurales reales del parque para la FRASE (fix del signo, 02-sep-2026):
+ *  12823999 San Miguel (plazo 30 ⇒ noAplica) y b47570e0 La Florida (plazo noAplica). */
+const ESTRUCTURALES_FRASE = ["12823999", "b47570e0"];
+
+/** La fraseCanonica estructural dice lo que el motor sabe, sin invertir el signo:
+ *  topes probados + la cifra que recién cruzaría (de `vias`), plazo/pie por estado. */
+function verificarFraseEstructural(tag: string, dv: HallazgoDistanciaVeredicto, fallas: string[]) {
+  const f = (msg: string) => fallas.push(`${tag} · frase · ${msg}`);
+  const v = dv.valor;
+  if (!v.esEstructural || !v.vias) return;
+  const fr = dv.fraseCanonica;
+  if (/Ni bajando el precio|Ni subiendo el arriendo/.test(fr)) f(`sigue con el signo invertido: "${fr.slice(0, 80)}"`);
+  const vP = v.vias.find((x) => x.palanca === "precio");
+  const vA = v.vias.find((x) => x.palanca === "arriendo");
+  if (vP?.estado === "noCruza" && !fr.includes(`hasta −${vP.topeExplorado}%`)) f(`no cita el tope del precio −${vP.topeExplorado}%`);
+  if (vA?.estado === "noCruza" && !fr.includes(`hasta +${vA.topeExplorado}%`)) f(`no cita el tope del arriendo +${vA.topeExplorado}%`);
+  const dm = v.deltaMinimoFueraDeTope;
+  if (dm) {
+    const cifra = `${dm.deltaPct < 0 ? "−" : "+"}${Number.isInteger(Math.abs(dm.deltaPct)) ? Math.abs(dm.deltaPct) : Math.abs(dm.deltaPct).toFixed(1).replace(".", ",")}%`;
+    if (!fr.includes(`recién con ${cifra}`)) f(`no cita el mínimo que cruza (${cifra}) como lo que recién cruzaría`);
+  } else if (!fr.includes("ningún ajuste en rango")) f("sin mínimo debía cerrar con 'ningún ajuste en rango'");
+  const vPlazo = v.vias.find((x) => x.palanca === "plazo");
+  const vPie = v.vias.find((x) => x.palanca === "pie");
+  if (vPlazo?.estado === "noCruza" && !fr.includes(`a ${vPlazo.topeExplorado} años`)) f("plazo noCruza sin su tope en la segunda oración");
+  if (vPlazo?.estado === "noAplica" && /años/.test(fr)) f("plazo noAplica y la frase igual habla de años");
+  if (vPie?.estado === "noCruza" && !fr.includes(`con pie ${vPie.topeExplorado}%`)) f("pie noCruza sin su tope en la segunda oración");
+  if (vPie?.estado === "noAplica" && /\bpie\b/.test(fr)) f("pie noAplica y la frase igual habla del pie");
+}
 const ORDEN: ViaDistancia["palanca"][] = ["precio", "arriendo", "plazo", "pie"];
 
 type Fila = {
@@ -97,6 +125,8 @@ function verificar(tag: string, input: AnalisisInput, dv: HallazgoDistanciaVered
     const via = vias.find((x) => x.palanca === dm.palanca);
     if (!via || via.estado !== "noCruza" || via.deltaMinimoPct !== dm.deltaPct) f(`la vía ${dm.palanca} no lleva deltaMinimoPct ${dm.deltaPct}`);
   }
+  // 6. la frase estructural, sin el signo invertido
+  verificarFraseEstructural(tag, dv, fallas);
 }
 
 function resumen(dv: HallazgoDistanciaVeredicto | null): string {
@@ -166,6 +196,34 @@ async function main() {
     const cruzan = dv?.valor.vias?.filter((x) => x.estado === "cruza").length ?? 0;
     if (cruzan === 4) fallas.push(`${key} · las cuatro cruzan: el seed dejó de servir como caso con alguna vía que no cruza`);
     casos.push(`${key} ${seed.input.comuna} · ${dv?.valor.veredictoBase} → ${resumen(dv)}`);
+  }
+
+  // (c) estructurales reales del parque, para la FRASE (plazo noAplica incluido).
+  // uuid no admite LIKE en PostgREST: se pagina y se filtra por prefijo en cliente.
+  {
+    const pendientes = new Set(ESTRUCTURALES_FRASE);
+    for (let from = 0; from < 3000 && pendientes.size; from += 500) {
+      const { data, error } = await sb
+        .from("analisis")
+        .select("id, nombre, input_data, results, created_at, mediana_comuna_snapshot")
+        .eq("tipo_analisis", "long-term")
+        .order("created_at", { ascending: false })
+        .range(from, from + 499);
+      if (error || !data?.length) break;
+      for (const f of data as Fila[]) {
+        const pref = [...pendientes].find((p) => f.id.startsWith(p));
+        if (!pref || !f.input_data) continue;
+        pendientes.delete(pref);
+        const uf = resolveUfForAnalysis(f.results, f.input_data, 39000, f.id);
+        const mediana = f.mediana_comuna_snapshot ? { mediana: f.mediana_comuna_snapshot.mediana, n: f.mediana_comuna_snapshot.n ?? 0 } : undefined;
+        const r = recomputeResultsForLegacy(f.input_data, uf, mediana, new Date(f.created_at));
+        const dv = distanciaDe(r);
+        verificar(pref, f.input_data, dv, fallas);
+        if (!dv?.valor.esEstructural) fallas.push(`${pref} · debía ser estructural`);
+        casos.push(`${pref} · ${dv?.valor.veredictoBase} → ${resumen(dv)}\n      frase: ${dv?.fraseCanonica}`);
+      }
+    }
+    for (const p of pendientes) fallas.push(`${p} · no se encontró en el parque`);
   }
 
   console.log("\nVÍAS · catch-test (cuatro palancas siempre)");
