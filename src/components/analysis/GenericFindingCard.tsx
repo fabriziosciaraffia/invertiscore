@@ -362,7 +362,7 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
 // bit-idéntico), pero la CARD debe mostrarlo en la moneda activa (sin $ en modo UF). Reusa
 // la MISMA plantilla del builder (buildFraseFlujo) con el monto reformateado — misma rama,
 // mismo texto. Los otros 8 tipos no tienen monto embebido → fraseCanonica verbatim.
-function fraseCanonicaCard(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): string {
+export function fraseCanonicaCard(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): string {
   if (h.id === "flujo_mensual") {
     const v = h.valor;
     const abs = Math.abs(v.flujoNetoMensualCLP);

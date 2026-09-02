@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { usePostHog } from "posthog-js/react";
 import { renderPlumon } from "./hallazgos/plumon";
-import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo } from "@/lib/types";
+import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, HallazgoSensibilidad } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
+import { Modal } from "./hallazgos/vocabulario";
+import { DrawerDistanciaLtr, DrawerSensibilidadLtr } from "./drawers/DrawersPropios";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 
 /**
@@ -21,8 +23,8 @@ import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 export function HeroLTR({
   data,
   currency,
-  onOpenDrawer,
   veredicto,
+  valorUF,
   results,
   createdAt,
   fechaProsa,
@@ -96,17 +98,35 @@ export function HeroLTR({
   // respuesta; lo que se fija es el LABEL, que antes prometía cosas distintas
   // según el inventario de hallazgos.
   const hallazgosRow = (results?.hallazgos ?? []) as Hallazgo[];
-  const distanciaRow = hallazgosRow.find((h) => h.id === "distancia_veredicto");
-  const CTA_POR_VEREDICTO: Record<string, string> = {
-    "BUSCAR OTRA": "Por qué no cierra",
-    "AJUSTA SUPUESTOS": "Ver las vías",
-    COMPRAR: "Qué verificar antes de firmar",
-  };
-  const posicionDrawer: { key: DrawerKey; label: string } | null = distanciaRow
-    ? { key: "distanciaVeredicto", label: CTA_POR_VEREDICTO[veredicto] ?? "Ver el detalle" }
-    : hallazgosRow.some((h) => h.id === "sensibilidad")
-      ? { key: "sensibilidad", label: CTA_POR_VEREDICTO[veredicto] ?? "Ver el margen" }
-      : null;
+  const distanciaRow = hallazgosRow.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
+  const sensibilidadRow = hallazgosRow.find((h): h is HallazgoSensibilidad => h.id === "sensibilidad");
+  // FOOTER DE LA POSICIÓN — contrato CONGELADO 02-sep-2026 (T2). Por veredicto:
+  // AJUSTA y BUSCAR OTRA abren "Lo que te separa" (la matriz de vías, en modal);
+  // COMPRAR abre "Cuánto aguanta este veredicto" (la sensibilidad del arriendo).
+  // Sin distancia cae a sensibilidad si existe; sin ninguna, no hay footer. Es
+  // información de otra índole que no compite con el flujo de lectura: modal,
+  // no drawer, y el único botón real del informe hasta que exista el CTA.
+  const footer =
+    distanciaRow && veredicto !== "COMPRAR"
+      ? {
+          key: "distanciaVeredicto" as const,
+          k: "Lo que te separa del veredicto de arriba",
+          l: "Franco probó distintos ajustes que mueven el veredicto.",
+          btn: "Ver ajustes",
+          sub: "Franco probó los ajustes uno a la vez, con el resto de los supuestos fijos, hasta donde deja de ser un ajuste y pasa a ser otro departamento.",
+          cuerpo: <DrawerDistanciaLtr hallazgo={distanciaRow} currency={currency} valorUF={valorUF} />,
+        }
+      : sensibilidadRow && results
+        ? {
+            key: "sensibilidad" as const,
+            k: "Cuánto aguanta este veredicto",
+            l: "Franco probó hasta dónde puede caer el arriendo sin que cambie la conclusión.",
+            btn: "Ver margen",
+            sub: "Bajamos el arriendo declarado hasta que el veredicto se mueve. Esto es lo que aguanta antes de cambiar.",
+            cuerpo: <DrawerSensibilidadLtr hallazgo={sensibilidadRow} results={results} currency={currency} valorUF={valorUF} />,
+          }
+        : null;
+  const [modalAbierto, setModalAbierto] = useState(false);
   // POR QUÉ NO CIERRA (LTR) — puerto del patrón STR (§1.12.8): la glosa de los
   // motivos que decidieron el veredicto, SOLO cuando lo decidió un gate y no la
   // banda del score. Los brazos del Gate 1 viajan en el hallazgo de distancia
@@ -126,14 +146,14 @@ export function HeroLTR({
     if (posicionMedida.current) return;
     posicionMedida.current = true;
     try {
-      posthog?.capture("informe_posicion_abierta", { veredicto, tipo: "ltr", destino: posicionDrawer?.key });
+      posthog?.capture("informe_posicion_abierta", { veredicto, tipo: "ltr", destino: footer?.key });
     } catch {
       /* la telemetría jamás rompe la lectura */
     }
     if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
       (window.__informeEvents ??= []).push({
         name: "informe_posicion_abierta",
-        props: { veredicto, tipo: "ltr", destino: posicionDrawer?.key },
+        props: { veredicto, tipo: "ltr", destino: footer?.key },
       });
     }
   };
@@ -223,138 +243,55 @@ export function HeroLTR({
         </div>
 
       </div>
-      {/* ═══ POSICIÓN DE FRANCO — full-width, ambas columnas (A5) ═══
-          Gana affordance de drawer: es donde vive la salida del análisis, así que es el
-          lugar natural para abrir el detalle. Reusa el lenguaje que el usuario ya aprendió
-          en la pirámide (franco-card-target + link mono al pie); cero primitivas nuevas.
-          Qué abre depende del veredicto y el link SIEMPRE lo anuncia — la inconsistencia
-          de destino no molesta si el label dice a dónde vas. */}
-      {/* (b) FASE 4.1 — el bloque YA NO cuelga de `cajaAccionable`. Antes, si la IA no
-          producía caja accionable desaparecía el bloque entero y con él la ÚNICA puerta a
-          `distanciaVeredicto`, el cuerpo más denso del informe. Ahora la caja es una parte
-          opcional adentro: basta con que haya algo de posición que mostrar (la caja, el
-          destino, o ambos). Sin ninguno de los dos no hay bloque — ahí de verdad no hay
-          nada que decir ni a dónde ir. */}
-      {(cajaAccionable || posicionDrawer) && (
-        <div className="pb-4">
-          <div
-            className={posicionDrawer ? "franco-card-target cursor-pointer" : undefined}
-            style={{
-              borderLeft: "3px solid var(--signal-red)",
-              borderRadius: "0 8px 8px 0",
-              background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
-            }}
-            {...(posicionDrawer
-              ? {
-                  role: "button" as const,
-                  tabIndex: 0,
-                  onClick: () => {
-                    abrirPosicion();
-                    onOpenDrawer?.(posicionDrawer.key);
-                  },
-                  onKeyDown: (e: React.KeyboardEvent) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      abrirPosicion();
-                      onOpenDrawer?.(posicionDrawer.key);
-                    }
-                  },
-                }
-              : {})}
-          >
-            <div className="px-4 py-3.5">
-              {cajaAccionable ? (
-                <>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
-                    La posición de Franco
-                  </span>
-                  <div className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)]">
-                    {renderPlumon(cajaAccionable)}
-                  </div>
-                    <div
-                      className="mt-3 pt-2.5 flex items-center justify-between gap-3"
-                      style={{ borderTop: "1px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}
-                    >
-                      {/* FIRMA DENTRO DE LA CAJA. La línea "Análisis generado por IA"
-                          nunca estuvo acá: era el pie del hero, y la card que envolvía
-                          todo la hacía PARECER parte del bloque. Sin card quedó
-                          huérfana sobre el papel, así que baja a donde el mockup la
-                          pone — junto al ísotipo y el nombre, a la izquierda, con el
-                          destino del drawer a la derecha en la misma línea. */}
-                      <span className="flex items-center gap-2 min-w-0">
-                        <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
-                          f.
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block font-body text-[11.5px] font-semibold text-[var(--franco-text)] leading-tight">
-                            Franco
-                          </span>
-                          <span className="block font-mono text-[9.5px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] leading-tight">
-                            Análisis generado por IA{fechaFirma ? ` · ${fechaFirma}` : ""}
-                          </span>
-                        </span>
-                      </span>
-                      {posicionDrawer && (
-                        <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
-                          {posicionDrawer.label} →
-                        </span>
-                      )}
-                    </div>
-                </>
-              ) : (
-                /* Sin caja el bloque COLAPSA a una línea: label y destino en la misma fila.
-                   Dejar el divisor con el párrafo vacío en medio abría un hueco muerto. */
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)]">
-                    La posición de Franco
-                  </span>
-                  {posicionDrawer && (
-                    <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
-                      {posicionDrawer.label} →
-                    </span>
-                  )}
-                </div>
-              )}
+      {/* ═══ LA POSICIÓN DE FRANCO — card con footer propio (contrato CONGELADO, T2) ═══
+          La caja IA + la firma van en el cuerpo con la línea roja; el footer "Lo que
+          te separa" / "Cuánto aguanta" tiene fondo propio, regla de 1px y el botón
+          real que abre el modal. Cuelga del texto del título (md:ml-9) igual que la
+          prosa, para compartir su línea vertical. Sin caja ni footer no hay bloque. */}
+      {(cajaAccionable || footer) && (
+        <div className="pb-2 md:ml-9">
+          <div className="pos-card">
+            <div className="pos-main">
+              <span className="pos-t">La posición de Franco</span>
+              {cajaAccionable && <div className="pos-p">{renderPlumon(cajaAccionable)}</div>}
+              <div className="pos-firma">
+                <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true" style={{ width: 22, height: 22, fontSize: 10 }}>
+                  f.
+                </span>
+                <span>
+                  Franco
+                  <small>Análisis generado por IA{fechaFirma ? ` · ${fechaFirma}` : ""}</small>
+                </span>
+              </div>
             </div>
+            {footer && (
+              <div className="pos-foot">
+                <div>
+                  <span className="k">{footer.k}</span>
+                  <span className="l">{footer.l}</span>
+                </div>
+                <button
+                  type="button"
+                  className="doc-btn"
+                  onClick={() => {
+                    abrirPosicion();
+                    setModalAbierto(true);
+                  }}
+                >
+                  {footer.btn} →
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
-
-      <div className="h-px" style={{ background: "var(--franco-border)" }} />
-
-      {/* PIE · solo el wordmark. El disclaimer de IA se mudo DENTRO de la caja de
-          posicion, junto a la firma: sin la card que envolvia el bloque, una linea
-          suelta sobre el papel no se leia como parte de nada. */}
-      <div className="flex items-center justify-end gap-3 py-2">
-        <Wordmark />
-      </div>
+      {footer && (
+        <Modal abierto={modalAbierto} onClose={() => setModalAbierto(false)} titulo={footer.k} sub={footer.sub}>
+          {/* .doc-tokens: los cuerpos de los drawers resuelven --doc-* también fuera de .doc-dictamen */}
+          <div className="doc-tokens">{footer.cuerpo}</div>
+        </Modal>
+      )}
     </div>
-  );
-}
-
-// Split compartido entre F3 (score|mapa) y F4 (veredicto|findings) — riel derecho
-// continuo. ~52/48 (A2). Definido una sola vez para que ambas filas coincidan.
-
-// ── Wordmark refranco.ai (mismo tratamiento que FrancoLogo/UnifiedNav) ──
-function Wordmark() {
-  return (
-    <span className="inline-flex items-baseline leading-none">
-      <span
-        className="font-heading italic font-light text-[17px]"
-        style={{ color: "var(--franco-wm-re)", marginRight: "-0.08em" }}
-      >
-        re
-      </span>
-      <span className="font-heading font-bold text-[17px]" style={{ color: "var(--franco-wm-franco)" }}>
-        franco
-      </span>
-      <span
-        className="font-body font-semibold tracking-wide text-[#C8323C]"
-        style={{ fontSize: "0.35em", letterSpacing: "0.1em", marginLeft: 1 }}
-      >
-        .ai
-      </span>
-    </span>
   );
 }
 

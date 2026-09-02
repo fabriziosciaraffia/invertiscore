@@ -64,6 +64,10 @@ function trackInforme(
  *  del fix en adelante. */
 export type SeccionInforme =
   | "hero"
+  // T2 del rediseño (contrato CONGELADO 02-sep-2026): las dos secciones nuevas de
+  // la página LTR. `piramide` sigue midiendo el acordeón (misma serie).
+  | "hallazgos"
+  | "numeros"
   | "piramide"
   | "evidencia"
   | "simulacion"

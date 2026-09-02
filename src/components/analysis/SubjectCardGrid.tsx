@@ -9,7 +9,12 @@ import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCa
 import { HeroLTR } from "./HeroLTR";
 import { ordenarHallazgosPiramide } from "./PiramideHallazgos";
 import { HALLAZGO_DRAWER, findingDisplay } from "./GenericFindingCard";
-import { HallazgosAcordeon, type FilaHallazgo } from "./hallazgos/HallazgosAcordeon";
+import { HallazgosAcordeon, TokensHallazgos, type FilaHallazgo } from "./hallazgos/HallazgosAcordeon";
+import { SeccionInforme } from "./SeccionInforme";
+import { PrincipalesHallazgos } from "./PrincipalesHallazgos";
+import { LosNumeros } from "./LosNumeros";
+import { ModalCalculo } from "./ModalCalculo";
+import { getCapRefComuna } from "@/lib/cap-rate-hallazgo";
 import { anchorHallazgo, numeroHallazgo } from "@/lib/orden-hallazgos";
 import { hasAiV2 } from "./AIInsightSection";
 import { derivarCifraClaveLtr } from "@/lib/cifra-clave";
@@ -17,7 +22,7 @@ import { buildFichaLtr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { DocumentoFrame, PortadaInforme } from "./portada/PortadaInforme";
 import { useComparablesCercanos } from "./portada/useComparablesCercanos";
-import type { HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
+import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
 import { BloqueEsperaInforme } from "@/components/analysis/ProsaSkeleton";
 
 /**
@@ -93,6 +98,7 @@ export function SubjectCardGrid({
   accessLevel?: string;
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
+  const [calculoAbierto, setCalculoAbierto] = useState(false);
 
   // Orden único de la pirámide — se calcula UNA vez acá y alimenta la secuencia
   // de drawers y el resolver de telemetría (mismo array que renderiza).
@@ -299,13 +305,28 @@ export function SubjectCardGrid({
       ? ""
       : d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
   })();
+  // Referencia del cap rate neto: la del hallazgo (motor) o la del catálogo por comuna.
+  const capRefInfo = (() => {
+    const h = (results?.metrics as { hallazgoCapRate?: { valor?: { capRefPct?: number; fuente?: string } } | null } | undefined)?.hallazgoCapRate;
+    if (h?.valor && typeof h.valor.capRefPct === "number") return { pct: h.valor.capRefPct, fuente: h.valor.fuente ?? "" };
+    const ref = getCapRefComuna(comunaPortada);
+    return { pct: ref.pct, fuente: ref.fuente };
+  })();
+  const scrollAHallazgo = (h: Pick<Hallazgo, "id">) => {
+    document.getElementById(anchorHallazgo(h))?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const scrollASimulacion = () => {
     document.getElementById("simulacion-interactiva")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
     <div id="informe-pro-section" className="mb-8">
-      <DocumentoFrame>
+      <DocumentoFrame secciones>
+      {/* CSS del acordeón + vocabulario + modal, montado siempre: el modal de la
+          posición y el de cálculo lo necesitan también mientras la prosa carga. */}
+      <TokensHallazgos />
+      {/* ═══ 1 · PORTADA (paper) ═══ */}
+      <SeccionInforme id="portada" tono="paper">
       {fichaPortada && (
         <PortadaInforme
           veredicto={veredicto}
@@ -333,9 +354,9 @@ export function SubjectCardGrid({
           onAjustarSupuestos={scrollASimulacion}
         />
       )}
-      {/* ═══ CUERPO — grilla con el ísotipo f. sticky en el margen (solo PC) ═══ */}
-      <div className="doc-cuerpo">
-        <div className="min-w-0">
+      </SeccionInforme>
+      {/* ═══ 2 · HERO (paper2) ═══ */}
+      <SeccionInforme id="hero" tono="paper2">
       <HeroLTR
         onOpenDrawer={setActiveDrawer}
         data={prosa}
@@ -353,7 +374,7 @@ export function SubjectCardGrid({
         createdAt={createdAt}
         fechaProsa={fechaProsa}
       />
-
+      </SeccionInforme>
       {/* ═══ ZONA 2 (Goal E) ═══ Sin prosa: UN solo bloque de espera — mensajes
           progresivos + siluetas puras (cero texto a medias, cero afordancia).
           Con error de prosa el bloque queda estático (el error vive inline en el
@@ -369,15 +390,65 @@ export function SubjectCardGrid({
           deterministas y no dependen de que el modelo haya escrito. El aviso de
           redacción sigue donde estaba (inline en el hero, Goal C). */}
       {!prosa && loading ? (
-        <div className="mt-5">
+        <SeccionInforme id="espera" tono="paper">
           <BloqueEsperaInforme estatico={false} />
-        </div>
+        </SeccionInforme>
       ) : (
         <div style={materializa ? { animation: "zona2Aparece 450ms ease-out" } : undefined}>
-          {/* ═══ LOS HALLAZGOS — acordeón (FASE 4, mockup v12) ═══
-              La fusión: la línea visible es el resumen (ex-pirámide) y el tap
-              despliega el cuerpo del drawer in-place (modo inline). Murieron el
-              overlay, el header con ✕, las flechas prev/next y los 3 niveles. */}
+          {/* ═══ 3 · PRINCIPALES HALLAZGOS (paper) — contrato CONGELADO, T2 ═══
+              Los cuatro que mueven el veredicto, del mismo orden único que el
+              acordeón. Fila + cierre con plumón + «↓ Ver detalle» al desarrollo. */}
+          {hallazgosOrdenados.length > 0 && (
+            <SeccionInforme
+              id="principales-hallazgos"
+              tono="paper"
+              eyebrow="Principales hallazgos"
+              titulo="Qué determina el veredicto en este departamento"
+              intent="Franco analizó los factores que pesan en la decisión. Estos son los cuatro que la mueven."
+            >
+              <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
+              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} onVerDetalle={scrollAHallazgo} />
+            </SeccionInforme>
+          )}
+          {/* ═══ 4 · LOS NÚMEROS (paper2) — seis cifras + modal de cálculo ═══ */}
+          {results?.metrics && inputData && (
+            <SeccionInforme
+              id="los-numeros"
+              tono="paper2"
+              eyebrow="Los números"
+              titulo="Las seis cifras que un inversionista mira primero"
+              intent="Las cifras con las que se evalúa cualquier inversión inmobiliaria — para comparar este departamento con otro, o con lo que rinde tu plata en otra parte."
+            >
+              <MarcaSeccion seccion="numeros" tipo="ltr" accessLevel={accessLevel} />
+              <LosNumeros
+                metrics={results.metrics}
+                results={results}
+                capRefPct={capRefInfo.pct}
+                currency={currency}
+                valorUF={valorUF}
+                onCalculo={() => setCalculoAbierto(true)}
+              />
+              <ModalCalculo
+                abierto={calculoAbierto}
+                onClose={() => setCalculoAbierto(false)}
+                metrics={results.metrics}
+                results={results}
+                inputData={inputData}
+                valorUF={valorUF}
+                capRef={capRefInfo}
+              />
+            </SeccionInforme>
+          )}
+          {/* ═══ 5 · LA INVERSIÓN (paper) — TRANSICIÓN T2: el acordeón actual y la
+              simulación se quedan acá tal cual hasta que T3 los reemplace por los
+              cinco capítulos. La sección ya tiene su forma; solo cambia el cuerpo. */}
+          <SeccionInforme
+            id="la-inversion"
+            tono="paper"
+            eyebrow="La inversión"
+            titulo="Cómo funciona este departamento como inversión"
+            intent="Cómo funciona este departamento como inversión, paso a paso: lo que entra, lo que sale, lo que queda y lo que crece."
+          >
           <MarcaSeccion seccion="piramide" tipo="ltr" accessLevel={accessLevel} />
           <HallazgosAcordeon
             tipo="ltr"
@@ -395,7 +466,6 @@ export function SubjectCardGrid({
               visita; el texto es el de esa fecha.
             </p>
           )}
-
           {/* ═══ CAPÍTULO · La simulación ═══ */}
           {simulationSlot && (
             <section className="doc-capitulo" id="simulacion-interactiva">
@@ -406,11 +476,16 @@ export function SubjectCardGrid({
               {cuerpoLargoPlazo}
             </section>
           )}
-
-          {/* ═══ CAPÍTULO · La zona ═══ */}
+          </SeccionInforme>
+          {/* ═══ 6 · LA ZONA (paper2) ═══ */}
           {analysisId && (
-            <section className="doc-capitulo">
-              <div className="doc-cap-eyebrow">La zona</div>
+            <SeccionInforme
+              id="la-zona"
+              tono="paper2"
+              eyebrow={`La zona${comunaPortada ? ` · ${comunaPortada}` : ""}`}
+              titulo="La zona"
+              intent="Cómo se compara este departamento con lo que se vende y arrienda alrededor."
+            >
               <MarcaSeccion seccion="zona" tipo="ltr" accessLevel={accessLevel} />
               <ZoneInsightMiniCard
                 data={zoneInsight}
@@ -419,9 +494,9 @@ export function SubjectCardGrid({
                 onClick={() => setActiveDrawer("zona")}
                 currency={currency}
               />
-            </section>
+            </SeccionInforme>
           )}
-          <style>{`
+          <style dangerouslySetInnerHTML={{ __html: `
             @keyframes zona2Aparece {
               from { opacity: 0; transform: translateY(6px); }
               to { opacity: 1; transform: translateY(0); }
@@ -429,12 +504,9 @@ export function SubjectCardGrid({
             @media (prefers-reduced-motion: reduce) {
               [style*="zona2Aparece"] { animation: none !important; }
             }
-          `}</style>
+          ` }} />
         </div>
       )}
-
-        </div>
-      </div>
       </DocumentoFrame>
 
       <p className="text-center text-[10px] text-[var(--franco-text-muted)] mt-4">
