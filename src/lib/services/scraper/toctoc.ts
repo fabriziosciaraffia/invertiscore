@@ -228,8 +228,16 @@ async function fetchMapRaw(
  *  paginado trae el universo de las 25 comunas del roster (medido 02-sep-2026:
  *  26.088 ventas usadas y 9.264 arriendos en 44 + 16 páginas), sin el solape
  *  ni el recorte de los viewports por comuna (Huechuraba, La Reina, Quilicura y
- *  Cerrillos pierden avisos con su caja propia). */
-export const VIEWPORT_GRAN_SANTIAGO = "-33.70,-70.95,-33.25,-70.40";
+ *  Cerrillos pierden avisos con su caja propia).
+ *
+ *  Cobertura verificada comuna por comuna contra el total del listado
+ *  (gw-lista-seo, 02-sep-2026): con el borde este en -70,40 Lo Barnechea perdía
+ *  58 ventas ubicadas entre -70,31 y -70,25 (sector cordillera); el borde se
+ *  corrió a -70,24 y el resto de las franjas (norte, sur, oeste) solo aportan
+ *  comunas fuera del roster. El déficit residual de 1 a 5% por comuna no es de
+ *  caja: son avisos publicados hace menos de un día que el índice del mapa aún
+ *  no tiene, ids repetidos entre páginas del listado y avisos con id 0. */
+export const VIEWPORT_GRAN_SANTIAGO = "-33.70,-70.95,-33.25,-70.24";
 
 /** Tope real por página del GetProps (pedir más devuelve exactamente esto). */
 export const GETPROPS_MAX_POR_PAGINA = 600;
