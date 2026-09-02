@@ -1700,9 +1700,7 @@ CAPEX PUESTA A PUNTO (depto usado de ${hallazgoCapex.valor.antiguedadAnios} año
       const dv = (results.hallazgos as Hallazgo[] | undefined)?.find(
         (h) => h.id === "distancia_veredicto",
       );
-      if (!dv || dv.id !== "distancia_veredicto" || dv.valor.esEstructural) return "";
-      const pals = dv.valor.palancas ?? [];
-      if (pals.length === 0) return "";
+      if (!dv || dv.id !== "distancia_veredicto") return "";
       const NOMBRE: Record<string, string> = {
         pie: "pie", arriendo: "arriendo", precio: "precio de compra", plazo: "plazo del crédito",
       };
@@ -1710,24 +1708,69 @@ CAPEX PUESTA A PUNTO (depto usado de ${hallazgoCapex.valor.antiguedadAnios} año
       // crudas ("de 280000 a 298540") y eso las volvía INUTILIZABLES: `LTR-CIFRA`
       // valida que toda cifra de la prosa esté en el input, así que para citar el
       // arriendo el modelo tendría que reformatear 298540 → $298.540, y
-      // reformatear es, desde su lado, arriesgarse a inventar. El sistema le
-      // enseñó a no hacerlo. Se notó midiendo: de las cuatro vías, la única que la
-      // prosa nombraba era la del pie — la única que ya venía con su unidad.
+      // reformatear es, desde su lado, arriesgarse a inventar.
       const fmtValor = (palanca: string, v: number): string =>
         palanca === "pie" ? `${Number.isInteger(v) ? v : v.toFixed(1).replace(".", ",")}%`
         : palanca === "plazo" ? `${v} años`
         : palanca === "precio" ? fmtUF(v)
         : fmtCLP(v);
-      const filas = pals
-        .map((x) => {
-          const signo = x.deltaPct < 0 ? "−" : "+";
-          return `- ${NOMBRE[x.palanca] ?? x.palanca}: de ${fmtValor(x.palanca, x.actual)} a ${fmtValor(x.palanca, x.objetivo)} (${signo}${Math.abs(x.deltaPct).toFixed(1).replace(".", ",")}%)`;
-        })
-        .join("\n");
-      return `
+      const pals = dv.valor.palancas ?? [];
+      const vias = dv.valor.vias;
+      // Filas sin `vias` (persistidas antes del goal "cuatro palancas siempre"):
+      // el bloque anterior, solo con las que cruzan.
+      if (!vias || vias.length === 0) {
+        if (dv.valor.esEstructural || pals.length === 0) return "";
+        const filas = pals
+          .map((x) => {
+            const signo = x.deltaPct < 0 ? "−" : "+";
+            return `- ${NOMBRE[x.palanca] ?? x.palanca}: de ${fmtValor(x.palanca, x.actual)} a ${fmtValor(x.palanca, x.objetivo)} (${signo}${Math.abs(x.deltaPct).toFixed(1).replace(".", ",")}%)`;
+          })
+          .join("\n");
+        return `
 VÍAS QUE CRUZAN AL VEREDICTO DE ARRIBA (${pals.length}) — cada una alcanza POR SÍ SOLA:
 ${filas}
   ⚠ Son ${pals.length}. Si dices "la única vía" o "la condición es una sola" cuando hay más de una, es falso. Puedes elegir la más accionable y decir por qué, pero sin negar las otras.`;
+      }
+      // ── GOAL "cuatro palancas siempre" (02-sep-2026): las CUATRO vías, cada una
+      // con su estado. El modelo deja de confundir "no está en la lista" con "no
+      // existe": las que no cruzan dicen hasta dónde se probaron y las que no
+      // aplican dicen por qué. El motor emite datos; la prosa redacta.
+      const objetivo = dv.valor.veredictoObjetivo;
+      const piePctActual = dv.valor.piePctActual ?? input.piePct ?? 0;
+      const precioCLPCaso = input.precio * UF_CLP;
+      const filas = vias
+        .map((v) => {
+          const nombre = NOMBRE[v.palanca] ?? v.palanca;
+          if (v.estado === "cruza") {
+            const signo = v.deltaPct < 0 ? "−" : "+";
+            const base = `- ${nombre}: CRUZA — de ${fmtValor(v.palanca, v.actual)} a ${fmtValor(v.palanca, v.objetivo)} (${signo}${Math.abs(v.deltaPct).toFixed(1).replace(".", ",")}%)`;
+            if (v.palanca === "pie" && piePctActual >= 20) {
+              const extra = Math.round(((v.objetivo - v.actual) / 100) * precioCLPCaso);
+              return `${base} — cruza, pero ya cumples con ${fmtValor("pie", v.actual)} de pie: es un INTERCAMBIO (${fmtCLP(extra)} más el día 1 a cambio de un mes que cierra), no una recomendación`;
+            }
+            return base;
+          }
+          if (v.estado === "noCruza") {
+            const tope =
+              v.palanca === "plazo" ? `ni a ${v.topeExplorado} años`
+              : v.palanca === "pie" ? `ni con pie ${v.topeExplorado}%`
+              : v.palanca === "precio" ? `ni −${v.topeExplorado}%`
+              : `ni +${v.topeExplorado}%`;
+            const minimo = v.deltaMinimoPct != null
+              ? ` (lo mínimo que cruzaría: ${v.deltaMinimoPct < 0 ? "−" : "+"}${Math.abs(v.deltaMinimoPct).toFixed(1).replace(".", ",")}%, fuera de todo rango razonable)`
+              : "";
+            return `- ${nombre}: NO CRUZA — ${tope} cambia el veredicto; se probó hasta ahí${minimo}`;
+          }
+          return `- ${nombre}: NO APLICA — ${v.razon}`;
+        })
+        .join("\n");
+      const nCruzan = vias.filter((v) => v.estado === "cruza").length;
+      return `
+VÍAS AL VEREDICTO DE ARRIBA (${objetivo}) — las cuatro, cada una probada POR SEPARADO con el resto de los supuestos fijos:
+${filas}
+  ⚠ Cruzan ${nCruzan} de 4, y cada una que cruza alcanza POR SÍ SOLA. Si dices "la única vía" o "la condición es una sola" cuando cruza más de una, es falso; puedes elegir la más accionable y decir por qué, sin negar las otras.
+  ⚠ Las que NO CRUZAN sí se probaron, hasta el tope que dice su línea: puedes decirlo con ese tope. Nunca digas que una de ellas "no existe" o "no se probó".
+  ⚠ Las que NO APLICAN no se probaron, por la razón que dice su línea; esa razón es la única forma de nombrarlas.`;
     })();
 
     const escaleraBloque = (() => {
@@ -1938,6 +1981,16 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
 
     // ── §1.12 — pre-digestiones (la clasificación se resuelve acá; la IA narra) ──
     const dvGen = hallazgoDistanciaGen?.valor;
+    // Goal "cuatro palancas siempre": el estado del PIE se lee de `vias`, no de
+    // `pieEsPalanca` (que ahora significa "se exploró"). Sin `vias` (filas viejas)
+    // las directivas caen al gate anterior.
+    const viaPieGen = dvGen?.vias?.find((v) => v.palanca === "pie") ?? null;
+    const pieCruzaGen = viaPieGen ? viaPieGen.estado === "cruza" : dvGen?.pieEsPalanca === true;
+    const fmtPieGen = (v: number) => `${Number.isInteger(v) ? v : v.toFixed(1).replace(".", ",")}%`;
+    const pieYaCumpleCruzaGen =
+      viaPieGen && viaPieGen.estado === "cruza" && viaPieGen.actual >= 20
+        ? { actual: viaPieGen.actual, objetivo: viaPieGen.objetivo, extraCLP: Math.round(((viaPieGen.objetivo - viaPieGen.actual) / 100) * input.precio * UF_CLP) }
+        : null;
     // (1) Banda de esfuerzo de la palanca precio emitida — dato, nunca criterio IA.
     const palancaPrecioGen = dvGen?.palancas.find((l) => l.palanca === "precio");
     const bandaPrecio = palancaPrecioGen ? bandaEsfuerzoDescuento(Math.abs(palancaPrecioGen.deltaPct)) : null;
@@ -2050,14 +2103,26 @@ OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra
 
 TAMBIÉN en \`conviene.respuestaDirecta\`, si el hallazgo NO es estructural: cierra tu continuación con UNA mención breve de esa distancia ("estás a X% de arriendo de que esto sea un Comprar"). Una sola frase corta, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer. Si el hallazgo dice que ningún ajuste realista alcanza, NO menciones distancia en respuestaDirecta: no hay una que prometer y anunciarla sería falso.
 
-REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí${hallazgoDistanciaGen.valor.pieEsPalanca ? " (la tasa NO es palanca de este análisis; el pie SÍ lo es en este caso y viene con su cifra en la frase — úsala tal cual, es un NIVEL de pie, no un aumento porcentual)" : " (el pie y la tasa NO son palancas de este análisis)"}, NUNCA inventes un valor intermedio.${hallazgoDistanciaGen.valor.pieEsPalanca ? `
+REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase y en el bloque VÍAS. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí${
+  viaPieGen?.estado === "cruza"
+    ? " (la tasa NO es palanca de este análisis; el pie SÍ cruza en este caso y viene con su cifra en el bloque VÍAS — úsala tal cual, es un NIVEL de pie, no un aumento porcentual)"
+    : viaPieGen?.estado === "noCruza"
+      ? ` (la tasa NO es palanca de este análisis; el pie se probó hasta ${viaPieGen.topeExplorado}% y no cruza: puedes decirlo con ese tope, nunca como "no se probó")`
+      : viaPieGen?.estado === "noAplica"
+        ? ` (el pie y la tasa NO son palancas de este análisis: ${viaPieGen.razon})`
+        : hallazgoDistanciaGen.valor.pieEsPalanca
+          ? " (la tasa NO es palanca de este análisis; el pie SÍ lo es en este caso y viene con su cifra en la frase — úsala tal cual, es un NIVEL de pie, no un aumento porcentual)"
+          : " (el pie y la tasa NO son palancas de este análisis)"
+}, NUNCA inventes un valor intermedio.${pieCruzaGen ? `
 
 DOS PIES, DOS PREGUNTAS — no los mezcles ni los promedies:
 · La ESCALERA responde "¿qué me cuesta y qué me rinde según cuánto pie ponga?". Es un INTERCAMBIO —más pie alivia el mes y baja el retorno— y NO declara ningún óptimo. Ya no existe un "pie recomendado": si buscas uno, no está.
 · El pie de la DISTANCIA AL VEREDICTO (esta sección) responde "¿con qué pie el veredicto SUBE de banda?". Es el único que puedes presentar como "con este pie el veredicto pasa a X".
 Si el caso no trae pie de distancia, ese pie NO EXISTE: no lo interpoles desde la escalera ni lo inventes.
 
-HONESTIDAD DE DOBLE FILO DEL PIE (§1.12.3 — obligatoria al recomendarlo): "más pie mejora el flujo, pero también significa poner más plata tuya para que el mismo negocio se vea mejor — tapa el síntoma, no convierte una mala compra en buena". El pie sano nunca se presenta como mérito de la propiedad. (Con pie 0 rige la doctrina ## 5.bis.)` : ""}${hallazgoDistanciaGen.valor.pieExcluidoPorBono ? `
+HONESTIDAD DE DOBLE FILO DEL PIE (§1.12.3 — obligatoria al recomendarlo): "más pie mejora el flujo, pero también significa poner más plata tuya para que el mismo negocio se vea mejor — tapa el síntoma, no convierte una mala compra en buena". El pie sano nunca se presenta como mérito de la propiedad. (Con pie 0 rige la doctrina ## 5.bis.)` : ""}${pieYaCumpleCruzaGen ? `
+
+PIE QUE YA CUMPLE (${fmtPieGen(pieYaCumpleCruzaGen.actual)}) Y AUN ASÍ CRUZA: nómbralo como INTERCAMBIO, nunca como recomendación ni como "la vía". Si hay otra vía que cruza (precio, arriendo, plazo), esa es la palanca del titular y el pie va después, con este marco. Ejemplo (adáptalo, no lo copies): "Con ${fmtPieGen(pieYaCumpleCruzaGen.objetivo)} de pie el mes cierra, pero son ${fmtCLP(pieYaCumpleCruzaGen.extraCLP)} más el día 1: es un intercambio, no un consejo."` : ""}${hallazgoDistanciaGen.valor.pieExcluidoPorBono ? `
 El pie de este caso lo cubre un bono de la inmobiliaria: NO ofrezcas subir el pie como vía — desarma la compra que se está evaluando. Las vías son las que trae la frase.` : ""}${bandaPrecio ? `
 
 BANDA DE ESFUERZO del descuento de la palanca precio (§1.12.1 — dato del motor; nárrala con este lenguaje, NUNCA la reclasifiques): ${bandaPrecio.lectura}.` : ""}${arriendoEsApuesta ? `
@@ -2339,6 +2404,17 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         permitidos.push(Math.round(l.objetivo), Math.abs(l.deltaPct));
       }
       if (vD.deltaMinimoFueraDeTope) permitidos.push(Math.abs(vD.deltaMinimoFueraDeTope.deltaPct));
+      // Goal "cuatro palancas siempre": los topes explorados (30/15 de arriendo y
+      // precio, 30 años de plazo, 30% de pie), el mínimo fuera de tope y el pie
+      // actual también son cifras legítimas de brecha ("ni con pie 30%", "ya cumples
+      // con 20%"). Sin esto el monitor gritaba sobre prosa correcta.
+      for (const v of vD.vias ?? []) {
+        if (v.estado === "noCruza") {
+          permitidos.push(v.topeExplorado);
+          if (v.deltaMinimoPct != null) permitidos.push(Math.abs(v.deltaMinimoPct));
+        }
+        if (v.palanca === "pie" || v.palanca === "plazo") permitidos.push(Math.round(v.actual));
+      }
       // Afirma una brecha de banda (no un umbral de caja/retorno/mercado).
       const AFIRMA_BRECHA =
         /(veredicto|cambi\w* de conclusión|otra banda|llegu\w* a (COMPRAR|AJUSTA)|llegara a (COMPRAR|AJUSTA)|pas\w* a (COMPRAR|AJUSTA)|sub\w* a (COMPRAR|AJUSTA))/i;
