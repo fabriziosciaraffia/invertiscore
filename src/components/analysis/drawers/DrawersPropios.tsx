@@ -639,7 +639,9 @@ function derivarSensibilidad(hallazgo: HallazgoSensibilidad, results: FullAnalys
     const finBase = arribaX ? pos(arribaX) : 100;
     zonas.push({ k: base, pct: finBase - pos(piso), tono: tonoDe(base) });
     if (arribaX && objetivoArriba) zonas.push({ k: objetivoArriba, pct: 100 - finBase, tono: tonoDe(objetivoArriba) });
-    bordes.push({ pos: pos(piso), delta: `−${pctStr(v.marginPct)}`, v: pisoStr, k: `y cae a ${nuevo}`, dir: "abajo" });
+    // Formato único tira↔cuerpo (editorial T3): entero sin decimal, coma si no.
+    const margenStr = Number.isInteger(round1(v.marginPct)) ? `${Math.round(v.marginPct)}%` : pctStr(v.marginPct);
+    bordes.push({ pos: pos(piso), delta: `−${margenStr}`, v: pisoStr, k: `y cae a ${nuevo}`, dir: "abajo" });
     if (arribaX && objetivoArriba) {
       bordes.push({
         pos: pos(arribaX),

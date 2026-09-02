@@ -372,7 +372,7 @@ export function SubjectCardGrid({
             tono="paper"
             eyebrow="La inversión"
             titulo="Cómo funciona este departamento como inversión"
-            intent="Cómo funciona este departamento como inversión, paso a paso: lo que entra, lo que sale, lo que queda y lo que crece."
+            intent="Paso a paso: lo que entra, lo que sale, lo que queda y lo que crece."
           >
           <MarcaSeccion seccion="piramide" tipo="ltr" accessLevel={accessLevel} />
           {ctxDrawer && (
