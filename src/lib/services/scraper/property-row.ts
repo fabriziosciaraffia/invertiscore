@@ -53,9 +53,12 @@ export function propertyToRow(prop: ScrapedProperty) {
 
 export type FilaScraped = ReturnType<typeof propertyToRow>;
 
+/** Fila para upsert: la forma base, parcial, más columnas extra (p.ej. seen_pass_id). */
+export type FilaUpsert = Partial<FilaScraped> & Record<string, unknown>;
+
 /** Quita lat/lng/direccion cuando vienen null, para que el upsert no los toque. */
-export function filaSinPisarCoords(row: FilaScraped): Partial<FilaScraped> {
-  const out: Partial<FilaScraped> = { ...row };
+export function filaSinPisarCoords<T extends FilaUpsert>(row: T): T {
+  const out = { ...row };
   if (out.lat == null || out.lng == null) {
     delete out.lat;
     delete out.lng;
@@ -67,16 +70,29 @@ export function filaSinPisarCoords(row: FilaScraped): Partial<FilaScraped> {
 /** Tamaño de lote por upsert (mismo criterio que scrape-unidades-nuevas). */
 export const LOTE_UPSERT = 500;
 
+/** Milisegundos de un timestamp de Postgres sin zona (PostgREST lo entrega sin Z). */
+function msDe(ts: unknown): number {
+  const s = String(ts ?? "");
+  return Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
+}
+
 /**
  * Upsert por lotes, agrupando por forma de fila. Devuelve cuántas filas entraron
  * y los errores (uno por lote fallido); nunca lanza.
+ *
+ * `contarNuevasDesde` (ISO): además cuenta cuántas de las filas escritas NO
+ * existían antes de ese instante. El upsert no manda `created_at`, así que en
+ * las existentes conserva el valor viejo y en las nuevas queda el default
+ * now(): pedir `created_at` de vuelta y compararlo distingue las dos sin una
+ * query previa por id (600 URLs no caben en un `in` por GET).
  */
 export async function upsertSinPisarCoords(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
-  rows: Partial<FilaScraped>[],
-): Promise<{ escritas: number; errores: string[] }> {
-  const porForma = new Map<string, Partial<FilaScraped>[]>();
+  rows: FilaUpsert[],
+  opts: { contarNuevasDesde?: string } = {},
+): Promise<{ escritas: number; nuevas: number; errores: string[] }> {
+  const porForma = new Map<string, FilaUpsert[]>();
   for (const r of rows) {
     const forma = Object.keys(r).sort().join(",");
     const lista = porForma.get(forma) ?? [];
@@ -84,16 +100,23 @@ export async function upsertSinPisarCoords(
     porForma.set(forma, lista);
   }
   let escritas = 0;
+  let nuevas = 0;
   const errores: string[] = [];
+  const desdeMs = opts.contarNuevasDesde ? Date.parse(opts.contarNuevasDesde) : null;
   for (const grupo of Array.from(porForma.values())) {
     for (let i = 0; i < grupo.length; i += LOTE_UPSERT) {
       const chunk = grupo.slice(i, i + LOTE_UPSERT);
-      const { error } = await supabase
-        .from("scraped_properties")
-        .upsert(chunk, { onConflict: "source,source_id" });
-      if (error) errores.push(`upsert (${chunk.length} filas): ${error.message}`);
-      else escritas += chunk.length;
+      const q = supabase.from("scraped_properties").upsert(chunk, { onConflict: "source,source_id" });
+      const { data, error } = desdeMs !== null ? await q.select("created_at") : await q;
+      if (error) {
+        errores.push(`upsert (${chunk.length} filas): ${error.message}`);
+        continue;
+      }
+      escritas += chunk.length;
+      if (desdeMs !== null && Array.isArray(data)) {
+        for (const d of data as Array<{ created_at?: unknown }>) if (msDe(d.created_at) >= desdeMs) nuevas++;
+      }
     }
   }
-  return { escritas, errores };
+  return { escritas, nuevas, errores };
 }

@@ -263,10 +263,13 @@ export async function fetchMapPaginado(opts: {
   desdePagina?: number;
   maxPaginas?: number;
   pausaMs?: number;
+  /** Reintentos por página cuando la fuente no responde 200 (espera 3 s entre uno y otro). */
+  reintentos?: number;
   onPagina?: (p: PaginaMapa) => Promise<void> | void;
 }): Promise<ResultadoMapaPaginado> {
   const viewport = opts.viewport ?? VIEWPORT_GRAN_SANTIAGO;
   const pausaMs = opts.pausaMs ?? 1000;
+  const reintentos = opts.reintentos ?? 2;
   const operacion = opts.type === "arriendo" ? 2 : 1;
   const errors: string[] = [];
   const properties: ScrapedProperty[] = [];
@@ -287,9 +290,14 @@ export async function fetchMapPaginado(opts: {
   let paginas = 0;
   let pagina = Math.max(1, opts.desdePagina ?? 1);
   for (;;) {
-    const raw = await fetchMapRaw("santiago", operacion, viewport, cookies, token, opts.estado, pagina, GETPROPS_MAX_POR_PAGINA);
+    let raw: { propiedades: unknown[]; total: number } | null = null;
+    for (let intento = 0; intento <= reintentos; intento++) {
+      raw = await fetchMapRaw("santiago", operacion, viewport, cookies, token, opts.estado, pagina, GETPROPS_MAX_POR_PAGINA);
+      if (raw) break;
+      if (intento < reintentos) await new Promise((r) => setTimeout(r, 3000));
+    }
     if (!raw) {
-      errors.push(`Map p${pagina}: sin respuesta`);
+      errors.push(`Map p${pagina}: sin respuesta tras ${reintentos + 1} intentos`);
       break;
     }
     total = raw.total;
