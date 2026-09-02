@@ -111,7 +111,15 @@ export function HeroLTR({
       ? {
           key: "distanciaVeredicto" as const,
           k: "Lo que te separa del veredicto de arriba",
-          l: "Franco probó cuatro ajustes que mueven el veredicto.",
+          // Cuántos de los cuatro cruzan, leído de `vias` (goal "cuatro palancas
+          // siempre"). Sin `vias` (filas viejas) queda la línea genérica.
+          l: (() => {
+            const vias = distanciaRow.valor.vias;
+            if (!vias || vias.length === 0) return "Franco probó cuatro ajustes que mueven el veredicto.";
+            const n = vias.filter((v) => v.estado === "cruza").length;
+            const cuantos = n === 0 ? "Ninguno mueve" : n === 1 ? "Uno mueve" : n === 2 ? "Dos mueven" : n === 3 ? "Tres mueven" : "Los cuatro mueven";
+            return `Franco probó cuatro ajustes. ${cuantos} el veredicto.`;
+          })(),
           btn: "Ver ajustes",
           // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo
           // (DrawerDistanciaLtr), que sabe cuántas vías cruzan.
