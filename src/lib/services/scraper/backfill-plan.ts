@@ -35,6 +35,15 @@ export interface EstadoOperacion {
   terminadoEn: string | null;
 }
 
+export interface DesactivacionPase {
+  en: string;
+  pase: string;
+  /** Filas que pasaron a is_active = false. */
+  filas: number;
+  /** Activas del universo (toctoc, usado + arriendo) antes de desactivar. */
+  activasAntes: number;
+}
+
 export interface CheckpointBackfill {
   pase: string;
   iniciadoEn: string;
@@ -42,6 +51,8 @@ export interface CheckpointBackfill {
   operaciones: Partial<Record<OperacionBackfill, EstadoOperacion>>;
   /** Errores acumulados del pase (upserts fallidos, páginas sin respuesta). */
   errores: string[];
+  /** Presente cuando el pase completo ya desactivó lo que no vio (una sola vez por pase). */
+  desactivacion?: DesactivacionPase | null;
 }
 
 export interface Tramo {
@@ -92,10 +103,78 @@ export function parsearCheckpoint(value: string | null | undefined): CheckpointB
       actualizadoEn: typeof cp.actualizadoEn === "string" ? cp.actualizadoEn : "",
       operaciones: cp.operaciones,
       errores: Array.isArray(cp.errores) ? cp.errores.map(String) : [],
+      desactivacion: cp.desactivacion && typeof cp.desactivacion === "object" ? cp.desactivacion : null,
     };
   } catch {
     return null;
   }
+}
+
+// ─── Desactivación (Fase C) ──────────────────────────────────────────────────
+//
+// Al cerrar un pase COMPLETO (las dos operaciones, cero errores) se desactiva
+// todo lo que el pase no vio: source = 'toctoc', universo usado + arriendo,
+// activas, con seen_pass_id DISTINTO del pase — incluidas las que tienen
+// seen_pass_id NULL (las escribió el pase diario y la fuente ya no las lista).
+// SIN filtro de comuna: el viewport trae también comunas fuera del roster y
+// esas filas se mantienen con la misma regla.
+//
+// `IS DISTINCT FROM`, no `<>`: en SQL `NULL <> 'x'` es NULL y dejaría vivas
+// para siempre las filas sin pase (misma trampa que el cron expire-grace). En
+// PostgREST se escribe como `or(seen_pass_id.is.null,seen_pass_id.neq.<pase>)`.
+//
+// Una segunda fuente futura tiene su propio pase y su propia desactivación: el
+// `source = 'toctoc'` es explícito a propósito.
+
+/**
+ * Builder de filtros de supabase-js (`eq`, `in`, `or`). Va como `any` a
+ * propósito: tiparlo con un genérico auto-referente sobre PostgrestFilterBuilder
+ * hace que tsc caiga en "type instantiation is excessively deep". Los tests lo
+ * ejercitan con un builder falso que registra las llamadas.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type QueryFiltrable = any;
+
+/** El id de pase viaja dentro de un filtro `or` de PostgREST: solo [A-Za-z0-9-]. */
+export function validarPaseId(pase: string): void {
+  if (!/^[A-Za-z0-9-]+$/.test(pase)) throw new Error(`pase inválido para filtro PostgREST: ${pase}`);
+}
+
+/** Universo que el pase mantiene: toctoc, venta usada + arriendo, activas. */
+export function aplicarFiltrosUniverso(q: QueryFiltrable): QueryFiltrable {
+  return q
+    .eq("source", "toctoc")
+    .in("type", [...OPERACIONES])
+    .or("condicion.is.null,condicion.eq.usado")
+    .eq("is_active", true);
+}
+
+/** Universo + "no vista por este pase" (seen_pass_id IS DISTINCT FROM pase). */
+export function aplicarFiltrosDesactivacion(q: QueryFiltrable, pase: string): QueryFiltrable {
+  validarPaseId(pase);
+  return aplicarFiltrosUniverso(q).or(`seen_pass_id.is.null,seen_pass_id.neq.${pase}`);
+}
+
+/**
+ * Salvaguarda de tamaño: un pase que escribió MENOS de esta fracción de las
+ * activas actuales no desactiva nada. Un pase parcial ya no llega acá (exige
+ * completo y sin errores); esto cubre a la fuente devolviendo un universo
+ * recortado con status 200. Medido 02-sep-2026: el primer pase escribe ~35 mil
+ * sobre ~52 mil activas (0,67); los semanales rondan 0,95.
+ */
+export const UMBRAL_PASE_MINIMO = 0.5;
+
+export function debeDesactivar(opts: { escritasPase: number; activasAntes: number }): { ok: boolean; motivo: string } {
+  const { escritasPase, activasAntes } = opts;
+  if (activasAntes === 0) return { ok: true, motivo: "no hay activas que desactivar" };
+  const razon = escritasPase / activasAntes;
+  if (razon < UMBRAL_PASE_MINIMO) {
+    return {
+      ok: false,
+      motivo: `pase sospechosamente chico: escribió ${escritasPase} sobre ${activasAntes} activas (${razon.toFixed(2)} < ${UMBRAL_PASE_MINIMO})`,
+    };
+  }
+  return { ok: true, motivo: `escribió ${escritasPase} sobre ${activasAntes} activas (${razon.toFixed(2)})` };
 }
 
 /**

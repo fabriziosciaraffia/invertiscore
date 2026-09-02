@@ -13,6 +13,10 @@
       "schedule": "0 14 * * *"
     },
     {
+      "path": "/api/data/backfill-toctoc",
+      "schedule": "0 3 * * 1"
+    },
+    {
       "path": "/api/data/update-market",
       "schedule": "0 10 * * *"
     },

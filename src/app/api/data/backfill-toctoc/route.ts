@@ -10,15 +10,20 @@ import {
 import { propertyToRow, filaSinPisarCoords, upsertSinPisarCoords, type FilaUpsert } from "@/lib/services/scraper/property-row";
 import {
   CONFIG_KEY_CHECKPOINT,
+  OPERACIONES,
   parsearOperacion,
   parsearCheckpoint,
   planificar,
   estadoVacio,
   paseCompleto,
+  aplicarFiltrosUniverso,
+  aplicarFiltrosDesactivacion,
+  debeDesactivar,
   type CheckpointBackfill,
   type OperacionBackfill,
   type Tramo,
 } from "@/lib/services/scraper/backfill-plan";
+import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { respuestaCron } from "@/lib/cron-resultado";
 import { captureApiError } from "@/lib/observabilidad";
 
@@ -119,6 +124,56 @@ function detalleVacio(t: Tramo): DetalleTramo {
   return { operacion: t.operacion, desdePagina: t.desdePagina, total: null, paginas: 0, crudas: 0, parseadas: 0, escritas: 0, nuevas: 0, completa: false, ms: 0 };
 }
 
+// ─── Desactivación (Fase C) ──────────────────────────────────────────────────
+
+/** Activas del universo que el pase mantiene (toctoc, usado + arriendo). */
+async function contarActivas(sb: AnySupabase): Promise<number> {
+  const { count, error } = await aplicarFiltrosUniverso(
+    sb.from("scraped_properties").select("id", { count: "exact", head: true }),
+  );
+  if (error) throw new Error(`contar activas: ${error.message}`);
+  return count ?? 0;
+}
+
+/**
+ * Cuántas activas NO están en el conjunto que el pase vio. Pagina por id (el
+ * tope de PostgREST es PAGINA_POSTGREST filas por respuesta). Lo usa el dry-run,
+ * que no tiene pase con qué comparar en la tabla.
+ */
+async function contarNoVistas(sb: AnySupabase, vistas: Set<string>, tipos: OperacionBackfill[]): Promise<{ activas: number; noVistas: number }> {
+  let activas = 0;
+  let noVistas = 0;
+  for (let off = 0; ; off += PAGINA_POSTGREST) {
+    const { data, error } = await aplicarFiltrosUniverso(sb.from("scraped_properties").select("source_id,type"))
+      .in("type", tipos)
+      .order("id", { ascending: true })
+      .range(off, off + PAGINA_POSTGREST - 1);
+    if (error) throw new Error(`leer activas: ${error.message}`);
+    const rows = (data ?? []) as Array<{ source_id: string; type: string }>;
+    for (const r of rows) {
+      activas++;
+      if (!vistas.has(`toctoc|${r.source_id}`)) noVistas++;
+    }
+    if (rows.length < PAGINA_POSTGREST) break;
+  }
+  return { activas, noVistas };
+}
+
+/**
+ * Desactiva lo que el pase completo no vio. Solo la llama un pase COMPLETO
+ * (dos operaciones, cero errores) y una sola vez por pase; además exige que el
+ * pase haya escrito una fracción plausible de las activas (debeDesactivar).
+ * Devuelve el conteo o el motivo por el que no se hizo.
+ */
+async function desactivarNoVistas(sb: AnySupabase, pase: string): Promise<{ filas: number } | { omitida: string }> {
+  const { count, error } = await aplicarFiltrosDesactivacion(
+    sb.from("scraped_properties").update({ is_active: false }, { count: "exact" }),
+    pase,
+  );
+  if (error) return { omitida: `update falló: ${error.message}` };
+  return { filas: count ?? 0 };
+}
+
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
@@ -188,16 +243,32 @@ export async function GET(request: Request) {
       errores.push(...res.errors.map((e) => `${tramo.operacion}: ${e}`));
       d.ms = Date.now() - tTramo;
     }
+    // Qué desactivaría un pase completo con exactamente esto: activas del
+    // universo (de los tipos pedidos) que no aparecieron en el recorrido.
+    let desactivacion: { activas: number; desactivaria: number; motivo: string } | { error: string };
+    try {
+      const todasCompletas = detalles.every((d) => d.completa) && errores.length === 0;
+      const { activas, noVistas } = await contarNoVistas(sb, unicas, operaciones);
+      const decision = debeDesactivar({ escritasPase: unicas.size, activasAntes: activas });
+      desactivacion = {
+        activas,
+        desactivaria: todasCompletas && decision.ok ? noVistas : 0,
+        motivo: !todasCompletas ? `recorrido incompleto o con errores: no desactivaría (habría ${noVistas} no vistas)` : decision.ok ? decision.motivo : `${decision.motivo}: no desactivaría (habría ${noVistas} no vistas)`,
+      };
+    } catch (e) {
+      desactivacion = { error: String(e instanceof Error ? e.message : e) };
+    }
     const resumen = {
       dry: true,
       escribiria: unicas.size,
       tramos: detalles,
+      desactivacion,
       porComuna: Object.fromEntries(Object.entries(porComuna).sort((a, b) => b[1] - a[1])),
       errores,
-      nota: "sin checkpoint, sin seen_pass_id, sin upsert; el conteo no está capado",
+      nota: "sin checkpoint, sin seen_pass_id, sin upsert, sin desactivar; los conteos no están capados",
       timing: { total_ms: Date.now() - t0 },
     };
-    console.log(`[backfill-toctoc] dry ${JSON.stringify({ escribiria: resumen.escribiria, tramos: detalles, errores })}`);
+    console.log(`[backfill-toctoc] dry ${JSON.stringify({ escribiria: resumen.escribiria, tramos: detalles, desactivacion, errores })}`);
     return NextResponse.json(resumen, { status: errores.length ? 207 : 200 });
   }
 
@@ -283,6 +354,38 @@ export async function GET(request: Request) {
     }
   }
 
+  // ── Fase C: al cerrar un pase COMPLETO, desactivar lo que no vio ──
+  // Solo si las dos operaciones terminaron sin errores (paseCompleto) y una
+  // sola vez por pase (cp.desactivacion). Un pase parcial NUNCA desactiva.
+  let desactivacion: { filas: number; activasAntes: number; motivo: string } | { omitida: string } | null = null;
+  if (!cortado && paseCompleto(cp) && !cp.desactivacion) {
+    try {
+      const activasAntes = await contarActivas(sb);
+      const escritasPase = OPERACIONES.reduce((a, op) => a + (cp.operaciones[op]?.filas ?? 0), 0);
+      const decision = debeDesactivar({ escritasPase, activasAntes });
+      if (!decision.ok) {
+        desactivacion = { omitida: decision.motivo };
+        cp.errores.push(`desactivación omitida: ${decision.motivo}`);
+      } else {
+        const r = await desactivarNoVistas(sb, plan.pase);
+        if ("omitida" in r) {
+          desactivacion = r;
+          cp.errores.push(`desactivación: ${r.omitida}`);
+        } else {
+          desactivacion = { filas: r.filas, activasAntes, motivo: decision.motivo };
+          cp.desactivacion = { en: new Date().toISOString(), pase: plan.pase, filas: r.filas, activasAntes };
+        }
+      }
+      await guardarCheckpoint(sb, cp);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      desactivacion = { omitida: msg };
+      cp.errores.push(`desactivación: ${msg}`);
+      captureApiError(e, { ruta: RUTA, operacion: "desactivar", extra: { pase: plan.pase } });
+      await guardarCheckpoint(sb, cp).catch(() => undefined);
+    }
+  }
+
   const parseadas = detalles.reduce((a, d) => a + d.parseadas, 0);
   const escritas = detalles.reduce((a, d) => a + d.escritas, 0);
   const nuevas = detalles.reduce((a, d) => a + d.nuevas, 0);
@@ -296,7 +399,8 @@ export async function GET(request: Request) {
     actualizadas: escritas - nuevas,
     cortado,
     motivoCorte,
-    paseCompleto: paseCompleto(cp),
+    paseCompleto: paseCompleto(cp) || !!cp.desactivacion,
+    desactivacion,
     reanudarCon: cortado && pendiente ? `?operacion=${pendiente}&reanudar=1` : null,
     errores: cp.errores.slice(0, 20),
     timing: { total_ms: Date.now() - t0 },
