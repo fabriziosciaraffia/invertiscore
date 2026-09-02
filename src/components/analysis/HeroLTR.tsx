@@ -185,8 +185,16 @@ export function HeroLTR({
             <span className="min-w-0">{pregunta}</span>
           </h2>
           {/* A3: alineación izquierda (no justificado), ~65ch, 14-15px */}
+          {/* La prosa cuelga del TEXTO del titulo, no del borde del bloque: `ml-9` = 36px
+              = el ancho del chip `f.` (26px) mas el `gap-2.5` (10px) del h2. Asi el
+              unico elemento en el borde izquierdo es el isotipo, que queda de nota al
+              margen, y prosa y titulo comparten una sola linea vertical.
+              Antes arrancaba en x=138 con techo de 675px, o sea todo el aire sobrante
+              se apilaba a la derecha y el bloque se leia volcado al borde.
+              Solo desde `md`: bajo 768px no hay aire que repartir y 36px se comerian
+              el ancho de lectura. */}
           {respuesta ? (
-            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch]">
+            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch] md:ml-9">
               {renderPlumon(respuesta)}
               {fnote && <p className="doc-fnote">{fnote}</p>}
             </div>

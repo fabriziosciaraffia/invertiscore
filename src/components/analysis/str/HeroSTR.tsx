@@ -177,7 +177,15 @@ export function HeroSTR({
             </span>
             <span className="min-w-0">{pregunta}</span>
           </h2>
-          <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch]">
+          {/* La prosa cuelga del TEXTO del titulo, no del borde del bloque: `ml-9` = 36px
+              = el ancho del chip `f.` (26px) mas el `gap-2.5` (10px) del h2. Asi el
+              unico elemento en el borde izquierdo es el isotipo, que queda de nota al
+              margen, y prosa y titulo comparten una sola linea vertical.
+              Antes arrancaba en x=138 con techo de 675px, o sea todo el aire sobrante
+              se apilaba a la derecha y el bloque se leia volcado al borde.
+              Solo desde `md`: bajo 768px no hay aire que repartir y 36px se comerian
+              el ancho de lectura. */}
+          <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch] md:ml-9">
             {/* Goal F: la espera hereda ProgresoGeneracion (E.2) con etapas y
                 copy STR propios — skeleton didáctico en vez del mensaje fijo. */}
             {respuesta ? renderPlumon(respuesta) : aiLoading ? <ProgresoGeneracion etapas={ETAPAS_GENERACION_STR} copyTiempo={COPY_TIEMPO_STR} /> : null}
