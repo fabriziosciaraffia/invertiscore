@@ -50,6 +50,9 @@ export interface ArgsCierreRenta {
   sens: { marginPct: number; firme: boolean; veredictoBase: Veredicto; veredictoNuevo: Veredicto | null; corteAdverso: number; corteFavorable: number } | null;
   /** Palanca más barata de distancia_veredicto (null = estructural, ausente o base COMPRAR). */
   arriba: { palanca: "arriendo" | "precio" | "plazo" | "pie" | "adr" | "gestion"; deltaPct: number; objetivo: number; veredictoObjetivo: Veredicto } | null;
+  /** La vía del ARRIENDO con su estado (goal "cuatro palancas siempre"): con `noCruza`
+   *  la rama C2 cita el tope que el motor exploró; ausente en filas viejas. */
+  viaArriendo?: { estado: "cruza"; deltaPct: number } | { estado: "noCruza"; topeExplorado: number } | { estado: "noAplica" } | null;
 }
 
 export function cierreRenta(a: ArgsCierreRenta, f: FmtCierre): SegCierre[] {
@@ -99,9 +102,16 @@ export function cierreRenta(a: ArgsCierreRenta, f: FmtCierre): SegCierre[] {
       const pct = Math.abs(p.deltaPct);
       segs.push({ t: `Hacia arriba, subir a ${obj} por el arriendo pediría un +${f.pct1(pct)}%: ${pct <= 30 ? "posible solo si el mercado lo valida" : "fuera de lo que un ajuste puede dar"}.` });
     } else if (p.palanca === "precio") {
-      // Decisión (1) de Fabrizio: sin la cifra del arriendo hasta el goal de las
-      // cuatro palancas; nada de bisección en render.
-      segs.push({ t: "Hacia arriba no hay palanca en el arriendo; la del precio sí existe (capítulo III)." });
+      // Goal "cuatro palancas siempre": la cifra del arriendo es la que emite el motor
+      // (el tope explorado de la vía `noCruza`); nada de bisección en render. Sin
+      // `vias` (filas viejas) la frase queda sin cifra, como antes.
+      const va = a.viaArriendo;
+      segs.push({
+        t:
+          va && va.estado === "noCruza"
+            ? `Hacia arriba no hay palanca en el arriendo: subir a ${obj} pediría más de un +${va.topeExplorado}%, fuera de lo que un ajuste puede dar; la del precio sí existe (capítulo III).`
+            : "Hacia arriba no hay palanca en el arriendo; la del precio sí existe (capítulo III).",
+      });
     } else if (p.palanca === "plazo" || p.palanca === "pie") {
       segs.push({ t: "Hacia arriba la palanca no es el arriendo sino cómo lo pagas (capítulo III)." });
     }

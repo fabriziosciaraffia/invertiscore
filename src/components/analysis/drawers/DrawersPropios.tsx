@@ -26,6 +26,7 @@ import type {
   HallazgoEstructuraFinanciamiento,
   HallazgoEstructuraCostosStr,
   PalancaDistancia,
+  ViaDistancia,
 } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
@@ -527,6 +528,20 @@ function textoPalanca(p: PalancaDistancia, currency: Currency, valorUF: number) 
   }
 }
 
+/** Tope explorado de una vía que no cruza, en la unidad de la palanca. */
+function textoTope(via: Extract<ViaDistancia, { estado: "noCruza" }>): string {
+  switch (via.palanca) {
+    case "plazo":
+      return `hasta ${via.topeExplorado} años`;
+    case "pie":
+      return `hasta ${via.topeExplorado}%`;
+    case "precio":
+      return `hasta −${via.topeExplorado}%`;
+    default:
+      return `hasta +${via.topeExplorado}%`;
+  }
+}
+
 function construirPalancas(
   v: HallazgoDistanciaVeredicto["valor"],
   currency: Currency,
@@ -534,6 +549,57 @@ function construirPalancas(
   esStr: boolean,
 ): { filas: FilaPalanca[]; noProbadas: string[] } {
   const filas: FilaPalanca[] = [];
+  // ── GOAL "cuatro palancas siempre" (02-sep-2026): con `vias` la matriz trae las
+  // cuatro filas en el mismo orden siempre — las que cruzan arriba (orden de
+  // `palancas`: pie primero, luego por |delta|), después las que no cruzan con el
+  // tope explorado y su razón de catálogo, y al final las que no aplican. Sin cifra
+  // de "cuánto faltaría" salvo la que el motor emite (`deltaMinimoPct`, estructural).
+  if (v.vias && v.vias.length > 0) {
+    const razonAlcanza = v.palancas.length === 1 ? "la única que alcanza" : "alcanza por sí sola";
+    const RAZON_ALCANZA_PIE = "no depende del vendedor, depende de tu liquidez";
+    for (const p of v.palancas) {
+      const t = textoPalanca(p, currency, valorUF);
+      filas.push({
+        nombre: NOMBRE_PALANCA[p.palanca] ?? p.palanca,
+        delta: t.delta,
+        alcanza: true,
+        origen: t.origen,
+        destino: t.destino,
+        razon: p.palanca === "pie" ? RAZON_ALCANZA_PIE : razonAlcanza,
+        wash: "warn",
+      });
+    }
+    for (const via of v.vias.filter((x): x is Extract<ViaDistancia, { estado: "noCruza" }> => x.estado === "noCruza")) {
+      const dm = via.deltaMinimoPct;
+      // Las palancas de NIVEL (pie, plazo) muestran el tramo explorado en la misma
+      // posición donde el precio muestra "$… → $…" (editorial de Fabrizio, 02-sep).
+      const tramo =
+        via.palanca === "pie"
+          ? { origen: `${Number.isInteger(via.actual) ? via.actual : pctStr(via.actual).replace("%", "")}%`, destino: `${via.topeExplorado}%` }
+          : via.palanca === "plazo"
+            ? { origen: `${Math.round(via.actual)} años`, destino: `${via.topeExplorado} años` }
+            : {};
+      filas.push({
+        nombre: NOMBRE_PALANCA[via.palanca] ?? via.palanca,
+        delta: dm != null ? `${dm < 0 ? "−" : "+"}${pctStr(Math.abs(dm))}` : textoTope(via),
+        alcanza: false,
+        ...tramo,
+        razon: dm != null ? `lo mínimo que cruza, y queda fuera de lo razonable (probado ${textoTope(via)})` : via.razon,
+        atenuada: true,
+      });
+    }
+    for (const via of v.vias.filter((x): x is Extract<ViaDistancia, { estado: "noAplica" }> => x.estado === "noAplica")) {
+      filas.push({
+        nombre: NOMBRE_PALANCA[via.palanca] ?? via.palanca,
+        delta: "no aplica",
+        alcanza: false,
+        razon: via.razon,
+        atenuada: true,
+        noAplica: true,
+      });
+    }
+    return { filas, noProbadas: [] };
+  }
   if (v.esEstructural) {
     const d = v.deltaMinimoFueraDeTope;
     // Sin delta mínimo (5 filas del parque) NO hay matriz: el caller cae a prosa.
@@ -769,8 +835,8 @@ export function DrawerDistanciaLtr({
   const objetivo = v.veredictoObjetivo;
   const { filas, noProbadas } = construirPalancas(v, currency, valorUF, false);
 
-  // ── ESTRUCTURAL SIN DELTA MÍNIMO ── no hay una sola magnitud real que dibujar
-  // (5 filas en todo el parque). La matriz no se inventa: queda la prosa.
+  // ── ESTRUCTURAL SIN DELTA MÍNIMO (filas sin `vias`) ── no hay una sola magnitud
+  // real que dibujar. La matriz no se inventa: queda la prosa.
   if (v.esEstructural && filas.length === 0) {
     return (
       <div>
@@ -790,12 +856,22 @@ export function DrawerDistanciaLtr({
   return (
     <div>
       <VProsa>
-        {v.esEstructural
-          ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: probamos las palancas una por una, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
-          : `Tu veredicto es ${base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`}
+        {v.vias
+          ? `Franco probó cuatro ajustes, uno a la vez y con el resto fijo. ${
+              v.palancas.length === 0
+                ? `Ninguna cruza a ${objetivo}: cada una dice hasta dónde se probó.`
+                : v.palancas.length === 1
+                  ? `Una cruza a ${objetivo} por su cuenta; las demás dicen hasta dónde se probaron.`
+                  : v.palancas.length === 4
+                    ? `Las cuatro cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`
+                    : `${v.palancas.length === 2 ? "Dos" : "Tres"} cruzan a ${objetivo}, cada una por su cuenta; las demás dicen hasta dónde se probaron.`
+            }`
+          : v.esEstructural
+            ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: probamos las palancas una por una, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
+            : `Tu veredicto es ${base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`}
       </VProsa>
 
-      {v.pieExcluidoPorBono && (
+      {v.pieExcluidoPorBono && !v.vias && (
         <VProsa>
           El pie no aparece entre las vías porque lo cubre la inmobiliaria: subirlo no es una palanca, es
           deshacer el trato que estás evaluando. Con el pie cubierto, el precio se mira con más dureza,
@@ -807,11 +883,13 @@ export function DrawerDistanciaLtr({
         <Palancas
           filas={filas}
           pie={
-            v.esEstructural
-              ? "Es la vía menos exigente de todas las que probamos, y aun así queda fuera de rango. Las demás piden más."
-              : noProbadas.length > 0
-                ? `Probamos también ${noProbadas.join(", ")}: ninguna cruza dentro de lo razonable.`
-                : undefined
+            v.vias
+              ? undefined
+              : v.esEstructural
+                ? "Es la vía menos exigente de todas las que probamos, y aun así queda fuera de rango. Las demás piden más."
+                : noProbadas.length > 0
+                  ? `Probamos también ${noProbadas.join(", ")}: ninguna cruza dentro de lo razonable.`
+                  : undefined
           }
         />
       </VViz>

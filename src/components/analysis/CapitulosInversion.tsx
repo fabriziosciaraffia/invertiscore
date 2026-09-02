@@ -200,6 +200,15 @@ export function CapitulosInversion({
           dist && !dist.valor.esEstructural && dist.valor.palancaMasBarata
             ? { palanca: dist.valor.palancaMasBarata.palanca, deltaPct: dist.valor.palancaMasBarata.deltaPct, objetivo: dist.valor.palancaMasBarata.objetivo, veredictoObjetivo: dist.valor.veredictoObjetivo }
             : null;
+        const viaArr = dist?.valor.vias?.find((x) => x.palanca === "arriendo") ?? null;
+        const viaArriendo =
+          viaArr?.estado === "cruza"
+            ? { estado: "cruza" as const, deltaPct: viaArr.deltaPct }
+            : viaArr?.estado === "noCruza"
+              ? { estado: "noCruza" as const, topeExplorado: viaArr.topeExplorado }
+              : viaArr?.estado === "noAplica"
+                ? { estado: "noAplica" as const }
+                : null;
         const segs = cierreRenta(
           {
             arriendo,
@@ -210,6 +219,7 @@ export function CapitulosInversion({
               ? { marginPct: sens.valor.marginPct, firme: sens.valor.firme, veredictoBase: sens.valor.veredictoBase, veredictoNuevo: sens.valor.veredictoNuevo, corteAdverso: sens.valor.corteAdverso, corteFavorable: sens.valor.corteFavorable }
               : null,
             arriba,
+            viaArriendo,
           },
           f,
         );
@@ -301,6 +311,8 @@ export function CapitulosInversion({
       ? { objetivo: palancaDist.objetivo, deltaPct: palancaDist.deltaPct, veredicto: dist.valor.veredictoObjetivo }
       : null;
   const objetivoPrecioUF = palancaPrecio ? palancaPrecio.objetivo : null;
+  const viaPrecio = dist?.valor.vias?.find((x) => x.palanca === "precio") ?? null;
+  const precioNoCruza = !palancaPrecio && viaPrecio?.estado === "noCruza" ? viaPrecio : null;
   const tasaPct = Number(inputData.tasaInteres) || 0;
   const plazo = Number(inputData.plazoCredito) || 0;
   const piePct = Number(inputData.piePct) || 0;
@@ -308,7 +320,11 @@ export function CapitulosInversion({
     `precio UF ${Math.round(inputData.precio).toLocaleString("es-CL")}`,
     `pie ${Number.isInteger(piePct) ? piePct : pct1(piePct)}%`,
     plazo > 0 ? `${plazo} años al ${pct1(tasaPct)}%` : "sin crédito",
-    objetivoPrecioUF && palancaPrecio ? `cierra en ${capVer(palancaPrecio.veredicto)} bajo UF ${Math.round(objetivoPrecioUF).toLocaleString("es-CL")}` : "",
+    objetivoPrecioUF && palancaPrecio
+      ? `cierra en ${capVer(palancaPrecio.veredicto)} bajo UF ${Math.round(objetivoPrecioUF).toLocaleString("es-CL")}`
+      : precioNoCruza && dist
+        ? `ni con −${precioNoCruza.topeExplorado}% de precio sube a ${capVer(dist.valor.veredictoObjetivo)}`
+        : "",
   ]
     .filter(Boolean)
     .join(" · ");

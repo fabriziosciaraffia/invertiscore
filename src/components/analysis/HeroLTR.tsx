@@ -111,9 +111,11 @@ export function HeroLTR({
       ? {
           key: "distanciaVeredicto" as const,
           k: "Lo que te separa del veredicto de arriba",
-          l: "Franco probó distintos ajustes que mueven el veredicto.",
+          l: "Franco probó cuatro ajustes que mueven el veredicto.",
           btn: "Ver ajustes",
-          sub: "Franco probó los ajustes uno a la vez, con el resto de los supuestos fijos, hasta donde deja de ser un ajuste y pasa a ser otro departamento.",
+          // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo
+          // (DrawerDistanciaLtr), que sabe cuántas vías cruzan.
+          sub: undefined,
           cuerpo: <DrawerDistanciaLtr hallazgo={distanciaRow} currency={currency} valorUF={valorUF} />,
         }
       : sensibilidadRow && results

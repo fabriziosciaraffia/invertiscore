@@ -314,6 +314,10 @@ export type FilaPalanca = {
   /** Traducción de la jerga bajo el nombre (fase42 D-15c): "cuántas noches del
    *  mes se llenan". Determinista del caller, nunca IA. */
   glosa?: string;
+  /** Goal "cuatro palancas siempre": la vía explorada que no cruza (o no aplica) va
+   *  abajo y atenuada, con su razón en una línea. `"–"` en el veredicto = no aplica. */
+  atenuada?: boolean;
+  noAplica?: boolean;
 };
 
 /** Matriz de palancas: una fila por palanca, con delta, veredicto y magnitudes
@@ -323,13 +327,13 @@ export function Palancas({ filas, pie }: { filas: FilaPalanca[]; pie?: ReactNode
   return (
     <div className="pal">
       {filas.map((f, i) => (
-        <div key={i} className={`pal-row${f.alcanza ? " si" : ""}${f.wash ? ` wash-${f.wash}` : ""}`}>
+        <div key={i} className={`pal-row${f.alcanza ? " si" : ""}${f.wash ? ` wash-${f.wash}` : ""}${f.atenuada ? " off" : ""}`}>
           <div className="pal-name">
             {f.nombre}
             <span className={`pal-delta ${f.alcanza ? "si" : "no"}`}>{f.delta}</span>
             {f.glosa && <small className="pal-glosa">{f.glosa}</small>}
           </div>
-          <div className={`pal-verdict ${f.alcanza ? "si" : "no"}`}>{f.alcanza ? "✓" : "✕"}</div>
+          <div className={`pal-verdict ${f.alcanza ? "si" : "no"}`}>{f.alcanza ? "✓" : f.noAplica ? "–" : "✕"}</div>
           {(f.origen || f.razon) && (
             <div className="pal-detail">
               {f.origen && (

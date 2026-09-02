@@ -366,6 +366,8 @@ export function TokensHallazgos() {
       .pal-row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;background:var(--doc-paper);padding:11px 13px}
       .pal-row.si{background:var(--doc-paper2)}
       .pal-glosa{flex-basis:100%;font-size:11px;font-weight:400;color:var(--doc-tx3);margin-top:1px}
+      .pal-row.off{opacity:.62}
+      .pal-row.off .pal-name{color:var(--doc-tx2)}
       .pal-row.wash-warn{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-warn) 7%,transparent),transparent 70%)}
       .pal-row.wash-good{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-good) 8%,transparent),transparent 72%)}
       .pal-name{font-size:13px;color:var(--doc-tx);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
