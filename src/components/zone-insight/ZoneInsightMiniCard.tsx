@@ -1,31 +1,140 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
-function countPOIs(data: ZoneInsightData | null): number {
-  if (!data) return 0;
-  return (
-    data.pois.metro.length +
-    data.pois.clinicas.length +
-    data.pois.parques.length +
-    data.pois.universidades.length +
-    data.pois.institutos.length +
-    data.pois.colegios.length +
-    data.pois.malls.length +
-    data.pois.negocios.length +
-    data.pois.trenes.length
-  );
+/**
+ * LA ZONA — sección del informe (contrato CONGELADO 02-sep-2026, T4).
+ *
+ * Un párrafo de síntesis (la IA de zona que ya existe) + tres celdas con nombre
+ * en fácil, cada una con la cifra de la zona y su comparación contra el sujeto:
+ *   · Precio del m² en la comuna    → tu depto: UF X · N% sobre/bajo
+ *   · Arriendo típico de esta zona  → tu arriendo: $X · percentil, dónde cae
+ *   · Valorización en 10 años       → Santiago: N% · tu proyección usa 3% anual
+ * Cierra con «Explorar →», que abre el drawer de zona (mapa, lugares, fuente).
+ *
+ * Reemplaza la card recesiva "Lo que no ves a simple vista". Misma degradación
+ * declarada: si la zona no cargó, se dice, y el enlace sigue vivo.
+ */
+
+const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
+
+/** Síntesis CORTA de la sección (ajuste de Fabrizio 02-sep): el titular del
+ *  zone_insight + las dos primeras oraciones del insight, ~40 palabras. La prosa
+ *  completa vive solo en el drawer. Si las dos oraciones pasan de 45 palabras,
+ *  queda una. Sin titular (insights viejos), solo las oraciones. */
+function pickSintesis(data: ZoneInsightData | null, currency: "CLP" | "UF"): { titular: string; texto: string } {
+  if (!data) return { titular: "", texto: "" };
+  const i = data.insight;
+  const clp = currency === "CLP";
+  const titular = ((clp ? i.headline_clp : i.headline_uf) || i.headline_clp || "").trim().replace(/[.:;]+$/, "");
+  const fuente = (clp ? i.narrative_clp : i.narrative_uf) || (clp ? i.preview_clp : i.preview_uf) || "";
+  let texto = primerasOraciones(fuente, 2);
+  if (palabras(texto) > 45) texto = primerasOraciones(fuente, 1);
+  return { titular, texto };
 }
 
-function pickPreview(data: ZoneInsightData | null, currency: "CLP" | "UF"): string {
-  if (!data) return "";
-  const i = data.insight;
-  const direct = currency === "CLP" ? i.preview_clp : i.preview_uf;
-  if (direct) return direct;
-  // Fallback for caches created before preview_* existed
-  const narrative = currency === "CLP" ? i.narrative_clp : i.narrative_uf;
-  if (!narrative) return "";
-  return narrative.slice(0, 140).trim() + (narrative.length > 140 ? "…" : "");
+const palabras = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
+
+/** Corta en el n-ésimo fin de oración (`. ? !` seguido de espacio o fin). Los
+ *  puntos de miles ($778.000) no cortan porque no van seguidos de espacio. */
+function primerasOraciones(texto: string, n: number): string {
+  const t = texto.trim();
+  const re = /[.!?](?=\s|$)/g;
+  let k = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(t))) {
+    k += 1;
+    if (k === n) return t.slice(0, m.index + 1);
+  }
+  return t;
+}
+
+const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
+const fmtCLP = (n: number) => `$${Math.round(n).toLocaleString("es-CL")}`;
+const fmtUFn = (n: number) => `UF ${pct1(n)}`;
+const fmtMil = (n: number) => (n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1).replace(".", ",")} MM` : `$${Math.round(n / 1000)} mil`);
+
+/** Las tres celdas — compartidas por la sección y por el drawer (mismos datos, misma lectura). */
+export function ZonaCeldas({
+  stats,
+  currency,
+  valorUF,
+  arriendoUsuarioCLP,
+}: {
+  stats: ZoneInsightData["stats"];
+  currency: "CLP" | "UF";
+  valorUF: number;
+  arriendoUsuarioCLP: number;
+}) {
+  const m2 = stats.precioM2;
+  const of = stats.ofertaComparable;
+  const plus = stats.plusvaliaHistorica;
+  const fmtM2 = (uf: number) => (currency === "UF" ? fmtUFn(uf) : fmtCLP(uf * (valorUF || 0)));
+  const fmtArr = (clp: number) => (currency === "UF" ? `UF ${pct1(valorUF > 0 ? clp / valorUF : 0)}` : fmtMil(clp));
+
+  const celdaM2: { v: string; s: ReactNode } = m2
+    ? {
+        v: fmtM2(m2.medianaComuna),
+        s: (
+          <>
+            Tu depto: <b>{fmtM2(m2.tuDepto)}</b> · {pct1(Math.abs(m2.diffPct))}% {m2.diffPct >= 0 ? "sobre" : "bajo"} la mediana
+          </>
+        ),
+      }
+    : { v: "—", s: "Sin mediana comparable para esta comuna." };
+
+  const celdaArr: { v: string; s: ReactNode } = of
+    ? {
+        v: `${fmtArr(of.rangoArriendoMin)}–${fmtArr(of.rangoArriendoMax)}`,
+        s:
+          arriendoUsuarioCLP > 0 ? (
+            <>
+              Tu arriendo: <b>{fmtArr(arriendoUsuarioCLP)}</b> ·{" "}
+              {of.percentilTuDepto === 0
+                ? "bajo el rango"
+                : of.percentilTuDepto >= 80
+                  ? `P${of.percentilTuDepto}, en el tope del rango`
+                  : `P${of.percentilTuDepto}, en el rango medio`}{" "}
+              de {of.totalDeptos} avisos
+            </>
+          ) : (
+            <>{of.totalDeptos} avisos de arriendo activos</>
+          ),
+      }
+    : { v: "—", s: "Sin avisos de arriendo comparables." };
+
+  const mismaProy = Math.round(plus.anualizada * 10) === Math.round(PLUSVALIA_PROYECCION_ANUAL * 1000);
+  const celdaPlus: { v: string; s: ReactNode } = {
+    v: `${plus.valor}%`,
+    s: (
+      <>
+        Gran Santiago: <b>{plus.promedioSantiago}%</b> ·{" "}
+        {mismaProy ? `tu proyección usa el mismo ${PROY_PCT} anual` : `histórico ${pct1(plus.anualizada)}% al año; tu proyección usa ${PROY_PCT}`}
+      </>
+    ),
+  };
+
+  return (
+    <div className="zona-cells">
+      <div>
+        <div className="k">Precio del m² en la comuna</div>
+        <div className="v">{celdaM2.v}</div>
+        <div className="s">{celdaM2.s}</div>
+      </div>
+      <div>
+        <div className="k">Arriendo típico de esta zona</div>
+        <div className="v">{celdaArr.v}</div>
+        <div className="s">{celdaArr.s}</div>
+      </div>
+      <div>
+        <div className="k">Valorización en 10 años</div>
+        <div className="v">{celdaPlus.v}</div>
+        <div className="s">{celdaPlus.s}</div>
+      </div>
+    </div>
+  );
 }
 
 interface Props {
@@ -34,99 +143,47 @@ interface Props {
   error?: string | null;
   onClick: () => void;
   currency: "CLP" | "UF";
+  valorUF?: number;
+  arriendoUsuarioCLP?: number;
+  comuna?: string;
 }
 
-export function ZoneInsightMiniCard({ data, loading, error, onClick, currency }: Props) {
-  const totalPOIs = countPOIs(data);
-  // Degradación DECLARADA: si la zona no cargó (típico: dirección sin coordenadas),
-  // la card lo dice en vez de mostrar "0 lugares" + preview genérico. Sigue clickeable —
-  // el drawer amplía con ZoneErrorState + reintentar. Mismo lenguaje card↔drawer.
+export function ZoneInsightMiniCard({ data, loading, error, onClick, currency, valorUF = 0, arriendoUsuarioCLP = 0, comuna }: Props) {
   const hasError = !!error && !data;
-  // Ramifica por señal (D-D): coords/400 → atribuible a la dirección; transitorio → no.
   const esCoords = !!error && (/\b400\b/.test(error) || /coordenada/i.test(error));
-  const preview = hasError
+  const sint = pickSintesis(data, currency);
+  const sintesis = hasError
     ? esCoords
       ? "Zona no disponible para esta dirección."
       : "No pudimos cargar la zona ahora."
     : loading && !data
       ? "Analizando transporte, servicios y demanda de la zona…"
-      : pickPreview(data, currency) || "Explora el entorno del depto y los drivers de demanda.";
+      : sint.texto;
+  const titular = hasError || (loading && !data) ? "" : sint.titular;
+  const avisos = data?.stats.ofertaComparable?.totalDeptos ?? 0;
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={loading && !data}
-      className="franco-card-target w-full text-left transition-colors disabled:cursor-wait"
-      style={{
-        // Superficie recesiva (rediseño extras · D1): panel hundido bajo los
-        // hallazgos sólidos de la pirámide. Murió la franja 3px + el degradé;
-        // la seña es la omisión (sin acento, sin kicker de sección).
-        background: "color-mix(in srgb, var(--franco-text) 2.5%, transparent)",
-        border: "0.5px solid var(--franco-border)",
-        borderRadius: 16,
-        padding: "18px 20px",
-        boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--franco-text) 3%, transparent)",
-      }}
-    >
-      <div className="grid items-center gap-3.5 md:gap-4" style={{ gridTemplateColumns: "44px 1fr auto" }}>
-        {/* Icono: radar / círculos concéntricos */}
-        <div
-          className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-          style={{
-            background: "color-mix(in srgb, var(--ink-400) 10%, transparent)",
-            border: "1px solid color-mix(in srgb, var(--ink-400) 35%, transparent)",
-            color: "var(--ink-400)",
-          }}
-          aria-hidden="true"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="12" cy="12" r="9" />
-            <circle cx="12" cy="12" r="5" />
-            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
-          </svg>
+    <div className="zona-sec">
+      {(titular || sintesis) && (
+        <p className="v-prosa zona-sint">
+          {titular && <strong>{titular}.</strong>}
+          {titular && sintesis ? " " : ""}
+          {sintesis}
+        </p>
+      )}
+      {data && <ZonaCeldas stats={data.stats} currency={currency} valorUF={valorUF} arriendoUsuarioCLP={arriendoUsuarioCLP} />}
+      <div className="zona-foot">
+        <div className="v-fuente" style={{ margin: 0 }}>
+          {data
+            ? `Zone insight Franco${avisos ? ` · ${avisos} avisos de arriendo en ${comuna ?? "la comuna"}` : ""}`
+            : hasError
+              ? "Zone insight Franco"
+              : ""}
         </div>
-
-        {/* Body — sin kicker "06 · ZONA" (D5): la numeración muere */}
-        <div className="min-w-0 flex flex-col gap-1">
-          <h3 className="font-heading font-bold text-[15px] md:text-[16px] leading-[1.2] text-[var(--franco-text)] m-0">
-            Lo que no ves a simple vista
-          </h3>
-          <p
-            className="font-heading italic text-[12px] md:text-[12.5px] leading-[1.5] m-0 mt-0.5"
-            style={{
-              color: "color-mix(in srgb, var(--franco-text) 78%, transparent)",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {hasError || preview.startsWith("\"") ? preview : `"${preview}"`}
-          </p>
-        </div>
-
-        {/* Right stack */}
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <span
-            className="font-mono text-[9px] uppercase tracking-[1px] px-[7px] py-[3px] rounded"
-            style={{
-              background: "color-mix(in srgb, var(--ink-400) 15%, transparent)",
-              border: "0.5px solid color-mix(in srgb, var(--ink-400) 40%, transparent)",
-              color: "var(--ink-400)",
-              fontWeight: 500,
-            }}
-          >
-            {hasError || (loading && !data) ? "—" : `${totalPOIs} lugares`}
-          </span>
-          <span
-            className="font-mono text-[9px] uppercase tracking-[1.3px] hidden md:inline"
-            style={{ color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}
-          >
-            Explorar →
-          </span>
-        </div>
+        <button type="button" className="doc-lnk" onClick={onClick} disabled={loading && !data}>
+          Explorar →
+        </button>
       </div>
-    </button>
+    </div>
   );
 }

@@ -493,6 +493,9 @@ export function SubjectCardGrid({
                 error={zoneError}
                 onClick={() => setActiveDrawer("zona")}
                 currency={currency}
+                valorUF={valorUF}
+                arriendoUsuarioCLP={Number(inputData?.arriendo) || 0}
+                comuna={comunaPortada}
               />
             </SeccionInforme>
           )}

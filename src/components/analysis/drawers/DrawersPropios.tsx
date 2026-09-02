@@ -28,7 +28,6 @@ import type {
   PalancaDistancia,
 } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
-import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import { InfoTooltip } from "@/components/ui/tooltip";
@@ -53,8 +52,6 @@ import {
   ParBarras,
 } from "@/components/analysis/hallazgos/vocabulario";
 
-// Proyección estándar Franco a futuro, como texto ("3%") — desde la constante, nunca literal.
-const PROYECCION_FRANCO_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 
 // ── Formato (coma decimal chilena, UTF-8 directo) ──────────────────────────────
 type Currency = "CLP" | "UF";
@@ -454,10 +451,7 @@ export function DrawerTIRLtr({
           en la apuesta de valorización. Por eso el {pctStr(tirPct)} no es comparable pelado con un depósito UF.
         </Box>
       )}
-      <Note>
-        Montos en {currency} · togglean con el switch de la página · los tres motores salen del mismo
-        cálculo de la venta a 10 años, no se recalculan aparte.
-      </Note>
+      <Note>Motor Franco · escenario de venta a 10 años</Note>
     </div>
   );
 }
@@ -743,7 +737,7 @@ export function DrawerSensibilidadLtr({
         sino para saber con qué flujo real vas a vivir mes a mes.
       </VCierre>
 
-      <Note>Motor Franco · solo se mueve el arriendo; el resto de los supuestos queda fijo.</Note>
+      <Note>Motor Franco · reevaluación del veredicto sobre el arriendo</Note>
     </div>
   );
 }
@@ -764,8 +758,6 @@ export function DrawerDistanciaLtr({
   const base = v.veredictoBase;
   const objetivo = v.veredictoObjetivo;
   const { filas, noProbadas } = construirPalancas(v, currency, valorUF, false);
-  const tienePlazo = v.palancas.some((l) => l.palanca === "plazo");
-  const tienePie = v.palancas.some((l) => l.palanca === "pie");
 
   // ── ESTRUCTURAL SIN DELTA MÍNIMO ── no hay una sola magnitud real que dibujar
   // (5 filas en todo el parque). La matriz no se inventa: queda la prosa.
@@ -841,17 +833,7 @@ export function DrawerDistanciaLtr({
       </VCierre>
 
 
-      <Note>
-        {[
-          "Motor Franco · cada palanca probada por separado, con el resto de los supuestos fijos.",
-          tienePlazo ? "El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen." : null,
-          tienePie
-            ? "La tasa no entra acá: es condición del banco, no del depto."
-            : "El pie y la tasa no entran acá: son condiciones de tu bolsillo y del banco, no del depto.",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      </Note>
+      <Note>Motor Franco · palancas del veredicto, una a la vez</Note>
     </div>
   );
 }
@@ -1038,10 +1020,7 @@ export function DrawerPatrimonioLtr({
           : ` Y la deuda no se paga sola del todo: en los años de flujo negativo pusiste ${fmtCompact(bolsillo, currency, valorUF)} de tu bolsillo${mesesNegativos > 0 ? ` (unos ${fmtMoney(bolsilloMes, currency, valorUF)} al mes)` : ""}.`}
       </VCierre>
 
-      <Note>
-        Motor Franco · valor de venta a {aniosPlazo} años menos deuda remanente y comisión · la plusvalía se
-        detalla en su propio hallazgo.
-      </Note>
+      <Note>Motor Franco · escenario de venta a {aniosPlazo} años</Note>
     </div>
   );
 }
@@ -1327,8 +1306,7 @@ export function DrawerPlusvaliaLtr({
 
       <VFuente>
         {fuenteHist}
-        {tieneData ? ` · ${comunaLabel}` : ""} · referencia histórica, no garantía futura · la
-        proyección a futuro usa {PROYECCION_FRANCO_PCT} anual parejo
+        {tieneData ? ` · ${comunaLabel}` : ""}
       </VFuente>
     </div>
   );
@@ -1496,7 +1474,7 @@ export function DrawerFinanciamientoStr({
       )}
 
       {/* T1 — línea de fuente al pie del cuerpo, posición única del v12. */}
-      <Note>Motor Franco · tasa de mercado referencial a la fecha del análisis — actualización manual, no en tiempo real.</Note>
+      <Note>Tasa de referencia: promedio de mercado en UF · Motor Franco, actualización manual</Note>
     </div>
   );
 }
@@ -1576,10 +1554,7 @@ export function DrawerPrecioStr({
           : `Pagas sobre la referencia de mercado, así que acá sí hay espacio para negociar: cada peso que bajes del precio entra directo a tu patrimonio y mejora el flujo — menos crédito, menos cuota.`}
       </VCierre>
 
-      <Note>
-        {v.n > 0 ? `Mediana de ${v.n} avisos comparables de ${comuna}` : `Mediana de publicaciones de ${comuna}`},
-        ajustada a precio de cierre por un factor asumido. Es una estimación de referencia, no una tasación.
-      </Note>
+      <Note>{v.n > 0 ? `Mediana de ${v.n} avisos de venta en ${comuna}` : `Mediana de publicaciones de venta en ${comuna}`} · avisos, no transacciones</Note>
     </div>
   );
 }
@@ -1688,7 +1663,7 @@ export function DrawerTIRStr({
         diferencia de una renta larga sana, este retorno depende fuerte de un supuesto a futuro — vale entrarle
         con los ojos abiertos.
       </Box>
-      <Note>No repite el drawer de patrimonio: acá se explica el ritmo del retorno (por qué {pctStr(tirPct)} al año); allá, cuánto es tuyo al final.</Note>
+      <Note>Motor Franco · escenario de venta a 10 años</Note>
     </div>
   );
 }
@@ -1934,8 +1909,7 @@ export function DrawerPlusvaliaStr({
 
       <VFuente>
         {fuenteHist}
-        {tieneData ? ` · ${comunaLabel}` : ""} · referencia histórica, no garantía futura · la
-        proyección a futuro usa {PROYECCION_FRANCO_PCT} anual parejo
+        {tieneData ? ` · ${comunaLabel}` : ""}
       </VFuente>
     </div>
   );
@@ -2076,7 +2050,7 @@ export function DrawerEstructuraCostosStr({
           : ""}
       </VCierre>
 
-      <Note>Motor Franco · sobre {fmtMoney(bruto, currency, valorUF)} brutos al mes en el escenario base.</Note>
+      <Note>Motor Franco · escenario base</Note>
     </div>
   );
 }
@@ -2105,9 +2079,7 @@ export function DrawerDistanciaStr({
 
   const { filas, noProbadas } = construirPalancas(v, currency, valorUF, true);
   const tieneAdr = v.palancas.some((l) => l.palanca === "adr");
-  const tienePlazo = v.palancas.some((l) => l.palanca === "plazo");
   const tieneGestion = v.palancas.some((l) => l.palanca === "gestion");
-  const tienePie = v.palancas.some((l) => l.palanca === "pie");
   const primera = v.palancas[0]?.palanca;
 
   // ── ESTRUCTURAL SIN DELTA MÍNIMO ── ni una magnitud real que dibujar (2 filas STR
@@ -2203,22 +2175,7 @@ export function DrawerDistanciaStr({
         )}
       </VCierre>
 
-      <Note>
-        {[
-          "Motor Franco · cada palanca probada por separado, con el resto de los supuestos fijos.",
-          tienePlazo
-            ? "El plazo se muestra en tramos de 5 años porque es lo que los bancos ofrecen."
-            : null,
-          // La ocupación merece explicación propia: es la ausencia que un lector de renta
-          // corta va a notar primero.
-          "La ocupación no entra como vía: no la fijas tú —sale de tarifa, demanda y reseñas— y en el cálculo mueve exactamente lo mismo que la tarifa, así que aparecería dos veces con otro nombre.",
-          tienePie
-            ? "La tasa no entra acá: es condición del banco, no del departamento."
-            : "El pie y la tasa no entran acá: son condiciones de tu bolsillo y del banco, no del departamento.",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      </Note>
+      <Note>Motor Franco · palancas del veredicto, una a la vez</Note>
     </div>
   );
 }

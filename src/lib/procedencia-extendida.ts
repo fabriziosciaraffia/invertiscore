@@ -1,8 +1,8 @@
 // Procedencia extendida por tipo de hallazgo — builder determinístico (motor, NO IA).
 //
-// Devuelve 1-2 frases de MÉTODO: de dónde sale el número, con qué insumos y cuánta
-// confianza. NO re-narra el hallazgo (eso lo hace fraseCanonica) — aporta transparencia
-// de procedencia. Molde: el procedenciaTexto de capex, generalizado a los 6 tipos.
+// Devuelve la línea de FUENTE del hallazgo (fuente · fecha · alcance). Hasta T4 del
+// rediseño (02-sep-2026) devolvía 1-2 frases de método y confianza; eso se movió al
+// modal "Cómo se calcula" y acá queda solo la cita.
 // Voz: analysis-voice-franco §2.1 (tuteo chileno, sin engine-isms A11).
 //
 // DOS consumidores, mismo insumo (hallazgo.valor/.procedencia — disponible idéntico en
@@ -22,91 +22,66 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, nunca literal.
 const PROYECCION_FRANCO_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 
-// Formato — espejo de GenericFindingCard (coma decimal chilena, separador de miles punto).
-const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
-const intOrPct1 = (n: number) => (Number.isInteger(n) ? String(n) : pct1(n));
-const fmtCLP = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
-const fmtUF = (n: number) => "UF " + Math.round(n).toLocaleString("es-CL");
-const fmtMoneyFromCLP = (clp: number, currency: "CLP" | "UF", valorUF: number) =>
-  currency === "UF" ? fmtUF(valorUF > 0 ? clp / valorUF : 0) : fmtCLP(clp);
 
 /**
  * Procedencia extendida (método + insumos + confianza) para un hallazgo del motor.
  * @param currency / valorUF — solo los usan los tipos con monto (flujo, capex).
+ */
+/**
+ * Línea de FUENTE de un hallazgo — regla transversal del contrato CONGELADO
+ * (02-sep-2026, T4): la VFuente cita fuente, fecha y alcance. No cuenta el método
+ * ni la confianza — eso vive en el modal "Cómo se calcula". Máximo dos líneas.
+ * La consumen los drawers LTR y STR (mismo texto en las dos superficies) y la
+ * corona de la pirámide.
+ * @param currency / valorUF — conservados por firma; hoy ningún tipo los usa.
  */
 export function procedenciaExtendida(
   h: Hallazgo,
   currency: "CLP" | "UF",
   valorUF: number,
 ): string {
+  void currency;
+  void valorUF;
   switch (h.id) {
-    case "flujo_mensual": {
-      const v = h.valor;
-      // Mejora futura (Flag B): citar el monto de arriendo requiere agregarlo al `valor`
-      // del hallazgo (cambio de motor). Hoy la corona no recibe inputData, así que el
-      // texto queda a nivel método (cita el dividendo, no el arriendo).
-      const dividendo = fmtMoneyFromCLP(v.dividendoMensualCLP, currency, valorUF);
-      return `Sale de tus cifras declaradas, no de una estimación de mercado: al arriendo le restamos el dividendo de ${dividendo} y todos los gastos operativos —contribuciones, gastos comunes, vacancia y mantención—. Por eso la confianza es alta.`;
-    }
+    case "flujo_mensual":
+      return "Motor Franco · flujo mensual del análisis";
     case "cap_rate": {
       const v = h.valor;
-      const scope = v.scope === "comuna" ? "de la comuna" : "nacional";
-      // `fuente` es una cita de origen (a veces con su propio rango %); va como
-      // atribución final, no inline antes de capRefPct, para no chocar dos porcentajes.
-      return `El cap rate (${pct1(v.capRatePct)}%) es tu renta anual neta de gastos dividida por el precio. Lo comparamos contra un promedio de mercado ${scope} de referencia (${pct1(v.capRefPct)}%), no un dato en tiempo real. Fuente: ${v.fuente}.`;
+      const scope = v.scope === "comuna" ? "referencia de la comuna" : "referencia nacional";
+      return `${v.fuente} · ${scope}`;
     }
     case "sobreprecio": {
       const v = h.valor;
-      // El universo es la mitad de la procedencia: una mediana de usados no es
-      // comparable con un depto nuevo, y decir solo "de venta de la comuna" fue
-      // lo que dejó pasar esa comparación durante meses. Ausente ⇒ mediana mixta
-      // (snapshot pre-segmentación) y la frase se queda como estaba.
-      const universo = v.universo === "nuevo" ? "nuevos " : v.universo === "usado" ? "usados " : "";
-      return `Comparamos tu precio por m² (UF ${pct1(v.sujetoUfM2)}) contra la mediana de ${v.n} publicaciones de venta de departamentos ${universo}de la comuna (UF ${pct1(v.medianaComunaUfM2)}). Es una mediana de avisos ajustada a un precio de cierre estimado —una referencia, no una tasación—.`;
+      const universo = v.universo === "nuevo" ? " nuevos" : v.universo === "usado" ? " usados" : "";
+      const donde = v.comuna ? ` en ${v.comuna}` : " de la comuna";
+      return `Mediana de ${v.n} publicaciones de venta de departamentos${universo}${donde} · avisos, no transacciones`;
     }
     case "plusvalia": {
       const v = h.valor;
       if (v.tieneData) {
-        return `Es la apreciación real anualizada de la comuna entre 2014 y 2024 (${pct1(v.anualizadaPct)}%), comparada contra un umbral de referencia de ${pct1(v.refPct)}%. Es historia observada, no una proyección: el pasado no garantiza el futuro.`;
+        const fuente = v.fuente && !/umbral/i.test(v.fuente) ? v.fuente : "Arenas & Cayo, Tinsa, Propital, Activo Más";
+        return `${fuente} · 2014-2024`;
       }
-      return `La comuna no tiene serie histórica propia, así que usamos un umbral de apreciación real de referencia (${pct1(v.refPct)}%). Es un piso conservador, no una proyección de tu comuna.`;
+      return "Promedio histórico Gran Santiago 2014-2024 · la comuna no tiene serie propia";
     }
-    case "estructura_financiamiento": {
-      const v = h.valor;
-      // AUDITORÍA fase42 (2) — espejo del retiro hecho en la fuente del motor
-      // (estructura-financiamiento-hallazgo.ts, FASE 4.2): el pie NO se mide contra
-      // un óptimo (el 25% era convención sin fundamento); su efecto se muestra
-      // calculado nivel por nivel en la escalera. La tasa sí conserva referencia.
-      return `Miramos dos palancas de tu financiamiento: tu tasa (${pct1(v.tasaPct)}%) contra un promedio de mercado de referencia (${pct1(v.tasaMarketPct)}%), y tu pie (${intOrPct1(v.piePct)}%), cuyo efecto se muestra calculado nivel por nivel — no contra un óptimo fijo. La tasa de referencia se actualiza manualmente, no en tiempo real.`;
-    }
-    case "capex_puesta_a_punto": {
-      const v = h.valor;
+    case "estructura_financiamiento":
+      return "Tasa de referencia: promedio de mercado en UF · Motor Franco, actualización manual";
+    case "capex_puesta_a_punto":
       switch (h.procedencia.confianza) {
         case "alta":
-          return `Sale de la cotización que ingresaste, así que el monto es firme.`;
+          return "Cotización ingresada por ti";
         case "baja":
-          return `Estimación gruesa: no capturamos la antigüedad exacta, así que el monto es un orden de magnitud. Con una cotización real, se ajusta.`;
+          return "Estimación Motor Franco · sin antigüedad exacta";
         default:
-          return `Estimado según la antigüedad del depto (${v.antiguedadAnios} años) y su superficie, a unos UF ${pct1(v.ufM2)}/m². Con una cotización real, el número se ajusta.`;
+          return "Estimación Motor Franco · por antigüedad y superficie";
       }
-    }
-    case "tir": {
-      const v = h.valor;
-      return `La TIR es la rentabilidad anual de toda la operación: parte de tu inversión inicial (pie, gastos de cierre y puesta a punto), suma o resta tus aportes mensuales año a año, y cierra con la venta proyectada a 10 años neta del saldo del crédito y la comisión. La comparamos contra un mínimo de ${v.umbralPct}% —el piso bajo el cual una compra apalancada, hecha con crédito, rinde menos de lo que justifica su riesgo e iliquidez—, no contra un instrumento puntual.`;
-    }
-    case "sensibilidad": {
-      return `Este margen sale de reevaluar tu inversión bajando el arriendo declarado de a poco —en pasos de medio punto— hasta ver dónde el veredicto dejaría de sostenerse. El arriendo es el número más fácil de cargar optimista al simular, por eso lo estresamos a él y no al resto: si el veredicto aguanta una caída grande, la conclusión no depende de haber achuntado el arriendo al peso; si aguanta poco, confírmalo contra publicaciones reales de la zona antes de decidir.`;
-    }
-    case "patrimonio": {
-      const v = h.valor;
-      const aportes = v.incluyeCorretaje
-        ? "pie, gastos de cierre, corretaje de compra y los aportes mensuales que el arriendo no cubrió"
-        : "pie, gastos de cierre y los aportes mensuales que el arriendo no cubrió";
-      return `Es tu parte a 10 años si vendieras: el valor proyectado del depto menos el saldo del crédito y la comisión de venta, contra todo lo que pusiste (${aportes}). Integra la plusvalía proyectada —${PROYECCION_FRANCO_PCT} anual, la proyección estándar Franco— , lo que amortizas del crédito año a año y el flujo que fuiste inyectando; por eso puede ser favorable aunque el flujo mensual sea negativo, o quedarse corta aunque el depto se valorice. Es una proyección, no una promesa: cambia con la plusvalía real y el precio al que efectivamente vendas.`;
-    }
-    default: {
-      // Exhaustividad: si se agrega un tipo de hallazgo sin procedencia, no rompe el render.
+    case "tir":
+      return "Motor Franco · escenario de venta a 10 años";
+    case "sensibilidad":
+      return "Motor Franco · reevaluación del veredicto sobre el arriendo";
+    case "patrimonio":
+      return `Motor Franco · escenario de venta a 10 años · plusvalía proyectada ${PROYECCION_FRANCO_PCT} anual`;
+    default:
       return "";
-    }
   }
 }

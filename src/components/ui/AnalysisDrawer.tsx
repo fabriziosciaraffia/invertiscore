@@ -15,10 +15,8 @@ import type {
 import { calcFlujoDesglose, tirForPrice, calcDividendo } from "@/lib/analysis";
 import { metricaValorONull } from "@/lib/types";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
-import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, nunca literal.
-const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plumon";
 import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
@@ -54,10 +52,8 @@ import type {
   HallazgoPlusvalia,
 } from "@/lib/types";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
-import { ZoneStatsCards } from "@/components/zone-insight/ZoneStatsCards";
+import { ZonaCeldas } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { ZoneMap } from "@/components/zone-insight/ZoneMap";
-import { ZonePOIsList } from "@/components/zone-insight/ZonePOIsList";
-import { ZoneInsightAI } from "@/components/zone-insight/ZoneInsightAI";
 
 export type DrawerKey =
   | "costoMensual"
@@ -285,12 +281,9 @@ function DrawerCostoMensual({
 
       <VCierre titulo={data.cajaLabel || "Hazte esta pregunta:"}>{plumonInline(currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf)}</VCierre>
 
-      {/* #17 pasada tooltips — los SUPUESTOS del modelo salen del hover y quedan a
-          la vista: eran datos que cambian la lectura de dos filas del waterfall. */}
-      <VFuente>
-        Supuestos del modelo: mantención 0,3–1,5% anual del precio según antigüedad · recambio ½ mes
-        de arriendo cada 2 años, prorrateado.
-      </VFuente>
+      {/* T4 (contrato CONGELADO): la fuente cita, no explica. Los supuestos del
+          modelo (mantención por antigüedad, recambio) viven en "Cómo se calcula". */}
+      <VFuente>Motor Franco · flujo mensual del análisis</VFuente>
     </div>
   );
 }
@@ -735,10 +728,7 @@ function DrawerNegociacion({
         );
       })()}
 
-      <VFuente>
-        Compara contra un valor estimado de mercado (mediana de avisos ajustada a precio de cierre
-        estimado), no contra el precio publicado. Es una estimación, no una tasación.
-      </VFuente>
+      <VFuente>Mediana de publicaciones de venta en {inputData.comuna || "la comuna"} · avisos, no transacciones</VFuente>
     </div>
   );
 }
@@ -1286,14 +1276,10 @@ function DrawerReestructuracion({
  *  comparación se dice, que es lo que el lector necesita para saber si tiene
  *  margen que pedir. */
 function referenciaTasa(tasaUsuario?: number): string {
-  const ref = `Tasa de referencia: ${MARKET_AVG_TASA_UF.toFixed(1).replace(".", ",")}% anual en UF, promedio de mercado a la fecha del análisis — Motor Franco, actualización manual, no en tiempo real.`;
-  if (typeof tasaUsuario !== "number" || !Number.isFinite(tasaUsuario)) return ref;
-  const tuya = `${tasaUsuario.toFixed(1).replace(".", ",")}%`;
-  if (tasaUsuario > MARKET_AVG_TASA_UF) {
-    const brecha = (tasaUsuario - MARKET_AVG_TASA_UF).toFixed(1).replace(".", ",");
-    return `${ref} La tuya, ${tuya}, está ${brecha} puntos por encima: ahí hay margen para pedir.`;
-  }
-  return `${ref} La tuya, ${tuya}, ya está en esa referencia o por debajo.`;
+  // T4 (contrato CONGELADO): la fuente cita fuente, fecha y alcance. La comparación
+  // "la tuya está por encima" ya la muestra el diagrama de estructura.
+  void tasaUsuario;
+  return `Tasa de referencia: ${MARKET_AVG_TASA_UF.toFixed(1).replace(".", ",")}% anual en UF, promedio de mercado · Motor Franco, actualización manual`;
 }
 
 // Fallback del drawer de estructura/financiamiento: cuando NO existe
@@ -1467,7 +1453,7 @@ function DrawerEstructuraSana({
 
       {/* T1 — línea de fuente al pie, posición única del v12 (absorbe la frase de
           actualización manual que vivía en "De dónde sale"). */}
-      <VFuente>Motor Franco · tasa de mercado referencial a la fecha del análisis — actualización manual, no en tiempo real.</VFuente>
+      <VFuente>Tasa de referencia: promedio de mercado en UF · Motor Franco, actualización manual</VFuente>
     </div>
   );
 }
@@ -1696,33 +1682,73 @@ function DrawerZona({
   if (zoneLoading && !zoneInsight) return <ZoneSkeleton />;
   if (zoneError && !zoneInsight) return <ZoneErrorState message={zoneError} />;
   if (!zoneInsight) return <ZoneErrorState message={null} />;
-
+  // T4 (contrato CONGELADO): el drawer al vocabulario v12 — VProsa (la síntesis),
+  // las tres celdas de la sección, el mapa, los lugares como filas y la fuente.
+  // Murió la nota educativa sobre plusvalía histórica vs proyectada: es método,
+  // y la celda de valorización ya dice qué proyección usa el informe.
+  const sintesis =
+    (currency === "CLP" ? zoneInsight.insight.narrative_clp : zoneInsight.insight.narrative_uf) ||
+    (currency === "CLP" ? zoneInsight.insight.preview_clp : zoneInsight.insight.preview_uf) ||
+    "";
+  const avisos = zoneInsight.stats.ofertaComparable?.totalDeptos ?? 0;
   return (
-    <div className="flex flex-col gap-5">
-      <ZoneInsightAI insight={zoneInsight.insight} currency={currency} />
-
-      {/* Mensaje educativo dot Fase 4.8 — diferenciar plusvalía histórica
-          (esta sección) vs proyectada (Drawer 04 Largo Plazo). Resuelve
-          confusión potencial cuando los números no coinciden. */}
-      <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-        ● La plusvalía histórica de la comuna refleja el pasado real. Para proyectar tu venta a 10 años, Franco usa la proyección estándar Franco: {PROY_PCT} anual parejo, distinta de ese histórico.
-      </p>
-
-      <ZoneStatsCards
-        stats={zoneInsight.stats}
-        currency={currency}
-        comuna={comuna}
-        arriendoUsuarioCLP={arriendoUsuarioCLP}
-        valorUF={valorUF}
-      />
+    <div className="doc-tokens">
+      {sintesis && <VProsa>{sintesis}</VProsa>}
+      <ZonaCeldas stats={zoneInsight.stats} currency={currency} valorUF={valorUF} arriendoUsuarioCLP={arriendoUsuarioCLP} />
       {zoneCenter && (
-        <ZoneMap
-          centerLat={zoneCenter.lat}
-          centerLng={zoneCenter.lng}
-          pois={zoneInsight.pois}
-        />
+        <VViz t="El depto y lo que hay alrededor">
+          <ZoneMap centerLat={zoneCenter.lat} centerLng={zoneCenter.lng} pois={zoneInsight.pois} />
+        </VViz>
       )}
-      <ZonePOIsList pois={zoneInsight.pois} />
+      <VViz t="Lugares a menos de 2,5 km">
+        <ZonaLugares pois={zoneInsight.pois} />
+      </VViz>
+      <VFuente>
+        Zone insight Franco{avisos ? ` · ${avisos} avisos de arriendo en ${comuna}` : ""} · lugares: Google Places
+      </VFuente>
+    </div>
+  );
+}
+
+const LUGAR_LABEL: Record<keyof ZoneInsightData["pois"], string> = {
+  metro: "Metro",
+  trenes: "Tren",
+  parques: "Parque",
+  clinicas: "Clínica",
+  universidades: "Universidad",
+  institutos: "Instituto",
+  colegios: "Colegio",
+  malls: "Centro comercial",
+  negocios: "Zona de negocios",
+};
+
+/** Los lugares como filas (nombre · tipo y comuna · distancia), los más cercanos
+ *  primero, y una línea con lo que NO hay en el radio. */
+function ZonaLugares({ pois }: { pois: ZoneInsightData["pois"] }) {
+  const cats = Object.keys(LUGAR_LABEL) as (keyof ZoneInsightData["pois"])[];
+  const filas = cats
+    .flatMap((k) => pois[k].map((p) => ({ ...p, tipo: LUGAR_LABEL[k] })))
+    .sort((a, b) => a.distancia - b.distancia)
+    .slice(0, 8);
+  const faltan = cats.filter((k) => pois[k].length === 0 && ["metro", "clinicas", "malls"].includes(k)).map((k) => LUGAR_LABEL[k].toLowerCase());
+  const dist = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`);
+  if (filas.length === 0) {
+    return <p className="zona-sin">No detectamos transporte, comercio ni servicios a menos de 2,5 km. Zona residencial periférica.</p>;
+  }
+  return (
+    <div>
+      {filas.map((p, i) => (
+        <div key={`${p.nombre}-${i}`} className="lugar">
+          <span className="n">{p.nombre}</span>
+          <span className="d">{dist(p.distancia)}</span>
+          <span className="t">
+            {p.tipo}
+            {p.linea ? ` · ${p.linea}` : ""}
+            {p.comuna ? ` · ${p.comuna}` : ""}
+          </span>
+        </div>
+      ))}
+      {faltan.length > 0 && <p className="zona-sin">Sin {faltan.join(", ").replace(/, ([^,]*)$/, " ni $1")} en el radio</p>}
     </div>
   );
 }
@@ -1793,7 +1819,7 @@ export function AnalysisDrawer({
   }, [sequence, activeKey]);
 
   // Zone y reestructuracion no encajan con AISection — placeholder pregunta.
-  const zonaTitle = "Lo que no ves a simple vista";
+  const zonaTitle = `La zona · ${comuna ?? (inputData.comuna || "tu comuna")}`;
   // Sin IA de reestructuración (estructura sana), el título del fallback no debe
   // insinuar una palanca que mover.
   const reestructuracionTitle = aiAnalysis?.reestructuracion
@@ -2077,12 +2103,10 @@ export function AnalysisDrawer({
                 {DRAWER_META[nextKey].label} →
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={onClose}
-                className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
-              >
-                Cerrar análisis ✕
+              /* chip de cierre del v12 (mismo que el cuerpo del acordeón): cierra el
+                 drawer, no el análisis */
+              <button type="button" onClick={onClose} className="hall-close">
+                ↑ Cerrar
               </button>
             )}
           </div>
