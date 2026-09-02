@@ -333,8 +333,31 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
 
   if (esEstructural) {
     titular = "Ningún ajuste realista lo lleva al veredicto de arriba.";
+    // FRASE ESTRUCTURAL (fix del signo, 02-sep-2026 — espejo del LTR c48877d):
+    // `deltaMinimoFueraDeTope` es lo MÍNIMO que SÍ cruza (bisección en rango extendido) y
+    // la frase lo escribía como si no cruzara ("Ni cerrando un 33,6% bajo el precio…").
+    // Ahora: (1) los topes probados sin cruzar (precio según banda, tarifa con su tope
+    // propio) y la cifra que recién cruzaría; (2) plazo, pie y gestión según lo que el
+    // builder probó; (3) el cierre de brecha. Todo desde constantes y estado del builder,
+    // nunca literales. STR aún no emite `vias`: entra con la migración al CONGELADO, y ahí
+    // esta frase pasa a leerlas como la LTR.
     const dm = deltaMinimoFueraDeTope;
-    const colaPie = pieCalifica ? ` Subir el pie hasta ${DIST_PIE_TOPE_PCT}% tampoco lo cruza.` : "";
+    const hecho = `Cerrar hasta −${fmtPct(topeAplicado)}% bajo el precio o cobrar hasta +${fmtPct(DIST_STR_TOPE_ADR_PCT)}% más por noche no cambia el veredicto`;
+    const primera = dm
+      ? `${hecho}; recién ${
+          dm.palanca === "precio"
+            ? `con −${fmtPct(Math.abs(dm.deltaPct))}% de precio`
+            : `cobrando +${fmtPct(Math.abs(dm.deltaPct))}% por noche`
+        } cruzaría a ${objetivoNombre}, y eso ya no es un ajuste.`
+      : `${hecho}, y tampoco lo hace ningún ajuste en rango.`;
+    // Segunda oración: solo las palancas que el builder efectivamente probó.
+    const tramos: string[] = [];
+    if (Number.isFinite(p.plazoCredito) && p.plazoCredito > 0 && p.plazoCredito < DIST_PLAZO_TOPE_ANIOS) {
+      tramos.push(`a ${DIST_PLAZO_TOPE_ANIOS} años`);
+    }
+    if (pieCalifica && p.piePct < DIST_PIE_TOPE_PCT) tramos.push(`con pie ${fmtPct(DIST_PIE_TOPE_PCT)}%`);
+    tramos.push(p.modoGestionActual === "auto" ? "con administrador" : "autogestionando");
+    const segunda = tramos.length === 1 ? ` Ni ${tramos[0]} cambia.` : ` Ni ${tramos.slice(0, -1).join(", ni ")} ni ${tramos[tramos.length - 1]} cambia.`;
     // Cierre del estructural (§1.12.4): con precio a mercado y tarifa/ocupación
     // ancladas a la mediana observada, "la brecha es del negocio" apunta mal —
     // el negocio está a mercado; lo que no rinde en corto a estos precios de
@@ -342,20 +365,7 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     const cierreBrecha = p.casoPrecioJusto
       ? "La brecha no es de este departamento ni de su precio — esta zona no sostiene renta corta a los precios de compra actuales. Otro depto igual, acá mismo, tendría el mismo problema."
       : "La brecha es del negocio, no de cómo lo estás mirando.";
-    if (dm) {
-      const via =
-        dm.palanca === "precio"
-          ? `cerrando un ${fmtPct(Math.abs(dm.deltaPct))}% bajo el precio pedido`
-          : `cobrando un ${fmtPct(Math.abs(dm.deltaPct))}% más por noche que la zona`;
-      fraseCanonica =
-        `Ni ${via} este departamento llega a ${objetivoNombre}, y estirar el crédito a ${DIST_PLAZO_TOPE_ANIOS} años ` +
-        `tampoco alcanza.${colaPie} ${cierreBrecha}`;
-    } else {
-      fraseCanonica =
-        `No hay ajuste de supuestos que lleve esto a ${objetivoNombre}: ni cobrando más del doble por noche, ` +
-        `ni pagando un tercio del precio, ni estirando el crédito a ${DIST_PLAZO_TOPE_ANIOS} años.${colaPie} ` +
-        `${cierreBrecha}`;
-    }
+    fraseCanonica = `${primera}${segunda} ${cierreBrecha}`;
   } else {
     const l = palancaMasBarata!;
     const d = fmtPct(Math.abs(l.deltaPct));
