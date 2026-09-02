@@ -876,6 +876,32 @@ export interface PalancaDistancia {
   deltaAbs: number;
 }
 
+/**
+ * VÍA al veredicto superior con su ESTADO (goal "cuatro palancas siempre", 02-sep-2026).
+ * El motor emite las cuatro palancas LTR (precio · arriendo · plazo · pie) SIEMPRE, y
+ * cada una dice por construcción qué pasó con ella:
+ *   · `cruza`    — alcanza el veredicto objetivo dentro del tope; trae el objetivo.
+ *   · `noCruza`  — se exploró hasta `topeExplorado` (en la unidad de la palanca: % de
+ *                  cambio para arriendo/precio, años para plazo, nivel % para pie) y no
+ *                  cambia el veredicto. `razon` es de catálogo, determinista. En el caso
+ *                  estructural, la palanca del delta mínimo lleva además `deltaMinimoPct`
+ *                  (bisección en rango extendido: dato del motor, no invento).
+ *   · `noAplica` — no hay nada que mover: plazo ya en 30 años o sin crédito, pie con
+ *                  bono o ya en 30% o más.
+ * `palancas` es DERIVADO: `vias.filter(cruza)`. Ausente en filas persistidas anteriores.
+ */
+export type ViaDistancia =
+  | ({ estado: "cruza" } & PalancaDistancia)
+  | {
+      estado: "noCruza";
+      palanca: PalancaDistancia["palanca"];
+      actual: number;
+      topeExplorado: number;
+      razon: string;
+      deltaMinimoPct?: number;
+    }
+  | { estado: "noAplica"; palanca: PalancaDistancia["palanca"]; actual: number; razon: string };
+
 // Proto-hallazgo tipado — DISTANCIA AL VEREDICTO SUPERIOR para LTR. 10º hallazgo y el
 // cuarto SOLO-LECTURA (tras TIR, sensibilidad y patrimonio): decisividad 0 fija, NO
 // compite en el ranking ni pasa por calcDecisividades — es una propiedad de la distancia
@@ -903,8 +929,12 @@ export interface HallazgoDistanciaVeredicto {
   valor: {
     veredictoBase: Veredicto;                 // veredicto al input declarado
     veredictoObjetivo: Veredicto;             // el inmediatamente superior
-    /** Palancas que cruzan dentro de rango, de la más barata a la más cara. Vacío ⇒ estructural. */
+    /** Palancas que cruzan dentro de rango, de la más barata a la más cara. Vacío ⇒ estructural.
+     *  DERIVADO de `vias` desde el goal "cuatro palancas siempre" (02-sep-2026). */
     palancas: PalancaDistancia[];
+    /** Las cuatro palancas con su estado, en orden canónico precio · arriendo · plazo · pie
+     *  (LTR). Ausente en filas persistidas anteriores al goal y en STR. */
+    vias?: ViaDistancia[];
     /** La más barata de `palancas` (índice 0), o null si ninguna cruza. */
     palancaMasBarata: PalancaDistancia | null;
     /** Solo para BUSCAR OTRA: distancia a COMPRAR si cae en rango (salto de dos bandas). */
@@ -927,9 +957,11 @@ export interface HallazgoDistanciaVeredicto {
     /** Cuáles brazos del GATE 1 están activos (solo informativo; vacío si no dispara). */
     brazosGate1Activos: string[];
     /**
-     * ¿El pie CALIFICABA como palanca en este caso? true cuando el pie está bajo el nivel
-     * "aceptable" y no es bono pie. Es independiente de que haya cruzado: sirve para que el
-     * render y la prosa sepan si el pie se probó, sin re-derivar el umbral.
+     * ¿El pie SE EXPLORÓ como palanca? Desde el goal "cuatro palancas siempre"
+     * (02-sep-2026) el pie se prueba hasta 30% siempre que no sea bono pie ni esté ya en
+     * 30% o más: la banda de `classifyPieLevel` dejó de decidir la exploración. Antes
+     * (filas persistidas previas) era true solo con pie < 20%. Independiente de que haya
+     * cruzado: sirve para que el render y la prosa sepan si el pie se probó.
      *
      * Ausente ⇒ false (filas persistidas antes de la 4ª palanca).
      */

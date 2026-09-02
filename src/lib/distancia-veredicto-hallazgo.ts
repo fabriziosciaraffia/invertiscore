@@ -20,9 +20,14 @@
 // La TASA no se emite aunque `veredictoAtPatch` la soporte: es condición del banco, no del
 // deal (decisión de producto).
 //
-// CUARTA PALANCA CONDICIONAL — el PIE. Ver `DIST_PIE_*` abajo para el umbral de emisión,
-// el techo y la excepción de bono pie. Cuando se emite va PRIMERA: es la única que no
-// depende de que el vendedor acepte ni de que el mercado de arriendo acompañe.
+// CUARTA PALANCA — el PIE. Se explora SIEMPRE hasta `DIST_PIE_TOPE_PCT` salvo bono pie o
+// pie ya en el techo (decisión Fabrizio 02-sep-2026, goal "cuatro palancas siempre": la
+// banda de `classifyPieLevel` dejó de decidir la exploración). Cuando cruza va PRIMERA:
+// es la única que no depende de que el vendedor acepte ni de que el mercado acompañe.
+//
+// CUATRO VÍAS SIEMPRE (`valor.vias`): cada palanca sale con su estado por construcción —
+// cruza · noCruza (con el tope explorado y una razón de catálogo) · noAplica—, en orden
+// canónico precio · arriendo · plazo · pie. `palancas` es `vias.filter(cruza)`.
 //
 // TOPE DE HONESTIDAD: los rangos de búsqueda SON el tope. Si ninguna palanca cruza dentro
 // de su rango realista, `esEstructural = true` y la frase deja de prometer un ajuste. El
@@ -38,8 +43,8 @@ import type {
   PalancaDistancia,
   RazonSinCapital,
   Veredicto,
+  ViaDistancia,
 } from "./types";
-import { classifyPieLevel } from "./financing-health";
 
 // ── Tope de honestidad (calibrado, no inventado) ──────────────────────────────
 // Sweep sobre 315 filas no-COMPRAR de prod (143 AJUSTA + 172 BUSCAR OTRA), midiendo el
@@ -298,15 +303,15 @@ export function buildHallazgoDistanciaVeredicto(p: {
   const veredictoObjetivo: Veredicto =
     p.veredictoBase === "BUSCAR OTRA" ? "AJUSTA SUPUESTOS" : "COMPRAR";
 
-  // ── ¿El pie califica como palanca? Dos condiciones independientes ──
-  // 1. Nivel: solo "mejorable"/"problematico" (< 20%). La clasificación se importa de
-  //    financing-health para que este hallazgo y el de estructura no puedan divergir.
-  // 2. Origen: el bono pie queda fuera (ver DIST_PIE_RAZON_EXCLUIDA).
+  // ── ¿El pie SE EXPLORA como palanca? (goal "cuatro palancas siempre", 02-sep-2026) ──
+  // Dos exclusiones, ninguna por banda: el bono pie (ver DIST_PIE_RAZON_EXCLUIDA) y el pie
+  // que ya está en el techo (≥ DIST_PIE_TOPE_PCT: no hay tramo que probar). Hasta este goal
+  // solo se exploraba con pie < 20% (`classifyPieLevel` mejorable/problemático); el drift
+  // del Golden por pies entre 20 y 29 que ahora cruzan es esperado y está documentado.
   const razonPie: RazonSinCapital = p.razonSinPie ?? "sin_pie";
   const esBonoPie = p.piePct === 0 && razonPie === DIST_PIE_RAZON_EXCLUIDA;
-  const nivelPie = Number.isFinite(p.piePct) ? classifyPieLevel(p.piePct) : "optimo";
-  const pieCalifica =
-    !esBonoPie && (nivelPie === "mejorable" || nivelPie === "problematico");
+  const pieEnTecho = !Number.isFinite(p.piePct) || p.piePct >= DIST_PIE_TOPE_PCT;
+  const pieCalifica = !esBonoPie && !pieEnTecho;
 
   const alcanzaMeta = (v: Veredicto, meta: Veredicto) => RANK[v] >= RANK[meta];
   // El tope gobierna el SALTO que se está midiendo, no el veredicto de partida: el salto de
@@ -316,10 +321,16 @@ export function buildHallazgoDistanciaVeredicto(p: {
     meta === "COMPRAR" ? DIST_TOPE_AJUSTA_PCT : topeParaVeredicto(p.veredictoBase);
   const topeAplicado = topeParaVeredicto(p.veredictoBase);
 
-  /** Busca las 3 palancas para una meta dada. Devuelve solo las que cruzan dentro del tope. */
-  const palancasHasta = (meta: Veredicto): PalancaDistancia[] => {
+  /** Explora las CUATRO palancas para una meta dada. `palancas` = solo las que cruzan
+   *  dentro del tope (orden: pie primero, luego por |delta|); `vias` = las cuatro con su
+   *  estado, en orden canónico precio · arriendo · plazo · pie. */
+  const palancasHasta = (meta: Veredicto): { palancas: PalancaDistancia[]; vias: ViaDistancia[] } => {
     const out: PalancaDistancia[] = [];
     const tope = topeDe(meta);
+    let viaArriendo: ViaDistancia;
+    let viaPrecio: ViaDistancia;
+    let viaPlazo: ViaDistancia;
+    let viaPie: ViaDistancia;
     const topeFactor = 1 + tope / 100; // arriendo: sube hasta +tope%
     const pisoFactor = 1 - tope / 100; // precio: baja hasta −tope%
 
@@ -330,13 +341,23 @@ export function buildHallazgoDistanciaVeredicto(p: {
     );
     if (fArr != null) {
       const objetivo = Math.ceil(p.arriendo * fArr);
-      out.push({
+      const pal: PalancaDistancia = {
         palanca: "arriendo",
         objetivo,
         actual: p.arriendo,
         deltaPct: Math.round((objetivo / p.arriendo - 1) * 1000) / 10,
         deltaAbs: objetivo - p.arriendo,
-      });
+      };
+      out.push(pal);
+      viaArriendo = { estado: "cruza", ...pal };
+    } else {
+      viaArriendo = {
+        estado: "noCruza",
+        palanca: "arriendo",
+        actual: p.arriendo,
+        topeExplorado: tope,
+        razon: `ni con el arriendo un ${tope}% más alto cambia el veredicto`,
+      };
     }
 
     const fPre = biseccionFactor(
@@ -346,13 +367,23 @@ export function buildHallazgoDistanciaVeredicto(p: {
     );
     if (fPre != null) {
       const objetivo = Math.floor(p.precioUF * fPre);
-      out.push({
+      const pal: PalancaDistancia = {
         palanca: "precio",
         objetivo,
         actual: p.precioUF,
         deltaPct: Math.round((objetivo / p.precioUF - 1) * 1000) / 10, // negativo
         deltaAbs: objetivo - p.precioUF,
-      });
+      };
+      out.push(pal);
+      viaPrecio = { estado: "cruza", ...pal };
+    } else {
+      viaPrecio = {
+        estado: "noCruza",
+        palanca: "precio",
+        actual: p.precioUF,
+        topeExplorado: tope,
+        razon: `ni bajando el precio un ${tope}% cambia el veredicto`,
+      };
     }
 
     // Plazo: entero, del actual+1 al tope. Barrido lineal (≤ 30 evaluaciones, sin bisección
@@ -363,11 +394,23 @@ export function buildHallazgoDistanciaVeredicto(p: {
     // RE-VERIFICA el veredicto en ese plazo comercial antes de emitirlo: si por cualquier
     // no-monotonía el redondeo no cruzara, la palanca no se emite en vez de prometer algo
     // falso. Si ya estás en el tope (30), no hay tramo al que moverse ⇒ tampoco se emite.
-    if (
-      Number.isFinite(p.plazoCredito) &&
-      p.plazoCredito > 0 &&
-      p.plazoCredito < DIST_PLAZO_TOPE_ANIOS
-    ) {
+    if (!Number.isFinite(p.plazoCredito) || p.plazoCredito <= 0) {
+      viaPlazo = { estado: "noAplica", palanca: "plazo", actual: 0, razon: "sin crédito no hay plazo que estirar" };
+    } else if (p.plazoCredito >= DIST_PLAZO_TOPE_ANIOS) {
+      viaPlazo = {
+        estado: "noAplica",
+        palanca: "plazo",
+        actual: p.plazoCredito,
+        razon: `ya en ${DIST_PLAZO_TOPE_ANIOS} años: es el máximo que dan los bancos`,
+      };
+    } else {
+      viaPlazo = {
+        estado: "noCruza",
+        palanca: "plazo",
+        actual: p.plazoCredito,
+        topeExplorado: DIST_PLAZO_TOPE_ANIOS,
+        razon: `ni a ${DIST_PLAZO_TOPE_ANIOS} años cambia el veredicto`,
+      };
       for (let anios = Math.floor(p.plazoCredito) + 1; anios <= DIST_PLAZO_TOPE_ANIOS; anios++) {
         if (!alcanzaMeta(p.veredictoAtPatch({ plazoCredito: anios }), meta)) continue;
         const comercial = Math.min(
@@ -379,13 +422,15 @@ export function buildHallazgoDistanciaVeredicto(p: {
           comercial > p.plazoCredito &&
           alcanzaMeta(p.veredictoAtPatch({ plazoCredito: comercial }), meta)
         ) {
-          out.push({
+          const pal: PalancaDistancia = {
             palanca: "plazo",
             objetivo: comercial,
             actual: p.plazoCredito,
             deltaPct: Math.round((comercial / p.plazoCredito - 1) * 1000) / 10,
             deltaAbs: comercial - p.plazoCredito,
-          });
+          };
+          out.push(pal);
+          viaPlazo = { estado: "cruza", ...pal };
         }
         break;
       }
@@ -406,10 +451,26 @@ export function buildHallazgoDistanciaVeredicto(p: {
     // 5 como el plazo — los bancos ofrecen 15/20/25/30 años de plazo, pero el pie es un
     // monto continuo que el comprador arma. Redondear un 26% a 30% pediría 4 puntos de
     // capital extra que el caso no necesita (≈ UF 120 en un depto de UF 3.000).
-    if (pieCalifica && p.piePct < DIST_PIE_TOPE_PCT) {
+    if (esBonoPie) {
+      viaPie = { estado: "noAplica", palanca: "pie", actual: p.piePct, razon: "el pie lo cubre la inmobiliaria: subirlo desarma el trato" };
+    } else if (pieEnTecho) {
+      viaPie = {
+        estado: "noAplica",
+        palanca: "pie",
+        actual: p.piePct,
+        razon: `ya con ${fmtPct(p.piePct)}% de pie: sobre ${DIST_PIE_TOPE_PCT}% Franco no lo prueba como ajuste`,
+      };
+    } else {
+      viaPie = {
+        estado: "noCruza",
+        palanca: "pie",
+        actual: p.piePct,
+        topeExplorado: DIST_PIE_TOPE_PCT,
+        razon: `ni con un pie de ${DIST_PIE_TOPE_PCT}% cambia el veredicto`,
+      };
       for (let pie = Math.floor(p.piePct) + 1; pie <= DIST_PIE_TOPE_PCT; pie++) {
         if (!alcanzaMeta(p.veredictoAtPatch({ piePct: pie }), meta)) continue;
-        out.unshift({
+        const pal: PalancaDistancia = {
           palanca: "pie",
           objetivo: pie,
           actual: p.piePct,
@@ -417,15 +478,19 @@ export function buildHallazgoDistanciaVeredicto(p: {
           // relativo no existe.
           deltaPct: Math.round((pie - p.piePct) * 10) / 10,
           deltaAbs: Math.round((pie - p.piePct) * 10) / 10,
-        });
+        };
+        out.unshift(pal);
+        viaPie = { estado: "cruza", ...pal };
         break;
       }
     }
 
-    return out;
+    return { palancas: out, vias: [viaPrecio, viaArriendo, viaPlazo, viaPie] };
   };
 
-  const palancas = palancasHasta(veredictoObjetivo);
+  const explorado = palancasHasta(veredictoObjetivo);
+  const palancas = explorado.palancas;
+  let vias = explorado.vias;
   const palancaMasBarata = palancas[0] ?? null;
   const esEstructural = palancas.length === 0;
 
@@ -460,12 +525,17 @@ export function buildHallazgoDistanciaVeredicto(p: {
     // emite y el caso estructural nombra el pie sin cifra (ver el Lead del drawer).
     candidatos.sort((a, b) => Math.abs(a.deltaPct) - Math.abs(b.deltaPct));
     deltaMinimoFueraDeTope = candidatos[0] ?? null;
+    // La vía del delta mínimo lleva la cifra real (dato del motor, no invento del render).
+    const dm = deltaMinimoFueraDeTope;
+    if (dm) {
+      vias = vias.map((v) => (v.estado === "noCruza" && v.palanca === dm.palanca ? { ...v, deltaMinimoPct: dm.deltaPct } : v));
+    }
   }
 
   // Solo para BUSCAR OTRA: ¿el salto de DOS bandas cae en rango? Informativo; si no, null.
   const palancaHastaComprar =
     p.veredictoBase === "BUSCAR OTRA" && !esEstructural
-      ? (palancasHasta("COMPRAR")[0] ?? null)
+      ? (palancasHasta("COMPRAR").palancas[0] ?? null)
       : null;
 
   // Cercanía al umbral (1 = pegado al veredicto de arriba, 0 = en el tope o estructural).
@@ -578,6 +648,7 @@ export function buildHallazgoDistanciaVeredicto(p: {
       veredictoBase: p.veredictoBase,
       veredictoObjetivo,
       palancas,
+      vias,
       palancaMasBarata,
       palancaHastaComprar,
       esEstructural,
