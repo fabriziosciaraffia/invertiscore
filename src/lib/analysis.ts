@@ -755,15 +755,26 @@ export function calcProjections(args: {
     });
 
     let flujoAnual = 0;
+    let mesesOperativos = 0;
     for (let m = mesInicio; m <= mesFin; m++) {
       if (m <= mesesPreEntrega) {
         // Pre-delivery: sin flujo operativo
       } else {
         flujoAnual += flujoMes.flujoNeto;
+        mesesOperativos += 1;
       }
     }
-
     flujoAcumulado += flujoAnual;
+    // Desglose anual para el modal de cálculo. Se arma desde los MISMOS enteros que
+    // `flujoMes` (todos los egresos son enteros; solo el arriendo trae decimales por
+    // el reajuste), así que `noiAnual − vacanciaRotacion − dividendo` reproduce
+    // `Math.round(flujoAnual)` exacto: redondear el arriendo antes o después de
+    // restar enteros da lo mismo.
+    const gastosOperativosAnual = (flujoMes.ggccVacancia + flujoMes.contribucionesMes + flujoMes.mantencion) * mesesOperativos;
+    const vacanciaRotacionAnual =
+      (flujoMes.vacanciaProrrata + flujoMes.corretajeProrrata + flujoMes.recambio + flujoMes.administracion) * mesesOperativos;
+    const dividendoAnual = dividendoAnio * mesesOperativos;
+    const arriendoAnual = Math.round(arriendoActual * mesesOperativos);
 
     // Reloj de mercado CONTINUO desde el año 0 (P1-C: base = precioCLP, no vmFranco).
     //
@@ -802,6 +813,12 @@ export function calcProjections(args: {
       valorPropiedad: Math.round(valorPropiedad),
       saldoCredito: Math.round(saldo),
       patrimonioNeto: Math.round(patrimonioNeto),
+      mesesOperativos,
+      arriendoAnual,
+      gastosOperativosAnual,
+      noiAnual: arriendoAnual - gastosOperativosAnual,
+      vacanciaRotacionAnual,
+      dividendoAnual,
     });
 
     // REAJUSTE PAREJO: todos los términos se expresan en plata del año `anio`, sin
@@ -1540,8 +1557,11 @@ export function simularPie(
   const niveles = [actual - 5, actual, actual + 5, actual + 10]
     .filter((p) => p > 0 && p < 100)
     // Redondeo a 1 decimal: con pies fraccionarios (18,7%) los tramos de 5 arrastran
-    // colas largas que no aportan y ensucian la etiqueta.
-    .map((p) => Math.round(p * 10) / 10);
+    // colas largas que no aportan y ensucian la etiqueta. El nivel ACTUAL no se
+    // redondea: con un pie de 27,56% el redondeo lo convertía en 27,6, `esActual`
+    // nunca calzaba y el nivel "hoy" describía otro deal (lo cazó
+    // scripts/eval/golden/simulacion-catch-test.ts en cf472313).
+    .map((p) => (p === actual ? p : Math.round(p * 10) / 10));
 
   const salida: NivelPie[] = [];
   for (const piePct of niveles) {
@@ -1558,6 +1578,102 @@ export function simularPie(
     });
   }
   return salida;
+}
+
+export interface CeldaPiePlazo {
+  piePct: number;
+  plazoAnios: number;
+  /** La combinación declarada en el análisis (pie actual × plazo actual). */
+  esActual: boolean;
+  /** Flujo mensual neto con esa combinación (signed). */
+  flujoMensual: number;
+  /** TIR a 10 años con esa combinación. null si el VPN no cruza cero. */
+  tirPct: number | null;
+}
+
+export interface MatrizPiePlazo {
+  /** Niveles de pie, los mismos de `simularPie` (−5 / actual / +5 / +10, filtrados). */
+  pies: number[];
+  /** Plazos comerciales, los mismos de `simularPlazo`. */
+  plazos: number[];
+  /** `pies.length × plazos.length` celdas, en orden fila (pie) → columna (plazo). Vacío = no hay matriz. */
+  celdas: CeldaPiePlazo[];
+}
+
+/**
+ * MATRIZ PIE × PLAZO — la simulación COMBINADA que el contrato CONGELADO (02-sep-2026)
+ * pide en el capítulo "Cómo lo pagas", en reemplazo de las dos escaleras separadas.
+ *
+ * Misma ruta que `simularPie` (clon del input → calcMetrics → calcProjections →
+ * calcExitScenario), pero con AMBOS parches a la vez: `piePct` y `plazoCredito`.
+ * Ni `simularPie` ni `simularPlazo` sirven para esto — cada una mueve una sola
+ * dimensión y deja la otra en el valor declarado; la celda (pie+5, plazo−5) no
+ * existe en ninguna de las dos.
+ *
+ * INVARIANTE (la caza scripts/eval/golden/simulacion-catch-test.ts): la celda
+ * `esActual` reproduce BIT-IDÉNTICO `metrics.flujoNetoMensual` y `exitScenario.tir`
+ * del análisis canónico. Si divergiera, la matriz describiría otro deal que el
+ * que muestra el resto del informe.
+ *
+ * DEVUELVE VACÍO con la misma regla que las escaleras que reemplaza: pie 0 o 100
+ * (no hay pie que mover) y plazo declarado fuera de los tramos comerciales (no
+ * habría celda "hoy" que anclar).
+ */
+export function simularPieYPlazo(
+  input: AnalisisInput,
+  ufClp: number,
+  asOf: Date,
+  medianaComunaVentaUF?: MedianaComunaInyectada,
+): MatrizPiePlazo {
+  const vacia: MatrizPiePlazo = { pies: [], plazos: [], celdas: [] };
+  const pieActual = input.piePct;
+  const plazoActual = input.plazoCredito;
+  if (!Number.isFinite(pieActual) || pieActual <= 0 || pieActual >= 100) return vacia;
+  if (!Number.isFinite(plazoActual)) return vacia;
+  if (!PLAZOS_COMERCIALES.includes(plazoActual as (typeof PLAZOS_COMERCIALES)[number])) return vacia;
+  const precioCLP = input.precio * ufClp;
+  if (!(precioCLP > 0) || !(ufClp > 0)) return vacia;
+  const pies = [pieActual - 5, pieActual, pieActual + 5, pieActual + 10]
+    .filter((p) => p > 0 && p < 100)
+    // Misma regla que simularPie: el actual queda exacto, el resto a 1 decimal.
+    .map((p) => (p === pieActual ? p : Math.round(p * 10) / 10));
+  const plazos = [...PLAZOS_COMERCIALES];
+  const celdas: CeldaPiePlazo[] = [];
+  for (const piePct of pies) {
+    for (const plazoAnios of plazos) {
+      const clone: AnalisisInput = { ...input, piePct, plazoCredito: plazoAnios };
+      const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
+      const proj = calcProjections({ input: clone, metrics: m, ufClp, asOf });
+      const exit = calcExitScenario(clone, m, proj);
+      celdas.push({
+        piePct,
+        plazoAnios,
+        esActual: piePct === pieActual && plazoAnios === plazoActual,
+        flujoMensual: m.flujoNetoMensual,
+        tirPct: metricaValorONull(exit.tir),
+      });
+    }
+  }
+  return { pies, plazos, celdas };
+}
+
+/** Tasas de referencia de los instrumentos contra los que el informe compara la
+ *  plata inicial ("La misma plata en otro lado"). Son las mismas que el prompt
+ *  venía usando en su bloque de datos; viven acá para que el render y la prosa
+ *  no puedan divergir. */
+export const INSTRUMENTOS_REFERENCIA = { depositoUF: 0.05, fondoMutuo: 0.07 } as const;
+
+/**
+ * COSTO DE OPORTUNIDAD de la plata inicial: cuánto sería la misma inversión
+ * inicial en un depósito a plazo en UF y en un fondo mutuo, capitalizada `anios`
+ * años. Sin aporte mensual ni vacancia — la comparación honesta la hace el copy,
+ * no la cifra.
+ */
+export function costoOportunidad(inversionInicialCLP: number, anios: number = 10): { depositoUF: number; fondoMutuo: number } {
+  return {
+    depositoUF: Math.round(inversionInicialCLP * Math.pow(1 + INSTRUMENTOS_REFERENCIA.depositoUF, anios)),
+    fondoMutuo: Math.round(inversionInicialCLP * Math.pow(1 + INSTRUMENTOS_REFERENCIA.fondoMutuo, anios)),
+  };
 }
 
 /**

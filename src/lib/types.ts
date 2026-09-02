@@ -264,6 +264,24 @@ export interface YearProjection {
   valorPropiedad: number;
   saldoCredito: number;
   patrimonioNeto: number;
+  // ── Desglose anual (T1 del rediseño de la página, contrato CONGELADO 02-sep-2026) ──
+  // Alimenta la tabla "Flujo por año" del modal de cálculo. Son los MISMOS términos
+  // con los que el loop arma `flujoAnual`, solo que emitidos por separado; la
+  // identidad `noiAnual − vacanciaRotacionAnual − dividendoAnual === flujoAnual` se
+  // cumple exacta (la verifica scripts/eval/golden/simulacion-catch-test.ts).
+  // OPCIONALES solo porque la demo de la landing (app/demo/page.tsx) trae una
+  // serie escrita a mano y hay `results` legacy persistidos sin ellos; el motor los
+  // emite SIEMPRE. El render que los necesite (modal de cálculo) se esconde si
+  // faltan — nunca los inventa.
+  /** Meses con arriendo en el año (0 en pre-entrega, 12 en régimen). */
+  mesesOperativos?: number;
+  arriendoAnual?: number;
+  /** Gastos comunes en vacancia + contribuciones + mantención — lo que el motor resta para el NOI. */
+  gastosOperativosAnual?: number;
+  noiAnual?: number;
+  /** Vacancia del arriendo + corretaje + recambio + administración — entran al flujo, no al NOI. */
+  vacanciaRotacionAnual?: number;
+  dividendoAnual?: number;
 }
 
 export interface ExitScenario {

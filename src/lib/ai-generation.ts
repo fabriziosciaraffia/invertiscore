@@ -36,7 +36,7 @@ import { getCapRefComuna, buildHallazgoCapRate } from "@/lib/cap-rate-hallazgo";
 import { buildHallazgoFlujoMensual } from "@/lib/flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from "@/lib/plusvalia-hallazgo";
 import { buildHallazgoEstructuraFinanciamiento } from "@/lib/estructura-financiamiento-hallazgo";
-import { calcDecisividades } from "@/lib/analysis";
+import { calcDecisividades, costoOportunidad } from "@/lib/analysis";
 import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 import {
   CONTINUACION_MAX,
@@ -1237,8 +1237,9 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     const aporteTotal10 = typeof exit.totalAportado === "number" && exit.totalAportado > 0
       ? exit.totalAportado
       : inversionTotal + aporteMensual10;
-    const datoDP = Math.round(inversionTotal * Math.pow(1.05, 10));
-    const datoFM = Math.round(inversionTotal * Math.pow(1.07, 10));
+    // Misma fórmula que el bloque "La misma plata en otro lado" del informe (T1):
+    // una sola fuente para que prosa y render no puedan divergir.
+    const { depositoUF: datoDP, fondoMutuo: datoFM } = costoOportunidad(inversionTotal);
     const valorProp5 = Math.round(m.precioCLP * Math.pow(1 + PLUSVALIA_PROYECCION_ANUAL, 5));
     const valorProp10 = Math.round(m.precioCLP * Math.pow(1 + PLUSVALIA_PROYECCION_ANUAL, 10));
     const dividendoSiTasaSube1 = creditoCLP > 0
