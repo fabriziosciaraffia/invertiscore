@@ -20,7 +20,7 @@
 // mismo documento que la portada.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 /** 1 · Prosa. El <mark> del plumón lo pinta el CSS del acordeón. */
 export function VProsa({ children }: { children: ReactNode }) {
@@ -727,6 +727,277 @@ export function ParBarras({ filas, cap }: { filas: FilaPar[]; cap?: ReactNode })
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRIMITIVAS DEL CONTRATO CONGELADO (02-sep-2026) — T0 del rediseño de la página.
+// Sin llamador todavía: entran en T2/T3. Cero cambio visible en este tramo.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Subtítulo de tramo dentro de un capítulo: serif, un escalón bajo el título del
+ *  capítulo, Ink, 24px de aire arriba. Reemplaza los eyebrows mono que separaban
+ *  tramos; la etiqueta mono del diagrama (VViz) se conserva debajo. */
+export function VSub({ children }: { children: ReactNode }) {
+  return <h4 className="v-sub">{children}</h4>;
+}
+
+/** Línea puente entre dos diagramas de un mismo capítulo: mono, Ink al 60%, una
+ *  frase que justifica el segundo diagrama. */
+export function VPuente({ children }: { children: ReactNode }) {
+  return <p className="v-puente">{children}</p>;
+}
+
+/** Dato sin comparación: etiqueta · valor. Para lo que es dato y no comparación
+ *  (pie, cuota), donde una barra mentiría una referencia que no existe. */
+export function DataRow({ k, sub, v }: { k: ReactNode; sub?: ReactNode; v: ReactNode }) {
+  return (
+    <div className="datarow">
+      <span>
+        {k}
+        {sub && <small>{sub}</small>}
+      </span>
+      <span className="v">{v}</span>
+    </div>
+  );
+}
+
+export type SerieMatriz = {
+  id: string;
+  /** Texto del toggle (mono, mayúsculas). */
+  label: string;
+  /** Etiqueta mono del diagrama para esta métrica. */
+  etiqueta: string;
+  /** El "paper" de la escala: valores bajo `cero` van a Signal Red, sobre `cero` a verde. */
+  cero: number;
+  fmt: (n: number | null) => string;
+  /** `filas.length × cols.length`, en orden fila → columna. null = no calculable. */
+  celdas: (number | null)[][];
+  nota?: ReactNode;
+};
+
+/** Escala continua del contrato: Signal Red al 25% en el mínimo del rango →
+ *  transparente en `cero` → verde `--doc-good` al 25% en el máximo. Interpolada
+ *  sobre el rango REAL de las celdas, no sobre uno teórico. */
+function fondoPorMagnitud(v: number | null, min: number, max: number, cero: number): string | undefined {
+  if (v == null) return undefined;
+  if (v < cero && min < cero) return `color-mix(in srgb, var(--signal-red) ${Math.round((25 * (cero - v)) / (cero - min))}%, transparent)`;
+  if (v > cero && max > cero) return `color-mix(in srgb, var(--doc-good) ${Math.round((25 * (v - cero)) / (max - cero))}%, transparent)`;
+  return undefined;
+}
+
+/**
+ * Matriz de sensibilización (dos ejes × una métrica, con toggle entre métricas).
+ * Contrato: filas = niveles de un eje, columnas = niveles del otro, celda = la
+ * métrica con signo y color por signo, fondo por magnitud, la celda "hoy" con el
+ * wash ámbar ENCIMA del fondo.
+ */
+export function Matriz({
+  cols,
+  filas,
+  series,
+  actual,
+}: {
+  cols: string[];
+  filas: { k: string; sub?: string }[];
+  series: SerieMatriz[];
+  /** Índices (fila, columna) de la combinación declarada. */
+  actual?: { fila: number; col: number };
+}) {
+  const [activa, setActiva] = useState(0);
+  const serie = series[activa] ?? series[0];
+  if (!serie || !filas.length || !cols.length) return null;
+  const valores = serie.celdas.flat().filter((v): v is number => typeof v === "number");
+  const min = valores.length ? Math.min(...valores) : 0;
+  const max = valores.length ? Math.max(...valores) : 0;
+  return (
+    <div className="mx-wrap">
+      <div className="mx-head">
+        <div className="v-viz-t" style={{ margin: 0 }}>{serie.etiqueta}</div>
+        {series.length > 1 && (
+          <div className="mx-toggle" role="tablist">
+            {series.map((s, i) => (
+              <button key={s.id} type="button" role="tab" aria-selected={i === activa} className={i === activa ? "on" : ""} onClick={() => setActiva(i)}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="tblwrap">
+        <table className="mx">
+          <thead>
+            <tr>
+              <th />
+              {cols.map((c) => (
+                <th key={c}>{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((f, i) => (
+              <tr key={f.k}>
+                <td>
+                  {f.k}
+                  {f.sub && <small>{f.sub}</small>}
+                </td>
+                {cols.map((c, j) => {
+                  const v = serie.celdas[i]?.[j] ?? null;
+                  const hoy = actual && actual.fila === i && actual.col === j;
+                  const cls = [v != null && v < serie.cero ? "neg" : "pos", hoy ? "hoy" : ""].join(" ").trim();
+                  return (
+                    <td key={c} className={cls} style={{ background: fondoPorMagnitud(v, min, max, serie.cero) }}>
+                      {serie.fmt(v)}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="tbl-scrollcue">↔ desliza la tabla</div>
+      {serie.nota && <div className="mx-note">{serie.nota}</div>}
+    </div>
+  );
+}
+
+export type HitoLinea = { k: string; sub?: string; v: string; tono?: "base" | "mid" | "end" };
+
+/** Línea de tiempo con hitos y el delta entre cada par (compra en verde: firma →
+ *  entrega → año 10). En mobile los hitos se apilan y las flechas apuntan abajo. */
+export function LineaTiempo({ hitos, deltas, lectura }: { hitos: HitoLinea[]; deltas: { v: string; k: string }[]; lectura?: ReactNode }) {
+  if (!hitos.length) return null;
+  return (
+    <>
+      <div className="tl" style={{ gridTemplateColumns: hitos.map(() => "1fr").join(" auto ") }}>
+        {hitos.map((h, i) => (
+          <>
+            <div key={`h${i}`} className={`hito ${h.tono ?? (i === 0 ? "base" : i === hitos.length - 1 ? "end" : "mid")}`}>
+              <span className="k">{h.k}</span>
+              {h.sub && <span className="d">{h.sub}</span>}
+              <span className="v">{h.v}</span>
+            </div>
+            {i < hitos.length - 1 && deltas[i] && (
+              <div key={`d${i}`} className="tl-delta">
+                <b>{deltas[i].v}</b>
+                {deltas[i].k}
+              </div>
+            )}
+          </>
+        ))}
+      </div>
+      {lectura && <p className="lectura">{lectura}</p>}
+    </>
+  );
+}
+
+export type TonoApilado = "pie" | "amort" | "plus";
+
+/** Barra apilada con llaves arriba y leyenda abajo (propuesta-04): de dónde sale
+ *  tu parte, firme vs proyectado. Termina con el total sobre regla gruesa y la
+ *  nota del múltiplo. */
+export function BarraApilada({
+  llaves,
+  segmentos,
+  filas,
+  total,
+  nota,
+}: {
+  llaves: { k: ReactNode; pct: number }[];
+  segmentos: { tono: TonoApilado; pct: number }[];
+  filas: { tono: TonoApilado; k: string; sub?: string; v: string; tag?: string }[];
+  total: { k: string; v: string };
+  nota?: { texto: ReactNode; v?: string };
+}) {
+  return (
+    <div className="ba">
+      {llaves.length > 0 && (
+        <div className="ba-brackets">
+          {llaves.map((l, i) => (
+            <div key={i} className="ba-bracket" style={{ width: `${l.pct}%` }}>
+              {l.k}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="ba-compo">
+        {segmentos.map((s, i) => (
+          <div key={i} className={`ba-seg ${s.tono}`} style={{ width: `${s.pct}%` }} />
+        ))}
+      </div>
+      <div className="ba-leg">
+        {filas.map((f, i) => (
+          <div key={i} className="ba-row">
+            <span className={`ba-sw ${f.tono}`} />
+            <span className="ba-k">
+              {f.k}
+              {f.sub && <small>{f.sub}</small>}
+            </span>
+            <span className="ba-v">
+              {f.v}
+              {f.tag && <small>{f.tag}</small>}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="ba-total">
+        <span className="k">{total.k}</span>
+        <span className="v">{total.v}</span>
+      </div>
+      {nota && (
+        <div className="ba-mult">
+          <span className="k">{nota.texto}</span>
+          {nota.v && <span className="v">{nota.v}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Modal del contrato: overlay Ink al 60%, panel centrado de 720px máx (pantalla
+ * completa en mobile), título serif, cierre con ✕, con Esc y con click fuera.
+ * Es información de otra índole que no debe competir con el flujo de lectura.
+ */
+export function Modal({
+  abierto,
+  onClose,
+  titulo,
+  sub,
+  pie,
+  children,
+}: {
+  abierto: boolean;
+  onClose: () => void;
+  titulo: ReactNode;
+  sub?: ReactNode;
+  pie?: ReactNode;
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    if (!abierto) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [abierto, onClose]);
+  if (!abierto) return null;
+  return (
+    <div className="v-modal-overlay" role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="v-modal">
+        <div className="v-modal-head">
+          <h3>{titulo}</h3>
+          <button type="button" className="v-modal-x" onClick={onClose} aria-label="Cerrar">
+            ✕
+          </button>
+        </div>
+        {sub && <p className="v-modal-sub">{sub}</p>}
+        {children}
+        {pie && <div className="v-modal-pie">{pie}</div>}
+      </div>
     </div>
   );
 }
