@@ -51,7 +51,9 @@ export function distanciaFindingDisplay(h: HallazgoDistanciaVeredicto): Distanci
       kpi: dm ? `${dm.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(dm.deltaPct))}%` : "—",
       // Ink, nunca Signal Red: no es un negativo crítico, es la distancia a un umbral.
       kpiRed: false,
-      ksub: dm ? `${dm.palanca} · lo mínimo, y aun así no alcanza` : "fuera de todo rango razonable",
+      // `deltaMinimoFueraDeTope` es lo MÍNIMO que SÍ cruza (bisección en rango extendido):
+      // se dice como lo que recién cruzaría, no como algo que "no alcanza" (fix 02-sep-2026).
+      ksub: dm ? `${dm.palanca} · recién cruzaría con eso, fuera de rango` : "fuera de todo rango razonable",
     };
   }
   const l = v.palancaMasBarata;
@@ -105,7 +107,7 @@ export function lineaDistanciaMini(
   if (v.esEstructural) {
     const dm = v.deltaMinimoFueraDeTope;
     return dm
-      ? `Ningún ajuste realista lo mueve de ${v.veredictoBase} — ni ${nombrePalanca(dm.palanca)} ${dm.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(dm.deltaPct))}%, lo mínimo, alcanza.`
+      ? `Ningún ajuste realista lo mueve de ${v.veredictoBase}: cruzaría recién con ${nombrePalanca(dm.palanca)} ${dm.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(dm.deltaPct))}%, fuera de rango.`
       : `Ningún ajuste realista lo mueve de ${v.veredictoBase} — fuera de todo rango razonable.`;
   }
   const l = v.palancaMasBarata;

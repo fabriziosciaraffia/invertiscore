@@ -135,8 +135,10 @@ export function DocumentoLTR({
     const objetivo = v.veredictoObjetivo === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
     if (v.esEstructural) {
       const dm = v.deltaMinimoFueraDeTope;
+      // `deltaMinimoFueraDeTope` es lo MÍNIMO que SÍ cruza (fuera del tope): se cita como lo
+      // que recién cruzaría, no como algo que "no cruza" (fix del signo, 02-sep-2026).
       const evidencia = dm
-        ? `ni ${dm.palanca === "precio" ? "bajando el precio" : "subiendo el arriendo"} un ${pct(Math.abs(dm.deltaPct))} cruza siquiera a ${objetivo}`
+        ? `cruzaría a ${objetivo} recién ${dm.palanca === "precio" ? "bajando el precio" : "subiendo el arriendo"} un ${pct(Math.abs(dm.deltaPct))}, fuera de lo que un ajuste puede dar`
         : `ninguna vía razonable lo acerca a ${objetivo}`;
       return `Cumplir las tres es condición necesaria para un Comprar, y este caso no llega por ninguna vía razonable: ${evidencia}. No es cuestión de afinar un supuesto ni el precio.`;
     }
