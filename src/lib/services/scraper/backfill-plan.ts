@@ -40,8 +40,11 @@ export interface DesactivacionPase {
   pase: string;
   /** Filas que pasaron a is_active = false. */
   filas: number;
-  /** Activas del universo (toctoc, usado + arriendo) antes de desactivar. */
-  activasAntes: number;
+  /** Activas del universo (toctoc, usado + arriendo) medidas AL INICIO del pase
+   *  (checkpoint.activasAlInicio); null si el pase venía de antes de esa medición. */
+  activasAntes: number | null;
+  /** true si se saltó la salvaguarda de proporción con ?forzarDesactivacion=1. */
+  forzada?: boolean;
 }
 
 export interface CheckpointBackfill {
@@ -51,8 +54,21 @@ export interface CheckpointBackfill {
   operaciones: Partial<Record<OperacionBackfill, EstadoOperacion>>;
   /** Errores acumulados del pase (upserts fallidos, páginas sin respuesta). */
   errores: string[];
+  /**
+   * Activas del universo (toctoc, usado + arriendo) medidas AL INICIO del pase,
+   * antes del primer upsert. Es el denominador de la salvaguarda de proporción:
+   * medirlo después infla el denominador con las filas nuevas del propio pase
+   * (corrida real p20260902T223350Z-2aqb: 35.382 sobre 74.482 = 0,48 post-upsert
+   * vs 0,67 sobre las 52.674 que había antes). null en pases anteriores a esta
+   * medición.
+   */
+  activasAlInicio?: number | null;
   /** Presente cuando el pase completo ya desactivó lo que no vio (una sola vez por pase). */
   desactivacion?: DesactivacionPase | null;
+  /** Motivo por el que la desactivación se omitió (salvaguarda). NO es un error
+   *  del pase: el pase sigue completo y se puede reintentar con ?reanudar=1
+   *  (y ?forzarDesactivacion=1 si corresponde). */
+  desactivacionOmitida?: string | null;
 }
 
 export interface Tramo {
@@ -91,19 +107,35 @@ export function paseCompleto(cp: CheckpointBackfill | null): boolean {
   return OPERACIONES.every((op) => cp.operaciones[op]?.completa === true);
 }
 
+/** Prefijo con que la versión anterior anotaba la salvaguarda dentro de `errores`. */
+export const PREFIJO_OMITIDA = "desactivación omitida:";
+
 /** Lee el JSON del checkpoint con tolerancia: cualquier cosa rara es null. */
 export function parsearCheckpoint(value: string | null | undefined): CheckpointBackfill | null {
   if (!value) return null;
   try {
     const cp = JSON.parse(value) as Partial<CheckpointBackfill>;
     if (typeof cp?.pase !== "string" || typeof cp.operaciones !== "object" || cp.operaciones === null) return null;
+    // Compatibilidad: la primera versión anotaba la salvaguarda como error
+    // ("desactivación omitida: …"), lo que dejaba el pase como incompleto y sin
+    // forma de reintentar. Se migra al campo propio.
+    const erroresCrudos = Array.isArray(cp.errores) ? cp.errores.map(String) : [];
+    const omitidas = erroresCrudos.filter((e) => e.startsWith(PREFIJO_OMITIDA));
+    const errores = erroresCrudos.filter((e) => !e.startsWith(PREFIJO_OMITIDA));
     return {
       pase: cp.pase,
       iniciadoEn: typeof cp.iniciadoEn === "string" ? cp.iniciadoEn : "",
       actualizadoEn: typeof cp.actualizadoEn === "string" ? cp.actualizadoEn : "",
       operaciones: cp.operaciones,
-      errores: Array.isArray(cp.errores) ? cp.errores.map(String) : [],
+      errores,
+      activasAlInicio: typeof cp.activasAlInicio === "number" ? cp.activasAlInicio : null,
       desactivacion: cp.desactivacion && typeof cp.desactivacion === "object" ? cp.desactivacion : null,
+      desactivacionOmitida:
+        typeof cp.desactivacionOmitida === "string"
+          ? cp.desactivacionOmitida
+          : omitidas.length
+            ? omitidas[omitidas.length - 1].slice(PREFIJO_OMITIDA.length).trim()
+            : null,
     };
   } catch {
     return null;
@@ -164,17 +196,34 @@ export function aplicarFiltrosDesactivacion(q: QueryFiltrable, pase: string): Qu
  */
 export const UMBRAL_PASE_MINIMO = 0.5;
 
-export function debeDesactivar(opts: { escritasPase: number; activasAntes: number }): { ok: boolean; motivo: string } {
-  const { escritasPase, activasAntes } = opts;
-  if (activasAntes === 0) return { ok: true, motivo: "no hay activas que desactivar" };
-  const razon = escritasPase / activasAntes;
-  if (razon < UMBRAL_PASE_MINIMO) {
-    return {
-      ok: false,
-      motivo: `pase sospechosamente chico: escribió ${escritasPase} sobre ${activasAntes} activas (${razon.toFixed(2)} < ${UMBRAL_PASE_MINIMO})`,
-    };
+/**
+ * `activasAntes` es el conteo AL INICIO del pase (checkpoint.activasAlInicio).
+ * null = el pase no lo midió (checkpoint anterior a esa medición): la proporción
+ * no se puede evaluar y NO se desactiva, salvo `forzar`.
+ *
+ * `forzar` (?forzarDesactivacion=1) salta SOLO esta salvaguarda de proporción.
+ * Las demás —pase completo, ambas operaciones, cero errores, universo no
+ * vacío— las decide paseCompleto() en la ruta y no se pueden saltar.
+ */
+export function debeDesactivar(opts: {
+  escritasPase: number;
+  activasAntes: number | null;
+  forzar?: boolean;
+}): { ok: boolean; motivo: string; forzada: boolean } {
+  const { escritasPase, activasAntes, forzar = false } = opts;
+  const razon = activasAntes && activasAntes > 0 ? escritasPase / activasAntes : null;
+  const detalle = activasAntes === null
+    ? `escribió ${escritasPase}; sin activasAlInicio en el checkpoint`
+    : `escribió ${escritasPase} sobre ${activasAntes} activas al inicio (${razon === null ? "—" : razon.toFixed(2)})`;
+  if (forzar) return { ok: true, forzada: true, motivo: `FORZADA por parámetro, salvaguarda de proporción omitida: ${detalle}` };
+  if (activasAntes === null) {
+    return { ok: false, forzada: false, motivo: `${detalle}: no se puede evaluar la proporción; usa forzarDesactivacion=1 si el pase es confiable` };
   }
-  return { ok: true, motivo: `escribió ${escritasPase} sobre ${activasAntes} activas (${razon.toFixed(2)})` };
+  if (activasAntes === 0) return { ok: true, forzada: false, motivo: "no hay activas que desactivar" };
+  if ((razon as number) < UMBRAL_PASE_MINIMO) {
+    return { ok: false, forzada: false, motivo: `pase sospechosamente chico: ${detalle} < ${UMBRAL_PASE_MINIMO}` };
+  }
+  return { ok: true, forzada: false, motivo: detalle };
 }
 
 /**
@@ -192,6 +241,8 @@ export function planificar(opts: {
   checkpoint: CheckpointBackfill | null;
   ahora: Date;
   paseId?: string;
+  /** Activas del universo medidas antes del primer upsert; solo la usa un pase nuevo. */
+  activasAlInicio?: number | null;
 }): PlanBackfill | { error: string } {
   const { operaciones, desde, reanudar, checkpoint, ahora } = opts;
   const iso = ahora.toISOString();
@@ -240,7 +291,16 @@ export function planificar(opts: {
   }
 
   const pase = opts.paseId ?? nuevoPaseId(ahora);
-  const cp: CheckpointBackfill = { pase, iniciadoEn: iso, actualizadoEn: iso, operaciones: {}, errores: [] };
+  const cp: CheckpointBackfill = {
+    pase,
+    iniciadoEn: iso,
+    actualizadoEn: iso,
+    operaciones: {},
+    errores: [],
+    activasAlInicio: opts.activasAlInicio ?? null,
+    desactivacion: null,
+    desactivacionOmitida: null,
+  };
   for (const op of operaciones) cp.operaciones[op] = estadoVacio();
   return {
     pase,

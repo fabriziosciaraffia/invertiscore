@@ -50,6 +50,9 @@ import { captureApiError } from "@/lib/observabilidad";
 //    operación). reanudar=1: reanuda cada operación desde su última página + 1.
 //  · dry=1: recorre y cuenta lo que escribiría, sin checkpoint ni upsert.
 //    NO se capa: reporta el conteo real.
+//  · forzarDesactivacion=1: salta SOLO la salvaguarda de proporción de la
+//    desactivación (Fase C). No salta pase completo, ambas operaciones, cero
+//    errores ni universo no vacío. Queda anotado en el log y en el checkpoint.
 //
 // CHECKPOINT en `config` (CONFIG_KEY_CHECKPOINT), actualizado tras cada página
 // upserteada. Un corte por tiempo (PRESUPUESTO_MS) o por upsert fallido deja el
@@ -195,6 +198,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "desde debe ser un entero >= 1" }, { status: 400 });
   }
   const reanudar = url.searchParams.get("reanudar") === "1";
+  const forzarDesactivacion = url.searchParams.get("forzarDesactivacion") === "1";
 
   const t0 = Date.now();
   // Margen de 60 s por el reloj de Postgres vs el de la función: una fila creada
@@ -280,7 +284,17 @@ export async function GET(request: Request) {
     captureApiError(e, { ruta: RUTA, operacion: "leer-checkpoint" });
     return NextResponse.json({ error: String(e instanceof Error ? e.message : e) }, { status: 500 });
   }
-  const plan = planificar({ operaciones, desde, reanudar, checkpoint, ahora: new Date() });
+  // Activas del universo ANTES del primer upsert de esta invocación. Un pase
+  // nuevo lo guarda como denominador de la salvaguarda; al reanudar se conserva
+  // el del checkpoint (medirlo después inflaría el denominador con las filas
+  // nuevas del propio pase).
+  let activasAlInicio: number | null = null;
+  try {
+    activasAlInicio = await contarActivas(sb);
+  } catch (e) {
+    captureApiError(e, { ruta: RUTA, operacion: "contar-activas-inicio" });
+  }
+  const plan = planificar({ operaciones, desde, reanudar, checkpoint, ahora: new Date(), activasAlInicio });
   if ("error" in plan) return NextResponse.json({ error: plan.error }, { status: 400 });
   const cp = plan.checkpoint;
 
@@ -357,23 +371,32 @@ export async function GET(request: Request) {
   // ── Fase C: al cerrar un pase COMPLETO, desactivar lo que no vio ──
   // Solo si las dos operaciones terminaron sin errores (paseCompleto) y una
   // sola vez por pase (cp.desactivacion). Un pase parcial NUNCA desactiva.
-  let desactivacion: { filas: number; activasAntes: number; motivo: string } | { omitida: string } | null = null;
+  let desactivacion:
+    | { filas: number; activasAntes: number | null; motivo: string; forzada: boolean }
+    | { omitida: string }
+    | null = null;
   if (!cortado && paseCompleto(cp) && !cp.desactivacion) {
     try {
-      const activasAntes = await contarActivas(sb);
+      // Denominador: las activas AL INICIO del pase, no las de ahora.
+      const activasAntes = cp.activasAlInicio ?? null;
       const escritasPase = OPERACIONES.reduce((a, op) => a + (cp.operaciones[op]?.filas ?? 0), 0);
-      const decision = debeDesactivar({ escritasPase, activasAntes });
+      const decision = debeDesactivar({ escritasPase, activasAntes, forzar: forzarDesactivacion });
       if (!decision.ok) {
+        // Salvaguarda: NO es un error del pase. El pase sigue completo y se
+        // reintenta con ?reanudar=1 (más ?forzarDesactivacion=1 si corresponde).
         desactivacion = { omitida: decision.motivo };
-        cp.errores.push(`desactivación omitida: ${decision.motivo}`);
+        cp.desactivacionOmitida = decision.motivo;
+        console.warn(`[backfill-toctoc] desactivación omitida (pase ${plan.pase}): ${decision.motivo}`);
       } else {
         const r = await desactivarNoVistas(sb, plan.pase);
         if ("omitida" in r) {
           desactivacion = r;
           cp.errores.push(`desactivación: ${r.omitida}`);
         } else {
-          desactivacion = { filas: r.filas, activasAntes, motivo: decision.motivo };
-          cp.desactivacion = { en: new Date().toISOString(), pase: plan.pase, filas: r.filas, activasAntes };
+          desactivacion = { filas: r.filas, activasAntes, motivo: decision.motivo, forzada: decision.forzada };
+          cp.desactivacion = { en: new Date().toISOString(), pase: plan.pase, filas: r.filas, activasAntes, forzada: decision.forzada };
+          cp.desactivacionOmitida = null;
+          if (decision.forzada) console.warn(`[backfill-toctoc] desactivación FORZADA (pase ${plan.pase}): ${r.filas} filas · ${decision.motivo}`);
         }
       }
       await guardarCheckpoint(sb, cp);
@@ -400,7 +423,10 @@ export async function GET(request: Request) {
     cortado,
     motivoCorte,
     paseCompleto: paseCompleto(cp) || !!cp.desactivacion,
+    activasAlInicio: cp.activasAlInicio ?? null,
     desactivacion,
+    desactivacionOmitida: cp.desactivacionOmitida ?? null,
+    forzarDesactivacion,
     reanudarCon: cortado && pendiente ? `?operacion=${pendiente}&reanudar=1` : null,
     errores: cp.errores.slice(0, 20),
     timing: { total_ms: Date.now() - t0 },

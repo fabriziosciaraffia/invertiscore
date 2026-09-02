@@ -68,8 +68,8 @@ test("nuevoPaseId: fecha compacta + sufijo, distinto entre llamadas", () => {
   assert.notEqual(nuevoPaseId(AHORA), nuevoPaseId(AHORA));
 });
 
-test("pase nuevo: id nuevo, ambas desde la página 1, checkpoint limpio", () => {
-  const plan = planificar({ operaciones: ["venta", "arriendo"], desde: null, reanudar: false, checkpoint: null, ahora: AHORA, paseId: "pX" });
+test("pase nuevo: id nuevo, ambas desde la página 1, checkpoint limpio con activasAlInicio", () => {
+  const plan = planificar({ operaciones: ["venta", "arriendo"], desde: null, reanudar: false, checkpoint: null, ahora: AHORA, paseId: "pX", activasAlInicio: 52674 });
   assert.ok(!("error" in plan));
   assert.equal(plan.pase, "pX");
   assert.deepEqual(plan.tramos, [
@@ -78,6 +78,15 @@ test("pase nuevo: id nuevo, ambas desde la página 1, checkpoint limpio", () => 
   ]);
   assert.deepEqual(plan.checkpoint.operaciones.venta, estadoVacio());
   assert.equal(plan.checkpoint.errores.length, 0);
+  assert.equal(plan.checkpoint.activasAlInicio, 52674, "el denominador de la salvaguarda se fija al inicio del pase");
+  assert.equal(plan.checkpoint.desactivacion, null);
+  assert.equal(plan.checkpoint.desactivacionOmitida, null);
+});
+
+test("pase nuevo sin medición: activasAlInicio queda null (no se inventa)", () => {
+  const plan = planificar({ operaciones: ["venta"], desde: null, reanudar: false, checkpoint: null, ahora: AHORA, paseId: "pX" });
+  assert.ok(!("error" in plan));
+  assert.equal(plan.checkpoint.activasAlInicio, null);
 });
 
 test("pase nuevo sobre uno incompleto: lo abandona y lo dice", () => {
@@ -85,6 +94,16 @@ test("pase nuevo sobre uno incompleto: lo abandona y lo dice", () => {
   assert.ok(!("error" in plan));
   assert.equal(plan.pase, "pY");
   assert.match(plan.motivo, /quedó incompleto y se abandona/);
+});
+
+test("desde= y reanudar=1 conservan activasAlInicio del checkpoint aunque se pase una medición nueva", () => {
+  const cp = { ...cpAMedias(), activasAlInicio: 52674 };
+  const a = planificar({ operaciones: ["venta"], desde: 18, reanudar: false, checkpoint: cp, ahora: AHORA, activasAlInicio: 74482 });
+  assert.ok(!("error" in a));
+  assert.equal(a.checkpoint.activasAlInicio, 52674);
+  const b = planificar({ operaciones: ["venta"], desde: null, reanudar: true, checkpoint: cp, ahora: AHORA, activasAlInicio: 74482 });
+  assert.ok(!("error" in b));
+  assert.equal(b.checkpoint.activasAlInicio, 52674);
 });
 
 test("desde=: conserva el id del pase y arranca en esa página", () => {
@@ -152,6 +171,11 @@ test("parsearCheckpoint: tolera basura y conserva lo válido", () => {
   assert.equal(cp.operaciones.venta?.ultimaPagina, 17);
   const sinErrores = parsearCheckpoint(JSON.stringify({ pase: "p", operaciones: {} }));
   assert.deepEqual(sinErrores?.errores, []);
+  assert.equal(sinErrores?.activasAlInicio, null);
+  assert.equal(sinErrores?.desactivacionOmitida, null);
+  const conInicio = parsearCheckpoint(JSON.stringify({ pase: "p", operaciones: {}, activasAlInicio: 52674, desactivacionOmitida: "x" }));
+  assert.equal(conInicio?.activasAlInicio, 52674);
+  assert.equal(conInicio?.desactivacionOmitida, "x");
 });
 
 console.log(`\n${pass} OK · ${fail} FAIL${fail ? " → " + fallidos.join(", ") : ""}\n`);
