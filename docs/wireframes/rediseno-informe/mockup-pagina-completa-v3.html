@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light" data-view="desktop">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup · Página completa v3 — refranco.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;0,8..60,900;1,8..60,400;1,8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!--
+  ============================================================
+  MOCKUP · PÁGINA COMPLETA DEL INFORME · v3 (ronda 3 con feedback, 02-sep-2026)
+  ------------------------------------------------------------
+  Caso real: cb0e8f46 · Huechuraba · AJUSTA SUPUESTOS · LTR · score 48 · UF 40.874
+  Todos los números salen del recompute de la página; la tabla anual replica el
+  loop de calcProjections con las funciones del motor y calza con projections
+  (verificado año a año). La matriz pie × plazo son 16 recomputes con ambos
+  parches a la vez (piePct + plazoCredito).
+
+  NOVEDADES v3:
+   · "Lo que te separa" y "Ver cómo se calcula" son MODALES (overlay Ink 60%,
+     panel 720px / pantalla completa en mobile, ✕ y Esc).
+   · Footer de la posición de Franco con fondo propio, regla, botón real.
+   · III: puente nuevo · tasa con barras, pie y cuota como DataRow · matriz
+     pie × plazo con toggle FLUJO | TIR (reemplaza las dos escaleras).
+   · IV: comuna → proyección → compra en verde (línea de tiempo) → un cierre.
+   · V: barras aporte/valor + línea patrimonio · composición de la ganancia ·
+     venta/refi en dos columnas iguales · "La misma plata en otro lado".
+   · Zona: drawer v12 como destino de "Explorar →".
+   · VFuente: solo fuente, fecha y alcance. Máximo dos líneas.
+  ============================================================
+-->
+<style>
+  :root{--serif:'Source Serif 4',Georgia,serif;--sans:'IBM Plex Sans',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace;--signal:#C8323C}
+  [data-theme="light"]{--bg:#E9E6DF;--paper:#FAF8F3;--paper2:#F1EEE7;--paper3:#EAE7DF;--line:#DAD6CC;--line2:#C4BFB2;
+    --tx:#141311;--tx2:#3B3A36;--tx3:#75726A;--tx4:#A39F94;--hl:rgba(224,67,80,.26);--hl-tx:#141311;
+    --neutral:#8C8880;--good:#2F7D55;--warn:#A96F1B;--shadow:0 24px 60px rgba(20,19,17,.14);
+    --v-buscar:#C8323C;--v-ajusta:#A96F1B;--v-comprar:#2F7D55;--map-bg:#EFEDE6;--map-line:#DDD9CE}
+  [data-theme="dark"]{--bg:#0A0A0A;--paper:#141414;--paper2:#1B1B1B;--paper3:#232323;--line:#282828;--line2:#3A3A3A;
+    --tx:#EDEBE6;--tx2:#C4C2BC;--tx3:#8C8A84;--tx4:#5C5A55;--hl:rgba(216,67,77,.38);--hl-tx:#FFFFFF;
+    --neutral:#6E6A63;--good:#57B98A;--warn:#DFA34F;--shadow:0 24px 60px rgba(0,0,0,.6);
+    --v-buscar:#D8434D;--v-ajusta:#DFA34F;--v-comprar:#57B98A;--map-bg:#1A1A1A;--map-line:#2A2A2A}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);min-height:100vh;padding:28px 16px 90px}
+  mark{background:linear-gradient(transparent 42%,var(--hl) 42%,var(--hl) 94%,transparent 94%);color:var(--hl-tx);padding:0 2px;font-weight:500}
+
+  /* ===== LAB ===== */
+  .lab{max-width:1040px;margin:0 auto}
+  .lab-head h1{font-family:var(--serif);font-size:21px;font-weight:600;margin-bottom:4px}
+  .lab-head h1 em{font-style:italic;font-weight:400;color:var(--tx3)}
+  .lab-head .ai{color:var(--signal)}
+  .lab-sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:16px}
+  .frozen{border:1px solid var(--signal);border-left:3px solid var(--signal);background:var(--paper2);padding:12px 16px;margin-bottom:18px;font-size:12.5px;color:var(--tx2);line-height:1.6;max-width:80ch}
+  .frozen b{color:var(--signal);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:5px}
+  .frozen ol{padding-left:18px} .frozen li{margin-bottom:5px}
+  .frozen li strong{font-weight:600;color:var(--tx)}
+  .frozen code{font-family:var(--mono);font-size:11px;background:var(--paper3);padding:1px 4px;border-radius:2px}
+  .controls{display:flex;flex-wrap:wrap;gap:12px 20px;margin-bottom:22px}
+  .ctrl{display:flex;align-items:center;gap:8px}
+  .ctrl .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;padding:8px 12px;background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+
+  /* ===== DOCUMENTO ===== */
+  .stage{display:flex;justify-content:center}
+  .doc{width:100%;max-width:820px;background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);transition:max-width .25s;position:relative;overflow:hidden}
+  [data-view="mobile"] .doc{max-width:400px}
+  .doc::before{content:'';display:block;height:5px;background:var(--signal)}
+  .doc-head{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--line)}
+  [data-view="mobile"] .doc-head{padding:14px 20px}
+  .wordmark{font-family:var(--serif);font-size:16px;font-weight:700}
+  .wordmark em{font-style:italic;font-weight:400;color:var(--tx3)}
+  .wordmark .ai{color:var(--signal);font-weight:700}
+  .folio{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx4)}
+  .doc-foot{display:flex;justify-content:space-between;padding:14px 64px 20px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4);background:var(--paper2)}
+  [data-view="mobile"] .doc-foot{padding:12px 22px 18px}
+  .doc-foot .wm{font-family:var(--serif);font-size:11px;text-transform:none;letter-spacing:0;color:var(--tx3);font-weight:700}
+  .doc-foot .wm em{font-style:italic;font-weight:400} .doc-foot .wm .ai{color:var(--signal)}
+
+  /* ===== SECCIONES A SANGRE ===== */
+  .sec{padding:36px 64px 44px;background:var(--paper)}
+  .sec.p2{background:var(--paper2)}
+  [data-view="mobile"] .sec{padding:26px 22px 32px}
+  .sec-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:12px}
+  .sec h2.t{font-family:var(--serif);font-size:30px;font-weight:700;line-height:1.12;letter-spacing:-.012em;margin-bottom:10px}
+  [data-view="mobile"] .sec h2.t{font-size:25px}
+  .sec-intent{font-size:14.5px;line-height:1.62;color:var(--tx3);max-width:64ch;margin-bottom:26px}
+
+  /* ===== 1 · PORTADA ===== */
+  .cover-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tx3);margin-bottom:18px}
+  .cover-eyebrow b{color:var(--tx2);font-weight:500} .cover-eyebrow .sep{margin:0 8px;color:var(--tx4)}
+  .banda{position:relative;left:-64px;width:calc(100% + 128px);margin-bottom:18px}
+  [data-view="mobile"] .banda{left:-22px;width:calc(100% + 44px)}
+  .banda .band{display:block;background:var(--v-ajusta);color:#fff;font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:10px 20px 10px 64px}
+  [data-view="mobile"] .banda .band{padding-left:22px;font-size:11.5px;letter-spacing:.16em}
+  .sbar{display:flex;align-items:center;gap:12px;max-width:420px;margin:0 0 20px}
+  .sbar .bar{flex:1;position:relative;height:3px;background:var(--line2);border-radius:2px}
+  .sbar .fill{position:absolute;left:0;top:0;bottom:0;background:var(--tx);border-radius:2px}
+  .sbar .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--tx3);text-transform:uppercase;white-space:nowrap}
+  .sbar .lbl b{color:var(--tx)}
+  .cover-grid{display:grid;grid-template-columns:1fr 236px;gap:30px;align-items:start}
+  [data-view="mobile"] .cover-grid{grid-template-columns:1fr}
+  .headline{font-family:var(--serif);font-size:36px;line-height:1.15;font-weight:700;letter-spacing:-.01em;margin-bottom:16px}
+  [data-view="mobile"] .headline{font-size:27px;margin-bottom:12px}
+  .keyfig{font-size:13.5px;color:var(--tx3);line-height:1.55;margin-bottom:18px}
+  .keyfig .fig{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--signal)}
+  [data-view="mobile"] .keyfig .fig{font-size:19px}
+  .util{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .props-link{display:inline-flex;align-items:center;gap:9px;background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);border-bottom:1px dashed var(--line2);padding-bottom:3px}
+  .cur{display:inline-flex;border:1px solid var(--line2);border-radius:4px;overflow:hidden}
+  .cur span{font-family:var(--mono);font-size:10px;padding:4px 9px;color:var(--tx3)} .cur span.on{background:var(--tx);color:var(--bg);font-weight:700}
+  .mapbox{position:relative;height:210px;border:1px solid var(--line);background:var(--map-bg);overflow:hidden}
+  [data-view="mobile"] .cover-grid .mapbox{display:none}
+  .mapbox .streets{position:absolute;inset:0;background:linear-gradient(0deg,transparent 48%,var(--map-line) 48%,var(--map-line) 50%,transparent 50%),linear-gradient(90deg,transparent 30%,var(--map-line) 30%,var(--map-line) 31.5%,transparent 31.5%),linear-gradient(90deg,transparent 68%,var(--map-line) 68%,var(--map-line) 69.5%,transparent 69.5%),linear-gradient(28deg,transparent 63%,var(--map-line) 63%,var(--map-line) 64.5%,transparent 64.5%)}
+  .mapbox .dot{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--tx4);opacity:.55}
+  .mapbox .mpoi{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--paper);border:2px solid var(--tx2)}
+  .mapbox .pin{position:absolute;left:50%;top:44%;transform:translate(-50%,-100%);width:16px;height:16px;background:var(--signal);border-radius:50% 50% 50% 0;rotate:-45deg}
+  .mapbox .pin::after{content:'';position:absolute;inset:4px;background:#fff;border-radius:50%}
+  .mapbox .tag{position:absolute;right:8px;bottom:8px;background:var(--tx);color:var(--paper);font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;padding:5px 9px;border-radius:2px}
+
+  /* ===== 2 · HERO + posición con footer propio ===== */
+  .hero h2{font-family:var(--serif);font-size:23px;font-weight:700;line-height:1.22;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+  [data-view="mobile"] .hero h2{font-size:21px}
+  .fmark{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--signal);color:#fff;font-family:var(--serif);font-weight:700;font-size:12px;flex-shrink:0;position:relative;top:4px}
+  .hero-prosa{font-size:15px;line-height:1.62;color:var(--tx2);max-width:75ch;margin-left:36px}
+  [data-view="mobile"] .hero-prosa{margin-left:0;font-size:14px}
+  .posicion{margin-top:20px;background:var(--paper);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+  .pos-main{border-left:3px solid var(--signal);padding:16px 18px 14px}
+  .pos-main .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:8px}
+  .pos-main p{font-family:var(--serif);font-style:italic;font-size:14.5px;line-height:1.7;color:var(--tx2);max-width:70ch}
+  .firma{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:11.5px;font-weight:600}
+  .firma small{display:block;font-family:var(--mono);font-size:9.5px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3)}
+  .pos-foot{background:var(--paper2);border-top:1px solid var(--line);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+  .pos-foot .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx3);font-weight:700;display:block;margin-bottom:4px}
+  .pos-foot .l{font-size:13px;color:var(--tx2);line-height:1.5}
+  .btn{display:inline-flex;align-items:center;gap:8px;background:var(--signal);color:#fff;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:10px 16px;border-radius:4px;border:none;cursor:pointer;white-space:nowrap}
+  .btn:hover{filter:brightness(.92)}
+  .lnk{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal);text-decoration:none;white-space:nowrap;background:none;border:none;cursor:pointer;padding:0}
+  .lnk:hover{text-decoration:underline;text-underline-offset:3px}
+
+  /* ===== 3 · PRINCIPALES HALLAZGOS ===== */
+  .hz{border-bottom:1px solid var(--line);padding:14px 0 14px}
+  .hz:first-of-type{border-top:1px solid var(--line)}
+  .hz-head{display:flex;align-items:baseline;gap:16px}
+  .hz .num{font-family:var(--serif);font-size:28px;font-weight:900;color:var(--signal);min-width:46px;font-variant-numeric:tabular-nums}
+  [data-view="mobile"] .hz .num{font-size:22px;min-width:36px}
+  .hz .q{flex:1;font-family:var(--serif);font-size:16px;font-weight:600;line-height:1.35}
+  .hz .q small{display:block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.06em;color:var(--tx4);margin-top:3px}
+  [data-view="mobile"] .hz .q{font-size:14.5px}
+  .hz .val{font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--signal);white-space:nowrap}
+  .hz .val.ink{color:var(--tx)}
+  .hz-cierre{margin:10px 0 0 62px;font-family:var(--serif);font-style:italic;font-size:14px;line-height:1.65;color:var(--tx2);max-width:62ch}
+  [data-view="mobile"] .hz-cierre{margin-left:0}
+  .hz-foot{display:flex;justify-content:flex-end;margin-top:8px}
+  .dot-dir{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;position:relative;top:-1px}
+  .dot-dir.adv{background:var(--signal)} .dot-dir.fav{background:var(--good)}
+
+  /* ===== MODALES + DRAWER ===== */
+  .overlay{position:fixed;inset:0;background:rgba(20,19,17,.6);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
+  .overlay.open{display:flex}
+  .modal{width:100%;max-width:720px;max-height:92vh;overflow-y:auto;background:var(--paper);border:1px solid var(--line2);border-radius:4px;padding:26px 28px 24px;position:relative}
+  [data-view="mobile"] .overlay{padding:0}
+  [data-view="mobile"] .modal{max-width:none;max-height:none;height:100%;border-radius:0;border:none;padding:22px 20px 24px}
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:6px}
+  .modal h3{font-family:var(--serif);font-size:22px;font-weight:700;line-height:1.2}
+  .modal .sub{font-size:13px;color:var(--tx3);line-height:1.5;margin-bottom:18px}
+  .x{background:none;border:1px solid var(--line2);border-radius:4px;width:30px;height:30px;font-family:var(--mono);font-size:14px;color:var(--tx3);cursor:pointer;flex-shrink:0}
+  .x:hover{color:var(--tx);border-color:var(--tx4)}
+  .m-block{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+  .m-block:first-of-type{margin-top:0;padding-top:0;border-top:none}
+  .m-block .bt{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:4px}
+  .m-block .bq{font-family:var(--serif);font-size:16px;font-weight:600;margin-bottom:10px}
+  .m-foot{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--tx4);line-height:1.5}
+  .drawer-wrap{position:fixed;inset:0;background:rgba(20,19,17,.6);display:none;justify-content:flex-end;z-index:60}
+  .drawer-wrap.open{display:flex}
+  .drawer{width:100%;max-width:560px;height:100%;overflow-y:auto;background:var(--paper);border-left:1px solid var(--line2);padding:26px 28px 30px}
+  [data-view="mobile"] .drawer{max-width:none;padding:22px 20px 26px}
+  /* tablas del modal de cálculo */
+  .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tbl{border-collapse:collapse;width:100%;min-width:560px}
+  .tbl th{font-family:var(--mono);font-size:8px;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4);padding:7px 4px;text-align:right;border-bottom:1px solid var(--line);font-weight:400;white-space:nowrap}
+  .tbl th:first-child{text-align:left}
+  .tbl td{font-family:var(--mono);font-size:10px;padding:7px 4px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  .tbl td:first-child{text-align:left;color:var(--tx3)}
+  .tbl tr.pre td{color:var(--tx4)}
+  .tbl tr.ent td:first-child{color:var(--warn);font-weight:700}
+  .tbl tr.tot td{font-weight:700;border-top:2px solid var(--tx);border-bottom:none;color:var(--tx)}
+  .tbl .neg{color:var(--signal)}
+  .tbl-scrollcue{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4);margin-top:8px;display:none}
+  [data-view="mobile"] .tbl-scrollcue{display:block}
+  .ind{border-collapse:collapse;width:100%}
+  .ind td{padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px;vertical-align:baseline}
+  .ind td:first-child{color:var(--tx);font-weight:600;width:28%}
+  .ind td:nth-child(2){color:var(--tx3);font-size:12px;padding-right:12px}
+  .ind td:nth-child(3){font-family:var(--mono);color:var(--tx2);font-size:11.5px;padding-right:12px}
+  .ind td:last-child{font-family:var(--mono);font-weight:700;text-align:right;white-space:nowrap;width:12%}
+  .ind td:last-child.neg{color:var(--signal)}
+  [data-view="mobile"] .ind td:nth-child(2){display:none}
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dotted var(--line);font-size:12.5px;color:var(--tx3)}
+  .kv .v{font-family:var(--mono);color:var(--tx);white-space:nowrap} .kv .v.neg{color:var(--signal)}
+  .kv.tot{border-top:2px solid var(--tx);border-bottom:none;margin-top:4px;padding-top:9px;color:var(--tx);font-weight:600}
+  .kv.tot .v{font-weight:700;font-size:14px}
+  .kv.sub{border-top:1px solid var(--line2);border-bottom:none;padding-top:8px;color:var(--tx);font-weight:600}
+  .kv.sub .v{font-weight:700}
+  .compo{display:flex;height:22px;border-radius:3px;overflow:hidden;margin-top:12px}
+  .compo span{height:100%} .compo .f{background:var(--tx)} .compo .p{background:var(--good);opacity:.45}
+  /* barra apilada de "de dónde sale tu parte" (propuesta-04) */
+  .brackets{display:flex;margin-bottom:5px}
+  .bracket{position:relative;text-align:center;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);padding-bottom:7px}
+  .bracket::after{content:'';position:absolute;left:3px;right:3px;bottom:0;height:5px;border:1px solid var(--line2);border-bottom:none;border-radius:3px 3px 0 0}
+  .bracket b{color:var(--tx);font-size:11px}
+  .compo2{display:flex;height:38px;border-radius:3px;overflow:hidden}
+  .seg-c{height:100%;position:relative}
+  .seg-c.pie{background:var(--neutral)} .seg-c.amort{background:var(--good)} .seg-c.plus{background:var(--good);opacity:.45}
+  .seg-c.plus::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.35) 5px,rgba(255,255,255,.35) 10px)}
+  .leg{margin-top:14px}
+  .leg-row{display:grid;grid-template-columns:12px 1fr auto;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .leg-row:last-child{border-bottom:none}
+  .leg-sw{width:12px;height:12px;border-radius:2px;position:relative;top:2px}
+  .leg-sw.pie{background:var(--neutral)} .leg-sw.amort{background:var(--good)} .leg-sw.plus{background:var(--good);opacity:.45}
+  .leg-sw.plus::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.4) 3px,rgba(255,255,255,.4) 6px)}
+  .leg-k{font-size:12.5px;color:var(--tx2)} .leg-k small{display:block;font-size:11px;color:var(--tx3);margin-top:1px}
+  .leg-v{font-family:var(--mono);font-size:12.5px;font-weight:700;white-space:nowrap;text-align:right}
+  .leg-v small{display:block;font-family:var(--mono);font-size:9.5px;color:var(--tx4);font-weight:400;margin-top:1px}
+  .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:11px;border-top:2px solid var(--tx)}
+  .total .k{font-size:13px;font-weight:600;color:var(--tx)} .total .v{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--tx)}
+  [data-view="mobile"] .total .v{font-size:17px}
+  .mult{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--paper2);border:1px solid var(--line);border-radius:3px;margin-top:12px}
+  .mult .k{font-size:12px;color:var(--tx3);flex:1;line-height:1.45} .mult .v{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--good);white-space:nowrap}
+  .compo-leg{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--tx3);margin-top:6px}
+  .compo-leg b{color:var(--tx)}
+
+  /* ===== 4 · LOS NÚMEROS ===== */
+  .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+  [data-view="mobile"] .nums{grid-template-columns:repeat(2,1fr)}
+  .num-cell{background:var(--paper);padding:14px 16px 13px}
+  .num-cell .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:8px}
+  .num-cell .v{font-family:var(--mono);font-size:23px;font-weight:700;line-height:1;color:var(--tx);letter-spacing:-.01em}
+  [data-view="mobile"] .num-cell .v{font-size:19px}
+  .num-cell .v.neg{color:var(--signal)}
+  .num-cell .v small{font-size:11px;font-weight:400;color:var(--tx4);letter-spacing:0;margin-left:4px}
+  .num-cell .tr{font-size:12px;line-height:1.5;color:var(--tx3);margin-top:8px}
+  .num-cell .tr b{color:var(--tx2);font-weight:500}
+  .nums-foot{display:flex;justify-content:flex-end;margin-top:12px}
+
+  /* ===== ACORDEÓN ===== */
+  .hall{border-bottom:1px solid var(--line)}
+  .hall:first-of-type{border-top:1px solid var(--line)}
+  .hall-head{display:flex;align-items:baseline;gap:16px;padding:17px 0;cursor:pointer;width:100%;background:none;border:none;text-align:left;color:inherit;transition:padding-left .15s}
+  .hall-head:hover{padding-left:6px}
+  .hall .num{font-family:var(--serif);font-size:24px;font-weight:900;color:var(--line2);min-width:46px;transition:color .15s}
+  .hall.open .num,.hall-head:hover .num{color:var(--signal)}
+  [data-view="mobile"] .hall .num{font-size:20px;min-width:36px}
+  .hall .q{flex:1;font-family:var(--serif);font-size:17px;font-weight:600;line-height:1.3}
+  .hall .q .ksub{display:block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.06em;color:var(--tx4);margin-top:4px}
+  [data-view="mobile"] .hall .q{font-size:15px}
+  .hall .val{font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--tx);white-space:nowrap}
+  .hall .val.red{color:var(--signal)}
+  .hall .chev{font-family:var(--mono);font-size:13px;color:var(--tx4);transition:transform .2s}
+  .hall.open .chev{transform:rotate(180deg)}
+  .hall-body{display:none;margin:0 0 0 12px;padding:6px 0 18px 74px;border-left:2px solid color-mix(in srgb,var(--tx) 30%,transparent)}
+  [data-view="mobile"] .hall-body{margin-left:8px;padding-left:22px}
+  .hall.open .hall-body{display:block}
+  .hall-end{display:flex;justify-content:flex-end;margin-top:16px}
+  .hall-close{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);background:none;border:1px solid var(--line2);border-radius:3px;padding:6px 12px;cursor:pointer}
+  .hall-close:hover{color:var(--tx);border-color:var(--tx4)}
+  /* vocabulario v12 */
+  .v-prosa{font-size:14px;line-height:1.75;color:var(--tx2);margin-bottom:16px;max-width:60ch}
+  .v-viz{margin:0 0 18px}
+  .v-viz-t{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:10px}
+  /* subtítulo de tramo: serif, un escalón bajo el título del capítulo (17px), Ink, 24px de aire arriba */
+  .v-sub{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--tx);margin:24px 0 8px;line-height:1.3}
+  .hall-body > .v-prosa + .v-viz > .v-sub:first-child,.v-viz:first-of-type > .v-sub:first-child{margin-top:6px}
+  .v-copy{font-size:13.5px;line-height:1.65;color:var(--tx2);max-width:60ch;margin-bottom:12px}
+  .v-puente{font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:color-mix(in srgb,var(--tx) 60%,transparent);margin:2px 0 16px;padding-top:12px;border-top:1px dotted var(--line2)}
+  .v-cierre{background:var(--paper2);border:1px solid var(--line);border-left:3px solid var(--signal);border-radius:3px;padding:16px 18px;margin-top:4px}
+  .sec.p2 .v-cierre{background:var(--paper)}
+  .v-cierre .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:8px}
+  .v-cierre p{font-family:var(--serif);font-style:italic;font-size:14.5px;line-height:1.7;color:var(--tx2);max-width:58ch}
+  .v-fuente{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--tx4);margin-top:12px;line-height:1.5}
+
+  /* termómetro */
+  .thermo{padding:22px 0 2px;position:relative}
+  .thermo-track{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--signal),var(--warn),var(--good))}
+  .thermo-mark{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--tx);border:3px solid var(--paper);transform:translate(-50%,-50%)}
+  .thermo-ref{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--tx3)}
+  .thermo-you{position:absolute;top:-22px;transform:translateX(-50%);font-family:var(--mono);font-size:10px;font-weight:700;white-space:nowrap}
+  .thermo-legend{display:flex;justify-content:space-between;margin-top:9px;font-family:var(--mono);font-size:9.5px;color:var(--tx4);letter-spacing:.06em}
+  .thermo-legend b{color:var(--tx2);display:block;font-size:12px;margin-top:2px}
+  /* dial */
+  .dial{position:relative;margin:46px 0 8px}
+  .dial-track{position:relative;display:flex;height:34px;border-radius:3px;overflow:hidden}
+  .zone{height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#fff;white-space:nowrap;overflow:hidden}
+  .zone.buscar{background:var(--v-buscar)} .zone.ajusta{background:var(--v-ajusta)} .zone.comprar{background:var(--v-comprar)}
+  [data-view="mobile"] .zone{font-size:7.5px;letter-spacing:.04em}
+  .mark{position:absolute;top:-24px;bottom:-8px;width:2px;background:var(--tx);z-index:3}
+  .mark::after{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:11px;height:11px;border-radius:50%;background:var(--tx);border:2.5px solid var(--paper)}
+  .mark-lbl{position:absolute;top:-46px;transform:translateX(-50%);text-align:center;white-space:nowrap;z-index:4}
+  .mark-lbl .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);display:block}
+  .mark-lbl .v{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--tx)}
+  .edges{position:relative;height:66px;margin-top:6px}
+  .edge{position:absolute;top:0;text-align:left;white-space:nowrap}
+  .edge.der{text-align:right;transform:translateX(-100%)}
+  .edge::before{content:'';position:absolute;top:-12px;width:1px;height:10px;background:var(--line2)}
+  .edge.izq::before{left:0} .edge.der::before{right:0}
+  .edge .d{font-family:var(--mono);font-size:12px;font-weight:700;display:block}
+  .edge .v{font-family:var(--mono);font-size:12px;color:var(--tx2);display:block;margin-top:2px}
+  .edge .k{font-size:10.5px;color:var(--tx3);display:block;margin-top:3px;line-height:1.3;white-space:normal;max-width:130px}
+  .edge.der .k{margin-left:auto}
+  .edge.down .d{color:var(--signal)} .edge.up .d{color:var(--good)}
+  .colchon{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--paper2);border:1px solid var(--line);border-radius:3px;margin-top:2px}
+  .colchon .k{font-size:12.5px;color:var(--tx3);flex:1} .colchon .v{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--tx)}
+  .colchon .v small{font-size:10px;color:var(--tx4);font-weight:400}
+  /* waterfall */
+  .fall-visual{display:flex;height:26px;border-radius:2px;overflow:hidden;margin-bottom:12px}
+  .fall-visual span{height:100%}
+  .fall-row{display:grid;grid-template-columns:1fr 130px;align-items:center;gap:12px;padding:7px 0;border-bottom:1px dotted var(--line)}
+  [data-view="mobile"] .fall-row{grid-template-columns:1fr 108px;gap:8px}
+  .fall-row:last-child{border-bottom:none}
+  .fall-row .fk{font-size:12.5px;color:var(--tx3);display:flex;align-items:center;gap:8px}
+  .fall-row .fk small{color:var(--tx4);font-size:11px}
+  .fall-row .fk::before{content:'';width:8px;height:8px;border-radius:2px;background:var(--c,var(--neutral));flex-shrink:0}
+  .fall-row .fv{font-family:var(--mono);font-size:12.5px;text-align:right}
+  .fall-row.in .fk{color:var(--tx);font-weight:600} .fall-row.in .fk::before{background:var(--tx)} .fall-row.in .fv{font-weight:700}
+  .fall-row.total{border-top:2px solid var(--tx);margin-top:6px;padding-top:10px}
+  .fall-row.total .fk{color:var(--tx);font-weight:600;font-size:13px} .fall-row.total .fk::before{display:none}
+  .fall-row.total .fv{font-weight:700;font-size:14.5px;color:var(--signal)}
+  /* eje de precio + plan */
+  .eje-marca{height:42px;position:relative;margin-bottom:2px}
+  .m-lbl{position:absolute;bottom:0;transform:translateX(-50%);text-align:center;white-space:nowrap}
+  .m-lbl .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);display:block;margin-bottom:1px}
+  .m-lbl .v{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--tx);display:block}
+  .m-lbl::after{content:'';position:absolute;left:50%;bottom:-8px;width:2px;height:8px;background:var(--tx)}
+  .eje-track{display:flex;height:30px;border-radius:3px;overflow:hidden;position:relative}
+  .z{height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#fff;white-space:nowrap;overflow:hidden}
+  .z.compra{background:var(--v-comprar)} .z.ajusta{background:var(--v-ajusta)} .z.no{background:var(--v-buscar)}
+  .aguja{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--tx);z-index:3}
+  .bordes{position:relative;height:64px;margin-top:8px}
+  [data-view="mobile"] .bordes{height:104px}
+  .borde{position:absolute;top:0;text-align:left;white-space:nowrap}
+  .borde.der{text-align:right;transform:translateX(-100%)}
+  [data-view="mobile"] .borde.der{top:46px}
+  .borde::before{content:'';position:absolute;top:-14px;width:1px;height:12px;background:var(--line2)}
+  .borde.izq::before{left:0} .borde.der::before{right:0}
+  [data-view="mobile"] .borde.der::before{height:56px;top:-58px}
+  .borde .v{font-family:var(--mono);font-size:11.5px;font-weight:700;display:block}
+  .borde .k{font-size:10px;color:var(--tx3);display:block;margin-top:3px;line-height:1.3;white-space:normal;max-width:118px}
+  .borde.der .k{margin-left:auto}
+  .borde.a .v{color:var(--good)} .borde.b .v{color:var(--signal)}
+  .plan-row{padding:12px 0;border-bottom:1px solid var(--line)} .plan-row:last-child{border-bottom:none}
+  .plan-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+  .plan-k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal);font-weight:700}
+  .plan-v{font-family:var(--mono);font-size:15px;font-weight:700;white-space:nowrap}
+  .plan-deltas{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+  .dchip{font-family:var(--mono);font-size:10px;letter-spacing:.03em;padding:3px 7px;border-radius:3px;background:var(--paper3);color:var(--tx2)}
+  .dchip b{color:var(--tx)}
+  .plan-d{font-size:12px;color:var(--tx3);line-height:1.45}
+  /* tasa vs mercado + DataRows */
+  .cmp-row{padding:11px 0;border-bottom:1px solid var(--line)}
+  .cmp-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+  .cmp-k{font-size:12.5px;font-weight:600;color:var(--tx)} .cmp-k small{display:block;font-weight:400;font-size:11px;color:var(--tx3);margin-top:1px}
+  .cmp-tag{font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:2px 7px;border-radius:3px;white-space:nowrap;color:var(--good);background:color-mix(in srgb,var(--good) 13%,transparent)}
+  .cmp-line{display:grid;grid-template-columns:64px 1fr 76px;align-items:center;gap:9px;margin-bottom:5px}
+  [data-view="mobile"] .cmp-line{grid-template-columns:56px 1fr 70px;gap:7px}
+  .cmp-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);text-align:right}
+  .cmp-track{height:13px;background:var(--paper3);border-radius:2px;overflow:hidden}
+  .cmp-fill{height:100%;border-radius:2px}
+  .cmp-fill.ok{background:var(--good)} .cmp-fill.ref{background:var(--neutral);opacity:.5}
+  .cmp-v{font-family:var(--mono);font-size:11.5px;font-weight:700;text-align:right}
+  .datarow{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--tx)}
+  .datarow small{display:block;font-weight:400;font-size:11px;color:var(--tx3);margin-top:1px}
+  .datarow .v{font-family:var(--mono);font-weight:700;white-space:nowrap}
+  /* matriz pie × plazo */
+  .mx-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+  .mx-toggle{display:inline-flex;border:1px solid var(--line2);border-radius:4px;overflow:hidden}
+  .mx-toggle button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .mx-toggle button+button{border-left:1px solid var(--line2)}
+  .mx-toggle button.on{background:var(--tx);color:var(--bg);font-weight:700}
+  .mx{border-collapse:collapse;width:100%}
+  .mx th{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx4);padding:8px 6px;font-weight:400;border-bottom:1px solid var(--line);text-align:right}
+  .mx th:first-child{text-align:left}
+  .mx td{font-family:var(--mono);font-size:12px;padding:10px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  [data-view="mobile"] .mx{min-width:470px} [data-view="mobile"] .mx td{font-size:11px;padding:9px 6px}
+  .mx td:first-child{text-align:left;font-weight:700;color:var(--tx)} .mx td:first-child small{display:block;font-family:var(--sans);font-size:10px;font-weight:400;color:var(--tx3)}
+  .mx td.neg{color:var(--signal)} .mx td.pos{color:var(--tx)}
+  .mx td.hoy{box-shadow:inset 0 0 0 200px color-mix(in srgb,var(--warn) 16%,transparent);font-weight:700}
+  .mx-note{font-family:var(--mono);font-size:10.5px;color:var(--tx2);line-height:1.6;margin-top:10px;letter-spacing:.02em}
+  /* línea de tiempo (compra en verde) */
+  .tl{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:start;gap:8px;margin:14px 0 6px}
+  [data-view="mobile"] .tl{grid-template-columns:1fr;gap:6px}
+  .hito{border-top:3px solid var(--tx);padding-top:10px}
+  .hito.mid{border-top-color:var(--warn)} .hito.end{border-top-color:var(--good)}
+  .hito .k{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);display:block}
+  .hito .d{font-size:11px;color:var(--tx4);display:block;margin-top:1px}
+  .hito .v{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--tx);display:block;margin-top:6px}
+  [data-view="mobile"] .hito .v{font-size:14px}
+  .tl-delta{align-self:center;text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--tx2);padding:0 4px}
+  .tl-delta b{display:block;font-size:12px;color:var(--good)}
+  .tl-delta::before{content:'→';display:block;color:var(--tx4);font-size:14px}
+  [data-view="mobile"] .tl-delta::before{content:'↓'}
+  .lectura{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--tx2);margin-top:12px;line-height:1.6}
+  /* V · barras + composición + venta/refi + costo de oportunidad */
+  .chart{width:100%;height:180px;display:block} [data-view="mobile"] .chart{height:150px}
+  .chart-leg{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--tx3)}
+  .chart-leg span::before{content:'';display:inline-block;width:12px;height:8px;background:var(--c);margin-right:6px}
+  .chart-leg span.ln::before{height:3px;position:relative;top:-3px}
+  .venta{display:grid;grid-template-columns:1fr 1fr;gap:24px} [data-view="mobile"] .venta{grid-template-columns:1fr;gap:18px}
+  .venta h4{font-family:var(--serif);font-size:16px;font-weight:600;margin-bottom:4px}
+  .venta .ex{font-size:12.5px;color:var(--tx3);line-height:1.5;margin-bottom:8px;min-height:57px}
+  [data-view="mobile"] .venta .ex{min-height:0}
+  .oport{margin-top:18px;padding:14px 16px;background:var(--paper2);border:1px solid var(--line);border-radius:3px}
+  .oport .bt{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:8px}
+  .oport .kv{font-size:12.5px} .oport .kv .v{font-weight:700}
+  .oport .nota{font-size:12px;color:var(--tx3);line-height:1.5;margin-top:8px}
+
+  /* ===== 6 · LA ZONA ===== */
+  .zona-cells{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:18px}
+  [data-view="mobile"] .zona-cells{grid-template-columns:1fr 1fr} [data-view="mobile"] .zona-cells div:last-child{grid-column:span 2}
+  .zona-cells div{background:var(--paper);padding:12px 14px}
+  .zona-cells .k{font-size:11.5px;color:var(--tx3);margin-bottom:6px;line-height:1.35}
+  .zona-cells .v{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--tx)}
+  .zona-cells .s{font-size:11.5px;color:var(--tx3);margin-top:6px;line-height:1.4}
+  .zona-cells .s b{font-family:var(--mono);font-weight:700;color:var(--tx2)}
+  .zona-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:12px;flex-wrap:wrap}
+  .poi{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .poi .n{font-size:13px;font-weight:600;color:var(--tx)} .poi .t{grid-column:1;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4)}
+  .poi .d{grid-row:span 2;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tx2);align-self:center}
+</style>
+</head>
+<body>
+<div class="lab">
+  <div class="lab-head"><h1><em>re</em>franco<span class="ai">.ai</span> — <em>mockup · página completa v3</em></h1></div>
+  <div class="lab-sub">Ronda 3 con feedback · caso real cb0e8f46 (Huechuraba · AJUSTA · LTR) · UF 40.874 · datos del recompute, cero placeholders</div>
+  <div class="frozen"><b>Decisiones para aprobar</b>
+    <ol>
+      <li><strong>Matriz pie × plazo (6) — consecuencia de implementación.</strong> Hoy el motor tiene <code>simularPie</code> y <code>simularPlazo</code> por separado. La matriz necesita una simulación combinada: el mismo cálculo sobre un clon del input con <em>ambos</em> parches (<code>piePct</code> + <code>plazoCredito</code>), 16 corridas. Los valores del mockup son exactamente eso: 16 recomputes con <code>recomputeResultsForLegacy</code>; la celda 20% × 30 años calza con el informe (−$160.476 · TIR 9,03%).</li>
+      <li><strong>Tabla anual del modal (3a): NOI del motor, no NOI con vacancia.</strong> El motor separa gastos operativos (GGCC en vacancia + contribuciones + mantención → NOI) de vacancia + corretaje + recambio (entran al flujo, no al NOI). La tabla lleva las dos columnas para que el NOI cuadre con el cap rate neto de 3,74% y el flujo con −$160.476. Los indicadores (3b) usan el año base (arriendo de hoy); la tabla muestra cada año reajustado (+3,5% arriendo, +3% gastos y dividendo) — por eso el NOI del año 3 no es el del cálculo del cap rate.</li>
+      <li><strong>Composición de la ganancia (8).</strong> Para que sume: Plusvalía +71,6 · Amortización +29,4 · Flujo −21,3 · Comisión de venta y gastos de compra −9,8 = Ganancia +69,8 · + lo que pusiste 67,1 = Tu parte 137,0. Sin las dos filas chicas la columna no cuadra con el gráfico.</li>
+      <li><strong>Footers por veredicto (ronda 2, se mantiene).</strong> AJUSTA dibujado; BUSCAR OTRA idéntico; COMPRAR: <code>CUÁNTO AGUANTA ESTE VEREDICTO</code> + «Franco probó hasta dónde puede caer el arriendo sin que cambie la conclusión.» + botón <code>Ver margen →</code> abriendo la sensibilidad en modal.</li>
+      <li><strong>Capítulo V:</strong> «Tu resultado a 10 años»; alternativas «Lo que te llevas al final» · «Patrimonio y retorno». <strong>El 4,0%</strong> del cap rate es <code>CAP_RATE_REF_NACIONAL = 4.0</code> (Houm/Assetplan, mayo 2026, promedio Santiago): constante, nombrada como fuente en el modal.</li>
+      <li><strong>Color de la matriz (ronda 4).</strong> Flujo: rojo 25% en la celda más negativa → paper en cero → verde 25% en la más positiva, sobre el rango real de las 16 celdas; acá todas son negativas, así que la escala va de rojo 25% (−$678.004) a rojo 2,5% (−$68.190) y ninguna llega a verde. TIR: la misma lógica <em>con el piso de 6% como cero</em> — con el rango puro (6,8% → 10,0%) todas quedarían casi iguales de verdes; con el piso, 6,8% es verde 5% y 10,0% verde 25%.</li>
+      <li><strong>Cuota nueva del refinanciamiento (ronda 4).</strong> $868.166 = anualidad del crédito nuevo ($195,8 MM) a la misma tasa y 30 años, la misma fórmula del dividendo. <code>SaleRefiBlock</code> hoy emite nuevo crédito y liquidez pero <em>no</em> la cuota: hay que agregarla.</li>
+      <li><strong>Modales y drawer en el mockup:</strong> están dibujados en el DOM y se abren con sus botones; los shots los muestran abiertos. Esc y ✕ cierran.</li>
+    </ol>
+  </div>
+  <div class="controls">
+    <div class="ctrl"><span class="lbl">Vista</span><div class="seg" id="seg-view"><button class="on" data-v="desktop">PC</button><button data-v="mobile">Mobile</button></div></div>
+    <div class="ctrl"><span class="lbl">Tema</span><div class="seg" id="seg-theme"><button class="on" data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+  </div>
+
+  <div class="stage">
+    <div class="doc">
+      <div class="doc-head"><div class="wordmark"><em>re</em>franco<span class="ai">.ai</span></div><div class="folio">Análisis</div></div>
+
+      <!-- ═══════════ 1 · PORTADA ═══════════ -->
+      <section class="sec" id="portada">
+        <div class="cover-eyebrow"><b>Av. del Valle Nte.</b><span class="sep">·</span>Huechuraba<span class="sep">·</span>Renta larga<span class="sep">·</span>1 sept 2026</div>
+        <div class="banda"><span class="band">Ajusta supuestos</span></div>
+        <div class="sbar"><span class="lbl">Franco Score</span><div class="bar"><div class="fill" style="width:48%"></div></div><span class="lbl"><b>48</b>/100</span></div>
+        <div class="cover-grid">
+          <div>
+            <h1 class="headline">Ajusta el precio: <mark>pagas 29% sobre el valor estimado</mark> y la matemática no cierra.</h1>
+            <p class="keyfig"><span class="fig">−$160.476</span> que salen de tu bolsillo todos los meses</p>
+            <div class="util"><button class="props-link">🏢 Ficha del depto evaluado →</button><span class="cur"><span class="on">CLP</span><span>UF</span></span></div>
+          </div>
+          <div class="mapbox" title="Mapa de comparables — solo PC">
+            <div class="streets"></div>
+            <div class="dot" style="left:22%;top:30%"></div><div class="dot" style="left:34%;top:55%"></div><div class="dot" style="left:41%;top:24%"></div><div class="dot" style="left:58%;top:62%"></div><div class="dot" style="left:63%;top:35%"></div><div class="dot" style="left:71%;top:52%"></div><div class="dot" style="left:47%;top:70%"></div><div class="dot" style="left:78%;top:26%"></div>
+            <div class="pin"></div><div class="tag">69 comparables cerca</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ 2 · HERO ═══════════ -->
+      <section class="sec p2 hero" id="hero">
+        <h2><span class="fmark">f.</span><span>¿Conviene o no conviene?</span></h2>
+        <div class="hero-prosa">
+          <p>Todavía no: tienes que ajustar los supuestos. Tienes que poner $160.476 al mes de tu bolsillo — acotado frente al dividendo, pero recurrente: sale mes a mes, no una sola vez. Sostenible solo si tu flujo lo aguanta sin apuro; eso sí, la plusvalía histórica de la comuna no está para compensarlo. El precio por m² está 7% sobre la mediana comunal de Huechuraba — pagas el metro caro respecto de 69 publicaciones comparables. <mark>La proyección a 3% anual es consistente con lo que mostró la comuna entre 2014 y 2024, pero ese período cruza el boom pre-2019, el estallido y la pandemia: es ruidoso como predictor.</mark></p>
+          <div class="posicion">
+            <div class="pos-main">
+              <div class="t">La posición de Franco</div>
+              <p>La estructura financiera está bien y la plusvalía histórica de la comuna acompaña, pero el precio pedido le quita viabilidad al negocio. <mark>Si cierras en UF 3.945 — un 22,5% menos — el veredicto cambia a COMPRAR; por sobre eso, estás pagando una ubicación sin retorno que la justifique.</mark> Ese descuento requiere un vendedor motivado: si no cede, la respuesta honesta es mirar otra propiedad en comunas con perfil similar — Independencia o San Miguel dan deptos nuevos con mejor relación precio-retorno en este rango.</p>
+              <div class="firma"><span class="fmark" style="top:0;width:22px;height:22px;font-size:10px">f.</span><span>Franco<small>Análisis generado por IA · 1 sept 2026</small></span></div>
+            </div>
+            <div class="pos-foot">
+              <div><span class="k">Lo que te separa del veredicto de arriba</span><span class="l">Franco probó distintos ajustes que mueven el veredicto.</span></div>
+              <button class="btn" onclick="openM('m-vias')">Ver ajustes →</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ 3 · PRINCIPALES HALLAZGOS ═══════════ -->
+      <section class="sec" id="hallazgos">
+        <div class="sec-eyebrow">Principales hallazgos</div>
+        <h2 class="t">Qué determina el veredicto en este departamento</h2>
+        <p class="sec-intent">Franco analizó los factores que pesan en la decisión. Estos son los cuatro que la mueven.</p>
+        <div class="hz">
+          <div class="hz-head"><span class="num">01</span><span class="q"><span class="dot-dir adv"></span>Lo que sale de tu bolsillo cada mes<small>flujo mensual · decisividad 0,20 · en contra</small></span><span class="val">−$160.476</span></div>
+          <p class="hz-cierre"><mark>Acotado frente al dividendo, pero recurrente: sale mes a mes, no una sola vez.</mark> Sostenible solo si tu flujo lo aguanta sin apuro — y la plusvalía histórica de la comuna no está para compensarlo.</p>
+          <div class="hz-foot"><a class="lnk" href="#flujo">↓ Ver detalle</a></div>
+        </div>
+        <div class="hz">
+          <div class="hz-head"><span class="num">02</span><span class="q"><span class="dot-dir adv"></span>Estás pagando de más por el metro cuadrado<small>precio · decisividad 0,16 · en contra</small></span><span class="val">+7%</span></div>
+          <p class="hz-cierre">UF 92,4 contra una mediana de UF 86,0 en 69 publicaciones de la comuna. <mark>Los comparables no sostienen este valor: el vendedor tiene que explicar qué justifica la diferencia antes de que tú firmes.</mark></p>
+          <div class="hz-foot"><a class="lnk" href="#pagas">↓ Ver detalle</a></div>
+        </div>
+        <div class="hz">
+          <div class="hz-head"><span class="num">03</span><span class="q"><span class="dot-dir adv"></span>Lo que renta hoy vs lo que debería<small>cap rate neto · decisividad 0,12 · en contra</small></span><span class="val ink">3,7%</span></div>
+          <p class="hz-cierre">Tres décimas bajo la referencia de mercado (4,0%): <mark>rinde bajo el promedio. El precio pide ajuste, o conviene comparar con opciones más rentables en la zona.</mark></p>
+          <div class="hz-foot"><a class="lnk" href="#renta">↓ Ver detalle</a></div>
+        </div>
+        <div class="hz">
+          <div class="hz-head"><span class="num">04</span><span class="q"><span class="dot-dir fav"></span>Cómo estás financiando<small>financiamiento · decisividad 0,04 · a favor</small></span><span class="val ink">Pie 20%</span></div>
+          <p class="hz-cierre">La tasa (3,4%) está en buen nivel y el pie de 20% cumple. <mark>Suma a favor, pero por sí solo no alcanza para mover el veredicto.</mark></p>
+          <div class="hz-foot"><a class="lnk" href="#pagas">↓ Ver detalle</a></div>
+        </div>
+      </section>
+
+      <!-- ═══════════ 4 · LOS NÚMEROS ═══════════ -->
+      <section class="sec p2" id="numeros">
+        <div class="sec-eyebrow">Los números</div>
+        <h2 class="t">Las seis cifras que un inversionista mira primero</h2>
+        <p class="sec-intent">Las cifras con las que se evalúa cualquier inversión inmobiliaria — para comparar este departamento con otro, o con lo que rinde tu plata en otra parte.</p>
+        <div class="nums">
+          <div class="num-cell"><div class="k">Cap rate bruto</div><div class="v">4,5%</div><div class="tr">El arriendo de un año sobre el precio, <b>antes</b> de gastos.</div></div>
+          <div class="num-cell"><div class="k">Cap rate neto</div><div class="v">3,7%</div><div class="tr">Lo mismo, ya descontados los gastos. <b>La referencia de mercado es 4,0%.</b></div></div>
+          <div class="num-cell"><div class="k">Cash-on-cash</div><div class="v neg">−4,2%</div><div class="tr">Por cada $100 que pusiste, <b>este año pones $4,20 más</b> en vez de recibir.</div></div>
+          <div class="num-cell"><div class="k">Flujo mensual</div><div class="v neg">−$160.476</div><div class="tr">Lo que sale de tu bolsillo cada mes, <b>después de todo</b>: dividendo, gastos y vacancia.</div></div>
+          <div class="num-cell"><div class="k">Cobertura de cuota</div><div class="v">1,05<small>×</small></div><div class="tr">El arriendo paga el dividendo y <b>sobra un 5%</b> — antes de gastos.</div></div>
+          <div class="num-cell"><div class="k">TIR a 10 años</div><div class="v">9,0%</div><div class="tr">Lo que rinde tu plata al año, sumando arriendo, aportes y venta. <b>Bajo 6%, conviene más otra inversión.</b></div></div>
+        </div>
+        <div class="nums-foot"><button class="lnk" onclick="openM('m-calc')">Ver cómo se calcula →</button></div>
+      </section>
+
+      <!-- ═══════════ 5 · LA INVERSIÓN ═══════════ -->
+      <section class="sec" id="inversion">
+        <div class="sec-eyebrow">La inversión</div>
+        <h2 class="t">Cómo funciona este departamento como inversión</h2>
+        <p class="sec-intent">Cómo funciona este departamento como inversión, paso a paso: lo que entra, lo que sale, lo que queda y lo que crece.</p>
+
+        <!-- I -->
+        <div class="hall" id="renta">
+          <button class="hall-head" aria-expanded="false"><span class="num">I</span><span class="q">Cuánto renta<span class="ksub">cap rate neto 3,7% · referencia 4,0% · el arriendo aguanta −6%</span></span><span class="val">3,7%</span><span class="chev">↓</span></button>
+          <div class="hall-body">
+            <p class="v-prosa">Lo que el arriendo deja al año sobre el precio, ya descontados los gastos, contra lo que rinde el mercado. Y cuánto aguanta ese número si el arriendo real resulta distinto del declarado.</p>
+            <div class="v-viz"><div class="v-sub">Cuánto rinde frente al mercado</div><div class="v-viz-t">Dónde cae tu rendimiento frente a la referencia</div>
+              <div class="thermo"><div class="thermo-track"><div class="thermo-ref" style="left:50%"></div><div class="thermo-you" style="left:42.5%">Tú · 3,7%</div><div class="thermo-mark" style="left:42.5%"></div></div>
+                <div class="thermo-legend"><span>Rinde poco<b>2,0%</b></span><span style="text-align:center">Referencia de mercado<b>4,0%</b></span><span style="text-align:right">Rinde mucho<b>6,0%</b></span></div></div></div>
+            <div class="v-puente">Eso es con el arriendo declarado. ¿Y si el arriendo real es menor?</div>
+            <div class="v-viz"><div class="v-sub">Cuánto aguanta ese arriendo antes de que cambie el veredicto</div><div class="v-viz-t">Tu veredicto según el arriendo mensual</div>
+              <div class="dial"><div class="mark-lbl" style="left:25.4%"><span class="k">Declaraste</span><span class="v">$778.000</span></div>
+                <div class="dial-track"><div class="zone buscar" style="width:18.6%">Buscar otra</div><div class="zone ajusta" style="width:65.5%">Ajusta supuestos</div><div class="zone comprar" style="width:15.9%">Comprar</div></div>
+                <div class="mark" style="left:25.4%"></div></div>
+              <div class="edges"><div class="edge down izq" style="left:18.6%"><span class="d">−6,2%</span><span class="v">$729.897</span><span class="k">y cae a Buscar otra</span></div><div class="edge up der" style="left:84.1%"><span class="d">+52,7%</span><span class="v">$1.188.161</span><span class="k">y sube a Comprar</span></div></div>
+              <div class="colchon"><span class="k">Colchón hasta el borde de abajo</span><span class="v">$48.103 <small>/mes</small></span></div>
+            </div>
+            <div class="v-cierre"><div class="t">Qué significa</div>
+              <p>Hoy arriendas en $778.000 y rindes tres décimas bajo la referencia; para rendir como el mercado necesitarías cerca de $823.000 al mes. Y el colchón hacia abajo es acotado: <mark>si el arriendo real resultara apenas un 6% más bajo, el veredicto pasa a BUSCAR OTRA</mark>. Antes de firmar, confirma ese arriendo contra publicaciones reales de la zona. Hacia arriba no hay palanca — subir a COMPRAR por el arriendo pediría un 53% más; la del precio sí existe.</p></div>
+            <div class="v-fuente">Houm/Assetplan, mayo 2026 · promedio neto residencial Santiago</div>
+            <div class="hall-end"><button class="hall-close">↑ Cerrar</button></div>
+          </div>
+        </div>
+
+        <!-- II (abierto) -->
+        <div class="hall open" id="flujo">
+          <button class="hall-head" aria-expanded="true"><span class="num">II</span><span class="q">Tu flujo mensual<span class="ksub">de los $778.000 del arriendo, después de cuota, gastos y vacancia</span></span><span class="val red">−$160.476</span><span class="chev">↓</span></button>
+          <div class="hall-body">
+            <p class="v-prosa">Lo que entra cada mes contra todo lo que sale: la cuota, lo que no paga el arrendatario y lo que cuesta tener el depto arrendado. Lo que queda es lo que pones tú.</p>
+            <div class="v-viz"><div class="v-sub">Lo que entra y lo que sale cada mes</div><div class="v-viz-t">Qué pasa con los $778.000 del arriendo</div>
+              <div class="fall-visual"><span style="width:78.7%;background:var(--neutral)"></span><span style="width:13.3%;background:var(--warn)"></span><span style="width:4.6%;background:var(--signal)"></span><span style="width:3.4%;background:var(--tx4)"></span></div>
+              <div>
+                <div class="fall-row in"><span class="fk">Arriendo estimado</span><span class="fv">$778.000</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--neutral)">Dividendo <small>· crédito 30 años al 3,4%</small></span><span class="fv">−$738.285</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--warn)">Contribuciones <small>· $219.005 al trimestre</small></span><span class="fv">−$73.002</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--warn)">Provisión de mantención</span><span class="fv">−$52.023</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--signal)">Vacancia <small>· 0,6 mes al año, arriendo y gastos comunes</small></span><span class="fv">−$42.750</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--tx4)">Corretaje y recambio <small>· medio arriendo cada 2 años, cada uno</small></span><span class="fv">−$32.416</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--tx4)">Gestión del arriendo <small>· autogestionas</small></span><span class="fv">$0</span></div>
+                <div class="fall-row total"><span class="fk">Sale de tu bolsillo</span><span class="fv">−$160.476</span></div>
+              </div></div>
+            <div class="v-cierre"><div class="t">Qué haces con esto</div>
+              <p><mark>¿Tienes $160.476 disponibles cada mes sin comprometer otro gasto fijo, considerando que el depto llega recién en septiembre 2028 y la vacancia inicial puede durar más de un mes?</mark> Un mes sin arrendatario son $738.285 de dividendo más $77.000 de gastos comunes, completos de tu bolsillo.</p></div>
+            <div class="v-fuente">Motor Franco · UF 40.874 al 1 sep 2026</div>
+            <div class="hall-end"><button class="hall-close">↑ Cerrar</button></div>
+          </div>
+        </div>
+
+        <!-- III -->
+        <div class="hall" id="pagas">
+          <button class="hall-head" aria-expanded="false"><span class="num">III</span><span class="q">Cómo lo pagas<span class="ksub">precio UF 5.091 · pie 20% · 30 años al 3,4% · cierra en Comprar bajo UF 3.945</span></span><span class="val">−22,5%</span><span class="chev">↓</span></button>
+          <div class="hall-body">
+            <p class="v-prosa">Dos decisiones fijan cuánto cargas cada mes: el precio al que cierras y el crédito con el que lo pagas. Esto es lo que cambia en tu caso con cada una.</p>
+            <div class="v-viz"><div class="v-sub">A qué precio conviene cerrar</div><div class="v-viz-t">Qué veredicto tiene este depto según el precio</div>
+              <div class="eje-marca"><div class="m-lbl" style="left:59.7%"><span class="k">Tu precio</span><span class="v">UF 5.091</span></div></div>
+              <div class="eje-track"><div class="z compra" style="width:27.1%">Comprar</div><div class="z ajusta" style="width:43.2%">Ajusta supuestos</div><div class="z no" style="width:29.7%">Buscar otra</div><div class="aguja" style="left:59.7%"></div></div>
+              <div class="bordes"><div class="borde a izq" style="left:27.1%"><span class="v">UF 3.945</span><span class="k">bajo esto sube a Comprar</span></div><div class="borde b der" style="left:70.3%"><span class="v">UF 5.458</span><span class="k">sobre esto cae a Buscar otra</span></div></div>
+              <div class="v-sub">Cómo negociarlo: tu plan</div>
+              <div class="plan-row"><div class="plan-top"><span class="plan-k">Primera oferta</span><span class="plan-v">UF 3.636</span></div><div class="plan-deltas"><span class="dchip"><b>−28,6%</b> de tu precio</span><span class="dchip"><b>−5,0%</b> bajo tu techo</span><span class="dchip">$148.617.864</span></div><div class="plan-d">Ancla el rango bajo y deja espacio para subir hasta el techo sin abandonar el caso económico — es una apertura, no una cifra final.</div></div>
+              <div class="plan-row"><div class="plan-top"><span class="plan-k">Tu techo</span><span class="plan-v" style="color:var(--signal)">UF 3.827</span></div><div class="plan-deltas"><span class="dchip"><b>−24,8%</b> de tu precio</span><span class="dchip">$156.424.798</span></div><div class="plan-d">Sobre este precio la TIR no justifica el capital — es el máximo donde la aritmética todavía cierra para ti.</div></div>
+              <div class="plan-row"><div class="plan-top"><span class="plan-k" style="color:var(--tx3)">El mes en cero</span><span class="plan-v" style="color:var(--tx2)">UF 3.984</span></div><div class="plan-deltas"><span class="dchip"><b>−21,7%</b> de tu precio</span></div><div class="plan-d">A este precio el arriendo cubre todo y no pones plata cada mes. Cada UF que bajes se convierte en menos crédito, menos cuota, más flujo.</div></div>
+            </div>
+            <div class="v-puente">El precio es lo primero. Ahora veamos cómo lo financias: el crédito.</div>
+            <div class="v-viz"><div class="v-sub">Cómo lo financias: el crédito que tienes</div><div class="v-viz-t">Tu estructura contra la referencia</div>
+              <div class="cmp-row"><div class="cmp-top"><span class="cmp-k">Tasa de interés<small>con subsidio a la tasa aplicado</small></span><span class="cmp-tag">−0,7 pts · a tu favor</span></div>
+                <div class="cmp-line"><span class="cmp-lbl">tuya</span><div class="cmp-track"><div class="cmp-fill ok" style="width:83%"></div></div><span class="cmp-v">3,4%</span></div>
+                <div class="cmp-line"><span class="cmp-lbl">mercado</span><div class="cmp-track"><div class="cmp-fill ref" style="width:100%"></div></div><span class="cmp-v">4,1%</span></div></div>
+              <div class="datarow"><span>Pie<small>$41,6 MM · 24 cuotas de $1,7 MM durante la construcción</small></span><span class="v">20%</span></div>
+              <div class="datarow"><span>Cuota mensual<small>crédito de $166,5 MM a 30 años</small></span><span class="v">$738.285</span></div>
+              <div class="v-sub">Cuánto cambia el mes según pie y plazo</div>
+              <div class="mx-head"><div class="v-viz-t" style="margin:0" id="mx-label">Tu flujo mensual según pie y plazo</div>
+                <div class="mx-toggle"><button class="on" onclick="mxMetric('flujo',this)">Flujo</button><button onclick="mxMetric('tir',this)">TIR</button></div></div>
+              <div class="tblwrap"><table class="mx" id="mx">
+                <thead><tr><th>Pie</th><th>15 años</th><th>20 años</th><th>25 años</th><th>30 años</th></tr></thead>
+                <tbody>
+                  <tr><td>15%<small>$31,2 MM</small></td><td class="neg" data-f="−$678.004" data-t="8,0%" data-fn="-678004" data-tn="8.0">−$678.004</td><td class="neg" data-f="−$438.956" data-t="8,9%" data-fn="-438956" data-tn="8.9">−$438.956</td><td class="neg" data-f="−$298.234" data-t="9,6%" data-fn="-298234" data-tn="9.6">−$298.234</td><td class="neg" data-f="−$206.619" data-t="10,0%" data-fn="-206619" data-tn="10.0">−$206.619</td></tr>
+                  <tr><td>20%<small>$41,6 MM · hoy</small></td><td class="neg" data-f="−$604.133" data-t="7,5%" data-fn="-604133" data-tn="7.5">−$604.133</td><td class="neg" data-f="−$379.146" data-t="8,2%" data-fn="-379146" data-tn="8.2">−$379.146</td><td class="neg" data-f="−$246.702" data-t="8,7%" data-fn="-246702" data-tn="8.7">−$246.702</td><td class="neg hoy" data-f="−$160.476" data-t="9,0%" data-fn="-160476" data-tn="9.0">−$160.476</td></tr>
+                  <tr><td>25%<small>$52,0 MM</small></td><td class="neg" data-f="−$530.261" data-t="7,1%" data-fn="-530261" data-tn="7.1">−$530.261</td><td class="neg" data-f="−$319.336" data-t="7,7%" data-fn="-319336" data-tn="7.7">−$319.336</td><td class="neg" data-f="−$195.170" data-t="8,1%" data-fn="-195170" data-tn="8.1">−$195.170</td><td class="neg" data-f="−$114.333" data-t="8,3%" data-fn="-114333" data-tn="8.3">−$114.333</td></tr>
+                  <tr><td>30%<small>$62,4 MM</small></td><td class="neg" data-f="−$456.390" data-t="6,8%" data-fn="-456390" data-tn="6.8">−$456.390</td><td class="neg" data-f="−$259.526" data-t="7,3%" data-fn="-259526" data-tn="7.3">−$259.526</td><td class="neg" data-f="−$143.638" data-t="7,6%" data-fn="-143638" data-tn="7.6">−$143.638</td><td class="neg" data-f="−$68.190" data-t="7,8%" data-fn="-68190" data-tn="7.8">−$68.190</td></tr>
+                </tbody>
+              </table></div>
+              <div class="tbl-scrollcue" style="margin-top:6px">↔ desliza la tabla</div>
+              <div class="mx-note" id="mx-note">Ninguna combinación cierra el mes en verde. Más pie y más plazo alivian la cuota; el precio es lo que da vuelta el signo.</div>
+            </div>
+            <div class="v-cierre"><div class="t">Guión para la contraoferta</div>
+              <p><mark>Ofrece UF 3.636 y deja claro que tu techo es UF 3.827 — por encima de eso, no compras este depto.</mark> El argumento no es el regateo: 69 publicaciones de departamentos nuevos en la misma comuna ubican la mediana 7% por debajo de lo que estás pagando por metro. Del crédito no esperes el cierre: ya estás en 30 años, la tasa juega a tu favor y ni con 30% de pie el mes queda en verde. Si el vendedor no cede a ese rango, es más eficiente buscar en Independencia o San Miguel que forzar este precio.</p></div>
+            <div class="v-fuente">Mediana de 69 publicaciones de venta en Huechuraba, sep 2026 · tasa de referencia: promedio de mercado, sep 2026</div>
+            <div class="hall-end"><button class="hall-close">↑ Cerrar</button></div>
+          </div>
+        </div>
+
+        <!-- IV -->
+        <div class="hall" id="plusvalia">
+          <button class="hall-head" aria-expanded="false"><span class="num">IV</span><span class="q">Plusvalía<span class="ksub">Huechuraba 2014-2024 · 3,0% al año · compra en verde +6,1% a la entrega</span></span><span class="val">3,0% anual</span><span class="chev">↓</span></button>
+          <div class="hall-body">
+            <p class="v-prosa">Tres cosas distintas que suelen mezclarse: cuánto subió la comuna, cuánto proyecta Franco para este depto, y qué ganas por comprar en verde antes de que esté construido.</p>
+            <div class="v-viz"><div class="v-sub">Cuánto se ha valorizado Huechuraba</div>
+              <div class="thermo"><div class="thermo-track"><div class="thermo-ref" style="left:50%"></div><div class="thermo-you" style="left:50%">Huechuraba · 3,0% al año</div><div class="thermo-mark" style="left:50%"></div></div>
+                <div class="thermo-legend"><span>Subió poco<b>0%</b></span><span style="text-align:center">Referencia de largo plazo<b>3,0%</b></span><span style="text-align:right">Subió mucho<b>6%</b></span></div></div>
+              <p class="v-copy" style="margin-top:12px">Entre 2014 y 2024 los departamentos de la comuna subieron 3,0% al año, ya descontada la inflación. La referencia de largo plazo es 3%.</p>
+            </div>
+            <div class="v-viz"><div class="v-sub">Lo que Franco proyecta para este depto</div>
+              <p class="v-copy">Franco no usa el histórico de la comuna: proyecta 3% parejo para todos. Es un supuesto neutro: ni premia ni castiga. En Huechuraba histórico y proyección coinciden.</p>
+            </div>
+            <div class="v-viz"><div class="v-sub">Compras en verde: la plusvalía empieza antes de la entrega</div>
+              <p class="v-copy">Comprar en verde es fijar hoy el precio de un depto que recibes en dos años. Si la comuna sube en ese tramo, esa diferencia es tuya sin haber puesto la cuota todavía — es la ventaja de comprar antes.</p>
+              <div class="tl">
+                <div class="hito"><span class="k">Firma · hoy</span><span class="d">valor pactado</span><span class="v">$208.093.621</span></div>
+                <div class="tl-delta"><b>+$12,7 MM</b>+6,1% en 2 años</div>
+                <div class="hito mid"><span class="k">Entrega · sep 2028</span><span class="d">valor estimado a esa fecha</span><span class="v">$220.766.523</span></div>
+                <div class="tl-delta"><b>+$58,9 MM</b>+26,7% en 8 años</div>
+                <div class="hito end"><span class="k">Año 10</span><span class="d">valor proyectado</span><span class="v">$279.660.426</span></div>
+              </div>
+              <p class="lectura">Compras a $208,1 MM; a la entrega ya vale $220,8 MM; al año 10, $279,7 MM.</p>
+            </div>
+            <div class="v-cierre"><div class="t">Qué significa</div>
+              <p>Huechuraba subió al ritmo de la referencia, y la proyección de Franco la da por hecha: <mark>el histórico no es garantía, y todo lo que sigue en este informe descansa en ese 3%</mark>. El tramo en verde es real pero chico —$12,7 MM en dos años— y solo se cobra si la comuna cumple.</p></div>
+            <div class="v-fuente">Arenas & Cayo, Tinsa, Propital, Activo Más · 2014-2024 · Huechuraba</div>
+            <div class="hall-end"><button class="hall-close">↑ Cerrar</button></div>
+          </div>
+        </div>
+
+        <!-- V -->
+        <div class="hall" id="resultado">
+          <button class="hall-head" aria-expanded="false"><span class="num">V</span><span class="q">Tu resultado a 10 años<span class="ksub">tu parte al vender el año 10 · ×2,04 sobre lo puesto · TIR 9,0%</span></span><span class="val">$137,0 MM</span><span class="chev">↓</span></button>
+          <div class="hall-body">
+            <p class="v-prosa">Lo que llevas puesto contra lo que vale el depto, año a año — y con qué te quedas si vendes o refinancias en el año 10.</p>
+            <div class="v-viz"><div class="v-sub">Cómo crece tu parte, año a año</div><div class="v-viz-t">Lo que pusiste, lo que vale y tu parte · año a año</div>
+              <svg class="chart" viewBox="0 0 600 170" preserveAspectRatio="none" aria-label="Aporte acumulado, valor del depto y patrimonio neto por año">
+                <line x1="30" y1="150" x2="590" y2="150" stroke="var(--line2)" stroke-width="1"/>
+                <line x1="114" y1="14" x2="114" y2="150" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 4"/>
+                <text x="120" y="24" font-family="JetBrains Mono" font-size="13" fill="var(--warn)">entrega · año 2</text>
+                <!-- valor del depto (gris) y aporte acumulado (rojo), por año -->
+                <rect x="38" y="50.5" width="20" height="99.5" fill="var(--neutral)" opacity=".45"/><rect x="60" y="128.7" width="18" height="21.3" fill="var(--signal)"/>
+                <rect x="94" y="47.5" width="20" height="102.5" fill="var(--neutral)" opacity=".45"/><rect x="116" y="128.7" width="18" height="21.3" fill="var(--signal)"/>
+                <rect x="150" y="44.4" width="20" height="105.6" fill="var(--neutral)" opacity=".45"/><rect x="172" y="127.9" width="18" height="22.1" fill="var(--signal)"/>
+                <rect x="206" y="41.3" width="20" height="108.7" fill="var(--neutral)" opacity=".45"/><rect x="228" y="126.9" width="18" height="23.1" fill="var(--signal)"/>
+                <rect x="262" y="38" width="20" height="112" fill="var(--neutral)" opacity=".45"/><rect x="284" y="125.8" width="18" height="24.2" fill="var(--signal)"/>
+                <rect x="318" y="34.6" width="20" height="115.4" fill="var(--neutral)" opacity=".45"/><rect x="340" y="124.6" width="18" height="25.4" fill="var(--signal)"/>
+                <rect x="374" y="31.2" width="20" height="118.8" fill="var(--neutral)" opacity=".45"/><rect x="396" y="123.5" width="18" height="26.5" fill="var(--signal)"/>
+                <rect x="430" y="27.6" width="20" height="122.4" fill="var(--neutral)" opacity=".45"/><rect x="452" y="122" width="18" height="28" fill="var(--signal)"/>
+                <rect x="486" y="23.9" width="20" height="126.1" fill="var(--neutral)" opacity=".45"/><rect x="508" y="120.4" width="18" height="29.6" fill="var(--signal)"/>
+                <rect x="542" y="20.1" width="20" height="129.9" fill="var(--neutral)" opacity=".45"/><rect x="564" y="118.8" width="18" height="31.2" fill="var(--signal)"/>
+                <!-- patrimonio neto (valor − deuda), desde la entrega -->
+                <polyline fill="none" stroke="var(--tx)" stroke-width="3" points="114,124.8 170,120.2 226,115.5 282,110.6 338,105.6 394,100.4 450,95 506,89.5 562,83.8"/>
+                <circle cx="562" cy="83.8" r="4" fill="var(--tx)"/>
+                <text x="556" y="78" font-family="JetBrains Mono" font-size="14" font-weight="700" fill="var(--tx)" text-anchor="end">$142,6 MM</text>
+                <text x="48" y="164" font-family="JetBrains Mono" font-size="13" fill="var(--tx4)" text-anchor="middle">1</text>
+                <text x="272" y="164" font-family="JetBrains Mono" font-size="13" fill="var(--tx4)" text-anchor="middle">5</text>
+                <text x="552" y="164" font-family="JetBrains Mono" font-size="13" fill="var(--tx4)" text-anchor="middle">10</text>
+              </svg>
+              <div class="chart-leg"><span style="--c:var(--signal)">Aporte acumulado</span><span style="--c:var(--neutral)">Valor del depto</span><span class="ln" style="--c:var(--tx)">Tu parte (valor − deuda)</span></div>
+              <div class="v-sub">De dónde sale tu parte</div><div class="v-viz-t">De dónde salen tus $137,0 millones si vendes el año 10</div>
+              <div class="brackets"><div class="bracket" style="width:51.8%">Firme · <b>52%</b></div><div class="bracket" style="width:48.2%">Proyectado · <b>48%</b></div></div>
+              <div class="compo2"><div class="seg-c pie" style="width:30.4%"></div><div class="seg-c amort" style="width:21.4%"></div><div class="seg-c plus" style="width:48.2%"></div></div>
+              <div class="leg">
+                <div class="leg-row"><span class="leg-sw pie"></span><span class="leg-k">Tu pie<small>lo que desembolsas el día 1, vuelve entero</small></span><span class="leg-v">$41,6 MM<small>firme</small></span></div>
+                <div class="leg-row"><span class="leg-sw amort"></span><span class="leg-k">Deuda que amortizó el arriendo<small>sale del contrato, no de una proyección</small></span><span class="leg-v">$29,4 MM<small>firme</small></span></div>
+                <div class="leg-row"><span class="leg-sw plus"></span><span class="leg-k">Plusvalía proyectada, neta de comisión<small>$71,6 MM si la comuna rinde 3% · menos $5,6 MM de venta</small></span><span class="leg-v">$66,0 MM<small>proyectado</small></span></div>
+              </div>
+              <div class="total"><span class="k">Tu parte a 10 años</span><span class="v">$136.958.092</span></div>
+              <div class="mult"><span class="k">Para llegar acá pusiste $67,1 MM: $45,8 MM el día 1 y $21,3 MM mes a mes. Los $25,5 MM de gastos de compra y aportes pagaron intereses y costos — no vuelven como patrimonio.</span><span class="v">×2,04</span></div>
+              <div class="oport"><div class="bt">La misma plata en otro lado</div>
+                <div class="kv"><span>Depósito a plazo en UF al 5%</span><span class="v">$74.571.807</span></div>
+                <div class="kv"><span>Fondo mutuo al 7%</span><span class="v">$90.057.362</span></div>
+                <div class="kv" style="border-bottom:none"><span>Este depto</span><span class="v">$136.958.092</span></div>
+                <p class="nota">Los tres parten de los mismos $45,8 MM. El depto es el único que te pide $21,3 MM más en el camino y el único cuya ganancia depende de que la plusvalía ocurra.</p></div>
+            </div>
+            <div class="v-puente">Así crece tu parte. Y esto es lo que te llevas si vendes.</div>
+            <div class="v-viz"><div class="v-sub">Si vendes o refinancias en el año 10</div><div class="v-viz-t">Venta o refinanciamiento en el año 10</div>
+              <div class="venta">
+                <div><h4>Si vendes</h4><p class="ex">Vendes al valor proyectado, pagas lo que queda del crédito y la comisión. Lo que sobra es tu parte.</p>
+                  <div class="kv"><span>Valor de venta estimado</span><span class="v">$279.660.426</span></div>
+                  <div class="kv"><span>− Deuda pendiente</span><span class="v neg">−$137.109.125</span></div>
+                  <div class="kv"><span>− Comisión de venta (2%)</span><span class="v neg">−$5.593.209</span></div>
+                  <div class="kv tot"><span>Te queda</span><span class="v">$136.958.092</span></div></div>
+                <div><h4>Si refinancias</h4><p class="ex">Sacas parte de tu plusvalía como liquidez sin vender ni pagar impuesto — a cambio de una cuota más alta.</p>
+                  <div class="kv"><span>Nuevo crédito · 70% del valor</span><span class="v">$195.762.298</span></div>
+                  <div class="kv"><span>− Deuda pendiente</span><span class="v neg">−$137.109.125</span></div>
+                  <div class="kv"><span>Cuota nueva · 30 años al 3,4%</span><span class="v">$868.166</span></div>
+                  <div class="kv tot"><span>Liquidez sin vender</span><span class="v">$58.653.173</span></div></div>
+              </div>
+            </div>
+            <div class="v-cierre"><div class="t">Qué significa</div>
+              <p>Más de la mitad de tu parte no salió de tu bolsillo: la puso el arriendo pagando deuda y la plusvalía. Pero <mark>uno de los tres motores del retorno resta en vez de sumar</mark> —la caja te pide $21,3 MM en diez años— y el 9,0% ya lo trae descontado. La amortización es firme; la plusvalía, proyección: si Huechuraba no rinde el 3%, el negocio se parece más al depósito que al depto.</p></div>
+            <div class="v-fuente">Motor Franco · proyección a 3% anual · UF 40.874 al 1 sep 2026</div>
+            <div class="hall-end"><button class="hall-close">↑ Cerrar</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ 6 · LA ZONA ═══════════ -->
+      <section class="sec p2" id="zona">
+        <div class="sec-eyebrow">La zona · Av. del Valle Nte., Huechuraba</div>
+        <h2 class="t">La zona</h2>
+        <p class="sec-intent">Cómo se compara este departamento con lo que se vende y arrienda alrededor.</p>
+        <p class="v-prosa" style="max-width:70ch">El arriendo estimado de $778.000 cae en el rango medio de la zona (P61), razonable, pero no descansa en atractores de alta tracción: la UDP Economía a 600 m y el Saint George's atraen perfiles específicos, no demanda masiva. El problema mayor está en el precio de compra: pagas un 7% sobre la mediana de departamentos nuevos en Huechuraba, sin que el arriendo refuerce esa prima. La plusvalía histórica viene caminando al 3% anual, exactamente lo que la proyección da por hecho — la apuesta no tiene colchón histórico extra si algo cambia.</p>
+        <div class="zona-cells">
+          <div><div class="k">Precio del m² en la comuna</div><div class="v">UF 86,0</div><div class="s">Tu depto: <b>UF 92,4</b> · 7% sobre la mediana de 69 publicaciones nuevas</div></div>
+          <div><div class="k">Arriendo típico de esta zona</div><div class="v">$570–850 mil</div><div class="s">Tu arriendo: <b>$778.000</b> · P61, en el rango medio de 28 avisos</div></div>
+          <div><div class="k">Valorización en 10 años</div><div class="v">34%</div><div class="s">Santiago: <b>35%</b> · tu proyección usa el mismo 3,0% anual</div></div>
+        </div>
+        <div class="zona-foot"><div class="v-fuente" style="margin:0">Zone insight Franco · 28 avisos de arriendo y 69 de venta en Huechuraba · sep 2026</div><button class="lnk" onclick="openM('d-zona')">Explorar →</button></div>
+      </section>
+
+      <div class="doc-foot"><span>Real estate en su estado más franco</span><span class="wm"><em>re</em>franco<span class="ai">.ai</span></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL · LO QUE TE SEPARA ═══════════ -->
+<div class="overlay" id="m-vias" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal-head"><h3>Lo que te separa del veredicto de arriba</h3><button class="x" onclick="closeM('m-vias')" aria-label="Cerrar">✕</button></div>
+    <p class="sub">Franco probó cuatro ajustes, uno a la vez y con el resto de los supuestos fijos, hasta donde deja de ser un ajuste y pasa a ser otro departamento.</p>
+    <div class="m-block"><div class="bt">Qué pediría cada ajuste para llegar a Comprar</div>
+      <div class="pal" style="border-top:1px solid var(--line)">
+        <div class="pal-row si" style="display:grid;grid-template-columns:1fr auto;gap:4px 14px;padding:12px 10px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,color-mix(in srgb,var(--good) 8%,transparent),transparent 70%)"><div style="font-size:13.5px;font-weight:600">Precio de compra <span class="dchip" style="color:var(--good)"><b style="color:var(--good)">−22,5%</b></span></div><div style="grid-row:span 2;width:30px;height:30px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--good);color:var(--good);display:flex;align-items:center;justify-content:center;font-weight:700">✓</div><div style="font-family:var(--mono);font-size:12px;color:var(--tx2)">UF 5.091 → UF 3.945 <span style="font-family:var(--sans);font-style:italic;color:var(--tx3)">· el único que alcanza; es negociación, no otro departamento</span></div></div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:4px 14px;padding:12px 0;border-bottom:1px solid var(--line)"><div style="font-size:13.5px;font-weight:600">Arriendo <span class="dchip">+52,7%</span></div><div style="grid-row:span 2;width:30px;height:30px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--signal);color:var(--signal);opacity:.75;display:flex;align-items:center;justify-content:center;font-weight:700">✕</div><div style="font-family:var(--mono);font-size:12px;color:var(--tx2)">$778.000 → $1.188.161 <span style="font-family:var(--sans);font-style:italic;color:var(--tx3)">· fuera del tope de 30% que Franco considera un ajuste</span></div></div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:4px 14px;padding:12px 0;border-bottom:1px solid var(--line)"><div style="font-size:13.5px;font-weight:600">Plazo del crédito <span class="dchip">ya en 30</span></div><div style="grid-row:span 2;width:30px;height:30px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--signal);color:var(--signal);opacity:.75;display:flex;align-items:center;justify-content:center;font-weight:700">✕</div><div style="font-family:var(--mono);font-size:12px;color:var(--tx2)">30 años → — <span style="font-family:var(--sans);font-style:italic;color:var(--tx3)">· es el máximo que dan los bancos; no hay más que estirar</span></div></div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:4px 14px;padding:12px 0;border-bottom:1px solid var(--line)"><div style="font-size:13.5px;font-weight:600">Pie <span class="dchip">no aplica</span></div><div style="grid-row:span 2;width:30px;height:30px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--line2);color:var(--tx4);display:flex;align-items:center;justify-content:center;font-weight:700">–</div><div style="font-family:var(--mono);font-size:12px;color:var(--tx2)">20% hoy <span style="font-family:var(--sans);font-style:italic;color:var(--tx3)">· con un pie de 20% o más, Franco no lo prueba como ajuste: su efecto está en la matriz del capítulo III</span></div></div>
+      </div>
+    </div>
+    <div class="v-cierre" style="margin-top:18px"><div class="t">Qué haces con esto</div><p>Tu veredicto AJUSTA SUPUESTOS pasa a COMPRAR si cierras en UF 3.945 en vez de UF 5.091 —un 22,5% menos—. <mark>Es una diferencia de negociación, no de otro departamento.</mark></p></div>
+    <div class="m-foot">Motor Franco · sep 2026 · el arriendo está calculado con el mismo motor; plazo y pie son datos de tu input</div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL · VER CÓMO SE CALCULA ═══════════ -->
+<div class="overlay" id="m-calc" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal-head"><h3>Cómo se calcula</h3><button class="x" onclick="closeM('m-calc')" aria-label="Cerrar">✕</button></div>
+    <p class="sub">La planilla detrás de cada cifra: el flujo año a año, los indicadores con sus valores sustituidos y el escenario de salida.</p>
+
+    <div class="m-block"><div class="bt">a · Flujo por año</div><div class="bq">Los primeros dos años no hay flujo: el depto se entrega en septiembre 2028.</div>
+      <div class="tblwrap"><table class="tbl">
+        <thead><tr><th>Año</th><th>Arriendo</th><th>Gastos op.</th><th>NOI</th><th>Vac. y rotación</th><th>Dividendo</th><th>Flujo neto</th><th>Acumulado</th></tr></thead>
+        <tbody>
+          <tr class="pre"><td>1 · construcción</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>0</td><td>0</td></tr>
+          <tr class="pre ent"><td>2 · entrega</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>0</td><td>0</td></tr>
+          <tr><td>3</td><td>10.000.957</td><td>−1.640.664</td><td>8.360.293</td><td>−916.764</td><td>−9.398.964</td><td class="neg">−1.955.435</td><td class="neg">−1.955.435</td></tr>
+          <tr><td>4</td><td>10.350.990</td><td>−1.689.900</td><td>8.661.090</td><td>−948.828</td><td>−9.680.928</td><td class="neg">−1.968.666</td><td class="neg">−3.924.101</td></tr>
+          <tr><td>5</td><td>10.713.275</td><td>−2.209.020</td><td>8.504.255</td><td>−982.044</td><td>−9.971.352</td><td class="neg">−2.449.141</td><td class="neg">−6.373.243</td></tr>
+          <tr><td>6</td><td>11.088.239</td><td>−2.275.296</td><td>8.812.943</td><td>−1.016.412</td><td>−10.270.500</td><td class="neg">−2.473.969</td><td class="neg">−8.847.211</td></tr>
+          <tr><td>7</td><td>11.476.328</td><td>−2.343.552</td><td>9.132.776</td><td>−1.051.992</td><td>−10.578.612</td><td class="neg">−2.497.828</td><td class="neg">−11.345.040</td></tr>
+          <tr><td>8</td><td>11.877.999</td><td>−3.181.644</td><td>8.696.355</td><td>−1.088.832</td><td>−10.895.964</td><td class="neg">−3.288.441</td><td class="neg">−14.633.480</td></tr>
+          <tr><td>9</td><td>12.293.729</td><td>−3.277.092</td><td>9.016.637</td><td>−1.126.920</td><td>−11.222.844</td><td class="neg">−3.333.127</td><td class="neg">−17.966.607</td></tr>
+          <tr><td>10</td><td>12.724.010</td><td>−3.375.408</td><td>9.348.602</td><td>−1.166.364</td><td>−11.559.528</td><td class="neg">−3.377.290</td><td class="neg">−21.343.897</td></tr>
+          <tr class="tot"><td>Total 10 años</td><td>90.525.527</td><td>−19.992.576</td><td>70.532.951</td><td>−8.298.156</td><td>−83.578.692</td><td class="neg">−21.343.897</td><td></td></tr>
+        </tbody>
+      </table></div>
+      <div class="tbl-scrollcue">↔ desliza la tabla</div>
+      <div class="v-fuente" style="margin-top:8px">Arriendo reajustado 3,5% al año · gastos y dividendo 3% al año · gastos operativos = gastos comunes en vacancia + contribuciones + mantención · vacancia y rotación = 0,6 mes de arriendo + corretaje y recambio</div>
+    </div>
+
+    <div class="m-block"><div class="bt">b · Indicadores</div><div class="bq">Con el arriendo y los gastos de hoy, año base.</div>
+      <table class="ind">
+        <tr><td>Cap rate bruto</td><td>Arriendo anual ÷ precio</td><td>$9.336.000 ÷ $208.093.621</td><td>4,49%</td></tr>
+        <tr><td>Cap rate neto</td><td>NOI anual ÷ precio</td><td>$7.789.500 ÷ $208.093.621</td><td>3,74%</td></tr>
+        <tr><td>Cash-on-cash</td><td>Flujo anual ÷ capital aportado</td><td>−$1.925.712 ÷ $45.780.596</td><td class="neg">−4,21%</td></tr>
+        <tr><td>Cobertura de cuota</td><td>Arriendo mensual ÷ dividendo</td><td>$778.000 ÷ $738.285</td><td>1,05×</td></tr>
+        <tr><td>TIR a 10 años</td><td>Tasa que iguala lo que pones con lo que recibes</td><td>−$45,8 MM hoy · −$21,3 MM en 8 años · +$137,0 MM el año 10</td><td>9,03%</td></tr>
+      </table>
+      <div class="v-fuente" style="margin-top:8px">Capital aportado = pie $41.618.724 + gastos de compra $4.161.872 · NOI = arriendo − gastos comunes en vacancia − contribuciones − mantención</div>
+    </div>
+
+    <div class="m-block"><div class="bt">c · Escenario de salida</div><div class="bq">Venta en el año 10.</div>
+      <div class="kv"><span>Valor del depto en el año 10 · 3% anual desde la firma</span><span class="v">$279.660.426</span></div>
+      <div class="kv"><span>− Saldo de la deuda</span><span class="v neg">−$137.109.125</span></div>
+      <div class="kv"><span>− Comisión de venta (2%)</span><span class="v neg">−$5.593.209</span></div>
+      <div class="kv tot"><span>= Tu parte</span><span class="v">$136.958.092</span></div>
+      <div class="compo"><span class="f" style="width:51.8%"></span><span class="p" style="width:48.2%"></span></div>
+      <div class="compo-leg"><span><b>Firme · 52%</b> pie $41,6 MM + amortización $29,4 MM</span><span><b>Proyectado · 48%</b> plusvalía neta de comisión $66,0 MM</span></div>
+    </div>
+    <div class="m-foot">Motor Franco · UF 40.874 al 1 sep 2026 · cap rate de referencia: Houm/Assetplan, mayo 2026, promedio Santiago</div>
+  </div>
+</div>
+
+<!-- ═══════════ DRAWER · LA ZONA ═══════════ -->
+<div class="drawer-wrap" id="d-zona" role="dialog" aria-modal="true">
+  <div class="drawer">
+    <div class="modal-head"><div><div class="sec-eyebrow" style="margin-bottom:6px">La zona</div><h3>Av. del Valle Nte., Huechuraba</h3></div><button class="x" onclick="closeM('d-zona')" aria-label="Cerrar">✕</button></div>
+    <p class="v-prosa" style="max-width:none;margin-top:8px">El arriendo estimado de $778.000 cae en el rango medio de la zona (P61), razonable, pero no descansa en atractores de alta tracción: la UDP Economía a 600 m y el Saint George's atraen perfiles específicos, no demanda masiva. El problema mayor está en el precio de compra: pagas un 7% sobre la mediana de departamentos nuevos en Huechuraba, sin que el arriendo refuerce esa prima.</p>
+    <div class="zona-cells" style="margin-top:0">
+      <div><div class="k">Precio del m² en la comuna</div><div class="v">UF 86,0</div><div class="s">Tu depto: <b>UF 92,4</b> · 7% sobre</div></div>
+      <div><div class="k">Arriendo típico</div><div class="v">$570–850 mil</div><div class="s">Tu arriendo: <b>$778.000</b> · P61</div></div>
+      <div><div class="k">Valorización 10 años</div><div class="v">34%</div><div class="s">Santiago: <b>35%</b></div></div>
+    </div>
+    <div class="v-viz" style="margin-top:18px"><div class="v-viz-t">El depto y lo que hay alrededor</div>
+      <div class="mapbox" style="height:220px">
+        <div class="streets"></div>
+        <div class="dot" style="left:22%;top:30%"></div><div class="dot" style="left:34%;top:55%"></div><div class="dot" style="left:41%;top:24%"></div><div class="dot" style="left:58%;top:62%"></div><div class="dot" style="left:71%;top:52%"></div><div class="dot" style="left:47%;top:70%"></div>
+        <div class="mpoi" style="left:62%;top:38%" title="UDP Facultad Economía"></div><div class="mpoi" style="left:78%;top:22%" title="Saint George's College"></div><div class="mpoi" style="left:84%;top:66%" title="Parque Bicentenario"></div><div class="mpoi" style="left:12%;top:74%" title="Parque Metropolitano"></div>
+        <div class="pin"></div><div class="tag">28 deptos en arriendo cerca</div>
+      </div></div>
+    <div class="v-viz"><div class="v-viz-t">Lugares a menos de 2,5 km</div>
+      <div class="poi-list">
+        <div class="poi"><span class="n">UDP · Facultad de Economía</span><span class="d">596 m</span><span class="t">Universidad</span></div>
+        <div class="poi"><span class="n">Saint George's College</span><span class="d">1,4 km</span><span class="t">Colegio · Vitacura</span></div>
+        <div class="poi"><span class="n">Parque Bicentenario</span><span class="d">1,8 km</span><span class="t">Parque · Vitacura</span></div>
+        <div class="poi"><span class="n">Parque Metropolitano</span><span class="d">2,3 km</span><span class="t">Parque · Providencia</span></div>
+        <div class="poi" style="border-bottom:none"><span class="n" style="color:var(--tx3);font-weight:400">Sin metro, clínicas ni malls en el radio</span><span class="d"></span><span class="t"></span></div>
+      </div></div>
+    <div class="v-fuente">Zone insight Franco · 28 avisos de arriendo y 69 de venta en Huechuraba · sep 2026 · lugares: Google Places</div>
+  </div>
+</div>
+
+<script>
+function wireSeg(id,fn){document.querySelectorAll('#'+id+' button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fn(b.dataset.v)}))}
+wireSeg('seg-theme',v=>document.documentElement.dataset.theme=v);
+wireSeg('seg-view',v=>document.documentElement.dataset.view=v);
+paintMx('flujo');
+/* acordeón exclusivo dentro de la sección */
+function cerrar(h,volver){h.classList.remove('open');h.querySelector('.hall-head').setAttribute('aria-expanded','false');if(volver)h.scrollIntoView({behavior:'smooth',block:'center'})}
+function toggle(h){const ab=h.classList.contains('open');h.parentElement.querySelectorAll(':scope > .hall.open').forEach(o=>cerrar(o,false));
+  if(!ab){h.classList.add('open');h.querySelector('.hall-head').setAttribute('aria-expanded','true');setTimeout(()=>h.scrollIntoView({behavior:'smooth',block:'start'}),60)}}
+document.querySelectorAll('.hall-head').forEach(b=>b.addEventListener('click',()=>toggle(b.parentElement)));
+document.querySelectorAll('.hall-close').forEach(b=>b.addEventListener('click',()=>cerrar(b.closest('.hall'),true)));
+document.querySelectorAll('.hz-foot a').forEach(a=>a.addEventListener('click',e=>{const h=document.querySelector(a.getAttribute('href'));if(h){e.preventDefault();if(!h.classList.contains('open'))toggle(h);else h.scrollIntoView({behavior:'smooth',block:'start'})}}));
+/* modales y drawer: ✕, Esc y click fuera */
+function openM(id){document.getElementById(id).classList.add('open')}
+function closeM(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.overlay,.drawer-wrap').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.overlay.open,.drawer-wrap.open').forEach(o=>o.classList.remove('open'))});
+/* matriz pie × plazo: FLUJO | TIR · fondo por magnitud sobre el rango real de las 16 celdas
+   Flujo: Signal Red 25% en el más negativo → paper en cero → verde 25% en el más positivo.
+   TIR: misma lógica con el piso de 6% como cero (bajo el piso rojo, sobre el piso verde). */
+function paintMx(m){const tds=[...document.querySelectorAll('#mx td[data-f]')];const key=m==='flujo'?'fn':'tn';const zero=m==='flujo'?0:6;
+  const vals=tds.map(td=>parseFloat(td.dataset[key]));const mn=Math.min(...vals),mx=Math.max(...vals);
+  tds.forEach((td,i)=>{const v=vals[i];let a=0,c='47,125,85';
+    if(v<zero&&mn<zero){a=.25*(zero-v)/(zero-mn);c='200,50,60'}else if(v>zero&&mx>zero){a=.25*(v-zero)/(mx-zero)}
+    td.style.background=a>0?`rgba(${c},${a.toFixed(3)})`:'transparent'})}
+function mxMetric(m,btn){document.querySelectorAll('.mx-toggle button').forEach(b=>b.classList.toggle('on',b===btn));
+  document.querySelectorAll('#mx td[data-f]').forEach(td=>{td.textContent=m==='flujo'?td.dataset.f:td.dataset.t;td.classList.toggle('neg',m==='flujo'&&td.dataset.f.startsWith('−'));td.classList.toggle('pos',m==='tir')});
+  paintMx(m);
+  document.getElementById('mx-label').textContent=m==='flujo'?'Tu flujo mensual según pie y plazo':'Tu TIR a 10 años según pie y plazo';
+  document.getElementById('mx-note').textContent=m==='flujo'?'Ninguna combinación cierra el mes en verde. Más pie y más plazo alivian la cuota; el precio es lo que da vuelta el signo.':'Menos pie y más plazo suben la TIR a 10 años: apalancas más. Todas las celdas superan el piso de 6%.'}
+</script>
+</body>
+</html>
