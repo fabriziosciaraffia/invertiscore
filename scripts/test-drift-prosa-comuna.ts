@@ -18,7 +18,7 @@
  */
 
 import assert from "node:assert/strict";
-import { detectarDrift, publicabaDorms, snapshotDe, validarCoherenciaNumerica, validarFuenteEstimada, validarRolesDeCifras, PROMPT_VERSION_COMUNA, type ProsaComuna } from "../src/lib/data/comuna-prosa";
+import { detectarDrift, publicabaDorms, snapshotDe, validarCoherenciaNumerica, validarFuenteEstimada, validarRolesDeCifras, validarVeredictoRango, PROMPT_VERSION_COMUNA, type ProsaComuna } from "../src/lib/data/comuna-prosa";
 import type { ComunaStats, TipologiaStats } from "../src/lib/data/comunas-seo";
 
 let pass = 0, fail = 0;
@@ -36,16 +36,32 @@ function test(nombre: string, fn: () => void) {
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
 function tip(over: Partial<TipologiaStats> = {}): TipologiaStats {
-  return {
+  const base = {
     dorms: 2, nArriendos: 400, nVentas: 500,
     arriendoCLP: 950_000, ventaCLP: 324_000_000, ventaUF: 7_942,
     rentabilidadBruta: 3.5, dividendoCLP: 1_239_700,
     brechaCLP: -289_700, cubre: false,
     precioCuotaCLP: 248_000_000, precioCuotaUF: 6_086,
-    deltaPct: -23.4, pieNecesarioPct: 39, banda: "dificil", muestraChica: false,
-    referencia: { fuente: "porTipologia", n: 400, medianaCLP: 950_000 },
-    ...over,
+    deltaPct: -23.4, pieNecesarioPct: 39, banda: "dificil" as const, muestraChica: false,
+    referencia: { fuente: "porTipologia" as const, n: 400, medianaCLP: 950_000 },
   };
+  // El veredicto publicado sigue a `cubre` salvo que el test lo fije.
+  const cubre = over.cubre ?? base.cubre;
+  return { ...base, veredictoFila: cubre ? "sePagaSola" : "noSePagaSola", ...over };
+}
+
+/** Fila estimada cuyo rango CRUZA la cuota (1.239.700): sin veredicto. */
+function tipDepende(over: Partial<TipologiaStats> = {}): TipologiaStats {
+  return tip({
+    nArriendos: 9, arriendoCLP: 1_250_000, brechaCLP: 10_300, cubre: true,
+    veredictoFila: "dependeDelArriendoReal",
+    referencia: {
+      fuente: "comunalPorM2", nComunal: 18, ufM2Mes: 0.25, superficieRefM2: 60,
+      factorTipologia: 0.935, errorResidualPct: 11.7,
+      estimadoCLP: 1_250_000, rangoCLP: { min: 1_100_000, max: 1_400_000 },
+    },
+    ...over,
+  });
 }
 
 /** La misma fila, pero con el arriendo ESTIMADO desde el m² comunal y la misma cifra. */
@@ -218,6 +234,69 @@ test("publicabaDorms lee del snapshot qué tipologías había, con cualquier fue
   assert.equal(publicabaDorms(null).size, 0);
 });
 
+// ── Veredicto por rango: el drift compara el veredicto publicado ────────────
+
+console.log("\nVeredicto por rango · el drift mira veredictoFila, no cubre");
+
+test("una fila que pasa de \"no se paga sola\" a \"depende\" → drift veredicto-dado-vuelta", () => {
+  const p = prosaDe(stats([tipEstimada()]), 2);
+  const d = detectarDrift(p, stats([tipDepende()]), 2);
+  assert.ok(d.motivos.includes("veredicto-dado-vuelta"), `motivos: ${d.motivos.join(", ")}`);
+});
+
+test("cubre se mueve pero el veredicto publicado no (depende → depende) → sin veredicto-dado-vuelta", () => {
+  const p = prosaDe(stats([tipDepende({ cubre: false, arriendoCLP: 1_230_000 })]), 2);
+  const d = detectarDrift(p, stats([tipDepende({ cubre: true, arriendoCLP: 1_250_000 })]), 2);
+  assert.ok(!d.motivos.includes("veredicto-dado-vuelta"), `motivos: ${d.motivos.join(", ")}`);
+});
+
+test("snapshot anterior a v4 (sin veredictoFila) se compara por cubre: cubre=true → ahora depende → drift", () => {
+  const p = prosaDe(stats([tip({ cubre: true })]), 2);
+  delete p.snapshot.tipologias[0].veredictoFila;
+  const d = detectarDrift(p, stats([tipDepende()]), 2);
+  assert.ok(d.motivos.includes("veredicto-dado-vuelta"));
+});
+
+test("el snapshot guarda veredictoFila", () => {
+  assert.equal(snapshotDe(stats([tipDepende()]), 2).tipologias[0].veredictoFila, "dependeDelArriendoReal");
+});
+
+// ── Guard de veredicto por rango ────────────────────────────────────────────
+
+console.log("\nGuard de veredicto por rango · una fila que depende no se narra con veredicto");
+
+const conDepende = stats([tip({ dorms: 1, cubre: true }), tipDepende({ dorms: 3 })]);
+
+test("\"el 3D se paga solo\" sobre una fila que depende → se rechaza", () => {
+  const e = validarVeredictoRango("Con estos supuestos el 3D se paga solo y deja margen.", conDepende);
+  assert.equal(e.length, 1, e.join(" · "));
+  assert.match(e[0], /3D no tiene veredicto/);
+});
+
+test("\"el 3D no se paga solo\" también se rechaza: tampoco es su veredicto", () => {
+  const e = validarVeredictoRango("El 3 dormitorios no se paga solo al precio de lista.", conDepende);
+  assert.equal(e.length, 1, e.join(" · "));
+});
+
+test("el ejemplo positivo del prompt pasa: piso, techo y depende", () => {
+  const e = validarVeredictoRango("El 3D queda en el filo: con el piso del rango el arriendo no cubre la cuota y con el techo sí, así que depende del arriendo real que consigas.", conDepende);
+  assert.deepEqual(e, []);
+});
+
+test("\"si el arriendo real llega al techo, se paga solo\" es condicional y pasa", () => {
+  const e = validarVeredictoRango("El 3D, si el arriendo real llega al techo del rango, se paga solo.", conDepende);
+  assert.deepEqual(e, []);
+});
+
+test("el veredicto seco de una fila PROPIA no se toca", () => {
+  const e = validarVeredictoRango("El 1D se paga solo con holgura y es el que encabeza.", conDepende);
+  assert.deepEqual(e, []);
+});
+
+test("sin filas que dependan, el guard no hace nada", () => {
+  assert.deepEqual(validarVeredictoRango("El 3D no se paga solo.", stats([tipEstimada({ dorms: 3 })])), []);
+});
+
 // ── Guard de fuente estimada ────────────────────────────────────────────────
 
 console.log("\nFuente estimada · el estimado no se cita como mediana");
@@ -238,6 +317,26 @@ test("un extremo del rango presentado como promedio también se rechaza", () => 
 test("el ejemplo positivo del prompt pasa: estimado con rango", () => {
   const e = validarFuenteEstimada("El 3D no tiene arriendos propios; con el metro cuadrado de la comuna se estima entre $839.000 y $1.061.000.", conEstimada);
   assert.deepEqual(e, []);
+});
+
+test("EL CASO RECOLETA: la mediana NEGADA es aceptación — \"—no una mediana propia—\"", () => {
+  const e = validarFuenteEstimada("Para el 3D, la estimación comunal —no una mediana propia— ubica el arriendo entre $839.000 y $1.061.000, y aun con el techo la cuota no se cubre.", conEstimada);
+  assert.deepEqual(e, []);
+});
+
+test("variante: \"no es una mediana propia\" también es aceptación", () => {
+  const e = validarFuenteEstimada("El 3D no es una mediana propia sino un estimado que va de $839.000 a $1.061.000.", conEstimada);
+  assert.deepEqual(e, []);
+});
+
+test("variante: \"sin mediana propia\" también es aceptación", () => {
+  const e = validarFuenteEstimada("Sin mediana propia para el 3D, el arriendo queda entre $839.000 y $1.061.000.", conEstimada);
+  assert.deepEqual(e, []);
+});
+
+test("la negación lejos del sustantivo NO salva: \"no… el 3D tiene una mediana de $X\" sigue rechazándose", () => {
+  const e = validarFuenteEstimada("No conviene apurarse; el 3D tiene una mediana de $950.000 al mes.", conEstimada);
+  assert.equal(e.length, 1, e.join(" · "));
 });
 
 test("nombrar la mediana COMUNAL como origen del estimado es correcto", () => {

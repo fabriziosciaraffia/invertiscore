@@ -11,6 +11,7 @@ import {
   type ReferenciaArriendo,
 } from "@/lib/referencia-arriendo";
 import { getTodasLasProsas, publicabaDorms } from "@/lib/data/comuna-prosa";
+import { resolverVeredictoFila, type VeredictoFila } from "@/lib/veredicto-fila";
 
 function getSupabase() {
   return createSupabaseClient(
@@ -69,11 +70,39 @@ export function bandaDeEsfuerzo(descuentoPct: number): BandaEsfuerzo {
 export function tipologiaLider(tipologias: TipologiaStats[]): TipologiaStats | null {
   if (!tipologias.length) return null;
   const propias = tipologias.filter((t) => t.referencia.fuente === "porTipologia");
-  const candidatas = propias.length ? propias : tipologias;
-  const cubren = candidatas.filter((t) => t.cubre);
+  // Una fila sin veredicto (su rango estimado cruza la cuota) no encabeza nada:
+  // no hay "se paga hasta UF X" ni "está a Y% de lograrlo" que decir de ella.
+  // Si todas dependen, no hay líder y el hero lo dice.
+  const candidatas = (propias.length ? propias : tipologias).filter(
+    (t) => t.veredictoFila !== "dependeDelArriendoReal",
+  );
+  if (!candidatas.length) return null;
+  const cubren = candidatas.filter((t) => t.veredictoFila === "sePagaSola");
   const universo = cubren.length ? cubren : candidatas;
   // deltaPct MÁS ALTO = más margen si cubre, o menos descuento pendiente si no.
   return universo.reduce((a, b) => (b.deltaPct > a.deltaPct ? b : a));
+}
+
+/** Todas las filas publicadas son estimadas: la comuna no tiene arriendos propios. */
+export function esComunaEstimada(stats: ComunaStats): boolean {
+  return stats.tipologias.length > 0 && stats.tipologias.every((t) => t.referencia.fuente === "comunalPorM2");
+}
+
+/** Al menos una fila con mediana propia: la comuna compite en el ranking. */
+export function tieneArriendoPropio(stats: ComunaStats): boolean {
+  return stats.tipologias.some((t) => t.referencia.fuente === "porTipologia");
+}
+
+/** Rango de arriendo estimado de la comuna: el piso más bajo y el techo más alto de sus filas. */
+export function rangoArriendoComuna(stats: ComunaStats): { min: number; max: number } | null {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const t of stats.tipologias) {
+    if (t.referencia.fuente !== "comunalPorM2") continue;
+    min = Math.min(min, t.referencia.rangoCLP.min);
+    max = Math.max(max, t.referencia.rangoCLP.max);
+  }
+  return Number.isFinite(min) ? { min, max } : null;
 }
 
 /**
@@ -105,9 +134,16 @@ export interface TipologiaStats {
   rentabilidadBruta: number;
   /** Cuota mensual del crédito a los supuestos declarados, CLP. */
   dividendoCLP: number;
-  /** arriendo − dividendo. Positivo = se paga sola. */
+  /** arriendo − dividendo al arriendo de cálculo (punto medio si es estimado). Positivo = cubre. */
   brechaCLP: number;
+  /** Aritmética al arriendo de cálculo: arriendo ≥ cuota. NO es el veredicto publicado (ver `veredictoFila`). */
   cubre: boolean;
+  /**
+   * El veredicto que se publica. Fila propia: `cubre`. Fila estimada: por RANGO
+   * (piso cubre → se paga sola · techo no cubre → no se paga sola · cruza →
+   * depende del arriendo real, que no cuenta en ningún conteo binario).
+   */
+  veredictoFila: VeredictoFila;
   /** Precio al que el arriendo cubre la cuota (NO el flujo completo). */
   precioCuotaCLP: number;
   precioCuotaUF: number;
@@ -467,6 +503,7 @@ function construirTipologia(seg: SegmentResult, s: SupuestosCredito): TipologiaS
     dividendoCLP,
     brechaCLP,
     cubre,
+    veredictoFila: resolverVeredictoFila({ dividendoCLP, arriendoCLP: Math.round(seg.medianaArriendo), referencia: seg.referencia }),
     precioCuotaCLP: Math.round(precioCuotaCLP),
     precioCuotaUF: Math.round(precioCuotaCLP / s.ufCLP),
     deltaPct: Math.round(deltaPct * 10) / 10,

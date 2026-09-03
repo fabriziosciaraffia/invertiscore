@@ -7,6 +7,12 @@
 // falta poco, prueba de que negociar no alcanza cuando el caso es estructural,
 // y techo de protección cuando la tipología ya se paga sola.
 //
+// VEREDICTO POR FILA. El hero cuenta y encabeza con `veredictoFila`, no con la
+// aritmética del punto medio: una fila estimada cuyo rango cruza la cuota
+// "depende del arriendo real" y no suma a favor ni en contra, no encabeza y no
+// entra al CTA. Si todas dependen, no hay líder y el hero lo dice sin inventar
+// un veredicto.
+//
 // Signal Red SOLO en la brecha negativa (uso #2 de Capa 1). El caso positivo va
 // en Ink, sin verde. La marca de muestra chica va en Ink + tipografía: una
 // advertencia de calidad de dato no es uso permitido del rojo.
@@ -14,6 +20,7 @@
 
 import type { ComunaStats, BandaEsfuerzo, TipologiaStats } from "@/lib/data/comunas-seo";
 import { fmtCLP, tipologiaLider } from "@/lib/data/comunas-seo";
+import { COPY_DEPENDE, brechaRango } from "@/lib/veredicto-fila";
 
 const NOMBRE_TIPOLOGIA: Record<number, string> = {
   1: "1 dormitorio",
@@ -43,6 +50,9 @@ function uf(n: number): string {
 const UNIDAD_DEPTO = "UF del depto";
 function corto(dorms: number): string {
   return `${dorms}D`;
+}
+function lista(ts: TipologiaStats[]): string {
+  return ts.map((t) => corto(t.dorms)).join(", ").replace(/, ([^,]*)$/, " y $1");
 }
 
 /**
@@ -79,58 +89,120 @@ function Dato({ label, valor, critico = false, unidad }: { label: string; valor:
   );
 }
 
+/**
+ * Sin líder: todas las filas publicadas dependen del arriendo real. No hay
+ * veredicto que titular ni palanca que ofrecer; se muestra qué pasa en cada
+ * extremo del rango y se manda la decisión al análisis del depto.
+ */
+function HeroSinVeredicto({ stats, dependen }: { stats: ComunaStats; dependen: TipologiaStats[] }) {
+  return (
+    <div
+      className="mt-7 rounded-r-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-7 shadow-sm"
+      style={{ borderLeft: "3px solid var(--franco-text)" }}
+    >
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
+        ¿El arriendo paga el dividendo?
+      </p>
+      <p className="mt-3 font-heading text-2xl font-bold leading-tight tracking-[-0.01em] text-[var(--franco-text)]">
+        En {stats.nombre} todavía no se puede decir: el arriendo es estimado y, en{" "}
+        {dependen.length === 1 ? `el ${corto(dependen[0].dorms)}` : `las ${dependen.length} tipologías`}, su rango cruza la
+        cuota.
+      </p>
+      <p className="mt-3.5 max-w-[66ch] font-body text-sm text-[var(--franco-text-secondary)]">
+        {COPY_DEPENDE} Franco no convierte un rango que cruza la cuota en un veredicto: con el arriendo real en la
+        mano, el análisis del depto sí lo decide.
+      </p>
+      <div className="mt-5 border-t border-dashed border-[var(--franco-border)] pt-5">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--franco-text-tertiary)]">
+          Qué pasa en cada extremo del rango
+        </p>
+        <div className="mt-4 flex flex-wrap gap-6">
+          {dependen.map((t) => {
+            const r = brechaRango(t);
+            if (!r) return null;
+            return (
+              <div key={t.dorms} className="flex gap-6">
+                <Dato label={`${corto(t.dorms)} · con el piso`} valor={`−${fmtCLP(Math.abs(r.min))}`} critico unidad="al mes" />
+                <Dato label={`${corto(t.dorms)} · con el techo`} valor={`+${fmtCLP(Math.abs(r.max))}`} unidad="al mes" />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
   const tips = stats.tipologias;
   if (!tips.length) return null;
 
-  const cubren = tips.filter((t) => t.cubre);
+  // Veredicto PUBLICADO por fila: las que dependen del arriendo real no cuentan
+  // ni a favor ni en contra, y nunca encabezan.
+  const cubren = tips.filter((t) => t.veredictoFila === "sePagaSola");
+  const dependen = tips.filter((t) => t.veredictoFila === "dependeDelArriendoReal");
+  const decididas = tips.filter((t) => t.veredictoFila !== "dependeDelArriendoReal");
   const lider = tipologiaLider(tips);
-  if (!lider) return null;
+  if (!lider) return <HeroSinVeredicto stats={stats} dependen={dependen} />;
+
   const ningunaCubre = cubren.length === 0;
-  const unaSola = tips.length === 1;
+  const unaSola = decididas.length === 1;
+  const conVeredicto = dependen.length ? " con veredicto" : "";
   const liderEstimado = lider.referencia.fuente === "comunalPorM2";
   // Con una sola fila, el titular dice de dónde sale: mediana propia o estimado.
   const unicaConFuente = (t: TipologiaStats) =>
     t.referencia.fuente === "comunalPorM2"
       ? `${NOMBRE_TIPOLOGIA[t.dorms]} (con arriendo estimado desde el m² comunal)`
       : NOMBRE_TIPOLOGIA[t.dorms];
+  // Las filas sin veredicto se nombran en el titular, con el copy canónico.
+  const notaDepende = dependen.length ? (
+    <>
+      {" "}
+      El {lista(dependen)} {dependen.length === 1 ? "queda" : "quedan"} sin veredicto: {COPY_DEPENDE}
+    </>
+  ) : null;
 
   // ── Titular: cambia de signo, no de adjetivo ──────────────────────────────
   let titular: React.ReactNode;
   if (ningunaCubre) {
     titular = unaSola ? (
       <>
-        En {stats.nombre} solo se puede publicar el {unicaConFuente(tips[0])}, y{" "}
+        En {stats.nombre} solo se puede publicar{dependen.length ? " con veredicto" : ""} el {unicaConFuente(decididas[0])}, y{" "}
         <span className="text-[#C8323C]">no se paga solo</span>: faltan{" "}
-        {fmtCLP(Math.abs(tips[0].brechaCLP))} cada mes.
+        {fmtCLP(Math.abs(decididas[0].brechaCLP))} cada mes.
+        {notaDepende}
       </>
     ) : (
       <>
         En {stats.nombre},{" "}
         <span className="text-[#C8323C]">
-          ninguna de las {tips.length} tipologías se paga sola
+          ninguna de las {decididas.length} tipologías{conVeredicto} se paga sola
         </span>{" "}
         al precio de lista.
+        {notaDepende}
       </>
     );
-  } else if (cubren.length === tips.length) {
+  } else if (cubren.length === decididas.length) {
     titular = unaSola ? (
       <>
-        En {stats.nombre}, el {unicaConFuente(tips[0])} <strong>se paga solo</strong>: sobran{" "}
-        {fmtCLP(tips[0].brechaCLP)} al mes por sobre la cuota.
+        En {stats.nombre}, el {unicaConFuente(decididas[0])} <strong>se paga solo</strong>: sobran{" "}
+        {fmtCLP(decididas[0].brechaCLP)} al mes por sobre la cuota.
+        {notaDepende}
       </>
     ) : (
       <>
-        En {stats.nombre}, las {tips.length} tipologías con muestra <strong>se pagan solas</strong>. Un{" "}
+        En {stats.nombre}, las {decididas.length} tipologías{conVeredicto || " con muestra"} <strong>se pagan solas</strong>. Un{" "}
         {corto(lider.dorms)} deja {fmtCLP(lider.brechaCLP)} al mes por sobre la cuota.
+        {notaDepende}
       </>
     );
   } else {
     titular = (
       <>
-        En {stats.nombre}, {cubren.length} de {tips.length} tipologías{" "}
+        En {stats.nombre}, {cubren.length} de {decididas.length} tipologías{conVeredicto}{" "}
         <strong>se pagan solas</strong>. La que más margen deja es el {corto(lider.dorms)}, con{" "}
         {fmtCLP(lider.brechaCLP)} al mes.
+        {notaDepende}
       </>
     );
   }
@@ -148,7 +220,8 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
       : "A qué precio sí se paga sola"
     : "Cuánto margen tienes antes de que deje de pagarse sola";
 
-  const restantes = tips.filter((t) => t.dorms !== lider.dorms && !t.cubre);
+  const restantes = tips.filter((t) => t.dorms !== lider.dorms && t.veredictoFila === "noSePagaSola");
+  const otrasQueCubren = tips.filter((t) => t.dorms !== lider.dorms && t.veredictoFila === "sePagaSola");
 
   return (
     <div
@@ -256,14 +329,13 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
           ) : (
             <>
               Ese colchón es lo que te protege si el arriendo baja o la tasa sube.
-              {tips.length > 1 && (
+              {otrasQueCubren.length > 0 && (
                 <>
                   {" "}
-                  {tips
-                    .filter((t) => t.dorms !== lider.dorms && t.cubre)
+                  {otrasQueCubren
                     .map((t) => `El ${corto(t.dorms)} aguanta hasta ${uf(t.precioCuotaUF)} (+${pct(t.deltaPct)})`)
                     .join(". ")}
-                  {tips.filter((t) => t.dorms !== lider.dorms && t.cubre).length > 0 && "."}
+                  .
                 </>
               )}
             </>

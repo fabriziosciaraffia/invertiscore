@@ -7,7 +7,9 @@ import { TablaTipologias, ProcedenciaMuestraBloque } from "@/components/comunas/
 import { getProsaComuna } from "@/lib/data/comuna-prosa";
 import { COMUNAS_ROSTER, esComunaDelRoster, nombreDeComuna } from "@/lib/data/comunas-roster";
 import { MIN_ARRIENDOS_TIPOLOGIA } from "@/lib/referencia-arriendo";
-import { MIN_PER_TYPE } from "@/lib/data/comunas-seo";
+import { MIN_PER_TYPE, esComunaEstimada } from "@/lib/data/comunas-seo";
+import { COPY_DEPENDE } from "@/lib/veredicto-fila";
+import { ChipEstimado } from "@/components/comunas/ChipEstimado";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
@@ -245,7 +247,11 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
   const peorRent = stats.tipologias.length
     ? stats.tipologias.reduce((a2, b2) => (b2.rentabilidadBruta < a2.rentabilidadBruta ? b2 : a2))
     : null;
-  const cubrenN = stats.tipologias.filter((t) => t.cubre).length;
+  // Conteos del veredicto PUBLICADO (veredictoFila): una fila estimada cuyo
+  // rango cruza la cuota no cuenta ni a favor ni en contra.
+  const cubrenN = stats.tipologias.filter((t) => t.veredictoFila === "sePagaSola").length;
+  const dependen = stats.tipologias.filter((t) => t.veredictoFila === "dependeDelArriendoReal");
+  const decididasN = stats.tipologias.length - dependen.length;
   const chicasN = stats.tipologias.filter((t) => t.muestraChica).length;
   const estimadas = stats.tipologias.filter((t) => t.referencia.fuente === "comunalPorM2");
   const propias = stats.tipologias.filter((t) => t.referencia.fuente === "porTipologia");
@@ -267,25 +273,31 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
         name: `¿A qué precio se paga solo un departamento en ${stats.nombre}?`,
         acceptedAnswer: {
           "@type": "Answer",
-          text: lider.cubre
+          text: lider.veredictoFila === "sePagaSola"
             ? `Un ${nDorm(lider.dorms)} en ${stats.nombre} se paga solo hasta UF ${lider.precioCuotaUF.toLocaleString("es-CL")}: sobre ese precio el arriendo deja de cubrir la cuota, con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años. La mediana de la comuna hoy está en UF ${lider.ventaUF.toLocaleString("es-CL")}.${respaldoLider}`
             : `Un ${nDorm(lider.dorms)} tendría que costar UF ${lider.precioCuotaUF.toLocaleString("es-CL")} para que el arriendo cubra la cuota, un ${Math.abs(lider.deltaPct).toFixed(1).replace(".", ",")}% bajo la mediana de la comuna (UF ${lider.ventaUF.toLocaleString("es-CL")}), con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años. Es la tipología que queda más cerca.${respaldoLider}`,
         },
       }
     : null;
 
-  const faqDividendo = lider
+  // Las filas sin veredicto se nombran aparte, con el copy canónico, y nunca
+  // suman al "N de M": ni a favor ni en contra.
+  const notaDepende = dependen.length
+    ? ` ${listaDorms(dependen).replace(/^el/, "El")} ${dependen.length === 1 ? "queda" : "quedan"} sin veredicto: ${COPY_DEPENDE}`
+    : "";
+  const faqDividendo = stats.tipologias.length
     ? {
         "@type": "Question",
         name: `¿El arriendo alcanza para pagar el dividendo en ${stats.nombre}?`,
         acceptedAnswer: {
           "@type": "Answer",
-          text:
-            cubrenN === 0
-              ? `No, en ninguna de las ${stats.tipologias.length === 1 ? "tipologías con muestra" : `${stats.tipologias.length} tipologías`}. En un ${nDorm(lider.dorms)}, que es el que queda más cerca, faltan ${fmtCLP(Math.abs(lider.brechaCLP))} al mes con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años.`
-              : cubrenN === stats.tipologias.length
-                ? `Sí, en ${stats.tipologias.length === 1 ? "la única tipología con muestra" : `las ${stats.tipologias.length} tipologías con muestra`}. En un ${nDorm(lider.dorms)} sobran ${fmtCLP(lider.brechaCLP)} al mes con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años.`
-                : `En ${cubrenN} de ${stats.tipologias.length} tipologías sí. En un ${nDorm(lider.dorms)} sobran ${fmtCLP(lider.brechaCLP)} al mes; en las demás el arriendo no alcanza a cubrir la cuota.`,
+          text: !lider
+            ? `Depende del arriendo real. En ${stats.nombre} el arriendo es estimado y en ${listaDorms(dependen)} el rango cruza la cuota: ${COPY_DEPENDE}`
+            : cubrenN === 0
+              ? `No, en ninguna de las ${decididasN === 1 ? "tipologías con veredicto" : `${decididasN} tipologías con veredicto`}. En un ${nDorm(lider.dorms)}, que es el que queda más cerca, faltan ${fmtCLP(Math.abs(lider.brechaCLP))} al mes con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años.${notaDepende}`
+              : cubrenN === decididasN
+                ? `Sí, en ${decididasN === 1 ? "la única tipología con veredicto" : `las ${decididasN} tipologías con veredicto`}. En un ${nDorm(lider.dorms)} sobran ${fmtCLP(lider.brechaCLP)} al mes con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años.${notaDepende}`
+                : `En ${cubrenN} de ${decididasN} tipologías con veredicto sí. En un ${nDorm(lider.dorms)} sobran ${fmtCLP(lider.brechaCLP)} al mes; en las demás el arriendo no alcanza a cubrir la cuota.${notaDepende}`,
         },
       }
     : null;
@@ -400,7 +412,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
                 En {stats.nombre}, el metro cuadrado de los departamentos publicados está en {fmtUF(stats.precioM2Promedio)}/m²
                 ({fmtCLP(precioM2CLP)} por m²) y el arriendo mediano en {fmtCLP(stats.arriendoRepresentativo)} al mes,
                 lo que deja una rentabilidad bruta de {n1(stats.rentabilidadBruta)}%.
-                {lider && (lider.cubre
+                {lider && (lider.veredictoFila === "sePagaSola"
                   ? ` A los supuestos de arriba, el ${lider.dorms}D es el que más margen deja: el arriendo cubre la cuota y sobran ${fmtCLP(lider.brechaCLP)} al mes.`
                   : ` A los supuestos de arriba, ni siquiera el ${lider.dorms}D —el que queda más cerca— alcanza a cubrir la cuota: le faltan ${fmtCLP(Math.abs(lider.brechaCLP))} al mes.`)}
               </p>
@@ -432,7 +444,10 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
                 </thead>
                 <tbody>
                   <tr className="border-b border-[var(--franco-border)] bg-[var(--franco-card)]">
-                    <td className="px-4 py-3 font-body font-semibold text-[var(--franco-text)]">{stats.nombre}</td>
+                    <td className="px-4 py-3 font-body font-semibold text-[var(--franco-text)]">
+                      {stats.nombre}
+                      {esComunaEstimada(stats) && <ChipEstimado />}
+                    </td>
                     <td className="px-4 py-3 font-mono font-medium" style={{ color: rentColor(stats.rentabilidadBruta) }}>{stats.rentabilidadBruta.toFixed(1).replace(".", ",")}%</td>
                     <td className="px-4 py-3 font-mono font-medium text-[var(--franco-text)]">{fmtCLP(stats.arriendoRepresentativo)}</td>
                     <td className="px-4 py-3 font-mono font-medium text-[var(--franco-text)]">{stats.precioM2Promedio.toFixed(1).replace(".", ",")}</td>
@@ -441,6 +456,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
                     <tr key={c.slug} className="border-b border-[var(--franco-border)]">
                       <td className="px-4 py-3">
                         <Link href={`/comunas/${c.slug}`} className="font-body text-[var(--franco-text)] hover:text-[var(--franco-text)]">{c.nombre}</Link>
+                        {esComunaEstimada(c) && <ChipEstimado />}
                       </td>
                       <td className="px-4 py-3 font-mono text-[var(--franco-text-secondary)]">{c.rentabilidadBruta.toFixed(1).replace(".", ",")}%</td>
                       <td className="px-4 py-3 font-mono text-[var(--franco-text-secondary)]">{fmtCLP(c.arriendoRepresentativo)}</td>
@@ -477,11 +493,11 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
               <>
                 <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">
                   ¿Viste un {lider.dorms}D en {stats.nombre}{" "}
-                  {lider.cubre ? "bajo" : "cerca de"}{" "}
+                  {lider.veredictoFila === "sePagaSola" ? "bajo" : "cerca de"}{" "}
                   <span className="font-mono">UF {lider.precioCuotaUF.toLocaleString("es-CL")}</span>?
                 </h2>
                 <p className="mx-auto mt-2 max-w-[62ch] font-body text-sm text-[var(--franco-text-secondary)]">
-                  {lider.cubre
+                  {lider.veredictoFila === "sePagaSola"
                     ? `Sobre ese precio deja de pagarse solo con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años`
                     : `Ese es el precio al que el arriendo cubriría la cuota con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años`}
                   {lider.referencia.fuente === "comunalPorM2"

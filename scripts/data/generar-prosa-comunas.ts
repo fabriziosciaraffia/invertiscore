@@ -29,6 +29,7 @@ import {
   validarCoherenciaNumerica,
   validarFuenteEstimada,
   validarRolesDeCifras,
+  validarVeredictoRango,
 } from "@/lib/data/comuna-prosa";
 import { coberturaPlusvaliaDe, PLUSVALIA_ESTIMADO } from "@/lib/plusvalia-estimado.gen";
 
@@ -95,6 +96,11 @@ REGLAS DE RAZONAMIENTO
   publicados propios; con el metro cuadrado de la comuna se estima entre
   $[mínimo] y $[máximo], y ni con el techo de ese rango cubre la cuota".
   Así NO: "el 3D tiene una mediana de $[punto medio]".
+- Una tipología marcada DEPENDE DEL ARRIENDO REAL no tiene veredicto: su rango
+  de arriendo cruza la cuota. Nunca escribas que "se paga sola" ni que "no se
+  paga sola". Así se hace bien: "El 3D queda en el filo: con el piso del rango
+  el arriendo no cubre la cuota y con el techo sí, así que depende del
+  arriendo real que consigas". Así NO: "el 3D no se paga solo por $[cifra]".
 
 VOZ
 - Español chileno, tuteo neutro. Nunca voseo ("tenés", "podés") ni chilenismos
@@ -111,7 +117,9 @@ FORMA
 function bloqueDatos(stats: ComunaStats): string {
   const s = stats.supuestos;
   const lider = tipologiaLider(stats.tipologias);
-  const cubren = stats.tipologias.filter((t) => t.cubre).length;
+  const cubren = stats.tipologias.filter((t) => t.veredictoFila === "sePagaSola").length;
+  const dependen = stats.tipologias.filter((t) => t.veredictoFila === "dependeDelArriendoReal");
+  const decididas = stats.tipologias.length - dependen.length;
 
   const filas = stats.tipologias
     .map((t) => {
@@ -133,7 +141,13 @@ function bloqueDatos(stats: ComunaStats): string {
         `    cuota del crédito: ${fmtCLP(t.dividendoCLP)} [PESOS, mensual]`,
         `    diferencia arriendo − cuota: ${t.brechaCLP >= 0 ? "sobran " : "faltan "}${fmtCLP(Math.abs(t.brechaCLP))} [PESOS, mensual]`,
         `    rentabilidad bruta: ${pctTxt(t.rentabilidadBruta)}`,
-        `    ${t.cubre ? "SE PAGA SOLA" : "NO se paga sola"}; ${equil}`,
+        t.referencia.fuente === "comunalPorM2"
+          ? t.veredictoFila === "dependeDelArriendoReal"
+            ? `    VEREDICTO: DEPENDE DEL ARRIENDO REAL — con el piso del rango (${fmtCLP(t.referencia.rangoCLP.min)}) el arriendo NO cubre la cuota (${fmtCLP(t.dividendoCLP)}); con el techo (${fmtCLP(t.referencia.rangoCLP.max)}) SÍ. No escribas que se paga sola ni que no se paga sola: escribe que depende del arriendo real. [equilibrio al punto medio: ${equil}]`
+            : t.veredictoFila === "sePagaSola"
+              ? `    SE PAGA SOLA incluso con el piso del rango (${fmtCLP(t.referencia.rangoCLP.min)} ≥ cuota ${fmtCLP(t.dividendoCLP)}); ${equil}`
+              : `    NO se paga sola ni con el techo del rango (${fmtCLP(t.referencia.rangoCLP.max)} < cuota ${fmtCLP(t.dividendoCLP)}); ${equil}`
+          : `    ${t.cubre ? "SE PAGA SOLA" : "NO se paga sola"}; ${equil}`,
       ].join("\n");
     })
     .join("\n");
@@ -152,7 +166,7 @@ SUPUESTOS DE LA CUOTA (los mismos que muestra la página): pie ${s.piePct}%, pla
 TIPOLOGÍAS PUBLICADAS (${stats.tipologias.length} de 4; las que no aparecen no tienen ni arriendos propios ni muestra comunal para estimar, y NO debes mencionarlas como si los tuvieran):
 ${filas}
 
-RESUMEN: ${cubren} de ${stats.tipologias.length} tipologías se pagan solas.${lider ? ` La que encabeza es el ${lider.dorms}D.` : ""}
+RESUMEN: ${cubren} de ${decididas} tipologías con veredicto se pagan solas${dependen.length ? `; ${dependen.map((t) => `${t.dorms}D`).join(" y ")} DEPENDE${dependen.length > 1 ? "N" : ""} del arriendo real y no cuenta${dependen.length > 1 ? "n" : ""} en ese conteo` : ""}.${lider ? ` La que encabeza es el ${lider.dorms}D.` : " Ninguna tipología encabeza: todas dependen del arriendo real."}
 MUESTRA TOTAL: ${stats.procedencia.enCalculo} avisos entran en el cálculo, de ${stats.procedencia.activosTotales} activos.
 ${plusvalia}`;
 }
@@ -218,6 +232,7 @@ function validar(texto: string, stats: ComunaStats): string[] {
   errores.push(...validarCoherenciaNumerica(texto, stats));
   errores.push(...validarRolesDeCifras(texto));
   errores.push(...validarFuenteEstimada(texto, stats));
+  errores.push(...validarVeredictoRango(texto, stats));
   return errores;
 }
 

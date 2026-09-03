@@ -22,6 +22,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import type { ComunaStats } from "@/lib/data/comunas-seo";
 import { PLUSVALIA_ESTIMADO, coberturaPlusvaliaDe } from "@/lib/plusvalia-estimado.gen";
+import type { VeredictoFila } from "@/lib/veredicto-fila";
 
 /** Versión del prompt. Un bump obliga a regenerar el parque completo.
  *  v2: unidades explícitas por cifra + guard de coherencia numérica. La v1
@@ -31,8 +32,12 @@ import { PLUSVALIA_ESTIMADO, coberturaPlusvaliaDe } from "@/lib/plusvalia-estima
  *  v3: filas con arriendo ESTIMADO desde el m² comunal (referencia-arriendo).
  *  El bloque de datos las marca, entrega el rango, y el system trae el
  *  ejemplo positivo de cómo citarlas; el guard `validarFuenteEstimada` caza
- *  el estimado presentado como mediana. */
-export const PROMPT_VERSION_COMUNA = 3;
+ *  el estimado presentado como mediana.
+ *  v4: veredicto por RANGO en filas estimadas (se paga sola / no se paga sola /
+ *  depende del arriendo real). El bloque de datos lo entrega resuelto, el system
+ *  trae el ejemplo positivo, y `validarVeredictoRango` caza la fila "depende"
+ *  narrada con veredicto. */
+export const PROMPT_VERSION_COMUNA = 4;
 
 /** Lo que la prosa narró, por tipología. Solo lo citable. */
 export interface SnapshotTipologia {
@@ -53,6 +58,12 @@ export interface SnapshotTipologia {
    * falsa a la prosa; sirve para la histéresis (`publicabaDorms`).
    */
   fuente?: "porTipologia" | "comunalPorM2";
+  /**
+   * Veredicto PUBLICADO al generar (v4+). Es lo que compara el drift: una fila
+   * que pasa a "depende del arriendo real" cambió de veredicto aunque `cubre`
+   * no se haya movido. Snapshots anteriores lo derivan de `cubre`.
+   */
+  veredictoFila?: VeredictoFila;
 }
 
 export interface SnapshotProsa {
@@ -89,6 +100,7 @@ export function snapshotDe(stats: ComunaStats, liderDorms: number | null): Snaps
       deltaPct: t.deltaPct,
       muestraChica: t.muestraChica,
       fuente: t.referencia.fuente,
+      veredictoFila: t.veredictoFila,
     })),
     tasaAnual: stats.supuestos.tasaAnual,
     piePct: stats.supuestos.piePct,
@@ -173,11 +185,13 @@ export function detectarDrift(
       detalle.push(`el ${t.dorms}D no existía al generar`);
       continue;
     }
-    if (a.cubre !== t.cubre) {
+    // El veredicto publicado es `veredictoFila` (tres valores). Un snapshot
+    // anterior a v4 no lo trae: se deriva de `cubre`, que era el veredicto
+    // de entonces, así que "depende" contra un snapshot viejo también dispara.
+    const antesV: VeredictoFila = a.veredictoFila ?? (a.cubre ? "sePagaSola" : "noSePagaSola");
+    if (antesV !== t.veredictoFila) {
       motivos.push("veredicto-dado-vuelta");
-      detalle.push(
-        `el ${t.dorms}D ${a.cubre ? "se pagaba solo y ahora no" : "no se pagaba solo y ahora sí"}`
-      );
+      detalle.push(`el ${t.dorms}D pasó de ${antesV} a ${t.veredictoFila}`);
     }
     if (movio(a.arriendoCLP, t.arriendoCLP)) {
       motivos.push("cifra-movida");
@@ -319,6 +333,10 @@ export function cifrasCitables(stats: ComunaStats): CifrasCitables {
       clp.add(t.referencia.rangoCLP.min);
       clp.add(t.referencia.rangoCLP.max);
       enteros.add(t.referencia.nComunal);
+      // Fila estimada: la brecha en los dos extremos del rango también se
+      // entrega ("con el piso faltan $X; con el techo sobran $Y").
+      clp.add(Math.abs(t.referencia.rangoCLP.min - t.dividendoCLP));
+      clp.add(Math.abs(t.referencia.rangoCLP.max - t.dividendoCLP));
     }
   }
   pct.add(stats.supuestos.piePct);
@@ -338,7 +356,9 @@ export function cifrasCitables(stats: ComunaStats): CifrasCitables {
   }
   enteros.add(stats.supuestos.plazoAnos);
   enteros.add(stats.tipologias.length);
-  enteros.add(stats.tipologias.filter((t) => t.cubre).length);
+  enteros.add(stats.tipologias.filter((t) => t.veredictoFila === "sePagaSola").length);
+  enteros.add(stats.tipologias.filter((t) => t.veredictoFila === "dependeDelArriendoReal").length);
+  enteros.add(stats.tipologias.filter((t) => t.veredictoFila !== "dependeDelArriendoReal").length);
   enteros.add(stats.procedencia.enCalculo);
   enteros.add(stats.procedencia.activosTotales);
 
@@ -447,8 +467,17 @@ const EQUILIBRIO_SIN_PRECIO = /precio de equilibrio\s+(de|del|es|:)\s*(\$\s?[\d.
 // guard de roles: lo que no cubre vive en el prompt y en la revisión.
 // ─────────────────────────────────────────────────────────────────────────
 
-const VENTANA_ANTES = 45;
+// 90 y no 45: Recoleta escribió "la estimación comunal —no una mediana propia—"
+// y la cifra venía más de 45 caracteres después; la ventana corta vio
+// "mediana" y no vio "estimación".
+const VENTANA_ANTES = 90;
 const VENTANA_DESPUES = 30;
+/**
+ * Una mediana NEGADA es aceptación, no rechazo: "no una mediana propia", "no es
+ * una mediana", "sin mediana propia" dicen exactamente lo que el guard quiere
+ * que se diga. Ventana corta entre la negación y el sustantivo.
+ */
+const MEDIANA_NEGADA = /\b(no|sin|ni|tampoco)\b[^.;$]{0,24}\bmedian[ao]s?\b/i;
 
 export function validarFuenteEstimada(texto: string, stats: ComunaStats): string[] {
   const errores: string[] = [];
@@ -462,12 +491,45 @@ export function validarFuenteEstimada(texto: string, stats: ComunaStats): string
         const i = m.index ?? 0;
         const antes = texto.slice(Math.max(0, i - VENTANA_ANTES), i);
         const ventana = antes + texto.slice(i, i + m[0].length + VENTANA_DESPUES);
-        if (/median[ao]s?|promedio/i.test(antes) && !/estim|aproxim/i.test(ventana)) {
+        if (/median[ao]s?|promedio/i.test(antes) && !/estim|aproxim/i.test(ventana) && !MEDIANA_NEGADA.test(antes)) {
           errores.push(
             `fuente equivocada: "${antes.trim()} ${m[0]}" — el arriendo del ${t.dorms}D es un estimado comunal, no una mediana de la tipología`
           );
         }
       }
+    }
+  }
+  return errores;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Guard de VEREDICTO POR RANGO
+//
+// Una fila estimada cuyo rango cruza la cuota no tiene veredicto (ver
+// veredicto-fila.ts). El prompt se lo dice resuelto y trae el ejemplo
+// positivo; este guard caza el residuo: esa tipología narrada como "se paga
+// sola" o "no se paga sola" a secas. Si la frase habla de piso, techo o de
+// depender del arriendo real, está bien dicha y pasa.
+// ─────────────────────────────────────────────────────────────────────────
+
+const VEREDICTO_SECO = /\b(no\s+)?se\s+pagan?\s+sol[ao]s?\b/gi;
+const MATIZ_DEPENDE = /depend|piso|techo|seg[úu]n|si el arriendo|si consigues|si logras|salvo/i;
+
+export function validarVeredictoRango(texto: string, stats: ComunaStats): string[] {
+  const errores: string[] = [];
+  const dependen = stats.tipologias.filter((t) => t.veredictoFila === "dependeDelArriendoReal");
+  if (!dependen.length) return errores;
+  for (const m of Array.from(texto.matchAll(VEREDICTO_SECO))) {
+    const i = m.index ?? 0;
+    const antes = texto.slice(Math.max(0, i - 100), i);
+    const ventana = antes + texto.slice(i, i + m[0].length + 60);
+    for (const t of dependen) {
+      const nombra = new RegExp(`\\b${t.dorms}D\\b|\\b${t.dorms} dormitorios?\\b`, "i");
+      if (!nombra.test(antes)) continue;
+      if (MATIZ_DEPENDE.test(ventana)) continue;
+      errores.push(
+        `veredicto seco sobre una fila que depende: "${antes.trim().slice(-50)} ${m[0]}" — el ${t.dorms}D no tiene veredicto; su rango cruza la cuota`
+      );
     }
   }
   return errores;

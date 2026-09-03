@@ -34,6 +34,7 @@
 import type { ComunaStats, TipologiaStats } from "@/lib/data/comunas-seo";
 import { MIN_PER_TYPE, fmtCLP } from "@/lib/data/comunas-seo";
 import { MIN_ARRIENDOS_COMUNAL_ENTRA, MIN_ARRIENDOS_TIPOLOGIA } from "@/lib/referencia-arriendo";
+import { COPY_DEPENDE, ETIQUETA_VEREDICTO, brechaRango } from "@/lib/veredicto-fila";
 
 const NOMBRE_TIPOLOGIA: Record<number, string> = {
   1: "1 dormitorio",
@@ -105,8 +106,26 @@ function MarcaRespaldo({ t }: { t: TipologiaStats }) {
 }
 
 function textoEquilibrio(t: TipologiaStats): string {
-  if (t.cubre) return `+${pct1(t.deltaPct)} de margen`;
+  if (t.veredictoFila === "dependeDelArriendoReal") return "al punto medio · piso no cubre, techo sí";
+  if (t.veredictoFila === "sePagaSola") return `+${pct1(t.deltaPct)} de margen`;
   return `${pct1(t.deltaPct)}${t.pieNecesarioPct !== null ? ` · o pie ${t.pieNecesarioPct}%` : ""}`;
+}
+
+/** Solo el veredicto negativo lleva Signal Red; "depende" va en Ink como el positivo. */
+function colorVeredicto(t: TipologiaStats, positivo: string): string {
+  return t.veredictoFila === "noSePagaSola" ? "#C8323C" : positivo;
+}
+
+/**
+ * La diferencia arriendo − cuota. Una fila sin veredicto la muestra en sus dos
+ * extremos ("−$a a +$b"): el punto medio solo sería un número con cara de dato.
+ */
+function textoDiferencia(t: TipologiaStats): string {
+  if (t.veredictoFila === "dependeDelArriendoReal") {
+    const r = brechaRango(t);
+    if (r) return `${r.min < 0 ? "−" : "+"}${fmtCLP(Math.abs(r.min))} a ${r.max < 0 ? "−" : "+"}${fmtCLP(Math.abs(r.max))}`;
+  }
+  return `${t.cubre ? "+" : "−"}${fmtCLP(Math.abs(t.brechaCLP))}`;
 }
 
 /** Vista de tarjetas bajo 1024px: la tabla se reorganiza, no se encoge. */
@@ -121,9 +140,9 @@ function TarjetasTipologias({ tips }: { tips: TipologiaStats[] }) {
             </span>
             <span
               className="font-mono text-[11px] font-medium uppercase tracking-[0.08em]"
-              style={{ color: t.cubre ? "var(--franco-text-secondary)" : "#C8323C" }}
+              style={{ color: colorVeredicto(t, "var(--franco-text-secondary)") }}
             >
-              {t.cubre ? "Se paga solo" : "No se paga solo"}
+              {ETIQUETA_VEREDICTO[t.veredictoFila]}
             </span>
           </div>
           <p className="mt-0.5 font-mono text-[10px] tracking-[0.04em] text-[var(--franco-text-muted)]">
@@ -160,10 +179,9 @@ function TarjetasTipologias({ tips }: { tips: TipologiaStats[] }) {
               <p className="font-body text-[11px] text-[var(--franco-text-muted)]">Diferencia</p>
               <p
                 className="mt-0.5 font-mono text-[15px] font-bold"
-                style={{ color: t.cubre ? "var(--franco-text)" : "#C8323C" }}
+                style={{ color: colorVeredicto(t, "var(--franco-text)") }}
               >
-                {t.cubre ? "+" : "−"}
-                {fmtCLP(Math.abs(t.brechaCLP))}
+                {textoDiferencia(t)}
               </p>
             </div>
             <div className="rounded-lg bg-[var(--franco-sunken,var(--franco-bg))] p-2.5">
@@ -189,8 +207,9 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
   const tips = stats.tipologias;
   if (!tips.length) return null;
   const s = stats.supuestos;
-  const algunaCubre = tips.some((t) => t.cubre);
+  const algunaCubre = tips.some((t) => t.veredictoFila === "sePagaSola");
   const estimadas = tips.filter(esEstimada);
+  const dependen = tips.filter((t) => t.veredictoFila === "dependeDelArriendoReal");
 
   return (
     <section className="mt-14">
@@ -251,15 +270,14 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
                   {fmtCLP(t.dividendoCLP)}
                 </td>
                 <td className="whitespace-nowrap px-3 py-4 text-right font-mono text-[13px]">
-                  <span className="font-bold" style={{ color: t.cubre ? "var(--franco-text)" : "#C8323C" }}>
-                    {t.cubre ? "+" : "−"}
-                    {fmtCLP(Math.abs(t.brechaCLP))}
+                  <span className="font-bold" style={{ color: colorVeredicto(t, "var(--franco-text)") }}>
+                    {textoDiferencia(t)}
                   </span>
                   <span
                     className="mt-0.5 block font-mono text-[10px] font-medium uppercase tracking-[0.06em]"
-                    style={{ color: t.cubre ? "var(--franco-text-secondary)" : "#C8323C" }}
+                    style={{ color: colorVeredicto(t, "var(--franco-text-secondary)") }}
                   >
-                    {t.cubre ? "Se paga solo" : "No se paga solo"}
+                    {ETIQUETA_VEREDICTO[t.veredictoFila]}
                   </span>
                 </td>
                 <td className="whitespace-nowrap bg-[var(--franco-sunken,var(--franco-bg))] px-3 py-4 text-right font-mono text-[13px] font-bold text-[var(--franco-text)]">
@@ -303,8 +321,16 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
           {estimadas.length > 0 && (
             <>
               {" "}
-              En {estimadas.length === 1 ? "la fila estimada" : "las filas estimadas"}, la cuota y la diferencia
-              usan el punto medio del rango de arriendo.
+              En {estimadas.length === 1 ? "la fila estimada" : "las filas estimadas"}, el precio de equilibrio usa el
+              punto medio del rango de arriendo, pero el veredicto se decide con el rango completo: se paga solo
+              solo si el piso cubre la cuota, y no se paga solo solo si ni el techo la cubre.
+              {dependen.length > 0 && (
+                <>
+                  {" "}
+                  {dependen.length === 1 ? "Una fila queda" : `${dependen.length} filas quedan`} sin veredicto:{" "}
+                  {COPY_DEPENDE}
+                </>
+              )}
             </>
           )}
         </p>
