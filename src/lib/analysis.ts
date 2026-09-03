@@ -596,6 +596,11 @@ function calcMetrics(
     })(),
     capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
     corretajeInicialCLP: corretajeInicial,
+    // Display: los mismos sumandos que calcInversionInicialCLP suma en el exit
+    // (cierre + corretaje), para que el render descomponga el día 1 sin
+    // recomputar. PENDIENTE: GASTOS_CIERRE_PCT está duplicado en analysis.ts,
+    // ai-generation.ts y kpi-calculations.ts; unificar es otro goal.
+    gastosCompraCLP: gastosCompra + corretajeInicial,
     hallazgoPuestaAPunto,
     hallazgoCapRate,
     hallazgoFlujoMensual,

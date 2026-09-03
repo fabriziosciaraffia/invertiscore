@@ -420,6 +420,13 @@ export interface AnalysisMetrics {
   // NO a capitalInvertido (cashOnCash/gates/veredicto/score quedan intactos).
   // Ausente/0 en análisis viejos → recomputan byte-idéntico. Consumidores `?? 0`.
   corretajeInicialCLP?: number;
+  // Gastos de compra del día 1 = gastos de cierre (notaría, CBR, timbres,
+  // tasación) + corretaje inicial del comprador. Campo ADITIVO de display: el
+  // render descompone la plata del día 1 (pie + gastos de compra + puesta a
+  // punto === exit.inversionInicial) sin recomputar el 2% por su cuenta. Se
+  // calcula en calcMetrics con los mismos sumandos que calcInversionInicialCLP.
+  // Ausente en filas previas → el render cae a inversionInicial − pie − capex.
+  gastosCompraCLP?: number;
   // Proto-hallazgo tipado emitido por el motor (null si Nuevo / CapEx 0).
   hallazgoPuestaAPunto?: HallazgoPuestaAPunto | null;
   // Proto-hallazgo de cap rate (LTR). null si el cap rate no es computable

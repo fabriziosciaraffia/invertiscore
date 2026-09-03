@@ -279,6 +279,26 @@ test("P6 · runAnalysis(v3): capexPuestaAPuntoCLP === punto e inversionInicial s
   assert.equal(r.metrics.hallazgoPuestaAPunto?.valor.montoCLP, capex.montoCLP);
 });
 
+// ── P6b · la plata del día 1 se descompone exacto ────────────────────────────
+
+test("P6b · pie + gastosCompraCLP + capex === exit.inversionInicial, vía calcInversionInicialCLP (v3 y legacy, con y sin corretaje)", () => {
+  const casos = [
+    { ...ltr({ antiguedad: 15, superficie: 45, precio: 4000, arriendo: 700_000, piePct: 20, incluyeCorretajeInicial: true }), methodologyVersion: "v3" },
+    { ...ltr({ antiguedad: 4, superficie: 60, precio: 5500, arriendo: 960_000, piePct: 20 }), methodologyVersion: undefined },
+    { ...ltr({ antiguedad: 0, superficie: 55, precio: 4000, arriendo: 650_000, piePct: 0 }), methodologyVersion: "v3" },
+    { ...ltr({ antiguedad: 25, superficie: 42, precio: 1850, arriendo: 455_000, piePct: 50, incluyeCorretajeInicial: true }), methodologyVersion: "v3" },
+  ];
+  for (const input of casos) {
+    const r = runAnalysis(input, UF, undefined, new Date("2026-09-01"));
+    const m = r.metrics;
+    assert.equal(typeof m.gastosCompraCLP, "number");
+    const suma = calcInversionInicialCLP({ pieCLP: m.pieCLP, gastosCierreCLP: m.gastosCompraCLP!, capexPuestaAPuntoCLP: m.capexPuestaAPuntoCLP ?? 0 });
+    assert.equal(suma, r.exitScenario.inversionInicial, `antig=${input.antiguedad} pie=${input.piePct}: ${m.pieCLP} + ${m.gastosCompraCLP} + ${m.capexPuestaAPuntoCLP} ≠ ${r.exitScenario.inversionInicial}`);
+    // Y gastosCompra es cierre + corretaje: nunca incluye el CapEx.
+    assert.equal(m.gastosCompraCLP! - (m.corretajeInicialCLP ?? 0), r.exitScenario.inversionInicial - m.pieCLP - (m.capexPuestaAPuntoCLP ?? 0) - (m.corretajeInicialCLP ?? 0));
+  }
+});
+
 // ── P7 · gate por versión ────────────────────────────────────────────────────
 
 test("P7 · resolverModeloCostos: ausente/v1/v2 ⇒ legacy · v3/v4 ⇒ v3", () => {
