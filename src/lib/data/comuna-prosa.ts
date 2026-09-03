@@ -36,8 +36,12 @@ import type { VeredictoFila } from "@/lib/veredicto-fila";
  *  v4: veredicto por RANGO en filas estimadas (se paga sola / no se paga sola /
  *  depende del arriendo real). El bloque de datos lo entrega resuelto, el system
  *  trae el ejemplo positivo, y `validarVeredictoRango` caza la fila "depende"
- *  narrada con veredicto. */
-export const PROMPT_VERSION_COMUNA = 4;
+ *  narrada con veredicto.
+ *  v5: el universo de comparación de la muestra son las comunas publicadas.
+ *  Santiago y Providencia salieron con "la muestra más grande del país", una
+ *  afirmación que ningún dato sostiene; el bloque ahora declara el universo
+ *  (las 25) y el system trae el ejemplo positivo, sin prohibición. */
+export const PROMPT_VERSION_COMUNA = 5;
 
 /** Lo que la prosa narró, por tipología. Solo lo citable. */
 export interface SnapshotTipologia {

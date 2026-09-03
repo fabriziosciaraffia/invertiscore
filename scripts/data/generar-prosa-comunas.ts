@@ -89,6 +89,9 @@ REGLAS DE RAZONAMIENTO
   dice al lector qué hacer con esto o bajo qué condición le sirve la comuna.
 - Solo puedes afirmar lo que está en los DATOS que recibes. Nada de metro,
   proyectos, barrios, seguridad, colegios ni plazos de obras: no los tienes.
+- El universo con que se compara la muestra son las comunas publicadas que te
+  dice el bloque de datos, no el país ni la región. Así se hace bien: "la
+  muestra más grande de las 25 comunas".
 - Si la muestra de una tipología es chica, no la celebres sin decirlo.
 - Una tipología marcada ARRIENDO ESTIMADO no tiene mediana propia: su arriendo
   sale del metro cuadrado de la comuna y viene como RANGO. Si la citas, dilo
@@ -168,6 +171,7 @@ ${filas}
 
 RESUMEN: ${cubren} de ${decididas} tipologías con veredicto se pagan solas${dependen.length ? `; ${dependen.map((t) => `${t.dorms}D`).join(" y ")} DEPENDE${dependen.length > 1 ? "N" : ""} del arriendo real y no cuenta${dependen.length > 1 ? "n" : ""} en ese conteo` : ""}.${lider ? ` La que encabeza es el ${lider.dorms}D.` : " Ninguna tipología encabeza: todas dependen del arriendo real."}
 MUESTRA TOTAL: ${stats.procedencia.enCalculo} avisos entran en el cálculo, de ${stats.procedencia.activosTotales} activos.
+UNIVERSO DE COMPARACIÓN DE LA MUESTRA: las ${COMUNAS_ROSTER.length} comunas publicadas (esta y otras ${COMUNAS_ROSTER.length - 1}).
 ${plusvalia}`;
 }
 
