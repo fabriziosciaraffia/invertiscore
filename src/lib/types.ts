@@ -395,6 +395,9 @@ export interface AnalysisMetrics {
   valorMercadoFrancoUF?: number;       // vm resuelto (= precio cuando no hay valor de mercado con procedencia)
   /** Procedencia del valor de mercado que el motor aceptó; null = trabajó sin valor de mercado. */
   valorMercadoRef?: ValorMercadoRef | null;
+  /** Universo de mercado del depto (esNuevo del wizard). El gate de sobreprecio comunal
+   *  exige que la mediana de precioVsComuna sea de este mismo universo. */
+  universoDepto?: "nuevo" | "usado";
   valorMercadoUsuarioUF?: number;      // referencial (estimación usuario)
   plusvaliaInmediataFranco?: number;    // CLP vs datos reales
   plusvaliaInmediataFrancoPct?: number;

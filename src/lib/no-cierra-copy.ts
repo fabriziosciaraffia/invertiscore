@@ -180,6 +180,9 @@ const FAMILIA_DE_LTR: Record<string, FamiliaMotivoLTR> = {
   breakEvenImposible: "ingresoLTR",
   flujoSevero: "bolsilloLTR",
   cocSevero: "capitalLTR",
+  // Tramo B1: el brazo lee la mediana comunal (precioVsComuna). `plusvaliaConFlujo`
+  // queda solo para filas persistidas anteriores.
+  sobreprecioComunalConFlujo: "caroConAporte",
   plusvaliaConFlujo: "caroConAporte",
 };
 
@@ -196,7 +199,7 @@ const CLAUSULA_LTR: Record<FamiliaMotivoLTR, string> = {
   ingresoLTR: "el arriendo no alcanza a cubrir la cuota ni con la tasa de interés en cero",
   bolsilloLTR: "cada mes pones de tu bolsillo más de la mitad de lo que pagas de cuota",
   capitalLTR: "lo que pones de tu bolsillo cada año se come más de un tercio del capital que aportaste",
-  caroConAporte: "pagarías sobre el valor estimado de la zona y además pondrías plata de tu bolsillo todos los meses",
+  caroConAporte: "pagarías el metro sobre la mediana de la comuna y además pondrías plata de tu bolsillo todos los meses",
   aporteSobreCapital: "lo que pones de tu bolsillo pesa sobre el capital que aportaste",
 };
 
@@ -208,7 +211,7 @@ const FRASE_SOLA_LTR: Record<FamiliaMotivoLTR, string> = {
   capitalLTR:
     "No cierra por una razón concreta: lo que pones de tu bolsillo cada año se come más de un tercio del capital que aportaste.",
   caroConAporte:
-    "No cierra por una razón concreta: pagarías sobre el valor estimado de la zona y además pondrías plata de tu bolsillo todos los meses.",
+    "No cierra por una razón concreta: pagarías el metro sobre la mediana de la comuna y además pondrías plata de tu bolsillo todos los meses.",
   aporteSobreCapital:
     "Los números de calidad dan, pero la operación te exige poner de tu bolsillo un peso que el capital aportado no justifica todavía.",
 };

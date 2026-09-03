@@ -30,7 +30,8 @@ import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo, aplicarHorizonteAFlu
 import { esReferenciaContrastable, resolverArriendoReferencia, resolverProcedenciaArriendo } from "./arriendo-referencia";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
-import { resolverValorMercado, vmFrancoUFDe } from "./valor-mercado";
+import { resolverValorMercado, vmFrancoUFDe, universoDelDepto } from "./valor-mercado";
+import { SOBREPRECIO_GATE_UMBRAL_PCT } from "./sobreprecio-hallazgo";
 import type { MedianaComunaInyectada } from "./comuna-stats";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
 import { findNearestStation } from "./metro-stations";
@@ -578,6 +579,7 @@ function calcMetrics(
     gastos: gastosValor,
     valorMercadoFrancoUF: Math.round(vmFrancoUF * 10) / 10,
     valorMercadoRef: vmRef,
+    universoDepto: universoDelDepto(input),
     valorMercadoUsuarioUF: Math.round(vmUsuarioUF * 10) / 10,
     plusvaliaInmediataFranco: Math.round(plusvaliaFranco),
     plusvaliaInmediataFrancoPct: Math.round(plusvaliaFrancoPct * 10) / 10,
@@ -1334,8 +1336,12 @@ export interface Gate1Brazos {
   cocSevero: boolean;
   /** break-even de tasa == −1: el flujo sigue negativo aunque la tasa baje a 0%. */
   breakEvenImposible: boolean;
-  /** plusvalía inmediata < −8% Y flujo negativo Y |flujo|/dividendo > 0,3. */
-  plusvaliaConFlujo: boolean;
+  /** Sobreprecio COMUNAL: precioVsComuna confiable, del mismo universo que el depto,
+   *  con desviación > SOBREPRECIO_GATE_UMBRAL_PCT (10) Y flujo mensual negativo.
+   *  Tramo B1 (03-sep-2026): reemplaza a `plusvaliaConFlujo` (plusvalía inmediata
+   *  < −8%), que leía un valor de mercado sin procedencia y quedó muerto con el
+   *  Tramo A. Misma desviación que la card de sobreprecio: una sola fuente. */
+  sobreprecioComunalConFlujo: boolean;
   /** flujo negativo Y |flujo|/dividendo > 0,5. */
   flujoSevero: boolean;
 }
@@ -1359,17 +1365,20 @@ export function evalGate1Brazos(metrics: AnalysisMetrics, breakEvenTasa: number)
   return {
     cocSevero: coc !== null && coc < -30,
     breakEvenImposible: breakEvenTasa === -1,
-    plusvaliaConFlujo:
-      (metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 &&
-      metrics.flujoNetoMensual < 0 &&
-      flujoNegativoRatio > 0.3,
+    sobreprecioComunalConFlujo:
+      metrics.precioVsComuna?.confiable === true &&
+      typeof metrics.precioVsComuna.desviacionPct === "number" &&
+      metrics.precioVsComuna.desviacionPct > SOBREPRECIO_GATE_UMBRAL_PCT &&
+      metrics.precioVsComuna.universo !== undefined &&
+      metrics.precioVsComuna.universo === metrics.universoDepto &&
+      metrics.flujoNetoMensual < 0,
     flujoSevero: metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5,
   };
 }
 
 /** GATE 1 dispara si CUALQUIER brazo está activo (OR — la expresión original). */
 export const gate1Activo = (b: Gate1Brazos): boolean =>
-  b.cocSevero || b.breakEvenImposible || b.plusvaliaConFlujo || b.flujoSevero;
+  b.cocSevero || b.breakEvenImposible || b.sobreprecioComunalConFlujo || b.flujoSevero;
 
 /**
  * Núcleo del veredicto: bandas del score + 3 gates, devolviendo TAMBIÉN qué gate

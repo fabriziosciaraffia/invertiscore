@@ -31,6 +31,15 @@ import type { CondicionMercado } from "./comuna-stats";
  * CAP_RATE_BANDA_DEFAULT (la dispersión normal de precio/m² varía por comuna).
  */
 export const SOBREPRECIO_BANDA_DEFAULT = 30;
+/**
+ * Umbral del GATE de sobreprecio comunal (Tramo B1, 03-sep-2026): sobre la mediana de la
+ * comuna en más de este % (con mediana confiable, del mismo universo que el depto) y
+ * flujo mensual negativo ⇒ BUSCAR OTRA. Vive acá, junto a la banda del hallazgo, porque
+ * el gate y la card leen la MISMA desviación (precioVsComuna): motor y pirámide no
+ * pueden contradecirse. Reemplaza al gate de plusvalía inmediata, que dependía del valor
+ * de mercado sin procedencia.
+ */
+export const SOBREPRECIO_GATE_UMBRAL_PCT = 10;
 
 /**
  * Umbral (en %) bajo el cual la FRASE dice "en línea" con la mediana. La
