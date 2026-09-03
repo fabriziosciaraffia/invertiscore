@@ -1067,7 +1067,7 @@ const CLAIMS_HERO: ClaimHero[] = [
   { re: /\bun tercio\b/i, regla: "tercio", min: 0.3, max: 0.37 },
   { re: /\bmás del doble\b/i, regla: "doble", min: 2 },
   { re: /\bcasi el doble\b/i, regla: "doble", min: 1.8 },
-  { re: /\b(?:el doble|duplica|dos veces)\b/i, regla: "doble", min: 1.9 },
+  { re: /\b(?:el doble|del doble|duplica|dos veces)\b/i, regla: "doble", min: 1.9 },
   { re: /\b(?:más de la mitad|poco más de la mitad|apenas (?:más de )?la mitad)\b/i, regla: "mitad", min: 0.5 },
   { re: /\bmenos de la mitad\b/i, regla: "mitad", max: 0.5 },
   { re: /\b(?:la mitad|a la mitad)\b/i, regla: "mitad", min: 0.45, max: 0.55 },
@@ -1136,7 +1136,11 @@ export function violacionesHeroClaim(texto: string, r: RazonesHeroClaim): string
   const out: string[] = [];
   for (const o of texto.split(/(?<=[.!?])\s+/)) {
     const m1 = o.match(RE_HERO_UNICA);
-    if (m1 && r.viasCruzan.length !== 1) out.push(`unica-via: dice "${m1[0]}" y cruzan ${r.viasCruzan.length} vía(s)${r.viasCruzan.length ? ` (${r.viasCruzan.join(", ")})` : ""}`);
+    // Con CERO vías, "la única salida / opción / camino es vender / buscar otra" no habla de
+    // una palanca: es la conclusión estructural, y es verdadera. "La única vía / palanca /
+    // ajuste" sí afirma una palanca y con cero vías sigue siendo falsa.
+    const salidaEstructural = r.viasCruzan.length === 0 && m1 !== null && /(?:salida|opci[oó]n|camino|forma|manera)\b/i.test(m1[0]);
+    if (m1 && r.viasCruzan.length !== 1 && !salidaEstructural) out.push(`unica-via: dice "${m1[0]}" y cruzan ${r.viasCruzan.length} vía(s)${r.viasCruzan.length ? ` (${r.viasCruzan.join(", ")})` : ""}`);
     let claim: { def: ClaimHero; txt: string; pos: number } | null = null;
     for (const def of CLAIMS_HERO) {
       const m = o.match(def.re);
