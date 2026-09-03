@@ -3081,28 +3081,32 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // Un reintento quirúrgico sobre respuestaDirecta con el dato correcto citado; se
     // acepta solo si mejora. Corre ANTES de PLANC-BUDGET (el presupuesto es la última
     // palabra) y DESPUÉS de LTR-CIFRA (el candidato se re-verifica con empeoraCifras).
+    // Contexto contable compartido por el guard del hero y por el de largoPlazo /
+    // negociación (regla 2): se arma una vez, fuera de los try.
+    const viasCruzan = (hallazgoDistanciaGen?.valor.vias ?? []).filter((v) => v.estado === "cruza").map((v) => v.palanca);
+    const vmConFuente = vmRef !== null && Math.abs(vmFrancoUF - input.precio) * UF_CLP > 1_000_000;
+    const ctxClaim: RazonesHeroClaim = {
+      viasCruzan,
+      capRatePct: hallazgoCapRateGen?.valor.capRatePct ?? null,
+      capRefPct: hallazgoCapRateGen?.valor.capRefPct ?? null,
+      arriendoM: Number(input.arriendo) || null,
+      dividendoM: hallazgoFlujoGen?.valor.dividendoMensualCLP ?? null,
+      aporteM: m.flujoNetoMensual < 0 ? Math.abs(m.flujoNetoMensual) : null,
+      precioUF: input.precio,
+      vmUF: vmFrancoUF,
+      vmConFuente,
+      exitEquityCLP: exitEquityCLP > 0 ? exitEquityCLP : null,
+      depositoCLP: datoDP > 0 ? datoDP : null,
+      fondoCLP: datoFM > 0 ? datoFM : null,
+      sujetoUfM2: pvc.sujetoUfM2 > 0 ? pvc.sujetoUfM2 : null,
+      medianaUfM2: pvc.medianaComunaUfM2,
+      medianaConfiable: pvc.confiable === true,
+    };
+    const razonesTxt = razonesHeroClaimTexto(ctxClaim);
+    const datoViasClaim = `VÍAS QUE CRUZAN (dato del motor): ${viasCruzan.length}${viasCruzan.length ? ` — ${viasCruzan.join(", ")}` : ""}. Solo con exactamente UNA puedes decir "la única vía"; con varias, nómbralas o di "hay más de una vía"; con ninguna, no hay vía.
+RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad" / "el triple" solo con el SUJETO y el COMPARADOR nombrados en la MISMA oración y con la razón que corresponda: "más del doble" ≥ 2×, "el doble" ≥ 1,9×, "casi el doble" ≥ 1,8×, "más de la mitad" ≥ 0,5, "menos de la mitad" ≤ 0,5, "el triple" ≥ 2,9×. Sin nombrar contra qué, no hay múltiplo. Si no alcanza, di la razón con sus dos montos o su porcentaje, nunca como múltiplo verbal.`;
     if (aiResult?.conviene) {
       try {
-        const viasCruzan = (hallazgoDistanciaGen?.valor.vias ?? []).filter((v) => v.estado === "cruza").map((v) => v.palanca);
-        const vmConFuente = vmRef !== null && Math.abs(vmFrancoUF - input.precio) * UF_CLP > 1_000_000;
-        const ctxClaim: RazonesHeroClaim = {
-          viasCruzan,
-          capRatePct: hallazgoCapRateGen?.valor.capRatePct ?? null,
-          capRefPct: hallazgoCapRateGen?.valor.capRefPct ?? null,
-          arriendoM: Number(input.arriendo) || null,
-          dividendoM: hallazgoFlujoGen?.valor.dividendoMensualCLP ?? null,
-          aporteM: m.flujoNetoMensual < 0 ? Math.abs(m.flujoNetoMensual) : null,
-          precioUF: input.precio,
-          vmUF: vmFrancoUF,
-          vmConFuente,
-          exitEquityCLP: exitEquityCLP > 0 ? exitEquityCLP : null,
-          depositoCLP: datoDP > 0 ? datoDP : null,
-          fondoCLP: datoFM > 0 ? datoFM : null,
-          sujetoUfM2: pvc.sujetoUfM2 > 0 ? pvc.sujetoUfM2 : null,
-          medianaUfM2: pvc.medianaComunaUfM2,
-          medianaConfiable: pvc.confiable === true,
-        };
-        const razonesTxt = razonesHeroClaimTexto(ctxClaim);
         // v20: el titular también pasa por el guard (d3a6149a: "más del doble del valor
         // estimado por esa cuadra" con 1,59× y sin valor de mercado con procedencia).
         const violaciones = (ai: typeof aiResult): string[] =>
@@ -3175,6 +3179,83 @@ Responde SOLO este JSON, sin texto alrededor:
         }
       } catch (e) {
         console.warn(`[HERO-CLAIM] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
+    // ─── HERO-CLAIM en largoPlazo y negociación (regla 2 · 03-sep-2026) ───────
+    // Mismas reglas contables que el hero, mismo retry quirúrgico (por campo, ambas
+    // monedas), mismo log con la sección. El juez cazó "tu parte al vender … más del
+    // doble del fondo" con 1,6× en largoPlazo (GS-3, GS-PJ) y "no del doble de ella"
+    // (precio/m² vs mediana 1,78×) en negociación (GS-4): fuera del alcance del guard.
+    if (aiResult) {
+      const camposClaim: { seccion: "largoPlazo" | "negociacion"; campo: string }[] = [
+        { seccion: "largoPlazo", campo: "contenido" },
+        { seccion: "negociacion", campo: "contenido" },
+        { seccion: "negociacion", campo: "estrategiaSugerida" },
+        { seccion: "negociacion", campo: "cajaAccionable" },
+      ];
+      for (const { seccion, campo } of camposClaim) {
+        const etiqueta = `[HERO-CLAIM:${seccion}.${campo}]`;
+        try {
+          const leer = (ai: typeof aiResult): [string, string] => {
+            const sec = (ai as Record<string, Record<string, unknown>> | null)?.[seccion];
+            const clp = sec?.[`${campo}_clp`];
+            const uf = sec?.[`${campo}_uf`];
+            return [typeof clp === "string" ? clp : "", typeof uf === "string" ? uf : ""];
+          };
+          const evaluar = (ai: typeof aiResult): string[] =>
+            leer(ai).filter(Boolean).flatMap((t) => violacionesHeroClaim(t, ctxClaim)).filter((v, i, arr) => arr.indexOf(v) === i);
+          const [actualClp, actualUf] = leer(aiResult);
+          if (!actualClp && !actualUf) continue;
+          const viol = evaluar(aiResult);
+          if (!viol.length) continue;
+          console.warn(`${etiqueta} ${analysisId}: ${viol.join(" | ")} — 1 reintento quirúrgico`);
+          const promptSec = `Estás corrigiendo SOLO el campo ${seccion}.${campo} de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
+
+PROBLEMA: el texto afirma algo que el motor contradice — ${viol.join("; ")}.
+${datoViasClaim}
+
+TU TAREA: reescribe el texto conservando su contenido, su orden y su largo, corrigiendo SOLO esa afirmación con el dato de arriba. Usa SOLO cifras que ya aparecen en el texto — ninguna cifra nueva. Si la razón no alcanza para el múltiplo, di los dos montos o el porcentaje.
+
+TEXTO ACTUAL (variante CLP):
+${actualClp}
+
+TEXTO ACTUAL (variante UF):
+${actualUf}
+
+Responde SOLO este JSON, sin texto alrededor:
+{"clp": "...", "uf": "..."}`;
+          const regen = await reg.medir("hero-claim", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 700, messages: [{ role: "user", content: promptSec }], system: SYSTEM_LTR_CACHED }));
+          acumularUsage(usage, regen);
+          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+          let nClp = "";
+          let nUf = "";
+          try {
+            const mm = regenText.match(/\{[\s\S]*\}/);
+            const obj = JSON.parse(mm ? mm[0] : regenText);
+            nClp = typeof obj?.clp === "string" ? obj.clp.trim() : "";
+            nUf = typeof obj?.uf === "string" ? obj.uf.trim() : "";
+          } catch {
+            /* no parseó — se maneja abajo */
+          }
+          if ((actualClp && !nClp) || (actualUf && !nUf)) {
+            console.warn(`${etiqueta} ${analysisId}: retry no parseó — conservo el texto previo`);
+            continue;
+          }
+          const seccionActual = (aiResult as Record<string, Record<string, unknown>>)[seccion] ?? {};
+          const candidato = { ...aiResult, [seccion]: { ...seccionActual, ...(actualClp ? { [`${campo}_clp`]: nClp } : {}), ...(actualUf ? { [`${campo}_uf`]: nUf } : {}) } };
+          const quedan = evaluar(candidato);
+          if (empeoraCifras(userPrompt, aiResult, candidato, { ufClp: UF_CLP })) {
+            console.warn(`${etiqueta} ${analysisId}: el retry introdujo cifras fuera del input — candidato descartado`);
+          } else if (quedan.length < viol.length) {
+            console.warn(`${etiqueta} ${analysisId}: retry mejoró ${viol.length}→${quedan.length} — aceptado`);
+            aiResult = candidato;
+          } else {
+            console.warn(`${etiqueta} ${analysisId}: retry no mejoró (${quedan.join(" | ")}) — conservo el texto previo`);
+          }
+        } catch (e) {
+          console.warn(`${etiqueta} ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+        }
       }
     }
 
