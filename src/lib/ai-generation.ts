@@ -2923,6 +2923,14 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           razones.push({ nombre: "precio/VM", valor: input.precio / vmFrancoUF });
           razones.push({ nombre: "VM/precio", valor: vmFrancoUF / input.precio });
         }
+        // El "doble" del hero casi siempre es del CAP rate: contra su referencia (GS-PC2:
+        // 8,4/4,0 = 2,1×, verdadero) o contra el depósito UF 5% del bloque de largo plazo
+        // (GS-1: 8,7/5 = 1,74×, falso). Sin estas dos razones el guard marcaba el
+        // verdadero y no tenía con qué corregir el falso.
+        if (hallazgoCapRateGen && hallazgoCapRateGen.valor.capRatePct > 0) {
+          if (hallazgoCapRateGen.valor.capRefPct > 0) razones.push({ nombre: "CAP rate/referencia", valor: hallazgoCapRateGen.valor.capRatePct / hallazgoCapRateGen.valor.capRefPct });
+          razones.push({ nombre: "CAP rate/depósito UF 5%", valor: hallazgoCapRateGen.valor.capRatePct / 5 });
+        }
         const razonesTxt = razones.length ? razones.map((r) => `${r.nombre} = ${r.valor.toFixed(2)}×`).join(", ") : "ninguna razón disponible";
         const RE_UNICA = /\b(?:la |una )?(?:única|sola) (?:vía|forma|manera|palanca|salida|opción|ajuste|camino)\b|\buna sola vía\b|\bel único (?:ajuste|camino|movimiento)\b/i;
         const RE_DOBLE = /\b(?:el doble|dos veces|más del doble|casi el doble|la mitad|menos de la mitad|a la mitad)\b/i;
