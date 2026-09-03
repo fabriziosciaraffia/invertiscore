@@ -26,15 +26,17 @@ const check = (nombre: string, cond: boolean, detalle = "") => {
   if (!cond) fallas++;
 };
 
-// ── Set canónico estilo 51acbc01: pedido UF 1.000; techo −31,4%; flujo-neutro
-// −54,6%; límite TIR −23,6% (tres roles, todos activos) ──
+// ── Set canónico estilo 51acbc01: pedido UF 1.000; objetivo (sostenible, sin umbral)
+// −31,4%; flujo-neutro −54,6%; límite TIR −23,6% (tres roles, todos activos) ──
 const jer = construirJerarquiaPrecios({
   precioPedidoUF: 1000,
-  techoUF: 686,
-  modoSugerido: "optimizar_flujo",
-  umbralVeredictoUF: null,
+  objetivoUF: null,
   veredictoAlUmbral: null,
-  sugeridoMandadoPorVeredicto: false,
+  sostenibleUF: 686,
+  modoSugerido: "optimizar_flujo",
+  esEstructural: false,
+  minimoFueraDeRangoUF: null,
+  minimoFueraDeRangoPct: null,
   precioFlujoNeutroUF: 454,
   descuentoParaNeutro: 54.6,
   lecturaFlujoNeutro: "UF 454 (descuento 54,6%)",
@@ -53,7 +55,7 @@ const col1 = detectarColisionesEnTexto([{ pieza: "negociacion", texto: textoSuci
 check("detecta la colisión", col1.length === 1 && col1[0].roles.length === 3, JSON.stringify(col1));
 
 console.log("── (2) informe limpio: solo el protagonista → NO dispara ──");
-const textoLimpio = "El techo de la mesa es UF 686 — un 31,4% bajo lo pedido, y llegar ahí requiere un vendedor motivado.";
+const textoLimpio = "El objetivo de la mesa es UF 686 — un 31,4% bajo lo pedido, y llegar ahí requiere un vendedor motivado.";
 check("no dispara con un solo rol", detectarColisionesEnTexto([{ pieza: "negociacion", texto: textoLimpio }], jer.precios).length === 0);
 
 console.log("── (3) borde: mismas cifras CON línea de arbitraje → NO dispara ──");
@@ -62,29 +64,37 @@ check("marcador satisface el guard", detectarColisionesEnTexto([{ pieza: "negoci
 const casiCanonica = "Un descuento de 30,9% te acerca, y con 54,0% la caja cierra."; // fuera de tolerancia ±0,25pp
 check("cifras fuera de tolerancia no cuentan", detectarColisionesEnTexto([{ pieza: "negociacion", texto: casiCanonica }], jer.precios).length === 0);
 
-console.log("── colapso: merge techo==umbral (sugeridoMandadoPorVeredicto) ──");
+console.log("── umbral y sostenible iguales (±2%) ⇒ una sola entrada: el objetivo ──");
 const jerMerge = construirJerarquiaPrecios({
-  precioPedidoUF: 1000, techoUF: 800, modoSugerido: "alinear_mercado",
-  umbralVeredictoUF: 800, veredictoAlUmbral: "COMPRAR", sugeridoMandadoPorVeredicto: true,
+  precioPedidoUF: 1000, objetivoUF: 800, veredictoAlUmbral: "COMPRAR", sostenibleUF: 805, modoSugerido: "alinear_mercado",
+  esEstructural: false, minimoFueraDeRangoUF: null, minimoFueraDeRangoPct: null,
   precioFlujoNeutroUF: 0, descuentoParaNeutro: 0, lecturaFlujoNeutro: "no existe", limiteTirUF: null, sinCapitalPropio: false,
 });
-check("una sola entrada, doble razón", jerMerge.precios.filter((p) => p.rol === "techo").length === 1 && !jerMerge.precios.some((p) => p.rol === "umbral") && /doble raz[oó]n/.test(jerMerge.bloque));
+check("una sola entrada, el objetivo", jerMerge.precios.filter((p) => p.rol === "objetivo").length === 1 && !jerMerge.precios.some((p) => p.rol === "sostenible") && /donde cambia el veredicto/i.test(jerMerge.bloque));
 
-console.log("── colapso: límite-TIR a <2% del techo se OMITE ──");
+console.log("── colapso: límite-TIR a <2% del objetivo se OMITE ──");
 const jerLim = construirJerarquiaPrecios({
-  precioPedidoUF: 1000, techoUF: 800, modoSugerido: "alinear_mercado",
-  umbralVeredictoUF: null, veredictoAlUmbral: null, sugeridoMandadoPorVeredicto: false,
+  precioPedidoUF: 1000, objetivoUF: null, veredictoAlUmbral: null, sostenibleUF: 800, modoSugerido: "alinear_mercado",
+  esEstructural: false, minimoFueraDeRangoUF: null, minimoFueraDeRangoPct: null,
   precioFlujoNeutroUF: 0, descuentoParaNeutro: 0, lecturaFlujoNeutro: "no existe", limiteTirUF: 810, sinCapitalPropio: false,
 });
 check("límite omitido", !jerLim.precios.some((p) => p.rol === "limite_tir"));
 
-console.log("── colapso: umbral distinto → subordinación del par en el bloque ──");
+console.log("── sostenible bajo el umbral → objetivo = umbral, sostenible subordinado como dato de caja ──");
 const jerU = construirJerarquiaPrecios({
-  precioPedidoUF: 1000, techoUF: 664, modoSugerido: "optimizar_flujo",
-  umbralVeredictoUF: 765, veredictoAlUmbral: "AJUSTA SUPUESTOS", sugeridoMandadoPorVeredicto: false,
+  precioPedidoUF: 1000, objetivoUF: 765, veredictoAlUmbral: "AJUSTA SUPUESTOS", sostenibleUF: 664, modoSugerido: "optimizar_flujo",
+  esEstructural: false, minimoFueraDeRangoUF: null, minimoFueraDeRangoPct: null,
   precioFlujoNeutroUF: 0, descuentoParaNeutro: 0, lecturaFlujoNeutro: "no existe", limiteTirUF: null, sinCapitalPropio: false,
 });
-check("umbral presente con subordinación pre-escrita", jerU.precios.some((p) => p.rol === "umbral" && /pelea primero por/.test(p.subordinacion)) && /tu tope, no un segundo objetivo/.test(jerU.bloque));
+check("objetivo = umbral y sostenible subordinado", jerU.precios.some((p) => p.rol === "objetivo" && p.uf === 765) && jerU.precios.some((p) => p.rol === "sostenible" && /dato de caja/.test(p.subordinacion)) && /nunca "sobre esto no compras"/.test(jerU.bloque));
+
+console.log("── estructural: sin objetivo ni sostenible; solo lo que haría falta ──");
+const jerE = construirJerarquiaPrecios({
+  precioPedidoUF: 3800, objetivoUF: null, veredictoAlUmbral: null, sostenibleUF: 2772, modoSugerido: "alinear_mercado",
+  esEstructural: true, minimoFueraDeRangoUF: 3086, minimoFueraDeRangoPct: -18.8,
+  precioFlujoNeutroUF: 0, descuentoParaNeutro: 0, lecturaFlujoNeutro: "no existe", limiteTirUF: null, sinCapitalPropio: false,
+});
+check("estructural solo con el mínimo fuera de rango", jerE.precios.length === 1 && jerE.precios[0].rol === "minimo_fuera_rango" && /SIN plan/.test(jerE.bloque) && !/techo/i.test(jerE.bloque));
 
 console.log("── fallback: append determinístico a la 2ª falla ──");
 const aiFalso = {

@@ -20,7 +20,11 @@
 //     línea de arbitraje canónica (fallback determinístico).
 // ============================================================================
 
-export type RolPrecio = "techo" | "umbral" | "flujo_neutro" | "limite_tir";
+/** Un nombre por precio (goal 02-sep-2026): objetivo = "donde cambia el veredicto" ·
+ *  sostenible = "donde el aporte se vuelve sostenible" · flujo_neutro = "caja en cero" ·
+ *  limite_tir = "límite TIR 6%" · minimo_fuera_rango = "lo que haría falta, fuera de rango"
+ *  (solo estructural). "techo" murió como rol. */
+export type RolPrecio = "objetivo" | "sostenible" | "flujo_neutro" | "limite_tir" | "minimo_fuera_rango";
 
 export interface PrecioCanonico {
   rol: RolPrecio;
@@ -42,11 +46,16 @@ const pctj = (n: number) => (Math.round(n * 10) / 10).toLocaleString("es-CL", { 
 
 export function construirJerarquiaPrecios(args: {
   precioPedidoUF: number;
-  techoUF: number;
-  modoSugerido: "cerrar_actual" | "optimizar_flujo" | "alinear_mercado";
-  umbralVeredictoUF: number | null;
+  /** Umbral de veredicto dentro del tope: "donde cambia el veredicto". null sin umbral. */
+  objetivoUF: number | null;
   veredictoAlUmbral: string | null;
-  sugeridoMandadoPorVeredicto: boolean;
+  /** Sugerido del motor: "donde el aporte se vuelve sostenible". */
+  sostenibleUF: number;
+  modoSugerido: "cerrar_actual" | "optimizar_flujo" | "alinear_mercado";
+  /** Caso estructural: sin objetivo ni plan; solo lo que haría falta, fuera de rango. */
+  esEstructural: boolean;
+  minimoFueraDeRangoUF: number | null;
+  minimoFueraDeRangoPct: number | null;
   precioFlujoNeutroUF: number;
   descuentoParaNeutro: number;
   /** Lectura pre-digerida del flujo-neutro (lecturaPrecioFlujoNeutro) — fuente única del signo. */
@@ -58,65 +67,74 @@ export function construirJerarquiaPrecios(args: {
   if (!(p > 0)) return { precios: [], bloque: "" };
   const desc = (x: number) => ((p - x) / p) * 100;
   const cercano = (a: number, b: number) => a > 0 && b > 0 && Math.abs(a - b) / Math.max(a, b) < 0.02;
-
   const precios: PrecioCanonico[] = [];
   const lineas: string[] = [];
+  const destino = args.veredictoAlUmbral ?? "la banda de arriba";
 
-  // ── Techo (protagonista de negociacion) + umbral de veredicto ──
-  // El motor ya colapsa sugerido→umbral cuando el umbral está más abajo
-  // (sugeridoMandadoPorVeredicto); acá solo queda el caso umbral SOBRE el techo.
-  const umbralDistinto =
-    args.umbralVeredictoUF !== null && !args.sugeridoMandadoPorVeredicto && !cercano(args.umbralVeredictoUF, args.techoUF);
-  const descTecho = desc(args.techoUF);
-  if (args.modoSugerido === "cerrar_actual") {
-    precios.push({ rol: "techo", uf: args.techoUF, pct: null, subordinacion: "" });
-    lineas.push(`- Techo de negociación: ${fmtUFj(args.techoUF)} — IGUAL al precio pedido (modo cerrar_actual): cerrar al precio actual, sin descuento que pedir.`);
-  } else if (args.sugeridoMandadoPorVeredicto && args.umbralVeredictoUF !== null) {
-    precios.push({ rol: "techo", uf: args.techoUF, pct: descTecho, subordinacion: "" });
-    lineas.push(`- Techo de negociación: ${fmtUFj(args.techoUF)} (−${pctj(descTecho)}% del pedido) — COINCIDE con el umbral de veredicto: un solo número, doble razón (es el número de la mesa Y el que pasa el análisis a ${args.veredictoAlUmbral ?? "la banda de arriba"}). NO lo presentes como dos cifras, y las dos caras van SIEMPRE en una sola lectura, nunca como afirmaciones sueltas que parezcan contradecirse. Encuadre canónico (adáptalo lo mínimo, también en las glosas de ANCLAS): "cerrando en ${fmtUFj(args.techoUF)} el caso pasa a ${args.veredictoAlUmbral ?? "la banda de arriba"}; sobre ese precio, deja de convenir". PROHIBIDO describirlo solo como "donde el negocio deja de sostenerse" en una pieza y solo como "el precio que logra ${args.veredictoAlUmbral ?? "la banda de arriba"}" en otra.`);
+  if (args.esEstructural) {
+    // ── Estructural: NO hay objetivo ni plan. Lo único citable es lo que haría falta. ──
+    if (args.minimoFueraDeRangoUF !== null && args.minimoFueraDeRangoUF > 0) {
+      const m = args.minimoFueraDeRangoUF;
+      const descM = args.minimoFueraDeRangoPct !== null ? Math.abs(args.minimoFueraDeRangoPct) : desc(m);
+      const sub = "es lo que haría falta y queda fuera de rango: no es objetivo ni oferta — se cita solo para cerrar la puerta";
+      precios.push({ rol: "minimo_fuera_rango", uf: m, pct: descM > 0 ? descM : null, subordinacion: sub });
+      lineas.push(`- Lo que haría falta, fuera de rango: ${fmtUFj(m)} (−${pctj(descM)}%) — ${sub}.`);
+    }
   } else {
-    precios.push({ rol: "techo", uf: args.techoUF, pct: descTecho > 0 ? descTecho : null, subordinacion: "" });
-    lineas.push(`- Techo de negociación: ${fmtUFj(args.techoUF)}${descTecho > 0 ? ` (−${pctj(descTecho)}% del pedido)` : ""} — el número de la mesa (protagonista de \`negociacion\`).`);
+    // ── Objetivo del plan: el umbral cuando existe; sin umbral (base COMPRAR), el sostenible ──
+    const objetivo = args.objetivoUF !== null && args.objetivoUF > 0 ? args.objetivoUF : args.sostenibleUF;
+    const esUmbral = args.objetivoUF !== null && args.objetivoUF > 0;
+    const descO = desc(objetivo);
+    precios.push({ rol: "objetivo", uf: objetivo, pct: descO > 0 ? descO : null, subordinacion: "" });
+    if (esUmbral) {
+      lineas.push(`- Objetivo del plan — donde cambia el veredicto: ${fmtUFj(objetivo)}${descO > 0 ? ` (−${pctj(descO)}% del pedido)` : ""} — al cerrar ahí el análisis pasa a ${destino}; es el número de la mesa (protagonista de \`negociacion\` y de \`posicion\`). Sobre ese precio el veredicto sigue siendo el de hoy; bajo ese precio ya es ${destino}.`);
+    } else if (args.modoSugerido === "cerrar_actual") {
+      lineas.push(`- Objetivo del plan: ${fmtUFj(objetivo)} — IGUAL al precio pedido (modo cerrar_actual): el aporte ya es sostenible a este precio, no hay descuento que pedir.`);
+    } else {
+      lineas.push(`- Objetivo del plan — donde el aporte se vuelve sostenible: ${fmtUFj(objetivo)}${descO > 0 ? ` (−${pctj(descO)}% del pedido)` : ""} — el número de la mesa (protagonista de \`negociacion\` y de \`posicion\`). No cambia el veredicto: este caso no tiene umbral dentro de rango.`);
+    }
+    // ── Sostenible, como dato aparte cuando el objetivo es el umbral ──
+    if (esUmbral && !cercano(args.sostenibleUF, objetivo)) {
+      const sost = args.sostenibleUF;
+      const descS = desc(sost);
+      const sub =
+        sost < objetivo
+          ? `dato de caja, no un segundo objetivo: queda bajo el objetivo, o sea dentro de la zona donde el veredicto ya es ${destino}; es hasta dónde seguir si la conversación da, y nunca "sobre esto no compras"`
+          : `dato de caja, no un segundo objetivo: queda SOBRE el objetivo, o sea a ese precio el veredicto todavía no cambia`;
+      precios.push({ rol: "sostenible", uf: sost, pct: descS > 0 ? descS : null, subordinacion: sub });
+      lineas.push(`- Donde el aporte se vuelve sostenible: ${fmtUFj(sost)}${descS > 0 ? ` (−${pctj(descS)}%)` : ""} — ${args.modoSugerido === "alinear_mercado" ? "precio alineado con el mercado" : "el aporte mensual baja a un nivel sostenible"}. ${sub}.`);
+    }
   }
-  if (umbralDistinto && args.umbralVeredictoUF !== null) {
-    const u = args.umbralVeredictoUF;
-    const descU = desc(u);
-    const sub = `pelea primero por ${fmtUFj(u)} — es el que cambia la conclusión; ${fmtUFj(args.techoUF)} es hasta dónde llegar si la conversación da: tu tope, no un segundo objetivo`;
-    precios.push({ rol: "umbral", uf: u, pct: descU > 0 ? descU : null, subordinacion: sub });
-    lineas.push(`- Umbral de veredicto: ${fmtUFj(u)}${descU > 0 ? ` (−${pctj(descU)}%)` : ""} — al cruzarlo el análisis pasa a ${args.veredictoAlUmbral ?? "la banda de arriba"} (protagonista de \`posicion\` y del drawer de distancia).`);
-    lineas.push(`  · Si citas umbral y techo en la misma pieza, usa esta subordinación tal cual (adapta lo mínimo): "${sub}". La banda de esfuerzo (ANCLAS) se narra UNA vez, del número que la trae — nunca rotules dos cifras con la misma banda.`);
-  }
-
-  // ── Flujo-neutro (referencia de caja — nunca objetivo) ──
+  // ── Flujo-neutro (caja en cero — nunca objetivo) ──
   if (args.precioFlujoNeutroUF > 0) {
     const f = args.precioFlujoNeutroUF;
     const esRebaja = args.descuentoParaNeutro > 0;
-    const casi = cercano(f, args.techoUF) || (args.umbralVeredictoUF !== null && cercano(f, args.umbralVeredictoUF));
+    const objetivoRef = precios.find((x) => x.rol === "objetivo")?.uf ?? null;
+    const casi = (objetivoRef !== null && cercano(f, objetivoRef));
     const sub = casi
-      ? `casi coincide con ${cercano(f, args.techoUF) ? "el techo" : "el umbral de veredicto"} — nómbralo SOLO pegado a él, como el punto donde la caja queda en cero, nunca como un segundo objetivo`
+      ? "casi coincide con el objetivo — nómbralo SOLO pegado a él, como el punto donde la caja queda en cero, nunca como un segundo objetivo"
       : `referencia de caja: a ${fmtUFj(f)} el arriendo cubre justo la cuota — es el punto donde la caja queda en cero, no el número a pelear`;
     precios.push({ rol: "flujo_neutro", uf: f, pct: esRebaja ? args.descuentoParaNeutro : null, subordinacion: sub });
-    lineas.push(`- Flujo-neutro: ${args.lecturaFlujoNeutro} — NUNCA objetivo de negociación. Si lo nombras: "${sub}".`);
+    lineas.push(`- Caja en cero: ${args.lecturaFlujoNeutro} — NUNCA objetivo de negociación. Si lo nombras: "${sub}".`);
   }
-
-  // ── Límite TIR (contexto del techo; omitido si <2% del techo o sin capital) ──
-  if (args.limiteTirUF !== null && args.limiteTirUF > 0 && !args.sinCapitalPropio && !cercano(args.limiteTirUF, args.techoUF)) {
+  // ── Límite TIR 6% (contexto; omitido si <2% del objetivo o sin capital) ──
+  const objetivoRef2 = precios.find((x) => x.rol === "objetivo")?.uf ?? null;
+  if (args.limiteTirUF !== null && args.limiteTirUF > 0 && !args.sinCapitalPropio && !(objetivoRef2 !== null && cercano(args.limiteTirUF, objetivoRef2))) {
     const l = args.limiteTirUF;
     const descL = desc(l);
-    const sub = `contexto del techo: bajo ${fmtUFj(l)} la TIR deja de justificar el capital — no es un descuento aparte ni un objetivo`;
+    const sub = `límite TIR 6%: sobre ${fmtUFj(l)} la TIR deja de justificar el capital — contexto, no un descuento aparte ni un objetivo`;
     precios.push({ rol: "limite_tir", uf: l, pct: descL > 0 ? descL : null, subordinacion: sub });
-    lineas.push(`- Límite TIR: ${fmtUFj(l)}${descL > 0 ? ` (−${pctj(descL)}%)` : ""} — ${sub}.`);
+    lineas.push(`- Límite TIR 6%: ${fmtUFj(l)}${descL > 0 ? ` (−${pctj(descL)}%)` : ""} — ${sub}.`);
   }
-
   if (precios.length === 0) return { precios, bloque: "" };
 
-  const protagonistas = umbralDistinto
-    ? "\`negociacion\` → el techo · \`posicion\` y el drawer de distancia → el umbral de veredicto · \`costoMensual\`/\`reestructuracion\` → SIN objetivo de precio (sus palancas son pie/tasa/plazo)"
-    : "\`negociacion\`, \`posicion\` y el drawer de distancia → el techo · \`costoMensual\`/\`reestructuracion\` → SIN objetivo de precio (sus palancas son pie/tasa/plazo)";
+  const protagonistas = args.esEstructural
+    ? "\`negociacion\` → SIN plan ni precio objetivo (cierra por la alternativa) · \`posicion\` → solo lo que haría falta, fuera de rango · \`costoMensual\`/\`reestructuracion\` → SIN objetivo de precio"
+    : "\`negociacion\`, \`posicion\` y el drawer de distancia → el objetivo del plan · \`costoMensual\`/\`reestructuracion\` → SIN objetivo de precio (sus palancas son pie/tasa/plazo)";
 
   const bloque = `
 
-=== JERARQUÍA DE PRECIOS DE ESTE CASO (§1.12.6 — cifras canónicas: cita de AQUÍ con estos números EXACTOS; PROHIBIDO derivar % propios, recalcular descuentos o crear segundos objetivos) ===
+=== JERARQUÍA DE PRECIOS DE ESTE CASO (§1.12.6 — cifras canónicas con SU nombre: cita de AQUÍ con estos números EXACTOS y llama a cada precio por su nombre; PROHIBIDO derivar % propios, recalcular descuentos, crear segundos objetivos o llamar a un precio con un nombre que no sea el suyo) ===
 Protagonista por pieza: ${protagonistas}. Cada pieza cita SU protagonista; cualquier otro precio de esta lista solo puede aparecer CON su línea de subordinación.
 ${lineas.join("\n")}`;
 
@@ -133,7 +151,7 @@ ${lineas.join("\n")}`;
  * que un regex solo-canónico marcaba como colisión).
  */
 export const MARCADOR_SUBORDINACION =
-  /(el que manda|pelea (primero )?por|n[uú]mero de la mesa|referencia de caja|caja queda en cero|no es (el|un|tu) (n[uú]mero|objetivo|segundo objetivo)|tu tope, no|no lo pelees|contexto del techo|cambia la conclusi[oó]n|un solo n[uú]mero, doble raz[oó]n|casi coincide|piso absoluto|no un segundo objetivo|hasta d[oó]nde llegar|no (es|de) negociaci[oó]n|umbral de caja|de caja, no|no (el|es el) precio objetivo|preguntas distintas|no (el|es el) (precio )?objetivo de negociaci[oó]n)/i;
+  /(fuera de rango|lo que har[ií]a falta|dato de caja|donde el aporte|donde cambia el veredicto|l[ií]mite TIR|el que manda|pelea (primero )?por|n[uú]mero de la mesa|referencia de caja|caja queda en cero|no es (el|un|tu) (n[uú]mero|objetivo|segundo objetivo)|tu tope, no|no lo pelees|contexto del techo|cambia la conclusi[oó]n|un solo n[uú]mero, doble raz[oó]n|casi coincide|piso absoluto|no un segundo objetivo|hasta d[oó]nde llegar|no (es|de) negociaci[oó]n|umbral de caja|de caja, no|no (el|es el) precio objetivo|preguntas distintas|no (el|es el) (precio )?objetivo de negociaci[oó]n)/i;
 
 export interface ColisionJerarquia {
   pieza: string;

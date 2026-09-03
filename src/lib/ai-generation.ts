@@ -152,7 +152,10 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // v16 (02-sep-2026): bloque VÍAS con las cuatro palancas y su estado (Tramo B del goal
 // "cuatro palancas siempre"). Sube para que la prosa nueva llegue por lazy a quien abra un
 // informe con prosa anterior. Solo LTR; el prompt STR no cambió.
-export const PROMPT_VERSION_LTR = 16;
+// v17 (02-sep-2026): un nombre por precio — anclas con objetivo (donde cambia el
+// veredicto), sostenible (donde el aporte se vuelve sostenible) y límite TIR 6%; sin
+// "techo", sin glosaTecho, sin anclas en el estructural. Jerarquía re-cableada.
+export const PROMPT_VERSION_LTR = 17;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -527,29 +530,23 @@ REGLA 4 — Cierre cajaAccionable con tiempo realista.
 - Mal: "¿Puedes sostener $292K mensuales durante 20 años?" (ese es el crédito).
 - Si flujo no cruza: "¿Puedes sostener $X al mes sin tope claro en la proyección? El retorno depende solo de la venta."
 
-REGLA 5 — negociacion.estrategiaSugerida y los 3 precios discretos (v10).
-La IA NO calcula precios. Tienes 3 anclas en el bloque "ANCLAS DE NEGOCIACIÓN":
-- \`primeraOferta_uf\`: con qué número partir (puede ser igual al techo si el modo es "cerrar_actual")
-- \`techo_uf\`: hasta dónde subir si rechazan
-- \`walkAway\`: null cuando techo ya cumple esa función. Si NO null y \`precio_uf === null\`, la salida es "buscar otra propiedad" (veredicto BUSCAR OTRA)
+REGLA 5 — negociacion.estrategiaSugerida y el plan de precios (v16: UN NOMBRE POR PRECIO).
+La IA NO calcula precios. El bloque "ANCLAS DE NEGOCIACIÓN" trae cada precio con su NOMBRE y su significado, como datos:
+- \`objetivo_uf\` — el objetivo del plan. Cuando el caso tiene umbral de veredicto dentro de rango, ES ese umbral: "donde cambia el veredicto". Sin umbral (base COMPRAR), es el precio sostenible.
+- \`primeraOferta_uf\` — con qué número partir: el objetivo menos ~5% (dato mecánico). Igual al objetivo en modo cerrar_actual.
+- \`sostenible_uf\` — "donde el aporte se vuelve sostenible": dato de caja del motor (flujo ≥ −20% del arriendo con tope −25%, o alinear con mercado). NO es un objetivo ni un límite del veredicto; solo se cita con su nombre y subordinado al objetivo.
+- \`walkAway\`: null cuando el objetivo ya cumple esa función. Si NO null y \`precio_uf === null\`, la salida es "buscar otra propiedad" (veredicto BUSCAR OTRA).
+- Caso ESTRUCTURAL (sin umbral en rango): NO hay anclas ni plan. \`precios\` va en null y \`precioSugerido\` vacío. Lo único citable es "lo que haría falta, fuera de rango", y solo para cerrar la puerta.
 
-REGLA DURA: usa estos números EXACTOS en \`negociacion.cajaAccionable\`. NUNCA los recalcules, ni los ajustes a otro % de descuento, ni los redondees. NUNCA inventes "sugerido UF Z" si Z no está en las anclas — sería un cálculo inventado.
+REGLA DURA: usa estos números EXACTOS y CADA UNO CON SU NOMBRE en \`negociacion.cajaAccionable\`. NUNCA los recalcules, ni los ajustes a otro % de descuento, ni los redondees. NUNCA inventes "sugerido UF Z" si Z no está en las anclas. Cada precio se llama SOLO por el nombre que trae en las anclas; ningún otro nombre de precio existe en este informe. Y NUNCA afirmes un veredicto a un precio que contradiga el objetivo: bajo el objetivo (umbral) el veredicto YA es el de arriba; sobre el objetivo sigue siendo el de hoy.
 
-Tu trabajo: 1-3 frases en \`estrategiaSugerida\` + 1 glosa por slot en \`negociacion.precios.glosa*_clp/uf\`. Cada glosa ≤25 palabras. Tuteo chileno profesional. Sin moralizar.
+Tu trabajo: 1-3 frases en \`estrategiaSugerida\` + una glosa para la primera oferta y otra para el walk-away en \`negociacion.precios.glosa*_clp/uf\`. Cada glosa ≤25 palabras. Tuteo chileno profesional. Sin moralizar. El objetivo NO lleva glosa IA: el informe lo rotula solo, con su nombre.
 
-GLOSAS CON OBJETIVO DEL NIVEL (no descripción del número):
-
-\`glosaPrimeraOferta\`: explica el OBJETIVO de partir en este número. Por qué este precio es el "abrir conversación". §1.12.2: la primera oferta ES una posición de apertura respecto del techo (techo menos ~5%), no una cifra con origen propio — el caso trae ese dato mecánico; dilo en fácil, nunca la presentes como un cálculo aparte.
+\`glosaPrimeraOferta\`: explica el OBJETIVO de partir en este número. §1.12.2: la primera oferta ES una posición de apertura respecto del objetivo (objetivo menos ~5%), no una cifra con origen propio — dilo en fácil, nunca la presentes como un cálculo aparte.
 - BIEN: "Abre la conversación con margen para subir sin perder el caso económico."
-- BIEN: "Ancla el rango bajo: si rechazan, todavía tienes 5% de margen para llegar al techo."
-- MAL: "Reconoce ventaja pero pide aire operacional." (no explica QUÉ buscas)
+- BIEN: "Ancla el rango bajo: si rechazan, todavía tienes 5% de margen para llegar al objetivo."
 - MAL: "Partir agresivo justificado por sobreprecio." (describe el número, no el objetivo)
-- Cuando primeraOferta == techo (modo cerrar_actual): "Cierra al precio actual — ya estás bajo mercado y la matemática cierra."
-
-\`glosaTecho\`: explica POR QUÉ este es el máximo. Qué se rompe sobre este precio. §1.12.2: OBLIGATORIO nombrar el umbral que se rompe (viene en razonSugerido/anclas del caso) — "es el máximo" a secas es una cifra sin argumento, no un consejo. Cada ancla declara qué la produce.
-- BIEN: "Es el último precio donde tu aporte mensual sigue bajo $250K y mantienes ventaja vs comparables."
-- BIEN: "Sobre este número la TIR cae bajo 8% y el flujo deja de cerrar a 10 años."
-- MAL: "Matemática mejora, ventaja se mantiene." (genérica, no dice QUÉ se rompe sobre)
+- Cuando primeraOferta == objetivo (modo cerrar_actual): "Cierra al precio actual — ya estás bajo mercado y el aporte es sostenible."
 
 \`glosaWalkAway\`: SOLO cuando \`walkAway !== null\`. Explica POR QUÉ ya no tiene sentido.
 - BIEN (precio_uf null, BUSCAR OTRA): "Aunque bajen el precio, los riesgos estructurales de la zona invalidan la inversión."
@@ -558,25 +555,21 @@ GLOSAS CON OBJETIVO DEL NIVEL (no descripción del número):
 
 Si \`flujoCruzaEnHorizonte\` es false, NO prometas que el flujo mejorará en \`estrategiaSugerida\`.
 
-REGLA 6 — precioSugerido y modos del sugerido (v10).
-\`negociacion.precioSugerido\` debe ser EXACTAMENTE el \`techo_uf\` de las anclas, formateado "UF X.XXX". NO recalcular, NO aplicar descuento adicional, NO redondear a otra cifra.
+REGLA 6 — precioSugerido y el modo del sostenible (v16).
+\`negociacion.precioSugerido\` debe ser EXACTAMENTE el \`objetivo_uf\` de las anclas, formateado "UF X.XXX" (vacío en el caso estructural). NO recalcular, NO aplicar descuento adicional, NO redondear a otra cifra.
 
-El caso también trae \`modoSugerido\` y \`razonSugerido\`. Tu glosa de \`negociacion.contenido\` y \`estrategiaSugerida\` DEBE reflejar el modo:
+El caso también trae \`modoSostenible\` y \`razonSostenible\`: describen de dónde sale \`sostenible_uf\`, no el objetivo. Tu \`negociacion.contenido\` y \`estrategiaSugerida\` los reflejan SOLO cuando el objetivo es el sostenible (sin umbral en rango):
 
-modoSugerido = "cerrar_actual" (precioSugerido == precio actual):
-- NO sugieras bajar más. NO inventes margen de negociación.
-- contenido y estrategia deben decir explícitamente: "Ya estás bajo mercado y la matemática cierra. No hay caso para pedir descuento."
-- cajaAccionable: "Cierra a tu precio actual. No hay caso para negociar a la baja."
-- glosaPrimeraOferta = glosaTecho ≈ "Cierra al precio actual."
+modoSostenible = "cerrar_actual" (sostenible == precio actual):
+- Si NO hay umbral: NO sugieras bajar más. contenido y estrategia dicen: "Ya estás bajo mercado y el aporte es sostenible. No hay caso para pedir descuento." · cajaAccionable: "Cierra a tu precio actual."
+- Si SÍ hay umbral: el objetivo es el umbral y eso manda; el sostenible solo dice que a tu precio actual el aporte ya es sostenible.
 
-modoSugerido = "optimizar_flujo" (bajo mercado pero flujo apretado):
-- Explica que el descuento NO es por mercado sino por matemática propia.
-- contenido: "El precio está bien vs mercado, pero tu aporte mensual es alto. Bajar a precioSugerido vuelve la matemática mensual sostenible."
-- glosa: "Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos."
-- SUB-CASO \`sugeridoMandadoPorVeredicto\` = true (el precioSugerido ES el umbral donde cambia el veredicto): el argumento NO es "el flujo se vuelve sostenible" — es más fuerte. Ese precio cambia la CONCLUSIÓN del análisis, y \`razonSugerido\` ya lo dice. Tu glosa debe nombrarlo así: cerrar a precioSugerido lleva el veredicto a la banda de arriba. PROHIBIDO en este sub-caso decir "no hay caso para pedir descuento" o "no hay margen de negociación": existe un descuento concreto que cambia el resultado, y negarlo contradice a la propia pirámide del informe.
+modoSostenible = "optimizar_flujo" (bajo mercado pero aporte apretado):
+- El sostenible es un dato de caja: "a este precio tu aporte mensual baja a un nivel sostenible". Nunca lo llames máximo, límite ni borde del veredicto.
 
-modoSugerido = "alinear_mercado" (sobre mercado o cerca):
-- Lógica habitual: justifica con comparables + mejora de flujo (TIR, etc.).
+modoSostenible = "alinear_mercado" (sobre mercado o cerca):
+- El sostenible alinea con comparables; justifica con comparables + mejora de flujo.
+
 
 REGLA 7 — Traducción de jerga (v9 · ampliada paquete B).
 El lector es un comprador chileno inteligente pero NO financiero. Todo término técnico se glosa al PRIMER USO en el orden de lectura, con una aposición corta:
@@ -590,7 +583,7 @@ El lector es un comprador chileno inteligente pero NO financiero. Todo término 
 - "ganancia neta" PROHIBIDO para el patrimonio/equity a la venta. "Tu parte al vender" (valor de venta − deuda − comisión + flujos acumulados) es lo que te QUEDA en la mano al liquidar, NO la ganancia por encima de lo que pusiste. Nombrarlo "ganancia neta" miente: incluye recuperar tu propio capital. Di "tu parte", "lo que te queda a la venta", "lo tuyo al liquidar" — coherente con la card y el drawer de patrimonio. Si necesitas hablar de la ganancia real (por encima de lo aportado), es otra cifra y otra palabra; nunca uses "ganancia" para el equity total.
 
 REGLA 8 — Un precio protagonista por pieza (§1.12.6) — el bloque JERARQUÍA DE PRECIOS es la fuente.
-Conviven hasta cuatro precios por análisis (sugerido/techo de negociación, flujo-neutro, límite de TIR, umbral de veredicto) y cada uno responde una pregunta distinta. El user prompt trae el bloque "JERARQUÍA DE PRECIOS DE ESTE CASO" con los precios ACTIVOS de este caso: una sola cifra canónica por rol, el protagonista de cada pieza asignado y las líneas de subordinación YA escritas. Ese bloque es LA fuente: cada pieza cita SU protagonista con la cifra exacta del bloque; cualquier otro precio de la lista solo puede aparecer acompañado de su línea de subordinación (adáptala lo mínimo — la frase debe decir cuál manda). PROHIBIDO: derivar % de descuento propios, recalcular un precio de la lista, rotular dos cifras con la misma banda de esfuerzo, o presentar flujo-neutro/límite-TIR como objetivos de negociación. Un guard verifica esto post-generación: dos precios de roles distintos en una pieza sin frase de subordinación fuerzan reintento.
+Conviven hasta cuatro precios por análisis, cada uno con su nombre (el objetivo del plan —donde cambia el veredicto—, donde el aporte se vuelve sostenible, caja en cero y límite TIR 6%) y cada uno responde una pregunta distinta. El user prompt trae el bloque "JERARQUÍA DE PRECIOS DE ESTE CASO" con los precios ACTIVOS de este caso: una sola cifra canónica por rol, el protagonista de cada pieza asignado y las líneas de subordinación YA escritas. Ese bloque es LA fuente: cada pieza cita SU protagonista con la cifra exacta del bloque; cualquier otro precio de la lista solo puede aparecer acompañado de su línea de subordinación (adáptala lo mínimo — la frase debe decir cuál manda). PROHIBIDO: derivar % de descuento propios, recalcular un precio de la lista, rotular dos cifras con la misma banda de esfuerzo, o presentar flujo-neutro/límite-TIR como objetivos de negociación. Un guard verifica esto post-generación: dos precios de roles distintos en una pieza sin frase de subordinación fuerzan reintento.
 
 REGLA 9 — Plusvalía histórica: caveat temporal obligatorio (v13 — evento como período, no como causa).
 El dato de plusvalía de cada caso declara SU período y no todos son iguales: la serie anual de la comuna (GfK) llega hasta el último año con dato —2025 en la mayoría, 2024 en las que aún no tienen cierre—, y el estudio de dos puntos (Arenas & Cayo) cubre ${RANGO_HIST}. Usa SIEMPRE el rango que trae plusvaliaHistoricaInfo del caso, nunca uno de memoria. Cualquiera de esos períodos CRUZA tramos atípicos que lo vuelven un promedio ruidoso — no un predictor limpio. Son el marco temporal del dato (CUÁNDO ocurrió), NO causas cuantificables (CUÁNTO movió la cifra):
@@ -688,12 +681,10 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
     "estrategiaSugerida_clp": string,
     "estrategiaSugerida_uf": string,
     cajaAccionable_clp, cajaAccionable_uf, cajaLabel,
-    "precioSugerido": "UF X.XXX",  // EXACTO techo_uf de las anclas (REGLA 6 v9)
-    "precios": {                    // glosas IA por slot (REGLA 5 v9)
+    "precioSugerido": "UF X.XXX",  // EXACTO objetivo_uf de las anclas (REGLA 6 v16); "" en el caso estructural
+    "precios": {                    // glosas IA por slot (REGLA 5 v16); null en el caso estructural
       "glosaPrimeraOferta_clp": string,  // 1 frase ≤25 palabras
       "glosaPrimeraOferta_uf": string,
-      "glosaTecho_clp": string,
-      "glosaTecho_uf": string,
       "glosaWalkAway_clp": string,        // si walkAway === null en anclas, devolver ""
       "glosaWalkAway_uf": string
     }
@@ -723,20 +714,20 @@ Largos por campo:
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
 - negociacion.contenido: 1-2 frases, entre ${NEGOCIACION_MIN} y ${NEGOCIACION_MAX} palabras por variante. Dos guards lo miden —uno te pide desarrollar si te quedas corto, otro recorta si te pasas— así que escribe para ese rango. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
   ES EL ARGUMENTO CON EL QUE SE NEGOCIA (§1.12.2): por qué el vendedor debería moverse, dicho en una razón que el comprador pueda poner sobre la mesa. Y, SOLO si el pie es muy bajo o la tasa está sobre la referencia, la segunda frase dice que la palanca de mayor impacto es la estructura de financiamiento y no el precio — se trabaja con el banco, en paralelo (§1.5).
-  CERO MAGNITUDES. Este campo NO LLEVA NINGUNA CIFRA de plata, de UF ni de porcentaje. Ni una. Ni el precio, ni el techo, ni la oferta, ni el pie, ni la tasa, ni la TIR, ni el arriendo, ni la brecha, ni el descuento, ni el precio/m², ni la mediana. Nada con \`$\`, con \`UF\` ni con \`%\`.
+  CERO MAGNITUDES. Este campo NO LLEVA NINGUNA CIFRA de plata, de UF ni de porcentaje. Ni una. Ni el precio, ni el objetivo, ni la oferta, ni el pie, ni la tasa, ni la TIR, ni el arriendo, ni la brecha, ni el descuento, ni el precio/m², ni la mediana. Nada con \`$\`, con \`UF\` ni con \`%\`.
   NO ES UNA LISTA DE EXCEPCIONES: es categórico. Toda magnitud de este informe ya está dibujada en su propio bloque —el eje de veredicto, el plan de precios, el chip de caja en cero, la fila del índice, el hero— y repetirla acá la duplica. Cuando cerramos una fuente el argumento se mudaba a la siguiente, así que la regla es la categoría entera y no la enumeración.
   SÍ PUEDES USAR números que no son magnitudes: conteos ("108 publicaciones", "dos opciones"), distancias ("dentro de 500 m") y períodos ("a 10 años"). Lo que no lleva \`$\`, \`UF\` ni \`%\` no está prohibido.
-  DI LA MAGNITUD EN PALABRAS, que es lo que el diagrama no dice: "bajo la mediana de la comuna", "sobre los comparables de tu cuadra", "con la TIR en negativo", "sobre el techo que ves abajo". La dirección y su consecuencia son tu trabajo; el número es del bloque que lo dibuja.
+  DI LA MAGNITUD EN PALABRAS, que es lo que el diagrama no dice: "bajo la mediana de la comuna", "sobre los comparables de tu cuadra", "con la TIR en negativo", "sobre el objetivo que ves abajo". La dirección y su consecuencia son tu trabajo; el número es del bloque que lo dibuja.
   ASÍ SE VE BIEN HECHO. Estas son TRES FORMAS DISTINTAS de resolver el mismo problema — no tres variantes de la misma frase. Cada caso pide la que le sirve; NO copies ninguna literal, copia el movimiento:
   > (a) el argumento propiamente tal — "Pagas sobre el valor estimado de los comparables de tu cuadra: ese es el argumento de la mesa, no el regateo. Por encima del techo el negocio no se sostiene para ti; es aritmética, no postura."
   > (b) la palanca, cuando el precio NO es la palanca — "El precio por m² está bajo la mediana de la comuna, pero eso no abre margen de negociación: el problema es que el arriendo no sostiene el precio total, y bajar el precio es la palanca real."
   > (c) la exigencia al vendedor — "El precio está muy por encima del valor estimado de la zona, y el m² queda sobre la mediana comunal de departamentos usados — el vendedor tiene que explicar qué justifica esa diferencia antes de que tú pongas algo sobre la mesa."
   Las tres nombran la posición sin medirla y ninguna repite la fórmula de las otras: (a) cierra en la consecuencia, (b) desvía a la palanca correcta, (c) pone la carga de la prueba del otro lado. Cero cifras y sin embargo dicen algo que ningún diagrama dice. Si tu caso no encaja en ninguna, resuélvelo de una cuarta forma: lo que se copia es la ausencia de magnitudes, no el molde.
-- negociacion.estrategiaSugerida: 1-3 frases, máx 60 palabras. Es la ESTRATEGIA DE NEGOCIACIÓN CONCRETA: con qué precio abrir, hasta qué techo subir y con qué argumento (el sobreprecio/m² documentado es el ancla válida). Todo con número específico — arranca por la jugada, no por el contexto de precios.
+- negociacion.estrategiaSugerida: 1-3 frases, máx 60 palabras. Es la ESTRATEGIA DE NEGOCIACIÓN CONCRETA: con qué precio abrir, hasta qué objetivo subir y con qué argumento (el sobreprecio/m² documentado es el ancla válida). Todo con número específico — arranca por la jugada, no por el contexto de precios.
 - negociacion.cajaAccionable: 1 frase con guión de contraoferta CONCRETO. DEBE incluir el monto de \`negociacion.precioSugerido\` como referencia citable (no pregunta retórica abstracta).
   Ejemplos correctos:
   - "Ofrece UF 4.500. Si rechaza, pide 30 días para evaluar."
-  - "Tu techo es UF 5.200. Por encima, no compras."
+  - "Tu objetivo es UF 5.200: ahí cambia el veredicto. Sobre ese precio, sigue siendo el de hoy."
   - "Empieza en UF 4.300, cierra hasta UF 4.500."
   Ejemplo INCORRECTO (pregunta retórica sin número): "¿Hasta dónde estás dispuesto a llegar?"
 - reestructuracion.contenido: 3-5 frases. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
@@ -1543,21 +1534,29 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
 
     const veredictoMotor = readVeredicto(results) || (results.score >= 70 ? "COMPRAR" : results.score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
 
-    // ─── Fase 3.7 v10 — 3 anclas discretas + modo del motor ──────────────
-    // Techo viene del motor (siempre). primeraOferta:
-    //   - modo "cerrar_actual" → primeraOferta = techo (no se sugiere descuento)
-    //   - resto → techo * 0.95 redondeado a UF entera
-    // walkAway: oculto si = techo (excepto BUSCAR OTRA con precio_uf null).
+    // ─── UN NOMBRE POR PRECIO (goal 02-sep-2026) — anclas con nombre y significado ───
+    // objetivo = umbral de veredicto dentro del tope ("donde cambia el veredicto"); sin
+    // umbral (base COMPRAR) = el sostenible. sostenible = el sugerido del motor por modo
+    // ("donde el aporte se vuelve sostenible"), dato de caja. Estructural = SIN anclas.
     const modoSugerido: "cerrar_actual" | "optimizar_flujo" | "alinear_mercado" =
       neg?.modo || "alinear_mercado";
     const razonSugerido: string = neg?.razon || "";
-    const techoUF = neg?.precioSugeridoUF
-      ? Math.round(neg.precioSugeridoUF)
-      : precioSugeridoUF;
-    const techoCLP = Math.round(techoUF * UF_CLP);
-    const primeraOfertaUF = modoSugerido === "cerrar_actual"
-      ? techoUF
-      : Math.round(techoUF * 0.95);
+    const dvNeg = (results.hallazgos as Hallazgo[] | undefined)?.find((h) => h.id === "distancia_veredicto");
+    const esEstructuralNeg = dvNeg?.id === "distancia_veredicto" && dvNeg.valor.esEstructural === true;
+    const minimoFueraPctNeg =
+      dvNeg?.id === "distancia_veredicto" && dvNeg.valor.deltaMinimoFueraDeTope?.palanca === "precio"
+        ? dvNeg.valor.deltaMinimoFueraDeTope.deltaPct
+        : null;
+    const minimoFueraUFNeg = minimoFueraPctNeg !== null ? Math.round(input.precio * (1 + minimoFueraPctNeg / 100)) : null;
+    const sostenibleUF = neg?.precioSugeridoUF ? Math.round(neg.precioSugeridoUF) : precioSugeridoUF;
+    const sostenibleCLP = Math.round(sostenibleUF * UF_CLP);
+    const umbralNegUF = neg?.precioUmbralVeredictoUF && neg.precioUmbralVeredictoUF > 0 ? Math.round(neg.precioUmbralVeredictoUF) : null;
+    const objetivoEsUmbral = umbralNegUF !== null;
+    const objetivoUF = umbralNegUF ?? sostenibleUF;
+    const objetivoCLP = Math.round(objetivoUF * UF_CLP);
+    const primeraOfertaUF = modoSugerido === "cerrar_actual" && !objetivoEsUmbral
+      ? objetivoUF
+      : Math.round(objetivoUF * 0.95);
     const primeraOfertaCLP = Math.round(primeraOfertaUF * UF_CLP);
     let walkAwayAncla: { precio_uf: number | null; precio_clp: number | null; razon: string } | null;
     if (veredictoMotor === "BUSCAR OTRA") {
@@ -1566,49 +1565,47 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         precio_clp: null,
         razon: "No conviene comprar esta propiedad.",
       };
-    } else if (veredictoMotor === "AJUSTA SUPUESTOS" && modoSugerido !== "cerrar_actual") {
-      // Solo se incluye walkAway-precio cuando NO es cerrar_actual y NO es BUSCAR.
-      // Cuando precio_uf == techo, el walkAway es redundante con techo, así que lo
-      // omitimos a nivel ancla — frontend NO renderiza slot redundante.
-      walkAwayAncla = null;
     } else {
-      // COMPRAR (o AJUSTA con cerrar_actual) → no hay condición de salida discreta
+      // AJUSTA sin umbral y cerrar_actual, o COMPRAR: el objetivo ya es el límite duro.
       walkAwayAncla = null;
     }
     const anclasJsonPara_motor = {
       primeraOferta_uf: primeraOfertaUF,
       primeraOferta_clp: primeraOfertaCLP,
-      techo_uf: techoUF,
-      techo_clp: techoCLP,
+      objetivo_uf: objetivoUF,
+      objetivo_clp: objetivoCLP,
+      sostenible_uf: sostenibleUF,
+      sostenible_clp: sostenibleCLP,
       walkAway: walkAwayAncla,
     };
-    const anclasBloque = `
-ANCLAS DE NEGOCIACIÓN (REGLA 5 v10 — usar EXACTOS, no recalcular):
+    const destinoUmbralNeg = neg?.veredictoAlUmbral === "COMPRAR" ? "COMPRAR" : neg?.veredictoAlUmbral === "AJUSTA SUPUESTOS" ? "AJUSTA SUPUESTOS" : "la banda de arriba";
+    const anclasBloque = esEstructuralNeg
+      ? `
+ANCLAS DE NEGOCIACIÓN: NINGUNA — caso estructural. No hay objetivo, ni primera oferta, ni plan: \`negociacion.precios\` = null y \`negociacion.precioSugerido\` = "".${minimoFueraUFNeg !== null && minimoFueraPctNeg !== null ? `
+- Lo que haría falta, fuera de rango: ${fmtUF(minimoFueraUFNeg)} (${pct(Math.abs(minimoFueraPctNeg))}% bajo el pedido) — se cita solo para cerrar la puerta; nunca como oferta, objetivo ni "sigue sin convenir a ese precio" (a ese precio el veredicto SÍ cambia, por eso queda fuera de rango).` : ""}`
+      : `
+ANCLAS DE NEGOCIACIÓN (REGLA 5 v16 — usar EXACTOS y con su nombre, no recalcular):
   ⚠ NINGUNO de estos precios entra en \`negociacion.contenido\`: se imprimen como bloque propio justo debajo de ese párrafo. Van en las glosas del plan y en \`cajaAccionable\`, no en el argumento.
-- modoSugerido: "${modoSugerido}"
-- razonSugerido: "${razonSugerido}"
-- sugeridoMandadoPorVeredicto: ${neg?.sugeridoMandadoPorVeredicto === true}${neg?.sugeridoMandadoPorVeredicto === true ? ` (el precio sugerido ES el umbral donde el veredicto pasa a ${neg?.veredictoAlUmbral ?? ""} — ver el SUB-CASO en §12)` : ""}
-- primeraOferta_uf: ${primeraOfertaUF} (${fmtCLP(primeraOfertaCLP)})${primeraOfertaUF === techoUF ? " ← IGUAL al techo (modo cerrar_actual: no sugerir descuento)" : ""}
-- techo_uf: ${techoUF} (${fmtCLP(techoCLP)})
+- objetivo_uf: ${objetivoUF} (${fmtCLP(objetivoCLP)}) — ${objetivoEsUmbral ? `DONDE CAMBIA EL VEREDICTO: cerrando ahí el análisis pasa a ${destinoUmbralNeg}; bajo ese precio ya es ${destinoUmbralNeg}, sobre ese precio sigue siendo ${veredictoMotor}` : `donde el aporte se vuelve sostenible (este caso no tiene umbral de veredicto en rango)`}
+- primeraOferta_uf: ${primeraOfertaUF} (${fmtCLP(primeraOfertaCLP)})${primeraOfertaUF === objetivoUF ? " ← IGUAL al objetivo (modo cerrar_actual: no sugerir descuento)" : " — el objetivo menos ~5%, posición de apertura"}
+- sostenible_uf: ${sostenibleUF} (${fmtCLP(sostenibleCLP)}) — DONDE EL APORTE SE VUELVE SOSTENIBLE, dato de caja del motor${objetivoEsUmbral ? (sostenibleUF < objetivoUF ? `; queda BAJO el objetivo, o sea dentro de la zona donde el veredicto ya es ${destinoUmbralNeg}: es hasta dónde seguir si la conversación da, nunca "sobre esto no compras"` : sostenibleUF > objetivoUF ? `; queda SOBRE el objetivo: a ese precio el veredicto todavía no cambia` : "; coincide con el objetivo") : " (es el mismo número que el objetivo)"}
+- modoSostenible: "${modoSugerido}"
+- razonSostenible: "${razonSugerido}"
 - walkAway: ${walkAwayAncla === null
-        ? `null (${veredictoMotor === "BUSCAR OTRA" ? "—" : "el techo ya es el límite duro, no duplicar"})`
-        : walkAwayAncla.precio_uf === null
-          ? `{ precio_uf: null, razon: "${walkAwayAncla.razon}" } — la salida es buscar otra propiedad`
-          : `{ precio_uf: ${walkAwayAncla.precio_uf} (${fmtCLP(walkAwayAncla.precio_clp!)}), razon: "${walkAwayAncla.razon}" }`}${(() => {
-      // §1.12.1 — banda de esfuerzo del descuento del techo, pre-digerida (la IA
-      // narra el lenguaje canónico, nunca clasifica). Sin banda en cerrar_actual
-      // (no hay descuento que pedir) ni con techo sobre el precio pedido.
-      const descTechoPct = input.precio > 0 ? ((input.precio - techoUF) / input.precio) * 100 : 0;
-      if (modoSugerido === "cerrar_actual" || descTechoPct <= 0) return "";
+        ? "null (el objetivo ya es el límite duro, no duplicar)"
+        : `{ precio_uf: null, razon: "${walkAwayAncla.razon}" } — la salida es buscar otra propiedad`}${(() => {
+      // §1.12.1 — banda de esfuerzo del descuento del OBJETIVO, pre-digerida (la IA
+      // narra el lenguaje canónico, nunca clasifica). Sin banda si no hay descuento.
+      const descObjetivoPct = input.precio > 0 ? ((input.precio - objetivoUF) / input.precio) * 100 : 0;
+      if (descObjetivoPct <= 0) return "";
       return `
-- bandaEsfuerzoTecho (§1.12.1 — dato del motor; narra el descuento del techo CON este lenguaje, nunca lo reclasifiques): pedir el techo es un descuento de ${pct(descTechoPct)}% → ${bandaEsfuerzoDescuento(descTechoPct).lectura}`;
+- bandaEsfuerzoObjetivo (§1.12.1 — dato del motor; narra el descuento del objetivo CON este lenguaje, nunca lo reclasifiques): pedir el objetivo es un descuento de ${pct(descObjetivoPct)}% → ${bandaEsfuerzoDescuento(descObjetivoPct).lectura}`;
     })()}
 - casoNegociador (§1.12.2 — los argumentos van EN LA MISMA PIEZA que el número, en este orden de fuerza; SOLO estos — señales que no vienen acá NO existen: nada de urgencia del vendedor, días en mercado ni pre-aprobación del comprador):${pvc.desviacionPct != null && pvc.desviacionPct > 2 ? `
   1) sobreprecio vs mediana comunal: pides UF ${pvc.sujetoUfM2.toLocaleString("es-CL")}/m² donde la mediana confiable de la comuna está ${pct(pvc.desviacionPct)}% más abajo — el ancla de comparables
   2) ` : `
-  1) `}umbral económico propio: "${razonSugerido}" — sobre el techo el negocio no se sostiene para el comprador; no es regateo, es aritmética
-- glosaPrimeraOferta (dato mecánico): la primera oferta ES el techo menos ~5% — una posición de apertura con margen para subir, no una cifra con origen propio. Se explica así, en fácil.`;
-
+  1) `}${objetivoEsUmbral ? `el objetivo cambia la conclusión: cerrando en ${fmtUF(objetivoUF)} el análisis pasa a ${destinoUmbralNeg} — no es regateo, es el borde del veredicto` : `el aporte: "${razonSugerido}" — a ${fmtUF(objetivoUF)} el aporte mensual queda en un nivel sostenible; no es regateo, es caja`}
+- glosaPrimeraOferta (dato mecánico): la primera oferta ES el objetivo menos ~5% — una posición de apertura con margen para subir, no una cifra con origen propio. Se explica así, en fácil.`;
     // Bloque opcional de subsidio — datos puros, sin instrucciones (las reglas
     // viven en el system prompt + nota de compliance al final).
     const subsidioBloque = (() => {
@@ -2046,14 +2043,15 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
     // subordinaciones ya escritas. Sus `precios` canónicos alimentan además el
     // guard post-parse (JERARQUIA-PRECIOS). Reemplaza las líneas crudas de
     // límite-TIR y flujo-neutro del CONTEXTO — una sola fuente.
-    const umbralVeredictoUFGen = neg?.precioUmbralVeredictoUF ?? null;
     const jerarquiaPrecios = construirJerarquiaPrecios({
       precioPedidoUF: input.precio,
-      techoUF,
-      modoSugerido,
-      umbralVeredictoUF: umbralVeredictoUFGen,
+      objetivoUF: umbralNegUF,
       veredictoAlUmbral: neg?.veredictoAlUmbral ?? null,
-      sugeridoMandadoPorVeredicto: neg?.sugeridoMandadoPorVeredicto === true,
+      sostenibleUF,
+      modoSugerido,
+      esEstructural: esEstructuralNeg,
+      minimoFueraDeRangoUF: minimoFueraUFNeg,
+      minimoFueraDeRangoPct: minimoFueraPctNeg,
       precioFlujoNeutroUF,
       descuentoParaNeutro,
       lecturaFlujoNeutro: lecturaPrecioFlujoNeutro(precioFlujoNeutroUF, descuentoParaNeutro),
@@ -2220,8 +2218,8 @@ ${!tieneDiferenciaValida ? `- lecturaSinReferencia (narra ESTA idea con tus pala
 ${sinCapitalPropio
   ? `- tirActual: ${NO_APLICA_PROMPT} — el beneficio de negociar se lee en dividendo, no en TIR (## 5.bis.e)
 - bajaDividendoAlSugerido: −${fmtCLP(bajaDividendoSugerido)}/mes (crédito que no tomas al cerrar en el precio sugerido)
-- lecturaNegociacionSinPie (narra ESTA idea con tus palabras): sin pie, cada peso menos de precio es crédito que no tomas — cerrando en ${fmtUF(techoUF)} el dividendo baja ${fmtCLP(bajaDividendoSugerido)} al mes y tu flujo mejora exactamente eso
-- Precio límite (TIR baja a 6%): no aplica sin capital propio — el techo por retorno no tiene base; el límite de este caso lo pone tu flujo`
+- lecturaNegociacionSinPie (narra ESTA idea con tus palabras): sin pie, cada peso menos de precio es crédito que no tomas — cerrando en ${fmtUF(objetivoUF)} el dividendo baja ${fmtCLP(bajaDividendoSugerido)} al mes y tu flujo mejora exactamente eso
+- Límite TIR 6%: no aplica sin capital propio — sin capital el retorno no tiene base; el límite de este caso lo pone tu flujo`
   : `- tirActual: ${pct(tirActual)}%
 - tirAlSugerido: ${tirAlSugeridoNeg !== null ? tirAlSugeridoNeg.toFixed(1) + "%" : "sin dato"}
 - Cambio de TIR si negociás: ${deltaTirSugerido !== null ? (deltaTirSugerido >= 0 ? "+" : "") + deltaTirSugerido.toFixed(1) + " pp" : "sin dato"}
@@ -2262,7 +2260,7 @@ ${esFueraGranSantiago ? "ADVERTENCIA: propiedad fuera del Gran Santiago. Datos d
 ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}${subsidioBloque}${capexBloque}
 ${anclasBloque}${jerarquiaPrecios.bloque}${referenciasZona.bloque}${bloqueSimetriaSobreprecio}${bloquePrecioJusto}${bloqueDriverNoAccionable}${bloqueMotivosGateLTR}
 
-negociacion.precioSugerido (este caso): "${fmtUF(techoUF)}" ← EXACTO techo_uf de las anclas (REGLA 6 v9)
+negociacion.precioSugerido (este caso): ${esEstructuralNeg ? '"" ← caso estructural, sin objetivo' : `"${fmtUF(objetivoUF)}" ← EXACTO objetivo_uf de las anclas (REGLA 6 v16)`}
 ${(() => {
       // §18 — CIFRA CLAVE de portada: la deriva el MOTOR (cifra-clave.ts), la IA
       // solo la conoce para que el titular la encuadre sin contradecirla. El
@@ -2307,18 +2305,22 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       // devolvió precios distintos (drift) o no devolvió `precios`, sobreescribir
       // con las anclas y mantener solo glosas como string libre.
       if (parsed?.negociacion) {
-        const iaGlosas = parsed.negociacion.precios || {};
-        parsed.negociacion.precios = {
-          ...anclasJsonPara_motor,
-          glosaPrimeraOferta_clp: String(iaGlosas.glosaPrimeraOferta_clp || ""),
-          glosaPrimeraOferta_uf: String(iaGlosas.glosaPrimeraOferta_uf || iaGlosas.glosaPrimeraOferta_clp || ""),
-          glosaTecho_clp: String(iaGlosas.glosaTecho_clp || ""),
-          glosaTecho_uf: String(iaGlosas.glosaTecho_uf || iaGlosas.glosaTecho_clp || ""),
-          glosaWalkAway_clp: String(iaGlosas.glosaWalkAway_clp || ""),
-          glosaWalkAway_uf: String(iaGlosas.glosaWalkAway_uf || iaGlosas.glosaWalkAway_clp || ""),
-        };
-        // precioSugerido = techo formateado, ignorar lo que diga la IA
-        parsed.negociacion.precioSugerido = `UF ${techoUF.toLocaleString("es-CL")}`;
+        if (esEstructuralNeg) {
+          // Estructural: sin plan ni objetivo. Lo que diga la IA no cuenta.
+          parsed.negociacion.precios = null;
+          parsed.negociacion.precioSugerido = "";
+        } else {
+          const iaGlosas = parsed.negociacion.precios || {};
+          parsed.negociacion.precios = {
+            ...anclasJsonPara_motor,
+            glosaPrimeraOferta_clp: String(iaGlosas.glosaPrimeraOferta_clp || ""),
+            glosaPrimeraOferta_uf: String(iaGlosas.glosaPrimeraOferta_uf || iaGlosas.glosaPrimeraOferta_clp || ""),
+            glosaWalkAway_clp: String(iaGlosas.glosaWalkAway_clp || ""),
+            glosaWalkAway_uf: String(iaGlosas.glosaWalkAway_uf || iaGlosas.glosaWalkAway_clp || ""),
+          };
+          // precioSugerido = objetivo formateado, ignorar lo que diga la IA
+          parsed.negociacion.precioSugerido = `UF ${objetivoUF.toLocaleString("es-CL")}`;
+        }
       }
 
       // (Eliminada la salvaguarda de orden de conviene.datosClave: el prompt LTR
