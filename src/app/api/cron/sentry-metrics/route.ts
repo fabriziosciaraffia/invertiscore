@@ -171,5 +171,5 @@ export async function POST(request: Request) {
 
 // Vercel Cron dispara GET. Reusamos el handler POST (con su validación Bearer
 // CRON_SECRET) para no duplicar lógica ni perder la auth — mismo patrón que
-// scrape-properties, geocode-toctoc y enrich-coords.
+// scrape-nuevos y scrape-unidades-nuevas.
 export const GET = POST;

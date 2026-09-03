@@ -9,7 +9,7 @@
  * ON CONFLICT DO UPDATE solo escribe las columnas PRESENTES en el payload, y
  * las que no vienen conservan su valor. De ahí las dos reglas que se defienden:
  *
- *  · El pase diario (scrape-properties → propertyToRow) no conoce
+ *  · El pase de scraping (backfill-toctoc y scrape-nuevos → propertyToRow) no conoce
  *    `seen_pass_id`, así que una fila que el backfill ya marcó conserva su pase
  *    cuando el diario la refresca.
  *  · Una fila que llega sin lat/lng (o sin direccion) no pisa la coordenada que
@@ -95,7 +95,7 @@ function prop(over: Partial<ScrapedProperty> = {}): ScrapedProperty {
 
   await test("el pase diario no manda seen_pass_id: la fila conserva el pase que le puso el backfill", async () => {
     const t = tablaFalsa([{ source: "toctoc", source_id: prop().sourceId, lat: -33.45, lng: -70.65, seen_pass_id: "p20260903-ab12", precio: 2900, is_active: true }]);
-    // Exactamente lo que hace scrape-properties: propertyToRow → filaSinPisarCoords → upsert.
+    // Exactamente lo que hacen los pases de scraping: propertyToRow → filaSinPisarCoords → upsert.
     const rows: FilaUpsert[] = [prop({ lat: -33.4501, lng: -70.6502, precio: 3000 })].map(propertyToRow).map((r) => filaSinPisarCoords(r));
     assert.ok(!("seen_pass_id" in rows[0]), "propertyToRow no debe emitir seen_pass_id");
     const r = await upsertSinPisarCoords(t.cliente, rows);
