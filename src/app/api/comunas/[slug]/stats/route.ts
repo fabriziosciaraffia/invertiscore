@@ -29,10 +29,10 @@ export const revalidate = 86400;
 export async function GET(_req: Request, { params }: { params: { slug: string } }) {
   try {
     const stats = await getComunaStats(params.slug);
-    // Sin datos suficientes para esa comuna (`comunas-seo` exige mínimos por
-    // segmento). 404 y no un objeto en cero: la pantalla tiene que poder
-    // distinguir "no hay dato" de "el dato es cero", que significan cosas
-    // distintas y se dibujan distinto.
+    // Sin datos para esa comuna: ni una tipología con mediana propia ni muestra
+    // comunal con que estimar (`comunas-seo` + `referencia-arriendo`). 404 y no
+    // un objeto en cero: la pantalla tiene que poder distinguir "no hay dato" de
+    // "el dato es cero", que significan cosas distintas y se dibujan distinto.
     if (!stats) {
       return NextResponse.json({ error: "sin_datos" }, { status: 404 });
     }
@@ -43,6 +43,11 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     // matchea exacto, el lookup cae al DEFAULT en silencio — acá el lookup ya
     // está hecho y es el mismo que produce la cifra.
     const entry = PLUSVALIA_HISTORICA[stats.nombre];
+    // El arriendo de la comuna incluye filas estimadas desde el m² comunal cuando
+    // una tipología no junta arriendos propios; el wizard lo rotula por esto.
+    const estimadas = stats.tipologias.filter((t) => t.referencia.fuente === "comunalPorM2").length;
+    const arriendoFuente =
+      estimadas === 0 ? "propia" : estimadas === stats.tipologias.length ? "estimada" : "mixta";
     return NextResponse.json({
       nombre: stats.nombre,
       cubierta: isComunaDisponible(stats.nombre),
@@ -50,6 +55,8 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
       precioM2UF: stats.precioM2Promedio,
       precioM2CLP: Math.round(stats.precioM2Promedio * UF_CLP),
       arriendoCLP: stats.arriendoRepresentativo,
+      /** "propia": medianas de tipología · "estimada": todas desde el m² comunal · "mixta": las dos. */
+      arriendoFuente,
       rentabilidadBruta: stats.rentabilidadBruta,
       /** % anual observado de la comuna. `null` si no tiene trayectoria propia. */
       plusvaliaAnualizada: entry?.anualizada ?? null,

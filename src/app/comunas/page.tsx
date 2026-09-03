@@ -78,6 +78,14 @@ export default async function ComunasIndexPage() {
                 </span>
               </div>
               <p className="mt-0.5 font-body text-xs text-[var(--franco-text-muted)]">Rentabilidad bruta</p>
+              {/* Una comuna con filas estimadas lo dice también acá: el arriendo
+                  promedio de la card las incluye. */}
+              {c.tipologias.some((t) => t.referencia.fuente === "comunalPorM2") && (
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--franco-text-muted)]">
+                  Arriendo estimado en {c.tipologias.filter((t) => t.referencia.fuente === "comunalPorM2").length} de{" "}
+                  {c.tipologias.length} tipologías
+                </p>
+              )}
 
               <div className="mt-3 flex gap-4 text-xs">
                 <div>
@@ -104,7 +112,7 @@ export default async function ComunasIndexPage() {
             </Link>
           ))}
 
-          {/* Sin muestra suficiente esta semana: card sin cifras, link vivo. */}
+          {/* Ni mediana propia ni muestra comunal para estimar: card sin cifras, link vivo. */}
           {sinDatos.map((c) => (
             <Link
               key={c.slug}
@@ -115,7 +123,7 @@ export default async function ComunasIndexPage() {
                 <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">{c.nombre}</h2>
               </div>
               <p className="mt-0.5 font-body text-xs text-[var(--franco-text-muted)]">
-                Sin muestra suficiente esta semana
+                Sin avisos suficientes esta semana, ni para estimar
               </p>
             </Link>
           ))}

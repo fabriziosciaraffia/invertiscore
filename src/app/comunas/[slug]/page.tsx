@@ -6,6 +6,8 @@ import { VeredictoCuota } from "@/components/comunas/VeredictoCuota";
 import { TablaTipologias, ProcedenciaMuestraBloque } from "@/components/comunas/TablaTipologias";
 import { getProsaComuna } from "@/lib/data/comuna-prosa";
 import { COMUNAS_ROSTER, esComunaDelRoster, nombreDeComuna } from "@/lib/data/comunas-roster";
+import { MIN_ARRIENDOS_TIPOLOGIA } from "@/lib/referencia-arriendo";
+import { MIN_PER_TYPE } from "@/lib/data/comunas-seo";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
@@ -93,10 +95,10 @@ function ComunaSinDatos({ nombre }: { nombre: string }) {
 
         <div className="mt-8 rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 shadow-sm">
           <p className="font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
-            Esta semana no hay suficientes avisos activos en {nombre} para publicar
-            promedios que se sostengan. Franco prefiere no darte un número antes que
-            darte uno malo: los datos se actualizan semanalmente y las cifras vuelven
-            apenas la muestra alcance.
+            Esta semana {nombre} no junta avisos suficientes ni para una mediana por
+            tipología ni para estimar el arriendo desde el metro cuadrado de la comuna.
+            Franco prefiere no darte un número antes que darte uno malo: los datos se
+            actualizan cada semana y las cifras vuelven apenas la muestra alcance.
           </p>
           <p className="mt-4 font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">
             Mientras tanto, si tienes un departamento concreto en la mira, el análisis
@@ -242,6 +244,19 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
     : null;
   const cubrenN = stats.tipologias.filter((t) => t.cubre).length;
   const chicasN = stats.tipologias.filter((t) => t.muestraChica).length;
+  const estimadas = stats.tipologias.filter((t) => t.referencia.fuente === "comunalPorM2");
+  const propias = stats.tipologias.filter((t) => t.referencia.fuente === "porTipologia");
+  const listaDorms = (ts: typeof stats.tipologias) =>
+    ts.map((t) => `el ${t.dorms}D`).join(", ").replace(/, ([^,]*)$/, " y $1");
+  // Respaldo del número del líder, para las FAQ: un estimado se dice como
+  // estimado y con su rango; una mediana con pocos avisos, como muestra chica.
+  const respaldoLider = !lider
+    ? ""
+    : lider.referencia.fuente === "comunalPorM2"
+      ? ` El arriendo del ${nDorm(lider.dorms)} es un estimado desde el metro cuadrado de la comuna (${lider.referencia.nComunal.toLocaleString("es-CL")} arriendos publicados), entre ${fmtCLP(lider.referencia.rangoCLP.min)} y ${fmtCLP(lider.referencia.rangoCLP.max)}: tómalo como orden de magnitud.`
+      : lider.muestraChica
+        ? ` Esa cifra se apoya en ${lider.nArriendos} arriendos publicados, una muestra chica para la comuna.`
+        : "";
 
   const faqEquilibrio = lider
     ? {
@@ -250,8 +265,8 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
         acceptedAnswer: {
           "@type": "Answer",
           text: lider.cubre
-            ? `Un ${nDorm(lider.dorms)} en ${stats.nombre} se paga solo hasta UF ${lider.precioCuotaUF.toLocaleString("es-CL")}: sobre ese precio el arriendo deja de cubrir la cuota, con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años. La mediana de la comuna hoy está en UF ${lider.ventaUF.toLocaleString("es-CL")}.${lider.muestraChica ? ` Esa cifra se apoya en ${lider.nArriendos} arriendos publicados, una muestra chica para la comuna.` : ""}`
-            : `Un ${nDorm(lider.dorms)} tendría que costar UF ${lider.precioCuotaUF.toLocaleString("es-CL")} para que el arriendo cubra la cuota, un ${Math.abs(lider.deltaPct).toFixed(1).replace(".", ",")}% bajo la mediana de la comuna (UF ${lider.ventaUF.toLocaleString("es-CL")}), con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años. Es la tipología que queda más cerca.${lider.muestraChica ? ` Esa cifra se apoya en ${lider.nArriendos} arriendos publicados, una muestra chica para la comuna.` : ""}`,
+            ? `Un ${nDorm(lider.dorms)} en ${stats.nombre} se paga solo hasta UF ${lider.precioCuotaUF.toLocaleString("es-CL")}: sobre ese precio el arriendo deja de cubrir la cuota, con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años. La mediana de la comuna hoy está en UF ${lider.ventaUF.toLocaleString("es-CL")}.${respaldoLider}`
+            : `Un ${nDorm(lider.dorms)} tendría que costar UF ${lider.precioCuotaUF.toLocaleString("es-CL")} para que el arriendo cubra la cuota, un ${Math.abs(lider.deltaPct).toFixed(1).replace(".", ",")}% bajo la mediana de la comuna (UF ${lider.ventaUF.toLocaleString("es-CL")}), con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años. Es la tipología que queda más cerca.${respaldoLider}`,
         },
       }
     : null;
@@ -272,13 +287,22 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
       }
     : null;
 
-  const faqTercera = chicasN >= Math.max(1, Math.ceil(stats.tipologias.length / 2))
+  const faqTercera = estimadas.length > 0
+    ? {
+        "@type": "Question",
+        name: `¿Por qué ${estimadas.length === 1 ? "una tipología" : "algunas tipologías"} de ${stats.nombre} ${estimadas.length === 1 ? "tiene" : "tienen"} arriendo estimado?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: `Porque ${listaDorms(estimadas)} no ${estimadas.length === 1 ? "junta" : "juntan"} ${MIN_ARRIENDOS_TIPOLOGIA} arriendos publicados propios (${estimadas.map((t) => `${t.nArriendos} de ${t.dorms}D`).join(", ")}). En vez de dejar la fila afuera, Franco estima ese arriendo desde el metro cuadrado de los ${estimadas[0].referencia.fuente === "comunalPorM2" ? estimadas[0].referencia.nComunal.toLocaleString("es-CL") : 0} arriendos publicados en la comuna, ajustado por tipología, y lo publica como rango, no como cifra exacta.${propias.length ? ` ${listaDorms(propias).replace(/^el/, "El")} ${propias.length === 1 ? "usa" : "usan"} la mediana de sus propios avisos.` : ""} Si una tipología no aparece, es porque ni siquiera junta ${MIN_PER_TYPE} ventas para tener un precio.`,
+        },
+      }
+    : chicasN >= Math.max(1, Math.ceil(stats.tipologias.length / 2))
     ? {
         "@type": "Question",
         name: `¿Por qué hay menos datos de ${stats.nombre} que de otras comunas?`,
         acceptedAnswer: {
           "@type": "Answer",
-          text: `Porque se publican menos arriendos: ${stats.tipologias.map((t) => `${t.nArriendos} avisos de ${t.dorms}D`).join(", ")}. Franco prefiere mostrar las tipologías que tienen respaldo antes que rellenar las que no — por eso la tabla tiene ${stats.tipologias.length} de 4 filas.`,
+          text: `Porque se publican menos arriendos: ${stats.tipologias.map((t) => `${t.nArriendos} avisos de ${t.dorms}D`).join(", ")}. Las tipologías que faltan no juntan ${MIN_PER_TYPE} ventas publicadas, y sin precio no hay fila que armar — por eso la tabla tiene ${stats.tipologias.length} de 4 filas.`,
         },
       }
     : mejorRent && peorRent
@@ -289,7 +313,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
             "@type": "Answer",
             text: mejorRent.dorms === peorRent.dorms
               ? `El ${nDorm(mejorRent.dorms)}, con ${mejorRent.rentabilidadBruta.toFixed(1).replace(".", ",")}% de rentabilidad bruta. Es la única tipología con muestra suficiente en ${stats.nombre}.`
-              : `El ${nDorm(mejorRent.dorms)}, con ${mejorRent.rentabilidadBruta.toFixed(1).replace(".", ",")}% de rentabilidad bruta${mejorRent.muestraChica ? " —aunque es la tipología con menos avisos de la comuna—" : ""}. El que menos rinde es el ${nDorm(peorRent.dorms)}, con ${peorRent.rentabilidadBruta.toFixed(1).replace(".", ",")}%.`,
+              : `El ${nDorm(mejorRent.dorms)}, con ${mejorRent.rentabilidadBruta.toFixed(1).replace(".", ",")}% de rentabilidad bruta${mejorRent.referencia.fuente === "comunalPorM2" ? " —con arriendo estimado desde el m² comunal, no mediana propia—" : mejorRent.muestraChica ? " —aunque es la tipología con menos avisos de la comuna—" : ""}. El que menos rinde es el ${nDorm(peorRent.dorms)}, con ${peorRent.rentabilidadBruta.toFixed(1).replace(".", ",")}%.`,
           },
         }
       : null;
@@ -457,7 +481,11 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
                   {lider.cubre
                     ? `Sobre ese precio deja de pagarse solo con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años`
                     : `Ese es el precio al que el arriendo cubriría la cuota con pie de ${stats.supuestos.piePct}% a ${stats.supuestos.plazoAnos} años`}
-                  {lider.muestraChica ? `, calculado sobre ${lider.nArriendos} arriendos publicados` : ""}.
+                  {lider.referencia.fuente === "comunalPorM2"
+                    ? `, calculado con un arriendo estimado desde el m² comunal (entre ${fmtCLP(lider.referencia.rangoCLP.min)} y ${fmtCLP(lider.referencia.rangoCLP.max)})`
+                    : lider.muestraChica
+                      ? `, calculado sobre ${lider.nArriendos} arriendos publicados`
+                      : ""}.
                   Analiza el que tienes en la mira con sus números reales — gastos comunes, contribuciones y
                   estado incluidos — y Franco te dice si de verdad cierra.
                 </p>

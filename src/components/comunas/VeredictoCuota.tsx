@@ -12,7 +12,7 @@
 // advertencia de calidad de dato no es uso permitido del rojo.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { ComunaStats, BandaEsfuerzo } from "@/lib/data/comunas-seo";
+import type { ComunaStats, BandaEsfuerzo, TipologiaStats } from "@/lib/data/comunas-seo";
 import { fmtCLP, tipologiaLider } from "@/lib/data/comunas-seo";
 
 const NOMBRE_TIPOLOGIA: Record<number, string> = {
@@ -45,10 +45,17 @@ function corto(dorms: number): string {
   return `${dorms}D`;
 }
 
-function ChipMuestraChica({ n }: { n: number }) {
+/**
+ * Respaldo del número del líder, en Ink + tipografía. Dos marcas distintas:
+ * mediana propia con pocos avisos, o arriendo ESTIMADO desde el m² comunal.
+ * Una fila estimada nunca lleva la marca de muestra chica: no es una mediana.
+ */
+function ChipRespaldo({ t }: { t: TipologiaStats }) {
+  const estimada = t.referencia.fuente === "comunalPorM2";
+  if (!estimada && !t.muestraChica) return null;
   return (
     <span className="ml-2 inline-block rounded-full border border-[var(--franco-border)] bg-[var(--franco-sunken,var(--franco-bg))] px-2 py-0.5 align-middle font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-[var(--franco-text-secondary)]">
-      Muestra chica · {n} arriendos
+      {estimada ? `Arriendo estimado · m² comunal` : `Muestra chica · ${t.nArriendos} arriendos`}
     </span>
   );
 }
@@ -81,13 +88,19 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
   if (!lider) return null;
   const ningunaCubre = cubren.length === 0;
   const unaSola = tips.length === 1;
+  const liderEstimado = lider.referencia.fuente === "comunalPorM2";
+  // Con una sola fila, el titular dice de dónde sale: mediana propia o estimado.
+  const unicaConFuente = (t: TipologiaStats) =>
+    t.referencia.fuente === "comunalPorM2"
+      ? `${NOMBRE_TIPOLOGIA[t.dorms]} (con arriendo estimado desde el m² comunal)`
+      : NOMBRE_TIPOLOGIA[t.dorms];
 
   // ── Titular: cambia de signo, no de adjetivo ──────────────────────────────
   let titular: React.ReactNode;
   if (ningunaCubre) {
     titular = unaSola ? (
       <>
-        En {stats.nombre} solo hay muestra suficiente de {NOMBRE_TIPOLOGIA[tips[0].dorms]}, y{" "}
+        En {stats.nombre} solo se puede publicar el {unicaConFuente(tips[0])}, y{" "}
         <span className="text-[#C8323C]">no se paga solo</span>: faltan{" "}
         {fmtCLP(Math.abs(tips[0].brechaCLP))} cada mes.
       </>
@@ -103,7 +116,7 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
   } else if (cubren.length === tips.length) {
     titular = unaSola ? (
       <>
-        En {stats.nombre}, el {corto(tips[0].dorms)} con muestra <strong>se paga solo</strong>: sobran{" "}
+        En {stats.nombre}, el {unicaConFuente(tips[0])} <strong>se paga solo</strong>: sobran{" "}
         {fmtCLP(tips[0].brechaCLP)} al mes por sobre la cuota.
       </>
     ) : (
@@ -171,7 +184,7 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
                   por el departamento completo—, el arriendo cubre la cuota completa.
                 </>
               )}
-              {lider.muestraChica && <ChipMuestraChica n={lider.nArriendos} />}
+              <ChipRespaldo t={lider} />
             </p>
             <div className="mt-4 flex flex-wrap gap-6">
               <Dato label={`Precio de equilibrio · ${corto(lider.dorms)}`} valor={uf(lider.precioCuotaUF)} unidad={UNIDAD_DEPTO} />
@@ -188,7 +201,7 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
               <strong>{uf(lider.precioCuotaUF)}</strong> por el departamento completo. La mediana de la comuna
               es {uf(lider.ventaUF)}, así que tienes un {pct(lider.deltaPct)} de margen sobre el precio de
               lista.
-              {lider.muestraChica && <ChipMuestraChica n={lider.nArriendos} />}
+              <ChipRespaldo t={lider} />
             </p>
             <div className="mt-4 flex flex-wrap gap-6">
               <Dato label={`Precio de equilibrio · ${corto(lider.dorms)}`} valor={uf(lider.precioCuotaUF)} unidad={UNIDAD_DEPTO} />
@@ -257,7 +270,16 @@ export function VeredictoCuota({ stats }: { stats: ComunaStats }) {
           )}
         </p>
 
-        {lider.muestraChica && (
+        {liderEstimado && lider.referencia.fuente === "comunalPorM2" && (
+          <p className="mt-3 max-w-[68ch] font-body text-[13px] italic text-[var(--franco-text-muted)]">
+            Ojo con el respaldo de este número: el {corto(lider.dorms)} no junta arriendos publicados propios
+            ({lider.nArriendos}). Su arriendo es un estimado desde el metro cuadrado de los{" "}
+            {lider.referencia.nComunal.toLocaleString("es-CL")} arriendos de la comuna, ajustado por tipología, y va entre{" "}
+            {fmtCLP(lider.referencia.rangoCLP.min)} y {fmtCLP(lider.referencia.rangoCLP.max)}. El precio de
+            equilibrio de arriba usa el punto medio: tómalo como orden de magnitud, no como cifra para negociar.
+          </p>
+        )}
+        {!liderEstimado && lider.muestraChica && (
           <p className="mt-3 max-w-[68ch] font-body text-[13px] italic text-[var(--franco-text-muted)]">
             Ojo con el respaldo de este número: el {corto(lider.dorms)} se apoya en {lider.nArriendos} arriendos
             publicados, la muestra más chica de las que se muestran acá. Con esa cantidad la mediana se mueve

@@ -86,6 +86,8 @@ interface ComunaStats {
   precioM2UF: number;
   precioM2CLP: number;
   arriendoCLP: number;
+  /** Cómo se armó ese arriendo; un estimado desde el m² comunal se rotula como tal. */
+  arriendoFuente?: "propia" | "estimada" | "mixta";
   rentabilidadBruta: number;
   plusvaliaAnualizada: number | null;
   /** Período de esa cifra; viaja con ella para no rotularla con un rango ajeno. */
@@ -730,7 +732,7 @@ function SinDeptoScreen({
         )}
         {estado === "sin-dato" && (
           <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0">
-            Todavía no tengo suficientes propiedades en {comuna} para dar una referencia
+            Todavía no tengo avisos suficientes en {comuna} ni para estimar una referencia
             honesta. Prefiero no inventarte un número.
           </p>
         )}
@@ -738,7 +740,17 @@ function SinDeptoScreen({
           <>
             <div className="grid grid-cols-2 gap-x-4 gap-y-5">
               <Dato label="Precio por m²" valor={fmtCLP(stats.precioM2CLP)} />
-              <Dato label="Arriendo mediano" valor={`${fmtCLP(stats.arriendoCLP)}/mes`} />
+              <Dato
+                label={stats.arriendoFuente === "estimada" ? "Arriendo estimado" : "Arriendo mediano"}
+                valor={`${fmtCLP(stats.arriendoCLP)}/mes`}
+                sub={
+                  stats.arriendoFuente === "estimada"
+                    ? "desde el m² comunal, no mediana propia"
+                    : stats.arriendoFuente === "mixta"
+                      ? "incluye tipologías estimadas desde el m² comunal"
+                      : undefined
+                }
+              />
               <Dato label="Rentabilidad bruta" valor={fmtPct(stats.rentabilidadBruta)} />
               <Dato
                 label="Plusvalía anual"

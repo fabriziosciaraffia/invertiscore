@@ -4,6 +4,13 @@ import { slugify } from "@/lib/utils";
 import { calcDividendo, calcPrecioParaCuota } from "@/lib/analysis";
 import { esTasaPlausible } from "@/lib/uf";
 import { TASA_MERCADO_FALLBACK } from "@/lib/constants/subsidio";
+import {
+  arriendoDeReferencia,
+  medianaArriendoUFm2Mes,
+  resolverReferenciaArriendo,
+  type ReferenciaArriendo,
+} from "@/lib/referencia-arriendo";
+import { getTodasLasProsas, publicabaDorms } from "@/lib/data/comuna-prosa";
 
 function getSupabase() {
   return createSupabaseClient(
@@ -53,17 +60,30 @@ export function bandaDeEsfuerzo(descuentoPct: number): BandaEsfuerzo {
  * La tipología que manda el titular de la comuna: la de más margen si alguna se
  * paga sola, y si ninguna lo hace, la que quedó más cerca. Vive acá y no en el
  * componente porque la usan el hero, la FAQ y el CTA — un solo criterio.
+ *
+ * Las filas con arriendo ESTIMADO no encabezan mientras haya alguna con mediana
+ * propia: en Santiago el 4D estimado (3 arriendos propios) salía líder con +26%
+ * de margen por sobre tres tipologías con cientos de avisos. Un estimado puede
+ * ser fila; no puede ser el titular de la comuna si hay dato real al lado.
  */
 export function tipologiaLider(tipologias: TipologiaStats[]): TipologiaStats | null {
   if (!tipologias.length) return null;
-  const cubren = tipologias.filter((t) => t.cubre);
-  const universo = cubren.length ? cubren : tipologias;
+  const propias = tipologias.filter((t) => t.referencia.fuente === "porTipologia");
+  const candidatas = propias.length ? propias : tipologias;
+  const cubren = candidatas.filter((t) => t.cubre);
+  const universo = cubren.length ? cubren : candidatas;
   // deltaPct MÁS ALTO = más margen si cubre, o menos descuento pendiente si no.
   return universo.reduce((a, b) => (b.deltaPct > a.deltaPct ? b : a));
 }
 
 /**
- * Una tipología (1D/2D/3D/4D) con muestra suficiente en la comuna.
+ * Referencia de arriendo de una fila PUBLICADA: mediana propia o estimado
+ * comunal. La variante `insuficiente` no llega a ser fila.
+ */
+export type ReferenciaArriendoPublicada = Exclude<ReferenciaArriendo, { fuente: "insuficiente" }>;
+
+/**
+ * Una tipología (1D/2D/3D/4D) publicada en la comuna.
  *
  * OJO CON LAS UNIDADES: los precios de acá son **UF del departamento completo**.
  * La sección de plusvalía de la misma página habla en **UF por m²** cuando la
@@ -73,9 +93,10 @@ export function tipologiaLider(tipologias: TipologiaStats[]): TipologiaStats | n
  */
 export interface TipologiaStats {
   dorms: number;
+  /** Arriendos publicados de ESTA tipología (los propios, aunque la fila sea estimada). */
   nArriendos: number;
   nVentas: number;
-  /** Mediana de arriendo mensual, CLP. */
+  /** Arriendo mensual con que se calcula, CLP: mediana propia o punto central del estimado (ver `referencia`). */
   arriendoCLP: number;
   /** Mediana de precio de venta del depto completo, CLP y UF. */
   ventaCLP: number;
@@ -96,8 +117,19 @@ export interface TipologiaStats {
   pieNecesarioPct: number | null;
   /** Banda de esfuerzo del descuento. Null cuando la tipología ya se paga sola. */
   banda: BandaEsfuerzo | null;
-  /** Menos de 50 arriendos publicados: la mediana se mueve con pocos datos. */
+  /**
+   * Menos de 50 arriendos PROPIOS detrás de una mediana de tipología: la
+   * mediana se mueve con pocos datos. Siempre false en una fila estimada, que
+   * lleva su propia marca (`referencia.fuente`).
+   */
   muestraChica: boolean;
+  /**
+   * De dónde sale `arriendoCLP`. `porTipologia`: mediana de los arriendos de
+   * ESTA tipología. `comunalPorM2`: la tipología no junta muestra propia y el
+   * arriendo es un ESTIMADO desde el m² de la comuna, con rango. Toda
+   * superficie que muestre el arriendo de una fila estimada lo dice.
+   */
+  referencia: ReferenciaArriendoPublicada;
 }
 
 /** Supuestos del crédito con los que se calculó el dividendo. Van SIEMPRE visibles. */
@@ -136,14 +168,16 @@ export interface ComunaStats {
   precioM2Promedio: number;       // UF/m²
   arriendoUFm2Mes: number;        // UF/m²/mes — arriendo unitario
   nSegmentos: number;             // cuántos segmentos (dormitorios) contribuyen
-  /** Desglose por tipología, ordenado por dormitorios. Omisión, nunca relleno:
-   *  la tipología sin muestra suficiente NO aparece. */
+  /** Desglose por tipología, ordenado por dormitorios. Sin ventas suficientes
+   *  la fila no existe. Sin arriendos propios pero con muestra comunal, la fila
+   *  aparece ESTIMADA y lo dice (`referencia.fuente === "comunalPorM2"`). Sin
+   *  ninguna de las dos, no aparece: no se interpola ni se rellena. */
   tipologias: TipologiaStats[];
   supuestos: SupuestosCredito;
   procedencia: ProcedenciaMuestra;
 }
 
-export const MIN_PER_TYPE = 20; // mínimo 20 arriendos Y 20 ventas por segmento
+export const MIN_PER_TYPE = 20; // mínimo 20 ventas por segmento; los arriendos los decide referencia-arriendo (20 propios, o el estimado comunal)
 const MIN_TOTAL = 50;    // mínimo 50 propiedades totales por comuna
 /** Menos de 50 arriendos: el doble del mínimo, donde la mediana deja de bailar. */
 const MIN_ARRIENDOS_MUESTRA_SOLIDA = 50;
@@ -213,6 +247,7 @@ interface SegmentResult {
   rentBruta: number;
   medianaM2UF: number;
   medianaArriendoUFm2: number; // UF/m²/mes
+  referencia: ReferenciaArriendoPublicada;
 }
 
 /** Lo que el cómputo deja listo para armar las ComunaStats. */
@@ -292,7 +327,7 @@ async function computeAllSegments(): Promise<SegmentsBundle> {
   // Group by comuna + dormitorios
   type GroupKey = string; // "comuna|dorms"
   const arrGroups = new Map<GroupKey, { precios: number[]; ufm2: number[] }>();
-  const venGroups = new Map<GroupKey, { precios: number[]; m2: number[] }>();
+  const venGroups = new Map<GroupKey, { precios: number[]; m2: number[]; sups: number[] }>();
 
   for (const r of arriendoRows) {
     const key = `${r.comuna}|${r.dormitorios}`;
@@ -306,14 +341,37 @@ async function computeAllSegments(): Promise<SegmentsBundle> {
 
   for (const r of ventaRows) {
     const key = `${r.comuna}|${r.dormitorios}`;
-    if (!venGroups.has(key)) venGroups.set(key, { precios: [], m2: [] });
+    if (!venGroups.has(key)) venGroups.set(key, { precios: [], m2: [], sups: [] });
     const g = venGroups.get(key)!;
     const precioCLP = r.moneda === "UF" ? r.precio * ufValue : r.precio;
     g.precios.push(precioCLP);
     if (r.superficie_m2 > 0) {
       g.m2.push(precioCLP / r.superficie_m2 / ufValue); // UF/m²
+      g.sups.push(r.superficie_m2);
     }
   }
+
+  // Muestra comunal de arriendo (todas las tipologías juntas): el insumo del
+  // estimado por m² cuando una tipología no junta la suya. Se cuenta sobre los
+  // mismos avisos que entran al cálculo, no sobre el total activo.
+  const comunalArr = new Map<string, { n: number; ufM2Mes: number }>();
+  {
+    const porComuna = new Map<string, RawRow[]>();
+    for (const r of arriendoRows) {
+      if (!porComuna.has(r.comuna)) porComuna.set(r.comuna, []);
+      porComuna.get(r.comuna)!.push(r);
+    }
+    for (const [comuna, rows] of Array.from(porComuna.entries())) {
+      comunalArr.set(comuna, { n: rows.length, ufM2Mes: medianaArriendoUFm2Mes(rows, ufValue) });
+    }
+  }
+
+  // Histéresis del estimado comunal: qué tipologías publicaba la prosa
+  // persistida de cada comuna. Entrar exige más muestra que mantenerse (ver
+  // referencia-arriendo.ts); sin prosa, la comuna entra con el umbral seco.
+  const prosas = await getTodasLasProsas();
+  const publicaba = new Map<string, Set<number>>();
+  for (const p of Array.from(prosas.values())) publicaba.set(p.comuna, publicabaDorms(p));
 
   // Calculate per-segment stats
   const segments: SegmentResult[] = [];
@@ -327,14 +385,31 @@ async function computeAllSegments(): Promise<SegmentsBundle> {
     const venData = venGroups.get(key);
     const venPrecios = venData?.precios ?? [];
 
-    if (arrPrecios.length < MIN_PER_TYPE || venPrecios.length < MIN_PER_TYPE) continue;
-
-    const medianaArriendo = median(arrPrecios);
+    // Ventas: sin 20 no hay precio mediano ni superficie de referencia, y sin
+    // eso no hay fila (el estimado de arriendo necesita la superficie de venta).
+    if (venPrecios.length < MIN_PER_TYPE) continue;
     const medianaVenta = median(venPrecios);
     const medianaM2UF = venData?.m2.length ? median(venData.m2) : 0;
-    const medianaArriendoUFm2 = arrData?.ufm2.length ? median(arrData.ufm2) : 0;
-
     if (medianaVenta <= 0 || medianaM2UF <= 0) continue;
+
+    // Arriendos: jerarquía de referencia-arriendo (tipología → comunal por m²
+    // → insuficiente). Solo la variante insuficiente deja a la fila afuera.
+    const referencia = resolverReferenciaArriendo({
+      dorms,
+      tipologia: { n: arrPrecios.length, medianaCLP: arrPrecios.length ? median(arrPrecios) : 0 },
+      comunal: comunalArr.get(comuna) ?? { n: 0, ufM2Mes: 0 },
+      superficieRefM2: venData?.sups.length ? median(venData.sups) : null,
+      ufCLP: ufValue,
+      publicabaAntes: publicaba.get(comuna)?.has(dorms) === true,
+    });
+    if (referencia.fuente === "insuficiente") continue;
+    const medianaArriendo = arriendoDeReferencia(referencia) ?? 0;
+    if (medianaArriendo <= 0) continue;
+    // UF/m²/mes del segmento: el propio si hay mediana propia; el implícito
+    // en el estimado (punto central / superficie de referencia) si no.
+    const medianaArriendoUFm2 = referencia.fuente === "porTipologia"
+      ? (arrData?.ufm2.length ? median(arrData.ufm2) : 0)
+      : referencia.estimadoCLP / referencia.superficieRefM2 / ufValue;
 
     segments.push({
       comuna,
@@ -346,6 +421,7 @@ async function computeAllSegments(): Promise<SegmentsBundle> {
       rentBruta: (medianaArriendo * 12 / medianaVenta) * 100,
       medianaM2UF,
       medianaArriendoUFm2,
+      referencia,
     });
   }
 
@@ -396,7 +472,8 @@ function construirTipologia(seg: SegmentResult, s: SupuestosCredito): TipologiaS
     deltaPct: Math.round(deltaPct * 10) / 10,
     pieNecesarioPct,
     banda: cubre ? null : bandaDeEsfuerzo(Math.abs(deltaPct)),
-    muestraChica: seg.nArr < MIN_ARRIENDOS_MUESTRA_SOLIDA,
+    muestraChica: seg.referencia.fuente === "porTipologia" && seg.nArr < MIN_ARRIENDOS_MUESTRA_SOLIDA,
+    referencia: seg.referencia,
   };
 }
 

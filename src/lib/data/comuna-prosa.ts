@@ -27,8 +27,12 @@ import { PLUSVALIA_ESTIMADO, coberturaPlusvaliaDe } from "@/lib/plusvalia-estima
  *  v2: unidades explícitas por cifra + guard de coherencia numérica. La v1
  *  producía errores de unidad que el guard de forma no veía — Macul publicó
  *  "UF 174.210 mensuales" por una brecha que estaba en PESOS, y Cerrillos dio
- *  dos precios de equilibrio distintos para la misma tipología. */
-export const PROMPT_VERSION_COMUNA = 2;
+ *  dos precios de equilibrio distintos para la misma tipología.
+ *  v3: filas con arriendo ESTIMADO desde el m² comunal (referencia-arriendo).
+ *  El bloque de datos las marca, entrega el rango, y el system trae el
+ *  ejemplo positivo de cómo citarlas; el guard `validarFuenteEstimada` caza
+ *  el estimado presentado como mediana. */
+export const PROMPT_VERSION_COMUNA = 3;
 
 /** Lo que la prosa narró, por tipología. Solo lo citable. */
 export interface SnapshotTipologia {
@@ -42,6 +46,13 @@ export interface SnapshotTipologia {
   precioCuotaUF: number;
   deltaPct: number;
   muestraChica: boolean;
+  /**
+   * De dónde salió `arriendoCLP` al generar. Ausente en snapshots anteriores
+   * a v3, que se leen como mediana propia. Está FUERA del comparador de drift
+   * a propósito: que una fila cambie de fuente sin mover su cifra no vuelve
+   * falsa a la prosa; sirve para la histéresis (`publicabaDorms`).
+   */
+  fuente?: "porTipologia" | "comunalPorM2";
 }
 
 export interface SnapshotProsa {
@@ -77,12 +88,22 @@ export function snapshotDe(stats: ComunaStats, liderDorms: number | null): Snaps
       precioCuotaUF: t.precioCuotaUF,
       deltaPct: t.deltaPct,
       muestraChica: t.muestraChica,
+      fuente: t.referencia.fuente,
     })),
     tasaAnual: stats.supuestos.tasaAnual,
     piePct: stats.supuestos.piePct,
     plazoAnos: stats.supuestos.plazoAnos,
     liderDorms,
   };
+}
+
+/**
+ * Tipologías (dorms) que la prosa persistida publicaba, con cualquier fuente.
+ * Es la señal de histéresis del estimado comunal: una fila que ya estaba
+ * se mantiene con menos muestra de la que necesitó para entrar.
+ */
+export function publicabaDorms(prosa: ProsaComuna | null): Set<number> {
+  return new Set((prosa?.snapshot.tipologias ?? []).map((t) => t.dorms));
 }
 
 /** Cuánto puede moverse una cifra citada antes de que la prosa quede vieja. */
@@ -141,6 +162,10 @@ export function detectarDrift(
     detalle.push(`lideraba el ${antes.liderDorms}D, ahora el ${liderDorms}D`);
   }
 
+  // La FUENTE del arriendo no se compara: una fila que pasa de mediana propia
+  // a estimado comunal (o al revés) con la misma cifra no vuelve vieja a la
+  // prosa. Lo que sí la vuelve vieja —que la cifra se mueva, que la fila
+  // aparezca o desaparezca, que cambie de lado— se detecta abajo igual que antes.
   for (const t of stats.tipologias) {
     const a = porDorms.get(t.dorms);
     if (!a) {
@@ -288,6 +313,13 @@ export function cifrasCitables(stats: ComunaStats): CifrasCitables {
     enteros.add(t.nArriendos);
     enteros.add(t.nVentas);
     enteros.add(t.dorms);
+    // Fila estimada: el prompt entrega el rango y la muestra comunal, así que
+    // el modelo puede citarlos con razón.
+    if (t.referencia.fuente === "comunalPorM2") {
+      clp.add(t.referencia.rangoCLP.min);
+      clp.add(t.referencia.rangoCLP.max);
+      enteros.add(t.referencia.nComunal);
+    }
   }
   pct.add(stats.supuestos.piePct);
   pct.add(stats.supuestos.tasaAnual);
@@ -401,6 +433,45 @@ const MARGEN_CON_PRECIO = /(margen|colch[óo]n|holgura)\s+(de|del|es|:)\s*UF\s?[
  * y rechazó a Ñuñoa y San Joaquín por frases bien escritas.
  */
 const EQUILIBRIO_SIN_PRECIO = /precio de equilibrio\s+(de|del|es|:)\s*(\$\s?[\d.]+|[\d]+(?:[.,]\d+)?\s?%)/i;
+
+// ─────────────────────────────────────────────────────────────────────────
+// Guard de FUENTE ESTIMADA
+//
+// Una fila con arriendo estimado desde el m² comunal no tiene mediana propia.
+// El prompt lo marca y entrega el rango; el ejemplo positivo del system dice
+// cómo citarlo. Este guard caza el error residual: la cifra del estimado (o
+// un extremo de su rango) presentada como "mediana" o "promedio" de la
+// tipología. Ventana corta y con escape: "con la mediana de la comuna se
+// estima entre $X y $Y" es correcto, porque la mediana que se nombra es la
+// comunal y el verbo dice lo que es. Estrecho a propósito, igual que el
+// guard de roles: lo que no cubre vive en el prompt y en la revisión.
+// ─────────────────────────────────────────────────────────────────────────
+
+const VENTANA_ANTES = 45;
+const VENTANA_DESPUES = 30;
+
+export function validarFuenteEstimada(texto: string, stats: ComunaStats): string[] {
+  const errores: string[] = [];
+  for (const t of stats.tipologias) {
+    if (t.referencia.fuente !== "comunalPorM2") continue;
+    const cifras = new Set([t.arriendoCLP, t.referencia.rangoCLP.min, t.referencia.rangoCLP.max]);
+    for (const c of Array.from(cifras)) {
+      const literal = c.toLocaleString("es-CL").replace(/\./g, "\\.");
+      const re = new RegExp(`\\$\\s?${literal}(?!\\.?\\d)`, "g");
+      for (const m of Array.from(texto.matchAll(re))) {
+        const i = m.index ?? 0;
+        const antes = texto.slice(Math.max(0, i - VENTANA_ANTES), i);
+        const ventana = antes + texto.slice(i, i + m[0].length + VENTANA_DESPUES);
+        if (/median[ao]s?|promedio/i.test(antes) && !/estim|aproxim/i.test(ventana)) {
+          errores.push(
+            `fuente equivocada: "${antes.trim()} ${m[0]}" — el arriendo del ${t.dorms}D es un estimado comunal, no una mediana de la tipología`
+          );
+        }
+      }
+    }
+  }
+  return errores;
+}
 
 export function validarRolesDeCifras(texto: string): string[] {
   const errores: string[] = [];

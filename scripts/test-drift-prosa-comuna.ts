@@ -18,7 +18,7 @@
  */
 
 import assert from "node:assert/strict";
-import { detectarDrift, snapshotDe, validarCoherenciaNumerica, validarRolesDeCifras, PROMPT_VERSION_COMUNA, type ProsaComuna } from "../src/lib/data/comuna-prosa";
+import { detectarDrift, publicabaDorms, snapshotDe, validarCoherenciaNumerica, validarFuenteEstimada, validarRolesDeCifras, PROMPT_VERSION_COMUNA, type ProsaComuna } from "../src/lib/data/comuna-prosa";
 import type { ComunaStats, TipologiaStats } from "../src/lib/data/comunas-seo";
 
 let pass = 0, fail = 0;
@@ -43,8 +43,22 @@ function tip(over: Partial<TipologiaStats> = {}): TipologiaStats {
     brechaCLP: -289_700, cubre: false,
     precioCuotaCLP: 248_000_000, precioCuotaUF: 6_086,
     deltaPct: -23.4, pieNecesarioPct: 39, banda: "dificil", muestraChica: false,
+    referencia: { fuente: "porTipologia", n: 400, medianaCLP: 950_000 },
     ...over,
   };
+}
+
+/** La misma fila, pero con el arriendo ESTIMADO desde el m² comunal y la misma cifra. */
+function tipEstimada(over: Partial<TipologiaStats> = {}): TipologiaStats {
+  return tip({
+    nArriendos: 12,
+    referencia: {
+      fuente: "comunalPorM2", nComunal: 15, ufM2Mes: 0.25, superficieRefM2: 60,
+      factorTipologia: 0.935, errorResidualPct: 11.7,
+      estimadoCLP: 950_000, rangoCLP: { min: 839_000, max: 1_061_000 },
+    },
+    ...over,
+  });
 }
 
 function stats(tipologias: TipologiaStats[], tasaAnual = 4.0): ComunaStats {
@@ -151,6 +165,93 @@ test("los motivos no se repiten aunque los gatille más de una tipología", () =
   ]);
   const d = detectarDrift(p, s2, 2);
   assert.equal(new Set(d.motivos).size, d.motivos.length);
+});
+
+// ── Fuente del arriendo: fuera del comparador, dentro del snapshot ──────────
+
+console.log("\nFuente · cambiar de fuente no es drift; una fila nueva sí");
+
+test("una fila pasa de mediana propia a estimado comunal con la misma cifra → SIN drift", () => {
+  const s = stats([tip()]);
+  const p = prosaDe(s, 2);
+  const s2 = stats([tipEstimada()]);
+  const d = detectarDrift(p, s2, 2);
+  assert.equal(d.hayDrift, false, `motivos: ${d.motivos.join(", ")} · ${d.detalle.join(" / ")}`);
+});
+
+test("y al revés: de estimado a mediana propia, misma cifra → SIN drift", () => {
+  const s = stats([tipEstimada()]);
+  const p = prosaDe(s, 2);
+  const d = detectarDrift(p, stats([tip()]), 2);
+  assert.equal(d.hayDrift, false, `motivos: ${d.motivos.join(", ")}`);
+});
+
+test("el snapshot SÍ guarda la fuente, aunque el comparador no la mire", () => {
+  assert.equal(snapshotDe(stats([tip()]), 2).tipologias[0].fuente, "porTipologia");
+  assert.equal(snapshotDe(stats([tipEstimada()]), 2).tipologias[0].fuente, "comunalPorM2");
+});
+
+test("un snapshot anterior a v3 (sin fuente) se compara igual y no dispara", () => {
+  const s = stats([tip()]);
+  const p = prosaDe(s, 2);
+  delete p.snapshot.tipologias[0].fuente;
+  assert.equal(detectarDrift(p, s, 2).hayDrift, false);
+});
+
+test("aparece una tipología ESTIMADA nueva → drift (cambio-de-tipologias)", () => {
+  const s = stats([tip({ dorms: 2 })]);
+  const p = prosaDe(s, 2);
+  const d = detectarDrift(p, stats([tip({ dorms: 2 }), tipEstimada({ dorms: 3 })]), 2);
+  assert.equal(d.hayDrift, true);
+  assert.ok(d.motivos.includes("cambio-de-tipologias"), `motivos: ${d.motivos.join(", ")}`);
+});
+
+test("una fila estimada que mueve su cifra sobre la tolerancia → drift, como cualquier otra", () => {
+  const p = prosaDe(stats([tipEstimada()]), 2);
+  const d = detectarDrift(p, stats([tipEstimada({ arriendoCLP: 950_000 * 1.09 })]), 2);
+  assert.ok(d.motivos.includes("cifra-movida"));
+});
+
+test("publicabaDorms lee del snapshot qué tipologías había, con cualquier fuente", () => {
+  const p = prosaDe(stats([tip({ dorms: 1 }), tipEstimada({ dorms: 3 })]), 1);
+  assert.deepEqual(Array.from(publicabaDorms(p)).sort(), [1, 3]);
+  assert.equal(publicabaDorms(null).size, 0);
+});
+
+// ── Guard de fuente estimada ────────────────────────────────────────────────
+
+console.log("\nFuente estimada · el estimado no se cita como mediana");
+
+const conEstimada = stats([tip({ dorms: 1 }), tipEstimada({ dorms: 3 })]);
+
+test("el estimado presentado como mediana de la tipología se rechaza", () => {
+  const e = validarFuenteEstimada("El 3D tiene una mediana de $950.000 al mes.", conEstimada);
+  assert.equal(e.length, 1, e.join(" · "));
+  assert.ok(e[0].includes("estimado comunal"));
+});
+
+test("un extremo del rango presentado como promedio también se rechaza", () => {
+  const e = validarFuenteEstimada("El promedio del 3D ronda los $1.061.000.", conEstimada);
+  assert.equal(e.length, 1, e.join(" · "));
+});
+
+test("el ejemplo positivo del prompt pasa: estimado con rango", () => {
+  const e = validarFuenteEstimada("El 3D no tiene arriendos propios; con el metro cuadrado de la comuna se estima entre $839.000 y $1.061.000.", conEstimada);
+  assert.deepEqual(e, []);
+});
+
+test("nombrar la mediana COMUNAL como origen del estimado es correcto", () => {
+  const e = validarFuenteEstimada("Con la mediana de la comuna se estima entre $839.000 y $1.061.000 para el 3D.", conEstimada);
+  assert.deepEqual(e, []);
+});
+
+test("la mediana propia de otra tipología no se confunde con el estimado", () => {
+  const e = validarFuenteEstimada("El 1D tiene una mediana de $950.000.", stats([tip({ dorms: 1, arriendoCLP: 950_000 })]));
+  assert.deepEqual(e, []);
+});
+
+test("cifrasCitables incluye el rango del estimado, así el guard numérico no lo rechaza", () => {
+  assert.deepEqual(validarCoherenciaNumerica("Se estima entre $839.000 y $1.061.000.", conEstimada), []);
 });
 
 // ── Coherencia numérica: los errores REALES del primer lote ─────────────────

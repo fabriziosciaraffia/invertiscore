@@ -27,6 +27,7 @@ import {
   getTodasLasProsas,
   snapshotDe,
   validarCoherenciaNumerica,
+  validarFuenteEstimada,
   validarRolesDeCifras,
 } from "@/lib/data/comuna-prosa";
 import { coberturaPlusvaliaDe, PLUSVALIA_ESTIMADO } from "@/lib/plusvalia-estimado.gen";
@@ -88,6 +89,12 @@ REGLAS DE RAZONAMIENTO
 - Solo puedes afirmar lo que está en los DATOS que recibes. Nada de metro,
   proyectos, barrios, seguridad, colegios ni plazos de obras: no los tienes.
 - Si la muestra de una tipología es chica, no la celebres sin decirlo.
+- Una tipología marcada ARRIENDO ESTIMADO no tiene mediana propia: su arriendo
+  sale del metro cuadrado de la comuna y viene como RANGO. Si la citas, dilo
+  como estimación y con su rango. Así se hace bien: "El 3D no tiene arriendos
+  publicados propios; con el metro cuadrado de la comuna se estima entre
+  $[mínimo] y $[máximo], y ni con el techo de ese rango cubre la cuota".
+  Así NO: "el 3D tiene una mediana de $[punto medio]".
 
 VOZ
 - Español chileno, tuteo neutro. Nunca voseo ("tenés", "podés") ni chilenismos
@@ -116,8 +123,12 @@ function bloqueDatos(stats: ComunaStats): string {
         ? `deja de pagarse sola sobre ${ufTxt(t.precioCuotaUF)} [UF, PRECIO de compra] — el margen es ${pctTxt(t.deltaPct)} sobre la mediana [PORCENTAJE, no un precio]`
         : `se equilibraría a ${ufTxt(t.precioCuotaUF)} [UF, PRECIO de compra] — está ${pctTxt(t.deltaPct)} bajo la mediana [PORCENTAJE]${t.pieNecesarioPct !== null ? `, o con pie de ${t.pieNecesarioPct}%` : ""}`;
       return [
-        `- ${t.dorms}D${t.muestraChica ? " (MUESTRA CHICA)" : ""} · ${t.nArriendos} arriendos / ${t.nVentas} ventas publicadas`,
-        `    arriendo mediano: ${fmtCLP(t.arriendoCLP)} [PESOS, mensual]`,
+        t.referencia.fuente === "comunalPorM2"
+          ? `- ${t.dorms}D (ARRIENDO ESTIMADO: solo ${t.nArriendos} arriendos propios publicados; se estima desde el m² de los ${t.referencia.nComunal} arriendos de la comuna) · ${t.nVentas} ventas publicadas`
+          : `- ${t.dorms}D${t.muestraChica ? " (MUESTRA CHICA)" : ""} · ${t.nArriendos} arriendos / ${t.nVentas} ventas publicadas`,
+        t.referencia.fuente === "comunalPorM2"
+          ? `    arriendo estimado: entre ${fmtCLP(t.referencia.rangoCLP.min)} y ${fmtCLP(t.referencia.rangoCLP.max)} [PESOS, mensual, RANGO estimado: NO es una mediana]; la cuota y la diferencia de abajo usan el punto medio ${fmtCLP(t.arriendoCLP)}`
+          : `    arriendo mediano: ${fmtCLP(t.arriendoCLP)} [PESOS, mensual]`,
         `    precio mediano: ${ufTxt(t.ventaUF)} [UF, depto completo]`,
         `    cuota del crédito: ${fmtCLP(t.dividendoCLP)} [PESOS, mensual]`,
         `    diferencia arriendo − cuota: ${t.brechaCLP >= 0 ? "sobran " : "faltan "}${fmtCLP(Math.abs(t.brechaCLP))} [PESOS, mensual]`,
@@ -138,7 +149,7 @@ function bloqueDatos(stats: ComunaStats): string {
 
 SUPUESTOS DE LA CUOTA (los mismos que muestra la página): pie ${s.piePct}%, plazo ${s.plazoAnos} años, tasa ${s.tasaAnual}% anual. La cuota es SOLO el crédito: no incluye gastos comunes, contribuciones ni seguros.
 
-TIPOLOGÍAS CON MUESTRA SUFICIENTE (${stats.tipologias.length} de 4; las que no aparecen no tienen datos suficientes y NO debes mencionarlas como si los tuvieran):
+TIPOLOGÍAS PUBLICADAS (${stats.tipologias.length} de 4; las que no aparecen no tienen ni arriendos propios ni muestra comunal para estimar, y NO debes mencionarlas como si los tuvieran):
 ${filas}
 
 RESUMEN: ${cubren} de ${stats.tipologias.length} tipologías se pagan solas.${lider ? ` La que encabeza es el ${lider.dorms}D.` : ""}
@@ -206,6 +217,7 @@ function validar(texto: string, stats: ComunaStats): string[] {
   // equilibrio distintos para la misma tipología).
   errores.push(...validarCoherenciaNumerica(texto, stats));
   errores.push(...validarRolesDeCifras(texto));
+  errores.push(...validarFuenteEstimada(texto, stats));
   return errores;
 }
 

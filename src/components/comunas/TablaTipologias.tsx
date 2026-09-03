@@ -9,6 +9,12 @@
 // encabezados dicen su unidad, las tarjetas de móvil también, y el bloque de
 // supuestos la repite en prosa.
 //
+// FUENTE DEL ARRIENDO — el segundo cuidado. Una fila puede traer la mediana de
+// sus propios arriendos o un ESTIMADO desde el m² comunal cuando la tipología
+// no junta muestra (referencia-arriendo.ts). La fila estimada se marca, publica
+// su arriendo como RANGO y dice cuántos arriendos de la comuna hay detrás. Nunca
+// se presenta con el mismo rótulo que una mediana.
+//
 // ANCHO — la primera versión se pasaba ~257px del contenedor (1.052px útiles) y
 // truncaba justo la columna del precio de equilibrio, que es el dato más
 // diferenciador. El culpable no eran los datos sino DOS ENCABEZADOS con
@@ -20,12 +26,14 @@
 // mide 821px naturales contra 703px de contenedor y seguía pidiendo scroll
 // lateral. Desde 1024 el contenedor da 976px y entra con holgura.
 //
-// Signal Red solo en la brecha negativa (uso #2 de Capa 1). La marca de muestra
-// chica va en Ink + tipografía — no es uso permitido del rojo.
+// Signal Red solo en la brecha negativa (uso #2 de Capa 1). Las marcas de
+// muestra chica y de estimado van en Ink + tipografía — no es uso permitido
+// del rojo.
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { ComunaStats, TipologiaStats } from "@/lib/data/comunas-seo";
-import { fmtCLP } from "@/lib/data/comunas-seo";
+import { MIN_PER_TYPE, fmtCLP } from "@/lib/data/comunas-seo";
+import { MIN_ARRIENDOS_COMUNAL_ENTRA, MIN_ARRIENDOS_TIPOLOGIA } from "@/lib/referencia-arriendo";
 
 const NOMBRE_TIPOLOGIA: Record<number, string> = {
   1: "1 dormitorio",
@@ -42,6 +50,24 @@ function pct1(n: number): string {
 
 function uf(n: number): string {
   return `UF ${n.toLocaleString("es-CL")}`;
+}
+
+function esEstimada(t: TipologiaStats): boolean {
+  return t.referencia.fuente === "comunalPorM2";
+}
+
+/** "$839.000–$1.061.000" para una fila estimada. */
+function rangoArriendo(t: TipologiaStats): string {
+  if (t.referencia.fuente !== "comunalPorM2") return fmtCLP(t.arriendoCLP);
+  return `${fmtCLP(t.referencia.rangoCLP.min)}–${fmtCLP(t.referencia.rangoCLP.max)}`;
+}
+
+/** Línea de muestra: los avisos propios, o los de la comuna si la fila es estimada. */
+function lineaMuestra(t: TipologiaStats): string {
+  if (t.referencia.fuente === "comunalPorM2") {
+    return `${t.referencia.nComunal.toLocaleString("es-CL")} arriendos de la comuna · ${t.nVentas.toLocaleString("es-CL")} ventas`;
+  }
+  return `${t.nArriendos.toLocaleString("es-CL")} arriendos · ${t.nVentas.toLocaleString("es-CL")} ventas`;
 }
 
 /** Encabezado en dos líneas: rótulo arriba, unidad abajo. Sin `nowrap`. */
@@ -63,11 +89,17 @@ function Th({ children, unidad, alineado = "right", destacado = false }: {
   );
 }
 
-/** La marca de muestra chica, en Ink. Se reusa en tabla y tarjetas. */
-function MarcaMuestraChica() {
+/**
+ * La marca de respaldo de la fila, en Ink. Se reusa en tabla y tarjetas. Una
+ * fila estimada nunca lleva "muestra chica": no es una mediana con pocos datos,
+ * es otra cosa, y se llama por su nombre.
+ */
+function MarcaRespaldo({ t }: { t: TipologiaStats }) {
+  const texto = esEstimada(t) ? "Estimado · m² comunal" : t.muestraChica ? "Muestra chica" : null;
+  if (!texto) return null;
   return (
     <span className="mt-1 inline-block rounded-full border border-[var(--franco-border)] px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-[var(--franco-text-secondary)]">
-      Muestra chica
+      {texto}
     </span>
   );
 }
@@ -95,13 +127,15 @@ function TarjetasTipologias({ tips }: { tips: TipologiaStats[] }) {
             </span>
           </div>
           <p className="mt-0.5 font-mono text-[10px] tracking-[0.04em] text-[var(--franco-text-muted)]">
-            {t.nArriendos} arriendos · {t.nVentas} ventas
+            {lineaMuestra(t)}
           </p>
-          {t.muestraChica && <MarcaMuestraChica />}
+          <MarcaRespaldo t={t} />
 
           <dl className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3">
             {[
-              { l: "Arriendo mediana", v: fmtCLP(t.arriendoCLP) },
+              esEstimada(t)
+                ? { l: "Arriendo estimado", v: rangoArriendo(t), u: "rango · m² comunal" }
+                : { l: "Arriendo mediana", v: fmtCLP(t.arriendoCLP) },
               { l: "Precio mediana", v: uf(t.ventaUF), u: "UF del depto" },
               { l: "Rentab. bruta", v: pct1(t.rentabilidadBruta) },
               { l: "Dividendo est.", v: fmtCLP(t.dividendoCLP) },
@@ -156,6 +190,7 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
   if (!tips.length) return null;
   const s = stats.supuestos;
   const algunaCubre = tips.some((t) => t.cubre);
+  const estimadas = tips.filter(esEstimada);
 
   return (
     <section className="mt-14">
@@ -176,7 +211,7 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
           <thead>
             <tr className="border-b border-[var(--franco-border)]">
               <Th alineado="left">Tipología</Th>
-              <Th>Arriendo mediana</Th>
+              <Th unidad={estimadas.length ? "mediana, o rango estimado" : undefined}>Arriendo</Th>
               <Th unidad="UF del depto">Precio mediana</Th>
               <Th>Rentab. bruta</Th>
               <Th>Dividendo est.</Th>
@@ -194,12 +229,17 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
                     {NOMBRE_TIPOLOGIA[t.dorms]}
                   </span>
                   <span className="mt-0.5 block whitespace-nowrap font-mono text-[10px] tracking-[0.04em] text-[var(--franco-text-muted)]">
-                    {t.nArriendos} arriendos · {t.nVentas} ventas
+                    {lineaMuestra(t)}
                   </span>
-                  {t.muestraChica && <MarcaMuestraChica />}
+                  <MarcaRespaldo t={t} />
                 </td>
                 <td className="whitespace-nowrap px-3 py-4 text-right font-mono text-[13px] text-[var(--franco-text)]">
-                  {fmtCLP(t.arriendoCLP)}
+                  {rangoArriendo(t)}
+                  {esEstimada(t) && (
+                    <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">
+                      estimado
+                    </span>
+                  )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-4 text-right font-mono text-[13px] text-[var(--franco-text)]">
                   {uf(t.ventaUF)}
@@ -260,12 +300,23 @@ export function TablaTipologias({ stats }: { stats: ComunaStats }) {
           seguros. Por eso el precio de equilibrio de esta tabla es el precio al que el arriendo cubre{" "}
           <b>la cuota</b> — los gastos reales del edificio lo empujan más abajo, y cuánto depende de cada
           propiedad. Todos los precios de esta tabla son <b>UF del departamento completo</b>, no UF por m².
+          {estimadas.length > 0 && (
+            <>
+              {" "}
+              En {estimadas.length === 1 ? "la fila estimada" : "las filas estimadas"}, la cuota y la diferencia
+              usan el punto medio del rango de arriendo.
+            </>
+          )}
         </p>
       </div>
 
       <p className="mt-5 max-w-[82ch] border-l-[3px] border-[var(--franco-border)] py-1 pl-4 font-body text-[13px] text-[var(--franco-text-muted)]">
-        Solo aparecen las tipologías con al menos 20 arriendos y 20 ventas publicadas. Si un segmento no
-        llega, la fila no existe: no se interpola ni se promedia con el vecino.
+        Cada fila necesita al menos {MIN_PER_TYPE} ventas publicadas: sin eso no hay precio mediano y la
+        fila no existe. El arriendo sale de los avisos propios de la tipología cuando hay{" "}
+        {MIN_ARRIENDOS_TIPOLOGIA} o más. Si no los hay pero la comuna junta {MIN_ARRIENDOS_COMUNAL_ENTRA}{" "}
+        arriendos entre todas sus tipologías, Franco lo estima desde el metro cuadrado comunal ajustado por
+        tipología, lo marca como estimado y lo publica como rango, no como cifra exacta. Cuando ni eso
+        alcanza, la fila no aparece: no se interpola ni se promedia con el vecino.
       </p>
     </section>
   );
@@ -281,6 +332,9 @@ export function ProcedenciaMuestraBloque({ stats }: { stats: ComunaStats }) {
       })
     : "—";
   const excluidos = p.activosTotales - p.enCalculo;
+  const estimadas = stats.tipologias.filter(esEstimada);
+  const propias = stats.tipologias.length - estimadas.length;
+  const nComunal = estimadas[0]?.referencia.fuente === "comunalPorM2" ? estimadas[0].referencia.nComunal : 0;
 
   return (
     <section className="mt-14">
@@ -299,22 +353,46 @@ export function ProcedenciaMuestraBloque({ stats }: { stats: ComunaStats }) {
           <b className="mt-0.5 block font-mono text-[17px] font-bold text-[var(--franco-text)]">{fecha}</b>
         </div>
         <div className="font-body text-xs text-[var(--franco-text-muted)]">
-          Tipologías con muestra suficiente
+          Tipologías publicadas
           <b className="mt-0.5 block font-mono text-[17px] font-bold text-[var(--franco-text)]">
             {stats.tipologias.length} de 4
           </b>
+          {estimadas.length > 0 && (
+            <span className="mt-0.5 block font-mono text-[10px] tracking-[0.04em] text-[var(--franco-text-muted)]">
+              {propias} con arriendos propios · {estimadas.length} con arriendo estimado
+            </span>
+          )}
         </div>
       </div>
-      {excluidos > 0 && (
+      {(excluidos > 0 || estimadas.length > 0) && (
         <p className="mt-4 max-w-[82ch] border-l-[3px] border-[var(--franco-border)] py-1 pl-4 font-body text-[13px] text-[var(--franco-text-muted)]">
           <b className="text-[var(--franco-text-secondary)]">Qué cuenta ese número.</b> {stats.nombre} tiene{" "}
           {p.activosTotales.toLocaleString("es-CL")} avisos activos y{" "}
-          {p.enCalculo.toLocaleString("es-CL")} entran en el cálculo. Los {excluidos.toLocaleString("es-CL")}{" "}
-          restantes quedaron fuera porque no publican superficie ({p.sinSuperficie.toLocaleString("es-CL")}) o
-          están fuera del rango de 1 a 4 dormitorios ({p.fueraDeRango.toLocaleString("es-CL")}) — hay avisos
-          que fallan las dos cosas, así que las dos cifras no suman el total.
-          {p.bajoUmbral > 0 && (
-            <> Otros {p.bajoUmbral.toLocaleString("es-CL")} cayeron en tipologías sin muestra suficiente.</>
+          {p.enCalculo.toLocaleString("es-CL")} entran en el cálculo.
+          {excluidos > 0 && (
+            <>
+              {" "}
+              Los {excluidos.toLocaleString("es-CL")} restantes quedaron fuera porque no publican superficie (
+              {p.sinSuperficie.toLocaleString("es-CL")}) o están fuera del rango de 1 a 4 dormitorios (
+              {p.fueraDeRango.toLocaleString("es-CL")}) — hay avisos que fallan las dos cosas, así que las dos
+              cifras no suman el total.
+              {p.bajoUmbral > 0 && (
+                <>
+                  {" "}
+                  {p.bajoUmbral === 1
+                    ? "Otro aviso cayó en una tipología que no llega a publicarse."
+                    : `Otros ${p.bajoUmbral.toLocaleString("es-CL")} cayeron en tipologías que no llegan a publicarse.`}
+                </>
+              )}
+            </>
+          )}
+          {estimadas.length > 0 && (
+            <>
+              {" "}
+              {estimadas.length === 1 ? "La fila estimada no suma" : "Las filas estimadas no suman"} arriendos
+              propios a ese número: su arriendo sale del metro cuadrado de los {nComunal.toLocaleString("es-CL")} arriendos publicados en
+              la comuna.
+            </>
           )}{" "}
           El label dice &ldquo;que entran en el cálculo&rdquo; justamente para no leerse como el tamaño del
           mercado de la comuna.
