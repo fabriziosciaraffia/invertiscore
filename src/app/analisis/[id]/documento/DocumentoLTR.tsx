@@ -1,3 +1,10 @@
+// ============================================================================
+// DocumentoLTR — FUERA DE LA UI desde T5 (03-sep-2026): se reescribe sobre los cinco
+// capítulos después de STR (LTR + STR + AMBAS juntos). La ruta /analisis/[id]/documento
+// redirige al informe web y la API /pdf responde 410. Este archivo queda como base de
+// la reescritura: estructura pre-T3 (portada con score y dimensiones, hallazgos por
+// frase, 02-06), gates de Comprar propios y prosa redactada en el render.
+// ============================================================================
 // ─────────────────────────────────────────────────────────────────────────
 // DocumentoLTR — vista DOCUMENTO del informe LTR (server component, sin estado).
 // Implementa el contrato assets-export/mockup-pdf-ltr.html (v2.1). Cero

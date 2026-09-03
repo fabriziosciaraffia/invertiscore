@@ -33,11 +33,22 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/** T5: el PDF LTR vuelve a la UI cuando se reescriba sobre los cinco capítulos. */
+const PDF_LTR_VISIBLE = false;
+
 export default async function DocumentoLTRPage({
   params,
 }: {
   params: { id: string };
 }) {
+  // T5 (03-sep-2026): el documento LTR está fuera de la UI — redirige al informe web
+  // ANTES de consultar nada (sin fila, sin recompute). El resto de esta página y
+  // DocumentoLTR.tsx se quedan en el repo para la reescritura sobre los cinco capítulos
+  // (goal propio después de STR). STR y AMBAS no pasan por acá.
+  if (!PDF_LTR_VISIBLE) {
+    redirect(`/analisis/${params.id}?desde=documento`);
+  }
+
   const supabase = createClient();
 
   const [{ data: { user } }, ufValue] = await Promise.all([

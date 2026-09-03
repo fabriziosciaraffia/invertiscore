@@ -23,6 +23,9 @@ import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
 import { renderPdf } from "@/lib/pdf/render-pdf";
 import { accesoPdf, logDenegacion } from "@/lib/pdf/documento-access";
+
+/** T5: el PDF LTR vuelve cuando se reescriba sobre los cinco capítulos. */
+const PDF_LTR_VISIBLE = false;
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 
 export const runtime = "nodejs";
@@ -45,6 +48,16 @@ export async function GET(
       .single();
     if (!row) {
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
+    }
+
+    // T5 (03-sep-2026): el PDF LTR está fuera de la UI hasta que se reescriba sobre los
+    // cinco capítulos. La vista /documento redirige al informe web, así que renderizar
+    // acá solo produciría un PDF del redirect. 410: retirado, no roto.
+    if (!PDF_LTR_VISIBLE) {
+      return NextResponse.json(
+        { error: "El PDF del informe LTR está fuera de la UI desde T5; se reescribe sobre los cinco capítulos." },
+        { status: 410 },
+      );
     }
 
     // Gating dueño-only (D-1). Va ANTES de todo lo demás: sin esto, gatear la

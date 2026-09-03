@@ -39,9 +39,10 @@ export function AnalysisNav({
   // conserva la navegación general.
   const actions = (isGuest || subordinated) ? null : (
     <div className="flex items-center gap-2">
+      {/* T5: sin `pdfUrl` — el PDF LTR está fuera de la UI hasta que se reescriba
+          sobre los cinco capítulos (goal propio después de STR). STR y AMBAS siguen. */}
       <ShareButton
         path={`/analisis/${analysisId}`}
-        pdfUrl={`/api/analisis/${analysisId}/pdf`}
         analysisId={analysisId}
         modalidad="LTR"
         title={`Análisis Franco: ${nombre}`}
