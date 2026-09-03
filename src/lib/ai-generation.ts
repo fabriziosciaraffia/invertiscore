@@ -746,7 +746,7 @@ Labels y preguntas constantes (no derivar — usar EXACTAMENTE estos strings):
 - costoMensual.pregunta: "¿Qué te cuesta mes a mes?"
 - costoMensual.cajaLabel: "Hazte esta pregunta:"
 - negociacion.pregunta: "¿Hay margen para negociar?"
-- negociacion.cajaLabel: "Guión para la contraoferta:"
+- negociacion.cajaLabel: "Guión para la contraoferta:" — salvo cuando el bloque de negociación declara caso ESTRUCTURAL (sin plan ni anclas): ahí va "Qué haces con esto:", porque no hay contraoferta que guionar
 - largoPlazo.pregunta: "¿Vale la pena a 10 años?"
 - largoPlazo.cajaLabel: "La apuesta que estás haciendo:"
 

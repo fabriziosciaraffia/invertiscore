@@ -821,7 +821,8 @@ export function DrawerNegociacion({
       {(() => {
         const caja = currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf;
         // D-16 — el título del cierre va sin ":" final (la IA a veces lo trae).
-        const tituloCierre = capitulo ? "Guión para la contraoferta" : (data.cajaLabel || "Qué haces con esto").replace(/\s*:\s*$/, "");
+        // Un caso estructural no tiene contraoferta que guionar: el cierre se titula como decisión.
+        const tituloCierre = capitulo ? (esEstructuralNeg ? "Qué haces con esto" : "Guión para la contraoferta") : (data.cajaLabel || "Qué haces con esto").replace(/\s*:\s*$/, "");
         return caja ? (
           <VCierre titulo={tituloCierre}>{plumonInline(caja)}</VCierre>
         ) : (
