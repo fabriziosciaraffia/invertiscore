@@ -26,7 +26,7 @@ import { parseNumeroCL, type Decimales } from "@/lib/numero-cl";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import type { Anomalia, PlausibilidadInput } from "@/lib/plausibilidad";
 import { DEC, decPie, type WizardV4Answers } from "./wizardV4Nodes";
-import { leerNum } from "./derive";
+import { leerNum, type FuenteArriendo } from "./derive";
 
 export interface SubmitContext {
   ufCLP: number;
@@ -36,6 +36,11 @@ export interface SubmitContext {
   /** Arriendo mediana de la zona (fallback para zonaRadio). */
   arriendoSugerido: number | null;
   arriendoN: number;
+  /** Nivel de la sugerencia. Viaja en zonaRadio.arriendoFuente para que el
+   *  informe rotule la referencia por lo que es y no reproche contra un estimado. */
+  arriendoFuente: FuenteArriendo;
+  /** Solo comuna-m2: rango del estimado, persistido junto a la fuente. */
+  arriendoRango: { min: number; max: number } | null;
   precioM2UF: number | null;
   radiusUsed: number | null;
   ggccSugerido: number | null;
@@ -136,6 +141,11 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
       arriendoPromedio: ctx.arriendoSugerido,
       arriendoPrecioM2: null,
       sampleSizeArriendo: ctx.arriendoN,
+      // Fuente y rango de la sugerencia (arriendo-referencia.ts los lee; filas
+      // anteriores al campo se leen como radio, que es lo que eran).
+      arriendoFuente: ctx.arriendoFuente,
+      arriendoRangoMin: ctx.arriendoRango?.min ?? null,
+      arriendoRangoMax: ctx.arriendoRango?.max ?? null,
       sampleSizeVenta: 0,
       radioMetros: ctx.radiusUsed ?? 500,
       lat: a.lat,

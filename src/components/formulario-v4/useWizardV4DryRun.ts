@@ -57,6 +57,8 @@ export function useWizardV4DryRun(answers: WizardV4Answers, data: WizardV4Data):
       tasaMercado: data.tasaMercado,
       arriendoSugerido: data.arriendoSugerido,
       arriendoN: data.arriendoN,
+      arriendoFuente: data.arriendoFuente,
+      arriendoRango: data.arriendoRango,
       precioM2UF: data.precioM2UF,
       radiusUsed: data.radiusUsed,
       ggccSugerido: data.ggccSugerido,

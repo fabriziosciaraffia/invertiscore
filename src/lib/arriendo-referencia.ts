@@ -22,17 +22,41 @@
 // precio/m² (ai-generation.ts): mejor sin referencia que con una falsa, porque el
 // modelo copia la cifra que le des.
 //
-// Si mañana aparece una tercera puerta, entra por acá.
+// TRES FUENTES, UNA JERARQUÍA (sep-2026, goal fallback comunal). El dato scraped
+// ya no es solo el radio: market-suggestions resuelve radio → mediana de la
+// tipología en la comuna → estimado desde el m² comunal (referencia-arriendo.ts)
+// → sin dato, y el wizard persiste cuál fue en `zonaRadio.arriendoFuente`. Las
+// tres viajan por acá con su `fuente`, y el rótulo dice cuál es. La regla que
+// cuida lo de arriba sigue en pie con otra forma: un ESTIMADO desde el m² no es
+// un comparable. Sirve para sugerir y para nombrar la fuente; NO sirve para
+// reprochar (anomalías ARRIENDO ALTO/BAJO), para el corte de "apuesta" de la
+// palanca ni para el caso precio-justo — eso es `esReferenciaContrastable`.
+// Filas anteriores a `arriendoFuente` se leen como radio, que es lo que eran.
+//
+// Si mañana aparece una cuarta puerta, entra por acá.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Referencia de arriendo con procedencia real (comparables scrapeados por radio). */
+/** De dónde salió la referencia. Espejo de `Sugerencias.source` sin "sin-dato". */
+export type FuenteArriendoReferencia =
+  /** Mediana de comparables dentro del radio adaptativo del depto. */
+  | "radio"
+  /** Mediana de la tipología (dorms) en la comuna entera, ≥20 avisos. */
+  | "comuna"
+  /** ESTIMADO desde el UF/m² comunal × superficie × factor por tipología. Rango. */
+  | "comuna-m2";
+
+/** Referencia de arriendo con procedencia real (scraped_properties). */
 export interface ArriendoReferencia {
-  /** Mediana de arriendos comparables, CLP/mes. */
+  /** Mediana (radio/comuna) o punto central del estimado (comuna-m2), CLP/mes. */
   valorCLP: number;
-  /** Tamaño de la muestra de arriendos (0 si el payload no lo trae). */
+  /** Tamaño de la muestra detrás (0 si el payload no lo trae). */
   n: number;
-  /** Radio en metros del que salió la muestra. */
+  /** Radio en metros del que salió la muestra (solo tiene sentido en "radio"). */
   radioMetros: number;
+  /** Fuente. Payloads anteriores al campo `arriendoFuente` se leen como "radio". */
+  fuente: FuenteArriendoReferencia;
+  /** Solo "comuna-m2": el rango publicado del estimado (estimado ∓ error residual). */
+  rangoCLP?: { min: number; max: number };
 }
 
 /**
@@ -56,8 +80,20 @@ export type ProcedenciaArriendo =
 /** Tolerancia en CLP para la igualdad exacta (el wizard escribe el entero). */
 const EPSILON_CLP = 1;
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-type ConZonaRadio = { zonaRadio?: { arriendoPromedio?: number | null; sampleSizeArriendo?: number | null; radioMetros?: number | null } | null };
+type ConZonaRadio = {
+  zonaRadio?: {
+    arriendoPromedio?: number | null;
+    sampleSizeArriendo?: number | null;
+    radioMetros?: number | null;
+    arriendoFuente?: string | null;
+    arriendoRangoMin?: number | null;
+    arriendoRangoMax?: number | null;
+  } | null;
+};
+
+function esFuente(v: unknown): v is FuenteArriendoReferencia {
+  return v === "radio" || v === "comuna" || v === "comuna-m2";
+}
 
 /**
  * Resuelve la referencia de arriendo de la zona. `null` = no hay dato scraped y
@@ -71,7 +107,28 @@ export function resolverArriendoReferencia(input: unknown): ArriendoReferencia |
   const radioMetros = typeof zonaRadio?.radioMetros === "number" && zonaRadio.radioMetros > 0
     ? zonaRadio.radioMetros
     : 500;
-  return { valorCLP: Math.round(valor), n, radioMetros };
+  // Filas viejas no traen el campo: eran radio, se leen como radio.
+  const fuente: FuenteArriendoReferencia = esFuente(zonaRadio?.arriendoFuente) ? zonaRadio.arriendoFuente : "radio";
+  const ref: ArriendoReferencia = { valorCLP: Math.round(valor), n, radioMetros, fuente };
+  if (fuente === "comuna-m2") {
+    const min = zonaRadio?.arriendoRangoMin;
+    const max = zonaRadio?.arriendoRangoMax;
+    if (typeof min === "number" && typeof max === "number" && min > 0 && max >= min) {
+      ref.rangoCLP = { min: Math.round(min), max: Math.round(max) };
+    }
+  }
+  return ref;
+}
+
+/**
+ * ¿Sirve para CONTRASTAR el arriendo declarado? Radio y mediana de tipología
+ * son medidas del mercado; el estimado desde el m² comunal es un orden de
+ * magnitud con ±6-16% de error residual y NO se usa para reprochar (anomalías
+ * ARRIENDO ALTO/BAJO), para el corte de "apuesta" de la palanca ni para el
+ * caso precio-justo. Sí sirve para sugerir y para nombrar la fuente.
+ */
+export function esReferenciaContrastable(ref: ArriendoReferencia): boolean {
+  return ref.fuente !== "comuna-m2";
 }
 
 /** Procedencia del arriendo usado, derivada de su igualdad con la referencia. */
@@ -85,14 +142,32 @@ export function resolverProcedenciaArriendo(
     : "declarado_usuario";
 }
 
+function fmtCLP(n: number): string {
+  return `$${Math.round(n).toLocaleString("es-CL")}`;
+}
+
 /**
  * Rótulo honesto de la referencia para el prompt: nombra de dónde salió
- * (comparables en radio), nunca "referencia de zona" a secas — ese rótulo es el
+ * (comparables en radio, mediana de la tipología en la comuna, o estimación
+ * desde el m² comunal), nunca "referencia de zona" a secas — ese rótulo es el
  * que le daba autoridad de mercado a una constante hardcodeada.
  */
 export function rotuloArriendoReferencia(ref: ArriendoReferencia): string {
-  const muestra = ref.n > 0
-    ? `mediana de ${ref.n} ${ref.n === 1 ? "arriendo comparable publicado" : "arriendos comparables publicados"} en un radio de ${ref.radioMetros}m`
-    : `mediana de arriendos comparables publicados en un radio de ${ref.radioMetros}m`;
-  return muestra;
+  switch (ref.fuente) {
+    case "comuna":
+      return ref.n > 0
+        ? `mediana de ${ref.n} arriendos publicados de esta tipología en la comuna entera, no del radio del depto`
+        : "mediana de los arriendos publicados de esta tipología en la comuna entera, no del radio del depto";
+    case "comuna-m2": {
+      const base = ref.n > 0
+        ? `estimación desde el metro cuadrado de ${ref.n} arriendos publicados en la comuna, ajustada por tipología`
+        : "estimación desde el metro cuadrado de los arriendos publicados en la comuna, ajustada por tipología";
+      return ref.rangoCLP ? `${base}, rango ${fmtCLP(ref.rangoCLP.min)} a ${fmtCLP(ref.rangoCLP.max)}` : base;
+    }
+    case "radio":
+    default:
+      return ref.n > 0
+        ? `mediana de ${ref.n} ${ref.n === 1 ? "arriendo comparable publicado" : "arriendos comparables publicados"} en un radio de ${ref.radioMetros}m`
+        : `mediana de arriendos comparables publicados en un radio de ${ref.radioMetros}m`;
+  }
 }

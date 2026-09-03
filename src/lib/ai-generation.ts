@@ -26,6 +26,7 @@ import {
 } from "@/lib/comuna-stats";
 import { buildPrecioVsComuna } from "@/lib/precio-vs-comuna";
 import {
+  esReferenciaContrastable,
   resolverArriendoReferencia,
   resolverProcedenciaArriendo,
   rotuloArriendoReferencia,
@@ -155,7 +156,12 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // v17 (02-sep-2026): un nombre por precio — anclas con objetivo (donde cambia el
 // veredicto), sostenible (donde el aporte se vuelve sostenible) y límite TIR 6%; sin
 // "techo", sin glosaTecho, sin anclas en el estructural. Jerarquía re-cableada.
-export const PROMPT_VERSION_LTR = 17;
+// v18: la referencia de arriendo trae su fuente (radio · mediana de tipología en
+// la comuna · estimado desde el m² comunal). El estimado se nombra como tal, con
+// rango y ejemplo positivo, y NO alimenta anomalías, corte de apuesta ni
+// precio-justo (esReferenciaContrastable). Cierre §9 con posición sobre el
+// arriendo real cuando el caso se apoya en un estimado.
+export const PROMPT_VERSION_LTR = 18;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -1285,17 +1291,23 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // referencia no es evidencia de desvío (mismo criterio que CATCH-ROOT-A abajo).
     const arriendoReferencia = resolverArriendoReferencia(input);
     const procedenciaArriendo = resolverProcedenciaArriendo(input.arriendo, arriendoReferencia);
+    // Un estimado desde el m² comunal nombra la fuente y sugiere; NO contrasta:
+    // ni anomalías, ni corte de apuesta, ni precio-justo (decisión del goal
+    // fallback comunal, sep-2026). Con ±16% de error residual en 3D, reprochar
+    // contra él sería el incidente de la cabecera de arriendo-referencia.ts.
+    const arriendoRefContrastable =
+      arriendoReferencia && esReferenciaContrastable(arriendoReferencia) ? arriendoReferencia : null;
     // Con procedencia "estimacion_franco" la brecha es 0 por construcción (el
     // arriendo ES la mediana), así que ningún umbral dispara: el guard queda
     // implícito, no hay que excluirla a mano.
-    if (arriendoReferencia && input.arriendo > 0) {
-      const arriendoRef = arriendoReferencia.valorCLP;
+    if (arriendoRefContrastable && input.arriendo > 0) {
+      const arriendoRef = arriendoRefContrastable.valorCLP;
       const diffArriendo = ((input.arriendo - arriendoRef) / arriendoRef) * 100;
       if (diffArriendo > 30) {
         const flujoConArriendoReal = m.flujoNetoMensual - (input.arriendo - arriendoRef);
-        anomalias.push(`ARRIENDO ALTO: El usuario ingresó ${fmtCLP(input.arriendo)} pero la ${rotuloArriendoReferencia(arriendoReferencia)} es ${fmtCLP(arriendoRef)} (${Math.round(diffArriendo)}% sobre esos comparables). Considera ajustar a la baja tu proyección de arriendo o verifica con propiedades similares publicadas en la zona — si no logras ese precio, tu flujo real sería ${fmtCLP(flujoConArriendoReal)}, no ${fmtCLP(m.flujoNetoMensual)}.`);
+        anomalias.push(`ARRIENDO ALTO: El usuario ingresó ${fmtCLP(input.arriendo)} pero la ${rotuloArriendoReferencia(arriendoRefContrastable)} es ${fmtCLP(arriendoRef)} (${Math.round(diffArriendo)}% sobre esos comparables). Considera ajustar a la baja tu proyección de arriendo o verifica con propiedades similares publicadas en la zona — si no logras ese precio, tu flujo real sería ${fmtCLP(flujoConArriendoReal)}, no ${fmtCLP(m.flujoNetoMensual)}.`);
       } else if (diffArriendo < -30) {
-        anomalias.push(`ARRIENDO BAJO: El usuario ingresó arriendo de ${fmtCLP(input.arriendo)} pero la ${rotuloArriendoReferencia(arriendoReferencia)} es ${fmtCLP(arriendoRef)} (${Math.round(Math.abs(diffArriendo))}% bajo esos comparables). Podría estar subestimando o es una zona particular. Sugiere verificar.`);
+        anomalias.push(`ARRIENDO BAJO: El usuario ingresó arriendo de ${fmtCLP(input.arriendo)} pero la ${rotuloArriendoReferencia(arriendoRefContrastable)} es ${fmtCLP(arriendoRef)} (${Math.round(Math.abs(diffArriendo))}% bajo esos comparables). Podría estar subestimando o es una zona particular. Sugiere verificar.`);
       }
     }
     const precioM2Usuario = pvc.sujetoUfM2;
@@ -1986,18 +1998,41 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
     // comparables sobre el valor de la propiedad a la mediana comunal. Necesita
     // las dos puntas confiables — sin eso no se emite, porque un yield armado con
     // media zona real y media zona inventada es peor que ningún yield.
-    const yieldZonaPct = arriendoReferencia && precioM2ZonaConfiable && input.superficie > 0 && precioM2Zona > 0
-      ? Math.round((arriendoReferencia.valorCLP * 12 / (precioM2Zona * input.superficie * UF_CLP)) * 1000) / 10
+    const yieldZonaPct = arriendoRefContrastable && precioM2ZonaConfiable && input.superficie > 0 && precioM2Zona > 0
+      ? Math.round((arriendoRefContrastable.valorCLP * 12 / (precioM2Zona * input.superficie * UF_CLP)) * 1000) / 10
       : null;
 
+    const origenEstimacion =
+      arriendoReferencia?.fuente === "comuna-m2"
+        ? "esa misma estimación desde el m² comunal"
+        : arriendoReferencia?.fuente === "comuna"
+          ? "esa misma mediana de la tipología en la comuna"
+          : "esa misma mediana de comparables";
     const procedenciaLinea = procedenciaArriendo === "estimacion_franco"
-      ? "lo estimó Franco (esa misma mediana de comparables) y el usuario la aceptó tal cual — el arriendo del caso y la referencia son EL MISMO NÚMERO, la brecha entre ambos es 0 por construcción. Aplica §8.bis del system."
+      ? `lo estimó Franco (${origenEstimacion}) y el usuario la aceptó tal cual — el arriendo del caso y la referencia son EL MISMO NÚMERO, la brecha entre ambos es 0 por construcción. Aplica §8.bis del system.`
       : "lo declaró el usuario, distinto de lo que Franco estimó para la zona. Aplica §8.bis del system.";
 
-    const arriendoReferenciaBloque = arriendoReferencia
-      ? `- Arriendo de comparables de la zona (${rotuloArriendoReferencia(arriendoReferencia)}): ${fmtCLP(arriendoReferencia.valorCLP)}/mes — nómbralo por lo que es (comparables publicados en ese radio); NO lo llames "referencia de zona" ni "lo que paga el mercado" a secas
-- Procedencia del arriendo de este caso: ${procedenciaLinea}${yieldZonaPct !== null ? `\n- Yield bruto de esos comparables: ${pct(yieldZonaPct)}%` : ""}`
-      : `- Arriendo de comparables de la zona: sin dato — no hay comparables de arriendo publicados para esta zona, así que el arriendo del caso es el único que existe en este análisis. Su lectura entra por lo que produce: el flujo mensual, el break-even de precio y el margen del veredicto, todos ya calculados arriba. Si adviertes sobre la sensibilidad al arriendo, la cifra sale de esos datos dados — el escenario de caída se expresa con el margen del veredicto que ya viene en los hallazgos, nunca con un porcentaje de caída elegido por ti ni con un arriendo de mercado que este caso no tiene.`;
+    // Tres fuentes, tres rótulos. El estimado desde el m² comunal lleva ejemplo
+    // positivo (proximidad + ejemplo vencen a la prohibición) y la instrucción de
+    // cierre: si el caso se apoya en él, la posición de Franco lo dice.
+    const posicionEnRango = (() => {
+      if (arriendoReferencia?.fuente !== "comuna-m2" || !arriendoReferencia.rangoCLP || !(input.arriendo > 0)) return null;
+      const { min, max } = arriendoReferencia.rangoCLP;
+      return input.arriendo < min ? "BAJO el rango" : input.arriendo > max ? "SOBRE el rango" : "DENTRO del rango";
+    })();
+    const arriendoReferenciaBloque = !arriendoReferencia
+      ? `- Arriendo de comparables de la zona: sin dato — no hay comparables de arriendo publicados para esta zona, así que el arriendo del caso es el único que existe en este análisis. Su lectura entra por lo que produce: el flujo mensual, el break-even de precio y el margen del veredicto, todos ya calculados arriba. Si adviertes sobre la sensibilidad al arriendo, la cifra sale de esos datos dados — el escenario de caída se expresa con el margen del veredicto que ya viene en los hallazgos, nunca con un porcentaje de caída elegido por ti ni con un arriendo de mercado que este caso no tiene.`
+      : arriendoReferencia.fuente === "comuna-m2"
+        ? `- Arriendo de referencia — ESTIMACIÓN, no comparables (${rotuloArriendoReferencia(arriendoReferencia)}): no hay arriendos publicados cerca de este depto ni de esta tipología en la comuna con que contrastar. Franco estimó el arriendo desde el metro cuadrado de los arriendos publicados en la comuna, ajustado por tipología: ${arriendoReferencia.rangoCLP ? `entre ${fmtCLP(arriendoReferencia.rangoCLP.min)} y ${fmtCLP(arriendoReferencia.rangoCLP.max)} al mes (punto central ${fmtCLP(arriendoReferencia.valorCLP)})` : `${fmtCLP(arriendoReferencia.valorCLP)}/mes, orden de magnitud`}. Es un orden de magnitud, no una mediana de comparables.${posicionEnRango ? ` El arriendo del caso (${fmtCLP(input.arriendo)}) queda ${posicionEnRango}.` : ""}
+  CÓMO NOMBRARLO: siempre como estimación desde el metro cuadrado de la comuna, con su rango. NUNCA "comparables de la zona", "lo que paga el mercado" ni "la mediana". Así se hace bien: "No hay arriendos publicados cerca con que contrastar tu arriendo; con el metro cuadrado de la comuna, un depto como este se arrienda entre $[mínimo] y $[máximo], y el tuyo queda [dentro / sobre / bajo] de ese rango — cuenta con que lo que firmes puede caer en la parte baja".
+  CON ESTA REFERENCIA NO HAY ANOMALÍA DE ARRIENDO NI BRECHA PORCENTUAL QUE NOMBRAR: la lectura del arriendo entra por lo que produce en el flujo y por su posición dentro del rango. Ninguna cifra de brecha de arriendo viene en el bloque anomalias, así que no existe.
+  CIERRE (§9): si el arriendo del caso se apoya en esta estimación, tu posición lo dice con nombre propio — la decisión cuelga de confirmar el arriendo real antes de firmar, y dices con qué. Es TU posición, en primera persona, no un checklist. Así se hace bien: "Yo no firmaría con este arriendo sin verlo publicado en dos o tres deptos parecidos de la comuna; si el real cae en la parte baja del rango, [consecuencia con la cifra del flujo que ya tienes]".
+- Procedencia del arriendo de este caso: ${procedenciaLinea}`
+        : arriendoReferencia.fuente === "comuna"
+          ? `- Arriendo de referencia (${rotuloArriendoReferencia(arriendoReferencia)}): ${fmtCLP(arriendoReferencia.valorCLP)}/mes — no son comparables del radio del depto sino la mediana de su tipología en la comuna entera; nómbralo así ("la mediana de los ${input.dormitorios || 2}D publicados en la comuna"), NUNCA "comparables de la zona" ni "lo que paga el mercado" a secas
+- Procedencia del arriendo de este caso: ${procedenciaLinea}${yieldZonaPct !== null ? `\n- Yield bruto de esa mediana: ${pct(yieldZonaPct)}%` : ""}`
+          : `- Arriendo de comparables de la zona (${rotuloArriendoReferencia(arriendoReferencia)}): ${fmtCLP(arriendoReferencia.valorCLP)}/mes — nómbralo por lo que es (comparables publicados en ese radio); NO lo llames "referencia de zona" ni "lo que paga el mercado" a secas
+- Procedencia del arriendo de este caso: ${procedenciaLinea}${yieldZonaPct !== null ? `\n- Yield bruto de esos comparables: ${pct(yieldZonaPct)}%` : ""}`;
 
     // Matiz del bloque "distancia al veredicto": qué se puede advertir sobre la
     // palanca del arriendo, según de dónde salió ese arriendo. Con procedencia
@@ -2005,6 +2040,8 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
     // apunta a la estimación, no al usuario — Franco no reprocha lo que sugirió.
     const matizPalancaArriendo = !arriendoReferencia
       ? "EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: nombra la distancia Y advierte que esa palanca se apoya en un supuesto de arriendo que no está contrastado con comparables — hay que verificarlo antes de contar con él."
+      : arriendoReferencia.fuente === "comuna-m2"
+        ? `EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: la palanca de arriendo se apoya en una ESTIMACIÓN desde el metro cuadrado de la comuna${arriendoReferencia.rangoCLP ? ` (rango ${fmtCLP(arriendoReferencia.rangoCLP.min)} a ${fmtCLP(arriendoReferencia.rangoCLP.max)})` : ""}, no en comparables publicados cerca. Nombra la distancia Y di que el arriendo real es lo primero que hay que confirmar — con publicaciones de deptos parecidos en la comuna — antes de contar con esa palanca.`
       : procedenciaArriendo === "estimacion_franco"
         ? `EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: el arriendo de la palanca es la estimación de Franco, así que la advertencia va sobre la estimación y sobre el mundo, no sobre el usuario — la mediana sale de ${arriendoReferencia.n > 0 ? `${arriendoReferencia.n} avisos publicados` : "los avisos publicados"} y lo que se firma puede quedar por debajo. Nombra la distancia Y advierte que el arriendo efectivo es lo que hay que confirmar con el arrendatario real.`
         : "EL MATIZ LO ELIGES TÚ. Que la distancia sea corta no la vuelve fácil: si el arriendo declarado ya viene alto contra los comparables publicados, decirlo es MÁS honesto que celebrar que faltan pocos puntos — nombra la distancia Y advierte que esa palanca se apoya en un supuesto que hay que verificar.";
@@ -2031,8 +2068,8 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
     const palancaArriendoGen = dvGen?.palancas.find((l) => l.palanca === "arriendo");
     const arriendoEsApuesta =
       !!palancaArriendoGen &&
-      (arriendoReferencia
-        ? palancaArriendoGen.objetivo > arriendoReferencia.valorCLP
+      (arriendoRefContrastable
+        ? palancaArriendoGen.objetivo > arriendoRefContrastable.valorCLP
         : Math.abs(palancaArriendoGen.deltaPct) > 10);
     // (7) Driver no accionable: la plusvalía adversa corona el orden único — nada de
     // lo negociable la mueve, y el marco va ANTES de las palancas.
@@ -2053,7 +2090,7 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
       vmFrancoUF: input.valorMercadoFranco || input.precio,
       ufClp: UF_CLP,
       arriendoCLP: input.arriendo,
-      arriendoRefCLP: arriendoReferencia?.valorCLP ?? null,
+      arriendoRefCLP: arriendoRefContrastable?.valorCLP ?? null,
       arriendoEsEstimacionFranco: procedenciaArriendo === "estimacion_franco",
       veredicto: veredictoMotor,
     });
@@ -2158,7 +2195,7 @@ El pie de este caso lo cubre un bono de la inmobiliaria: NO ofrezcas subir el pi
 
 BANDA DE ESFUERZO del descuento de la palanca precio (§1.12.1 — dato del motor; nárrala con este lenguaje, NUNCA la reclasifiques): ${bandaPrecio.lectura}.` : ""}${arriendoEsApuesta ? `
 
-LA PALANCA DE ARRIENDO ES UNA APUESTA, NO UN AJUSTE (§1.12.3): ${arriendoReferencia ? `el objetivo (${fmtCLP(palancaArriendoGen!.objetivo)}) SUPERA los comparables publicados (${fmtCLP(arriendoReferencia.valorCLP)}) — pedir más que lo que la zona muestra es apostar contra el mercado, cualquiera sea el porcentaje` : `el salto pedido (+${pct(Math.abs(palancaArriendoGen!.deltaPct))}%) excede lo que un supuesto corrige`}. Lenguaje canónico (adáptalo lo mínimo): "subir el arriendo no se negocia con nadie — se testea publicando, y el costo de equivocarse se llama vacancia". Preséntala SIEMPRE así, nunca como "ajusta este supuesto".` : ""}
+LA PALANCA DE ARRIENDO ES UNA APUESTA, NO UN AJUSTE (§1.12.3): ${arriendoRefContrastable ? `el objetivo (${fmtCLP(palancaArriendoGen!.objetivo)}) SUPERA los comparables publicados (${fmtCLP(arriendoRefContrastable.valorCLP)}) — pedir más que lo que la zona muestra es apostar contra el mercado, cualquiera sea el porcentaje` : `el salto pedido (+${pct(Math.abs(palancaArriendoGen!.deltaPct))}%) excede lo que un supuesto corrige`}. Lenguaje canónico (adáptalo lo mínimo): "subir el arriendo no se negocia con nadie — se testea publicando, y el costo de equivocarse se llama vacancia". Preséntala SIEMPRE así, nunca como "ajusta este supuesto".` : ""}
 
 ${matizPalancaArriendo}
 

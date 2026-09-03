@@ -167,7 +167,10 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
   // de arriendo (Providencia con 1,4%), y un h1 que se contradice entre crawls
   // es peor para la identidad de la página que uno estable. El rango deriva sin
   // flipear. Ver el contrato, tab D.
-  const rents = stats.tipologias.map((t) => t.rentabilidadBruta);
+  // Misma regla que el líder (tipologiaLider): el rango sale de las filas con
+  // mediana propia; las estimadas entran solo cuando no hay otra.
+  const filasParaRango = stats.tipologias.filter((t) => t.referencia.fuente === "porTipologia");
+  const rents = (filasParaRango.length ? filasParaRango : stats.tipologias).map((t) => t.rentabilidadBruta);
   const rentMin = rents.length ? Math.min(...rents) : stats.rentabilidadBruta;
   const rentMax = rents.length ? Math.max(...rents) : stats.rentabilidadBruta;
   const n1 = (n: number) => n.toFixed(1).replace(".", ",");

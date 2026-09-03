@@ -108,7 +108,7 @@ export function ArrScreen({ answers, data, answer, goDetour, patchAnswers }: Scr
           {listo ? `${fmtCLP(sugerido ?? 0)}/mes` : "Estimando…"}
         </p>
         {listo && (
-          <FuenteLine>{fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed)}</FuenteLine>
+          <FuenteLine>{fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed, data.arriendoRango)}</FuenteLine>
         )}
       </div>
 

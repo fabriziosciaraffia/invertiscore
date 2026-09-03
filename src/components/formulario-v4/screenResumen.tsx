@@ -734,6 +734,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     tasaMercado: data.tasaMercado,
     arriendoSugerido: data.arriendoSugerido,
     arriendoN: data.arriendoN,
+    arriendoFuente: data.arriendoFuente,
+    arriendoRango: data.arriendoRango,
     precioM2UF: data.precioM2UF,
     radiusUsed: data.radiusUsed,
     ggccSugerido: data.ggccSugerido,
@@ -1286,7 +1288,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
                 label="Arriendo mensual" raw={a.arriendo ?? String(sugArriendo || "")} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
                 decimales={DEC.arriendo} formatEco={ecoPorDefecto("$", "/mes")} escala={escalaArriendo}
                 tag={arriendoTag}
-                fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed)}
+                fuente={fuenteArriendoLine(data.arriendoFuente, data.arriendoN, data.radiusUsed, data.arriendoRango)}
                 procedencia={procedenciaArriendoCorta(
                   data.arriendoFuente, data.arriendoN, data.radiusUsed,
                   data.arriendoSugerido, arriendoCorregido,

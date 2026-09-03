@@ -74,6 +74,10 @@ function NuevoAnalisisV3Inner() {
     sampleSize: number;
     radiusUsed: number | null;
     totalInRadius: number;
+    /** Nivel de la sugerencia de arriendo (`Sugerencias.source`); viaja a zonaRadio. */
+    source: string | null;
+    /** Solo source=comuna-m2: rango del estimado. */
+    rangoArriendo: { min: number; max: number } | null;
     // Shape "cruda": lat/lng pueden venir null desde el backend cuando la
     // propiedad no tiene geolocalización. El filtro estricto vive en MapaThumbnail
     // para poder loggear la proporción raw/válidos.
@@ -82,6 +86,7 @@ function NuevoAnalisisV3Inner() {
     arriendo: null, gastos: null, contribuciones: null, precioM2UF: null,
     precioM2SampleSize: null,
     sampleSize: 0, radiusUsed: null, totalInRadius: 0, nearbyProperties: [],
+    source: null, rangoArriendo: null,
   });
 
   // ─── AirROI prefetch — solo cuando modalidad ∈ {str, both} (Ronda 2b) ──
@@ -316,6 +321,8 @@ function NuevoAnalisisV3Inner() {
           radiusUsed,
           totalInRadius,
           nearbyProperties,
+          source: typeof d.source === "string" ? d.source : null,
+          rangoArriendo: d.rangoArriendo && d.rangoArriendo.min > 0 ? { min: Number(d.rangoArriendo.min), max: Number(d.rangoArriendo.max) } : null,
         };
         setSuggestions(next);
 
@@ -475,6 +482,10 @@ function NuevoAnalisisV3Inner() {
         arriendoPromedio: suggestions.arriendo,
         arriendoPrecioM2: null,
         sampleSizeArriendo: suggestions.sampleSize,
+        // Fuente y rango de la sugerencia (arriendo-referencia.ts los lee).
+        arriendoFuente: suggestions.source,
+        arriendoRangoMin: suggestions.rangoArriendo?.min ?? null,
+        arriendoRangoMax: suggestions.rangoArriendo?.max ?? null,
         sampleSizeVenta: 0,
         radioMetros: suggestions.radiusUsed ?? 500,
         lat: state.lat,

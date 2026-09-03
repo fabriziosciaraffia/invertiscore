@@ -26,7 +26,7 @@ import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
 import { buildHallazgoDistanciaVeredicto, esCasoPrecioJusto } from "./distancia-veredicto-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo, aplicarHorizonteAFlujo, analizarHorizonteFlujo, type HorizonteFlujo } from "./flujo-mensual-hallazgo";
-import { resolverArriendoReferencia, resolverProcedenciaArriendo } from "./arriendo-referencia";
+import { esReferenciaContrastable, resolverArriendoReferencia, resolverProcedenciaArriendo } from "./arriendo-referencia";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import type { MedianaComunaInyectada } from "./comuna-stats";
@@ -2468,7 +2468,8 @@ export function runAnalysis(
     vmFrancoUF: input.valorMercadoFranco || input.precio,
     ufClp,
     arriendoCLP: input.arriendo,
-    arriendoRefCLP: arrRefPJ?.valorCLP ?? null,
+    // Un estimado desde el m² comunal no contrasta (ver arriendo-referencia.ts).
+    arriendoRefCLP: arrRefPJ && esReferenciaContrastable(arrRefPJ) ? arrRefPJ.valorCLP : null,
     arriendoEsEstimacionFranco:
       resolverProcedenciaArriendo(input.arriendo, arrRefPJ) === "estimacion_franco",
     veredicto,

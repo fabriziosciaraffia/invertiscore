@@ -117,6 +117,39 @@ test("frase completa: sin dato no promete un número", () => {
   assert.match(fuenteArriendoLine("sin-dato", 0, null), /el valor lo pones tú/);
 });
 
+// ── Estimado desde el m² comunal (comuna-m2) ─────────────────────────────────
+
+const RANGO = { min: 587000, max: 813000 };
+
+test("comuna-m2 corta: se llama estimado, nombra la muestra comunal, nunca distancia", () => {
+  assert.equal(procedenciaArriendoCorta("comuna-m2", 15, null, 700000, false), "estimado del m² comunal (15 arriendos)");
+});
+
+test("comuna-m2 corta con valor corregido: contrasta contra el estimado, diciendo que es estimado", () => {
+  assert.equal(procedenciaArriendoCorta("comuna-m2", 15, null, 700000, true), "estimado del m² comunal (15 arriendos): $700.000");
+});
+
+test("comuna-m2 corta nunca lleva el caveat de muestra chica: no es una mediana", () => {
+  assert.doesNotMatch(procedenciaArriendoCorta("comuna-m2", 15, null, 700000, false)!, /muestra chica/);
+});
+
+test("comuna-m2 completa: estimado, m² comunal, rango publicado, y pide ajustarlo", () => {
+  const t = fuenteArriendoLine("comuna-m2", 15, null, RANGO);
+  assert.match(t, /^estimado desde el m² de 15 arriendos publicados en la comuna/);
+  assert.match(t, /no hay arriendos comparables cerca ni de esta tipología/);
+  assert.match(t, /de \$587\.000 a \$813\.000/);
+  assert.match(t, /Ajústalo si conoces el arriendo real/);
+  assert.doesNotMatch(t, /mediana|de la dirección/);
+});
+
+test("comuna-m2 completa sin rango: no inventa uno", () => {
+  assert.doesNotMatch(fuenteArriendoLine("comuna-m2", 15, null), /rango/);
+});
+
+test("comuna (tipología): dice esta tipología y comuna completa", () => {
+  assert.match(fuenteArriendoLine("comuna", 43, null), /43 arriendos de esta tipología en la comuna completa/);
+});
+
 // ── Coherencia entre las dos ─────────────────────────────────────────────────
 
 test("las dos coinciden en cuándo NO hay dato", () => {

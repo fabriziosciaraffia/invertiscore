@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { getUFValue } from "../uf";
 import { estimarContribuciones } from "../contribuciones";
-import { getFactorCierre, getComunaMedianaVentaUF } from "@/lib/comuna-stats";
+import { getFactorCierre, getComunaMedianaVentaUF, PAGINA_POSTGREST, median as medianaDe, normalizeComuna } from "@/lib/comuna-stats";
+import { medianaArriendoUFm2Mes, resolverReferenciaArriendo } from "@/lib/referencia-arriendo";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 
 const RUTA = "GET /api/data/suggestions";
@@ -34,12 +35,21 @@ export interface Sugerencias {
   contribTrim: number | null;
   /**
    * De dónde salió el número, para que el consumidor pueda decirlo sin mentir:
-   * - "radio"    → mediana de comparables publicados dentro de `radiusUsed` metros.
-   * - "comuna"   → mediana comunal de VENTA (scraped_properties, helper canónico).
-   *                Solo aplica a propType="venta"; el arriendo nunca usa este nivel.
-   * - "sin-dato" → no hubo comparables. `arriendo` viene en null.
+   * - "radio"     → mediana de comparables publicados dentro de `radiusUsed` metros.
+   * - "comuna"    → VENTA: mediana comunal (helper canónico). ARRIENDO: mediana de
+   *                 la tipología (dorms) en la comuna entera, ≥20 avisos.
+   * - "comuna-m2" → solo ARRIENDO: ESTIMADO desde el UF/m² comunal × superficie
+   *                 × factor por tipología (referencia-arriendo.ts). Viene con
+   *                 `rangoArriendo`; `arriendo` es el punto central. Es un orden
+   *                 de magnitud, no un comparable: el informe lo nombra y no lo
+   *                 usa para reprochar.
+   * - "sin-dato"  → ni comparables ni muestra comunal. `arriendo` viene en null.
    */
-  source: "radio" | "comuna" | "sin-dato";
+  source: "radio" | "comuna" | "comuna-m2" | "sin-dato";
+  /** Solo source="comuna-m2": rango publicado del estimado (∓ error residual de la tipología). */
+  rangoArriendo?: { min: number; max: number };
+  /** Solo source="comuna-m2": arriendos de la comuna (todas las tipologías) detrás del UF/m². */
+  nComunal?: number;
   sampleSize: number;
   radiusMeters?: number;
   /** Radio final usado por el loop adaptativo (solo source="radio"). Alias explícito de radiusMeters. */
@@ -110,23 +120,30 @@ export async function getSugerencias(
     }
   }
 
-  // NIVEL 2 — SOLO VENTA: mediana comunal desde scraped_properties.
-  //
-  // El arriendo NO tiene nivel 2. Lo tuvo hasta el 2026-08-04: leía `market_stats`,
-  // una tabla congelada el 2026-03-24 cuyo writer nunca paginó el SELECT y por eso
-  // calculó sobre 1.000 de 55.466 propiedades (el 87% de sus filas eran duplicados
-  // que nadie leía). Servía medianas de n=1 o n=2 como si fueran de la comuna entera.
-  //
-  // Tampoco hay nivel 3. Lo hubo: `getFallbackEstimacion`, un seed de 17 comunas con
-  // un arriendo por m² fijo. Ninguno de los dos era un dato: eran un número plausible
-  // ocupando el lugar de uno real, y el wizard los presentaba con el mismo rótulo de
-  // confianza que a los comparables medidos.
-  //
-  // Sin comparables, Franco no estima: lo dice y le pide el número al usuario.
+  // NIVEL 2 — VENTA: mediana comunal desde scraped_properties.
   if (propType === "venta") {
     const dormForComuna = dormFilter || 2;
     const ventaResult = await getMedianaComunalVenta(comuna, superficie, dormForComuna, condicion);
     if (ventaResult) return ventaResult;
+  }
+
+  // NIVELES 2 y 3 — ARRIENDO: la jerarquía de referencia-arriendo.ts sobre la
+  // comuna (mediana de la tipología ≥20 → estimado desde el m² comunal ≥15 →
+  // nada), calculada sobre los MISMOS avisos que publica /comunas/[slug].
+  //
+  // Historia, para que nadie la repita: el arriendo tuvo un nivel 2 hasta el
+  // 2026-08-04 que leía `market_stats`, una tabla congelada el 2026-03-24 cuyo
+  // writer nunca paginó el SELECT (calculó sobre 1.000 de 55.466 propiedades) y
+  // servía medianas de n=1 como si fueran de la comuna entera; y un nivel 3,
+  // `getFallbackEstimacion`, un seed de 17 comunas con un arriendo por m² fijo.
+  // Ninguno era un dato, y el wizard los presentaba con el rótulo de los
+  // comparables medidos. Lo que vuelve ahora es distinto en las tres cosas que
+  // importaban: se calcula en vivo sobre el scraping, exige muestra con nombre
+  // (MIN_ARRIENDOS_TIPOLOGIA / MIN_ARRIENDOS_COMUNAL_ENTRA), y declara su fuente
+  // con un `source` propio que el wizard, el payload y el informe arrastran.
+  if (propType === "arriendo") {
+    const comunal = await getReferenciaComunalArriendo(comuna, superficie, dormFilter);
+    if (comunal) return comunal;
   }
 
   return SIN_DATO;
@@ -344,6 +361,97 @@ async function getMedianaComunalVenta(
     sampleSize: n,
     precioM2: precioM2CLP,
   };
+}
+
+/** Variantes de escritura de una comuna en scraped_properties (con y sin tildes). */
+function variantesComuna(comuna: string): string[] {
+  const canon = normalizeComuna(comuna);
+  // Sin \p{M}: el target del app no lo admite. Tras NFD las marcas diacríticas
+  // viven en el bloque 0x0300-0x036F; se filtran por rango de code point.
+  const plana = Array.from(canon.normalize("NFD"))
+    .filter((c) => {
+      const cp = c.charCodeAt(0);
+      return cp < 0x0300 || cp > 0x036f;
+    })
+    .join("");
+  return Array.from(new Set([canon, plana]));
+}
+
+/**
+ * NIVELES 2 y 3 de ARRIENDO. Lee los arriendos activos de la comuna con los
+ * mismos cortes que comunas-seo (superficie útil 0-300 m², 1 a 4 dorms) y
+ * resuelve la jerarquía de referencia-arriendo.ts para la tipología del
+ * sujeto. La superficie de referencia del estimado es la del PROPIO depto:
+ * acá no se estima una fila de tabla sino este caso. Umbral comunal seco
+ * (el informe no tiene snapshot con qué hacer histéresis).
+ */
+async function getReferenciaComunalArriendo(
+  comuna: string,
+  superficie: number,
+  dormitorios: number | null,
+): Promise<Sugerencias | null> {
+  const supabase = getSupabase();
+  const variantes = variantesComuna(comuna);
+  const rows: Array<{ precio: number; superficie_m2: number | null; dormitorios: number | null }> = [];
+  for (let off = 0; ; off += PAGINA_POSTGREST) {
+    const { data, error } = await supabase
+      .from("scraped_properties")
+      .select("precio, superficie_m2, dormitorios")
+      .in("comuna", variantes)
+      .eq("type", "arriendo")
+      .eq("is_active", true)
+      .gt("precio", 0)
+      .order("id", { ascending: true })
+      .range(off, off + PAGINA_POSTGREST - 1);
+    reportarFalloQuery(error, {
+      ruta: RUTA,
+      operacion: "arriendos-comuna-referencia",
+      tags: { tabla: "scraped_properties", decide: "referencia-arriendo" },
+      extra: { comuna, dormitorios, superficie, offset: off },
+    });
+    if (!Array.isArray(data) || data.length === 0) break;
+    rows.push(...data);
+    if (data.length < PAGINA_POSTGREST) break;
+  }
+  // Mismos cortes que superficieUtil/dormsEnRango de comunas-seo: la muestra
+  // comunal del informe tiene que ser la que la página de comuna declara.
+  const entran = rows.filter((r) => {
+    const sup = Number(r.superficie_m2);
+    const d = Number(r.dormitorios);
+    return sup > 0 && sup <= 300 && d >= 1 && d <= 4;
+  });
+  if (!entran.length) return null;
+
+  const ufCLP = await getUFValue();
+  const propias = dormitorios ? entran.filter((r) => Number(r.dormitorios) === dormitorios) : [];
+  const ref = resolverReferenciaArriendo({
+    dorms: dormitorios ?? 2,
+    tipologia: { n: propias.length, medianaCLP: propias.length ? medianaDe(propias.map((r) => Number(r.precio))) : 0 },
+    comunal: { n: entran.length, ufM2Mes: medianaArriendoUFm2Mes(entran, ufCLP) },
+    superficieRefM2: superficie > 0 ? superficie : null,
+    ufCLP,
+  });
+  if (ref.fuente === "porTipologia") {
+    return {
+      arriendo: Math.round(ref.medianaCLP / 1000) * 1000,
+      ggcc: null,
+      contribTrim: null,
+      source: "comuna",
+      sampleSize: ref.n,
+    };
+  }
+  if (ref.fuente === "comunalPorM2") {
+    return {
+      arriendo: ref.estimadoCLP,
+      ggcc: null,
+      contribTrim: null,
+      source: "comuna-m2",
+      sampleSize: ref.nComunal,
+      nComunal: ref.nComunal,
+      rangoArriendo: ref.rangoCLP,
+    };
+  }
+  return null;
 }
 
 /**

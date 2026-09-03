@@ -206,16 +206,27 @@ function fmtRadio(m: number): string {
  *
  * El nivel manda (`fuente`, que declara el endpoint); el n solo modula el caveat.
  */
+/** Nivel de la sugerencia de arriendo, tal como lo declara `/api/data/suggestions`. */
+export type FuenteArriendo = "radio" | "comuna" | "comuna-m2" | "sin-dato";
+
 export function fuenteArriendoLine(
-  fuente: "radio" | "comuna" | "sin-dato",
+  fuente: FuenteArriendo,
   n: number,
   radio: number | null,
+  /** Solo comuna-m2: el rango del estimado, que la frase publica. */
+  rango: { min: number; max: number } | null = null,
 ): string {
   if (fuente === "sin-dato" || n <= 0) {
     return "sin arriendos publicados cerca para comparar — el valor lo pones tú";
   }
+  if (fuente === "comuna-m2") {
+    // Un estimado no es una mediana: la frase lo dice, dice de dónde sale y
+    // publica el rango, porque el punto central solo es el centro del rango.
+    const rangoTxt = rango ? `; el rango probable va de ${fmtCLP(rango.min)} a ${fmtCLP(rango.max)}` : "";
+    return `estimado desde el m² de ${n} arriendos publicados en la comuna — no hay arriendos comparables cerca ni de esta tipología${rangoTxt}. Ajústalo si conoces el arriendo real`;
+  }
   if (fuente === "comuna") {
-    return `mediana de ${n} arriendos de la comuna completa — no de la zona del depto`;
+    return `mediana de ${n} arriendos de esta tipología en la comuna completa — no de la zona del depto`;
   }
   const donde = radio ? `a menos de ${fmtRadio(radio)} de la dirección` : "en la zona";
   return n >= 10
@@ -247,7 +258,7 @@ export function fuenteArriendoLine(
  * sin dato tiene su propia frase).
  */
 export function procedenciaArriendoCorta(
-  fuente: "radio" | "comuna" | "sin-dato",
+  fuente: FuenteArriendo,
   n: number,
   radio: number | null,
   /** La sugerencia de Franco, para contrastarla cuando el usuario puso otra. */
@@ -256,6 +267,14 @@ export function procedenciaArriendoCorta(
   corregido: boolean,
 ): string | null {
   if (fuente === "sin-dato" || n <= 0) return "sin arriendos publicados cerca para comparar";
+
+  // Estimado: se llama estimado también en reposo. Con el valor corregido, la
+  // línea contrasta contra el estimado igual que las otras fuentes contra su
+  // mediana — pero diciendo que es un estimado.
+  if (fuente === "comuna-m2") {
+    const base = `estimado del m² comunal (${n} arriendos)`;
+    return corregido && sugerido && sugerido > 0 ? `${base}: ${fmtCLP(sugerido)}` : base;
+  }
 
   const donde = fuente === "comuna"
     ? "de la comuna"
