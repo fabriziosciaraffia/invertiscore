@@ -44,6 +44,14 @@ const ABANDON_THRESHOLD_MS = 6 * 60 * 60 * 1000;
 // (ruta B, pending dejado por subscriptions/create). Todas las keys del catálogo.
 const RECOVERABLE_PRODUCTS = Object.keys(FLOW_PRODUCTS) as FlowProductKey[];
 
+// Tope de candidatos por corrida. El loop de abajo es serial (un getUserById y
+// un envío por fila); sin tope, una acumulación de pendings —un día de Flow
+// caído, un bug que dejó de marcar— vuelve la corrida tan larga como la cola y
+// la corta el maxDuration a mitad, sin resumen. Con 50 la corrida cabe siempre;
+// lo que no alcanzó se toma mañana (los más viejos primero) y Sentry avisa que
+// la cola superó el tope, que es la señal que importa.
+const TOPE_POR_CORRIDA = 50;
+
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
@@ -64,17 +72,46 @@ export async function GET(request: Request) {
   const cutoffIso = new Date(Date.now() - ABANDON_THRESHOLD_MS).toISOString();
 
   // Candidatos: compras únicas iniciadas y no pagadas, viejas, sin email previo.
+  // Primero el conteo exacto de la cola (head, sin filas), después el lote.
+  const { count: candidatosTotales, error: errCount } = await supabase
+    .from("payments")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending")
+    .in("product", RECOVERABLE_PRODUCTS)
+    .lte("created_at", cutoffIso)
+    .is("recovery_email_sent_at", null);
+  if (errCount) {
+    console.error("[cron/abandoned-checkout] count error:", errCount);
+    return NextResponse.json({ error: "Query failed" }, { status: 500 });
+  }
+
   const { data: candidates, error } = await supabase
     .from("payments")
     .select("id, user_id, product, created_at")
     .eq("status", "pending")
     .in("product", RECOVERABLE_PRODUCTS)
     .lte("created_at", cutoffIso)
-    .is("recovery_email_sent_at", null);
+    .is("recovery_email_sent_at", null)
+    .order("created_at", { ascending: true })
+    .limit(TOPE_POR_CORRIDA);
 
   if (error) {
     console.error("[cron/abandoned-checkout] query error:", error);
     return NextResponse.json({ error: "Query failed" }, { status: 500 });
+  }
+
+  const colaTotal = candidatosTotales ?? candidates?.length ?? 0;
+  const topeAlcanzado = colaTotal > TOPE_POR_CORRIDA;
+  if (topeAlcanzado) {
+    // No es un error de esta corrida: es que la cola creció más de lo que una
+    // corrida procesa. Lo que queda se toma mañana, pero alguien tiene que
+    // mirar por qué se acumuló.
+    captureApiWarning(new Error(`Cola de carritos abandonados (${colaTotal}) supera el tope por corrida (${TOPE_POR_CORRIDA})`), {
+      ruta: RUTA,
+      operacion: "tope-por-corrida",
+      tags: { tope: String(TOPE_POR_CORRIDA) },
+      extra: { candidatos_totales: colaTotal, procesados_en_esta_corrida: candidates?.length ?? 0 },
+    });
   }
 
   // Excluir usuarios que YA compraron un 'single' (en otra orden ya pagada): no
@@ -262,6 +299,6 @@ export async function GET(request: Request) {
   );
   return respuestaCron(
     { procesados: processed, exitosos: sent, fallidos },
-    { sent, noReclamados, envioTrasReclamo },
+    { sent, noReclamados, envioTrasReclamo, colaTotal, topePorCorrida: TOPE_POR_CORRIDA, topeAlcanzado },
   );
 }
