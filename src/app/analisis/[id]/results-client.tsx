@@ -33,34 +33,10 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];
 
-// Ronda 4a.1: normalizeMetrics, fmtCLP, fmtPct, parseUFString → src/components/analysis/utils.ts
-// Ronda 4a.2: fmtUF, fmtMoney, fmtM, fmtAxisMoney → src/components/analysis/utils.ts.
-
-// Ronda 4a.3: renderAiContent + hasAiV2 → src/components/analysis/AIInsightSection.tsx.
-
-// Ronda 4a.1: CollapsibleSection, MetricRow, SimulationTag → src/components/analysis/.
-
-// Ronda 4a.2: IndicadoresRentabilidadContent → src/components/analysis/Indicators.tsx.
-
-// ─── Gráfico de patrimonio (acordeón 2 · Capa 3) ─────
-// Ronda 4a.2: GraficoPatrimonioContent → src/components/analysis/PatrimonioChart.tsx.
-
-// ─── Venta o Refi (acordeón 3 · Capa 3) ──────────────
-// Ronda 4a.2: VentaRefiContent → src/components/analysis/SaleRefiBlock.tsx.
-
-// Ronda 4a.2: AdvancedSection → src/components/analysis/AdvancedSection.tsx.
-
-// Ronda 4a.3: VERDICT_TOOLTIPS + FRANCO_SCORE_TOOLTIP + VERDICT_STYLES +
-// getVerdictStyles + buildHeroDatosClave → src/components/analysis/AIInsightSection.tsx.
-
-// stub eliminado-bloque - cuerpo dummy para preservar match (sin uso):
-// Ronda 4a.3: buildHeroDatosClave + HeroTopStrip + HeroCard +
-// ReestructuracionMiniCard + DashboardAnalysisSection → src/components/analysis/.
-
-
-// RegisterOverlay removed — all users see content directly
-
-// PaywallOverlay removed — all users see content directly
+// Los helpers y componentes que vivían acá (formatos, tooltips, hero, patrimonio,
+// AdvancedSection, Indicators…) se extrajeron a src/components/analysis/ en la ronda
+// 4a y varios murieron en T3 (capítulos); T5 borra los comentarios que los seguían
+// nombrando por archivos que ya no existen.
 
 // BottomPaywallCTA removed — all users see content directly
 

@@ -15,7 +15,6 @@
 
 import type { Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
 import { buildFraseFlujo } from "@/lib/flujo-mensual-hallazgo";
 import { distanciaFindingDisplay } from "@/lib/distancia-copy";
@@ -393,7 +392,6 @@ export function GenericFindingCard<K extends string = DrawerKey>({
   palanca,
   numero,
   anchorId,
-  bodyDuplicado = false,
   onOpenDrawer,
   drawerMap,
 }: {
@@ -412,12 +410,6 @@ export function GenericFindingCard<K extends string = DrawerKey>({
   numero?: string;
   /** Id de ancla estable de la card (el índice del hero linkea con #anchorId). */
   anchorId?: string;
-  /** Suprime el <p> body (fraseCanonica) cuando ese texto YA lo dice la apertura de
-   *  la prosa (respuestaDirecta abre con la misma fraseCanonica del coronado). Evita
-   *  que el usuario lea el mismo bloque dos veces en una pantalla. Lo computa el caller
-   *  (PiramideHallazgos) por detección directa. Default false → body se muestra
-   *  (backward-compat con todos los demás callers y con niveles 2/3). */
-  bodyDuplicado?: boolean;
   /** Abre el drawer de detalle del hallazgo. Sin este callback, no hay affordance. */
   onOpenDrawer?: (key: K) => void;
   /** Mapa hallazgo → drawer key (la pirámide STR pasa el suyo, claves DrawerKeySTR).
@@ -426,9 +418,7 @@ export function GenericFindingCard<K extends string = DrawerKey>({
 }) {
   const d = findingDisplay(hallazgo, currency, valorUF);
   const dir = direccionMeta(hallazgo.direccion);
-  // Caveat corto de procedencia (pie): se suprime cuando la corona muestra la
-  // procedencia extendida en el body (bodyDuplicado) — Flag A, no duplicar procedencia.
-  const procedenciaCorta = bodyDuplicado ? undefined : d.procedencia;
+  const procedenciaCorta = d.procedencia;
   const kpiColor = d.kpiRed ? "text-signal-red" : "";
 
   // Affordance de detalle: solo cuando el hallazgo mapea a un drawer Y hay handler.
@@ -532,21 +522,11 @@ export function GenericFindingCard<K extends string = DrawerKey>({
       </div>
 
       {/* resumen = fraseCanonica (el motor la escribe; la IA la reescribe aguas abajo).
-          Se OMITE cuando bodyDuplicado: la apertura de la prosa ya abrió con esta misma
-          fraseCanonica y repetirla sería el mismo bloque dos veces. Al no renderizar el
-          <p> tampoco queda su margen → sin hueco; el pie/procedencia toma su mt propio. */}
-      {!bodyDuplicado ? (
-        <p className={`font-body leading-[1.55] mt-3.5 ${resumenSize}`} style={{ color: "var(--franco-text-secondary)" }}>
-          {fraseCanonicaCard(hallazgo, currency, valorUF)}
-        </p>
-      ) : (
-        // Corona sin body: la prosa ya abrió con esta misma fraseCanonica. En vez de
-        // dejar aire vertical, mostramos la procedencia extendida (de dónde sale el
-        // dato). Reemplaza también el caveat corto del pie (procedenciaCorta, Flag A).
-        <p className={`font-body leading-[1.55] mt-3.5 ${resumenSize}`} style={{ color: "var(--franco-text-muted)" }}>
-          {procedenciaExtendida(hallazgo, currency, valorUF)}
-        </p>
-      )}
+          T5: murió la rama `bodyDuplicado` (la pasaba PiramideHallazgos cuando la
+          apertura fija repetía esta misma frase; esa apertura no existe desde v19). */}
+      <p className={`font-body leading-[1.55] mt-3.5 ${resumenSize}`} style={{ color: "var(--franco-text-secondary)" }}>
+        {fraseCanonicaCard(hallazgo, currency, valorUF)}
+      </p>
 
       {/* palanca opcional (nivel 1): border-top + slot de acción */}
       {nivel === 1 && palanca ? (
