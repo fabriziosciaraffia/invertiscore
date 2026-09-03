@@ -1020,12 +1020,23 @@ export function techoSinUmbralEnNegociacion(ai: Record<string, unknown> | null |
 }
 
 /**
- * [HERO-CLAIM] estricto: cada "doble / mitad / triple" se evalúa contra la razón que
- * la ORACIÓN nombra — "depósito" → CAP/5% · "dividendo" → arriendo/dividendo · "cuota"
- * → cuota/arriendo · "mediana / zona / cuadra / valor" → precio/VM (solo con VM con
- * fuente) · "referencia / mercado" → CAP/referencia. Sin comparador nombrado, sin
- * licencia. "Única / sola vía" ⇔ exactamente una vía cruza. Puro: corre en el guard y
- * en los instrumentos sobre un dump.
+ * [HERO-CLAIM] · reglas contables (03-sep-2026). Cada "doble / mitad / triple" se
+ * evalúa contra UNA razón sujeto/comparador que la ORACIÓN nombra:
+ *   · el SUJETO elige el numerador: "aporte / lo que pones / de tu bolsillo" → aporte;
+ *     "arriendo / cubre" → arriendo; "cuota / dividendo" → cuota; "tu parte / patrimonio /
+ *     al vender" → tu parte al vender; "CAP rate / rinde / rentabilidad" → CAP rate;
+ *     "precio por m² / el metro" → precio/m²; "precio" → precio.
+ *   · el COMPARADOR (el más cercano al múltiplo) elige el denominador: cuota/dividendo ·
+ *     arriendo · depósito · fondo · referencia/mercado · mediana · cuadra/valor (VM, solo
+ *     con fuente).
+ *   · sin sujeto claro o sin comparador nombrado, sin licencia.
+ * La razón es direccional (sujeto ÷ comparador): "más de la mitad" ⇔ ≥ 0,5; "menos de la
+ * mitad" ⇔ ≤ 0,5; "la mitad" ⇔ 0,45–0,55; "el doble / duplica / dos veces" ⇔ ≥ 1,9;
+ * "más del doble" ⇔ ≥ 2; "casi el doble" ⇔ ≥ 1,8; "el triple" ⇔ ≥ 2,9; "más del triple"
+ * ⇔ ≥ 3; "un tercio" ⇔ 0,30–0,37. GS-4 "aportas más de la mitad de la cuota" (aporte/cuota
+ * 0,53) es verdadera; antes se medía contra cuota/arriendo y se marcaba falsa.
+ * "Única / sola vía" ⇔ exactamente una vía cruza. Puro: corre en el guard y en los
+ * instrumentos sobre un dump.
  */
 export interface RazonesHeroClaim {
   viasCruzan: string[];
@@ -1033,62 +1044,130 @@ export interface RazonesHeroClaim {
   capRefPct?: number | null;
   arriendoM?: number | null;
   dividendoM?: number | null;
+  /** Aporte mensual de bolsillo (|flujo neto| cuando es negativo). */
+  aporteM?: number | null;
   precioUF?: number | null;
   vmUF?: number | null;
   vmConFuente?: boolean;
+  /** Tu parte al vender a 10 años (equity) y los dos instrumentos comparados, en CLP. */
+  exitEquityCLP?: number | null;
+  depositoCLP?: number | null;
+  fondoCLP?: number | null;
+  /** Precio por m² del sujeto y mediana comunal (UF/m²), con su confiabilidad. */
+  sujetoUfM2?: number | null;
+  medianaUfM2?: number | null;
+  medianaConfiable?: boolean;
 }
 const RE_HERO_UNICA = /\b(?:la |una )?(?:única|sola) (?:vía|forma|manera|palanca|salida|opción|ajuste|camino)\b|\buna sola vía\b|\bel único (?:ajuste|camino|movimiento)\b/i;
-const RE_HERO_DOBLE = /\b(?:el doble|dos veces|más del doble|casi el doble|la mitad|menos de la mitad|a la mitad|duplica)\b/i;
-const RE_HERO_TRIPLE = /\b(?:el triple|tres veces|un tercio|triplica)\b/i;
-export function razonesHeroClaimTexto(r: RazonesHeroClaim): string {
-  const out: string[] = [];
+type ClaimHero = { re: RegExp; regla: string; min?: number; max?: number };
+/** Orden: los más específicos primero (el primero que calza manda). Razón = sujeto ÷ comparador. */
+const CLAIMS_HERO: ClaimHero[] = [
+  { re: /\bmás del triple\b/i, regla: "triple", min: 3 },
+  { re: /\b(?:el triple|triplica|tres veces)\b/i, regla: "triple", min: 2.9 },
+  { re: /\bun tercio\b/i, regla: "tercio", min: 0.3, max: 0.37 },
+  { re: /\bmás del doble\b/i, regla: "doble", min: 2 },
+  { re: /\bcasi el doble\b/i, regla: "doble", min: 1.8 },
+  { re: /\b(?:el doble|duplica|dos veces)\b/i, regla: "doble", min: 1.9 },
+  { re: /\b(?:más de la mitad|poco más de la mitad|apenas (?:más de )?la mitad)\b/i, regla: "mitad", min: 0.5 },
+  { re: /\bmenos de la mitad\b/i, regla: "mitad", max: 0.5 },
+  { re: /\b(?:la mitad|a la mitad)\b/i, regla: "mitad", min: 0.45, max: 0.55 },
+];
+type SujetoHero = "aporte" | "arriendo" | "cuota" | "patrimonio" | "cap" | "precioM2" | "precio";
+type ComparadorHero = "cuota" | "arriendo" | "deposito" | "fondo" | "referencia" | "mediana" | "vm";
+const SUJETOS_HERO: { re: RegExp; s: SujetoHero }[] = [
+  { re: /\baport(?:e|es|as|ar|ando)\b|\bpon(?:es|er|iendo|drías|drás)\b|de tu (?:propio )?bolsillo|te faltan|sale de tu/gi, s: "aporte" },
+  { re: /\barriendo\b|\brenta\b|\bcubre\b|\bcubrir[íi]a\b|\bingreso\b/gi, s: "arriendo" },
+  { re: /\btu parte\b|\bpatrimonio\b|\bal vender\b|\bliquidar\b|\bequity\b|\bte queda\b/gi, s: "patrimonio" },
+  { re: /\bcap rate\b|\brinde\b|\brentabilidad\b|\brendimiento\b|\bretorno\b/gi, s: "cap" },
+  { re: /precio por m[²2]|\bm[²2]\b|\bpor (?:cada )?metro\b|\bel metro\b/gi, s: "precioM2" },
+  { re: /\bcuota\b|\bdividendo\b/gi, s: "cuota" },
+  { re: /\bprecio\b/gi, s: "precio" },
+];
+const COMPARADORES_HERO: { re: RegExp; c: ComparadorHero }[] = [
+  { re: /\bcuota\b|\bdividendo\b/gi, c: "cuota" },
+  { re: /\barriendo\b/gi, c: "arriendo" },
+  { re: /dep[oó]sito/gi, c: "deposito" },
+  { re: /\bfondo\b/gi, c: "fondo" },
+  { re: /\breferencia\b|\bmercado\b/gi, c: "referencia" },
+  { re: /\bmediana\b|\bcomuna\b/gi, c: "mediana" },
+  { re: /\bcuadra\b|valor estimado|valor de (?:tu|la)|\bzona\b/gi, c: "vm" },
+];
+const NOMBRE_RAZON_HERO: Record<string, string> = {
+  "aporte/cuota": "aporte/cuota", "arriendo/cuota": "arriendo/cuota", "cuota/arriendo": "cuota/arriendo",
+  "patrimonio/deposito": "tu parte al vender/depósito", "patrimonio/fondo": "tu parte al vender/fondo mutuo",
+  "cap/deposito": "CAP rate/depósito UF 5%", "cap/fondo": "CAP rate/fondo mutuo 7%", "cap/referencia": "CAP rate/referencia",
+  "precioM2/mediana": "precio por m²/mediana comunal", "precioM2/referencia": "precio por m²/mediana comunal",
+  "precio/vm": "precio/valor de mercado", "precioM2/vm": "precio/valor de mercado", "precio/mediana": "precio por m²/mediana comunal",
+};
+function razonHero(r: RazonesHeroClaim, sujeto: SujetoHero, comp: ComparadorHero): { nombre: string; valor: number | null } | null {
   const div = (a?: number | null, b?: number | null) => (a && b && a > 0 && b > 0 ? a / b : null);
-  const push = (n: string, v: number | null) => { if (v !== null) out.push(`${n} = ${v.toFixed(2)}×`); };
-  push("CAP rate/depósito UF 5%", div(r.capRatePct, 5));
-  push("CAP rate/referencia", div(r.capRatePct, r.capRefPct));
-  push("arriendo/dividendo", div(r.arriendoM, r.dividendoM));
-  push("cuota/arriendo", div(r.dividendoM, r.arriendoM));
-  if (r.vmConFuente) push("precio/VM", div(r.precioUF, r.vmUF));
+  const k = `${sujeto}/${comp}`;
+  const nombre = NOMBRE_RAZON_HERO[k];
+  if (!nombre) return null;
+  switch (k) {
+    case "aporte/cuota": return { nombre, valor: div(r.aporteM, r.dividendoM) };
+    case "arriendo/cuota": return { nombre, valor: div(r.arriendoM, r.dividendoM) };
+    case "cuota/arriendo": return { nombre, valor: div(r.dividendoM, r.arriendoM) };
+    case "patrimonio/deposito": return { nombre, valor: div(r.exitEquityCLP, r.depositoCLP) };
+    case "patrimonio/fondo": return { nombre, valor: div(r.exitEquityCLP, r.fondoCLP) };
+    case "cap/deposito": return { nombre, valor: div(r.capRatePct, 5) };
+    case "cap/fondo": return { nombre, valor: div(r.capRatePct, 7) };
+    case "cap/referencia": return { nombre, valor: div(r.capRatePct, r.capRefPct) };
+    case "precioM2/mediana": case "precioM2/referencia": case "precio/mediana":
+      return { nombre, valor: r.medianaConfiable ? div(r.sujetoUfM2, r.medianaUfM2) : null };
+    case "precio/vm": case "precioM2/vm":
+      return { nombre: r.vmConFuente ? nombre : `${nombre} (sin fuente)`, valor: r.vmConFuente ? div(r.precioUF, r.vmUF) : null };
+    default: return null;
+  }
+}
+export function razonesHeroClaimTexto(r: RazonesHeroClaim): string {
+  const pares: [SujetoHero, ComparadorHero][] = [
+    ["aporte", "cuota"], ["arriendo", "cuota"], ["cuota", "arriendo"], ["patrimonio", "deposito"], ["patrimonio", "fondo"],
+    ["cap", "deposito"], ["cap", "fondo"], ["cap", "referencia"], ["precioM2", "mediana"], ["precio", "vm"],
+  ];
+  const out: string[] = [];
+  for (const [sj, cp] of pares) {
+    const z = razonHero(r, sj, cp);
+    if (z && z.valor !== null) out.push(`${z.nombre} = ${z.valor.toFixed(2)}×`);
+  }
   return out.length ? out.join(", ") : "ninguna razón disponible";
 }
 export function violacionesHeroClaim(texto: string, r: RazonesHeroClaim): string[] {
   const out: string[] = [];
-  const div = (a?: number | null, b?: number | null) => (a && b && a > 0 && b > 0 ? a / b : null);
   for (const o of texto.split(/(?<=[.!?])\s+/)) {
     const m1 = o.match(RE_HERO_UNICA);
     if (m1 && r.viasCruzan.length !== 1) out.push(`unica-via: dice "${m1[0]}" y cruzan ${r.viasCruzan.length} vía(s)${r.viasCruzan.length ? ` (${r.viasCruzan.join(", ")})` : ""}`);
-    const m3 = o.match(RE_HERO_TRIPLE);
-    const m2 = m3 ? null : o.match(RE_HERO_DOBLE);
-    const claim = m3 ? { k: 3, txt: m3[0], regla: "triple" } : m2 ? { k: 2, txt: m2[0], regla: "doble" } : null;
-    if (!claim) continue;
-    // comparador nombrado en la MISMA oración: el más cercano al múltiplo, antes o
-    // después ("8,4% contra una referencia de 4,0% — más del doble — … cubre la cuota":
-    // manda "referencia", a 20 caracteres, no "cuota", a 60). Una oración puede nombrar
-    // varios: manda el que el múltiplo compara, no el primero que aparezca.
-    const comparadores: { re: RegExp; nombre: string; razon: number | null }[] = [
-      { re: /dep[oó]sito/gi, nombre: "CAP rate/depósito UF 5%", razon: div(r.capRatePct, 5) },
-      { re: /dividendo/gi, nombre: "arriendo/dividendo", razon: div(r.arriendoM, r.dividendoM) },
-      { re: /cuota/gi, nombre: "cuota/arriendo", razon: div(r.dividendoM, r.arriendoM) },
-      { re: /mediana|zona|cuadra|valor/gi, nombre: r.vmConFuente ? "precio/VM" : "precio/VM (sin fuente)", razon: r.vmConFuente ? div(r.precioUF, r.vmUF) : null },
-      { re: /referencia|mercado/gi, nombre: "CAP rate/referencia", razon: div(r.capRatePct, r.capRefPct) },
-    ];
-    const posClaim = o.toLowerCase().indexOf(claim.txt.toLowerCase());
-    let mejor: { d: number; c: (typeof comparadores)[number] } | null = null;
-    for (const c of comparadores) {
-      c.re.lastIndex = 0;
-      let m: RegExpExecArray | null;
-      while ((m = c.re.exec(o))) {
-        const d = Math.abs(m.index - posClaim);
-        if (!mejor || d < mejor.d) mejor = { d, c };
-      }
+    let claim: { def: ClaimHero; txt: string; pos: number } | null = null;
+    for (const def of CLAIMS_HERO) {
+      const m = o.match(def.re);
+      if (m && m.index !== undefined) { claim = { def, txt: m[0], pos: m.index }; break; }
     }
-    const elegido = mejor?.c ?? null;
-    const nombre: string | null = elegido?.nombre ?? null;
-    const razon: number | null = elegido?.razon ?? null;
-    if (!nombre) { out.push(`${claim.regla}: dice "${claim.txt}" sin nombrar contra qué (sin comparador, sin licencia)`); continue; }
-    if (razon === null) { out.push(`${claim.regla}: dice "${claim.txt}" contra ${nombre}, que no tiene dato`); continue; }
-    const magnitud = Math.max(razon, 1 / razon);
-    if (magnitud < claim.k) out.push(`${claim.regla}: dice "${claim.txt}" contra ${nombre} = ${razon.toFixed(2)}× (se exige ≥ ${claim.k}×)`);
+    if (!claim) continue;
+    // Comparador: el más cercano al múltiplo (antes o después). Sujeto: el más cercano al
+    // múltiplo que no sea el propio comparador. Sin alguno de los dos, sin licencia.
+    const masCercano = <T,>(defs: { re: RegExp; v: T }[], excluir?: { ini: number; fin: number }): { v: T; ini: number; fin: number; d: number } | null => {
+      let mejor: { v: T; ini: number; fin: number; d: number } | null = null;
+      for (const def of defs) {
+        def.re.lastIndex = 0;
+        let m: RegExpExecArray | null;
+        while ((m = def.re.exec(o))) {
+          if (excluir && m.index === excluir.ini) continue;
+          const d = Math.abs(m.index - claim!.pos);
+          if (!mejor || d < mejor.d) mejor = { v: def.v, ini: m.index, fin: m.index + m[0].length, d };
+        }
+      }
+      return mejor;
+    };
+    const comp = masCercano(COMPARADORES_HERO.map((x) => ({ re: x.re, v: x.c })));
+    if (!comp) { out.push(`${claim.def.regla}: dice "${claim.txt}" sin nombrar contra qué (sin comparador, sin licencia)`); continue; }
+    const suj = masCercano(SUJETOS_HERO.map((x) => ({ re: x.re, v: x.s })), { ini: comp.ini, fin: comp.fin });
+    if (!suj) { out.push(`${claim.def.regla}: dice "${claim.txt}" contra ${comp.v} sin sujeto claro (sin licencia)`); continue; }
+    const z = razonHero(r, suj.v, comp.v);
+    if (!z) { out.push(`${claim.def.regla}: dice "${claim.txt}" con sujeto ${suj.v} y comparador ${comp.v}: no hay razón del motor para ese par (sin licencia)`); continue; }
+    if (z.valor === null) { out.push(`${claim.def.regla}: dice "${claim.txt}" contra ${z.nombre}, que no tiene dato`); continue; }
+    const { min, max } = claim.def;
+    const ok = (min === undefined || z.valor >= min) && (max === undefined || z.valor <= max);
+    if (!ok) out.push(`${claim.def.regla}: dice "${claim.txt}" con ${z.nombre} = ${z.valor.toFixed(2)}× (se exige ${min !== undefined ? `≥ ${min}` : ""}${min !== undefined && max !== undefined ? " y " : ""}${max !== undefined ? `≤ ${max}` : ""})`);
   }
   return out.filter((v, i, arr) => arr.indexOf(v) === i);
 }
@@ -2995,10 +3074,10 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // cruzan (GS-PJ) y "más del doble" con una razón de 1,68× (GS-PC2). Dos reglas
     // contables sobre respuestaDirecta, contra datos del motor:
     //   · "única / sola / una sola vía" ⇔ exactamente UNA vía cruza.
-    //   · "doble / triple / mitad" ⇔ la razón que la MISMA oración nombra es ≥ 2 (≥ 3
-    //     para "triple"): depósito → CAP/5% · dividendo → arriendo/dividendo · cuota →
-    //     cuota/arriendo · mediana/zona/cuadra/valor → precio/VM (solo con fuente) ·
-    //     referencia/mercado → CAP/referencia. Sin comparador nombrado, sin licencia.
+    //   · "doble / triple / mitad" ⇔ la razón SUJETO ÷ COMPARADOR que la MISMA oración
+    //     nombra cae en el rango del múltiplo (ver violacionesHeroClaim: el sujeto elige
+    //     el numerador, el comparador más cercano el denominador; sin alguno de los dos,
+    //     sin licencia).
     // Un reintento quirúrgico sobre respuestaDirecta con el dato correcto citado; se
     // acepta solo si mejora. Corre ANTES de PLANC-BUDGET (el presupuesto es la última
     // palabra) y DESPUÉS de LTR-CIFRA (el candidato se re-verifica con empeoraCifras).
@@ -3012,9 +3091,16 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           capRefPct: hallazgoCapRateGen?.valor.capRefPct ?? null,
           arriendoM: Number(input.arriendo) || null,
           dividendoM: hallazgoFlujoGen?.valor.dividendoMensualCLP ?? null,
+          aporteM: m.flujoNetoMensual < 0 ? Math.abs(m.flujoNetoMensual) : null,
           precioUF: input.precio,
           vmUF: vmFrancoUF,
           vmConFuente,
+          exitEquityCLP: exitEquityCLP > 0 ? exitEquityCLP : null,
+          depositoCLP: datoDP > 0 ? datoDP : null,
+          fondoCLP: datoFM > 0 ? datoFM : null,
+          sujetoUfM2: pvc.sujetoUfM2 > 0 ? pvc.sujetoUfM2 : null,
+          medianaUfM2: pvc.medianaComunaUfM2,
+          medianaConfiable: pvc.confiable === true,
         };
         const razonesTxt = razonesHeroClaimTexto(ctxClaim);
         // v20: el titular también pasa por el guard (d3a6149a: "más del doble del valor
@@ -3030,7 +3116,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         if (viol.length) {
           console.warn(`[HERO-CLAIM] ${analysisId}: ${viol.join(" | ")} — 1 reintento quirúrgico`);
           const datoCorrecto = `VÍAS QUE CRUZAN (dato del motor): ${viasCruzan.length}${viasCruzan.length ? ` — ${viasCruzan.join(", ")}` : ""}. Solo con exactamente UNA puedes decir "la única vía"; con varias, nómbralas o di "hay más de una vía"; con ninguna, no hay vía.
-RAZONES DEL MOTOR: ${razonesTxt}. "El doble" / "la mitad" solo contra la razón que la MISMA oración nombra y solo si esa razón es ≥ 2× (≥ 3× para "el triple"); sin nombrar contra qué, no hay múltiplo. Si no alcanza, di la razón con sus dos montos o su porcentaje, nunca como múltiplo verbal.`;
+RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad" / "el triple" solo con el SUJETO y el COMPARADOR nombrados en la MISMA oración y con la razón que corresponda: "más del doble" ≥ 2×, "el doble" ≥ 1,9×, "casi el doble" ≥ 1,8×, "más de la mitad" ≥ 0,5, "menos de la mitad" ≤ 0,5, "el triple" ≥ 2,9×. Sin nombrar contra qué, no hay múltiplo. Si no alcanza, di la razón con sus dos montos o su porcentaje, nunca como múltiplo verbal.`;
           const contClp = typeof aiResult.conviene.respuestaDirecta_clp === "string" ? aiResult.conviene.respuestaDirecta_clp : "";
           const contUf = typeof aiResult.conviene.respuestaDirecta_uf === "string" ? aiResult.conviene.respuestaDirecta_uf : "";
           const titularActual = typeof aiResult.titular === "string" ? aiResult.titular : "";
