@@ -117,6 +117,18 @@ export const NEGOCIACION_MIN = 20;
 /** Techo DURO de la continuación. Sobre esto no se acepta: se recorta. */
 export const TECHO_CONTINUACION_DURO = Math.ceil(CONTINUACION_MAX * TOLERANCIA_PRESUPUESTO); // 66
 
+/**
+ * v18 (goal "apertura en voz de Franco", 02-sep-2026): el motor YA NO antepone la
+ * fraseCanonica del #1 — el modelo escribe la respuestaDirecta completa (primera
+ * oración = la razón que manda, en su voz) y el motor solo antepone la respuesta al
+ * veredicto. El techo TOTAL no cambió: `aperturaWC` (lo que medía la frase del #1)
+ * sigue entrando como presupuesto de esa primera oración. Lo que el MODELO puede
+ * escribir es entonces `aperturaWC + CONTINUACION_MAX` (duro: + TECHO_CONTINUACION_DURO),
+ * y el total ensamblado sigue siendo `techoTotalRespuestaDirecta`.
+ */
+export const techoRespuestaModelo = (aperturaWC: number, duro = false): number =>
+  aperturaWC + (duro ? TECHO_CONTINUACION_DURO : CONTINUACION_MAX);
+
 /** Palabras de un texto (mismo conteo en motor, guard y golden). */
 export const contarPalabras = (s: unknown): number =>
   typeof s === "string" && s.trim() ? s.trim().split(/\s+/).filter(Boolean).length : 0;

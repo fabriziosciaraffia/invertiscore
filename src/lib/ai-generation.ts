@@ -44,7 +44,7 @@ import {
   CONTINUACION_MAX,
   NEGOCIACION_MAX,
   NEGOCIACION_MIN,
-  TECHO_CONTINUACION_DURO,
+  techoRespuestaModelo,
   TECHO_NEGOCIACION_DURO,
   TOLERANCIA_PRESUPUESTO,
   contarPalabras,
@@ -162,7 +162,11 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // rango y ejemplo positivo, y NO alimenta anomalías, corte de apuesta ni
 // precio-justo (esReferenciaContrastable). Cierre §9 con posición sobre el
 // arriendo real cuando el caso se apoya en un estimado.
-export const PROMPT_VERSION_LTR = 18;
+// v19 (03-sep-2026): la apertura del hero en voz de Franco — muere Plan C. El motor
+// antepone solo la respuesta al veredicto; el modelo escribe la respuestaDirecta
+// completa con el hallazgo #1 como datos (qué · cuánto · dirección) y un ejemplo
+// positivo pegado al campo. Anclas: "el veredicto sube a".
+export const PROMPT_VERSION_LTR = 19;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -711,10 +715,11 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 \`\`\`
 
 Largos por campo:
-- conviene.respuestaDirecta: escribes SOLO la CONTINUACIÓN. El motor antepone DOS cosas por su cuenta: la RESPUESTA al veredicto ("Conviene." / "Todavía no: tienes que ajustar los supuestos." / "No conviene.") y después la PRIMERA ORACIÓN FIJA que narra el #1. NO escribas ninguna de las dos ni las repitas — tampoco abras tu continuación afirmando o negando la conveniencia, porque quedaría dicho dos veces. Tu continuación: UNA MARCA \`**…**\` OBLIGATORIA EN TU CONTINUACIÓN (ni cero ni dos): frase completa con predicado, que se lea sola. La apertura que antepone el motor no lleva marcas — no intentes marcarla.
-  (1) UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona al #1, y SOLO si cambia la decisión: el supuesto de arriendo que sostiene el caso (con el encuadre que fija §8.bis según su procedencia), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Termina en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
-  (2) PRESUPUESTO: tu continuación tiene un máximo PROPIO de ${CONTINUACION_MAX} palabras, y no depende de cuánto ocupe lo que el motor antepone — el máximo total escala con eso. Escribí para ese presupuesto, no para el total. Un guard lo mide, puede pedirte recortar y, si insistís, RECORTA ÉL por oración: la última idea que no quepa se pierde entera, así que pon lo que importa primero.
-  PROHIBIDO: repetir la apertura fija; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones de magnitud fuera de §15 (con el % o múltiplo provisto, o los dos montos absolutos, nunca como aproximación verbal); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
+- conviene.respuestaDirecta: la escribes TÚ completa, salvo la RESPUESTA al veredicto ("Conviene." / "Conviene, con una condición." / "Todavía no: tienes que ajustar los supuestos." / "No conviene."), que el motor antepone por su cuenta: no la escribas ni la repitas, y no abras afirmando o negando la conveniencia — quedaría dicho dos veces. UNA MARCA \`**…**\` OBLIGATORIA (ni cero ni dos): frase completa con predicado, que se lea sola.
+  (1) PRIMERA ORACIÓN = LA razón que manda: el hallazgo 1 del bloque HALLAZGOS del caso, en tus palabras y con su cifra — la respuesta a "¿por qué?". No es la frase del hallazgo (esa es la card que el lector ve más abajo): es tu lectura, como se la dirías a quien te preguntó si compra.
+  (2) DESPUÉS, UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona esa razón, y SOLO si cambia la decisión: el supuesto de arriendo que sostiene el caso (con el encuadre que fija §8.bis según su procedencia), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Termina en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
+  (3) PRESUPUESTO: el bloque HALLAZGOS del caso declara el máximo de palabras de lo que escribes (≈ ${CONTINUACION_MAX} para el matiz más lo que pesa la razón que manda); la respuesta del motor no se descuenta. Escribe para ese presupuesto. Un guard lo mide, puede pedirte recortar y, si insistes, RECORTA ÉL por oración: la última idea que no quepa se pierde entera, así que pon lo que importa primero.
+  PROHIBIDO: copiar la frase de un hallazgo; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones de magnitud fuera de §15 (con el % o múltiplo provisto, o los dos montos absolutos, nunca como aproximación verbal); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
 - conviene.cajaAccionable: 1-2 frases — la POSICIÓN PERSONAL de Franco que cierra el análisis (§9): síntesis + condición bajo la que se sostiene + costo de avanzar contra el análisis si aplica. Cierra con un próximo paso concreto. NO checklist genérica, NO pregunta retórica sin respuesta.
   LAS VÍAS SON LAS QUE SON. Si el caso trae el bloque VÍAS QUE CRUZAN AL VEREDICTO DE ARRIBA, tu posición se escribe SOBRE ESA LISTA: cada una alcanza por sí sola y todas están medidas. Puedes recomendar una —la más accionable para este comprador— pero no puedes dejar creyendo que es la única disponible.
   LA PRUEBA NO ES LA LITERALIDAD, ES LO QUE QUEDA CREYENDO QUIEN LEE. "La única palanca que depende solo de ti" puede ser cierta palabra por palabra y aun así dejar al lector convencido de que no hay otra vía — cuando estirar el plazo tampoco depende del vendedor, depende del banco, igual que la tasa. Una frase técnicamente correcta que produce una creencia falsa es un error, no un matiz.
@@ -1005,6 +1010,51 @@ export function techoSinUmbralEnNegociacion(ai: Record<string, unknown> | null |
     }
   }
   return out;
+}
+
+/**
+ * v18 — el hallazgo entra al prompt como DATOS (qué · cuánto · dirección), no como su
+ * fraseCanonica: esa frase es la card que el lector ve en "Principales hallazgos" y,
+ * cuando el prompt la traía, el modelo (o el motor, vía Plan C) la copiaba como
+ * apertura. El motor emite datos; la prosa redacta.
+ */
+function datosHallazgoParaPrompt(h: Hallazgo): string {
+  const dir = h.direccion === "favorable" ? "a favor" : h.direccion === "adverso" ? "en contra" : "neutral";
+  const conf = `confianza ${h.procedencia.confianza}`;
+  switch (h.id) {
+    case "flujo_mensual": {
+      const v = h.valor;
+      const aporte = Math.abs(v.flujoNetoMensualCLP);
+      const que = v.flujoNetoMensualCLP < 0
+        ? `aporte mensual de tu bolsillo (el arriendo no cubre la cuota) · cuánto: ${fmtCLP(aporte)} al mes, ${pct(v.ratioSobreDividendo * 100, 0)}% del dividendo de ${fmtCLP(v.dividendoMensualCLP)}`
+        : `el arriendo cubre la cuota y sobra · cuánto: ${fmtCLP(aporte)} al mes libres sobre un dividendo de ${fmtCLP(v.dividendoMensualCLP)}`;
+      const consuelo = v.consuelo === "plusvalia" ? " · la plusvalía histórica de la comuna lo compensa en parte" : v.consuelo === "ninguno" ? " · la plusvalía histórica no lo compensa" : "";
+      return `qué: ${que}${consuelo} · dirección: ${dir} · ${conf}`;
+    }
+    case "cap_rate": {
+      const v = h.valor;
+      return `qué: rentabilidad neta anual del arriendo sobre el precio (CAP rate) · cuánto: ${pct(v.capRatePct)}% contra ${pct(v.capRefPct)}% de referencia (${v.gapPts >= 0 ? "+" : ""}${pct(v.gapPts)} pts) · dirección: ${dir} · ${conf}`;
+    }
+    case "sobreprecio": {
+      const v = h.valor;
+      const lado = v.desviacionPct >= 0 ? "SOBRE" : "BAJO";
+      return `qué: precio por m² contra la mediana de la comuna${v.comuna ? ` (${v.comuna})` : ""} · cuánto: UF ${pct(v.sujetoUfM2)}/m² contra mediana UF ${pct(v.medianaComunaUfM2)}/m², un ${Math.abs(Math.round(v.desviacionPct))}% ${lado} la mediana (${v.n} ventas) · dirección: ${dir} · ${conf}`;
+    }
+    case "plusvalia": {
+      const v = h.valor;
+      return `qué: plusvalía histórica anual de la comuna · cuánto: ${pct(v.anualizadaPct)}% anual contra ${pct(v.refPct)}% de referencia${v.tieneData ? "" : " (sin dato propio de la comuna)"} · dirección: ${dir} · ${conf}`;
+    }
+    case "capex_puesta_a_punto": {
+      const v = h.valor;
+      return `qué: puesta a punto antes de arrendar (depto de ${v.antiguedadAnios} años) · cuánto: ${fmtCLP(v.montoCLP)} (${fmtUF(v.montoUF)}), ${pct(v.fraccionInversion * 100, 0)}% de la inversión inicial · dirección: ${dir} · ${conf}`;
+    }
+    case "estructura_financiamiento": {
+      const v = h.valor;
+      return `qué: estructura de financiamiento (manda: ${v.driver}) · cuánto: pie ${pct(v.piePct, 0)}% (${v.pieLevel}), tasa ${pct(v.tasaPct, 2)}% contra ${pct(v.tasaMarketPct, 2)}% de mercado (${v.spreadBps >= 0 ? "+" : ""}${Math.round(v.spreadBps)} pb, ${v.tasaLevel}) · dirección: ${dir} · ${conf}`;
+    }
+    default:
+      return `qué: ${h.titular} · dirección: ${dir} · ${conf}`;
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1632,7 +1682,7 @@ ANCLAS DE NEGOCIACIÓN: NINGUNA — caso estructural. No hay objetivo, ni primer
       : `
 ANCLAS DE NEGOCIACIÓN (REGLA 5 v16 — usar EXACTOS y con su nombre, no recalcular):
   ⚠ NINGUNO de estos precios entra en \`negociacion.contenido\`: se imprimen como bloque propio justo debajo de ese párrafo. Van en las glosas del plan y en \`cajaAccionable\`, no en el argumento.
-- objetivo_uf: ${objetivoUF} (${fmtCLP(objetivoCLP)}) — ${objetivoEsUmbral ? `DONDE CAMBIA EL VEREDICTO: cerrando ahí el análisis pasa a ${destinoUmbralNeg}; bajo ese precio ya es ${destinoUmbralNeg}, sobre ese precio sigue siendo ${veredictoMotor}` : `donde el aporte se vuelve sostenible (este caso no tiene umbral de veredicto en rango)`}
+- objetivo_uf: ${objetivoUF} (${fmtCLP(objetivoCLP)}) — ${objetivoEsUmbral ? `DONDE CAMBIA EL VEREDICTO: cerrando ahí el veredicto sube a ${destinoUmbralNeg}; bajo ese precio ya es ${destinoUmbralNeg}, sobre ese precio sigue siendo ${veredictoMotor}` : `donde el aporte se vuelve sostenible (este caso no tiene umbral de veredicto en rango)`}
 - primeraOferta_uf: ${primeraOfertaUF} (${fmtCLP(primeraOfertaCLP)})${primeraOfertaUF === objetivoUF ? " ← IGUAL al objetivo (modo cerrar_actual: no sugerir descuento)" : " — el objetivo menos ~5%, posición de apertura"}
 - sostenible_uf: ${sostenibleUF} (${fmtCLP(sostenibleCLP)}) — DONDE EL APORTE SE VUELVE SOSTENIBLE, dato de caja del motor${objetivoEsUmbral ? (sostenibleUF < objetivoUF ? `; queda BAJO el objetivo, o sea dentro de la zona donde el veredicto ya es ${destinoUmbralNeg}: es hasta dónde seguir si la conversación da, nunca "sobre esto no compras"` : sostenibleUF > objetivoUF ? `; queda SOBRE el objetivo: a ese precio el veredicto todavía no cambia` : "; coincide con el objetivo") : " (es el mismo número que el objetivo)"}
 - modoSostenible: "${modoSugerido}"
@@ -1650,7 +1700,7 @@ ANCLAS DE NEGOCIACIÓN (REGLA 5 v16 — usar EXACTOS y con su nombre, no recalcu
 - casoNegociador (§1.12.2 — los argumentos van EN LA MISMA PIEZA que el número, en este orden de fuerza; SOLO estos — señales que no vienen acá NO existen: nada de urgencia del vendedor, días en mercado ni pre-aprobación del comprador):${pvc.desviacionPct != null && pvc.desviacionPct > 2 ? `
   1) sobreprecio vs mediana comunal: pides UF ${pvc.sujetoUfM2.toLocaleString("es-CL")}/m² donde la mediana confiable de la comuna está ${pct(pvc.desviacionPct)}% más abajo — el ancla de comparables
   2) ` : `
-  1) `}${objetivoEsUmbral ? `el objetivo cambia la conclusión: cerrando en ${fmtUF(objetivoUF)} el análisis pasa a ${destinoUmbralNeg} — no es regateo, es el borde del veredicto` : `el aporte: "${razonSugerido}" — a ${fmtUF(objetivoUF)} el aporte mensual queda en un nivel sostenible; no es regateo, es caja`}
+  1) `}${objetivoEsUmbral ? `el objetivo cambia la conclusión: cerrando en ${fmtUF(objetivoUF)} el veredicto sube a ${destinoUmbralNeg} — no es regateo, es el borde del veredicto` : `el aporte: "${razonSugerido}" — a ${fmtUF(objetivoUF)} el aporte mensual queda en un nivel sostenible; no es regateo, es caja`}
 - glosaPrimeraOferta (dato mecánico): la primera oferta ES el objetivo menos ~5% — una posición de apertura con margen para subir, no una cifra con origen propio. Se explica así, en fácil.`;
     // Bloque opcional de subsidio — datos puros, sin instrucciones (las reglas
     // viven en el system prompt + nota de compliance al final).
@@ -1957,8 +2007,6 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
     // ≥0.2 relevante · resto contexto.
     const pesoHallazgo = (dec: number): string =>
       dec >= 0.5 ? "decisivo" : dec >= 0.2 ? "relevante" : "contexto";
-    const dirHallazgo = (dir: string): string =>
-      dir === "favorable" ? "a favor" : dir === "adverso" ? "en contra" : "neutral";
 
     // Respuesta al veredicto que el motor antepone (ver el ensamblado más abajo). Se
     // resuelve ACÁ porque su largo entra en el techo TOTAL que el prompt declara y que
@@ -1980,6 +2028,16 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
           ? "No conviene."
           : "Todavía no: tienes que ajustar los supuestos.";
     const respuestaWC = contarPalabras(respuestaVeredicto);
+    // v18 — ejemplo positivo de la PRIMERA ORACIÓN del modelo (la que sigue a la
+    // respuesta), tomado del patrón de los ejemplos calibrados del titular (§18):
+    // veredicto en palabras simples + la razón que manda. Sin montos (la cifra es la
+    // del caso) y sin la palanca de este ejemplo (la del caso viene del bloque VÍAS).
+    const ejemploApertura =
+      veredictoMotor === "COMPRAR"
+        ? "Compras bajo la mediana de la comuna y el arriendo cubre el dividendo: el negocio se sostiene sin que pongas de tu bolsillo."
+        : veredictoMotor === "BUSCAR OTRA"
+          ? "Pagas caro y el arriendo no cubre la cuota: cada mes sale de tu bolsillo la diferencia, y el resto del caso no la compensa."
+          : "Buen depto, mal negocio como está: el arriendo queda corto frente a la cuota, y con más pie el mes cierra.";
 
     // PLAN C — presupuesto de la continuación: FIJO (CONTINUACION_MAX), y el techo
     // TOTAL escala con lo que el motor antepone. La regla, su calibración y por qué
@@ -1991,6 +2049,10 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
       : 0;
     const maxContinuacion = CONTINUACION_MAX;
     const techoTotal = aperturaWC + respuestaWC + maxContinuacion;
+    // v18: el modelo escribe la respuestaDirecta completa (menos la respuesta al
+    // veredicto). aperturaWC ya no es una frase antepuesta: es el presupuesto de la
+    // primera oración, y el techo total no cambia.
+    const maxRespuestaModelo = techoRespuestaModelo(aperturaWC);
 
     // ── Referencia de arriendo: las tres piezas que el prompt consume ─────────
     // Todas cuelgan de la MISMA resolución (arriendo-referencia.ts) para que no
@@ -2159,13 +2221,14 @@ Lo que más pesa en esta lectura es la plusvalía histórica de la comuna — un
 
     const hallazgosBloque = hallazgosOrdenados.length > 0
       ? `
-HALLAZGOS DEL ANÁLISIS (vienen en el ORDEN DEL INFORME: el 1º es el que abre la lectura — el adverso más determinante cuando lo hay, o el de más peso — y el resto va por cuánto pesa en la decisión). Nárralos en pirámide con TU voz. NO copies la frase literal, NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostén la tensión con honestidad — no la aplanes.
+HALLAZGOS DEL ANÁLISIS (vienen en el ORDEN DEL INFORME: el 1º es el que manda — el adverso más determinante cuando lo hay, o el de más peso — y el resto va por cuánto pesa en la decisión). Llegan como DATOS, no como frases: las cards del informe ya narran cada uno con su propia frase, así que tu prosa los cuenta con TU voz y nunca los recita. NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostén la tensión con honestidad — no la aplanes.
 
-PRIMERA ORACIÓN FIJA de conviene.respuestaDirecta (consume ${aperturaWC} palabras) — YA está escrita y se antepone automáticamente. NO la escribas, NO la repitas, NO la parafrasees; tu texto CONTINÚA después de ella: «${hallazgosOrdenados[0].fraseCanonica}»
+LA RESPUESTA YA ESTÁ ESCRITA: el motor antepone «${respuestaVeredicto}» a conviene.respuestaDirecta. No la escribas ni la repitas. Tu PRIMERA ORACIÓN es LA razón que manda — el hallazgo 1 de abajo — en tus palabras, con su cifra, sin repetir la frase del hallazgo: es la respuesta a "¿por qué?", dicha como se la dirías a alguien que te preguntó si compra.
+Ejemplo del patrón (la razón y la cifra son las de ESTE caso, no las del ejemplo): «${respuestaVeredicto} ${ejemploApertura}»
 
-Lista completa de hallazgos (para elegir el matiz de tu continuación; el 1º es el de la apertura fija):
+Hallazgos, en orden (el 1 manda la primera oración; el resto sirve para elegir el matiz):
 ${hallazgosOrdenados
-  .map((h, i) => `${i + 1}. [${pesoHallazgo(h.decisividad)} · ${dirHallazgo(h.direccion)} · confianza ${h.procedencia.confianza}] ${h.fraseCanonica}`)
+  .map((h, i) => `${i + 1}. [${pesoHallazgo(h.decisividad)}] ${datosHallazgoParaPrompt(h)}`)
   .join("\n")}
 
 ${hallazgoDistanciaGen ? `
@@ -2205,7 +2268,7 @@ ${matizPalancaArriendo}
 
 SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues" o cualquier ajuste como salida. La honestidad acá es cerrar la puerta, no dejarla entornada: ${casoPrecioJustoGen ? "la brecha no es de este depto ni de su precio — es de lo que la zona rinde hoy (ver CASO PRECIO-JUSTO)" : "la brecha es del deal"}. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe.
 ` : ""}
-CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrolla UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras — es TU presupuesto, entero, y no se descuenta de las ${aperturaWC + respuestaWC} que el motor ya antepuso (el total ensamblado no pasa de ${techoTotal}); arranca donde termina la apertura, sin repetir su métrica ni sus palabras. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
+CÓMO ESCRIBIR conviene.respuestaDirecta (contrato completo en §13): PRIMERA ORACIÓN = la razón que manda (hallazgo 1, con su cifra, en tu voz); DESPUÉS un solo matiz — el de mayor consecuencia en plata — que la condiciona, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxRespuestaModelo} palabras en total para lo que escribes tú — la respuesta al veredicto (${respuestaWC} palabras) la pone el motor y no se descuenta; el total ensamblado no pasa de ${techoTotal}. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
     // Pie cero (RESUELTO fase 4): con pie 0 las métricas sobre capital llegan
@@ -2723,6 +2786,11 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           } else {
             console.warn(`[LTR-CIFRA] ${analysisId}: retry no mejoró o no parseó — conservo la prosa previa`);
           }
+          // Auditoría (NO se renderiza, espejo de _catchRootAFlag): las cifras fuera del
+          // input que sobrevivieron al reintento, para que un instrumento las lea sin
+          // parsear logs.
+          const sobreviven = cifrasFueraDeInput(userPrompt, aiResult, { ufClp: UF_CLP });
+          if (sobreviven.length) aiResult._cifrasFueraDeInput = sobreviven;
         }
       } catch (e) {
         console.warn(`[LTR-CIFRA] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
@@ -2825,8 +2893,9 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       }
     }
 
-    // PLAN C GUARD — enforcement de presupuesto POR CONSTRUCCIÓN. La continuación (lo
-    // que escribió el modelo, aún SIN la apertura) no puede superar maxContinuacion.
+    // PLAN C GUARD — enforcement de presupuesto POR CONSTRUCCIÓN. Lo que escribió el
+    // modelo (v18: la respuestaDirecta completa, aún SIN la respuesta al veredicto que
+    // antepone el motor) no puede superar maxRespuestaModelo = aperturaWC + CONTINUACION_MAX.
     // El modelo no cuenta bien, así que medimos acá: sobre maxContinuacion×1.1, hasta
     // 2 retries QUIRÚRGICOS (Goal D). Antes cada retry regeneraba el JSON COMPLETO
     // (~24k tokens de input + ~2.9k de output, ~50s) para acortar un campo de ≤66
@@ -2849,15 +2918,15 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     if (aiResult?.conviene && hallazgosOrdenados.length > 0) {
       const wcCont = (ai: typeof aiResult): number =>
         Math.max(contarPalabras(ai?.conviene?.respuestaDirecta_clp), contarPalabras(ai?.conviene?.respuestaDirecta_uf));
-      const limiteRetry = maxContinuacion * TOLERANCIA_PRESUPUESTO;
+      const limiteRetry = maxRespuestaModelo * TOLERANCIA_PRESUPUESTO;
+      const techoDuroModelo = techoRespuestaModelo(aperturaWC, true);
       // El mejor candidato es el MÁS CORTO que hayamos visto: si el retry empeora, no
       // hay razón para quedarse con él (antes se pisaba el previo sin comparar).
       let mejor = aiResult;
       let mejorWC = wcCont(aiResult);
       const PLANC_MAX_RETRIES = 2;
-      const aperturaFija = String(hallazgosOrdenados[0]?.fraseCanonica ?? "").trim();
       for (let intento = 1; intento <= PLANC_MAX_RETRIES && mejorWC > limiteRetry; intento++) {
-        console.warn(`[PLANC-BUDGET] ${analysisId}: continuación ${mejorWC} palabras > máx ${maxContinuacion} — retry quirúrgico ${intento}/${PLANC_MAX_RETRIES}`);
+        console.warn(`[PLANC-BUDGET] ${analysisId}: respuestaDirecta ${mejorWC} palabras > máx ${maxRespuestaModelo} — retry quirúrgico ${intento}/${PLANC_MAX_RETRIES}`);
         const insistencia =
           intento === 1
             ? ""
@@ -2866,14 +2935,14 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         const contUf = typeof mejor?.conviene?.respuestaDirecta_uf === "string" ? mejor.conviene.respuestaDirecta_uf : "";
         const promptQuirurgico = `Estás corrigiendo SOLO el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
 
-PRIMERA PARTE FIJA del texto — ya está escrita y se antepone automáticamente; tu texto CONTINÚA después de ella. NO la escribas, NO la repitas, NO la parafrasees: «${aperturaFija}»
+La RESPUESTA al veredicto («${respuestaVeredicto}») la antepone el motor: NO la escribas ni la repitas. Tu texto arranca con LA razón que manda (la primera oración actual, que se conserva) y sigue con el matiz.
 
-TU TAREA: la continuación actual mide ${mejorWC} palabras y el MÁXIMO es ${maxContinuacion} por variante. Comprímela conservando el MISMO matiz (el de mayor consecuencia en plata) y usando SOLO cifras que ya aparecen en ella — ninguna cifra nueva. UN solo matiz; los demás viven en las cards.${insistencia}
+TU TAREA: el texto actual mide ${mejorWC} palabras y el MÁXIMO es ${maxRespuestaModelo} por variante. Comprímelo conservando la primera oración (la razón) y el MISMO matiz (el de mayor consecuencia en plata), usando SOLO cifras que ya aparecen en él — ninguna cifra nueva. UN solo matiz; los demás viven en las cards.${insistencia}
 
-CONTINUACIÓN ACTUAL (variante CLP):
+TEXTO ACTUAL (variante CLP):
 ${contClp}
 
-CONTINUACIÓN ACTUAL (variante UF):
+TEXTO ACTUAL (variante UF):
 ${contUf}
 
 Responde SOLO este JSON, sin texto alrededor:
@@ -2918,15 +2987,16 @@ Responde SOLO este JSON, sin texto alrededor:
       // Enforcement final: recorte determinístico por oración. Ambas variantes pierden
       // las MISMAS oraciones — si divergieran, el toggle de moneda cambiaría el
       // contenido de la prosa y no solo sus cifras.
-      if (mejorWC > TECHO_CONTINUACION_DURO && aiResult?.conviene) {
+      if (mejorWC > techoDuroModelo && aiResult?.conviene) {
         const { clp, uf, oracionesDescartadas } = recortarContinuacion(
           typeof aiResult.conviene.respuestaDirecta_clp === "string" ? aiResult.conviene.respuestaDirecta_clp : "",
           typeof aiResult.conviene.respuestaDirecta_uf === "string" ? aiResult.conviene.respuestaDirecta_uf : "",
+          techoDuroModelo,
         );
         aiResult.conviene.respuestaDirecta_clp = clp;
         aiResult.conviene.respuestaDirecta_uf = uf;
         console.warn(
-          `[PLANC-BUDGET-TRIM] ${analysisId}: no convergió en ${PLANC_MAX_RETRIES} reintentos (${mejorWC} > ${TECHO_CONTINUACION_DURO}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras${clp ? "" : " (continuación vacía: queda la apertura del motor sola)"}`,
+          `[PLANC-BUDGET-TRIM] ${analysisId}: no convergió en ${PLANC_MAX_RETRIES} reintentos (${mejorWC} > ${techoDuroModelo}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras${clp ? "" : " (texto vacío: queda la respuesta del motor sola)"}`,
         );
       }
     }
@@ -3134,80 +3204,21 @@ Responde SOLO este JSON, sin texto alrededor:
       aiResult.hallazgoSobreprecio = hallazgoSobreprecio;
     }
 
-    // PLAN C — apertura determinística de respuestaDirecta: el MOTOR escribe la
-    // primera oración (fraseCanonica del hallazgo #1); la IA solo continúa. Se
-    // antepone acá, post-LLM (y post-regeneración del catch-layer), para que el #1
-    // SIEMPRE lidere sin depender de la obediencia del modelo — 4 iteraciones de
-    // instrucción fallaban en los mismos casos. fraseCanonica es un string ÚNICO
-    // (no dual _clp/_uf): agnóstico de moneda salvo flujo_mensual (CLP $) y capex
-    // (UF+CLP inline); se usa igual en ambas variantes, la apertura no flipea con el toggle.
-    if (aiResult?.conviene && hallazgosOrdenados[0]?.fraseCanonica) {
-      const apertura = String(hallazgosOrdenados[0].fraseCanonica).trim();
-      const aw = apertura.toLowerCase().split(/\s+/);
-      // Detección moneda/cifra-AGNÓSTICA del eco de la apertura. Motivo: cuando el #1
-      // es flujo_mensual la apertura lleva un monto en CLP ("Tienes que poner $X…"); el
-      // LLM a veces la restata en la OTRA moneda dentro de respuestaDirecta_uf ("Tienes
-      // que poner UF Y…"). El guard de prefijo por-palabra (abajo) es ciego a esto: el
-      // token de monto rompe el match en la palabra 4 (< umbral 6) y el eco sobrevive
-      // → apertura duplicada dual-moneda. Este paso normaliza montos/% a un placeholder
-      // y compara a nivel ORACIÓN, así el eco en otra moneda se reconoce y strippea.
-      const normSent = (s: string): string =>
-        s.replace(/\$[\d.,]+/g, "«M»").replace(/UF\s?[\d.,]+/gi, "«M»").replace(/[\d.,]+\s?%/g, "«P»").replace(/\s+/g, " ").trim().toLowerCase();
-      const splitSents = (s: string): string[] => s.split(/(?<=[.;])\s+/).map((x) => x.trim()).filter(Boolean);
-      const aperturaSkeletons = new Set(splitSents(apertura).map(normSent).filter((x) => x.length >= 12));
-      const armar = (cont: unknown): string => {
-        const c = typeof cont === "string" ? cont.trim() : "";
-        if (!c) return apertura;
-        // (1) Strip de ECO moneda-normalizado: descarta oraciones INICIALES de la
-        // continuación cuyo esqueleto (montos/% neutralizados) coincide con una oración
-        // de la apertura — la clase del bug dual-moneda F2. Log [PLANC-DUAL-STRIPPED].
-        const sents = splitSents(c);
-        let drop = 0;
-        while (drop < sents.length && aperturaSkeletons.has(normSent(sents[drop]))) drop++;
-        if (drop > 0) {
-          const resto = sents.slice(drop).join(" ").trim();
-          const restoWC = resto ? resto.split(/\s+/).filter(Boolean).length : 0;
-          if (restoWC >= 15) {
-            console.warn(`[PLANC-DUAL-STRIPPED] ${analysisId}: continuación restaba ${drop} oración(es) de la apertura (variante moneda/cifra) — strippeadas, quedan ${restoWC} palabras`);
-            return `${apertura} ${resto}`;
-          }
-          console.warn(`[PLANC-DUAL] ${analysisId}: continuación restaba ${drop} oración(es) de la apertura pero el resto quedaría <15 palabras (strip omitido)`);
-        }
-        // (2) Sanity de no-repetición EXACTA (comportamiento previo): si la continuación
-        // arranca copiando >6 palabras idénticas de la apertura fija, STRIP del prefijo
-        // duplicado. Borde: si tras el strip quedan <15 palabras, no strippea (mejor
-        // duplicado que mutilado) y deja el warning.
-        const cw = c.toLowerCase().split(/\s+/);
-        let match = 0;
-        while (match < aw.length && match < cw.length && aw[match] === cw[match]) match++;
-        if (match > 6) {
-          const resto = c.split(/\s+/).slice(match).join(" ").trim();
-          const restoWC = resto ? resto.split(/\s+/).filter(Boolean).length : 0;
-          if (restoWC >= 15) {
-            console.warn(`[PLANC-REPEAT-STRIPPED] ${analysisId}: continuación repetía ${match} palabras de la apertura — prefijo strippeado, quedan ${restoWC} palabras`);
-            return `${apertura} ${resto}`;
-          }
-          console.warn(`[PLANC-REPEAT] ${analysisId}: la continuación repite ${match} palabras de la apertura fija (strip omitido: quedarían ${restoWC} < 15 palabras)`);
-        }
-        return `${apertura} ${c}`;
-      };
-      aiResult.conviene.respuestaDirecta_clp = armar(aiResult.conviene.respuestaDirecta_clp);
-      aiResult.conviene.respuestaDirecta_uf = armar(aiResult.conviene.respuestaDirecta_uf);
-
-      // ─── LA RESPUESTA VA PRIMERO ────────────────────────────────────────────
-      // El usuario pregunta "¿conviene?" y hasta acá la prosa abría con el CAP rate o
-      // con el aporte mensual: el badge decía el veredicto, el texto no. La respuesta se
-      // antepone en el MOTOR y no por instrucción al modelo, por dos razones: la primera
-      // oración de respuestaDirecta ya era del motor (contrato Plan C), y así la línea
-      // más leída del informe no depende de que el LLM obedezca.
-      //
-      // COMPRAR condicional: cuando el veredicto se apoya en un supuesto frágil, "Conviene."
-      // a secas contradice al párrafo siguiente, que suele avisar que el arriendo declarado
-      // está sobre mercado. La señal ya existe y es determinística: el margen de
-      // `sensibilidad` bajo su propio corte favorable = el veredicto cuelga del arriendo.
-      // (`respuestaVeredicto` se resolvió arriba, junto al presupuesto: ya no se
-      // descuenta de la continuación —tiene techo propio— pero sí entra en el techo
-      // TOTAL que se declara en el prompt y que verifica el golden.)
+    // ─── LA RESPUESTA VA PRIMERO (v18: la apertura ya no es prefabricada) ──────
+    // Hasta v17 el motor anteponía además la fraseCanonica del hallazgo #1 ("Plan C",
+    // con dos strippers de eco) y esa misma frase se renderizaba como card en
+    // Principales hallazgos: doble lectura y cero respuesta a "¿invierto o no?" —
+    // medido sobre el parque, 100% de las prosas v13-v17 abrían con la frase de la
+    // card. Desde v18 el modelo escribe la respuestaDirecta completa (primera
+    // oración = la razón que manda, en su voz, con el hallazgo #1 como DATOS en el
+    // prompt) y el motor antepone SOLO la respuesta al veredicto, siempre, para que
+    // la línea más leída del informe conteste la pregunta sin depender de la
+    // obediencia del modelo. Idempotente si el modelo ya la escribió.
+    //
+    // COMPRAR condicional: cuando el veredicto se apoya en un supuesto frágil, "Conviene."
+    // a secas contradice al párrafo siguiente; la señal es determinística (margen de
+    // `sensibilidad` bajo su corte favorable) y se resolvió arriba en respuestaVeredicto.
+    if (aiResult?.conviene) {
       const anteponerVeredicto = (t: unknown): string => {
         const txt = typeof t === "string" ? t.trim() : "";
         if (!txt) return respuestaVeredicto;
