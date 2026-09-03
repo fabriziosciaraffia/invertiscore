@@ -62,6 +62,10 @@ export function useWizardV4DryRun(answers: WizardV4Answers, data: WizardV4Data):
       precioM2UF: data.precioM2UF,
       radiusUsed: data.radiusUsed,
       ggccSugerido: data.ggccSugerido,
+      ventaN: data.ventaN,
+      ventaFuente: data.ventaFuente,
+      ventaUniverso: data.ventaUniverso,
+      ventaRadio: data.ventaRadio,
     };
     const flags = {
       arriendoEstimacion: answers.arrModo === "estimacion",

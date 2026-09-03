@@ -37,6 +37,12 @@ export interface WizardV4Data {
   precioM2UF: number | null;
   /** Radio (m) usado por el RPC de sugerencias. */
   radiusUsed: number | null;
+  /** Procedencia de la sugerencia de VENTA (Tramo A): n, nivel, universo y radio, tal
+   *  como los declara el endpoint. Sin esto el valor de mercado no tiene fuente. */
+  ventaN: number;
+  ventaFuente: "radio" | "comuna" | "sin-dato";
+  ventaUniverso: "nuevo" | "usado" | "mixto" | null;
+  ventaRadio: number | null;
   /** Baseline AirROI (tarifa/ocupación) — solo activo en str/both. */
   airRoi: AirRoiSuggestion;
 }
@@ -54,6 +60,10 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
   const [ggccSugerido, setGgccSugerido] = useState<number | null>(null);
   const [precioM2Clp, setPrecioM2Clp] = useState<number | null>(null); // CLP/m² crudo del RPC
   const [radiusUsed, setRadiusUsed] = useState<number | null>(null);
+  const [ventaN, setVentaN] = useState(0);
+  const [ventaFuente, setVentaFuente] = useState<WizardV4Data["ventaFuente"]>("sin-dato");
+  const [ventaUniverso, setVentaUniverso] = useState<WizardV4Data["ventaUniverso"]>(null);
+  const [ventaRadio, setVentaRadio] = useState<number | null>(null);
 
   // UF del día + tasa de mercado (una vez).
   useEffect(() => {
@@ -81,6 +91,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
   const comuna = answers.comuna ?? "";
   const superficie = answers.superficieUtil ?? "";
   const dormitorios = answers.dormitorios ?? "";
+  const tipoPropiedad = answers.tipoPropiedad;
   const reqSeq = useRef(0);
 
   useEffect(() => {
@@ -100,7 +111,11 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
         lng: String(lng),
       };
       const qArriendo = new URLSearchParams({ ...base, type: "arriendo" });
-      const qVenta = new URLSearchParams({ ...base, type: "venta" });
+      // Tramo A: la venta se consulta en el universo del depto. Sin `condicion` el
+      // radio mezclaba nuevos y usados y el nivel comunal caía a usados, y a un
+      // nuevo le llegaba un valor de mercado de otro mercado (d3a6149a).
+      const condicion = tipoPropiedad === "nuevo" ? "nuevo" : tipoPropiedad === "usado" ? "usado" : null;
+      const qVenta = new URLSearchParams({ ...base, type: "venta", ...(condicion ? { condicion } : {}) });
       // Dos fetches (como v3): arriendo (comparables/arriendo/ggcc) + venta
       // (precioM2 → valorMercadoFranco y aviso de subsidio). El endpoint solo
       // devuelve precioM2 en la rama venta.
@@ -129,6 +144,10 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
           setRadiusUsed(typeof arr?.radiusUsed === "number" ? arr.radiusUsed : null);
           // precioM2 viene en CLP/m² → se convierte a UF en el return (÷ ufCLP), igual que v3.
           setPrecioM2Clp(typeof venta?.precioM2 === "number" ? venta.precioM2 : null);
+          setVentaN(Number(venta?.sampleSize) || 0);
+          setVentaFuente(venta?.source === "radio" || venta?.source === "comuna" ? venta.source : "sin-dato");
+          setVentaUniverso(venta?.universoVenta === "nuevo" || venta?.universoVenta === "usado" || venta?.universoVenta === "mixto" ? venta.universoVenta : null);
+          setVentaRadio(typeof venta?.radiusUsed === "number" ? venta.radiusUsed : null);
         })
         .catch(() => {
           if (seq !== reqSeq.current) return;
@@ -138,6 +157,10 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
           setArriendoN(0);
           setArriendoFuente("sin-dato");
           setGgccSugerido(null);
+          setVentaN(0);
+          setVentaFuente("sin-dato");
+          setVentaUniverso(null);
+          setVentaRadio(null);
           setPrecioM2Clp(null);
           setRadiusUsed(null);
         })
@@ -146,7 +169,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
         });
     }, 400);
     return () => clearTimeout(t);
-  }, [lat, lng, comuna, superficie, dormitorios]);
+  }, [lat, lng, comuna, superficie, dormitorios, tipoPropiedad]);
 
   // Baseline AirROI — no-op salvo modalidad str/both (evita el costo del fetch
   // en LTR puro). capacidadHuespedes se aproxima desde dormitorios cuando no se
@@ -176,6 +199,10 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
     // precioM2 del RPC viene en CLP/m² → UF/m² (÷ ufCLP), como v3.
     precioM2UF: precioM2Clp != null && ufCLP > 0 ? precioM2Clp / ufCLP : null,
     radiusUsed,
+    ventaN,
+    ventaFuente,
+    ventaUniverso,
+    ventaRadio,
     airRoi,
   };
 }

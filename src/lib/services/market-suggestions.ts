@@ -1,3 +1,4 @@
+import { universoDeSugerenciaVenta } from "@/lib/valor-mercado";
 import { createClient } from "@supabase/supabase-js";
 import { getUFValue } from "../uf";
 import { estimarContribuciones } from "../contribuciones";
@@ -55,6 +56,8 @@ export interface Sugerencias {
   /** Radio final usado por el loop adaptativo (solo source="radio"). Alias explícito de radiusMeters. */
   radiusUsed?: number;
   precioM2?: number;
+  /** Solo VENTA: universo de la muestra detrás de precioM2 (Tramo A). "mixto" = radio sin condición. */
+  universoVenta?: "nuevo" | "usado" | "mixto";
   nearbyProperties?: NearbyPropertyPoint[];
   totalInRadius?: number;
   filteredInRadius?: number;
@@ -102,7 +105,7 @@ export async function getSugerencias(
 
       // Guardar siempre el "mejor hasta ahora" (mayor sampleSize gana)
       if (!best || result.sampleSize > best.sampleSize) {
-        best = { ...result, radiusUsed: r, radiusMeters: r };
+        best = { ...result, radiusUsed: r, radiusMeters: r, ...(propType === "venta" ? { universoVenta: universoDeSugerenciaVenta("radio", condicion) } : {}) };
         bestMap = mapData;
       }
 
@@ -360,6 +363,7 @@ async function getMedianaComunalVenta(
     source: "comuna",
     sampleSize: n,
     precioM2: precioM2CLP,
+    universoVenta: universoDeSugerenciaVenta("comuna", condicion),
   };
 }
 

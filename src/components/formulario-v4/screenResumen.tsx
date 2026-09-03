@@ -739,6 +739,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     precioM2UF: data.precioM2UF,
     radiusUsed: data.radiusUsed,
     ggccSugerido: data.ggccSugerido,
+    ventaN: data.ventaN,
+    ventaFuente: data.ventaFuente,
+    ventaUniverso: data.ventaUniverso,
+    ventaRadio: data.ventaRadio,
   };
 
   // Gate mostrado: UN disparo por montaje del resumen y por tipo de gate.

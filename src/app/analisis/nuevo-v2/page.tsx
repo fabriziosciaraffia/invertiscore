@@ -1,5 +1,6 @@
 "use client";
 
+import { valorMercadoRefDeSugerencia } from "@/lib/valor-mercado";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
@@ -71,6 +72,10 @@ function NuevoAnalisisV3Inner() {
     contribuciones: number | null;
     precioM2UF: number | null;   // UF/m² sugerido (para cálculo de precioSugeridoUF)
     precioM2SampleSize: number | null; // n comparables del fetch de venta (para hint)
+    /** Procedencia de la sugerencia de venta (Tramo A). */
+    ventaFuente: "radio" | "comuna" | "sin-dato";
+    ventaUniverso: "nuevo" | "usado" | "mixto" | null;
+    ventaRadio: number | null;
     sampleSize: number;
     radiusUsed: number | null;
     totalInRadius: number;
@@ -84,7 +89,7 @@ function NuevoAnalisisV3Inner() {
     nearbyProperties: Array<{ lat: number | null; lng: number | null }>;
   }>({
     arriendo: null, gastos: null, contribuciones: null, precioM2UF: null,
-    precioM2SampleSize: null,
+    precioM2SampleSize: null, ventaFuente: "sin-dato", ventaUniverso: null, ventaRadio: null,
     sampleSize: 0, radiusUsed: null, totalInRadius: 0, nearbyProperties: [],
     source: null, rangoArriendo: null,
   });
@@ -317,6 +322,9 @@ function NuevoAnalisisV3Inner() {
           contribuciones: sup > 0 ? contribSugerida : null,
           precioM2UF,
           precioM2SampleSize,
+          ventaFuente: venta?.source === "radio" || venta?.source === "comuna" ? venta.source : "sin-dato",
+          ventaUniverso: venta?.universoVenta === "nuevo" || venta?.universoVenta === "usado" || venta?.universoVenta === "mixto" ? venta.universoVenta : null,
+          ventaRadio: typeof venta?.radiusUsed === "number" ? venta.radiusUsed : null,
           sampleSize,
           radiusUsed,
           totalInRadius,
@@ -463,6 +471,11 @@ function NuevoAnalisisV3Inner() {
       valorMercadoFranco: suggestions.precioM2UF && supUtil > 0
         ? Math.round(suggestions.precioM2UF * supUtil)
         : undefined,
+      // Tramo A: el valor de mercado viaja CON su procedencia; el motor solo lee esto.
+      valorMercadoRef: valorMercadoRefDeSugerencia({
+        precioM2UF: suggestions.precioM2UF, superficieUtilM2: supUtil, source: suggestions.ventaFuente,
+        sampleSize: suggestions.precioM2SampleSize, universoVenta: suggestions.ventaUniverso, radiusUsed: suggestions.ventaRadio,
+      }),
       valorMercadoUsuario: undefined, // no se pregunta en v3
       piePct: Number(state.piePct),
       plazoCredito: Number(state.plazoCredito),
@@ -479,7 +492,7 @@ function NuevoAnalisisV3Inner() {
       usaAdministrador: Number(state.adminPct) > 0,
       comisionAdministrador: Number(state.adminPct) > 0 ? Number(state.adminPct) : undefined,
       zonaRadio: {
-        precioM2VentaCLP: null,
+        precioM2VentaCLP: suggestions.precioM2UF && ufCLP > 0 ? Math.round(suggestions.precioM2UF * ufCLP) : null,
         arriendoPromedio: suggestions.arriendo,
         arriendoPrecioM2: null,
         sampleSizeArriendo: suggestions.sampleSize,
@@ -487,7 +500,10 @@ function NuevoAnalisisV3Inner() {
         arriendoFuente: suggestions.source,
         arriendoRangoMin: suggestions.rangoArriendo?.min ?? null,
         arriendoRangoMax: suggestions.rangoArriendo?.max ?? null,
-        sampleSizeVenta: 0,
+        sampleSizeVenta: suggestions.precioM2SampleSize ?? 0,
+        ventaFuente: suggestions.ventaFuente,
+        ventaUniverso: suggestions.ventaUniverso,
+        ventaRadio: suggestions.ventaRadio,
         radioMetros: suggestions.radiusUsed ?? 500,
         lat: state.lat,
         lng: state.lng,

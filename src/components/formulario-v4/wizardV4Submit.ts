@@ -26,6 +26,7 @@ import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import type { Anomalia, PlausibilidadInput } from "@/lib/plausibilidad";
 import { DEC, decPie, type WizardV4Answers } from "./wizardV4Nodes";
 import { leerNum, type FuenteArriendo } from "./derive";
+import { valorMercadoRefDeSugerencia } from "@/lib/valor-mercado";
 
 export interface SubmitContext {
   ufCLP: number;
@@ -43,6 +44,11 @@ export interface SubmitContext {
   precioM2UF: number | null;
   radiusUsed: number | null;
   ggccSugerido: number | null;
+  /** Procedencia de la sugerencia de venta (Tramo A). */
+  ventaN: number;
+  ventaFuente: "radio" | "comuna" | "sin-dato";
+  ventaUniverso: "nuevo" | "usado" | "mixto" | null;
+  ventaRadio: number | null;
 }
 
 /**
@@ -113,6 +119,11 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     precio: precioUF,
     valorMercadoFranco:
       ctx.precioM2UF && supUtil > 0 ? Math.round(ctx.precioM2UF * supUtil) : undefined,
+    // Tramo A: el valor de mercado viaja CON su procedencia; el motor solo lee esto.
+    valorMercadoRef: valorMercadoRefDeSugerencia({
+      precioM2UF: ctx.precioM2UF, superficieUtilM2: supUtil, source: ctx.ventaFuente,
+      sampleSize: ctx.ventaN, universoVenta: ctx.ventaUniverso, radiusUsed: ctx.ventaRadio,
+    }),
     valorMercadoUsuario: undefined,
     piePct,
     // Fase 5b: el origen del pie 0 viaja al motor (razón de MetricaSobreCapital)
@@ -140,7 +151,7 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     usaAdministrador: comisionAdmin > 0,
     comisionAdministrador: comisionAdmin > 0 ? comisionAdmin : undefined,
     zonaRadio: {
-      precioM2VentaCLP: null,
+      precioM2VentaCLP: ctx.precioM2UF ? Math.round(ctx.precioM2UF * ctx.ufCLP) : null,
       arriendoPromedio: ctx.arriendoSugerido,
       arriendoPrecioM2: null,
       sampleSizeArriendo: ctx.arriendoN,
@@ -149,7 +160,10 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
       arriendoFuente: ctx.arriendoFuente,
       arriendoRangoMin: ctx.arriendoRango?.min ?? null,
       arriendoRangoMax: ctx.arriendoRango?.max ?? null,
-      sampleSizeVenta: 0,
+      sampleSizeVenta: ctx.ventaN,
+      ventaFuente: ctx.ventaFuente,
+      ventaUniverso: ctx.ventaUniverso,
+      ventaRadio: ctx.ventaRadio,
       radioMetros: ctx.radiusUsed ?? 500,
       lat: a.lat,
       lng: a.lng,
