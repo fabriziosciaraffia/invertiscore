@@ -208,8 +208,9 @@ function buildPoisTopN(nearby: NearbyAttractor[]): ZoneInsightPois {
  *     la lectura por radio (`valorMercadoFranco`) que la prosa si hace. Medido:
  *     10 de 119 informes con zona (e42f9e9f: prosa "25% bajo" vs zona "en linea";
  *     8bda5e13: "19% bajo" vs "muy sobre").
- *  3. Sin snapshot y sin opinion del motor (results legacy), queda la query viva
- *     de la zona -- el fallback historico, intacto.
+ *  3. Sin snapshot, queda la query viva de la zona (misma helper y mismo universo
+ *     que el hallazgo de sobreprecio). El veredicto de confiabilidad del motor ya
+ *     no la veta: se decidio al crear y envejece.
  */
 export function resolverMedianaZona(p: {
   medSnap: { mediana: number | null; n: number; universo?: "nuevo" | "usado" } | null | undefined;
@@ -231,9 +232,11 @@ export function resolverMedianaZona(p: {
     }
     return { precioM2: null, universo: undefined };
   }
-  if (pvcMotor != null && pvcMotor.confiable !== true) {
-    return { precioM2: null, universo: undefined };
-  }
+  // Tramo A (03-sep-2026): sin snapshot, la zona consulta VIVA igual que el hallazgo
+  // de sobreprecio de la prosa. Antes acataba `precioVsComuna.confiable === false`
+  // del motor, que se decidió al CREAR: 7710a017 (abril, n=0 entonces) quedó con la
+  // zona en "sin mediana" para siempre mientras la prosa regenerada veía n=216.
+  void pvcMotor;
   return { precioM2: precioM2Live, universo: undefined };
 }
 
