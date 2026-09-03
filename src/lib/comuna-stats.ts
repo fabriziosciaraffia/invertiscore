@@ -143,10 +143,45 @@ export function normalizeComuna(comuna: string): string {
   return COMUNA_ALIASES[comuna] ?? comuna;
 }
 
+// ─── Filas-proyecto vs unidades dentro de obra nueva ──────────────────────
+
+/**
+ * `true` si la fila es una UNIDAD de obra nueva y no la fila del PROYECTO.
+ *
+ * Las dos conviven en scraped_properties bajo `condicion = 'nuevo'` y se
+ * distinguen por el `source_id`: la fila-proyecto lo hereda de la URL del
+ * proyecto en el listado; la unidad lleva `url#unidad` (la escribe
+ * scrape-unidades-nuevas desde el GraphQL de la ficha, ver esa ruta).
+ *
+ * Importa porque el campo `dormitorios` significa cosas distintas en cada una:
+ * en la unidad es el dato de esa unidad, en la fila-proyecto es el MÍNIMO del
+ * rango que ofrece el proyecto. `source_id` es nullable en el esquema (hoy no
+ * hay ninguna fila sin él): sin valor no se puede probar que sea unidad, así
+ * que se trata como fila-proyecto — la rama que no filtra.
+ */
+export function esUnidadDeObraNueva(sourceId: unknown): boolean {
+  return typeof sourceId === "string" && sourceId.includes("#");
+}
+
+/**
+ * Deja pasar las filas de obra nueva que sirven para comparar contra un sujeto
+ * de `dormitorios`: las UNIDADES tienen que coincidir exacto; las FILAS-PROYECTO
+ * pasan siempre, porque su `dormitorios` es el piso de un rango y filtrar por él
+ * es filtrar por la tipología de entrada del proyecto, no por la del depto.
+ */
+export function filtrarTipologiaObraNueva<T extends { source_id?: unknown; dormitorios?: unknown }>(
+  filas: T[],
+  dormitorios: number | null,
+): T[] {
+  if (dormitorios === null) return filas;
+  return filas.filter((f) => !esUnidadDeObraNueva(f.source_id) || Number(f.dormitorios) === dormitorios);
+}
+
 /**
  * Mediana de precio/m² de VENTA (en UF) para la comuna, DENTRO DEL UNIVERSO del
  * sujeto (nuevo | usado), calculada desde scraped_properties. Ventana ±20% de
- * superficie; filtro de dormitorios solo si se entrega un valor; escalera de
+ * superficie; filtro de dormitorios según el tipo de fila (ver
+ * `esUnidadDeObraNueva`); escalera de
  * frescura por universo (ver VENTANAS_DIAS). Requiere >= MIN_VENTAS_MEDIANA
  * ventas válidas (precio>0 y superficie_m2>0).
  *
@@ -183,7 +218,7 @@ export async function getComunaMedianaVentaUF(
     for (let off = 0; ; off += PAGINA_POSTGREST) {
       let q = supabase
         .from("scraped_properties")
-        .select("precio, moneda, superficie_m2, dormitorios, condicion")
+        .select("precio, moneda, superficie_m2, dormitorios, condicion, source_id")
         .eq("comuna", comunaNorm)
         .eq("type", "venta")
         .eq("is_active", true)
@@ -199,26 +234,31 @@ export async function getComunaMedianaVentaUF(
       q = condicion === "nuevo"
         ? q.eq("condicion", "nuevo")
         : q.or("condicion.is.null,condicion.eq.usado");
-    // Dormitorios: filtro EXACTO en usado, NINGUNO en obra nueva.
-    //
-    // No es una relajación para ganar cobertura — es que en obra nueva el campo
-    // no dice lo que parece. Ahí la fila de la fuente es del PROYECTO, no de una
-    // unidad, y `dormitorios` trae el MÍNIMO del rango que ofrece el proyecto:
-    // uno que va de 1 a 2 dormitorios se registra como 1D. Por eso ~70% del stock
-    // nuevo aparece como 1D, y un sujeto de 2D no encuentra contra qué medirse.
-    // Filtrar por esa etiqueta es filtrar por la tipología de ENTRADA del
-    // proyecto, no por la del depto.
-    //
-    // Quien sí discrimina bien la tipología en ese universo es la superficie
-    // (±20%), que la fila reporta de verdad. Medido sobre los 25 sujetos nuevos
-    // que hoy juntan muestra, sacar el filtro mueve la mediana |Δ| p50 0,2% ·
-    // p75 0,7% · p90 1,9% · max 6,6%, con Δ mediano CON SIGNO de 0,0% (no
-    // introduce sesgo direccional). A cambio, 19 sujetos que no tenían
-    // comparación pasan a tenerla: 25 -> 44 de 78.
-    //
-    // En USADO el filtro se mantiene: ahí la fila es de una unidad y el dato de
-    // dormitorios es real. Misma asimetría-por-universo que VENTANAS_DIAS, y por
-    // el mismo tipo de razón: la fuente se comporta distinto en cada universo.
+      // Dormitorios: filtro EXACTO en usado; en obra nueva depende del TIPO DE
+      // FILA y por eso se resuelve abajo, en memoria (ver filtrarTipologiaObraNueva).
+      //
+      // En usado la fila es siempre de una unidad y el dato es real. En obra
+      // nueva conviven dos poblaciones: las UNIDADES (GraphQL de la ficha, hoy
+      // 8.863 de las 8.963 filas activas) traen dormitorios de la unidad, y las
+      // FILAS-PROYECTO (listado, 100) traen el MÍNIMO del rango del proyecto —
+      // uno de 1 a 2 dormitorios se registra como 1D. Filtrar por esa etiqueta es
+      // filtrar por la tipología de ENTRADA del proyecto, no por la del depto.
+      //
+      // Hasta el 04-sep-2026 no se filtraba NADA en obra nueva, porque el campo
+      // era el mínimo del rango en las dos poblaciones. Desde que
+      // scrape-unidades-nuevas trae unidades con dormitorios propios, no filtrarlas
+      // deja de comparable a la tipología equivocada: en Peñalolén 3D, 104 de las
+      // 189 filas en ventana son unidades que no son 3D, y con ellas adentro la
+      // mediana queda 3,0% abajo de la de los 3D reales.
+      //
+      // Medido con la geometría del motor (sujeto ±20%, sujeto = superficie mediana
+      // de esa tipología nueva en esa comuna, 90 días). Donde la muestra aguanta el
+      // filtro mueve poco: Peñalolén 3D +3,0%, Vitacura 3D +2,2%, Las Condes 3D
+      // −0,2%. Cinco celdas caen bajo MIN_VENTAS_MEDIANA y dejan de emitir
+      // hallazgo de sobreprecio (Providencia 4D, Vitacura 4D, San Miguel 3D,
+      // Recoleta 3D, Las Condes 4D); en las dos que igual se pueden medir, la
+      // mediana sin filtro estaba 23,1% y 12,3% ARRIBA de la de los 3D reales, así
+      // que no emitir es la conducta correcta.
       if (dormitorios !== null && condicion === "usado") q = q.eq("dormitorios", dormitorios);
       const { data, error } = await q;
       // Esta query decide la mediana comunal de venta, que alimenta
@@ -235,7 +275,12 @@ export async function getComunaMedianaVentaUF(
       out.push(...data);
       if (data.length < PAGINA_POSTGREST) break;
     }
-    return out;
+    // El filtro de tipología de obra nueva va acá y no en la query: distingue
+    // unidad de fila-proyecto por el source_id, que es nullable, y un predicado
+    // PostgREST con NOT LIKE descartaría las filas sin valor en vez de dejarlas
+    // pasar (la trampa del NULL). Se aplica ANTES de que la escalera de frescura
+    // cuente, para que el peldaño se decida sobre las filas que van a la mediana.
+    return condicion === "nuevo" ? filtrarTipologiaObraNueva(out, dormitorios) : out;
   }
 
   // Escalera de frescura por universo: se sube un peldaño solo si el universo

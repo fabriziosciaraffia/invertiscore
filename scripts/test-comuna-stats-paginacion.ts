@@ -11,10 +11,19 @@
  * pasan el filtro, no sobre las primeras 1.000 en orden físico. Verificado el
  * 02-sep-2026: `.limit(2000)` sobre Santiago 1D usado 90 días devolvía 1.000 de
  * 1.230. Con el backfill, Santiago 1D en banda pasa a ~2.400.
+ *
+ * Desde el 04-sep-2026 cubre también el filtro de tipología de obra nueva: las
+ * unidades se filtran por dormitorios exactos, las filas-proyecto no.
  */
 
 import assert from "node:assert/strict";
-import { getComunaMedianaVentaUF, PAGINA_POSTGREST, MIN_VENTAS_MEDIANA } from "../src/lib/comuna-stats";
+import {
+  esUnidadDeObraNueva,
+  filtrarTipologiaObraNueva,
+  getComunaMedianaVentaUF,
+  MIN_VENTAS_MEDIANA,
+  PAGINA_POSTGREST,
+} from "../src/lib/comuna-stats";
 
 let pass = 0;
 let fail = 0;
@@ -34,7 +43,7 @@ async function test(nombre: string, fn: () => Promise<void>) {
 
 // ── Cliente falso: PostgREST de juguete ─────────────────────────────────────
 
-type Fila = { id: number; precio: number; moneda: string; superficie_m2: number; dormitorios: number; condicion: string };
+type Fila = { id: number; precio: number; moneda: string; superficie_m2: number; dormitorios: number; condicion: string; source_id: string };
 
 interface Registro {
   llamadas: number;
@@ -77,14 +86,20 @@ function clienteFalso(dataset: Fila[], registro: Registro) {
   return { from: () => builder({}) };
 }
 
-function dataset(n: number, opts: { dorms?: number; sup?: number; precioUF?: (i: number) => number } = {}): Fila[] {
+function dataset(
+  n: number,
+  opts: { dorms?: number; sup?: number; precioUF?: (i: number) => number; condicion?: string; unidad?: boolean; base?: number } = {},
+): Fila[] {
+  const base = opts.base ?? 0;
   return Array.from({ length: n }, (_, i) => ({
-    id: i + 1,
+    id: base + i + 1,
     precio: opts.precioUF ? opts.precioUF(i) : 2000 + i, // UF
     moneda: "UF",
     superficie_m2: opts.sup ?? 40,
     dormitorios: opts.dorms ?? 1,
-    condicion: "usado",
+    condicion: opts.condicion ?? "usado",
+    // Unidad de obra nueva = source_id con '#'; fila-proyecto = sin '#'.
+    source_id: `https://toctoc/p/${base + i + 1}${opts.unidad ? "#u1" : ""}`,
   }));
 }
 
@@ -139,6 +154,76 @@ function dataset(n: number, opts: { dorms?: number; sup?: number; precioUF?: (i:
     const cli = clienteFalso([...dataset(1100, { dorms: 1 }), ...dataset(900, { dorms: 2 })], reg);
     const r = await getComunaMedianaVentaUF(cli, "Santiago", 40, 1, 40000, "usado");
     assert.equal(r.n, 1100);
+  });
+
+  console.log("\ncomuna-stats · tipología en obra nueva\n");
+
+  await test("el source_id con # marca unidad; sin # (o sin valor) es fila-proyecto", async () => {
+    assert.equal(esUnidadDeObraNueva("https://toctoc/p/1384492#12345"), true);
+    assert.equal(esUnidadDeObraNueva("https://toctoc/p/1384492"), false);
+    assert.equal(esUnidadDeObraNueva(null), false);
+    assert.equal(esUnidadDeObraNueva(undefined), false);
+  });
+
+  await test("filtrarTipologiaObraNueva: la unidad 2D no entra a 3D, la fila-proyecto sí", async () => {
+    const filas = [
+      { source_id: "p/1#u1", dormitorios: 2 },
+      { source_id: "p/1#u2", dormitorios: 3 },
+      { source_id: "p/9", dormitorios: 1 },
+    ];
+    const r = filtrarTipologiaObraNueva(filas, 3);
+    assert.deepEqual(r.map((f) => f.source_id), ["p/1#u2", "p/9"]);
+  });
+
+  await test("sin dormitorios del sujeto no se filtra nada", async () => {
+    const filas = [{ source_id: "p/1#u1", dormitorios: 2 }];
+    assert.equal(filtrarTipologiaObraNueva(filas, null).length, 1);
+  });
+
+  await test("obra nueva: las unidades de otra tipología quedan fuera de la mediana", async () => {
+    // 20 unidades 3D + 40 unidades 2D en la misma banda de superficie: antes del
+    // 04-sep-2026 la mediana salía de las 60. Ahora sale de las 20.
+    const reg: Registro = { llamadas: 0, rangos: [], usoLimit: false };
+    const cli = clienteFalso(
+      [
+        ...dataset(20, { dorms: 3, sup: 75, condicion: "nuevo", unidad: true, precioUF: () => 6000 }),
+        ...dataset(40, { dorms: 2, sup: 75, condicion: "nuevo", unidad: true, precioUF: () => 4000, base: 100 }),
+      ],
+      reg,
+    );
+    const r = await getComunaMedianaVentaUF(cli, "Santiago", 75, 3, 40000, "nuevo");
+    assert.equal(r.n, 20);
+    // Obra nueva no lleva factor de cierre: 6000/75 = 80 UF/m².
+    assert.equal(r.mediana, 80);
+  });
+
+  await test("obra nueva: la fila-proyecto entra aunque su dormitorios sea el mínimo del rango", async () => {
+    const reg: Registro = { llamadas: 0, rangos: [], usoLimit: false };
+    const cli = clienteFalso(
+      [
+        ...dataset(15, { dorms: 3, sup: 75, condicion: "nuevo", unidad: true, precioUF: () => 6000 }),
+        ...dataset(5, { dorms: 1, sup: 75, condicion: "nuevo", unidad: false, precioUF: () => 6000, base: 100 }),
+      ],
+      reg,
+    );
+    const r = await getComunaMedianaVentaUF(cli, "Santiago", 75, 3, 40000, "nuevo");
+    assert.equal(r.n, 20);
+  });
+
+  await test("el filtro se aplica ANTES de la escalera: 14 unidades 3D no alcanzan el mínimo", async () => {
+    const reg: Registro = { llamadas: 0, rangos: [], usoLimit: false };
+    const cli = clienteFalso(
+      [
+        ...dataset(14, { dorms: 3, sup: 75, condicion: "nuevo", unidad: true, precioUF: () => 6000 }),
+        ...dataset(60, { dorms: 2, sup: 75, condicion: "nuevo", unidad: true, precioUF: () => 4000, base: 100 }),
+      ],
+      reg,
+    );
+    const r = await getComunaMedianaVentaUF(cli, "Santiago", 75, 3, 40000, "nuevo");
+    assert.equal(r.mediana, null, "con 14 de 15 no hay mediana, aunque haya 74 filas en la banda");
+    assert.equal(r.n, 14);
+    // Los tres peldaños de la escalera de obra nueva: 90, 180 y 365 días.
+    assert.equal(reg.llamadas, 3, `llamadas: ${reg.llamadas}`);
   });
 
   console.log(`\n${pass} OK · ${fail} FAIL${fail ? " → " + fallidos.join(", ") : ""}\n`);
