@@ -20,6 +20,7 @@ import { calcDividendo, costoOportunidad, simularPieYPlazo, INSTRUMENTOS_REFEREN
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
+import { barraDia1 } from "@/lib/plata-dia1";
 import { cierrePlusvalia, cierreRenta, cierreResultado, type FmtCierre, type SegCierre } from "@/lib/cierres-capitulos";
 import { HallazgosAcordeon, type FilaHallazgo } from "./hallazgos/HallazgosAcordeon";
 import {
@@ -632,6 +633,12 @@ export function CapitulosInversion({
           const capexSub = capexV
             ? `${capexRango ? `${capexRangoUF}, corre con UF ${ufN(capexV.montoUF)}` : `UF ${ufN(capexV.montoUF)}${capexV.origen === "override" ? ", tu cotización" : ""}`} — no vuelve`
             : "no vuelve";
+          // Barra "Lo que pusiste · el día 1" a la MISMA escala que la de abajo
+          // (ancho = inversión inicial / tu parte al vender). Geometría pura en
+          // plata-dia1.ts; los montos son los mismos de las filas de la leyenda.
+          const dia1 = barraDia1({ pieCLP, gastosCompraCLP: gastosCompra, capexCLP: capexDia1, inversionInicial, patrimonio });
+          const altMoney = (n: number) =>
+            currency === "UF" ? "$" + Math.round(n).toLocaleString("es-CL") : "UF " + Math.round(n / (valorUF || 1)).toLocaleString("es-CL");
           const oport = costoOportunidad(inversionInicial, anios);
           const ltv = 0.7;
           const nuevoCredito = Math.round(exit.valorVenta * ltv);
@@ -674,6 +681,43 @@ export function CapitulosInversion({
                 </VViz>
                 <VViz t={`De dónde salen tus ${compact(patrimonio)} si vendes el año ${anios}`}>
                   <VSub>De dónde sale tu parte</VSub>
+                  {composicionCierra && dia1.anchoPct > 0 && (
+                    /* Barra ADITIVA sobre la actual: la plata del día 1, de tu bolsillo, a la
+                       misma escala que "tu parte a N años". La barra de abajo, sus % y sus
+                       filas no cambian. Tonos y trama: los mismos de BarraApilada (.ba-seg). */
+                    <div style={{ marginBottom: 16 }}>
+                      <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--doc-tx3)", marginBottom: 10 }}>
+                        Las dos barras están a la misma escala.
+                      </p>
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
+                        <span className="font-mono uppercase" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)" }}>
+                          Lo que pusiste · el día 1, de tu bolsillo
+                        </span>
+                        <span className="font-mono" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--doc-tx)", whiteSpace: "nowrap" }}>
+                          {money(inversionInicial)}{" "}
+                          <small style={{ fontSize: 10.5, fontWeight: 500, color: "var(--doc-tx3)" }}>{altMoney(inversionInicial)}</small>
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", height: 38, borderRadius: 3, overflow: "hidden", width: `${dia1.anchoPct}%`, maxWidth: "100%" }}>
+                        {dia1.segmentos.map((s) => (
+                          <div key={s.tono} className={`ba-seg ${s.tono}`} style={{ width: `${s.pct}%`, position: "relative" }}>
+                            {s.tono === "capex" && (
+                              <span
+                                aria-hidden
+                                style={{ position: "absolute", inset: 0, background: "repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.5) 5px,rgba(255,255,255,.5) 10px)" }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {/* El multiplicador es el MISMO que ya muestra "Tu parte a N años" (v.multiplicador): no se recalcula. Ink, sin Signal Red. */}
+                      {!v.sinCapitalPropio && (
+                        <p className="font-mono m-0" style={{ fontSize: 12, color: "var(--doc-tx2)", marginTop: 10 }}>
+                          <b style={{ color: "var(--doc-tx)", fontWeight: 700 }}>×{mult2(mult)}</b> por cada peso que pusiste
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {composicionCierra ? (
                     <BarraApilada
                       llaves={[
