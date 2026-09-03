@@ -47,11 +47,23 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     };
   }
 
+  // El arriendo de la description sale de las mismas filas que la tabla: si
+  // todas son estimadas desde el m² comunal, la description lo dice; si solo
+  // algunas, también. Un snippet de Google que promete "arriendo promedio"
+  // sobre un estimado es la misma mentira que la página ya no cuenta.
+  const estimadas = stats.tipologias.filter((t) => t.referencia.fuente === "comunalPorM2").length;
+  const arriendoDesc =
+    estimadas > 0 && estimadas === stats.tipologias.length
+      ? `Arriendo estimado ${fmtCLP(stats.arriendoRepresentativo)}/mes, desde el m² de la comuna (sin arriendos propios por tipología)`
+      : estimadas > 0
+        ? `Arriendo promedio ${fmtCLP(stats.arriendoRepresentativo)}/mes (incluye tipologías con arriendo estimado)`
+        : `Arriendo promedio ${fmtCLP(stats.arriendoRepresentativo)}/mes`;
+
   return {
     // Sin "| Franco" acá: la marca la agrega el template del root layout
     // (%s | Franco); con ella adentro el <title> salía "… | Franco | Franco".
     title: `Invertir en ${stats.nombre} — Rentabilidad y datos reales`,
-    description: `Rentabilidad bruta promedio ${stats.rentabilidadBruta}% en ${stats.nombre}. Arriendo promedio ${fmtCLP(stats.arriendoRepresentativo)}/mes. Basado en ${stats.totalPropiedades} propiedades reales.`,
+    description: `Rentabilidad bruta promedio ${stats.rentabilidadBruta}% en ${stats.nombre}. ${arriendoDesc}. Basado en ${stats.totalPropiedades} propiedades reales.`,
     alternates: { canonical: `/comunas/${stats.slug}` },
     openGraph: {
       title: `Departamentos en ${stats.nombre} — ¿Vale la pena invertir?`,
