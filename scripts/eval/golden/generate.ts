@@ -9,6 +9,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { generateAiAnalysis } from "../../../src/lib/ai-generation";
 import { runAnalysis } from "../../../src/lib/analysis";
 import { TECHO_CONTINUACION_DURO } from "../../../src/lib/prosa-presupuesto";
@@ -35,7 +37,15 @@ function runComun(a: string[], b: string[]): number {
   }
   return best;
 }
+// Copia = el run común cubre ≥ 60% de la frase (mínimo 8 palabras). A 8 palabras secas
+// el check castigaba la reformulación fiel del sobreprecio (GS-7: "está 59% sobre la
+// mediana de la comuna" comparte 8-10 palabras con la card porque la cláusula métrica
+// con cifra exacta y ámbito es la que exige la doctrina); las copias reales del parque
+// reproducían la frase entera.
 const REPITE_FRASE = 8;
+const REPITE_FRACCION = 0.6;
+const esCopia = (oracion: string[], frase: string[]): boolean =>
+  runComun(oracion, frase) >= Math.max(REPITE_FRASE, Math.ceil(frase.length * REPITE_FRACCION));
 
 function collectStrings(node: any, out: { path: string; s: string }[], path = ""): void {
   if (typeof node === "string") { out.push({ path, s: node }); return; }
@@ -51,7 +61,13 @@ async function captureWarns<T>(fn: () => Promise<T>): Promise<{ result: T; warns
   finally { console.warn = orig; }
 }
 
-export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<SeedReport[]> {
+/**
+ * `dump`: escribe cada generación en `<dump>/<key>-run<N>.json` ({ ai, warns }) para
+ * que otros instrumentos (juez, auditorías) corran sobre LAS MISMAS salidas.
+ * `from`: en vez de generar, lee esos archivos (misma tanda, cero tokens).
+ */
+export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dump?: string; from?: string } = {}): Promise<SeedReport[]> {
+  if (opts.dump) mkdirSync(opts.dump, { recursive: true });
   const reports: SeedReport[] = [];
 
   // --solo=GS-PC1,GS-PC2 → corre el tier AUTO solo sobre esos seeds (mismo
@@ -100,8 +116,12 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       // ven exactamente igual.
       const t0 = Date.now();
       process.stderr.write(`      · ${seed.key} run ${run + 1}/${K}…`);
-      const { result: ai, warns } = await captureWarns(() => generateAiAnalysis(seed.uuid, sb, { persist: false }));
-      process.stderr.write(` ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
+      const archivo = (dir: string) => join(dir, `${seed.key}-run${run}.json`);
+      const { result: ai, warns } = opts.from && existsSync(archivo(opts.from))
+        ? (JSON.parse(readFileSync(archivo(opts.from), "utf-8")) as { result: any; warns: string[] })
+        : await captureWarns(() => generateAiAnalysis(seed.uuid, sb, { persist: false }));
+      if (opts.dump) writeFileSync(archivo(opts.dump), JSON.stringify({ result: ai, warns }, null, 2), "utf-8");
+      process.stderr.write(` ${((Date.now() - t0) / 1000).toFixed(0)}s${opts.from ? " (desde dump)" : ""}\n`);
       if (!ai) { bump("gen.null"); continue; }
       genOk++;
       const strings = ((): { path: string; s: string }[] => { const o: { path: string; s: string }[] = []; collectStrings(ai, o); return o; })();
@@ -109,8 +129,8 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
 
       // A1 (HARD) — v18: la respuestaDirecta EMPIEZA con la respuesta al veredicto
       // ("Conviene." / "No conviene." / "Todavía no: tienes que ajustar los supuestos."),
-      // que el motor antepone, y NINGUNA de sus oraciones repite ≥ 8 palabras seguidas de
-      // una fraseCanonica: la apertura ya no es prefabricada — el modelo escribe la razón
+      // que el motor antepone, y NINGUNA de sus oraciones COPIA una fraseCanonica (run
+      // común ≥ 60% de la frase, mínimo 8 palabras): la apertura ya no es prefabricada — el modelo escribe la razón
       // que manda en su voz y la frase del hallazgo se queda en la card.
       const RESPUESTAS_VEREDICTO = [
         "Todavía no: tienes que ajustar los supuestos.",
@@ -121,7 +141,7 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       const respUsada = RESPUESTAS_VEREDICTO.find((r) => rd.startsWith(r));
       if (!respUsada) {
         bump("A1.apertura");
-      } else if (sentencesOf(rd).some((o) => { const w = wordsOf(o); return frasesCanonicas.some((f) => runComun(w, f) >= REPITE_FRASE); })) {
+      } else if (sentencesOf(rd).some((o) => { const w = wordsOf(o); return frasesCanonicas.some((f) => esCopia(w, f)); })) {
         bump("A1.apertura");
       }
 

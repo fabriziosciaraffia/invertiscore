@@ -39,6 +39,12 @@ const MODE_FULL = has("--full");
 const NO_SEM = has("--no-semantic");
 const AMBAS_SEM = has("--ambas-semantic"); // tier semántico AMBAS standalone (cuesta tokens)
 const STR_SEM = has("--str-semantic"); // tier coherencia modo-gestión STR standalone (cuesta tokens de gen)
+// --dump=<dir>: guarda cada generación LTR del tier FULL; --from=<dir>: reutiliza esas
+// salidas (checks + juez sobre la MISMA prosa, cero tokens de generación).
+// --ltr-only: en FULL, salta la generación STR y los jueces AMBAS/STR.
+const DUMP = argv.find((a) => a.startsWith("--dump="))?.slice("--dump=".length);
+const FROM = argv.find((a) => a.startsWith("--from="))?.slice("--from=".length);
+const LTR_ONLY = has("--ltr-only");
 
 function sb() {
   return createClient(
@@ -131,7 +137,7 @@ async function printStrSemantic() {
   // ── Tier FULL (opcional) ────────────────────────────────────────────────
   if (MODE_FULL) {
     console.log(`\n─── TIER FULL · generación fresca AUTO (K=${K}) ───`);
-    const gen = await runGenerateTier(sb(), K);
+    const gen = await runGenerateTier(sb(), K, { dump: DUMP, from: FROM });
     gen.forEach(printSeed);
     totalHard += gen.reduce((n, r) => n + r.hardFail, 0);
     totalDrift += gen.reduce((n, r) => n + r.rebaseline, 0);
@@ -139,25 +145,29 @@ async function printStrSemantic() {
     // Tier STR generación fresca (FASE 2 dictamen · refuerzo 1) — BLOQUEANTE:
     // GE-1 + GE-2, checks AUTO duros. Antes la única gen STR era el tier
     // modo-gestión, no-bloqueante — un cambio de prompt STR corría sin red.
-    console.log(`\n─── TIER FULL · generación fresca STR AUTO (K=${K}, BLOQUEANTE) ───`);
-    const genStr = await runStrGenerateTier(K);
-    genStr.forEach(printSeed);
-    totalHard += genStr.reduce((n, r) => n + r.hardFail, 0);
+    if (!LTR_ONLY) {
+      console.log(`\n─── TIER FULL · generación fresca STR AUTO (K=${K}, BLOQUEANTE) ───`);
+      const genStr = await runStrGenerateTier(K);
+      genStr.forEach(printSeed);
+      totalHard += genStr.reduce((n, r) => n + r.hardFail, 0);
+    }
 
     if (!NO_SEM) {
       console.log("\n─── TIER FULL · checklist semántico (juez Opus) ───");
-      const sem = await runSemanticTier(sb());
+      const sem = await runSemanticTier(sb(), { from: FROM ?? DUMP });
       for (const s of sem) {
         console.log(`\n  ${s.flags.length === 0 ? "✓" : "⚑"} ${s.key} — ${s.flags.length} flags`);
         for (const fl of s.flags) console.log(`      ⚑ [${fl.categoria}] ${fl.detalle}`);
       }
       console.log("\n  (flags semánticos = reporte para Fabrizio, NO bloquean)");
 
-      // Tier semántico AMBAS (prosa comparativa nueva) — mismo gate que el LTR.
-      await printAmbasSemantic(sb());
+      if (!LTR_ONLY) {
+        // Tier semántico AMBAS (prosa comparativa nueva) — mismo gate que el LTR.
+        await printAmbasSemantic(sb());
 
-      // Tier coherencia modo-gestión STR (F6 · audit b) — no-bloqueante.
-      await printStrSemantic();
+        // Tier coherencia modo-gestión STR (F6 · audit b) — no-bloqueante.
+        await printStrSemantic();
+      }
     }
   }
 
