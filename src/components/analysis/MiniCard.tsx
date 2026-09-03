@@ -184,9 +184,13 @@ export function MiniCard({
             return "¿Cómo queda tu flujo mensual?";
           }
           if (section === "negociacion") {
+            // T5: la pregunta lee el valor de mercado CON procedencia; sin él, calla
+            // (vm = precio ⇒ ni pasada ni sobreprecio) y queda la pregunta neutra.
+            const vmRef = results?.metrics?.valorMercadoRef ?? null;
+            if (!vmRef) return "¿Vale la pena negociar?";
             const precioCLP = results?.metrics?.precioCLP ?? 0;
             const precioUF = valorUF > 0 ? precioCLP / valorUF : 0;
-            const vmFranco = results?.metrics?.valorMercadoFrancoUF ?? precioUF;
+            const vmFranco = vmRef.valorUF;
             const dev = vmFranco > 0 ? (vmFranco - precioUF) / vmFranco : 0;
             const absDev = Math.abs(dev);
             if (absDev <= 0.02) return "¿Vale la pena negociar?";

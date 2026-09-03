@@ -118,10 +118,11 @@ export function DocumentoLTR({
   const gates = [
     { label: "Flujo mensual ≥ 0", ok: m.flujoNetoMensual >= 0, val: money(m.flujoNetoMensual) },
     { label: "Rentabilidad neta ≥ 4%", ok: m.rentabilidadNeta >= 4, val: pct(m.rentabilidadNeta) },
-    { label: "Plusvalía inmediata ≥ 0", ok: (m.plusvaliaInmediataFrancoPct ?? 0) >= 0, val: pct(m.plusvaliaInmediataFrancoPct ?? 0) },
+    // T5: la fila "Plusvalía inmediata ≥ 0" murió — sin valor de mercado con procedencia
+    // era ✓ siempre (vm = precio ⇒ plusvalía 0).
   ];
   const gatesOkCount = gates.filter((g) => g.ok).length;
-  const allGatesOk = gatesOkCount === 3;
+  const allGatesOk = gatesOkCount === gates.length;
   // Título + foot del gate según veredicto (COMPRAR llega por score/gates, no
   // necesariamente por el gate3 de upgrade — no inventar mecánica).
   const gateTitle =
@@ -146,7 +147,7 @@ export function DocumentoLTR({
       const evidencia = dm
         ? `cruzaría a ${objetivo} recién ${dm.palanca === "precio" ? "bajando el precio" : "subiendo el arriendo"} un ${pct(Math.abs(dm.deltaPct))}, fuera de lo que un ajuste puede dar`
         : `ninguna vía razonable lo acerca a ${objetivo}`;
-      return `Cumplir las tres es condición necesaria para un Comprar, y este caso no llega por ninguna vía razonable: ${evidencia}. No es cuestión de afinar un supuesto ni el precio.`;
+      return `Cumplir las dos es condición necesaria para un Comprar, y este caso no llega por ninguna vía razonable: ${evidencia}. No es cuestión de afinar un supuesto ni el precio.`;
     }
     const l = v.palancaMasBarata;
     if (!l) return null;
@@ -161,17 +162,17 @@ export function DocumentoLTR({
           : l.palanca === "arriendo"
             ? `con el arriendo en ${money(l.objetivo)} —${pct(Math.abs(l.deltaPct))} más que el declarado—`
             : `cerrando en UF ${Math.round(l.objetivo).toLocaleString("es-CL")} —${pct(Math.abs(l.deltaPct))} menos—`;
-    return `Cumplir las tres es condición necesaria para un Comprar. Este caso no está lejos: ${via} el veredicto ya sube a ${objetivo}.`;
+    return `Cumplir las dos es condición necesaria para un Comprar. Este caso no está lejos: ${via} el veredicto ya sube a ${objetivo}.`;
   })();
   const gateFoot =
     veredicto === "COMPRAR"
       ? (allGatesOk
-          ? "El Comprar se apoya en estas tres, cumplidas hoy."
-          : "El Comprar viene del Franco Score; estas tres son el chequeo de fondo, y no todas se cumplen hoy — tenlo presente antes de firmar.")
+          ? "El Comprar se apoya en estas dos, cumplidas hoy."
+          : "El Comprar viene del Franco Score; estas dos son el chequeo de fondo, y no ambas se cumplen hoy — tenlo presente antes de firmar.")
       : (gateFootDistancia ??
         (veredicto === "BUSCAR OTRA"
-          ? "Cumplir las tres es condición necesaria para un Comprar, pero este caso está lejos de ahí: no es cuestión de afinar un supuesto ni el precio."
-          : "Las tres deben cumplirse a la vez para que el veredicto suba a Comprar. Negociar mueve estos números — cuánto exactamente, se recalcula con el precio de cierre en mano, no antes."));
+          ? "Cumplir las dos es condición necesaria para un Comprar, pero este caso está lejos de ahí: no es cuestión de afinar un supuesto ni el precio."
+          : "Las dos deben cumplirse a la vez para que el veredicto suba a Comprar. Negociar mueve estos números — cuánto exactamente, se recalcula con el precio de cierre en mano, no antes."));
 
   // ── Hallazgos (ORDEN ÚNICO — el mismo del índice del hero y la pirámide web) ──
   // Documento: incluye la distancia al veredicto (la web la movió al drawer de "La

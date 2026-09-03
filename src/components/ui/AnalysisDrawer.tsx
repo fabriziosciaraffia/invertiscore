@@ -342,7 +342,9 @@ export function DrawerNegociacion({
   const data = dataProp ?? ({} as AINegociacionSection);
 
   const precioCLP = (inputData.precio || 0) * valorUF;
-  const vmFrancoUF = results.metrics?.valorMercadoFrancoUF ?? (inputData.precio || 0);
+  // T5: el valor de mercado solo cuenta con procedencia (metrics.valorMercadoRef); sin
+  // ella vm = precio y el drawer calla sobre pasada/sobreprecio.
+  const vmFrancoUF = results.metrics?.valorMercadoRef?.valorUF ?? (inputData.precio || 0);
   const vmFrancoCLP = vmFrancoUF * valorUF;
 
   const diferenciaCLP = vmFrancoCLP - precioCLP;
@@ -1915,7 +1917,7 @@ export function AnalysisDrawer({
     }
     if (activeKey === "negociacion") {
       const precioActual = (inputData?.precio || 0);
-      const vmFranco = results.metrics?.valorMercadoFrancoUF ?? precioActual;
+      const vmFranco = results.metrics?.valorMercadoRef?.valorUF ?? precioActual;
       const dev = vmFranco > 0 ? (vmFranco - precioActual) / vmFranco : 0;
       const absDev = Math.abs(dev);
       if (absDev <= 0.02) return "¿Vale la pena negociar?";
