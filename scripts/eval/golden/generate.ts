@@ -23,6 +23,19 @@ const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|invier|da vuelta|vuelve posi
 
 const WORDS = (s: string) => (s.trim().match(/\S+/g) || []).length;
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+// v18 · A1: ninguna oración de la respuestaDirecta repite ≥ 8 palabras seguidas de una
+// fraseCanonica (la apertura ya no es prefabricada; la frase del hallazgo es la card).
+const wordsOf = (s: string) => s.toLowerCase().replace(/\*\*/g, "").split(/\s+/).filter(Boolean);
+const sentencesOf = (s: string) => s.replace(/\*\*/g, "").split(/(?<=[.!?;])\s+/).map((x) => x.trim()).filter(Boolean);
+function runComun(a: string[], b: string[]): number {
+  let best = 0;
+  for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) {
+    let k = 0; while (i + k < a.length && j + k < b.length && a[i + k] === b[j + k]) k++;
+    if (k > best) best = k;
+  }
+  return best;
+}
+const REPITE_FRASE = 8;
 
 function collectStrings(node: any, out: { path: string; s: string }[], path = ""): void {
   if (typeof node === "string") { out.push({ path, s: node }); return; }
@@ -53,8 +66,10 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
     // (NO la corona adverso-first de la pirámide — divergen cuando un favorable
     // tiene la mayor decisividad, ej. GS-2 cap_rate). Espejo de ai-generation.ts.
     const recomputed = runAnalysis(seed.input, GOLDEN_UF, seed.mediana);
-    const apSrc = aperturaSource(gatherHallazgos(recomputed));
+    const todosHallazgos = gatherHallazgos(recomputed);
+    const apSrc = aperturaSource(todosHallazgos);
     const coronaFrase = apSrc ? norm(apSrc.fraseCanonica) : "";
+    const frasesCanonicas = todosHallazgos.map((h) => wordsOf(norm(String(h.fraseCanonica ?? "")))).filter((w) => w.length >= REPITE_FRASE);
     const vmFrancoUF = seed.input.valorMercadoFranco || seed.input.precio;
     const vmSolido = Math.abs(vmFrancoUF - seed.input.precio) * GOLDEN_UF > 1_000_000;
     // A6 · TECHO ESCALADO (fuente única: src/lib/prosa-presupuesto.ts). El techo NO
@@ -92,13 +107,11 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       const strings = ((): { path: string; s: string }[] => { const o: { path: string; s: string }[] = []; collectStrings(ai, o); return o; })();
       const rd = norm(ai.conviene?.respuestaDirecta_clp ?? "");
 
-      // A1 (HARD) — apertura == RESPUESTA al veredicto + fraseCanonica del #1 (una moneda).
-      // El contrato cambió: el motor antepone la respuesta ("Conviene." / "No conviene." /
-      // "Todavía no: tienes que ajustar los supuestos.") antes de la apertura fija, para que
-      // la primera línea conteste la pregunta que el usuario hizo. El check verifica AMBAS
-      // piezas y en ese orden — es más estricto que el anterior, no menos: antes bastaba con
-      // que la fraseCanonica estuviera al inicio; ahora además la respuesta tiene que estar
-      // y la fraseCanonica tiene que seguirla.
+      // A1 (HARD) — v18: la respuestaDirecta EMPIEZA con la respuesta al veredicto
+      // ("Conviene." / "No conviene." / "Todavía no: tienes que ajustar los supuestos."),
+      // que el motor antepone, y NINGUNA de sus oraciones repite ≥ 8 palabras seguidas de
+      // una fraseCanonica: la apertura ya no es prefabricada — el modelo escribe la razón
+      // que manda en su voz y la frase del hallazgo se queda en la card.
       const RESPUESTAS_VEREDICTO = [
         "Todavía no: tienes que ajustar los supuestos.",
         "Conviene, con una condición.",
@@ -108,9 +121,8 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       const respUsada = RESPUESTAS_VEREDICTO.find((r) => rd.startsWith(r));
       if (!respUsada) {
         bump("A1.apertura");
-      } else if (coronaFrase) {
-        const resto = rd.slice(respUsada.length).trim();
-        if (!resto.startsWith(coronaFrase.slice(0, Math.min(40, coronaFrase.length)))) bump("A1.apertura");
+      } else if (sentencesOf(rd).some((o) => { const w = wordsOf(o); return frasesCanonicas.some((f) => runComun(w, f) >= REPITE_FRASE); })) {
+        bump("A1.apertura");
       }
 
       // A2 (HARD) — fabricación de cifra de zona: el flag interno _catchRootAFlag se
@@ -120,12 +132,11 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
       // A5 (HARD) — §9 en conviene.cajaAccionable presente y con sustancia.
       if (WORDS(ai.conviene?.cajaAccionable_clp ?? "") < 8) bump("A5.§9-cajaAccionable");
 
-      // A6 (HARD) — presupuesto Plan C escalado: [respuesta] + [apertura] + continuación,
-      // donde solo la continuación tiene techo (TECHO_CONTINUACION_DURO, ya con la
-      // tolerancia del guard). Las dos piezas del motor se miden REALES, no se estiman:
-      // si A1 falló y no sabemos qué respuesta se usó, se asume la más larga (7 palabras,
-      // "Todavía no: tienes que ajustar los supuestos.") para no cobrarle a A6 una falla
-      // que es de A1.
+      // A6 (HARD) — presupuesto escalado (v18): el techo TOTAL no cambió — respuesta del
+      // motor + presupuesto de la primera oración (lo que medía la fraseCanonica del #1,
+      // que ya no se antepone) + continuación con TECHO_CONTINUACION_DURO. Se mide la
+      // respuestaDirecta COMPLETA. Si A1 falló y no sabemos qué respuesta se usó, se asume
+      // la más larga (7 palabras) para no cobrarle a A6 una falla que es de A1.
       const fijoWC = (respUsada ? WORDS(respUsada) : 7) + WORDS(coronaFrase);
       totalesWC.push(WORDS(rd));
       if (WORDS(rd) > fijoWC + techoContinuacion) bump("A6.presupuesto");
@@ -230,7 +241,7 @@ export async function runGenerateTier(sb: SupabaseClient, K: number): Promise<Se
     if (totalesWC.length) {
       console.log(
         `      · ${seed.key} presupuesto: respuestaDirecta ${Math.min(...totalesWC)}-${Math.max(...totalesWC)} palabras` +
-          ` [apertura fija ${WORDS(coronaFrase)} + respuesta + continuación ≤${techoContinuacion}] · corridas: ${totalesWC.join("·")}`,
+          ` [techo = respuesta + ${WORDS(coronaFrase)} (presupuesto de la razón que manda) + ≤${techoContinuacion}] · corridas: ${totalesWC.join("·")}`,
       );
     }
     const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
