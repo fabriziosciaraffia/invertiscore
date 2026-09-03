@@ -25,11 +25,15 @@ export function CapexPuestaAPuntoMiniCard({
   onClick: () => void;
 }) {
   void valorUF; // el hallazgo ya trae montoUF/CLP precomputados por el motor
-  const { montoCLP, montoUF } = hallazgo.valor;
-  const montoFmt =
-    currency === "CLP"
-      ? "$" + Math.round(montoCLP).toLocaleString("es-CL")
-      : "UF " + Math.round(montoUF).toLocaleString("es-CL");
+  const { montoCLP, montoUF, montoMinUF, montoMaxUF, montoMinCLP, montoMaxCLP } = hallazgo.valor;
+  const fmtN = (n: number) => Math.round(n).toLocaleString("es-CL");
+  // Rango (modelo v3): "UF 60–80". Override, legacy y filas sin rango → valor único.
+  const rango = montoMinUF != null && montoMaxUF != null && montoMaxUF > montoMinUF;
+  const montoFmt = rango
+    ? (currency === "CLP"
+        ? `$${fmtN(montoMinCLP ?? montoCLP)}–$${fmtN(montoMaxCLP ?? montoCLP)}`
+        : `UF ${fmtN(montoMinUF)}–${fmtN(montoMaxUF)}`)
+    : (currency === "CLP" ? "$" + fmtN(montoCLP) : "UF " + fmtN(montoUF));
 
   // KPI condicional Signal Red: cuando el CapEx pesa fuerte en la plata día 1.
   // Umbral 0.20 calibrado a la distribución real (máx ~0.20, mediana ~0.07).
@@ -98,15 +102,23 @@ export function CapexPuestaAPuntoMiniCard({
             className="font-mono text-[9px] uppercase tracking-[1px] text-right"
             style={{ color: "var(--franco-text-secondary)" }}
           >
-            Inversión extra
+            {rango ? "Rango estimado" : "Inversión extra"}
           </span>
           <span
             className={`font-mono font-bold text-[14px] md:text-[15px] ${
               pesaFuerte ? "text-signal-red" : "text-[var(--franco-text)]"
             }`}
           >
-            +{montoFmt}
+            {rango ? montoFmt : `+${montoFmt}`}
           </span>
+          {rango && (
+            <span
+              className="font-mono text-[9px] uppercase tracking-[1px] text-right"
+              style={{ color: "var(--franco-text-secondary)" }}
+            >
+              corre con UF {fmtN(montoUF)}
+            </span>
+          )}
           <span
             className="font-mono text-[9px] uppercase tracking-[1.3px] hidden md:inline mt-1"
             style={{ color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}

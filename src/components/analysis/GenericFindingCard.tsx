@@ -147,16 +147,25 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
     }
     case "capex_puesta_a_punto": {
       const v = h.valor;
+      // Rango (modelo v3): el KPI muestra los extremos y el ksub declara el punto que
+      // corre el caso. Override, legacy y filas persistidas sin rango → valor único.
+      const rango = v.montoMinUF != null && v.montoMaxUF != null && v.montoMaxUF > v.montoMinUF;
+      const kpi = rango
+        ? (currency === "UF"
+            ? `UF ${Math.round(v.montoMinUF!).toLocaleString("es-CL")}–${Math.round(v.montoMaxUF!).toLocaleString("es-CL")}`
+            : `${fmtCLP(v.montoMinCLP ?? v.montoCLP)}–${fmtCLP(v.montoMaxCLP ?? v.montoCLP)}`)
+        : `+${currency === "UF" ? fmtUF(v.montoUF) : fmtCLP(v.montoCLP)}`;
+      const punto = rango ? `Franco corre el caso con UF ${Math.round(v.montoUF)}` : `UF ${Math.round(v.montoUF)}`;
       return {
         kick: "Puesta a punto",
         title: "Dejarlo listo para arrendar",
-        kpi: `+${currency === "UF" ? fmtUF(v.montoUF) : fmtCLP(v.montoCLP)}`,
+        kpi,
         kpiRed: false,
         // Fase 5b · D4: con pie 0 el % sobre la inversión inicial miente (la
         // base se desploma) — el ksub cambia el porcentaje por el CUÁNDO.
         ksub: v.sinCapitalPropio
-          ? `UF ${Math.round(v.montoUF)} · antes de arrendar, en una sola vez`
-          : `UF ${Math.round(v.montoUF)} · ${Math.round(v.fraccionInversion * 100)}% de tu inversión inicial`,
+          ? `${punto} · antes de arrendar, en una sola vez`
+          : `${punto} · ${Math.round(v.fraccionInversion * 100)}% de tu inversión inicial`,
       };
     }
     case "plusvalia": {

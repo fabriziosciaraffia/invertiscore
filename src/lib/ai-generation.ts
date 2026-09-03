@@ -1231,6 +1231,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       inversionInicialCLP: inversionTotal,
       decisividad: decisividades.capex_puesta_a_punto?.decisividad ?? 0,
       magnitudContinua: decisividades.capex_puesta_a_punto?.magnitud ?? 0,
+      valorUF: UF_CLP,
     });
 
     const mesesEs = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];

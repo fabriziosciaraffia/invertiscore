@@ -487,6 +487,17 @@ export interface HallazgoPuestaAPunto {
     fraccionInversion: number;
     /** Fase 5b · D4: pie 0 ⇒ la fracción no se muestra (base desplomada). */
     sinCapitalPropio?: boolean;
+    // Rango de la puesta a punto (modelo de costos v3). DISPLAY: los extremos no
+    // entran a ninguna suma; `montoUF`/`montoCLP` (el punto) siguen siendo lo que
+    // corre el caso. En UF van redondeados a múltiplos de 5 (también el punto).
+    // Con override del usuario o curva legacy colapsan al punto (min = max).
+    // OPCIONALES: filas persistidas antes de este cambio no los traen.
+    montoMinUF?: number;
+    montoMaxUF?: number;
+    montoMinCLP?: number;
+    montoMaxCLP?: number;
+    ufM2Min?: number;
+    ufM2Max?: number;
   };
   // Nunca 'favorable': una puesta a punto siempre resta de tu plata día 1.
   direccion: "adverso" | "neutral";

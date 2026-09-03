@@ -432,6 +432,7 @@ function calcMetrics(
     magnitudContinua: decisividades?.capex_puesta_a_punto?.magnitud ?? 0,
     // Fase 5b · D4: sin pie el % sobre la inversión inicial miente.
     sinCapitalPropio: pieCLP === 0,
+    valorUF: ufClp,
   });
   // Hallazgo de cap rate: envuelve el número de :250 (no lo recalcula) y lo
   // compara contra la referencia de mercado. getCapRefComuna es el único punto

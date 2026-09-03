@@ -151,6 +151,9 @@ export function buildHallazgoPuestaAPunto(p: {
   /** Fase 5b · D4: con pie 0 el % sobre la inversión inicial miente (la base se
    *  desploma). true ⇒ la frase y el ksub muestran solo el monto. */
   sinCapitalPropio?: boolean;
+  /** UF del análisis. Solo para que los extremos CLP del rango salgan de los UF
+   *  ya redondeados (UF 10 ⇒ $400.010, no $480.012). Ausente ⇒ extremos exactos. */
+  valorUF?: number;
 }): HallazgoPuestaAPunto | null {
   if (p.capex.montoCLP <= 0) return null;
 
@@ -160,8 +163,29 @@ export function buildHallazgoPuestaAPunto(p: {
     p.inversionInicialCLP > 0 ? p.capex.montoCLP / p.inversionInicialCLP : 0,
   );
   const pct = Math.round(fraccionInversion * 100);
-  const ufFmt = Math.round(p.capex.montoUF).toLocaleString("es-CL");
+
+  // Rango (v3, derivado): los tres montos UF van a múltiplos de 5 — es una
+  // estimación, no una cotización. Override (cotización real) y legacy colapsan
+  // min = max y NO se redondean: un rango sobre una cifra exacta es mentira, y
+  // los análisis previos deben seguir mostrando su cifra tal cual. Si el
+  // redondeo degenera el rango (deptos minúsculos) cae a la frase de valor único.
+  const round5 = (v: number) => Math.round(v / 5) * 5;
+  const minUF5 = round5(p.capex.montoMinUF);
+  const maxUF5 = round5(p.capex.montoMaxUF);
+  const esRango = p.capex.origen === "derivado" && p.capex.montoMaxUF > p.capex.montoMinUF && minUF5 > 0 && maxUF5 > minUF5;
+  const montoUFDisplay = esRango ? Math.max(minUF5, Math.min(maxUF5, round5(p.capex.montoUF))) : p.capex.montoUF;
+  const montoMinUF = esRango ? minUF5 : p.capex.montoUF;
+  const montoMaxUF = esRango ? maxUF5 : p.capex.montoUF;
+  // Extremos CLP coherentes con los UF redondeados que se muestran (misma UF del
+  // motor). Sin valorUF caen a los extremos exactos del cálculo.
+  const conUF = esRango && p.valorUF != null && p.valorUF > 0;
+  const montoMinCLP = esRango ? (conUF ? Math.round(montoMinUF * p.valorUF!) : p.capex.montoMinCLP) : p.capex.montoCLP;
+  const montoMaxCLP = esRango ? (conUF ? Math.round(montoMaxUF * p.valorUF!) : p.capex.montoMaxCLP) : p.capex.montoCLP;
+
+  const ufFmt = Math.round(montoUFDisplay).toLocaleString("es-CL");
   const clpFmt = "$" + p.capex.montoCLP.toLocaleString("es-CL");
+  const fmtUF0 = (v: number) => Math.round(v).toLocaleString("es-CL");
+  const fmtCLP0 = (v: number) => "$" + Math.round(v).toLocaleString("es-CL");
   // Procedencia honesta: override > antigüedad real (LTR) > fallback gruesa (STR).
   let confianza: "alta" | "media" | "baja";
   let base: string;
@@ -180,14 +204,27 @@ export function buildHallazgoPuestaAPunto(p: {
   // (inversión inicial) se desploma a gastos de cierre + este mismo CapEx, y el
   // mismo depto salta de 18% (pie 20%) a 71%. El % mide el denominador, no el
   // gasto: se suprime y en su lugar va lo que sí es verdad y propio del caso.
-  const fraseCanonica = p.sinCapitalPropio
+  //
+  // Rango (v3): la frase declara el rango Y el punto que corre el caso, sin el
+  // porcentaje (el punto ya lo lleva el KPI/ksub). Con pie 0 conserva la oración
+  // propia del caso. La IA copia la fuente aguas abajo; el prompt no cambia.
+  const cierre = `No es remodelar para revender: es dejarlo en estándar de arriendo.`;
+  const fraseCanonica = esRango
     ? `Departamento de ${p.antiguedad} años: para captar arriendo de mercado, ` +
-      `considera unos UF ${ufFmt} (${clpFmt}) de puesta a punto. Sin pie, es la única ` +
-      `plata tuya que entra el día uno además de los gastos de cierre. No es remodelar ` +
-      `para revender: es dejarlo en estándar de arriendo.`
-    : `Departamento de ${p.antiguedad} años: para captar arriendo de mercado, ` +
-      `considera unos UF ${ufFmt} (${clpFmt}) de puesta a punto — cerca del ${pct}% ` +
-      `de tu inversión inicial. No es remodelar para revender: es dejarlo en estándar de arriendo.`;
+      `considera entre UF ${fmtUF0(montoMinUF)} y UF ${fmtUF0(montoMaxUF)} ` +
+      `(${fmtCLP0(montoMinCLP)}–${fmtCLP0(montoMaxCLP)}) de puesta a punto; ` +
+      `Franco corre el caso con UF ${ufFmt}.` +
+      (p.sinCapitalPropio
+        ? ` Sin pie, es la única plata tuya que entra el día uno además de los gastos de cierre.`
+        : "") +
+      ` ${cierre}`
+    : p.sinCapitalPropio
+      ? `Departamento de ${p.antiguedad} años: para captar arriendo de mercado, ` +
+        `considera unos UF ${ufFmt} (${clpFmt}) de puesta a punto. Sin pie, es la única ` +
+        `plata tuya que entra el día uno además de los gastos de cierre. ${cierre}`
+      : `Departamento de ${p.antiguedad} años: para captar arriendo de mercado, ` +
+        `considera unos UF ${ufFmt} (${clpFmt}) de puesta a punto — cerca del ${pct}% ` +
+        `de tu inversión inicial. ${cierre}`;
 
   const titular =
     p.capex.montoUF > 0
@@ -199,7 +236,7 @@ export function buildHallazgoPuestaAPunto(p: {
     tipo: "capex_habilitacion",
     valor: {
       montoCLP: p.capex.montoCLP,
-      montoUF: p.capex.montoUF,
+      montoUF: montoUFDisplay,
       ufM2: p.capex.ufM2,
       antiguedadAnios: p.antiguedad,
       superficieUtilM2: p.superficieUtilM2,
@@ -207,6 +244,12 @@ export function buildHallazgoPuestaAPunto(p: {
       origen: p.capex.origen,
       fraccionInversion,
       ...(p.sinCapitalPropio ? { sinCapitalPropio: true } : {}),
+      montoMinUF,
+      montoMaxUF,
+      montoMinCLP,
+      montoMaxCLP,
+      ufM2Min: esRango ? p.capex.ufM2Min : p.capex.ufM2,
+      ufM2Max: esRango ? p.capex.ufM2Max : p.capex.ufM2,
     },
     direccion: p.capex.montoUF > 0 ? "adverso" : "neutral",
     decisividad: p.decisividad,

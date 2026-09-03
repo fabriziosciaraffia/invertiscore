@@ -1527,14 +1527,24 @@ export function DrawerCapexPuestaAPunto({
   currency: "CLP" | "UF";
   valorUF: number;
 }) {
-  const { montoCLP, montoUF, ufM2, antiguedadAnios, superficieUtilM2 } = hallazgo.valor;
-  const montoFmt =
-    currency === "CLP"
-      ? "$" + Math.round(montoCLP).toLocaleString("es-CL")
-      : "UF " + Math.round(montoUF).toLocaleString("es-CL");
+  const { montoCLP, montoUF, ufM2, antiguedadAnios, superficieUtilM2, montoMinUF, montoMaxUF, montoMinCLP, montoMaxCLP, ufM2Min, ufM2Max } = hallazgo.valor;
+  const fmtN = (n: number) => Math.round(n).toLocaleString("es-CL");
+  const montoFmt = currency === "CLP" ? "$" + fmtN(montoCLP) : "UF " + fmtN(montoUF);
+  // Rango (modelo v3): extremos como display + el punto que entró al cálculo.
+  // Override (cotización real), legacy y filas persistidas sin rango → valor único.
+  const rango = montoMinUF != null && montoMaxUF != null && montoMaxUF > montoMinUF;
+  const rangoFmt = rango
+    ? (currency === "CLP"
+        ? `$${fmtN(montoMinCLP ?? montoCLP)}–$${fmtN(montoMaxCLP ?? montoCLP)}`
+        : `UF ${fmtN(montoMinUF)}–${fmtN(montoMaxUF)}`)
+    : montoFmt;
+  const ufM2Fmt = (v: number) => v.toFixed(1).replace(".", ",");
+  const porM2Fmt = rango && ufM2Min != null && ufM2Max != null ? `${ufM2Fmt(ufM2Min)}–${ufM2Fmt(ufM2Max)}` : ufM2Fmt(ufM2);
   // fraccionInversion (capex/inversión inicial), NO decisividad — que desde E2 es
   // la "Δdecisión" calibrada. Esta cifra es display: "X% de tu plata día 1".
   const pctInversion = Math.round(hallazgo.valor.fraccionInversion * 100);
+  const lbl: React.CSSProperties = { fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 };
+  const val: React.CSSProperties = { fontSize: rango ? 18 : 20, lineHeight: 1.05, color: "var(--doc-tx)" };
 
   // FASE 4 — migrado al VOCABULARIO ÚNICO (2º de los 3 cuerpos con markup a mano).
   return (
@@ -1542,33 +1552,33 @@ export function DrawerCapexPuestaAPunto({
       <VProsa>
         <p className="inline-flex items-center gap-1 m-0">
           <span>No es remodelar para revender: es dejar el depto en estándar de arriendo para captar el precio de mercado.</span>
-          <InfoTooltip content="Pintura, pisos, cocina/baño al día. Un usado sin puesta a punto suele arrendar bajo el precio de mercado de la zona." />
+          <InfoTooltip content="Pintura, grifería, calefont, filtraciones y terminaciones al día. Un usado sin puesta a punto suele arrendar bajo el precio de mercado de la zona." />
         </p>
       </VProsa>
 
       <VViz t="Puesta a punto estimada">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className={`grid grid-cols-2 gap-3 ${rango ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
           <div>
-            <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>
-              Inversión
+            <p className="font-mono uppercase m-0" style={lbl}>{rango ? "Rango estimado" : "Inversión"}</p>
+            <p className="font-mono font-bold m-0" style={val}>{rangoFmt}</p>
+          </div>
+          {rango && (
+            <div>
+              <p className="font-mono uppercase m-0" style={lbl}>Corre el caso con</p>
+              <p className="font-mono font-bold m-0" style={val}>{montoFmt}</p>
+            </div>
+          )}
+          <div>
+            <p className="font-mono uppercase m-0" style={lbl}>Por m²</p>
+            <p className="font-mono font-bold m-0" style={val}>
+              {porM2Fmt} <span style={{ fontSize: 13, fontWeight: 500 }}>UF/m²</span>
             </p>
-            <p className="font-mono font-bold m-0" style={{ fontSize: 20, lineHeight: 1.05, color: "var(--doc-tx)" }}>{montoFmt}</p>
           </div>
           <div>
-            <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>
-              Por m²
-            </p>
-            <p className="font-mono font-bold m-0" style={{ fontSize: 20, lineHeight: 1.05, color: "var(--doc-tx)" }}>
-              {ufM2.toFixed(1).replace(".", ",")} <span style={{ fontSize: 13, fontWeight: 500 }}>UF/m²</span>
-            </p>
-          </div>
-          <div>
-            <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>
-              De tu plata día 1
-            </p>
+            <p className="font-mono uppercase m-0" style={lbl}>De tu plata día 1</p>
             <p
               className="font-mono font-bold m-0"
-              style={{ fontSize: 20, lineHeight: 1.05, color: hallazgo.valor.fraccionInversion > 0.2 ? "var(--signal-red)" : "var(--doc-tx)" }}
+              style={{ ...val, color: hallazgo.valor.fraccionInversion > 0.2 ? "var(--signal-red)" : "var(--doc-tx)" }}
             >
               {pctInversion}%
             </p>
@@ -1576,6 +1586,7 @@ export function DrawerCapexPuestaAPunto({
         </div>
         <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--doc-tx3)", marginTop: 12 }}>
           Depto de {antiguedadAnios} años · {superficieUtilM2} m² útiles.
+          {rango && " El punto medio del rango es lo que entra a la inversión inicial, al cash-on-cash y a la TIR; los extremos son la banda de la estimación."}
         </p>
       </VViz>
 

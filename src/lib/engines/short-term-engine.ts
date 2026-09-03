@@ -1058,6 +1058,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     antiguedadEsFallback: input.antiguedadEsFallback ?? false,
     // Fase 5b · D4: sin pie el % sobre la inversión inicial miente.
     sinCapitalPropio: pie === 0,
+    valorUF: input.valorUF,
   });
 
   // Comisión según modo de gestión
