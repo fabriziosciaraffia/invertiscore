@@ -2383,7 +2383,7 @@ COMPARACIÓN DE PRECIO POR M² (fuente única — NO recalcules ni estimes de me
 - Precio/m² de este depto: ${fmtUF(pvc.sujetoUfM2)}
 - Mediana de la comuna${hallazgoSobreprecio?.valor.universo === "nuevo" ? " (departamentos NUEVOS — nómbralo al citarla, no digas 'la comuna' a secas)" : hallazgoSobreprecio?.valor.universo === "usado" ? " (departamentos USADOS — nómbralo al citarla, no digas 'la comuna' a secas)" : ""}: ${hallazgoSobreprecio ? fmtUF(hallazgoSobreprecio.valor.medianaComunaUfM2) : "sin dato confiable de la comuna"}
 - Desviación vs mediana: ${hallazgoSobreprecio ? (hallazgoSobreprecio.valor.desviacionPct >= 0 ? "+" : "") + hallazgoSobreprecio.valor.desviacionPct + "% (USA ESTE NÚMERO EXACTO — la mediana y el % salen del hallazgo, no los recalcules)" : "sin dato — no afirmes nada sobre precio vs comuna (ver REGLA 0)"}
-- Lectura canónica del hallazgo (narra ESTA idea con tus palabras; NO inventes otra mediana ni otro %): ${hallazgoSobreprecio ? `"${hallazgoSobreprecio.fraseCanonica}"` : "—"}
+- Lectura del hallazgo (v18: datos, no frase — la frase es la card; nárrala con tus palabras y NO inventes otra mediana ni otro %): ${hallazgoSobreprecio ? datosHallazgoParaPrompt(hallazgoSobreprecio) : "—"}
 ${arriendoReferenciaBloque}
 
 UBICACIÓN Y PLUSVALÍA
