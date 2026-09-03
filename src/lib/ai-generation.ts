@@ -1050,7 +1050,11 @@ function datosHallazgoParaPrompt(h: Hallazgo): string {
     }
     case "estructura_financiamiento": {
       const v = h.valor;
-      return `qué: estructura de financiamiento (manda: ${v.driver}) · cuánto: pie ${pct(v.piePct, 0)}% (${v.pieLevel}), tasa ${pct(v.tasaPct, 2)}% contra ${pct(v.tasaMarketPct, 2)}% de mercado (${v.spreadBps >= 0 ? "+" : ""}${Math.round(v.spreadBps)} pb, ${v.tasaLevel}) · dirección: ${dir} · ${conf}`;
+      // Niveles del clasificador traducidos a palabras: el nivel crudo ("óptimo",
+      // "problemático") el modelo lo copiaba como "clasifica como problemático".
+      const pieEnPalabras: Record<string, string> = { optimo: "holgado", aceptable: "aceptable", mejorable: "con margen de mejora", problematico: "bajo para esta operación" };
+      const tasaEnPalabras: Record<string, string> = { optimo: "bajo el mercado", aceptable: "en línea con el mercado", mejorable: "algo sobre el mercado", problematico: "alta frente al mercado" };
+      return `qué: estructura de financiamiento (manda: ${v.driver}) · cuánto: pie ${pct(v.piePct, 0)}% (${pieEnPalabras[v.pieLevel] ?? v.pieLevel}), tasa ${pct(v.tasaPct, 2)}% contra ${pct(v.tasaMarketPct, 2)}% de mercado (${v.spreadBps >= 0 ? "+" : ""}${Math.round(v.spreadBps)} pb, ${tasaEnPalabras[v.tasaLevel] ?? v.tasaLevel}) · dirección: ${dir} · ${conf}`;
     }
     default:
       return `qué: ${h.titular} · dirección: ${dir} · ${conf}`;

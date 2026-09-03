@@ -144,9 +144,10 @@ export const techoTotalRespuestaDirecta = (
   duro = false,
 ): number => aperturaWC + respuestaWC + (duro ? TECHO_CONTINUACION_DURO : CONTINUACION_MAX);
 
-/** Corte por oración (mismo criterio que los strippers PLANC de ai-generation). */
+/** Corte por oración. Solo cierre de oración (. ! ?): el ";" une cláusulas de una
+ *  misma oración y partir ahí dejaba colgando medias frases ("…el veredicto sube;"). */
 const partirEnOraciones = (s: string): string[] =>
-  s.split(/(?<=[.;])\s+/).map((x) => x.trim()).filter(Boolean);
+  s.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
 
 /**
  * Cuántas oraciones INICIALES caben en `maxWC`. 0 = ni la primera cabe.
