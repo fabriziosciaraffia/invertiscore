@@ -1013,6 +1013,82 @@ export function techoSinUmbralEnNegociacion(ai: Record<string, unknown> | null |
 }
 
 /**
+ * [HERO-CLAIM] estricto: cada "doble / mitad / triple" se evalúa contra la razón que
+ * la ORACIÓN nombra — "depósito" → CAP/5% · "dividendo" → arriendo/dividendo · "cuota"
+ * → cuota/arriendo · "mediana / zona / cuadra / valor" → precio/VM (solo con VM con
+ * fuente) · "referencia / mercado" → CAP/referencia. Sin comparador nombrado, sin
+ * licencia. "Única / sola vía" ⇔ exactamente una vía cruza. Puro: corre en el guard y
+ * en los instrumentos sobre un dump.
+ */
+export interface RazonesHeroClaim {
+  viasCruzan: string[];
+  capRatePct?: number | null;
+  capRefPct?: number | null;
+  arriendoM?: number | null;
+  dividendoM?: number | null;
+  precioUF?: number | null;
+  vmUF?: number | null;
+  vmConFuente?: boolean;
+}
+const RE_HERO_UNICA = /\b(?:la |una )?(?:única|sola) (?:vía|forma|manera|palanca|salida|opción|ajuste|camino)\b|\buna sola vía\b|\bel único (?:ajuste|camino|movimiento)\b/i;
+const RE_HERO_DOBLE = /\b(?:el doble|dos veces|más del doble|casi el doble|la mitad|menos de la mitad|a la mitad|duplica)\b/i;
+const RE_HERO_TRIPLE = /\b(?:el triple|tres veces|un tercio|triplica)\b/i;
+export function razonesHeroClaimTexto(r: RazonesHeroClaim): string {
+  const out: string[] = [];
+  const div = (a?: number | null, b?: number | null) => (a && b && a > 0 && b > 0 ? a / b : null);
+  const push = (n: string, v: number | null) => { if (v !== null) out.push(`${n} = ${v.toFixed(2)}×`); };
+  push("CAP rate/depósito UF 5%", div(r.capRatePct, 5));
+  push("CAP rate/referencia", div(r.capRatePct, r.capRefPct));
+  push("arriendo/dividendo", div(r.arriendoM, r.dividendoM));
+  push("cuota/arriendo", div(r.dividendoM, r.arriendoM));
+  if (r.vmConFuente) push("precio/VM", div(r.precioUF, r.vmUF));
+  return out.length ? out.join(", ") : "ninguna razón disponible";
+}
+export function violacionesHeroClaim(texto: string, r: RazonesHeroClaim): string[] {
+  const out: string[] = [];
+  const div = (a?: number | null, b?: number | null) => (a && b && a > 0 && b > 0 ? a / b : null);
+  for (const o of texto.split(/(?<=[.!?])\s+/)) {
+    const m1 = o.match(RE_HERO_UNICA);
+    if (m1 && r.viasCruzan.length !== 1) out.push(`unica-via: dice "${m1[0]}" y cruzan ${r.viasCruzan.length} vía(s)${r.viasCruzan.length ? ` (${r.viasCruzan.join(", ")})` : ""}`);
+    const m3 = o.match(RE_HERO_TRIPLE);
+    const m2 = m3 ? null : o.match(RE_HERO_DOBLE);
+    const claim = m3 ? { k: 3, txt: m3[0], regla: "triple" } : m2 ? { k: 2, txt: m2[0], regla: "doble" } : null;
+    if (!claim) continue;
+    // comparador nombrado en la MISMA oración: el más cercano DESPUÉS del múltiplo
+    // ("más del doble de la referencia") y, si no hay, el más cercano antes. Una oración
+    // puede nombrar varios ("…de la referencia… con los datos de zona…"): manda el que
+    // el múltiplo compara, no el primero que aparezca.
+    const comparadores: { re: RegExp; nombre: string; razon: number | null }[] = [
+      { re: /dep[oó]sito/gi, nombre: "CAP rate/depósito UF 5%", razon: div(r.capRatePct, 5) },
+      { re: /dividendo/gi, nombre: "arriendo/dividendo", razon: div(r.arriendoM, r.dividendoM) },
+      { re: /cuota/gi, nombre: "cuota/arriendo", razon: div(r.dividendoM, r.arriendoM) },
+      { re: /mediana|zona|cuadra|valor/gi, nombre: r.vmConFuente ? "precio/VM" : "precio/VM (sin fuente)", razon: r.vmConFuente ? div(r.precioUF, r.vmUF) : null },
+      { re: /referencia|mercado/gi, nombre: "CAP rate/referencia", razon: div(r.capRatePct, r.capRefPct) },
+    ];
+    const posClaim = o.toLowerCase().indexOf(claim.txt.toLowerCase());
+    let mejorDespues: { d: number; c: (typeof comparadores)[number] } | null = null;
+    let mejorAntes: { d: number; c: (typeof comparadores)[number] } | null = null;
+    for (const c of comparadores) {
+      c.re.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = c.re.exec(o))) {
+        const d = m.index - posClaim;
+        if (d >= 0) { if (!mejorDespues || d < mejorDespues.d) mejorDespues = { d, c }; }
+        else if (!mejorAntes || -d < mejorAntes.d) mejorAntes = { d: -d, c };
+      }
+    }
+    const elegido = mejorDespues?.c ?? mejorAntes?.c ?? null;
+    const nombre: string | null = elegido?.nombre ?? null;
+    const razon: number | null = elegido?.razon ?? null;
+    if (!nombre) { out.push(`${claim.regla}: dice "${claim.txt}" sin nombrar contra qué (sin comparador, sin licencia)`); continue; }
+    if (razon === null) { out.push(`${claim.regla}: dice "${claim.txt}" contra ${nombre}, que no tiene dato`); continue; }
+    const magnitud = Math.max(razon, 1 / razon);
+    if (magnitud < claim.k) out.push(`${claim.regla}: dice "${claim.txt}" contra ${nombre} = ${razon.toFixed(2)}× (se exige ≥ ${claim.k}×)`);
+  }
+  return out.filter((v, i, arr) => arr.indexOf(v) === i);
+}
+
+/**
  * v18 — el hallazgo entra al prompt como DATOS (qué · cuánto · dirección), no como su
  * fraseCanonica: esa frase es la card que el lector ve en "Principales hallazgos" y,
  * cuando el prompt la traía, el modelo (o el motor, vía Plan C) la copiaba como
@@ -2903,58 +2979,38 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // cruzan (GS-PJ) y "más del doble" con una razón de 1,68× (GS-PC2). Dos reglas
     // contables sobre respuestaDirecta, contra datos del motor:
     //   · "única / sola / una sola vía" ⇔ exactamente UNA vía cruza.
-    //   · "doble / triple / mitad" ⇔ alguna razón del motor ≥ 2 (≥ 3 para "triple"):
-    //     precio/VM (solo con VM con fuente), arriendo/dividendo y cuota/arriendo.
+    //   · "doble / triple / mitad" ⇔ la razón que la MISMA oración nombra es ≥ 2 (≥ 3
+    //     para "triple"): depósito → CAP/5% · dividendo → arriendo/dividendo · cuota →
+    //     cuota/arriendo · mediana/zona/cuadra/valor → precio/VM (solo con fuente) ·
+    //     referencia/mercado → CAP/referencia. Sin comparador nombrado, sin licencia.
     // Un reintento quirúrgico sobre respuestaDirecta con el dato correcto citado; se
     // acepta solo si mejora. Corre ANTES de PLANC-BUDGET (el presupuesto es la última
     // palabra) y DESPUÉS de LTR-CIFRA (el candidato se re-verifica con empeoraCifras).
     if (aiResult?.conviene) {
       try {
-        const viasCruzan = (hallazgoDistanciaGen?.valor.vias ?? []).filter((v) => v.estado === "cruza");
-        const razones: { nombre: string; valor: number }[] = [];
-        const arriendoM = Number(input.arriendo) || 0;
-        const dividendoM = hallazgoFlujoGen?.valor.dividendoMensualCLP ?? 0;
-        if (arriendoM > 0 && dividendoM > 0) {
-          razones.push({ nombre: "arriendo/dividendo", valor: arriendoM / dividendoM });
-          razones.push({ nombre: "cuota/arriendo", valor: dividendoM / arriendoM });
-        }
+        const viasCruzan = (hallazgoDistanciaGen?.valor.vias ?? []).filter((v) => v.estado === "cruza").map((v) => v.palanca);
         const vmConFuente = (input.valorMercadoFranco ?? 0) > 0 && Math.abs(vmFrancoUF - input.precio) * UF_CLP > 1_000_000;
-        if (vmConFuente && input.precio > 0) {
-          razones.push({ nombre: "precio/VM", valor: input.precio / vmFrancoUF });
-          razones.push({ nombre: "VM/precio", valor: vmFrancoUF / input.precio });
-        }
-        // El "doble" del hero casi siempre es del CAP rate: contra su referencia (GS-PC2:
-        // 8,4/4,0 = 2,1×, verdadero) o contra el depósito UF 5% del bloque de largo plazo
-        // (GS-1: 8,7/5 = 1,74×, falso). Sin estas dos razones el guard marcaba el
-        // verdadero y no tenía con qué corregir el falso.
-        if (hallazgoCapRateGen && hallazgoCapRateGen.valor.capRatePct > 0) {
-          if (hallazgoCapRateGen.valor.capRefPct > 0) razones.push({ nombre: "CAP rate/referencia", valor: hallazgoCapRateGen.valor.capRatePct / hallazgoCapRateGen.valor.capRefPct });
-          razones.push({ nombre: "CAP rate/depósito UF 5%", valor: hallazgoCapRateGen.valor.capRatePct / 5 });
-        }
-        const razonesTxt = razones.length ? razones.map((r) => `${r.nombre} = ${r.valor.toFixed(2)}×`).join(", ") : "ninguna razón disponible";
-        const RE_UNICA = /\b(?:la |una )?(?:única|sola) (?:vía|forma|manera|palanca|salida|opción|ajuste|camino)\b|\buna sola vía\b|\bel único (?:ajuste|camino|movimiento)\b/i;
-        const RE_DOBLE = /\b(?:el doble|dos veces|más del doble|casi el doble|la mitad|menos de la mitad|a la mitad)\b/i;
-        const RE_TRIPLE = /\b(?:el triple|tres veces|un tercio)\b/i;
-        const hayDoble = razones.some((r) => r.valor >= 2);
-        const hayTriple = razones.some((r) => r.valor >= 3);
-        const violaciones = (ai: typeof aiResult): string[] => {
-          const out: string[] = [];
-          for (const txt of [ai?.conviene?.respuestaDirecta_clp, ai?.conviene?.respuestaDirecta_uf]) {
-            if (typeof txt !== "string") continue;
-            const m1 = txt.match(RE_UNICA);
-            if (m1 && viasCruzan.length !== 1) out.push(`unica-via: dice "${m1[0]}" y cruzan ${viasCruzan.length} vía(s)${viasCruzan.length ? ` (${viasCruzan.map((v) => v.palanca).join(", ")})` : ""}`);
-            const m2 = txt.match(RE_DOBLE);
-            if (m2 && !hayDoble) out.push(`doble: dice "${m2[0]}" y ninguna razón del motor llega a 2× (${razonesTxt})`);
-            const m3 = txt.match(RE_TRIPLE);
-            if (m3 && !hayTriple) out.push(`triple: dice "${m3[0]}" y ninguna razón del motor llega a 3× (${razonesTxt})`);
-          }
-          return out.filter((v, i, arr) => arr.indexOf(v) === i);
+        const ctxClaim: RazonesHeroClaim = {
+          viasCruzan,
+          capRatePct: hallazgoCapRateGen?.valor.capRatePct ?? null,
+          capRefPct: hallazgoCapRateGen?.valor.capRefPct ?? null,
+          arriendoM: Number(input.arriendo) || null,
+          dividendoM: hallazgoFlujoGen?.valor.dividendoMensualCLP ?? null,
+          precioUF: input.precio,
+          vmUF: vmFrancoUF,
+          vmConFuente,
         };
+        const razonesTxt = razonesHeroClaimTexto(ctxClaim);
+        const violaciones = (ai: typeof aiResult): string[] =>
+          [ai?.conviene?.respuestaDirecta_clp, ai?.conviene?.respuestaDirecta_uf]
+            .filter((t): t is string => typeof t === "string")
+            .flatMap((t) => violacionesHeroClaim(t, ctxClaim))
+            .filter((v, i, arr) => arr.indexOf(v) === i);
         const viol = violaciones(aiResult);
         if (viol.length) {
           console.warn(`[HERO-CLAIM] ${analysisId}: ${viol.join(" | ")} — 1 reintento quirúrgico`);
-          const datoCorrecto = `VÍAS QUE CRUZAN (dato del motor): ${viasCruzan.length}${viasCruzan.length ? ` — ${viasCruzan.map((v) => v.palanca).join(", ")}` : ""}. Solo con exactamente UNA puedes decir "la única vía"; con varias, nómbralas o di "hay más de una vía"; con ninguna, no hay vía.
-RAZONES DEL MOTOR: ${razonesTxt}. "El doble" / "la mitad" solo si alguna razón es ≥ 2×; "el triple" solo si alguna es ≥ 3×. Si no, di la razón con sus dos montos o su porcentaje, nunca como múltiplo verbal.`;
+          const datoCorrecto = `VÍAS QUE CRUZAN (dato del motor): ${viasCruzan.length}${viasCruzan.length ? ` — ${viasCruzan.join(", ")}` : ""}. Solo con exactamente UNA puedes decir "la única vía"; con varias, nómbralas o di "hay más de una vía"; con ninguna, no hay vía.
+RAZONES DEL MOTOR: ${razonesTxt}. "El doble" / "la mitad" solo contra la razón que la MISMA oración nombra y solo si esa razón es ≥ 2× (≥ 3× para "el triple"); sin nombrar contra qué, no hay múltiplo. Si no alcanza, di la razón con sus dos montos o su porcentaje, nunca como múltiplo verbal.`;
           const contClp = typeof aiResult.conviene.respuestaDirecta_clp === "string" ? aiResult.conviene.respuestaDirecta_clp : "";
           const contUf = typeof aiResult.conviene.respuestaDirecta_uf === "string" ? aiResult.conviene.respuestaDirecta_uf : "";
           const promptClaim = `Estás corrigiendo SOLO el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
