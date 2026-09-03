@@ -36,7 +36,13 @@ export interface AnalisisInput {
   montoCuota: number;
   precio: number;
   valorMercadoUsuario?: number;  // Lo que el usuario estima (referencial)
-  valorMercadoFranco?: number;   // Sugerencia de Franco basada en datos reales (para cálculos)
+  /** LEGACY: número sin procedencia. El motor ya NO lo lee (ver valorMercadoRef /
+   *  valor-mercado.ts); se sigue escribiendo para los lectores viejos. */
+  valorMercadoFranco?: number;
+  /** Valor estimado de mercado CON procedencia (Tramo A, 03-sep-2026): nivel de la
+   *  sugerencia de venta, universo de la muestra y n. Ausente = no hay valor de
+   *  mercado y el motor trabaja como si no lo hubiera. Ver valor-mercado.ts. */
+  valorMercadoRef?: ValorMercadoRef | null;
   piePct: number;
   plazoCredito: number;
   tasaInteres: number;
@@ -386,7 +392,9 @@ export interface AnalysisMetrics {
   contribuciones: number;     // trimestral (mismo formato que input.contribuciones)
   gastos: number;             // mensual (mismo formato que input.gastos / GGCC)
   // Plusvalía inmediata
-  valorMercadoFrancoUF?: number;       // para cálculos (datos reales)
+  valorMercadoFrancoUF?: number;       // vm resuelto (= precio cuando no hay valor de mercado con procedencia)
+  /** Procedencia del valor de mercado que el motor aceptó; null = trabajó sin valor de mercado. */
+  valorMercadoRef?: ValorMercadoRef | null;
   valorMercadoUsuarioUF?: number;      // referencial (estimación usuario)
   plusvaliaInmediataFranco?: number;    // CLP vs datos reales
   plusvaliaInmediataFrancoPct?: number;
@@ -454,6 +462,18 @@ export interface AnalysisMetrics {
 // Comparación determinística de precio/m² del sujeto vs mediana comunal de VENTA
 // (UF/m²). NO es un hallazgo (FASE A): la empaqueta el builder puro
 // buildPrecioVsComuna (precio-vs-comuna.ts). FASE B construirá el hallazgo encima.
+/** Universo de una muestra de venta: "mixto" = radio consultado sin condición. */
+export type UniversoVenta = "nuevo" | "usado" | "mixto";
+/** Procedencia del valor estimado de mercado del wizard. */
+export interface ValorMercadoRef {
+  valorUF: number;
+  /** "radio" = comparables publicados dentro de radioMetros · "comuna" = mediana comunal. */
+  nivel: "radio" | "comuna";
+  universo: UniversoVenta;
+  n: number;
+  radioMetros?: number | null;
+}
+
 export interface PrecioVsComuna {
   /** Precio depto / superficie, SIN estacionamiento (base comparable a la mediana comunal). NO es metrics.precioM2. */
   sujetoUfM2: number;

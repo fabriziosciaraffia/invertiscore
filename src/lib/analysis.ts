@@ -30,6 +30,7 @@ import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo, aplicarHorizonteAFlu
 import { esReferenciaContrastable, resolverArriendoReferencia, resolverProcedenciaArriendo } from "./arriendo-referencia";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
+import { resolverValorMercado, vmFrancoUFDe } from "./valor-mercado";
 import type { MedianaComunaInyectada } from "./comuna-stats";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
 import { findNearestStation } from "./metro-stations";
@@ -536,7 +537,10 @@ function calcMetrics(
     : metricaValor(flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999);
 
   // Plusvalía inmediata — Franco (datos reales, para cálculos) y Usuario (referencial)
-  const vmFrancoUF = input.valorMercadoFranco || input.precio;
+  // Tramo A: el valor de mercado solo cuenta con procedencia y universo del depto
+  // (valor-mercado.ts). Sin eso, vm = precio y la plusvalía inmediata es 0.
+  const vmRef = resolverValorMercado(input);
+  const vmFrancoUF = vmRef?.valorUF ?? input.precio;
   const vmUsuarioUF = input.valorMercadoUsuario || input.precio;
   const vmFrancoCLP = vmFrancoUF * ufClp;
   const vmUsuarioCLP = vmUsuarioUF * ufClp;
@@ -573,6 +577,7 @@ function calcMetrics(
     contribuciones: contribucionesValor,
     gastos: gastosValor,
     valorMercadoFrancoUF: Math.round(vmFrancoUF * 10) / 10,
+    valorMercadoRef: vmRef,
     valorMercadoUsuarioUF: Math.round(vmUsuarioUF * 10) / 10,
     plusvaliaInmediataFranco: Math.round(plusvaliaFranco),
     plusvaliaInmediataFrancoPct: Math.round(plusvaliaFrancoPct * 10) / 10,
@@ -2176,7 +2181,10 @@ function calcNegociacionScenario(
   // acá no se recomputa nada. Ausente ⇒ comportamiento idéntico al previo.
   umbralVeredicto?: { precioUF: number; veredicto: Veredicto } | null,
 ): NegociacionScenario {
-  const vmFrancoUF = input.valorMercadoFranco || input.precio;
+  // Tramo A: sin valor de mercado con procedencia, vm = precio ⇒ nunca "bajo mercado"
+  // y el modo alinear_mercado se reduce al 3% de cualquier cierre, sin invocar comparables.
+  const hayValorMercado = resolverValorMercado(input) !== null;
+  const vmFrancoUF = vmFrancoUFDe(input);
   const arriendo = input.arriendo || 0;
   const flujoViable = metrics.flujoNetoMensual >= -arriendo * UMBRAL_FLUJO_VIABLE_PCT_ARRIENDO;
   const bajoMercado = input.precio < vmFrancoUF * 0.98;  // 2% holgura para evitar "borderline alineado"
@@ -2214,7 +2222,9 @@ function calcNegociacionScenario(
     const baseSugerido = Math.min(input.precio, vmFrancoUF);
     precioSugeridoUF = Math.round(baseSugerido * 0.97 * 10) / 10;
     modo = "alinear_mercado";
-    razon = "Pagas sobre el valor estimado de mercado de la zona. Este precio te alinea con comparables y mejora la matemática.";
+    razon = hayValorMercado
+      ? "Pagas sobre el valor estimado de mercado de la zona. Este precio te alinea con comparables y mejora la matemática."
+      : "Sin valor de mercado de referencia para este depto: un 3% es lo que se conversa en cualquier cierre, no un argumento de mercado.";
   }
 
   // ── UN NOMBRE POR PRECIO (goal 02-sep-2026): el sugerido YA NO se colapsa al umbral ──
@@ -2502,7 +2512,7 @@ export function runAnalysis(
   const casoPrecioJusto = esCasoPrecioJusto({
     desviacionPct: metrics.precioVsComuna?.desviacionPct,
     precioUF: input.precio,
-    vmFrancoUF: input.valorMercadoFranco || input.precio,
+    vmFrancoUF: vmFrancoUFDe(input),
     ufClp,
     arriendoCLP: input.arriendo,
     // Un estimado desde el m² comunal no contrasta (ver arriendo-referencia.ts).
