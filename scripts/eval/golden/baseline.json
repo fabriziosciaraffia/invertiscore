@@ -64,8 +64,8 @@
       "capRatePct": 6.34,
       "sobreprecioPct": 70,
       "flujoNetoMensual": -66618,
-      "tirPct": 10.01,
-      "patrimonioMult": 2.34
+      "tirPct": 10.03,
+      "patrimonioMult": 2.35
     },
     "GS-4": {
       "veredicto": "BUSCAR OTRA",
@@ -108,7 +108,7 @@
       "capRatePct": 4.9,
       "sobreprecioPct": null,
       "flujoNetoMensual": -107628,
-      "tirPct": 9.43,
+      "tirPct": 9.41,
       "patrimonioMult": 2.17
     },
     "GS-6": {
@@ -212,8 +212,8 @@
       "capRatePct": 5.66,
       "sobreprecioPct": 0,
       "flujoNetoMensual": -31677,
-      "tirPct": 11.28,
-      "patrimonioMult": 2.77
+      "tirPct": 11.24,
+      "patrimonioMult": 2.76
     },
     "BE-caprate": {
       "veredicto": "COMPRAR",
@@ -234,8 +234,8 @@
       "capRatePct": 9.92,
       "sobreprecioPct": 11,
       "flujoNetoMensual": 277726,
-      "tirPct": 23.94,
-      "patrimonioMult": 3.27
+      "tirPct": 23.89,
+      "patrimonioMult": 3.26
     },
     "BE-patrimonio": {
       "veredicto": "BUSCAR OTRA",
@@ -278,8 +278,8 @@
       "capRatePct": 6.55,
       "sobreprecioPct": 67,
       "flujoNetoMensual": 30836,
-      "tirPct": 14.08,
-      "patrimonioMult": 3.28
+      "tirPct": 14.12,
+      "patrimonioMult": 3.29
     }
   }
 }

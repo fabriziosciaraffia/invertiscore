@@ -102,18 +102,29 @@ export function calcCapexPuestaAPunto(p: {
     };
   }
   const rango = getPuestaAPuntoRango(p.antiguedad, p.modelo);
-  const montoUFExacto = rango.punto * p.superficieUtilM2;
-  const montoCLP = Math.round(montoUFExacto * p.valorUF);
-  const minUFExacto = rango.min * p.superficieUtilM2;
-  const maxUFExacto = rango.max * p.superficieUtilM2;
+  // v3: los tres montos UF se redondean a múltiplos de 5 ACÁ (piso 5 UF si hay
+  // CapEx) y los CLP se derivan de esos UF, con la misma UF del motor. Así el
+  // punto que declara la frase ("Franco corre el caso con UF 30") es exactamente
+  // el que entra a la inversión inicial, al cash-on-cash y a la TIR. Antes el
+  // redondeo vivía solo en el hallazgo y el motor sumaba el exacto (31,5 UF →
+  // 1.287.657 vs UF 30 declarados; prod 9feffbcc). Legacy conserva el exacto a
+  // 0,1 UF para no mover informes previos.
+  const aUF = (exacto: number) =>
+    p.modelo === "v3"
+      ? (exacto > 0 ? Math.max(5, Math.round(exacto / 5) * 5) : 0)
+      : Math.round(exacto * 10) / 10;
+  const montoUF = aUF(rango.punto * p.superficieUtilM2);
+  const montoMinUF = aUF(rango.min * p.superficieUtilM2);
+  const montoMaxUF = aUF(rango.max * p.superficieUtilM2);
+  const aCLP = (uf: number, exacto: number) => Math.round((p.modelo === "v3" ? uf : exacto) * p.valorUF);
   return {
-    montoCLP,
-    montoUF: Math.round(montoUFExacto * 10) / 10,
+    montoCLP: aCLP(montoUF, rango.punto * p.superficieUtilM2),
+    montoUF,
     ufM2: rango.punto,
-    montoMinUF: Math.round(minUFExacto * 10) / 10,
-    montoMaxUF: Math.round(maxUFExacto * 10) / 10,
-    montoMinCLP: Math.round(minUFExacto * p.valorUF),
-    montoMaxCLP: Math.round(maxUFExacto * p.valorUF),
+    montoMinUF,
+    montoMaxUF,
+    montoMinCLP: aCLP(montoMinUF, rango.min * p.superficieUtilM2),
+    montoMaxCLP: aCLP(montoMaxUF, rango.max * p.superficieUtilM2),
     ufM2Min: rango.min,
     ufM2Max: rango.max,
     origen: "derivado",

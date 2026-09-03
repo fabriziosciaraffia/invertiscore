@@ -40,6 +40,7 @@ import {
 } from "../src/lib/modelo-costos";
 import {
   calcCapexPuestaAPunto,
+  buildHallazgoPuestaAPunto,
   getPuestaAPuntoRango,
   getPuestaAPuntoUfM2Legacy,
   PUESTA_A_PUNTO_UF_M2,
@@ -150,22 +151,54 @@ test("P3 · legacy === round(precio × tasa(antig) / 12), y con inflación round
 
 // ── P4 · CapEx: rango y punto ────────────────────────────────────────────────
 
-test("P4 · CapEx v3: montoUF ∈ [min, max], montoUF === round1(punto × m²), punto === medio", () => {
+test("P4 · CapEx v3: montoUF ∈ [min, max], montoUF === round5(punto × m²), punto === medio", () => {
+  const round5 = (v: number) => (v > 0 ? Math.max(5, Math.round(v / 5) * 5) : 0);
   for (const antiguedad of ANTIGUEDADES) for (const sup of SUPERFICIES) {
     const r = getPuestaAPuntoRango(antiguedad, "v3");
     assert.equal(r.punto, Math.round(((r.min + r.max) / 2) * 100) / 100, `punto medio antig=${antiguedad}`);
     const c = calcCapexPuestaAPunto({ antiguedad, superficieUtilM2: sup, valorUF: UF, modelo: "v3" });
     assert.ok(c.montoUF >= c.montoMinUF && c.montoUF <= c.montoMaxUF, `antig=${antiguedad} sup=${sup}: ${c.montoMinUF} ≤ ${c.montoUF} ≤ ${c.montoMaxUF}`);
     assert.ok(c.montoCLP >= c.montoMinCLP && c.montoCLP <= c.montoMaxCLP);
-    assert.equal(c.montoUF, round1(r.punto * sup));
-    assert.equal(c.montoMinUF, round1(r.min * sup));
-    assert.equal(c.montoMaxUF, round1(r.max * sup));
-    assert.equal(c.montoCLP, Math.round(r.punto * sup * UF));
+    assert.equal(c.montoUF, round5(r.punto * sup));
+    assert.equal(c.montoMinUF, round5(r.min * sup));
+    assert.equal(c.montoMaxUF, round5(r.max * sup));
+    assert.equal(c.montoCLP, Math.round(c.montoUF * UF));
     assert.equal(c.ufM2, r.punto);
     assert.equal(c.origen, "derivado");
     if (antiguedad <= 2) assert.equal(c.montoCLP, 0, "nuevo/casi nuevo ⇒ sin CapEx");
   }
   assert.equal(PUESTA_A_PUNTO_UF_M2.length, 5);
+});
+
+test("P4e · el punto que corre el caso ES el declarado: montoCLP === montoUF × UF (y min/max) en todo tramo v3 × m² 20..150", () => {
+  // Regresión prod 9feffbcc (v3): la frase decía "corre el caso con UF 30" y la
+  // inversión inicial corría con 31,5 UF (1.287.657 = 31,5 × 40.878). El redondeo
+  // a múltiplo de 5 vivía solo en el hallazgo; el motor sumaba el exacto.
+  const UFS = [38800, 40878];
+  let n = 0;
+  for (const uf of UFS) for (const antiguedad of ANTIGUEDADES) for (let sup = 20; sup <= 150; sup++) {
+    const capex = calcCapexPuestaAPunto({ antiguedad, superficieUtilM2: sup, valorUF: uf, modelo: "v3" });
+    const h = buildHallazgoPuestaAPunto({ capex, antiguedad, superficieUtilM2: sup, modalidad: "ltr", inversionInicialCLP: 50_000_000, decisividad: 0, magnitudContinua: 0, valorUF: uf });
+    if (!h) { assert.equal(capex.montoCLP, 0); continue; }
+    const v = h.valor;
+    const ctx = `uf=${uf} antig=${antiguedad} sup=${sup}`;
+    // Lo que declara la frase (montoUF) × UF tiene que ser lo que suma el motor (montoCLP).
+    assert.equal(v.montoCLP, Math.round(v.montoUF * uf), `${ctx}: hallazgo montoCLP ${v.montoCLP} ≠ ${v.montoUF} UF × ${uf}`);
+    assert.equal(capex.montoCLP, v.montoCLP, `${ctx}: el motor suma ${capex.montoCLP}, la frase declara ${v.montoCLP}`);
+    assert.equal(v.montoMinCLP, Math.round((v.montoMinUF ?? 0) * uf), `${ctx}: min`);
+    assert.equal(v.montoMaxCLP, Math.round((v.montoMaxUF ?? 0) * uf), `${ctx}: max`);
+    // El punto declarado es múltiplo de 5 (estimación, no cotización).
+    assert.equal(v.montoUF % 5, 0, `${ctx}: montoUF ${v.montoUF} no es múltiplo de 5`);
+    n++;
+  }
+  assert.ok(n > 5000, `barrido demasiado chico: ${n}`);
+  // Y el motor entero: lo que suma capitalInvertido es el punto declarado por la frase.
+  for (const [antiguedad, sup] of [[20, 60], [4, 60], [25, 42], [10, 31]] as const) {
+    const r = runAnalysis({ ...ltr({ antiguedad, superficie: sup, precio: 4000, arriendo: 700_000, piePct: 20 }), methodologyVersion: "v3" }, UF, undefined, new Date("2026-09-01"));
+    const hv = r.metrics.hallazgoPuestaAPunto!.valor;
+    assert.equal(r.metrics.capexPuestaAPuntoCLP, Math.round(hv.montoUF * UF), `antig=${antiguedad} sup=${sup}`);
+    assert.equal(hv.montoUF % 5, 0);
+  }
 });
 
 test("P4b · tramos CapEx v3: [0,0] · [0.2,0.4] · [0.5,0.9] · [1.0,1.6] · [1.8,2.6]", () => {
@@ -270,7 +303,11 @@ test("P7c · runAnalysis con v3: provisión = fuente única v3 (techo 6% incluid
   const esperado = calcMantencionMensual({ modelo: "v3", antiguedad: 20, superficieUtilM2: 60, precioCLP: 4000 * UF, arriendoCLP: 700_000, ufClp: UF });
   assert.equal(r.metrics.provisionMantencionAjustada, esperado);
   assert.ok(esperado <= Math.round(700_000 * 0.06));
-  assert.equal(r.metrics.capexPuestaAPuntoCLP, Math.round(1.3 * 60 * UF));
+  // 1,3 UF/m² × 60 m² = 78 UF exactos → el punto que corre el caso es UF 80 (múltiplo de 5).
+  const capex = calcCapexPuestaAPunto({ antiguedad: 20, superficieUtilM2: 60, valorUF: UF, modelo: "v3" });
+  assert.equal(capex.ufM2, 1.3);
+  assert.equal(capex.montoUF, 80);
+  assert.equal(r.metrics.capexPuestaAPuntoCLP, Math.round(80 * UF));
 });
 
 test("P7d · v3 respeta la provisión declarada (> 0) igual que hoy", () => {
