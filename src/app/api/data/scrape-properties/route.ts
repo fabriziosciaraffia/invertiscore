@@ -5,6 +5,15 @@ import { scrapeTocTocMap, scrapeTocTocAPI, scrapeTocToc, getComunasBatch, TOTAL_
 // que las dos rutas escriban el mismo shape.
 import { propertyToRow, filaSinPisarCoords, upsertSinPisarCoords } from "@/lib/services/scraper/property-row";
 
+// SIN SCHEDULE desde el 04-sep-2026. Este pase rotaba UNA comuna por día con el
+// GetProps capado en 510 filas por viewport, así que refrescaba una fracción
+// del universo y nunca desactivaba lo que dejó de publicarse. El pase semanal
+// (/api/data/backfill-toctoc, lunes 03:00 UTC) lo reemplaza: universo completo
+// por paginación, sin tope de 510, sin viewport que recorta y con desactivación
+// de lo no visto. La ruta se conserva para invocación manual con Bearer
+// CRON_SECRET (diagnóstico, una comuna puntual); no la vuelvas a agendar sin
+// revisar antes cómo convive con la desactivación del pase semanal.
+//
 // Hobby con Fluid Compute permite hasta 300s (el "60s" de antes quedó obsoleto
 // cuando Vercel subió el default). 60 le sobra a este pase (~11s por corrida);
 // se mantiene como tope conservador para cazar corridas colgadas temprano.
