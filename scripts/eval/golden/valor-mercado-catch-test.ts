@@ -23,7 +23,7 @@ import { resolverMedianaZona } from "../../../src/lib/zone-insight-core";
 import type { AnalisisInput, FullAnalysisResult } from "../../../src/lib/types";
 
 type Fila = { id: string; comuna: string | null; input_data: AnalisisInput | null; results: FullAnalysisResult | null; created_at: string; mediana_comuna_snapshot: { mediana: number | null; n?: number; universo?: "nuevo" | "usado" } | null };
-const CASOS = ["d3a6149a", "93316ad0", "7710a017"];
+const CASOS = ["d3a6149a", "93316ad0", "7710a017", "cb0e8f46"];
 
 function testPuros(fallas: string[]) {
   const F = (m: string) => fallas.push(`puro · ${m}`);
@@ -72,7 +72,8 @@ async function main() {
     if (m.valorMercadoRef !== null && m.valorMercadoRef !== undefined) F("valorMercadoRef debía ser null (VM legacy sin procedencia)");
     if (Math.round(m.valorMercadoFrancoUF ?? 0) !== Math.round(f.input_data.precio)) F(`vm resuelto ${m.valorMercadoFrancoUF} ≠ precio ${f.input_data.precio}`);
     if ((m.plusvaliaInmediataFrancoPct ?? 0) !== 0) F(`plusvalía inmediata ${m.plusvaliaInmediataFrancoPct} ≠ 0`);
-    if (r.negociacion?.modo === "alinear_mercado" && /comparables/.test(r.negociacion.razon ?? "")) F("negociación invoca comparables sin valor de mercado");
+    if (/comparables|bajo mercado/.test(r.negociacion?.razon ?? "")) F(`negociación invoca comparables sin valor de mercado: «${r.negociacion?.razon}»`);
+    if (r.negociacion?.modo === "alinear_mercado" && r.metrics.flujoNetoMensual < -(f.input_data.arriendo || 0) * 0.2) F("aporte no sostenible: el modo debía ser optimizar_flujo, no alinear_mercado");
     if (pref === "d3a6149a") {
       // VM con fuente real, mismo universo (nuevo): la plusvalía inmediata vuelve a moverse como antes
       const conFuente = { ...f.input_data, valorMercadoRef: { valorUF: 3300, nivel: "radio", universo: "nuevo", n: 24, radioMetros: 750 } } as AnalisisInput;
@@ -85,6 +86,23 @@ async function main() {
       const otroUniverso = { ...f.input_data, valorMercadoRef: { valorUF: 3300, nivel: "radio", universo: "usado", n: 24 } } as AnalisisInput;
       if (recompute(f, otroUniverso).metrics.valorMercadoRef) F("VM de universo usado para depto nuevo debía ser ausente");
     }
+  }
+  // El modo del plan no depende del VM cuando el VM está ausente: cb0e8f46 (Huechuraba,
+  // aporte no sostenible) queda en optimizar_flujo con el sostenible calculado desde el
+  // flujo (precio donde el aporte cae al 20% del arriendo), no precio × 0,97. Ojo: el
+  // "sostenible" de UF 3.827 ($151,9 MM) que mostraba el 02-sep era alinear_mercado =
+  // VM legacy 3.945 × 0,97 — un valor sin procedencia, no el flujo.
+  const fcb = filas.get("cb0e8f46");
+  if (fcb?.input_data) {
+    const F = (m: string) => fallas.push(`cb0e8f46 ${fcb.comuna} · ${m}`);
+    const r = recompute(fcb, fcb.input_data);
+    const neg = r.negociacion;
+    console.log(`── cb0e8f46 ${fcb.comuna} · VM legacy ${fcb.input_data.valorMercadoFranco} · ref ${JSON.stringify(r.metrics.valorMercadoRef)} · modo ${neg?.modo} · sostenible UF ${neg?.precioSugeridoUF} ($${Math.round(neg?.precioSugeridoCLP ?? 0).toLocaleString("es-CL")}) · precio×0,97 = ${Math.round(fcb.input_data.precio * 0.97)}`);
+    if (neg?.modo !== "optimizar_flujo") F(`modo ${neg?.modo} ≠ optimizar_flujo`);
+    const p097 = Math.round(fcb.input_data.precio * 0.97);
+    if (Math.round(neg?.precioSugeridoUF ?? 0) === p097) F(`sostenible ${neg?.precioSugeridoUF} = precio × 0,97 (debía salir del flujo)`);
+    if (!((neg?.precioSugeridoUF ?? 0) < fcb.input_data.precio)) F(`sostenible ${neg?.precioSugeridoUF} debía quedar bajo el precio ${fcb.input_data.precio}`);
+    if (Math.round(neg?.precioSugeridoUF ?? 0) === 3827) F("sostenible volvió al VM legacy × 0,97 (3.827)");
   }
   const f77 = filas.get("7710a017");
   if (f77) {

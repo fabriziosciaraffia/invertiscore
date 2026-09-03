@@ -2187,7 +2187,11 @@ function calcNegociacionScenario(
   const vmFrancoUF = vmFrancoUFDe(input);
   const arriendo = input.arriendo || 0;
   const flujoViable = metrics.flujoNetoMensual >= -arriendo * UMBRAL_FLUJO_VIABLE_PCT_ARRIENDO;
-  const bajoMercado = input.precio < vmFrancoUF * 0.98;  // 2% holgura para evitar "borderline alineado"
+  // Sin valor de mercado el MODO no puede depender de "bajo mercado" (vm = precio lo
+  // dejaba siempre en falso y todo el parque caía a precio × 0,97, perdiendo el precio
+  // donde el aporte se vuelve sostenible): sin VM decide solo el flujo — viable ⇒ cerrar
+  // al precio actual, no viable ⇒ optimizar el flujo. Con VM, la lógica de siempre.
+  const bajoMercado = hayValorMercado ? input.precio < vmFrancoUF * 0.98 : true;  // 2% holgura para evitar "borderline alineado"
 
   // Fase 3.7 v10 — 3 modos
   let precioSugeridoUF: number;
@@ -2197,7 +2201,9 @@ function calcNegociacionScenario(
     // Modo 1 — cerrar al precio actual: ya estás bajo mercado y la matemática cierra.
     precioSugeridoUF = Math.round(input.precio * 10) / 10;
     modo = "cerrar_actual";
-    razon = "Ya estás bajo mercado y la matemática cierra. No hay caso para pedir descuento.";
+    razon = hayValorMercado
+      ? "Ya estás bajo mercado y la matemática cierra. No hay caso para pedir descuento."
+      : "El aporte es sostenible al precio pedido y no hay valor de mercado de referencia: no hay caso para pedir descuento.";
   } else if (bajoMercado && !flujoViable) {
     // Modo 2 — optimizar flujo: el precio es bueno vs mercado pero el aporte es alto.
     const precioFlujoViable = calcPrecioFlujoViable(input, metrics, ufClp);
@@ -2215,7 +2221,9 @@ function calcNegociacionScenario(
       const baseSugerido = Math.min(input.precio, vmFrancoUF);
       precioSugeridoUF = Math.round(baseSugerido * 0.97 * 10) / 10;
       modo = "alinear_mercado";
-      razon = "El precio sugerido alinea con comparables y mejora marginalmente tu matemática.";
+      razon = hayValorMercado
+        ? "El precio sugerido alinea con comparables y mejora marginalmente tu matemática."
+        : "Ningún precio dentro del tope vuelve sostenible el aporte; un 3% es lo que se conversa en cualquier cierre.";
     }
   } else {
     // Modo 3 — alinear mercado: el precio está sobre o cerca del valor estimado de mercado.
