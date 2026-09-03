@@ -970,6 +970,36 @@ const SYSTEM_LTR_CACHED = [
   { type: "text" as const, text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" as const } },
 ];
 
+/**
+ * [NEG-TECHO] Goal "un nombre por precio": "techo" solo puede nombrar al umbral de
+ * veredicto. Devuelve las oraciones de `negociacion.*` (contenido, estrategia, caja,
+ * glosas del plan) que dicen "techo" sin la cifra del umbral en la misma oración —
+ * o todas las que lo dicen cuando el caso no tiene umbral en rango.
+ */
+export function techoSinUmbralEnNegociacion(ai: Record<string, unknown> | null | undefined, umbralUF: number | null, ufClp: number): string[] {
+  const neg = ai?.negociacion;
+  if (!neg) return [];
+  const textos: string[] = [];
+  const walk = (o: unknown) => {
+    if (typeof o === "string") textos.push(o);
+    else if (Array.isArray(o)) o.forEach(walk);
+    else if (o && typeof o === "object") Object.values(o).forEach(walk);
+  };
+  walk(neg);
+  const marcas = umbralUF && umbralUF > 0
+    ? [Math.round(umbralUF).toLocaleString("es-CL"), Math.round(umbralUF * ufClp).toLocaleString("es-CL")]
+    : [];
+  const out: string[] = [];
+  for (const t of textos) {
+    for (const o of t.split(/(?<=[.!?;])\s+/)) {
+      if (!/\btecho\b/i.test(o)) continue;
+      if (marcas.some((m) => o.includes(m))) continue;
+      out.push(o.trim());
+    }
+  }
+  return out;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function generateAiAnalysis(analysisId: string, supabase: SupabaseClient, opts: { persist?: boolean; trigger?: GeneracionTrigger } = {}): Promise<any | null> {
   // Consumo de tokens de ESTA generación: la llamada principal más todos sus
@@ -2655,6 +2685,42 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         }
       } catch (e) {
         console.warn(`[LTR-CIFRA] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
+    // ─── NEG-TECHO (goal "un nombre por precio" · 02-sep-2026) ────────────────
+    // Auditoría n=15 tras el v17: 2/15 prosas frescas llamaron "techo" a un precio
+    // por su cuenta (una al objetivo, otra al sostenible) y ningún guard miraba la
+    // palabra. "techo" solo cabe pegado a la cifra del umbral de veredicto; en
+    // cualquier otra oración de negociacion.* es un nombre que no es el suyo.
+    // Mismo reparto que LTR-CIFRA: 1 reintento con la cita, se acepta si mejora.
+    if (aiResult) {
+      try {
+        const viol = techoSinUmbralEnNegociacion(aiResult, umbralNegUF, UF_CLP);
+        if (viol.length) {
+          console.warn(`[NEG-TECHO] ${analysisId}: ${viol.length} oración(es) con "techo" sin el umbral — ${viol.map((v) => `«${v.slice(0, 120)}»`).join(" | ")} — 1 reintento`);
+          const correctivo = `
+
+⚠️ CORRECCIÓN DE NOMBRES (REGLA 6): la versión anterior llamó "techo" a un precio que no es el umbral de veredicto: ${viol.map((v) => `«${v}»`).join(" · ")}. Cada precio se llama SOLO por el nombre que trae en las anclas — objetivo (donde cambia el veredicto), donde el aporte se vuelve sostenible, primera oferta, walk-away. La palabra "techo" ${umbralNegUF ? `solo cabe en la misma oración que la cifra del umbral (${fmtUF(umbralNegUF)})` : "no cabe en este caso: no hay umbral de veredicto en rango"}. Reescribe el JSON COMPLETO respetando la doctrina §1-§17.`;
+          const regen = await anthropic.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 8000,
+            messages: [{ role: "user", content: userPrompt + correctivo }],
+            system: SYSTEM_LTR_CACHED,
+          });
+          acumularUsage(usage, regen);
+          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+          const regenResult = parseAndNormalize(regenText);
+          const quedan = regenResult ? techoSinUmbralEnNegociacion(regenResult, umbralNegUF, UF_CLP) : null;
+          if (regenResult && quedan && quedan.length < viol.length) {
+            console.warn(`[NEG-TECHO] ${analysisId}: retry mejoró ${viol.length}→${quedan.length} — aceptado`);
+            aiResult = regenResult;
+          } else {
+            console.warn(`[NEG-TECHO] ${analysisId}: retry no mejoró o no parseó — conservo la prosa previa`);
+          }
+        }
+      } catch (e) {
+        console.warn(`[NEG-TECHO] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
       }
     }
 

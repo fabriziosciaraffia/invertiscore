@@ -21,7 +21,7 @@ import { createClient } from "@supabase/supabase-js";
 import { recomputeResultsForLegacy } from "../../../src/lib/analysis/recompute-results-for-legacy";
 import { resolveUfForAnalysis } from "../../../src/lib/uf";
 import { construirJerarquiaPrecios } from "../../../src/lib/precio-jerarquia";
-import { lecturaPrecioFlujoNeutro } from "../../../src/lib/ai-generation";
+import { lecturaPrecioFlujoNeutro, techoSinUmbralEnNegociacion } from "../../../src/lib/ai-generation";
 import type { AnalisisInput, FullAnalysisResult, HallazgoDistanciaVeredicto } from "../../../src/lib/types";
 
 const CASOS: { pref: string; espera: "sugeridoBajoUmbral" | "estructuralBajoMinimo" | "estructuralCoherente" | "contrato" }[] = [
@@ -35,9 +35,23 @@ type Fila = { id: string; comuna: string | null; input_data: AnalisisInput | nul
 const dist = (r: FullAnalysisResult) =>
   (((r.hallazgos ?? []) as { id: string }[]).find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined) ?? null;
 
+function testNegTecho(fallas: string[]) {
+  const F = (m: string) => fallas.push(`NEG-TECHO · ${m}`);
+  const ai = (s: string) => ({ negociacion: { contenido_uf: s, precios: { glosaWalkAway_uf: "Si no llega, busca otro." } } });
+  // "techo" pegado a la cifra del umbral: permitido
+  if (techoSinUmbralEnNegociacion(ai("Explica que UF 3.799 es tu techo — ahí cambia el veredicto."), 3799, 39000).length !== 0) F("techo con la cifra del umbral no debía marcar");
+  // "techo" sobre el sostenible (1f12b5bb): marca
+  if (techoSinUmbralEnNegociacion(ai("Abre en UF 3.143. El techo útil es UF 3.308, donde el aporte queda sostenible."), 3480, 39000).length !== 1) F("techo sobre el sostenible debía marcar 1");
+  // sin umbral en rango: cualquier "techo" marca; la oración limpia no
+  if (techoSinUmbralEnNegociacion(ai("Tu techo es UF 4.125. Abre en UF 3.919."), null, 39000).length !== 1) F("sin umbral debía marcar 1");
+  // otra sección no cuenta
+  if (techoSinUmbralEnNegociacion({ conviene: { contenido_uf: "techo optimista" }, negociacion: { contenido_uf: "Abre en UF 3.000." } }, null, 39000).length !== 0) F("techo fuera de negociacion no debía marcar");
+}
+
 async function main() {
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", process.env.SUPABASE_SERVICE_ROLE_KEY ?? "");
   const fallas: string[] = [];
+  testNegTecho(fallas);
   const pendientes = new Map(CASOS.map((c) => [c.pref, c]));
   const filas: Fila[] = [];
   for (let from = 0; from < 3000 && pendientes.size; from += 500) {
