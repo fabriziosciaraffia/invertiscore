@@ -167,7 +167,13 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // antepone solo la respuesta al veredicto; el modelo escribe la respuestaDirecta
 // completa con el hallazgo #1 como datos (qué · cuánto · dirección) y un ejemplo
 // positivo pegado al campo. Anclas: "el veredicto sube a".
-export const PROMPT_VERSION_LTR = 19;
+// v20 (03-sep-2026): una sola referencia de precio. El valor de mercado entra al
+// prompt SOLO con procedencia (metrics.valorMercadoRef: nivel · universo · n) y la
+// plusvalía inmediata con él; sin procedencia, la única referencia es la mediana de
+// la comuna (precioVsComuna) y "tu cuadra" no existe. §18: ámbito por defecto
+// "sobre la mediana de la comuna". El gate de sobreprecio comunal entra como dato
+// con su nombre. El titular pasa por [HERO-CLAIM].
+export const PROMPT_VERSION_LTR = 20;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -730,9 +736,9 @@ Largos por campo:
   CERO MAGNITUDES. Este campo NO LLEVA NINGUNA CIFRA de plata, de UF ni de porcentaje. Ni una. Ni el precio, ni el objetivo, ni la oferta, ni el pie, ni la tasa, ni la TIR, ni el arriendo, ni la brecha, ni el descuento, ni el precio/m², ni la mediana. Nada con \`$\`, con \`UF\` ni con \`%\`.
   NO ES UNA LISTA DE EXCEPCIONES: es categórico. Toda magnitud de este informe ya está dibujada en su propio bloque —el eje de veredicto, el plan de precios, el chip de caja en cero, la fila del índice, el hero— y repetirla acá la duplica. Cuando cerramos una fuente el argumento se mudaba a la siguiente, así que la regla es la categoría entera y no la enumeración.
   SÍ PUEDES USAR números que no son magnitudes: conteos ("108 publicaciones", "dos opciones"), distancias ("dentro de 500 m") y períodos ("a 10 años"). Lo que no lleva \`$\`, \`UF\` ni \`%\` no está prohibido.
-  DI LA MAGNITUD EN PALABRAS, que es lo que el diagrama no dice: "bajo la mediana de la comuna", "sobre los comparables de tu cuadra", "con la TIR en negativo", "sobre el objetivo que ves abajo". La dirección y su consecuencia son tu trabajo; el número es del bloque que lo dibuja.
+  DI LA MAGNITUD EN PALABRAS, que es lo que el diagrama no dice: "bajo la mediana de la comuna", "sobre la mediana de la comuna" (o "sobre los comparables de tu cuadra" solo cuando el bloque trae valor de mercado con procedencia), "con la TIR en negativo", "sobre el objetivo que ves abajo". La dirección y su consecuencia son tu trabajo; el número es del bloque que lo dibuja.
   ASÍ SE VE BIEN HECHO. Estas son TRES FORMAS DISTINTAS de resolver el mismo problema — no tres variantes de la misma frase. Cada caso pide la que le sirve; NO copies ninguna literal, copia el movimiento:
-  > (a) el argumento propiamente tal — "Pagas sobre el valor estimado de los comparables de tu cuadra: ese es el argumento de la mesa, no el regateo. Por encima de ese valor el negocio no se sostiene para ti; es aritmética, no postura."
+  > (a) el argumento propiamente tal — "Pagas el metro sobre la mediana de la comuna (o sobre el valor estimado de tu cuadra, solo cuando el bloque lo trae con su n): ese es el argumento de la mesa, no el regateo. Por encima de ese valor el negocio no se sostiene para ti; es aritmética, no postura."
   > (b) la palanca, cuando el precio NO es la palanca — "El precio por m² está bajo la mediana de la comuna, pero eso no abre margen de negociación: el problema es que el arriendo no sostiene el precio total, y bajar el precio es la palanca real."
   > (c) la exigencia al vendedor — "El precio está muy por encima del valor estimado de la zona, y el m² queda sobre la mediana comunal de departamentos usados — el vendedor tiene que explicar qué justifica esa diferencia antes de que tú pongas algo sobre la mesa."
   Las tres nombran la posición sin medirla y ninguna repite la fórmula de las otras: (a) cierra en la consecuencia, (b) desvía a la palanca correcta, (c) pone la carga de la prueba del otro lado. Cero cifras y sin embargo dicen algo que ningún diagrama dice. Si tu caso no encaja en ninguna, resuélvelo de una cuarta forma: lo que se copia es la ausencia de magnitudes, no el molde.
@@ -823,7 +829,7 @@ FÓRMULA DURA: [el veredicto en palabras del usuario] + [LA razón más fuerte d
 - ≤15 palabras — LÍMITE DURO, cuéntalas: un titular de 16 se DESCARTA ENTERO y la portada queda sin titular. Si dudas entre dos razones, va SOLO la más fuerte; el matiz vive en la respuestaDirecta, no aquí. UNA oración; se admite estructura de dos cláusulas con \`:\` o \`—\`.
 - Exactamente UNA marca \`**…**\` sobre el NÚCLEO — máximo 7 palabras marcadas, cuéntalas: 8 marcadas y el titular entero se descarta. La marca cubre el corazón de la razón, NO la frase completa ("pagas caro y **el arriendo no cubre la cuota**", nunca "**pagas caro y el arriendo no cubre la cuota del crédito**"). No cruza puntuación de cierre ni parte una cifra.
 - SIN montos en CLP ni UF. Porcentajes y magnitudes sin moneda ("20% de más", "la mitad de la cuota") SÍ se permiten cuando son LA razón.
-- Si el titular cita una referencia de precio, DECLARA su ámbito (§1.12.9): "sobre el valor estimado de tu cuadra" o "sobre la mediana de la comuna" — nunca "de la zona" a secas.
+- Si el titular cita una referencia de precio, DECLARA su ámbito (§1.12.9). Por defecto es "sobre la mediana de la comuna" (precioVsComuna, la referencia única del informe); "sobre el valor estimado de tu cuadra" SOLO cuando el bloque trae un valor de mercado CON procedencia (nivel · universo · n). Nunca "de la zona" a secas, y nunca un múltiplo ("el doble") que la desviación no dé.
 - SIN jerga: prohibidos CAP rate, NOI, TIR, UF/m², percentil, spread, yield y "plusvalía" como término pelado. Todo en términos de bolsillo, arriendo, cuota, precio, zona.
 - CONSISTENCIA TERNARIA con el veredicto dado: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS nombra la palanca REAL del caso (la del bloque VÍAS QUE CRUZAN — no copies la palanca de los ejemplos, y si hay varias elige una sin dar a entender que es la única) Y, cuando el bloque provee su magnitud, la INCLUYE — una palanca sin número es una vaguedad, no una vía. La magnitud de la palanca PRECIO se expresa como % de descuento (el del bloque de distancia), NUNCA como monto UF/CLP (prohibidos en el titular); la del pie, como % objetivo. COMPRAR afirma sin triunfalismo.
 - Toda afirmación se completa sola: nada de elipsis ambiguas ("un arriendo que no llega" — ¿a dónde?).
@@ -1486,7 +1492,8 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     const valorMercadoFrancoUF = m.valorMercadoFrancoUF || input.precio;
     const valorMercadoUsuarioUF = m.valorMercadoUsuarioUF || input.precio;
     let anomaliaValorMercado = "";
-    if (Math.abs(valorMercadoUsuarioUF - valorMercadoFrancoUF) / (valorMercadoFrancoUF || 1) > 0.05) {
+    // v20: sin valor de mercado con procedencia no hay contra qué contrastar la estimación del usuario.
+    if (m.valorMercadoRef && Math.abs(valorMercadoUsuarioUF - valorMercadoFrancoUF) / (valorMercadoFrancoUF || 1) > 0.05) {
       anomaliaValorMercado = valorMercadoUsuarioUF > valorMercadoFrancoUF
         ? `El usuario estima que vale ${fmtUF(valorMercadoUsuarioUF)} pero los datos indican ${fmtUF(valorMercadoFrancoUF)}. Posible sobreestimación. La ventaja o sobreprecio de entrada se mide con el valor estimado de Franco, no con la estimación del usuario; la proyección de patrimonio parte del precio de compra.`
         : `El usuario estima ${fmtUF(valorMercadoUsuarioUF)} pero los datos indican ${fmtUF(valorMercadoFrancoUF)}. Posible subvaloración o información adicional del usuario.`;
@@ -1529,7 +1536,11 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // ─── Contexto estructurado de negociación (v2) ─────────
     // Variables categóricas + numéricas explícitas para la IA, y guía de cómo
     // abordar la dualidad veredicto ↔ pasada/sobreprecio.
-    const vmFrancoUF = input.valorMercadoFranco || input.precio;
+    // v20: el valor de mercado que lee el prompt es el que el MOTOR aceptó (con
+    // procedencia: nivel · universo · n). Sin procedencia, vm = precio y ninguna pieza
+    // habla de "tu cuadra" ni de plusvalía inmediata — la referencia es la comuna.
+    const vmRef = m.valorMercadoRef ?? null;
+    const vmFrancoUF = vmRef?.valorUF ?? input.precio;
     const vmFrancoCLP = vmFrancoUF * UF_CLP;
     const precioCompraCLP = m.precioCLP;
     const diferenciaCLP = vmFrancoCLP - precioCompraCLP;
@@ -1549,7 +1560,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // por fallback), la IA no debe generar frases "UF X sobre mercado" — son
     // alucinaciones. Solo puede hablar del indicador por m².
     // Threshold: |diferencia| > $1M CLP ≈ UF 25 — descarta ruido de redondeo.
-    const tieneDiferenciaValida = Math.abs(diferenciaCLP) > 1_000_000;
+    const tieneDiferenciaValida = vmRef !== null && Math.abs(diferenciaCLP) > 1_000_000;
     // Sobreprecio absoluto (UF/m²) desde la FUENTE ÚNICA (pvc): null si la mediana
     // de zona no es confiable — el builder lo garantiza. La IA no inventa el
     // absoluto cuando no hay dato.
@@ -1565,8 +1576,8 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       superficieM2: input.superficie,
       vmFrancoUF: vmFrancoUF,
       tieneDiferenciaValida,
-      radioMetros: zonaRadio?.radioMetros ?? null,
-      sampleSizeVenta: zonaRadio?.sampleSizeVenta ?? null,
+      radioMetros: vmRef?.radioMetros ?? zonaRadio?.radioMetros ?? null,
+      sampleSizeVenta: vmRef?.n ?? null,
       medianaComunaUfM2: pvc.medianaComunaUfM2,
       desviacionPct: pvc.desviacionPct,
       medianaConfiable: pvc.confiable === true,
@@ -2283,6 +2294,12 @@ PROHIBIDO resolver este caso pidiendo un descuento cosmético "por matemática p
 
 === POR QUÉ NO CIERRA (glosa canónica del motor — el veredicto lo decidió esta condición, no el puntaje) ===
 «${motivosLTRGen.frase}»
+GATES ACTIVOS (dato del motor, con su nombre): ${(dvGen?.brazosGate1Activos ?? []).map((b) => b === "sobreprecioComunalConFlujo"
+  ? `sobreprecio comunal — precio por m² ${pvc.desviacionPct !== null && pvc.desviacionPct >= 0 ? "+" : ""}${pvc.desviacionPct ?? "?"}% sobre la mediana de la comuna (${hallazgoSobreprecio?.valor.universo ?? "universo del depto"}, n=${pvc.n ?? "?"}) con aporte mensual negativo ⇒ BUSCAR OTRA`
+  : b === "breakEvenImposible" ? "arriendo que no cubre la cuota ni con tasa cero"
+  : b === "flujoSevero" ? "aporte mensual sobre la mitad de la cuota"
+  : b === "cocSevero" ? "cash-on-cash bajo −30%"
+  : b).join(" · ") || "ninguno (capa del gate 2)"}. El sobreprecio comunal se nombra SIEMPRE contra la mediana de la comuna, nunca contra "tu cuadra".
 Esta glosa es la CAUSA del veredicto: úsala, no la re-derives ni la contradigas. Cuando las cards favorables dominen la pirámide, la pieza que resuelve la tensión (POR QUÉ lo bueno no salva el caso) es OBLIGATORIA y va ARRIBA — en conviene.respuestaDirecta o inmediatamente después de la apertura — nunca enterrada en un drawer. PROHIBIDO atribuir el veredicto al puntaje ("le faltan puntos"): el puntaje mide calidad; esta condición decide.` : "";
 
     const bloqueDriverNoAccionable = driverNoAccionable ? `
@@ -2424,8 +2441,8 @@ ${bloquePreEntrega}${hallazgosBloque}
 VARIABLES DE NEGOCIACIÓN (insumos para REGLAS 0-6 del system §12)
 - tipoNegociacion: ${tieneDiferenciaValida ? tipoNegociacion : "INDETERMINADO (NO usar — no hay valor de mercado de referencia, solo el precio pedido; aplica REGLA 0 §12 con SOLO el indicador por m²)"}
 - Precio de compra: ${fmtUF(input.precio)} (${fmtCLP(precioCompraCLP)})
-- Valor de referencia estimado: ${fmtUF(vmFrancoUF)} (${fmtCLP(vmFrancoCLP)})${tieneDiferenciaValida ? "" : " ← no es valor de mercado real (solo el precio pedido)"}
-- Diferencia vs referencia: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pct(pctDiferencia)}%)${tieneDiferenciaValida ? "" : " ← INVÁLIDO: no hay valor de mercado de referencia"}
+${vmRef ? `- Valor de mercado estimado (CON procedencia: ${vmRef.nivel === "radio" ? `comparables publicados dentro de ${vmRef.radioMetros ?? "~800"} m` : "mediana de la comuna"} · ${vmRef.universo} · n=${vmRef.n}): ${fmtUF(vmFrancoUF)} (${fmtCLP(vmFrancoCLP)})${tieneDiferenciaValida ? "" : " ← a menos de $1M del precio: sin diferencia que narrar"}
+- Diferencia vs valor de mercado: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pct(pctDiferencia)}%)${tieneDiferenciaValida ? "" : " ← INVÁLIDO: sin diferencia válida"}` : `- Valor de mercado: SIN DATO CON PROCEDENCIA para este depto. La ÚNICA referencia de precio es la mediana de la comuna (sobreprecioPorM2, abajo, y la card de precio por m²). PROHIBIDO nombrar "tu cuadra", "comparables de tu cuadra", "valor estimado del activo" o una plusvalía inmediata: no existen en este caso.`}
 ${!tieneDiferenciaValida ? `- lecturaSinReferencia (narra ESTA idea con tus palabras, NO nombres ninguna maquinaria): ${sobreprecioPorM2UF !== null ? "no hay comparables directos suficientes para fijar un valor de mercado total de este depto; la lectura de precio se apoya solo en el ratio por m² frente a la mediana de la comuna, y la decisión en el flujo, la TIR y la plusvalía." : "no hay un valor de mercado ni un dato comunal confiable para este depto; la decisión se apoya solo en el flujo, la TIR y la plusvalía — no afirmes nada sobre precio vs comuna."}\n` : ""}- tieneDiferenciaValida: ${tieneDiferenciaValida}
 - sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${pct(sobreprecioPorM2UF)} UF/m² (tu ${pct(pvc.sujetoUfM2)} vs comuna ${pct(precioM2Zona)})` : "sin dato"}
 ${sinCapitalPropio
@@ -2437,8 +2454,8 @@ ${sinCapitalPropio
 - tirAlSugerido: ${tirAlSugeridoNeg !== null ? tirAlSugeridoNeg.toFixed(1) + "%" : "sin dato"}
 - Cambio de TIR si negociás: ${deltaTirSugerido !== null ? (deltaTirSugerido >= 0 ? "+" : "") + deltaTirSugerido.toFixed(1) + " pp" : "sin dato"}
 - lecturaTIR (narra esta idea con tus palabras): ${tirAlSugeridoNeg !== null && deltaTirSugerido !== null ? `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido; al precio sugerido sería ${tirAlSugeridoNeg.toFixed(1)}% (${deltaTirSugerido >= 0 ? "+" : ""}${deltaTirSugerido.toFixed(1)} pp)` : `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido`}`}
-- Plusvalía inmediata estimada: ${pct(plusvaliaFrancoPct)}% (${plusvaliaFranco >= 0 ? "+" : ""}${fmtCLP(plusvaliaFranco)})
-- lecturaFlujo (narra esta idea con tus palabras): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
+${vmRef ? `- Plusvalía inmediata estimada (vs valor de mercado con procedencia): ${pct(plusvaliaFrancoPct)}% (${plusvaliaFranco >= 0 ? "+" : ""}${fmtCLP(plusvaliaFranco)})
+` : ""}- lecturaFlujo (narra esta idea con tus palabras): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
 - Plazo del crédito: ${input.plazoCredito} años (NO confundir con mesesDeFlujoNegativo)
 
 PROYECCIÓN Y ALTERNATIVAS
@@ -2988,7 +3005,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     if (aiResult?.conviene) {
       try {
         const viasCruzan = (hallazgoDistanciaGen?.valor.vias ?? []).filter((v) => v.estado === "cruza").map((v) => v.palanca);
-        const vmConFuente = (input.valorMercadoFranco ?? 0) > 0 && Math.abs(vmFrancoUF - input.precio) * UF_CLP > 1_000_000;
+        const vmConFuente = vmRef !== null && Math.abs(vmFrancoUF - input.precio) * UF_CLP > 1_000_000;
         const ctxClaim: RazonesHeroClaim = {
           viasCruzan,
           capRatePct: hallazgoCapRateGen?.valor.capRatePct ?? null,
@@ -3000,11 +3017,15 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           vmConFuente,
         };
         const razonesTxt = razonesHeroClaimTexto(ctxClaim);
+        // v20: el titular también pasa por el guard (d3a6149a: "más del doble del valor
+        // estimado por esa cuadra" con 1,59× y sin valor de mercado con procedencia).
         const violaciones = (ai: typeof aiResult): string[] =>
-          [ai?.conviene?.respuestaDirecta_clp, ai?.conviene?.respuestaDirecta_uf]
+          [ai?.conviene?.respuestaDirecta_clp, ai?.conviene?.respuestaDirecta_uf, ai?.titular]
             .filter((t): t is string => typeof t === "string")
             .flatMap((t) => violacionesHeroClaim(t, ctxClaim))
             .filter((v, i, arr) => arr.indexOf(v) === i);
+        const titularViola = (ai: typeof aiResult): boolean =>
+          typeof ai?.titular === "string" && violacionesHeroClaim(ai.titular, ctxClaim).length > 0;
         const viol = violaciones(aiResult);
         if (viol.length) {
           console.warn(`[HERO-CLAIM] ${analysisId}: ${viol.join(" | ")} — 1 reintento quirúrgico`);
@@ -3012,7 +3033,9 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
 RAZONES DEL MOTOR: ${razonesTxt}. "El doble" / "la mitad" solo contra la razón que la MISMA oración nombra y solo si esa razón es ≥ 2× (≥ 3× para "el triple"); sin nombrar contra qué, no hay múltiplo. Si no alcanza, di la razón con sus dos montos o su porcentaje, nunca como múltiplo verbal.`;
           const contClp = typeof aiResult.conviene.respuestaDirecta_clp === "string" ? aiResult.conviene.respuestaDirecta_clp : "";
           const contUf = typeof aiResult.conviene.respuestaDirecta_uf === "string" ? aiResult.conviene.respuestaDirecta_uf : "";
-          const promptClaim = `Estás corrigiendo SOLO el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
+          const titularActual = typeof aiResult.titular === "string" ? aiResult.titular : "";
+          const corrigeTitular = titularViola(aiResult);
+          const promptClaim = `Estás corrigiendo SOLO ${corrigeTitular ? "el titular y " : ""}el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
 
 La RESPUESTA al veredicto («${respuestaVeredicto}») la antepone el motor: NO la escribas ni la repitas.
 
@@ -3021,6 +3044,9 @@ ${datoCorrecto}
 
 TU TAREA: reescribe el texto conservando la primera oración (la razón que manda), el mismo matiz y el mismo largo, corrigiendo SOLO esa afirmación con el dato de arriba. Usa SOLO cifras que ya aparecen en el texto — ninguna cifra nueva.
 
+TITULAR ACTUAL (${corrigeTitular ? "también afirma algo que el motor contradice: corrígelo con el dato de arriba, ≤15 palabras, UNA marca **…** sobre el núcleo, sin montos" : "está bien: devuélvelo tal cual"}):
+${titularActual}
+
 TEXTO ACTUAL (variante CLP):
 ${contClp}
 
@@ -3028,24 +3054,28 @@ TEXTO ACTUAL (variante UF):
 ${contUf}
 
 Responde SOLO este JSON, sin texto alrededor:
-{"respuestaDirecta_clp": "...", "respuestaDirecta_uf": "..."}`;
+{"titular": "...", "respuestaDirecta_clp": "...", "respuestaDirecta_uf": "..."}`;
           const regen = await reg.medir("hero-claim", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 600, messages: [{ role: "user", content: promptClaim }], system: SYSTEM_LTR_CACHED }));
           acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
           let nClp = "";
           let nUf = "";
+          let nTitular = "";
           try {
             const m = regenText.match(/\{[\s\S]*\}/);
             const obj = JSON.parse(m ? m[0] : regenText);
             nClp = typeof obj?.respuestaDirecta_clp === "string" ? obj.respuestaDirecta_clp.trim() : "";
             nUf = typeof obj?.respuestaDirecta_uf === "string" ? obj.respuestaDirecta_uf.trim() : "";
+            nTitular = typeof obj?.titular === "string" ? obj.titular.trim() : "";
           } catch {
             /* no parseó — se maneja abajo */
           }
           if (!nClp || !nUf) {
             console.warn(`[HERO-CLAIM] ${analysisId}: retry no parseó — conservo el texto previo`);
           } else {
-            const candidato = { ...aiResult, conviene: { ...aiResult.conviene, respuestaDirecta_clp: nClp, respuestaDirecta_uf: nUf } };
+            // El titular solo se reemplaza si violaba y el retry trajo uno; si no, se conserva.
+            const titularCandidato = corrigeTitular && nTitular ? nTitular : aiResult.titular;
+            const candidato = { ...aiResult, titular: titularCandidato, conviene: { ...aiResult.conviene, respuestaDirecta_clp: nClp, respuestaDirecta_uf: nUf } };
             const quedan = violaciones(candidato);
             if (empeoraCifras(userPrompt, aiResult, candidato, { ufClp: UF_CLP })) {
               console.warn(`[HERO-CLAIM] ${analysisId}: el retry introdujo cifras fuera del input — candidato descartado`);
