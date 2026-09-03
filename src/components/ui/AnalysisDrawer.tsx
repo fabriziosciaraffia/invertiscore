@@ -924,7 +924,7 @@ export function PlanNegociacion({
         label: objetivoEsUmbral ? "Objetivo · donde cambia el veredicto" : modoSostenible === "cerrar_actual" ? "Objetivo · tu precio actual" : "Objetivo · donde el aporte se vuelve sostenible",
         valor: fmtPrecio(obj.clp, obj.uf),
         glosa: objetivoEsUmbral
-          ? `Cerrando acá el análisis pasa a ${capVer(obj.veredicto)}. Bajo este precio ya es ${capVer(obj.veredicto)}; sobre este precio sigue siendo el veredicto de hoy.`
+          ? `Cerrando acá el veredicto sube a ${capVer(obj.veredicto)}. Bajo este precio ya es ${capVer(obj.veredicto)}; sobre este precio sigue siendo el veredicto de hoy.`
           : modoSostenible === "cerrar_actual"
             ? "Ya estás bajo mercado y el aporte es sostenible: no hay caso para pedir descuento."
             : modoSostenible === "alinear_mercado"
