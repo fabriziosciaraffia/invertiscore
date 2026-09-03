@@ -13,6 +13,7 @@ import type {
   HallazgoSobreprecio,
   HallazgoTIR,
   HallazgoEstructuraFinanciamiento,
+  HallazgoPuestaAPunto,
 } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import { calcDividendo, costoOportunidad, simularPieYPlazo, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
@@ -141,6 +142,18 @@ export function CapitulosInversion({
   const tirH = hs.find((h): h is HallazgoTIR => h.id === "tir");
   const estr = hs.find((h): h is HallazgoEstructuraFinanciamiento => h.id === "estructura_financiamiento");
   const sobre = (m?.hallazgoSobreprecio as HallazgoSobreprecio | null | undefined) ?? (hs.find((h) => h.id === "sobreprecio") as HallazgoSobreprecio | undefined) ?? null;
+  // Puesta a punto (usados). null con antigüedad ≤ 2 (CapEx 0): no se nombra en
+  // ninguna parte. Se consume tal cual lo emite el motor — cero re-derivación.
+  const capex =
+    (hs.find((h) => h.id === "capex_puesta_a_punto") as HallazgoPuestaAPunto | undefined) ??
+    (m?.hallazgoPuestaAPunto && m.hallazgoPuestaAPunto.valor.montoUF > 0 ? m.hallazgoPuestaAPunto : null) ??
+    null;
+  const capexV = capex && capex.valor.montoUF > 0 ? capex.valor : null;
+  // Rango solo cuando el motor lo trae y no es degenerado (v3 derivado). Override
+  // (cotización real) y filas legacy → valor único.
+  const capexRango = !!capexV && capexV.montoMinUF != null && capexV.montoMaxUF != null && capexV.montoMaxUF > capexV.montoMinUF;
+  const ufN = (n: number) => Math.round(n).toLocaleString("es-CL");
+  const capexRangoUF = capexV && capexRango ? `UF ${ufN(capexV.montoMinUF!)}–${ufN(capexV.montoMaxUF!)}` : capexV ? `UF ${ufN(capexV.montoUF)}` : "";
 
   // ── formato (dueño de moneda y UF) ──
   const money = (n: number) => {
@@ -320,6 +333,9 @@ export function CapitulosInversion({
     `precio UF ${Math.round(inputData.precio).toLocaleString("es-CL")}`,
     `pie ${Number.isInteger(piePct) ? piePct : pct1(piePct)}%`,
     plazo > 0 ? `${plazo} años al ${pct1(tasaPct)}%` : "sin crédito",
+    // Cuarta pata: la plata del día 1 que no es pie. Rango (v3), cotización
+    // (override) o valor único (legacy). Sin CapEx no aparece.
+    capexV ? `puesta a punto ${capexRangoUF}${capexV.origen === "override" ? " (tu cotización)" : ""}` : "",
     objetivoPrecioUF && palancaPrecio
       ? `cierra en ${capVer(palancaPrecio.veredicto)} bajo UF ${Math.round(objetivoPrecioUF).toLocaleString("es-CL")}`
       : precioNoCruza && dist
@@ -421,9 +437,61 @@ export function CapitulosInversion({
                   )}
                 </>
               )}
+              {capexV && (
+                <>
+                  <VPuente>Y hay una parte de la plata del día 1 que no es pie ni crédito: dejar el depto listo para arrendar.</VPuente>
+                  <VViz t="Puesta a punto antes de arrendar">
+                    <VSub>Lo que cuesta dejarlo en estándar de arriendo</VSub>
+                    {/* Viz duplicada de DrawerCapexPuestaAPunto (AnalysisDrawer.tsx):
+                        extraerla creaba una abstracción de un consumidor y medio. Si
+                        cambia allá, cambia acá. */}
+                    <div className={`grid grid-cols-2 gap-3 ${capexRango ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
+                      <div>
+                        <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>
+                          {capexRango ? "Rango estimado" : capexV.origen === "override" ? "Tu cotización" : "Inversión"}
+                        </p>
+                        <p className="font-mono font-bold m-0" style={{ fontSize: capexRango ? 18 : 20, lineHeight: 1.05, color: "var(--doc-tx)" }}>
+                          {capexRango
+                            ? (currency === "UF" ? capexRangoUF : `${compact(capexV.montoMinCLP ?? capexV.montoCLP)}–${compact(capexV.montoMaxCLP ?? capexV.montoCLP)}`)
+                            : (currency === "UF" ? `UF ${ufN(capexV.montoUF)}` : money(capexV.montoCLP))}
+                        </p>
+                      </div>
+                      {capexRango && (
+                        <div>
+                          <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>Corre el caso con</p>
+                          {/* El punto es un entero en UF (múltiplo de 5): sin el decimal de money(). */}
+                          <p className="font-mono font-bold m-0" style={{ fontSize: 18, lineHeight: 1.05, color: "var(--doc-tx)" }}>{currency === "UF" ? `UF ${ufN(capexV.montoUF)}` : money(capexV.montoCLP)}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>Por m²</p>
+                        <p className="font-mono font-bold m-0" style={{ fontSize: capexRango ? 18 : 20, lineHeight: 1.05, color: "var(--doc-tx)" }}>
+                          {capexRango && capexV.ufM2Min != null && capexV.ufM2Max != null
+                            ? `${pct1(capexV.ufM2Min)}–${pct1(capexV.ufM2Max)}`
+                            : pct1(capexV.ufM2)}{" "}
+                          <span style={{ fontSize: 13, fontWeight: 500 }}>UF/m²</span>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-mono uppercase m-0" style={{ fontSize: 9.5, letterSpacing: "0.06em", color: "var(--doc-tx4)", marginBottom: 4 }}>De tu plata día 1</p>
+                        {/* Sin Signal Red acá: el rojo condicional del KPI vive en el drawer del hallazgo, no en el capítulo. */}
+                        <p className="font-mono font-bold m-0" style={{ fontSize: capexRango ? 18 : 20, lineHeight: 1.05, color: "var(--doc-tx)" }}>
+                          {Math.round(capexV.fraccionInversion * 100)}%
+                        </p>
+                      </div>
+                    </div>
+                    <p className="font-body m-0" style={{ fontSize: 11.5, color: "var(--doc-tx3)", marginTop: 12 }}>
+                      Franco corre el caso con UF {ufN(capexV.montoUF)} · ${ufN(capexV.montoCLP)}.{" "}
+                      {capexV.origen === "override"
+                        ? "Es tu cotización: entra tal cual a la inversión inicial."
+                        : `Estimación según la antigüedad del depto (${capexV.antiguedadAnios} años, ${capexV.superficieUtilM2} m² útiles). Con una cotización real, el número se ajusta.`}
+                    </p>
+                  </VViz>
+                </>
+              )}
             </>
           ),
-          fuente: `${sobre ? procedenciaExtendida(sobre, currency, valorUF) : `Mediana de publicaciones de venta en ${comuna}`}${plazo > 0 ? " · tasa de referencia: promedio de mercado, Motor Franco" : ""}`,
+          fuente: `${sobre ? procedenciaExtendida(sobre, currency, valorUF) : `Mediana de publicaciones de venta en ${comuna}`}${plazo > 0 ? " · tasa de referencia: promedio de mercado, Motor Franco" : ""}${capex && capexV ? ` · puesta a punto: ${procedenciaExtendida(capex, currency, valorUF)}` : ""}`,
         }}
       />
     ),
