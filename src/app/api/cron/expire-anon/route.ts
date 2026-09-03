@@ -23,11 +23,17 @@ const RUTA = "GET /api/cron/expire-anon";
  *  · anon_claim_token_hash IS NOT NULL → idempotente: tras el update las filas
  *    ya no matchean.
  *
- * `?dry=1`: cuenta y lista lo que expiraría, sin escribir. Auth: Vercel Cron
- * con `Authorization: Bearer ${CRON_SECRET}` (patrón expire-grace).
+ * `?dry=1`: cuenta lo que expiraría, sin escribir. `expirarian` es el conteo
+ * REAL (count exact, sin tope); `filas` es una muestra de hasta MUESTRA_DRY
+ * para mirar, no para contar. Hasta el 04-sep-2026 el dry hacía un select con
+ * `.limit(100)` y reportaba `data.length`: un dry decía "100" cuando el real
+ * iba a expirar 340. Auth: Vercel Cron con `Authorization: Bearer
+ * ${CRON_SECRET}` (patrón expire-grace).
  */
 
 const VENTANA_CLAIM_DIAS = 30;
+/** Filas que el dry-run lista como muestra. El conteo va aparte y sin tope. */
+const MUESTRA_DRY = 100;
 
 function createAdminClient() {
   return createClient(
@@ -58,6 +64,16 @@ export async function GET(request: Request) {
 
   try {
     if (dry) {
+      // Mismo predicado que el UPDATE real, dos lecturas: el conteo exacto (head,
+      // sin filas ni tope) y una muestra acotada para inspeccionar.
+      const { count, error: errCount } = await supabase
+        .from("analisis")
+        .select("id", { count: "exact", head: true })
+        .eq("charge_mode", "anon_cap")
+        .is("user_id", null)
+        .not("anon_claim_token_hash", "is", null)
+        .lt("created_at", corte);
+      if (errCount) throw errCount;
       const { data, error } = await supabase
         .from("analisis")
         .select("id, comuna, created_at")
@@ -65,9 +81,16 @@ export async function GET(request: Request) {
         .is("user_id", null)
         .not("anon_claim_token_hash", "is", null)
         .lt("created_at", corte)
-        .limit(100);
+        .order("created_at", { ascending: true })
+        .limit(MUESTRA_DRY);
       if (error) throw error;
-      return NextResponse.json({ dry: true, expirarian: data?.length ?? 0, filas: data ?? [] });
+      return NextResponse.json({
+        dry: true,
+        expirarian: count ?? 0,
+        filas: data ?? [],
+        muestraTope: MUESTRA_DRY,
+        muestraCapada: (count ?? 0) > MUESTRA_DRY,
+      });
     }
 
     const { data, error } = await supabase
