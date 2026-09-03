@@ -2232,7 +2232,7 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
     const casoPrecioJustoGen = esCasoPrecioJusto({
       desviacionPct: pvc.desviacionPct,
       precioUF: input.precio,
-      vmFrancoUF: vmFrancoUFDe(input), // Tramo A: misma resolución que el motor
+      vmFrancoUF: vmFrancoUFDe(input, results.metrics?.universoDepto?.valor), // Tramo A: misma resolución que el motor
       ufClp: UF_CLP,
       arriendoCLP: input.arriendo,
       arriendoRefCLP: arriendoRefContrastable?.valorCLP ?? null,

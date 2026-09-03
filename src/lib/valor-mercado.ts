@@ -20,30 +20,53 @@
 // precio-justo, sin "alinear con comparables". El número legacy
 // `valorMercadoFranco` se sigue escribiendo para los lectores viejos, pero ya
 // no decide nada.
-import type { AnalisisInput, UniversoVenta, ValorMercadoRef } from "./types";
+import type { AnalisisInput, UniversoDepto, UniversoVenta, ValorMercadoRef } from "./types";
 
-/** Universo de mercado del depto: lo que el usuario declaró en el wizard. */
+/**
+ * Universo de mercado del depto, con procedencia:
+ *   · `declarado`: el wizard guardó `esNuevo` (true/false).
+ *   · `inferidoDeSnapshot`: filas sin `esNuevo` — se toma el universo de la mediana que el
+ *     pipeline consultó al crear (mediana_comuna_snapshot.universo): es lo que el wizard de
+ *     entonces pidió para ese depto aunque no lo persistiera (50345272: mediana de nuevos).
+ *   · `default`: sin `esNuevo` y sin snapshot con universo ⇒ usado (93% del inventario).
+ */
+export function resolverUniversoDepto(
+  input: Pick<AnalisisInput, "esNuevo">,
+  universoSnapshot?: "nuevo" | "usado" | null,
+): UniversoDepto {
+  if (input.esNuevo === true) return { valor: "nuevo", origen: "declarado" };
+  if (input.esNuevo === false) return { valor: "usado", origen: "declarado" };
+  if (universoSnapshot === "nuevo" || universoSnapshot === "usado") return { valor: universoSnapshot, origen: "inferidoDeSnapshot" };
+  return { valor: "usado", origen: "default" };
+}
+
+/** Atajo sin snapshot (scripts y wizards): universo declarado o default. */
 export function universoDelDepto(input: Pick<AnalisisInput, "esNuevo">): "nuevo" | "usado" {
-  return input.esNuevo === true ? "nuevo" : "usado";
+  return resolverUniversoDepto(input).valor;
 }
 
 /**
  * Valor de mercado con procedencia válida para ESTE depto, o null.
  * Válido = valorUF > 0, n > 0 y universo igual al del depto ("mixto" nunca calza).
+ * `universoDepto` es el resuelto por el motor (con snapshot); sin él se resuelve del input.
  */
 export function resolverValorMercado(
   input: Pick<AnalisisInput, "esNuevo" | "valorMercadoRef">,
+  universoDepto?: "nuevo" | "usado",
 ): ValorMercadoRef | null {
   const ref = input.valorMercadoRef;
   if (!ref || typeof ref !== "object") return null;
   if (!(ref.valorUF > 0) || !(ref.n > 0)) return null;
-  if (ref.universo !== universoDelDepto(input)) return null;
+  if (ref.universo !== (universoDepto ?? universoDelDepto(input))) return null;
   return ref;
 }
 
 /** vm resuelto con el fallback al precio ya aplicado (lo que el motor consume). */
-export function vmFrancoUFDe(input: Pick<AnalisisInput, "esNuevo" | "valorMercadoRef" | "precio">): number {
-  return resolverValorMercado(input)?.valorUF ?? input.precio;
+export function vmFrancoUFDe(
+  input: Pick<AnalisisInput, "esNuevo" | "valorMercadoRef" | "precio">,
+  universoDepto?: "nuevo" | "usado",
+): number {
+  return resolverValorMercado(input, universoDepto)?.valorUF ?? input.precio;
 }
 
 /** Universo que declara una sugerencia de venta según cómo se consultó. */

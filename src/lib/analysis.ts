@@ -13,6 +13,7 @@ import type {
   MetricaTIR,
   RazonSinCapital,
   PreEntregaGanancia,
+  UniversoDepto,
 } from "./types";
 import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "./types";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
@@ -30,7 +31,7 @@ import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo, aplicarHorizonteAFlu
 import { esReferenciaContrastable, resolverArriendoReferencia, resolverProcedenciaArriendo } from "./arriendo-referencia";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
-import { resolverValorMercado, vmFrancoUFDe, universoDelDepto } from "./valor-mercado";
+import { resolverValorMercado, vmFrancoUFDe, resolverUniversoDepto } from "./valor-mercado";
 import { SOBREPRECIO_GATE_UMBRAL_PCT } from "./sobreprecio-hallazgo";
 import type { MedianaComunaInyectada } from "./comuna-stats";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
@@ -540,7 +541,8 @@ function calcMetrics(
   // Plusvalía inmediata — Franco (datos reales, para cálculos) y Usuario (referencial)
   // Tramo A: el valor de mercado solo cuenta con procedencia y universo del depto
   // (valor-mercado.ts). Sin eso, vm = precio y la plusvalía inmediata es 0.
-  const vmRef = resolverValorMercado(input);
+  const universoDepto = resolverUniversoDepto(input, medianaComunaVentaUF?.universo);
+  const vmRef = resolverValorMercado(input, universoDepto.valor);
   const vmFrancoUF = vmRef?.valorUF ?? input.precio;
   const vmUsuarioUF = input.valorMercadoUsuario || input.precio;
   const vmFrancoCLP = vmFrancoUF * ufClp;
@@ -579,7 +581,7 @@ function calcMetrics(
     gastos: gastosValor,
     valorMercadoFrancoUF: Math.round(vmFrancoUF * 10) / 10,
     valorMercadoRef: vmRef,
-    universoDepto: universoDelDepto(input),
+    universoDepto,
     valorMercadoUsuarioUF: Math.round(vmUsuarioUF * 10) / 10,
     plusvaliaInmediataFranco: Math.round(plusvaliaFranco),
     plusvaliaInmediataFrancoPct: Math.round(plusvaliaFrancoPct * 10) / 10,
@@ -1370,7 +1372,7 @@ export function evalGate1Brazos(metrics: AnalysisMetrics, breakEvenTasa: number)
       typeof metrics.precioVsComuna.desviacionPct === "number" &&
       metrics.precioVsComuna.desviacionPct > SOBREPRECIO_GATE_UMBRAL_PCT &&
       metrics.precioVsComuna.universo !== undefined &&
-      metrics.precioVsComuna.universo === metrics.universoDepto &&
+      metrics.precioVsComuna.universo === metrics.universoDepto?.valor &&
       metrics.flujoNetoMensual < 0,
     flujoSevero: metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5,
   };
@@ -2182,7 +2184,7 @@ function calcNegociacionScenario(
   // null ⇒ el análisis no tiene TIR reportable (pie 0, o VPN sin raíz). El gate
   // del precio límite se omite entero, igual que ya se omitía con pie 0.
   tirActual: number | null,
-  metrics: { flujoNetoMensual: number },
+  metrics: { flujoNetoMensual: number; universoDepto?: UniversoDepto },
   ufClp: number,
   asOf: Date,
   // Umbral de veredicto (jerarquía de precios): el precio al que el veredicto sube de
@@ -2192,8 +2194,8 @@ function calcNegociacionScenario(
 ): NegociacionScenario {
   // Tramo A: sin valor de mercado con procedencia, vm = precio ⇒ nunca "bajo mercado"
   // y el modo alinear_mercado se reduce al 3% de cualquier cierre, sin invocar comparables.
-  const hayValorMercado = resolverValorMercado(input) !== null;
-  const vmFrancoUF = vmFrancoUFDe(input);
+  const hayValorMercado = resolverValorMercado(input, metrics.universoDepto?.valor) !== null;
+  const vmFrancoUF = vmFrancoUFDe(input, metrics.universoDepto?.valor);
   const arriendo = input.arriendo || 0;
   const flujoViable = metrics.flujoNetoMensual >= -arriendo * UMBRAL_FLUJO_VIABLE_PCT_ARRIENDO;
   // Sin valor de mercado el MODO no puede depender de "bajo mercado" (vm = precio lo
@@ -2529,7 +2531,7 @@ export function runAnalysis(
   const casoPrecioJusto = esCasoPrecioJusto({
     desviacionPct: metrics.precioVsComuna?.desviacionPct,
     precioUF: input.precio,
-    vmFrancoUF: vmFrancoUFDe(input),
+    vmFrancoUF: vmFrancoUFDe(input, metrics.universoDepto?.valor),
     ufClp,
     arriendoCLP: input.arriendo,
     // Un estimado desde el m² comunal no contrasta (ver arriendo-referencia.ts).

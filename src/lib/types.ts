@@ -395,9 +395,11 @@ export interface AnalysisMetrics {
   valorMercadoFrancoUF?: number;       // vm resuelto (= precio cuando no hay valor de mercado con procedencia)
   /** Procedencia del valor de mercado que el motor aceptó; null = trabajó sin valor de mercado. */
   valorMercadoRef?: ValorMercadoRef | null;
-  /** Universo de mercado del depto (esNuevo del wizard). El gate de sobreprecio comunal
-   *  exige que la mediana de precioVsComuna sea de este mismo universo. */
-  universoDepto?: "nuevo" | "usado";
+  /** Universo de mercado del depto CON procedencia: `declarado` (esNuevo del wizard),
+   *  `inferidoDeSnapshot` (filas sin esNuevo: el universo de la mediana que se consultó al
+   *  crear) o `default` (sin esNuevo y sin snapshot ⇒ usado). El gate de sobreprecio
+   *  comunal y el valor de mercado exigen su mismo universo. */
+  universoDepto?: UniversoDepto;
   valorMercadoUsuarioUF?: number;      // referencial (estimación usuario)
   plusvaliaInmediataFranco?: number;    // CLP vs datos reales
   plusvaliaInmediataFrancoPct?: number;
@@ -467,6 +469,11 @@ export interface AnalysisMetrics {
 // buildPrecioVsComuna (precio-vs-comuna.ts). FASE B construirá el hallazgo encima.
 /** Universo de una muestra de venta: "mixto" = radio consultado sin condición. */
 export type UniversoVenta = "nuevo" | "usado" | "mixto";
+/** Universo del depto con procedencia (ver valor-mercado.ts · resolverUniversoDepto). */
+export interface UniversoDepto {
+  valor: "nuevo" | "usado";
+  origen: "declarado" | "inferidoDeSnapshot" | "default";
+}
 /** Procedencia del valor estimado de mercado del wizard. */
 export interface ValorMercadoRef {
   valorUF: number;
