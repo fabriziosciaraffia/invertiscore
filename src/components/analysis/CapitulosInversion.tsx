@@ -624,12 +624,10 @@ export function CapitulosInversion({
           // pie + gastos de compra (cierre + corretaje) + puesta a punto === inversionInicial.
           // `gastosCompraCLP` lo emite calcMetrics desde el mismo lugar que
           // calcInversionInicialCLP; la resta es FALLBACK para filas persistidas
-          // anteriores al campo, no la fuente.
+          // anteriores al campo, no la fuente. El invariante de la suma vive en
+          // plata-dia1.ts (avisoDia1), que es quien posee estos montos.
           const capexDia1 = m.capexPuestaAPuntoCLP ?? 0;
           const gastosCompra = m.gastosCompraCLP ?? Math.max(0, inversionInicial - pieCLP - capexDia1);
-          if (process.env.NODE_ENV !== "production" && pieCLP + gastosCompra + capexDia1 !== inversionInicial) {
-            console.warn(`[CapitulosInversion] día 1 no cierra: ${pieCLP} + ${gastosCompra} + ${capexDia1} ≠ ${inversionInicial}`);
-          }
           const capexSub = capexV
             ? `${capexRango ? `${capexRangoUF}, corre con UF ${ufN(capexV.montoUF)}` : `UF ${ufN(capexV.montoUF)}${capexV.origen === "override" ? ", tu cotización" : ""}`} — no vuelve`
             : "no vuelve";
