@@ -33,6 +33,9 @@ if (v("El CAP rate de 8,7% es más del doble de la referencia de 4,0%.").length)
 if (!v("El CAP rate de 6,0% es más del doble de la referencia de 4,0%.", { capRatePct: 6 }).length) F("1 · CAP/referencia 1,5× con 'más del doble' debía disparar");
 if (v("hay una sola vía: el precio.", { viasCruzan: ["precio"] }).length) F("1 · única vía con una vía debía pasar");
 if (!v("hay una sola vía: el precio.", { viasCruzan: ["precio", "pie"] }).length) F("1 · única vía con dos vías debía disparar");
+if (v("y la única salida es la venta.", { viasCruzan: [] }).length) F("1 · 'la única salida es la venta' con cero vías (GS-6) debía pasar");
+if (!v("la única vía es el precio.", { viasCruzan: [] }).length) F("1 · 'la única vía' con cero vías debía disparar");
+if (!v("busca un depto donde el precio por m² parta de la mediana comunal, no del doble de ella.").length) F("1 · 'no del doble de la mediana' con 1,78× (GS-4) debía disparar");
 
 // ── 2. razones de largoPlazo ──
 if (!v("El depto proyecta que tu parte al vender a 10 años es $70.865.849 —más del doble del fondo—, pero pones $66.618 al mes.").length) F("2 · GS-3 'tu parte al vender … más del doble del fondo' (1,6×) debía disparar");
@@ -47,6 +50,10 @@ if (!cifrasPorMetroFueraDeUnidad({ conviene: { respuestaDirecta_clp: "estás pag
 if (cifrasPorMetroFueraDeUnidad({ conviene: { cajaAccionable_clp: "en esta comuna existen, pero no a UF 110 el metro." } }, { ...ref, sujetoUfM2: 110, medianaUfM2: 58 }).length) F("3 · 'UF 110 el metro' (precio/m² del sujeto) no debía disparar");
 if (cifrasPorMetroFueraDeUnidad({ conviene: { respuestaDirecta_clp: "pagas UF 35 más por metro que la mediana (UF 45/m²)." } }, ref).length) F("3 · 'UF 35 más por metro' (la diferencia) no debía disparar");
 if (cifrasPorMetroFueraDeUnidad({ conviene: { respuestaDirecta_clp: "estás pagando UF 700 sobre la mediana por los 20 m²." } }, ref).length) F("3 · total sin 'por metro' no debía disparar");
+if (!cifrasPorMetroFueraDeUnidad({ conviene: { respuestaDirecta_clp: "Tu precio por m² (UF 80) está 78% sobre la mediana comunal de Macul (UF 45, sobre 180 ventas): pagas UF 700 más por metro que el departamento promedio." } }, ref).length) F("3 · GS-4 con UF 80 y UF 45 antes en la misma oración debía disparar igual");
+if (cifrasPorMetroFueraDeUnidad({ largoPlazo: { cajaAccionable_clp: "compensar UF 1.256,2 de tu bolsillo y un precio por m² 59% sobre la mediana comunal." } }, ref).length) F("3 · 'UF 1.256,2 de tu bolsillo y un precio por m²' no debía disparar");
+if (cifrasPorMetroFueraDeUnidad({ negociacion: { estrategiaSugerida_clp: "El argumento no es el precio por m² (está alineado), sino que a UF 2.012 el análisis pasa a COMPRAR." } }, ref).length) F("3 · 'por m² (…), sino que a UF 2.012' no debía disparar");
+if (cifrasPorMetroFueraDeUnidad({ conviene: { contenido_clp: "por m² de UF 45 en la comuna" } }, ref).length) F("3 · 'por m² de UF 45' (mediana) no debía disparar");
 
 console.log("\nGUARDS CONTABLES · catch-test\n");
 if (fallas.length) { for (const x of fallas) console.log("  ✗ " + x); console.log(`\n✗ ROJO — ${fallas.length} falla(s)`); process.exit(1); }

@@ -146,9 +146,15 @@ export function cifrasPorMetroFueraDeUnidad(
   const validasCLP = ref.ufClp && ref.ufClp > 0 ? validasUF.map((v) => v * (ref.ufClp as number)) : [];
   const calza = (n: number, set: number[]) => set.some((v) => Math.abs(n - v) / Math.max(n, v) <= 0.03 || Math.abs(n - v) <= 0.6);
   const MARCA = String.raw`(?:por (?:cada )?metro(?: cuadrado)?|por m[²2]|el metro|cada metro|al metro|\/\s?m[²2])`;
-  // cifra ANTES de la marca ("UF 700 más por metro") o DESPUÉS ("por metro … UF 700")
-  const reAntes = new RegExp(String.raw`(UF\s?[-−]?\s?[\d.]+(?:,\d+)?|\$\s?[\d.]+(?:,\d+)?)[^.;]{0,45}?\b` + MARCA, "gi");
-  const reDespues = new RegExp(MARCA + String.raw`[^.;]{0,30}?(UF\s?[-−]?\s?[\d.]+(?:,\d+)?|\$\s?[\d.]+(?:,\d+)?)`, "gi");
+  const CIFRA = String.raw`(UF\s?[-−]?\s?[\d.]+(?:,\d+)?|\$\s?[\d.]+(?:,\d+)?)`;
+  // La cifra va PEGADA a la marca, con a lo sumo el conector del sobreprecio en medio:
+  // "UF 700 más por metro", "UF 146 de más por cada metro", "UF 110 el metro", "UF 45/m²".
+  // Una ventana libre capturaba el "UF 45" anterior de la misma oración (y perdía el
+  // "UF 700"), o ataba "UF 1.256,2 de tu bolsillo y un precio por m²" a la marca.
+  const CONECTOR = String.raw`(?:\s+(?:m[aá]s|de m[aá]s|menos|de menos|extra|adicionales?|de diferencia))?(?:\s+(?:por encima|por debajo|sobre|bajo)(?:\s+de)?(?:\s+la mediana(?:\s+comunal)?)?)?`;
+  const reAntes = new RegExp(CIFRA + CONECTOR + String.raw`\s*` + MARCA, "gi");
+  // DESPUÉS solo con conector directo: "el metro a UF 110", "por m² de UF 45".
+  const reDespues = new RegExp(MARCA + String.raw`\s+(?:a|de|en|:)\s*` + CIFRA, "gi");
   const strings: { path: string; value: string }[] = [];
   collectStrings(ai, "", strings);
   const out: string[] = [];
