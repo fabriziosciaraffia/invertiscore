@@ -22,7 +22,7 @@ const COMUNA_CANONICAL: Record<string, string> = {
   "Nunoa": "Ñuñoa",
 };
 
-function normalizeComunaName(raw: string): string {
+export function normalizeComunaName(raw: string): string {
   return COMUNA_CANONICAL[raw] || raw;
 }
 
@@ -143,7 +143,7 @@ export interface ComunaStats {
   procedencia: ProcedenciaMuestra;
 }
 
-const MIN_PER_TYPE = 20; // mínimo 20 arriendos Y 20 ventas por segmento
+export const MIN_PER_TYPE = 20; // mínimo 20 arriendos Y 20 ventas por segmento
 const MIN_TOTAL = 50;    // mínimo 50 propiedades totales por comuna
 /** Menos de 50 arriendos: el doble del mínimo, donde la mediana deja de bailar. */
 const MIN_ARRIENDOS_MUESTRA_SOLIDA = 50;
@@ -153,7 +153,7 @@ const MIN_ARRIENDOS_MUESTRA_SOLIDA = 50;
 export const PIE_PCT_COMUNA = 20;
 export const PLAZO_ANOS_COMUNA = 30;
 
-interface RawRow {
+export interface RawRow {
   comuna: string;
   dormitorios: number;
   precio: number;
@@ -163,14 +163,14 @@ interface RawRow {
 }
 
 /** Un aviso entra al cálculo, o no entra por una razón que la página declara. */
-function superficieUtil(r: RawRow): boolean {
+export function superficieUtil(r: RawRow): boolean {
   return r.superficie_m2 > 0 && r.superficie_m2 <= 300;
 }
-function dormsEnRango(r: RawRow): boolean {
+export function dormsEnRango(r: RawRow): boolean {
   return r.dormitorios >= 1 && r.dormitorios <= 4;
 }
 
-async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, type: "arriendo" | "venta"): Promise<RawRow[]> {
+export async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, type: "arriendo" | "venta"): Promise<RawRow[]> {
   const allRows: RawRow[] = [];
   const pageSize = 1000;
   let offset = 0;
