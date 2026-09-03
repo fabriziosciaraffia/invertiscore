@@ -93,7 +93,6 @@ export default async function AdminOperacionPage({
     ufConfig,
     tasaConfig,
     lastPaidPayment,
-    geocodeLatest,
     overviewReal,
     overviewTotal,
     serieErrores,
@@ -116,7 +115,6 @@ export default async function AdminOperacionPage({
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    sb.from("scraped_properties").select("scraped_at").not("lat", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(),
     adminOverview(sb, false),
     adminOverview(sb, true),
     // Errores de Sentry: se leen de metrics_daily, NO de la API de Sentry. Un
@@ -143,7 +141,6 @@ export default async function AdminOperacionPage({
   const diasSinActualizar = diasDesde(marketUpdatedAt);
 
   const lastScrapedAt = propsLastScraped.data?.scraped_at as string | undefined;
-  const geocodeAt = geocodeLatest.data?.scraped_at as string | undefined;
 
   // ─── ERRORES (Sentry) ───
   // "0 errores" y "sin dato" NO son lo mismo, y la pastilla tiene que
@@ -226,11 +223,10 @@ export default async function AdminOperacionPage({
       value: marketUpdatedAt ? `${fmtDateShort(marketUpdatedAt)} · ${fmtRelative(marketUpdatedAt)}` : "nunca",
       estado: isStale(marketUpdatedAt, 48) ? "error" : "ok",
     },
-    {
-      label: "Cron: Geocode",
-      value: geocodeAt ? fmtRelative(geocodeAt) : "sin datos",
-      estado: geocodeAt ? "ok" : "warn",
-    },
+    // "Cron: Geocode" se retiró el 03-sep-2026 junto con el botón "Forzar Geocode":
+    // ya no hay cron de geocode (ce65743) y la pastilla medía max(scraped_at) con
+    // lat no nula, que hoy es cualquier fila del listado. Los huecos de coordenadas
+    // se ven por comuna en "Cobertura de datos".
     {
       // Los crons de negocio, en UNA pastilla. Individualizarlos serían cinco
       // pastillas más en una fila que ya scrollea; el bloque de abajo nombra los
@@ -415,9 +411,9 @@ export default async function AdminOperacionPage({
                 UF y tasa sin actualizarse
                 {diasSinActualizar != null && ` hace ${fmtNumber(diasSinActualizar)} días`}.
               </b>{" "}
-              La ruta que las escribe (<span className="font-mono text-xs">/api/data/update-market</span>) no tiene cron:
-              solo corre cuando alguien aprieta &laquo;Actualizar UF/Tasa&raquo; acá abajo. El cron que sí está
-              configurado apunta a otra ruta, que escribe en una tabla que no existe en la base.
+              La ruta que las escribe (<span className="font-mono text-xs">/api/data/update-market</span>) corre a
+              diario a las 10:00 UTC; si figura acá es que no corrió o falló. Se puede forzar con
+              &laquo;Actualizar UF/Tasa&raquo; acá abajo.
               {ufCorrupta && (
                 <>
                   {" "}

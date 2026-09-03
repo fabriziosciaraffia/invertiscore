@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type ActionKey = "update-market" | "geocode";
+type ActionKey = "update-market";
 /**
  * Cuatro estados, no tres. "parcial" existe desde que los endpoints devuelven
  * 207 (ver cron-resultado.ts): la acción corrió e hizo parte del trabajo. Antes
@@ -21,15 +21,17 @@ interface ActionState {
 
 // "Recalcular Stats" se retiró con market_stats (2026-08: tabla huérfana desde que el
 // nivel 2 del wizard murió; el escritor procesaba el 1,8% del universo y duplicaba filas).
+// "Forzar Geocode" se retiró el 03-sep-2026: llamaba a /api/data/geocode-toctoc, que
+// salió del cron en ce65743 porque la ficha de TocToc ya no trae coordenadas y la ruta
+// marcaba geocoded=true a 30 filas por corrida sin acertar ninguna. Las coordenadas
+// hoy vienen del listado (backfill-toctoc); apretar ese botón solo quemaba reintentos.
 const ACTIONS: { key: ActionKey; label: string }[] = [
   { key: "update-market", label: "Actualizar UF/Tasa" },
-  { key: "geocode", label: "Forzar Geocode" },
 ];
 
 export function AdminActions() {
   const [states, setStates] = useState<Record<ActionKey, ActionState>>({
     "update-market": { status: "idle" },
-    "geocode": { status: "idle" },
   });
 
   async function run(action: ActionKey) {

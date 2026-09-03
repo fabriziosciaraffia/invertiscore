@@ -4,7 +4,8 @@ import { requireAdmin } from "@/lib/admin-auth";
 const ACTIONS = {
   "update-market": "/api/data/update-market",
   // "calculate-stats" se retiró junto con market_stats (2026-08).
-  "geocode": "/api/data/geocode-toctoc",
+  // "geocode" (→ /api/data/geocode-toctoc) se retiró el 03-sep-2026: la ruta salió
+  // del cron en ce65743 y solo quemaba reintentos (ver admin-actions.tsx).
 } as const;
 
 type ActionKey = keyof typeof ACTIONS;
