@@ -11,6 +11,7 @@ import type {
   HallazgoPuestaAPunto,
   HallazgoEstructuraFinanciamiento,
   HallazgoCapRate,
+  AINegociacionWalkAway,
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice, calcDividendo } from "@/lib/analysis";
 import { metricaValorONull } from "@/lib/types";
@@ -372,7 +373,7 @@ export function DrawerNegociacion({
   const tirActual = metricaValorONull(results.exitScenario?.tir);
   // Pie cero (fase 3b · D2, mockup 98e2319): sin capital propio el beneficio de
   // negociar se mide en PLATA MENSUAL, no en TIR — la columna TIR pasa a
-  // "Tu flujo/mes", la fila Límite (techo de retorno) se suprime y los
+  // "Tu flujo/mes", la fila Límite TIR 6% se suprime y los
   // escenarios −5%/−10% se muestran como baja de dividendo.
   const mtr = results.metrics;
   const sinPie = mtr ? mtr.pieCLP === 0 : inputData.piePct === 0;
@@ -388,7 +389,7 @@ export function DrawerNegociacion({
     const baseSugerido = Math.min(inputData.precio, vmFrancoUF);
     const precioSugUF = Math.round(baseSugerido * 0.97 * 10) / 10;
     // Pie cero: la TIR no aplica — el render plata-mensual no la consume y la
-    // bisección del límite (techo de TIR) se omite entera.
+    // bisección del límite TIR 6% se omite entera.
     const tirSug = sinPie ? 0 : tirForPrice(inputData, precioSugUF, valorUF, asOf);
     const tirVm = sinPie ? 0 : tirForPrice(inputData, vmFrancoUF, valorUF, asOf);
     // Precio límite por bisección simple solo si la TIR actual es > 6
@@ -441,12 +442,24 @@ export function DrawerNegociacion({
     );
   }
 
-  const precioSugeridoCLP = negData.precioSugeridoCLP;
-  const tirAlSugerido = negData.tirAlSugerido;
   const precioLimiteCLP = negData.precioLimiteCLP;
-  // Jerarquía de precios (motor decide, drawer obedece): si el sugerido quedó fijado por
-  // el umbral de veredicto, la escalera lo nombra como tal. Valores TIPADOS del motor.
-  const mandadoPorVeredicto = negData.sugeridoMandadoPorVeredicto === true;
+  // UN NOMBRE POR PRECIO (goal 02-sep-2026): el objetivo del plan es el umbral de
+  // veredicto cuando existe dentro del tope; sin umbral, el sostenible. Valores TIPADOS
+  // del motor; la IA no manda precios.
+  const hayObjetivoVeredicto = typeof negData.precioUmbralVeredictoUF === "number" && negData.precioUmbralVeredictoUF > 0 && !!negData.veredictoAlUmbral;
+  const objetivoPlanUF = hayObjetivoVeredicto ? (negData.precioUmbralVeredictoUF as number) : negData.precioSugeridoUF;
+  const objetivoPlanCLP = Math.round(objetivoPlanUF * valorUF);
+  const distNeg = results.hallazgos?.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
+  const esEstructuralNeg = distNeg?.valor.esEstructural === true;
+  const minimoFueraNeg =
+    esEstructuralNeg && distNeg?.valor.deltaMinimoFueraDeTope?.palanca === "precio"
+      ? {
+          uf: Math.round(inputData.precio * (1 + distNeg.valor.deltaMinimoFueraDeTope.deltaPct / 100)),
+          clp: Math.round(precioCLP * (1 + distNeg.valor.deltaMinimoFueraDeTope.deltaPct / 100)),
+          pct: distNeg.valor.deltaMinimoFueraDeTope.deltaPct,
+          veredicto: distNeg.valor.veredictoObjetivo,
+        }
+      : null;
   const destinoUmbral =
     negData.veredictoAlUmbral === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
   const tirAlLimite = negData.tirAlLimite;
@@ -614,15 +627,18 @@ export function DrawerNegociacion({
       {(() => {
         // T3 (02-sep-2026): el borde de la izquierda es el UMBRAL DE VEREDICTO
         // (`precioUmbralVeredictoUF`, el mismo número que emite distancia_veredicto),
-        // no el precio sugerido. Hasta acá el dial ponía el techo de negociación
-        // (sugerido = techo de TIR, UF 3.827 en cb0e8f46) con el rótulo "bajo esto
+        // no el precio sugerido. Hasta acá el dial ponía el sugerido
+        // (el sugerido, UF 3.827 en cb0e8f46) con el rótulo "bajo esto
         // sube a Comprar" que corresponde al umbral (UF 3.945): dos precios que
         // responden preguntas distintas, mezclados en un solo borde. Con el umbral
         // ausente (filas viejas) o mandando sobre el sugerido, cae al sugerido
         // como antes.
         const umbralVerUF = negData.precioUmbralVeredictoUF;
         const hayUmbralVeredicto = typeof umbralVerUF === "number" && umbralVerUF > 0 && !!negData.veredictoAlUmbral;
-        const umbral = hayUmbralVeredicto ? Math.round(umbralVerUF * valorUF) : precioSugeridoCLP > 0 ? precioSugeridoCLP : null;
+        // Un nombre por precio (goal 02-sep-2026): el dial de VEREDICTO solo se dibuja con
+        // el umbral. Sin umbral (estructural o base COMPRAR) el sostenible no es un borde de
+        // veredicto y dibujarlo como tal era la contradicción que se vio en prod.
+        const umbral = hayUmbralVeredicto ? Math.round(umbralVerUF * valorUF) : null;
         const limite = precioLimiteCLP != null && precioLimiteCLP > 0 ? precioLimiteCLP : null;
         if (!umbral || !(precioCLP > 0)) return null;
         const puntos = [precioCLP, umbral, ...(limite ? [limite] : [])];
@@ -652,9 +668,7 @@ export function DrawerNegociacion({
             pos: pUmbral,
             delta: `−${(((precioCLP - umbral) / precioCLP) * 100).toFixed(1).replace(".", ",")}%`,
             v: fmtPrecio(umbral),
-            k: hayUmbralVeredicto
-              ? `bajo esto sube a ${destinoUmbral}`
-              : `bajo esto sube a ${destinoUmbral}${tirAlSugerido != null ? ` · TIR ${fmtTir(tirAlSugerido)}` : ""}`,
+            k: `bajo esto sube a ${destinoUmbral}`,
             dir: "abajo",
           },
           ...(limite
@@ -724,13 +738,13 @@ export function DrawerNegociacion({
             <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
               Cerrando en{" "}
               <b className="font-mono font-bold">
-                UF {Math.round(negData.precioSugeridoUF).toLocaleString("es-CL")}
+                UF {Math.round(objetivoPlanUF).toLocaleString("es-CL")}
               </b>{" "}
-              ({precioCLP > 0 ? `−${((1 - precioSugeridoCLP / precioCLP) * 100).toFixed(1).replace(".", ",")}%` : ""}) el dividendo baja{" "}
-              <b className="font-mono font-bold">{fmtFull(mtr.dividendo - dividendoAt(precioSugeridoCLP))}/mes</b>
-              {mandadoPorVeredicto
-                ? ` y el veredicto sube a ${destinoUmbral}. No es alinearse con comparables: es cambiar la conclusión.`
-                : " — tu flujo mejora exactamente eso."}
+              ({precioCLP > 0 ? `−${((1 - objetivoPlanCLP / precioCLP) * 100).toFixed(1).replace(".", ",")}%` : ""}) el dividendo baja{" "}
+              <b className="font-mono font-bold">{fmtFull(mtr.dividendo - dividendoAt(objetivoPlanCLP))}/mes</b>
+              {hayObjetivoVeredicto
+                ? ` y el veredicto sube a ${destinoUmbral}: es donde cambia el veredicto, no un alineamiento con comparables.`
+                : " — es donde el aporte se vuelve sostenible; tu flujo mejora exactamente eso."}
             </p>
           </div>
         </>
@@ -738,9 +752,9 @@ export function DrawerNegociacion({
 
       {/* GOAL 16 — "Aunque negocies al máximo" se desarmó. El bloque narraba dos
           cifras que ya viven abajo con forma propia: el break-even de caja (ahora
-          CHIP determinista del plan, leído del motor) y el techo (slot del plan,
+          CHIP determinista del plan, leído del motor) y el objetivo (slot del plan,
           impreso a dos centímetros). Medido sobre las 318 prosas v12 del parque:
-          65% citaba el techo, 63% narraba el break-even y un 6% arrastraba además
+          65% citaba el objetivo, 63% narraba el break-even y un 6% arrastraba además
           la frase-puente que solo existía para desambiguar su propia duplicación.
           Peor que la duplicación: en la rama sin descuento (28 casos) 9 narraban
           una rebaja que el motor prohíbe, y en el demo de la landing la cifra
@@ -754,21 +768,51 @@ export function DrawerNegociacion({
           mismos montos del plan impreso debajo (duplicación literal). El cierre es
           UNO: la cajaAccionable de la IA si existe; si no (cache pre-v9 o IA muda),
           la estrategia ocupa su lugar como cierre — nunca las dos apiladas. */}
-      {data.precios && (
-        <div style={capitulo ? { marginBottom: 18 } : undefined}>
-          {capitulo && <VSub>Cómo negociarlo: tu plan</VSub>}
-          <PlanNegociacion
-            precios={data.precios}
-            currency={currency}
-            precioActualCLP={precioCLP}
-            valorUF={valorUF}
-            neutroUF={mtr?.precioFlujoNeutroUF}
-            neutroCLP={mtr?.precioFlujoNeutroCLP}
-            descuentoNeutroPct={mtr?.descuentoParaNeutro}
-            sinCredito={(inputData.piePct ?? 0) >= 100}
-          />
-        </div>
-      )}
+      {(() => {
+        // El plan sale del MOTOR; las glosas IA (si hay) solo acompañan.
+        // Prosas anteriores al goal glosaban la primera oferta contra "el techo": esa
+        // glosa cae al texto determinista hasta que la prosa se regenere.
+        const glosaPrimeraCruda = (currency === "CLP" ? data.precios?.glosaPrimeraOferta_clp : data.precios?.glosaPrimeraOferta_uf) || "";
+        const glosaPrimera = /techo/i.test(glosaPrimeraCruda) ? "" : glosaPrimeraCruda;
+        const glosaWalkCruda = (currency === "CLP" ? data.precios?.glosaWalkAway_clp : data.precios?.glosaWalkAway_uf) || "";
+        const glosaWalk = /techo/i.test(glosaWalkCruda) ? "" : glosaWalkCruda;
+        const objetivoPlan = hayObjetivoVeredicto
+          ? { uf: objetivoPlanUF, clp: objetivoPlanCLP, veredicto: negData.veredictoAlUmbral ?? null }
+          : null;
+        const sostenible = negData.precioSugeridoUF > 0 ? { uf: negData.precioSugeridoUF, clp: negData.precioSugeridoCLP } : null;
+        const baseUF = objetivoPlan?.uf ?? sostenible?.uf ?? 0;
+        const primeraOferta =
+          !esEstructuralNeg && baseUF > 0
+            ? negData.modo === "cerrar_actual" && !hayObjetivoVeredicto
+              ? { uf: Math.round(baseUF), clp: Math.round(baseUF * valorUF) }
+              : { uf: Math.round(baseUF * 0.95), clp: Math.round(Math.round(baseUF * 0.95) * valorUF) }
+            : null;
+        const walkAway: AINegociacionWalkAway | null =
+          results.veredicto === "BUSCAR OTRA" && !esEstructuralNeg
+            ? { precio_uf: null, precio_clp: null, razon: "No conviene comprar esta propiedad." }
+            : null;
+        return (
+          <div style={capitulo ? { marginBottom: 18 } : undefined}>
+            {capitulo && <VSub>{esEstructuralNeg ? "Por qué no hay plan" : "Cómo negociarlo: tu plan"}</VSub>}
+            <PlanNegociacion
+              objetivo={objetivoPlan}
+              primeraOferta={primeraOferta}
+              sostenible={sostenible}
+              modoSostenible={negData.modo}
+              minimoFueraDeRango={minimoFueraNeg}
+              walkAway={walkAway}
+              glosas={{ primera: glosaPrimera, walkAway: glosaWalk }}
+              currency={currency}
+              precioActualCLP={precioCLP}
+              valorUF={valorUF}
+              neutroUF={mtr?.precioFlujoNeutroUF}
+              neutroCLP={mtr?.precioFlujoNeutroCLP}
+              descuentoNeutroPct={mtr?.descuentoParaNeutro}
+              sinCredito={(inputData.piePct ?? 0) >= 100}
+            />
+          </div>
+        );
+      })()}
 
       {capitulo?.entreMedio}
 
@@ -790,11 +834,25 @@ export function DrawerNegociacion({
   );
 }
 
-// ─── Fase 3.6 v9 — Plan de negociación (3 slots) ──────────────────────────
-// Patrón 2 (zona): Ink neutro, sin Signal Red. Slots apilados con border-left
-// Ink secundario. Cada slot: label mono uppercase + precio mono bold + glosa.
-function PlanNegociacion({
-  precios,
+// ─── Plan de negociación — UN NOMBRE POR PRECIO (goal 02-sep-2026) ─────────
+// Lee el MOTOR (results.negociacion + distancia_veredicto), no las anclas de la IA:
+// la IA solo aporta las glosas de la primera oferta y del walk-away.
+//   · Objetivo — "donde cambia el veredicto" (umbral dentro del tope). Sin umbral (base
+//     COMPRAR), el objetivo es el sostenible, con su propio nombre.
+//   · Primera oferta — el objetivo menos ~5% (igual al objetivo en cerrar_actual sin umbral).
+//   · Donde el aporte se vuelve sostenible — el sugerido del motor por modo, como dato
+//     aparte cuando difiere del objetivo. Nunca "sobre esto no compras".
+//   · Caja en cero — el chip determinista (precioFlujoNeutro), como hasta ahora.
+//   · Estructural — sin plan: solo "lo que haría falta, fuera de rango".
+export type PlanPrecio = { uf: number; clp: number };
+export function PlanNegociacion({
+  objetivo,
+  primeraOferta,
+  sostenible,
+  modoSostenible,
+  minimoFueraDeRango,
+  walkAway,
+  glosas,
   currency,
   precioActualCLP,
   valorUF,
@@ -803,7 +861,16 @@ function PlanNegociacion({
   descuentoNeutroPct,
   sinCredito,
 }: {
-  precios: NonNullable<AINegociacionSection["precios"]>;
+  /** El umbral de veredicto dentro del tope (con su destino), o null. */
+  objetivo: (PlanPrecio & { veredicto: string | null }) | null;
+  primeraOferta: PlanPrecio | null;
+  /** "Donde el aporte se vuelve sostenible": el sugerido del motor. */
+  sostenible: PlanPrecio | null;
+  modoSostenible?: "cerrar_actual" | "optimizar_flujo" | "alinear_mercado";
+  /** Estructural: el mínimo fuera de tope por precio, con su %. */
+  minimoFueraDeRango: (PlanPrecio & { pct: number; veredicto: string }) | null;
+  walkAway?: AINegociacionWalkAway | null;
+  glosas?: { primera?: string; walkAway?: string };
   currency: "CLP" | "UF";
   /** Tu precio (el del análisis): ancla de los deltas del plan (fase42 (4)). */
   precioActualCLP: number;
@@ -823,123 +890,100 @@ function PlanNegociacion({
     if (currency === "UF") return `UF ${Math.round(uf).toLocaleString("es-CL")}`;
     return "$" + Math.round(clp).toLocaleString("es-CL");
   };
+  const capVer = (v: string | null | undefined) =>
+    v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajusta supuestos" : v === "BUSCAR OTRA" ? "Buscar otra" : "la banda de arriba";
 
-  const glosaPrimera = (currency === "CLP" ? precios.glosaPrimeraOferta_clp : precios.glosaPrimeraOferta_uf) || "";
-  const glosaTecho = (currency === "CLP" ? precios.glosaTecho_clp : precios.glosaTecho_uf) || "";
-  const glosaWalk = (currency === "CLP" ? precios.glosaWalkAway_clp : precios.glosaWalkAway_uf) || "";
-
-  // AUDITORÍA fase42 (4) — cada precio del plan lleva sus descuentos (aprobado en
-  // propuesta-16-15-v2): contra tu precio, y la primera oferta además contra el
-  // techo. Ahí se ve la estrategia que era invisible: cuánto margen deja la
-  // apertura antes de tocar el techo. El % es el mismo en CLP y UF, así que se
-  // calcula una vez sobre CLP.
+  // Cada precio del plan lleva sus descuentos contra tu precio (fase42 (4)), y la primera
+  // oferta además contra el objetivo. El % es el mismo en CLP y UF: se calcula sobre CLP.
   const deltaPct = (menor: number, mayor: number) =>
     mayor > 0 && menor > 0 && menor < mayor ? ((1 - menor / mayor) * 100).toFixed(1).replace(".", ",") : null;
   const chip = (b: string | null, resto: string) => (b ? { b: `−${b}%`, resto } : null);
   const noNulos = (xs: Array<{ b: string; resto: string } | null>) =>
     xs.filter((x): x is { b: string; resto: string } => x !== null);
+  const cercano = (a: number, b: number) => a > 0 && b > 0 && Math.abs(a - b) / Math.max(a, b) < 0.02;
 
-  // Item 1 Sesión B2: cuando primeraOferta == techo (modo cerrar_actual del
-  // motor), ambos slots muestran el mismo número. Fusionamos en uno solo.
-  const slotsUnificados = precios.primeraOferta_uf === precios.techo_uf;
-  const slots: Array<{ label: string; valor: string; glosa: string; razon?: string; deltas?: Array<{ b: string; resto: string }> }> = slotsUnificados
-    ? [
-        {
-          label: "Oferta única",
-          valor: fmtPrecio(precios.techo_clp, precios.techo_uf),
-          glosa: glosaTecho || glosaPrimera || "Cierra a este precio — no hay margen para negociar a la baja.",
-          deltas: noNulos([chip(deltaPct(precios.techo_clp, precioActualCLP), "de tu precio")]),
-        },
-      ]
-    : [
-        {
-          label: "Primera oferta",
-          valor: fmtPrecio(precios.primeraOferta_clp, precios.primeraOferta_uf),
-          glosa: glosaPrimera || "Con qué número partir.",
-          deltas: noNulos([
-            chip(deltaPct(precios.primeraOferta_clp, precioActualCLP), "de tu precio"),
-            chip(deltaPct(precios.primeraOferta_clp, precios.techo_clp), "bajo tu techo"),
-          ]),
-        },
-        {
-          label: "Techo",
-          valor: fmtPrecio(precios.techo_clp, precios.techo_uf),
-          glosa: glosaTecho || "Hasta dónde subir si rechazan.",
-          deltas: noNulos([chip(deltaPct(precios.techo_clp, precioActualCLP), "de tu precio")]),
-        },
-      ];
+  type Slot = { label: string; valor: string; glosa: string; deltas?: Array<{ b: string; resto: string }>; tenue?: boolean };
+  const slots: Slot[] = [];
 
-  if (precios.walkAway) {
-    if (precios.walkAway.precio_uf === null) {
+  if (minimoFueraDeRango) {
+    // Estructural: no hay plan. Lo único que se muestra es lo que haría falta.
+    slots.push({
+      label: "Lo que haría falta, fuera de rango",
+      valor: fmtPrecio(minimoFueraDeRango.clp, minimoFueraDeRango.uf),
+      glosa: `Recién ahí el veredicto pasaría a ${capVer(minimoFueraDeRango.veredicto)}; es un ${Math.abs(minimoFueraDeRango.pct).toFixed(1).replace(".", ",")}% menos, y eso ya no es un ajuste: no es una oferta ni un objetivo.`,
+      deltas: noNulos([chip(deltaPct(minimoFueraDeRango.clp, precioActualCLP), "de tu precio")]),
+      tenue: true,
+    });
+  } else {
+    const obj = objetivo ?? (sostenible ? { ...sostenible, veredicto: null } : null);
+    const objetivoEsUmbral = !!objetivo;
+    const primeraIgual = !!primeraOferta && obj != null && Math.round(primeraOferta.uf) === Math.round(obj.uf);
+    if (obj) {
       slots.push({
-        label: "Walk-away",
-        valor: "Buscar otra propiedad",
-        glosa: glosaWalk || precios.walkAway.razon,
+        label: objetivoEsUmbral ? "Objetivo · donde cambia el veredicto" : modoSostenible === "cerrar_actual" ? "Objetivo · tu precio actual" : "Objetivo · donde el aporte se vuelve sostenible",
+        valor: fmtPrecio(obj.clp, obj.uf),
+        glosa: objetivoEsUmbral
+          ? `Cerrando acá el análisis pasa a ${capVer(obj.veredicto)}. Bajo este precio ya es ${capVer(obj.veredicto)}; sobre este precio sigue siendo el veredicto de hoy.`
+          : modoSostenible === "cerrar_actual"
+            ? "Ya estás bajo mercado y el aporte es sostenible: no hay caso para pedir descuento."
+            : modoSostenible === "alinear_mercado"
+              ? "Alinea el precio con los comparables de la zona. No cambia el veredicto: este caso no tiene umbral dentro de rango."
+              : "A este precio tu aporte mensual baja a un nivel sostenible. No cambia el veredicto: este caso no tiene umbral dentro de rango.",
+        deltas: noNulos([chip(deltaPct(obj.clp, precioActualCLP), "de tu precio")]),
       });
-    } else if (precios.walkAway.precio_clp !== null) {
+    }
+    if (primeraOferta && !primeraIgual) {
+      slots.unshift({
+        label: "Primera oferta",
+        valor: fmtPrecio(primeraOferta.clp, primeraOferta.uf),
+        glosa: glosas?.primera || "Abre la conversación con margen para subir hasta el objetivo sin perder el caso económico.",
+        deltas: noNulos([
+          chip(deltaPct(primeraOferta.clp, precioActualCLP), "de tu precio"),
+          obj ? chip(deltaPct(primeraOferta.clp, obj.clp), "bajo el objetivo") : null,
+        ]),
+      });
+    }
+    if (objetivoEsUmbral && sostenible && obj && !cercano(sostenible.uf, obj.uf)) {
+      const bajo = sostenible.uf < obj.uf;
       slots.push({
-        label: "Walk-away",
-        valor: fmtPrecio(precios.walkAway.precio_clp, precios.walkAway.precio_uf),
-        glosa: glosaWalk || precios.walkAway.razon,
+        label: "Donde el aporte se vuelve sostenible",
+        valor: fmtPrecio(sostenible.clp, sostenible.uf),
+        glosa: bajo
+          ? `Dato de caja, no un segundo objetivo: queda bajo el objetivo, dentro de la zona donde el veredicto ya es ${capVer(obj.veredicto)}. Es hasta dónde seguir si la conversación da.`
+          : "Dato de caja, no un segundo objetivo: queda sobre el objetivo, así que a este precio el veredicto todavía no cambia.",
+        deltas: noNulos([chip(deltaPct(sostenible.clp, precioActualCLP), "de tu precio")]),
+        tenue: true,
       });
+    }
+    if (walkAway) {
+      if (walkAway.precio_uf === null) {
+        slots.push({ label: "Walk-away", valor: "Buscar otra propiedad", glosa: glosas?.walkAway || walkAway.razon });
+      } else if (walkAway.precio_clp !== null) {
+        slots.push({ label: "Walk-away", valor: fmtPrecio(walkAway.precio_clp, walkAway.precio_uf), glosa: glosas?.walkAway || walkAway.razon });
+      }
     }
   }
 
   // ── CHIP DE CAJA EN CERO (GOAL 16) ───────────────────────────────────────
   // El número sale del motor (`metrics.precioFlujoNeutro*`), no de la IA ni de un
-  // recálculo en cliente: `calcMetrics` ya lo persiste y leerlo acá es la única
-  // forma de que el chip y el motor no puedan divergir.
-  //
-  // NO ES UN SLOT, y por eso cuelga del rótulo en vez de sumarse a la lista: un
-  // cuarto slot lo leería como "un precio más para ofrecer", que es exactamente lo
-  // que la glosa viene a desmentir. Colgado del encabezado queda como el MARCO
-  // dentro del cual se leen los tres precios que sí se ofrecen.
-  //
-  // TRES RAMAS, porque el motor tiene tres (espejo de `lecturaPrecioFlujoNeutro`):
-  // el equilibrio bajo el precio (91% del parque), en o sobre el precio (9%) y el
-  // que no existe. La rama del medio NUNCA muestra el número como delta: un
-  // "+2,0%" junto a "−14,4% de tu precio" se lee como otra oferta posible, cuando
-  // dice justo lo contrario — que ningún descuento llega hasta ahí.
+  // recálculo en cliente. NO ES UN SLOT: cuelga del rótulo como el MARCO dentro del
+  // cual se leen los precios que sí se ofrecen. Tres ramas, espejo del motor.
   const chipCaja = (() => {
-    // Pie 100% ⇒ NO HAY CHIP. `calcPrecioParaFlujo` devuelve 0 cuando el
-    // financiamiento es 0, igual que cuando el arriendo no cubre los gastos
-    // fijos — pero son dos cosas distintas y una sola glosa mentía en una de
-    // ellas. Medido sobre el parque: de las 16 filas sin equilibrio, **15 son
-    // pie 100%** y solo 1 es el caso del arriendo insuficiente. Sin crédito no
-    // hay cuota que cubrir, así que la pregunta "¿a qué precio la caja queda en
-    // cero?" no aplica; dibujar "no existe" la respondería con una causa falsa.
     if (sinCredito) return null;
     const dto = descuentoNeutroPct;
     const hayNeutro = typeof neutroUF === "number" && neutroUF > 0 && typeof neutroCLP === "number" && neutroCLP > 0;
     if (!hayNeutro || typeof dto !== "number") {
-      // Sin dato (análisis anterior al campo) el chip no se dibuja: distinto de
-      // "no existe", que sí es una respuesta del motor.
       if (!hayNeutro && typeof dto === "number") {
-        return {
-          valor: "no existe",
-          delta: null,
-          glosa: "Con esta estructura el arriendo no cubre los gastos fijos a ningún precio.",
-        };
+        return { valor: "no existe", delta: null, glosa: "Con esta estructura el arriendo no cubre los gastos fijos a ningún precio." };
       }
       return null;
     }
-    // Compacto ($106,6M), no completo: el chip comparte fila con el rótulo y el
-    // monto entero desbordaba el contenedor en desktop (medido en el shot del
-    // demo). Los slots sí van completos — ahí el número es el protagonista.
-    const valor = currency === "UF"
-      ? `UF ${Math.round(neutroUF!).toLocaleString("es-CL")}`
-      : fmtCompact(neutroCLP!, currency, valorUF);
+    const valor = currency === "UF" ? `UF ${Math.round(neutroUF!).toLocaleString("es-CL")}` : fmtCompact(neutroCLP!, currency, valorUF);
     if (dto > 0) {
-      return {
-        valor,
-        delta: `−${dto.toFixed(1).replace(".", ",")}%`,
-        glosa: "No es el número a pelear: es dónde el arriendo alcanza a cubrirlo todo.",
-      };
+      return { valor, delta: `−${dto.toFixed(1).replace(".", ",")}%`, glosa: "No es el número a pelear: es dónde el arriendo alcanza a cubrirlo todo." };
     }
     return {
       valor,
-      // Sin delta: la magnitud va en palabras dentro de la glosa, para que no
-      // comparta forma con los descuentos negociables de los slots.
       delta: null,
       glosa:
         Math.abs(dto) >= 0.1
@@ -948,38 +992,21 @@ function PlanNegociacion({
     };
   })();
 
+  if (slots.length === 0 && !chipCaja) return null;
+
   return (
     <div className="flex flex-col gap-2.5">
-      {/* `paddingRight` = el padding horizontal del slot (16px). Sin él, el chip
-          cuelga del borde del CONTENEDOR mientras los montos de los slots cuelgan
-          del borde interior de su caja, y el chip sobresalía esos 16px hacia la
-          derecha en toda la columna. Con el padding, chip y montos comparten línea
-          de fuga. El rótulo de la izquierda NO se mueve: alinea con la glosa y con
-          el resto de los encabezados de sección. */}
       <div className="flex items-baseline justify-between gap-3 mb-1 flex-wrap" style={{ paddingRight: 16 }}>
         <p
           className="font-mono uppercase m-0"
-          style={{
-            fontSize: 10,
-            letterSpacing: "0.06em",
-            color: "var(--franco-text-secondary)",
-            fontWeight: 600,
-          }}
+          style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
         >
-          Tu plan de negociación
+          {minimoFueraDeRango ? "Sin plan de negociación" : "Tu plan de negociación"}
         </p>
         {chipCaja && (
           <span
             className="font-mono"
-            style={{
-              fontSize: 10,
-              letterSpacing: "0.03em",
-              padding: "3px 7px",
-              borderRadius: 3,
-              background: "color-mix(in srgb, var(--franco-text) 5%, transparent)",
-              color: "var(--franco-text-secondary)",
-              whiteSpace: "nowrap",
-            }}
+            style={{ fontSize: 10, letterSpacing: "0.03em", padding: "3px 7px", borderRadius: 3, background: "color-mix(in srgb, var(--franco-text) 5%, transparent)", color: "var(--franco-text-secondary)", whiteSpace: "nowrap" }}
           >
             Caja en cero <b style={{ color: "var(--franco-text)" }}>{chipCaja.valor}</b>
             {chipCaja.delta ? <> · <b style={{ color: "var(--franco-text)" }}>{chipCaja.delta}</b></> : null}
@@ -987,68 +1014,41 @@ function PlanNegociacion({
         )}
       </div>
       {chipCaja && (
-        <p
-          className="font-body m-0 mb-1"
-          style={{ fontSize: 11.5, lineHeight: 1.5, color: "color-mix(in srgb, var(--franco-text) 65%, transparent)" }}
-        >
+        <p className="font-body m-0 mb-1" style={{ fontSize: 11.5, lineHeight: 1.5, color: "color-mix(in srgb, var(--franco-text) 65%, transparent)" }}>
           {chipCaja.glosa}
         </p>
       )}
-      {slots.map((s, i) => (
+      {slots.map((sl, i) => (
         <div
           key={i}
           style={{
-            borderLeft: "3px solid var(--franco-text-secondary)",
+            borderLeft: `3px solid ${sl.tenue ? "var(--franco-border)" : "var(--franco-text-secondary)"}`,
             background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
             borderRadius: "0 8px 8px 0",
             padding: "12px 16px",
+            opacity: sl.tenue ? 0.85 : 1,
           }}
         >
-          <div className="flex items-baseline justify-between mb-1.5">
-            <span
-              className="font-mono uppercase"
-              style={{
-                fontSize: 10,
-                letterSpacing: "0.06em",
-                color: "var(--franco-text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              {s.label}
+          <div className="flex items-baseline justify-between mb-1.5 gap-3">
+            <span className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)", fontWeight: 500 }}>
+              {sl.label}
             </span>
-            <span
-              className="font-mono font-bold whitespace-nowrap"
-              style={{ fontSize: 14, color: "var(--franco-text)" }}
-            >
-              {s.valor}
+            <span className="font-mono font-bold whitespace-nowrap" style={{ fontSize: 14, color: "var(--franco-text)" }}>
+              {sl.valor}
             </span>
           </div>
-          {s.deltas && s.deltas.length > 0 && (
+          {sl.deltas && sl.deltas.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-1.5">
-              {s.deltas.map((d, j) => (
-                <span
-                  key={j}
-                  className="font-mono"
-                  style={{
-                    fontSize: 10,
-                    letterSpacing: "0.03em",
-                    padding: "3px 7px",
-                    borderRadius: 3,
-                    background: "color-mix(in srgb, var(--franco-text) 5%, transparent)",
-                    color: "var(--franco-text-secondary)",
-                  }}
-                >
+              {sl.deltas.map((d, j) => (
+                <span key={j} className="font-mono" style={{ fontSize: 10, letterSpacing: "0.03em", padding: "3px 7px", borderRadius: 3, background: "color-mix(in srgb, var(--franco-text) 5%, transparent)", color: "var(--franco-text-secondary)" }}>
                   <b style={{ color: "var(--franco-text)" }}>{d.b}</b> {d.resto}
                 </span>
               ))}
             </div>
           )}
-          {s.glosa && (
-            <p
-              className="font-body m-0"
-              style={{ fontSize: 12, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)", lineHeight: 1.55 }}
-            >
-              {s.glosa}
+          {sl.glosa && (
+            <p className="font-body m-0" style={{ fontSize: 12, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)", lineHeight: 1.55 }}>
+              {sl.glosa}
             </p>
           )}
         </div>

@@ -129,8 +129,9 @@ export function buildHeroDatosClave(
   const precioSugeridoUFParsed = parseUFString(precioSugeridoRaw);
   const motorPrecioSugUF = results?.negociacion?.precioSugeridoUF;
   const motorPrecioSugCLP = results?.negociacion?.precioSugeridoCLP;
-  const techoUFAncla = aiData.negociacion?.precios?.techo_uf;
-  const techoCLPAncla = aiData.negociacion?.precios?.techo_clp;
+  // Un nombre por precio: las anclas nuevas traen `objetivo_*`; las prosas viejas, `techo_*`.
+  const techoUFAncla = aiData.negociacion?.precios?.objetivo_uf ?? aiData.negociacion?.precios?.techo_uf;
+  const techoCLPAncla = aiData.negociacion?.precios?.objetivo_clp ?? aiData.negociacion?.precios?.techo_clp;
   const precioSugeridoUF =
     (typeof motorPrecioSugUF === "number" && motorPrecioSugUF > 0) ? motorPrecioSugUF
     : (typeof techoUFAncla === "number" && techoUFAncla > 0) ? techoUFAncla
@@ -140,7 +141,7 @@ export function buildHeroDatosClave(
     : (typeof techoCLPAncla === "number" && techoCLPAncla > 0) ? techoCLPAncla
     : precioSugeridoUF * (valorUF || 0);
   const precioCard: DatoClave = {
-    label: "Precio sugerido",
+    label: "Donde el aporte se vuelve sostenible",
     valor_uf: precioSugeridoUF > 0 ? `UF ${Math.round(precioSugeridoUF).toLocaleString("es-CL")}` : "—",
     valor_clp: precioSugeridoCLP > 0 ? "$" + Math.round(precioSugeridoCLP).toLocaleString("es-CL") : "—",
     subtexto: "Para cerrar bien",

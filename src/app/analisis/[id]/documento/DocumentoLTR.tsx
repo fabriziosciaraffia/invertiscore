@@ -90,8 +90,14 @@ export function DocumentoLTR({
   const sinPie = m.pieCLP === 0;
   const dividendoAlPrecio = (clp: number) =>
     calcDividendo(clp * (1 - piePct / 100), tasaPct, plazoAnios);
+  // Un nombre por precio (goal 02-sep-2026): el objetivo es el umbral de veredicto si
+  // existe dentro del tope ("donde cambia el veredicto"); si no, el sostenible.
+  const hayObjetivoVeredicto = !!neg && typeof neg.precioUmbralVeredictoUF === "number" && neg.precioUmbralVeredictoUF > 0 && !!neg.veredictoAlUmbral;
+  const objetivoPlanUF = neg ? (hayObjetivoVeredicto ? (neg.precioUmbralVeredictoUF as number) : neg.precioSugeridoUF) : 0;
+  // CLP del objetivo con la misma UF congelada que trae la negociación del motor.
+  const ufNeg = neg && neg.precioSugeridoUF > 0 ? neg.precioSugeridoCLP / neg.precioSugeridoUF : 0;
   const bajaDividendoSugerido =
-    sinPie && neg ? m.dividendo - dividendoAlPrecio(neg.precioSugeridoCLP) : null;
+    sinPie && neg ? m.dividendo - dividendoAlPrecio(objetivoPlanUF * ufNeg) : null;
   // ¿el precio sugerido MEJORA materialmente la TIR? (≥ 0,3 pts sobre lo actual,
   // comparado sobre valores redondeados = lo que se muestra). En BUSCAR OTRA con
   // TIR negativa el sugerido no mueve la aguja → no afirmar "mejora la matemática".
@@ -369,38 +375,43 @@ export function DocumentoLTR({
 
         {neg && sinPie && (
           /* Pie cero (D2 al documento): el beneficio de negociar en plata mensual —
-             la TIR no aplica y el techo por retorno se suprime (mockup 98e2319). */
+             la TIR no aplica y el límite TIR 6% se suprime (mockup 98e2319). */
           <div className="chips">
-            <p className="cl">Precio objetivo · lo que el motor sugiere</p>
+            <p className="cl">Precio objetivo · un nombre por precio</p>
             <div className="grid g2">
-              <div className="c"><p className="ck">Precio sugerido</p><div className="cv pos">{fmtUFint(neg.precioSugeridoUF)}</div></div>
+              <div className="c"><p className="ck">{hayObjetivoVeredicto ? "Donde cambia el veredicto" : "Donde el aporte se vuelve sostenible"}</p><div className="cv pos">{fmtUFint(objetivoPlanUF)}</div></div>
               <div className="c"><p className="ck">Dividendo baja</p><div className="cv">{bajaDividendoSugerido !== null ? `−${money(bajaDividendoSugerido)}/mes` : "—"}</div></div>
             </div>
             <p className="foot">
-              Sin pie, cada peso menos de precio es crédito que no tomas: cerrando en {fmtUFint(neg.precioSugeridoUF)} el dividendo baja {bajaDividendoSugerido !== null ? money(bajaDividendoSugerido) : "—"} al mes y tu flujo mejora exactamente eso.
-              {neg.veredictoAlUmbral && neg.sugeridoMandadoPorVeredicto ? <> Además, a ese precio el veredicto sube a {neg.veredictoAlUmbral === "COMPRAR" ? "Comprar" : "Ajusta supuestos"}: no es alinearse con comparables, es cambiar la conclusión.</> : null}
+              Sin pie, cada peso menos de precio es crédito que no tomas: cerrando en {fmtUFint(objetivoPlanUF)} el dividendo baja {bajaDividendoSugerido !== null ? money(bajaDividendoSugerido) : "—"} al mes y tu flujo mejora exactamente eso.
+              {hayObjetivoVeredicto ? <> A ese precio el veredicto pasa a {neg.veredictoAlUmbral === "COMPRAR" ? "Comprar" : "Ajusta supuestos"}: es donde cambia el veredicto, no un alineamiento con comparables.</> : null}
             </p>
           </div>
         )}
         {neg && !sinPie && (
           <div className="chips">
-            <p className="cl">Precio objetivo · lo que el motor sugiere</p>
-            {/* Grilla 2 o 3 columnas según haya techo — sin celda fantasma (QA 1b). */}
-            <div className={`grid ${neg.precioLimiteUF != null ? "g3" : "g2"}`}>
-              <div className="c"><p className="ck">Precio sugerido</p><div className="cv pos">{fmtUFint(neg.precioSugeridoUF)}</div></div>
-              <div className="c"><p className="ck">TIR al sugerido</p><div className="cv">{pctON(neg.tirAlSugerido)}</div></div>
+            <p className="cl">Precios del caso · un nombre por precio</p>
+            {/* Grilla según cuántos precios hay — sin celda fantasma (QA 1b). */}
+            <div className={`grid ${[hayObjetivoVeredicto, true, neg.precioLimiteUF != null].filter(Boolean).length >= 3 ? "g3" : "g2"}`}>
+              {hayObjetivoVeredicto && (
+                <div className="c"><p className="ck">Donde cambia el veredicto</p><div className="cv pos">{fmtUFint(objetivoPlanUF)}</div></div>
+              )}
+              <div className="c"><p className="ck">Donde el aporte se vuelve sostenible</p><div className="cv">{fmtUFint(neg.precioSugeridoUF)}</div></div>
               {neg.precioLimiteUF != null && (
-                <div className="c"><p className="ck">Techo (TIR 6%)</p><div className="cv">{fmtUFint(neg.precioLimiteUF)}</div></div>
+                <div className="c"><p className="ck">Límite TIR 6%</p><div className="cv">{fmtUFint(neg.precioLimiteUF)}</div></div>
               )}
             </div>
             <p className="foot">
+              {hayObjetivoVeredicto ? (
+                <>Cerrando en {fmtUFint(objetivoPlanUF)} el veredicto pasa a {neg.veredictoAlUmbral === "COMPRAR" ? "Comprar" : "Ajusta supuestos"}; sobre ese precio sigue siendo el de hoy. </>
+              ) : null}
               {tirMejoraMaterial && tirDistinto ? (
-                <>{neg.razon ?? "Este precio te acerca a los comparables de la zona."} La TIR pasa de {metricaDisplay(exit.tir, pct)} a {pctON(neg.tirAlSugerido)}.</>
+                <>{neg.razon ?? "Este precio te acerca a los comparables de la zona."} A {fmtUFint(neg.precioSugeridoUF)} la TIR pasa de {metricaDisplay(exit.tir, pct)} a {pctON(neg.tirAlSugerido)}.</>
               ) : (
                 <>El precio no es la palanca de este caso: acercarlo al mercado de la zona apenas mueve el retorno (TIR {metricaDisplay(exit.tir, pct)}). Lo que decide acá vive en el flujo y los supuestos, no en el precio de entrada.</>
               )}
               {neg.precioLimiteUF != null && (
-                <> El <b>techo</b> es {fmtUFint(neg.precioLimiteUF)}: por encima de ese precio la operación deja de rendir el 6% mínimo que un crédito apalancado debe pagar.</>
+                <> El <b>límite TIR 6%</b> es {fmtUFint(neg.precioLimiteUF)}: por encima de ese precio la operación deja de rendir el 6% mínimo que un crédito apalancado debe pagar.</>
               )}
             </p>
           </div>

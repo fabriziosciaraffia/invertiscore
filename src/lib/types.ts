@@ -1439,13 +1439,26 @@ export interface AINegociacionSection extends AISection {
 export interface AINegociacionPrecios {
   primeraOferta_uf: number;
   primeraOferta_clp: number;
-  techo_uf: number;
-  techo_clp: number;
+  /** Goal "un nombre por precio" (02-sep-2026): el OBJETIVO del plan es el umbral de
+   *  veredicto cuando existe dentro del tope ("donde cambia el veredicto"); sin umbral
+   *  (base COMPRAR) es el precio sostenible. Ausente en prosas anteriores, que traen
+   *  `techo_*` con el mismo rol. */
+  objetivo_uf?: number;
+  objetivo_clp?: number;
+  /** "Donde el aporte se vuelve sostenible": el sugerido del motor por modo (flujo ≥ −20%
+   *  del arriendo con tope −25%, o alinear con mercado). Dato de caja, no objetivo. */
+  sostenible_uf?: number;
+  sostenible_clp?: number;
+  /** LEGACY (prosas anteriores al goal): el "techo" del plan, que era el sugerido colapsado
+   *  al umbral. Ya no se escribe; se lee solo como fallback de `objetivo_*`. */
+  techo_uf?: number;
+  techo_clp?: number;
   walkAway: AINegociacionWalkAway | null;
   // Glosas IA por slot — 1-2 frases que explican POR QUÉ ese precio.
   // _clp/_uf son idénticos cuando no contienen montos.
   glosaPrimeraOferta_clp?: string;
   glosaPrimeraOferta_uf?: string;
+  /** LEGACY: la glosa del "techo" murió con el goal (el objetivo lleva su sub determinista). */
   glosaTecho_clp?: string;
   glosaTecho_uf?: string;
   glosaWalkAway_clp?: string;
