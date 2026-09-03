@@ -6,6 +6,7 @@ import {
   type ProyectoBase,
 } from "@/lib/services/scraper/toctoc-unidades";
 import { propertyToRow } from "@/lib/services/scraper/property-row";
+import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 
 // ─── Unidades de obra nueva (detalle por tipología), con cadencia propia ─────
 //
@@ -18,20 +19,25 @@ import { propertyToRow } from "@/lib/services/scraper/property-row";
 // scraped_properties (source_id = url#unidad) para que getComunaMedianaVentaUF
 // las vea sin tocar el motor. Medido en el diagnóstico: cobertura 44/78 → ~72/78.
 //
-// ROTACIÓN POR SÉPTIMOS, no por tercios. El sondeo real midió 1,32s efectivos
-// por ficha a concurrencia 8 (231 fichas en 306s): un tercio de los ~515
-// proyectos son ~172 fichas ≈ 240s — el 80% del techo de 300s, sin margen para
-// la varianza de 7-9s de la fuente. Un séptimo son ~74 fichas ≈ 100s (33% del
-// techo) y el ciclo semanal sobra para precios de lista que se mueven por
-// trimestre. La partición es por id de proyecto (id % 7), no por índice: estable
-// aunque la lista crezca o se reordene.
+// ROTACIÓN POR TERCIOS (antes séptimos). El sondeo real midió 1,32s efectivos
+// por ficha a concurrencia 8 (231 fichas en 306s). Con el techo de Hobby (300s)
+// un tercio de los proyectos (~172 fichas ≈ 240s) ocupaba el 80% del techo y la
+// varianza de 7-9s de la fuente botaba fichas; por eso se partió en séptimos
+// (~74 fichas ≈ 100s, 33%). Con el techo de Pro (800s) la misma regla —no
+// pasar del tercio del techo, para absorber la varianza— admite 522 / 3 ≈ 174
+// fichas ≈ 230s (29%). Cada proyecto se refresca cada 3 días en vez de cada 7,
+// y sigue sobrando para precios de lista que se mueven por trimestre. La
+// partición es por id de proyecto (id % CICLO_DIAS), no por índice: estable
+// aunque la lista crezca o se reordene. Si los proyectos superan ~600, volver a
+// subir el ciclo antes que acercarse al techo.
 
-// Techo real de Hobby con Fluid Compute (default y máximo: 300s). El "60s" que
-// citaban los routes hermanos quedó obsoleto cuando Vercel subió el default.
-export const maxDuration = 300;
+// Techo del plan Pro con Fluid Compute. Era el único límite real de Hobby:
+// 300s botaban un tercio de las fichas del batch cuando la fuente se ponía
+// lenta. Mismo valor que backfill-toctoc.
+export const maxDuration = 800;
 
 /** Días del ciclo de rotación (ver nota de arriba). */
-const CICLO_DIAS = 7;
+const CICLO_DIAS = 3;
 /** Fichas GraphQL en vuelo a la vez. Sondeado sin rate-limit a 8. */
 const CONCURRENCIA = 8;
 /** Pausa de cortesía entre lotes de fichas (ms). */
@@ -73,22 +79,35 @@ export async function POST(request: Request) {
   // primera pasada. El corte de frescura (30d) descarta proyectos que
   // scrape-nuevos —que corre diario— ya no ve publicados.
   const desde30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: basesRaw, error: errBases } = await supabase
-    .from("scraped_properties")
-    .select("source_id, url, comuna, lat, lng, direccion, scraped_at")
-    .eq("type", "venta")
-    .eq("condicion", "nuevo")
-    .not("source_id", "like", "%#%")
-    .gte("scraped_at", desde30d)
-    .limit(2000);
-  if (errBases) {
-    return NextResponse.json({ error: `select proyectos: ${errBases.message}` }, { status: 500 });
+  // Paginado con .range: PostgREST capa cada respuesta en PAGINA_POSTGREST filas
+  // sin avisar, así que un `.limit(2000)` devolvía como máximo 1.000. Hoy las
+  // filas-proyecto de 30 días son ~470 (1.006 contando variantes históricas de
+  // URL), bajo el tope, pero la regla del repo es paginar toda lectura de
+  // scraped_properties que pueda crecer: la próxima vez que supere 1.000, los
+  // proyectos que queden fuera no entrarían a ningún batch y nada lo diría.
+  const basesRaw: Array<Record<string, unknown>> = [];
+  for (let off = 0; ; off += PAGINA_POSTGREST) {
+    const { data, error: errBases } = await supabase
+      .from("scraped_properties")
+      .select("source_id, url, comuna, lat, lng, direccion, scraped_at")
+      .eq("type", "venta")
+      .eq("condicion", "nuevo")
+      .not("source_id", "like", "%#%")
+      .gte("scraped_at", desde30d)
+      .order("id", { ascending: true })
+      .range(off, off + PAGINA_POSTGREST - 1);
+    if (errBases) {
+      return NextResponse.json({ error: `select proyectos: ${errBases.message}` }, { status: 500 });
+    }
+    if (!data || data.length === 0) break;
+    basesRaw.push(...(data as Array<Record<string, unknown>>));
+    if (data.length < PAGINA_POSTGREST) break;
   }
 
   // Dedup por id de proyecto (el número final de la URL compranuevo): un mismo
   // proyecto puede tener variantes de URL históricas; gana la fila más fresca.
   const porId = new Map<number, ProyectoBase & { scrapedAt: string }>();
-  for (const r of (basesRaw ?? []) as Array<Record<string, unknown>>) {
+  for (const r of basesRaw) {
     const m = String(r.url ?? "").match(/compranuevo\/departamento\/[^/]+\/[^/]+\/(\d+)/);
     if (!m) continue;
     const id = Number(m[1]);
