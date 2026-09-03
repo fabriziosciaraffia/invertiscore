@@ -124,6 +124,8 @@ scripts/eval/editorial/out*.log
 
 # dumps de auditoría
 audit/
+# reportes de auditoría read-only versionados (docs/audit/AAAA-MM-DD-*.md)
+!docs/audit/
 # scripts de auditoría versionados (read-only, se corren a mano)
 !scripts/audit/
 .env.local
