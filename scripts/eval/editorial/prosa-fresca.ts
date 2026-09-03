@@ -20,7 +20,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../../../src/lib/engines/short-term-score";
-import { buildStrHallazgos } from "../../../src/lib/str-hallazgos";
+import { buildStrHallazgos, mergeHallazgosStr } from "../../../src/lib/str-hallazgos";
 import { buildAirbnbData } from "../../../src/lib/api-helpers/analisis-pipeline";
 import { getComunaMedianaVentaUF, resolverCondicionMercado } from "../../../src/lib/comuna-stats";
 import { generateStrProse } from "../../../src/lib/ai-generation-str";
@@ -90,7 +90,7 @@ export async function prosaFrescaStr(
   });
   const newResults = {
     ...rec,
-    hallazgos: [...(rec.hallazgos ?? []), ...strHallazgos],
+    hallazgos: mergeHallazgosStr(rec.hallazgos, strHallazgos),
     tipoAnalisis: "short-term",
     veredicto: score.veredicto,
     francoScore: score,

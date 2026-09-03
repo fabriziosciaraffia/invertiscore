@@ -1,6 +1,6 @@
 import { calcShortTerm, type ShortTermInputs, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR, type FrancoScoreSTR } from "@/lib/engines/short-term-score";
-import { buildStrHallazgos } from "@/lib/str-hallazgos";
+import { buildStrHallazgos, mergeHallazgosStr } from "@/lib/str-hallazgos";
 import { buildAirbnbData } from "@/lib/api-helpers/analisis-pipeline";
 import { piePercentDesdeInputData } from "@/lib/analysis/pie-input-data";
 import type { ScoreSTRExtras } from "@/lib/analysis/veredicto-str-con-patch";
@@ -171,7 +171,7 @@ export function recomputeShortTermForLegacy(
     // distancia se mide contra el análisis que el usuario tiene en pantalla.
     veredictoCtx: { inputs, scoreExtras, asOf },
   });
-  const hallazgos = [...(result.hallazgos ?? []), ...strHallazgos];
+  const hallazgos = mergeHallazgosStr(result.hallazgos, strHallazgos);
 
   return {
     ...result,

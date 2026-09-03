@@ -12,7 +12,7 @@ import { config } from "dotenv";
 import path from "path";
 import { calcShortTerm } from "../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../src/lib/engines/short-term-score";
-import { buildStrHallazgos } from "../src/lib/str-hallazgos";
+import { buildStrHallazgos, mergeHallazgosStr } from "../src/lib/str-hallazgos";
 import { buildAirbnbData } from "../src/lib/api-helpers/analisis-pipeline";
 import { getComunaMedianaVentaUF, resolverCondicionMercado } from "../src/lib/comuna-stats";
 config({ path: path.resolve(process.cwd(), ".env.local") });
@@ -81,15 +81,21 @@ async function main() {
     if (recompute) {
       const uf = d.precioCompra / d.precioCompraUF;
       const airbnbData = buildAirbnbData(oldResults.airbnbRaw, uf);
-      const rec = calcShortTerm(buildInputs(d, airbnbData, uf) as any);
+      const inputs = buildInputs(d, airbnbData, uf);
+      const rec = calcShortTerm(inputs as any);
       const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, dormitorios: d.dormitorios, superficie: d.superficieUtil,
         regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro", lat: typeof d.lat === "number" ? d.lat : -33.4378, lng: typeof d.lng === "number" ? d.lng : -70.6504,
         revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue } as any);
       let mediana: { mediana: number | null; n: number } = { mediana: null, n: 0 };
       try { mediana = await getComunaMedianaVentaUF(sb, r.comuna as string, d.superficieUtil, d.dormitorios ?? null, uf, resolverCondicionMercado({ esNuevo: d.tipoPropiedad === "nuevo", antiguedad: d.antiguedad })); } catch { /* null */ }
       const str = buildStrHallazgos({ result: rec, francoScore: score, comuna: (r.comuna as string) || "", precioUF: d.precioCompraUF, superficieM2: d.superficieUtil,
-        piePct: d.piePct, tasaPct: d.tasaInteres, plazoAnios: d.plazoCredito, mediana, valorUF: uf, incluyeCorretaje: false });
-      hallazgos = [...(rec.hallazgos ?? []), ...str];
+        piePct: d.piePct, tasaPct: d.tasaInteres, plazoAnios: d.plazoCredito, mediana, valorUF: uf, incluyeCorretaje: false,
+        // veredictoCtx obligatorio desde la decisividad real: el MISMO input que produjo `rec`.
+        veredictoCtx: { inputs: inputs as any, scoreExtras: { dormitorios: d.dormitorios, superficie: d.superficieUtil,
+          regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro", lat: typeof d.lat === "number" ? d.lat : -33.4378,
+          lng: typeof d.lng === "number" ? d.lng : -70.6504, revenueP50: airbnbData.percentiles.revenue.p50,
+          monthlyRevenue: airbnbData.monthly_revenue } as any, asOf: new Date() } });
+      hallazgos = mergeHallazgosStr(rec.hallazgos, str);
       veredicto = score.veredicto; factorADR = rec.ejesAplicados?.factorADRTotal; exit = !!rec.exitScenario;
       medianaConf = mediana.mediana != null && mediana.n > 0; ai = r.ai_analysis;
     } else {

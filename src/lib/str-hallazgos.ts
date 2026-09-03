@@ -4,9 +4,13 @@
 // decisividad de los 4 DECISIVOS sale del desglose de 4 dimensiones del score.
 // Diseño congelado en of-e1a-piramide-str.md.
 //
-// DECISIVIDAD STR (decisión E.1a): decisividad>0 SOLO en los 4 que son 1:1 con una dim del
-// score (decisividad_dim = |dimScore−50|/50). Los 8 restantes van solo-lectura (0.000) con
-// magnitud para el sort. No se construye un calcDecisividades STR.
+// DECISIVIDAD STR (03-sep-2026, goal "decisividad real"): la calcula calcDecisividadesSTR
+// (decisividades-str.ts) por NEUTRALIZACIÓN, con el mismo contrato y las mismas constantes
+// que calcDecisividades en LTR (|Δscore|/25, piso 0,85 si flipea el veredicto o desarma
+// un gate, magnitud como desempate). Siete hallazgos tienen knob; los seis informativos
+// (INFORMATIVOS_STR) declaran 0 en su builder. Hasta acá la decisividad de los 4
+// "decisivos" se inyectaba desde |dimScore−50|/50 — un número sin relación con lo que
+// cada hallazgo mide (ver la cabecera de decisividades-str.ts).
 
 import type { Hallazgo } from "./types";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
@@ -28,16 +32,34 @@ import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import { buildHallazgoPlusvalia, getPlusvaliaRef, resolvePlusvaliaComuna, PLUSVALIA_BANDA_DEFAULT } from "./plusvalia-hallazgo";
 import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
-import { classifyFinancingHealth, LEVEL_RANK } from "./financing-health";
+import { classifyFinancingHealth } from "./financing-health";
 import { buildHallazgoDistanciaVeredictoStr } from "./distancia-veredicto-str-hallazgo";
 import { esCasoPrecioJustoStr } from "./distancia-veredicto-hallazgo";
 import { veredictoStrConPatch, type VeredictoStrCtx } from "./analysis/veredicto-str-con-patch";
+import { calcDecisividadesSTR } from "./decisividades-str";
+import type { DecisividadFactor } from "./analysis";
 import { COMISION_AIRBNB } from "./engines/short-term-engine";
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-/** decisividad_dim = |dimScore−50|/50: cuánto tira la dimensión el veredicto desde el neutro. */
-const decisividadDim = (dimScore: number): number =>
-  Number.isFinite(dimScore) ? clamp01(Math.abs(dimScore - 50) / 50) : 0;
+
+/** Aplica el factor calibrado a un hallazgo ya construido: decisividad y magnitud
+ *  (Δscore crudo, desempate del orden único) — el mismo par que LTR pasa a sus builders.
+ *  Sin factor (no aplicable) ⇒ 0 / 0. */
+function calibrar<H extends Hallazgo>(h: H | null, f: DecisividadFactor | undefined): H | null {
+  if (!h) return h;
+  return { ...h, decisividad: f?.decisividad ?? 0, magnitudContinua: f?.magnitud ?? 0 };
+}
+
+/**
+ * Une los hallazgos que siembra el motor (`result.hallazgos`: hoy solo capex) con los del
+ * assembler. Los del assembler GANAN por id: el capex que el motor siembra con decisividad
+ * 0 se reemplaza por su copia calibrada. Fuente única del concat para los seis call sites
+ * (pipeline, recompute legacy, golden, regen, sweep, prosa fresca).
+ */
+export function mergeHallazgosStr(motor: Hallazgo[] | null | undefined, str: Hallazgo[]): Hallazgo[] {
+  const ids = new Set(str.map((h) => h.id));
+  return [...(motor ?? []).filter((h) => h && !ids.has(h.id)), ...str];
+}
 
 export interface BuildStrHallazgosCtx {
   result: ShortTermResult;
@@ -54,14 +76,13 @@ export interface BuildStrHallazgosCtx {
   valorUF: number;  // UF→CLP del momento (patrimonio CLP↔UF, financing)
   incluyeCorretaje: boolean;
   /**
-   * Contexto para reevaluar el veredicto con una palanca movida (hallazgo de distancia al
-   * veredicto). Se pasa el contexto ENTERO en vez de los campos sueltos para que el
-   * hallazgo no pueda medir contra un input distinto del que produjo el veredicto.
-   *
-   * OPCIONAL: sin él el hallazgo se omite (pirámide N−1), que es el comportamiento correcto
-   * para los call sites de auditoría que reconstruyen el resultado sin el input completo.
+   * Contexto para reevaluar el veredicto con una palanca movida: lo consumen la distancia
+   * al veredicto y la decisividad real. Se pasa el contexto ENTERO en vez de los campos
+   * sueltos para que ningún hallazgo pueda medir contra un input distinto del que produjo
+   * el veredicto. OBLIGATORIO desde el 03-sep-2026: sin él no hay decisividad, y una
+   * pirámide sin decisividad no es una pirámide más corta, es una pirámide ordenada al azar.
    */
-  veredictoCtx?: VeredictoStrCtx;
+  veredictoCtx: VeredictoStrCtx;
 }
 
 /**
@@ -75,31 +96,46 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
   const out: (Hallazgo | null)[] = [];
   if (!base) return [];
 
-  // ── 4 DECISIVOS (decisividad = dim del score) ──
+  // Decisividad real: una sola llamada sobre el MISMO ctx (y la misma base) que produjo el
+  // veredicto. Los siete con knob reciben su factor; el resto declara 0 abajo.
+  const dec = calcDecisividadesSTR(
+    ctx.veredictoCtx,
+    { comuna: ctx.comuna || "", medianaUfM2: ctx.mediana.mediana, medianaN: ctx.mediana.n, superficieM2: ctx.superficieM2, valorUF: ctx.valorUF },
+    { result: r, francoScore: fs },
+  );
+
+  // ── 4 con knob propio del corto (calibrados) ──
   out.push(
-    buildHallazgoRentabilidadStr({
-      capRatePct: base.capRate * 100,
-      decisividad: decisividadDim(fs.desglose.rentabilidad.score),
-      modalidad: "str",
-    }),
+    calibrar(
+      buildHallazgoRentabilidadStr({
+        capRatePct: base.capRate * 100,
+        decisividad: dec.rentabilidad_str?.decisividad ?? 0,
+        modalidad: "str",
+      }),
+      dec.rentabilidad_str,
+    ),
   );
   // fix-occfuente-override 2026-07 — procedencia real de la ocupación del base.
   const occEsOverride = r.occFuente === "override";
   const occObservadaPct = (typeof r.occObservada === "number" ? r.occObservada : base.ocupacionReferencia) * 100;
   const occObservadaEsFallback = r.occObservadaFuente === "fallback_mercado";
   out.push(
-    buildHallazgoFlujoStr({
-      flujoMensualCLP: base.flujoCajaMensual,
-      decisividad: decisividadDim(fs.desglose.sostenibilidad.score),
-      modalidad: "str",
-      occEsOverride,
-      occDefinidaPct: base.ocupacionReferencia * 100,
-      occObservadaPct,
-    }),
+    calibrar(
+      buildHallazgoFlujoStr({
+        flujoMensualCLP: base.flujoCajaMensual,
+        decisividad: dec.flujo_str?.decisividad ?? 0,
+        modalidad: "str",
+        occEsOverride,
+        occDefinidaPct: base.ocupacionReferencia * 100,
+        occObservadaPct,
+      }),
+      dec.flujo_str,
+    ),
   );
   {
     const bandaComunal = STR_UNIVERSO_OCC[ctx.comuna];
     out.push(
+      calibrar(
       buildHallazgoOcupacionVsBanda({
         ocupacionPct: base.ocupacionReferencia * 100, // = override cuando lo hay (consistente con el score, que factura ocupacionFinal)
         bandaComunalPct: typeof bandaComunal === "number" ? bandaComunal * 100 : NaN,
@@ -109,27 +145,32 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
         occObservadaPct,
         occObservadaEsFallback,
         comuna: ctx.comuna || "",
-        decisividad: decisividadDim(fs.desglose.factibilidad.score),
+        decisividad: dec.ocupacion_vs_banda?.decisividad ?? 0,
         modalidad: "str",
       }),
+      dec.ocupacion_vs_banda,
+      ),
     );
   }
   {
     const comp = r.comparativa;
     if (comp) {
       out.push(
-        buildHallazgoVentajaVsLtr({
-          sobreRentaPct: comp.sobreRentaPct,
-          sobreRentaCLP: comp.sobreRenta,
-          ltrNoiMensual: comp.ltr?.noiMensual ?? NaN,
-          decisividad: decisividadDim(fs.desglose.ventaja.score),
-          modalidad: "str",
-        }),
+        calibrar(
+          buildHallazgoVentajaVsLtr({
+            sobreRentaPct: comp.sobreRentaPct,
+            sobreRentaCLP: comp.sobreRenta,
+            ltrNoiMensual: comp.ltr?.noiMensual ?? NaN,
+            decisividad: dec.ventaja_vs_ltr?.decisividad ?? 0,
+            modalidad: "str",
+          }),
+          dec.ventaja_vs_ltr,
+        ),
       );
     }
   }
 
-  // ── SOLO-LECTURA propios (decisividad 0) ──
+  // ── INFORMATIVOS propios del corto (0 declarado en el builder) ──
   out.push(
     buildHallazgoSensibilidadStr({
       breakEvenPctDelMercado: r.breakEvenPctDelMercado,
@@ -148,24 +189,25 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
     }
   }
 
-  // ── HEREDADOS (reuso de builders LTR, solo-lectura, modalidad "str") ──
-  // estructura_financiamiento — mismo crédito hipotecario que LTR.
+  // ── HEREDADOS (reuso de builders LTR, modalidad "str") ──
+  // estructura_financiamiento — mismo crédito hipotecario que LTR; calibrado (pie → 25%,
+  // tasa → mercado), porque en el corto el pie mueve el dividendo, el flujo y los gates.
   {
     const fh = classifyFinancingHealth(
       { pie_pct: ctx.piePct, tasa_pct: ctx.tasaPct, precio_uf: ctx.precioUF, plazo_anios: ctx.plazoAnios },
       ctx.valorUF,
     );
-    const magFin = clamp01(LEVEL_RANK[fh.overall] / 3);
     out.push(
       buildHallazgoEstructuraFinanciamiento({
         financingHealth: fh,
         modalidad: "str",
-        decisividad: 0,
-        magnitudContinua: magFin,
+        decisividad: dec.estructura_financiamiento?.decisividad ?? 0,
+        magnitudContinua: dec.estructura_financiamiento?.magnitud ?? 0,
       }),
     );
   }
-  // sobreprecio — precio/mediana comunal idéntico a LTR (solo si hay mediana confiable).
+  // sobreprecio — precio/mediana comunal idéntico a LTR (solo si hay mediana confiable);
+  // calibrado: precio → mediana × superficie.
   {
     const sujetoUfM2 = ctx.superficieM2 > 0 ? ctx.precioUF / ctx.superficieM2 : NaN;
     const confiable = ctx.mediana.mediana != null && ctx.mediana.n > 0;
@@ -176,11 +218,20 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
       n: ctx.mediana.n,
     });
     if (pvc.confiable && pvc.desviacionPct != null) {
-      const mag = clamp01(Math.abs(pvc.desviacionPct) / SOBREPRECIO_BANDA_DEFAULT);
-      out.push(buildHallazgoSobreprecio(pvc, 0, mag, ctx.comuna || "", SOBREPRECIO_BANDA_DEFAULT));
+      out.push(
+        buildHallazgoSobreprecio(
+          pvc,
+          dec.sobreprecio?.decisividad ?? 0,
+          dec.sobreprecio?.magnitud ?? 0,
+          ctx.comuna || "",
+          SOBREPRECIO_BANDA_DEFAULT,
+        ),
+      );
     }
   }
-  // plusvalia — histórica comunal idéntica a LTR.
+  // plusvalia — histórica comunal idéntica a LTR. INFORMATIVO en el corto (0 declarado):
+  // el motor STR proyecta con la tasa global y no lee la histórica comunal, así que
+  // neutralizarla no mueve nada. La magnitud propia queda como desempate.
   {
     const { anualizada, tieneData, cobertura, nivelUfM2, nivelPeriodo } = resolvePlusvaliaComuna(ctx.comuna || "");
     const ref = getPlusvaliaRef();
@@ -201,7 +252,15 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
     );
   }
 
-  // ── INTEGRADORES (condicionales a exitScenario, solo-lectura) ──
+  // ── capex_puesta_a_punto — lo siembra calcShortTerm en result.hallazgos con decisividad
+  //    0 (el motor no tiene ctx). Acá se re-emite CALIBRADO (CapEx → 0 puede desarmar un
+  //    gate de cash-on-cash); mergeHallazgosStr reemplaza la copia del motor por esta. ──
+  {
+    const capexMotor = r.hallazgos?.find((h) => h.id === "capex_puesta_a_punto");
+    if (capexMotor && dec.capex_puesta_a_punto) out.push(calibrar(capexMotor, dec.capex_puesta_a_punto));
+  }
+
+  // ── INTEGRADORES (condicionales a exitScenario, informativos: 0 declarado) ──
   const exit = r.exitScenario;
   if (exit) {
     // Pie cero (rama A): TIR 'no_aplica' ⇒ hallazgo ausente, igual que LTR
@@ -226,12 +285,11 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
     );
   }
 
-  // ── DISTANCIA AL VEREDICTO (solo-lectura, decisividad 0) ──
+  // ── DISTANCIA AL VEREDICTO (informativo, decisividad 0 declarada) ──
   // Espejo STR del hallazgo LTR: mide cuánto tiene que mejorar una palanca para que el
   // veredicto SUBA. Usa el closure `veredictoStrConPatch`, que NO reconstruye hallazgos →
-  // sin recursión con este assembler. Ausente en COMPRAR (no hay veredicto superior) y
-  // cuando el caller no pasa el contexto ⇒ pirámide N−1.
-  if (ctx.veredictoCtx) {
+  // sin recursión con este assembler. Ausente en COMPRAR (no hay veredicto superior).
+  {
     const vc = ctx.veredictoCtx;
     // CASO PRECIO-JUSTO STR (§1.12.4) — detección de fuente única
     // (esCasoPrecioJustoStr): el sobreprecio ya viene sembrado en la lista con la

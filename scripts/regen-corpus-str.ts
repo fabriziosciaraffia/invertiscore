@@ -26,7 +26,7 @@ import { calcShortTerm } from "../src/lib/engines/short-term-engine";
 import type { ShortTermResult, STRVerdict } from "../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../src/lib/engines/short-term-score";
 import type { FrancoScoreSTR } from "../src/lib/engines/short-term-score";
-import { buildStrHallazgos } from "../src/lib/str-hallazgos";
+import { buildStrHallazgos, mergeHallazgosStr } from "../src/lib/str-hallazgos";
 import { buildAirbnbData } from "../src/lib/api-helpers/analisis-pipeline";
 import { getComunaMedianaVentaUF, resolverCondicionMercado } from "../src/lib/comuna-stats";
 import { generateStrProse } from "../src/lib/ai-generation-str";
@@ -96,7 +96,7 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
       asOf: new Date(),
     },
   });
-  const hallazgos = [...(rec.hallazgos ?? []), ...strHallazgos];
+  const hallazgos = mergeHallazgosStr(rec.hallazgos, strHallazgos);
   const newResults = {
     ...rec,
     hallazgos,

@@ -37,7 +37,7 @@ import {
   type HabilitacionSTR,
 } from "@/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
-import { buildStrHallazgos } from "@/lib/str-hallazgos";
+import { buildStrHallazgos, mergeHallazgosStr } from "@/lib/str-hallazgos";
 import { getAirbnbEstimate } from "@/lib/airbnb/get-estimate";
 import type { AirbnbEstimateData, AirbnbEstimateDirectData } from "@/lib/airbnb/types";
 
@@ -736,7 +736,7 @@ export async function buildShortTermAnalysisRow(
       asOf: asOfPipeline,
     },
   });
-  const hallazgosSTR = [...(result.hallazgos ?? []), ...strHallazgos];
+  const hallazgosSTR = mergeHallazgosStr(result.hallazgos, strHallazgos);
   if (timing) timing.motor_ms = Date.now() - tMotor;
 
   const nombre = `Renta Corta - ${body.direccion || body.comuna}`;

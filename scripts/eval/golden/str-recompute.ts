@@ -16,7 +16,7 @@ import fs from "fs";
 import path from "path";
 import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../../../src/lib/engines/short-term-score";
-import { buildStrHallazgos } from "../../../src/lib/str-hallazgos";
+import { buildStrHallazgos, mergeHallazgosStr } from "../../../src/lib/str-hallazgos";
 import type { Hallazgo } from "../../../src/lib/types";
 import { metricaValorONull, esMetricaNoAplica } from "../../../src/lib/types";
 import { STR_GE_SEEDS, loadFrozen, type FrozenFixture, type Sintesis, type StrGeSeed } from "./str-seeds";
@@ -26,6 +26,7 @@ import { buildHallazgoEstructuraCostosStr } from "../../../src/lib/estructura-co
 // La MISMA transformación raw→airbnbData que producción (sin réplica que pueda driftar).
 import { buildAirbnbData } from "../../../src/lib/api-helpers/analisis-pipeline";
 import { METHODOLOGY_VERSION_ACTUAL } from "../../../src/lib/modelo-costos";
+import { INFORMATIVOS_STR } from "../../../src/lib/decisividades-str";
 function buildInputs(d: any, airbnbData: any, uf: number) {
   // Versión de metodología: la del frozen si la trae, si no la ACTUAL. Los frozen
   // son filas reales anteriores al gate (sin el campo): sin este default el golden
@@ -90,7 +91,6 @@ function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any; reg: string 
 }
 
 interface Check { rule: string; pass: boolean; detail: string }
-const decisivos = new Set(["rentabilidad_str", "flujo_str", "ocupacion_vs_banda", "ventaja_vs_ltr"]);
 
 function invariantes(hz: Hallazgo[], score: any, rec: any, medianaConfiable: boolean): Check[] {
   const out: Check[] = [];
@@ -133,10 +133,20 @@ function invariantes(hz: Hallazgo[], score: any, rec: any, medianaConfiable: boo
     });
   }
 
-  // BS3 — decisividad>0 SOLO en los 4 dim-outcomes.
-  let bs3 = true;
-  for (const h of hz) { const dec = decisivos.has(h.id); if ((dec && h.decisividad <= 0) || (!dec && h.decisividad !== 0)) bs3 = false; }
-  out.push({ rule: "BS3.decisividad", pass: bs3, detail: bs3 ? "solo los 4 con dec>0" : "violación decisividad/solo-lectura" });
+  // BS3 — contrato de decisividad real (03-sep-2026, espejo de LTR): los informativos
+  // (INFORMATIVOS_STR) declaran 0; todo el resto vive en [0,1]; y si un hallazgo pasa el
+  // piso 0,85 es porque flipea el veredicto o desarma un gate, nunca por inyección de una
+  // dimensión del score. Además, al menos UN hallazgo con knob tiene decisividad > 0: una
+  // pirámide toda en cero es una pirámide sin orden.
+  const bs3Fallas: string[] = [];
+  for (const h of hz) {
+    const inf = (INFORMATIVOS_STR as readonly string[]).includes(h.id);
+    if (inf && h.decisividad !== 0) bs3Fallas.push(`${h.id} informativo con ${h.decisividad}`);
+    if (!(h.decisividad >= 0 && h.decisividad <= 1)) bs3Fallas.push(`${h.id} fuera de [0,1]: ${h.decisividad}`);
+    if (!inf && h.decisividad > 0 && (h.magnitudContinua ?? 0) > h.decisividad + 1e-9) bs3Fallas.push(`${h.id} magnitud ${h.magnitudContinua} > decisividad ${h.decisividad}`);
+  }
+  if (!hz.some((h) => !(INFORMATIVOS_STR as readonly string[]).includes(h.id) && h.decisividad > 0)) bs3Fallas.push("ningún hallazgo con knob tiene decisividad > 0");
+  out.push({ rule: "BS3.decisividad", pass: bs3Fallas.length === 0, detail: bs3Fallas.length ? bs3Fallas.join(" · ") : "informativos en 0, calibrados en [0,1]" });
 
   // BS4 — omisiones.
   const has = (id: string) => hz.some((h) => h.id === id);
@@ -216,10 +226,10 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
   // `veredictoCtx` es obligatorio en el golden aunque el assembler lo acepte opcional: sin
   // él el hallazgo de distancia al veredicto se omite y la red de seguridad mediría una
   // pirámide más corta que la de producción, en silencio.
-  const hz = [...(rec.hallazgos ?? []), ...buildStrHallazgos({ result: rec, francoScore: score, comuna: d.comuna || "",
+  const hz = mergeHallazgosStr(rec.hallazgos, buildStrHallazgos({ result: rec, francoScore: score, comuna: d.comuna || "",
     precioUF: d.precioCompraUF, superficieM2: d.superficieUtil, piePct: d.piePct, tasaPct: d.tasaInteres,
     plazoAnios: d.plazoCredito, mediana, valorUF: fx.uf, incluyeCorretaje: false,
-    veredictoCtx: { inputs, scoreExtras: scoreExtras as any, asOf: asOfGolden } })];
+    veredictoCtx: { inputs, scoreExtras: scoreExtras as any, asOf: asOfGolden } }));
   return { rec, score, hz, mediana };
 }
 

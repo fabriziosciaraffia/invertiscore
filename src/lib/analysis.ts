@@ -1796,9 +1796,11 @@ export interface Decisividades {
 // Divisor de normalización: 25 pts = una banda de veredicto (70→45). |Δscore|≥25
 // satura a 1.0 (mueve una banda entera). Floor de factor vinculante: 0.85 (sobre
 // "decisivo" ≥0.5, bajo 1.0 reservado a vinculante + Δ enorme). Pie neutro: 25%.
-const DECISIVIDAD_DIVISOR = 25;
-const DECISIVIDAD_FLOOR = 0.85;
-const NEUTRAL_PIE_PCT = 25;
+// Exportadas: calcDecisividadesSTR (decisividades-str.ts) usa el MISMO contrato y las
+// mismas constantes — una sola escala de decisividad para los dos motores.
+export const DECISIVIDAD_DIVISOR = 25;
+export const DECISIVIDAD_FLOOR = 0.85;
+export const NEUTRAL_PIE_PCT = 25;
 
 const clamp01Dec = (v: number) => Math.max(0, Math.min(1, v));
 

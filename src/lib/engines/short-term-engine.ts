@@ -447,7 +447,7 @@ const MESES = [
 
 const GASTOS_CIERRE_PCT = 0.02;
 export const COMISION_AIRBNB = 0.03;
-const COMISION_LTR = 0.05;
+export const COMISION_LTR = 0.05;
 // Ramp-up consolidado: ver `STR_RAMP_UP` exportado más abajo. Esta variable
 // queda como alias interno para no tocar callsites legacy.
 // Curva 6 meses: ocupación llega al 100% del target estabilizado en el mes 6.
