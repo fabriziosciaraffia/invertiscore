@@ -619,6 +619,19 @@ export function CapitulosInversion({
           const composicionCierra = patrimonio > 0 && amort >= 0 && plusvaliaNeta >= 0 && mult >= 1;
           const pctFirme = patrimonio > 0 ? Math.round(((pieCLP + amort) / patrimonio) * 100) : 0;
           const inversionInicial = exit.inversionInicial ?? pieCLP;
+          // Descomposición de la plata del día 1, tal cual la suma el motor:
+          // pie + gastos de compra (cierre + corretaje) + puesta a punto === inversionInicial.
+          // `gastosCompraCLP` lo emite calcMetrics desde el mismo lugar que
+          // calcInversionInicialCLP; la resta es FALLBACK para filas persistidas
+          // anteriores al campo, no la fuente.
+          const capexDia1 = m.capexPuestaAPuntoCLP ?? 0;
+          const gastosCompra = m.gastosCompraCLP ?? Math.max(0, inversionInicial - pieCLP - capexDia1);
+          if (process.env.NODE_ENV !== "production" && pieCLP + gastosCompra + capexDia1 !== inversionInicial) {
+            console.warn(`[CapitulosInversion] día 1 no cierra: ${pieCLP} + ${gastosCompra} + ${capexDia1} ≠ ${inversionInicial}`);
+          }
+          const capexSub = capexV
+            ? `${capexRango ? `${capexRangoUF}, corre con UF ${ufN(capexV.montoUF)}` : `UF ${ufN(capexV.montoUF)}${capexV.origen === "override" ? ", tu cotización" : ""}`} — no vuelve`
+            : "no vuelve";
           const oport = costoOportunidad(inversionInicial, anios);
           const ltv = 0.7;
           const nuevoCredito = Math.round(exit.valorVenta * ltv);
@@ -673,7 +686,10 @@ export function CapitulosInversion({
                         { tono: "plus", pct: pctSeg(plusvaliaNeta) },
                       ]}
                       filas={[
-                        ...(pieCLP > 0 ? [{ tono: "pie" as const, k: "Tu pie", sub: "lo que desembolsas el día 1, vuelve entero", v: compact(pieCLP), tag: "firme" }] : []),
+                        ...(pieCLP > 0 ? [{ tono: "pie" as const, k: "Tu pie", sub: "lo que desembolsaste el día 1, vuelve entero", v: compact(pieCLP), tag: "firme" }] : []),
+                        // Lo demás que pusiste el día 1 y que NO es patrimonio: se lista, no entra a la barra.
+                        ...(gastosCompra > 0 ? [{ tono: "gastos" as const, k: "Gastos de compra", sub: "notaría, CBR, corretaje — no vuelven", v: compact(gastosCompra), tag: "no vuelve" }] : []),
+                        ...(capexDia1 > 0 ? [{ tono: "capex" as const, k: "Puesta a punto", sub: capexSub, v: compact(capexDia1), tag: "no vuelve" }] : []),
                         { tono: "amort", k: "Deuda que amortizó el arriendo", sub: "sale del contrato, no de una proyección", v: compact(amort), tag: "firme" },
                         {
                           tono: "plus",
@@ -686,9 +702,21 @@ export function CapitulosInversion({
                       total={{ k: `Tu parte a ${anios} años`, v: money(patrimonio) }}
                       nota={{
                         texto:
+                          // Con puesta a punto, la frase la nombra aparte de los gastos de compra;
+                          // sin CapEx conserva su forma anterior.
                           bolsillo > 0
-                            ? `Para llegar acá pusiste ${compact(aportado)}: ${compact(inversionInicial)} el día 1 y ${compact(bolsillo)} mes a mes. Los ${compact(aportado - pieCLP)} de gastos de compra y aportes pagaron intereses y costos, no vuelven como patrimonio.`
-                            : `Para llegar acá pusiste ${compact(aportado)} el día 1${aportado - pieCLP > 0 ? `; los ${compact(aportado - pieCLP)} de gastos de compra pagaron costos, no vuelven como patrimonio` : ""}.`,
+                            ? `Para llegar acá pusiste ${compact(aportado)}: ${compact(inversionInicial)} el día 1 y ${compact(bolsillo)} mes a mes. ${
+                                capexDia1 > 0
+                                  ? `Los ${compact(gastosCompra)} de gastos de compra, ${compact(capexDia1)} de puesta a punto y ${compact(bolsillo)} de aportes pagaron intereses y costos, no vuelven como patrimonio.`
+                                  : `Los ${compact(aportado - pieCLP)} de gastos de compra y aportes pagaron intereses y costos, no vuelven como patrimonio.`
+                              }`
+                            : `Para llegar acá pusiste ${compact(aportado)} el día 1${
+                                capexDia1 > 0
+                                  ? `; ${compact(gastosCompra)} de gastos de compra y ${compact(capexDia1)} de puesta a punto pagaron costos, no vuelven como patrimonio`
+                                  : aportado - pieCLP > 0
+                                    ? `; los ${compact(aportado - pieCLP)} de gastos de compra pagaron costos, no vuelven como patrimonio`
+                                    : ""
+                              }.`,
                         v: v.sinCapitalPropio ? undefined : `×${mult2(mult)}`,
                       }}
                     />

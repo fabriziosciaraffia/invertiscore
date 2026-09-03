@@ -501,6 +501,8 @@ export function TokensHallazgos() {
       .ba-seg{height:100%;position:relative}
       .ba-seg.pie,.ba-sw.pie{background:var(--doc-neutral)} .ba-seg.amort,.ba-sw.amort{background:var(--doc-good)} .ba-seg.plus,.ba-sw.plus{background:var(--doc-good);opacity:.45}
       .ba-seg.plus::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.35) 5px,rgba(255,255,255,.35) 10px)}
+      .ba-sw.gastos,.ba-seg.gastos{background:var(--doc-line2)} .ba-sw.capex,.ba-seg.capex{background:var(--doc-line2)}
+      .ba-sw.capex::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.5) 3px,rgba(255,255,255,.5) 6px)}
       .ba-leg{margin-top:14px}
       .ba-row{display:grid;grid-template-columns:12px 1fr auto;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--doc-line)}
       .ba-row:last-child{border-bottom:none}

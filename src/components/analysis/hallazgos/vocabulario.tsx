@@ -902,7 +902,9 @@ export function LineaTiempo({ hitos, deltas, lectura }: { hitos: HitoLinea[]; de
   );
 }
 
-export type TonoApilado = "pie" | "amort" | "plus";
+// "gastos" y "capex" son filas de la leyenda (plata del día 1 que NO vuelve como
+// patrimonio); no son segmentos de la barra, que sigue siendo pie + amort + plus.
+export type TonoApilado = "pie" | "amort" | "plus" | "gastos" | "capex";
 
 /** Barra apilada con llaves arriba y leyenda abajo (propuesta-04): de dónde sale
  *  tu parte, firme vs proyectado. Termina con el total sobre regla gruesa y la
