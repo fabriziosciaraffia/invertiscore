@@ -16,7 +16,7 @@ import type {
   Hallazgo,
   HallazgoDistanciaVeredicto,
 } from "@/lib/types";
-import { ordenarHallazgosDocumento } from "@/components/analysis/PiramideHallazgos";
+import { ordenarHallazgosDocumento } from "@/lib/orden-hallazgos";
 import { fmtUF, fmtMoney } from "@/components/analysis/utils";
 import { metricaDisplay, metricaODefault, metricaValorONull } from "@/lib/types";
 import { calcDividendo } from "@/lib/analysis";

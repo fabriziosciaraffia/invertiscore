@@ -23,7 +23,7 @@ import type { AIAnalysisSTRv2, AIAnalysisV2, AISection, FullAnalysisResult, Hall
 import { recomputeResultsForLegacy } from "../../../src/lib/analysis/recompute-results-for-legacy";
 import { recomputeShortTermForLegacy } from "../../../src/lib/analysis/recompute-short-term-for-legacy";
 import { resolveUfForAnalysis } from "../../../src/lib/uf";
-import { ordenarHallazgosPiramide, piramideLayout } from "../../../src/components/analysis/PiramideHallazgos";
+import { ordenarHallazgosPiramide, piramideLayout } from "../../../src/lib/orden-hallazgos";
 import { ordenarHallazgosPiramideSTR } from "../../../src/lib/piramide-orden-str";
 import { findingDisplay } from "../../../src/components/analysis/GenericFindingCard";
 import { describirMotivosSTR, describirMotivosLTR } from "../../../src/lib/no-cierra-copy";

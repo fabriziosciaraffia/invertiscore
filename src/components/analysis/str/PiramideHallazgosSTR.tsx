@@ -13,7 +13,7 @@
 
 import type { Hallazgo } from "@/lib/types";
 import { GenericFindingCard } from "@/components/analysis/GenericFindingCard";
-import { filasNivel3 } from "@/components/analysis/PiramideHallazgos";
+import { filasNivel3 } from "@/lib/orden-hallazgos";
 import { anchorHallazgo, numeroHallazgo } from "@/lib/orden-hallazgos";
 // Orden extraído a módulo puro server-safe (lo consume también la vista documento).
 // Re-exportado acá para no romper los importadores (results-client, DrawerSTR seq).

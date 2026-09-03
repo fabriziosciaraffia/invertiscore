@@ -5,7 +5,6 @@ import {
   Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, ComposedChart, ReferenceLine,
 } from "recharts";
-import { useSimulationOpcional } from "@/contexts/SimulationContext";
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
 import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
 import { fmtAxisMoney, fmtMoney } from "./utils";
@@ -51,8 +50,8 @@ export function PatrimonioChart({
    *  composición de abajo). */
   capitulo?: boolean;
 }) {
-  const sim = useSimulationOpcional();
-  const plazoAnios = plazoFijo ?? sim?.plazoAnios ?? 10;
+  // T5: sin SimulationContext (murió con los sliders de T3); el horizonte es fijo.
+  const plazoAnios = plazoFijo ?? 10;
 
   // Serie extraída a builder puro (src/lib/patrimonio-series.ts) — fuente única
   // compartida con la vista documento (SVG estático). Comportamiento idéntico.

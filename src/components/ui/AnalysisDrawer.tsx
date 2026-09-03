@@ -39,20 +39,8 @@ import {
   type ZonaDial,
   type BordeDial,
 } from "@/components/analysis/hallazgos/vocabulario";
-import {
-  DrawerTIRLtr,
-  DrawerSensibilidadLtr,
-  DrawerDistanciaLtr,
-  DrawerPatrimonioLtr,
-  DrawerPlusvaliaLtr,
-} from "@/components/analysis/drawers/DrawersPropios";
-import type {
-  HallazgoTIR,
-  HallazgoSensibilidad,
-  HallazgoPatrimonio,
-  HallazgoDistanciaVeredicto,
-  HallazgoPlusvalia,
-} from "@/lib/types";
+import { DrawerSensibilidadLtr, DrawerDistanciaLtr } from "@/components/analysis/drawers/DrawersPropios";
+import type { HallazgoSensibilidad, HallazgoDistanciaVeredicto } from "@/lib/types";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
 import { ZonaCeldas } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { ZoneMap } from "@/components/zone-insight/ZoneMap";
@@ -65,11 +53,10 @@ export type DrawerKey =
   | "largoPlazo"
   | "zona"
   | "capexPuestaAPunto"
-  // rama drawers-propios (F2) — 4 drawers propios LTR (dejan de cablear a hermanos).
-  | "tir"
+  // rama drawers-propios (F2). T5: tir / patrimonio / plusvalia murieron (sus cuerpos
+  // viven en los capítulos IV y V); sensibilidad y distancia siguen porque HeroLTR los
+  // monta directo.
   | "sensibilidad"
-  | "patrimonio"
-  | "plusvalia"
   // rama superficies-distancia: drawer propio del 10º hallazgo (LTR-only).
   | "distanciaVeredicto";
 
@@ -120,11 +107,8 @@ const DRAWER_META: Record<DrawerKey, { label: string }> = {
   largoPlazo: { label: "A 10 años" },
   zona: { label: "La zona" },
   capexPuestaAPunto: { label: "Puesta a punto" },
-  tir: { label: "Retorno total" },
   sensibilidad: { label: "Margen del veredicto" },
   distanciaVeredicto: { label: "Lo que te separa" },
-  patrimonio: { label: "Patrimonio a 10 años" },
-  plusvalia: { label: "Plusvalía de la comuna" },
 };
 
 function fmtCLP(n: number): string {
@@ -1847,22 +1831,14 @@ export function AnalysisDrawer({
     results.metrics?.hallazgoCapRate ??
     undefined;
 
-  // Hallazgos de los 4 drawers propios LTR (motor-seeded en results.hallazgos; plusvalía
-  // también puede venir del carrier de métricas). Alimentan plantillas determinísticas.
-  const tirHallazgo = results.hallazgos?.find((h): h is HallazgoTIR => h.id === "tir");
+  // Hallazgos de los drawers propios LTR que siguen vivos (motor-seeded en
+  // results.hallazgos). Alimentan plantillas determinísticas.
   const sensibilidadHallazgo = results.hallazgos?.find(
     (h): h is HallazgoSensibilidad => h.id === "sensibilidad",
-  );
-  const patrimonioHallazgo = results.hallazgos?.find(
-    (h): h is HallazgoPatrimonio => h.id === "patrimonio",
   );
   const distanciaHallazgo = results.hallazgos?.find(
     (h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto",
   );
-  const plusvaliaHallazgo =
-    results.hallazgos?.find((h): h is HallazgoPlusvalia => h.id === "plusvalia") ??
-    results.metrics?.hallazgoPlusvalia ??
-    undefined;
 
   // Fallback simétrico al de STR (DrawerContentSTR): si la card abrió un drawer propio
   // pero el hallazgo no está (fila legacy), se muestra una constatación honesta, no un
@@ -1900,9 +1876,6 @@ export function AnalysisDrawer({
   // completa con el % real más abajo (drawerPregunta); las otras son estables.
   const sensibilidadTitle = "¿Cuánto aguanta tu veredicto?";
   const distanciaTitle = "¿Qué tendría que pasar para que suba?";
-  const patrimonioTitle = "¿Cuánto es tuyo a 10 años?";
-  const plusvaliaTitle = "¿Cuánto se ha valorizado la comuna?";
-  const tirTitle = "¿Por qué tu retorno no es el de un depósito?";
 
   // Hallazgo estructura (motor-seeded, siempre presente en LTR) — alimenta el
   // fallback del drawer de reestructuración cuando no hay sección IA.
@@ -1924,17 +1897,11 @@ export function AnalysisDrawer({
           ? ({ pregunta: capexTitle } as { pregunta: string })
           : activeKey === "capRate"
             ? ({ pregunta: capRateTitle } as { pregunta: string })
-            : activeKey === "tir"
-              ? ({ pregunta: tirTitle } as { pregunta: string })
-              : activeKey === "sensibilidad"
-                ? ({ pregunta: sensibilidadTitle } as { pregunta: string })
-                : activeKey === "patrimonio"
-                  ? ({ pregunta: patrimonioTitle } as { pregunta: string })
-                  : activeKey === "plusvalia"
-                    ? ({ pregunta: plusvaliaTitle } as { pregunta: string })
-                    : activeKey === "distanciaVeredicto"
-                      ? ({ pregunta: distanciaTitle } as { pregunta: string })
-                      : aiAnalysis?.[activeKey];
+            : activeKey === "sensibilidad"
+              ? ({ pregunta: sensibilidadTitle } as { pregunta: string })
+              : activeKey === "distanciaVeredicto"
+                ? ({ pregunta: distanciaTitle } as { pregunta: string })
+                : aiAnalysis?.[activeKey];
 
   // Override de pregunta por drawer + estado. La pregunta IA es genérica;
   // hardcoded varía según el "veredicto numérico" del bloque para evitar
@@ -1962,10 +1929,6 @@ export function AnalysisDrawer({
       if (gananciaSobreTotal < -1000) return `¿Cuánto pierdes a ${aniosPlazo} años?`;
       if (gananciaSobreTotal > 1000) return `¿Cuánto ganas a ${aniosPlazo} años?`;
       return `¿Vale la pena a ${aniosPlazo} años?`;
-    }
-    if (activeKey === "tir" && tirHallazgo) {
-      const tp = tirHallazgo.valor.tirPct.toFixed(1).replace(".", ",");
-      return `¿Por qué tu ${tp}% no es el ${tp}% de un depósito?`;
     }
     // Sin prosa no hay `section`: el header cae al label del drawer (DRAWER_META),
     // que es determinista. En modo inline este título ni se usa — lo muestra la
@@ -2069,12 +2032,6 @@ export function AnalysisDrawer({
           valorUF={valorUF}
         />
       )}
-      {activeKey === "tir" &&
-        (tirHallazgo ? (
-          <DrawerTIRLtr hallazgo={tirHallazgo} results={results} currency={currency} valorUF={valorUF} />
-        ) : (
-          faltaHallazgoLtr
-        ))}
       {activeKey === "sensibilidad" &&
         (sensibilidadHallazgo ? (
           <DrawerSensibilidadLtr hallazgo={sensibilidadHallazgo} results={results} currency={currency} valorUF={valorUF} />
@@ -2084,24 +2041,6 @@ export function AnalysisDrawer({
       {activeKey === "distanciaVeredicto" &&
         (distanciaHallazgo ? (
           <DrawerDistanciaLtr hallazgo={distanciaHallazgo} currency={currency} valorUF={valorUF} />
-        ) : (
-          faltaHallazgoLtr
-        ))}
-      {activeKey === "patrimonio" &&
-        (patrimonioHallazgo ? (
-          <DrawerPatrimonioLtr hallazgo={patrimonioHallazgo} results={results} currency={currency} valorUF={valorUF} />
-        ) : (
-          faltaHallazgoLtr
-        ))}
-      {activeKey === "plusvalia" &&
-        (plusvaliaHallazgo ? (
-          <DrawerPlusvaliaLtr
-            hallazgo={plusvaliaHallazgo}
-            results={results}
-            currency={currency}
-            valorUF={valorUF}
-            comuna={comuna ?? (inputData.comuna || "la comuna")}
-          />
         ) : (
           faltaHallazgoLtr
         ))}

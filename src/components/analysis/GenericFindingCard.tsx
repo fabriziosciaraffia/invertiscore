@@ -24,20 +24,8 @@ import { distanciaFindingDisplay } from "@/lib/distancia-copy";
 // título calza con ella. Sin entrada ⇒ sin affordance "Ver detalle" (mejor puerta
 // ausente que puerta equivocada). Exportado (fix-drawers): la navegación prev/next
 // deriva de este mapa + el orden de la pirámide (un solo orden de verdad).
-export const HALLAZGO_DRAWER: Partial<Record<Hallazgo["id"], DrawerKey>> = {
-  flujo_mensual: "costoMensual",
-  cap_rate: "capRate",
-  sobreprecio: "negociacion",
-  capex_puesta_a_punto: "capexPuestaAPunto",
-  estructura_financiamiento: "reestructuracion",
-  // rama drawers-propios (F2): los 4 que en rama-1 quedaron desconectados (por cablear
-  // a un hermano cuyo título no calzaba) ahora abren su DRAWER PROPIO, motor-templated.
-  tir: "tir",
-  sensibilidad: "sensibilidad",
-  patrimonio: "patrimonio",
-  distancia_veredicto: "distanciaVeredicto",
-  plusvalia: "plusvalia",
-};
+// T5: HALLAZGO_DRAWER (hallazgo → drawer LTR) murió con la pirámide y la secuencia
+// prev/next; la pirámide STR pasa su propio `drawerMap`.
 
 // ── Formato (tuteo neutro, coma decimal chilena) ──────────────────────────────
 const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
@@ -394,10 +382,9 @@ function direccionMeta(dir: string): { color: string; label: string } {
 }
 
 // ── Componente ────────────────────────────────────────────────────────────────
-// Genérico sobre el tipo de drawer key `K` (E.2): LTR usa `DrawerKey` (default,
-// vía HALLAZGO_DRAWER); la pirámide STR pasa su propio `drawerMap` con claves
-// `DrawerKeySTR` + un `onOpenDrawer` tipado a esas claves. Sin `drawerMap`, cae
-// al mapa LTR — backward-compat total con los callers existentes.
+// Genérico sobre el tipo de drawer key `K` (E.2): la pirámide STR pasa su propio
+// `drawerMap` con claves `DrawerKeySTR` + un `onOpenDrawer` tipado a esas claves. Sin
+// `drawerMap` no hay affordance de detalle (T5: el mapa LTR murió con la pirámide).
 export function GenericFindingCard<K extends string = DrawerKey>({
   hallazgo,
   nivel,
@@ -433,8 +420,8 @@ export function GenericFindingCard<K extends string = DrawerKey>({
   bodyDuplicado?: boolean;
   /** Abre el drawer de detalle del hallazgo. Sin este callback, no hay affordance. */
   onOpenDrawer?: (key: K) => void;
-  /** Mapa hallazgo → drawer key. Default: HALLAZGO_DRAWER (LTR). La pirámide STR
-   *  pasa el suyo (claves DrawerKeySTR). */
+  /** Mapa hallazgo → drawer key (la pirámide STR pasa el suyo, claves DrawerKeySTR).
+   *  Sin mapa no hay detalle. */
   drawerMap?: Partial<Record<Hallazgo["id"], K>>;
 }) {
   const d = findingDisplay(hallazgo, currency, valorUF);
@@ -445,7 +432,7 @@ export function GenericFindingCard<K extends string = DrawerKey>({
   const kpiColor = d.kpiRed ? "text-signal-red" : "";
 
   // Affordance de detalle: solo cuando el hallazgo mapea a un drawer Y hay handler.
-  const effectiveMap = (drawerMap ?? HALLAZGO_DRAWER) as Partial<Record<Hallazgo["id"], K>>;
+  const effectiveMap = (drawerMap ?? {}) as Partial<Record<Hallazgo["id"], K>>;
   const drawerKey = effectiveMap[hallazgo.id];
   const hasDetalle = !!drawerKey && !!onOpenDrawer;
   const openDetalle = () => {

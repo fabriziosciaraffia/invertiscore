@@ -7,8 +7,7 @@ import { MarcaSeccion, useDrawerAbierto } from "./informeTelemetry";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { HeroLTR } from "./HeroLTR";
-import { ordenarHallazgosPiramide } from "./PiramideHallazgos";
-import { HALLAZGO_DRAWER } from "./GenericFindingCard";
+import { ordenarHallazgosPiramide } from "@/lib/orden-hallazgos";
 import { TokensHallazgos } from "./hallazgos/HallazgosAcordeon";
 import { CapitulosInversion, CAPITULO_DE_HALLAZGO, type CapituloId } from "./CapitulosInversion";
 import { SeccionInforme } from "./SeccionInforme";
@@ -103,26 +102,14 @@ export function SubjectCardGrid({
   // I-3: apertura de drawer (todas las cards entran por acá). El resolver emite
   // en paralelo `informe_hallazgo_abierto {n, id_hallazgo}` cuando el drawer
   // corresponde a un hallazgo de la pirámide (línea base pre-rediseño).
-  useDrawerAbierto(
-    activeDrawer,
-    "ltr",
-    (key) => {
-      const idx = hallazgosOrdenados.findIndex((h) => HALLAZGO_DRAWER[h.id] === key);
-      return idx >= 0 ? { n: idx + 1, id: hallazgosOrdenados[idx].id } : null;
-    },
-    { veredicto, accessLevel },
-  );
+  // T5: el único drawer que abre la página LTR es "La zona"; los hallazgos viven en
+  // los capítulos (T3), así que el drawer ya no corresponde a una card de la pirámide.
+  useDrawerAbierto(activeDrawer, "ltr", () => null, { veredicto, accessLevel });
 
-  // Secuencia de drawers = orden VISUAL de la pirámide (mismo array que renderiza),
-  // filtrando las cards que tienen drawer y dedup por si dos cayeran al mismo. La
-  // navegación prev/next del drawer se deriva de acá: "siguiente" = card siguiente
-  // de la pirámide. Un solo orden de verdad. `zona` NO entra (se abre solo desde su
-  // MiniCard) → queda fuera de las flechas.
-  const drawerSequence: DrawerKey[] = [];
-  for (const h of hallazgosOrdenados) {
-    const key = HALLAZGO_DRAWER[h.id];
-    if (key && !drawerSequence.includes(key)) drawerSequence.push(key);
-  }
+  // T5: la secuencia prev/next de los drawers murió con la pirámide. Antes se armaba
+  // desde HALLAZGO_DRAWER y dejaba llegar, con las flechas, a diez drawers que ninguna
+  // card abría ya. Queda solo la zona.
+  const drawerSequence: DrawerKey[] = ["zona"];
 
   // Preload zone-insight at dashboard mount (non-blocking).
   // Only fires if we have an analysisId and the analysis has coords (checked server-side).
