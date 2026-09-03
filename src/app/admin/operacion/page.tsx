@@ -20,6 +20,7 @@ import {
 import { leerLatidos } from "@/lib/cron-heartbeat";
 import { leerCobertura, plegarCobertura } from "@/lib/admin-cobertura";
 import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
+import { DIAS_ATRASO_PASE, estadoPase, leerCheckpointBackfill } from "@/lib/admin-backfill-toctoc";
 import { AdminActions } from "../admin-actions";
 import { RetryButton } from "../retry-button";
 import { TestToggle } from "../test-toggle";
@@ -98,6 +99,7 @@ export default async function AdminOperacionPage({
     serieErrores,
     latidos,
     cobertura,
+    checkpointBackfill,
   ] = await Promise.all([
     sb.from("analisis").select("*", { count: "exact", head: true }),
     sb.from("scraped_properties").select("*", { count: "exact", head: true }).eq("is_active", true),
@@ -123,6 +125,7 @@ export default async function AdminOperacionPage({
     leerSerie(sb, FUENTE_SENTRY, METRICA_ERRORES_1D, DIAS_VENTANA_ERRORES),
     leerLatidos(sb),
     leerCobertura(sb),
+    leerCheckpointBackfill(sb),
   ]);
 
   // ─── UF y tasa ───
@@ -179,6 +182,24 @@ export default async function AdminOperacionPage({
     null
   );
 
+  // ─── PASE SEMANAL TOCTOC ───
+  // Es el latido que CRONS_VIGILADOS no cubre: el backfill vive en /api/data/*
+  // y además importa QUÉ hizo, no solo si corrió. Se lee del checkpoint que la
+  // propia ruta deja en `config`, así que no hay instrumentación nueva.
+  const pase = estadoPase(checkpointBackfill);
+  const paseBadge: { label: string; tone: StatusBadgeTone } =
+    pase.pase === null
+      ? { label: "Sin checkpoint", tone: "signal-red" }
+      : pase.atrasado
+      ? { label: "Atrasado", tone: "signal-red" }
+      : pase.estado === "error"
+      ? { label: "Con errores", tone: "signal-red" }
+      : !pase.completo
+      ? { label: "A medias", tone: "ink-700" }
+      : pase.estado === "warn"
+      ? { label: "Sin desactivar", tone: "ink-700" }
+      : { label: "Completo", tone: "ink-400" };
+
   const pills: Array<{ label: string; value: string; estado: "ok" | "warn" | "error" }> = [
     {
       label: "Base de datos",
@@ -222,6 +243,13 @@ export default async function AdminOperacionPage({
       label: "Cron: UF/Tasa",
       value: marketUpdatedAt ? `${fmtDateShort(marketUpdatedAt)} · ${fmtRelative(marketUpdatedAt)}` : "nunca",
       estado: isStale(marketUpdatedAt, 48) ? "error" : "ok",
+    },
+    {
+      label: "Cron: Backfill TocToc",
+      value: pase.fecha
+        ? `${fmtRelative(pase.fecha)} · ${pase.completo ? "completo" : "a medias"}`
+        : "sin checkpoint",
+      estado: pase.estado,
     },
     // "Cron: Geocode" se retiró el 03-sep-2026 junto con el botón "Forzar Geocode":
     // ya no hay cron de geocode (ce65743) y la pastilla medía max(scraped_at) con
@@ -573,6 +601,115 @@ export default async function AdminOperacionPage({
               </tbody>
             </table>
           )}
+        </div>
+      </section>
+
+      {/* ─── PASE SEMANAL TOCTOC ─── */}
+      <section className="mb-8">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Último pase semanal TocToc</h2>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
+            lunes 03:00 UTC · /api/data/backfill-toctoc
+          </span>
+        </div>
+        <div
+          className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4"
+          style={pase.estado === "error" ? { borderColor: "rgba(200,50,60,.35)" } : undefined}
+        >
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <StatusBadge label={paseBadge.label} tone={paseBadge.tone} className="text-[10px]" />
+            <span className="font-mono text-xs text-[var(--franco-text-muted)]">{pase.pase ?? "—"}</span>
+          </div>
+
+          {pase.pase === null ? (
+            <p className="font-body text-[13px] leading-relaxed text-[var(--franco-text-secondary)]">
+              <b className="font-medium text-[var(--franco-text)]">No hay checkpoint en la tabla config.</b> El backfill
+              nunca corrió con esta versión, o corrió y no pudo escribir su estado. Una corrida deja el checkpoint
+              antes de la primera fila, así que si el cron disparó, tiene que estar.
+            </p>
+          ) : (
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+              <div>
+                <dt className="font-body text-[10px] uppercase tracking-wide text-[var(--franco-text-muted)]">
+                  {pase.completo ? "Terminó" : "Última actualización"}
+                </dt>
+                <dd
+                  className="mt-0.5 font-mono text-sm"
+                  style={{ color: pase.atrasado ? "var(--signal-red)" : "var(--franco-text)" }}
+                >
+                  {fmtDateShort(pase.fecha)}
+                  <span className="ml-2 text-xs text-[var(--franco-text-muted)]">{fmtRelative(pase.fecha)}</span>
+                </dd>
+              </div>
+              <div>
+                <dt className="font-body text-[10px] uppercase tracking-wide text-[var(--franco-text-muted)]">
+                  Filas escritas
+                </dt>
+                <dd className="mt-0.5 font-mono text-sm text-[var(--franco-text)]">
+                  {fmtNumber(pase.filas.total)}
+                  <span className="ml-2 text-xs text-[var(--franco-text-muted)]">
+                    venta {fmtNumber(pase.filas.venta)} · arriendo {fmtNumber(pase.filas.arriendo)}
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt className="font-body text-[10px] uppercase tracking-wide text-[var(--franco-text-muted)]">Nuevas</dt>
+                <dd className="mt-0.5 font-mono text-sm text-[var(--franco-text)]">{fmtNumber(pase.nuevas)}</dd>
+              </div>
+              <div>
+                <dt className="font-body text-[10px] uppercase tracking-wide text-[var(--franco-text-muted)]">
+                  Desactivadas
+                </dt>
+                <dd className="mt-0.5 font-mono text-sm text-[var(--franco-text)]">
+                  {pase.desactivadas === null ? "—" : fmtNumber(pase.desactivadas)}
+                  {pase.forzada && (
+                    <span
+                      className="ml-2 inline-block whitespace-nowrap rounded border border-[var(--franco-border-strong)] px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-[var(--franco-text-secondary)]"
+                      title="Se saltó la salvaguarda de proporción con ?forzarDesactivacion=1"
+                    >
+                      Forzada
+                    </span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+          )}
+
+          {/* La salvaguarda no es un error del pase: el pase cerró, pero no
+              desactivó. Hay que leer el motivo para decidir si se reintenta. */}
+          {pase.omitida && (
+            <p className="mt-4 font-body text-[13px] leading-relaxed text-[var(--franco-text-secondary)]">
+              <b className="font-medium text-[var(--franco-text)]">Desactivación omitida:</b> {pase.omitida}. Se
+              reintenta con <span className="font-mono text-xs">?reanudar=1</span> (y{" "}
+              <span className="font-mono text-xs">?forzarDesactivacion=1</span> si el pase es confiable).
+            </p>
+          )}
+
+          {pase.errores.length > 0 && (
+            <div className="mt-4">
+              <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[var(--signal-red)]">
+                {fmtNumber(pase.errores.length)} {pase.errores.length === 1 ? "error" : "errores"} en el pase
+              </div>
+              <ul className="space-y-0.5">
+                {pase.errores.slice(0, 5).map((e, i) => (
+                  <li key={i} className="truncate font-mono text-xs text-[var(--franco-text-secondary)]" title={e}>
+                    {e}
+                  </li>
+                ))}
+                {pase.errores.length > 5 && (
+                  <li className="font-body text-xs text-[var(--franco-text-muted)]">
+                    y {fmtNumber(pase.errores.length - 5)} más en el checkpoint.
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          <p className="mt-4 font-body text-[11px] text-[var(--franco-text-muted)]">
+            El pase recorre venta usada + arriendo de TocToc y, al cerrar completo y sin errores, desactiva lo que no
+            vio (Fase C). Se declara atrasado pasados {DIAS_ATRASO_PASE} días. No está en los crons de negocio: se lee
+            del checkpoint que la ruta deja en <span className="font-mono">config</span>.
+          </p>
         </div>
       </section>
 
