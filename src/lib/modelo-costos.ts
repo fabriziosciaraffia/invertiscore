@@ -15,10 +15,10 @@
 //   · Análisis previos: input_data no trae el campo → `legacy` → byte-idéntico.
 //
 // El campo espeja la columna `analisis.methodology_version` (poblada al 100%:
-// v1 hasta el 12-may-2026, v2 desde el 13-may). La columna misma NO se sube a
-// v3 en este cambio: tiene CHECK (methodology_version IN ('v1','v2')) y la
-// migración es SQL (goal aparte). Por eso la verdad que lee el motor vive en
-// input_data, no en la columna.
+// v1 hasta el 12-may-2026, v2 desde el 13-may). Las rutas de creación escriben
+// el mismo valor en la columna, pero la verdad que lee el motor vive en
+// input_data (viaja con el análisis a todo recompute). La columna admite 'v3'
+// recién con la migración supabase/migrations/20260903_methodology_version_v3.sql.
 //
 // ═══ MANTENCIÓN (v3) ═════════════════════════════════════════════════════════
 // Antes: % anual del PRECIO por antigüedad (0,3% → 1,5%). Sobreestimaba 6-10×

@@ -165,10 +165,11 @@ export async function POST(request: Request) {
         // Commit E.1 · 2026-05-13: análisis nuevos usan metodología v2
         // (thresholds 70/45/0 unificados · slider 3 segmentos · sin fallback
         // score 50). Análisis pre-Commit-E quedan como v1 (legacy preservation).
-        // Sep-2026: la versión que gatea el modelo de costos (v3) viaja en
-        // input_data.methodologyVersion; la columna sigue en v2 porque su CHECK
-        // solo admite ('v1','v2') y ampliarlo es SQL (goal aparte).
-        methodology_version: "v2",
+        // Sep-2026: v3 = modelo de costos recalibrado (modelo-costos.ts). La
+        // columna espeja input_data.methodologyVersion, que es lo que lee el
+        // motor. Requiere la migración 20260903_methodology_version_v3.sql
+        // (CHECK con 'v3') aplicada ANTES del deploy, o el INSERT falla.
+        methodology_version: METHODOLOGY_VERSION_ACTUAL,
         dormitorios: body.dormitorios,
         banos: body.banos,
         superficie: body.superficie,

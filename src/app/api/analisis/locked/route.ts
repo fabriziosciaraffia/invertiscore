@@ -67,7 +67,9 @@ function buildLockedLtrRow(
     direccion: body.direccion || null,
     tipo: body.tipo,
     tipo_analisis: "long-term",
-    methodology_version: "v2",
+    // Espejo de body.methodologyVersion (ver arriba). Requiere la migración
+    // 20260903_methodology_version_v3.sql aplicada antes del deploy.
+    methodology_version: METHODOLOGY_VERSION_ACTUAL,
     dormitorios: body.dormitorios,
     banos: body.banos,
     superficie: body.superficie,

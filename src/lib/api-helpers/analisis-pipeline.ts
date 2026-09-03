@@ -750,10 +750,11 @@ export async function buildShortTermAnalysisRow(
       direccion: body.direccion || null,
       tipo: "Departamento",
       tipo_analisis: "short-term",
-      // Commit E.1 · 2026-05-13: STR nuevos en metodología v2. La versión que
-      // gatea el modelo de costos (v3) viaja en input_data.methodologyVersion;
-      // la columna sigue en v2 por su CHECK ('v1','v2') — ver modelo-costos.ts.
-      methodology_version: "v2",
+      // Sep-2026: v3 = modelo de costos recalibrado (curva de CapEx en rango).
+      // Espejo de input_data.methodologyVersion (abajo), que es lo que lee el
+      // motor. Requiere la migración 20260903_methodology_version_v3.sql
+      // aplicada ANTES del deploy, o el INSERT viola el CHECK.
+      methodology_version: METHODOLOGY_VERSION_ACTUAL,
       dormitorios: body.dormitorios,
       banos: body.banos,
       superficie: body.superficieUtil,
