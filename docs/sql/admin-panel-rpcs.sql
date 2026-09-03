@@ -198,3 +198,65 @@ grant execute on function public.admin_overview(boolean) to service_role;
 -- ───────────────────────────────────────────────────────────────────────────
 -- select * from public.admin_overview(false);
 -- select * from public.admin_weekly_stats(12, false);
+
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- 3) admin_cobertura_scraped — activas por comuna × tipo, con antigüedad y
+--    huecos de coordenadas
+--
+-- Reemplaza la query de "Cobertura de datos" de /admin/operacion, que traía
+-- TODAS las activas a JS (`select comuna, type, scraped_at ... eq is_active`)
+-- sin `.limit`: PostgREST corta en 1.000 filas por defecto, así que la tabla
+-- contaba 1.000 propiedades mientras la pastilla de arriba (un `count` con
+-- `head: true`, que no pasa por ese tope) decía 44.798. Agregar en SQL es la
+-- única forma de que las dos cifras salgan de la misma base.
+--
+-- Una fila por comuna tal como está escrita en `scraped_properties.comuna`
+-- (con acentos: "Ñuñoa", "Peñalolén"), que coincide con `nombre` del roster de
+-- `src/lib/data/comunas-roster.ts`. El plegado a "25 del roster + otras" lo
+-- hace el panel, porque el roster es decisión de producto y vive en TS.
+--
+-- Tres tipos, no dos:
+--   venta_usada = type 'venta' y condicion distinta de 'nuevo' (NULL cuenta
+--                 como usado: property-row.ts escribe 'usado' por defecto, pero
+--                 filas viejas pueden traer NULL).
+--   arriendo    = type 'arriendo' (sin distinguir condición: hoy no hay
+--                 arriendo nuevo en la base y si aparece cuenta acá).
+--   obra_nueva  = type 'venta' y condicion 'nuevo' (fila-proyecto + unidades,
+--                 ver toctoc-unidades.ts).
+-- sin_coords = lat o lng NULL: candidatas a la coordenada del listado, y las
+-- que properties_within_radius no ve.
+--
+-- Verificado el 03-sep-2026 contra la base: 51 comunas, 26.113 + 9.283 + 9.402
+-- = 44.798 activas, 59 sin coordenadas — mismo total que la pastilla.
+-- ───────────────────────────────────────────────────────────────────────────
+create or replace function public.admin_cobertura_scraped()
+returns table (
+  comuna text,
+  venta_usada int,
+  arriendo int,
+  obra_nueva int,
+  sin_coords int,
+  ultimo timestamp
+)
+language sql
+stable
+set search_path = public
+as $$
+  select
+    p.comuna,
+    count(*) filter (where p.type = 'venta' and coalesce(p.condicion, 'usado') <> 'nuevo')::int as venta_usada,
+    count(*) filter (where p.type = 'arriendo')::int as arriendo,
+    count(*) filter (where p.type = 'venta' and p.condicion = 'nuevo')::int as obra_nueva,
+    count(*) filter (where p.lat is null or p.lng is null)::int as sin_coords,
+    max(p.scraped_at) as ultimo
+  from public.scraped_properties p
+  where p.is_active = true
+  group by p.comuna
+  order by count(*) desc;
+$$;
+
+revoke all on function public.admin_cobertura_scraped() from public;
+revoke all on function public.admin_cobertura_scraped() from anon;
+revoke all on function public.admin_cobertura_scraped() from authenticated;
+grant execute on function public.admin_cobertura_scraped() to service_role;

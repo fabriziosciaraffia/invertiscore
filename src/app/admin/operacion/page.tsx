@@ -18,6 +18,8 @@ import {
   resumirSerie,
 } from "@/lib/metrics-daily";
 import { leerLatidos } from "@/lib/cron-heartbeat";
+import { leerCobertura, plegarCobertura } from "@/lib/admin-cobertura";
+import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
 import { AdminActions } from "../admin-actions";
 import { RetryButton } from "../retry-button";
 import { TestToggle } from "../test-toggle";
@@ -96,6 +98,7 @@ export default async function AdminOperacionPage({
     overviewTotal,
     serieErrores,
     latidos,
+    cobertura,
   ] = await Promise.all([
     sb.from("analisis").select("*", { count: "exact", head: true }),
     sb.from("scraped_properties").select("*", { count: "exact", head: true }).eq("is_active", true),
@@ -121,6 +124,7 @@ export default async function AdminOperacionPage({
     // (/api/cron/sentry-metrics) es el único que habla con Sentry.
     leerSerie(sb, FUENTE_SENTRY, METRICA_ERRORES_1D, DIAS_VENTANA_ERRORES),
     leerLatidos(sb),
+    leerCobertura(sb),
   ]);
 
   // ─── UF y tasa ───
@@ -248,32 +252,60 @@ export default async function AdminOperacionPage({
   const hayAlertaMercado = !ufOk || ufCorrupta || isStale(marketUpdatedAt, 48);
 
   // ─── COBERTURA ───
-  const { data: coverage } = await sb
-    .from("scraped_properties")
-    .select("comuna, type, scraped_at")
-    .eq("is_active", true);
-
-  type CovRow = { arriendo: number; venta: number; ultimo: string };
-  const covMap = new Map<string, CovRow>();
-  for (const r of (coverage ?? []) as Array<{ comuna: string; type: string; scraped_at: string }>) {
-    if (!r.comuna) continue;
-    if (!covMap.has(r.comuna)) covMap.set(r.comuna, { arriendo: 0, venta: 0, ultimo: "" });
-    const row = covMap.get(r.comuna)!;
-    if (r.type === "arriendo") row.arriendo++;
-    else if (r.type === "venta") row.venta++;
-    if (!row.ultimo || r.scraped_at > row.ultimo) row.ultimo = r.scraped_at;
-  }
+  // Agregado EN LA BASE (RPC admin_cobertura_scraped, docs/sql/admin-panel-rpcs.sql
+  // §3). La query anterior traía las activas a JS sin `.limit`, y PostgREST corta
+  // en 1.000 filas: la tabla sumaba 1.000 propiedades mientras la pastilla de
+  // arriba —un count con head:true, que no pasa por ese tope— decía 44.798.
+  // Ahora las dos cifras salen del mismo conteo.
+  const cov = cobertura.ok ? plegarCobertura(cobertura.rows) : null;
+  const diasFila = (ultimo: string | null): number | null => (ultimo ? diasDesde(ultimo) ?? 0 : null);
   // Orden por ANTIGÜEDAD descendente: lo más viejo arriba. Ordenado alfabético,
   // una comuna con 131 días sin actualizar quedaba enterrada en el medio de la
-  // tabla y no la veía nadie.
-  const covRows = Array.from(covMap.entries())
-    .map(([comuna, v]) => ({ comuna, ...v, dias: diasDesde(v.ultimo) ?? 0 }))
-    .sort((a, b) => b.dias - a.dias);
-  const covTotal = covRows.reduce(
-    (acc, r) => ({ arriendo: acc.arriendo + r.arriendo, venta: acc.venta + r.venta }),
-    { arriendo: 0, venta: 0 }
+  // tabla y no la veía nadie. Una comuna del roster SIN activas (dias null) va
+  // primera: es el caso peor.
+  const ordenAntiguedad = (d: number | null) => d ?? Number.MAX_SAFE_INTEGER;
+  const covRows = (cov?.roster ?? [])
+    .map((r) => ({ ...r, dias: diasFila(r.ultimo) }))
+    .sort((a, b) => ordenAntiguedad(b.dias) - ordenAntiguedad(a.dias));
+  const covOtras = cov?.otras ? { ...cov.otras, dias: diasFila(cov.otras.ultimo) } : null;
+  const covMaxDias = Math.max(...covRows.map((r) => r.dias ?? 0), covOtras?.dias ?? 0, 1);
+
+  /** Celda de antigüedad: barra proporcional + días + "Crítico" desde los 60. */
+  const celdaAntiguedad = (dias: number | null) => {
+    const critico = dias === null || dias >= 60;
+    return (
+      <>
+        <span
+          aria-hidden="true"
+          className="mr-2 hidden h-[7px] w-[110px] overflow-hidden rounded-sm bg-[var(--franco-sunken)] align-middle sm:inline-block"
+        >
+          <span
+            className="block h-full"
+            style={{
+              width: `${dias === null ? 100 : Math.max((dias / covMaxDias) * 100, 2)}%`,
+              background: critico ? "var(--signal-red)" : dias >= 14 ? "var(--ink-600)" : "var(--ink-400)",
+            }}
+          />
+        </span>
+        <span className="font-mono text-xs" style={{ color: critico ? "var(--signal-red)" : "var(--franco-text)" }}>
+          {dias === null ? "sin activas" : dias === 0 ? "hoy" : `${fmtNumber(dias)} d`}
+        </span>
+        {critico && (
+          <span
+            className="ml-2 inline-block whitespace-nowrap rounded border px-1.5 py-px font-mono text-[9px] uppercase tracking-wider"
+            style={{ color: "var(--signal-red)", borderColor: "rgba(200,50,60,.4)" }}
+          >
+            Crítico
+          </span>
+        )}
+      </>
+    );
+  };
+  const celdaConteo = (n: number, bold = false) => (
+    <span className={`font-mono text-xs ${bold ? "font-bold" : ""}`} style={{ color: n === 0 ? "var(--franco-text-muted)" : "var(--franco-text)" }}>
+      {n === 0 ? "—" : fmtNumber(n)}
+    </span>
   );
-  const covMaxDias = Math.max(...covRows.map((r) => r.dias), 1);
 
   // ─── ANÁLISIS ───
   const { count: sharedCount } = await sinTest(
@@ -470,63 +502,81 @@ export default async function AdminOperacionPage({
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Cobertura de datos</h2>
           <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-tertiary)]">
-            {fmtNumber(covRows.length)} comunas · lo más viejo arriba
+            {cov
+              ? `${fmtNumber(cov.total.total)} activas · ${COMUNAS_ROSTER.length} del roster${
+                  covOtras ? ` + ${fmtNumber(covOtras.comunas)} otras` : ""
+                } · lo más viejo arriba`
+              : "sin datos"}
           </span>
         </div>
         <div className="overflow-x-auto rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left">
-                <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Comuna</th>
-                <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Antigüedad</th>
-                <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Arriendos</th>
-                <th className="pb-2 font-body text-xs font-medium text-[var(--franco-text-muted)]">Ventas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {covRows.map((r) => {
-                const critico = r.dias >= 60;
-                return (
+          {!cov ? (
+            // La RPC se aplica a mano (docs/sql). Hasta entonces la sección lo
+            // dice en vez de pintar una tabla vacía que parezca "cero propiedades".
+            <p className="font-body text-[13px] leading-relaxed text-[var(--franco-text-secondary)]">
+              {cobertura.ok === false && cobertura.faltaRpc ? (
+                <>
+                  <b className="font-medium text-[var(--franco-text)]">
+                    Falta la función <span className="font-mono text-xs">admin_cobertura_scraped</span> en la base.
+                  </b>{" "}
+                  Aplicar la sección 3 de <span className="font-mono text-xs">docs/sql/admin-panel-rpcs.sql</span> en
+                  el SQL Editor de Supabase; la tabla aparece sola en la siguiente carga.
+                </>
+              ) : (
+                <>
+                  <b className="font-medium text-[var(--franco-text)]">No se pudo leer la cobertura.</b>{" "}
+                  <span className="font-mono text-xs">{cobertura.ok === false ? cobertura.mensaje : ""}</span>
+                </>
+              )}
+            </p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Comuna</th>
+                  <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Antigüedad</th>
+                  <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Venta usada</th>
+                  <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Arriendo</th>
+                  <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Obra nueva</th>
+                  <th className="pb-2 font-body text-xs font-medium text-[var(--franco-text-muted)]">Sin coords</th>
+                </tr>
+              </thead>
+              <tbody>
+                {covRows.map((r) => (
                   <tr key={r.comuna} className="border-b border-[var(--franco-border)] last:border-b-0">
                     <td className="py-2 pr-4 font-body text-xs text-[var(--franco-text)]">{r.comuna}</td>
-                    <td className="py-2 pr-4">
-                      <span
-                        aria-hidden="true"
-                        className="mr-2 hidden h-[7px] w-[110px] overflow-hidden rounded-sm bg-[var(--franco-sunken)] align-middle sm:inline-block"
-                      >
-                        <span
-                          className="block h-full"
-                          style={{
-                            width: `${Math.max((r.dias / covMaxDias) * 100, 2)}%`,
-                            background: critico ? "var(--signal-red)" : r.dias >= 14 ? "var(--ink-600)" : "var(--ink-400)",
-                          }}
-                        />
-                      </span>
-                      <span
-                        className="font-mono text-xs"
-                        style={{ color: critico ? "var(--signal-red)" : "var(--franco-text)" }}
-                      >
-                        {r.dias === 0 ? "hoy" : `${fmtNumber(r.dias)} d`}
-                      </span>
-                      {critico && (
-                        <span className="ml-2 inline-block whitespace-nowrap rounded border px-1.5 py-px font-mono text-[9px] uppercase tracking-wider" style={{ color: "var(--signal-red)", borderColor: "rgba(200,50,60,.4)" }}>
-                          Crítico
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 font-mono text-xs text-[var(--franco-text)]">{fmtNumber(r.arriendo)}</td>
-                    <td className="py-2 font-mono text-xs text-[var(--franco-text)]">{fmtNumber(r.venta)}</td>
+                    <td className="py-2 pr-4">{celdaAntiguedad(r.dias)}</td>
+                    <td className="py-2 pr-4">{celdaConteo(r.ventaUsada)}</td>
+                    <td className="py-2 pr-4">{celdaConteo(r.arriendo)}</td>
+                    <td className="py-2 pr-4">{celdaConteo(r.obraNueva)}</td>
+                    <td className="py-2">{celdaConteo(r.sinCoords)}</td>
                   </tr>
-                );
-              })}
-              <tr className="border-t-2 border-[var(--franco-border)]">
-                <td className="py-2 pr-4 font-body text-xs font-bold text-[var(--franco-text)]">TOTAL</td>
-                <td className="py-2 pr-4" />
-                <td className="py-2 pr-4 font-mono text-xs font-bold text-[var(--franco-text)]">{fmtNumber(covTotal.arriendo)}</td>
-                <td className="py-2 font-mono text-xs font-bold text-[var(--franco-text)]">{fmtNumber(covTotal.venta)}</td>
-              </tr>
-            </tbody>
-          </table>
+                ))}
+                {/* Lo que el viewport trae de fuera del roster, en una fila: no se
+                    publica, pero sí se mantiene (Fase C las desactiva igual). */}
+                {covOtras && (
+                  <tr className="border-b border-[var(--franco-border)]">
+                    <td className="py-2 pr-4 font-body text-xs text-[var(--franco-text-muted)]">
+                      Otras · {fmtNumber(covOtras.comunas)} comunas
+                    </td>
+                    <td className="py-2 pr-4">{celdaAntiguedad(covOtras.dias)}</td>
+                    <td className="py-2 pr-4">{celdaConteo(covOtras.ventaUsada)}</td>
+                    <td className="py-2 pr-4">{celdaConteo(covOtras.arriendo)}</td>
+                    <td className="py-2 pr-4">{celdaConteo(covOtras.obraNueva)}</td>
+                    <td className="py-2">{celdaConteo(covOtras.sinCoords)}</td>
+                  </tr>
+                )}
+                <tr className="border-t-2 border-[var(--franco-border)]">
+                  <td className="py-2 pr-4 font-body text-xs font-bold text-[var(--franco-text)]">TOTAL</td>
+                  <td className="py-2 pr-4" />
+                  <td className="py-2 pr-4">{celdaConteo(cov.total.ventaUsada, true)}</td>
+                  <td className="py-2 pr-4">{celdaConteo(cov.total.arriendo, true)}</td>
+                  <td className="py-2 pr-4">{celdaConteo(cov.total.obraNueva, true)}</td>
+                  <td className="py-2">{celdaConteo(cov.total.sinCoords, true)}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
 
