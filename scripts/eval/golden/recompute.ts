@@ -16,6 +16,7 @@ import { GOLDEN_SEEDS, BORDE_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 import { extractFacts, gatherHallazgos } from "./extract";
 import { checkClassA, checkClassB, type Baseline, type Check } from "./invariants";
 import { BE_UUID } from "./ids";
+import { goldenSeedSha, SELLO_KEYS } from "./sello";
 
 export interface SeedReport {
   key: string;
@@ -53,6 +54,17 @@ export async function runRecomputeTier(sb: SupabaseClient): Promise<SeedReport[]
       continue;
     }
     checks.push({ rule: "§1.load", pass: true, detail: `fila persistida cargada` });
+    // ~golden-sello (T5): la fila trae el sha de los seeds con que se sembró; si no
+    // coincide con el del repo, los checks B8/B-PJ pueden mentir. Aviso soft (drift),
+    // no rojo: el remedio es `seed-db.ts`, no tocar el motor.
+    const selloFila = (row.input_data as Record<string, unknown> | null)?.[SELLO_KEYS.sha];
+    const selloRepo = goldenSeedSha();
+    checks.push({
+      rule: "~golden-sello",
+      pass: selloFila === selloRepo,
+      detail: selloFila === selloRepo ? `sello ${selloRepo}` : `base ${String(selloFila ?? "sin sello")} ≠ repo ${selloRepo} — corre seed-db.ts`,
+      rebaseline: selloFila !== selloRepo,
+    });
 
     const input = row.input_data;
     const mediana = row.mediana_comuna_snapshot ?? undefined;

@@ -15,6 +15,7 @@ import { createClient } from "@supabase/supabase-js";
 import { runAnalysis } from "../../../src/lib/analysis";
 import { GOLDEN_SEEDS, BORDE_SEEDS, GOLDEN_UF, type GoldenSeed, type BordeSeed } from "./seeds";
 import { BE_UUID } from "./ids";
+import { goldenSeedSha, SELLO_KEYS } from "./sello";
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,6 +42,10 @@ const sb = createClient(
     ...BORDE_SEEDS.map((s) => ({ key: s.key, uuid: BE_UUID[s.key], seed: s })),
   ];
 
+  const sello = goldenSeedSha();
+  const selloAt = new Date().toISOString();
+  console.log(`sello de siembra: ${sello} · ${selloAt}`);
+
   for (const { key, uuid, seed } of all) {
     const input = seed.input;
     const results = runAnalysis(input, GOLDEN_UF, seed.mediana);
@@ -65,7 +70,9 @@ const sb = createClient(
       resumen: results.veredicto,
       tipo_analisis: "long-term",
       results: { ...results, tipoAnalisis: "long-term" },
-      input_data: { ...input, tipoAnalisis: "long-term" },
+      // Sello de siembra (T5): el QUICK avisa (~golden-sello) cuando el sha de la base
+      // no coincide con el del repo — alguien cambió un seed y no re-sembró.
+      input_data: { ...input, tipoAnalisis: "long-term", [SELLO_KEYS.sha]: sello, [SELLO_KEYS.at]: selloAt },
       mediana_comuna_snapshot: seed.mediana,
       is_premium: true,
       creator_name: "GOLDEN SET",
