@@ -29,7 +29,7 @@ const UMBRAL_DECISIVO = 0.5;
  * Plantilla determinística de titular + fraseCanonica de flujo, parametrizada por el monto
  * YA formateado. Fuente ÚNICA del texto — la llaman DOS consumidores con la MISMA plantilla:
  *   (a) el builder (abajo) con `fmtCLP(aporte)` → la fraseCanonica SEEDED en CLP, que la
- *       apertura Plan C consume bit-idéntica (contrato de la prosa persistida).
+ *       card y la prosa persistida consumen bit-idéntica (mismo texto en todas las superficies).
  *   (b) el render de la card (GenericFindingCard.fraseCanonicaCard) con el monto en la moneda
  *       ACTIVA → body dual, sin $ en modo UF.
  * `montoFmt` ya trae signo/símbolo; la rama (favorable / acotado / fuerte) NO depende de la
@@ -214,7 +214,7 @@ export function buildHallazgoFlujoMensual(p: {
   const direccion: "favorable" | "adverso" = aporte >= 0 ? "favorable" : "adverso";
   const consuelo = p.consuelo ?? "plusvalia";
 
-  // Frase SEEDED en CLP (contrato Plan C bit-idéntico): el monto va en CLP vía fmtCLP. El
+  // Frase SEEDED en CLP (bit-idéntica entre superficies): el monto va en CLP vía fmtCLP. El
   // render de la card reusa la MISMA plantilla (buildFraseFlujo) con el monto en la moneda
   // activa — misma rama, mismo texto, solo cambia el formato del monto.
   const { titular, fraseCanonica } = buildFraseFlujo(fmtCLP(aporte), direccion, ratio, consuelo);

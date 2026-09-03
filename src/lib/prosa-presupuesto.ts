@@ -1,24 +1,22 @@
 // ============================================================================
-// PRESUPUESTO DE PROSA — Plan C (conviene.respuestaDirecta del hero LTR)
+// PRESUPUESTO DE PROSA — conviene.respuestaDirecta del hero LTR
 // ============================================================================
-// La respuestaDirecta ensamblada tiene TRES piezas y solo UNA la escribe el modelo:
+// Desde v18 (goal "apertura en voz de Franco") la respuestaDirecta tiene DOS piezas:
 //
-//   [respuesta al veredicto] + [apertura fija = fraseCanonica del #1] + [continuación]
-//    └── motor, determinística ─────────────────────────────────────┘    └── LLM
+//   [respuesta al veredicto] + [texto del modelo: primera oración + un matiz]
+//    └── motor ────────────┘   └── presupuesto = aperturaWC + CONTINUACION_MAX ──┘
+//
+// `aperturaWC` es lo que mide la fraseCanonica del hallazgo #1: hasta v17 el motor la
+// anteponía literal ("Plan C", muerto en T5 junto con sus strippers) y hoy es el
+// presupuesto de la primera oración que el modelo escribe sobre ese hallazgo. El
+// techo TOTAL no cambió con la migración.
 //
 // TECHO PLANO (hasta 4aa898e) — muerto. El máximo era 85 palabras TOTALES y la
-// continuación se quedaba con el resto: `85 − apertura − respuesta`. O sea: el
-// presupuesto de la única pieza que el modelo controla dependía del largo de dos
-// piezas que NO controla. El modelo entregaba su largo natural igual, el guard
-// insistía dos veces y aceptaba lo que hubiera → techo reportado, no enforzado.
-//
-// REGLA VIGENTE — la continuación tiene presupuesto PROPIO Y FIJO
-// (CONTINUACION_MAX) y el techo TOTAL escala con lo que el motor antepuso:
-//
-//   techoTotal = palabras(respuesta) + palabras(apertura) + CONTINUACION_MAX
-//
-// El trabajo del modelo ("UN matiz, con su cifra y su consecuencia") no cambia de
-// tamaño porque el motor haya elegido una apertura de 24 o de 40 palabras.
+// continuación se quedaba con el resto: el presupuesto de la única pieza que el modelo
+// controla dependía del largo de piezas que NO controla. El modelo entregaba su largo
+// natural igual, el guard insistía dos veces y aceptaba lo que hubiera → techo
+// reportado, no enforzado. Desde entonces el presupuesto del modelo es PROPIO y el
+// guard [RD-BUDGET] lo enforza por construcción (retry quirúrgico + recorte por oración).
 //
 // ── CALIBRACIÓN DE CONTINUACION_MAX = 60 ───────────────────────────────────
 // Medición determinística de la parte fija sobre los 9 seeds golden (0 tokens,
@@ -124,7 +122,7 @@ export const TECHO_CONTINUACION_DURO = Math.ceil(CONTINUACION_MAX * TOLERANCIA_P
  * veredicto. El techo TOTAL no cambió: `aperturaWC` (lo que medía la frase del #1)
  * sigue entrando como presupuesto de esa primera oración. Lo que el MODELO puede
  * escribir es entonces `aperturaWC + CONTINUACION_MAX` (duro: + TECHO_CONTINUACION_DURO),
- * y el total ensamblado sigue siendo `techoTotalRespuestaDirecta`.
+ * y el total ensamblado = palabras(respuesta) + techoRespuestaModelo (lo verifica A6).
  */
 export const techoRespuestaModelo = (aperturaWC: number, duro = false): number =>
   aperturaWC + (duro ? TECHO_CONTINUACION_DURO : CONTINUACION_MAX);
@@ -132,17 +130,6 @@ export const techoRespuestaModelo = (aperturaWC: number, duro = false): number =
 /** Palabras de un texto (mismo conteo en motor, guard y golden). */
 export const contarPalabras = (s: unknown): number =>
   typeof s === "string" && s.trim() ? s.trim().split(/\s+/).filter(Boolean).length : 0;
-
-/**
- * Techo TOTAL de la respuestaDirecta ensamblada, dado lo que el motor antepone.
- * `duro = true` devuelve la línea que el guard enforza por construcción (la que
- * verifica el golden en A6); sin flag, el presupuesto que se le instruye al modelo.
- */
-export const techoTotalRespuestaDirecta = (
-  aperturaWC: number,
-  respuestaWC: number,
-  duro = false,
-): number => aperturaWC + respuestaWC + (duro ? TECHO_CONTINUACION_DURO : CONTINUACION_MAX);
 
 /** Corte por oración. Solo cierre de oración (. ! ?): el ";" une cláusulas de una
  *  misma oración y partir ahí dejaba colgando medias frases ("…el veredicto sube;"). */

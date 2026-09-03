@@ -11,7 +11,7 @@
 //   27e8de38 Lo Barnechea — estructural coherente (sugerido sobre el mínimo)
 //   cb0e8f46 Huechuraba — el caso del contrato (umbral 3.945 · sugerido 3.827)
 // Invariantes: umbral ≡ palanca precio de distancia; sugerido nunca pisado por el umbral
-// (`sugeridoMandadoPorVeredicto` false); estructural ⇒ umbral null; el bloque de
+// (el motor ya no lo colapsa); estructural ⇒ umbral null; el bloque de
 // jerarquía no dice "techo", nombra cada precio y en el estructural no ofrece objetivo.
 //
 // Corre: node --env-file=.env.local --import tsx scripts/eval/golden/precios-nombre-catch-test.ts
@@ -82,7 +82,6 @@ async function main() {
     const palancaPrecio = dv.valor.palancas.find((x) => x.palanca === "precio") ?? null;
     const dm = dv.valor.deltaMinimoFueraDeTope;
     // 1. el sugerido ya no se colapsa al umbral
-    if (neg.sugeridoMandadoPorVeredicto) F("sugeridoMandadoPorVeredicto sigue en true");
     // 2. umbral ≡ palanca precio de distancia (o null si no cruza)
     if (palancaPrecio && umbral !== palancaPrecio.objetivo) F(`umbral ${umbral} ≠ palanca precio ${palancaPrecio.objetivo}`);
     if (!palancaPrecio && umbral !== null) F(`umbral ${umbral} sin palanca precio que cruce`);

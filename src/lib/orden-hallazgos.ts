@@ -2,7 +2,7 @@
 // ORDEN ÚNICO de hallazgos (esquema C con umbral) — módulo PURO, server-safe.
 //
 // Una sola jerarquía para TODAS las superficies: índice del hero, pirámide,
-// documento (PDF) y anclaje de la apertura Plan C. La regla:
+// documento (PDF) y el hallazgo que manda la primera oración del hero. La regla:
 //
 //   · Posición 01 = el ADVERSO más decisivo, solo si su decisividad pasa el
 //     piso vinculante (>= 0,85 — el mismo DECISIVIDAD_FLOOR de analysis.ts:
@@ -34,7 +34,7 @@ const rankDireccion = (d: Hallazgo["direccion"]) => (d === "adverso" ? 0 : d ===
  *  (alfabético). El id cierra el orden TOTAL: sin él, un empate exacto (ej.
  *  cap_rate y sobreprecio ambos 1,00/1,00 en a610e8bb) lo resolvía la
  *  estabilidad del sort — es decir, el orden de gather de cada superficie —
- *  y la apertura Plan C podía anclar un 01 distinto del que la pirámide
+ *  y la apertura del hero podía anclar un 01 distinto del que la pirámide
  *  mostraba. Con el id, todas las superficies computan el mismo orden
  *  aunque junten los hallazgos en secuencias distintas. */
 export const cmpDecisividad = (a: Hallazgo, b: Hallazgo) =>

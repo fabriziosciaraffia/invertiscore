@@ -6,7 +6,7 @@
 // STRIPEA con `stripMarcas` (render tolerante: la prosa nueva nunca muestra `**`
 // crudos, cualquiera sea el orden de deploys). El golden usa `marcasBalanceadas`
 // como invariante: los sanitizers del pipeline recortan por ORACIÓN entera
-// (PLANC-BUDGET-TRIM, PLANC-DUAL-STRIPPED en LTR; stripCardEcho en STR), así que
+// (RD-BUDGET-TRIM en LTR; stripCardEcho en STR), así que
 // un par que cruce el punto puede quedar mutilado en un `**` impar — el check lo
 // caza en generación fresca y el prompt prohíbe marcas que crucen oraciones.
 //

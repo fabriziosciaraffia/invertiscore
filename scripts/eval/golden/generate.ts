@@ -246,12 +246,11 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       // ARRIENDO es legítimo (la mediana COMUNAL determinística la cubre el recompute).
       if (strings.some((x) => ENGINE_ISM_RE.test(x.s))) bump("~engine-ism");
       if (warns.some((w) => w.includes("[ZONA-DRIFT]"))) bump("~zona-drift");
-      if (warns.some((w) => /\[PLANC-(DUAL|REPEAT)-STRIPPED\]/.test(w))) bump("~planc-stripped");
       // El guard tuvo que AMPUTAR: ni el original ni 2 reintentos entraron en el
       // presupuesto y se cayó una oración entera. Es el fallback diseñado, no una
       // regresión — pero si la tasa sube, el número a mover es CONTINUACION_MAX, no
       // el check. SOFT por la misma razón que el resto: es varianza del modelo.
-      if (warns.some((w) => w.includes("[PLANC-BUDGET-TRIM]"))) bump("~planc-trim");
+      if (warns.some((w) => w.includes("[RD-BUDGET-TRIM]"))) bump("~rd-trim");
     }
 
     // Consolidar. Regla dura falla si falló en ≥1 run; soft (~) reporta sin bloquear.
@@ -265,7 +264,7 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       );
     }
     const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
-    const SOFT = ["~engine-ism", "~zona-drift", "~planc-stripped", "~planc-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado"];
+    const SOFT = ["~engine-ism", "~zona-drift", "~rd-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado"];
 
     // ── Umbral de MAYORÍA para las reglas que juzgan PROSA GENERADA ────────────
     //

@@ -355,7 +355,7 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
 }
 
 // ── Body de la card: dual-moneda para flujo, verbatim para el resto ───────────
-// flujo_mensual embebe el monto en la fraseCanonica; la seed va en CLP (contrato Plan C
+// flujo_mensual embebe el monto en la fraseCanonica; la seed va en CLP (contrato de la prosa persistida
 // bit-idéntico), pero la CARD debe mostrarlo en la moneda activa (sin $ en modo UF). Reusa
 // la MISMA plantilla del builder (buildFraseFlujo) con el monto reformateado — misma rama,
 // mismo texto. Los otros 8 tipos no tienen monto embebido → fraseCanonica verbatim.

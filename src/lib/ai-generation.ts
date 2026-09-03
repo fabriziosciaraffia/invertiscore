@@ -327,7 +327,7 @@ d. DUREZA CON EL PRECIO, CALIBRADA POR LA RAZÓN. Si el pie es 0, alguien lo est
 
 e. LA PALANCA DE PRECIO SE EXPRESA EN PLATA MENSUAL: cada peso menos de precio es crédito que no tomas, y eso baja el dividendo desde el día uno. El input reemplaza las lecturas de TIR de negociación por la baja de dividendo al precio sugerido — esa es la cifra que se narra. Las reglas de §12 (jerarquía de precios, umbral de veredicto, diferencia absoluta vs por m²) siguen aplicando igual; solo cambia la moneda del beneficio: dividendo/mes en vez de puntos de TIR.
 
-f. ESTA DOCTRINA NO EXPANDE TU PRESUPUESTO DE PALABRAS. Los contratos de largo por campo (§13, Plan C) siguen intactos con pie 0. Si no te cabe todo, prioriza: (1º) la estructura 100% y su consecuencia en el dividendo, (2º) el escenario de vacancia en plata; el resto vive en las cards y drawers — no lo fuerces en la apertura.
+f. ESTA DOCTRINA NO EXPANDE TU PRESUPUESTO DE PALABRAS. Los contratos de largo por campo (§13) siguen intactos con pie 0. Si no te cabe todo, prioriza: (1º) la estructura 100% y su consecuencia en el dividendo, (2º) el escenario de vacancia en plata; el resto vive en las cards y drawers — no lo fuerces en la apertura.
 
 ## 6. Tiempos verbales — disciplina pasada vs futura
 
@@ -1188,8 +1188,8 @@ export function violacionesHeroClaim(texto: string, r: RazonesHeroClaim): string
 /**
  * v18 — el hallazgo entra al prompt como DATOS (qué · cuánto · dirección), no como su
  * fraseCanonica: esa frase es la card que el lector ve en "Principales hallazgos" y,
- * cuando el prompt la traía, el modelo (o el motor, vía Plan C) la copiaba como
- * apertura. El motor emite datos; la prosa redacta.
+ * cuando el prompt la traía, el modelo (o el motor, con la apertura fija que murió en
+ * v19) la copiaba como apertura. El motor emite datos; la prosa redacta.
  */
 function datosHallazgoParaPrompt(h: Hallazgo): string {
   const dir = h.direccion === "favorable" ? "a favor" : h.direccion === "adverso" ? "en contra" : "neutral";
@@ -2178,8 +2178,8 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
     // ORDEN ÚNICO (esquema C-umbral, orden-hallazgos.ts): el MISMO orden que muestran
     // el índice del hero y la pirámide — 01 = adverso más decisivo si pasa el piso
     // 0,85; resto ranking puro decisividad→magnitud. El [0] de esta lista es el 01
-    // visible del informe, y su fraseCanonica es la apertura fija Plan C: apertura,
-    // índice y pirámide cuentan la misma historia. (Los solo-lectura, todos con
+    // visible del informe y el hallazgo que manda la primera oración del hero (v19+):
+    // apertura, índice y capítulos cuentan la misma historia. (Los solo-lectura, todos con
     // decisividad 0, no pueden ser 01 mientras algún builder pese > 0 — el orden del
     // prompt y el de la pirámide eligen el mismo 01 por construcción en ese caso.)
     const hallazgosOrdenados: Hallazgo[] = ordenarHallazgosUnico(hallazgosPromptSet);
@@ -2947,7 +2947,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // Espejo LTR del guard STR-CIFRA (cifras-guard.ts): las cifras de la prosa deben
     // venir del propio userPrompt; la conversión CLP↔UF con la tasa monedaUF es la única
     // aritmética sancionada (§12). Mismo reparto que CATCH-VOZ: 1 reintento con la cita
-    // exacta, se acepta solo si mejora. Corre ANTES de PLANC-BUDGET (el techo de
+    // exacta, se acepta solo si mejora. Corre ANTES de RD-BUDGET (el techo de
     // palabras sigue siendo la última palabra) y ANTES de FASE B (que inyecta bloques
     // del motor que no son prosa del modelo y no se auditan). Best-effort.
     if (aiResult) {
@@ -3111,7 +3111,7 @@ Responde SOLO este JSON, sin texto alrededor:
     // conteo lexical de "%": medido inservible en ambos extremos). Hasta 2
     // reintentos con el correctivo; si persiste, fallback determinístico: se
     // appendea la línea de arbitraje canónica a la pieza ofensora. Corre después
-    // de LTR-CIFRA (cifras ya saneadas) y ANTES de PLANC-BUDGET (el techo de
+    // de LTR-CIFRA (cifras ya saneadas) y ANTES de RD-BUDGET (el techo de
     // palabras sigue siendo la última palabra). Best-effort en try/catch.
     if (aiResult && jerarquiaPrecios.precios.length >= 2) {
       try {
@@ -3175,7 +3175,7 @@ Responde SOLO este JSON, sin texto alrededor:
     //     el numerador, el comparador más cercano el denominador; sin alguno de los dos,
     //     sin licencia).
     // Un reintento quirúrgico sobre respuestaDirecta con el dato correcto citado; se
-    // acepta solo si mejora. Corre ANTES de PLANC-BUDGET (el presupuesto es la última
+    // acepta solo si mejora. Corre ANTES de RD-BUDGET (el presupuesto es la última
     // palabra) y DESPUÉS de LTR-CIFRA (el candidato se re-verifica con empeoraCifras).
     // Contexto contable compartido por el guard del hero y por el de largoPlazo /
     // negociación (regla 2): se arma una vez, fuera de los try.
@@ -3355,18 +3355,17 @@ Responde SOLO este JSON, sin texto alrededor:
       }
     }
 
-    // PLAN C GUARD — enforcement de presupuesto POR CONSTRUCCIÓN. Lo que escribió el
-    // modelo (v18: la respuestaDirecta completa, aún SIN la respuesta al veredicto que
-    // antepone el motor) no puede superar maxRespuestaModelo = aperturaWC + CONTINUACION_MAX.
+    // RD-BUDGET GUARD (hasta T5 se llamaba Plan C) — enforcement de presupuesto POR
+    // CONSTRUCCIÓN. Lo que escribió el modelo (v18+: la respuestaDirecta completa, aún
+    // SIN la respuesta al veredicto que antepone el motor) no puede superar
+    // maxRespuestaModelo = aperturaWC + CONTINUACION_MAX.
     // El modelo no cuenta bien, así que medimos acá: sobre maxContinuacion×1.1, hasta
     // 2 retries QUIRÚRGICOS (Goal D). Antes cada retry regeneraba el JSON COMPLETO
     // (~24k tokens de input + ~2.9k de output, ~50s) para acortar un campo de ≤66
     // palabras — medido en prod (a5179ba2): 2 regens = 100s extra para corregir el
-    // 5% de la prosa. Ahora el retry reescribe SOLO conviene.respuestaDirecta:
-    // recibe la apertura fija como ancla y la continuación vigente para COMPRIMIRLA
-    // (mismo matiz, mismas cifras — cero costura: es la unidad editorial completa
-    // que sigue a la apertura, no un fragmento). El resto de la prosa, que los
-    // guards anteriores ya validaron, no se regenera ni se toca.
+    // 5% de la prosa. Ahora el retry reescribe SOLO conviene.respuestaDirecta para
+    // COMPRIMIRLA (misma primera oración, mismo matiz, mismas cifras). El resto de la
+    // prosa, que los guards anteriores ya validaron, no se regenera ni se toca.
     //
     // Y SI NO CONVERGE, NO SE ACEPTA: recorte por ORACIÓN (nunca a media frase)
     // hasta la línea dura, quedándose con la versión más corta vista. Sin regen
@@ -3386,9 +3385,9 @@ Responde SOLO este JSON, sin texto alrededor:
       // hay razón para quedarse con él (antes se pisaba el previo sin comparar).
       let mejor = aiResult;
       let mejorWC = wcCont(aiResult);
-      const PLANC_MAX_RETRIES = 2;
-      for (let intento = 1; intento <= PLANC_MAX_RETRIES && mejorWC > limiteRetry; intento++) {
-        console.warn(`[PLANC-BUDGET] ${analysisId}: respuestaDirecta ${mejorWC} palabras > máx ${maxRespuestaModelo} — retry quirúrgico ${intento}/${PLANC_MAX_RETRIES}`);
+      const RD_MAX_RETRIES = 2;
+      for (let intento = 1; intento <= RD_MAX_RETRIES && mejorWC > limiteRetry; intento++) {
+        console.warn(`[RD-BUDGET] ${analysisId}: respuestaDirecta ${mejorWC} palabras > máx ${maxRespuestaModelo} — retry quirúrgico ${intento}/${RD_MAX_RETRIES}`);
         const insistencia =
           intento === 1
             ? ""
@@ -3410,7 +3409,7 @@ ${contUf}
 Responde SOLO este JSON, sin texto alrededor:
 {"respuestaDirecta_clp": "...", "respuestaDirecta_uf": "..."}`;
         try {
-          const regen = await reg.medir("plan-c", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 500, messages: [{ role: "user", content: promptQuirurgico }], system: SYSTEM_LTR_CACHED }));
+          const regen = await reg.medir("rd-budget", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 500, messages: [{ role: "user", content: promptQuirurgico }], system: SYSTEM_LTR_CACHED }));
           acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
           // Parse tolerante (patrón del detector): primer objeto {...} del texto.
@@ -3425,23 +3424,23 @@ Responde SOLO este JSON, sin texto alrededor:
             /* no parseó — se maneja abajo */
           }
           if (!nClp || !nUf) {
-            console.warn(`[PLANC-BUDGET] ${analysisId}: retry quirúrgico ${intento} no parseó — conservo la continuación previa`);
+            console.warn(`[RD-BUDGET] ${analysisId}: retry quirúrgico ${intento} no parseó — conservo la continuación previa`);
             break;
           }
           const candidato = { ...mejor, conviene: { ...mejor.conviene, respuestaDirecta_clp: nClp, respuestaDirecta_uf: nUf } };
           const wc2 = wcCont(candidato);
-          console.warn(`[PLANC-BUDGET] ${analysisId}: retry quirúrgico ${intento} → ${wc2} palabras${wc2 <= limiteRetry ? " (OK)" : ""}`);
+          console.warn(`[RD-BUDGET] ${analysisId}: retry quirúrgico ${intento} → ${wc2} palabras${wc2 <= limiteRetry ? " (OK)" : ""}`);
           // Invariante de cifras sobre el quirúrgico: como ya no se regenera el JSON
           // que LTR-CIFRA validó, el candidato completo se re-verifica con la regla
           // compartida (cifras-guard.ts — una regla, un módulo, N consumidores).
           if (empeoraCifras(userPrompt, mejor, candidato, { ufClp: UF_CLP })) {
-            console.warn(`[PLANC-CIFRA-REJECT] ${analysisId}: el retry quirúrgico introdujo cifras fuera del input — candidato descartado`);
+            console.warn(`[RD-CIFRA-REJECT] ${analysisId}: el retry quirúrgico introdujo cifras fuera del input — candidato descartado`);
           } else if (wc2 < mejorWC) {
             mejor = candidato;
             mejorWC = wc2;
           }
         } catch (e) {
-          console.warn(`[PLANC-BUDGET] ${analysisId}: retry quirúrgico ${intento} falló (best-effort): ${(e as Error)?.message ?? e}`);
+          console.warn(`[RD-BUDGET] ${analysisId}: retry quirúrgico ${intento} falló (best-effort): ${(e as Error)?.message ?? e}`);
           break;
         }
       }
@@ -3458,7 +3457,7 @@ Responde SOLO este JSON, sin texto alrededor:
         aiResult.conviene.respuestaDirecta_clp = clp;
         aiResult.conviene.respuestaDirecta_uf = uf;
         console.warn(
-          `[PLANC-BUDGET-TRIM] ${analysisId}: no convergió en ${PLANC_MAX_RETRIES} reintentos (${mejorWC} > ${techoDuroModelo}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras${clp ? "" : " (texto vacío: queda la respuesta del motor sola)"}`,
+          `[RD-BUDGET-TRIM] ${analysisId}: no convergió en ${RD_MAX_RETRIES} reintentos (${mejorWC} > ${techoDuroModelo}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras${clp ? "" : " (texto vacío: queda la respuesta del motor sola)"}`,
         );
       }
     }

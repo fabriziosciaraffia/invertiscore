@@ -2251,12 +2251,10 @@ function calcNegociacionScenario(
   // cambia el veredicto" (objetivo del plan cuando existe dentro del tope) y
   // `precioSugeridoUF` es "donde el aporte se vuelve sostenible" (flujo ≥ −20% del
   // arriendo con tope −25%, o alinear con mercado): un dato de caja, nunca el borde del
-  // veredicto. Hasta acá, cuando el umbral quedaba bajo el sugerido, el motor pisaba el
-  // sugerido con el umbral (`sugeridoMandadoPorVeredicto`) y el render/prompt llamaba
-  // "techo" a las dos cosas; medido en el parque recomputado: 105 filas con el sugerido
-  // DENTRO de la zona del veredicto mejor y 66 estructurales con el sugerido bajo el
-  // mínimo que sí cruza — Franco redactaba el sugerido como borde del veredicto.
-  const sugeridoMandadoPorVeredicto = false;
+  // veredicto. Hasta el 02-sep-2026, cuando el umbral quedaba bajo el sugerido, el motor
+  // pisaba el sugerido con el umbral y el render/prompt llamaba "techo" a las dos cosas;
+  // medido en el parque recomputado: 105 filas con el sugerido DENTRO de la zona del
+  // veredicto mejor y 66 estructurales con el sugerido bajo el mínimo que sí cruza.
 
   const tirAlSugerido = tirForPrice(input, precioSugeridoUF, ufClp, asOf);
   const tirAlVmFranco = tirForPrice(input, vmFrancoUF, ufClp, asOf);
@@ -2296,7 +2294,6 @@ function calcNegociacionScenario(
   return {
     precioUmbralVeredictoUF: umbralVeredicto?.precioUF ?? null,
     veredictoAlUmbral: umbralVeredicto?.veredicto ?? null,
-    sugeridoMandadoPorVeredicto,
     precioSugeridoUF,
     precioSugeridoCLP: Math.round(precioSugeridoUF * ufClp),
     tirAlSugerido,
