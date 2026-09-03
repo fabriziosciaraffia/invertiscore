@@ -38,7 +38,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef } from "react";
-import type { PostHog } from "posthog-js";
+import type { CaptureOptions, PostHog } from "posthog-js";
 import { trackWizard } from "./track";
 import { computePlannedPath, type NodeId, type WizardV4Answers } from "./wizardV4Nodes";
 import {
@@ -168,10 +168,25 @@ export function useStepTelemetry(opts: {
   useEffect(() => { completedRef.current = completed; }, [completed]);
   useEffect(() => { dirRef.current = dir; }, [dir]);
 
-  const emitir = useCallback((paso: PasoEnCurso, salida: SalidaPaso) => {
+  // ── `urgente`: la página se está descargando ──
+  // El SDK ata su propio `pagehide` en `init`, antes que este hook, así que
+  // cuando corre `onHide` PostHog ya capturó `$pageleave` y ya despachó la cola
+  // con sendBeacon. Un `capture` normal encolado después de eso se queda en una
+  // cola que no vuelve a vaciarse: medido en sandbox con posthog-js 1.364.7, el
+  // evento encolado en `pagehide` no llegó nunca al servidor. Y en producción,
+  // 2.433 de 3.331 sesiones de la portada (73%) tenían `$pageleave` sin
+  // `step_left` (docs/audit/2026-09-03-paso-dir.md).
+  //
+  // `send_instantly` salta la cola y manda al tiro; en esta versión el SDK lo
+  // despacha por fetch con `keepalive` (POST < 51 KB), que es lo que sobrevive
+  // al unload. No se pide `transport: "sendBeacon"`: en 1.364.7 esa opción de
+  // captura no se propaga al request (medido: llegó igual, con `beacon=0`), así
+  // que pedirla solo prometería en el código algo que la red no cumple.
+  const emitir = useCallback((paso: PasoEnCurso, salida: SalidaPaso, urgente = false) => {
     if (paso.emitido) return;
     paso.emitido = true;
     const a = answersRef.current;
+    const opts: CaptureOptions | undefined = urgente ? { send_instantly: true } : undefined;
     // Índice del paso EN SU RAMA: el mismo cálculo que alimenta la barra de
     // progreso, así "posición 3" significa lo mismo en el evento y en la UI.
     // Los detours (tasaFix/arrFix/adrFix) y gateNo no están en el camino
@@ -209,13 +224,14 @@ export function useStepTelemetry(opts: {
       n_interacciones: paso.interacciones,
       control_principal_usado: completedRef.current[paso.node] === true,
       validacion_rechazos: rechazosPasoActual,
-    });
-    // Sonda específica de esta pantalla (mod / dir), si la registró.
+    }, opts);
+    // Sonda específica de esta pantalla (mod / dir), si la registró. Hereda
+    // `opts`: `dir_tipeo` sale por el mismo camino y se perdía igual.
     const sonda = sondasSalida.get(paso.node);
     if (sonda) {
       sondasSalida.delete(paso.node);
       const ev = sonda();
-      if (ev) trackWizard(posthog, ev.name, ev.props);
+      if (ev) trackWizard(posthog, ev.name, ev.props, opts);
     }
   }, [posthog]);
 
@@ -266,7 +282,11 @@ export function useStepTelemetry(opts: {
       if (!p) return;
       // Terminal (generar/pagar) es un avance real hacia fuera del wizard, no un
       // abandono: así el dwell del resumen de quien SÍ completa queda medido.
-      emitir(p, terminadoRef.current ? "avanzo" : "abandono_navegacion");
+      // Urgente: la página se va y el batch ya no sale (ver `emitir`).
+      // `visibilitychange → hidden` se descartó a propósito como disparador de
+      // esto: cerraría el paso al cambiar de app y rompería la contabilidad de
+      // `tab_oculta_sin_retorno` (ver `onVisibility`).
+      emitir(p, terminadoRef.current ? "avanzo" : "abandono_navegacion", true);
     };
 
     // LA DECISIÓN SE TOMA AL CERRAR EL PASO, NO AL VENCER EL TIMER.

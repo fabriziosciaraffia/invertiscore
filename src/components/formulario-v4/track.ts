@@ -8,11 +8,13 @@
 //     (en dev PostHog no se inicializa). El pase conjunto lee window.__wizard4Events
 //     tras un recorrido real y valida evento por evento — patrón "en el cable" F5.
 
-import type { PostHog } from "posthog-js";
+import type { CaptureOptions, PostHog } from "posthog-js";
 
 export interface WizardTrackedEvent {
   name: string;
   props?: Record<string, unknown>;
+  /** Opciones de captura con que salió (p. ej. envío inmediato al descargar). */
+  opts?: CaptureOptions;
   t: number;
 }
 
@@ -22,15 +24,22 @@ declare global {
   }
 }
 
+/**
+ * `opts` es opcional y se pasa tal cual a `posthog.capture`. Los llamadores
+ * existentes no cambian. Lo usa la telemetría de pasos cuando la página se está
+ * descargando: ahí el batch normal ya no alcanza a salir (ver `emitir` en
+ * `stepTelemetry.ts`).
+ */
 export function trackWizard(
   posthog: PostHog | null | undefined,
   name: string,
   props?: Record<string, unknown>,
+  opts?: CaptureOptions,
 ): void {
-  posthog?.capture(name, props);
+  posthog?.capture(name, props, opts);
   if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
     // eslint-disable-next-line no-console
-    console.debug("[wizard4]", name, props ?? {});
-    (window.__wizard4Events ??= []).push({ name, props, t: Date.now() });
+    console.debug("[wizard4]", name, props ?? {}, opts ?? {});
+    (window.__wizard4Events ??= []).push({ name, props, opts, t: Date.now() });
   }
 }
