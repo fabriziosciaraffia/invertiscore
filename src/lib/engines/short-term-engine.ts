@@ -23,6 +23,7 @@ import { mesesHastaEntregaDesdeFecha } from "@/lib/pre-entrega-serie";
 import { calcInversionInicialCLP } from "../inversion-inicial";
 import { PLUSVALIA_PROYECCION_ANUAL } from "../plusvalia-proyeccion";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
+import { resolverModeloCostos } from "../modelo-costos";
 import type { Hallazgo, MetricaSobreCapital, MetricaTIR, RazonSinCapital } from "../types";
 import { metricaNoAplica, metricaNoCalculable, metricaValor } from "../types";
 import { calcIRRPct } from "../finance/irr";
@@ -136,6 +137,11 @@ export interface ShortTermInputs {
 
   // UF
   valorUF: number;
+
+  /** Versión de metodología (espejo de input_data.methodologyVersion). Gatea la
+   *  curva de CapEx de puesta a punto: ≥ v3 ⇒ rango nuevo; ausente ⇒ legacy, así
+   *  que los análisis STR previos recomputan idéntico. Ver modelo-costos.ts. */
+  methodologyVersion?: string;
 
   /** Fase 5b · origen del pie 0 declarado en el wizard. Solo aplica con
    *  piePercent === 0; se propaga a la razón de las métricas sobre capital.
@@ -1021,6 +1027,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     superficieUtilM2: input.superficie,
     valorUF: input.valorUF,
     overrideCLP: input.costoPuestaAPuntoCLP,
+    modelo: resolverModeloCostos(input.methodologyVersion),
   });
   // (a) AMOBLAMIENTO EN LA ENTREGA, no al firmar. Nadie compra sofás para un
   // edificio que se entrega en 2029. Con pre-entrega el amoblamiento sale del

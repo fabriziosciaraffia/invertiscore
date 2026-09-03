@@ -24,9 +24,11 @@ import {
   calcFlujoDesglose,
   calcExitScenario,
   calcProjections,
-  getMantencionRate,
   runAnalysis,
 } from "../../src/lib/analysis";
+// Backtest histórico (reel 2): conserva la tabla legacy a propósito — reproduce
+// la aritmética con la que se corrió; no es un consumidor del modelo vigente.
+import { getMantencionRateLegacy as getMantencionRate } from "../../src/lib/modelo-costos";
 import { calcIRR } from "../../src/lib/finance/irr";
 import type { AnalisisInput, YearProjection } from "../../src/lib/types";
 import { GFK_SERIE, PLUSVALIA_ESTIMADO_2025 } from "../../src/lib/plusvalia-estimado.gen";

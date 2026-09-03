@@ -68,6 +68,13 @@ export interface AnalisisInput {
   // tal cual (origen='override') en lugar de la curva por antigüedad. Sin UI esta
   // sesión — el motor solo lo lee si el caller lo setea.
   costoPuestaAPuntoCLP?: number;
+  // Versión de metodología del análisis — espejo de `analisis.methodology_version`
+  // llevado DENTRO de input_data para que el motor lo lea sin plomería en los
+  // callers de render. La estampa el borde (API routes) al CREAR, antes de correr
+  // el motor y de persistir el body. Gatea el modelo de costos (mantención y
+  // curva de CapEx): ≥ v3 ⇒ tablas nuevas; ausente / v1 / v2 ⇒ legacy, así que
+  // ningún informe previo cambia en pantalla al recomputar. Ver modelo-costos.ts.
+  methodologyVersion?: string;
   // Gate anti-drift del corretaje inicial (2% del precio, solo usados). Se setea
   // en el payload al CREAR (true iff tipoPropiedad==="usado"); persistido en
   // input_data. El motor lo lee una vez en calcMetrics → metrics.corretajeInicialCLP.

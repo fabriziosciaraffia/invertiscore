@@ -18,7 +18,6 @@ import {
   antiguedadToNumber,
   mesesHastaEntrega,
 } from "@/components/formulario-v3/wizardV3State";
-import { getMantencionRate } from "@/lib/analysis";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
@@ -126,7 +125,11 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     esNuevo: a.tipoPropiedad === "nuevo",
     gastos: ggccCLP(a, ctx, supUtil),
     contribuciones: contribCLP(a, Math.round(precioUF * ctx.ufCLP)),
-    provisionMantencion: Math.round((precioUF * ctx.ufCLP * getMantencionRate(antigNum)) / 12),
+    // Provisión de mantención: el wizard NO la calcula. 0 ⇒ el motor la deriva
+    // con la fuente única (modelo-costos.ts, gateada por versión). Antes el
+    // wizard mandaba el % del precio calculado acá y el motor lo trataba como
+    // "declarado por el usuario", congelando la tabla vieja en input_data.
+    provisionMantencion: 0,
     tipoRenta: "larga",
     arriendo: leerNum(a.arriendo, DEC.arriendo) || ctx.arriendoSugerido || 0,
     arriendoEstacionamiento: 0,

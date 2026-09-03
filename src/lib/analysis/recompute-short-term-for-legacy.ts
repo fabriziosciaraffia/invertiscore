@@ -105,6 +105,9 @@ export function buildStrRecomputeCtx(
     costoAmoblamiento: inputData.estaAmoblado ? 0 : (inputData.costoAmoblamiento || 0),
     arriendoLargoMensual: inputData.arriendoLargoMensual,
     valorUF: ufClp,
+    // Gate del modelo de costos: la versión estampada al crear. Filas previas no
+    // la traen ⇒ legacy ⇒ curva de CapEx idéntica a la que las generó.
+    methodologyVersion: typeof inputData.methodologyVersion === "string" ? inputData.methodologyVersion : undefined,
     // Entrega futura. Sin esto el recompute-on-load reconstruía SIEMPRE como
     // entrega inmediata, así que la pre-entrega del motor no se veía al abrir
     // un análisis persistido — solo al crearlo. El `asOf` que este helper ya

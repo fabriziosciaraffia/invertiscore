@@ -1,57 +1,123 @@
 // CapEx de "puesta a punto" para deptos usados — motor determinístico.
 //
 // Comprar un usado y captar arriendo DE MERCADO suele exigir una puesta a punto
-// (pintura, pisos, cocina/baño) que escala con la antigüedad. El motor lo modela
-// como CapEx upfront 100% equity (no financiado) que suma a la inversión inicial.
+// (pintura, grifería, calefont, filtraciones, terminaciones) que escala con la
+// antigüedad. El motor lo modela como CapEx upfront 100% equity (no financiado)
+// que suma a la inversión inicial.
 //
 // NO es flipping ni reno integral: es dejar el depto en estándar de arriendo.
-// Por eso el techo de la curva (9 UF/m²) queda MUY por debajo de la banda de
-// reno integral (15–25 UF/m²). Anclas de calibración: usado típico ~5 UF/m²
-// (referencias de mercado Santiago); integral 15–25 UF/m² = techo que NO se cruza.
+// Recalibración sep-2026: la curva previa (1,5 → 9,0 UF/m²) caía en zona de
+// remodelación media, no de habilitación para arriendo. Bottom-up chileno
+// 2025-26 para 16-25 años: 0,6-1,3 UF/m². La curva v3 es un RANGO [min, max]
+// por tramo; el PUNTO (medio) es lo único que entra a inversión inicial,
+// cash-on-cash y TIR. Los extremos son display (hallazgo, card, drawer, PDF) y
+// no entran a ninguna suma.
+//
+// La curva legacy se conserva para que los análisis previos recomputen
+// byte-idéntico (gate por versión: ver modelo-costos.ts).
 
 import type { HallazgoPuestaAPunto } from "./types";
+import type { ModeloCostos } from "./modelo-costos";
+
+/** Rango de puesta a punto en UF/m² útil por tramo de antigüedad (v3). */
+export const PUESTA_A_PUNTO_UF_M2: ReadonlyArray<{ hasta: number; min: number; max: number }> = [
+  { hasta: 2, min: 0, max: 0 }, // nuevo / casi nuevo — sin puesta a punto
+  { hasta: 7, min: 0.2, max: 0.4 },
+  { hasta: 15, min: 0.5, max: 0.9 },
+  { hasta: 25, min: 1.0, max: 1.6 },
+  // 26+: defensivo. El wizard captura antigüedad máxima 25 → hoy inalcanzable
+  // en producción; documentado para no dejar el dominio abierto.
+  { hasta: Infinity, min: 1.8, max: 2.6 },
+];
 
 /**
- * Costo de puesta a punto en UF/m² (sobre superficie útil) según antigüedad.
- * Misma forma escalonada que getMantencionRate. Valores = punto medio de las
- * bandas calibradas; son un PISO estimado, no un presupuesto cerrado.
+ * Curva LEGACY (valor único). SOLO para análisis previos al gate por versión.
+ * No usar en código nuevo.
  */
-export function getPuestaAPuntoUfM2(antiguedad: number): number {
-  if (antiguedad <= 2) return 0; // depto nuevo / casi nuevo — sin puesta a punto
+export function getPuestaAPuntoUfM2Legacy(antiguedad: number): number {
+  if (antiguedad <= 2) return 0;
   if (antiguedad <= 7) return 1.5;
   if (antiguedad <= 15) return 3.5;
   if (antiguedad <= 25) return 6.0;
-  return 9.0; // techo: estándar de arriendo, NUNCA reno integral (15–25 UF/m²)
+  return 9.0;
+}
+
+export interface RangoUfM2 {
+  min: number;
+  max: number;
+  /** Punto que corre el caso: medio del rango (legacy: el valor único). */
+  punto: number;
+}
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+/** Rango UF/m² por antigüedad según el modelo. Legacy colapsa min = max = punto. */
+export function getPuestaAPuntoRango(antiguedad: number, modelo: ModeloCostos): RangoUfM2 {
+  if (modelo === "legacy") {
+    const v = getPuestaAPuntoUfM2Legacy(antiguedad);
+    return { min: v, max: v, punto: v };
+  }
+  const tramo = PUESTA_A_PUNTO_UF_M2.find((t) => antiguedad <= t.hasta) ?? PUESTA_A_PUNTO_UF_M2[PUESTA_A_PUNTO_UF_M2.length - 1];
+  return { min: tramo.min, max: tramo.max, punto: round2((tramo.min + tramo.max) / 2) };
 }
 
 export interface CapexPuestaAPunto {
+  /** PUNTO — lo único que entra a inversión inicial / cash-on-cash / TIR. */
   montoCLP: number;
   montoUF: number;
   ufM2: number;
+  /** Extremos del rango — display, NO entran a ninguna suma. Con override o
+   *  legacy colapsan al punto. */
+  montoMinUF: number;
+  montoMaxUF: number;
+  montoMinCLP: number;
+  montoMaxCLP: number;
+  ufM2Min: number;
+  ufM2Max: number;
   origen: "derivado" | "override";
 }
 
 /**
  * Calcula el CapEx de puesta a punto. Determinístico desde la antigüedad
- * (curva) o desde un override explícito del usuario. Usa el MISMO valorUF que
- * el motor — no introduce otra fuente de UF.
+ * (curva del modelo) o desde un override explícito del usuario. Usa el MISMO
+ * valorUF que el motor — no introduce otra fuente de UF.
  */
 export function calcCapexPuestaAPunto(p: {
   antiguedad: number;
   superficieUtilM2: number;
   valorUF: number;
   overrideCLP?: number | null;
+  modelo: ModeloCostos;
 }): CapexPuestaAPunto {
   if (p.overrideCLP != null && p.overrideCLP > 0) {
     const montoCLP = Math.round(p.overrideCLP);
     const montoUF = p.valorUF > 0 ? Math.round((montoCLP / p.valorUF) * 10) / 10 : 0;
     const ufM2 = p.superficieUtilM2 > 0 ? Math.round((montoUF / p.superficieUtilM2) * 100) / 100 : 0;
-    return { montoCLP, montoUF, ufM2, origen: "override" };
+    // Una cotización real no admite rango: min = max = monto.
+    return {
+      montoCLP, montoUF, ufM2,
+      montoMinUF: montoUF, montoMaxUF: montoUF, montoMinCLP: montoCLP, montoMaxCLP: montoCLP,
+      ufM2Min: ufM2, ufM2Max: ufM2,
+      origen: "override",
+    };
   }
-  const ufM2 = getPuestaAPuntoUfM2(p.antiguedad);
-  const montoUF = ufM2 * p.superficieUtilM2;
-  const montoCLP = Math.round(montoUF * p.valorUF);
-  return { montoCLP, montoUF: Math.round(montoUF * 10) / 10, ufM2, origen: "derivado" };
+  const rango = getPuestaAPuntoRango(p.antiguedad, p.modelo);
+  const montoUFExacto = rango.punto * p.superficieUtilM2;
+  const montoCLP = Math.round(montoUFExacto * p.valorUF);
+  const minUFExacto = rango.min * p.superficieUtilM2;
+  const maxUFExacto = rango.max * p.superficieUtilM2;
+  return {
+    montoCLP,
+    montoUF: Math.round(montoUFExacto * 10) / 10,
+    ufM2: rango.punto,
+    montoMinUF: Math.round(minUFExacto * 10) / 10,
+    montoMaxUF: Math.round(maxUFExacto * 10) / 10,
+    montoMinCLP: Math.round(minUFExacto * p.valorUF),
+    montoMaxCLP: Math.round(maxUFExacto * p.valorUF),
+    ufM2Min: rango.min,
+    ufM2Max: rango.max,
+    origen: "derivado",
+  };
 }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));

@@ -16,6 +16,7 @@ import {
 import { desdeBodyLtr, desdeBodyStr } from "@/lib/plausibilidad";
 import { AMBAS_ENABLED, AMBAS_OFF_ERROR } from "@/lib/ambas-flag";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
+import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { waitUntil } from "@vercel/functions";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
 
@@ -55,6 +56,9 @@ function buildLockedLtrRow(
   // mismo criterio que /api/analisis — se normaliza antes del motor y del
   // input_data. Único punto para las ramas LTR-single y AMBAS.
   if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
+  // Versión de metodología en el body (gate del modelo de costos; se persiste en
+  // input_data). Mismo criterio que /api/analisis. Ver modelo-costos.ts.
+  body.methodologyVersion = METHODOLOGY_VERSION_ACTUAL;
   const result = runAnalysis(body, ufValue, medianaComuna);
   return {
     nombre: body.nombre,

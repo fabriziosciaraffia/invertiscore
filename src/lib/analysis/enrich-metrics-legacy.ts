@@ -1,5 +1,5 @@
 import type { AnalisisInput, AnalysisMetrics } from "@/lib/types";
-import { getMantencionRate } from "@/lib/analysis";
+import { calcMantencionMensual, resolverModeloCostos } from "@/lib/modelo-costos";
 import { estimarContribuciones } from "@/lib/contribuciones";
 
 /**
@@ -39,6 +39,16 @@ export function enrichMetricsLegacy(
       metrics.provisionMantencionAjustada
       ?? (input.provisionMantencion > 0
         ? input.provisionMantencion
-        : Math.round((precioCLP * getMantencionRate(input.antiguedad ?? 0)) / 12)),
+        // Misma fuente única que calcMetrics. Estas filas son pre-B1 (2026-05),
+        // así que sin methodologyVersion caen a legacy, que es lo que las generó.
+        // La UF se reconstruye del snapshot (precioCLP / precio UF); solo la usa v3.
+        : calcMantencionMensual({
+            modelo: resolverModeloCostos(input.methodologyVersion),
+            antiguedad: input.antiguedad ?? 0,
+            superficieUtilM2: input.superficie ?? 0,
+            precioCLP,
+            arriendoCLP: input.arriendo ?? 0,
+            ufClp: input.precio > 0 ? precioCLP / input.precio : 0,
+          })),
   };
 }

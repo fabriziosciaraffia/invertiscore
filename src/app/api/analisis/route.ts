@@ -4,6 +4,7 @@ import { waitUntil } from "@vercel/functions";
 import type { AnalisisInput } from "@/lib/types";
 import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import { runAnalysis } from "@/lib/analysis";
+import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
 import { resolveDisplayName, ensureWelcomeEmail } from "@/lib/welcome";
@@ -80,6 +81,10 @@ export async function POST(request: Request) {
     // en input_data — cualquier cliente que mande el float crudo lo deja sucio
     // para siempre. Se normaliza en el borde, antes de ambas cosas.
     if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
+    // Versión de metodología DENTRO del body: gatea el modelo de costos del motor
+    // y queda persistida en input_data, así el recompute de render la lee sin
+    // plomería. Análisis previos no la traen ⇒ legacy. Ver modelo-costos.ts.
+    body.methodologyVersion = METHODOLOGY_VERSION_ACTUAL;
     const prepaidChargeId = body.prepaidChargeId;
     comuna = body.comuna;
     // Enlace AMBAS (flujo crédito/welcome): el wizard genera el group_id y lo
@@ -160,6 +165,9 @@ export async function POST(request: Request) {
         // Commit E.1 · 2026-05-13: análisis nuevos usan metodología v2
         // (thresholds 70/45/0 unificados · slider 3 segmentos · sin fallback
         // score 50). Análisis pre-Commit-E quedan como v1 (legacy preservation).
+        // Sep-2026: la versión que gatea el modelo de costos (v3) viaja en
+        // input_data.methodologyVersion; la columna sigue en v2 porque su CHECK
+        // solo admite ('v1','v2') y ampliarlo es SQL (goal aparte).
         methodology_version: "v2",
         dormitorios: body.dormitorios,
         banos: body.banos,

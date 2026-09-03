@@ -4,7 +4,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { usePostHog } from "posthog-js/react";
 import { registrarInformeVisto, leerEsperaMs, type InformeAiEstado } from "@/lib/informe-visto";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
-import { calcFlujoDesglose, getMantencionRate, calcExitScenario, calcProjections } from "@/lib/analysis";
+import { calcFlujoDesglose, calcExitScenario, calcProjections } from "@/lib/analysis";
+import { resolverModeloCostos, calcMantencionMensual, antiguedadEfectiva } from "@/lib/modelo-costos";
 import { readVeredicto } from "@/lib/results-helpers";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { findNearestStation } from "@/lib/metro-stations";
@@ -555,14 +556,30 @@ export function PremiumResults({
     let contribucionesActual = m.contribuciones;
     const costGrowthDec = costGrowth / 100;
 
+    // Misma fuente única que calcProjections (modelo-costos.ts): gate por versión,
+    // antigüedad efectiva (reset post-CapEx en v3) y techo 6% sobre el arriendo del
+    // depto reajustado. Antes la rama `inputData.provisionMantencion ||` mantenía
+    // el valor año-1 como CONSTANTE, divergente del motor.
+    const modeloCostos = resolverModeloCostos(inputData.methodologyVersion);
+    const tieneCapex = modeloCostos === "v3" && (m.capexPuestaAPuntoCLP ?? 0) > 0;
+    const aniosEntregaCliente = Math.ceil(mesesPreEntrega / 12);
+    const ufCliente = inputData.precio > 0 ? m.precioCLP / inputData.precio : 0;
     function getMantencionForMonth(mes: number): number {
-      // Fórmula canónica del motor (precio × rate(antig+año) / 12). Antes la
-      // rama `inputData.provisionMantencion ||` mantenía el valor año-1 como
-      // CONSTANTE, divergente del motor.
       const anioProyeccion = Math.ceil(mes / 12);
-      const antiguedadActual = inputData!.antiguedad + anioProyeccion;
-      const mantencionBase = Math.round((m!.precioCLP * getMantencionRate(antiguedadActual)) / 12);
-      return Math.round(mantencionBase * Math.pow(1 + costGrowthDec, anioProyeccion - 1));
+      // Convención de `t` espejo del motor: legacy año 1 ⇒ antigüedad + 1; v3 parte en 0.
+      const t = modeloCostos === "v3"
+        ? Math.max(0, anioProyeccion - 1 - aniosEntregaCliente)
+        : anioProyeccion;
+      const antiguedadActual = antiguedadEfectiva(inputData!.antiguedad, t, tieneCapex);
+      return calcMantencionMensual({
+        modelo: modeloCostos,
+        antiguedad: antiguedadActual,
+        superficieUtilM2: inputData!.superficie,
+        precioCLP: m!.precioCLP,
+        arriendoCLP: inputData!.arriendo * Math.pow(1 + arriendoGrowth / 100, anioProyeccion - 1),
+        ufClp: ufCliente,
+        factorInflacion: Math.pow(1 + costGrowthDec, anioProyeccion - 1),
+      });
     }
 
     function buildRow(mes: number, arriendoAct: number, gastosAct: number, contribAct: number): CashflowRow {

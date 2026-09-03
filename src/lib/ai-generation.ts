@@ -16,6 +16,7 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { calcInversionInicialCLP } from "@/lib/inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "@/lib/capex-puesta-a-punto";
+import { resolverModeloCostos } from "@/lib/modelo-costos";
 import { readVeredicto } from "@/lib/results-helpers";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
@@ -1202,6 +1203,8 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       superficieUtilM2: input.superficie,
       valorUF: UF_CLP,
       overrideCLP: input.costoPuestaAPuntoCLP,
+      // Mismo gate por versión que el motor: la cifra del prompt = la de la card.
+      modelo: resolverModeloCostos(input.methodologyVersion),
     });
 
     const creditoCLP = m.precioCLP * (1 - input.piePct / 100);

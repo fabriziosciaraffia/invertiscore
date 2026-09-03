@@ -27,6 +27,7 @@ import {
 } from "@/lib/comuna-stats";
 import { evaluarPlausibilidad, type Anomalia, type PlausibilidadInput } from "@/lib/plausibilidad";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
+import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import type { AnalisisInput, RazonSinCapital } from "@/lib/types";
 import {
   calcShortTerm,
@@ -634,6 +635,9 @@ export async function buildShortTermAnalysisRow(
   const antiguedadResuelta = body.antiguedad ?? (body.tipoPropiedad === "nuevo" ? 0 : 5);
 
   const inputs: ShortTermInputs = {
+    // Gate del modelo de costos (curva de CapEx). Mismo valor que se persiste en
+    // input_data abajo, para que el recompute-on-load reconstruya idéntico.
+    methodologyVersion: METHODOLOGY_VERSION_ACTUAL,
     precioCompra: body.precioCompra,
     superficie: body.superficieUtil,
     dormitorios: body.dormitorios,
@@ -746,7 +750,9 @@ export async function buildShortTermAnalysisRow(
       direccion: body.direccion || null,
       tipo: "Departamento",
       tipo_analisis: "short-term",
-      // Commit E.1 · 2026-05-13: STR nuevos en metodología v2.
+      // Commit E.1 · 2026-05-13: STR nuevos en metodología v2. La versión que
+      // gatea el modelo de costos (v3) viaja en input_data.methodologyVersion;
+      // la columna sigue en v2 por su CHECK ('v1','v2') — ver modelo-costos.ts.
       methodology_version: "v2",
       dormitorios: body.dormitorios,
       banos: body.banos,
@@ -780,7 +786,7 @@ export async function buildShortTermAnalysisRow(
       // deja el dato registrado para reconstrucción futura y para homologar la base CLP con LTR en
       // el comparativo. Aditivo: no toca precioCompra/precioCompraUF (el ancla UF-vs-CLP del wizard
       // es ambiguo server-side), así que no distorsiona precios entrados en CLP.
-      input_data: { ...body, tipoAnalisis: "short-term", ufCongelada: ufValue },
+      input_data: { ...body, tipoAnalisis: "short-term", ufCongelada: ufValue, methodologyVersion: METHODOLOGY_VERSION_ACTUAL },
     },
   };
 }

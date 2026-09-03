@@ -469,7 +469,8 @@ function NuevoAnalisisV3Inner() {
       tasaInteres: parseDecimalLocale(state.tasaInteres) || 4.72,
       gastos,
       contribuciones,
-      provisionMantencion: Math.round((precioUF * ufCLP * getMantencionRate(antigNum)) / 12),
+      // 0 ⇒ el motor deriva la provisión con la fuente única (modelo-costos.ts).
+      provisionMantencion: 0,
       tipoRenta: "larga",
       arriendo,
       arriendoEstacionamiento: Number(state.arriendoEstac) || 0,
@@ -1069,13 +1070,4 @@ export default function NuevoAnalisisV3Page() {
       <NuevoAnalisisV3Inner />
     </Suspense>
   );
-}
-
-function getMantencionRate(antiguedad: number): number {
-  if (antiguedad <= 2) return 0.003;
-  if (antiguedad <= 5) return 0.005;
-  if (antiguedad <= 10) return 0.008;
-  if (antiguedad <= 15) return 0.01;
-  if (antiguedad <= 20) return 0.013;
-  return 0.015;
 }
