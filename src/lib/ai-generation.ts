@@ -1143,27 +1143,36 @@ export function violacionesHeroClaim(texto: string, r: RazonesHeroClaim): string
       if (m && m.index !== undefined) { claim = { def, txt: m[0], pos: m.index }; break; }
     }
     if (!claim) continue;
-    // Comparador: el más cercano al múltiplo (antes o después). Sujeto: el más cercano al
-    // múltiplo que no sea el propio comparador. Sin alguno de los dos, sin licencia.
-    const masCercano = <T,>(defs: { re: RegExp; v: T }[], excluir?: { ini: number; fin: number }): { v: T; ini: number; fin: number; d: number } | null => {
-      let mejor: { v: T; ini: number; fin: number; d: number } | null = null;
+    // Comparador: el objeto del múltiplo ("más de la mitad DE LA CUOTA") — el más cercano
+    // DESPUÉS del múltiplo; si no hay ninguno después, el más cercano antes. Sujeto: el más
+    // cercano ANTES del múltiplo (después si no hay antes), sin pisar el comparador y
+    // saltando los que no forman razón con ese comparador ("el arriendo rinde 8,7% sobre el
+    // precio de compra — más del doble de la referencia": manda "rinde", no "precio").
+    // Sin alguno de los dos, sin licencia.
+    type Hit<T> = { v: T; ini: number; fin: number; d: number; antes: boolean };
+    const hits = <T,>(defs: { re: RegExp; v: T }[], excluir?: { ini: number; fin: number }): Hit<T>[] => {
+      const out2: Hit<T>[] = [];
       for (const def of defs) {
         def.re.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = def.re.exec(o))) {
-          if (excluir && m.index === excluir.ini) continue;
-          const d = Math.abs(m.index - claim!.pos);
-          if (!mejor || d < mejor.d) mejor = { v: def.v, ini: m.index, fin: m.index + m[0].length, d };
+          const ini = m.index; const fin = m.index + m[0].length;
+          if (excluir && ini < excluir.fin && fin > excluir.ini) continue;
+          out2.push({ v: def.v, ini, fin, d: Math.abs(ini - claim!.pos), antes: ini < claim!.pos });
         }
       }
-      return mejor;
+      return out2.sort((a, b) => a.d - b.d);
     };
-    const comp = masCercano(COMPARADORES_HERO.map((x) => ({ re: x.re, v: x.c })));
+    const compHits = hits(COMPARADORES_HERO.map((x) => ({ re: x.re, v: x.c })));
+    const comp = compHits.find((h) => !h.antes) ?? compHits[0] ?? null;
     if (!comp) { out.push(`${claim.def.regla}: dice "${claim.txt}" sin nombrar contra qué (sin comparador, sin licencia)`); continue; }
-    const suj = masCercano(SUJETOS_HERO.map((x) => ({ re: x.re, v: x.s })), { ini: comp.ini, fin: comp.fin });
-    if (!suj) { out.push(`${claim.def.regla}: dice "${claim.txt}" contra ${comp.v} sin sujeto claro (sin licencia)`); continue; }
-    const z = razonHero(r, suj.v, comp.v);
-    if (!z) { out.push(`${claim.def.regla}: dice "${claim.txt}" con sujeto ${suj.v} y comparador ${comp.v}: no hay razón del motor para ese par (sin licencia)`); continue; }
+    const sujHits = hits(SUJETOS_HERO.map((x) => ({ re: x.re, v: x.s })), { ini: comp.ini, fin: comp.fin });
+    const ordenados = [...sujHits.filter((h) => h.antes), ...sujHits.filter((h) => !h.antes)];
+    if (!ordenados.length) { out.push(`${claim.def.regla}: dice "${claim.txt}" contra ${comp.v} sin sujeto claro (sin licencia)`); continue; }
+    let z: { nombre: string; valor: number | null } | null = null;
+    let sujElegido: SujetoHero = ordenados[0].v;
+    for (const h of ordenados) { const zz = razonHero(r, h.v, comp.v); if (zz) { z = zz; sujElegido = h.v; break; } }
+    if (!z) { out.push(`${claim.def.regla}: dice "${claim.txt}" con sujeto ${sujElegido} y comparador ${comp.v}: no hay razón del motor para ese par (sin licencia)`); continue; }
     if (z.valor === null) { out.push(`${claim.def.regla}: dice "${claim.txt}" contra ${z.nombre}, que no tiene dato`); continue; }
     const { min, max } = claim.def;
     const ok = (min === undefined || z.valor >= min) && (max === undefined || z.valor <= max);
