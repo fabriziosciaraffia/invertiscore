@@ -330,6 +330,31 @@ export async function fetchMapPaginado(opts: {
   return { total, paginas, properties, errors };
 }
 
+/**
+ * UNA página cruda del GetProps, sin parser: para sondas y fixtures de test
+ * (scripts/test-parse-toctoc.ts se construye sobre filas reales capturadas así).
+ * No toca la ficha HTML. Devuelve null si la fuente no responde 200.
+ */
+export async function fetchMapCrudo(opts: {
+  type: "arriendo" | "venta";
+  estado: number;
+  pagina?: number;
+  limite?: number;
+  viewport?: string;
+}): Promise<{ propiedades: unknown[]; total: number } | null> {
+  const { cookies, token } = await getTocTocSession();
+  return fetchMapRaw(
+    "santiago",
+    opts.type === "arriendo" ? 2 : 1,
+    opts.viewport ?? VIEWPORT_GRAN_SANTIAGO,
+    cookies,
+    token,
+    opts.estado,
+    opts.pagina ?? 1,
+    Math.min(opts.limite ?? GETPROPS_MAX_POR_PAGINA, GETPROPS_MAX_POR_PAGINA),
+  );
+}
+
 export function parseMapProperty(
   arr: unknown[],
   comunaSlug: string,
@@ -370,16 +395,17 @@ export function parseMapProperty(
     const esObraNueva = !!url && url.includes("compranuevo");
 
     // Dormitorios. La fila del GetProps trae [4]/[5] = baños (mín/máx) y
-    // [8]/[9] = dormitorios (mín/máx). Hasta el 02-sep-2026 se leía [4], así que
-    // todo lo que entró por el mapa quedó con dormitorios = baños: medido contra
-    // el listado gw-lista-seo sobre 3.979 avisos usados, [8] acierta 3.977 y [4]
-    // solo 2.343 (cuando dorms y baños coinciden); en la tabla, el 100% de las
-    // filas vía mapa tenía dormitorios = banos. En obra nueva pasa lo mismo
-    // ([8] = dormitorios mínimos, 239/239), pero ese universo se deja
-    // byte-idéntico acá a propósito (regla del goal backfill: scrape-nuevos
-    // intacto) y se corrige en su propio goal — junto con el filtro de dorms que
-    // comuna-stats sacó en nuevo creyendo que [4] era el mínimo del rango.
-    const dormitorios = (esObraNueva ? arr[4] : arr[8]) as number;
+    // [8]/[9] = dormitorios (mín/máx), en usado Y en obra nueva. Hasta el
+    // 02-sep-2026 se leía [4] en los dos universos, así que todo lo que entró por
+    // el mapa quedó con dormitorios = baños: medido contra el listado gw-lista-seo
+    // sobre 3.979 avisos usados, [8] acierta 3.977 y [4] solo 2.343 (cuando dorms
+    // y baños coinciden). En obra nueva pasa lo mismo ([8] = dormitorios mínimos
+    // del rango del proyecto, 239/239); ese universo se corrigió el 04-sep-2026,
+    // después del pase semanal, y no necesita backfill: scrape-nuevos reescribe
+    // las filas-proyecto cada mañana. OJO: en obra nueva [8] sigue siendo el
+    // MÍNIMO del rango (la fila es del proyecto, no de una unidad); las unidades
+    // con dormitorios propios las trae scrape-unidades-nuevas por GraphQL.
+    const dormitorios = arr[8] as number;
 
     // Superficie. Contra el listado gw-lista-seo (3.979 avisos usados
     // emparejados por id, 02-sep-2026) la superficie que publica el aviso es

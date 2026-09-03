@@ -13,7 +13,10 @@
  *    título: "3d +2b".
  *  · GetProps usado: la superficie canónica es la ÚTIL [33], que es la que
  *    publica el aviso ([27] es la construida).
- *  · Obra nueva queda byte-idéntica en este goal: dormitorios sigue en [4].
+ *  · Obra nueva: dormitorios también desde [8] (el MÍNIMO del rango del
+ *    proyecto); [4] es baños mín. Hasta el 04-sep-2026 leía [4] y las
+ *    filas-proyecto quedaban con dormitorios = baños mín. Se prueba con la fila
+ *    real de "Edificio Refugio New" (La Florida), capturada ese día.
  *  · gw-lista-seo: `latitud`/`longitud` se leen (antes se descartaban y la fila
  *    entraba sin coordenada).
  */
@@ -75,6 +78,19 @@ const NUEVO_LA_FLORIDA: unknown[] = (() => {
   row[40] = "https://www.toctoc.com/propiedades/compranuevo/departamento/la-florida/proyecto/1384492";
   return row;
 })();
+
+/** Fila REAL del GetProps con estado=1, capturada el 04-sep-2026 (sonda
+ *  of-sonda-getprops-nuevo.ts): "Edificio Refugio New", La Florida. [4]=1 baño
+ *  mín, [5]=2 baños máx, [8]=2 dorms mín, [9]=3 dorms máx, [33]=50,99 útil mín. */
+const NUEVO_LA_FLORIDA_REAL: unknown[] = [
+  [25, 27, 28, 29, 30, 37],
+  1384492, -70.5858681, -33.5339223, 1, 2, 7, "La Florida", 2, 3, false, true, 0, false, "20-12-2019 0:00:00",
+  2, 7, 2, 7, 2, "https://d1cfu8v5n1wsm.cloudfront.net/toctoc/fotos/20191220/1384492/s_wm_2020082631447222663.jpg",
+  1, 3594, 3594, 146914561.62, 0, "912/2019043008494788677.jpg", 54.08, 87.92, 0, 0, 54.08, 87.92, 50.99, 82.96,
+  false, false, false, 0, "Edificio Refugio New",
+  "https://www.toctoc.com/propiedades/compranuevo/departamento/la-florida/edificio-refugio-new/1384492",
+  4, 1, 0, "",
+];
 
 // ── Fixture real (gw-lista-seo, Renca venta, page 1) ────────────────────────
 
@@ -148,14 +164,37 @@ test("usado: una fila con [4] ≠ [8] ya no confunde baños con dormitorios (reg
   assert.equal(p.banos, 1);
 });
 
-test("obra nueva: byte-idéntica en este goal — dormitorios sigue en [4], superficie mínima en [33]", () => {
+test("obra nueva (fila real): dormitorios mínimos desde [8], no baños mínimos [4]", () => {
+  const p = parseMapProperty(NUEVO_LA_FLORIDA_REAL, "santiago", "venta");
+  assert.ok(p);
+  assert.equal(p.condicion, "nuevo");
+  assert.equal(p.dormitorios, 2, "[8] = 2 dorms mín; [4] = 1 baño mín era lo que se leía antes");
+  assert.equal(p.banos, 2);
+  assert.equal(p.comuna, "La Florida");
+  assert.equal(p.superficieM2, 50.99, "útil mínima [33]");
+  assert.equal(p.moneda, "CLP");
+  assert.equal(p.precio, 146914561.62);
+  assert.equal(p.url, NUEVO_LA_FLORIDA_REAL[40]);
+});
+
+test("obra nueva (fila sintética): [8] manda aunque [4] traiga otro valor; superficie mínima en [33]", () => {
   const p = parseMapProperty(NUEVO_LA_FLORIDA, "santiago", "venta");
   assert.ok(p);
   assert.equal(p.condicion, "nuevo");
-  assert.equal(p.dormitorios, 1, "obra nueva conserva [4] hasta su propio goal");
+  assert.equal(p.dormitorios, 2);
+  assert.equal(p.banos, 2);
   assert.equal(p.superficieM2, 50.99);
   assert.equal(p.precio, 2100);
   assert.equal(p.moneda, "UF");
+});
+
+test("regresión del bug en obra nueva: [4]=1 con [8]=3 → 3 dormitorios, 1 baño mín", () => {
+  const row = [...NUEVO_LA_FLORIDA_REAL];
+  row[4] = 1; row[5] = 1; row[8] = 3; row[9] = 3;
+  const p = parseMapProperty(row, "santiago", "venta");
+  assert.ok(p);
+  assert.equal(p.dormitorios, 3);
+  assert.equal(p.banos, 1);
 });
 
 test("fila sin coordenadas válidas se descarta", () => {
