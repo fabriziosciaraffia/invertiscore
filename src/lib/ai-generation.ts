@@ -1054,10 +1054,10 @@ export function violacionesHeroClaim(texto: string, r: RazonesHeroClaim): string
     const m2 = m3 ? null : o.match(RE_HERO_DOBLE);
     const claim = m3 ? { k: 3, txt: m3[0], regla: "triple" } : m2 ? { k: 2, txt: m2[0], regla: "doble" } : null;
     if (!claim) continue;
-    // comparador nombrado en la MISMA oración: el más cercano DESPUÉS del múltiplo
-    // ("más del doble de la referencia") y, si no hay, el más cercano antes. Una oración
-    // puede nombrar varios ("…de la referencia… con los datos de zona…"): manda el que
-    // el múltiplo compara, no el primero que aparezca.
+    // comparador nombrado en la MISMA oración: el más cercano al múltiplo, antes o
+    // después ("8,4% contra una referencia de 4,0% — más del doble — … cubre la cuota":
+    // manda "referencia", a 20 caracteres, no "cuota", a 60). Una oración puede nombrar
+    // varios: manda el que el múltiplo compara, no el primero que aparezca.
     const comparadores: { re: RegExp; nombre: string; razon: number | null }[] = [
       { re: /dep[oó]sito/gi, nombre: "CAP rate/depósito UF 5%", razon: div(r.capRatePct, 5) },
       { re: /dividendo/gi, nombre: "arriendo/dividendo", razon: div(r.arriendoM, r.dividendoM) },
@@ -1066,18 +1066,16 @@ export function violacionesHeroClaim(texto: string, r: RazonesHeroClaim): string
       { re: /referencia|mercado/gi, nombre: "CAP rate/referencia", razon: div(r.capRatePct, r.capRefPct) },
     ];
     const posClaim = o.toLowerCase().indexOf(claim.txt.toLowerCase());
-    let mejorDespues: { d: number; c: (typeof comparadores)[number] } | null = null;
-    let mejorAntes: { d: number; c: (typeof comparadores)[number] } | null = null;
+    let mejor: { d: number; c: (typeof comparadores)[number] } | null = null;
     for (const c of comparadores) {
       c.re.lastIndex = 0;
       let m: RegExpExecArray | null;
       while ((m = c.re.exec(o))) {
-        const d = m.index - posClaim;
-        if (d >= 0) { if (!mejorDespues || d < mejorDespues.d) mejorDespues = { d, c }; }
-        else if (!mejorAntes || -d < mejorAntes.d) mejorAntes = { d: -d, c };
+        const d = Math.abs(m.index - posClaim);
+        if (!mejor || d < mejor.d) mejor = { d, c };
       }
     }
-    const elegido = mejorDespues?.c ?? mejorAntes?.c ?? null;
+    const elegido = mejor?.c ?? null;
     const nombre: string | null = elegido?.nombre ?? null;
     const razon: number | null = elegido?.razon ?? null;
     if (!nombre) { out.push(`${claim.regla}: dice "${claim.txt}" sin nombrar contra qué (sin comparador, sin licencia)`); continue; }
