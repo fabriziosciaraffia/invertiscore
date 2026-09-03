@@ -7,6 +7,7 @@ import {
 } from "@/lib/services/scraper/toctoc-unidades";
 import { propertyToRow } from "@/lib/services/scraper/property-row";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
+import { latirCron } from "@/lib/cron-heartbeat";
 
 // ─── Unidades de obra nueva (detalle por tipología), con cadencia propia ─────
 //
@@ -70,6 +71,8 @@ export async function POST(request: Request) {
     : new Date().getDate() % CICLO_DIAS;
 
   const supabase = getSupabase();
+  // Latido ANTES del trabajo (doctrina cron-heartbeat): registra "corrió".
+  await latirCron(supabase, "scrape-unidades-nuevas");
   const t0 = Date.now();
 
   // ── 1. Proyectos a consultar: las filas-proyecto ya persistidas ──

@@ -28,17 +28,19 @@ export const FUENTE_CRON = "cron";
 /**
  * Los crons instrumentados, con cada cuántas horas se espera que corran.
  *
- * ALCANCE DECLARADO: solo los de `/api/cron/*` —los que mueven créditos, plata y
- * facturación—. Los scrapers de `/api/data/*` también son crons y NO están acá;
- * si mañana importan, se agregan. El panel dice explícitamente cuántos vigila
- * para que la ausencia de un scraper no se lea como "todo bien".
+ * ALCANCE: los de `/api/cron/*` —los que mueven créditos, plata y facturación—
+ * y, desde el 04-sep-2026, los pases de datos de `/api/data/*` que sostienen
+ * las páginas de comuna y la referencia del informe (obra nueva diaria, unidades,
+ * UF/tasa y el pase semanal). Un scraper que deja de correr no rompe nada a la
+ * vista: las medianas siguen saliendo de datos cada vez más viejos. El panel dice
+ * cuántos vigila para que la ausencia de uno no se lea como "todo bien".
  *
  * ESTE REGISTRO DEBE SEGUIR A `vercel.json`. Si cambia un schedule allá y no acá,
  * el umbral queda mal calibrado: un cron que pasó a diario se reportaría atrasado
  * cada dos horas, o uno que pasó a horario tardaría dos días en delatarse.
  */
 export interface CronVigilado {
-  /** Sufijo de la ruta bajo /api/cron/ — es también la `metrica` en la tabla. */
+  /** Sufijo de la ruta (bajo /api/cron/ o /api/data/) — es también la `metrica` en la tabla. */
   nombre: string;
   /** Etiqueta corta para el panel. */
   label: string;
@@ -52,6 +54,13 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   { nombre: "expire-grace", label: "Vencimiento de gracia", intervaloHoras: 24 },
   { nombre: "abandoned-checkout", label: "Carritos abandonados", intervaloHoras: 24 },
   { nombre: "sentry-metrics", label: "Métricas de Sentry", intervaloHoras: 24 },
+  // Pases de datos (/api/data/*). Cadencias de vercel.json al 04-sep-2026.
+  { nombre: "scrape-nuevos", label: "Obra nueva (diario)", intervaloHoras: 24 },
+  { nombre: "scrape-unidades-nuevas", label: "Unidades de obra nueva (diario)", intervaloHoras: 24 },
+  { nombre: "update-market", label: "UF y tasa (diario)", intervaloHoras: 24 },
+  // El pase semanal además deja su checkpoint en `config` (admin-backfill-toctoc):
+  // acá solo late, allá se lee QUÉ hizo. Los dos conviven.
+  { nombre: "backfill-toctoc", label: "Pase semanal TocToc", intervaloHoras: 24 * 7 },
 ];
 
 /**

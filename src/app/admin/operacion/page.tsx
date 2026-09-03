@@ -183,9 +183,9 @@ export default async function AdminOperacionPage({
   );
 
   // ─── PASE SEMANAL TOCTOC ───
-  // Es el latido que CRONS_VIGILADOS no cubre: el backfill vive en /api/data/*
-  // y además importa QUÉ hizo, no solo si corrió. Se lee del checkpoint que la
-  // propia ruta deja en `config`, así que no hay instrumentación nueva.
+  // Complementa el latido de CRONS_VIGILADOS (que desde el 04-sep también lo
+  // incluye): acá importa QUÉ hizo, no solo si corrió. Se lee del checkpoint
+  // que la propia ruta deja en `config`, así que no hay instrumentación nueva.
   const pase = estadoPase(checkpointBackfill);
   const paseBadge: { label: string; tone: StatusBadgeTone } =
     pase.pase === null

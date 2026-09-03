@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { latirCron } from "@/lib/cron-heartbeat";
 import { createClient } from "@supabase/supabase-js";
 import {
   fetchMapPaginado,
@@ -205,6 +206,10 @@ export async function GET(request: Request) {
   // en ese minuto por el scrape diario contaría como nueva; irrelevante.
   const inicioIso = new Date(t0 - 60_000).toISOString();
   const sb = getSupabase();
+  // Latido ANTES del trabajo (doctrina cron-heartbeat). En dry-run no se late:
+  // un ensayo no debe figurar como corrida sana. El checkpoint en `config`
+  // sigue diciendo QUÉ hizo el pase; esto solo dice que corrió.
+  if (!dry) await latirCron(sb, "backfill-toctoc");
 
   // ── DRY RUN: recorre y cuenta, sin checkpoint, sin seen_pass_id, sin upsert ──
   if (dry) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { latirCron } from "@/lib/cron-heartbeat";
 import { createClient } from "@supabase/supabase-js";
 import { parseNumeroBCCH, esUFPlausible, esTasaPlausible } from "@/lib/uf";
 import { captureApiError } from "@/lib/observabilidad";
@@ -51,6 +52,8 @@ export async function POST(request: Request) {
   }
 
   const supabase = getSupabase();
+  // Latido ANTES del trabajo (doctrina cron-heartbeat): registra "corrió".
+  await latirCron(supabase, "update-market");
   const today = new Date().toISOString().split("T")[0];
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);

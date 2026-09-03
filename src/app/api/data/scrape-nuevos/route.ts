@@ -5,6 +5,7 @@ import {
   getTodasLasComunas,
   ESTADO_OBRA_NUEVA,
 } from "@/lib/services/scraper/toctoc";
+import { latirCron } from "@/lib/cron-heartbeat";
 import { propertyToRow } from "@/lib/services/scraper/property-row";
 import { desactivarProyectosConUnidades } from "@/lib/services/scraper/toctoc-unidades";
 
@@ -61,6 +62,8 @@ export async function POST(request: Request) {
 
   const comunas = getTodasLasComunas();
   const supabase = getSupabase();
+  // Latido ANTES del trabajo (doctrina cron-heartbeat): registra "corrió".
+  await latirCron(supabase, "scrape-nuevos");
   const t0 = Date.now();
 
   // Solo `venta`: la obra nueva no existe en arriendo.

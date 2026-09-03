@@ -2,11 +2,11 @@
  * Estado del pase semanal de TocToc para /admin/operacion, leído del
  * checkpoint que /api/data/backfill-toctoc deja en `config`.
  *
- * POR QUÉ NO ESTÁ EN CRONS_VIGILADOS. El latido genérico (cron-heartbeat.ts)
- * solo dice "el cron se ejecutó"; del backfill importa más QUÉ hizo: si el
- * pase cerró completo, cuántas filas escribió por operación y cuántas
- * desactivó en la Fase C. Todo eso ya está en el checkpoint, así que se lee
- * de ahí y no se duplica en metrics_daily.
+ * CONVIVE CON CRONS_VIGILADOS. Desde el 04-sep-2026 el backfill también late
+ * en cron-heartbeat.ts, pero el latido genérico solo dice "el cron se ejecutó";
+ * del backfill importa más QUÉ hizo: si el pase cerró completo, cuántas filas
+ * escribió por operación y cuántas desactivó en la Fase C. Todo eso está en el
+ * checkpoint, así que esta tarjeta se lee de ahí y no se duplica en metrics_daily.
  *
  * La lectura del estado es pura y se testea en scripts/test-admin-operacion.ts.
  */
