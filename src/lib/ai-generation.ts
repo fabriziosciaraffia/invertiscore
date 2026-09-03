@@ -2893,6 +2893,108 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       }
     }
 
+    // ─── HERO-CLAIM (v18 · goal "apertura en voz de Franco") ──────────────────
+    // Con la primera oración del hero escrita por el modelo, el juez cazó dos clases
+    // de afirmación contable falsa en 10 seeds: "la única vía" con tres vías que
+    // cruzan (GS-PJ) y "más del doble" con una razón de 1,68× (GS-PC2). Dos reglas
+    // contables sobre respuestaDirecta, contra datos del motor:
+    //   · "única / sola / una sola vía" ⇔ exactamente UNA vía cruza.
+    //   · "doble / triple / mitad" ⇔ alguna razón del motor ≥ 2 (≥ 3 para "triple"):
+    //     precio/VM (solo con VM con fuente), arriendo/dividendo y cuota/arriendo.
+    // Un reintento quirúrgico sobre respuestaDirecta con el dato correcto citado; se
+    // acepta solo si mejora. Corre ANTES de PLANC-BUDGET (el presupuesto es la última
+    // palabra) y DESPUÉS de LTR-CIFRA (el candidato se re-verifica con empeoraCifras).
+    if (aiResult?.conviene) {
+      try {
+        const viasCruzan = (hallazgoDistanciaGen?.valor.vias ?? []).filter((v) => v.estado === "cruza");
+        const razones: { nombre: string; valor: number }[] = [];
+        const arriendoM = Number(input.arriendo) || 0;
+        const dividendoM = hallazgoFlujoGen?.valor.dividendoMensualCLP ?? 0;
+        if (arriendoM > 0 && dividendoM > 0) {
+          razones.push({ nombre: "arriendo/dividendo", valor: arriendoM / dividendoM });
+          razones.push({ nombre: "cuota/arriendo", valor: dividendoM / arriendoM });
+        }
+        const vmConFuente = (input.valorMercadoFranco ?? 0) > 0 && Math.abs(vmFrancoUF - input.precio) * UF_CLP > 1_000_000;
+        if (vmConFuente && input.precio > 0) {
+          razones.push({ nombre: "precio/VM", valor: input.precio / vmFrancoUF });
+          razones.push({ nombre: "VM/precio", valor: vmFrancoUF / input.precio });
+        }
+        const razonesTxt = razones.length ? razones.map((r) => `${r.nombre} = ${r.valor.toFixed(2)}×`).join(", ") : "ninguna razón disponible";
+        const RE_UNICA = /\b(?:la |una )?(?:única|sola) (?:vía|forma|manera|palanca|salida|opción|ajuste|camino)\b|\buna sola vía\b|\bel único (?:ajuste|camino|movimiento)\b/i;
+        const RE_DOBLE = /\b(?:el doble|dos veces|más del doble|casi el doble|la mitad|menos de la mitad|a la mitad)\b/i;
+        const RE_TRIPLE = /\b(?:el triple|tres veces|un tercio)\b/i;
+        const hayDoble = razones.some((r) => r.valor >= 2);
+        const hayTriple = razones.some((r) => r.valor >= 3);
+        const violaciones = (ai: typeof aiResult): string[] => {
+          const out: string[] = [];
+          for (const txt of [ai?.conviene?.respuestaDirecta_clp, ai?.conviene?.respuestaDirecta_uf]) {
+            if (typeof txt !== "string") continue;
+            const m1 = txt.match(RE_UNICA);
+            if (m1 && viasCruzan.length !== 1) out.push(`unica-via: dice "${m1[0]}" y cruzan ${viasCruzan.length} vía(s)${viasCruzan.length ? ` (${viasCruzan.map((v) => v.palanca).join(", ")})` : ""}`);
+            const m2 = txt.match(RE_DOBLE);
+            if (m2 && !hayDoble) out.push(`doble: dice "${m2[0]}" y ninguna razón del motor llega a 2× (${razonesTxt})`);
+            const m3 = txt.match(RE_TRIPLE);
+            if (m3 && !hayTriple) out.push(`triple: dice "${m3[0]}" y ninguna razón del motor llega a 3× (${razonesTxt})`);
+          }
+          return out.filter((v, i, arr) => arr.indexOf(v) === i);
+        };
+        const viol = violaciones(aiResult);
+        if (viol.length) {
+          console.warn(`[HERO-CLAIM] ${analysisId}: ${viol.join(" | ")} — 1 reintento quirúrgico`);
+          const datoCorrecto = `VÍAS QUE CRUZAN (dato del motor): ${viasCruzan.length}${viasCruzan.length ? ` — ${viasCruzan.map((v) => v.palanca).join(", ")}` : ""}. Solo con exactamente UNA puedes decir "la única vía"; con varias, nómbralas o di "hay más de una vía"; con ninguna, no hay vía.
+RAZONES DEL MOTOR: ${razonesTxt}. "El doble" / "la mitad" solo si alguna razón es ≥ 2×; "el triple" solo si alguna es ≥ 3×. Si no, di la razón con sus dos montos o su porcentaje, nunca como múltiplo verbal.`;
+          const contClp = typeof aiResult.conviene.respuestaDirecta_clp === "string" ? aiResult.conviene.respuestaDirecta_clp : "";
+          const contUf = typeof aiResult.conviene.respuestaDirecta_uf === "string" ? aiResult.conviene.respuestaDirecta_uf : "";
+          const promptClaim = `Estás corrigiendo SOLO el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
+
+La RESPUESTA al veredicto («${respuestaVeredicto}») la antepone el motor: NO la escribas ni la repitas.
+
+PROBLEMA: el texto afirma algo que el motor contradice — ${viol.join("; ")}.
+${datoCorrecto}
+
+TU TAREA: reescribe el texto conservando la primera oración (la razón que manda), el mismo matiz y el mismo largo, corrigiendo SOLO esa afirmación con el dato de arriba. Usa SOLO cifras que ya aparecen en el texto — ninguna cifra nueva.
+
+TEXTO ACTUAL (variante CLP):
+${contClp}
+
+TEXTO ACTUAL (variante UF):
+${contUf}
+
+Responde SOLO este JSON, sin texto alrededor:
+{"respuestaDirecta_clp": "...", "respuestaDirecta_uf": "..."}`;
+          const regen = await reg.medir("hero-claim", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 600, messages: [{ role: "user", content: promptClaim }], system: SYSTEM_LTR_CACHED }));
+          acumularUsage(usage, regen);
+          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+          let nClp = "";
+          let nUf = "";
+          try {
+            const m = regenText.match(/\{[\s\S]*\}/);
+            const obj = JSON.parse(m ? m[0] : regenText);
+            nClp = typeof obj?.respuestaDirecta_clp === "string" ? obj.respuestaDirecta_clp.trim() : "";
+            nUf = typeof obj?.respuestaDirecta_uf === "string" ? obj.respuestaDirecta_uf.trim() : "";
+          } catch {
+            /* no parseó — se maneja abajo */
+          }
+          if (!nClp || !nUf) {
+            console.warn(`[HERO-CLAIM] ${analysisId}: retry no parseó — conservo el texto previo`);
+          } else {
+            const candidato = { ...aiResult, conviene: { ...aiResult.conviene, respuestaDirecta_clp: nClp, respuestaDirecta_uf: nUf } };
+            const quedan = violaciones(candidato);
+            if (empeoraCifras(userPrompt, aiResult, candidato, { ufClp: UF_CLP })) {
+              console.warn(`[HERO-CLAIM] ${analysisId}: el retry introdujo cifras fuera del input — candidato descartado`);
+            } else if (quedan.length < viol.length) {
+              console.warn(`[HERO-CLAIM] ${analysisId}: retry mejoró ${viol.length}→${quedan.length} — aceptado`);
+              aiResult = candidato;
+            } else {
+              console.warn(`[HERO-CLAIM] ${analysisId}: retry no mejoró (${quedan.join(" | ")}) — conservo el texto previo`);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`[HERO-CLAIM] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
     // PLAN C GUARD — enforcement de presupuesto POR CONSTRUCCIÓN. Lo que escribió el
     // modelo (v18: la respuestaDirecta completa, aún SIN la respuesta al veredicto que
     // antepone el motor) no puede superar maxRespuestaModelo = aperturaWC + CONTINUACION_MAX.
