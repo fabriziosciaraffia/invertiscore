@@ -54,7 +54,7 @@ import {
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico, piezasDeAiLtr } from "@/lib/precio-jerarquia";
 import { construirReferenciasZona, faltaReconciliacion, appendReconciliacion } from "@/lib/referencias-zona";
-import { cifrasFueraDeInput, empeoraCifras } from "@/lib/cifras-guard";
+import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad } from "@/lib/cifras-guard";
 import { derivarCifraClaveLtr, captionDeCifraClave } from "@/lib/cifra-clave";
 import { validarTitular, evaluarTitular, normalizarMarcasTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
 import { reescribirTitular } from "@/lib/titular-retry";
@@ -2978,6 +2978,89 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         }
       } catch (e) {
         console.warn(`[LTR-CIFRA] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
+    // ─── LTR-UNIDAD-M2 (regla 3 · 03-sep-2026) ─────────────────────────────────
+    // Una cifra con "por metro / por m² / el metro" tiene que ser un valor por m²: la
+    // diferencia contra la mediana (sobreprecioUfM2), el precio/m² del sujeto o la
+    // mediana. El total sobre la superficie no lo es ("UF 700 más por metro" con +35 en
+    // GS-4; "UF 146" con +32,8 en GS-7). Retry quirúrgico por campo con el dato correcto;
+    // se acepta solo si mejora y sin cifras nuevas. Best-effort.
+    if (aiResult) {
+      const refM2 = { sobreprecioUfM2: pvc.sobreprecioUfM2, sujetoUfM2: pvc.sujetoUfM2 > 0 ? pvc.sujetoUfM2 : null, medianaUfM2: pvc.medianaComunaUfM2, ufClp: UF_CLP };
+      const violUnidad = cifrasPorMetroFueraDeUnidad(aiResult, refM2);
+      const porCampo = new Map<string, string[]>();
+      for (const v of violUnidad) {
+        const path = v.split("=")[0];
+        const campoBase = path.replace(/_(clp|uf)$/, "");
+        porCampo.set(campoBase, [...(porCampo.get(campoBase) ?? []), v]);
+      }
+      for (const [campoBase, viols] of Array.from(porCampo.entries())) {
+        const etiqueta = `[LTR-UNIDAD-M2:${campoBase}]`;
+        try {
+          console.warn(`${etiqueta} ${analysisId}: ${viols.join(" | ")} — 1 reintento quirúrgico`);
+          const [seccion, campo] = campoBase.split(".");
+          const leer = (ai: typeof aiResult): [string, string] => {
+            const sec = seccion && campo ? (ai as Record<string, Record<string, unknown>> | null)?.[seccion] : null;
+            const clp = sec?.[`${campo}_clp`];
+            const uf = sec?.[`${campo}_uf`];
+            if (!campo) { const t = (ai as Record<string, unknown> | null)?.[seccion]; return [typeof t === "string" ? t : "", ""]; }
+            return [typeof clp === "string" ? clp : "", typeof uf === "string" ? uf : ""];
+          };
+          const evaluar = (ai: typeof aiResult): number =>
+            cifrasPorMetroFueraDeUnidad(ai, refM2).filter((x) => x.split("=")[0].replace(/_(clp|uf)$/, "") === campoBase).length;
+          const [actualClp, actualUf] = leer(aiResult);
+          if (!actualClp) continue;
+          const datoM2 = `DATO CORRECTO (por m²): la diferencia contra la mediana de la comuna es ${pvc.sobreprecioUfM2 !== null ? `${pvc.sobreprecioUfM2 > 0 ? "+" : ""}${pct(pvc.sobreprecioUfM2)} UF/m²` : "sin dato"} (tu precio ${pct(pvc.sujetoUfM2)} UF/m² contra mediana ${pvc.medianaComunaUfM2 !== null ? `${pct(pvc.medianaComunaUfM2)} UF/m²` : "sin dato"}). Cualquier otra cifra con "por metro" es el TOTAL sobre la superficie completa, no un valor por m²: o la nombras como total ("UF X sobre la mediana por los ${input.superficie} m²") o usas la diferencia por m².`;
+          const promptM2 = `Estás corrigiendo SOLO el campo ${campoBase} de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
+
+PROBLEMA DE UNIDAD: el texto pone una cifra que NO es por m² junto a "por metro" — ${viols.join("; ")}.
+${datoM2}
+
+TU TAREA: reescribe el texto conservando su contenido, su orden y su largo, corrigiendo SOLO la unidad de esa cifra. Usa SOLO cifras que ya aparecen en el texto o en el dato de arriba — ninguna cifra nueva.
+
+TEXTO ACTUAL (variante CLP):
+${actualClp}
+${actualUf ? `
+TEXTO ACTUAL (variante UF):
+${actualUf}
+` : ""}
+Responde SOLO este JSON, sin texto alrededor:
+{"clp": "...", "uf": "..."}`;
+          const regen = await reg.medir("unidad-m2", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 700, messages: [{ role: "user", content: promptM2 }], system: SYSTEM_LTR_CACHED }));
+          acumularUsage(usage, regen);
+          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+          let nClp = "";
+          let nUf = "";
+          try {
+            const mm = regenText.match(/\{[\s\S]*\}/);
+            const obj = JSON.parse(mm ? mm[0] : regenText);
+            nClp = typeof obj?.clp === "string" ? obj.clp.trim() : "";
+            nUf = typeof obj?.uf === "string" ? obj.uf.trim() : "";
+          } catch {
+            /* no parseó — se maneja abajo */
+          }
+          if (!nClp || (actualUf && !nUf)) {
+            console.warn(`${etiqueta} ${analysisId}: retry no parseó — conservo el texto previo`);
+            continue;
+          }
+          const candidato = campo
+            ? { ...aiResult, [seccion]: { ...((aiResult as Record<string, Record<string, unknown>>)[seccion] ?? {}), [`${campo}_clp`]: nClp, ...(actualUf ? { [`${campo}_uf`]: nUf } : {}) } }
+            : { ...aiResult, [seccion]: nClp };
+          const antes = evaluar(aiResult);
+          const quedan = evaluar(candidato);
+          if (empeoraCifras(userPrompt, aiResult, candidato, { ufClp: UF_CLP })) {
+            console.warn(`${etiqueta} ${analysisId}: el retry introdujo cifras fuera del input — candidato descartado`);
+          } else if (quedan < antes) {
+            console.warn(`${etiqueta} ${analysisId}: retry mejoró ${antes}→${quedan} — aceptado`);
+            aiResult = candidato;
+          } else {
+            console.warn(`${etiqueta} ${analysisId}: retry no mejoró — conservo el texto previo`);
+          }
+        } catch (e) {
+          console.warn(`${etiqueta} ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+        }
       }
     }
 

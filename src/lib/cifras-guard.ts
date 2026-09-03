@@ -127,3 +127,45 @@ export function empeoraCifras(
 ): boolean {
   return cifrasFueraDeInput(userPrompt, candidato, opts).length > cifrasFueraDeInput(userPrompt, base, opts).length;
 }
+
+/**
+ * Regla contable de UNIDAD (goal "tres reglas contables", 03-sep-2026): una cifra que
+ * va con "por metro / por m² / el metro" tiene que ser un valor POR m² — la diferencia
+ * contra la mediana (sobreprecioUfM2), el precio/m² del sujeto o la mediana —, nunca el
+ * total. El juez cazó "UF 700 más por metro" con +35 UF/m² (GS-4: el total sobre 20 m²) y
+ * "UF 146 de más por cada metro" con +32,8 (GS-7). Devuelve `path="UF 700"` por violación.
+ */
+export function cifrasPorMetroFueraDeUnidad(
+  ai: unknown,
+  ref: { sobreprecioUfM2: number | null; sujetoUfM2: number | null; medianaUfM2: number | null; ufClp?: number },
+): string[] {
+  const validasUF = [ref.sobreprecioUfM2, ref.sujetoUfM2, ref.medianaUfM2]
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v) && v !== 0)
+    .map((v) => Math.abs(v));
+  if (!validasUF.length) return [];
+  const validasCLP = ref.ufClp && ref.ufClp > 0 ? validasUF.map((v) => v * (ref.ufClp as number)) : [];
+  const calza = (n: number, set: number[]) => set.some((v) => Math.abs(n - v) / Math.max(n, v) <= 0.03 || Math.abs(n - v) <= 0.6);
+  const MARCA = String.raw`(?:por (?:cada )?metro(?: cuadrado)?|por m[²2]|el metro|cada metro|al metro|\/\s?m[²2])`;
+  // cifra ANTES de la marca ("UF 700 más por metro") o DESPUÉS ("por metro … UF 700")
+  const reAntes = new RegExp(String.raw`(UF\s?[-−]?\s?[\d.]+(?:,\d+)?|\$\s?[\d.]+(?:,\d+)?)[^.;]{0,45}?\b` + MARCA, "gi");
+  const reDespues = new RegExp(MARCA + String.raw`[^.;]{0,30}?(UF\s?[-−]?\s?[\d.]+(?:,\d+)?|\$\s?[\d.]+(?:,\d+)?)`, "gi");
+  const strings: { path: string; value: string }[] = [];
+  collectStrings(ai, "", strings);
+  const out: string[] = [];
+  for (const { path, value } of strings) {
+    for (const re of [reAntes, reDespues]) {
+      re.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(value)) !== null) {
+        const raw = m[1].trim();
+        const esUF = /^UF/i.test(raw);
+        const n = parseNumCL(raw.replace(/^UF\s?[-−]?\s?|^\$\s?/i, ""));
+        if (!Number.isFinite(n) || n <= 0) continue;
+        if (esUF ? calza(n, validasUF) : calza(n, validasCLP)) continue;
+        // "UF 5/m²" ya viene con la unidad pegada al número (precio/m² del sujeto o mediana): se cubre arriba
+        out.push(`${path}="${raw}"`);
+      }
+    }
+  }
+  return out.filter((v, i, arr) => arr.indexOf(v) === i);
+}
