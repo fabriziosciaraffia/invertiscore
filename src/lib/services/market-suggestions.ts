@@ -2,6 +2,11 @@ import { universoDeSugerenciaVenta } from "@/lib/valor-mercado";
 import { createClient } from "@supabase/supabase-js";
 import { getUFValue } from "../uf";
 import { estimarContribuciones } from "../contribuciones";
+import {
+  filterOutliers,
+  resumirComparablesRadio,
+  type FilaRadio,
+} from "./comparables-radio";
 import { getFactorCierre, getComunaMedianaVentaUF, PAGINA_POSTGREST, median as medianaDe, normalizeComuna } from "@/lib/comuna-stats";
 import { medianaArriendoUFm2Mes, resolverReferenciaArriendo } from "@/lib/referencia-arriendo";
 import { reportarFalloQuery } from "@/lib/observabilidad";
@@ -259,9 +264,14 @@ async function getSugerenciasPorRadio(
     extra: { comuna, radiusMeters, dormitorios, superficie },
   });
 
-  // Filter outliers, then by surface range ±30%
-  const clean = filterBySurface(filterOutliers(arriendos || []), superficie);
-  if (clean.length < 5) {
+  // Limpieza + resumen en comparables-radio.ts (puro, con test de fixture). Las
+  // filas traen `gastos_comunes` desde la migración 20260904 de la RPC; antes
+  // la función viva no lo devolvía y el gasto común por radio nunca se estimó.
+  const conDorms = resumirComparablesRadio((arriendos || []) as FilaRadio[], superficie, {
+    modo: "conDorms",
+    factorCierre,
+  });
+  if (!conDorms) {
     // Intentar sin filtro de dormitorios (si ya estaba sin filtro, skip)
     if (dormitorios === null) return null;
     const { data: arriendosGeneral, error: errGeneral } = await supabase.rpc("properties_within_radius", {
@@ -280,52 +290,16 @@ async function getSugerenciasPorRadio(
       extra: { comuna, radiusMeters, superficie },
     });
 
-    const cleanGeneral = filterBySurface(filterOutliers(arriendosGeneral || []), superficie);
-    if (cleanGeneral.length < 5) return null;
-
-    const preciosM2 = cleanGeneral
-      .filter((a) => a.superficie_m2 && a.superficie_m2 > 0)
-      .map((a) => a.precio / a.superficie_m2!)
-      .sort((a, b) => a - b);
-
-    if (preciosM2.length < 3) return null;
-
-    const medianaM2 = preciosM2[Math.floor(preciosM2.length / 2)];
-    const arriendo = Math.round(medianaM2 * superficie / 1000) * 1000;
-
-    const ggccs = (cleanGeneral as Array<{ gastos_comunes?: number } & typeof cleanGeneral[0]>)
-      .filter((a) => a.gastos_comunes && a.gastos_comunes > 0)
-      .map((a) => a.gastos_comunes!);
-
-    return {
-      arriendo,
-      ggcc: ggccs.length >= 3 ? Math.round(median(ggccs) / 1000) * 1000 : null,
-      contribTrim: estimarContribuciones(Math.round(medianaM2 * superficie)),
-      source: "radio",
-      sampleSize: cleanGeneral.length,
-      radiusMeters,
-      precioM2: Math.round(medianaM2 * factorCierre),
-    };
+    const sinDorms = resumirComparablesRadio((arriendosGeneral || []) as FilaRadio[], superficie, {
+      modo: "sinDorms",
+      factorCierre,
+    });
+    if (!sinDorms) return null;
+    return { ...sinDorms, source: "radio", radiusMeters };
   }
 
   // Tenemos suficientes datos con dormitorios (post-filter)
-  const precios = clean.map((a) => a.precio).sort((a, b) => a - b);
-  const preciosM2 = clean
-    .filter((a) => a.superficie_m2 && a.superficie_m2 > 0)
-    .map((a) => a.precio / a.superficie_m2!);
-  const ggccs = (clean as Array<{ gastos_comunes?: number } & typeof clean[0]>)
-    .filter((a) => a.gastos_comunes && a.gastos_comunes > 0)
-    .map((a) => a.gastos_comunes!);
-
-  return {
-    arriendo: Math.round(median(precios) / 1000) * 1000,
-    ggcc: ggccs.length >= 3 ? Math.round(median(ggccs) / 1000) * 1000 : null,
-    contribTrim: preciosM2.length > 0 ? estimarContribuciones(Math.round(median(preciosM2) * superficie)) : estimarContribuciones(superficie * 2_000_000),
-    source: "radio",
-    sampleSize: clean.length,
-    radiusMeters,
-    precioM2: preciosM2.length > 0 ? Math.round(median(preciosM2) * factorCierre) : undefined,
-  };
+  return { ...conDorms, source: "radio", radiusMeters };
 }
 
 /**
@@ -481,55 +455,4 @@ export function getGgccFallback(comuna: string, superficie: number): number | nu
   return Math.round((porM2 * superficie) / 1000) * 1000;
 }
 
-function median(arr: number[]): number {
-  const sorted = [...arr].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-function percentile(sorted: number[], p: number): number {
-  const idx = (p / 100) * (sorted.length - 1);
-  const lo = Math.floor(idx);
-  const hi = Math.ceil(idx);
-  if (lo === hi) return sorted[lo];
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
-}
-
-/** Filter by surface area ±30% — falls back to unfiltered if fewer than 4 remain */
-function filterBySurface<T extends { superficie_m2: number | null }>(props: T[], targetSup: number): T[] {
-  if (!targetSup || targetSup <= 0) return props;
-  const minSup = targetSup * 0.7;
-  const maxSup = targetSup * 1.3;
-  const filtered = props.filter(
-    (p) => p.superficie_m2 && p.superficie_m2 >= minSup && p.superficie_m2 <= maxSup
-  );
-  return filtered.length >= 4 ? filtered : props;
-}
-
-/** Filter outliers by superficie range + IQR on precio/m2 */
-function filterOutliers<T extends { precio: number; superficie_m2: number | null }>(props: T[]): T[] {
-  // 1. Remove absurd superficie
-  const valid = props.filter(
-    (p) => !p.superficie_m2 || (p.superficie_m2 >= 15 && p.superficie_m2 <= 300)
-  );
-
-  // 2. IQR filter on precio/m2 (only for props with superficie)
-  const withM2 = valid.filter((p) => p.superficie_m2 && p.superficie_m2 > 0);
-  const withoutM2 = valid.filter((p) => !p.superficie_m2 || p.superficie_m2 <= 0);
-
-  if (withM2.length < 4) return valid; // not enough data for IQR
-
-  const ppm2 = withM2.map((p) => p.precio / p.superficie_m2!).sort((a, b) => a - b);
-  const q1 = percentile(ppm2, 25);
-  const q3 = percentile(ppm2, 75);
-  const iqr = q3 - q1;
-  const lo = q1 - 1.5 * iqr;
-  const hi = q3 + 1.5 * iqr;
-
-  const filtered = withM2.filter((p) => {
-    const pm2 = p.precio / p.superficie_m2!;
-    return pm2 >= lo && pm2 <= hi;
-  });
-
-  return [...filtered, ...withoutM2];
-}
+// median / percentile / filterBySurface / filterOutliers viven en comparables-radio.ts.
