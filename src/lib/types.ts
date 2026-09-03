@@ -1296,10 +1296,6 @@ export interface NegociacionScenario {
   precioUmbralVeredictoUF?: number | null;
   /** Veredicto al que se llega cerrando en `precioUmbralVeredictoUF`. */
   veredictoAlUmbral?: Veredicto | null;
-  /** DEPRECADO (goal "un nombre por precio", 02-sep-2026): el sugerido ya NO se colapsa
-   *  al umbral — son dos precios con nombre propio. Siempre false en filas nuevas; true
-   *  solo en filas persistidas anteriores. */
-  sugeridoMandadoPorVeredicto?: boolean;
 }
 
 // Vocabulario unificado de veredictos. 3 valores canónicos compartidos por
