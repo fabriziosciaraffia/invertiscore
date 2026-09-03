@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import Link from "next/link";
+import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
@@ -21,8 +22,13 @@ export const metadata: Metadata = {
   },
 };
 
+// La lista sale del ROSTER de comunas publicadas (25), no de COMUNAS_DISPONIBLES:
+// esa lista valida el wizard y quedó en 24 (sin Renca), así que esta página
+// prometía cobertura distinta de la que /comunas publica. Una sola fuente para
+// "dónde hay página", y cada chip enlaza a la suya — antes eran texto plano y
+// la página de cobertura no aportaba ningún enlace interno.
 // Orden alfabético chileno (respeta acentos y la Ñ).
-const comunas = [...COMUNAS_DISPONIBLES].sort((a, b) => a.localeCompare(b, "es"));
+const comunas = [...COMUNAS_ROSTER].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
 export default function CoberturaPage() {
   return (
@@ -36,18 +42,20 @@ export default function CoberturaPage() {
           ¿Dónde está disponible Franco?
         </h1>
         <p className="mt-3 font-body text-base text-[var(--franco-text-secondary)]">
-          Franco analiza departamentos en estas {COMUNAS_DISPONIBLES.length} comunas
-          de Gran Santiago.
+          Franco analiza departamentos en estas {COMUNAS_ROSTER.length} comunas de Gran Santiago.
+          Cada una tiene su página con precios, arriendos y rentabilidad por tipología.
         </p>
 
-        {/* Chips de comunas — sin links, orden alfabético */}
+        {/* Chips de comunas, cada uno enlaza a su página */}
         <ul className="mt-10 flex flex-wrap gap-2.5">
-          {comunas.map((nombre) => (
-            <li
-              key={nombre}
-              className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3.5 py-2 font-body text-sm text-[var(--franco-text)]"
-            >
-              {nombre}
+          {comunas.map((c) => (
+            <li key={c.slug}>
+              <Link
+                href={`/comunas/${c.slug}`}
+                className="block rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3.5 py-2 font-body text-sm text-[var(--franco-text)] transition-colors hover:border-[var(--franco-border-hover)] hover:text-[var(--franco-text)]"
+              >
+                {c.nombre}
+              </Link>
             </li>
           ))}
         </ul>
