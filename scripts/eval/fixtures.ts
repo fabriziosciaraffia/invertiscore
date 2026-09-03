@@ -122,6 +122,9 @@ export function ltr(
     precio: over.precio ?? 3500,
     valorMercadoUsuario: over.valorMercadoUsuario,
     valorMercadoFranco: over.valorMercadoFranco,
+    // Tramo A: la procedencia del valor de mercado viaja con el seed (sin ella el
+    // motor lo trata como ausente).
+    valorMercadoRef: over.valorMercadoRef,
     piePct: over.piePct ?? 20,
     plazoCredito: over.plazoCredito ?? 25,
     tasaInteres: over.tasaInteres ?? 4.5,

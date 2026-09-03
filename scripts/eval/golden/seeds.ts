@@ -75,6 +75,9 @@ export const GOLDEN_SEEDS: GoldenSeed[] = [
       piePct: 20, tasaInteres: 3.5, plazoCredito: 30, gastos: 60000,
       contribuciones: 64676, provisionMantencion: 30260, vacanciaMeses: 0.6,
       valorMercadoFranco: 3038, valorMercadoUsuario: 3038,
+      // Tramo A: la VM del seed lleva procedencia (radio, n=25). Universo espejo de
+      // universoDelDepto (esNuevo ausente ⇒ "usado") para no mover el baseline.
+      valorMercadoRef: { valorUF: 3038, nivel: "radio", universo: "usado", n: 25 },
       lat: -33.4145, lng: -70.5737,
     }),
     mediana: { mediana: 79.5, n: 357 },
@@ -106,6 +109,9 @@ export const GOLDEN_SEEDS: GoldenSeed[] = [
       dormitorios: 2, banos: 1, antiguedad: 14, piePct: 20, tasaInteres: 4.5,
       plazoCredito: 25, gastos: 120000, vacanciaMeses: 1,
       valorMercadoFranco: 3300,
+      // Tramo A: la VM del seed lleva procedencia (radio, n=25). Universo espejo de
+      // universoDelDepto (esNuevo ausente ⇒ "usado") para no mover el baseline.
+      valorMercadoRef: { valorUF: 3300, nivel: "radio", universo: "usado", n: 25 },
       lat: -33.4800, lng: -70.5980,
     }),
     mediana: { mediana: 45, n: 180 },
@@ -154,6 +160,9 @@ export const GOLDEN_SEEDS: GoldenSeed[] = [
       piePct: 10, tasaInteres: 4.11, plazoCredito: 25, gastos: 65000,
       contribuciones: 68946, provisionMantencion: 30914, vacanciaMeses: 0.48,
       valorMercadoFranco: 3041,
+      // Tramo A: la VM del seed lleva procedencia (radio, n=25). Universo espejo de
+      // universoDelDepto (esNuevo ausente ⇒ "usado") para no mover el baseline.
+      valorMercadoRef: { valorUF: 3041, nivel: "radio", universo: "usado", n: 25 },
       lat: -33.4432, lng: -70.6387,
     }),
     mediana: { mediana: 55.7, n: 60 },
@@ -205,6 +214,9 @@ export const GOLDEN_SEEDS: GoldenSeed[] = [
         dormitorios: 2, banos: 1, antiguedad: 8, piePct: 20, tasaInteres: 4.6,
         plazoCredito: 25, gastos: 90000, vacanciaMeses: 1,
         valorMercadoFranco: 2140,
+        // Tramo A: la VM del seed lleva procedencia (radio, n=25). Universo espejo de
+        // universoDelDepto (esNuevo ausente ⇒ "usado") para no mover el baseline.
+        valorMercadoRef: { valorUF: 2140, nivel: "radio", universo: "usado", n: 25 },
       }),
       zonaRadio: { arriendoPromedio: 400000, sampleSizeArriendo: 18, radioMetros: 750 },
     } as GoldenSeed["input"],
