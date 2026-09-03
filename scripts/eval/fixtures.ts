@@ -20,7 +20,13 @@
 
 import type { AnalisisInput } from "../../src/lib/types";
 import type { AirbnbData, ShortTermInputs } from "../../src/lib/engines/short-term-engine";
+import { METHODOLOGY_VERSION_ACTUAL } from "../../src/lib/modelo-costos";
 import { SEED_MARKET_DATA } from "./fixture-mediana-seed";
+
+// Versión de metodología de los fixtures: la ACTUAL, salvo override explícito. Un
+// fixture sin versión correría el modelo de costos legacy (gate en modelo-costos.ts)
+// y el golden mediría un motor que ya no genera análisis nuevos. Fuente única para
+// LTR (`ltr()`) y STR (`str()`); el golden STR frozen se estampa en su buildInputs.
 
 export const AUDIT_UF = 38800;
 
@@ -130,6 +136,7 @@ export function ltr(
     usaAdministrador: over.usaAdministrador,
     comisionAdministrador: over.comisionAdministrador,
     costoPuestaAPuntoCLP: over.costoPuestaAPuntoCLP,
+    methodologyVersion: over.methodologyVersion ?? METHODOLOGY_VERSION_ACTUAL,
     lat: over.lat,
     lng: over.lng,
   };
@@ -207,6 +214,7 @@ export function str(over: Partial<ShortTermInputs> & { adrP50?: number; occP50?:
     costoAmoblamiento: over.costoAmoblamiento ?? 3500000,
     arriendoLargoMensual: over.arriendoLargoMensual ?? 600000,
     valorUF: AUDIT_UF,
+    methodologyVersion: over.methodologyVersion ?? METHODOLOGY_VERSION_ACTUAL,
   };
 }
 

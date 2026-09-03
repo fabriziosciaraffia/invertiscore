@@ -17,10 +17,10 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 8.73,
+      "capRatePct": 9,
       "sobreprecioPct": -10,
-      "flujoNetoMensual": 188115,
-      "tirPct": 19.29,
+      "flujoNetoMensual": 210102,
+      "tirPct": 21.26,
       "patrimonioMult": 3.34
     },
     "GS-2": {
@@ -41,12 +41,12 @@
       "capRatePct": 4.58,
       "sobreprecioPct": 33,
       "flujoNetoMensual": -18161,
-      "tirPct": 11.17,
-      "patrimonioMult": 2.65
+      "tirPct": 12.83,
+      "patrimonioMult": 3.17
     },
     "GS-3": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 66,
+      "score": 69,
       "N": 10,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -61,15 +61,15 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 5.62,
+      "capRatePct": 6.34,
       "sobreprecioPct": 70,
-      "flujoNetoMensual": -127728,
-      "tirPct": 6.77,
-      "patrimonioMult": 1.68
+      "flujoNetoMensual": -66618,
+      "tirPct": 10.01,
+      "patrimonioMult": 2.34
     },
     "GS-4": {
       "veredicto": "BUSCAR OTRA",
-      "score": 36,
+      "score": 39,
       "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -83,15 +83,15 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 2.09,
+      "capRatePct": 2.98,
       "sobreprecioPct": 78,
-      "flujoNetoMensual": -475855,
-      "tirPct": 0.37,
-      "patrimonioMult": 1.02
+      "flujoNetoMensual": -361072,
+      "tirPct": 4.66,
+      "patrimonioMult": 1.38
     },
     "GS-5": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 53,
+      "score": 58,
       "N": 9,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -105,15 +105,15 @@
         "sensibilidad",
         "tir"
       ],
-      "capRatePct": 4.26,
+      "capRatePct": 4.9,
       "sobreprecioPct": null,
-      "flujoNetoMensual": -169223,
-      "tirPct": 5.08,
-      "patrimonioMult": 1.47
+      "flujoNetoMensual": -107628,
+      "tirPct": 9.43,
+      "patrimonioMult": 2.17
     },
     "GS-6": {
       "veredicto": "BUSCAR OTRA",
-      "score": 35,
+      "score": 37,
       "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -127,11 +127,11 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 2,
+      "capRatePct": 2.92,
       "sobreprecioPct": 90,
-      "flujoNetoMensual": -789313,
-      "tirPct": -0.53,
-      "patrimonioMult": 0.97
+      "flujoNetoMensual": -626030,
+      "tirPct": 4.27,
+      "patrimonioMult": 1.28
     },
     "GS-7": {
       "veredicto": "BUSCAR OTRA",
@@ -151,8 +151,8 @@
       "capRatePct": 2.85,
       "sobreprecioPct": 59,
       "flujoNetoMensual": -329290,
-      "tirPct": 6.14,
-      "patrimonioMult": 1.39
+      "tirPct": 7.86,
+      "patrimonioMult": 1.57
     },
     "GS-PC1": {
       "veredicto": "BUSCAR OTRA",
@@ -167,11 +167,11 @@
         "patrimonio",
         "plusvalia"
       ],
-      "capRatePct": 4.13,
+      "capRatePct": 4.41,
       "sobreprecioPct": null,
-      "flujoNetoMensual": -427083,
+      "flujoNetoMensual": -391840,
       "tirPct": null,
-      "patrimonioMult": 1.38
+      "patrimonioMult": 1.62
     },
     "GS-PC2": {
       "veredicto": "COMPRAR",
@@ -186,9 +186,9 @@
         "plusvalia",
         "sensibilidad"
       ],
-      "capRatePct": 8.39,
+      "capRatePct": 8.66,
       "sobreprecioPct": null,
-      "flujoNetoMensual": 54168,
+      "flujoNetoMensual": 89411,
       "tirPct": null,
       "patrimonioMult": 29.27
     },
@@ -209,11 +209,11 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 5.33,
+      "capRatePct": 5.66,
       "sobreprecioPct": 0,
-      "flujoNetoMensual": -56341,
-      "tirPct": 7.32,
-      "patrimonioMult": 1.84
+      "flujoNetoMensual": -31677,
+      "tirPct": 11.28,
+      "patrimonioMult": 2.77
     },
     "BE-caprate": {
       "veredicto": "COMPRAR",
@@ -231,15 +231,15 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 9.5,
+      "capRatePct": 9.92,
       "sobreprecioPct": 11,
-      "flujoNetoMensual": 242968,
-      "tirPct": 20.14,
-      "patrimonioMult": 2.99
+      "flujoNetoMensual": 277726,
+      "tirPct": 23.94,
+      "patrimonioMult": 3.27
     },
     "BE-patrimonio": {
       "veredicto": "BUSCAR OTRA",
-      "score": 32,
+      "score": 34,
       "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -253,15 +253,15 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 2.19,
+      "capRatePct": 2.63,
       "sobreprecioPct": 91,
-      "flujoNetoMensual": -490799,
-      "tirPct": 1.34,
-      "patrimonioMult": 1.09
+      "flujoNetoMensual": -429365,
+      "tirPct": 3.84,
+      "patrimonioMult": 1.29
     },
     "BE-sensibilidad": {
       "veredicto": "COMPRAR",
-      "score": 70,
+      "score": 71,
       "N": 9,
       "corona": "cap_rate",
       "hallazgoIds": [
@@ -275,11 +275,11 @@
         "sobreprecio",
         "tir"
       ],
-      "capRatePct": 6.12,
+      "capRatePct": 6.55,
       "sobreprecioPct": 67,
-      "flujoNetoMensual": -6347,
-      "tirPct": 10.76,
-      "patrimonioMult": 2.62
+      "flujoNetoMensual": 30836,
+      "tirPct": 14.08,
+      "patrimonioMult": 3.28
     }
   }
 }

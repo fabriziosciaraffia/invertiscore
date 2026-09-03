@@ -25,8 +25,13 @@ import { buildHallazgoSensibilidadStr } from "../../../src/lib/sensibilidad-str-
 import { buildHallazgoEstructuraCostosStr } from "../../../src/lib/estructura-costos-str-hallazgo";
 // La MISMA transformación raw→airbnbData que producción (sin réplica que pueda driftar).
 import { buildAirbnbData } from "../../../src/lib/api-helpers/analisis-pipeline";
+import { METHODOLOGY_VERSION_ACTUAL } from "../../../src/lib/modelo-costos";
 function buildInputs(d: any, airbnbData: any, uf: number) {
-  return { precioCompra: d.precioCompra, superficie: d.superficieUtil, dormitorios: d.dormitorios, banos: d.banos,
+  // Versión de metodología: la del frozen si la trae, si no la ACTUAL. Los frozen
+  // son filas reales anteriores al gate (sin el campo): sin este default el golden
+  // STR mediría la curva de CapEx legacy, que ya no genera análisis nuevos.
+  return { methodologyVersion: typeof d.methodologyVersion === "string" ? d.methodologyVersion : METHODOLOGY_VERSION_ACTUAL,
+    precioCompra: d.precioCompra, superficie: d.superficieUtil, dormitorios: d.dormitorios, banos: d.banos,
     tipoPropiedad: typeof d.tipoPropiedad === "string" ? d.tipoPropiedad : undefined,
     antiguedad: d.antiguedad ?? (d.tipoPropiedad === "nuevo" ? 0 : 5), antiguedadEsFallback: d.antiguedad == null,
     comuna: typeof d.comuna === "string" ? d.comuna : undefined, piePercent: d.piePct/100, tasaCredito: d.tasaInteres/100,

@@ -201,15 +201,22 @@ export const GOLDEN_SEEDS: GoldenSeed[] = [
     input: {
       ...ltr({
         comuna: "Santiago", ciudad: "Santiago", nombre: "GOLDEN GS-PJ Santiago",
-        precio: 2080, arriendo: 420000, superficie: 40, superficieTotal: 40,
+        precio: 2080, arriendo: 400000, superficie: 40, superficieTotal: 40,
         dormitorios: 2, banos: 1, antiguedad: 8, piePct: 20, tasaInteres: 4.6,
         plazoCredito: 25, gastos: 90000, vacanciaMeses: 1,
         valorMercadoFranco: 2140,
       }),
-      zonaRadio: { arriendoPromedio: 420000, sampleSizeArriendo: 18, radioMetros: 750 },
+      zonaRadio: { arriendoPromedio: 400000, sampleSizeArriendo: 18, radioMetros: 750 },
     } as GoldenSeed["input"],
     mediana: { mediana: 52, n: 300 },
-    nota: "§1.12.4: precio/m² = mediana (desv 0), vm 2140 vs precio 2080 (+2,9%, dif > $1M), arriendo = comparables (estimación franco) → casoPrecioJusto = true con AJUSTA (score ~63, flujo ~-$56K, banda pura). Fija: detección + reencuadre canónico + Ángulo 2 obligatorio + prohibición del descuento cosmético. Calibrado 15-ago-2026.",
+    // Recalibrado 03-sep-2026 (modelo de costos v3): con arriendo 420.000 el caso
+    // pasaba a COMPRAR 70 bajo v3 (la mantención y el CapEx bajan, el flujo mejora
+    // de −$56K a −$14K) y sin AJUSTA no hay distancia_veredicto ni casoPrecioJusto
+    // que fijar. Con 400.000 (y arriendoPromedio igual, para conservar la pata
+    // "ingreso a mercado") queda AJUSTA 68 en v3 y AJUSTA 66 en legacy, con
+    // casoPrecioJusto = true en ambos. Es el ÚNICO seed que se movió; el resto
+    // solo driftea cifras.
+    nota: "§1.12.4: precio/m² = mediana (desv 0), vm 2140 vs precio 2080 (+2,9%, dif > $1M), arriendo = comparables (estimación franco) → casoPrecioJusto = true con AJUSTA (v3: score 68, flujo ~-$32K, banda pura). Fija: detección + reencuadre canónico + Ángulo 2 obligatorio + prohibición del descuento cosmético. Calibrado 15-ago-2026; arriendo 420→400K el 03-sep-2026 (modelo de costos v3).",
   },
 ];
 

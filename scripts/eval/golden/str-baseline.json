@@ -17,49 +17,49 @@
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 60,
       "N": 13,
-      "tirPct": 7.09,
-      "multiplicadorCapital": 1.8442319190335588,
+      "tirPct": 7.63,
+      "multiplicadorCapital": 1.924760119192336,
       "equityCLP": 92356962,
       "valorVenta": 166860658,
-      "capitalInvertido": 37284200,
+      "capitalInvertido": 35189000,
       "patrimonioCLP": 92356962,
-      "patrimonioMult": 1.84
+      "patrimonioMult": 1.92
     },
     "GE-3": {
       "veredicto": "BUSCAR OTRA",
       "score": 48,
       "N": 13,
-      "tirPct": 10.87,
-      "multiplicadorCapital": 2.565602805878918,
+      "tirPct": 11.53,
+      "multiplicadorCapital": 2.716704816691406,
       "equityCLP": 118123768,
       "valorVenta": 227556222,
-      "capitalInvertido": 45002104,
+      "capitalInvertido": 42441304,
       "patrimonioCLP": 118123768,
-      "patrimonioMult": 2.57
+      "patrimonioMult": 2.72
     },
     "GE-4": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 55,
       "N": 13,
-      "tirPct": 13.25,
-      "multiplicadorCapital": 2.7994235580433884,
+      "tirPct": 14,
+      "multiplicadorCapital": 2.972041260834642,
       "equityCLP": 100986565,
       "valorVenta": 182451700,
-      "capitalInvertido": 35986464,
+      "capitalInvertido": 33891264,
       "patrimonioCLP": 100986565,
-      "patrimonioMult": 2.8
+      "patrimonioMult": 2.97
     },
     "GE-5": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 54,
       "N": 13,
-      "tirPct": 8.13,
-      "multiplicadorCapital": 1.993810164363924,
+      "tirPct": 8.61,
+      "multiplicadorCapital": 2.0678062750883575,
       "equityCLP": 93358211,
       "valorVenta": 171569741,
-      "capitalInvertido": 33680568,
+      "capitalInvertido": 32004978,
       "patrimonioCLP": 93358211,
-      "patrimonioMult": 1.99
+      "patrimonioMult": 2.07
     },
     "GE-6": {
       "veredicto": "BUSCAR OTRA",
@@ -89,13 +89,13 @@
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 60,
       "N": 13,
-      "tirPct": 7.09,
-      "multiplicadorCapital": 1.8442319190335588,
+      "tirPct": 7.63,
+      "multiplicadorCapital": 1.924760119192336,
       "equityCLP": 92356962,
       "valorVenta": 166860658,
-      "capitalInvertido": 37284200,
+      "capitalInvertido": 35189000,
       "patrimonioCLP": 92356962,
-      "patrimonioMult": 1.84
+      "patrimonioMult": 1.92
     }
   }
 }
