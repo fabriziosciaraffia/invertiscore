@@ -155,16 +155,21 @@ export function simularTarifaYOcupacionStr(
       : [base.ocupacion * 0.7, base.ocupacion, base.ocupacion * 1.35, base.ocupacion * 1.65],
   ).map((o) => Math.min(0.99, Math.round(o * 1000) / 1000));
   const celdas: CeldaTarifaOcupacion[] = [];
+  const adrActual = Math.round(base.adr);
+  const occActual = Math.min(0.99, Math.round(base.ocupacion * 1000) / 1000);
   for (const ocupacion of ocupaciones) {
     for (const tarifaCLP of tarifas) {
-      const r = recomputeStrConPatch(ctx, { adrOverride: tarifaCLP, occOverride: ocupacion });
+      const esActual = tarifaCLP === adrActual && ocupacion === occActual;
+      // La celda "hoy" se recomputa con los valores EXACTOS del caso (la ocupación sin
+      // redondear): así su flujo es el del informe, no uno a tres decimales.
+      const r = recomputeStrConPatch(ctx, esActual ? {} : { adrOverride: tarifaCLP, occOverride: ocupacion });
       const v = r.francoScore.veredicto;
       celdas.push({
         tarifaCLP,
         ocupacion,
         flujoMensual: r.result.escenarios.base.flujoCajaMensual,
         veredicto: v,
-        esActual: tarifaCLP === Math.round(base.adr) && ocupacion === Math.min(0.99, Math.round(base.ocupacion * 1000) / 1000),
+        esActual,
         cruza: RANK[v] > rankBase,
         cae: RANK[v] < rankBase,
       });
