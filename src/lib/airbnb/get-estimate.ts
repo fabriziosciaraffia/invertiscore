@@ -12,9 +12,13 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 // Solo servidor: este módulo crea el cliente admin (service role) para leer airbnb_estimates
-// y llama al proveedor de datos de mercado. Si un componente cliente lo importara, Next
-// corta el build acá en vez de arrastrar la ruta al bundle del navegador.
-import "server-only";
+// y llama al proveedor de datos de mercado. Si un componente cliente lo importara, el
+// guard corta en el navegador. NO se usa `import "server-only"`: el paquete marcador
+// lanza en cualquier runtime que no exponga la condición `react-server` (node, tsx), y
+// desde 147471c dejó muertos el golden y todo script que cargue analisis-pipeline.
+if (typeof window !== "undefined") {
+  throw new Error("get-estimate.ts es solo servidor: no importarlo desde un componente cliente");
+}
 import { createHash } from "crypto";
 import { contarLlamadaAirroi, type OrigenAirroi } from "./contador-airroi";
 import { createClient } from "@supabase/supabase-js";
