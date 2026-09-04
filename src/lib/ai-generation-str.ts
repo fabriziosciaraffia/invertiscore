@@ -168,7 +168,10 @@ Es la disciplina de §1.4 (solo datos provistos) llevada a su forma dura: vale p
 - Alternativa: qué pasa si no sigues la recomendación.
 
 Distribución por sección JSON (topología v3):
-- conviene.respuestaDirecta: capas 1+2+3 — es el lead del hero, alineado al hallazgo coronado (ver §7.bis). UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
+- conviene.respuestaDirecta: la escribes TÚ completa, en voz de Franco. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola.
+  (1) PRIMERA ORACIÓN = LA razón que manda: el HALLAZGO #1 del bloque PIRÁMIDE DE HALLAZGOS del caso, en tus palabras y con su cifra — la respuesta a "¿por qué?", dicha como se la dirías a quien te preguntó si compra. No es la frase del hallazgo (esa es la card que el lector ve más abajo): es tu lectura. El bloque trae, pegado al hallazgo #1, un ejemplo del patrón con la cifra de ESTE caso: no lo copies, copia el movimiento.
+  (2) DESPUÉS, UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona esa razón, y SOLO si cambia la decisión: la fuente de la ocupación cuando es un dato tuyo o no hay dato de la dirección, el modo de gestión cuando da vuelta el signo del mes, la puesta a punto si pesa. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA. Termina en el matiz y su consecuencia, NO en un imperativo de verificación.
+  PROHIBIDO: copiar la frase de un hallazgo; anunciar secciones; parafrasear \`cajaAccionable\`; relleno tranquilizador sin dato; mencionar "hallazgo", "coronado", el orden o la mecánica del prompt; abrir por un tema distinto del #1 (el reencuadre de zona, la comparación con el largo, la distancia al veredicto) — esos van después, si entran.
 - rentabilidad.contenido: capa 2 en 2-3 frases (la card hizo la capa 1; los diagramas del cuerpo muestran el resto). La capa 3 vive en su cajaAccionable. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
 - vsLTR.contenido: capas 1+3, arrancando del dato que la card NO tiene (NOI absoluto, auto-vs-admin).
 - largoPlazo.contenido: capas 3+4. Ángulo 3 (instrumentos) + condicional de plusvalía + posición. NO recita las cifras que ya muestran las cards de Escenarios y Proyección ni los drawers de patrimonio/plusvalía.
@@ -259,9 +262,7 @@ El \`veredicto\` del motor es la conclusión final. La IA NUNCA lo contradice en
 
 ## 7.bis Ancla del hero al hallazgo coronado
 
-El input te pasa el HALLAZGO CORONADO — el que lidera la pirámide de hallazgos (el más decisivo/adverso), con su titular. \`conviene.respuestaDirecta\` debe alinear su ángulo-lead con ese hallazgo: si la pirámide lidera con la ocupación, el hero no puede sugerir que el problema central es otro. No copies el texto del coronado (§1.bis) — alinea el ÁNGULO. El usuario lee el hero y baja a la pirámide: deben contar la misma historia dominante.
-
-EXCEPCIÓN ÚNICA (decisión B-extendida, 25-ago-2026): cuando el coronado es la VENTAJA VS LTR — favorable O adversa — el lead NO abre por la comparación: abre por el BOLSILLO ABSOLUTO del usuario operando por día (el flujo del escenario base, lo que pone o le queda cada mes), y la comparación con el arriendo largo entra en la SEGUNDA frase. Razón: el titular de portada nunca lidera comparativo (§7.ter) y en el caso adverso la comparación ya la cargan la glosa del gate, la card y su drawer — el lead no necesita ser otra superficie más que repita la misma dirección. La historia sigue siendo la del coronado; solo cambia la puerta de entrada.
+El input te pasa la PIRÁMIDE DE HALLAZGOS en su orden real y el HALLAZGO #1 como datos (qué · cuánto · dirección). \`conviene.respuestaDirecta\` abre por ese dato: si la pirámide lidera con la rentabilidad operativa, el hero no puede sugerir que el problema central es otro. No copies el texto de la card (§1.bis) — es tu lectura. El usuario lee el hero y baja a la pirámide: deben contar la misma historia dominante. Cuando el hallazgo que lidera es la ventaja frente al arriendo largo, el dato que manda que trae el bloque es el bolsillo (lo que pones o te queda cada mes operando por día) y la comparación con el largo es el segundo dato: la primera oración se escribe sobre el primero.
 
 ## 7.ter TITULAR — la primera frase del informe
 
@@ -860,15 +861,48 @@ Matriz pie × plazo (${mpp.celdas.length} recomputes): ${mpp.celdas.filter((c) =
     const ordenados = ordenarHallazgosPiramideSTR(list);
     const filas = ordenados.map((h, i) => `${String(i + 1).padStart(2, "0")} · ${NOMBRE_H[h.id] ?? h.id} · ${h.direccion === "adverso" ? "en contra" : h.direccion === "favorable" ? "a favor" : "neutral"}${cuanto(h) ? ` · ${cuanto(h)}` : ""}${i < 4 ? " · TOP-4 (se ve en la página)" : ""}`).join("\n");
     const top = ordenados[0];
+    const dir = (h: Hallazgo) => (h.direccion === "adverso" ? "en contra" : h.direccion === "favorable" ? "a favor" : "neutral");
+    const flujoCaso = base.flujoCajaMensual;
+    const bolsillo = flujoCaso < 0 ? `pones ${fmtCLP(-flujoCaso)} de tu bolsillo cada mes` : `te quedan ${fmtCLP(flujoCaso)} cada mes`;
+    // La razón que manda, como dato. Cuando el #1 es la ventaja frente al largo, el dato que
+    // manda es el bolsillo (lo que pone o le queda cada mes) y la comparación es el segundo.
+    const esVentaja = top.id === "ventaja_vs_ltr";
+    const datoManda = esVentaja
+      ? `qué = lo que te deja operar por día, pagado todo · cuánto = ${bolsillo} · dirección = ${flujoCaso < 0 ? "en contra" : "a favor"}. SEGUNDO DATO: ${NOMBRE_H[top.id]} · ${cuanto(top)} · ${dir(top)}.`
+      : `qué = ${NOMBRE_H[top.id] ?? top.id} · cuánto = ${cuanto(top) || "(sin cifra)"} · dirección = ${dir(top)}.`;
+    // Ejemplo positivo pegado al campo, con la cifra de ESTE caso (patrón de los ejemplos del titular).
+    const v = top.valor as Record<string, unknown>;
+    const n = (k: string) => (typeof v[k] === "number" ? (v[k] as number) : 0);
+    const ejemplo = (() => {
+      switch (top.id) {
+        case "rentabilidad_str": return n("capRatePct") < n("umbralPct")
+          ? `Rinde ${pct(n("capRatePct"))}% sobre el precio, bajo el ${pct(n("umbralPct"))}% que le pedimos a una renta corta: **el precio no se justifica con lo que deja operar por día**.`
+          : `Rinde ${pct(n("capRatePct"))}% sobre el precio, sobre el ${pct(n("umbralPct"))}% que le pedimos a una renta corta: **el metro se paga solo operando por día**.`;
+        case "ventaja_vs_ltr": return flujoCaso < 0
+          ? `Operando por día ${bolsillo}, pagado todo; **le gana al largo, pero esa ventaja la pagas con tus horas**.`
+          : `Operando por día ${bolsillo}, pagado todo: **le gana al largo con la ocupación que el mercado estima**.`;
+        case "flujo_str": return flujoCaso < 0
+          ? `**${bolsillo[0].toUpperCase()}${bolsillo.slice(1)}** con la ocupación que el mercado estima para tu depto: la operación no se paga sola.`
+          : `**${bolsillo[0].toUpperCase()}${bolsillo.slice(1)}**, pagado todo, con la ocupación que el mercado estima para tu depto.`;
+        case "sobreprecio": return n("desviacionPct") > 0
+          ? `Pagas el metro un ${pct(n("desviacionPct"))}% sobre la mediana de la comuna: **entras caro y el corto no lo compensa**.`
+          : `Entras un ${pct(Math.abs(n("desviacionPct")))}% bajo la mediana de la comuna: **el precio no es el problema**.`;
+        case "ocupacion_vs_estimacion": return `Supusiste ${n("ocupacionPct")}% de ocupación cuando el mercado estima ${n("estimacionPct")}%: **el veredicto descansa en tu supuesto, no en el mercado**.`;
+        case "estructura_financiamiento": return `Con ${n("piePct")}% de pie y ${pct(n("tasaPct"))}% de tasa, **la cuota se come lo que deja la operación**.`;
+        case "sensibilidad_str": return `Necesitas facturar el ${n("beRatioPct")}% de lo que rinde la zona para no perder plata: **el margen es el problema**.`;
+        default: return `${NOMBRE_H[top.id] ?? top.id}: ${cuanto(top)} — **y eso es lo que decide este caso**.`;
+      }
+    })();
     return `
 
 === PIRÁMIDE DE HALLAZGOS (orden real por decisividad · dato del motor) ===
 ${filas}
-HALLAZGO #1 COMO DATOS: qué = ${NOMBRE_H[top.id] ?? top.id} · cuánto = ${cuanto(top) || "(sin cifra)"} · dirección = ${top.direccion === "adverso" ? "en contra" : top.direccion === "favorable" ? "a favor" : "neutral"}. El hero abre por ESTE hallazgo (§7.bis); los cuatro del TOP-4 son los que el usuario ve en la página, en ese orden.`;
+HALLAZGO #1 COMO DATOS (la razón que manda la primera oración): ${datoManda} Los cuatro del TOP-4 son los que el usuario ve en la página, en ese orden.
+Ejemplo del patrón para la primera oración de \`conviene.respuestaDirecta\` (la razón y la cifra son las de ESTE caso; no lo copies, copia el movimiento): «${ejemplo}»`;
   })();
 
   const bloqueCoronado = cardFrases.coronado
-    ? `\n\n=== HALLAZGO QUE LIDERA LA PIRÁMIDE (ancla el ángulo-lead del hero · §7.bis) ===\nEl coronado (más decisivo/adverso) es: «${cardFrases.coronado.titular}» — ${cardFrases.coronado.frase}\n→ \`conviene.respuestaDirecta\` debe alinear su ángulo-lead con este hallazgo. No lo copies (§1.bis); no contradigas la jerarquía visual.`
+    ? `\n\n=== LO QUE LA CARD DEL #1 YA MUESTRA (no la copies · §1.bis) ===\n«${cardFrases.coronado.titular}» — ${cardFrases.coronado.frase}`
     : "";
 
   // §1.12.4 — caso precio-justo STR: el flag viaja en el hallazgo de distancia

@@ -23,6 +23,11 @@ const casos: { nombre: string; texto: string; dispara: boolean }[] = [
   { nombre: "cierre honesto · ningún ajuste", dispara: false, texto: "El negocio no cierra porque la zona premia el arriendo largo, no el corto, y ningún ajuste de tarifa o gestión cambia esa ecuación." },
   { nombre: "sin negociación", dispara: false, texto: "Busca otro departamento en una comuna con ocupación sobre 60%." },
   { nombre: "GE-4 · si no puedes dedicar horas (no es oferta)", dispara: false, texto: "Si no puedes dedicar 8-12 horas semanales a la operación, los números no cierran con administrador." },
+  // v14 (tanda del 04-sep): la acción de negociar es oferta aunque la misma oración niegue el descuento.
+  { nombre: "GE-4 v14 · negocia el precio con dureza aunque ningún descuento cambie", dispara: true, texto: "Antes de firmar, negocia el precio con dureza: aunque ningún descuento cambia el veredicto, cada UF que bajes reduce la herida patrimonial del día uno." },
+  { nombre: "negociar con dureza (infinitivo)", dispara: true, texto: "Te conviene negociar con dureza antes de firmar." },
+  { nombre: "no negocies (negación pegada)", dispara: false, texto: "No negocies el precio esperando que cambie el veredicto: no cambia." },
+  { nombre: "sin negociar", dispara: false, texto: "Sin negociar nada, la conclusión es la misma: la zona no sostiene el corto." },
 ];
 for (const c of casos) {
   const v = ofertasNegociacion(c.texto);

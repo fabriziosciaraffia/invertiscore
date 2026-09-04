@@ -296,6 +296,12 @@ export function esDistanciaEstructural(r: { hallazgos?: Hallazgo[] }): boolean {
  *  "puedes": "si no puedes dedicar horas a la operación" no ofrece negociar nada. */
 const RE_SI_LOGRAS = /\bsi (?:no )?(?:logras|consigues|lograras|consiguieras|lograses|consiguieses)\b/i;
 const RE_OFERTA = /\bnegoci(?:a|as|ar|ando|ación|aciones)\b|\bdescuento\b|\brebaja\b/i;
+/** Formas de "negociar" que son la acción misma (imperativo o infinitivo): "negocia el precio",
+ *  "negociar con dureza". Con distancia estructural son oferta aunque la oración diga después
+ *  que ningún descuento cambia el veredicto (GE-4 v14: "negocia el precio con dureza: aunque
+ *  ningún descuento cambia el veredicto…"). Solo las salva una negación pegada ("no negocies",
+ *  "sin negociar", "ni negociar"). */
+const RE_NEGOCIAR_ACCION = /(?<!\b(?:no|sin|ni)\s)\bnegoci(?:a|á|ar|en|emos)\b/i;
 const RE_NEGACION = /\b(?:ni|ning[uú]n[oa]?|nadie|tampoco)\b|\bno (?:alcanza|basta|cambia|mueve|sirve|salva|justifica|arregla|lo (?:mueve|cambia|salva|justifica|arregla|logra))\b/i;
 /** Oraciones que ofrecen negociar / descuento / "si logras" como salida. Solo tiene
  *  sentido cuando la distancia es estructural: el bloque del prompt lo prohíbe con esas
@@ -304,6 +310,9 @@ export function ofertasNegociacion(texto: string): string[] {
   const out: string[] = [];
   for (const o of texto.replace(/\*\*/g, "").split(/(?<=[.!?])\s+/)) {
     if (RE_SI_LOGRAS.test(o)) { out.push(o.trim()); continue; }
+    if (RE_NEGOCIAR_ACCION.test(o)) { out.push(o.trim()); continue; }
+    // "sin negociar" / "no negocies" / "ni negociar": la negación pegada al verbo no es oferta.
+    if (/(?:no|sin|ni)\s+negoci/i.test(o)) continue;
     if (RE_OFERTA.test(o) && !RE_NEGACION.test(o)) out.push(o.trim());
   }
   return out;
