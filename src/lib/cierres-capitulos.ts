@@ -197,22 +197,25 @@ export interface ArgsCierreResultado {
   /** Depósito a plazo del costo de oportunidad (misma plata inicial). */
   depositoCLP: number;
   proyPct: string;
+  /** Quién paga la deuda: "el arriendo" (LTR, default) · "la operación por noche" (STR). */
+  motor?: string;
 }
 
 export function cierreResultado(a: ArgsCierreResultado, f: FmtCierre): SegCierre[] {
   const segs: SegCierre[] = [];
+  const motor = a.motor ?? "el arriendo";
   const plusvaliaNeta = a.patrimonioCLP - a.pieCLP - a.amortizacionCLP;
   const pctPie = a.patrimonioCLP > 0 ? (a.pieCLP / a.patrimonioCLP) * 100 : 100;
   const sinPlusCLP = a.pieCLP + a.amortizacionCLP;
   // Oración A · de dónde sale tu parte
   if (a.sinCapitalPropio) {
-    segs.push({ t: `Sin pie, todo lo que es tuyo al año 10 lo puso el arriendo amortizando deuda (${f.compact(a.amortizacionCLP)}) y la plusvalía (${f.compact(plusvaliaNeta)}). ` });
+    segs.push({ t: `Sin pie, todo lo que es tuyo al año 10 lo puso ${motor} amortizando deuda (${f.compact(a.amortizacionCLP)}) y la plusvalía (${f.compact(plusvaliaNeta)}). ` });
   } else if (plusvaliaNeta < 0) {
-    segs.push({ t: "Tu parte es menos que el pie más lo que amortizó el arriendo: la plusvalía proyectada no alcanza a cubrir la comisión de venta. " });
+    segs.push({ t: `Tu parte es menos que el pie más lo que amortizó ${motor}: la plusvalía proyectada no alcanza a cubrir la comisión de venta. ` });
   } else if (pctPie < 50) {
-    segs.push({ t: `Más de la mitad de tu parte no salió de tu bolsillo: la puso el arriendo pagando deuda (${f.compact(a.amortizacionCLP)}) y la plusvalía (${f.compact(plusvaliaNeta)}). ` });
+    segs.push({ t: `Más de la mitad de tu parte no salió de tu bolsillo: la puso ${motor} pagando deuda (${f.compact(a.amortizacionCLP)}) y la plusvalía (${f.compact(plusvaliaNeta)}). ` });
   } else {
-    segs.push({ t: `La mayor parte de tu parte es tu propio pie que vuelve: el arriendo amortizó ${f.compact(a.amortizacionCLP)} y la plusvalía suma ${f.compact(plusvaliaNeta)}. ` });
+    segs.push({ t: `La mayor parte de tu parte es tu propio pie que vuelve: ${motor} amortizó ${f.compact(a.amortizacionCLP)} y la plusvalía suma ${f.compact(plusvaliaNeta)}. ` });
   }
   // Oración B · la caja (signo del flujo acumulado a 10 años)
   const tir = a.tirPct != null ? `el ${f.pct1(a.tirPct)}%` : "el resultado";

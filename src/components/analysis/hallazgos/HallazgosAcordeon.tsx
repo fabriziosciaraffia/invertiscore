@@ -397,12 +397,15 @@ export function TokensHallazgos() {
       .dial-zone.comprar{background:var(--doc-good)}
       .dial-mark{position:absolute;top:29px;height:32px;width:3px;border-radius:2px;background:var(--doc-tx);
         transform:translateX(-50%);z-index:2}
-      .dial-edges{position:relative;height:48px;margin-top:12px}
-      .dial-edge{position:absolute;top:0;white-space:nowrap;font-family:var(--font-mono, ui-monospace)}
-      .dial-edge.arriba{transform:translateX(-100%);text-align:right}
+      .dial-tick{position:absolute;top:30px;width:1px;height:30px;background:var(--doc-tx);opacity:.55;z-index:3}
+      /* fronteras en dos celdas estáticas (abajo · arriba): sin solapamiento en PC ni en 390 */
+      .dial-edges{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+      .dial-edge{font-family:var(--font-mono, ui-monospace);text-align:left;white-space:normal;min-height:1px}
+      .dial-edge.arriba{text-align:right}
       .dial-edge .d{display:block;font-size:12px;font-weight:700;color:var(--doc-tx)}
-      .dial-edge .v{display:block;font-size:11px;color:var(--doc-tx2)}
-      .dial-edge .k{display:block;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4)}
+      .dial-edge.abajo .d{color:var(--signal-red)} .dial-edge.arriba .d{color:var(--doc-good)}
+      .dial-edge .v{display:block;font-size:11px;color:var(--doc-tx2);margin-top:2px}
+      .dial-edge .k{display:block;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4);margin-top:3px;line-height:1.35}
 
       /* ===== COMPOSICIÓN (llaves + segmentos) ===== */
       .compo-wrap{padding:2px 0}
@@ -629,10 +632,7 @@ export function TokensHallazgos() {
         .dial-edge .d{font-size:11px}
         /* T3 · a 390px los dos bordes posicionados en % se pisaban (dial de precio):
            pasan a una fila flex con cada borde en su lado, sin coordenadas. */
-        .dial-edges{position:static;height:auto;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:12px}
-        .dial-edge{position:static;transform:none !important;left:auto !important;max-width:48%;white-space:normal}
-        .dial-edge.arriba{text-align:right;margin-left:auto}
-        .dial-edge .k{white-space:normal;line-height:1.35}
+        .dial-edges{gap:10px}
         .compo-leg-row{grid-template-columns:10px 1fr auto;gap:8px}
         .compo-k{font-size:12px}
         .compo-bracket{font-size:8px;letter-spacing:.04em}

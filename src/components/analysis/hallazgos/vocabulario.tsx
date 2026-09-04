@@ -400,16 +400,29 @@ export function Dial({
         ))}
       </div>
       <div className="dial-mark" style={{ left: `${clamp(marcaPct)}%` }} />
-      {/* Línea 2 · SOLO los bordes, cada uno anclado a su lado. */}
+      {/* Ticks: una raya fina por frontera cruzando el riel (T1, contrato del CONGELADO). */}
+      {bordes.map((b, i) => (
+        <div key={`t${i}`} className="dial-tick" style={{ left: `${clamp(b.pos)}%` }} />
+      ))}
+      {/* Línea 2 · los bordes en DOS CELDAS bajo el riel (abajo a la izquierda, arriba a la
+          derecha), estáticas: nunca se solapan aunque las fronteras queden pegadas. Antes
+          iban absolutas sobre su posición y chocaban en PC y en 390. */}
       {bordes.length > 0 && (
         <div className="dial-edges">
-          {bordes.map((b, i) => (
-            <div key={i} className={`dial-edge ${b.dir}`} style={{ left: `${clamp(b.pos)}%` }}>
-              <span className="d">{b.delta}</span>
-              <span className="v">{b.v}</span>
-              <span className="k">{b.k}</span>
-            </div>
-          ))}
+          {(["abajo", "arriba"] as const).map((dir) => {
+            const b = bordes.find((x) => x.dir === dir);
+            return (
+              <div key={dir} className={`dial-edge ${dir}`}>
+                {b && (
+                  <>
+                    <span className="d">{b.delta}</span>
+                    <span className="v">{b.v}</span>
+                    <span className="k">{b.k}</span>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
