@@ -216,7 +216,7 @@ export function MapaThumbnail({
           style={{ background: "rgba(15,15,15,0.72)" }}
         >
           <span className="font-mono text-[10px] tracking-wide text-white">
-            {displayCount} {countLabel}
+            {displayCount >= 1000 ? "1.000+" : displayCount} {countLabel}
           </span>
         </div>
       )}
