@@ -35,7 +35,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Anthropic from "@anthropic-ai/sdk";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { generateStrProse } from "../../../src/lib/ai-generation-str";
 import { marcasBalanceadas, evaluarTitular } from "../../../src/lib/prosa-marcas";
@@ -78,15 +78,25 @@ function collectStrings(node: any, out: { path: string; s: string }[], path = ""
 
 export async function runStrGenerateTier(
   K: number,
-  opts: { dump?: string; judge?: boolean } = {},
+  opts: {
+    dump?: string;
+    judge?: boolean;
+    /** Solo estos seeds (default: los seis). */
+    seeds?: readonly string[];
+    /** Reutiliza las generaciones dumpeadas en `<from>/<key>-str-run<n>.json` en vez de
+     *  generar: los checks y el juez miran LA MISMA prosa contra el recompute ACTUAL
+     *  (motor, mediana y coronado de hoy). Espejo del --from de LTR. */
+    from?: string;
+  } = {},
 ): Promise<{ reports: SeedReport[]; tanda: TandaStr[] }> {
   const anthropic = new Anthropic();
   const frozen = loadFrozen();
   const reports: SeedReport[] = [];
   const tanda: TandaStr[] = [];
   if (opts.dump) mkdirSync(opts.dump, { recursive: true });
+  const seeds = (opts.seeds ?? STR_GEN_SEEDS).filter((k) => (STR_GEN_SEEDS as readonly string[]).includes(k));
 
-  for (const key of STR_GEN_SEEDS) {
+  for (const key of seeds) {
     const seed = STR_GE_SEEDS.find((s) => s.key === key);
     const checks: Check[] = [];
     if (!seed || !frozen[key]) {
@@ -109,9 +119,16 @@ export async function runStrGenerateTier(
         const rForProse = { ...r.rec, francoScore: r.score, hallazgos: r.hz };
         const comuna = (frozen[key].input_data.comuna as string) || "";
         const coronado = ordenarHallazgosPiramideSTR(r.hz)[0] ?? null;
-        const gen = await generateStrProse({ anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna });
-        process.stderr.write(` ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
-        const ai: any = gen.ai;
+        const archivo = opts.from ? join(opts.from, `${key}-str-run${run}.json`) : null;
+        let ai: any;
+        if (archivo && existsSync(archivo)) {
+          ai = (JSON.parse(readFileSync(archivo, "utf-8")) as { result: any }).result;
+          process.stderr.write(` (dump)\n`);
+        } else {
+          const gen = await generateStrProse({ anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna });
+          process.stderr.write(` ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
+          ai = gen.ai;
+        }
         if (!ai) { bump("gen.null"); continue; }
         genOk++;
         const lead: string = ai.conviene?.respuestaDirecta ?? "";
@@ -211,13 +228,14 @@ export async function runStrGenerateTier(
   return { reports, tanda };
 }
 
-// Ejecución directa (standalone): `--k=N` opcional (default 1), `--judge`, `--dump=<dir>`.
+// Ejecución directa (standalone): `--k=N` (default 1), `--judge`, `--dump=<dir>`,
+// `--seeds=GE-1,GE-4` (solo esos) y `--from=<dir>` (re-chequea un dump sin generar).
 // El runner lo importa vía runStrGenerateTier() dentro de --full.
 if (process.argv[1] && /str-generate\.ts$/.test(process.argv[1])) {
-  const kArg = process.argv.find((a) => a.startsWith("--k="));
-  const K = kArg ? Math.max(1, parseInt(kArg.split("=")[1], 10) || 1) : 1;
-  const dump = process.argv.find((a) => a.startsWith("--dump="))?.slice("--dump=".length);
-  runStrGenerateTier(K, { dump, judge: process.argv.includes("--judge") }).then(({ reports, tanda }) => {
+  const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
+  const K = Math.max(1, parseInt(arg("k") ?? "1", 10) || 1);
+  const seedsArg = arg("seeds")?.split(",").map((x) => x.trim()).filter(Boolean);
+  runStrGenerateTier(K, { dump: arg("dump"), from: arg("from"), seeds: seedsArg, judge: process.argv.includes("--judge") }).then(({ reports, tanda }) => {
     let hard = 0;
     for (const r of reports) {
       console.log(`\n  ${r.hardFail > 0 ? "✗ FAIL" : "✓ PASS"}  ${r.key}`);
