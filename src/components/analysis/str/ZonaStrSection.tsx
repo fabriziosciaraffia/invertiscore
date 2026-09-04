@@ -113,7 +113,7 @@ export function ZonaStrSection({
           <p className="v">{t ? money(t.mediana) : "sin datos suficientes"}</p>
           {t && (
             <p className="s">
-              Tú: <b>{money(t.tuya)}</b> · {t.posicion === "igual" ? "cobras la mediana" : t.posicion === "arriba" ? "cobras sobre la mediana" : "cobras bajo la mediana"} · {mitad}
+              Tú: <b>{money(t.tuya)}</b> · {t.posicion === "igual" ? "cobras la mediana" : t.posicion === "arriba" ? `cobras sobre la mediana · ${mitad}` : `cobras bajo la mediana · ${mitad}`}
               {t.esTuya ? " · tarifa definida por ti" : ""}
             </p>
           )}
