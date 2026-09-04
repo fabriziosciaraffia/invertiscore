@@ -2,6 +2,7 @@
 
 import type { AnalysisMetrics, FullAnalysisResult } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
+import { SeisCifras, type CifraInforme } from "./shared/SeisCifras";
 import { fmtMoney } from "./utils";
 
 /**
@@ -17,6 +18,10 @@ import { fmtMoney } from "./utils";
  * cobertura (arriendo ÷ dividendo, el DSCR que mira el banco). Los "no aplica"
  * del motor (pie 0, TIR no calculable) se muestran como tales, nunca se rellenan.
  * Cierra con el enlace al modal "Ver cómo se calcula".
+ *
+ * Goal "LTR hereda" (05-sep-2026): las celdas son datos (`CifraInforme[]`) sobre la
+ * misma pieza `SeisCifras` que STR; el toggle CLP/UF es el de la portada y llega en
+ * `currency`. Mismos textos y mismas cifras que el JSX fijo anterior.
  */
 export function LosNumeros({
   metrics,
@@ -43,103 +48,95 @@ export function LosNumeros({
   const coberturaPct = cobertura != null ? Math.round((cobertura - 1) * 100) : null;
   const fmtSigned = (n: number) => `${n < 0 ? "−" : ""}${fmtMoney(Math.abs(n), currency, valorUF)}`;
 
-  return (
-    <div className="nums-wrap">
-      <div className="nums">
-        <div className="num-cell">
-          <div className="k">Cap rate bruto</div>
-          <div className="v">{pct1(metrics.rentabilidadBruta)}</div>
-          <div className="tr">
-            El arriendo de un año sobre el precio, <b>antes</b> de gastos.
-          </div>
-        </div>
-        <div className="num-cell">
-          <div className="k">Cap rate neto</div>
-          <div className="v">{pct1(metrics.capRate)}</div>
-          <div className="tr">
-            Lo mismo, ya descontados los gastos.{" "}
-            {capRefPct != null ? <b>La referencia de mercado es {pct1(capRefPct)}.</b> : null}
-          </div>
-        </div>
-        <div className="num-cell">
-          <div className="k">Cash-on-cash</div>
-          <div className={`v${coc != null && coc < 0 ? " neg" : ""}`}>{coc != null ? pct1(coc) : "—"}</div>
-          <div className="tr">
-            {coc == null ? (
-              <>Sin pie no hay capital propio sobre el que medirlo.</>
-            ) : coc < 0 ? (
-              <>
-                Por cada $100 que pusiste, <b>este año pones ${Math.abs(coc).toFixed(2).replace(".", ",")} más</b> en vez de recibir.
-              </>
-            ) : (
-              <>
-                Por cada $100 que pusiste, <b>este año recibes ${coc.toFixed(2).replace(".", ",")}</b> de vuelta.
-              </>
-            )}
-          </div>
-        </div>
-        <div className="num-cell">
-          <div className="k">Flujo mensual</div>
-          <div className={`v${flujo < 0 ? " neg" : ""}`}>{fmtSigned(flujo)}</div>
-          <div className="tr">
-            {flujo < 0 ? (
-              <>
-                Lo que sale de tu bolsillo cada mes, <b>después de todo</b>: dividendo, gastos y vacancia.
-              </>
-            ) : (
-              <>
-                Lo que te queda cada mes, <b>después de todo</b>: dividendo, gastos y vacancia.
-              </>
-            )}
-          </div>
-        </div>
-        <div className="num-cell">
-          <div className="k">Cobertura de cuota</div>
-          <div className="v">
-            {cobertura != null ? (
-              <>
-                {cobertura.toFixed(2).replace(".", ",")}
-                <small>×</small>
-              </>
-            ) : (
-              "—"
-            )}
-          </div>
-          <div className="tr">
-            {cobertura == null ? (
-              <>Compra al contado: no hay cuota que cubrir.</>
-            ) : coberturaPct != null && coberturaPct >= 0 ? (
-              <>
-                El arriendo paga el dividendo y <b>sobra un {coberturaPct}%</b> — antes de gastos.
-              </>
-            ) : (
-              <>
-                El arriendo <b>no alcanza a pagar el dividendo</b>: falta un {Math.abs(coberturaPct ?? 0)}% — antes de gastos.
-              </>
-            )}
-          </div>
-        </div>
-        <div className="num-cell">
-          <div className="k">TIR a {anios} años</div>
-          <div className="v">{tir != null ? pct1(tir) : "—"}</div>
-          <div className="tr">
-            {tir == null ? (
-              <>No se puede calcular: el flujo no cruza cero en el horizonte.</>
-            ) : (
-              <>
-                Lo que rinde tu plata al año, sumando arriendo, aportes y venta. <b>Bajo 6%, conviene más otra inversión.</b>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-      {onCalculo && (
-        <div className="nums-foot">
-          <button type="button" className="doc-lnk" onClick={onCalculo}>
-            Ver cómo se calcula →
-          </button>
-        </div>
-      )}
-    </div>
-  );
+  const cifras: CifraInforme[] = [
+    {
+      k: "Cap rate bruto",
+      v: pct1(metrics.rentabilidadBruta),
+      tr: (
+        <>
+          El arriendo de un año sobre el precio, <b>antes</b> de gastos.
+        </>
+      ),
+    },
+    {
+      k: "Cap rate neto",
+      v: pct1(metrics.capRate),
+      tr: (
+        <>
+          Lo mismo, ya descontados los gastos.{" "}
+          {capRefPct != null ? <b>La referencia de mercado es {pct1(capRefPct)}.</b> : null}
+        </>
+      ),
+    },
+    {
+      k: "Cash-on-cash",
+      v: coc != null ? pct1(coc) : "—",
+      neg: coc != null && coc < 0,
+      tr:
+        coc == null ? (
+          <>Sin pie no hay capital propio sobre el que medirlo.</>
+        ) : coc < 0 ? (
+          <>
+            Por cada $100 que pusiste, <b>este año pones ${Math.abs(coc).toFixed(2).replace(".", ",")} más</b> en vez de recibir.
+          </>
+        ) : (
+          <>
+            Por cada $100 que pusiste, <b>este año recibes ${coc.toFixed(2).replace(".", ",")}</b> de vuelta.
+          </>
+        ),
+    },
+    {
+      k: "Flujo mensual",
+      v: fmtSigned(flujo),
+      neg: flujo < 0,
+      tr:
+        flujo < 0 ? (
+          <>
+            Lo que sale de tu bolsillo cada mes, <b>después de todo</b>: dividendo, gastos y vacancia.
+          </>
+        ) : (
+          <>
+            Lo que te queda cada mes, <b>después de todo</b>: dividendo, gastos y vacancia.
+          </>
+        ),
+    },
+    {
+      k: "Cobertura de cuota",
+      v:
+        cobertura != null ? (
+          <>
+            {cobertura.toFixed(2).replace(".", ",")}
+            <small>×</small>
+          </>
+        ) : (
+          "—"
+        ),
+      tr:
+        cobertura == null ? (
+          <>Compra al contado: no hay cuota que cubrir.</>
+        ) : coberturaPct != null && coberturaPct >= 0 ? (
+          <>
+            El arriendo paga el dividendo y <b>sobra un {coberturaPct}%</b> — antes de gastos.
+          </>
+        ) : (
+          <>
+            El arriendo <b>no alcanza a pagar el dividendo</b>: falta un {Math.abs(coberturaPct ?? 0)}% — antes de gastos.
+          </>
+        ),
+    },
+    {
+      k: `TIR a ${anios} años`,
+      v: tir != null ? pct1(tir) : "—",
+      tr:
+        tir == null ? (
+          <>No se puede calcular: el flujo no cruza cero en el horizonte.</>
+        ) : (
+          <>
+            Lo que rinde tu plata al año, sumando arriendo, aportes y venta. <b>Bajo 6%, conviene más otra inversión.</b>
+          </>
+        ),
+    },
+  ];
+
+  return <SeisCifras cifras={cifras} onCalculo={onCalculo} />;
 }
