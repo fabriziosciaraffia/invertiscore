@@ -90,7 +90,9 @@ export async function POST(request: Request) {
     // para CUALQUIER logueado — con análisis anónimos reales eso era adoptar/
     // regenerar lo ajeno. La vía legítima hacia una fila anónima es el claim
     // (POST /api/analisis/claim, exige el token de la cookie), nunca esta ruta.
-    if (analysis.user_id !== user.id && !isAdmin) {
+    // T2.1: el admin tampoco regenera lo ajeno (la política UPDATE de `analisis` es
+    // auth.uid() = user_id: generaba y no guardaba).
+    if (analysis.user_id !== user.id) {
       return NextResponse.json({ error: "No autorizado para analizar este registro" }, { status: 403 });
     }
 

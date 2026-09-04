@@ -190,7 +190,10 @@ export function STRResultsClient({
   // Filas stale (versión vieja): sin polling, regen directa gratis.
   useEffect(() => {
     if (!analysisId) return;
-    if (aiAnalysis) return;
+    // T2.1: con prosa VIEJA en pantalla igual se intenta la regen (solo el dueño); si el POST
+    // falla, la vieja se queda y se marca con su fecha. Sin prosa y con 500, el hero muestra
+    // "No pudimos completar la redacción" con Reintentar; nunca un "redactando" infinito.
+    if (aiAnalysis && !aiStaleInitial) return;
     const isPaid = accessLevel === "premium" || accessLevel === "subscriber";
     if (!isPaid) return;
 
@@ -273,7 +276,7 @@ export function STRResultsClient({
       posthog,
       ids: [analysisId],
       modalidad: "str",
-      aiEstado: initialAi ? "cacheada" : aiStaleInitial ? "stale-regen" : "generando",
+      aiEstado: aiStaleInitial ? "stale-regen" : initialAi ? "cacheada" : "generando",
       esperaMs: leerEsperaMs(),
       esOwner: !isSharedView,
     });
@@ -283,6 +286,9 @@ export function STRResultsClient({
   // FASE 4: la prosa llega CRUDA (con `**…**`) — el plumón se pinta en los
   // puntos de render. El strip sobrevive SOLO en /documento (el PDF no cambia).
   const aiParaRender = aiAnalysis;
+  // Prosa vieja en pantalla: la del server marcada como tal (no dueño) o la del dueño cuya
+  // regen falló o sigue en vuelo (la inicial era stale y no fue reemplazada).
+  const mostrandoProsaVieja = prosaDesactualizada || (aiStaleInitial && aiAnalysis != null && aiAnalysis === initialAi);
 
   // ─── Datos derivados ──────────────────────────────
   // Commit E.0 (2026-05-13): eliminado fallback `score ?? 50`. Análisis legacy
@@ -541,7 +547,7 @@ export function STRResultsClient({
             </p>
           )}
           {/* Procedencia de la prosa vieja — texto y ubicación idénticos a LTR. */}
-          {prosaDesactualizada && fechaCorta && (
+          {mostrandoProsaVieja && fechaCorta && (
             <p className="font-mono m-0 mt-2" style={{ fontSize: 10.5, lineHeight: 1.5, color: "var(--franco-text-muted)" }}>
               Análisis redactado el {fechaCorta}. Los números de arriba se recalculan en cada visita; el texto es el de esa fecha.
             </p>

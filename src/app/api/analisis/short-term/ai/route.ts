@@ -94,7 +94,9 @@ export async function POST(request: Request) {
 
     // Fix guard-NULL (F2-2): `user_id NULL` ya no pasa para cualquier logueado.
     // La vía hacia una fila anónima es el claim, nunca esta ruta.
-    if (analysis.user_id !== user.id && !isAdmin) {
+    // T2.1: el admin tampoco: la política UPDATE de `analisis` es auth.uid() = user_id, así
+    // que sobre una fila ajena generaba y no guardaba. Regenera solo quien puede persistir.
+    if (analysis.user_id !== user.id) {
       return NextResponse.json({ error: "No autorizado para analizar este registro" }, { status: 403 });
     }
 

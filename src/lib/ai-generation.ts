@@ -1,4 +1,5 @@
 import { CLAIMS_HERO, violacionesClaims } from "./hero-claim-core";
+import { captureApiError } from "@/lib/observabilidad";
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
@@ -3732,7 +3733,7 @@ Responde SOLO este JSON, sin texto alrededor:
       return aiResult;
     }
 
-    const { error: updateError } = await supabase
+    const { data: guardado, error: updateError } = await supabase
       .from("analisis")
       .update({
         ai_analysis: aiResult,
@@ -3740,9 +3741,18 @@ Responde SOLO este JSON, sin texto alrededor:
         // (regenerar no borra el costo previo) — ver camposUpdateUsage.
         ...camposUpdateUsage(usage, analysis, CLAUDE_MODEL),
       })
-      .eq("id", analysisId);
-    if (updateError) {
-      console.error(`generateAiAnalysis: fallo al guardar ai_analysis (${analysisId}):`, updateError);
+      .eq("id", analysisId)
+      .select("id");
+    if (updateError || !guardado?.length) {
+      // T2.1: un UPDATE bloqueado por RLS no da error, da CERO filas; antes se devolvía la
+      // prosa con 200 y el lector veía un texto que no existe en la base. Es un fallo.
+      console.error(`generateAiAnalysis: fallo al guardar ai_analysis (${analysisId}):`, updateError ?? "0 filas");
+      captureApiError(updateError ?? new Error("prosa LTR generada y no persistida: el UPDATE devolvió 0 filas (RLS)"), {
+        ruta: `generateAiAnalysis (${opts.trigger ?? "manual"})`,
+        operacion: "persistir-prosa-ltr",
+        analysisId,
+        tags: { promptVersion: String(PROMPT_VERSION_LTR), userIdNull: String((analysis as { user_id?: unknown } | null)?.user_id == null) },
+      });
       await persistGen("error");
       return null;
     }

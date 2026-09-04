@@ -178,7 +178,7 @@ export function PremiumResults({
   // veredicto queda visible (= mount del grid, ahora inmediato). Ya no registra
   // "por qué vía llegó la prosa": el evento dispara antes de que llegue.
   const aiEstadoAlMontar = useRef<InformeAiEstado>(
-    hasAiV2(aiAnalysisInitial) ? "cacheada" : aiStale ? "stale-regen" : "generando"
+    aiStale ? "stale-regen" : hasAiV2(aiAnalysisInitial) ? "cacheada" : "generando"
   );
 
   // `trigger` es telemetría de timing (Goal A): declara QUIÉN pidió la
@@ -247,7 +247,9 @@ export function PremiumResults({
       return;
     }
     if (!analysisId) return;
-    if (hasAiV2(aiAnalysis)) return;
+    // T2.1: con prosa vieja en pantalla igual se intenta la regen (solo el dueño); si falla,
+    // la vieja se queda con su fecha. Sin prosa y con 500: error inline + Reintentar.
+    if (hasAiV2(aiAnalysis) && !aiStale) return;
 
     // F6 lazy-on-open: la prosa persistida quedó STALE (versión vieja) → el server no la
     // pasó como inicial y marcó aiStale. El poll a /ai-status devolvería la MISMA prosa
@@ -805,7 +807,7 @@ export function PremiumResults({
             comuna={comuna}
             createdAt={createdAt}
             fechaProsa={fechaProsa}
-            prosaDesactualizada={prosaDesactualizada}
+            prosaDesactualizada={prosaDesactualizada || (aiStale && hasAiV2(aiAnalysis) && aiAnalysis === aiAnalysisInitial)}
           />
         </>
       )}

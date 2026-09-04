@@ -339,7 +339,9 @@ export default async function AnalisisDetallePage({
   //
   // Se muestra con su fecha —la portada ya la imprime vía `fechaProsa`— para que
   // el lector sepa cuándo se escribió lo que está leyendo.
-  const puedeRegenerarProsa = isOwner || isAdmin;
+  // T2.1: solo el DUEÑO regenera (la política UPDATE de `analisis` es auth.uid() = user_id;
+  // un no dueño, admin incluido, generaba y no guardaba).
+  const puedeRegenerarProsa = isOwner;
   const mostrarProsaStale = ltrAiStale && !puedeRegenerarProsa;
 
   return (
@@ -378,7 +380,7 @@ export default async function AnalisisDetallePage({
           freePrecioM2={precioM2}
           resumenEjecutivo={resumenEjecutivo}
           ufValue={ufFrozen}
-          aiAnalysisInitial={ltrAiFresh || mostrarProsaStale ? (ltrAiPersisted as Record<string, unknown>) : undefined}
+          aiAnalysisInitial={ltrAiPersisted ? (ltrAiPersisted as Record<string, unknown>) : undefined}
           aiStale={ltrAiStale}
           puedeRegenerarProsa={puedeRegenerarProsa}
           prosaDesactualizada={mostrarProsaStale}

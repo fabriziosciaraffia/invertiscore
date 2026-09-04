@@ -17,7 +17,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Anthropic from "@anthropic-ai/sdk";
-import { captureApiWarning } from "@/lib/observabilidad";
+import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { Hallazgo } from "@/lib/types";
@@ -90,7 +90,7 @@ export async function generarYPersistirProsaStr(args: {
       logger: (m) => console.warn(`[STR AI v3] ${analysisId}: ${m}`),
     });
     const ai = gen.ai as unknown as Record<string, unknown>;
-    await supabase
+    const { data: guardado, error: updateError } = await supabase
       .from("analisis")
       .update({
         ai_analysis: ai,
@@ -99,7 +99,30 @@ export async function generarYPersistirProsaStr(args: {
         // select("*"), así que ya trae los contadores actuales — cero queries nuevas.
         ...camposUpdateUsage(gen.usage, analysis, CLAUDE_MODEL),
       })
-      .eq("id", analysisId);
+      .eq("id", analysisId)
+      .select("id");
+    if (updateError || !guardado?.length) {
+      // T2.1: un UPDATE bloqueado por RLS no da error, da CERO filas. Antes esto devolvía
+      // la prosa con 200 y el usuario leía un texto que no existe en la base (Sta. Rosa:
+      // v15 en pantalla, v9 persistida, una generación pagada por visita). Es un fallo.
+      captureApiError(updateError ?? new Error("prosa STR generada y no persistida: el UPDATE devolvió 0 filas (RLS)"), {
+        ruta: `generarYPersistirProsaStr (${trigger})`,
+        operacion: "persistir-prosa-str",
+        analysisId,
+        tags: { promptVersion: String(PROMPT_VERSION_STR), userIdNull: String(analysis.user_id == null) },
+      });
+      await persistGeneracionTiming(supabase, analysisId, {
+        tipo: "str",
+        trigger,
+        inicio_at: new Date(tGen).toISOString(),
+        fin_at: new Date().toISOString(),
+        total_ms: Date.now() - tGen,
+        resultado: "error",
+        prompt_version: PROMPT_VERSION_STR,
+        llamadas: gen.llamadas,
+      });
+      return null;
+    }
     await persistGeneracionTiming(supabase, analysisId, {
       tipo: "str",
       trigger,

@@ -236,7 +236,10 @@ export default async function STRResultPage({
   // la prosa es la capa de interpretación. Un texto redactado con un contrato anterior
   // sigue siendo verdadero sobre el caso: envejece en forma, no en hechos. Se muestra
   // con su fecha para que el lector sepa cuándo se escribió lo que lee.
-  const strPuedeRegenerarProsa = isOwner || isAdmin;
+  // T2.1: solo el DUEÑO regenera. El admin no dueño (y cualquier no dueño) conserva lo que
+  // hay: la política UPDATE de `analisis` es auth.uid() = user_id, así que una regen sobre
+  // una fila ajena o anónima genera y no guarda (cada visita pagaba una prosa que se botaba).
+  const strPuedeRegenerarProsa = isOwner;
   const strAiStale = !!strAiPersisted && !strAiFresh;
   const mostrarProsaStaleStr = strAiStale && !strPuedeRegenerarProsa;
 
@@ -317,7 +320,9 @@ export default async function STRResultPage({
     isSharedView,
     userCredits,
     welcomeAvailable,
-    aiAnalysisInitial: strAiFresh || mostrarProsaStaleStr ? data.ai_analysis : null,
+    // La prosa persistida viaja SIEMPRE (fresca o vieja): si la regen del dueño falla, el
+    // cliente conserva la vieja con su fecha en vez de quedar mudo.
+    aiAnalysisInitial: strAiPersisted ? data.ai_analysis : null,
     // Goal F: prosa persistida con versión vieja → el cliente NO pollea (el
     // status la devolvería como ready) y regenera directo (stale-regen, gratis).
     aiStaleInitial: strAiStale,
