@@ -68,10 +68,13 @@ console.log("\n═════════════════════�
 console.log(" CROSSCHECK reglas calcRecomendacionModalidad           ");
 console.log("════════════════════════════════════════════════════════");
 const checks: Array<{ sr: number; tier: "alta" | "media" | "baja"; esperado: string }> = [
+  // Una fuente (04-sep-2026): decide el signo y la magnitud de la sobre-renta; el tier es contexto.
   { sr: 0.30, tier: "alta",  esperado: "STR_VENTAJA_CLARA" },
   { sr: 0.10, tier: "alta",  esperado: "INDIFERENTE" },
-  { sr: 0.02, tier: "alta",  esperado: "LTR_PREFERIDO" },
-  { sr: 0.30, tier: "baja",  esperado: "LTR_PREFERIDO" },   // baja overrides
+  { sr: 0.02, tier: "alta",  esperado: "INDIFERENTE" },       // STR>LTR por poco: parejo, nunca LTR
+  { sr: -0.02, tier: "alta", esperado: "INDIFERENTE" },       // LTR>STR por poco: parejo
+  { sr: -0.10, tier: "alta", esperado: "LTR_PREFERIDO" },     // el largo rinde más neto, con margen
+  { sr: 0.30, tier: "baja",  esperado: "STR_VENTAJA_CLARA" }, // el tier ya no veta
   { sr: 0.10, tier: "media", esperado: "INDIFERENTE" },
   { sr: 0.20, tier: "media", esperado: "STR_VENTAJA_CLARA" },
 ];

@@ -254,18 +254,26 @@ function refinarPorBreakEven(breakEvenPct: number | undefined): BandaComparativa
   return "INDIFERENTE";
 }
 
-// Núcleo de clasificación de banda. La ruta break-even solo aplica cuando la sobre-renta
-// ya calificaría como ventaja clara (≥15% o degenerado con STR>LTR).
+// Núcleo de clasificación de banda — UNA fuente: la sobre-renta medida (el mismo dato del
+// hallazgo `ventaja_vs_ltr`). El SIGNO dice qué modalidad rinde más neto; la MAGNITUD, cuánto.
+//   • ≤ −5%      → LTR_PREFERIDO   (el largo rinde más neto por un margen que se nota)
+//   • (−5%, 15%) → INDIFERENTE     (parejo: la decisión es operativa, no de rentabilidad)
+//   • ≥ 15%      → STR_VENTAJA_CLARA, refinada por el break-even medido (FRÁGIL / INDIFERENTE)
+// El tier de zona NO veta ni ordena: es contexto de La zona (`zonaSTR.tierZona`). Antes
+// (`tierZona === "baja" → LTR_PREFERIDO`) 51 de 245 filas del parque recomendaban LTR con
+// STR rindiendo MÁS que LTR, y la prosa lo copiaba ("el largo rinde más neto" con signo
+// contrario al hallazgo). El parámetro se conserva por firma (callers AMBAS) y no se lee.
+// La ruta break-even solo aplica cuando la sobre-renta ya califica ventaja clara
+// (≥15% o degenerado con STR>LTR).
+export const SOBRE_RENTA_LTR_PREFERIDO_MAX = -0.05;
+export const SOBRE_RENTA_STR_CLARA_MIN = 0.15;
+
 function clasificarBanda(
   sobreRentaPct: number,
-  tierZona: ZonaSTRScore["tierZona"] | undefined,
+  _tierZonaContexto: ZonaSTRScore["tierZona"] | undefined,
   breakEvenPct: number | undefined,
   degen?: { confiable: boolean; sobreRenta: number; strNoiMensual: number },
 ): BandaComparativa {
-  // Zona baja → casi siempre LTR_PREFERIDO. La operación STR no se sostiene con poca
-  // demanda; el riesgo operativo + ramp-up no se compensa.
-  if (tierZona === "baja") return "LTR_PREFERIDO";
-
   // P3: ratio degenerado (NOI-LTR ≤0 o pct explotado). El % no ordena: −3483% caía en
   // LTR_PREFERIDO (< 0.05) aunque STR generaba MÁS NOI que LTR (bug 4ea0b582). Clasificamos
   // por la sobre-renta ABSOLUTA: si STR no supera a LTR → LTR_PREFERIDO; si supera y su NOI
@@ -277,8 +285,8 @@ function clasificarBanda(
     return degen.strNoiMensual > 0 ? "STR_VENTAJA_CLARA" : "INDIFERENTE";
   }
 
-  if (sobreRentaPct < 0.05) return "LTR_PREFERIDO";
-  if (sobreRentaPct >= 0.15) return refinarPorBreakEven(breakEvenPct);
+  if (sobreRentaPct <= SOBRE_RENTA_LTR_PREFERIDO_MAX) return "LTR_PREFERIDO";
+  if (sobreRentaPct >= SOBRE_RENTA_STR_CLARA_MIN) return refinarPorBreakEven(breakEvenPct);
   return "INDIFERENTE";
 }
 
@@ -291,6 +299,8 @@ function bandaAReco(banda: BandaComparativa): RecomendacionModalidadSTR {
 
 export function calcRecomendacionModalidad(
   sobreRentaPct: number,         // decimal (0.15 = +15% sobre LTR)
+  // Contexto de zona. Desde 04-sep-2026 NO decide la recomendación (ver clasificarBanda);
+  // se conserva en la firma para no tocar a los callers AMBAS/comparativa.
   tierZona: ZonaSTRScore["tierZona"] | undefined,
   // P3: contexto para clasificar por ABSOLUTO cuando el ratio degenera. Ausente ⇒ ruta clásica.
   degen?: { confiable: boolean; sobreRenta: number; strNoiMensual: number },
@@ -358,13 +368,13 @@ export function calcVeredictoComparativo(input: {
 
 /**
  * Fallback para análisis legacy pre-Commit 4 que no tienen
- * `recomendacionModalidad` ni `zonaSTR` en results. Reusa la misma lógica
- * de umbral pero asume tier "media" cuando la zona no está clasificada.
+ * `recomendacionModalidad` ni `zonaSTR` en results. Reusa la misma regla:
+ * la recomendación sale del signo y la magnitud de la sobre-renta medida.
  *
  * Pasos:
  *  1) Si el STR result ya tiene `recomendacionModalidad`, devolverla.
- *  2) Si tiene `zonaSTR.tierZona`, aplicar regla completa.
- *  3) Si no, asumir tier "media" y decidir solo por sobreRentaPct.
+ *  2) Si no, decidir por sobreRentaPct (y por absoluto si el ratio degenera).
+ *     El tier de zona se pasa como contexto y no altera el resultado.
  *
  * Único lugar canónico para esta lógica — usar acá tanto en server
  * (endpoint comparativa/ai) como en cliente (comparativa-client) para
