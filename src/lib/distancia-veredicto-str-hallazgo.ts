@@ -22,6 +22,7 @@
 import type {
   HallazgoDistanciaVeredicto,
   PalancaDistancia,
+  ViaDistancia,
   RazonSinCapital,
   Veredicto,
 } from "./types";
@@ -179,9 +180,20 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     meta === "COMPRAR" ? DIST_STR_TOPE_AJUSTA_PCT : topeStrParaVeredicto(p.veredictoBase);
   const topeAplicado = topeStrParaVeredicto(p.veredictoBase);
 
-  const palancasHasta = (meta: Veredicto): PalancaDistancia[] => {
+  /** Explora las CINCO vías STR para una meta dada. `palancas` = solo las que cruzan
+   *  (pie y gestión primero, luego por |delta|); `vias` = las cinco con su estado, en
+   *  orden canónico precio · tarifa · plazo · pie · gestión (goal T0 CONGELADO, 04-sep-2026).
+   *  El pie se explora hasta el tope de 30% siempre que exista y no esté ya en el techo:
+   *  con 20% "cruza" es un intercambio (más capital el día 1 a cambio de un mes que
+   *  cierra), no una recomendación — el copy lo dice con ese estado. */
+  const palancasHasta = (meta: Veredicto): { palancas: PalancaDistancia[]; vias: ViaDistancia[] } => {
     const relativas: PalancaDistancia[] = [];
     const tope = topeDe(meta);
+    let viaPrecio: ViaDistancia;
+    let viaAdr: ViaDistancia;
+    let viaPlazo: ViaDistancia;
+    let viaPie: ViaDistancia;
+    let viaGestion: ViaDistancia;
 
     // PRECIO — baja hasta el tope general.
     const fPre = biseccionFactor(
@@ -191,13 +203,23 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     );
     if (fPre != null) {
       const objetivo = Math.floor(p.precioUF * fPre);
-      relativas.push({
+      const pal: PalancaDistancia = {
         palanca: "precio",
         objetivo,
         actual: p.precioUF,
         deltaPct: Math.round((objetivo / p.precioUF - 1) * 1000) / 10, // negativo
         deltaAbs: objetivo - p.precioUF,
-      });
+      };
+      relativas.push(pal);
+      viaPrecio = { estado: "cruza", ...pal };
+    } else {
+      viaPrecio = {
+        estado: "noCruza",
+        palanca: "precio",
+        actual: p.precioUF,
+        topeExplorado: tope,
+        razon: `ni bajando el precio un ${fmtPct(tope)}% cambia el veredicto`,
+      };
     }
 
     // ADR — sube, pero contra SU tope, no el general. Es la única palanca cuyo techo no se
@@ -210,19 +232,45 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     );
     if (fAdr != null) {
       const objetivo = Math.ceil(p.adrActual * fAdr);
-      relativas.push({
+      const pal: PalancaDistancia = {
         palanca: "adr",
         objetivo,
         actual: p.adrActual,
         deltaPct: Math.round((objetivo / p.adrActual - 1) * 1000) / 10,
         deltaAbs: objetivo - p.adrActual,
-      });
+      };
+      relativas.push(pal);
+      viaAdr = { estado: "cruza", ...pal };
+    } else {
+      viaAdr = {
+        estado: "noCruza",
+        palanca: "adr",
+        actual: p.adrActual,
+        topeExplorado: DIST_STR_TOPE_ADR_PCT,
+        razon: `ni cobrando un ${fmtPct(DIST_STR_TOPE_ADR_PCT)}% más por noche cambia el veredicto`,
+      };
     }
 
     // PLAZO — entero, redondeado hacia arriba al tramo comercial (los bancos ofrecen
     // 15/20/25/30, no años sueltos) y RE-VERIFICADO en ese tramo antes de emitirlo: si el
     // redondeo no cruzara, la palanca no se emite en vez de prometer algo falso.
-    if (Number.isFinite(p.plazoCredito) && p.plazoCredito > 0 && p.plazoCredito < DIST_PLAZO_TOPE_ANIOS) {
+    if (!Number.isFinite(p.plazoCredito) || p.plazoCredito <= 0) {
+      viaPlazo = { estado: "noAplica", palanca: "plazo", actual: 0, razon: "sin crédito no hay plazo que estirar" };
+    } else if (p.plazoCredito >= DIST_PLAZO_TOPE_ANIOS) {
+      viaPlazo = {
+        estado: "noAplica",
+        palanca: "plazo",
+        actual: p.plazoCredito,
+        razon: `ya en ${DIST_PLAZO_TOPE_ANIOS} años: es el máximo que dan los bancos`,
+      };
+    } else {
+      viaPlazo = {
+        estado: "noCruza",
+        palanca: "plazo",
+        actual: p.plazoCredito,
+        topeExplorado: DIST_PLAZO_TOPE_ANIOS,
+        razon: `ni a ${DIST_PLAZO_TOPE_ANIOS} años cambia el veredicto`,
+      };
       for (let anios = Math.floor(p.plazoCredito) + 1; anios <= DIST_PLAZO_TOPE_ANIOS; anios++) {
         if (!alcanzaMeta(p.veredictoAtPatch({ plazoCredito: anios }), meta)) continue;
         const comercial = Math.min(
@@ -230,13 +278,15 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
           Math.ceil(anios / DIST_PLAZO_TRAMO_ANIOS) * DIST_PLAZO_TRAMO_ANIOS,
         );
         if (comercial > p.plazoCredito && alcanzaMeta(p.veredictoAtPatch({ plazoCredito: comercial }), meta)) {
-          relativas.push({
+          const pal: PalancaDistancia = {
             palanca: "plazo",
             objetivo: comercial,
             actual: p.plazoCredito,
             deltaPct: Math.round((comercial / p.plazoCredito - 1) * 1000) / 10,
             deltaAbs: comercial - p.plazoCredito,
-          });
+          };
+          relativas.push(pal);
+          viaPlazo = { estado: "cruza", ...pal };
         }
         break;
       }
@@ -252,17 +302,39 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     // que el mercado dé más. El pie antes que la gestión: cambiar de administrador es una
     // decisión operativa reversible, poner más capital es la que de verdad reordena el deal.
     const propias: PalancaDistancia[] = [];
+    // El pie que cruza sin ser prioritario (ya cumple con 20% o más) va al final: cruza,
+    // pero es un intercambio de capital, no la vía que Franco recomienda primero.
+    const pieAlFinal: PalancaDistancia[] = [];
 
-    if (pieCalifica && p.piePct < DIST_PIE_TOPE_PCT) {
+    if (esBonoPie) {
+      viaPie = { estado: "noAplica", palanca: "pie", actual: p.piePct, razon: "el pie lo cubre la inmobiliaria: subirlo desarma el trato" };
+    } else if (!Number.isFinite(p.piePct) || p.piePct >= DIST_PIE_TOPE_PCT) {
+      viaPie = {
+        estado: "noAplica",
+        palanca: "pie",
+        actual: p.piePct,
+        razon: `ya con ${fmtPct(p.piePct)}% de pie: sobre ${DIST_PIE_TOPE_PCT}% Franco no lo prueba como ajuste`,
+      };
+    } else {
+      viaPie = {
+        estado: "noCruza",
+        palanca: "pie",
+        actual: p.piePct,
+        topeExplorado: DIST_PIE_TOPE_PCT,
+        razon: `ni con un pie de ${DIST_PIE_TOPE_PCT}% cambia el veredicto`,
+      };
       for (let pie = Math.floor(p.piePct) + 1; pie <= DIST_PIE_TOPE_PCT; pie++) {
         if (!alcanzaMeta(p.veredictoAtPatch({ piePercent: pie / 100 }), meta)) continue;
-        propias.push({
+        const pal: PalancaDistancia = {
           palanca: "pie",
           objetivo: pie,
           actual: p.piePct,
           deltaPct: Math.round((pie - p.piePct) * 10) / 10, // PUNTOS porcentuales
           deltaAbs: Math.round((pie - p.piePct) * 10) / 10,
-        });
+        };
+        if (pieCalifica) propias.push(pal);
+        else pieAlFinal.push(pal);
+        viaPie = { estado: "cruza", ...pal };
         break;
       }
     }
@@ -272,24 +344,36 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     // al otro (el revenue es el mismo en ambos).
     {
       const otro = p.modoGestionActual === "auto" ? "administrador" : "auto";
+      const comActual = (p.modoGestionActual === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;
+      const comObjetivo = (otro === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;
       if (alcanzaMeta(p.veredictoAtPatch({ modoGestion: otro }), meta)) {
-        const comActual = (p.modoGestionActual === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;
-        const comObjetivo = (otro === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;
-        propias.push({
+        const pal: PalancaDistancia = {
           palanca: "gestion",
           modoGestionObjetivo: otro,
           objetivo: Math.round(comObjetivo * 10) / 10,
           actual: Math.round(comActual * 10) / 10,
           deltaPct: Math.round((comObjetivo - comActual) * 10) / 10, // PUNTOS porcentuales
           deltaAbs: Math.round((comObjetivo - comActual) * 10) / 10,
-        });
+        };
+        propias.push(pal);
+        viaGestion = { estado: "cruza", ...pal };
+      } else {
+        viaGestion = {
+          estado: "noCruza",
+          palanca: "gestion",
+          actual: Math.round(comActual * 10) / 10,
+          topeExplorado: Math.round(comObjetivo * 10) / 10,
+          razon: otro === "auto" ? "ni gestionándolo tú cambia el veredicto" : "ni con administrador cambia el veredicto",
+        };
       }
     }
 
-    return [...propias, ...relativas];
+    return { palancas: [...propias, ...relativas, ...pieAlFinal], vias: [viaPrecio, viaAdr, viaPlazo, viaPie, viaGestion] };
   };
 
-  const palancas = palancasHasta(veredictoObjetivo);
+  const explorado = palancasHasta(veredictoObjetivo);
+  const palancas = explorado.palancas;
+  const vias = explorado.vias;
   const palancaMasBarata = palancas[0] ?? null;
   const esEstructural = palancas.length === 0;
 
@@ -316,7 +400,7 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
 
   // Solo para BUSCAR OTRA: ¿el salto de DOS bandas cae en rango? Informativo.
   const palancaHastaComprar =
-    p.veredictoBase === "BUSCAR OTRA" && !esEstructural ? (palancasHasta("COMPRAR")[0] ?? null) : null;
+    p.veredictoBase === "BUSCAR OTRA" && !esEstructural ? (palancasHasta("COMPRAR").palancas[0] ?? null) : null;
 
   // Cercanía medida sobre la palanca RELATIVA más barata: pie y gestión están en puntos
   // porcentuales y dividirlas por un tope expresado en cambio relativo daría una cercanía
@@ -339,10 +423,16 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     // Ahora: (1) los topes probados sin cruzar (precio según banda, tarifa con su tope
     // propio) y la cifra que recién cruzaría; (2) plazo, pie y gestión según lo que el
     // builder probó; (3) el cierre de brecha. Todo desde constantes y estado del builder,
-    // nunca literales. STR aún no emite `vias`: entra con la migración al CONGELADO, y ahí
-    // esta frase pasa a leerlas como la LTR.
+    // nunca literales. T0 CONGELADO (04-sep-2026): las cifras se leen de `vias`, como en LTR.
     const dm = deltaMinimoFueraDeTope;
-    const hecho = `Cerrar hasta −${fmtPct(topeAplicado)}% bajo el precio o cobrar hasta +${fmtPct(DIST_STR_TOPE_ADR_PCT)}% más por noche no cambia el veredicto`;
+    const vPrecio = vias.find((v) => v.palanca === "precio");
+    const vAdr = vias.find((v) => v.palanca === "adr");
+    const vPlazo = vias.find((v) => v.palanca === "plazo");
+    const vPie = vias.find((v) => v.palanca === "pie");
+    const vGestion = vias.find((v) => v.palanca === "gestion");
+    const topeP = vPrecio?.estado === "noCruza" ? vPrecio.topeExplorado : topeAplicado;
+    const topeA = vAdr?.estado === "noCruza" ? vAdr.topeExplorado : DIST_STR_TOPE_ADR_PCT;
+    const hecho = `Cerrar hasta −${fmtPct(topeP)}% bajo el precio o cobrar hasta +${fmtPct(topeA)}% más por noche no cambia el veredicto`;
     const primera = dm
       ? `${hecho}; recién ${
           dm.palanca === "precio"
@@ -350,14 +440,13 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
             : `cobrando +${fmtPct(Math.abs(dm.deltaPct))}% por noche`
         } cruzaría a ${objetivoNombre}, y eso ya no es un ajuste.`
       : `${hecho}, y tampoco lo hace ningún ajuste en rango.`;
-    // Segunda oración: solo las palancas que el builder efectivamente probó.
+    // Segunda oración: plazo, pie y gestión por su estado en `vias` (solo las `noCruza`;
+    // `noAplica` se omite). Sin ninguna, no hay segunda oración.
     const tramos: string[] = [];
-    if (Number.isFinite(p.plazoCredito) && p.plazoCredito > 0 && p.plazoCredito < DIST_PLAZO_TOPE_ANIOS) {
-      tramos.push(`a ${DIST_PLAZO_TOPE_ANIOS} años`);
-    }
-    if (pieCalifica && p.piePct < DIST_PIE_TOPE_PCT) tramos.push(`con pie ${fmtPct(DIST_PIE_TOPE_PCT)}%`);
-    tramos.push(p.modoGestionActual === "auto" ? "con administrador" : "autogestionando");
-    const segunda = tramos.length === 1 ? ` Ni ${tramos[0]} cambia.` : ` Ni ${tramos.slice(0, -1).join(", ni ")} ni ${tramos[tramos.length - 1]} cambia.`;
+    if (vPlazo?.estado === "noCruza") tramos.push(`a ${vPlazo.topeExplorado} años`);
+    if (vPie?.estado === "noCruza") tramos.push(`con pie ${fmtPct(vPie.topeExplorado)}%`);
+    if (vGestion?.estado === "noCruza") tramos.push(p.modoGestionActual === "auto" ? "con administrador" : "autogestionando");
+    const segunda = tramos.length === 0 ? "" : tramos.length === 1 ? ` Ni ${tramos[0]} cambia.` : ` Ni ${tramos.slice(0, -1).join(", ni ")} ni ${tramos[tramos.length - 1]} cambia.`;
     // Cierre del estructural (§1.12.4): con precio a mercado y tarifa/ocupación
     // ancladas a la mediana observada, "la brecha es del negocio" apunta mal —
     // el negocio está a mercado; lo que no rinde en corto a estos precios de
@@ -430,6 +519,7 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
       veredictoBase: p.veredictoBase,
       veredictoObjetivo,
       palancas,
+      vias,
       palancaMasBarata,
       palancaHastaComprar,
       esEstructural,

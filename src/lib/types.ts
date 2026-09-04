@@ -987,8 +987,9 @@ export interface HallazgoDistanciaVeredicto {
     /** Palancas que cruzan dentro de rango, de la más barata a la más cara. Vacío ⇒ estructural.
      *  DERIVADO de `vias` desde el goal "cuatro palancas siempre" (02-sep-2026). */
     palancas: PalancaDistancia[];
-    /** Las cuatro palancas con su estado, en orden canónico precio · arriendo · plazo · pie
-     *  (LTR). Ausente en filas persistidas anteriores al goal y en STR. */
+    /** Las palancas con su estado, en orden canónico: precio · arriendo · plazo · pie (LTR)
+     *  y precio · tarifa (adr) · plazo · pie · gestión (STR, desde T0 CONGELADO 04-sep-2026).
+     *  Ausente en filas persistidas anteriores. */
     vias?: ViaDistancia[];
     /** La más barata de `palancas` (índice 0), o null si ninguna cruza. */
     palancaMasBarata: PalancaDistancia | null;

@@ -45,13 +45,13 @@ export function buildHallazgoFlujoStr(p: {
   const fuerte = Math.abs(flujo) >= FLUJO_STR_BANDA_CLP;
 
   // fix-occfuente-override 2026-07 — el ancla declara la procedencia de la ocupación que
-  // produjo este flujo: con override no se disfraza de "mediana de la zona".
+  // produjo este flujo: con override no se disfraza de "estimada para tu depto" (Goal 4: la ocupación del caso es la estimación de mercado para el depto, no la mediana de la zona).
   const occOverride = p.occEsOverride === true
     && Number.isFinite(p.occDefinidaPct as number)
     && Number.isFinite(p.occObservadaPct as number);
   const anclaOcc = occOverride
-    ? `Con la ocupación que definiste (${pct0(p.occDefinidaPct as number)}%), no la observada de la zona (${pct0(p.occObservadaPct as number)}%),`
-    : "Con la ocupación mediana de la zona,";
+    ? `Con la ocupación que definiste (${pct0(p.occDefinidaPct as number)}%), no la estimación de mercado para tu depto (${pct0(p.occObservadaPct as number)}%),`
+    : "Con la ocupación estimada para tu depto,";
 
   let titular: string;
   let fraseCanonica: string;
