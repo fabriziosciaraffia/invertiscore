@@ -16101,6 +16101,38 @@
       "comisionAdministrador": 0.2,
       "edificioPermiteAirbnb": "si"
     },
+    "superficie": 45,
+    "ai_analysis": {
+      "vsLTR": {
+        "contenido": "En números absolutos: el arriendo largo te deja un NOI de $231.416 al mes con cero gestión; el corto en modo auto te deja $381.518, pero con 8-12 horas semanales de trabajo tuyo. La diferencia de $150.102 mensuales existe y es real. Ahora la brecha auto-vs-administrador: si delegas la gestión a un operador (comisión 20%), el NOI baja a $280.876 y el flujo cae a -$185.049 —casi igual de malo que el arriendo largo pero con toda la complejidad del corto encima. El corto tiene ventaja solo si tú gestionas directamente. El punto de equilibrio con el amoblamiento se recupera en 17 meses sobre el arriendo largo, lo que tiene sentido si la operación se sostiene.",
+        "cajaAccionable": "**Si decides entrar, hazlo en modo auto y activa el subsidio de tasa antes de firmar: es la combinación que más mejora el flujo sin tocar el precio.**",
+        "estrategiaSugerida": "Modo auto es la única configuración en que el corto gana con claridad. Antes de invertir en el amoblamiento, aplica el subsidio MINVU Ley 21.748: calificas (depto nuevo, primera venta, bajo UF 6.000) y la tasa puede bajar desde 0,6 pp, lo que reduce el dividendo y mejora el flujo en esa misma magnitud. **Eso no está reflejado en este cálculo y puede ser la palanca más barata disponible.**"
+      },
+      "riesgos": {
+        "contenido": "El break-even está estructuralmente sobre el mercado.\n\nNecesitas el 115% de los ingresos brutos medianos de la zona solo para no poner dinero de tu bolsillo —eso significa que ni operando al nivel promedio de la zona cubres los costos. No es un riesgo de mal mes: es la geometría del caso central. Si la zona no mejora su ocupación o tú no sostienes una tarifa sobre la mediana ($47.510 por noche), el déficit mensual de $84.407 es permanente, no transitorio.\n\nLa ocupación observada de la zona deja poco margen para errores de gestión.\n\nEl upside de 55% de ocupación requiere gestión profesional sostenida: fotos de calidad, respuesta rápida, calendario optimizado y reseñas acumuladas. El gap de 12 puntos desde el 43% observado no se cierra solo con el tiempo; es trabajo real. En el cuartil bajo, el flujo cae a -$315.288 al mes —un escenario que puede ocurrir en los primeros meses de operación o en temporada baja sin estrategia activa de tarifas.\n\nLa tarifa objetivo está sobre la mediana y no es un supuesto que controlas.\n\nLlegar a $47.510 por noche —el punto donde el veredicto cambia— implica rendir en el percentil superior de lo que la zona cobra hoy. Es alcanzable con diferenciación (presentación, amenidades, gestión de reseñas), pero depende de lo que el mercado valide, no de lo que tú decidas cobrar. Si el mercado no absorbe esa tarifa con la ocupación necesaria, la palanca desaparece.",
+        "cajaAccionable": "**Mi posición: este depto es viable en STR solo si negocias el precio bajo UF 2.536 o demuestras que la zona aguanta $47.510 por noche antes de comprometerte** —sin una de esas dos condiciones, estás financiando un activo de apreciación con flujo negativo todos los meses, y eso es una decisión distinta a invertir en renta corta."
+      },
+      "titular": "Renta corta aquí: **pones plata todos los meses** hasta que la tarifa mejore.",
+      "conviene": {
+        "reencuadre": "Este depto es un activo de apreciación con flujo negativo en el escenario central. Si entras con la tasa actual y la tarifa del mercado, financias la diferencia durante años. El subsidio de la Ley 21.748 puede mejorar el dividendo y achica ese déficit mensual, pero no cierra la brecha completa.",
+        "cajaAccionable": "**El paso concreto es uno: negocia el precio bajo UF 2.536 o trabaja la tarifa hasta $47.510 por noche** —cualquiera de los dos mueve el veredicto a COMPRAR. Sin al menos una de esas dos condiciones, estás financiando tú la operación cada mes.",
+        "respuestaDirecta": "El escenario base te deja aportando $84.407 mensuales para sostener la operación: no es flujo, es subsidio. La ventaja sobre el arriendo largo existe —$150.102 de NOI adicional cada mes— pero no alcanza a cerrar la brecha con el dividendo. El ADR ya está en el percentil 78 de la zona; la tarifa no es el problema. El problema es la ocupación observada del mercado (43%), que no sostiene los costos desde el día uno. El veredicto se mueve si la tarifa sube a $47.510 por noche —un 4,3% sobre la mediana actual—, y eso es una apuesta a rendir sobre lo que hoy cobra el mercado, no un supuesto que tú controlas."
+      },
+      "operacion": {
+        "contenido": "Con autogestión necesitas estar disponible para check-ins, mensajes y rotación de ropa de cama —estima 8-12 horas semanales reales, no esporádicas. El edificio permite Airbnb, lo que elimina el riesgo más común de entrada. En el mes valle (febrero), si la ocupación cae bajo el cuartil, considera activar estadías de mediana duración (7-15 noches) para sostener el ingreso bruto. Los primeros ~6 meses el listing opera bajo su ocupación normal mientras gana reseñas: la pérdida acumulada estimada de ese período es $888.018, que debes tener cubierta en caja antes de arrancar. Fondo de reserva mínimo aparte: 3 meses de costos fijos para imprevistos de mantención y vacancia inesperada.",
+        "cajaAccionable": "**Antes de publicar el listing, ten en caja la pérdida de estabilización más el fondo de reserva: arrancar sin ese colchón convierte cualquier mes malo en un problema de liquidez.**"
+      },
+      "veredicto": "AJUSTA SUPUESTOS",
+      "largoPlazo": {
+        "contenido": "Tu capital rinde ×2,20 en el depto frente a ×1,63 en un depósito UF y ×1,97 en un fondo mutuo, pero el depto exige gestión activa durante una década, es ilíquido y carga un flujo operativo acumulado negativo que el fondo no tiene. La prima por asumir esos tres riesgos es real en múltiplo, pero moderada. Santiago apreció 5% anual en la última década, sobre el 3% flat que usa la proyección: en esa medida el supuesto es conservador respecto a lo que la comuna ya mostró, aunque no garantiza repetición. Si la apreciación se estanca en 0% real, el multiplicador y la TIR caen y el margen sobre los instrumentos alternativos se achica.",
+        "cajaAccionable": "**La apuesta de largo plazo se sostiene si la comuna sigue apreciando y tú aguantas el flujo negativo mensual durante los primeros años sin que eso presione tu liquidez personal.**"
+      },
+      "rentabilidad": {
+        "contenido": "La causa raíz es el precio de entrada: a UF 2.700 para 45 m², el dividendo y los costos consumen el margen que la tarifa logra generar con la ocupación que la zona realmente muestra. El margen existe en el upside, no en el caso central; el desglose y la matriz lo muestran.",
+        "cajaAccionable": "**La rentabilidad se destraba por precio o por tarifa: sin mover alguno de los dos, el flujo negativo no es un problema de gestión sino de estructura.**"
+      },
+      "promptVersion": 9
+    },
     "results": {
       "veredicto": "AJUSTA SUPUESTOS",
       "legacyEngineVeredicto": "COMPRAR",

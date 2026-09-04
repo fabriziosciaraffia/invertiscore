@@ -21,10 +21,10 @@ export function TokensShared() {
       .mx-toggle button{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;background:var(--doc-paper);color:var(--doc-tx3);border:none;cursor:pointer}
       .mx-toggle button+button{border-left:1px solid var(--doc-line2)}
       .mx-toggle button.on{background:var(--doc-tx);color:var(--doc-paper);font-weight:700}
-      .matriz{--cell:88px;--rowh:58px;--axis:20px;--gap:3px;display:grid;grid-template-columns:var(--axis) auto;gap:0 6px;max-width:calc(var(--axis) + 6px + var(--rowh) + 4*var(--cell) + 5*var(--gap));margin-top:6px}
+      .matriz{--cell:88px;--rowh:58px;--axis:20px;--gap:3px;display:grid;grid-template-columns:var(--axis) minmax(0,1fr);gap:0 6px;max-width:calc(var(--axis) + 6px + var(--rowh) + var(--n,4)*var(--cell) + 5*var(--gap));margin-top:6px}
       .mz-axis-x{grid-column:2;font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--doc-tx3);padding-left:calc(var(--rowh) + var(--gap));margin-bottom:6px}
       .mz-axis-y{grid-row:2;writing-mode:vertical-rl;font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--doc-tx3);padding-top:calc(var(--cell) * .55 + var(--gap));white-space:nowrap}
-      .mz-grid{grid-row:2;display:grid;grid-template-columns:var(--rowh) repeat(4,var(--cell));grid-auto-rows:auto;gap:var(--gap);align-items:stretch}
+      .mz-grid{grid-row:2;display:grid;grid-template-columns:var(--rowh) repeat(var(--n,4),var(--cell));grid-auto-rows:auto;gap:var(--gap);align-items:stretch;min-width:0}
       .mz-colh,.mz-rowh{font-family:var(--font-mono, ui-monospace);font-size:11px;font-weight:700;color:var(--doc-tx);line-height:1.15}
       .mz-colh{text-align:center;padding:0 0 6px;align-self:end}
       .mz-rowh{display:flex;flex-direction:column;justify-content:center;padding-right:8px;text-align:right}
@@ -124,9 +124,11 @@ export function TokensShared() {
       .ba-sw.amoblamiento::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-45deg,transparent,transparent 3px,rgba(255,255,255,.5) 3px,rgba(255,255,255,.5) 6px)}
 
       @media (max-width: 767px){
-        .matriz{--cell:64px;--rowh:52px;--axis:16px;max-width:none}
-        .mz-grid{grid-template-columns:var(--rowh) repeat(4,1fr)}
-        .mz-cell{font-size:10px}
+        /* en 390 el cuerpo del capítulo mide ~280px: la fila de cabecera se angosta y las cuatro columnas reparten el resto sin scroll */
+        .matriz{--cell:64px;--rowh:44px;--axis:16px;max-width:none}
+        .mz-grid{grid-template-columns:var(--rowh) repeat(var(--n,4),minmax(0,1fr))}
+        .mz-rowh{padding-right:5px}
+        .mz-cell{font-size:9.5px}
         .mz-leg .lg{display:none}
         .mz-leg .sh{display:inline}
         .pl th:first-child,.pl td:first-child{position:sticky;left:0;background:var(--doc-paper);z-index:1;box-shadow:1px 0 0 var(--doc-line)}

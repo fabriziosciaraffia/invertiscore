@@ -68,10 +68,10 @@ export function Matriz({
           )}
         </div>
       )}
-      <div className="matriz" id={id}>
+      <div className="matriz" id={id} style={{ ["--n" as string]: String(ejeX.niveles.length) }}>
         <div className="mz-axis-x">{ejeX.label}</div>
         <div className="mz-axis-y">{ejeY.label}</div>
-        <div className="mz-grid" style={{ gridTemplateColumns: `var(--rowh) repeat(${ejeX.niveles.length}, var(--cell))` }}>
+        <div className="mz-grid">
           <div className="mz-corner" />
           {ejeX.niveles.map((c, i) => (
             <div key={`c${i}`} className="mz-colh">

@@ -21,6 +21,7 @@ import { TokensHallazgos } from "@/components/analysis/hallazgos/HallazgosAcorde
 import { DocTokens } from "@/components/analysis/portada/PortadaInforme";
 import { TokensShared } from "@/components/analysis/shared";
 import { PiezasShared } from "./PiezasShared";
+import { STRResultsClient } from "@/app/analisis/renta-corta/[id]/results-client";
 import fixtures from "./fixtures.json";
 
 type FixKey = "santiagoStr" | "qaStr" | "selfLiqStr" | "elBosqueStr" | "staRosaStr";
@@ -56,6 +57,31 @@ function Inner() {
   // de dato, tramos, curva, cifras, día 1, patrimonio, all) sobre el recompute volcado de
   // Sta. Rosa (`?row=staRosaStr`). Sin registro por pieza cada QA era un `if` a mano.
   const comp = sp.get("comp");
+  // `?comp=pagina` monta la página STR completa (T1) con el fixture: la ruta real exige
+  // sesión, así que sin esto la página nueva no se puede ver ni shotear sin login.
+  if (comp === "pagina") {
+    return (
+      <STRResultsClient
+        analysisId={fix.id}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        results={results as any}
+        inputData={fix.input_data ?? null}
+        accessLevel="premium"
+        ufValue={valorUF}
+        nombre={fix.nombre ?? ""}
+        comuna={fix.comuna}
+        ciudad={fix.ciudad ?? "Santiago"}
+        superficie={fix.superficie ?? 0}
+        createdAt={fix.created_at}
+        userId={null}
+        isSharedView={false}
+        userCredits={0}
+        aiAnalysisInitial={fix.ai_analysis ?? null}
+        puedeRegenerarProsa={false}
+        simulacionStr={fix.simulacion ?? null}
+      />
+    );
+  }
   if (comp && comp !== "hero") {
     return (
       <div className="doc-dictamen doc-tokens" style={{ background: "var(--doc-paper, #FAF8F3)", minHeight: "100vh" }}>

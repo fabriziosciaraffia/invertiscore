@@ -174,6 +174,9 @@ export type BarRow = {
    *  negativo), no el destaque: una serie destacada con valor positivo mantiene su
    *  cifra en Ink. */
   neg?: boolean;
+  /** T1 (STR · V): la serie "tuya" en Ink, sin criticidad — el modo de gestión que
+   *  elegiste no es una alerta. Sin `tono` y sin `destacada` la barra es neutra. */
+  tono?: "ink";
 };
 
 /** Barras comparativas: una fila por término de comparación.
@@ -195,7 +198,7 @@ export function Bars({ rows }: { rows: BarRow[] }) {
               className="bar-fill"
               style={{
                 width: `${Math.max(0, Math.min(100, r.pct))}%`,
-                background: r.destacada ? "var(--signal-red)" : "var(--doc-neutral)",
+                background: r.destacada ? "var(--signal-red)" : r.tono === "ink" ? "var(--doc-tx)" : "var(--doc-neutral)",
               }}
             />
           </div>

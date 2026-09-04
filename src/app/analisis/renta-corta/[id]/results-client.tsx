@@ -33,15 +33,16 @@ import { MarcaSeccion, useDrawerAbierto } from "@/components/analysis/informeTel
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
-import { HeroSTR } from "@/components/analysis/str/HeroSTR";
+import { HeroStrDictamen } from "@/components/analysis/str/HeroStrDictamen";
 import { StateBox } from "@/components/ui/StateBox";
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
 import { ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
-import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
-import { findingDisplay } from "@/components/analysis/GenericFindingCard";
-import { anchorHallazgo, numeroHallazgo } from "@/lib/orden-hallazgos";
-import { EjesAplicadosSTR } from "@/components/analysis/str/EjesAplicadosSTR";
+import { PrincipalesHallazgos } from "@/components/analysis/PrincipalesHallazgos";
+import { SeccionInforme } from "@/components/analysis/SeccionInforme";
+import { TokensShared } from "@/components/analysis/shared";
+import { SeisCifrasStr } from "@/components/analysis/str/SeisCifrasStr";
+import { ModalCalculoStr } from "@/components/analysis/str/ModalCalculoStr";
+import { CapitulosInversionStr, CAPITULO_DE_HALLAZGO_STR, type CapituloStrId } from "@/components/analysis/str/CapitulosInversionStr";
 import { DrawerSTR, type DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
 import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/DrawerContentSTR";
 import { ZonaCardSTR } from "@/components/analysis/str/ZonaCardSTR";
@@ -116,7 +117,6 @@ export function STRResultsClient({
   ufValue,
   nombre,
   comuna,
-  ciudad,
   createdAt,
   fechaProsa,
   isSharedView,
@@ -130,11 +130,17 @@ export function STRResultsClient({
   showCtaWelcome = false,
   isAnonOwner = false,
   nivelesPie = [],
+  simulacionStr = null,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
   // SubjectCardGrid): lo abre la pirámide (hallazgos) y la card zona (tipoHuesped).
   const [activeDrawer, setActiveDrawer] = useState<DrawerKeySTR | null>(null);
+  // T1 — modal "Cómo se calcula" y apertura de un capítulo desde Principales hallazgos
+  // (espejo de SubjectCardGrid LTR).
+  const [calculoAbierto, setCalculoAbierto] = useState(false);
+  const [capituloAbrir, setCapituloAbrir] = useState<{ id: string; nonce: number } | null>(null);
+  const abrirCapitulo = (id: CapituloStrId) => setCapituloAbrir({ id, nonce: Date.now() });
 
   // Orden único de la pirámide STR — una sola pasada para la secuencia de drawers
   // y el resolver de telemetría (mismo array que renderiza).
@@ -367,38 +373,14 @@ export function STRResultsClient({
     lng: lngPortada,
   });
   const fechaCorta = fechaCortaCL(fechaProsa ?? createdAt);
-  // ═══ FILAS DEL ACORDEÓN (FASE 4) ═══ el cuerpo es DrawerContentSTR, que ya
-  // era solo-cuerpo (el shell DrawerSTR aportaba el chrome que ahora muere).
-  const filasHallazgosStr: FilaHallazgo[] = hallazgosOrdenadosSTR.map((h, i) => {
-    const d = findingDisplay(h, currency, ufValue);
-    const key = HALLAZGO_DRAWER_STR[h.id];
-    return {
-      id: h.id,
-      numero: numeroHallazgo(i),
-      pregunta: d.title || h.titular,
-      valor: d.kpi,
-      valorRojo: d.kpiRed,
-      ksub: d.ksub,
-      anchorId: anchorHallazgo(h),
-      cuerpo: key ? (
-        <DrawerContentSTR
-          activeKey={key}
-          analysisId={analysisId}
-          results={results}
-          inputData={inputData as never}
-          comuna={comuna}
-          currency={currency}
-          valorUF={ufValue}
-          ai={aiParaRender as never}
-          nivelesPie={nivelesPie}
-        />
-      ) : null,
-    };
-  });
-
-  const scrollASimulacion = () => {
-    document.getElementById("simulacion-interactiva-str")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // T1 — «↓ Ver detalle» de Principales hallazgos abre el capítulo que desarrolla ese
+  // hallazgo (mapa hallazgo → capítulo, espejo LTR). "Ajustar supuestos" de la portada
+  // abre el IV, donde viven precio, pie y plazo.
+  const scrollAHallazgo = (h: { id: string }) => {
+    const cap = CAPITULO_DE_HALLAZGO_STR[h.id];
+    if (cap) abrirCapitulo(cap);
   };
+  const scrollASimulacion = () => abrirCapitulo("pagas");
 
   const isSubscriber = accessLevel === "subscriber";
 
@@ -481,7 +463,9 @@ export function STRResultsClient({
             conviene.pregunta ?? hardcode (v3 podó el campo). */}
         {/* ═══ DOCUMENTO (FASE 3 rediseño Dictamen): papel + portada; el interior
             se transforma en FASE 4 ═══ */}
-        <DocumentoFrame>
+        <DocumentoFrame secciones>
+        <TokensShared />
+        <SeccionInforme id="portada" tono="paper">
         <PortadaInforme
           veredicto={veredicto}
           score={score}
@@ -507,140 +491,96 @@ export function STRResultsClient({
           }
           onAjustarSupuestos={scrollASimulacion}
         />
-        {/* ═══ CUERPO — grilla con el ísotipo f. sticky en el margen (solo PC) ═══ */}
-        <div className="doc-cuerpo">
-        <div className="min-w-0">
-        {/* I-3 fix FASE 1: STR nunca emitió `hero` (solo LTR/comparativa) — el
-            embudo por modalidad quedaba cojo al revés que piramide/zona. */}
-        <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
-        <HeroSTR
-          ai={aiParaRender as unknown as AIAnalysisSTRv2 | null}
-          results={results}
-          veredicto={veredicto}
-          score={score}
-          inputData={inputData}
-          comuna={comuna}
-          ciudad={ciudad}
-          createdAt={createdAt}
-          fechaProsa={fechaProsa}
-          aiLoading={aiLoading && !aiAnalysis}
-          onOpenDrawer={setActiveDrawer}
-        />
-
-        {/* Loading IA: el progreso vive en el slot de prosa del Hero
-            (ProgresoGeneracion). Acá abajo solo queda el indicador de error,
-            ahora CON reintento (Goal F — antes el error era terminal). */}
-        {aiError && !aiAnalysis && (
-          <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] mb-3 mt-1 px-1">
-            ● Análisis IA no disponible · {aiError} ·{" "}
-            <button
-              type="button"
-              onClick={() => generarProsa("manual")}
-              className="font-mono text-[11px] uppercase tracking-[0.04em] text-signal-red hover:underline"
-            >
-              Reintentar
-            </button>
-          </p>
-        )}
-
-        {/* gap menor 24px — Hero → Cards */}
-        <div style={{ height: 24 }} />
-
-        {/* ViabilidadSTRBanner desmontado el 04-sep-2026 (una fuente para "corto o largo"):
-            la modalidad la dicen la card "Ventaja vs arriendo largo" y la prosa, desde el
-            signo de la sobre-renta medida; el tier de zona es contexto de La zona. El
-            componente sigue en src/components/analysis/str/ hasta T3. */}
-
-        {/* Calibración v1 — bloque pedagógico "¿Cómo llegamos a este número?" */}
-        {results.ejesAplicados && (
-          <>
-            <EjesAplicadosSTR
-              ejes={results.ejesAplicados}
-              ingresoMensualBase={results.escenarios.base.ingresoBrutoMensual}
-              currency={currency}
-              valorUF={ufValue}
-              occFuente={results.occFuente}
-              occRealizada={results.ocupacionRealizadaComparables}
-            />
-            <div style={{ height: 24 }} />
-          </>
-        )}
-
-        {/* ═══ LOS HALLAZGOS — acordeón (FASE 4, mockup v12) ═══ */}
-        <MarcaSeccion seccion="piramide" tipo="str" accessLevel={accessLevel} />
-        <HallazgosAcordeon
-          tipo="str"
-          total={filasHallazgosStr.length}
-          filas={filasHallazgosStr}
-          veredicto={veredicto}
-          accessLevel={accessLevel}
-        />
-        {/* Procedencia de la prosa vieja — texto y ubicación idénticos a LTR
-            (`SubjectCardGrid.tsx`), para que la misma situación se lea igual en las
-            dos modalidades. */}
-        {prosaDesactualizada && fechaCorta && (
-          <p
-            className="font-mono m-0 mt-2"
-            style={{ fontSize: 10.5, lineHeight: 1.5, color: "var(--franco-text-muted)" }}
+        </SeccionInforme>
+        {/* ═══ T1 (04-sep-2026) · el interior STR sobre piezas compartidas: hero con el
+            contrato LTR → principales hallazgos → seis cifras → la inversión (seis
+            capítulos I–VI) → la zona (placeholder hasta T2). Lo viejo (AdvancedSectionSTR,
+            EjesAplicadosSTR, la pirámide y los drawers como cuerpo) queda desmontado de la
+            página y vivo en el repo hasta T3. */}
+        <SeccionInforme id="hero" tono="paper2">
+          <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
+          <HeroStrDictamen
+            ai={aiParaRender as unknown as AIAnalysisSTRv2 | null}
+            results={results}
+            veredicto={veredicto}
+            simulacion={simulacionStr}
+            currency={currency}
+            valorUF={ufValue}
+            createdAt={createdAt}
+            fechaProsa={fechaProsa}
+            aiLoading={aiLoading && !aiAnalysis}
+            prosaError={aiError && !aiAnalysis ? aiError : null}
+            onRetryProsa={() => generarProsa("manual")}
+          />
+        </SeccionInforme>
+        {hallazgosOrdenadosSTR.length > 0 && (
+          <SeccionInforme
+            id="principales-hallazgos"
+            tono="paper"
+            eyebrow="Principales hallazgos"
+            titulo="Qué determina el veredicto en este departamento"
+            intent="Franco analizó los factores que pesan en la decisión. Estos son los cuatro que la mueven."
           >
-            Análisis redactado el {fechaCorta}. Los números de arriba se recalculan en cada
-            visita; el texto es el de esa fecha.
-          </p>
+            <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
+            <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} onVerDetalle={scrollAHallazgo} />
+          </SeccionInforme>
         )}
-
-        {/* ESCENARIOS Y PROYECCIÓN (07-10). La prosa ai.largoPlazo dejó de ir inline
-            (str-paridad2) y ahora vive en su drawer "A 10 años", abierto desde una
-            afordance en la columna Patrimonio (fuera de la secuencia de pirámide, como
-            ZonaCardSTR→tipoHuesped). Solo se pasa el handler si hay prosa. */}
-        <section className="doc-capitulo" id="simulacion-interactiva-str">
-        <div className="doc-cap-eyebrow">La simulación</div>
-        <MarcaSeccion seccion="advanced" tipo="str" accessLevel={accessLevel} />
-        <div>
-        <AdvancedSectionSTR
-          results={results}
-          currency={currency}
-          valorUF={ufValue}
-          forceOpen={false}
-        />
-        </div>
-        {/* (a) FASE 4.1 · EL ANÁLISIS A 10 AÑOS — espejo exacto del LTR
-            (SubjectCardGrid: "el juicio del horizonte, en su lugar"). Antes su única
-            puerta era `onOpenLargoPlazo`, un afordance dentro de AdvancedSectionSTR que
-            abría el overlay: quedaba detrás del gate del simulador y a dos clics. Como
-            cuerpo del capítulo se lee sin abrir nada, igual que en renta larga.
-            No es fila del acordeón a propósito: no tiene hallazgo ni valor que poner en
-            la columna derecha — fabricárselo sería inventar. */}
-        {(aiParaRender as unknown as AIAnalysisSTRv2 | null)?.largoPlazo?.contenido?.trim() && (
-          <div className="mt-5">
-            <div className="doc-cap-sub">El análisis a 10 años</div>
-            <DrawerContentSTR
-              activeKey="largoPlazo"
-              analysisId={analysisId}
+        <SeccionInforme
+          id="los-numeros"
+          tono="paper2"
+          eyebrow="Los números"
+          titulo="Las seis cifras que un inversionista mira primero"
+          intent="Las cifras con las que se evalúa una renta corta — para comparar este departamento con otro, o con arrendarlo largo."
+        >
+          <MarcaSeccion seccion="numeros" tipo="str" accessLevel={accessLevel} />
+          <SeisCifrasStr results={results} currency={currency} valorUF={ufValue} onCalculo={() => setCalculoAbierto(true)} />
+          <ModalCalculoStr abierto={calculoAbierto} onClose={() => setCalculoAbierto(false)} results={results} valorUF={ufValue} fechaUF={fechaCortaCL(createdAt)} />
+        </SeccionInforme>
+        <SeccionInforme
+          id="la-inversion"
+          tono="paper"
+          eyebrow="La inversión"
+          titulo="Cómo funciona este departamento como renta corta"
+          intent="Paso a paso: lo que factura, lo que queda cada mes, de qué depende, cómo lo pagas, contra qué lo comparas y con qué te quedas."
+        >
+          <MarcaSeccion seccion="piramide" tipo="str" accessLevel={accessLevel} />
+          {francoScore ? (
+            <CapitulosInversionStr
               results={results}
-              inputData={inputData as never}
-              comuna={comuna}
+              francoScore={francoScore}
+              hallazgos={results.hallazgos ?? []}
+              simulacion={simulacionStr}
+              inputData={inputData}
               currency={currency}
               valorUF={ufValue}
-              ai={aiParaRender as never}
+              comuna={comuna}
+              createdAt={createdAt}
+              veredicto={veredicto}
+              accessLevel={accessLevel}
+              abrir={capituloAbrir}
             />
-          </div>
-        )}
-        </section>
-
-        {/* ═══ CAPÍTULO · La zona ═══ card recesiva. E.2: la ex-card 06 "Tipo de huésped"
-            se reancla acá (E.1a), abre el drawer tipoHuesped. */}
-        <section className="doc-capitulo">
-        <div className="doc-cap-eyebrow">La zona</div>
-        <MarcaSeccion seccion="zona" tipo="str" accessLevel={accessLevel} />
-        <ZonaCardSTR
-          lat={(inputData?.lat as number) ?? ((inputData?.zonaRadio as { lat?: number } | undefined)?.lat) ?? null}
-          lng={(inputData?.lng as number) ?? ((inputData?.zonaRadio as { lng?: number } | undefined)?.lng) ?? null}
-          comuna={comuna}
-          onOpen={() => setActiveDrawer("tipoHuesped")}
-        />
-        </section>
-        </div>
-        </div>
+          ) : (
+            <p className="font-mono m-0" style={{ fontSize: 11.5, color: "var(--franco-text-muted)" }}>
+              Este análisis no tiene Franco Score persistido: regenera el análisis para ver los capítulos.
+            </p>
+          )}
+          {/* Procedencia de la prosa vieja — texto y ubicación idénticos a LTR. */}
+          {prosaDesactualizada && fechaCorta && (
+            <p className="font-mono m-0 mt-2" style={{ fontSize: 10.5, lineHeight: 1.5, color: "var(--franco-text-muted)" }}>
+              Análisis redactado el {fechaCorta}. Los números de arriba se recalculan en cada visita; el texto es el de esa fecha.
+            </p>
+          )}
+        </SeccionInforme>
+        <SeccionInforme id="la-zona" tono="paper2" eyebrow={`La zona · ${comuna}`} titulo="La zona" intent="Contra qué compites y quién se va a alojar acá.">
+          <MarcaSeccion seccion="zona" tipo="str" accessLevel={accessLevel} />
+          {/* Placeholder hasta T2: la card actual, que abre el drawer de tipo de huésped. */}
+          <ZonaCardSTR
+            lat={(inputData?.lat as number) ?? ((inputData?.zonaRadio as { lat?: number } | undefined)?.lat) ?? null}
+            lng={(inputData?.lng as number) ?? ((inputData?.zonaRadio as { lng?: number } | undefined)?.lng) ?? null}
+            comuna={comuna}
+            onOpen={() => setActiveDrawer("tipoHuesped")}
+          />
+        </SeccionInforme>
         </DocumentoFrame>
 
         {/* CTA post-análisis welcome — banda inline al cierre del informe +
@@ -745,6 +685,7 @@ export function STRResultsClient({
               currency={currency}
               valorUF={ufValue}
               ai={aiParaRender as never}
+              nivelesPie={nivelesPie}
             />
           </DrawerSTR>
         )}

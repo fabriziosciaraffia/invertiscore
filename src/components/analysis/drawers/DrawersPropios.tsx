@@ -1720,6 +1720,9 @@ export function DrawerDistanciaStr({
       <VProsa>
         {v.esEstructural
           ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: probamos las palancas una por una, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
+          : v.vias && v.vias.length > 0 && !v.esPuroGate
+            // T1: con `vias` la intro cuenta las vías reales (cinco en STR), la misma frase que LTR.
+            ? introModalVias(v.palancas.length, v.vias.length, objetivo)
           : v.esPuroGate
             ? `Tu puntaje ya da para ${objetivo}: lo que retiene el veredicto en ${base} no son puntos, es que la operación todavía no cierra. Estas son las vías que la dan vuelta, cada una por su cuenta: no se suman, cualquiera alcanza.`
             : `Tu veredicto es ${base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`}
