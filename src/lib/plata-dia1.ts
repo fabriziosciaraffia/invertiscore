@@ -1,6 +1,6 @@
 // Barra "Lo que pusiste · el día 1" del capítulo V — geometría pura.
 //
-// La barra de arriba (plata del día 1: pie + gastos de compra + puesta a punto)
+// La barra de arriba (plata del día 1: pie + gastos de compra + amoblamiento (STR) + puesta a punto)
 // se dibuja A LA MISMA ESCALA que la barra de abajo (tu parte al vender): su
 // ancho es inversionInicial / patrimonio. Con multiplicador ≥ 1 queda más corta;
 // si alguna vez llegara un caso con multiplicador < 1 (hoy cae al fallback
@@ -19,7 +19,7 @@
 // porque el peso chileno no tiene decimales: bajo eso es redondeo, sobre eso es un
 // sumando perdido y hay que mirarlo.
 
-export type TonoDia1 = "pie" | "gastos" | "capex";
+export type TonoDia1 = "pie" | "gastos" | "amoblamiento" | "capex";
 
 /** Bajo un peso es redondeo (el peso chileno no tiene decimales); de ahí para arriba,
  *  falta un sumando del día 1. */
@@ -28,13 +28,16 @@ export const TOLERANCIA_DIA1_CLP = 1;
 export interface MontosDia1 {
   pieCLP: number;
   gastosCompraCLP: number;
+  /** Amoblamiento del día 1 — cuarto tono, solo STR (T0 CONGELADO · 04-sep-2026). LTR lo
+   *  pasa en 0 y no dibuja el tramo. Opcional para no tocar a los llamadores viejos. */
+  amoblamientoCLP?: number;
   capexCLP: number;
   inversionInicial: number;
 }
 
 /** Diferencia (con signo) entre lo que suman los tres montos y la inversión inicial. */
 export function descuadreDia1(p: MontosDia1): number {
-  return p.pieCLP + p.gastosCompraCLP + p.capexCLP - p.inversionInicial;
+  return p.pieCLP + p.gastosCompraCLP + (p.amoblamientoCLP ?? 0) + p.capexCLP - p.inversionInicial;
 }
 
 /**
@@ -44,7 +47,7 @@ export function descuadreDia1(p: MontosDia1): number {
 export function avisoDia1(p: MontosDia1): string | null {
   const d = descuadreDia1(p);
   if (Math.abs(d) < TOLERANCIA_DIA1_CLP) return null;
-  return `[plata-dia1] el día 1 no cierra por $${Math.round(Math.abs(d)).toLocaleString("es-CL")}: ${Math.round(p.pieCLP)} + ${Math.round(p.gastosCompraCLP)} + ${Math.round(p.capexCLP)} ≠ ${Math.round(p.inversionInicial)}`;
+  return `[plata-dia1] el día 1 no cierra por $${Math.round(Math.abs(d)).toLocaleString("es-CL")}: ${Math.round(p.pieCLP)} + ${Math.round(p.gastosCompraCLP)}${p.amoblamientoCLP ? ` + ${Math.round(p.amoblamientoCLP)}` : ""} + ${Math.round(p.capexCLP)} ≠ ${Math.round(p.inversionInicial)}`;
 }
 
 export interface SegmentoDia1 {
@@ -62,13 +65,7 @@ export interface BarraDia1 {
   segmentos: SegmentoDia1[];
 }
 
-export function barraDia1(p: {
-  pieCLP: number;
-  gastosCompraCLP: number;
-  capexCLP: number;
-  inversionInicial: number;
-  patrimonio: number;
-}): BarraDia1 {
+export function barraDia1(p: MontosDia1 & { patrimonio: number }): BarraDia1 {
   // Invariante del módulo: en desarrollo avisa si los tres montos no suman el día 1.
   if (process.env.NODE_ENV !== "production") {
     const aviso = avisoDia1(p);
@@ -79,6 +76,7 @@ export function barraDia1(p: {
   const partes: [TonoDia1, number][] = [
     ["pie", Math.max(0, p.pieCLP)],
     ["gastos", Math.max(0, p.gastosCompraCLP)],
+    ["amoblamiento", Math.max(0, p.amoblamientoCLP ?? 0)],
     ["capex", Math.max(0, p.capexCLP)],
   ];
   // Sin CapEx (antigüedad ≤ 2) o sin pie (pie cero) el segmento no existe: dos barras, no tres.

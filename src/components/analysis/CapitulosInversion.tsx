@@ -634,7 +634,8 @@ export function CapitulosInversion({
           // Barra "Lo que pusiste · el día 1" a la MISMA escala que la de abajo
           // (ancho = inversión inicial / tu parte al vender). Geometría pura en
           // plata-dia1.ts; los montos son los mismos de las filas de la leyenda.
-          const dia1 = barraDia1({ pieCLP, gastosCompraCLP: gastosCompra, capexCLP: capexDia1, inversionInicial, patrimonio });
+          // LTR no tiene amoblamiento: va en 0 y el tramo no se dibuja (cuarto tono, solo STR).
+          const dia1 = barraDia1({ pieCLP, gastosCompraCLP: gastosCompra, amoblamientoCLP: 0, capexCLP: capexDia1, inversionInicial, patrimonio });
           const altMoney = (n: number) =>
             currency === "UF" ? "$" + Math.round(n).toLocaleString("es-CL") : "UF " + Math.round(n / (valorUF || 1)).toLocaleString("es-CL");
           const oport = costoOportunidad(inversionInicial, anios);

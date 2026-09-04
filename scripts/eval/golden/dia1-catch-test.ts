@@ -52,6 +52,15 @@ for (const [nombre, caso] of [["exacto", exacto], ["cb0e8f46", cb0e8f46], ["falt
 // Sin capex el segmento no existe (dos barras, no tres).
 if (barraDia1({ ...exacto, patrimonio: 44_000_000 }).segmentos.length !== 2) F("sin capex debían quedar 2 segmentos");
 
+// Cuarto tono (STR, T0 CONGELADO): el amoblamiento del día 1 entra al invariante y a la
+// barra; LTR lo pasa en 0 y no dibuja el tramo.
+const staRosa = { pieCLP: 22_067_640, gastosCompraCLP: 2_206_764, amoblamientoCLP: 2_500_000, capexCLP: 0, inversionInicial: 26_774_404 };
+if (avisoDia1(staRosa) !== null) F(`Sta. Rosa · con amoblamiento debía cerrar, avisó: ${avisoDia1(staRosa)}`);
+if (avisoDia1({ ...staRosa, amoblamientoCLP: 0 }) === null) F("Sta. Rosa · sin el amoblamiento debía avisar por $2.500.000");
+const bSta = barraDia1({ ...staRosa, patrimonio: 82_330_269 });
+if (bSta.segmentos.map((x) => x.tono).join(",") !== "pie,gastos,amoblamiento") F(`Sta. Rosa · tonos ${bSta.segmentos.map((x) => x.tono).join(",")}`);
+if (barraDia1({ ...exacto, amoblamientoCLP: 0, patrimonio: 44_000_000 }).segmentos.some((x) => x.tono === "amoblamiento")) F("LTR con amoblamiento 0 no debía dibujar el tramo");
+
 console.log("\nINVARIANTE DEL DÍA 1 · catch-test\n");
 if (fallas.length) { for (const x of fallas) console.log("  ✗ " + x); console.log(`\n✗ ROJO — ${fallas.length} falla(s)`); process.exit(1); }
 console.log("✓ VERDE");

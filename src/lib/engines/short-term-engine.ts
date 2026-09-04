@@ -25,7 +25,7 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "../plusvalia-proyeccion";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
 import { resolverModeloCostos } from "../modelo-costos";
 import type { Hallazgo, MetricaSobreCapital, MetricaTIR, RazonSinCapital } from "../types";
-import { metricaNoAplica, metricaNoCalculable, metricaValor } from "../types";
+import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "../types";
 import { calcIRRPct } from "../finance/irr";
 
 // =========================================
@@ -218,6 +218,45 @@ export interface SensibilidadRow {
 export type STRVerdict = 'COMPRAR' | 'AJUSTA SUPUESTOS' | 'BUSCAR OTRA';
 
 // Proyección año-a-año para Patrón 7 (Advanced Section). Ronda 4b.
+/** Cifras con nombre del informe STR (T0 CONGELADO). Todas en CLP salvo lo indicado. */
+export interface MetricsSTR {
+  /** Ingreso bruto de un mes típico con la ocupación del caso (antes de comisión y costos). */
+  ingresoEstabilizadoMensual: number;
+  ingresoEstabilizadoAnual: number;
+  /** Lo que queda (o sale de tu bolsillo) cada mes después de comisión, costos y cuota. */
+  flujoMensual: number;
+  /** Ingreso neto anual ÷ precio, en %. */
+  capRatePct: number;
+  /** TIR a 10 años en %, null sin escenario de salida. */
+  tirPct: number | null;
+  /** Tarifa por noche del caso (CLP). */
+  tarifaNoche: number;
+  /** Ocupación del caso (0-1): el supuesto del usuario o la estimación de mercado. */
+  ocupacion: number;
+  /** Desglose del Fall del capítulo II: cada línea con su nombre, negativas las que salen. */
+  desgloseFall: {
+    ingreso: number;
+    /** Comisión de la plataforma (3%) en autogestión; 0 con administrador (el operador la reemplaza en el motor). */
+    comisionPlataforma: number;
+    /** Comisión del administrador cuando el modo es administrador; 0 en autogestión. */
+    administrador: number;
+    /** Luz, agua, internet e insumos. */
+    costosDirectos: number;
+    gastosComunesMantencion: number;
+    /** Contribuciones trimestrales mensualizadas (÷3). */
+    contribucionesMensuales: number;
+    cuota: number;
+    /** = flujoMensual (negativo cuando sale de tu bolsillo). */
+    saleDeTuBolsillo: number;
+  };
+  /** Tramos de la barra del Fall: el largo es el ingreso; sobre él, costos de operar y cuota;
+   *  si suman más que el ingreso, el exceso es lo que sale de tu bolsillo; si menos, el
+   *  tramo libre es lo que te queda. */
+  tramosBarra: { ingreso: number; costosOperar: number; cuota: number; exceso: number; libre: number };
+  /** La plata del día 1, con los cuatro sumandos de `plata-dia1` (el amoblamiento es el cuarto tono STR). */
+  dia1: { pieCLP: number; gastosCompraCLP: number; amoblamientoCLP: number; capexCLP: number; inversionInicial: number };
+}
+
 export interface YearProjectionSTR {
   year: number;
   valorDepto: number;
@@ -226,6 +265,21 @@ export interface YearProjectionSTR {
   flujoAcumulado: number;
   aporteMensualPromedio: number;     // si flujo<0, lo que aporta el dueño /12
   patrimonioNeto: number;            // valorDepto - saldoCredito (SIN flujo — homologación LTR)
+  // ── Desglose anual (T0 CONGELADO STR · 04-sep-2026) — alimenta la planilla "Flujo por
+  //    año" del modal. Son los MISMOS términos con los que el loop arma
+  //    `flujoOperacionalAnual`; la identidad ingresoNeto − cuota − estabilización −
+  //    amoblamiento === flujoOperacionalAnual se cumple exacta. Opcionales solo por las
+  //    filas persistidas sin ellos; el motor los emite siempre. ──
+  mesesOperativos?: number;
+  ingresoAnual?: number;
+  comisionAnual?: number;
+  costosAnual?: number;
+  ingresoNetoAnual?: number;
+  cuotaAnual?: number;
+  /** Pérdida por estabilización inicial (primeros meses al 50…90%), solo el primer año operativo. */
+  estabilizacionAnual?: number;
+  /** Amoblamiento comprado al recibir el depto (solo con pre-entrega; con entrega inmediata va en el día 1). */
+  amoblamientoAnual?: number;
 }
 
 // Escenario "si vendes en año N". Ronda 4b.
@@ -246,6 +300,9 @@ export interface ExitScenarioSTR {
   // EQUITY(sin flujo) / totalAportado → ×1 = break-even (espejo LTR). Sobre capital
   // propio: 'no_aplica' cuando pie === 0 (pie cero · fase 1-2); legacy trae number.
   multiplicadorCapital: MetricaSobreCapital;
+  /** Capital del día 1 (pie + gastos de compra + amoblamiento + puesta a punto). Paridad con
+   *  `ExitScenario.inversionInicial` de LTR; alimenta `plata-dia1`. Opcional por filas viejas. */
+  inversionInicial?: number;
   // TIR % del cashflow año 0 → año N. Sobre capital propio: 'no_aplica' cuando
   // pie === 0 (rama A pie-cero-str-tir); legacy trae number crudo. Suma
   // 'no_calculable' (MetricaTIR) cuando el VPN del flujo no cruza cero.
@@ -300,6 +357,12 @@ export interface ShortTermResult {
   montoCredito: number;
   dividendoMensual: number;
   capitalInvertido: number;
+
+  // ── Cifras con nombre (T0 CONGELADO STR · 04-sep-2026). Las seis cifras del informe,
+  //    el desglose del Fall del capítulo II con los tramos de su barra y la plata del
+  //    día 1: el render las lee de acá, no las arma desde input_data. Opcional solo por
+  //    las filas persistidas antes de T0; el motor lo emite siempre. ──
+  metrics?: MetricsSTR;
 
   // Proto-hallazgos. calcShortTerm siembra solo el CapEx puesta a punto; el pipeline
   // (buildStrHallazgos) reemplaza este array con la pirámide STR completa antes de persistir.
@@ -917,6 +980,14 @@ function buildProjections(
       flujoAcumulado: Math.round(flujoAcumulado),
       aporteMensualPromedio,
       patrimonioNeto: Math.round(patrimonioNeto),
+      mesesOperativos,
+      ingresoAnual: Math.round(revenueAnual * proporcion),
+      comisionAnual: Math.round(comisionAnual * proporcion),
+      costosAnual: Math.round(costosAnual * proporcion),
+      ingresoNetoAnual: Math.round(noiAnual * proporcion),
+      cuotaAnual: Math.round(dividendoAnual * proporcion),
+      estabilizacionAnual: Math.round(rampUpDelAnio),
+      amoblamientoAnual: Math.round(amoblamientoDelAnio),
     });
   }
 
@@ -942,7 +1013,7 @@ function buildExitScenario(
   if (!proy) {
     return {
       yearVenta, valorVenta: 0, saldoCreditoAlVender: 0, gastosCierre: 0,
-      flujoAcumuladoAlVender: 0, equityCLP: 0, retornoTotal: 0, totalAportado: 0,
+      flujoAcumuladoAlVender: 0, equityCLP: 0, retornoTotal: 0, totalAportado: 0, inversionInicial: Math.round(capitalInicial),
       multiplicadorCapital: sinPie ? metricaNoAplica(razonSinPie) : metricaValor(0),
       tirAnual: sinPie ? metricaNoAplica(razonSinPie) : metricaValor(0),
     };
@@ -1000,6 +1071,7 @@ function buildExitScenario(
     equityCLP: Math.round(equityCLP),
     retornoTotal: Math.round(retornoTotal),
     totalAportado: Math.round(totalAportado),
+    inversionInicial: Math.round(capitalInicial),
     multiplicadorCapital: sinPie ? metricaNoAplica(razonSinPie) : metricaValor(multiplicadorCapital),
     // Espejo exacto del multiplicador de arriba: sin capital propio no hay retorno
     // sobre lo invertido que medir, aunque capitalInicial > 0 por amoblamiento/CapEx.
@@ -1336,6 +1408,35 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     montoCredito,
     dividendoMensual,
     capitalInvertido,
+    metrics: (() => {
+      const ingreso = base.ingresoBrutoMensual;
+      const comisionPlataforma = modoGestion === 'auto' ? base.comisionMensual : 0;
+      const administrador = modoGestion === 'auto' ? 0 : base.comisionMensual;
+      const costosOperar = base.comisionMensual + costosOperativosTotales;
+      const exceso = Math.max(0, costosOperar + dividendoMensual - ingreso);
+      const libre = Math.max(0, ingreso - costosOperar - dividendoMensual);
+      return {
+        ingresoEstabilizadoMensual: ingreso,
+        ingresoEstabilizadoAnual: base.revenueAnual,
+        flujoMensual: base.flujoCajaMensual,
+        capRatePct: base.capRate * 100,
+        tirPct: exitScenario ? metricaValorONull(exitScenario.tirAnual) : null,
+        tarifaNoche: adrBase,
+        ocupacion: occBase,
+        desgloseFall: {
+          ingreso,
+          comisionPlataforma,
+          administrador,
+          costosDirectos,
+          gastosComunesMantencion: input.gastosComunes + input.mantencion,
+          contribucionesMensuales,
+          cuota: dividendoMensual,
+          saleDeTuBolsillo: base.flujoCajaMensual,
+        },
+        tramosBarra: { ingreso, costosOperar, cuota: dividendoMensual, exceso, libre },
+        dia1: { pieCLP: pie, gastosCompraCLP: gastosCierre, amoblamientoCLP: amoblamientoDia1, capexCLP: capexPuestaAPunto.montoCLP, inversionInicial: capitalInvertido },
+      };
+    })(),
     hallazgos: hallazgoPuestaAPunto ? [hallazgoPuestaAPunto] : [],
     escenarios: { conservador, base, agresivo },
     comparativa: {
