@@ -990,11 +990,11 @@ function collectStrings(node: unknown, path: string, out: { path: string; value:
 // determinism del prompt (ingresos brutos / estabilización inicial) los previene;
 // esto es la red.
 const STR_HARD_RE = /\brevenue\b|ramp-?up/i;
-// SOFT drift: engine-isms TEMPORALES (mecánica del modelo filtrada al copy). DETECCIÓN-
-// ONLY, no bloquean ni reintentan (paridad monitor LTR ENGINE-ISM-DRIFT): son fraseo
-// estocástico que no se puede reescribir seguro de forma determinística → se loguean
-// para revisión. ("el/del motor" NO está acá: lo elimina despersonalizarMotor.)
-const STR_SOFT_RE = /flujo[^.]{0,30}(cruza|revier|da vuelta|vuelve positivo)|flujo neutro|inflexi[óo]n|punto de quiebre/i;
+// SOFT drift: engine-isms (mecánica del modelo filtrada al copy). Desde el Goal 2 STR
+// (04-sep-2026) la lista vive en str-guards.ts (STR_ENGINEISM_RE) y el guard
+// [STR-ENGINEISM] REINTENTA por campo; este monitor reporta el residual con la misma
+// lista. ("el/del motor" NO está acá: lo elimina despersonalizarMotor.)
+const STR_SOFT_RE = STR_ENGINEISM_RE;
 
 function scanWith(ai: unknown, re: RegExp): string[] {
   const strings: { path: string; value: string }[] = [];
@@ -1019,7 +1019,7 @@ export function scanStrDrift(ai: unknown): string[] { return [...scanStrHardDrif
 import { cifrasFueraDeInput, empeoraCifras } from "./cifras-guard";
 import {
   contextoGuardsStr, violacionesPorCampo, totalViolaciones, leerCampo, escribirCampo,
-  razonesHeroClaimStrTexto, type ReglaStr,
+  razonesHeroClaimStrTexto, STR_ENGINEISM_RE, type ReglaStr,
 } from "./str-guards";
 import { derivarCifraClaveStr, captionDeCifraClave } from "./cifra-clave";
 import { validarTitular, evaluarTitular, normalizarMarcasTitular, marcasBalanceadas, stripMarcas } from "./prosa-marcas";
@@ -1516,6 +1516,13 @@ Responde SOLO este JSON, sin texto alrededor:
       "[HERO-CLAIM]",
       (v) => `afirma un múltiplo que el motor contradice — ${v.join("; ")}`,
       `RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad" / "el triple" / "N veces" solo con el SUJETO y el COMPARADOR nombrados en la MISMA oración y con la razón del motor dentro del rango; si no hay razón para ese par, escribe la cifra y no el múltiplo.`,
+    );
+    // 2. [STR-ENGINEISM] — verbo-trayectoria del modelo.
+    await reintentoQuirurgico(
+      "engineism",
+      "[STR-ENGINEISM]",
+      (v) => `describe cómo se mueve un número dentro del cálculo en vez de la consecuencia vivida: ${v.map((x) => `«${x}»`).join(", ")}`,
+      "reescribe cada frase con la consecuencia para el usuario (\"dejas de poner plata cada mes\", \"el arriendo pasa a cubrir la cuota\", \"si la tarifa real baja a la del mercado\"), nunca con verbos de trayectoria como cruzar, converger o dar vuelta.",
     );
   }
 

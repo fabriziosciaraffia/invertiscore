@@ -235,6 +235,20 @@ export function razonesHeroClaimStrTexto(r: RazonesHeroClaimStr): string {
   return out.length ? out.join(", ") : "ninguna razón disponible";
 }
 
+// ─── 2. [STR-ENGINEISM] ─────────────────────────────────────────────────────
+/** Verbo-trayectoria del modelo: cómo se mueve un número dentro del cálculo en vez de la
+ *  consecuencia vivida. La lista que usaba el monitor (solo detección) más lo que la tanda
+ *  v13 destapó: "converge", "cruza a positivo / el umbral / al territorio", "lo cruza". */
+export const STR_ENGINEISM_RE =
+  /flujo[^.]{0,30}(?:cruza|revier|da vuelta|vuelve positivo)|flujo neutro|inflexi[óo]n|punto de quiebre|\bconverg(?:e|en|er|i[óo]|iendo|ería|erían)\b|\bcruza(?:r|n|ría)? (?:a|al|el) (?:positivo|umbral|territorio)|\blo cruza\b|\bcruza el umbral\b|\bcruce (?:a|al|del) (?:positivo|umbral)|\b(?:puede|pueden|podr[ií]a|podr[ií]an) cruzar\b/i;
+export function hitsEngineIsm(texto: string): string[] {
+  const out: string[] = [];
+  const re = new RegExp(STR_ENGINEISM_RE.source, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(texto))) out.push(m[0]);
+  return out;
+}
+
 // ─── Evaluación por campo (lo que consumen el generador, los fixtures y el reporte) ───
 export interface ContextoGuardsStr {
   razones: RazonesHeroClaimStr;
@@ -245,7 +259,7 @@ export function contextoGuardsStr(r: ShortTermResult & { hallazgos?: Hallazgo[] 
   return { razones: razonesHeroClaimStr(r, inp, comuna), estructural: false, frases: [] };
 }
 
-export type ReglaStr = "hero-claim";
+export type ReglaStr = "hero-claim" | "engineism";
 /** path → violaciones (vacío si el campo está limpio). */
 export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regla: ReglaStr, ctx: ContextoGuardsStr): Record<string, string[]> {
   const out: Record<string, string[]> = {};
@@ -255,6 +269,7 @@ export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regl
     let v: string[] = [];
     switch (regla) {
       case "hero-claim": v = violacionesHeroClaimStr(texto, ctx.razones); break;
+      case "engineism": v = hitsEngineIsm(texto); break;
     }
     if (v.length) out[path] = v;
   }
