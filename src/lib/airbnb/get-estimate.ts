@@ -11,6 +11,10 @@
 // Esta función NO conoce HTTP. Recibe args, retorna el shape estándar.
 // ─────────────────────────────────────────────────────────────────────────
 
+// Solo servidor: este módulo crea el cliente admin (service role) para leer airbnb_estimates
+// y llama al proveedor de datos de mercado. Si un componente cliente lo importara, Next
+// corta el build acá en vez de arrastrar la ruta al bundle del navegador.
+import "server-only";
 import { createHash } from "crypto";
 import { contarLlamadaAirroi, type OrigenAirroi } from "./contador-airroi";
 import { createClient } from "@supabase/supabase-js";
