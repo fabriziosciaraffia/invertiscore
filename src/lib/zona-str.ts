@@ -113,12 +113,16 @@ export function buildZonaStr(p: {
   // ── comparables ──
   const avisos = p.estimate ? avisosDesdeListings(p.estimate.listings, lat, lng) : [];
   const distancias = avisos.map((a) => a.distanciaM).filter((x): x is number => x != null);
+  // Si el proveedor entrega coordenadas colapsadas (≤ 3 puntos únicos en los 25), el radio no
+  // es derivable y la celda va sin él (radioM: null). Medido 05-sep-2026: Sta. Rosa 5 puntos
+  // únicos, Grajales 15.
+  const puntosUnicos = new Set(avisos.filter((a) => a.lat != null && a.lng != null).map((a) => `${a.lat},${a.lng}`)).size;
   const comparables =
     avisos.length > 0
       ? {
           n: avisos.length,
           nSuperhost: avisos.filter((a) => a.superhost).length,
-          radioM: distancias.length ? Math.max(50, Math.ceil(Math.max(...distancias) / 50) * 50) : null,
+          radioM: distancias.length && puntosUnicos > 3 ? Math.max(50, Math.ceil(Math.max(...distancias) / 50) * 50) : null,
           estadiaNoches: (() => {
             const md = median(avisos.map((a) => a.estadiaNoches).filter((x): x is number => x != null && x > 0));
             return md != null ? Math.round(md * 10) / 10 : null;

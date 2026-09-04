@@ -237,9 +237,10 @@ export function cierrePagasStr(a: ArgsCierrePagasStr, f: FmtCierre): SegCierre[]
       segs.push({ t: `Bajo ${uf(a.techoUF)} el veredicto sube a ${a.veredictoObjetivo}: un ${f.pct1(Math.abs(d))}% menos que tu precio, negociación y no otro departamento`, mark: true }, { t: ". " });
     } else {
       segs.push({ t: "Bajar el precio dentro de lo que un ajuste puede dar no cambia el veredicto: la palanca no está en la mesa del vendedor. " });
+      // Cierre estructural: el porcentaje es prueba, el precio no se ofrece (no se cita en UF).
       if (a.mesCierraUF != null && a.mesCierraUF > 0 && a.precioUF > 0) {
-        const dm = (1 - a.mesCierraUF / a.precioUF) * 100;
-        segs.push({ t: `Donde el mes cierra es ${uf(a.mesCierraUF)}, un ${f.pct1(dm)}% menos: es un dato de caja, no una oferta. ` });
+        const dm = Math.round((1 - a.mesCierraUF / a.precioUF) * 100);
+        segs.push({ t: `Cerrar el mes exige un ${dm}% menos: fuera de lo negociable. El problema es la estructura, no el precio. ` });
       }
     }
   }

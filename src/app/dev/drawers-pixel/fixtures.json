@@ -17570,22 +17570,22 @@
         {
           "perfil": "ejecutivo_corto",
           "label": "Ejecutivo en visita corta",
-          "descripcion": "Visita por trabajo (3-7 noches). Prioriza cercanía a zona de negocios (El Golf, Sanhattan, Apoquindo), wifi rápido, escritorio funcional y conexión rápida con aeropuerto."
+          "descripcion": "Visita por trabajo (3-7 noches). Prioriza cercanía a zona de negocios (El Golf, Sanhattan, Apoquindo), internet rápido, escritorio funcional y conexión rápida con el aeropuerto."
         },
         {
           "perfil": "paciente_medico",
           "label": "Paciente médico / Familiar acompañante",
-          "descripcion": "Paciente en tratamiento o familiar acompañante (1-3 semanas). Prioriza cercanía caminable a clínica, silencio, blackout para descanso prolongado, cocina equipada y lavadora."
+          "descripcion": "Paciente en tratamiento o familiar acompañante (1-3 semanas). Prioriza cercanía caminable a una clínica, silencio, cortinas que oscurezcan para el descanso prolongado, cocina equipada y lavadora."
         },
         {
           "perfil": "turista_leisure",
-          "label": "Turista de leisure",
-          "descripcion": "Visita Santiago por turismo (2-5 noches). Prioriza ubicación walkable, cerca de barrios con vida (Lastarria, Bellavista, centro histórico), restaurantes y transporte público."
+          "label": "Turista",
+          "descripcion": "Visita Santiago por turismo (2-5 noches). Prioriza una ubicación caminable, cerca de barrios con vida (Lastarria, Bellavista, centro histórico), restaurantes y transporte público."
         },
         {
           "perfil": "familia",
           "label": "Familia visitando",
-          "descripcion": "Familia en visita corta (3-5 noches), a veces acompañando a estudiantes o eventos. Prioriza parques cercanos, malls familiares y depto amplio sobre lujo."
+          "descripcion": "Familia en visita corta (3-5 noches), a veces acompañando a estudiantes o eventos. Prioriza parques cercanos, centros comerciales familiares y un depto amplio antes que lujo."
         }
       ],
       "avisos": [
@@ -19362,22 +19362,22 @@
         {
           "perfil": "ejecutivo_corto",
           "label": "Ejecutivo en visita corta",
-          "descripcion": "Visita por trabajo (3-7 noches). Prioriza cercanía a zona de negocios (El Golf, Sanhattan, Apoquindo), wifi rápido, escritorio funcional y conexión rápida con aeropuerto."
+          "descripcion": "Visita por trabajo (3-7 noches). Prioriza cercanía a zona de negocios (El Golf, Sanhattan, Apoquindo), internet rápido, escritorio funcional y conexión rápida con el aeropuerto."
         },
         {
           "perfil": "turista_leisure",
-          "label": "Turista de leisure",
-          "descripcion": "Visita Santiago por turismo (2-5 noches). Prioriza ubicación walkable, cerca de barrios con vida (Lastarria, Bellavista, centro histórico), restaurantes y transporte público."
+          "label": "Turista",
+          "descripcion": "Visita Santiago por turismo (2-5 noches). Prioriza una ubicación caminable, cerca de barrios con vida (Lastarria, Bellavista, centro histórico), restaurantes y transporte público."
         },
         {
           "perfil": "paciente_medico",
           "label": "Paciente médico / Familiar acompañante",
-          "descripcion": "Paciente en tratamiento o familiar acompañante (1-3 semanas). Prioriza cercanía caminable a clínica, silencio, blackout para descanso prolongado, cocina equipada y lavadora."
+          "descripcion": "Paciente en tratamiento o familiar acompañante (1-3 semanas). Prioriza cercanía caminable a una clínica, silencio, cortinas que oscurezcan para el descanso prolongado, cocina equipada y lavadora."
         },
         {
           "perfil": "familia",
           "label": "Familia visitando",
-          "descripcion": "Familia en visita corta (3-5 noches), a veces acompañando a estudiantes o eventos. Prioriza parques cercanos, malls familiares y depto amplio sobre lujo."
+          "descripcion": "Familia en visita corta (3-5 noches), a veces acompañando a estudiantes o eventos. Prioriza parques cercanos, centros comerciales familiares y un depto amplio antes que lujo."
         }
       ],
       "avisos": [
