@@ -22,9 +22,10 @@ import { DocTokens } from "@/components/analysis/portada/PortadaInforme";
 import { TokensShared } from "@/components/analysis/shared";
 import { PiezasShared } from "./PiezasShared";
 import { STRResultsClient } from "@/app/analisis/renta-corta/[id]/results-client";
+import { PremiumResults } from "@/app/analisis/[id]/results-client";
 import fixtures from "./fixtures.json";
 
-type FixKey = "santiagoStr" | "qaStr" | "selfLiqStr" | "elBosqueStr" | "staRosaStr" | "grajalesStr";
+type FixKey = "santiagoStr" | "qaStr" | "selfLiqStr" | "elBosqueStr" | "staRosaStr" | "grajalesStr" | "providenciaLtr";
 
 function seqStr(hallazgos: Hallazgo[] | undefined): DrawerKeySTR[] {
   const seq: DrawerKeySTR[] = [];
@@ -51,12 +52,43 @@ function Inner() {
   const [strKey, setStrKey] = useState<DrawerKeySTR>((initialKey as DrawerKeySTR) ?? "retorno");
   const [heroDrawer, setHeroDrawer] = useState<DrawerKeySTR | null>(null);
 
+  const comp = sp.get("comp");
+  // Goal "LTR hereda piezas compartidas" (05-sep-2026) · `?row=providenciaLtr&comp=paginaLtr`
+  // monta la página LTR completa (PremiumResults) con el recompute volcado de 7710a017, con
+  // el mismo motivo que `comp=pagina` en STR: la ruta real exige sesión de dueño/suscriptor.
+  if (fix && !isSTR && comp === "paginaLtr") {
+    return (
+      <PremiumResults
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        results={results as any}
+        accessLevel="subscriber"
+        analysisId={fix.id}
+        inputData={fix.input_data}
+        comuna={fix.comuna}
+        score={fix.score ?? results?.score ?? 0}
+        freeYieldBruto={results?.metrics?.rentabilidadBruta ?? 0}
+        freeFlujo={results?.metrics?.flujoNetoMensual ?? 0}
+        freePrecioM2={results?.metrics?.precioM2 ?? 0}
+        resumenEjecutivo=""
+        ufValue={valorUF}
+        aiAnalysisInitial={fix.ai_analysis ?? undefined}
+        aiStale={false}
+        puedeRegenerarProsa={false}
+        nombre={fix.nombre ?? ""}
+        ciudad={fix.ciudad ?? "Santiago"}
+        createdAt={fix.created_at ?? ""}
+        superficie={fix.superficie ?? 0}
+        precioUF={fix.precio ?? 0}
+        isSharedView={false}
+        isLoggedIn
+      />
+    );
+  }
   if (!fix || !isSTR) return <div style={{ padding: 40 }}>fixture STR ?row=santiagoStr|qaStr|selfLiqStr|elBosqueStr|staRosaStr no encontrado (T5: esta ruta ya no monta LTR)</div>;
 
   // T1 (04-sep-2026) · `?comp=<pieza>` monta las piezas compartidas (matriz, planilla, fila
   // de dato, tramos, curva, cifras, día 1, patrimonio, all) sobre el recompute volcado de
   // Sta. Rosa (`?row=staRosaStr`). Sin registro por pieza cada QA era un `if` a mano.
-  const comp = sp.get("comp");
   // `?comp=pagina` monta la página STR completa (T1) con el fixture: la ruta real exige
   // sesión, así que sin esto la página nueva no se puede ver ni shotear sin login.
   if (comp === "pagina") {
