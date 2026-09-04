@@ -505,7 +505,7 @@
   .drow .tip{font-style:normal;font-family:var(--sans);font-size:11px;color:var(--tx4);margin-left:5px;cursor:help;vertical-align:1px}
   .drow .dk small{display:block;font-size:10.5px;color:var(--tx4);margin-top:1px;line-height:1.35}
   .drow .dv{font-family:var(--mono);font-size:12.5px;color:var(--tx);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
-  .drow .dv em{font-style:normal;font-family:var(--mono);font-size:9.5px;color:var(--tx4);display:inline-block;width:34px;text-align:left;margin-left:5px}
+  .drow .dv em{font-style:normal;font-family:var(--mono);font-size:9.5px;color:var(--tx4);display:inline-block;min-width:34px;text-align:left;margin-left:5px}
   .drow.in .dk{color:var(--tx);font-weight:600} .drow.in .dv{font-weight:700}
   .drow.neg .dv{color:var(--signal)} .drow.cruza .dv{color:var(--good);font-weight:700}
   .drow.tot{border-top:2px solid var(--tx);border-bottom:none;margin-top:3px;padding-top:8px}
@@ -518,6 +518,13 @@
   .venta2 h4{font-family:var(--serif);font-size:16px;font-weight:600;margin-bottom:4px}
   .venta2 .ex{font-size:12.5px;color:var(--tx3);line-height:1.5;margin-bottom:6px;min-height:57px} [data-view="mobile"] .venta2 .ex{min-height:0}
   .cur span{cursor:pointer}
+  .dia1{margin:14px 0 6px} .dia1-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+  .dia1-head .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4)} .dia1-head .v{font-family:var(--mono);font-size:12.5px;font-weight:700} .dia1-head .v small{font-size:10.5px;font-weight:500;color:var(--tx3)}
+  .dia1-bar{display:flex;height:38px;border-radius:3px;overflow:hidden;max-width:100%} .dia1-bar span{position:relative;height:100%}
+  .dia1-bar .pie{background:var(--neutral)} .dia1-bar .gastos{background:var(--tx4)} .dia1-bar .amoblamiento{background:var(--line2)} .dia1-bar .capex{background:var(--line2)}
+  .dia1-bar .capex::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.5) 5px,rgba(255,255,255,.5) 10px)}
+  .dia1-mult{font-family:var(--mono);font-size:12px;color:var(--tx2);margin-top:10px} .dia1-mult b{color:var(--tx);font-weight:700}
+  .dia1-nota{font-size:11.5px;color:var(--tx3);margin-bottom:10px}
   .muere{border:1px dashed var(--line2);padding:12px 16px;margin-bottom:18px;font-size:12.5px;color:var(--tx2);line-height:1.6;max-width:80ch}
   .muere b{color:var(--tx3);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:5px}
   .muere code{font-family:var(--mono);font-size:11px;background:var(--paper3);padding:1px 4px;border-radius:2px}
@@ -537,6 +544,7 @@
       <li><strong>Modal de vías · pie con la regla LTR:</strong> se explora hasta el tope de 30% y se dice «cruza» o «no cruza» con el recompute (−$84.407 → −$26.166 al mes a 30% de pie, no cruza).</li>
       <li><strong>Seis cifras con toggle CLP/UF:</strong> ingreso, flujo y tarifa por noche cambian; <em>cap rate</em>, TIR y ocupación no. Mismo fix pendiente en LTR (cola).</li>
       <li><strong>III:</strong> muere la línea «Objetivo con gestión estabilizada, para el escenario de arriba». Se mantiene lo de v2: «Cuántas noches necesitas», diales sin solapamiento, sin «llenar», zona con el contexto comunal V2 y sin el 22% hasta que AirROI responda.</li>
+      <li><strong>VI · el día 1 como en LTR:</strong> barra «Lo que pusiste · el día 1» a la misma escala que «tu parte» (helper <code>plata-dia1</code>, cuarto tono «amoblamiento»), gastos de compra y amoblamiento como filas «no vuelve», multiplicador sobre lo puesto (T0, sin nueva aprobación).</li>
       <li><strong>Prosa IA:</strong> hero, posición y cajas siguen siendo la prosa persistida; al congelar se regenera con v13 y los guards. El mockup fija el lugar de cada pieza, no su texto.</li>
     </ol>
   </div>
@@ -794,10 +802,16 @@
               </svg>
               <div class="chart-leg"><span style="--c:var(--signal)">Aporte acumulado</span><span style="--c:var(--neutral)">Valor del depto · 3% al año</span><span class="ln" style="--c:var(--tx)">Tu parte (valor − deuda)</span></div>
               <div class="v-sub">De dónde sale tu parte</div><div class="v-viz-t">De dónde salen tus $82,3 MM si vendes el año 10</div>
+              <div class="dia1">
+                <p class="dia1-nota">Las dos barras están a la misma escala.</p>
+                <div class="dia1-head"><span class="k">Lo que pusiste · el día 1, de tu bolsillo</span><span class="v">$26.774.404 <small>UF 655</small></span></div>
+                <div class="dia1-bar" style="width:32.5%"><span class="pie" style="width:82.4%" title="pie: $22.067.640"></span><span class="gastos" style="width:8.2%" title="gastos: $2.206.764"></span><span class="amoblamiento" style="width:9.3%" title="amoblamiento: $2.500.000"></span></div>
+                <p class="dia1-mult"><b>×2,20</b> por cada peso que pusiste</p>
+              </div>
               <div class="brackets"><div class="bracket" style="width:57.5%">Firme · <b>58%</b></div><div class="bracket" style="width:42.5%">Proyectado · <b>42%</b></div></div>
               <div class="compo2"><div class="seg-c pie" style="width:26.8%"></div><div class="seg-c amort" style="width:30.7%"></div><div class="seg-c plus" style="width:42.5%"></div></div>
-              <div class="drows"><div class="drow "><span class="dk">Tu pie<i class="tip" title="Firme: no depende de proyección" aria-label="Firme: no depende de proyección">ⓘ</i><small>lo que desembolsas el día 1, vuelve entero</small></span><span class="dv">$22,1 MM<em>firme</em></span></div><div class="drow "><span class="dk">Deuda que amortizó la operación<i class="tip" title="Firme: capital pagado del crédito en 10 años" aria-label="Firme: capital pagado del crédito en 10 años">ⓘ</i><small>sale del crédito, no de una proyección</small></span><span class="dv">$25,3 MM<em>firme</em></span></div><div class="drow "><span class="dk">Plusvalía proyectada, neta de gastos de venta<i class="tip" title="Proyectado: supuesto de 3% anual" aria-label="Proyectado: supuesto de 3% anual">ⓘ</i><small>$37,9 MM si el depto rinde 3% al año · menos $3,0 MM de venta</small></span><span class="dv">$35,0 MM<em>proy.</em></span></div><div class="drow tot"><span class="dk">Tu parte a 10 años<i class="tip" title="Pie + amortización + plusvalía neta" aria-label="Pie + amortización + plusvalía neta">ⓘ</i></span><span class="dv">$82.330.269</span></div></div>
-              <div class="mult"><span class="k">Para llegar acá pusiste $37,4 MM: $26,8 MM el día 1 (pie, cierre y amoblamiento) y $10,7 MM mes a mes. Los $15,4 MM que no son pie pagaron intereses, costos y muebles — no vuelven como patrimonio.</span><span class="v">×2,20</span></div>
+              <div class="drows"><div class="drow "><span class="dk">Tu pie<i class="tip" title="Firme: no depende de proyección" aria-label="Firme: no depende de proyección">ⓘ</i><small>lo que desembolsas el día 1, vuelve entero</small></span><span class="dv">$22,1 MM<em>firme</em></span></div><div class="drow "><span class="dk">Gastos de compra<i class="tip" title="Notaría, inscripción y estudio de títulos" aria-label="Notaría, inscripción y estudio de títulos">ⓘ</i><small>2% de cierre el día 1 — no vuelve</small></span><span class="dv">$2,2 MM<em>no vuelve</em></span></div><div class="drow "><span class="dk">Amoblamiento<i class="tip" title="Muebles y equipamiento del depto" aria-label="Muebles y equipamiento del depto">ⓘ</i><small>se compra el día 1 — no vuelve como patrimonio</small></span><span class="dv">$2,5 MM<em>no vuelve</em></span></div><div class="drow "><span class="dk">Deuda que amortizó la operación<i class="tip" title="Firme: capital pagado del crédito en 10 años" aria-label="Firme: capital pagado del crédito en 10 años">ⓘ</i><small>sale del crédito, no de una proyección</small></span><span class="dv">$25,3 MM<em>firme</em></span></div><div class="drow "><span class="dk">Plusvalía proyectada, neta de gastos de venta<i class="tip" title="Proyectado: supuesto de 3% anual" aria-label="Proyectado: supuesto de 3% anual">ⓘ</i><small>$37,9 MM si el depto rinde 3% al año · menos $3,0 MM de venta</small></span><span class="dv">$35,0 MM<em>proy.</em></span></div><div class="drow tot"><span class="dk">Tu parte a 10 años<i class="tip" title="Pie + amortización + plusvalía neta" aria-label="Pie + amortización + plusvalía neta">ⓘ</i></span><span class="dv">$82.330.269</span></div></div>
+              <div class="mult"><span class="k">Para llegar acá pusiste $37,4 MM: $26,8 MM el día 1 (pie, cierre y amoblamiento) y $10,7 MM mes a mes. Los $4,7 MM de gastos de compra y amoblamiento del día 1 no vuelven como patrimonio, y los $10,7 MM mes a mes pagaron intereses y costos.</span><span class="v">×2,20</span></div>
               <div class="oport"><div class="bt">La misma plata en otro lado</div>
                 <div class="drows"><div class="drow "><span class="dk">Depósito a plazo en UF al 5%<i class="tip" title="Los mismos $26,8 MM a 5% anual en UF, 10 años" aria-label="Los mismos $26,8 MM a 5% anual en UF, 10 años">ⓘ</i></span><span class="dv">$43.612.683</span></div><div class="drow "><span class="dk">Fondo mutuo al 7%<i class="tip" title="Los mismos $26,8 MM a 7% anual, 10 años" aria-label="Los mismos $26,8 MM a 7% anual, 10 años">ⓘ</i></span><span class="dv">$52.669.305</span></div><div class="drow tot"><span class="dk">Este depto<i class="tip" title="Tu parte al vender el año 10" aria-label="Tu parte al vender el año 10">ⓘ</i></span><span class="dv">$82.330.269</span></div></div>
                 <p class="nota">Los tres parten de los mismos $26,8 MM. El depto es el único que te pide $10,7 MM más en el camino, el único que te pide horas cada semana, y el único cuya ganancia depende de que la plusvalía ocurra.</p></div>
