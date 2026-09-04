@@ -13,7 +13,7 @@
 //   · plazo    — sube (años, tramos comerciales de 5, tope 30).
 // La OCUPACIÓN queda fuera a propósito: no la controla el propietario (sale de tarifa,
 // demanda, calidad y reseñas) y en el motor es aritméticamente la MISMA palanca que el ADR
-// —el revenue base es `adr × occ × 365`, así que Δocc/Δadr = 1,0—. Ofrecerla sería ofrecer
+// —el ingreso base es `adr × occ × 365`, así que Δocc/Δadr = 1,0—. Ofrecerla sería ofrecer
 // la tarifa dos veces con otro nombre.
 //
 // TRES CASOS DE OMISIÓN (return null): veredicto base COMPRAR · precio no computable ·
@@ -341,7 +341,7 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
 
     // GESTIÓN — discreta, una sola evaluación: o el otro modo cruza o no. Los números
     // expresan la COMISIÓN sobre el ingreso, que es lo que efectivamente cambia de un modo
-    // al otro (el revenue es el mismo en ambos).
+    // al otro (el ingreso es el mismo en ambos).
     {
       const otro = p.modoGestionActual === "auto" ? "administrador" : "auto";
       const comActual = (p.modoGestionActual === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;

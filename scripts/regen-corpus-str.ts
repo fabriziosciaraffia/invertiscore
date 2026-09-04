@@ -71,7 +71,7 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
   const score = calcFrancoScoreSTR({
     results: rec, precioCompra: d.precioCompra, dormitorios: d.dormitorios, superficie: d.superficieUtil,
     regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro", lat, lng,
-    revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue,
+    ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue,
   } as any);
   // mediana comunal real (sobreprecio) — mismo helper que el prefetch del pipeline.
   let mediana: { mediana: number | null; n: number } = { mediana: null, n: 0 };
@@ -91,7 +91,7 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
         regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro",
         lat: typeof d.lat === "number" ? d.lat : -33.4378,
         lng: typeof d.lng === "number" ? d.lng : -70.6504,
-        revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue,
+        ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue,
       },
       asOf: new Date(),
     },
@@ -110,7 +110,7 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
 }
 
 // ── generarProsa: usa el orquestador compartido (mismo prompt v3 + guards que
-// producción, vía generateStrProse). `leaks` = HARD drift residual (revenue /
+// producción, vía generateStrProse). `leaks` = HARD drift residual (ingreso /
 // ramp-up / "el|del motor"); si >0 la prosa NO se persiste (invariante del regen).
 // Los engine-isms SOFT son detección-only y NO bloquean persistencia (paridad LTR). ──
 async function generarProsa(inp: any, newResults: any, comuna: string): Promise<{ ai: AIAnalysisSTRv2; leaks: number; cifras: string[] }> {

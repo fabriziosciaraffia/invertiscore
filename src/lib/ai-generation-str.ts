@@ -842,7 +842,7 @@ Factibilidad: ${fs.desglose.factibilidad.score}/100 — ${fs.desglose.factibilid
 ${motivosBloque}
 
 ${bloqueBaseHeader}
-Ingresos brutos anuales: ${fmtCLP(base.revenueAnual)}
+Ingresos brutos anuales: ${fmtCLP(base.ingresoAnual)}
 ${lineaADR}, ${lineaOcc}
 Ocupación upside (potencial con gestión profesional, estabilizado): ${Math.round(agr.ocupacionReferencia * 100)}%
 Gap ocupación: ${(() => { const g = Math.round((agr.ocupacionReferencia - base.ocupacionReferencia) * 100); return `${g >= 0 ? "+" : ""}${g}`; })()} pts ${gapOccTag}
@@ -876,7 +876,7 @@ Diferencia: auto-gestión genera ${fmtCLPSigned(difAutoAdmin)}/mes ${difAutoAdmi
 Estacionalidad Santiago general: julio peak (vacaciones invierno + ski), febrero valle. El gráfico de 12 meses ya vive en la página; a lo sumo 1 frase de consecuencia operativa en \`operacion.contenido\` si cambia una decisión.
 
 === BREAK-EVEN (ya digerido — menciónalo UNA vez, §Ángulo 6) ===
-Para no poner plata de tu bolsillo, este depto necesita ingresos brutos de ${fmtCLP(r.breakEvenRevenueAnual)}/año, que es el ${Math.round(r.breakEvenPctDelMercado * 100)}% de los ingresos brutos medianos de la zona (P50). ${r.breakEvenPctDelMercado > 1 ? "Está SOBRE el mercado: ni operando al nivel mediano cubre costos — riesgo estructural." : "Está bajo el mercado: hay margen antes de poner plata."}
+Para no poner plata de tu bolsillo, este depto necesita ingresos brutos de ${fmtCLP(r.breakEvenIngresoAnual)}/año, que es el ${Math.round(r.breakEvenPctDelMercado * 100)}% de los ingresos brutos medianos de la zona (P50). ${r.breakEvenPctDelMercado > 1 ? "Está SOBRE el mercado: ni operando al nivel mediano cubre costos — riesgo estructural." : "Está bajo el mercado: hay margen antes de poner plata."}
 
 === ESTABILIZACIÓN INICIAL (no "ramp-up" en el output) ===
 Los primeros ~6 meses el listing opera bajo su ocupación normal mientras gana reseñas; pérdida estimada acumulada de ese período: ${fmtCLP(r.perdidaRampUp)}.
@@ -902,7 +902,7 @@ Acceso ski (junio-septiembre): ${distSkiTxt} (peak julio coincide con peak STR S
 
 === VIABILIDAD STR POR ZONA (honestidad de modalidad · §3.bis) ===
 ${r.zonaSTR ? `Tier zona: ${r.zonaSTR.tierZona} (score ${r.zonaSTR.score}/100)
-ADR percentil vs comunas de Santiago con datos: p${r.zonaSTR.percentilADR} · Ocupación p${r.zonaSTR.percentilOcupacion} · Ingresos brutos p${r.zonaSTR.percentilRevenue}
+ADR percentil vs comunas de Santiago con datos: p${r.zonaSTR.percentilADR} · Ocupación p${r.zonaSTR.percentilOcupacion} · Ingresos brutos p${r.zonaSTR.percentilIngreso}
 ${r.zonaSTR.comunaOcupacion && r.zonaSTR.ocupacionVsComuna && r.zonaSTR.ocupacionVsComuna !== "sin_datos" ? `Contexto comunal (datos de mercado): la estimación para esta dirección es ${Math.round(r.zonaSTR.occZona * 100)}% de ocupación frente a ${Math.round(r.zonaSTR.comunaOcupacion.valor * 100)}% típico de la comuna (${r.zonaSTR.comunaOcupacion.n} direcciones) → tu zona ocupa ${r.zonaSTR.ocupacionVsComuna === "mas" ? "más" : r.zonaSTR.ocupacionVsComuna === "menos" ? "menos" : "parecido a"} lo típico de la comuna. Es CONTEXTO de La zona, no un hallazgo: nómbralo en \`operacion\`/\`riesgos\` solo si cambia la lectura, y di "datos de mercado", nunca el nombre del proveedor.` : "(comuna sin datos de mercado suficientes — NO compares con la comuna; usa caveat al mencionar percentiles)"}` : "(sin datos de zonaSTR)"}
 Recomendación de modalidad: ${r.recomendacionModalidad ?? "(no disponible)"}
 ${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ OBLIGATORIO en \`vsLTR.contenido\`: decir explícitamente que en esta zona LTR rinde mejor neto que STR y que la complejidad operativa del corto no se justifica. NO endulces (§1.1). Pero arranca del NOI absoluto, no re-enunciando la dirección que la card ya mostró (§1.bis).` : r.recomendacionModalidad === "STR_VENTAJA_CLARA" ? `→ En \`vsLTR.contenido\`: cuantifica el upside STR sobre LTR (sobre-renta > +15%); el esfuerzo se justifica.` : r.recomendacionModalidad === "INDIFERENTE" ? `→ En \`vsLTR.contenido\`: di "está parejo"; la decisión depende del esfuerzo operativo y el perfil de riesgo.` : ""}
@@ -1201,7 +1201,7 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   const log = args.logger ?? (() => {});
   const { userPrompt, veredictoMotor, cardFrases } = buildUserPromptSTR(inp, r, comuna);
 
-  // FASE 1 — reintento por HARD drift (invariante que no puede persistir: revenue/
+  // FASE 1 — reintento por HARD drift (invariante que no puede persistir: ingreso/
   // ramp-up) y por voseo NO corregible (pronombre "vos" o -és/-ís fuera del léxico:
   // no sabemos a qué tuteo mapean, así que la única salida es regenerar). Los
   // engine-isms SOFT son detección-only; "el/del motor" lo elimina la

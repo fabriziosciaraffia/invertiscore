@@ -85,7 +85,7 @@ export function BloqueOperacionSTR({
   const adrFinal = adrEsOverride ? (state.adrOverride as number) : adrDerivado;
   const occFinal = occEsOverride ? (state.occOverride as number) : occDerivada;
 
-  const revenueMensual = adrFinal != null
+  const ingresoMensual = adrFinal != null
     ? Math.round((adrFinal * occFinal * 365) / 12)
     : null;
 
@@ -178,7 +178,7 @@ export function BloqueOperacionSTR({
           ) : (
             <span className="flex items-baseline gap-1.5">
               <span className="font-mono text-[18px] font-semibold text-[var(--franco-text)] leading-none">
-                {revenueMensual != null ? fmtCLP(revenueMensual) : "—"}
+                {ingresoMensual != null ? fmtCLP(ingresoMensual) : "—"}
               </span>
               <span className="font-mono text-[11px] text-[var(--franco-text-muted)]">/mes · bruto</span>
             </span>

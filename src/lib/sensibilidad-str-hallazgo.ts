@@ -33,7 +33,7 @@ const pct0 = (n: number) => Math.round(n).toString();
  * null si el break-even no es computable. Voz: tuteo neutro chileno.
  */
 export function buildHallazgoSensibilidadStr(p: {
-  /** Break-even como fracción del revenue de mercado (breakEvenPctDelMercado; 1,0 = al nivel). */
+  /** Break-even como fracción del ingreso de mercado (breakEvenPctDelMercado; 1,0 = al nivel). */
   breakEvenPctDelMercado: number;
   modalidad: "ltr" | "str" | "ambas";
 }): HallazgoSensibilidadStr | null {

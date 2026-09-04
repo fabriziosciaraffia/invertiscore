@@ -177,7 +177,7 @@ export interface ShortTermInputs {
 
 export interface EscenarioSTR {
   label: string;
-  revenueAnual: number;
+  ingresoAnual: number;
   ingresoBrutoMensual: number;
   comisionMensual: number;
   costosOperativos: number;
@@ -202,7 +202,7 @@ export interface FlujoEstacionalMes {
 
 export interface SensibilidadRow {
   label: string;
-  revenueAnual: number;
+  ingresoAnual: number;
   noiMensual: number;
   sobreRenta: number;
   sobreRentaPct: number;
@@ -398,7 +398,7 @@ export interface ShortTermResult {
   perdidaRampUp: number;
 
   // Break-even
-  breakEvenRevenueAnual: number;
+  breakEvenIngresoAnual: number;
   breakEvenPctDelMercado: number;
 
   // Sensibilidad
@@ -426,13 +426,13 @@ export interface ShortTermResult {
 
   // Commit 3a · 2026-05-12 — Sensibilidad al PRECIO (paridad con LTR
   // calcNegociacionScenario). Distinto de `sensibilidad[]` que mide
-  // sensibilidad al revenue del mercado. Acá variamos el precio del depto y
+  // sensibilidad al ingreso del mercado. Acá variamos el precio del depto y
   // recalculamos CAP/CoC/payback — útil para drawer 04 "Plan negociación".
   sensibilidadPrecio?: SensibilidadPrecioRow[];
 
   // Commit 4 · 2026-05-12 — Viabilidad STR honesta por zona.
   // `zonaSTR` clasifica la zona vs universo Santiago (alta/media/baja) en
-  // base a ADR + ocupación + revenue p50. Sirve para emitir advertencias
+  // base a ADR + ocupación + ingreso p50. Sirve para emitir advertencias
   // en UI cuando la zona no tracciona STR.
   // `recomendacionModalidad` cruza tier de zona + sobre-renta para decir
   // honestamente cuándo LTR es mejor opción que STR.
@@ -818,7 +818,7 @@ function calcDividendo(creditoCLP: number, tasaAnualDecimal: number, plazoAnos: 
 
 function calcEscenario(
   label: string,
-  revenueAnual: number,
+  ingresoAnual: number,
   adrReferencia: number,
   ocupacionReferencia: number,
   comisionRate: number,
@@ -829,7 +829,7 @@ function calcEscenario(
   pieCLP: number,
   razonSinPie: RazonSinCapital,
 ): EscenarioSTR {
-  const ingresoBrutoMensual = Math.round(revenueAnual / 12);
+  const ingresoBrutoMensual = Math.round(ingresoAnual / 12);
   const comisionMensual = Math.round(ingresoBrutoMensual * comisionRate);
   const ingresoNetoComision = ingresoBrutoMensual - comisionMensual;
   const noiMensual = ingresoNetoComision - costosOperativosTotales;
@@ -847,7 +847,7 @@ function calcEscenario(
 
   return {
     label,
-    revenueAnual,
+    ingresoAnual,
     ingresoBrutoMensual,
     comisionMensual,
     costosOperativos: costosOperativosTotales,
@@ -886,7 +886,7 @@ function buildProjections(
   input: ShortTermInputs,
   capitalInvertido: number,
   dividendoMensual: number,
-  revenueBaseAnual: number,
+  ingresoBaseAnual: number,
   comisionRate: number,
   costosOperativosMensual: number,
   perdidaRampUp: number,
@@ -933,12 +933,12 @@ function buildProjections(
       : Math.max(0, saldoCreditoSTR(montoCredito, input.tasaCredito, input.plazoCredito, Math.min(mesesCredito, input.plazoCredito * 12)));
 
     // Inflación homologada a LTR (antes flat). El NOI se recompone año a año: ingreso 3,5%,
-    // costos 3%, dividendo 3%. La comisión escala con el revenue inflado. En año 1 el NOI
-    // recompuesto == noiAnualBase (revenueBase - comisiónBase - costosBase), sin regresión.
-    const revenueAnual = revenueBaseAnual * Math.pow(1 + REVENUE_INFLACION, year - 1);
-    const comisionAnual = revenueAnual * comisionRate;
+    // costos 3%, dividendo 3%. La comisión escala con el ingreso inflado. En año 1 el NOI
+    // recompuesto == noiAnualBase (ingresoBase - comisiónBase - costosBase), sin regresión.
+    const ingresoAnual = ingresoBaseAnual * Math.pow(1 + REVENUE_INFLACION, year - 1);
+    const comisionAnual = ingresoAnual * comisionRate;
     const costosAnual = costosOperativosAnualBase * Math.pow(1 + COSTOS_INFLACION, year - 1);
-    const noiAnual = revenueAnual - comisionAnual - costosAnual;
+    const noiAnual = ingresoAnual - comisionAnual - costosAnual;
     const dividendoAnual = dividendoAnualBase * Math.pow(1 + DIVIDENDO_INFLACION, year - 1);
 
     // Meses operativos del año: 12 salvo el que cruza la escritura, que opera
@@ -981,7 +981,7 @@ function buildProjections(
       aporteMensualPromedio,
       patrimonioNeto: Math.round(patrimonioNeto),
       mesesOperativos,
-      ingresoAnual: Math.round(revenueAnual * proporcion),
+      ingresoAnual: Math.round(ingresoAnual * proporcion),
       comisionAnual: Math.round(comisionAnual * proporcion),
       costosAnual: Math.round(costosAnual * proporcion),
       ingresoNetoAnual: Math.round(noiAnual * proporcion),
@@ -1142,8 +1142,8 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   const costosOperativosTotales = costosDirectos + input.gastosComunes + input.mantencion + contribucionesMensuales;
 
   // Helper parcial
-  const buildEscenario = (label: string, revenueAnual: number, adr: number, ocu: number) =>
-    calcEscenario(label, revenueAnual, adr, ocu, comisionRate, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie, razonSinPie);
+  const buildEscenario = (label: string, ingresoAnual: number, adr: number, ocu: number) =>
+    calcEscenario(label, ingresoAnual, adr, ocu, comisionRate, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie, razonSinPie);
 
   // --- 2. Escenarios ---
   // Calibración v1: el escenario `base` se construye con los 3 ejes
@@ -1174,14 +1174,14 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   const adrFuente: AdrFuenteSTR = ejes.adrOverride != null ? 'override' : 'modelo';
   const adrBase = ejes.adrFinal;
   const occBase = ejes.ocupacionFinal;  // override manual, o la ocupación OBSERVADA
-  const revenueBase = Math.round(adrBase * occBase * 365);
+  const ingresoBase = Math.round(adrBase * occBase * 365);
 
   // Conservador: anclado en la ocupación OBSERVADA absoluta (p25), no en
   // occBase × shift. El ADR baja por el shift p25/p50 de AirROI (sin tocar uplifts).
   const adrShiftP25 = p.average_daily_rate.p50 > 0 ? p.average_daily_rate.p25 / p.average_daily_rate.p50 : 0.85;
   const adrConservador = Math.round(adrBase * adrShiftP25);
   const occConservador = Math.max(0.05, Math.min(0.95, p.occupancy.p25));
-  const revenueConservador = Math.round(adrConservador * occConservador * 365);
+  const ingresoConservador = Math.round(adrConservador * occConservador * 365);
 
   // Agresivo repurposed → UPSIDE: "potencial con gestión profesional"
   // (estabilizado mes 7+). occ = occ_target de la banda; ADR = adrBase (mismo
@@ -1189,22 +1189,22 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   // se ajusta en la capa UI.
   const occAgresivo = ejes.ocupacionTarget;
   const adrAgresivo = adrBase;
-  const revenueAgresivo = Math.round(adrBase * occAgresivo * 365);
+  const ingresoAgresivo = Math.round(adrBase * occAgresivo * 365);
 
-  const conservador = buildEscenario('Conservador', revenueConservador, adrConservador, occConservador);
-  const base = buildEscenario('Base', revenueBase, adrBase, occBase);
-  const agresivo = buildEscenario('Agresivo', revenueAgresivo, adrAgresivo, occAgresivo);
+  const conservador = buildEscenario('Conservador', ingresoConservador, adrConservador, occConservador);
+  const base = buildEscenario('Base', ingresoBase, adrBase, occBase);
+  const agresivo = buildEscenario('Agresivo', ingresoAgresivo, adrAgresivo, occAgresivo);
 
   // --- 3. Break-even ---
-  const breakEvenRevenueMensual = (1 - comisionRate) > 0
+  const breakEvenIngresoMensual = (1 - comisionRate) > 0
     ? (costosOperativosTotales + dividendoMensual) / (1 - comisionRate)
     : Infinity;
-  const breakEvenRevenueAnual = Math.round(breakEvenRevenueMensual * 12);
-  // El break-even se compara contra el revenue del escenario base CALIBRADO
+  const breakEvenIngresoAnual = Math.round(breakEvenIngresoMensual * 12);
+  // El break-even se compara contra el ingreso del escenario base CALIBRADO
   // (no contra el p50 raw de AirROI), para mantener consistencia con el resto
   // de los KPIs que el usuario ve.
-  const breakEvenPctDelMercado = revenueBase > 0
-    ? breakEvenRevenueAnual / revenueBase
+  const breakEvenPctDelMercado = ingresoBase > 0
+    ? breakEvenIngresoAnual / ingresoBase
     : Infinity;
 
   // --- 4. Comparativa STR vs LTR ---
@@ -1214,11 +1214,11 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   const ltr_noiMensual = ltr_ingresoNeto - input.gastosComunes - input.mantencion - contribucionesMensuales;
   const ltr_flujoCaja = ltr_noiMensual - dividendoMensual;
 
-  // STR auto y admin para la comparativa: ambos sobre el revenueBase calibrado
+  // STR auto y admin para la comparativa: ambos sobre el ingresoBase calibrado
   // (mismo ADR ajustado y misma ocupación target). Lo único que cambia entre
   // los dos es la comisión que se paga.
-  const str_auto = calcEscenario('Auto', revenueBase, adrBase, occBase, COMISION_AIRBNB, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie, razonSinPie);
-  const str_admin = calcEscenario('Administrador', revenueBase, adrBase, occBase, comisionAdministrador, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie, razonSinPie);
+  const str_auto = calcEscenario('Auto', ingresoBase, adrBase, occBase, COMISION_AIRBNB, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie, razonSinPie);
+  const str_admin = calcEscenario('Administrador', ingresoBase, adrBase, occBase, comisionAdministrador, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido, pie, razonSinPie);
 
   // Sobre-renta del modo actualmente seleccionado (escenario base)
   const sobreRenta = base.noiMensual - ltr_noiMensual;
@@ -1241,7 +1241,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
 
   // --- 5. Estacionalidad (escenario base) ---
   const flujoEstacional: FlujoEstacionalMes[] = airbnbData.monthly_revenue.map((factor, i) => {
-    const ingresoBruto = Math.round(base.revenueAnual * factor);
+    const ingresoBruto = Math.round(base.ingresoAnual * factor);
     const comision = Math.round(ingresoBruto * comisionRate);
     const ingresoNeto = ingresoBruto - comision - costosOperativosTotales;
     const flujo = ingresoNeto - dividendoMensual;
@@ -1264,23 +1264,23 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   );
 
   // --- Sensibilidad ---
-  const sensibilidadKeys: Array<{ label: string; revenue: number }> = [
-    { label: 'P25', revenue: p.revenue.p25 },
-    { label: 'P50', revenue: p.revenue.p50 },
-    { label: 'P75', revenue: p.revenue.p75 },
-    { label: 'P90', revenue: p.revenue.p90 },
-    { label: 'Promedio', revenue: p.revenue.avg },
+  const sensibilidadKeys: Array<{ label: string; ingreso: number }> = [
+    { label: 'P25', ingreso: p.revenue.p25 },
+    { label: 'P50', ingreso: p.revenue.p50 },
+    { label: 'P75', ingreso: p.revenue.p75 },
+    { label: 'P90', ingreso: p.revenue.p90 },
+    { label: 'Promedio', ingreso: p.revenue.avg },
   ];
 
-  const sensibilidad: SensibilidadRow[] = sensibilidadKeys.map(({ label, revenue }) => {
-    const mensual = Math.round(revenue / 12);
+  const sensibilidad: SensibilidadRow[] = sensibilidadKeys.map(({ label, ingreso }) => {
+    const mensual = Math.round(ingreso / 12);
     const comision = Math.round(mensual * comisionRate);
     const noi = mensual - comision - costosOperativosTotales;
     const sr = noi - ltr_noiMensual;
     const srPct = ltr_noiMensual !== 0 ? sr / ltr_noiMensual : 0;
     return {
       label,
-      revenueAnual: revenue,
+      ingresoAnual: ingreso,
       noiMensual: noi,
       sobreRenta: sr,
       sobreRentaPct: srPct,
@@ -1313,7 +1313,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     input,
     capitalInvertido,
     dividendoMensual,
-    base.revenueAnual,
+    base.ingresoAnual,
     comisionRate,
     costosOperativosTotales,
     perdidaRampUp,
@@ -1351,7 +1351,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   })();
 
   // --- 10. Sensibilidad de precio (Commit 3a · 2026-05-12) ---
-  // Recalcula CAP / CoC / payback con precio reducido (-5%, -10%). El revenue
+  // Recalcula CAP / CoC / payback con precio reducido (-5%, -10%). El ingreso
   // (ADR × occ × 365) y los costos operativos NO cambian con el precio — sólo
   // cambian el crédito, el dividendo, el capital invertido y los ratios.
   const sensibilidadPrecio = calcSensibilidadPrecio(
@@ -1372,14 +1372,14 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     airbnbData.percentiles.occupancy.p50,
   );
   // D1+D2 (Rama superficie AMBAS): veredicto comparativo tipado. Break-even por modo con
-  // la misma fórmula del motor ((costos+dividendo)/(1−comisión), anualizado / revenueBase),
+  // la misma fórmula del motor ((costos+dividendo)/(1−comisión), anualizado / ingresoBase),
   // invariante al modo salvo la comisión. `str_auto`/`str_admin` ya calculados arriba dan la
   // sobre-renta de cada modo para el flip de gestión.
-  const breakEvenAutoPct = revenueBase > 0 && (1 - COMISION_AIRBNB) > 0
-    ? Math.round(((costosOperativosTotales + dividendoMensual) / (1 - COMISION_AIRBNB)) * 12) / revenueBase
+  const breakEvenAutoPct = ingresoBase > 0 && (1 - COMISION_AIRBNB) > 0
+    ? Math.round(((costosOperativosTotales + dividendoMensual) / (1 - COMISION_AIRBNB)) * 12) / ingresoBase
     : Infinity;
-  const breakEvenAdminPct = revenueBase > 0 && (1 - comisionAdministrador) > 0
-    ? Math.round(((costosOperativosTotales + dividendoMensual) / (1 - comisionAdministrador)) * 12) / revenueBase
+  const breakEvenAdminPct = ingresoBase > 0 && (1 - comisionAdministrador) > 0
+    ? Math.round(((costosOperativosTotales + dividendoMensual) / (1 - comisionAdministrador)) * 12) / ingresoBase
     : Infinity;
   const veredictoComparativo = calcVeredictoComparativo({
     modoActual: (modoGestion === "auto" ? "auto" : "admin") as ModoGestionAmbas,
@@ -1417,7 +1417,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
       const libre = Math.max(0, ingreso - costosOperar - dividendoMensual);
       return {
         ingresoEstabilizadoMensual: ingreso,
-        ingresoEstabilizadoAnual: base.revenueAnual,
+        ingresoEstabilizadoAnual: base.ingresoAnual,
         flujoMensual: base.flujoCajaMensual,
         capRatePct: base.capRate * 100,
         tirPct: exitScenario ? metricaValorONull(exitScenario.tirAnual) : null,
@@ -1450,7 +1450,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     },
     flujoEstacional,
     perdidaRampUp,
-    breakEvenRevenueAnual,
+    breakEvenIngresoAnual,
     breakEvenPctDelMercado,
     sensibilidad,
     sensibilidadPrecio,
@@ -1483,10 +1483,10 @@ function calcSensibilidadPrecio(
   capexPuestaAPuntoCLP: number = 0,
   razonSinPie: RazonSinCapital = "sin_pie",
 ): SensibilidadPrecioRow[] {
-  const revenueAnual = base.revenueAnual;
-  const revenueMensual = revenueAnual / 12;
-  const comisionMensual = revenueMensual * comisionRate;
-  const noiMensualConst = revenueMensual - comisionMensual - costosOperativosTotales;
+  const ingresoAnual = base.ingresoAnual;
+  const ingresoMensual = ingresoAnual / 12;
+  const comisionMensual = ingresoMensual * comisionRate;
+  const noiMensualConst = ingresoMensual - comisionMensual - costosOperativosTotales;
   const noiAnual = noiMensualConst * 12;
   const variantes = [
     { label: "actual", factor: 1.0 },

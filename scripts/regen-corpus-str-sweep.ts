@@ -85,7 +85,7 @@ async function main() {
       const rec = calcShortTerm(inputs as any);
       const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, dormitorios: d.dormitorios, superficie: d.superficieUtil,
         regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro", lat: typeof d.lat === "number" ? d.lat : -33.4378, lng: typeof d.lng === "number" ? d.lng : -70.6504,
-        revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue } as any);
+        ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue } as any);
       let mediana: { mediana: number | null; n: number } = { mediana: null, n: 0 };
       try { mediana = await getComunaMedianaVentaUF(sb, r.comuna as string, d.superficieUtil, d.dormitorios ?? null, uf, resolverCondicionMercado({ esNuevo: d.tipoPropiedad === "nuevo", antiguedad: d.antiguedad })); } catch { /* null */ }
       const str = buildStrHallazgos({ result: rec, francoScore: score, comuna: (r.comuna as string) || "", precioUF: d.precioCompraUF, superficieM2: d.superficieUtil,
@@ -93,8 +93,8 @@ async function main() {
         // veredictoCtx obligatorio desde la decisividad real: el MISMO input que produjo `rec`.
         veredictoCtx: { inputs: inputs as any, scoreExtras: { dormitorios: d.dormitorios, superficie: d.superficieUtil,
           regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro", lat: typeof d.lat === "number" ? d.lat : -33.4378,
-          lng: typeof d.lng === "number" ? d.lng : -70.6504, revenueP50: airbnbData.percentiles.revenue.p50,
-          monthlyRevenue: airbnbData.monthly_revenue } as any, asOf: new Date() } });
+          lng: typeof d.lng === "number" ? d.lng : -70.6504, ingresoP50: airbnbData.percentiles.revenue.p50,
+          ingresoMensualScore: airbnbData.monthly_revenue } as any, asOf: new Date() } });
       hallazgos = mergeHallazgosStr(rec.hallazgos, str);
       veredicto = score.veredicto; factorADR = rec.ejesAplicados?.factorADRTotal; exit = !!rec.exitScenario;
       medianaConf = mediana.mediana != null && mediana.n > 0; ai = r.ai_analysis;

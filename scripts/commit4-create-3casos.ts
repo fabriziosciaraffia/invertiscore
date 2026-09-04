@@ -30,18 +30,18 @@ const supa = createClient(
 );
 
 function mkAirbnb(adr: number, occ: number): AirbnbData {
-  const monthlyRevenue = adr * occ * 30;
+  const ingresoMensualScore = adr * occ * 30;
   return {
     estimated_adr: adr,
     estimated_occupancy: occ,
-    estimated_annual_revenue: monthlyRevenue * 12,
+    estimated_annual_revenue: ingresoMensualScore * 12,
     percentiles: {
       revenue: {
-        p25: monthlyRevenue * 12 * 0.75,
-        p50: monthlyRevenue * 12,
-        p75: monthlyRevenue * 12 * 1.25,
-        p90: monthlyRevenue * 12 * 1.45,
-        avg: monthlyRevenue * 12 * 1.05,
+        p25: ingresoMensualScore * 12 * 0.75,
+        p50: ingresoMensualScore * 12,
+        p75: ingresoMensualScore * 12 * 1.25,
+        p90: ingresoMensualScore * 12 * 1.45,
+        avg: ingresoMensualScore * 12 * 1.05,
       },
       occupancy: {
         p25: occ * 0.78,
@@ -195,7 +195,7 @@ function commonInputs(): Omit<
     console.log(`  zonaSTR.tierZona       = ${result.zonaSTR?.tierZona}`);
     console.log(`  zonaSTR.score          = ${result.zonaSTR?.score}/100`);
     console.log(
-      `  zonaSTR.percentiles    = ADR p${result.zonaSTR?.percentilADR}, OCC p${result.zonaSTR?.percentilOcupacion}, REV p${result.zonaSTR?.percentilRevenue}`,
+      `  zonaSTR.percentiles    = ADR p${result.zonaSTR?.percentilADR}, OCC p${result.zonaSTR?.percentilOcupacion}, REV p${result.zonaSTR?.percentilIngreso}`,
     );
     console.log(`  comparativa.sobreRentaPct = ${((result.comparativa?.sobreRentaPct ?? 0) * 100).toFixed(1)}%`);
     console.log(`  recomendacionModalidad = ${result.recomendacionModalidad}`);

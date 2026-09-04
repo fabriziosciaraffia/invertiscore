@@ -1,3 +1,4 @@
+import { normalizarResultsStrPersistidos } from "@/lib/analysis/normalizar-results-str";
 import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -84,7 +85,7 @@ export default async function ShareComparativaPage({
   // vista privada: patrimonio STR comparable con LTR. UF y fecha congeladas a la creación.
   // Idempotente, cero DB writes. Fallback al persistido si falta airbnbRaw.
   // P2 (Rama 0b): el lado STR adopta la UF real reconstruida del lado LTR del par (espejo de
-  // la vista privada). El recompute STR re-escala precio+revenue a esta UF (TIR-neutral),
+  // la vista privada). El recompute STR re-escala precio+ingreso a esta UF (TIR-neutral),
   // homologando la base CLP de ambos motores.
   const ltrUfFrozen = resolveUfForAnalysis(
     ltrResultsPersisted as { metrics?: { precioCLP?: number | null } | null } | null,
@@ -124,7 +125,7 @@ export default async function ShareComparativaPage({
     ltrUfFrozen,
     strAsOfFrozen,
     strMediana,
-  ) ?? strResultsPersisted) as STRResultsWithScore;
+  ) ?? normalizarResultsStrPersistidos(strResultsPersisted)) as STRResultsWithScore;
 
   return (
     <SharedComparativaClient

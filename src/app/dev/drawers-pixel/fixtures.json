@@ -1535,9 +1535,9 @@
         "tierZona": "media",
         "percentilADR": 78,
         "comunaNoListada": false,
-        "percentilRevenue": 56,
+        "percentilIngreso": 56,
         "percentilOcupacion": 22,
-        "revenueZonaMensual": 572570
+        "ingresoZonaMensual": 572570
       },
       "adrFuente": "modelo",
       "adrModelo": 45543,
@@ -1857,7 +1857,7 @@
           "capRate": 0.021898939617083946,
           "cashOnCash": -0.10493106987761548,
           "noiMensual": 247823,
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "adrReferencia": 45543,
           "comisionMensual": 116104,
           "costosOperativos": 216592,
@@ -1871,7 +1871,7 @@
           "capRate": 0.04451363770250368,
           "cashOnCash": -0.02410264508487959,
           "noiMensual": 503746,
-          "revenueAnual": 10805077,
+          "ingresoAnual": 10805077,
           "adrReferencia": 45543,
           "comisionMensual": 180085,
           "costosOperativos": 216592,
@@ -1885,7 +1885,7 @@
           "capRate": 0.004431958762886598,
           "cashOnCash": -0.16736075799447295,
           "noiMensual": 50155,
-          "revenueAnual": 4001209,
+          "ingresoAnual": 4001209,
           "adrReferencia": 37523,
           "comisionMensual": 66687,
           "costosOperativos": 216592,
@@ -1906,7 +1906,7 @@
           "capRate": 0.030619528718703975,
           "cashOnCash": -0.07376233714962495,
           "noiMensual": 346511,
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "adrReferencia": 45543,
           "comisionMensual": 17416,
           "costosOperativos": 216592,
@@ -1920,7 +1920,7 @@
           "capRate": 0.021898939617083946,
           "cashOnCash": -0.10493106987761548,
           "noiMensual": 247823,
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "adrReferencia": 45543,
           "comisionMensual": 116104,
           "costosOperativos": 216592,
@@ -2073,35 +2073,35 @@
           "label": "P25",
           "noiMensual": 126578,
           "sobreRenta": -155580,
-          "revenueAnual": 5147555.565186529,
+          "ingresoAnual": 5147555.565186529,
           "sobreRentaPct": -0.5513931910489868
         },
         {
           "label": "P50",
           "noiMensual": 251878,
           "sobreRenta": -30280,
-          "revenueAnual": 7027061.567389272,
+          "ingresoAnual": 7027061.567389272,
           "sobreRentaPct": -0.10731575925545261
         },
         {
           "label": "P75",
           "noiMensual": 496726,
           "sobreRenta": 214568,
-          "revenueAnual": 10699761.64605664,
+          "ingresoAnual": 10699761.64605664,
           "sobreRentaPct": 0.7604533630093777
         },
         {
           "label": "P90",
           "noiMensual": 760824,
           "sobreRenta": 478666,
-          "revenueAnual": 14661243.050870305,
+          "ingresoAnual": 14661243.050870305,
           "sobreRentaPct": 1.6964466717229354
         },
         {
           "label": "Promedio",
           "noiMensual": 330301,
           "sobreRenta": 48143,
-          "revenueAnual": 8203389.825895019,
+          "ingresoAnual": 8203389.825895019,
           "sobreRentaPct": 0.17062426016628982
         }
       ],
@@ -2247,7 +2247,7 @@
           "flujoCajaMensual": -274232
         }
       ],
-      "breakEvenRevenueAnual": 11949795,
+      "breakEvenIngresoAnual": 11949795,
       "legacyEngineVeredicto": "BUSCAR OTRA",
       "breakEvenPctDelMercado": 1.7153895910383639,
       "recomendacionModalidad": "LTR_PREFERIDO"
@@ -2307,9 +2307,9 @@
         "tierZona": "alta",
         "percentilADR": 94,
         "comunaNoListada": false,
-        "percentilRevenue": 78,
+        "percentilIngreso": 78,
         "percentilOcupacion": 39,
-        "revenueZonaMensual": 899246
+        "ingresoZonaMensual": 899246
       },
       "adrFuente": "modelo",
       "adrModelo": 65746,
@@ -2606,7 +2606,7 @@
           "capRate": 0.04664226804123711,
           "cashOnCash": -0.01902677717564552,
           "noiMensual": 603240,
-          "revenueAnual": 10940904,
+          "ingresoAnual": 10940904,
           "adrReferencia": 65746,
           "comisionMensual": 27352,
           "costosOperativos": 281150,
@@ -2620,7 +2620,7 @@
           "capRate": 0.06075231958762887,
           "cashOnCash": 0.039146636914249286,
           "noiMensual": 785730,
-          "revenueAnual": 13198510,
+          "ingresoAnual": 13198510,
           "adrReferencia": 65746,
           "comisionMensual": 32996,
           "costosOperativos": 281150,
@@ -2634,7 +2634,7 @@
           "capRate": 0.017335206185567012,
           "cashOnCash": -0.13985495696525344,
           "noiMensual": 224202,
-          "revenueAnual": 6251768,
+          "ingresoAnual": 6251768,
           "adrReferencia": 52913,
           "comisionMensual": 15629,
           "costosOperativos": 281150,
@@ -2655,7 +2655,7 @@
           "capRate": 0.04664226804123711,
           "cashOnCash": -0.01902677717564552,
           "noiMensual": 603240,
-          "revenueAnual": 10940904,
+          "ingresoAnual": 10940904,
           "adrReferencia": 65746,
           "comisionMensual": 27352,
           "costosOperativos": 281150,
@@ -2669,7 +2669,7 @@
           "capRate": 0.0346580412371134,
           "cashOnCash": -0.0684357666560408,
           "noiMensual": 448244,
-          "revenueAnual": 10940904,
+          "ingresoAnual": 10940904,
           "adrReferencia": 65746,
           "comisionMensual": 182348,
           "costosOperativos": 281150,
@@ -2822,35 +2822,35 @@
           "label": "P25",
           "noiMensual": 345415,
           "sobreRenta": -263435,
-          "revenueAnual": 7751320.8398204325,
+          "ingresoAnual": 7751320.8398204325,
           "sobreRentaPct": -0.43267635706660096
         },
         {
           "label": "P50",
           "noiMensual": 571860,
           "sobreRenta": -36990,
-          "revenueAnual": 10552698.226433229,
+          "ingresoAnual": 10552698.226433229,
           "sobreRentaPct": -0.06075388026607539
         },
         {
           "label": "P75",
           "noiMensual": 944308,
           "sobreRenta": 335458,
-          "revenueAnual": 15160307.45475869,
+          "ingresoAnual": 15160307.45475869,
           "sobreRentaPct": 0.5509698612137637
         },
         {
           "label": "P90",
           "noiMensual": 1337347,
           "sobreRenta": 728497,
-          "revenueAnual": 20022653.455508135,
+          "ingresoAnual": 20022653.455508135,
           "sobreRentaPct": 1.196513098464318
         },
         {
           "label": "Promedio",
           "noiMensual": 680047,
           "sobreRenta": 71197,
-          "revenueAnual": 11891101.878902303,
+          "ingresoAnual": 11891101.878902303,
           "sobreRentaPct": 0.11693684815636035
         }
       ],
@@ -2996,7 +2996,7 @@
           "flujoCajaMensual": 6606
         }
       ],
-      "breakEvenRevenueAnual": 11679303,
+      "breakEvenIngresoAnual": 11679303,
       "legacyEngineVeredicto": "BUSCAR OTRA",
       "breakEvenPctDelMercado": 1.067489761357928,
       "recomendacionModalidad": "LTR_PREFERIDO",
@@ -3060,9 +3060,9 @@
         "tierZona": "media",
         "percentilADR": 78,
         "comunaNoListada": false,
-        "percentilRevenue": 67,
+        "percentilIngreso": 67,
         "percentilOcupacion": 39,
-        "revenueZonaMensual": 659336
+        "ingresoZonaMensual": 659336
       },
       "adrFuente": "override",
       "adrModelo": 47496,
@@ -3359,7 +3359,7 @@
           "capRate": 0.04755708136345432,
           "cashOnCash": 0.004603899781278078,
           "noiMensual": 629372,
-          "revenueAnual": 12667291,
+          "ingresoAnual": 12667291,
           "adrReferencia": 75000,
           "comisionMensual": 211122,
           "costosOperativos": 215114,
@@ -3373,7 +3373,7 @@
           "capRate": 0.08579289256739568,
           "cashOnCash": 0.1625775719806166,
           "noiMensual": 1135386,
-          "revenueAnual": 20257500,
+          "ingresoAnual": 20257500,
           "adrReferencia": 75000,
           "comisionMensual": 337625,
           "costosOperativos": 215114,
@@ -3387,7 +3387,7 @@
           "capRate": 0.01930643467222137,
           "cashOnCash": -0.11211543372563418,
           "noiMensual": 255502,
-          "revenueAnual": 7059239,
+          "ingresoAnual": 7059239,
           "adrReferencia": 58680,
           "comisionMensual": 117654,
           "costosOperativos": 215114,
@@ -3408,7 +3408,7 @@
           "capRate": 0.061117119749333156,
           "cashOnCash": 0.06062805597233227,
           "noiMensual": 808826,
-          "revenueAnual": 12667291,
+          "ingresoAnual": 12667291,
           "adrReferencia": 75000,
           "comisionMensual": 31668,
           "costosOperativos": 215114,
@@ -3422,7 +3422,7 @@
           "capRate": 0.04755708136345432,
           "cashOnCash": 0.004603899781278078,
           "noiMensual": 629372,
-          "revenueAnual": 12667291,
+          "ingresoAnual": 12667291,
           "adrReferencia": 75000,
           "comisionMensual": 211122,
           "costosOperativos": 215114,
@@ -3575,35 +3575,35 @@
           "label": "P25",
           "noiMensual": 173080,
           "sobreRenta": -37856,
-          "revenueAnual": 5822908.499777101,
+          "ingresoAnual": 5822908.499777101,
           "sobreRentaPct": -0.17946675768953615
         },
         {
           "label": "P50",
           "noiMensual": 321655,
           "sobreRenta": 110719,
-          "revenueAnual": 8051536.907153703,
+          "ingresoAnual": 8051536.907153703,
           "sobreRentaPct": 0.5248938066522547
         },
         {
           "label": "P75",
           "noiMensual": 575476,
           "sobreRenta": 364540,
-          "revenueAnual": 11858841.493912997,
+          "ingresoAnual": 11858841.493912997,
           "sobreRentaPct": 1.7282019190654985
         },
         {
           "label": "P90",
           "noiMensual": 831324,
           "sobreRenta": 620388,
-          "revenueAnual": 15696570.343253674,
+          "ingresoAnual": 15696570.343253674,
           "sobreRentaPct": 2.9411195812948003
         },
         {
           "label": "Promedio",
           "noiMensual": 441003,
           "sobreRenta": 230067,
-          "revenueAnual": 9841753.830522753,
+          "ingresoAnual": 9841753.830522753,
           "sobreRentaPct": 1.0906957560587098
         }
       ],
@@ -3749,7 +3749,7 @@
           "flujoCajaMensual": 76210
         }
       ],
-      "breakEvenRevenueAnual": 12446085,
+      "breakEvenIngresoAnual": 12446085,
       "legacyEngineVeredicto": "COMPRAR",
       "breakEvenPctDelMercado": 0.9825372291518368,
       "recomendacionModalidad": "STR_VENTAJA_CLARA"
@@ -3805,9 +3805,9 @@
         "tierZona": "media",
         "percentilADR": 78,
         "comunaNoListada": true,
-        "percentilRevenue": 67,
+        "percentilIngreso": 67,
         "percentilOcupacion": 39,
-        "revenueZonaMensual": 669574
+        "ingresoZonaMensual": 669574
       },
       "adrFuente": "modelo",
       "adrModelo": 48233,
@@ -4127,7 +4127,7 @@
           "capRate": 0.046542923724566504,
           "cashOnCash": -0.03041103516663292,
           "noiMensual": 495316,
-          "revenueAnual": 8146419,
+          "ingresoAnual": 8146419,
           "adrReferencia": 48233,
           "comisionMensual": 20366,
           "costosOperativos": 163186,
@@ -4141,7 +4141,7 @@
           "capRate": 0.05821248245965721,
           "cashOnCash": 0.01382316542260315,
           "noiMensual": 619505,
-          "revenueAnual": 9682775,
+          "ingresoAnual": 9682775,
           "adrReferencia": 48233,
           "comisionMensual": 24207,
           "costosOperativos": 163186,
@@ -4155,7 +4155,7 @@
           "capRate": 0.019149262052721258,
           "cashOnCash": -0.1342484426276659,
           "noiMensual": 203789,
-          "revenueAnual": 4539904,
+          "ingresoAnual": 4539904,
           "adrReferencia": 37738,
           "comisionMensual": 11350,
           "costosOperativos": 163186,
@@ -4176,7 +4176,7 @@
           "capRate": 0.046542923724566504,
           "cashOnCash": -0.03041103516663292,
           "noiMensual": 495316,
-          "revenueAnual": 8146419,
+          "ingresoAnual": 8146419,
           "adrReferencia": 48233,
           "comisionMensual": 20366,
           "costosOperativos": 163186,
@@ -4190,7 +4190,7 @@
           "capRate": 0.03569848150746718,
           "cashOnCash": -0.07151757939842926,
           "noiMensual": 379908,
-          "revenueAnual": 8146419,
+          "ingresoAnual": 8146419,
           "adrReferencia": 48233,
           "comisionMensual": 135774,
           "costosOperativos": 163186,
@@ -4343,35 +4343,35 @@
           "label": "P25",
           "noiMensual": 314808,
           "sobreRenta": 197294,
-          "revenueAnual": 5913324.410350517,
+          "ingresoAnual": 5913324.410350517,
           "sobreRentaPct": 1.6788978334496316
         },
         {
           "label": "P50",
           "noiMensual": 497753,
           "sobreRenta": 380239,
-          "revenueAnual": 8176558.112794085,
+          "ingresoAnual": 8176558.112794085,
           "sobreRentaPct": 3.2356910665963206
         },
         {
           "label": "P75",
           "noiMensual": 810289,
           "sobreRenta": 692775,
-          "revenueAnual": 12042981.078462368,
+          "ingresoAnual": 12042981.078462368,
           "sobreRentaPct": 5.895255033442824
         },
         {
           "label": "P90",
           "noiMensual": 1125321,
           "sobreRenta": 1007807,
-          "revenueAnual": 15940300.723100668,
+          "ingresoAnual": 15940300.723100668,
           "sobreRentaPct": 8.576059022754736
         },
         {
           "label": "Promedio",
           "noiMensual": 644709,
           "sobreRenta": 527195,
-          "revenueAnual": 9994572.844295712,
+          "ingresoAnual": 9994572.844295712,
           "sobreRentaPct": 4.486231427744779
         }
       ],
@@ -4517,7 +4517,7 @@
           "flujoCajaMensual": -27310
         }
       ],
-      "breakEvenRevenueAnual": 9202664,
+      "breakEvenIngresoAnual": 9202664,
       "legacyEngineVeredicto": "COMPRAR",
       "breakEvenPctDelMercado": 1.12965758328905,
       "recomendacionModalidad": "STR_VENTAJA_CLARA"
@@ -5323,9 +5323,9 @@
         "tierZona": "alta",
         "percentilADR": 100,
         "comunaNoListada": false,
-        "percentilRevenue": 89,
+        "percentilIngreso": 89,
         "percentilOcupacion": 44,
-        "revenueZonaMensual": 1065750
+        "ingresoZonaMensual": 1065750
       },
       "adrFuente": "modelo",
       "adrModelo": 74713,
@@ -5645,7 +5645,7 @@
           "capRate": 0.03092360508005272,
           "cashOnCash": -0.07877861108714017,
           "noiMensual": 504431,
-          "revenueAnual": 12966663,
+          "ingresoAnual": 12966663,
           "adrReferencia": 74713,
           "comisionMensual": 270139,
           "costosOperativos": 305985,
@@ -5659,7 +5659,7 @@
           "capRate": 0.04915766350270248,
           "cashOnCash": -0.008134253501100069,
           "noiMensual": 801868,
-          "revenueAnual": 17725659,
+          "ingresoAnual": 17725659,
           "adrReferencia": 74713,
           "comisionMensual": 369285,
           "costosOperativos": 305985,
@@ -5673,7 +5673,7 @@
           "capRate": 0.010872191513491974,
           "cashOnCash": -0.15646396216302233,
           "noiMensual": 177349,
-          "revenueAnual": 7733338,
+          "ingresoAnual": 7733338,
           "adrReferencia": 62846,
           "comisionMensual": 161111,
           "costosOperativos": 305985,
@@ -5694,7 +5694,7 @@
           "capRate": 0.04549689904263689,
           "cashOnCash": -0.02231718236755039,
           "noiMensual": 742153,
-          "revenueAnual": 12966663,
+          "ingresoAnual": 12966663,
           "adrReferencia": 74713,
           "comisionMensual": 32417,
           "costosOperativos": 305985,
@@ -5708,7 +5708,7 @@
           "capRate": 0.03092360508005272,
           "cashOnCash": -0.07877861108714017,
           "noiMensual": 504431,
-          "revenueAnual": 12966663,
+          "ingresoAnual": 12966663,
           "adrReferencia": 74713,
           "comisionMensual": 270139,
           "costosOperativos": 305985,
@@ -5861,35 +5861,35 @@
           "label": "P25",
           "noiMensual": 296260,
           "sobreRenta": -282055,
-          "revenueAnual": 9635913.960642243,
+          "ingresoAnual": 9635913.960642243,
           "sobreRentaPct": -0.4877186308499693
         },
         {
           "label": "P50",
           "noiMensual": 482049,
           "sobreRenta": -96266,
-          "revenueAnual": 12608547.279664421,
+          "ingresoAnual": 12608547.279664421,
           "sobreRentaPct": -0.16645945548706154
         },
         {
           "label": "P75",
           "noiMensual": 808769,
           "sobreRenta": 230454,
-          "revenueAnual": 17836064.719007492,
+          "ingresoAnual": 17836064.719007492,
           "sobreRentaPct": 0.3984921712215661
         },
         {
           "label": "P90",
           "noiMensual": 1126374,
           "sobreRenta": 548059,
-          "revenueAnual": 22917740.873763654,
+          "ingresoAnual": 22917740.873763654,
           "sobreRentaPct": 0.9476824913758073
         },
         {
           "label": "Promedio",
           "noiMensual": 532351,
           "sobreRenta": -45964,
-          "revenueAnual": 13413366.289183576,
+          "ingresoAnual": 13413366.289183576,
           "sobreRentaPct": -0.07947917657332076
         }
       ],
@@ -6035,7 +6035,7 @@
           "flujoCajaMensual": -248074
         }
       ],
-      "breakEvenRevenueAnual": 18273616,
+      "breakEvenIngresoAnual": 18273616,
       "legacyEngineVeredicto": "BUSCAR OTRA",
       "breakEvenPctDelMercado": 1.409276696710634,
       "recomendacionModalidad": "LTR_PREFERIDO",
@@ -6094,9 +6094,9 @@
         "tierZona": "media",
         "percentilADR": 78,
         "comunaNoListada": false,
-        "percentilRevenue": 56,
+        "percentilIngreso": 56,
         "percentilOcupacion": 22,
-        "revenueZonaMensual": 572570
+        "ingresoZonaMensual": 572570
       },
       "adrFuente": "modelo",
       "adrModelo": 45543,
@@ -6416,7 +6416,7 @@
           "capRate": 0.021898939617083946,
           "cashOnCash": -0.10493106987761548,
           "noiMensual": 247823,
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "adrReferencia": 45543,
           "comisionMensual": 116104,
           "costosOperativos": 216592,
@@ -6430,7 +6430,7 @@
           "capRate": 0.04451363770250368,
           "cashOnCash": -0.02410264508487959,
           "noiMensual": 503746,
-          "revenueAnual": 10805077,
+          "ingresoAnual": 10805077,
           "adrReferencia": 45543,
           "comisionMensual": 180085,
           "costosOperativos": 216592,
@@ -6444,7 +6444,7 @@
           "capRate": 0.004431958762886598,
           "cashOnCash": -0.16736075799447295,
           "noiMensual": 50155,
-          "revenueAnual": 4001209,
+          "ingresoAnual": 4001209,
           "adrReferencia": 37523,
           "comisionMensual": 66687,
           "costosOperativos": 216592,
@@ -6465,7 +6465,7 @@
           "capRate": 0.030619528718703975,
           "cashOnCash": -0.07376233714962495,
           "noiMensual": 346511,
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "adrReferencia": 45543,
           "comisionMensual": 17416,
           "costosOperativos": 216592,
@@ -6479,7 +6479,7 @@
           "capRate": 0.021898939617083946,
           "cashOnCash": -0.10493106987761548,
           "noiMensual": 247823,
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "adrReferencia": 45543,
           "comisionMensual": 116104,
           "costosOperativos": 216592,
@@ -6632,35 +6632,35 @@
           "label": "P25",
           "noiMensual": 126578,
           "sobreRenta": -155580,
-          "revenueAnual": 5147555.565186529,
+          "ingresoAnual": 5147555.565186529,
           "sobreRentaPct": -0.5513931910489868
         },
         {
           "label": "P50",
           "noiMensual": 251878,
           "sobreRenta": -30280,
-          "revenueAnual": 7027061.567389272,
+          "ingresoAnual": 7027061.567389272,
           "sobreRentaPct": -0.10731575925545261
         },
         {
           "label": "P75",
           "noiMensual": 496726,
           "sobreRenta": 214568,
-          "revenueAnual": 10699761.64605664,
+          "ingresoAnual": 10699761.64605664,
           "sobreRentaPct": 0.7604533630093777
         },
         {
           "label": "P90",
           "noiMensual": 760824,
           "sobreRenta": 478666,
-          "revenueAnual": 14661243.050870305,
+          "ingresoAnual": 14661243.050870305,
           "sobreRentaPct": 1.6964466717229354
         },
         {
           "label": "Promedio",
           "noiMensual": 330301,
           "sobreRenta": 48143,
-          "revenueAnual": 8203389.825895019,
+          "ingresoAnual": 8203389.825895019,
           "sobreRentaPct": 0.17062426016628982
         }
       ],
@@ -6806,7 +6806,7 @@
           "flujoCajaMensual": -274232
         }
       ],
-      "breakEvenRevenueAnual": 11949795,
+      "breakEvenIngresoAnual": 11949795,
       "legacyEngineVeredicto": "BUSCAR OTRA",
       "breakEvenPctDelMercado": 1.7153895910383639,
       "recomendacionModalidad": "LTR_PREFERIDO"
@@ -7169,7 +7169,7 @@
       "escenarios": {
         "conservador": {
           "label": "Conservador",
-          "revenueAnual": 4539904,
+          "ingresoAnual": 4539904,
           "ingresoBrutoMensual": 378325,
           "comisionMensual": 11350,
           "costosOperativos": 163164,
@@ -7186,7 +7186,7 @@
         },
         "base": {
           "label": "Base",
-          "revenueAnual": 8146419,
+          "ingresoAnual": 8146419,
           "ingresoBrutoMensual": 678868,
           "comisionMensual": 20366,
           "costosOperativos": 163164,
@@ -7203,7 +7203,7 @@
         },
         "agresivo": {
           "label": "Agresivo",
-          "revenueAnual": 9682775,
+          "ingresoAnual": 9682775,
           "ingresoBrutoMensual": 806898,
           "comisionMensual": 24207,
           "costosOperativos": 163164,
@@ -7227,7 +7227,7 @@
         },
         "str_auto": {
           "label": "Auto",
-          "revenueAnual": 8146419,
+          "ingresoAnual": 8146419,
           "ingresoBrutoMensual": 678868,
           "comisionMensual": 20366,
           "costosOperativos": 163164,
@@ -7244,7 +7244,7 @@
         },
         "str_admin": {
           "label": "Administrador",
-          "revenueAnual": 8146419,
+          "ingresoAnual": 8146419,
           "ingresoBrutoMensual": 678868,
           "comisionMensual": 135774,
           "costosOperativos": 163164,
@@ -7351,12 +7351,12 @@
         }
       ],
       "perdidaRampUp": 1018302,
-      "breakEvenRevenueAnual": 9200054,
+      "breakEvenIngresoAnual": 9200054,
       "breakEvenPctDelMercado": 1.1293371971169173,
       "sensibilidad": [
         {
           "label": "P25",
-          "revenueAnual": 5913324.410350517,
+          "ingresoAnual": 5913324.410350517,
           "noiMensual": 314830,
           "sobreRenta": -34506,
           "sobreRentaPct": -0.09877596354226303,
@@ -7364,7 +7364,7 @@
         },
         {
           "label": "P50",
-          "revenueAnual": 8176558.112794085,
+          "ingresoAnual": 8176558.112794085,
           "noiMensual": 497775,
           "sobreRenta": 148439,
           "sobreRentaPct": 0.42491755788123753,
@@ -7372,7 +7372,7 @@
         },
         {
           "label": "P75",
-          "revenueAnual": 12042981.078462368,
+          "ingresoAnual": 12042981.078462368,
           "noiMensual": 810311,
           "sobreRenta": 460975,
           "sobreRentaPct": 1.3195748505736598,
@@ -7380,7 +7380,7 @@
         },
         {
           "label": "P90",
-          "revenueAnual": 15940300.723100668,
+          "ingresoAnual": 15940300.723100668,
           "noiMensual": 1125343,
           "sobreRenta": 776007,
           "sobreRentaPct": 2.221377126892161,
@@ -7388,7 +7388,7 @@
         },
         {
           "label": "Promedio",
-          "revenueAnual": 9994572.844295712,
+          "ingresoAnual": 9994572.844295712,
           "noiMensual": 644731,
           "sobreRenta": 295395,
           "sobreRentaPct": 0.8455899191609224,
@@ -7552,10 +7552,10 @@
         "comuna": "Providencia",
         "adrZona": 48233,
         "occZona": 0.463,
-        "revenueZonaMensual": 669574,
+        "ingresoZonaMensual": 669574,
         "percentilADR": 78,
         "percentilOcupacion": 39,
-        "percentilRevenue": 67,
+        "percentilIngreso": 67,
         "tierZona": "media",
         "score": 61,
         "comunaNoListada": false
@@ -7992,7 +7992,7 @@
       "escenarios": {
         "conservador": {
           "label": "Conservador",
-          "revenueAnual": 4539904,
+          "ingresoAnual": 4539904,
           "ingresoBrutoMensual": 378325,
           "comisionMensual": 11350,
           "costosOperativos": 163186,
@@ -8009,7 +8009,7 @@
         },
         "base": {
           "label": "Base",
-          "revenueAnual": 8146419,
+          "ingresoAnual": 8146419,
           "ingresoBrutoMensual": 678868,
           "comisionMensual": 20366,
           "costosOperativos": 163186,
@@ -8026,7 +8026,7 @@
         },
         "agresivo": {
           "label": "Agresivo",
-          "revenueAnual": 9682775,
+          "ingresoAnual": 9682775,
           "ingresoBrutoMensual": 806898,
           "comisionMensual": 24207,
           "costosOperativos": 163186,
@@ -8050,7 +8050,7 @@
         },
         "str_auto": {
           "label": "Auto",
-          "revenueAnual": 8146419,
+          "ingresoAnual": 8146419,
           "ingresoBrutoMensual": 678868,
           "comisionMensual": 20366,
           "costosOperativos": 163186,
@@ -8067,7 +8067,7 @@
         },
         "str_admin": {
           "label": "Administrador",
-          "revenueAnual": 8146419,
+          "ingresoAnual": 8146419,
           "ingresoBrutoMensual": 678868,
           "comisionMensual": 135774,
           "costosOperativos": 163186,
@@ -8174,12 +8174,12 @@
         }
       ],
       "perdidaRampUp": 1018302,
-      "breakEvenRevenueAnual": 9202664,
+      "breakEvenIngresoAnual": 9202664,
       "breakEvenPctDelMercado": 1.12965758328905,
       "sensibilidad": [
         {
           "label": "P25",
-          "revenueAnual": 5913324.410350517,
+          "ingresoAnual": 5913324.410350517,
           "noiMensual": 314808,
           "sobreRenta": 197294,
           "sobreRentaPct": 1.6788978334496316,
@@ -8187,7 +8187,7 @@
         },
         {
           "label": "P50",
-          "revenueAnual": 8176558.112794085,
+          "ingresoAnual": 8176558.112794085,
           "noiMensual": 497753,
           "sobreRenta": 380239,
           "sobreRentaPct": 3.2356910665963206,
@@ -8195,7 +8195,7 @@
         },
         {
           "label": "P75",
-          "revenueAnual": 12042981.078462368,
+          "ingresoAnual": 12042981.078462368,
           "noiMensual": 810289,
           "sobreRenta": 692775,
           "sobreRentaPct": 5.895255033442824,
@@ -8203,7 +8203,7 @@
         },
         {
           "label": "P90",
-          "revenueAnual": 15940300.723100668,
+          "ingresoAnual": 15940300.723100668,
           "noiMensual": 1125321,
           "sobreRenta": 1007807,
           "sobreRentaPct": 8.576059022754736,
@@ -8211,7 +8211,7 @@
         },
         {
           "label": "Promedio",
-          "revenueAnual": 9994572.844295712,
+          "ingresoAnual": 9994572.844295712,
           "noiMensual": 644709,
           "sobreRenta": 527195,
           "sobreRentaPct": 4.486231427744779,
@@ -8375,10 +8375,10 @@
         "comuna": "Santiago Centro",
         "adrZona": 48233,
         "occZona": 0.463,
-        "revenueZonaMensual": 669574,
+        "ingresoZonaMensual": 669574,
         "percentilADR": 78,
         "percentilOcupacion": 39,
-        "percentilRevenue": 67,
+        "percentilIngreso": 67,
         "tierZona": "media",
         "score": 61,
         "comunaNoListada": true
@@ -8800,7 +8800,7 @@
       "escenarios": {
         "conservador": {
           "label": "Conservador",
-          "revenueAnual": 4001209,
+          "ingresoAnual": 4001209,
           "ingresoBrutoMensual": 333434,
           "comisionMensual": 66687,
           "costosOperativos": 216592,
@@ -8817,7 +8817,7 @@
         },
         "base": {
           "label": "Base",
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "ingresoBrutoMensual": 580519,
           "comisionMensual": 116104,
           "costosOperativos": 216592,
@@ -8834,7 +8834,7 @@
         },
         "agresivo": {
           "label": "Agresivo",
-          "revenueAnual": 10805077,
+          "ingresoAnual": 10805077,
           "ingresoBrutoMensual": 900423,
           "comisionMensual": 180085,
           "costosOperativos": 216592,
@@ -8858,7 +8858,7 @@
         },
         "str_auto": {
           "label": "Auto",
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "ingresoBrutoMensual": 580519,
           "comisionMensual": 17416,
           "costosOperativos": 216592,
@@ -8875,7 +8875,7 @@
         },
         "str_admin": {
           "label": "Administrador",
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "ingresoBrutoMensual": 580519,
           "comisionMensual": 116104,
           "costosOperativos": 216592,
@@ -8982,12 +8982,12 @@
         }
       ],
       "perdidaRampUp": 870779,
-      "breakEvenRevenueAnual": 11949795,
+      "breakEvenIngresoAnual": 11949795,
       "breakEvenPctDelMercado": 1.7153895910383639,
       "sensibilidad": [
         {
           "label": "P25",
-          "revenueAnual": 5147555.565186529,
+          "ingresoAnual": 5147555.565186529,
           "noiMensual": 126578,
           "sobreRenta": -155580,
           "sobreRentaPct": -0.5513931910489868,
@@ -8995,7 +8995,7 @@
         },
         {
           "label": "P50",
-          "revenueAnual": 7027061.567389272,
+          "ingresoAnual": 7027061.567389272,
           "noiMensual": 251878,
           "sobreRenta": -30280,
           "sobreRentaPct": -0.10731575925545261,
@@ -9003,7 +9003,7 @@
         },
         {
           "label": "P75",
-          "revenueAnual": 10699761.64605664,
+          "ingresoAnual": 10699761.64605664,
           "noiMensual": 496726,
           "sobreRenta": 214568,
           "sobreRentaPct": 0.7604533630093777,
@@ -9011,7 +9011,7 @@
         },
         {
           "label": "P90",
-          "revenueAnual": 14661243.050870305,
+          "ingresoAnual": 14661243.050870305,
           "noiMensual": 760824,
           "sobreRenta": 478666,
           "sobreRentaPct": 1.6964466717229354,
@@ -9019,7 +9019,7 @@
         },
         {
           "label": "Promedio",
-          "revenueAnual": 8203389.825895019,
+          "ingresoAnual": 8203389.825895019,
           "noiMensual": 330301,
           "sobreRenta": 48143,
           "sobreRentaPct": 0.17062426016628982,
@@ -9183,10 +9183,10 @@
         "comuna": "Santiago",
         "adrZona": 45543,
         "occZona": 0.419,
-        "revenueZonaMensual": 572570,
+        "ingresoZonaMensual": 572570,
         "percentilADR": 78,
         "percentilOcupacion": 22,
-        "percentilRevenue": 56,
+        "percentilIngreso": 56,
         "tierZona": "media",
         "score": 52,
         "comunaNoListada": false
@@ -9599,7 +9599,7 @@
       "escenarios": {
         "conservador": {
           "label": "Conservador",
-          "revenueAnual": 4470490,
+          "ingresoAnual": 4470490,
           "ingresoBrutoMensual": 372541,
           "comisionMensual": 74508,
           "costosOperativos": 213150,
@@ -9616,7 +9616,7 @@
         },
         "base": {
           "label": "Base",
-          "revenueAnual": 8021942,
+          "ingresoAnual": 8021942,
           "ingresoBrutoMensual": 668495,
           "comisionMensual": 133699,
           "costosOperativos": 213150,
@@ -9633,7 +9633,7 @@
         },
         "agresivo": {
           "label": "Agresivo",
-          "revenueAnual": 11268426,
+          "ingresoAnual": 11268426,
           "ingresoBrutoMensual": 939036,
           "comisionMensual": 187807,
           "costosOperativos": 213150,
@@ -9657,7 +9657,7 @@
         },
         "str_auto": {
           "label": "Auto",
-          "revenueAnual": 8021942,
+          "ingresoAnual": 8021942,
           "ingresoBrutoMensual": 668495,
           "comisionMensual": 20055,
           "costosOperativos": 213150,
@@ -9674,7 +9674,7 @@
         },
         "str_admin": {
           "label": "Administrador",
-          "revenueAnual": 8021942,
+          "ingresoAnual": 8021942,
           "ingresoBrutoMensual": 668495,
           "comisionMensual": 133699,
           "costosOperativos": 213150,
@@ -9781,12 +9781,12 @@
         }
       ],
       "perdidaRampUp": 1002743,
-      "breakEvenRevenueAnual": 11875245,
+      "breakEvenIngresoAnual": 11875245,
       "breakEvenPctDelMercado": 1.480345407633214,
       "sensibilidad": [
         {
           "label": "P25",
-          "revenueAnual": 5822908.499777101,
+          "ingresoAnual": 5822908.499777101,
           "noiMensual": 175044,
           "sobreRenta": -124306,
           "sobreRentaPct": -0.41525304827125437,
@@ -9794,7 +9794,7 @@
         },
         {
           "label": "P50",
-          "revenueAnual": 8051536.907153703,
+          "ingresoAnual": 8051536.907153703,
           "noiMensual": 323619,
           "sobreRenta": 24269,
           "sobreRentaPct": 0.0810723233672958,
@@ -9802,7 +9802,7 @@
         },
         {
           "label": "P75",
-          "revenueAnual": 11858841.493912997,
+          "ingresoAnual": 11858841.493912997,
           "noiMensual": 577440,
           "sobreRenta": 278090,
           "sobreRentaPct": 0.9289794554868882,
@@ -9810,7 +9810,7 @@
         },
         {
           "label": "P90",
-          "revenueAnual": 15696570.343253674,
+          "ingresoAnual": 15696570.343253674,
           "noiMensual": 833288,
           "sobreRenta": 533938,
           "sobreRentaPct": 1.7836579255052614,
@@ -9818,7 +9818,7 @@
         },
         {
           "label": "Promedio",
-          "revenueAnual": 9841753.830522753,
+          "ingresoAnual": 9841753.830522753,
           "noiMensual": 442967,
           "sobreRenta": 143617,
           "sobreRentaPct": 0.4797628194421246,
@@ -9982,10 +9982,10 @@
         "comuna": "Santiago",
         "adrZona": 47496,
         "occZona": 0.463,
-        "revenueZonaMensual": 659336,
+        "ingresoZonaMensual": 659336,
         "percentilADR": 78,
         "percentilOcupacion": 39,
-        "percentilRevenue": 67,
+        "percentilIngreso": 67,
         "tierZona": "media",
         "score": 61,
         "comunaNoListada": false
@@ -13435,9 +13435,9 @@
         "tierZona": "media",
         "percentilADR": 78,
         "comunaNoListada": false,
-        "percentilRevenue": 56,
+        "percentilIngreso": 56,
         "percentilOcupacion": 22,
-        "revenueZonaMensual": 572570
+        "ingresoZonaMensual": 572570
       },
       "adrFuente": "modelo",
       "adrModelo": 45543,
@@ -13758,7 +13758,7 @@
           "capRate": 0.021898939617083946,
           "cashOnCash": -0.10493106987761548,
           "noiMensual": 247823,
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "adrReferencia": 45543,
           "comisionMensual": 116104,
           "costosOperativos": 216592,
@@ -13772,7 +13772,7 @@
           "capRate": 0.04451363770250368,
           "cashOnCash": -0.02410264508487959,
           "noiMensual": 503746,
-          "revenueAnual": 10805077,
+          "ingresoAnual": 10805077,
           "adrReferencia": 45543,
           "comisionMensual": 180085,
           "costosOperativos": 216592,
@@ -13786,7 +13786,7 @@
           "capRate": 0.004431958762886598,
           "cashOnCash": -0.16736075799447295,
           "noiMensual": 50155,
-          "revenueAnual": 4001209,
+          "ingresoAnual": 4001209,
           "adrReferencia": 37523,
           "comisionMensual": 66687,
           "costosOperativos": 216592,
@@ -13807,7 +13807,7 @@
           "capRate": 0.030619528718703975,
           "cashOnCash": -0.07376233714962495,
           "noiMensual": 346511,
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "adrReferencia": 45543,
           "comisionMensual": 17416,
           "costosOperativos": 216592,
@@ -13821,7 +13821,7 @@
           "capRate": 0.021898939617083946,
           "cashOnCash": -0.10493106987761548,
           "noiMensual": 247823,
-          "revenueAnual": 6966228,
+          "ingresoAnual": 6966228,
           "adrReferencia": 45543,
           "comisionMensual": 116104,
           "costosOperativos": 216592,
@@ -13974,35 +13974,35 @@
           "label": "P25",
           "noiMensual": 126578,
           "sobreRenta": -155580,
-          "revenueAnual": 5147555.565186529,
+          "ingresoAnual": 5147555.565186529,
           "sobreRentaPct": -0.5513931910489868
         },
         {
           "label": "P50",
           "noiMensual": 251878,
           "sobreRenta": -30280,
-          "revenueAnual": 7027061.567389272,
+          "ingresoAnual": 7027061.567389272,
           "sobreRentaPct": -0.10731575925545261
         },
         {
           "label": "P75",
           "noiMensual": 496726,
           "sobreRenta": 214568,
-          "revenueAnual": 10699761.64605664,
+          "ingresoAnual": 10699761.64605664,
           "sobreRentaPct": 0.7604533630093777
         },
         {
           "label": "P90",
           "noiMensual": 760824,
           "sobreRenta": 478666,
-          "revenueAnual": 14661243.050870305,
+          "ingresoAnual": 14661243.050870305,
           "sobreRentaPct": 1.6964466717229354
         },
         {
           "label": "Promedio",
           "noiMensual": 330301,
           "sobreRenta": 48143,
-          "revenueAnual": 8203389.825895019,
+          "ingresoAnual": 8203389.825895019,
           "sobreRentaPct": 0.17062426016628982
         }
       ],
@@ -14148,7 +14148,7 @@
           "flujoCajaMensual": -274232
         }
       ],
-      "breakEvenRevenueAnual": 11949795,
+      "breakEvenIngresoAnual": 11949795,
       "legacyEngineVeredicto": "BUSCAR OTRA",
       "breakEvenPctDelMercado": 1.7153895910383639,
       "recomendacionModalidad": "LTR_PREFERIDO"

@@ -125,8 +125,8 @@ async function evaluarStrBranch(
     regulacionEdificio: str.edificioPermiteAirbnb || "no_seguro",
     lat: typeof str.lat === "number" ? str.lat : -33.4378,
     lng: typeof str.lng === "number" ? str.lng : -70.6504,
-    revenueP50: airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0,
-    monthlyRevenue: Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [],
+    ingresoP50: airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0,
+    ingresoMensualScore: Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [],
   };
 
   const d = evaluarStr(inputs, scoreCtx, asOf, STR_DELTA_TARIFA, STR_DELTA_OCC_PP, { esEstimacion });

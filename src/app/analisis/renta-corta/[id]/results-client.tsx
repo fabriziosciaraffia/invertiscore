@@ -561,7 +561,7 @@ export function STRResultsClient({
           <>
             <EjesAplicadosSTR
               ejes={results.ejesAplicados}
-              revenueMensualBase={results.escenarios.base.ingresoBrutoMensual}
+              ingresoMensualBase={results.escenarios.base.ingresoBrutoMensual}
               currency={currency}
               valorUF={ufValue}
               occFuente={results.occFuente}

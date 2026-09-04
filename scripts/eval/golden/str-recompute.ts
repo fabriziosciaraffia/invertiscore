@@ -230,7 +230,7 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
   const rec = calcShortTerm(inputs, asOfGolden);
   const scoreExtras = { dormitorios: d.dormitorios, superficie: d.superficieUtil, regulacionEdificio: reg,
     lat: d.lat ?? -33.4378, lng: d.lng ?? -70.6504,
-    revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue };
+    ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue };
   const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, ...scoreExtras } as any);
   // Mediana comunal confiable con DESVIACIÓN CONOCIDA por seed (MEDIANA_DESV_POR_SEED):
   // mediana = sujeto / (1 + desv), así el sobreprecio del seed mide exactamente `desv`.

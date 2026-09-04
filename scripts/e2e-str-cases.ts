@@ -125,7 +125,7 @@ async function runCase(
     console.log(`    ocupacionFinal        = ${(ea.ocupacionFinal * 100).toFixed(0)}%`);
   }
   console.log(`  Base scenario:`);
-  console.log(`    Revenue/año     = ${result.escenarios.base.revenueAnual.toLocaleString("es-CL")}`);
+  console.log(`    Ingreso/año     = ${result.escenarios.base.ingresoAnual.toLocaleString("es-CL")}`);
   console.log(`    NOI mensual     = ${result.escenarios.base.noiMensual.toLocaleString("es-CL")}`);
   console.log(`    Pérdida ramp-up = ${result.perdidaRampUp.toLocaleString("es-CL")} (5 meses parciales)`);
   console.log(`    Veredicto       = ${result.veredicto}`);
@@ -146,7 +146,7 @@ async function runCase(
     ["Edificio:", html.includes("Edificio:")],
     ["Habilitación:", html.includes("Habilitación:")],
     ["Gestión:", html.includes("Gestión:")],
-    ["Revenue mensual estimado", html.includes("Revenue mensual estimado")],
+    ["Ingreso mensual estimado", html.includes("Ingreso mensual estimado")],
     [`ADR final "${adrFinalFmt}" en HTML`, html.includes(adrFinalFmt)],
     [`Occ final ${occFinalPct}% en HTML`, html.includes(`${occFinalPct}%`)],
   ];

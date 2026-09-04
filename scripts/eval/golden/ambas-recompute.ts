@@ -68,7 +68,7 @@ function findingsOrdenDe(rec: any, d: any): string {
     // de ese campo — el finding `patrimonio` está siempre presente.
     ltrPatY10: 0, strPatY10: 0, asimetriaEntrega: false,
     breakEvenPctDelMercado: rec.breakEvenPctDelMercado ?? 0,
-    breakEvenRevenueAnual: rec.breakEvenRevenueAnual ?? 0,
+    breakEvenIngresoAnual: rec.breakEvenIngresoAnual ?? 0,
     zonaTier: rec.zonaSTR?.tierZona, zonaPercentilADR: rec.zonaSTR?.percentilADR,
     zonaPercentilOcupacion: rec.zonaSTR?.percentilOcupacion, zonaComuna: rec.zonaSTR?.comuna,
     edificioPermiteAirbnb: typeof d?.edificioPermiteAirbnb === "string" ? d.edificioPermiteAirbnb : "no_seguro",

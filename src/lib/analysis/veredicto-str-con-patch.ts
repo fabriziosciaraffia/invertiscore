@@ -8,11 +8,11 @@
 //
 // DOS OBJETOS, no uno. A diferencia de LTR —donde el patch cae sobre un único
 // `AnalisisInput`— acá el veredicto depende de `ShortTermInputs` (motor) Y de los extras de
-// `ScoreSTRInputs` (dimensión factibilidad: tipología, regulación, atractores, revenue de
+// `ScoreSTRInputs` (dimensión factibilidad: tipología, regulación, atractores, ingreso de
 // mercado). El único campo que vive en los DOS y hay que patchear en ambos es
 // `precioCompra`: el motor lo usa para pie/dividendo y el score para el cap rate implícito.
-// Los demás extras (lat/lng, dormitorios, superficie, regulación, revenueP50,
-// monthlyRevenue) son del mercado y de la propiedad física — ninguna palanca los mueve, y
+// Los demás extras (lat/lng, dormitorios, superficie, regulación, ingresoP50,
+// ingresoMensualScore) son del mercado y de la propiedad física — ninguna palanca los mueve, y
 // mantenerlos fijos es lo correcto: subir la tarifa propia no cambia la mediana de la zona.
 
 import { calcShortTerm, type ShortTermInputs, type ShortTermResult } from "@/lib/engines/short-term-engine";

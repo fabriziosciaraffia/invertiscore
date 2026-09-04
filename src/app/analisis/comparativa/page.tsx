@@ -1,3 +1,4 @@
+import { normalizarResultsStrPersistidos } from "@/lib/analysis/normalizar-results-str";
 import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -137,7 +138,7 @@ export default async function ComparativaPage({
   // si falta airbnbRaw.
   // P2 (Rama 0b): el lado STR adopta la UF real reconstruida del lado LTR del par
   // (resolveUfForAnalysis = precioCLP/precio, byte-idéntica a la prosa LTR) en vez de su
-  // propia UF congelada (fallback ~38.800). El recompute STR re-escala precio+revenue a esta
+  // propia UF congelada (fallback ~38.800). El recompute STR re-escala precio+ingreso a esta
   // UF (TIR-neutral), homologando la base CLP de ambos motores para el hero comparativo. Es
   // el mismo par-propiedad entrado ~al mismo tiempo, así que la UF real de LTR es la del día.
   // La UF se reconstruye del PERSISTIDO (precioCLP no lo toca la evolución del motor).
@@ -184,7 +185,7 @@ export default async function ComparativaPage({
     ltrUfFrozen,
     strAsOfFrozen,
     strMediana,
-  ) ?? strResultsPersisted) as STRResultsWithScore | null;
+  ) ?? normalizarResultsStrPersistidos(strResultsPersisted)) as STRResultsWithScore | null;
 
   // Fase D — gating del MODAL de resumen. El comparativo sigue íntegro (esto NO
   // lo toca): solo decide si las mini-cards de los hijos abren el modal (bloqueado)

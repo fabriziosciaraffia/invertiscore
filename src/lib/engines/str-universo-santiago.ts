@@ -44,7 +44,7 @@ export const STR_UNIVERSO_OCC: Record<string, number> = Object.fromEntries(
 
 // Ingreso bruto mensual por comuna (CLP) = ADR × ocupación × 30. Redundante con los dos
 // de arriba, pero precalcularlo evita que UI/IA inventen cálculos al vuelo.
-export const STR_UNIVERSO_REVENUE: Record<string, number> = Object.fromEntries(
+export const STR_UNIVERSO_INGRESO: Record<string, number> = Object.fromEntries(
   Object.entries(STR_UNIVERSO_V2).map(([c, d]) => [c, Math.round(d.adr.valor * d.ocupacion.valor * 30)]),
 );
 
@@ -78,13 +78,13 @@ export interface ZonaSTRScore {
   /** Ocupación de la dirección (p50 de la estimación de mercado). */
   occZona: number;
   /** Ingreso bruto mensual estabilizado = adr × occ × 30. */
-  revenueZonaMensual: number;
+  ingresoZonaMensual: number;
   /** Percentil de ADR vs las comunas con datos (0-100). */
   percentilADR: number;
   /** Percentil de ocupación vs las comunas con datos. */
   percentilOcupacion: number;
   /** Percentil de ingreso mensual vs las comunas con datos. */
-  percentilRevenue: number;
+  percentilIngreso: number;
   /** Tier agregado: alta (>=70 avg), media (40-70), baja (<40). */
   tierZona: "alta" | "media" | "baja";
   /** Score zona 0-100 (promedio simple de los 3 percentiles). */
@@ -121,16 +121,16 @@ export function calcZonaSTR(
 ): ZonaSTRScore {
   const adrUniverso = Object.values(STR_UNIVERSO_ADR);
   const occUniverso = Object.values(STR_UNIVERSO_OCC);
-  const revenueUniverso = Object.values(STR_UNIVERSO_REVENUE);
-  const revenueZona = Math.round(adrZona * occZona * 30);
+  const ingresoUniverso = Object.values(STR_UNIVERSO_INGRESO);
+  const ingresoZona = Math.round(adrZona * occZona * 30);
 
   const percentilADR = percentileRank(adrUniverso, adrZona);
   const percentilOcupacion = percentileRank(occUniverso, occZona);
-  const percentilRevenue = percentileRank(revenueUniverso, revenueZona);
+  const percentilIngreso = percentileRank(ingresoUniverso, ingresoZona);
 
   // Score agregado: media simple. El ingreso ya combina ADR+occ pero los 3 percentiles
   // capturan dimensiones distintas (ADR alto con baja ocupación, o viceversa).
-  const score = Math.round((percentilADR + percentilOcupacion + percentilRevenue) / 3);
+  const score = Math.round((percentilADR + percentilOcupacion + percentilIngreso) / 3);
 
   let tierZona: ZonaSTRScore["tierZona"];
   if (score >= 70) tierZona = "alta";
@@ -146,10 +146,10 @@ export function calcZonaSTR(
     comuna,
     adrZona: Math.round(adrZona),
     occZona: Math.round(occZona * 1000) / 1000,
-    revenueZonaMensual: revenueZona,
+    ingresoZonaMensual: ingresoZona,
     percentilADR,
     percentilOcupacion,
-    percentilRevenue,
+    percentilIngreso,
     tierZona,
     score,
     comunaNoListada: datos === null,
@@ -170,7 +170,7 @@ export type RecomendacionModalidadSTR =
 // D1 (Rama superficie AMBAS) — banda tipada refinada del veredicto comparativo.
 // Añade STR_FRAGIL sobre los 3 valores de RecomendacionModalidadSTR: es el estado
 // honesto cuando el flujo STR supera a LTR (sobre-renta ≥15%) PERO el break-even está
-// en zona frágil (>90% del revenue de mercado). La `recomendacion` que consume el resto
+// en zona frágil (>90% del ingreso de mercado). La `recomendacion` que consume el resto
 // del sistema colapsa STR_FRAGIL → INDIFERENTE (backward-compat); la banda preserva el
 // "por qué" para que la superficie muestre la advertencia sin inventar copy.
 export type BandaComparativa =
@@ -229,7 +229,7 @@ export interface VeredictoComparativo {
 export const SOBRE_RENTA_PCT_MAX_CONFIABLE = 3.0; // ±300%
 
 // D1 (Rama superficie AMBAS) — cortes de break-even de la SEGUNDA condición. ≤90% del
-// revenue de mercado = margen holgado (ventaja clara sostenible); (90%,110%] = frágil
+// ingreso de mercado = margen holgado (ventaja clara sostenible); (90%,110%] = frágil
 // (degrada a INDIFERENTE con advertencia); >110% = data conflictiva (flujo alto sobre LTR
 // pero STR no cubre costos ni al precio de mercado → INDIFERENTE, sin sello frágil). El
 // corte 110% alinea con `corteFragil` de HallazgoSensibilidadStr (Gate-2 STR).

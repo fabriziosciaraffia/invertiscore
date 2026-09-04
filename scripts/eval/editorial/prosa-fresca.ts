@@ -74,7 +74,7 @@ export async function prosaFrescaStr(
   const scoreExtras = {
     dormitorios: d.dormitorios, superficie: d.superficieUtil,
     regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro", lat, lng,
-    revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue,
+    ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue,
   };
   const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, ...scoreExtras } as any);
   let mediana: { mediana: number | null; n: number } = { mediana: null, n: 0 };

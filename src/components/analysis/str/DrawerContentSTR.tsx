@@ -560,7 +560,7 @@ export function DrawerContentSTR({
         <DrawerSection label={occEsOverride ? "Escenario base (ocupación definida por ti)" : "Escenario base (mediana observada de la zona · P50)"}>
           <DataRow
             label="Ingresos brutos anuales"
-            value={fmtMoney(base.revenueAnual, currency, valorUF)}
+            value={fmtMoney(base.ingresoAnual, currency, valorUF)}
             tooltip={occEsOverride
               ? "Total de ingresos del año asumiendo la ocupación que definiste. Sin descontar costos."
               : "Total de ingresos del año asumiendo la mediana observada de la zona. Sin descontar costos."}
@@ -697,7 +697,7 @@ export function DrawerContentSTR({
     // Drawer solo-motor (E.2): patrón cap_rate LTR. Sin narrativa IA.
     const rows = results.sensibilidad;
     const breakEvenPct = results.breakEvenPctDelMercado;
-    const breakEvenAnual = results.breakEvenRevenueAnual;
+    const breakEvenAnual = results.breakEvenIngresoAnual;
     return (
       <>
         {/* ═══ CONVERSIÓN 11 (FASE 4.2) — el equilibrio, antes de la tabla ═══

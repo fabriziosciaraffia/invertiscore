@@ -57,8 +57,8 @@ export function buildStrRecomputeCtx(
 
   const airbnbData = buildAirbnbData(airbnbRaw as any, ufClp);
 
-  // P2 (Rama 0b): base CLP re-escalada al MISMO `ufClp` que convierte el revenue
-  // (buildAirbnbData arriba) → precio y revenue quedan en la misma UF, de modo que los
+  // P2 (Rama 0b): base CLP re-escalada al MISMO `ufClp` que convierte el ingreso
+  // (buildAirbnbData arriba) → precio y ingreso quedan en la misma UF, de modo que los
   // ratios (TIR, multiplicador de capital) son INVARIANTES al cambio de UF: solo re-escalan
   // las magnitudes CLP absolutas (patrimonio, saldo). precioCompra se deriva de
   // `precioCompraUF × ufClp`. Con la UF congelada propia (standalone) es no-op; en el
@@ -118,8 +118,8 @@ export function buildStrRecomputeCtx(
 
   const lat = typeof inputData.lat === "number" ? inputData.lat : -33.4378;
   const lng = typeof inputData.lng === "number" ? inputData.lng : -70.6504;
-  const monthlyRevenue = Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [];
-  const revenueP50 = airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0;
+  const ingresoMensualScore = Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [];
+  const ingresoP50 = airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0;
 
   return {
     inputs,
@@ -130,8 +130,8 @@ export function buildStrRecomputeCtx(
       regulacionEdificio: inputData.edificioPermiteAirbnb || "no_seguro",
       lat,
       lng,
-      revenueP50,
-      monthlyRevenue,
+      ingresoP50,
+      ingresoMensualScore,
     },
   };
 }

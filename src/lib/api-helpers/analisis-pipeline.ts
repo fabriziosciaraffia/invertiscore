@@ -688,8 +688,8 @@ export async function buildShortTermAnalysisRow(
   const lat = typeof body.lat === "number" ? body.lat : -33.4378;
   const lng = typeof body.lng === "number" ? body.lng : -70.6504;
 
-  const monthlyRevenue = Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [];
-  const revenueP50 = airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0;
+  const ingresoMensualScore = Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [];
+  const ingresoP50 = airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0;
 
   const scoreInputs: ScoreSTRInputs = {
     results: result,
@@ -699,8 +699,8 @@ export async function buildShortTermAnalysisRow(
     regulacionEdificio: body.edificioPermiteAirbnb || "no_seguro",
     lat,
     lng,
-    revenueP50,
-    monthlyRevenue,
+    ingresoP50,
+    ingresoMensualScore,
   };
 
   const francoScore = calcFrancoScoreSTR(scoreInputs);
@@ -730,8 +730,8 @@ export async function buildShortTermAnalysisRow(
         regulacionEdificio: scoreInputs.regulacionEdificio,
         lat: scoreInputs.lat,
         lng: scoreInputs.lng,
-        revenueP50: scoreInputs.revenueP50,
-        monthlyRevenue: scoreInputs.monthlyRevenue,
+        ingresoP50: scoreInputs.ingresoP50,
+        ingresoMensualScore: scoreInputs.ingresoMensualScore,
       },
       asOf: asOfPipeline,
     },

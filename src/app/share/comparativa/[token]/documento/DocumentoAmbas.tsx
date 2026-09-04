@@ -559,7 +559,7 @@ export function DocumentoAmbas({
                 return (
                   <div className={`row ${r.label === "P50" ? "base" : ""}`} key={r.label}>
                     <div className="pk">{r.label} {nivel && <small>· {nivel}</small>}</div>
-                    <div className="sv">{money(r.revenueAnual)}</div>
+                    <div className="sv">{money(r.ingresoAnual)}</div>
                     <div className="sv">{money(r.noiMensual)}</div>
                     <div className={`sv ${pos ? "pos" : "neg"}`}>
                       {r.sobreRentaPctConfiable

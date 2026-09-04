@@ -31,8 +31,8 @@ const MIN_N_SUPERHOST = 3;
 
 interface Props {
   ejes: EjesType | undefined;
-  /** Revenue mensual del escenario base (para mostrar el resultado final) */
-  revenueMensualBase: number;
+  /** Ingreso mensual del escenario base (para mostrar el resultado final) */
+  ingresoMensualBase: number;
   currency: "CLP" | "UF";
   valorUF: number;
   /** Fuente de la ocupación base (Remediación 2026-06). Si está presente, el
@@ -60,7 +60,7 @@ const LABEL_HABILITACION: Record<string, string> = {
   premium: "Premium",
 };
 
-export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, occFuente, occRealizada }: Props) {
+export function EjesAplicadosSTR({ ejes, ingresoMensualBase, currency, valorUF, occFuente, occRealizada }: Props) {
   const adrEsOverride = ejes?.adrOverride != null;
   const occEsOverride = ejes?.occOverride != null;
   // Arranca abierto si hay override manual: esa transparencia no se esconde
@@ -125,7 +125,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
           <span>Tarifa diaria <span className="text-[var(--franco-text)] font-medium">{fmtMoney(adrFinal, currency, valorUF)}</span></span>
           <span>{occFuente ? "Ocupación observada" : "Ocupación"} <span className="text-[var(--franco-text)] font-medium">{occFinalPct}%</span></span>
           {occFuente && <span>Potencial <span className="text-[var(--franco-text)] font-medium">{occPct}%</span></span>}
-          <span>Bruto <span className="text-[var(--franco-text)] font-medium">{fmtMoney(revenueMensualBase, currency, valorUF)}</span></span>
+          <span>Bruto <span className="text-[var(--franco-text)] font-medium">{fmtMoney(ingresoMensualBase, currency, valorUF)}</span></span>
         </div>
       )}
 
@@ -268,7 +268,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
             )}
             <div className="flex justify-between font-mono text-[13px]">
               <span className="text-[var(--franco-text)]">Ingresos brutos mensuales estimados</span>
-              <span className="text-[var(--franco-text)] font-semibold">{fmtMoney(revenueMensualBase, currency, valorUF)}</span>
+              <span className="text-[var(--franco-text)] font-semibold">{fmtMoney(ingresoMensualBase, currency, valorUF)}</span>
             </div>
           </div>
 

@@ -50,7 +50,7 @@ for (const c of casos) {
   if (!okTier) fallos++;
 
   console.log(`\n▶ ${c.nombre} (comuna="${c.comuna}")`);
-  console.log(`  ADR p${z.percentilADR} · OCC p${z.percentilOcupacion} · REV p${z.percentilRevenue}`);
+  console.log(`  ADR p${z.percentilADR} · OCC p${z.percentilOcupacion} · REV p${z.percentilIngreso}`);
   console.log(`  Score zona: ${z.score}/100 · Tier: ${z.tierZona}`);
   console.log(`  Esperado: ${c.tierEsperado} · ${okTier ? "OK" : "FAIL"}`);
   console.log(`  comunaNoListada=${z.comunaNoListada}`);

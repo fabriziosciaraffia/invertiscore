@@ -194,9 +194,9 @@ export function DocumentoSTR({
   const breakEvenBorde = breakEvenPct >= BE_STR_CORTE_FAVORABLE && breakEvenPct <= BE_STR_CORTE_FRAGIL;
   const breakEvenBox =
     breakEvenInviable
-      ? { red: true, label: "Punto de equilibrio", text: `Para no perder plata necesitas facturar ${money(results.breakEvenRevenueAnual ?? 0)} al año — el ${breakEvenPct}% de los ingresos brutos medianos de la zona (P50), un ${breakEvenPct - 100}% por sobre lo típico. No es un margen apretado: es pedirle al departamento que opere en el techo del mercado todo el año solo para quedar en cero. La palanca está en el precio de compra o en los costos, no en apretar la ocupación ni la tarifa.` }
+      ? { red: true, label: "Punto de equilibrio", text: `Para no perder plata necesitas facturar ${money(results.breakEvenIngresoAnual ?? 0)} al año — el ${breakEvenPct}% de los ingresos brutos medianos de la zona (P50), un ${breakEvenPct - 100}% por sobre lo típico. No es un margen apretado: es pedirle al departamento que opere en el techo del mercado todo el año solo para quedar en cero. La palanca está en el precio de compra o en los costos, no en apretar la ocupación ni la tarifa.` }
       : breakEvenFragil
-      ? { red: true, label: "Punto de equilibrio", text: `Para no perder plata necesitas facturar ${money(results.breakEvenRevenueAnual ?? 0)} al año — el ${breakEvenPct}% de los ingresos brutos medianos de la zona (P50). Estás pidiéndole al listing que rinda sobre lo típico solo para quedar en cero: por debajo del P50, el corto ya no cubre la cuota. Es el número más frágil del análisis.` }
+      ? { red: true, label: "Punto de equilibrio", text: `Para no perder plata necesitas facturar ${money(results.breakEvenIngresoAnual ?? 0)} al año — el ${breakEvenPct}% de los ingresos brutos medianos de la zona (P50). Estás pidiéndole al listing que rinda sobre lo típico solo para quedar en cero: por debajo del P50, el corto ya no cubre la cuota. Es el número más frágil del análisis.` }
       : breakEvenBorde
         ? { red: true, label: "Punto de equilibrio", text: `Tu punto de equilibrio está en el ${Math.round(breakEvenPct)}% de los ingresos brutos medianos de la zona (P50) — justo en el borde. Cuadras si la zona rinde lo típico, pero sin colchón para un mal trimestre de ocupación o tarifa.` }
         : { red: false, label: "Punto de equilibrio", text: `Tu punto de equilibrio está en el ${Math.round(breakEvenPct)}% de los ingresos brutos medianos de la zona (P50): cuadras facturando por debajo de lo que rinde la zona típica. Hay colchón si la ocupación o la tarifa vienen algo más bajas de lo asumido.` };
@@ -469,7 +469,7 @@ export function DocumentoSTR({
             return (
               <div className={`row ${es50 ? "base" : ""}`} key={r.label}>
                 <div className="pk">{r.label} {nivelLabel && <small>· {nivelLabel}</small>}</div>
-                <div className="sv">{money(r.revenueAnual)}</div>
+                <div className="sv">{money(r.ingresoAnual)}</div>
                 <div className="sv">{money(r.noiMensual)}</div>
                 <div className={`sv ${srPos ? "pos" : "neg"}`}>{r.sobreRentaPctConfiable ? `${srPos ? "+" : ""}${money(r.sobreRenta)} · ${srPos ? "+" : ""}${Math.round(r.sobreRentaPct * 100)}%` : money(r.sobreRenta)}</div>
               </div>

@@ -145,8 +145,8 @@ export interface ScoreSTRInputs {
   lat: number;
   lng: number;
 
-  revenueP50: number;
-  monthlyRevenue: number[];
+  ingresoP50: number;
+  ingresoMensualScore: number[];
 
   // Remediación metro 2026-06: `distanciaMetro` deprecado. La distancia a metro
   // se deriva de lat/lng dentro de calcAtractores (findNearestStation, filtro
@@ -238,14 +238,14 @@ const ESCALA_ESTABILIDAD: [number, number][] = [
 function calcSostenibilidad(
   flujoCajaMensual: number,
   breakEvenPctDelMercado: number,
-  monthlyRevenue: number[]
+  ingresoMensualScore: number[]
 ): DimensionScore {
   const puntajeFlujo = interpolate(flujoCajaMensual, ESCALA_FLUJO);
 
   const puntajeBreakeven = interpolate(breakEvenPctDelMercado, ESCALA_BREAKEVEN);
 
-  const minMonth = monthlyRevenue.length > 0 ? Math.min(...monthlyRevenue) : 0;
-  const maxMonth = monthlyRevenue.length > 0 ? Math.max(...monthlyRevenue) : 0;
+  const minMonth = ingresoMensualScore.length > 0 ? Math.min(...ingresoMensualScore) : 0;
+  const maxMonth = ingresoMensualScore.length > 0 ? Math.max(...ingresoMensualScore) : 0;
   const estabilidadRatio = maxMonth > 0 ? minMonth / maxMonth : 0;
   const puntajeEstabilidad = interpolate(estabilidadRatio, ESCALA_ESTABILIDAD);
 
@@ -388,8 +388,8 @@ function calcAtractores(lat: number, lng: number): { score: number; detail: stri
 
 function calcFactibilidad(inputs: ScoreSTRInputs): DimensionScore {
   const benchmark = REVENUE_BENCHMARKS[inputs.dormitorios] || REVENUE_BENCHMARKS[1];
-  const revenueRatio = benchmark > 0 ? inputs.revenueP50 / benchmark : 0;
-  const puntajeRevenue = interpolate(revenueRatio, ESCALA_REVENUE_RELATIVO);
+  const ingresoRatio = benchmark > 0 ? inputs.ingresoP50 / benchmark : 0;
+  const puntajeIngreso = interpolate(ingresoRatio, ESCALA_REVENUE_RELATIVO);
 
   const puntajeTipologia = calcTipologia(inputs.dormitorios, inputs.superficie);
 
@@ -398,7 +398,7 @@ function calcFactibilidad(inputs: ScoreSTRInputs): DimensionScore {
   const atractores = calcAtractores(inputs.lat, inputs.lng);
 
   const score = Math.round(
-    puntajeRevenue * 0.30 +
+    puntajeIngreso * 0.30 +
     puntajeTipologia * 0.20 +
     puntajeRegulacion * 0.25 +
     atractores.score * 0.25
@@ -423,7 +423,7 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   const sostenibilidad = calcSostenibilidad(
     base.flujoCajaMensual,
     inputs.results.breakEvenPctDelMercado,
-    inputs.monthlyRevenue
+    inputs.ingresoMensualScore
   );
   const ventaja = calcVentaja(inputs.results.comparativa.sobreRentaPct);
   const factibilidad = calcFactibilidad(inputs);

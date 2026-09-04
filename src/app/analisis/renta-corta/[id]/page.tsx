@@ -1,3 +1,4 @@
+import { normalizarResultsStrPersistidos } from "@/lib/analysis/normalizar-results-str";
 import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -86,7 +87,7 @@ export default async function STRResultPage({
     redirect(user ? "/dashboard" : "/");
   }
 
-  const persistedResults = data.results as (ShortTermResult & { tipoAnalisis?: string }) | null;
+  const persistedResults = normalizarResultsStrPersistidos(data.results as (ShortTermResult & { tipoAnalisis?: string }) | null);
 
   // Commit E.1 · 2026-05-13 — guard simétrico LTR↔STR.
   // Antes solo se chequeaba results.tipoAnalisis (jsonb). Ahora se valida

@@ -91,7 +91,7 @@ export interface FindingsCtx {
   asimetriaEntrega: boolean;
   // Break-even / zona
   breakEvenPctDelMercado: number;
-  breakEvenRevenueAnual: number;    // facturación anual necesaria para no perder (derivación F4)
+  breakEvenIngresoAnual: number;    // facturación anual necesaria para no perder (derivación F4)
   zonaTier?: string;
   zonaPercentilADR?: number;
   zonaPercentilOcupacion?: number;
@@ -152,7 +152,7 @@ export function ctxFromResults(
     strPatY10: str.projections?.[9]?.patrimonioNeto ?? null,
     asimetriaEntrega: hayAsimetriaDeEntrega(ltr.projections, ltr.metrics, str.projections),
     breakEvenPctDelMercado: str.breakEvenPctDelMercado ?? 0,
-    breakEvenRevenueAnual: str.breakEvenRevenueAnual ?? 0,
+    breakEvenIngresoAnual: str.breakEvenIngresoAnual ?? 0,
     zonaTier: str.zonaSTR?.tierZona,
     zonaPercentilADR: str.zonaSTR?.percentilADR,
     zonaPercentilOcupacion: str.zonaSTR?.percentilOcupacion,
@@ -361,7 +361,7 @@ function buildBreakEven(x: FindingsCtx, c: Currency, uf: number): FindingCompara
   const tarifaAlta = x.zonaPercentilADR != null && x.zonaPercentilADR >= 60;
   const occBaja = x.zonaPercentilOcupacion != null && x.zonaPercentilOcupacion < 50;
   const tension = tarifaAlta && occBaja;
-  const revenueMercado = x.breakEvenPctDelMercado > 0 ? Math.round(x.breakEvenRevenueAnual / x.breakEvenPctDelMercado) : 0;
+  const ingresoMercado = x.breakEvenPctDelMercado > 0 ? Math.round(x.breakEvenIngresoAnual / x.breakEvenPctDelMercado) : 0;
   // C5: conclusión primero; la tensión es el insight, no la cola.
   const titular = holgado
     ? "El corto convendría: cubre sus costos facturando bastante menos que el promedio de la zona"
@@ -390,8 +390,8 @@ function buildBreakEven(x: FindingsCtx, c: Currency, uf: number): FindingCompara
       titulo: `De dónde sale el ${bePct}%`,
       lead: `El punto de equilibrio compara dos facturaciones anuales del corto: la que necesita solo para cubrir costos, contra la que rinde una operación típica de la zona. El ratio entre las dos es el ${bePct}%:`,
       filas: [
-        { label: "Facturación que necesita para no perder", str: money(x.breakEvenRevenueAnual, c, uf) + "/año" },
-        { label: "Lo que rinde una operación típica de la zona", str: money(revenueMercado, c, uf) + "/año" },
+        { label: "Facturación que necesita para no perder", str: money(x.breakEvenIngresoAnual, c, uf) + "/año" },
+        { label: "Lo que rinde una operación típica de la zona", str: money(ingresoMercado, c, uf) + "/año" },
         { label: "El corto necesita, de eso", str: `${bePct}%` },
       ],
       nota: holgado

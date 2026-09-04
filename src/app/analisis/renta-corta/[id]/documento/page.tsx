@@ -1,3 +1,4 @@
+import { normalizarResultsStrPersistidos } from "@/lib/analysis/normalizar-results-str";
 // ─────────────────────────────────────────────────────────────────────────
 // Vista DOCUMENTO STR (renta corta) — ruta dedicada que visita Puppeteer para
 // el PDF. Espejo estructural de /analisis/[id]/documento (LTR): guard-only (sin
@@ -65,7 +66,7 @@ export default async function DocumentoSTRPage({ params }: { params: { id: strin
     redirect(`/analisis/renta-corta/${params.id}?desde=documento`);
   }
 
-  const persistedResults = data.results as (ShortTermResult & { tipoAnalisis?: string }) | null;
+  const persistedResults = normalizarResultsStrPersistidos(data.results as (ShortTermResult & { tipoAnalisis?: string }) | null);
 
   // Guard: un análisis long-term va al documento LTR (espejo del guard inverso).
   const tipoCol = (data as Record<string, unknown>).tipo_analisis;

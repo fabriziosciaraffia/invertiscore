@@ -93,7 +93,7 @@ function decisividadDesdeStr(base: FrancoScoreSTR, neu: FrancoScoreSTR): Decisiv
 /**
  * Busca la tarifa (ADR) que lleva el cap rate del escenario base al umbral STR
  * (neutralización de rentabilidad_str). El cap es monótono creciente en el ADR
- * (revenue = ADR × occ × 365; NOI = revenue × (1 − comisión) − costos) → bisección.
+ * (ingreso = ADR × occ × 365; NOI = ingreso × (1 − comisión) − costos) → bisección.
  */
 function solveAdrForCapRate(ctx: VeredictoStrCtx, adrRef: number, targetCapDec: number): number {
   let lo = 1;
