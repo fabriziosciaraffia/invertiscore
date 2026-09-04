@@ -48,6 +48,7 @@ import { ZonaCardSTR } from "@/components/analysis/str/ZonaCardSTR";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import type { AIAnalysisSTRv2, HallazgoDistanciaVeredicto } from "@/lib/types";
 import type { NivelPie } from "@/lib/analysis";
+import type { SimulacionStr } from "@/lib/analysis/simular-str";
 import { derivarCifraClaveStr } from "@/lib/cifra-clave";
 import { buildFichaStr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
@@ -102,6 +103,9 @@ interface STRResultsProps {
   /** Escalera del pie precalculada en el server (`simularPieStr`): el reconstructor
    *  del input arrastra `next/headers` y no puede importarse desde el cliente. */
   nivelesPie?: NivelPie[];
+  /** Simulaciones del CONGELADO (T0): fronteras de los diales y las matrices, calculadas en
+   *  el server. T1 las dibuja; hasta entonces viajan y no se leen. */
+  simulacionStr?: SimulacionStr | null;
 }
 
 export function STRResultsClient({

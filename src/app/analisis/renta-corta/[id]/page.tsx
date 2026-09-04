@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { simularPieStr } from "@/lib/analysis/simular-pie-str";
+import { simularStrDesdePersistido } from "@/lib/analysis/simular-str";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import { STRResultsClient } from "./results-client";
@@ -261,6 +262,20 @@ export default async function STRResultPage({
     }
   })();
 
+  // SIMULACIONES DEL CONGELADO (T0 · 04-sep-2026): fronteras de los diales y las dos
+  // matrices, en el server por la misma razón que la escalera. Nada se bisecciona en el
+  // render; T1 las consume.
+  const simulacionStr = (() => {
+    const raw = data.input_data as Record<string, unknown> | null;
+    const uf = Number(raw?.ufCongelada) || ufFrozen;
+    if (!raw || !data.created_at || !(uf > 0)) return null;
+    try {
+      return simularStrDesdePersistido(raw, results as unknown as { airbnbRaw?: unknown }, uf, new Date(data.created_at));
+    } catch {
+      return null;
+    }
+  })();
+
   const sharedProps = {
     analysisId: data.id,
     results,
@@ -287,6 +302,7 @@ export default async function STRResultPage({
     showCtaWelcome,
     isAnonOwner,
     nivelesPie,
+    simulacionStr,
   };
 
   return <STRResultsClient {...sharedProps} />;
