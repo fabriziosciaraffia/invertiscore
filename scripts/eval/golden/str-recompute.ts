@@ -198,6 +198,22 @@ export interface StrBaseline {
 
 export interface StrRecompute { rec: any; score: any; hz: Hallazgo[]; mediana: { mediana: number; n: number } }
 
+/** Desviación del precio/m² del sujeto respecto de la mediana golden, por seed (decisión
+ *  Fabrizio, 04-sep-2026): GE-1 sobreprecio favorable leve (−5%), GE-4 adverso (+12%), el
+ *  resto ±3% alternado; GE-PJ va alineado (0) por su síntesis. Positivo = sujeto más caro
+ *  que la mediana. Documentado acá y en ningún otro lado: si un seed necesita otro
+ *  sobreprecio, se cambia esta tabla, no la fórmula. */
+export const MEDIANA_DESV_POR_SEED: Record<string, number> = {
+  "GE-1": -0.05,
+  "GE-2": +0.03,
+  "GE-3": -0.03,
+  "GE-4": +0.12,
+  "GE-5": +0.03,
+  "GE-6": -0.03,
+  "GE-PC": -0.05, // síntesis sobre GE-1: hereda su desviación
+};
+export const MEDIANA_DESV_DEFAULT = 0.03;
+
 // Recompute determinístico de UN seed GE (reusado por el tier de checks y por str-accept).
 export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenFixture>): StrRecompute | null {
   // GE-PC no tiene fixture propia: se sintetiza sobre GE-1 (ver FILA_BASE), igual
@@ -216,13 +232,18 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
     lat: d.lat ?? -33.4378, lng: d.lng ?? -70.6504,
     revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue };
   const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, ...scoreExtras } as any);
-  // mediana fake confiable para ejercitar sobreprecio: comuna típica. Para el
-  // seed precio-justo (GE-PJ) la mediana va ALINEADA al precio/m² del sujeto
-  // (desv 0, confiable) — es la pata de la detección esCasoPrecioJustoStr.
-  const mediana =
-    seed.sintesis === "precio_justo"
-      ? { mediana: Math.round((d.precioCompra / fx.uf / d.superficieUtil) * 10) / 10, n: 25 }
-      : { mediana: 3200, n: 12 };
+  // Mediana comunal confiable con DESVIACIÓN CONOCIDA por seed (MEDIANA_DESV_POR_SEED):
+  // mediana = sujeto / (1 + desv), así el sobreprecio del seed mide exactamente `desv`.
+  // Hasta el 04-sep-2026 era un stub fijo de 3.200 UF/m² contra sujetos de 71 a 95: daba
+  // −97% en todos los seeds, inocuo mientras sobreprecio valía 0 y, con la decisividad
+  // real, coronaba GE-1 y GE-4 con un artefacto del fixture. Para el seed precio-justo
+  // (GE-PJ) la mediana va ALINEADA al sujeto (desv 0) — es la pata de esCasoPrecioJustoStr.
+  const sujetoUfM2 = d.precioCompra / fx.uf / d.superficieUtil;
+  const desv = seed.sintesis === "precio_justo" ? 0 : (MEDIANA_DESV_POR_SEED[seed.key] ?? MEDIANA_DESV_DEFAULT);
+  const mediana = {
+    mediana: Math.round((sujetoUfM2 / (1 + desv)) * 10) / 10,
+    n: seed.sintesis === "precio_justo" ? 25 : 12,
+  };
   // `veredictoCtx` es obligatorio en el golden aunque el assembler lo acepte opcional: sin
   // él el hallazgo de distancia al veredicto se omite y la red de seguridad mediría una
   // pirámide más corta que la de producción, en silencio.
