@@ -61,6 +61,10 @@ interface ZoneInsightStats {
     rangoArriendoMax: number;
     percentilTuDepto: number;
     precision: "exacta" | "superficie_amplia" | "dormitorios_flexibles" | "comuna_general";
+    /** Fecha ISO de la consulta de avisos (goal "LTR hereda", 05-sep-2026). OPCIONAL:
+     *  las caches anteriores no la traen y no se reconsultan (la invalidación es por
+     *  versión, no por edad); sin fecha la sección muestra "N avisos activos" a secas. */
+    asOf?: string;
   } | null;
 }
 
@@ -359,6 +363,7 @@ function buildOferta(
     rangoArriendoMax: Math.round(p90),
     percentilTuDepto: percentile(sorted, arriendoEstimadoCLP),
     precision,
+    asOf: new Date().toISOString(),
   };
 }
 

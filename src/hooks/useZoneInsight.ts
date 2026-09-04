@@ -21,6 +21,8 @@ export interface ZoneInsightData {
       rangoArriendoMax: number;
       percentilTuDepto: number;
       precision: "exacta" | "superficie_amplia" | "dormitorios_flexibles" | "comuna_general";
+      /** Fecha ISO de la consulta de avisos; ausente en caches anteriores. */
+      asOf?: string;
     } | null;
   };
   pois: {
