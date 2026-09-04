@@ -26,7 +26,7 @@ import { runCatchTest } from "./catch-test";
 import { runGenerateTier } from "./generate";
 import { runSemanticTier } from "./semantic";
 import { runStrTier } from "./str-recompute";
-import { runStrGenerateTier } from "./str-generate";
+import { runStrGenerateTier, type TandaStr } from "./str-generate";
 import { runAmbasTier } from "./ambas-recompute";
 import { runAmbasSemanticTier } from "./ambas-semantic";
 import { runStrSemanticTier } from "./str-semantic";
@@ -42,9 +42,12 @@ const STR_SEM = has("--str-semantic"); // tier coherencia modo-gestión STR stan
 // --dump=<dir>: guarda cada generación LTR del tier FULL; --from=<dir>: reutiliza esas
 // salidas (checks + juez sobre la MISMA prosa, cero tokens de generación).
 // --ltr-only: en FULL, salta la generación STR y los jueces AMBAS/STR.
+// --str-only: en FULL, salta la generación LTR, su juez y AMBAS: corre SOLO la tanda STR
+//   (generación fresca de los seis GE + juez Opus con el criterio del lead-coronado).
 const DUMP = argv.find((a) => a.startsWith("--dump="))?.slice("--dump=".length);
 const FROM = argv.find((a) => a.startsWith("--from="))?.slice("--from=".length);
 const LTR_ONLY = has("--ltr-only");
+const STR_ONLY = has("--str-only");
 
 function sb() {
   return createClient(
@@ -75,6 +78,18 @@ async function printAmbasSemantic(sbClient: ReturnType<typeof sb>) {
   }
   console.log("\n  cobertura por banda:", JSON.stringify(byBanda));
   console.log("  (flags semánticos AMBAS = reporte para Fabrizio, NO bloquean)");
+}
+
+function printTandaStr(tanda: TandaStr[]) {
+  console.log("\n─── TANDA STR · lead del hero vs hallazgo coronado (juez Opus, reporte) ───");
+  for (const t of tanda) {
+    console.log(`\n  ${t.key}  ${t.veredicto}/${t.score} · 01 ${t.coronadoId ?? "—"}${t.coronadoTitular ? ` «${t.coronadoTitular}»` : ""}`);
+    console.log(`      lead: ${t.lead.replace(/\s+/g, " ").slice(0, 320)}${t.lead.length > 320 ? "…" : ""}`);
+    if (t.error) console.log(`      ⚠ juez: ${t.error}`);
+    for (const fl of t.flags) console.log(`      ⚑ [${fl.severidad}/${fl.categoria}] ${fl.detalle}`);
+    if (!t.error && t.flags.length === 0) console.log("      ✓ sin flags");
+  }
+  console.log("\n  (flags del juez STR = reporte para Fabrizio, NO bloquean; AS1-AS5 sí)");
 }
 
 async function printStrSemantic() {
@@ -136,23 +151,27 @@ async function printStrSemantic() {
 
   // ── Tier FULL (opcional) ────────────────────────────────────────────────
   if (MODE_FULL) {
-    console.log(`\n─── TIER FULL · generación fresca AUTO (K=${K}) ───`);
-    const gen = await runGenerateTier(sb(), K, { dump: DUMP, from: FROM });
-    gen.forEach(printSeed);
-    totalHard += gen.reduce((n, r) => n + r.hardFail, 0);
-    totalDrift += gen.reduce((n, r) => n + r.rebaseline, 0);
-
-    // Tier STR generación fresca (FASE 2 dictamen · refuerzo 1) — BLOQUEANTE:
-    // GE-1 + GE-2, checks AUTO duros. Antes la única gen STR era el tier
-    // modo-gestión, no-bloqueante — un cambio de prompt STR corría sin red.
-    if (!LTR_ONLY) {
-      console.log(`\n─── TIER FULL · generación fresca STR AUTO (K=${K}, BLOQUEANTE) ───`);
-      const genStr = await runStrGenerateTier(K);
-      genStr.forEach(printSeed);
-      totalHard += genStr.reduce((n, r) => n + r.hardFail, 0);
+    if (!STR_ONLY) {
+      console.log(`\n─── TIER FULL · generación fresca AUTO (K=${K}) ───`);
+      const gen = await runGenerateTier(sb(), K, { dump: DUMP, from: FROM });
+      gen.forEach(printSeed);
+      totalHard += gen.reduce((n, r) => n + r.hardFail, 0);
+      totalDrift += gen.reduce((n, r) => n + r.rebaseline, 0);
     }
 
-    if (!NO_SEM) {
+    // Tier STR generación fresca (FASE 2 dictamen · refuerzo 1) — BLOQUEANTE: los seis
+    // GE con checks AUTO duros (AS1-AS5) y, salvo --no-semantic, el juez Opus por corrida
+    // con el criterio del lead-coronado (flags = reporte, no bloquean). Antes la única gen
+    // STR era el tier modo-gestión, no-bloqueante — un cambio de prompt STR corría sin red.
+    if (!LTR_ONLY) {
+      console.log(`\n─── TIER FULL · generación fresca STR AUTO (K=${K}, BLOQUEANTE${NO_SEM ? "" : " + juez"}) ───`);
+      const genStr = await runStrGenerateTier(K, { dump: DUMP, judge: !NO_SEM });
+      genStr.reports.forEach(printSeed);
+      totalHard += genStr.reports.reduce((n, r) => n + r.hardFail, 0);
+      printTandaStr(genStr.tanda);
+    }
+
+    if (!NO_SEM && !STR_ONLY) {
       console.log("\n─── TIER FULL · checklist semántico (juez Opus) ───");
       const sem = await runSemanticTier(sb(), { from: FROM ?? DUMP });
       for (const s of sem) {

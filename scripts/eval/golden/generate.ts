@@ -24,28 +24,8 @@ import type { SeedReport } from "./recompute";
 const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|invier|da vuelta|vuelve positivo|vuelve neutro)|flujo neutro|(el|del)\s+motor|proyecci[óo]n\s+del\s+motor|se\s+(equilibr|estabiliz|neutraliz|nivela)|conver[gj]|inflexi[óo]n|punto de quiebre/i;
 
 const WORDS = (s: string) => (s.trim().match(/\S+/g) || []).length;
-const norm = (s: string) => s.replace(/\s+/g, " ").trim();
-// v18 · A1: ninguna oración de la respuestaDirecta repite ≥ 8 palabras seguidas de una
-// fraseCanonica (la apertura ya no es prefabricada; la frase del hallazgo es la card).
-const wordsOf = (s: string) => s.toLowerCase().replace(/\*\*/g, "").split(/\s+/).filter(Boolean);
-const sentencesOf = (s: string) => s.replace(/\*\*/g, "").split(/(?<=[.!?;])\s+/).map((x) => x.trim()).filter(Boolean);
-function runComun(a: string[], b: string[]): number {
-  let best = 0;
-  for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) {
-    let k = 0; while (i + k < a.length && j + k < b.length && a[i + k] === b[j + k]) k++;
-    if (k > best) best = k;
-  }
-  return best;
-}
-// Copia = el run común cubre ≥ 60% de la frase (mínimo 8 palabras). A 8 palabras secas
-// el check castigaba la reformulación fiel del sobreprecio (GS-7: "está 59% sobre la
-// mediana de la comuna" comparte 8-10 palabras con la card porque la cláusula métrica
-// con cifra exacta y ámbito es la que exige la doctrina); las copias reales del parque
-// reproducían la frase entera.
-const REPITE_FRASE = 8;
-const REPITE_FRACCION = 0.6;
-const esCopia = (oracion: string[], frase: string[]): boolean =>
-  runComun(oracion, frase) >= Math.max(REPITE_FRASE, Math.ceil(frase.length * REPITE_FRACCION));
+// Helpers de copia de fraseCanonica: módulo compartido con la tanda STR (copia-frase.ts).
+import { norm, wordsOf, sentencesOf, esCopia, REPITE_FRASE } from "./copia-frase";
 
 function collectStrings(node: any, out: { path: string; s: string }[], path = ""): void {
   if (typeof node === "string") { out.push({ path, s: node }); return; }

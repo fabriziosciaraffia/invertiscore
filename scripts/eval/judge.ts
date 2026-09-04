@@ -569,6 +569,10 @@ export async function runJudgeV2(args: {
   aiAnalysis: unknown;
   caseBlock: string;
   truthBundle: unknown;
+  /** Criterios adicionales del tier que llama (ej. STR: el lead del hero abre por el
+   *  hallazgo coronado). Van al user prompt, después de los datasets; la rúbrica base
+   *  (JUDGE_SYSTEM_V2) no cambia. */
+  criteriosExtra?: string;
 }): Promise<JudgeResult> {
   const userPrompt = `CONTEXTO DEL CASO (metadato, no es prosa a auditar): ${JSON.stringify(args.fixtureMeta)}
 
@@ -580,8 +584,8 @@ ${JSON.stringify(args.aiAnalysis, null, 2)}
 
 === DATASETS DE VERDAD (para afirmaciones verificables: metro activo, plusvalía) ===
 ${JSON.stringify(args.truthBundle, null, 2)}
-
-Audita la prosa. Para contra-fuente/sin-fuente, recordá: si el dato está en el BLOQUE-CASO, NO es invención. Devolvé SOLO el JSON.`;
+${args.criteriosExtra ? `\n=== CRITERIOS ADICIONALES DE ESTE TIER (se auditan igual que la doctrina) ===\n${args.criteriosExtra}\n` : ""}
+Audita la prosa. Para contra-fuente/sin-fuente, recuerda: si el dato está en el BLOQUE-CASO, NO es invención. Devuelve SOLO el JSON.`;
 
   const msg = await anthropic.messages.create({
     model: JUDGE_MODEL,
