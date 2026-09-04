@@ -911,6 +911,15 @@ export function PlanNegociacion({
     if (currency === "UF") return `UF ${Math.round(uf).toLocaleString("es-CL")}`;
     return "$" + Math.round(clp).toLocaleString("es-CL");
   };
+  // Dual moneda (goal "LTR hereda", 05-sep-2026): la moneda del toggle en grande y la
+  // otra en chico, en cada precio del plan y en el chip. Mismos números, otra escala.
+  const fmtAlt = (clp: number, uf: number) => (currency === "UF" ? fmtCompact(clp, "CLP", valorUF) : `UF ${Math.round(uf).toLocaleString("es-CL")}`);
+  const Alt = ({ v }: { v?: string | null }) =>
+    v ? (
+      <small className="font-mono" style={{ fontSize: 10.5, fontWeight: 500, color: "var(--franco-text-secondary)", marginLeft: 6 }}>
+        {v}
+      </small>
+    ) : null;
   const capVer = (v: string | null | undefined) =>
     v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajusta supuestos" : v === "BUSCAR OTRA" ? "Buscar otra" : "la banda de arriba";
 
@@ -923,7 +932,7 @@ export function PlanNegociacion({
     xs.filter((x): x is { b: string; resto: string } => x !== null);
   const cercano = (a: number, b: number) => a > 0 && b > 0 && Math.abs(a - b) / Math.max(a, b) < 0.02;
 
-  type Slot = { label: string; valor: string; glosa: string; deltas?: Array<{ b: string; resto: string }>; tenue?: boolean };
+  type Slot = { label: string; valor: string; alt?: string; glosa: string; deltas?: Array<{ b: string; resto: string }>; tenue?: boolean };
   const slots: Slot[] = [];
 
   if (minimoFueraDeRango) {
@@ -931,6 +940,7 @@ export function PlanNegociacion({
     slots.push({
       label: "Lo que haría falta, fuera de rango",
       valor: fmtPrecio(minimoFueraDeRango.clp, minimoFueraDeRango.uf),
+      alt: fmtAlt(minimoFueraDeRango.clp, minimoFueraDeRango.uf),
       glosa: `Recién ahí el veredicto pasaría a ${capVer(minimoFueraDeRango.veredicto)}; es un ${Math.abs(minimoFueraDeRango.pct).toFixed(1).replace(".", ",")}% menos, y eso ya no es un ajuste: no es una oferta ni un objetivo.`,
       deltas: noNulos([chip(deltaPct(minimoFueraDeRango.clp, precioActualCLP), "de tu precio")]),
       tenue: true,
@@ -943,6 +953,7 @@ export function PlanNegociacion({
       slots.push({
         label: objetivoEsUmbral ? "Objetivo · donde cambia el veredicto" : modoSostenible === "cerrar_actual" ? "Objetivo · tu precio actual" : "Objetivo · donde el aporte se vuelve sostenible",
         valor: fmtPrecio(obj.clp, obj.uf),
+        alt: fmtAlt(obj.clp, obj.uf),
         glosa: objetivoEsUmbral
           ? `Cerrando acá el veredicto sube a ${capVer(obj.veredicto)}. Bajo este precio ya es ${capVer(obj.veredicto)}; sobre este precio sigue siendo el veredicto de hoy.`
           : modoSostenible === "cerrar_actual"
@@ -957,6 +968,7 @@ export function PlanNegociacion({
       slots.unshift({
         label: "Primera oferta",
         valor: fmtPrecio(primeraOferta.clp, primeraOferta.uf),
+        alt: fmtAlt(primeraOferta.clp, primeraOferta.uf),
         glosa: glosas?.primera || "Abre la conversación con margen para subir hasta el objetivo sin perder el caso económico.",
         deltas: noNulos([
           chip(deltaPct(primeraOferta.clp, precioActualCLP), "de tu precio"),
@@ -969,6 +981,7 @@ export function PlanNegociacion({
       slots.push({
         label: "Donde el aporte se vuelve sostenible",
         valor: fmtPrecio(sostenible.clp, sostenible.uf),
+        alt: fmtAlt(sostenible.clp, sostenible.uf),
         glosa: bajo
           ? `Dato de caja, no un segundo objetivo: queda bajo el objetivo, dentro de la zona donde el veredicto ya es ${capVer(obj.veredicto)}. Es hasta dónde seguir si la conversación da.`
           : "Dato de caja, no un segundo objetivo: queda sobre el objetivo, así que a este precio el veredicto todavía no cambia.",
@@ -980,7 +993,7 @@ export function PlanNegociacion({
       if (walkAway.precio_uf === null) {
         slots.push({ label: labelLimite, valor: "Buscar otra propiedad", glosa: glosas?.walkAway || walkAway.razon });
       } else if (walkAway.precio_clp !== null) {
-        slots.push({ label: labelLimite, valor: fmtPrecio(walkAway.precio_clp, walkAway.precio_uf), glosa: glosas?.walkAway || walkAway.razon });
+        slots.push({ label: labelLimite, valor: fmtPrecio(walkAway.precio_clp, walkAway.precio_uf), alt: fmtAlt(walkAway.precio_clp, walkAway.precio_uf), glosa: glosas?.walkAway || walkAway.razon });
       }
     }
   }
@@ -995,16 +1008,18 @@ export function PlanNegociacion({
     const hayNeutro = typeof neutroUF === "number" && neutroUF > 0 && typeof neutroCLP === "number" && neutroCLP > 0;
     if (!hayNeutro || typeof dto !== "number") {
       if (!hayNeutro && typeof dto === "number") {
-        return { valor: "no existe", delta: null, glosa: "Con esta estructura lo que entra cada mes no cubre los gastos fijos a ningún precio." };
+        return { valor: "no existe", alt: null, delta: null, glosa: "Con esta estructura lo que entra cada mes no cubre los gastos fijos a ningún precio." };
       }
       return null;
     }
     const valor = currency === "UF" ? `UF ${Math.round(neutroUF!).toLocaleString("es-CL")}` : fmtCompact(neutroCLP!, currency, valorUF);
+    const alt = fmtAlt(neutroCLP!, neutroUF!);
     if (dto > 0) {
-      return { valor, delta: `−${dto.toFixed(1).replace(".", ",")}%`, glosa: "No es el número a pelear: es dónde lo que entra cada mes alcanza a cubrirlo todo." };
+      return { valor, alt, delta: `−${dto.toFixed(1).replace(".", ",")}%`, glosa: "No es el número a pelear: es dónde lo que entra cada mes alcanza a cubrirlo todo." };
     }
     return {
       valor,
+      alt,
       delta: null,
       glosa:
         Math.abs(dto) >= 0.1
@@ -1030,6 +1045,7 @@ export function PlanNegociacion({
             style={{ fontSize: 10, letterSpacing: "0.03em", padding: "3px 7px", borderRadius: 3, background: "color-mix(in srgb, var(--franco-text) 5%, transparent)", color: "var(--franco-text-secondary)", whiteSpace: "nowrap" }}
           >
             Donde el mes cierra <b style={{ color: "var(--franco-text)" }}>{chipCaja.valor}</b>
+            <Alt v={chipCaja.alt} />
             {chipCaja.delta ? <> · <b style={{ color: "var(--franco-text)" }}>{chipCaja.delta}</b></> : null}
           </span>
         )}
@@ -1056,6 +1072,7 @@ export function PlanNegociacion({
             </span>
             <span className="font-mono font-bold whitespace-nowrap" style={{ fontSize: 14, color: "var(--franco-text)" }}>
               {sl.valor}
+              <Alt v={sl.alt} />
             </span>
           </div>
           {sl.deltas && sl.deltas.length > 0 && (
