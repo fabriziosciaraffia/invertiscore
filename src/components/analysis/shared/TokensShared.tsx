@@ -56,6 +56,8 @@ export function TokensShared() {
       .pl tr.pre th,.pl tr.pre td{color:var(--doc-tx4)}
       .pl tr.ent th{color:var(--doc-warn);font-weight:700}
       .pl .neg{color:var(--signal-red)}
+      /* dentro del modal (720px) las ocho columnas entran con el padding corto */
+      .v-modal .pl th,.v-modal .pl td{padding:5px 4px;font-size:10px}
       .pl.ind td:nth-child(2){color:var(--doc-tx3);font-family:var(--font-body, system-ui);font-size:11.5px;white-space:normal;text-align:left}
       .pl.ind td:nth-child(3){color:var(--doc-tx2);text-align:left}
       .pl.ind th{color:var(--doc-tx);font-weight:600;font-family:var(--font-body, system-ui);font-size:12px;white-space:normal}

@@ -9,3 +9,6 @@ export { CurvaAnual } from "./CurvaAnual";
 export { SeisCifras, type CifraInforme } from "./SeisCifras";
 export { BloqueDia1 } from "./BloqueDia1";
 export { CurvaPatrimonio } from "./CurvaPatrimonio";
+export { PosicionFranco, type FooterPosicion } from "./PosicionFranco";
+export { SegsCierre } from "./SegsCierre";
+export { ModalCalculoBase, type BloqueCalculo } from "./ModalCalculoBase";

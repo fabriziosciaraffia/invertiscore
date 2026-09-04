@@ -1,5 +1,6 @@
 "use client";
 
+import { TokensShared } from "./shared/TokensShared";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { useState, useEffect, useRef } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/types";
@@ -237,6 +238,7 @@ export function SubjectCardGrid({
       {/* CSS del acordeón + vocabulario + modal, montado siempre: el modal de la
           posición y el de cálculo lo necesitan también mientras la prosa carga. */}
       <TokensHallazgos />
+      <TokensShared />
       {/* ═══ 1 · PORTADA (paper) ═══ */}
       <SeccionInforme id="portada" tono="paper">
       {fichaPortada && (

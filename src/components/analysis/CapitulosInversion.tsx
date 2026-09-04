@@ -1,5 +1,6 @@
 "use client";
 
+import { SegsCierre } from "./shared/SegsCierre";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { useMemo } from "react";
 import type {
@@ -22,7 +23,7 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { barraDia1 } from "@/lib/plata-dia1";
-import { cierrePlusvalia, cierreRenta, cierreResultado, type FmtCierre, type SegCierre } from "@/lib/cierres-capitulos";
+import { cierrePlusvalia, cierreRenta, cierreResultado, type FmtCierre } from "@/lib/cierres-capitulos";
 import { HallazgosAcordeon, type FilaHallazgo } from "./hallazgos/HallazgosAcordeon";
 import {
   BarraApilada,
@@ -101,13 +102,7 @@ function formatearEntrega(fecha?: string | null): string {
   return `${meses[m - 1] ?? ""} ${y}`.trim();
 }
 
-function Segs({ segs }: { segs: SegCierre[] }) {
-  return (
-    <>
-      {segs.map((s, i) => (s.mark ? <mark key={i}>{s.t}</mark> : <span key={i}>{s.t}</span>))}
-    </>
-  );
-}
+const Segs = SegsCierre;
 
 export function CapitulosInversion({
   results,

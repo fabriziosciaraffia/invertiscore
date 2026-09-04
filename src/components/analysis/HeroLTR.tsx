@@ -1,12 +1,11 @@
 "use client";
 
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { useRef, useState } from "react";
-import { usePostHog } from "posthog-js/react";
 import { renderPlumon } from "./hallazgos/plumon";
+import { lineaFooterVias } from "@/lib/palancas-en-palabras";
+import { PosicionFranco } from "./shared/PosicionFranco";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, HallazgoSensibilidad } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { Modal } from "./hallazgos/vocabulario";
 import { DrawerDistanciaLtr, DrawerSensibilidadLtr } from "./drawers/DrawersPropios";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 
@@ -112,14 +111,13 @@ export function HeroLTR({
       ? {
           key: "distanciaVeredicto" as const,
           k: "Lo que te separa del veredicto de arriba",
-          // Cuántos de los cuatro cruzan, leído de `vias` (goal "cuatro palancas
-          // siempre"). Sin `vias` (filas viejas) queda la línea genérica.
+          // Cuántas de las vías cruzan, leído de `vias` (goal "cuatro palancas
+          // siempre"). Sin `vias` (filas viejas) queda la línea genérica. El total es el
+          // de las vías reales (LTR: 4); la frase vive en palancas-en-palabras (T1).
           l: (() => {
             const vias = distanciaRow.valor.vias;
-            if (!vias || vias.length === 0) return "Franco probó cuatro ajustes que mueven el veredicto.";
-            const n = vias.filter((v) => v.estado === "cruza").length;
-            const cuantos = n === 0 ? "Ninguno mueve" : n === 1 ? "Uno mueve" : n === 2 ? "Dos mueven" : n === 3 ? "Tres mueven" : "Los cuatro mueven";
-            return `Franco probó cuatro ajustes. ${cuantos} el veredicto.`;
+            if (!vias || vias.length === 0) return lineaFooterVias(null, 4);
+            return lineaFooterVias(vias.filter((v) => v.estado === "cruza").length, vias.length);
           })(),
           btn: "Ver ajustes",
           // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo
@@ -137,7 +135,6 @@ export function HeroLTR({
             cuerpo: <DrawerSensibilidadLtr hallazgo={sensibilidadRow} results={results} currency={currency} valorUF={valorUF} />,
           }
         : null;
-  const [modalAbierto, setModalAbierto] = useState(false);
   // POR QUÉ NO CIERRA (LTR) — puerto del patrón STR (§1.12.8): la glosa de los
   // motivos que decidieron el veredicto, SOLO cuando lo decidió un gate y no la
   // banda del score. Los brazos del Gate 1 viajan en el hallazgo de distancia
@@ -146,28 +143,6 @@ export function HeroLTR({
   // AJUSTA ⇒ el gate capó. Veredicto de banda pura → null y no se muestra nada:
   // inventar una causa sería peor que no darla (§1.9.3).
   const fechaFirma = formatFecha(fechaProsa ?? createdAt);
-
-  // Evento propio de la posición de Franco: su apertura NO es un hallazgo (la
-  // distancia al veredicto está excluida de la pirámide por diseño), así que
-  // colgaba de `informe_drawer_abierto` sin par de hallazgo — el falso hueco que
-  // Claude chat cazó en la línea base. Ahora tiene su propia serie.
-  const posthog = usePostHog();
-  const posicionMedida = useRef(false);
-  const abrirPosicion = () => {
-    if (posicionMedida.current) return;
-    posicionMedida.current = true;
-    try {
-      posthog?.capture("informe_posicion_abierta", { veredicto, tipo: "ltr", destino: footer?.key });
-    } catch {
-      /* la telemetría jamás rompe la lectura */
-    }
-    if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
-      (window.__informeEvents ??= []).push({
-        name: "informe_posicion_abierta",
-        props: { veredicto, tipo: "ltr", destino: footer?.key },
-      });
-    }
-  };
 
   // FASE 3 rediseño Dictamen: F1 (identidad+toggle), F2/F3 (chips, score 48px,
   // gauge, badge, mapa) MURIERON — la portada nueva (PortadaInforme) los absorbe:
@@ -255,53 +230,11 @@ export function HeroLTR({
 
       </div>
       {/* ═══ LA POSICIÓN DE FRANCO — card con footer propio (contrato CONGELADO, T2) ═══
-          La caja IA + la firma van en el cuerpo con la línea roja; el footer "Lo que
-          te separa" / "Cuánto aguanta" tiene fondo propio, regla de 1px y el botón
-          real que abre el modal. Cuelga del texto del título (md:ml-9) igual que la
-          prosa, para compartir su línea vertical. Sin caja ni footer no hay bloque. */}
-      {(cajaAccionable || footer) && (
-        <div className="pb-2 md:ml-9">
-          <div className="pos-card">
-            <div className="pos-main">
-              <span className="pos-t">La posición de Franco</span>
-              {cajaAccionable && <div className="pos-p">{renderPlumon(cajaAccionable)}</div>}
-              <div className="pos-firma">
-                <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true" style={{ width: 22, height: 22, fontSize: 10 }}>
-                  f.
-                </span>
-                <span>
-                  Franco
-                  <small>Análisis generado por IA{fechaFirma ? ` · ${fechaFirma}` : ""}</small>
-                </span>
-              </div>
-            </div>
-            {footer && (
-              <div className="pos-foot">
-                <div>
-                  <span className="k">{footer.k}</span>
-                  <span className="l">{footer.l}</span>
-                </div>
-                <button
-                  type="button"
-                  className="doc-btn"
-                  onClick={() => {
-                    abrirPosicion();
-                    setModalAbierto(true);
-                  }}
-                >
-                  {footer.btn} →
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      {footer && (
-        <Modal abierto={modalAbierto} onClose={() => setModalAbierto(false)} titulo={footer.k} sub={footer.sub}>
-          {/* .doc-tokens: los cuerpos de los drawers resuelven --doc-* también fuera de .doc-dictamen */}
-          <div className="doc-tokens">{footer.cuerpo}</div>
-        </Modal>
-      )}
+          Pieza compartida desde T1 (PosicionFranco): la caja IA + la firma en el cuerpo
+          con la línea roja; el footer "Lo que te separa" / "Cuánto aguanta" con fondo
+          propio y el botón real que abre el modal. Cuelga del texto del título (md:ml-9)
+          igual que la prosa. Sin caja ni footer no hay bloque. */}
+      <PosicionFranco cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null} fechaFirma={fechaFirma} footer={footer} tipo="ltr" veredicto={veredicto} />
     </div>
   );
 }

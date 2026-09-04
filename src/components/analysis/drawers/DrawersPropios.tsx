@@ -1,5 +1,6 @@
 "use client";
 
+import { introModalVias } from "@/lib/palancas-en-palabras";
 import { DIST_PIE_TOPE_PCT } from "@/lib/distancia-veredicto-hallazgo";
 
 // Drawers propios (rama drawers-propios · F2) — plantillas DETERMINÍSTICAS motor-templated.
@@ -711,15 +712,7 @@ export function DrawerDistanciaLtr({
     <div>
       <VProsa>
         {v.vias
-          ? `Franco probó cuatro ajustes, uno a la vez y con el resto fijo. ${
-              v.palancas.length === 0
-                ? `Ninguna cruza a ${objetivo}: cada una dice hasta dónde se probó.`
-                : v.palancas.length === 1
-                  ? `Una cruza a ${objetivo} por su cuenta; las demás dicen hasta dónde se probaron.`
-                  : v.palancas.length === 4
-                    ? `Las cuatro cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`
-                    : `${v.palancas.length === 2 ? "Dos" : "Tres"} cruzan a ${objetivo}, cada una por su cuenta; las demás dicen hasta dónde se probaron.`
-            }`
+          ? introModalVias(v.palancas.length, v.vias.length, objetivo)
           : v.esEstructural
             ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: probamos las palancas una por una, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
             : `Tu veredicto es ${base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`}
