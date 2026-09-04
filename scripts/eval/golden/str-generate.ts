@@ -42,7 +42,7 @@ import { marcasBalanceadas, evaluarTitular } from "../../../src/lib/prosa-marcas
 import { ordenarHallazgosPiramideSTR } from "../../../src/lib/piramide-orden-str";
 import { STR_GE_SEEDS, loadFrozen } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
-import { frasesCanonicasDe, oracionQueCopia } from "./copia-frase";
+import { frasesCanonicasDe, oracionQueCopia } from "../../../src/lib/copia-frase";
 import { buildTruthBundle, captureStrPrompt, runJudgeV2 } from "../judge";
 import type { Check } from "./invariants";
 import type { SeedReport } from "./recompute";

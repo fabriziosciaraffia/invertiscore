@@ -23,6 +23,7 @@ import type { AIAnalysisSTRv2, Hallazgo } from "./types";
 import { STR_UNIVERSO_OCC } from "./engines/str-universo-santiago";
 import { CAP_STR_UMBRAL_PCT } from "./rentabilidad-str-hallazgo";
 import { CLAIMS_HERO, CLAIMS_VECES, violacionesClaims, type ClaimHero } from "./hero-claim-core";
+import { frasesCanonicasDe, oracionQueCopia } from "./copia-frase";
 
 // ─── Campos de prosa (paths `sección.campo`; `titular` y `francoCaveat` top-level) ───
 export const PROSA_PATHS_STR = [
@@ -284,6 +285,15 @@ export function ofertasNegociacion(texto: string): string[] {
   return out;
 }
 
+// ─── 5. [STR-COPIA] ─────────────────────────────────────────────────────────
+export function frasesCanonicasStr(r: { hallazgos?: Hallazgo[] }): string[][] {
+  return frasesCanonicasDe(r.hallazgos ?? []);
+}
+/** La oración del texto que copia una fraseCanonica (≥ 60% de la frase, mínimo 8 palabras), o null. */
+export function copiaFraseCanonica(texto: string, frases: string[][]): string | null {
+  return oracionQueCopia(texto, frases);
+}
+
 // ─── Evaluación por campo (lo que consumen el generador, los fixtures y el reporte) ───
 export interface ContextoGuardsStr {
   razones: RazonesHeroClaimStr;
@@ -291,10 +301,10 @@ export interface ContextoGuardsStr {
   frases: string[][];
 }
 export function contextoGuardsStr(r: ShortTermResult & { hallazgos?: Hallazgo[] }, inp: Record<string, unknown>, comuna: string): ContextoGuardsStr {
-  return { razones: razonesHeroClaimStr(r, inp, comuna), estructural: esDistanciaEstructural(r), frases: [] };
+  return { razones: razonesHeroClaimStr(r, inp, comuna), estructural: esDistanciaEstructural(r), frases: frasesCanonicasStr(r) };
 }
 
-export type ReglaStr = "hero-claim" | "engineism" | "internas" | "estructural";
+export type ReglaStr = "hero-claim" | "engineism" | "internas" | "estructural" | "copia";
 /** path → violaciones (vacío si el campo está limpio). */
 export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regla: ReglaStr, ctx: ContextoGuardsStr): Record<string, string[]> {
   const out: Record<string, string[]> = {};
@@ -307,6 +317,7 @@ export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regl
       case "engineism": v = hitsEngineIsm(texto); break;
       case "internas": v = hitsPalabrasInternas(texto); break;
       case "estructural": v = ctx.estructural ? ofertasNegociacion(texto) : []; break;
+      case "copia": { const c = copiaFraseCanonica(texto, ctx.frases); v = c ? [c] : []; break; }
     }
     if (v.length) out[path] = v;
   }

@@ -25,7 +25,7 @@ const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|invier|da vuelta|vuelve posi
 
 const WORDS = (s: string) => (s.trim().match(/\S+/g) || []).length;
 // Helpers de copia de fraseCanonica: módulo compartido con la tanda STR (copia-frase.ts).
-import { norm, wordsOf, sentencesOf, esCopia, REPITE_FRASE } from "./copia-frase";
+import { norm, wordsOf, sentencesOf, esCopia, REPITE_FRASE } from "../../../src/lib/copia-frase";
 
 function collectStrings(node: any, out: { path: string; s: string }[], path = ""): void {
   if (typeof node === "string") { out.push({ path, s: node }); return; }

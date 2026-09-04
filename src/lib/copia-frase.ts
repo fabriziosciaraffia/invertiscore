@@ -7,7 +7,8 @@
 // la comuna" comparte 8-10 palabras con la card porque la cláusula métrica con cifra
 // exacta y ámbito es la que exige la doctrina); las copias reales del parque
 // reproducían la frase entera. Vivía en generate.ts (LTR, v18); se extrajo el
-// 03-sep-2026 para que la tanda STR mida con la misma regla.
+// 03-sep-2026 para que la tanda STR mida con la misma regla, y el 04-sep pasó a src/lib
+// porque el guard [STR-COPIA] de producción evalúa exactamente esta función.
 
 export const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 export const wordsOf = (s: string) => s.toLowerCase().replace(/\*\*/g, "").split(/\s+/).filter(Boolean);

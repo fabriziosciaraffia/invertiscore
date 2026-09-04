@@ -1538,6 +1538,13 @@ Responde SOLO este JSON, sin texto alrededor:
       (v) => `describe cómo se mueve un número dentro del cálculo en vez de la consecuencia vivida: ${v.map((x) => `«${x}»`).join(", ")}`,
       "reescribe cada frase con la consecuencia para el usuario (\"dejas de poner plata cada mes\", \"el arriendo pasa a cubrir la cuota\", \"si la tarifa real baja a la del mercado\"), nunca con verbos de trayectoria como cruzar, converger o dar vuelta.",
     );
+    // 5. [STR-COPIA] — la frase de la card no se repite.
+    await reintentoQuirurgico(
+      "copia",
+      "[STR-COPIA]",
+      (v) => `reproduce casi literal la frase de una card que el usuario ya leyó: ${v.map((x) => `«${x}»`).join(" · ")}`,
+      "redacta esa oración con tu ángulo y otras palabras: la frase del hallazgo vive en la card; la prosa la interpreta, no la repite.",
+    );
   }
 
   // Garantía de veredicto (si la IA olvidó copiarlo).
