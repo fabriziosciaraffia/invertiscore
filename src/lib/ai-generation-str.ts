@@ -47,6 +47,7 @@ import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
+import type { SimulacionStr } from "@/lib/analysis/simular-str";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
 // que el render y que REGLA 10 del prompt LTR. Nunca literal tipeado.
@@ -91,7 +92,12 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // HALLAZGO CORONADO que ancla el lead (§7.bis) salen ahora de la decisividad medida, no de
 // las dimensiones del score. En el parque, 162 de 245 informes cambian de 01. Sube para que
 // la prosa persistida con el coronado viejo se regenere por lazy.
-export const PROMPT_VERSION_STR = 13;
+// v14 (04-sep-2026 · T0 CONGELADO): bloque VÍAS con las cinco palancas y su estado (como
+// LTR v16) más FRONTERAS y MATRICES del motor; fuentes de ocupación en lenguaje de usuario
+// («dato tuyo» / «estimación de mercado» / «sin dato de la dirección»: fuera "override" y
+// "fallback" del prompt); la pirámide entra como datos en su orden real y el #1 como
+// qué · cuánto · dirección; [HERO-CLAIM] STR con "única vía" contra las vías que cruzan.
+export const PROMPT_VERSION_STR = 14;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -205,13 +211,14 @@ El input trae \`recomendacionModalidad\` ∈ {LTR_PREFERIDO, STR_VENTAJA_CLARA, 
 
 Recuerda: la card de ventaja ya mostró la dirección y el %. En el drawer, arranca del NOI absoluto o la palanca, no repitiendo la dirección (§1.bis).
 
-## 3.ter Ocupación: caso central observado vs upside condicional
+## 3.ter Ocupación: el caso central y su fuente
 
-El input te pasa la ocupación base y el upside. Reglas de framing:
-1. Ancla el caso central y la lectura del veredicto en la ocupación OBSERVADA (o el supuesto, si es override). El upside es CONDICIONAL ("si logras gestión profesional y el listing se estabiliza"), nunca lo que va a pasar. PROHIBIDO "ramp-up" → "estabilización inicial" o "los primeros meses de operación".
-2. El \`Gap ocupación\` (observada → potencial) es la magnitud de la apuesta operativa: cuantifícalo cuando sume, dejando claro que cerrarlo depende de la gestión, no del mercado.
-3. **Override (el usuario definió la ocupación o el ADR a mano):** CAVEAT PRIORITARIO y OBLIGATORIO. La ocupación base NO es dato observado. PROHIBIDO llamarla "mediana observada" o "dato de mercado". Preséntala junto a la estimación de mercado para el depto que trae el input ("supusiste 74% de ocupación; la estimación de mercado para tu depto es 46%") y trátala como supuesto a validar — el veredicto se apoya en un número que pusiste tú. Mismo trato para el ADR si viene marcado "definido por ti".
-4. **Fallback de mercado (~45%, sin dato observado de la propiedad):** la card de ocupación y el drawer YA declaran "supuesto conservador · sin dato propio". NO es tono general que debas repetir en cada análisis. Menciona el caveat SOLO si el fallback cambia cómo leer el veredicto (ej. la conclusión cuelga de un número que no se observó). Si no cambia la lectura, no abras con el disclaimer — la card ya lo posee.
+El input te pasa la ocupación del caso con su FUENTE en tres palabras posibles: «estimación de mercado» (lo que los datos de mercado estiman para un depto como este), «dato tuyo» (el usuario la definió a mano) o «sin dato de la dirección» (no hay estimación: se usa una referencia conservadora de 45%). Reglas de framing:
+1. Ancla el caso central y la lectura del veredicto en la ocupación del caso, nombrando su fuente con esas palabras. El upside es CONDICIONAL ("si logras gestión profesional y el listing se estabiliza"), nunca lo que va a pasar. PROHIBIDO "ramp-up" → "estabilización inicial" o "los primeros meses de operación".
+2. El \`Gap ocupación\` (caso → potencial) es la magnitud de la apuesta operativa: cuantifícalo cuando sume, dejando claro que cerrarlo depende de la gestión, no del mercado.
+3. **Dato tuyo (el usuario definió la ocupación o la tarifa a mano):** CAVEAT PRIORITARIO y OBLIGATORIO. La ocupación del caso NO es dato de mercado. PROHIBIDO llamarla "estimación" o "dato de mercado". Preséntala junto a la estimación de mercado para el depto que trae el input ("supusiste 74% de ocupación; la estimación de mercado para tu depto es 46%") y trátala como supuesto a validar — el veredicto se apoya en un número que pusiste tú. Mismo trato para la tarifa si viene marcada «dato tuyo».
+4. **Sin dato de la dirección (referencia conservadora de 45%):** la card de ocupación y el drawer YA lo declaran. NO es tono general que debas repetir en cada análisis. Menciona el caveat SOLO si cambia cómo leer el veredicto (ej. la conclusión cuelga de un número que no se estimó). Si no cambia la lectura, no abras con el disclaimer — la card ya lo posee.
+5. La mecánica interna del motor no existe para el usuario: nunca nombres fuentes internas ni percentiles, ni digas "mediana de la zona" para la ocupación (la ocupación del caso es la estimación para el depto, o tu dato). La comparación con la comuna vive en La zona («tu zona ocupa parecido a lo típico de la comuna»), no en el hallazgo de ocupación.
 
 ## 4. Disciplina sobre afirmaciones
 
@@ -346,7 +353,7 @@ Devuelve EXACTAMENTE esta estructura. Sin campos extra, sin texto fuera del JSON
   },
   "operacion": {
     "contenido": string,          // (≤110) contexto operativo BREVE · SIN párrafo de estacionalidad
-    "cajaAccionable": string      // (≤75) fallback
+    "cajaAccionable": string      // (≤75) respaldo
   },
   "largoPlazo": {
     "contenido": string,          // (≤95) juicio del horizonte · instrumentos (ángulo 3) + condicional plusvalía + posición · SIN recitar cards
@@ -494,6 +501,7 @@ export function buildUserPromptSTR(
   inp: Record<string, unknown>,
   r: ShortTermResult & { francoScore?: FrancoScoreSTR; hallazgos?: Hallazgo[] },
   comuna: string,
+  simulacion?: SimulacionStr | null,
 ): { userPrompt: string; veredictoMotor: STRVerdict; cardFrases: CardFrasesSTR } {
   const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
   const base = r.escenarios.base;
@@ -626,26 +634,31 @@ Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards f
   const projY10 = r.projections && r.projections.length >= 10 ? r.projections[9] : null;
   const exit = r.exitScenario;
 
-  // --- Procedencia occ/ADR (override → declarar sin eufemismo) ---
+  // --- Fuente de la ocupación y la tarifa, en lenguaje de usuario (T0 CONGELADO: fuera
+  //     "override"/"fallback" del prompt — el modelo repite lo que lee) ---
   const occEsOverride = r.occFuente === "override";
   const adrEsOverride = r.adrFuente === "override";
+  const occEsSinDato = r.occFuente === "fallback_mercado" || r.occObservadaFuente === "fallback_mercado";
   const occBasePct = Math.round(base.ocupacionReferencia * 100);
   const occObsPct = Math.round((typeof r.occObservada === "number" ? r.occObservada : base.ocupacionReferencia) * 100);
   const adrModelo = typeof r.adrModelo === "number" ? r.adrModelo : base.adrReferencia;
+  const fuenteOccPalabras = occEsOverride ? "dato tuyo" : occEsSinDato ? "sin dato de la dirección: referencia conservadora de 45%" : "estimación de mercado para tu depto";
   const bloqueBaseHeader = occEsOverride
-    ? "=== ESCENARIO BASE (ocupación DEFINIDA POR EL USUARIO — no es dato de mercado) ==="
-    : "=== ESCENARIO BASE (ocupación en la mediana observada de la zona) ===";
+    ? "=== ESCENARIO BASE (ocupación: DATO TUYO — no es dato de mercado) ==="
+    : occEsSinDato
+    ? "=== ESCENARIO BASE (ocupación: SIN DATO DE LA DIRECCIÓN — referencia conservadora de 45%) ==="
+    : "=== ESCENARIO BASE (ocupación: estimación de mercado para tu depto) ===";
   const lineaADR = adrEsOverride
-    ? `ADR: ${fmtCLP(base.adrReferencia)}/noche (⚠ definido por ti; el ADR de mercado ajustado sería ${fmtCLP(adrModelo)}/noche)`
-    : `ADR: ${fmtCLP(base.adrReferencia)}/noche`;
+    ? `Tarifa por noche (ADR): ${fmtCLP(base.adrReferencia)} (⚠ dato tuyo; la estimación de mercado para tu depto sería ${fmtCLP(adrModelo)})`
+    : `Tarifa por noche (ADR): ${fmtCLP(base.adrReferencia)} (estimación de mercado, mediana de la zona)`;
   const lineaOcc = occEsOverride
-    ? `Ocupación: ${occBasePct}% (⚠ definida por ti, NO observada — la observada de la zona es ${occObsPct}%)`
-    : `Ocupación: ${occBasePct}% (mediana observada de la zona)`;
-  const gapOccTag = occEsOverride ? "(tu supuesto → potencial)" : "(observada → potencial)";
-  const lineaFuenteOcc = occEsOverride
-    ? `Fuente ocupación base: override (usuario) · Observada real de la zona: ${occObsPct}%`
-    : `Fuente ocupación base: ${r.occFuente ?? "—"}`;
-  const labelBaseEscenario = occEsOverride ? "Base (ocupación definida por ti)" : "Base (ocupación en la mediana observada)";
+    ? `Ocupación: ${occBasePct}% (⚠ dato tuyo, NO de mercado — la estimación de mercado para tu depto es ${occObsPct}%)`
+    : occEsSinDato
+    ? `Ocupación: ${occBasePct}% (sin dato de la dirección: referencia conservadora)`
+    : `Ocupación: ${occBasePct}% (estimación de mercado para tu depto)`;
+  const gapOccTag = occEsOverride ? "(tu supuesto → potencial)" : "(estimación → potencial)";
+  const lineaFuenteOcc = `Fuente de la ocupación del caso: ${fuenteOccPalabras}${occEsOverride ? ` · estimación de mercado para tu depto: ${occObsPct}%` : ""}`;
+  const labelBaseEscenario = occEsOverride ? "Base (ocupación: dato tuyo)" : occEsSinDato ? "Base (ocupación: referencia conservadora)" : "Base (ocupación: estimación de mercado)";
 
   // --- Cards que el usuario YA leyó (drawer profundiza, no repite) + coronado ---
   const cardFrases = extraerCardFrases(r.hallazgos);
@@ -674,7 +687,37 @@ Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards f
   const bloqueDistancia = (() => {
     if (!distanciaSTR) return "";
     const dv = distanciaSTR.valor;
-    const cab = `\n\n=== LO QUE TE SEPARA DEL VEREDICTO DE ARRIBA (valores YA CALCULADOS) ===\n«${distanciaSTR.titular}» — ${distanciaSTR.fraseCanonica}`;
+    // ── VÍAS (T0 CONGELADO, espejo de LTR v16): las cinco palancas con su estado. El modelo
+    //    deja de confundir "no está en la lista" con "no existe": las que no cruzan dicen
+    //    hasta dónde se probaron y las que no aplican dicen por qué. Formateadas con los
+    //    mismos helpers del prompt para que STR-CIFRA las reconozca.
+    const NOMBRE_VIA: Record<string, string> = { precio: "precio de compra", adr: "tarifa por noche", plazo: "plazo del crédito", pie: "pie", gestion: "modo de gestión" };
+    const fmtVia = (palanca: string, v: number): string =>
+      palanca === "pie" ? `${Number.isInteger(v) ? v : v.toFixed(1).replace(".", ",")}%`
+      : palanca === "plazo" ? `${v} años`
+      : palanca === "precio" ? fmtUF(v)
+      : palanca === "gestion" ? `${Number.isInteger(v) ? v : v.toFixed(1).replace(".", ",")}% de comisión`
+      : fmtCLP(v);
+    const viasBloque = (() => {
+      const vias = dv.vias;
+      if (!vias || vias.length === 0) return "";
+      const cruzan = vias.filter((v) => v.estado === "cruza");
+      const filas = vias.map((v) => {
+        const nombre = NOMBRE_VIA[v.palanca] ?? v.palanca;
+        if (v.estado === "cruza") {
+          const signo = v.deltaPct < 0 ? "−" : "+";
+          const unidad = v.palanca === "pie" || v.palanca === "gestion" ? " pts" : "%";
+          const base = `- ${nombre}: CRUZA — de ${fmtVia(v.palanca, v.actual)} a ${fmtVia(v.palanca, v.objetivo)} (${signo}${Math.abs(v.deltaPct).toFixed(1).replace(".", ",")}${unidad})`;
+          if (v.palanca === "pie" && v.actual >= 20) return `${base} — cruza, pero ya cumples con ${fmtVia("pie", v.actual)} de pie: es un INTERCAMBIO (más capital el día 1 a cambio de un mes que cierra), no una recomendación`;
+          if (v.palanca === "adr") return `${base} — es una APUESTA a rendir sobre lo que hoy cobra la zona, no un supuesto que se corrige`;
+          return base;
+        }
+        if (v.estado === "noCruza") return `- ${nombre}: NO CRUZA — ${v.razon} (probado hasta ${fmtVia(v.palanca, v.topeExplorado)})`;
+        return `- ${nombre}: NO APLICA — ${v.razon}`;
+      }).join("\n");
+      return `\n\nVÍAS AL VEREDICTO DE ARRIBA (${dv.veredictoObjetivo}) — las cinco, con su estado (dato del motor):\n${filas}\nVÍAS QUE CRUZAN (dato del motor): ${cruzan.length}${cruzan.length ? ` — ${cruzan.map((v) => NOMBRE_VIA[v.palanca] ?? v.palanca).join(", ")}` : ""}. Solo con exactamente UNA puedes decir "la única vía"; con varias, nómbralas o di "hay más de una vía"; con ninguna, no hay vía. Cada una alcanza POR SÍ SOLA; puedes recomendar la más accionable, pero sin negar las otras.`;
+    })();
+    const cab = `\n\n=== LO QUE TE SEPARA DEL VEREDICTO DE ARRIBA (valores YA CALCULADOS) ===\n«${distanciaSTR.titular}» — ${distanciaSTR.fraseCanonica}${viasBloque}`;
 
     if (dv.esEstructural) {
       return `${cab}
@@ -758,6 +801,72 @@ REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase d
 → El condicional de plusvalía de \`largoPlazo.contenido\` usa ESTA lectura: mismas cifras, mismo marco. NUNCA afirmes que falta histórico comunal cuando esta línea trae la cifra — y si dice "promedio del Gran Santiago", entonces la comuna NO tiene dato propio y lo dices así.`
     : "";
 
+  // ── FRONTERAS Y MATRICES (T0 CONGELADO): lo que dibujan los diales y las dos matrices, como
+  //    datos. El modelo no bisecciona ni cuenta celdas: lee.
+  const bloqueSimulacion = (() => {
+    if (!simulacion) return "";
+    const fi = simulacion.fronterasIngreso;
+    const fp = simulacion.fronteraPrecio;
+    const mto = simulacion.matrizTarifaOcupacion;
+    const mpp = simulacion.matrizPiePlazo;
+    const pctF = (f: number) => `${f >= 1 ? "+" : "−"}${Math.abs((f - 1) * 100).toFixed(1).replace(".", ",")}%`;
+    const arriba = fi.arriba && fi.tarifa.arriba != null && fi.ocupacion.arriba != null
+      ? `sube a ${fi.arriba.veredicto} con ${pctF(fi.arriba.factor)} de ingreso (${fmtCLP(fi.tarifa.arriba)} por noche o ${Math.round(fi.ocupacion.arriba * 1000) / 10}% de ocupación)`
+      : simulacion.veredictoBase === "COMPRAR" ? "no hay veredicto superior" : "no sube ni con el triple de ingreso";
+    const abajo = fi.abajo && fi.tarifa.abajo != null && fi.ocupacion.abajo != null
+      ? `cae a ${fi.abajo.veredicto} con ${pctF(fi.abajo.factor)} de ingreso (${fmtCLP(fi.tarifa.abajo)} por noche o ${Math.round(fi.ocupacion.abajo * 1000) / 10}% de ocupación)`
+      : "no cae ni con el ingreso a un tercio";
+    const precio = `${fp.subeA ? `sube a ${fp.subeA.veredicto} bajo ${fmtUF(fp.subeA.precioUF)}` : "no sube por precio"} · ${fp.caeA ? `cae a ${fp.caeA.veredicto} sobre ${fmtUF(fp.caeA.precioUF)}` : "no cae por precio"}`;
+    const negCruza = mto.celdas.find((c) => c.cruza && c.flujoMensual < 0);
+    return `
+
+=== FRONTERAS Y MATRICES (dato del motor · lo que dibujan los diales y las matrices) ===
+Ingreso (tarifa y ocupación mueven el ingreso por la misma razón): ${arriba}; ${abajo}.
+Precio: ${precio}.
+Matriz tarifa × ocupación (${mto.celdas.length} recomputes): ${mto.celdas.filter((c) => c.cruza).length} cruzan al veredicto de arriba, ${mto.celdas.filter((c) => c.cae).length} caen.${negCruza ? ` OJO: ${fmtCLP(negCruza.tarifaCLP)} por noche con ${Math.round(negCruza.ocupacion * 100)}% de ocupación cruza a ${negCruza.veredicto} aunque el mes quede en ${fmtCLP(negCruza.flujoMensual)}: el veredicto lo decide el Franco Score, no el signo del mes — si lo mencionas, dilo así.` : ""}
+Matriz pie × plazo (${mpp.celdas.length} recomputes): ${mpp.celdas.filter((c) => c.cruza).length} cruzan, ${mpp.celdas.filter((c) => c.flujoMensual >= 0).length} dejan el mes en verde.
+→ Cita estas cifras tal cual cuando hables de fronteras o de la matriz; no inventes intermedios ni cuentes celdas por tu cuenta.`;
+  })();
+
+  // ── PIRÁMIDE COMO DATOS (T0 CONGELADO): los hallazgos en su orden real, cada uno con qué ·
+  //    cuánto · dirección. El #1 es el que ancla el hero (§7.bis); el resto es el mapa.
+  const bloquePiramide = (() => {
+    const list = Array.isArray(r.hallazgos) ? r.hallazgos.filter(Boolean) : [];
+    if (!list.length) return "";
+    const NOMBRE_H: Record<string, string> = {
+      rentabilidad_str: "rentabilidad operativa (cap rate)", flujo_str: "flujo mensual", sobreprecio: "precio por m² frente a la mediana comunal",
+      ventaja_vs_ltr: "corto frente a largo", ocupacion_vs_estimacion: "ocupación del caso frente a la estimación", sensibilidad_str: "punto de equilibrio",
+      estructura_costos_str: "costos de operar", estructura_financiamiento: "estructura de financiamiento", plusvalia: "plusvalía histórica de la comuna",
+      tir: "TIR a 10 años", patrimonio: "tu parte a 10 años", capex_puesta_a_punto: "puesta a punto", distancia_veredicto: "distancia al veredicto de arriba", gate_veredicto: "lo que retiene el veredicto",
+    };
+    const cuanto = (h: Hallazgo): string => {
+      const v = h.valor as Record<string, unknown>;
+      const n = (k: string) => (typeof v[k] === "number" ? (v[k] as number) : undefined);
+      switch (h.id) {
+        case "rentabilidad_str": return `${pct(n("capRatePct") ?? 0)}% frente a ${pct(n("umbralPct") ?? 5)}%`;
+        case "flujo_str": return `${fmtCLP(n("flujoMensualCLP") ?? 0)} al mes`;
+        case "sobreprecio": return `${pct(n("desviacionPct") ?? 0)}% frente a la mediana`;
+        case "ventaja_vs_ltr": return `${pct(n("sobreRentaPct") ?? 0)}% de sobre-renta`;
+        case "ocupacion_vs_estimacion": return `${n("ocupacionPct") ?? 0}% frente a ${n("estimacionPct") ?? 0}% estimado`;
+        case "sensibilidad_str": return `${n("beRatioPct") ?? 0}% del ingreso de mercado para no perder plata`;
+        case "estructura_costos_str": return `${n("costStackPct") ?? 0} de cada 100 pesos`;
+        case "estructura_financiamiento": return `pie ${n("piePct") ?? 0}% · tasa ${pct(n("tasaPct") ?? 0)}%`;
+        case "plusvalia": return `${pct(n("anualizadaPct") ?? 0)}% anual histórico`;
+        case "tir": return `${pct(n("tirPct") ?? 0)}%`;
+        case "patrimonio": return `×${pct(n("multiplicador") ?? 0, 2)} sobre lo puesto`;
+        default: return "";
+      }
+    };
+    const ordenados = ordenarHallazgosPiramideSTR(list);
+    const filas = ordenados.map((h, i) => `${String(i + 1).padStart(2, "0")} · ${NOMBRE_H[h.id] ?? h.id} · ${h.direccion === "adverso" ? "en contra" : h.direccion === "favorable" ? "a favor" : "neutral"}${cuanto(h) ? ` · ${cuanto(h)}` : ""}${i < 4 ? " · TOP-4 (se ve en la página)" : ""}`).join("\n");
+    const top = ordenados[0];
+    return `
+
+=== PIRÁMIDE DE HALLAZGOS (orden real por decisividad · dato del motor) ===
+${filas}
+HALLAZGO #1 COMO DATOS: qué = ${NOMBRE_H[top.id] ?? top.id} · cuánto = ${cuanto(top) || "(sin cifra)"} · dirección = ${top.direccion === "adverso" ? "en contra" : top.direccion === "favorable" ? "a favor" : "neutral"}. El hero abre por ESTE hallazgo (§7.bis); los cuatro del TOP-4 son los que el usuario ve en la página, en ese orden.`;
+  })();
+
   const bloqueCoronado = cardFrases.coronado
     ? `\n\n=== HALLAZGO QUE LIDERA LA PIRÁMIDE (ancla el ángulo-lead del hero · §7.bis) ===\nEl coronado (más decisivo/adverso) es: «${cardFrases.coronado.titular}» — ${cardFrases.coronado.frase}\n→ \`conviene.respuestaDirecta\` debe alinear su ángulo-lead con este hallazgo. No lo copies (§1.bis); no contradigas la jerarquía visual.`
     : "";
@@ -768,7 +877,7 @@ REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase d
     ? `
 
 === CASO PRECIO-JUSTO STR (§1.12.4 — PRECIO E INGRESOS A MERCADO, VEREDICTO ${String(r.francoScore?.veredicto ?? "")}) ===
-El precio está alineado con la mediana comunal (dato confiable) Y la tarifa/ocupación corren ancladas a la mediana observada de la zona (sin overrides del usuario). El problema NO es el departamento — es la zona.
+El precio está alineado con la mediana comunal (dato confiable) Y la tarifa/ocupación corren ancladas a la mediana observada de la zona (sin datos tuyos: tarifa y ocupación de mercado). El problema NO es el departamento — es la zona.
 REENCUADRE OBLIGATORIO (lenguaje canónico; adáptalo lo mínimo): "esta zona no sostiene renta corta a los precios de compra actuales".
 SALIDA CONSTRUCTIVA: no un descuento cosmético — la comparación honesta con el arriendo largo (sección vsLTR / recomendación de modalidad) y, si el dato lo permite, dónde el corto sí rinde.
 PROHIBIDO resolver este caso pidiendo un descuento chico "por matemática propia" sin este reencuadre. Si el descuento que arreglaría el caso excede lo plausible, se dice — no se maquilla.`
@@ -913,7 +1022,7 @@ ${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar: el
 
 === SENSIBILIDAD DE PRECIO (Ángulo 4 — la tabla vive en su propio drawer de datos) ===
 ${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${pct(s.capRate * 100, 2)}%, CoC ${esMetricaNoAplica(s.cashOnCash) ? NO_APLICA_PROMPT : metricaDisplay(s.cashOnCash, (n) => `${pct(n * 100)}%`)}, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${sinCapitalPropio ? `
-→ Con pie 0 la sensibilidad de precio se narra en FLUJO (## 5.bis.e): cada peso menos de precio es crédito que no tomas — el flujo de cada fila ya trae ese efecto.` : ""}${bloqueCards}${bloqueCoronado}${bloqueDistancia}${bloquePlusvalia}${bloqueSimetriaStr}${bloquePrecioJustoStr}${bloqueDriverNoAccionableStr}${anomaliasTexto}
+→ Con pie 0 la sensibilidad de precio se narra en FLUJO (## 5.bis.e): cada peso menos de precio es crédito que no tomas — el flujo de cada fila ya trae ese efecto.` : ""}${bloqueCards}${bloqueCoronado}${bloquePiramide}${bloqueDistancia}${bloqueSimulacion}${bloquePlusvalia}${bloqueSimetriaStr}${bloquePrecioJustoStr}${bloqueDriverNoAccionableStr}${anomaliasTexto}
 ${(() => {
     // §7.ter — CIFRA CLAVE de portada (motor: cifra-clave.ts; caption de catálogo).
     const distanciaStr = (r.hallazgos as { id: string }[] | undefined)?.find(
@@ -1157,6 +1266,9 @@ export interface GenerateStrProseArgs {
   inp: Record<string, unknown>;
   r: ShortTermResult & { francoScore?: FrancoScoreSTR; hallazgos?: Hallazgo[] };
   comuna: string;
+  /** Simulaciones del CONGELADO (fronteras y matrices), si el caller las tiene. Entran al
+   *  prompt y a las razones de [HERO-CLAIM]. */
+  simulacion?: SimulacionStr | null;
   maxTries?: number;
   logger?: (msg: string) => void;
 }
@@ -1197,9 +1309,10 @@ const SYSTEM_STR_CACHED = [
 
 export async function generateStrProse(args: GenerateStrProseArgs): Promise<GenerateStrProseResult> {
   const { anthropic, inp, r, comuna } = args;
+  const simulacion = args.simulacion ?? null;
   const maxTries = args.maxTries ?? 3;
   const log = args.logger ?? (() => {});
-  const { userPrompt, veredictoMotor, cardFrases } = buildUserPromptSTR(inp, r, comuna);
+  const { userPrompt, veredictoMotor, cardFrases } = buildUserPromptSTR(inp, r, comuna, simulacion);
 
   // FASE 1 — reintento por HARD drift (invariante que no puede persistir: ingreso/
   // ramp-up) y por voseo NO corregible (pronombre "vos" o -és/-ís fuera del léxico:
@@ -1447,7 +1560,7 @@ Responde SOLO este JSON, sin texto alrededor:
   // de los monitores finales, así estos miden lo que se persiste. Orden: estructural
   // (regla contable pegada al campo), múltiplos, palabras internas, engine-ism, copia.
   {
-    const ctxGuards = contextoGuardsStr(r, inp, comuna);
+    const ctxGuards = contextoGuardsStr(r, inp, comuna, simulacion);
     const reintentoQuirurgico = async (
       regla: ReglaStr,
       etiqueta: string,

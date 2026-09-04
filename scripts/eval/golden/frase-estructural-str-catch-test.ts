@@ -6,8 +6,8 @@
 // MISMA cadena que la página STR (recomputeShortTermForLegacy con UF y fecha congeladas y
 // la mediana prefetcheada):
 //   · 5dc42a82 Santiago — mínimo por PRECIO (−33,6%), pie 10% explorado, plazo 25
-//   · d043ebfc Las Condes — mínimo por TARIFA (+38,3%), pie 20% (no se explora en STR
-//     hasta que entre `vias`), plazo 25
+//   · d043ebfc Las Condes — mínimo por TARIFA (+38,3%), pie 20% explorado hasta 30% (T0
+//     CONGELADO: vias), plazo 25
 // Invariantes: sin "Ni cerrando/cobrando"; cita los dos topes; cita el mínimo como lo que
 // recién cruzaría; plazo/pie/gestión solo si el builder los probó; cierre de brecha.
 //
@@ -75,7 +75,10 @@ async function main() {
     const plazo = Number(input.plazoCredito) || 0;
     const plazoProbado = plazo > 0 && plazo < DIST_PLAZO_TOPE_ANIOS;
     if (plazoProbado !== fr.includes(`a ${DIST_PLAZO_TOPE_ANIOS} años`)) f(`plazo ${plazo}: la frase ${plazoProbado ? "debía" : "no debía"} citar los ${DIST_PLAZO_TOPE_ANIOS} años`);
-    const pieProbado = !!v.pieEsPalanca;
+    // T0 CONGELADO: el pie se explora hasta 30% siempre que exista y no esté en el techo; el
+    // estado vive en `vias` (noAplica = no se probó).
+    const vPie = v.vias?.find((x) => x.palanca === "pie");
+    const pieProbado = vPie ? vPie.estado !== "noAplica" : !!v.pieEsPalanca;
     if (pieProbado !== fr.includes(`con pie ${DIST_PIE_TOPE_PCT}%`)) f(`pie ${v.piePctActual}: la frase ${pieProbado ? "debía" : "no debía"} citar el pie ${DIST_PIE_TOPE_PCT}%`);
     if (!/(con administrador|autogestionando)/.test(fr)) f("no cita la gestión, que el builder siempre prueba");
     if (!/La brecha (es del negocio|no es de este departamento)/.test(fr)) f("sin cierre de brecha");

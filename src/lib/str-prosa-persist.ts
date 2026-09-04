@@ -22,6 +22,7 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { Hallazgo } from "@/lib/types";
 import { generateStrProse, PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
+import { simularStrDesdePersistido } from "@/lib/analysis/simular-str";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { camposUpdateUsage } from "@/lib/ai-usage";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
@@ -76,11 +77,16 @@ export async function generarYPersistirProsaStr(args: {
     const rGen = (recomputeShortTermForLegacy(input, results, ufFrozen, asOfFrozen, medianaStr) ?? results) as
       ShortTermResult & { francoScore?: FrancoScoreSTR; hallazgos?: Hallazgo[] };
 
+    // Simulaciones del CONGELADO (fronteras y matrices) para el prompt y [HERO-CLAIM].
+    // Un fallo acá no frena la prosa: sin simulación el bloque no entra.
+    let simulacion = null;
+    try { simulacion = simularStrDesdePersistido(input, results as unknown as { airbnbRaw?: unknown }, ufFrozen, asOfFrozen); } catch { simulacion = null; }
     const gen = await generateStrProse({
       anthropic,
       inp: input,
       r: rGen,
       comuna,
+      simulacion,
       logger: (m) => console.warn(`[STR AI v3] ${analysisId}: ${m}`),
     });
     const ai = gen.ai as unknown as Record<string, unknown>;

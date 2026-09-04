@@ -21,6 +21,8 @@
 import type { ShortTermResult } from "./engines/short-term-engine";
 import type { AIAnalysisSTRv2, Hallazgo } from "./types";
 import { datosComunaSTR } from "./engines/str-universo-santiago";
+import type { SimulacionStr } from "./analysis/simular-str";
+import type { HallazgoDistanciaVeredicto } from "./types";
 import { CAP_STR_UMBRAL_PCT } from "./rentabilidad-str-hallazgo";
 import { CLAIMS_HERO, CLAIMS_VECES, violacionesClaims, type ClaimHero } from "./hero-claim-core";
 import { frasesCanonicasDe, oracionQueCopia } from "./copia-frase";
@@ -91,6 +93,15 @@ export interface RazonesHeroClaimStr {
   sujetoUfM2?: number | null;
   medianaUfM2?: number | null;
   medianaConfiable?: boolean;
+  // ── T0 CONGELADO (04-sep-2026): vías y simulaciones del motor ──
+  /** Palancas que cruzan (de `distancia_veredicto.vias`), para la regla "única vía". undefined = filas sin vias (no se evalúa). */
+  viasCruzan?: string[];
+  /** Fronteras del ingreso (una bisección para tarifa y ocupación), en % sobre el caso. */
+  fronteraArribaPct?: number | null;
+  fronteraAbajoPct?: number | null;
+  /** Celdas que cruzan en la matriz tarifa × ocupación y en la de pie × plazo. */
+  celdasCruzanTarifaOcupacion?: number | null;
+  celdasCruzanPiePlazo?: number | null;
 }
 
 /** Razones del motor para un resultado STR ya computado (con sus hallazgos). */
@@ -98,7 +109,10 @@ export function razonesHeroClaimStr(
   r: ShortTermResult & { hallazgos?: Hallazgo[] },
   inp: Record<string, unknown>,
   comuna: string,
+  sim?: SimulacionStr | null,
 ): RazonesHeroClaimStr {
+  const dv = (r.hallazgos ?? []).find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined;
+  const vias = dv?.valor.vias;
   const base = r.escenarios?.base;
   const up = r.escenarios?.agresivo;
   const ejes = r.ejesAplicados;
@@ -127,6 +141,11 @@ export function razonesHeroClaimStr(
     sujetoUfM2: num(sobre?.valor?.sujetoUfM2),
     medianaUfM2: num(sobre?.valor?.medianaComunaUfM2),
     medianaConfiable: !!sobre && num(sobre.valor?.medianaComunaUfM2) !== null,
+    viasCruzan: vias ? vias.filter((v) => v.estado === "cruza").map((v) => v.palanca) : undefined,
+    fronteraArribaPct: sim?.fronterasIngreso.arriba ? Math.round((sim.fronterasIngreso.arriba.factor - 1) * 1000) / 10 : null,
+    fronteraAbajoPct: sim?.fronterasIngreso.abajo ? Math.round((sim.fronterasIngreso.abajo.factor - 1) * 1000) / 10 : null,
+    celdasCruzanTarifaOcupacion: sim ? sim.matrizTarifaOcupacion.celdas.filter((c) => c.cruza).length : null,
+    celdasCruzanPiePlazo: sim ? sim.matrizPiePlazo.celdas.filter((c) => c.cruza).length : null,
   };
 }
 
@@ -214,13 +233,15 @@ const CLAIMS_STR: ClaimHero[] = [
   ...CLAIMS_VECES,
 ];
 
-/** Violaciones [HERO-CLAIM] de un texto STR contra las razones del motor. STR no emite
- *  `vias`, así que la regla "única vía" no se evalúa (queda para el CONGELADO). */
+/** Violaciones [HERO-CLAIM] de un texto STR contra las razones del motor. Desde T0
+ *  CONGELADO el hallazgo emite `vias`, así que la regla "única vía" se evalúa con las que
+ *  cruzan (igual que LTR); en filas sin vias no se evalúa. */
 export function violacionesHeroClaimStr(texto: string, r: RazonesHeroClaimStr): string[] {
   return violacionesClaims<SujetoStr, ComparadorStr>(texto, {
     claims: CLAIMS_STR,
     sujetos: SUJETOS_STR,
     comparadores: COMPARADORES_STR,
+    viasCruzan: r.viasCruzan,
     razon: (s, c, o) => razonStr(r, s, c, o),
   });
 }
@@ -233,6 +254,9 @@ export function razonesHeroClaimStrTexto(r: RazonesHeroClaimStr): string {
   ];
   const out: string[] = [];
   for (const [s, c] of pares) { const z = razonStr(r, s, c, ""); if (z && z.valor !== null) out.push(`${z.nombre} = ${z.valor.toFixed(2)}×`); }
+  if (r.viasCruzan) out.push(`vías que cruzan: ${r.viasCruzan.length}${r.viasCruzan.length ? ` (${r.viasCruzan.join(", ")})` : ""}`);
+  if (r.fronteraArribaPct != null || r.fronteraAbajoPct != null) out.push(`frontera del ingreso: ${r.fronteraAbajoPct != null ? `cae a ${r.fronteraAbajoPct}%` : "no cae"} · ${r.fronteraArribaPct != null ? `sube a +${r.fronteraArribaPct}%` : "no sube"}`);
+  if (r.celdasCruzanTarifaOcupacion != null) out.push(`matriz tarifa × ocupación: ${r.celdasCruzanTarifaOcupacion} de 16 cruzan · pie × plazo: ${r.celdasCruzanPiePlazo ?? 0} de 16`);
   return out.length ? out.join(", ") : "ninguna razón disponible";
 }
 
@@ -300,8 +324,8 @@ export interface ContextoGuardsStr {
   estructural: boolean;
   frases: string[][];
 }
-export function contextoGuardsStr(r: ShortTermResult & { hallazgos?: Hallazgo[] }, inp: Record<string, unknown>, comuna: string): ContextoGuardsStr {
-  return { razones: razonesHeroClaimStr(r, inp, comuna), estructural: esDistanciaEstructural(r), frases: frasesCanonicasStr(r) };
+export function contextoGuardsStr(r: ShortTermResult & { hallazgos?: Hallazgo[] }, inp: Record<string, unknown>, comuna: string, sim?: SimulacionStr | null): ContextoGuardsStr {
+  return { razones: razonesHeroClaimStr(r, inp, comuna, sim), estructural: esDistanciaEstructural(r), frases: frasesCanonicasStr(r) };
 }
 
 export type ReglaStr = "hero-claim" | "engineism" | "internas" | "estructural" | "copia";
