@@ -262,6 +262,28 @@ export function hitsPalabrasInternas(texto: string): string[] {
   return out;
 }
 
+// ─── 4. [STR-ESTRUCTURAL] ───────────────────────────────────────────────────
+export function esDistanciaEstructural(r: { hallazgos?: Hallazgo[] }): boolean {
+  const d = (r.hallazgos ?? []).find((h) => h.id === "distancia_veredicto") as { valor?: { esEstructural?: boolean } } | undefined;
+  return d?.valor?.esEstructural === true;
+}
+/** Las palabras exactas que el bloque del prompt prohíbe ("si logras", "si consigues"). Sin
+ *  "puedes": "si no puedes dedicar horas a la operación" no ofrece negociar nada. */
+const RE_SI_LOGRAS = /\bsi (?:no )?(?:logras|consigues|lograras|consiguieras|lograses|consiguieses)\b/i;
+const RE_OFERTA = /\bnegoci(?:a|as|ar|ando|ación|aciones)\b|\bdescuento\b|\brebaja\b/i;
+const RE_NEGACION = /\b(?:ni|ning[uú]n[oa]?|nadie|tampoco)\b|\bno (?:alcanza|basta|cambia|mueve|sirve|salva|justifica|arregla|lo (?:mueve|cambia|salva|justifica|arregla|logra))\b/i;
+/** Oraciones que ofrecen negociar / descuento / "si logras" como salida. Solo tiene
+ *  sentido cuando la distancia es estructural: el bloque del prompt lo prohíbe con esas
+ *  mismas palabras y nadie lo hacía cumplir (GE-4: "si no logras negociar el precio…"). */
+export function ofertasNegociacion(texto: string): string[] {
+  const out: string[] = [];
+  for (const o of texto.replace(/\*\*/g, "").split(/(?<=[.!?])\s+/)) {
+    if (RE_SI_LOGRAS.test(o)) { out.push(o.trim()); continue; }
+    if (RE_OFERTA.test(o) && !RE_NEGACION.test(o)) out.push(o.trim());
+  }
+  return out;
+}
+
 // ─── Evaluación por campo (lo que consumen el generador, los fixtures y el reporte) ───
 export interface ContextoGuardsStr {
   razones: RazonesHeroClaimStr;
@@ -269,21 +291,22 @@ export interface ContextoGuardsStr {
   frases: string[][];
 }
 export function contextoGuardsStr(r: ShortTermResult & { hallazgos?: Hallazgo[] }, inp: Record<string, unknown>, comuna: string): ContextoGuardsStr {
-  return { razones: razonesHeroClaimStr(r, inp, comuna), estructural: false, frases: [] };
+  return { razones: razonesHeroClaimStr(r, inp, comuna), estructural: esDistanciaEstructural(r), frases: [] };
 }
 
-export type ReglaStr = "hero-claim" | "engineism" | "internas";
+export type ReglaStr = "hero-claim" | "engineism" | "internas" | "estructural";
 /** path → violaciones (vacío si el campo está limpio). */
 export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regla: ReglaStr, ctx: ContextoGuardsStr): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   if (!ai) return out;
-  const paths = PROSA_PATHS_STR;
+  const paths = regla === "estructural" ? CAJAS_PATHS_STR : PROSA_PATHS_STR;
   for (const { path, texto } of camposProsa(ai, paths)) {
     let v: string[] = [];
     switch (regla) {
       case "hero-claim": v = violacionesHeroClaimStr(texto, ctx.razones); break;
       case "engineism": v = hitsEngineIsm(texto); break;
       case "internas": v = hitsPalabrasInternas(texto); break;
+      case "estructural": v = ctx.estructural ? ofertasNegociacion(texto) : []; break;
     }
     if (v.length) out[path] = v;
   }

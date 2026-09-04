@@ -1509,6 +1509,13 @@ Responde SOLO este JSON, sin texto alrededor:
       }
     };
 
+    // 4. [STR-ESTRUCTURAL] — con distancia estructural ninguna caja ofrece negociar.
+    await reintentoQuirurgico(
+      "estructural",
+      "[STR-ESTRUCTURAL]",
+      (v) => `la distancia al veredicto es ESTRUCTURAL (ningún ajuste realista alcanza) y la caja ofrece negociar, un descuento o un "si logras" como salida: ${v.map((x) => `«${x}»`).join(" · ")}`,
+      "reescribe cada campo cerrando la puerta: sin negociación, sin descuento, sin \"si logras / si consigues\"; la brecha es del negocio, no de los supuestos, y el cierre entra por la alternativa.",
+    );
     // 1. [HERO-CLAIM] — múltiplos contra la razón del motor.
     const razonesTxt = razonesHeroClaimStrTexto(ctxGuards.razones);
     await reintentoQuirurgico(
