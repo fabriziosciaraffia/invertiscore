@@ -38,7 +38,6 @@ import Anthropic from "@anthropic-ai/sdk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { generateStrProse } from "../../../src/lib/ai-generation-str";
-import { simularStrDesdePersistido } from "../../../src/lib/analysis/simular-str";
 import { marcasBalanceadas, evaluarTitular } from "../../../src/lib/prosa-marcas";
 import { ordenarHallazgosPiramideSTR } from "../../../src/lib/piramide-orden-str";
 import { STR_GE_SEEDS, loadFrozen } from "./str-seeds";
@@ -126,11 +125,8 @@ export async function runStrGenerateTier(
           ai = (JSON.parse(readFileSync(archivo, "utf-8")) as { result: any }).result;
           process.stderr.write(` (dump)\n`);
         } else {
-          // Simulaciones del CONGELADO con la UF y la fecha congeladas del seed (como la página).
-          const fz = frozen[key] as any;
-          const ufSeed = Number(fz.input_data?.precioCompra) / Number(fz.input_data?.precioCompraUF);
-          const simSeed = ufSeed > 0 ? simularStrDesdePersistido(fz.input_data, rForProse as any, ufSeed, new Date(fz.created_at ?? Date.now())) : null;
-          const gen = await generateStrProse({ anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna, simulacion: simSeed });
+          // Simulaciones del CONGELADO: las del recompute del seed (mismo contexto sintetizado).
+          const gen = await generateStrProse({ anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna, simulacion: r.sim });
           process.stderr.write(` ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
           ai = gen.ai;
         }

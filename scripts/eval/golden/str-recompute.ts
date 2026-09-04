@@ -14,6 +14,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from "fs";
 import path from "path";
+import { simularStr, type SimulacionStr } from "../../../src/lib/analysis/simular-str";
 import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../../../src/lib/engines/short-term-score";
 import { buildStrHallazgos, mergeHallazgosStr } from "../../../src/lib/str-hallazgos";
@@ -196,7 +197,7 @@ export interface StrBaseline {
   patrimonioMult: number | null;        // hallazgo patrimonio valor.multiplicador (card; redondeado 2 dec)
 }
 
-export interface StrRecompute { rec: any; score: any; hz: Hallazgo[]; mediana: { mediana: number; n: number } }
+export interface StrRecompute { rec: any; score: any; hz: Hallazgo[]; mediana: { mediana: number; n: number }; sim: SimulacionStr }
 
 /** Desviación del precio/m² del sujeto respecto de la mediana golden, por seed (decisión
  *  Fabrizio, 04-sep-2026): GE-1 sobreprecio favorable leve (−5%), GE-4 adverso (+12%), el
@@ -251,7 +252,14 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
     precioUF: d.precioCompraUF, superficieM2: d.superficieUtil, piePct: d.piePct, tasaPct: d.tasaInteres,
     plazoAnios: d.plazoCredito, mediana, valorUF: fx.uf, incluyeCorretaje: false,
     veredictoCtx: { inputs, scoreExtras: scoreExtras as any, asOf: asOfGolden } }));
-  return { rec, score, hz, mediana };
+  // Simulaciones del CONGELADO (fronteras y matrices) sobre el MISMO contexto sintetizado del
+  // seed: entran al prompt y a [HERO-CLAIM] de la tanda como en producción.
+  const pc = airbnbData.percentiles;
+  const sim = simularStr({ inputs, scoreExtras: scoreExtras as any, asOf: asOfGolden }, {
+    veredicto: score.veredicto, adr: rec.ejesAplicados?.adrFinal ?? rec.escenarios.base.adrReferencia,
+    ocupacion: rec.ejesAplicados?.ocupacionFinal ?? rec.escenarios.base.ocupacionReferencia, precioCLP: d.precioCompra, precioUF: d.precioCompraUF,
+  }, { adr: { p25: pc.average_daily_rate.p25, p75: pc.average_daily_rate.p75, p90: pc.average_daily_rate.p90 }, ocupacion: { p25: pc.occupancy.p25, p75: pc.occupancy.p75, p90: pc.occupancy.p90 } });
+  return { rec, score, hz, mediana, sim };
 }
 
 // Extrae los HECHOS numéricos STR de un recompute (para congelar o comparar).
