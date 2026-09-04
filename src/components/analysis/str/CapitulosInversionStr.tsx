@@ -5,7 +5,8 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoEstructuraFinanciamiento, HallazgoSobreprecio, Veredicto } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
-import { TIR_LIMITE_PCT, type SimulacionStr, type FronteraLado } from "@/lib/analysis/simular-str";
+import type { SimulacionStr, FronteraLado } from "@/lib/analysis/simular-str";
+import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
 import { argsCierresStr, cierresStr, type EntradaCierresStr } from "@/lib/cierres-str-ensamblador";
 import type { FmtCierre } from "@/lib/cierres-capitulos";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
@@ -446,8 +447,11 @@ export function CapitulosInversionStr({
     const mpp = simulacion?.matrizPiePlazo ?? null;
     const cuota = m?.desgloseFall.cuota ?? results.dividendoMensual;
     const planObjetivo = techoUF != null && techoDeltaPct != null && techoDeltaPct < 0 ? { uf: techoUF, clp: techoUF * valorUF, veredicto: args.pagas.veredictoObjetivo ?? objetivo } : null;
-    const minimo = dist?.valor.esEstructural ? dist.valor.deltaMinimoFueraDeTope : null;
-    const planMinimo = minimo && minimo.palanca === "precio" && precioUF > 0 ? { uf: precioUF * (1 + minimo.deltaPct / 100), clp: precioCLP * (1 + minimo.deltaPct / 100), pct: minimo.deltaPct, veredicto: objetivo } : null;
+    // ESTRUCTURAL SIN PLAN, como LTR (T2): cuando ninguna vía cruza no hay plan que
+    // ofrecer; "donde el mes cierra" sigue existiendo para la zona y el cierre del
+    // capítulo, pero no como oferta de negociación. Es el mismo caso que cubre el guard
+    // [STR-ESTRUCTURAL] en la prosa (esDistanciaEstructural lee dist.valor.esEstructural).
+    const esEstructural = dist?.valor.esEstructural === true;
     return {
       id: "pagas",
       numero: ROMANO.pagas,
@@ -469,7 +473,7 @@ export function CapitulosInversionStr({
               cambia el veredicto) · estructural: lo que haría falta, fuera de rango. "Donde el mes
               cierra" solo si el motor lo trae (STR aún no lo emite). La conversión va junto a la
               cifra (el componente formatea por moneda). */}
-          {(planObjetivo || planMinimo || simulacion?.mesCierra) && (
+          {!esEstructural && (planObjetivo || simulacion?.mesCierra) && (
             <VViz>
               <VSub>Cómo negociarlo: tu plan</VSub>
               {/* Un nombre por precio (T2): umbral = donde cambia el veredicto (objetivo) ·
@@ -479,7 +483,8 @@ export function CapitulosInversionStr({
                 objetivo={planObjetivo}
                 primeraOferta={planObjetivo ? { uf: planObjetivo.uf * 0.95, clp: planObjetivo.clp * 0.95 } : null}
                 sostenible={null}
-                minimoFueraDeRango={planMinimo}
+                minimoFueraDeRango={null}
+                labelLimite={`Límite · TIR ${TIR_LIMITE_PCT}%`}
                 walkAway={
                   simulacion?.limiteTir
                     ? { precio_uf: simulacion.limiteTir.precioUF, precio_clp: simulacion.limiteTir.precioCLP, razon: `Sobre este precio la TIR a 10 años baja del ${TIR_LIMITE_PCT}%: conviene más otra inversión.` }

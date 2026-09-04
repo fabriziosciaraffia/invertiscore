@@ -38,7 +38,7 @@ export type PerfilHuespedSTR =
 // (más reconocible para usuario chileno, evita connotación de turismo de moda).
 // El key interno `nomada_digital` se conserva para compat con cache DB.
 export const PERFIL_LABEL: Record<PerfilHuespedSTR, string> = {
-  turista_leisure: "Turista de leisure",
+  turista_leisure: "Turista",
   ejecutivo_corto: "Ejecutivo en visita corta",
   nomada_digital: "Trabajador remoto",
   familia: "Familia visitando",
@@ -47,15 +47,15 @@ export const PERFIL_LABEL: Record<PerfilHuespedSTR, string> = {
 
 export const PERFIL_DESCRIPCION: Record<PerfilHuespedSTR, string> = {
   turista_leisure:
-    "Visita Santiago por turismo (2-5 noches). Prioriza ubicación walkable, cerca de barrios con vida (Lastarria, Bellavista, centro histórico), restaurantes y transporte público.",
+    "Visita Santiago por turismo (2-5 noches). Prioriza una ubicación caminable, cerca de barrios con vida (Lastarria, Bellavista, centro histórico), restaurantes y transporte público.",
   ejecutivo_corto:
-    "Visita por trabajo (3-7 noches). Prioriza cercanía a zona de negocios (El Golf, Sanhattan, Apoquindo), wifi rápido, escritorio funcional y conexión rápida con aeropuerto.",
+    "Visita por trabajo (3-7 noches). Prioriza cercanía a zona de negocios (El Golf, Sanhattan, Apoquindo), internet rápido, escritorio funcional y conexión rápida con el aeropuerto.",
   nomada_digital:
     "Trabajador remoto extranjero o de regiones (1-3 meses). Prioriza cocina equipada, lavadora, espacio de trabajo cómodo, internet sólido y barrio activo con cafés.",
   familia:
-    "Familia en visita corta (3-5 noches), a veces acompañando a estudiantes o eventos. Prioriza parques cercanos, malls familiares y depto amplio sobre lujo.",
+    "Familia en visita corta (3-5 noches), a veces acompañando a estudiantes o eventos. Prioriza parques cercanos, centros comerciales familiares y un depto amplio antes que lujo.",
   paciente_medico:
-    "Paciente en tratamiento o familiar acompañante (1-3 semanas). Prioriza cercanía caminable a clínica, silencio, blackout para descanso prolongado, cocina equipada y lavadora.",
+    "Paciente en tratamiento o familiar acompañante (1-3 semanas). Prioriza cercanía caminable a una clínica, silencio, cortinas que oscurezcan para el descanso prolongado, cocina equipada y lavadora.",
 };
 
 export interface PerfilScore {

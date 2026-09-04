@@ -24,7 +24,7 @@ import { PiezasShared } from "./PiezasShared";
 import { STRResultsClient } from "@/app/analisis/renta-corta/[id]/results-client";
 import fixtures from "./fixtures.json";
 
-type FixKey = "santiagoStr" | "qaStr" | "selfLiqStr" | "elBosqueStr" | "staRosaStr";
+type FixKey = "santiagoStr" | "qaStr" | "selfLiqStr" | "elBosqueStr" | "staRosaStr" | "grajalesStr";
 
 function seqStr(hallazgos: Hallazgo[] | undefined): DrawerKeySTR[] {
   const seq: DrawerKeySTR[] = [];
@@ -79,6 +79,7 @@ function Inner() {
         aiAnalysisInitial={fix.ai_analysis ?? null}
         puedeRegenerarProsa={false}
         simulacionStr={fix.simulacion ?? null}
+        zonaStr={fix.zonaStr ?? null}
       />
     );
   }

@@ -41,7 +41,9 @@ export interface AvisoZona {
   distanciaM: number | null;
   resenas: number | null;
   nota: number | null;
-  dormitorios: number | null;
+  /** Coordenadas redondeadas a 4 decimales (≈ 10 m), para un mapa futuro. */
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface ZonaStr {
@@ -74,7 +76,6 @@ type RawListing = {
   location_info?: { latitude?: number; longitude?: number };
   performance_metrics?: { ttm_avg_rate?: number; ttm_occupancy?: number; ttm_avg_length_of_stay?: number; ttm_revenue?: number };
   ratings?: { num_reviews?: number; rating_overall?: number };
-  property_details?: { bedrooms?: number };
 };
 
 export function avisosDesdeListings(listings: unknown[], lat: number | null, lng: number | null): AvisoZona[] {
@@ -89,7 +90,8 @@ export function avisosDesdeListings(listings: unknown[], lat: number | null, lng
       distanciaM: lat != null && lng != null && la != null && lo != null ? Math.round(distanciaMetros(lat, lng, la, lo)) : null,
       resenas: num(l.ratings?.num_reviews),
       nota: num(l.ratings?.rating_overall),
-      dormitorios: num(l.property_details?.bedrooms),
+      lat: la != null ? Math.round(la * 1e4) / 1e4 : null,
+      lng: lo != null ? Math.round(lo * 1e4) / 1e4 : null,
     };
   });
 }

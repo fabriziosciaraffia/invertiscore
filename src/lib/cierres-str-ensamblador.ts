@@ -128,6 +128,7 @@ export function argsCierresStr(e: EntradaCierresStr): ArgsCierresStr {
       spreadTasaPts: fin?.valor && typeof fin.valor.tasaPct === "number" && typeof fin.valor.tasaMarketPct === "number" ? fin.valor.tasaPct - fin.valor.tasaMarketPct : null,
       matriz: sim?.matrizPiePlazo ?? null,
       tarifaCruza: viaAdr?.estado === "cruza" ? { objetivo: viaAdr.objetivo, deltaPct: viaAdr.deltaPct } : null,
+      mesCierraUF: sim?.mesCierra?.precioUF ?? null,
     },
     gestion: {
       modo: e.modoGestion,

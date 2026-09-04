@@ -29,23 +29,21 @@ import { AppFooter } from "@/components/chrome/AppFooter";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { NextAnalysisCTA, nextCtaState } from "@/components/analysis/NextAnalysisCTA";
-import { MarcaSeccion, useDrawerAbierto } from "@/components/analysis/informeTelemetry";
+import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 import { CtaWelcome } from "@/components/analysis/CtaWelcome";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { HeroStrDictamen } from "@/components/analysis/str/HeroStrDictamen";
 import { StateBox } from "@/components/ui/StateBox";
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
+import { ordenarHallazgosPiramideSTR } from "@/components/analysis/str/PiramideHallazgosSTR";
 import { PrincipalesHallazgos } from "@/components/analysis/PrincipalesHallazgos";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { TokensShared } from "@/components/analysis/shared";
 import { SeisCifrasStr } from "@/components/analysis/str/SeisCifrasStr";
 import { ModalCalculoStr } from "@/components/analysis/str/ModalCalculoStr";
 import { CapitulosInversionStr, CAPITULO_DE_HALLAZGO_STR, type CapituloStrId } from "@/components/analysis/str/CapitulosInversionStr";
-import { DrawerSTR, type DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
-import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/DrawerContentSTR";
-import { ZonaCardSTR } from "@/components/analysis/str/ZonaCardSTR";
+import { ZonaStrSection } from "@/components/analysis/str/ZonaStrSection";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import type { AIAnalysisSTRv2, HallazgoDistanciaVeredicto } from "@/lib/types";
 import type { NivelPie } from "@/lib/analysis";
@@ -132,13 +130,12 @@ export function STRResultsClient({
   subordinatedHref = null,
   showCtaWelcome = false,
   isAnonOwner = false,
-  nivelesPie = [],
   simulacionStr = null,
+  zonaStr = null,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
   // SubjectCardGrid): lo abre la pirámide (hallazgos) y la card zona (tipoHuesped).
-  const [activeDrawer, setActiveDrawer] = useState<DrawerKeySTR | null>(null);
   // T1 — modal "Cómo se calcula" y apertura de un capítulo desde Principales hallazgos
   // (espejo de SubjectCardGrid LTR).
   const [calculoAbierto, setCalculoAbierto] = useState(false);
@@ -148,15 +145,6 @@ export function STRResultsClient({
   // Orden único de la pirámide STR — una sola pasada para la secuencia de drawers
   // y el resolver de telemetría (mismo array que renderiza).
   const hallazgosOrdenadosSTR = ordenarHallazgosPiramideSTR(results?.hallazgos);
-
-  // Secuencia de drawers = orden VISUAL de la pirámide STR (mismo array que renderiza),
-  // filtrando las cards con drawer y dedup. La navegación prev/next se deriva de acá.
-  // `tipoHuesped` NO entra (se abre solo desde ZonaCardSTR) → queda fuera de las flechas.
-  const drawerSequenceSTR: DrawerKeySTR[] = [];
-  for (const h of hallazgosOrdenadosSTR) {
-    const key = HALLAZGO_DRAWER_STR[h.id];
-    if (key && !drawerSequenceSTR.includes(key)) drawerSequenceSTR.push(key);
-  }
 
   // ─── AI state ─────────────────────────────────────
   const initialAi =
@@ -308,21 +296,6 @@ export function STRResultsClient({
   const isIncompleteScore = score === null;
   const veredicto: STRVerdict =
     (francoScore?.veredicto as STRVerdict) ?? results.veredicto;
-
-  // I-3: apertura de drawer (pirámide + zona entran por acá). El resolver emite
-  // en paralelo `informe_hallazgo_abierto {n, id_hallazgo}` cuando el drawer
-  // corresponde a un hallazgo (línea base pre-rediseño, fix FASE 1). El hook
-  // vive DESPUÉS de derivar `veredicto` porque el contexto FASE 5 lo necesita;
-  // como derivación pura del prop `results`, el orden de hooks no varía.
-  useDrawerAbierto(
-    activeDrawer,
-    "str",
-    (key) => {
-      const idx = hallazgosOrdenadosSTR.findIndex((h) => HALLAZGO_DRAWER_STR[h.id] === key);
-      return idx >= 0 ? { n: idx + 1, id: hallazgosOrdenadosSTR[idx].id } : null;
-    },
-    { veredicto, accessLevel },
-  );
 
   // E.5 — el HeroSTR lee los chips (dorm/baño/m²/precio/pie/gestión) directamente
   // de input_data; ya no se arma metadataItems/subtitle acá. propiedadTitle queda
@@ -576,13 +549,14 @@ export function STRResultsClient({
         </SeccionInforme>
         <SeccionInforme id="la-zona" tono="paper2" eyebrow={`La zona · ${comuna}`} titulo="La zona" intent="Contra qué compites y quién se va a alojar acá.">
           <MarcaSeccion seccion="zona" tipo="str" accessLevel={accessLevel} />
-          {/* Placeholder hasta T2: la card actual, que abre el drawer de tipo de huésped. */}
-          <ZonaCardSTR
-            lat={(inputData?.lat as number) ?? ((inputData?.zonaRadio as { lat?: number } | undefined)?.lat) ?? null}
-            lng={(inputData?.lng as number) ?? ((inputData?.zonaRadio as { lng?: number } | undefined)?.lng) ?? null}
-            comuna={comuna}
-            onOpen={() => setActiveDrawer("tipoHuesped")}
-          />
+          {/* T2 (05-sep-2026): La zona sobre piezas compartidas, desde `zonaStr` (server, con
+              procedencia). ZonaCardSTR y el drawer de tipo de huésped con porcentajes quedan
+              desmontados (T3 borra). */}
+          {zonaStr ? (
+            <ZonaStrSection zona={zonaStr} comuna={comuna} direccion={direccionPortada} currency={currency} valorUF={ufValue} veredicto={veredicto} accessLevel={accessLevel} />
+          ) : (
+            <p className="v-copy">Sin datos suficientes de la zona para este análisis.</p>
+          )}
         </SeccionInforme>
         </DocumentoFrame>
 
@@ -669,29 +643,6 @@ export function STRResultsClient({
           Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
         </p>
 
-        {/* Drawer de detalle (overlay) — abierto desde la pirámide o la card zona.
-            E.2: estado levantado acá; el contenido vive en DrawerContentSTR. */}
-        {activeDrawer && (
-          <DrawerSTR
-            activeKey={activeDrawer}
-            titulo={DRAWER_TITULOS_STR[activeDrawer]}
-            sequence={drawerSequenceSTR}
-            onClose={() => setActiveDrawer(null)}
-            onNavigate={(k) => setActiveDrawer(k)}
-          >
-            <DrawerContentSTR
-              activeKey={activeDrawer}
-              analysisId={analysisId}
-              results={results}
-              inputData={inputData as never}
-              comuna={comuna}
-              currency={currency}
-              valorUF={ufValue}
-              ai={aiParaRender as never}
-              nivelesPie={nivelesPie}
-            />
-          </DrawerSTR>
-        )}
       </main>
 
       {/* Footer del sitio */}

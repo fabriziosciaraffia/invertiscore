@@ -839,6 +839,7 @@ export function PlanNegociacion({
   modoSostenible,
   minimoFueraDeRango,
   walkAway,
+  labelLimite = "Límite",
   glosas,
   currency,
   precioActualCLP,
@@ -848,6 +849,8 @@ export function PlanNegociacion({
   descuentoNeutroPct,
   sinCredito,
 }: {
+  /** Rótulo visible del precio límite (T2: nunca "walk-away"). STR pasa "Límite · TIR 6%". */
+  labelLimite?: string;
   /** El umbral de veredicto dentro del tope (con su destino), o null. */
   objetivo: (PlanPrecio & { veredicto: string | null }) | null;
   primeraOferta: PlanPrecio | null;
@@ -944,9 +947,9 @@ export function PlanNegociacion({
     }
     if (walkAway) {
       if (walkAway.precio_uf === null) {
-        slots.push({ label: "Walk-away", valor: "Buscar otra propiedad", glosa: glosas?.walkAway || walkAway.razon });
+        slots.push({ label: labelLimite, valor: "Buscar otra propiedad", glosa: glosas?.walkAway || walkAway.razon });
       } else if (walkAway.precio_clp !== null) {
-        slots.push({ label: "Walk-away", valor: fmtPrecio(walkAway.precio_clp, walkAway.precio_uf), glosa: glosas?.walkAway || walkAway.razon });
+        slots.push({ label: labelLimite, valor: fmtPrecio(walkAway.precio_clp, walkAway.precio_uf), glosa: glosas?.walkAway || walkAway.razon });
       }
     }
   }
@@ -961,13 +964,13 @@ export function PlanNegociacion({
     const hayNeutro = typeof neutroUF === "number" && neutroUF > 0 && typeof neutroCLP === "number" && neutroCLP > 0;
     if (!hayNeutro || typeof dto !== "number") {
       if (!hayNeutro && typeof dto === "number") {
-        return { valor: "no existe", delta: null, glosa: "Con esta estructura el arriendo no cubre los gastos fijos a ningún precio." };
+        return { valor: "no existe", delta: null, glosa: "Con esta estructura lo que entra cada mes no cubre los gastos fijos a ningún precio." };
       }
       return null;
     }
     const valor = currency === "UF" ? `UF ${Math.round(neutroUF!).toLocaleString("es-CL")}` : fmtCompact(neutroCLP!, currency, valorUF);
     if (dto > 0) {
-      return { valor, delta: `−${dto.toFixed(1).replace(".", ",")}%`, glosa: "No es el número a pelear: es dónde el arriendo alcanza a cubrirlo todo." };
+      return { valor, delta: `−${dto.toFixed(1).replace(".", ",")}%`, glosa: "No es el número a pelear: es dónde lo que entra cada mes alcanza a cubrirlo todo." };
     }
     return {
       valor,
@@ -995,7 +998,7 @@ export function PlanNegociacion({
             className="font-mono"
             style={{ fontSize: 10, letterSpacing: "0.03em", padding: "3px 7px", borderRadius: 3, background: "color-mix(in srgb, var(--franco-text) 5%, transparent)", color: "var(--franco-text-secondary)", whiteSpace: "nowrap" }}
           >
-            Caja en cero <b style={{ color: "var(--franco-text)" }}>{chipCaja.valor}</b>
+            Donde el mes cierra <b style={{ color: "var(--franco-text)" }}>{chipCaja.valor}</b>
             {chipCaja.delta ? <> · <b style={{ color: "var(--franco-text)" }}>{chipCaja.delta}</b></> : null}
           </span>
         )}

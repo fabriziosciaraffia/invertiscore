@@ -103,6 +103,29 @@ export function TokensShared() {
       .chart-leg span::before{content:'';display:inline-block;width:12px;height:8px;background:var(--c);margin-right:6px}
       .chart-leg span.ln::before{height:3px;position:relative;top:-3px}
 
+      /* ── La zona (CONGELADO · LA ZONA) ── */
+      .zona-cells{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--doc-line);border:1px solid var(--doc-line);margin-top:18px}
+      .zona-cells div{background:var(--doc-paper);padding:12px 14px}
+      .zona-cells p{margin:0}
+      .zona-cells .k{font-size:11.5px;color:var(--doc-tx3);margin-bottom:6px;line-height:1.35}
+      .zona-cells .v{font-family:var(--font-mono, ui-monospace);font-size:17px;font-weight:700;color:var(--doc-tx)}
+      .zona-cells .s{font-size:11.5px;color:var(--doc-tx3);margin-top:6px;line-height:1.4}
+      .zona-cells .s b{font-family:var(--font-mono, ui-monospace);font-weight:700;color:var(--doc-tx2)}
+      .zona-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:12px;flex-wrap:wrap}
+      .zona-foot .v-fuente{margin-top:0;flex:1;min-width:0}
+      .tipo-line{font-size:12.5px;color:var(--doc-tx2);line-height:1.55;margin:12px 0 0;padding-top:12px;border-top:1px dotted var(--doc-line)}
+      .tipo-line b{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--doc-tx4);margin-right:8px}
+      .poi{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--doc-line)}
+      .poi .n{font-size:13px;font-weight:600;color:var(--doc-tx)}
+      .poi .t{grid-column:1;font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx4)}
+      .poi .d{grid-row:span 2;font-family:var(--font-mono, ui-monospace);font-size:12px;font-weight:700;color:var(--doc-tx2);align-self:center}
+      .perfil-row{padding:10px 0;border-bottom:1px solid var(--doc-line)}
+      .perfil-row p{margin:0}
+      .perfil-row .pn{font-size:13.5px;font-weight:600;color:var(--doc-tx2)}
+      .perfil-row .pd{font-size:12px;color:var(--doc-tx3);margin-top:2px;line-height:1.45}
+      .perfil-row.dom .pn{color:var(--doc-tx)}
+      .perfil-row.dom .pn::before{content:'Dominante · ';font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal-red)}
+
       /* ── el día 1 (CONGELADO · VI) ── */
       .dia1{margin:14px 0 6px}
       .dia1-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
@@ -134,6 +157,8 @@ export function TokensShared() {
         .pl th:first-child,.pl td:first-child{position:sticky;left:0;background:var(--doc-paper);z-index:1;box-shadow:1px 0 0 var(--doc-line)}
         .pl.ind td:nth-child(2){display:none}
         .curva{height:130px}
+        .zona-cells{grid-template-columns:1fr 1fr}
+        .zona-cells div:last-child{grid-column:span 2}
         .chart{height:150px}
       }
     `,

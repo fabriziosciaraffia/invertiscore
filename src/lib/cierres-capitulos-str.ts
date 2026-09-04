@@ -224,6 +224,8 @@ export interface ArgsCierrePagasStr {
   matriz: MatrizPiePlazoStr | null;
   /** Tarifa que también cruza (vía adr), null si no. */
   tarifaCruza: { objetivo: number; deltaPct: number } | null;
+  /** "Donde el mes cierra" (T2): precio UF al que el flujo mensual queda en cero; null si no cierra. */
+  mesCierraUF?: number | null;
 }
 
 export function cierrePagasStr(a: ArgsCierrePagasStr, f: FmtCierre): SegCierre[] {
@@ -235,6 +237,10 @@ export function cierrePagasStr(a: ArgsCierrePagasStr, f: FmtCierre): SegCierre[]
       segs.push({ t: `Bajo ${uf(a.techoUF)} el veredicto sube a ${a.veredictoObjetivo}: un ${f.pct1(Math.abs(d))}% menos que tu precio, negociación y no otro departamento`, mark: true }, { t: ". " });
     } else {
       segs.push({ t: "Bajar el precio dentro de lo que un ajuste puede dar no cambia el veredicto: la palanca no está en la mesa del vendedor. " });
+      if (a.mesCierraUF != null && a.mesCierraUF > 0 && a.precioUF > 0) {
+        const dm = (1 - a.mesCierraUF / a.precioUF) * 100;
+        segs.push({ t: `Donde el mes cierra es ${uf(a.mesCierraUF)}, un ${f.pct1(dm)}% menos: es un dato de caja, no una oferta. ` });
+      }
     }
   }
   if (a.sobreprecio) {

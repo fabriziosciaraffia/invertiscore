@@ -19,6 +19,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { metricaValorONull, type Veredicto } from "@/lib/types";
+import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
 import { biseccionFactor } from "@/lib/distancia-veredicto-hallazgo";
 import { buildStrRecomputeCtx } from "./recompute-short-term-for-legacy";
 import { recomputeStrConPatch, type VeredictoStrCtx } from "./veredicto-str-con-patch";
@@ -153,8 +154,7 @@ export function fronteraPrecioStr(ctx: VeredictoStrCtx, base: { veredicto: Vered
   };
 }
 
-/** Umbral de TIR bajo el cual "conviene más otra inversión" (la glosa de las seis cifras). */
-export const TIR_LIMITE_PCT = 6;
+export { TIR_LIMITE_PCT };
 /** Precisión de la bisección sobre el precio en CLP: con 80% de crédito, $100 de precio
  *  mueven la cuota menos de $0,5 al mes, así el flujo en el precio hallado queda dentro
  *  de ±$1 (regla de plata-dia1). */
