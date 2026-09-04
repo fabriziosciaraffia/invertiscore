@@ -466,24 +466,13 @@ export function TokensHallazgos() {
       .datarow{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--doc-line);font-size:12.5px;font-weight:600;color:var(--doc-tx)}
       .datarow small{display:block;font-weight:400;font-size:11px;color:var(--doc-tx3);margin-top:1px}
       .datarow .v{font-family:var(--font-mono, ui-monospace);font-weight:700;white-space:nowrap}
-      /* matriz de sensibilización */
+      /* matriz de sensibilización: toggle (la grilla vive en TokensShared, .matriz) */
       .mx-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
       .mx-toggle{display:inline-flex;border:1px solid var(--doc-line2);border-radius:4px;overflow:hidden}
       .mx-toggle button{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;
         background:var(--doc-paper);color:var(--doc-tx3);border:none;cursor:pointer}
       .mx-toggle button+button{border-left:1px solid var(--doc-line2)}
       .mx-toggle button.on{background:var(--doc-tx);color:var(--doc-paper);font-weight:700}
-      .mx{border-collapse:collapse;width:100%}
-      .mx th{font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--doc-tx4);padding:8px 6px;
-        font-weight:400;border-bottom:1px solid var(--doc-line);text-align:right}
-      .mx th:first-child{text-align:left}
-      .mx td{font-family:var(--font-mono, ui-monospace);font-size:12px;padding:10px 6px;text-align:right;border-bottom:1px solid var(--doc-line);white-space:nowrap}
-      .mx td:first-child{text-align:left;font-weight:700;color:var(--doc-tx)}
-      .mx td:first-child small{display:block;font-family:var(--font-body, system-ui);font-size:10px;font-weight:400;color:var(--doc-tx3)}
-      .mx td.neg{color:var(--signal-red)} .mx td.pos{color:var(--doc-tx)}
-      .mx td.hoy{box-shadow:inset 0 0 0 200px color-mix(in srgb,var(--doc-warn) 16%,transparent);font-weight:700}
-      .mx-note{font-family:var(--font-mono, ui-monospace);font-size:10.5px;color:var(--doc-tx2);line-height:1.6;margin-top:10px;letter-spacing:.02em}
-      .mx-wrap .tbl-scrollcue{display:none}
       /* línea de tiempo */
       .tl{display:grid;align-items:start;gap:8px;margin:14px 0 6px}
       .hito{border-top:3px solid var(--doc-tx);padding-top:10px}
@@ -534,9 +523,6 @@ export function TokensHallazgos() {
         border:1px solid var(--doc-line2);border-radius:3px;padding:6px 12px;cursor:pointer}
       .hall-close:hover{color:var(--doc-tx);border-color:var(--doc-tx4)}
       @media (max-width: 767px){
-        .mx-wrap .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-        .mx-wrap .mx{min-width:470px} .mx td{font-size:11px;padding:9px 6px}
-        .mx-wrap .tbl-scrollcue{display:block;margin-top:6px}
         .tl{grid-template-columns:1fr !important;gap:6px} .tl-delta::before{content:'↓'} .hito .v{font-size:14px}
         .ba-total .v{font-size:17px}
         .v-modal-overlay{padding:0} .v-modal{max-width:none;max-height:none;height:100%;border-radius:0;border:none;padding:22px 20px 24px}

@@ -1,8 +1,9 @@
 "use client";
 
 import { SegsCierre } from "./shared/SegsCierre";
+import { Matriz } from "./shared/Matriz";
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type {
   AIAnalysisV2,
   AnalisisInput,
@@ -30,7 +31,6 @@ import {
   Bars,
   DataRow,
   LineaTiempo,
-  Matriz,
   Thermo,
   VCierre,
   VFuente,
@@ -38,7 +38,6 @@ import {
   VPuente,
   VSub,
   VViz,
-  type SerieMatriz,
 } from "./hallazgos/vocabulario";
 import { SensibilidadDial } from "./drawers/DrawersPropios";
 import { DrawerCostoMensual, DrawerNegociacion } from "@/components/ui/AnalysisDrawer";
@@ -191,6 +190,8 @@ export function CapitulosInversion({
     const mx = simularPieYPlazo(inputData, ufCongelado, new Date(createdAt));
     return mx.celdas.length ? mx : null;
   }, [inputData, createdAt, precioCLP, valorUF]);
+  // Serie visible de la matriz del III (Flujo | TIR). Mismo toggle que STR IV.
+  const [serieIII, setSerieIII] = useState<"flujo" | "tir">("flujo");
 
   if (!m) return null;
 
@@ -346,35 +347,20 @@ export function CapitulosInversion({
     : sobre
       ? { v: `${sobre.valor.desviacionPct > 0 ? "+" : ""}${pct1(sobre.valor.desviacionPct)}%`, rojo: sobre.direccion === "adverso" }
       : { v: money(dividendo), rojo: false };
-  const seriesMatriz: SerieMatriz[] = matriz
-    ? [
-        {
-          id: "flujo",
-          label: "Flujo",
-          etiqueta: "Tu flujo mensual según pie y plazo",
-          cero: 0,
-          fmt: (n) => (n == null ? "—" : signed(n)),
-          celdas: matriz.pies.map((p) => matriz.plazos.map((z) => matriz.celdas.find((c) => c.piePct === p && c.plazoAnios === z)?.flujoMensual ?? null)),
-          nota: (() => {
-            const verde = matriz.celdas.filter((c) => c.flujoMensual >= 0).sort((a, b) => a.piePct - b.piePct || a.plazoAnios - b.plazoAnios)[0];
-            return verde
-              ? `El mes cierra en verde desde ${Number.isInteger(verde.piePct) ? verde.piePct : pct1(verde.piePct)}% de pie a ${verde.plazoAnios} años. Más pie y más plazo alivian la cuota; el precio es lo que más mueve el signo.`
-              : "Ninguna combinación cierra el mes en verde. Más pie y más plazo alivian la cuota; el precio es lo que da vuelta el signo.";
-          })(),
-        },
-        {
-          id: "tir",
-          label: "TIR",
-          etiqueta: "Tu TIR a 10 años según pie y plazo",
-          cero: tirH?.valor.umbralPct ?? 6,
-          fmt: (n) => (n == null ? "—" : `${pct1(n)}%`),
-          celdas: matriz.pies.map((p) => matriz.plazos.map((z) => matriz.celdas.find((c) => c.piePct === p && c.plazoAnios === z)?.tirPct ?? null)),
-        },
-      ]
-    : [];
-  const actualMatriz = matriz
-    ? { fila: matriz.pies.findIndex((p) => p === inputData.piePct), col: matriz.plazos.findIndex((z) => z === inputData.plazoCredito) }
-    : undefined;
+  // Matriz pie × plazo sobre la pieza compartida (goal "LTR hereda", 05-sep-2026). El
+  // motor LTR (`CeldaPiePlazo`) no emite `cruza`: acá "cruza" = la celda supera el umbral
+  // de la serie activa (flujo ≥ 0 · TIR ≥ umbral), la misma lectura que coloreaba la
+  // matriz vieja. Cruza por veredicto en LTR = goal de motor pendiente; la leyenda LTR
+  // nunca nombra un veredicto.
+  const umbralTir = tirH?.valor.umbralPct ?? 6;
+  const cortoMx = (n: number) => `${n < 0 ? "−" : ""}${currency === "UF" ? `UF ${Math.round(Math.abs(n) / (valorUF || 1))}` : `$${Math.round(Math.abs(n) / 1000)}k`}`;
+  const notaMatrizFlujo = (() => {
+    if (!matriz) return "";
+    const verde = matriz.celdas.filter((c) => c.flujoMensual >= 0).sort((a, b) => a.piePct - b.piePct || a.plazoAnios - b.plazoAnios)[0];
+    return verde
+      ? `El mes cierra desde ${Number.isInteger(verde.piePct) ? verde.piePct : pct1(verde.piePct)}% de pie a ${verde.plazoAnios} años. Más pie y más plazo alivian la cuota; el precio es lo que da vuelta el signo.`
+      : "Ninguna combinación cierra el mes. Más pie y más plazo alivian la cuota; el precio es lo que da vuelta el signo.";
+  })();
   const cuotasPie = Number(inputData.cuotasPie) || 0;
   const montoCuota = Number(inputData.montoCuota) || 0;
   const filaIII: FilaHallazgo = {
@@ -418,17 +404,26 @@ export function CapitulosInversion({
                     />
                     <DataRow k="Cuota mensual" sub={`crédito de ${compact(precioCLP - pieCLP)} a ${plazo} años`} v={money(dividendo)} />
                   </VViz>
-                  {matriz && seriesMatriz.length > 0 && (
-                    <VViz>
-                      <VSub>Cuánto cambia el mes según pie y plazo</VSub>
+                  {matriz && (
+                    <VViz t={serieIII === "flujo" ? "Tu flujo mensual según pie y plazo" : "Tu TIR a 10 años según pie y plazo"}>
                       <Matriz
-                        cols={matriz.plazos.map((z) => `${z} años`)}
-                        filas={matriz.pies.map((p) => ({
-                          k: `${Number.isInteger(p) ? p : pct1(p)}%`,
-                          sub: `${compact(precioCLP * (p / 100))}${p === inputData.piePct ? " · hoy" : ""}`,
-                        }))}
-                        series={seriesMatriz}
-                        actual={actualMatriz && actualMatriz.fila >= 0 && actualMatriz.col >= 0 ? actualMatriz : undefined}
+                        id="mz-ltr-iii"
+                        cabecera="Cuánto cambia el mes según pie y plazo"
+                        toggle={{ opciones: [{ id: "flujo", label: "Flujo" }, { id: "tir", label: "TIR" }], activo: serieIII, onChange: (id) => setSerieIII(id as "flujo" | "tir") }}
+                        ejeX={{ label: "→ más plazo", niveles: matriz.plazos.map((z) => ({ k: String(z), sub: "años" })) }}
+                        ejeY={{ label: "↓ más pie", niveles: matriz.pies.map((p) => ({ k: `${Number.isInteger(p) ? p : pct1(p)}%`, sub: compact(precioCLP * (p / 100)) })) }}
+                        celdas={matriz.pies.map((p) =>
+                          matriz.plazos.map((z) => {
+                            const c = matriz.celdas.find((x) => x.piePct === p && x.plazoAnios === z);
+                            if (!c) return { v: "—" };
+                            const tir = c.tirPct != null ? `${pct1(c.tirPct)}%` : "—";
+                            const v = serieIII === "flujo" ? cortoMx(c.flujoMensual) : tir;
+                            const cruza = serieIII === "flujo" ? c.flujoMensual >= 0 : c.tirPct != null && c.tirPct >= umbralTir;
+                            return { v, neg: serieIII === "flujo" && c.flujoMensual < 0, cruza, hoy: c.esActual, title: `${signed(c.flujoMensual)} al mes · TIR ${tir} · ${Number.isInteger(p) ? p : pct1(p)}% de pie a ${z} años` };
+                          }),
+                        )}
+                        leyenda={{ hoy: "hoy", cruza: serieIII === "flujo" ? "cierra el mes" : `sobre TIR ${pct1(umbralTir)}%`, cruzaCorto: "cruza" }}
+                        nota={serieIII === "flujo" ? notaMatrizFlujo : undefined}
                       />
                     </VViz>
                   )}
