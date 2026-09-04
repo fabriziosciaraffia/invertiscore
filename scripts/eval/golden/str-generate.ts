@@ -127,7 +127,11 @@ export async function runStrGenerateTier(
           process.stderr.write(` (dump)\n`);
         } else {
           // Simulaciones del CONGELADO: las del recompute del seed (mismo contexto sintetizado).
-          const gen = await generateStrProse({ anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna, simulacion: r.sim });
+          // Los guards con reintento ([HERO-CLAIM], [STR-…]) se ven en la tanda: sin logger no queda rastro.
+          const gen = await generateStrProse({
+            anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna, simulacion: r.sim,
+            logger: (m) => { if (/^\[(?:HERO-CLAIM|STR-)/.test(m)) process.stderr.write(`\n        ${key} ${m.slice(0, 220)}`); },
+          });
           process.stderr.write(` ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
           ai = gen.ai;
         }
@@ -214,7 +218,7 @@ export async function runStrGenerateTier(
     }
 
     checks.push({ rule: `gen.runs(K=${K})`, pass: genOk === K, detail: `${genOk}/${K} generaciones OK` });
-    const HARD = ["AS1.respuestaDirecta", "AS2.§9-cajaAccionable", "AS3.marcas-balanceadas", "AS4.titular", "AS5.copia-fraseCanonica", "gen.null"];
+    const HARD = ["AS1.respuestaDirecta", "AS2.§9-cajaAccionable", "AS3.marcas-balanceadas", "AS4.titular", "AS5.copia-fraseCanonica", "AS6.modalidad-contra-signo", "gen.null"];
     const SOFT = ["~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado"];
     const esReglaDeProsa = (r: string) => r.startsWith("AS");
     const umbralMayoria = Math.floor(K / 2);

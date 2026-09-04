@@ -54,6 +54,17 @@ const casos: { nombre: string; sr: number; texto: string; dispara: boolean }[] =
     texto: "El largo rinde más neto acá." },
   { nombre: "descripción del tier sin ganador", sr: STR_GANA, dispara: false,
     texto: "La demanda de la zona es baja frente al resto de Santiago; operar corto acá depende de superar al mercado típico." },
+  // ── falsos positivos de la tanda v15 (no disparan) ──
+  { nombre: "GE-2 · 'le gana al largo': el largo es objeto, no sujeto", sr: STR_GANA, dispara: false,
+    texto: "La buena noticia es que el corto le gana al largo en neto, pero esa ventaja desaparece si sigues pagando el 20% de comisión al administrador." },
+  { nombre: "GE-3 · 'rinde más y el corto tiene…': cláusula nueva, no sujeto", sr: LTR_GANA, dispara: false,
+    texto: "El largo rinde más y el corto tiene costos de arranque reales." },
+  { nombre: "GE-6 · condicional con el otro modo de gestión", sr: LTR_GANA, dispara: false,
+    texto: "Si en vez de administrador autogestionas el STR, el NOI sube a $433.495 y ahí el corto sí supera al largo — pero eso exige dedicarle entre 8 y 12 horas semanales." },
+  { nombre: "el otro modo de gestión sin condicional", sr: STR_GANA, dispara: false,
+    texto: "Con administrador el largo deja más neto que el corto." },
+  { nombre: "'el corto supera al largo' con STR ganando", sr: STR_GANA, dispara: false,
+    texto: "El corto supera al largo por $180.000 al mes." },
 ];
 
 for (const c of casos) {

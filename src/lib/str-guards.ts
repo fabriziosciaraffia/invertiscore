@@ -349,11 +349,22 @@ const RE_MOD_A = new RegExp(
   String.raw`(?<suj>${SUJ_LARGO}|${SUJ_CORTO})[^.;:,]{0,30}?\b(?<neg>${NEG})?(?:(?<verbo>${VERBO_CON_CUANTO})\b[^.;:]{0,20}?\b(?<cuanto>${CUANTO})\b|(?<solo>${VERBO_SOLO})\b(?:\s+(?<cuanto2>${CUANTO})\b)?)`,
   "gi",
 );
-// B: verbo (cuánto) … sujeto, sin "que" en medio  ("conviene más el largo", "te conviene STR", "rinde más el corto")
+// B: verbo (cuánto) … sujeto pospuesto ("conviene más el largo", "te conviene STR", "rinde más el corto").
+// El sujeto pospuesto va con "el" o nombre propio, pegado al verbo (a lo más una palabra suelta):
+// "le gana AL largo", "supera AL largo", "más QUE el largo" y "rinde más Y el corto tiene…" son
+// objeto o cláusula nueva, no sujeto (falsos positivos de la tanda v15: GE-2, GE-3).
+const SUJ_LARGO_POS = String.raw`(?:el\s+(?:arriendo\s+)?(?:largo|tradicional)(?!\s+plazo)|\bLTR\b|\brenta\s+larga\b|\barriendo\s+(?:largo|tradicional)\b)`;
+const SUJ_CORTO_POS = String.raw`(?:el\s+(?:arriendo\s+)?corto(?!\s+plazo)|\bSTR\b|\bAirbnb\b|\brenta\s+corta\b|\barriendo\s+corto\b)`;
 const RE_MOD_B = new RegExp(
-  String.raw`\b(?<neg>${NEG})?(?:te\s+)?(?:(?<verbo>${VERBO_CON_CUANTO})\s+(?<cuanto>${CUANTO})|(?<solo>${VERBO_SOLO})(?:\s+(?<cuanto2>${CUANTO}))?)\b(?:(?!\bque\b)[^.;:]){0,20}?(?<suj>${SUJ_LARGO}|${SUJ_CORTO})`,
+  String.raw`\b(?<neg>${NEG})?(?:te\s+)?(?:(?<verbo>${VERBO_CON_CUANTO})\s+(?<cuanto>${CUANTO})|(?<solo>${VERBO_SOLO})(?:\s+(?<cuanto2>${CUANTO}))?)\s+(?:(?!(?:que|y|pero|a|al|del|de)\b)[^\s.;:,]+\s+)?(?<suj>${SUJ_LARGO_POS}|${SUJ_CORTO_POS})`,
   "gi",
 );
+/** Oraciones donde el ganador depende de un supuesto y no del dato medido: un condicional
+ *  ("si autogestionas…", "cuando…") o el OTRO modo de gestión (la sobre-renta medida es la del
+ *  modo elegido; el motor emite recomendacionAuto / recomendacionAdmin y con administrador el
+ *  signo puede darse vuelta). GE-6 v15: "si autogestionas el STR … ahí el corto sí supera al
+ *  largo" con sobre-renta negativa en modo administrador era verdad, no contradicción. */
+const RE_CONDICIONAL_O_MODO = /\b(?:si|cuando|en\s+caso\s+de|siempre\s+que|salvo\s+que)\b|\bautogesti|\bgesti(?:ón|on)\s+propia\b|\bmodo\s+(?:auto|administrador)\b|\bcon\s+administrador\b|\badministrador\b|\bdelega|\bgestionas?\s+t[uú]\b|\bt[uú]\s+(?:mismo|misma)\b/i;
 const RE_ES_LARGO = new RegExp(`^${SUJ_LARGO}$`, "i");
 type Gana = "largo" | "corto" | null;
 function ganadorDeClausula(o: string): Gana[] {
@@ -381,6 +392,7 @@ export function afirmacionesContraSigno(texto: string, sobreRenta: number): stri
   const ganaMedido: Gana = sobreRenta > 0 ? "corto" : "largo";
   const out: string[] = [];
   for (const o of texto.replace(/\*\*/g, "").split(/(?<=[.!?])\s+/)) {
+    if (RE_CONDICIONAL_O_MODO.test(o)) continue;
     if (ganadorDeClausula(o).some((g) => g !== null && g !== ganaMedido)) out.push(o.trim());
   }
   return out;
