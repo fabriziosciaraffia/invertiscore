@@ -35,6 +35,7 @@ import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engin
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { HeroSTR } from "@/components/analysis/str/HeroSTR";
 import { StateBox } from "@/components/ui/StateBox";
+import { fechaCortaCL } from "@/lib/fecha-cl";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
 import { ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
 import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
@@ -365,12 +366,7 @@ export function STRResultsClient({
     lat: latPortada,
     lng: lngPortada,
   });
-  const fechaCorta = (() => {
-    const d = new Date(fechaProsa ?? createdAt ?? "");
-    return Number.isNaN(d.getTime())
-      ? ""
-      : d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
-  })();
+  const fechaCorta = fechaCortaCL(fechaProsa ?? createdAt);
   // ═══ FILAS DEL ACORDEÓN (FASE 4) ═══ el cuerpo es DrawerContentSTR, que ya
   // era solo-cuerpo (el shell DrawerSTR aportaba el chrome que ahora muere).
   const filasHallazgosStr: FilaHallazgo[] = hallazgosOrdenadosSTR.map((h, i) => {

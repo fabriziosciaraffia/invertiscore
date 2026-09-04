@@ -1,5 +1,6 @@
 "use client";
 
+import { fechaCortaCL } from "@/lib/fecha-cl";
 import { useMemo } from "react";
 import type {
   AIAnalysisV2,
@@ -174,8 +175,8 @@ export function CapitulosInversion({
   };
   const f: FmtCierre = { money, compact, pct1 };
   const ufFecha = (() => {
-    const d = new Date(createdAt ?? "");
-    const fecha = Number.isNaN(d.getTime()) ? "" : ` al ${d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" })}`;
+    const f = fechaCortaCL(createdAt);
+    const fecha = f ? ` al ${f}` : "";
     return `UF ${Math.round(valorUF).toLocaleString("es-CL")}${fecha}`;
   })();
 

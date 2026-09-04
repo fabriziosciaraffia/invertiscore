@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fechaCortaCL, TZ_CHILE } from "@/lib/fecha-cl";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { hasSubscriptionAccess } from "@/lib/access";
@@ -46,7 +47,7 @@ export default async function PerfilPage() {
   const email = user.email || "";
   const isAdmin = isAdminUser(email);
   const createdAt = user.created_at
-    ? new Date(user.created_at).toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric" })
+    ? fechaCortaCL(user.created_at, { month: "long" })
     : "—";
 
   // Fetch user credits + subscription status
@@ -128,7 +129,7 @@ export default async function PerfilPage() {
     planCtaHref = "/pricing";
   } else if (isPastDueGrace) {
     const graceDate = graceEndsAt
-      ? new Date(graceEndsAt).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" })
+      ? fechaCortaCL(graceEndsAt, { month: "long" })
       : "—";
     planLabel = "Pago pendiente";
     planDescription = `Tu último cobro no se procesó. Mantienes acceso hasta el ${graceDate}.`;
@@ -136,7 +137,7 @@ export default async function PerfilPage() {
     planCtaHref = "/pricing";
   } else if (isCancelledActive) {
     const endDate = subEnd
-      ? new Date(subEnd).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" })
+      ? fechaCortaCL(subEnd, { month: "long" })
       : "—";
     planLabel = "Suscripción cancelada";
     planDescription = `Acceso Pro hasta el ${endDate}.`;
@@ -273,7 +274,7 @@ export default async function PerfilPage() {
                           <div className="text-sm font-medium text-[var(--franco-text)]">{fmtProductName(p.product)}</div>
                         )}
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--franco-text-secondary)]">
-                          <span>{new Date(p.created_at).toLocaleDateString("es-CL")}</span>
+                          <span>{new Date(p.created_at).toLocaleDateString("es-CL", { timeZone: TZ_CHILE })}</span>
                           {analysis && analysis.score != null && (
                             <>
                               <span className="text-[var(--franco-text-muted)]">·</span>

@@ -1,5 +1,6 @@
 "use client";
 
+import { fechaCortaCL } from "@/lib/fecha-cl";
 import { useState, useEffect, useRef } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/types";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
@@ -209,10 +210,7 @@ export function SubjectCardGrid({
     lng: zoneCenter?.lng ?? null,
   });
   const fechaCorta = (() => {
-    const d = new Date(fechaProsa ?? createdAt ?? "");
-    return Number.isNaN(d.getTime())
-      ? ""
-      : d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
+    return fechaCortaCL(fechaProsa ?? createdAt);
   })();
   // Referencia del cap rate neto: la del hallazgo (motor) o la del catálogo por comuna.
   const capRefInfo = (() => {

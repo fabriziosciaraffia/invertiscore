@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fechaCortaCL } from "@/lib/fecha-cl";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { hasSubscriptionAccess } from "@/lib/access";
@@ -14,7 +15,7 @@ function fmtCLP(n: number): string {
 
 function fmtDate(d: string | null | undefined): string {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
+  return fechaCortaCL(d, { month: "long" }) || "—";
 }
 
 export default async function CuentaPage() {

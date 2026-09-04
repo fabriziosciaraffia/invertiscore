@@ -1,3 +1,5 @@
+import { fechaCortaCL } from "@/lib/fecha-cl";
+
 /**
  * Formatters compartidos del panel admin. Extraídos de src/app/admin/page.tsx
  * (eran locales no exportados) para reutilizarlos en las nuevas pantallas de la
@@ -25,7 +27,7 @@ export function fmtRelative(date: string | null | undefined): string {
 
 export function fmtDateShort(date: string | null | undefined): string {
   if (!date) return "—";
-  return new Date(date).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
+  return fechaCortaCL(date);
 }
 
 /**

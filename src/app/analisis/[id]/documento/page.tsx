@@ -10,6 +10,7 @@
 // recálculo ni lógica nueva de motor. Tema claro estructural (no lee el theme).
 // ─────────────────────────────────────────────────────────────────────────
 
+import { fechaCortaCL } from "@/lib/fecha-cl";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -149,9 +150,7 @@ export default async function DocumentoLTRPage({
     ? formatDireccionDisplay(analisis.direccion as string, analisis.comuna as string | null)
     : (analisis.comuna ? `Depto en ${analisis.comuna}` : "Análisis de inversión");
 
-  const fechaCorta = new Date(analisis.created_at).toLocaleDateString("es-CL", {
-    day: "numeric", month: "long", year: "numeric",
-  });
+  const fechaCorta = fechaCortaCL(analisis.created_at, { month: "long" });
 
   // Zona: la card muestra encuadre neutro. El insight narrativo
   // (headline/preview/narrative) se genera client-side (useZoneInsight) y no está

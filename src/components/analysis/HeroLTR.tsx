@@ -1,5 +1,6 @@
 "use client";
 
+import { fechaCortaCL } from "@/lib/fecha-cl";
 import { useRef, useState } from "react";
 import { usePostHog } from "posthog-js/react";
 import { renderPlumon } from "./hallazgos/plumon";
@@ -311,10 +312,7 @@ export function HeroLTR({
 
 // Fecha de la firma: "3 jul 2026" (es-CL). Vacío si no hay createdAt válido.
 function formatFecha(iso?: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
+  return fechaCortaCL(iso);
 }
 
 
