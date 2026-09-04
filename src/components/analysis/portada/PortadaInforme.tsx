@@ -375,7 +375,6 @@ export function DocTokens() {
         .ind-tbl td:nth-child(2){display:none}
       }
       /* la zona (T4): síntesis + tres celdas comparadas + explorar · drawer: lugares como filas */
-      .zona-sint{max-width:70ch}
       .zona-cells{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--doc-line);border:1px solid var(--doc-line);margin-top:18px}
       .zona-cells>div{background:var(--doc-paper);padding:12px 14px}
       .zona-cells .k{font-size:11.5px;color:var(--doc-tx3);margin-bottom:6px;line-height:1.35}

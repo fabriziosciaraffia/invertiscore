@@ -41,9 +41,9 @@ import {
   type BordeDial,
 } from "@/components/analysis/hallazgos/vocabulario";
 import { DrawerSensibilidadLtr, DrawerDistanciaLtr } from "@/components/analysis/drawers/DrawersPropios";
-import type { HallazgoSensibilidad, HallazgoDistanciaVeredicto } from "@/lib/types";
+import type { HallazgoSensibilidad, HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
-import { ZonaCeldas } from "@/components/zone-insight/ZoneInsightMiniCard";
+import { ZonaCeldasLtr, buildZonaLtr } from "@/components/analysis/zona/ZonaLtr";
 import { ZoneMap } from "@/components/zone-insight/ZoneMap";
 
 export type DrawerKey =
@@ -85,6 +85,10 @@ interface DrawerProps {
   zoneCenter?: { lat: number; lng: number } | null;
   comuna?: string;
   arriendoUsuarioCLP?: number;
+  /** Zona LTR (goal "LTR hereda"): la mediana comunal de la celda es la del hallazgo de
+   *  sobreprecio, fechada con el snapshot. */
+  sobreprecio?: HallazgoSobreprecio | null;
+  medianaResolvedAt?: string;
   /** FASE 4 — modo INLINE: renderiza SOLO el cuerpo, sin overlay, panel, header
    *  ni navegación prev/next. Es lo que consume el acordeón de hallazgos, donde
    *  el chrome del drawer murió. Extiende, no muta: sin la prop el componente se
@@ -1775,6 +1779,8 @@ function DrawerZona({
   comuna,
   arriendoUsuarioCLP,
   valorUF,
+  sobreprecio,
+  medianaResolvedAt,
 }: {
   zoneInsight?: ZoneInsightData | null;
   zoneLoading?: boolean;
@@ -1784,6 +1790,8 @@ function DrawerZona({
   comuna: string;
   arriendoUsuarioCLP: number;
   valorUF: number;
+  sobreprecio?: HallazgoSobreprecio | null;
+  medianaResolvedAt?: string;
 }) {
   if (zoneLoading && !zoneInsight) return <ZoneSkeleton />;
   if (zoneError && !zoneInsight) return <ZoneErrorState message={zoneError} />;
@@ -1800,7 +1808,9 @@ function DrawerZona({
   return (
     <div className="doc-tokens">
       {sintesis && <VProsa>{sintesis}</VProsa>}
-      <ZonaCeldas stats={zoneInsight.stats} currency={currency} valorUF={valorUF} arriendoUsuarioCLP={arriendoUsuarioCLP} />
+      {/* Goal "LTR hereda": las mismas tres celdas de la sección (mediana del hallazgo con
+          procedencia, rango de arriendos con n y fecha, valorización con fuente). Sin P71. */}
+      <ZonaCeldasLtr zona={buildZonaLtr({ stats: zoneInsight.stats, sobre: sobreprecio, medianaResolvedAt, arriendoUsuarioCLP, comuna })} currency={currency} valorUF={valorUF} />
       {zoneCenter && (
         <VViz t="El depto y lo que hay alrededor">
           <ZoneMap centerLat={zoneCenter.lat} centerLng={zoneCenter.lng} pois={zoneInsight.pois} />
@@ -1877,6 +1887,8 @@ export function AnalysisDrawer({
   comuna,
   arriendoUsuarioCLP,
   createdAt,
+  sobreprecio,
+  medianaResolvedAt,
 }: DrawerProps) {
   // Hallazgo cap_rate (carrier del motor o persistido) — alimenta el drawer capRate.
   const capRateHallazgo =
@@ -2083,6 +2095,8 @@ export function AnalysisDrawer({
           comuna={comuna ?? (inputData.comuna || "tu comuna")}
           arriendoUsuarioCLP={arriendoUsuarioCLP ?? Number(inputData.arriendo) ?? 0}
           valorUF={valorUF}
+          sobreprecio={sobreprecio}
+          medianaResolvedAt={medianaResolvedAt}
         />
       )}
       {activeKey === "sensibilidad" &&

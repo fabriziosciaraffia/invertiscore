@@ -180,6 +180,9 @@ export default async function AnalisisDetallePage({
   // plusvalía proyectada, penalty del score y prosa NO deriven entre recargas.
   // Ver of-datedrift-design.md.
   const asOfFrozen = new Date(analisis.created_at);
+  // Fecha de la mediana comunal para la celda de zona (goal "LTR hereda"): la del snapshot
+  // (congelada al crear) o ahora, cuando se resolvió viva (filas pre-Fase A).
+  const medianaResolvedAt = medianaSnapshot?.resolvedAt ?? new Date().toISOString();
   const results: FullAnalysisResult | null = inputDataRaw
     ? recomputeResultsForLegacy(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen)
     : (rawResults && rawResults.metrics
@@ -400,6 +403,7 @@ export default async function AnalisisDetallePage({
           isLoggedIn={isLoggedIn}
           showCtaWelcome={showCtaWelcome}
           isAnonOwner={isAnonOwner}
+          medianaResolvedAt={medianaResolvedAt}
         />
 
         {/* Fallback for old analyses without full results */}

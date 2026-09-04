@@ -68,6 +68,7 @@ export function PremiumResults({
   isLoggedIn = false,
   showCtaWelcome = false,
   isAnonOwner = false,
+  medianaResolvedAt,
 }: {
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium" | "subscriber";
@@ -109,6 +110,8 @@ export function PremiumResults({
    * 401, así que se suprimen; el polling público a /ai-status queda. Si la
    * generación de creación murió, su recovery es registrarse (claim → regen). */
   isAnonOwner?: boolean;
+  /** Fecha de la mediana comunal (snapshot o ahora): la celda de zona la declara. */
+  medianaResolvedAt?: string;
 }) {
   const posthog = usePostHog();
   // T3: sin sliders el horizonte y la plusvalía quedan fijos (los del motor).
@@ -808,6 +811,7 @@ export function PremiumResults({
             createdAt={createdAt}
             fechaProsa={fechaProsa}
             prosaDesactualizada={prosaDesactualizada || (aiStale && hasAiV2(aiAnalysis) && aiAnalysis === aiAnalysisInitial)}
+            medianaResolvedAt={medianaResolvedAt}
           />
         </>
       )}

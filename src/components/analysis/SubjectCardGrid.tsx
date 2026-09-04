@@ -7,7 +7,7 @@ import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/type
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { MarcaSeccion, useDrawerAbierto } from "./informeTelemetry";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
-import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
+import { ZonaLtrSection, buildZonaLtr } from "./zona/ZonaLtr";
 import { HeroLTR } from "./HeroLTR";
 import { ordenarHallazgosPiramide } from "@/lib/orden-hallazgos";
 import { TokensHallazgos } from "./hallazgos/HallazgosAcordeon";
@@ -58,6 +58,7 @@ export function SubjectCardGrid({
   prosaDesactualizada = false,
   onInformeVisible,
   accessLevel = "free",
+  medianaResolvedAt,
 }: {
   aiAnalysis: AIAnalysisV2 | null;
   loading: boolean;
@@ -91,6 +92,9 @@ export function SubjectCardGrid({
    *  marcas `piramide`/`zona`, que hasta ahora no existían en LTR. Desde FASE 5
    *  también en `informe_hallazgo_abierto` (como `access_level`). */
   accessLevel?: string;
+  /** Fecha (ISO) de la mediana comunal que muestra la zona: el `resolvedAt` del snapshot
+   *  o ahora, si se resolvió viva. Viene de page.tsx. */
+  medianaResolvedAt?: string;
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
   const [calculoAbierto, setCalculoAbierto] = useState(false);
@@ -396,15 +400,20 @@ export function SubjectCardGrid({
               intent="Cómo se compara este departamento con lo que se vende y arrienda alrededor."
             >
               <MarcaSeccion seccion="zona" tipo="ltr" accessLevel={accessLevel} />
-              <ZoneInsightMiniCard
+              <ZonaLtrSection
                 data={zoneInsight}
                 loading={zoneLoading}
                 error={zoneError}
                 onClick={() => setActiveDrawer("zona")}
                 currency={currency}
                 valorUF={valorUF}
-                arriendoUsuarioCLP={Number(inputData?.arriendo) || 0}
-                comuna={comunaPortada}
+                zona={buildZonaLtr({
+                  stats: zoneInsight?.stats,
+                  sobre: sobreprecioPortada,
+                  medianaResolvedAt,
+                  arriendoUsuarioCLP: Number(inputData?.arriendo) || 0,
+                  comuna: comunaPortada || "",
+                })}
               />
             </SeccionInforme>
           )}
@@ -446,6 +455,8 @@ export function SubjectCardGrid({
           comuna={comuna ?? inputData.comuna}
           arriendoUsuarioCLP={Number(inputData.arriendo) || 0}
           createdAt={createdAt}
+          sobreprecio={sobreprecioPortada}
+          medianaResolvedAt={medianaResolvedAt}
         />
       )}
     </div>

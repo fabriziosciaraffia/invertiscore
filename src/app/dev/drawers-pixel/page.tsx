@@ -81,6 +81,7 @@ function Inner() {
         precioUF={fix.precio ?? 0}
         isSharedView={false}
         isLoggedIn
+        medianaResolvedAt={fix.medianaSnapshot?.resolvedAt ?? new Date().toISOString()}
       />
     );
   }
