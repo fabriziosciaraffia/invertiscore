@@ -249,6 +249,19 @@ export function hitsEngineIsm(texto: string): string[] {
   return out;
 }
 
+// ─── 3. [STR-INTERNAS] ──────────────────────────────────────────────────────
+/** Nombres de la mecánica interna que el prompt usa como fuentes ("override", "fallback")
+ *  o como ramas del código y que nunca pueden llegar al usuario. */
+export const PALABRAS_INTERNAS_RE =
+  /\b(?:fallback|override|overrides|stub|recompute|recomputo|snapshot|no_seguro|fallback_mercado|calculator_direct|hard[- ]?drift|engine[- ]?ism|proto-?hallazgo)\b/i;
+export function hitsPalabrasInternas(texto: string): string[] {
+  const out: string[] = [];
+  const re = new RegExp(PALABRAS_INTERNAS_RE.source, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(texto))) out.push(m[0]);
+  return out;
+}
+
 // ─── Evaluación por campo (lo que consumen el generador, los fixtures y el reporte) ───
 export interface ContextoGuardsStr {
   razones: RazonesHeroClaimStr;
@@ -259,7 +272,7 @@ export function contextoGuardsStr(r: ShortTermResult & { hallazgos?: Hallazgo[] 
   return { razones: razonesHeroClaimStr(r, inp, comuna), estructural: false, frases: [] };
 }
 
-export type ReglaStr = "hero-claim" | "engineism";
+export type ReglaStr = "hero-claim" | "engineism" | "internas";
 /** path → violaciones (vacío si el campo está limpio). */
 export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regla: ReglaStr, ctx: ContextoGuardsStr): Record<string, string[]> {
   const out: Record<string, string[]> = {};
@@ -270,6 +283,7 @@ export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regl
     switch (regla) {
       case "hero-claim": v = violacionesHeroClaimStr(texto, ctx.razones); break;
       case "engineism": v = hitsEngineIsm(texto); break;
+      case "internas": v = hitsPalabrasInternas(texto); break;
     }
     if (v.length) out[path] = v;
   }

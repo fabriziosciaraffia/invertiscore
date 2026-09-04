@@ -1517,6 +1517,13 @@ Responde SOLO este JSON, sin texto alrededor:
       (v) => `afirma un múltiplo que el motor contradice — ${v.join("; ")}`,
       `RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad" / "el triple" / "N veces" solo con el SUJETO y el COMPARADOR nombrados en la MISMA oración y con la razón del motor dentro del rango; si no hay razón para ese par, escribe la cifra y no el múltiplo.`,
     );
+    // 3. [STR-INTERNAS] — nombres de la mecánica interna.
+    await reintentoQuirurgico(
+      "internas",
+      "[STR-INTERNAS]",
+      (v) => `usa nombres de la mecánica interna del cálculo que el usuario no debe ver: ${v.join(", ")}`,
+      "reemplaza cada palabra interna por lenguaje de usuario: \"fallback\" → \"sin dato observado propio, se usa una referencia conservadora de mercado\"; \"override\" → \"el valor que tú definiste\"; en general, di qué es el dato, no de qué rama del cálculo sale.",
+    );
     // 2. [STR-ENGINEISM] — verbo-trayectoria del modelo.
     await reintentoQuirurgico(
       "engineism",
