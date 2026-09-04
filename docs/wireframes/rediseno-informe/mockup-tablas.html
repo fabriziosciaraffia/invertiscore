@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  MOCKUP · TABLAS DEL INFORME (04-sep-2026) — una dirección, no variantes
+  ------------------------------------------------------------
+  Tres piezas y una fila de dato compartida, con un solo CSS para LTR y STR:
+    · matriz de sensibilización (pie × plazo del IV, tarifa × ocupación del I)
+    · planilla del modal "Cómo se calcula"
+    · fila de dato (Fall del II, crédito y cuota, "de dónde sale tu parte",
+      venta/refi, "la misma plata en otro lado", drawer de zona, modal de vías)
+  Cifras: recompute real de eb7b3a66 (mockup-eb7b3a66-v2.json). Los bloques
+  "hoy" son el HTML+CSS del mockup STR v2, sin tocar.
+  Script: scratchpad/build-mockup-tablas.py.
+  ============================================================
+-->
+<html lang="es" data-theme="light" data-view="desktop">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup · Tablas del informe — refranco.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;0,8..60,900;1,8..60,400;1,8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--serif:'Source Serif 4',Georgia,serif;--sans:'IBM Plex Sans',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace;--signal:#C8323C}
+  [data-theme="light"]{--bg:#E9E6DF;--paper:#FAF8F3;--paper2:#F1EEE7;--paper3:#EAE7DF;--line:#DAD6CC;--line2:#C4BFB2;
+    --tx:#141311;--tx2:#3B3A36;--tx3:#75726A;--tx4:#A39F94;--hl:rgba(224,67,80,.26);--hl-tx:#141311;
+    --neutral:#8C8880;--good:#2F7D55;--warn:#A96F1B;--shadow:0 24px 60px rgba(20,19,17,.14);
+    --v-buscar:#C8323C;--v-ajusta:#A96F1B;--v-comprar:#2F7D55;--map-bg:#EFEDE6;--map-line:#DDD9CE}
+  [data-theme="dark"]{--bg:#0A0A0A;--paper:#141414;--paper2:#1B1B1B;--paper3:#232323;--line:#282828;--line2:#3A3A3A;
+    --tx:#EDEBE6;--tx2:#C4C2BC;--tx3:#8C8A84;--tx4:#5C5A55;--hl:rgba(216,67,77,.38);--hl-tx:#FFFFFF;
+    --neutral:#6E6A63;--good:#57B98A;--warn:#DFA34F;--shadow:0 24px 60px rgba(0,0,0,.6);
+    --v-buscar:#D8434D;--v-ajusta:#DFA34F;--v-comprar:#57B98A;--map-bg:#1A1A1A;--map-line:#2A2A2A}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);min-height:100vh;padding:28px 16px 90px}
+  mark{background:linear-gradient(transparent 42%,var(--hl) 42%,var(--hl) 94%,transparent 94%);color:var(--hl-tx);padding:0 2px;font-weight:500}
+
+  /* ===== LAB ===== */
+  .lab{max-width:1040px;margin:0 auto}
+  .lab-head h1{font-family:var(--serif);font-size:21px;font-weight:600;margin-bottom:4px}
+  .lab-head h1 em{font-style:italic;font-weight:400;color:var(--tx3)}
+  .lab-head .ai{color:var(--signal)}
+  .lab-sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:16px}
+  .frozen{border:1px solid var(--signal);border-left:3px solid var(--signal);background:var(--paper2);padding:12px 16px;margin-bottom:18px;font-size:12.5px;color:var(--tx2);line-height:1.6;max-width:80ch}
+  .frozen b{color:var(--signal);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:5px}
+  .frozen ol{padding-left:18px} .frozen li{margin-bottom:5px}
+  .frozen li strong{font-weight:600;color:var(--tx)}
+  .frozen code{font-family:var(--mono);font-size:11px;background:var(--paper3);padding:1px 4px;border-radius:2px}
+  .controls{display:flex;flex-wrap:wrap;gap:12px 20px;margin-bottom:22px}
+  .ctrl{display:flex;align-items:center;gap:8px}
+  .ctrl .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;padding:8px 12px;background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+
+  /* ===== DOCUMENTO ===== */
+  .stage{display:flex;justify-content:center}
+  .doc{width:100%;max-width:820px;background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);transition:max-width .25s;position:relative;overflow:hidden}
+  [data-view="mobile"] .doc{max-width:400px}
+  .doc::before{content:'';display:block;height:5px;background:var(--signal)}
+  .doc-head{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--line)}
+  [data-view="mobile"] .doc-head{padding:14px 20px}
+  .wordmark{font-family:var(--serif);font-size:16px;font-weight:700}
+  .wordmark em{font-style:italic;font-weight:400;color:var(--tx3)}
+  .wordmark .ai{color:var(--signal);font-weight:700}
+  .folio{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx4)}
+  .doc-foot{display:flex;justify-content:space-between;padding:14px 64px 20px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4);background:var(--paper2)}
+  [data-view="mobile"] .doc-foot{padding:12px 22px 18px}
+  .doc-foot .wm{font-family:var(--serif);font-size:11px;text-transform:none;letter-spacing:0;color:var(--tx3);font-weight:700}
+  .doc-foot .wm em{font-style:italic;font-weight:400} .doc-foot .wm .ai{color:var(--signal)}
+
+  /* ===== SECCIONES A SANGRE ===== */
+  .sec{padding:36px 64px 44px;background:var(--paper)}
+  .sec.p2{background:var(--paper2)}
+  [data-view="mobile"] .sec{padding:26px 22px 32px}
+  .sec-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:12px}
+  .sec h2.t{font-family:var(--serif);font-size:30px;font-weight:700;line-height:1.12;letter-spacing:-.012em;margin-bottom:10px}
+  [data-view="mobile"] .sec h2.t{font-size:25px}
+  .sec-intent{font-size:14.5px;line-height:1.62;color:var(--tx3);max-width:64ch;margin-bottom:26px}
+
+  /* ===== 1 · PORTADA ===== */
+  .cover-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tx3);margin-bottom:18px}
+  .cover-eyebrow b{color:var(--tx2);font-weight:500} .cover-eyebrow .sep{margin:0 8px;color:var(--tx4)}
+  .banda{position:relative;left:-64px;width:calc(100% + 128px);margin-bottom:18px}
+  [data-view="mobile"] .banda{left:-22px;width:calc(100% + 44px)}
+  .banda .band{display:block;background:var(--v-ajusta);color:#fff;font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:10px 20px 10px 64px}
+  [data-view="mobile"] .banda .band{padding-left:22px;font-size:11.5px;letter-spacing:.16em}
+  .sbar{display:flex;align-items:center;gap:12px;max-width:420px;margin:0 0 20px}
+  .sbar .bar{flex:1;position:relative;height:3px;background:var(--line2);border-radius:2px}
+  .sbar .fill{position:absolute;left:0;top:0;bottom:0;background:var(--tx);border-radius:2px}
+  .sbar .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--tx3);text-transform:uppercase;white-space:nowrap}
+  .sbar .lbl b{color:var(--tx)}
+  .cover-grid{display:grid;grid-template-columns:1fr 236px;gap:30px;align-items:start}
+  [data-view="mobile"] .cover-grid{grid-template-columns:1fr}
+  .headline{font-family:var(--serif);font-size:36px;line-height:1.15;font-weight:700;letter-spacing:-.01em;margin-bottom:16px}
+  [data-view="mobile"] .headline{font-size:27px;margin-bottom:12px}
+  .keyfig{font-size:13.5px;color:var(--tx3);line-height:1.55;margin-bottom:18px}
+  .keyfig .fig{font-family:var(--mono);font-size:23px;font-weight:700;color:var(--signal)}
+  [data-view="mobile"] .keyfig .fig{font-size:19px}
+  .util{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .props-link{display:inline-flex;align-items:center;gap:9px;background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);border-bottom:1px dashed var(--line2);padding-bottom:3px}
+  .cur{display:inline-flex;border:1px solid var(--line2);border-radius:4px;overflow:hidden}
+  .cur span{font-family:var(--mono);font-size:10px;padding:4px 9px;color:var(--tx3)} .cur span.on{background:var(--tx);color:var(--bg);font-weight:700}
+  .mapbox{position:relative;height:210px;border:1px solid var(--line);background:var(--map-bg);overflow:hidden}
+  [data-view="mobile"] .cover-grid .mapbox{display:none}
+  .mapbox .streets{position:absolute;inset:0;background:linear-gradient(0deg,transparent 48%,var(--map-line) 48%,var(--map-line) 50%,transparent 50%),linear-gradient(90deg,transparent 30%,var(--map-line) 30%,var(--map-line) 31.5%,transparent 31.5%),linear-gradient(90deg,transparent 68%,var(--map-line) 68%,var(--map-line) 69.5%,transparent 69.5%),linear-gradient(28deg,transparent 63%,var(--map-line) 63%,var(--map-line) 64.5%,transparent 64.5%)}
+  .mapbox .dot{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--tx4);opacity:.55}
+  .mapbox .mpoi{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--paper);border:2px solid var(--tx2)}
+  .mapbox .pin{position:absolute;left:50%;top:44%;transform:translate(-50%,-100%);width:16px;height:16px;background:var(--signal);border-radius:50% 50% 50% 0;rotate:-45deg}
+  .mapbox .pin::after{content:'';position:absolute;inset:4px;background:#fff;border-radius:50%}
+  .mapbox .tag{position:absolute;right:8px;bottom:8px;background:var(--tx);color:var(--paper);font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;padding:5px 9px;border-radius:2px}
+
+  /* ===== 2 · HERO + posición con footer propio ===== */
+  .hero h2{font-family:var(--serif);font-size:23px;font-weight:700;line-height:1.22;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+  [data-view="mobile"] .hero h2{font-size:21px}
+  .fmark{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--signal);color:#fff;font-family:var(--serif);font-weight:700;font-size:12px;flex-shrink:0;position:relative;top:4px}
+  .hero-prosa{font-size:15px;line-height:1.62;color:var(--tx2);max-width:75ch;margin-left:36px}
+  [data-view="mobile"] .hero-prosa{margin-left:0;font-size:14px}
+  .posicion{margin-top:20px;background:var(--paper);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+  .pos-main{border-left:3px solid var(--signal);padding:16px 18px 14px}
+  .pos-main .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:8px}
+  .pos-main p{font-family:var(--serif);font-style:italic;font-size:14.5px;line-height:1.7;color:var(--tx2);max-width:70ch}
+  .firma{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:11.5px;font-weight:600}
+  .firma small{display:block;font-family:var(--mono);font-size:9.5px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3)}
+  .pos-foot{background:var(--paper2);border-top:1px solid var(--line);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+  .pos-foot .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx3);font-weight:700;display:block;margin-bottom:4px}
+  .pos-foot .l{font-size:13px;color:var(--tx2);line-height:1.5}
+  .btn{display:inline-flex;align-items:center;gap:8px;background:var(--signal);color:#fff;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:10px 16px;border-radius:4px;border:none;cursor:pointer;white-space:nowrap}
+  .btn:hover{filter:brightness(.92)}
+  .lnk{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal);text-decoration:none;white-space:nowrap;background:none;border:none;cursor:pointer;padding:0}
+  .lnk:hover{text-decoration:underline;text-underline-offset:3px}
+
+  /* ===== 3 · PRINCIPALES HALLAZGOS ===== */
+  .hz{border-bottom:1px solid var(--line);padding:14px 0 14px}
+  .hz:first-of-type{border-top:1px solid var(--line)}
+  .hz-head{display:flex;align-items:baseline;gap:16px}
+  .hz .num{font-family:var(--serif);font-size:28px;font-weight:900;color:var(--signal);min-width:46px;font-variant-numeric:tabular-nums}
+  [data-view="mobile"] .hz .num{font-size:22px;min-width:36px}
+  .hz .q{flex:1;font-family:var(--serif);font-size:16px;font-weight:600;line-height:1.35}
+  .hz .q small{display:block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.06em;color:var(--tx4);margin-top:3px}
+  [data-view="mobile"] .hz .q{font-size:14.5px}
+  .hz .val{font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--signal);white-space:nowrap}
+  .hz .val.ink{color:var(--tx)}
+  .hz-cierre{margin:10px 0 0 62px;font-family:var(--serif);font-style:italic;font-size:14px;line-height:1.65;color:var(--tx2);max-width:62ch}
+  [data-view="mobile"] .hz-cierre{margin-left:0}
+  .hz-foot{display:flex;justify-content:flex-end;margin-top:8px}
+  .dot-dir{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;position:relative;top:-1px}
+  .dot-dir.adv{background:var(--signal)} .dot-dir.fav{background:var(--good)}
+
+  /* ===== MODALES + DRAWER ===== */
+  .overlay{position:fixed;inset:0;background:rgba(20,19,17,.6);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
+  .overlay.open{display:flex}
+  .modal{width:100%;max-width:720px;max-height:92vh;overflow-y:auto;background:var(--paper);border:1px solid var(--line2);border-radius:4px;padding:26px 28px 24px;position:relative}
+  [data-view="mobile"] .overlay{padding:0}
+  [data-view="mobile"] .modal{max-width:none;max-height:none;height:100%;border-radius:0;border:none;padding:22px 20px 24px}
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:6px}
+  .modal h3{font-family:var(--serif);font-size:22px;font-weight:700;line-height:1.2}
+  .modal .sub{font-size:13px;color:var(--tx3);line-height:1.5;margin-bottom:18px}
+  .x{background:none;border:1px solid var(--line2);border-radius:4px;width:30px;height:30px;font-family:var(--mono);font-size:14px;color:var(--tx3);cursor:pointer;flex-shrink:0}
+  .x:hover{color:var(--tx);border-color:var(--tx4)}
+  .m-block{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+  .m-block:first-of-type{margin-top:0;padding-top:0;border-top:none}
+  .m-block .bt{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:4px}
+  .m-block .bq{font-family:var(--serif);font-size:16px;font-weight:600;margin-bottom:10px}
+  .m-foot{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--tx4);line-height:1.5}
+  .drawer-wrap{position:fixed;inset:0;background:rgba(20,19,17,.6);display:none;justify-content:flex-end;z-index:60}
+  .drawer-wrap.open{display:flex}
+  .drawer{width:100%;max-width:560px;height:100%;overflow-y:auto;background:var(--paper);border-left:1px solid var(--line2);padding:26px 28px 30px}
+  [data-view="mobile"] .drawer{max-width:none;padding:22px 20px 26px}
+  /* tablas del modal de cálculo */
+  .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tbl{border-collapse:collapse;width:100%;min-width:560px}
+  .tbl th{font-family:var(--mono);font-size:8px;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4);padding:7px 4px;text-align:right;border-bottom:1px solid var(--line);font-weight:400;white-space:nowrap}
+  .tbl th:first-child{text-align:left}
+  .tbl td{font-family:var(--mono);font-size:10px;padding:7px 4px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  .tbl td:first-child{text-align:left;color:var(--tx3)}
+  .tbl tr.pre td{color:var(--tx4)}
+  .tbl tr.ent td:first-child{color:var(--warn);font-weight:700}
+  .tbl tr.tot td{font-weight:700;border-top:2px solid var(--tx);border-bottom:none;color:var(--tx)}
+  .tbl .neg{color:var(--signal)}
+  .tbl-scrollcue{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4);margin-top:8px;display:none}
+  [data-view="mobile"] .tbl-scrollcue{display:block}
+  .ind{border-collapse:collapse;width:100%}
+  .ind td{padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px;vertical-align:baseline}
+  .ind td:first-child{color:var(--tx);font-weight:600;width:28%}
+  .ind td:nth-child(2){color:var(--tx3);font-size:12px;padding-right:12px}
+  .ind td:nth-child(3){font-family:var(--mono);color:var(--tx2);font-size:11.5px;padding-right:12px}
+  .ind td:last-child{font-family:var(--mono);font-weight:700;text-align:right;white-space:nowrap;width:12%}
+  .ind td:last-child.neg{color:var(--signal)}
+  [data-view="mobile"] .ind td:nth-child(2){display:none}
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dotted var(--line);font-size:12.5px;color:var(--tx3)}
+  .kv .v{font-family:var(--mono);color:var(--tx);white-space:nowrap} .kv .v.neg{color:var(--signal)}
+  .kv.tot{border-top:2px solid var(--tx);border-bottom:none;margin-top:4px;padding-top:9px;color:var(--tx);font-weight:600}
+  .kv.tot .v{font-weight:700;font-size:14px}
+  .kv.sub{border-top:1px solid var(--line2);border-bottom:none;padding-top:8px;color:var(--tx);font-weight:600}
+  .kv.sub .v{font-weight:700}
+  .compo{display:flex;height:22px;border-radius:3px;overflow:hidden;margin-top:12px}
+  .compo span{height:100%} .compo .f{background:var(--tx)} .compo .p{background:var(--good);opacity:.45}
+  /* barra apilada de "de dónde sale tu parte" (propuesta-04) */
+  .brackets{display:flex;margin-bottom:5px}
+  .bracket{position:relative;text-align:center;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);padding-bottom:7px}
+  .bracket::after{content:'';position:absolute;left:3px;right:3px;bottom:0;height:5px;border:1px solid var(--line2);border-bottom:none;border-radius:3px 3px 0 0}
+  .bracket b{color:var(--tx);font-size:11px}
+  .compo2{display:flex;height:38px;border-radius:3px;overflow:hidden}
+  .seg-c{height:100%;position:relative}
+  .seg-c.pie{background:var(--neutral)} .seg-c.amort{background:var(--good)} .seg-c.plus{background:var(--good);opacity:.45}
+  .seg-c.plus::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.35) 5px,rgba(255,255,255,.35) 10px)}
+  .leg{margin-top:14px}
+  .leg-row{display:grid;grid-template-columns:12px 1fr auto;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .leg-row:last-child{border-bottom:none}
+  .leg-sw{width:12px;height:12px;border-radius:2px;position:relative;top:2px}
+  .leg-sw.pie{background:var(--neutral)} .leg-sw.amort{background:var(--good)} .leg-sw.plus{background:var(--good);opacity:.45}
+  .leg-sw.plus::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.4) 3px,rgba(255,255,255,.4) 6px)}
+  .leg-k{font-size:12.5px;color:var(--tx2)} .leg-k small{display:block;font-size:11px;color:var(--tx3);margin-top:1px}
+  .leg-v{font-family:var(--mono);font-size:12.5px;font-weight:700;white-space:nowrap;text-align:right}
+  .leg-v small{display:block;font-family:var(--mono);font-size:9.5px;color:var(--tx4);font-weight:400;margin-top:1px}
+  .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:11px;border-top:2px solid var(--tx)}
+  .total .k{font-size:13px;font-weight:600;color:var(--tx)} .total .v{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--tx)}
+  [data-view="mobile"] .total .v{font-size:17px}
+  .mult{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--paper2);border:1px solid var(--line);border-radius:3px;margin-top:12px}
+  .mult .k{font-size:12px;color:var(--tx3);flex:1;line-height:1.45} .mult .v{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--good);white-space:nowrap}
+  .compo-leg{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--tx3);margin-top:6px}
+  .compo-leg b{color:var(--tx)}
+
+  /* ===== 4 · LOS NÚMEROS ===== */
+  .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+  [data-view="mobile"] .nums{grid-template-columns:repeat(2,1fr)}
+  .num-cell{background:var(--paper);padding:14px 16px 13px}
+  .num-cell .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:8px}
+  .num-cell .v{font-family:var(--mono);font-size:23px;font-weight:700;line-height:1;color:var(--tx);letter-spacing:-.01em}
+  [data-view="mobile"] .num-cell .v{font-size:19px}
+  .num-cell .v.neg{color:var(--signal)}
+  .num-cell .v small{font-size:11px;font-weight:400;color:var(--tx4);letter-spacing:0;margin-left:1px}
+  .num-cell .tr{font-size:12px;line-height:1.5;color:var(--tx3);margin-top:8px}
+  .num-cell .tr b{color:var(--tx2);font-weight:500}
+  .nums-foot{display:flex;justify-content:flex-end;margin-top:12px}
+
+  /* ===== ACORDEÓN ===== */
+  .hall{border-bottom:1px solid var(--line)}
+  .hall:first-of-type{border-top:1px solid var(--line)}
+  .hall-head{display:flex;align-items:baseline;gap:16px;padding:17px 0;cursor:pointer;width:100%;background:none;border:none;text-align:left;color:inherit;transition:padding-left .15s}
+  .hall-head:hover{padding-left:6px}
+  .hall .num{font-family:var(--serif);font-size:24px;font-weight:900;color:var(--line2);min-width:46px;transition:color .15s}
+  .hall.open .num,.hall-head:hover .num{color:var(--signal)}
+  [data-view="mobile"] .hall .num{font-size:20px;min-width:36px}
+  .hall .q{flex:1;font-family:var(--serif);font-size:17px;font-weight:600;line-height:1.3}
+  .hall .q .ksub{display:block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.06em;color:var(--tx4);margin-top:4px}
+  [data-view="mobile"] .hall .q{font-size:15px}
+  .hall .val{font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--tx);white-space:nowrap}
+  .hall .val.red{color:var(--signal)}
+  .hall .chev{font-family:var(--mono);font-size:13px;color:var(--tx4);transition:transform .2s}
+  .hall.open .chev{transform:rotate(180deg)}
+  .hall-body{display:none;margin:0 0 0 12px;padding:6px 0 18px 74px;border-left:2px solid color-mix(in srgb,var(--tx) 30%,transparent)}
+  [data-view="mobile"] .hall-body{margin-left:8px;padding-left:22px}
+  .hall.open .hall-body{display:block}
+  .hall-end{display:flex;justify-content:flex-end;margin-top:16px}
+  .hall-close{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);background:none;border:1px solid var(--line2);border-radius:3px;padding:6px 12px;cursor:pointer}
+  .hall-close:hover{color:var(--tx);border-color:var(--tx4)}
+  /* vocabulario v12 */
+  .v-prosa{font-size:14px;line-height:1.75;color:var(--tx2);margin-bottom:16px;max-width:60ch}
+  .v-viz{margin:0 0 18px}
+  .v-viz-t{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:10px}
+  /* subtítulo de tramo: serif, un escalón bajo el título del capítulo (17px), Ink, 24px de aire arriba */
+  .v-sub{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--tx);margin:24px 0 8px;line-height:1.3}
+  .hall-body > .v-prosa + .v-viz > .v-sub:first-child,.v-viz:first-of-type > .v-sub:first-child{margin-top:6px}
+  .v-copy{font-size:13.5px;line-height:1.65;color:var(--tx2);max-width:60ch;margin-bottom:12px}
+  .v-puente{font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:color-mix(in srgb,var(--tx) 60%,transparent);margin:2px 0 16px;padding-top:12px;border-top:1px dotted var(--line2)}
+  .v-cierre{background:var(--paper2);border:1px solid var(--line);border-left:3px solid var(--signal);border-radius:3px;padding:16px 18px;margin-top:4px}
+  .sec.p2 .v-cierre{background:var(--paper)}
+  .v-cierre .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:8px}
+  .v-cierre p{font-family:var(--serif);font-style:italic;font-size:14.5px;line-height:1.7;color:var(--tx2);max-width:58ch}
+  .v-fuente{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--tx4);margin-top:12px;line-height:1.5}
+
+  /* termómetro */
+  .thermo{padding:22px 0 2px;position:relative}
+  .thermo-track{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--signal),var(--warn),var(--good))}
+  .thermo-mark{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--tx);border:3px solid var(--paper);transform:translate(-50%,-50%)}
+  .thermo-ref{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--tx3)}
+  .thermo-you{position:absolute;top:-22px;transform:translateX(-50%);font-family:var(--mono);font-size:10px;font-weight:700;white-space:nowrap}
+  .thermo-legend{display:flex;justify-content:space-between;margin-top:9px;font-family:var(--mono);font-size:9.5px;color:var(--tx4);letter-spacing:.06em}
+  .thermo-legend b{color:var(--tx2);display:block;font-size:12px;margin-top:2px}
+  /* dial */
+  .dial{position:relative;margin:46px 0 8px}
+  .dial-track{position:relative;display:flex;height:34px;border-radius:3px;overflow:hidden}
+  .zone{height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#fff;white-space:nowrap;overflow:hidden}
+  .zone.buscar{background:var(--v-buscar)} .zone.ajusta{background:var(--v-ajusta)} .zone.comprar{background:var(--v-comprar)}
+  [data-view="mobile"] .zone{font-size:7.5px;letter-spacing:.04em}
+  .mark{position:absolute;top:-24px;bottom:-8px;width:2px;background:var(--tx);z-index:3}
+  .mark::after{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:11px;height:11px;border-radius:50%;background:var(--tx);border:2.5px solid var(--paper)}
+  .mark-lbl{position:absolute;top:-46px;transform:translateX(-50%);text-align:center;white-space:nowrap;z-index:4}
+  .mark-lbl .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);display:block}
+  .mark-lbl .v{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--tx)}
+  .edges{position:relative;height:66px;margin-top:6px}
+  .edge{position:absolute;top:0;text-align:left;white-space:nowrap}
+  .edge.der{text-align:right;transform:translateX(-100%)}
+  .edge::before{content:'';position:absolute;top:-12px;width:1px;height:10px;background:var(--line2)}
+  .edge.izq::before{left:0} .edge.der::before{right:0}
+  .edge .d{font-family:var(--mono);font-size:12px;font-weight:700;display:block}
+  .edge .v{font-family:var(--mono);font-size:12px;color:var(--tx2);display:block;margin-top:2px}
+  .edge .k{font-size:10.5px;color:var(--tx3);display:block;margin-top:3px;line-height:1.3;white-space:normal;max-width:130px}
+  .edge.der .k{margin-left:auto}
+  .edge.down .d{color:var(--signal)} .edge.up .d{color:var(--good)}
+  .colchon{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--paper2);border:1px solid var(--line);border-radius:3px;margin-top:2px}
+  .colchon .k{font-size:12.5px;color:var(--tx3);flex:1} .colchon .v{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--tx)}
+  .colchon .v small{font-size:10px;color:var(--tx4);font-weight:400}
+  /* waterfall */
+  .fall-visual{display:flex;height:26px;border-radius:2px;overflow:hidden;margin-bottom:12px}
+  .fall-visual span{height:100%}
+  .fall-row{display:grid;grid-template-columns:1fr 130px;align-items:center;gap:12px;padding:7px 0;border-bottom:1px dotted var(--line)}
+  [data-view="mobile"] .fall-row{grid-template-columns:1fr 108px;gap:8px}
+  .fall-row:last-child{border-bottom:none}
+  .fall-row .fk{font-size:12.5px;color:var(--tx3);display:flex;align-items:center;gap:8px}
+  .fall-row .fk small{color:var(--tx4);font-size:11px}
+  .fall-row .fk::before{content:'';width:8px;height:8px;border-radius:2px;background:var(--c,var(--neutral));flex-shrink:0}
+  .fall-row .fv{font-family:var(--mono);font-size:12.5px;text-align:right}
+  .fall-row.in .fk{color:var(--tx);font-weight:600} .fall-row.in .fk::before{background:var(--tx)} .fall-row.in .fv{font-weight:700}
+  .fall-row.total{border-top:2px solid var(--tx);margin-top:6px;padding-top:10px}
+  .fall-row.total .fk{color:var(--tx);font-weight:600;font-size:13px} .fall-row.total .fk::before{display:none}
+  .fall-row.total .fv{font-weight:700;font-size:14.5px;color:var(--signal)}
+  /* eje de precio + plan */
+  .eje-marca{height:42px;position:relative;margin-bottom:2px}
+  .m-lbl{position:absolute;bottom:0;transform:translateX(-50%);text-align:center;white-space:nowrap}
+  .m-lbl .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);display:block;margin-bottom:1px}
+  .m-lbl .v{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--tx);display:block}
+  .m-lbl::after{content:'';position:absolute;left:50%;bottom:-8px;width:2px;height:8px;background:var(--tx)}
+  .eje-track{display:flex;height:30px;border-radius:3px;overflow:hidden;position:relative}
+  .z{height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#fff;white-space:nowrap;overflow:hidden}
+  .z.compra{background:var(--v-comprar)} .z.ajusta{background:var(--v-ajusta)} .z.no{background:var(--v-buscar)}
+  .aguja{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--tx);z-index:3}
+  .bordes{position:relative;height:64px;margin-top:8px}
+  [data-view="mobile"] .bordes{height:104px}
+  .borde{position:absolute;top:0;text-align:left;white-space:nowrap}
+  .borde.der{text-align:right;transform:translateX(-100%)}
+  [data-view="mobile"] .borde.der{top:46px}
+  .borde::before{content:'';position:absolute;top:-14px;width:1px;height:12px;background:var(--line2)}
+  .borde.izq::before{left:0} .borde.der::before{right:0}
+  [data-view="mobile"] .borde.der::before{height:56px;top:-58px}
+  .borde .v{font-family:var(--mono);font-size:11.5px;font-weight:700;display:block}
+  .borde .k{font-size:10px;color:var(--tx3);display:block;margin-top:3px;line-height:1.3;white-space:normal;max-width:118px}
+  .borde.der .k{margin-left:auto}
+  .borde.a .v{color:var(--good)} .borde.b .v{color:var(--signal)}
+  .plan-row{padding:12px 0;border-bottom:1px solid var(--line)} .plan-row:last-child{border-bottom:none}
+  .plan-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+  .plan-k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal);font-weight:700}
+  .plan-v{font-family:var(--mono);font-size:15px;font-weight:700;white-space:nowrap}
+  .plan-deltas{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+  .dchip{font-family:var(--mono);font-size:10px;letter-spacing:.03em;padding:3px 7px;border-radius:3px;background:var(--paper3);color:var(--tx2)}
+  .dchip b{color:var(--tx)}
+  .plan-d{font-size:12px;color:var(--tx3);line-height:1.45}
+  /* tasa vs mercado + DataRows */
+  .cmp-row{padding:11px 0;border-bottom:1px solid var(--line)}
+  .cmp-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+  .cmp-k{font-size:12.5px;font-weight:600;color:var(--tx)} .cmp-k small{display:block;font-weight:400;font-size:11px;color:var(--tx3);margin-top:1px}
+  .cmp-tag{font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:2px 7px;border-radius:3px;white-space:nowrap;color:var(--good);background:color-mix(in srgb,var(--good) 13%,transparent)}
+  .cmp-line{display:grid;grid-template-columns:64px 1fr 76px;align-items:center;gap:9px;margin-bottom:5px}
+  [data-view="mobile"] .cmp-line{grid-template-columns:56px 1fr 70px;gap:7px}
+  .cmp-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);text-align:right}
+  .cmp-track{height:13px;background:var(--paper3);border-radius:2px;overflow:hidden}
+  .cmp-fill{height:100%;border-radius:2px}
+  .cmp-fill.ok{background:var(--good)} .cmp-fill.ref{background:var(--neutral);opacity:.5}
+  .cmp-v{font-family:var(--mono);font-size:11.5px;font-weight:700;text-align:right}
+  .datarow{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--tx)}
+  .datarow small{display:block;font-weight:400;font-size:11px;color:var(--tx3);margin-top:1px}
+  .datarow .v{font-family:var(--mono);font-weight:700;white-space:nowrap}
+  /* matriz pie × plazo */
+  .mx-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+  .mx-toggle{display:inline-flex;border:1px solid var(--line2);border-radius:4px;overflow:hidden}
+  .mx-toggle button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .mx-toggle button+button{border-left:1px solid var(--line2)}
+  .mx-toggle button.on{background:var(--tx);color:var(--bg);font-weight:700}
+  .mx{border-collapse:collapse;width:100%}
+  .mx th{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx4);padding:8px 6px;font-weight:400;border-bottom:1px solid var(--line);text-align:right}
+  .mx th:first-child{text-align:left}
+  .mx td{font-family:var(--mono);font-size:12px;padding:10px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  [data-view="mobile"] .mx{min-width:470px} [data-view="mobile"] .mx td{font-size:11px;padding:9px 6px}
+  .mx td:first-child{text-align:left;font-weight:700;color:var(--tx)} .mx td:first-child small{display:block;font-family:var(--sans);font-size:10px;font-weight:400;color:var(--tx3)}
+  .mx td.neg{color:var(--signal)} .mx td.pos{color:var(--tx)}
+  .mx td.hoy{box-shadow:inset 0 0 0 200px color-mix(in srgb,var(--warn) 16%,transparent);font-weight:700}
+  .mx-note{font-family:var(--mono);font-size:10.5px;color:var(--tx2);line-height:1.6;margin-top:10px;letter-spacing:.02em}
+  /* línea de tiempo (compra en verde) */
+  .tl{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:start;gap:8px;margin:14px 0 6px}
+  [data-view="mobile"] .tl{grid-template-columns:1fr;gap:6px}
+  .hito{border-top:3px solid var(--tx);padding-top:10px}
+  .hito.mid{border-top-color:var(--warn)} .hito.end{border-top-color:var(--good)}
+  .hito .k{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);display:block}
+  .hito .d{font-size:11px;color:var(--tx4);display:block;margin-top:1px}
+  .hito .v{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--tx);display:block;margin-top:6px}
+  [data-view="mobile"] .hito .v{font-size:14px}
+  .tl-delta{align-self:center;text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--tx2);padding:0 4px}
+  .tl-delta b{display:block;font-size:12px;color:var(--good)}
+  .tl-delta::before{content:'→';display:block;color:var(--tx4);font-size:14px}
+  [data-view="mobile"] .tl-delta::before{content:'↓'}
+  .lectura{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--tx2);margin-top:12px;line-height:1.6}
+  /* V · barras + composición + venta/refi + costo de oportunidad */
+  .chart{width:100%;height:180px;display:block} [data-view="mobile"] .chart{height:150px}
+  .chart-leg{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--tx3)}
+  .chart-leg span::before{content:'';display:inline-block;width:12px;height:8px;background:var(--c);margin-right:6px}
+  .chart-leg span.ln::before{height:3px;position:relative;top:-3px}
+  .venta{display:grid;grid-template-columns:1fr 1fr;gap:24px} [data-view="mobile"] .venta{grid-template-columns:1fr;gap:18px}
+  .venta h4{font-family:var(--serif);font-size:16px;font-weight:600;margin-bottom:4px}
+  .venta .ex{font-size:12.5px;color:var(--tx3);line-height:1.5;margin-bottom:8px;min-height:57px}
+  [data-view="mobile"] .venta .ex{min-height:0}
+  .oport{margin-top:18px;padding:14px 16px;background:var(--paper2);border:1px solid var(--line);border-radius:3px}
+  .oport .bt{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);font-weight:700;margin-bottom:8px}
+  .oport .kv{font-size:12.5px} .oport .kv .v{font-weight:700}
+  .oport .nota{font-size:12px;color:var(--tx3);line-height:1.5;margin-top:8px}
+
+  /* ===== 6 · LA ZONA ===== */
+  .zona-cells{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:18px}
+  [data-view="mobile"] .zona-cells{grid-template-columns:1fr 1fr} [data-view="mobile"] .zona-cells div:last-child{grid-column:span 2}
+  .zona-cells div{background:var(--paper);padding:12px 14px}
+  .zona-cells .k{font-size:11.5px;color:var(--tx3);margin-bottom:6px;line-height:1.35}
+  .zona-cells .v{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--tx)}
+  .zona-cells .s{font-size:11.5px;color:var(--tx3);margin-top:6px;line-height:1.4}
+  .zona-cells .s b{font-family:var(--mono);font-weight:700;color:var(--tx2)}
+  .zona-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:12px;flex-wrap:wrap}
+  .poi{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .poi .n{font-size:13px;font-weight:600;color:var(--tx)} .poi .t{grid-column:1;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4)}
+  .poi .d{grid-row:span 2;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tx2);align-self:center}
+
+  /* ===== STR · lo único nuevo (todo lo demás es el CSS del LTR congelado) ===== */
+  .num-cell .k2{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--signal);margin-top:6px}
+  .formula{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:8px;margin:6px 0 4px}
+  [data-view="mobile"] .formula{grid-template-columns:1fr;gap:4px}
+  .formula .op{font-family:var(--mono);font-size:18px;color:var(--tx4);text-align:center}
+  [data-view="mobile"] .formula .op{display:none}
+  .formula .f{border:1px solid var(--line);border-radius:3px;padding:10px 12px;background:var(--paper2)}
+  .sec.p2 .formula .f{background:var(--paper)}
+  .formula .f .k{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx4);display:block;margin-bottom:4px}
+  .formula .f .v{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--tx)}
+  .formula .f .v small{font-size:10px;font-weight:400;color:var(--tx4)}
+  .formula .f.res{border-color:var(--tx);border-width:2px}
+  .curva{width:100%;height:150px;display:block} [data-view="mobile"] .curva{height:130px}
+  .bars{margin-top:6px} .bar-row{display:grid;grid-template-columns:150px 1fr 110px;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dotted var(--line)}
+  [data-view="mobile"] .bar-row{grid-template-columns:110px 1fr 92px;gap:7px}
+  .bar-row .bk{font-size:12.5px;color:var(--tx2)} .bar-row .bk small{display:block;font-size:10.5px;color:var(--tx3)}
+  .bar-row .bt{height:16px;background:var(--paper3);border-radius:2px;overflow:hidden} .bar-row .bf{height:100%;border-radius:2px;background:var(--neutral)}
+  .bar-row.tu .bf{background:var(--tx)} .bar-row.admin .bf{background:var(--warn)}
+  .bar-row .bv{font-family:var(--mono);font-size:12.5px;font-weight:700;text-align:right} .bar-row .bv.neg{color:var(--signal)}
+  .gate{display:grid;grid-template-columns:1fr auto;gap:2px 14px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .gate .gk{font-size:12.5px;font-weight:600;color:var(--tx)} .gate .gd{grid-column:1;font-size:11.5px;color:var(--tx3);line-height:1.45}
+  .gate .gv{grid-row:span 2;align-self:center;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap}
+  .gate .gv.ok{color:var(--good);background:color-mix(in srgb,var(--good) 13%,transparent)} .gate .gv.no{color:var(--signal);background:color-mix(in srgb,var(--signal) 13%,transparent)}
+  .lst{border-collapse:collapse;width:100%} .lst td{padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--tx3)} .lst td:last-child{font-family:var(--mono);font-weight:700;color:var(--tx);text-align:right;white-space:nowrap}
+  .perfil-row{padding:10px 0;border-bottom:1px solid var(--line)} .perfil-row .pn{font-size:13.5px;font-weight:600} .perfil-row .pd{font-size:12px;color:var(--tx3);margin-top:2px;line-height:1.45}
+  .perfil-row.dom .pn{color:var(--tx)} .perfil-row.dom .pn::before{content:'Dominante · ';font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal)}
+  .edges2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+  .edges2 .edge{position:static;transform:none;white-space:normal} .edges2 .edge::before{display:none}
+  .edges2 .edge.up{text-align:right} .edges2 .edge.up .k{margin-left:auto} .edges2 .edge .k{max-width:none}
+  .dial .tick{position:absolute;bottom:-6px;width:1px;height:46px;background:var(--tx);opacity:.55;z-index:3}
+  .mx2{border-collapse:collapse;width:100%;min-width:560px} .mx2 th,.mx2 td{padding:9px 8px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12px;text-align:right;white-space:nowrap}
+  .mx2 th{font-weight:500;color:var(--tx3);vertical-align:bottom} .mx2 th small,.mx2 td small{display:block;font-family:var(--sans);font-size:10px;color:var(--tx4);white-space:normal;font-weight:400;margin-top:2px}
+  .mx2 td:first-child,.mx2 th:first-child{text-align:left;color:var(--tx);font-weight:700} .mx2 td:first-child small{font-weight:400}
+  .mx2 td.neg{color:var(--signal)} .mx2 td.pos{color:var(--good)} .mx2 td.hoy{outline:2px solid var(--tx);outline-offset:-2px;font-weight:700}
+  .tipo-line{font-size:12.5px;color:var(--tx2);line-height:1.55;margin:12px 0 0;padding-top:12px;border-top:1px dotted var(--line)} .tipo-line b{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx4);margin-right:8px}
+  .dial-track .zone .sh{display:none} [data-view="mobile"] .dial-track .zone .lg{display:none} [data-view="mobile"] .dial-track .zone .sh{display:inline}
+  [data-view="mobile"] .lst td:last-child{white-space:normal;max-width:48%;padding-left:10px}
+  .muere{border:1px dashed var(--line2);padding:12px 16px;margin-bottom:18px;font-size:12.5px;color:var(--tx2);line-height:1.6;max-width:80ch}
+  .muere b{color:var(--tx3);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:5px}
+  .muere code{font-family:var(--mono);font-size:11px;background:var(--paper3);padding:1px 4px;border-radius:2px}
+
+  /* ===== TABLAS · lo nuevo (un solo CSS para LTR y STR; ancho 936) ===== */
+  .lab{max-width:1120px}
+  .doc{max-width:936px}
+  .pieza{margin-top:6px}
+  .pieza + .pieza{margin-top:34px;padding-top:26px;border-top:1px solid var(--line)}
+  .regla{font-size:12.5px;color:var(--tx3);line-height:1.6;max-width:70ch;margin:-8px 0 16px}
+  .dos{display:grid;grid-template-columns:1fr 1fr;gap:28px} [data-view="mobile"] .dos{grid-template-columns:1fr;gap:22px}
+  .dos > div > .tag{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx4);margin-bottom:10px;padding-bottom:6px;border-bottom:1px dotted var(--line2)}
+  .dos > div > .tag.nuevo{color:var(--signal)}
+
+  /* ── matriz de sensibilización ── */
+  .matriz{--cell:88px;--rowh:58px;--axis:20px;--gap:3px;display:grid;grid-template-columns:var(--axis) auto;gap:0 6px;max-width:calc(var(--axis) + 6px + var(--rowh) + 4*var(--cell) + 5*var(--gap));margin-top:6px}
+  [data-view="mobile"] .matriz{--cell:64px;--rowh:52px;--axis:16px;max-width:none}
+  .mz-axis-x{grid-column:2;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3);padding-left:calc(var(--rowh) + var(--gap));margin-bottom:6px}
+  .mz-axis-y{grid-row:2;writing-mode:vertical-rl;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3);padding-top:calc(var(--cell) * .55 + var(--gap));white-space:nowrap}
+  .mz-grid{grid-row:2;display:grid;grid-template-columns:var(--rowh) repeat(4,var(--cell));grid-auto-rows:auto;gap:var(--gap);align-items:stretch}
+  [data-view="mobile"] .mz-grid{grid-template-columns:var(--rowh) repeat(4,1fr)}
+  .mz-corner{}
+  .mz-colh,.mz-rowh{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--tx);line-height:1.15}
+  .mz-colh{text-align:center;padding:0 0 6px;align-self:end}
+  .mz-rowh{display:flex;flex-direction:column;justify-content:center;padding-right:8px;text-align:right}
+  .mz-colh small,.mz-rowh small{display:block;font-family:var(--sans);font-size:9.5px;font-weight:400;color:var(--tx4);margin-top:2px;white-space:nowrap}
+  .mz-cell{position:relative;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:var(--paper2);border:1px solid var(--line);border-radius:2px;font-family:var(--mono);font-size:11px;color:var(--tx);cursor:help;font-variant-numeric:tabular-nums}
+  .sec.p2 .mz-cell{background:var(--paper)}
+  [data-view="mobile"] .mz-cell{font-size:10px}
+  .mz-cell.neg{color:var(--signal)}
+  .mz-cell.cruza{border:1px solid var(--good)}
+  .mz-cell.cruza::after{content:'';position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--good)}
+  .mz-cell.hoy{box-shadow:inset 0 0 0 2.5px var(--tx);font-weight:700}
+  .mz-hoy{position:absolute;top:-1px;left:-1px;font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;background:var(--tx);color:var(--paper);padding:2px 5px 2px 6px;border-radius:2px 0 3px 0;line-height:1}
+  .mz-note{font-family:var(--mono);font-size:10.5px;color:var(--tx2);line-height:1.6;margin-top:12px;letter-spacing:.02em;max-width:60ch}
+  .mz-leg{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--tx3)}
+  .mz-leg span{display:inline-flex;align-items:center;gap:6px}
+  .mz-leg i{width:11px;height:11px;border-radius:2px;border:1px solid var(--line);background:var(--paper2)}
+  .mz-leg i.hoy{box-shadow:inset 0 0 0 2px var(--tx)} .mz-leg i.cruza{border-color:var(--good);position:relative} .mz-leg i.cruza::after{content:'';position:absolute;top:1px;right:1px;width:4px;height:4px;border-radius:50%;background:var(--good)}
+
+  /* ── planilla ── */
+  .plwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .pl{border-collapse:separate;border-spacing:0;width:100%;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .pl th,.pl td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-size:10.5px;line-height:1.3;color:var(--tx2);font-weight:400}
+  .pl thead th{font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx4);padding-bottom:7px;vertical-align:bottom}
+  .pl th:first-child,.pl td:first-child{text-align:left}
+  .pl tbody th{color:var(--tx3);font-weight:400}
+  .pl tr.tot th,.pl tr.tot td{font-weight:700;color:var(--tx);border-top:2px solid var(--tx);border-bottom:none;padding-top:7px}
+  .pl .neg{color:var(--signal)}
+  [data-view="mobile"] .pl th:first-child,[data-view="mobile"] .pl td:first-child{position:sticky;left:0;background:var(--paper);z-index:1;box-shadow:1px 0 0 var(--line)}
+  .pl.ind td:nth-child(2){color:var(--tx3);font-family:var(--sans);font-size:11.5px;white-space:normal;text-align:left}
+  .pl.ind td:nth-child(3){color:var(--tx2);text-align:left}
+  .pl.ind th{color:var(--tx);font-weight:600;font-family:var(--sans);font-size:12px;white-space:normal}
+  .pl.ind td:last-child{font-weight:700;color:var(--tx)}
+  [data-view="mobile"] .pl.ind td:nth-child(2){display:none}
+  .pl-card{max-width:720px;background:var(--paper);border:1px solid var(--line2);border-radius:4px;padding:22px 24px 20px}
+  .sec.p2 .pl-card{background:var(--paper)}
+  [data-view="mobile"] .pl-card{padding:16px 14px}
+
+  /* ── fila de dato compartida ── */
+  .drows{margin-top:4px}
+  .drow{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:14px;min-height:30px;padding:5px 0;border-bottom:1px solid var(--line)}
+  .drow .dk{font-size:12.5px;color:var(--tx2);line-height:1.35}
+  .drow .dk[title]{cursor:help;text-decoration:underline dotted var(--line2);text-underline-offset:3px}
+  .drow .dk small{display:block;font-size:10.5px;color:var(--tx4);margin-top:1px;line-height:1.35}
+  .drow .dv{font-family:var(--mono);font-size:12.5px;color:var(--tx);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+  .drow .dv em{font-style:normal;font-family:var(--mono);font-size:9.5px;color:var(--tx4);display:inline-block;width:30px;text-align:left;margin-left:5px}
+  .drow.in .dk{color:var(--tx);font-weight:600} .drow.in .dv{font-weight:700}
+  .drow.neg .dv{color:var(--signal)} .drow.cruza .dv{color:var(--good)}
+  .drow.tot{border-top:2px solid var(--tx);border-bottom:none;margin-top:3px;padding-top:8px}
+  .drow.tot .dk{color:var(--tx);font-weight:600;font-size:13px} .drow.tot .dv{font-weight:700;font-size:14px}
+  .venta2{display:grid;grid-template-columns:1fr 1fr;gap:24px} [data-view="mobile"] .venta2{grid-template-columns:1fr;gap:18px}
+  .venta2 h4{font-family:var(--serif);font-size:16px;font-weight:600;margin-bottom:4px}
+  .venta2 .ex{font-size:12.5px;color:var(--tx3);line-height:1.5;margin-bottom:6px;min-height:57px} [data-view="mobile"] .venta2 .ex{min-height:0}
+</style>
+</head>
+<body>
+<div class="lab">
+  <div class="lab-head"><h1><em>re</em>franco<span class="ai">.ai</span> — <em>mockup · tablas del informe · 04-sep-2026</em></h1></div>
+  <div class="lab-sub">Una dirección, no variantes · matriz de sensibilización · planilla del modal · fila de dato compartida · cifras del recompute de eb7b3a66</div>
+  <div class="frozen"><b>Reglas de la pieza (para aprobar)</b>
+    <ol>
+      <li><strong>Matriz que se lee como matriz.</strong> Celdas cuadradas del mismo tamaño (88 px en PC, 53 px en 390), mono chica, cifra corta adentro (<code>−$312k</code>, <code>$1,2 MM</code>) y el valor exacto con veredicto en el tooltip. Ejes nombrados con dirección: arriba «→ más plazo» / «→ más tarifa» con los cuatro valores, a la izquierda «↓ más pie» / «↓ más ocupación» con los cuatro.</li>
+      <li><strong>Celda base inconfundible:</strong> anillo grueso en Ink y rótulo «hoy» pegado a la esquina; es la única con anillo. <strong>Cruza al veredicto de arriba:</strong> borde verde fino y punto. El mapa de calor queda muy tenue (máximo 8% de opacidad) y sigue el toggle Flujo/TIR del IV.</li>
+      <li><strong>A 390 la matriz completa cabe sin scroll:</strong> cuatro celdas de 53 px más la cabecera de fila; «desliza la tabla» muere en las matrices.</li>
+      <li><strong>Matriz del I transpuesta respecto de v2:</strong> tarifa en columnas (→ más tarifa), ocupación en filas (↓ más ocupación). Los percentiles van en palabras cortas en la cabecera («baja / mediana / alta / muy alta») y la frase completa («la mitad de la zona cobra menos que tú») en el tooltip. Cruza = el ingreso alcanza la frontera del dial (+4,3%): tarifa y ocupación mueven el ingreso por la misma razón, así que es la regla del motor, no una estimación.</li>
+      <li><strong>Planilla:</strong> misma familia (mono, filas de 26 px, cabecera uppercase chica, totales en negrita con regla gruesa) pero es tabla y puede serlo: a 390 desliza con la primera columna fija, sin rótulo «desliza».</li>
+      <li><strong>Fila de dato compartida:</strong> una sola pieza para todas las listas etiqueta·cifra. Altura única (30 px), separador hairline, etiqueta sans con sub-línea gris opcional y tooltip (subrayado punteado), cifra mono alineada con la unidad en gris aparte, color solo semántico (rojo = sale de tu bolsillo, verde = cruza; el resto Ink; las deducciones de la venta van en Ink con su signo, ya no en rojo), total con regla gruesa y negrita. La barra apilada de colores del Fall del II se va: sus colores eran por categoría, no semánticos.</li>
+      <li><strong>Un solo CSS para LTR y STR, ancho 936 en todo.</strong> Este documento ya está a 936; las clases (<code>.matriz</code>, <code>.pl</code>, <code>.drow</code>) reemplazan a <code>.mx</code>, <code>.mx2</code>, <code>.tbl</code>, <code>.ind</code>, <code>.kv</code>, <code>.fall-row</code>, <code>.datarow</code>, <code>.leg-row</code> y <code>.lst</code>.</li>
+    </ol>
+  </div>
+  <div class="controls">
+    <div class="ctrl"><span class="lbl">Vista</span><div class="seg" id="seg-view"><button class="on" data-v="desktop">PC</button><button data-v="mobile">Mobile</button></div></div>
+    <div class="ctrl"><span class="lbl">Tema</span><div class="seg" id="seg-theme"><button class="on" data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+  </div>
+
+  <div class="stage">
+    <div class="doc">
+      <div class="doc-head"><div class="wordmark"><em>re</em>franco<span class="ai">.ai</span></div><div class="folio">Tablas · matriz · planilla · fila de dato</div></div>
+
+      <!-- ═══════════ 1 · MATRIZ IV ═══════════ -->
+      <section class="sec" id="matriz-iv">
+        <div class="sec-eyebrow">Pieza 1 · matriz de sensibilización</div>
+        <h2 class="t">Cuánto cambia el mes según pie y plazo</h2>
+        <p class="regla">Capítulo IV. Dieciséis recomputes del motor con ambos parches. Se lee «más pie, más plazo, ¿qué pasa?» sin leer nada más: hacia la derecha alivia la cuota, hacia abajo también; solo una celda cruza a COMPRAR.</p>
+        <div class="mx-head"><div class="v-viz-t" style="margin:0" id="mz-label">Tu flujo mensual según pie y plazo</div>
+          <div class="mx-toggle"><button class="on" onclick="mzMetric('flujo',this)">Flujo</button><button onclick="mzMetric('tir',this)">TIR</button></div></div>
+        <div class="matriz" id="mz-iv">
+          <div class="mz-axis-x">→ más plazo</div>
+          <div class="mz-axis-y">↓ más pie</div>
+          <div class="mz-grid"><div class="mz-corner"></div><div class="mz-colh">15<small>años</small></div><div class="mz-colh">20<small>años</small></div><div class="mz-colh">25<small>años</small></div><div class="mz-colh">30<small>años</small></div><div class="mz-rowh">15%<small>16,6 MM</small></div><div class="mz-cell neg" title="−$312.217 al mes · TIR 8,2% · BUSCAR OTRA · pie 15% ($16,6 MM) a 15 años" data-f="−$312k" data-t="8,2%" data-fn="-312217" data-tn="8.17"><span class="mz-v">−$312k</span></div><div class="mz-cell neg" title="−$186.816 al mes · TIR 9,2% · BUSCAR OTRA · pie 15% ($16,6 MM) a 20 años" data-f="−$187k" data-t="9,2%" data-fn="-186816" data-tn="9.16"><span class="mz-v">−$187k</span></div><div class="mz-cell neg" title="−$113.527 al mes · TIR 9,9% · AJUSTA SUPUESTOS · pie 15% ($16,6 MM) a 25 años" data-f="−$114k" data-t="9,9%" data-fn="-113527" data-tn="9.88"><span class="mz-v">−$114k</span></div><div class="mz-cell neg" title="−$66.238 al mes · TIR 10,4% · AJUSTA SUPUESTOS · pie 15% ($16,6 MM) a 30 años" data-f="−$66k" data-t="10,4%" data-fn="-66238" data-tn="10.41"><span class="mz-v">−$66k</span></div><div class="mz-rowh">20%<small>22,1 MM</small></div><div class="mz-cell neg" title="−$271.409 al mes · TIR 7,9% · BUSCAR OTRA · pie 20% ($22,1 MM) a 15 años" data-f="−$271k" data-t="7,9%" data-fn="-271409" data-tn="7.93"><span class="mz-v">−$271k</span></div><div class="mz-cell neg" title="−$153.384 al mes · TIR 8,7% · AJUSTA SUPUESTOS · pie 20% ($22,1 MM) a 20 años" data-f="−$153k" data-t="8,7%" data-fn="-153384" data-tn="8.74"><span class="mz-v">−$153k</span></div><div class="mz-cell neg hoy" title="−$84.407 al mes · TIR 9,3% · AJUSTA SUPUESTOS · pie 20% ($22,1 MM) a 25 años" data-f="−$84k" data-t="9,3%" data-fn="-84407" data-tn="9.31"><span class="mz-v">−$84k</span><span class="mz-hoy">hoy</span></div><div class="mz-cell neg" title="−$39.899 al mes · TIR 9,7% · AJUSTA SUPUESTOS · pie 20% ($22,1 MM) a 30 años" data-f="−$40k" data-t="9,7%" data-fn="-39899" data-tn="9.72"><span class="mz-v">−$40k</span></div><div class="mz-rowh">25%<small>27,6 MM</small></div><div class="mz-cell neg" title="−$230.601 al mes · TIR 7,7% · BUSCAR OTRA · pie 25% ($27,6 MM) a 15 años" data-f="−$231k" data-t="7,7%" data-fn="-230601" data-tn="7.74"><span class="mz-v">−$231k</span></div><div class="mz-cell neg" title="−$119.953 al mes · TIR 8,4% · AJUSTA SUPUESTOS · pie 25% ($27,6 MM) a 20 años" data-f="−$120k" data-t="8,4%" data-fn="-119953" data-tn="8.4"><span class="mz-v">−$120k</span></div><div class="mz-cell neg" title="−$55.286 al mes · TIR 8,9% · AJUSTA SUPUESTOS · pie 25% ($27,6 MM) a 25 años" data-f="−$55k" data-t="8,9%" data-fn="-55286" data-tn="8.86"><span class="mz-v">−$55k</span></div><div class="mz-cell neg" title="−$13.561 al mes · TIR 9,2% · AJUSTA SUPUESTOS · pie 25% ($27,6 MM) a 30 años" data-f="−$14k" data-t="9,2%" data-fn="-13561" data-tn="9.18"><span class="mz-v">−$14k</span></div><div class="mz-rowh">30%<small>33,1 MM</small></div><div class="mz-cell neg" title="−$189.793 al mes · TIR 7,6% · BUSCAR OTRA · pie 30% ($33,1 MM) a 15 años" data-f="−$190k" data-t="7,6%" data-fn="-189793" data-tn="7.57"><span class="mz-v">−$190k</span></div><div class="mz-cell neg" title="−$86.521 al mes · TIR 8,1% · AJUSTA SUPUESTOS · pie 30% ($33,1 MM) a 20 años" data-f="−$87k" data-t="8,1%" data-fn="-86521" data-tn="8.12"><span class="mz-v">−$87k</span></div><div class="mz-cell neg" title="−$26.166 al mes · TIR 8,5% · AJUSTA SUPUESTOS · pie 30% ($33,1 MM) a 25 años" data-f="−$26k" data-t="8,5%" data-fn="-26166" data-tn="8.49"><span class="mz-v">−$26k</span></div><div class="mz-cell cruza" title="$12.778 al mes · TIR 8,8% · COMPRAR · pie 30% ($33,1 MM) a 30 años" data-f="$13k" data-t="8,8%" data-fn="12778" data-tn="8.75"><span class="mz-v">$13k</span></div></div>
+        </div>
+        <div class="mz-leg"><span><i class="hoy"></i>hoy · tu caso</span><span><i class="cruza"></i>cruza a Comprar</span><span><i></i>pasa el cursor: valor exacto y veredicto</span></div>
+        <div class="mz-note" id="mz-note">Solo 30% de pie a 30 años cierra el mes en verde ($12.778) y es la única celda que llega a COMPRAR. Más pie y más plazo alivian la cuota; la tarifa o el precio son lo que da vuelta el signo.</div>
+      </section>
+
+      <!-- ═══════════ 2 · MATRIZ I ═══════════ -->
+      <section class="sec p2" id="matriz-i">
+        <div class="sec-eyebrow">Pieza 1 · la misma matriz en el capítulo I</div>
+        <h2 class="t">Tarifa por ocupación: tu flujo mensual</h2>
+        <p class="regla">Capítulo I. Misma pieza, otros ejes: → más tarifa arriba, ↓ más ocupación a la izquierda. La celda «hoy» es la mediana de tarifa con la ocupación estimada; las verdes son las combinaciones que cruzan a COMPRAR: el veredicto lo decide el score, no el signo del mes, por eso $75k × 30% cruza con −$275.</p>
+        <div class="v-viz-t">Lo que queda cada mes después de comisión, costos y cuota</div>
+        <div class="matriz" id="mz-i">
+          <div class="mz-axis-x">→ más tarifa por noche</div>
+          <div class="mz-axis-y">↓ más ocupación</div>
+          <div class="mz-grid"><div class="mz-corner"></div><div class="mz-colh" title="tres de cada cuatro avisos cobran más">$39k<small>baja</small></div><div class="mz-colh" title="la mitad de la zona cobra menos que tú">$46k<small>mediana</small></div><div class="mz-colh" title="solo uno de cada cuatro cobra más">$59k<small>alta</small></div><div class="mz-colh" title="solo uno de cada diez cobra más">$75k<small>muy alta</small></div><div class="mz-rowh" title="tres de cada cuatro deptos ocupan más">30%<small>baja</small></div><div class="mz-cell neg" title="−$315.287 al mes · BUSCAR OTRA · $39.147 por noche (tres de cada cuatro avisos cobran más) · ocupación 30% (tres de cada cuatro deptos ocupan más)"><span class="mz-v">−$315k</span></div><div class="mz-cell neg" title="−$259.107 al mes · BUSCAR OTRA · $45.552 por noche (la mitad de la zona cobra menos que tú) · ocupación 30% (tres de cada cuatro deptos ocupan más)"><span class="mz-v">−$259k</span></div><div class="mz-cell neg" title="−$143.779 al mes · AJUSTA SUPUESTOS · $58.700 por noche (solo uno de cada cuatro cobra más) · ocupación 30% (tres de cada cuatro deptos ocupan más)"><span class="mz-v">−$144k</span></div><div class="mz-cell neg cruza" title="−$275 al mes · COMPRAR · $75.061 por noche (solo uno de cada diez cobra más) · ocupación 30% (tres de cada cuatro deptos ocupan más)"><span class="mz-v">−$275</span></div><div class="mz-rowh" title="la estimación de mercado para tu depto">43%<small>estimada</small></div><div class="mz-cell neg" title="−$165.151 al mes · BUSCAR OTRA · $39.147 por noche (tres de cada cuatro avisos cobran más) · ocupación 43% (la estimación de mercado para tu depto)"><span class="mz-v">−$165k</span></div><div class="mz-cell neg hoy" title="−$84.407 al mes · AJUSTA SUPUESTOS · $45.552 por noche (la mitad de la zona cobra menos que tú) · ocupación 43% (la estimación de mercado para tu depto)"><span class="mz-v">−$84k</span><span class="mz-hoy">hoy</span></div><div class="mz-cell cruza" title="$81.347 al mes · COMPRAR · $58.700 por noche (solo uno de cada cuatro cobra más) · ocupación 43% (la estimación de mercado para tu depto)"><span class="mz-v">$81k</span></div><div class="mz-cell cruza" title="$287.596 al mes · COMPRAR · $75.061 por noche (solo uno de cada diez cobra más) · ocupación 43% (la estimación de mercado para tu depto)"><span class="mz-v">$288k</span></div><div class="mz-rowh" title="solo uno de cada cuatro ocupa más">58%<small>alta</small></div><div class="mz-cell cruza" title="$11.174 al mes · COMPRAR · $39.147 por noche (tres de cada cuatro avisos cobran más) · ocupación 58% (solo uno de cada cuatro ocupa más)"><span class="mz-v">$11k</span></div><div class="mz-cell cruza" title="$120.765 al mes · COMPRAR · $45.552 por noche (la mitad de la zona cobra menos que tú) · ocupación 58% (solo uno de cada cuatro ocupa más)"><span class="mz-v">$121k</span></div><div class="mz-cell cruza" title="$345.742 al mes · COMPRAR · $58.700 por noche (solo uno de cada cuatro cobra más) · ocupación 58% (solo uno de cada cuatro ocupa más)"><span class="mz-v">$346k</span></div><div class="mz-cell cruza" title="$625.681 al mes · COMPRAR · $75.061 por noche (solo uno de cada diez cobra más) · ocupación 58% (solo uno de cada cuatro ocupa más)"><span class="mz-v">$626k</span></div><div class="mz-rowh" title="solo uno de cada diez ocupa más">71%<small>muy alta</small></div><div class="mz-cell cruza" title="$156.813 al mes · COMPRAR · $39.147 por noche (tres de cada cuatro avisos cobran más) · ocupación 71% (solo uno de cada diez ocupa más)"><span class="mz-v">$157k</span></div><div class="mz-cell cruza" title="$290.234 al mes · COMPRAR · $45.552 por noche (la mitad de la zona cobra menos que tú) · ocupación 71% (solo uno de cada diez ocupa más)"><span class="mz-v">$290k</span></div><div class="mz-cell cruza" title="$564.127 al mes · COMPRAR · $58.700 por noche (solo uno de cada cuatro cobra más) · ocupación 71% (solo uno de cada diez ocupa más)"><span class="mz-v">$564k</span></div><div class="mz-cell cruza" title="$904.932 al mes · COMPRAR · $75.061 por noche (solo uno de cada diez cobra más) · ocupación 71% (solo uno de cada diez ocupa más)"><span class="mz-v">$905k</span></div></div>
+        </div>
+        <div class="mz-leg"><span><i class="hoy"></i>hoy · tu caso</span><span><i class="cruza"></i>cruza a Comprar</span><span><i></i>pasa el cursor: valor exacto y veredicto</span></div>
+        <div class="mz-note">11 de las 16 combinaciones cruzan a COMPRAR y todas están a la derecha o debajo de tu celda: se cruza cobrando más o con más ocupación que la estimación, nunca con menos. Con la tarifa de la zona necesitas 58% de ocupación para dejar de poner plata.</div>
+      </section>
+
+      <!-- ═══════════ 3 · PLANILLA ═══════════ -->
+      <section class="sec" id="planilla">
+        <div class="sec-eyebrow">Pieza 2 · planilla del modal</div>
+        <h2 class="t">Cómo se calcula</h2>
+        <p class="regla">Tal como va dentro del modal (720 px). Es tabla y puede serlo: mono, filas bajas, totales en negrita. A 390 desliza con la primera columna fija.</p>
+        <div class="pl-card">
+          <div class="m-block"><div class="bt">a · Flujo por año</div><div class="bq">Entrega inmediata: el año 1 ya opera, con la estabilización inicial descontada.</div>
+            <div class="plwrap"><table class="pl">
+              <thead><tr><th>Año</th><th>Ingreso</th><th>Comisión y costos</th><th>Ingreso neto</th><th>Cuota</th><th>Estabilización</th><th>Flujo neto</th><th>Acumulado</th></tr></thead>
+              <tbody><tr><th>1</th><td>$7.104.142</td><td>−$2.525.932</td><td>$4.578.210</td><td>−$5.591.100</td><td>−$888.018</td><td class="neg">−$1.900.908</td><td class="neg">−$1.900.908</td></tr><tr><th>2</th><td>$7.352.787</td><td>−$2.602.776</td><td>$4.750.011</td><td>−$5.758.833</td><td>—</td><td class="neg">−$1.008.822</td><td class="neg">−$2.909.730</td></tr><tr><th>3</th><td>$7.610.135</td><td>−$2.681.962</td><td>$4.928.172</td><td>−$5.931.598</td><td>—</td><td class="neg">−$1.003.426</td><td class="neg">−$3.913.156</td></tr><tr><th>4</th><td>$7.876.489</td><td>−$2.763.562</td><td>$5.112.927</td><td>−$6.109.546</td><td>—</td><td class="neg">−$996.619</td><td class="neg">−$4.909.775</td></tr><tr><th>5</th><td>$8.152.166</td><td>−$2.847.651</td><td>$5.304.516</td><td>−$6.292.832</td><td>—</td><td class="neg">−$988.317</td><td class="neg">−$5.898.092</td></tr><tr><th>6</th><td>$8.437.492</td><td>−$2.934.303</td><td>$5.503.189</td><td>−$6.481.617</td><td>—</td><td class="neg">−$978.428</td><td class="neg">−$6.876.520</td></tr><tr><th>7</th><td>$8.732.804</td><td>−$3.023.598</td><td>$5.709.207</td><td>−$6.676.066</td><td>—</td><td class="neg">−$966.859</td><td class="neg">−$7.843.379</td></tr><tr><th>8</th><td>$9.038.453</td><td>−$3.115.616</td><td>$5.922.837</td><td>−$6.876.348</td><td>—</td><td class="neg">−$953.511</td><td class="neg">−$8.796.890</td></tr><tr><th>9</th><td>$9.354.798</td><td>−$3.210.440</td><td>$6.144.358</td><td>−$7.082.638</td><td>—</td><td class="neg">−$938.280</td><td class="neg">−$9.735.170</td></tr><tr><th>10</th><td>$9.682.216</td><td>−$3.308.156</td><td>$6.374.060</td><td>−$7.295.117</td><td>—</td><td class="neg">−$921.057</td><td class="neg">−$10.656.227</td></tr><tr class="tot"><th>10 años</th><td>$83.341.483</td><td>−$29.013.996</td><td>$54.327.487</td><td>−$64.095.696</td><td>−$888.018</td><td class="neg">−$10.656.227</td><td></td></tr></tbody>
+            </table></div>
+            <div class="v-fuente" style="margin-top:8px">Ingreso reajustado 3,5% al año · costos y cuota 3% al año · comisión de plataforma 3% del ingreso · estabilización inicial: $888.018, los primeros seis meses al 50, 60, 70, 80 y 90% de la ocupación estimada</div>
+          </div>
+          <div class="m-block"><div class="bt">b · Indicadores</div><div class="bq">Con la tarifa y la ocupación estimadas de hoy, año base.</div>
+            <table class="pl ind">
+              <tr><th>Ingreso mensual</th><td>Tarifa × ocupación × 365 ÷ 12</td><td>$45.552 × 42,7% × 365 ÷ 12</td><td>$592.012</td></tr>
+              <tr><th>Ingreso neto mensual</th><td>Ingreso − comisión − costos</td><td>$592.012 − $17.760 − $192.734</td><td>$381.518</td></tr>
+              <tr><th>Cap rate STR</th><td>Ingreso neto anual ÷ precio</td><td>$4.578.216 ÷ $110.338.200</td><td>4,15%</td></tr>
+              <tr><th>Flujo mensual</th><td>Ingreso neto − cuota</td><td>$381.518 − $465.925</td><td class="neg">−$84.407</td></tr>
+              <tr><th>Cash-on-cash</th><td>Flujo anual ÷ capital del día 1</td><td>−$1.012.884 ÷ $26.774.404</td><td class="neg">-3,78%</td></tr>
+              <tr><th>Cobertura de cuota</th><td>Ingreso neto ÷ cuota</td><td>$381.518 ÷ $465.925</td><td>0,82×</td></tr>
+              <tr><th>Break-even</th><td>Ingreso que cubre costos y cuota ÷ ingreso estimado</td><td>$8.148.359 ÷ $7.104.142</td><td>115%</td></tr>
+              <tr><th>TIR a 10 años</th><td>Tasa que iguala lo que pones con lo que recibes</td><td>−$26,8 MM hoy · −$10,7 MM en 10 años · +$82,3 MM el año 10</td><td>9,31%</td></tr>
+            </table>
+          </div>
+          <div class="m-block"><div class="bt">c · Escenario de salida</div><div class="bq">Venta en el año 10, con la fila de dato compartida.</div>
+            <div class="drows"><div class="drow "><span class="dk" title="Precio × 1,03¹⁰">Valor del depto en el año 10<small>3% anual desde la compra</small></span><span class="dv">$148.285.314</span></div><div class="drow "><span class="dk" title="Lo que queda del crédito el año 10">Saldo de la deuda</span><span class="dv">−$62.989.339</span></div><div class="drow "><span class="dk" title="Corretaje">Comisión de venta<small>2% del valor</small></span><span class="dv">−$2.965.706</span></div><div class="drow tot"><span class="dk" title="Valor − deuda − comisión">Tu parte</span><span class="dv">$82.330.269</span></div></div>
+          </div>
+          <div class="m-foot">Motor Franco · UF 40866 al 25 ago 2026 · umbral de cap rate STR: 5,0% (Franco, Santiago)</div>
+        </div>
+      </section>
+
+      <!-- ═══════════ 4 · FILA DE DATO ═══════════ -->
+      <section class="sec p2" id="filas">
+        <div class="sec-eyebrow">Pieza 3 · fila de dato compartida</div>
+        <h2 class="t">Una sola fila para todas las listas etiqueta · cifra</h2>
+        <p class="regla">Fall del II y venta/refinanciamiento del VI rehechos con la pieza, al lado de cómo se ven hoy. La misma fila sirve para crédito y cuota del IV, «de dónde sale tu parte», «la misma plata en otro lado», el drawer de zona y el modal de vías.</p>
+        <div class="dos">
+          <div><div class="tag">Hoy · Fall del capítulo II</div>
+            <div class="v-viz-t">Qué pasa con los $592.012 del revenue</div>
+            <div class="fall-visual"><span style="width:78.7%;background:var(--neutral)"></span><span style="width:18.2%;background:var(--warn)"></span><span style="width:14.4%;background:var(--tx4)"></span><span style="width:3.0%;background:var(--signal)"></span></div>
+              <div>
+                <div class="fall-row in"><span class="fk">Revenue mensual estabilizado</span><span class="fv">$592.012</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--signal)">Comisión de la plataforma <small>· 3% del revenue</small></span><span class="fv">−$17.760</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--tx4)">Luz, agua, internet e insumos <small>· limpieza y reposición incluidas en insumos</small></span><span class="fv">−$85.000</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--tx4)">Administrador <small>· autogestionas; con operador al 20% serían −$118.402</small></span><span class="fv">$0</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--warn)">Gastos comunes y mantención</span><span class="fv">−$92.000</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--warn)">Contribuciones <small>· $47.202 al trimestre</small></span><span class="fv">−$15.734</span></div>
+                <div class="fall-row"><span class="fk" style="--c:var(--neutral)">Cuota del crédito <small>· 25 años al 4,0%</small></span><span class="fv">−$465.925</span></div>
+                <div class="fall-row total"><span class="fk">Sale de tu bolsillo</span><span class="fv">−$84.407</span></div>
+              </div>
+          </div>
+          <div><div class="tag nuevo">Nuevo · fila de dato compartida</div>
+            <div class="v-viz-t">Qué pasa con los $592.012 del ingreso</div>
+            <div class="drows"><div class="drow in"><span class="dk" title="ADR × ocupación × 365 ÷ 12">Ingreso mensual estabilizado<small>lo que factura un mes típico con la ocupación estimada</small></span><span class="dv">$592.012<em>/mes</em></span></div><div class="drow "><span class="dk" title="Airbnb cobra 3% al anfitrión">Comisión de la plataforma<small>3% del ingreso</small></span><span class="dv">−$17.760<em>/mes</em></span></div><div class="drow "><span class="dk" title="Costos directos declarados por ti">Luz, agua, internet e insumos<small>limpieza y reposición incluidas en insumos</small></span><span class="dv">−$85.000<em>/mes</em></span></div><div class="drow "><span class="dk" title="Comisión del administrador, si lo hubiera">Administrador<small>autogestionas · con operador al 20% serían −$118.402</small></span><span class="dv">$0<em>/mes</em></span></div><div class="drow "><span class="dk" title="Declarados por ti">Gastos comunes y mantención</span><span class="dv">−$92.000<em>/mes</em></span></div><div class="drow "><span class="dk" title="Contribuciones ÷ 3">Contribuciones<small>$47.202 al trimestre</small></span><span class="dv">−$15.734<em>/mes</em></span></div><div class="drow "><span class="dk" title="Dividendo del crédito hipotecario">Cuota del crédito<small>$88,3 MM a 25 años al 4,0%</small></span><span class="dv">−$465.925<em>/mes</em></span></div><div class="drow tot neg"><span class="dk" title="Ingreso − comisión − costos − cuota">Sale de tu bolsillo</span><span class="dv">−$84.407<em>/mes</em></span></div></div>
+          </div>
+        </div>
+        <div class="dos" style="margin-top:34px">
+          <div><div class="tag">Hoy · venta o refinanciamiento (VI)</div>
+            <div class="venta">
+                <div><h4>Si vendes</h4><p class="ex">Vendes al valor proyectado, pagas lo que queda del crédito y los gastos de venta. Lo que sobra es tu parte.</p>
+                  <div class="kv"><span>Valor de venta estimado</span><span class="v">$148.285.314</span></div>
+                  <div class="kv"><span>− Deuda pendiente</span><span class="v neg">−$62.989.339</span></div>
+                  <div class="kv"><span>− Gastos de venta (2%)</span><span class="v neg">−$2.965.706</span></div>
+                  <div class="kv tot"><span>Te queda</span><span class="v">$82.330.269</span></div></div>
+                <div><h4>Si refinancias</h4><p class="ex">Sacas parte de tu plusvalía como liquidez sin vender ni pagar impuesto — a cambio de una cuota más alta.</p>
+                  <div class="kv"><span>Nuevo crédito · 70% del valor</span><span class="v">$103.799.720</span></div>
+                  <div class="kv"><span>− Deuda pendiente</span><span class="v neg">−$62.989.339</span></div>
+                  <div class="kv"><span>Cuota nueva · 25 años al 4,0%</span><span class="v">$547.893</span></div>
+                  <div class="kv tot"><span>Liquidez sin vender</span><span class="v">$40.810.381</span></div></div>
+              </div>
+          </div>
+          <div><div class="tag nuevo">Nuevo · fila de dato compartida</div>
+            <div class="venta2">
+  <div><h4>Si vendes</h4><p class="ex">Vendes al valor proyectado, pagas lo que queda del crédito y los gastos de venta. Lo que sobra es tu parte.</p>
+    <div class="drows"><div class="drow "><span class="dk" title="Precio × 1,03¹⁰">Valor de venta estimado<small>3% al año desde la compra</small></span><span class="dv">$148.285.314</span></div><div class="drow "><span class="dk" title="Saldo del crédito al vender">Deuda pendiente<small>lo que queda del crédito el año 10</small></span><span class="dv">−$62.989.339</span></div><div class="drow "><span class="dk" title="Comisión de corretaje">Gastos de venta<small>2% del valor de venta</small></span><span class="dv">−$2.965.706</span></div><div class="drow tot"><span class="dk" title="Valor − deuda − gastos">Te queda</span><span class="dv">$82.330.269</span></div></div></div>
+  <div><h4>Si refinancias</h4><p class="ex">Sacas parte de tu plusvalía como liquidez sin vender ni pagar impuesto, a cambio de una cuota más alta.</p>
+    <div class="drows"><div class="drow "><span class="dk" title="Loan-to-value 70%">Nuevo crédito<small>70% del valor del año 10</small></span><span class="dv">$103.799.720</span></div><div class="drow "><span class="dk" title="Saldo del crédito al refinanciar">Deuda pendiente<small>se paga con el crédito nuevo</small></span><span class="dv">−$62.989.339</span></div><div class="drow "><span class="dk" title="Anualidad del crédito nuevo">Cuota nueva<small>25 años al 4,0%</small></span><span class="dv">$547.893<em>/mes</em></span></div><div class="drow tot"><span class="dk" title="Crédito nuevo − deuda pendiente">Liquidez sin vender</span><span class="dv">$40.810.381</span></div></div></div>
+</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="doc-foot"><span>Real estate en su estado más franco</span><span class="wm"><em>re</em>franco<span class="ai">.ai</span></span></div>
+    </div>
+  </div>
+</div>
+<script>
+function wireSeg(id,fn){document.querySelectorAll('#'+id+' button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fn(b.dataset.v)}))}
+wireSeg('seg-theme',v=>document.documentElement.dataset.theme=v);
+wireSeg('seg-view',v=>document.documentElement.dataset.view=v);
+/* matriz IV: FLUJO | TIR · fondo muy tenue por magnitud (máx 8%); rojo bajo cero (o bajo el piso 6% en TIR), verde sobre. */
+function paintMz(m){const tds=[...document.querySelectorAll('#mz-iv .mz-cell')];const key=m==='flujo'?'fn':'tn';const zero=m==='flujo'?0:6;
+  const vals=tds.map(td=>parseFloat(td.dataset[key]));const mn=Math.min(...vals),mx=Math.max(...vals);
+  tds.forEach((td,i)=>{const v=vals[i];let a=0,c='47,125,85';
+    if(v<zero&&mn<zero){a=.08*(zero-v)/(zero-mn);c='200,50,60'}else if(v>zero&&mx>zero){a=.08*(v-zero)/(mx-zero)}
+    td.style.background=a>0?`rgba(${c},${a.toFixed(3)})`:''})}
+function mzMetric(m,btn){document.querySelectorAll('.mx-toggle button').forEach(b=>b.classList.toggle('on',b===btn));
+  document.querySelectorAll('#mz-iv .mz-cell').forEach(td=>{td.querySelector('.mz-v').textContent=m==='flujo'?td.dataset.f:td.dataset.t;td.classList.toggle('neg',m==='flujo'&&td.dataset.f.startsWith('−'))});
+  paintMz(m);
+  document.getElementById('mz-label').textContent=m==='flujo'?'Tu flujo mensual según pie y plazo':'Tu TIR a 10 años según pie y plazo';
+  document.getElementById('mz-note').textContent=m==='flujo'?'Solo 30% de pie a 30 años cierra el mes en verde ($12.778) y es la única celda que llega a COMPRAR. Más pie y más plazo alivian la cuota; la tarifa o el precio son lo que da vuelta el signo.':'Menos pie y más plazo suben la TIR a 10 años: apalancas más. Las 16 celdas superan el piso de 6%; las de 15 años caen a BUSCAR OTRA por el flujo, no por la TIR.'}
+paintMz('flujo');
+</script>
+</body>
+</html>
