@@ -86,7 +86,12 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // v12 (02-sep-2026): la fraseCanonica estructural de distancia_veredicto —que entra al
 // prompt como regla espejo— dejó de invertir el signo del mínimo fuera de tope. Sube para
 // que la prosa nueva llegue por lazy a quien abra un informe STR con prosa anterior.
-export const PROMPT_VERSION_STR = 12;
+// v13 (03-sep-2026): decisividad REAL por neutralización (decisividades-str.ts, espejo de
+// LTR). El texto del prompt no cambia, pero sí lo que lee: el orden de la pirámide y el
+// HALLAZGO CORONADO que ancla el lead (§7.bis) salen ahora de la decisividad medida, no de
+// las dimensiones del score. En el parque, 162 de 245 informes cambian de 01. Sube para que
+// la prosa persistida con el coronado viejo se regenere por lazy.
+export const PROMPT_VERSION_STR = 13;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
