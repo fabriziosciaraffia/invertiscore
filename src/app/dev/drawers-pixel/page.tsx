@@ -19,9 +19,11 @@ import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/
 import { ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
 import { TokensHallazgos } from "@/components/analysis/hallazgos/HallazgosAcordeon";
 import { DocTokens } from "@/components/analysis/portada/PortadaInforme";
+import { TokensShared } from "@/components/analysis/shared";
+import { PiezasShared } from "./PiezasShared";
 import fixtures from "./fixtures.json";
 
-type FixKey = "santiagoStr" | "qaStr" | "selfLiqStr" | "elBosqueStr";
+type FixKey = "santiagoStr" | "qaStr" | "selfLiqStr" | "elBosqueStr" | "staRosaStr";
 
 function seqStr(hallazgos: Hallazgo[] | undefined): DrawerKeySTR[] {
   const seq: DrawerKeySTR[] = [];
@@ -48,7 +50,23 @@ function Inner() {
   const [strKey, setStrKey] = useState<DrawerKeySTR>((initialKey as DrawerKeySTR) ?? "retorno");
   const [heroDrawer, setHeroDrawer] = useState<DrawerKeySTR | null>(null);
 
-  if (!fix || !isSTR) return <div style={{ padding: 40 }}>fixture STR ?row=santiagoStr|qaStr|selfLiqStr|elBosqueStr no encontrado (T5: esta ruta ya no monta LTR)</div>;
+  if (!fix || !isSTR) return <div style={{ padding: 40 }}>fixture STR ?row=santiagoStr|qaStr|selfLiqStr|elBosqueStr|staRosaStr no encontrado (T5: esta ruta ya no monta LTR)</div>;
+
+  // T1 (04-sep-2026) · `?comp=<pieza>` monta las piezas compartidas (matriz, planilla, fila
+  // de dato, tramos, curva, cifras, día 1, patrimonio, all) sobre el recompute volcado de
+  // Sta. Rosa (`?row=staRosaStr`). Sin registro por pieza cada QA era un `if` a mano.
+  const comp = sp.get("comp");
+  if (comp && comp !== "hero") {
+    return (
+      <div className="doc-dictamen doc-tokens" style={{ background: "var(--doc-paper, #FAF8F3)", minHeight: "100vh" }}>
+        <DocTokens />
+        <TokensHallazgos />
+        <TokensShared />
+        <p className="font-mono" style={{ fontSize: 12, padding: "12px 20px 0" }}>DEV · {rowKey} · piezas compartidas · comp={comp}</p>
+        <PiezasShared fix={fix} comp={comp} />
+      </div>
+    );
+  }
 
   // `?comp=hero` monta el HeroSTR de producción con el mismo fixture. Existe para poder
   // verificar el clickeable de "La posición de Franco" sin sesión: la página de resultados
