@@ -287,7 +287,8 @@ export default async function STRResultPage({
     const raw = data.input_data as Record<string, unknown> | null;
     if (!raw) return null;
     try {
-      const estimate = await loadAirbnbEstimateCrudo(supabase, {
+      // Cliente admin adentro del loader (RLS sin políticas en airbnb_estimates), acotado por cache_key.
+      const estimate = await loadAirbnbEstimateCrudo({
         direccion: String(raw.direccion ?? ""),
         comuna: String(raw.comuna ?? data.comuna ?? ""),
         dormitorios: Number(raw.dormitorios) || 0,

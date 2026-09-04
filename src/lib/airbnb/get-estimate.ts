@@ -444,12 +444,19 @@ export async function getAirbnbEstimate(
  * LA ZONA (T2 · 05-sep-2026): la fila cruda del estimate que usó este análisis, por la
  * MISMA llave de caché (dirección + comuna + dormitorios + baños + huéspedes). Devuelve
  * los 25 avisos parecidos y la fecha de esa consulta; null sin fila. Solo lectura.
+ *
+ * T2.1: lee con el cliente ADMIN del servidor (service role), acotado a UNA fila por
+ * cache_key. `airbnb_estimates` tiene RLS activo y cero políticas: con el cliente de
+ * sesión la consulta vuelve vacía y la celda "contra quién te comparan" decía "sin datos
+ * suficientes" en prod. No se agrega política: la tabla no es del usuario. Sin service
+ * role (entorno local sin la variable) devuelve null.
  */
 export async function loadAirbnbEstimateCrudo(
-  db: SupabaseClient,
   k: { direccion: string; comuna: string; dormitorios: number; banos: number; huespedes: number },
 ): Promise<{ createdAt: string; listings: unknown[] } | null> {
   if (!k.direccion) return null;
+  const db = getAdminClient();
+  if (!db) return null;
   const cacheKey = makeCacheKey(k.direccion, k.comuna, k.dormitorios, k.banos, k.huespedes);
   const { data, error } = await db
     .from("airbnb_estimates")
