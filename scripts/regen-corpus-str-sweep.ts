@@ -45,7 +45,7 @@ function buildInputs(d: any, airbnbData: any, uf: number) {
 
 // Universo canónico de la pirámide STR (12) — para nombrar qué falta cuando N<12.
 const UNIVERSO = [
-  "capex_puesta_a_punto", "rentabilidad_str", "flujo_str", "ocupacion_vs_banda", "ventaja_vs_ltr",
+  "capex_puesta_a_punto", "rentabilidad_str", "flujo_str", "ocupacion_vs_estimacion", "ventaja_vs_ltr",
   "sensibilidad_str", "estructura_costos_str", "estructura_financiamiento", "sobreprecio", "plusvalia", "tir", "patrimonio",
 ];
 function causaOmision(id: string, exit: boolean, medianaConf: boolean): string {

@@ -40,7 +40,7 @@ export const STR_GE_SEEDS: StrGeSeed[] = [
     nota: "ltr_noiMensual ≤ 0: ventaja_vs_ltr usa CLP absoluto, sin % (rama LTR-negativo)." },
   { key: "GE-5", label: "Ocupación fallback (occ-strip)", sintesis: "occ_strip",
     ejes: ["E4:fallback", "ocupacion:confianza-baja", "supuesto-45%"],
-    nota: "airbnbRaw sin ocupación → resolveOccObservada cae a fallback 0,45; ocupacion_vs_banda confianza baja, procedencia sin eufemismo. Sintetizado (occ-strip)." },
+    nota: "airbnbRaw sin ocupación → resolveOccObservada cae a fallback 0,45; ocupacion_vs_estimacion confianza baja, procedencia sin eufemismo. Sintetizado (occ-strip)." },
   { key: "GE-6", label: "ADR legacy uplifted · forward-only", sintesis: null,
     ejes: ["E10:factor≠1", "forward-only", "capRate-normalizado"],
     nota: "Fila que persistió con factorADR≠1 (revenue inflado); el recompute normaliza a 1,0 → capRate menor. Verifica forward-only." },

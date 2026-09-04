@@ -20,7 +20,7 @@
 
 import type { ShortTermResult } from "./engines/short-term-engine";
 import type { AIAnalysisSTRv2, Hallazgo } from "./types";
-import { STR_UNIVERSO_OCC } from "./engines/str-universo-santiago";
+import { datosComunaSTR } from "./engines/str-universo-santiago";
 import { CAP_STR_UMBRAL_PCT } from "./rentabilidad-str-hallazgo";
 import { CLAIMS_HERO, CLAIMS_VECES, violacionesClaims, type ClaimHero } from "./hero-claim-core";
 import { frasesCanonicasDe, oracionQueCopia } from "./copia-frase";
@@ -80,7 +80,7 @@ export interface RazonesHeroClaimStr {
   /** Tarifa efectiva y su referencia de mercado (p50 de la zona), CLP/noche. */
   adrFinal?: number | null;
   adrRef?: number | null;
-  /** Ocupación efectiva, observada (p50), banda comunal y objetivo del upside, en fracción. */
+  /** Ocupación efectiva, estimación (p50 de la dirección), mediana comunal V2 y objetivo del upside, en fracción. */
   occFinal?: number | null;
   occRef?: number | null;
   occBanda?: number | null;
@@ -105,7 +105,7 @@ export function razonesHeroClaimStr(
   const sobre = (r.hallazgos ?? []).find((h) => h.id === "sobreprecio") as
     | { valor?: { sujetoUfM2?: number; medianaComunaUfM2?: number | null } } | undefined;
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
-  const banda = STR_UNIVERSO_OCC[comuna];
+  const comunaOcc = datosComunaSTR(comuna)?.ocupacion.valor ?? null;
   return {
     flujoBase: num(base?.flujoCajaMensual),
     flujoUpside: num(up?.flujoCajaMensual),
@@ -120,7 +120,7 @@ export function razonesHeroClaimStr(
     adrRef: num(ejes?.adrBaselineP50),
     occFinal: num(ejes?.ocupacionFinal) ?? num(base?.ocupacionReferencia),
     occRef: num(ejes?.ocupacionBaselineP50),
-    occBanda: typeof banda === "number" ? banda : null,
+    occBanda: comunaOcc,
     occTarget: num(ejes?.ocupacionTarget),
     capPct: base && Number.isFinite(base.capRate) ? base.capRate * 100 : null,
     breakEvenPct: num(r.breakEvenPctDelMercado),
@@ -151,8 +151,8 @@ const COMPARADORES_STR: { re: RegExp; c: ComparadorStr }[] = [
   { re: /\b(?:el |del )?corto\b|\bstr\b|renta corta|\bairbnb\b/gi, c: "corto" },
   { re: /\bupside\b|\bpotencial\b|gesti[oó]n (?:profesional|estabilizada)|\bestabilizad[oa]\b|\bestabilizaci[oó]n\b/gi, c: "upside" },
   { re: /arriendo largo|renta larga|\bltr\b|largo plazo|\b(?:el |del |al )?largo\b|arriendo tradicional/gi, c: "largo" },
-  { re: /\bbanda\b|zona t[ií]pica|comuna t[ií]pica|\bt[ií]pic[oa]\b/gi, c: "banda" },
-  { re: /\breferencia\b|\bmercado\b|\bp50\b|\bobservad[oa]\b/gi, c: "referencia" },
+  { re: /\bbanda\b|zona t[ií]pica|comuna t[ií]pica|\bt[ií]pic[oa]\b|lo t[ií]pico de la comuna/gi, c: "banda" },
+  { re: /\breferencia\b|\bmercado\b|\bp50\b|\bobservad[oa]\b|\bestimaci[oó]n\b|\bestimad[oa]\b/gi, c: "referencia" },
   { re: /\bmediana\b|\bcomuna\b|\bzona\b/gi, c: "mediana" },
   { re: /escenario base|\bbase\b|\bhoy\b|\bactual\b/gi, c: "base" },
   { re: /\bumbral\b/gi, c: "umbral" },
@@ -165,7 +165,7 @@ const NOMBRE_RAZON_STR: Record<string, string> = {
   "flujo/corto": "flujo largo/flujo corto", "noi/corto": "NOI largo/NOI corto", "ingreso/corto": "arriendo largo/ingreso corto",
   "flujo/base": "flujo upside/flujo base", "flujo/upside": "flujo upside/flujo base", "ocupacion/upside": "ocupación objetivo/ocupación base", "ingreso/upside": "ingreso upside/ingreso base",
   "tarifa/referencia": "tarifa/p50 de la zona", "tarifa/mediana": "tarifa/p50 de la zona", "tarifa/base": "tarifa/p50 de la zona",
-  "ocupacion/banda": "ocupación/banda comunal", "ocupacion/referencia": "ocupación/observada p50", "ocupacion/mediana": "ocupación/observada p50", "ocupacion/base": "ocupación objetivo/ocupación base",
+  "ocupacion/banda": "ocupación/típica de la comuna", "ocupacion/referencia": "ocupación/estimación de mercado", "ocupacion/mediana": "ocupación/estimación de mercado", "ocupacion/base": "ocupación objetivo/ocupación base",
   "cap/umbral": "CAP rate/umbral 5%", "cap/referencia": "CAP rate/umbral 5%", "cap/deposito": "CAP rate/depósito UF 5%", "cap/fondo": "CAP rate/fondo mutuo 7%",
   "precioM2/mediana": "precio por m²/mediana comunal", "precio/mediana": "precio por m²/mediana comunal", "precioM2/referencia": "precio por m²/mediana comunal",
   "breakEven/referencia": "break-even/ingreso de mercado", "breakEven/mediana": "break-even/ingreso de mercado", "breakEven/base": "break-even/ingreso de mercado", "breakEven/banda": "break-even/ingreso de mercado",

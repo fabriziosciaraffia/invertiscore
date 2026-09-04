@@ -277,31 +277,29 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         ksub: "Estabilizado · ocupación base",
       };
     }
-    case "ocupacion_vs_banda": {
+    case "ocupacion_vs_estimacion": {
       const v = h.valor;
-      // fix-occfuente-override — KPI dual: el supuesto del usuario + el dato observado real.
+      // Goal 4 — el supuesto del usuario contra la estimación de mercado para ESTE depto.
+      // Sin override ambos son el mismo número: la card lo dice y no compara con nadie.
       if (v.esOverride) {
         return {
-          kick: "Ocupación vs zona",
+          kick: "Tu supuesto de ocupación",
           title: h.titular,
           kpi: `${v.ocupacionPct}%`,
           kpiRed: false,
-          ksub: v.occObservadaPct != null ? `Definida por ti · observada ${v.occObservadaPct}%` : "Definida por ti",
-          procedencia: "Ocupación definida por ti, no observada",
+          ksub: v.esFallback ? "Definida por ti · sin estimación para esta dirección" : `Definida por ti · estimación de mercado ${v.estimacionPct}%`,
+          procedencia: "Ocupación definida por ti; la estimación de mercado es el contraste",
         };
       }
       return {
-        kick: "Ocupación vs zona",
+        kick: "Ocupación del caso",
         title: h.titular,
         kpi: `${v.ocupacionPct}%`,
         kpiRed: false, // la ocupación no es un negativo monetario; la dirección la da el dot
-        ksub: v.esFallback ? "Supuesto conservador · sin dato propio" : `Banda comuna ${v.bandaComunalPct}%`,
-        // E.5 caveat (a) — la banda comunal sale de STR_UNIVERSO_OCC (tabla fija por
-        // comuna), NO de un dato observado de esta dirección. Antes se mostraba
-        // "Banda comuna X%" sin procedencia → se leía como cifra viva de la zona.
+        ksub: v.esFallback ? "Supuesto conservador · sin dato para esta dirección" : "Estimación de mercado para este depto",
         procedencia: v.esFallback
-          ? "Sin ocupación observada · supuesto 45%"
-          : "Banda comunal de referencia (valor fijo por comuna), no medida en esta dirección",
+          ? "Sin dato de ocupación para esta dirección · supuesto 45%"
+          : "Datos de mercado: estimación para un depto como este en esta zona",
       };
     }
     case "ventaja_vs_ltr": {

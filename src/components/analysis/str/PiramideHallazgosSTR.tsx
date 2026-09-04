@@ -31,7 +31,7 @@ export const HALLAZGO_DRAWER_STR: Partial<Record<Hallazgo["id"], DrawerKeySTR>> 
   flujo_str: "sostenibilidad",
   sensibilidad_str: "sensibilidad",
   ventaja_vs_ltr: "ventajaLtr",
-  ocupacion_vs_banda: "factibilidad",
+  ocupacion_vs_estimacion: "factibilidad",
   // Drawers propios F2 (antes heredados solo-lectura / compartido):
   estructura_financiamiento: "financiamiento",
   sobreprecio: "precio",

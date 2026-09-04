@@ -1653,28 +1653,27 @@
           "magnitudContinua": 1
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
-            "banda": 15,
-            "comuna": "Santiago",
-            "gapPts": -16,
-            "modalidad": "str",
-            "esFallback": false,
-            "esOverride": false,
             "ocupacionPct": 42,
-            "bandaComunalPct": 58,
-            "occObservadaPct": 42
+            "estimacionPct": 42,
+            "gapPts": 0,
+            "esOverride": false,
+            "esFallback": false,
+            "comuna": "Santiago",
+            "saturacionPts": 15,
+            "modalidad": "str"
           },
           "titular": "Necesitas llenar más que la zona típica.",
-          "direccion": "adverso",
-          "decisividad": 0.52,
+          "direccion": "neutral",
+          "decisividad": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
             "confianza": "media"
           },
           "fraseCanonica": "Tu ocupación observada es 42%, bajo la banda típica de la comuna (58%). Necesitas llenar más noches que el promedio de la zona para sostener los números.",
-          "magnitudContinua": 1
+          "magnitudContinua": 0
         },
         {
           "id": "ventaja_vs_ltr",
@@ -2403,28 +2402,27 @@
           "magnitudContinua": 0.238748
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
-            "banda": 15,
-            "comuna": "Providencia",
-            "gapPts": -16,
-            "modalidad": "str",
-            "esFallback": false,
-            "esOverride": false,
             "ocupacionPct": 46,
-            "bandaComunalPct": 62,
-            "occObservadaPct": 46
+            "estimacionPct": 46,
+            "gapPts": 0,
+            "esOverride": false,
+            "esFallback": false,
+            "comuna": "Providencia",
+            "saturacionPts": 15,
+            "modalidad": "str"
           },
           "titular": "Necesitas llenar más que la zona típica.",
-          "direccion": "adverso",
-          "decisividad": 0.38,
+          "direccion": "neutral",
+          "decisividad": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
             "confianza": "media"
           },
           "fraseCanonica": "Tu ocupación observada es 46%, bajo la banda típica de la comuna (62%). Necesitas llenar más noches que el promedio de la zona para sostener los números.",
-          "magnitudContinua": 1
+          "magnitudContinua": 0
         },
         {
           "id": "ventaja_vs_ltr",
@@ -3157,28 +3155,27 @@
           "magnitudContinua": 0.058988
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
-            "banda": 15,
-            "comuna": "Santiago",
-            "gapPts": -12,
-            "modalidad": "str",
-            "esFallback": false,
-            "esOverride": false,
             "ocupacionPct": 46,
-            "bandaComunalPct": 58,
-            "occObservadaPct": 46
+            "estimacionPct": 46,
+            "gapPts": 0,
+            "esOverride": false,
+            "esFallback": false,
+            "comuna": "Santiago",
+            "saturacionPts": 15,
+            "modalidad": "str"
           },
           "titular": "Necesitas llenar más que la zona típica.",
-          "direccion": "adverso",
-          "decisividad": 0.78,
+          "direccion": "neutral",
+          "decisividad": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
             "confianza": "media"
           },
           "fraseCanonica": "Tu ocupación observada es 46%, bajo la banda típica de la comuna (58%). Necesitas llenar más noches que el promedio de la zona para sostener los números.",
-          "magnitudContinua": 0.8
+          "magnitudContinua": 0
         },
         {
           "id": "ventaja_vs_ltr",
@@ -3926,22 +3923,21 @@
           "magnitudContinua": 0.34152
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
-            "banda": 15,
-            "comuna": "Santiago Centro",
-            "gapPts": 0,
-            "modalidad": "str",
-            "esFallback": false,
-            "esOverride": false,
             "ocupacionPct": 46,
-            "bandaComunalPct": 46,
-            "occObservadaPct": 46
+            "estimacionPct": 46,
+            "gapPts": 0,
+            "esOverride": false,
+            "esFallback": false,
+            "comuna": "Santiago Centro",
+            "saturacionPts": 15,
+            "modalidad": "str"
           },
           "titular": "Tu ocupación está en línea con la zona.",
-          "direccion": "favorable",
-          "decisividad": 0.78,
+          "direccion": "neutral",
+          "decisividad": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
             "confianza": "media"
@@ -5445,28 +5441,27 @@
           "magnitudContinua": 1
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
-            "banda": 15,
-            "comuna": "Providencia",
-            "gapPts": -14,
-            "modalidad": "str",
-            "esFallback": false,
-            "esOverride": false,
             "ocupacionPct": 48,
-            "bandaComunalPct": 62,
-            "occObservadaPct": 48
+            "estimacionPct": 48,
+            "gapPts": 0,
+            "esOverride": false,
+            "esFallback": false,
+            "comuna": "Providencia",
+            "saturacionPts": 15,
+            "modalidad": "str"
           },
           "titular": "Necesitas llenar más que la zona típica.",
-          "direccion": "adverso",
-          "decisividad": 0.46,
+          "direccion": "neutral",
+          "decisividad": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
             "confianza": "media"
           },
           "fraseCanonica": "Tu ocupación observada es 48%, bajo la banda típica de la comuna (62%). Necesitas llenar más noches que el promedio de la zona para sostener los números.",
-          "magnitudContinua": 0.9333333333333333
+          "magnitudContinua": 0
         },
         {
           "id": "ventaja_vs_ltr",
@@ -6217,28 +6212,27 @@
           "magnitudContinua": 1
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
-            "banda": 15,
-            "comuna": "Santiago",
-            "gapPts": -16,
-            "modalidad": "str",
-            "esFallback": false,
-            "esOverride": false,
             "ocupacionPct": 42,
-            "bandaComunalPct": 58,
-            "occObservadaPct": 42
+            "estimacionPct": 42,
+            "gapPts": 0,
+            "esOverride": false,
+            "esFallback": false,
+            "comuna": "Santiago",
+            "saturacionPts": 15,
+            "modalidad": "str"
           },
           "titular": "Necesitas llenar más que la zona típica.",
-          "direccion": "adverso",
-          "decisividad": 0.52,
+          "direccion": "neutral",
+          "decisividad": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
             "confianza": "media"
           },
           "fraseCanonica": "Tu ocupación observada es 42%, bajo la banda típica de la comuna (58%). Necesitas llenar más noches que el promedio de la zona para sostener los números.",
-          "magnitudContinua": 1
+          "magnitudContinua": 0
         },
         {
           "id": "ventaja_vs_ltr",
@@ -6944,22 +6938,21 @@
           "fraseCanonica": "Con la ocupación mediana de la zona, el corto deja −$85.169 al mes después de la cuota y los costos. No es una sangría, pero necesitas un colchón: la operación todavía no se sostiene sola."
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
             "ocupacionPct": 46,
-            "bandaComunalPct": 62,
-            "gapPts": -16,
-            "esFallback": false,
+            "estimacionPct": 46,
+            "gapPts": 0,
             "esOverride": false,
-            "occObservadaPct": 46,
+            "esFallback": false,
             "comuna": "Providencia",
-            "banda": 15,
+            "saturacionPts": 15,
             "modalidad": "str"
           },
-          "direccion": "adverso",
-          "decisividad": 0.52,
-          "magnitudContinua": 1,
+          "direccion": "neutral",
+          "decisividad": 0,
+          "magnitudContinua": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
             "confianza": "media"
@@ -7765,21 +7758,20 @@
           "fraseCanonica": "Con la ocupación mediana de la zona, el corto deja −$85.380 al mes después de la cuota y los costos. No es una sangría, pero necesitas un colchón: la operación todavía no se sostiene sola."
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
             "ocupacionPct": 46,
-            "bandaComunalPct": 46,
+            "estimacionPct": 46,
             "gapPts": 0,
-            "esFallback": false,
             "esOverride": false,
-            "occObservadaPct": 46,
+            "esFallback": false,
             "comuna": "Santiago Centro",
-            "banda": 15,
+            "saturacionPts": 15,
             "modalidad": "str"
           },
-          "direccion": "favorable",
-          "decisividad": 0.78,
+          "direccion": "neutral",
+          "decisividad": 0,
           "magnitudContinua": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
@@ -8589,22 +8581,21 @@
           "fraseCanonica": "Con la ocupación mediana de la zona, el corto deja −$332.238 al mes después de la cuota y los costos — un aporte fuerte. Antes de avanzar, confirma que puedes sostenerlo mes a mes: es plata que sale de tu bolsillo, no de la operación."
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
             "ocupacionPct": 42,
-            "bandaComunalPct": 58,
-            "gapPts": -16,
-            "esFallback": false,
+            "estimacionPct": 42,
+            "gapPts": 0,
             "esOverride": false,
-            "occObservadaPct": 42,
+            "esFallback": false,
             "comuna": "Santiago",
-            "banda": 15,
+            "saturacionPts": 15,
             "modalidad": "str"
           },
-          "direccion": "adverso",
-          "decisividad": 0.52,
-          "magnitudContinua": 1,
+          "direccion": "neutral",
+          "decisividad": 0,
+          "magnitudContinua": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
             "confianza": "media"
@@ -9376,22 +9367,21 @@
           "fraseCanonica": "Con la ocupación mediana de la zona, el corto deja −$256.887 al mes después de la cuota y los costos — un aporte fuerte. Antes de avanzar, confirma que puedes sostenerlo mes a mes: es plata que sale de tu bolsillo, no de la operación."
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
             "ocupacionPct": 46,
-            "bandaComunalPct": 58,
-            "gapPts": -12,
-            "esFallback": false,
+            "estimacionPct": 46,
+            "gapPts": 0,
             "esOverride": false,
-            "occObservadaPct": 46,
+            "esFallback": false,
             "comuna": "Santiago",
-            "banda": 15,
+            "saturacionPts": 15,
             "modalidad": "str"
           },
-          "direccion": "adverso",
-          "decisividad": 0.78,
-          "magnitudContinua": 0.8,
+          "direccion": "neutral",
+          "decisividad": 0,
+          "magnitudContinua": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
             "confianza": "media"
@@ -13563,28 +13553,27 @@
           "magnitudContinua": 1
         },
         {
-          "id": "ocupacion_vs_banda",
-          "tipo": "ocupacion_vs_banda",
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
           "valor": {
-            "banda": 15,
-            "comuna": "Santiago",
-            "gapPts": -16,
-            "modalidad": "str",
-            "esFallback": false,
-            "esOverride": false,
             "ocupacionPct": 42,
-            "bandaComunalPct": 58,
-            "occObservadaPct": 42
+            "estimacionPct": 42,
+            "gapPts": 0,
+            "esOverride": false,
+            "esFallback": false,
+            "comuna": "Santiago",
+            "saturacionPts": 15,
+            "modalidad": "str"
           },
           "titular": "Necesitas llenar más que la zona típica.",
-          "direccion": "adverso",
-          "decisividad": 0.52,
+          "direccion": "neutral",
+          "decisividad": 0,
           "procedencia": {
             "base": "ocupación observada del listing (AirROI), p50 de la comuna",
             "confianza": "media"
           },
           "fraseCanonica": "Tu ocupación observada es 42%, bajo la banda típica de la comuna (58%). Necesitas llenar más noches que el promedio de la zona para sostener los números.",
-          "magnitudContinua": 1
+          "magnitudContinua": 0
         },
         {
           "id": "ventaja_vs_ltr",

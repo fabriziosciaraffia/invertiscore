@@ -3,7 +3,7 @@
 // ============================================================================
 // Hasta el 03-sep-2026 la decisividad de los 4 hallazgos "decisivos" del corto se
 // INYECTABA desde el desglose del score (|dimScore − 50| / 50) y los demás iban en 0.
-// Eso no medía nada: `ocupacion_vs_banda` heredaba la dimensión factibilidad, que no
+// Eso no medía nada: `ocupacion_vs_estimacion` heredaba la dimensión factibilidad, que no
 // lee la ocupación en ningún término, y `estructura_financiamiento` valía 0 fijo
 // aunque el pie mueva el dividendo, el flujo y los gates. Medido sobre el parque
 // (243 filas): el top-4 era siempre el mismo cuarteto y solo el 49% de los informes
@@ -39,7 +39,6 @@ import {
   type DecisividadFactor,
 } from "./analysis";
 import { CAP_STR_UMBRAL_PCT } from "./rentabilidad-str-hallazgo";
-import { STR_UNIVERSO_OCC } from "./engines/str-universo-santiago";
 import { MARKET_AVG_TASA_UF } from "./financing-health";
 import { calcCapexPuestaAPunto } from "./capex-puesta-a-punto";
 import { resolverModeloCostos } from "./modelo-costos";
@@ -49,7 +48,7 @@ import { metricaValor } from "./types";
 export interface DecisividadesSTR {
   rentabilidad_str?: DecisividadFactor;
   flujo_str?: DecisividadFactor;
-  ocupacion_vs_banda?: DecisividadFactor;
+  ocupacion_vs_estimacion?: DecisividadFactor;
   ventaja_vs_ltr?: DecisividadFactor;
   sobreprecio?: DecisividadFactor;
   estructura_financiamiento?: DecisividadFactor;
@@ -150,11 +149,14 @@ export function calcDecisividadesSTR(
     out.flujo_str = fin(francoScoreStrDeResultado(ctx, rNeu));
   }
 
-  // ── ocupacion_vs_banda: la ocupación del base a la banda comunal (universo STR;
-  //    0,5 si la comuna no está listada, el mismo fallback del hallazgo). ──
+  // ── ocupacion_vs_estimacion (Goal 4): la ocupación del base a la ESTIMACIÓN de mercado
+  //    para este depto (occObservada: p50 de la dirección, o el 45% conservador si es
+  //    fallback). Sin override el base YA es la estimación ⇒ Δscore 0 ⇒ decisividad 0 por
+  //    neutralización: el hallazgo no corona. Con override mide cuánto del veredicto
+  //    descansa en el supuesto del usuario. ──
   if (Number.isFinite(b.ocupacionReferencia)) {
-    const banda = STR_UNIVERSO_OCC[extras.comuna] ?? 0.5;
-    out.ocupacion_vs_banda = fin(recomputeStrConPatch(ctx, { occOverride: banda }).francoScore);
+    const estimacion = typeof r.occObservada === "number" && r.occObservada > 0 && r.occObservada <= 1 ? r.occObservada : b.ocupacionReferencia;
+    out.ocupacion_vs_estimacion = fin(recomputeStrConPatch(ctx, { occOverride: estimacion }).francoScore);
   }
 
   // ── ventaja_vs_ltr: sobre-renta → 0. El NOI del largo es lineal en el arriendo

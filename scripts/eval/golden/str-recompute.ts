@@ -162,7 +162,7 @@ function invariantes(hz: Hallazgo[], score: any, rec: any, medianaConfiable: boo
   if (ve && ve.valor.ltrNegativo) out.push({ rule: "BS5.ventaja-CLP", pass: ve.fraseCanonica.includes("$") && ve.fraseCanonica.includes("porcentaje no dice"), detail: "frase usa CLP y declina el %" });
 
   // BS6 — ocupación fallback ⇒ confianza baja, frase declara supuesto, cero "ramp-up".
-  const oc = byId("ocupacion_vs_banda");
+  const oc = byId("ocupacion_vs_estimacion");
   if (oc && oc.valor.esFallback) out.push({ rule: "BS6.fallback", pass: oc.procedencia.confianza === "baja" && !/ramp-?up/i.test(oc.fraseCanonica) && /no hay datos/i.test(oc.fraseCanonica), detail: `conf=${oc.procedencia.confianza}` });
 
   // BS7 — N∈[7,13]. El techo subió de 12 a 13 al entrar `distancia_veredicto`: la pirámide

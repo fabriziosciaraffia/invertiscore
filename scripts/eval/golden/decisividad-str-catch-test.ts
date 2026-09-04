@@ -8,9 +8,10 @@
 //   · los seis informativos (INFORMATIVOS_STR) declaran 0;
 //   · el piso 0,85 aparece SOLO por flip de veredicto o gate desarmado: 9102b7e6 lo
 //     muestra en estructura_financiamiento con Δscore 0 (desarma g1_beInviable);
-//   · el 01 de cada caso es el que midió el sweep del 03-sep (162 de 245 cambiaron de 01
-//     respecto de la decisividad inyectada): ocupación en los dos AJUSTA/BUSCAR,
-//     rentabilidad en el COMPRAR (empate 0,85 con ventaja, lo decide la magnitud).
+//   · el 01 de cada caso es el que midió el sweep del 04-sep (Goal 4: ocupación contra la
+//     estimación del depto, no contra la comuna; 113 de 245 cambiaron de 01): rentabilidad
+//     en los dos AJUSTA/BUSCAR (su ocupación es neutral, decisividad 0 por neutralización),
+//     ocupación en el COMPRAR bc61f612, que lleva override (65% sobre la estimación de 43%).
 //   · CapEx neutro: antigüedad 0 sin override ⇒ 0 CLP (el knob del capex).
 // La mediana comunal es viva (sin snapshot en las tres filas), así que el fixture NO
 // congela la decisividad de sobreprecio: solo exige que, si existe, cumpla el contrato.
@@ -29,11 +30,13 @@ import { calcCapexPuestaAPunto } from "../../../src/lib/capex-puesta-a-punto";
 import { DECISIVIDAD_FLOOR } from "../../../src/lib/analysis";
 
 const CASOS: { id: string; veredicto: string; primero: string; pisos: (keyof DecisividadesSTR)[]; gateDesarmadoSinDelta?: keyof DecisividadesSTR }[] = [
-  { id: "bc61f612-f1d0-44c9-af0c-a689ca4ab7fd", veredicto: "COMPRAR", primero: "rentabilidad_str", pisos: ["rentabilidad_str", "ventaja_vs_ltr", "ocupacion_vs_banda"] },
-  { id: "29bbcd75-96a8-4f9f-bef1-5e0a179b4d83", veredicto: "AJUSTA SUPUESTOS", primero: "ocupacion_vs_banda", pisos: ["ocupacion_vs_banda", "rentabilidad_str"] },
-  { id: "9102b7e6-3bae-4174-971f-afb8bd99547c", veredicto: "BUSCAR OTRA", primero: "ocupacion_vs_banda", pisos: ["ocupacion_vs_banda", "rentabilidad_str", "estructura_financiamiento"], gateDesarmadoSinDelta: "estructura_financiamiento" },
+  // bc61f612 lleva override de ocupación (65% sobre una estimación de 43%): con Goal 4 ese supuesto
+  // corona (Δscore lleva al piso 1,00). 29bbcd75 y 9102b7e6 no tienen override: ocupación neutral, 0.
+  { id: "bc61f612-f1d0-44c9-af0c-a689ca4ab7fd", veredicto: "COMPRAR", primero: "ocupacion_vs_estimacion", pisos: ["ocupacion_vs_estimacion", "rentabilidad_str", "ventaja_vs_ltr"] },
+  { id: "29bbcd75-96a8-4f9f-bef1-5e0a179b4d83", veredicto: "AJUSTA SUPUESTOS", primero: "rentabilidad_str", pisos: ["rentabilidad_str"] },
+  { id: "9102b7e6-3bae-4174-971f-afb8bd99547c", veredicto: "BUSCAR OTRA", primero: "rentabilidad_str", pisos: ["rentabilidad_str", "estructura_financiamiento"], gateDesarmadoSinDelta: "estructura_financiamiento" },
 ];
-const CON_KNOB: (keyof DecisividadesSTR)[] = ["rentabilidad_str", "flujo_str", "ocupacion_vs_banda", "ventaja_vs_ltr", "sobreprecio", "estructura_financiamiento", "capex_puesta_a_punto"];
+const CON_KNOB: (keyof DecisividadesSTR)[] = ["rentabilidad_str", "flujo_str", "ocupacion_vs_estimacion", "ventaja_vs_ltr", "sobreprecio", "estructura_financiamiento", "capex_puesta_a_punto"];
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);

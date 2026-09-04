@@ -19,10 +19,9 @@ import { GLOSA_BRAZO } from "./engines/short-term-score";
 import { metricaValorONull } from "./types";
 import type { ShortTermResult } from "./engines/short-term-engine";
 import type { FrancoScoreSTR } from "./engines/short-term-score";
-import { STR_UNIVERSO_OCC } from "./engines/str-universo-santiago";
 import { buildHallazgoRentabilidadStr } from "./rentabilidad-str-hallazgo";
 import { buildHallazgoFlujoStr } from "./flujo-str-hallazgo";
-import { buildHallazgoOcupacionVsBanda } from "./ocupacion-vs-banda-hallazgo";
+import { buildHallazgoOcupacionVsEstimacion, OCC_FALLBACK_PCT } from "./ocupacion-vs-estimacion-hallazgo";
 import { buildHallazgoVentajaVsLtr } from "./ventaja-vs-ltr-hallazgo";
 import { buildHallazgoSensibilidadStr } from "./sensibilidad-str-hallazgo";
 import { buildHallazgoEstructuraCostosStr } from "./estructura-costos-str-hallazgo";
@@ -133,22 +132,22 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
     ),
   );
   {
-    const bandaComunal = STR_UNIVERSO_OCC[ctx.comuna];
+    // Goal 4 — el supuesto contra la estimación para ESTE depto (no contra la comuna). Sin
+    // override, caso = estimación ⇒ neutral y decisividad 0 por neutralización. La estimación
+    // es `occObservada` (p50 de la dirección) o el 45% conservador cuando es fallback.
+    const estimacionEsFallback = occObservadaEsFallback || r.occFuente === "fallback_mercado" || (r.occFuente == null && typeof r.occObservada !== "number");
     out.push(
       calibrar(
-      buildHallazgoOcupacionVsBanda({
-        ocupacionPct: base.ocupacionReferencia * 100, // = override cuando lo hay (consistente con el score, que factura ocupacionFinal)
-        bandaComunalPct: typeof bandaComunal === "number" ? bandaComunal * 100 : NaN,
-        // fallback SOLO cuando es fallback real; 'override' NO es fallback; undefined (legacy)→fallback (default dominante).
-        esFallback: r.occFuente === "fallback_mercado" || r.occFuente == null,
-        esOverride: occEsOverride,
-        occObservadaPct,
-        occObservadaEsFallback,
-        comuna: ctx.comuna || "",
-        decisividad: dec.ocupacion_vs_banda?.decisividad ?? 0,
-        modalidad: "str",
-      }),
-      dec.ocupacion_vs_banda,
+        buildHallazgoOcupacionVsEstimacion({
+          ocupacionPct: base.ocupacionReferencia * 100, // = override cuando lo hay (consistente con el score, que factura ocupacionFinal)
+          estimacionPct: estimacionEsFallback && !occEsOverride ? base.ocupacionReferencia * 100 : estimacionEsFallback ? OCC_FALLBACK_PCT : occObservadaPct,
+          esOverride: occEsOverride,
+          esFallback: estimacionEsFallback,
+          comuna: ctx.comuna || "",
+          decisividad: dec.ocupacion_vs_estimacion?.decisividad ?? 0,
+          modalidad: "str",
+        }),
+        dec.ocupacion_vs_estimacion,
       ),
     );
   }

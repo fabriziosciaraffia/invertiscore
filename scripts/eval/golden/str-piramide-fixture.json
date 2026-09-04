@@ -66,20 +66,21 @@
       "fraseCanonica": "Con la ocupación mediana de la zona, el corto deja −$99.472 al mes después de la cuota y los costos. No es una sangría, pero necesitas un colchón: la operación todavía no se sostiene sola."
     },
     {
-      "id": "ocupacion_vs_banda",
-      "tipo": "ocupacion_vs_banda",
+      "id": "ocupacion_vs_estimacion",
+      "tipo": "ocupacion_vs_estimacion",
       "valor": {
         "ocupacionPct": 47,
-        "bandaComunalPct": 58,
-        "gapPts": -11,
+        "estimacionPct": 47,
+        "gapPts": 0,
+        "esOverride": false,
         "esFallback": false,
         "comuna": "Santiago",
-        "banda": 15,
+        "saturacionPts": 15,
         "modalidad": "str"
       },
-      "direccion": "adverso",
-      "decisividad": 0.36,
-      "magnitudContinua": 0.7333333333333333,
+      "direccion": "neutral",
+      "decisividad": 0,
+      "magnitudContinua": 0,
       "procedencia": {
         "base": "ocupación observada del listing (AirROI), p50 de la comuna",
         "confianza": "media"

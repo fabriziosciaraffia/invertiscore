@@ -136,7 +136,7 @@ La prosa de los drawers vive DETRÁS de una card que YA mostró título + KPI + 
 - ASUME la card leída. Arranca del PORQUÉ (la causa) o del QUÉ HACER (la palanca), nunca del QUÉ (el dato que la card ya declaró).
 - \`rentabilidad.contenido\`: la card ya dijo "CAP rate X% [sobre/bajo] el umbral". PROHIBIDO abrir con "El CAP rate de X% está…". Y desde v8 el cuerpo del hallazgo ya DIBUJA la comparación (matriz CAP/retorno/ocupación contra su referencia), el rango de escenarios y el desglose de costos: tu prosa es el ENCUADRE de 2-3 frases que orienta la lectura — la causa raíz en una frase y dónde mirar — y NUNCA narra fila por fila lo que los diagramas ya muestran (ni la matriz, ni los escenarios, ni el desglose). Sin destacador acá: la frase-fuerza de esta sección vive en \`rentabilidad.cajaAccionable\`, que es el cierre del cuerpo.
 - \`vsLTR.contenido\`: la card ya dijo la dirección (LTR gana / STR gana) y la sobre-renta%. PROHIBIDO abrir re-enunciando "En esta zona LTR/STR rinde más". Arranca por el NOI absoluto ($ LTR vs $ STR), la brecha auto-vs-administrador, o la palanca.
-- \`riesgos.contenido\`: la card ya mostró la ocupación vs banda. No abras el primer riesgo repitiendo el % de ocupación.
+- \`riesgos.contenido\`: la card ya mostró la ocupación del caso frente a la estimación de mercado. No abras el primer riesgo repitiendo el % de ocupación.
 
 Regla mnemónica: la card responde "¿qué pasa?"; el drawer responde "¿por qué y qué hago?".
 
@@ -210,7 +210,7 @@ Recuerda: la card de ventaja ya mostró la dirección y el %. En el drawer, arra
 El input te pasa la ocupación base y el upside. Reglas de framing:
 1. Ancla el caso central y la lectura del veredicto en la ocupación OBSERVADA (o el supuesto, si es override). El upside es CONDICIONAL ("si logras gestión profesional y el listing se estabiliza"), nunca lo que va a pasar. PROHIBIDO "ramp-up" → "estabilización inicial" o "los primeros meses de operación".
 2. El \`Gap ocupación\` (observada → potencial) es la magnitud de la apuesta operativa: cuantifícalo cuando sume, dejando claro que cerrarlo depende de la gestión, no del mercado.
-3. **Override (el usuario definió la ocupación o el ADR a mano):** CAVEAT PRIORITARIO y OBLIGATORIO. La ocupación base NO es dato observado. PROHIBIDO llamarla "mediana observada" o "dato de mercado". Preséntala junto a la observada real que trae el input ("asumes 74% de ocupación, sobre el 46% que hoy se observa en la zona") y trátala como supuesto a validar — el veredicto se apoya en un número que pusiste tú. Mismo trato para el ADR si viene marcado "definido por ti".
+3. **Override (el usuario definió la ocupación o el ADR a mano):** CAVEAT PRIORITARIO y OBLIGATORIO. La ocupación base NO es dato observado. PROHIBIDO llamarla "mediana observada" o "dato de mercado". Preséntala junto a la estimación de mercado para el depto que trae el input ("supusiste 74% de ocupación; la estimación de mercado para tu depto es 46%") y trátala como supuesto a validar — el veredicto se apoya en un número que pusiste tú. Mismo trato para el ADR si viene marcado "definido por ti".
 4. **Fallback de mercado (~45%, sin dato observado de la propiedad):** la card de ocupación y el drawer YA declaran "supuesto conservador · sin dato propio". NO es tono general que debas repetir en cada análisis. Menciona el caveat SOLO si el fallback cambia cómo leer el veredicto (ej. la conclusión cuelga de un número que no se observó). Si no cambia la lectura, no abras con el disclaimer — la card ya lo posee.
 
 ## 4. Disciplina sobre afirmaciones
@@ -478,7 +478,7 @@ function extraerCardFrases(hallazgos: Hallazgo[] | undefined | null): CardFrases
   return {
     rentabilidad: byId("rentabilidad_str"),
     vsLTR: byId("ventaja_vs_ltr"),
-    ocupacion: byId("ocupacion_vs_banda"),
+    ocupacion: byId("ocupacion_vs_estimacion"),
     coronado: top && top.titular && top.fraseCanonica ? { titular: top.titular, frase: top.fraseCanonica } : undefined,
   };
 }
@@ -902,8 +902,8 @@ Acceso ski (junio-septiembre): ${distSkiTxt} (peak julio coincide con peak STR S
 
 === VIABILIDAD STR POR ZONA (honestidad de modalidad · §3.bis) ===
 ${r.zonaSTR ? `Tier zona: ${r.zonaSTR.tierZona} (score ${r.zonaSTR.score}/100)
-ADR percentil vs Santiago: p${r.zonaSTR.percentilADR} · Ocupación p${r.zonaSTR.percentilOcupacion} · Ingresos brutos p${r.zonaSTR.percentilRevenue}
-${r.zonaSTR.comunaNoListada ? "(comuna no incluida en universo benchmark V1 — usar caveat al mencionar percentiles)" : ""}` : "(sin datos de zonaSTR)"}
+ADR percentil vs comunas de Santiago con datos: p${r.zonaSTR.percentilADR} · Ocupación p${r.zonaSTR.percentilOcupacion} · Ingresos brutos p${r.zonaSTR.percentilRevenue}
+${r.zonaSTR.comunaOcupacion && r.zonaSTR.ocupacionVsComuna && r.zonaSTR.ocupacionVsComuna !== "sin_datos" ? `Contexto comunal (datos de mercado): la estimación para esta dirección es ${Math.round(r.zonaSTR.occZona * 100)}% de ocupación frente a ${Math.round(r.zonaSTR.comunaOcupacion.valor * 100)}% típico de la comuna (${r.zonaSTR.comunaOcupacion.n} direcciones) → tu zona ocupa ${r.zonaSTR.ocupacionVsComuna === "mas" ? "más" : r.zonaSTR.ocupacionVsComuna === "menos" ? "menos" : "parecido a"} lo típico de la comuna. Es CONTEXTO de La zona, no un hallazgo: nómbralo en \`operacion\`/\`riesgos\` solo si cambia la lectura, y di "datos de mercado", nunca el nombre del proveedor.` : "(comuna sin datos de mercado suficientes — NO compares con la comuna; usa caveat al mencionar percentiles)"}` : "(sin datos de zonaSTR)"}
 Recomendación de modalidad: ${r.recomendacionModalidad ?? "(no disponible)"}
 ${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ OBLIGATORIO en \`vsLTR.contenido\`: decir explícitamente que en esta zona LTR rinde mejor neto que STR y que la complejidad operativa del corto no se justifica. NO endulces (§1.1). Pero arranca del NOI absoluto, no re-enunciando la dirección que la card ya mostró (§1.bis).` : r.recomendacionModalidad === "STR_VENTAJA_CLARA" ? `→ En \`vsLTR.contenido\`: cuantifica el upside STR sobre LTR (sobre-renta > +15%); el esfuerzo se justifica.` : r.recomendacionModalidad === "INDIFERENTE" ? `→ En \`vsLTR.contenido\`: di "está parejo"; la decisión depende del esfuerzo operativo y el perfil de riesgo.` : ""}
 

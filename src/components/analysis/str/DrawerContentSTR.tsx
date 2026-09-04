@@ -14,7 +14,7 @@
  *   sostenibilidad ← (motor) · flujo mensual + estacionalidad
  *   sensibilidad   ← (motor) · tabla P25-P90 + break-even
  *   ventajaLtr     ← ai.vsLTR + estrategiaSugerida
- *   factibilidad   ← ai.riesgos + ai.operacion  (ancla pirámide: ocupacion_vs_banda)
+ *   factibilidad   ← ai.riesgos + ai.operacion  (ancla pirámide: ocupacion_vs_estimacion)
  *   tipoHuesped    ← DrawerTipoHuesped (endpoint guest-insight)
  */
 
@@ -1011,7 +1011,7 @@ export function DrawerContentSTR({
     );
   }
 
-  // factibilidad y riesgos (ancla pirámide: ocupacion_vs_banda)
+  // factibilidad y riesgos (ancla pirámide: ocupacion_vs_estimacion)
   const isCriticalReg = regulacion === "no";
   const riesgosSec = ai?.riesgos;
   const operacionSec = ai?.operacion;
@@ -1039,28 +1039,43 @@ export function DrawerContentSTR({
           value={comuna}
           tooltip="Comuna donde está la propiedad. Cada zona tiene perfil de demanda distinto: turismo, negocios, salud, residencial."
         />
+        {/* Goal 4 — la comparación con la comuna es CONTEXTO de La zona, no un hallazgo:
+            "tu zona ocupa más/menos que lo típico de la comuna" (datos de mercado V2, n ≥ 3). */}
+        {(() => {
+          const z = results.zonaSTR;
+          if (!z?.ocupacionVsComuna) return null;
+          if (z.ocupacionVsComuna === "sin_datos" || !z.comunaOcupacion) {
+            return <DataRow label="Ocupación frente a la comuna" value="Sin datos suficientes de la comuna" tooltip="Los datos de mercado no tienen suficientes direcciones analizadas en esta comuna para compararla." />;
+          }
+          const lectura = z.ocupacionVsComuna === "mas" ? "Tu zona ocupa más que lo típico de la comuna" : z.ocupacionVsComuna === "menos" ? "Tu zona ocupa menos que lo típico de la comuna" : "Tu zona ocupa parecido a lo típico de la comuna";
+          return (
+            <DataRow
+              label="Ocupación frente a la comuna"
+              value={`${lectura} (${Math.round(z.occZona * 100)}% frente a ${Math.round(z.comunaOcupacion.valor * 100)}%)`}
+              tooltip={`Datos de mercado: mediana de ${z.comunaOcupacion.n} direcciones analizadas en ${comuna}, al ${z.comunaOcupacion.fecha}.`}
+            />
+          );
+        })()}
       </DrawerSection>
 
-      {/* CUERPO 14 · VIZ ÚNICA (decisión 28-ago) — ocupación observada contra la
-          banda comunal: el 42% del encabezado por fin tiene contra qué leerse. Eje
-          posicional (la forma aprobada para diferencias de un dígito), escala real
-          0-100 de la ocupación — sin barras desde cero. Solo se dibuja con dato
-          observado o supuesto declarado: en fallback (sin dato, supuesto 45%) una
-          comparación "observada vs banda" mentiría. */}
+      {/* CUERPO 14 · VIZ ÚNICA (Goal 4) — el supuesto del usuario contra la estimación de
+          mercado para este depto. Eje posicional, escala real 0-100. Solo se dibuja con
+          override y estimación real: sin override ambos son el mismo número y no hay
+          nada que comparar; en fallback no hay estimación. */}
       {(() => {
-        const hOcc = results.hallazgos?.find((h) => h.id === "ocupacion_vs_banda");
-        const v = hOcc && hOcc.id === "ocupacion_vs_banda" ? hOcc.valor : null;
-        if (!v || v.esFallback || !(v.bandaComunalPct > 0)) return null;
+        const hOcc = results.hallazgos?.find((h) => h.id === "ocupacion_vs_estimacion");
+        const v = hOcc && hOcc.id === "ocupacion_vs_estimacion" ? hOcc.valor : null;
+        if (!v || !v.esOverride || v.esFallback || !(v.estimacionPct > 0)) return null;
         const gap = Math.round(v.gapPts);
         return (
-          <VViz t="Tu ocupación contra la banda de la comuna">
+          <VViz t="Tu supuesto contra la estimación de mercado">
             <Thermo
               invertido
               pct={v.ocupacionPct}
-              refPct={v.bandaComunalPct}
+              refPct={v.estimacionPct}
               legend={[
-                { k: v.esOverride ? "tu supuesto" : "tu ocupación", v: `${Math.round(v.ocupacionPct)}%` },
-                { k: "banda comunal", v: `${Math.round(v.bandaComunalPct)}%` },
+                { k: "tu supuesto", v: `${Math.round(v.ocupacionPct)}%` },
+                { k: "estimación de mercado", v: `${Math.round(v.estimacionPct)}%` },
                 { k: "brecha", v: `${gap >= 0 ? "+" : "−"}${Math.abs(gap)} pts` },
               ]}
             />
@@ -1098,11 +1113,11 @@ export function DrawerContentSTR({
       <VFuente>
         Motor Franco · regulación declarada por el usuario, no verificada ·{" "}
         {(() => {
-          const hOcc = results.hallazgos?.find((h) => h.id === "ocupacion_vs_banda");
-          const v = hOcc && hOcc.id === "ocupacion_vs_banda" ? hOcc.valor : null;
-          if (v?.esOverride) return "ocupación definida por ti, no observada";
-          if (v?.esFallback) return "ocupación supuesta (45%, sin dato observado)";
-          return "ocupación observada de la zona (AirROI)";
+          const hOcc = results.hallazgos?.find((h) => h.id === "ocupacion_vs_estimacion");
+          const v = hOcc && hOcc.id === "ocupacion_vs_estimacion" ? hOcc.valor : null;
+          if (v?.esOverride) return "ocupación definida por ti; la estimación de mercado es el contraste";
+          if (v?.esFallback) return "ocupación supuesta (45%, sin dato para esta dirección)";
+          return "ocupación estimada por datos de mercado para este depto";
         })()}
       </VFuente>
     </>

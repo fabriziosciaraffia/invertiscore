@@ -1127,27 +1127,27 @@ export interface HallazgoFlujoStr {
   fraseCanonica: string;
 }
 
-// 3 · OCUPACION_VS_BANDA (DECISIVO — dim factibilidad). Compara base.ocupacionReferencia
-// contra la banda comunal (STR_UNIVERSO_OCC). Rama fallback (occ no observada, dominante)
-// declara SIN eufemismo el supuesto conservador 45%. Ver ocupacion-vs-banda-hallazgo.ts.
-export interface HallazgoOcupacionVsBanda {
-  id: "ocupacion_vs_banda";
-  tipo: "ocupacion_vs_banda";
+// 3 · OCUPACION_VS_ESTIMACION (Goal 4 · 04-sep-2026). Compara la ocupación del CASO (el
+// supuesto del usuario si hay override; si no, la estimación misma) contra la ESTIMACIÓN de
+// mercado para ese depto (p50 de la dirección; 45% conservador si no hay dato). Sin override
+// es neutral con decisividad 0 (neutralización: caso = estimación); con override, la diferencia
+// con su signo. La comparación con la comuna vive en zonaSTR.ocupacionVsComuna (La zona).
+// Ver ocupacion-vs-estimacion-hallazgo.ts.
+export interface HallazgoOcupacionVsEstimacion {
+  id: "ocupacion_vs_estimacion";
+  tipo: "ocupacion_vs_estimacion";
   valor: {
-    ocupacionPct: number;      // ocupación del escenario base, % (base.ocupacionReferencia×100)
-    bandaComunalPct: number;   // ocupación estabilizada de la comuna, % (STR_UNIVERSO_OCC)
-    gapPts: number;            // ocupacionPct − bandaComunalPct, en puntos (signed)
-    esFallback: boolean;       // true si occ no observada (fallback 0,45) → confianza baja
-    // fix-occfuente-override 2026-07 — el usuario definió la ocupación a mano.
-    // `ocupacionPct` es entonces su supuesto; `occObservadaPct` es el dato de mercado real.
-    esOverride?: boolean;
-    occObservadaPct?: number;  // ocupación observada real de la zona, % (para mostrar ambos)
-    comuna: string;            // nombra el nivel en el ksub; "" si no disponible
-    banda: number;             // banda de saturación de magnitudContinua, en puntos
+    ocupacionPct: number;      // ocupación del escenario base, % (= supuesto del usuario con override)
+    estimacionPct: number;     // estimación de mercado para este depto, % (45 si fallback)
+    gapPts: number;            // ocupacionPct − estimacionPct con override; 0 sin override
+    esOverride: boolean;       // true si el usuario definió la ocupación a mano
+    esFallback: boolean;       // true si la estimación es el fallback conservador (sin dato de la dirección)
+    comuna: string;            // "" si no disponible
+    saturacionPts: number;     // saturación de magnitudContinua, en puntos
     modalidad: "ltr" | "str" | "ambas";
   };
-  direccion: "favorable" | "adverso"; // favorable si occ ≥ banda comunal
-  decisividad: number;                // dim factibilidad: |dimScore−50|/50
+  direccion: "favorable" | "adverso" | "neutral"; // adverso: supuesto sobre la estimación; favorable: bajo; neutral: sin override o en línea
+  decisividad: number;                // real: Δscore al llevar la ocupación a la estimación (0 sin override)
   magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
   titular: string;
@@ -1263,7 +1263,7 @@ export type Hallazgo =
   | HallazgoGateVeredicto
   | HallazgoRentabilidadStr
   | HallazgoFlujoStr
-  | HallazgoOcupacionVsBanda
+  | HallazgoOcupacionVsEstimacion
   | HallazgoVentajaVsLtr
   | HallazgoSensibilidadStr
   | HallazgoEstructuraCostosStr;
