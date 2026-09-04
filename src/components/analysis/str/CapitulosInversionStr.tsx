@@ -16,6 +16,7 @@ import { fechaCortaCL } from "@/lib/fecha-cl";
 import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
 import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, Bars, BarraApilada, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
+import { PlanNegociacion } from "@/components/ui/AnalysisDrawer";
 import { Matriz, FilaDato, FilasDato, BarraTramos, CurvaAnual, CurvaPatrimonio, BloqueDia1, SegsCierre } from "@/components/analysis/shared";
 
 /**
@@ -415,7 +416,6 @@ export function CapitulosInversionStr({
   // ═══════════════ IV · CÓMO LO PAGAS ═══════════════
   const filaIV: FilaHallazgo = (() => {
     const fp = simulacion?.fronteraPrecio ?? null;
-    const viaPrecio = dist?.valor.vias?.find((v) => v.palanca === "precio") ?? null;
     const techoUF = args.pagas.techoUF;
     const techoDeltaPct = techoUF != null && precioUF > 0 ? ((techoUF - precioUF) / precioUF) * 100 : null;
     const valorIV = techoDeltaPct != null ? `${techoDeltaPct < 0 ? "−" : "+"}${pct1(Math.abs(techoDeltaPct))}%` : ufTxt(precioUF);
@@ -445,6 +445,9 @@ export function CapitulosInversionStr({
       : null;
     const mpp = simulacion?.matrizPiePlazo ?? null;
     const cuota = m?.desgloseFall.cuota ?? results.dividendoMensual;
+    const planObjetivo = techoUF != null && techoDeltaPct != null && techoDeltaPct < 0 ? { uf: techoUF, clp: techoUF * valorUF, veredicto: args.pagas.veredictoObjetivo ?? objetivo } : null;
+    const minimo = dist?.valor.esEstructural ? dist.valor.deltaMinimoFueraDeTope : null;
+    const planMinimo = minimo && minimo.palanca === "precio" && precioUF > 0 ? { uf: precioUF * (1 + minimo.deltaPct / 100), clp: precioCLP * (1 + minimo.deltaPct / 100), pct: minimo.deltaPct, veredicto: objetivo } : null;
     return {
       id: "pagas",
       numero: ROMANO.pagas,
@@ -462,28 +465,35 @@ export function CapitulosInversionStr({
               <Dial zonas={dialPrecio.zonas} bordes={dialPrecio.bordes} marcaPct={dialPrecio.marcaPct} marcaK="Tu precio" marcaV={ufTxt(precioUF)} />
             </VViz>
           )}
-          {techoUF != null && techoDeltaPct != null && techoDeltaPct < 0 && (
+          {/* Un nombre por precio, el MISMO componente que LTR: Primera oferta · Objetivo (donde
+              cambia el veredicto) · estructural: lo que haría falta, fuera de rango. "Donde el mes
+              cierra" solo si el motor lo trae (STR aún no lo emite). La conversión va junto a la
+              cifra (el componente formatea por moneda). */}
+          {(planObjetivo || planMinimo) && (
             <VViz>
               <VSub>Cómo negociarlo: tu plan</VSub>
-              <FilasDato>
-                <FilaDato k="Primera oferta" tip="5% bajo tu techo: ancla el rango bajo y deja espacio para subir" sub={`−${pct1(Math.abs(((techoUF * 0.95 - precioUF) / precioUF) * 100))}% de tu precio · una apertura, no una cifra`} v={ufTxt(techoUF * 0.95)} />
-                <FilaDato k="Tu techo" tip="El máximo donde la aritmética cierra para ti con la tarifa y la ocupación de hoy" sub={`−${pct1(Math.abs(techoDeltaPct))}% de tu precio · bajo este precio el veredicto sube a ${nombreVeredicto(args.pagas.veredictoObjetivo ?? objetivo)}`} v={ufTxt(techoUF)} tono="in" />
-                {viaPrecio?.estado === "cruza" && <FilaDato k="En pesos" tip="Al valor de la UF del análisis" v={money(techoUF * valorUF)} />}
-              </FilasDato>
+              <PlanNegociacion
+                objetivo={planObjetivo}
+                primeraOferta={planObjetivo ? { uf: planObjetivo.uf * 0.95, clp: planObjetivo.clp * 0.95 } : null}
+                sostenible={null}
+                minimoFueraDeRango={planMinimo}
+                currency={currency}
+                precioActualCLP={precioCLP}
+                valorUF={valorUF}
+                sinCredito={!(results.montoCredito > 0)}
+              />
             </VViz>
           )}
           <VPuente>El precio es lo primero. Ahora veamos cómo lo financias: el crédito.</VPuente>
           <VViz t="Tu estructura contra la referencia">
             <VSub>Cómo lo financias: el crédito que tienes</VSub>
-            {fin && results.montoCredito > 0 ? (
-              <EstructuraComparada piePct={fin.valor.piePct} tasaPct={fin.valor.tasaPct} tasaMarketPct={fin.valor.tasaMarketPct} cuotaFmt={`${money(cuota)}/mes`} />
-            ) : (
-              <FilasDato>
-                <FilaDato k="Pie" v={`${Math.round(piePct)}% · ${money(results.pie)}`} />
-                <FilaDato k="Crédito" v={results.montoCredito > 0 ? `${money(results.montoCredito)} · ${plazo} años al ${pct1(tasa)}%` : "sin crédito"} />
-                <FilaDato k="Cuota" v={money(cuota)} unidad="/mes" />
-              </FilasDato>
-            )}
+            {/* Como en LTR: solo la tasa se compara (tuya vs mercado); pie y cuota son datos sin
+                referencia y van como fila de dato. */}
+            {fin && results.montoCredito > 0 && <EstructuraComparada soloTasa piePct={fin.valor.piePct} tasaPct={fin.valor.tasaPct} tasaMarketPct={fin.valor.tasaMarketPct} cuotaFmt={money(cuota)} />}
+            <FilasDato>
+              <FilaDato k="Pie" tip="Lo que pones el día 1 sobre el precio" sub={money(results.pie)} v={`${Number.isInteger(piePct) ? piePct : pct1(piePct)}%`} />
+              <FilaDato k="Cuota mensual" tip="Dividendo del crédito hipotecario" sub={results.montoCredito > 0 ? `crédito de ${compact(results.montoCredito)} a ${plazo} años al ${pct1(tasa)}%` : "sin crédito"} v={money(cuota)} unidad="/mes" />
+            </FilasDato>
           </VViz>
           {mpp && mpp.celdas.length > 0 && (
             <VViz t="Tu flujo mensual según pie y plazo">
@@ -551,8 +561,9 @@ export function CapitulosInversionStr({
             <VSub>Autogestión contra administrador</VSub>
             <Bars
               rows={[
-                { k: "Autogestión", v: money(auto.noiMensual), pct: (auto.noiMensual / maxNoi) * 100, tono: modo === "auto" ? "ink" : undefined, neg: auto.noiMensual < 0 },
-                { k: "Con administrador", v: money(admin.noiMensual), pct: (admin.noiMensual / maxNoi) * 100, tono: modo === "administrador" ? "ink" : undefined, neg: admin.noiMensual < 0 },
+                // Ink para autogestión, gris para administrador; Signal Red solo en lo que sale del bolsillo.
+                { k: "Autogestión", v: money(auto.noiMensual), pct: (auto.noiMensual / maxNoi) * 100, tono: "ink", neg: auto.noiMensual < 0 },
+                { k: "Con administrador", v: money(admin.noiMensual), pct: (admin.noiMensual / maxNoi) * 100, neg: admin.noiMensual < 0 },
               ]}
             />
             <FilasDato style={{ marginTop: 8 }}>

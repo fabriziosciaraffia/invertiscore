@@ -392,6 +392,9 @@ function textoTope(via: Extract<ViaDistancia, { estado: "noCruza" }>): string {
       return `hasta ${via.topeExplorado}%`;
     case "precio":
       return `hasta −${via.topeExplorado}%`;
+    case "gestion":
+      // La vía probó el OTRO modo: el chip nombra el modo, no un porcentaje.
+      return /autogesti/i.test(via.razon) ? "autogestión" : "con administrador";
     default:
       return `hasta +${via.topeExplorado}%`;
   }
@@ -1732,7 +1735,7 @@ export function DrawerDistanciaStr({
           secuencias del mockup son [prosa] → viz → cierre → fuente): este caveat de
           la tarifa sube ANTES de la matriz. Sigue siendo prosa legítima — ningún
           diagrama dice esto. */}
-      {tieneAdr && !v.esEstructural && (
+      {tieneAdr && !v.esEstructural && !v.vias && (
         <VProsa>
           Ojo con la tarifa: la de referencia no es un supuesto nuestro, sale de lo que se cobra realmente
           alrededor. Pedirte que la superes no es ajustar un número optimista, es apostar a que vas a rendir

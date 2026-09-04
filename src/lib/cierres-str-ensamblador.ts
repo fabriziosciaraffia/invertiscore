@@ -150,6 +150,7 @@ export function argsCierresStr(e: EntradaCierresStr): ArgsCierresStr {
       tirPct: exit ? metricaValorONull(exit.tirAnual) : null,
       depositoCLP: costoOportunidad(r.capitalInvertido, 10).depositoUF,
       proyPct: String(Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)),
+      motor: "la operación por noche",
     },
   };
 }

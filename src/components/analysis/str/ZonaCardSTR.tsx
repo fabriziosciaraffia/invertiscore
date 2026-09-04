@@ -35,7 +35,7 @@ export function ZonaCardSTR({
   }, [lat, lng, comuna]);
 
   const cita = perfil
-    ? `Perfil dominante: ${PERFIL_LABEL[perfil.dominante.perfil]} · ${perfil.dominante.porcentaje}% del flujo esperado${perfil.secundarios.length > 0 ? ` · ${perfil.secundarios.length} perfil${perfil.secundarios.length > 1 ? "es" : ""} secundari${perfil.secundarios.length > 1 ? "os" : "o"}` : ""}.`
+    ? `Perfil dominante: ${PERFIL_LABEL[perfil.dominante.perfil]}${perfil.secundarios.length > 0 ? ` · ${perfil.secundarios.length} perfil${perfil.secundarios.length > 1 ? "es" : ""} secundari${perfil.secundarios.length > 1 ? "os" : "o"}` : ""}.`
     : `Cada zona atrae un perfil de huésped distinto — turismo, negocios, salud, familia. Abre el detalle para ver el de ${comuna}.`;
 
   return (

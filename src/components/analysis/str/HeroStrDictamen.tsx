@@ -50,9 +50,8 @@ export function HeroStrDictamen({
   const reencuadre = conviene?.reencuadre?.trim() || null;
   const capsula = conviene?.veredictoFrase?.trim() || null;
   const cajaAccionable = conviene?.cajaAccionable?.trim() || null;
-  const pregunta =
-    conviene?.pregunta?.trim() ||
-    (veredicto === "BUSCAR OTRA" ? "¿Conviene operar este depto en renta corta?" : veredicto === "AJUSTA SUPUESTOS" ? "¿Cómo puedes hacer rendir este depto en renta corta?" : "¿Es buena oportunidad para renta corta?");
+  // La misma pregunta que LTR: la portada ya dijo "renta corta" y el veredicto.
+  const pregunta = conviene?.pregunta?.trim() || "¿Conviene o no conviene?";
   const fechaFirma = fechaCortaCL(fechaProsa ?? createdAt);
   const money = (n: number) => (currency === "UF" ? `UF ${(n / (valorUF || 1)).toFixed(1).replace(".", ",")}` : `$${Math.round(n).toLocaleString("es-CL")}`);
 
