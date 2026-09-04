@@ -51,6 +51,14 @@ export interface FronterasIngresoStr {
   ocupacion: { actual: number; abajo: number | null; arriba: number | null };
 }
 
+/** Un precio con nombre, resultado de una bisección sobre el precio de compra. */
+export interface PrecioConNombre {
+  precioCLP: number;
+  precioUF: number;
+  /** Factor sobre el precio actual (1 = el caso). */
+  factor: number;
+}
+
 export interface FronteraPrecioStr {
   precioUFActual: number;
   /** Bajo este precio (UF) el veredicto sube (null: no sube ni a −70%, o ya es COMPRAR). */
@@ -99,6 +107,12 @@ export interface SimulacionStr {
   veredictoBase: Veredicto;
   fronterasIngreso: FronterasIngresoStr;
   fronteraPrecio: FronteraPrecioStr;
+  /** "Donde el mes cierra": el precio más alto al que el flujo mensual queda en cero o
+   *  positivo (T2). null si ni a −70% del precio el mes cierra. */
+  mesCierra: PrecioConNombre | null;
+  /** "Límite": el precio más alto al que la TIR sigue en o sobre TIR_LIMITE_PCT (T2).
+   *  null si la TIR no es calculable o ya está bajo el límite al precio actual. */
+  limiteTir: PrecioConNombre | null;
   matrizTarifaOcupacion: MatrizTarifaOcupacion;
   matrizPiePlazo: MatrizPiePlazoStr;
 }
@@ -137,6 +151,60 @@ export function fronteraPrecioStr(ctx: VeredictoStrCtx, base: { veredicto: Vered
     subeA: fSube != null ? { factor: fSube, veredicto: veredictoP(fSube), precioUF: Math.floor(base.precioUF * fSube) } : null,
     caeA: fCae != null ? { factor: fCae, veredicto: veredictoP(fCae), precioUF: Math.ceil(base.precioUF * fCae) } : null,
   };
+}
+
+/** Umbral de TIR bajo el cual "conviene más otra inversión" (la glosa de las seis cifras). */
+export const TIR_LIMITE_PCT = 6;
+/** Precisión de la bisección sobre el precio en CLP: con 80% de crédito, $100 de precio
+ *  mueven la cuota menos de $0,5 al mes, así el flujo en el precio hallado queda dentro
+ *  de ±$1 (regla de plata-dia1). */
+const PRECIO_PREC_CLP = 100;
+
+const flujoA = (ctx: VeredictoStrCtx, precioCLP: number): number => {
+  const r = recomputeStrConPatch(ctx, { precioCompra: Math.round(precioCLP) }).result;
+  return r.metrics?.flujoMensual ?? r.escenarios.base.flujoCajaMensual;
+};
+const tirA = (ctx: VeredictoStrCtx, precioCLP: number): number | null => {
+  const r = recomputeStrConPatch(ctx, { precioCompra: Math.round(precioCLP) }).result;
+  return r.metrics?.tirPct ?? (r.exitScenario ? metricaValorONull(r.exitScenario.tirAnual) : null);
+};
+
+/** Bisección sobre el precio en CLP: el precio MÁS ALTO dentro de [lo, hi] donde `ok`
+ *  se cumple. `ok` debe cumplirse en `lo` (si no, null). */
+function precioMaximoQueCumple(ok: (precioCLP: number) => boolean, lo: number, hi: number): number | null {
+  if (!ok(lo)) return null;
+  if (ok(hi)) return Math.round(hi);
+  let a = lo;
+  let b = hi;
+  while (b - a > PRECIO_PREC_CLP) {
+    const mid = (a + b) / 2;
+    if (ok(mid)) a = mid;
+    else b = mid;
+  }
+  return Math.round(a);
+}
+
+/** "Donde el mes cierra": el precio más alto al que el flujo mensual es ≥ 0, buscado
+ *  entre −70% del precio y el precio actual. Si al precio actual ya cierra, es el actual. */
+export function precioMesCierraStr(ctx: VeredictoStrCtx, base: { precioCLP: number; precioUF: number }): PrecioConNombre | null {
+  const p = precioMaximoQueCumple((x) => flujoA(ctx, x) >= 0, base.precioCLP * SIM_PRECIO_MIN, base.precioCLP);
+  if (p == null) return null;
+  const factor = p / base.precioCLP;
+  return { precioCLP: p, precioUF: Math.floor(base.precioUF * factor), factor };
+}
+
+/** "Límite": el precio más alto al que la TIR a 10 años sigue en o sobre TIR_LIMITE_PCT,
+ *  buscado entre el precio actual y ×2. null si la TIR no es calculable o ya está bajo el
+ *  límite hoy. */
+export function precioLimiteTirStr(ctx: VeredictoStrCtx, base: { precioCLP: number; precioUF: number }): PrecioConNombre | null {
+  const ok = (x: number) => {
+    const t = tirA(ctx, x);
+    return t != null && t >= TIR_LIMITE_PCT;
+  };
+  const p = precioMaximoQueCumple(ok, base.precioCLP, base.precioCLP * SIM_PRECIO_MAX);
+  if (p == null) return null;
+  const factor = p / base.precioCLP;
+  return { precioCLP: p, precioUF: Math.floor(base.precioUF * factor), factor };
 }
 
 /** 4 × 4 recomputes completos: tarifa (columnas) × ocupación (filas). */
@@ -217,6 +285,8 @@ export function simularStr(
     veredictoBase: base.veredicto,
     fronterasIngreso: fronterasIngresoStr(ctx, base),
     fronteraPrecio: fronteraPrecioStr(ctx, base),
+    mesCierra: precioMesCierraStr(ctx, base),
+    limiteTir: precioLimiteTirStr(ctx, base),
     matrizTarifaOcupacion: simularTarifaYOcupacionStr(ctx, base, percentiles),
     matrizPiePlazo: simularPieYPlazoStr(ctx, base),
   };

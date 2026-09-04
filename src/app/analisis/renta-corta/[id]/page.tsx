@@ -1,4 +1,6 @@
 import { normalizarResultsStrPersistidos } from "@/lib/analysis/normalizar-results-str";
+import { loadAirbnbEstimateCrudo } from "@/lib/airbnb/get-estimate";
+import { buildZonaStr } from "@/lib/zona-str";
 import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -277,6 +279,27 @@ export default async function STRResultPage({
     }
   })();
 
+  // LA ZONA (T2 · 05-sep-2026): tarifa, ocupación y contra quién te comparan, con
+  // procedencia, calculadas ACÁ. Los 25 avisos parecidos viven en `airbnb_estimates`
+  // (raw_response.comparable_listings) y se buscan por la misma llave de caché que usó
+  // el estimate; sin fila, la celda dice "sin datos suficientes". Cero llamadas al modelo.
+  const zonaStr = await (async () => {
+    const raw = data.input_data as Record<string, unknown> | null;
+    if (!raw) return null;
+    try {
+      const estimate = await loadAirbnbEstimateCrudo(supabase, {
+        direccion: String(raw.direccion ?? ""),
+        comuna: String(raw.comuna ?? data.comuna ?? ""),
+        dormitorios: Number(raw.dormitorios) || 0,
+        banos: Number(raw.banos) || 0,
+        huespedes: Number(raw.capacidadHuespedes) || 2,
+      });
+      return buildZonaStr({ results: results as unknown as ShortTermResult, inputData: raw, comuna: String(data.comuna ?? ""), estimate, createdAt: String(data.created_at) });
+    } catch {
+      return null;
+    }
+  })();
+
   const sharedProps = {
     analysisId: data.id,
     results,
@@ -304,6 +327,7 @@ export default async function STRResultPage({
     isAnonOwner,
     nivelesPie,
     simulacionStr,
+    zonaStr,
   };
 
   return <STRResultsClient {...sharedProps} />;

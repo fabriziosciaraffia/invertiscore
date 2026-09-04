@@ -5,7 +5,7 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoEstructuraFinanciamiento, HallazgoSobreprecio, Veredicto } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
-import type { SimulacionStr, FronteraLado } from "@/lib/analysis/simular-str";
+import { TIR_LIMITE_PCT, type SimulacionStr, type FronteraLado } from "@/lib/analysis/simular-str";
 import { argsCierresStr, cierresStr, type EntradaCierresStr } from "@/lib/cierres-str-ensamblador";
 import type { FmtCierre } from "@/lib/cierres-capitulos";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
@@ -469,17 +469,28 @@ export function CapitulosInversionStr({
               cambia el veredicto) · estructural: lo que haría falta, fuera de rango. "Donde el mes
               cierra" solo si el motor lo trae (STR aún no lo emite). La conversión va junto a la
               cifra (el componente formatea por moneda). */}
-          {(planObjetivo || planMinimo) && (
+          {(planObjetivo || planMinimo || simulacion?.mesCierra) && (
             <VViz>
               <VSub>Cómo negociarlo: tu plan</VSub>
+              {/* Un nombre por precio (T2): umbral = donde cambia el veredicto (objetivo) ·
+                  sugerido = donde el mes cierra (caja en cero, del motor) · límite = donde la
+                  TIR baja del 6% (walk-away). Los tres salen de bisecciones en el server. */}
               <PlanNegociacion
                 objetivo={planObjetivo}
                 primeraOferta={planObjetivo ? { uf: planObjetivo.uf * 0.95, clp: planObjetivo.clp * 0.95 } : null}
                 sostenible={null}
                 minimoFueraDeRango={planMinimo}
+                walkAway={
+                  simulacion?.limiteTir
+                    ? { precio_uf: simulacion.limiteTir.precioUF, precio_clp: simulacion.limiteTir.precioCLP, razon: `Sobre este precio la TIR a 10 años baja del ${TIR_LIMITE_PCT}%: conviene más otra inversión.` }
+                    : null
+                }
                 currency={currency}
                 precioActualCLP={precioCLP}
                 valorUF={valorUF}
+                neutroUF={simulacion?.mesCierra?.precioUF}
+                neutroCLP={simulacion?.mesCierra?.precioCLP}
+                descuentoNeutroPct={simulacion?.mesCierra && precioCLP > 0 ? ((precioCLP - simulacion.mesCierra.precioCLP) / precioCLP) * 100 : undefined}
                 sinCredito={!(results.montoCredito > 0)}
               />
             </VViz>

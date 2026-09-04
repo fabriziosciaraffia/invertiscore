@@ -33,7 +33,7 @@ function getAdminClient(): SupabaseClient | null {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key);
 }
 
-function makeCacheKey(
+export function makeCacheKey(
   address: string,
   comuna: string,
   bedrooms: number,
@@ -438,4 +438,27 @@ export async function getAirbnbEstimate(
     error: "no_comparables",
     message: "No se encontraron propiedades comparables ni datos calculados en esta zona",
   };
+}
+
+/**
+ * LA ZONA (T2 · 05-sep-2026): la fila cruda del estimate que usó este análisis, por la
+ * MISMA llave de caché (dirección + comuna + dormitorios + baños + huéspedes). Devuelve
+ * los 25 avisos parecidos y la fecha de esa consulta; null sin fila. Solo lectura.
+ */
+export async function loadAirbnbEstimateCrudo(
+  db: SupabaseClient,
+  k: { direccion: string; comuna: string; dormitorios: number; banos: number; huespedes: number },
+): Promise<{ createdAt: string; listings: unknown[] } | null> {
+  if (!k.direccion) return null;
+  const cacheKey = makeCacheKey(k.direccion, k.comuna, k.dormitorios, k.banos, k.huespedes);
+  const { data, error } = await db
+    .from("airbnb_estimates")
+    .select("created_at, raw_response")
+    .eq("cache_key", cacheKey)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error || !data?.length) return null;
+  const row = data[0] as { created_at: string; raw_response?: { comparable_listings?: unknown } };
+  const listings = Array.isArray(row.raw_response?.comparable_listings) ? (row.raw_response!.comparable_listings as unknown[]) : [];
+  return { createdAt: row.created_at, listings };
 }
