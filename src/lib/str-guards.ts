@@ -1,0 +1,263 @@
+// ============================================================================
+// GUARDS DE SALIDA STR (Goal 2 · 04-sep-2026) — detección PURA, fuente única
+// ============================================================================
+// Cinco reglas que la prosa de renta corta no puede violar, con el mismo patrón que
+// LTR: el generador (ai-generation-str.ts) las evalúa, hace UN reintento quirúrgico por
+// campo y acepta solo si mejora; los fixtures del golden y el reporte sobre el dump
+// evalúan EXACTAMENTE estas funciones. Ninguna cambia lo que el modelo lee.
+//
+//   1. [HERO-CLAIM]     múltiplos verbales (doble / mitad / triple / N veces) contra la
+//                       razón del motor que la oración nombra — núcleo compartido con LTR
+//                       (hero-claim-core.ts), tablas de renta corta acá.
+//   2. [STR-ENGINEISM]  verbo-trayectoria del modelo ("cruza a positivo", "converge") —
+//                       antes solo detección; ahora reintenta.
+//   3. [STR-INTERNAS]   palabras de la mecánica interna ("fallback", "override"…) que el
+//                       propio prompt nombra como fuentes y el modelo copia.
+//   4. [STR-ESTRUCTURAL] con distancia estructural, ninguna caja ofrece negociar,
+//                       descuento ni "si logras": regla contable pegada al campo.
+//   5. [STR-COPIA]      ninguna oración de NINGÚN campo copia una fraseCanonica (≥ 60%
+//                       de la frase, mínimo 8 palabras) — la card ya la muestra.
+
+import type { ShortTermResult } from "./engines/short-term-engine";
+import type { AIAnalysisSTRv2, Hallazgo } from "./types";
+import { STR_UNIVERSO_OCC } from "./engines/str-universo-santiago";
+import { CAP_STR_UMBRAL_PCT } from "./rentabilidad-str-hallazgo";
+import { CLAIMS_HERO, CLAIMS_VECES, violacionesClaims, type ClaimHero } from "./hero-claim-core";
+
+// ─── Campos de prosa (paths `sección.campo`; `titular` y `francoCaveat` top-level) ───
+export const PROSA_PATHS_STR = [
+  "titular",
+  "conviene.respuestaDirecta", "conviene.veredictoFrase", "conviene.reencuadre", "conviene.cajaAccionable",
+  "rentabilidad.contenido", "rentabilidad.cajaAccionable",
+  "vsLTR.contenido", "vsLTR.estrategiaSugerida", "vsLTR.cajaAccionable",
+  "operacion.contenido", "operacion.cajaAccionable",
+  "largoPlazo.contenido", "largoPlazo.cajaAccionable",
+  "riesgos.contenido", "riesgos.cajaAccionable",
+  "francoCaveat",
+] as const;
+export type ProsaPathStr = (typeof PROSA_PATHS_STR)[number];
+
+/** Las cajas (una por sección) y la estrategia: lo que el usuario lee como recomendación. */
+export const CAJAS_PATHS_STR: ProsaPathStr[] = [
+  "conviene.cajaAccionable", "rentabilidad.cajaAccionable", "vsLTR.cajaAccionable", "vsLTR.estrategiaSugerida",
+  "operacion.cajaAccionable", "largoPlazo.cajaAccionable", "riesgos.cajaAccionable",
+];
+
+export function leerCampo(ai: unknown, path: string): string | null {
+  const rec = ai as Record<string, unknown> | null;
+  if (!rec) return null;
+  const [sec, field] = path.split(".");
+  const v = field ? (rec[sec] as Record<string, unknown> | undefined)?.[field] : rec[sec];
+  return typeof v === "string" ? v : null;
+}
+export function escribirCampo(ai: unknown, path: string, valor: string): void {
+  const rec = ai as Record<string, unknown>;
+  const [sec, field] = path.split(".");
+  if (!field) { rec[sec] = valor; return; }
+  const s = rec[sec];
+  if (s && typeof s === "object") (s as Record<string, unknown>)[field] = valor;
+}
+export function camposProsa(ai: unknown, paths: readonly string[] = PROSA_PATHS_STR): { path: string; texto: string }[] {
+  const out: { path: string; texto: string }[] = [];
+  for (const path of paths) { const t = leerCampo(ai, path); if (t && t.trim()) out.push({ path, texto: t }); }
+  return out;
+}
+
+// ─── 1. [HERO-CLAIM] STR ─────────────────────────────────────────────────────
+export interface RazonesHeroClaimStr {
+  /** Flujo mensual del escenario base y del upside (gestión estabilizada), CLP con signo. */
+  flujoBase?: number | null;
+  flujoUpside?: number | null;
+  dividendoM?: number | null;
+  /** Ingreso bruto mensual del corto y arriendo largo mensual (bruto). */
+  ingresoBrutoM?: number | null;
+  ingresoUpsideM?: number | null;
+  arriendoLargoM?: number | null;
+  noiCorto?: number | null;
+  noiLargo?: number | null;
+  flujoLargo?: number | null;
+  /** Tarifa efectiva y su referencia de mercado (p50 de la zona), CLP/noche. */
+  adrFinal?: number | null;
+  adrRef?: number | null;
+  /** Ocupación efectiva, observada (p50), banda comunal y objetivo del upside, en fracción. */
+  occFinal?: number | null;
+  occRef?: number | null;
+  occBanda?: number | null;
+  occTarget?: number | null;
+  capPct?: number | null;
+  /** Break-even como fracción del ingreso de mercado (1,53 = 153%). */
+  breakEvenPct?: number | null;
+  sujetoUfM2?: number | null;
+  medianaUfM2?: number | null;
+  medianaConfiable?: boolean;
+}
+
+/** Razones del motor para un resultado STR ya computado (con sus hallazgos). */
+export function razonesHeroClaimStr(
+  r: ShortTermResult & { hallazgos?: Hallazgo[] },
+  inp: Record<string, unknown>,
+  comuna: string,
+): RazonesHeroClaimStr {
+  const base = r.escenarios?.base;
+  const up = r.escenarios?.agresivo;
+  const ejes = r.ejesAplicados;
+  const sobre = (r.hallazgos ?? []).find((h) => h.id === "sobreprecio") as
+    | { valor?: { sujetoUfM2?: number; medianaComunaUfM2?: number | null } } | undefined;
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const banda = STR_UNIVERSO_OCC[comuna];
+  return {
+    flujoBase: num(base?.flujoCajaMensual),
+    flujoUpside: num(up?.flujoCajaMensual),
+    dividendoM: num(r.dividendoMensual),
+    ingresoBrutoM: num(base?.ingresoBrutoMensual),
+    ingresoUpsideM: num(up?.ingresoBrutoMensual),
+    arriendoLargoM: num(r.comparativa?.ltr?.ingresoBruto) ?? num(inp.arriendoLargoMensual),
+    noiCorto: num(base?.noiMensual),
+    noiLargo: num(r.comparativa?.ltr?.noiMensual),
+    flujoLargo: num(r.comparativa?.ltr?.flujoCaja),
+    adrFinal: num(ejes?.adrFinal),
+    adrRef: num(ejes?.adrBaselineP50),
+    occFinal: num(ejes?.ocupacionFinal) ?? num(base?.ocupacionReferencia),
+    occRef: num(ejes?.ocupacionBaselineP50),
+    occBanda: typeof banda === "number" ? banda : null,
+    occTarget: num(ejes?.ocupacionTarget),
+    capPct: base && Number.isFinite(base.capRate) ? base.capRate * 100 : null,
+    breakEvenPct: num(r.breakEvenPctDelMercado),
+    sujetoUfM2: num(sobre?.valor?.sujetoUfM2),
+    medianaUfM2: num(sobre?.valor?.medianaComunaUfM2),
+    medianaConfiable: !!sobre && num(sobre.valor?.medianaComunaUfM2) !== null,
+  };
+}
+
+type SujetoStr = "aporte" | "flujo" | "ingreso" | "noi" | "tarifa" | "ocupacion" | "cap" | "breakEven" | "precioM2" | "cuota" | "precio";
+type ComparadorStr = "cuota" | "corto" | "upside" | "largo" | "banda" | "referencia" | "mediana" | "base" | "umbral" | "deposito" | "fondo";
+
+const SUJETOS_STR: { re: RegExp; s: SujetoStr }[] = [
+  { re: /\baport(?:e|es|as|ar|ando)\b|\bpon(?:es|er|iendo|drías|drás|gas)\b|de tu (?:propio )?bolsillo|te faltan|sale de tu/gi, s: "aporte" },
+  { re: /\bflujo\b|\bte queda(?:n|r[íi]an?)?\b|\bmargen\b|\bsobra\b/gi, s: "flujo" },
+  { re: /\bingresos?\b|\bgenera\b|\bfactura\b/gi, s: "ingreso" },
+  { re: /\bnoi\b|\brenta neta\b|\bmargen operativo\b/gi, s: "noi" },
+  { re: /\btarifa\b|\badr\b|\bpor noche\b|\bla noche\b/gi, s: "tarifa" },
+  { re: /\bocupaci[oó]n\b|\bnoches\b|\bllenar\b/gi, s: "ocupacion" },
+  { re: /\bcap rate\b|\bcap\b|\brinde\b|\brentabilidad\b|\brendimiento\b|\bretorno\b/gi, s: "cap" },
+  { re: /break-?even|punto de equilibrio|\boperar\b/gi, s: "breakEven" },
+  { re: /precio por m[²2]|\bm[²2]\b|\bpor (?:cada )?metro\b|\bel metro\b/gi, s: "precioM2" },
+  { re: /\bcuota\b|\bdividendo\b/gi, s: "cuota" },
+  { re: /\bprecio\b/gi, s: "precio" },
+];
+const COMPARADORES_STR: { re: RegExp; c: ComparadorStr }[] = [
+  { re: /\bcuota\b|\bdividendo\b/gi, c: "cuota" },
+  { re: /\b(?:el |del )?corto\b|\bstr\b|renta corta|\bairbnb\b/gi, c: "corto" },
+  { re: /\bupside\b|\bpotencial\b|gesti[oó]n (?:profesional|estabilizada)|\bestabilizad[oa]\b|\bestabilizaci[oó]n\b/gi, c: "upside" },
+  { re: /arriendo largo|renta larga|\bltr\b|largo plazo|\b(?:el |del |al )?largo\b|arriendo tradicional/gi, c: "largo" },
+  { re: /\bbanda\b|zona t[ií]pica|comuna t[ií]pica|\bt[ií]pic[oa]\b/gi, c: "banda" },
+  { re: /\breferencia\b|\bmercado\b|\bp50\b|\bobservad[oa]\b/gi, c: "referencia" },
+  { re: /\bmediana\b|\bcomuna\b|\bzona\b/gi, c: "mediana" },
+  { re: /escenario base|\bbase\b|\bhoy\b|\bactual\b/gi, c: "base" },
+  { re: /\bumbral\b/gi, c: "umbral" },
+  { re: /dep[oó]sito/gi, c: "deposito" },
+  { re: /\bfondo\b/gi, c: "fondo" },
+];
+const NOMBRE_RAZON_STR: Record<string, string> = {
+  "aporte/cuota": "aporte/cuota", "flujo/cuota": "flujo/cuota",
+  "ingreso/largo": "ingreso bruto corto/arriendo largo", "noi/largo": "NOI corto/NOI largo", "flujo/largo": "flujo corto/flujo largo",
+  "flujo/corto": "flujo largo/flujo corto", "noi/corto": "NOI largo/NOI corto", "ingreso/corto": "arriendo largo/ingreso corto",
+  "flujo/base": "flujo upside/flujo base", "flujo/upside": "flujo upside/flujo base", "ocupacion/upside": "ocupación objetivo/ocupación base", "ingreso/upside": "ingreso upside/ingreso base",
+  "tarifa/referencia": "tarifa/p50 de la zona", "tarifa/mediana": "tarifa/p50 de la zona", "tarifa/base": "tarifa/p50 de la zona",
+  "ocupacion/banda": "ocupación/banda comunal", "ocupacion/referencia": "ocupación/observada p50", "ocupacion/mediana": "ocupación/observada p50", "ocupacion/base": "ocupación objetivo/ocupación base",
+  "cap/umbral": "CAP rate/umbral 5%", "cap/referencia": "CAP rate/umbral 5%", "cap/deposito": "CAP rate/depósito UF 5%", "cap/fondo": "CAP rate/fondo mutuo 7%",
+  "precioM2/mediana": "precio por m²/mediana comunal", "precio/mediana": "precio por m²/mediana comunal", "precioM2/referencia": "precio por m²/mediana comunal",
+  "breakEven/referencia": "break-even/ingreso de mercado", "breakEven/mediana": "break-even/ingreso de mercado", "breakEven/base": "break-even/ingreso de mercado", "breakEven/banda": "break-even/ingreso de mercado",
+};
+const RE_UPSIDE = /mejor escenario|\bupside\b|\bpotencial\b|gesti[oó]n (?:profesional|estabilizada)|\bestabilizad[oa]\b/i;
+
+function razonStr(r: RazonesHeroClaimStr, s: SujetoStr, c: ComparadorStr, oracion: string): { nombre: string; valor: number | null } | null {
+  const k = `${s}/${c}`;
+  const nombre = NOMBRE_RAZON_STR[k];
+  if (!nombre) return null;
+  const div = (a?: number | null, b?: number | null) => (a != null && b != null && a > 0 && b > 0 ? a / b : null);
+  const abs = (v?: number | null) => (v == null ? null : Math.abs(v));
+  const flujoCortoRef = RE_UPSIDE.test(oracion) ? r.flujoUpside : r.flujoBase;
+  switch (k) {
+    case "aporte/cuota": return { nombre, valor: r.flujoBase != null && r.flujoBase < 0 ? div(abs(r.flujoBase), r.dividendoM) : null };
+    case "flujo/cuota": return { nombre, valor: div(abs(r.flujoBase), r.dividendoM) };
+    case "ingreso/largo": return { nombre, valor: div(r.ingresoBrutoM, r.arriendoLargoM) };
+    case "noi/largo": return { nombre, valor: div(r.noiCorto, r.noiLargo) };
+    case "flujo/largo": return { nombre, valor: div(abs(r.flujoBase), abs(r.flujoLargo)) };
+    case "flujo/corto": return { nombre: RE_UPSIDE.test(oracion) ? "flujo largo/flujo corto (upside)" : nombre, valor: div(r.flujoLargo, flujoCortoRef) };
+    case "noi/corto": return { nombre, valor: div(r.noiLargo, r.noiCorto) };
+    case "ingreso/corto": return { nombre, valor: div(r.arriendoLargoM, r.ingresoBrutoM) };
+    case "flujo/base": case "flujo/upside": return { nombre, valor: div(r.flujoUpside, r.flujoBase) };
+    case "ocupacion/upside": return { nombre, valor: div(r.occTarget, r.occFinal) };
+    case "ingreso/upside": return { nombre, valor: div(r.ingresoUpsideM, r.ingresoBrutoM) };
+    case "tarifa/referencia": case "tarifa/mediana": case "tarifa/base": return { nombre, valor: div(r.adrFinal, r.adrRef) };
+    case "ocupacion/banda": return { nombre, valor: div(r.occFinal, r.occBanda) };
+    case "ocupacion/referencia": case "ocupacion/mediana": return { nombre, valor: div(r.occFinal, r.occRef) };
+    case "ocupacion/base": return { nombre, valor: div(r.occTarget, r.occFinal) };
+    case "cap/umbral": case "cap/referencia": return { nombre, valor: div(r.capPct, CAP_STR_UMBRAL_PCT) };
+    case "cap/deposito": return { nombre, valor: div(r.capPct, 5) };
+    case "cap/fondo": return { nombre, valor: div(r.capPct, 7) };
+    case "precioM2/mediana": case "precio/mediana": case "precioM2/referencia":
+      return { nombre, valor: r.medianaConfiable ? div(r.sujetoUfM2, r.medianaUfM2) : null };
+    case "breakEven/referencia": case "breakEven/mediana": case "breakEven/base": case "breakEven/banda":
+      return { nombre, valor: r.breakEvenPct != null && r.breakEvenPct > 0 ? r.breakEvenPct : null };
+    default: return null;
+  }
+}
+
+/** "al doble" no está en la tabla base de LTR (se agregará con su propio goal); STR la estrena
+ *  junto con "N veces". */
+const CLAIMS_STR: ClaimHero[] = [
+  { re: /\bal doble\b/i, regla: "doble", min: 1.9 },
+  ...CLAIMS_HERO,
+  ...CLAIMS_VECES,
+];
+
+/** Violaciones [HERO-CLAIM] de un texto STR contra las razones del motor. STR no emite
+ *  `vias`, así que la regla "única vía" no se evalúa (queda para el CONGELADO). */
+export function violacionesHeroClaimStr(texto: string, r: RazonesHeroClaimStr): string[] {
+  return violacionesClaims<SujetoStr, ComparadorStr>(texto, {
+    claims: CLAIMS_STR,
+    sujetos: SUJETOS_STR,
+    comparadores: COMPARADORES_STR,
+    razon: (s, c, o) => razonStr(r, s, c, o),
+  });
+}
+
+export function razonesHeroClaimStrTexto(r: RazonesHeroClaimStr): string {
+  const pares: [SujetoStr, ComparadorStr][] = [
+    ["aporte", "cuota"], ["flujo", "cuota"], ["ingreso", "largo"], ["noi", "largo"], ["flujo", "corto"], ["flujo", "base"],
+    ["tarifa", "referencia"], ["ocupacion", "banda"], ["ocupacion", "referencia"], ["ocupacion", "upside"],
+    ["cap", "umbral"], ["precioM2", "mediana"], ["breakEven", "referencia"],
+  ];
+  const out: string[] = [];
+  for (const [s, c] of pares) { const z = razonStr(r, s, c, ""); if (z && z.valor !== null) out.push(`${z.nombre} = ${z.valor.toFixed(2)}×`); }
+  return out.length ? out.join(", ") : "ninguna razón disponible";
+}
+
+// ─── Evaluación por campo (lo que consumen el generador, los fixtures y el reporte) ───
+export interface ContextoGuardsStr {
+  razones: RazonesHeroClaimStr;
+  estructural: boolean;
+  frases: string[][];
+}
+export function contextoGuardsStr(r: ShortTermResult & { hallazgos?: Hallazgo[] }, inp: Record<string, unknown>, comuna: string): ContextoGuardsStr {
+  return { razones: razonesHeroClaimStr(r, inp, comuna), estructural: false, frases: [] };
+}
+
+export type ReglaStr = "hero-claim";
+/** path → violaciones (vacío si el campo está limpio). */
+export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regla: ReglaStr, ctx: ContextoGuardsStr): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  if (!ai) return out;
+  const paths = PROSA_PATHS_STR;
+  for (const { path, texto } of camposProsa(ai, paths)) {
+    let v: string[] = [];
+    switch (regla) {
+      case "hero-claim": v = violacionesHeroClaimStr(texto, ctx.razones); break;
+    }
+    if (v.length) out[path] = v;
+  }
+  return out;
+}
+export const totalViolaciones = (m: Record<string, string[]>): number => Object.values(m).reduce((n, v) => n + v.length, 0);

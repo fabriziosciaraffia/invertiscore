@@ -1,3 +1,4 @@
+import { CLAIMS_HERO, violacionesClaims } from "./hero-claim-core";
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
@@ -1058,20 +1059,8 @@ export interface RazonesHeroClaim {
   medianaUfM2?: number | null;
   medianaConfiable?: boolean;
 }
-const RE_HERO_UNICA = /\b(?:la |una )?(?:única|sola) (?:vía|forma|manera|palanca|salida|opción|ajuste|camino)\b|\buna sola vía\b|\bel único (?:ajuste|camino|movimiento)\b/i;
-type ClaimHero = { re: RegExp; regla: string; min?: number; max?: number };
-/** Orden: los más específicos primero (el primero que calza manda). Razón = sujeto ÷ comparador. */
-const CLAIMS_HERO: ClaimHero[] = [
-  { re: /\bmás del triple\b/i, regla: "triple", min: 3 },
-  { re: /\b(?:el triple|triplica|tres veces)\b/i, regla: "triple", min: 2.9 },
-  { re: /\bun tercio\b/i, regla: "tercio", min: 0.3, max: 0.37 },
-  { re: /\bmás del doble\b/i, regla: "doble", min: 2 },
-  { re: /\bcasi el doble\b/i, regla: "doble", min: 1.8 },
-  { re: /\b(?:el doble|del doble|duplica|dos veces)\b/i, regla: "doble", min: 1.9 },
-  { re: /\b(?:más de la mitad|poco más de la mitad|apenas (?:más de )?la mitad)\b/i, regla: "mitad", min: 0.5 },
-  { re: /\bmenos de la mitad\b/i, regla: "mitad", max: 0.5 },
-  { re: /\b(?:la mitad|a la mitad)\b/i, regla: "mitad", min: 0.45, max: 0.55 },
-];
+// RE_HERO_UNICA, ClaimHero y CLAIMS_HERO viven en hero-claim-core.ts (núcleo compartido con
+// STR desde el 04-sep-2026); acá quedan las tablas LTR de sujetos, comparadores y razones.
 type SujetoHero = "aporte" | "arriendo" | "cuota" | "patrimonio" | "cap" | "precioM2" | "precio";
 type ComparadorHero = "cuota" | "arriendo" | "deposito" | "fondo" | "referencia" | "mediana" | "vm";
 const SUJETOS_HERO: { re: RegExp; s: SujetoHero }[] = [
@@ -1133,56 +1122,13 @@ export function razonesHeroClaimTexto(r: RazonesHeroClaim): string {
   return out.length ? out.join(", ") : "ninguna razón disponible";
 }
 export function violacionesHeroClaim(texto: string, r: RazonesHeroClaim): string[] {
-  const out: string[] = [];
-  for (const o of texto.split(/(?<=[.!?])\s+/)) {
-    const m1 = o.match(RE_HERO_UNICA);
-    // Con CERO vías, "la única salida / opción / camino es vender / buscar otra" no habla de
-    // una palanca: es la conclusión estructural, y es verdadera. "La única vía / palanca /
-    // ajuste" sí afirma una palanca y con cero vías sigue siendo falsa.
-    const salidaEstructural = r.viasCruzan.length === 0 && m1 !== null && /(?:salida|opci[oó]n|camino|forma|manera)\b/i.test(m1[0]);
-    if (m1 && r.viasCruzan.length !== 1 && !salidaEstructural) out.push(`unica-via: dice "${m1[0]}" y cruzan ${r.viasCruzan.length} vía(s)${r.viasCruzan.length ? ` (${r.viasCruzan.join(", ")})` : ""}`);
-    let claim: { def: ClaimHero; txt: string; pos: number } | null = null;
-    for (const def of CLAIMS_HERO) {
-      const m = o.match(def.re);
-      if (m && m.index !== undefined) { claim = { def, txt: m[0], pos: m.index }; break; }
-    }
-    if (!claim) continue;
-    // Comparador: el objeto del múltiplo ("más de la mitad DE LA CUOTA") — el más cercano
-    // DESPUÉS del múltiplo; si no hay ninguno después, el más cercano antes. Sujeto: el más
-    // cercano ANTES del múltiplo (después si no hay antes), sin pisar el comparador y
-    // saltando los que no forman razón con ese comparador ("el arriendo rinde 8,7% sobre el
-    // precio de compra — más del doble de la referencia": manda "rinde", no "precio").
-    // Sin alguno de los dos, sin licencia.
-    type Hit<T> = { v: T; ini: number; fin: number; d: number; antes: boolean };
-    const hits = <T,>(defs: { re: RegExp; v: T }[], excluir?: { ini: number; fin: number }): Hit<T>[] => {
-      const out2: Hit<T>[] = [];
-      for (const def of defs) {
-        def.re.lastIndex = 0;
-        let m: RegExpExecArray | null;
-        while ((m = def.re.exec(o))) {
-          const ini = m.index; const fin = m.index + m[0].length;
-          if (excluir && ini < excluir.fin && fin > excluir.ini) continue;
-          out2.push({ v: def.v, ini, fin, d: Math.abs(ini - claim!.pos), antes: ini < claim!.pos });
-        }
-      }
-      return out2.sort((a, b) => a.d - b.d);
-    };
-    const compHits = hits(COMPARADORES_HERO.map((x) => ({ re: x.re, v: x.c })));
-    const comp = compHits.find((h) => !h.antes) ?? compHits[0] ?? null;
-    if (!comp) { out.push(`${claim.def.regla}: dice "${claim.txt}" sin nombrar contra qué (sin comparador, sin licencia)`); continue; }
-    const sujHits = hits(SUJETOS_HERO.map((x) => ({ re: x.re, v: x.s })), { ini: comp.ini, fin: comp.fin });
-    const ordenados = [...sujHits.filter((h) => h.antes), ...sujHits.filter((h) => !h.antes)];
-    if (!ordenados.length) { out.push(`${claim.def.regla}: dice "${claim.txt}" contra ${comp.v} sin sujeto claro (sin licencia)`); continue; }
-    let z: { nombre: string; valor: number | null } | null = null;
-    let sujElegido: SujetoHero = ordenados[0].v;
-    for (const h of ordenados) { const zz = razonHero(r, h.v, comp.v); if (zz) { z = zz; sujElegido = h.v; break; } }
-    if (!z) { out.push(`${claim.def.regla}: dice "${claim.txt}" con sujeto ${sujElegido} y comparador ${comp.v}: no hay razón del motor para ese par (sin licencia)`); continue; }
-    if (z.valor === null) { out.push(`${claim.def.regla}: dice "${claim.txt}" contra ${z.nombre}, que no tiene dato`); continue; }
-    const { min, max } = claim.def;
-    const ok = (min === undefined || z.valor >= min) && (max === undefined || z.valor <= max);
-    if (!ok) out.push(`${claim.def.regla}: dice "${claim.txt}" con ${z.nombre} = ${z.valor.toFixed(2)}× (se exige ${min !== undefined ? `≥ ${min}` : ""}${min !== undefined && max !== undefined ? " y " : ""}${max !== undefined ? `≤ ${max}` : ""})`);
-  }
-  return out.filter((v, i, arr) => arr.indexOf(v) === i);
+  return violacionesClaims<SujetoHero, ComparadorHero>(texto, {
+    claims: CLAIMS_HERO,
+    sujetos: SUJETOS_HERO,
+    comparadores: COMPARADORES_HERO,
+    razon: (sj, cp) => razonHero(r, sj, cp),
+    viasCruzan: r.viasCruzan,
+  });
 }
 
 /**

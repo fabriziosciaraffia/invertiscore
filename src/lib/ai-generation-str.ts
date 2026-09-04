@@ -1017,6 +1017,10 @@ export function scanStrDrift(ai: unknown): string[] { return [...scanStrHardDrif
 // Guard de cifras: extraído a módulo compartido al portarlo a LTR (rama
 // prosa-no-recalcula-ltr). Se re-exporta para los consumidores existentes.
 import { cifrasFueraDeInput, empeoraCifras } from "./cifras-guard";
+import {
+  contextoGuardsStr, violacionesPorCampo, totalViolaciones, leerCampo, escribirCampo,
+  razonesHeroClaimStrTexto, type ReglaStr,
+} from "./str-guards";
 import { derivarCifraClaveStr, captionDeCifraClave } from "./cifra-clave";
 import { validarTitular, evaluarTitular, normalizarMarcasTitular, marcasBalanceadas, stripMarcas } from "./prosa-marcas";
 import { reescribirTitular } from "./titular-retry";
@@ -1433,6 +1437,86 @@ Responde SOLO este JSON, sin texto alrededor:
         }
       }
     }
+  }
+
+  // ── GUARDS DE SALIDA (Goal 2 · 04-sep-2026) · paridad con LTR ────────────────
+  // Detección pura en str-guards.ts: la MISMA que evalúan los fixtures del golden y el
+  // reporte sobre el dump. Cada regla hace UN reintento quirúrgico por campo y acepta
+  // solo si mejora (menos violaciones, sin drift ni voz nuevos, sin empeorar cifras); si
+  // no, conserva el previo y el residual queda en el log. Corre ANTES del strip de eco y
+  // de los monitores finales, así estos miden lo que se persiste. Orden: estructural
+  // (regla contable pegada al campo), múltiplos, palabras internas, engine-ism, copia.
+  {
+    const ctxGuards = contextoGuardsStr(r, inp, comuna);
+    const reintentoQuirurgico = async (
+      regla: ReglaStr,
+      etiqueta: string,
+      problema: (v: string[]) => string,
+      instruccion: string,
+    ): Promise<void> => {
+      if (!best) return;
+      const antes = violacionesPorCampo(best, regla, ctxGuards);
+      const nAntes = totalViolaciones(antes);
+      if (nAntes === 0) return;
+      const campos = Object.keys(antes)
+        .map((path) => ({ path, actual: leerCampo(best, path) ?? "", viol: antes[path] }))
+        .filter((c) => c.actual);
+      log(`${etiqueta} ${campos.map((c) => `${c.path}: ${c.viol.map((v) => `«${v.slice(0, 100)}»`).join(" · ")}`).join(" | ")} — 1 reintento quirúrgico`);
+      try {
+        const prompt = `Estás corrigiendo SOLO ${campos.length} campo(s) de un análisis de renta corta YA generado y validado. El resto de la prosa no se toca y no lo ves.
+
+${campos.map((c) => `CAMPO ${c.path}\nPROBLEMA: ${problema(c.viol)}\nTEXTO ACTUAL:\n${c.actual}`).join("\n\n")}
+
+TU TAREA: ${instruccion} Conserva el mismo contenido, las mismas cifras (ninguna cifra nueva), el mismo largo aproximado y las marcas \`**…**\` que ya tenía cada campo. Tuteo chileno neutro, sin voseo.
+
+Responde SOLO este JSON, sin texto alrededor:
+{${campos.map((c) => `"${c.path}": "..."`).join(", ")}}`;
+        const msg = await reg.medir(`guard-${regla}`, CLAUDE_MODEL, () => anthropic.messages.create({
+          model: CLAUDE_MODEL,
+          max_tokens: 1500,
+          messages: [{ role: "user", content: prompt }],
+          system: SYSTEM_STR_CACHED,
+        }));
+        acumularUsage(usage, msg);
+        usedTries += 1;
+        const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
+        let reemplazos: Record<string, unknown> = {};
+        try {
+          const m = rawText.match(/\{[\s\S]*\}/);
+          reemplazos = JSON.parse(m ? m[0] : rawText) as Record<string, unknown>;
+        } catch { /* no parseó — candidato vacío, se conserva el previo */ }
+        const candidato = JSON.parse(JSON.stringify(best)) as AIAnalysisSTRv2;
+        let aplicados = 0;
+        for (const c of campos) {
+          const nuevo = reemplazos[c.path];
+          if (typeof nuevo === "string" && nuevo.trim()) { escribirCampo(candidato, c.path, nuevo.trim()); aplicados++; }
+        }
+        const nDespues = totalViolaciones(violacionesPorCampo(candidato, regla, ctxGuards));
+        if (
+          aplicados > 0 &&
+          nDespues < nAntes &&
+          scanStrHardDrift(candidato).length === 0 &&
+          vozDura(candidato).length === 0 &&
+          !empeoraCifras(userPrompt, best, candidato)
+        ) {
+          log(`${etiqueta} retry mejoró ${nAntes}→${nDespues} — aceptado`);
+          best = candidato;
+        } else {
+          log(`${etiqueta} retry no mejoró (${nAntes}→${nDespues}), no parseó o empeoró cifras/drift — conservo el previo`);
+        }
+      } catch (e) {
+        log(`${etiqueta} falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    };
+
+    // 1. [HERO-CLAIM] — múltiplos contra la razón del motor.
+    const razonesTxt = razonesHeroClaimStrTexto(ctxGuards.razones);
+    await reintentoQuirurgico(
+      "hero-claim",
+      "[HERO-CLAIM]",
+      (v) => `afirma un múltiplo que el motor contradice — ${v.join("; ")}`,
+      `RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad" / "el triple" / "N veces" solo con el SUJETO y el COMPARADOR nombrados en la MISMA oración y con la razón del motor dentro del rango; si no hay razón para ese par, escribe la cifra y no el múltiplo.`,
+    );
   }
 
   // Garantía de veredicto (si la IA olvidó copiarlo).
