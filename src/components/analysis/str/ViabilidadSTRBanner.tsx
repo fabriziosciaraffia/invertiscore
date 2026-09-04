@@ -28,7 +28,7 @@ export function ViabilidadSTRBanner({ results }: { results: ShortTermResult }) {
   if (!showBanner) return null;
 
   const zonaTexto = results.zonaSTR?.comunaNoListada
-    ? "Esta zona no tiene historial STR consolidado en nuestros benchmarks"
+    ? "Esta comuna no tiene datos de mercado suficientes para compararla con el resto de Santiago"
     : tier === "baja"
       ? `Esta zona (${results.zonaSTR?.comuna ?? "—"}) está en el tier bajo de demanda STR de Santiago`
       : null;
@@ -82,7 +82,7 @@ export function ViabilidadSTRBanner({ results }: { results: ShortTermResult }) {
         >
           ● {zonaTexto}
           {results.zonaSTR && !results.zonaSTR.comunaNoListada
-            ? ` · tarifa diaria por encima del ${results.zonaSTR.percentilADR}% de la zona · ocupación por encima del ${results.zonaSTR.percentilOcupacion}%`
+            ? ` · tarifa diaria por encima del ${results.zonaSTR.percentilADR}% de las comunas de Santiago con datos · ocupación por encima del ${results.zonaSTR.percentilOcupacion}%`
             : ""}
           .
         </p>

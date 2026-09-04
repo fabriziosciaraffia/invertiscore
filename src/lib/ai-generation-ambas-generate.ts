@@ -282,7 +282,7 @@ ${dormitorios}D${banos}B en ${comuna} · ${superficie} m² · ${fmtUFAmbas(preci
 estadoVeredicto: ${estadoLabel[banda]}
 recomendacion (cópiala EXACTO al JSON): ${reco}
 ${flipCambia ? `flipGestion: SÍ — administrarlo tú vs delegarlo CAMBIA el veredicto (auto→${flip?.recomendacionAuto}, admin→${flip?.recomendacionAdmin}). Recanócelo en el cierre.` : "flipGestion: no cambia el veredicto."}
-${zona ? `zona: ${zona.tierZona} (score ${zona.score}/100)${zona.comunaNoListada ? " · comuna no listada en el universo benchmark — atenúa" : ""}` : "zona STR no calculada"}
+${zona ? `zona: ${zona.tierZona} (score ${zona.score}/100)${zona.comunaNoListada ? " · comuna sin datos de mercado suficientes — atenúa" : ""}` : "zona STR no calculada"}
 
 === VIABILIDAD DE COMPRA (ver sección homónima del system) ===
 estadoHero: ${estadoHeroLabel[estadoHero]}

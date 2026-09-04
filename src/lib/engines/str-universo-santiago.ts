@@ -1,92 +1,52 @@
-// Universo de comunas Santiago para benchmark STR — calibración V1
-// (Commit 4 · 2026-05-12).
+// Universo de comunas del Gran Santiago para el benchmark STR — V2 (Goal 4 · 04-sep-2026).
 //
-// CAVEAT: estos valores son una aproximación HEURÍSTICA basada en data
-// agregada de AirROI conocida + experiencia de mercado. NO son el resultado
-// de un cálculo dinámico sobre la base de análisis ya creados en la
-// plataforma. Sirven para emitir un veredicto honesto sobre la fortaleza
-// STR de la zona — alta/media/baja — sin invocar datos externos en runtime.
+// V1 (12-may-2026) era una tabla escrita a mano ("aproximación heurística"): quedaba ARRIBA
+// del parque en 14 de 14 comunas con datos (mediana +8,3 pts de ocupación, máx +20,6) y con
+// la decisividad real coronaba 236 de 238 informes por construcción. V2 se CALCULA desde las
+// respuestas de mercado guardadas por dirección (mediana del p50 de ocupación y de tarifa por
+// comuna, n ≥ 3 direcciones, cada valor con {valor, n, fecha}) y vive en el archivo generado
+// `str-universo-santiago.gen.ts`. Regenerar:
+//   node --env-file=.env.local --import tsx scripts/data/generar-str-universo.ts
 //
-// V2 (futura) debería:
-//   1. Calcular medianas reales por comuna desde la tabla `analisis` de
-//      todos los STR ya creados (al menos N=20 por comuna para evitar
-//      sesgo de muestra chica).
-//   2. Refrescar cada trimestre.
-//   3. Ponderar por superficie/dormitorios para que el percentil refleje
-//      tipologías comparables.
+// Quién lee qué:
+//   · `calcZonaSTR` → percentiles del p50 de la dirección contra la distribución V2 (una
+//     entrada por comuna con datos) + tier alta/media/baja + el CONTEXTO comunal de la
+//     ocupación (`ocupacionVsComuna`) que La zona muestra como "tu zona ocupa más/menos
+//     que lo típico de la comuna". La comparación con la comuna ya no es un hallazgo.
+//   · `datosComunaSTR(comuna)` → {ocupacion, adr} con n y fecha, o null = "sin datos
+//     suficientes" (menos de 3 direcciones o comuna fuera del Gran Santiago).
+//   · `STR_UNIVERSO_ADR/OCC/REVENUE` se derivan de V2 para los consumidores que siguen
+//     leyendo un Record<comuna, number> (guards, scripts). Mismo dato, otra forma.
 //
-// La función de scoring `calcZonaSTR` consume estos valores + airbnbData.p50
-// de la propiedad analizada y devuelve percentiles + tier zona + score 0-100.
-//
-// Comuna no listada → fallback a percentil 50 (no penaliza ni premia — la
-// zona se considera "media" hasta tener data).
+// El copy visible dice "datos de mercado"; el proveedor no se nombra al usuario.
 
-// ADR p50 estabilizado (CLP/noche, departamento 1-2D promedio).
-// Fuente: experiencia mercado AirROI + listings públicos Airbnb 2024-2025.
-export const STR_UNIVERSO_ADR: Record<string, number> = {
-  // Sector alta — turismo premium + corporativo + clínicas
-  "Las Condes": 65000,
-  "Vitacura": 70000,
-  "Lo Barnechea": 62000,
-  "Providencia": 55000,
+import { STR_UNIVERSO_V2, type DatoComunaSTR, type UniversoComunaSTR } from "./str-universo-santiago.gen";
+export { STR_UNIVERSO_V2, STR_UNIVERSO_V2_META } from "./str-universo-santiago.gen";
+export type { DatoComunaSTR, UniversoComunaSTR } from "./str-universo-santiago.gen";
 
-  // Sector medio-alto — turismo + university + business
-  "Santiago": 45000,
-  "Ñuñoa": 42000,
-  "La Reina": 42000,
-  "Recoleta": 40000,
+const ALIAS_COMUNA: Record<string, string> = { "Santiago Centro": "Santiago" };
 
-  // Sector medio — residencial conectado / turismo segundario
-  "San Miguel": 36000,
-  "Independencia": 35000,
-  "Macul": 35000,
+/** Datos V2 de una comuna, o null = sin datos suficientes. Acepta el alias "Santiago Centro". */
+export function datosComunaSTR(comuna: string | null | undefined): UniversoComunaSTR | null {
+  if (!comuna) return null;
+  return STR_UNIVERSO_V2[ALIAS_COMUNA[comuna] ?? comuna] ?? null;
+}
 
-  // Sector bajo — residencial periferia / poca demanda turística
-  "Estación Central": 32000,
-  "Quinta Normal": 30000,
-  "Maipú": 28000,
-  "La Florida": 28000,
-  "Puente Alto": 26000,
-  "Quilicura": 26000,
-  "San Bernardo": 25000,
-};
+// Tarifa por noche mediana por comuna (CLP), derivada de V2.
+export const STR_UNIVERSO_ADR: Record<string, number> = Object.fromEntries(
+  Object.entries(STR_UNIVERSO_V2).map(([c, d]) => [c, d.adr.valor]),
+);
 
-// Ocupación estabilizada anual (decimal 0-1). Las zonas con más turismo +
-// business mantienen ocupación más alta todo el año; periferia residencial
-// cae en valles fuertes.
-export const STR_UNIVERSO_OCC: Record<string, number> = {
-  "Las Condes": 0.65,
-  "Vitacura": 0.62,
-  "Lo Barnechea": 0.55,
-  "Providencia": 0.62,
-  "Santiago": 0.58,
-  "Ñuñoa": 0.52,
-  "La Reina": 0.50,
-  "Recoleta": 0.58,
-  "San Miguel": 0.48,
-  "Independencia": 0.50,
-  "Macul": 0.47,
-  "Estación Central": 0.45,
-  "Quinta Normal": 0.42,
-  "Maipú": 0.40,
-  "La Florida": 0.42,
-  "Puente Alto": 0.38,
-  "Quilicura": 0.38,
-  "San Bernardo": 0.36,
-};
+// Ocupación mediana por comuna (decimal 0-1), derivada de V2.
+export const STR_UNIVERSO_OCC: Record<string, number> = Object.fromEntries(
+  Object.entries(STR_UNIVERSO_V2).map(([c, d]) => [c, d.ocupacion.valor]),
+);
 
-// Revenue mensual estabilizado por defecto (CLP), derivado de ADR × Occ ×
-// 30. Es redundante con ADR + Occ, pero precalcularlo evita que UI/IA
-// inviente cálculos al vuelo.
-export const STR_UNIVERSO_REVENUE: Record<string, number> = (() => {
-  const out: Record<string, number> = {};
-  for (const c of Object.keys(STR_UNIVERSO_ADR)) {
-    const adr = STR_UNIVERSO_ADR[c];
-    const occ = STR_UNIVERSO_OCC[c] ?? 0.5;
-    out[c] = Math.round(adr * occ * 30);
-  }
-  return out;
-})();
+// Ingreso bruto mensual por comuna (CLP) = ADR × ocupación × 30. Redundante con los dos
+// de arriba, pero precalcularlo evita que UI/IA inventen cálculos al vuelo.
+export const STR_UNIVERSO_REVENUE: Record<string, number> = Object.fromEntries(
+  Object.entries(STR_UNIVERSO_V2).map(([c, d]) => [c, Math.round(d.adr.valor * d.ocupacion.valor * 30)]),
+);
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -105,41 +65,54 @@ function percentileRank(values: number[], v: number): number {
   return Math.round(((below + 0.5 * equal) / sorted.length) * 100);
 }
 
+/** Umbral de "similar" para la lectura ocupación de la dirección vs mediana comunal, en puntos. */
+export const OCC_VS_COMUNA_SIMILAR_PTS = 2;
+
+export type OcupacionVsComuna = "mas" | "menos" | "similar" | "sin_datos";
+
 export interface ZonaSTRScore {
-  /** Comuna evaluada. Si no está en el universo, percentiles = 50. */
+  /** Comuna evaluada. Sin datos V2 ⇒ `comunaNoListada` y contexto comunal "sin_datos". */
   comuna: string;
-  /** ADR de la zona (p50 de AirROI para esta dirección). */
+  /** Tarifa por noche de la dirección (p50 de la estimación de mercado). */
   adrZona: number;
-  /** Ocupación de la zona (p50 de AirROI). */
+  /** Ocupación de la dirección (p50 de la estimación de mercado). */
   occZona: number;
-  /** Revenue mensual estabilizado = adr × occ × 30. */
+  /** Ingreso bruto mensual estabilizado = adr × occ × 30. */
   revenueZonaMensual: number;
-  /** Percentil de ADR vs universo Santiago (0-100). */
+  /** Percentil de ADR vs las comunas con datos (0-100). */
   percentilADR: number;
-  /** Percentil de ocupación vs universo. */
+  /** Percentil de ocupación vs las comunas con datos. */
   percentilOcupacion: number;
-  /** Percentil de revenue mensual vs universo. */
+  /** Percentil de ingreso mensual vs las comunas con datos. */
   percentilRevenue: number;
   /** Tier agregado: alta (>=70 avg), media (40-70), baja (<40). */
   tierZona: "alta" | "media" | "baja";
   /** Score zona 0-100 (promedio simple de los 3 percentiles). */
   score: number;
-  /** True si la comuna NO está en el universo — el score cae al fallback 50. */
+  /** True si la comuna no tiene datos suficientes en V2 (n < 3): los percentiles se calculan igual, el contexto comunal no. */
   comunaNoListada: boolean;
+  // ── Contexto comunal V2 (Goal 4) — lo que La zona muestra. Opcionales porque `zonaSTR` se
+  //    persiste en `results` y las filas anteriores a V2 no los traen. ──
+  /** Ocupación mediana de la comuna con n y fecha, si hay datos suficientes. */
+  comunaOcupacion?: DatoComunaSTR;
+  /** Tarifa por noche mediana de la comuna con n y fecha, si hay datos suficientes. */
+  comunaAdr?: DatoComunaSTR;
+  /** "tu zona ocupa más/menos/parecido que lo típico de la comuna", o sin datos. */
+  ocupacionVsComuna?: OcupacionVsComuna;
+  /** occZona − comuna, en puntos (redondeado); null sin datos. */
+  ocupacionVsComunaPts?: number | null;
 }
 
 /**
- * Calcula el score zona STR de una propiedad vs universo Santiago.
+ * Score zona STR de una dirección contra las comunas con datos (V2).
  *
  * Inputs:
- *  - comuna: usado para fallback narrativo + flag de "no listada".
- *  - adrZona / occZona: vienen de airbnbData.percentiles.*.p50 del motor
- *    (representan el mid-point del micro-cluster que devuelve AirROI).
+ *  - comuna: para el contexto comunal + flag "sin datos suficientes".
+ *  - adrZona / occZona: p50 de la estimación de mercado para la dirección (el motor los
+ *    saca de airbnbData.percentiles.*.p50).
  *
- * Output: percentiles + tier + score agregado. Si la comuna no está en el
- * universo, el percentil se calcula igual (los valores absolutos sí están
- * en la distribución), pero `comunaNoListada=true` para que la UI/IA
- * pueda atenuar el caveat.
+ * Los percentiles se calculan siempre (los valores absolutos sí están en la distribución);
+ * el contexto comunal solo cuando la comuna tiene n ≥ 3 direcciones.
  */
 export function calcZonaSTR(
   comuna: string,
@@ -155,15 +128,19 @@ export function calcZonaSTR(
   const percentilOcupacion = percentileRank(occUniverso, occZona);
   const percentilRevenue = percentileRank(revenueUniverso, revenueZona);
 
-  // Score agregado: media simple. El revenue ya combina ADR+occ pero los
-  // 3 percentiles capturan dimensiones ligeramente distintas (zona puede
-  // tener ADR alto pero baja ocupación, o viceversa).
+  // Score agregado: media simple. El ingreso ya combina ADR+occ pero los 3 percentiles
+  // capturan dimensiones distintas (ADR alto con baja ocupación, o viceversa).
   const score = Math.round((percentilADR + percentilOcupacion + percentilRevenue) / 3);
 
   let tierZona: ZonaSTRScore["tierZona"];
   if (score >= 70) tierZona = "alta";
   else if (score >= 40) tierZona = "media";
   else tierZona = "baja";
+
+  const datos = datosComunaSTR(comuna);
+  const pts = datos ? Math.round((occZona - datos.ocupacion.valor) * 100) : null;
+  const ocupacionVsComuna: OcupacionVsComuna =
+    pts === null ? "sin_datos" : Math.abs(pts) <= OCC_VS_COMUNA_SIMILAR_PTS ? "similar" : pts > 0 ? "mas" : "menos";
 
   return {
     comuna,
@@ -175,7 +152,11 @@ export function calcZonaSTR(
     percentilRevenue,
     tierZona,
     score,
-    comunaNoListada: !(comuna in STR_UNIVERSO_ADR),
+    comunaNoListada: datos === null,
+    comunaOcupacion: datos?.ocupacion,
+    comunaAdr: datos?.adr,
+    ocupacionVsComuna,
+    ocupacionVsComunaPts: pts,
   };
 }
 

@@ -373,8 +373,8 @@ export interface ShortTermResult {
   // en UI cuando la zona no tracciona STR.
   // `recomendacionModalidad` cruza tier de zona + sobre-renta para decir
   // honestamente cuándo LTR es mejor opción que STR.
-  // Calibración V1 — benchmarks de universo Santiago hardcoded en
-  // str-universo-santiago.ts. Recalibrar con data interna en V2.
+  // V2 (Goal 4 · 2026-09-04): universo generado desde datos de mercado por comuna, con el
+  // contexto comunal de la ocupación (`ocupacionVsComuna`) que La zona muestra.
   zonaSTR?: ZonaSTRScore;
   recomendacionModalidad?: RecomendacionModalidadSTR;
 
@@ -1291,9 +1291,9 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     razonSinPie,
   );
 
-  // --- 11. Viabilidad STR honesta por zona (Commit 4 · 2026-05-12) ---
-  // Calibración V1 — benchmarks de universo Santiago hardcoded en
-  // str-universo-santiago.ts. Recalibrar con data interna en V2.
+  // --- 11. Viabilidad STR honesta por zona (Commit 4 · 2026-05-12; V2 Goal 4 · 2026-09-04) ---
+  // Universo V2 calculado desde las respuestas de mercado guardadas (str-universo-santiago.gen.ts):
+  // percentiles contra las comunas con datos + contexto comunal de la ocupación para La zona.
   const zonaSTR = calcZonaSTR(
     input.comuna ?? "",
     airbnbData.percentiles.average_daily_rate.p50,
