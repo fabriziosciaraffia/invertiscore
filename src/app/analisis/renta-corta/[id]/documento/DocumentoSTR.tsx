@@ -215,16 +215,8 @@ export function DocumentoSTR({
   const tierZona = results.zonaSTR?.tierZona;
   const tierLabel = tierZona === "alta" ? "Alta" : tierZona === "baja" ? "Baja" : "Media";
 
-  // Variante G — banner de viabilidad (condicional · zona baja / LTR preferido).
-  const mostrarViab = tierZona === "baja" || results.recomendacionModalidad === "LTR_PREFERIDO";
-  const viabTitulo = results.recomendacionModalidad === "LTR_PREFERIDO"
-    ? "LTR es la apuesta más sólida acá, no STR"
-    : "Zona con demanda STR baja";
-  const viabCuerpo = results.recomendacionModalidad === "LTR_PREFERIDO" && tierZona === "baja"
-    ? "El arriendo largo rinde más neto que el corto en esta zona, y la demanda STR no compensa la complejidad operativa adicional. Antes de invertir en amoblamiento y gestión, considera quedarte con arriendo tradicional."
-    : results.recomendacionModalidad === "LTR_PREFERIDO"
-      ? "Tu sobre-renta STR vs LTR es muy chica (bajo 5% neto). El esfuerzo operativo del corto no se justifica con ese margen. El arriendo largo queda como opción principal."
-      : "La demanda turística y corporativa en esta zona es baja frente al resto de Santiago. Operar corto acá depende de superar al mercado típico para no quedar en aporte mensual. Revisa antes de invertir en amoblamiento.";
+  // Banner de viabilidad (variante G) desmontado el 04-sep-2026: la modalidad sale del
+  // signo de la sobre-renta medida (chip "Recomendación" + prosa); el tier es contexto.
 
   // ── Simulación (proyección · exit) ──
   const exit = results.exitScenario;
@@ -505,15 +497,6 @@ export function DocumentoSTR({
         <div className="divider" />
 
         <div className={`chapter ${veredicto !== "COMPRAR" ? "crit" : ""}`}><span className="no">06</span><h2 className="subtitle">Factibilidad y riesgos — lo que puede salir distinto</h2></div>
-
-        {/* Variante G — banner de viabilidad (condicional). */}
-        {mostrarViab && (
-          <div className="viab">
-            <p className="vl">Antes de seguir — STR no conviene acá</p>
-            <p className="vh">{viabTitulo}</p>
-            <p className="vt">{viabCuerpo}</p>
-          </div>
-        )}
 
         <div className="chips">
           <p className="cl">Datos de factibilidad</p>

@@ -35,7 +35,6 @@ import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engin
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { HeroSTR } from "@/components/analysis/str/HeroSTR";
 import { StateBox } from "@/components/ui/StateBox";
-import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
 import { ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
 import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hallazgos/HallazgosAcordeon";
@@ -551,10 +550,10 @@ export function STRResultsClient({
         {/* gap menor 24px — Hero → Cards */}
         <div style={{ height: 24 }} />
 
-        {/* Commit 4 · 2026-05-12 — Viabilidad STR honesta por zona.
-            Aparece sólo cuando tierZona = "baja" o recomendacionModalidad =
-            "LTR_PREFERIDO". Doctrina Franco: decir cuando STR no conviene. */}
-        <ViabilidadSTRBanner results={results} />
+        {/* ViabilidadSTRBanner desmontado el 04-sep-2026 (una fuente para "corto o largo"):
+            la modalidad la dicen la card "Ventaja vs arriendo largo" y la prosa, desde el
+            signo de la sobre-renta medida; el tier de zona es contexto de La zona. El
+            componente sigue en src/components/analysis/str/ hasta T3. */}
 
         {/* Calibración v1 — bloque pedagógico "¿Cómo llegamos a este número?" */}
         {results.ejesAplicados && (
