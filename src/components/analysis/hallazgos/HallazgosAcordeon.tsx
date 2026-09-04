@@ -463,9 +463,6 @@ export function TokensHallazgos() {
       .v-sub{font-family:var(--font-heading, Georgia, serif);font-size:16px;font-weight:600;color:var(--doc-tx);margin:24px 0 8px;line-height:1.3}
       .v-puente{font-family:var(--font-mono, ui-monospace);font-size:11px;letter-spacing:.02em;color:color-mix(in srgb,var(--doc-tx) 60%,transparent);
         margin:2px 0 16px;padding-top:12px;border-top:1px dotted var(--doc-line2)}
-      .datarow{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--doc-line);font-size:12.5px;font-weight:600;color:var(--doc-tx)}
-      .datarow small{display:block;font-weight:400;font-size:11px;color:var(--doc-tx3);margin-top:1px}
-      .datarow .v{font-family:var(--font-mono, ui-monospace);font-weight:700;white-space:nowrap}
       /* matriz de sensibilización: toggle (la grilla vive en TokensShared, .matriz) */
       .mx-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
       .mx-toggle{display:inline-flex;border:1px solid var(--doc-line2);border-radius:4px;overflow:hidden}

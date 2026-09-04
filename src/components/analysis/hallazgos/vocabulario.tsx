@@ -774,20 +774,6 @@ export function VPuente({ children }: { children: ReactNode }) {
   return <p className="v-puente">{children}</p>;
 }
 
-/** Dato sin comparación: etiqueta · valor. Para lo que es dato y no comparación
- *  (pie, cuota), donde una barra mentiría una referencia que no existe. */
-export function DataRow({ k, sub, v }: { k: ReactNode; sub?: ReactNode; v: ReactNode }) {
-  return (
-    <div className="datarow">
-      <span>
-        {k}
-        {sub && <small>{sub}</small>}
-      </span>
-      <span className="v">{v}</span>
-    </div>
-  );
-}
-
 export type HitoLinea = { k: string; sub?: string; v: string; tono?: "base" | "mid" | "end" };
 
 /** Línea de tiempo con hitos y el delta entre cada par (compra en verde: firma →

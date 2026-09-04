@@ -23,6 +23,7 @@ import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plum
 import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
 import { EscaleraPlazo } from "@/components/analysis/hallazgos/escalera-plazo";
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
+import { BarraTramos, FilaDato, FilasDato } from "@/components/analysis/shared";
 import { simularPie, simularPlazo } from "@/lib/analysis";
 import { MARKET_AVG_TASA_UF } from "@/lib/financing-health";
 import {
@@ -262,23 +263,53 @@ export function DrawerCostoMensual({
           como total. Reemplaza los dos grupos de barras ENTRA/SALE. */}
       <VViz t={`Qué pasa con los ${fmt(arriendo)} del arriendo`}>
         {capitulo && <VSub>Lo que entra y lo que sale cada mes</VSub>}
-        <Fall
-          rows={saleItemsSorted
-            .filter((r) => r.value > 0)
-            .map((r, i) => ({
-              k: r.name,
-              v: `−${fmt(r.value)}`,
-              pct: r.value,
-              tone: (i === 0 ? "neutral" : i === 1 ? "warn" : i === 2 ? "muted" : "red") as FallRow["tone"],
-              // CORRECCIÓN 5 — el mapeo al waterfall descartaba `tooltip` y se perdían las
-              // glosas de cada egreso (contribuciones, provisión de mantención, etc.).
-              tip: r.tooltip ? <InfoTooltip content={r.tooltip} /> : undefined,
-            }))}
-          total={{
-            k: isNeg ? "Sale de tu bolsillo" : "Te queda cada mes",
-            v: `${isNeg ? "−" : "+"}${fmt(Math.abs(flujo))}`,
-          }}
-        />
+        {capitulo ? (
+          /* Goal "LTR hereda" (05-sep-2026): el capítulo II usa las mismas piezas que STR II
+             (barra de tramos + filas de dato). Mismos ítems y mismas cifras que el waterfall. */
+          <>
+            <BarraTramos
+              ingreso={arriendo}
+              costosOperar={Math.max(0, arriendo - desglose.dividendo - flujo)}
+              cuota={desglose.dividendo}
+              exceso={Math.max(0, -flujo)}
+              libre={Math.max(0, flujo)}
+              title={`Arriendo ${fmt(arriendo)} · gastos ${fmt(Math.max(0, arriendo - desglose.dividendo - flujo))} · cuota ${fmt(desglose.dividendo)} · ${isNeg ? `sale de tu bolsillo ${fmt(Math.abs(flujo))}` : `queda libre ${fmt(flujo)}`}`}
+            />
+            <FilasDato>
+              <FilaDato tono="in" k="Arriendo mensual" tip="Lo que entra cada mes, antes de cuota y gastos" v={fmt(arriendo)} unidad="/mes" />
+              {saleItemsSorted
+                .filter((r) => r.value > 0)
+                .map((r) => (
+                  <FilaDato key={r.name} k={r.name} tip={r.tooltip} v={`−${fmt(r.value)}`} unidad="/mes" />
+                ))}
+              <FilaDato
+                tono="tot"
+                k={isNeg ? "Sale de tu bolsillo" : "Te queda cada mes"}
+                tip="Arriendo − cuota − gastos"
+                v={<span style={{ color: isNeg ? "var(--signal-red)" : undefined }}>{`${isNeg ? "−" : "+"}${fmt(Math.abs(flujo))}`}</span>}
+                unidad="/mes"
+              />
+            </FilasDato>
+          </>
+        ) : (
+          <Fall
+            rows={saleItemsSorted
+              .filter((r) => r.value > 0)
+              .map((r, i) => ({
+                k: r.name,
+                v: `−${fmt(r.value)}`,
+                pct: r.value,
+                tone: (i === 0 ? "neutral" : i === 1 ? "warn" : i === 2 ? "muted" : "red") as FallRow["tone"],
+                // CORRECCIÓN 5 — el mapeo al waterfall descartaba `tooltip` y se perdían las
+                // glosas de cada egreso (contribuciones, provisión de mantención, etc.).
+                tip: r.tooltip ? <InfoTooltip content={r.tooltip} /> : undefined,
+              }))}
+            total={{
+              k: isNeg ? "Sale de tu bolsillo" : "Te queda cada mes",
+              v: `${isNeg ? "−" : "+"}${fmt(Math.abs(flujo))}`,
+            }}
+          />
+        )}
       </VViz>
 
       {caja ? (

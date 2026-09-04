@@ -2,6 +2,7 @@
 
 import { SegsCierre } from "./shared/SegsCierre";
 import { Matriz } from "./shared/Matriz";
+import { FilaDato, FilasDato } from "./shared/FilaDato";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { useMemo, useState } from "react";
 import type {
@@ -29,7 +30,6 @@ import { HallazgosAcordeon, type FilaHallazgo } from "./hallazgos/HallazgosAcord
 import {
   BarraApilada,
   Bars,
-  DataRow,
   LineaTiempo,
   Thermo,
   VCierre,
@@ -397,12 +397,15 @@ export function CapitulosInversion({
                         cuotaFmt={money(dividendo)}
                       />
                     )}
-                    <DataRow
-                      k="Pie"
-                      sub={`${compact(pieCLP)}${cuotasPie > 0 && montoCuota > 0 ? ` · ${cuotasPie} cuotas de ${compact(montoCuota)} durante la construcción` : ""}`}
-                      v={`${Number.isInteger(piePct) ? piePct : pct1(piePct)}%`}
-                    />
-                    <DataRow k="Cuota mensual" sub={`crédito de ${compact(precioCLP - pieCLP)} a ${plazo} años`} v={money(dividendo)} />
+                    <FilasDato>
+                      <FilaDato
+                        k="Pie"
+                        tip="Lo que pones el día 1 sobre el precio"
+                        sub={`${compact(pieCLP)}${cuotasPie > 0 && montoCuota > 0 ? ` · ${cuotasPie} cuotas de ${compact(montoCuota)} durante la construcción` : ""}`}
+                        v={`${Number.isInteger(piePct) ? piePct : pct1(piePct)}%`}
+                      />
+                      <FilaDato k="Cuota mensual" tip="Dividendo del crédito hipotecario" sub={`crédito de ${compact(precioCLP - pieCLP)} a ${plazo} años`} v={money(dividendo)} unidad="/mes" />
+                    </FilasDato>
                   </VViz>
                   {matriz && (
                     <VViz t={serieIII === "flujo" ? "Tu flujo mensual según pie y plazo" : "Tu TIR a 10 años según pie y plazo"}>
@@ -764,18 +767,11 @@ export function CapitulosInversion({
                   )}
                   <div className="oport">
                     <div className="bt">La misma plata en otro lado</div>
-                    <div className="kv">
-                      <span>Depósito a plazo en UF al {Math.round(INSTRUMENTOS_REFERENCIA.depositoUF * 100)}%</span>
-                      <span className="v">{money(oport.depositoUF)}</span>
-                    </div>
-                    <div className="kv">
-                      <span>Fondo mutuo al {Math.round(INSTRUMENTOS_REFERENCIA.fondoMutuo * 100)}%</span>
-                      <span className="v">{money(oport.fondoMutuo)}</span>
-                    </div>
-                    <div className="kv" style={{ borderBottom: "none" }}>
-                      <span>Este depto</span>
-                      <span className="v">{money(patrimonio)}</span>
-                    </div>
+                    <FilasDato>
+                      <FilaDato k={`Depósito a plazo en UF al ${Math.round(INSTRUMENTOS_REFERENCIA.depositoUF * 100)}%`} tip={`${compact(inversionInicial)} a ${Math.round(INSTRUMENTOS_REFERENCIA.depositoUF * 100)}% anual por ${anios} años`} v={money(oport.depositoUF)} />
+                      <FilaDato k={`Fondo mutuo al ${Math.round(INSTRUMENTOS_REFERENCIA.fondoMutuo * 100)}%`} tip={`${compact(inversionInicial)} a ${Math.round(INSTRUMENTOS_REFERENCIA.fondoMutuo * 100)}% anual por ${anios} años`} v={money(oport.fondoMutuo)} />
+                      <FilaDato k="Este depto" tip={`Tu parte al vender el año ${anios}`} v={money(patrimonio)} tono="in" />
+                    </FilasDato>
                     <p className="nota">
                       Los tres parten de los mismos {compact(inversionInicial)}.{" "}
                       {bolsillo > 0
@@ -791,19 +787,23 @@ export function CapitulosInversion({
                     <div>
                       <h4>Si vendes</h4>
                       <p className="ex">Vendes al valor proyectado, pagas lo que queda del crédito y la comisión. Lo que sobra es tu parte.</p>
-                      <div className="kv"><span>Valor de venta estimado</span><span className="v">{money(exit.valorVenta)}</span></div>
-                      <div className="kv"><span>− Deuda pendiente</span><span className="v neg">−{money(exit.saldoCredito)}</span></div>
-                      <div className="kv"><span>− Comisión de venta (2%)</span><span className="v neg">−{money(exit.comisionVenta)}</span></div>
-                      <div className="kv tot"><span>Te queda</span><span className="v">{money(exit.equityCLP)}</span></div>
+                      <FilasDato>
+                        <FilaDato k="Valor de venta estimado" tip={`Precio de hoy proyectado a ${PROY_PCT}% al año por ${anios} años`} sub={`${PROY_PCT}% al año desde la compra`} v={money(exit.valorVenta)} />
+                        <FilaDato k="Deuda pendiente" tip="Saldo del crédito al vender" sub={`lo que queda del crédito el año ${anios}`} v={`−${money(exit.saldoCredito)}`} tono="neg" />
+                        <FilaDato k="Comisión de venta" tip="Corretaje de la venta" sub="2% del valor de venta" v={`−${money(exit.comisionVenta)}`} tono="neg" />
+                        <FilaDato k="Te queda" tip="Valor − deuda − comisión" v={money(exit.equityCLP)} tono="tot" />
+                      </FilasDato>
                     </div>
                     {plazo > 0 && liquidez > 0 && (
                       <div>
                         <h4>Si refinancias</h4>
                         <p className="ex">Sacas parte de tu plusvalía como liquidez sin vender ni pagar impuesto, a cambio de una cuota más alta.</p>
-                        <div className="kv"><span>Nuevo crédito · {Math.round(ltv * 100)}% del valor</span><span className="v">{money(nuevoCredito)}</span></div>
-                        <div className="kv"><span>− Deuda pendiente</span><span className="v neg">−{money(exit.saldoCredito)}</span></div>
-                        <div className="kv"><span>Cuota nueva · {plazo} años al {pct1(tasaPct)}%</span><span className="v">{money(cuotaNueva)}</span></div>
-                        <div className="kv tot"><span>Liquidez sin vender</span><span className="v">{money(liquidez)}</span></div>
+                        <FilasDato>
+                          <FilaDato k="Nuevo crédito" tip={`Crédito nuevo sobre el valor del año ${anios}`} sub={`${Math.round(ltv * 100)}% del valor`} v={money(nuevoCredito)} />
+                          <FilaDato k="Deuda pendiente" tip="Se paga con el crédito nuevo" v={`−${money(exit.saldoCredito)}`} tono="neg" />
+                          <FilaDato k="Cuota nueva" tip="Dividendo del crédito nuevo" sub={`${plazo} años al ${pct1(tasaPct)}%`} v={money(cuotaNueva)} unidad="/mes" />
+                          <FilaDato k="Liquidez sin vender" tip="Crédito nuevo − deuda pendiente" v={money(liquidez)} tono="tot" />
+                        </FilasDato>
                       </div>
                     )}
                   </div>
