@@ -329,17 +329,81 @@ export function copiaFraseCanonica(texto: string, frases: string[][]): string | 
   return oracionQueCopia(texto, frases);
 }
 
+// ─── 6. [STR-MODALIDAD] ─────────────────────────────────────────────────────
+/** "Corto o largo" tiene UNA fuente: el signo de la sobre-renta medida (el dato del hallazgo
+ *  `ventaja_vs_ltr`). Hasta v14 el prompt obligaba a escribir "el largo rinde más neto" por
+ *  banda, y la banda salía del tier de zona: 51 filas del parque decían LTR con STR rindiendo
+ *  más. Este detector caza la afirmación "X rinde / conviene / deja / genera más" (o "menos", o
+ *  "supera", o "conviene X") cuando X contradice el signo. Sujetos con artículo o nombre propio
+ *  ("el largo", "el arriendo corto", "LTR", "STR", "Airbnb", "renta corta") para no cazar
+ *  "un plazo más corto" ni "a largo plazo"; una negación pegada al verbo ("no rinde más")
+ *  no se evalúa; "más que el largo" no convierte al largo en sujeto. */
+const SUJ_LARGO = String.raw`(?:(?:el|al|del)\s+(?:arriendo\s+)?(?:largo|tradicional)(?!\s+plazo)|\bLTR\b|\brenta\s+larga\b|\barriendo\s+(?:largo|tradicional)\b)`;
+const SUJ_CORTO = String.raw`(?:(?:el|al|del)\s+(?:arriendo\s+)?corto(?!\s+plazo)|\bSTR\b|\bAirbnb\b|\brenta\s+corta\b|\barriendo\s+corto\b)`;
+const VERBO_CON_CUANTO = String.raw`(?:rinde|deja|genera|paga|gana|te\s+deja|te\s+rinde|sale)`;
+const VERBO_SOLO = String.raw`(?:conviene|supera|le\s+gana)`;
+const CUANTO = String.raw`(?:más|mejor|menos|peor)`;
+const NEG = String.raw`(?:no|ni|tampoco|nunca)\s+`;
+// A: sujeto … verbo … cuánto  ("el largo rinde más neto", "STR te deja menos", "el corto supera al largo")
+const RE_MOD_A = new RegExp(
+  String.raw`(?<suj>${SUJ_LARGO}|${SUJ_CORTO})[^.;:,]{0,30}?\b(?<neg>${NEG})?(?:(?<verbo>${VERBO_CON_CUANTO})\b[^.;:]{0,20}?\b(?<cuanto>${CUANTO})\b|(?<solo>${VERBO_SOLO})\b(?:\s+(?<cuanto2>${CUANTO})\b)?)`,
+  "gi",
+);
+// B: verbo (cuánto) … sujeto, sin "que" en medio  ("conviene más el largo", "te conviene STR", "rinde más el corto")
+const RE_MOD_B = new RegExp(
+  String.raw`\b(?<neg>${NEG})?(?:te\s+)?(?:(?<verbo>${VERBO_CON_CUANTO})\s+(?<cuanto>${CUANTO})|(?<solo>${VERBO_SOLO})(?:\s+(?<cuanto2>${CUANTO}))?)\b(?:(?!\bque\b)[^.;:]){0,20}?(?<suj>${SUJ_LARGO}|${SUJ_CORTO})`,
+  "gi",
+);
+const RE_ES_LARGO = new RegExp(`^${SUJ_LARGO}$`, "i");
+type Gana = "largo" | "corto" | null;
+function ganadorDeClausula(o: string): Gana[] {
+  const out: Gana[] = [];
+  for (const re of [RE_MOD_A, RE_MOD_B]) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(o)) !== null) {
+      const g = m.groups ?? {};
+      if (g.neg) continue; // "no rinde más": no se evalúa (la negación pegada invierte y no vale el riesgo)
+      const sujetoLargo = RE_ES_LARGO.test(g.suj ?? "");
+      const cuanto = (g.cuanto ?? g.cuanto2 ?? "más").toLowerCase();
+      const invierte = cuanto === "menos" || cuanto === "peor";
+      const gana: Gana = sujetoLargo === !invierte ? "largo" : "corto";
+      out.push(gana);
+    }
+  }
+  return out;
+}
+/** Oraciones que afirman que gana la modalidad contraria al signo de `sobreRenta`
+ *  (sobre-renta NOI mensual STR − LTR del hallazgo `ventaja_vs_ltr`). Con sobreRenta = 0 no
+ *  hay signo y no se evalúa nada. */
+export function afirmacionesContraSigno(texto: string, sobreRenta: number): string[] {
+  if (!(sobreRenta > 0) && !(sobreRenta < 0)) return [];
+  const ganaMedido: Gana = sobreRenta > 0 ? "corto" : "largo";
+  const out: string[] = [];
+  for (const o of texto.replace(/\*\*/g, "").split(/(?<=[.!?])\s+/)) {
+    if (ganadorDeClausula(o).some((g) => g !== null && g !== ganaMedido)) out.push(o.trim());
+  }
+  return out;
+}
+
 // ─── Evaluación por campo (lo que consumen el generador, los fixtures y el reporte) ───
 export interface ContextoGuardsStr {
   razones: RazonesHeroClaimStr;
   estructural: boolean;
   frases: string[][];
+  /** Sobre-renta NOI mensual STR − LTR (una fuente para "corto o largo"). */
+  sobreRenta: number;
 }
 export function contextoGuardsStr(r: ShortTermResult & { hallazgos?: Hallazgo[] }, inp: Record<string, unknown>, comuna: string, sim?: SimulacionStr | null): ContextoGuardsStr {
-  return { razones: razonesHeroClaimStr(r, inp, comuna, sim), estructural: esDistanciaEstructural(r), frases: frasesCanonicasStr(r) };
+  return {
+    razones: razonesHeroClaimStr(r, inp, comuna, sim),
+    estructural: esDistanciaEstructural(r),
+    frases: frasesCanonicasStr(r),
+    sobreRenta: Number.isFinite(r.comparativa?.sobreRenta) ? r.comparativa.sobreRenta : 0,
+  };
 }
 
-export type ReglaStr = "hero-claim" | "engineism" | "internas" | "estructural" | "copia";
+export type ReglaStr = "hero-claim" | "engineism" | "internas" | "estructural" | "copia" | "modalidad";
 /** path → violaciones (vacío si el campo está limpio). */
 export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regla: ReglaStr, ctx: ContextoGuardsStr): Record<string, string[]> {
   const out: Record<string, string[]> = {};
@@ -353,6 +417,7 @@ export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regl
       case "internas": v = hitsPalabrasInternas(texto); break;
       case "estructural": v = ctx.estructural ? ofertasNegociacion(texto) : []; break;
       case "copia": { const c = copiaFraseCanonica(texto, ctx.frases); v = c ? [c] : []; break; }
+      case "modalidad": v = afirmacionesContraSigno(texto, ctx.sobreRenta); break;
     }
     if (v.length) out[path] = v;
   }

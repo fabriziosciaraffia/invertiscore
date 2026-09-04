@@ -31,7 +31,7 @@ const ai = {
   conviene: { respuestaDirecta: "Limpio.", reencuadre: "Limpio.", cajaAccionable: "Limpio." },
   riesgos: { contenido: `Riesgo uno. ${frase} Riesgo dos.`, cajaAccionable: "Limpio." },
 } as unknown as AIAnalysisSTRv2;
-const ctx: ContextoGuardsStr = { razones: {}, estructural: false, frases };
+const ctx: ContextoGuardsStr = { razones: {}, estructural: false, frases, sobreRenta: 0 };
 const v = violacionesPorCampo(ai, "copia", ctx);
 if (!v["riesgos.contenido"]) F("la copia en riesgos.contenido debía disparar");
 if (Object.keys(v).length !== 1) F(`solo un campo debía disparar, dispararon ${Object.keys(v).join(", ")}`);

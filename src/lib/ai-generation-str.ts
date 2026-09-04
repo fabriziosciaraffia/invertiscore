@@ -97,7 +97,7 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // («dato tuyo» / «estimación de mercado» / «sin dato de la dirección»: fuera "override" y
 // "fallback" del prompt); la pirámide entra como datos en su orden real y el #1 como
 // qué · cuánto · dirección; [HERO-CLAIM] STR con "única vía" contra las vías que cruzan.
-export const PROMPT_VERSION_STR = 14;
+export const PROMPT_VERSION_STR = 15;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -205,12 +205,11 @@ Activa los que sumen al caso. Si el ángulo cambia o refuerza la decisión, va. 
 
 NOTACIÓN DE PERCENTILES (P25/P50/P75/P90): EXCLUSIVA para los percentiles de ingresos brutos de mercado (la tabla del drawer solo-motor y el break-even como % del P50). NUNCA nombres los escenarios del depto (conservador/base/upside) con "P25/P50" — su ancla de ocupación va en palabras ("cuartil bajo observado", "mediana observada de la zona", "estabilizado con gestión profesional").
 
-## 3.bis Viabilidad STR por zona — recomendación de modalidad
+## 3.bis Corto o largo — una sola fuente
 
-El input trae \`recomendacionModalidad\` ∈ {LTR_PREFERIDO, STR_VENTAJA_CLARA, INDIFERENTE}, que alimenta \`vsLTR.contenido\`. Verbalízala SIN endulzar (doctrina §1.1):
-- **LTR_PREFERIDO** — el arriendo largo rinde mejor neto acá. Dilo explícito: "en tu zona, LTR rinde más neto que STR; la complejidad operativa del corto no se justifica". Cuantifica con la sobre-renta del input. NO redirijas a "ajusta la estrategia STR".
-- **STR_VENTAJA_CLARA** — sobre-renta > +15%. Cuantifica el upside y di que el esfuerzo se justifica.
-- **INDIFERENTE** — sobre-renta 5-15%. Di "está parejo" y deja la decisión en el usuario (disponibilidad operativa, tolerancia a estacionalidad).
+Qué modalidad rinde más neto lo dice UN dato: la sobre-renta medida del bloque "STR vs LTR" (NOI mensual STR − LTR, el mismo del hallazgo \`ventaja_vs_ltr\`). Su SIGNO dice quién gana; su MAGNITUD, cuánto. La recomendación (\`recomendacionModalidad\`) sale de ese mismo dato: LTR_PREFERIDO = el largo rinde más neto por 5% o más · INDIFERENTE = está parejo (entre −5% y +15%) · STR_VENTAJA_CLARA = el corto rinde 15% o más, sostenible al break-even.
+- Ninguna oración de ningún campo puede afirmar que "rinde / conviene / deja más" la modalidad contraria al signo. Si la sobre-renta es positiva, el corto rinde más neto (aunque sea poco); si es negativa, el largo. La demanda de la zona (tier) es CONTEXTO de La zona: describe el mercado, no decide la modalidad ni contradice el dato.
+- Con LTR_PREFERIDO: cuantifica cuánto más deja el largo con la sobre-renta del input y di que el esfuerzo del corto no se justifica con ese margen; no redirijas a "ajusta la estrategia STR". Con STR_VENTAJA_CLARA: cuantifica el upside y di que el esfuerzo se justifica. Con INDIFERENTE: di "está parejo" y deja la decisión en el usuario (disponibilidad operativa, tolerancia a estacionalidad), sin inventar un ganador.
 
 Recuerda: la card de ventaja ya mostró la dirección y el %. En el drawer, arranca del NOI absoluto o la palanca, no repitiendo la dirección (§1.bis).
 
@@ -1047,8 +1046,8 @@ Acceso ski (junio-septiembre): ${distSkiTxt} (peak julio coincide con peak STR S
 ${r.zonaSTR ? `Tier zona: ${r.zonaSTR.tierZona} (score ${r.zonaSTR.score}/100)
 ADR percentil vs comunas de Santiago con datos: p${r.zonaSTR.percentilADR} · Ocupación p${r.zonaSTR.percentilOcupacion} · Ingresos brutos p${r.zonaSTR.percentilIngreso}
 ${r.zonaSTR.comunaOcupacion && r.zonaSTR.ocupacionVsComuna && r.zonaSTR.ocupacionVsComuna !== "sin_datos" ? `Contexto comunal (datos de mercado): la estimación para esta dirección es ${Math.round(r.zonaSTR.occZona * 100)}% de ocupación frente a ${Math.round(r.zonaSTR.comunaOcupacion.valor * 100)}% típico de la comuna (${r.zonaSTR.comunaOcupacion.n} direcciones) → tu zona ocupa ${r.zonaSTR.ocupacionVsComuna === "mas" ? "más" : r.zonaSTR.ocupacionVsComuna === "menos" ? "menos" : "parecido a"} lo típico de la comuna. Es CONTEXTO de La zona, no un hallazgo: nómbralo en \`operacion\`/\`riesgos\` solo si cambia la lectura, y di "datos de mercado", nunca el nombre del proveedor.` : "(comuna sin datos de mercado suficientes — NO compares con la comuna; usa caveat al mencionar percentiles)"}` : "(sin datos de zonaSTR)"}
-Recomendación de modalidad: ${r.recomendacionModalidad ?? "(no disponible)"}
-${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ OBLIGATORIO en \`vsLTR.contenido\`: decir explícitamente que en esta zona LTR rinde mejor neto que STR y que la complejidad operativa del corto no se justifica. NO endulces (§1.1). Pero arranca del NOI absoluto, no re-enunciando la dirección que la card ya mostró (§1.bis).` : r.recomendacionModalidad === "STR_VENTAJA_CLARA" ? `→ En \`vsLTR.contenido\`: cuantifica el upside STR sobre LTR (sobre-renta > +15%); el esfuerzo se justifica.` : r.recomendacionModalidad === "INDIFERENTE" ? `→ En \`vsLTR.contenido\`: di "está parejo"; la decisión depende del esfuerzo operativo y el perfil de riesgo.` : ""}
+Corto o largo (UNA fuente — §3.bis): la sobre-renta medida es ${fmtCLPSigned(r.comparativa.sobreRenta)}/mes${sobreRentaPctEsConfiable(r.comparativa.ltr.noiMensual, r.comparativa.sobreRentaPct) ? ` (${r.comparativa.sobreRentaPct >= 0 ? "+" : ""}${Math.round(r.comparativa.sobreRentaPct * 100)}%)` : " (porcentaje N/D: usa el monto)"} → ${r.comparativa.sobreRenta > 0 ? "el CORTO rinde más neto que el largo" : r.comparativa.sobreRenta < 0 ? "el LARGO rinde más neto que el corto" : "rinden igual"}. Recomendación derivada: ${r.recomendacionModalidad ?? "(no disponible)"}. Tier de demanda de la zona (${r.zonaSTR?.tierZona ?? "sin dato"}): contexto de La zona, no decide.
+${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ En \`vsLTR.contenido\`: cuantifica cuánto más deja el largo con esa sobre-renta y di que el esfuerzo del corto no se justifica con ese margen. NO endulces (§1.1). Arranca del NOI absoluto, no re-enunciando la dirección que la card ya mostró (§1.bis).` : r.recomendacionModalidad === "STR_VENTAJA_CLARA" ? `→ En \`vsLTR.contenido\`: cuantifica el upside del corto sobre el largo; el esfuerzo se justifica.` : r.recomendacionModalidad === "INDIFERENTE" ? `→ En \`vsLTR.contenido\`: di "está parejo" sin inventar un ganador contrario al signo; la decisión depende del esfuerzo operativo y el perfil de riesgo.` : ""}
 
 === SUBSIDIO LEY 21.748 (palanca financiera externa · Ángulo 4) ===
 ${r.subsidioTasa ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioTasa.aplicado} | tasaConSubsidio=${pct(r.subsidioTasa.tasaConSubsidio)}%
@@ -1670,6 +1669,14 @@ Responde SOLO este JSON, sin texto alrededor:
       "[HERO-CLAIM]",
       (v) => `afirma un múltiplo que el motor contradice — ${v.join("; ")}`,
       `RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad" / "el triple" / "N veces" solo con el SUJETO y el COMPARADOR nombrados en la MISMA oración y con la razón del motor dentro del rango; si no hay razón para ese par, escribe la cifra y no el múltiplo.`,
+    );
+    // 6. [STR-MODALIDAD] — "corto o largo" con una sola fuente: el signo de la sobre-renta medida.
+    const srGuard = ctxGuards.sobreRenta;
+    await reintentoQuirurgico(
+      "modalidad",
+      "[STR-MODALIDAD]",
+      (v) => `afirma que rinde / conviene más la modalidad contraria al dato medido: ${v.map((x) => `«${x.slice(0, 120)}»`).join(" · ")}`,
+      `EL DATO: la sobre-renta medida es ${fmtCLPSigned(srGuard)}/mes, o sea ${srGuard > 0 ? "el CORTO (STR) rinde más neto que el largo" : "el LARGO (LTR) rinde más neto que el corto"}. Reescribe cada campo sin afirmar lo contrario: si el margen es chico, di que está parejo y cuánto es; la demanda de la zona es contexto y no cambia quién rinde más.`,
     );
     // 3. [STR-INTERNAS] — nombres de la mecánica interna.
     await reintentoQuirurgico(

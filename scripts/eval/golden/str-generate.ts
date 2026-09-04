@@ -43,6 +43,7 @@ import { ordenarHallazgosPiramideSTR } from "../../../src/lib/piramide-orden-str
 import { STR_GE_SEEDS, loadFrozen } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
 import { frasesCanonicasDe, oracionQueCopia } from "../../../src/lib/copia-frase";
+import { contextoGuardsStr, violacionesPorCampo } from "../../../src/lib/str-guards";
 import { buildTruthBundle, captureStrPrompt, runJudgeV2 } from "../judge";
 import type { Check } from "./invariants";
 import type { SeedReport } from "./recompute";
@@ -152,6 +153,14 @@ export async function runStrGenerateTier(
         // AS5 — ninguna oración del lead copia una fraseCanonica (regla A1 de LTR).
         const copia = oracionQueCopia(lead, frasesCanonicasDe(r.hz));
         if (copia) { bump("AS5.copia-fraseCanonica"); detalles.push(`AS5 run ${run + 1}: «${copia.slice(0, 120)}»`); }
+        // AS6 — "corto o largo" con una fuente: ninguna afirmación "LTR / STR rinde o conviene más"
+        // contradice el signo de la sobre-renta medida (hallazgo ventaja_vs_ltr). Duro.
+        const ctxG = contextoGuardsStr(rForProse as any, frozen[key].input_data, comuna, r.sim);
+        const contra = violacionesPorCampo(ai, "modalidad", ctxG);
+        for (const [path, vs] of Object.entries(contra)) {
+          bump("AS6.modalidad-contra-signo");
+          detalles.push(`AS6 run ${run + 1} · ${path} · sobre-renta ${Math.round(ctxG.sobreRenta)}: «${vs[0].slice(0, 140)}»`);
+        }
         // Métricas BLANDAS del titular (decisión PARÁ 2) — espejo LTR.
         if (ai.titular === null) bump("~titular-null");
         const nucleoTit = typeof ai.titular === "string" ? (ai.titular.match(/\*\*([\s\S]+?)\*\*/)?.[1] ?? "") : "";

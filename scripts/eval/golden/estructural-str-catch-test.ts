@@ -41,7 +41,7 @@ const ai = {
   conviene: { respuestaDirecta: "x", reencuadre: "x", cajaAccionable: "Si no logras negociar el precio, revisa la regulación." },
   rentabilidad: { contenido: "Si logras negociar, el cap sube.", cajaAccionable: "El CAP no alcanza el umbral." },
 } as unknown as AIAnalysisSTRv2;
-const base: ContextoGuardsStr = { razones: {}, estructural: true, frases: [] };
+const base: ContextoGuardsStr = { razones: {}, estructural: true, frases: [], sobreRenta: 0 };
 const conEstructural = violacionesPorCampo(ai, "estructural", base);
 if (!conEstructural["conviene.cajaAccionable"]) F("estructural: la caja con oferta debía disparar");
 if (conEstructural["rentabilidad.contenido"]) F("estructural: el contenido no es caja y no debía evaluarse");
