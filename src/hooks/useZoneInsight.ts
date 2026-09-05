@@ -36,7 +36,8 @@ export interface ZoneInsightData {
     negocios: ZonePOI[];
     trenes: ZonePOI[];
   };
-  insight: {
+  /** Prosa IA de caches anteriores al 05-sep-2026; el payload nuevo no la trae y nadie la lee. */
+  insight?: {
     headline_clp: string;
     headline_uf: string;
     preview_clp: string;

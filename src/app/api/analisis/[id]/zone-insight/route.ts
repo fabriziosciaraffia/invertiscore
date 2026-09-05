@@ -12,7 +12,7 @@ import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
 import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
 import { buildZoneInsightForRow, PROMPT_VERSION_ZONA, type ZoneInsightResponse } from "@/lib/zone-insight-core";
-import { nuevoRegistroLlamadas, persistGeneracionTiming } from "@/lib/pipeline-timing";
+import { persistGeneracionTiming } from "@/lib/pipeline-timing";
 
 // Goal C: techo explícito — POIs + stats + 1 llamada corta (1200 tokens).
 export const maxDuration = 60;
@@ -95,8 +95,9 @@ export async function GET(
     // Timing (Goal A): esta generación hoy no registra usage en ai_*_tokens; el
     // registro de pipeline_timing es su única visibilidad de ms + tokens.
     const tGen = Date.now();
-    const reg = nuevoRegistroLlamadas();
-    const built = await buildZoneInsightForRow(row, supabase, reg);
+    // 05-sep-2026: sin llamada al modelo. El timing sigue escribiéndose con el mismo tipo y
+    // `llamadas: []` para que la serie de latencia no se corte en el tablero.
+    const built = await buildZoneInsightForRow(row, supabase);
     if ("error" in built) {
       return NextResponse.json({ error: built.error }, { status: built.status });
     }
@@ -123,7 +124,7 @@ export async function GET(
       fin_at: new Date().toISOString(),
       total_ms: Date.now() - tGen,
       resultado: "ok",
-      llamadas: reg.llamadas,
+      llamadas: [],
     });
 
     return NextResponse.json(response);

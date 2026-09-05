@@ -66,10 +66,6 @@ async function main() {
       const built = await buildZoneInsightForRow(r, sb);
       if ("error" in built) {
         fallidos.push({ id: r.id, motivo: built.error });
-      } else if (!built.response.insight?.narrative_clp) {
-        // Guard: la generación IA falló aguas adentro (devuelve strings vacíos) —
-        // la zona vieja es mejor que una zona vacía.
-        fallidos.push({ id: r.id, motivo: "narrative vacío — queda con su zona vieja" });
       } else {
         const { error: upErr } = await sb.from("analisis").update({ zone_insight: built.response }).eq("id", r.id);
         if (upErr) fallidos.push({ id: r.id, motivo: upErr.message });

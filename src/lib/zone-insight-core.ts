@@ -1,7 +1,7 @@
 // ============================================================================
 // ZONE INSIGHT — núcleo de generación (extraído de la ruta · paquete B)
 // ============================================================================
-// Todo lo que computa el insight de zona (POIs + stats + prosa IA con REGLA 9)
+// Todo lo que computa el insight de zona (POIs + stats; sin prosa IA desde el 05-sep-2026)
 // vive acá, sin HTTP ni persistencia. Lo consumen:
 //   · la ruta GET /api/analisis/[id]/zone-insight (wrapper: auth + cache)
 //   · scripts/regen-zone-insight.ts (regen administrativa por lote, service-role)
@@ -9,27 +9,17 @@
 // exports de route.ts), por eso el núcleo vive en lib.
 
 
-import Anthropic from "@anthropic-ai/sdk";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
-import { CLAUDE_MODEL } from "@/lib/ai-config";
-import type { RegistroLlamadas } from "@/lib/pipeline-timing";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { getNearbyAttractors, type AttractorTipo } from "@/lib/data/attractors";
-import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO, rangoHistDe } from "@/lib/plusvalia-estimado.gen";
-import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
-
-// Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
-// que el render y REGLA 10 del prompt LTR. Nunca literal tipeado.
-const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
-const RANGO_HIST = PLUSVALIA_DEFAULT_RANGO; // rótulo centralizado del rango histórico
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT } from "@/lib/plusvalia-estimado.gen";
 import {
   getComunaMedianaVentaUF,
   resolverCondicionMercado,
   type CondicionMercado,
 } from "@/lib/comuna-stats";
 
-const anthropic = new Anthropic();
 
 // ─── Types ──────────────────────────────────────────
 interface PoiBasic {
@@ -83,7 +73,10 @@ interface ZoneInsightPois {
 export interface ZoneInsightResponse {
   stats: ZoneInsightStats;
   pois: ZoneInsightPois;
-  insight: {
+  /** Prosa IA de la zona. DESDE EL 05-sep-2026 NO SE GENERA (goal "el endpoint de zona
+   *  deja de pagar IA"): ninguna superficie la mostraba desde 9704e8f y cada cache-miss
+   *  pagaba una llamada de 13,5 s. Las caches anteriores la traen; el payload nuevo no. */
+  insight?: {
     headline_clp: string;
     headline_uf: string;
     preview_clp: string;
@@ -97,10 +90,12 @@ export interface ZoneInsightResponse {
   };
   valorUF: number;
   /**
-   * Version del prompt/doctrina con que se genero esta zona. Driver de la
-   * invalidacion lazy-on-open, espejo de `promptVersion` en ai_analysis: si el
-   * cache trae una version menor que PROMPT_VERSION_ZONA (o no la trae), el
-   * endpoint la trata como cache-miss y regenera. Ausente => cache pre-versionado.
+   * Version de la cache de zona (nacio como version del prompt). Driver de la
+   * invalidacion lazy-on-open: si el cache trae una version menor que
+   * PROMPT_VERSION_ZONA (o no la trae), el endpoint la trata como cache-miss y
+   * recalcula. Ausente => cache pre-versionado. Desde el 05-sep-2026 el payload no
+   * lleva prosa IA y la version NO se sube: el payload nuevo es compatible (insight
+   * ausente) y subirla reconsultaria 619 caches al abrirse.
    */
   promptVersion?: number;
 }
@@ -125,6 +120,7 @@ export interface ZoneInsightResponse {
 // en el bloque del caso, porque con la cascada cada comuna tiene el suyo
 // (2015-2025 / 2015-2024 / 2014-2024) y el system prompt, estático, no puede
 // nombrar uno fijo. La prosa cacheada databa el número con el rango del DEFAULT.
+// 05-sep-2026: muere la prosa IA de la zona; la version queda en 2 a proposito (ver arriba).
 export const PROMPT_VERSION_ZONA = 2;
 
 // ─── Stats helpers ──────────────────────────────────
@@ -431,300 +427,9 @@ async function fetchOfertaComparableCascade(
   return null;
 }
 
-// ─── AI insight generator ───────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// INSIGHT_SYSTEM_PROMPT v2 (Fase 5)
-// Hereda doctrina del skill analysis-voice-franco: asesor no narrador, framework
-// D→C→R→A, interpretación obligatoria de stats. Conserva reglas defensivas que
-// funcionaban en v1 (chileno neutro, no jerga, no metros futuros). Agrega campo
-// `accion` imperativa al schema de respuesta.
-// ─────────────────────────────────────────────────────────────────────────────
-const INSIGHT_SYSTEM_PROMPT = `Eres Franco. Asesor inmobiliario chileno. Le hablas a un inversionista que está evaluando un departamento — no le vendes, no narras la pantalla, no recitas la tabla. Lees los datos por él y le dices qué significan.
-
-REGLA 0 — ASESOR, NO NARRADOR
-Antes de escribir cada frase, pregúntate: ¿esto se reemplaza por una tabla sin pérdida de información? Si la respuesta es sí, no lo escribas. Tu valor es interpretar, no listar.
-
-Narrador (prohibido): "El Metro Tobalaba a 180m garantiza conectividad directa. El Costanera Center a 850m densifica la oferta comercial."
-Asesor (esperado): "El mix Tobalaba + El Golf explica que estés en P78 de arriendo: pagas la prima de una zona ya validada."
-
-REGLA 1 — INTERPRETA STATS, NO LOS RECITES
-Cuando el contexto financiero te dé números, traduce cada uno a una lectura cualitativa con estos umbrales:
-
-precioM2.diffPct (precio m² del depto vs mediana de la comuna):
-  ≤ -3% → "bajo la mediana"
-  -3% a +3% → "en línea con la mediana"
-  +3% a +8% → "sobre la mediana"
-  > +8% → "muy sobre la mediana — sobreprecio"
-
-percentilTuDepto (percentil del arriendo dentro del rango local):
-  P0–P25 → "barato para la zona"
-  P25–P75 → "rango medio"
-  P75–P90 → "caro para la zona"
-  > P90 → "muy caro para la zona"
-
-plusvaliaAnual (histórica anualizada de la comuna, en el período que el bloque del caso declara — cada comuna tiene el suyo):
-  < ${PROY_PCT} → "débil vs la proyección de plusvalía a futuro de ${PROY_PCT} (la proyección estándar Franco)"
-  ${PROY_PCT}–5% → "alineada o sobre la proyección de plusvalía a futuro de ${PROY_PCT}"
-  > 5% → "fuerte vs la proyección de plusvalía a futuro de ${PROY_PCT}"
-
-CRÍTICO: el "${PROY_PCT}" de estos umbrales es la PROYECCIÓN estándar Franco a futuro (supuesto parejo del modelo para todos los cálculos), NO una afirmación de que la comuna se aprecia ${PROY_PCT}. Coincide numéricamente con el promedio histórico observado del Gran Santiago (~3%), pero son cosas distintas: una es supuesto a futuro, la otra dato del pasado. Cuando el narrative cite "${PROY_PCT}", debe quedar claro al usuario que es una proyección a futuro, no un dato observado ni una promesa sobre la comuna.
-
-Prohibido recitar el número sin interpretarlo. Si el narrative menciona "+8.2%" o "P81", debe seguir con la lectura cualitativa. Si los datos contradicen un cierre optimista, escribe el cierre que dice la verdad — no el que vende.
-
-REGLA 2 — FRAMEWORK D→C→R→A
-El narrative debe construirse como: Dato → Contexto → Riesgo o ventaja. La Acción concreta NO va en el narrative — va en el campo \`accion\` separado.
-
-REGLA 3 — \`accion\` ES IMPERATIVA Y ESPECÍFICA
-Verbo en imperativo. Apunta a verificación, negociación o decisión concreta. Tope 140 caracteres. NO depende de unidad (no se duplica en UF).
-
-OK: "Antes de firmar, pide comparables de los últimos 3 meses en el mismo edificio."
-OK: "Negocia a la baja: estás pagando ~8% sobre mediana sin justificación visible."
-OK: "Verifica que la línea de metro esté operativa antes de pagar la prima de cercanía."
-NO: "Considera todos los factores antes de decidir."
-NO: "Evalúa si esta inversión calza con tu perfil."
-NO: "Analiza con detalle los pros y contras."
-
-REGLA 4 — \`narrative\` ≤ 4 FRASES
-Tope duro: 4 frases. Si llegas a 5, sobra una. La densidad importa más que la extensión.
-
-REGLA 5 — VOCABULARIO PROHIBIDO
-No uses estas palabras o construcciones (son tono de corredor, no de Franco):
-- "ecosistema"
-- "ubicación estratégica" / "ubicación privilegiada"
-- "establece base sólida" / "posición sólida"
-- "compite desde una posición"
-- "valoración que el mercado otorga"
-- "respiro verde"
-- "arriendos resilientes"
-- "polo consolidado" / "polo emergente"
-- "diversifica inquilinos potenciales"
-- "se posiciona como opción atractiva"
-- "ofrece" + sustantivo abstracto ("ofrece tranquilidad", "ofrece calidad de vida")
-
-REGLA 6 — REGISTRO Y FORMA (heredado v1, conservado)
-- Español chileno neutro. Tuteo: "tú", "tienes", "evalúa", "controlas", "compras". NO voseo ("tenés", "bajá", "decidí", "controlás", "comprás") — ningún verbo en segunda persona termina en vocal acentuada.
-- NO jerga: "che", "dale", "cachai", "weón", "bacán", "ponele".
-- Tono Franco directo. No paternalista, no alarmista, no vendedor.
-- Solo menciona POIs presentes en el input. NUNCA inventes estaciones de metro futuras (L7, L8, L9), líneas en construcción ni proyectos urbanos planificados.
-- NUNCA menciones "el motor" ni "el modelo" como entidad — el usuario ve a Franco, no al instrumento de cálculo. La proyección se nombra "la proyección de plusvalía a futuro (${PROY_PCT})" o "la proyección estándar Franco", nunca "la proyección del motor/del modelo" ni "el modelo usa/apuesta".
-
-REGLA 7 — \`headline\` Y \`preview\` SIGUEN LA MISMA DOCTRINA
-- headline_clp: 6-10 palabras. Agrega un ángulo, no titula la zona genéricamente.
-  NO: "Metro y mix comercial impulsan demanda premium."
-  OK: "Pagas prima por El Golf, no por el depto."
-- preview_clp: 12-18 palabras (máximo 2 líneas). Frase analítica que explica el POR QUÉ, no lista datos.
-  NO: "Metro a 180m, Bustamante a 410m, Costanera a 850m."
-  OK: "La mezcla Metro + El Golf valida un arriendo en el tramo alto de la zona, pero no garantiza retorno." (traduce los percentiles a lenguaje llano — "en el tramo alto", "entre los más altos" — nunca "percentil 78"/"p78")
-
-REGLA 8 — Plusvalía: jerarquía canónica IA ↔ motor
-
-La proyección base es ${PROY_PCT} anual flat — la proyección estándar Franco a futuro. Es canónica para los cálculos del análisis (TIR, Cash-on-Cash, valor venta, patrimonio proyectado). La histórica de la comuna que recibís en el contexto es CONTEXTO DE RIESGO sobre esa apuesta, no proyección alternativa. NUNCA digas "la comuna se aprecia ${PROY_PCT}": es un supuesto parejo del modelo, no una afirmación sobre la comuna.
-
-Cuando interpretes la histórica vs la proyección ${PROY_PCT}:
-- Histórica > ${PROY_PCT}: la proyección es conservadora vs lo observado.
-- Histórica ≈ ${PROY_PCT} (ej. Providencia 3,0%): la proyección está alineada con la trayectoria.
-- Histórica < ${PROY_PCT} positiva: la proyección descansa en una densificación o cambio de zona distinto a la década pasada.
-- Histórica negativa: la proyección es una apuesta a recuperación frente a una década de pérdida.
-- Sin data histórica: la proyección es supuesto puro, sin verificación local.
-
-PROHIBIDO:
-- "la proyección sobreestima la plusvalía"
-- "la plusvalía real será X%" (X ≠ ${PROY_PCT})
-- "no esperes plusvalía aquí"
-- Cualquier sugerencia de una proyección distinta al ${PROY_PCT}.
-
-VÁLIDO:
-- "Santiago perdió 1% anual histórico — la proyección a futuro de ${PROY_PCT} es una apuesta a recuperación."
-- "Providencia subió 3% anual; la proyección a ${PROY_PCT} queda alineada con esa trayectoria."
-- "Sin data histórica para esta comuna; la proyección ${PROY_PCT} es supuesto sin ancla local."
-
-Esta REGLA 8 NO sustituye los umbrales cualitativos de REGLA 1 (que clasifican la histórica como "fuerte/en línea/débil" vs el promedio histórico Gran Santiago). Disciplina la JERARQUÍA entre proyección motor y histórica al hablarle al usuario.
-
-REGLA 9 — EL VEREDICTO DISCIPLINA EL TONO
-El contexto puede traer el veredicto del análisis (COMPRAR / AJUSTA SUPUESTOS / BUSCAR OTRA). La zona es una pieza del MISMO informe: nunca empuja contra él.
-- Con BUSCAR OTRA: PROHIBIDO el lenguaje comprador — "punto dulce", "oportunidad", "margen para negociar aún más", "tienes espacio para cerrar mejor" o cualquier frase que invite a avanzar la compra. La lectura de zona explica el contexto y los riesgos que la sostienen o la contradicen, y la \`accion\` apunta a VERIFICAR o DESCARTAR ("confirma X antes de considerar cualquier propiedad en esta zona"), nunca a negociar la compra de este depto.
-- Con AJUSTA SUPUESTOS: la zona puede señalar palancas, sin vender ("la brecha de arriendo es el supuesto a validar antes de mover cualquier otra pieza").
-- Con COMPRAR: no siembres alarma sin dato; los riesgos van con cifra o no van.
-- El veredicto NO se menciona textualmente en el narrative (ya vive en el hero del informe): solo disciplina tu tono y la dirección de la \`accion\`.
-- Si el contexto no trae veredicto, escribe neutro: ni comprador ni alarmista.
-
-FORMATO DE MONTOS
-- CLP: "$1.500.000" — separador de miles con punto.
-- UF: "UF 38,7" (decimal con coma) o "UF 1.250" (>=100).
-- Rango: "$950.000–$1.700.000" / "UF 24,5–UF 43,8".
-
-VERSIONES CLP vs UF
-- Los campos *_clp y *_uf son IDÉNTICOS si el contenido no menciona montos.
-- Si el contenido menciona montos, *_clp los expresa en pesos y *_uf en UF (mismo orden, mismas frases, solo cambia la unidad).
-- \`accion\` NO tiene versión UF: es una sola frase, no depende de unidad.
-
-ESQUEMA DE RESPUESTA (JSON, 7 campos)
-
-{
-  "headline_clp": "...",
-  "headline_uf":  "...",
-  "preview_clp":  "...",
-  "preview_uf":   "...",
-  "narrative_clp": "3-4 frases con estructura D→C→R. Si hay montos, en pesos.",
-  "narrative_uf":  "Mismas 3-4 frases con montos en UF. Idéntica si no hay montos.",
-  "accion": "1 frase imperativa específica (≤140 chars)."
-}
-
-Respondes SOLO con el JSON, sin texto adicional ni backticks.`;
-
-interface InsightAIContext {
-  arriendoCLP: number;
-  valorUF: number;
-  plusvaliaAnual?: number;
-  plusvaliaFallback?: boolean;
-  precioM2?: { tuDepto: number; medianaComuna: number; diffPct: number } | null;
-  /** Universo de la mediana de precio/m² (nuevo | usado). Desde el fix de
-   *  segmentación (ac83e94) la mediana sale de UN solo universo, y la card y la
-   *  fraseCanonica ya lo declaran. Sin esto, la zona seguía diciendo "la mediana
-   *  de <comuna>" a secas sobre la misma cifra — el usuario leía dos rótulos
-   *  distintos para el mismo número en el mismo informe. Ausente ⇒ mediana mixta
-   *  (snapshot pre-segmentación): la zona no declara universo, como antes. */
-  universoMediana?: "nuevo" | "usado";
-  oferta?: { rangoArriendoMin: number; rangoArriendoMax: number; percentilTuDepto: number } | null;
-  /** Veredicto del análisis (COMPRAR | AJUSTA SUPUESTOS | BUSCAR OTRA) — disciplina el
-   *  TONO de la zona (REGLA 9): la zona nunca empuja contra el veredicto. Censo editorial
-   *  familia 3: zonas con lenguaje comprador ("punto dulce") en informes BUSCAR OTRA. */
-  veredicto?: string;
-}
-
-async function generateInsightAI(
-  comuna: string,
-  pois: ZoneInsightPois,
-  ctx: InsightAIContext,
-  /** Colector de timing (Goal A) — opcional, solo medición. */
-  registro?: RegistroLlamadas,
-): Promise<{ headline_clp: string; headline_uf: string; preview_clp: string; preview_uf: string; narrative_clp: string; narrative_uf: string; accion: string }> {
-  const flatTop: Array<{ tipo: string; nombre: string; distancia: number }> = [];
-  (Object.keys(pois) as Array<keyof ZoneInsightPois>).forEach((bucket) => {
-    pois[bucket].slice(0, 3).forEach((p) => flatTop.push({ tipo: bucket, nombre: p.nombre, distancia: p.distancia }));
-  });
-  flatTop.sort((a, b) => a.distancia - b.distancia);
-  const top = flatTop.slice(0, 8);
-
-  const fmtCLP = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
-  const fmtUF = (n: number) => {
-    const uf = ctx.valorUF > 0 ? n / ctx.valorUF : 0;
-    return uf >= 100
-      ? "UF " + Math.round(uf).toLocaleString("es-CL")
-      : "UF " + (Math.round(uf * 10) / 10).toFixed(1).replace(".", ",");
-  };
-
-  const finLines: string[] = [];
-  if (ctx.arriendoCLP > 0) {
-    finLines.push(`- Arriendo estimado: ${fmtCLP(ctx.arriendoCLP)} / ${fmtUF(ctx.arriendoCLP)}`);
-  }
-  if (ctx.oferta) {
-    finLines.push(
-      `- Rango comparable arriendo: ${fmtCLP(ctx.oferta.rangoArriendoMin)}–${fmtCLP(ctx.oferta.rangoArriendoMax)} / ${fmtUF(ctx.oferta.rangoArriendoMin)}–${fmtUF(ctx.oferta.rangoArriendoMax)}`
-    );
-    finLines.push(`- Percentil de tu arriendo dentro del rango: P${ctx.oferta.percentilTuDepto}`);
-  }
-  if (ctx.precioM2) {
-    const diff = ctx.precioM2.diffPct;
-    // El UNIVERSO va en la misma línea que la cifra, no en una regla aparte: es
-    // el rótulo de ESE número, y separarlos invita a que el modelo cite la cifra
-    // sin la etiqueta. Mismo vocabulario que la fraseCanonica del hallazgo
-    // ("departamentos nuevos/usados de la comuna") para que el informe no use dos
-    // nombres distintos para la misma muestra.
-    const univ = ctx.universoMediana === "nuevo" ? " de departamentos NUEVOS"
-      : ctx.universoMediana === "usado" ? " de departamentos USADOS"
-      : "";
-    // El % se entrega REDONDEADO A ENTERO: es el mismo número que la card y la
-    // fraseCanonica del hallazgo (que redondean a entero), y con un decimal el
-    // informe mostraba "23%" en la card y "23,6%" en la zona para la misma
-    // comparación — el juez editorial lo marcó como cifra que baila.
-    const diffEntero = Math.round(diff);
-    finLines.push(
-      `- Precio m² tu depto: UF ${ctx.precioM2.tuDepto.toFixed(1).replace(".", ",")} (mediana${univ} de ${comuna}: UF ${ctx.precioM2.medianaComuna.toFixed(1).replace(".", ",")}, ${diffEntero >= 0 ? "+" : ""}${diffEntero}%). Cita ESE porcentaje tal cual, sin decimales`
-        + (univ ? `, y nombra el universo: es la mediana${univ.toLowerCase()}, NO la de toda la comuna.` : ".")
-    );
-  } else {
-    // B4-1: cuando no hay data de mediana de precio/m² para esta comuna
-    // (zona sin scraped_properties suficientes), el IA debe mencionarlo
-    // explícitamente — no omitirlo en silencio. El usuario tiene que saber
-    // que la comparación de precio/m² vs zona NO está disponible.
-    finLines.push(`- Precio m² zona: SIN DATA confiable para ${comuna} (sample insuficiente). Debes mencionarlo explícitamente en el narrative — no omitas en silencio.`);
-  }
-  if (typeof ctx.plusvaliaAnual === "number") {
-    // B4-2: el número es ANUALIZADO (ej. 3.2 = 3,2% anual). El acumulado 10
-    // años de la misma comuna sería ~37% — no confundir un valor con el otro.
-    // La tasa de proyección de los umbrales (REGLA 1/8, hoy 3%) es la PROYECCIÓN
-    // estándar Franco a futuro, no la histórica observada — aunque coincidan en el número.
-    finLines.push(ctx.plusvaliaFallback
-      ? `- Sin histórico propio de ${comuna}: la comuna NO está en la serie ${RANGO_HIST}. Referencia usada: promedio del Gran Santiago, ${ctx.plusvaliaAnual.toFixed(1).replace(".", ",")}% anual. PROHIBIDO atribuir ese % a ${comuna} ("${comuna} promedió/subió X%") — es referencia regional, no la historia de la comuna.`
-      // F4.1 — el período va JUNTO a la cifra: cada comuna tiene el suyo
-      // (2015-2025 / 2015-2024 / 2014-2024) y el system prompt, que es estático,
-      // ya no puede nombrar uno fijo. Sin esto la prosa de zona databa el número
-      // con el rango del DEFAULT aunque la comuna tuviera otro.
-      : `- Plusvalía histórica anualizada ${comuna} (${rangoHistDe(comuna)}): ${ctx.plusvaliaAnual.toFixed(1).replace(".", ",")}% (cifra ANUAL, no acumulada 10 años).`);
-  }
-
-  const finBlock = finLines.length > 0 ? `\n\nContexto financiero del depto (usar solo montos presentes acá):\n${finLines.join("\n")}` : "";
-
-  const userPrompt = `Comuna: ${comuna}
-Tipo: análisis LTR (arriendo de largo plazo)${ctx.veredicto ? `
-Veredicto del análisis (REGLA 9 — disciplina tu tono, no lo menciones textualmente): ${ctx.veredicto}` : ""}
-
-Atractores cercanos (los más relevantes por distancia):
-${top.length === 0 ? "(ninguno dentro de 2,5 km — comuna periférica)" : top.map(t => `- ${t.tipo.toUpperCase()}: ${t.nombre} (${t.distancia} m)`).join("\n")}${finBlock}
-
-Genera tu respuesta como JSON exactamente con esta forma:
-{
-  "headline_clp": "6-10 palabras. Agrega un ángulo, no titula la zona genéricamente.",
-  "headline_uf":  "Igual que headline_clp si no contiene montos.",
-  "preview_clp":  "12-18 palabras. Frase analítica, estilo editorial, explica el POR QUÉ, no lista datos.",
-  "preview_uf":   "Igual que preview_clp si no contiene montos.",
-  "narrative_clp": "3-4 frases con estructura D→C→R (Dato→Contexto→Riesgo/ventaja). Interpreta los stats, no los recites. Si hay montos, en pesos.",
-  "narrative_uf":  "Mismas 3-4 frases con montos en UF. Idéntica si narrative_clp no contiene montos.",
-  "accion": "1 frase imperativa específica (≤140 chars). Verifica/negocia/decide algo concreto."
-}`;
-
-  try {
-    const hacerLlamada = () => anthropic.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 1200,
-      // Prompt caching (Goal C): system compartido entre análisis distintos de
-      // la misma ventana de 5 min. Solo shape del request.
-      system: [{ type: "text" as const, text: INSIGHT_SYSTEM_PROMPT, cache_control: { type: "ephemeral" as const } }],
-      messages: [{ role: "user", content: userPrompt }],
-    });
-    const message = registro
-      ? await registro.medir("principal", CLAUDE_MODEL, hacerLlamada)
-      : await hacerLlamada();
-    const text = message.content[0].type === "text" ? message.content[0].text : "";
-    const cleaned = text.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
-    const parsed = JSON.parse(cleaned);
-    return {
-      headline_clp: String(parsed.headline_clp || ""),
-      headline_uf: String(parsed.headline_uf || parsed.headline_clp || ""),
-      preview_clp: String(parsed.preview_clp || ""),
-      preview_uf: String(parsed.preview_uf || parsed.preview_clp || ""),
-      narrative_clp: String(parsed.narrative_clp || ""),
-      narrative_uf: String(parsed.narrative_uf || parsed.narrative_clp || ""),
-      accion: String(parsed.accion || ""),
-    };
-  } catch (e) {
-    console.error("zone-insight: AI generation failed", e);
-    return {
-      headline_clp: "",
-      headline_uf: "",
-      preview_clp: "",
-      preview_uf: "",
-      narrative_clp: "",
-      narrative_uf: "",
-      accion: "",
-    };
-  }
-}
-
 // ─── Núcleo de generación (extraído del GET · paquete B) ─────────────────────
 // Computa el zone insight COMPLETO para una fila de `analisis` ya cargada: POIs,
-// stats (plusvalía/mediana/oferta), prosa IA (con veredicto para REGLA 9) y el
+// stats (plusvalía/mediana/oferta) y el
 // objeto de respuesta listo para cachear. NO persiste ni conoce HTTP — el GET lo
 // envuelve (y cachea con el client del request); scripts/regen-zone-insight.ts lo
 // invoca con service-role para regenerar zonas cacheadas por lote. Errores de
@@ -736,8 +441,6 @@ export async function buildZoneInsightForRow(
   // path normal usa createAdminClient con SUPABASE_SERVICE_ROLE_KEY).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
-  /** Colector de timing (Goal A) — opcional, se threadea a la llamada IA. */
-  registro?: RegistroLlamadas,
 ): Promise<{ response: ZoneInsightResponse } | { error: string; status: number }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = (row.input_data ?? {}) as any;
@@ -794,7 +497,6 @@ export async function buildZoneInsightForRow(
   // 3) Stats — comparable comuna ───────────────────
   let precioM2: ZoneInsightStats["precioM2"] = null;
   // Universo declarado por el snapshot (si lo trae). Ver el bloque Fase B abajo.
-  let medSnapUniverso: "nuevo" | "usado" | undefined;
   let ofertaComparable: ZoneInsightStats["ofertaComparable"] = null;
   try {
     // Use service role for stats so we can read the full scraped dataset regardless of RLS.
@@ -833,7 +535,6 @@ export async function buildZoneInsightForRow(
       { confiable?: boolean; desviacionPct?: number | null } | null | undefined;
     const resuelta = resolverMedianaZona({ medSnap, pvcMotor, precioM2Live: precioM2 });
     precioM2 = resuelta.precioM2;
-    medSnapUniverso = resuelta.universo;
 
     // Fill in tuDepto using precioUF / superficie directly (in UF).
     // We deliberately ignore results.metrics.precioM2 (it can add optional parking
@@ -860,31 +561,11 @@ export async function buildZoneInsightForRow(
     console.error("zone-insight: stats query failed", e);
   }
 
-  // 4) AI insight ──────────────────────────────────
-  const insight = await generateInsightAI(comuna, pois, {
-    arriendoCLP: arriendoEstimadoCLP,
-    valorUF: ufValue,
-    plusvaliaAnual: plusvaliaHistorica.anualizada,
-    plusvaliaFallback: !histo, // sin dato propio de la comuna → referencia Gran Santiago
-    veredicto: typeof results?.veredicto === "string" ? results.veredicto : undefined,
-    precioM2: precioM2,
-    // El universo de la mediana que se está citando: del snapshot si lo trae
-    // (fuente única con la card), si no el del sujeto —que es el que
-    // fetchComunaStats usó para su query—. Sin snapshot y sin segmentar, undefined.
-    universoMediana: (medSnapUniverso ?? condicionSujeto) as "nuevo" | "usado" | undefined,
-    oferta: ofertaComparable
-      ? {
-          rangoArriendoMin: ofertaComparable.rangoArriendoMin,
-          rangoArriendoMax: ofertaComparable.rangoArriendoMax,
-          percentilTuDepto: ofertaComparable.percentilTuDepto,
-        }
-      : null,
-  }, registro);
-
+  // 4) Sin prosa IA (05-sep-2026): la sección y el drawer escriben su síntesis desde las
+  //    celdas; lo que el producto lee de acá es el rango de arriendos y los lugares.
   const response: ZoneInsightResponse = {
     stats: { plusvaliaHistorica, precioM2, ofertaComparable },
     pois,
-    insight,
     valorUF: ufValue,
     promptVersion: PROMPT_VERSION_ZONA,
   };
