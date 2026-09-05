@@ -1,22 +1,19 @@
 "use client";
 // ============================================================================
-// Página DEV — pixel de los DRAWERS PROPIOS STR (⛔#3). Monta DrawerSTR con
-// DrawerContentSTR sobre un fixture JSON congelado, sin sesión ni Supabase.
-// T5 (03-sep-2026): la rama LTR de esta página murió con los drawers LTR (los
-// hallazgos viven en los capítulos y la página solo abre "La zona"); queda STR.
-// Controlado por query: ?row=santiagoStr|qaStr|selfLiqStr|elBosqueStr &key=<drawerKey> &cur=CLP|UF
-//   · elBosqueStr: histórico NEGATIVO (−0,7%), única comuna con serie histórica bajo cero.
-//   · ?comp=hero monta el HeroSTR de producción con el mismo fixture.
-// Los fixtures LTR del JSON quedan (los usa el shot QA del acordeón), pero esta ruta no
-// los monta.
+// Página DEV — monta el informe y sus piezas sobre fixtures JSON congelados, sin sesión
+// ni Supabase. La ruta real exige sesión de dueño/suscriptor, así que sin esto la página
+// no se puede ver ni shotear sin login.
+//   · ?row=staRosaStr|grajalesStr&comp=pagina  → página STR completa (STRResultsClient)
+//   · ?row=providenciaLtr&comp=paginaLtr       → página LTR completa (PremiumResults)
+//   · ?row=<str>&comp=<pieza>                  → piezas compartidas (matriz, planilla, fila
+//     de dato, tramos, curva, cifras, día 1, patrimonio, all) sobre el recompute volcado
+// T3 STR (05-sep-2026): murió la rama de los drawers STR viejos (DrawerSTR, DrawerContentSTR,
+// HeroSTR) junto con esos componentes; los hallazgos viven en los capítulos.
+// Los fixtures se regeneran desde la base con scripts/of-dump-fixture.ts (gitignored).
 // ============================================================================
-import { Suspense, useMemo, useState } from "react";
+import { Suspense } from "react";
 import { useSearchParams, notFound } from "next/navigation";
-import type { FullAnalysisResult, Hallazgo } from "@/lib/types";
-import { DrawerSTR, type DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
-import { HeroSTR } from "@/components/analysis/str/HeroSTR";
-import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/DrawerContentSTR";
-import { ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
+import type { FullAnalysisResult } from "@/lib/types";
 import { TokensHallazgos } from "@/components/analysis/hallazgos/HallazgosAcordeon";
 import { DocTokens } from "@/components/analysis/portada/PortadaInforme";
 import { TokensShared } from "@/components/analysis/shared";
@@ -25,37 +22,20 @@ import { STRResultsClient } from "@/app/analisis/renta-corta/[id]/results-client
 import { PremiumResults } from "@/app/analisis/[id]/results-client";
 import fixtures from "./fixtures.json";
 
-type FixKey = "santiagoStr" | "qaStr" | "selfLiqStr" | "elBosqueStr" | "staRosaStr" | "grajalesStr" | "providenciaLtr";
-
-function seqStr(hallazgos: Hallazgo[] | undefined): DrawerKeySTR[] {
-  const seq: DrawerKeySTR[] = [];
-  for (const h of ordenarHallazgosPiramideSTR(hallazgos)) {
-    const k = HALLAZGO_DRAWER_STR[h.id];
-    if (k && !seq.includes(k)) seq.push(k);
-  }
-  return seq;
-}
+type FixKey = "staRosaStr" | "grajalesStr" | "providenciaLtr";
 
 function Inner() {
   const sp = useSearchParams();
-  const rowKey = (sp.get("row") ?? "santiagoStr") as FixKey;
+  const rowKey = (sp.get("row") ?? "staRosaStr") as FixKey;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fix = (fixtures as Record<string, any>)[rowKey];
   const isSTR = fix?.tipo === "renta_corta" || fix?.tipo === "short-term";
-  const [currency, setCurrency] = useState<"CLP" | "UF">((sp.get("cur") as "CLP" | "UF") ?? "CLP");
-
   const results = fix?.results as FullAnalysisResult;
   const valorUF: number = fix?.uf ?? 38800;
-
-  const strSeq = useMemo(() => (isSTR && results ? seqStr(results.hallazgos) : []), [isSTR, results]);
-  const initialKey = sp.get("key") ?? "retorno";
-  const [strKey, setStrKey] = useState<DrawerKeySTR>((initialKey as DrawerKeySTR) ?? "retorno");
-  const [heroDrawer, setHeroDrawer] = useState<DrawerKeySTR | null>(null);
-
   const comp = sp.get("comp");
+
   // Goal "LTR hereda piezas compartidas" (05-sep-2026) · `?row=providenciaLtr&comp=paginaLtr`
-  // monta la página LTR completa (PremiumResults) con el recompute volcado de 7710a017, con
-  // el mismo motivo que `comp=pagina` en STR: la ruta real exige sesión de dueño/suscriptor.
+  // monta la página LTR completa con el recompute volcado de 7710a017.
   if (fix && !isSTR && comp === "paginaLtr") {
     return (
       <PremiumResults
@@ -85,13 +65,9 @@ function Inner() {
       />
     );
   }
-  if (!fix || !isSTR) return <div style={{ padding: 40 }}>fixture STR ?row=santiagoStr|qaStr|selfLiqStr|elBosqueStr|staRosaStr no encontrado (T5: esta ruta ya no monta LTR)</div>;
+  if (!fix || !isSTR) return <div style={{ padding: 40 }}>fixture ?row=staRosaStr|grajalesStr (STR, con &comp=pagina o &comp=&lt;pieza&gt;) · providenciaLtr (&comp=paginaLtr) no encontrado</div>;
 
-  // T1 (04-sep-2026) · `?comp=<pieza>` monta las piezas compartidas (matriz, planilla, fila
-  // de dato, tramos, curva, cifras, día 1, patrimonio, all) sobre el recompute volcado de
-  // Sta. Rosa (`?row=staRosaStr`). Sin registro por pieza cada QA era un `if` a mano.
-  // `?comp=pagina` monta la página STR completa (T1) con el fixture: la ruta real exige
-  // sesión, así que sin esto la página nueva no se puede ver ni shotear sin login.
+  // `?comp=pagina` monta la página STR completa (T1) con el fixture.
   if (comp === "pagina") {
     return (
       <STRResultsClient
@@ -116,80 +92,16 @@ function Inner() {
       />
     );
   }
-  if (comp && comp !== "hero") {
-    return (
-      <div className="doc-dictamen doc-tokens" style={{ background: "var(--doc-paper, #FAF8F3)", minHeight: "100vh" }}>
-        <DocTokens />
-        <TokensHallazgos />
-        <TokensShared />
-        <p className="font-mono" style={{ fontSize: 12, padding: "12px 20px 0" }}>DEV · {rowKey} · piezas compartidas · comp={comp}</p>
-        <PiezasShared fix={fix} comp={comp} />
-      </div>
-    );
-  }
 
-  // `?comp=hero` monta el HeroSTR de producción con el mismo fixture. Existe para poder
-  // verificar el clickeable de "La posición de Franco" sin sesión: la página de resultados
-  // real exige auth, así que sin esto el botón solo se podía revisar leyendo el código.
-  if (sp.get("comp") === "hero") {
-    return (
-      <div style={{ background: "var(--franco-bg, #FAFAF8)", minHeight: "100vh", padding: 16 }}>
-        <p className="font-mono" style={{ fontSize: 12, marginBottom: 12 }}>
-          DEV · {rowKey} · HeroSTR · drawer abierto: {heroDrawer ?? "—"}
-        </p>
-        <HeroSTR
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ai={{ conviene: { cajaAccionable: "Stub de QA: la caja de posición existe solo cuando hay prosa IA." } } as any}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          results={results as any}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          veredicto={(results as any)?.francoScore?.veredicto ?? "BUSCAR OTRA"}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          score={(results as any)?.francoScore?.score ?? null}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          inputData={(fix.input_data ?? {}) as any}
-          comuna={fix.comuna}
-          onOpenDrawer={(k) => setHeroDrawer(k)}
-        />
-      </div>
-    );
-  }
-
+  // T1 (04-sep-2026) · `?comp=<pieza>` monta las piezas compartidas sobre el recompute
+  // volcado. Sin registro por pieza cada QA era un `if` a mano.
   return (
-    <div style={{ background: "var(--franco-bg, #FAFAF8)", minHeight: "100vh" }}>
-      {/* Los dos bloques que el informe real aporta y esta ruta no montaba: los tokens
-          --doc-* (portada) y el CSS del vocabulario (acordeón). Sin ellos los cuerpos
-          se ven sin diseño y el shot QA no sirve de evidencia visual. */}
+    <div className="doc-dictamen doc-tokens" style={{ background: "var(--doc-paper, #FAF8F3)", minHeight: "100vh" }}>
       <DocTokens />
       <TokensHallazgos />
-      <div style={{ padding: "16px 24px", display: "flex", gap: 12, alignItems: "center" }}>
-        <span className="font-mono" style={{ fontSize: 12 }}>
-          DEV · {rowKey} · {fix.comuna} · STR · key={strKey}
-        </span>
-        <button className="font-mono" style={{ fontSize: 12, border: "1px solid #ccc", padding: "3px 10px", borderRadius: 6 }} onClick={() => setCurrency((c) => (c === "CLP" ? "UF" : "CLP"))}>
-          {currency}
-        </button>
-      </div>
-      <DrawerSTR
-        activeKey={strKey}
-        titulo={DRAWER_TITULOS_STR[strKey]}
-        sequence={strSeq}
-        onClose={() => {}}
-        onNavigate={(k) => setStrKey(k)}
-      >
-        <DrawerContentSTR
-          activeKey={strKey}
-          analysisId={fix.id}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          results={results as any}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          inputData={(fix.input_data ?? {}) as any}
-          comuna={fix.comuna}
-          currency={currency}
-          valorUF={valorUF}
-          ai={null}
-        />
-      </DrawerSTR>
+      <TokensShared />
+      <p className="font-mono" style={{ fontSize: 12, padding: "12px 20px 0" }}>DEV · {rowKey} · piezas compartidas · comp={comp ?? "all"}</p>
+      <PiezasShared fix={fix} comp={comp ?? "all"} />
     </div>
   );
 }

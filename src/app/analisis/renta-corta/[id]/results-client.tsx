@@ -36,7 +36,7 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { HeroStrDictamen } from "@/components/analysis/str/HeroStrDictamen";
 import { StateBox } from "@/components/ui/StateBox";
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { ordenarHallazgosPiramideSTR } from "@/components/analysis/str/PiramideHallazgosSTR";
+import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { PrincipalesHallazgos } from "@/components/analysis/PrincipalesHallazgos";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { TokensShared } from "@/components/analysis/shared";
