@@ -69,12 +69,8 @@ export function LosNumeros({
       ),
     },
     {
-      // §5.7: anglicismo en cursiva, con el nombre en español primero (tabla) y glosa en la línea.
-      k: (
-        <>
-          Retorno sobre lo puesto (<em className="ang">cash-on-cash</em>)
-        </>
-      ),
+      // §5.7: el rótulo en español, de una línea; el anglicismo en cursiva abre la glosa.
+      k: "Retorno sobre lo puesto",
       v: coc != null ? pct1(coc) : "—",
       neg: coc != null && coc < 0,
       tr:
@@ -82,11 +78,11 @@ export function LosNumeros({
           <>Sin pie no hay capital propio sobre el que medirlo.</>
         ) : coc < 0 ? (
           <>
-            Lo que rinde este año la plata que pusiste. Por cada $100, <b>este año pones ${Math.abs(coc).toFixed(2).replace(".", ",")} más</b> en vez de recibir.
+            <em className="ang">Cash-on-cash</em>: por cada $100 que pusiste, <b>este año pones ${Math.abs(coc).toFixed(2).replace(".", ",")} más</b> en vez de recibir.
           </>
         ) : (
           <>
-            Lo que rinde este año la plata que pusiste. Por cada $100, <b>este año recibes ${coc.toFixed(2).replace(".", ",")}</b> de vuelta.
+            <em className="ang">Cash-on-cash</em>: por cada $100 que pusiste, <b>este año recibes ${coc.toFixed(2).replace(".", ",")}</b> de vuelta.
           </>
         ),
     },
