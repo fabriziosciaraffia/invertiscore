@@ -43,7 +43,7 @@ import {
 import { DrawerSensibilidadLtr, DrawerDistanciaLtr } from "@/components/analysis/drawers/DrawersPropios";
 import type { HallazgoSensibilidad, HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
-import { ZonaCeldasLtr, buildZonaLtr } from "@/components/analysis/zona/ZonaLtr";
+import { ZonaCeldasLtr, buildZonaLtr, sintesisZonaLtr } from "@/components/analysis/zona/ZonaLtr";
 import { ZoneMap } from "@/components/zone-insight/ZoneMap";
 
 export type DrawerKey =
@@ -1800,17 +1800,17 @@ function DrawerZona({
   // las tres celdas de la sección, el mapa, los lugares como filas y la fuente.
   // Murió la nota educativa sobre plusvalía histórica vs proyectada: es método,
   // y la celda de valorización ya dice qué proyección usa el informe.
-  const sintesis =
-    (currency === "CLP" ? zoneInsight.insight.narrative_clp : zoneInsight.insight.narrative_uf) ||
-    (currency === "CLP" ? zoneInsight.insight.preview_clp : zoneInsight.insight.preview_uf) ||
-    "";
+  // Síntesis determinista desde las celdas (goal "síntesis de zona LTR", 05-sep-2026): la
+  // prosa IA cacheada en zone_insight ya no se muestra (contradecía las celdas); la cache
+  // sigue siendo la fuente del rango de arriendos y de los lugares.
+  const zonaLtr = buildZonaLtr({ stats: zoneInsight.stats, sobre: sobreprecio, medianaResolvedAt, arriendoUsuarioCLP, comuna });
   const avisos = zoneInsight.stats.ofertaComparable?.totalDeptos ?? 0;
   return (
     <div className="doc-tokens">
-      {sintesis && <VProsa>{sintesis}</VProsa>}
+      <VProsa>{sintesisZonaLtr(zonaLtr)}</VProsa>
       {/* Goal "LTR hereda": las mismas tres celdas de la sección (mediana del hallazgo con
           procedencia, rango de arriendos con n y fecha, valorización con fuente). Sin P71. */}
-      <ZonaCeldasLtr zona={buildZonaLtr({ stats: zoneInsight.stats, sobre: sobreprecio, medianaResolvedAt, arriendoUsuarioCLP, comuna })} currency={currency} valorUF={valorUF} />
+      <ZonaCeldasLtr zona={zonaLtr} currency={currency} valorUF={valorUF} />
       {zoneCenter && (
         <VViz t="El depto y lo que hay alrededor">
           <ZoneMap centerLat={zoneCenter.lat} centerLng={zoneCenter.lng} pois={zoneInsight.pois} />

@@ -136,35 +136,33 @@ export function ZonaCeldasLtr({ zona, currency, valorUF, cargando = false }: { z
   );
 }
 
-/** Síntesis CORTA de la sección: el titular del zone_insight + las dos primeras oraciones
- *  del insight, ~40 palabras. La prosa completa vive solo en el drawer. Si las dos
- *  oraciones pasan de 45 palabras, queda una. Sin titular (insights viejos), solo las
- *  oraciones. */
-function pickSintesis(data: ZoneInsightData | null, currency: "CLP" | "UF"): { titular: string; texto: string } {
-  if (!data) return { titular: "", texto: "" };
-  const i = data.insight;
-  const clp = currency === "CLP";
-  const titular = ((clp ? i.headline_clp : i.headline_uf) || i.headline_clp || "").trim().replace(/[.:;]+$/, "");
-  const fuente = (clp ? i.narrative_clp : i.narrative_uf) || (clp ? i.preview_clp : i.preview_uf) || "";
-  let texto = primerasOraciones(fuente, 2);
-  if (palabras(texto) > 45) texto = primerasOraciones(fuente, 1);
-  return { titular, texto };
-}
-
-const palabras = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
-
-/** Corta en el n-ésimo fin de oración (`. ? !` seguido de espacio o fin). Los puntos de
- *  miles ($778.000) no cortan porque no van seguidos de espacio. */
-function primerasOraciones(texto: string, n: number): string {
-  const t = texto.trim();
-  const re = /[.!?](?=\s|$)/g;
-  let k = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(t))) {
-    k += 1;
-    if (k === n) return t.slice(0, m.index + 1);
+/**
+ * Síntesis determinista (goal "síntesis de zona LTR", 05-sep-2026): una oración por celda
+ * con dato, unidas como en STR. La escribe el motor desde las MISMAS celdas; la IA no abre
+ * la zona (la prosa cacheada en zone_insight contradecía las celdas: "sin data de precio
+ * m²" con la mediana dos líneas más abajo, percentiles que ya no se publican). Sin celda,
+ * sin oración; la valorización solo con serie propia de la comuna (el promedio Gran
+ * Santiago no es dato de la comuna). Sin ninguna, "Sin datos suficientes de la zona."
+ */
+export function sintesisZonaLtr(zona: ZonaLtr): string {
+  const partes: string[] = [];
+  const { m2, arriendo: ar, valorizacion: pl } = zona;
+  if (m2) {
+    partes.push(
+      Math.abs(m2.desviacionPct) < 0.5
+        ? "tu precio por m² está en la mediana de la comuna"
+        : `tu precio por m² está ${pct1(Math.abs(m2.desviacionPct))}% ${m2.desviacionPct > 0 ? "sobre" : "bajo"} la mediana de la comuna`,
+    );
   }
-  return t;
+  if (ar && ar.tuyo > 0 && ar.posicion) {
+    partes.push(`tu arriendo está ${ar.posicion === "dentro" ? "dentro del" : ar.posicion === "sobre" ? "sobre el" : "bajo el"} rango de la zona`);
+  }
+  if (pl.propia) {
+    partes.push(pl.anualizada < 0 ? `la comuna perdió ${pct1(Math.abs(pl.anualizada))}% al año` : `la comuna se valorizó ${pct1(pl.anualizada)}% al año`);
+  }
+  if (!partes.length) return "Sin datos suficientes de la zona.";
+  const texto = partes.join(" · ");
+  return texto.charAt(0).toUpperCase() + texto.slice(1) + ".";
 }
 
 export function fuenteZonaLtr(zona: ZonaLtr): ReactNode {
@@ -192,27 +190,13 @@ export function ZonaLtrSection({
   valorUF: number;
   zona: ZonaLtr;
 }) {
-  const hasError = !!error && !data;
-  const esCoords = !!error && (/\b400\b/.test(error) || /coordenada/i.test(error));
-  const sint = pickSintesis(data, currency);
-  const sintesis = hasError
-    ? esCoords
-      ? "Zona no disponible para esta dirección."
-      : "No pudimos cargar la zona ahora."
-    : loading && !data
-      ? "Analizando transporte, servicios y demanda de la zona…"
-      : sint.texto;
-  const titular = hasError || (loading && !data) ? "" : sint.titular;
+  void data;
+  void error;
+  const sintesis = sintesisZonaLtr(zona);
 
   return (
     <div>
-      {(titular || sintesis) && (
-        <VProsa>
-          {titular && <strong>{titular}.</strong>}
-          {titular && sintesis ? " " : ""}
-          {sintesis}
-        </VProsa>
-      )}
+      <VProsa>{sintesis}</VProsa>
       <ZonaCeldasLtr zona={zona} currency={currency} valorUF={valorUF} cargando={loading && !data} />
       <div className="zona-foot">
         <VFuente>{fuenteZonaLtr(zona)}</VFuente>
