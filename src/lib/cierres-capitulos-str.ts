@@ -241,6 +241,9 @@ export function cierrePagasStr(a: ArgsCierrePagasStr, f: FmtCierre): SegCierre[]
       if (a.mesCierraUF != null && a.mesCierraUF > 0 && a.precioUF > 0) {
         const dm = Math.round((1 - a.mesCierraUF / a.precioUF) * 100);
         segs.push({ t: `Cerrar el mes exige un ${dm}% menos: fuera de lo negociable. El problema es la estructura, no el precio. ` });
+      } else {
+        // Sin "donde el mes cierra" (ningún precio hasta −70% deja el flujo en cero): se dice.
+        segs.push({ t: "Ningún precio dentro de lo negociable cierra el mes: el problema es la estructura, no el precio. " });
       }
     }
   }

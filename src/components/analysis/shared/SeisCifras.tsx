@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
  * cambian con la moneda (cap rate, TIR, ocupación) se formatean igual en las dos.
  */
 export type CifraInforme = {
-  k: string;
+  k: ReactNode;
   v: ReactNode;
   neg?: boolean;
   /** Traducción de una línea (con `<b>` para lo que pesa). */

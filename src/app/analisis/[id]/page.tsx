@@ -346,12 +346,15 @@ export default async function AnalisisDetallePage({
   // un no dueño, admin incluido, generaba y no guardaba).
   const puedeRegenerarProsa = isOwner;
   const mostrarProsaStale = ltrAiStale && !puedeRegenerarProsa;
+  // Una fecha por informe (T3): la banda de invitado y la portada muestran la fecha de la
+  // prosa vigente; created_at no se muestra.
+  const fechaProsaLtr = fechaProsaVigente((data as Record<string, unknown>).pipeline_timing, "ltr") ?? undefined;
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {accessLevel === "guest" || isAnonOwner ? (
         <PublicShareHeader
-          date={formatFechaCorta(analisis.created_at)}
+          date={formatFechaCorta(fechaProsaLtr ?? analisis.created_at)}
           anonOwner={isAnonOwner}
           registerNext={`/analisis/${analisis.id}`}
         />
@@ -390,7 +393,7 @@ export default async function AnalisisDetallePage({
           nombre={analisis.nombre}
           ciudad={analisis.ciudad}
           createdAt={analisis.created_at}
-          fechaProsa={fechaProsaVigente((data as Record<string, unknown>).pipeline_timing, "ltr") ?? undefined}
+          fechaProsa={fechaProsaLtr}
           superficie={analisis.superficie}
           precioUF={analisis.precio}
           creatorName={(data as Record<string, unknown>).creator_name as string | undefined}

@@ -16,6 +16,8 @@ export function TokensShared() {
       dangerouslySetInnerHTML={{
         __html: `
       /* ── matriz de sensibilización (mockup-tablas) ── */
+      /* §5.7 · anglicismo que el mercado usa: cursiva en todas sus apariciones */
+      .ang{font-style:italic}
       .mx-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
       .mx-toggle{display:inline-flex;border:1px solid var(--doc-line2);border-radius:4px;overflow:hidden}
       .mx-toggle button{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;background:var(--doc-paper);color:var(--doc-tx3);border:none;cursor:pointer}

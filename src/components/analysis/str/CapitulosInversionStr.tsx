@@ -458,7 +458,7 @@ export function CapitulosInversionStr({
       pregunta: "Cómo lo pagas",
       valor: valorIV,
       valorRojo: false,
-      ksub: [`precio ${ufTxt(precioUF)}`, `pie ${Math.round(piePct)}%`, plazo > 0 ? `${plazo} años al ${pct1(tasa)}%` : "sin crédito", subeTxt].filter(Boolean).join(" · "),
+      ksub: [`precio ${ufTxt(precioUF)}`, `pie ${Math.round(piePct)}%`, plazo > 0 ? `${plazo} años al ${pct1(tasa)}%` : "sin crédito", esEstructural ? "fuera de lo negociable" : subeTxt].filter(Boolean).join(" · "),
       anchorId: anchorCapituloStr("pagas"),
       cuerpo: (
         <div>

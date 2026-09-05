@@ -385,7 +385,7 @@ export function STRResultsClient({
       {/* Chrome de nav/header — el PDF usa la vista documento aparte, no esta página. */}
       {accessLevel === "guest" || isAnonOwner ? (
         <PublicShareHeader
-          date={formatFechaCorta(createdAt)}
+          date={formatFechaCorta(fechaProsa ?? createdAt)}
           anonOwner={isAnonOwner}
           registerNext={`/analisis/renta-corta/${analysisId}`}
         />

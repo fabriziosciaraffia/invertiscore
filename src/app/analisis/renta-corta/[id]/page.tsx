@@ -40,7 +40,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const veredicto = normalizeLegacyVerdict(results?.veredicto) ?? "Análisis";
   // Misma regla que el título LTR: la comuna autoritativa se pega si el nombre
   // libre no la nombra (ver `etiquetaAnalisis`).
-  const title = `Renta Corta: ${etiquetaAnalisis(data.nombre, data.comuna)} — ${veredicto}`;
+  // T3 (05-sep-2026): el nombre libre de las filas STR ya empieza con "Renta Corta - …", así
+  // que el título salía "Renta Corta: Renta Corta - …". Se quita ese prefijo antes de la etiqueta.
+  const nombreSinPrefijo = (data.nombre ?? "").replace(/^\s*renta\s+corta\s*[-–·:]\s*/i, "");
+  const title = `Renta Corta: ${etiquetaAnalisis(nombreSinPrefijo, data.comuna)} — ${veredicto}`;
   const description = `Análisis de renta corta en ${data.comuna}. Veredicto: ${veredicto}.`;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
