@@ -3,14 +3,13 @@
 /**
  * Results client (Renta Corta).
  *
- * Render del módulo STR (E.2 · orden LTR: la pirámide ES el detalle):
+ * Render del módulo STR (Dictamen, T1–T3 sep-2026):
  *   • UnifiedNav variant="app"
- *   • HeroVerdictBlockSTR (veredicto + score + KPIs + conviene IA)
- *   • EjesAplicadosSTR — panel "¿Cómo llegamos?" (colapsable)
- *   • PiramideHallazgosSTR — el detalle; sus cards abren DrawerContentSTR
- *   • AdvancedSectionSTR (07-10 · escenarios · patrimonio · venta)
- *   • ZonaCardSTR — destino zona, abre el drawer tipoHuesped
- *   • DrawerSTR + DrawerContentSTR — overlay de detalle (estado acá)
+ *   • Portada + HeroStrDictamen (veredicto + score + posición de Franco)
+ *   • PrincipalesHallazgos + SeisCifrasStr (+ ModalCalculoStr)
+ *   • CapitulosInversionStr — seis capítulos sobre piezas compartidas
+ *   • ZonaStrSection — La zona con procedencia y su modal Explorar
+ *   (T3 borró los drawers, el hero, la pirámide y la advanced section viejos)
  *
  * Gating: el render completo se muestra siempre. Los CTAs (WalletStatusCTA +
  * ProCTABanner) gestionan el upgrade.
@@ -556,8 +555,7 @@ export function STRResultsClient({
         <SeccionInforme id="la-zona" tono="paper2" eyebrow={`La zona · ${comuna}`} titulo="La zona" intent="Contra qué compites y quién se va a alojar acá.">
           <MarcaSeccion seccion="zona" tipo="str" accessLevel={accessLevel} />
           {/* T2 (05-sep-2026): La zona sobre piezas compartidas, desde `zonaStr` (server, con
-              procedencia). ZonaCardSTR y el drawer de tipo de huésped con porcentajes quedan
-              desmontados (T3 borra). */}
+              procedencia). T3 borró ZonaCardSTR y el drawer de tipo de huésped. */}
           {zonaStr ? (
             <ZonaStrSection zona={zonaStr} comuna={comuna} direccion={direccionPortada} currency={currency} valorUF={ufValue} veredicto={veredicto} accessLevel={accessLevel} />
           ) : (
