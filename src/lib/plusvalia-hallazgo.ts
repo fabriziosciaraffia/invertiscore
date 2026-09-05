@@ -11,7 +11,8 @@
 // buena (Franco es pro-honestidad: no vender plusvalía histórica como futura).
 
 import type { HallazgoPlusvalia, CoberturaHallazgo } from "./types";
-import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, PLUSVALIA_DEFAULT_RANGO, GFK_NIVEL } from "./plusvalia-estimado.gen";
+import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, GFK_NIVEL } from "./plusvalia-estimado.gen";
+import { fuenteHistoricaPlusvalia, procedenciaPlusvalia } from "./plusvalia-procedencia";
 import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 
 // ─── Referencia (umbral absoluto de apreciación real) ─────────────────────
@@ -194,12 +195,9 @@ export function buildHallazgoPlusvalia(p: {
   // estudio Arenas & Cayo 2014-2024. El rótulo sale de la entry de ESTA comuna,
   // nunca de un literal global — que era lo que hacía decir "Arenas & Cayo" a
   // una comuna cuya trayectoria ya no viene de ahí.
-  const entry = PLUSVALIA_HISTORICA[p.comuna.trim()];
-  const rango = entry?.rangoHist ?? PLUSVALIA_DEFAULT_RANGO;
-  const atribucion =
-    entry?.fuente === "gfk"
-      ? "GfK/NielsenIQ, precios de oferta de deptos nuevos"
-      : "Arenas & Cayo, Tinsa, Propital, Activo Más";
+  // Período y atribución desde el único lugar que los conoce (plusvalia-procedencia.ts);
+  // las cadenas son las mismas que antes de esa fuente única.
+  const { rango, atribucion } = procedenciaPlusvalia(p.comuna);
 
   const base = p.tieneData
     ? `apreciación histórica de la comuna ${rango} (${atribucion}), no garantía de apreciación futura`
@@ -208,9 +206,7 @@ export function buildHallazgoPlusvalia(p: {
   // v.fuente carga la PROCEDENCIA HISTÓRICA REAL (rama motor-supuestos F4), no el umbral. Es
   // la fuente única de verdad que los drawers leen (con fallback defensivo al literal para
   // filas persistidas pre-regen, cuya v.fuente aún trae el texto del umbral).
-  const fuenteHistorica = p.tieneData
-    ? `Histórico ${rango} · ${atribucion}`
-    : `Promedio histórico Gran Santiago ${PLUSVALIA_DEFAULT_RANGO}`;
+  const fuenteHistorica = fuenteHistoricaPlusvalia(p.comuna, p.tieneData);
 
   return {
     id: "plusvalia",

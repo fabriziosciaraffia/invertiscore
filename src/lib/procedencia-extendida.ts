@@ -18,6 +18,7 @@
 
 import type { Hallazgo } from "@/lib/types";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+import { fuenteHistoricaPlusvalia } from "@/lib/plusvalia-procedencia";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, nunca literal.
 const PROYECCION_FRANCO_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
@@ -58,11 +59,10 @@ export function procedenciaExtendida(
     }
     case "plusvalia": {
       const v = h.valor;
-      if (v.tieneData) {
-        const fuente = v.fuente && !/umbral/i.test(v.fuente) ? v.fuente : "Arenas & Cayo, Tinsa, Propital, Activo Más";
-        return `${fuente} · 2014-2024`;
-      }
-      return "Promedio histórico Gran Santiago 2014-2024 · la comuna no tiene serie propia";
+      // `v.fuente` ya trae período y atribución de ESTA comuna (builder); antes se le pegaba
+      // "· 2014-2024" encima, aunque la serie fuera GfK 2015-2025.
+      if (v.tieneData) return v.fuente && !/umbral/i.test(v.fuente) ? v.fuente : fuenteHistoricaPlusvalia(null, true);
+      return `${fuenteHistoricaPlusvalia(null, false)} · la comuna no tiene serie propia`;
     }
     case "estructura_financiamiento":
       return "Tasa de referencia: promedio de mercado en UF · Motor Franco, actualización manual";

@@ -5,7 +5,8 @@ import type { ZoneInsightData } from "@/hooks/useZoneInsight";
 import type { HallazgoSobreprecio } from "@/lib/types";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
-import { PLUSVALIA_DEFAULT_RANGO, PLUSVALIA_ESTIMADO, PLUSVALIA_ESTIMADO_DEFAULT } from "@/lib/plusvalia-estimado.gen";
+import { PLUSVALIA_ESTIMADO_DEFAULT } from "@/lib/plusvalia-estimado.gen";
+import { procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { VFuente, VProsa } from "@/components/analysis/hallazgos/vocabulario";
 
 /**
@@ -32,8 +33,6 @@ export interface ZonaLtr {
   arriendo: { min: number; max: number; n: number; tuyo: number; posicion: "dentro" | "sobre" | "bajo" | null; fecha: string | null } | null;
   valorizacion: { valor10: number; anualizada: number; fuente: string; rango: string; propia: boolean };
 }
-
-const FUENTE_LABEL: Record<string, string> = { arenas_cayo: "Arenas & Cayo", gfk: "GfK" };
 
 export function buildZonaLtr(p: {
   stats: ZoneInsightData["stats"] | null | undefined;
@@ -69,10 +68,10 @@ export function buildZonaLtr(p: {
       }
     : null;
 
-  const serie = PLUSVALIA_ESTIMADO[p.comuna];
-  const valorizacion = serie
-    ? { valor10: serie.plusvalia10a, anualizada: serie.anualizada, fuente: FUENTE_LABEL[serie.fuente] ?? serie.fuente, rango: serie.rangoHist, propia: true }
-    : { valor10: PLUSVALIA_ESTIMADO_DEFAULT.plusvalia10a, anualizada: PLUSVALIA_ESTIMADO_DEFAULT.anualizada, fuente: "promedio Gran Santiago", rango: PLUSVALIA_DEFAULT_RANGO, propia: false };
+  const proc = procedenciaPlusvalia(p.comuna);
+  const valorizacion = proc.entry
+    ? { valor10: proc.entry.plusvalia10a, anualizada: proc.entry.anualizada, fuente: proc.fuenteCorta, rango: proc.rango, propia: true }
+    : { valor10: PLUSVALIA_ESTIMADO_DEFAULT.plusvalia10a, anualizada: PLUSVALIA_ESTIMADO_DEFAULT.anualizada, fuente: proc.fuenteCorta, rango: proc.rango, propia: false };
 
   return { m2, arriendo, valorizacion };
 }

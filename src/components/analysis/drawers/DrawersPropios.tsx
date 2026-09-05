@@ -30,7 +30,7 @@ import type {
   ViaDistancia,
 } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
-import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
+import { fuenteHistoricaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   VProsa,
@@ -1430,7 +1430,7 @@ export function DrawerPlusvaliaStr({
   // literal para filas pre-regen (v.fuente con texto del umbral). Idéntico al drawer LTR.
   const fuenteHist = (v.fuente && !/umbral/i.test(v.fuente))
     ? v.fuente
-    : (tieneData ? `Histórico ${PLUSVALIA_DEFAULT_RANGO} · Arenas & Cayo, Tinsa, Propital, Activo Más` : `Promedio histórico Gran Santiago ${PLUSVALIA_DEFAULT_RANGO}`);
+    : fuenteHistoricaPlusvalia(comuna, tieneData);
   // FIX-7 — cierre de caja negativa ramificado por caso: "la historia no respalda" solo es cierto
   // con histórico negativo. Con histórico que sí respalda (positivo) o sin dato comunal, cambia.
   const cierreCaja = !cajaNegativa

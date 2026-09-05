@@ -22,7 +22,7 @@ import type {
 import { metricaValorONull } from "@/lib/types";
 import { calcDividendo, costoOportunidad, simularPieYPlazo, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
-import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
+import { fuenteHistoricaPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { barraDia1 } from "@/lib/plata-dia1";
 import { cierrePlusvalia, cierreRenta, cierreResultado, type FmtCierre } from "@/lib/cierres-capitulos";
@@ -501,8 +501,10 @@ export function CapitulosInversion({
         const hi = Math.max(6, Math.ceil(anual + 1));
         const pos = (x: number) => ((x - lo) / (hi - lo)) * 100;
         const g = Math.round(v.gapPts * 10) / 10;
-        const fuenteHist = v.fuente && !/umbral/i.test(v.fuente) ? v.fuente : v.tieneData ? "Arenas & Cayo, Tinsa, Propital, Activo Más" : "Promedio histórico Gran Santiago";
-        const rango = PLUSVALIA_DEFAULT_RANGO;
+        // Período y fuente de ESTA comuna (plusvalia-procedencia.ts): antes el capítulo decía
+        // "Providencia 2014-2024" con la cifra GfK 2015-2025 en la zona.
+        const fuenteHist = v.fuente && !/umbral/i.test(v.fuente) ? v.fuente : fuenteHistoricaPlusvalia(comuna, v.tieneData);
+        const rango = procedenciaPlusvalia(comuna).rango;
         const [r0, r1] = rango.split("-");
         const segs = cierrePlusvalia(
           { comuna, anualizadaPct: anual, refPct: v.refPct, gapPts: v.gapPts, tieneData: v.tieneData, proyPct: PROY_PCT, preEntrega },
