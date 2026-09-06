@@ -159,6 +159,9 @@ export function TokensShared() {
         .mz-grid{grid-template-columns:var(--rowh) repeat(var(--n,4),minmax(0,1fr))}
         .mz-rowh{padding-right:5px}
         .mz-cell{font-size:9.5px}
+        /* cabecera + toggle: a 390 el título mono no cabe junto al toggle y el botón "TIR"
+           quedaba recortado por el contenedor (overflow clip del capítulo). Envuelve. */
+        .mx-head{flex-wrap:wrap;gap:6px 10px}
         .mz-ver{font-size:7px;bottom:3px;letter-spacing:.04em}
         .mz-cell.conver .mz-v{transform:translateY(-4px)}
         .mz-leg .lg{display:none}
