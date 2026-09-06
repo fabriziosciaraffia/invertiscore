@@ -1808,7 +1808,8 @@ Responde SOLO este JSON, sin texto alrededor:
   addRes("cifras", Array.from(agruparPorCampo(cifrasFuera).keys()));
   addRes("drift", Array.from(agruparPorCampo(hardDriftHits).keys()));
   addRes("voz", vozResidual.map((h) => h.path));
-  addRes("budget", overBudget.map((o) => o.path));
+  // Budget: solo lo que el retry intentó y no convergió (>1,3× del techo); el 1,15× de reporte no es residuo.
+  addRes("budget", sectionsOverBudget(best as unknown as Record<string, unknown>, 1.3).map((o) => o.path));
   {
     const ctxRes = contextoGuardsStr(r, inp, comuna, simulacion);
     for (const regla of ["estructural", "hero-claim", "modalidad", "internas", "engineism", "copia"] as ReglaStr[]) {
