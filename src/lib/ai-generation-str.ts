@@ -1496,7 +1496,9 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   // el estándar). No corre si el mejor aún tiene HARD drift.
   const grossOf = (ai: AIAnalysisSTRv2): { path: string; wc: number; max: number }[] =>
     sectionsOverBudget(ai as unknown as Record<string, unknown>, 1.3);
-  const grossBest = grossOf(best);
+  // Un campo que nadie renderiza no paga retry de presupuesto (el monitor [STR-BUDGET] del
+  // final sí lo mide, sobre todo el objeto).
+  const grossBest = grossOf(best).filter((o) => !sinRender(o.path));
   if (grossBest.length > 0 && scanStrHardDrift(best).length === 0 && hayCupo("[STR-BUDGET-RETRY]")) {
     log(`[STR-BUDGET-RETRY] ${grossBest.length} campo(s) >1.3× techo (${grossBest.map((o) => `${o.path}:${o.wc}/${o.max}`).join(", ")}) — retry quirúrgico`);
     const bestRec = best as unknown as Record<string, Record<string, unknown>>;
@@ -1590,10 +1592,14 @@ Responde SOLO este JSON, sin texto alrededor:
     const donde = conRamp(best);
     if (donde.length !== 1) {
       const bestRec = best as unknown as Record<string, Record<string, unknown>>;
-      const dueno = donde.includes("riesgos.contenido") ? "riesgos.contenido" : donde[0];
+      // El dueño de la cifra tiene que ser un campo que el usuario lea; los que nadie
+      // renderiza ni son dueño ni se reescriben (en la tanda v16 un ramp-dueño entero se
+      // fue a operacion.cajaAccionable).
+      const conRender = donde.filter((pth) => !sinRender(pth));
+      const dueno = conRender.includes("riesgos.contenido") ? "riesgos.contenido" : conRender[0] ?? donde[0];
       const targets = donde.length === 0
         ? ["operacion.contenido"]
-        : donde.filter((pth) => pth !== dueno);
+        : conRender.filter((pth) => pth !== dueno);
       const campos = targets
         .map((path) => {
           const [sec, field] = path.split(".");
@@ -1828,7 +1834,7 @@ Responde SOLO este JSON, sin texto alrededor:
   addRes("drift", Array.from(agruparPorCampo(hardDriftHits).keys()).filter((p) => !sinRender(p)));
   addRes("voz", vozResidual.map((h) => h.path).filter((p) => !sinRender(p)));
   // Budget: solo lo que el retry intentó y no convergió (>1,3× del techo); el 1,15× de reporte no es residuo.
-  addRes("budget", sectionsOverBudget(best as unknown as Record<string, unknown>, 1.3).map((o) => o.path));
+  addRes("budget", sectionsOverBudget(best as unknown as Record<string, unknown>, 1.3).map((o) => o.path).filter((p) => !sinRender(p)));
   {
     const ctxRes = contextoGuardsStr(r, inp, comuna, simulacion);
     for (const regla of ["estructural", "hero-claim", "modalidad", "internas", "engineism", "copia"] as ReglaStr[]) {
