@@ -221,7 +221,8 @@ export function Spark({ puntos, ejeX, aria }: { puntos: number[]; ejeX: string[]
     <>
       <svg className="spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={aria}>
         <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke="var(--doc-line2)" strokeWidth="1" strokeDasharray="4 4" />
-        <polygon fill="var(--doc-hl)" points={`${pts} ${10 + (puntos.length - 1) * paso},${H} 10,${H}`} />
+        {/* área bajo la curva: wash Ink, no el plumón (--doc-hl es color de veredicto desde el goal "material del informe") */}
+        <polygon fill="color-mix(in srgb, var(--doc-tx) 10%, transparent)" points={`${pts} ${10 + (puntos.length - 1) * paso},${H} 10,${H}`} />
         <polyline fill="none" stroke="var(--signal-red)" strokeWidth="3" points={pts} />
       </svg>
       <div className="thermo-legend" style={{ marginTop: 4 }}>

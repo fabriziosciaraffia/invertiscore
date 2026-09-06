@@ -112,16 +112,20 @@ export function PortadaInforme({
         <span className="doc-banda-band">{banda.label}</span>
       </div>
 
-      {/* Score = barra fina bajo la banda (muere el score gigante) */}
+      {/* Score = barra de bloques llenos bajo la banda, en el color del veredicto
+          (contrato: "▓▓▓░░"). Diez bloques de 10 puntos; muere la barra fina Ink. */}
       <div className="flex items-center gap-3 max-w-[420px] mb-5">
         <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] whitespace-nowrap" style={{ color: "var(--doc-tx3)" }}>
           Franco Score
         </span>
-        <div className="flex-1 relative h-[3px] rounded-[2px]" style={{ background: "var(--doc-line2)" }}>
-          <div
-            className="absolute left-0 top-0 bottom-0 rounded-[2px]"
-            style={{ width: `${scorePct}%`, background: "var(--doc-tx)" }}
-          />
+        <div className="flex-1 flex gap-[3px]" aria-hidden="true">
+          {Array.from({ length: 10 }, (_, i) => (
+            <span
+              key={i}
+              className="flex-1 h-[6px] rounded-[1px]"
+              style={{ background: i < Math.round(scorePct / 10) ? "var(--verdict)" : "var(--doc-line2)" }}
+            />
+          ))}
         </div>
         <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] whitespace-nowrap" style={{ color: "var(--doc-tx3)" }}>
           <b style={{ color: "var(--doc-tx)" }}>{score ?? "—"}</b>/100
@@ -267,7 +271,9 @@ export function DocTokens() {
         --doc-paper:#141414; --doc-paper2:#1B1B1B;
         --doc-line:#282828; --doc-line2:#3A3A3A;
         --doc-tx:#EDEBE6; --doc-tx2:#C4C2BC; --doc-tx3:#8C8A84; --doc-tx4:#5C5A55;
-        --doc-hl:rgba(216,67,77,.38); --doc-hl-tx:#FFFFFF;
+        /* plumón: color del veredicto al 32% en el 40% inferior de la línea (contrato,
+           opacidad elegida .32). Sin veredicto cae a Ink porque --verdict cae a Ink. */
+        --doc-hl:color-mix(in srgb,var(--verdict) 32%,transparent); --doc-hl-tx:var(--doc-tx);
         --doc-paper3:#232323; --doc-neutral:#6E6A63; --doc-good:#57B98A; --doc-warn:#DFA34F;
         --doc-shadow:0 24px 60px rgba(0,0,0,.6);
         /* grano de papel: tile SVG 300px, NO filtro en vivo (contrato plumon-veredicto.html) */
@@ -302,7 +308,7 @@ export function DocTokens() {
         --doc-paper:#FAF8F3; --doc-paper2:#F1EEE7;
         --doc-line:#DAD6CC; --doc-line2:#C4BFB2;
         --doc-tx:#141311; --doc-tx2:#3B3A36; --doc-tx3:#75726A; --doc-tx4:#A39F94;
-        --doc-hl:rgba(224,67,80,.26); --doc-hl-tx:#141311;
+        --doc-hl:color-mix(in srgb,var(--verdict) 32%,transparent); --doc-hl-tx:var(--doc-tx);
         /* semáforo del dato (Dial, Thermo, matriz): en claro, los mismos hexes de la tríada
            de veredicto para que no haya dos verdes ni dos ámbares en la página; en oscuro
            conservan sus variantes claras por contraste sobre #141414. */
@@ -319,7 +325,7 @@ export function DocTokens() {
       .doc-sec-eyebrow{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--signal-red);font-weight:700;margin-bottom:12px}
       .doc-sec-t{font-family:var(--font-heading, Georgia, serif);font-size:30px;font-weight:700;line-height:1.12;letter-spacing:-.012em;margin:0 0 10px;color:var(--doc-tx)}
       .doc-sec-intent{font-size:14.5px;line-height:1.62;color:var(--doc-tx3);max-width:64ch;margin:0 0 26px}
-      .doc-sec mark{background:linear-gradient(transparent 42%,var(--doc-hl) 42%,var(--doc-hl) 94%,transparent 94%);color:var(--doc-hl-tx);padding:0 2px;font-weight:500}
+      .doc-sec mark{background:linear-gradient(transparent 60%,var(--doc-hl) 60%);color:var(--doc-hl-tx);padding:0 2px;font-weight:500}
       .doc-lnk{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal-red);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap}
       .doc-lnk:hover{text-decoration:underline;text-underline-offset:3px}
       /* el único botón del informe hasta que exista el CTA */
@@ -469,7 +475,7 @@ export function DocTokens() {
          de plumón (corrección PARÁ 3; con 500 el destacado se veía más delgado
          que el resto). Las marcas de PROSA (FASE 4) mantienen su 500. */
       .doc-headline mark{
-        background:linear-gradient(transparent 42%, var(--doc-hl) 42%, var(--doc-hl) 94%, transparent 94%);
+        background:linear-gradient(transparent 60%, var(--doc-hl) 60%);
         color:var(--doc-hl-tx);padding:0 2px;font-weight:inherit}
       /* Parrafo unico: el monto inline arrastra la altura de linea, asi que el
          interlineado se fija aca y no en el span grande. */
@@ -531,7 +537,7 @@ export function DocTokens() {
         color:var(--doc-tx4);margin-bottom:10px}
       /* Plumón de la prosa FUERA del acordeón (hero): mismo gesto, weight 500. */
       .doc-portada + div mark,.doc-cuerpo mark{
-        background:linear-gradient(transparent 42%,var(--doc-hl) 42%,var(--doc-hl) 94%,transparent 94%);
+        background:linear-gradient(transparent 60%,var(--doc-hl) 60%);
         color:var(--doc-hl-tx);padding:0 2px;font-weight:500}
       @media (prefers-reduced-motion: reduce){
         .doc-props-link{transition:none}

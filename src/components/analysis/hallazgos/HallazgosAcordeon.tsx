@@ -259,7 +259,7 @@ export function TokensHallazgos() {
       .v-prosa p{margin:0 0 12px}
       .v-prosa p:last-child{margin-bottom:0}
       .v-prosa mark,.v-cierre p mark{
-        background:linear-gradient(transparent 42%,var(--doc-hl) 42%,var(--doc-hl) 94%,transparent 94%);
+        background:linear-gradient(transparent 60%,var(--doc-hl) 60%);
         color:var(--doc-hl-tx);padding:0 2px;font-weight:500}
       .v-viz{margin:0 0 18px}
       .v-viz-t{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
