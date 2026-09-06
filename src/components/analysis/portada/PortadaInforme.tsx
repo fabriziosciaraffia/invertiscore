@@ -22,11 +22,13 @@ import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import type { FichaDepto } from "@/lib/ficha-depto";
 import { FichaModal } from "./FichaModal";
 
-// Colores semánticos de la banda (mockup v8; único lugar semántico del informe).
-const BANDA: Record<string, { light: string; dark: string; label: string }> = {
-  "BUSCAR OTRA": { light: "#C8323C", dark: "#D8434D", label: "Buscar otra" },
-  "AJUSTA SUPUESTOS": { light: "#A96F1B", dark: "#DFA34F", label: "Ajusta supuestos" },
-  COMPRAR: { light: "#2F7D55", dark: "#57B98A", label: "Comprar" },
+// Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
+// --verdict / --verdict-deep que DocTokens fija según `data-verdict` en la raíz del
+// documento (goal "material del informe", 06-sep-2026; contrato docs/mockups/plumon-veredicto.html).
+const BANDA: Record<string, { label: string }> = {
+  "BUSCAR OTRA": { label: "Buscar otra" },
+  "AJUSTA SUPUESTOS": { label: "Ajusta supuestos" },
+  COMPRAR: { label: "Comprar" },
 };
 
 /** Titular con marcas `**…**` → <mark> plumón. Normaliza defensivamente
@@ -107,12 +109,7 @@ export function PortadaInforme({
 
       {/* Banda de veredicto — full-bleed del documento, único color semántico */}
       <div className="doc-banda" aria-label={`Veredicto: ${banda.label}`}>
-        <span
-          className="doc-banda-band"
-          style={{ ["--banda-light" as string]: banda.light, ["--banda-dark" as string]: banda.dark }}
-        >
-          {banda.label}
-        </span>
+        <span className="doc-banda-band">{banda.label}</span>
       </div>
 
       {/* Score = barra fina bajo la banda (muere el score gigante) */}
@@ -220,9 +217,12 @@ export function PortadaInforme({
  *  cada una gobierna su propio aire vertical, así que `.doc-page` suelta el padding
  *  vertical y conserva solo el horizontal, contra el que las secciones sangran. STR
  *  no lo pasa y queda idéntico. */
-export function DocumentoFrame({ children, secciones = false }: { children: ReactNode; secciones?: boolean }) {
+/** `veredicto` (goal "material del informe"): fija `data-verdict` en la raíz, de donde
+ *  DocTokens deriva --verdict / --verdict-deep para la banda, los plumones y la barra de
+ *  score. Sin veredicto (AMBAS) los tokens caen a Ink. */
+export function DocumentoFrame({ children, secciones = false, veredicto }: { children: ReactNode; secciones?: boolean; veredicto?: string }) {
   return (
-    <div className="doc-dictamen">
+    <div className="doc-dictamen" data-verdict={veredicto}>
       <DocTokens />
       <div className="doc-toprule" aria-hidden="true" />
       <div className="doc-head">
@@ -270,8 +270,28 @@ export function DocTokens() {
         --doc-hl:rgba(216,67,77,.38); --doc-hl-tx:#FFFFFF;
         --doc-paper3:#232323; --doc-neutral:#6E6A63; --doc-good:#57B98A; --doc-warn:#DFA34F;
         --doc-shadow:0 24px 60px rgba(0,0,0,.6);
-        --doc-banda:var(--banda-dark, #DFA34F);
+        /* grano de papel: tile SVG 300px, NO filtro en vivo (contrato plumon-veredicto.html) */
+        --doc-grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
       }
+      /* ═══ COLOR POR VEREDICTO (goal "material del informe", 06-sep-2026) ═══
+         Un solo par de tokens en la raíz del documento, fijado por data-verdict
+         (DocumentoFrame). Lo usan la banda, TODOS los plumones y la barra de score.
+         NO lo usan clasificacionColor, rentColor(), el Dial/Thermo ni la matriz: ese
+         es el semáforo del DATO y sigue con --doc-good / --doc-warn / --signal-red.
+         Misma tríada en claro y oscuro. Sin data-verdict (AMBAS): Ink, sin color. */
+      .doc-dictamen:not([data-verdict]),.doc-tokens:not([data-verdict] *){
+        --verdict:var(--doc-tx); --verdict-deep:var(--doc-tx); --verdict-band-0:var(--verdict);
+      }
+      [data-verdict="BUSCAR OTRA"]{--verdict:#C8323C; --verdict-deep:#7A1F27; --verdict-band-0:var(--verdict)}
+      /* AJUSTA arranca más oscuro: #B7791F pelado da 3,6:1 con texto blanco (decisión Fabrizio, FASE 0) */
+      [data-verdict="AJUSTA SUPUESTOS"]{--verdict:#B7791F; --verdict-deep:#6E4712; --verdict-band-0:color-mix(in srgb,var(--verdict) 70%,var(--verdict-deep))}
+      [data-verdict="COMPRAR"]{--verdict:#2E8B57; --verdict-deep:#1E5A38; --verdict-band-0:var(--verdict)}
+      /* grano sobre todo el documento: oscuro soft-light .12 (mockup oscuro aprobado),
+         claro multiply .10 (contrato). Encima del contenido, sin capturar el mouse. */
+      .doc-dictamen::after{content:"";position:absolute;inset:0;pointer-events:none;
+        background-image:var(--doc-grain);background-size:300px;opacity:.12;mix-blend-mode:soft-light}
+      [data-theme="light"] .doc-dictamen::after{opacity:.10;mix-blend-mode:multiply}
+      @media print{.doc-dictamen::after,.doc-banda-band::after{display:none}}
       .doc-dictamen{
         background:var(--doc-paper);
         border:1px solid var(--doc-line);
@@ -283,7 +303,10 @@ export function DocTokens() {
         --doc-line:#DAD6CC; --doc-line2:#C4BFB2;
         --doc-tx:#141311; --doc-tx2:#3B3A36; --doc-tx3:#75726A; --doc-tx4:#A39F94;
         --doc-hl:rgba(224,67,80,.26); --doc-hl-tx:#141311;
-        --doc-paper3:#EAE7DF; --doc-neutral:#8C8880; --doc-good:#2F7D55; --doc-warn:#A96F1B;
+        /* semáforo del dato (Dial, Thermo, matriz): en claro, los mismos hexes de la tríada
+           de veredicto para que no haya dos verdes ni dos ámbares en la página; en oscuro
+           conservan sus variantes claras por contraste sobre #141414. */
+        --doc-paper3:#EAE7DF; --doc-neutral:#8C8880; --doc-good:#2E8B57; --doc-warn:#B7791F;
         --doc-shadow:0 24px 60px rgba(20,19,17,.14);
       }
       /* ═══ PÁGINA POR SECCIONES (T2, contrato CONGELADO 02-sep-2026) ═══
@@ -404,10 +427,14 @@ export function DocTokens() {
       .doc-portada{padding-bottom:26px;border-bottom:1px solid var(--doc-line);margin-bottom:26px;color:var(--doc-tx)}
       /* banda full-bleed: sangra el padding de .doc-page */
       .doc-banda{position:relative;left:-64px;width:calc(100% + 128px);margin-bottom:18px}
-      .doc-banda-band{display:block;color:#fff;font-family:var(--font-mono, ui-monospace);
+      /* banda con cuerpo: degradado 100° color → 80/20 → deep (0 / 70 / 100%) + grano .35
+         multiply. Texto blanco. Mismo material en claro y oscuro (contrato). */
+      .doc-banda-band{display:block;position:relative;overflow:hidden;color:#fff;font-family:var(--font-mono, ui-monospace);
         font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
-        padding:10px 20px 10px 64px;background:var(--banda-dark)}
-      [data-theme="light"] .doc-banda-band{background:var(--banda-light)}
+        padding:10px 20px 10px 64px;
+        background:linear-gradient(100deg,var(--verdict-band-0) 0%,color-mix(in srgb,var(--verdict) 80%,var(--verdict-deep)) 70%,var(--verdict-deep) 100%)}
+      .doc-banda-band::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;mix-blend-mode:multiply;
+        background-image:var(--doc-grain);background-size:220px}
       @media (max-width: 767px){
         .doc-banda{left:-22px;width:calc(100% + 44px)}
         .doc-banda-band{padding-left:22px;font-size:11.5px;letter-spacing:.16em}

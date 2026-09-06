@@ -444,7 +444,7 @@ export function STRResultsClient({
             conviene.pregunta ?? hardcode (v3 podó el campo). */}
         {/* ═══ DOCUMENTO (FASE 3 rediseño Dictamen): papel + portada; el interior
             se transforma en FASE 4 ═══ */}
-        <DocumentoFrame secciones>
+        <DocumentoFrame secciones veredicto={veredicto}>
         <TokensShared />
         <SeccionInforme id="portada" tono="paper">
         <PortadaInforme
