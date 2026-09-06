@@ -40,6 +40,19 @@ export const PROSA_PATHS_STR = [
 ] as const;
 export type ProsaPathStr = (typeof PROSA_PATHS_STR)[number];
 
+/** Campos de prosa que NINGÚN componente renderiza (06-sep-2026): `francoCaveat` es audit-only
+ *  por contrato del prompt, y las cajas de vsLTR / operación / largoPlazo no las lee ni la
+ *  página (HeroStrDictamen + capítulos deterministas) ni /documento (DocumentoSTR pinta las
+ *  de rentabilidad y riesgos). Se siguen DETECTANDO (reporte, juez, monitores) pero el
+ *  generador no paga un reintento quirúrgico por un campo que nadie lee: en la tanda v16
+ *  se fueron 3 quirúrgicos a francoCaveat. Si un componente empieza a leer uno de estos,
+ *  sale de esta lista. */
+export const PATHS_SIN_RENDER_STR: readonly ProsaPathStr[] = [
+  "francoCaveat", "vsLTR.cajaAccionable", "operacion.cajaAccionable", "largoPlazo.cajaAccionable",
+];
+/** Lo que el usuario lee: los paths que reintentan y los que cuentan como residuo. */
+export const PROSA_RETRY_PATHS_STR: readonly ProsaPathStr[] = PROSA_PATHS_STR.filter((p) => !PATHS_SIN_RENDER_STR.includes(p));
+
 /** Las cajas (una por sección) y la estrategia: lo que el usuario lee como recomendación. */
 export const CAJAS_PATHS_STR: ProsaPathStr[] = [
   "conviene.cajaAccionable", "rentabilidad.cajaAccionable", "vsLTR.cajaAccionable", "vsLTR.estrategiaSugerida",
@@ -156,7 +169,8 @@ const SUJETOS_STR: { re: RegExp; s: SujetoStr }[] = [
   { re: /\baport(?:e|es|as|ar|ando)\b|\bpon(?:es|er|iendo|drías|drás|gas)\b|de tu (?:propio )?bolsillo|te faltan|sale de tu/gi, s: "aporte" },
   { re: /\bflujo\b|\bte queda(?:n|r[íi]an?)?\b|\bmargen\b|\bsobra\b/gi, s: "flujo" },
   { re: /\bingresos?\b|\bgenera\b|\bfactura\b/gi, s: "ingreso" },
-  { re: /\bnoi\b|\brenta neta\b|\bmargen operativo\b/gi, s: "noi" },
+  // "neto" / "ingreso neto" es el NOI en el vocabulario del informe ("el corto triplica el neto del largo").
+  { re: /\bnoi\b|\bneto\b|\brenta neta\b|\bmargen operativo\b/gi, s: "noi" },
   { re: /\btarifa\b|\badr\b|\bpor noche\b|\bla noche\b/gi, s: "tarifa" },
   { re: /\bocupaci[oó]n\b|\bnoches\b|\bllenar\b/gi, s: "ocupacion" },
   { re: /\bcap rate\b|\bcap\b|\brinde\b|\brentabilidad\b|\brendimiento\b|\bretorno\b/gi, s: "cap" },
@@ -228,6 +242,11 @@ function razonStr(r: RazonesHeroClaimStr, s: SujetoStr, c: ComparadorStr, oracio
 /** "al doble" no está en la tabla base de LTR (se agregará con su propio goal); STR la estrena
  *  junto con "N veces". */
 const CLAIMS_STR: ClaimHero[] = [
+  // "casi dobla / casi duplica" = "casi el doble" (≥ 1,8); "dobla" = "duplica" (≥ 1,9). Van
+  // ANTES de la tabla base porque el primero que calza manda y "duplica" está en ella.
+  // Testigo: GE-1 v15/v16, tarifa $75.000 contra estimación $47.496 = 1,58×.
+  { re: /\bcasi (?:dobla|duplica)\b/i, regla: "doble", min: 1.8 },
+  { re: /\bdobla\b/i, regla: "doble", min: 1.9 },
   { re: /\bal doble\b/i, regla: "doble", min: 1.9 },
   ...CLAIMS_HERO,
   ...CLAIMS_VECES,
@@ -263,9 +282,40 @@ export function razonesHeroClaimStrTexto(r: RazonesHeroClaimStr): string {
 // ─── 2. [STR-ENGINEISM] ─────────────────────────────────────────────────────
 /** Verbo-trayectoria del modelo: cómo se mueve un número dentro del cálculo en vez de la
  *  consecuencia vivida. La lista que usaba el monitor (solo detección) más lo que la tanda
- *  v13 destapó: "converge", "cruza a positivo / el umbral / al territorio", "lo cruza". */
-export const STR_ENGINEISM_RE =
-  /flujo[^.]{0,30}(?:cruza|revier|da vuelta|vuelve positivo)|flujo neutro|inflexi[óo]n|punto de quiebre|\bconverg(?:e|en|er|i[óo]|iendo|ería|erían)\b|\bcruza(?:r|n|ría)? (?:a|al|el) (?:positivo|umbral|territorio)|\blo cruza\b|\bcruza el umbral\b|\bcruce (?:a|al|del) (?:positivo|umbral)|\b(?:puede|pueden|podr[ií]a|podr[ií]an) cruzar\b/i;
+ *  v13 destapó: "converge", "cruza a positivo / el umbral / al territorio", "lo cruza".
+ *
+ *  Ampliada el 06-sep-2026 con lo que el juez vio en las tandas v15 y v16 y el regex no:
+ *  · la familia "cruza al veredicto (de arriba / superior) / cruza el veredicto a COMPRAR /
+ *    cruza a AJUSTA SUPUESTOS / cruza esa línea / ese umbral / cruzando al veredicto" — el
+ *    modelo copia el verbo del bloque VÍAS del user prompt ("CRUZA / NO CRUZA", "N cruzan
+ *    al veredicto de arriba"); 20 oraciones en 12 salidas v16, 0 cazadas;
+ *  · las formas peladas: "ninguno cruza", "no se cruza con ningún ajuste", "para cruzar",
+ *    "podría cruzarlo";
+ *  · la matriz como mecánica: "celdas" (16 celdas, 0 de 16 celdas cruzando);
+ *  · sin "cruza": "pasa / llega a positivo", "cambia el signo", "la ecuación se invierte",
+ *    "el análisis marca a favor", "el modelo base / positivo".
+ *  Fuera a propósito: "cruzar la avenida" (no lleva veredicto ni umbral) y "el veredicto
+ *  sube si mueves X" (el juez lo dio como baja: es consecuencia, aunque hable de estados). */
+const CRUZ = String.raw`cruz(?:a|an|ar|ando|ar[íi]an?|e|ó|aron)`;
+export const STR_ENGINEISM_RE = new RegExp([
+  String.raw`flujo[^.]{0,30}(?:cruza|revier|da vuelta|vuelve positivo)`,
+  String.raw`flujo neutro`, String.raw`inflexi[óo]n`, String.raw`punto de quiebre`,
+  String.raw`\bconverg(?:e|en|er|i[óo]|iendo|ería|erían)\b`,
+  // cruza + (a|al|el|ese|esa|hacia) + objeto del motor
+  String.raw`\b${CRUZ}\s+(?:a|al|el|ese|esa|hacia|hacia el)\s+(?:positivo|umbral|territorio|veredicto|l[ií]nea|COMPRAR|AJUSTA|BUSCAR)\b`,
+  String.raw`\bcruce (?:a|al|del) (?:positivo|umbral|veredicto)`,
+  // formas peladas y pronominales
+  String.raw`\blo cruza\b`, String.raw`\bcruzarl[oa]s?\b`,
+  String.raw`\b(?:puede|pueden|podr[ií]a|podr[ií]an|para|sin|alcanza a|alcanzan a|llega a|llegan a) cruzar\b`,
+  String.raw`\b(?:ningun[oa]s?|nadie|no se|tampoco) ${CRUZ}\b`,
+  // la matriz como mecánica
+  String.raw`\b(?:celdas?|combinaciones) (?:que )?${CRUZ}\b`, String.raw`\bceldas?\b`,
+  // sin "cruza"
+  String.raw`\b(?:pasa|pasan|pasar|pasar[íi]an?|llega|llegan|llegar|llegar[íi]an?|vuelve|vuelven|volver) a (?:positivo|negativo|neutro)\b`,
+  String.raw`\bcambia(?:r|n)? (?:el|de) signo\b`, String.raw`\becuaci[óo]n se (?:invierte|da vuelta)\b`,
+  // "el análisis marca a favor" (juez v15) sí; "el análisis marca como referencia" queda fuera (es la fuente del dato, no la mecánica).
+  String.raw`\b(?:an[áa]lisis|motor|modelo) marca (?:a favor|en contra)\b`, String.raw`\b(?:an[áa]lisis|motor|modelo) (?:lo|la) marca\b`, String.raw`\bmodelo (?:base|positivo|negativo)\b`,
+].join("|"), "i");
 export function hitsEngineIsm(texto: string): string[] {
   const out: string[] = [];
   const re = new RegExp(STR_ENGINEISM_RE.source, "gi");
@@ -416,11 +466,14 @@ export function contextoGuardsStr(r: ShortTermResult & { hallazgos?: Hallazgo[] 
 }
 
 export type ReglaStr = "hero-claim" | "engineism" | "internas" | "estructural" | "copia" | "modalidad";
-/** path → violaciones (vacío si el campo está limpio). */
-export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regla: ReglaStr, ctx: ContextoGuardsStr): Record<string, string[]> {
+/** path → violaciones (vacío si el campo está limpio). `solo` acota a un subconjunto de paths
+ *  (el generador pasa PROSA_RETRY_PATHS_STR: reintenta y cuenta residuo solo sobre lo que se
+ *  renderiza); sin `solo` evalúa todo, que es lo que miran el reporte y los fixtures. */
+export function violacionesPorCampo(ai: AIAnalysisSTRv2 | null | undefined, regla: ReglaStr, ctx: ContextoGuardsStr, solo?: readonly string[]): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   if (!ai) return out;
-  const paths = regla === "estructural" ? CAJAS_PATHS_STR : PROSA_PATHS_STR;
+  const base: readonly string[] = regla === "estructural" ? CAJAS_PATHS_STR : PROSA_PATHS_STR;
+  const paths = solo ? base.filter((p) => solo.includes(p)) : base;
   for (const { path, texto } of camposProsa(ai, paths)) {
     let v: string[] = [];
     switch (regla) {

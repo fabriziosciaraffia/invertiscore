@@ -1174,7 +1174,7 @@ export function scanStrDrift(ai: unknown): string[] { return [...scanStrHardDrif
 import { cifrasFueraDeInput, empeoraCifras } from "./cifras-guard";
 import {
   contextoGuardsStr, violacionesPorCampo, totalViolaciones, leerCampo, escribirCampo,
-  razonesHeroClaimStrTexto, STR_ENGINEISM_RE, type ReglaStr,
+  razonesHeroClaimStrTexto, STR_ENGINEISM_RE, PROSA_RETRY_PATHS_STR, PATHS_SIN_RENDER_STR, type ReglaStr,
 } from "./str-guards";
 import { derivarCifraClaveStr, captionDeCifraClave } from "./cifra-clave";
 import { validarTitular, evaluarTitular, normalizarMarcasTitular, marcasBalanceadas, stripMarcas } from "./prosa-marcas";
@@ -1438,8 +1438,12 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
     if (res.llamo) { quirurgicos += 1; usedTries += 1; }
     if (res.aceptado) best = res.ai;
   };
+  // Campos que nadie renderiza (francoCaveat y tres cajas): se detectan y se loguean, pero
+  // no se paga un quirúrgico por ellos (06-sep-2026).
+  const sinRender = (path: string) => (PATHS_SIN_RENDER_STR as readonly string[]).includes(path);
   const camposDe = (viols: string[]) =>
     Array.from(agruparPorCampo(viols).entries())
+      .filter(([path]) => !sinRender(path))
       .map(([path, viol]) => ({ path, actual: leerCampo(best, path) ?? "", viol }))
       .filter((c) => c.actual);
   const cita = (v: string) => v.slice(v.indexOf("=") + 1);
@@ -1466,6 +1470,7 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
     const porPath = new Map<string, string[]>();
     for (const hh of vozDura(best)) porPath.set(hh.path, [...(porPath.get(hh.path) ?? []), `"${hh.token}" en «${hh.contexto}»`]);
     const campos = Array.from(porPath.entries())
+      .filter(([path]) => !sinRender(path))
       .map(([path, viol]) => ({ path, actual: leerCampo(best, path) ?? "", viol }))
       .filter((c) => c.actual);
     await correrQuirurgico({
@@ -1670,7 +1675,7 @@ Responde SOLO este JSON, sin texto alrededor:
       instruccion: string,
     ): Promise<void> => {
       if (!best) return;
-      const antes = violacionesPorCampo(best, regla, ctxGuards);
+      const antes = violacionesPorCampo(best, regla, ctxGuards, PROSA_RETRY_PATHS_STR);
       if (totalViolaciones(antes) === 0) return;
       const campos = Object.keys(antes)
         .filter((path) => antes[path].length > 0)
@@ -1682,7 +1687,7 @@ Responde SOLO este JSON, sin texto alrededor:
         campos,
         problema,
         instruccion,
-        evaluar: (ai) => totalViolaciones(violacionesPorCampo(ai, regla, ctxGuards)),
+        evaluar: (ai) => totalViolaciones(violacionesPorCampo(ai, regla, ctxGuards, PROSA_RETRY_PATHS_STR)),
       });
     };
 
@@ -1720,7 +1725,7 @@ Responde SOLO este JSON, sin texto alrededor:
       "engineism",
       "[STR-ENGINEISM]",
       (v) => `describe cómo se mueve un número dentro del cálculo en vez de la consecuencia vivida: ${v.map((x) => `«${x}»`).join(", ")}`,
-      "reescribe cada frase con la consecuencia para el usuario (\"dejas de poner plata cada mes\", \"el arriendo pasa a cubrir la cuota\", \"si la tarifa real baja a la del mercado\"), nunca con verbos de trayectoria como cruzar, converger o dar vuelta.",
+      "reescribe cada frase con la consecuencia para el usuario (\"dejas de poner plata cada mes\", \"el arriendo pasa a cubrir la cuota\", \"si la tarifa real baja a la del mercado\", \"ningún ajuste realista alcanza a cambiar la conclusión\", \"con autogestión el veredicto sube a COMPRAR\"), nunca con verbos de trayectoria como cruzar, converger o dar vuelta, y sin nombrar celdas ni matrices.",
     );
     // 5. [STR-COPIA] — la frase de la card no se repite.
     await reintentoQuirurgico(
@@ -1818,15 +1823,16 @@ Responde SOLO este JSON, sin texto alrededor:
   const addRes = (guard: string, campos: string[]) => {
     for (const c of campos) if (!residuo.some((x) => x.guard === guard && x.campo === c)) residuo.push({ guard, campo: c });
   };
-  addRes("cifras", Array.from(agruparPorCampo(cifrasFuera).keys()));
-  addRes("drift", Array.from(agruparPorCampo(hardDriftHits).keys()));
-  addRes("voz", vozResidual.map((h) => h.path));
+  // Residuo = lo que el retry intentó y no convergió: solo sobre lo que se renderiza.
+  addRes("cifras", Array.from(agruparPorCampo(cifrasFuera).keys()).filter((p) => !sinRender(p)));
+  addRes("drift", Array.from(agruparPorCampo(hardDriftHits).keys()).filter((p) => !sinRender(p)));
+  addRes("voz", vozResidual.map((h) => h.path).filter((p) => !sinRender(p)));
   // Budget: solo lo que el retry intentó y no convergió (>1,3× del techo); el 1,15× de reporte no es residuo.
   addRes("budget", sectionsOverBudget(best as unknown as Record<string, unknown>, 1.3).map((o) => o.path));
   {
     const ctxRes = contextoGuardsStr(r, inp, comuna, simulacion);
     for (const regla of ["estructural", "hero-claim", "modalidad", "internas", "engineism", "copia"] as ReglaStr[]) {
-      const v = violacionesPorCampo(best, regla, ctxRes);
+      const v = violacionesPorCampo(best, regla, ctxRes, PROSA_RETRY_PATHS_STR);
       addRes(regla, Object.keys(v).filter((p) => v[p].length > 0));
     }
   }

@@ -3,10 +3,19 @@
 // ============================================================================
 // Cada "doble / mitad / triple / N veces" que escribe el modelo es una RAZÓN: sujeto ÷
 // comparador, nombrados en la misma oración. El guard busca el múltiplo, resuelve el
-// comparador (el objeto del múltiplo, el más cercano DESPUÉS; si no hay, antes) y el
-// sujeto (el más cercano ANTES, sin pisar el comparador, saltando los pares que no
-// forman razón), le pide al motor esa razón y compara contra el rango del múltiplo.
-// Sin sujeto, sin comparador o sin razón del motor ⇒ sin licencia ⇒ violación.
+// comparador (el objeto del múltiplo: el más cercano DESPUÉS si está pegado al múltiplo,
+// si no el más cercano en cualquier dirección) y el sujeto (el más cercano, contando los de
+// ANTES a cualquier distancia y los de DESPUÉS solo si están pegados al múltiplo, sin pisar
+// el comparador, saltando los pares que no forman razón y los pares cuya razón no tiene
+// dato cuando otro sujeto de la oración sí la tiene), le pide al motor esa razón y compara
+// contra el rango del múltiplo. Sin sujeto, sin comparador o sin razón del motor ⇒ sin
+// licencia ⇒ violación.
+//
+// 06-sep-2026 (goal guards STR (b), testigo GE-1): "te quedan $14.747 al mes […]: el corto
+// le saca al largo casi tres veces más en NOI neto" resolvía comparador = "Airbnb" (quince
+// palabras DESPUÉS) en vez de "largo" (tres ANTES), y sujeto = "te quedan" (flujo, veinte
+// palabras antes) en vez de "NOI" (dos palabras después, razón 2,98×). De ahí la ventana
+// de 60 caracteres para lo que viene después del múltiplo, en el comparador y en el sujeto.
 //
 // Vivía entero en ai-generation.ts (LTR, v20). Se extrajo para que STR use el MISMO
 // bucle con sus propias tablas de sujetos, comparadores y razones (str-guards.ts):
@@ -109,16 +118,29 @@ export function violacionesClaims<S extends string, C extends string>(texto: str
       return out2.sort((a, b) => a.d - b.d);
     };
     const compHits = hits(cfg.comparadores.map((x) => ({ re: x.re, v: x.c })));
-    const comp = compHits.find((h) => !h.antes) ?? compHits[0] ?? null;
+    // El objeto del múltiplo viene pegado ("casi el doble DE LA CUOTA"): un comparador de
+    // después vale si está a ≤ 60 caracteres del múltiplo; más lejos, manda la cercanía.
+    const finClaim = c.pos + c.txt.length;
+    const comp = compHits.find((h) => !h.antes && h.ini - finClaim <= 60) ?? compHits[0] ?? null;
     if (!comp) { out.push(`${c.def.regla}: dice "${c.txt}" sin nombrar contra qué (sin comparador, sin licencia)`); continue; }
     const sujHits = hits(cfg.sujetos.map((x) => ({ re: x.re, v: x.s })), { ini: comp.ini, fin: comp.fin });
-    const ordenados = [...sujHits.filter((h) => h.antes), ...sujHits.filter((h) => !h.antes)];
+    // Los de antes a cualquier distancia y los de después pegados al múltiplo compiten por
+    // cercanía (ya vienen ordenados por distancia); los de después lejanos, al final.
+    const pegado = (h: { antes: boolean; ini: number }) => h.antes || h.ini - finClaim <= 60;
+    const ordenados = [...sujHits.filter(pegado), ...sujHits.filter((h) => !pegado(h))];
     if (!ordenados.length) { out.push(`${c.def.regla}: dice "${c.txt}" contra ${comp.v} sin sujeto claro (sin licencia)`); continue; }
-    let z: { nombre: string; valor: number | null } | null = null;
-    let sujElegido: S = ordenados[0].v;
-    for (const h of ordenados) { const zz = cfg.razon(h.v, comp.v, o); if (zz) { z = zz; sujElegido = h.v; break; } }
+    let z: { nombre: string; valor: number } | null = null;
+    let sinDato: { nombre: string } | null = null;
+    const sujElegido: S = ordenados[0].v;
+    for (const h of ordenados) {
+      const zz = cfg.razon(h.v, comp.v, o);
+      if (!zz) continue;
+      // Par que existe pero sin dato: se recuerda y se sigue buscando un sujeto con razón.
+      if (zz.valor === null) { sinDato = sinDato ?? { nombre: zz.nombre }; continue; }
+      z = { nombre: zz.nombre, valor: zz.valor }; break;
+    }
+    if (!z && sinDato) { out.push(`${c.def.regla}: dice "${c.txt}" contra ${sinDato.nombre}, que no tiene dato`); continue; }
     if (!z) { out.push(`${c.def.regla}: dice "${c.txt}" con sujeto ${sujElegido} y comparador ${comp.v}: no hay razón del motor para ese par (sin licencia)`); continue; }
-    if (z.valor === null) { out.push(`${c.def.regla}: dice "${c.txt}" contra ${z.nombre}, que no tiene dato`); continue; }
     const { min, max } = c;
     const ok = (min === undefined || z.valor >= min) && (max === undefined || z.valor <= max);
     if (!ok) out.push(`${c.def.regla}: dice "${c.txt}" con ${z.nombre} = ${z.valor.toFixed(2)}× (se exige ${min !== undefined ? `≥ ${min}` : ""}${min !== undefined && max !== undefined ? " y " : ""}${max !== undefined ? `≤ ${max}` : ""})`);
