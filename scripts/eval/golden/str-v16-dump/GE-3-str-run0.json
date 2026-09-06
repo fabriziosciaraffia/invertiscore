@@ -1,0 +1,112 @@
+{
+  "key": "GE-3",
+  "run": 0,
+  "veredicto": "BUSCAR OTRA",
+  "score": 48,
+  "coronado": {
+    "id": "rentabilidad_str",
+    "titular": "La rentabilidad operativa se queda corta.",
+    "fraseCanonica": "Tu CAP rate en corto es 4,6%, bajo el umbral de 5% que le pedimos a una renta corta en Santiago. Genera caja, pero por debajo del piso que hace que el precio de entrada se justifique por rentabilidad.",
+    "decisividad": 0.24
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 0.24,
+      "direccion": "adverso"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0.04,
+      "direccion": "favorable"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.2,
+      "direccion": "adverso"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0.04,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0.08,
+      "direccion": "favorable"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "capex_puesta_a_punto",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "distancia_veredicto",
+      "decisividad": 0,
+      "direccion": "neutral"
+    }
+  ],
+  "result": {
+    "titular": "No conviene por día: **esta zona no sostiene renta corta a precios de hoy**.",
+    "conviene": {
+      "respuestaDirecta": "El CAP rate de 4,6% queda bajo el 5,0% que le pedimos a una renta corta, pero el problema de fondo no es el número: **esta zona no sostiene renta corta a los precios de compra actuales**, y ningún ajuste realista —ni bajar el precio 15%, ni subir la tarifa 10%, ni cambiar el modo de gestión— cruza al veredicto de arriba. El arriendo largo del mismo depto deja $117.972 más al mes en NOI, sin rotación ni gestión semanal.",
+      "veredictoFrase": "Esta zona no da para el corto: el largo gana y no hay palanca.",
+      "reencuadre": "Para un inversor, este depto tiene precio justo y financiamiento razonable. **El problema no es el departamento, es que la zona no cierra en renta corta a precios de mercado** — y eso no lo arregla la negociación.",
+      "cajaAccionable": "**Arrenda largo o busca otra zona donde el corto sí rinda**: en esta dirección, operar por día es perder el upside sin ganarlo."
+    },
+    "rentabilidad": {
+      "contenido": "El precio por m² está alineado con la mediana comunal y la tarifa corre anclada a la mediana de la zona, así que la causa no es un sobreprecio puntual: **el mercado de esta zona simplemente no genera los ingresos suficientes para que el corto pague el precio de entrada**. Mira primero la matriz de tarifa y ocupación — ninguna de las 16 celdas cruza al veredicto de arriba.",
+      "cajaAccionable": "**El CAP rate no sube con ajustes dentro del rango realista**: la brecha es estructural a la zona, no al departamento."
+    },
+    "vsLTR": {
+      "contenido": "En NOI absoluto, el largo deja $761.163 al mes frente a $643.191 del corto en modo auto: $117.972 más cada mes sin gestionar check-ins, rotación ni estacionalidad. Con administrador la brecha se abre todavía más: el NOI baja a $477.918 y el mes cierra en rojo. El amoblamiento tampoco se recupera con la sobre-renta negativa — no hay horizonte en que el corto tape esa diferencia.",
+      "estrategiaSugerida": "Si decides operar igual por día, lo tienes que hacer tú mismo y sostener la ocupación en al menos el caso base: con administrador, pierdes $130.351 al mes. Si ese esfuerzo semanal de 8 a 12 horas no es tuyo, el largo es la única jugada que cierra.",
+      "cajaAccionable": "**El largo gana $117.972 al mes en NOI sin esfuerzo operativo**: ese diferencial es difícil de ignorar."
+    },
+    "operacion": {
+      "contenido": "En modo auto necesitas entre 8 y 12 horas semanales para sostener el caso base; delegar a un operador profesional te pone el flujo en negativo. En el mes valle activa estadías más largas para amortiguar la caída de tarifa diaria. Considera también los primeros meses de operación: mientras el listing acumula reseñas, la ocupación real queda por debajo del caso base, con una pérdida acumulada estimada de $1.458.291 durante ese período.",
+      "cajaAccionable": "**Ten un colchón de al menos tres meses de costos fijos antes de encender el listing**: el arranque cuesta y la zona no da margen para improvisar."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF al 5% deja $70.730.402 a diez años sin gestión ni vacancia, con un múltiplo de ×1,63; un fondo mutuo al 7% llega a $85.418.297, ×1,97 — este depto proyecta ×2,72 sobre el capital aportado, pero ese múltiplo exige diez años de gestión activa, iliquidez total y que la plusvalía de Providencia sostenga el ritmo. La histórica comunal muestra 2,9% anual, en línea con el 3% proyectado, así que la apuesta no es descabellada, pero tampoco tiene margen de error si la plusvalía se estanca. Mi lectura: el largo plazo es el argumento más sólido de este caso, y aun así descansa más en plusvalía que en flujo.",
+      "cajaAccionable": "**Para que los diez años justifiquen la inversión, Providencia tiene que seguir valorizándose**: si la plusvalía se detiene, el múltiplo y la TIR caen y los instrumentos sin gestión empiezan a competir de verdad."
+    },
+    "riesgos": {
+      "contenido": "La zona no cierra en renta corta a precios actuales.\n\nNingún ajuste dentro del rango realista —precio, tarifa, gestión, pie— cambia el veredicto: la matriz de tarifa por ocupación tiene 0 de 16 celdas cruzando al veredicto de arriba, y bajar el precio hasta un 15% tampoco alcanza. El problema es estructural a la zona, no al departamento, así que no es cuestión de negociar mejor.\n\nEl arriendo largo genera 15% más neto que el corto cada mes.\n\nEsta es la anomalía central del caso: el mismo depto arrendado largo deja $117.972 más al mes en NOI, sin rotación ni gestión semanal. Operar por día acá es asumir el esfuerzo del corto para obtener un resultado inferior al del largo, sin una palanca que lo corrija.\n\nEl escenario conservador deja el mes en rojo profundo.\n\nCon ocupación en el cuartil bajo observado, el NOI baja a $263.345 y el flujo cae a -$344.924 al mes: ese nivel de vacancia no es raro en la zona y exige aportar de tu bolsillo mes a mes. El punto de equilibrio está en el 96% del ingreso mediano de la zona, así que el margen antes de perder plata existe, pero es estrecho.",
+      "cajaAccionable": "**Mi posición: no compres este depto para Airbnb**. Si el activo te convence, arriéndalo largo y olvida el corto — esta zona ya te dijo que no."
+    },
+    "veredicto": "BUSCAR OTRA",
+    "francoCaveat": "El edificio permite Airbnb según el input (campo 'Edificio permite Airbnb: si'), pero el bloque POR QUÉ NO CIERRA del análisis dice explícitamente 'el edificio no permite arriendo por días'. Hay una contradicción entre ambos campos del input. Resolví narrando el veredicto del análisis con su argumento zonal (el caso precio-justo STR es consistente y cierra solo) sin exponer la contradicción al usuario, dado que el veredicto BUSCAR OTRA es sostenido por múltiples razones estructurales independientes del gate regulatorio.",
+    "promptVersion": 16
+  }
+}

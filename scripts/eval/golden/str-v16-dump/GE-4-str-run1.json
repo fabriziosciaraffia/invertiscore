@@ -1,0 +1,112 @@
+{
+  "key": "GE-4",
+  "run": 1,
+  "veredicto": "AJUSTA SUPUESTOS",
+  "score": 55,
+  "coronado": {
+    "id": "rentabilidad_str",
+    "titular": "El metro cuadrado rinde de sobra en corto.",
+    "fraseCanonica": "Tu CAP rate en corto es 6,0%, sobre el umbral de 5% que le pedimos a una renta corta en Santiago. El precio de entrada se justifica por lo que la operación rinde, sin depender de la plusvalía. Suma a favor, pero por sí solo no alcanza para mover el veredicto.",
+    "decisividad": 0.32
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 0.32,
+      "direccion": "favorable"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0.08,
+      "direccion": "favorable"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.28,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0.16,
+      "direccion": "adverso"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "capex_puesta_a_punto",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "distancia_veredicto",
+      "decisividad": 0,
+      "direccion": "neutral"
+    }
+  ],
+  "result": {
+    "titular": "Funciona en corto, pero **el precio del día uno exige ajuste**.",
+    "conviene": {
+      "respuestaDirecta": "El CAP rate de 6,0% supera el umbral de 5% que le pedimos a una renta corta en Santiago, así que **el metro se paga solo operando por día**. Lo que condiciona la decisión es que estás pagando unas UF 378 sobre el valor estimado de la zona —plata que sale el día de la firma y que a la plusvalía histórica de Providencia tardarías unos 4 años solo en recuperar, antes de ganar un peso de apreciación. Con esa carga de entrada, el veredicto se sostiene en ajustar los supuestos, no en comprar tal como está.",
+      "veredictoFrase": "El precio de entrada te cobra caro antes de que el depto genere nada.",
+      "reencuadre": "Para un inversionista, este depto es una apuesta a que el flujo mensual aguante la deuda y que la plusvalía recupere el sobreprecio. **Lo que compras no es solo el flujo de hoy, sino la apuesta a que Providencia siga en línea con su histórico de 2,9% anual**, que apenas toca el umbral de apreciación real.",
+      "cajaAccionable": "**Este depto no cierra como STR al precio de lista**: el análisis lo confirmó probando hasta un 25% de descuento y la brecha de UF 378 de sobreprecio no se cruza con ningún ajuste realista."
+    },
+    "rentabilidad": {
+      "contenido": "El precio por m² está un 12% sobre la mediana comunal —eso es lo que frena el veredicto, no la operación en sí. **Mira la matriz de tarifa y ocupación**: con 47% estimado y $58.359 por noche, el margen existe, pero es fino y sensible a cualquier caída de ocupación.",
+      "cajaAccionable": "**El CAP rate de 6,0% te da piso operativo, pero el sobreprecio de UF 378 lo come por arriba**: el negocio rinde, el precio de entrada no acompaña."
+    },
+    "vsLTR": {
+      "contenido": "El arriendo largo en este depto genera un NOI de −$20.000 al mes —ni siquiera cubre los gastos comunes—, mientras que el corto llega a $676.678 de NOI mensual. La brecha de $696.678 al mes hace que la comparación no sea un debate: el largo directamente no funciona acá. Autogestionando, el mes cierra con $96.783 positivos; con un administrador al 20%, el flujo cae a −$44.769 y el depto empieza a costarte plata todos los meses. La diferencia entre ambos modos es $141.552 mensuales —suficiente para que la decisión de gestión sea tan relevante como el precio de compra.",
+      "estrategiaSugerida": "Si optas por el corto, la autogestión no es opcional: **con administrador el mes se pone negativo**. Dedica las 8 a 12 horas semanales que requiere o no entres por esta vía —el margen no aguanta el costo de delegarlo al 20%.",
+      "cajaAccionable": "**El corto gana al largo por $696.678 de NOI al mes, pero solo si lo gestionas tú**: ese es el único modo en que el flujo se mantiene positivo."
+    },
+    "operacion": {
+      "contenido": "Verifica el reglamento del edificio antes de invertir en amoblamiento: el permiso para operar Airbnb no está confirmado, y ese es el primer paso antes de cualquier otro movimiento. La ocupación estimada para este depto es 47%, en línea con el 46% típico de la comuna —no hay un gap de demanda que esperar, sino gestión de listing para estabilizar el ritmo. **En el mes valle, considera estadías de más de 30 días para sostener la ocupación** sin bajar la tarifa. Los primeros meses de operación implican una pérdida acumulada estimada de $1.248.987 mientras el listing gana reseñas —ten ese monto disponible como colchón antes de la primera reserva.",
+      "cajaAccionable": "**Confirma el reglamento y reserva el colchón de estabilización antes de amueblar**: operar sin esos dos pasos resueltos es asumir un riesgo que puedes eliminar."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF al 5% deja $55.442.779 a diez años sin gestión ni vacancia (×1,63 sobre tu capital); un fondo mutuo al 7% llega a $66.956.043 (×1,97); este depto proyecta ×2,97 de equity sobre lo aportado, pero ese múltiplo descansa en que Providencia se aprecie al 3% anual —su histórico de 2,9% está apenas en línea con ese supuesto, sin margen de holgura. **El diferencial de ×1,0 sobre el fondo es la prima que cobras por 10 años de gestión activa, iliquidez y riesgo de vacancia**: tiene que valer la pena para ti.",
+      "cajaAccionable": "**La apuesta a 10 años se sostiene si Providencia mantiene su histórico de apreciación y tú aguantas la gestión activa todo el período**: si alguna de las dos falla, el instrumento financiero gana sin esfuerzo."
+    },
+    "riesgos": {
+      "contenido": "Regulación del edificio sin confirmar.\n\nEl reglamento de copropiedad puede prohibir el arriendo por noche y ese es el único riesgo que anula toda la operación de golpe. Antes de firmar la escritura —y antes de gastar un peso en amoblamiento— tienes que leer el reglamento completo y confirmar que permite el arriendo turístico; si no está explícito, pide una carta del administrador.\n\nEscenario conservador: el mes se pone rojo.\n\nEn el cuartil bajo de ocupación observado en la zona, el NOI cae a $333.211 al mes y el flujo pasa a −$246.684, lo que significa que aportas plata de tu bolsillo todos los meses sin excepción. Ese escenario no es teórico: el break-even está en el 88% del ingreso mediano de la zona, margen que se agota rápido si la ocupación baja algunos puntos o si el listing demora en estabilizarse.\n\nSobreprecio pagado el día de la firma.\n\nEstás pagando unas UF 378 sobre el valor estimado de la zona —plata que sale el día de la escritura y que no recuperas con el flujo operativo. A la plusvalía histórica de Providencia (2,9% anual), tardarías unos 4 años solo en recuperar ese sobreprecio, antes de acumular tu primer peso real de apreciación; si la comuna se estanca, ese período se extiende indefinidamente.",
+      "cajaAccionable": "**Mi posición: el precio de entrada hace que este negocio no cierre, y eso no es un supuesto que puedas ajustar**; la alternativa es buscar un activo donde la entrada no lastre desde el día uno."
+    },
+    "veredicto": "AJUSTA SUPUESTOS",
+    "francoCaveat": "El input declara que ningún ajuste realista cruza al veredicto COMPRAR —ni bajando el precio 25%, ni subiendo la tarifa 10%, ni cambiando el plazo, el pie o el modo de gestión. Con ese dato, el veredicto AJUSTA SUPUESTOS es técnicamente correcto pero operativamente ambiguo: no hay supuesto accionable que el usuario pueda mover para cruzar. Un veredicto BUSCAR OTRA sería más honesto con la situación real. Lo dejo en AJUSTA para respetar la instrucción del análisis y porque el flujo base es positivo y el CAP supera el umbral, pero el lector debería saber que no existe la palanca que el veredicto sugiere.",
+    "promptVersion": 16
+  }
+}

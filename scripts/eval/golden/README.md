@@ -21,6 +21,8 @@ Diseño aprobado: `of-golden-design.md` (raíz, untracked).
 | `catch-test.ts` | meta-validación: rompe invariantes y verifica que el runner CAZA | 0 |
 | `runner.ts` | CLI orquestador | — |
 | `accept.ts` | re-baseline (regenera baseline.json) | 0 |
+| `str-v16-dump/` | corpus: las 12 salidas STR de la tanda FULL parcial del prompt v16 (6 seeds × 2), prosa persistida. Alimenta catch-tests de 0 tokens; no son cifras congeladas. | — |
+| `guards-v16-dump-catch-test.ts` | [STR-ENGINEISM] + [HERO-CLAIM] sobre el corpus v16: caza toda oración con la familia y no dispara fuera de ella | 0 |
 
 ## Uso
 

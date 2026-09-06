@@ -1,0 +1,112 @@
+{
+  "key": "GE-2",
+  "run": 1,
+  "veredicto": "AJUSTA SUPUESTOS",
+  "score": 60,
+  "coronado": {
+    "id": "ventaja_vs_ltr",
+    "titular": "El corto le saca ventaja clara al arriendo largo.",
+    "fraseCanonica": "En corto rindes 44% más neto que arrendando largo el mismo depto —pero esa ventaja compara un corto estabilizado, con la ocupación proyectada, contra un arriendo largo contractual y garantizado. La diferencia justifica el esfuerzo operativo extra —rotación, gestión, estacionalidad—; si la ocupación proyectada no se cumple, se achica. Suma a favor, pero por sí solo no alcanza para mover el veredicto.",
+    "decisividad": 0.56
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 0.48,
+      "direccion": "adverso"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0.16,
+      "direccion": "adverso"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.56,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0.08,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0.08,
+      "direccion": "adverso"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "capex_puesta_a_punto",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "distancia_veredicto",
+      "decisividad": 0,
+      "direccion": "neutral"
+    }
+  ],
+  "result": {
+    "titular": "Ajusta la gestión: **administrándolo tú el mes cierra positivo**.",
+    "conviene": {
+      "respuestaDirecta": "Operando por día con administrador pones $99.472 de tu bolsillo cada mes, pagado todo, y eso no cambia aunque el corto le saque un 44% más neto al arriendo largo. **Ese margen de ventaja desaparece cuando el administrador se lleva el 20%: la diferencia entre perder plata y ganarla es quién gestiona.** La distancia al veredicto de arriba es una sola decisión operativa: autogestionar el depto en vez de delegar, lo que cierra el flujo positivo; o negociar el precio hasta UF 2.596, que requiere un vendedor muy motivado.",
+      "veredictoFrase": "STR gana al largo, pero el administrador se come ese margen.",
+      "reencuadre": "Para un inversionista este depto es una apuesta operativa, no una renta pasiva: **el flujo positivo existe solo si tú controlas la gestión directamente**. Lo que compras es la plusvalía histórica de Santiago más una prima de esfuerzo que el mercado de renta corta puede o no remunerar.",
+      "cajaAccionable": "Antes de firmar, define si puedes dedicar 8-12 horas semanales a la operación: **autogestiónalo y el mes cierra con $42.080 a tu favor; con administrador, pones $99.472 cada mes de tu bolsillo**."
+    },
+    "rentabilidad": {
+      "contenido": "El precio de entrada es el nudo: pagas UF 71,1 por m² en una comuna donde la mediana ya está 3% más abajo, y eso deprime el CAP antes de que la operación arranque. **Mira la matriz de tarifa y ocupación: el escenario base está en el límite donde cualquier caída de demanda lleva el flujo a territorio conservador.**",
+      "cajaAccionable": "**El CAP de 4,2% no justifica el precio de compra a estas condiciones de gestión pasiva**: las palancas que están en tus manos hoy son la comisión y el precio de entrada, no la tarifa ni el plazo."
+    },
+    "vsLTR": {
+      "contenido": "El largo deja un NOI de $298.493 al mes, garantizado y sin rotación; el corto con administrador deja $430.869, pero con vacancia, estacionalidad y gestión activa. La brecha de $132.376 mensuales suena bien hasta que ves que toda esa diferencia —y algo más— la absorbe la comisión del 20%: autogestionando, el NOI sube a $572.421 y el corto gana con claridad; delegando, la ventaja existe pero no alcanza para cubrir el dividendo. Está parejo en términos de esfuerzo-riesgo: la decisión no es matemática sino cuántas horas a la semana puedes operar esto.",
+      "estrategiaSugerida": "Si optas por el corto, los caminos que cierran en positivo hoy son la autogestión directa y negociar el precio de entrada: la autogestión pasa el mes de −$99.472 a +$42.080 sin tocar precio ni tarifa. Si no tienes esas horas disponibles, el arriendo largo a $445.000 brutos reduce la pérdida mensual y elimina el riesgo operativo del STR.",
+      "cajaAccionable": "**La ventaja del corto sobre el largo existe, pero solo la aprovechas si operas tú**: con administrador, la sobre-renta real no compensa el esfuerzo ni cubre el dividendo. Franco pronto te conectará con operadores verificados."
+    },
+    "operacion": {
+      "contenido": "La zona registra 47% de ocupación estimada, sobre el 42% típico de la comuna, lo que es contexto favorable de demanda pero no mueve el flujo por sí solo. El potencial con gestión profesional estabilizada llega a 65% de ocupación, un gap de 18 puntos que tarda varios meses en cerrarse mientras el listing gana reseñas: la pérdida de estabilización ya dimensionada en los riesgos debe estar disponible antes de operar. **En el mes valle de febrero, activa estadías más largas para sostener la ocupación sin bajar tarifa base.**",
+      "cajaAccionable": "**Ten al menos tres meses de costos fijos en reserva antes de publicar el listing**: los primeros meses de operación son los de menor ocupación y mayor exposición."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF al 5% deja un múltiplo de ×1,63 a diez años sin gestión, vacancia ni riesgo regulatorio; este depto llega a ×1,92 sobre lo puesto, pero solo si la plusvalía acompaña: Santiago mostró 5% anual histórico en la última década, sobre el umbral de referencia del 3%, aunque eso es respaldo histórico y no garantía. **El retorno del depto supera al depósito UF pero queda bajo el fondo mutuo (×1,97), y esa prima la cobras a cambio de diez años de gestión activa, un activo ilíquido y riesgo de vacancia.** Si la plusvalía se estanca en 0% real, el multiplicador cae y el instrumento sin esfuerzo gana.",
+      "cajaAccionable": "**Para que diez años de gestión e iliquidez se justifiquen, necesitas que Santiago siga apreciándose y que tú o alguien de confianza opere el listing con ocupación estabilizada**: si alguna de esas dos condiciones falla, el fondo mutuo rinde igual sin el trabajo."
+    },
+    "riesgos": {
+      "contenido": "Regulación del edificio sin confirmar.\n\nNo sabes si el reglamento permite Airbnb, y si lo prohíbe, los $7.350.000 de amoblamiento son pérdida inmediata: verifica el reglamento con el administrador del edificio antes de firmar cualquier promesa, porque este dato no se recupera después.\n\nBreak-even estructuralmente sobre el mercado.\n\nNecesitas el 115% de los ingresos brutos medianos de la zona solo para no poner plata: eso significa que ni operando al nivel mediano de la zona cubres los costos, y cualquier mes flojo —febrero, inicio del listing— amplía la pérdida sin amortiguador.\n\nCostos operativos altos desde el inicio.\n\nEl 48% del ingreso bruto se va en gastos y comisión, sobre la banda de referencia de este análisis (30-40%), y la pérdida acumulada de los primeros meses de operación antes de estabilizarse asciende a $1.248.987: ese monto debe estar disponible en efectivo antes de publicar el primer aviso.",
+      "cajaAccionable": "**Mi posición: este depto tiene lógica solo si autogestionas, el reglamento del edificio lo permite y tienes el colchón de arranque en la cuenta**: si alguna de esas tres condiciones no se cumple, busca otra propiedad antes de comprometer el capital."
+    },
+    "veredicto": "AJUSTA SUPUESTOS",
+    "francoCaveat": "El hallazgo coronado es la ventaja STR vs LTR (+44%), pero el flujo base es negativo y el break-even está sobre el mercado. El veredicto AJUSTA SUPUESTOS es correcto dado que la autogestión deja el mes positivo, pero el caso está muy cerca del límite BUSCAR OTRA si el reglamento del edificio no permite STR o el propietario no puede/quiere autogestionar. Una calibración futura podría ponderar la regulación no confirmada como gate duro antes de emitir AJUSTA.",
+    "promptVersion": 16
+  }
+}

@@ -37,6 +37,16 @@ if (v("y la única salida es la venta.", { viasCruzan: [] }).length) F("1 · 'la
 if (!v("la única vía es el precio.", { viasCruzan: [] }).length) F("1 · 'la única vía' con cero vías debía disparar");
 if (!v("busca un depto donde el precio por m² parta de la mediana comunal, no del doble de ella.").length) F("1 · 'no del doble de la mediana' con 1,78× (GS-4) debía disparar");
 
+// ── 1.bis núcleo compartido (06-sep-2026, goal guards STR (b)): el sujeto pegado DESPUÉS del
+// múltiplo compite por cercanía con los de antes, y un par sin dato cede al siguiente sujeto
+// con razón. En LTR no existe la forma "sin dato → otro sujeto con dato" (los únicos pares
+// sin dato son precio/mediana sin mediana confiable y precio/VM sin fuente, y ningún otro
+// sujeto forma razón con esos comparadores), así que acá se fija lo que NO cambia. ──
+if (!v("El precio pedido es casi el doble del valor estimado de la zona.", { vmConFuente: false }).some((x) => x.includes("no tiene dato"))) F("1.bis · precio/VM sin fuente sigue diciendo 'no tiene dato'");
+if (!v("Al vender, casi el doble del fondo mutuo es lo que queda como tu parte.").length) F("1.bis · sujeto después del múltiplo (tu parte/fondo 1,6×) con 'casi el doble' debía disparar");
+if (v("Al vender, casi el doble del fondo mutuo es lo que queda como tu parte.", { exitEquityCLP: 84_000_000 }).length) F("1.bis · sujeto después del múltiplo con 1,89× debía pasar");
+if (v("así que aportas de tu bolsillo más de la mitad de la cuota cada mes, y al vender tu parte supera el depósito.").length) F("1.bis · el sujeto de antes (aporte) sigue ganando al de después lejano (patrimonio)");
+
 // ── 2. razones de largoPlazo ──
 if (!v("El depto proyecta que tu parte al vender a 10 años es $70.865.849 —más del doble del fondo—, pero pones $66.618 al mes.").length) F("2 · GS-3 'tu parte al vender … más del doble del fondo' (1,6×) debía disparar");
 if (!v("el depto te deja tu parte al vender en $59.214.387 — casi el doble del fondo mutuo —", { exitEquityCLP: 59214387, fondoCLP: 37216300 }).length) F("2 · GS-PJ 'casi el doble del fondo mutuo' (1,59×) debía disparar");

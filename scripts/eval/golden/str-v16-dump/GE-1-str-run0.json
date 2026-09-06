@@ -1,0 +1,120 @@
+{
+  "key": "GE-1",
+  "run": 0,
+  "veredicto": "COMPRAR",
+  "score": 78,
+  "coronado": {
+    "id": "ventaja_vs_ltr",
+    "titular": "El corto le saca ventaja clara al arriendo largo.",
+    "fraseCanonica": "En corto rindes 198% más neto que arrendando largo el mismo depto —pero esa ventaja compara un corto estabilizado, con la ocupación proyectada, contra un arriendo largo contractual y garantizado. La diferencia justifica el esfuerzo operativo extra —rotación, gestión, estacionalidad—; si la ocupación proyectada no se cumple, se achica.",
+    "decisividad": 0.85
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 0.08,
+      "direccion": "adverso"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.85,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0.04,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0.12,
+      "direccion": "favorable"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    }
+  ],
+  "result": {
+    "titular": "Arriéndalo por día: **el mercado corto ya triplica el neto del largo**.",
+    "conviene": {
+      "respuestaDirecta": "Operando por día te quedan $14.747 al mes, pagado todo, con la ocupación que el mercado estima para este depto: **el corto le saca al largo casi tres veces más en NOI neto**, lo que es la razón más fuerte para optar por Airbnb aquí. El matiz que más pesa es la tarifa: pusiste $75.000 por noche, pero la estimación de mercado para este depto es $47.496, y si bajas a esa tarifa el flujo se estrecha significativamente. Sin esa tarifa sostenida, el margen positivo desaparece.",
+      "veredictoFrase": "Este depto conviene en corto, pero la tarifa lo decide todo.",
+      "reencuadre": "Para un inversionista, este depto es una apuesta a plusvalía con flujo de respaldo: Santiago Centro lleva 5,0% anual histórico de valorización, **lo que convierte el dividendo cubierto de hoy en patrimonio real a 10 años**. Lo que compras no es la renta mensual —que es ajustada— sino la posición en un activo que históricamente se aprecia sobre la inflación.",
+      "cajaAccionable": "Antes de firmar, **solicita al banco la tasa subsidiada Ley 21.748**: califica por ser vivienda nueva en primera venta bajo UF 6.000, baja al menos 0,6 pp desde 4,1% y mejora el flujo mensual sin tocar el precio."
+    },
+    "rentabilidad": {
+      "contenido": "El precio de entrada es lo que mantiene el CAP rate a 0,24 puntos bajo el umbral: **el stack de costos operativos es eficiente**, así que la palanca no está en reducir gastos sino en la tarifa o en negociar el precio. Mira primero la matriz tarifa × ocupación y la sensibilidad de precio: una rebaja de 5% lleva el CAP a 5,01% y el flujo a $45.478.",
+      "cajaAccionable": "**Si el precio no se mueve, la tarifa es tu única palanca dentro del CAP**: sostener $75.000 por noche no es seguro; la estimación de mercado está en $47.496, y ahí el modelo base cambia por completo."
+    },
+    "vsLTR": {
+      "contenido": "El NOI mensual en largo es $210.936 frente a $629.372 en corto con administrador: la brecha absoluta es $418.436 al mes, que es lo que paga el esfuerzo de operar por día. Con autogestión ese NOI sube a $808.826 y el flujo a $194.201, generando $179.454 más al mes que con administrador. La decisión real no es corto vs largo —el corto gana en neto—, sino si delegas esa diferencia a un operador o la administras tú.",
+      "estrategiaSugerida": "Si operas con administrador, la sobre-renta de $418.436 cubre el dividendo y deja $14.747 libres, pero el margen es estrecho para absorber meses bajos. Si tienes disponibilidad de 8-12 horas semanales para autogestionar, el flujo sube a $194.201 y la operación gana holgura real: **Franco pronto te conectará con operadores verificados**.",
+      "cajaAccionable": "**Elige el modo de gestión antes de amueblar**: autogestión da $179.454 más al mes, pero exige presencia y tiempo; con administrador el flujo es pasivo y justo, sin margen para vacancias prolongadas."
+    },
+    "operacion": {
+      "contenido": "La estimación de ocupación de este depto es 46%, alineada con el 42% típico de la comuna, lo que sugiere que el caso base no descansa en un supuesto optimista de zona. La estabilización inicial del listing toma cerca de 6 meses mientras gana reseñas: la pérdida acumulada estimada de ese período es $1.583.412, que debes tener disponible como colchón antes de operar. **En el mes valle de febrero activa estadías de más de 30 días** para sostener la ocupación sin bajar tarifa.",
+      "cajaAccionable": "**Ten la pérdida de estabilización ya dimensionada en los riesgos disponible como reserva de arranque**: no es pérdida permanente, es el costo de construir el historial del listing antes de operar a ocupación normal."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF al 5% deja $64.902.158 a diez años sin gestión ni vacancia (×1,63 sobre tu capital); un fondo mutuo al 7% llega a $78.379.759 (×1,97): este depto proyecta ×2,73 en equity, pero eso exige gestión activa, iliquidez total y que la plusvalía acompañe. Santiago Centro lleva 5,0% anual histórico —sobre el umbral de apreciación real de 3%—, lo que hace que la proyección estándar al 3% sea conservadora respecto a lo que la comuna ya mostró, aunque pasado no garantiza futuro. Mi lectura: la prima que cobras sobre el depósito UF (×1,10 más) se justifica si valorizas estar en un activo que históricamente supera la inflación; si la plusvalía se estanca, el flujo solo no sostiene el retorno.",
+      "cajaAccionable": "**Para que los 10 años valgan el esfuerzo y la iliquidez, la comuna tiene que seguir valorizándose sobre inflación**: el flujo mensual es respaldo, no el análisis del retorno."
+    },
+    "riesgos": {
+      "contenido": "La tarifa de $75.000 no está respaldada por el mercado. Pusiste una tarifa que casi duplica la estimación de mercado de $47.496 para este depto: si el listing opera cerca de esa estimación, el flujo base se estrecha y el modelo positivo se sostiene solo por el buen comportamiento de la ocupación. Con la tarifa de mercado, revisa la matriz antes de comprometerte con el precio actual.\n\nEl caso base descansa en un margen muy estrecho. El escenario conservador —cuartil bajo observado— produce un flujo de $-359.123 al mes, lo que significa aportar de tu bolsillo en meses de baja demanda. La frontera entre COMPRAR y AJUSTA SUPUESTOS está a solo −6,7% de ingreso desde el base: cualquier caída de tarifa o vacancia sostenida cruza esa línea.\n\nEl edificio permite Airbnb, pero la regulación comunal puede cambiar. Santiago Centro tiene presión regulatoria creciente sobre renta corta; un cambio de reglamento comunal o de copropiedad puede forzar el traspaso a arriendo largo, donde el NOI cae a $210.936 y el flujo mensual pasa a ser $-403.689. Antes de invertir en amoblamiento, revisa el reglamento de copropiedad vigente y el estado de las iniciativas municipales.",
+      "cajaAccionable": "**Este depto conviene comprarlo si puedes sostener la tarifa objetivo y tienes el colchón de arranque**: sin esas dos condiciones, el veredicto positivo se apoya en supuestos que el mercado aún no confirma."
+    },
+    "veredicto": "COMPRAR",
+    "francoCaveat": "El veredicto COMPRAR descansa en una tarifa de $75.000 por noche marcada como 'dato tuyo', que casi duplica la estimación de mercado de $47.496. Si el usuario opera con la tarifa de mercado, el flujo base pasa a negativo y el veredicto correcto sería AJUSTA SUPUESTOS. El análisis mantuvo el COMPRAR porque la ocupación base (46%) coincide con la estimación de mercado y el break-even está al 98% del P50, pero con la tarifa real de mercado el usuario estaría poniendo plata de su bolsillo cada mes en vez de recibir flujo positivo. Recomendaría mostrar al usuario el escenario con $47.496 de ADR antes de que tome la decisión.",
+    "_residuoGuards": [
+      {
+        "guard": "hero-claim",
+        "campo": "titular"
+      },
+      {
+        "guard": "hero-claim",
+        "campo": "conviene.respuestaDirecta"
+      },
+      {
+        "guard": "hero-claim",
+        "campo": "riesgos.contenido"
+      },
+      {
+        "guard": "hero-claim",
+        "campo": "francoCaveat"
+      }
+    ],
+    "promptVersion": 16
+  }
+}

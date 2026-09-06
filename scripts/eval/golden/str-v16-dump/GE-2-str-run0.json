@@ -1,0 +1,112 @@
+{
+  "key": "GE-2",
+  "run": 0,
+  "veredicto": "AJUSTA SUPUESTOS",
+  "score": 60,
+  "coronado": {
+    "id": "ventaja_vs_ltr",
+    "titular": "El corto le saca ventaja clara al arriendo largo.",
+    "fraseCanonica": "En corto rindes 44% más neto que arrendando largo el mismo depto —pero esa ventaja compara un corto estabilizado, con la ocupación proyectada, contra un arriendo largo contractual y garantizado. La diferencia justifica el esfuerzo operativo extra —rotación, gestión, estacionalidad—; si la ocupación proyectada no se cumple, se achica. Suma a favor, pero por sí solo no alcanza para mover el veredicto.",
+    "decisividad": 0.56
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 0.48,
+      "direccion": "adverso"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0.16,
+      "direccion": "adverso"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.56,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0.08,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0.08,
+      "direccion": "adverso"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "capex_puesta_a_punto",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "distancia_veredicto",
+      "decisividad": 0,
+      "direccion": "neutral"
+    }
+  ],
+  "result": {
+    "titular": "Funciona solo si **lo gestionas tú**: con administrador, pones plata cada mes.",
+    "conviene": {
+      "respuestaDirecta": "Operando por día con administrador pones $99.472 de tu bolsillo cada mes, pagado todo; el corto le saca 44% más neto al largo, pero esa ventaja no alcanza a cubrir el dividendo con gestión pasiva. **Si gestionas tú directamente, la comisión que ahorras convierte el flujo negativo en positivo**: ese es el ajuste que cambia el veredicto. Hay una segunda vía —bajar el precio a UF 2.596—, aunque requiere un vendedor motivado.",
+      "veredictoFrase": "Hay dos ajustes que mueven este caso: bajar el precio o autogestionarlo.",
+      "reencuadre": "Para un inversionista, este depto es una apuesta a la plusvalía de Santiago más que al flujo operativo: **la histórica comunal de 5% anual respalda el activo a largo plazo**, pero el flujo mensual depende enteramente de cómo lo operas. Lo que compras hoy es ilíquido y con flujo negativo en modo pasivo.",
+      "cajaAccionable": "**Decide el modo de gestión antes de firmar**: autogestión cruza el veredicto a COMPRAR; con administrador, sigues en negativo $99.472 al mes. Si no puedes dedicar 8-12 hrs semanales, negocia el precio bajo UF 2.596 o busca otra propiedad."
+    },
+    "rentabilidad": {
+      "contenido": "El problema está en el precio de entrada: a UF 71,1/m² el activo no genera suficiente caja para justificar su costo en este contexto de tasas, y el stack de costos operativos —que se lleva 48 de cada 100 pesos de ingreso bruto— no deja margen. **Mira la matriz de tarifa y ocupación: el veredicto solo sube si mueves la gestión o el precio, no la tarifa.**",
+      "cajaAccionable": "**Un descuento de 19% en el precio de compra o pasar a autogestión son las únicas palancas que te sacan del flujo negativo**: sin una de las dos, el CAP rate se queda bajo el 5% de referencia y sigues poniendo plata cada mes."
+    },
+    "vsLTR": {
+      "contenido": "El NOI mensual en corto con administrador es $430.869 frente a $298.493 en arriendo largo: $132.376 más al mes a favor del corto. Pero en ambos casos pones plata de tu bolsillo —$99.472 al mes en corto y $231.848 en largo—, porque el dividendo de $530.341 supera al NOI en los dos modos. La diferencia real está en la gestión: si pasas a autogestión, el NOI sube a $572.421 y dejas de poner plata —te quedan $42.080 al mes—, lo que no ocurre con el arriendo largo bajo ninguna configuración comparable.",
+      "estrategiaSugerida": "Si optas por el corto, la autogestión es la condición mínima para que la operación no te cueste plata cada mes: $141.552 mensuales de diferencia respecto al administrador no es un detalle operativo, es lo que separa el flujo positivo del negativo. Si no puedes hacerte cargo de las 8-12 horas semanales, el arriendo largo —aunque negativo— es más predecible y menos exigente.",
+      "cajaAccionable": "**La ventaja del corto sobre el largo solo se materializa plenamente si gestionas tú**: con administrador la brecha se achica y ambos modos te dejan poniendo plata al dividendo. Franco pronto te conectará con operadores verificados."
+    },
+    "operacion": {
+      "contenido": "La ubicación juega a favor: Metro Manuel Montt a 119 metros y Hospital Calvo Mackenna a 585 metros anclan una demanda mixta —turistas, corporativo y estadías médicas de 3 a 15 días— que sostiene ocupación sobre la típica comunal. En el mes valle considera activar estadías más largas para no perder noches. **Antes de invertir en el amoblado o publicar el anuncio, verifica el reglamento del edificio**: si el copropietario prohíbe Airbnb, los $7.350.000 en amoblamiento son un costo irrecuperable. Los primeros meses de operación implican una pérdida acumulada estimada de $1.248.987 mientras el listing gana reseñas y estabiliza su ocupación.",
+      "cajaAccionable": "**Confirma por escrito que el edificio permite arriendo por día antes de cualquier gasto de habilitación**: es el único paso que no tiene vuelta atrás si sale mal."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF más 5% deja ×1,63 sobre tu capital en 10 años sin gestión ni vacancia; un fondo mutuo al 7% llega a ×1,97; este depto proyecta ×1,92 en equity, pero exige una década de gestión activa, iliquidez y flujo negativo en modo pasivo. Ese retorno descansa en la plusvalía: Santiago mostró 5% anual histórico en la última década, sobre el 3% de la proyección estándar, lo que hace la apuesta conservadora respecto a lo que la comuna ya demostró —aunque el pasado no garantiza el futuro. **Si la plusvalía se estanca en cero real, el múltiplo cae y el depto pierde contra el fondo mutuo sin haber compensado el esfuerzo**.",
+      "cajaAccionable": "**Para que 10 años de gestión e iliquidez se justifiquen, la plusvalía tiene que seguir acompañando y tú tienes que operar en autogestión**: si alguna de las dos falla, los instrumentos financieros ganan sin desgaste."
+    },
+    "riesgos": {
+      "contenido": "Break-even estructuralmente sobre el mercado.\n\nNecesitas 115% de los ingresos brutos medianos de la zona solo para no poner plata: ni operando al nivel mediano de la zona cubres costos con administrador. Este no es un problema de mala suerte operativa sino de la combinación precio-tasa-comisión; dentro del corto, las salidas son la autogestión o una rebaja de precio a UF 2.596.\n\nRegulación del edificio sin confirmar.\n\nEl reglamento del edificio no garantiza que Airbnb esté permitido, y en caso de prohibición los $7.350.000 de amoblamiento no se recuperan. Verifica el reglamento de copropiedad antes de cualquier desembolso de habilitación; si el administrador del edificio no puede confirmarlo por escrito, el riesgo no está gestionado.\n\nCostos operativos altos y margen ajustado.\n\nEl 48% del ingreso bruto se va en gastos más comisión, sobre la banda de referencia de 30-40% que el análisis usa para esta zona; cualquier alza en gastos comunes o mantención presiona un flujo que ya es negativo en el escenario base con administrador. En el escenario conservador el flujo llega a −$382.744 al mes, lo que exige un colchón de reserva antes de operar.",
+      "cajaAccionable": "**Mi posición: este depto puede funcionar, pero solo si gestionas tú y confirmas la regulación antes de firmar**; si no puedes cumplir las dos condiciones, la honestidad es mirar otra propiedad antes que forzar una operación que te cuesta plata cada mes."
+    },
+    "veredicto": "AJUSTA SUPUESTOS",
+    "francoCaveat": "El hallazgo #1 de la pirámide es la ventaja vs LTR, pero el dato que más pesa en la decisión real es el flujo negativo estructural con administrador (hallazgo #3 y el break-even sobre mercado). El análisis posiciona ventaja-vs-LTR como coronado, lo que puede llevar al usuario a leer el caso como más favorable de lo que es: en modo administrador, ambas modalidades son negativas y la zona no sostiene renta corta a precios actuales sin autogestión. Considero que el frame de 'CASO PRECIO-JUSTO STR' del input es el diagnóstico correcto y debería pesar más en la jerarquía narrativa.",
+    "promptVersion": 16
+  }
+}

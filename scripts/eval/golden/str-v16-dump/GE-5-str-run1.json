@@ -1,0 +1,112 @@
+{
+  "key": "GE-5",
+  "run": 1,
+  "veredicto": "AJUSTA SUPUESTOS",
+  "score": 54,
+  "coronado": {
+    "id": "rentabilidad_str",
+    "titular": "La rentabilidad operativa se queda corta.",
+    "fraseCanonica": "Tu CAP rate en corto es 4,5%, bajo el umbral de 5% que le pedimos a una renta corta en Santiago. Genera caja, pero por debajo del piso que hace que el precio de entrada se justifique por rentabilidad.",
+    "decisividad": 0.36
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 0.36,
+      "direccion": "adverso"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0.12,
+      "direccion": "adverso"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.16,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0.12,
+      "direccion": "adverso"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0.04,
+      "direccion": "adverso"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "capex_puesta_a_punto",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "distancia_veredicto",
+      "decisividad": 0,
+      "direccion": "neutral"
+    }
+  ],
+  "result": {
+    "titular": "Ajusta supuestos: **esta zona no sostiene renta corta a los precios actuales**.",
+    "conviene": {
+      "respuestaDirecta": "El precio de entrada rinde 4,5% operado por día, bajo el 5,0% que le pedimos a una renta corta: **el precio no se justifica con lo que deja operar por noche**. El supuesto que define todo es la ocupación: sin dato real de esta dirección, la operación parte de una referencia conservadora de 45% que recién confirmarás después de meses en el listing. Sin que esa ocupación se sostenga, el flujo negativo de $103.288 al mes no tiene palanca que lo corrija dentro de rangos realistas.",
+      "veredictoFrase": "Esta zona no da las noches para sostener el dividendo.",
+      "reencuadre": "Para un inversionista, este depto es una apuesta a plusvalía en Providencia más que a flujo operativo: **lo que compras es el activo, no la renta mensual**. El flujo negativo no es un ajuste fino — es la matemática estructural de la zona a los precios actuales.",
+      "cajaAccionable": "**Antes de comprometerte, contrasta este depto con la alternativa de arriendo largo**: la sobre-renta del corto es de solo $35.733 al mes, y no paga el esfuerzo operativo ni el riesgo regulatorio del edificio."
+    },
+    "rentabilidad": {
+      "contenido": "El precio de compra por m² es el peso que arrastra la rentabilidad: con ingresos anclados a la mediana de una zona de tier bajo, ajustar tarifas o gestionar tú mismo no alcanza para que este depto genere el retorno mínimo. **Mira la matriz de tarifa y ocupación para ver cuánto margen real hay entre el caso base y el borde del veredicto**.",
+      "cajaAccionable": "**Para que la rentabilidad operativa se justifique, el precio de entrada tendría que bajar bajo UF 2.230** — un descuento que ninguna negociación normal produce en esta zona."
+    },
+    "vsLTR": {
+      "contenido": "En números absolutos, el corto deja un NOI de $477.219 al mes frente a $441.486 del largo: una diferencia de $35.733. Ambas modalidades operan con flujo negativo — el corto en $103.288 y el largo en $139.021 — así que la pregunta no es cuál te deja plata, sino cuál te hace perder menos. La autogestión suma $112.232 al mes frente al administrador; sin ese diferencial, la ventaja del corto sobre el largo desaparece por completo y terminas poniendo más de tu bolsillo con más esfuerzo.",
+      "estrategiaSugerida": "Está parejo entre modalidades: la sobre-renta del corto es $35.733 al mes, y no compensa las 8-12 horas semanales de gestión ni la incertidumbre regulatoria del edificio. Si tu perfil no es operar activamente y con disciplina de tarifas dinámicas por temporada, el arriendo largo con menos desgaste puede ser la opción más honesta.",
+      "cajaAccionable": "**La ventaja real del corto sobre el largo depende de que sostengas la autogestión todo el año**: si delegas, el corto pierde contra el largo por $113.000 al mes."
+    },
+    "operacion": {
+      "contenido": "Antes de invertir en el amoblamiento, verifica el reglamento del edificio: si no permite Airbnb, el análisis completo cae. Los primeros meses de operación el listing funciona bajo su ocupación normal mientras acumula reseñas; esa estabilización inicial tiene un costo estimado de $990.284 acumulados que debes tener disponibles como colchón, adicionales al pie. **En el mes valle activa estadías más largas para sostener ocupación cuando la demanda baja**, porque la zona ya muestra tier bajo y no hay margen para dejar noches vacías.",
+      "cajaAccionable": "**Ten tres meses de costos fijos líquidos antes de encender el listing**: el flujo negativo más la estabilización inicial pueden comprometer la operación en los primeros seis meses."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF al 5% deja ×1,63 sobre el mismo capital a diez años sin gestión ni vacancia; un fondo mutuo al 7% llega a ×1,97; este depto proyecta ×2,07, pero ese múltiplo descansa en la plusvalía del activo, no en el flujo operativo — que acumula negativo en el período. Providencia apreció 2,9% anual en la última década, en línea con el 3% proyectado, así que la proyección no es conservadora ni arriesgada: es consistente con lo que la comuna ya mostró, aunque pasado no garantiza futuro. Mi lectura: **la prima que cobras por asumir gestión, iliquidez y flujo negativo durante diez años es de 0,10x sobre el fondo mutuo**, un margen fino para el esfuerzo que implica.",
+      "cajaAccionable": "**Para que diez años de gestión e iliquidez se justifiquen, la plusvalía de Providencia tiene que sostenerse cerca del 3% real anual**: si se estanca, el múltiplo cae bajo el fondo mutuo sin haber gestionado nada."
+    },
+    "riesgos": {
+      "contenido": "Break-even estructuralmente sobre el mercado.\n\nNecesitas ingresos brutos que equivalen al 116% de la mediana de la zona solo para cubrir costos — no como escenario adverso, sino como punto de partida. Eso significa que operando al nivel mediano del mercado sigues poniendo plata de tu bolsillo cada mes, y la única variable que podría cruzarlo requiere un salto de ingreso de 14,6% que esta zona no muestra en sus datos.\n\nRegulación del edificio sin confirmar.\n\nNo sabes si el edificio permite Airbnb. Invertir en amoblamiento antes de verificar el reglamento es el error más caro del análisis: si la respuesta es no, pierdes el costo de amoblamiento y toda la tesis del corto sin haber operado un solo día. Primero el reglamento, después cualquier otra decisión.\n\nOcupación sin respaldo de datos de esta dirección.\n\nEl caso base descansa en una referencia conservadora de 45% porque no hay datos reales para esta dirección; los datos de mercado de la zona muestran ocupación en percentil cero frente a la comuna, lo que sugiere que incluso ese 45% puede ser optimista. Si la ocupación real se ubica en el cuartil bajo observado, el flujo mensual supera los $680.000 negativos.",
+      "cajaAccionable": "**Mi posición: no compres este depto para operar en renta corta mientras no confirmes el reglamento del edificio y tengas datos reales de ocupación de la zona** — las dos incógnitas que, si salen mal, hacen que el análisis entero sea irrelevante."
+    },
+    "veredicto": "AJUSTA SUPUESTOS",
+    "francoCaveat": "El veredicto del análisis es AJUSTA SUPUESTOS, pero el bloque de vías indica que ningún ajuste realista cruza a COMPRAR: ni precio, ni tarifa, ni plazo, ni pie, ni gestión. En estricto rigor, el caso es más cercano a BUSCAR OTRA que a AJUSTA. El reencuadre canónico de CASO PRECIO-JUSTO STR (la zona no sostiene, no el depto) justifica mantener AJUSTA como señal de que el problema es sistémico y no una falla del activo específico, pero el usuario debería entender que no hay palanca accionable que cambie el veredicto.",
+    "promptVersion": 16
+  }
+}

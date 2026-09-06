@@ -1,0 +1,107 @@
+{
+  "key": "GE-6",
+  "run": 1,
+  "veredicto": "BUSCAR OTRA",
+  "score": 37,
+  "coronado": {
+    "id": "rentabilidad_str",
+    "titular": "La rentabilidad operativa se queda corta.",
+    "fraseCanonica": "Tu CAP rate en corto es 2,4%, bajo el umbral de 5% que le pedimos a una renta corta en Santiago. Genera caja, pero por debajo del piso que hace que el precio de entrada se justifique por rentabilidad.",
+    "decisividad": 1
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 1,
+      "direccion": "adverso"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0.28,
+      "direccion": "adverso"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.12,
+      "direccion": "adverso"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0.04,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "distancia_veredicto",
+      "decisividad": 0,
+      "direccion": "neutral"
+    }
+  ],
+  "result": {
+    "titular": "Arrendarlo por día no conviene: **pones plata y no la recuperas**.",
+    "conviene": {
+      "respuestaDirecta": "**El precio de este depto no se justifica con lo que deja operar por día**: el CAP rate queda en 2,4% frente al umbral de 5% y el flujo es negativo incluso en el upside. Para no poner plata cada mes necesitas ingresos equivalentes al 153% de la mediana de la zona, y eso no lo mueve la gestión sino lo que el mercado da en esta dirección. La única vía en que dejas de poner plata es gestionar tú el depto, reemplazando la comisión del 20% por la plataforma del 3%.",
+      "veredictoFrase": "Este depto no cierra en corto: la zona no da para el precio.",
+      "reencuadre": "Para un inversionista, este caso es una apuesta al patrimonio en una zona con historial de valorización, no a la renta operativa. **Lo que compras hoy no te paga la cuota — esperas que Santiago siga apreciándose.**",
+      "cajaAccionable": "**La única palanca que mueve el veredicto es gestionar tú el depto** — de 20% a 3% de comisión cambia 17 puntos en el score. Si no tienes disponibilidad para las 8-12 horas semanales que eso exige, la posición de Franco es buscar otra propiedad."
+    },
+    "rentabilidad": {
+      "contenido": "El problema raíz es el precio de entrada: a UF 4.085 para 43 m², el depto necesita rentas que esta zona no produce en mediana. **Los costos operativos se llevan el 52% del ingreso bruto**, sobre la banda del 30-40% que mantiene sano un STR, y eso deja el NOI sin espacio para justificar el precio.",
+      "cajaAccionable": "**Antes de avanzar, revisa la matriz de tarifa y ocupación**: ninguna combinación razonable de mercado acerca el CAP al umbral de 5% — el ajuste tendría que venir del precio, no de la operación."
+    },
+    "vsLTR": {
+      "contenido": "El largo deja $345.055 de NOI mensual frente a $319.851 del corto con administrador: $25.204 más al mes sin rotación, sin estacionalidad y sin gestión activa. Con autogestión STR el NOI sube a $433.495 y el corto gana al largo, pero eso requiere 8-12 horas semanales tuyas — la brecha de $113.644 entre auto y administrador es exactamente lo que la comisión del 20% se lleva. En cualquier caso, ambas modalidades dejan flujo negativo frente al dividendo de $605.355: el largo pierde menos cada mes, pero sigue perdiendo.",
+      "estrategiaSugerida": "Si igual decides operar en corto, la única forma de acercarte al equilibrio es gestionar tú el listing y además calificar al subsidio MINVU Ley 21.748: la tasa bajaría desde 4,0% al menos 0,6 pp, lo que reduciría el dividendo y mejoraría el flujo en la misma magnitud — y este depto nuevo en primera venta bajo UF 6.000 califica, aunque no sea tu primera vivienda. Sin ambas palancas simultáneas, el corto pierde contra el largo todos los meses.",
+      "cajaAccionable": "**Si la decisión es este depto, arriéndalo largo**: te evitas la gestión, reduces la pérdida mensual y no expones el amoblamiento a la rotación — Franco pronto te conectará con operadores verificados."
+    },
+    "operacion": {
+      "contenido": "La estimación de mercado sitúa la ocupación en 46% para esta dirección, alineada con el 42% típico de la comuna — la zona no está deprimida, simplemente el precio de compra supera lo que esa ocupación puede sostener. En el mes valle (febrero) activa estadías largas de semanas completas para sostener el ingreso sin bajar la tarifa base. **Los primeros seis meses de operación implican una pérdida acumulada estimada de $1.002.743** mientras el listing gana reseñas y posición: asegúrate de tener ese colchón líquido antes de activar el aviso.",
+      "cajaAccionable": "**Ten al menos tres meses de costos fijos en reserva líquida** antes de publicar el aviso — con flujo negativo estructural, cualquier mes de baja ocupación se convierte en emergencia de caja."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF al 5% deja un múltiplo de ×1,63 a diez años sin gestión ni vacancia; un fondo mutuo al 7% llega a ×1,97 — este depto proyecta ×1,38 sobre lo aportado, y eso solo si la plusvalía acompaña. Santiago mostró 5,0% anual de valorización histórica en la última década, sobre el 3,0% que usa la proyección estándar, así que la apuesta de plusvalía tiene respaldo histórico, aunque no garantía de que se repita. Mi lectura: el retorno de este depto a diez años descansa más en que la comuna siga apreciándose que en lo que la operación deja — si la plusvalía se estanca, el instrumento financiero gana sin esfuerzo.",
+      "cajaAccionable": "**Para que diez años de gestión e iliquidez se justifiquen, Santiago tiene que seguir valorizándose cerca del ritmo histórico** — si la apreciación cae a cero real, el depósito UF te da más con menos riesgo y cero trabajo."
+    },
+    "riesgos": {
+      "contenido": "Break-even estructuralmente fuera del mercado.\n\nNecesitas ingresos equivalentes al 153% de la mediana de la zona para no poner plata de tu bolsillo — eso no es un mal mes, es la condición base del depto. Ningún ajuste operativo razonable (tarifa, limpieza, amoblamiento) cruza ese umbral: el origen es el precio de compra y la comisión combinados contra lo que la zona produce.\n\nCostos operativos sobre la banda sostenible.\n\nEl 52% del ingreso bruto se va en costos y comisión antes de pagar el dividendo, sobre la banda del 30-40% que mantiene un STR saludable. Con administrador, la comisión del 20% explica la mayor parte del desvío; con autogestión ese porcentaje baja, pero sigue requiriendo que la ocupación y la tarifa se mantengan en el rango estimado todo el año.\n\nFlujo negativo en todos los escenarios salvo el upside extremo.\n\nEn el escenario conservador el flujo llega a -$522.267 al mes; incluso en el base, -$285.504 salen de tu bolsillo cada mes con un administrador. El upside de $34.945 positivos requiere gestión profesional estabilizada a 74% de ocupación, un gap de 28 puntos sobre la estimación de mercado que depende exclusivamente de tu ejecución operativa.",
+      "cajaAccionable": "**Mi posición: este depto no es un STR viable al precio actual con administrador** — si igual lo compras, arriéndalo largo y solicita el subsidio de tasa antes de firmar; si buscas renta corta real, necesitas una zona donde el mercado dé las noches para cubrir la cuota."
+    },
+    "veredicto": "BUSCAR OTRA",
+    "francoCaveat": "El bloque 'LO QUE TE SEPARA DEL VEREDICTO DE ARRIBA' indica que la autogestión cruza a AJUSTA SUPUESTOS, lo que técnicamente abre una vía. Sin embargo, con flujo de -$171.860/mes incluso en autogestión base, break-even al 153% del mercado y LTR ganando neto, el veredicto BUSCAR OTRA refleja mejor la realidad estructural del caso. La vía de autogestión se menciona en el análisis como la única palanca existente, no como recomendación.",
+    "promptVersion": 16
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "key": "GE-3",
+  "run": 1,
+  "veredicto": "BUSCAR OTRA",
+  "score": 48,
+  "coronado": {
+    "id": "rentabilidad_str",
+    "titular": "La rentabilidad operativa se queda corta.",
+    "fraseCanonica": "Tu CAP rate en corto es 4,6%, bajo el umbral de 5% que le pedimos a una renta corta en Santiago. Genera caja, pero por debajo del piso que hace que el precio de entrada se justifique por rentabilidad.",
+    "decisividad": 0.24
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 0.24,
+      "direccion": "adverso"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0.04,
+      "direccion": "favorable"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.2,
+      "direccion": "adverso"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0.04,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0.08,
+      "direccion": "favorable"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "capex_puesta_a_punto",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "distancia_veredicto",
+      "decisividad": 0,
+      "direccion": "neutral"
+    }
+  ],
+  "result": {
+    "titular": "No conviene operarlo por día: **esta zona no sostiene renta corta a los precios actuales**.",
+    "conviene": {
+      "respuestaDirecta": "La rentabilidad operativa queda en 4,6% sobre el precio de compra, bajo el 5,0% que exige una renta corta en Santiago, y **ningún ajuste realista —ni bajar el precio un 15%, ni cobrar un 10% más por noche, ni cambiar el modo de gestión— cruza ese umbral**: la brecha es de la zona, no del departamento. Encima, arrendarme largo el mismo depto dejaría $117.972 más neto al mes que operarlo por día. El edificio sí permite Airbnb, pero eso no cambia la matemática de fondo.",
+      "veredictoFrase": "Esta zona no rinde en corto: busca otro depto o cambia de modalidad.",
+      "reencuadre": "Para un inversionista, este depto no tiene un problema de precio ni de ejecución: **la zona simplemente no genera suficiente ingreso por noche para que el corto compita con el largo** a los valores de compra actuales. Lo que compras es un activo bien ubicado que rinde mejor arrendado largo.",
+      "cajaAccionable": "**Antes de seguir evaluando este depto en renta corta, compara en serio con el arriendo largo**: el largo deja $152.894 al mes, el corto deja $34.922 —y el esfuerzo operativo del corto no se paga con esa diferencia."
+    },
+    "rentabilidad": {
+      "contenido": "La causa está en el precio de entrada: a UF 4.364, el mercado de esta zona no paga lo suficiente por noche para que la rentabilidad operativa cubra el umbral de 5,0%. **El stack de costos es razonable —34 de cada 100 pesos van a costos—, así que la palanca no está en los gastos.**",
+      "cajaAccionable": "**El problema no se resuelve negociando: ni bajando el precio un 15% ni subiendo la tarifa un 10% el veredicto cambia.** Si la rentabilidad operativa es tu filtro de entrada, este depto en renta corta no pasa."
+    },
+    "vsLTR": {
+      "contenido": "El arriendo largo genera un NOI de $761.163 al mes; el corto, en modo auto-gestión, llega a $643.191 —una brecha de $117.972 a favor del largo. Con administrador, el corto cae a $477.918 y el flujo mensual se vuelve negativo en $130.351. Eso significa que incluso si decides gestionar tú mismo con 8 a 12 horas semanales, el largo te deja más plata en el bolsillo sin ese esfuerzo. El amoblamiento tampoco se recupera: la sobre-renta negativa hace que el payback nunca llegue.",
+      "estrategiaSugerida": "La jugada concreta es arrendar largo este depto: el NOI adicional de $117.972 al mes frente al corto compensa ampliamente el esfuerzo operativo ahorrado. Si lo que buscas es operar renta corta, necesitas evaluar un depto en una zona donde el corto sí supere al largo neto.",
+      "cajaAccionable": "**El arriendo largo no es el plan B: es el plan correcto para este depto en esta zona**, con $152.894 de flujo mensual frente a los $34.922 del corto."
+    },
+    "operacion": {
+      "contenido": "Con auto-gestión a 8-12 horas semanales, el flujo base es $34.922 al mes —un margen tan estrecho que cualquier mes con ocupación bajo la estimación de mercado pone el flujo en rojo. En el cuartil bajo observado el flujo cae a -$344.924, lo que implica aportar de tu bolsillo ese monto ese mes. **Los primeros meses de operación agregan una pérdida acumulada estimada de $1.458.291 mientras el listing gana reseñas**, un costo que no se recupera con la sobre-renta actual frente al largo. En julio el flujo mejora con el peak de invierno; en febrero baja: si operas, considera estadías largas en el mes valle para sostener la ocupación.",
+      "cajaAccionable": "**Si decides operar en corto de todas formas, ten un colchón de al menos 3 meses de costos fijos antes de encender el listing**: el margen no aguanta los primeros meses sin reserva."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF al 5% deja $70.730.402 a diez años sin gestión ni vacancia; un fondo al 7% llega a $85.418.297 —múltiplos de ×1,63 y ×1,97 frente al ×2,72 que proyecta este depto en equity—. Esa prima la pagas con gestión activa, iliquidez y la apuesta a que Providencia siga apreciándose: históricamente la comuna rindió 2,9% anual, en línea con el 3% flat de la proyección, así que el supuesto no es heroico pero tampoco garantizado. Mi lectura: el horizonte largo tiene sentido solo si operas en largo, donde el flujo acumulado a diez años apenas suma $6.373.087 adicionales sobre un equity que ya descansa casi todo en plusvalía.",
+      "cajaAccionable": "**Para que el ×2,72 se justifique, necesitas que Providencia mantenga su apreciación histórica y que el flujo operativo no te sangre en los años de baja ocupación**: si alguna de las dos falla, los instrumentos sin gestión empatan o ganan."
+    },
+    "riesgos": {
+      "contenido": "La zona no sostiene renta corta a este precio de compra.\n\nNi bajando el precio un 15% ni subiendo la tarifa un 10% el CAP rate llega al umbral de 5,0%: la brecha es estructural a la zona, no a este departamento en particular. Operar en corto aquí es apostar a que el mercado cambie, no a que la matemática cierre con los datos de hoy.\n\nFlujo sin margen ante cualquier caída de ocupación.\n\nEn el cuartil bajo observado el flujo mensual cae a -$344.924, y ese escenario no es excepcional en una zona con 48% de ocupación estimada. El breakeven de ingresos exige el 96% del ingreso mediano de la zona, lo que deja poco margen antes de poner plata de tu bolsillo.\n\nEl arriendo largo es la alternativa dominante acá.\n\nCon NOI de $761.163 al mes en largo frente a $643.191 en corto, operar por día implica asumir toda la rotación, la estacionalidad y el riesgo de vacancia para terminar ganando menos neto que si simplemente arrendas el depto.",
+      "cajaAccionable": "**Mi posición es clara: este depto no es para renta corta, y la única decisión que tiene sentido aquí es arrendarlo largo o buscar otro activo en una zona donde el corto sí gane al largo.** Avanzar igual es pagar por gestión un esfuerzo que el mercado de esta zona no recompensa."
+    },
+    "veredicto": "BUSCAR OTRA",
+    "francoCaveat": "El score 48/100 con flujo positivo en base y hallazgos 03 y 04 a favor podría dar la impresión de un caso marginal ajustable. El gate real es que ninguna vía alcanza el veredicto superior, y el caso precio-justo STR cierra la puerta: la brecha es de zona. El veredicto BUSCAR OTRA es correcto; la tensión con los hallazgos favorables se resuelve en respuestaDirecta.",
+    "promptVersion": 16
+  }
+}

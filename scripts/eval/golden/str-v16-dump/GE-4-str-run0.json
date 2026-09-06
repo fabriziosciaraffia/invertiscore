@@ -1,0 +1,112 @@
+{
+  "key": "GE-4",
+  "run": 0,
+  "veredicto": "AJUSTA SUPUESTOS",
+  "score": 55,
+  "coronado": {
+    "id": "rentabilidad_str",
+    "titular": "El metro cuadrado rinde de sobra en corto.",
+    "fraseCanonica": "Tu CAP rate en corto es 6,0%, sobre el umbral de 5% que le pedimos a una renta corta en Santiago. El precio de entrada se justifica por lo que la operación rinde, sin depender de la plusvalía. Suma a favor, pero por sí solo no alcanza para mover el veredicto.",
+    "decisividad": 0.32
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 0.32,
+      "direccion": "favorable"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0.08,
+      "direccion": "favorable"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.28,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0.16,
+      "direccion": "adverso"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "capex_puesta_a_punto",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "distancia_veredicto",
+      "decisividad": 0,
+      "direccion": "neutral"
+    }
+  ],
+  "result": {
+    "titular": "Funciona en corto, **pero el precio inicial es demasiado alto**.",
+    "conviene": {
+      "respuestaDirecta": "La operación rinde 6,0% sobre el precio de compra, sobre el umbral de 5% que le pedimos a una renta corta: el metro cuadrado se paga solo operando por día con la ocupación que el mercado estima para este depto. **El problema es que estás pagando ~UF 378 sobre el valor estimado de la zona, plata que entregas el día de la firma y que a la plusvalía histórica de Providencia tardarías ~4 años solo en recuperar antes de tu primer peso de apreciación real.** Ningún ajuste de tarifa, plazo ni gestión cruza al veredicto de arriba: la brecha es del negocio, no de los supuestos.",
+      "veredictoFrase": "El flujo aguanta, pero el sobreprecio del día uno no tiene palanca.",
+      "reencuadre": "Para un inversionista, este depto es una apuesta a que Providencia siga valorizándose: **el flujo mensual cubre el dividendo en el escenario base, pero el retorno total a 10 años descansa más en plusvalía que en renta**. Lo que compras es exposición al activo, no un flujo robusto.",
+      "cajaAccionable": "**Antes de avanzar, confirma el reglamento del edificio**: si no permite arriendo por día, la operación entera cambia de naturaleza y el amoblamiento de $3.500.000 ya no tiene dónde rendir."
+    },
+    "rentabilidad": {
+      "contenido": "El CAP de 6,0% es real, pero viene empujado por costos operativos bajos y una tarifa en la mediana de la zona; la presión viene del precio de entrada, que está ~12% sobre la mediana comunal. **Mira primero la matriz de tarifa y ocupación**: ninguna de las 16 combinaciones cruza el veredicto de arriba, lo que confirma que el techo está en el precio, no en la operación.",
+      "cajaAccionable": "**El flujo base de $96.783 al mes cubre el dividendo, pero ese margen desaparece si la ocupación cae al cuartil bajo**: en ese escenario pones $246.684 de tu bolsillo cada mes."
+    },
+    "vsLTR": {
+      "contenido": "El arriendo largo deja un NOI de −$20.000 al mes: no cubre ni los gastos del depto sin considerar la cuota. En corto, el NOI sube a $676.678 al mes en el escenario base, una diferencia de $696.678 mensuales que justifica con creces el esfuerzo de gestión. Lo que define si ese esfuerzo te conviene es si lo gestionas tú: con administrador el NOI baja a $535.126 y el flujo cae a −$44.769 al mes, lo que te pone en terreno negativo sin haber movido ningún otro supuesto.",
+      "estrategiaSugerida": "Si operas en corto, hazlo en modo autogestión: la diferencia de $141.552 al mes frente a un administrador es lo que mantiene el flujo en verde. El payback del amoblamiento es de 5 meses operando en modo auto, así que el capital de puesta a punto se recupera rápido una vez el listing esté estabilizado.",
+      "cajaAccionable": "**El corto gana al largo por $696.678 al mes de NOI, pero solo si gestionas tú**: delegar convierte un flujo positivo en uno negativo sin cambiar ninguna otra variable."
+    },
+    "operacion": {
+      "contenido": "Con 47% de ocupación estimada por el mercado, este depto necesita ingresos brutos equivalentes al 88% del P50 de la zona para no poner plata: hay margen antes del punto de equilibrio, pero es margen ajustado. Los primeros ~6 meses de operación el listing gana reseñas mientras opera bajo su ocupación normal; **la pérdida acumulada estimada de ese período es $1.248.987**, que debes tener disponible antes de la primera reserva. En el mes valle (febrero), activa estadías más largas para sostener la ocupación cuando la demanda puntual baja.",
+      "cajaAccionable": "**Ten un colchón líquido antes de publicar el listing**: cubre la estabilización inicial y el primer mes de costos fijos si la ocupación arranca lento."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF rinde ×1,63 sobre el mismo capital a 10 años sin gestión ni vacancia; un fondo mutuo llega a ×1,97; este depto llega a ×2,97 en equity sobre lo aportado, según los datos, pero ese múltiplo supone que la plusvalía de Providencia se sostiene cerca del 3% anual que la proyección usa como base, y la histórica de la última década fue 2,9%, en línea pero sin margen. **Si la plusvalía real se estanca en 0%, el multiplicador y la TIR de 14,0% caen materialmente y la prima por gestión e iliquidez deja de pagarse sola**. La apuesta a 10 años tiene sentido si crees en la trayectoria de Providencia como zona, no como un flujo que se sostiene solo.",
+      "cajaAccionable": "**La prima sobre el depósito UF o el fondo se justifica solo si la plusvalía de Providencia no se detiene**: ese es el supuesto que tienes que creer antes de comprometer 10 años de gestión e iliquidez."
+    },
+    "riesgos": {
+      "contenido": "Regulación del edificio sin confirmar.\n\nNo sabes si el edificio permite arriendo por día: si el reglamento lo prohíbe, pierdes el modelo completo y los $3.500.000 de amoblamiento no tienen otro uso rentable en el corto plazo. Verifica el reglamento con el administrador del edificio antes de firmar cualquier documento de compra.\n\nEl sobreprecio de entrada no tiene recuperación rápida.\n\nEstás pagando ~UF 378 sobre el valor estimado de la zona; a la plusvalía histórica de Providencia (2,9% anual), tardarías ~4 años solo en recuperar ese diferencial antes de ganar tu primer peso de apreciación real. Ningún ajuste de tarifa, plazo ni modo de gestión cruza al veredicto superior: la brecha es estructural.\n\nEl escenario conservador pone el mes en rojo profundo.\n\nCon ocupación en el cuartil bajo observado el flujo cae a −$246.684 al mes, y ese escenario no es descartable en los primeros meses de operación cuando el listing no tiene reseñas. Sin un colchón de al menos tres meses de costos fijos, una racha de baja ocupación te obliga a vender en el peor momento.",
+      "cajaAccionable": "**Mi posición: el flujo base funciona y el corto gana al largo, pero el sobreprecio de entrada y la regulación sin confirmar son flancos reales que ninguna palanca disponible cierra**. Si el reglamento no permite Airbnb o no puedes gestionar tú mismo, busca otra propiedad."
+    },
+    "veredicto": "AJUSTA SUPUESTOS",
+    "francoCaveat": "El veredicto AJUSTA SUPUESTOS es técnicamente correcto dado el score 55/100, pero el bloque de vías confirma que ningún ajuste realista cruza a COMPRAR: precio, tarifa, plazo, pie y gestión fueron probados y ninguno cruza. En la práctica este caso está más cerca de BUSCAR OTRA que de AJUSTA, porque no hay palanca discreta que el usuario pueda accionar. El análisis lo mantiene en AJUSTA probablemente por el CAP positivo y el flujo base en verde; la honestidad total sería decirle al usuario que el veredicto de arriba no está disponible con esta propiedad en este precio.",
+    "promptVersion": 16
+  }
+}

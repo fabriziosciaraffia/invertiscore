@@ -1,0 +1,107 @@
+{
+  "key": "GE-6",
+  "run": 0,
+  "veredicto": "BUSCAR OTRA",
+  "score": 37,
+  "coronado": {
+    "id": "rentabilidad_str",
+    "titular": "La rentabilidad operativa se queda corta.",
+    "fraseCanonica": "Tu CAP rate en corto es 2,4%, bajo el umbral de 5% que le pedimos a una renta corta en Santiago. Genera caja, pero por debajo del piso que hace que el precio de entrada se justifique por rentabilidad.",
+    "decisividad": 1
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 1,
+      "direccion": "adverso"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0.28,
+      "direccion": "adverso"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.12,
+      "direccion": "adverso"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0.04,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "adverso"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "distancia_veredicto",
+      "decisividad": 0,
+      "direccion": "neutral"
+    }
+  ],
+  "result": {
+    "titular": "No conviene arrendarlo por día: **pones plata cada mes y no la recuperas**.",
+    "conviene": {
+      "respuestaDirecta": "El CAP rate de 2,4% frente al umbral de 5,0% muestra que el precio no se justifica con lo que deja operar por día, y encima **el flujo mensual es negativo durante toda la operación**: ni la venta a diez años alcanza a cubrir lo que pones de tu bolsillo. La única vía al veredicto de arriba es gestionar tú el departamento en vez de dejarlo con administrador, cambiando la comisión de 20% a 3%.",
+      "veredictoFrase": "Este depto no cierra: dos problemas estructurales al mismo tiempo.",
+      "reencuadre": "Para un inversionista, este depto es una apuesta a plusvalía, no a flujo: **la zona se apreció 5,0% anual en la última década**, pero eso no corrige que la renta corta no paga el precio de compra hoy. Lo que compras es exposición patrimonial, no ingreso mensual.",
+      "cajaAccionable": "**La única palanca que cruza el veredicto es que gestiones tú el depto** —pasas de 20% a 3% de comisión—; cualquier otra vía fue probada y no mueve la aguja. Si no puedes dedicar 8-12 hrs semanales, este depto no cierra."
+    },
+    "rentabilidad": {
+      "contenido": "El problema de fondo es que el precio de entrada es alto para lo que la zona genera en renta corta: **con costos operativos que absorben 52 de cada 100 pesos del ingreso bruto**, el margen que queda no alcanza para justificar el precio pagado. Mira primero la matriz de tarifa y ocupación para ver en qué combinación el caso se acerca al umbral.",
+      "cajaAccionable": "**El break-even estructural está al 153% del ingreso mediano de la zona**: ni operando al nivel mediano cubre costos. Ese es el número que debes resolver antes de seguir."
+    },
+    "vsLTR": {
+      "contenido": "El arriendo largo deja un NOI de $345.055 al mes frente a $319.851 del corto con administrador: el largo gana $25.204 mensuales netos sin rotación, sin gestión, sin estacionalidad. Si cambias a autogestión, el corto sube a $433.495 de NOI y ahí sí supera al largo, pero eso requiere tus horas encima. Con administrador, el esfuerzo operativo del corto no se paga y el amoblamiento tampoco se recupera con la sobre-renta.",
+      "estrategiaSugerida": "Si decides quedarte con el depto, el arriendo largo es la jugada correcta hoy: te deja $345.055 de NOI al mes sin el desgaste operativo del corto. Además, califica para el subsidio MINVU Ley 21.748 —tasa baja desde 0,6 pp según lo que negocie el banco— lo que reduce el dividendo y mejora el flujo en la misma magnitud; ese cálculo no está reflejado aquí.",
+      "cajaAccionable": "**Con el largo evitas poner $285.504 de tu bolsillo cada mes** y reduces el riesgo operativo a casi cero; el corto con administrador solo tiene sentido si la zona cambia estructuralmente."
+    },
+    "operacion": {
+      "contenido": "La estimación de ocupación para este depto es 46%, ligeramente sobre el 42% típico de la comuna según datos de mercado —contexto favorable, pero insuficiente para cerrar el flujo. En el mes valle activa estadías más largas para reducir la rotación y sostener el ingreso. El edificio permite Airbnb y el depto está amoblado, así que la operación puede arrancar, pero los primeros meses acumulan la pérdida de estabilización ya dimensionada en los riesgos mientras el listing gana reseñas y sube la ocupación: **ten ese colchón disponible antes de publicar**.",
+      "cajaAccionable": "**Antes de invertir más en amoblamiento o marketing, define si puedes asumir los primeros seis meses negativos** y si la autogestión es realista para ti —sin eso, los números no cambian."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF rinde ×1,63 sobre el mismo capital a diez años sin gestión ni vacancia; un fondo mutuo llega a ×1,97, ambos sin poner plata de tu bolsillo cada mes. Este depto llega a ×1,38 en equity, y eso descansa en que la plusvalía se mantenga: Santiago mostró 5,0% anual en la última década, sobre el umbral de 3,0% que usa la proyección, así que la proyección es conservadora frente a lo histórico —pero el historial no garantiza que se repita. Mi lectura: el retorno total a diez años queda bajo ambos instrumentos y te exige gestión activa o pérdida mensual durante toda la vida del crédito; es una apuesta patrimonial, no de renta.",
+      "cajaAccionable": "**Para que los diez años se justifiquen, necesitas que la plusvalía se sostenga y que seas tú quien gestione el depto** —sin alguna de esas dos condiciones, el depósito UF gana sin esfuerzo."
+    },
+    "riesgos": {
+      "contenido": "Break-even estructuralmente sobre el mercado. Necesitas un 53% más de ingresos brutos que la mediana de la zona para no poner plata de tu bolsillo: eso no se resuelve con gestión fina ni tarifas dinámicas, es un problema de precio de compra versus lo que la zona puede facturar. Ninguna palanca de precio, tarifa ni pie cruza el veredicto por sí sola.\n\nCostos operativos fuera del rango sano. El stack de gastos y comisión consume 52 de cada 100 pesos del ingreso bruto, sobre la banda de 30-40% que el análisis marca como referencia. Con administrador al 20%, cualquier caída de ocupación amplifica el déficit rápidamente: en el escenario conservador el flujo llega a -$522.267 al mes.\n\nArranque con pérdida acumulada relevante. Los primeros seis meses de operación generan una pérdida acumulada estimada de $1.002.743 mientras el listing construye reseñas y estabiliza la ocupación. Sin ese colchón líquido disponible antes de publicar, el operador entra en tensión financiera desde el primer mes.",
+      "cajaAccionable": "**Mi posición es clara: esta zona no sostiene renta corta a los precios de compra actuales**, y dos problemas estructurales simultáneos no se corrigen con ajustes menores. Si igual avanzas, hazlo solo con autogestión y con seis meses de reserva; sin eso, el costo financiero y operativo te pasa la cuenta antes de que el listing madure."
+    },
+    "veredicto": "BUSCAR OTRA",
+    "francoCaveat": "",
+    "promptVersion": 16
+  }
+}

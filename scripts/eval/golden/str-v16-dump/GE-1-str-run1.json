@@ -1,0 +1,108 @@
+{
+  "key": "GE-1",
+  "run": 1,
+  "veredicto": "COMPRAR",
+  "score": 78,
+  "coronado": {
+    "id": "ventaja_vs_ltr",
+    "titular": "El corto le saca ventaja clara al arriendo largo.",
+    "fraseCanonica": "En corto rindes 198% más neto que arrendando largo el mismo depto —pero esa ventaja compara un corto estabilizado, con la ocupación proyectada, contra un arriendo largo contractual y garantizado. La diferencia justifica el esfuerzo operativo extra —rotación, gestión, estacionalidad—; si la ocupación proyectada no se cumple, se achica.",
+    "decisividad": 0.85
+  },
+  "piramide": [
+    {
+      "id": "rentabilidad_str",
+      "decisividad": 0.08,
+      "direccion": "adverso"
+    },
+    {
+      "id": "flujo_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "ocupacion_vs_estimacion",
+      "decisividad": 0,
+      "direccion": "neutral"
+    },
+    {
+      "id": "ventaja_vs_ltr",
+      "decisividad": 0.85,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sensibilidad_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_costos_str",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "estructura_financiamiento",
+      "decisividad": 0.04,
+      "direccion": "favorable"
+    },
+    {
+      "id": "sobreprecio",
+      "decisividad": 0.12,
+      "direccion": "favorable"
+    },
+    {
+      "id": "plusvalia",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "tir",
+      "decisividad": 0,
+      "direccion": "favorable"
+    },
+    {
+      "id": "patrimonio",
+      "decisividad": 0,
+      "direccion": "favorable"
+    }
+  ],
+  "result": {
+    "titular": "Arriéndalo por día: **el margen es real si fijas bien la tarifa**.",
+    "conviene": {
+      "respuestaDirecta": "Operando por día te quedan $14.747 al mes, pagado todo, con la ocupación que el mercado estima para este depto. **El supuesto que condiciona ese resultado es tu tarifa de $75.000 por noche, que casi duplica los $47.496 que el mercado estima para esta dirección.** Si la tarifa real se acerca a la de mercado, el flujo positivo desaparece y el escenario base se convierte en el conservador.",
+      "veredictoFrase": "Este depto conviene, pero la tarifa que pusiste la tienes que sostener.",
+      "reencuadre": "Para un inversionista, este depto es principalmente una apuesta a plusvalía: Santiago apreció 5,0% anual la última década y **el multiplicador de capital a diez años supera al depósito UF y al fondo mutuo** con holgura. Lo que compras no es el flujo de hoy, que es justo, sino el activo en una dirección con demanda estructural.",
+      "cajaAccionable": "Antes de firmar, **verifica con avisos reales en la zona qué tarifa por noche se está logrando hoy**, no la que esperas. Si el mercado te da menos de lo que supusiste, recalcula el flujo con ese número antes de comprometerte."
+    },
+    "rentabilidad": {
+      "contenido": "El precio de entrada es el que pesa: comprando a UF 4.093 en una dirección que cotiza 5% bajo la mediana comunal, el CAP queda en 4,76% y la operación no alcanza a rentabilizar el activo al umbral de referencia. **La causa no es la operación sino el precio del activo**, y la tabla de sensibilidad muestra que un descuento de 5% ya te deja en el retorno mínimo exigido.",
+      "cajaAccionable": "**Negocia el precio antes de apalancar la operación**: a −5% el CAP llega a 5,0% y el flujo mensual sube a $45.478, cambiando la lectura de rentabilidad desde promedio a sólida."
+    },
+    "vsLTR": {
+      "contenido": "En largo, el NOI mensual es $210.936 y el flujo cae a −$403.689, o sea, pones $403K de tu bolsillo cada mes. En corto con administrador, el NOI sube a $629.372 y el flujo llega a $14.747: la diferencia es $418.436 de NOI adicional al mes. Si te autogestionas, ese diferencial sube en $179.454 más y el flujo alcanza $194.201 al mes. La brecha entre modalidades es real, pero el corto descansa en una tarifa por noche que el usuario definió a mano y que casi dobla la estimación de mercado: hasta que valides esa tarifa, la ventaja sobre el largo es un supuesto, no un dato.",
+      "estrategiaSugerida": "Si operas con administrador al 20%, el margen sobre el largo es positivo pero ajustado; cualquier caída de tarifa o de ocupación lo erosiona rápido. Este depto además califica para el subsidio de tasa Ley 21.748 (vivienda nueva, primera venta, bajo UF 6.000): si lo solicitas, la tasa baja desde 4,1% —el banco define cuánto, mínimo 0,6 pp— y el dividendo cae, mejorando el flujo en la misma magnitud.",
+      "cajaAccionable": "**Solicita la tasa subsidiada antes de escriturar**: no está reflejada en estos cálculos y puede mejorar el flujo mensual sin cambiar nada de la operación."
+    },
+    "operacion": {
+      "contenido": "Con administrador al 20% la operación es pasiva, pero los primeros meses de operación pesan: mientras el listing gana reseñas, la ocupación parte bajo su nivel normal y la pérdida acumulada estimada es $1.583.412 en los primeros seis meses. **Tenla en el colchón antes de operar**, no la financíes con el flujo del depto. En el mes valle de Santiago (febrero), activa estadías de semana o descuentos de última hora para sostener el ingreso.",
+      "cajaAccionable": "**Franco pronto te conectará con operadores verificados** para que no vayas a ciegas en la selección del administrador."
+    },
+    "largoPlazo": {
+      "contenido": "Un depósito en UF al 5% deja ×1,63 sobre tu capital a diez años sin gestión ni vacancia; un fondo al 7% llega a ×1,97; este depto llega a ×2,73 en equity, pero exige gestión activa, iliquidez y que ocupación y tarifa se sostengan. Santiago apreció 5,0% anual la última década, sobre el umbral de 3% que usa la proyección, así que la proyección es conservadora respecto a lo que la comuna ya mostró. Mi lectura: si la plusvalía se estanca, el flujo no te compensa el esfuerzo frente al fondo.",
+      "cajaAccionable": "**Esta apuesta funciona si la tarifa real se acerca a la de mercado y la plusvalía comunal se mantiene sobre inflación**: sin esas dos condiciones, el múltiplo cae y el instrumento financiero gana sin esfuerzo."
+    },
+    "riesgos": {
+      "contenido": "La tarifa por noche es un supuesto tuyo, no un dato de mercado.\n\nDefiniste $75.000 por noche; la estimación de mercado para este depto es $47.496, una brecha significativa. Si la tarifa real se acerca a ese nivel, el flujo mensual se vuelve negativo y pones plata cada mes en vez de recibirla. Antes de comprar, valida la tarifa con dos o tres avisos reales activos en el mismo edificio o en la misma cuadra.\n\nEl punto de equilibrio opera en el filo del mercado.\n\nPara no aportar dinero de tu bolsillo, necesitas el 98% del ingreso bruto mediano de la zona: hay margen, pero es estrecho. En el escenario conservador, con la ocupación en el cuartil bajo observado, el flujo cae a −$359.123 al mes, un monto que tienes que cubrir tú. Un mes malo no destruye la inversión, pero dos o tres seguidos sí erosionan el colchón de reserva.\n\nEl precio actual no alcanza el retorno mínimo exigido.\n\nA UF 4.093 el CAP rate queda en 4,76%, por debajo del umbral de referencia de 5,0%. La matriz de sensibilidad muestra que sobre UF 4.529 el veredicto cae a AJUSTA SUPUESTOS y que la operación no tiene margen para absorber subidas de precio: si la inmobiliaria no cede, el descuento del 5% que lleva el CAP al umbral es la negociación que tienes que dar antes de firmar.",
+      "cajaAccionable": "**Compra este depto si validas la tarifa con avisos reales y negocias el precio**: sin esas dos condiciones, el análisis descansa en supuestos que el mercado puede no respaldar."
+    },
+    "veredicto": "COMPRAR",
+    "francoCaveat": "El veredicto COMPRAR descansa en una tarifa por noche de $75.000 que el usuario definió a mano y que supera con holgura la estimación de mercado de $47.496. Con la tarifa de mercado, el flujo base se vuelve negativo y el caso se acercaría más a AJUSTA SUPUESTOS. Mantengo el veredicto del análisis porque el precio por m² está bajo la mediana comunal, la plusvalía histórica de Santiago respalda la apuesta patrimonial a 10 años y el subsidio de tasa no está aplicado, pero el caveat de tarifa es estructural y debería pesar en la calibración del score.",
+    "_residuoGuards": [
+      {
+        "guard": "hero-claim",
+        "campo": "conviene.respuestaDirecta"
+      }
+    ],
+    "promptVersion": 16
+  }
+}
