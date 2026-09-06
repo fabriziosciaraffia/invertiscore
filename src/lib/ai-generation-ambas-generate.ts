@@ -438,7 +438,12 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
   aiResult.promptVersion = PROMPT_VERSION_AMBAS;
 
   if (persist) {
-    const updatedResults = { ...(ltrResults as object), comparativaAI: aiResult };
+    // La matriz pie × plazo del capítulo III se recalcula en memoria en cada carga y NUNCA
+    // se persiste (invariante del goal "cruza por veredicto", 06-sep-2026): este UPDATE
+    // guarda el recompute LTR completo, así que se la quita antes de escribir.
+    const { matrizPiePlazo: _matrizNoPersistida, ...ltrSinMatriz } = ltrResults as LTRResultsWithCache & { matrizPiePlazo?: unknown };
+    void _matrizNoPersistida;
+    const updatedResults = { ...(ltrSinMatriz as object), comparativaAI: aiResult };
     await supabase
       .from("analisis")
       .update({
