@@ -44,7 +44,7 @@ import { NO_APLICA_PROMPT, razonSinCapitalPrompt } from "@/lib/no-aplica-copy";
 import { describirMotivosSTR } from "@/lib/no-cierra-copy";
 import { bandaEsfuerzoDescuento } from "@/lib/distancia-veredicto-hallazgo";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
-import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
+import { scanVozChilena, hitsQueExigenReintento, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
@@ -1166,6 +1166,7 @@ import {
 import { derivarCifraClaveStr, captionDeCifraClave } from "./cifra-clave";
 import { validarTitular, evaluarTitular, normalizarMarcasTitular, marcasBalanceadas, stripMarcas } from "./prosa-marcas";
 import { reescribirTitular } from "./titular-retry";
+import { retryQuirurgico, agruparPorCampo, type ArgsRetryQuirurgico } from "./retry-quirurgico";
 export { cifrasFueraDeInput };
 
 /** Techo POR RIESGO (v9): título (~10) + explicación de 45-55 palabras. El render
@@ -1290,7 +1291,7 @@ export function despersonalizarMotor<T>(ai: T, logger: (msg: string) => void = (
 // ─────────────────────────────────────────────────────────────────────────
 // generateStrProse — orquestador compartido. Un solo camino LLM+guards para
 // el endpoint y el regen, así el corpus regenerado == producción.
-//  1. build prompt v3 · 2. LLM (hasta maxTries, mejor por leaks+presupuesto)
+//  1. build prompt v3 · 2. LLM (una pasada principal + reintentos quirúrgicos por campo)
 //  3. strip de eco determinístico · 4. drift scan (log) · 5. veredicto fill.
 // NO persiste — el caller decide (supabase o archivo).
 // ─────────────────────────────────────────────────────────────────────────
@@ -1313,6 +1314,12 @@ export interface GenerateStrProseResult {
   overBudget: { path: string; wc: number; max: number }[];
   /** Guard STR-CIFRA: cifras de la prosa que no vienen del input (residual tras reintentos). */
   cifrasFuera: string[];
+  /** Guards en rojo al agotar los reintentos (también persistido en `ai._residuoGuards`). */
+  residuo: { guard: string; campo: string }[];
+  /** Reintentos quirúrgicos hechos (tope MAX_QUIRURGICOS) y si el tope se alcanzó. */
+  quirurgicos: number;
+  topeAlcanzado: boolean;
+  /** Llamadas al modelo: 1 principal + quirúrgicos (+ titular). */
   tries: number;
   /**
    * Consumo de tokens de esta generación (intento principal + retries). Lo
@@ -1347,21 +1354,17 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   const log = args.logger ?? (() => {});
   const { userPrompt, veredictoMotor, cardFrases } = buildUserPromptSTR(inp, r, comuna, simulacion);
 
-  // FASE 1 — reintento por HARD drift (invariante que no puede persistir: ingreso/
-  // ramp-up) y por voseo NO corregible (pronombre "vos" o -és/-ís fuera del léxico:
-  // no sabemos a qué tuteo mapean, así que la única salida es regenerar). Los
-  // engine-isms SOFT son detección-only; "el/del motor" lo elimina la
-  // despersonalización y el voseo CONOCIDO lo arregla sanitizeVozChilena abajo, sin
-  // gastar un reintento. El presupuesto se enforca aparte, en FASE 2 (1 reintento por
-  // desborde grosero). Así un caso limpio y dentro de techo hace 1 intento.
+  // Detectores que piden reintento QUIRÚRGICO por campo: HARD drift (invariante que no
+  // puede persistir: revenue/ramp-up), voseo NO corregible (pronombre "vos" o -és/-ís
+  // fuera del léxico) y cifras fuera del input. Los engine-isms SOFT son detección-only;
+  // "el/del motor" lo elimina la despersonalización y el voseo CONOCIDO lo arregla
+  // sanitizeVozChilena abajo, sin gastar un reintento. Un caso limpio hace 1 llamada.
   const vozDura = (ai: AIAnalysisSTRv2 | null) => (ai ? hitsQueExigenReintento(scanVozChilena(ai)) : []);
   // STR-CIFRA entra al score con el MISMO peso que el hard drift: elige la muestra con
   // menos cifras re-derivadas y gasta reintentos en converger a 0. NO es un gate duro —
   // si tras los intentos queda residual, se acepta y se reporta (lección del guard
   // flaky A8: c>0 sobre generación fresca como invariante dura revienta por azar).
   const cifrasDe = (ai: AIAnalysisSTRv2 | null) => (ai ? cifrasFueraDeInput(userPrompt, ai) : []);
-  const scoreOf = (ai: AIAnalysisSTRv2 | null): number =>
-    ai ? scanStrHardDrift(ai).length + vozDura(ai).length + cifrasDe(ai).length : Number.POSITIVE_INFINITY;
 
   // Consumo de tokens de todos los intentos. Viaja en el resultado; el caller lo
   // escribe junto con ai_analysis.
@@ -1370,46 +1373,97 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   // resultado y lo persiste el caller. Solo medición.
   const reg = nuevoRegistroLlamadas();
 
+  // Goal "retry por campo" (05-sep-2026): UNA pasada principal (prompt idéntico al de
+  // siempre) y, cuando un detector rechaza campos, reintentos QUIRÚRGICOS por campo
+  // (retry-quirurgico.ts), nunca otra pasada completa. Medido en pipeline_timing (30 días
+  // a sep-2026): el loop de 3 pasadas gastaba 2ª pasada en el 50% y 3ª en el 18% de las
+  // generaciones, a ~7k tokens y ~53 s cada una; un quirúrgico cuesta ~1k tokens y ~6 s.
+  // `maxTries` queda en la firma sin efecto (lo pasan scripts viejos). Tope duro:
+  // 1 principal + MAX_QUIRURGICOS llamadas acotadas contando budget, ramp-dueño, los seis
+  // guards y el titular; al tope se conserva lo que hay y el residuo va al reporte y a la
+  // prosa (`_residuoGuards`).
+  void maxTries;
   let best: AIAnalysisSTRv2 | null = null;
-  let bestScore = Number.POSITIVE_INFINITY;
-  let usedTries = 0;
-  for (let t = 0; t < maxTries; t++) {
-    usedTries = t + 1;
-    let correctivo = "";
-    if (t > 0 && best) {
-      const hard = scanStrHardDrift(best);
-      if (hard.length) {
-        correctivo = `\n\n⚠️ CORRECCIÓN: la versión anterior usó términos prohibidos (${hard.join(", ")}). Reemplázalos ("revenue"→"ingresos brutos", "ramp-up"→"estabilización inicial"). Reescribe el JSON COMPLETO respetando la doctrina §0-§14.`;
-      }
-      const voz = vozDura(best);
-      if (voz.length) correctivo += correctivoVoz(voz);
-      const cifras = cifrasDe(best);
-      if (cifras.length) {
-        correctivo += `
-
-⚠️ CORRECCIÓN DE CIFRAS (§1.quater): la versión anterior citó cifras que NO vienen del input: ${cifras.join(", ")}. Cada monto y porcentaje del texto debe ser EXACTAMENTE uno de los provistos en el bloque de datos — sin sumas propias, sin restas, sin convertir montos a porcentajes. Donde la cifra que necesitas no exista, escribe la frase sin cifra. Reescribe el JSON COMPLETO respetando la doctrina §0-§15.`;
-      }
-    }
-    let ai: AIAnalysisSTRv2 | null = null;
-    try {
-      const msg = await reg.medir(`quality-try-${t + 1}`, CLAUDE_MODEL, () => anthropic.messages.create({
-        model: CLAUDE_MODEL,
-        max_tokens: 8000,
-        messages: [{ role: "user", content: userPrompt + correctivo }],
-        system: SYSTEM_STR_CACHED,
-      }));
-      acumularUsage(usage, msg);
-      const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
-      ai = parseStrJson(rawText);
-    } catch (e) {
-      log(`[STR-PROSE] intento ${t + 1} falló: ${(e as Error)?.message ?? e}`);
-    }
-    const sc = scoreOf(ai);
-    if (sc < bestScore) { best = ai; bestScore = sc; }
-    if (bestScore === 0) break; // sin HARD drift → aceptado
+  let usedTries = 1;
+  try {
+    const msg = await reg.medir("quality-try-1", CLAUDE_MODEL, () => anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 8000,
+      messages: [{ role: "user", content: userPrompt }],
+      system: SYSTEM_STR_CACHED,
+    }));
+    acumularUsage(usage, msg);
+    const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
+    best = parseStrJson(rawText);
+  } catch (e) {
+    log(`[STR-PROSE] intento principal falló: ${(e as Error)?.message ?? e}`);
   }
+  if (!best) throw new Error("generateStrProse: el intento principal no parseó JSON válido");
 
-  if (!best) throw new Error("generateStrProse: ningún intento parseó JSON válido");
+  const MAX_QUIRURGICOS = 8;
+  let quirurgicos = 0;
+  let topeAlcanzado = false;
+  const hayCupo = (etiqueta: string): boolean => {
+    if (quirurgicos < MAX_QUIRURGICOS) return true;
+    if (!topeAlcanzado) log(`[STR-TOPE] tope de ${MAX_QUIRURGICOS} reintentos quirúrgicos alcanzado — ${etiqueta} y los siguientes conservan el previo`);
+    topeAlcanzado = true;
+    return false;
+  };
+  // Un candidato solo entra si no empeora lo que ya estaba bien: drift, voz y cifras se
+  // comparan contra la base vigente (no contra cero: la base puede traer residuo).
+  const noEmpeora = (base: AIAnalysisSTRv2, cand: AIAnalysisSTRv2): boolean =>
+    scanStrHardDrift(cand).length <= scanStrHardDrift(base).length &&
+    vozDura(cand).length <= vozDura(base).length &&
+    !empeoraCifras(userPrompt, base, cand);
+  type ArgsQ = Pick<ArgsRetryQuirurgico<AIAnalysisSTRv2>, "guard" | "etiqueta" | "campos" | "problema" | "instruccion" | "evaluar" | "maxTokens">;
+  const correrQuirurgico = async (args: ArgsQ): Promise<void> => {
+    if (!best || args.campos.length === 0) return;
+    if (!hayCupo(args.etiqueta)) return;
+    const res = await retryQuirurgico<AIAnalysisSTRv2>({
+      ...args, anthropic, model: CLAUDE_MODEL, system: SYSTEM_STR_CACHED, reg, usage, base: best, escribir: escribirCampo, log, noEmpeora,
+    });
+    if (res.llamo) { quirurgicos += 1; usedTries += 1; }
+    if (res.aceptado) best = res.ai;
+  };
+  const camposDe = (viols: string[]) =>
+    Array.from(agruparPorCampo(viols).entries())
+      .map(([path, viol]) => ({ path, actual: leerCampo(best, path) ?? "", viol }))
+      .filter((c) => c.actual);
+  const cita = (v: string) => v.slice(v.indexOf("=") + 1);
+
+  // Orden: cifras (lo más grave) → drift duro → voz; después budget, ramp-dueño, los seis
+  // guards y el titular, cada uno sobre el texto ya corregido por el anterior.
+  await correrQuirurgico({
+    guard: "cifras",
+    etiqueta: "[STR-CIFRA]",
+    campos: camposDe(cifrasDe(best)),
+    problema: (v) => `cita cifras que NO vienen del input del análisis: ${v.map(cita).join(", ")}`,
+    instruccion: "reescribe cada campo sin esas cifras: conserva solo las que ya tenía el texto y sí vienen del input, o escribe la frase sin cifra. Ninguna cifra nueva, ninguna suma, resta ni conversión propia.",
+    evaluar: (ai) => cifrasDe(ai).length,
+  });
+  await correrQuirurgico({
+    guard: "drift",
+    etiqueta: "[STR-HARD-DRIFT]",
+    campos: camposDe(scanStrHardDrift(best)),
+    problema: (v) => `usa términos prohibidos: ${v.map(cita).join(", ")}`,
+    instruccion: 'reemplaza cada término prohibido ("revenue" → "ingresos brutos", "ramp-up" → "estabilización inicial") sin cambiar nada más.',
+    evaluar: (ai) => scanStrHardDrift(ai).length,
+  });
+  {
+    const porPath = new Map<string, string[]>();
+    for (const hh of vozDura(best)) porPath.set(hh.path, [...(porPath.get(hh.path) ?? []), `"${hh.token}" en «${hh.contexto}»`]);
+    const campos = Array.from(porPath.entries())
+      .map(([path, viol]) => ({ path, actual: leerCampo(best, path) ?? "", viol }))
+      .filter((c) => c.actual);
+    await correrQuirurgico({
+      guard: "voz",
+      etiqueta: "[STR-VOZ]",
+      campos,
+      problema: (v) => `usa formas que no son español de Chile: ${v.join(" · ")}`,
+      instruccion: 'reescribe en tuteo chileno neutro: la segunda persona singular no lleva tilde final ("tú compras", "tienes", "puedes", "inviertes") y el pronombre es "tú", nunca "vos".',
+      evaluar: (ai) => vozDura(ai).length,
+    });
+  }
 
   // FASE 2 — reintento QUIRÚRGICO de presupuesto (Goal F, patrón Goal D). Antes el
   // retry regeneraba el JSON COMPLETO (~12-14k tokens de input + ~3k de output,
@@ -1425,7 +1479,7 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   const grossOf = (ai: AIAnalysisSTRv2): { path: string; wc: number; max: number }[] =>
     sectionsOverBudget(ai as unknown as Record<string, unknown>, 1.3);
   const grossBest = grossOf(best);
-  if (grossBest.length > 0 && scanStrHardDrift(best).length === 0) {
+  if (grossBest.length > 0 && scanStrHardDrift(best).length === 0 && hayCupo("[STR-BUDGET-RETRY]")) {
     log(`[STR-BUDGET-RETRY] ${grossBest.length} campo(s) >1.3× techo (${grossBest.map((o) => `${o.path}:${o.wc}/${o.max}`).join(", ")}) — retry quirúrgico`);
     const bestRec = best as unknown as Record<string, Record<string, unknown>>;
     const campos = grossBest
@@ -1450,9 +1504,10 @@ Responde SOLO este JSON, sin texto alrededor:
           max_tokens: 1000,
           messages: [{ role: "user", content: promptQuirurgico }],
           system: SYSTEM_STR_CACHED,
-        }));
+        }), { guard: "budget", campos: campos.map((c) => c.path) });
         acumularUsage(usage, msg);
         usedTries += 1;
+        quirurgicos += 1;
         const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
         // Parse tolerante: primer objeto {...} del texto; claves "seccion.campo".
         let reemplazos: Record<string, unknown> = {};
@@ -1528,7 +1583,7 @@ Responde SOLO este JSON, sin texto alrededor:
           return { path, sec, field, actual: typeof actual === "string" ? actual : "" };
         })
         .filter((c) => c.actual);
-      if (campos.length > 0) {
+      if (campos.length > 0 && hayCupo("[STR-RAMP-DUENO]")) {
         log(`[STR-RAMP-DUENO] cifra de estabilización en ${donde.length} sección(es) (${donde.join(", ") || "ninguna"}) — retry quirúrgico sobre ${campos.map((c) => c.path).join(", ")}`);
         const instruccion = donde.length === 0
           ? `TU TAREA: reescribe cada campo conservando su contenido e integrando el monto de la pérdida de estabilización inicial (${fmtCLP(r.perdidaRampUp)}) donde el texto ya habla de los primeros meses de operación. Ninguna otra cifra nueva.`
@@ -1547,9 +1602,10 @@ Responde SOLO este JSON, sin texto alrededor:
             max_tokens: 1000,
             messages: [{ role: "user", content: promptDueno }],
             system: SYSTEM_STR_CACHED,
-          }));
+          }), { guard: "ramp-dueno", campos: campos.map((c) => c.path) });
           acumularUsage(usage, msg);
           usedTries += 1;
+          quirurgicos += 1;
           const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
           let reemplazos: Record<string, unknown> = {};
           try {
@@ -1602,60 +1658,21 @@ Responde SOLO este JSON, sin texto alrededor:
     ): Promise<void> => {
       if (!best) return;
       const antes = violacionesPorCampo(best, regla, ctxGuards);
-      const nAntes = totalViolaciones(antes);
-      if (nAntes === 0) return;
+      if (totalViolaciones(antes) === 0) return;
       const campos = Object.keys(antes)
+        .filter((path) => antes[path].length > 0)
         .map((path) => ({ path, actual: leerCampo(best, path) ?? "", viol: antes[path] }))
         .filter((c) => c.actual);
-      log(`${etiqueta} ${campos.map((c) => `${c.path}: ${c.viol.map((v) => `«${v.slice(0, 100)}»`).join(" · ")}`).join(" | ")} — 1 reintento quirúrgico`);
-      try {
-        const prompt = `Estás corrigiendo SOLO ${campos.length} campo(s) de un análisis de renta corta YA generado y validado. El resto de la prosa no se toca y no lo ves.
-
-${campos.map((c) => `CAMPO ${c.path}\nPROBLEMA: ${problema(c.viol)}\nTEXTO ACTUAL:\n${c.actual}`).join("\n\n")}
-
-TU TAREA: ${instruccion} Conserva el mismo contenido, las mismas cifras (ninguna cifra nueva), el mismo largo aproximado y las marcas \`**…**\` que ya tenía cada campo. Tuteo chileno neutro, sin voseo.
-
-Responde SOLO este JSON, sin texto alrededor:
-{${campos.map((c) => `"${c.path}": "..."`).join(", ")}}`;
-        const msg = await reg.medir(`guard-${regla}`, CLAUDE_MODEL, () => anthropic.messages.create({
-          model: CLAUDE_MODEL,
-          max_tokens: 1500,
-          messages: [{ role: "user", content: prompt }],
-          system: SYSTEM_STR_CACHED,
-        }));
-        acumularUsage(usage, msg);
-        usedTries += 1;
-        const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
-        let reemplazos: Record<string, unknown> = {};
-        try {
-          const m = rawText.match(/\{[\s\S]*\}/);
-          reemplazos = JSON.parse(m ? m[0] : rawText) as Record<string, unknown>;
-        } catch { /* no parseó — candidato vacío, se conserva el previo */ }
-        const candidato = JSON.parse(JSON.stringify(best)) as AIAnalysisSTRv2;
-        let aplicados = 0;
-        for (const c of campos) {
-          const nuevo = reemplazos[c.path];
-          if (typeof nuevo === "string" && nuevo.trim()) { escribirCampo(candidato, c.path, nuevo.trim()); aplicados++; }
-        }
-        const nDespues = totalViolaciones(violacionesPorCampo(candidato, regla, ctxGuards));
-        if (
-          aplicados > 0 &&
-          nDespues < nAntes &&
-          scanStrHardDrift(candidato).length === 0 &&
-          vozDura(candidato).length === 0 &&
-          !empeoraCifras(userPrompt, best, candidato)
-        ) {
-          log(`${etiqueta} retry mejoró ${nAntes}→${nDespues} — aceptado`);
-          best = candidato;
-        } else {
-          log(`${etiqueta} retry no mejoró (${nAntes}→${nDespues}), no parseó o empeoró cifras/drift — conservo el previo`);
-        }
-      } catch (e) {
-        log(`${etiqueta} falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
-      }
+      await correrQuirurgico({
+        guard: regla,
+        etiqueta,
+        campos,
+        problema,
+        instruccion,
+        evaluar: (ai) => totalViolaciones(violacionesPorCampo(ai, regla, ctxGuards)),
+      });
     };
 
-    // 4. [STR-ESTRUCTURAL] — con distancia estructural ninguna caja ofrece negociar.
     await reintentoQuirurgico(
       "estructural",
       "[STR-ESTRUCTURAL]",
@@ -1738,7 +1755,7 @@ Responde SOLO este JSON, sin texto alrededor:
     const v = validarTitular(t);
     if (!v.ok) {
       // Retry dirigido (titular-retry.ts) — espejo LTR.
-      const reescrito = typeof t === "string" && t.trim()
+      const reescrito = typeof t === "string" && t.trim() && hayCupo("[TITULAR]")
         ? await reescribirTitular({
             anthropic: args.anthropic,
             model: CLAUDE_MODEL,
@@ -1747,6 +1764,7 @@ Responde SOLO este JSON, sin texto alrededor:
             veredicto: String((best as { veredicto?: unknown }).veredicto ?? ""),
           })
         : null;
+      if (typeof t === "string" && t.trim() && !topeAlcanzado) { quirurgicos += 1; usedTries += 1; }
       if (reescrito) {
         log(`[TITULAR-REESCRITO] ${v.motivo} — corregido por retry dirigido`);
         (best as { titular?: string | null }).titular = reescrito;
@@ -1780,7 +1798,32 @@ Responde SOLO este JSON, sin texto alrededor:
 
   // Sello de versión (F6). El caller (route + regen-corpus) persiste `ai` tal cual,
   // así endpoint y corpus sellan idéntico. Espejo ambas-generate.ts.
+  // Residuo persistido (goal retry por campo): lo que quedó en rojo al agotar los
+  // reintentos, por guard y campo. Espejo de `_cifrasFueraDeInput` en LTR. Antes el rojo
+  // vivía solo en el log de la ruta, que no se guarda.
+  const residuo: { guard: string; campo: string }[] = [];
+  const addRes = (guard: string, campos: string[]) => {
+    for (const c of campos) if (!residuo.some((x) => x.guard === guard && x.campo === c)) residuo.push({ guard, campo: c });
+  };
+  addRes("cifras", Array.from(agruparPorCampo(cifrasFuera).keys()));
+  addRes("drift", Array.from(agruparPorCampo(hardDriftHits).keys()));
+  addRes("voz", vozResidual.map((h) => h.path));
+  addRes("budget", overBudget.map((o) => o.path));
+  {
+    const ctxRes = contextoGuardsStr(r, inp, comuna, simulacion);
+    for (const regla of ["estructural", "hero-claim", "modalidad", "internas", "engineism", "copia"] as ReglaStr[]) {
+      const v = violacionesPorCampo(best, regla, ctxRes);
+      addRes(regla, Object.keys(v).filter((p) => v[p].length > 0));
+    }
+  }
+  if (residuo.length) {
+    best._residuoGuards = residuo;
+    log(`[STR-RESIDUO] ${residuo.length} guard(s) en rojo al agotar — ${residuo.map((x) => `${x.guard}:${x.campo}`).join(", ")}${topeAlcanzado ? " · tope alcanzado" : ""}`);
+  } else {
+    delete best._residuoGuards;
+  }
+
   best.promptVersion = PROMPT_VERSION_STR;
 
-  return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, cifrasFuera, tries: usedTries, usage, llamadas: reg.llamadas };
+  return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, cifrasFuera, residuo, quirurgicos, topeAlcanzado, tries: usedTries, usage, llamadas: reg.llamadas };
 }

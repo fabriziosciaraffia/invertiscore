@@ -133,6 +133,8 @@ export async function runStrGenerateTier(
             logger: (m) => { if (/^\[(?:HERO-CLAIM|STR-)/.test(m)) process.stderr.write(`\n        ${key} ${m.slice(0, 220)}`); },
           });
           process.stderr.write(` ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
+          // Goal retry por campo: qué pidió cada generación (guard:campos), cuántas llamadas y si tocó el tope.
+          process.stderr.write(`        ${key} llamadas=${gen.llamadas.length} quirúrgicos=${gen.quirurgicos} tope=${gen.topeAlcanzado} tokens=${gen.llamadas.reduce((n, l) => n + (l.input_tokens ?? 0), 0)}in/${gen.llamadas.reduce((n, l) => n + (l.output_tokens ?? 0), 0)}out guards=${gen.llamadas.filter((l) => l.guard).map((l) => `${l.guard}:${(l.campos ?? []).join("+")}`).join(" ") || "-"} residuo=${gen.residuo.map((x) => `${x.guard}:${x.campo}`).join(",") || "-"}\n`);
           ai = gen.ai;
         }
         if (!ai) { bump("gen.null"); continue; }
