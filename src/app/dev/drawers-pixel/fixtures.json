@@ -4821,7 +4821,151 @@
           "titular": "Está cerca del veredicto de arriba por el lado del precio.",
           "fraseCanonica": "Tu veredicto AJUSTA SUPUESTOS pasa a COMPRAR si cierras en UF 4.175 en vez de UF 5.500 —un 24,1% menos—. Es una diferencia de negociación, no de otro departamento. Hay otra vía que también cruza; la tabla las compara."
         }
-      ]
+      ],
+      "matrizPiePlazo": {
+        "pies": [
+          15,
+          20,
+          25,
+          30
+        ],
+        "plazos": [
+          15,
+          20,
+          25,
+          30
+        ],
+        "celdas": [
+          {
+            "piePct": 15,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -735477,
+            "tirPct": 6.02,
+            "veredicto": "BUSCAR OTRA"
+          },
+          {
+            "piePct": 15,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -487988,
+            "tirPct": 6.62,
+            "veredicto": "BUSCAR OTRA"
+          },
+          {
+            "piePct": 15,
+            "plazoAnios": 25,
+            "esActual": false,
+            "flujoMensual": -344337,
+            "tirPct": 7.06,
+            "veredicto": "AJUSTA SUPUESTOS"
+          },
+          {
+            "piePct": 15,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -252429,
+            "tirPct": 7.39,
+            "veredicto": "AJUSTA SUPUESTOS"
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -651326,
+            "tirPct": 6.01,
+            "veredicto": "BUSCAR OTRA"
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -418395,
+            "tirPct": 6.52,
+            "veredicto": "BUSCAR OTRA"
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 25,
+            "esActual": true,
+            "flujoMensual": -283194,
+            "tirPct": 6.88,
+            "veredicto": "AJUSTA SUPUESTOS"
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -196692,
+            "tirPct": 7.14,
+            "veredicto": "AJUSTA SUPUESTOS"
+          },
+          {
+            "piePct": 25,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -567174,
+            "tirPct": 6,
+            "veredicto": "BUSCAR OTRA"
+          },
+          {
+            "piePct": 25,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -348802,
+            "tirPct": 6.43,
+            "veredicto": "AJUSTA SUPUESTOS"
+          },
+          {
+            "piePct": 25,
+            "plazoAnios": 25,
+            "esActual": false,
+            "flujoMensual": -222051,
+            "tirPct": 6.73,
+            "veredicto": "AJUSTA SUPUESTOS"
+          },
+          {
+            "piePct": 25,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -140956,
+            "tirPct": 6.94,
+            "veredicto": "AJUSTA SUPUESTOS"
+          },
+          {
+            "piePct": 30,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -483023,
+            "tirPct": 5.99,
+            "veredicto": "BUSCAR OTRA"
+          },
+          {
+            "piePct": 30,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -279208,
+            "tirPct": 6.36,
+            "veredicto": "AJUSTA SUPUESTOS"
+          },
+          {
+            "piePct": 30,
+            "plazoAnios": 25,
+            "esActual": false,
+            "flujoMensual": -160907,
+            "tirPct": 6.6,
+            "veredicto": "AJUSTA SUPUESTOS"
+          },
+          {
+            "piePct": 30,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -85219,
+            "tirPct": 6.78,
+            "veredicto": "AJUSTA SUPUESTOS"
+          }
+        ]
+      }
     },
     "medianaSnapshot": null
   }

@@ -1,10 +1,10 @@
 "use client";
 
 import { SegsCierre } from "./shared/SegsCierre";
-import { Matriz } from "./shared/Matriz";
+import { Matriz, nombreVeredicto } from "./shared/Matriz";
 import { FilaDato, FilasDato } from "./shared/FilaDato";
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type {
   AIAnalysisV2,
   AnalisisInput,
@@ -20,7 +20,7 @@ import type {
   HallazgoPuestaAPunto,
 } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
-import { calcDividendo, costoOportunidad, simularPieYPlazo, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
+import { calcDividendo, costoOportunidad, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fuenteHistoricaPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
@@ -183,13 +183,10 @@ export function CapitulosInversion({
   const anios = exit?.anios ?? 10;
   const tir = metricaValorONull(exit?.tir);
 
-  // ── matriz pie × plazo (T0/T1): UF congelado del análisis, fecha del análisis ──
-  const matriz = useMemo(() => {
-    if (!inputData || !(inputData.precio > 0) || !createdAt) return null;
-    const ufCongelado = precioCLP > 0 ? precioCLP / inputData.precio : valorUF;
-    const mx = simularPieYPlazo(inputData, ufCongelado, new Date(createdAt));
-    return mx.celdas.length ? mx : null;
-  }, [inputData, createdAt, precioCLP, valorUF]);
+  // ── matriz pie × plazo (T0/T1): la arma el builder del servidor (recomputeResultsForLegacy)
+  // con la mediana, el UF y la fecha congelados del informe; acá solo se pinta. Resultados
+  // persistidos viejos y el demo no la traen: sin matriz.
+  const matriz = results.matrizPiePlazo && results.matrizPiePlazo.celdas.length ? results.matrizPiePlazo : null;
   // Serie visible de la matriz del III (Flujo | TIR). Mismo toggle que STR IV.
   const [serieIII, setSerieIII] = useState<"flujo" | "tir">("flujo");
 
@@ -347,11 +344,10 @@ export function CapitulosInversion({
     : sobre
       ? { v: `${sobre.valor.desviacionPct > 0 ? "+" : ""}${pct1(sobre.valor.desviacionPct)}%`, rojo: sobre.direccion === "adverso" }
       : { v: money(dividendo), rojo: false };
-  // Matriz pie × plazo sobre la pieza compartida (goal "LTR hereda", 05-sep-2026). El
-  // motor LTR (`CeldaPiePlazo`) no emite `cruza`: acá "cruza" = la celda supera el umbral
-  // de la serie activa (flujo ≥ 0 · TIR ≥ umbral), la misma lectura que coloreaba la
-  // matriz vieja. Cruza por veredicto en LTR = goal de motor pendiente; la leyenda LTR
-  // nunca nombra un veredicto.
+  // Matriz pie × plazo sobre la pieza compartida (goal "LTR hereda", 05-sep-2026). Dos
+  // señales por celda (goal "cruza por veredicto", 06-sep-2026): `umbral` = la celda supera
+  // el umbral de la serie activa (flujo ≥ 0 · TIR ≥ umbral), y `veredicto` = el del motor
+  // con esa combinación, que la pieza compara contra el del caso y marca en Ink.
   const umbralTir = tirH?.valor.umbralPct ?? 6;
   const cortoMx = (n: number) => `${n < 0 ? "−" : ""}${currency === "UF" ? `UF ${Math.round(Math.abs(n) / (valorUF || 1))}` : `$${Math.round(Math.abs(n) / 1000)}k`}`;
   const notaMatrizFlujo = (() => {
@@ -421,11 +417,12 @@ export function CapitulosInversion({
                             if (!c) return { v: "—" };
                             const tir = c.tirPct != null ? `${pct1(c.tirPct)}%` : "—";
                             const v = serieIII === "flujo" ? cortoMx(c.flujoMensual) : tir;
-                            const cruza = serieIII === "flujo" ? c.flujoMensual >= 0 : c.tirPct != null && c.tirPct >= umbralTir;
-                            return { v, neg: serieIII === "flujo" && c.flujoMensual < 0, cruza, hoy: c.esActual, title: `${signed(c.flujoMensual)} al mes · TIR ${tir} · ${Number.isInteger(p) ? p : pct1(p)}% de pie a ${z} años` };
+                            const umbral = serieIII === "flujo" ? c.flujoMensual >= 0 : c.tirPct != null && c.tirPct >= umbralTir;
+                            return { v, neg: serieIII === "flujo" && c.flujoMensual < 0, umbral, veredicto: c.veredicto, hoy: c.esActual, title: `${signed(c.flujoMensual)} al mes · TIR ${tir} · ${nombreVeredicto(c.veredicto)} · ${Number.isInteger(p) ? p : pct1(p)}% de pie a ${z} años` };
                           }),
                         )}
-                        leyenda={{ hoy: "hoy", cruza: serieIII === "flujo" ? "cierra el mes" : `sobre TIR ${pct1(umbralTir)}%`, cruzaCorto: "cruza" }}
+                        veredictoBase={results.veredicto}
+                        leyenda={{ hoy: "hoy", umbral: serieIII === "flujo" ? "cierra el mes" : `sobre TIR ${pct1(umbralTir)}%`, umbralCorto: serieIII === "flujo" ? "cierra" : `TIR ≥ ${pct1(umbralTir)}%` }}
                         nota={serieIII === "flujo" ? notaMatrizFlujo : undefined}
                       />
                     </VViz>

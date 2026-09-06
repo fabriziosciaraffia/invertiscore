@@ -78,9 +78,10 @@ export function PiezasShared({ fix, comp }: { fix: any; comp: string }) {
               celdas={mto.ocupaciones.map((o: number) => mto.tarifas.map((t: number) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const c = mto.celdas.find((x: any) => x.tarifaCLP === t && x.ocupacion === o);
-                return c ? { v: k(c.flujoMensual), neg: c.flujoMensual < 0, cruza: c.cruza, hoy: c.esActual, title: `${clp(c.flujoMensual)} al mes · ${c.veredicto}` } : { v: "—" };
+                return c ? { v: k(c.flujoMensual), neg: c.flujoMensual < 0, umbral: c.flujoMensual >= 0, veredicto: c.veredicto, hoy: c.esActual, title: `${clp(c.flujoMensual)} al mes · ${c.veredicto}` } : { v: "—" };
               }))}
-              leyenda={{ hoy: "hoy", cruza: "cruza a Comprar", cruzaCorto: "cruza" }}
+              veredictoBase={r?.francoScore?.veredicto ?? r?.veredicto}
+              leyenda={{ hoy: "hoy", umbral: "cierra el mes", umbralCorto: "cierra" }}
             />
           </VViz>
           <VViz t="Tu flujo mensual según pie y plazo">
@@ -94,9 +95,10 @@ export function PiezasShared({ fix, comp }: { fix: any; comp: string }) {
                 const c = mpp.celdas.find((x: any) => x.piePct === p && x.plazoAnios === pl);
                 if (!c) return { v: "—" };
                 const v = serie === "flujo" ? k(c.flujoMensual) : c.tirPct != null ? pct1(c.tirPct) : "—";
-                return { v, neg: serie === "flujo" ? c.flujoMensual < 0 : false, cruza: c.cruza, hoy: c.esActual, title: `${clp(c.flujoMensual)} al mes · TIR ${c.tirPct != null ? pct1(c.tirPct) : "—"} · ${c.veredicto}` };
+                return { v, neg: serie === "flujo" ? c.flujoMensual < 0 : false, umbral: serie === "flujo" ? c.flujoMensual >= 0 : c.tirPct != null && c.tirPct >= 6, veredicto: c.veredicto, hoy: c.esActual, title: `${clp(c.flujoMensual)} al mes · TIR ${c.tirPct != null ? pct1(c.tirPct) : "—"} · ${c.veredicto}` };
               }))}
-              leyenda={{ hoy: "hoy", cruza: "cruza a Comprar", cruzaCorto: "cruza" }}
+              veredictoBase={r?.francoScore?.veredicto ?? r?.veredicto}
+              leyenda={{ hoy: "hoy", umbral: serie === "flujo" ? "cierra el mes" : "sobre TIR 6%", umbralCorto: serie === "flujo" ? "cierra" : "TIR ≥ 6%" }}
             />
           </VViz>
         </>

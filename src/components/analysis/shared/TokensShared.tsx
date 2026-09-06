@@ -34,8 +34,12 @@ export function TokensShared() {
       .mz-cell{position:relative;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:var(--doc-paper2);border:1px solid var(--doc-line);border-radius:2px;font-family:var(--font-mono, ui-monospace);font-size:11px;color:var(--doc-tx);cursor:help;font-variant-numeric:tabular-nums}
       .doc-sec--paper2 .mz-cell{background:var(--doc-paper)}
       .mz-cell.neg{color:var(--signal-red)}
-      .mz-cell.cruza{border:1px solid var(--doc-good)}
-      .mz-cell.cruza::after{content:'';position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--doc-good)}
+      .mz-cell.umbral{border:1px solid var(--doc-good)}
+      .mz-cell.umbral::after{content:'';position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--doc-good)}
+      /* salto de veredicto: marca mono en Ink al pie de la celda (sin color nuevo) */
+      .mz-cell.conver .mz-v{transform:translateY(-5px)}
+      .mz-ver{position:absolute;left:0;right:0;bottom:4px;text-align:center;font-family:var(--font-mono, ui-monospace);font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--doc-tx);line-height:1;white-space:nowrap}
+      .mz-cell.neg .mz-ver{color:var(--doc-tx)}
       .mz-cell.hoy{box-shadow:inset 0 0 0 2.5px var(--doc-tx);font-weight:700}
       .mz-hoy{position:absolute;top:-1px;left:-1px;font-family:var(--font-mono, ui-monospace);font-size:8px;letter-spacing:.14em;text-transform:uppercase;background:var(--doc-tx);color:var(--doc-paper);padding:2px 5px 2px 6px;border-radius:2px 0 3px 0;line-height:1}
       .mz-note{font-family:var(--font-mono, ui-monospace);font-size:10.5px;color:var(--doc-tx2);line-height:1.6;margin-top:12px;letter-spacing:.02em;max-width:60ch}
@@ -44,8 +48,9 @@ export function TokensShared() {
       .mz-leg i{width:11px;height:11px;border-radius:2px;border:1px solid var(--doc-line);background:var(--doc-paper2)}
       .mz-leg .sh{display:none}
       .mz-leg i.hoy{box-shadow:inset 0 0 0 2px var(--doc-tx)}
-      .mz-leg i.cruza{border-color:var(--doc-good);position:relative}
-      .mz-leg i.cruza::after{content:'';position:absolute;top:1px;right:1px;width:4px;height:4px;border-radius:50%;background:var(--doc-good)}
+      .mz-leg i.umbral{border-color:var(--doc-good);position:relative}
+      .mz-leg i.umbral::after{content:'';position:absolute;top:1px;right:1px;width:4px;height:4px;border-radius:50%;background:var(--doc-good)}
+      .mz-leg i.ver{border:0;background:none;width:auto;height:auto;font-style:normal;font-weight:700;color:var(--doc-tx);font-size:10px;line-height:1}
 
       /* ── planilla (mockup-tablas) ── */
       .pl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -154,6 +159,8 @@ export function TokensShared() {
         .mz-grid{grid-template-columns:var(--rowh) repeat(var(--n,4),minmax(0,1fr))}
         .mz-rowh{padding-right:5px}
         .mz-cell{font-size:9.5px}
+        .mz-ver{font-size:7px;bottom:3px;letter-spacing:.04em}
+        .mz-cell.conver .mz-v{transform:translateY(-4px)}
         .mz-leg .lg{display:none}
         .mz-leg .sh{display:inline}
         .pl th:first-child,.pl td:first-child{position:sticky;left:0;background:var(--doc-paper);z-index:1;box-shadow:1px 0 0 var(--doc-line)}

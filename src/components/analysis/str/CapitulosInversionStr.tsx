@@ -18,7 +18,7 @@ import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hall
 import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, Bars, BarraApilada, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
 import { PlanNegociacion } from "@/components/ui/AnalysisDrawer";
-import { Matriz, FilaDato, FilasDato, BarraTramos, CurvaAnual, CurvaPatrimonio, BloqueDia1, SegsCierre } from "@/components/analysis/shared";
+import { Matriz, nombreVeredicto, FilaDato, FilasDato, BarraTramos, CurvaAnual, CurvaPatrimonio, BloqueDia1, SegsCierre } from "@/components/analysis/shared";
 
 /**
  * LA INVERSIÓN · STR — los seis capítulos del CONGELADO (T1 · 04-sep-2026):
@@ -56,7 +56,7 @@ const ROMANO: Record<CapituloStrId, string> = { renta: "I", flujo: "II", noches:
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const EN_PALABRAS = ["Ninguno", "Uno", "Dos", "Tres", "Cuatro", "Cinco", "Seis", "Siete", "Ocho", "Nueve", "Diez", "Once", "Los doce"];
 const tonoVeredicto = (v: Veredicto | string): ZonaDial["tono"] => (v === "COMPRAR" ? "comprar" : v === "AJUSTA SUPUESTOS" ? "ajusta" : "buscar");
-const nombreVeredicto = (v: Veredicto | string) => (v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajusta supuestos" : "Buscar otra");
+// `nombreVeredicto` vive en la pieza compartida (Matriz.tsx) desde el goal "cruza por veredicto".
 
 /** Zonas y bordes del dial a partir de las dos fronteras del motor (una bisección en el
  *  server). El eje es el factor sobre el valor actual; las zonas se cortan en las
@@ -250,11 +250,12 @@ export function CapitulosInversionStr({
                   celdas={mto.ocupaciones.map((o) =>
                     mto.tarifas.map((t) => {
                       const c = mto.celdas.find((x) => x.tarifaCLP === t && x.ocupacion === o);
-                      return c ? { v: corto(c.flujoMensual), neg: c.flujoMensual < 0, cruza: c.cruza, hoy: c.esActual, title: `${neg(c.flujoMensual)} al mes · ${c.veredicto} · ${money(t)} por noche al ${Math.round(o * 100)}%` } : { v: "—" };
+                      return c ? { v: corto(c.flujoMensual), neg: c.flujoMensual < 0, umbral: c.flujoMensual >= 0, veredicto: c.veredicto, hoy: c.esActual, title: `${neg(c.flujoMensual)} al mes · ${nombreVeredicto(c.veredicto)} · ${money(t)} por noche al ${Math.round(o * 100)}%` } : { v: "—" };
                     }),
                   )}
-                  leyenda={{ hoy: "hoy", cruza: `cruza a ${nombreVeredicto(objetivo)}`, cruzaCorto: "cruza" }}
-                  nota="Cada celda es el flujo mensual con esa tarifa y esa ocupación, con la misma comisión, costos y cuota de tu caso. Cruza = el ingreso alcanza la frontera del dial."
+                  veredictoBase={veredicto as Veredicto}
+                  leyenda={{ hoy: "hoy", umbral: "cierra el mes", umbralCorto: "cierra" }}
+                  nota="Cada celda es el flujo mensual con esa tarifa y esa ocupación, con la misma comisión, costos y cuota de tu caso. Las celdas con flecha cambian tu veredicto."
                 />
               </VViz>
             </>
@@ -524,10 +525,12 @@ export function CapitulosInversionStr({
                     const c = mpp.celdas.find((x) => x.piePct === p && x.plazoAnios === pl);
                     if (!c) return { v: "—" };
                     const v = serieIV === "flujo" ? corto(c.flujoMensual) : c.tirPct != null ? `${pct1(c.tirPct)}%` : "—";
-                    return { v, neg: serieIV === "flujo" && c.flujoMensual < 0, cruza: c.cruza, hoy: c.esActual, title: `${neg(c.flujoMensual)} al mes · TIR ${c.tirPct != null ? `${pct1(c.tirPct)}%` : "—"} · ${c.veredicto} · pie ${p}% a ${pl} años` };
+                    const umbral = serieIV === "flujo" ? c.flujoMensual >= 0 : c.tirPct != null && c.tirPct >= TIR_LIMITE_PCT;
+                    return { v, neg: serieIV === "flujo" && c.flujoMensual < 0, umbral, veredicto: c.veredicto, hoy: c.esActual, title: `${neg(c.flujoMensual)} al mes · TIR ${c.tirPct != null ? `${pct1(c.tirPct)}%` : "—"} · ${nombreVeredicto(c.veredicto)} · pie ${p}% a ${pl} años` };
                   }),
                 )}
-                leyenda={{ hoy: "hoy", cruza: `cruza a ${nombreVeredicto(objetivo)}`, cruzaCorto: "cruza" }}
+                veredictoBase={veredicto as Veredicto}
+                leyenda={{ hoy: "hoy", umbral: serieIV === "flujo" ? "cierra el mes" : `sobre TIR ${TIR_LIMITE_PCT}%`, umbralCorto: serieIV === "flujo" ? "cierra" : `TIR ≥ ${TIR_LIMITE_PCT}%` }}
               />
             </VViz>
           )}
