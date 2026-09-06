@@ -1632,25 +1632,10 @@ export function simularPie(
   return salida;
 }
 
-export interface CeldaPiePlazo {
-  piePct: number;
-  plazoAnios: number;
-  /** La combinación declarada en el análisis (pie actual × plazo actual). */
-  esActual: boolean;
-  /** Flujo mensual neto con esa combinación (signed). */
-  flujoMensual: number;
-  /** TIR a 10 años con esa combinación. null si el VPN no cruza cero. */
-  tirPct: number | null;
-}
-
-export interface MatrizPiePlazo {
-  /** Niveles de pie, los mismos de `simularPie` (−5 / actual / +5 / +10, filtrados). */
-  pies: number[];
-  /** Plazos comerciales, los mismos de `simularPlazo`. */
-  plazos: number[];
-  /** `pies.length × plazos.length` celdas, en orden fila (pie) → columna (plazo). Vacío = no hay matriz. */
-  celdas: CeldaPiePlazo[];
-}
+// `CeldaPiePlazo` / `MatrizPiePlazo` viven en types.ts desde el goal "Matriz III: cruza por
+// veredicto" (06-sep-2026), porque `FullAnalysisResult.matrizPiePlazo` las necesita ahí.
+export type { CeldaPiePlazo, MatrizPiePlazo } from "./types";
+import type { CeldaPiePlazo, MatrizPiePlazo } from "./types";
 
 /**
  * MATRIZ PIE × PLAZO — la simulación COMBINADA que el contrato CONGELADO (02-sep-2026)
@@ -1697,12 +1682,17 @@ export function simularPieYPlazo(
       const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
       const proj = calcProjections({ input: clone, metrics: m, ufClp, asOf });
       const exit = calcExitScenario(clone, m, proj);
+      // Veredicto de la combinación por la MISMA ruta que `veredictoConPatch` (y que el
+      // canónico de runAnalysis), reutilizando las métricas que la celda ya calculó.
+      const score = calcScoreFromMetrics(clone, m, ufClp, asOf);
+      const veredicto = deriveVeredicto(score, m, calcBreakEvenTasa(clone, m, ufClp));
       celdas.push({
         piePct,
         plazoAnios,
         esActual: piePct === pieActual && plazoAnios === plazoActual,
         flujoMensual: m.flujoNetoMensual,
         tirPct: metricaValorONull(exit.tir),
+        veredicto,
       });
     }
   }

@@ -4,7 +4,9 @@
 // Fixture obligatorio del tramo (contrato CONGELADO 02-sep-2026):
 //   (1) MATRIZ PIE × PLAZO: la celda `esActual` de `simularPieYPlazo` reproduce
 //       BIT-IDÉNTICO `metrics.flujoNetoMensual` y `exitScenario.tir` del análisis
-//       canónico. Si divergiera, la matriz describiría otro deal.
+//       canónico, y (goal "cruza por veredicto", 06-sep-2026) su `veredicto` es el
+//       veredicto del informe. Si divergiera, la matriz describiría otro deal. La misma
+//       aserción corre sobre los seeds GS del golden (en memoria) y sobre 7710a017.
 //   (2) TABLA ANUAL: los desgloses nuevos de `YearProjection` cierran exacto —
 //       `arriendoAnual − gastosOperativosAnual === noiAnual` y
 //       `noiAnual − vacanciaRotacionAnual − dividendoAnual === flujoAnual` en cada
@@ -21,12 +23,16 @@
 import { createClient } from "@supabase/supabase-js";
 import { recomputeResultsForLegacy } from "../../../src/lib/analysis/recompute-results-for-legacy";
 import { resolveUfForAnalysis } from "../../../src/lib/uf";
-import { simularPieYPlazo } from "../../../src/lib/analysis";
+import { simularPieYPlazo, runAnalysis } from "../../../src/lib/analysis";
+import { GOLDEN_SEEDS, GOLDEN_UF } from "./seeds";
 import { metricaValorONull } from "../../../src/lib/types";
 import type { AnalisisInput, FullAnalysisResult } from "../../../src/lib/types";
 
 const CASO_CONTRATO = "cb0e8f46";
 const CASO_CONTRATO_ID = "cb0e8f46-8dc5-4fc0-b24b-e68e2a927f2d"; // uuid: PostgREST no acepta LIKE sobre uuid
+// Canónico del rediseño (66 · AJUSTA SUPUESTOS · −$283.194): también entra siempre.
+const CASO_CANONICO = "7710a017";
+const CASO_CANONICO_ID = "7710a017-8066-47a6-8b3e-8fc64143e256";
 const N = Number(process.argv[2] ?? 40);
 
 type Fila = {
@@ -49,12 +55,13 @@ async function main() {
     .limit(N);
   if (error) throw error;
   const filas = (data ?? []) as Fila[];
-  if (!filas.some((f) => f.id.startsWith(CASO_CONTRATO))) {
+  for (const [pref, id] of [[CASO_CONTRATO, CASO_CONTRATO_ID], [CASO_CANONICO, CASO_CANONICO_ID]]) {
+    if (filas.some((f) => f.id.startsWith(pref))) continue;
     const { data: extra } = await sb
       .from("analisis")
       .select("id, comuna, input_data, results, created_at, mediana_comuna_snapshot")
       .eq("tipo_analisis", "long-term")
-      .eq("id", CASO_CONTRATO_ID)
+      .eq("id", id)
       .limit(1);
     if (extra?.length) filas.push(extra[0] as Fila);
   }
@@ -83,6 +90,12 @@ async function main() {
       } else if (hoy.flujoMensual !== r.metrics.flujoNetoMensual || hoy.tirPct !== tirCanon) {
         matrizFalla++;
         fallas.push(`${tag} · celda actual ${hoy.flujoMensual} / ${hoy.tirPct} ≠ informe ${r.metrics.flujoNetoMensual} / ${tirCanon}`);
+      } else if (hoy.veredicto !== r.veredicto) {
+        matrizFalla++;
+        fallas.push(`${tag} · celda actual veredicto ${hoy.veredicto} ≠ informe ${r.veredicto}`);
+      } else if (r.matrizPiePlazo?.celdas.find((c) => c.esActual)?.veredicto !== r.veredicto) {
+        matrizFalla++;
+        fallas.push(`${tag} · results.matrizPiePlazo (builder) no reproduce el veredicto ${r.veredicto}`);
       } else if (mx.celdas.length !== mx.pies.length * mx.plazos.length) {
         matrizFalla++; fallas.push(`${tag} · ${mx.celdas.length} celdas para ${mx.pies.length}×${mx.plazos.length}`);
       } else {
@@ -121,13 +134,30 @@ async function main() {
     }
   }
 
+  // (1.bis) seeds GS del golden, en memoria: la celda "hoy" reproduce flujo, TIR y veredicto.
+  let gsOk = 0, gsFalla = 0;
+  for (const seed of GOLDEN_SEEDS) {
+    const asOfGs = new Date();
+    const rg = runAnalysis(seed.input, GOLDEN_UF, seed.mediana, asOfGs);
+    const mg = simularPieYPlazo(seed.input, GOLDEN_UF, asOfGs, seed.mediana);
+    const hoyG = mg.celdas.find((c) => c.esActual);
+    if (!mg.celdas.length) continue; // pie 0/100 o plazo no comercial: sin matriz, igual que en prod
+    if (!hoyG) { gsFalla++; fallas.push(`${seed.key} · matriz sin celda actual`); continue; }
+    if (hoyG.flujoMensual !== rg.metrics.flujoNetoMensual || hoyG.tirPct !== metricaValorONull(rg.exitScenario.tir) || hoyG.veredicto !== rg.veredicto) {
+      gsFalla++;
+      fallas.push(`${seed.key} · celda actual ${hoyG.flujoMensual} / ${hoyG.tirPct} / ${hoyG.veredicto} ≠ informe ${rg.metrics.flujoNetoMensual} / ${metricaValorONull(rg.exitScenario.tir)} / ${rg.veredicto}`);
+    } else gsOk++;
+  }
+
   console.log(`\nSIMULACIÓN · catch-test sobre ${filas.length} filas`);
+  console.log(`  seeds golden       ok ${gsOk} · FALLA ${gsFalla}`);
   console.log(`  matriz pie×plazo   ok ${matrizOk} · vacía (pie 0/100 o plazo no comercial) ${matrizVacia} · FALLA ${matrizFalla}`);
   console.log(`  tabla anual        ok ${tablaOk} · FALLA ${tablaFalla}`);
   for (const x of fallas) console.log(`  ✗ ${x}`);
   const contrato = filas.find((f) => f.id.startsWith(CASO_CONTRATO));
-  console.log(`  caso del contrato ${CASO_CONTRATO}: ${contrato ? "incluido" : "NO ENCONTRADO"}`);
-  if (matrizFalla || tablaFalla || !contrato) {
+  const canonico = filas.find((f) => f.id.startsWith(CASO_CANONICO));
+  console.log(`  caso del contrato ${CASO_CONTRATO}: ${contrato ? "incluido" : "NO ENCONTRADO"} · canónico ${CASO_CANONICO}: ${canonico ? "incluido" : "NO ENCONTRADO"}`);
+  if (matrizFalla || tablaFalla || gsFalla || !contrato || !canonico) {
     console.log("\n✗ ROJO");
     process.exit(1);
   }

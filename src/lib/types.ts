@@ -1366,6 +1366,35 @@ export function normalizeLegacyVerdict(raw: string | null | undefined): Veredict
   }
 }
 
+/** Una celda de la matriz pie × plazo (capítulo III LTR). Nace ENTERA en el motor
+ *  (`simularPieYPlazo`): flujo, TIR y veredicto salen del mismo recompute de la
+ *  misma combinación, así que no existe una celda con veredicto sin umbral calculado
+ *  ni al revés. El render solo compara: umbral de la serie (flujo ≥ 0 · TIR ≥ límite)
+ *  y veredicto contra el del caso. */
+export interface CeldaPiePlazo {
+  piePct: number;
+  plazoAnios: number;
+  /** La combinación declarada en el análisis (pie actual × plazo actual). */
+  esActual: boolean;
+  /** Flujo mensual neto con esa combinación (signed). */
+  flujoMensual: number;
+  /** TIR a 10 años con esa combinación. null si el VPN no cruza cero. */
+  tirPct: number | null;
+  /** Veredicto ternario del motor con esa combinación, por la MISMA ruta del veredicto
+   *  canónico (calcMetrics → score → break-even → deriveVeredicto). La celda `esActual`
+   *  reproduce el veredicto del informe (lo caza simulacion-catch-test). */
+  veredicto: Veredicto;
+}
+
+export interface MatrizPiePlazo {
+  /** Niveles de pie, los mismos de `simularPie` (−5 / actual / +5 / +10, filtrados). */
+  pies: number[];
+  /** Plazos comerciales, los mismos de `simularPlazo`. */
+  plazos: number[];
+  /** `pies.length × plazos.length` celdas, en orden fila (pie) → columna (plazo). Vacío = no hay matriz. */
+  celdas: CeldaPiePlazo[];
+}
+
 export interface FullAnalysisResult {
   score: number;
   clasificacion: string;
@@ -1394,6 +1423,11 @@ export interface FullAnalysisResult {
   // Proto-hallazgos del motor (CapEx puesta a punto + cap rate). Vacío/omitido
   // si no aplica. Sin lógica de ordenamiento — es la semilla de la capa.
   hallazgos?: Hallazgo[];
+  /** Matriz pie × plazo del capítulo III, calculada en el builder del servidor
+   *  (`recomputeResultsForLegacy`, con la mediana comunal, el UF y la fecha congelados
+   *  del informe), nunca en render. Ausente en resultados persistidos viejos y en el
+   *  demo: el capítulo no la pinta. */
+  matrizPiePlazo?: MatrizPiePlazo;
 }
 
 export interface AIAnalysis {

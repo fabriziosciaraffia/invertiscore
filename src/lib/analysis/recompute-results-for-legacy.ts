@@ -1,5 +1,5 @@
 import type { AnalisisInput, FullAnalysisResult } from "@/lib/types";
-import { runAnalysis } from "@/lib/analysis";
+import { runAnalysis, simularPieYPlazo } from "@/lib/analysis";
 import type { MedianaComunaInyectada } from "@/lib/comuna-stats";
 
 /**
@@ -43,5 +43,13 @@ export function recomputeResultsForLegacy(
   // entre recomputes. Ausente ⇒ new Date() (compat). Ver of-datedrift-design.md.
   asOf?: Date,
 ): FullAnalysisResult {
-  return runAnalysis(input, ufClp, medianaComuna, asOf);
+  // Una sola fecha para el análisis y para la matriz: si `asOf` falta, runAnalysis
+  // usaría new Date() por su cuenta y la matriz otra.
+  const fecha = asOf ?? new Date();
+  const base = runAnalysis(input, ufClp, medianaComuna, fecha);
+  // Matriz pie × plazo del capítulo III (goal "cruza por veredicto", 06-sep-2026): se
+  // arma acá, en el builder, con la MISMA mediana, UF y fecha que el veredicto canónico.
+  // Antes la simulaba el componente en un useMemo, sin la mediana comunal, así que en
+  // filas con sobreprecio la celda "hoy" podía no reproducir el veredicto del informe.
+  return { ...base, matrizPiePlazo: simularPieYPlazo(input, ufClp, fecha, medianaComuna) };
 }
