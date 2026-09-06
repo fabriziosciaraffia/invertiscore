@@ -1651,6 +1651,10 @@ export interface AIAnalysisSTRv2 {
   // lazy-on-open: si `promptVersion` < PROMPT_VERSION_STR, el análisis del owner la
   // regenera al abrir. Ausente ⇒ prosa pre-F6 (siempre stale). Espejo comparativa.
   promptVersion?: number;
+  /** Residuo persistido (goal retry por campo, 05-sep-2026): guards que quedaron en rojo
+   *  al agotar los reintentos quirúrgicos, con su campo. Espejo de `_cifrasFueraDeInput`
+   *  en LTR. Ausente ⇒ prosa limpia (o anterior al goal). NO se renderiza. */
+  _residuoGuards?: { guard: string; campo: string }[];
 }
 
 // ─── Comparativa Ambas — IA narrativa "Cuál te conviene" (Fase C · Plan C) ──

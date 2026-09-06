@@ -38,6 +38,16 @@ export interface LlamadaTiming {
   ms: number;
   input_tokens?: number;
   output_tokens?: number;
+  /** Retry quirúrgico (goal retry por campo, 05-sep-2026): qué guard lo pidió y sobre
+   *  qué campos. Ausente en la llamada principal y en las llamadas viejas. */
+  guard?: string;
+  campos?: string[];
+}
+
+/** Metadatos opcionales de una llamada (retry por campo). */
+export interface MetaLlamada {
+  guard?: string;
+  campos?: string[];
 }
 
 /** Bloque `submit` de pipeline_timing: fases del request de creación. */
@@ -111,7 +121,7 @@ export interface RegistroLlamadas {
   /** Cronometra una llamada que devuelve `usage` (messages.create). Si la
    *  llamada lanza, la entrada queda registrada igual (sin tokens) y el error
    *  se propaga intacto — los catch existentes del pipeline no cambian. */
-  medir<T extends ConUsage>(rol: string, modelo: string, fn: () => Promise<T>): Promise<T>;
+  medir<T extends ConUsage>(rol: string, modelo: string, fn: () => Promise<T>, meta?: MetaLlamada): Promise<T>;
   /** Ídem para llamadas cuyo retorno no expone usage (micro-check haiku, cuyo
    *  costo se decide no sumar — ver la nota de tarifas en ai-generation.ts). */
   medirSinTokens<T>(rol: string, modelo: string, fn: () => Promise<T>): Promise<T>;
@@ -121,8 +131,9 @@ export function nuevoRegistroLlamadas(): RegistroLlamadas {
   const llamadas: LlamadaTiming[] = [];
   return {
     llamadas,
-    async medir(rol, modelo, fn) {
+    async medir(rol, modelo, fn, meta) {
       const t = Date.now();
+      const extra = meta ? { ...(meta.guard ? { guard: meta.guard } : {}), ...(meta.campos?.length ? { campos: meta.campos } : {}) } : {};
       try {
         const res = await fn();
         llamadas.push({
@@ -131,10 +142,11 @@ export function nuevoRegistroLlamadas(): RegistroLlamadas {
           ms: Date.now() - t,
           ...(typeof res.usage?.input_tokens === "number" ? { input_tokens: res.usage.input_tokens } : {}),
           ...(typeof res.usage?.output_tokens === "number" ? { output_tokens: res.usage.output_tokens } : {}),
+          ...extra,
         });
         return res;
       } catch (e) {
-        llamadas.push({ rol, modelo, ms: Date.now() - t });
+        llamadas.push({ rol, modelo, ms: Date.now() - t, ...extra });
         throw e;
       }
     },
