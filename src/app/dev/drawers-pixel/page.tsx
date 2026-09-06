@@ -22,7 +22,10 @@ import { STRResultsClient } from "@/app/analisis/renta-corta/[id]/results-client
 import { PremiumResults } from "@/app/analisis/[id]/results-client";
 import fixtures from "./fixtures.json";
 
-type FixKey = "staRosaStr" | "grajalesStr" | "providenciaLtr";
+// Goal "material del informe" (06-sep-2026): tres casos más para los shots por veredicto sin
+// abrir las filas en prod (laFloridaLtr = c4ffe9a6 BUSCAR, nunoaLtr = 17b4e10d COMPRAR,
+// lasCondesStr = efe52b6a COMPRAR). Se vuelcan con scripts/of-dump-fixture.ts.
+type FixKey = "staRosaStr" | "grajalesStr" | "providenciaLtr" | "laFloridaLtr" | "nunoaLtr" | "lasCondesStr";
 
 function Inner() {
   const sp = useSearchParams();
