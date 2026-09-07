@@ -1323,7 +1323,7 @@ export interface GenerateStrProseArgs {
 export interface GenerateStrProseResult {
   ai: AIAnalysisSTRv2;
   driftHits: string[];        // todos (hard+soft), reporte
-  hardDriftHits: string[];    // invariante — si >0, NO persistir
+  hardDriftHits: string[];    // reporte: nadie bloquea el persist con esto (str-prosa-persist guarda igual); regen-corpus-str.ts lo cuenta como leaks
   softDriftHits: string[];    // engine-isms, detección-only
   overBudget: { path: string; wc: number; max: number }[];
   /** Guard STR-CIFRA: cifras de la prosa que no vienen del input (residual tras reintentos). */
