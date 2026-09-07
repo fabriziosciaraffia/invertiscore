@@ -26,6 +26,7 @@ import { runCatchTest } from "./catch-test";
 import { runGenerateTier } from "./generate";
 import { runSemanticTier } from "./semantic";
 import { runStrTier } from "./str-recompute";
+import { runEtiquetaTier } from "./etiqueta-veredicto-catch-test";
 import { runStrGenerateTier, type TandaStr } from "./str-generate";
 import { runAmbasTier } from "./ambas-recompute";
 import { runAmbasSemanticTier } from "./ambas-semantic";
@@ -134,6 +135,10 @@ async function printStrSemantic() {
   quick.forEach(printSeed);
   totalHard += quick.reduce((n, r) => n + r.hardFail, 0);
   totalDrift += quick.reduce((n, r) => n + r.rebaseline, 0);
+
+  // ── Tier ETIQUETA (goal 10a · 07-sep-2026, 0 tokens): ningún literal de etiqueta de
+  // veredicto fuera de src/lib/veredicto-etiqueta.ts. Corre siempre con el QUICK. ──
+  totalHard += runEtiquetaTier().hard;
 
   // ── Tier STR (E.1b · GS-STR, 0 tokens). Corre con --str o --all/--full. ──
   if (has("--str") || has("--all") || MODE_FULL) {
