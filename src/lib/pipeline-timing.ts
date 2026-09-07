@@ -65,6 +65,25 @@ export interface SubmitTiming {
   total_ms?: number;
 }
 
+/** Guard del titular (goal #8 · 07-sep-2026): qué pasó cuando `validarTitular`
+ *  rechazó el titular de la generación principal. Ausente cuando validó a la
+ *  primera. Antes solo se logueaba el conteo; el texto descartado no quedaba en
+ *  ningún lado y el A9 del golden fallaba sin que se pudiera leer por qué. */
+export interface TitularTiming {
+  /** Titular que vino en el JSON principal, tal cual. */
+  original: string;
+  /** Motivo de `validarTitular` sobre el original. */
+  motivo: string;
+  palabras: number;
+  /** Texto del retry dirigido (titular-retry.ts), o null si la API falló. */
+  reescrito: string | null;
+  /** Motivo de `validarTitular` sobre el reescrito; null si validó o no hubo. */
+  reescrito_motivo: string | null;
+  /** Con qué quedó la portada: reescrito válido · escalón (16-20 palabras del
+   *  original, normalizado) · null (descartado, portada sin titular). */
+  fallback: "reescrito" | "escalon" | "null";
+}
+
 /** Una entrada del array `generaciones` de pipeline_timing. */
 export interface GeneracionTiming {
   tipo: GeneracionTipo;
@@ -77,6 +96,7 @@ export interface GeneracionTiming {
   /** Trabajo previo al primer messages.create (SELECT fila, mediana, recompute). */
   prep_ms?: number;
   llamadas: LlamadaTiming[];
+  titular?: TitularTiming;
 }
 
 /**

@@ -1789,9 +1789,11 @@ Responde SOLO este JSON, sin texto alrededor:
           })
         : null;
       if (typeof t === "string" && t.trim() && !topeAlcanzado) { quirurgicos += 1; usedTries += 1; }
-      if (reescrito) {
+      // El retry devuelve siempre su texto (goal #8); acá se conserva el comportamiento
+      // STR de antes: solo se usa si valida. El fallback STR queda fuera de ese goal.
+      if (reescrito?.valido) {
         log(`[TITULAR-REESCRITO] ${v.motivo} — corregido por retry dirigido`);
-        (best as { titular?: string | null }).titular = reescrito;
+        (best as { titular?: string | null }).titular = reescrito.texto;
       } else {
         // ESCALÓN (decisión PARÁ 3) — espejo LTR: 16-20 palabras sin montos se
         // renderiza con violación blanda; marcas rotas se normalizan; montos o
