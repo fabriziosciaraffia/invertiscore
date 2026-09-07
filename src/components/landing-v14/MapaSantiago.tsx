@@ -1,21 +1,23 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Mapa de Santiago (sección 3) — opción (c) del goal: SVG estático de calles
-// principales desde OpenStreetMap.
+// principales desde OpenStreetMap, en tres capas:
 //
-//  · Calles: `public/landing/mapa-santiago.svg` (tools/mapa/santiago-svg.mjs),
-//    cargado como <img> para que Vercel lo sirva comprimido y cacheado aparte
-//    del HTML (281 KB en disco, ~111 KB comprimido).
-//  · Encima, un SVG inline con la misma proyección: puntos de densidad reales
-//    (muestra de avisos activos), etiquetas de comuna en su centroide real y el
-//    pin "TU DEPTO" latiendo (uso 7 de Signal Red). Datos y proyección salen de
-//    los `.gen.json` que escriben los scripts de tools/mapa/.
+//  1. Calles: `public/landing/mapa-santiago.svg` (tools/mapa/santiago-svg.mjs),
+//     cargado como <img> para que Vercel lo sirva comprimido y cacheado aparte
+//     del HTML (282 KB en disco, ~111 KB comprimido).
+//  2. Puntos: TODOS los avisos activos con coordenadas, en <canvas>
+//     (`MapaPuntos`, datos por /api/landing/mapa-puntos, ISR 24 h).
+//  3. Etiquetas de comuna en su centroide real (mapa-puntos.gen.json, de
+//     tools/mapa/puntos.mjs) y el pin "TU DEPTO" latiendo (uso 7 de Signal
+//     Red), en un SVG inline con la misma proyección.
 //
-// Server component: no hay estado; la animación de entrada es CSS y la dispara
-// `SeccionVista` (data-visto) al entrar en pantalla.
+// Server component salvo el canvas; la animación de entrada de calles, etiquetas
+// y pin es CSS y la dispara `SeccionVista` (data-visto) al entrar en pantalla.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import proj from "./mapa-santiago.proj.json";
-import puntos from "./mapa-puntos.gen.json";
+import centroides from "./mapa-puntos.gen.json";
+import { MapaPuntos } from "./MapaPuntos";
 
 const px = (lng: number) => (lng - proj.W) * proj.kLat * proj.s + proj.ox;
 const py = (lat: number) => (proj.N - lat) * proj.s + proj.oy;
@@ -35,7 +37,7 @@ const AJUSTE: Record<string, { dx?: number; dy?: number }> = {
 export function MapaSantiago() {
   const { VW, VH } = proj;
   return (
-    <div className="lv-mapwrap">
+    <div className="lv-mapwrap" style={{ aspectRatio: `${VW} / ${VH}` }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- SVG estático, sin optimizador */}
       <img
         className="lv-map-calles"
@@ -46,19 +48,9 @@ export function MapaSantiago() {
         loading="lazy"
         decoding="async"
       />
+      <MapaPuntos />
       <svg className="lv-map-capa" viewBox={`0 0 ${VW} ${VH}`} aria-hidden="true">
-        <g className="lv-dots">
-          {puntos.puntos.map(([lat, lng], k) => (
-            <circle
-              key={k}
-              cx={px(lng).toFixed(1)}
-              cy={py(lat).toFixed(1)}
-              r={1.7}
-              style={{ ["--o" as string]: (0.35 + ((k * 37) % 50) / 100).toFixed(2), ["--d" as string]: `${(0.6 + ((k * 13) % 60) / 24).toFixed(2)}s` }}
-            />
-          ))}
-        </g>
-        {puntos.centroides.map((c, k) => (
+        {centroides.centroides.map((c, k) => (
           <text
             key={c.comuna}
             className="lv-lb"
