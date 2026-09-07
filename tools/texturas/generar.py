@@ -2,17 +2,30 @@
 """
 Generador de texturas de marca — refranco.ai
 Receta aprobada 06-sep-2026 (chat landing): composición F3i-b, paleta T1, grano 0,035.
+Regla de composición v2 (QA de Fabrizio, 07-sep-2026): el rojo ocupa una ALTURA FIJA
+medida desde abajo (`rojo`, en px de la imagen), no una proporción del lienzo. Sobre el
+bloque rojo la rampa sigue hasta papel en 1,67 × rojo (0,6 = rojo pleno); lo que quede
+más arriba es papel liso, que es el fondo de la página, así la imagen se puede recortar
+por arriba sin costura. En CSS la banda se sirve con altura fija en vh y `object-fit:
+cover` anclado abajo: hero 50 svh (rojo = 30 vh), cierre 83 svh (rojo = 50 vh).
+
 Uso:
-  python tools/texturas/generar.py hero   1440 1600 public/landing/textura-hero-desktop.webp
-  python tools/texturas/generar.py hero    900 1600 public/landing/textura-hero-mobile.webp
-  python tools/texturas/generar.py cierre 1440 1000 public/landing/textura-cierre-desktop.webp
-  python tools/texturas/generar.py cierre  900 1400 public/landing/textura-cierre-mobile.webp
-  python tools/texturas/generar.py hero   1200  630 public/landing/og-hero.jpg   # fondo del OG (JPEG, lo lee Satori)
+  python tools/texturas/generar.py banda ANCHO ALTO ROJO salida.webp
+  # set de la landing (2x/3x, servido por <picture> + srcset, nada se estira):
+  python tools/texturas/generar.py banda 1200 1000  600 public/landing/textura-hero-m2x.webp
+  python tools/texturas/generar.py banda 1800 1500  900 public/landing/textura-hero-m3x.webp
+  python tools/texturas/generar.py banda 3000 1000  600 public/landing/textura-hero-d2x.webp   # cubre 50 svh hasta 1000 px de alto
+  python tools/texturas/generar.py banda 1200 1500  900 public/landing/textura-cierre-m2x.webp
+  python tools/texturas/generar.py banda 3000 1500  900 public/landing/textura-cierre-d2x.webp
+  python tools/texturas/generar.py banda 1200  630  190 public/landing/og-hero.jpg   # OG (JPEG: Satori no lee WebP)
+  # receta v1 (proporción del lienzo), por si hace falta reproducirla:
+  python tools/texturas/generar.py hero 1440 1600 salida.webp · cierre 1440 1000 salida.webp
 Requiere: numpy, Pillow (`python -m pip install numpy pillow`).
-Determinista (seed fija): mismo tamaño → misma imagen. El formato lo decide la extensión de salida
-(.webp con QUALITY, .jpg con calidad 88; WebP no lo lee el runtime edge del OG).
-No cambiar paleta, grano ni composición sin decisión explícita; sí se puede cambiar tamaño, calidad y formato.
-Las texturas generadas se commitean junto con el script: el build de Vercel no corre Python.
+Determinista (seed fija): mismo tamaño → misma imagen. El formato lo decide la extensión
+(.webp con QUALITY, .jpg con calidad 88).
+No cambiar paleta, grano ni composición sin decisión explícita; sí se puede cambiar tamaño,
+calidad y formato. Las texturas generadas se commitean junto con el script: el build de
+Vercel no corre Python.
 """
 import sys
 import numpy as np
@@ -50,11 +63,22 @@ def colormap(v):
         out[m] = hexc(c0) * (1 - t) + hexc(c1) * t
     return out
 
-def render(kind, w, h, out, seed=7):
-    bias_fn = COMPOSICION[kind]
+def bias_banda(h, rojo):
+    """v2: rampa desde abajo. v = 1 en el borde inferior, 0,6 (rojo pleno) a `rojo` px,
+    0 (papel) a 1,67 × rojo; más arriba, papel liso."""
+    def fn(x, y):
+        d = (1 - y) * h                      # px desde abajo
+        return np.clip(1 - d / (rojo / 0.6), 0, 1)
+    return fn
+
+def render(kind, w, h, out, seed=7, rojo=None):
+    bias_fn = bias_banda(h, rojo) if kind == 'banda' else COMPOSICION[kind]
     f = field(w, h, seed)
     yy, xx = np.mgrid[0:h, 0:w]
     v = np.clip(f * FIELD_W + bias_fn(xx / w, yy / h) * (1 - FIELD_W * 0.4), 0, 1)
+    if kind == 'banda':
+        # el campo orgánico no debe manchar el papel liso de arriba: se apaga con la rampa
+        v = np.where(bias_fn(xx / w, yy / h) > 0, v, 0)
     rgb = colormap(v)
     g = np.random.default_rng(seed).normal(0, 1, (h, w))
     rgb = rgb + (g[:, :, None] * GRAIN * 255)
@@ -66,5 +90,10 @@ def render(kind, w, h, out, seed=7):
     print(f'{out}: {w}x{h}')
 
 if __name__ == '__main__':
-    kind, w, h, out = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
-    render(kind, w, h, out)
+    kind = sys.argv[1]
+    if kind == 'banda':
+        w, h, rojo, out = int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5]
+        render(kind, w, h, out, rojo=rojo)
+    else:
+        w, h, out = int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
+        render(kind, w, h, out)
