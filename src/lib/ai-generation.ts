@@ -3654,20 +3654,6 @@ Responde SOLO este JSON, sin texto alrededor:
       aiResult.reestructuracion.estructuraSugerida = reestructuracionFinanciera;
     }
 
-    // RED FINAL DE VOZ — swap determinístico del voseo conocido y los typos
-    // recurrentes ("commune"→"comuna", "delgas"→"delegas"). Es la capa que
-    // GARANTIZA que no llegan al usuario, sin reintento caro: 1 token por 1
-    // token, así que no mueve el conteo de palabras y no invalida el guard de
-    // presupuesto que corrió arriba. Va antes del sello para que el golden
-    // (persist:false) vea exactamente lo que ve producción.
-    if (aiResult) {
-      aiResult = sanitizeVozChilena(aiResult, (m) => console.warn(`${m} — ${analysisId}`));
-      const vozResidual = hitsQueExigenReintento(scanVozChilena(aiResult));
-      if (vozResidual.length) {
-        console.warn(`[VOZ-RESIDUAL] ${analysisId}: ${vozResidual.length} forma(s) sin corrección tras el reintento — ${vozResidual.map((h) => `"${h.token}"`).join(", ")}`);
-      }
-    }
-
     // GUARD DEL TITULAR (§18, v10) — validación de FORMA (validarTitular,
     // fuente única con el golden A9). Inválido ⇒ null + warn, SIN reintento:
     // el render tolera titular ausente (portada sin titular, nunca placeholder)
@@ -3745,6 +3731,24 @@ Responde SOLO este JSON, sin texto alrededor:
         }
       };
       stripDesbalance(aiResult as Record<string, unknown>);
+    }
+
+    // RED FINAL DE VOZ — swap determinístico del voseo conocido y los typos
+    // recurrentes ("commune"→"comuna", "delgas"→"delegas"). Es la capa que
+    // GARANTIZA que no llegan al usuario, sin reintento caro: 1 token por 1
+    // token, así que no mueve el conteo de palabras y no invalida el guard de
+    // presupuesto que corrió arriba. ÚNICO punto de salida de la prosa: corre
+    // DESPUÉS del guard del titular (retry dirigido + escalón + strip de marcas),
+    // que era el último que escribía texto y quedaba sin sanitizar — así salió
+    // «Comprás muy bajo la mediana» en 17b4e10d (v20, 03-sep-2026) con la forma en
+    // el léxico. Va antes del sello para que el golden (persist:false) vea
+    // exactamente lo que ve producción.
+    if (aiResult) {
+      aiResult = sanitizeVozChilena(aiResult, (m) => console.warn(`${m} — ${analysisId}`));
+      const vozResidual = hitsQueExigenReintento(scanVozChilena(aiResult));
+      if (vozResidual.length) {
+        console.warn(`[VOZ-RESIDUAL] ${analysisId}: ${vozResidual.length} forma(s) sin corrección tras el reintento — ${vozResidual.map((h) => `"${h.token}"`).join(", ")}`);
+      }
     }
 
     // Sello de versión (F6). Antes del early-return de persist:false para que el
