@@ -56,12 +56,13 @@
 }
 .lv-root a { color: inherit; }
 
-/* autoscroll: snap suave por sección, solo mientras la landing está montada
-   (`html:has`) y sin snap con prefers-reduced-motion. En mobile la sección 3
-   (mapa) queda fuera porque mide más que la pantalla. */
-html:has(.lv-root) { scroll-snap-type: y proximity; }
-.lv-root [data-seccion] { scroll-snap-align: start; }
-@media (max-width: 899px) { .lv-root [data-seccion="3"] { scroll-snap-align: none; } }
+/* autoscroll: snap suave por sección SOLO en desktop (>=900), solo mientras la
+   landing está montada (`html:has`) y nunca con prefers-reduced-motion. En mobile
+   no hay snap (FASE 1.3). */
+@media (min-width: 900px) {
+  html:has(.lv-root) { scroll-snap-type: y proximity; }
+  .lv-root [data-seccion] { scroll-snap-align: start; }
+}
 @media (prefers-reduced-motion: reduce) { html:has(.lv-root) { scroll-snap-type: none; } }
 .lv-root mark { background: transparent; color: inherit; }
 
@@ -91,8 +92,11 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
 .lv-tag {
   margin-top: 8px;
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--lv-g2);
+  font-size: 9px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--lv-g2);
 }
+/* a 390 y 9 px el slogan mide ~220 px, más de la mitad del ancho: en el hero mobile
+   se oculta y queda en el footer (regla FASE 1.3; el texto nunca cambia). */
+.lv-hero .lv-tag { display: none; }
 .lv-wm { display: inline-flex; text-decoration: none; line-height: 1; }
 /* wordmark 22 px en mobile: FrancoLogo `header` mide 26 y no tiene un tamaño de 22;
    el `.ai` va en em y escala solo. En desktop queda el canónico. */
@@ -139,14 +143,20 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
   transition: background 0.2s;
 }
 .lv-box:hover .lv-btn, .lv-btn:focus-visible { background: var(--lv-red); }
-/* pregunta en su línea, acciones en la siguiente (QA mobile) */
-.lv-alt { margin-top: 18px; font-size: 14px; color: var(--lv-g2); display: flex; flex-direction: column; gap: 8px; }
-.lv-alt-acciones { display: flex; gap: 18px; flex-wrap: wrap; }
-.lv-alt a { color: var(--lv-ink); font-weight: 500; text-decoration: none; white-space: nowrap; }
-.lv-alt a::before {
-  content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-  background: var(--lv-ink); margin-right: 8px; vertical-align: 2px;
+/* pregunta en su línea, acciones en la siguiente (QA mobile). El bloque cae
+   sobre la banda roja en todos los anchos medidos: va en papel. Sin bullets:
+   formato flecha como el resto de la página; hover/foco la flecha avanza 4 px;
+   área táctil de 44 px de alto (FASE 1.3). */
+.lv-alt { margin-top: 10px; font-size: 14px; color: rgba(250, 250, 248, 0.82); display: flex; flex-direction: column; gap: 0; }
+.lv-alt-q { padding: 4px 0; }
+.lv-alt-acciones { display: flex; gap: 22px; flex-wrap: wrap; }
+.lv-alt a {
+  display: inline-flex; align-items: center; min-height: 44px; gap: 8px;
+  color: var(--lv-paper); font-weight: 500; text-decoration: none; white-space: nowrap;
 }
+.lv-alt a span { font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace; font-weight: 500; display: inline-block; transition: transform 0.2s; }
+.lv-alt a:hover span, .lv-alt a:focus-visible span { transform: translateX(4px); }
+.lv-alt a:focus-visible { outline: 1.5px solid var(--lv-paper); outline-offset: 2px; }
 
 /* ===== bandas de textura (hero y cierre) ===== */
 /* máscara sobre el borde superior: el empalme papel↔imagen es invisible a cualquier
@@ -169,9 +179,12 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
 /* solo el eje vertical: el mockup usaba el shorthand y pisaba los 24px laterales
    de .col (a 390px el texto salía pegado al borde). */
 .lv-hero .lv-top { padding-top: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.lv-hero .lv-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-top: 40px; padding-bottom: 40px; }
+/* el h1 arriba con su propio aire; el bloque [campo + sin dirección] baja como
+   unidad al tercio inferior, sobre la banda roja (FASE 1.3). */
+.lv-hero .lv-mid { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding-top: 40px; padding-bottom: 28px; }
 .lv-h1 {
-  margin: 0;
+  /* 56 px hasta el campo en mobile (72 en desktop): el h1 con su propio aire */
+  margin: 0 0 56px;
   font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
   /* El mockup pedía clamp(44px, 11.5vw, 96px), pero medía sobre una columna sin
      los 24px laterales (su bug de padding); con la columna real "buena
@@ -180,11 +193,11 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
   font-weight: 700; font-size: clamp(38px, 10vw, 78px); line-height: 0.96; letter-spacing: -0.03em;
 }
 .lv-h1 mark { background: linear-gradient(transparent 60%, var(--lv-plumon) 60%); }
-.lv-hero .lv-campo { margin-top: 44px; }
+.lv-hero .lv-campo { margin-top: 0; }
 .lv-hero .lv-foot { padding-bottom: 34px; text-align: center; }
 .lv-hero .lv-foot a {
   font-family: var(--font-heading), "Source Serif 4", Georgia, serif; font-style: italic; font-size: 19px;
-  color: var(--lv-ink); text-decoration: none;
+  color: var(--lv-paper); text-decoration: none;
 }
 .lv-hero .lv-foot a span {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace; font-style: normal; font-weight: 500;
@@ -194,6 +207,8 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
 
 /* ===== 2 LA RESPUESTA ===== */
 .lv-s2 { padding: var(--lv-sec) 0; }
+/* mobile: usa toda la pantalla, contenido centrado (FASE 1.3) */
+@media (max-width: 899px) { .lv-s2 { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; } }
 .lv-s2-izq { min-width: 0; }
 .lv-ans { margin-top: 22px; }
 /* sin data-verdict (no debería pasar) los tokens caen a Ink */
@@ -260,20 +275,21 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
 /* ===== 3 POR QUÉ CREERLE (tinta) ===== */
 .lv-s3 { background: var(--lv-ink); color: var(--lv-paper); padding: var(--lv-sec) 0; }
 .lv-s3 .lv-idx { color: #9a9a9a; }
+/* "44.256 deptos" en UNA línea: 13 caracteres de mono; a 390 caben a 43 px */
 .lv-big {
-  margin-top: 18px;
+  margin-top: 18px; white-space: nowrap;
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-weight: 700; font-size: clamp(46px, 12.5vw, 84px); line-height: 1; letter-spacing: -0.04em;
+  font-weight: 700; font-size: clamp(38px, 11vw, 76px); line-height: 1; letter-spacing: -0.04em;
 }
-.lv-big small {
-  display: block; margin-top: 8px;
+/* "Base de datos · actualizado hoy HH:MM": mono chico, punto latiendo (el único rojo) */
+.lv-base, .lv-map-titulo {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-weight: 500; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #9a9a9a;
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
 }
-/* "actualizado hoy HH:MM": texto en papel; el rojo es solo el punto latiendo (estado vivo) */
-.lv-big small em { font-style: normal; color: var(--lv-paper); font-weight: 700; display: inline-flex; align-items: center; gap: 7px; }
-.lv-big small em i { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--lv-red); display: inline-block; }
-.lv-big small em i::after {
+.lv-base { margin-top: 10px; }
+.lv-base i, .lv-map-titulo i { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--lv-red); display: inline-block; flex: none; }
+.lv-base i::after, .lv-map-titulo i::after {
   content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 1.5px solid var(--lv-red);
   animation: lv-live 2s ease-out infinite;
 }
@@ -285,7 +301,7 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
 }
 /* "Santiago": dejó el rojo; va con el mismo plumón de papel de "Sin sesgo" */
 .lv-sabe mark { background: linear-gradient(transparent 60%, rgba(250, 250, 248, 0.26) 60%); color: var(--lv-paper); }
-.lv-proc { list-style: none; margin: 30px 0 0; padding: 0; max-width: 44ch; position: relative; }
+.lv-proc { list-style: none; margin: 36px 0 0; padding: 0; max-width: 44ch; position: relative; }
 .lv-proc::before { content: ""; position: absolute; left: 11px; top: 14px; bottom: 14px; width: 1px; background: rgba(255, 255, 255, 0.25); }
 .lv-proc li { display: grid; grid-template-columns: 24px 1fr; gap: 16px; align-items: start; padding: 10px 0; }
 .lv-proc .lv-n {
@@ -310,8 +326,18 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
 .lv-como span { font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace; margin-left: 6px; }
 
 /* mapa: calles como <img> (estático, cacheado aparte) + canvas con todos los
-   avisos + capa inline con etiquetas y pin. Las tres capas comparten el viewBox. */
-.lv-mapwrap { margin-top: 36px; position: relative; width: 100%; }
+   avisos + capa inline con etiquetas. Las tres capas comparten el viewBox. El
+   contenedor lleva máscara en los cuatro bordes (~12 %) para flotar sobre la
+   tinta; el título "BASE DE DATOS EN VIVO" va superpuesto arriba a la izquierda. */
+.lv-mapa { position: relative; margin-top: 32px; }
+.lv-mapwrap {
+  position: relative; width: 100%;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent), linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent), linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+.lv-map-titulo { position: absolute; top: 10px; left: 12px; color: var(--lv-paper); }
 .lv-map-calles { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; animation: lv-fade 0.8s 0.1s ease-out forwards; }
 .lv-map-puntos { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .lv-map-capa { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -323,29 +349,11 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
   paint-order: stroke; stroke: var(--lv-ink); stroke-width: 4px;
 }
 @keyframes lv-fadeL { to { opacity: 1; } }
-.lv-tu { opacity: 0; animation: lv-fadeL 0.4s 3.6s ease-out forwards; }
-.lv-pin { fill: var(--lv-red); }
-.lv-ring { fill: none; stroke: var(--lv-red); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: lv-ring 2.4s 3.8s ease-out infinite; }
-.lv-ring.r2 { animation-delay: 5s; }
-@keyframes lv-ring { 0% { transform: scale(1); opacity: 0.9; } 100% { transform: scale(5); opacity: 0; } }
-.lv-tulb {
-  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px; font-weight: 700; letter-spacing: 0.14em; fill: var(--lv-red);
-  paint-order: stroke; stroke: var(--lv-ink); stroke-width: 4px;
-}
 /* la animación arranca cuando la sección entra en pantalla: con JS vivo se
    retiene (`data-anim="listo"`) hasta que el observer marque `data-visto`. Sin
    JS no se retiene nada y el mapa aparece animado desde la carga. */
 .lv-s3[data-anim="listo"]:not([data-visto]) .lv-map-calles,
-.lv-s3[data-anim="listo"]:not([data-visto]) .lv-lb,
-.lv-s3[data-anim="listo"]:not([data-visto]) .lv-tu,
-.lv-s3[data-anim="listo"]:not([data-visto]) .lv-ring { animation: none; }
-.lv-nota {
-  margin-top: 10px;
-  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6a6a6a;
-}
-.lv-nota a { text-decoration: none; }
+.lv-s3[data-anim="listo"]:not([data-visto]) .lv-lb { animation: none; }
 
 /* ===== 4 CIERRE ===== */
 .lv-s4 { position: relative; padding: var(--lv-sec) 0 28px; overflow: hidden; }
@@ -393,8 +401,17 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
 .lv-ultimo {
   margin-top: 8px; padding-top: 12px; border-top: 1px solid rgba(250, 250, 248, 0.25);
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(250, 250, 248, 0.85);
+  font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(250, 250, 248, 0.85);
+  white-space: nowrap; overflow: hidden;
 }
+/* a 390 y 10 px la línea con comuna mide 343 px contra 327 disponibles: cae la
+   comuna antes que el veredicto (regla FASE 1.3) hasta 419 px */
+@media (max-width: 419px) { .lv-ultimo-comuna { display: none; } }
+.lv-osm {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(250, 250, 248, 0.6);
+}
+.lv-osm a { text-decoration: none; }
 .lv-ultimo b { color: var(--lv-paper); font-weight: 700; }
 .lv-ultimo .lv-dot {
   display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--lv-paper);
@@ -406,14 +423,16 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
 @media (min-width: 768px) {
   .lv-root { --lv-pad: 40px; --lv-sec: 88px; }
   .lv-wm > span { font-size: 26px; }
-  .lv-tag { font-size: 11px; }
+  .lv-tag { font-size: 11px; letter-spacing: 0.16em; }
+  .lv-hero .lv-tag { display: block; }
   .lv-hero .lv-top { padding-top: 32px; }
-  .lv-hero .lv-mid { padding-top: 60px; padding-bottom: 60px; }
+  .lv-hero .lv-mid { padding-top: 60px; padding-bottom: 40px; }
+  .lv-h1 { margin-bottom: 72px; }
   /* h1 + campo en la mitad izquierda; textura y aire a la derecha */
   .lv-mid-izq { max-width: 560px; }
   .lv-box { height: 74px; }
   .lv-btn { width: 62px; height: 62px; }
-  .lv-alt { flex-direction: row; align-items: center; gap: 18px; }
+  .lv-alt { flex-direction: row; align-items: center; gap: 22px; }
   /* sección 2: respuesta a la izquierda, chips al pie a la derecha */
   .lv-s2-grid-inner { display: grid; grid-template-columns: minmax(0, 640px) minmax(220px, 1fr); column-gap: 56px; align-items: end; }
   .lv-band { margin: 0; }
@@ -422,12 +441,19 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
   /* h1 en dos líneas dentro de la mitad izquierda (medido: 8,1 px de ancho por px de cuerpo) */
   .lv-h1 { font-size: 64px; }
   .lv-footer { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; }
-  .lv-ultimo { width: 100%; }
+  .lv-ultimo { width: 100%; font-size: 11px; }
+  .lv-osm { width: 100%; }
 }
 /* sección 3 a dos columnas recién desde 1024: a 768 el mapa quedaba en 104 px */
 @media (min-width: 1024px) {
-  .lv-s3 .lv-grid { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); gap: 64px; align-items: center; }
-  .lv-mapwrap { margin-top: 0; }
+  .lv-s3-grid {
+    display: grid; grid-template-columns: minmax(0, 600px) minmax(0, 1fr); column-gap: 64px; row-gap: 0;
+    grid-template-areas: "arriba mapa" "abajo mapa"; align-items: start;
+  }
+  .lv-s3-arriba { grid-area: arriba; }
+  .lv-s3-abajo { grid-area: abajo; }
+  .lv-s3-mapa { grid-area: mapa; align-self: center; }
+  .lv-mapa { margin-top: 0; }
 }
 @media (min-width: 1100px) {
   .lv-mid-izq { max-width: 600px; }
@@ -461,5 +487,5 @@ html:has(.lv-root) { scroll-snap-type: y proximity; }
 
 @media (prefers-reduced-motion: reduce) {
   .lv-root *, .lv-root *::before, .lv-root *::after { animation: none !important; transition: none !important; }
-  .lv-map-calles, .lv-lb, .lv-tu { opacity: 1; }
+  .lv-map-calles, .lv-lb { opacity: 1; }
 }

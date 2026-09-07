@@ -89,16 +89,20 @@ export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Da
   return (
     <SeccionVista n={3} className="lv-s3">
       <div className="lv-col">
-        <div className="lv-grid">
-          <div>
+        {/* Orden FASE 1.3 (mobile y desktop): etiqueta → cifra en una línea → base
+            de datos → "Franco evalúa…" → MAPA → proceso → sin sesgo → link. En
+            desktop el mapa ocupa la columna derecha a lo largo de los dos bloques. */}
+        <div className="lv-s3-grid">
+          <div className="lv-s3-arriba">
             <div className="lv-idx">Por qué creerle</div>
-            <div className="lv-big">
-              {datos.avisosActivos.toLocaleString("es-CL")}
-              <small>
-                deptos publicados hoy · actualizado <em><i />{actualizado(datos.ultimoScrape, ahora)}</em>
-              </small>
-            </div>
+            <div className="lv-big">{datos.avisosActivos.toLocaleString("es-CL")} deptos</div>
+            <div className="lv-base"><i />Base de datos · actualizado {actualizado(datos.ultimoScrape, ahora)}</div>
             <p className="lv-sabe">Franco evalúa tu depto<br />contra toda la oferta en <mark>Santiago</mark>.</p>
+          </div>
+          <div className="lv-s3-mapa">
+            <MapaSantiago />
+          </div>
+          <div className="lv-s3-abajo">
             <ol className="lv-proc">
               <li><span className="lv-n">01</span><p>Un modelo financiero <b>proyecta qué pasa con tu inversión</b> en el tiempo.</p></li>
               <li><span className="lv-n">02</span><p>Franco interpreta con IA y <b>te lo explica en fácil,</b> con un veredicto y una posición.</p></li>
@@ -107,12 +111,6 @@ export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Da
             <p className="lv-sesgo"><span>Sin sesgo:</span> Nadie le paga por decir que sí. <mark>Por eso puede decir que no.</mark></p>
             <Link className="lv-como" href="/metodologia">Ver cómo calcula <span>→</span></Link>
           </div>
-          <div>
-            <MapaSantiago />
-            <div className="lv-nota">
-              Calles © <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">OpenStreetMap</a>
-            </div>
-          </div>
         </div>
       </div>
     </SeccionVista>
@@ -120,16 +118,18 @@ export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Da
 }
 
 // ===== 4 · CIERRE + FOOTER =====
+/** "15 h" / "4 min" / "2 días": sin "hace", para que la línea del footer quepa
+ *  en una a 390 px (FASE 1.3). */
 function haceCuanto(iso: string, ahora: Date): string {
   const ms = ahora.getTime() - new Date(iso).getTime();
   if (!Number.isFinite(ms) || ms < 0) return "";
   const min = Math.round(ms / 60000);
   if (min < 1) return "recién";
-  if (min < 60) return `hace ${min} min`;
+  if (min < 60) return `${min} min`;
   const h = Math.round(min / 60);
-  if (h < 24) return `hace ${h} h`;
+  if (h < 24) return `${h} h`;
   const d = Math.round(h / 24);
-  return `hace ${d} ${d === 1 ? "día" : "días"}`;
+  return `${d} ${d === 1 ? "día" : "días"}`;
 }
 
 export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
@@ -164,9 +164,13 @@ export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
           </nav>
           {u && (
             <div className="lv-ultimo">
-              <i className="lv-dot" />Último análisis · <b>{u.etiqueta}</b> · {u.comuna} · {haceCuanto(u.createdAt, ahora)}
+              <i className="lv-dot" />Último análisis · <b>{u.etiqueta}</b> · <span className="lv-ultimo-comuna">{u.comuna} · </span>{haceCuanto(u.createdAt, ahora)}
             </div>
           )}
+          {/* Atribución obligatoria del mapa (ODbL); salió del mapa en FASE 1.3. */}
+          <div className="lv-osm">
+            Mapa © <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">OpenStreetMap</a>
+          </div>
         </footer>
       </div>
     </SeccionVista>

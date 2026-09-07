@@ -162,8 +162,8 @@ export function CampoDireccion({ ubicacion }: { ubicacion: UbicacionCampo }) {
       <div className="lv-alt">
         <span className="lv-alt-q">¿No tienes la dirección?</span>
         <span className="lv-alt-acciones">
-          <a href={hrefSin("ubicacion")} onClick={() => sinDireccion("ubicacion")}>Estoy en el depto</a>
-          <a href={hrefSin("mapa")} onClick={() => sinDireccion("mapa")}>Marcarlo en el mapa</a>
+          <a href={hrefSin("ubicacion")} onClick={() => sinDireccion("ubicacion")}>Estoy en el depto<span aria-hidden="true">→</span></a>
+          <a href={hrefSin("mapa")} onClick={() => sinDireccion("mapa")}>Marcarlo en el mapa<span aria-hidden="true">→</span></a>
         </span>
       </div>
     </div>
