@@ -10,6 +10,7 @@ import { renderPlumon } from "@/components/analysis/hallazgos/plumon";
 import { VProsa, VViz, VCierre, Dial, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { DrawerDistanciaStr } from "@/components/analysis/drawers/DrawersPropios";
 import { PosicionFranco, type FooterPosicion } from "@/components/analysis/shared";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
  * Hero STR con el contrato LTR (T1 · 04-sep-2026): chip `f.` en el título, prosa a
@@ -90,7 +91,7 @@ export function HeroStrDictamen({
               const hi = 1.2;
               const pos = (x: number) => ((x - lo) / (hi - lo)) * 100;
               const tono = (v: string): ZonaDial["tono"] => (v === "COMPRAR" ? "comprar" : v === "AJUSTA SUPUESTOS" ? "ajusta" : "buscar");
-              const nombre = (v: string) => (v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajusta supuestos" : "Buscar otra");
+              const nombre = (v: string) => etiquetaVeredicto(v, "frase");
               const zonas: ZonaDial[] = [
                 { k: nombre(abajo.veredicto), pct: pos(abajo.factor) - pos(lo), tono: tono(abajo.veredicto) },
                 { k: "Comprar", pct: pos(hi) - pos(abajo.factor), tono: "comprar" },

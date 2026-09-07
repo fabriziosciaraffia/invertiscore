@@ -21,15 +21,14 @@ import { stripMarcas, normalizarMarcasTitular } from "@/lib/prosa-marcas";
 import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import type { FichaDepto } from "@/lib/ficha-depto";
 import { FichaModal } from "./FichaModal";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 // Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
 // --verdict / --verdict-deep que DocTokens fija según `data-verdict` en la raíz del
 // documento (goal "material del informe", 06-sep-2026; contrato docs/mockups/plumon-veredicto.html).
-const BANDA: Record<string, { label: string }> = {
-  "BUSCAR OTRA": { label: "Buscar otra" },
-  "AJUSTA SUPUESTOS": { label: "Ajusta supuestos" },
-  COMPRAR: { label: "Comprar" },
-};
+// Etiqueta (goal 10a, 07-sep-2026): la escritura vive en veredicto-etiqueta.ts; un
+// veredicto que no sea de los tres cae a la etiqueta de AJUSTA, como antes.
+const bandaLabelDe = (v: string): string => etiquetaVeredicto(v, "banda", etiquetaVeredicto("AJUSTA SUPUESTOS", "banda"));
 
 /** Titular con marcas `**…**` → <mark> plumón. Normaliza defensivamente
  *  (marcas rotas en prosa persistida: sin plumón o con el primer par — el
@@ -87,7 +86,7 @@ export function PortadaInforme({
   onAjustarSupuestos?: () => void;
 }) {
   const [fichaOpen, setFichaOpen] = useState(false);
-  const banda = BANDA[veredicto] ?? BANDA["AJUSTA SUPUESTOS"];
+  const bandaLabel = bandaLabelDe(veredicto);
   const scorePct = Math.max(0, Math.min(100, score ?? 0));
 
   return (
@@ -108,8 +107,8 @@ export function PortadaInforme({
       </div>
 
       {/* Banda de veredicto — full-bleed del documento, único color semántico */}
-      <div className="doc-banda" aria-label={`Veredicto: ${banda.label}`}>
-        <span className="doc-banda-band">{banda.label}</span>
+      <div className="doc-banda" aria-label={`Veredicto: ${bandaLabel}`}>
+        <span className="doc-banda-band">{bandaLabel}</span>
       </div>
 
       {/* Score = barra de bloques llenos bajo la banda, en el color del veredicto

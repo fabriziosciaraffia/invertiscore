@@ -45,6 +45,7 @@ import type { HallazgoSensibilidad, HallazgoDistanciaVeredicto, HallazgoSobrepre
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
 import { ZonaCeldasLtr, buildZonaLtr, sintesisZonaLtr } from "@/components/analysis/zona/ZonaLtr";
 import { ZoneMap } from "@/components/zone-insight/ZoneMap";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 export type DrawerKey =
   | "costoMensual"
@@ -481,8 +482,8 @@ export function DrawerNegociacion({
           veredicto: distNeg.valor.veredictoObjetivo,
         }
       : null;
-  const destinoUmbral =
-    negData.veredictoAlUmbral === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
+  const umbralEsComprar = negData.veredictoAlUmbral === "COMPRAR";
+  const destinoUmbral = etiquetaVeredicto(umbralEsComprar ? "COMPRAR" : "AJUSTA SUPUESTOS");
   const tirAlLimite = negData.tirAlLimite;
 
   const fmtFull = (v: number) => {
@@ -673,16 +674,16 @@ export function DrawerNegociacion({
         // veredicto de esa banda: AJUSTA cuando bajo el sugerido se llega a COMPRAR;
         // si el sugerido solo alcanza AJUSTA, la banda del medio es BUSCAR OTRA (y su
         // tono acompaña). La roja lleva su nombre; en zonas angostas el Dial lo oculta.
-        const kMedio = destinoUmbral === "Comprar" ? "Ajusta supuestos" : "Buscar otra";
+        const kMedio = etiquetaVeredicto(umbralEsComprar ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
         const zonas: ZonaDial[] = [
           // El TONO sigue al veredicto, no a la posición. fase42 (3) arregló las
           // etiquetas y dejó este `tono` fijo en "comprar": la primera zona se
           // pintaba verde por ser la mejor del eje, aunque su veredicto fuera
           // AJUSTA SUPUESTOS (visto en Peñalolén — banda rotulada AJUSTA y pintada
           // de COMPRAR). Verde es el color de COMPRAR, no el de "la zona buena".
-          { k: destinoUmbral, pct: pUmbral, tono: destinoUmbral === "Comprar" ? "comprar" : "ajusta" },
-          { k: kMedio, pct: pLimite - pUmbral, tono: destinoUmbral === "Comprar" ? "ajusta" : "buscar" },
-          ...(limite ? [{ k: "Buscar otra", pct: 100 - pLimite, tono: "buscar" as const }] : []),
+          { k: destinoUmbral, pct: pUmbral, tono: umbralEsComprar ? "comprar" : "ajusta" },
+          { k: kMedio, pct: pLimite - pUmbral, tono: umbralEsComprar ? "ajusta" : "buscar" },
+          ...(limite ? [{ k: etiquetaVeredicto("BUSCAR OTRA"), pct: 100 - pLimite, tono: "buscar" as const }] : []),
         ];
         const bordes: BordeDial[] = [
           {
@@ -924,8 +925,7 @@ export function PlanNegociacion({
         {v}
       </small>
     ) : null;
-  const capVer = (v: string | null | undefined) =>
-    v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajusta supuestos" : v === "BUSCAR OTRA" ? "Buscar otra" : "la banda de arriba";
+  const capVer = (v: string | null | undefined) => etiquetaVeredicto(v, "frase", "la banda de arriba");
 
   // Cada precio del plan lleva sus descuentos contra tu precio (fase42 (4)), y la primera
   // oferta además contra el objetivo. El % es el mismo en CLP y UF: se calcula sobre CLP.
@@ -995,7 +995,7 @@ export function PlanNegociacion({
     }
     if (walkAway) {
       if (walkAway.precio_uf === null) {
-        slots.push({ label: labelLimite, valor: "Buscar otra propiedad", glosa: glosas?.walkAway || walkAway.razon });
+        slots.push({ label: labelLimite, valor: `${etiquetaVeredicto("BUSCAR OTRA")} depto`, glosa: glosas?.walkAway || walkAway.razon });
       } else if (walkAway.precio_clp !== null) {
         slots.push({ label: labelLimite, valor: fmtPrecio(walkAway.precio_clp, walkAway.precio_uf), alt: fmtAlt(walkAway.precio_clp, walkAway.precio_uf), glosa: glosas?.walkAway || walkAway.razon });
       }

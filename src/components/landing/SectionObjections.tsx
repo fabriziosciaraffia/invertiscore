@@ -9,6 +9,7 @@ import {
 } from "framer-motion";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import LandingModal from "./LandingModal";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
  * Sección 07 · Garantías — grid de 4 cards con modal al click.
@@ -59,7 +60,7 @@ const BLOCKS: ReadonlyArray<Block> = [
     label: "Honestidad",
     quote: "¿Y si me dice lo que quiero escuchar?",
     title: "Franco prefiere decirte que no antes que quedar bien contigo.",
-    body: "El veredicto puede ser COMPRAR, AJUSTA SUPUESTOS o BUSCAR OTRA — los tres aparecen según el análisis. Cuando los números no dan, Franco lo dice claro y te ahorra millones.",
+    body: `El veredicto puede ser ${etiquetaVeredicto("COMPRAR", "banda")}, ${etiquetaVeredicto("AJUSTA SUPUESTOS", "banda")} o ${etiquetaVeredicto("BUSCAR OTRA", "banda")} — los tres aparecen según el análisis. Cuando los números no dan, Franco lo dice claro y te ahorra millones.`,
     visualKey: "honestidad",
   },
 ];
@@ -607,7 +608,7 @@ function VerdictHonesty() {
       },
     },
     {
-      label: "Ajusta supuestos",
+      label: etiquetaVeredicto("AJUSTA SUPUESTOS"),
       cita: "Negocia primero. Acá está el rango.",
       badgeStyle: {
         background: "transparent",
@@ -616,7 +617,7 @@ function VerdictHonesty() {
       },
     },
     {
-      label: "Buscar otra",
+      label: etiquetaVeredicto("BUSCAR OTRA"),
       cita: "No te conviene. Esto es por qué.",
       badgeStyle: {
         background: "#C8323C",

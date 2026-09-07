@@ -18,6 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { HallazgoDistanciaVeredicto } from "@/lib/types";
+import { etiquetaVeredicto } from "./veredicto-etiqueta";
 
 type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 
@@ -40,12 +41,12 @@ export function distanciaFindingDisplay(h: HallazgoDistanciaVeredicto): Distanci
   // es un mapa, no un golpe. "Ruta a comprar" se descartó porque necesitaría un
   // tercer texto en el caso estructural, donde "ruta" sería mentira.
   const kick = "Lo que te separa";
-  const objetivo = v.veredictoObjetivo === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
+  const objetivo = etiquetaVeredicto(v.veredictoObjetivo === "COMPRAR" ? "COMPRAR" : "AJUSTA SUPUESTOS");
   if (v.esEstructural) {
     const dm = v.deltaMinimoFueraDeTope;
     return {
       kick,
-      title: `Ningún ajuste realista lo mueve de ${v.veredictoBase === "BUSCAR OTRA" ? "Buscar otra" : "Ajusta supuestos"}.`,
+      title: `Ningún ajuste realista lo mueve de ${etiquetaVeredicto(v.veredictoBase === "BUSCAR OTRA" ? "BUSCAR OTRA" : "AJUSTA SUPUESTOS")}.`,
       // El KPI cita el delta mínimo REAL, no el tope. Sin él (ni el rango extendido
       // cruza) el KPI queda vacío y el título carga solo — más honesto que inventar.
       kpi: dm ? `${dm.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(dm.deltaPct))}%` : "—",
@@ -100,7 +101,7 @@ export function lineaDistanciaMini(
     // Fallback aprobado (contrato d25096d): el motor LTR no emite el hallazgo
     // para el hijo irrecuperable. Solo aplica al peor veredicto; con AJUSTA o
     // COMPRAR sin hallazgo, mejor silencio que inventar distancia.
-    return verdict === "BUSCAR OTRA" ? "Ningún ajuste realista lo saca de BUSCAR OTRA." : null;
+    return verdict === "BUSCAR OTRA" ? `Ningún ajuste realista lo saca de ${etiquetaVeredicto("BUSCAR OTRA", "banda")}.` : null;
   }
   const v = h.valor;
   const objetivo = v.veredictoObjetivo;

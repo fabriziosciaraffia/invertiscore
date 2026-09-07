@@ -28,6 +28,8 @@ import {
   SEGMENT_POS,
 } from "@/lib/comparativa-hero-copy";
 
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+
 type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 
 interface Props {
@@ -577,7 +579,7 @@ function MiniVerdictBadge({ verdict }: { verdict: Verdict | null }) {
   const border = isAjusta ? "0.5px solid color-mix(in srgb, var(--signal-red) 40%, transparent)" : undefined;
   return (
     <span className="inline-block font-mono text-[9px] font-bold uppercase tracking-[0.05em] px-1.5 py-0.5 rounded" style={{ background: bg, color, border }}>
-      {verdict}
+      {etiquetaVeredicto(verdict, "banda")}
     </span>
   );
 }

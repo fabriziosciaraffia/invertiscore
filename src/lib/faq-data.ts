@@ -1,4 +1,5 @@
 import { PROPERTIES_COUNT } from "@/lib/stats";
+import { etiquetaVeredicto } from "./veredicto-etiqueta";
 
 export interface FAQItem {
   id: string;
@@ -37,7 +38,7 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "veredictos",
         q: "¿Qué significan los veredictos?",
-        a: "COMPRAR significa que los números cierran bien. AJUSTA SUPUESTOS significa que hay potencial pero algún supuesto (precio, ocupación, estructura) hace que la operación quede justa — revisa antes de avanzar. BUSCAR OTRA significa que los números no cierran y probablemente hay mejores opciones.",
+        a: `${etiquetaVeredicto("COMPRAR", "banda")} significa que los números cierran bien. ${etiquetaVeredicto("AJUSTA SUPUESTOS", "banda")} significa que hay potencial pero algún supuesto (precio, ocupación, estructura) hace que la operación quede justa — revisa antes de avanzar. ${etiquetaVeredicto("BUSCAR OTRA", "banda")} significa que los números no cierran y probablemente hay mejores opciones.`,
       },
       {
         id: "datos",
@@ -57,7 +58,7 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "saber-finanzas",
         q: "¿Necesito saber de finanzas para entender el análisis?",
-        a: "No. Franco traduce los números a un veredicto claro —COMPRAR, AJUSTA SUPUESTOS o BUSCAR OTRA— con recomendaciones concretas. Si quieres entrar al detalle de los cálculos, están todos disponibles; pero no necesitas hacerlo para decidir.",
+        a: `No. Franco traduce los números a un veredicto claro —${etiquetaVeredicto("COMPRAR", "banda")}, ${etiquetaVeredicto("AJUSTA SUPUESTOS", "banda")} o ${etiquetaVeredicto("BUSCAR OTRA", "banda")}— con recomendaciones concretas. Si quieres entrar al detalle de los cálculos, están todos disponibles; pero no necesitas hacerlo para decidir.`,
       },
       {
         id: "datos-previos",

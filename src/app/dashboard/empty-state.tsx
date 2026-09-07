@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import { DEMO_ID } from "./dashboard-helpers";
+import { listaVeredictos } from "@/lib/veredicto-etiqueta";
 
 const BLOQUES = [
   {
@@ -18,7 +19,7 @@ const BLOQUES = [
   },
   {
     label: "Veredicto, no opinión",
-    texto: "COMPRAR · AJUSTA SUPUESTOS · BUSCAR OTRA. Sin matices en el veredicto; los matices van en el análisis.",
+    texto: `${listaVeredictos("banda")}. Sin matices en el veredicto; los matices van en el análisis.`,
     destacado: true,
   },
   {
@@ -71,7 +72,7 @@ export function EmptyState() {
               {b.destacado ? (
                 <>
                   <span className="font-medium text-[var(--franco-text)]">
-                    COMPRAR · AJUSTA SUPUESTOS · BUSCAR OTRA.
+                    {listaVeredictos("banda")}.
                   </span>{" "}
                   Sin matices en el veredicto; los matices van en el análisis.
                 </>

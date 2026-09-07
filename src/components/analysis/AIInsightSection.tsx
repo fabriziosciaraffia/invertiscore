@@ -2,6 +2,7 @@
 
 import type { AIAnalysisV2, DatoClave, FullAnalysisResult } from "@/lib/types";
 import { parseUFString } from "./utils";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
  * Helpers compartidos del análisis IA v2 (Patrón 4 — AI Insight). Move
@@ -56,7 +57,7 @@ export const VERDICT_TOOLTIPS: Record<string, string> = {
 };
 
 export const FRANCO_SCORE_TOOLTIP =
-  "Puntaje 0-100 que combina rentabilidad (30%), flujo de caja (25%), plusvalía proyectada (25%) y eficiencia (20%) del depto. Sobre 70: COMPRAR. Entre 50-70: AJUSTA SUPUESTOS. Bajo 50: BUSCAR OTRA.";
+  `Puntaje 0-100 que combina rentabilidad (30%), flujo de caja (25%), plusvalía proyectada (25%) y eficiencia (20%) del depto. Sobre 70: ${etiquetaVeredicto("COMPRAR", "banda")}. Entre 50-70: ${etiquetaVeredicto("AJUSTA SUPUESTOS", "banda")}. Bajo 50: ${etiquetaVeredicto("BUSCAR OTRA", "banda")}.`;
 
 /** Detecta la estructura nueva v2 del análisis IA.
  * Discriminador: `conviene.respuestaDirecta_clp` (no `siendoFrancoHeadline_clp`,

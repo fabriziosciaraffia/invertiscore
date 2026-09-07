@@ -12,6 +12,7 @@ import Link from "next/link";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { METODOS_ESTIMADO, ANIO_ESTIMADO, GFK_SERIE } from "@/lib/plusvalia-estimado.gen";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 export const metadata: Metadata = {
   title: "Metodología — de dónde salen los números de Franco",
@@ -211,7 +212,7 @@ export default function MetodologiaPage() {
               caja, plusvalía y riesgo. Sobre ese puntaje corren reglas duras que pueden bajar el veredicto
               aunque el puntaje sea alto — por ejemplo, cuando el arriendo no alcanza a cubrir la cuota y ni
               la valorización ni la amortización compensan ese esfuerzo. Por eso un score alto con veredicto
-              AJUSTA SUPUESTOS no es una contradicción: el puntaje mide la calidad del depto y el veredicto
+              {etiquetaVeredicto("AJUSTA SUPUESTOS", "banda")} no es una contradicción: el puntaje mide la calidad del depto y el veredicto
               incorpora si la operación se sostiene.
             </p>
             <p className="mt-4 font-body text-sm leading-relaxed text-[var(--franco-text-secondary)]">

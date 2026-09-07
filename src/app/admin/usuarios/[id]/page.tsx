@@ -14,6 +14,7 @@ import { UnlimitedToggle, type UnlimitedEstado } from "./unlimited-client";
 import { hasSubscriptionAccess } from "@/lib/access";
 import { leerAtribucion, fmtFuente } from "@/lib/attribution";
 import { leerComision } from "@/lib/comision-flow";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 export const dynamic = "force-dynamic";
 
@@ -339,7 +340,7 @@ export default async function AdminUsuarioDetallePage({
             </div>
             <div className="flex flex-col items-end gap-1 shrink-0">
               {veredicto && (
-                <StatusBadge label={veredicto} tone={veredictoTone(veredicto)} className="text-[10px]" />
+                <StatusBadge label={etiquetaVeredicto(veredicto, "banda")} tone={veredictoTone(veredicto)} className="text-[10px]" />
               )}
               {pending && (
                 <StatusBadge label="Pago no asociado" tone="signal-red" className="text-[10px]" />

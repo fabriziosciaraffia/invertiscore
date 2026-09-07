@@ -42,6 +42,7 @@ import {
 import { Chevron, ModChip, VerdictBadge, ZoneLabel, scoreColor } from "./dashboard-ui";
 import { ArchiveSearch } from "./archive-search";
 import { RowActions } from "./row-actions";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /** Hijos que se muestran al expandir un grupo antes de ofrecer «ver el resto». */
 const HIJOS_VISIBLES = 8;
@@ -360,7 +361,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                 activo={params.v === v}
                 rojo={v === "BUSCAR OTRA"}
               >
-                {v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajusta supuestos" : "Buscar otra"}
+                {etiquetaVeredicto(v)}
                 <Conteo n={ver[v] ?? 0} />
               </Chip>
             ))}

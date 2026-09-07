@@ -6,6 +6,7 @@ import type { ResumenAnexoData } from "@/lib/resumen-anexo";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { FLOW_PRODUCTS } from "@/lib/flow-products";
 import { metaTrack } from "@/lib/meta/pixel";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 const SIGNAL_RED = "#C8323C";
 
@@ -187,7 +188,7 @@ export function ResumenAnexoModal({
                   className="rounded font-mono text-[10px] font-bold uppercase tracking-[0.06em]"
                   style={{ padding: "4px 10px", ...badgeStyle }}
                 >
-                  {v}
+                  {etiquetaVeredicto(v, "banda", v)}
                 </span>
               </div>
               {typeof data.score === "number" && (

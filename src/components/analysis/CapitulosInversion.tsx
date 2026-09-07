@@ -43,6 +43,7 @@ import { SensibilidadDial } from "./drawers/DrawersPropios";
 import { DrawerCostoMensual, DrawerNegociacion } from "@/components/ui/AnalysisDrawer";
 import { EstructuraComparada } from "./hallazgos/estructura-comparada";
 import { PatrimonioChart } from "./PatrimonioChart";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
  * LA INVERSIÓN — cinco capítulos (contrato CONGELADO 02-sep-2026, T3).
@@ -91,7 +92,7 @@ const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
 const mult2 = (n: number) => n.toFixed(2).replace(".", ",");
 /** Margen de sensibilidad: entero sin decimal (−6%), coma chilena si no (−6,2%). */
 const pctMargin = (n: number) => (Number.isInteger(Math.round(n * 10) / 10) ? String(Math.round(n)) : pct1(n));
-const capVer = (v: string) => (v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajusta supuestos" : v === "BUSCAR OTRA" ? "Buscar otra" : v);
+const capVer = (v: string) => etiquetaVeredicto(v, "frase", v);
 
 function formatearEntrega(fecha?: string | null): string {
   if (!fecha) return "";

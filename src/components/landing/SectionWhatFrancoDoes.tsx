@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import SectionHeader from "./SectionHeader";
 import { RevealOnScroll } from "./RevealOnScroll";
 import { PROPERTIES_COUNT } from "@/lib/stats";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
  * Sección 04 · Cómo funciona (F.11 Phase 2.3 · reset estilo Linear).
@@ -53,7 +54,7 @@ const STEPS: ReadonlyArray<Step> = [
     eyebrow: "Decisión clara",
     title: "Score, veredicto y qué hacer en este caso.",
     description:
-      "No solo te damos un puntaje. Te decimos si comprar, ajustar precio, cambiar modalidad o buscar otra. Y por qué.",
+      `No solo te damos un puntaje. Te decimos si ${etiquetaVeredicto("COMPRAR").toLowerCase()}, ${etiquetaVeredicto("AJUSTA SUPUESTOS").toLowerCase()}, cambiar modalidad o ${etiquetaVeredicto("BUSCAR OTRA").toLowerCase()}. Y por qué.`,
     mockup: <MockupStep03 />,
   },
 ];
@@ -1448,7 +1449,7 @@ function MockupStep03() {
               whiteSpace: "nowrap",
             }}
           >
-            Ajusta supuestos
+            {etiquetaVeredicto("AJUSTA SUPUESTOS")}
           </motion.span>
         </div>
 

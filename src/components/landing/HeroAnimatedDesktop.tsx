@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /* Hook · detecta si el tema actual es light leyendo data-theme en <html>
  * (fuente única de tema · Fase 1). Re-evalúa via MutationObserver. */
@@ -1058,7 +1059,7 @@ function ResultsCard({
               whiteSpace: "nowrap",
             }}
           >
-            Ajusta supuestos
+            {etiquetaVeredicto("AJUSTA SUPUESTOS")}
           </motion.span>
         </div>
 

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { Veredicto } from "@/lib/types";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
  * Matriz de sensibilización 4×4 (contrato `mockup-tablas.html`, sección "matriz").
@@ -37,10 +38,10 @@ export type CeldaMatriz = {
 };
 
 const RANK: Record<Veredicto, number> = { "BUSCAR OTRA": 0, "AJUSTA SUPUESTOS": 1, COMPRAR: 2 };
-/** Nombre del veredicto en lenguaje de usuario (compartido LTR / STR). */
-export const nombreVeredicto = (v: Veredicto | string): string =>
-  v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajusta supuestos" : "Buscar otra";
-const nombreCorto = (v: Veredicto): string => (v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajusta" : "Buscar");
+/** Nombre del veredicto en lenguaje de usuario (compartido LTR / STR): la escritura vive
+ *  en veredicto-etiqueta.ts (goal 10a); esto queda como alias para los llamadores. */
+export const nombreVeredicto = (v: Veredicto | string): string => etiquetaVeredicto(v, "frase");
+const nombreCorto = (v: Veredicto): string => etiquetaVeredicto(v, "corta");
 
 /** El salto de una celda respecto del caso: null si no cambia el veredicto. */
 export function saltoVeredicto(v: Veredicto | undefined, base: Veredicto | undefined): { sube: boolean; v: Veredicto; tag: string; frase: string } | null {

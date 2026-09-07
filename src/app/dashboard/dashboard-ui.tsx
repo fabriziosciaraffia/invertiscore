@@ -9,6 +9,7 @@
  */
 
 import type { Veredicto } from "@/lib/types";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 // ─── Badge de veredicto ─────────────────────────────────────────────────────
 // Capa 1 binaria: la jerarquía es Ink primario / Ink secundario / Signal Red.
@@ -44,7 +45,7 @@ export function VerdictBadge({ verdict, mini = false }: { verdict: Veredicto; mi
         color: s.color,
       }}
     >
-      {verdict}
+      {etiquetaVeredicto(verdict, "banda")}
     </span>
   );
 }

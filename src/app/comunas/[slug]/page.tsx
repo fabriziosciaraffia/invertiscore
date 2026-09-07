@@ -15,6 +15,7 @@ import { AppFooter } from "@/components/chrome/AppFooter";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { PlusvaliaComunaSection } from "@/components/comunas/PlusvaliaComunaSection";
 import { GFK_SERIE, PLUSVALIA_ESTIMADO, coberturaPlusvaliaDe } from "@/lib/plusvalia-estimado.gen";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 export const revalidate = 86400;
 
@@ -525,7 +526,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
               <>
                 <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)]">¿Tienes un departamento en {stats.nombre}?</h2>
                 <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
-                  Analízalo en 2 minutos. Franco te dice si comprar, ajustar supuestos o buscar otra.
+                  Analízalo en 2 minutos. Franco te dice si {etiquetaVeredicto("COMPRAR").toLowerCase()}, {etiquetaVeredicto("AJUSTA SUPUESTOS").toLowerCase()} o {etiquetaVeredicto("BUSCAR OTRA").toLowerCase()}.
                 </p>
               </>
             )}

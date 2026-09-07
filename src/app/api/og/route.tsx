@@ -1,6 +1,10 @@
 import { ImageResponse } from "next/og";
 import { createClient } from "@supabase/supabase-js";
 import { fmtPct } from "@/components/analysis/utils";
+import { readVeredicto } from "@/lib/results-helpers";
+import { veredictoDeBanda } from "@/lib/gate-veredicto-hallazgo";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import type { Veredicto } from "@/lib/types";
 
 export const runtime = "edge";
 
@@ -28,8 +32,12 @@ export async function GET(request: Request) {
   }
 
   const score = data.score || 0;
-  const verdict = score >= 75 ? "COMPRAR" : score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
-  const verdictColor = score >= 75 ? "#B0BEC5" : score >= 40 ? "#C8323C" : "#C8323C";
+  // Goal 10a (07-sep-2026): el veredicto sale de results.veredicto (el del motor, con
+  // gates), no de umbrales sobre el score (los viejos 75/40 ni siquiera eran los del
+  // motor). Sin results, la banda del score con los umbrales del motor. Etiqueta única.
+  const veredicto = readVeredicto(data.results as Parameters<typeof readVeredicto>[0]) ?? (veredictoDeBanda(score) as Veredicto);
+  const verdict = etiquetaVeredicto(veredicto, "banda");
+  const verdictColor = veredicto === "COMPRAR" ? "#B0BEC5" : "#C8323C";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const results = data.results as any;
   const flujo = results?.metrics?.flujoNetoMensual;

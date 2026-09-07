@@ -28,6 +28,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { BandaComparativa } from "@/lib/engines/str-universo-santiago";
+import { etiquetaVeredicto } from "./veredicto-etiqueta";
 
 export type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 export type EstadoHero = "e1" | "e2" | "e3";
@@ -303,8 +304,8 @@ function buildE2(input: HeroAmbasInput, ganador: GanadorMetodo): HeroAmbas {
   const sub =
     "Este depto no se sostiene en ninguna de las dos." +
     (ambosNegativos
-      ? " Arrendarlo por mes o por día, en los dos casos pones plata de tu bolsillo todos los meses y el análisis de cada lado dice BUSCAR OTRA."
-      : " Lo arriendes por mes o por día, el análisis de cada lado dice BUSCAR OTRA.") +
+      ? ` Arrendarlo por mes o por día, en los dos casos pones plata de tu bolsillo todos los meses y el análisis de cada lado dice ${etiquetaVeredicto("BUSCAR OTRA", "banda")}.`
+      : ` Lo arriendes por mes o por día, el análisis de cada lado dice ${etiquetaVeredicto("BUSCAR OTRA", "banda")}.`) +
     " La pregunta ya no es cómo arrendarlo — es si comprarlo.";
 
   // El método, subordinado y en plata: quién pierde menos según el flujo mensual.
@@ -320,7 +321,7 @@ function buildE2(input: HeroAmbasInput, ganador: GanadorMetodo): HeroAmbas {
         : `${HECHO[mejor]} queda mejor parado: ${fmtCLP(delta)} al mes de diferencia.`;
 
   const posicion =
-    "Buscar otra." +
+    `${etiquetaVeredicto("BUSCAR OTRA")}.` +
     (ambosNegativos
       ? " Las dos formas de arrendarlo te piden plata cada mes y ninguna paga el esfuerzo."
       : " Ninguna de las dos formas de arrendarlo sostiene la compra.") +

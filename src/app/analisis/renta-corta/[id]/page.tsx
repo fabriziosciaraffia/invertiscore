@@ -19,6 +19,7 @@ import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline"
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -37,7 +38,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
   const results = data.results as ShortTermResult | null;
   // Commit 1 · 2026-05-11: normalizar veredicto legacy en metadata.
-  const veredicto = normalizeLegacyVerdict(results?.veredicto) ?? "Análisis";
+  // Goal 10a: en <title> y meta va la etiqueta (BUSCAR OTRO / AJUSTAR / COMPRAR), no el valor.
+  const veredicto = etiquetaVeredicto(normalizeLegacyVerdict(results?.veredicto), "banda", "Análisis");
   // Misma regla que el título LTR: la comuna autoritativa se pega si el nombre
   // libre no la nombra (ver `etiquetaAnalisis`).
   // T3 (05-sep-2026): el nombre libre de las filas STR ya empieza con "Renta Corta - …", así

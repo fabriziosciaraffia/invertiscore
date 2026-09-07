@@ -61,7 +61,7 @@ export const GLOSA_BRAZO: Record<BrazoSTR, string> = {
   g1_beInviable: 'Break-even >130% del mercado — depende de occ/ADR fuera de alcance',
   g1_flujoSevero: 'Flujo muy negativo sin ventaja clara sobre LTR',
   g1_capRateMinimo: 'CAP Rate bajo 2% — NOI mínimo, no justifica operación STR',
-  g2_ltrGana: 'LTR genera más que STR — máximo AJUSTA SUPUESTOS',
+  g2_ltrGana: 'LTR genera más que STR — el veredicto no pasa del medio (gate 2)',
   g2_cocFuerte: 'Cash-on-Cash <-10% — esfuerzo mensual significativo',
   g2_flujoSinHorizonte: 'Flujo mensual negativo sin retorno de horizonte que lo compense (TIR <10% y multiplicador de equity insuficiente)',
   g2_beApretado: 'Break-even >110% del mercado — margen operativo apretado',

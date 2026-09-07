@@ -10,6 +10,8 @@ import type {
 } from "@/lib/types";
 
 // Edge runtime: misma elección que /api/og (existente).
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+
 export const runtime = "edge";
 
 // ── Fuentes del sistema (Capa 2) ─────────────────────────────────────────
@@ -375,7 +377,7 @@ export async function GET(request: Request) {
                 padding: "7px 16px",
               }}
             >
-              {veredicto}
+              {etiquetaVeredicto(veredicto, "banda")}
             </div>
           </div>
 
@@ -437,9 +439,9 @@ export async function GET(request: Request) {
               letterSpacing: "1px",
             }}
           >
-            <span style={{ color: labelActive("BUSCAR OTRA") }}>BUSCAR</span>
-            <span style={{ color: labelActive("AJUSTA SUPUESTOS") }}>AJUSTA</span>
-            <span style={{ color: labelActive("COMPRAR") }}>COMPRAR</span>
+            <span style={{ color: labelActive("BUSCAR OTRA") }}>{etiquetaVeredicto("BUSCAR OTRA", "corta").toUpperCase()}</span>
+            <span style={{ color: labelActive("AJUSTA SUPUESTOS") }}>{etiquetaVeredicto("AJUSTA SUPUESTOS", "corta").toUpperCase()}</span>
+            <span style={{ color: labelActive("COMPRAR") }}>{etiquetaVeredicto("COMPRAR", "corta").toUpperCase()}</span>
           </div>
         </div>
 

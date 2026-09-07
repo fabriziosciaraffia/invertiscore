@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { PROPERTIES_COUNT } from './stats';
+import { etiquetaVeredicto } from "./veredicto-etiqueta";
 
 let _resend: Resend | null = null;
 function getResend(): Resend | null {
@@ -94,7 +95,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
             <td style="padding: 8px 4px 20px 4px;">
               <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 12px 0;">${greeting}</h1>
               <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0;">
-                Así se ve un análisis de Franco. Ingresas un depto y recibes un veredicto claro — COMPRAR, AJUSTA SUPUESTOS o BUSCAR OTRA — con los números que tu cotización no muestra.
+                Así se ve un análisis de Franco. Ingresas un depto y recibes un veredicto claro — ${etiquetaVeredicto("COMPRAR", "banda")}, ${etiquetaVeredicto("AJUSTA SUPUESTOS", "banda")} o ${etiquetaVeredicto("BUSCAR OTRA", "banda")} — con los números que tu cotización no muestra.
               </p>
             </td>
           </tr>
@@ -130,7 +131,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   ${welcomeStep('01', 'Ingresas los datos del depto: dirección, precio, superficie.')}
                   ${welcomeStep('02', `Franco cruza tu depto con ${PROPERTIES_COUNT} propiedades reales + datos Airbnb en línea.`)}
-                  ${welcomeStep('03', 'Recibes un veredicto —comprar, ajustar el precio o buscar otra— con su explicación.')}
+                  ${welcomeStep('03', `Recibes un veredicto —${etiquetaVeredicto("COMPRAR").toLowerCase()}, ${etiquetaVeredicto("AJUSTA SUPUESTOS").toLowerCase()} o ${etiquetaVeredicto("BUSCAR OTRA").toLowerCase()}— con su explicación.`)}
                 </table>
               </div>
             </td>
@@ -643,7 +644,7 @@ export async function sendAnalysisReadyEmailOrThrow(to: string, name: string, an
   // Hero dinámico: imagen generada por @vercel/og con el veredicto REAL del
   // análisis (no un caso fijo). Lee de DB por analisisId. Cache-friendly.
   const heroUrl = `${SITE_URL}/api/og/veredicto?analisisId=${encodeURIComponent(analysisId)}`;
-  const heroAlt = `${analysisTitle} — Franco Score ${score}, veredicto ${veredicto}`;
+  const heroAlt = `${analysisTitle} — Franco Score ${score}, veredicto ${etiquetaVeredicto(veredicto, "banda", veredicto)}`;
 
   // Estructura email-safe (tablas + inline, 600px, fondo #0F0F0F). El hero
   // va como PNG dinámico (Hero Verdict Block real); el CTA es HTML real.
