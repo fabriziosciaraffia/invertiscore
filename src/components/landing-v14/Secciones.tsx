@@ -33,15 +33,24 @@ function Wordmark({ onBrand = false }: { onBrand?: boolean }) {
 export function Hero() {
   return (
     <SeccionVista n={1} className="lv-hero">
-      <picture className="lv-fondo">
-        <source media="(min-width: 900px)" srcSet="/landing/textura-hero-desktop.webp" />
+      {/* Banda de textura anclada abajo: 50 svh de alto, el rojo pleno son los 30 vh
+          inferiores (regla v2, generar.py). Nada se estira: cada tramo trae su imagen
+          a 2x (y 3x en mobile) y `cover` solo recorta el papel de arriba. */}
+      <picture className="lv-fondo lv-fondo-hero">
+        <source media="(min-width: 768px)" srcSet="/landing/textura-hero-d2x.webp" />
+        <source srcSet="/landing/textura-hero-m2x.webp 2x, /landing/textura-hero-m3x.webp 3x" />
         {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP; es el LCP y va con fetchpriority */}
-        <img src="/landing/textura-hero-mobile.webp" alt="" fetchPriority="high" decoding="async" />
+        <img src="/landing/textura-hero-m2x.webp" alt="" fetchPriority="high" decoding="async" />
       </picture>
-      <div className="lv-col lv-top"><Wordmark /></div>
+      <div className="lv-col lv-top">
+        <Wordmark />
+        <Link href="/login" className="lv-entrar">Entrar</Link>
+      </div>
       <div className="lv-col lv-mid">
-        <h1 className="lv-h1">¿Ese depto es<br /><mark>buena inversión</mark>?</h1>
-        <CampoDireccion ubicacion="hero" />
+        <div className="lv-mid-izq">
+          <h1 className="lv-h1">¿Ese depto es<br /><mark>buena inversión</mark>?</h1>
+          <CampoDireccion ubicacion="hero" />
+        </div>
       </div>
       <div className="lv-col lv-foot">
         <LinkMedido href="#respuesta" evento={EV.ejemplo} props={{ origen: "hero" }}>
@@ -56,8 +65,7 @@ export function Hero() {
 export function LaRespuesta({ datos }: { datos: DatosLanding }) {
   return (
     <SeccionVista n={2} id="respuesta" className="lv-s2">
-      <div className="lv-col">
-        <div className="lv-idx">La respuesta, en fácil</div>
+      <div className="lv-col lv-s2-grid">
         <Respuesta ejemplos={datos.ejemplos} />
       </div>
     </SeccionVista>
@@ -128,21 +136,24 @@ export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
   const u = datos.ultimoAnalisis;
   return (
     <SeccionVista n={4} className="lv-s4">
-      <picture className="lv-fondo">
-        <source media="(min-width: 900px)" srcSet="/landing/textura-cierre-desktop.webp" />
+      {/* Banda de 83 svh anclada abajo: el rojo pleno son los 50 vh inferiores. */}
+      <picture className="lv-fondo lv-fondo-cierre">
+        <source media="(min-width: 768px)" srcSet="/landing/textura-cierre-d2x.webp" />
         {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-        <img src="/landing/textura-cierre-mobile.webp" alt="" loading="lazy" decoding="async" />
+        <img src="/landing/textura-cierre-m2x.webp" alt="" loading="lazy" decoding="async" />
       </picture>
       <div className="lv-col">
-        <h2 className="lv-h2">Antes de comprar,<br /><mark>evalúa con Franco.</mark></h2>
-        <p className="lv-precio">
-          El primer análisis es gratis.
-          <span>Los siguientes, <b>{fmtCLP(SINGLE_PRICE)}</b> cada uno.</span>
-        </p>
-        <LinkMedido href="/pricing" className="lv-planes" evento={EV.planes}>
-          Ver planes <span>→</span>
-        </LinkMedido>
-        <CampoDireccion ubicacion="cierre" />
+        <div className="lv-cierre-izq">
+          <h2 className="lv-h2">Antes de comprar,<br /><mark>evalúa con Franco.</mark></h2>
+          <p className="lv-precio">
+            El primer análisis es gratis.
+            <span>Los siguientes, <b>{fmtCLP(SINGLE_PRICE)}</b> cada uno.</span>
+          </p>
+          <LinkMedido href="/pricing" className="lv-planes" evento={EV.planes}>
+            Ver planes <span>→</span>
+          </LinkMedido>
+          <CampoDireccion ubicacion="cierre" />
+        </div>
         <footer className="lv-footer">
           <Wordmark onBrand />
           <nav aria-label="Franco">

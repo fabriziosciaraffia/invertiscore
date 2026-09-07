@@ -1,11 +1,12 @@
 /* ─────────────────────────────────────────────────────────────────────────────
  * Landing v14 — hoja de estilos de la página.
  *
- * Contrato: landing-v14-final.html (07-sep-2026). Prefijo `lv-` para no chocar
- * con el resto del app. La landing es de UN solo material (papel, tinta, la
- * textura roja de marca) y NO sigue el toggle claro/oscuro: pinta sus colores
- * explícitos y fija los tokens del wordmark, así en tema oscuro no sale un
- * wordmark de papel sobre papel.
+ * Contrato: landing-v14-final.html (07-sep-2026) + ajustes FASE 1.1 del QA de
+ * Fabrizio en preview (mismo día). Prefijo `lv-` para no chocar con el resto del
+ * app. La landing es de UN solo material (papel, tinta, la textura roja de
+ * marca) y NO sigue el toggle claro/oscuro: pinta sus colores explícitos y fija
+ * los tokens del wordmark, así en tema oscuro no sale un wordmark de papel
+ * sobre papel.
  *
  * Decisiones sobre el mockup (FASE 0, OK de Fabrizio):
  *  · Tipografía: manda la skill. Titulares en Source Serif 700 (el mockup pedía
@@ -15,6 +16,17 @@
  *    Los puntos de "¿No tienes la dirección?", el texto de "actualizado",
  *    "Santiago" y el brillo del campo dejaron el rojo.
  *  · El chip activo usa `--verdict` (el mockup traía `--cc`, sin definir).
+ *
+ * FASE 1.1 (QA en preview):
+ *  · Desktop usa el ancho: grilla de 1200 con márgenes, contenido a la
+ *    izquierda; hero con h1 + campo en la mitad izquierda; sección 2 en dos
+ *    columnas con los chips al pie, a la derecha.
+ *  · Texturas como banda de altura FIJA en vh anclada abajo (hero 50 svh con
+ *    30 vh de rojo, cierre 83 svh con 50 vh), imágenes a 2x/3x sin estirar.
+ *  · Mobile: sin menú, solo "Entrar" arriba a la derecha; wordmark 22 px y
+ *    slogan 10 px; "¿No tienes la dirección?" en su línea y las acciones en la
+ *    siguiente. Solo el hero mide 100 svh; el resto, alto natural con padding
+ *    72 (mobile) / 88 (desktop).
  * ───────────────────────────────────────────────────────────────────────── */
 
 .lv-root {
@@ -29,6 +41,8 @@
   /* uso 11 de Signal Red: el plumón del hero y del cierre (aprobado 07-sep-2026) */
   --lv-plumon: rgba(200, 50, 60, 0.26);
   --lv-dur: 900ms;
+  --lv-pad: 24px;
+  --lv-sec: 72px;
   /* el wordmark canónico (FrancoLogo) lee estos tokens; acá van fijos al material */
   --franco-wm-re: var(--lv-ghost);
   --franco-wm-franco: var(--lv-ink);
@@ -60,7 +74,8 @@
 }
 @media print { .lv-root::before { display: none; } }
 
-.lv-col { width: 100%; max-width: 680px; margin: 0 auto; padding: 0 24px; position: relative; }
+/* grilla: 1200 con márgenes, contenido a la izquierda */
+.lv-col { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 var(--lv-pad); position: relative; box-sizing: border-box; }
 .lv-idx {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lv-g);
@@ -68,9 +83,16 @@
 .lv-tag {
   margin-top: 8px;
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--lv-g2);
+  font-size: 10px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--lv-g2);
 }
 .lv-wm { display: inline-flex; text-decoration: none; line-height: 1; }
+/* wordmark 22 px en mobile: FrancoLogo `header` mide 26 y no tiene un tamaño de 22;
+   el `.ai` va en em y escala solo. En desktop queda el canónico. */
+.lv-wm > span { font-size: 22px; }
+.lv-entrar {
+  font-size: 14px; font-weight: 500; color: var(--lv-ink); text-decoration: none;
+  padding: 6px 0; margin-top: -2px;
+}
 
 /* ===== campo-CTA (compartido hero + cierre) ===== */
 .lv-campo { position: relative; }
@@ -109,30 +131,36 @@
   transition: background 0.2s;
 }
 .lv-box:hover .lv-btn, .lv-btn:focus-visible { background: var(--lv-red); }
-.lv-alt { margin-top: 18px; font-size: 14px; color: var(--lv-g2); display: flex; gap: 18px; flex-wrap: wrap; }
-.lv-alt a { color: var(--lv-ink); font-weight: 500; text-decoration: none; }
+/* pregunta en su línea, acciones en la siguiente (QA mobile) */
+.lv-alt { margin-top: 18px; font-size: 14px; color: var(--lv-g2); display: flex; flex-direction: column; gap: 8px; }
+.lv-alt-acciones { display: flex; gap: 18px; flex-wrap: wrap; }
+.lv-alt a { color: var(--lv-ink); font-weight: 500; text-decoration: none; white-space: nowrap; }
 .lv-alt a::before {
   content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
   background: var(--lv-ink); margin-right: 8px; vertical-align: 2px;
 }
 
+/* ===== bandas de textura (hero y cierre) ===== */
+.lv-fondo { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0; display: block; }
+.lv-fondo img { width: 100%; height: 100%; object-fit: cover; object-position: center bottom; display: block; }
+.lv-fondo-hero { height: 50svh; }
+.lv-fondo-cierre { height: 83svh; }
+
 /* ===== 1 HERO ===== */
 .lv-hero { position: relative; min-height: 100svh; display: flex; flex-direction: column; overflow: hidden; }
-.lv-fondo { position: absolute; inset: 0; z-index: 0; }
-.lv-fondo img { width: 100%; height: 100%; object-fit: cover; object-position: center bottom; display: block; }
 .lv-hero > .lv-col { z-index: 1; }
 /* solo el eje vertical: el mockup usaba el shorthand y pisaba los 24px laterales
    de .col (a 390px el texto salía pegado al borde). */
-.lv-hero .lv-top { padding-top: 24px; }
+.lv-hero .lv-top { padding-top: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .lv-hero .lv-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-top: 40px; padding-bottom: 40px; }
 .lv-h1 {
   margin: 0;
   font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
   /* El mockup pedía clamp(44px, 11.5vw, 96px), pero medía sobre una columna sin
      los 24px laterales (su bug de padding); con la columna real "buena
-     inversión?" se partía en tres líneas a 390 y a 1440. Este clamp mantiene
-     el h1 en las DOS líneas que exige el contrato en ambos anchos. */
-  font-weight: 700; font-size: clamp(38px, 10vw, 88px); line-height: 0.96; letter-spacing: -0.03em;
+     inversión?" se partía en tres líneas. Este clamp mantiene el h1 en las DOS
+     líneas que exige el contrato: a 390 y en la mitad izquierda de 1200. */
+  font-weight: 700; font-size: clamp(38px, 10vw, 78px); line-height: 0.96; letter-spacing: -0.03em;
 }
 .lv-h1 mark { background: linear-gradient(transparent 60%, var(--lv-plumon) 60%); }
 .lv-hero .lv-campo { margin-top: 44px; }
@@ -148,14 +176,15 @@
 @keyframes lv-arr { 50% { transform: translateX(5px); } }
 
 /* ===== 2 LA RESPUESTA ===== */
-.lv-s2 { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding: 72px 0; }
+.lv-s2 { padding: var(--lv-sec) 0; }
+.lv-s2-izq { min-width: 0; }
 .lv-ans { margin-top: 22px; }
 /* sin data-verdict (no debería pasar) los tokens caen a Ink */
 .lv-ans:not([data-verdict]), .lv-chip:not([data-verdict]) {
   --verdict: var(--lv-ink); --verdict-deep: var(--lv-ink); --verdict-band-0: var(--lv-ink);
 }
 .lv-band {
-  margin: 0 -24px; padding: 22px 24px; position: relative; overflow: hidden; color: #fff;
+  margin: 0 calc(-1 * var(--lv-pad)); padding: 22px var(--lv-pad); position: relative; overflow: hidden; color: #fff;
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-weight: 700; font-size: clamp(28px, 7.6vw, 48px); letter-spacing: 0.1em;
   background: linear-gradient(100deg, var(--verdict-band-0) 0%, color-mix(in srgb, var(--verdict) 80%, var(--verdict-deep)) 70%, var(--verdict-deep) 100%);
@@ -212,10 +241,7 @@
 .lv-chip.on { color: #fff; border-color: transparent; background: var(--verdict); }
 
 /* ===== 3 POR QUÉ CREERLE (tinta) ===== */
-.lv-s3 {
-  background: var(--lv-ink); color: var(--lv-paper); min-height: 100svh;
-  display: flex; flex-direction: column; justify-content: center; padding: 72px 0;
-}
+.lv-s3 { background: var(--lv-ink); color: var(--lv-paper); padding: var(--lv-sec) 0; }
 .lv-s3 .lv-idx { color: #9a9a9a; }
 .lv-big {
   margin-top: 18px;
@@ -266,13 +292,13 @@
 .lv-como { display: inline-block; margin-top: 16px; font-size: 14px; color: #c4c2bc; text-decoration: none; }
 .lv-como span { font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace; margin-left: 6px; }
 
-/* mapa: calles como <img> (estático, cacheado aparte) + capa inline con puntos, etiquetas y pin */
-.lv-mapwrap { margin-top: 36px; position: relative; }
-.lv-map-calles { width: 100%; height: auto; display: block; opacity: 0; animation: lv-fade 0.8s 0.1s ease-out forwards; }
+/* mapa: calles como <img> (estático, cacheado aparte) + canvas con todos los
+   avisos + capa inline con etiquetas y pin. Las tres capas comparten el viewBox. */
+.lv-mapwrap { margin-top: 36px; position: relative; width: 100%; }
+.lv-map-calles { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; animation: lv-fade 0.8s 0.1s ease-out forwards; }
+.lv-map-puntos { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .lv-map-capa { position: absolute; inset: 0; width: 100%; height: 100%; }
 @keyframes lv-fade { to { opacity: 1; } }
-.lv-dots circle { fill: var(--lv-paper); opacity: 0; transform-box: fill-box; transform-origin: center; animation: lv-pop 0.6s ease-out forwards; animation-delay: var(--d, 0s); }
-@keyframes lv-pop { 0% { opacity: 0; transform: scale(0.2); } 70% { opacity: var(--o, 0.6); } 100% { opacity: var(--o, 0.6); transform: scale(1); } }
 .lv-lb {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px; letter-spacing: 0.14em; fill: #9a9a9a; text-anchor: middle; opacity: 0;
@@ -294,7 +320,6 @@
    retiene (`data-anim="listo"`) hasta que el observer marque `data-visto`. Sin
    JS no se retiene nada y el mapa aparece animado desde la carga. */
 .lv-s3[data-anim="listo"]:not([data-visto]) .lv-map-calles,
-.lv-s3[data-anim="listo"]:not([data-visto]) .lv-dots circle,
 .lv-s3[data-anim="listo"]:not([data-visto]) .lv-lb,
 .lv-s3[data-anim="listo"]:not([data-visto]) .lv-tu,
 .lv-s3[data-anim="listo"]:not([data-visto]) .lv-ring { animation: none; }
@@ -306,7 +331,7 @@
 .lv-nota a { text-decoration: none; }
 
 /* ===== 4 CIERRE ===== */
-.lv-s4 { position: relative; min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding: 72px 0 28px; overflow: hidden; }
+.lv-s4 { position: relative; padding: var(--lv-sec) 0 28px; overflow: hidden; }
 .lv-s4 > .lv-col { z-index: 1; }
 .lv-h2 {
   margin: 0;
@@ -337,6 +362,7 @@
 }
 .lv-planes:hover { background: var(--lv-ink); color: #fff; }
 .lv-planes span { font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace; display: inline-block; animation: lv-arr 1.8s ease-in-out infinite; }
+.lv-s4 .lv-cierre-izq { max-width: 640px; }
 .lv-s4 .lv-campo { margin-top: 38px; }
 
 /* footer en papel sobre la textura roja */
@@ -359,22 +385,39 @@
 }
 @keyframes lv-pulse { 50% { opacity: 0.25; } }
 
-@media (min-width: 900px) {
-  .lv-col { max-width: 760px; }
+/* ===== desktop: usar el ancho ===== */
+@media (min-width: 768px) {
+  .lv-root { --lv-pad: 40px; --lv-sec: 88px; }
+  .lv-wm > span { font-size: 26px; }
+  .lv-tag { font-size: 11px; }
   .lv-hero .lv-top { padding-top: 32px; }
   .lv-hero .lv-mid { padding-top: 60px; padding-bottom: 60px; }
+  /* h1 + campo en la mitad izquierda; textura y aire a la derecha */
+  .lv-mid-izq { max-width: 560px; }
   .lv-box { height: 74px; }
   .lv-btn { width: 62px; height: 62px; }
+  .lv-alt { flex-direction: row; align-items: center; gap: 18px; }
+  /* sección 2: respuesta a la izquierda, chips al pie a la derecha */
+  .lv-s2-grid-inner { display: grid; grid-template-columns: minmax(0, 640px) minmax(220px, 1fr); column-gap: 56px; align-items: end; }
   .lv-band { margin: 0; }
-  .lv-s3 .lv-col { max-width: 1080px; }
-  .lv-s3 .lv-grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 56px; align-items: center; }
-  .lv-mapwrap { margin-top: 0; }
+  .lv-nav { margin-top: 0; padding-top: 0; border-top: 0; flex-direction: column; align-items: flex-end; gap: 12px; }
+  .lv-nav .lv-lbl { text-align: right; }
+  /* h1 en dos líneas dentro de la mitad izquierda (medido: 8,1 px de ancho por px de cuerpo) */
+  .lv-h1 { font-size: 64px; }
   .lv-footer { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; }
   .lv-ultimo { width: 100%; }
+}
+/* sección 3 a dos columnas recién desde 1024: a 768 el mapa quedaba en 104 px */
+@media (min-width: 1024px) {
+  .lv-s3 .lv-grid { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); gap: 64px; align-items: center; }
+  .lv-mapwrap { margin-top: 0; }
+}
+@media (min-width: 1100px) {
+  .lv-mid-izq { max-width: 600px; }
+  .lv-h1 { font-size: 70px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .lv-root *, .lv-root *::before, .lv-root *::after { animation: none !important; transition: none !important; }
-  .lv-map-calles, .lv-dots circle, .lv-lb, .lv-tu { opacity: 1; }
-  .lv-dots circle { opacity: var(--o, 0.6); }
+  .lv-map-calles, .lv-lb, .lv-tu { opacity: 1; }
 }

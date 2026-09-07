@@ -119,7 +119,9 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
   const caption = x.cifra ? captionDeCifraClave(x.cifra) : null;
 
   return (
-    <div ref={raiz}>
+    <div ref={raiz} className="lv-s2-grid-inner">
+      <div className="lv-s2-izq">
+      <div className="lv-idx">La respuesta, en fácil</div>
       <div className="lv-ans" data-verdict={x.veredicto} aria-live="polite">
         <div className="lv-band"><span className={`lv-x${out ? " out" : ""}`} style={delay(0)}>{x.etiqueta}</span></div>
         <h2 className={`lv-why lv-x${out ? " out" : ""}`} style={delay(1)}>
@@ -139,6 +141,7 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
             }
           />
         </div>
+      </div>
       </div>
       <div className="lv-nav">
         <span className="lv-lbl">Tres respuestas posibles</span>

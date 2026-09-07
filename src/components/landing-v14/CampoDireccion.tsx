@@ -23,13 +23,15 @@ import { useDireccionPlaces, type SeleccionDireccion } from "@/components/formul
 import { RUTA_WIZARD } from "@/lib/cta-analizar";
 import { EV, type UbicacionCampo } from "./eventos";
 
-/** Direcciones reales del catálogo (07-sep-2026), formato "Calle Número, Comuna". */
+/** Direcciones reales del catálogo (07-sep-2026), formato "Calle Número, Comuna".
+ *  Solo las que caben a 19px en el campo a 390px sin cortarse: ≤26 caracteres
+ *  con comuna (QA de Fabrizio). Las largas del catálogo quedaron fuera. */
 export const DIRECCIONES_EJEMPLO = [
-  "Av. Ecuador 3866, Estación Central",
   "Linares 1415, Providencia",
   "Zañartu 980, Ñuñoa",
-  "Cuarta Avenida 1350, San Miguel",
-  "Eleuterio Ramírez 710, Santiago",
+  "Lazo 1365, San Miguel",
+  "Juan Mitjans 105, Macul",
+  "Lia Aguirre 95, La Florida",
 ] as const;
 
 function origenDe(ubicacion: UbicacionCampo) {
@@ -158,9 +160,11 @@ export function CampoDireccion({ ubicacion }: { ubicacion: UbicacionCampo }) {
         </button>
       </form>
       <div className="lv-alt">
-        <span>¿No tienes la dirección?</span>
-        <a href={hrefSin("ubicacion")} onClick={() => sinDireccion("ubicacion")}>Estoy en el depto</a>
-        <a href={hrefSin("mapa")} onClick={() => sinDireccion("mapa")}>Marcarlo en el mapa</a>
+        <span className="lv-alt-q">¿No tienes la dirección?</span>
+        <span className="lv-alt-acciones">
+          <a href={hrefSin("ubicacion")} onClick={() => sinDireccion("ubicacion")}>Estoy en el depto</a>
+          <a href={hrefSin("mapa")} onClick={() => sinDireccion("mapa")}>Marcarlo en el mapa</a>
+        </span>
       </div>
     </div>
   );
