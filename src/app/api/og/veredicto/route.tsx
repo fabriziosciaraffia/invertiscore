@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { createClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { readVeredicto } from "@/lib/results-helpers";
 import { fmtPct, fmtMult } from "@/components/analysis/utils";
 import type {
@@ -150,10 +150,7 @@ export async function GET(request: Request) {
     return new Response("Missing analisisId", { status: 400 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const supabase = createServiceClient();
 
   // Fuentes (runtime) + datos del análisis en paralelo. Las fuentes se bajan
   // desde el mismo origin que sirve esta función (prod o localhost), así están

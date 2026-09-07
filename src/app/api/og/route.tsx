@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { createClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { fmtPct } from "@/components/analysis/utils";
 import { readVeredicto } from "@/lib/results-helpers";
 import { veredictoDeBanda } from "@/lib/gate-veredicto-hallazgo";
@@ -16,10 +16,7 @@ export async function GET(request: Request) {
     return new Response("Missing id", { status: 400 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const supabase = createServiceClient();
 
   const { data } = await supabase
     .from("analisis")

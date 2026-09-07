@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { conCandado } from "@/lib/candado-generacion";
-import { createClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { latirCron } from "@/lib/cron-heartbeat";
 import Anthropic from "@anthropic-ai/sdk";
@@ -106,10 +106,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const supabase = createServiceClient();
     const dry = new URL(request.url).searchParams.get("dry") === "1";
 
     const desde = new Date(Date.now() - DIAS_RECIENTES * 86400_000).toISOString();
