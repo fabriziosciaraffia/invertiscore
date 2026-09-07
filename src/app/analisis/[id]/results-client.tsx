@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { usePostHog } from "posthog-js/react";
 import { registrarInformeVisto, leerEsperaMs, type InformeAiEstado } from "@/lib/informe-visto";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
-import { calcFlujoDesglose, calcExitScenario, calcProjections } from "@/lib/analysis";
+import { calcFlujoDesglose } from "@/lib/analysis";
 import { resolverModeloCostos, calcMantencionMensual, antiguedadEfectiva } from "@/lib/modelo-costos";
 import { readVeredicto } from "@/lib/results-helpers";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -21,7 +21,6 @@ import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/compo
 // Ronda 4a.3: Hero + Subject Cards + AI section helpers.
 import { SubjectCardGrid } from "@/components/analysis/SubjectCardGrid";
 import { hasAiV2 } from "@/components/analysis/AIInsightSection";
-import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 
 // El valor de la UF llega siempre como prop desde el server (`ufValue`) y se
@@ -120,7 +119,6 @@ export function PremiumResults({
   // Default del slider = la MISMA tasa que proyecta el motor (PLUSVALIA_PROYECCION_ANUAL,
   // 3%). Así la simulación abre coincidiendo con el análisis estático de arriba; mover el
   // slider es explorar, no corregir. Math.round evita el float de 0.03*100.
-  const plusvaliaRate = Math.round(PLUSVALIA_PROYECCION_ANUAL * 100);
   // P5 Fase 24 — Sliders huérfanos eliminados (Opción A). Estos valores
   // afectan dynamicProjections pero el user nunca pudo modificarlos. Si se
   // expone en el futuro, rehacer limpio en SliderSimulacion bajo "Avanzado".
@@ -404,23 +402,10 @@ export function PremiumResults({
     });
   }, [m, inputData]);
 
-  // Capa 3 — Simulación. Recompute projections cuando cambian sliders.
-  // Antes (Sesión A) era un clon inline divergente de calcProjections; hoy
-  // delega al motor (lib/analysis.ts) para garantizar coherencia con la TIR
-  // principal en defaults. Ver audit/sesionA-fix/ y el diagnóstico previo.
-  const dynamicProjections = useMemo(() => {
-    if (!results || !m || !inputData) return results?.projections ?? [];
-    return calcProjections({
-      input: inputData,
-      metrics: m,
-      plazoVenta: 30,
-      plusvaliaAnual: plusvaliaRate / 100,
-      ufClp: ufValue,
-      // Fecha congelada a created_at (no la viva del navegador): el simulador de
-      // sliders no debe driftar meses-hasta-entrega. of-datedrift-design.md.
-      asOf: createdAt ? new Date(createdAt) : new Date(),
-    });
-  }, [results, m, inputData, plusvaliaRate, ufValue, createdAt]);
+  // Auditoría 06-sep-2026: murieron acá `dynamicProjections` (calcProjections en
+  // render), `calcExitForYear` y `fixedExit10`: sin consumidor desde T3, se
+  // calculaban en cada render para nadie. Las proyecciones que se muestran vienen
+  // del builder (results.projections / exitScenario).
 
   // dynamicRefi removed — refi section now calculates directly from projData
 
@@ -669,25 +654,6 @@ export function PremiumResults({
       .filter(s => s.avg > 0)
       .sort((a, b) => b.avg - a.avg);
   }, [cashflowData]);
-
-  // Exit scenario helper — usa el motor como fuente única de verdad
-  const calcExitForYear = useCallback((years: number, _flujoAcum: number) => {
-    if (!results || !m || !inputData || dynamicProjections.length === 0) return null;
-    if (!dynamicProjections[years - 1]) return null;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _unused = _flujoAcum; // firma compatible; el motor recomputa internamente
-    return calcExitScenario(inputData, m, dynamicProjections, years);
-  }, [results, m, inputData, dynamicProjections]);
-
-  // Fixed 10-year exit for header metrics (independent of horizon slider)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const fixedExit10 = useMemo(() => {
-    if (dynamicProjections.length < 10) return null;
-    // Calculate 10-year flujo acumulado from dynamicProjections
-    let flujoAcum10 = 0;
-    for (let i = 0; i < 10; i++) flujoAcum10 += dynamicProjections[i].flujoAnual;
-    return calcExitForYear(10, flujoAcum10);
-  }, [dynamicProjections, calcExitForYear]);
 
   // dynamicExit removed — exit section now reads directly from projData
 
