@@ -81,9 +81,32 @@ check("-ás desconocido: exige reintento", hitsQueExigenReintento(desconocido).s
 check("-ás desconocido: NO se corrige en silencio", sanitizeVozChilenaTexto("Si trepás por el balcón.").includes("trepás"));
 check("futuro de tuteo intacto tras el swap", sanitizeVozChilenaTexto("Comprarás y tendrás margen.") === "Comprarás y tendrás margen.");
 
+// ── (4.bis) Casos del 06-sep-2026 (auditoría de prosa persistida) ──
+// 17b4e10d (LTR v20) salió con «Comprás» en el titular: la forma estaba en el
+// léxico, pero el titular se reescribía DESPUÉS de la red final de voz. El reorden
+// (2a) vive en la rama claude/voz-titular-orden, pendiente de prueba; acá se fija
+// el léxico y las altas, que no dependen del orden.
+console.log("── casos 06-sep ──");
+{
+  const titular = "Comprás **muy bajo la mediana** y el arriendo cubre el dividendo desde el inicio.";
+  const hits = scanVozChilenaTexto(titular, "titular");
+  check("17b4e10d: «Comprás» se caza por léxico", hits.some((h) => h.token === "Comprás" && h.capa === "lexico" && h.sugerencia === "Compras"));
+  check("17b4e10d: no exige reintento (corregible)", hitsQueExigenReintento(hits).length === 0);
+  check("17b4e10d: sanitize deja «Compras» y conserva las marcas", sanitizeVozChilenaTexto(titular) === "Compras **muy bajo la mediana** y el arriendo cubre el dividendo desde el inicio.", sanitizeVozChilenaTexto(titular));
+  const futuro = "Comprarás caro y tendrás que negociar.";
+  check("negativo: «Comprarás caro y tendrás» no dispara", scanVozChilenaTexto(futuro).length === 0);
+  check("negativo: «que estés dispuesto» (subjuntivo) no dispara", scanVozChilenaTexto("exige que estés dispuesto a poner plata.").length === 0);
+  for (const [forma, esperado] of [["podés", "puedes"], ["sumá", "suma"], ["conocés", "conoces"], ["tené", "ten"], ["cobrás", "cobras"], ["generás", "generas"], ["anotate", "anótate"], ["poné", "pon"]] as [string, string][]) {
+    const frase = `Ahora ${forma} el número real.`;
+    const h = scanVozChilenaTexto(frase);
+    check(`alta 06-sep: ${forma} → ${esperado}`, h.some((x) => x.capa === "lexico" && x.sugerencia === esperado) && sanitizeVozChilenaTexto(frase).includes(esperado), sanitizeVozChilenaTexto(frase));
+  }
+}
+
 // ── (5) Integridad del léxico ──
 console.log("── integridad del léxico ──");
-const sinTilde = Object.keys(VOSEO_A_TUTEO).filter((k) => !/[áéí]/.test(k) && !/^(fijate|ponete)$/.test(k));
+// Los reflexivos sin tilde (fijate, anotate, quedate…) mapean a esdrújulas con tilde, no diptongan.
+const sinTilde = Object.keys(VOSEO_A_TUTEO).filter((k) => !/[áéí]/.test(k) && !/(ate|ete)$/.test(k));
 check("toda entrada sin tilde diptonga en tuteo", sinTilde.every((k) => /ie|ue/.test(VOSEO_A_TUTEO[k])), sinTilde.filter((k) => !/ie|ue/.test(VOSEO_A_TUTEO[k])).join(","));
 check("ninguna entrada se mapea a sí misma", Object.entries(VOSEO_A_TUTEO).every(([k, v]) => k !== v));
 check("swap idempotente", sanitizeVozChilenaTexto(sanitizeVozChilenaTexto("Si tenés y comprometés, cerrás.")) === sanitizeVozChilenaTexto("Si tenés y comprometés, cerrás."));
