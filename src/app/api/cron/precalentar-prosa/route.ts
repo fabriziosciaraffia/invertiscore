@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { conCandado } from "@/lib/candado-generacion";
 import { createClient } from "@supabase/supabase-js";
 import { captureApiError } from "@/lib/observabilidad";
 import { latirCron } from "@/lib/cron-heartbeat";
@@ -159,6 +160,8 @@ export async function GET(request: Request) {
     const stale = ((filas ?? []) as unknown as FilaPrecalentado[]).filter(esStale).filter(soloSinDueno);
     let ok = 0;
     let fallidos = 0;
+    // Goal #3: otro proceso tenía el candado (el cron pisándose o el dueño abriendo).
+    let saltados = 0;
     let cortadoPorTiempo = false;
 
     // El DEMO va primero pase lo que pase: es la única superficie del informe que
@@ -192,18 +195,22 @@ export async function GET(request: Request) {
           // generación es nada contra los ~2 min de la generación misma.
           const { data: row } = await supabase.from("analisis").select("*").eq("id", fila.id).single();
           if (!row) { fallidos++; continue; }
-          const r = await generarYPersistirProsaStr({
-            analysisId: fila.id,
-            analysis: row as Record<string, unknown>,
-            supabase,
-            anthropic,
-            trigger: "precalentado",
-          });
-          if (r) ok++;
+          const c = await conCandado(fila.id, "str", () =>
+            generarYPersistirProsaStr({
+              analysisId: fila.id,
+              analysis: row as Record<string, unknown>,
+              supabase,
+              anthropic,
+              trigger: "precalentado",
+            }),
+          );
+          if (!c.tomado) saltados++;
+          else if (c.resultado) ok++;
           else fallidos++;
         } else {
-          const r = await generateAiAnalysis(fila.id, supabase, { trigger: "precalentado" });
-          if (r) ok++;
+          const c = await conCandado(fila.id, "ltr", () => generateAiAnalysis(fila.id, supabase, { trigger: "precalentado" }));
+          if (!c.tomado) saltados++;
+          else if (c.resultado) ok++;
           else fallidos++;
         }
       } catch {
@@ -217,6 +224,7 @@ export async function GET(request: Request) {
       staleDetectados: stale.length,
       precalentados: ok,
       fallidos,
+      saltadosPorCandado: saltados,
       // La MÉTRICA de la ventana bump→precalentado. Si no baja corrida a corrida,
       // la cadencia no alcanza para el ritmo al que se está bumpeando.
       pendientes: Math.max(0, stale.length - ok),

@@ -162,11 +162,18 @@ export function STRResultsClient({
     setAiLoading(true);
     setAiError(null);
     try {
-      const res = await fetch("/api/analisis/short-term/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysisId, trigger }),
-      });
+      // Goal #3: 409 { generando: true } = otro proceso tiene el candado (espejo LTR):
+      // se vuelve a pedir cada 8 s, hasta ~4 min, sin mostrar error.
+      let res!: Response;
+      for (let intento = 0; ; intento++) {
+        res = await fetch("/api/analisis/short-term/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ analysisId, trigger }),
+        });
+        if (res.status !== 409 || intento >= 30) break;
+        await new Promise((r) => setTimeout(r, 8000));
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error((data as { error?: string }).error || "Error generando análisis IA");

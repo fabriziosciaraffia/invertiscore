@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { conCandado } from "@/lib/candado-generacion";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import { cookies } from "next/headers";
 import { waitUntil } from "@vercel/functions";
@@ -187,14 +188,20 @@ export async function POST(request: Request) {
       {
         const analysisRow = data as Record<string, unknown>;
         const analysisIdBg = data.id as string;
+        // Candado cross-instance (goal #3): con el candado tomado por otro proceso, la
+        // background se salta en vez de generar por segunda vez.
         waitUntil(
-          generarYPersistirProsaStr({
-            analysisId: analysisIdBg,
-            analysis: analysisRow,
-            supabase: dbClient,
-            anthropic,
-            trigger: "background",
-          }).then(() => undefined),
+          conCandado(analysisIdBg, "str", () =>
+            generarYPersistirProsaStr({
+              analysisId: analysisIdBg,
+              analysis: analysisRow,
+              supabase: dbClient,
+              anthropic,
+              trigger: "background",
+            }),
+          ).then((c) => {
+            if (!c.tomado) console.warn(`[CANDADO] ${analysisIdBg}: IA background STR saltada — otro proceso la está generando`);
+          }),
         );
       }
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { conCandado } from "@/lib/candado-generacion";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { flowGet } from "@/lib/flow";
@@ -178,7 +179,10 @@ export async function POST(request: Request) {
           // recupera la IA on-demand vía polling /ai-status — no es critical path.
           if (unlocked && unlocked.tipo_analisis === "long-term") {
             try {
-              await generateAiAnalysis(analysisId, supabase, { trigger: "post-pago" });
+              // Candado cross-instance (goal #3): si la fila ya se está generando
+              // (background del submit, dueño abriendo), esta se salta.
+              const c = await conCandado(analysisId, "ltr", () => generateAiAnalysis(analysisId, supabase, { trigger: "post-pago" }));
+              if (!c.tomado) console.warn(`[CANDADO] ${analysisId}: IA post-pago saltada — otro proceso la está generando`);
             } catch (e) {
               console.error("[payments/confirm] generateAiAnalysis diferida falló:", e);
               captureApiWarning(e, {

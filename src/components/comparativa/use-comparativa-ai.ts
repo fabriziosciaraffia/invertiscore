@@ -49,6 +49,9 @@ export function useComparativaAI(
     const MAX_INTENTOS = 3;
     const BACKOFF_MS = [0, 4000, 8000];
     let timer: ReturnType<typeof setTimeout> | null = null;
+    // Goal #3: 409 { generando: true } = otro proceso tiene el candado del par. No
+    // consume intentos de error: se vuelve a pedir cada 8 s, hasta ~4 min.
+    let esperas409 = 0;
 
     const intentar = (intento: number) => {
       fetch("/api/analisis/comparativa/ai", {
@@ -57,6 +60,15 @@ export function useComparativaAI(
         body: JSON.stringify({ ltrId, strId }),
       })
         .then(async (res) => {
+          if (res.status === 409) {
+            if (cancelled) return null;
+            if (esperas409 < 30) {
+              esperas409 += 1;
+              timer = setTimeout(() => intentar(intento), 8000);
+              return null;
+            }
+            throw new Error("La narrativa se está generando; vuelve a intentar en un momento.");
+          }
           if (!res.ok) {
             const d = await res.json().catch(() => ({}));
             throw new Error(d.error || `HTTP ${res.status}`);
@@ -64,6 +76,7 @@ export function useComparativaAI(
           return res.json() as Promise<AIAnalysisComparativa>;
         })
         .then((data) => {
+          if (!data) return; // 409: ya quedó reagendado
           if (!cancelled) {
             setAi(data);
             setLoading(false);

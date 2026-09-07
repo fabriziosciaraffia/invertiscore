@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { conCandado, RESPUESTA_GENERANDO, STATUS_GENERANDO } from "@/lib/candado-generacion";
 import { captureApiError } from "@/lib/observabilidad";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
@@ -41,11 +42,9 @@ function createSupabaseServer() {
   );
 }
 
-// Lock/debounce en proceso: la invalidación lazy-on-open puede disparar aperturas
-// concurrentes del mismo análisis → doble LLM + doble write. Un Map colapsa las requests
-// del MISMO analysisId a una sola generación. Cross-instance (serverless) es last-write-wins,
-// inofensivo. Espejo comparativa/ai/route.ts.
-const inflight = new Map<string, Promise<unknown>>();
+// Candado de regeneración (goal #3, 07-sep-2026): vive en la base
+// (src/lib/candado-generacion.ts), una generación por fila ENTRE instancias.
+// Reemplaza el Map en memoria de esta ruta, que no veía al waitUntil ni al cron.
 
 // Cache VERSION-AWARE: fresca solo si es new-structure Y la versión del prompt coincide.
 // Prosa pre-F6 (sin promptVersion) o versión vieja → cae a regen (lazy-on-open).
@@ -115,24 +114,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // Regen con lock/debounce por analysisId (colapsa aperturas concurrentes).
-    const existing = inflight.get(analysisId);
-    if (existing) {
-      const shared = await existing;
-      if (!shared) return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
-      return NextResponse.json(shared);
+    // Candado cross-instance (goal #3): otro proceso generando esta fila (apertura
+    // paralela, waitUntil del submit, cron) → 409 { generando: true }; el cliente
+    // vuelve a pedir en unos segundos y, cuando el otro termina, la cache fresca
+    // responde sin generar. Se suelta en finally, también si la generación lanza.
+    const idGen: string = analysisId; // el closure pierde el narrowing de `let analysisId`
+    const r = await conCandado(idGen, "ltr", () => generateAiAnalysis(idGen, supabase, { trigger }));
+    if (!r.tomado) return NextResponse.json(RESPUESTA_GENERANDO, { status: STATUS_GENERANDO });
+    if (!r.resultado) {
+      return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
     }
-    const task = generateAiAnalysis(analysisId, supabase, { trigger });
-    inflight.set(analysisId, task);
-    try {
-      const aiResult = await task;
-      if (!aiResult) {
-        return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
-      }
-      return NextResponse.json(aiResult);
-    } finally {
-      inflight.delete(analysisId);
-    }
+    return NextResponse.json(r.resultado);
   } catch (error) {
     console.error("AI analysis error:", error);
     captureApiError(error, { ruta: "POST /api/analisis/ai", operacion: "generar-prosa-ltr", analysisId });

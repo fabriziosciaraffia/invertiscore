@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { conCandado, RESPUESTA_GENERANDO, STATUS_GENERANDO } from "@/lib/candado-generacion";
 import { captureApiError } from "@/lib/observabilidad";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
@@ -47,12 +48,9 @@ type STRResultsExtended = ShortTermResult & {
 };
 
 // ─── Lock / debounce en proceso ──────────────────────────────────────────
-// La invalidación lazy-on-open (regen al abrir cuando la prosa quedó vieja) puede
-// disparar dos aperturas concurrentes del mismo par → doble llamada al LLM + doble
-// write. Un Map en memoria colapsa las requests concurrentes del MISMO ltrId dentro
-// de esta instancia a una sola generación (las demás esperan y comparten el resultado).
-// Carreras cross-instance (serverless) son raras y last-write-wins: inofensivas.
-const inflight = new Map<string, Promise<AIAnalysisComparativa | null>>();
+// Candado de regeneración (goal #3, 07-sep-2026): vive en la base
+// (src/lib/candado-generacion.ts), sobre la fila LTR del par, una generación a la
+// vez ENTRE instancias. Reemplaza el Map en memoria de esta ruta.
 
 // Versión de la prosa cacheada. `undefined` (prosa v0) siempre se considera vieja.
 function cacheEstaFresca(ai: AIAnalysisComparativa | undefined | null): boolean {
@@ -124,30 +122,23 @@ export async function POST(request: Request) {
     }
 
     // ─── Regeneración con lock/debounce por ltrId ────────────────────────────
-    const existing = inflight.get(ltrId);
-    if (existing) {
-      const shared = await existing;
-      if (!shared) return NextResponse.json({ error: "Error generando narrativa IA" }, { status: 500 });
-      return NextResponse.json(shared);
+    // Candado cross-instance (goal #3) sobre la fila LTR del par: tomado → 409
+    // { generando: true } y el hook del cliente vuelve a pedir en unos segundos.
+    const r = await conCandado(ltrId, "ambas", () =>
+      generateComparativaAI({
+        ltrId,
+        strId,
+        // Anónimo-dueño: el persist del cache escribe en `analisis.results` de una
+        // fila sin dueño — el client con cookies de sesión no existe, va service-role.
+        supabase: esAnonDueno ? createAnonPipelineClient() : supabase,
+        persist: true,
+      }),
+    );
+    if (!r.tomado) return NextResponse.json(RESPUESTA_GENERANDO, { status: STATUS_GENERANDO });
+    if (!r.resultado) {
+      return NextResponse.json({ error: "Error generando narrativa IA" }, { status: 500 });
     }
-    const task = generateComparativaAI({
-      ltrId,
-      strId,
-      // Anónimo-dueño: el persist del cache escribe en `analisis.results` de una
-      // fila sin dueño — el client con cookies de sesión no existe, va service-role.
-      supabase: esAnonDueno ? createAnonPipelineClient() : supabase,
-      persist: true,
-    });
-    inflight.set(ltrId, task);
-    try {
-      const aiResult = await task;
-      if (!aiResult) {
-        return NextResponse.json({ error: "Error generando narrativa IA" }, { status: 500 });
-      }
-      return NextResponse.json(aiResult);
-    } finally {
-      inflight.delete(ltrId);
-    }
+    return NextResponse.json(r.resultado);
   } catch (error) {
     console.error("Comparativa AI error:", error);
     captureApiError(error, { ruta: "POST /api/analisis/comparativa/ai", operacion: "generar-prosa-ambas" });

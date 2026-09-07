@@ -29,6 +29,7 @@ import { runStrTier } from "./str-recompute";
 import { runEtiquetaTier } from "./etiqueta-veredicto-catch-test";
 import { runTitularFinalTier } from "./titular-final-catch-test";
 import { runInstrumentosTier } from "./instrumentos-catch-test";
+import { runCandadoTier } from "./candado-catch-test";
 import { runStrGenerateTier, type TandaStr } from "./str-generate";
 import { runAmbasTier } from "./ambas-recompute";
 import { runAmbasSemanticTier } from "./ambas-semantic";
@@ -149,6 +150,10 @@ async function printStrSemantic() {
   // ── Tier INSTRUMENTOS (#11 · 07-sep-2026, 0 tokens): el matcher A8·D1 acepta los
   // wordings legítimos del instrumento y rechaza el género. Corre siempre con el QUICK. ──
   totalHard += runInstrumentosTier().hard;
+
+  // ── Tier CANDADO (goal #3 · 07-sep-2026, 0 tokens, sin base): generating_since solo
+  // se escribe en candado-generacion.ts; dos tomas → una gana; TTL vence. Siempre con el QUICK. ──
+  totalHard += (await runCandadoTier()).hard;
 
   // ── Tier STR (E.1b · GS-STR, 0 tokens). Corre con --str o --all/--full. ──
   if (has("--str") || has("--all") || MODE_FULL) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { conCandado } from "@/lib/candado-generacion";
 import { cookies } from "next/headers";
 import { waitUntil } from "@vercel/functions";
 import type { AnalisisInput } from "@/lib/types";
@@ -317,7 +318,10 @@ export async function POST(request: Request) {
         // IA al final (no bloquea la notificación). El page la recupera vía
         // polling /ai-status si acá falla. generateAiAnalysis intacto.
         try {
-          await generateAiAnalysis(analysisId, dbClient, { trigger: "background" });
+          // Candado cross-instance (goal #3): si el dueño ya abrió y su ruta tomó el
+          // candado, esta background se salta en vez de generar por segunda vez.
+          const c = await conCandado(analysisId, "ltr", () => generateAiAnalysis(analysisId, dbClient, { trigger: "background" }));
+          if (!c.tomado) console.warn(`[CANDADO] ${analysisId}: IA background saltada — otro proceso la está generando`);
         } catch (e) {
           console.error("Background AI generation failed:", e);
           // La fila existe y el usuario ya tiene su análisis; lo que falta es la

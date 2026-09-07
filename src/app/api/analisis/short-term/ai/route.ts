@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { conCandado, RESPUESTA_GENERANDO, STATUS_GENERANDO } from "@/lib/candado-generacion";
 import { captureApiError } from "@/lib/observabilidad";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@supabase/ssr";
@@ -45,9 +46,9 @@ function createSupabaseServer() {
   );
 }
 
-// Lock/debounce en proceso: colapsa aperturas concurrentes del MISMO analysisId a una
-// sola generación (evita doble LLM + doble write en el lazy-on-open). Espejo comparativa.
-const inflight = new Map<string, Promise<Record<string, unknown> | null>>();
+// Candado de regeneración (goal #3, 07-sep-2026): vive en la base
+// (src/lib/candado-generacion.ts), una generación por fila ENTRE instancias.
+// Reemplaza el Map en memoria de esta ruta, que no veía al waitUntil ni al cron.
 
 // Cache VERSION-AWARE: fresca solo si la versión del prompt coincide. Prosa pre-F6 (sin
 // promptVersion) o versión vieja → cae a regen (lazy-on-open).
@@ -118,25 +119,16 @@ export async function POST(request: Request) {
       }
     }
 
-    // Regen con lock/debounce por analysisId. La tarea genera Y persiste; si falla
-    // devuelve null (NO persiste → la versión no se sella → se reintenta al reabrir).
-    const existing = inflight.get(analysisId);
-    if (existing) {
-      const shared = await existing;
-      if (!shared) return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
-      return NextResponse.json(shared);
+    // Candado cross-instance (goal #3, espejo LTR): otro proceso generando esta fila →
+    // 409 { generando: true }. La tarea genera Y persiste; si falla devuelve null (NO
+    // persiste → la versión no se sella → se reintenta al reabrir). Suelta en finally.
+    const idGen: string = analysisId; // el closure pierde el narrowing de `let analysisId`
+    const r = await conCandado(idGen, "str", () => generarYPersistirProsaStr({ analysisId: idGen, analysis, supabase, anthropic, trigger }));
+    if (!r.tomado) return NextResponse.json(RESPUESTA_GENERANDO, { status: STATUS_GENERANDO });
+    if (!r.resultado) {
+      return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
     }
-    const task = generarYPersistirProsaStr({ analysisId, analysis, supabase, anthropic, trigger });
-    inflight.set(analysisId, task);
-    try {
-      const aiResult = await task;
-      if (!aiResult) {
-        return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
-      }
-      return NextResponse.json(aiResult);
-    } finally {
-      inflight.delete(analysisId);
-    }
+    return NextResponse.json(r.resultado);
   } catch (error) {
     console.error("STR AI v3 error:", error);
     captureApiError(error, { ruta: "POST /api/analisis/short-term/ai", operacion: "generar-prosa-str", analysisId });

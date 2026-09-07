@@ -190,16 +190,25 @@ export function PremiumResults({
     setAiLoading(true);
     setAiError(null);
     try {
-      const res = await fetch("/api/analisis/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysisId, trigger }),
-      });
-      const data = await res.json();
+      // Goal #3: 409 { generando: true } = otro proceso tiene el candado de esta fila.
+      // No es error: se vuelve a pedir cada 8 s (hasta ~4 min); cuando el otro termina,
+      // la ruta responde la cache fresca sin generar de nuevo.
+      let res!: Response;
+      let data: Record<string, unknown> | null = null;
+      for (let intento = 0; ; intento++) {
+        res = await fetch("/api/analisis/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ analysisId, trigger }),
+        });
+        data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+        if (res.status !== 409 || intento >= 30) break;
+        await new Promise((r) => setTimeout(r, 8000));
+      }
       if (res.ok && hasAiV2(data)) {
         setAiAnalysis(data);
       } else {
-        setAiError(data?.error || "Error al generar análisis");
+        setAiError((data?.error as string | undefined) || "Error al generar análisis");
       }
     } catch {
       setAiError("Error de conexión");
