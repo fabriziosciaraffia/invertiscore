@@ -1,49 +1,50 @@
-import { UnifiedNav } from "@/components/chrome/UnifiedNav";
-import SmoothScroll from "@/components/landing/SmoothScroll";
-import { LandingThemeProvider } from "@/components/landing/LandingTheme";
-import SectionHero from "@/components/landing/SectionHero";
-import SectionProblem from "@/components/landing/SectionProblem";
-import SectionWhatFrancoIs from "@/components/landing/SectionWhatFrancoIs";
-import SectionWhatFrancoDoes from "@/components/landing/SectionWhatFrancoDoes";
-import SectionUseCases from "@/components/landing/SectionUseCases";
-import SectionCTAPrimary from "@/components/landing/SectionCTAPrimary";
-import SectionObjections from "@/components/landing/SectionObjections";
-import SectionCTASecondary from "@/components/landing/SectionCTASecondary";
-import SectionPricing from "@/components/landing/SectionPricing";
-import SectionFinalCTA from "@/components/landing/SectionFinalCTA";
-import LandingFooter from "@/components/landing/LandingFooter";
-import { PROPERTIES_COUNT } from "@/lib/stats";
+// ─────────────────────────────────────────────────────────────────────────────
+// Landing v14 (07-sep-2026) — cuatro pantallas, un solo CTA (el campo de
+// dirección) repetido al inicio y al final. La página vende una respuesta, no un
+// producto. Reemplaza completa a la landing anterior; no recicla secciones.
+//
+// Server component con ISR de 10 minutos: el contador de avisos, la hora del
+// último scrape, el último análisis emitido y los tres ejemplos se leen en cada
+// revalidación (`leerDatosLanding`). Las piezas con estado (campo, rotación,
+// telemetría) son islas cliente que reciben los datos por props.
+// ─────────────────────────────────────────────────────────────────────────────
 
-export const metadata = {
-  title: "Franco — ¿Y si el depto no se paga solo?",
-  description: `Antes de invertir, ve si los números cierran. Análisis de inversión inmobiliaria con datos reales: ${PROPERTIES_COUNT} deptos, arriendo largo y Airbnb, 24 comunas. Veredicto en 30 segundos.`,
+import type { Metadata } from "next";
+import "@/components/landing-v14/landing.css";
+import { leerDatosLanding } from "@/lib/landing-vivo";
+import { Hero, LaRespuesta, PorQueCreerle, Cierre } from "@/components/landing-v14/Secciones";
+import { LandingViewed } from "@/components/landing-v14/Telemetria";
+
+export const revalidate = 600;
+
+export const metadata: Metadata = {
+  title: { absolute: "¿Ese depto es buena inversión? — Franco" },
+  description:
+    "Escribe la dirección y Franco te dice si comprar, ajustar o buscar otro: un modelo financiero, una lectura con IA y un veredicto, contra toda la oferta de Santiago.",
   alternates: { canonical: "/" },
+  openGraph: {
+    title: "¿Ese depto es buena inversión? — Franco",
+    description:
+      "Escribe la dirección y Franco te dice si comprar, ajustar o buscar otro. Contra toda la oferta de Santiago.",
+    url: "https://refranco.ai",
+    siteName: "Franco",
+    locale: "es_CL",
+    type: "website",
+  },
 };
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const datos = await leerDatosLanding();
+  const ahora = new Date();
   return (
-    <LandingThemeProvider>
-      <div
-        data-franco-root
-        className="min-h-screen"
-        style={{ background: "var(--landing-bg)", color: "var(--landing-text)" }}
-      >
-        <SmoothScroll />
-        <UnifiedNav variant="landing" />
-        <main>
-          <SectionHero />
-          <SectionWhatFrancoIs />
-          <SectionProblem />
-          <SectionWhatFrancoDoes />
-          <SectionUseCases />
-          <SectionCTAPrimary />
-          <SectionObjections />
-          <SectionCTASecondary />
-          <SectionPricing />
-          <SectionFinalCTA />
-        </main>
-        <LandingFooter />
-      </div>
-    </LandingThemeProvider>
+    <div className="lv-root" data-franco-root data-landing="v14">
+      <LandingViewed />
+      <main>
+        <Hero />
+        <LaRespuesta datos={datos} />
+        <PorQueCreerle datos={datos} ahora={ahora} />
+        <Cierre datos={datos} ahora={ahora} />
+      </main>
+    </div>
   );
 }
