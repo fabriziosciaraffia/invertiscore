@@ -19,6 +19,7 @@ Diseño aprobado: `of-golden-design.md` (raíz, untracked).
 | `generate.ts` | tier FULL AUTO: `generateAiAnalysis(persist:false)` ×K, checks AUTO | sí |
 | `semantic.ts` | tier FULL semántico: juez Opus (reusa `../judge.ts`) | sí |
 | `catch-test.ts` | meta-validación: rompe invariantes y verifica que el runner CAZA | 0 |
+| `timeout.ts` | techo de 5 min por llamada al generador / juez en FULL: el seed cae como FALLA-TIMEOUT y la tanda sigue (una tanda quedó colgada 8 h el 06-sep) | — |
 | `runner.ts` | CLI orquestador | — |
 | `accept.ts` | re-baseline (regenera baseline.json) | 0 |
 | `str-v16-dump/` | corpus: las 12 salidas STR de la tanda FULL parcial del prompt v16 (6 seeds × 2), prosa persistida. Alimenta catch-tests de 0 tokens; no son cifras congeladas. | — |

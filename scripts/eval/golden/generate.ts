@@ -12,6 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { generateAiAnalysis } from "../../../src/lib/ai-generation";
+import { conTimeout, esTimeout, TIMEOUT_GENERADOR_MS } from "./timeout";
 import { runAnalysis } from "../../../src/lib/analysis";
 import { TECHO_CONTINUACION_DURO } from "../../../src/lib/prosa-presupuesto";
 import { marcasBalanceadas, evaluarTitular } from "../../../src/lib/prosa-marcas";
@@ -97,9 +98,19 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       const t0 = Date.now();
       process.stderr.write(`      · ${seed.key} run ${run + 1}/${K}…`);
       const archivo = (dir: string) => join(dir, `${seed.key}-run${run}.json`);
-      const { result: ai, warns } = opts.from && existsSync(archivo(opts.from))
-        ? (JSON.parse(readFileSync(archivo(opts.from), "utf-8")) as { result: any; warns: string[] })
-        : await captureWarns(() => generateAiAnalysis(seed.uuid, sb, { persist: false }));
+      let gen: { result: any; warns: string[] };
+      try {
+        gen = opts.from && existsSync(archivo(opts.from))
+          ? (JSON.parse(readFileSync(archivo(opts.from), "utf-8")) as { result: any; warns: string[] })
+          : await conTimeout(captureWarns(() => generateAiAnalysis(seed.uuid, sb, { persist: false })), TIMEOUT_GENERADOR_MS, `${seed.key} run ${run + 1}`);
+      } catch (e) {
+        // Timeout por llamada (06-sep-2026): el seed cae como FALLA-TIMEOUT (dura) y la tanda sigue.
+        if (!esTimeout(e)) throw e;
+        process.stderr.write(` ${(e as Error).message}\n`);
+        checks.push({ rule: "FALLA-TIMEOUT", pass: false, detail: (e as Error).message });
+        continue;
+      }
+      const { result: ai, warns } = gen;
       if (opts.dump) writeFileSync(archivo(opts.dump), JSON.stringify({ result: ai, warns }, null, 2), "utf-8");
       process.stderr.write(` ${((Date.now() - t0) / 1000).toFixed(0)}s${opts.from ? " (desde dump)" : ""}\n`);
       if (!ai) { bump("gen.null"); continue; }

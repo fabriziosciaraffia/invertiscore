@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { generateAiAnalysis } from "../../../src/lib/ai-generation";
 import { buildTruthBundle, captureGeneratorPrompt, runJudgeV2 } from "../judge";
+import { conTimeout, esTimeout, TIMEOUT_GENERADOR_MS } from "./timeout";
 import { GOLDEN_SEEDS } from "./seeds";
 
 export interface SemanticReport {
@@ -26,23 +27,33 @@ export async function runSemanticTier(sb: SupabaseClient, opts: { from?: string 
   const reports: SemanticReport[] = [];
 
   for (const seed of GOLDEN_SEEDS) {
+    // Timeout por llamada (06-sep-2026): generación, captura del prompt y juez tienen techo;
+    // el seed cae como FALLA-TIMEOUT y la tanda sigue. Antes una llamada colgada paraba todo.
     const archivo = opts.from ? join(opts.from, `${seed.key}-run0.json`) : null;
-    const ai = archivo && existsSync(archivo)
-      ? (JSON.parse(readFileSync(archivo, "utf-8")) as { result: any }).result
-      : await generateAiAnalysis(seed.uuid, sb, { persist: false });
-    if (!ai) { reports.push({ key: seed.key, flags: [{ categoria: "gen", detalle: "generación devolvió null" }] }); continue; }
+    let ai: any;
+    let cap: Awaited<ReturnType<typeof captureGeneratorPrompt>>;
+    try {
+      ai = archivo && existsSync(archivo)
+        ? (JSON.parse(readFileSync(archivo, "utf-8")) as { result: any }).result
+        : await conTimeout(generateAiAnalysis(seed.uuid, sb, { persist: false }), TIMEOUT_GENERADOR_MS, `${seed.key} generación (semántico)`);
+      if (!ai) { reports.push({ key: seed.key, flags: [{ categoria: "gen", detalle: "generación devolvió null" }] }); continue; }
 
-    // REGLA ESPEJO: capturamos el bloque-caso REAL que el generador le pasó al modelo
-    // (incluye datoDP/datoFM y todo lo que el modelo vio) y juzgamos contra eso (V2).
-    const cap = await captureGeneratorPrompt(seed.uuid, sb);
+      // REGLA ESPEJO: capturamos el bloque-caso REAL que el generador le pasó al modelo
+      // (incluye datoDP/datoFM y todo lo que el modelo vio) y juzgamos contra eso (V2).
+      cap = await conTimeout(captureGeneratorPrompt(seed.uuid, sb), TIMEOUT_GENERADOR_MS, `${seed.key} captura del prompt`);
+    } catch (e) {
+      if (!esTimeout(e)) throw e;
+      reports.push({ key: seed.key, flags: [{ categoria: "FALLA-TIMEOUT", detalle: (e as Error).message }] });
+      continue;
+    }
     const truthBundle = buildTruthBundle(seed.input.comuna, seed.input.lat ?? null, seed.input.lng ?? null, seed.mediana);
     const fixtureMeta = { id: seed.key, modalidad: "LTR", tier: "experto", ejes: seed.ejes, nota: seed.nota };
 
     let judge;
     try {
-      judge = await runJudgeV2({ fixtureMeta, aiAnalysis: ai, caseBlock: cap?.user ?? "", truthBundle });
+      judge = await conTimeout(runJudgeV2({ fixtureMeta, aiAnalysis: ai, caseBlock: cap?.user ?? "", truthBundle }), TIMEOUT_GENERADOR_MS, `${seed.key} juez`);
     } catch (e) {
-      reports.push({ key: seed.key, flags: [{ categoria: "juez-error", detalle: String((e as Error)?.message ?? e) }] });
+      reports.push({ key: seed.key, flags: [{ categoria: esTimeout(e) ? "FALLA-TIMEOUT" : "juez-error", detalle: String((e as Error)?.message ?? e) }] });
       continue;
     }
     reports.push({

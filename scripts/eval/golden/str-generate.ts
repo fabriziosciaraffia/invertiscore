@@ -40,6 +40,7 @@ import { join } from "node:path";
 import { generateStrProse } from "../../../src/lib/ai-generation-str";
 import { marcasBalanceadas, evaluarTitular } from "../../../src/lib/prosa-marcas";
 import { ordenarHallazgosPiramideSTR } from "../../../src/lib/piramide-orden-str";
+import { conTimeout, esTimeout, TIMEOUT_GENERADOR_MS } from "./timeout";
 import { STR_GE_SEEDS, loadFrozen } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
 import { frasesCanonicasDe, oracionQueCopia } from "../../../src/lib/copia-frase";
@@ -128,10 +129,19 @@ export async function runStrGenerateTier(
         } else {
           // Simulaciones del CONGELADO: las del recompute del seed (mismo contexto sintetizado).
           // Los guards con reintento ([HERO-CLAIM], [STR-…]) se ven en la tanda: sin logger no queda rastro.
-          const gen = await generateStrProse({
-            anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna, simulacion: r.sim,
-            logger: (m) => { if (/^\[(?:HERO-CLAIM|STR-)/.test(m)) process.stderr.write(`\n        ${key} ${m.slice(0, 220)}`); },
-          });
+          let gen: Awaited<ReturnType<typeof generateStrProse>>;
+          try {
+            gen = await conTimeout(generateStrProse({
+              anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna, simulacion: r.sim,
+              logger: (m) => { if (/^\[(?:HERO-CLAIM|STR-)/.test(m)) process.stderr.write(`\n        ${key} ${m.slice(0, 220)}`); },
+            }), TIMEOUT_GENERADOR_MS, `${key} run ${run + 1}`);
+          } catch (e) {
+            // Timeout por llamada (06-sep-2026): FALLA-TIMEOUT (dura) y la tanda sigue.
+            if (!esTimeout(e)) throw e;
+            process.stderr.write(` ${(e as Error).message}\n`);
+            checks.push({ rule: "FALLA-TIMEOUT", pass: false, detail: (e as Error).message });
+            continue;
+          }
           process.stderr.write(` ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
           // Goal retry por campo: qué pidió cada generación (guard:campos), cuántas llamadas y si tocó el tope.
           process.stderr.write(`        ${key} llamadas=${gen.llamadas.length} quirúrgicos=${gen.quirurgicos} tope=${gen.topeAlcanzado} tokens=${gen.llamadas.reduce((n, l) => n + (l.input_tokens ?? 0), 0)}in/${gen.llamadas.reduce((n, l) => n + (l.output_tokens ?? 0), 0)}out guards=${gen.llamadas.filter((l) => l.guard).map((l) => `${l.guard}:${(l.campos ?? []).join("+")}`).join(" ") || "-"} residuo=${gen.residuo.map((x) => `${x.guard}:${x.campo}`).join(",") || "-"}\n`);
