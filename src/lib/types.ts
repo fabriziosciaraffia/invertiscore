@@ -1584,8 +1584,9 @@ export interface AIAnalysisV2 {
   // `**…**` (núcleo ≤7 palabras, el render lo pinta con plumón), SIN montos en
   // moneda (la cifra vive en cifraClave, que emite el motor — cifra-clave.ts).
   // Campo ÚNICO sin _clp/_uf por construcción. Opcional: prosa ≤v9 no lo trae
-  // (el render cae a portada sin titular); null cuando la generación lo emitió
-  // inválido y el guard lo descartó ([TITULAR-INVALIDO]).
+  // (el render cae a portada sin titular); null solo en filas persistidas antes
+  // del goal #8 (07-sep-2026): desde entonces la generación LTR resuelve SIEMPRE un
+  // string (titular-final.ts: reescrito → escalón → titular del motor).
   titular?: string | null;
   // Opcionales: el prompt LTR dejó de emitirlos (campos huérfanos, sin consumidor
   // de render — el hero usa chips de inputData y conviene.respuestaDirecta). Se

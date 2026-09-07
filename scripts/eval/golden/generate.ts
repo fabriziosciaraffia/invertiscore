@@ -219,6 +219,10 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       // sobre las 7 palabras (regla de prompt, no de check) y de titular null
       // (el fallback del retry) — visibles en cada FULL, sin bloquear.
       if ((ai as any).titular === null) bump("~titular-null");
+      // Goal #8 (07-sep-2026): la portada cayó al titular del MOTOR (retry sin converger
+      // y original >20 palabras o con monto). Es el piso diseñado, no una falla; la tasa
+      // dice cuánto trabaja el prompt del retry.
+      if (warns.some((w) => w.includes("[TITULAR-DESCARTADO]") && w.includes("fallback: motor"))) bump("~titular-fallback-motor");
       const nucleoTit = typeof (ai as any).titular === "string" ? ((ai as any).titular.match(/\*\*([\s\S]+?)\*\*/)?.[1] ?? "") : "";
       if ((nucleoTit.trim().match(/\S+/g) || []).length > 7) bump("~titular-nucleo-largo");
 
@@ -255,7 +259,7 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       );
     }
     const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
-    const SOFT = ["~engine-ism", "~zona-drift", "~rd-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado"];
+    const SOFT = ["~engine-ism", "~zona-drift", "~rd-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado", "~titular-fallback-motor"];
 
     // ── Umbral de MAYORÍA para las reglas que juzgan PROSA GENERADA ────────────
     //

@@ -79,9 +79,12 @@ export interface TitularTiming {
   reescrito: string | null;
   /** Motivo de `validarTitular` sobre el reescrito; null si validó o no hubo. */
   reescrito_motivo: string | null;
-  /** Con qué quedó la portada: reescrito válido · escalón (16-20 palabras del
-   *  original, normalizado) · null (descartado, portada sin titular). */
-  fallback: "reescrito" | "escalon" | "null";
+  /** Con qué quedó la portada: reescrito (≤15 válido o 16-20 largo) · escalón
+   *  (el original en 16-20, normalizado) · motor (titular determinista de
+   *  titular-final.ts). Nunca null: la portada siempre lleva titular. */
+  fallback: "reescrito" | "escalon" | "motor";
+  /** Titular que quedó en la portada. */
+  final: string;
 }
 
 /** Una entrada del array `generaciones` de pipeline_timing. */

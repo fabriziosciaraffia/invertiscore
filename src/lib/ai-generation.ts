@@ -58,7 +58,7 @@ import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerar
 import { construirReferenciasZona, faltaReconciliacion, appendReconciliacion } from "@/lib/referencias-zona";
 import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad } from "@/lib/cifras-guard";
 import { derivarCifraClaveLtr, captionDeCifraClave } from "@/lib/cifra-clave";
-import { validarTitular, evaluarTitular, normalizarMarcasTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
+import { validarTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
 import { reescribirTitular } from "@/lib/titular-retry";
 import { contarAniosPreEntrega } from "@/lib/pre-entrega-serie";
 import type { Hallazgo } from "@/lib/types";
@@ -71,6 +71,7 @@ import {
   type TitularTiming,
   type GeneracionTrigger,
 } from "@/lib/pipeline-timing";
+import { resolverTitular } from "@/lib/titular-final";
 
 const anthropic = new Anthropic();
 
@@ -3690,49 +3691,48 @@ Responde SOLO este JSON, sin texto alrededor:
               veredicto: veredictoMotor,
             })
           : null;
-        // Observabilidad (goal #8, 07-sep-2026): el texto descartado y su motivo van
-        // al warn y a pipeline_timing.titular. Antes el warn solo traía el conteo y
-        // un A9 rojo en el golden no se podía leer.
+        // Resolución determinista (goal #8, 07-sep-2026 · titular-final.ts): el titular
+        // final es un string POR CONSTRUCCIÓN — reescrito → escalón del original →
+        // titular del motor («**Etiqueta.** Titular del hallazgo top.»). Antes esta rama
+        // terminaba en null y la portada quedaba sin titular (A9 rojo, informe roto).
+        // El texto descartado y su motivo van al warn y a pipeline_timing.titular.
         const original = typeof t === "string" ? t.trim() : "";
         const palabras = (original.match(/\S+/g) || []).length;
-        const traza = (fallback: TitularTiming["fallback"]): void => {
-          titularTiming = {
-            original,
-            motivo: v.motivo ?? "",
-            palabras,
-            reescrito: reescrito?.texto ?? null,
-            reescrito_motivo: reescrito ? reescrito.motivo : null,
-            fallback,
-          };
-        };
         const cita = (x: string | null | undefined): string => (x ? `«${x}»` : "null");
-        if (reescrito?.valido) {
-          console.warn(`[TITULAR-REESCRITO] ${analysisId}: ${v.motivo} — corregido por retry dirigido`);
-          (aiResult as { titular?: string | null }).titular = reescrito.texto;
-          traza("reescrito");
-        } else {
-          // ESCALÓN (decisión PARÁ 3 — mostrar largo gana a callar): el retry no
-          // convergió al ≤15; el original se evalúa escalonado — 16-20 palabras
-          // sin montos SE RENDERIZA (violación blanda visible), marcas rotas se
-          // normalizan sin anular; montos o >20 → null.
-          const ev = evaluarTitular(t);
-          if (ev.nivel !== "invalido" && typeof t === "string") {
-            if (ev.nivel === "largo_renderizable") {
-              console.warn(`[TITULAR-LARGO-RENDERIZADO] ${analysisId}: ${ev.motivo}`);
-            } else {
-              console.warn(`[TITULAR-MARCAS-NORMALIZADAS] ${analysisId}: ${v.motivo} — se renderiza normalizado`);
-            }
-            (aiResult as { titular?: string | null }).titular = normalizarMarcasTitular(t.trim());
-            traza("escalon");
+        const res = resolverTitular({
+          original,
+          reescrito: reescrito?.texto ?? null,
+          veredicto: veredictoMotor,
+          hallazgos: hallazgosOrdenados,
+          respuestaFija: respuestaVeredicto,
+        });
+        const infoReescrito = `reescrito: ${cita(reescrito?.texto)}${reescrito && !reescrito.valido && reescrito.motivo ? ` (${reescrito.motivo})` : ""}`;
+        if (res.via === "escalon") {
+          // ESCALÓN (decisión PARÁ 3 — mostrar largo gana a callar): 16-20 palabras
+          // sin montos SE RENDERIZA (violación blanda visible); marcas rotas se
+          // normalizan sin anular.
+          if (res.nivel === "largo_renderizable") {
+            console.warn(`[TITULAR-LARGO-RENDERIZADO] ${analysisId}: ${res.motivo} — ${infoReescrito}`);
           } else {
-            console.warn(
-              `[TITULAR-DESCARTADO] ${analysisId}: ${cita(original)} (${palabras} palabras) — motivo: ${ev.motivo ?? v.motivo}` +
-                ` — reescrito: ${cita(reescrito?.texto)}${reescrito?.motivo ? ` (${reescrito.motivo})` : ""} — fallback: null (portada sin titular)`,
-            );
-            (aiResult as { titular?: string | null }).titular = null;
-            traza("null");
+            console.warn(`[TITULAR-MARCAS-NORMALIZADAS] ${analysisId}: ${v.motivo} — se renderiza normalizado — ${infoReescrito}`);
           }
+        } else {
+          console.warn(
+            `[TITULAR-DESCARTADO] ${analysisId}: ${cita(original)} (${palabras} palabras) — motivo: ${v.motivo} — ${infoReescrito}` +
+              ` — fallback: ${res.via}${res.nivel === "largo_renderizable" ? " (largo renderizable)" : ""} ${cita(res.titular)}`,
+          );
         }
+        (aiResult as { titular?: string }).titular = res.titular;
+        titularTiming = {
+          original,
+          motivo: v.motivo ?? "",
+          palabras,
+          reescrito: reescrito?.texto ?? null,
+          reescrito_motivo: reescrito ? reescrito.motivo : null,
+          // "ia" es imposible acá: validarTitular ya rechazó el original.
+          fallback: res.via === "ia" ? "reescrito" : res.via,
+          final: res.titular,
+        };
       }
       const stripDesbalance = (nodo: Record<string, unknown>): void => {
         for (const [k, val] of Object.entries(nodo)) {
