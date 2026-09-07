@@ -46,7 +46,7 @@ export type FilaHallazgo = {
    *  /analisis/1920fd35-… : "/m²" aparecía 0 veces en todo el DOM. El par
    *  sujeto-vs-mediana solo vivía dentro del párrafo IA del cuerpo 16, el mismo que
    *  este goal desarma; sin este consumidor el dato desaparecía del informe. */
-  ksub?: string;
+  ksub?: ReactNode;
   /** El valor pide Signal Red (adverso). */
   valorRojo?: boolean;
   /** Ancla estable para deep-link desde otras superficies. */

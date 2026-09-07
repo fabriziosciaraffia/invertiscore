@@ -1,5 +1,6 @@
 "use client";
 
+import { Ang } from "./shared/Ang";
 import type { AnalisisInput, AnalysisMetrics, FullAnalysisResult } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import { ModalCalculoBase } from "./shared/ModalCalculoBase";
@@ -97,9 +98,9 @@ export function ModalCalculo({
   });
 
   const filasInd: FilaPlanilla[] = [
-    { th: "Cap rate bruto", celdas: [{ v: "Arriendo anual ÷ precio" }, { v: `${clp(arriendoAnual)} ÷ ${clp(precio)}` }, { v: pct2(metrics.rentabilidadBruta) }] },
-    { th: "Cap rate neto", celdas: [{ v: "NOI anual ÷ precio" }, { v: `${clp(noiAnual)} ÷ ${clp(precio)}` }, { v: pct2(metrics.capRate) }] },
-    { th: "Cash-on-cash", celdas: [{ v: "Flujo anual ÷ capital aportado" }, { v: coc != null ? `${clp(flujoAnual0)} ÷ ${clp(capital)}` : "sin pie: no aplica" }, { v: coc != null ? pct2(coc) : "—", neg: coc != null && coc < 0 }] },
+    { th: <><Ang>Cap rate</Ang> bruto</>, celdas: [{ v: "Arriendo anual ÷ precio" }, { v: `${clp(arriendoAnual)} ÷ ${clp(precio)}` }, { v: pct2(metrics.rentabilidadBruta) }] },
+    { th: <><Ang>Cap rate</Ang> neto</>, celdas: [{ v: "NOI anual ÷ precio" }, { v: `${clp(noiAnual)} ÷ ${clp(precio)}` }, { v: pct2(metrics.capRate) }] },
+    { th: <Ang>Cash-on-cash</Ang>, celdas: [{ v: "Flujo anual ÷ capital aportado" }, { v: coc != null ? `${clp(flujoAnual0)} ÷ ${clp(capital)}` : "sin pie: no aplica" }, { v: coc != null ? pct2(coc) : "—", neg: coc != null && coc < 0 }] },
     { th: "Cobertura de cuota", celdas: [{ v: "Arriendo mensual ÷ dividendo" }, { v: cobertura != null ? `${clp(metrics.ingresoMensual)} ÷ ${clp(metrics.dividendo)}` : "sin crédito" }, { v: cobertura != null ? `${cobertura.toFixed(2).replace(".", ",")}×` : "—" }] },
     {
       th: `TIR a ${anios} años`,
@@ -118,7 +119,7 @@ export function ModalCalculo({
       pie={
         <>
           Motor Franco · UF {Math.round(valorUF).toLocaleString("es-CL")}
-          {capRef ? ` · cap rate de referencia: ${capRef.fuente}` : ""}
+          {capRef ? <> · <Ang>cap rate</Ang> de referencia: {capRef.fuente}</> : null}
         </>
       }
       bloques={[

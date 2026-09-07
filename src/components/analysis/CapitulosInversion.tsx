@@ -3,6 +3,7 @@
 import { SegsCierre } from "./shared/SegsCierre";
 import { Matriz, nombreVeredicto } from "./shared/Matriz";
 import { FilaDato, FilasDato } from "./shared/FilaDato";
+import { Ang } from "./shared/Ang";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { useState } from "react";
 import type {
@@ -238,7 +239,11 @@ export function CapitulosInversion({
           pregunta: "Cuánto renta",
           valor: `${pct1(v.capRatePct)}%`,
           valorRojo: capRate.direccion === "adverso",
-          ksub: [`cap rate neto ${pct1(v.capRatePct)}%`, `referencia ${pct1(v.capRefPct)}%`, aguanta].filter(Boolean).join(" · "),
+          ksub: (
+            <>
+              <Ang>cap rate</Ang> neto {pct1(v.capRatePct)}% · referencia {pct1(v.capRefPct)}%{aguanta ? ` · ${aguanta}` : ""}
+            </>
+          ),
           anchorId: anchorCapitulo("renta"),
           cuerpo: (
             <div>

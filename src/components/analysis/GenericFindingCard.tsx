@@ -13,6 +13,7 @@
 //  - Tipografía: Serif (title), Sans (resumen), Mono (kick/kpi/labels).
 //  - Anatomía y tokens del mockup aprobado (mockup-piramide.html), con --franco-*.
 
+import { angliza } from "./shared/Ang";
 import type { Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { fuenteHistoricaPlusvalia, rangoDesdeFuente } from "@/lib/plusvalia-procedencia";
@@ -516,7 +517,7 @@ export function GenericFindingCard<K extends string = DrawerKey>({
         className="font-mono uppercase tracking-[0.05em] mt-2"
         style={{ fontSize: 10, color: "var(--franco-text-tertiary)" }}
       >
-        {d.ksub}
+        {angliza(d.ksub)}
       </div>
 
       {/* resumen = fraseCanonica (el motor la escribe; la IA la reescribe aguas abajo).

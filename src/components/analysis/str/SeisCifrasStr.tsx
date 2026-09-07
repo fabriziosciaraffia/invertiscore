@@ -1,5 +1,6 @@
 "use client";
 
+import { Ang } from "@/components/analysis/shared/Ang";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { metricaValorONull } from "@/lib/types";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
@@ -63,11 +64,11 @@ export function SeisCifrasStr({
         ),
     },
     {
-      k: "Cap rate STR",
+      k: <><Ang>Cap rate</Ang> STR</>,
       v: pct1(cap),
       tr: (
         <>
-          El ingreso neto de un año (lo que queda antes de la cuota) sobre el precio. <b>La referencia para renta corta es {pct1(CAP_STR_UMBRAL_PCT)}.</b>
+          <Ang>Cap rate</Ang> (lo que renta al año sobre el precio): el ingreso neto de un año, lo que queda antes de la cuota, sobre el precio. <b>La referencia para renta corta es {pct1(CAP_STR_UMBRAL_PCT)}.</b>
         </>
       ),
     },

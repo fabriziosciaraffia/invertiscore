@@ -1,5 +1,6 @@
 "use client";
 
+import { Ang } from "./shared/Ang";
 import type { AnalysisMetrics, FullAnalysisResult } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import { SeisCifras, type CifraInforme } from "./shared/SeisCifras";
@@ -50,16 +51,16 @@ export function LosNumeros({
 
   const cifras: CifraInforme[] = [
     {
-      k: "Cap rate bruto",
+      k: <><Ang>Cap rate</Ang> bruto</>,
       v: pct1(metrics.rentabilidadBruta),
       tr: (
         <>
-          El arriendo de un año sobre el precio, <b>antes</b> de gastos.
+          <Ang>Cap rate</Ang> (lo que renta al año sobre el precio): el arriendo de un año, <b>antes</b> de gastos.
         </>
       ),
     },
     {
-      k: "Cap rate neto",
+      k: <><Ang>Cap rate</Ang> neto</>,
       v: pct1(metrics.capRate),
       tr: (
         <>
@@ -78,11 +79,11 @@ export function LosNumeros({
           <>Sin pie no hay capital propio sobre el que medirlo.</>
         ) : coc < 0 ? (
           <>
-            <em className="ang">Cash-on-cash</em>: por cada $100 que pusiste, <b>este año pones ${Math.abs(coc).toFixed(2).replace(".", ",")} más</b> en vez de recibir.
+            <Ang>Cash-on-cash</Ang>: por cada $100 que pusiste, <b>este año pones ${Math.abs(coc).toFixed(2).replace(".", ",")} más</b> en vez de recibir.
           </>
         ) : (
           <>
-            <em className="ang">Cash-on-cash</em>: por cada $100 que pusiste, <b>este año recibes ${coc.toFixed(2).replace(".", ",")}</b> de vuelta.
+            <Ang>Cash-on-cash</Ang>: por cada $100 que pusiste, <b>este año recibes ${coc.toFixed(2).replace(".", ",")}</b> de vuelta.
           </>
         ),
     },

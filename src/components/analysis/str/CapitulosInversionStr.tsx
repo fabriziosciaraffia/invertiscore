@@ -1,5 +1,6 @@
 "use client";
 
+import { Ang } from "@/components/analysis/shared/Ang";
 import { useMemo, useState } from "react";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
@@ -185,7 +186,11 @@ export function CapitulosInversionStr({
       pregunta: "Cuánto renta",
       valor: `${pct1(cap)}%`,
       valorRojo: cap < CAP_STR_UMBRAL_PCT,
-      ksub: [`${money(adr)} × ${Math.round(occ * 100)}% = ${money(ingreso)} al mes`, `cap rate STR ${pct1(cap)}%`, `referencia ${pct1(CAP_STR_UMBRAL_PCT)}%`, aguanta].filter(Boolean).join(" · "),
+      ksub: (
+        <>
+          {money(adr)} × {Math.round(occ * 100)}% = {money(ingreso)} al mes · <Ang>cap rate</Ang> STR {pct1(cap)}% · referencia {pct1(CAP_STR_UMBRAL_PCT)}%{aguanta ? ` · ${aguanta}` : ""}
+        </>
+      ),
       anchorId: anchorCapituloStr("renta"),
       cuerpo: (
         <div>
@@ -207,7 +212,7 @@ export function CapitulosInversionStr({
             </FilasDato>
           </VViz>
           <VPuente>Ese ingreso, menos los costos, sobre el precio: la rentabilidad operativa.</VPuente>
-          <VViz t="Dónde cae tu cap rate">
+          <VViz t={<>Dónde cae tu <Ang>cap rate</Ang></>}>
             <VSub>Cuánto rinde frente a la referencia</VSub>
             <Thermo
               invertido

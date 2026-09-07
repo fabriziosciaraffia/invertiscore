@@ -1,5 +1,6 @@
 "use client";
 
+import { Ang } from "@/components/analysis/shared/Ang";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { metricaValorONull } from "@/lib/types";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
@@ -90,7 +91,7 @@ export function ModalCalculoStr({
   const filasInd: FilaPlanilla[] = [
     { th: "Ingreso mensual", celdas: [{ v: "Tarifa × ocupación × 365 ÷ 12" }, { v: `${clp(tarifa)} × ${pct1(occ * 100)} × 365 ÷ 12` }, { v: clp(ingreso) }] },
     { th: "Ingreso neto mensual", celdas: [{ v: "Ingreso − comisión − costos" }, { v: `${clp(ingreso)} − ${clp(comision + admin)} − ${clp(costos)}` }, { v: clp(ingresoNeto) }] },
-    { th: "Cap rate STR", celdas: [{ v: "Ingreso neto anual ÷ precio" }, { v: `${clp(ingresoNeto * 12)} ÷ ${clp(precio)}` }, { v: pct2(cap) }] },
+    { th: <><Ang>Cap rate</Ang> STR</>, celdas: [{ v: "Ingreso neto anual ÷ precio" }, { v: `${clp(ingresoNeto * 12)} ÷ ${clp(precio)}` }, { v: pct2(cap) }] },
     { th: "Flujo mensual", celdas: [{ v: "Ingreso neto − cuota" }, { v: `${clp(ingresoNeto)} − ${clp(cuota)}` }, { v: clp(flujo), neg: flujo < 0 }] },
     { th: "Retorno sobre el capital puesto", celdas: [{ v: "Flujo anual ÷ capital del día 1" }, { v: coc != null ? `${clp(flujo * 12)} ÷ ${clp(capital)}` : "sin capital propio: no aplica" }, { v: coc != null ? pct2(coc) : "—", neg: coc != null && coc < 0 }] },
     { th: "Cobertura de cuota", celdas: [{ v: "Ingreso neto ÷ cuota" }, { v: cobertura != null ? `${clp(ingresoNeto)} ÷ ${clp(cuota)}` : "sin crédito" }, { v: cobertura != null ? `${cobertura.toFixed(2).replace(".", ",")}×` : "—" }] },
