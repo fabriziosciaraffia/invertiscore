@@ -232,9 +232,9 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
 .lv-s2 { padding: var(--lv-sec) 0; min-height: 100svh; display: flex; flex-direction: column; }
 .lv-s2 > .lv-col { flex: 1; display: flex; flex-direction: column; }
 .lv-s2-grid-inner { flex: 1; display: flex; flex-direction: column; }
-.lv-s2-izq { min-width: 0; flex: 1; display: flex; flex-direction: column; }
-.lv-s2-izq .lv-idx { margin-bottom: auto; }
-.lv-s2-izq .lv-ans { margin: auto 0; padding: 32px 0; }
+.lv-s2-grid-inner > .lv-idx { margin-bottom: auto; }
+.lv-ans { margin: auto 0; padding: 32px 0; }
+.lv-ans-izq { min-width: 0; }
 .lv-nav { margin-top: auto; }
 /* sin data-verdict (no debería pasar) los tokens caen a Ink */
 .lv-ans:not([data-verdict]), .lv-chip:not([data-verdict]), .lv-fila:not([data-verdict]) {
@@ -485,9 +485,8 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   .lv-btn { width: 62px; height: 62px; }
   .lv-alt { flex-direction: row; align-items: center; gap: 22px; }
   /* sección 2: respuesta a la izquierda, chips al pie a la derecha */
-  .lv-s2-grid-inner { display: grid; grid-template-columns: minmax(0, 640px) minmax(220px, 1fr); column-gap: 56px; align-items: stretch; }
   .lv-band { margin: 0; }
-  .lv-nav { margin-top: 0; padding-top: 0; border-top: 0; flex-direction: column; align-items: flex-end; justify-content: flex-end; gap: 12px; }
+  .lv-nav { margin-top: auto; padding-top: 0; border-top: 0; flex-direction: column; align-items: flex-end; justify-content: flex-end; gap: 12px; }
   .lv-nav .lv-lbl { text-align: right; }
   /* h1 en dos líneas dentro de la mitad izquierda (medido: 8,1 px de ancho por px de cuerpo) */
   .lv-h1 { font-size: 64px; }
@@ -539,16 +538,24 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   .lv-mid-izq, .lv-s4 .lv-cierre-izq { max-width: 820px; }
   .lv-proc { max-width: 40ch; }
   .lv-precio span { max-width: 40ch; }
-  /* bandas de textura en desktop: hero 26 vh de rojo, cierre 40 vh */
-  .lv-fondo-hero { height: 42.25svh; }
-  .lv-fondo-cierre { height: 65svh; }
+  /* bandas de textura en desktop (v2.3): el degradado visible ocupa el tercio
+     inferior (33 vh) con una rampa larga; rojo pleno solo en los 12 vh (hero) y
+     15 vh (cierre) del fondo. La banda mide 41,25 svh porque el 20 % superior de
+     la imagen es papel bajo la máscara. */
+  .lv-fondo-hero { height: 41.25svh; }
+  .lv-fondo-cierre { height: 41.25svh; }
   /* sección 2: banda delgada, cifra 72, razón 32; columna derecha con las filas */
   .lv-band { font-size: 22px; padding: 14px 20px; letter-spacing: 0.14em; }
   .lv-num { font-size: 72px; }
   .lv-why { font-size: 32px; max-width: 26ch; }
   .lv-nav { display: none; }
-  .lv-lista { display: flex; flex-direction: column; justify-content: center; gap: 10px; }
-  .lv-s2-grid-inner { grid-template-columns: minmax(0, 620px) minmax(320px, 1fr); align-items: stretch; }
+  /* banda a todo el ancho del contenido; debajo, ejemplo a la izquierda y las tres
+     definiciones a la derecha, con aire entre veredicto, título y cifra */
+  .lv-ans-cuerpo { display: grid; grid-template-columns: minmax(0, 620px) minmax(320px, 1fr); column-gap: 72px; align-items: start; margin-top: 44px; }
+  .lv-why { margin-top: 0; }
+  .lv-num { margin-top: 40px; }
+  .lv-ey { margin-top: 28px; }
+  .lv-lista { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
   /* sección 3: cabe en una pantalla; texto y mapa lado a lado */
   .lv-s3 { height: 100svh; min-height: 0; overflow: hidden; }
   .lv-s3 > .lv-col { height: 100%; }

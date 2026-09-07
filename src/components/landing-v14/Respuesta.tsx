@@ -19,7 +19,16 @@ import { usePostHog } from "posthog-js/react";
 import type { EjemploLanding } from "@/lib/landing-vivo";
 import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import { EV } from "./eventos";
-import { stripMarcas } from "@/lib/prosa-marcas";
+import type { Veredicto } from "@/lib/types";
+
+/** Qué significa cada veredicto, en una línea (columna derecha en desktop, FASE
+ *  1.6). No es la bajada del ejemplo —esa ya está en el bloque grande—, es la
+ *  definición del veredicto. Copy de la landing, pendiente de OK de Fabrizio. */
+const DEFINICION: Record<Veredicto, string> = {
+  "BUSCAR OTRA": "Los números no cierran, ni ajustando.",
+  "AJUSTA SUPUESTOS": "Sirve, pero a otro precio o con más pie.",
+  COMPRAR: "Se paga solo y el precio está bien.",
+};
 
 const DUR = 900;
 const HOLD = 6000;
@@ -121,48 +130,50 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
 
   return (
     <div ref={raiz} className="lv-s2-grid-inner">
-      <div className="lv-s2-izq">
       <div className="lv-idx">La respuesta, en fácil</div>
+      {/* la banda usa todo el ancho del contenido; debajo, en desktop, el ejemplo a
+          la izquierda y los tres veredictos con su definición a la derecha */}
       <div className="lv-ans" data-verdict={x.veredicto} aria-live="polite">
         <div className="lv-band"><span className={`lv-x${out ? " out" : ""}`} style={delay(0)}>{x.etiqueta}</span></div>
-        <h2 className={`lv-why lv-x${out ? " out" : ""}`} style={delay(1)}>
-          {x.titular ? conPlumon(x.titular) : null}
-        </h2>
-        <div className={`lv-num lv-x${out ? " out" : ""}`} style={delay(2)}>
-          {x.cifra ? fmtCifra(x.cifra) : null}
-          {caption && <small>{caption}</small>}
+        <div className="lv-ans-cuerpo">
+          <div className="lv-ans-izq">
+            <h2 className={`lv-why lv-x${out ? " out" : ""}`} style={delay(1)}>
+              {x.titular ? conPlumon(x.titular) : null}
+            </h2>
+            <div className={`lv-num lv-x${out ? " out" : ""}`} style={delay(2)}>
+              {x.cifra ? fmtCifra(x.cifra) : null}
+              {caption && <small>{caption}</small>}
+            </div>
+            <div className={`lv-ey lv-x${out ? " out" : ""}`} style={delay(3)}>{x.eyebrow}</div>
+            <div className="lv-prog" aria-hidden="true">
+              <i
+                style={
+                  progreso === "corriendo"
+                    ? { transition: `width ${HOLD}ms linear`, width: "100%" }
+                    : { transition: "none", width: progreso === "quieto" && detenido.current ? "100%" : "0" }
+                }
+              />
+            </div>
+          </div>
+          <div className="lv-lista" role="tablist" aria-label="Veredictos">
+            <span className="lv-lbl">Tres respuestas posibles</span>
+            {ejemplos.map((e, j) => (
+              <button
+                key={e.id}
+                type="button"
+                role="tab"
+                aria-selected={j === i}
+                className={`lv-fila${j === i ? " on" : ""}`}
+                data-verdict={e.veredicto}
+                onClick={() => elegir(j)}
+              >
+                <span className="lv-fila-banda">{e.etiqueta}</span>
+                <span className="lv-fila-razon">{DEFINICION[e.veredicto]}</span>
+                <span className="lv-fila-cifra">{e.cifra ? fmtCifra(e.cifra) : ""}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className={`lv-ey lv-x${out ? " out" : ""}`} style={delay(3)}>{x.eyebrow}</div>
-        <div className="lv-prog" aria-hidden="true">
-          <i
-            style={
-              progreso === "corriendo"
-                ? { transition: `width ${HOLD}ms linear`, width: "100%" }
-                : { transition: "none", width: progreso === "quieto" && detenido.current ? "100%" : "0" }
-            }
-          />
-        </div>
-      </div>
-      </div>
-      {/* desktop (FASE 1.5): los tres veredictos como filas — banda mini, razón en una
-          línea, cifra —, la activa resaltada y sincronizada con la rotación */}
-      <div className="lv-lista" role="tablist" aria-label="Veredictos">
-        <span className="lv-lbl">Tres respuestas posibles</span>
-        {ejemplos.map((e, j) => (
-          <button
-            key={e.id}
-            type="button"
-            role="tab"
-            aria-selected={j === i}
-            className={`lv-fila${j === i ? " on" : ""}`}
-            data-verdict={e.veredicto}
-            onClick={() => elegir(j)}
-          >
-            <span className="lv-fila-banda">{e.etiqueta}</span>
-            <span className="lv-fila-razon">{e.titular ? stripMarcas(e.titular) : e.eyebrow}</span>
-            <span className="lv-fila-cifra">{e.cifra ? fmtCifra(e.cifra) : ""}</span>
-          </button>
-        ))}
       </div>
       <div className="lv-nav">
         <span className="lv-lbl">Tres respuestas posibles</span>
