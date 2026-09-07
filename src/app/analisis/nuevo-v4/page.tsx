@@ -29,12 +29,37 @@ function NuevoAnalisisV4Inner() {
   const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comunaParam.toLowerCase());
   const comunaInicial = match && isComunaDisponible(match.comuna) ? match : null;
 
+  // ?direccion=&lat=&lng=&comuna= — llega desde el campo del hero de la landing
+  // (07-sep-2026), que es el MISMO campo de Places de esta pantalla
+  // (`useDireccionPlaces`): la dirección ya viene canónica y con coordenadas, así
+  // que se precarga como si el usuario la hubiera elegido acá. Mismo patrón que
+  // `comunaInicial`: una sola vez y nunca pisa lo que ya había (ni un draft).
+  //
+  // `direccionConfirmada` SOLO si la comuna está cubierta: una comuna fuera de
+  // cobertura entra sin confirmar y la pantalla cae en su rechazo normal, con la
+  // captura de correo. La landing no duplica esa lógica; la delega acá.
+  const direccionParam = searchParams.get("direccion")?.trim() || "";
+  const latParam = Number(searchParams.get("lat"));
+  const lngParam = Number(searchParams.get("lng"));
+  const direccionInicial =
+    direccionParam && comunaParam && Number.isFinite(latParam) && Number.isFinite(lngParam)
+      ? {
+          direccion: direccionParam,
+          comuna: match?.comuna ?? comunaParam,
+          ciudad: match?.ciudad ?? "Santiago",
+          cubierta: isComunaDisponible(match?.comuna ?? comunaParam),
+          lat: latParam,
+          lng: lngParam,
+        }
+      : null;
+
   // ?origen= — superficie del CTA que trajo al usuario. Viaja para que quede en
   // el $current_url del pageview automático; el wizard no lo usa para nada más.
   return (
     <WizardV4
       resume={resume}
       comunaInicial={comunaInicial ? { comuna: comunaInicial.comuna, ciudad: comunaInicial.ciudad } : null}
+      direccionInicial={direccionInicial}
     />
   );
 }

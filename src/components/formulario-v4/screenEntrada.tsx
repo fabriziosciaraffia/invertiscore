@@ -38,7 +38,6 @@
 import { useEffect, useRef, useState } from "react";
 import { FileText } from "lucide-react";
 import { usePostHog } from "posthog-js/react";
-import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import { slugify } from "@/lib/utils";
@@ -48,8 +47,8 @@ import { FieldLabel, PrimaryBtn } from "./ui";
 import { trackWizard } from "./track";
 import { rangoChars, registrarSondaSalida, reportarValidacionRechazo } from "./stepTelemetry";
 import { WaitlistZonaInline } from "./WaitlistZonaInline";
-import { decidirEnganche, derivarComuna, plano } from "./entradaPlaces";
-import { cajaParaComuna, type Caja } from "@/lib/comuna-bounds";
+import { plano } from "./entradaPlaces";
+import { useDireccionPlaces } from "./useDireccionPlaces";
 import { PLUSVALIA_DEFAULT_RANGO } from "@/lib/plusvalia-estimado.gen";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,29 +93,11 @@ interface ComunaStats {
   plusvaliaRango: string | null;
 }
 
-/** `Caja` → el `LatLngBounds` que espera Places. Un solo lugar arma el objeto. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function aLatLngBounds(google: any, caja: Caja) {
-  const [sur, oeste, norte, este] = caja;
-  return new google.maps.LatLngBounds(
-    new google.maps.LatLng(sur, oeste),
-    new google.maps.LatLng(norte, este),
-  );
-}
-
 const fmtCLP = (n: number) => `$${Math.round(n).toLocaleString("es-CL")}`;
 const fmtPct = (n: number) => `${n.toFixed(1).replace(".", ",")}%`;
 
 export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenProps) {
   const posthog = usePostHog();
-  const inputRef = useRef<HTMLInputElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const acRef = useRef<any>(null);
-  /** Nodo al que está atado `acRef`. Si cambia, hay que re-atar (ver el efecto). */
-  const nodoAtado = useRef<HTMLInputElement | null>(null);
-  /** Comuna vigente, para leerla al crear el widget sin meterla en las deps del
-   *  efecto (meterla ahí re-crearía el widget de Places en cada corrección). */
-  const comunaRef = useRef<string | undefined>(undefined);
 
   /** Estado 3, local: no es una respuesta del wizard, es un desvío de lectura. */
   const [sinDepto, setSinDepto] = useState(false);
@@ -130,7 +111,6 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
   const fueraDeZona = !!comuna && !isComunaDisponible(comuna);
   const puedeSeguir = confirmada && !!comuna && !fueraDeZona;
   const estado: 1 | 2 | 3 = !comuna ? 1 : sinDepto ? 3 : 2;
-  comunaRef.current = comuna;
 
   // ── Sonda de salida (I-2) ──
   // Se conserva el nombre `wizard4_dir_tipeo` para no cortar la serie del campo
@@ -158,141 +138,40 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
   }));
 
   // ── Places sobre el campo de dirección (estado 2) ──
-  //
-  // EL ENGANCHE SIGUE AL NODO VIVO, NO A UN REF GLOBAL (fix 20-ago-2026)
-  // ────────────────────────────────────────────────────────────────────
-  // El input SOLO existe en el estado 2, así que volver al 1 (cambiar de comuna)
-  // o al 3 ("todavía no tengo uno elegido") lo desmonta, y al volver React crea
-  // un nodo NUEVO. El guard original era `if (acRef.current) return`, que
-  // sobrevive al desmontaje: en el segundo montaje el efecto se iba por el
-  // return y el Autocomplete quedaba escuchando a un `<input>` que ya no estaba
-  // en el DOM. El campo que el usuario veía no estaba conectado a nada.
-  //
-  // Consecuencia medida en producción: no aparece el desplegable → nunca se
-  // setea `direccionConfirmada` → sale "Selecciona la dirección de la lista" y
-  // Continuar queda bloqueado. Camino principal roto para el ~19% de quienes
-  // tipearon (8 de 43 sesiones el 20-ago).
-  //
-  // La pantalla anterior no podía tener este bug porque su input era
-  // incondicional: vivía montado toda la visita. Es regresión de la portada.
-  //
-  // Ahora se recuerda a QUÉ NODO se ató. Si el nodo cambió, se desatan los
-  // listeners del instance viejo y se vuelve a atar al vivo.
-  useEffect(() => {
-    if (estado !== 2) return;
-    let cancelado = false;
-    loadGoogleMaps()
-      .then(() => {
-        if (cancelado) return;
-        const input = inputRef.current;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const google = (window as any).google;
-        if (!google?.maps?.places) return;
-        // La decisión vive en `entradaPlaces.ts` y está testeada: acá solo se
-        // ejecuta. "ya-atado" evita re-crear el widget en cada render, que era
-        // lo único que el guard viejo protegía bien.
-        const accion = decidirEnganche({
-          tieneInstancia: !!acRef.current,
-          nodoAtado: nodoAtado.current,
-          nodoVivo: input,
-        });
-        if (accion === "sin-nodo" || accion === "ya-atado") return;
-        if (accion === "reatar") {
-          // Atado a un nodo muerto. `Autocomplete` no tiene destroy(), así que
-          // lo más cerca es soltarle los listeners y abandonar el instance.
-          google.maps.event.clearInstanceListeners(acRef.current);
-          acRef.current = null;
-          nodoAtado.current = null;
-          // El instance viejo dejó su `.pac-container` colgado del <body> —
-          // Google los crea ahí y nunca los recoge. Sin esto queda un
-          // desplegable huérfano, con sugerencias rancias, que puede aparecer
-          // sobre el campo nuevo. Se pueden borrar TODOS sin riesgo: esta
-          // pantalla es la única con un Autocomplete montado (la del resumen
-          // vive en otra pantalla y nunca coexisten).
-          document.querySelectorAll(".pac-container").forEach((n) => n.remove());
-        }
-        // ── FILTRO DURO: la comuna elegida (y con ella, la RM) ──
-        // `componentRestrictions` solo admite país — no hay restricción por
-        // región ni por comuna en esta API. `bounds` a secas es solo un SESGO
-        // (medido: con la caja de la RM sin `strictBounds` seguían saliendo
-        // Ovalle, Valdivia y hasta Linares). `strictBounds` es el único filtro
-        // que EXCLUYE de verdad, y es el que se usa acá.
-        //
-        // Toda caja comunal viene recortada contra la de la RM, así que el piso
-        // regional no depende de que haya comuna elegida: `cajaParaComuna(null)`
-        // devuelve la RM. Nunca se vuelve a "todo Chile".
-        const ac = new google.maps.places.Autocomplete(input, {
-          types: ["address"],
-          componentRestrictions: { country: "cl" },
-          bounds: aLatLngBounds(google, cajaParaComuna(comunaRef.current)),
-          strictBounds: true,
-          fields: ["geometry", "formatted_address", "address_components"],
-        });
-        ac.addListener("place_changed", () => {
-          const place = ac.getPlace();
-          if (!place?.geometry?.location) return;
-          const plat = place.geometry.location.lat();
-          const plng = place.geometry.location.lng();
-          const addr = place.formatted_address || inputRef.current?.value || "";
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const comps = (place.address_components || []) as any[];
-          // En la RM, Google mapea la comuna a `locality` (fallback admin_level_3).
-          const comunaRaw =
-            comps.find((c) => c.types.includes("locality"))?.long_name ||
-            comps.find((c) => c.types.includes("administrative_area_level_3"))?.long_name ||
-            "";
-          const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comunaRaw.toLowerCase());
-          const comunaFinal = match?.comuna || comunaRaw;
-          const cubierta = isComunaDisponible(comunaFinal);
-          const regionRaw =
-            comps.find((c) => c.types.includes("administrative_area_level_1"))?.long_name || "";
-          sugerenciaSeleccionada.current = true;
-          regionRef.current = regionRaw || null;
-          if (!cubierta) {
-            trackWizard(posthog, "wizard4_dir_rechazo_cobertura", {
-              comuna: comunaFinal || "sin_dato",
-              region: regionRaw || "sin_dato",
-            });
-            reportarValidacionRechazo(posthog, "cobertura", "dir");
-          }
-          // REGRESIÓN-7: Google rellena el input con un texto distinto al
-          // formatted_address, y su `input` event puede correr DESPUÉS de este
-          // handler → direccion ≠ direccionConfirmada. Sincronizamos el input a
-          // la dirección canónica y usamos ESA misma cadena para ambos.
-          if (inputRef.current) inputRef.current.value = addr;
-          // La dirección MANDA sobre el chip: si el usuario tocó "Ñuñoa" y después
-          // escribió una dirección de Macul, la comuna real es Macul. El chip era
-          // una forma de arrancar, no una declaración.
-          patchAnswers({
-            direccion: addr,
-            comuna: comunaFinal,
-            ciudad: match?.ciudad || "Santiago",
-            ...(cubierta
-              ? { direccionConfirmada: addr, lat: plat, lng: plng }
-              : { direccionConfirmada: undefined, lat: undefined, lng: undefined }),
+  // El cableado del widget (enganche al nodo vivo, `strictBounds` por comuna,
+  // `setBounds` cuando Places corrige el chip, respaldo por `/api/geocode`) vive
+  // en `useDireccionPlaces`, compartido con el campo del hero de la landing. Acá
+  // queda lo que es del wizard: qué se guarda y qué se mide.
+  const { inputRef, geocodificarEscrita } = useDireccionPlaces({
+    activo: estado === 2,
+    comuna,
+    onSeleccion: (sel) => {
+      if (sel.via === "places") {
+        sugerenciaSeleccionada.current = true;
+        regionRef.current = sel.region;
+        if (!sel.cubierta) {
+          trackWizard(posthog, "wizard4_dir_rechazo_cobertura", {
+            comuna: sel.comuna || "sin_dato",
+            region: sel.region || "sin_dato",
           });
-        });
-        acRef.current = ac;
-        nodoAtado.current = input;
-      })
-      .catch(() => { /* ignore */ });
-    return () => { cancelado = true; };
-    // `posthog` es estable y solo se usa dentro del listener: re-suscribir por
-    // él re-crearía el widget de Places.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patchAnswers, estado]);
-
-  // La comuna puede cambiar SIN que el input se remonte: pasa cuando Places
-  // corrige el chip (se tocó Providencia y la dirección resultó de Ñuñoa). Ahí
-  // el widget ya existe, así que se le mueve la caja en vez de re-crearlo — con
-  // `setBounds`, que es la API que el propio widget expone para esto.
-  useEffect(() => {
-    const ac = acRef.current;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const google = (window as any).google;
-    if (!ac || !google?.maps) return;
-    ac.setBounds(aLatLngBounds(google, cajaParaComuna(comuna)));
-  }, [comuna]);
+          reportarValidacionRechazo(posthog, "cobertura", "dir");
+        }
+      }
+      // La dirección MANDA sobre el chip: si el usuario tocó "Ñuñoa" y después
+      // escribió una dirección de Macul, la comuna real es Macul. El chip era
+      // una forma de arrancar, no una declaración. Si la comuna no está
+      // cubierta se guarda igual (sin confirmar) y la pantalla cae en el
+      // rechazo de cobertura, con su captura de correo.
+      patchAnswers({
+        direccion: sel.direccion,
+        comuna: sel.comuna,
+        ciudad: sel.ciudad,
+        ...(sel.cubierta
+          ? { direccionConfirmada: sel.direccion, lat: sel.lat, lng: sel.lng }
+          : { direccionConfirmada: undefined, lat: undefined, lng: undefined }),
+      });
+    },
+  });
 
   function elegirComuna(nombre: string, origen: "chip" | "buscador") {
     const match = COMUNAS.find((c) => c.comuna === nombre);
@@ -334,53 +213,25 @@ export function EntradaScreen({ answers, data, patchAnswers, answer }: ScreenPro
   }
 
   // ── SALIDA SIN BLOQUEO ────────────────────────────────────────────────────
-  // El campo exige elegir de la lista de Places, y si Places no responde —API
-  // caída, cuota, red mala, o el bug que este commit arregla— el usuario queda
-  // encerrado: se le pide seleccionar de una lista que no ve. Un camino
-  // principal no puede tener un callejón sin salida.
-  //
-  // Acá se geocodifica lo que ESCRIBIÓ contra `/api/geocode` (endpoint que ya
-  // existía, público, con Google del lado servidor y Nominatim de respaldo).
-  // No reemplaza a Places: es lo que se ofrece recién cuando Places ya falló.
-  //
-  // La comuna se deriva del `formattedAddress` que devuelve el geocodificador,
-  // no del chip: alguien que tocó "Providencia" y escribió Irarrázaval 2100
-  // está en Ñuñoa, y así lo resuelve (verificado contra el endpoint en prod).
-  // Si la comuna derivada no está cubierta, se guarda igual y la pantalla cae
-  // en el mismo rechazo de cobertura que el camino de Places — con su captura
-  // de correo. Nunca se inventa una cobertura que no existe.
+  // Si Places no responde —API caída, cuota, red mala— el usuario no puede
+  // quedar encerrado pidiéndole elegir de una lista que no ve. El hook
+  // geocodifica lo que ESCRIBIÓ; acá solo se mide y se muestra el estado.
   async function usarDireccionEscrita() {
     const q = direccion?.trim();
     if (!q || !comuna) return;
     setFallback("buscando");
     trackWizard(posthog, "wizard4_entrada_fallback_geocode", { comuna });
-    try {
-      const r = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&comuna=${encodeURIComponent(comuna)}`);
-      const j = (await r.json()) as { lat: number | null; lng: number | null; formattedAddress?: string };
-      if (!r.ok || j.lat == null || j.lng == null) {
-        setFallback("fallo");
-        return;
-      }
-      const fmt = j.formattedAddress ?? q;
-      const d = derivarComuna(fmt, comuna);
-      trackWizard(posthog, "wizard4_entrada_fallback_resuelto", {
-        comuna: d.comuna,
-        cubierta: d.cubierta,
-        corrigio_al_chip: d.corrigioAlChip,
-      });
-      setFallback(null);
-      if (inputRef.current) inputRef.current.value = fmt;
-      patchAnswers({
-        direccion: fmt,
-        comuna: d.comuna,
-        ciudad: d.ciudad,
-        ...(d.cubierta
-          ? { direccionConfirmada: fmt, lat: j.lat, lng: j.lng }
-          : { direccionConfirmada: undefined, lat: undefined, lng: undefined }),
-      });
-    } catch {
+    const sel = await geocodificarEscrita(q, comuna);
+    if (!sel) {
       setFallback("fallo");
+      return;
     }
+    trackWizard(posthog, "wizard4_entrada_fallback_resuelto", {
+      comuna: sel.comuna,
+      cubierta: sel.cubierta,
+      corrigio_al_chip: sel.corrigioAlChip,
+    });
+    setFallback(null);
   }
 
   function verEjemplo() {

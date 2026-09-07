@@ -78,11 +78,24 @@ function PlaceholderBox({ node }: { node: NodeId }) {
 export function WizardV4({
   resume,
   comunaInicial = null,
+  direccionInicial = null,
 }: {
   resume: boolean;
   /** Comuna precargada desde ?comuna= (páginas SEO). Solo contexto: la pantalla
    *  de dirección igual exige una dirección confirmada de Places. */
   comunaInicial?: { comuna: string; ciudad: string } | null;
+  /** Dirección precargada desde el campo del hero de la landing (?direccion=
+   *  &lat=&lng=&comuna=). Viene del mismo Places, así que si la comuna está
+   *  cubierta entra CONFIRMADA; si no, entra sin confirmar y la pantalla de
+   *  entrada muestra su rechazo de cobertura. */
+  direccionInicial?: {
+    direccion: string;
+    comuna: string;
+    ciudad: string;
+    cubierta: boolean;
+    lat: number;
+    lng: number;
+  } | null;
 }) {
   const posthog = usePostHog();
   const emitEvent = useCallback(
@@ -114,6 +127,25 @@ export function WizardV4({
     w.patchAnswers({ comuna: comunaInicial.comuna, ciudad: comunaInicial.ciudad });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comunaInicial]);
+
+  // Precarga de dirección (?direccion=…, landing). Una sola vez y solo si no hay
+  // dirección ni comuna ya elegidas: nunca pisa lo que el usuario hizo ni un
+  // draft retomado. Corre después de la precarga de comuna (misma pasada de
+  // efectos) y la incluye, así una landing con dirección no depende de la otra.
+  const direccionPrecargada = useRef(false);
+  useEffect(() => {
+    if (direccionPrecargada.current || !direccionInicial) return;
+    direccionPrecargada.current = true;
+    if (nav.answers.direccion || nav.answers.direccionConfirmada) return;
+    const d = direccionInicial;
+    w.patchAnswers({
+      comuna: d.comuna,
+      ciudad: d.ciudad,
+      direccion: d.direccion,
+      ...(d.cubierta ? { direccionConfirmada: d.direccion, lat: d.lat, lng: d.lng } : {}),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [direccionInicial]);
 
   // step_viewed: una vez por cambio de nodo (guard anti-doble en StrictMode).
   const lastStep = useRef<NodeId | null>(null);
