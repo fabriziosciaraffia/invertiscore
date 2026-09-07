@@ -5,18 +5,20 @@ Receta aprobada 06-sep-2026 (chat landing): composición F3i-b, paleta T1, grano
 Regla de composición v2 (QA de Fabrizio, 07-sep-2026): el rojo ocupa una ALTURA FIJA
 medida desde abajo (`rojo`, en px de la imagen), no una proporción del lienzo. Sobre el
 bloque rojo la rampa sigue hasta papel en 1,67 × rojo (0,6 = rojo pleno); lo que quede
-más arriba es papel liso, que es el fondo de la página, así la imagen se puede recortar
-por arriba sin costura. En CSS la banda se sirve con altura fija en vh y `object-fit:
-cover` anclado abajo: hero 50 svh (rojo = 30 vh), cierre 83 svh (rojo = 50 vh).
+más arriba es papel liso #FAFAF8 puro y SIN grano (v2.1), que es el fondo de la página, así la
+imagen se puede recortar por arriba sin costura; el CSS además la enmascara en el borde superior. En CSS la banda se sirve con altura fija en vh y `object-fit:
+cover` anclado abajo: hero 62,5 svh (rojo = 30 vh), cierre 104 svh (rojo = 50 vh), con un 20 % de papel puro arriba.
 
 Uso:
   python tools/texturas/generar.py banda ANCHO ALTO ROJO salida.webp
-  # set de la landing (2x/3x, servido por <picture> + srcset, nada se estira):
-  python tools/texturas/generar.py banda 1200 1000  600 public/landing/textura-hero-m2x.webp
-  python tools/texturas/generar.py banda 1800 1500  900 public/landing/textura-hero-m3x.webp
-  python tools/texturas/generar.py banda 3000 1000  600 public/landing/textura-hero-d2x.webp   # cubre 50 svh hasta 1000 px de alto
-  python tools/texturas/generar.py banda 1200 1500  900 public/landing/textura-cierre-m2x.webp
-  python tools/texturas/generar.py banda 3000 1500  900 public/landing/textura-cierre-d2x.webp
+  # set de la landing (2x/3x, servido por <picture> + srcset, nada se estira). El alto es
+  # 1,25 × (ROJO / 0,6): el 20 % superior queda de papel puro, que es lo que la máscara CSS
+  # del borde (18 %) funde con el fondo. En CSS la banda mide 62,5 svh (hero) y 104 svh (cierre).
+  python tools/texturas/generar.py banda 1200 1250  600 public/landing/textura-hero-m2x.webp
+  python tools/texturas/generar.py banda 1800 1875  900 public/landing/textura-hero-m3x.webp
+  python tools/texturas/generar.py banda 3000 1250  600 public/landing/textura-hero-d2x.webp
+  python tools/texturas/generar.py banda 1200 1875  900 public/landing/textura-cierre-m2x.webp
+  python tools/texturas/generar.py banda 3000 1875  900 public/landing/textura-cierre-d2x.webp
   python tools/texturas/generar.py banda 1200  630  190 public/landing/og-hero.jpg   # OG (JPEG: Satori no lee WebP)
   # receta v1 (proporción del lienzo), por si hace falta reproducirla:
   python tools/texturas/generar.py hero 1440 1600 salida.webp · cierre 1440 1000 salida.webp
@@ -75,12 +77,20 @@ def render(kind, w, h, out, seed=7, rojo=None):
     bias_fn = bias_banda(h, rojo) if kind == 'banda' else COMPOSICION[kind]
     f = field(w, h, seed)
     yy, xx = np.mgrid[0:h, 0:w]
-    v = np.clip(f * FIELD_W + bias_fn(xx / w, yy / h) * (1 - FIELD_W * 0.4), 0, 1)
+    b = bias_fn(xx / w, yy / h)
     if kind == 'banda':
-        # el campo orgánico no debe manchar el papel liso de arriba: se apaga con la rampa
-        v = np.where(bias_fn(xx / w, yy / h) > 0, v, 0)
+        # el campo orgánico entra CON la rampa (pleno en su primer 12 %): si entrara de
+        # golpe donde bias > 0 dejaría un escalón de hasta 0,18 justo en el borde del
+        # papel, que es la costura que se veía (QA 07-sep).
+        f = f * np.clip(b / 0.12, 0, 1)
+    v = np.clip(f * FIELD_W + b * (1 - FIELD_W * 0.4), 0, 1)
     rgb = colormap(v)
     g = np.random.default_rng(seed).normal(0, 1, (h, w))
+    if kind == 'banda':
+        # v2.1 (costura, QA 07-sep): el tramo superior es #FAFAF8 PURO, sin grano — el
+        # grano de página lo pone la capa CSS y el empalme con el fondo tiene que ser
+        # invisible. El grano entra con la rampa (sube a pleno en el primer 12 % de ella).
+        g = g * np.clip(b / 0.12, 0, 1)
     rgb = rgb + (g[:, :, None] * GRAIN * 255)
     img = Image.fromarray(np.clip(rgb, 0, 255).astype('uint8'))
     if out.lower().endswith(('.jpg', '.jpeg')):
