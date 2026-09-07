@@ -4,7 +4,7 @@ Generador de texturas de marca — refranco.ai
 Receta aprobada 06-sep-2026 (chat landing): composición F3i-b, paleta T1, grano 0,035.
 Regla de composición v2 (QA de Fabrizio, 07-sep-2026): el rojo ocupa una ALTURA FIJA
 medida desde abajo (`rojo`, en px de la imagen), no una proporción del lienzo. Sobre el
-bloque rojo la rampa sigue hasta papel en 1,67 × rojo (0,6 = rojo pleno); lo que quede
+bloque rojo la rampa sigue hasta papel en RAMPA × rojo (1,3 desde FASE 1.5; 0,6 = rojo pleno); lo que quede
 más arriba es papel liso #FAFAF8 puro y SIN grano (v2.1), que es el fondo de la página, así la
 imagen se puede recortar por arriba sin costura; el CSS además la enmascara en el borde superior. En CSS la banda se sirve con altura fija en vh y `object-fit:
 cover` anclado abajo: hero 62,5 svh (rojo = 30 vh), cierre 104 svh (rojo = 50 vh), con un 20 % de papel puro arriba.
@@ -12,13 +12,15 @@ cover` anclado abajo: hero 62,5 svh (rojo = 30 vh), cierre 104 svh (rojo = 50 vh
 Uso:
   python tools/texturas/generar.py banda ANCHO ALTO ROJO salida.webp
   # set de la landing (2x/3x, servido por <picture> + srcset, nada se estira). El alto es
-  # 1,25 × (ROJO / 0,6): el 20 % superior queda de papel puro, que es lo que la máscara CSS
-  # del borde (18 %) funde con el fondo. En CSS la banda mide 62,5 svh (hero) y 104 svh (cierre).
-  python tools/texturas/generar.py banda 1200 1250  600 public/landing/textura-hero-m2x.webp
-  python tools/texturas/generar.py banda 1800 1875  900 public/landing/textura-hero-m3x.webp
-  python tools/texturas/generar.py banda 3000 1250  600 public/landing/textura-hero-d2x.webp
-  python tools/texturas/generar.py banda 1200 1875  900 public/landing/textura-cierre-m2x.webp
-  python tools/texturas/generar.py banda 3000 1875  900 public/landing/textura-cierre-d2x.webp
+  # 1,25 × RAMPA × ROJO: el 20 % superior queda de papel puro, que es lo que la máscara CSS
+  # del borde (18 %) funde con el fondo. En CSS la banda mide 1,625 × el rojo en vh:
+  # hero 48,75 svh (30 vh de rojo) en mobile y 42,25 svh (26 vh) en desktop; cierre 81,25 svh
+  # (50 vh) en mobile y 65 svh (40 vh) en desktop.
+  python tools/texturas/generar.py banda 1200  975  600 public/landing/textura-hero-m2x.webp
+  python tools/texturas/generar.py banda 1800 1463  900 public/landing/textura-hero-m3x.webp
+  python tools/texturas/generar.py banda 3000  975  600 public/landing/textura-hero-d2x.webp
+  python tools/texturas/generar.py banda 1200 1463  900 public/landing/textura-cierre-m2x.webp
+  python tools/texturas/generar.py banda 3000 1463  900 public/landing/textura-cierre-d2x.webp
   python tools/texturas/generar.py banda 1200  630  190 public/landing/og-hero.jpg   # OG (JPEG: Satori no lee WebP)
   # receta v1 (proporción del lienzo), por si hace falta reproducirla:
   python tools/texturas/generar.py hero 1440 1600 salida.webp · cierre 1440 1000 salida.webp
@@ -65,12 +67,16 @@ def colormap(v):
         out[m] = hexc(c0) * (1 - t) + hexc(c1) * t
     return out
 
+RAMPA = 1.3  # v2.2 (FASE 1.5): el papel llega a 1,3 × rojo (antes 1,67): rampa más corta
+
 def bias_banda(h, rojo):
-    """v2: rampa desde abajo. v = 1 en el borde inferior, 0,6 (rojo pleno) a `rojo` px,
-    0 (papel) a 1,67 × rojo; más arriba, papel liso."""
+    """v2.2: rampa desde abajo, en dos tramos. v = 1 en el borde inferior y 0,6 (rojo
+    pleno) a `rojo` px; de ahí baja a 0 (papel) en RAMPA × rojo; más arriba, papel liso."""
     def fn(x, y):
         d = (1 - y) * h                      # px desde abajo
-        return np.clip(1 - d / (rojo / 0.6), 0, 1)
+        t = d / rojo
+        v = np.where(t <= 1, 1 - 0.4 * t, 0.6 * (RAMPA - t) / (RAMPA - 1))
+        return np.clip(v, 0, 1)
     return fn
 
 def render(kind, w, h, out, seed=7, rojo=None):
