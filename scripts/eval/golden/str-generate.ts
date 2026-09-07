@@ -123,6 +123,7 @@ export async function runStrGenerateTier(
         const coronado = ordenarHallazgosPiramideSTR(r.hz)[0] ?? null;
         const archivo = opts.from ? join(opts.from, `${key}-str-run${run}.json`) : null;
         let ai: any;
+        let fallbackMotor = false;
         if (archivo && existsSync(archivo)) {
           ai = (JSON.parse(readFileSync(archivo, "utf-8")) as { result: any }).result;
           process.stderr.write(` (dump)\n`);
@@ -130,6 +131,7 @@ export async function runStrGenerateTier(
           // Simulaciones del CONGELADO: las del recompute del seed (mismo contexto sintetizado).
           // Los guards con reintento ([HERO-CLAIM], [STR-…]) se ven en la tanda: sin logger no queda rastro.
           let gen: Awaited<ReturnType<typeof generateStrProse>>;
+          fallbackMotor = false;
           try {
             gen = await conTimeout(generateStrProse({
               anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna, simulacion: r.sim,
@@ -146,6 +148,9 @@ export async function runStrGenerateTier(
           // Goal retry por campo: qué pidió cada generación (guard:campos), cuántas llamadas y si tocó el tope.
           process.stderr.write(`        ${key} llamadas=${gen.llamadas.length} quirúrgicos=${gen.quirurgicos} tope=${gen.topeAlcanzado} tokens=${gen.llamadas.reduce((n, l) => n + (l.input_tokens ?? 0), 0)}in/${gen.llamadas.reduce((n, l) => n + (l.output_tokens ?? 0), 0)}out guards=${gen.llamadas.filter((l) => l.guard).map((l) => `${l.guard}:${(l.campos ?? []).join("+")}`).join(" ") || "-"} residuo=${gen.residuo.map((x) => `${x.guard}:${x.campo}`).join(",") || "-"}\n`);
           ai = gen.ai;
+          // Goal #8b: la portada cayó al titular del MOTOR (retry sin converger y original
+          // >20 palabras o con monto). Piso diseñado, no falla; la tasa mide el retry.
+          fallbackMotor = gen.titular?.fallback === "motor";
         }
         if (!ai) { bump("gen.null"); continue; }
         genOk++;
@@ -179,6 +184,7 @@ export async function runStrGenerateTier(
         }
         // Métricas BLANDAS del titular (decisión PARÁ 2) — espejo LTR.
         if (ai.titular === null) bump("~titular-null");
+        if (fallbackMotor) bump("~titular-fallback-motor");
         const nucleoTit = typeof ai.titular === "string" ? (ai.titular.match(/\*\*([\s\S]+?)\*\*/)?.[1] ?? "") : "";
         if ((nucleoTit.trim().match(/\S+/g) || []).length > 7) bump("~titular-nucleo-largo");
 
@@ -231,7 +237,7 @@ export async function runStrGenerateTier(
 
     checks.push({ rule: `gen.runs(K=${K})`, pass: genOk === K, detail: `${genOk}/${K} generaciones OK` });
     const HARD = ["AS1.respuestaDirecta", "AS2.§9-cajaAccionable", "AS3.marcas-balanceadas", "AS4.titular", "AS5.copia-fraseCanonica", "AS6.modalidad-contra-signo", "gen.null"];
-    const SOFT = ["~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado"];
+    const SOFT = ["~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado", "~titular-fallback-motor"];
     const esReglaDeProsa = (r: string) => r.startsWith("AS");
     const umbralMayoria = Math.floor(K / 2);
     for (const r of HARD) {

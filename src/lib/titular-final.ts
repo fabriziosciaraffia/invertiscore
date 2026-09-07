@@ -17,17 +17,30 @@
 //      o dos palabras, sin montos. Sin hallazgo usable: etiqueta + la respuesta fija
 //      del motor al veredicto ("Todavía no: tienes que ajustar los supuestos.").
 //
+// STR (goal #8b · 07-sep-2026) reutiliza la misma cadena con dos diferencias propias:
+//   · el orden es el de la pirámide STR (piramide-orden-str.ts) y el hallazgo que
+//     manda el titular tiene que ir en la DIRECCIÓN del veredicto (COMPRAR → favorable,
+//     BUSCAR OTRA → adverso, AJUSTA → el 01 tal cual, que es la palanca): el 01 STR
+//     puede ser adverso con COMPRAR (efe52b6a: ocupación supuesta > estimada) y un
+//     «**Comprar.** Supusiste más ocupación…» contradice la banda.
+//   · el motor STR no antepone respuesta fija a la prosa: el último recurso es la
+//     LÍNEA FIJA STR de abajo (copy de Fabrizio, 07-sep), no el prompt.
+//
 // Módulo PURO (sin React, sin DB, sin API): lo ejercita el catch-test
 // scripts/eval/golden/titular-final-catch-test.ts dentro del QUICK.
 // ============================================================================
 
-import type { Hallazgo } from "./types";
+import type { Hallazgo, Veredicto } from "./types";
 import { evaluarTitular, normalizarMarcasTitular, stripMarcas, validarTitular, type NivelTitular } from "./prosa-marcas";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 import { ordenarHallazgosUnico } from "./orden-hallazgos";
+import { ordenarHallazgosPiramideSTR } from "./piramide-orden-str";
 
 /** Con qué quedó la portada. `ia` = el original validó a la primera. */
 export type ViaTitular = "ia" | "reescrito" | "escalon" | "motor";
+
+/** Qué orden de hallazgos manda el titular del motor. */
+export type OrdenTitular = "ltr" | "str";
 
 export interface TitularResuelto {
   /** Nunca vacío. */
@@ -39,35 +52,81 @@ export interface TitularResuelto {
   motivo: string | null;
 }
 
+/** Último recurso STR por veredicto (sin hallazgo usable). Copy de Fabrizio (07-sep-2026);
+ *  vive acá y no en el prompt: el modelo nunca lo ve. */
+export const LINEA_FIJA_STR: Record<Veredicto, string> = {
+  COMPRAR: "En renta corta se sostiene solo.",
+  "AJUSTA SUPUESTOS": "En renta corta cierra con un ajuste.",
+  "BUSCAR OTRA": "En renta corta no cierra.",
+};
+
+export function lineaFijaStr(veredicto: string): string {
+  return (LINEA_FIJA_STR as Record<string, string>)[veredicto] ?? "";
+}
+
+/** Dirección del hallazgo que puede cargar el titular del motor: la del veredicto.
+ *  AJUSTA no filtra (su 01 es la palanca, adversa por definición). */
+export function direccionPreferidaTitular(veredicto: string): Hallazgo["direccion"] | null {
+  if (veredicto === "COMPRAR") return "favorable";
+  if (veredicto === "BUSCAR OTRA") return "adverso";
+  return null;
+}
+
 const tieneMonto = (s: string): boolean => /\$\s?\d/.test(s) || /\bUF\s?[\d.]/i.test(s);
 
-/** Primer hallazgo del orden único con titular corto, sin marcas ni montos. */
-function titularHallazgoTop(hallazgos: Hallazgo[] | null | undefined): string | null {
-  for (const h of ordenarHallazgosUnico(hallazgos)) {
-    const t = typeof h?.titular === "string" ? stripMarcas(h.titular).trim() : "";
-    if (!t || tieneMonto(t)) continue;
-    return /[.!?…]$/.test(t) ? t : `${t}.`;
+const titularCorto = (h: Hallazgo | null | undefined): string | null => {
+  const t = typeof h?.titular === "string" ? stripMarcas(h.titular).trim() : "";
+  if (!t || tieneMonto(t)) return null;
+  return /[.!?…]$/.test(t) ? t : `${t}.`;
+};
+
+/** Primer hallazgo del orden con titular corto usable (sin marcas ni montos). Con
+ *  `direccion`, primero el primero que va en esa dirección; si ninguno sirve, el
+ *  primero usable del orden (nunca se queda sin candidato por el filtro). */
+function titularHallazgoTop(
+  hallazgos: Hallazgo[] | null | undefined,
+  orden: OrdenTitular,
+  direccion: Hallazgo["direccion"] | null,
+): string | null {
+  const lista = orden === "str" ? ordenarHallazgosPiramideSTR(hallazgos) : ordenarHallazgosUnico(hallazgos);
+  if (direccion) {
+    for (const h of lista) {
+      if (h?.direccion !== direccion) continue;
+      const t = titularCorto(h);
+      if (t) return t;
+    }
+  }
+  for (const h of lista) {
+    const t = titularCorto(h);
+    if (t) return t;
   }
   return null;
+}
+
+export interface TitularMotorArgs {
+  veredicto: string;
+  hallazgos: Hallazgo[] | null | undefined;
+  /** Último recurso sin hallazgo usable: LTR la respuesta fija del motor
+   *  (ai-generation.ts, `respuestaVeredicto`); STR `lineaFijaStr(veredicto)`. */
+  respuestaFija: string;
+  /** Orden de hallazgos que manda. Default "ltr" (orden único). */
+  orden?: OrdenTitular;
+  /** Dirección exigida al hallazgo que carga el titular (STR: `direccionPreferidaTitular`). */
+  direccionPreferida?: Hallazgo["direccion"] | null;
 }
 
 /**
  * Titular del motor, sin IA: «**Etiqueta.** Titular del hallazgo top.» Si ningún
  * hallazgo sirve (sin titular, con monto, o el resultado supera las 20 palabras),
- * «**Etiqueta.** Respuesta fija del motor.» Devuelve siempre un string no vacío
- * mientras `veredicto` o `respuestaFija` traigan algo.
+ * «**Etiqueta.** Respuesta fija.» Devuelve siempre un string no vacío mientras
+ * `veredicto` o `respuestaFija` traigan algo.
  */
-export function titularMotor(p: {
-  veredicto: string;
-  hallazgos: Hallazgo[] | null | undefined;
-  /** Respuesta fija del motor al veredicto (ai-generation.ts, `respuestaVeredicto`). */
-  respuestaFija: string;
-}): string {
+export function titularMotor(p: TitularMotorArgs): string {
   const etiqueta = etiquetaVeredicto(p.veredicto, "frase", p.veredicto).trim();
   const cabeza = etiqueta ? `**${etiqueta.replace(/\.$/, "")}.**` : "";
   const armar = (cuerpo: string): string => (cabeza && cuerpo ? `${cabeza} ${cuerpo}` : cabeza || cuerpo);
 
-  const top = titularHallazgoTop(p.hallazgos);
+  const top = titularHallazgoTop(p.hallazgos, p.orden ?? "ltr", p.direccionPreferida ?? null);
   if (top) {
     const candidato = armar(top);
     if (evaluarTitular(candidato).nivel !== "invalido") return candidato;
@@ -82,13 +141,7 @@ export function titularMotor(p: {
  * generación principal (puede ser cualquier cosa); `reescrito` el texto del retry
  * dirigido (null si no hubo o la API falló). Nunca devuelve vacío ni null.
  */
-export function resolverTitular(p: {
-  original: unknown;
-  reescrito: string | null;
-  veredicto: string;
-  hallazgos: Hallazgo[] | null | undefined;
-  respuestaFija: string;
-}): TitularResuelto {
+export function resolverTitular(p: TitularMotorArgs & { original: unknown; reescrito: string | null }): TitularResuelto {
   const original = typeof p.original === "string" ? p.original.trim() : "";
   if (original && validarTitular(original).ok) {
     return { titular: original, via: "ia", nivel: "valido", motivo: null };
@@ -105,7 +158,7 @@ export function resolverTitular(p: {
     return { titular: normalizarMarcasTitular(c.texto), via: c.via, nivel: ev.nivel, motivo: ev.motivo };
   }
 
-  const motor = titularMotor({ veredicto: p.veredicto, hallazgos: p.hallazgos, respuestaFija: p.respuestaFija });
+  const motor = titularMotor(p);
   const ev = evaluarTitular(motor);
   return {
     titular: motor,

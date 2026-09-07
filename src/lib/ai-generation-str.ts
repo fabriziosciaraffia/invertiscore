@@ -26,7 +26,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { acumularUsage, nuevoAcumuladorUsage, type AiUsage } from "@/lib/ai-usage";
-import { nuevoRegistroLlamadas, type LlamadaTiming } from "@/lib/pipeline-timing";
+import { nuevoRegistroLlamadas, type LlamadaTiming, type TitularTiming } from "@/lib/pipeline-timing";
 import { findNearestStation } from "@/lib/metro-stations";
 import {
   CLINICAS,
@@ -1177,8 +1177,9 @@ import {
   razonesHeroClaimStrTexto, STR_ENGINEISM_RE, PROSA_RETRY_PATHS_STR, PATHS_SIN_RENDER_STR, type ReglaStr,
 } from "./str-guards";
 import { derivarCifraClaveStr, captionDeCifraClave } from "./cifra-clave";
-import { validarTitular, evaluarTitular, normalizarMarcasTitular, marcasBalanceadas, stripMarcas } from "./prosa-marcas";
+import { validarTitular, marcasBalanceadas, stripMarcas } from "./prosa-marcas";
 import { reescribirTitular } from "./titular-retry";
+import { resolverTitular, lineaFijaStr, direccionPreferidaTitular } from "./titular-final";
 import { retryQuirurgico, agruparPorCampo, type ArgsRetryQuirurgico } from "./retry-quirurgico";
 export { cifrasFueraDeInput };
 
@@ -1342,6 +1343,9 @@ export interface GenerateStrProseResult {
   /** Timing por llamada LLM (Goal A). Mismo contrato que usage: lo persiste el
    *  CALLER (route → pipeline_timing); los scripts pueden ignorarlo. */
   llamadas: LlamadaTiming[];
+  /** Guard del titular (goal #8b): qué pasó cuando validarTitular rechazó el original;
+   *  ausente si validó a la primera. El CALLER lo persiste en pipeline_timing. */
+  titular?: TitularTiming;
 }
 
 function parseStrJson(raw: string): AIAnalysisSTRv2 | null {
@@ -1365,6 +1369,8 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   const simulacion = args.simulacion ?? null;
   const maxTries = args.maxTries ?? 3;
   const log = args.logger ?? (() => {});
+  // Guard del titular (goal #8b): se llena solo si validarTitular rechazó el original.
+  let titularTiming: TitularTiming | undefined;
   const { userPrompt, veredictoMotor, cardFrases } = buildUserPromptSTR(inp, r, comuna, simulacion);
 
   // Detectores que piden reintento QUIRÚRGICO por campo: HARD drift (invariante que no
@@ -1789,25 +1795,46 @@ Responde SOLO este JSON, sin texto alrededor:
           })
         : null;
       if (typeof t === "string" && t.trim() && !topeAlcanzado) { quirurgicos += 1; usedTries += 1; }
-      // El retry devuelve siempre su texto (goal #8); acá se conserva el comportamiento
-      // STR de antes: solo se usa si valida. El fallback STR queda fuera de ese goal.
-      if (reescrito?.valido) {
-        log(`[TITULAR-REESCRITO] ${v.motivo} — corregido por retry dirigido`);
-        (best as { titular?: string | null }).titular = reescrito.texto;
-      } else {
+      // Resolución determinista (goal #8b, 07-sep-2026 · titular-final.ts, paridad con
+      // LTR): el titular final es un string POR CONSTRUCCIÓN — reescrito → escalón del
+      // original → titular del motor («**Etiqueta.** Titular del hallazgo.», con el
+      // hallazgo en la dirección del veredicto y el orden de la pirámide STR) → etiqueta
+      // + línea fija STR. Antes esta rama terminaba en null (portada sin titular).
+      const original = typeof t === "string" ? t.trim() : "";
+      const palabras = (original.match(/\S+/g) || []).length;
+      const cita = (x: string | null | undefined): string => (x ? `«${x}»` : "null");
+      const res = resolverTitular({
+        original,
+        reescrito: reescrito?.texto ?? null,
+        veredicto: veredictoMotor,
+        hallazgos: r.hallazgos,
+        respuestaFija: lineaFijaStr(veredictoMotor),
+        orden: "str",
+        direccionPreferida: direccionPreferidaTitular(veredictoMotor),
+      });
+      const infoReescrito = `reescrito: ${cita(reescrito?.texto)}${reescrito && !reescrito.valido && reescrito.motivo ? ` (${reescrito.motivo})` : ""}`;
+      if (res.via === "escalon") {
         // ESCALÓN (decisión PARÁ 3) — espejo LTR: 16-20 palabras sin montos se
-        // renderiza con violación blanda; marcas rotas se normalizan; montos o
-        // >20 → null.
-        const ev = evaluarTitular(t);
-        if (ev.nivel !== "invalido" && typeof t === "string") {
-          if (ev.nivel === "largo_renderizable") log(`[TITULAR-LARGO-RENDERIZADO] ${ev.motivo}`);
-          else log(`[TITULAR-MARCAS-NORMALIZADAS] ${v.motivo} — se renderiza normalizado`);
-          (best as { titular?: string | null }).titular = normalizarMarcasTitular(t.trim());
-        } else {
-          log(`[TITULAR-INVALIDO] ${ev.motivo ?? v.motivo} — titular descartado (portada sin titular)`);
-          (best as { titular?: string | null }).titular = null;
-        }
+        // renderiza con violación blanda; marcas rotas se normalizan.
+        if (res.nivel === "largo_renderizable") log(`[TITULAR-LARGO-RENDERIZADO] ${res.motivo} — ${infoReescrito}`);
+        else log(`[TITULAR-MARCAS-NORMALIZADAS] ${v.motivo} — se renderiza normalizado — ${infoReescrito}`);
+      } else {
+        log(
+          `[TITULAR-DESCARTADO] ${cita(original)} (${palabras} palabras) — motivo: ${v.motivo} — ${infoReescrito}` +
+            ` — fallback: ${res.via}${res.nivel === "largo_renderizable" ? " (largo renderizable)" : ""} ${cita(res.titular)}`,
+        );
       }
+      (best as { titular?: string }).titular = res.titular;
+      titularTiming = {
+        original,
+        motivo: v.motivo ?? "",
+        palabras,
+        reescrito: reescrito?.texto ?? null,
+        reescrito_motivo: reescrito ? reescrito.motivo : null,
+        // "ia" es imposible acá: validarTitular ya rechazó el original.
+        fallback: res.via === "ia" ? "reescrito" : res.via,
+        final: res.titular,
+      };
     }
     const stripDesbalance = (nodo: Record<string, unknown>): void => {
       for (const [k, val] of Object.entries(nodo)) {
@@ -1853,5 +1880,5 @@ Responde SOLO este JSON, sin texto alrededor:
 
   best.promptVersion = PROMPT_VERSION_STR;
 
-  return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, cifrasFuera, residuo, quirurgicos, topeAlcanzado, tries: usedTries, usage, llamadas: reg.llamadas };
+  return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, cifrasFuera, residuo, quirurgicos, topeAlcanzado, tries: usedTries, usage, llamadas: reg.llamadas, ...(titularTiming ? { titular: titularTiming } : {}) };
 }

@@ -132,6 +132,7 @@ export async function generarYPersistirProsaStr(args: {
       resultado: "ok",
       prompt_version: PROMPT_VERSION_STR,
       llamadas: gen.llamadas,
+      ...(gen.titular ? { titular: gen.titular } : {}),
     });
     return ai;
   } catch (genError) {

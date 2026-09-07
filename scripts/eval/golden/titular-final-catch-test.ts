@@ -11,7 +11,7 @@
 // Corre dentro del QUICK del runner (tier "titular") y standalone:
 //   node --import tsx scripts/eval/golden/titular-final-catch-test.ts
 // ============================================================================
-import { resolverTitular, titularMotor } from "../../../src/lib/titular-final";
+import { resolverTitular, titularMotor, lineaFijaStr, direccionPreferidaTitular } from "../../../src/lib/titular-final";
 import { evaluarTitular, stripMarcas } from "../../../src/lib/prosa-marcas";
 import type { Hallazgo } from "../../../src/lib/types";
 
@@ -27,6 +27,12 @@ const FLUJO = hallazgo("flujo_mensual", "Pones algo de tu bolsillo cada mes.", 0
 const SOBREPRECIO = hallazgo("sobreprecio", "Entras barato: el metro está bajo la mediana comunal.", 1, "favorable");
 const CON_MONTO = hallazgo("cap_rate", "Te faltan $283.194 al mes.", 1, "adverso");
 const RESPUESTA_AJUSTA = "Todavía no: tienes que ajustar los supuestos.";
+// STR: ids reales de la pirámide (rentabilidad_str, ocupacion_vs_estimacion, ventaja_vs_ltr, flujo_str).
+const STR_RENTABILIDAD_ADVERSA = hallazgo("rentabilidad_str", "La rentabilidad operativa se queda corta.", 1, "adverso");
+const STR_RENTABILIDAD_FAVORABLE = hallazgo("rentabilidad_str", "El metro cuadrado rinde de sobra en corto.", 1, "favorable");
+const STR_OCUPACION_ADVERSA = hallazgo("ocupacion_vs_estimacion", "Supusiste más ocupación que la que estima el mercado.", 1, "adverso");
+const STR_VS_LTR = hallazgo("ventaja_vs_ltr", "El corto le saca ventaja clara al arriendo largo.", 0.68, "favorable");
+const STR_FLUJO = hallazgo("flujo_str", "Pones plata de tu bolsillo todos los meses.", 0.28, "adverso");
 
 const VEINTICINCO =
   "Buen depto pero **el arriendo no cubre la cuota** y además la comuna viene cara, el pie es corto y la tasa no ayuda nada.";
@@ -121,6 +127,62 @@ const CASOS: Caso[] = [
         if (evaluarTitular(t).nivel === "invalido") return `inválido: «${t}»`;
         if (r.via === "motor" && pares(t) !== 1) return `plumón: ${pares(t)} pares en «${t}»`;
         if (r.via === "motor" && palabras(t) > 15) return `${palabras(t)} palabras en «${t}»`;
+      }
+      return null;
+    },
+  },
+  // ── STR (goal #8b · 07-sep-2026): misma cadena, orden de la pirámide STR, hallazgo en la
+  // dirección del veredicto y línea fija STR como último recurso (espejo de efe52b6a y
+  // eb7b3a66; los hallazgos STR reales llevan ids y direcciones como estos). ──
+  {
+    nombre: "STR · 25 palabras + retry sin converger → titular del motor, portada no vacía",
+    check: () => {
+      const r = resolverTitular({
+        original: VEINTICINCO, reescrito: null, veredicto: "AJUSTA SUPUESTOS",
+        hallazgos: [STR_RENTABILIDAD_ADVERSA, STR_VS_LTR, STR_FLUJO],
+        respuestaFija: lineaFijaStr("AJUSTA SUPUESTOS"), orden: "str", direccionPreferida: direccionPreferidaTitular("AJUSTA SUPUESTOS"),
+      });
+      if (r.via !== "motor") return `via ${r.via}`;
+      if (r.titular !== "**Ajustar.** La rentabilidad operativa se queda corta.") return `titular «${r.titular}»`;
+      return null;
+    },
+  },
+  {
+    nombre: "STR · COMPRAR con 01 adverso → el titular toma el primer favorable",
+    check: () => {
+      const r = resolverTitular({
+        original: VEINTICINCO, reescrito: null, veredicto: "COMPRAR",
+        hallazgos: [STR_OCUPACION_ADVERSA, STR_RENTABILIDAD_FAVORABLE, STR_VS_LTR],
+        respuestaFija: lineaFijaStr("COMPRAR"), orden: "str", direccionPreferida: direccionPreferidaTitular("COMPRAR"),
+      });
+      if (r.via !== "motor") return `via ${r.via}`;
+      if (r.titular !== "**Comprar.** El metro cuadrado rinde de sobra en corto.") return `titular «${r.titular}»`;
+      return null;
+    },
+  },
+  {
+    nombre: "STR · BUSCAR OTRA toma el adverso aunque un favorable ordene antes",
+    check: () => {
+      const r = resolverTitular({
+        original: "", reescrito: null, veredicto: "BUSCAR OTRA",
+        hallazgos: [STR_VS_LTR, STR_RENTABILIDAD_ADVERSA],
+        respuestaFija: lineaFijaStr("BUSCAR OTRA"), orden: "str", direccionPreferida: direccionPreferidaTitular("BUSCAR OTRA"),
+      });
+      return r.titular === "**Buscar otro.** La rentabilidad operativa se queda corta." ? null : `titular «${r.titular}»`;
+    },
+  },
+  {
+    nombre: "STR · sin hallazgos → etiqueta + línea fija STR, los tres veredictos",
+    check: () => {
+      const esperado: Record<string, string> = {
+        COMPRAR: "**Comprar.** En renta corta se sostiene solo.",
+        "AJUSTA SUPUESTOS": "**Ajustar.** En renta corta cierra con un ajuste.",
+        "BUSCAR OTRA": "**Buscar otro.** En renta corta no cierra.",
+      };
+      for (const [v, e] of Object.entries(esperado)) {
+        const r = resolverTitular({ original: VEINTICINCO, reescrito: null, veredicto: v, hallazgos: [], respuestaFija: lineaFijaStr(v), orden: "str", direccionPreferida: direccionPreferidaTitular(v) });
+        if (r.titular !== e) return `${v}: «${r.titular}»`;
+        if (evaluarTitular(r.titular).nivel === "invalido" || pares(r.titular) !== 1) return `${v}: no renderizable «${r.titular}»`;
       }
       return null;
     },
