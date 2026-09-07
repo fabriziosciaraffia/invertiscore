@@ -101,11 +101,25 @@ export function CampoDireccion({ ubicacion }: { ubicacion: UbicacionCampo }) {
     return () => clearTimeout(t);
   }, [animar, ubicacion]);
 
+  const boxRef = useRef<HTMLFormElement>(null);
   const onFocus = () => {
     setEnfocado(true);
     if (!focoMedido.current) {
       focoMedido.current = true;
       posthog?.capture(EV.ctaFocus, { ubicacion });
+    }
+    // El desplegable de Places cuelga del <body> con el ancho del <input>. Se le
+    // pasa por variables CSS el borde izquierdo y el ancho exacto del cuadro
+    // (input + botón) para que calce con el campo (ver `.pac-container` en
+    // landing.css). En mobile, además, el campo sube a ~96 px del borde: el
+    // bloque vive en el tercio inferior y el teclado tapaba la lista.
+    const box = boxRef.current;
+    if (!box) return;
+    const r = box.getBoundingClientRect();
+    document.documentElement.style.setProperty("--lv-pac-x", `${Math.round(r.left)}px`);
+    document.documentElement.style.setProperty("--lv-pac-w", `${Math.round(r.width)}px`);
+    if (window.innerWidth < 900) {
+      window.scrollTo({ top: Math.max(0, r.top + window.scrollY - 96), behavior: "smooth" });
     }
   };
 
@@ -133,7 +147,9 @@ export function CampoDireccion({ ubicacion }: { ubicacion: UbicacionCampo }) {
 
   return (
     <div className="lv-campo">
-      <form className="lv-box" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
+      <form ref={boxRef} className="lv-box" onSubmit={enviar} role="search" aria-label="Dirección del departamento">
+        {/* el brillo vive en su propia capa con overflow propio: el cuadro ya no recorta nada */}
+        <span className="lv-sheen" aria-hidden="true" />
         <span className="lv-tx">
           <input
             ref={inputRef}

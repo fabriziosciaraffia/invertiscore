@@ -9,7 +9,6 @@
 //     (`MapaPuntos`, datos por /api/landing/mapa-puntos, ISR 24 h), en loop.
 //  3. Etiquetas de comuna en su centroide real (mapa-puntos.gen.json, de
 //     tools/mapa/puntos.mjs), en un SVG inline con la misma proyección.
-//  4. "BASE DE DATOS EN VIVO" arriba a la izquierda, con el punto latiendo.
 //
 // El contenedor lleva una máscara en los cuatro bordes (CSS) para que el mapa
 // flote sobre la tinta, sin rectángulo. La atribución de OpenStreetMap (ODbL)
@@ -62,7 +61,6 @@ export function MapaSantiago() {
           ))}
         </svg>
       </div>
-      <div className="lv-map-titulo"><i />Base de datos en vivo</div>
     </div>
   );
 }

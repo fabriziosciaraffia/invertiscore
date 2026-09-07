@@ -2,14 +2,7 @@ import Link from "next/link";
 
 interface FrancoLogoProps {
   size?: "sm" | "header" | "md" | "lg" | "xl";
-  /** Sin efecto desde hace tiempo (14 llamadas lo pasan). Se conserva para no
-   *  tocarlas; el wordmark ya toma el tema de los tokens `--franco-wm-*`. */
   inverted?: boolean;
-  /** Sobre fondo de marca (la textura roja del cierre de la landing): todo en
-   *  papel. El `.ai` en Signal Red sobre rojo da 1,0:1 — invisible —, y el "re"
-   *  fantasma sube a .75 porque al .28 no llega a 3:1 (medido en FASE 0 del goal
-   *  landing v14). Único caso en que el `.ai` no va en rojo. */
-  onBrand?: boolean;
   showTagline?: boolean;
   className?: string;
   href?: string;
@@ -27,7 +20,6 @@ export default function FrancoLogo({
   size = "md",
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   inverted = false,
-  onBrand = false,
   showTagline = false,
   className = "",
   href,
@@ -39,19 +31,19 @@ export default function FrancoLogo({
       <span className={`${s.text} leading-tight flex items-baseline`}>
         <span
           className="font-heading italic font-normal transition-colors duration-300"
-          style={{ color: onBrand ? 'rgba(250,250,248,0.75)' : 'var(--franco-wm-re)', marginRight: '-0.08em' }}
+          style={{ color: 'var(--franco-wm-re)', marginRight: '-0.08em' }}
         >
           re
         </span>
         <span
           className="font-heading font-bold transition-colors duration-300"
-          style={{ color: onBrand ? '#FAFAF8' : 'var(--franco-wm-franco)' }}
+          style={{ color: 'var(--franco-wm-franco)' }}
         >
           franco
         </span>
         <span
-          className={`font-body font-semibold ${s.dot} tracking-wide`}
-          style={{ fontSize: '0.35em', letterSpacing: '0.1em', color: onBrand ? '#FAFAF8' : '#C8323C' }}
+          className={`font-body font-semibold text-[#C8323C] ${s.dot} tracking-wide`}
+          style={{ fontSize: '0.35em', letterSpacing: '0.1em' }}
         >
           .ai
         </span>

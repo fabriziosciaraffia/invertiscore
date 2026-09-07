@@ -112,20 +112,43 @@
   position: relative; display: flex; align-items: center; height: 68px;
   background: #fff; padding: 0 6px 0 20px;
   box-shadow: 0 26px 60px -24px rgba(60, 10, 14, 0.5);
-  overflow: hidden;
 }
-/* brillo que recorre el cuadro: neutro (dejó el tinte rojo) */
-.lv-box::after {
-  content: ""; position: absolute; top: 0; bottom: 0; width: 38%; left: -45%; pointer-events: none;
+/* brillo que recorre el cuadro: neutro (dejó el tinte rojo). Vive en su propia
+   capa con overflow propio, así el cuadro no recorta nada (FASE 1.4). */
+.lv-sheen { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.lv-sheen::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 38%; left: -45%;
   background: linear-gradient(100deg, transparent, rgba(15, 15, 15, 0.05), transparent);
   animation: lv-sheen 4.2s ease-in-out infinite;
 }
+/* desplegable de Google Places (cuelga del <body>): ancho exacto del cuadro, sin
+   radios, Plex 17 px, ítems de 48 px, sobre todo lo demás. Solo con la landing
+   montada: el wizard conserva el suyo. */
+html:has(.lv-root) .pac-container {
+  left: var(--lv-pac-x, auto) !important; width: var(--lv-pac-w, auto) !important;
+  margin-top: 2px; border: 0; border-radius: 0; background: #fff; z-index: 3000;
+  box-shadow: 0 26px 60px -24px rgba(60, 10, 14, 0.5);
+  font-family: var(--font-body), "IBM Plex Sans", system-ui, sans-serif;
+}
+html:has(.lv-root) .pac-container::after { display: none; }
+html:has(.lv-root) .pac-item {
+  height: 48px; line-height: 48px; padding: 0 20px; border-top: 1px solid #E8E6E1;
+  font-family: inherit; font-size: 17px; color: #3A3A3A; cursor: pointer;
+}
+html:has(.lv-root) .pac-item:first-child { border-top: 0; }
+html:has(.lv-root) .pac-item:hover, html:has(.lv-root) .pac-item-selected { background: #F6F6F7; }
+html:has(.lv-root) .pac-icon { display: none; }
+html:has(.lv-root) .pac-item-query { font-size: 17px; color: #0F0F0F; }
+html:has(.lv-root) .pac-matched { font-weight: 500; }
 @keyframes lv-sheen { 0%, 55% { left: -45%; } 85%, 100% { left: 110%; } }
 .lv-tx { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; }
 .lv-input {
   position: relative; z-index: 1; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; outline: 0;
   background: transparent; font: inherit; font-size: 19px; color: var(--lv-ink); caret-color: var(--lv-ink);
 }
+/* globals.css fija input { font-size: 16px !important } bajo 640 px (anti-zoom de iOS);
+   acá el campo va a 19 px, que también evita el zoom, y hace falta el mismo peso. */
+html:has(.lv-root) .lv-input { font-size: 19px !important; }
 .lv-input::placeholder { color: transparent; }
 .lv-ph {
   position: absolute; inset: 0; display: flex; align-items: center; pointer-events: none;
@@ -190,7 +213,9 @@
      los 24px laterales (su bug de padding); con la columna real "buena
      inversión?" se partía en tres líneas. Este clamp mantiene el h1 en las DOS
      líneas que exige el contrato: a 390 y en la mitad izquierda de 1200. */
-  font-weight: 700; font-size: clamp(38px, 10vw, 78px); line-height: 0.96; letter-spacing: -0.03em;
+  /* FASE 1.4: a 390 "buena inversión?" pasa a tres líneas desde 42 px (medido con
+     Range: 40 px = 2 líneas, 42 px = 3); 10,3vw da 40 px. Desktop hasta 120 px. */
+  font-weight: 700; font-size: clamp(38px, 10.3vw, 78px); line-height: 0.96; letter-spacing: -0.03em;
 }
 .lv-h1 mark { background: linear-gradient(transparent 60%, var(--lv-plumon) 60%); }
 .lv-hero .lv-campo { margin-top: 0; }
@@ -206,11 +231,15 @@
 @keyframes lv-arr { 50% { transform: translateX(5px); } }
 
 /* ===== 2 LA RESPUESTA ===== */
-.lv-s2 { padding: var(--lv-sec) 0; }
-/* mobile: usa toda la pantalla, contenido centrado (FASE 1.3) */
-@media (max-width: 899px) { .lv-s2 { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; } }
-.lv-s2-izq { min-width: 0; }
-.lv-ans { margin-top: 22px; }
+/* pantalla completa; etiqueta arriba con aire, bloque de respuesta al centro,
+   "Tres respuestas posibles" + chips abajo (FASE 1.4, mobile y desktop) */
+.lv-s2 { padding: var(--lv-sec) 0; min-height: 100svh; display: flex; flex-direction: column; }
+.lv-s2 > .lv-col { flex: 1; display: flex; flex-direction: column; }
+.lv-s2-grid-inner { flex: 1; display: flex; flex-direction: column; }
+.lv-s2-izq { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.lv-s2-izq .lv-idx { margin-bottom: auto; }
+.lv-s2-izq .lv-ans { margin: auto 0; padding: 32px 0; }
+.lv-nav { margin-top: auto; }
 /* sin data-verdict (no debería pasar) los tokens caen a Ink */
 .lv-ans:not([data-verdict]), .lv-chip:not([data-verdict]) {
   --verdict: var(--lv-ink); --verdict-deep: var(--lv-ink); --verdict-band-0: var(--lv-ink);
@@ -259,7 +288,7 @@
 .lv-prog { height: 2px; background: var(--lv-ll); margin-top: 14px; overflow: hidden; }
 .lv-prog i { display: block; height: 100%; background: var(--verdict); width: 0; }
 .lv-nav {
-  margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--lv-ink);
+  padding-top: 18px; border-top: 1px solid var(--lv-ink);
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
 .lv-nav .lv-lbl { font-size: 15px; color: var(--lv-g2); }
@@ -273,8 +302,8 @@
 .lv-chip.on { color: #fff; border-color: transparent; background: var(--verdict); }
 
 /* ===== 3 POR QUÉ CREERLE (tinta) ===== */
-.lv-s3 { background: var(--lv-ink); color: var(--lv-paper); padding: var(--lv-sec) 0; }
-.lv-s3 .lv-idx { color: #9a9a9a; }
+.lv-s3 { background: var(--lv-ink); color: var(--lv-paper); padding: var(--lv-sec) 0; min-height: 100svh; }
+.lv-s3 .lv-idx { color: #9a9a9a; margin-bottom: 28px; }
 /* "44.256 deptos" en UNA línea: 13 caracteres de mono; a 390 caben a 43 px */
 .lv-big {
   margin-top: 18px; white-space: nowrap;
@@ -282,14 +311,14 @@
   font-weight: 700; font-size: clamp(38px, 11vw, 76px); line-height: 1; letter-spacing: -0.04em;
 }
 /* "Base de datos · actualizado hoy HH:MM": mono chico, punto latiendo (el único rojo) */
-.lv-base, .lv-map-titulo {
+.lv-base {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-weight: 500; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #9a9a9a;
   display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
 }
 .lv-base { margin-top: 10px; }
-.lv-base i, .lv-map-titulo i { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--lv-red); display: inline-block; flex: none; }
-.lv-base i::after, .lv-map-titulo i::after {
+.lv-base i { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--lv-red); display: inline-block; flex: none; }
+.lv-base i::after {
   content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 1.5px solid var(--lv-red);
   animation: lv-live 2s ease-out infinite;
 }
@@ -328,7 +357,7 @@
 /* mapa: calles como <img> (estático, cacheado aparte) + canvas con todos los
    avisos + capa inline con etiquetas. Las tres capas comparten el viewBox. El
    contenedor lleva máscara en los cuatro bordes (~12 %) para flotar sobre la
-   tinta; el título "BASE DE DATOS EN VIVO" va superpuesto arriba a la izquierda. */
+   tinta. */
 .lv-mapa { position: relative; margin-top: 32px; }
 .lv-mapwrap {
   position: relative; width: 100%;
@@ -337,7 +366,6 @@
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
 }
-.lv-map-titulo { position: absolute; top: 10px; left: 12px; color: var(--lv-paper); }
 .lv-map-calles { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; animation: lv-fade 0.8s 0.1s ease-out forwards; }
 .lv-map-puntos { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .lv-map-capa { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -356,8 +384,11 @@
 .lv-s3[data-anim="listo"]:not([data-visto]) .lv-lb { animation: none; }
 
 /* ===== 4 CIERRE ===== */
-.lv-s4 { position: relative; padding: var(--lv-sec) 0 28px; overflow: hidden; }
-.lv-s4 > .lv-col { z-index: 1; }
+/* como el hero: título arriba con su aire, el bloque del campo al tercio
+   inferior sobre la banda; la textura termina en rojo (FASE 1.4) */
+.lv-s4 { position: relative; padding: var(--lv-sec) 0 28px; overflow: hidden; min-height: 100svh; display: flex; flex-direction: column; }
+.lv-s4 > .lv-col { z-index: 1; flex: 1; display: flex; flex-direction: column; }
+.lv-cierre-campo { margin-top: auto; padding-top: 56px; }
 .lv-h2 {
   margin: 0;
   font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
@@ -388,33 +419,33 @@
 .lv-planes:hover { background: var(--lv-ink); color: #fff; }
 .lv-planes span { font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace; display: inline-block; animation: lv-arr 1.8s ease-in-out infinite; }
 .lv-s4 .lv-cierre-izq { max-width: 640px; }
-.lv-s4 .lv-campo { margin-top: 38px; }
+.lv-s4 .lv-campo { margin-top: 0; }
 
-/* footer en papel sobre la textura roja */
-.lv-footer {
-  margin-top: 72px; padding-top: 18px; border-top: 1px solid rgba(250, 250, 248, 0.35);
-  color: var(--lv-paper); display: flex; flex-direction: column; gap: 14px;
-}
-.lv-footer .lv-tag { color: rgba(250, 250, 248, 0.8); }
+/* footer en una franja de papel bajo la textura: wordmark canónico, links en
+   tinta, último análisis en mono gris (FASE 1.4) */
+.lv-footer { background: var(--lv-paper); color: var(--lv-ink); padding: 28px 0 32px; border-top: 1px solid var(--lv-ll); }
+.lv-footer .lv-tag { display: block; }
+.lv-footer-fila { display: flex; flex-direction: column; gap: 18px; }
 .lv-footer nav { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; }
-.lv-footer nav a { text-decoration: none; color: var(--lv-paper); }
+.lv-footer nav a { text-decoration: none; color: var(--lv-ink); }
 .lv-ultimo {
-  margin-top: 8px; padding-top: 12px; border-top: 1px solid rgba(250, 250, 248, 0.25);
+  margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--lv-ll);
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(250, 250, 248, 0.85);
+  font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--lv-g);
   white-space: nowrap; overflow: hidden;
 }
 /* a 390 y 10 px la línea con comuna mide 343 px contra 327 disponibles: cae la
    comuna antes que el veredicto (regla FASE 1.3) hasta 419 px */
 @media (max-width: 419px) { .lv-ultimo-comuna { display: none; } }
 .lv-osm {
+  margin-top: 8px;
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(250, 250, 248, 0.6);
+  font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lv-g);
 }
 .lv-osm a { text-decoration: none; }
-.lv-ultimo b { color: var(--lv-paper); font-weight: 700; }
+.lv-ultimo b { color: var(--lv-g2); font-weight: 700; }
 .lv-ultimo .lv-dot {
-  display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--lv-paper);
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--lv-g);
   margin-right: 8px; vertical-align: 1px; animation: lv-pulse 1.6s infinite;
 }
 @keyframes lv-pulse { 50% { opacity: 0.25; } }
@@ -434,15 +465,14 @@
   .lv-btn { width: 62px; height: 62px; }
   .lv-alt { flex-direction: row; align-items: center; gap: 22px; }
   /* sección 2: respuesta a la izquierda, chips al pie a la derecha */
-  .lv-s2-grid-inner { display: grid; grid-template-columns: minmax(0, 640px) minmax(220px, 1fr); column-gap: 56px; align-items: end; }
+  .lv-s2-grid-inner { display: grid; grid-template-columns: minmax(0, 640px) minmax(220px, 1fr); column-gap: 56px; align-items: stretch; }
   .lv-band { margin: 0; }
-  .lv-nav { margin-top: 0; padding-top: 0; border-top: 0; flex-direction: column; align-items: flex-end; gap: 12px; }
+  .lv-nav { margin-top: 0; padding-top: 0; border-top: 0; flex-direction: column; align-items: flex-end; justify-content: flex-end; gap: 12px; }
   .lv-nav .lv-lbl { text-align: right; }
   /* h1 en dos líneas dentro de la mitad izquierda (medido: 8,1 px de ancho por px de cuerpo) */
   .lv-h1 { font-size: 64px; }
-  .lv-footer { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; }
-  .lv-ultimo { width: 100%; font-size: 11px; }
-  .lv-osm { width: 100%; }
+  .lv-footer-fila { flex-direction: row; justify-content: space-between; align-items: flex-end; }
+  .lv-ultimo { font-size: 11px; }
 }
 /* sección 3 a dos columnas recién desde 1024: a 768 el mapa quedaba en 104 px */
 @media (min-width: 1024px) {
@@ -472,7 +502,8 @@
   .lv-h1, .lv-h2 { font-size: 96px; }
   .lv-box { max-width: 760px; height: 80px; padding-left: 24px; }
   .lv-btn { width: 68px; height: 68px; }
-  .lv-input, .lv-ph { font-size: 21px; }
+  html:has(.lv-root) .lv-input { font-size: 21px !important; }
+  .lv-ph { font-size: 21px; }
   .lv-hero .lv-foot { text-align: right; }
   .lv-hero .lv-foot a { font-size: 22px; }
   .lv-precio { font-size: 36px; }
@@ -482,7 +513,9 @@
   .lv-why { font-size: 44px; }
 }
 @media (min-width: 1440px) {
-  .lv-h1, .lv-h2 { font-size: 112px; }
+  .lv-h1, .lv-h2 { font-size: 120px; }
+  .lv-mid-izq { max-width: 1000px; }
+  .lv-s4 .lv-cierre-izq { max-width: 1280px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

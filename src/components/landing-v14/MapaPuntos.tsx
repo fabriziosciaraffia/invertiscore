@@ -4,33 +4,39 @@
 // Capa de puntos del mapa: TODOS los avisos activos con coordenadas (~44.000),
 // en <canvas>. Cada punto es un depto: Signal Red, 2 px a 1x y 3 px en retina,
 // alpha baja para que la acumulación se lea como calor sin que el punto deje de
-// ser un punto (FASE 1.3). Los datos llegan del endpoint ISR
-// /api/landing/mapa-puntos (binario propio, ~110 KB) y se piden recién cuando
-// el mapa se acerca a pantalla.
+// ser un punto. Los datos llegan del endpoint ISR /api/landing/mapa-puntos
+// (binario propio, ~110 KB) y se piden recién cuando el mapa se acerca.
 //
-// Animación en loop: llena en oleadas desde Plaza de Armas (2,6 s), sostiene
-// 4 s, se desvanece 0,8 s y vuelve a llenar. Se pausa cuando la sección sale
-// de pantalla y se retoma donde iba. Con prefers-reduced-motion no hay loop:
-// estado final fijo. El canvas se dibuja a resolución del dispositivo.
+// Animación en loop (FASE 1.4): los puntos aparecen en orden ALEATORIO (barajado
+// determinista) hasta llenar en ~6 s, sostiene 5 s, se desvanece 1 s y vuelve a
+// empezar. Se pausa cuando el mapa sale de pantalla y retoma donde iba. Con
+// prefers-reduced-motion no hay loop: estado final fijo.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef } from "react";
 import { decodificarPuntos } from "./mapa-puntos-codec";
 import proj from "./mapa-santiago.proj.json";
 
-/** Centro de las oleadas: Plaza de Armas, en unidades del viewBox. */
-const CENTRO = {
-  x: (-70.6506 - proj.W) * proj.kLat * proj.s + proj.ox,
-  y: (proj.N - -33.4378) * proj.s + proj.oy,
-};
-const LLENAR_MS = 2600;
-const SOSTENER_MS = 4000;
-const FUNDIR_MS = 800;
+const LLENAR_MS = 6000;
+const SOSTENER_MS = 5000;
+const FUNDIR_MS = 1000;
 const CICLO_MS = LLENAR_MS + SOSTENER_MS + FUNDIR_MS;
-const OLEADAS = 4;
 /** Alpha de cada punto (elegido con screenshot en FASE 1.3). */
 const ALPHA = 0.28;
 const COLOR = `rgba(200,50,60,${ALPHA})`;
+
+/** Barajado Fisher-Yates con semilla fija: mismo orden en cada carga. */
+function barajar(n: number): Uint32Array {
+  const o = new Uint32Array(n);
+  for (let i = 0; i < n; i++) o[i] = i;
+  let s = 0x9e3779b9;
+  const rnd = () => { s = (Math.imul(s ^ (s >>> 15), 0x2c1b3c6d) >>> 0); s = (Math.imul(s ^ (s >>> 12), 0x297a2d39) >>> 0); return (s ^ (s >>> 15)) >>> 0; };
+  for (let i = n - 1; i > 0; i--) {
+    const j = rnd() % (i + 1);
+    const t = o[i]; o[i] = o[j]; o[j] = t;
+  }
+  return o;
+}
 
 export function MapaPuntos() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -65,7 +71,7 @@ export function MapaPuntos() {
 
     const tamPunto = (dpr: number) => (dpr >= 2 ? 3 : 2);
 
-    /** Pinta los primeros `hasta` puntos (orden por distancia al centro) en un contexto. */
+    /** Pinta los primeros `hasta` puntos del orden barajado en un contexto. */
     const pintarEn = (ctx: CanvasRenderingContext2D, w: number, h: number, dpr: number, hasta: number) => {
       if (!puntos || !orden) return;
       ctx.clearRect(0, 0, w, h);
@@ -99,10 +105,9 @@ export function MapaPuntos() {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       if (fase < LLENAR_MS) {
+        // llenado parejo con un leve ease-out al final
         const p = fase / LLENAR_MS;
-        const ol = Math.min(OLEADAS - 1, Math.floor(p * OLEADAS));
-        const dentro = p * OLEADAS - ol;
-        const frac = (ol + (1 - Math.pow(1 - dentro, 3))) / OLEADAS;
+        const frac = 1 - Math.pow(1 - p, 1.4);
         pintarEn(ctx, w, h, dpr, Math.round(frac * orden.length));
       } else if (fase < LLENAR_MS + SOSTENER_MS) {
         ctx.clearRect(0, 0, w, h);
@@ -148,15 +153,7 @@ export function MapaPuntos() {
         const bytes = new Uint8Array(await r.arrayBuffer());
         if (cancelado) return;
         puntos = decodificarPuntos(bytes);
-        const n = puntos.length / 2;
-        const d = new Float32Array(n);
-        for (let i = 0; i < n; i++) {
-          const dx = puntos[i * 2] - CENTRO.x, dy = puntos[i * 2 + 1] - CENTRO.y;
-          d[i] = dx * dx + dy * dy;
-        }
-        orden = new Uint32Array(n);
-        for (let i = 0; i < n; i++) orden[i] = i;
-        orden.sort((a, b) => d[a] - d[b]);
+        orden = barajar(puntos.length / 2);
         if (visible) reanudar();
       } catch {
         /* sin puntos el mapa igual muestra calles y etiquetas */

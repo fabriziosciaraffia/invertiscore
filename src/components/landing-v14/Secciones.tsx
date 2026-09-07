@@ -20,10 +20,10 @@ import { EV } from "./eventos";
 
 const TAGLINE = "Real estate en su estado más franco";
 
-function Wordmark({ onBrand = false }: { onBrand?: boolean }) {
+function Wordmark() {
   return (
     <div>
-      <FrancoLogo size="header" href="/" onBrand={onBrand} className="lv-wm" />
+      <FrancoLogo size="header" href="/" className="lv-wm" />
       <div className="lv-tag">{TAGLINE}</div>
     </div>
   );
@@ -135,44 +135,55 @@ function haceCuanto(iso: string, ahora: Date): string {
 export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
   const u = datos.ultimoAnalisis;
   return (
-    <SeccionVista n={4} className="lv-s4">
-      {/* Banda de 83 svh anclada abajo: el rojo pleno son los 50 vh inferiores. */}
-      <picture className="lv-fondo lv-fondo-cierre">
-        <source media="(min-width: 768px)" srcSet="/landing/textura-cierre-d2x.webp" />
-        {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-        <img src="/landing/textura-cierre-m2x.webp" alt="" loading="lazy" decoding="async" />
-      </picture>
-      <div className="lv-col">
-        <div className="lv-cierre-izq">
-          <h2 className="lv-h2">Antes de comprar,<br /><mark>evalúa con Franco.</mark></h2>
-          <p className="lv-precio">
-            El primer análisis es gratis.
-            <span>Los siguientes, <b>{fmtCLP(SINGLE_PRICE)}</b> cada uno.</span>
-          </p>
-          <LinkMedido href="/pricing" className="lv-planes" evento={EV.planes}>
-            Ver planes <span>→</span>
-          </LinkMedido>
-          <CampoDireccion ubicacion="cierre" />
+    <>
+      {/* Igual que el hero (FASE 1.4): título + precio + "Ver planes" arriba con su
+          aire; el bloque [campo + sin dirección] baja como unidad al tercio inferior,
+          sobre la banda. La textura termina en rojo y el footer va aparte, en papel. */}
+      <SeccionVista n={4} className="lv-s4">
+        <picture className="lv-fondo lv-fondo-cierre">
+          <source media="(min-width: 768px)" srcSet="/landing/textura-cierre-d2x.webp" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
+          <img src="/landing/textura-cierre-m2x.webp" alt="" loading="lazy" decoding="async" />
+        </picture>
+        <div className="lv-col lv-s4-col">
+          <div className="lv-cierre-izq">
+            <h2 className="lv-h2">Antes de comprar,<br /><mark>evalúa con Franco.</mark></h2>
+            <p className="lv-precio">
+              El primer análisis es gratis.
+              <span>Los siguientes, <b>{fmtCLP(SINGLE_PRICE)}</b> cada uno.</span>
+            </p>
+            <LinkMedido href="/pricing" className="lv-planes" evento={EV.planes}>
+              Ver planes <span>→</span>
+            </LinkMedido>
+          </div>
+          <div className="lv-cierre-izq lv-cierre-campo">
+            <CampoDireccion ubicacion="cierre" />
+          </div>
         </div>
-        <footer className="lv-footer">
-          <Wordmark onBrand />
-          <nav aria-label="Franco">
-            <Link href="/metodologia">Cómo calcula</Link>
-            <Link href="/comunas">Comunas</Link>
-            <Link href="/pricing">Planes</Link>
-            <Link href="/login">Entrar</Link>
-          </nav>
+      </SeccionVista>
+      {/* Footer sobre papel, bajo la textura: wordmark canónico (.ai rojo), links en
+          tinta, último análisis en mono gris, atribución del mapa (ODbL). */}
+      <footer className="lv-footer">
+        <div className="lv-col">
+          <div className="lv-footer-fila">
+            <Wordmark />
+            <nav aria-label="Franco">
+              <Link href="/metodologia">Cómo calcula</Link>
+              <Link href="/comunas">Comunas</Link>
+              <Link href="/pricing">Planes</Link>
+              <Link href="/login">Entrar</Link>
+            </nav>
+          </div>
           {u && (
             <div className="lv-ultimo">
               <i className="lv-dot" />Último análisis · <b>{u.etiqueta}</b> · <span className="lv-ultimo-comuna">{u.comuna} · </span>{haceCuanto(u.createdAt, ahora)}
             </div>
           )}
-          {/* Atribución obligatoria del mapa (ODbL); salió del mapa en FASE 1.3. */}
           <div className="lv-osm">
             Mapa © <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">OpenStreetMap</a>
           </div>
-        </footer>
-      </div>
-    </SeccionVista>
+        </div>
+      </footer>
+    </>
   );
 }
