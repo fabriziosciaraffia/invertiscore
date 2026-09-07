@@ -42,10 +42,10 @@ export function Hero() {
         {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP; es el LCP y va con fetchpriority */}
         <img src="/landing/textura-hero-m2x.webp" alt="" fetchPriority="high" decoding="async" />
       </picture>
-      <div className="lv-col lv-top">
+      <header className="lv-col lv-top">
         <Wordmark />
         <Link href="/login" className="lv-entrar">Entrar</Link>
-      </div>
+      </header>
       <div className="lv-col lv-mid">
         <div className="lv-mid-izq">
           <h1 className="lv-h1">¿Ese depto es<br /><mark>buena inversión</mark>?</h1>

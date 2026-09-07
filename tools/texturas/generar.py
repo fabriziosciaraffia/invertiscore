@@ -13,16 +13,16 @@ Uso:
   python tools/texturas/generar.py banda ANCHO ALTO ROJO salida.webp
   # set de la landing (2x/3x, servido por <picture> + srcset, nada se estira). El alto es
   # 1,25 × RAMPA × ROJO: el 20 % superior queda de papel puro, que es lo que la máscara CSS
-  # del borde (18 %) funde con el fondo. En CSS la banda mide 1,25 × RAMPA × el rojo en vh.
-  # Mobile (rampa 1,3): hero 30 vh de rojo → 48,75 svh; cierre 50 vh → 81,25 svh.
-  # PC (v2.3, rampa larga = tercio inferior y transición suave): hero 12 vh de rojo con
-  # rampa 2,75 → banda 41,25 svh; cierre 15 vh con rampa 2,2 → 41,25 svh.
+  # del borde (18 %) funde con el fondo. En CSS la banda mide 1,625 × el rojo en vh, con la
+  # MISMA rampa (1,3) en mobile y PC — la rampa larga de la v2.3 se descartó en QA.
+  # Mobile: hero 30 vh de rojo → 48,75 svh; cierre 50 vh → 81,25 svh.
+  # PC: hero y cierre 24 vh de rojo → 39 svh (el degradado queda en el tercio inferior).
   python tools/texturas/generar.py banda 1200  975  600 public/landing/textura-hero-m2x.webp
   python tools/texturas/generar.py banda 1800 1463  900 public/landing/textura-hero-m3x.webp
-  python tools/texturas/generar.py banda 3000 1375  400 public/landing/textura-hero-d2x.webp 2.75
+  python tools/texturas/generar.py banda 3000  975  600 public/landing/textura-hero-d2x.webp
   python tools/texturas/generar.py banda 1200 1463  900 public/landing/textura-cierre-m2x.webp
-  python tools/texturas/generar.py banda 3000 1375  500 public/landing/textura-cierre-d2x.webp 2.2
-  python tools/texturas/generar.py banda 1200  630  150 public/landing/og-hero.jpg 2.75   # OG (JPEG: Satori no lee WebP)
+  python tools/texturas/generar.py banda 3000  975  600 public/landing/textura-cierre-d2x.webp
+  python tools/texturas/generar.py banda 1200  630  190 public/landing/og-hero.jpg   # OG (JPEG: Satori no lee WebP)
   # receta v1 (proporción del lienzo), por si hace falta reproducirla:
   python tools/texturas/generar.py hero 1440 1600 salida.webp · cierre 1440 1000 salida.webp
 Requiere: numpy, Pillow (`python -m pip install numpy pillow`).
@@ -68,8 +68,8 @@ def colormap(v):
         out[m] = hexc(c0) * (1 - t) + hexc(c1) * t
     return out
 
-RAMPA = 1.3  # v2.2: el papel llega a RAMPA × rojo. Por línea de comando se puede pasar otra
-             # (v2.3, PC: 2,75 en el hero y 2,2 en el cierre = transición más larga y suave)
+RAMPA = 1.3  # v2.2: el papel llega a RAMPA × rojo. Se puede pasar otra por línea de comando,
+             # pero la landing usa 1,3 en todos los tramos (la rampa larga se descartó en QA)
 
 def bias_banda(h, rojo, rampa=RAMPA):
     """v2.2: rampa desde abajo, en dos tramos. v = 1 en el borde inferior y 0,6 (rojo

@@ -21,13 +21,17 @@ import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import { EV } from "./eventos";
 import type { Veredicto } from "@/lib/types";
 
-/** Qué significa cada veredicto, en una línea (columna derecha en desktop, FASE
- *  1.6). No es la bajada del ejemplo —esa ya está en el bloque grande—, es la
- *  definición del veredicto. Copy de la landing, pendiente de OK de Fabrizio. */
-const DEFINICION: Record<Veredicto, string> = {
-  "BUSCAR OTRA": "Los números no cierran, ni ajustando.",
-  "AJUSTA SUPUESTOS": "Sirve, pero a otro precio o con más pie.",
-  COMPRAR: "Se paga solo y el precio está bien.",
+/** Qué significa obtener cada veredicto, explicado en simple (columna "Tres
+ *  respuestas posibles" en desktop). No habla de un informe en particular: es la
+ *  explicación del veredicto, por eso no lleva cifra. Copy de la landing,
+ *  pendiente de OK de Fabrizio. */
+const EXPLICACION: Record<Veredicto, string> = {
+  "BUSCAR OTRA":
+    "Deptos que no se pagan solos ni ajustando: pones plata todos los meses y la inversión no la recupera.",
+  "AJUSTA SUPUESTOS":
+    "Deptos que sirven, pero no con estos supuestos: a otro precio, con más pie o a otro plazo el negocio funciona.",
+  COMPRAR:
+    "Deptos que se pagan solos y entran a buen precio: el arriendo cubre la cuota y te queda plata cada mes.",
 };
 
 const DUR = 900;
@@ -168,8 +172,7 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
                 onClick={() => elegir(j)}
               >
                 <span className="lv-fila-banda">{e.etiqueta}</span>
-                <span className="lv-fila-razon">{DEFINICION[e.veredicto]}</span>
-                <span className="lv-fila-cifra">{e.cifra ? fmtCifra(e.cifra) : ""}</span>
+                <span className="lv-fila-razon">{EXPLICACION[e.veredicto]}</span>
               </button>
             ))}
           </div>
