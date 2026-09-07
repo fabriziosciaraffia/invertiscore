@@ -13,6 +13,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { generateAiAnalysis } from "../../../src/lib/ai-generation";
 import { conTimeout, esTimeout, TIMEOUT_GENERADOR_MS } from "./timeout";
+import { nombraInstrumento } from "./instrumentos";
 import { runAnalysis } from "../../../src/lib/analysis";
 import { TECHO_CONTINUACION_DURO } from "../../../src/lib/prosa-presupuesto";
 import { marcasBalanceadas, evaluarTitular } from "../../../src/lib/prosa-marcas";
@@ -158,15 +159,15 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
         if (/no hay (comparables|un valor de mercado|suficientes|valor de mercado)/i.test(neg)) bump("A7.D2-niega-VM");
       }
 
-      // A8·D1 (HARD) — largoPlazo compara con instrumentos (depósito/fondo).
-      // Acepta el PLURAL ("depósitos a plazo", "fondos mutuos"): es la forma
-      // natural en español y el matcher literal en singular la rechazaba, o sea
-      // podía cobrar una falla por gramática y no por doctrina. NO se aceptan
-      // categorías como "renta fija": nombran el género, no el instrumento, y
-      // aflojarían justo lo que la regla protege (la comparación concreta del
-      // Ángulo 3). El prompt pide el instrumento por su nombre — ai-generation.ts:627.
+      // A8·D1 (HARD) — largoPlazo compara con instrumentos (depósito/fondo) POR SU
+      // NOMBRE. El matcher vive en instrumentos.ts (#11, 07-sep-2026): acepta plural y
+      // «depósito (a plazo) en UF» / «depósito UF» — el mismo instrumento que el prompt
+      // entrega como «Depósito a plazo (UF+5%)»; GS-PJ k=1 cobraba una falla dura por
+      // esa gramática. NO acepta «depósito» pelado, «renta fija» ni «instrumento»:
+      // nombran el género y aflojarían la comparación concreta del Ángulo 3. El
+      // catch-test instrumentos-catch-test.ts fija los dos lados.
       const lp = norm(ai.largoPlazo?.contenido_clp ?? "");
-      if (lp && !/(dep[óo]sitos?\s+a\s+plazo|fondos?\s+mutuos?)/i.test(lp)) bump("A8.D1-instrumentos");
+      if (lp && !nombraInstrumento(lp)) bump("A8.D1-instrumentos");
 
       // ── Checks pie-0 (GS-PC* · fase 4, aprobados 2026-08-01) — doctrina ## 5.bis ──
       if (seed.key.startsWith("GS-PC")) {

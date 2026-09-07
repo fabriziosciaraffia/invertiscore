@@ -28,6 +28,7 @@ import { runSemanticTier } from "./semantic";
 import { runStrTier } from "./str-recompute";
 import { runEtiquetaTier } from "./etiqueta-veredicto-catch-test";
 import { runTitularFinalTier } from "./titular-final-catch-test";
+import { runInstrumentosTier } from "./instrumentos-catch-test";
 import { runStrGenerateTier, type TandaStr } from "./str-generate";
 import { runAmbasTier } from "./ambas-recompute";
 import { runAmbasSemanticTier } from "./ambas-semantic";
@@ -144,6 +145,10 @@ async function printStrSemantic() {
   // ── Tier TITULAR (goal #8 · 07-sep-2026, 0 tokens): el titular final de portada nunca
   // queda vacío (titular-final.ts: reescrito → escalón → motor). Corre siempre con el QUICK. ──
   totalHard += runTitularFinalTier().hard;
+
+  // ── Tier INSTRUMENTOS (#11 · 07-sep-2026, 0 tokens): el matcher A8·D1 acepta los
+  // wordings legítimos del instrumento y rechaza el género. Corre siempre con el QUICK. ──
+  totalHard += runInstrumentosTier().hard;
 
   // ── Tier STR (E.1b · GS-STR, 0 tokens). Corre con --str o --all/--full. ──
   if (has("--str") || has("--all") || MODE_FULL) {
