@@ -14,6 +14,7 @@ import "@/components/landing-v14/landing.css";
 import { leerDatosLanding } from "@/lib/landing-vivo";
 import { Hero, LaRespuesta, PorQueCreerle, Cierre } from "@/components/landing-v14/Secciones";
 import { LandingViewed } from "@/components/landing-v14/Telemetria";
+import { SuaveScroll } from "@/components/landing-v14/SuaveScroll";
 
 export const revalidate = 600;
 
@@ -39,6 +40,7 @@ export default async function LandingPage() {
   return (
     <div className="lv-root" data-franco-root data-landing="v14">
       <LandingViewed />
+      <SuaveScroll />
       <main>
         <Hero />
         <LaRespuesta datos={datos} />

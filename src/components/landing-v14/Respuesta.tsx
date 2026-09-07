@@ -19,6 +19,7 @@ import { usePostHog } from "posthog-js/react";
 import type { EjemploLanding } from "@/lib/landing-vivo";
 import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import { EV } from "./eventos";
+import { stripMarcas } from "@/lib/prosa-marcas";
 
 const DUR = 900;
 const HOLD = 6000;
@@ -142,6 +143,26 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
           />
         </div>
       </div>
+      </div>
+      {/* desktop (FASE 1.5): los tres veredictos como filas — banda mini, razón en una
+          línea, cifra —, la activa resaltada y sincronizada con la rotación */}
+      <div className="lv-lista" role="tablist" aria-label="Veredictos">
+        <span className="lv-lbl">Tres respuestas posibles</span>
+        {ejemplos.map((e, j) => (
+          <button
+            key={e.id}
+            type="button"
+            role="tab"
+            aria-selected={j === i}
+            className={`lv-fila${j === i ? " on" : ""}`}
+            data-verdict={e.veredicto}
+            onClick={() => elegir(j)}
+          >
+            <span className="lv-fila-banda">{e.etiqueta}</span>
+            <span className="lv-fila-razon">{e.titular ? stripMarcas(e.titular) : e.eyebrow}</span>
+            <span className="lv-fila-cifra">{e.cifra ? fmtCifra(e.cifra) : ""}</span>
+          </button>
+        ))}
       </div>
       <div className="lv-nav">
         <span className="lv-lbl">Tres respuestas posibles</span>
