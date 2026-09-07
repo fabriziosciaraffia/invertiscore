@@ -13,15 +13,16 @@ Uso:
   python tools/texturas/generar.py banda ANCHO ALTO ROJO salida.webp
   # set de la landing (2x/3x, servido por <picture> + srcset, nada se estira). El alto es
   # 1,25 × RAMPA × ROJO: el 20 % superior queda de papel puro, que es lo que la máscara CSS
-  # del borde (18 %) funde con el fondo. En CSS la banda mide 1,625 × el rojo en vh, con la
-  # MISMA rampa (1,3) en mobile y PC — la rampa larga de la v2.3 se descartó en QA.
-  # Mobile: hero 30 vh de rojo → 48,75 svh; cierre 50 vh → 81,25 svh.
-  # PC: hero y cierre 24 vh de rojo → 39 svh (el degradado queda en el tercio inferior).
-  python tools/texturas/generar.py banda 1200  975  600 public/landing/textura-hero-m2x.webp
-  python tools/texturas/generar.py banda 1800 1463  900 public/landing/textura-hero-m3x.webp
-  python tools/texturas/generar.py banda 3000  975  600 public/landing/textura-hero-d2x.webp
-  python tools/texturas/generar.py banda 1200 1463  900 public/landing/textura-cierre-m2x.webp
-  python tools/texturas/generar.py banda 3000  975  600 public/landing/textura-cierre-d2x.webp
+  # del borde (18 %) funde con el fondo. En CSS la banda mide 1,25 × (rojo + rampa) en vh.
+  # Mobile (rampa 1,3, onda v1): hero 30 vh de rojo → 48,75 svh; cierre 50 vh → 81,25 svh.
+  #   python tools/texturas/generar.py banda 1200  975  600 public/landing/textura-hero-m2x.webp
+  #   python tools/texturas/generar.py banda 1800 1463  900 public/landing/textura-hero-m3x.webp
+  #   python tools/texturas/generar.py banda 1200 1463  900 public/landing/textura-cierre-m2x.webp
+  # PC (v2.4, FASE 1.6): casi sin rojo pleno, lo que se ve es la rampa; onda 0,22 relativa
+  # al ancho. Hero: 10 vh de rojo + 40 de rampa (factor 5,0) → banda 62,5 svh. Cierre: 22 vh
+  # + 40 (factor 2,8182) → banda 77,5 svh.
+  #   python tools/texturas/generar.py banda 3000 1375  220 public/landing/textura-hero-d2x.webp 5.0 0.22
+  #   python tools/texturas/generar.py banda 3000 1691  480 public/landing/textura-cierre-d2x.webp 2.8182 0.22
   python tools/texturas/generar.py banda 1200  630  190 public/landing/og-hero.jpg   # OG (JPEG: Satori no lee WebP)
   # receta v1 (proporción del lienzo), por si hace falta reproducirla:
   python tools/texturas/generar.py hero 1440 1600 salida.webp · cierre 1440 1000 salida.webp
@@ -52,11 +53,15 @@ COMPOSICION = {
 def hexc(h):
     return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)], dtype=float)
 
-def field(w, h, seed=7, cells=3):
+def field(w, h, seed=7, cells=3, ref='min'):
+    """Ondulación orgánica. `ref='min'`: difuminado relativo al lado menor (receta v1,
+    mobile). `ref='w'` (v2.4, PC): relativo al ANCHO, así la onda recorre la imagen a lo
+    largo y la transición no queda como una recta horizontal."""
     r = np.random.default_rng(seed)
     n = r.random((cells, cells))
     img = Image.fromarray((n * 255).astype('uint8')).resize((w, h), Image.BICUBIC)
-    img = img.filter(ImageFilter.GaussianBlur(radius=min(w, h) * FIELD_BLUR))
+    base = w if ref == 'w' else min(w, h)
+    img = img.filter(ImageFilter.GaussianBlur(radius=base * FIELD_BLUR))
     a = np.asarray(img, dtype=float) / 255
     return (a - a.min()) / (a.max() - a.min())
 
@@ -81,9 +86,9 @@ def bias_banda(h, rojo, rampa=RAMPA):
         return np.clip(v, 0, 1)
     return fn
 
-def render(kind, w, h, out, seed=7, rojo=None, rampa=RAMPA):
+def render(kind, w, h, out, seed=7, rojo=None, rampa=RAMPA, field_w=FIELD_W, field_ref='min'):
     bias_fn = bias_banda(h, rojo, rampa) if kind == 'banda' else COMPOSICION[kind]
-    f = field(w, h, seed)
+    f = field(w, h, seed, ref=field_ref)
     yy, xx = np.mgrid[0:h, 0:w]
     b = bias_fn(xx / w, yy / h)
     if kind == 'banda':
@@ -91,7 +96,7 @@ def render(kind, w, h, out, seed=7, rojo=None, rampa=RAMPA):
         # golpe donde bias > 0 dejaría un escalón de hasta 0,18 justo en el borde del
         # papel, que es la costura que se veía (QA 07-sep).
         f = f * np.clip(b / 0.12, 0, 1)
-    v = np.clip(f * FIELD_W + b * (1 - FIELD_W * 0.4), 0, 1)
+    v = np.clip(f * field_w + b * (1 - field_w * 0.4), 0, 1)
     rgb = colormap(v)
     g = np.random.default_rng(seed).normal(0, 1, (h, w))
     if kind == 'banda':
@@ -112,7 +117,10 @@ if __name__ == '__main__':
     if kind == 'banda':
         w, h, rojo, out = int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5]
         rampa = float(sys.argv[6]) if len(sys.argv) > 6 else RAMPA
-        render(kind, w, h, out, rojo=rojo, rampa=rampa)
+        # PC (v2.4): peso de la onda 0,22 y difuminado relativo al ancho
+        field_w = float(sys.argv[7]) if len(sys.argv) > 7 else FIELD_W
+        ref = 'w' if len(sys.argv) > 7 else 'min'
+        render(kind, w, h, out, rojo=rojo, rampa=rampa, field_w=field_w, field_ref=ref)
     else:
         w, h, out = int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
         render(kind, w, h, out)
