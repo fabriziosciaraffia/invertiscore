@@ -55,6 +55,14 @@
   color-scheme: light;
 }
 .lv-root a { color: inherit; }
+
+/* autoscroll: snap suave por sección, solo mientras la landing está montada
+   (`html:has`) y sin snap con prefers-reduced-motion. En mobile la sección 3
+   (mapa) queda fuera porque mide más que la pantalla. */
+html:has(.lv-root) { scroll-snap-type: y proximity; }
+.lv-root [data-seccion] { scroll-snap-align: start; }
+@media (max-width: 899px) { .lv-root [data-seccion="3"] { scroll-snap-align: none; } }
+@media (prefers-reduced-motion: reduce) { html:has(.lv-root) { scroll-snap-type: none; } }
 .lv-root mark { background: transparent; color: inherit; }
 
 /* grano de página: el tile del informe, multiply .10, apagado en print.
@@ -141,10 +149,19 @@
 }
 
 /* ===== bandas de textura (hero y cierre) ===== */
-.lv-fondo { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0; display: block; }
+/* máscara sobre el borde superior: el empalme papel↔imagen es invisible a cualquier
+   tamaño (QA 07-sep: se veía una línea horizontal donde empezaba la banda). */
+.lv-fondo {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 0; display: block;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 18%);
+}
 .lv-fondo img { width: 100%; height: 100%; object-fit: cover; object-position: center bottom; display: block; }
-.lv-fondo-hero { height: 50svh; }
-.lv-fondo-cierre { height: 83svh; }
+/* la imagen trae un 20 % de papel puro arriba (generar.py v2.1): la banda mide 1,25 ×
+   lo que necesita el rojo (hero 30 vh → 62,5 svh; cierre 50 vh → 104 svh) y la máscara
+   del 18 % cae entera sobre ese papel. */
+.lv-fondo-hero { height: 62.5svh; }
+.lv-fondo-cierre { height: 104svh; }
 
 /* ===== 1 HERO ===== */
 .lv-hero { position: relative; min-height: 100svh; display: flex; flex-direction: column; overflow: hidden; }
@@ -415,6 +432,31 @@
 @media (min-width: 1100px) {
   .lv-mid-izq { max-width: 600px; }
   .lv-h1 { font-size: 70px; }
+}
+/* ≥1280: falta escala, no elementos (QA 07-sep). Grilla 1440 con 48 px de margen,
+   h1/h2 hasta 112 px en dos líneas, campo 760 × 80, "Ver un análisis real" abajo a
+   la derecha, banda y cifra de la sección 2 a escala. */
+@media (min-width: 1280px) {
+  .lv-root { --lv-pad: 48px; }
+  .lv-col { max-width: 1440px; }
+  .lv-mid-izq { max-width: 940px; }
+  /* "Antes de comprar," a 112 px mide ~950 px: la columna del cierre va más ancha
+     que la del hero para que el h2 quede en sus dos líneas (el campo sigue en 760). */
+  .lv-s4 .lv-cierre-izq { max-width: 1200px; }
+  .lv-h1, .lv-h2 { font-size: 96px; }
+  .lv-box { max-width: 760px; height: 80px; padding-left: 24px; }
+  .lv-btn { width: 68px; height: 68px; }
+  .lv-input, .lv-ph { font-size: 21px; }
+  .lv-hero .lv-foot { text-align: right; }
+  .lv-hero .lv-foot a { font-size: 22px; }
+  .lv-precio { font-size: 36px; }
+  .lv-s2-grid-inner { grid-template-columns: minmax(0, 820px) minmax(220px, 1fr); }
+  .lv-band { font-size: 64px; padding: 26px 32px; }
+  .lv-num { font-size: 96px; }
+  .lv-why { font-size: 44px; }
+}
+@media (min-width: 1440px) {
+  .lv-h1, .lv-h2 { font-size: 112px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
