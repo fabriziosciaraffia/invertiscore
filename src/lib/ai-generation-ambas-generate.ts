@@ -438,12 +438,12 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
   aiResult.promptVersion = PROMPT_VERSION_AMBAS;
 
   if (persist) {
-    // La matriz pie × plazo del capítulo III se recalcula en memoria en cada carga y NUNCA
-    // se persiste (invariante del goal "cruza por veredicto", 06-sep-2026): este UPDATE
-    // guarda el recompute LTR completo, así que se la quita antes de escribir.
-    const { matrizPiePlazo: _matrizNoPersistida, ...ltrSinMatriz } = ltrResults as LTRResultsWithCache & { matrizPiePlazo?: unknown };
-    void _matrizNoPersistida;
-    const updatedResults = { ...(ltrSinMatriz as object), comparativaAI: aiResult };
+    // Se persiste LO QUE HABÍA en la fila más la comparativa: nada del recompute entra a
+    // `results`. Antes se escribía `ltrResults` (el recompute con el motor de hoy), y eso
+    // "actualizaba" en silencio score, veredicto, metrics y hallazgos de la fila LTR cada
+    // vez que se generaba la comparativa (auditoría 06-sep-2026: 3 de 3 filas cambiaban de
+    // score y una de veredicto). El recompute sigue alimentando SOLO la prosa.
+    const updatedResults = { ...(ltrResultsPersisted as object), comparativaAI: aiResult };
     await supabase
       .from("analisis")
       .update({
