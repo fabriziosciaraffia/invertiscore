@@ -27,6 +27,13 @@ RECETA VIGENTE (v3, FASE 1.7 · 07-sep-2026): `hero` — fondo completo del hero
 Uso:
   python tools/texturas/generar.py escala [--globals=RUTA]
   python tools/texturas/generar.py hero ANCHO ALTO salida.webp [--sin-grano] [--invertir] [--calidad=N] [--globals=RUTA]
+                                   [--peso=X,Y] [--rango=LO,HI]
+    --peso   composición (default 0.65,0.35: diagonal, manda X). El FOOTER usa 0.15,0.85 (manda Y).
+    --rango  tramo de la escala que recorre la imagen (default 0,1). El footer usa 0,0.95 con
+             --invertir: arranca arriba en el rojo profundo donde termina la banda del cierre y
+             baja hasta el azul oscuro del hero, así la página cierra donde empezó.
+  # footer: python tools/texturas/generar.py hero 780 480 public/landing/footer-m2x.webp --sin-grano --invertir --peso=0.15,0.85 --rango=0,0.95
+  #         python tools/texturas/generar.py hero 2880 440 public/landing/footer-d2x.webp --sin-grano --invertir --peso=0.15,0.85 --rango=0,0.95
   python tools/texturas/generar.py grano-tile public/landing/grano-256.png
   # set de la landing (FASE 1.7/1.8): SOLO el hero lleva la receta v3.
   #   hero  m1x 390×844 · m2x 780×1688 · m3x 1170×2532 (--calidad=76 para quedar bajo 250 KB) · d1x 1440×900 · d2x 2880×1800
@@ -173,15 +180,19 @@ def guardar(rgb, out, calidad):
         img.save(out, quality=calidad, method=6)
 
 
-def render_hero(w, h, out, seed=7, grano=True, invertir=False, field_w=FIELD_W, calidad=None, escala=None):
-    """Receta v3 (ver cabecera). `escala`: lista de (pos, hex); por defecto la leída del token."""
+def render_hero(w, h, out, seed=7, grano=True, invertir=False, field_w=FIELD_W, calidad=None, escala=None,
+                peso=(PESO_X, PESO_Y), rango=(0.0, 1.0)):
+    """Receta v3 (ver cabecera). `escala`: lista de (pos, hex); por defecto la leída del token.
+    `peso`: composición (x, y); `rango`: tramo de la escala que recorre la imagen."""
     escala = escala or escala_desde_tokens()
     f = field(w, h, seed, ref='w')
     yy, xx = np.mgrid[0:h, 0:w]
-    bias = PESO_X * (xx / (w - 1)) + PESO_Y * (yy / (h - 1))
+    px_, py_ = peso
+    bias = px_ * (xx / (w - 1)) + py_ * (yy / (h - 1))
     if invertir:
         bias = 1 - bias
-    v = np.clip(f * field_w + bias * (1 - field_w * 0.4), 0, 1)
+    lo, hi = rango
+    v = lo + (hi - lo) * np.clip(f * field_w + bias * (1 - field_w * 0.4), 0, 1)
     rgb = colormap(v, escala)
     # bloom en las luces (S1)
     lum = (0.2126 * rgb[:, :, 0] + 0.7152 * rgb[:, :, 1] + 0.0722 * rgb[:, :, 2]) / 255
@@ -243,8 +254,9 @@ if __name__ == '__main__':
     elif kind == 'hero':
         w, h, out = int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
         calidad = next((int(f.split('=')[1]) for f in flags if f.startswith('--calidad=')), None)
+        par = lambda nombre, default: next((tuple(float(x) for x in f.split('=')[1].split(',')) for f in flags if f.startswith(nombre + '=')), default)
         render_hero(w, h, out, grano='--sin-grano' not in flags, invertir='--invertir' in flags, calidad=calidad,
-                    escala=escala_desde_tokens(css))
+                    escala=escala_desde_tokens(css), peso=par('--peso', (PESO_X, PESO_Y)), rango=par('--rango', (0.0, 1.0)))
     elif kind == 'grano-tile':
         grano_tile(sys.argv[2])
     elif kind == 'banda':

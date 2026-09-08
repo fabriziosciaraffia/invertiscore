@@ -169,9 +169,16 @@ export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
           </div>
         </div>
       </SeccionVista>
-      {/* Footer sobre el rojo de la banda: wordmark en papel (.ai rojo), links en
-          papel, último análisis en mono papel, atribución del mapa (ODbL). */}
+      {/* Footer con las tonalidades del hero: la misma receta v3 invertida y vertical
+          (--peso=0.15,0.85 --rango=0,0.95), arranca en el rojo pleno donde termina la
+          banda del cierre y baja hasta el azul oscuro con que abrió la página. Todo en
+          papel; el .ai del wordmark también (Signal Red sobre rojo desaparece). */}
       <footer className="lv-footer">
+        <picture className="lv-fondo lv-fondo-footer">
+          <source media="(min-width: 768px)" srcSet="/landing/footer-d2x.webp" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
+          <img src="/landing/footer-m2x.webp" alt="" loading="lazy" decoding="async" />
+        </picture>
         <div className="lv-col">
           <div className="lv-footer-fila">
             <Wordmark />
