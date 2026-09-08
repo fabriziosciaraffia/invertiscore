@@ -259,9 +259,8 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
 .lv-s2-grid-inner > .lv-idx { margin: 0 0 22px; }
 .lv-ans { margin: auto 0; padding: 0; }
 .lv-ans-izq { min-width: 0; }
-.lv-nav { margin-top: 0; padding-top: 32px; }
 /* sin data-verdict (no debería pasar) los tokens caen a Ink */
-.lv-ans:not([data-verdict]), .lv-chip:not([data-verdict]), .lv-fila:not([data-verdict]) {
+.lv-ans:not([data-verdict]), .lv-fila:not([data-verdict]) {
   --verdict: var(--lv-ink); --verdict-deep: var(--lv-ink); --verdict-band-0: var(--lv-ink);
 }
 .lv-band {
@@ -312,16 +311,10 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
 .lv-x.out { opacity: 0; }
 .lv-prog { height: 2px; background: var(--lv-ll); margin-top: 14px; overflow: hidden; }
 .lv-prog i { display: block; height: 100%; background: var(--verdict); width: 0; }
-.lv-nav {
-  padding-top: 18px; border-top: 1px solid var(--lv-ink);
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-}
-.lv-nav .lv-lbl { font-size: 15px; color: var(--lv-g2); }
 /* explicaciones: tres filas apiladas (banda mini + una o dos líneas), la activa
-   resaltada y sincronizada con la rotación; en mobile van bajo los chips y la
-   etiqueta la pone la tira de chips */
-.lv-lista { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
-.lv-lista .lv-lbl { display: none; }
+   resaltada y sincronizada con la rotación, tocables; en mobile van al pie bajo
+   una línea, con su etiqueta */
+.lv-lista { display: flex; flex-direction: column; gap: 8px; margin-top: 0; padding-top: 26px; border-top: 1px solid var(--lv-ink); }
 .lv-lista .lv-lbl {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lv-g);
@@ -341,14 +334,6 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   background: var(--verdict); white-space: nowrap;
 }
 .lv-fila-razon { font-size: 14px; line-height: 1.4; color: var(--lv-g2); min-width: 0; padding-top: 1px; }
-.lv-chips { display: flex; gap: 6px; }
-.lv-chip {
-  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; padding: 7px 9px;
-  border: 1px solid var(--lv-l); background: transparent; color: var(--lv-g); cursor: pointer; transition: all 0.4s;
-  white-space: nowrap;
-}
-.lv-chip.on { color: #fff; border-color: transparent; background: var(--verdict); }
 
 /* ===== 3 POR QUÉ CREERLE (tinta) ===== */
 .lv-s3 { background: var(--lv-ink); color: var(--lv-paper); padding: var(--lv-sec) 0; min-height: 100svh; position: relative; }
@@ -534,7 +519,6 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   .lv-alt { flex-direction: row; align-items: center; gap: 22px; }
   /* sección 2: respuesta a la izquierda, chips al pie a la derecha */
   .lv-band { margin: 0; }
-  .lv-nav { padding-top: 32px; border-top: 0; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
   /* h1 en dos líneas dentro de la mitad izquierda (medido: 8,1 px de ancho por px de cuerpo) */
   .lv-h1 { font-size: 64px; }
   .lv-footer-fila { flex-direction: row; justify-content: space-between; align-items: flex-end; }
@@ -601,12 +585,10 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   .lv-ans { display: contents; }
   .lv-band { grid-area: 3 / 1 / 4 / 3; font-size: 26px; padding: 18px 24px; letter-spacing: 0.14em; }
   .lv-ans-cuerpo { grid-area: 4 / 1 / 5 / 2; margin-top: 44px; }
-  .lv-lista { grid-area: 4 / 2 / 5 / 3; align-self: end; display: grid; grid-template-rows: auto repeat(3, 1fr); gap: 10px; margin: 44px 0 0; }
-  .lv-lista .lv-lbl { display: block; }
+  .lv-lista { grid-area: 4 / 2 / 5 / 3; align-self: end; display: grid; grid-template-rows: auto repeat(3, 1fr); gap: 10px; margin: 44px 0 0; padding-top: 0; border-top: 0; }
   .lv-fila { align-items: center; }
   .lv-num { font-size: 88px; }
   .lv-why { font-size: 36px; max-width: 24ch; }
-  .lv-nav { display: none; }
   .lv-why { margin-top: 0; }
   .lv-num { margin-top: 40px; }
   .lv-ey { margin-top: 28px; }

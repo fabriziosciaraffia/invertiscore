@@ -140,7 +140,7 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
 
   const elegir = (j: number) => {
     parar();
-    posthog?.capture(EV.ejemplo, { ejemplo: ejemplos[j]?.etiqueta, origen: "chip" });
+    posthog?.capture(EV.ejemplo, { ejemplo: ejemplos[j]?.etiqueta, origen: "fila" });
     if (j !== i) mostrar(j);
     else setProgreso("quieto");
   };
@@ -186,26 +186,8 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
           </div>
         </div>
       </div>
-      {/* mobile: tira de chips ("Tres respuestas posibles") y, debajo, las tres
-          explicaciones apiladas; PC: solo las explicaciones, en la columna derecha */}
-      <div className="lv-nav">
-        <span className="lv-lbl">Tres respuestas posibles</span>
-        <div className="lv-chips" role="tablist" aria-label="Veredictos">
-          {ejemplos.map((e, j) => (
-            <button
-              key={e.id}
-              type="button"
-              role="tab"
-              aria-selected={j === i}
-              className={`lv-chip${j === i ? " on" : ""}`}
-              data-verdict={e.veredicto}
-              onClick={() => elegir(j)}
-            >
-              {e.etiqueta}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* las tres explicaciones son también el control: mobile al pie (los chips
+          murieron el 08-sep, eran redundantes con estas filas), PC en la columna derecha */}
       <div className="lv-lista" role="tablist" aria-label="Qué significa cada veredicto">
         <span className="lv-lbl">Tres respuestas posibles</span>
         {ejemplos.map((e, j) => (
