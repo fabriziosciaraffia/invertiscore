@@ -363,8 +363,17 @@ export function TokensHallazgos() {
       /* ===== FASE 4.1 · MATRIZ DE PALANCAS ===== */
       .pal{display:flex;flex-direction:column;gap:1px;background:var(--doc-line);border:1px solid var(--doc-line);
         border-radius:3px;overflow:hidden}
+      /* APILADO (08-sep-2026) — la fila destacada usaba --doc-paper2, que es el fondo
+         de las secciones .p2 (NO se usa acento grave: este CSS vive en un template
+         literal y un backtick lo corta). Mientras la matriz vivió dentro del modal
+         (--doc-paper)
+         no se notaba; al subirla al flujo, en una seccion .p2 la fila destacada calcula
+         EXACTAMENTE el mismo color que su contenedor (medido: rgb(27,27,27) en los dos)
+         y desaparece justo cuando es la que importa. Pasa a --doc-paper3, que por
+         contrato NO es fondo de sección: la pieza deja de depender de dónde se monte.
+         Mismo criterio que .bar-track, .esc-track y .cmp-track, que ya lo usan. */
       .pal-row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;background:var(--doc-paper);padding:11px 13px}
-      .pal-row.si{background:var(--doc-paper2)}
+      .pal-row.si{background:var(--doc-paper3)}
       .pal-glosa{flex-basis:100%;font-size:11px;font-weight:400;color:var(--doc-tx3);margin-top:1px}
       .pal-row.off{opacity:.62}
       .pal-row.off .pal-name{color:var(--doc-tx2)}
