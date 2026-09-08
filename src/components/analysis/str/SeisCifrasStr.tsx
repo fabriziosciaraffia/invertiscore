@@ -6,6 +6,7 @@ import { metricaValorONull } from "@/lib/types";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
 import { SeisCifras, type CifraInforme } from "@/components/analysis/shared";
 import { fmtMoney } from "@/components/analysis/utils";
+import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
 
 /**
  * "Los números" STR — seis cifras del CONGELADO, en su orden: ingreso mensual
@@ -80,7 +81,8 @@ export function SeisCifrasStr({
           <>No se puede calcular: el flujo no cruza cero en el horizonte.</>
         ) : (
           <>
-            Lo que rinde tu plata al año, sumando operación, aportes y venta. <b>Bajo 6%, conviene más otra inversión.</b>
+            Lo que rinde tu plata al año, sumando operación, aportes y venta.{" "}
+            <b>Bajo {TIR_LIMITE_PCT}%, conviene más otra inversión.</b>
           </>
         ),
     },
