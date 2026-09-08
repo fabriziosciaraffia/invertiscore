@@ -28,9 +28,14 @@ import { distanciaFindingDisplay } from "@/lib/distancia-copy";
 // prev/next; la pirámide STR pasa su propio `drawerMap`.
 
 // ── Formato (tuteo neutro, coma decimal chilena) ──────────────────────────────
-const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
+// El − TIPOGRÁFICO, no el guion ASCII que devuelve toFixed/String. Desde que las
+// cifras de los hallazgos viven en una columna (la fila como línea, 08-sep-2026),
+// un "-3%" al lado de un "−$283.194" se ve descalibrado. Mismo arreglo que ya
+// tenía `dec1` en DrawersPropios (HUECO-3b).
+const menos = (s: string) => s.replace("-", "−");
+const pct1 = (n: number) => menos(n.toFixed(1).replace(".", ","));
 // Margen de sensibilidad: entero sin decimal (−7%), coma chilena si no (−7,5%).
-const fmtMargin = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
+const fmtMargin = (n: number) => menos(Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
 const fmtCLP = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
 const fmtUF = (n: number) => "UF " + Math.round(n).toLocaleString("es-CL");
 const fmtSigned = (n: number, currency: "CLP" | "UF", valorUF: number) => {
@@ -80,7 +85,7 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
       return {
         kick: "Precio por metro",
         title,
-        kpi: `${sobre ? "+" : ""}${Math.round(v.desviacionPct)}%`,
+        kpi: `${sobre ? "+" : v.desviacionPct < 0 ? "−" : ""}${Math.abs(Math.round(v.desviacionPct))}%`,
         // Rojo solo fuera de la banda "en línea": un +1% con dot neutral no puede
         // cargar Signal Red (la etiqueta y el KPI dirían cosas distintas).
         kpiRed: sobre && !enLinea,
@@ -223,7 +228,7 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
       // multiplicador + lo aportado. Título direction-aware (mismas 3 bandas que la frase).
       // 2 decimales recortados — misma precisión que la fraseCanonica del builder y que el
       // multiplicador que la prosa recibe del exit (familia 7: mata el ×1,5 vs ×1,45).
-      const multFmt = "×" + v.multiplicador.toFixed(2).replace(/0$/, "").replace(/\.$/, "").replace(".", ",");
+      const multFmt = "×" + menos(v.multiplicador.toFixed(2).replace(/0$/, "").replace(/\.$/, "").replace(".", ","));
       const adverso = v.multiplicador < v.corteAdverso;
       const favorable = v.multiplicador >= v.corteFavorable;
       const patrimonioFmt = currency === "UF" ? fmtUF(valorUF > 0 ? v.patrimonioCLP / valorUF : 0) : fmtCLP(v.patrimonioCLP);
