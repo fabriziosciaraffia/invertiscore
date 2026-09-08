@@ -2563,6 +2563,10 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // null si el JSON no parsea. NO persiste. Se reutiliza en la regeneración del
     // catch-layer (Root A', Fase 2b) para que la prosa regenerada pase por las
     // MISMAS normalizaciones que la original.
+    // Goal observabilidad (08-sep-2026): la excepción del parse se guarda acá porque este
+    // catch es el ÚNICO punto donde existe. Abajo solo se sabe "devolvió null", y un evento
+    // de Sentry que dice "no parseó" sin el SyntaxError no diagnostica nada.
+    let errorParse: unknown = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parseAndNormalize = (rawText: string): any | null => {
       let parsed;
@@ -2570,6 +2574,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         const cleaned = rawText.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
         parsed = JSON.parse(cleaned);
       } catch (e) {
+        errorParse = e;
         console.error("Error parsing AI response:", e, "raw:", rawText.slice(0, 500));
         return null;
       }
@@ -2615,6 +2620,25 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
 
     let aiResult = parseAndNormalize(text);
     if (!aiResult) {
+      // El JSON del modelo no parseó: la ruta responde 500 y hasta el 08-sep-2026 esto
+      // solo existía como `resultado: "error"` en pipeline_timing — el mismo silencio que
+      // tenía el catch global de abajo antes del 07-sep. Mismo tratamiento: `persist: false`
+      // marca una corrida de validación (golden, scripts de eval), que no es tráfico real
+      // y no debe abrir un evento.
+      //
+      // El texto crudo NO viaja a Sentry: es prosa sobre una propiedad real (comuna y
+      // precios) y el contrato de observabilidad.ts es identificadores sí, contenido no.
+      // Van su largo y si terminaba en llave, que es lo que separa un corte por max_tokens
+      // de una salida que directamente no es JSON.
+      if (opts.persist !== false) {
+        captureApiError(errorParse ?? new Error("prosa LTR: el JSON del modelo no parseó"), {
+          ruta: `generateAiAnalysis (${opts.trigger ?? "manual"})`,
+          operacion: "parsear-prosa-ltr",
+          analysisId,
+          tags: { trigger: String(opts.trigger ?? "manual"), promptVersion: String(PROMPT_VERSION_LTR) },
+          extra: { largoRaw: text.length, terminaEnLlave: text.trimEnd().endsWith("}") },
+        });
+      }
       await persistGen("error");
       return null;
     }

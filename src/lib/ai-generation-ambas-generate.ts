@@ -43,6 +43,7 @@ import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { nuevoRegistroLlamadas, persistGeneracionTiming } from "@/lib/pipeline-timing";
+import { captureApiError } from "@/lib/observabilidad";
 
 const anthropic = new Anthropic();
 
@@ -324,6 +325,10 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
     const all = `${ai.conviene.quienDeberiasSer ?? ""} ${ai.conviene.switchPath ?? ""} ${ai.conviene.cierre ?? ""}`.trim();
     return all ? all.split(/\s+/).filter(Boolean).length : 0;
   };
+  // Goal observabilidad (08-sep-2026): la excepción se guarda acá porque este catch es el
+  // ÚNICO punto donde existe — abajo solo se sabe que devolvió null. Espejo de
+  // `errorParse` en ai-generation.ts.
+  let errorParse: unknown = null;
   const parse = (raw: string): AIAnalysisComparativa | null => {
     try {
       let t = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "");
@@ -333,6 +338,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
       t = t.replace(/,(\s*[}\]])/g, "$1");
       return JSON.parse(t) as AIAnalysisComparativa;
     } catch (e) {
+      errorParse = e;
       log(`[Comparativa AI] Parse error: ${(e as Error)?.message ?? e}`);
       return null;
     }
@@ -349,6 +355,19 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
   const rawText = msg.content[0].type === "text" ? msg.content[0].text : "";
   let aiResult = parse(rawText);
   if (!aiResult) {
+    // Gemelo exacto del camino LTR: el JSON no parseó, la ruta responde 500 y hasta el
+    // 08-sep-2026 esto solo existía como `resultado: "error"` en pipeline_timing. Con
+    // `persist: false` (golden, scripts de eval) no se abre evento: no es tráfico real.
+    // Sin texto crudo — largo y si terminaba en llave, nada más.
+    if (persist) {
+      captureApiError(errorParse ?? new Error("prosa AMBAS: el JSON del modelo no parseó"), {
+        ruta: "generateComparativaAI (on-open)",
+        operacion: "parsear-prosa-ambas",
+        analysisId: ltrId,
+        tags: { promptVersion: String(PROMPT_VERSION_AMBAS) },
+        extra: { largoRaw: rawText.length, terminaEnLlave: rawText.trimEnd().endsWith("}"), strId },
+      });
+    }
     await persistGen("error");
     return null;
   }
@@ -444,7 +463,7 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
     // vez que se generaba la comparativa (auditoría 06-sep-2026: 3 de 3 filas cambiaban de
     // score y una de veredicto). El recompute sigue alimentando SOLO la prosa.
     const updatedResults = { ...(ltrResultsPersisted as object), comparativaAI: aiResult };
-    await supabase
+    const { data: guardado, error: updateError } = await supabase
       .from("analisis")
       .update({
         results: updatedResults,
@@ -453,7 +472,25 @@ Total continuación ≤ ${maxTotal} palabras. Un matiz por movimiento, no encade
         // `ltrRow` viene de un select("*"), así que ya trae los contadores.
         ...camposUpdateUsage(usage, ltrRow, CLAUDE_MODEL),
       })
-      .eq("id", ltrId);
+      .eq("id", ltrId)
+      .select("id");
+    if (updateError || !guardado?.length) {
+      // T2.1, tercera pata (08-sep-2026). Un UPDATE bloqueado por RLS no da error: da CERO
+      // filas. LTR y STR ya lo chequeaban; acá la comparativa devolvía la prosa y registraba
+      // "ok" aunque el cache no se hubiera escrito, así que cada apertura del par volvía a
+      // pagar la generación entera y nadie se enteraba. Es un fallo, y se trata como tal.
+      captureApiError(updateError ?? new Error("comparativa AMBAS generada y no persistida: el UPDATE devolvió 0 filas (RLS)"), {
+        ruta: "generateComparativaAI (on-open)",
+        operacion: "persistir-prosa-ambas",
+        analysisId: ltrId,
+        tags: {
+          promptVersion: String(PROMPT_VERSION_AMBAS),
+          userIdNull: String((ltrRow as { user_id?: unknown }).user_id == null),
+        },
+      });
+      await persistGen("error");
+      return null;
+    }
   }
   await persistGen("ok");
 

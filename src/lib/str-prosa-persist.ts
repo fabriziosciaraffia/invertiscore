@@ -17,7 +17,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Anthropic from "@anthropic-ai/sdk";
-import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
+import { captureApiError } from "@/lib/observabilidad";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { Hallazgo } from "@/lib/types";
@@ -137,10 +137,15 @@ export async function generarYPersistirProsaStr(args: {
     return ai;
   } catch (genError) {
     console.error("[STR AI v3] generación falló:", genError);
-    captureApiWarning(genError, {
+    // Nivel `error`, no `warning` (08-sep-2026). La misma falla —la generación reventó y
+    // el lector se queda sin prosa— se reportaba en `error` desde LTR y en `warning` desde
+    // acá, así que en Sentry quedaban en dos montones y el de STR no entraba en ninguna
+    // alerta. Es el mismo hecho: mismo nivel.
+    captureApiError(genError, {
       ruta: `generarYPersistirProsaStr (${trigger})`,
       operacion: "generar-prosa-str",
       analysisId,
+      tags: { trigger: String(trigger), promptVersion: String(PROMPT_VERSION_STR) },
     });
     await persistGeneracionTiming(supabase, analysisId, {
       tipo: "str",
