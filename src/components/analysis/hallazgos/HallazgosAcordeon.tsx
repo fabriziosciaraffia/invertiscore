@@ -390,22 +390,6 @@ export function TokensHallazgos() {
       .pal-arrow{margin:0 6px;color:var(--doc-tx4)}
       .pal-why{color:var(--doc-tx4);font-style:italic}
 
-      /* ===== LO QUE TE SEPARA · en el flujo (variante c, 08-sep-2026) =====
-         Las que cruzan van en bloque propio sobre --doc-paper3 (nunca fondo de
-         sección: la pieza es independiente de dónde se monte, igual que .pal-row.si);
-         las que no cruzan van en una línea de texto, sin caja. */
-      .plf{margin-top:22px}
-      .plf-t{font-family:var(--font-mono, ui-monospace);font-size:10.5px;letter-spacing:.14em;
-        text-transform:uppercase;color:var(--doc-tx3);margin:0 0 10px}
-      .plf-si{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 14px;
-        margin-bottom:8px;border:1px solid var(--doc-line);border-radius:3px;background:var(--doc-paper3)}
-      .plf-n{font-size:14px;font-weight:600;color:var(--doc-tx)}
-      .plf-d{font-family:var(--font-mono, ui-monospace);font-size:12.5px;font-weight:700;
-        color:var(--doc-good);text-align:right;white-space:nowrap}
-      .plf-x{grid-column:1/-1;font-family:var(--font-mono, ui-monospace);font-size:11.5px;color:var(--doc-tx3)}
-      .plf-off{font-size:12.5px;line-height:1.55;color:var(--doc-tx4);margin:0;
-        padding:9px 14px;border:1px dashed var(--doc-line2);border-radius:3px}
-      .plf-solo{color:var(--doc-tx3)}
       .pal-pie{background:var(--doc-paper);padding:10px 13px;font-size:11.5px;line-height:1.6;color:var(--doc-tx4)}
 
       /* ===== DIAL DE VEREDICTO ===== */
@@ -647,7 +631,6 @@ export function TokensHallazgos() {
         .compo-bracket{font-size:8px;letter-spacing:.04em}
         .par-top{flex-wrap:wrap;gap:2px}
         .pal-name{font-size:12.5px}
-        .plf-n{font-size:13px} .plf-d{font-size:12px} .plf-x{font-size:11px}
       }
     `,
       }}

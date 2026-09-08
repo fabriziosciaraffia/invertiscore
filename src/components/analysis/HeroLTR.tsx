@@ -5,7 +5,8 @@ import { renderPlumon } from "./hallazgos/plumon";
 import { PosicionFranco } from "./shared/PosicionFranco";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, HallazgoSensibilidad } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { DrawerSensibilidadLtr } from "./drawers/DrawersPropios";
+import { DrawerDistanciaLtr, DrawerSensibilidadLtr } from "./drawers/DrawersPropios";
+import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { MatrizPiePlazoLtr } from "./shared/MatrizPiePlazoLtr";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 import { esProsaDosBloques } from "./AIInsightSection";
@@ -134,17 +135,28 @@ export function HeroLTR({
     distanciaRow && veredicto !== "COMPRAR"
       ? {
           key: "distanciaVeredicto" as const,
-          // El rótulo cambió con el intercambio (08-sep-2026): «lo que te separa» ya se
-          // lee en el flujo, así que el botón deja de prometerlo y ofrece lo otro —
-          // mover pie y plazo, que es explorar y no decidir.
-          k: "Qué pasa si mueves el pie o el plazo",
+          k: "Lo que te separa del veredicto de arriba",
           // Cuántas de las vías cruzan, leído de `vias` (goal "cuatro palancas
           // siempre"). Sin `vias` (filas viejas) queda la línea genérica. El total es el
           // de las vías reales (LTR: 4); la frase vive en palancas-en-palabras (T1).
-          l: "Cada combinación de pie y plazo, con su flujo y su TIR.",
-          btn: "Ver combinaciones",
+          l: (() => {
+            const vias = distanciaRow.valor.vias;
+            if (!vias || vias.length === 0) return lineaFooterVias(null, 4);
+            return lineaFooterVias(vias.filter((v) => v.estado === "cruza").length, vias.length);
+          })(),
+          btn: "Ver ajustes",
+          // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo
+          // (DrawerDistanciaLtr), que sabe cuántas vías cruzan.
           sub: undefined,
-          cuerpo: results ? <MatrizPiePlazoLtr results={results} currency={currency} valorUF={valorUF} /> : null,
+          // LAS DOS PROFUNDIDADES, UN SOLO POP-UP. Primero qué te separa del veredicto
+          // (las cuatro palancas con su intro y su cierre) y después qué pasa si mueves
+          // pie y plazo. Son la misma pregunta a dos niveles y no justifican dos botones.
+          cuerpo: (
+            <>
+              <DrawerDistanciaLtr hallazgo={distanciaRow} currency={currency} valorUF={valorUF} />
+              {results && <MatrizPiePlazoLtr results={results} currency={currency} valorUF={valorUF} />}
+            </>
+          ),
         }
       : sensibilidadRow && results
         ? {
