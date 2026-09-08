@@ -497,7 +497,12 @@ export async function captureGeneratorPrompt(
     throw new Error(CAPTURE_SENTINEL);
   };
   try {
-    await generateAiAnalysis(analysisId, supabase);
+    // `persist: false` NO es opcional acá (07-sep-2026): el centinela de arriba hace
+    // que generateAiAnalysis caiga en su catch, y ese catch persiste una generación
+    // en `error` sobre la fila REAL. Sin esta opción, cada corrida del tier semántico
+    // escribía una entrada basura en pipeline_timing de las seeds del golden que viven
+    // en producción: 522 de las 681 entradas en error de toda la base salieron de acá.
+    await generateAiAnalysis(analysisId, supabase, { persist: false });
   } catch { /* sentinel u otro — captured ya quedó seteado si llegó al create */ }
   finally {
     _MsgProto.create = _origCreate; // restaurar SIEMPRE (el juez usa el real)
