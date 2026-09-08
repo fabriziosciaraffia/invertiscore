@@ -33,14 +33,14 @@ function Wordmark() {
 export function Hero() {
   return (
     <SeccionVista n={1} className="lv-hero">
-      {/* Banda de textura anclada abajo: 50 svh de alto, el rojo pleno son los 30 vh
-          inferiores (regla v2, generar.py). Nada se estira: cada tramo trae su imagen
-          a 2x (y 3x en mobile) y `cover` solo recorta el papel de arriba. */}
+      {/* Fondo completo (receta v3, FASE 1.7): escala A1 azul tinta → ciruela → rojo en
+          diagonal, generada a la resolución final de cada variante; el grano lo pone el
+          CSS (grano-256.png). Es el LCP: fetchpriority alto. */}
       <picture className="lv-fondo lv-fondo-hero">
-        <source media="(min-width: 768px)" srcSet="/landing/textura-hero-d2x.webp" />
-        <source srcSet="/landing/textura-hero-m2x.webp 2x, /landing/textura-hero-m3x.webp 3x" />
+        <source media="(min-width: 768px)" srcSet="/landing/hero-d1x.webp 1x, /landing/hero-d2x.webp 2x" />
+        <source srcSet="/landing/hero-m1x.webp 1x, /landing/hero-m2x.webp 2x, /landing/hero-m3x.webp 3x" />
         {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP; es el LCP y va con fetchpriority */}
-        <img src="/landing/textura-hero-m2x.webp" alt="" fetchPriority="high" decoding="async" />
+        <img src="/landing/hero-m2x.webp" alt="" fetchPriority="high" decoding="async" />
       </picture>
       <header className="lv-col lv-top">
         <Wordmark />
@@ -136,14 +136,15 @@ export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
   const u = datos.ultimoAnalisis;
   return (
     <>
-      {/* Igual que el hero (FASE 1.4): título + precio + "Ver planes" arriba con su
-          aire; el bloque [campo + sin dirección] baja como unidad al tercio inferior,
-          sobre la banda. La textura termina en rojo y el footer va aparte, en papel. */}
+      {/* Igual que el hero: título + precio + "Ver planes" arriba con su aire; el
+          bloque [campo + sin dirección] baja como unidad. Fondo completo con la misma
+          receta del hero (misma dirección); el footer va aparte, en papel. */}
       <SeccionVista n={4} className="lv-s4">
         <picture className="lv-fondo lv-fondo-cierre">
-          <source media="(min-width: 768px)" srcSet="/landing/textura-cierre-d2x.webp" />
+          <source media="(min-width: 768px)" srcSet="/landing/cierre-d1x.webp 1x, /landing/cierre-d2x.webp 2x" />
+          <source srcSet="/landing/cierre-m1x.webp 1x, /landing/cierre-m2x.webp 2x, /landing/cierre-m3x.webp 3x" />
           {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-          <img src="/landing/textura-cierre-m2x.webp" alt="" loading="lazy" decoding="async" />
+          <img src="/landing/cierre-m2x.webp" alt="" loading="lazy" decoding="async" />
         </picture>
         <div className="lv-col lv-s4-col">
           <div className="lv-cierre-izq">

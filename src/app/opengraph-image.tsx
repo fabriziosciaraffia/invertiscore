@@ -5,10 +5,11 @@ import { ImageResponse } from "next/og";
 // ruta que no declare su propia imagen (los informes /analisis/[id] siguen
 // usando /api/og).
 //
-// Landing v14 (07-sep-2026): la textura del hero (misma receta, JPEG porque
-// Satori no lee WebP: tools/texturas/generar.py hero 1200 630) con el h1 en
-// Source Serif 4 Bold y el wordmark arriba. El plumón del h1 es el uso 11 de
-// Signal Red (skill). El ".ai" en Signal Red es el uso 4.
+// Landing v14 (FASE 1.7): la textura del hero (receta v3, fondo oscuro; JPEG
+// porque Satori no lee WebP: tools/texturas/generar.py hero 1200 630 … --sin-grano)
+// con el h1 en Source Serif 4 Bold en papel y el wordmark arriba. El plumón va
+// en papel al 26 % (sobre el fondo oscuro el rojo desaparece). El ".ai" en
+// Signal Red es el uso 4.
 //
 // Wordmark: paths vectoriales de public/logos/refranco-wordmark-light.svg
 // (la versión dark del SVG tiene el bug del .ai en x=155 — no usar).
@@ -28,8 +29,8 @@ const FRANCO_PATH =
 const AI_PATH =
   "M119.60 30.18L119.60 30.18Q118.96 30.18 118.64 29.84Q118.32 29.50 118.32 29.01L118.32 29.01L118.32 28.72Q118.32 28.21 118.64 27.87Q118.96 27.54 119.60 27.54L119.60 27.54Q120.28 27.54 120.58 27.87Q120.88 28.21 120.88 28.72L120.88 28.72L120.88 29.01Q120.88 29.50 120.58 29.84Q120.28 30.18 119.60 30.18ZM130.47 28.37L130.47 30L129.33 30Q128.87 30 128.51 29.78Q128.15 29.57 127.95 29.15Q127.75 28.74 127.75 28.18L127.75 28.18L127.75 28L128.26 28.56L127.68 28.56Q127.48 29.36 126.83 29.78Q126.18 30.19 125.25 30.19L125.25 30.19Q123.97 30.19 123.28 29.51Q122.60 28.83 122.60 27.73L122.60 27.73Q122.60 26.86 123.02 26.30Q123.44 25.74 124.24 25.46Q125.04 25.17 126.16 25.17L126.16 25.17L127.59 25.17L127.59 24.56Q127.59 23.87 127.22 23.48Q126.85 23.09 126.04 23.09L126.04 23.09Q125.32 23.09 124.88 23.40Q124.44 23.71 124.13 24.14L124.13 24.14L122.92 23.06Q123.38 22.34 124.15 21.90Q124.92 21.46 126.18 21.46L126.18 21.46Q127.86 21.46 128.75 22.23Q129.64 23.01 129.64 24.43L129.64 24.43L129.64 28.37L130.47 28.37ZM127.59 27.50L127.59 26.40L126.28 26.40Q125.48 26.40 125.08 26.66Q124.68 26.93 124.68 27.42L124.68 27.42L124.68 27.70Q124.68 28.19 125.01 28.45Q125.35 28.70 125.94 28.70L125.94 28.70Q126.40 28.70 126.77 28.57Q127.14 28.43 127.36 28.16Q127.59 27.89 127.59 27.50L127.59 27.50ZM133.16 20.43L133.16 20.43Q132.53 20.43 132.24 20.14Q131.96 19.84 131.96 19.41L131.96 19.41L131.96 19.09Q131.96 18.64 132.24 18.35Q132.53 18.06 133.16 18.06L133.16 18.06Q133.78 18.06 134.07 18.35Q134.36 18.64 134.36 19.09L134.36 19.09L134.36 19.41Q134.36 19.84 134.07 20.14Q133.78 20.43 133.16 20.43ZM134.18 30L132.13 30L132.13 21.65L134.18 21.65L134.18 30Z";
 
-// Sobre papel: "re" fantasma Ink al 28%, "franco" Ink, ".ai" Signal Red (uso 4).
-const WORDMARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.40 8.50 134.96 22.94"><path fill="#0F0F0F" fill-opacity="0.28" d="${RE_PATH}"/><path fill="#0F0F0F" d="${FRANCO_PATH}"/><path fill="#C8323C" d="${AI_PATH}"/></svg>`;
+// Sobre el fondo oscuro: "re" fantasma papel al 55%, "franco" papel, ".ai" Signal Red (uso 4).
+const WORDMARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.40 8.50 134.96 22.94"><path fill="#FAFAF8" fill-opacity="0.55" d="${RE_PATH}"/><path fill="#FAFAF8" d="${FRANCO_PATH}"/><path fill="#C8323C" d="${AI_PATH}"/></svg>`;
 
 function aBase64(buf: ArrayBuffer): string {
   let s = "";
@@ -57,7 +58,7 @@ export default async function OgImage() {
           display: "flex",
           flexDirection: "column",
           position: "relative",
-          backgroundColor: "#FAFAF8",
+          backgroundColor: "#16264A",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -72,7 +73,7 @@ export default async function OgImage() {
               fontSize: 15,
               fontWeight: 700,
               letterSpacing: "0.16em",
-              color: "#3A3A3A",
+              color: "rgba(250,250,248,0.8)",
             }}
           >
             REAL ESTATE EN SU ESTADO MÁS FRANCO
@@ -90,7 +91,7 @@ export default async function OgImage() {
             fontWeight: 700,
             lineHeight: 0.96,
             letterSpacing: "-0.03em",
-            color: "#0F0F0F",
+            color: "#FAFAF8",
           }}
         >
           <div style={{ display: "flex" }}>¿Ese depto es</div>
@@ -105,7 +106,7 @@ export default async function OgImage() {
                   right: 0,
                   bottom: 0,
                   height: "40%",
-                  backgroundColor: "rgba(200,50,60,0.26)",
+                  backgroundColor: "rgba(250,250,248,0.26)",
                 }}
               />
               <span style={{ position: "relative" }}>buena inversión</span>
