@@ -30,8 +30,13 @@ const EXCLUIDOS: RegExp[] = [
   /^src[\\/]app[\\/]share[\\/]comparativa[\\/]\[token\][\\/]documento[\\/]/,
 ];
 
-/** Formas de etiqueta que nunca son valor: se cazan siempre. */
-const FRASE = /Buscar otra|Ajusta supuestos/g;
+/** Formas de etiqueta que nunca son valor: se cazan siempre.
+ *  Incluye las dos formas propias de la LÍNEA QUE DECLARA (v21): si alguien la
+ *  copia en un componente en vez de pedirla a `lineaQueDeclara`, la escritura del
+ *  veredicto vuelve a tener dos fuentes. «Compra.» queda fuera a propósito: es una
+ *  palabra corriente del castellano y cazarla daría falsos positivos en cualquier
+ *  prosa; las otras dos alcanzan para detectar la copia. */
+const FRASE = /Buscar otra|Ajusta supuestos|Ajusta los números|Busca otro/g;
 /** Formas en mayúsculas: se cazan salvo como string entero (valor) o clave CSS/mapa. */
 const BANDA = /BUSCAR OTRA|AJUSTA SUPUESTOS/g;
 

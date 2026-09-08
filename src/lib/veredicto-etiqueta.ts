@@ -39,3 +39,38 @@ export function etiquetaVeredicto(v: Veredicto | string | null | undefined, form
 export function listaVeredictos(forma: FormaEtiqueta = "banda", sep = " · "): string {
   return (["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"] as const).map((v) => ETIQUETAS[v][forma]).join(sep);
 }
+
+// ============================================================================
+// LA LÍNEA QUE DECLARA — el título del bloque «¿Conviene?» (v21 · 08-sep-2026)
+// ============================================================================
+// El bloque perdió su rótulo genérico («¿Conviene o no conviene?», que preguntaba
+// lo que la banda de la portada ya contestó) y pasó a titularse con la RESPUESTA:
+// una oración imperativa por veredicto, y bajo ella las razones que la sostienen.
+//
+// SON CONSTANTES, NO UN CAMPO DEL PROMPT. Tres strings fijos no necesitan modelo:
+// meterlos al schema costaría tokens por generación para reproducir algo que ya
+// está decidido, y dejaría que cada corrida los escribiera distinto. Viven acá,
+// junto a la etiqueta, porque son la MISMA decisión escrita para otra superficie:
+// el usuario tiene que leer la misma palabra en la banda y en el título.
+//
+// La segunda cláusula es idéntica en los tres a propósito. La lista que va debajo
+// es MIXTA —trae razones a favor y en contra en el mismo bloque, ordenadas por
+// peso— así que un cierre direccional («lo que no cierra») se contradice con la
+// primera línea a favor. «Esto es lo que pesa» describe el criterio de la lista,
+// que es lo único cierto para los tres veredictos.
+//
+// «Ajusta los números», no «los supuestos»: supuesto es palabra nuestra, del motor.
+// El valor persistido sigue siendo "AJUSTA SUPUESTOS" y no cambia.
+// ============================================================================
+
+const LINEAS_DECLARA: Record<Veredicto, string> = {
+  COMPRAR: "Compra. Esto es lo que pesa:",
+  "AJUSTA SUPUESTOS": "Ajusta los números. Esto es lo que pesa:",
+  "BUSCAR OTRA": "Busca otro. Esto es lo que pesa:",
+};
+
+/** Título del bloque de razones, por veredicto. `null` si el valor no es un
+ *  veredicto conocido (legacy sin normalizar): el caller decide el vacío. */
+export function lineaQueDeclara(v: Veredicto | string | null | undefined): string | null {
+  return esVeredicto(v) ? LINEAS_DECLARA[v] : null;
+}
