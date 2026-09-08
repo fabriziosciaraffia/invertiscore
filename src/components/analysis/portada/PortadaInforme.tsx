@@ -278,19 +278,10 @@ export function DocTokens() {
         /* grano de papel: tile SVG 300px, NO filtro en vivo (contrato plumon-veredicto.html) */
         --doc-grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
       }
-      /* ═══ COLOR POR VEREDICTO (goal "material del informe", 06-sep-2026) ═══
-         Un solo par de tokens en la raíz del documento, fijado por data-verdict
-         (DocumentoFrame). Lo usan la banda, TODOS los plumones y la barra de score.
-         NO lo usan clasificacionColor, rentColor(), el Dial/Thermo ni la matriz: ese
-         es el semáforo del DATO y sigue con --doc-good / --doc-warn / --signal-red.
-         Misma tríada en claro y oscuro. Sin data-verdict (AMBAS): Ink, sin color. */
-      .doc-dictamen:not([data-verdict]),.doc-tokens:not([data-verdict] *){
-        --verdict:var(--doc-tx); --verdict-deep:var(--doc-tx); --verdict-band-0:var(--verdict);
-      }
-      [data-verdict="BUSCAR OTRA"]{--verdict:#C8323C; --verdict-deep:#7A1F27; --verdict-band-0:var(--verdict)}
-      /* AJUSTA arranca más oscuro: #B7791F pelado da 3,6:1 con texto blanco (decisión Fabrizio, FASE 0) */
-      [data-verdict="AJUSTA SUPUESTOS"]{--verdict:#B7791F; --verdict-deep:#6E4712; --verdict-band-0:color-mix(in srgb,var(--verdict) 70%,var(--verdict-deep))}
-      [data-verdict="COMPRAR"]{--verdict:#2E8B57; --verdict-deep:#1E5A38; --verdict-band-0:var(--verdict)}
+      /* ═══ COLOR POR VEREDICTO ═══ El bloque [data-verdict] se mudó a
+         src/app/globals.css (07-sep-2026, camino B): la landing necesita los mismos
+         tokens fuera del informe, y tenerlos en dos hojas era tener dos fuentes. Acá
+         no queda ninguna definición — el catch-test del QUICK falla si vuelve. */
       /* grano sobre todo el documento: oscuro soft-light .12 (mockup oscuro aprobado),
          claro multiply .10 (contrato). Encima del contenido, sin capturar el mouse. */
       .doc-dictamen::after{content:"";position:absolute;inset:0;pointer-events:none;
