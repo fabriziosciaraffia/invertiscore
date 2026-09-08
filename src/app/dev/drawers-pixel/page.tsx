@@ -5,6 +5,7 @@
 // no se puede ver ni shotear sin login.
 //   · ?row=staRosaStr|grajalesStr&comp=pagina  → página STR completa (STRResultsClient)
 //   · ?row=providenciaLtr&comp=paginaLtr       → página LTR completa (PremiumResults)
+//   · ?row=providenciaLtrV20&comp=paginaLtr    → la misma fila con prosa de cuatro campos
 //   · ?row=<str>&comp=<pieza>                  → piezas compartidas (matriz, planilla, fila
 //     de dato, tramos, curva, cifras, día 1, patrimonio, all) sobre el recompute volcado
 // T3 STR (05-sep-2026): murió la rama de los drawers STR viejos (DrawerSTR, DrawerContentSTR,
@@ -25,7 +26,10 @@ import fixtures from "./fixtures.json";
 // Goal "material del informe" (06-sep-2026): tres casos más para los shots por veredicto sin
 // abrir las filas en prod (laFloridaLtr = c4ffe9a6 BUSCAR, nunoaLtr = 17b4e10d COMPRAR,
 // lasCondesStr = efe52b6a COMPRAR). Se vuelcan con scripts/of-dump-fixture.ts.
-type FixKey = "staRosaStr" | "grajalesStr" | "providenciaLtr" | "laFloridaLtr" | "nunoaLtr" | "lasCondesStr";
+// v21 (08-sep-2026): los tres LTR se volcaron a prosa de DOS BLOQUES y
+// `providenciaLtrV20` conserva la misma fila con los CUATRO campos viejos, que es
+// la unica forma de shotear el camino congelado sin abrir una fila anonima en prod.
+type FixKey = "staRosaStr" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "laFloridaLtr" | "nunoaLtr" | "lasCondesStr";
 
 function Inner() {
   const sp = useSearchParams();
