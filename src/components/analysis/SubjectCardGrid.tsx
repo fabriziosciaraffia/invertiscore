@@ -23,8 +23,11 @@ import { buildFichaLtr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { DocumentoFrame, PortadaInforme } from "./portada/PortadaInforme";
 import { useComparablesCercanos } from "./portada/useComparablesCercanos";
-import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
+import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoSensibilidad, HallazgoSobreprecio } from "@/lib/types";
 import { BloqueEsperaInforme } from "@/components/analysis/ProsaSkeleton";
+import { construirPalancas } from "./drawers/DrawersPropios";
+import { PalancasFlujo, MargenFlujo } from "./shared/PalancasFlujo";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
  * Orquestador del análisis IA: Hero Verdict + Subject Card Grid 2×2 + card
@@ -104,6 +107,29 @@ export function SubjectCardGrid({
   // Orden único de la pirámide — se calcula UNA vez acá y alimenta la secuencia
   // de drawers y el resolver de telemetría (mismo array que renderiza).
   const hallazgosOrdenados = ordenarHallazgosPiramide(results, aiAnalysis);
+
+  // ── LO QUE TE SEPARA (08-sep-2026) ────────────────────────────────────────
+  // `distancia_veredicto` está EXCLUIDO de la pirámide a propósito (orden-hallazgos),
+  // así que se lee de results.hallazgos sin pasar por el orden. Misma condición que
+  // el footer del hero desde T2: con distancia va la matriz; sin ella (COMPRAR, donde
+  // el motor devuelve null porque no hay veredicto superior) va el margen.
+  const palancasFlujo = (() => {
+    const hs = (results?.hallazgos ?? []) as Hallazgo[];
+    const dist = hs.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
+    if (dist && veredicto !== "COMPRAR") {
+      const { filas } = construirPalancas(dist.valor, currency, valorUF, false);
+      return <PalancasFlujo filas={filas} objetivo={etiquetaVeredicto(dist.valor.veredictoObjetivo, "banda")} />;
+    }
+    const sens = hs.find((h): h is HallazgoSensibilidad => h.id === "sensibilidad");
+    if (!sens) return null;
+    return (
+      <MargenFlujo
+        marginPct={sens.valor.marginPct}
+        firme={sens.valor.firme}
+        veredictoNuevo={sens.valor.veredictoNuevo ? etiquetaVeredicto(sens.valor.veredictoNuevo, "banda") : ""}
+      />
+    );
+  })();
 
   // I-3: apertura de drawer (todas las cards entran por acá). El resolver emite
   // en paralelo `informe_hallazgo_abierto {n, id_hallazgo}` cuando el drawer
@@ -324,6 +350,15 @@ export function SubjectCardGrid({
             >
               <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
               <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} onVerDetalle={scrollAHallazgo} />
+              {/* LO QUE TE SEPARA — la matriz de palancas sube del modal al flujo
+                  (08-sep-2026). Las cuatro palancas son MOTOR, no IA, y contestan la
+                  única pregunta accionable del informe; tenerlas detrás de un botón
+                  las dejaba fuera de la lectura. Variante (c): las que cruzan
+                  destacadas, el resto en una línea. Sube solo la matriz — la intro y
+                  el cierre del drawer se quedan allá.
+                  Sin distancia (COMPRAR) el slot cambia de pregunta a «cuánto
+                  aguanta», misma regla que el footer del hero desde T2. */}
+              {palancasFlujo}
             </SeccionInforme>
           )}
           {/* ═══ 4 · LOS NÚMEROS (paper2) — seis cifras + modal de cálculo ═══ */}
