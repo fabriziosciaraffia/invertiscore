@@ -1,8 +1,10 @@
 // ============================================================================
-// GOLDEN · A8·D1 instrumentos — catch-test (#11 · 07-sep-2026). 0 tokens.
+// GOLDEN · instrumentos por su nombre — catch-test (#11 · 07-sep-2026). 0 tokens.
 // ============================================================================
-// Fija qué wording nombra el instrumento (pasa A8) y cuál solo nombra el género
-// (sigue fallando). Los legítimos salen del parque y de los dumps LTR: «depósito a
+// Fija qué wording nombra el instrumento y cuál solo nombra el género. Nació para
+// A8·D1 en LTR; esa regla se retiró con `largoPlazo` en v21 (08-sep-2026) y el
+// matcher quedó sirviendo al golden de STR, donde el campo existe y se renderiza.
+// Los legítimos salen del parque y de los dumps LTR: «depósito a
 // plazo», «depósito en UF al 5%», «depósito a plazo en UF», «depósito UF», «fondos
 // mutuos», plural de depósito. Los ilegítimos son los que la regla protege.
 //
@@ -28,7 +30,7 @@ const ILEGITIMOS: string[] = [
 
 /** Tier para el runner: cada wording mal clasificado es una falla dura. */
 export function runInstrumentosTier(): { hard: number } {
-  console.log("\n─── TIER INSTRUMENTOS (A8·D1 nombra el instrumento, no el género · instrumentos.ts, 0 tokens) ───");
+  console.log("\n─── TIER INSTRUMENTOS (nombra el instrumento, no el género · instrumentos.ts, 0 tokens) ───");
   let hard = 0;
   for (const t of LEGITIMOS) if (!nombraInstrumento(t)) { hard += 1; console.log(`  ✗ legítimo rechazado: «${t}»`); }
   for (const t of ILEGITIMOS) if (nombraInstrumento(t)) { hard += 1; console.log(`  ✗ ilegítimo aceptado: «${t}»`); }
