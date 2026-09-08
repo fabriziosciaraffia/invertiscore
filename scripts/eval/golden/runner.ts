@@ -30,6 +30,7 @@ import { runEtiquetaTier } from "./etiqueta-veredicto-catch-test";
 import { runTitularFinalTier } from "./titular-final-catch-test";
 import { runInstrumentosTier } from "./instrumentos-catch-test";
 import { runCandadoTier } from "./candado-catch-test";
+import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runStrGenerateTier, type TandaStr } from "./str-generate";
 import { runAmbasTier } from "./ambas-recompute";
 import { runAmbasSemanticTier } from "./ambas-semantic";
@@ -154,6 +155,10 @@ async function printStrSemantic() {
   // ── Tier CANDADO (goal #3 · 07-sep-2026, 0 tokens, sin base): generating_since solo
   // se escribe en candado-generacion.ts; dos tomas → una gana; TTL vence. Siempre con el QUICK. ──
   totalHard += (await runCandadoTier()).hard;
+
+  // ── Tier INSTRUMENTO (07-sep-2026, 0 tokens): ningún call site del generador en scripts/
+  // escribe en la base sin declararlo (persist:false o trigger). Corre siempre con el QUICK. ──
+  totalHard += runGeneradorEnScriptsTier().hard;
 
   // ── Tier STR (E.1b · GS-STR, 0 tokens). Corre con --str o --all/--full. ──
   if (has("--str") || has("--all") || MODE_FULL) {
