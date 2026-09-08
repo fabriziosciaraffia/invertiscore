@@ -29,6 +29,7 @@ export function HeroLTR({
   currency,
   veredicto,
   valorUF,
+  inputData,
   results,
   createdAt,
   fechaProsa,
@@ -187,15 +188,24 @@ export function HeroLTR({
   // lector leería una contradicción. `objetivo_uf` es el nombre nuevo; las prosas
   // anteriores traen `techo_uf` con el mismo rol. En el caso ESTRUCTURAL no hay
   // plan ni anclas: no hay chip.
+  // SIEMPRE EN UF, no con el toggle. El objetivo del plan se nombra en UF en todo el
+  // informe —el ksub del capitulo III dice "cierra en Comprar bajo UF 4.175" sin mirar
+  // la moneda, y `negociacion.precioSugerido` es "UF X.XXX" por contrato del prompt—
+  // porque es un precio de cierre, no una cifra de caja. En pesos el mismo dato sale
+  // "$167.004.175": nueve digitos en un chip, imposible de leer de un vistazo.
   const objetivoChip = (() => {
     if (!dosBloques) return null;
     const pr = data?.negociacion?.precios;
     const uf = pr?.objetivo_uf ?? pr?.techo_uf;
-    const clp = pr?.objetivo_clp ?? pr?.techo_clp;
-    if (currency === "UF") {
-      return typeof uf === "number" && uf > 0 ? `Objetivo UF ${Math.round(uf).toLocaleString("es-CL")}` : null;
-    }
-    return typeof clp === "number" && clp > 0 ? `Objetivo $${Math.round(clp).toLocaleString("es-CL")}` : null;
+    if (typeof uf !== "number" || uf <= 0) return null;
+    // SOLO SI HAY ALGO QUE APUNTAR. Cuando el objetivo del plan coincide con el precio
+    // pedido —tipico en COMPRAR, donde el caso ya cierra al precio de lista— el chip
+    // repetia la cifra que el lector acaba de ver en la portada y la rotulaba
+    // "Objetivo", justo al lado de un parrafo que dice que no hay argumento para pedir
+    // rebaja. Un objetivo que es el precio actual no es un objetivo.
+    const pedido = Number(inputData?.precio) || 0;
+    if (pedido > 0 && uf >= pedido * 0.995) return null;
+    return `Objetivo UF ${Math.round(uf).toLocaleString("es-CL")}`;
   })();
 
   const fechaFirma = formatFecha(fechaProsa ?? createdAt);
