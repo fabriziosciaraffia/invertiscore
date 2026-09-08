@@ -1,11 +1,11 @@
 "use client";
 
 import { SegsCierre } from "./shared/SegsCierre";
-import { Matriz, nombreVeredicto } from "./shared/Matriz";
+
 import { FilaDato, FilasDato } from "./shared/FilaDato";
 import { Ang } from "./shared/Ang";
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { useState } from "react";
+
 import type {
   AIAnalysisV2,
   AnalisisInput,
@@ -16,7 +16,6 @@ import type {
   HallazgoPlusvalia,
   HallazgoSensibilidad,
   HallazgoSobreprecio,
-  HallazgoTIR,
   HallazgoEstructuraFinanciamiento,
   HallazgoPuestaAPunto,
 } from "@/lib/types";
@@ -137,7 +136,7 @@ export function CapitulosInversion({
   const dist = hs.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
   const plus = (hs.find((h) => h.id === "plusvalia") as HallazgoPlusvalia | undefined) ?? m?.hallazgoPlusvalia ?? undefined;
   const pat = hs.find((h): h is HallazgoPatrimonio => h.id === "patrimonio");
-  const tirH = hs.find((h): h is HallazgoTIR => h.id === "tir");
+
   const estr = hs.find((h): h is HallazgoEstructuraFinanciamiento => h.id === "estructura_financiamiento");
   const sobre = (m?.hallazgoSobreprecio as HallazgoSobreprecio | null | undefined) ?? (hs.find((h) => h.id === "sobreprecio") as HallazgoSobreprecio | undefined) ?? null;
   // Puesta a punto (usados). null con antigüedad ≤ 2 (CapEx 0): no se nombra en
@@ -185,12 +184,8 @@ export function CapitulosInversion({
   const anios = exit?.anios ?? 10;
   const tir = metricaValorONull(exit?.tir);
 
-  // ── matriz pie × plazo (T0/T1): la arma el builder del servidor (recomputeResultsForLegacy)
-  // con la mediana, el UF y la fecha congelados del informe; acá solo se pinta. Resultados
-  // persistidos viejos y el demo no la traen: sin matriz.
-  const matriz = results.matrizPiePlazo && results.matrizPiePlazo.celdas.length ? results.matrizPiePlazo : null;
-  // Serie visible de la matriz del III (Flujo | TIR). Mismo toggle que STR IV.
-  const [serieIII, setSerieIII] = useState<"flujo" | "tir">("flujo");
+
+
 
   if (!m) return null;
 
@@ -350,19 +345,7 @@ export function CapitulosInversion({
     : sobre
       ? { v: `${sobre.valor.desviacionPct > 0 ? "+" : ""}${pct1(sobre.valor.desviacionPct)}%`, rojo: sobre.direccion === "adverso" }
       : { v: money(dividendo), rojo: false };
-  // Matriz pie × plazo sobre la pieza compartida (goal "LTR hereda", 05-sep-2026). Dos
-  // señales por celda (goal "cruza por veredicto", 06-sep-2026): `umbral` = la celda supera
-  // el umbral de la serie activa (flujo ≥ 0 · TIR ≥ umbral), y `veredicto` = el del motor
-  // con esa combinación, que la pieza compara contra el del caso y marca en Ink.
-  const umbralTir = tirH?.valor.umbralPct ?? 6;
-  const cortoMx = (n: number) => `${n < 0 ? "−" : ""}${currency === "UF" ? `UF ${Math.round(Math.abs(n) / (valorUF || 1))}` : `$${Math.round(Math.abs(n) / 1000)}k`}`;
-  const notaMatrizFlujo = (() => {
-    if (!matriz) return "";
-    const verde = matriz.celdas.filter((c) => c.flujoMensual >= 0).sort((a, b) => a.piePct - b.piePct || a.plazoAnios - b.plazoAnios)[0];
-    return verde
-      ? `El mes cierra desde ${Number.isInteger(verde.piePct) ? verde.piePct : pct1(verde.piePct)}% de pie a ${verde.plazoAnios} años. Más pie y más plazo alivian la cuota; el precio es lo que da vuelta el signo.`
-      : "Ninguna combinación cierra el mes. Más pie y más plazo alivian la cuota; el precio es lo que da vuelta el signo.";
-  })();
+
   const cuotasPie = Number(inputData.cuotasPie) || 0;
   const montoCuota = Number(inputData.montoCuota) || 0;
   const filaIII: FilaHallazgo = {
@@ -409,30 +392,11 @@ export function CapitulosInversion({
                       <FilaDato k="Cuota mensual" tip="Dividendo del crédito hipotecario" sub={`crédito de ${compact(precioCLP - pieCLP)} a ${plazo} años`} v={money(dividendo)} unidad="/mes" />
                     </FilasDato>
                   </VViz>
-                  {matriz && (
-                    <VViz t={serieIII === "flujo" ? "Tu flujo mensual según pie y plazo" : "Tu TIR a 10 años según pie y plazo"}>
-                      <Matriz
-                        id="mz-ltr-iii"
-                        cabecera="Cuánto cambia el mes según pie y plazo"
-                        toggle={{ opciones: [{ id: "flujo", label: "Flujo" }, { id: "tir", label: "TIR" }], activo: serieIII, onChange: (id) => setSerieIII(id as "flujo" | "tir") }}
-                        ejeX={{ label: "→ más plazo", niveles: matriz.plazos.map((z) => ({ k: String(z), sub: "años" })) }}
-                        ejeY={{ label: "↓ más pie", niveles: matriz.pies.map((p) => ({ k: `${Number.isInteger(p) ? p : pct1(p)}%`, sub: compact(precioCLP * (p / 100)) })) }}
-                        celdas={matriz.pies.map((p) =>
-                          matriz.plazos.map((z) => {
-                            const c = matriz.celdas.find((x) => x.piePct === p && x.plazoAnios === z);
-                            if (!c) return { v: "—" };
-                            const tir = c.tirPct != null ? `${pct1(c.tirPct)}%` : "—";
-                            const v = serieIII === "flujo" ? cortoMx(c.flujoMensual) : tir;
-                            const umbral = serieIII === "flujo" ? c.flujoMensual >= 0 : c.tirPct != null && c.tirPct >= umbralTir;
-                            return { v, neg: serieIII === "flujo" && c.flujoMensual < 0, umbral, veredicto: c.veredicto, hoy: c.esActual, title: `${signed(c.flujoMensual)} al mes · TIR ${tir} · ${nombreVeredicto(c.veredicto)} · ${Number.isInteger(p) ? p : pct1(p)}% de pie a ${z} años` };
-                          }),
-                        )}
-                        veredictoBase={results.veredicto}
-                        leyenda={{ hoy: "hoy", umbral: serieIII === "flujo" ? "cierra el mes" : `sobre TIR ${pct1(umbralTir)}%`, umbralCorto: serieIII === "flujo" ? "cierra" : `TIR ≥ ${pct1(umbralTir)}%` }}
-                        nota={serieIII === "flujo" ? notaMatrizFlujo : undefined}
-                      />
-                    </VViz>
-                  )}
+                  {/* La matriz pie × plazo BAJÓ al pop-up (08-sep-2026): se intercambió
+                      con la matriz de palancas. Aquella contesta «qué te separa del
+                      veredicto» y subió al flujo; esta contesta «qué pasa si muevo pie y
+                      plazo», que es explorar, no decidir. Vive en
+                      shared/MatrizPiePlazoLtr.tsx, con su toggle. */}
                 </>
               )}
               {capexV && (

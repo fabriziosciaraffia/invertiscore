@@ -2,11 +2,11 @@
 
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { renderPlumon } from "./hallazgos/plumon";
-import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { PosicionFranco } from "./shared/PosicionFranco";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, HallazgoSensibilidad } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { DrawerDistanciaLtr, DrawerSensibilidadLtr } from "./drawers/DrawersPropios";
+import { DrawerSensibilidadLtr } from "./drawers/DrawersPropios";
+import { MatrizPiePlazoLtr } from "./shared/MatrizPiePlazoLtr";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 
 /**
@@ -110,20 +110,17 @@ export function HeroLTR({
     distanciaRow && veredicto !== "COMPRAR"
       ? {
           key: "distanciaVeredicto" as const,
-          k: "Lo que te separa del veredicto de arriba",
+          // El rótulo cambió con el intercambio (08-sep-2026): «lo que te separa» ya se
+          // lee en el flujo, así que el botón deja de prometerlo y ofrece lo otro —
+          // mover pie y plazo, que es explorar y no decidir.
+          k: "Qué pasa si mueves el pie o el plazo",
           // Cuántas de las vías cruzan, leído de `vias` (goal "cuatro palancas
           // siempre"). Sin `vias` (filas viejas) queda la línea genérica. El total es el
           // de las vías reales (LTR: 4); la frase vive en palancas-en-palabras (T1).
-          l: (() => {
-            const vias = distanciaRow.valor.vias;
-            if (!vias || vias.length === 0) return lineaFooterVias(null, 4);
-            return lineaFooterVias(vias.filter((v) => v.estado === "cruza").length, vias.length);
-          })(),
-          btn: "Ver ajustes",
-          // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo
-          // (DrawerDistanciaLtr), que sabe cuántas vías cruzan.
+          l: "Cada combinación de pie y plazo, con su flujo y su TIR.",
+          btn: "Ver combinaciones",
           sub: undefined,
-          cuerpo: <DrawerDistanciaLtr hallazgo={distanciaRow} currency={currency} valorUF={valorUF} />,
+          cuerpo: results ? <MatrizPiePlazoLtr results={results} currency={currency} valorUF={valorUF} /> : null,
         }
       : sensibilidadRow && results
         ? {
