@@ -3478,6 +3478,15 @@ Responde SOLO este JSON, sin texto alrededor:
 
       const limiteNeg = NEGOCIACION_MAX * TOLERANCIA_PRESUPUESTO;
       let mejorNeg = aiResult;
+      // RED DE SEGURIDAD DEL PASO 3. Guarda el último texto SIN magnitudes que haya
+      // producido un retry, aunque se pase del techo de palabras y por eso no lo
+      // hayamos aceptado como "mejor". Sirve para un caso que se vio en la FULL de
+      // v21 (GS-7): el retry devolvió un argumento limpio de 48 palabras, se rechazó
+      // por 2 palabras sobre el techo, y el recorte determinista —que solo sabe
+      // descartar oraciones sucias— se quedó sin ninguna limpia y dejó el campo en
+      // CERO palabras. Un argumento largo de más es un defecto de calibración; un
+      // campo vacío es un bloque sin su primer párrafo.
+      let ultimoLimpio: typeof aiResult | null = null;
       let mejorNegWC = wcNeg(aiResult);
       let mejorNegNum = numeralesDe(aiResult);
       const NEG_MAX_RETRIES = 2;
@@ -3585,6 +3594,7 @@ Responde SOLO este JSON, sin texto alrededor:
         const mejora =
           (num2.length < mejorNegNum.length && wc2 <= Math.max(mejorNegWC, limiteNeg)) ||
           (wc2 < mejorNegWC && num2.length <= mejorNegNum.length);
+        if (num2.length === 0 && wc2 > 0) ultimoLimpio = candidato;
         if (mejora) {
           mejorNeg = candidato;
           mejorNegWC = wc2;
@@ -3605,22 +3615,54 @@ Responde SOLO este JSON, sin texto alrededor:
         // test siguiente empezaría a mitad de la oración.
         const traeMagnitud = (t: string) => new RegExp(NUMERAL_MAGNITUD.source, "i").test(t);
         const limpias = oraciones.filter((o) => !traeMagnitud(o));
-        aiResult.negociacion.contenido = limpias.join(" ").trim();
         const total = oraciones.length;
-        mejorNegWC = wcNeg(aiResult);
-        console.warn(
-          `[NEG-MAGNITUD-TRIM] ${analysisId}: no convergió en ${NEG_MAX_RETRIES} reintentos — descartada(s) ${total - limpias.length} oración(es) con magnitudes (${mejorNegNum.join(", ")}), quedan ${mejorNegWC} palabras`,
-        );
+        if (limpias.length > 0) {
+          // Quedan oraciones limpias: se conservan todas, la última incluida.
+          aiResult.negociacion.contenido = limpias.join(" ").trim();
+          mejorNegWC = wcNeg(aiResult);
+          console.warn(
+            `[NEG-MAGNITUD-TRIM] ${analysisId}: no convergió en ${NEG_MAX_RETRIES} reintentos — descartada(s) ${total - limpias.length} oración(es) con magnitudes (${mejorNegNum.join(", ")}), quedan ${mejorNegWC} palabras`,
+          );
+        } else if (ultimoLimpio && contarPalabras(ultimoLimpio.negociacion?.contenido) > 0) {
+          // NINGUNA oración está limpia: en vez de vaciar el campo se recupera el
+          // último texto sin magnitudes que produjo un retry. Se pasa del techo, y el
+          // recorte de presupuesto de abajo lo acota; largo de más se lee, vacío no.
+          const culpables = mejorNegNum.join(", ");
+          aiResult = ultimoLimpio;
+          mejorNegWC = wcNeg(aiResult);
+          mejorNegNum = [];
+          console.warn(
+            `[NEG-MAGNITUD-TRIM] ${analysisId}: las ${total} oración(es) traían magnitudes (${culpables}) — se recupera el retry limpio de ${mejorNegWC} palabras en vez de vaciar el campo`,
+          );
+        } else {
+          // Sin oración limpia y sin retry limpio, el campo SÍ queda vacío: publicar
+          // una magnitud que el diagrama de al lado ya dibuja es peor que publicar el
+          // bloque con su posición sola, que es como degrada el render.
+          aiResult.negociacion.contenido = "";
+          mejorNegWC = 0;
+          console.warn(
+            `[NEG-MAGNITUD-TRIM] ${analysisId}: las ${total} oración(es) traían magnitudes (${mejorNegNum.join(", ")}) y no hubo retry limpio — el campo queda vacío`,
+          );
+        }
       }
       if (mejorNegWC > TECHO_NEGOCIACION_DURO && aiResult?.negociacion) {
         // `recortarContinuacion` recorta un PAR alineado; con campo único se le pasa
         // el mismo texto dos veces y se usa una sola salida.
         const actual = typeof aiResult.negociacion.contenido === "string" ? aiResult.negociacion.contenido : "";
         const { clp, oracionesDescartadas } = recortarContinuacion(actual, actual, TECHO_NEGOCIACION_DURO);
-        aiResult.negociacion.contenido = clp;
-        console.warn(
-          `[NEG-BUDGET-TRIM] ${analysisId}: no convergió (${mejorNegWC} > ${TECHO_NEGOCIACION_DURO}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras`,
-        );
+        // Mismo piso que el recorte por magnitudes: si el techo se llevaría el campo
+        // entero, se conserva el texto previo. Pasarse del presupuesto es un defecto
+        // de calibración que el lector no ve; el bloque sin su párrafo sí se ve.
+        if (contarPalabras(clp) > 0) {
+          aiResult.negociacion.contenido = clp;
+          console.warn(
+            `[NEG-BUDGET-TRIM] ${analysisId}: no convergió (${mejorNegWC} > ${TECHO_NEGOCIACION_DURO}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras`,
+          );
+        } else {
+          console.warn(
+            `[NEG-BUDGET-TRIM] ${analysisId}: el recorte a ${TECHO_NEGOCIACION_DURO} dejaría el campo vacío — conservo las ${mejorNegWC} palabras`,
+          );
+        }
       }
     }
 
