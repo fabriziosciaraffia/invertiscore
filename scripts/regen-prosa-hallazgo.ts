@@ -141,7 +141,9 @@ async function main() {
     let hecho = false;
     let motivo = "";
     for (let intento = 1; intento <= MAX_INTENTOS && !hecho; intento++) {
-      const { result: ai, warns } = await conWarns(() => generateAiAnalysis(x.id, sb as any, { persist: true }));
+      // persist:true es el propósito declarado de este script; el trigger lo separa del
+      // "manual" de una persona (misma razón que regenerate-ai-analysis.ts).
+      const { result: ai, warns } = await conWarns(() => generateAiAnalysis(x.id, sb as any, { persist: true, trigger: "backfill-script" }));
       llamadas++;
       if (!ai) {
         motivo = "la generación devolvió null";

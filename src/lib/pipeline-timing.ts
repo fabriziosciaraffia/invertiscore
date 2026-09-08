@@ -26,7 +26,8 @@ export type GeneracionTrigger =
   | "stale-regen"   // prosa persistida con promptVersion vieja (lazy-on-open)
   | "post-pago"     // payments/confirm (camino locked)
   | "on-open"       // generación on-demand al abrir la página (STR/AMBAS/insights)
-  | "precalentado"; // cron que refresca prosa stale tras un bump de PROMPT_VERSION
+  | "precalentado"  // cron que refresca prosa stale tras un bump de PROMPT_VERSION
+  | "backfill-script"; // lote manual desde scripts/ (regenerate-ai-analysis, regen-prosa-hallazgo)
 
 export type GeneracionTipo = "ltr" | "str" | "ambas" | "zone-insight" | "guest-insight";
 

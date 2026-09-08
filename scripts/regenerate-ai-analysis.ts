@@ -96,7 +96,10 @@ async function main() {
     const label = `[${i + 1}/${toRegenerate.length}] ${r.id} (${r.comuna || "?"})`;
     process.stdout.write(`${label} ... `);
     try {
-      const result = await generateAiAnalysis(r.id, supabase as any);
+      // `trigger` explícito (07-sep-2026): sin él, el default de generateAiAnalysis es
+      // "manual" y un lote de 157 regeneraciones quedó indistinguible de 157 personas
+      // apretando Reintentar en el tablero del 01-sep.
+      const result = await generateAiAnalysis(r.id, supabase as any, { trigger: "backfill-script" });
       if (result && hasNewAiStructure(result)) {
         ok++;
         console.log("OK");
