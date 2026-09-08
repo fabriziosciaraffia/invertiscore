@@ -25,7 +25,18 @@
 import type { Hallazgo } from "@/lib/types";
 import { fmtMoney } from "./utils";
 
-/** Porcentaje con coma chilena y sin decimal cuando es entero. */
+/**
+ * Dos precisiones a propósito: la referencia tiene que leerse con la MISMA que la
+ * cifra que está arriba, o el par se ve descalibrado.
+ *
+ * `pct1` (siempre un decimal) va donde el KPI es una tasa de un decimal: «4,3%»
+ * con «promedio 4,0%». Con el entero pelado quedaba «promedio 4%» al lado de
+ * «4,3%», que es lo que el contrato del wireframe corrige.
+ *
+ * `pct` (entero cuando es entero) va donde la referencia es un umbral o una banda
+ * en números redondos: «normal 30–40%», «firme sobre 15%». Ahí el decimal sobra.
+ */
+const pct1 = (n: number): string => n.toFixed(1).replace(".", ",") + "%";
 const pct = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ",")) + "%";
 
 /**
@@ -36,13 +47,13 @@ export function referenciaHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF:
   const money = (n: number) => fmtMoney(n, currency, valorUF);
   switch (h.id) {
     case "cap_rate":
-      return `promedio ${pct(h.valor.capRefPct)}`;
+      return `promedio ${pct1(h.valor.capRefPct)}`;
     case "rentabilidad_str":
-      return `umbral ${pct(h.valor.umbralPct)}`;
+      return `umbral ${pct1(h.valor.umbralPct)}`;
     case "plusvalia":
-      return `umbral real ${pct(h.valor.refPct)}`;
+      return `umbral real ${pct1(h.valor.refPct)}`;
     case "tir":
-      return `umbral ${pct(h.valor.umbralPct)}`;
+      return `umbral ${pct1(h.valor.umbralPct)}`;
     case "ocupacion_vs_estimacion":
       return `estimado ${pct(h.valor.estimacionPct)}`;
     case "ventaja_vs_ltr":
