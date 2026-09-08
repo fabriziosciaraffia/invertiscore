@@ -181,7 +181,9 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
    el WebP pese poco y no bandee). */
 .lv-fondo { position: absolute; inset: 0; z-index: 0; display: block; }
 .lv-fondo img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
-.lv-fondo-hero { background: #16264A; }
+/* color de respaldo mientras carga la textura = 0 % de la escala del hero, derivada del
+   token (`python tools/texturas/generar.py escala`); si cambia la tríada, cambia acá */
+.lv-fondo-hero { background: #1F3D67; }
 .lv-fondo-hero::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background-image: url("/landing/grano-256.png"); background-size: 256px;

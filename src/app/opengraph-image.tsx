@@ -58,7 +58,7 @@ export default async function OgImage() {
           display: "flex",
           flexDirection: "column",
           position: "relative",
-          backgroundColor: "#16264A",
+          backgroundColor: "#1F3D67", // 0 % de la escala del hero, derivada del token (generar.py escala)
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
