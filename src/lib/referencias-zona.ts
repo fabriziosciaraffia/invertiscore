@@ -195,7 +195,9 @@ export function appendReconciliacion(ai: any, refs: ReferenciasZona): number {
   // palabras haria que el recorte por oracion se comiera justo la frase que
   // este guard acaba de poner. Fallback a la respuesta directa solo si la pieza
   // de negociacion no existe en esta prosa.
-  const enNegociacion = typeof ai?.negociacion?.contenido_clp === "string" && ai.negociacion.contenido_clp.trim().length > 0;
+  // `contenido` (campo único, v21+) o `contenido_clp` (prosa ≤v20 persistida).
+  const negTexto = ai?.negociacion?.contenido ?? ai?.negociacion?.contenido_clp;
+  const enNegociacion = typeof negTexto === "string" && negTexto.trim().length > 0;
   const candidatos: [string, string][] = enNegociacion
     ? [["negociacion", "contenido_clp"], ["negociacion", "contenido_uf"]]
     : [["conviene", "respuestaDirecta_clp"], ["conviene", "respuestaDirecta_uf"]];

@@ -1495,7 +1495,10 @@ export interface AISection {
 }
 
 export interface AIConvieneSection {
-  pregunta: string;
+  // Opcional desde v21: el bloque se titula con la LÍNEA QUE DECLARA
+  // (veredicto-etiqueta.ts), que es constante por veredicto y no la escribe el
+  // modelo. Las filas persistidas anteriores sí lo traen.
+  pregunta?: string;
   respuestaDirecta_clp: string;
   respuestaDirecta_uf: string;
   // Opcionales (Entrega 2 · prosa fundida): el prompt LTR ya no los emite —
@@ -1512,7 +1515,14 @@ export interface AIConvieneSection {
   cajaLabel: string;
 }
 
-export interface AINegociacionSection extends AISection {
+export interface AINegociacionSection extends Omit<AISection, "contenido_clp" | "contenido_uf"> {
+  /** CAMPO ÚNICO desde v21: el argumento de negociación tiene prohibida toda
+   *  magnitud, así que nunca pudo diferir entre monedas. Opcional porque las filas
+   *  persistidas anteriores traen el par `contenido_clp`/`contenido_uf` en su lugar. */
+  contenido?: string;
+  /** LEGACY (prosa ≤v20). Se leen, no se escriben. */
+  contenido_clp?: string;
+  contenido_uf?: string;
   precioSugerido: string;
   estrategiaSugerida_clp?: string;
   estrategiaSugerida_uf?: string;
@@ -1594,11 +1604,14 @@ export interface AIAnalysisV2 {
   siendoFrancoHeadline_clp?: string;
   siendoFrancoHeadline_uf?: string;
   conviene: AIConvieneSection;
-  costoMensual: AISection;
+  // Opcionales desde v21 (08-sep-2026): el prompt LTR dejó de emitirlos. Se
+  // conservan en el tipo porque el parque persistido los trae —669 filas con prosa
+  // v2, todas con los dos campos— y el camino de render congelado los sigue leyendo.
+  costoMensual?: AISection;
   negociacion: AINegociacionSection;
   // Opcional: solo presente cuando Franco recomienda Nivel 3 (skill §1.5).
   reestructuracion?: AIReestructuracionSection;
-  largoPlazo: AISection;
+  largoPlazo?: AISection;
   // Opcional (Entrega B · Fase 2): el prompt LTR dejó de emitir `riesgos` (el
   // drawer se retiró en Entrega A; su única función viva era alimentar el
   // detector de fabricación, reapuntado a largoPlazo.contenido). Se conserva en

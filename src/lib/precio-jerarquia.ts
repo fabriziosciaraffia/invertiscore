@@ -206,12 +206,11 @@ export function piezasDeAiLtr(ai: any): { pieza: string; texto: string; campos: 
     { pieza: "conviene.respuestaDirecta", campos: ["conviene.respuestaDirecta_clp", "conviene.respuestaDirecta_uf"], texto: `${s(ai?.conviene?.respuestaDirecta_clp)}\n${s(ai?.conviene?.respuestaDirecta_uf)}` },
     { pieza: "posicion", campos: ["conviene.cajaAccionable_clp", "conviene.cajaAccionable_uf"], texto: `${s(ai?.conviene?.cajaAccionable_clp)}\n${s(ai?.conviene?.cajaAccionable_uf)}` },
     {
-      pieza: "negociacion", campos: ["negociacion.contenido_clp", "negociacion.contenido_uf", "negociacion.estrategiaSugerida_clp", "negociacion.estrategiaSugerida_uf", "negociacion.cajaAccionable_clp", "negociacion.cajaAccionable_uf"],
-      texto: [ai?.negociacion?.contenido_clp, ai?.negociacion?.contenido_uf, ai?.negociacion?.estrategiaSugerida_clp, ai?.negociacion?.estrategiaSugerida_uf, ai?.negociacion?.cajaAccionable_clp, ai?.negociacion?.cajaAccionable_uf, ai?.negociacion?.precios?.glosaPrimeraOferta_clp, ai?.negociacion?.precios?.glosaPrimeraOferta_uf, ai?.negociacion?.precios?.glosaWalkAway_clp, ai?.negociacion?.precios?.glosaWalkAway_uf].map(s).join("\n"),
+      // `negociacion.contenido` es campo único desde v21; las filas viejas traen el par.
+      pieza: "negociacion", campos: ["negociacion.contenido", "negociacion.estrategiaSugerida_clp", "negociacion.estrategiaSugerida_uf", "negociacion.cajaAccionable_clp", "negociacion.cajaAccionable_uf"],
+      texto: [ai?.negociacion?.contenido, ai?.negociacion?.contenido_clp, ai?.negociacion?.contenido_uf, ai?.negociacion?.estrategiaSugerida_clp, ai?.negociacion?.estrategiaSugerida_uf, ai?.negociacion?.cajaAccionable_clp, ai?.negociacion?.cajaAccionable_uf, ai?.negociacion?.precios?.glosaPrimeraOferta_clp, ai?.negociacion?.precios?.glosaPrimeraOferta_uf, ai?.negociacion?.precios?.glosaWalkAway_clp, ai?.negociacion?.precios?.glosaWalkAway_uf].map(s).join("\n"),
     },
-    { pieza: "costoMensual", campos: ["costoMensual.contenido_clp", "costoMensual.contenido_uf", "costoMensual.cajaAccionable_clp", "costoMensual.cajaAccionable_uf"], texto: [ai?.costoMensual?.contenido_clp, ai?.costoMensual?.contenido_uf, ai?.costoMensual?.cajaAccionable_clp, ai?.costoMensual?.cajaAccionable_uf].map(s).join("\n") },
     { pieza: "reestructuracion", campos: ["reestructuracion.contenido_clp", "reestructuracion.contenido_uf"], texto: [ai?.reestructuracion?.contenido_clp, ai?.reestructuracion?.contenido_uf].map(s).join("\n") },
-    { pieza: "largoPlazo", campos: ["largoPlazo.contenido_clp", "largoPlazo.contenido_uf"], texto: [ai?.largoPlazo?.contenido_clp, ai?.largoPlazo?.contenido_uf].map(s).join("\n") },
   ];
 }
 

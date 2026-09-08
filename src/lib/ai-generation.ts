@@ -177,7 +177,15 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // la comuna (precioVsComuna) y "tu cuadra" no existe. §18: ámbito por defecto
 // "sobre la mediana de la comuna". El gate de sobreprecio comunal entra como dato
 // con su nombre. El titular pasa por [HERO-CLAIM].
-export const PROMPT_VERSION_LTR = 20;
+// v21 (08-sep-2026) · LA PROSA PASA DE CUATRO CAMPOS A DOS. Mueren `costoMensual`
+// y `largoPlazo` con sus cajas: 303 palabras por generación que el informe ya no
+// lee — `largoPlazo` no se renderiza en la web desde hace semanas, o sea que hoy se
+// paga y no se lee. Muere también el rótulo `conviene.pregunta`: el bloque se titula
+// con la LÍNEA QUE DECLARA, que es constante por veredicto (veredicto-etiqueta.ts) y
+// no cuesta tokens. Y `negociacion.contenido` pasa a campo ÚNICO: tiene prohibida
+// toda magnitud, así que nunca pudo diferir entre monedas.
+// Es un bump de BORRADO: no entra ningún campo nuevo al contrato.
+export const PROMPT_VERSION_LTR = 21;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -211,11 +219,9 @@ Toda intervención sustantiva pasa internamente por estas 4 capas, aunque el out
 Distribución por sección:
 - conviene.respuestaDirecta: capas 1+2+3.
 - negociacion.contenido y negociacion.estrategiaSugerida: capas 1+3, a veces 4.
-- largoPlazo: capas 3+4. Instrumentos (ángulo 3) + condicional de plusvalía + posición. NO recita el equity al vender, el valor a 10 años ni el flujo acumulado — el drawer de patrimonio y las cards de indicadores ya los muestran.
-- costoMensual.cajaAccionable: capa 3 sola, una pregunta.
 - conviene.cajaAccionable: capa 3 + el cierre personal de Franco (capa 4, §9) — posición + próximo paso.
 
-## 3. Cinco ángulos de análisis
+## 3. Cuatro ángulos de análisis
 
 Activa los que sumen al caso. No son obligatorios todos en cada análisis. La regla: si el ángulo cambia o refuerza la decisión del usuario, va. Si es relleno, fuera.
 
@@ -246,13 +252,10 @@ PROHIBIDO frases genéricas tipo:
 
 Si el output va a contener cualquiera de esas frases genéricas sin nombrar al menos una comuna específica, reescribir.
 
-**Ángulo 3 — Instrumentos (depósito UF, fondos mutuos, deuda propia):**
-Activar en \`largoPlazo\` casi siempre. Regla crítica: comparar TIR vs tasa sin contextualizar esfuerzo, riesgo e iliquidez es trampa contable. La comparación honesta incluye qué exige cada instrumento.
-
-**Ángulo 4 — Estructura financiera del usuario:**
+**Ángulo 3 — Estructura financiera del usuario:**
 Pie + tasa del usuario, ver §5 abajo.
 
-**Ángulo 5 — Errores típicos del comprador:**
+**Ángulo 4 — Errores típicos del comprador:**
 Anticipar lo que un primer inversor probablemente no sabe pedir (certificado de deudas de GGCC, actas del comité, situación dominical). Activar cuando hay señales atípicas en el caso (precio muy bajo, GGCC fuera de rango).
 
 ## 4. Disciplina sobre afirmaciones
@@ -298,7 +301,7 @@ El input incluye un objeto \`financingHealth\` con clasificación de pie y tasa 
 
 NIVEL 1 — Validación silenciosa.
 Cuándo: \`overall\` ∈ {optimo, aceptable}.
-Forma: una sola frase integrada en \`conviene.respuestaDirecta\` o en \`largoPlazo.contenido\`. Sin sección dedicada. Sin \`reestructuracion\`. Ejemplo:
+Forma: una sola frase integrada en \`conviene.respuestaDirecta\`. Sin sección dedicada. Sin \`reestructuracion\`. Ejemplo:
 > "La estructura está bien calibrada: [pie%] de pie a [plazo] años con tasa [tasa]% es coherente con lo que da el mercado hoy."
 
 NIVEL 2 — Observación táctica.
@@ -325,7 +328,7 @@ a. NÓMBRALO SIN EUFEMISMOS. Pie 0 = financiamiento del 100%, típicamente bono 
 
 b. EL RIESGO A NARRAR ES ESTRUCTURAL, no una métrica: dividendo en su punto más alto, cero colchón de capital, sensibilidad total a vacancia y tasa. El escenario concreto es la vacancia: un mes vacío = pagar de tu bolsillo el dividendo completo + gastos comunes + contribuciones — el input trae esos montos, úsalos en plata, no en abstracto.
 
-c. PROHIBIDO CELEBRAR MÉTRICAS SOBRE CAPITAL. Cash-on-cash, payback del pie, TIR y multiplicador de capital vienen como "no aplica: sin capital propio (pie $0)": NO existen, NO los inventes, NO digas "rentabilidad infinita", "retorno espectacular sobre lo invertido" ni equivalentes. Si el flujo es positivo, la lectura correcta es "la operación aguanta su propio financiamiento completo" — mérito del flujo, no de un retorno sobre capital que no hay. La comparación con instrumentos (§3 ángulo 3) se hace en flujo, esfuerzo y riesgo, nunca en múltiplos.
+c. PROHIBIDO CELEBRAR MÉTRICAS SOBRE CAPITAL. Cash-on-cash, payback del pie, TIR y multiplicador de capital vienen como "no aplica: sin capital propio (pie $0)": NO existen, NO los inventes, NO digas "rentabilidad infinita", "retorno espectacular sobre lo invertido" ni equivalentes. Si el flujo es positivo, la lectura correcta es "la operación aguanta su propio financiamiento completo" — mérito del flujo, no de un retorno sobre capital que no hay.
 
 d. DUREZA CON EL PRECIO, CALIBRADA POR LA RAZÓN. Si el pie es 0, alguien lo está cubriendo. Cuando el input declara 'bono_pie' es la inmobiliaria: ahí la comparación del precio/m² contra la mediana de la zona va con MÁS dureza que en un caso normal, porque el bono suele estar cargado en el precio de lista. Con 'otra_fuente' (lo cubre el comprador) esa sospecha NO aplica — no la insinúes. Con 'sin_pie' o 'no_declarada' mantén la cautela genérica sin afirmar quién lo cubre. Si no hay mediana confiable, dilo como límite del análisis y recomienda verificar comparables antes de firmar.
 
@@ -382,7 +385,6 @@ Reglas:
 OBLIGATORIO mencionarla en \`conviene.respuestaDirecta\` cuando:
 - plusvaliaHistoricaAnualizada < 2% (comuna estancada)
 - plusvaliaHistoricaAnualizada negativa (comuna perdiendo valor)
-- Ángulo 3 (instrumentos) sería invalidado sin contexto histórico (la comparación TIR vs depósito/fondo asume plusvalía estable o creciente; si la comuna está perdiendo valor, hay que explicitarlo).
 
 Forma: diagnóstico + implicancia.
 Ejemplo: "${EJ_BAJA[0]} rindió ${pct(EJ_BAJA[1].anualizada)}% anualizado en su período — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón." (la cifra es la del dataset; en tu prosa va la del caso)
@@ -407,7 +409,7 @@ Cuando el caso incluye un bloque \`CAPEX PUESTA A PUNTO\`, el depto es usado y n
 Reglas:
 1. El monto te viene DADO (UF y CLP) y el % que pesa sobre la inversión inicial también. NO los recalcules ni los inventes. Si no está en el bloque, no existe.
 2. PROHIBIDO recitar el monto (A1). En vez de "necesitas UF X de puesta a punto", REENCUADRA: qué significa que tu inversión inicial real sea más alta de lo que parece, que la plata día 1 no es solo el pie, que captar arriendo de mercado tiene un costo de entrada previo.
-3. PLACEMENT + DECISIVIDAD: cuando aparece el bloque \`CAPEX PUESTA A PUNTO\`, ya viene gateado a que PESA (adverso y ≥12% de la inversión inicial). Va SOLO en \`conviene.respuestaDirecta\`, como el matiz de inversión inicial — y solo si condiciona la decisión (que la plata día-1 real supere de lejos al pie); si el caso se decide por otra cosa, omitilo (NO es "siempre"). PROHIBIDO en cualquier otra sección (\`largoPlazo\`, \`costoMensual\`, \`negociacion\`). REENCUADRA qué significa para tu inversión inicial real — NO recites el monto.
+3. PLACEMENT + DECISIVIDAD: cuando aparece el bloque \`CAPEX PUESTA A PUNTO\`, ya viene gateado a que PESA (adverso y ≥12% de la inversión inicial). Va SOLO en \`conviene.respuestaDirecta\`, como el matiz de inversión inicial — y solo si condiciona la decisión (que la plata día-1 real supere de lejos al pie); si el caso se decide por otra cosa, omitilo (NO es "siempre"). PROHIBIDO en cualquier otra sección (\`negociacion\`). REENCUADRA qué significa para tu inversión inicial real — NO recites el monto.
 4. Si el bloque NO aparece, silencio: no menciones puesta a punto, ni "el depto está impecable", nada. Sin bloque, el tema no existe para ti.
 
 ## 9. Cierre obligatorio — Franco se la juega
@@ -614,7 +616,7 @@ El dato de plusvalía de cada caso declara SU período y no todos son iguales: l
 - Pandemia, 2020-2021.
 - Cierre 2025, SOLO si el período del caso llega a 2025: en la serie, el precio de 2025 se movió poco respecto de 2024. Es un dato de la propia serie —y ese punto es un cierre estimado por Franco, no un anual publicado—, no una lectura del mercado. Puedes señalar que el promedio incluye un año casi plano; NO puedes afirmar que "el mercado se frenó", "se desaceleró", "se enfrió" ni ninguna causa: a diferencia del estallido o la pandemia, acá no hay un evento externo verificable, hay una cifra nuestra.
 
-REGLA DURA: en el PRIMER uso de la plusvalía histórica dentro de cualquier campo (\`conviene.respuestaDirecta\`, \`largoPlazo\`), debes situar el número en su período: nombra ≥1 de los tramos que el rango cruza y di que por eso es ruidoso / no es proyección. Después del primer uso puedes citar el número pelado.
+REGLA DURA: en el PRIMER uso de la plusvalía histórica (\`conviene.respuestaDirecta\`) debes situar el número en su período: nombra ≥1 de los tramos que el rango cruza y di que por eso es ruidoso / no es proyección. Después del primer uso puedes citar el número pelado.
 
 ENCUADRE OBLIGATORIO — el evento es CUÁNDO, no POR QUÉ:
 - Correcto (el rango CRUZA el período): "ese número cruza el estallido y la pandemia, así que es ruidoso".
@@ -688,7 +690,6 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
                             // Campo ÚNICO (sin _clp/_uf): no lleva montos en moneda.
 
   "conviene": {
-    "pregunta": "¿Conviene o no conviene?",
     "respuestaDirecta_clp": string,
     "respuestaDirecta_uf": string,
     "cajaAccionable_clp": string,
@@ -696,10 +697,10 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
     "cajaLabel": string
   },
 
-  "costoMensual": { pregunta, contenido_clp, contenido_uf, cajaAccionable_clp, cajaAccionable_uf, cajaLabel },
-
   "negociacion": {
-    pregunta, contenido_clp, contenido_uf,
+    pregunta,
+    "contenido": string,           // CAMPO ÚNICO (sin _clp/_uf): tiene prohibida toda
+                                   // magnitud, así que no cambia con la moneda.
     "estrategiaSugerida_clp": string,
     "estrategiaSugerida_uf": string,
     cajaAccionable_clp, cajaAccionable_uf, cajaLabel,
@@ -719,9 +720,7 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
       "plazoSugerido_anios": number,    // = estructuraFinancieraSugerida.plazoSugerido (igual al actual)
       "tasaObjetivo_pct": number,       // = estructuraFinancieraSugerida.tasaObjetivo
     }
-  },
-
-  "largoPlazo": { pregunta, contenido_clp, contenido_uf, cajaAccionable_clp, cajaAccionable_uf, cajaLabel }
+  }
 }
 \`\`\`
 
@@ -734,8 +733,7 @@ Largos por campo:
 - conviene.cajaAccionable: 1-2 frases — la POSICIÓN PERSONAL de Franco que cierra el análisis (§9): síntesis + condición bajo la que se sostiene + costo de avanzar contra el análisis si aplica. Cierra con un próximo paso concreto. NO checklist genérica, NO pregunta retórica sin respuesta.
   LAS VÍAS SON LAS QUE SON. Si el caso trae el bloque VÍAS QUE CRUZAN AL VEREDICTO DE ARRIBA, tu posición se escribe SOBRE ESA LISTA: cada una alcanza por sí sola y todas están medidas. Puedes recomendar una —la más accionable para este comprador— pero no puedes dejar creyendo que es la única disponible.
   LA PRUEBA NO ES LA LITERALIDAD, ES LO QUE QUEDA CREYENDO QUIEN LEE. "La única palanca que depende solo de ti" puede ser cierta palabra por palabra y aun así dejar al lector convencido de que no hay otra vía — cuando estirar el plazo tampoco depende del vendedor, depende del banco, igual que la tasa. Una frase técnicamente correcta que produce una creencia falsa es un error, no un matiz.
-- costoMensual.contenido: 2-3 frases — interpretación, no recitación de números. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
-- negociacion.contenido: 1-2 frases, entre ${NEGOCIACION_MIN} y ${NEGOCIACION_MAX} palabras por variante. Dos guards lo miden —uno te pide desarrollar si te quedas corto, otro recorta si te pasas— así que escribe para ese rango. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
+- negociacion.contenido: 1-2 frases, entre ${NEGOCIACION_MIN} y ${NEGOCIACION_MAX} palabras. Dos guards lo miden —uno te pide desarrollar si te quedas corto, otro recorta si te pasas— así que escribe para ese rango. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
   ES EL ARGUMENTO CON EL QUE SE NEGOCIA (§1.12.2): por qué el vendedor debería moverse, dicho en una razón que el comprador pueda poner sobre la mesa. Y, SOLO si el pie es muy bajo o la tasa está sobre la referencia, la segunda frase dice que la palanca de mayor impacto es la estructura de financiamiento y no el precio — se trabaja con el banco, en paralelo (§1.5).
   CERO MAGNITUDES. Este campo NO LLEVA NINGUNA CIFRA de plata, de UF ni de porcentaje. Ni una. Ni el precio, ni el objetivo, ni la oferta, ni el pie, ni la tasa, ni la TIR, ni el arriendo, ni la brecha, ni el descuento, ni el precio/m², ni la mediana. Nada con \`$\`, con \`UF\` ni con \`%\`.
   NO ES UNA LISTA DE EXCEPCIONES: es categórico. Toda magnitud de este informe ya está dibujada en su propio bloque —el eje de veredicto, el plan de precios, el chip de caja en cero, la fila del índice, el hero— y repetirla acá la duplica. Cuando cerramos una fuente el argumento se mudaba a la siguiente, así que la regla es la categoría entera y no la enumeración.
@@ -754,9 +752,9 @@ Largos por campo:
   - "Empieza en UF 4.300, cierra hasta UF 4.500."
   Ejemplo INCORRECTO (pregunta retórica sin número): "¿Hasta dónde estás dispuesto a llegar?"
 - reestructuracion.contenido: 3-5 frases. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
-- largoPlazo.contenido: 2-3 frases. ENTRA DIRECTO por la comparación con instrumentos (Ángulo 3, §1.3): un depósito a plazo en UF y/o un fondo mutuo, con el costo de oportunidad honesto — no exigen aporte mensual, no tienen vacancia, son líquidos — nunca TIR pelada vs tasa (A4). Cierra con el caveat de plusvalía histórica de la comuna situado en su período (ver REGLA plusvalía): nombra el tramo que el promedio cruza y si la proyección a futuro queda por encima o por debajo del histórico observado. El equity / tu parte a la venta, el valor a 10 años y el flujo acumulado NO se recitan: ya viven en el drawer de patrimonio y en las cards de indicadores. Puedes referenciar UNA cifra como ancla de la comparación ("el depto proyecta $X frente a $Y del fondo") — nunca la llames "ganancia neta", nunca abras recitándola ni desgloses de dónde sale. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
 
 CLP/UF — cuándo duplicar:
+- \`negociacion.contenido\` NO se duplica: es campo único. No lleva magnitudes por contrato, así que un par _clp/_uf sería el mismo texto dos veces.
 - Campo con cifras concretas que cambian con la moneda → duplicar (un texto con $X y otro con UF Y).
 - Campo puramente analítico sin cifras → texto idéntico en _clp y _uf.
 - Campo mixto (cifras + análisis) → duplicar; las cifras se reescriben, el análisis envuelve igual.
@@ -764,18 +762,13 @@ CLP/UF — cuándo duplicar:
 - Formato UF: "UF X,X" para valores <100 UF (coma decimal), "UF X.XXX" para valores ≥100 UF (separador miles con punto, sin decimales). Nunca "UF 0".
 
 Labels y preguntas constantes (no derivar — usar EXACTAMENTE estos strings):
-- conviene.pregunta: "¿Conviene o no conviene?"
 - conviene.cajaLabel: "Antes de seguir, decide:"
-- costoMensual.pregunta: "¿Qué te cuesta mes a mes?"
-- costoMensual.cajaLabel: "Hazte esta pregunta:"
 - negociacion.pregunta: "¿Hay margen para negociar?"
 - negociacion.cajaLabel: "Guión para la contraoferta:" — salvo cuando el bloque de negociación declara caso ESTRUCTURAL (sin plan ni anclas): ahí va "Qué haces con esto:", porque no hay contraoferta que guionar
-- largoPlazo.pregunta: "¿Vale la pena a 10 años?"
-- largoPlazo.cajaLabel: "La apuesta que estás haciendo:"
 
 Reglas universales del output:
 - Todo monto formateado a la chilena. Decimal con coma, miles con punto.
-- DESTACADORES \`**…**\` (único markdown permitido; el render los pinta con plumón): marca las frases clave de la prosa. Máximo 2 marcas por párrafo. Cada marca envuelve una FRASE COMPLETA con predicado que se lee sola como mini-hallazgo (el lector que solo lee lo marcado entiende el análisis) — nunca un número pelado ni un fragmento sin verbo. Una marca JAMÁS cruza un punto ni parte un token de cifra ($X.XXX, UF X, X%): la cifra queda entera dentro o entera fuera. Aplica a conviene, costoMensual, negociacion, largoPlazo y reestructuracion; en el \`titular\` rige §18 (exactamente UNA marca). Y en CADA \`cajaAccionable\` va EXACTAMENTE UNA marca — ni dos ni cero: es el cierre del cuerpo y el lector que solo barre lo marcado tiene que poder quedarse con la frase-fuerza de ese cierre. (STR ya lo cumple desde su v9; esto lo iguala en LTR.) Ningún otro markdown (sin cursivas, sin listas, sin encabezados).
+- DESTACADORES \`**…**\` (único markdown permitido; el render los pinta con plumón): marca las frases clave de la prosa. Máximo 2 marcas por párrafo. Cada marca envuelve una FRASE COMPLETA con predicado que se lee sola como mini-hallazgo (el lector que solo lee lo marcado entiende el análisis) — nunca un número pelado ni un fragmento sin verbo. Una marca JAMÁS cruza un punto ni parte un token de cifra ($X.XXX, UF X, X%): la cifra queda entera dentro o entera fuera. Aplica a conviene, negociacion y reestructuracion; en el \`titular\` rige §18 (exactamente UNA marca). Y en CADA \`cajaAccionable\` va EXACTAMENTE UNA marca — ni dos ni cero: es el cierre del cuerpo y el lector que solo barre lo marcado tiene que poder quedarse con la frase-fuerza de ese cierre. (STR ya lo cumple desde su v9; esto lo iguala en LTR.) Ningún otro markdown (sin cursivas, sin listas, sin encabezados).
 - No inventar datos del input. Si falta un dato, omítelo o di "sin dato".
 - NUNCA emitas un veredicto en el JSON. El veredicto viene dado (\`veredicto\` en input). Tu narrativa lo asume. Si discrepas, usa \`francoCaveat\` audit-only.
 
@@ -949,8 +942,7 @@ export function hasNewAiStructure(ai: unknown): boolean {
 async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic, usage?: AiUsage): Promise<{ fabrica: boolean; cita: string }> {
   const camposNarrativos = JSON.stringify({
     conviene: aiResult?.conviene?.respuestaDirecta_clp,
-    negociacion: aiResult?.negociacion?.contenido_clp,
-    largoPlazo: aiResult?.largoPlazo?.contenido_clp,
+    negociacion: aiResult?.negociacion?.contenido,
   });
   const msg = await anthropicClient.messages.create({
     model: MICRO_CHECK_MODEL,
@@ -2433,7 +2425,7 @@ CÓMO ESCRIBIR conviene.respuestaDirecta (contrato completo en §13): PRIMERA OR
           : " El marco del puente aplica: ese 3% acá es techo optimista, no piso — la ventaja de la espera hereda ese caveat, dilo."
         : ""
     const bloquePreEntrega = peGen && peGen.gananciaCLP > 0 && aniosPreGen > 0
-      ? `- COMPRA EN VERDE (pre-entrega, valores tipados — cítalos tal cual): precio fijado hoy, escritura en ~${peGen.mesesEspera} meses; ventaja proyectada al escriturar: ${fmtCLP(peGen.gananciaCLP)} (${pct(peGen.gananciaPct)}% sobre el precio pactado) SI la comuna rinde el ${pct(peGen.tasaAnual * 100, 0)}% anual proyectado. Es el argumento central de comprar en verde y NINGUNA sección lo narra aún: llévalo a \`largoPlazo.contenido\` (o \`conviene.reencuadre\` si el caso lo pide) SIEMPRE con su condición — nunca como ganancia asegurada.${marcoPuenteGen}
+      ? `- COMPRA EN VERDE (pre-entrega, valores tipados — cítalos tal cual): precio fijado hoy, escritura en ~${peGen.mesesEspera} meses; ventaja proyectada al escriturar: ${fmtCLP(peGen.gananciaCLP)} (${pct(peGen.gananciaPct)}% sobre el precio pactado) SI la comuna rinde el ${pct(peGen.tasaAnual * 100, 0)}% anual proyectado. Es el argumento central de comprar en verde y NINGUNA sección lo narra aún: llévalo a \`conviene.respuestaDirecta\` SIEMPRE con su condición — nunca como ganancia asegurada.${marcoPuenteGen}
 ` : "";
 
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
@@ -3153,8 +3145,8 @@ Responde SOLO este JSON, sin texto alrededor:
     // Un reintento quirúrgico sobre respuestaDirecta con el dato correcto citado; se
     // acepta solo si mejora. Corre ANTES de RD-BUDGET (el presupuesto es la última
     // palabra) y DESPUÉS de LTR-CIFRA (el candidato se re-verifica con empeoraCifras).
-    // Contexto contable compartido por el guard del hero y por el de largoPlazo /
-    // negociación (regla 2): se arma una vez, fuera de los try.
+    // Contexto contable compartido por el guard del hero y por el de negociación
+    // (regla 2): se arma una vez, fuera de los try.
     const viasCruzan = (hallazgoDistanciaGen?.valor.vias ?? []).filter((v) => v.estado === "cruza").map((v) => v.palanca);
     const vmConFuente = vmRef !== null && Math.abs(vmFrancoUF - input.precio) * UF_CLP > 1_000_000;
     const ctxClaim: RazonesHeroClaim = {
@@ -3254,14 +3246,18 @@ Responde SOLO este JSON, sin texto alrededor:
       }
     }
 
-    // ─── HERO-CLAIM en largoPlazo y negociación (regla 2 · 03-sep-2026) ───────
+    // ─── HERO-CLAIM en negociación (regla 2 · 03-sep-2026) ───────────────────
     // Mismas reglas contables que el hero, mismo retry quirúrgico (por campo, ambas
-    // monedas), mismo log con la sección. El juez cazó "tu parte al vender … más del
-    // doble del fondo" con 1,6× en largoPlazo (GS-3, GS-PJ) y "no del doble de ella"
+    // monedas), mismo log con la sección. El juez cazó "no del doble de ella"
     // (precio/m² vs mediana 1,78×) en negociación (GS-4): fuera del alcance del guard.
+    // El sitio de `largoPlazo` («tu parte al vender … más del doble del fondo», 1,6× en
+    // GS-3 y GS-PJ) salió con el campo en v21: ya no hay texto que vigilar ahí.
+    //
+    // CAMPOS ÚNICOS. Desde v21 `negociacion.contenido` no tiene par _clp/_uf. El lector
+    // los soporta explícitamente porque la alternativa es el modo de falla de A8·D1:
+    // un guard apuntando a un campo inexistente lee "" y deja de disparar EN SILENCIO.
     if (aiResult) {
-      const camposClaim: { seccion: "largoPlazo" | "negociacion"; campo: string }[] = [
-        { seccion: "largoPlazo", campo: "contenido" },
+      const camposClaim: { seccion: "negociacion"; campo: string }[] = [
         { seccion: "negociacion", campo: "contenido" },
         { seccion: "negociacion", campo: "estrategiaSugerida" },
         { seccion: "negociacion", campo: "cajaAccionable" },
@@ -3269,8 +3265,15 @@ Responde SOLO este JSON, sin texto alrededor:
       for (const { seccion, campo } of camposClaim) {
         const etiqueta = `[HERO-CLAIM:${seccion}.${campo}]`;
         try {
+          // Campo único (sin sufijo) → viaja en el slot CLP y el UF queda vacío; el
+          // resto del flujo ya trata "" como "esta variante no existe".
+          const unico = typeof (aiResult as Record<string, Record<string, unknown>>)?.[seccion]?.[campo] === "string";
           const leer = (ai: typeof aiResult): [string, string] => {
             const sec = (ai as Record<string, Record<string, unknown>> | null)?.[seccion];
+            if (unico) {
+              const v = sec?.[campo];
+              return [typeof v === "string" ? v : "", ""];
+            }
             const clp = sec?.[`${campo}_clp`];
             const uf = sec?.[`${campo}_uf`];
             return [typeof clp === "string" ? clp : "", typeof uf === "string" ? uf : ""];
@@ -3315,7 +3318,9 @@ Responde SOLO este JSON, sin texto alrededor:
             continue;
           }
           const seccionActual = (aiResult as Record<string, Record<string, unknown>>)[seccion] ?? {};
-          const candidato = { ...aiResult, [seccion]: { ...seccionActual, ...(actualClp ? { [`${campo}_clp`]: nClp } : {}), ...(actualUf ? { [`${campo}_uf`]: nUf } : {}) } };
+          const candidato = unico
+            ? { ...aiResult, [seccion]: { ...seccionActual, [campo]: nClp } }
+            : { ...aiResult, [seccion]: { ...seccionActual, ...(actualClp ? { [`${campo}_clp`]: nClp } : {}), ...(actualUf ? { [`${campo}_uf`]: nUf } : {}) } };
           const quedan = evaluar(candidato);
           if (empeoraCifras(userPrompt, aiResult, candidato, { ufClp: UF_CLP })) {
             console.warn(`${etiqueta} ${analysisId}: el retry introdujo cifras fuera del input — candidato descartado`);
@@ -3459,10 +3464,9 @@ Responde SOLO este JSON, sin texto alrededor:
     // Conteos, distancias y períodos NO son magnitudes y no se tocan: "108
     // publicaciones" es tamaño de muestra, y suma credibilidad sin duplicar nada.
     if (aiResult?.negociacion) {
-      const wcNeg = (ai: typeof aiResult): number =>
-        Math.max(contarPalabras(ai?.negociacion?.contenido_clp), contarPalabras(ai?.negociacion?.contenido_uf));
-      const textoNeg = (ai: typeof aiResult): string =>
-        `${ai?.negociacion?.contenido_clp ?? ""}\n${ai?.negociacion?.contenido_uf ?? ""}`;
+      // CAMPO ÚNICO desde v21: una sola variante que medir, una sola que limpiar.
+      const wcNeg = (ai: typeof aiResult): number => contarPalabras(ai?.negociacion?.contenido);
+      const textoNeg = (ai: typeof aiResult): string => ai?.negociacion?.contenido ?? "";
       /** Numerales de MAGNITUD: lo que lleva `$`, `UF` o `%`. */
       const NUMERAL_MAGNITUD = /\$\s?\d[\d.,]*|UF\s?\d[\d.,]*|\d[\d.,]*\s?%/gi;
       // DEDUPLICADO: `textoNeg` concatena las variantes _clp y _uf, y la misma
@@ -3490,8 +3494,7 @@ Responde SOLO este JSON, sin texto alrededor:
 
       /** Retry quirúrgico: reescribe SOLO este campo. Devuelve el candidato o null. */
       const retryNeg = async (instruccion: string): Promise<typeof aiResult | null> => {
-        const negClp = typeof mejorNeg?.negociacion?.contenido_clp === "string" ? mejorNeg.negociacion.contenido_clp : "";
-        const negUf = typeof mejorNeg?.negociacion?.contenido_uf === "string" ? mejorNeg.negociacion.contenido_uf : "";
+        const negActual = typeof mejorNeg?.negociacion?.contenido === "string" ? mejorNeg.negociacion.contenido : "";
         const promptNeg = `Estás corrigiendo SOLO el campo negociacion.contenido de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
 
 QUÉ ES ESTE CAMPO: el ARGUMENTO con el que se negocia — por qué el vendedor debería moverse, dicho en una razón que el comprador pueda poner sobre la mesa. Si la versión actual trae además la palanca de estructura de financiamiento (pie/tasa), consérvala.
@@ -3500,30 +3503,25 @@ ${instruccion}
 
 PROHIBIDO al reescribir: CUALQUIER cifra de plata, de UF o de porcentaje. Ni una: toda magnitud de este informe ya está dibujada en su propio bloque. Di la dirección en palabras ("bajo la mediana", "sobre los comparables de tu cuadra", "con la TIR en negativo"). Conteos, distancias y períodos sí se pueden.
 
-VERSIÓN ACTUAL (variante CLP):
-${negClp}
-
-VERSIÓN ACTUAL (variante UF):
-${negUf}
+VERSIÓN ACTUAL:
+${negActual}
 
 Responde SOLO este JSON, sin texto alrededor:
-{"contenido_clp": "...", "contenido_uf": "..."}`;
+{"contenido": "..."}`;
         try {
           const regen = await reg.medir("neg-guard", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 500, messages: [{ role: "user", content: promptNeg }], system: SYSTEM_LTR_CACHED }));
           acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
-          let nClp = "";
-          let nUf = "";
+          let nuevo = "";
           try {
             const m = regenText.match(/\{[\s\S]*\}/);
             const obj = JSON.parse(m ? m[0] : regenText);
-            nClp = typeof obj?.contenido_clp === "string" ? obj.contenido_clp.trim() : "";
-            nUf = typeof obj?.contenido_uf === "string" ? obj.contenido_uf.trim() : "";
+            nuevo = typeof obj?.contenido === "string" ? obj.contenido.trim() : "";
           } catch {
             /* no parseó */
           }
-          if (!nClp || !nUf) return null;
-          const candidato = { ...mejorNeg, negociacion: { ...mejorNeg.negociacion, contenido_clp: nClp, contenido_uf: nUf } };
+          if (!nuevo) return null;
+          const candidato = { ...mejorNeg, negociacion: { ...mejorNeg.negociacion, contenido: nuevo } };
           // Invariante de cifras: LTR-CIFRA ya no vuelve a correr sobre este JSON.
           if (empeoraCifras(userPrompt, mejorNeg, candidato, { ufClp: UF_CLP })) {
             console.warn(`[NEG-CIFRA-REJECT] ${analysisId}: el retry introdujo cifras fuera del input — candidato descartado`);
@@ -3597,35 +3595,29 @@ Responde SOLO este JSON, sin texto alrededor:
 
       // ── PASO 3 · ENFORCEMENT DETERMINISTA ────────────────────────────────
       // Si quedó alguna magnitud, cae la ORACIÓN que la trae —nunca a media
-      // frase—, y las dos variantes pierden el mismo índice para que el toggle de
-      // moneda no cambie el contenido. Publicar la cifra duplicada es peor que
-      // publicar una oración menos: la duplicación es el defecto entero.
+      // frase—. Publicar la cifra duplicada es peor que publicar una oración menos:
+      // la duplicación es el defecto entero. Desde v21 el campo es único, así que ya
+      // no hay que alinear el índice descartado entre dos variantes.
       if (mejorNegNum.length > 0 && aiResult?.negociacion) {
         const partir = (t: string): string[] => t.split(/(?<=[.;])\s+/).map((x) => x.trim()).filter(Boolean);
-        const oracionesClp = partir(typeof aiResult.negociacion.contenido_clp === "string" ? aiResult.negociacion.contenido_clp : "");
-        const oracionesUf = partir(typeof aiResult.negociacion.contenido_uf === "string" ? aiResult.negociacion.contenido_uf : "");
+        const oraciones = partir(typeof aiResult.negociacion.contenido === "string" ? aiResult.negociacion.contenido : "");
         // Copia SIN `/g`: `.test()` sobre un regex global avanza `lastIndex` y el
-        // segundo test de cada par (clp/uf) empezaría a mitad de la oración.
+        // test siguiente empezaría a mitad de la oración.
         const traeMagnitud = (t: string) => new RegExp(NUMERAL_MAGNITUD.source, "i").test(t);
-        const sucia = (i: number) => traeMagnitud(oracionesClp[i] ?? "") || traeMagnitud(oracionesUf[i] ?? "");
-        const total = Math.max(oracionesClp.length, oracionesUf.length);
-        const limpias: number[] = [];
-        for (let i = 0; i < total; i++) if (!sucia(i)) limpias.push(i);
-        aiResult.negociacion.contenido_clp = limpias.map((i) => oracionesClp[i] ?? "").join(" ").trim();
-        aiResult.negociacion.contenido_uf = limpias.map((i) => oracionesUf[i] ?? "").join(" ").trim();
+        const limpias = oraciones.filter((o) => !traeMagnitud(o));
+        aiResult.negociacion.contenido = limpias.join(" ").trim();
+        const total = oraciones.length;
         mejorNegWC = wcNeg(aiResult);
         console.warn(
           `[NEG-MAGNITUD-TRIM] ${analysisId}: no convergió en ${NEG_MAX_RETRIES} reintentos — descartada(s) ${total - limpias.length} oración(es) con magnitudes (${mejorNegNum.join(", ")}), quedan ${mejorNegWC} palabras`,
         );
       }
       if (mejorNegWC > TECHO_NEGOCIACION_DURO && aiResult?.negociacion) {
-        const { clp, uf, oracionesDescartadas } = recortarContinuacion(
-          typeof aiResult.negociacion.contenido_clp === "string" ? aiResult.negociacion.contenido_clp : "",
-          typeof aiResult.negociacion.contenido_uf === "string" ? aiResult.negociacion.contenido_uf : "",
-          TECHO_NEGOCIACION_DURO,
-        );
-        aiResult.negociacion.contenido_clp = clp;
-        aiResult.negociacion.contenido_uf = uf;
+        // `recortarContinuacion` recorta un PAR alineado; con campo único se le pasa
+        // el mismo texto dos veces y se usa una sola salida.
+        const actual = typeof aiResult.negociacion.contenido === "string" ? aiResult.negociacion.contenido : "";
+        const { clp, oracionesDescartadas } = recortarContinuacion(actual, actual, TECHO_NEGOCIACION_DURO);
+        aiResult.negociacion.contenido = clp;
         console.warn(
           `[NEG-BUDGET-TRIM] ${analysisId}: no convergió (${mejorNegWC} > ${TECHO_NEGOCIACION_DURO}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras`,
         );
