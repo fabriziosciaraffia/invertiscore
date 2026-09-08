@@ -19,12 +19,14 @@ RECETA VIGENTE (v3, FASE 1.7 · 07-sep-2026): `hero` — fondo completo del hero
   textura ya generada. WebP calidad 82.
 
 Uso:
-  python tools/texturas/generar.py hero ANCHO ALTO salida.webp [--sin-grano] [--invertir]
+  python tools/texturas/generar.py hero ANCHO ALTO salida.webp [--sin-grano] [--invertir] [--calidad=N]
   python tools/texturas/generar.py grano-tile public/landing/grano-256.png
-  # set de la landing:
-  #   hero  m1x 390×844 · m2x 780×1688 · m3x 1170×2532 · d1x 1440×900 · d2x 2880×1800
-  #   cierre: mismo set con la misma receta (misma dirección; `--invertir` da el recorrido al revés)
-  #   og: python tools/texturas/generar.py hero 1200 630 public/landing/og-hero.jpg --sin-grano
+  # set de la landing (FASE 1.7/1.8): SOLO el hero lleva la receta v3.
+  #   hero  m1x 390×844 · m2x 780×1688 · m3x 1170×2532 (--calidad=76 para quedar bajo 250 KB) · d1x 1440×900 · d2x 2880×1800
+  #   og:   python tools/texturas/generar.py hero 1200 630 public/landing/og-hero.jpg --sin-grano
+  # El CIERRE vuelve a papel con la banda inferior de la receta v2 (ritmo: hero oscuro · papel · tinta · papel):
+  #   python tools/texturas/generar.py banda 1200 1463 900 public/landing/textura-cierre-m2x.webp
+  #   python tools/texturas/generar.py banda 3000 1691 480 public/landing/textura-cierre-d2x.webp 2.8182 0.22
 
 Recetas anteriores, para reproducirlas: `banda W H ROJO salida [RAMPA] [FIELD_W]` (v2, papel →
 rojo desde abajo) y `hero-v1` / `cierre-v1` (v1, proporción del lienzo). Ya no se usan en la página.
@@ -98,7 +100,7 @@ def guardar(rgb, out, calidad):
         img.save(out, quality=calidad, method=6)
 
 
-def render_hero(w, h, out, seed=7, grano=True, invertir=False, field_w=FIELD_W):
+def render_hero(w, h, out, seed=7, grano=True, invertir=False, field_w=FIELD_W, calidad=None):
     """Receta v3 (ver cabecera)."""
     f = field(w, h, seed, ref='w')
     yy, xx = np.mgrid[0:h, 0:w]
@@ -117,7 +119,7 @@ def render_hero(w, h, out, seed=7, grano=True, invertir=False, field_w=FIELD_W):
     rng = np.random.default_rng(seed)
     sigma = GRANO_V3 if grano else GRANO_DITHER
     rgb = rgb + rng.normal(0, 1, (h, w))[:, :, None] * sigma * 255
-    guardar(rgb, out, CALIDAD_V3 if grano else CALIDAD_DITHER)
+    guardar(rgb, out, calidad or (CALIDAD_V3 if grano else CALIDAD_DITHER))
     print(f'{out}: {w}x{h} · grano={"0,06" if grano else "dither 0,02"} · invertido={invertir}')
 
 
@@ -163,7 +165,8 @@ if __name__ == '__main__':
     if kind == 'hero':
         w, h, out = int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
         flags = set(sys.argv[5:])
-        render_hero(w, h, out, grano='--sin-grano' not in flags, invertir='--invertir' in flags)
+        calidad = next((int(f.split('=')[1]) for f in flags if f.startswith('--calidad=')), None)
+        render_hero(w, h, out, grano='--sin-grano' not in flags, invertir='--invertir' in flags, calidad=calidad)
     elif kind == 'grano-tile':
         grano_tile(sys.argv[2])
     elif kind == 'banda':
