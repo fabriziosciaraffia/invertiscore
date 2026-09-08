@@ -75,7 +75,10 @@ export function dedupHallazgos(hallazgos: Hallazgo[]): Hallazgo[] {
   return Array.from(byId.values());
 }
 
-/** Numeración visual de posición: 0 → "01". Compartida por índice y eyebrows. */
+/** Numeración visual de posición: 0 → "01".
+ *  SIN CONSUMIDORES desde el 08-sep-2026: la fila de hallazgos dejó de numerar
+ *  («la fila como línea») y el PDF numera con su propio padStart en DocumentoSTR.
+ *  Se deja a propósito, no es un olvido: si la numeración vuelve, este es su lugar. */
 export const numeroHallazgo = (index: number) => String(index + 1).padStart(2, "0");
 
 /** Id de ancla estable de la card de un hallazgo (índice del hero → card). */
