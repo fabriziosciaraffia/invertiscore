@@ -35,6 +35,26 @@ const EXPLICACION: Record<Veredicto, string> = {
 const DUR = 900;
 const HOLD = 6000;
 
+/** Glifo de veredicto (FASE 1.8, punto 5): ✕ · — · ✓ en papel, a la izquierda de la
+ *  palabra. Refuerza el veredicto sin depender del color (ciruela y azul se
+ *  confunden con daltonismo) y recupera la lectura de semáforo. Decorativo: la
+ *  palabra ya lo dice, así que va con aria-hidden y sin aria-label. SVG inline,
+ *  sin librería de iconos. Contrato: refuerzo-veredicto.html, bloque A. Solo la
+ *  landing por ahora; al informe se lleva después como parte de la banda. */
+const GLIFO: Record<Veredicto, string> = {
+  "BUSCAR OTRA": "M5 5l14 14M19 5L5 19",
+  "AJUSTA SUPUESTOS": "M4 12h16",
+  COMPRAR: "M4 13l5 5L20 6",
+};
+
+function Glifo({ veredicto }: { veredicto: Veredicto }) {
+  return (
+    <svg className="lv-glifo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d={GLIFO[veredicto]} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="square" />
+    </svg>
+  );
+}
+
 /** `**…**` → <mark>. Igual que la portada del informe, sin cifras en el titular. */
 function conPlumon(titular: string): ReactNode {
   const partes = titular.split(/(\*\*[^*]+\*\*)/g);
@@ -138,7 +158,12 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
           banda cruce las dos columnas y las explicaciones queden al pie del
           bloque; los tokens del veredicto se siguen heredando. */}
       <div className="lv-ans" data-verdict={x.veredicto} aria-live="polite">
-        <div className="lv-band"><span className={`lv-x${out ? " out" : ""}`} style={delay(0)}>{x.etiqueta}</span></div>
+        <div className="lv-band">
+          <span className={`lv-x${out ? " out" : ""}`} style={delay(0)}>
+            <Glifo veredicto={x.veredicto} />
+            {x.etiqueta}
+          </span>
+        </div>
         <div className="lv-ans-cuerpo">
           <div className="lv-ans-izq">
             <h2 className={`lv-why lv-x${out ? " out" : ""}`} style={delay(1)}>
@@ -193,7 +218,7 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
             data-verdict={e.veredicto}
             onClick={() => elegir(j)}
           >
-            <span className="lv-fila-banda">{e.etiqueta}</span>
+            <span className="lv-fila-banda"><Glifo veredicto={e.veredicto} />{e.etiqueta}</span>
             <span className="lv-fila-razon">{EXPLICACION[e.veredicto]}</span>
           </button>
         ))}
