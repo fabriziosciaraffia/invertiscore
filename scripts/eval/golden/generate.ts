@@ -13,7 +13,6 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { generateAiAnalysis } from "../../../src/lib/ai-generation";
 import { conTimeout, esTimeout, TIMEOUT_GENERADOR_MS } from "./timeout";
-import { nombraInstrumento } from "./instrumentos";
 import { runAnalysis } from "../../../src/lib/analysis";
 import { TECHO_CONTINUACION_DURO } from "../../../src/lib/prosa-presupuesto";
 import { marcasBalanceadas, evaluarTitular } from "../../../src/lib/prosa-marcas";
