@@ -137,14 +137,16 @@ export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
   return (
     <>
       {/* Igual que el hero: título + precio + "Ver planes" arriba con su aire; el
-          bloque [campo + sin dirección] baja como unidad. Fondo completo con la misma
-          receta del hero (misma dirección); el footer va aparte, en papel. */}
+          bloque [campo + sin dirección] baja como unidad sobre la banda roja. El
+          footer va aparte, en papel. */}
       <SeccionVista n={4} className="lv-s4">
+        {/* Banda inferior de la receta v2 (papel → rojo), anclada abajo y con máscara en
+            el borde: el cierre queda en papel para que el CTA final caiga sobre claro
+            (ritmo: hero oscuro · papel · tinta · papel). Mobile 50 vh de rojo; PC 22 + 40. */}
         <picture className="lv-fondo lv-fondo-cierre">
-          <source media="(min-width: 768px)" srcSet="/landing/cierre-d1x.webp 1x, /landing/cierre-d2x.webp 2x" />
-          <source srcSet="/landing/cierre-m1x.webp 1x, /landing/cierre-m2x.webp 2x, /landing/cierre-m3x.webp 3x" />
+          <source media="(min-width: 768px)" srcSet="/landing/textura-cierre-d2x.webp" />
           {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-          <img src="/landing/cierre-m2x.webp" alt="" loading="lazy" decoding="async" />
+          <img src="/landing/textura-cierre-m2x.webp" alt="" loading="lazy" decoding="async" />
         </picture>
         <div className="lv-col lv-s4-col">
           <div className="lv-cierre-izq">
