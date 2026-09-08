@@ -353,19 +353,24 @@ export function DocTokens() {
       .pos-foot{background:var(--doc-paper2);border-top:1px solid var(--doc-line);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
       .pos-foot .k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--doc-tx3);font-weight:700;display:block;margin-bottom:4px}
       .pos-foot .l{font-size:13px;color:var(--doc-tx2);line-height:1.5}
-      /* principales hallazgos: fila + cierre + ver detalle */
-      .hz{border-bottom:1px solid var(--doc-line);padding:14px 0}
-      .hz:first-child{border-top:1px solid var(--doc-line)}
-      .hz-head{display:flex;align-items:baseline;gap:16px}
-      .hz .num{font-family:var(--font-heading, Georgia, serif);font-size:28px;font-weight:900;color:var(--signal-red);min-width:46px;font-variant-numeric:tabular-nums}
-      .hz .q{flex:1;font-family:var(--font-heading, Georgia, serif);font-size:16px;font-weight:600;line-height:1.35;color:var(--doc-tx)}
-      .hz .q small{display:block;font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:400;letter-spacing:.06em;color:var(--doc-tx4);margin-top:3px}
-      .hz .val{font-family:var(--font-mono, ui-monospace);font-size:13.5px;font-weight:700;color:var(--signal-red);white-space:nowrap}
-      .hz .val.ink{color:var(--doc-tx)}
-      .hz-cierre{margin:10px 0 0 62px;font-family:var(--font-heading, Georgia, serif);font-style:italic;font-size:14px;line-height:1.65;color:var(--doc-tx2);max-width:62ch}
-      .hz-foot{display:flex;justify-content:flex-end;margin-top:8px}
-      .dot-dir{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;position:relative;top:-1px;background:var(--doc-tx4)}
-      .dot-dir.adv{background:var(--signal-red)} .dot-dir.fav{background:var(--doc-good)}
+      /* PRINCIPALES HALLAZGOS · la fila es una línea (08-sep-2026).
+         Contrato: docs/wireframes/rediseno-informe/la-fila-como-linea.html, opción 2.
+         Murieron .num, .q, .q small, .hz-cierre, .hz-foot y .dot-dir: la numeración,
+         el kicker, el punto de dirección, el título y la frase larga salieron de la
+         fila. El separador y el espaciado se deciden con el informe completo a la
+         vista, en otro goal; acá va el que trae el contrato. */
+      .hz-lin{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:baseline;width:100%;
+        padding:15px 0;border-bottom:1px solid var(--doc-line);cursor:pointer;text-align:left;
+        background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit}
+      .hz-lin:last-child{border-bottom:none}
+      .hz-lin p{font-family:var(--font-heading, Georgia, serif);font-size:15.5px;line-height:1.45;color:var(--doc-tx);margin:0}
+      .hz-lin:hover p{color:var(--doc-tx2)}
+      /* Foco visible: la fila entera es el control, así que el anillo va en la fila. */
+      .hz-lin:focus-visible{outline:2px solid var(--verdict);outline-offset:3px;border-radius:2px}
+      .hz-n{font-family:var(--font-mono, ui-monospace);font-size:15px;font-weight:700;white-space:nowrap;letter-spacing:-.01em;color:var(--doc-tx)}
+      .hz-n.mal{color:var(--signal-red)}
+      .hz-n.bien{color:var(--doc-good)}
+      .hz-n small{display:block;font-size:10.5px;font-weight:500;color:var(--doc-tx3);text-align:right;margin-top:2px;letter-spacing:0}
       /* los números */
       .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--doc-line);border:1px solid var(--doc-line)}
       .num-cell{background:var(--doc-paper);padding:14px 16px 13px}
@@ -409,7 +414,7 @@ export function DocTokens() {
       @media (max-width: 767px){
         .doc-sec{margin:0 -22px;padding:26px 22px 32px}
         .doc-sec-t{font-size:25px}
-        .hz .num{font-size:22px;min-width:36px} .hz .q{font-size:14.5px} .hz-cierre{margin-left:0}
+        .hz-lin p{font-size:14.5px} .hz-n{font-size:14px}
         .nums{grid-template-columns:repeat(2,1fr)} .num-cell .v{font-size:19px}
         .m-scrollcue{display:block}
         .ind-tbl td:nth-child(2){display:none}

@@ -1,22 +1,31 @@
 "use client";
 
 import type { Hallazgo } from "@/lib/types";
-import { findingDisplay, fraseCanonicaCard } from "./GenericFindingCard";
-import { numeroHallazgo } from "@/lib/orden-hallazgos";
+import { findingDisplay } from "./GenericFindingCard";
+import { referenciaHallazgo } from "./referencia-hallazgo";
 
 /**
- * PRINCIPALES HALLAZGOS — contrato CONGELADO 02-sep-2026 (T2).
+ * PRINCIPALES HALLAZGOS — la fila es UNA LÍNEA (08-sep-2026).
  *
- * Los cuatro hallazgos que mueven el veredicto, en el ORDEN ÚNICO (el mismo array
- * que ordena el acordeón y que espeja el Golden): un `slice(0, 4)`, nada más. Rol:
- * asesoría — qué pesa en ESTE deal. Cada fila lleva número, pregunta, cifra, la
- * dirección y su decisividad, y cierra con la fraseCanonica del hallazgo con el
- * plumón sobre la PRIMERA ORACIÓN (decisión de Fabrizio: determinista, sin
- * prompt — la frase-fuerza es la que abre). Al margen derecho, un solo enlace
- * «↓ Ver detalle» hacia el desarrollo del hallazgo en el relato.
+ * Contrato: `docs/wireframes/rediseno-informe/la-fila-como-linea.html`, opción 2.
+ * Frase corta a la izquierda, cifra a la derecha con su referencia debajo. La línea
+ * entera es el botón que lleva al desarrollo.
  *
- * El diagrama y el juicio largo NO viven acá: existen una sola vez, en la
- * sección de la inversión. Acá va la fila y su cierre.
+ * MURIERON de la fila, y por qué:
+ *   · la numeración 01-0n — la jerarquía ya la dice el orden;
+ *   · el punto de dirección y el kicker «en contra / a favor» — la frase lo dice
+ *     con palabras, y el color de la cifra lo repite;
+ *   · el `title` de `findingDisplay` — en seis tipos LTR era neutro («Cómo estás
+ *     financiando») y el juicio vivía en el `titular` del motor;
+ *   · la `fraseCanonica` en pantalla y el «↓ Ver detalle».
+ *
+ * LA FRASE ES EL `titular` DEL MOTOR, no el `title` del render. Es la única de las
+ * dos que trae juicio en todos los tipos: «Rinde por sobre lo que el mercado paga»
+ * contra «Lo que renta hoy vs lo que debería». Esa es la línea entre simplificar y
+ * vaciar — la fila corta el texto, no la opinión.
+ *
+ * La `fraseCanonica` NO se borra: sigue viva en el hallazgo y sigue entrando al
+ * user prompt como insumo. Solo desaparece de esta superficie.
  */
 export function PrincipalesHallazgos({
   hallazgos,
@@ -28,57 +37,31 @@ export function PrincipalesHallazgos({
   hallazgos: Hallazgo[];
   currency: "CLP" | "UF";
   valorUF: number;
-  /** Lleva al desarrollo del hallazgo (ancla del acordeón / capítulo). */
+  /** Lleva al desarrollo del hallazgo (ancla del capítulo). */
   onVerDetalle: (h: Hallazgo) => void;
 }) {
   const top = hallazgos.slice(0, 4);
   if (top.length === 0) return null;
   return (
     <div className="hz-list">
-      {top.map((h, i) => {
-        const d = findingDisplay(h, currency, valorUF);
-        const frase = fraseCanonicaCard(h, currency, valorUF);
-        const { marcada, resto } = primeraOracion(frase);
-        const adverso = h.direccion === "adverso";
-        const favorable = h.direccion === "favorable";
+      {top.map((h) => {
+        // De `findingDisplay` sobrevive SOLO el KPI: el título y el kicker murieron.
+        const { kpi, kpiRed } = findingDisplay(h, currency, valorUF);
+        const ref = referenciaHallazgo(h, currency, valorUF);
+        const frase = h.titular;
+        const tono = h.direccion === "adverso" ? "mal" : h.direccion === "favorable" ? "bien" : "neu";
         return (
-          <div key={h.id} className="hz">
-            <div className="hz-head">
-              <span className="num">{numeroHallazgo(i)}</span>
-              <span className="q">
-                <span className={`dot-dir ${adverso ? "adv" : favorable ? "fav" : "neu"}`} aria-hidden="true" />
-                {d.title || h.titular}
-                {/* Sin la cifra de decisividad: regla de la pirámide desde su diseño — la
-                    jerarquía la dicen el orden, el tamaño y el color, nunca un número. */}
-                <small>
-                  {d.kick.toLowerCase()} · {adverso ? "en contra" : favorable ? "a favor" : "neutral"}
-                </small>
-              </span>
-              <span className={`val${d.kpiRed ? "" : " ink"}`}>{d.kpi}</span>
-            </div>
-            {frase && (
-              <p className="hz-cierre">
-                <mark>{marcada}</mark>
-                {resto ? ` ${resto}` : ""}
-              </p>
-            )}
-            <div className="hz-foot">
-              <button type="button" className="doc-lnk" onClick={() => onVerDetalle(h)}>
-                ↓ Ver detalle
-              </button>
-            </div>
-          </div>
+          // La línea entera es un <button>: accesible por teclado y con foco visible,
+          // sin el `role="button"` que obliga a manejar Enter/Space a mano.
+          <button key={h.id} type="button" className="hz-lin" onClick={() => onVerDetalle(h)}>
+            <p>{frase}</p>
+            <span className={`hz-n ${kpiRed ? "mal" : tono}`}>
+              {kpi}
+              {ref && <small>{ref}</small>}
+            </span>
+          </button>
         );
       })}
     </div>
   );
-}
-
-/** Primera oración de la fraseCanonica (hasta el primer `. ? !` seguido de espacio)
- *  y el resto. Si no hay corte, toda la frase es la marcada. */
-function primeraOracion(texto: string): { marcada: string; resto: string } {
-  const t = (texto ?? "").trim();
-  const m = t.match(/^(.+?[.?!])(?:\s+|$)([\s\S]*)$/);
-  if (!m) return { marcada: t, resto: "" };
-  return { marcada: m[1].trim(), resto: m[2].trim() };
 }
