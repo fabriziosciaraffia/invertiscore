@@ -72,6 +72,32 @@ export function hasAiV2(ai: any): ai is AIAnalysisV2 {
     && typeof ai.conviene.respuestaDirecta_clp === "string";
 }
 
+/**
+ * ¿Esta prosa es de DOS BLOQUES (v21) o de los cuatro campos viejos?
+ *
+ * El discriminador es `promptVersion`, que se persiste con el JSON desde siempre
+ * (ai-generation.ts). NO sirve mirar la forma de `conviene`: sus dos campos vivos
+ * —`respuestaDirecta` y `cajaAccionable`— no cambian en v21, y lo que muere
+ * (`pregunta`) es un campo que las filas viejas traen y las nuevas no, o sea una
+ * ausencia, que es la señal más frágil que existe. Las filas sin `promptVersion`
+ * (150 del parque) caen al camino viejo por el `?? 0`.
+ *
+ * EL CAMINO VIEJO NO ES TEMPORAL. Es TRANSITORIO para las 216 filas CON DUEÑO: se
+ * invalidan solas al abrirse (`cacheEstaFrescaLTR` compara contra
+ * PROMPT_VERSION_LTR) y quedan en formato nuevo. Es PERMANENTE para las 453 filas
+ * ANÓNIMAS, que no pueden regenerar —POST /api/analisis/ai responde 401— y van a
+ * conservar su prosa de cuatro campos para siempre (decisión del goal #13, sin
+ * backfill). Así que este camino no se borra cuando "se termine de migrar el
+ * parque": no hay tal cosa.
+ *
+ * El informe viejo se ve coherente CONSIGO MISMO —su rótulo, su nota al margen, su
+ * «posición de Franco»— y nunca mezclado con el nuevo.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function esProsaDosBloques(ai: any): boolean {
+  return hasAiV2(ai) && ((ai as { promptVersion?: number }).promptVersion ?? 0) >= 21;
+}
+
 /** Renderiza contenido AI con bold markdown simple (**text**), preservando
  * párrafos. Per skill §2.5 los consumers deben aplicar `italic` al wrapper
  * cuando el campo es cuerpo IA (Patrón 4). */

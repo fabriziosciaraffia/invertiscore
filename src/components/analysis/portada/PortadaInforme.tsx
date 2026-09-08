@@ -346,8 +346,16 @@ export function DocTokens() {
       /* la posición de Franco: card con footer propio (la línea roja termina antes del footer) */
       .pos-card{margin-top:20px;background:var(--doc-paper);border:1px solid var(--doc-line);border-radius:3px;overflow:hidden}
       .pos-main{border-left:3px solid var(--signal-red);padding:16px 18px 14px}
-      .pos-t{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal-red);font-weight:700;display:block;margin-bottom:8px}
+      /* display:flex en vez de block para que el chip del objetivo (v21) se apoye
+         a la derecha (nada de backticks acá dentro: esto vive en un template
+         literal). Con un solo hijo de texto —STR y la prosa vieja— el resultado
+         es el mismo renglón que daba display:block. */
+      .pos-t{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal-red);font-weight:700;display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
+      /* El objetivo del plan: dato, no rótulo — mono, sin versalitas, sobre paper3
+         (que por contrato no es fondo de sección, y por eso lo usan las piezas). */
+      .pos-chip{margin-left:auto;font-style:normal;font-size:11px;letter-spacing:.06em;text-transform:none;color:var(--doc-tx2);background:var(--doc-paper3);border:1px solid var(--doc-line);border-radius:3px;padding:3px 8px;white-space:nowrap}
       .pos-p{font-family:var(--font-heading, Georgia, serif);font-style:italic;font-size:14.5px;line-height:1.7;color:var(--doc-tx2);max-width:70ch}
+      .pos-p + .pos-p{margin-top:13px}
       .pos-firma{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:11.5px;font-weight:600;color:var(--doc-tx)}
       .pos-firma small{display:block;font-family:var(--font-mono, ui-monospace);font-size:9.5px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--doc-tx3)}
       .pos-foot{background:var(--doc-paper2);border-top:1px solid var(--doc-line);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}

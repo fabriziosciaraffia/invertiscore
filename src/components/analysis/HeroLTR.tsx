@@ -8,6 +8,9 @@ import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { DrawerSensibilidadLtr } from "./drawers/DrawersPropios";
 import { MatrizPiePlazoLtr } from "./shared/MatrizPiePlazoLtr";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
+import { esProsaDosBloques } from "./AIInsightSection";
+import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
+import type { ReactNode } from "react";
 
 /**
  * Hero de resultados LTR — rediseño dark (Fase 1a). Referencia visual aprobada:
@@ -30,7 +33,12 @@ export function HeroLTR({
   fechaProsa,
   prosaError,
   onRetryProsa,
+  razones,
 }: {
+  /** Las cuatro líneas de hallazgo. En v21 se leen DENTRO de este bloque, debajo de
+   *  la línea que declara; con prosa vieja el caller las monta en su sección aparte
+   *  y acá no llega nada. */
+  razones?: ReactNode;
   /** Prosa IA. `null` mientras se genera (Goal C/E/E.2: veredicto inmediato) —
    *  el hero renderiza todo lo que viene del motor y el slot de prosa muestra
    *  ProgresoGeneracion (skeleton didáctico) hasta que llegue. */
@@ -65,6 +73,11 @@ export function HeroLTR({
   // ── Veredicto / findings (F4) ──
   // Con prosa en vuelo (data null): el slot muestra ProgresoGeneracion (Goal
   // E.2 — skeleton didáctico), o el error inline si la generación falló.
+  // ── EL DISCRIMINADOR ──────────────────────────────────────────────────────
+  // Prosa de DOS BLOQUES (v21) o de los cuatro campos viejos. Ver
+  // `esProsaDosBloques`: el camino viejo es transitorio para las filas con dueño y
+  // PERMANENTE para las anónimas, que nunca van a regenerar.
+  const dosBloques = esProsaDosBloques(data);
   const conviene = data?.conviene;
   const respuesta =
     (currency === "CLP" ? conviene?.respuestaDirecta_clp : conviene?.respuestaDirecta_uf) ?? null;
@@ -74,7 +87,12 @@ export function HeroLTR({
   // IA nuevo — es la primera oración de una cajaAccionable que la prosa YA trae, y
   // se elige la de costoMensual (la más cercana al bolsillo). Si mide más de ~18
   // palabras no se muestra: una nota larga deja de ser nota.
-  const fnote = (() => {
+  //
+  // SOLO EN EL CAMINO VIEJO. `costoMensual` murió del schema en v21, así que la nota
+  // no tiene de dónde salir. No se reapunta a `conviene.cajaAccionable`: ese texto ya
+  // se lee entero unos centímetros más abajo, en «Lo que haría yo», y la nota pasaría
+  // a repetir su primera oración.
+  const fnote = dosBloques ? null : (() => {
     const fuente = (currency === "CLP" ? data?.costoMensual?.cajaAccionable_clp : data?.costoMensual?.cajaAccionable_uf) ?? "";
     const primera = fuente.split(/(?<=[.?!])\s/)[0]?.trim() ?? "";
     const palabras = (primera.match(/\S+/g) || []).length;
@@ -82,7 +100,13 @@ export function HeroLTR({
   })();
   // veredictoFrase (schema.conviene) ya no se renderiza en el hero compacto — la
   // prosa fundida lo dice. El campo sigue en el schema (Entrega 2 decide su destino).
-  const pregunta = conviene?.pregunta || "¿Conviene o no conviene?";
+  //
+  // EL TÍTULO ES LA RESPUESTA, NO LA PREGUNTA (v21). «¿Conviene o no conviene?»
+  // preguntaba lo que la banda de la portada ya contestó tres centímetros más arriba;
+  // ahora el bloque se titula con la línea que declara —«Ajusta los números. Esto es
+  // lo que pesa:»— y debajo van las razones. La prosa vieja conserva su rótulo: su
+  // cuerpo fue escrito para contestar esa pregunta.
+  const pregunta = (dosBloques ? lineaQueDeclara(veredicto) : conviene?.pregunta) || "¿Conviene o no conviene?";
   // ÍNDICE del informe: los primeros 3 del ORDEN ÚNICO — el MISMO array que renderiza
   // la pirámide (fuente única: ordenarHallazgosPiramide). El hero los numera 01-03 y
   // cada fila ancla a su card; la pirámide continúa la numeración.
@@ -139,6 +163,29 @@ export function HeroLTR({
   // brazo persistido y se deriva: score en banda COMPRAR (≥70) con veredicto
   // AJUSTA ⇒ el gate capó. Veredicto de banda pura → null y no se muestra nada:
   // inventar una causa sería peor que no darla (§1.9.3).
+  // ── «LO QUE HARÍA YO» (v21) ───────────────────────────────────────────────
+  // La negociación deja de ser capítulo aparte y entra como el ARGUMENTO que
+  // antecede a la posición: por qué el vendedor debería moverse, y después qué
+  // haría Franco. El campo es ÚNICO desde v21 (no lleva magnitudes, así que no
+  // cambia con la moneda); las filas viejas traen el par y no llegan hasta acá.
+  const negociacion = dosBloques ? (data?.negociacion?.contenido ?? null) : null;
+  // EL CHIP ES EL OBJETIVO DEL PLAN, y sale de las ANCLAS con las que se escribió
+  // esta prosa —no del motor recomputado— porque está pegado al párrafo que lo
+  // argumenta: si el chip y el texto de al lado nombraran precios distintos, el
+  // lector leería una contradicción. `objetivo_uf` es el nombre nuevo; las prosas
+  // anteriores traen `techo_uf` con el mismo rol. En el caso ESTRUCTURAL no hay
+  // plan ni anclas: no hay chip.
+  const objetivoChip = (() => {
+    if (!dosBloques) return null;
+    const pr = data?.negociacion?.precios;
+    const uf = pr?.objetivo_uf ?? pr?.techo_uf;
+    const clp = pr?.objetivo_clp ?? pr?.techo_clp;
+    if (currency === "UF") {
+      return typeof uf === "number" && uf > 0 ? `Objetivo UF ${Math.round(uf).toLocaleString("es-CL")}` : null;
+    }
+    return typeof clp === "number" && clp > 0 ? `Objetivo $${Math.round(clp).toLocaleString("es-CL")}` : null;
+  })();
+
   const fechaFirma = formatFecha(fechaProsa ?? createdAt);
 
   // FASE 3 rediseño Dictamen: F1 (identidad+toggle), F2/F3 (chips, score 48px,
@@ -231,7 +278,21 @@ export function HeroLTR({
           con la línea roja; el footer "Lo que te separa" / "Cuánto aguanta" con fondo
           propio y el botón real que abre el modal. Cuelga del texto del título (md:ml-9)
           igual que la prosa. Sin caja ni footer no hay bloque. */}
-      <PosicionFranco cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null} fechaFirma={fechaFirma} footer={footer} tipo="ltr" veredicto={veredicto} />
+      {/* LAS RAZONES, dentro del mismo bloque (v21): las cuatro líneas de hallazgo
+          suben acá desde su sección propia. «Qué determina el veredicto» no se borra
+          —se fusiona—: la línea que declara ya es ese título, y tenerlo dos veces
+          separaba la afirmación de su fundamento con un corte de sección en medio. */}
+      {dosBloques && razones}
+      <PosicionFranco
+        cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}
+        prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
+        chip={dosBloques ? objetivoChip : undefined}
+        titulo={dosBloques ? "Lo que haría yo" : undefined}
+        fechaFirma={fechaFirma}
+        footer={footer}
+        tipo="ltr"
+        veredicto={veredicto}
+      />
     </div>
   );
 }

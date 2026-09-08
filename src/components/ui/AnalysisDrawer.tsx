@@ -555,6 +555,10 @@ export function DrawerNegociacion({
   // conversión 16: codificaban precio absoluto desde cero y no podían mostrar una
   // diferencia de un dígito porcentual. El eje de veredicto ocupa su lugar.
 
+  // SOLO PROSA VIEJA. Desde v21 el argumento de negociacion es campo unico y se lee
+  // ARRIBA, dentro de «Lo que haria yo»: aca queda vacio A PROPOSITO. No lo reapuntes
+  // a `data.contenido` — el capitulo repetiria, palabra por palabra, el parrafo que el
+  // lector acaba de leer en el bloque de decision.
   const argumento = (currency === "CLP" ? data.contenido_clp : data.contenido_uf)?.trim();
   return (
     <div className={capitulo ? undefined : "flex flex-col gap-5"}>

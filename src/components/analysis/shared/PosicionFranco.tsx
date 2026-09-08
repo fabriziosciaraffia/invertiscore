@@ -8,6 +8,11 @@ import type { TipoInforme } from "@/components/analysis/informeTelemetry";
 /**
  * "La posición de Franco" — la única caja del hero (contrato CONGELADO, T2), con la
  * firma y el footer "Lo que te separa" / "Cuánto aguanta" que abre el modal de vías.
+ *
+ * En LTR v21 se llama "Lo que haría yo" y absorbe la prosa de negociación (que dejó
+ * de ser capítulo aparte) más el chip con el precio objetivo. Los dos son props
+ * OPCIONALES: STR y el camino de prosa vieja la montan como siempre, con el mismo
+ * DOM byte a byte.
  * Extraída de HeroLTR en T1 (04-sep-2026) para que STR la monte con el mismo DOM y la
  * misma telemetría (`informe_posicion_abierta` con `tipo` por prop, un disparo por
  * montaje). Presentacional: el caller trae la caja IA ya renderizada (plumón), la
@@ -29,6 +34,8 @@ export type FooterPosicion = {
 
 export function PosicionFranco({
   cajaAccionable,
+  prosa,
+  chip,
   fechaFirma,
   footer,
   tipo,
@@ -37,6 +44,10 @@ export function PosicionFranco({
   className = "pb-2 md:ml-9",
 }: {
   cajaAccionable: ReactNode | null;
+  /** Cuerpo que ENTRA ANTES de la caja (v21: el argumento de negociación). */
+  prosa?: ReactNode;
+  /** Chip mono a la derecha del título (v21: el precio objetivo del plan). */
+  chip?: ReactNode;
   fechaFirma?: string;
   footer: FooterPosicion | null;
   tipo: TipoInforme;
@@ -66,13 +77,17 @@ export function PosicionFranco({
       });
     }
   };
-  if (!cajaAccionable && !footer) return null;
+  if (!cajaAccionable && !prosa && !footer) return null;
   return (
     <>
       <div className={className}>
         <div className="pos-card">
           <div className="pos-main">
-            <span className="pos-t">{titulo}</span>
+            <span className="pos-t">
+              {titulo}
+              {chip && <em className="pos-chip">{chip}</em>}
+            </span>
+            {prosa && <div className="pos-p">{prosa}</div>}
             {cajaAccionable && <div className="pos-p">{cajaAccionable}</div>}
             <div className="pos-firma">
               <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true" style={{ width: 22, height: 22, fontSize: 10 }}>

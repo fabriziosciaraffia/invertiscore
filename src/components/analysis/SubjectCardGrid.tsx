@@ -17,7 +17,7 @@ import { PrincipalesHallazgos } from "./PrincipalesHallazgos";
 import { LosNumeros } from "./LosNumeros";
 import { ModalCalculo } from "./ModalCalculo";
 import { getCapRefComuna } from "@/lib/cap-rate-hallazgo";
-import { hasAiV2 } from "./AIInsightSection";
+import { esProsaDosBloques, hasAiV2 } from "./AIInsightSection";
 import { derivarCifraClaveLtr } from "@/lib/cifra-clave";
 import { buildFichaLtr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
@@ -173,6 +173,18 @@ export function SubjectCardGrid({
   // en los puntos de render (renderPlumon). El strip sigue vivo SOLO donde el
   // rediseño no llega: las dos vistas /documento (PDF).
   const prosa = prosaLista ? aiAnalysis : null;
+  // ── DOS CAMINOS DE RENDER (v21 · 08-sep-2026) ─────────────────────────────
+  // Con prosa de dos bloques las razones se leen DENTRO del bloque de arriba y la
+  // sección «Qué determina el veredicto» deja de existir. Con prosa vieja —o sin
+  // prosa— la página es exactamente la de siempre. Ver `esProsaDosBloques`: el
+  // camino viejo es permanente para las filas anónimas.
+  const dosBloques = esProsaDosBloques(prosa);
+  // La alternancia de fondos es la forma de la página (contrato T2: seis cosas
+  // distintas al hacer scroll). Al fusionarse una sección, las tres siguientes
+  // invierten su tono para que dos consecutivas nunca compartan papel.
+  const tonoNumeros = dosBloques ? "paper" : "paper2";
+  const tonoInversion = dosBloques ? "paper2" : "paper";
+  const tonoZona = dosBloques ? "paper" : "paper2";
 
   // Materialización (Goal E): la transición siluetas→cards corre SOLO cuando la
   // prosa llegó DESPUÉS del mount (generación en vivo). Prosa cacheada
@@ -304,6 +316,15 @@ export function SubjectCardGrid({
       <HeroLTR
         onOpenDrawer={setActiveDrawer}
         data={prosa}
+        razones={
+          dosBloques && hallazgosOrdenados.length > 0 ? (
+            <>
+              <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
+              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} onVerDetalle={scrollAHallazgo} />
+              {palancasFlujo}
+            </>
+          ) : undefined
+        }
         prosaError={!prosa && !loading ? (error ?? null) : null}
         onRetryProsa={onRetry}
         currency={currency}
@@ -339,10 +360,14 @@ export function SubjectCardGrid({
         </SeccionInforme>
       ) : (
         <div style={materializa ? { animation: "zona2Aparece 450ms ease-out" } : undefined}>
-          {/* ═══ 3 · PRINCIPALES HALLAZGOS (paper) — contrato CONGELADO, T2 ═══
+          {/* ═══ 3 · PRINCIPALES HALLAZGOS (paper) — CAMINO VIEJO ═══
               Los cuatro que mueven el veredicto, del mismo orden único que el
-              acordeón. Fila + cierre con plumón + «↓ Ver detalle» al desarrollo. */}
-          {hallazgosOrdenados.length > 0 && (
+              acordeón. Con prosa de dos bloques esta sección no existe: las mismas
+              cuatro líneas se leen arriba, bajo la línea que declara. Acá siguen
+              porque el informe viejo tiene que verse coherente consigo mismo —su
+              título pregunta lo que su prosa contesta— y porque las 453 filas
+              anónimas del parque nunca van a regenerar. */}
+          {!dosBloques && hallazgosOrdenados.length > 0 && (
             <SeccionInforme
               id="principales-hallazgos"
               tono="paper"
@@ -365,7 +390,7 @@ export function SubjectCardGrid({
           {results?.metrics && inputData && (
             <SeccionInforme
               id="los-numeros"
-              tono="paper2"
+              tono={tonoNumeros}
               titulo="Las seis cifras"
             >
               <MarcaSeccion seccion="numeros" tipo="ltr" accessLevel={accessLevel} />
@@ -391,7 +416,7 @@ export function SubjectCardGrid({
           {/* ═══ 5 · LA INVERSIÓN (paper) — T3: los cinco capítulos del CONGELADO ═══ */}
           <SeccionInforme
             id="la-inversion"
-            tono="paper"
+            tono={tonoInversion}
             titulo="Cómo funciona como inversión"
           >
           <MarcaSeccion seccion="piramide" tipo="ltr" accessLevel={accessLevel} />
@@ -423,7 +448,7 @@ export function SubjectCardGrid({
           {analysisId && (
             <SeccionInforme
               id="la-zona"
-              tono="paper2"
+              tono={tonoZona}
               // La comuna vivía en el ksub; al morir el ksub sube al título, que es el
               // único lugar donde el nombre de la comuna aparece en esta sección.
               titulo={`La zona${comunaPortada ? ` · ${comunaPortada}` : ""}`}
