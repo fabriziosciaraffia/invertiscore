@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plumón · tríada rojo / ciruela / azul — FASE 0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════════════════════════════
+   MOCKUP DE DECISIÓN · tríada de veredicto rojo / ciruela / azul (07-sep-2026)
+   Read-only sobre el sistema real: los tokens, el gradiente del mark, el grano
+   y los tamaños salen tal cual de PortadaInforme.tsx (tip acd0aed).
+   Todo número de contraste se calcula al vuelo con la fórmula WCAG 2.1 sobre el
+   color COMPUESTO que pinta el navegador (alpha sobre papel), no sobre el hex.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root{
+  --ink:#0F0F0F; --red:#C8323C;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-serif:"Source Serif 4",Georgia,serif;
+  --font-mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#F6F6F7;color:#0F0F0F;font-family:var(--font-body);font-size:14px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding:40px 28px 90px}
+h1{font-family:var(--font-serif);font-size:32px;line-height:1.15;margin:0 0 6px;letter-spacing:-.01em}
+h2{font-family:var(--font-serif);font-size:22px;margin:44px 0 4px;letter-spacing:-.01em}
+h3{font-family:var(--font-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#C8323C;margin:30px 0 10px;font-weight:700}
+.lead{color:#55555C;max-width:82ch;margin:0 0 8px}
+.nota{font-size:12.5px;color:#6B6B72;max-width:86ch}
+code{font-family:var(--font-mono);font-size:12px;background:#EDEDEF;padding:1px 5px;border-radius:3px}
+
+/* ── el papel del informe, en sus dos temas ── */
+.paper{
+  --doc-paper:#FAF8F3; --doc-paper2:#F1EEE7; --doc-tx:#141311; --doc-line:#DAD6CC;
+  --doc-grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/><feColorMatrix type='saturate' values='0'/></filter><rect width='300' height='300' filter='url(%23n)' opacity='.5'/></svg>");
+  --grain-op:.10; --grain-blend:multiply;
+  background:var(--doc-paper);color:var(--doc-tx);
+  border:1px solid var(--doc-line);border-radius:4px;position:relative;overflow:hidden;
+}
+.paper.dark{
+  --doc-paper:#141414; --doc-paper2:#1B1B1B; --doc-tx:#EDEBE6; --doc-line:#282828;
+  --grain-op:.12; --grain-blend:soft-light;
+}
+.paper::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:var(--doc-grain);background-size:300px;opacity:var(--grain-op);mix-blend-mode:var(--grain-blend)}
+.paper > *{position:relative;z-index:1}
+
+/* tríada — los hexes en discusión */
+[data-v="BUSCAR OTRA"]{--verdict:#C8323C; --verdict-deep:#7A1F27}
+[data-v="AJUSTA SUPUESTOS"]{--verdict:#4A2E44; --verdict-deep:#2A1A26}
+[data-v="COMPRAR"]{--verdict:#1D3A6B; --verdict-deep:#10203C}
+/* la tríada VIEJA, para comparar */
+[data-v="AJUSTA SUPUESTOS"].viejo{--verdict:#B7791F; --verdict-deep:#6E4712}
+[data-v="COMPRAR"].viejo{--verdict:#2E8B57; --verdict-deep:#1E5A38}
+/* variante propuesta solo para oscuro (punto 4) */
+[data-v="AJUSTA SUPUESTOS"].dkvar{--verdict:#7A4A6E; --verdict-deep:#4A2E44}
+[data-v="COMPRAR"].dkvar{--verdict:#3A63A8; --verdict-deep:#1D3A6B}
+
+/* el titular real de portada, al tamaño real */
+/* el titular NO va en mayúsculas: la regla h3 de esta página no debe alcanzarlo */
+.headline{font-family:var(--font-serif);font-size:36px;line-height:1.15;font-weight:700;letter-spacing:-.01em;margin:0;color:var(--doc-tx);text-transform:none}
+/* VÍA A — el mecanismo actual: alpha sobre lo que haya detrás */
+.headline mark{background:linear-gradient(transparent 60%, var(--hl) 60%);color:var(--doc-tx);padding:0 2px;font-weight:inherit}
+/* VÍA B — tinte OPACO mezclado contra el papel */
+.viaB .headline mark{background:linear-gradient(transparent 60%, var(--hlB) 60%)}
+
+.celda{padding:18px 20px 20px;border-bottom:1px solid var(--doc-line)}
+.celda:last-child{border-bottom:none}
+.celda .meta{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--doc-tx);opacity:.55;margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap}
+.num{display:inline-flex;align-items:center;gap:5px}
+.num b{font-family:var(--font-mono);font-size:11.5px;letter-spacing:0}
+.ok{color:#2F7D55} .mal{color:#C8323C} .ojo{color:#A96F1B}
+.paper.dark .ok{color:#57B98A} .paper.dark .ojo{color:#DFA34F} .paper.dark .mal{color:#E8737B}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+.tema{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6B6B72;margin:0 0 8px;font-weight:700}
+
+/* ── banda ── */
+.banda{display:block;position:relative;overflow:hidden;color:#fff;font-family:var(--font-mono);
+  font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:10px 20px;
+  background:linear-gradient(100deg,var(--band0) 0%,color-mix(in srgb,var(--verdict) 80%,var(--verdict-deep)) 70%,var(--verdict-deep) 100%)}
+.banda::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;mix-blend-mode:multiply;
+  background-image:var(--doc-grain);background-size:220px}
+.banda-wrap{margin:0 0 14px}
+.banda-datos{font-family:var(--font-mono);font-size:11px;color:var(--doc-tx);opacity:.7;padding:0 20px 16px;display:flex;gap:18px;flex-wrap:wrap}
+
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0 4px}
+th,td{border:1px solid #DDDDE1;padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#EDEDEF;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+td.n{font-family:var(--font-mono);text-align:right;white-space:nowrap}
+.reco{border-left:3px solid #C8323C;background:#fff;padding:16px 20px;margin:18px 0}
+.reco b{display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#C8323C;margin-bottom:6px}
+.sw{display:inline-block;width:13px;height:13px;border-radius:2px;vertical-align:-2px;margin-right:5px;border:1px solid rgba(0,0,0,.15)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Plumón sobre la tríada rojo / ciruela / azul</h1>
+<p class="lead">Mockup de decisión, FASE 0. Los tokens, el gradiente del <code>mark</code>, el grano y los tamaños salen tal cual de <code>PortadaInforme.tsx</code> en <code>acd0aed</code>. Cada número de contraste se calcula al vuelo con WCAG 2.1 sobre el color <b>compuesto</b> que pinta el navegador, no sobre el hex nominal.</p>
+<p class="nota">Tríada en discusión: <span class="sw" style="background:#C8323C"></span>BUSCAR OTRO <code>#C8323C</code> · <span class="sw" style="background:#4A2E44"></span>AJUSTAR <code>#4A2E44</code> · <span class="sw" style="background:#1D3A6B"></span>COMPRAR <code>#1D3A6B</code>. Los <code>deep</code> de ciruela y azul son provisorios (ver punto 5).</p>
+
+<h2>1 · La pregunta real: ¿el plumón parte la frase?</h2>
+<p class="nota">Los tres titulares son reales del parque, con el <code>&lt;mark&gt;</code> <b>en medio</b> de la oración. Lo que hay que mirar no es solo si se lee, sino si la parte con plumón y la parte sin plumón se leen como el <b>mismo</b> texto. Por eso cada celda trae tres números: tinta sobre papel (la mitad de arriba del glifo), tinta sobre plumón (la mitad de abajo) y plumón sobre papel (cuánto se ve la marca). El que decide es el tercero comparado con el segundo.</p>
+
+<div id="matriz"></div>
+
+<h2>2 · Vía A contra vía B, lado a lado</h2>
+<p class="nota"><b>Vía A</b> es el mecanismo actual: <code>color-mix(in srgb, var(--verdict) X%, transparent)</code>, sube la opacidad. <b>Vía B</b> aclara el color contra el papel y lo aplica opaco: <code>color-mix(in srgb, var(--verdict) X%, var(--doc-paper))</code>. Sobre el papel principal las dos dan el <b>mismo</b> RGB compuesto — es la misma cuenta. La diferencia aparece sobre <code>--doc-paper2</code>, el papel de las secciones alternadas: la vía A se adapta y la vía B queda pegada al papel con el que se calculó.</p>
+<div id="vias"></div>
+
+<h2>3 · Banda: ciruela y azul con texto blanco</h2>
+<p class="nota">Medido en el 0% y el 70% del degradado, que son los dos puntos donde el contrato fija color. El grano va a .35 en <code>multiply</code>: solo puede oscurecer, así que el número de abajo es el <b>peor caso</b> (grano en su pixel más claro). Se muestran las dos variantes de arranque: color puro y <code>color-mix(--verdict 70%, --verdict-deep)</code>, que es lo que hoy necesita AJUSTAR con el ámbar.</p>
+<div id="bandas"></div>
+
+<h2>4 · El riesgo: la banda ciruela sobre papel Ink en modo oscuro</h2>
+<p class="nota">El papel oscuro es <code>#141414</code>. Si la banda no se despega del papel, deja de ser una banda y pasa a ser un rectángulo un poco más claro. Abajo, las tres del veredicto en oscuro y su contraste <b>contra el papel</b>, más una variante más saturada propuesta solo para oscuro.</p>
+<div id="oscuro"></div>
+
+<h2>5 · Comparación directa con la tríada vieja</h2>
+<div id="comparacion"></div>
+
+<h2>6 · La salida: la tríada al mismo peso visual</h2>
+<p class="nota">El rojo funciona en los dos temas porque es un color de luminancia media (0,149). La ciruela (0,038) y el azul (0,044) propuestos son casi negros: sobre papel <code>#141414</code> no tienen contra qué empujar. Si se les sube la luminancia hasta la del rojo <b>conservando matiz y saturación</b>, los tres se comportan igual en claro y en oscuro. Eso es lo que un espectro debería ser: tres matices del mismo peso, no tres colores sueltos.</p>
+<div id="peso"></div>
+
+<div class="reco" id="reco"></div>
+
+<script>
+/* ── WCAG 2.1 ─────────────────────────────────────────────────────────────── */
+const hex = h => { const s = h.replace('#',''); return [0,2,4].map(i => parseInt(s.slice(i,i+2),16)); };
+const lin = c => { const v = c/255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); };
+const lum = rgb => 0.2126*lin(rgb[0]) + 0.7152*lin(rgb[1]) + 0.0722*lin(rgb[2]);
+const ratio = (a,b) => { const l1 = lum(a), l2 = lum(b); const [hi,lo] = l1 > l2 ? [l1,l2] : [l2,l1]; return (hi+0.05)/(lo+0.05); };
+/** composición alpha de `fg` con opacidad `a` sobre `bg` — lo que pinta el navegador */
+const mezcla = (fg, bg, a) => fg.map((c,i) => Math.round(c*a + bg[i]*(1-a)));
+const fmt = n => n.toFixed(2).replace('.', ',') + ':1';
+const clase = n => n >= 4.5 ? 'ok' : n >= 3 ? 'ojo' : 'mal';
+
+const TEMAS = {
+  claro: { paper:'#FAF8F3', paper2:'#F1EEE7', tx:'#141311' },
+  oscuro:{ paper:'#141414', paper2:'#1B1B1B', tx:'#EDEBE6' },
+};
+const TRIADA = {
+  'BUSCAR OTRA':      { et:'BUSCAR OTRO', v:'#C8323C', deep:'#7A1F27' },
+  'AJUSTA SUPUESTOS': { et:'AJUSTAR',     v:'#4A2E44', deep:'#2A1A26' },
+  'COMPRAR':          { et:'COMPRAR',     v:'#1D3A6B', deep:'#10203C' },
+};
+const VIEJA = {
+  'BUSCAR OTRA':      { et:'BUSCAR OTRO', v:'#C8323C', deep:'#7A1F27' },
+  'AJUSTA SUPUESTOS': { et:'AJUSTAR',     v:'#B7791F', deep:'#6E4712' },
+  'COMPRAR':          { et:'COMPRAR',     v:'#2E8B57', deep:'#1E5A38' },
+};
+const OPACIDADES = [24, 32, 40, 50, 60];
+/* Titulares REALES del parque; el mark se movió al medio de la oración donde hacía falta. */
+const TITULARES = {
+  'BUSCAR OTRA':      ['No conviene: ', 'el arriendo no cubre ni la mitad', ' y el metro sale al doble.'],
+  'AJUSTA SUPUESTOS': ['Buen depto, pero ', 'el arriendo no cubre la cuota', ': ajusta los supuestos.'],
+  'COMPRAR':          ['Compras bajo la mediana y ', 'el arriendo cubre el dividendo', ' desde el primer mes.'],
+};
+
+function celda(tema, vKey, op, via, triada) {
+  const T = TEMAS[tema], V = (triada || TRIADA)[vKey];
+  const papel = hex(T.paper), tinta = hex(T.tx), color = hex(V.v);
+  const plumon = mezcla(color, papel, op/100);          // el RGB que realmente se pinta
+  const cPapel = ratio(tinta, papel);                   // mitad de arriba del glifo
+  const cPlumon = ratio(tinta, plumon);                 // mitad de abajo
+  const cMarca = ratio(plumon, papel);                  // ¿se ve la marca?
+  const salto = Math.abs(cPapel - cPlumon) / cPapel * 100;
+  const [a, m, b] = TITULARES[vKey];
+  const hl = `rgba(${color.join(',')},${op/100})`;
+  const hlB = `rgb(${plumon.join(',')})`;
+  return `<div class="celda">
+    <div class="meta">
+      <span>${V.et} · ${via} ${op}%</span>
+      <span class="num">tinta/papel <b>${fmt(cPapel)}</b></span>
+      <span class="num">tinta/plumón <b class="${clase(cPlumon)}">${fmt(cPlumon)}</b></span>
+      <span class="num">plumón/papel <b class="${cMarca >= 1.2 ? 'ok' : 'mal'}">${fmt(cMarca)}</b></span>
+      <span class="num">salto dentro de la frase <b class="${salto < 25 ? 'ok' : salto < 45 ? 'ojo' : 'mal'}">${salto.toFixed(0)}%</b></span>
+    </div>
+    <h3 class="headline" style="--hl:${hl};--hlB:${hlB};margin:0">${a}<mark>${m}</mark>${b}</h3>
+  </div>`;
+}
+
+function bloque(tema, via, triada, extraClase) {
+  const clases = `paper${tema === 'oscuro' ? ' dark' : ''}${via === 'vía B' ? ' viaB' : ''}`;
+  let html = `<div><p class="tema">${tema} · ${via}</p><div class="${clases}">`;
+  for (const vKey of Object.keys(TRIADA)) {
+    for (const op of OPACIDADES) {
+      html += `<div data-v="${vKey}" class="${extraClase || ''}">${celda(tema, vKey, op, via, triada)}</div>`;
+    }
+  }
+  return html + '</div></div>';
+}
+
+document.getElementById('matriz').innerHTML =
+  `<div class="cols">${bloque('claro','vía A')}${bloque('oscuro','vía A')}</div>`;
+
+/* vía A y vía B sobre los DOS papeles, para que se vea dónde se separan */
+function comparaVias(tema) {
+  const T = TEMAS[tema];
+  let filas = '';
+  for (const vKey of Object.keys(TRIADA)) {
+    const V = TRIADA[vKey], color = hex(V.v);
+    const p1 = hex(T.paper), p2 = hex(T.paper2);
+    const aSobre1 = mezcla(color, p1, .32), aSobre2 = mezcla(color, p2, .32);
+    const bFijo = mezcla(color, p1, .32);   // vía B se calcula contra --doc-paper y no cambia
+    const deriva = ratio(bFijo, p2);        // el tinte opaco contra el papel alternado
+    const derivaA = ratio(aSobre2, p2);
+    filas += `<tr><td>${V.et}</td>
+      <td class="n">rgb(${aSobre1.join(', ')})</td>
+      <td class="n">rgb(${aSobre2.join(', ')})</td>
+      <td class="n">rgb(${bFijo.join(', ')})</td>
+      <td class="n">${fmt(derivaA)}</td>
+      <td class="n">${fmt(deriva)}</td></tr>`;
+  }
+  return `<p class="tema">${tema}</p><table>
+    <tr><th>Veredicto</th><th>Vía A sobre papel</th><th>Vía A sobre papel2</th><th>Vía B (fija)</th><th>Marca/papel2 · vía A</th><th>Marca/papel2 · vía B</th></tr>
+    ${filas}</table>`;
+}
+document.getElementById('vias').innerHTML =
+  `<div class="cols">${bloque('claro','vía A')}${bloque('claro','vía B')}</div>
+   <p class="nota" style="margin-top:14px">Los dos bloques de arriba se ven idénticos sobre el papel principal: es la misma cuenta. La tabla muestra dónde dejan de serlo.</p>
+   ${comparaVias('claro')}${comparaVias('oscuro')}`;
+
+/* ── banda ── */
+function bandaBloque(tema) {
+  const T = TEMAS[tema];
+  let html = `<div><p class="tema">${tema}</p>`;
+  for (const vKey of Object.keys(TRIADA)) {
+    const V = TRIADA[vKey];
+    const c0 = hex(V.v), deep = hex(V.deep);
+    const c70 = c0.map((c,i) => Math.round(c*0.8 + deep[i]*0.2));
+    const arranqueMix = c0.map((c,i) => Math.round(c*0.7 + deep[i]*0.3));
+    const blanco = [255,255,255];
+    const r0 = ratio(blanco, c0), r70 = ratio(blanco, c70), rMix = ratio(blanco, arranqueMix), r100 = ratio(blanco, deep);
+    const rPapel = ratio(c0, hex(T.paper));
+    for (const [modo, band0, rr] of [['color puro', V.v, r0], ['mix 70% deep', `color-mix(in srgb, ${V.v} 70%, ${V.deep})`, rMix]]) {
+      html += `<div class="banda-wrap paper${tema === 'oscuro' ? ' dark' : ''}" data-v="${vKey}" style="--verdict:${V.v};--verdict-deep:${V.deep};--band0:${band0}">
+        <span class="banda">${V.et}</span>
+        <div class="banda-datos">
+          <span>arranque: ${modo}</span>
+          <span>blanco/0% <b class="${clase(rr)}">${fmt(rr)}</b></span>
+          <span>blanco/70% <b class="${clase(r70)}">${fmt(r70)}</b></span>
+          <span>blanco/100% <b class="${clase(r100)}">${fmt(r100)}</b></span>
+          <span>banda/papel <b class="${rPapel >= 3 ? 'ok' : rPapel >= 1.8 ? 'ojo' : 'mal'}">${fmt(rPapel)}</b></span>
+        </div>
+      </div>`;
+    }
+  }
+  return html + '</div>';
+}
+document.getElementById('bandas').innerHTML = `<div class="cols">${bandaBloque('claro')}${bandaBloque('oscuro')}</div>`;
+
+/* ── punto 4: ciruela y azul contra el papel oscuro, y la variante propuesta ── */
+const DK_VAR = {
+  'BUSCAR OTRA':      { et:'BUSCAR OTRO', v:'#C8323C', deep:'#7A1F27' },
+  'AJUSTA SUPUESTOS': { et:'AJUSTAR',     v:'#7A4A6E', deep:'#4A2E44' },
+  'COMPRAR':          { et:'COMPRAR',     v:'#3A63A8', deep:'#1D3A6B' },
+};
+function tablaOscuro() {
+  const papel = hex(TEMAS.oscuro.paper);
+  let filas = '';
+  for (const vKey of Object.keys(TRIADA)) {
+    const a = TRIADA[vKey], b = DK_VAR[vKey];
+    filas += `<tr>
+      <td><span class="sw" style="background:${a.v}"></span>${a.et}</td>
+      <td class="n">${a.v}</td><td class="n ${ratio(hex(a.v),papel) >= 3 ? 'ok' : ratio(hex(a.v),papel) >= 1.8 ? 'ojo' : 'mal'}">${fmt(ratio(hex(a.v), papel))}</td>
+      <td class="n">${fmt(ratio([255,255,255], hex(a.v)))}</td>
+      <td class="n">${b.v}</td><td class="n ${ratio(hex(b.v),papel) >= 3 ? 'ok' : 'ojo'}">${fmt(ratio(hex(b.v), papel))}</td>
+      <td class="n">${fmt(ratio([255,255,255], hex(b.v)))}</td></tr>`;
+  }
+  return `<table>
+    <tr><th>Veredicto</th><th>Hex</th><th>Banda/papel oscuro</th><th>Blanco/banda</th><th>Variante oscuro</th><th>Banda/papel</th><th>Blanco/banda</th></tr>
+    ${filas}</table>`;
+}
+document.getElementById('oscuro').innerHTML =
+  tablaOscuro() +
+  `<div class="cols" style="margin-top:16px">
+     <div><p class="tema">oscuro · hexes propuestos</p>${bandaBloque('oscuro').replace('<div><p class="tema">oscuro</p>','<div>')}</div>
+     <div><p class="tema">oscuro · variante más saturada (propuesta, sin aplicar)</p>${
+       Object.keys(DK_VAR).map(k => {
+         const V = DK_VAR[k];
+         return `<div class="banda-wrap paper dark" data-v="${k}" style="--verdict:${V.v};--verdict-deep:${V.deep};--band0:${V.v}">
+           <span class="banda">${V.et}</span>
+           <div class="banda-datos"><span>${V.v} → ${V.deep}</span><span>banda/papel <b class="ok">${fmt(ratio(hex(V.v), hex(TEMAS.oscuro.paper)))}</b></span><span>blanco/banda <b class="${clase(ratio([255,255,255], hex(V.v)))}">${fmt(ratio([255,255,255], hex(V.v)))}</b></span></div>
+         </div>`;
+       }).join('')
+     }</div>
+   </div>`;
+
+/* ── punto 5: vieja contra nueva, mismo mecanismo ── */
+function tablaComparacion() {
+  const claro = hex(TEMAS.claro.paper), tintaC = hex(TEMAS.claro.tx);
+  const oscuro = hex(TEMAS.oscuro.paper), tintaO = hex(TEMAS.oscuro.tx);
+  let filas = '';
+  for (const vKey of Object.keys(TRIADA)) {
+    for (const [nombre, set] of [['vieja', VIEJA], ['nueva', TRIADA]]) {
+      const V = set[vKey];
+      const pC = mezcla(hex(V.v), claro, .32), pO = mezcla(hex(V.v), oscuro, .32);
+      filas += `<tr><td><span class="sw" style="background:${V.v}"></span>${V.et} · ${nombre}</td>
+        <td class="n">${V.v}</td>
+        <td class="n ${clase(ratio(tintaC,pC))}">${fmt(ratio(tintaC, pC))}</td>
+        <td class="n ${ratio(pC,claro) >= 1.2 ? 'ok' : 'mal'}">${fmt(ratio(pC, claro))}</td>
+        <td class="n ${clase(ratio(tintaO,pO))}">${fmt(ratio(tintaO, pO))}</td>
+        <td class="n ${ratio(pO,oscuro) >= 1.2 ? 'ok' : 'mal'}">${fmt(ratio(pO, oscuro))}</td>
+        <td class="n ${ratio(hex(V.v),oscuro) >= 3 ? 'ok' : ratio(hex(V.v),oscuro) >= 1.8 ? 'ojo' : 'mal'}">${fmt(ratio(hex(V.v), oscuro))}</td></tr>`;
+    }
+  }
+  return `<table>
+    <tr><th>Veredicto</th><th>Hex</th><th>Tinta/plumón 32% claro</th><th>Plumón/papel claro</th><th>Tinta/plumón 32% oscuro</th><th>Plumón/papel oscuro</th><th>Banda/papel oscuro</th></tr>
+    ${filas}</table>`;
+}
+document.getElementById('comparacion').innerHTML = tablaComparacion();
+
+/* ── punto 6: la tríada al mismo peso visual que el rojo ── */
+const PESO = {
+  'BUSCAR OTRA':      { et:'BUSCAR OTRO', v:'#C8323C', deep:'#7A1F27' },
+  'AJUSTA SUPUESTOS': { et:'AJUSTAR',     v:'#915A85', deep:'#5A3852' },
+  'COMPRAR':          { et:'COMPRAR',     v:'#3569C3', deep:'#214179' },
+};
+(function peso() {
+  let html = '<table><tr><th>Veredicto</th><th>Hex</th><th>Luminancia</th><th>Banda/papel oscuro</th><th>Blanco/banda</th><th>Plumón 32% claro</th><th>Plumón 32% oscuro</th></tr>';
+  for (const k of Object.keys(PESO)) {
+    const V = PESO[k], c = hex(V.v);
+    const L = (0.2126*lin(c[0]) + 0.7152*lin(c[1]) + 0.0722*lin(c[2]));
+    const pC = mezcla(c, hex(TEMAS.claro.paper), .32), pO = mezcla(c, hex(TEMAS.oscuro.paper), .32);
+    html += `<tr><td><span class="sw" style="background:${V.v}"></span>${V.et}</td><td class="n">${V.v}</td><td class="n">${L.toFixed(3)}</td>
+      <td class="n ok">${fmt(ratio(c, hex(TEMAS.oscuro.paper)))}</td>
+      <td class="n ok">${fmt(ratio([255,255,255], c))}</td>
+      <td class="n">${fmt(ratio(pC, hex(TEMAS.claro.paper)))}</td>
+      <td class="n">${fmt(ratio(pO, hex(TEMAS.oscuro.paper)))}</td></tr>`;
+  }
+  html += '</table><div class="cols" style="margin-top:16px">';
+  for (const tema of ['claro','oscuro']) {
+    html += `<div><p class="tema">${tema} · peso igualado</p>`;
+    for (const k of Object.keys(PESO)) {
+      const V = PESO[k];
+      html += `<div class="banda-wrap paper${tema==='oscuro'?' dark':''}" style="--verdict:${V.v};--verdict-deep:${V.deep};--band0:${V.v}">
+        <span class="banda">${V.et}</span></div>`;
+      const T = TEMAS[tema], p = mezcla(hex(V.v), hex(T.paper), .32);
+      const [a,m,b] = TITULARES[k];
+      html += `<div class="paper${tema==='oscuro'?' dark':''}" style="margin-bottom:14px"><div class="celda">
+        <div class="meta"><span>${V.et} · 32%</span><span class="num">tinta/plumón <b class="${clase(ratio(hex(T.tx),p))}">${fmt(ratio(hex(T.tx),p))}</b></span><span class="num">plumón/papel <b>${fmt(ratio(p,hex(T.paper)))}</b></span></div>
+        <h3 class="headline" style="--hl:rgba(${hex(V.v).join(',')},.32);margin:0">${a}<mark>${m}</mark>${b}</h3>
+      </div></div>`;
+    }
+    html += '</div>';
+  }
+  document.getElementById('peso').innerHTML = html + '</div>';
+})();
+
+/* ── recomendación, calculada con los mismos números ── */
+(function reco() {
+  const claro = hex(TEMAS.claro.paper), tintaC = hex(TEMAS.claro.tx);
+  const oscuro = hex(TEMAS.oscuro.paper);
+  const filas = Object.keys(TRIADA).map(k => {
+    const V = TRIADA[k];
+    const mejor = OPACIDADES.map(op => {
+      const p = mezcla(hex(V.v), claro, op/100);
+      return { op, marca: ratio(p, claro), texto: ratio(tintaC, p) };
+    });
+    const elegido = mejor.find(m => m.marca >= 1.35 && m.texto >= 4.5) || mejor[mejor.length-1];
+    return `<li><b>${V.et}</b>: ${elegido.op}% — marca ${fmt(elegido.marca)} sobre papel, texto ${fmt(elegido.texto)} sobre plumón.</li>`;
+  }).join('');
+  document.getElementById('reco').innerHTML = `<b>Recomendación</b>
+    <p style="margin:0 0 8px">Opacidad mínima por veredicto para que la marca se vea (≥1,35:1 contra el papel) sin bajar el texto de 4,5:1:</p>
+    <ul style="margin:0 0 10px 18px">${filas}</ul>
+    <p style="margin:0" class="nota">Banda ciruela contra papel oscuro: <b>${fmt(ratio(hex(TRIADA['AJUSTA SUPUESTOS'].v), oscuro))}</b>. Banda azul: <b>${fmt(ratio(hex(TRIADA['COMPRAR'].v), oscuro))}</b>. Rojo, de referencia: <b>${fmt(ratio(hex(TRIADA['BUSCAR OTRA'].v), oscuro))}</b>.</p>`;
+})();
+</script>
+</div>
+</body>
+</html>
