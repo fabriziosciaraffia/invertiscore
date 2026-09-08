@@ -278,7 +278,9 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
 /* glifo de veredicto (✕ · — · ✓) en papel, 17 px, antes de la palabra; en las
    bandas mini baja a 11 px con 6 px de aire */
 .lv-glifo { width: 17px; height: 17px; flex: none; display: block; color: currentColor; }
-.lv-fila-banda { display: inline-flex; align-items: center; gap: 6px; }
+/* las tres bandas mini miden lo mismo (el ancho de BUSCAR OTRO); el texto arranca
+   pegado al glifo y el sobrante queda a la derecha */
+.lv-fila-banda { display: inline-flex; align-items: center; gap: 6px; width: 118px; box-sizing: border-box; }
 .lv-fila-banda .lv-glifo { width: 11px; height: 11px; }
 .lv-why {
   margin: 22px 0 0;
