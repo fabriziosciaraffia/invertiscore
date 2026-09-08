@@ -16,6 +16,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { FilaPalanca } from "@/components/analysis/hallazgos/vocabulario";
+import { totalEnPalabras } from "@/lib/palancas-en-palabras";
+
+const capitalizar = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function PalancasFlujo({
   filas,
@@ -32,12 +35,14 @@ export function PalancasFlujo({
 
   return (
     <div className="plf">
+      {/* El conteo va en PALABRAS, no en dígito: es la misma regla que sostiene
+          palancas-en-palabras.ts desde T1, y de ahí sale el numeral. */}
       <p className="plf-t">
         {cruzan.length === 0
           ? `Ninguna vía llega a ${objetivo}`
           : cruzan.length === 1
             ? `Una vía llega a ${objetivo}, por su cuenta`
-            : `${cruzan.length} vías llegan a ${objetivo}, cada una por su cuenta`}
+            : `${capitalizar(totalEnPalabras(cruzan.length))} vías llegan a ${objetivo}, cada una por su cuenta`}
       </p>
 
       {cruzan.map((f, i) => (
