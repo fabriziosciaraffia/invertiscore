@@ -3789,7 +3789,21 @@ Responde SOLO este JSON, sin texto alrededor:
     await persistGen("ok");
     return aiResult;
   } catch (error) {
+    // Este catch devuelve null y el caller responde 500, así que la falla NO se
+    // propaga: hasta el 07-sep-2026 solo existía en pipeline_timing (681 generaciones
+    // en `error` en toda la base, cero eventos en Sentry) y no se podía saber por qué
+    // reventó — la entrada de timing guarda el resultado, no la excepción.
+    // `persist: false` marca una corrida de validación (golden, scripts de eval): esa
+    // no es tráfico real y no debe abrir un evento.
     console.error("generateAiAnalysis error:", error);
+    if (opts.persist !== false) {
+      captureApiError(error, {
+        ruta: `generateAiAnalysis (${opts.trigger ?? "manual"})`,
+        operacion: "generar-prosa-ltr",
+        analysisId,
+        tags: { trigger: String(opts.trigger ?? "manual"), promptVersion: String(PROMPT_VERSION_LTR) },
+      });
+    }
     await persistGen("error");
     return null;
   }
