@@ -1012,11 +1012,24 @@ input[type="number"] {
    es el semáforo del DATO y sigue con --doc-good / --doc-warn / --signal-red.
    Misma tríada en claro y oscuro. Sin data-verdict (AMBAS): Ink, sin color.
    `--doc-tx` lo hereda el elemento desde los tokens del documento.
+
+   TRÍADA TINTA (07-sep-2026) — rojo · ciruela · azul tinta. Deja de ser un
+   semáforo rojo/ámbar/verde por dos razones: el ámbar y el verde competían con el
+   rojo de Franco, y el hero de la landing usa de fondo el degradado azul → ciruela
+   → rojo, así que el color de cada informe es un punto de ese espectro y landing e
+   informe comparten sistema, no solo paleta.
+
+   Los tres arrancan la banda en color pleno: con texto blanco dan 5,28 (rojo),
+   7,83 (ciruela) y 7,50 (azul), todos sobre 4,5:1. Murió la mezcla 70/30 con deep
+   que necesitaba el ámbar (#B7791F pelado daba 3,64:1 y no pasaba).
+
+   La banda contra el papel oscuro queda en 2,35 y 2,46, bajo 3:1, y es una decisión
+   tomada: WCAG 1.4.11 rige para gráficos que son la ÚNICA señal, y acá la banda
+   comunica por su texto blanco, que sí cumple. El color es redundante.
    ═══════════════════════════════════════════════════════════════════════════ */
 .doc-dictamen:not([data-verdict]),.doc-tokens:not([data-verdict] *){
   --verdict:var(--doc-tx); --verdict-deep:var(--doc-tx); --verdict-band-0:var(--verdict);
 }
 [data-verdict="BUSCAR OTRA"]{--verdict:#C8323C; --verdict-deep:#7A1F27; --verdict-band-0:var(--verdict)}
-/* AJUSTA arranca más oscuro: #B7791F pelado da 3,6:1 con texto blanco (decisión Fabrizio, FASE 0) */
-[data-verdict="AJUSTA SUPUESTOS"]{--verdict:#B7791F; --verdict-deep:#6E4712; --verdict-band-0:color-mix(in srgb,var(--verdict) 70%,var(--verdict-deep))}
-[data-verdict="COMPRAR"]{--verdict:#2E8B57; --verdict-deep:#1E5A38; --verdict-band-0:var(--verdict)}
+[data-verdict="AJUSTA SUPUESTOS"]{--verdict:#6E4560; --verdict-deep:#442B3B; --verdict-band-0:var(--verdict)}
+[data-verdict="COMPRAR"]{--verdict:#2B558F; --verdict-deep:#1B3559; --verdict-band-0:var(--verdict)}

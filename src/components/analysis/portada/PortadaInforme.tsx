@@ -122,7 +122,7 @@ export function PortadaInforme({
             <span
               key={i}
               className="flex-1 h-[6px] rounded-[1px]"
-              style={{ background: i < Math.round(scorePct / 10) ? "var(--verdict)" : "var(--doc-line2)" }}
+              style={{ background: i < Math.round(scorePct / 10) ? "var(--verdict)" : "var(--doc-score-empty)" }}
             />
           ))}
         </div>
@@ -270,9 +270,17 @@ export function DocTokens() {
         --doc-paper:#141414; --doc-paper2:#1B1B1B;
         --doc-line:#282828; --doc-line2:#3A3A3A;
         --doc-tx:#EDEBE6; --doc-tx2:#C4C2BC; --doc-tx3:#8C8A84; --doc-tx4:#5C5A55;
-        /* plumón: color del veredicto al 32% en el 40% inferior de la línea (contrato,
-           opacidad elegida .32). Sin veredicto cae a Ink porque --verdict cae a Ink. */
-        --doc-hl:color-mix(in srgb,var(--verdict) 32%,transparent); --doc-hl-tx:var(--doc-tx);
+        /* plumón OSCURO (tríada Tinta, 07-sep-2026): se ACLARA el color antes de
+           aplicarlo en vez de subirle el alfa. Sobre papel #141414 un color oscuro al
+           32% se hunde — medido, la marca quedaba en 1,25:1 contra el papel, o sea
+           invisible. Aclarado 25% hacia blanco y aplicado al 40%, la marca sube a
+           1,69-1,90:1 y el texto encima se queda sobre 8:1. Todo en srgb: el repo no
+           usa oklab en ninguna parte y la diferencia con oklab es de centésimas.
+           Sin veredicto cae a Ink porque --verdict cae a Ink. */
+        --doc-hl:color-mix(in srgb,color-mix(in srgb,var(--verdict),white 25%) 40%,transparent); --doc-hl-tx:var(--doc-tx);
+        /* bloques vacíos de la barra de score: solo en oscuro bajan a la línea del
+           papel para que la barra sea el veredicto y no una fila de casilleros. */
+        --doc-score-empty:#282828;
         --doc-paper3:#232323; --doc-neutral:#6E6A63; --doc-good:#57B98A; --doc-warn:#DFA34F;
         --doc-shadow:0 24px 60px rgba(0,0,0,.6);
         /* grano de papel: tile SVG 300px, NO filtro en vivo (contrato plumon-veredicto.html) */
@@ -298,9 +306,17 @@ export function DocTokens() {
         --doc-paper:#FAF8F3; --doc-paper2:#F1EEE7;
         --doc-line:#DAD6CC; --doc-line2:#C4BFB2;
         --doc-tx:#141311; --doc-tx2:#3B3A36; --doc-tx3:#75726A; --doc-tx4:#A39F94;
+        /* claro: el plumón NO cambia — 32% sobre papel claro da 1,63-1,67:1 de marca
+           y 10,5:1 de texto encima. El aclarado es un arreglo del papel oscuro. */
         --doc-hl:color-mix(in srgb,var(--verdict) 32%,transparent); --doc-hl-tx:var(--doc-tx);
-        /* semáforo del dato (Dial, Thermo, matriz): en claro, los mismos hexes de la tríada
-           de veredicto para que no haya dos verdes ni dos ámbares en la página; en oscuro
+        /* la barra de score en claro se queda como estaba */
+        --doc-score-empty:var(--doc-line2);
+        /* semáforo del DATO (Dial, Thermo, matriz): verde y ámbar propios, y se quedan.
+           Hasta el 06-sep valían los mismos hexes que la tríada de veredicto para no
+           tener dos verdes ni dos ámbares en la página; con la tríada Tinta
+           (07-sep-2026) la tríada dejó de ser verde y ámbar, así que esa razón murió y
+           los valores se quedan donde están: el Dial mide un DATO en un eje ordinal,
+           no un veredicto, y ahí verde y ámbar son la lectura convencional. En oscuro
            conservan sus variantes claras por contraste sobre #141414. */
         --doc-paper3:#EAE7DF; --doc-neutral:#8C8880; --doc-good:#2E8B57; --doc-warn:#B7791F;
         --doc-shadow:0 24px 60px rgba(20,19,17,.14);
