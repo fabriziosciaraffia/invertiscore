@@ -21,17 +21,15 @@ import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import { EV } from "./eventos";
 import type { Veredicto } from "@/lib/types";
 
-/** Qué significa obtener cada veredicto, explicado en simple (columna "Tres
- *  respuestas posibles" en desktop). No habla de un informe en particular: es la
- *  explicación del veredicto, por eso no lleva cifra. Copy de la landing,
- *  pendiente de OK de Fabrizio. */
+/** Qué significa obtener cada veredicto, explicado en simple (tres filas bajo la
+ *  respuesta, en PC y en mobile). No habla de un informe en particular: es la
+ *  explicación del veredicto, por eso no lleva cifra. Dos frases y este largo:
+ *  el veredicto mira más que el flujo (rentabilidad, flujo, plusvalía,
+ *  eficiencia). Copy propuesto en FASE 1.8; Fabrizio lo ajusta. */
 const EXPLICACION: Record<Veredicto, string> = {
-  "BUSCAR OTRA":
-    "Deptos que no se pagan solos ni ajustando: pones plata todos los meses y la inversión no la recupera.",
-  "AJUSTA SUPUESTOS":
-    "Deptos que sirven, pero no con estos supuestos: a otro precio, con más pie o a otro plazo el negocio funciona.",
-  COMPRAR:
-    "Deptos que se pagan solos y entran a buen precio: el arriendo cubre la cuota y te queda plata cada mes.",
+  "BUSCAR OTRA": "Ni el arriendo ni la plusvalía esperada justifican el precio. Hay mejores opciones en la misma zona.",
+  "AJUSTA SUPUESTOS": "El depto sirve, los supuestos no. A otro precio, con más pie o a otro plazo, el negocio cierra.",
+  COMPRAR: "Rentabilidad, flujo y precio de entrada juegan a favor. Se paga solo y compite bien con la zona.",
 };
 
 const DUR = 900;
@@ -135,8 +133,10 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
   return (
     <div ref={raiz} className="lv-s2-grid-inner">
       <div className="lv-idx">La respuesta, en fácil</div>
-      {/* la banda usa todo el ancho del contenido; debajo, en desktop, el ejemplo a
-          la izquierda y los tres veredictos con su definición a la derecha */}
+      {/* la banda usa todo el ancho del contenido; debajo, el ejemplo. En PC el
+          bloque .lv-ans se disuelve en la grilla (display: contents) para que la
+          banda cruce las dos columnas y las explicaciones queden al pie del
+          bloque; los tokens del veredicto se siguen heredando. */}
       <div className="lv-ans" data-verdict={x.veredicto} aria-live="polite">
         <div className="lv-band"><span className={`lv-x${out ? " out" : ""}`} style={delay(0)}>{x.etiqueta}</span></div>
         <div className="lv-ans-cuerpo">
@@ -159,25 +159,10 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
               />
             </div>
           </div>
-          <div className="lv-lista" role="tablist" aria-label="Veredictos">
-            <span className="lv-lbl">Tres respuestas posibles</span>
-            {ejemplos.map((e, j) => (
-              <button
-                key={e.id}
-                type="button"
-                role="tab"
-                aria-selected={j === i}
-                className={`lv-fila${j === i ? " on" : ""}`}
-                data-verdict={e.veredicto}
-                onClick={() => elegir(j)}
-              >
-                <span className="lv-fila-banda">{e.etiqueta}</span>
-                <span className="lv-fila-razon">{EXPLICACION[e.veredicto]}</span>
-              </button>
-            ))}
-          </div>
         </div>
       </div>
+      {/* mobile: tira de chips ("Tres respuestas posibles") y, debajo, las tres
+          explicaciones apiladas; PC: solo las explicaciones, en la columna derecha */}
       <div className="lv-nav">
         <span className="lv-lbl">Tres respuestas posibles</span>
         <div className="lv-chips" role="tablist" aria-label="Veredictos">
@@ -195,6 +180,23 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
             </button>
           ))}
         </div>
+      </div>
+      <div className="lv-lista" role="tablist" aria-label="Qué significa cada veredicto">
+        <span className="lv-lbl">Tres respuestas posibles</span>
+        {ejemplos.map((e, j) => (
+          <button
+            key={e.id}
+            type="button"
+            role="tab"
+            aria-selected={j === i}
+            className={`lv-fila${j === i ? " on" : ""}`}
+            data-verdict={e.veredicto}
+            onClick={() => elegir(j)}
+          >
+            <span className="lv-fila-banda">{e.etiqueta}</span>
+            <span className="lv-fila-razon">{EXPLICACION[e.veredicto]}</span>
+          </button>
+        ))}
       </div>
     </div>
   );

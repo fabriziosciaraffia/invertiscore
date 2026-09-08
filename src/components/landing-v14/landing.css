@@ -250,13 +250,13 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
    "Tres respuestas posibles" + chips abajo (FASE 1.4, mobile y desktop) */
 .lv-s2 { padding: var(--lv-sec) 0; min-height: 100svh; display: flex; flex-direction: column; }
 .lv-s2 > .lv-col { flex: 1; display: flex; flex-direction: column; }
-/* etiqueta + banda + cuerpo son UN grupo, centrado en la pantalla; en mobile los
-   chips quedan al pie (los márgenes auto reparten el aire arriba y abajo del grupo) */
+/* FASE 1.8: la sección se distribuye como la 3. Mobile: etiqueta arriba; banda +
+   razón + cifra al centro (márgenes auto); chips y las tres explicaciones al pie. */
 .lv-s2-grid-inner { flex: 1; display: flex; flex-direction: column; }
-.lv-s2-grid-inner > .lv-idx { margin-top: auto; margin-bottom: 22px; }
-.lv-ans { margin: 0; padding: 0; }
+.lv-s2-grid-inner > .lv-idx { margin: 0 0 22px; }
+.lv-ans { margin: auto 0; padding: 0; }
 .lv-ans-izq { min-width: 0; }
-.lv-nav { margin-top: auto; padding-top: 40px; }
+.lv-nav { margin-top: 0; padding-top: 32px; }
 /* sin data-verdict (no debería pasar) los tokens caen a Ink */
 .lv-ans:not([data-verdict]), .lv-chip:not([data-verdict]), .lv-fila:not([data-verdict]) {
   --verdict: var(--lv-ink); --verdict-deep: var(--lv-ink); --verdict-band-0: var(--lv-ink);
@@ -309,7 +309,11 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
 .lv-nav .lv-lbl { font-size: 15px; color: var(--lv-g2); }
-.lv-lista { display: none; }
+/* explicaciones: tres filas apiladas (banda mini + una o dos líneas), la activa
+   resaltada y sincronizada con la rotación; en mobile van bajo los chips y la
+   etiqueta la pone la tira de chips */
+.lv-lista { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.lv-lista .lv-lbl { display: none; }
 .lv-lista .lv-lbl {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lv-g);
@@ -507,9 +511,7 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   .lv-alt { flex-direction: row; align-items: center; gap: 22px; }
   /* sección 2: respuesta a la izquierda, chips al pie a la derecha */
   .lv-band { margin: 0; }
-  .lv-nav { margin-top: auto; padding-top: 0; border-top: 0; flex-direction: column; align-items: flex-end; justify-content: flex-end; gap: 12px; }
-  .lv-ans { margin-bottom: auto; }
-  .lv-nav .lv-lbl { text-align: right; }
+  .lv-nav { padding-top: 32px; border-top: 0; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
   /* h1 en dos líneas dentro de la mitad izquierda (medido: 8,1 px de ancho por px de cuerpo) */
   .lv-h1 { font-size: 64px; }
   .lv-footer-fila { flex-direction: row; justify-content: space-between; align-items: flex-end; }
@@ -542,10 +544,6 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   .lv-hero .lv-foot { text-align: right; }
   .lv-hero .lv-foot a { font-size: 22px; }
   .lv-precio { font-size: 30px; }
-  .lv-s2-grid-inner { grid-template-columns: minmax(0, 820px) minmax(220px, 1fr); }
-  .lv-band { font-size: 64px; padding: 26px 32px; }
-  .lv-num { font-size: 96px; }
-  .lv-why { font-size: 44px; }
 }
 /* ≥1024 (FASE 1.5): página editorial, no slide. Contenedor 1200 con 48 px de
    margen; columnas de texto en ch: h1 14ch y h2 16ch (a 88 px, 12ch parte
@@ -567,18 +565,28 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   .lv-hero .lv-mid-izq { flex: 1; display: flex; flex-direction: column; }
   .lv-h1 { margin-top: 4vh; margin-bottom: 0; }
   .lv-hero .lv-campo { margin-top: auto; }
-  /* sección 2: banda delgada, cifra 72, razón 32; columna derecha con las filas */
-  .lv-band { font-size: 22px; padding: 14px 20px; letter-spacing: 0.14em; }
-  .lv-num { font-size: 72px; }
-  .lv-why { font-size: 32px; max-width: 26ch; }
+  /* sección 2 (FASE 1.8): misma escala y aire que la 3. Grilla de dos columnas:
+     etiqueta arriba con su aire, banda a todo el ancho + bloque de respuesta al
+     centro (dos filas 1fr los centran), explicaciones alineadas al PIE del bloque
+     y con las tres cajas del mismo alto. .lv-ans se disuelve (display: contents)
+     para que banda y cuerpo sean hijos de la grilla; sus tokens se heredan igual. */
+  .lv-s2-grid-inner {
+    display: grid; grid-template-columns: minmax(0, 620px) minmax(380px, 1fr); column-gap: 64px;
+    grid-template-rows: auto minmax(32px, 1fr) auto auto minmax(32px, 1fr);
+  }
+  .lv-s2-grid-inner > .lv-idx { grid-area: 1 / 1 / 2 / 3; margin: 0; }
+  .lv-ans { display: contents; }
+  .lv-band { grid-area: 3 / 1 / 4 / 3; font-size: 26px; padding: 18px 24px; letter-spacing: 0.14em; }
+  .lv-ans-cuerpo { grid-area: 4 / 1 / 5 / 2; margin-top: 44px; }
+  .lv-lista { grid-area: 4 / 2 / 5 / 3; align-self: end; display: grid; grid-template-rows: auto repeat(3, 1fr); gap: 10px; margin: 44px 0 0; }
+  .lv-lista .lv-lbl { display: block; }
+  .lv-fila { align-items: center; }
+  .lv-num { font-size: 88px; }
+  .lv-why { font-size: 36px; max-width: 24ch; }
   .lv-nav { display: none; }
-  /* banda a todo el ancho del contenido; debajo, ejemplo a la izquierda y las tres
-     definiciones a la derecha, con aire entre veredicto, título y cifra */
-  .lv-ans-cuerpo { display: grid; grid-template-columns: minmax(0, 580px) minmax(380px, 1fr); column-gap: 64px; align-items: start; margin-top: 44px; }
   .lv-why { margin-top: 0; }
   .lv-num { margin-top: 40px; }
   .lv-ey { margin-top: 28px; }
-  .lv-lista { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
   /* sección 3: cabe en una pantalla; texto y mapa lado a lado */
   .lv-s3 { height: 100svh; min-height: 0; overflow: hidden; }
   .lv-s3 > .lv-col { height: 100%; }
@@ -590,6 +598,14 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   .lv-sesgo { margin-top: 24px; }
   .lv-mapa { display: flex; justify-content: center; }
   .lv-mapwrap { height: calc(100svh - 176px); max-height: calc(100svh - 176px); width: auto; max-width: 100%; }
+}
+/* ≥1280: la sección 2 sube de escala para no verse chica al lado de la 3 */
+@media (min-width: 1280px) {
+  .lv-s2-grid-inner { grid-template-columns: minmax(0, 720px) minmax(400px, 1fr); column-gap: 72px; }
+  .lv-band { font-size: 30px; padding: 20px 28px; }
+  .lv-num { font-size: 104px; }
+  .lv-why { font-size: 40px; }
+  .lv-fila-razon { font-size: 15px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
