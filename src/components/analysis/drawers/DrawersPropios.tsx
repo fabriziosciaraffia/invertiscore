@@ -400,7 +400,18 @@ function textoTope(via: Extract<ViaDistancia, { estado: "noCruza" }>): string {
   }
 }
 
-function construirPalancas(
+/**
+ * Filas de la matriz de palancas, listas para pintar. EXPORTADA (08-sep-2026) para que
+ * la sección del flujo pueda armar las mismas filas sin montar el drawer entero.
+ *
+ * NO se movió a un módulo propio, aunque el plan del goal lo decía: arrastra cinco
+ * helpers privados (textoPalanca, textoTope, NOMBRE_PALANCA, RAZON_NO_ALCANZA) más
+ * `fmtMoney` y el tipo `Currency`, que los usan otros veinte drawers de este archivo.
+ * Mover eso es un refactor de otro tamaño y con otro riesgo; exportarla da exactamente
+ * la misma capacidad con un diff de una línea. Si algún día `fmtMoney` sale a un módulo
+ * compartido, esta se va con él.
+ */
+export function construirPalancas(
   v: HallazgoDistanciaVeredicto["valor"],
   currency: Currency,
   valorUF: number,
