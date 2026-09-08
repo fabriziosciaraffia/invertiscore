@@ -328,9 +328,14 @@ export function DocTokens() {
       .doc-sec{margin:0 -64px;padding:36px 64px 44px;background:var(--doc-paper);color:var(--doc-tx)}
       .doc-sec.p2{background:var(--doc-paper2)}
       .doc-sec .doc-portada{border-bottom:none;margin-bottom:0;padding-bottom:0}
-      .doc-sec-eyebrow{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--signal-red);font-weight:700;margin-bottom:12px}
-      .doc-sec-t{font-family:var(--font-heading, Georgia, serif);font-size:30px;font-weight:700;line-height:1.12;letter-spacing:-.012em;margin:0 0 10px;color:var(--doc-tx)}
-      .doc-sec-intent{font-size:14.5px;line-height:1.62;color:var(--doc-tx3);max-width:64ch;margin:0 0 26px}
+      /* UN TÍTULO POR SECCIÓN (08-sep-2026). Murieron el ksub (.doc-sec-eyebrow) y la
+         bajada (.doc-sec-intent): el ksub repetía la palabra del título y la bajada
+         anunciaba lo que la sección iba a hacer en vez de hacerlo — y en «Principales
+         hallazgos» prometía «los cuatro» cuando el número varía por caso. Las props
+         salieron de SeccionInforme para que no vuelvan por costumbre.
+         El margen inferior del título absorbe el que traía la bajada: sin eso el
+         título quedaba a 10px del contenido. */
+      .doc-sec-t{font-family:var(--font-heading, Georgia, serif);font-size:30px;font-weight:700;line-height:1.12;letter-spacing:-.012em;margin:0 0 22px;color:var(--doc-tx)}
       .doc-sec mark{background:linear-gradient(transparent 60%,var(--doc-hl) 60%);color:var(--doc-hl-tx);padding:0 2px;font-weight:500}
       .doc-lnk{font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal-red);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap}
       .doc-lnk:hover{text-decoration:underline;text-underline-offset:3px}

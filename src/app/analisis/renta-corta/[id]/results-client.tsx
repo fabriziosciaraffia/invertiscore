@@ -505,9 +505,7 @@ export function STRResultsClient({
           <SeccionInforme
             id="principales-hallazgos"
             tono="paper"
-            eyebrow="Principales hallazgos"
-            titulo="Qué determina el veredicto en este departamento"
-            intent="Franco analizó los factores que pesan en la decisión. Estos son los cuatro que la mueven."
+            titulo="Qué determina el veredicto"
           >
             <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
             <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} onVerDetalle={scrollAHallazgo} />
@@ -516,9 +514,7 @@ export function STRResultsClient({
         <SeccionInforme
           id="los-numeros"
           tono="paper2"
-          eyebrow="Los números"
-          titulo="Las seis cifras que un inversionista mira primero"
-          intent="Las cifras con las que se evalúa una renta corta — para comparar este departamento con otro, o con arrendarlo largo."
+          titulo="Las seis cifras"
         >
           <MarcaSeccion seccion="numeros" tipo="str" accessLevel={accessLevel} />
           <SeisCifrasStr results={results} currency={currency} valorUF={ufValue} onCalculo={() => setCalculoAbierto(true)} />
@@ -527,9 +523,7 @@ export function STRResultsClient({
         <SeccionInforme
           id="la-inversion"
           tono="paper"
-          eyebrow="La inversión"
-          titulo="Cómo funciona este departamento como renta corta"
-          intent="Paso a paso: lo que factura, lo que queda cada mes, de qué depende, cómo lo pagas, contra qué lo comparas y con qué te quedas."
+          titulo="Cómo funciona como renta corta"
         >
           <MarcaSeccion seccion="piramide" tipo="str" accessLevel={accessLevel} />
           {francoScore ? (
@@ -559,7 +553,8 @@ export function STRResultsClient({
             </p>
           )}
         </SeccionInforme>
-        <SeccionInforme id="la-zona" tono="paper2" eyebrow={`La zona · ${comuna}`} titulo="La zona" intent="Contra qué compites y quién se va a alojar acá.">
+        {/* La comuna vivía en el ksub; al morir el ksub sube al título. */}
+        <SeccionInforme id="la-zona" tono="paper2" titulo={`La zona · ${comuna}`}>
           <MarcaSeccion seccion="zona" tipo="str" accessLevel={accessLevel} />
           {/* T2 (05-sep-2026): La zona sobre piezas compartidas, desde `zonaStr` (server, con
               procedencia). T3 borró ZonaCardSTR y el drawer de tipo de huésped. */}

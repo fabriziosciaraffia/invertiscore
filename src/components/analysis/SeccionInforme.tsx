@@ -18,23 +18,17 @@ import type { ReactNode } from "react";
 export function SeccionInforme({
   id,
   tono,
-  eyebrow,
   titulo,
-  intent,
   children,
 }: {
   id: string;
   tono: "paper" | "paper2";
-  eyebrow?: ReactNode;
   titulo?: ReactNode;
-  intent?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section id={id} className={`doc-sec${tono === "paper2" ? " p2" : ""}`}>
-      {eyebrow && <div className="doc-sec-eyebrow">{eyebrow}</div>}
       {titulo && <h2 className="doc-sec-t">{titulo}</h2>}
-      {intent && <p className="doc-sec-intent">{intent}</p>}
       {children}
     </section>
   );

@@ -320,9 +320,7 @@ export function SubjectCardGrid({
             <SeccionInforme
               id="principales-hallazgos"
               tono="paper"
-              eyebrow="Principales hallazgos"
-              titulo="Qué determina el veredicto en este departamento"
-              intent="Franco analizó los factores que pesan en la decisión. Estos son los cuatro que la mueven."
+              titulo="Qué determina el veredicto"
             >
               <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
               <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} onVerDetalle={scrollAHallazgo} />
@@ -333,9 +331,7 @@ export function SubjectCardGrid({
             <SeccionInforme
               id="los-numeros"
               tono="paper2"
-              eyebrow="Los números"
-              titulo="Las seis cifras que un inversionista mira primero"
-              intent="Las cifras con las que se evalúa cualquier inversión inmobiliaria — para comparar este departamento con otro, o con lo que rinde tu plata en otra parte."
+              titulo="Las seis cifras"
             >
               <MarcaSeccion seccion="numeros" tipo="ltr" accessLevel={accessLevel} />
               <LosNumeros
@@ -361,9 +357,7 @@ export function SubjectCardGrid({
           <SeccionInforme
             id="la-inversion"
             tono="paper"
-            eyebrow="La inversión"
-            titulo="Cómo funciona este departamento como inversión"
-            intent="Paso a paso: lo que entra, lo que sale, lo que queda y lo que crece."
+            titulo="Cómo funciona como inversión"
           >
           <MarcaSeccion seccion="piramide" tipo="ltr" accessLevel={accessLevel} />
           {ctxDrawer && (
@@ -395,9 +389,9 @@ export function SubjectCardGrid({
             <SeccionInforme
               id="la-zona"
               tono="paper2"
-              eyebrow={`La zona${comunaPortada ? ` · ${comunaPortada}` : ""}`}
-              titulo="La zona"
-              intent="Cómo se compara este departamento con lo que se vende y arrienda alrededor."
+              // La comuna vivía en el ksub; al morir el ksub sube al título, que es el
+              // único lugar donde el nombre de la comuna aparece en esta sección.
+              titulo={`La zona${comunaPortada ? ` · ${comunaPortada}` : ""}`}
             >
               <MarcaSeccion seccion="zona" tipo="ltr" accessLevel={accessLevel} />
               <ZonaLtrSection
