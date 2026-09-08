@@ -343,7 +343,14 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
 .lv-chip.on { color: #fff; border-color: transparent; background: var(--verdict); }
 
 /* ===== 3 POR QUÉ CREERLE (tinta) ===== */
-.lv-s3 { background: var(--lv-ink); color: var(--lv-paper); padding: var(--lv-sec) 0; min-height: 100svh; }
+.lv-s3 { background: var(--lv-ink); color: var(--lv-paper); padding: var(--lv-sec) 0; min-height: 100svh; position: relative; }
+/* resplandor muy tenue del azul del token (COMPRAR) en la esquina superior
+   derecha: la tinta deja de ser plana sin que aparezca un color nuevo */
+.lv-s3-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(70% 55% at 100% 0%, color-mix(in srgb, var(--verdict) 22%, transparent), transparent 70%);
+}
+.lv-s3 > .lv-col { position: relative; }
 .lv-s3 .lv-idx { color: #9a9a9a; margin-bottom: 28px; }
 /* "44.256 deptos" en UNA línea: 13 caracteres de mono; a 390 caben a 43 px */
 .lv-big {
@@ -374,9 +381,10 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
 .lv-proc { list-style: none; margin: 36px 0 0; padding: 0; max-width: 44ch; position: relative; }
 .lv-proc::before { content: ""; position: absolute; left: 11px; top: 14px; bottom: 14px; width: 1px; background: rgba(255, 255, 255, 0.25); }
 .lv-proc li { display: grid; grid-template-columns: 24px 1fr; gap: 16px; align-items: start; padding: 10px 0; }
+/* numerales sobre la tríada (azul, ciruela, rojo) con texto blanco: 7,5 · 7,8 · 5,3:1 */
 .lv-proc .lv-n {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--lv-ink); background: var(--lv-paper);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #fff; background: var(--verdict, var(--lv-paper));
   width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
   position: relative; z-index: 1; margin-top: 1px;
 }

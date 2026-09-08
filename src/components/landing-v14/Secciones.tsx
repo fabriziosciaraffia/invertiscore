@@ -88,6 +88,9 @@ function actualizado(iso: string, ahora: Date): string {
 export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
   return (
     <SeccionVista n={3} className="lv-s3">
+      {/* resplandor muy tenue del azul del token en la esquina superior derecha, en
+          vez de tinta plana (FASE 1.8; se compara con y sin en el reporte) */}
+      <div className="lv-s3-glow" data-verdict="COMPRAR" aria-hidden="true" />
       <div className="lv-col">
         {/* Orden FASE 1.3 (mobile y desktop): etiqueta → cifra en una línea → base
             de datos → "Franco evalúa…" → MAPA → proceso → sin sesgo → link. En
@@ -103,10 +106,12 @@ export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Da
             <MapaSantiago />
           </div>
           <div className="lv-s3-abajo">
+            {/* los tres numerales recorren la tríada (azul → ciruela → rojo) leyendo el
+                token por data-verdict: la misma escala del hero y del mapa */}
             <ol className="lv-proc">
-              <li><span className="lv-n">01</span><p>Un modelo financiero <b>proyecta qué pasa con tu inversión</b> en el tiempo.</p></li>
-              <li><span className="lv-n">02</span><p>Franco interpreta con IA y <b>te lo explica en fácil,</b> con un veredicto y una posición.</p></li>
-              <li><span className="lv-n">03</span><p>Y te dice qué hacer: <b>a qué precio conviene, hasta dónde negociar</b> y cuándo buscar otro.</p></li>
+              <li><span className="lv-n" data-verdict="COMPRAR">01</span><p>Un modelo financiero <b>proyecta qué pasa con tu inversión</b> en el tiempo.</p></li>
+              <li><span className="lv-n" data-verdict="AJUSTA SUPUESTOS">02</span><p>Franco interpreta con IA y <b>te lo explica en fácil,</b> con un veredicto y una posición.</p></li>
+              <li><span className="lv-n" data-verdict="BUSCAR OTRA">03</span><p>Y te dice qué hacer: <b>a qué precio conviene, hasta dónde negociar</b> y cuándo buscar otro.</p></li>
             </ol>
             <p className="lv-sesgo"><span>Sin sesgo:</span> Nadie le paga por decir que sí. <mark>Por eso puede decir que no.</mark></p>
             <Link className="lv-como" href="/metodologia">Ver cómo calcula <span>→</span></Link>
