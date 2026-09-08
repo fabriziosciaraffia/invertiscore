@@ -53,6 +53,10 @@ function sb() {
 }
 
 // Extrae el texto de largoPlazo de cualquiera de las dos formas (LTR/STR).
+// EN LTR YA NO HAY SITIO: `largoPlazo` salió del schema en v21, así que R2 (fondo
+// mutuo) solo tiene dónde medirse en STR. La función se conserva porque el brazo STR
+// la usa igual; el brazo LTR devuelve "" y el reporte lo muestra vacío, que es lo
+// correcto: no hay campo que muestrear, no un campo que falló.
 function largoPlazoText(ai: any): string {
   const lp = ai?.largoPlazo;
   if (!lp) return "";

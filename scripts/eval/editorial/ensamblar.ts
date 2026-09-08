@@ -141,10 +141,13 @@ function ensamblarLTR(fila: FilaAnalisis): InformeEnsamblado {
         ])
       : null,
     ...cardsPiramide(ordenadas, respuesta, ufFrozen),
-    drawerAISection("costoMensual (¿Cuánto te cuesta al mes?)", ai.costoMensual),
+    // costoMensual y largoPlazo salieron del schema LTR en v21; las filas persistidas
+    // anteriores los siguen trayendo, así que el ensamblador los sigue leyendo cuando
+    // están y los omite cuando no.
+    ai.costoMensual ? drawerAISection("costoMensual (¿Cuánto te cuesta al mes?)", ai.costoMensual) : null,
     ai.negociacion
       ? seccion("drawer:negociacion", [
-          ai.negociacion.contenido_clp,
+          ai.negociacion.contenido ?? ai.negociacion.contenido_clp,
           ai.negociacion.estrategiaSugerida_clp,
           ai.negociacion.precios?.glosaPrimeraOferta_clp ? `Primera oferta: ${ai.negociacion.precios.glosaPrimeraOferta_clp}` : null,
           ai.negociacion.precios?.glosaTecho_clp ? `Techo: ${ai.negociacion.precios.glosaTecho_clp}` : null,
@@ -157,7 +160,7 @@ function ensamblarLTR(fila: FilaAnalisis): InformeEnsamblado {
         ])
       : null,
     ai.reestructuracion ? seccion("drawer:reestructuracion", [ai.reestructuracion.contenido_clp]) : null,
-    drawerAISection("largoPlazo (análisis a 10 años)", ai.largoPlazo),
+    ai.largoPlazo ? drawerAISection("largoPlazo (análisis a 10 años)", ai.largoPlazo) : null,
   ];
 
   const zi = fila.zone_insight?.insight as { headline_clp?: string; narrative_clp?: string; accion?: string } | undefined;

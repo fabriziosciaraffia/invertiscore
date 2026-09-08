@@ -100,7 +100,6 @@ console.log("── fallback: append determinístico a la 2ª falla ──");
 const aiFalso = {
   conviene: { respuestaDirecta_clp: "ok", respuestaDirecta_uf: "ok", cajaAccionable_clp: "ok", cajaAccionable_uf: "ok" },
   negociacion: { contenido_clp: textoSucio, contenido_uf: textoSucio.replace("31,4", "31,4") },
-  costoMensual: {}, largoPlazo: {},
 };
 const colFalso = detectarColisionesJerarquia(aiFalso, jer.precios);
 check("colisión en el JSON", colFalso.length === 1 && colFalso[0].pieza === "negociacion");

@@ -155,19 +155,30 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
 
       // A7·D2 (HARD) — break-even sin negar VM cuando VM es sólido.
       if (vmSolido) {
-        const neg = norm(ai.negociacion?.contenido_clp ?? "");
+        const neg = norm(ai.negociacion?.contenido ?? ai.negociacion?.contenido_clp ?? "");
         if (/no hay (comparables|un valor de mercado|suficientes|valor de mercado)/i.test(neg)) bump("A7.D2-niega-VM");
       }
 
-      // A8·D1 (HARD) — largoPlazo compara con instrumentos (depósito/fondo) POR SU
-      // NOMBRE. El matcher vive en instrumentos.ts (#11, 07-sep-2026): acepta plural y
-      // «depósito (a plazo) en UF» / «depósito UF» — el mismo instrumento que el prompt
-      // entrega como «Depósito a plazo (UF+5%)»; GS-PJ k=1 cobraba una falla dura por
-      // esa gramática. NO acepta «depósito» pelado, «renta fija» ni «instrumento»:
-      // nombran el género y aflojarían la comparación concreta del Ángulo 3. El
-      // catch-test instrumentos-catch-test.ts fija los dos lados.
-      const lp = norm(ai.largoPlazo?.contenido_clp ?? "");
-      if (lp && !nombraInstrumento(lp)) bump("A8.D1-instrumentos");
+      // A8·D1 (HARD) — RETIRADA con acta en v21 (08-sep-2026).
+      //
+      // Verificaba que `largoPlazo.contenido` nombrara el instrumento comparado
+      // (depósito UF / fondo mutuo). Ese campo murió del schema junto con el ángulo 3
+      // que lo alimentaba, así que la regla se quedó SIN SUJETO: no hay campo LTR
+      // donde la comparación con instrumentos deba aparecer.
+      //
+      // NO SE REAPUNTA a `conviene`. Ese campo tiene sus propias reglas —la razón que
+      // manda más un matiz decisivo— y no compara instrumentos; exigirle el nombre de
+      // un depósito sería inventarle un contenido que la doctrina no le pide.
+      //
+      // Y NO SE DEJA APUNTANDO AL CAMPO MUERTO, que es la razón de que esto quede
+      // escrito: un guard HARD leyendo `ai.largoPlazo?.contenido_clp` habría obtenido
+      // "" en cada corrida, y `if (lp && ...)` no dispara nunca con "". El gate seguiría
+      // en verde para siempre sin haber probado nada — la red midiendo cero y
+      // reportándolo como éxito. Es el mismo modo de falla que ya costó cuatro campos
+      // rotos en el bundle del juez.
+      //
+      // `nombraInstrumento` y su catch-test siguen vivos: los usa el golden de STR,
+      // donde `largoPlazo` sí existe y sí se renderiza.
 
       // ── Checks pie-0 (GS-PC* · fase 4, aprobados 2026-08-01) — doctrina ## 5.bis ──
       if (seed.key.startsWith("GS-PC")) {
@@ -180,7 +191,7 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
         if (!nombra || celebra) bump("A-PC1.doctrina-100pct");
         // A-PC2 (HARD) — el escenario de vacancia aparece en ALGÚN campo de la
         // prosa (## 5.bis.b manda narrarlo pero NO fija campo: la generación real
-        // lo ubica donde el análisis lo pide — largoPlazo, costoMensual,
+        // lo ubica donde el análisis lo pide — conviene, negociacion,
         // reestructuracion...). Scope global a propósito.
         if (!/vacancia/i.test(todo)) bump("A-PC2.vacancia");
         // A-PC3 (PC2 · flujo positivo) — HARD: prohibido narrar el flujo positivo
@@ -259,7 +270,7 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
           ` [techo = respuesta + ${WORDS(coronaFrase)} (presupuesto de la razón que manda) + ≤${techoContinuacion}] · corridas: ${totalesWC.join("·")}`,
       );
     }
-    const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A8.D1-instrumentos", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
+    const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
     const SOFT = ["~engine-ism", "~zona-drift", "~rd-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado", "~titular-fallback-motor"];
 
     // ── Umbral de MAYORÍA para las reglas que juzgan PROSA GENERADA ────────────

@@ -4,7 +4,7 @@
 //   1. [HERO-CLAIM] el sujeto elige la razón: "aportas más de la mitad de la cuota" con
 //      aporte/cuota 0,53 es verdadera (GS-4); "el arriendo cubre menos de la mitad de la
 //      cuota" con arriendo/cuota 0,74 es falsa; sin sujeto claro, sin licencia.
-//   2. [HERO-CLAIM] razones de largoPlazo: "tu parte al vender … más del doble del fondo"
+//   2. [HERO-CLAIM] razones patrimonio/fondo: "tu parte al vender … más del doble del fondo"
 //      con 1,6× dispara (GS-3); "casi el doble del fondo mutuo" con 1,59× dispara (GS-PJ).
 //   3. Unidad "por metro": "UF 700 más por metro" con +35 UF/m² dispara (GS-4); "UF 146 de
 //      más por cada metro" con +32,8 dispara (GS-7); "UF 110 el metro" (el precio/m² del
@@ -47,7 +47,7 @@ if (!v("Al vender, casi el doble del fondo mutuo es lo que queda como tu parte."
 if (v("Al vender, casi el doble del fondo mutuo es lo que queda como tu parte.", { exitEquityCLP: 84_000_000 }).length) F("1.bis · sujeto después del múltiplo con 1,89× debía pasar");
 if (v("así que aportas de tu bolsillo más de la mitad de la cuota cada mes, y al vender tu parte supera el depósito.").length) F("1.bis · el sujeto de antes (aporte) sigue ganando al de después lejano (patrimonio)");
 
-// ── 2. razones de largoPlazo ──
+// ── 2. razones del cuerpo de conviene ──
 if (!v("El depto proyecta que tu parte al vender a 10 años es $70.865.849 —más del doble del fondo—, pero pones $66.618 al mes.").length) F("2 · GS-3 'tu parte al vender … más del doble del fondo' (1,6×) debía disparar");
 if (!v("el depto te deja tu parte al vender en $59.214.387 — casi el doble del fondo mutuo —", { exitEquityCLP: 59214387, fondoCLP: 37216300 }).length) F("2 · GS-PJ 'casi el doble del fondo mutuo' (1,59×) debía disparar");
 if (v("tu parte al vender es más del doble del fondo mutuo.", { exitEquityCLP: 100000000, fondoCLP: 44421425 }).length) F("2 · tu parte/fondo 2,25× debía pasar");
@@ -61,7 +61,9 @@ if (cifrasPorMetroFueraDeUnidad({ conviene: { cajaAccionable_clp: "en esta comun
 if (cifrasPorMetroFueraDeUnidad({ conviene: { respuestaDirecta_clp: "pagas UF 35 más por metro que la mediana (UF 45/m²)." } }, ref).length) F("3 · 'UF 35 más por metro' (la diferencia) no debía disparar");
 if (cifrasPorMetroFueraDeUnidad({ conviene: { respuestaDirecta_clp: "estás pagando UF 700 sobre la mediana por los 20 m²." } }, ref).length) F("3 · total sin 'por metro' no debía disparar");
 if (!cifrasPorMetroFueraDeUnidad({ conviene: { respuestaDirecta_clp: "Tu precio por m² (UF 80) está 78% sobre la mediana comunal de Macul (UF 45, sobre 180 ventas): pagas UF 700 más por metro que el departamento promedio." } }, ref).length) F("3 · GS-4 con UF 80 y UF 45 antes en la misma oración debía disparar igual");
-if (cifrasPorMetroFueraDeUnidad({ largoPlazo: { cajaAccionable_clp: "compensar UF 1.256,2 de tu bolsillo y un precio por m² 59% sobre la mediana comunal." } }, ref).length) F("3 · 'UF 1.256,2 de tu bolsillo y un precio por m²' no debía disparar");
+// El caso se mudó de `largoPlazo` (campo muerto en v21) a `conviene`: lo que prueba
+// es el DETECTOR de cifras por metro fuera de unidad, no la sección donde vivan.
+if (cifrasPorMetroFueraDeUnidad({ conviene: { cajaAccionable_clp: "compensar UF 1.256,2 de tu bolsillo y un precio por m² 59% sobre la mediana comunal." } }, ref).length) F("3 · 'UF 1.256,2 de tu bolsillo y un precio por m²' no debía disparar");
 if (cifrasPorMetroFueraDeUnidad({ negociacion: { estrategiaSugerida_clp: "El argumento no es el precio por m² (está alineado), sino que a UF 2.012 el análisis pasa a COMPRAR." } }, ref).length) F("3 · 'por m² (…), sino que a UF 2.012' no debía disparar");
 if (cifrasPorMetroFueraDeUnidad({ conviene: { contenido_clp: "por m² de UF 45 en la comuna" } }, ref).length) F("3 · 'por m² de UF 45' (mediana) no debía disparar");
 
