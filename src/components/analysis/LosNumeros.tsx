@@ -108,11 +108,16 @@ export function LosNumeros({
     },
     {
       k: "Cobertura de cuota",
+      // El múltiplo Y su porcentaje. No es dato nuevo: es el mismo número en la unidad
+      // que se entiende sin pensar. Medido sobre 30 generaciones v21, la prosa traducía
+      // «0,71×» a «cubre el 71% de la cuota» en 8 de ellas — gastaba palabras en una
+      // conversión que la celda puede hacer sola. Ojo con el sufijo del tooltip, que
+      // dice otra cosa: `coberturaPct` es el SOBRANTE (cobertura − 1), no la cobertura.
       v:
         cobertura != null ? (
           <>
             {cobertura.toFixed(2).replace(".", ",")}
-            <small>×</small>
+            <small>× · {Math.round(cobertura * 100)}%</small>
           </>
         ) : (
           "—"
