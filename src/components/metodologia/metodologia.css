@@ -1,0 +1,214 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * /metodologia — el interior del mismo material que la landing v14.
+ *
+ * La landing es la portada; esta página es el interior. Papel con grano de
+ * principio a fin: el fondo, el grano, los tokens y las primitivas (`.lv-col`,
+ * `.lv-idx`, `.lv-band`, `.lv-glifo`, `.lv-box`, el footer) salen de
+ * `landing.css`, que la página importa junto con esta hoja. Acá va SOLO lo que
+ * la landing no tiene: cabecera de documento, índice, secciones numeradas,
+ * tablas y FAQ. Prefijo `mtd-`.
+ *
+ * La textura del hero NO se repite como fondo: el único color es el de los
+ * veredictos (tokens `[data-verdict]` de globals.css).
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.mtd-root { padding-bottom: 0; }
+
+/* barra superior: "← Volver" · wordmark · "Entrar". La altura (64 / 88) sale de
+   la misma regla del hero en landing.css, no de una copia. */
+.mtd-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.mtd-volver {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--lv-g); text-decoration: none; white-space: nowrap; padding: 6px 0;
+}
+.mtd-volver:hover, .mtd-volver:focus-visible { color: var(--lv-ink); }
+.mtd-volver span { display: inline-block; margin-right: 8px; transition: transform 0.2s; }
+.mtd-volver:hover span { transform: translateX(-3px); }
+/* el wordmark queda al centro en PC y a la izquierda del "Entrar" en mobile */
+.mtd-top-marca { flex: 1; display: flex; justify-content: center; }
+@media (max-width: 599px) {
+  .mtd-top-marca { justify-content: flex-end; }
+  .mtd-top-marca .lv-tag { display: none; }
+}
+
+/* solo el eje vertical: el horizontal lo pone `.lv-col` (24 / 40 / 48 px) y un
+   shorthand acá lo borraba, dejando el texto pegado al borde en mobile */
+.mtd-main { padding-top: 40px; padding-bottom: 88px; }
+
+/* ── cabecera de documento: los datos vivos, como la ficha de un informe ── */
+.mtd-doc {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+  padding-bottom: 18px; border-bottom: 1px solid var(--lv-ll);
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lv-g);
+}
+.mtd-doc b { color: var(--lv-g2); font-weight: 700; }
+.mtd-doc span + span::before { content: "·"; margin-right: 14px; color: var(--lv-l); }
+.mtd-doc i {
+  position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--lv-red);
+  display: inline-block; flex: none; margin-right: 6px;
+}
+.mtd-doc i::after {
+  content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 1.5px solid var(--lv-red);
+  animation: lv-live 2s ease-out infinite;
+}
+
+.mtd-h1 {
+  margin: 36px 0 0;
+  font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
+  font-weight: 700; font-size: clamp(34px, 8vw, 60px); line-height: 1.05; letter-spacing: -0.025em;
+  max-width: 16ch;
+}
+.mtd-h1 mark { background: linear-gradient(transparent 60%, var(--lv-plumon) 60%); }
+.mtd-lead {
+  margin: 22px 0 0; max-width: 56ch;
+  font-size: 18px; line-height: 1.55; color: var(--lv-g2);
+}
+
+/* ── índice clicable ── */
+.mtd-indice { margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--lv-ink); }
+.mtd-indice ol { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 2px; }
+.mtd-indice a {
+  display: grid; grid-template-columns: 34px 1fr; align-items: baseline; gap: 10px;
+  padding: 9px 0; text-decoration: none; color: var(--lv-ink); border-bottom: 1px solid var(--lv-ll);
+}
+.mtd-indice a:hover, .mtd-indice a:focus-visible { color: var(--lv-red); }
+.mtd-indice em {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--lv-g);
+}
+.mtd-indice span { font-size: 15px; font-weight: 500; }
+
+/* ── secciones ── */
+/* el ancla no deja el título bajo la barra: 64 / 88 px de header + aire */
+.mtd-sec { scroll-margin-top: 88px; padding-top: 64px; }
+.mtd-sec-cab { display: flex; align-items: baseline; gap: 14px; }
+.mtd-n {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--lv-g); flex: none;
+}
+.mtd-h2 {
+  margin: 0;
+  font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
+  font-weight: 700; font-size: clamp(24px, 5.4vw, 34px); line-height: 1.15; letter-spacing: -0.02em;
+  max-width: 22ch;
+}
+.mtd-sec p { margin: 18px 0 0; max-width: 62ch; font-size: 16px; line-height: 1.6; color: var(--lv-g2); }
+.mtd-sec p b { color: var(--lv-ink); font-weight: 600; }
+.mtd-sec p mark { background: linear-gradient(transparent 60%, var(--lv-plumon) 60%); }
+.mtd-nota {
+  margin-top: 18px; padding-left: 16px; border-left: 2px solid var(--lv-ll);
+  font-size: 14px !important; line-height: 1.55; color: var(--lv-g) !important;
+}
+.mtd-sec a:not(.mtd-indice a) { color: inherit; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--lv-l); }
+.mtd-sec a:hover { text-decoration-color: var(--lv-red); }
+
+/* ── toggle LTR/STR (un solo estado para las dos tablas) ── */
+.mtd-toggle { display: inline-flex; margin-top: 26px; border: 1px solid var(--lv-ink); }
+.mtd-toggle button {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 9px 14px; border: 0; background: transparent; color: var(--lv-g); cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.mtd-toggle button[aria-pressed="true"] { background: var(--lv-ink); color: var(--lv-paper); }
+.mtd-toggle button + button { border-left: 1px solid var(--lv-ink); }
+
+/* las dos modalidades viven en el HTML (indexable, sin depender de JS); el
+   toggle solo cambia `data-modalidad` en el envoltorio */
+.mtd-modal[data-modalidad="ltr"] [data-m="str"],
+.mtd-modal[data-modalidad="str"] [data-m="ltr"] { display: none; }
+
+/* ── tablas ── */
+.mtd-tabla-wrap { margin-top: 20px; overflow-x: auto; }
+.mtd-tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.mtd-tabla caption {
+  text-align: left; padding-bottom: 10px;
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lv-g);
+}
+.mtd-tabla th, .mtd-tabla td { text-align: left; padding: 11px 14px 11px 0; border-bottom: 1px solid var(--lv-ll); vertical-align: top; }
+.mtd-tabla thead th {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--lv-g);
+  border-bottom-color: var(--lv-ink);
+}
+.mtd-tabla tbody th { font-weight: 500; color: var(--lv-ink); padding-right: 20px; }
+.mtd-tabla td { color: var(--lv-g2); }
+/* valores y unidades en mono, como en el informe */
+.mtd-v {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-weight: 700; color: var(--lv-ink); white-space: nowrap;
+}
+.mtd-tabla small { display: block; margin-top: 3px; font-size: 12.5px; line-height: 1.45; color: var(--lv-g); }
+
+/* ── los cuatro ejes ── */
+.mtd-ejes { margin-top: 26px; display: grid; gap: 0; }
+.mtd-eje { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--lv-ll); }
+.mtd-eje:first-child { border-top: 1px solid var(--lv-ink); }
+.mtd-eje h3 {
+  margin: 0;
+  font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
+  font-weight: 700; font-size: 19px; line-height: 1.2;
+}
+.mtd-eje p { margin: 6px 0 0 !important; font-size: 14.5px !important; max-width: 52ch; }
+.mtd-peso {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-weight: 700; font-size: 22px; letter-spacing: -0.02em; color: var(--lv-ink); white-space: nowrap;
+}
+
+/* ── bandas de veredicto (el mismo componente de la sección 2) ── */
+.mtd-bandas { margin-top: 26px; display: grid; gap: 22px; }
+.mtd-banda .lv-band { font-size: clamp(20px, 4.6vw, 26px); padding: 14px 18px; margin: 0; letter-spacing: 0.12em; }
+.mtd-banda .lv-glifo { width: 15px; height: 15px; }
+.mtd-banda p { margin-top: 12px !important; }
+
+/* ── FAQ ── */
+.mtd-faq { margin-top: 24px; border-top: 1px solid var(--lv-ink); }
+.mtd-faq details { border-bottom: 1px solid var(--lv-ll); }
+.mtd-faq summary {
+  list-style: none; cursor: pointer; padding: 16px 34px 16px 0; position: relative;
+  font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
+  font-weight: 700; font-size: 17px; line-height: 1.3; color: var(--lv-ink);
+}
+.mtd-faq summary::-webkit-details-marker { display: none; }
+.mtd-faq summary::after {
+  content: "+"; position: absolute; right: 2px; top: 14px;
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-size: 18px; font-weight: 400; color: var(--lv-g);
+}
+.mtd-faq details[open] summary::after { content: "−"; }
+.mtd-faq summary:focus-visible { outline: 2px solid var(--lv-ink); outline-offset: 2px; }
+.mtd-faq details p { margin: 0 0 18px !important; max-width: 62ch; }
+
+/* ── CTA final: el campo del hero, no un botón ── */
+.mtd-cta { margin-top: 72px; padding-top: 40px; border-top: 1px solid var(--lv-ink); }
+.mtd-cta h2 {
+  margin: 0 0 24px;
+  font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
+  font-weight: 700; font-size: clamp(26px, 6vw, 40px); line-height: 1.1; letter-spacing: -0.02em;
+  max-width: 22ch;
+}
+.mtd-cta h2 mark { background: linear-gradient(transparent 60%, var(--lv-plumon) 60%); }
+/* sobre papel el campo lleva borde: en el hero se recorta contra la textura */
+.mtd-cta .lv-box { border: 1px solid var(--lv-ink); box-shadow: none; }
+.mtd-cta .lv-alt { color: var(--lv-g2); }
+.mtd-cta .lv-alt a { color: var(--lv-ink); }
+.mtd-cta .lv-alt a:focus-visible { outline-color: var(--lv-ink); }
+.mtd-legal {
+  margin-top: 28px; max-width: 72ch;
+  font-size: 12.5px !important; line-height: 1.5; color: var(--lv-g) !important; font-style: italic;
+}
+
+@media (min-width: 768px) {
+  .mtd-main { padding-top: 56px; padding-bottom: 104px; }
+  .mtd-indice ol { grid-template-columns: 1fr 1fr; column-gap: 48px; }
+  .mtd-sec { padding-top: 88px; }
+  .mtd-lead { font-size: 20px; }
+}
+@media (min-width: 1024px) {
+  .mtd-sec-cab { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 0; align-items: start; }
+  .mtd-sec-cuerpo { padding-left: 90px; }
+  .mtd-bandas { gap: 26px; }
+}

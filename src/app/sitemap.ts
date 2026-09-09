@@ -17,6 +17,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "https://refranco.ai/pricing", lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: "https://refranco.ai/demo", lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: "https://refranco.ai/faq", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
+    // /metodologia es la página citable del producto (FAQPage + supuestos del motor)
+    { url: "https://refranco.ai/metodologia", lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: "https://refranco.ai/comunas", lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: "https://refranco.ai/cobertura", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: "https://refranco.ai/aprende", lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
