@@ -361,6 +361,19 @@ export function DocTokens() {
       .pos-foot{background:var(--doc-paper2);border-top:1px solid var(--doc-line);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
       .pos-foot .k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--doc-tx3);font-weight:700;display:block;margin-bottom:4px}
       .pos-foot .l{font-size:13px;color:var(--doc-tx2);line-height:1.5}
+      /* LA REGULACIÓN DEL EDIFICIO (STR, 09-sep-2026) — la quinta razón, la que no es
+         un número. Vive dentro de «Qué determina el veredicto», debajo de las cuatro
+         líneas. Sobre --doc-paper3, que por contrato no es fondo de sección; con el
+         reglamento ya en contra sube a Signal Red (uso legítimo: condición que invalida
+         la operación, no decoración). */
+      .reg{margin-top:22px;padding:14px 16px;border:1px solid var(--doc-line);border-left:3px solid var(--doc-tx3);
+        border-radius:3px;background:var(--doc-paper3)}
+      .reg.crit{border-left-color:var(--signal-red)}
+      .reg-t{font-family:var(--font-mono, ui-monospace);font-size:10.5px;letter-spacing:.14em;
+        text-transform:uppercase;color:var(--doc-tx3);font-weight:700;margin:0 0 8px}
+      .reg.crit .reg-t{color:var(--signal-red)}
+      .reg-p{font-size:13.5px;line-height:1.6;color:var(--doc-tx2);margin:0;max-width:70ch}
+
       /* PRINCIPALES HALLAZGOS · la fila es una línea (08-sep-2026).
          Contrato: docs/wireframes/rediseno-informe/la-fila-como-linea.html, opción 2.
          Murieron .num, .q, .q small, .hz-cierre, .hz-foot y .dot-dir: la numeración,

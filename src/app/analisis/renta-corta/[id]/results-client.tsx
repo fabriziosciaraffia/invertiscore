@@ -37,6 +37,7 @@ import { StateBox } from "@/components/ui/StateBox";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { PrincipalesHallazgos } from "@/components/analysis/PrincipalesHallazgos";
+import { RegulacionEdificio } from "@/components/analysis/str/RegulacionEdificio";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { TokensShared } from "@/components/analysis/shared";
 import { SeisCifrasStr } from "@/components/analysis/str/SeisCifrasStr";
@@ -509,6 +510,11 @@ export function STRResultsClient({
           >
             <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
             <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} onVerDetalle={scrollAHallazgo} />
+            {/* LA QUINTA RAZÓN, la que no es un número: si el reglamento del edificio
+                permite operar por día. Determinista (input del wizard + el amoblamiento
+                en riesgo), cero IA. Con «sí permite» no renderiza nada — que no aparezca
+                ES la señal de que no hay nada que confirmar. */}
+            <RegulacionEdificio inputData={inputData} currency={currency} valorUF={ufValue} />
           </SeccionInforme>
         )}
         <SeccionInforme
