@@ -561,7 +561,7 @@ export function buildUserPromptSTR(
     anomalias.push(`COSTOS OPERATIVOS ALTOS: ${costStackPctAnomalia}% del ingreso bruto se va en costos totales de operar —gastos + comisión— (banda típica ${COSTOS_STR_BANDA_FAV_PCT}-${COSTOS_STR_BANDA_ADV_PCT}% del ingreso bruto; sobre ${COSTOS_STR_BANDA_ADV_PCT}% es alto).`);
   }
   const anomaliasTexto = anomalias.length > 0
-    ? `\n\n=== ANOMALÍAS DETECTADAS POR EL MOTOR ===\n${anomalias.map((a, i) => `${i + 1}. ${a}`).join("\n")}\n\nMENCIÓN OBLIGATORIA (§8). Recuerda: el break-even se menciona UNA vez (§Ángulo 6).`
+    ? `\n\n=== ANOMALÍAS DETECTADAS EN EL CASO ===\n${anomalias.map((a, i) => `${i + 1}. ${a}`).join("\n")}\n\nMENCIÓN OBLIGATORIA (§8). Recuerda: el break-even se menciona UNA vez (§Ángulo 6).`
     : "";
 
   // --- Score + veredicto ---
@@ -582,7 +582,7 @@ export function buildUserPromptSTR(
   const motivos = describirMotivosSTR(fs?.gates?.motivos ?? []);
   const motivosBloque = motivos
     ? `
-POR QUÉ NO CIERRA (motor · ${motivos.familias.length === 1 ? "una causa" : `${motivos.familias.length} causas simultáneas`}): ${motivos.frase}
+POR QUÉ NO CIERRA (${motivos.familias.length === 1 ? "una causa" : `${motivos.familias.length} causas simultáneas`}): ${motivos.frase}
 Esta es la razón REAL del veredicto, por sobre el score. Si el score parece alto para el veredicto, es exactamente esto lo que lo explica — nómbralo, no lo esquives ni inventes otra causa.${motivos.familias.length > 1 ? `
 Son causas DISTINTAS y hay que nombrarlas TODAS: presentar una sola deja al lector creyendo que arreglando ese número el caso se salva, y no es así.` : ""}
 Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards favorables dominan la pirámide y este gate decidió el veredicto, \`conviene.respuestaDirecta\` DEBE resolver la tensión — POR QUÉ lo bueno no salva el caso — alineada con esta causa, nunca enterrada en un drawer. La glosa del hero sola no basta si el resto de la página sigue celebrando.`
@@ -698,7 +698,7 @@ NINGÚN AJUSTE REALISTA ALCANZA. PROHIBIDO ofrecer negociación, descuento, "si 
     // topes propios STR — la banda describe el esfuerzo del delta emitido).
     const palancaPrecioStr = dv.palancas.find((l) => l.palanca === "precio");
     const avisoBandaPrecio = palancaPrecioStr
-      ? `\n\nBANDA DE ESFUERZO del descuento de la palanca precio (§1.12.1 — dato del motor; nárrala con este lenguaje, NUNCA la reclasifiques): ${bandaEsfuerzoDescuento(Math.abs(palancaPrecioStr.deltaPct)).lectura}.`
+      ? `\n\nBANDA DE ESFUERZO del descuento de la palanca precio (§1.12.1 — ya calculado; nárrala con este lenguaje, NUNCA la reclasifiques): ${bandaEsfuerzoDescuento(Math.abs(palancaPrecioStr.deltaPct)).lectura}.`
       : "";
 
     // §1.12.3 — doble filo del pie, obligatorio al recomendarlo como palanca.
@@ -772,7 +772,7 @@ REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase d
     const negCruza = mto.celdas.find((c) => c.cruza && c.flujoMensual < 0);
     return `
 
-=== FRONTERAS Y MATRICES (dato del motor · lo que dibujan los diales y las matrices) ===
+=== FRONTERAS Y MATRICES (ya calculado · lo que dibujan los diales y las matrices) ===
 Ingreso (tarifa y ocupación mueven el ingreso por la misma razón): ${arriba}; ${abajo}.
 Precio: ${precio}.
 Matriz tarifa × ocupación (${mto.celdas.length} recomputes): ${mto.celdas.filter((c) => c.cruza).length} cruzan al veredicto de arriba, ${mto.celdas.filter((c) => c.cae).length} caen.${negCruza ? ` OJO: ${fmtCLP(negCruza.tarifaCLP)} por noche con ${Math.round(negCruza.ocupacion * 100)}% de ocupación cruza a ${negCruza.veredicto} aunque el mes quede en ${fmtCLP(negCruza.flujoMensual)}: el veredicto lo decide el Franco Score, no el signo del mes — si lo mencionas, dilo así.` : ""}
@@ -846,7 +846,7 @@ Matriz pie × plazo (${mpp.celdas.length} recomputes): ${mpp.celdas.filter((c) =
     })();
     return `
 
-=== PIRÁMIDE DE HALLAZGOS (orden real por decisividad · dato del motor) ===
+=== PIRÁMIDE DE HALLAZGOS (orden real por decisividad · ya calculado) ===
 ${filas}
 HALLAZGO #1 COMO DATOS (la razón que manda la primera oración): ${datoManda} Los cuatro del TOP-4 son los que el usuario ve en la página, en ese orden.
 Ejemplo del patrón para la primera oración de \`conviene.respuestaDirecta\` (la razón y la cifra son las de ESTE caso; no lo copies, copia el movimiento): «${ejemplo}»`;
