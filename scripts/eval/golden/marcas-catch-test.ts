@@ -4,17 +4,18 @@
 // Refuerzo 3 de FASE 2 (rediseño Dictamen). Tres cosas:
 //   (1) el validador `marcasBalanceadas` caza un `**` impar y acepta prosa sana;
 //   (2) `stripMarcas` deja texto plano (render tolerante FASE 2);
-//   (3) demostración del RIESGO REAL: un sanitizer por-oración del pipeline
-//       (stripCardEcho, STR) mutila un par que cruza el punto → queda `**`
-//       impar → el invariante AS3/A10 lo caza. Es la clase de bug que motivó
-//       el check; si stripCardEcho cambia y esto deja de reproducirse, mejor —
-//       el caso (3b) verifica que el par DENTRO de una oración sobrevive.
+//   (3) demostración del RIESGO REAL: un sanitizer POR ORACIÓN mutila un par que
+//       cruza el punto → queda `**` impar → el invariante AS3/A10 lo caza. Es la
+//       clase de bug que motivó el check. Hasta v17 se reproducía llamando a
+//       `stripCardEcho` (STR), que murió con sus campos; ahora el mutilador es LOCAL,
+//       porque lo que se prueba es la clase de bug y no qué función la produce —
+//       atarlo a una del pipeline dejaba el test sin sujeto cuando esa se retiraba.
+//       El caso (3b) verifica que el par DENTRO de una oración sobrevive.
 //
 //   node --import tsx scripts/eval/golden/marcas-catch-test.ts
 // ============================================================================
 
 import { contarTokensMarca, marcasBalanceadas, stripMarcas, stripMarcasDeep, validarTitular, evaluarTitular, normalizarMarcasTitular } from "../../../src/lib/prosa-marcas";
-import { stripCardEcho } from "../../../src/lib/ai-generation-str";
 
 let fallas = 0;
 const check = (nombre: string, cond: boolean, detalle = "") => {
@@ -44,7 +45,13 @@ check(
 check("prosa sin marcas queda idéntica", stripMarcas("Sin marcas acá.") === "Sin marcas acá.");
 
 // ── (3) Riesgo real: sanitizer por-oración mutila un par que cruza el punto ──
-console.log("── stripCardEcho + par cruzado (la clase de bug que AS3/A10 caza) ──");
+console.log("── recorte por oración + par cruzado (la clase de bug que AS3/A10 caza) ──");
+/** El mutilador de la clase de bug: bota la 1ª oración, como cualquier sanitizer
+ *  por-oración del pipeline. Local a propósito (ver cabecera). */
+const botarPrimeraOracion = (t: string): string => {
+  const partes = t.split(/(?<=[.;])\s+/);
+  return partes.slice(1).join(" ").trim();
+};
 // vsLTR: la 1ª oración re-enuncia la dirección pelada (el patrón que stripCardEcho
 // bota) y una marca ABRE en esa oración y CIERRA en la siguiente. El resto queda
 // ≥18 palabras para que el strip proceda.
@@ -55,10 +62,8 @@ const aiSembrada = {
       " no compensa** el esfuerzo operativo del corto cuando la ocupación real se queda bajo la banda observada de la comuna y la rotación te obliga a gestionar semana a semana.",
   },
 } as never;
-const logs: string[] = [];
-stripCardEcho(aiSembrada, {}, (m: string) => logs.push(m));
-const post = (aiSembrada as { vsLTR: { contenido: string } }).vsLTR.contenido;
-const seEjecutoStrip = logs.some((l) => l.includes("STR-ECHO-STRIPPED"));
+const post = botarPrimeraOracion((aiSembrada as { vsLTR: { contenido: string } }).vsLTR.contenido);
+const seEjecutoStrip = post.length > 0;
 if (seEjecutoStrip) {
   check(
     "el strip por-oración dejó un `**` impar y el invariante lo caza",
@@ -78,10 +83,9 @@ const aiSana = {
       "En esta zona LTR rinde más. La brecha real está en la gestión: **administrarlo tú baja la comisión a cero** y ese ahorro mensual es la única palanca que mueve el flujo antes de renegociar el precio de compra con el vendedor.",
   },
 } as never;
-stripCardEcho(aiSana, {}, () => {});
 check(
-  "par dentro de una oración sobrevive al strip",
-  marcasBalanceadas((aiSana as { vsLTR: { contenido: string } }).vsLTR.contenido),
+  "par dentro de una oración sobrevive al recorte",
+  marcasBalanceadas(botarPrimeraOracion((aiSana as { vsLTR: { contenido: string } }).vsLTR.contenido)),
 );
 
 // ── (4) validarTitular (checks A9/AS4 — clase "campo nuevo ausente") ──

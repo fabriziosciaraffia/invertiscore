@@ -101,7 +101,23 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // cada campo, en positivo y con un ejemplo de forma (placeholders). Solo largo: nada más del
 // prompt cambia. Motivo: budget disparaba 12/12 en la tanda de a57a822 con el "(≤N)" del
 // schema como única señal; medido, una oración de Franco mide 22-30 palabras.
-export const PROMPT_VERSION_STR = 16;
+// v17 (09-sep-2026) · LA PROSA STR SE PODA A LO QUE SE LEE. Auditoría del render: en
+// la página STR `aiParaRender` tiene UN consumidor —HeroStrDictamen— y los seis
+// capítulos son 100% motor, así que de los siete bloques de prosa solo `conviene` y el
+// `titular` llegaban al lector: 772 de 970 palabras por generación (80%) se pagaban y
+// no se leían en ninguna parte.
+//
+// MUEREN los cuatro bloques que el motor ya dibuja —`rentabilidad` (cap. I + matriz),
+// `operacion` (cap. V), `largoPlazo` (cap. VI + plusvalía) y `vsLTR.contenido`
+// (hallazgo ventaja_vs_ltr + su capítulo)— más `riesgos`, cuya auditoría encontró que
+// ocho de sus nueve familias ya estaban dibujadas y la novena (la regulación del
+// edificio) pasó a ser un bloque determinista. Y muere `conviene.veredictoFrase`: con
+// el título del bloque siendo la línea que declara, la cápsula decía la conclusión por
+// tercera vez.
+//
+// SOBREVIVE `vsLTR.estrategiaSugerida`, que no tiene equivalente determinista: es la
+// acción concreta, y pasa a leerse dentro de «Lo que haría yo».
+export const PROMPT_VERSION_STR = 17;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -115,11 +131,6 @@ Tu prosa NO se lee como un documento corrido. Cada campo aterriza en un lugar es
 
 - \`titular\` → PORTADA, la primera frase del informe en serif grande con su núcleo pintado con plumón. Contrato en §7.ter. Junto a él el usuario ve UNA cifra grande que emite el análisis (bloque CIFRA CLAVE del user prompt).
 - \`conviene.*\` → HERO. respuestaDirecta = lead narrativo (alineado al coronado, §7.bis); reencuadre = contexto de inversor; cajaAccionable = cierre del hero (la posición de Franco). El hero muestra además el score con su barra, los chips del depto, el mapa y el índice de los 3 primeros hallazgos — esos datos YA están en pantalla: no los recites.
-- \`rentabilidad.contenido\` → abre el DRAWER de rentabilidad, detrás de la card "Rentabilidad operativa" (que ya mostró el CAP rate y el umbral). cajaAccionable cierra ese drawer.
-- \`vsLTR.contenido\` → abre el DRAWER "STR vs arriendo largo", detrás de la card "Ventaja vs arriendo largo" (que ya mostró la dirección y la sobre-renta). estrategiaSugerida = caja de estrategia con cifra (2 oraciones, ≤75 palabras); cajaAccionable cierra.
-- \`riesgos.contenido\` → 3 riesgos parseados en el DRAWER "Regulación, zona y riesgos", detrás de la card de ocupación. cajaAccionable = CIERRE del análisis (posición personal §9).
-- \`operacion.contenido\` → bloque SECUNDARIO "contexto operativo" dentro de ese mismo drawer de riesgos (solo aparece junto a los riesgos). Es contexto breve, NO una sección estelar.
-- \`largoPlazo.contenido\` → abre el DRAWER "A 10 años", detrás de la columna Patrimonio (sección Escenarios y Proyección). Es JUICIO del horizonte, no la planilla. cajaAccionable = la apuesta, cierra el drawer.
 
 NO existen en la página (NO los generes): un "headline" suelto, ni un campo \`pregunta\` por sección. El flujo mensual y la estacionalidad tienen su propio drawer SOLO-MOTOR con gráficos — NO los narres en detalle, el gráfico ya los cuenta.
 
@@ -144,9 +155,6 @@ Test rápido por párrafo: si un lector lo puede reemplazar por una tabla sin p�
 La prosa de los drawers vive DETRÁS de una card que YA mostró título + KPI + una frase (la "fraseCanónica"). El user prompt te pasa, por cada drawer, la frase EXACTA que el usuario ya leyó en la card (bloque "LO QUE LA CARD YA MOSTRÓ"). Tu trabajo NO es re-enunciar ese dato: es lo que viene DESPUÉS.
 
 - ASUME la card leída. Arranca del PORQUÉ (la causa) o del QUÉ HACER (la palanca), nunca del QUÉ (el dato que la card ya declaró).
-- \`rentabilidad.contenido\`: la card ya dijo "CAP rate X% [sobre/bajo] el umbral". PROHIBIDO abrir con "El CAP rate de X% está…". Y desde v8 el cuerpo del hallazgo ya DIBUJA la comparación (matriz CAP/retorno/ocupación contra su referencia), el rango de escenarios y el desglose de costos: tu prosa es el ENCUADRE de 2 oraciones (≤55 palabras) que orienta la lectura — la causa raíz en una frase y dónde mirar — y NUNCA narra fila por fila lo que los diagramas ya muestran (ni la matriz, ni los escenarios, ni el desglose). Sin destacador acá: la frase-fuerza de esta sección vive en \`rentabilidad.cajaAccionable\`, que es el cierre del cuerpo.
-- \`vsLTR.contenido\`: la card ya dijo la dirección (LTR gana / STR gana) y la sobre-renta%. PROHIBIDO abrir re-enunciando "En esta zona LTR/STR rinde más". Arranca por el NOI absoluto ($ LTR vs $ STR), la brecha auto-vs-administrador, o la palanca.
-- \`riesgos.contenido\`: la card ya mostró la ocupación del caso frente a la estimación de mercado. No abras el primer riesgo repitiendo el % de ocupación.
 
 Regla mnemónica: la card responde "¿qué pasa?"; el drawer responde "¿por qué y qué hago?".
 
@@ -177,11 +185,6 @@ Distribución por sección JSON (topología v3):
   (2) DESPUÉS, UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona esa razón, y SOLO si cambia la decisión: la fuente de la ocupación cuando es un dato tuyo o no hay dato de la dirección, el modo de gestión cuando da vuelta el signo del mes, la puesta a punto si pesa. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA. Termina en el matiz y su consecuencia, NO en un imperativo de verificación.
   (3) LARGO: 3 oraciones y ≤85 palabras en total — la razón que manda, el matiz y su consecuencia. Nada más entra.
   PROHIBIDO: copiar la frase de un hallazgo; anunciar secciones; parafrasear \`cajaAccionable\`; relleno tranquilizador sin dato; mencionar "hallazgo", "coronado", el orden o la mecánica del prompt; abrir por un tema distinto del #1 (el reencuadre de zona, la comparación con el largo, la distancia al veredicto) — esos van después, si entran.
-- rentabilidad.contenido: capa 2 en 2 oraciones, ≤55 palabras (la card hizo la capa 1; los diagramas del cuerpo muestran el resto). La capa 3 vive en su cajaAccionable. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
-- vsLTR.contenido: capas 1+3, arrancando del dato que la card NO tiene (NOI absoluto, auto-vs-admin).
-- largoPlazo.contenido: capas 3+4 en 3 oraciones, ≤95 palabras. Ángulo 3 (instrumentos) + condicional de plusvalía + posición. NO recita las cifras que ya muestran las cards de Escenarios y Proyección ni los drawers de patrimonio/plusvalía.
-- riesgos.contenido: capas 1+2 por riesgo (la 3 va en cajaAccionable). SIN NINGUNA marca \`**…**\` — regla propia de este campo: son tres riesgos en prosa y destacar dentro de ellos compite con la jerarquía entre riesgos.
-- operacion.contenido: contexto operativo breve (capas 2+3), SIN narración estacional larga. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
 - cajaAccionable de cada sección: capa 3 sola, una posición o acción concreta.
 
 ## 3. Ángulos de análisis STR
@@ -192,21 +195,11 @@ Activa los que sumen al caso. Si el ángulo cambia o refuerza la decisión, va. 
 
 **Ángulo 2 — Costos operativos vs ingreso bruto.** Si el input marca que costos+comisión superan el rango sano que el motor reporta, menciónalo en \`rentabilidad.contenido\`. Usa el rango que trae el input, no uno inventado.
 
-**Ángulo 3 — Instrumentos alternativos.** Es el material PRIMARIO de \`largoPlazo.contenido\`, casi siempre — abre por acá. Compara el retorno de este activo contra un depósito UF y/o un fondo, pero SIEMPRE ajustado por esfuerzo: el STR exige gestión activa u operador; el depósito UF no exige nada; el arriendo largo es 1/10 del esfuerzo. Comparar TIR pelada vs tasa sin nombrar esfuerzo, iliquidez y riesgo es trampa (A4). Nombra la prima que estás cobrando por asumir esos tres riesgos y si vale la pena. El bloque de datos te entrega el depósito UF y el fondo YA proyectados a 10 años sobre el mismo capital, con su múltiplo calculado: úsalos tal cual, nunca estimes su rendimiento (§15).
+**Ángulo 3 — Negociación del precio y subsidio.** Si la rentabilidad es marginal y el precio tiene grasa, sugiere un descuento concreto (usa la tabla de sensibilidad de precio del input) en \`vsLTR.estrategiaSugerida\`. Subsidio Ley 21.748: si el input trae \`subsidioTasa.califica=true\` Y \`aplicado=false\`, OBLIGATORIO mencionar la palanca en \`vsLTR.estrategiaSugerida\` u \`operacion.contenido\` ("califica para el subsidio MINVU: la tasa baja desde 0,6 pp, el dividendo baja unos $X, el flujo mejora en la misma magnitud"). Sin inventar montos exactos. La rebaja de 0,6 pp es el PISO —la ley fija "hasta 60 pb" y lo efectivo va de 0,61 a 1,16 pp según el banco—: nunca la presentes como cifra exacta ni prometas más.
 
-**Plusvalía proyectada (jerarquía) — en \`largoPlazo.contenido\`.** La proyección de patrimonio usa ${PROY_PCT} anual flat: la proyección estándar Franco a futuro, la misma que muestra el drawer de plusvalía. La histórica de la comuna (2014-2024) es CONTEXTO DE RIESGO sobre esa apuesta, NO una proyección sustituta: histórica > ${PROY_PCT} → la proyección es conservadora vs lo que la comuna ya mostró; ≈ ${PROY_PCT} → alineada; < ${PROY_PCT} positiva → descansa en un cambio de zona; negativa (ej. Santiago -1,1%) → es una apuesta a recuperación que la comuna aún no muestra; sin data comunal → supuesto puro. PROHIBIDO: "tu comuna se aprecia ${PROY_PCT}", "la histórica no respalda la proyección", o sugerir una proyección distinta al ${PROY_PCT}. VÁLIDO como riesgo condicional: "si la comuna se estanca (0% real), tu multiplicador y TIR caen". EL PUENTE ES DE LA CARD: bajo el umbral, la card de plusvalía ya declara la relación (${PROY_PCT} como "techo optimista, no piso"; o "apuesta a recuperación" si la comuna cayó) — reproduce ESE marco con tus palabras; NUNCA llames "conservador" o "respaldado" al ${PROY_PCT} en una comuna bajo umbral ("conservadora" solo si la histórica ≥ proyección).
+**Ángulo 4 — Sensibilidad / punto de equilibrio.** El break-even como % del mercado tiene su PROPIO drawer solo-motor (tabla de percentiles) — el usuario lo ve ahí. Menciónalo UNA sola vez, donde más pese (\`riesgos.contenido\` si el punto de equilibrio es estructuralmente alto, O \`rentabilidad.contenido\`, nunca en ambas), y en \`conviene\` solo si es el driver del veredicto. NO lo repitas en tres secciones.
 
-**\`largoPlazo\` — NO recites la planilla.** Tu parte al vender (el equity), el valor del activo a 10 años, la TIR, el multiplicador de capital y el flujo acumulado YA viven en las cards de Escenarios y Proyección (Venta, indicadores) y en los drawers de patrimonio y plusvalía. Tu texto no los enumera: los interpreta. Puedes referenciar UNA cifra como ancla de la comparación con instrumentos ("con esa TIR de X%", "tu capital rinde ×N en el depto frente al ×M del fondo, según los datos") — nunca abrir recitándolas, nunca desglosar de dónde salen. Cierra con la posición de Franco (§1.10): si el caso descansa en plusvalía y no en flujo, dilo — es una apuesta a que la comuna se valorice, no a la renta.
-
-**Patrimonio = EQUITY (valor − deuda, SIN flujo).** El "patrimonio a 10 años" es el valor del activo menos la deuda, SIN el flujo operativo acumulado. "Tu parte al vender" es el equity al liquidar (valor de venta − deuda − comisión), también SIN flujo: lo que te queda en la mano DEL ACTIVO, NO la ganancia por encima del capital. El flujo operativo acumulado es un dato APARTE (ya lo embolsaste durante los años); el "retorno total" suma equity + flujo. El multiplicador es equity/aportado → ×1 = recuperas lo puesto, ≥2 = doblas. NUNCA lo llames "ganancia neta" ni digas "recuperas el capital y te llevas ganancia encima": di "tu parte", "lo que es tuyo a la venta", coherente con la card y el drawer de patrimonio (SaleBlockSTR dice lo mismo).
-
-**Ángulo 4 — Negociación del precio y subsidio.** Si la rentabilidad es marginal y el precio tiene grasa, sugiere un descuento concreto (usa la tabla de sensibilidad de precio del input) en \`vsLTR.estrategiaSugerida\`. Subsidio Ley 21.748: si el input trae \`subsidioTasa.califica=true\` Y \`aplicado=false\`, OBLIGATORIO mencionar la palanca en \`vsLTR.estrategiaSugerida\` u \`operacion.contenido\` ("califica para el subsidio MINVU: la tasa baja desde 0,6 pp, el dividendo baja unos $X, el flujo mejora en la misma magnitud"). Sin inventar montos exactos. La rebaja de 0,6 pp es el PISO —la ley fija "hasta 60 pb" y lo efectivo va de 0,61 a 1,16 pp según el banco—: nunca la presentes como cifra exacta ni prometas más.
-
-**Ángulo 5 — Errores típicos del primer operador STR.** Activar en \`riesgos.contenido\` cuando el caso lo amerite (regulación incierta, primer Airbnb): subestimar costos de rotación (5-8% del bruto, no 3%), no tener fondo de reserva para los primeros meses de operación, tarifa fija todo el año, amoblamiento de mala calidad que arrastra reseñas bajas.
-
-**Ángulo 6 — Sensibilidad / punto de equilibrio.** El break-even como % del mercado tiene su PROPIO drawer solo-motor (tabla de percentiles) — el usuario lo ve ahí. Menciónalo UNA sola vez, donde más pese (\`riesgos.contenido\` si el punto de equilibrio es estructuralmente alto, O \`rentabilidad.contenido\`, nunca en ambas), y en \`conviene\` solo si es el driver del veredicto. NO lo repitas en tres secciones.
-
-**Ángulo 7 — Estacionalidad.** El gráfico de estacionalidad de 12 meses vive en su propio drawer SOLO-MOTOR. NO narres julio-peak/febrero-valle en detalle: el gráfico ya lo muestra. A lo sumo UNA frase de consecuencia operativa en \`operacion.contenido\` si cambia una decisión concreta (ej. "en el mes valle activa estadías largas"). Prohibido el párrafo de estacionalidad.
+**Ángulo 5 — Estacionalidad.** El gráfico de estacionalidad de 12 meses vive en su propio drawer SOLO-MOTOR. NO narres julio-peak/febrero-valle en detalle: el gráfico ya lo muestra. A lo sumo UNA frase de consecuencia operativa en \`operacion.contenido\` si cambia una decisión concreta (ej. "en el mes valle activa estadías largas"). Prohibido el párrafo de estacionalidad.
 
 NOTACIÓN DE PERCENTILES (P25/P50/P75/P90): EXCLUSIVA para los percentiles de ingresos brutos de mercado (la tabla del drawer solo-motor y el break-even como % del P50). NUNCA nombres los escenarios del depto (conservador/base/upside) con "P25/P50" — su ancla de ocupación va en palabras ("cuartil bajo observado", "mediana observada de la zona", "estabilizado con gestión profesional").
 
@@ -243,7 +236,7 @@ Regla simple: si el dato no está en el input, no existe para ti. Cuando dudes, 
 ## 5. Salud financiera del usuario (si el input trae \`financingHealth\`)
 
 NIVEL 1 — Validación silenciosa (\`overall\` ∈ {optimo, aceptable}): una frase en \`conviene.reencuadre\`.
-NIVEL 2 — Observación táctica (\`mejorable\`): frase corta + impacto cuantificado en \`vsLTR.estrategiaSugerida\` u \`operacion.contenido\`.
+NIVEL 2 — Observación táctica (\`mejorable\`): frase corta + impacto cuantificado en \`vsLTR.estrategiaSugerida\`.
 NIVEL 3 — Reestructuración (\`problematico\`): la estructura ES la palanca; lo mencionas en \`conviene.respuestaDirecta\` y propones cambio en \`vsLTR.estrategiaSugerida\`.
 Si no viene, omite esta capa.
 
@@ -297,11 +290,11 @@ EJEMPLOS CALIBRADOS (genera uno NUEVO para el caso siguiendo el patrón — no l
 
 ## 8. Anomalías del input
 
-El user prompt trae una sección \`ANOMALÍAS DETECTADAS\`. Cada anomalía se menciona obligatoriamente en \`riesgos.contenido\` o la sección que más aplique, con forma diagnóstico + impacto + acción. Sin anomalías → silencio (no inventes "tu operación se ve normal"). Recuerda §6-Ángulo: el break-even se menciona una sola vez.
+El user prompt trae una sección \`ANOMALÍAS DETECTADAS\`. Cada anomalía se menciona obligatoriamente en \`conviene.respuestaDirecta\` o la sección que más aplique, con forma diagnóstico + impacto + acción. Sin anomalías → silencio (no inventes "tu operación se ve normal"). Recuerda §6-Ángulo: el break-even se menciona una sola vez.
 
 ## 9. Cierre obligatorio — Franco se la juega
 
-\`riesgos.cajaAccionable\` cierra el análisis con UNA POSICIÓN PERSONAL, no checklist. Estructura: síntesis en una frase + condición bajo la que la posición se sostiene + cuando hay tensión real, el costo de avanzar contra el análisis.
+\`conviene.cajaAccionable\` cierra el análisis con UNA POSICIÓN PERSONAL, no checklist. Estructura: síntesis en una frase + condición bajo la que la posición se sostiene + cuando hay tensión real, el costo de avanzar contra el análisis.
 
 ═══════════════════════════════════════════════════════════════════
 PARTE II — VOZ Y EXPRESIÓN
@@ -343,30 +336,11 @@ Devuelve EXACTAMENTE esta estructura. Sin campos extra, sin texto fuera del JSON
   "titular": string,              // portada · contrato §7.ter · campo ÚNICO, sin montos en moneda
   "conviene": {
     "respuestaDirecta": string,   // 3 oraciones · ≤85 palabras · lead del hero · capas 1+2+3 · alineado al coronado (§7.bis)
-    "veredictoFrase": string,     // (≤12) CÁPSULA de Franco — ver §CÁPSULA. Conclusión en primera persona, NO resumen
     "reencuadre": string,         // 2 oraciones · ≤55 palabras · bajo los KPIs del hero · contexto de inversor · UNA marca \`**…**\` obligatoria
     "cajaAccionable": string      // (≤75) StateBox de cierre del hero · posición o acción
   },
-  "rentabilidad": {
-    "contenido": string,          // 2 oraciones · ≤55 palabras · ENCUADRE (§1.bis v8): causa raíz + dónde mirar · los diagramas del cuerpo ya muestran matriz/escenarios/desglose — NO los narres · sin destacador (va en cajaAccionable)
-    "cajaAccionable": string      // (≤75) cierra el drawer
-  },
   "vsLTR": {
-    "contenido": string,          // (≤120) abre el drawer · NO repitas la dirección · NOI absoluto / auto-vs-admin
-    "estrategiaSugerida": string, // 2 oraciones · ≤75 palabras · caja estrategia · recomendación con cifra
-    "cajaAccionable": string      // (≤75) cierra el drawer
-  },
-  "operacion": {
-    "contenido": string,          // (≤110) contexto operativo BREVE · SIN párrafo de estacionalidad
-    "cajaAccionable": string      // (≤75) respaldo
-  },
-  "largoPlazo": {
-    "contenido": string,          // 3 oraciones · ≤95 palabras · juicio del horizonte · instrumentos (ángulo 3) + condicional plusvalía + posición · SIN recitar cards
-    "cajaAccionable": string      // (≤75) la apuesta en una frase: qué tiene que ser cierto para que el retorno justifique 10 años de gestión e iliquidez
-  },
-  "riesgos": {
-    "contenido": string,          // ≤195 palabras = 3 riesgos × 65 (título + 2 oraciones) · EXACTO 3 riesgos en prosa, separados por \\n\\n. Sin bullets, sin **bold**
-    "cajaAccionable": string      // (≤75) CIERRE del análisis · posición personal (§9)
+    "estrategiaSugerida": string  // 2 oraciones · ≤75 palabras · la ACCIÓN, dentro de «Lo que haría yo» · recomendación con cifra
   },
   "veredicto": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA",  // copia EXACTA del motor
   "francoCaveat": string          // OPCIONAL · audit-only NO renderizado · omite si concuerdas con el motor
@@ -376,16 +350,8 @@ Devuelve EXACTAMENTE esta estructura. Sin campos extra, sin texto fuera del JSON
 LARGO POR CAMPO — ejemplos de FORMA, no de contenido (los corchetes son huecos que llenas con el dato del caso; no copies las frases, copia el tamaño):
 - conviene.respuestaDirecta · 3 oraciones · ≤85 palabras: «Operando por día [te quedan / pones] [cifra] al mes, pagado todo, con la ocupación que el mercado estima para este depto. El supuesto que cambia la decisión es [supuesto con su cifra]. Sin eso, [consecuencia en una frase].» (39 palabras)
 - conviene.reencuadre · 2 oraciones · ≤55 palabras: «Para un inversionista este depto es [tipo de apuesta]: [razón con su cifra]. Lo que compras no es el flujo de hoy sino [qué].» (24 palabras)
-- rentabilidad.contenido · 2 oraciones · ≤55 palabras: «El precio de entrada pesa más que la operación: [rentabilidad operativa] contra [umbral], con costos en línea con lo normal. Mira primero la matriz de tarifa y ocupación.» (28 palabras)
 - vsLTR.estrategiaSugerida · 2 oraciones · ≤75 palabras: «Si sigues por el corto, [acción concreta con su cifra]. Si el margen sobre el largo no paga tus horas, [alternativa].» (21 palabras)
-- largoPlazo.contenido · 3 oraciones · ≤95 palabras: «Un depósito en UF al [tasa] deja [cifra] a diez años sin gestión ni vacancia; este depto llega a [cifra] solo si la plusvalía acompaña. Con [X] anual de plusvalía el retorno empata al depósito y con menos pierde contra él. Mi lectura: [posición en una frase].» (47 palabras)
-- riesgos.contenido · cada riesgo = título de 6-8 palabras + 2 oraciones de 45-55 palabras = 65; tres riesgos = 195: «Ocupación por debajo de la estimación. Con [ocupación baja] el mes cierra con [cifra] de tu bolsillo, y ese escenario no es raro en la zona: [dato]. Antes de comprar, pide el historial real de dos avisos parecidos.» (38 palabras)
-
 REGLA DURA: \`veredicto\` = EXACTAMENTE el valor del bloque "FRANCO SCORE STR". Cópialo. Si discrepas, va a \`francoCaveat\`.
-
-REGLA DURA — \`riesgos.contenido\`: EXACTO 3 riesgos, separados por DOBLE SALTO DE LÍNEA (\\n\\n). Cada riesgo: 1ª oración = título corto de 6-8 palabras (≤60 caracteres ESTRICTOS) terminado en punto (se extrae como heading y se muestra ÍNTEGRO — un título largo queda largo en pantalla, nadie lo recorta por ti); PROHIBIDO terminar un título en puntos suspensivos («…» o «...»), imitan un texto cortado. Después del título: explicación de 2 oraciones, 45-55 PALABRAS (interpretar, no recitar); título más explicación son 65 palabras por riesgo y 195 en los tres, que es el techo del campo. Desde v9 el render muestra cada explicación ÍNTEGRA — no hay truncado: un riesgo pasado de largo se lee entero y pesado. EL DATO DURO DE CADA RIESGO SOBREVIVE COMPLETO: si el riesgo se apoya en una cifra del input (un flujo en escenario bajo, una tarifa objetivo contra su mediana, la pérdida de estabilización), esa cifra va DENTRO de las 45-55 palabras — un riesgo sin su número es adjetivo (A3). El título y su explicación van en el MISMO bloque (salto SIMPLE entre ellos, o seguido): el doble salto \n\n separa RIESGOS, nunca un título de su explicación — una línea en blanco ahí parte el riesgo en dos y rompe el parseo. PROHIBIDO bullets, "•", "-", "1.", **bold**, *italic* en \`contenido\`. El render parsea los headings desde esta estructura; cualquier desviación rompe la presentación.
-
-DIETA DE RE-NARRACIÓN (v9) — el break-even como % del mercado, la tarifa objetivo vs su mediana y el umbral de precio del veredicto YA tienen su diagrama en otros cuerpos del informe (sensibilidad, vías, negociación): en \`riesgos\` y \`operacion\` se citan como REFERENCIA de una línea, nunca como argumento desarrollado — desarrollarlos acá es repetir con palabras lo que otro cuerpo muestra dibujado. Y la pérdida de estabilización (\`perdidaRampUp\`) se cita en UNA SOLA sección: en \`riesgos\` si es uno de los 3 flancos dominantes, si no en \`operacion\` — PROHIBIDO en ambas (hoy sale duplicada casi con la misma frase).
 
 ## 14. Verificación numérica obligatoria
 
@@ -413,34 +379,14 @@ Un múltiplo que calculas tú a partir de dos cifras del bloque es una afirmaci�
 // tolera desborde → sus techos quedan apretados (respuestaDirecta 85, veredictoFrase 22,
 // reencuadre 55). Cajas y estrategia: 75. Contenidos de drawer: a su longitud sana.
 export const SECTION_BUDGETS_STR: Record<string, number> = {
-  // v7: "conviene.veredictoFrase" salió del schema (podada — no se renderizaba).
+  // v17: quedan CUATRO campos. Los presupuestos de los bloques que murieron
+  // (rentabilidad, operacion, largoPlazo, riesgos, vsLTR.contenido y sus cajas, más la
+  // cápsula) se van con ellos: un techo sobre un campo que no existe no mide nada.
   // El titular top-level NO entra acá (paths sec.field): lo valida validarTitular.
   "conviene.respuestaDirecta": 85,
-  // v10: la cápsula vuelve. Fue podada en v7 "porque no se renderizaba" y ahora sí:
-  // es la línea corta de Franco DENTRO de la prosa del veredicto. El techo es 12 y no
-  // 22 (el viejo) porque el registro es de conclusión, no de resumen — las 57 filas
-  // v3/v4/v6 que la traen miden 10,8 palabras de media y esas leen bien.
-  "conviene.veredictoFrase": 12,
   "conviene.reencuadre": 55,
   "conviene.cajaAccionable": 75,
-  // v8: 130 → 55. El contrato nuevo (encuadre de 2-3 frases) salió como guía y la
-  // primera generación real lo ignoró (107 palabras narrando los escenarios): el
-  // presupuesto es ENFORCEMENT, no guía — con 55 el desborde dispara el retry
-  // quirúrgico que ya existe.
-  "rentabilidad.contenido": 55,
-  "rentabilidad.cajaAccionable": 75,
-  "vsLTR.contenido": 120,
   "vsLTR.estrategiaSugerida": 75,
-  "vsLTR.cajaAccionable": 75,
-  "operacion.contenido": 110,
-  "operacion.cajaAccionable": 75,
-  "largoPlazo.contenido": 95,
-  "largoPlazo.cajaAccionable": 75,
-  // v9: 230 → 195 = 3 bloques × BUDGET_POR_RIESGO. El truncado de 220 caracteres
-  // del render MURIÓ (mostraba "…" y escondía el dato duro): desde v9 el largo se
-  // controla acá, en generación — misma lección del v8 (enforcement, no guía).
-  "riesgos.contenido": 195,
-  "riesgos.cajaAccionable": 75,
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -677,15 +623,6 @@ Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards f
   const cardFrases = extraerCardFrases(r.hallazgos);
   const bloqueCards = (() => {
     const parts: string[] = [];
-    if (cardFrases.rentabilidad) {
-      parts.push(`- Card de rentabilidad (antes de \`rentabilidad.contenido\`) — YA mostró: «${cardFrases.rentabilidad.frase}»\n  → NO abras re-enunciando el CAP/umbral. Arranca por la causa (precio de entrada por m², stack de costos) o la consecuencia.`);
-    }
-    if (cardFrases.vsLTR) {
-      parts.push(`- Card ventaja vs LTR (antes de \`vsLTR.contenido\`) — YA mostró: «${cardFrases.vsLTR.frase}»\n  → NO abras re-enunciando la dirección ni la sobre-renta%. Arranca por el NOI absoluto ($ LTR vs $ STR), auto-vs-administrador o la palanca.`);
-    }
-    if (cardFrases.ocupacion) {
-      parts.push(`- Card de ocupación (antes de \`riesgos.contenido\`) — YA mostró: «${cardFrases.ocupacion.frase}»\n  → No abras el primer riesgo repitiendo el % de ocupación.`);
-    }
     return parts.length
       ? `\n\n=== LO QUE LA CARD YA MOSTRÓ (NO LO REPITAS — §1.bis DRAWER PROFUNDIZA) ===\nEl usuario abre cada drawer DESPUÉS de leer su card. Cada card ya mostró título + KPI + esta frase. Arranca del porqué/qué-hacer, no del qué:\n${parts.join("\n")}`
       : "";
@@ -811,7 +748,7 @@ REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase d
 
 === PLUSVALÍA HISTÓRICA DE LA COMUNA (lectura canónica de la card) ===
 «${hallazgoPlusvalia.fraseCanonica}»
-→ El condicional de plusvalía de \`largoPlazo.contenido\` usa ESTA lectura: mismas cifras, mismo marco. NUNCA afirmes que falta histórico comunal cuando esta línea trae la cifra — y si dice "promedio del Gran Santiago", entonces la comuna NO tiene dato propio y lo dices así.`
+→ Si tocas la plusvalía en \`conviene\`, usa ESTA lectura: mismas cifras, mismo marco. NUNCA afirmes que falta histórico comunal cuando esta línea trae la cifra — y si dice "promedio del Gran Santiago", entonces la comuna NO tiene dato propio y lo dices así.`
     : "";
 
   // ── FRONTERAS Y MATRICES (T0 CONGELADO): lo que dibujan los diales y las dos matrices, como
@@ -1060,7 +997,7 @@ ${r.zonaSTR ? `Tier zona: ${r.zonaSTR.tierZona} (score ${r.zonaSTR.score}/100)
 ADR percentil vs comunas de Santiago con datos: p${r.zonaSTR.percentilADR} · Ocupación p${r.zonaSTR.percentilOcupacion} · Ingresos brutos p${r.zonaSTR.percentilIngreso}
 ${r.zonaSTR.comunaOcupacion && r.zonaSTR.ocupacionVsComuna && r.zonaSTR.ocupacionVsComuna !== "sin_datos" ? `Contexto comunal (datos de mercado): la estimación para esta dirección es ${Math.round(r.zonaSTR.occZona * 100)}% de ocupación frente a ${Math.round(r.zonaSTR.comunaOcupacion.valor * 100)}% típico de la comuna (${r.zonaSTR.comunaOcupacion.n} direcciones) → tu zona ocupa ${r.zonaSTR.ocupacionVsComuna === "mas" ? "más" : r.zonaSTR.ocupacionVsComuna === "menos" ? "menos" : "parecido a"} lo típico de la comuna. Es CONTEXTO de La zona, no un hallazgo: nómbralo en \`operacion\`/\`riesgos\` solo si cambia la lectura, y di "datos de mercado", nunca el nombre del proveedor.` : "(comuna sin datos de mercado suficientes — NO compares con la comuna; usa caveat al mencionar percentiles)"}` : "(sin datos de zonaSTR)"}
 Corto o largo (UNA fuente — §3.bis): la sobre-renta medida es ${fmtCLPSigned(r.comparativa.sobreRenta)}/mes${sobreRentaPctEsConfiable(r.comparativa.ltr.noiMensual, r.comparativa.sobreRentaPct) ? ` (${r.comparativa.sobreRentaPct >= 0 ? "+" : ""}${Math.round(r.comparativa.sobreRentaPct * 100)}%)` : " (porcentaje N/D: usa el monto)"} → ${r.comparativa.sobreRenta > 0 ? "el CORTO rinde más neto que el largo" : r.comparativa.sobreRenta < 0 ? "el LARGO rinde más neto que el corto" : "rinden igual"}. Recomendación derivada: ${r.recomendacionModalidad ?? "(no disponible)"}. Tier de demanda de la zona (${r.zonaSTR?.tierZona ?? "sin dato"}): contexto de La zona, no decide.
-${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ En \`vsLTR.contenido\`: cuantifica cuánto más deja el largo con esa sobre-renta y di que el esfuerzo del corto no se justifica con ese margen. NO endulces (§1.1). Arranca del NOI absoluto, no re-enunciando la dirección que la card ya mostró (§1.bis).` : r.recomendacionModalidad === "STR_VENTAJA_CLARA" ? `→ En \`vsLTR.contenido\`: cuantifica el upside del corto sobre el largo; el esfuerzo se justifica.` : r.recomendacionModalidad === "INDIFERENTE" ? `→ En \`vsLTR.contenido\`: di "está parejo" sin inventar un ganador contrario al signo; la decisión depende del esfuerzo operativo y el perfil de riesgo.` : ""}
+${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ En \`vsLTR.estrategiaSugerida\`: cuantifica cuánto más deja el largo con esa sobre-renta y di que el esfuerzo del corto no se justifica con ese margen. NO endulces (§1.1). Arranca del NOI absoluto, no re-enunciando la dirección que la card ya mostró (§1.bis).` : r.recomendacionModalidad === "STR_VENTAJA_CLARA" ? `→ En \`vsLTR.contenido\`: cuantifica el upside del corto sobre el largo; el esfuerzo se justifica.` : r.recomendacionModalidad === "INDIFERENTE" ? `→ En \`vsLTR.contenido\`: di "está parejo" sin inventar un ganador contrario al signo; la decisión depende del esfuerzo operativo y el perfil de riesgo.` : ""}
 
 === SUBSIDIO LEY 21.748 (palanca financiera externa · Ángulo 4) ===
 ${r.subsidioTasa ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioTasa.aplicado} | tasaConSubsidio=${pct(r.subsidioTasa.tasaConSubsidio)}%
@@ -1094,18 +1031,6 @@ Tu titular la ENCUADRA: no la repite, no la contradice, no cita otro monto en su
 `;
   })()}
 
-═══════════=== §CÁPSULA — \`conviene.veredictoFrase\` (≤12 palabras) ===
-UNA línea de Franco DENTRO de la prosa del veredicto, en primera persona y en rojo.
-Es CONCLUSIÓN, no resumen: la frase que dirías mirando al comprador a los ojos después
-de haber leído todo. Si se puede reemplazar por un encabezado, está mal escrita.
-- NO recita cifras (la prosa y la cifra clave ya las tienen).
-- NO repite el titular ni la primera oración de \`respuestaDirecta\`.
-- NO es un consejo genérico ("evalúa bien"): es el juicio de este caso.
-Del registro que se busca, tres ejemplos REALES de análisis del parque:
-> "Flujo negativo estructural: ajusta supuestos antes de comprometerte."
-> "STR gana al largo, pero ninguno llega al dividendo."
-> "Ajusta la gestión o el precio antes de firmar."
-
 ════════════════════════════════════════════════════════
 INSTRUCCIÓN FINAL
 ═══════════════════════════════════════════════════════════════════
@@ -1115,9 +1040,8 @@ INSTRUCCIÓN FINAL
 3. Umbrales SOLO del input (§1.ter). El umbral de CAP es 5%; PROHIBIDO inventar "rangos sanos 6-8%".
 4. Si crees que el veredicto está mal calibrado, NO lo contradigas: usa \`francoCaveat\` opcional (audit-only).
 5. Cada anomalía detectada aparece en el output (§8); el break-even, UNA sola vez.
-6. Cierre obligatorio en \`riesgos.cajaAccionable\` con posición personal (§9), NO checklist.
+6. Cierre obligatorio en \`conviene.cajaAccionable\` con posición personal (§9), NO checklist.
 7. Voz tuteo neutro chileno (§10). Auto-chequeo: ningún voseo (-ás/-és/-ís); ningún "revenue"/"ramp-up".
-8. \`riesgos.contenido\`: EXACTO 3 riesgos en prosa, separados por \\n\\n. Sin bullets.
 9. Respeta los MÁXIMOS de palabras por campo del §13. Un guard los mide.
 10. JSON válido y completo. Sin texto fuera del JSON, sin backticks.
 11. DESTACADORES \`**…**\` (único markdown permitido; el render los pinta con plumón): marca las frases clave. Máximo 2 marcas por párrafo; cada marca envuelve una FRASE COMPLETA con predicado que se lee sola como mini-hallazgo — nunca un número pelado ni un fragmento sin verbo. Una marca JAMÁS cruza un punto ni parte un token de cifra. En el \`titular\` rige §7.ter (exactamente UNA marca). Desde v9, CADA \`cajaAccionable\` lleva EXACTAMENTE UNA marca sobre su frase-fuerza (el render las muestra como cierre del cuerpo, y un cierre sin frase-fuerza destacada se lee plano); \`riesgos.contenido\` sigue SIN marcas (regla propia).
@@ -1204,75 +1128,20 @@ export function sectionsOverBudget(ai: Record<string, unknown> | null | undefine
       out.push({ path, wc, max });
       continue;
     }
-    if (path === "riesgos.contenido" && typeof val === "string") {
-      const bloques = val.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
-      const peor = Math.max(0, ...bloques.map((b) => wordCount(b)));
-      if (peor > BUDGET_POR_RIESGO * factor) out.push({ path, wc, max });
-    }
   }
   return out;
 }
 
-/** Normaliza una oración para comparar eco (montos/% neutralizados). */
-function normSent(s: string): string {
-  return s
-    .replace(/\$[\d.,]+/g, "«M»")
-    .replace(/UF\s?[\d.,]+/gi, "«M»")
-    .replace(/[\d.,]+\s?%/g, "«P»")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
-function firstSentence(s: string): { first: string; rest: string } {
-  const parts = s.split(/(?<=[.;])\s+/);
-  const first = (parts[0] ?? "").trim();
-  const rest = parts.slice(1).join(" ").trim();
-  return { first, rest };
-}
-
-/**
- * Strip de eco card↔drawer (backstop determinístico, capa secundaria; el primario
- * es el prompt §1.bis). Si la 1ª oración de la prosa RE-ENUNCIA el dato que la card
- * ya mostró (patrón exacto que F1b cazó), se strippea — solo si el resto queda ≥18
- * palabras (mejor eco que mutilado). Cada strip loguea con `logger`.
- */
-export function stripCardEcho(
-  ai: AIAnalysisSTRv2 | null | undefined,
-  cardFrases: CardFrasesSTR,
-  logger: (msg: string) => void = () => {},
-): AIAnalysisSTRv2 | null | undefined {
-  if (!ai) return ai;
-  const MIN_REST = 18;
-
-  // rentabilidad: la card abre "Tu CAP rate en corto es X%…"; strippea si la prosa
-  // abre re-enunciando el CAP ("El/Un/Tu CAP (rate) de X% …") o clona la fraseCanónica.
-  const capRe = /^(el|un|tu)\s+cap\s*rate\s+de\s+[\d.,]+\s?%/i;
-  const rentSkel = cardFrases.rentabilidad ? new Set(cardFrases.rentabilidad.frase.split(/(?<=[.;])\s+/).map(normSent)) : new Set<string>();
-  if (ai.rentabilidad?.contenido) {
-    const { first, rest } = firstSentence(ai.rentabilidad.contenido);
-    const echoes = capRe.test(first) || rentSkel.has(normSent(first));
-    if (echoes && wordCount(rest) >= MIN_REST) {
-      logger(`[STR-ECHO-STRIPPED] rentabilidad.contenido: 1ª oración re-enunciaba el CAP — strippeada`);
-      ai.rentabilidad.contenido = rest;
-    }
-  }
-
-  // vsLTR: la card abre con la dirección; strippea si la prosa abre re-enunciándola.
-  const dirRe = /^(en esta zona,?\s+)?(el arriendo largo|ltr|la ventaja str|la sobre-?renta str|str genera|el corto)\b/i;
-  const vsSkel = cardFrases.vsLTR ? new Set(cardFrases.vsLTR.frase.split(/(?<=[.;])\s+/).map(normSent)) : new Set<string>();
-  if (ai.vsLTR?.contenido) {
-    const { first, rest } = firstSentence(ai.vsLTR.contenido);
-    const echoes = vsSkel.has(normSent(first)) || (dirRe.test(first) && !/\$[\d.]/.test(first));
-    // solo strippea la re-enunciación PELADA de dirección (sin cifra propia); si la
-    // 1ª oración ya trae el NOI absoluto ($…), es profundización, no eco → se conserva.
-    if (echoes && wordCount(rest) >= MIN_REST) {
-      logger(`[STR-ECHO-STRIPPED] vsLTR.contenido: 1ª oración re-enunciaba la dirección — strippeada`);
-      ai.vsLTR.contenido = rest;
-    }
-  }
-
-  return ai;
-}
+// stripCardEcho MURIÓ CON SUS CAMPOS (v17). Era el backstop determinista del eco
+// card↔drawer: si la 1ª oración de `rentabilidad.contenido` re-enunciaba el CAP de su
+// card, o la de `vsLTR.contenido` la dirección de la ventaja, la botaba. Los dos campos
+// salieron del schema porque el motor ya los dibuja, así que no queda eco que strippear
+// —`conviene` no cuelga de ninguna card— y sus cinco helpers quedaban muertos (lo cazó
+// el lint). Que el lead no copie una fraseCanonica lo sigue vigilando AS5.
+//
+// La CLASE DE BUG que este sanitizer demostraba —un recorte por oración parte un par
+// `**` y deja una marca impar— no se perdió: el catch-test de marcas la reproduce con
+// un mutilador local, sin depender de una función del pipeline que ya no existe.
 
 /**
  * Despersonaliza "el/del motor" → "el/del análisis" en TODO string del output (A11:
@@ -1371,7 +1240,10 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   const log = args.logger ?? (() => {});
   // Guard del titular (goal #8b): se llena solo si validarTitular rechazó el original.
   let titularTiming: TitularTiming | undefined;
-  const { userPrompt, veredictoMotor, cardFrases } = buildUserPromptSTR(inp, r, comuna, simulacion);
+  // `cardFrases` ya no se desestructura acá: lo consumían el bloque de cards del prompt
+  // y stripCardEcho, los dos retirados en v17. Sigue vivo DENTRO de buildUserPromptSTR
+  // (el bloque del coronado) y por eso la función lo sigue devolviendo.
+  const { userPrompt, veredictoMotor } = buildUserPromptSTR(inp, r, comuna, simulacion);
 
   // Detectores que piden reintento QUIRÚRGICO por campo: HARD drift (invariante que no
   // puede persistir: revenue/ramp-up), voseo NO corregible (pronombre "vos" o -és/-ís
@@ -1571,105 +1443,14 @@ Responde SOLO este JSON, sin texto alrededor:
     }
   }
 
-  // ── RETRY SEMÁNTICO · dueño de la cifra de estabilización (decisión 28-ago) ──
-  // La instrucción del prompt reduce pero no garantiza: medido sobre 4 corridas v9,
-  // 1 duplicó el monto (riesgos + operación) y 1 lo omitió en todas partes. Este es
-  // el enforcement por construcción, con la forma del budget-retry: la cifra
-  // formateada de perdidaRampUp debe aparecer en EXACTAMENTE UNA sección de prosa.
-  // Duplicada → se reescribe cada NO-dueño referenciando sin monto; omitida → se
-  // reescribe operación para incluirla (dueño por defecto cuando riesgos no la
-  // tomó). Una sola llamada, best-effort: si el candidato no queda en exactamente
-  // una, se conserva el previo y el monitor lo reporta.
-  const rampDigits = r.perdidaRampUp > 0 ? fmtCLP(r.perdidaRampUp).replace(/^\$/, "") : null;
-  if (rampDigits && best && scanStrHardDrift(best).length === 0) {
-    const PROSA_PATHS = [
-      "riesgos.contenido", "operacion.contenido", "rentabilidad.contenido",
-      "conviene.respuestaDirecta", "conviene.reencuadre", "largoPlazo.contenido", "vsLTR.contenido",
-      "riesgos.cajaAccionable", "operacion.cajaAccionable",
-    ];
-    const conRamp = (ai: AIAnalysisSTRv2): string[] => {
-      const rec = ai as unknown as Record<string, Record<string, unknown>>;
-      return PROSA_PATHS.filter((path) => {
-        const [sec, field] = path.split(".");
-        const val = rec[sec]?.[field];
-        return typeof val === "string" && val.includes(rampDigits);
-      });
-    };
-    const donde = conRamp(best);
-    if (donde.length !== 1) {
-      const bestRec = best as unknown as Record<string, Record<string, unknown>>;
-      // El dueño de la cifra tiene que ser un campo que el usuario lea; los que nadie
-      // renderiza ni son dueño ni se reescriben (en la tanda v16 un ramp-dueño entero se
-      // fue a operacion.cajaAccionable).
-      const conRender = donde.filter((pth) => !sinRender(pth));
-      const dueno = conRender.includes("riesgos.contenido") ? "riesgos.contenido" : conRender[0] ?? donde[0];
-      const targets = donde.length === 0
-        ? ["operacion.contenido"]
-        : conRender.filter((pth) => pth !== dueno);
-      const campos = targets
-        .map((path) => {
-          const [sec, field] = path.split(".");
-          const actual = bestRec[sec]?.[field];
-          return { path, sec, field, actual: typeof actual === "string" ? actual : "" };
-        })
-        .filter((c) => c.actual);
-      if (campos.length > 0 && hayCupo("[STR-RAMP-DUENO]")) {
-        log(`[STR-RAMP-DUENO] cifra de estabilización en ${donde.length} sección(es) (${donde.join(", ") || "ninguna"}) — retry quirúrgico sobre ${campos.map((c) => c.path).join(", ")}`);
-        const instruccion = donde.length === 0
-          ? `TU TAREA: reescribe cada campo conservando su contenido e integrando el monto de la pérdida de estabilización inicial (${fmtCLP(r.perdidaRampUp)}) donde el texto ya habla de los primeros meses de operación. Ninguna otra cifra nueva.`
-          : `TU TAREA: reescribe cada campo conservando su contenido pero SIN el monto ${fmtCLP(r.perdidaRampUp)} — esa cifra ya vive en otra sección del análisis; si el campo la necesita, referénciala sin número ("la pérdida de estabilización ya dimensionada en los riesgos"). Ninguna cifra nueva.`;
-        const promptDueno = `Estás corrigiendo SOLO ${campos.length} campo(s) de un análisis de renta corta YA generado y validado. El resto de la prosa no se toca y no lo verás.
-
-${campos.map((c) => `CAMPO ${c.path}:\n${c.actual}`).join("\n\n")}
-
-${instruccion}
-
-Responde SOLO este JSON, sin texto alrededor:
-{${campos.map((c) => `"${c.path}": "..."`).join(", ")}}`;
-        try {
-          const msg = await reg.medir("ramp-dueno-retry", CLAUDE_MODEL, () => anthropic.messages.create({
-            model: CLAUDE_MODEL,
-            max_tokens: 1000,
-            messages: [{ role: "user", content: promptDueno }],
-            system: SYSTEM_STR_CACHED,
-          }), { guard: "ramp-dueno", campos: campos.map((c) => c.path) });
-          acumularUsage(usage, msg);
-          usedTries += 1;
-          quirurgicos += 1;
-          const rawText = msg.content[0]?.type === "text" ? msg.content[0].text : "";
-          let reemplazos: Record<string, unknown> = {};
-          try {
-            const m = rawText.match(/\{[\s\S]*\}/);
-            reemplazos = JSON.parse(m ? m[0] : rawText) as Record<string, unknown>;
-          } catch { /* no parseó — se conserva el previo */ }
-          const candidato = JSON.parse(JSON.stringify(best)) as AIAnalysisSTRv2;
-          const candidatoRec = candidato as unknown as Record<string, Record<string, unknown>>;
-          let aplicados = 0;
-          for (const c of campos) {
-            const nuevo = reemplazos[c.path];
-            if (typeof nuevo === "string" && nuevo.trim() && candidatoRec[c.sec]) {
-              candidatoRec[c.sec][c.field] = nuevo.trim();
-              aplicados++;
-            }
-          }
-          if (
-            aplicados > 0 &&
-            conRamp(candidato).length === 1 &&
-            scanStrHardDrift(candidato).length === 0 &&
-            vozDura(candidato).length === 0 &&
-            !empeoraCifras(userPrompt, best, candidato)
-          ) {
-            log(`[STR-RAMP-DUENO] quirúrgico dejó la cifra en exactamente una sección (${conRamp(candidato)[0]}) — aceptado`);
-            best = candidato;
-          } else {
-            log(`[STR-RAMP-DUENO] quirúrgico no convergió a una sección (o reintrodujo drift/cifras) — conservo el previo; queda para el monitor`);
-          }
-        } catch (e) {
-          log(`[STR-RAMP-DUENO] falló (best-effort, conservo el previo): ${(e as Error)?.message ?? e}`);
-        }
-      }
-    }
-  }
+  // EL REPARTO DEL MONTO DE RAMP-UP MURIÓ CON SUS SECCIONES (v17). Existía para que
+  // `perdidaRampUp` se citara en EXACTAMENTE UNA sección —`riesgos` si era uno de los
+  // tres flancos dominantes, si no `operacion`— porque medido sobre 4 corridas v9 una
+  // la duplicaba y otra la omitía. Las dos secciones salieron del schema, y la cifra NO
+  // se perdió: el capítulo III ya la narra con su monto («los primeros meses el aviso se
+  // ocupa menos mientras gana reseñas: $X acumulados que tienes que tener en caja antes
+  // de arrancar»), determinista y en el 100% de los informes. Un reparto entre secciones
+  // que no existen no reparte nada — y dejarlo apuntando al vacío es el patrón A8·D1.
 
   // ── GUARDS DE SALIDA (Goal 2 · 04-sep-2026) · paridad con LTR ────────────────
   // Detección pura en str-guards.ts: la MISMA que evalúan los fixtures del golden y el
@@ -1752,7 +1533,6 @@ Responde SOLO este JSON, sin texto alrededor:
   if (!best.veredicto) best.veredicto = veredictoMotor;
 
   // Strip de eco card↔drawer (determinístico, post-LLM).
-  best = stripCardEcho(best, cardFrases, log) as AIAnalysisSTRv2;
   // Despersonaliza "el/del motor" → "análisis" (A11) — garantiza que la entidad interna
   // nunca llega al usuario, sin reintento caro.
   best = despersonalizarMotor(best, log);
