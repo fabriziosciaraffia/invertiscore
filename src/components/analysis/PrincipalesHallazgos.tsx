@@ -30,6 +30,9 @@ import { referenciaHallazgo } from "./referencia-hallazgo";
  * frena, ↑ lo que ayuda. El bloque queda SIN color salvo una excepción: la cifra que
  * es un MONTO NEGATIVO conserva Signal Red.
  */
+/** 0 = frena (va arriba), 1 = ayuda o no mueve la aguja. */
+const grupo = (h: Hallazgo): number => (h.direccion === "adverso" ? 0 : 1);
+
 export function PrincipalesHallazgos({
   hallazgos,
   currency,
@@ -43,11 +46,24 @@ export function PrincipalesHallazgos({
   /** Lleva al desarrollo del hallazgo (ancla del capítulo). */
   onVerDetalle: (h: Hallazgo) => void;
 }) {
+  // ORDEN AGRUPADO: en contra primero, a favor después. Sin encabezados de grupo — con
+  // las flechas el agrupamiento se ve solo, y un encabezado para dos filas pesa más que
+  // lo que ordena.
+  //
+  // SE AGRUPA DESPUÉS DE CORTAR, y sobre una COPIA. Dos motivos que no son de estilo:
+  // cortar primero deja intacto CUÁLES cuatro hallazgos entran (eso lo decide la
+  // decisividad del motor, no esta vista); y `ordenarHallazgosPiramide` es fuente única
+  // del coronado — la lee el user prompt, el PDF y los catch-tests del golden — así que
+  // reordenarla acá movería la apertura de la prosa. El agrupamiento es de PRESENTACIÓN.
+  //
+  // `sort` es estable en V8, así que dentro de cada grupo sobrevive el orden por
+  // decisividad que ya venía. `neutral` viaja con «a favor»: no frena nada.
   const top = hallazgos.slice(0, 4);
+  const enOrden = [...top].sort((a, b) => grupo(a) - grupo(b));
   if (top.length === 0) return null;
   return (
     <div className="hz-list">
-      {top.map((h) => {
+      {enOrden.map((h) => {
         // De `findingDisplay` sobrevive SOLO el KPI: el título y el kicker murieron.
         const { kpi, kpiNegativo } = findingDisplay(h, currency, valorUF);
         const ref = referenciaHallazgo(h, currency, valorUF);
