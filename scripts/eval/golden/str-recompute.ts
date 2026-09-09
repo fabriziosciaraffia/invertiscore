@@ -68,7 +68,11 @@ function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any; reg: string 
   const d = { ...fx.input_data };
   let raw = fx.airbnbRaw;
   let reg = d.edificioPermiteAirbnb || "no_seguro";
-  if (s === "reg_no") reg = "no";
+  // La regulación se escribe DENTRO de `d`, no solo en la variable suelta: `reg` va al
+  // motor de score y `d` va al prompt, y hasta el 09-sep-2026 la síntesis solo tocaba la
+  // primera. GE-3 le mostraba al modelo «Edificio permite Airbnb: si» mientras el motor
+  // gatillaba BUSCAR OTRA por el gate G1. Una fuente, no dos.
+  if (s === "reg_no") { reg = "no"; d.edificioPermiteAirbnb = "no"; }
   if (s === "pie_cero_banda") {
     const ab = buildAirbnbData(fx.airbnbRaw as any, fx.uf) as any;
     const adrBase = ab.adr ?? ab.percentiles?.adr?.p50 ?? 45000;
@@ -197,7 +201,12 @@ export interface StrBaseline {
   patrimonioMult: number | null;        // hallazgo patrimonio valor.multiplicador (card; redondeado 2 dec)
 }
 
-export interface StrRecompute { rec: any; score: any; hz: Hallazgo[]; mediana: { mediana: number; n: number }; sim: SimulacionStr }
+export interface StrRecompute {
+  rec: any; score: any; hz: Hallazgo[]; mediana: { mediana: number; n: number }; sim: SimulacionStr;
+  /** El `input_data` YA SINTETIZADO. Es el que hay que pasarle al prompt: si se le pasa el
+   *  crudo del frozen, el motor y la prosa miran inputs distintos para el mismo caso. */
+  d: Record<string, any>;
+}
 
 /** Desviación del precio/m² del sujeto respecto de la mediana golden, por seed (decisión
  *  Fabrizio, 04-sep-2026): GE-1 sobreprecio favorable leve (−5%), GE-4 adverso (+12%), el
@@ -259,7 +268,7 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
     veredicto: score.veredicto, adr: rec.ejesAplicados?.adrFinal ?? rec.escenarios.base.adrReferencia,
     ocupacion: rec.ejesAplicados?.ocupacionFinal ?? rec.escenarios.base.ocupacionReferencia, precioCLP: d.precioCompra, precioUF: d.precioCompraUF,
   }, { adr: { p25: pc.average_daily_rate.p25, p75: pc.average_daily_rate.p75, p90: pc.average_daily_rate.p90 }, ocupacion: { p25: pc.occupancy.p25, p75: pc.occupancy.p75, p90: pc.occupancy.p90 } });
-  return { rec, score, hz, mediana, sim };
+  return { rec, score, hz, mediana, sim, d };
 }
 
 // Extrae los HECHOS numéricos STR de un recompute (para congelar o comparar).

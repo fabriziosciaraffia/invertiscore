@@ -52,9 +52,9 @@ import type { Check } from "./invariants";
 import type { SeedReport } from "./recompute";
 
 const WORDS = (s: string) => (s.trim().match(/\S+/g) || []).length;
-// El baseline de guards de la tanda vive en su propio modulo (str-guards-baseline.ts):
-// una sola definicion de la metrica para el tier y para el lector que compara dos dumps.
-// Si la cuenta viviera en los dos lados, tarde o temprano dirian cosas distintas del
+// El baseline de guards de la tanda vive en su propio módulo (str-guards-baseline.ts):
+// una sola definición de la métrica para el tier y para el lector que compara dos dumps.
+// Si la cuenta viviera en los dos lados, tarde o temprano dirían cosas distintas del
 // mismo dump.
 
 // Los seis GE reales del corpus: dos veredictos dominantes (GE-1 COMPRAR, GE-2 AJUSTA),
@@ -128,7 +128,9 @@ export async function runStrGenerateTier(
         const r = recomputeStrSeed(seed, frozen);
         if (!r) throw new Error("recompute devolvió null");
         const rForProse = { ...r.rec, francoScore: r.score, hallazgos: r.hz };
-        const comuna = (frozen[key].input_data.comuna as string) || "";
+        // `r.d` = el input_data YA SINTETIZADO. Pasarle el crudo al prompt hacía que el
+        // motor y la prosa miraran inputs distintos para el mismo caso (GE-3).
+        const comuna = (r.d.comuna as string) || "";
         const coronado = ordenarHallazgosPiramideSTR(r.hz)[0] ?? null;
         const archivo = opts.from ? join(opts.from, `${key}-str-run${run}.json`) : null;
         let ai: any;
@@ -150,7 +152,7 @@ export async function runStrGenerateTier(
           warns = capturados;
           try {
             gen = await conTimeout(generateStrProse({
-              anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna, simulacion: r.sim,
+              anthropic, inp: r.d, r: rForProse as any, comuna, simulacion: r.sim,
               logger: (m) => {
                 capturados.push(m);
                 if (/^\[(?:HERO-CLAIM|STR-)/.test(m)) process.stderr.write(`\n        ${key} ${m.slice(0, 220)}`);
@@ -239,8 +241,9 @@ export async function runStrGenerateTier(
             coronadoId: coronado?.id ?? null, coronadoTitular: coronado?.titular ?? null, lead, flags: [],
           };
           try {
-            const cap = await captureStrPrompt({ inp: frozen[key].input_data, r: rForProse, comuna });
-            const inp = frozen[key].input_data as Record<string, unknown>;
+            // El juez tiene que ver EL MISMO bloque-caso que vio el modelo.
+            const cap = await captureStrPrompt({ inp: r.d, r: rForProse, comuna });
+            const inp = r.d as Record<string, unknown>;
             const truthBundle = buildTruthBundle(
               comuna,
               typeof inp.lat === "number" ? inp.lat : null,

@@ -91,9 +91,12 @@ async function runStr(): Promise<CaseReport[]> {
     try {
       const r = recomputeStrSeed(seed, frozen);
       if (!r) { out.push({ modalidad: "STR", key: seed.key, label: seed.label, hallazgos: [], error: "sin fixture frozen" }); continue; }
-      const fx = frozen[seed.key];
-      const inp = fx.input_data as Record<string, unknown>;
-      const comuna = (inp.comuna as string) || fx.comuna || "";
+      // `r.d` = el input_data YA SINTETIZADO. Con el crudo, el motor y la prosa miraban
+      // inputs distintos para el mismo caso. Y de paso arregla GE-PC / GE-PJ: no tienen
+      // fixture propio (se sintetizan sobre su base), así que `frozen[seed.key]` era
+      // undefined, el acceso tiraba TypeError y el try/catch lo dejaba como "error".
+      const inp = r.d as Record<string, unknown>;
+      const comuna = (inp.comuna as string) || frozen[seed.key]?.comuna || "";
       const rForProse = { ...r.rec, francoScore: r.score, hallazgos: r.hz };
       const gen = await generateStrProse({ anthropic, inp, r: rForProse as any, comuna });
       const cap = await captureStrPrompt({ inp, r: rForProse, comuna });
