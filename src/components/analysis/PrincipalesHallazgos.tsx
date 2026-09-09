@@ -8,13 +8,12 @@ import { referenciaHallazgo } from "./referencia-hallazgo";
  * PRINCIPALES HALLAZGOS — la fila es UNA LÍNEA (08-sep-2026).
  *
  * Contrato: `docs/wireframes/rediseno-informe/la-fila-como-linea.html`, opción 2.
- * Frase corta a la izquierda, cifra a la derecha con su referencia debajo. La línea
- * entera es el botón que lleva al desarrollo.
+ * Frase corta a la izquierda, cifra a la derecha con su referencia debajo.
  *
  * MURIERON de la fila, y por qué:
  *   · la numeración 01-0n — la jerarquía ya la dice el orden;
  *   · el punto de dirección y el kicker «en contra / a favor» — la frase lo dice
- *     con palabras, y el color de la cifra lo repite;
+ *     con palabras, y ahora la flecha lo repite en un símbolo;
  *   · el `title` de `findingDisplay` — en seis tipos LTR era neutro («Cómo estás
  *     financiando») y el juicio vivía en el `titular` del motor;
  *   · la `fraseCanonica` en pantalla y el «↓ Ver detalle».
@@ -26,6 +25,10 @@ import { referenciaHallazgo } from "./referencia-hallazgo";
  *
  * La `fraseCanonica` NO se borra: sigue viva en el hallazgo y sigue entrando al
  * user prompt como insumo. Solo desaparece de esta superficie.
+ *
+ * SÍMBOLO, NO COLOR (09-sep-2026). La dirección la dice una flecha en Ink: ↓ lo que
+ * frena, ↑ lo que ayuda. El bloque queda SIN color salvo una excepción: la cifra que
+ * es un MONTO NEGATIVO conserva Signal Red.
  */
 export function PrincipalesHallazgos({
   hallazgos,
@@ -46,18 +49,27 @@ export function PrincipalesHallazgos({
     <div className="hz-list">
       {top.map((h) => {
         // De `findingDisplay` sobrevive SOLO el KPI: el título y el kicker murieron.
-        const { kpi, kpiRed } = findingDisplay(h, currency, valorUF);
+        const { kpi, kpiNegativo } = findingDisplay(h, currency, valorUF);
         const ref = referenciaHallazgo(h, currency, valorUF);
         const frase = h.titular;
-        const tono = h.direccion === "adverso" ? "mal" : h.direccion === "favorable" ? "bien" : "neu";
+        // `neutral` existe como tercera dirección y no lleva flecha: la celda queda
+        // vacía pero conserva su ancho, así la frase arranca en el mismo sitio en las
+        // cuatro filas.
+        const flecha = h.direccion === "adverso" ? "↓" : h.direccion === "favorable" ? "↑" : "";
         return (
           // La línea entera es un <button>: accesible por teclado y con foco visible,
           // sin el `role="button"` que obliga a manejar Enter/Space a mano.
           <button key={h.id} type="button" className="hz-lin" onClick={() => onVerDetalle(h)}>
+            {/* La flecha REPITE lo que la frase ya dice con palabras: es apoyo visual,
+                no información nueva, así que no entra al árbol de accesibilidad. */}
+            <span className="hz-fl" aria-hidden="true">{flecha}</span>
             <p>{frase}</p>
-            <span className={`hz-n ${kpiRed ? "mal" : tono}`}>
+            <span className={`hz-n${kpiNegativo ? " neg" : ""}`}>
               {kpi}
-              {ref && <small>{ref}</small>}
+              {/* El slot de la referencia se renderiza SIEMPRE, con o sin texto: si no
+                  reservara su alto, la fila sin referencia (p. ej. «Pie 20%») se
+                  hundiría respecto de las otras tres. */}
+              <small>{ref || " "}</small>
             </span>
           </button>
         );

@@ -380,17 +380,22 @@ export function DocTokens() {
          el kicker, el punto de dirección, el título y la frase larga salieron de la
          fila. El separador y el espaciado se deciden con el informe completo a la
          vista, en otro goal; acá va el que trae el contrato. */
-      .hz-lin{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:baseline;width:100%;
+      .hz-lin{display:grid;grid-template-columns:16px 1fr auto;gap:14px;align-items:baseline;width:100%;
         padding:15px 0;border-bottom:1px solid var(--doc-line);cursor:pointer;text-align:left;
         background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit}
       .hz-lin:last-child{border-bottom:none}
+      /* La flecha: SIEMPRE Ink. Nunca toma el color de la dirección — ese es justo el
+         acoplamiento que este bloque dejó de hacer. Ancho fijo para que la fila
+         la fila neutral, que no lleva flecha, no corra la frase hacia la izquierda. */
+      .hz-fl{font-family:var(--font-mono, ui-monospace);font-size:14px;line-height:1.45;color:var(--doc-tx);text-align:center}
       .hz-lin p{font-family:var(--font-heading, Georgia, serif);font-size:15.5px;line-height:1.45;color:var(--doc-tx);margin:0}
       .hz-lin:hover p{color:var(--doc-tx2)}
       /* Foco visible: la fila entera es el control, así que el anillo va en la fila. */
       .hz-lin:focus-visible{outline:2px solid var(--verdict);outline-offset:3px;border-radius:2px}
       .hz-n{font-family:var(--font-mono, ui-monospace);font-size:15px;font-weight:700;white-space:nowrap;letter-spacing:-.01em;color:var(--doc-tx)}
-      .hz-n.mal{color:var(--signal-red)}
-      .hz-n.bien{color:var(--doc-good)}
+      /* La ÚNICA cifra con color: el monto negativo. «.mal» (adverso) y «.bien»
+         (--doc-good) murieron — codificaban DIRECCIÓN, que ahora dice la flecha. */
+      .hz-n.neg{color:var(--signal-red)}
       .hz-n small{display:block;font-size:10.5px;font-weight:500;color:var(--doc-tx3);text-align:right;margin-top:2px;letter-spacing:0}
       /* los números */
       .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--doc-line);border:1px solid var(--doc-line)}

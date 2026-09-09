@@ -51,6 +51,11 @@ export interface FindingDisplay {
   title: string;     // headline (serif)
   kpi: string;       // dato dominante (mono)
   kpiRed: boolean;   // KPI en Signal Red si el valor es críticamente adverso
+  /** La cifra rendereada es un MONTO NEGATIVO (trae signo menos). Distinto de `kpiRed`,
+   *  que significa «críticamente adverso» — una dirección, no un signo. El bloque de
+   *  hallazgos usa ESTE: ahí la dirección la dice la flecha y el color queda solo para el
+   *  negativo monetario. `kpiRed` sigue intacto para el PDF y el anexo. */
+  kpiNegativo?: boolean;
   ksub: string;      // sub-label del KPI (mono uppercase)
   // Caveat de fuente/método al pie — SOLO cuando aclara cómo leer el dato (ej.
   // "publicación, no transacción"). El boilerplate "sobre tus datos declarados"
@@ -117,6 +122,7 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         title: favorable ? "Lo que te queda cada mes" : "Lo que sale de tu bolsillo cada mes",
         kpi: fmtSigned(v.flujoNetoMensualCLP, currency, valorUF),
         kpiRed: v.flujoNetoMensualCLP < 0, // monetario negativo (uso Signal Red #2)
+        kpiNegativo: v.flujoNetoMensualCLP < 0,
         ksub: favorable
           ? "cada mes · te queda después de todos los costos"
           : "cada mes · sale de tu bolsillo, no del arriendo",
@@ -279,6 +285,7 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         title: h.titular,
         kpi: fmtSigned(v.flujoMensualCLP, currency, valorUF),
         kpiRed: v.flujoMensualCLP < 0,
+        kpiNegativo: v.flujoMensualCLP < 0,
         ksub: "Estabilizado · ocupación base",
       };
     }
