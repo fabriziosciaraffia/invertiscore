@@ -291,7 +291,20 @@ export function CapitulosInversion({
           estaba contrastado — en 17 de 30 generaciones medidas, o sea que en 13 no.
           Determinista: `respaldoArriendo` resuelve los cinco estados con la referencia
           de zona que el motor ya tenía. Nunca se calla: sin referencia, ESO es el dato. */}
-      <VFuente>{respaldoArriendo(inputData, arriendo).texto}</VFuente>
+      {(() => {
+        const r = respaldoArriendo(inputData, arriendo);
+        // El tratamiento marca UNA cosa: que el dato de respaldo es débil. Los tres
+        // estados donde la referencia no sirve para contrastar —sin referencia (424 de
+        // 1.200 filas), muestra chica, orden de magnitud— suben a aviso; con mediana
+        // sólida detrás esto es procedencia y se lee como pie, aunque el declarado tenga
+        // brecha contra ella.
+        //
+        // Por eso NO se usa `r.advertencia`, que es un flag más ancho: incluye el
+        // declarado POR SOBRE la mediana, que es un hallazgo del caso y no una debilidad
+        // del dato. Mezclarlos haría que el borde signifique dos cosas.
+        const dudoso = r.estado === "sin_referencia" || r.estado === "muestra_chica" || r.estado === "orden_de_magnitud";
+        return <VFuente aviso={dudoso}>{r.texto}</VFuente>;
+      })()}
       <DrawerCostoMensual
         data={prosa?.costoMensual}
         currency={currency}

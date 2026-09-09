@@ -278,6 +278,15 @@ export function TokensHallazgos() {
       .hall-body .v-cierre:has(~ .v-cierre) p{font-family:var(--font-body, sans-serif);font-style:normal;font-size:14px;
         line-height:1.75;color:var(--doc-tx2)}
       .v-fuente{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.06em;color:var(--doc-tx4);margin-top:12px}
+      /* .v-fuente.aviso — cuando la procedencia deja de ser una nota al pie y pasa a ser
+         una advertencia: el dato del que cuelga el capitulo no esta contrastado. Sube de
+         --doc-tx4 (el gris mas apagado) al gris de cuerpo, gana el tamano de la prosa
+         chica y toma el borde izquierdo del patron .reg del bloque de regulacion STR.
+         SIN COLOR NUEVO y sin Signal Red a proposito: el rojo es del veredicto y de la
+         cifra negativa, y este bloque acaba de dejar de usarlo para no decir dos cosas
+         con el mismo color. Un caveat no es una alarma. */
+      .v-fuente.aviso{font-size:11.5px;line-height:1.5;color:var(--doc-tx2);letter-spacing:0;
+        border-left:3px solid var(--doc-tx3);padding:2px 0 2px 12px;margin-top:14px}
       .v-collapse{margin-top:18px;width:100%;background:none;border:1px dashed var(--doc-line2);border-radius:3px;padding:10px;
         font-family:var(--font-mono, ui-monospace);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
         color:var(--doc-tx3);cursor:pointer}
