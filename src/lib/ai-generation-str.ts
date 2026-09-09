@@ -659,15 +659,15 @@ Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards f
         if (v.estado === "cruza") {
           const signo = v.deltaPct < 0 ? "−" : "+";
           const unidad = v.palanca === "pie" || v.palanca === "gestion" ? " pts" : "%";
-          const base = `- ${nombre}: CRUZA — de ${fmtVia(v.palanca, v.actual)} a ${fmtVia(v.palanca, v.objetivo)} (${signo}${Math.abs(v.deltaPct).toFixed(1).replace(".", ",")}${unidad})`;
-          if (v.palanca === "pie" && v.actual >= 20) return `${base} — cruza, pero ya cumples con ${fmtVia("pie", v.actual)} de pie: es un INTERCAMBIO (más capital el día 1 a cambio de un mes que cierra), no una recomendación`;
+          const base = `- ${nombre}: ALCANZA — de ${fmtVia(v.palanca, v.actual)} a ${fmtVia(v.palanca, v.objetivo)} (${signo}${Math.abs(v.deltaPct).toFixed(1).replace(".", ",")}${unidad})`;
+          if (v.palanca === "pie" && v.actual >= 20) return `${base} — alcanza, pero ya cumples con ${fmtVia("pie", v.actual)} de pie: es un INTERCAMBIO (más capital el día 1 a cambio de un mes que cierra), no una recomendación`;
           if (v.palanca === "adr") return `${base} — es una APUESTA a rendir sobre lo que hoy cobra la zona, no un supuesto que se corrige`;
           return base;
         }
-        if (v.estado === "noCruza") return `- ${nombre}: NO CRUZA — ${v.razon} (probado hasta ${fmtVia(v.palanca, v.topeExplorado)})`;
+        if (v.estado === "noCruza") return `- ${nombre}: NO ALCANZA — ${v.razon} (probado hasta ${fmtVia(v.palanca, v.topeExplorado)})`;
         return `- ${nombre}: NO APLICA — ${v.razon}`;
       }).join("\n");
-      return `\n\nVÍAS AL VEREDICTO DE ARRIBA (${dv.veredictoObjetivo}) — las cinco, con su estado (dato del motor):\n${filas}\nVÍAS QUE CRUZAN (dato del motor): ${cruzan.length}${cruzan.length ? ` — ${cruzan.map((v) => NOMBRE_VIA[v.palanca] ?? v.palanca).join(", ")}` : ""}. Solo con exactamente UNA puedes decir "la única vía"; con varias, nómbralas o di "hay más de una vía"; con ninguna, no hay vía. Cada una alcanza POR SÍ SOLA; puedes recomendar la más accionable, pero sin negar las otras.`;
+      return `\n\nVÍAS AL VEREDICTO DE ARRIBA (${dv.veredictoObjetivo}) — las cinco, con su estado (ya calculado):\n${filas}\nVÍAS QUE ALCANZAN: ${cruzan.length}${cruzan.length ? ` — ${cruzan.map((v) => NOMBRE_VIA[v.palanca] ?? v.palanca).join(", ")}` : ""}. Solo con exactamente UNA puedes decir "la única vía"; con varias, nómbralas o di "hay más de una vía"; con ninguna, no hay vía. Cada una alcanza POR SÍ SOLA; puedes recomendar la más accionable, pero sin negar las otras.`;
     })();
     const cab = `\n\n=== LO QUE TE SEPARA DEL VEREDICTO DE ARRIBA (valores YA CALCULADOS) ===\n«${distanciaSTR.titular}» — ${distanciaSTR.fraseCanonica}${viasBloque}`;
 
