@@ -24,15 +24,18 @@
 export type EstadoRegulacion = "si" | "no" | "no_seguro";
 
 /**
- * Normaliza el input. Dos nombres conviven en las filas persistidas
- * (`regulacionEdificio` es el que lee el prompt, `edificioPermiteAirbnb` el que escribe
- * el wizard) y una variante vieja del valor (`no_estoy_seguro`). Sin dato ⇒
- * `no_seguro`: el default del wizard, y el que NO da por buena una condición que nadie
- * confirmó.
+ * Normaliza el input. La clave REAL es `edificioPermiteAirbnb`, la que escribe el wizard:
+ * medido el 09-sep-2026, está en 246 de 246 filas STR y `regulacionEdificio` en CERO.
+ * Ese segundo nombre existe, pero es la clave de `ShortTermScoreInputs` —el objeto que se
+ * le arma al motor de score mapeando desde `edificioPermiteAirbnb`— y acá nunca llega:
+ * los dos consumidores reciben `input_data`. Se mantiene una variante vieja del valor
+ * (`no_estoy_seguro`). Sin dato ⇒ `no_seguro`: el default del wizard, y el que NO da por
+ * buena una condición que nadie confirmó.
  */
 export function normalizarRegulacion(input: unknown): EstadoRegulacion {
+  // `regulacionEdificio` va segundo: es un alias que nunca se materializó en los datos.
   const raw = input && typeof input === "object"
-    ? ((input as Record<string, unknown>).regulacionEdificio ?? (input as Record<string, unknown>).edificioPermiteAirbnb)
+    ? ((input as Record<string, unknown>).edificioPermiteAirbnb ?? (input as Record<string, unknown>).regulacionEdificio)
     : input;
   const v = typeof raw === "string" ? raw.trim().toLowerCase() : "";
   if (v === "si" || v === "sí") return "si";

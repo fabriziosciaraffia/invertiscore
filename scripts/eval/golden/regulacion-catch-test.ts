@@ -8,7 +8,7 @@
 // la fija: cobertura del 100% de las filas, siempre, en vez de 6 de 12 corridas y solo
 // si el modelo se acordaba.
 //
-// Fija TRES cosas:
+// Fija CUATRO cosas:
 //
 //   1. LOS TRES ESTADOS. `si` no renderiza NADA (que no aparezca es la señal de que no
 //      hay nada que confirmar; un bloque tranquilizador ocuparía el mismo espacio para
@@ -25,10 +25,16 @@
 //      Esta es la parte que más importa: un default a `si` haría desaparecer el bloque
 //      justo en las filas donde falta el dato — el silencio más caro posible.
 //
+//   4. EL ANCLA A DATOS REALES. Los tres bloques de arriba se prueban con objetos armados
+//      a mano, y eso valida el contrato contra lo que supuso quien escribió el test. El
+//      cuarto lee el `input_data` de las seis filas de producción congeladas en
+//      str-seeds-frozen.json: es el único que caza un nombre de clave equivocado.
+//
 // Corre dentro del QUICK del runner (tier "regulación") y standalone:
 //   node --import tsx scripts/eval/golden/regulacion-catch-test.ts
 // ============================================================================
 import { bloqueRegulacion, normalizarRegulacion, type EstadoRegulacion } from "../../../src/lib/regulacion-edificio";
+import { loadFrozen } from "./str-seeds";
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -81,11 +87,50 @@ for (const [inp, esperado, nombre] of casos) {
   if (got !== esperado) F(`3 · ${nombre}: dio «${got}», se esperaba «${esperado}»`);
 }
 
+// ── 4 · EL ANCLA: filas REALES, no objetos armados a mano ───────────────────
+// Los diez casos de arriba validan el contrato de la función contra lo que supuso quien
+// la escribió. No cazan un nombre de clave equivocado, porque el test lo escribe el mismo
+// que escribió el módulo: si los dos se equivocan igual, los dos coinciden. De hecho pasó
+// —el orden del lookup tenía primero `regulacionEdificio`, que NO existe en `input_data`—
+// y lo cazó una query a la base, no este archivo.
+//
+// Así que acá se lee el `input_data` de las seis filas de producción congeladas en
+// str-seeds-frozen.json, con el MISMO loader que usa la tanda STR. El estado esperado va
+// escrito en la tabla de abajo y NO se deriva del fixture: derivarlo sería una tautología
+// que renombrar la clave dejaría verde.
+//
+// Cobertura honesta: las seis filas cubren «si» y «no_seguro». «no» no aparece porque en
+// el parque hay UNA sola fila con ese valor (1 de 246) y no está entre las congeladas;
+// ese estado lo fijan los bloques 1 y 3.
+const ESPERADO_FROZEN: Record<string, EstadoRegulacion> = {
+  "GE-1": "si", "GE-2": "no_seguro", "GE-3": "si",
+  "GE-4": "no_seguro", "GE-5": "no_seguro", "GE-6": "si",
+};
+const frozen = loadFrozen();
+for (const [key, esperado] of Object.entries(ESPERADO_FROZEN)) {
+  const fx = frozen[key];
+  if (!fx) { F(`4 · ${key}: no está en str-seeds-frozen.json`); continue; }
+  const d = fx.input_data;
+  // La costura: los DOS campos que el componente lee de `input_data`, por nombre.
+  if (!("edificioPermiteAirbnb" in d)) {
+    F(`4 · ${key}: la fila real no trae «edificioPermiteAirbnb» — el módulo lee una clave que no existe`);
+  }
+  if (typeof d.costoAmoblamiento !== "number" || !(d.costoAmoblamiento > 0)) {
+    F(`4 · ${key}: «costoAmoblamiento» no es un número positivo (${JSON.stringify(d.costoAmoblamiento)})`);
+  }
+  const got = normalizarRegulacion(d);
+  if (got !== esperado) F(`4 · ${key} (fila real ${fx.srcId.slice(0, 8)}): dio «${got}», se esperaba «${esperado}»`);
+}
+// Que una seed nueva no entre sin fijar su estado.
+for (const key of Object.keys(frozen)) {
+  if (!(key in ESPERADO_FROZEN)) F(`4 · ${key} está congelada y no tiene estado esperado en ESPERADO_FROZEN`);
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runRegulacionTier(): { hard: number } {
   console.log("\n─── TIER REGULACIÓN (el edificio permite operar por día · regulacion-edificio.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — tres estados, el monto en riesgo y 10 casos de normalización (sin dato ⇒ no_seguro)");
+    console.log("  ✓ VERDE — tres estados, el monto en riesgo, 10 casos de normalización (sin dato ⇒ no_seguro) y 6 filas reales congeladas");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

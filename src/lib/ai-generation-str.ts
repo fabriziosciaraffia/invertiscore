@@ -453,7 +453,7 @@ function extraerCardFrases(hallazgos: Hallazgo[] | undefined | null): CardFrases
 // buildUserPromptSTR — user prompt v3. Compartido por el endpoint y el regen.
 // `inp` = input_data (se normalizan defensivamente las dos convenciones de
 // claves que conviven en el corpus: piePercent|piePct, tasaCredito|tasaInteres,
-// superficie|superficieUtil, regulacionEdificio|edificioPermiteAirbnb).
+// superficie|superficieUtil, edificioPermiteAirbnb|regulacionEdificio).
 // `r` = results (persistido en prod, recomputado en el regen).
 // ─────────────────────────────────────────────────────────────────────────
 export function buildUserPromptSTR(
@@ -484,7 +484,9 @@ export function buildUserPromptSTR(
   const plazo = num(inp.plazoCredito) ?? 25;
   const modoGestion = (inp.modoGestion as string) ?? "auto";
   const comisionPct = modoGestion === "auto" ? 3 : Math.round((num(inp.comisionAdministrador) ?? 0.2) * 100);
-  const regulacion = (inp.regulacionEdificio as string) ?? (inp.edificioPermiteAirbnb as string) ?? "no_seguro";
+  // `regulacionEdificio` va segundo: es un alias que nunca se materializó en los datos
+  // (0 de 246 filas; ese nombre es el de ShortTermScoreInputs, que no llega hasta acá).
+  const regulacion = (inp.edificioPermiteAirbnb as string) ?? (inp.regulacionEdificio as string) ?? "no_seguro";
   const costoAmoblamiento = inp.estaAmoblado ? 0 : (num(inp.costoAmoblamiento) ?? 0);
   const amoblado = costoAmoblamiento > 0 ? "Sí" : "No";
   const elec = num(inp.costoElectricidad) ?? 0;
