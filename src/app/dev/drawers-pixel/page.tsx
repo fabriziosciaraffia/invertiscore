@@ -29,7 +29,12 @@ import fixtures from "./fixtures.json";
 // v21 (08-sep-2026): los tres LTR se volcaron a prosa de DOS BLOQUES y
 // `providenciaLtrV20` conserva la misma fila con los CUATRO campos viejos, que es
 // la unica forma de shotear el camino congelado sin abrir una fila anonima en prod.
-type FixKey = "staRosaStr" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "laFloridaLtr" | "nunoaLtr" | "lasCondesStr";
+// v17 (09-sep-2026): los tres STR se volcaron a la prosa podada; `staRosaStrV11`
+// conserva la misma fila con los siete bloques viejos (camino congelado), y
+// `lasCondesStrNo` / `lasCondesStrNoSeguro` son la misma fila con los otros dos estados
+// de regulacionEdificio — la unica forma de shotear el bloque determinista sin inventar
+// filas de analisis.
+type FixKey = "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "laFloridaLtr" | "nunoaLtr" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro";
 
 function Inner() {
   const sp = useSearchParams();
