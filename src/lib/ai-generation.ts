@@ -3158,20 +3158,30 @@ RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad"
       try {
         // v20: el titular también pasa por el guard (d3a6149a: "más del doble del valor
         // estimado por esa cuadra" con 1,59× y sin valor de mercado con procedencia).
+        // Las fuentes van CON NOMBRE: con un solo campo de prosa, saber que algo violó
+        // no alcanza — el log tiene que decir si fue el titular o el cierre.
+        const FUENTES: [string, (ai: typeof aiResult) => unknown][] = [
+          ["titular", (ai) => ai?.titular],
+          ["conviene.cajaAccionable_clp", (ai) => ai?.conviene?.cajaAccionable_clp],
+          ["conviene.cajaAccionable_uf", (ai) => ai?.conviene?.cajaAccionable_uf],
+        ];
         const violaciones = (ai: typeof aiResult): string[] =>
-          [ai?.conviene?.respuestaDirecta_clp, ai?.conviene?.respuestaDirecta_uf, ai?.titular]
-            .filter((t): t is string => typeof t === "string")
-            .flatMap((t) => violacionesHeroClaim(t, ctxClaim))
+          FUENTES
+            .flatMap(([nombre, leer]) => {
+              const t = leer(ai);
+              return typeof t === "string" ? violacionesHeroClaim(t, ctxClaim).map((x) => `${nombre}: ${x}`) : [];
+            })
             .filter((v, i, arr) => arr.indexOf(v) === i);
         const titularViola = (ai: typeof aiResult): boolean =>
           typeof ai?.titular === "string" && violacionesHeroClaim(ai.titular, ctxClaim).length > 0;
         const viol = violaciones(aiResult);
         if (viol.length) {
           console.warn(`[HERO-CLAIM] ${analysisId}: ${viol.join(" | ")} — 1 reintento quirúrgico`);
-          const datoCorrecto = `VÍAS QUE CRUZAN (dato del motor): ${viasCruzan.length}${viasCruzan.length ? ` — ${viasCruzan.join(", ")}` : ""}. Solo con exactamente UNA puedes decir "la única vía"; con varias, nómbralas o di "hay más de una vía"; con ninguna, no hay vía.
-RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad" / "el triple" solo con el SUJETO y el COMPARADOR nombrados en la MISMA oración y con la razón que corresponda: "más del doble" ≥ 2×, "el doble" ≥ 1,9×, "casi el doble" ≥ 1,8×, "más de la mitad" ≥ 0,5, "menos de la mitad" ≤ 0,5, "el triple" ≥ 2,9×. Sin nombrar contra qué, no hay múltiplo. Si no alcanza, di la razón con sus dos montos o su porcentaje, nunca como múltiplo verbal.`;
-          const contClp = typeof aiResult.conviene.respuestaDirecta_clp === "string" ? aiResult.conviene.respuestaDirecta_clp : "";
-          const contUf = typeof aiResult.conviene.respuestaDirecta_uf === "string" ? aiResult.conviene.respuestaDirecta_uf : "";
+          // Mismo bloque de datos que arma `datoViasClaim` arriba: era el MISMO texto
+          // escrito dos veces, y el segundo se quedó sin dueño al fusionar los dos barridos.
+          const datoCorrecto = datoViasClaim;
+          const contClp = typeof aiResult.conviene.cajaAccionable_clp === "string" ? aiResult.conviene.cajaAccionable_clp : "";
+          const contUf = typeof aiResult.conviene.cajaAccionable_uf === "string" ? aiResult.conviene.cajaAccionable_uf : "";
           const titularActual = typeof aiResult.titular === "string" ? aiResult.titular : "";
           const corrigeTitular = titularViola(aiResult);
           const promptClaim = `Estás corrigiendo SOLO ${corrigeTitular ? "el titular y " : ""}el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
@@ -3193,7 +3203,7 @@ TEXTO ACTUAL (variante UF):
 ${contUf}
 
 Responde SOLO este JSON, sin texto alrededor:
-{"titular": "...", "respuestaDirecta_clp": "...", "respuestaDirecta_uf": "..."}`;
+{"titular": "...", "cajaAccionable_clp": "...", "cajaAccionable_uf": "..."}`;
           const regen = await reg.medir("hero-claim", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 600, messages: [{ role: "user", content: promptClaim }], system: SYSTEM_LTR_CACHED }));
           acumularUsage(usage, regen);
           const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
@@ -3203,8 +3213,8 @@ Responde SOLO este JSON, sin texto alrededor:
           try {
             const m = regenText.match(/\{[\s\S]*\}/);
             const obj = JSON.parse(m ? m[0] : regenText);
-            nClp = typeof obj?.respuestaDirecta_clp === "string" ? obj.respuestaDirecta_clp.trim() : "";
-            nUf = typeof obj?.respuestaDirecta_uf === "string" ? obj.respuestaDirecta_uf.trim() : "";
+            nClp = typeof obj?.cajaAccionable_clp === "string" ? obj.cajaAccionable_clp.trim() : "";
+            nUf = typeof obj?.cajaAccionable_uf === "string" ? obj.cajaAccionable_uf.trim() : "";
             nTitular = typeof obj?.titular === "string" ? obj.titular.trim() : "";
           } catch {
             /* no parseó — se maneja abajo */
@@ -3214,7 +3224,7 @@ Responde SOLO este JSON, sin texto alrededor:
           } else {
             // El titular solo se reemplaza si violaba y el retry trajo uno; si no, se conserva.
             const titularCandidato = corrigeTitular && nTitular ? nTitular : aiResult.titular;
-            const candidato = { ...aiResult, titular: titularCandidato, conviene: { ...aiResult.conviene, respuestaDirecta_clp: nClp, respuestaDirecta_uf: nUf } };
+            const candidato = { ...aiResult, titular: titularCandidato, conviene: { ...aiResult.conviene, cajaAccionable_clp: nClp, cajaAccionable_uf: nUf } };
             const quedan = violaciones(candidato);
             if (empeoraCifras(userPrompt, aiResult, candidato, { ufClp: UF_CLP })) {
               console.warn(`[HERO-CLAIM] ${analysisId}: el retry introdujo cifras fuera del input — candidato descartado`);
@@ -3231,95 +3241,18 @@ Responde SOLO este JSON, sin texto alrededor:
       }
     }
 
-    // ─── HERO-CLAIM en negociación (regla 2 · 03-sep-2026) ───────────────────
-    // Mismas reglas contables que el hero, mismo retry quirúrgico (por campo, ambas
-    // monedas), mismo log con la sección. El juez cazó "no del doble de ella"
-    // (precio/m² vs mediana 1,78×) en negociación (GS-4): fuera del alcance del guard.
-    // El sitio de `largoPlazo` («tu parte al vender … más del doble del fondo», 1,6× en
-    // GS-3 y GS-PJ) salió con el campo en v21: ya no hay texto que vigilar ahí.
+    // ─── HERO-CLAIM en negociación — RETIRADO POR FUSIÓN (v22, 09-sep-2026) ───
+    // Barría `negociacion.contenido`, `estrategiaSugerida` y `cajaAccionable` con las
+    // mismas reglas contables del hero. Los TRES mueren en v22, así que el barrido se
+    // quedaba sin sujeto entero — y su propio comentario ya describía ese modo de falla
+    // («un guard apuntando a un campo inexistente lee "" y deja de disparar EN
+    // SILENCIO», el de A8·D1). Tenía un `continue` para el campo vacío que, con los tres
+    // muertos, se habría ejecutado siempre.
     //
-    // CAMPOS ÚNICOS. Desde v21 `negociacion.contenido` no tiene par _clp/_uf. El lector
-    // los soporta explícitamente porque la alternativa es el modo de falla de A8·D1:
-    // un guard apuntando a un campo inexistente lee "" y deja de disparar EN SILENCIO.
-    if (aiResult) {
-      const camposClaim: { seccion: "negociacion"; campo: string }[] = [
-        { seccion: "negociacion", campo: "contenido" },
-        { seccion: "negociacion", campo: "estrategiaSugerida" },
-        { seccion: "negociacion", campo: "cajaAccionable" },
-      ];
-      for (const { seccion, campo } of camposClaim) {
-        const etiqueta = `[HERO-CLAIM:${seccion}.${campo}]`;
-        try {
-          // Campo único (sin sufijo) → viaja en el slot CLP y el UF queda vacío; el
-          // resto del flujo ya trata "" como "esta variante no existe".
-          const unico = typeof (aiResult as Record<string, Record<string, unknown>>)?.[seccion]?.[campo] === "string";
-          const leer = (ai: typeof aiResult): [string, string] => {
-            const sec = (ai as Record<string, Record<string, unknown>> | null)?.[seccion];
-            if (unico) {
-              const v = sec?.[campo];
-              return [typeof v === "string" ? v : "", ""];
-            }
-            const clp = sec?.[`${campo}_clp`];
-            const uf = sec?.[`${campo}_uf`];
-            return [typeof clp === "string" ? clp : "", typeof uf === "string" ? uf : ""];
-          };
-          const evaluar = (ai: typeof aiResult): string[] =>
-            leer(ai).filter(Boolean).flatMap((t) => violacionesHeroClaim(t, ctxClaim)).filter((v, i, arr) => arr.indexOf(v) === i);
-          const [actualClp, actualUf] = leer(aiResult);
-          if (!actualClp && !actualUf) continue;
-          const viol = evaluar(aiResult);
-          if (!viol.length) continue;
-          console.warn(`${etiqueta} ${analysisId}: ${viol.join(" | ")} — 1 reintento quirúrgico`);
-          const promptSec = `Estás corrigiendo SOLO el campo ${seccion}.${campo} de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
-
-PROBLEMA: el texto afirma algo que el motor contradice — ${viol.join("; ")}.
-${datoViasClaim}
-
-TU TAREA: reescribe el texto conservando su contenido, su orden y su largo, corrigiendo SOLO esa afirmación con el dato de arriba. Usa SOLO cifras que ya aparecen en el texto — ninguna cifra nueva. Si la razón no alcanza para el múltiplo, di los dos montos o el porcentaje.
-
-TEXTO ACTUAL (variante CLP):
-${actualClp}
-
-TEXTO ACTUAL (variante UF):
-${actualUf}
-
-Responde SOLO este JSON, sin texto alrededor:
-{"clp": "...", "uf": "..."}`;
-          const regen = await reg.medir("hero-claim", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 700, messages: [{ role: "user", content: promptSec }], system: SYSTEM_LTR_CACHED }));
-          acumularUsage(usage, regen);
-          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
-          let nClp = "";
-          let nUf = "";
-          try {
-            const mm = regenText.match(/\{[\s\S]*\}/);
-            const obj = JSON.parse(mm ? mm[0] : regenText);
-            nClp = typeof obj?.clp === "string" ? obj.clp.trim() : "";
-            nUf = typeof obj?.uf === "string" ? obj.uf.trim() : "";
-          } catch {
-            /* no parseó — se maneja abajo */
-          }
-          if ((actualClp && !nClp) || (actualUf && !nUf)) {
-            console.warn(`${etiqueta} ${analysisId}: retry no parseó — conservo el texto previo`);
-            continue;
-          }
-          const seccionActual = (aiResult as Record<string, Record<string, unknown>>)[seccion] ?? {};
-          const candidato = unico
-            ? { ...aiResult, [seccion]: { ...seccionActual, [campo]: nClp } }
-            : { ...aiResult, [seccion]: { ...seccionActual, ...(actualClp ? { [`${campo}_clp`]: nClp } : {}), ...(actualUf ? { [`${campo}_uf`]: nUf } : {}) } };
-          const quedan = evaluar(candidato);
-          if (empeoraCifras(userPrompt, aiResult, candidato, { ufClp: UF_CLP })) {
-            console.warn(`${etiqueta} ${analysisId}: el retry introdujo cifras fuera del input — candidato descartado`);
-          } else if (quedan.length < viol.length) {
-            console.warn(`${etiqueta} ${analysisId}: retry mejoró ${viol.length}→${quedan.length} — aceptado`);
-            aiResult = candidato;
-          } else {
-            console.warn(`${etiqueta} ${analysisId}: retry no mejoró (${quedan.join(" | ")}) — conservo el texto previo`);
-          }
-        } catch (e) {
-          console.warn(`${etiqueta} ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
-        }
-      }
-    }
+    // NO se retira lo que prohibía: se FUSIONÓ al barrido de arriba. Con un solo campo de
+    // prosa, dos guards escaneando el mismo texto es superficie sin información; la
+    // trazabilidad por campo, que era lo que aportaba tener dos etiquetas, ahora la da el
+    // nombre de la fuente dentro del log.
 
     // RD-BUDGET GUARD (hasta T5 se llamaba Plan C) — enforcement de presupuesto POR
     // CONSTRUCCIÓN. Lo que escribe el modelo —la respuestaDirecta completa, que desde
