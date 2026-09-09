@@ -385,17 +385,15 @@ export function DocTokens() {
          ANCHO FIJO, no «auto»: con auto cada fila se acomodaba a su largo y las cuatro
          cifras arrancaban en sitios distintos. 120px entra el caso peor (−$1.149.025). */
       .hz-lin{display:grid;grid-template-columns:16px 1fr 120px;gap:14px;align-items:start;width:100%;
-        padding:15px 0;border-bottom:1px solid var(--doc-line);cursor:pointer;text-align:left;
-        background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit}
+        padding:15px 0;border-bottom:1px solid var(--doc-line);text-align:left}
       .hz-lin:last-child{border-bottom:none}
       /* La flecha: SIEMPRE Ink. Nunca toma el color de la dirección — ese es justo el
          acoplamiento que este bloque dejó de hacer. Ancho fijo para que la fila
          la fila neutral, que no lleva flecha, no corra la frase hacia la izquierda. */
       .hz-fl{font-family:var(--font-mono, ui-monospace);font-size:14px;line-height:1.4;color:var(--doc-tx);text-align:center}
       .hz-lin p{font-family:var(--font-heading, Georgia, serif);font-weight:400;font-size:16px;line-height:1.4;color:var(--doc-tx);margin:0}
-      .hz-lin:hover p{color:var(--doc-tx2)}
-      /* Foco visible: la fila entera es el control, así que el anillo va en la fila. */
-      .hz-lin:focus-visible{outline:2px solid var(--verdict);outline-offset:3px;border-radius:2px}
+      /* Sin :hover ni :focus-visible: la fila dejó de ser un control. Un hover sobre algo
+         que no responde promete una puerta que no existe. */
       .hz-n{font-family:var(--font-mono, ui-monospace);font-size:15px;font-weight:700;white-space:nowrap;letter-spacing:-.01em;color:var(--doc-tx)}
       /* La ÚNICA cifra con color: el monto negativo. «.mal» (adverso) y «.bien»
          (--doc-good) murieron — codificaban DIRECCIÓN, que ahora dice la flecha. */

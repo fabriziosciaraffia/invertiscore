@@ -43,7 +43,7 @@ import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { TokensShared } from "@/components/analysis/shared";
 import { SeisCifrasStr } from "@/components/analysis/str/SeisCifrasStr";
 import { ModalCalculoStr } from "@/components/analysis/str/ModalCalculoStr";
-import { CapitulosInversionStr, CAPITULO_DE_HALLAZGO_STR, type CapituloStrId } from "@/components/analysis/str/CapitulosInversionStr";
+import { CapitulosInversionStr, type CapituloStrId } from "@/components/analysis/str/CapitulosInversionStr";
 import { ZonaStrSection } from "@/components/analysis/str/ZonaStrSection";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import type { AIAnalysisSTRv2, HallazgoDistanciaVeredicto } from "@/lib/types";
@@ -374,13 +374,6 @@ export function STRResultsClient({
     lng: lngPortada,
   });
   const fechaCorta = fechaCortaCL(fechaProsa ?? createdAt);
-  // T1 — «↓ Ver detalle» de Principales hallazgos abre el capítulo que desarrolla ese
-  // hallazgo (mapa hallazgo → capítulo, espejo LTR). "Ajustar supuestos" de la portada
-  // abre el IV, donde viven precio, pie y plazo.
-  const scrollAHallazgo = (h: { id: string }) => {
-    const cap = CAPITULO_DE_HALLAZGO_STR[h.id];
-    if (cap) abrirCapitulo(cap);
-  };
   const scrollASimulacion = () => abrirCapitulo("pagas");
 
   const isSubscriber = accessLevel === "subscriber";
@@ -516,7 +509,7 @@ export function STRResultsClient({
               strPodada && hallazgosOrdenadosSTR.length > 0 ? (
                 <>
                   <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
-                  <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} onVerDetalle={scrollAHallazgo} />
+                  <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} />
                   <RegulacionEdificio inputData={inputData} currency={currency} valorUF={ufValue} />
                 </>
               ) : undefined
@@ -535,7 +528,7 @@ export function STRResultsClient({
             titulo="Qué determina el veredicto"
           >
             <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
-            <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} onVerDetalle={scrollAHallazgo} />
+            <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} />
             {/* LA QUINTA RAZÓN, la que no es un número: si el reglamento del edificio
                 permite operar por día. Determinista (input del wizard + el amoblamiento
                 en riesgo), cero IA. Con «sí permite» no renderiza nada — que no aparezca

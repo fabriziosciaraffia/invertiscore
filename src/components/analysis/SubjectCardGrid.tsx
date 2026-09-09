@@ -11,7 +11,7 @@ import { ZonaLtrSection, buildZonaLtr } from "./zona/ZonaLtr";
 import { HeroLTR } from "./HeroLTR";
 import { ordenarHallazgosPiramide } from "@/lib/orden-hallazgos";
 import { TokensHallazgos } from "./hallazgos/HallazgosAcordeon";
-import { CapitulosInversion, CAPITULO_DE_HALLAZGO, type CapituloId } from "./CapitulosInversion";
+import { CapitulosInversion, type CapituloId } from "./CapitulosInversion";
 import { SeccionInforme } from "./SeccionInforme";
 import { PrincipalesHallazgos } from "./PrincipalesHallazgos";
 import { LosNumeros } from "./LosNumeros";
@@ -23,7 +23,7 @@ import { buildFichaLtr } from "@/lib/ficha-depto";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { DocumentoFrame, PortadaInforme } from "./portada/PortadaInforme";
 import { useComparablesCercanos } from "./portada/useComparablesCercanos";
-import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
+import type { HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
 import { BloqueEsperaInforme } from "@/components/analysis/ProsaSkeleton";
 
 /**
@@ -239,11 +239,6 @@ export function SubjectCardGrid({
   // «↓ Ver detalle» abre el capítulo donde vive el desarrollo del hallazgo (el
   // acordeón lo ancla arriba). Sin capítulo mapeado, cae a la sección entera.
   const abrirCapitulo = (id: CapituloId) => setCapituloAbrir({ id, nonce: Date.now() });
-  const scrollAHallazgo = (h: Pick<Hallazgo, "id">) => {
-    const cap = CAPITULO_DE_HALLAZGO[h.id];
-    if (cap) abrirCapitulo(cap);
-    else document.getElementById("la-inversion")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
   // La portada: «Ajustar supuestos» lleva a "Cómo lo pagas" (precio, crédito y la
   // matriz pie×plazo son los supuestos que se pueden mover).
   const scrollASimulacion = () => abrirCapitulo("pagas");
@@ -294,7 +289,7 @@ export function SubjectCardGrid({
           dosBloques && hallazgosOrdenados.length > 0 ? (
             <>
               <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
-              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} onVerDetalle={scrollAHallazgo} />
+              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} />
             </>
           ) : undefined
         }
@@ -347,7 +342,7 @@ export function SubjectCardGrid({
               titulo="Qué determina el veredicto"
             >
               <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
-              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} onVerDetalle={scrollAHallazgo} />
+              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} />
             </SeccionInforme>
           )}
           {/* ═══ 4 · LOS NÚMEROS (paper2) — seis cifras + modal de cálculo ═══ */}

@@ -26,6 +26,11 @@ import { referenciaHallazgo } from "./referencia-hallazgo";
  * La `fraseCanonica` NO se borra: sigue viva en el hallazgo y sigue entrando al
  * user prompt como insumo. Solo desaparece de esta superficie.
  *
+ * LA FILA NO ES CLICABLE (09-sep-2026). Es informativa. Sin puntero, sin hover y sin
+ * rol de botón: apretar y perder el hilo es peor que no tener puerta. Nada queda
+ * inalcanzable — cada capítulo de «Cómo funciona como inversión» es su propio botón en
+ * el acordeón, así que la fila era un atajo, no la única puerta.
+ *
  * SÍMBOLO, NO COLOR (09-sep-2026). La dirección la dice una flecha en Ink: ↓ lo que
  * frena, ↑ lo que ayuda. El bloque queda SIN color salvo una excepción: la cifra que
  * es un MONTO NEGATIVO conserva Signal Red.
@@ -37,14 +42,11 @@ export function PrincipalesHallazgos({
   hallazgos,
   currency,
   valorUF,
-  onVerDetalle,
 }: {
   /** Ya ordenados por `ordenarHallazgosPiramide`; se muestran los primeros 4. */
   hallazgos: Hallazgo[];
   currency: "CLP" | "UF";
   valorUF: number;
-  /** Lleva al desarrollo del hallazgo (ancla del capítulo). */
-  onVerDetalle: (h: Hallazgo) => void;
 }) {
   // ORDEN AGRUPADO: en contra primero, a favor después. Sin encabezados de grupo — con
   // las flechas el agrupamiento se ve solo, y un encabezado para dos filas pesa más que
@@ -73,9 +75,7 @@ export function PrincipalesHallazgos({
         // cuatro filas.
         const flecha = h.direccion === "adverso" ? "↓" : h.direccion === "favorable" ? "↑" : "";
         return (
-          // La línea entera es un <button>: accesible por teclado y con foco visible,
-          // sin el `role="button"` que obliga a manejar Enter/Space a mano.
-          <button key={h.id} type="button" className="hz-lin" onClick={() => onVerDetalle(h)}>
+          <div key={h.id} className="hz-lin">
             {/* La flecha REPITE lo que la frase ya dice con palabras: es apoyo visual,
                 no información nueva, así que no entra al árbol de accesibilidad. */}
             <span className="hz-fl" aria-hidden="true">{flecha}</span>
@@ -87,7 +87,7 @@ export function PrincipalesHallazgos({
                   hundiría respecto de las otras tres. */}
               <small>{ref || " "}</small>
             </span>
-          </button>
+          </div>
         );
       })}
     </div>

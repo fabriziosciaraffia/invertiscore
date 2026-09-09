@@ -36,21 +36,12 @@ import { Matriz, nombreVeredicto, FilaDato, FilasDato, BarraTramos, CurvaAnual, 
  */
 export type CapituloStrId = "renta" | "flujo" | "noches" | "pagas" | "gestion" | "resultado";
 
-export const CAPITULO_DE_HALLAZGO_STR: Record<string, CapituloStrId> = {
-  rentabilidad_str: "renta",
-  flujo_str: "flujo",
-  estructura_costos_str: "flujo",
-  ocupacion_vs_estimacion: "noches",
-  sensibilidad_str: "noches",
-  sobreprecio: "pagas",
-  estructura_financiamiento: "pagas",
-  distancia_veredicto: "pagas",
-  ventaja_vs_ltr: "gestion",
-  capex_puesta_a_punto: "resultado",
-  tir: "resultado",
-  patrimonio: "resultado",
-  plusvalia: "resultado",
-};
+/* CAPITULO_DE_HALLAZGO_STR SE RETIRA CON ACTA (09-sep-2026).
+ * Mapeaba cada hallazgo al capitulo donde vive su desarrollo, y su unico consumidor
+ * era el atajo de la fila de hallazgos. Con la fila ya no clicable el mapa quedo sin
+ * lector: un export vivo sin consumidor se lee como un vinculo que existe, y no existe.
+ * Nada queda inalcanzable — cada capitulo es su propio boton en el acordeon. La
+ * relacion hallazgo↔capitulo, si vuelve a hacer falta, esta en el historial. */
 export const anchorCapituloStr = (id: CapituloStrId) => `cap-str-${id}`;
 
 const ROMANO: Record<CapituloStrId, string> = { renta: "I", flujo: "II", noches: "III", pagas: "IV", gestion: "V", resultado: "VI" };

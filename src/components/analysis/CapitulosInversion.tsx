@@ -69,19 +69,12 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 export type CapituloId = "renta" | "flujo" | "pagas" | "plusvalia" | "resultado";
 
-/** A qué capítulo lleva «↓ Ver detalle» de cada hallazgo de la sección 3. */
-export const CAPITULO_DE_HALLAZGO: Record<string, CapituloId> = {
-  cap_rate: "renta",
-  sensibilidad: "renta",
-  flujo_mensual: "flujo",
-  sobreprecio: "pagas",
-  estructura_financiamiento: "pagas",
-  distancia_veredicto: "pagas",
-  capex_puesta_a_punto: "pagas",
-  plusvalia: "plusvalia",
-  patrimonio: "resultado",
-  tir: "resultado",
-};
+/* CAPITULO_DE_HALLAZGO SE RETIRA CON ACTA (09-sep-2026).
+ * Mapeaba cada hallazgo al capitulo donde vive su desarrollo, y su unico consumidor
+ * era el atajo de la fila de hallazgos. Con la fila ya no clicable el mapa quedo sin
+ * lector: un export vivo sin consumidor se lee como un vinculo que existe, y no existe.
+ * Nada queda inalcanzable — cada capitulo es su propio boton en el acordeon. La
+ * relacion hallazgo↔capitulo, si vuelve a hacer falta, esta en el historial. */
 
 export function anchorCapitulo(id: CapituloId): string {
   return `cap-${id}`;
