@@ -43,6 +43,7 @@ import { ordenarHallazgosPiramideSTR } from "../../../src/lib/piramide-orden-str
 import { conTimeout, esTimeout, TIMEOUT_GENERADOR_MS } from "./timeout";
 import { STR_GE_SEEDS, loadFrozen } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
+import { contarGuards, fundir, nuevoBaseline, printBaselineGuards, type BaselineGuards } from "./str-guards-baseline";
 import { frasesCanonicasDe, oracionQueCopia } from "../../../src/lib/copia-frase";
 // Los imports de `contextoGuardsStr` y `violacionesPorCampo` se fueron con AS6: los
 // guards de dirección siguen corriendo DENTRO del generador (str-guards.ts), no acá.
@@ -51,6 +52,10 @@ import type { Check } from "./invariants";
 import type { SeedReport } from "./recompute";
 
 const WORDS = (s: string) => (s.trim().match(/\S+/g) || []).length;
+// El baseline de guards de la tanda vive en su propio modulo (str-guards-baseline.ts):
+// una sola definicion de la metrica para el tier y para el lector que compara dos dumps.
+// Si la cuenta viviera en los dos lados, tarde o temprano dirian cosas distintas del
+// mismo dump.
 
 // Los seis GE reales del corpus: dos veredictos dominantes (GE-1 COMPRAR, GE-2 AJUSTA),
 // el gate de regulación (GE-3), LTR-negativo (GE-4), ocupación fallback (GE-5) y ADR
@@ -96,6 +101,8 @@ export async function runStrGenerateTier(
   const frozen = loadFrozen();
   const reports: SeedReport[] = [];
   const tanda: TandaStr[] = [];
+  const baselinePorSeed: Array<[string, BaselineGuards]> = [];
+  const baselineTanda = nuevoBaseline();
   if (opts.dump) mkdirSync(opts.dump, { recursive: true });
   const seeds = (opts.seeds ?? STR_GEN_SEEDS).filter((k) => (STR_GEN_SEEDS as readonly string[]).includes(k));
 
@@ -109,6 +116,7 @@ export async function runStrGenerateTier(
     }
 
     let genOk = 0;
+    const baseSeed = nuevoBaseline();
     const failCounts: Record<string, number> = {};
     const bump = (rule: string) => { failCounts[rule] = (failCounts[rule] ?? 0) + 1; };
     const detalles: string[] = [];
@@ -125,18 +133,28 @@ export async function runStrGenerateTier(
         const archivo = opts.from ? join(opts.from, `${key}-str-run${run}.json`) : null;
         let ai: any;
         let fallbackMotor = false;
+        // `null` ⇒ esta generación no tiene log de guards (dump anterior al campo).
+        let warns: string[] | null = null;
         if (archivo && existsSync(archivo)) {
-          ai = (JSON.parse(readFileSync(archivo, "utf-8")) as { result: any }).result;
-          process.stderr.write(` (dump)\n`);
+          const dumpeado = JSON.parse(readFileSync(archivo, "utf-8")) as { result: any; warns?: unknown };
+          ai = dumpeado.result;
+          warns = Array.isArray(dumpeado.warns) ? (dumpeado.warns as string[]) : null;
+          process.stderr.write(` (dump${warns ? "" : ", SIN log de guards"})\n`);
         } else {
           // Simulaciones del CONGELADO: las del recompute del seed (mismo contexto sintetizado).
           // Los guards con reintento ([HERO-CLAIM], [STR-…]) se ven en la tanda: sin logger no queda rastro.
           let gen: Awaited<ReturnType<typeof generateStrProse>>;
           fallbackMotor = false;
+          // El log ENTERO va al dump; a stderr sigue yendo el subconjunto legible de siempre.
+          const capturados: string[] = [];
+          warns = capturados;
           try {
             gen = await conTimeout(generateStrProse({
               anthropic, inp: frozen[key].input_data, r: rForProse as any, comuna, simulacion: r.sim,
-              logger: (m) => { if (/^\[(?:HERO-CLAIM|STR-)/.test(m)) process.stderr.write(`\n        ${key} ${m.slice(0, 220)}`); },
+              logger: (m) => {
+                capturados.push(m);
+                if (/^\[(?:HERO-CLAIM|STR-)/.test(m)) process.stderr.write(`\n        ${key} ${m.slice(0, 220)}`);
+              },
             }), TIMEOUT_GENERADOR_MS, `${key} run ${run + 1}`);
           } catch (e) {
             // Timeout por llamada (06-sep-2026): FALLA-TIMEOUT (dura) y la tanda sigue.
@@ -153,6 +171,9 @@ export async function runStrGenerateTier(
           // >20 palabras o con monto). Piso diseñado, no falla; la tasa mide el retry.
           fallbackMotor = gen.titular?.fallback === "motor";
         }
+        // Denominador del baseline: generaciones que llegaron hasta acá. Las que se cayeron
+        // por timeout ya hicieron `continue` y no entran — no completaron los guards.
+        contarGuards(baseSeed, warns);
         if (!ai) { bump("gen.null"); continue; }
         genOk++;
         const lead: string = ai.conviene?.respuestaDirecta ?? "";
@@ -204,6 +225,9 @@ export async function runStrGenerateTier(
             coronado: coronado ? { id: coronado.id, titular: coronado.titular, fraseCanonica: coronado.fraseCanonica, decisividad: coronado.decisividad } : null,
             piramide: r.hz.map((h) => ({ id: h.id, decisividad: h.decisividad, direccion: h.direccion })),
             result: ai,
+            // Espejo del dump de LTR. Se OMITE si esta generación no tiene log (venía de un
+            // dump viejo): un `warns: []` mentiría diciendo que ningún guard disparó.
+            ...(warns ? { warns } : {}),
           }, null, 2), "utf-8");
         }
 
@@ -266,7 +290,10 @@ export async function runStrGenerateTier(
     const hardFail = checks.filter((c) => !c.pass && !c.rebaseline).length;
     const soft = checks.filter((c) => !c.pass && c.rebaseline).length;
     reports.push({ key: `${key}-gen`, checks, hardFail, rebaseline: soft });
+    baselinePorSeed.push([key, baseSeed]);
+    fundir(baselineTanda, baseSeed);
   }
+  printBaselineGuards(baselinePorSeed, baselineTanda);
   return { reports, tanda };
 }
 
