@@ -4,7 +4,7 @@ import { Ang } from "./shared/Ang";
 import type { AnalysisMetrics, FullAnalysisResult } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
 import { SeisCifras, type CifraInforme } from "./shared/SeisCifras";
-import { fmtMoney } from "./utils";
+import { fmtMoney, menos } from "./utils";
 import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
 
 /**
@@ -41,7 +41,10 @@ export function LosNumeros({
   valorUF: number;
   onCalculo?: () => void;
 }) {
-  const pct1 = (n: number) => `${n.toFixed(1).replace(".", ",")}%`;
+  // El signo tipográfico sale de `menos` (utils.ts). Afecta las dos celdas que
+  // pueden ir en negativo —«Retorno sobre lo puesto» y la TIR—, que hasta acá
+  // imprimían el guion ASCII al lado de las filas de hallazgo, ya con «−».
+  const pct1 = (n: number) => `${menos(n.toFixed(1).replace(".", ","))}%`;
   const coc = metricaValorONull(metrics.cashOnCash);
   const tir = metricaValorONull(results.exitScenario?.tir);
   const anios = results.exitScenario?.anios ?? 10;

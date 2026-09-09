@@ -14,6 +14,7 @@
 //  - Anatomía y tokens del mockup aprobado (mockup-piramide.html), con --franco-*.
 
 import { angliza } from "./shared/Ang";
+import { menos } from "./utils";
 import type { Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { fuenteHistoricaPlusvalia, rangoDesdeFuente } from "@/lib/plusvalia-procedencia";
@@ -28,11 +29,9 @@ import { distanciaFindingDisplay } from "@/lib/distancia-copy";
 // prev/next; la pirámide STR pasa su propio `drawerMap`.
 
 // ── Formato (tuteo neutro, coma decimal chilena) ──────────────────────────────
-// El − TIPOGRÁFICO, no el guion ASCII que devuelve toFixed/String. Desde que las
-// cifras de los hallazgos viven en una columna (la fila como línea, 08-sep-2026),
-// un "-3%" al lado de un "−$283.194" se ve descalibrado. Mismo arreglo que ya
-// tenía `dec1` en DrawersPropios (HUECO-3b).
-const menos = (s: string) => s.replace("-", "−");
+// El − TIPOGRÁFICO sale de `menos` en utils.ts (fuente única): tenerlo duplicado acá
+// fue justo lo que dejó «Las seis cifras» con el guion ASCII mientras estas filas
+// usaban el tipográfico. Mismo arreglo que ya tenía `dec1` en DrawersPropios (HUECO-3b).
 const pct1 = (n: number) => menos(n.toFixed(1).replace(".", ","));
 // Margen de sensibilidad: entero sin decimal (−7%), coma chilena si no (−7,5%).
 const fmtMargin = (n: number) => menos(Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));

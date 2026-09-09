@@ -5,6 +5,20 @@
 import type { AnalysisMetrics } from "@/lib/types";
 
 /**
+ * EL SIGNO MENOS DEL INFORME — «−» (U+2212), no el guion ASCII que devuelven
+ * `toFixed` y `String`.
+ *
+ * Vivía privado en GenericFindingCard, así que las cifras de los hallazgos usaban el
+ * tipográfico y las de «Las seis cifras» el ASCII: en la misma página, un «-6,5%» en
+ * la celda de retorno al lado de un «−$283.194» en la fila de hallazgo. Sube acá para
+ * que el signo tenga UNA fuente y no dos copias que se desincronizan.
+ *
+ * Reemplaza solo el PRIMER guion: los formateadores lo aplican al signo de un número,
+ * no a texto con guiones internos.
+ */
+export const menos = (s: string) => s.replace("-", "−");
+
+/**
  * Compatibilidad con análisis guardados con nombres viejos (yieldBruto, yieldNeto).
  * Sin esto, métricas legacy disparan NaN en cliente. Ver audit/sesionB-bug-nan/.
  */
