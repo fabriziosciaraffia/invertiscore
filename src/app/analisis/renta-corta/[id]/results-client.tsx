@@ -38,6 +38,7 @@ import { fechaCortaCL } from "@/lib/fecha-cl";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { PrincipalesHallazgos } from "@/components/analysis/PrincipalesHallazgos";
 import { RegulacionEdificio } from "@/components/analysis/str/RegulacionEdificio";
+import { esProsaStrPodada } from "@/components/analysis/AIInsightSection";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { TokensShared } from "@/components/analysis/shared";
 import { SeisCifrasStr } from "@/components/analysis/str/SeisCifrasStr";
@@ -293,6 +294,17 @@ export function STRResultsClient({
   // FASE 4: la prosa llega CRUDA (con `**…**`) — el plumón se pinta en los
   // puntos de render. El strip sobrevive SOLO en /documento (el PDF no cambia).
   const aiParaRender = aiAnalysis;
+  // ── DOS CAMINOS DE RENDER (v17) ───────────────────────────────────────────
+  // Con prosa podada las razones se leen DENTRO del bloque de arriba y la sección «Qué
+  // determina el veredicto» deja de existir. Con prosa vieja —o sin prosa— la página es
+  // la de siempre. El camino viejo es PERMANENTE para las 94 filas anónimas del parque.
+  const strPodada = esProsaStrPodada(aiParaRender);
+  // La alternancia de fondos es la forma de la página (contrato T2). Al fusionarse una
+  // sección, las tres siguientes invierten su tono para que dos consecutivas nunca
+  // compartan papel. Mismo ajuste que hizo LTR en v21.
+  const tonoNumerosStr = strPodada ? "paper" : "paper2";
+  const tonoInversionStr = strPodada ? "paper2" : "paper";
+  const tonoZonaStr = strPodada ? "paper" : "paper2";
   // Prosa vieja en pantalla: la del server marcada como tal (no dueño) o la del dueño cuya
   // regen falló o sigue en vuelo (la inicial era stale y no fue reemplazada).
   const mostrandoProsaVieja = prosaDesactualizada || (aiStaleInitial && aiAnalysis != null && aiAnalysis === initialAi);
@@ -500,9 +512,23 @@ export function STRResultsClient({
             aiLoading={aiLoading && !aiAnalysis}
             prosaError={aiError && !aiAnalysis ? aiError : null}
             onRetryProsa={() => generarProsa("manual")}
+            razones={
+              strPodada && hallazgosOrdenadosSTR.length > 0 ? (
+                <>
+                  <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
+                  <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} onVerDetalle={scrollAHallazgo} />
+                  <RegulacionEdificio inputData={inputData} currency={currency} valorUF={ufValue} />
+                </>
+              ) : undefined
+            }
           />
         </SeccionInforme>
-        {hallazgosOrdenadosSTR.length > 0 && (
+        {/* CAMINO VIEJO. Con prosa podada esta sección no existe: las mismas cuatro
+            líneas (más la regulación) se leen arriba, bajo la línea que declara. Acá
+            siguen porque el informe viejo tiene que verse coherente consigo mismo —su
+            título pregunta lo que su prosa contesta— y porque las 94 filas anónimas del
+            parque STR nunca van a regenerar. */}
+        {!strPodada && hallazgosOrdenadosSTR.length > 0 && (
           <SeccionInforme
             id="principales-hallazgos"
             tono="paper"
@@ -519,7 +545,7 @@ export function STRResultsClient({
         )}
         <SeccionInforme
           id="los-numeros"
-          tono="paper2"
+          tono={tonoNumerosStr}
           titulo="Las seis cifras"
         >
           <MarcaSeccion seccion="numeros" tipo="str" accessLevel={accessLevel} />
@@ -528,7 +554,7 @@ export function STRResultsClient({
         </SeccionInforme>
         <SeccionInforme
           id="la-inversion"
-          tono="paper"
+          tono={tonoInversionStr}
           titulo="Cómo funciona como renta corta"
         >
           <MarcaSeccion seccion="piramide" tipo="str" accessLevel={accessLevel} />
@@ -560,7 +586,7 @@ export function STRResultsClient({
           )}
         </SeccionInforme>
         {/* La comuna vivía en el ksub; al morir el ksub sube al título. */}
-        <SeccionInforme id="la-zona" tono="paper2" titulo={`La zona · ${comuna}`}>
+        <SeccionInforme id="la-zona" tono={tonoZonaStr} titulo={`La zona · ${comuna}`}>
           <MarcaSeccion seccion="zona" tipo="str" accessLevel={accessLevel} />
           {/* T2 (05-sep-2026): La zona sobre piezas compartidas, desde `zonaStr` (server, con
               procedencia). T3 borró ZonaCardSTR y el drawer de tipo de huésped. */}

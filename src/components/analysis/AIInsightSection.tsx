@@ -98,6 +98,26 @@ export function esProsaDosBloques(ai: any): boolean {
   return hasAiV2(ai) && ((ai as { promptVersion?: number }).promptVersion ?? 0) >= 21;
 }
 
+/**
+ * ¿Esta prosa STR es de la forma podada (v17) o de los siete bloques viejos?
+ *
+ * Mismo criterio que `esProsaDosBloques` de LTR y por la misma razón: el discriminador
+ * es `promptVersion`, que se persiste con el JSON, y NO la forma de `conviene` — sus
+ * campos vivos no cambian en v17 y lo que muere (`veredictoFrase`) es una AUSENCIA, la
+ * señal más frágil que existe. Las filas sin `promptVersion` caen al camino viejo.
+ *
+ * EL CAMINO VIEJO NO ES TEMPORAL, igual que en LTR: de las 167 filas STR con prosa, 73
+ * tienen dueño y se invalidan solas al abrirse, pero 94 son ANÓNIMAS y no pueden
+ * regenerar (401). Esas conservan sus siete bloques para siempre.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function esProsaStrPodada(ai: any): boolean {
+  return !!ai
+    && typeof ai === "object"
+    && typeof ai.conviene?.respuestaDirecta === "string"
+    && ((ai as { promptVersion?: number }).promptVersion ?? 0) >= 17;
+}
+
 /** Renderiza contenido AI con bold markdown simple (**text**), preservando
  * párrafos. Per skill §2.5 los consumers deben aplicar `italic` al wrapper
  * cuando el campo es cuerpo IA (Patrón 4). */

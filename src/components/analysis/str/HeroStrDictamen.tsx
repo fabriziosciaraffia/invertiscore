@@ -10,6 +10,9 @@ import { renderPlumon } from "@/components/analysis/hallazgos/plumon";
 import { VProsa, VViz, VCierre, Dial, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { DrawerDistanciaStr } from "@/components/analysis/drawers/DrawersPropios";
 import { PosicionFranco, type FooterPosicion } from "@/components/analysis/shared";
+import { esProsaStrPodada } from "@/components/analysis/AIInsightSection";
+import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
+import type { ReactNode } from "react";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
@@ -33,7 +36,12 @@ export function HeroStrDictamen({
   aiLoading,
   prosaError,
   onRetryProsa,
+  razones,
 }: {
+  /** Las cuatro líneas de hallazgo más el bloque de regulación. En v17 se leen DENTRO
+   *  de este bloque, debajo de la línea que declara; con prosa vieja el caller las monta
+   *  en su sección aparte y acá no llega nada. */
+  razones?: ReactNode;
   ai: AIAnalysisSTRv2 | null;
   results: ShortTermResult;
   veredicto: STRVerdict;
@@ -46,13 +54,27 @@ export function HeroStrDictamen({
   prosaError?: string | null;
   onRetryProsa?: () => void;
 }) {
+  // ── EL DISCRIMINADOR ──────────────────────────────────────────────────────
+  // Prosa podada (v17) o los siete bloques viejos. El camino viejo es permanente para
+  // las 94 filas anónimas del parque STR, que no pueden regenerar.
+  const podada = esProsaStrPodada(ai);
   const conviene = ai?.conviene;
   const respuesta = conviene?.respuestaDirecta?.trim() || null;
   const reencuadre = conviene?.reencuadre?.trim() || null;
-  const capsula = conviene?.veredictoFrase?.trim() || null;
+  // LA CÁPSULA MURIÓ EN v17. Con el título del bloque siendo la línea que declara
+  // («Compra.» / «Ajusta los números.» / «Busca otro.»), esta línea en primera persona
+  // decía la conclusión por TERCERA vez: la banda de la portada, el título y ella. La
+  // prosa vieja la conserva porque su cuerpo fue escrito con ella en el medio.
+  const capsula = podada ? null : conviene?.veredictoFrase?.trim() || null;
   const cajaAccionable = conviene?.cajaAccionable?.trim() || null;
-  // La misma pregunta que LTR: la portada ya dijo "renta corta" y el veredicto.
-  const pregunta = conviene?.pregunta?.trim() || "¿Conviene o no conviene?";
+  // LA ACCIÓN, dentro de «Lo que haría yo» (v17): el único bloque de prosa que no tenía
+  // equivalente determinista. Antes no se renderizaba en ninguna parte de la página.
+  const estrategia = podada ? ai?.vsLTR?.estrategiaSugerida?.trim() || null : null;
+  // EL TÍTULO ES LA RESPUESTA, NO LA PREGUNTA (v17) — mismo criterio y misma fuente que
+  // LTR: `lineaQueDeclara` sobre los tres veredictos, que STR persiste iguales. No hay
+  // una formulación propia de STR: la decisión que el lector toma es la misma, y tener
+  // dos redacciones por modalidad sería lo que la fuente única vino a evitar.
+  const pregunta = (podada ? lineaQueDeclara(veredicto) : conviene?.pregunta?.trim()) || "¿Conviene o no conviene?";
   const fechaFirma = fechaCortaCL(fechaProsa ?? createdAt);
   const money = (n: number) => (currency === "UF" ? `UF ${(n / (valorUF || 1)).toFixed(1).replace(".", ",")}` : `$${Math.round(n).toLocaleString("es-CL")}`);
 
@@ -150,7 +172,19 @@ export function HeroStrDictamen({
           ) : null}
         </div>
       </div>
-      <PosicionFranco cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null} fechaFirma={fechaFirma} footer={footer} tipo="str" veredicto={veredicto} />
+      {/* LAS RAZONES, dentro del mismo bloque (v17): las cuatro líneas de hallazgo y el
+          bloque de regulación suben acá desde su sección propia. «Qué determina el
+          veredicto» no se borra — se fusiona: la línea que declara ya es ese título. */}
+      {podada && razones}
+      <PosicionFranco
+        cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}
+        prosa={estrategia ? renderPlumon(estrategia) : undefined}
+        titulo={podada ? "Lo que haría yo" : undefined}
+        fechaFirma={fechaFirma}
+        footer={footer}
+        tipo="str"
+        veredicto={veredicto}
+      />
     </div>
   );
 }
