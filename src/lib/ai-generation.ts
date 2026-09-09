@@ -46,10 +46,7 @@ import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 import {
   CAJA_ACCIONABLE_MAX,
   TECHO_CAJA_ACCIONABLE_DURO,
-  NEGOCIACION_MAX,
-  NEGOCIACION_MIN,
   techoRespuestaModelo,
-  TECHO_NEGOCIACION_DURO,
   TOLERANCIA_PRESUPUESTO,
   contarPalabras,
   recortarContinuacion,
@@ -3365,236 +3362,31 @@ Responde SOLO este JSON, sin texto alrededor:
       }
     }
 
-    // ── GUARDS DE negociacion.contenido (GOAL 1) ────────────────────────────
+    // ─── GUARDS DE negociacion.contenido — RETIRADOS CON ACTA (v22, 09-sep-2026) ───
     //
-    // Tres pasos, en este orden: PISO → NUMERALES → enforcement determinista.
+    // Eran tres más un enforcement determinista, sobre un campo que v22 mata:
     //
-    // EL ORDEN NO ES CASUAL. El retry de piso pide DESARROLLAR, y pedir que se
-    // alargue mientras rigen prohibiciones de cifras tienta al relleno con
-    // magnitudes. Se alarga primero y se limpia después: el detector de numerales
-    // es siempre la última palabra sobre el texto.
+    //   NEG-PISO      PRESENCIA  — exigía ≥ NEGOCIACION_MIN palabras. Sin campo no hay
+    //                              piso que exigir. Ya estaba neutralizado en 2a porque
+    //                              leía el 0 como «se quedó corto» y disparaba un retry
+    //                              para desarrollar un campo inexistente.
+    //   NEG-MAGNITUD  PROHIBICIÓN— prohibía TODA cifra de plata, UF o %.
+    //   NEG-BUDGET    MEDIDA     — techo NEGOCIACION_MAX.
+    //   trimmer                  — recorte por oración de las que traían magnitudes.
     //
-    // POR QUÉ EL DETECTOR ES GENÉRICO Y NO UNA LISTA. Las versiones anteriores
-    // armaban listas de cifras esperadas (los precios del plan, después las de
-    // `financingHealth`) y las buscaban formateadas. Falló tres veces seguidas por
-    // el mismo motivo: cada vez que se cerraba una fuente el argumento se mudaba a
-    // la siguiente —break-even → techo → escalera del pie → hero— y quedaban
-    // libres el ksub, el score y los KPI. La regla pasó a ser la CATEGORÍA:
-    // ninguna cifra de plata, UF ni porcentaje. Es más corta que las listas y no
-    // depende de que alguien recuerde agregar la próxima fuente.
+    // POR QUÉ LA PROHIBICIÓN SÍ MUERE ACÁ, y no se reapunta como se hizo con A7 y con
+    // HERO-CLAIM: NEG-MAGNITUD prohibía cifras en un campo cuyo CONTRATO era no tenerlas
+    // —por eso era campo único, sin par _clp/_uf: sin magnitudes, el texto no cambia con
+    // la moneda—. `conviene.cajaAccionable` es lo contrario: es el campo CON cifras, el
+    // que cita el objetivo, el aporte y la condición. Reapuntar esta prohibición ahí
+    // prohibiría exactamente lo que el campo tiene que hacer.
     //
-    // Conteos, distancias y períodos NO son magnitudes y no se tocan: "108
-    // publicaciones" es tamaño de muestra, y suma credibilidad sin duplicar nada.
-    // NEUTRALIZADO EN v22 (parcial 2a) — se retira entero en 2b.
-    // El schema de v22 ya no pide `negociacion.contenido`, así que el modelo no lo emite
-    // y `contarPalabras` da 0. Sin esta condición, NEG-PISO leía ese 0 como «se quedó
-    // corto» y disparaba un retry para DESARROLLAR un campo que no existe: una llamada
-    // extra al modelo en cada generación, pagada, para llenar un hueco inexistente.
+    // No es que el riesgo se haya ido: es que el riesgo era del contrato de ESE campo, y
+    // el contrato se fue con él. El trimmer muere por lo mismo (recortaba oraciones por
+    // traer magnitudes) y NEG-PISO porque cajaAccionable ya tiene su piso en A5.
     //
-    // Los tres guards se aplican SOLO si el campo llegó con texto. Con v22 nunca llega;
-    // con la prosa v21 y vieja que se regenera con este código, sí, y ahí siguen valiendo.
-    if (aiResult?.negociacion && contarPalabras(aiResult.negociacion.contenido) > 0) {
-      // CAMPO ÚNICO desde v21: una sola variante que medir, una sola que limpiar.
-      const wcNeg = (ai: typeof aiResult): number => contarPalabras(ai?.negociacion?.contenido);
-      const textoNeg = (ai: typeof aiResult): string => ai?.negociacion?.contenido ?? "";
-      /** Numerales de MAGNITUD: lo que lleva `$`, `UF` o `%`. */
-      const NUMERAL_MAGNITUD = /\$\s?\d[\d.,]*|UF\s?\d[\d.,]*|\d[\d.,]*\s?%/gi;
-      // DEDUPLICADO: `textoNeg` concatena las variantes _clp y _uf, y la misma
-      // magnitud aparece en las dos. Sin el Set, la métrica reportaría el doble.
-      const numeralesDe = (ai: typeof aiResult): string[] =>
-        (textoNeg(ai).match(NUMERAL_MAGNITUD) ?? [])
-          .map((t) => t.trim())
-          .filter((t, i, arr) => arr.indexOf(t) === i);
-
-      const limiteNeg = NEGOCIACION_MAX * TOLERANCIA_PRESUPUESTO;
-      let mejorNeg = aiResult;
-      // RED DE SEGURIDAD DEL PASO 3. Guarda el último texto SIN magnitudes que haya
-      // producido un retry, aunque se pase del techo de palabras y por eso no lo
-      // hayamos aceptado como "mejor". Sirve para un caso que se vio en la FULL de
-      // v21 (GS-7): el retry devolvió un argumento limpio de 48 palabras, se rechazó
-      // por 2 palabras sobre el techo, y el recorte determinista —que solo sabe
-      // descartar oraciones sucias— se quedó sin ninguna limpia y dejó el campo en
-      // CERO palabras. Un argumento largo de más es un defecto de calibración; un
-      // campo vacío es un bloque sin su primer párrafo.
-      let ultimoLimpio: typeof aiResult | null = null;
-      let mejorNegWC = wcNeg(aiResult);
-      let mejorNegNum = numeralesDe(aiResult);
-      const NEG_MAX_RETRIES = 2;
-
-      // MÉTRICA DEL GOAL — cuántas generaciones salen limpias SIN retry. Si esta
-      // tasa no sube, el contrato no funcionó y los retries son un parche caro,
-      // no un éxito. Se emite siempre, incluso cuando todo está bien, para poder
-      // contarla sobre corridas reales.
-      const primeraLimpia =
-        mejorNegNum.length === 0 && mejorNegWC <= limiteNeg && mejorNegWC >= NEGOCIACION_MIN;
-      console.warn(
-        `[NEG-PRIMERA-PASADA] ${analysisId}: ${primeraLimpia ? "LIMPIA" : "sucia"} · ${mejorNegWC} palabras · ${mejorNegNum.length} magnitud(es)${mejorNegNum.length ? ` (${mejorNegNum.join(", ")})` : ""}`,
-      );
-
-      /** Retry quirúrgico: reescribe SOLO este campo. Devuelve el candidato o null. */
-      const retryNeg = async (instruccion: string): Promise<typeof aiResult | null> => {
-        const negActual = typeof mejorNeg?.negociacion?.contenido === "string" ? mejorNeg.negociacion.contenido : "";
-        const promptNeg = `Estás corrigiendo SOLO el campo negociacion.contenido de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
-
-QUÉ ES ESTE CAMPO: el ARGUMENTO con el que se negocia — por qué el vendedor debería moverse, dicho en una razón que el comprador pueda poner sobre la mesa. Si la versión actual trae además la palanca de estructura de financiamiento (pie/tasa), consérvala.
-
-${instruccion}
-
-PROHIBIDO al reescribir: CUALQUIER cifra de plata, de UF o de porcentaje. Ni una: toda magnitud de este informe ya está dibujada en su propio bloque. Di la dirección en palabras ("bajo la mediana", "sobre los comparables de tu cuadra", "con la TIR en negativo"). Conteos, distancias y períodos sí se pueden.
-
-VERSIÓN ACTUAL:
-${negActual}
-
-Responde SOLO este JSON, sin texto alrededor:
-{"contenido": "..."}`;
-        try {
-          const regen = await reg.medir("neg-guard", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 500, messages: [{ role: "user", content: promptNeg }], system: SYSTEM_LTR_CACHED }));
-          acumularUsage(usage, regen);
-          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
-          let nuevo = "";
-          try {
-            const m = regenText.match(/\{[\s\S]*\}/);
-            const obj = JSON.parse(m ? m[0] : regenText);
-            nuevo = typeof obj?.contenido === "string" ? obj.contenido.trim() : "";
-          } catch {
-            /* no parseó */
-          }
-          if (!nuevo) return null;
-          const candidato = { ...mejorNeg, negociacion: { ...mejorNeg.negociacion, contenido: nuevo } };
-          // Invariante de cifras: LTR-CIFRA ya no vuelve a correr sobre este JSON.
-          if (empeoraCifras(userPrompt, mejorNeg, candidato, { ufClp: UF_CLP })) {
-            console.warn(`[NEG-CIFRA-REJECT] ${analysisId}: el retry introdujo cifras fuera del input — candidato descartado`);
-            return null;
-          }
-          return candidato;
-        } catch (e) {
-          console.warn(`[NEG-GUARD] ${analysisId}: retry falló (best-effort): ${(e as Error)?.message ?? e}`);
-          return null;
-        }
-      };
-
-      // ── PASO 1 · PISO ────────────────────────────────────────────────────
-      // Un solo intento: si el modelo no desarrolla a la primera, insistir sale
-      // más caro que publicar un argumento corto — corto es válido, falso no.
-      if (mejorNegWC > 0 && mejorNegWC < NEGOCIACION_MIN) {
-        console.warn(`[NEG-PISO] ${analysisId}: negociacion.contenido ${mejorNegWC} palabras < mín ${NEGOCIACION_MIN} — retry de desarrollo`);
-        const candidato = await retryNeg(
-          `TU TAREA: el argumento actual mide ${mejorNegWC} palabras y se queda corto — el mínimo es ${NEGOCIACION_MIN} y el máximo ${NEGOCIACION_MAX}. DESARROLLA el argumento: agrega el porqué o la consecuencia que hoy falta, sin agregar NINGUNA magnitud. Más razón, no más cifras.`,
-        );
-        if (candidato) {
-          const wc2 = wcNeg(candidato);
-          console.warn(`[NEG-PISO] ${analysisId}: retry → ${wc2} palabras${wc2 >= NEGOCIACION_MIN ? " (OK)" : " (sigue corto — se acepta)"}`);
-          if (wc2 > mejorNegWC && wc2 <= limiteNeg) {
-            mejorNeg = candidato;
-            mejorNegWC = wc2;
-            mejorNegNum = numeralesDe(candidato);
-          }
-        }
-      }
-
-      // ── PASO 2 · TECHO + NUMERALES ───────────────────────────────────────
-      for (
-        let intento = 1;
-        intento <= NEG_MAX_RETRIES && (mejorNegWC > limiteNeg || mejorNegNum.length > 0);
-        intento++
-      ) {
-        if (mejorNegNum.length > 0) {
-          console.warn(`[NEG-MAGNITUD] ${analysisId}: negociacion.contenido trae ${mejorNegNum.length} magnitud(es) (${mejorNegNum.join(", ")}) — retry quirúrgico ${intento}/${NEG_MAX_RETRIES}`);
-        }
-        if (mejorNegWC > limiteNeg) {
-          console.warn(`[NEG-BUDGET] ${analysisId}: negociacion.contenido ${mejorNegWC} palabras > máx ${NEGOCIACION_MAX} — retry quirúrgico ${intento}/${NEG_MAX_RETRIES}`);
-        }
-        const partes: string[] = [];
-        if (mejorNegWC > limiteNeg) {
-          partes.push(`mide ${mejorNegWC} palabras y el MÁXIMO es ${NEGOCIACION_MAX} por variante: comprímelo conservando el argumento`);
-        }
-        if (mejorNegNum.length > 0) {
-          partes.push(`trae ${mejorNegNum.length === 1 ? "una magnitud que sobra" : "magnitudes que sobran"} (${mejorNegNum.join(", ")}): sácalas y di la misma idea en palabras`);
-        }
-        const insistencia = intento === 1 ? "" : " Este es el SEGUNDO aviso: si vuelve a fallar, el sistema recorta por oración y la última idea se pierde entera.";
-        const candidato = await retryNeg(`TU TAREA: el argumento actual ${partes.join("; y ")}.${insistencia}`);
-        if (!candidato) {
-          console.warn(`[NEG-GUARD] ${analysisId}: retry ${intento} no parseó — conservo la versión previa`);
-          break;
-        }
-        const wc2 = wcNeg(candidato);
-        const num2 = numeralesDe(candidato);
-        console.warn(`[NEG-GUARD] ${analysisId}: retry ${intento} → ${wc2} palabras · ${num2.length} magnitud(es)${wc2 <= limiteNeg && num2.length === 0 ? " (OK)" : ""}`);
-        // Mejora si baja magnitudes sin desbordar, o si acorta sin sumar magnitudes.
-        const mejora =
-          (num2.length < mejorNegNum.length && wc2 <= Math.max(mejorNegWC, limiteNeg)) ||
-          (wc2 < mejorNegWC && num2.length <= mejorNegNum.length);
-        if (num2.length === 0 && wc2 > 0) ultimoLimpio = candidato;
-        if (mejora) {
-          mejorNeg = candidato;
-          mejorNegWC = wc2;
-          mejorNegNum = num2;
-        }
-      }
-      aiResult = mejorNeg;
-
-      // ── PASO 3 · ENFORCEMENT DETERMINISTA ────────────────────────────────
-      // Si quedó alguna magnitud, cae la ORACIÓN que la trae —nunca a media
-      // frase—. Publicar la cifra duplicada es peor que publicar una oración menos:
-      // la duplicación es el defecto entero. Desde v21 el campo es único, así que ya
-      // no hay que alinear el índice descartado entre dos variantes.
-      if (mejorNegNum.length > 0 && aiResult?.negociacion) {
-        const partir = (t: string): string[] => t.split(/(?<=[.;])\s+/).map((x) => x.trim()).filter(Boolean);
-        const oraciones = partir(typeof aiResult.negociacion.contenido === "string" ? aiResult.negociacion.contenido : "");
-        // Copia SIN `/g`: `.test()` sobre un regex global avanza `lastIndex` y el
-        // test siguiente empezaría a mitad de la oración.
-        const traeMagnitud = (t: string) => new RegExp(NUMERAL_MAGNITUD.source, "i").test(t);
-        const limpias = oraciones.filter((o) => !traeMagnitud(o));
-        const total = oraciones.length;
-        if (limpias.length > 0) {
-          // Quedan oraciones limpias: se conservan todas, la última incluida.
-          aiResult.negociacion.contenido = limpias.join(" ").trim();
-          mejorNegWC = wcNeg(aiResult);
-          console.warn(
-            `[NEG-MAGNITUD-TRIM] ${analysisId}: no convergió en ${NEG_MAX_RETRIES} reintentos — descartada(s) ${total - limpias.length} oración(es) con magnitudes (${mejorNegNum.join(", ")}), quedan ${mejorNegWC} palabras`,
-          );
-        } else if (ultimoLimpio && contarPalabras(ultimoLimpio.negociacion?.contenido) > 0) {
-          // NINGUNA oración está limpia: en vez de vaciar el campo se recupera el
-          // último texto sin magnitudes que produjo un retry. Se pasa del techo, y el
-          // recorte de presupuesto de abajo lo acota; largo de más se lee, vacío no.
-          const culpables = mejorNegNum.join(", ");
-          aiResult = ultimoLimpio;
-          mejorNegWC = wcNeg(aiResult);
-          mejorNegNum = [];
-          console.warn(
-            `[NEG-MAGNITUD-TRIM] ${analysisId}: las ${total} oración(es) traían magnitudes (${culpables}) — se recupera el retry limpio de ${mejorNegWC} palabras en vez de vaciar el campo`,
-          );
-        } else {
-          // Sin oración limpia y sin retry limpio, el campo SÍ queda vacío: publicar
-          // una magnitud que el diagrama de al lado ya dibuja es peor que publicar el
-          // bloque con su posición sola, que es como degrada el render.
-          aiResult.negociacion.contenido = "";
-          mejorNegWC = 0;
-          console.warn(
-            `[NEG-MAGNITUD-TRIM] ${analysisId}: las ${total} oración(es) traían magnitudes (${mejorNegNum.join(", ")}) y no hubo retry limpio — el campo queda vacío`,
-          );
-        }
-      }
-      if (mejorNegWC > TECHO_NEGOCIACION_DURO && aiResult?.negociacion) {
-        // `recortarContinuacion` recorta un PAR alineado; con campo único se le pasa
-        // el mismo texto dos veces y se usa una sola salida.
-        const actual = typeof aiResult.negociacion.contenido === "string" ? aiResult.negociacion.contenido : "";
-        const { clp, oracionesDescartadas } = recortarContinuacion(actual, actual, TECHO_NEGOCIACION_DURO);
-        // Mismo piso que el recorte por magnitudes: si el techo se llevaría el campo
-        // entero, se conserva el texto previo. Pasarse del presupuesto es un defecto
-        // de calibración que el lector no ve; el bloque sin su párrafo sí se ve.
-        if (contarPalabras(clp) > 0) {
-          aiResult.negociacion.contenido = clp;
-          console.warn(
-            `[NEG-BUDGET-TRIM] ${analysisId}: no convergió (${mejorNegWC} > ${TECHO_NEGOCIACION_DURO}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras`,
-          );
-        } else {
-          console.warn(
-            `[NEG-BUDGET-TRIM] ${analysisId}: el recorte a ${TECHO_NEGOCIACION_DURO} dejaría el campo vacío — conservo las ${mejorNegWC} palabras`,
-          );
-        }
-      }
-    }
+    // Lo que sí sobrevive del subsistema es su hermano de presupuesto: ver CAJA-BUDGET,
+    // que es el RD-BUDGET reapuntado al campo vivo.
 
     // FASE B — inyectar el hallazgo de sobreprecio (determinístico, NO del LLM)
     // en ai_analysis. FUENTE ÚNICA de la desviación: el chip del hero lo lee de
