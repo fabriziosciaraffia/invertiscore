@@ -915,9 +915,14 @@ export function hasNewAiStructure(ai: unknown): boolean {
 // puede convertir a plata con ningún precio único. Ver src/lib/ai-usage.ts.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic, usage?: AiUsage): Promise<{ fabrica: boolean; cita: string }> {
+  // v22: los dos campos que este check miraba —`conviene.respuestaDirecta` y
+  // `negociacion.contenido`— murieron. Sin reapuntar, `JSON.stringify` de dos
+  // undefined da `{}` y haiku contesta fabrica=false SIEMPRE: el guard quedaba
+  // verde para siempre justo en el caso para el que existe (sin mediana confiable
+  // el modelo se la inventa), y encima pagando su llamada. Ahora mira el campo que
+  // heredó toda la prosa.
   const camposNarrativos = JSON.stringify({
-    conviene: aiResult?.conviene?.respuestaDirecta_clp,
-    negociacion: aiResult?.negociacion?.contenido,
+    conviene: aiResult?.conviene?.cajaAccionable_clp,
   });
   const msg = await anthropicClient.messages.create({
     model: MICRO_CHECK_MODEL,
@@ -2616,8 +2621,11 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // Lee la mediana de la FUENTE ÚNICA (hallazgoSobreprecio): la misma que narró el prompt.
     if (hallazgoSobreprecio) {
       const medianaReal = Math.round(hallazgoSobreprecio.valor.medianaComunaUfM2);
+      // v22: la variante UF de la prosa es `cajaAccionable_uf`. Con el campo viejo
+      // el array quedaba vacío, `camposProsa` era "" y el regex no podía casar nunca:
+      // ZONA-DRIFT habría reportado cero drift para siempre sin haber mirado nada.
       const camposProsa = [
-        aiResult?.conviene?.respuestaDirecta_uf,
+        aiResult?.conviene?.cajaAccionable_uf,
       ].filter((s: unknown) => typeof s === "string").join(" ");
       // Heurística simple: si la prosa menciona una mediana de zona distinta a la real ±2 UF
       const matchUF = camposProsa.match(/zona\D{0,20}UF\s*(\d{2,4})/i) || camposProsa.match(/mediana\D{0,20}UF\s*(\d{2,4})/i);
@@ -2707,7 +2715,6 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       };
       const desalineadas: string[] = [];
       for (const [campo, txt] of [
-        ["respuestaDirecta_clp", aiResult?.conviene?.respuestaDirecta_clp],
         ["cajaAccionable_clp", aiResult?.conviene?.cajaAccionable_clp],
         // `reestructuracion` entra al barrido desde la 4ª palanca (pie): es la sección que
         // trae el OTRO pie (`financingHealth.pieSugerido_pct`, hoy una constante fija que
@@ -2770,8 +2777,6 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           })
           .map((o) => o.trim());
       const camposCierre: [string, unknown][] = [
-        ["respuestaDirecta_clp", aiResult?.conviene?.respuestaDirecta_clp],
-        ["respuestaDirecta_uf", aiResult?.conviene?.respuestaDirecta_uf],
         ["cajaAccionable_clp", aiResult?.conviene?.cajaAccionable_clp],
         ["cajaAccionable_uf", aiResult?.conviene?.cajaAccionable_uf],
       ];
