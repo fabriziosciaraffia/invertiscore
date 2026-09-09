@@ -171,3 +171,118 @@ export function rotuloArriendoReferencia(ref: ArriendoReferencia): string {
         : `mediana de arriendos comparables publicados en un radio de ${ref.radioMetros}m`;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EL RESPALDO DEL ARRIENDO — F1 (09-sep-2026).
+//
+// El arriendo es el número del que cuelga todo el informe, y lo puso el usuario. Hasta
+// hoy el único lugar donde el lector podía enterarse de si ese número está contrastado
+// era la prosa: lo decía en 17 de 30 generaciones medidas, o sea que en 13 no.
+//
+// No hay juicio nuevo que inventar. `resolverArriendoReferencia` ya resuelve la fuente,
+// `esReferenciaContrastable` ya dice cuáles sirven para contrastar, y el umbral n≥10 ya
+// estaba calibrado en el wizard (formulario-v4/derive.ts). Esto los junta en una línea.
+//
+// POR QUÉ NO REUSA EL TEXTO DEL WIZARD. `fuenteArriendoLine` dice «Ajústalo si conoces
+// el arriendo real» — es la línea de un campo editable. Acá el informe ya está hecho y
+// el número no se toca: lo que corresponde es decir qué lo respalda. Misma LÓGICA
+// (fuente + n + umbral, que vive acá y es una sola), distinto momento y distinto verbo.
+//
+// Medido sobre las 1.200 filas LTR del parque: 776 tienen referencia (65%) y 424 no
+// (35%). De las que tienen, 721 llegan a n≥10 (93%). `comuna-m2` es 1 fila.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type EstadoRespaldoArriendo =
+  /** No hay dato de zona: el número no se puede contrastar contra nada. */
+  | "sin_referencia"
+  /** Estimado desde el m² comunal: orden de magnitud, no mediana (no contrastable). */
+  | "orden_de_magnitud"
+  /** Hay mediana pero la muestra es chica (n < 10). */
+  | "muestra_chica"
+  /** El número declarado ES la sugerencia de Franco: coincide con la referencia. */
+  | "coincide_con_referencia"
+  /** El usuario declaró otro valor y hay mediana sólida contra la cual medirlo. */
+  | "declarado_con_brecha";
+
+export interface RespaldoArriendo {
+  estado: EstadoRespaldoArriendo;
+  /** La línea que se dibuja bajo el arriendo. Siempre hay una. */
+  texto: string;
+  /** ¿El lector tiene que saber que el número NO está contrastado? */
+  advertencia: boolean;
+  /** Brecha del declarado contra la referencia, en % (solo `declarado_con_brecha`). */
+  brechaPct: number | null;
+}
+
+/** n mínimo para que una mediana se presente como medida y no como indicio. Es el
+ *  umbral que el wizard ya usaba; acá se nombra para que se pueda leer y testear. */
+export const N_MINIMO_MEDIANA = 10;
+
+const fmtRadio = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${m} m`);
+
+/**
+ * Qué respalda el arriendo declarado. Nunca devuelve `null`: cuando no hay con qué
+ * contrastar, ESO es lo que hay que decir — el silencio dejaría al lector creyendo que
+ * el número está verificado.
+ */
+export function respaldoArriendo(input: unknown, arriendoCLP: number): RespaldoArriendo {
+  const ref = resolverArriendoReferencia(input);
+
+  if (!ref) {
+    return {
+      estado: "sin_referencia",
+      texto: "Sin arriendos publicados cerca para comparar: este número lo pusiste tú y el análisis no lo puede contrastar.",
+      advertencia: true,
+      brechaPct: null,
+    };
+  }
+
+  const donde = ref.fuente === "comuna" ? "de la comuna" : `a menos de ${fmtRadio(ref.radioMetros)}`;
+
+  if (!esReferenciaContrastable(ref)) {
+    return {
+      estado: "orden_de_magnitud",
+      texto: `Estimado desde el m² de ${ref.n} arriendos de la comuna, no de arriendos comparables cerca: es un orden de magnitud, no una mediana.`,
+      advertencia: true,
+      brechaPct: null,
+    };
+  }
+
+  if (ref.n < N_MINIMO_MEDIANA) {
+    return {
+      estado: "muestra_chica",
+      texto: `Mediana de solo ${ref.n} ${ref.n === 1 ? "arriendo publicado" : "arriendos publicados"} ${donde} (${fmtCLP(ref.valorCLP)}): muestra chica para contrastar.`,
+      advertencia: true,
+      brechaPct: null,
+    };
+  }
+
+  const procedencia = resolverProcedenciaArriendo(arriendoCLP, ref);
+  const base = `Mediana de ${ref.n} arriendos publicados ${donde}: ${fmtCLP(ref.valorCLP)}`;
+
+  if (procedencia === "estimacion_franco") {
+    return {
+      estado: "coincide_con_referencia",
+      texto: `${base}. Es el valor que usa el análisis.`,
+      advertencia: false,
+      brechaPct: null,
+    };
+  }
+
+  // El caso que la auditoría del canónico encontró: el arriendo declarado por encima de
+  // lo que la zona publica. Es el único hecho de la apertura que no estaba dibujado en
+  // ninguna parte del informe.
+  const brechaPct = Math.round(((arriendoCLP - ref.valorCLP) / ref.valorCLP) * 100);
+  const direccion = brechaPct > 0 ? "sobre" : "bajo";
+  return {
+    estado: "declarado_con_brecha",
+    texto:
+      brechaPct === 0
+        ? `${base}. Lo que declaraste queda en la mediana.`
+        : `${base}. Lo que declaraste queda ${Math.abs(brechaPct)}% ${direccion} esa mediana.`,
+    // Por sobre la mediana el supuesto que sostiene el caso es más exigente que lo que
+    // la zona muestra: eso el lector lo tiene que ver. Por debajo es conservador.
+    advertencia: brechaPct > 0,
+    brechaPct,
+  };
+}

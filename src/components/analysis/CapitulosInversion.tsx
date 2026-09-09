@@ -24,6 +24,7 @@ import { calcDividendo, costoOportunidad, INSTRUMENTOS_REFERENCIA } from "@/lib/
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fuenteHistoricaPlusvalia, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
+import { respaldoArriendo } from "@/lib/arriendo-referencia";
 import { barraDia1 } from "@/lib/plata-dia1";
 import { cierrePlusvalia, cierreRenta, cierreResultado, type FmtCierre } from "@/lib/cierres-capitulos";
 import { HallazgosAcordeon, type FilaHallazgo } from "./hallazgos/HallazgosAcordeon";
@@ -283,6 +284,14 @@ export function CapitulosInversion({
     ksub: `de los ${money(arriendo)} del arriendo, después de cuota, gastos y vacancia`,
     anchorId: anchorCapitulo("flujo"),
     cuerpo: (
+      <>
+      {/* F1 · QUÉ RESPALDA EL ARRIENDO. Va primero y pegado al número, porque todo lo
+          que sigue en este capítulo cuelga de él. Es el único caveat epistémico del
+          informe: el arriendo lo puso el usuario y hasta hoy solo la prosa decía si
+          estaba contrastado — en 17 de 30 generaciones medidas, o sea que en 13 no.
+          Determinista: `respaldoArriendo` resuelve los cinco estados con la referencia
+          de zona que el motor ya tenía. Nunca se calla: sin referencia, ESO es el dato. */}
+      <VFuente>{respaldoArriendo(inputData, arriendo).texto}</VFuente>
       <DrawerCostoMensual
         data={prosa?.costoMensual}
         currency={currency}
@@ -294,7 +303,8 @@ export function CapitulosInversion({
             "Lo que entra cada mes contra todo lo que sale: la cuota, lo que no paga el arrendatario y lo que cuesta tener el depto arrendado. Lo que queda es lo que pones tú.",
           fuente: `Motor Franco · ${ufFecha}`,
         }}
-      />
+      />      </>
+
     ),
   };
 
