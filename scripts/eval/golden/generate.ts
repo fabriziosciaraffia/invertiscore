@@ -238,9 +238,37 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
             if (!/\bno\b|\bni\b|\bnunca\b|\bsin\b/i.test(prev)) { celebra = true; break; }
           }
           if (celebra) bump("A-PC3.retorno-sobre-capital");
-          // Lectura correcta del flujo positivo — el modelo la parafrasea
-          // legítimamente ("se financia sola desde el día uno"): soft, reporta tasa.
-          if (!/(aguanta|sostiene|banca)[^.]{0,80}financiamiento|financia\s+sola|paga\s+su\s+propio\s+(cr[eé]dito|financiamiento)/i.test(todo)) bump("~aguanta-lectura");
+          // Lectura correcta del flujo positivo: que la operación se sostiene por sí
+          // misma. Soft — el fraseo es estocástico y el guardrail positivo vive en el
+          // system; acá solo se reporta la tasa.
+          //
+          // EL REGEX SE ENSANCHÓ (v21.1 · 09-sep-2026) porque reportaba 3/3 y la idea
+          // ESTABA en las tres corridas, dicha bien: «La operación se sostiene sola
+          // mientras el depto esté arrendado», «se sostiene sola desde el día uno», «el
+          // arriendo cubre el dividendo y te sobran $89.411 al mes». La versión anterior
+          // exigía que «sostiene» viniera seguido de la palabra «financiamiento» dentro
+          // de 80 caracteres, o el literal «financia sola» — y ninguna de las tres
+          // paráfrasis entra. Su propio comentario anticipaba la paráfrasis y aun así
+          // dejaba afuera la forma más natural de decirlo.
+          //
+          // Es anterior a v21: «se sostiene sola» habría fallado igual antes. Un soft en
+          // rojo permanente es peor que no tenerlo — entrena a leer los rojos como ruido,
+          // que es justo lo que este goal vino a sacar.
+          //
+          // Tres formas aceptadas, todas con SUJETO explícito (la operación / el
+          // arriendo), para que no entre cualquier "sola" suelto:
+          //   a) aguanta|sostiene|banca … financiamiento|crédito|cuota|dividendo
+          //   b) se sostiene|financia|paga sola  (la paráfrasis que el modelo prefiere)
+          //   c) el arriendo cubre el dividendo / la cuota
+          const RE_AGUANTA = new RegExp(
+            [
+              "(aguanta|sostiene|banca)[^.]{0,80}(financiamiento|cr[eé]dito|cuota|dividendo)",
+              "se\\s+(sostiene|financia|paga)\\s+sola",
+              "(arriendo|operaci[oó]n)[^.]{0,60}cubre[^.]{0,40}(el\\s+)?(dividendo|cuota)",
+            ].join("|"),
+            "i",
+          );
+          if (!RE_AGUANTA.test(todo)) bump("~aguanta-lectura");
         }
       }
 
