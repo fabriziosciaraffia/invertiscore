@@ -18,7 +18,12 @@
 //                    corriendo siempre (cuestan 0) y STR/AMBAS siguen su propia regla
 //                    (--str, --ambas, --ltr-only). Para acotar el COSTO de un --full
 //                    hay que combinarlo: --seed=GS-7 --ltr-only --no-semantic.
-//                    Claves válidas: las 10 GS-* + las 3 BE-* (ver seeds.ts).
+//                    Claves válidas: las 10 GS-* + 3 BE-* de LTR (seeds.ts) y las
+//                    GE-* + BE-*-str de STR (str-seeds.ts).
+//                    Una clave de LTR deja los tiers STR en cero y al revés, así que
+//                    el filtro EXIGE acotar la modalidad: --seed=GS-7 pide --ltr-only
+//                    y --seed=GE-2 pide --str-only. Si no, la capa 2 lo pone en rojo
+//                    en vez de correr cero y reportar verde.
 //     --catch-test   auto-test: rompe invariantes en memoria y verifica que FALLA
 //
 // Exit code 0 solo si no hay fallas duras. Drift de cifra clase (a) → warning
@@ -29,6 +34,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { runRecomputeTier, type SeedReport } from "./recompute";
 import { GOLDEN_SEEDS, BORDE_SEEDS } from "./seeds";
+import { STR_GE_SEEDS } from "./str-seeds";
 import { runCatchTest } from "./catch-test";
 import { runGenerateTier } from "./generate";
 import { runSemanticTier } from "./semantic";
@@ -69,7 +75,25 @@ const seedArg = argv.find((a) => a.startsWith("--seed="));
 const SEED_FILTRO: Set<string> | null = seedArg
   ? new Set(seedArg.slice("--seed=".length).split(",").map((x) => x.trim()).filter(Boolean))
   : null;
-const CLAVES_SEED = [...GOLDEN_SEEDS.map((x) => x.key), ...BORDE_SEEDS.map((x) => x.key)];
+const CLAVES_LTR = [...GOLDEN_SEEDS.map((x) => x.key), ...BORDE_SEEDS.map((x) => x.key)];
+const CLAVES_STR = STR_GE_SEEDS.map((x) => x.key);
+const CLAVES_SEED = [...CLAVES_LTR, ...CLAVES_STR];
+
+// EL NAMESPACE DEL FILTRO DECIDE LA MODALIDAD. Nombrar solo seeds STR no es una falla
+// de los tiers LTR: es el filtro funcionando, y esos tiers no tienen nada que hacer. Se
+// SALTAN diciéndolo (nunca en silencio), y la capa 2 queda para la falla de verdad —
+// una clave de la modalidad correcta que igual deja el tier en cero, como `BE-caprate`
+// en el FULL AUTO de LTR.
+const FILTRO_SOLO_LTR = !!SEED_FILTRO && [...SEED_FILTRO].every((k) => CLAVES_LTR.includes(k));
+const FILTRO_SOLO_STR = !!SEED_FILTRO && [...SEED_FILTRO].every((k) => CLAVES_STR.includes(k));
+
+/** Los tiers por seed de la modalidad que el filtro no nombra se saltan, con línea. */
+function saltadoPorFiltro(tier: string, esDeStr: boolean): boolean {
+  if (!SEED_FILTRO) return false;
+  const salta = esDeStr ? FILTRO_SOLO_LTR : FILTRO_SOLO_STR;
+  if (salta) console.log(`\n─── ${tier} — SALTADO: el filtro --seed nombra solo seeds de ${esDeStr ? "LTR" : "STR"} ───`);
+  return salta;
+}
 
 /** CAPA 1 de validación: una clave que no existe muere ANTES de tocar la base o gastar
  *  un token. Sin esto, un ID mal escrito recorre cero seeds y la tanda reporta verde. */
@@ -82,7 +106,8 @@ function validarFiltroSeed(): void {
   const invalidas = [...SEED_FILTRO].filter((k) => !CLAVES_SEED.includes(k));
   if (invalidas.length > 0) {
     console.error(`\n✗ --seed: clave(s) inexistente(s): ${invalidas.join(", ")}`);
-    console.error("   Claves válidas:\n   " + CLAVES_SEED.join(" "));
+    console.error("   LTR:\n   " + CLAVES_LTR.join(" "));
+    console.error("   STR:\n   " + CLAVES_STR.join(" "));
     process.exit(1);
   }
 }
@@ -95,7 +120,8 @@ function validarFiltroSeed(): void {
 function ceroSeedsEsFalla(tier: string, corridas: number): number {
   if (!SEED_FILTRO || corridas > 0) return 0;
   console.log(`\n  ✗ ${tier}: --seed=${[...SEED_FILTRO].join(",")} no dejó NINGUNA seed en este tier.`);
-  console.log(`      El tier no probó nada. Revisa que la clave exista en su universo (el FULL solo conoce las GS-*).`);
+  console.log(`      El tier corrió y no probó nada. La clave es de esta modalidad pero no está en el`);
+  console.log(`      universo de ESTE tier: el FULL AUTO de LTR solo conoce las GS-*, no las BE-*.`);
   return 1;
 }
 
@@ -104,9 +130,10 @@ function ceroSeedsEsFalla(tier: string, corridas: number): number {
 function lineaTandaAcotada(): void {
   if (!SEED_FILTRO) return;
   const claves = [...SEED_FILTRO].join(",");
-  const enQuick = CLAVES_SEED.filter((k) => SEED_FILTRO.has(k)).length;
+  const enQuick = CLAVES_LTR.filter((k) => SEED_FILTRO.has(k)).length;
   const enFull = GOLDEN_SEEDS.filter((x) => SEED_FILTRO.has(x.key)).length;
-  console.log(`\n⚠ TANDA ACOTADA · --seed=${claves} — QUICK ${enQuick} de ${CLAVES_SEED.length} · FULL ${enFull} de ${GOLDEN_SEEDS.length}`);
+  const enStr = CLAVES_STR.filter((k) => SEED_FILTRO.has(k)).length;
+  console.log(`\n⚠ TANDA ACOTADA · --seed=${claves} — QUICK ${enQuick} de ${CLAVES_LTR.length} · FULL LTR ${enFull} de ${GOLDEN_SEEDS.length} · STR ${enStr} de ${CLAVES_STR.length}`);
   console.log("  El verde NO cubre las otras seeds.");
 }
 
@@ -191,13 +218,15 @@ async function printStrSemantic() {
   let totalHard = 0;
   let totalDrift = 0;
 
-  // ── Tier QUICK (siempre corre) ──────────────────────────────────────────
-  console.log("\n─── TIER QUICK (recompute §1, 0 tokens) ───");
-  const quick = await runRecomputeTier(sb(), { seeds: SEED_FILTRO });
-  quick.forEach(printSeed);
-  totalHard += quick.reduce((n, r) => n + r.hardFail, 0);
-  totalDrift += quick.reduce((n, r) => n + r.rebaseline, 0);
-  totalHard += ceroSeedsEsFalla("TIER QUICK", quick.length);
+  // ── Tier QUICK (corre siempre, salvo que el filtro sea solo de STR) ─────
+  if (!saltadoPorFiltro("TIER QUICK", false)) {
+    console.log("\n─── TIER QUICK (recompute §1, 0 tokens) ───");
+    const quick = await runRecomputeTier(sb(), { seeds: SEED_FILTRO });
+    quick.forEach(printSeed);
+    totalHard += quick.reduce((n, r) => n + r.hardFail, 0);
+    totalDrift += quick.reduce((n, r) => n + r.rebaseline, 0);
+    totalHard += ceroSeedsEsFalla("TIER QUICK", quick.length);
+  }
 
   // ── Tier ETIQUETA (goal 10a · 07-sep-2026, 0 tokens): ningún literal de etiqueta de
   // veredicto fuera de src/lib/veredicto-etiqueta.ts. Corre siempre con el QUICK. ──
@@ -226,10 +255,11 @@ async function printStrSemantic() {
   totalHard += runGeneradorEnScriptsTier().hard;
 
   // ── Tier STR (E.1b · GS-STR, 0 tokens). Corre con --str o --all/--full. ──
-  if (has("--str") || has("--all") || MODE_FULL) {
-    const str = runStrTier();
+  if ((has("--str") || has("--all") || MODE_FULL) && !saltadoPorFiltro("TIER STR · recompute", true)) {
+    const str = runStrTier({ seeds: SEED_FILTRO });
     totalHard += str.hard;
     totalDrift += str.drift;
+    totalHard += ceroSeedsEsFalla("TIER STR · recompute", str.corridas);
   }
 
   // ── Tier AMBAS (D1+D2 · GS-AMBAS veredicto comparativo, 0 tokens). --ambas o --all/--full. ──
@@ -241,7 +271,7 @@ async function printStrSemantic() {
 
   // ── Tier FULL (opcional) ────────────────────────────────────────────────
   if (MODE_FULL) {
-    if (!STR_ONLY) {
+    if (!STR_ONLY && !saltadoPorFiltro("TIER FULL · AUTO LTR", false)) {
       console.log(`\n─── TIER FULL · generación fresca AUTO (K=${K}) ───`);
       const gen = await runGenerateTier(sb(), K, { dump: DUMP, from: FROM, seeds: SEED_FILTRO });
       gen.forEach(printSeed);
@@ -254,15 +284,22 @@ async function printStrSemantic() {
     // GE con checks AUTO duros (AS1-AS5) y, salvo --no-semantic, el juez Opus por corrida
     // con el criterio del lead-coronado (flags = reporte, no bloquean). Antes la única gen
     // STR era el tier modo-gestión, no-bloqueante — un cambio de prompt STR corría sin red.
-    if (!LTR_ONLY) {
+    if (!LTR_ONLY && !saltadoPorFiltro("TIER FULL · AUTO STR", true)) {
       console.log(`\n─── TIER FULL · generación fresca STR AUTO (K=${K}, BLOQUEANTE${NO_SEM ? "" : " + juez"}) ───`);
-      const genStr = await runStrGenerateTier(K, { dump: DUMP, judge: !NO_SEM });
+      const genStr = await runStrGenerateTier(K, {
+        dump: DUMP,
+        judge: !NO_SEM,
+        // `runStrGenerateTier` ya aceptaba `seeds` desde su primera versión y el runner
+        // nunca se lo pasaba: acotar la tanda STR era imposible desde el CLI.
+        seeds: SEED_FILTRO ? [...SEED_FILTRO] : undefined,
+      });
       genStr.reports.forEach(printSeed);
       totalHard += genStr.reports.reduce((n, r) => n + r.hardFail, 0);
+      totalHard += ceroSeedsEsFalla("TIER FULL · AUTO STR", genStr.reports.length);
       printTandaStr(genStr.tanda);
     }
 
-    if (!NO_SEM && !STR_ONLY) {
+    if (!NO_SEM && !STR_ONLY && !saltadoPorFiltro("TIER FULL · semántico LTR", false)) {
       console.log("\n─── TIER FULL · checklist semántico (juez Opus) ───");
       const sem = await runSemanticTier(sb(), { from: FROM ?? DUMP, seeds: SEED_FILTRO });
       for (const s of sem) {

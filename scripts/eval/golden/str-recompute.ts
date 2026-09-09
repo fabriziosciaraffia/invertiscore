@@ -317,13 +317,16 @@ function checkClassAStr(f: StrBaseline, base: StrBaseline): { hard: number; drif
   return { hard, drift, lines };
 }
 
-export function runStrTier(): { hard: number; drift: number } {
+/** `seeds`: acota la tanda a esas claves (flag --seed del runner). Devuelve `corridas`
+ *  para que el runner aplique su capa 2 (cero seeds tras filtrar = falla dura). */
+export function runStrTier(opts: { seeds?: Set<string> | null } = {}): { hard: number; drift: number; corridas: number } {
   const frozen = loadFrozen();
   const baseline = loadStrBaseline();
   let hard = 0, drift = 0;
   console.log(`\n─── TIER STR (recompute BS1-BS8${baseline ? " + baseline clase a" : ""}, 0 tokens) ───\n`);
 
-  for (const seed of STR_GE_SEEDS) {
+  const seedsARecorrer = opts.seeds ? STR_GE_SEEDS.filter((x) => opts.seeds!.has(x.key)) : STR_GE_SEEDS;
+  for (const seed of seedsARecorrer) {
     const r = recomputeStrSeed(seed, frozen);
     if (!r) { console.log(`  ⚠️  ${seed.key}  sin fixture frozen`); hard++; continue; }
     const bad = invariantes(r.hz, r.score, r.rec, r.mediana.mediana != null).filter((c) => !c.pass);
@@ -360,7 +363,7 @@ export function runStrTier(): { hard: number; drift: number } {
   be("BE-costos-str", cFav.direccion === "favorable" && cAdv.direccion === "adverso", `40→${cFav.direccion} · 41→${cAdv.direccion}`);
 
   console.log(`\n  ${hard === 0 ? `✓ VERDE — GS-STR sin violaciones (BS1-BS8${baseline ? " + baseline clase a" : ""})` : `✗ ${hard} fallas`}${drift ? ` · ${drift} drift clase (a) (candidatos a re-baseline)` : ""}`);
-  return { hard, drift };
+  return { hard, drift, corridas: seedsARecorrer.length };
 }
 
 // Ejecución directa (standalone). El runner lo importa vía runStrTier() sin auto-ejecutar.
