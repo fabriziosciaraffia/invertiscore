@@ -2,11 +2,16 @@
 // GUARD DE ÁMBITOS ZONALES — catch-test (determinístico, 0 tokens)
 // ============================================================================
 // El bloque REFERENCIAS DE ZONA pide la frase que reconcilia las dos lecturas de
-// precio; este guard verifica que esté y la appendea si falta. Casos:
+// precio; este guard DETECTA si falta. Casos:
 //   · regresión 05462488: prosa que etiqueta AMBOS ámbitos pero no los junta;
 //   · limpio: prosa que sí reconcilia (con la canónica y con formas orgánicas);
-//   · el piso de magnitud: conflicto trivial no arma nada;
-//   · el fallback: append determinístico, idempotente, sin reescribir.
+//   · el piso de magnitud: conflicto trivial no arma nada.
+//
+// v22 (09-sep-2026): la sección «fallback: append determinístico» SE RETIRA con el
+// writer que probaba. `appendReconciliacion` murió con sus dos anfitriones — ver el
+// acta en referencias-zona.ts. Lo que queda es detección audit-only, y estos casos
+// la cubren: son los únicos que ejercitan este subsistema en todo el repo (el
+// golden no tiene ninguna seed con lados opuestos — 0 de 30 en v21, 0 de 20 en v22).
 //
 //   node --import tsx scripts/eval/golden/ambitos-zona-catch-test.ts
 // ============================================================================
@@ -14,7 +19,6 @@
 import {
   construirReferenciasZona,
   faltaReconciliacion,
-  appendReconciliacion,
   MARCADOR_RECONCILIACION,
 } from "../../../src/lib/referencias-zona";
 import { esCasoPrecioJusto } from "../../../src/lib/distancia-veredicto-hallazgo";
@@ -81,26 +85,15 @@ const refs = construirReferenciasZona(BASE);
   check("sin conflicto material el guard ni se arma", faltaReconciliacion([{ pieza: "x", texto: "nada" }], trivial) === false);
 }
 
-console.log("── fallback: append determinístico ──");
-{
-  const ai: Record<string, unknown> = {
-    conviene: { respuestaDirecta_clp: "Entras barato para esta comuna.", respuestaDirecta_uf: "Entras barato para esta comuna." },
-    negociacion: { contenido_clp: "Pagas 107% sobre el valor de tu cuadra.", contenido_uf: "Pagas 107% sobre el valor de tu cuadra." },
-  };
-  const tocados = appendReconciliacion(ai, refs);
-  check("appendea en ambas variantes de moneda", tocados === 2, `tocados=${tocados}`);
-  const n = (ai.negociacion as Record<string, string>);
-  const c = (ai.conviene as Record<string, string>);
-  check("aloja en negociacion, NO en la respuesta directa (tope PLAN C)", n.contenido_clp.includes("no es contradicción") && !c.respuestaDirecta_clp.includes("no es contradicción"));
-  check("conserva el texto original", n.contenido_clp.startsWith("Pagas 107% sobre el valor de tu cuadra."));
-  check("post-append el guard queda satisfecho", faltaReconciliacion([{ pieza: "negociacion", texto: n.contenido_clp }], refs) === false);
-  const otraVez = appendReconciliacion(ai, refs);
-  check("idempotente (no duplica)", otraVez === 0);
-}
-{
-  const ai: Record<string, unknown> = { conviene: { respuestaDirecta_clp: "", respuestaDirecta_uf: "" } };
-  check("no inventa campos vacíos", appendReconciliacion(ai, refs) === 0);
-}
+// ── «fallback: append determinístico» — RETIRADA CON ACTA (v22) ───────────
+// Probaba que `appendReconciliacion` appendeara en las dos variantes de moneda,
+// alojara en `negociacion` y no en la respuesta directa, conservara el texto y
+// fuera idempotente. Los DOS campos que alojaba murieron en v22, así que el writer
+// se retiró: no había dónde appendear. El test se va con su sujeto.
+//
+// Vale la pena dejar escrito lo que probaba, porque es la restricción que hay que
+// respetar el día que se decida dónde vive el puente: alojaba en `negociacion`
+// DELIBERADAMENTE, para NO tocar el campo con tope duro de palabras.
 
 console.log("── NO descalibra la pata vm de precio-justo ──");
 {
@@ -110,11 +103,9 @@ console.log("── NO descalibra la pata vm de precio-justo ──");
     veredicto: "AJUSTA SUPUESTOS" as const,
   };
   const antes = esCasoPrecioJusto(insumos);
-  const ai: Record<string, unknown> = { conviene: { respuestaDirecta_clp: "texto", respuestaDirecta_uf: "texto" } };
-  appendReconciliacion(ai, refs);
   check("esCasoPrecioJusto estable (el guard narra, no calcula)", esCasoPrecioJusto(insumos) === antes && antes === true);
   check("vm divergente sigue rechazando precio-justo", esCasoPrecioJusto({ ...insumos, vmFrancoUF: 3400 }) === false);
 }
 
-console.log(fallas === 0 ? "\n✓ VERDE — el puente entre ámbitos es obligatorio y, si falta, se pone" : `\n✗ ${fallas} falla(s)`);
+console.log(fallas === 0 ? "\n✓ VERDE — el puente entre ámbitos se pide en el prompt y su ausencia se detecta (audit-only)" : `\n✗ ${fallas} falla(s)`);
 process.exit(fallas === 0 ? 0 : 1);

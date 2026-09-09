@@ -52,7 +52,7 @@ import {
 } from "@/lib/prosa-presupuesto";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico, piezasDeAiLtr } from "@/lib/precio-jerarquia";
-import { construirReferenciasZona, faltaReconciliacion, appendReconciliacion } from "@/lib/referencias-zona";
+import { construirReferenciasZona, faltaReconciliacion } from "@/lib/referencias-zona";
 import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad } from "@/lib/cifras-guard";
 import { derivarCifraClaveLtr, captionDeCifraClave } from "@/lib/cifra-clave";
 import { validarTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
@@ -3112,18 +3112,21 @@ Responde SOLO este JSON, sin texto alrededor:
       }
     }
 
-    // ─── AMBITOS-ZONA (enforcement del bloque REFERENCIAS DE ZONA) ───────────
-    // Requisito de PRESENCIA: si las dos referencias de valor apuntan a lados
-    // opuestos de forma material, la prosa tiene que traer el puente que las
-    // reconcilia. Sin reintento: la frase ya viene escrita del builder, asi que
-    // appendearla cuesta 0 tokens y es determinista (mismo criterio que el
-    // append de arbitraje del guard de jerarquia). Best-effort.
+    // ─── AMBITOS-ZONA — AUDIT-ONLY desde v22 (09-sep-2026) ───────────────────
+    // Hasta v21 esto APPENDEABA la frase de reconciliación. El append murió con
+    // sus dos anfitriones (`negociacion.contenido*` y `respuestaDirecta_*`): ver el
+    // acta en referencias-zona.ts. Queda la detección, que no escribe nada.
+    //
+    // NO ES DECORACIÓN. Este caso disparó 0 de 30 generaciones v21 y 0 de 20 en la
+    // FULL v22 — el golden no tiene ninguna seed que lo active, así que ninguna
+    // tanda lo iba a cazar. Este log en prod es la ÚNICA forma de saber si el caso
+    // existe y con qué frecuencia. Si aparece, ahí se decide dónde va el puente
+    // (prosa con presupuesto propio, o dibujado por el motor).
     if (aiResult && referenciasZona.signosOpuestos) {
       try {
         const piezas = piezasDeAiLtr(aiResult).map((p) => ({ pieza: p.pieza, texto: p.texto }));
         if (faltaReconciliacion(piezas, referenciasZona)) {
-          const tocados = appendReconciliacion(aiResult, referenciasZona);
-          console.warn(`[AMBITOS-ZONA] ${analysisId}: sin frase de reconciliacion — appendeada en ${tocados} campo(s)`);
+          console.warn(`[AMBITOS-ZONA] ${analysisId}: caso de lados opuestos SIN frase de reconciliacion — audit-only, la prosa NO se toca`);
         }
       } catch (e) {
         console.warn(`[AMBITOS-ZONA] ${analysisId}: fallo (best-effort): ${(e as Error)?.message ?? e}`);

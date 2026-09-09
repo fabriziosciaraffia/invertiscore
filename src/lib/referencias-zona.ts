@@ -175,39 +175,41 @@ export const MARCADOR_RECONCILIACION =
 /**
  * ¿Falta el puente? Devuelve true cuando el caso es materialmente opuesto y
  * NINGUNA pieza de prosa trae una frase de reconciliación.
+ *
+ * AUDIT-ONLY desde v22: ya no gatea ninguna escritura (ver el acta de
+ * `appendReconciliacion` abajo). Su único consumidor loguea [AMBITOS-ZONA] y
+ * sigue de largo.
  */
 export function faltaReconciliacion(piezas: { pieza: string; texto: string }[], refs: ReferenciasZona): boolean {
   if (!refs.signosOpuestos) return false;
   return !piezas.some((p) => MARCADOR_RECONCILIACION.test(p.texto));
 }
 
-/**
- * Appendea la frase canónica al campo de prosa que mejor la aloja: la respuesta
- * directa si existe, si no la pieza de negociación. Muta `ai` in place y
- * devuelve cuántos campos tocó (0 = no encontró dónde ponerla).
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function appendReconciliacion(ai: any, refs: ReferenciasZona): number {
-  if (!refs.fraseReconciliacion) return 0;
-  // Anfitrion: la pieza de NEGOCIACION, no la respuesta directa. Dos razones:
-  // (1) el argumento de precio vive ahi; (2) `conviene.respuestaDirecta` es el
-  // unico campo con tope duro de palabras (PLAN C GUARD), y colgarle ~35
-  // palabras haria que el recorte por oracion se comiera justo la frase que
-  // este guard acaba de poner. Fallback a la respuesta directa solo si la pieza
-  // de negociacion no existe en esta prosa.
-  // `contenido` (campo único, v21+) o `contenido_clp` (prosa ≤v20 persistida).
-  const negTexto = ai?.negociacion?.contenido ?? ai?.negociacion?.contenido_clp;
-  const enNegociacion = typeof negTexto === "string" && negTexto.trim().length > 0;
-  const candidatos: [string, string][] = enNegociacion
-    ? [["negociacion", "contenido_clp"], ["negociacion", "contenido_uf"]]
-    : [["conviene", "respuestaDirecta_clp"], ["conviene", "respuestaDirecta_uf"]];
-  let tocados = 0;
-  for (const [a, b] of candidatos) {
-    const obj = ai?.[a];
-    if (obj && typeof obj[b] === "string" && obj[b].trim().length > 0 && !MARCADOR_RECONCILIACION.test(obj[b])) {
-      obj[b] = `${obj[b].replace(/\s+$/, "")} ${refs.fraseReconciliacion}`;
-      tocados++;
-    }
-  }
-  return tocados;
-}
+// ─── appendReconciliacion — RETIRADA CON ACTA (v22, 09-sep-2026) ───────────
+//
+// Era un WRITER, no un detector: appendeaba la frase de reconciliación al campo
+// de prosa que mejor la alojara. Su lista de anfitriones estaba hardcodeada e
+// independiente de qué campo tenía texto:
+//
+//     negociacion.contenido_clp/_uf   →  muerto en v22
+//     conviene.respuestaDirecta_*     →  muerto en v22   (fallback)
+//
+// ⇒ escribía en NINGUNA parte y devolvía 0, y su log decía «appendeada en 0
+// campo(s)»: la clase de cero que no distingue «no hacía falta» de «no pude».
+//
+// NO se reapunta a `conviene.cajaAccionable`, que es el único anfitrión que
+// queda, y la razón está en el comentario que este bloque tenía: evitaba
+// deliberadamente el campo con tope duro de palabras, porque colgarle ~35
+// palabras hace que el recorte por oración se coma justo la frase que el guard
+// acaba de poner. En v22 ese tope es 110 y CAJA-BUDGET dispara en el 85% de las
+// generaciones, así que el riesgo dejó de ser teórico.
+//
+// LO QUE NO MUERE: el prompt SIGUE pidiendo el puente. `construirReferenciasZona`
+// arma el bloque REFERENCIAS DE ZONA con el encuadre de lados opuestos y cita la
+// frase canónica textual. Lo que se retira es el parche determinista de después,
+// no la doctrina.
+//
+// Y `faltaReconciliacion` sobrevive como DETECTOR audit-only: medido, este caso
+// disparó 0 de 30 generaciones v21 y 0 de 20 v22, o sea que el golden nunca lo
+// ejercita y ninguna FULL lo iba a cazar. El log en prod es la única forma de
+// saber si existe. Un guard sin seed que lo active es un guard sin red.
