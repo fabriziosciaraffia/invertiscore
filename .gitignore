@@ -124,6 +124,9 @@ scripts/eval/editorial/out*.log
 
 # dumps de auditoría
 audit/
+# dumps del golden: el FULL se lanza con --dump para que un juez posterior lea de
+# ahí en vez de regenerar (regla de trabajo). Es prosa generada, no fuente.
+/dumps/
 # reportes de auditoría read-only versionados (docs/audit/AAAA-MM-DD-*.md)
 !docs/audit/
 # scripts de auditoría versionados (read-only, se corren a mano)
