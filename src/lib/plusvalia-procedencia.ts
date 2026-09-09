@@ -57,3 +57,53 @@ export function rangoDesdeFuente(fuente: string | null | undefined): string | nu
   const m = fuente?.match(/\b(\d{4}-\d{4})\b/);
   return m ? m[1] : null;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EL CAVEAT DEL PERÍODO — F3 (09-sep-2026).
+//
+// El capítulo IV ya muestra el período («Providencia 2015-2025 · 2,9% al año») pero no
+// dice lo que ese período tiene de raro. Hasta hoy lo decía la prosa, en 9 de 30
+// generaciones medidas: «cruza el estallido y la pandemia, así que es ruidoso».
+//
+// Es DETERMINISTA y no depende del caso: dado el rango, qué tramos atípicos cruza es un
+// lookup. La regla y los tramos son los de la REGLA 9 del system prompt LTR, que ya los
+// enumeraba para el modelo — acá se calculan en vez de pedirse.
+//
+// DECISIÓN: el boom se declara por PERÍODO, no por comuna. La REGLA 9 lo acota a las
+// comunas en densificación, pero el trabajo de esta glosa es decir «este promedio cruza
+// tramos atípicos, por eso es ruidoso» — no atribuir cuánto movió cada tramo, que es
+// justo lo que la regla prohíbe («son el marco temporal, NO causas cuantificables»).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Un tramo atípico con los años que ocupa. Cerrado: no se agregan sin dato que lo respalde. */
+const TRAMOS_ATIPICOS: ReadonlyArray<{ desde: number; hasta: number; etiqueta: string }> = [
+  { desde: 2014, hasta: 2018, etiqueta: "el boom de densificación (2014-18)" },
+  { desde: 2019, hasta: 2019, etiqueta: "el estallido (2019)" },
+  { desde: 2020, hasta: 2021, etiqueta: "la pandemia (2020-21)" },
+];
+
+/** Los tramos atípicos que cruza un período «AAAA-AAAA». Vacío si el rango no parsea. */
+export function tramosDelPeriodo(rango: string | null | undefined): string[] {
+  const m = rango?.match(/^(\d{4})-(\d{4})$/);
+  if (!m) return [];
+  const de = Number(m[1]);
+  const a = Number(m[2]);
+  if (!(a >= de)) return [];
+  // Solapamiento, no contención: 2015-2025 cruza el boom aunque no lo cubra entero.
+  return TRAMOS_ATIPICOS.filter((t) => t.desde <= a && t.hasta >= de).map((t) => t.etiqueta);
+}
+
+/**
+ * La glosa del período para el capítulo IV. `null` cuando el rango no parsea o no cruza
+ * ningún tramo: sin tramos no hay nada que advertir, y una glosa que dijera «es ruidoso»
+ * sin nombrar por qué sería una advertencia vacía.
+ */
+export function glosaPeriodoPlusvalia(rango: string | null | undefined): string | null {
+  const tramos = tramosDelPeriodo(rango);
+  if (tramos.length === 0) return null;
+  const lista =
+    tramos.length === 1
+      ? tramos[0]
+      : `${tramos.slice(0, -1).join(", ")} y ${tramos[tramos.length - 1]}`;
+  return `El período cruza ${lista}: es un promedio de años atípicos, no una proyección.`;
+}

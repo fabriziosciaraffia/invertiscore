@@ -22,7 +22,7 @@ import type {
 import { metricaValorONull } from "@/lib/types";
 import { calcDividendo, costoOportunidad, INSTRUMENTOS_REFERENCIA } from "@/lib/analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
-import { fuenteHistoricaPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
+import { fuenteHistoricaPlusvalia, glosaPeriodoPlusvalia, procedenciaPlusvalia } from "@/lib/plusvalia-procedencia";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { barraDia1 } from "@/lib/plata-dia1";
 import { cierrePlusvalia, cierreRenta, cierreResultado, type FmtCierre } from "@/lib/cierres-capitulos";
@@ -517,6 +517,11 @@ export function CapitulosInversion({
                 />
                 <p className="viz-pie" style={{ marginTop: 12 }}>
                   Entre {r0} y {r1} los departamentos {v.tieneData ? "de la comuna" : "del Gran Santiago"} {anual < 0 ? "bajaron" : "subieron"} {pct1(Math.abs(anual))}% al año, ya descontada la inflación. La referencia de largo plazo es {pct1(v.refPct)}%.
+                  {/* F3 · el caveat del período. Va pegado a la frase que ya nombra el rango:
+                      el pie declara el número y esta línea dice qué tiene ese número de raro.
+                      Determinista (plusvalia-procedencia.ts); antes lo decía la prosa en 9 de
+                      30 generaciones, o sea que en 21 el lector no se enteraba. */}
+                  {glosaPeriodoPlusvalia(rango) ? ` ${glosaPeriodoPlusvalia(rango)}` : ""}
                 </p>
               </VViz>
               <VViz>

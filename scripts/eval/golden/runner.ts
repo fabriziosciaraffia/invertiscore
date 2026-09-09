@@ -44,6 +44,7 @@ import { runTitularFinalTier } from "./titular-final-catch-test";
 import { runInstrumentosTier } from "./instrumentos-catch-test";
 import { runMesVacioTier } from "./mes-vacio-catch-test";
 import { runRegulacionTier } from "./regulacion-catch-test";
+import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runCandadoTier } from "./candado-catch-test";
 import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runStrGenerateTier, type TandaStr } from "./str-generate";
@@ -253,6 +254,7 @@ async function printStrSemantic() {
   // modelo escribía, ocho ya las dibuja el motor y esta era la única sin cubrir.
   // Corre siempre con el QUICK. ──
   totalHard += runRegulacionTier().hard;
+  totalHard += runPlusvaliaGlosaTier().hard;
 
   // ── Tier CANDADO (goal #3 · 07-sep-2026, 0 tokens, sin base): generating_since solo
   // se escribe en candado-generacion.ts; dos tomas → una gana; TTL vence. Siempre con el QUICK. ──
