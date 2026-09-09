@@ -3321,12 +3321,12 @@ Responde SOLO este JSON, sin texto alrededor:
             /* no parseó — se maneja abajo */
           }
           if (!nClp || !nUf) {
-            console.warn(`[RD-BUDGET] ${analysisId}: retry quirúrgico ${intento} no parseó — conservo la continuación previa`);
+            console.warn(`[CAJA-BUDGET] : retry quirúrgico  no parseó — conservo el texto previo`);
             break;
           }
           const candidato = { ...mejor, conviene: { ...mejor.conviene, cajaAccionable_clp: nClp, cajaAccionable_uf: nUf } };
           const wc2 = wcCont(candidato);
-          console.warn(`[RD-BUDGET] ${analysisId}: retry quirúrgico ${intento} → ${wc2} palabras${wc2 <= limiteRetry ? " (OK)" : ""}`);
+          console.warn(`[CAJA-BUDGET] : retry quirúrgico  → ${wc2} palabras${wc2 <= limiteRetry ? " (OK)" : ""}`);
           // Invariante de cifras sobre el quirúrgico: como ya no se regenera el JSON
           // que LTR-CIFRA validó, el candidato completo se re-verifica con la regla
           // compartida (cifras-guard.ts — una regla, un módulo, N consumidores).

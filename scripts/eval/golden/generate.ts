@@ -13,11 +13,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { generateAiAnalysis } from "../../../src/lib/ai-generation";
 import { conTimeout, esTimeout, TIMEOUT_GENERADOR_MS } from "./timeout";
-import { runAnalysis } from "../../../src/lib/analysis";
-import { TECHO_CONTINUACION_DURO } from "../../../src/lib/prosa-presupuesto";
+import { CAJA_ACCIONABLE_MAX } from "../../../src/lib/prosa-presupuesto";
 import { marcasBalanceadas, evaluarTitular } from "../../../src/lib/prosa-marcas";
 import { GOLDEN_SEEDS, GOLDEN_UF } from "./seeds";
-import { gatherHallazgos, aperturaSource } from "./extract";
 import type { Check } from "./invariants";
 import type { SeedReport } from "./recompute";
 
@@ -26,7 +24,7 @@ const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|invier|da vuelta|vuelve posi
 
 const WORDS = (s: string) => (s.trim().match(/\S+/g) || []).length;
 // Helpers de copia de fraseCanonica: módulo compartido con la tanda STR (copia-frase.ts).
-import { norm, wordsOf, sentencesOf, esCopia, REPITE_FRASE } from "../../../src/lib/copia-frase";
+import { norm } from "../../../src/lib/copia-frase";
 
 function collectStrings(node: any, out: { path: string; s: string }[], path = ""): void {
   if (typeof node === "string") { out.push({ path, s: node }); return; }
@@ -60,32 +58,16 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
 
   for (const seed of seedsARecorrer) {
     const checks: Check[] = [];
-    // Fuente de la apertura para A1: #1 por decisividad pura entre los 6 builders
-    // (NO la corona adverso-first de la pirámide — divergen cuando un favorable
-    // tiene la mayor decisividad, ej. GS-2 cap_rate). Espejo de ai-generation.ts.
-    const recomputed = runAnalysis(seed.input, GOLDEN_UF, seed.mediana);
-    const todosHallazgos = gatherHallazgos(recomputed);
-    const apSrc = aperturaSource(todosHallazgos);
-    const coronaFrase = apSrc ? norm(apSrc.fraseCanonica) : "";
-    const frasesCanonicas = todosHallazgos.map((h) => wordsOf(norm(String(h.fraseCanonica ?? "")))).filter((w) => w.length >= REPITE_FRASE);
     const vmFrancoUF = seed.input.valorMercadoFranco || seed.input.precio;
     const vmSolido = Math.abs(vmFrancoUF - seed.input.precio) * GOLDEN_UF > 1_000_000;
-    // A6 · TECHO ESCALADO (fuente única: src/lib/prosa-presupuesto.ts). El techo NO
-    // es plano: la continuación tiene presupuesto propio y el total escala con lo que
-    // el motor antepone (respuesta al veredicto + apertura fija). Se computa por seed
-    // desde las MISMAS piezas determinísticas que usa ai-generation.
-    //
-    // MURIÓ el techo de emergencia 140 del pie 0. Existía porque el guard PLANC no
-    // enforzaba (aceptaba lo que hubiera tras 2 reintentos) y GS-PC1 desbordaba
-    // sistemático; ahora el guard recorta por oración y el desborde no puede llegar
-    // acá. Su comentario además diagnosticaba mal: culpaba a una "apertura fija larga"
-    // de flujo_mensual que en realidad mide 35 palabras contra las 40 de cap_rate —
-    // GS-PC1 desbordaba con MÁS presupuesto que su control, no con menos.
-    const techoContinuacion = TECHO_CONTINUACION_DURO;
+    // ─── EL TECHO YA NO ESCALA (v22) ─────────────────────────────────────────
+    // Hasta v21.1 el presupuesto era «lo que mide la fraseCanonica del #1 + la
+    // continuación», así que había que recomputar la corona por seed. En v22 el único
+    // campo de prosa tiene techo FIJO: CAJA_ACCIONABLE_MAX. No hay nada que escalar.
 
     let genOk = 0;
     // Uso REAL del presupuesto por corrida. No es un check: es la evidencia que hace
-    // auditable la calibración de CONTINUACION_MAX. Un techo que nadie mide vuelve a
+    // auditable la calibración de CAJA_ACCIONABLE_MAX. Un techo que nadie mide vuelve a
     // ser doctrina muerta — acá se ve si la prosa se infla o si vive pegada al techo.
     const totalesWC: number[] = [];
     const failCounts: Record<string, number> = {};
@@ -117,30 +99,27 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       if (!ai) { bump("gen.null"); continue; }
       genOk++;
       const strings = ((): { path: string; s: string }[] => { const o: { path: string; s: string }[] = []; collectStrings(ai, o); return o; })();
-      const rd = norm(ai.conviene?.respuestaDirecta_clp ?? "");
+      const caja = norm(ai.conviene?.cajaAccionable_clp ?? "");
 
-      // A1 (HARD) — dos mitades, y la primera se INVIRTIÓ en v21.1 (08-sep-2026):
+      // ─── A1 (sus DOS mitades) — RETIRADA CON ACTA (v22, 09-sep-2026) ────────
       //
-      // (1) La respuestaDirecta NO arranca contestando la conveniencia. Antes exigía lo
-      //     contrario —que empezara con la respuesta que el motor anteponía—, y el motor
-      //     ya no antepone nada: el bloque se titula con la línea que declara, así que
-      //     una apertura que vuelve a contestar repite el título un renglón más abajo.
-      //     El prompt lo prohíbe desde v18 («no abras afirmando o negando la
-      //     conveniencia»); ESTE CHEQUEO PASA A MEDIRLO POR PRIMERA VEZ. Mientras el
-      //     prepend existía era inmedible: toda apertura arrancaba con la respuesta y no
-      //     había forma de distinguir la del motor de la del modelo.
-      //     El predicado es el mismo que usaba la guarda de idempotencia del prepend, no
-      //     una lista de literales: caza la FAMILIA («Conviene…», «No conviene…»,
-      //     «Todavía no…»), que es lo que el lector percibe como respuesta.
-      // (2) NINGUNA de sus oraciones COPIA una fraseCanonica (run común ≥ 60% de la
-      //     frase, mínimo 8 palabras) — la apertura no es prefabricada: el modelo escribe
-      //     la razón que manda en su voz y la frase del hallazgo se queda en la card.
-      if (/^(conviene|no conviene|todavía no)/i.test(rd.trim())) {
-        bump("A1.apertura");
-      } else if (sentencesOf(rd).some((o) => { const w = wordsOf(o); return frasesCanonicas.some((f) => esCopia(w, f)); })) {
-        bump("A1.apertura");
-      }
-
+      // Medía `conviene.respuestaDirecta`, la APERTURA. En v22 no hay apertura: el
+      // informe tiene un solo campo de prosa, `conviene.cajaAccionable`, y no es el
+      // mismo objeto — la apertura abría el bloque de razones, la caja accionable
+      // responde «¿y ahora qué?». Las dos mitades quedan sin sujeto:
+      //
+      //   (1) «no arranca contestando la conveniencia» existía porque el bloque se
+      //       titula con la respuesta y la apertura la repetía un renglón más abajo.
+      //       La caja accionable no vive pegada a ese título.
+      //   (2) «ninguna oración COPIA una fraseCanonica» sigue siendo una regla sana,
+      //       pero apuntarla a cajaAccionable NO es un reapunte: la caja cita el
+      //       hallazgo #1 por contrato (§13), y el umbral de copia estaba calibrado
+      //       contra una apertura que tenía prohibido citarlo. Sería un check nuevo,
+      //       con su propia calibración. Queda anotado, no implementado a ojo.
+      //
+      // Ironía documentada: la mitad (1) se INVIRTIÓ en v21.1 y fue medible por
+      // primera vez ahí. Duró un bump.
+      //
       // A2 (HARD) — fabricación de cifra de zona: el flag interno _catchRootAFlag se
       // setea SOLO si la fabricación sobrevivió los reintentos (robusto, no parsea logs).
       if ((ai as any)._catchRootAFlag === true) bump("A2.catch-root-a");
@@ -148,23 +127,36 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       // A5 (HARD) — §9 en conviene.cajaAccionable presente y con sustancia.
       if (WORDS(ai.conviene?.cajaAccionable_clp ?? "") < 8) bump("A5.§9-cajaAccionable");
 
-      // A6 (HARD) — presupuesto: el de la primera oración (lo que medía la fraseCanonica
-      // del #1) + continuación con TECHO_CONTINUACION_DURO. Se mide la respuestaDirecta
-      // COMPLETA.
+      // ─── A6 — RETIRADA CON ACTA (v22, 09-sep-2026) ─────────────────────────
+      // Medía `palabras(respuestaDirecta) <= fraseCanonica(#1) + TECHO_CONTINUACION_DURO`.
+      // Los dos lados murieron: el campo y el techo escalado. El techo de v22 es fijo
+      // (CAJA_ACCIONABLE_MAX) y lo ENFORZA CAJA-BUDGET por construcción —retry
+      // quirúrgico y, si no converge, recorte por oración— así que un desborde no
+      // puede llegar hasta acá: A6 mediría siempre verde. Es una medida de presencia
+      // cuyo sujeto pasó a estar garantizado aguas arriba.
       //
-      // v21.1: sale el término de la respuesta del motor (1 a 7 palabras según el
-      // veredicto), porque el motor ya no antepone nada. EL MARGEN NO CAMBIA: lo que se
-      // mide baja exactamente las mismas palabras que baja el techo. Y desaparece el
-      // acoplamiento con A1 —el «si A1 falló, asume 7»— que existía solo para no
-      // cobrarle a A6 una falla ajena.
-      const fijoWC = WORDS(coronaFrase);
-      totalesWC.push(WORDS(rd));
-      if (WORDS(rd) > fijoWC + techoContinuacion) bump("A6.presupuesto");
+      // LO QUE SÍ SOBREVIVE es `totalesWC`, que nunca fue un check: es la evidencia
+      // del uso real del presupuesto. Y ahora hace falta más que antes —
+      // prosa-presupuesto.ts dice literalmente que 110 «se remide tras la primera FULL
+      // v22»—, así que se reapunta al campo vivo. Sin esto la FULL no traería con qué
+      // recalibrar el número que este bump acaba de inventar.
+      totalesWC.push(WORDS(caja));
 
-      // A7·D2 (HARD) — break-even sin negar VM cuando VM es sólido.
+      // ─── A7·D2 (HARD) — REAPUNTADA, Y CAMBIA DE SUJETO (v22, decisión de Fabrizio)
+      // La regla es la misma: con un valor de mercado SÓLIDO, la prosa no puede decir
+      // que no lo hay. Lo que cambia es DÓNDE se mide. Antes miraba
+      // `negociacion.contenido` —el argumento de por qué el vendedor debería moverse,
+      // que es donde el VM naturalmente se citaba— y ahora mira
+      // `conviene.cajaAccionable`, que es un campo con otro trabajo.
+      //
+      // O sea que NO es la misma medición con otro nombre: el sujeto es otro. Si la
+      // tasa de A7 se mueve en la primera FULL v22, la explicación más probable es
+      // ésta y no una regresión del modelo. Se reapunta igual porque la alternativa
+      // era retirarla, y una regla contable sobre el VM sin ningún campo que vigilar
+      // deja el hueco abierto justo donde el modelo ya demostró que completa lo que
+      // no sabe.
       if (vmSolido) {
-        const neg = norm(ai.negociacion?.contenido ?? ai.negociacion?.contenido_clp ?? "");
-        if (/no hay (comparables|un valor de mercado|suficientes|valor de mercado)/i.test(neg)) bump("A7.D2-niega-VM");
+        if (/no hay (comparables|un valor de mercado|suficientes|valor de mercado)/i.test(caja)) bump("A7.D2-niega-VM");
       }
 
       // A8·D1 (HARD) — RETIRADA con acta en v21 (08-sep-2026).
@@ -313,9 +305,16 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       if (warns.some((w) => w.includes("[ZONA-DRIFT]"))) bump("~zona-drift");
       // El guard tuvo que AMPUTAR: ni el original ni 2 reintentos entraron en el
       // presupuesto y se cayó una oración entera. Es el fallback diseñado, no una
-      // regresión — pero si la tasa sube, el número a mover es CONTINUACION_MAX, no
-      // el check. SOFT por la misma razón que el resto: es varianza del modelo.
-      if (warns.some((w) => w.includes("[RD-BUDGET-TRIM]"))) bump("~rd-trim");
+      // regresión — pero si la tasa sube, el número a mover es CAJA_ACCIONABLE_MAX,
+      // no el check. SOFT por la misma razón que el resto: es varianza del modelo.
+      //
+      // ⚠ NO SE RETIRA, se RENOMBRA. El plan de 2b decía «~rd-trim se retira con
+      // acta», sobre el supuesto de que su sujeto moría. No murió: el trimmer sigue
+      // vivo, reapuntado a cajaAccionable, y su log pasó a llamarse
+      // [CAJA-BUDGET-TRIM]. Retirar el watcher habría perdido una señal viva; dejarlo
+      // mirando el label viejo habría sido un cero que no distingue «no pasó» de «no
+      // miré». Se reporta como desvío del plan.
+      if (warns.some((w) => w.includes("[CAJA-BUDGET-TRIM]"))) bump("~caja-trim");
     }
 
     // Consolidar. Regla dura falla si falló en ≥1 run; soft (~) reporta sin bloquear.
@@ -324,12 +323,12 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
     // presupuesto es evidencia de calibración, no un veredicto.
     if (totalesWC.length) {
       console.log(
-        `      · ${seed.key} presupuesto: respuestaDirecta ${Math.min(...totalesWC)}-${Math.max(...totalesWC)} palabras` +
-          ` [techo = ${WORDS(coronaFrase)} (presupuesto de la razón que manda) + ≤${techoContinuacion}] · corridas: ${totalesWC.join("·")}`,
+        `      · ${seed.key} presupuesto: cajaAccionable ${Math.min(...totalesWC)}-${Math.max(...totalesWC)} palabras` +
+          ` [techo fijo = ${CAJA_ACCIONABLE_MAX}] · corridas: ${totalesWC.join("·")}`,
       );
     }
-    const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC3.retorno-sobre-capital", "gen.null"];
-    const SOFT = ["~engine-ism", "~zona-drift", "~rd-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado", "~titular-fallback-motor"];
+    const HARD = ["A2.catch-root-a", "A5.§9-cajaAccionable", "A7.D2-niega-VM", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC3.retorno-sobre-capital", "gen.null"];
+    const SOFT = ["~engine-ism", "~zona-drift", "~caja-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado", "~titular-fallback-motor"];
 
     // ── Umbral de MAYORÍA para las reglas que juzgan PROSA GENERADA ────────────
     //
