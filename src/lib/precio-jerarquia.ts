@@ -128,9 +128,12 @@ export function construirJerarquiaPrecios(args: {
   }
   if (precios.length === 0) return { precios, bloque: "" };
 
+  // `costoMensual` salió del schema LTR en v21: nombrarlo acá le declaraba al modelo
+  // el precio protagonista de una sección que ya no puede escribir. Queda
+  // `reestructuracion`, que sigue viva y sigue sin objetivo de precio.
   const protagonistas = args.esEstructural
-    ? "\`negociacion\` → SIN plan ni precio objetivo (cierra por la alternativa) · \`posicion\` → solo lo que haría falta, fuera de rango · \`costoMensual\`/\`reestructuracion\` → SIN objetivo de precio"
-    : "\`negociacion\`, \`posicion\` y el drawer de distancia → el objetivo del plan · \`costoMensual\`/\`reestructuracion\` → SIN objetivo de precio (sus palancas son pie/tasa/plazo)";
+    ? "\`negociacion\` → SIN plan ni precio objetivo (cierra por la alternativa) · \`posicion\` → solo lo que haría falta, fuera de rango · \`reestructuracion\` → SIN objetivo de precio"
+    : "\`negociacion\`, \`posicion\` y el drawer de distancia → el objetivo del plan · \`reestructuracion\` → SIN objetivo de precio (sus palancas son pie/tasa/plazo)";
 
   const bloque = `
 
