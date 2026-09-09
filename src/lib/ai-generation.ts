@@ -46,7 +46,6 @@ import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 import {
   CAJA_ACCIONABLE_MAX,
   TECHO_CAJA_ACCIONABLE_DURO,
-  techoRespuestaModelo,
   TOLERANCIA_PRESUPUESTO,
   contarPalabras,
   recortarContinuacion,
@@ -593,7 +592,7 @@ modoSostenible = "alinear_mercado" (sobre mercado o cerca):
 
 REGLA 7 — Traducción de jerga (v9 · ampliada paquete B).
 El lector es un comprador chileno inteligente pero NO financiero. Todo término técnico se glosa al PRIMER USO en el orden de lectura, con una aposición corta:
-- En \`conviene.cajaAccionable\` (lo primero que se lee, ANTES de cualquier card): si usas CAP rate, TIR, NOI, break-even o cash-on-cash ahí, la glosa va ahí — "TIR (rentabilidad anual de tu inversión)", "NOI (lo que queda del arriendo tras los gastos operativos, antes del crédito)". No importa que una card lo explique más abajo: el lector llega primero a tu prosa. OJO: la glosa CUENTA dentro del presupuesto de palabras de tu continuación — si no te alcanza, NO uses el término técnico: di la lectura en palabras llanas ("rinde X% al año sobre el precio" en vez de nombrar el CAP rate). Término sin glosa no es opción; término evitado sí.
+- En \`conviene.cajaAccionable\` (lo primero que se lee, ANTES de cualquier card): si usas CAP rate, TIR, NOI, break-even o cash-on-cash ahí, la glosa va ahí — "TIR (rentabilidad anual de tu inversión)", "NOI (lo que queda del arriendo tras los gastos operativos, antes del crédito)". No importa que una card lo explique más abajo: el lector llega primero a tu prosa. OJO: la glosa CUENTA dentro del presupuesto de palabras de \`conviene.cajaAccionable\` — si no te alcanza, NO uses el término técnico: di la lectura en palabras llanas ("rinde X% al año sobre el precio" en vez de nombrar el CAP rate). Término sin glosa no es opción; término evitado sí.
 - En los drawers (que se leen DESPUÉS de las cards): NO re-gloses lo que la fraseCanonica de un hallazgo de la lista ya glosa (las cards ya explican CAP rate, TIR y "compra apalancada" — duplicar la glosa es ruido). Sí glosa los términos que tu prosa introduce por su cuenta y ninguna card explicó (NOI, cash-on-cash, walk-away, payback).
 - Tras la primera glosa, el término va pelado.
 - "bps" PROHIBIDO. Usa "puntos porcentuales" o "puntos sobre mercado" (ej: "tu tasa está 0,4 puntos porcentuales sobre mercado", no "40 bps sobre mercado").
@@ -1783,7 +1782,6 @@ ANCLAS DE NEGOCIACIÓN: NINGUNA — caso estructural. No hay objetivo, ni primer
 - Lo que haría falta, fuera de rango: ${fmtUF(minimoFueraUFNeg)} (${pct(Math.abs(minimoFueraPctNeg))}% bajo el pedido) — se cita solo para cerrar la puerta; nunca como oferta, objetivo ni "sigue sin convenir a ese precio" (a ese precio el veredicto SÍ cambia, por eso queda fuera de rango).` : ""}`
       : `
 ANCLAS DE NEGOCIACIÓN (REGLA 5 v16 — usar EXACTOS y con su nombre, no recalcular):
-  ⚠ NINGUNO de estos precios entra en \`negociacion.contenido\`: se imprimen como bloque propio justo debajo de ese párrafo. Van en las glosas del plan y en \`cajaAccionable\`, no en el argumento.
 - objetivo_uf: ${objetivoUF} (${fmtCLP(objetivoCLP)}) — ${objetivoEsUmbral ? `DONDE CAMBIA EL VEREDICTO: cerrando ahí el veredicto sube a ${destinoUmbralNeg}; bajo ese precio ya es ${destinoUmbralNeg}, sobre ese precio sigue siendo ${veredictoMotor}` : `donde el aporte se vuelve sostenible (este caso no tiene umbral de veredicto en rango)`}
 - primeraOferta_uf: ${primeraOfertaUF} (${fmtCLP(primeraOfertaCLP)})${primeraOfertaUF === objetivoUF ? " ← IGUAL al objetivo (modo cerrar_actual: no sugerir descuento)" : " — el objetivo menos ~5%, posición de apertura"}
 - sostenible_uf: ${sostenibleUF} (${fmtCLP(sostenibleCLP)}) — DONDE EL APORTE SE VUELVE SOSTENIBLE, dato de caja del motor${objetivoEsUmbral ? (sostenibleUF < objetivoUF ? `; queda BAJO el objetivo, o sea dentro de la zona donde el veredicto ya es ${destinoUmbralNeg}: es hasta dónde seguir si la conversación da, nunca "sobre esto no compras"` : sostenibleUF > objetivoUF ? `; queda SOBRE el objetivo: a ese precio el veredicto todavía no cambia` : "; coincide con el objetivo") : " (es el mismo número que el objetivo)"}
@@ -1853,7 +1851,7 @@ CAPEX PUESTA A PUNTO (depto usado de ${hallazgoCapex.valor.antiguedadAnios} año
 - monto puesta a punto: ${fmtUF(hallazgoCapex.valor.montoUF)} (${fmtCLP(hallazgoCapex.valor.montoCLP)}) de tu bolsillo el día 1
 - pesa ~${Math.round(hallazgoCapex.decisividad * 100)}% de tu inversión inicial total (${fmtCLP(inversionTotal)})
 - es parte de la plata día 1, NO un gasto mensual ni palanca de precio
-- placement: intégralo en conviene.respuestaDirecta SOLO si su peso condiciona la decisión (regla §8.1). REENCUADRA qué significa para tu inversión inicial real — NO recites el monto.`
+- placement: intégralo en conviene.cajaAccionable SOLO si su peso condiciona la decisión (regla §8.1). REENCUADRA qué significa para tu inversión inicial real — NO recites el monto.`
       : "";
 
     // financingHealth — clasificación de pie + tasa para el escalonado §5 del system.
@@ -1997,7 +1995,7 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
 - tasaObjetivo: ${reestructuracionFinanciera.tasaObjetivo_pct}%
 - plazoSugerido: ${reestructuracionFinanciera.plazoSugerido_anios} años (igual al actual — no se recomienda cambiar el plazo)
   ⚠ NO HAY PIE SUGERIDO, y no es un dato que falte: no existe. Si la reestructuración habla del pie, la magnitud sale de la ESCALERA y se dice como intercambio, nunca como meta.
-  ⚠ NINGUNA de estas cifras entra en \`negociacion.contenido\`: la sección de reestructuración las dibuja. Ahí la palanca se NOMBRA ("trabajar la estructura con tu banco mueve más que el precio"), sin sus números.` : ""}` : "";
+  ⚠ SIN CIFRAS: la sección de reestructuración las dibuja. Ahí la palanca se NOMBRA ("trabajar la estructura con tu banco mueve más que el precio"), sin sus números.` : ""}` : "";
 
     // FINDINGS LAYER — ensamblado de los 6 hallazgos tipados desde el scope de
     // generación (objetos VIVOS: hallazgoCapex/hallazgoSobreprecio ya construidos
@@ -2147,22 +2145,17 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
           ? "Pagas caro y el arriendo no cubre la cuota: cada mes sale de tu bolsillo la diferencia, y el resto del caso no la compensa."
           : "Buen depto, mal negocio como está: el arriendo queda corto frente a la cuota, y con más pie el mes cierra.";
 
-    // PLAN C — presupuesto de la continuación: FIJO (CONTINUACION_MAX). Desde v21.1 el
-    // techo ya no escala con nada del motor. La regla, su calibración y por qué
-    // murió el techo plano de 85 viven en prosa-presupuesto.ts (fuente única con el
-    // check A6 del golden). aperturaWC sigue midiéndose acá porque el prompt declara
-    // cuánto consume la apertura, y el guard lo reporta en sus logs.
-    const aperturaWC = hallazgosOrdenados.length > 0
-      ? contarPalabras(String(hallazgosOrdenados[0].fraseCanonica))
-      : 0;
-    // EL TECHO SIGUE SIGNIFICANDO LO MISMO: «primera oración + 60 de continuación».
-    // Lo único que sale es el término del motor (1 a 7 palabras según el veredicto),
-    // porque el motor ya no antepone nada. El presupuesto DEL MODELO no se toca —nunca
-    // incluyó la respuesta— y con eso `techoTotal` pasaba a ser idéntico a
-    // `maxRespuestaModelo`, así que muere: el total ensamblado ES lo que escribe el
-    // modelo. A6 pierde el mismo término del otro lado, y el margen medido no cambia
-    // (lo que se mide, `palabras(respuestaDirecta)`, baja exactamente lo mismo).
-    const maxRespuestaModelo = techoRespuestaModelo(aperturaWC);
+    // ─── PLAN C · `aperturaWC` y `maxRespuestaModelo` MUEREN ACÁ (v22) ────────
+    // Los dos existían para un techo que escalaba con la apertura: el modelo podía
+    // escribir `aperturaWC + CONTINUACION_MAX` porque su primera oración reescribía la
+    // frase del hallazgo #1. En v22 no hay apertura ni continuación — hay UN campo,
+    // `conviene.cajaAccionable`, con techo FIJO (CAJA_ACCIONABLE_MAX = 110).
+    //
+    // Y estaban abriendo un hueco medible: 2a puso «TECHO: 110 palabras» en el system
+    // prompt y el guard mide contra 110, pero acá el user prompt seguía declarando
+    // `maxRespuestaModelo` (aperturaWC + 60 ≈ 75-85 según el caso). El modelo recibía
+    // DOS techos distintos para el mismo campo en la misma request. Ahora los tres
+    // —system, user y guard— dicen 110.
 
     // ── Referencia de arriendo: las tres piezas que el prompt consume ─────────
     // Todas cuelgan de la MISMA resolución (arriendo-referencia.ts) para que no
@@ -2352,7 +2345,7 @@ DISTANCIA AL VEREDICTO (último de la lista). Trae los valores YA CALCULADOS de 
 
 OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra. Es la condición concreta bajo la que tu posición se sostiene (§1.10) y es lo único del informe que responde "¿y ahora qué?".
 
-TAMBIÉN en \`conviene.respuestaDirecta\`, si el hallazgo NO es estructural: cierra tu continuación con UNA mención breve de esa distancia ("estás a X% de arriendo de que esto sea un Comprar"). Una sola frase corta, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer. Si el hallazgo dice que ningún ajuste realista alcanza, NO menciones distancia en respuestaDirecta: no hay una que prometer y anunciarla sería falso.
+TAMBIÉN, si el hallazgo NO es estructural: cierra con UNA mención breve de esa distancia ("estás a X% de arriendo de que esto sea un Comprar"). Una sola frase corta, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer. Si el hallazgo dice que ningún ajuste realista alcanza, NO menciones distancia: no hay una que prometer y anunciarla sería falso.
 
 REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase y en el bloque VÍAS. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí${
   viaPieGen?.estado === "cruza"
@@ -2384,7 +2377,7 @@ ${matizPalancaArriendo}
 
 SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues" o cualquier ajuste como salida. La honestidad acá es cerrar la puerta, no dejarla entornada: ${casoPrecioJustoGen ? "la brecha no es de este depto ni de su precio — es de lo que la zona rinde hoy (ver CASO PRECIO-JUSTO)" : "la brecha es del deal"}. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe.
 ` : ""}
-CÓMO ESCRIBIR conviene.respuestaDirecta (contrato completo en §13): PRIMERA ORACIÓN = la razón que manda (hallazgo 1, con su cifra, en tu voz); DESPUÉS un solo matiz — el de mayor consecuencia en plata — que la condiciona, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxRespuestaModelo} palabras en total. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
+CÓMO ESCRIBIR conviene.cajaAccionable (contrato completo en §13): PRIMERA ORACIÓN = la razón que manda (hallazgo 1, con su cifra, en tu voz); DESPUÉS un solo matiz — el de mayor consecuencia en plata — que la condiciona, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${CAJA_ACCIONABLE_MAX} palabras en total. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
     // Pie cero (RESUELTO fase 4): con pie 0 las métricas sobre capital llegan
@@ -2495,7 +2488,7 @@ PROYECCIÓN Y ALTERNATIVAS
 - lecturaSensibilidadTasa (narra esta idea con tus palabras): ${creditoCLP > 0 ? `si la tasa sube 1 punto tu dividendo pasa de ${fmtCLP(m.dividendo)} a ${fmtCLP(dividendoSiTasaSube1)}; con 2 puntos, a ${fmtCLP(dividendoSiTasaSube2)}` : "sin crédito, la tasa no afecta tu dividendo"}
 
 COMPARACIÓN DE PRECIO POR M² (fuente única — NO recalcules ni estimes de memoria)
-  ⚠ En \`negociacion.contenido\` esta comparación va SIN cifras: la fila del índice ya muestra el par y el porcentaje. Ahí se dice la dirección ("tu precio por m² está sobre/bajo la mediana de la comuna"), que es lo que el número no dice.
+  ⚠ Esta comparación va SIN cifras: la fila del índice ya muestra el par y el porcentaje. Ahí se dice la dirección ("tu precio por m² está sobre/bajo la mediana de la comuna"), que es lo que el número no dice.
 - Precio/m² de este depto: ${fmtUF(pvc.sujetoUfM2)}
 - Mediana de la comuna${hallazgoSobreprecio?.valor.universo === "nuevo" ? " (departamentos NUEVOS — nómbralo al citarla, no digas 'la comuna' a secas)" : hallazgoSobreprecio?.valor.universo === "usado" ? " (departamentos USADOS — nómbralo al citarla, no digas 'la comuna' a secas)" : ""}: ${hallazgoSobreprecio ? fmtUF(hallazgoSobreprecio.valor.medianaComunaUfM2) : "sin dato confiable de la comuna"}
 - Desviación vs mediana: ${hallazgoSobreprecio ? (hallazgoSobreprecio.valor.desviacionPct >= 0 ? "+" : "") + hallazgoSobreprecio.valor.desviacionPct + "% (USA ESTE NÚMERO EXACTO — la mediana y el % salen del hallazgo, no los recalcules)" : "sin dato — no afirmes nada sobre precio vs comuna (ver REGLA 0)"}
@@ -3120,13 +3113,13 @@ Responde SOLO este JSON, sin texto alrededor:
     // Con la primera oración del hero escrita por el modelo, el juez cazó dos clases
     // de afirmación contable falsa en 10 seeds: "la única vía" con tres vías que
     // cruzan (GS-PJ) y "más del doble" con una razón de 1,68× (GS-PC2). Dos reglas
-    // contables sobre respuestaDirecta, contra datos del motor:
+    // contables sobre el texto publicado (titular + cajaAccionable), contra datos del motor:
     //   · "única / sola / una sola vía" ⇔ exactamente UNA vía cruza.
     //   · "doble / triple / mitad" ⇔ la razón SUJETO ÷ COMPARADOR que la MISMA oración
     //     nombra cae en el rango del múltiplo (ver violacionesHeroClaim: el sujeto elige
     //     el numerador, el comparador más cercano el denominador; sin alguno de los dos,
     //     sin licencia).
-    // Un reintento quirúrgico sobre respuestaDirecta con el dato correcto citado; se
+    // Un reintento quirúrgico sobre el campo que violó, con el dato correcto citado; se
     // acepta solo si mejora. Corre ANTES de RD-BUDGET (el presupuesto es la última
     // palabra) y DESPUÉS de LTR-CIFRA (el candidato se re-verifica con empeoraCifras).
     // Contexto contable compartido por el guard del hero y por el de negociación
@@ -3183,7 +3176,7 @@ RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad"
           const contUf = typeof aiResult.conviene.cajaAccionable_uf === "string" ? aiResult.conviene.cajaAccionable_uf : "";
           const titularActual = typeof aiResult.titular === "string" ? aiResult.titular : "";
           const corrigeTitular = titularViola(aiResult);
-          const promptClaim = `Estás corrigiendo SOLO ${corrigeTitular ? "el titular y " : ""}el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
+          const promptClaim = `Estás corrigiendo SOLO ${corrigeTitular ? "el titular y " : ""}el campo conviene.cajaAccionable de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
 
 La RESPUESTA al veredicto la dice el TÍTULO del bloque: NO la escribas. El texto abre por la razón.
 
@@ -3254,14 +3247,13 @@ Responde SOLO este JSON, sin texto alrededor:
     // nombre de la fuente dentro del log.
 
     // RD-BUDGET GUARD (hasta T5 se llamaba Plan C) — enforcement de presupuesto POR
-    // CONSTRUCCIÓN. Lo que escribe el modelo —la respuestaDirecta completa, que desde
-    // v21.1 es TODO lo que se publica— no puede superar
-    // maxRespuestaModelo = aperturaWC + CONTINUACION_MAX.
+    // CONSTRUCCIÓN. Lo que escribe el modelo —desde v22, `conviene.cajaAccionable` y
+    // nada más— no puede superar CAJA_ACCIONABLE_MAX.
     // El modelo no cuenta bien, así que medimos acá: sobre maxContinuacion×1.1, hasta
     // 2 retries QUIRÚRGICOS (Goal D). Antes cada retry regeneraba el JSON COMPLETO
     // (~24k tokens de input + ~2.9k de output, ~50s) para acortar un campo de ≤66
     // palabras — medido en prod (a5179ba2): 2 regens = 100s extra para corregir el
-    // 5% de la prosa. Ahora el retry reescribe SOLO conviene.respuestaDirecta para
+    // 5% de la prosa. Ahora el retry reescribe SOLO conviene.cajaAccionable para
     // COMPRIMIRLA (misma primera oración, mismo matiz, mismas cifras). El resto de la
     // prosa, que los guards anteriores ya validaron, no se regenera ni se toca.
     //
@@ -3298,7 +3290,7 @@ Responde SOLO este JSON, sin texto alrededor:
 
 La RESPUESTA al veredicto la dice el TÍTULO del bloque: NO la escribas. Tu texto arranca con LA razón que manda (la primera oración actual, que se conserva) y sigue con el matiz.
 
-TU TAREA: el texto actual mide ${mejorWC} palabras y el MÁXIMO es ${maxRespuestaModelo} por variante. Comprímelo conservando la primera oración (la razón) y el MISMO matiz (el de mayor consecuencia en plata), usando SOLO cifras que ya aparecen en él — ninguna cifra nueva. UN solo matiz; los demás viven en las cards.${insistencia}
+TU TAREA: el texto actual mide ${mejorWC} palabras y el MÁXIMO es ${maxCaja} por variante. Comprímelo conservando la primera oración (la razón) y el MISMO matiz (el de mayor consecuencia en plata), usando SOLO cifras que ya aparecen en él — ninguna cifra nueva. UN solo matiz; los demás viven en las cards.${insistencia}
 
 TEXTO ACTUAL (variante CLP):
 ${contClp}
