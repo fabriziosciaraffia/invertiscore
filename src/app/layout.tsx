@@ -7,8 +7,11 @@ import { buildSiteJsonLd } from "@/lib/seo/jsonld";
 
 const sourceSerif = Source_Serif_4({
   subsets: ["latin", "latin-ext"],
-  // Skill franco-design-system Capa 2: Light 300 (italic, solo wordmark "re") + Bold 700 (resto)
-  weight: ["300", "700"],
+  // Skill franco-design-system Capa 2: Light 300 (italic, solo wordmark "re") + Bold 700 (resto).
+  // 400 agregado el 09-sep-2026: la prosa serif del informe (la frase del hallazgo) pide
+  // peso normal y NO estaba cargado, así que el navegador caía al 300 por font-matching y
+  // se rendíia en Light. Se veía apretada, y la causa era el peso faltante.
+  weight: ["300", "400", "700"],
   style: ["normal", "italic"],
   variable: "--font-heading",
   display: "swap",

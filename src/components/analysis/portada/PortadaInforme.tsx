@@ -380,15 +380,19 @@ export function DocTokens() {
          el kicker, el punto de dirección, el título y la frase larga salieron de la
          fila. El separador y el espaciado se deciden con el informe completo a la
          vista, en otro goal; acá va el que trae el contrato. */
-      .hz-lin{display:grid;grid-template-columns:16px 1fr auto;gap:14px;align-items:baseline;width:100%;
+      /* ALINEACIÓN — estrategia 3 del contrato. «start», no «baseline»: con baseline la
+         frase de dos líneas arrastraba la cifra hacia abajo. Y la columna de cifras va con
+         ANCHO FIJO, no «auto»: con auto cada fila se acomodaba a su largo y las cuatro
+         cifras arrancaban en sitios distintos. 120px entra el caso peor (−$1.149.025). */
+      .hz-lin{display:grid;grid-template-columns:16px 1fr 120px;gap:14px;align-items:start;width:100%;
         padding:15px 0;border-bottom:1px solid var(--doc-line);cursor:pointer;text-align:left;
         background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit}
       .hz-lin:last-child{border-bottom:none}
       /* La flecha: SIEMPRE Ink. Nunca toma el color de la dirección — ese es justo el
          acoplamiento que este bloque dejó de hacer. Ancho fijo para que la fila
          la fila neutral, que no lleva flecha, no corra la frase hacia la izquierda. */
-      .hz-fl{font-family:var(--font-mono, ui-monospace);font-size:14px;line-height:1.45;color:var(--doc-tx);text-align:center}
-      .hz-lin p{font-family:var(--font-heading, Georgia, serif);font-size:15.5px;line-height:1.45;color:var(--doc-tx);margin:0}
+      .hz-fl{font-family:var(--font-mono, ui-monospace);font-size:14px;line-height:1.4;color:var(--doc-tx);text-align:center}
+      .hz-lin p{font-family:var(--font-heading, Georgia, serif);font-weight:400;font-size:16px;line-height:1.4;color:var(--doc-tx);margin:0}
       .hz-lin:hover p{color:var(--doc-tx2)}
       /* Foco visible: la fila entera es el control, así que el anillo va en la fila. */
       .hz-lin:focus-visible{outline:2px solid var(--verdict);outline-offset:3px;border-radius:2px}
@@ -396,7 +400,10 @@ export function DocTokens() {
       /* La ÚNICA cifra con color: el monto negativo. «.mal» (adverso) y «.bien»
          (--doc-good) murieron — codificaban DIRECCIÓN, que ahora dice la flecha. */
       .hz-n.neg{color:var(--signal-red)}
-      .hz-n small{display:block;font-size:10.5px;font-weight:500;color:var(--doc-tx3);text-align:right;margin-top:2px;letter-spacing:0}
+      /* El slot de la referencia reserva su alto AUNQUE ESTÉ VACÍO (min-height + el
+         espacio duro que emite el componente): sin eso la fila sin referencia —Pie 20%—
+         se hundía respecto de las otras tres. */
+      .hz-n small{display:block;min-height:14px;font-size:10.5px;font-weight:500;color:var(--doc-tx3);text-align:right;margin-top:2px;letter-spacing:0;white-space:normal}
       /* los números */
       .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--doc-line);border:1px solid var(--doc-line)}
       .num-cell{background:var(--doc-paper);padding:14px 16px 13px}
@@ -440,7 +447,10 @@ export function DocTokens() {
       @media (max-width: 767px){
         .doc-sec{margin:0 -22px;padding:26px 22px 32px}
         .doc-sec-t{font-size:25px}
-        .hz-lin p{font-size:14.5px} .hz-n{font-size:14px}
+        /* Móvil proporcional: 15px. Igualar a 16 aprieta demasiado a 390; los 14,5
+           viejos mantenían el problema justo donde más se lee. */
+        .hz-lin p{font-size:15px} .hz-n{font-size:14px}
+        .hz-lin{grid-template-columns:14px 1fr 104px;gap:10px}
         .nums{grid-template-columns:repeat(2,1fr)} .num-cell .v{font-size:19px}
         .m-scrollcue{display:block}
         .ind-tbl td:nth-child(2){display:none}
