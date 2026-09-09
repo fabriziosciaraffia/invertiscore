@@ -911,7 +911,7 @@ export function hasNewAiStructure(ai: unknown): boolean {
   const obj = ai as Record<string, unknown>;
   const conviene = obj.conviene as Record<string, unknown> | undefined;
   return typeof conviene === "object" && conviene !== null
-    && typeof conviene.respuestaDirecta_clp === "string";
+    && typeof conviene.cajaAccionable_clp === "string";
 }
 
 /**

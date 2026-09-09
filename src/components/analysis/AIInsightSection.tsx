@@ -60,16 +60,25 @@ export const FRANCO_SCORE_TOOLTIP =
   `Puntaje 0-100 que combina rentabilidad (30%), flujo de caja (25%), plusvalía proyectada (25%) y eficiencia (20%) del depto. Sobre 70: ${etiquetaVeredicto("COMPRAR", "banda")}. Entre 50-70: ${etiquetaVeredicto("AJUSTA SUPUESTOS", "banda")}. Bajo 50: ${etiquetaVeredicto("BUSCAR OTRA", "banda")}.`;
 
 /** Detecta la estructura nueva v2 del análisis IA.
- * Discriminador: `conviene.respuestaDirecta_clp` (no `siendoFrancoHeadline_clp`,
- * que el prompt LTR dejó de emitir — campo huérfano no renderizado). Los
- * análisis viejos persistidos siguen pasando: traían respuestaDirecta_clp junto
- * al headline, sin regresión hacia atrás. */
+ *
+ * Discriminador: `conviene.cajaAccionable_clp`. Hasta v21.1 era
+ * `respuestaDirecta_clp`, y v22 mata ese campo — dejarlo habría convertido esta
+ * función en un NO para toda prosa nueva, con dos consecuencias caras: la caché la
+ * lee como no-nueva y regenera en loop, y `ai-status` nunca reporta `ready`, así que
+ * el informe se queda en «generando» para siempre.
+ *
+ * `cajaAccionable_clp` es el campo que SOBREVIVE a v22 y que las filas viejas también
+ * traen: medido el 09-sep-2026, las 669 filas LTR con prosa lo tienen, y cero tienen
+ * `respuestaDirecta` sin él. O sea que el cambio no deja a nadie afuera.
+ *
+ * Sigue siendo una PRESENCIA, no una ausencia: se mira el campo que tiene que estar,
+ * nunca uno que tiene que faltar. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function hasAiV2(ai: any): ai is AIAnalysisV2 {
   return !!ai
     && typeof ai === "object"
     && !!ai.conviene
-    && typeof ai.conviene.respuestaDirecta_clp === "string";
+    && typeof ai.conviene.cajaAccionable_clp === "string";
 }
 
 /**
@@ -80,7 +89,8 @@ export function hasAiV2(ai: any): ai is AIAnalysisV2 {
  * —`respuestaDirecta` y `cajaAccionable`— no cambian en v21, y lo que muere
  * (`pregunta`) es un campo que las filas viejas traen y las nuevas no, o sea una
  * ausencia, que es la señal más frágil que existe. Las filas sin `promptVersion`
- * (150 del parque) caen al camino viejo por el `?? 0`.
+ * caen al camino viejo por el `?? 0` — medido el 09-sep-2026 ya no queda ninguna
+ * (el comentario decía 150; el parque las migró).
  *
  * EL CAMINO VIEJO NO ES TEMPORAL. Es TRANSITORIO para las 216 filas CON DUEÑO: se
  * invalidan solas al abrirse (`cacheEstaFrescaLTR` compara contra

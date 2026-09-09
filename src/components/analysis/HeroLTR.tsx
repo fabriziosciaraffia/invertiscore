@@ -83,6 +83,8 @@ export function HeroLTR({
   const conviene = data?.conviene;
   const respuesta =
     (currency === "CLP" ? conviene?.respuestaDirecta_clp : conviene?.respuestaDirecta_uf) ?? null;
+  // La señal de «la prosa llegó» es el campo que sobrevive a v22, no la apertura.
+  const hayProsa = typeof conviene?.cajaAccionable_clp === "string";
   const cajaAccionable =
     (currency === "CLP" ? conviene?.cajaAccionable_clp : conviene?.cajaAccionable_uf) ?? null;
   // FNOTE por CURADURÍA (decisión b del PARÁ 0): la nota al margen no es un campo
@@ -265,11 +267,18 @@ export function HeroLTR({
               se apilaba a la derecha y el bloque se leia volcado al borde.
               Solo desde `md`: bajo 768px no hay aire que repartir y 36px se comerian
               el ancho de lectura. */}
-          {respuesta ? (
-            <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch] md:ml-9">
-              {renderPlumon(respuesta)}
-              {fnote && <p className="doc-fnote">{fnote}</p>}
-            </div>
+          {/* HAY PROSA ⇔ hay `cajaAccionable`, no ⇔ hay apertura. v22 mata
+              `respuestaDirecta` y este ternario colgaba de ella: sin el cambio, toda
+              prosa v22 caía al skeleton y el hero se quedaba en «generando» para
+              siempre. La apertura, cuando existe (filas v21 y viejas), se sigue
+              pintando; cuando no, el título queda pegado a las razones. */}
+          {hayProsa ? (
+            respuesta ? (
+              <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch] md:ml-9">
+                {renderPlumon(respuesta)}
+                {fnote && <p className="doc-fnote">{fnote}</p>}
+              </div>
+            ) : null
           ) : prosaError ? (
             /* Error de generación inline: el hero (veredicto/score/índice) sigue
                vivo; solo el slot de prosa reporta y ofrece reintentar. */
