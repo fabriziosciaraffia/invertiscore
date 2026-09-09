@@ -118,19 +118,23 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       const strings = ((): { path: string; s: string }[] => { const o: { path: string; s: string }[] = []; collectStrings(ai, o); return o; })();
       const rd = norm(ai.conviene?.respuestaDirecta_clp ?? "");
 
-      // A1 (HARD) — v18: la respuestaDirecta EMPIEZA con la respuesta al veredicto
-      // ("Conviene." / "No conviene." / "Todavía no: tienes que ajustar los supuestos."),
-      // que el motor antepone, y NINGUNA de sus oraciones COPIA una fraseCanonica (run
-      // común ≥ 60% de la frase, mínimo 8 palabras): la apertura ya no es prefabricada — el modelo escribe la razón
-      // que manda en su voz y la frase del hallazgo se queda en la card.
-      const RESPUESTAS_VEREDICTO = [
-        "Todavía no: tienes que ajustar los supuestos.",
-        "Conviene, con una condición.",
-        "No conviene.",
-        "Conviene.",
-      ];
-      const respUsada = RESPUESTAS_VEREDICTO.find((r) => rd.startsWith(r));
-      if (!respUsada) {
+      // A1 (HARD) — dos mitades, y la primera se INVIRTIÓ en v21.1 (08-sep-2026):
+      //
+      // (1) La respuestaDirecta NO arranca contestando la conveniencia. Antes exigía lo
+      //     contrario —que empezara con la respuesta que el motor anteponía—, y el motor
+      //     ya no antepone nada: el bloque se titula con la línea que declara, así que
+      //     una apertura que vuelve a contestar repite el título un renglón más abajo.
+      //     El prompt lo prohíbe desde v18 («no abras afirmando o negando la
+      //     conveniencia»); ESTE CHEQUEO PASA A MEDIRLO POR PRIMERA VEZ. Mientras el
+      //     prepend existía era inmedible: toda apertura arrancaba con la respuesta y no
+      //     había forma de distinguir la del motor de la del modelo.
+      //     El predicado es el mismo que usaba la guarda de idempotencia del prepend, no
+      //     una lista de literales: caza la FAMILIA («Conviene…», «No conviene…»,
+      //     «Todavía no…»), que es lo que el lector percibe como respuesta.
+      // (2) NINGUNA de sus oraciones COPIA una fraseCanonica (run común ≥ 60% de la
+      //     frase, mínimo 8 palabras) — la apertura no es prefabricada: el modelo escribe
+      //     la razón que manda en su voz y la frase del hallazgo se queda en la card.
+      if (/^(conviene|no conviene|todavía no)/i.test(rd.trim())) {
         bump("A1.apertura");
       } else if (sentencesOf(rd).some((o) => { const w = wordsOf(o); return frasesCanonicas.some((f) => esCopia(w, f)); })) {
         bump("A1.apertura");
@@ -143,12 +147,16 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       // A5 (HARD) — §9 en conviene.cajaAccionable presente y con sustancia.
       if (WORDS(ai.conviene?.cajaAccionable_clp ?? "") < 8) bump("A5.§9-cajaAccionable");
 
-      // A6 (HARD) — presupuesto escalado (v18): el techo TOTAL no cambió — respuesta del
-      // motor + presupuesto de la primera oración (lo que medía la fraseCanonica del #1,
-      // que ya no se antepone) + continuación con TECHO_CONTINUACION_DURO. Se mide la
-      // respuestaDirecta COMPLETA. Si A1 falló y no sabemos qué respuesta se usó, se asume
-      // la más larga (7 palabras) para no cobrarle a A6 una falla que es de A1.
-      const fijoWC = (respUsada ? WORDS(respUsada) : 7) + WORDS(coronaFrase);
+      // A6 (HARD) — presupuesto: el de la primera oración (lo que medía la fraseCanonica
+      // del #1) + continuación con TECHO_CONTINUACION_DURO. Se mide la respuestaDirecta
+      // COMPLETA.
+      //
+      // v21.1: sale el término de la respuesta del motor (1 a 7 palabras según el
+      // veredicto), porque el motor ya no antepone nada. EL MARGEN NO CAMBIA: lo que se
+      // mide baja exactamente las mismas palabras que baja el techo. Y desaparece el
+      // acoplamiento con A1 —el «si A1 falló, asume 7»— que existía solo para no
+      // cobrarle a A6 una falla ajena.
+      const fijoWC = WORDS(coronaFrase);
       totalesWC.push(WORDS(rd));
       if (WORDS(rd) > fijoWC + techoContinuacion) bump("A6.presupuesto");
 
@@ -266,7 +274,7 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
     if (totalesWC.length) {
       console.log(
         `      · ${seed.key} presupuesto: respuestaDirecta ${Math.min(...totalesWC)}-${Math.max(...totalesWC)} palabras` +
-          ` [techo = respuesta + ${WORDS(coronaFrase)} (presupuesto de la razón que manda) + ≤${techoContinuacion}] · corridas: ${totalesWC.join("·")}`,
+          ` [techo = ${WORDS(coronaFrase)} (presupuesto de la razón que manda) + ≤${techoContinuacion}] · corridas: ${totalesWC.join("·")}`,
       );
     }
     const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];

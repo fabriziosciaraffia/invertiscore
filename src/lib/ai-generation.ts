@@ -2145,7 +2145,16 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
       sensibilidadGen?.id === "sensibilidad" &&
       !sensibilidadGen.valor.firme &&
       sensibilidadGen.valor.marginPct < sensibilidadGen.valor.corteFavorable;
-    const respuestaVeredicto =
+    // YA NO SE ANTEPONE A LA PROSA (v21.1 · 08-sep-2026). El bloque de decisión se
+    // titula con la LÍNEA QUE DECLARA —«Ajusta los números. Esto es lo que pesa:»— y
+    // esta respuesta decía lo mismo un renglón más abajo, con la jerga que la línea
+    // vino a sacar («supuestos»). Era lo primero que leía el usuario, dos veces.
+    //
+    // SIGUE VIVA para UNA cosa: el último recurso del titular de portada
+    // (`titularMotor`), que la usa cuando ningún hallazgo da un titular válido. Ahí no
+    // duplica nada, porque es otra superficie. El nombre lo dice para que no vuelva a
+    // anteponerse a la prosa por inercia.
+    const respuestaFijaTitular =
       veredictoMotor === "COMPRAR"
         ? compraFragil
           ? "Conviene, con una condición."
@@ -2153,7 +2162,6 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
         : veredictoMotor === "BUSCAR OTRA"
           ? "No conviene."
           : "Todavía no: tienes que ajustar los supuestos.";
-    const respuestaWC = contarPalabras(respuestaVeredicto);
     // v18 — ejemplo positivo de la PRIMERA ORACIÓN del modelo (la que sigue a la
     // respuesta), tomado del patrón de los ejemplos calibrados del titular (§18):
     // veredicto en palabras simples + la razón que manda. Sin montos (la cifra es la
@@ -2169,15 +2177,17 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
     // TOTAL escala con lo que el motor antepone. La regla, su calibración y por qué
     // murió el techo plano de 85 viven en prosa-presupuesto.ts (fuente única con el
     // check A6 del golden). aperturaWC sigue midiéndose acá porque el prompt declara
-    // cuánto consume la apertura y el techo total se reporta en los logs del guard.
+    // cuánto consume la apertura, y el guard lo reporta en sus logs.
     const aperturaWC = hallazgosOrdenados.length > 0
       ? contarPalabras(String(hallazgosOrdenados[0].fraseCanonica))
       : 0;
-    const maxContinuacion = CONTINUACION_MAX;
-    const techoTotal = aperturaWC + respuestaWC + maxContinuacion;
-    // v18: el modelo escribe la respuestaDirecta completa (menos la respuesta al
-    // veredicto). aperturaWC ya no es una frase antepuesta: es el presupuesto de la
-    // primera oración, y el techo total no cambia.
+    // EL TECHO SIGUE SIGNIFICANDO LO MISMO: «primera oración + 60 de continuación».
+    // Lo único que sale es el término del motor (1 a 7 palabras según el veredicto),
+    // porque el motor ya no antepone nada. El presupuesto DEL MODELO no se toca —nunca
+    // incluyó la respuesta— y con eso `techoTotal` pasaba a ser idéntico a
+    // `maxRespuestaModelo`, así que muere: el total ensamblado ES lo que escribe el
+    // modelo. A6 pierde el mismo término del otro lado, y el margen medido no cambia
+    // (lo que se mide, `palabras(respuestaDirecta)`, baja exactamente lo mismo).
     const maxRespuestaModelo = techoRespuestaModelo(aperturaWC);
 
     // ── Referencia de arriendo: las tres piezas que el prompt consume ─────────
@@ -2355,8 +2365,8 @@ Lo que más pesa en esta lectura es la plusvalía histórica de la comuna — un
       ? `
 HALLAZGOS DEL ANÁLISIS (vienen en el ORDEN DEL INFORME: el 1º es el que manda — el adverso más determinante cuando lo hay, o el de más peso — y el resto va por cuánto pesa en la decisión). Llegan como DATOS, no como frases: las cards del informe ya narran cada uno con su propia frase, así que tu prosa los cuenta con TU voz y nunca los recita. NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostén la tensión con honestidad — no la aplanes.
 
-LA RESPUESTA YA ESTÁ ESCRITA: el motor antepone «${respuestaVeredicto}» a conviene.respuestaDirecta. No la escribas ni la repitas. Tu PRIMERA ORACIÓN es LA razón que manda — el hallazgo 1 de abajo — en tus palabras, con su cifra, sin repetir la frase del hallazgo: es la respuesta a "¿por qué?", dicha como se la dirías a alguien que te preguntó si compra.
-Ejemplo del patrón (la razón y la cifra son las de ESTE caso, no las del ejemplo): «${respuestaVeredicto} ${ejemploApertura}»
+LA RESPUESTA YA ESTÁ ESCRITA: el motor antepone «${respuestaFijaTitular}» a conviene.respuestaDirecta. No la escribas ni la repitas. Tu PRIMERA ORACIÓN es LA razón que manda — el hallazgo 1 de abajo — en tus palabras, con su cifra, sin repetir la frase del hallazgo: es la respuesta a "¿por qué?", dicha como se la dirías a alguien que te preguntó si compra.
+Ejemplo del patrón (la razón y la cifra son las de ESTE caso, no las del ejemplo): «${respuestaFijaTitular} ${ejemploApertura}»
 
 Hallazgos, en orden (el 1 manda la primera oración; el resto sirve para elegir el matiz):
 ${hallazgosOrdenados
@@ -2400,7 +2410,7 @@ ${matizPalancaArriendo}
 
 SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues" o cualquier ajuste como salida. La honestidad acá es cerrar la puerta, no dejarla entornada: ${casoPrecioJustoGen ? "la brecha no es de este depto ni de su precio — es de lo que la zona rinde hoy (ver CASO PRECIO-JUSTO)" : "la brecha es del deal"}. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe.
 ` : ""}
-CÓMO ESCRIBIR conviene.respuestaDirecta (contrato completo en §13): PRIMERA ORACIÓN = la razón que manda (hallazgo 1, con su cifra, en tu voz); DESPUÉS un solo matiz — el de mayor consecuencia en plata — que la condiciona, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxRespuestaModelo} palabras en total para lo que escribes tú — la respuesta al veredicto (${respuestaWC} palabras) la pone el motor y no se descuenta; el total ensamblado no pasa de ${techoTotal}. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
+CÓMO ESCRIBIR conviene.respuestaDirecta (contrato completo en §13): PRIMERA ORACIÓN = la razón que manda (hallazgo 1, con su cifra, en tu voz); DESPUÉS un solo matiz — el de mayor consecuencia en plata — que la condiciona, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxRespuestaModelo} palabras en total. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
     // Pie cero (RESUELTO fase 4): con pie 0 las métricas sobre capital llegan
@@ -3191,7 +3201,7 @@ RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad"
           const corrigeTitular = titularViola(aiResult);
           const promptClaim = `Estás corrigiendo SOLO ${corrigeTitular ? "el titular y " : ""}el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
 
-La RESPUESTA al veredicto («${respuestaVeredicto}») la antepone el motor: NO la escribas ni la repitas.
+La RESPUESTA al veredicto («${respuestaFijaTitular}») la antepone el motor: NO la escribas ni la repitas.
 
 PROBLEMA: el texto afirma algo que el motor contradice — ${viol.join("; ")}.
 ${datoCorrecto}
@@ -3377,7 +3387,7 @@ Responde SOLO este JSON, sin texto alrededor:
         const contUf = typeof mejor?.conviene?.respuestaDirecta_uf === "string" ? mejor.conviene.respuestaDirecta_uf : "";
         const promptQuirurgico = `Estás corrigiendo SOLO el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
 
-La RESPUESTA al veredicto («${respuestaVeredicto}») la antepone el motor: NO la escribas ni la repitas. Tu texto arranca con LA razón que manda (la primera oración actual, que se conserva) y sigue con el matiz.
+La RESPUESTA al veredicto («${respuestaFijaTitular}») la antepone el motor: NO la escribas ni la repitas. Tu texto arranca con LA razón que manda (la primera oración actual, que se conserva) y sigue con el matiz.
 
 TU TAREA: el texto actual mide ${mejorWC} palabras y el MÁXIMO es ${maxRespuestaModelo} por variante. Comprímelo conservando la primera oración (la razón) y el MISMO matiz (el de mayor consecuencia en plata), usando SOLO cifras que ya aparecen en él — ninguna cifra nueva. UN solo matiz; los demás viven en las cards.${insistencia}
 
@@ -3675,32 +3685,20 @@ Responde SOLO este JSON, sin texto alrededor:
       aiResult.hallazgoSobreprecio = hallazgoSobreprecio;
     }
 
-    // ─── LA RESPUESTA VA PRIMERO (v18: la apertura ya no es prefabricada) ──────
-    // Hasta v17 el motor anteponía además la fraseCanonica del hallazgo #1 ("Plan C",
-    // con dos strippers de eco) y esa misma frase se renderizaba como card en
-    // Principales hallazgos: doble lectura y cero respuesta a "¿invierto o no?" —
-    // medido sobre el parque, 100% de las prosas v13-v17 abrían con la frase de la
-    // card. Desde v18 el modelo escribe la respuestaDirecta completa (primera
-    // oración = la razón que manda, en su voz, con el hallazgo #1 como DATOS en el
-    // prompt) y el motor antepone SOLO la respuesta al veredicto, siempre, para que
-    // la línea más leída del informe conteste la pregunta sin depender de la
-    // obediencia del modelo. Idempotente si el modelo ya la escribió.
+    // ─── LA RESPUESTA YA NO VA PRIMERO (v21.1 · 08-sep-2026) ──────────────────
+    // Hasta v17 el motor anteponía la fraseCanonica del hallazgo #1 ("Plan C"); desde
+    // v18 anteponía solo la respuesta al veredicto, para que la línea más leída del
+    // informe contestara la pregunta sin depender de la obediencia del modelo.
     //
-    // COMPRAR condicional: cuando el veredicto se apoya en un supuesto frágil, "Conviene."
-    // a secas contradice al párrafo siguiente; la señal es determinística (margen de
-    // `sensibilidad` bajo su corte favorable) y se resolvió arriba en respuestaVeredicto.
-    if (aiResult?.conviene) {
-      const anteponerVeredicto = (t: unknown): string => {
-        const txt = typeof t === "string" ? t.trim() : "";
-        if (!txt) return respuestaVeredicto;
-        // Idempotencia: si por lo que sea ya arranca con la respuesta, no se duplica.
-        const primeras = txt.slice(0, 44).toLowerCase();
-        if (/^(conviene|no conviene|todavía no)/.test(primeras)) return txt;
-        return `${respuestaVeredicto} ${txt}`;
-      };
-      aiResult.conviene.respuestaDirecta_clp = anteponerVeredicto(aiResult.conviene.respuestaDirecta_clp);
-      aiResult.conviene.respuestaDirecta_uf = anteponerVeredicto(aiResult.conviene.respuestaDirecta_uf);
-    }
+    // Ese trabajo lo hace ahora el TÍTULO del bloque —la línea que declara, constante
+    // por veredicto (veredicto-etiqueta.ts)—, que además lo dice en el vocabulario del
+    // lector y no en el del motor. Con el prepend puesto, el usuario leía la misma
+    // instrucción dos veces seguidas: «Ajusta los números. Esto es lo que pesa:» y
+    // debajo «Todavía no: tienes que ajustar los supuestos.». Así que el prepend murió
+    // y la prosa arranca donde el prompt ya le pedía arrancar: la razón que manda.
+    //
+    // La constante no murió con él: sigue siendo el último recurso del titular de
+    // portada (`respuestaFijaTitular` → `titularMotor`), superficie donde no duplica.
 
     // FASE A — los 4 números de estructuraSugerida son DETERMINISTAS (motor), no
     // del LLM. Cuando la IA decide incluir la sección (Nivel 3, juicio cualitativo
@@ -3748,7 +3746,7 @@ Responde SOLO este JSON, sin texto alrededor:
           reescrito: reescrito?.texto ?? null,
           veredicto: veredictoMotor,
           hallazgos: hallazgosOrdenados,
-          respuestaFija: respuestaVeredicto,
+          respuestaFija: respuestaFijaTitular,
         });
         const infoReescrito = `reescrito: ${cita(reescrito?.texto)}${reescrito && !reescrito.valido && reescrito.motivo ? ` (${reescrito.motivo})` : ""}`;
         if (res.via === "escalon") {
