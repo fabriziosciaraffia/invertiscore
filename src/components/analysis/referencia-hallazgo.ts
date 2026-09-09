@@ -68,8 +68,26 @@ export function referenciaHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF:
       return `normal ${pct(h.valor.bandaFavPct)}–${pct(h.valor.bandaAdvPct)}`;
     case "patrimonio":
       return `pusiste ${money(h.valor.aportadoCLP)}`;
-    case "sobreprecio":
-      return `mediana UF ${h.valor.medianaComunaUfM2.toFixed(1).replace(".", ",")}`;
+    case "sobreprecio": {
+      // F2 · el término PROPIO junto a la mediana. La línea ya decía contra qué se
+      // compara («mediana UF 94,2») pero nunca cuánto vale el metro de ESTE depto, y la
+      // prosa lo suplía en 14 de 30 generaciones medidas.
+      //
+      // DOS RECORTES QUE SALIERON DE MEDIR, no de gusto. La columna mide 120px fijos y
+      // 104 en móvil; con «mediana» entera o con decimal, el par envuelve a dos líneas:
+      //   UF 110,0 · med 101,1  → 2 líneas en desktop Y en móvil
+      //   UF 68,4 · med 40,3    → 1 en desktop, 2 en móvil
+      //   UF 110 · med 101      → 1 y 1  ← esta
+      // El decimal además era precisión falsa: la mediana sale de una muestra de N
+      // publicaciones y la diferencia entre UF 110,0 y UF 110 es ruido. La precisión
+      // que importa la lleva el KPI, que es el % de brecha.
+      const uf = (x: number) => Math.round(x).toLocaleString("es-CL");
+      const sujeto = h.valor.sujetoUfM2;
+      const mediana = uf(h.valor.medianaComunaUfM2);
+      return typeof sujeto === "number" && sujeto > 0
+        ? `UF ${uf(sujeto)} · med ${mediana}`
+        : `mediana UF ${mediana}`;
+    }
     case "flujo_mensual":
       return `cuota ${money(h.valor.dividendoMensualCLP)}`;
     default:

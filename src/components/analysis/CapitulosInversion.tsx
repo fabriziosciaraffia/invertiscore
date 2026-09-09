@@ -371,6 +371,20 @@ export function CapitulosInversion({
           intro: "Dos decisiones fijan cuánto cargas cada mes: el precio al que cierras y el crédito con el que lo pagas. Esto es lo que cambia en tu caso con cada una.",
           entreMedio: (
             <>
+              {/* F2 (2/2) · EL SOBREPRECIO EN PLATA. La línea de hallazgo dice el ratio
+                  (UF 68 · med 40, −24%) y el capítulo el precio, pero nadie decía cuánto
+                  es esa brecha en total. La prosa lo suplía en 14 de 30 generaciones
+                  («pagas UF 1.181 más de lo que valen los metros»). Cierra la mitad de
+                  precio, justo antes del puente al crédito.
+                  Neutral (|desv| ≤ 2) no entra: ahí el propio hallazgo dice «pagas lo
+                  justo» y una cifra de brecha contradiría esa lectura. */}
+              {sobre && Math.abs(sobre.valor.desviacionPct) > 2 && inputData.superficie > 0 && (
+                <VFuente>
+                  En plata son {money(Math.abs(sobre.valor.sobreprecioUfM2) * inputData.superficie * valorUF)}{" "}
+                  {sobre.valor.sobreprecioUfM2 > 0 ? "por sobre" : "por debajo de"} la mediana de{" "}
+                  {sobre.valor.comuna || "la comuna"}, por los {inputData.superficie} m² de este depto.
+                </VFuente>
+              )}
               {plazo > 0 && piePct < 100 && (
                 <>
                   <VPuente>El precio es lo primero. Ahora veamos cómo lo financias: el crédito.</VPuente>
