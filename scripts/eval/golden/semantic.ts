@@ -23,10 +23,15 @@ export interface SemanticReport {
 
 /** `from`: juzga las salidas dumpeadas por runGenerateTier (`<from>/<key>-run0.json`) en
  *  vez de generar de nuevo — el juez y los checks miran LA MISMA prosa. */
-export async function runSemanticTier(sb: SupabaseClient, opts: { from?: string } = {}): Promise<SemanticReport[]> {
+export async function runSemanticTier(sb: SupabaseClient, opts: { from?: string; seeds?: Set<string> | null } = {}): Promise<SemanticReport[]> {
   const reports: SemanticReport[] = [];
 
-  for (const seed of GOLDEN_SEEDS) {
+  // `seeds` (v21.1): el tier NO honraba el filtro y era un bug de COSTO, no una
+  // preferencia — con una seed acotada seguía pagando una pasada de juez Opus por
+  // cada una de las diez.
+  const seedsARecorrer = opts.seeds ? GOLDEN_SEEDS.filter((s) => opts.seeds!.has(s.key)) : GOLDEN_SEEDS;
+
+  for (const seed of seedsARecorrer) {
     // Timeout por llamada (06-sep-2026): generación, captura del prompt y juez tienen techo;
     // el seed cae como FALLA-TIMEOUT y la tanda sigue. Antes una llamada colgada paraba todo.
     const archivo = opts.from ? join(opts.from, `${seed.key}-run0.json`) : null;

@@ -37,12 +37,15 @@ const frozenUF = (row: any): number => {
   return Number.isFinite(derived) && derived > 0 ? derived : GOLDEN_UF;
 };
 
-export async function runRecomputeTier(sb: SupabaseClient): Promise<SeedReport[]> {
+/** `seeds`: acota la tanda a esas claves (flag --seed del runner). El runner ya validó
+ *  que existan y chequea que el filtro no deje el tier en cero. */
+export async function runRecomputeTier(sb: SupabaseClient, opts: { seeds?: Set<string> | null } = {}): Promise<SeedReport[]> {
   const baseline = loadBaseline();
-  const all = [
+  const todas = [
     ...GOLDEN_SEEDS.map((s) => ({ key: s.key, uuid: s.uuid })),
     ...BORDE_SEEDS.map((s) => ({ key: s.key, uuid: BE_UUID[s.key] })),
   ];
+  const all = opts.seeds ? todas.filter((s) => opts.seeds!.has(s.key)) : todas;
   const reports: SeedReport[] = [];
 
   for (const { key, uuid } of all) {

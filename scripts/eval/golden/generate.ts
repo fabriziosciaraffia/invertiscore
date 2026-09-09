@@ -47,15 +47,16 @@ async function captureWarns<T>(fn: () => Promise<T>): Promise<{ result: T; warns
  * que otros instrumentos (juez, auditorías) corran sobre LAS MISMAS salidas.
  * `from`: en vez de generar, lee esos archivos (misma tanda, cero tokens).
  */
-export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dump?: string; from?: string } = {}): Promise<SeedReport[]> {
+export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dump?: string; from?: string; seeds?: Set<string> | null } = {}): Promise<SeedReport[]> {
   if (opts.dump) mkdirSync(opts.dump, { recursive: true });
   const reports: SeedReport[] = [];
 
-  // --solo=GS-PC1,GS-PC2 → corre el tier AUTO solo sobre esos seeds (mismo
-  // patrón --solo del regen STR del paquete B). Sin flag: todos.
-  const soloArg = process.argv.find((a) => a.startsWith("--solo="));
-  const solo = soloArg ? new Set(soloArg.slice("--solo=".length).split(",").map((s) => s.trim())) : null;
-  const seedsARecorrer = solo ? GOLDEN_SEEDS.filter((s) => solo.has(s.key)) : GOLDEN_SEEDS;
+  // `seeds`: acota la tanda (flag --seed del runner). Hasta v21.1 este tier leía un
+  // `--solo=` PROPIO desde process.argv: indocumentado, sin validar, y el único tier
+  // que lo respetaba. Un ID mal escrito recorría CERO seeds y el runner reportaba
+  // verde con exit 0 — la red midiendo nada y diciendo que pasó. Ahora el filtro se
+  // resuelve y se valida una sola vez, en el runner, y llega como opción.
+  const seedsARecorrer = opts.seeds ? GOLDEN_SEEDS.filter((s) => opts.seeds!.has(s.key)) : GOLDEN_SEEDS;
 
   for (const seed of seedsARecorrer) {
     const checks: Check[] = [];
