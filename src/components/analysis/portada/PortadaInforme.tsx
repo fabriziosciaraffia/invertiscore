@@ -394,14 +394,18 @@ export function DocTokens() {
       .hz-lin p{font-family:var(--font-heading, Georgia, serif);font-weight:400;font-size:16px;line-height:1.4;color:var(--doc-tx);margin:0}
       /* Sin :hover ni :focus-visible: la fila dejó de ser un control. Un hover sobre algo
          que no responde promete una puerta que no existe. */
-      .hz-n{font-family:var(--font-mono, ui-monospace);font-size:15px;font-weight:700;white-space:nowrap;letter-spacing:-.01em;color:var(--doc-tx)}
+      /* Cifra y referencia alineadas al MISMO borde, el derecho. La caja mide 120px fijos:
+         con la cifra a la izquierda y la referencia a la derecha, el par se leía torcido —
+         se notaba en las cifras cortas (3,3%), donde quedaba un hueco que la referencia
+         cruzaba por debajo. A la derecha las unidades quedan una bajo otra y comparan. */
+      .hz-n{font-family:var(--font-mono, ui-monospace);font-size:15px;font-weight:700;white-space:nowrap;letter-spacing:-.01em;color:var(--doc-tx);text-align:right}
       /* La ÚNICA cifra con color: el monto negativo. «.mal» (adverso) y «.bien»
          (--doc-good) murieron — codificaban DIRECCIÓN, que ahora dice la flecha. */
       .hz-n.neg{color:var(--signal-red)}
       /* El slot de la referencia reserva su alto AUNQUE ESTÉ VACÍO (min-height + el
          espacio duro que emite el componente): sin eso la fila sin referencia —Pie 20%—
          se hundía respecto de las otras tres. */
-      .hz-n small{display:block;min-height:14px;font-size:10.5px;font-weight:500;color:var(--doc-tx3);text-align:right;margin-top:2px;letter-spacing:0;white-space:normal}
+      .hz-n small{display:block;min-height:14px;font-size:10.5px;font-weight:500;color:var(--doc-tx3);margin-top:2px;letter-spacing:0;white-space:normal}
       /* los números */
       .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--doc-line);border:1px solid var(--doc-line)}
       .num-cell{background:var(--doc-paper);padding:14px 16px 13px}
