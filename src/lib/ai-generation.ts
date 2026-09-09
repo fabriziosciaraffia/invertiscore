@@ -168,7 +168,7 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // precio-justo (esReferenciaContrastable). Cierre §9 con posición sobre el
 // arriendo real cuando el caso se apoya en un estimado.
 // v19 (03-sep-2026): la apertura del hero en voz de Franco — muere Plan C. El motor
-// antepone solo la respuesta al veredicto; el modelo escribe la respuestaDirecta
+// anteponía solo la respuesta al veredicto (murió en v21.1, ver ahí); el modelo escribe la respuestaDirecta
 // completa con el hallazgo #1 como datos (qué · cuánto · dirección) y un ejemplo
 // positivo pegado al campo. Anclas: "el veredicto sube a".
 // v20 (03-sep-2026): una sola referencia de precio. El valor de mercado entra al
@@ -725,10 +725,10 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 \`\`\`
 
 Largos por campo:
-- conviene.respuestaDirecta: la escribes TÚ completa, salvo la RESPUESTA al veredicto ("Conviene." / "Conviene, con una condición." / "Todavía no: tienes que ajustar los supuestos." / "No conviene."), que el motor antepone por su cuenta: no la escribas ni la repitas, y no abras afirmando o negando la conveniencia — quedaría dicho dos veces. UNA MARCA \`**…**\` OBLIGATORIA (ni cero ni dos): frase completa con predicado, que se lea sola.
+- conviene.respuestaDirecta: la escribes TÚ completa, y ABRE POR LA RAZÓN, nunca por la respuesta. NO afirmes ni niegues la conveniencia —ni "Conviene", ni "No conviene", ni "Todavía no"— en ninguna parte, y menos en la primera oración: el TÍTULO del bloque ya la declara ("Compra." / "Ajusta los números." / "Busca otro."), así que decirla acá la deja dicha dos veces seguidas, y es lo primero que el lector ve. Tu trabajo empieza en el "¿por qué?". UNA MARCA \`**…**\` OBLIGATORIA (ni cero ni dos): frase completa con predicado, que se lea sola.
   (1) PRIMERA ORACIÓN = LA razón que manda: el hallazgo 1 del bloque HALLAZGOS del caso, en tus palabras y con su cifra — la respuesta a "¿por qué?". No es la frase del hallazgo (esa es la card que el lector ve más abajo): es tu lectura, como se la dirías a quien te preguntó si compra.
   (2) DESPUÉS, UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona esa razón, y SOLO si cambia la decisión: el supuesto de arriendo que sostiene el caso (con el encuadre que fija §8.bis según su procedencia), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Termina en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
-  (3) PRESUPUESTO: el bloque HALLAZGOS del caso declara el máximo de palabras de lo que escribes (≈ ${CONTINUACION_MAX} para el matiz más lo que pesa la razón que manda); la respuesta del motor no se descuenta. Escribe para ese presupuesto. Un guard lo mide, puede pedirte recortar y, si insistes, RECORTA ÉL por oración: la última idea que no quepa se pierde entera, así que pon lo que importa primero.
+  (3) PRESUPUESTO: el bloque HALLAZGOS del caso declara el máximo de palabras (≈ ${CONTINUACION_MAX} para el matiz más lo que pesa la razón que manda). Escribe para ese presupuesto. Un guard lo mide, puede pedirte recortar y, si insistes, RECORTA ÉL por oración: la última idea que no quepa se pierde entera, así que pon lo que importa primero.
   PROHIBIDO: copiar la frase de un hallazgo; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones de magnitud fuera de §15 (con el % o múltiplo provisto, o los dos montos absolutos, nunca como aproximación verbal); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
 - conviene.cajaAccionable: 1-2 frases — la POSICIÓN PERSONAL de Franco que cierra el análisis (§9): síntesis + condición bajo la que se sostiene + costo de avanzar contra el análisis si aplica. Cierra con un próximo paso concreto. NO checklist genérica, NO pregunta retórica sin respuesta.
   LAS VÍAS SON LAS QUE SON. Si el caso trae el bloque VÍAS QUE CRUZAN AL VEREDICTO DE ARRIBA, tu posición se escribe SOBRE ESA LISTA: cada una alcanza por sí sola y todas están medidas. Puedes recomendar una —la más accionable para este comprador— pero no puedes dejar creyendo que es la única disponible.
@@ -2134,10 +2134,8 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
     const pesoHallazgo = (dec: number): string =>
       dec >= 0.5 ? "decisivo" : dec >= 0.2 ? "relevante" : "contexto";
 
-    // Respuesta al veredicto que el motor antepone (ver el ensamblado más abajo). Se
-    // resuelve ACÁ porque su largo entra en el techo TOTAL que el prompt declara y que
-    // verifica el golden (A6) — 2 palabras ("No conviene.") o 7 ("Todavía no: tienes
-    // que ajustar los supuestos."), medidas, nunca una reserva estimada.
+    // Respuesta al veredicto. YA NO SE ANTEPONE A LA PROSA (v21.1): su único consumidor
+    // es el último recurso del titular de portada. Ver el comentario del ensamblado.
     const sensibilidadGen = (results.hallazgos as Hallazgo[] | undefined)?.find(
       (h) => h.id === "sensibilidad",
     );
@@ -2173,8 +2171,8 @@ estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS 
           ? "Pagas caro y el arriendo no cubre la cuota: cada mes sale de tu bolsillo la diferencia, y el resto del caso no la compensa."
           : "Buen depto, mal negocio como está: el arriendo queda corto frente a la cuota, y con más pie el mes cierra.";
 
-    // PLAN C — presupuesto de la continuación: FIJO (CONTINUACION_MAX), y el techo
-    // TOTAL escala con lo que el motor antepone. La regla, su calibración y por qué
+    // PLAN C — presupuesto de la continuación: FIJO (CONTINUACION_MAX). Desde v21.1 el
+    // techo ya no escala con nada del motor. La regla, su calibración y por qué
     // murió el techo plano de 85 viven en prosa-presupuesto.ts (fuente única con el
     // check A6 del golden). aperturaWC sigue midiéndose acá porque el prompt declara
     // cuánto consume la apertura, y el guard lo reporta en sus logs.
@@ -2365,8 +2363,8 @@ Lo que más pesa en esta lectura es la plusvalía histórica de la comuna — un
       ? `
 HALLAZGOS DEL ANÁLISIS (vienen en el ORDEN DEL INFORME: el 1º es el que manda — el adverso más determinante cuando lo hay, o el de más peso — y el resto va por cuánto pesa en la decisión). Llegan como DATOS, no como frases: las cards del informe ya narran cada uno con su propia frase, así que tu prosa los cuenta con TU voz y nunca los recita. NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostén la tensión con honestidad — no la aplanes.
 
-LA RESPUESTA YA ESTÁ ESCRITA: el motor antepone «${respuestaFijaTitular}» a conviene.respuestaDirecta. No la escribas ni la repitas. Tu PRIMERA ORACIÓN es LA razón que manda — el hallazgo 1 de abajo — en tus palabras, con su cifra, sin repetir la frase del hallazgo: es la respuesta a "¿por qué?", dicha como se la dirías a alguien que te preguntó si compra.
-Ejemplo del patrón (la razón y la cifra son las de ESTE caso, no las del ejemplo): «${respuestaFijaTitular} ${ejemploApertura}»
+LA RESPUESTA YA ESTÁ DICHA, EN EL TÍTULO DEL BLOQUE: el informe titula esta sección con la respuesta al veredicto y debajo van las razones. Tu texto NO la vuelve a decir. Tu PRIMERA ORACIÓN es LA razón que manda — el hallazgo 1 de abajo — en tus palabras, con su cifra, sin repetir la frase del hallazgo: es la respuesta a "¿por qué?", dicha como se la dirías a alguien que te preguntó si compra.
+Ejemplo del patrón (la razón y la cifra son las de ESTE caso, no las del ejemplo): «${ejemploApertura}»
 
 Hallazgos, en orden (el 1 manda la primera oración; el resto sirve para elegir el matiz):
 ${hallazgosOrdenados
@@ -3201,7 +3199,7 @@ RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad"
           const corrigeTitular = titularViola(aiResult);
           const promptClaim = `Estás corrigiendo SOLO ${corrigeTitular ? "el titular y " : ""}el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
 
-La RESPUESTA al veredicto («${respuestaFijaTitular}») la antepone el motor: NO la escribas ni la repitas.
+La RESPUESTA al veredicto la dice el TÍTULO del bloque: NO la escribas. El texto abre por la razón.
 
 PROBLEMA: el texto afirma algo que el motor contradice — ${viol.join("; ")}.
 ${datoCorrecto}
@@ -3347,8 +3345,8 @@ Responde SOLO este JSON, sin texto alrededor:
     }
 
     // RD-BUDGET GUARD (hasta T5 se llamaba Plan C) — enforcement de presupuesto POR
-    // CONSTRUCCIÓN. Lo que escribió el modelo (v18+: la respuestaDirecta completa, aún
-    // SIN la respuesta al veredicto que antepone el motor) no puede superar
+    // CONSTRUCCIÓN. Lo que escribe el modelo —la respuestaDirecta completa, que desde
+    // v21.1 es TODO lo que se publica— no puede superar
     // maxRespuestaModelo = aperturaWC + CONTINUACION_MAX.
     // El modelo no cuenta bien, así que medimos acá: sobre maxContinuacion×1.1, hasta
     // 2 retries QUIRÚRGICOS (Goal D). Antes cada retry regeneraba el JSON COMPLETO
@@ -3387,7 +3385,7 @@ Responde SOLO este JSON, sin texto alrededor:
         const contUf = typeof mejor?.conviene?.respuestaDirecta_uf === "string" ? mejor.conviene.respuestaDirecta_uf : "";
         const promptQuirurgico = `Estás corrigiendo SOLO el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
 
-La RESPUESTA al veredicto («${respuestaFijaTitular}») la antepone el motor: NO la escribas ni la repitas. Tu texto arranca con LA razón que manda (la primera oración actual, que se conserva) y sigue con el matiz.
+La RESPUESTA al veredicto la dice el TÍTULO del bloque: NO la escribas. Tu texto arranca con LA razón que manda (la primera oración actual, que se conserva) y sigue con el matiz.
 
 TU TAREA: el texto actual mide ${mejorWC} palabras y el MÁXIMO es ${maxRespuestaModelo} por variante. Comprímelo conservando la primera oración (la razón) y el MISMO matiz (el de mayor consecuencia en plata), usando SOLO cifras que ya aparecen en él — ninguna cifra nueva. UN solo matiz; los demás viven en las cards.${insistencia}
 
