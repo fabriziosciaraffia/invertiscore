@@ -13,7 +13,7 @@ import type {
   HallazgoCapRate,
   AINegociacionWalkAway,
 } from "@/lib/types";
-import { calcFlujoDesglose, tirForPrice, calcDividendo } from "@/lib/analysis";
+import { calcFlujoDesglose, calcMesVacio, tirForPrice, calcDividendo } from "@/lib/analysis";
 import { metricaValorONull } from "@/lib/types";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 
@@ -241,6 +241,18 @@ export function DrawerCostoMensual({
     return b.value - a.value;
   });
 
+  // EL MES VACÍO, COMPLETO. Hasta acá esta frase decía solo el dividendo y se quedaba
+  // corta: en Providencia (7710a017) anunciaba $978.290 cuando el golpe real es
+  // $1.149.025 — 14,9% menos de lo que el dueño paga (le faltaban los $90.000 de
+  // gastos comunes completos y los $80.735 de contribuciones del mes). Desde v21 este cierre es el ÚNICO
+  // lugar del informe LTR donde el lector ve el escenario (la prosa de `costoMensual`
+  // murió y el bloque del drawer de estructura es inalcanzable), así que la cifra
+  // incompleta era la única que quedaba en pie.
+  const mesVacio = calcMesVacio({
+    dividendo: desglose.dividendo,
+    ggcc: results.metrics?.gastos ?? inputData.gastos ?? 0,
+    contribuciones: results.metrics?.contribuciones ?? inputData.contribuciones ?? 0,
+  });
   const caja = data ? (currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf) : "";
   const contenido = data ? (currency === "CLP" ? data.contenido_clp : data.contenido_uf) : "";
   return (
@@ -322,8 +334,8 @@ export function DrawerCostoMensual({
       ) : (
         <VCierre titulo="Qué haces con esto">
           {isNeg
-            ? `¿Tienes ${fmt(Math.abs(flujo))} disponibles cada mes sin comprometer otro gasto fijo? Un mes sin arrendatario son ${fmt(desglose.dividendo)} de dividendo, completos de tu bolsillo.`
-            : `El arriendo cubre la cuota y los gastos y deja ${fmt(flujo)} al mes. Un mes sin arrendatario son ${fmt(desglose.dividendo)} de dividendo, completos de tu bolsillo.`}
+            ? `¿Tienes ${fmt(Math.abs(flujo))} disponibles cada mes sin comprometer otro gasto fijo? Un mes sin arrendatario son ${fmt(mesVacio)} de tu bolsillo: el dividendo completo más gastos comunes y contribuciones.`
+            : `El arriendo cubre la cuota y los gastos y deja ${fmt(flujo)} al mes. Un mes sin arrendatario son ${fmt(mesVacio)} de tu bolsillo: el dividendo completo más gastos comunes y contribuciones.`}
         </VCierre>
       )}
 
@@ -1435,10 +1447,12 @@ function DrawerEstructuraSana({
   const adverso = hallazgo.direccion === "adverso";
   const sinPie = piePct === 0;
   const m = results.metrics;
-  // Obligaciones duras del dueño en un mes sin arrendatario: dividendo + GGCC
-  // + contribuciones mensualizadas (m.contribuciones viene trimestral).
+  // Obligaciones duras del dueño en un mes sin arrendatario. La aritmética se mudó a
+  // `calcMesVacio` (analysis.ts) para que este bloque y el cierre del capítulo II
+  // digan la MISMA cifra: estaban calculándola por separado y la del capítulo II
+  // subestimaba el golpe un 8%.
   const contribMes = m ? Math.round(m.contribuciones / 3) : 0;
-  const vacanciaMes = m ? Math.round(m.dividendo + m.gastos + contribMes) : null;
+  const vacanciaMes = m ? calcMesVacio({ dividendo: m.dividendo, ggcc: m.gastos, contribuciones: m.contribuciones }) : null;
   const creditoCLP = m ? m.precioCLP - m.pieCLP : null;
 
   return (

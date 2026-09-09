@@ -198,6 +198,30 @@ export function calcFlujoDesglose(datos: {
   return { arriendo, dividendo, ggccVacancia, contribucionesMes, mantencion, vacanciaProrrata, corretajeProrrata, recambio, administracion, totalEgresos, flujoNeto };
 }
 
+/**
+ * OBLIGACIONES DE UN MES VACÍO — lo que el dueño paga de su bolsillo cuando no hay
+ * arrendatario: el dividendo completo, los gastos comunes COMPLETOS y las
+ * contribuciones del mes. Es el escenario que la doctrina ##5.bis.b manda narrar en
+ * los casos de pie 0, y el que el cierre del capítulo II pone en plata.
+ *
+ * LOS GASTOS COMUNES VAN COMPLETOS, no la prorrata. `calcFlujoDesglose` devuelve
+ * `ggccVacancia` = ggcc × meses de vacancia ÷ 12, que es lo correcto para el FLUJO
+ * PROMEDIO —el arrendatario los paga los meses que está— pero no para este escenario:
+ * el mes que el depto está vacío los paga el dueño, enteros. Usar la prorrata acá
+ * subestima el golpe, que es justo lo contrario de lo que el escenario existe para
+ * mostrar.
+ *
+ * Las contribuciones vienen TRIMESTRALES en `metrics.contribuciones` (mismo /3 que
+ * `contribucionesMes` del desglose).
+ *
+ * Fuente única a propósito: la cifra la usan el cierre del capítulo II y el bloque
+ * «Un mes de vacancia, en plata» del drawer de estructura. Estaban calculándola por
+ * separado y una de las dos lo hacía mal.
+ */
+export function calcMesVacio(datos: { dividendo: number; ggcc: number; contribuciones: number }): number {
+  return Math.round(datos.dividendo + datos.ggcc + Math.round(datos.contribuciones / 3));
+}
+
 // =========================================
 // Core Metrics
 // =========================================
