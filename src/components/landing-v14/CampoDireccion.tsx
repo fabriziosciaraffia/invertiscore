@@ -34,8 +34,14 @@ export const DIRECCIONES_EJEMPLO = [
   "Lia Aguirre 95, La Florida",
 ] as const;
 
+const ORIGEN: Record<UbicacionCampo, string> = {
+  hero: "landing_hero",
+  cierre: "landing_cta_final",
+  metodologia: "metodologia_cta",
+};
+
 function origenDe(ubicacion: UbicacionCampo) {
-  return ubicacion === "hero" ? "landing_hero" : "landing_cta_final";
+  return ORIGEN[ubicacion];
 }
 
 export function CampoDireccion({ ubicacion }: { ubicacion: UbicacionCampo }) {
@@ -78,7 +84,7 @@ export function CampoDireccion({ ubicacion }: { ubicacion: UbicacionCampo }) {
       setPh(DIRECCIONES_EJEMPLO[0]);
       return;
     }
-    const off = ubicacion === "hero" ? 0 : 1;
+    const off = ubicacion === "hero" ? 0 : ubicacion === "cierre" ? 1 : 2;
     let k = off % DIRECCIONES_EJEMPLO.length;
     let i = 0;
     let del = false;

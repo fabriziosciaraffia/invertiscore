@@ -19,6 +19,7 @@ import { usePostHog } from "posthog-js/react";
 import type { EjemploLanding } from "@/lib/landing-vivo";
 import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import { EV } from "./eventos";
+import { Glifo } from "./Marca";
 import type { Veredicto } from "@/lib/types";
 
 /** Qué significa obtener cada veredicto, explicado en simple (tres filas bajo la
@@ -34,26 +35,6 @@ const EXPLICACION: Record<Veredicto, string> = {
 
 const DUR = 900;
 const HOLD = 6000;
-
-/** Glifo de veredicto (FASE 1.8, punto 5): ✕ · — · ✓ en papel, a la izquierda de la
- *  palabra. Refuerza el veredicto sin depender del color (ciruela y azul se
- *  confunden con daltonismo) y recupera la lectura de semáforo. Decorativo: la
- *  palabra ya lo dice, así que va con aria-hidden y sin aria-label. SVG inline,
- *  sin librería de iconos. Contrato: refuerzo-veredicto.html, bloque A. Solo la
- *  landing por ahora; al informe se lleva después como parte de la banda. */
-const GLIFO: Record<Veredicto, string> = {
-  "BUSCAR OTRA": "M5 5l14 14M19 5L5 19",
-  "AJUSTA SUPUESTOS": "M4 12h16",
-  COMPRAR: "M4 13l5 5L20 6",
-};
-
-function Glifo({ veredicto }: { veredicto: Veredicto }) {
-  return (
-    <svg className="lv-glifo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d={GLIFO[veredicto]} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="square" />
-    </svg>
-  );
-}
 
 /** `**…**` → <mark>. Igual que la portada del informe, sin cifras en el titular. */
 function conPlumon(titular: string): ReactNode {

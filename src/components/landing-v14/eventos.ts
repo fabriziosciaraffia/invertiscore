@@ -13,7 +13,9 @@ export const EV = {
   sinDireccion: "landing_sin_direccion",
 } as const;
 
-export type UbicacionCampo = "hero" | "cierre";
+/** Dónde vive el campo de dirección. `metodologia` es el CTA del interior:
+ *  mismo componente, otro origen para el wizard y la telemetría. */
+export type UbicacionCampo = "hero" | "cierre" | "metodologia";
 
 const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const;
 

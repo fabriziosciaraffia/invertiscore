@@ -7,9 +7,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
-import FrancoLogo from "@/components/franco-logo";
 import type { DatosLanding } from "@/lib/landing-vivo";
-import { TZ_CHILE } from "@/lib/fecha-cl";
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 import { CampoDireccion } from "./CampoDireccion";
 import { Respuesta } from "./Respuesta";
@@ -17,17 +15,8 @@ import { MapaSantiago } from "./MapaSantiago";
 import { SeccionVista } from "./Telemetria";
 import { LinkMedido } from "./LinkMedido";
 import { EV } from "./eventos";
-
-const TAGLINE = "Real estate en su estado más franco";
-
-function Wordmark() {
-  return (
-    <div>
-      <FrancoLogo size="header" href="/" className="lv-wm" />
-      <div className="lv-tag">{TAGLINE}</div>
-    </div>
-  );
-}
+// Wordmark, footer y glifo viven en `Marca.tsx`: los comparte /metodologia.
+import { actualizado, PieLanding, Wordmark } from "./Marca";
 
 // ===== 1 · HERO =====
 export function Hero() {
@@ -73,18 +62,6 @@ export function LaRespuesta({ datos }: { datos: DatosLanding }) {
 }
 
 // ===== 3 · POR QUÉ CREERLE =====
-/** "hoy 03:30" (hora de Chile) si el último scrape fue hoy; si no, "el 6 sep 03:30".
- *  Decisión del goal: sin "hace N min" — el scrape corre una vez al día. */
-function actualizado(iso: string, ahora: Date): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const hora = new Intl.DateTimeFormat("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ_CHILE }).format(d);
-  const dia = (x: Date) => new Intl.DateTimeFormat("es-CL", { timeZone: TZ_CHILE, year: "numeric", month: "2-digit", day: "2-digit" }).format(x);
-  if (dia(d) === dia(ahora)) return `hoy ${hora}`;
-  const fecha = new Intl.DateTimeFormat("es-CL", { timeZone: TZ_CHILE, day: "numeric", month: "short" }).format(d).replace(".", "");
-  return `el ${fecha} ${hora}`;
-}
-
 export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
   return (
     <SeccionVista n={3} className="lv-s3">
@@ -123,22 +100,7 @@ export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Da
 }
 
 // ===== 4 · CIERRE + FOOTER =====
-/** "15 h" / "4 min" / "2 días": sin "hace", para que la línea del footer quepa
- *  en una a 390 px (FASE 1.3). */
-function haceCuanto(iso: string, ahora: Date): string {
-  const ms = ahora.getTime() - new Date(iso).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return "";
-  const min = Math.round(ms / 60000);
-  if (min < 1) return "recién";
-  if (min < 60) return `${min} min`;
-  const h = Math.round(min / 60);
-  if (h < 24) return `${h} h`;
-  const d = Math.round(h / 24);
-  return `${d} ${d === 1 ? "día" : "días"}`;
-}
-
 export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
-  const u = datos.ultimoAnalisis;
   return (
     <div className="lv-cierre-wrap">
       {/* Banda inferior de la receta v2 (papel → rojo), anclada al FINAL de la página
@@ -171,34 +133,9 @@ export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
       </SeccionVista>
       {/* Footer con las tonalidades del hero: la misma receta v3 invertida y vertical
           (--peso=0.15,0.85 --rango=0,0.95), arranca en el rojo pleno donde termina la
-          banda del cierre y baja hasta el azul oscuro con que abrió la página. Todo en
-          papel; el .ai del wordmark también (Signal Red sobre rojo desaparece). */}
-      <footer className="lv-footer">
-        <picture className="lv-fondo lv-fondo-footer">
-          <source media="(min-width: 768px)" srcSet="/landing/footer-d2x.webp" />
-          {/* eslint-disable-next-line @next/next/no-img-element -- textura de marca ya en WebP */}
-          <img src="/landing/footer-m2x.webp" alt="" loading="lazy" decoding="async" />
-        </picture>
-        <div className="lv-col">
-          <div className="lv-footer-fila">
-            <Wordmark />
-            <nav aria-label="Franco">
-              <Link href="/metodologia">Cómo calcula</Link>
-              <Link href="/comunas">Comunas</Link>
-              <Link href="/pricing">Planes</Link>
-              <Link href="/login">Entrar</Link>
-            </nav>
-          </div>
-          {u && (
-            <div className="lv-ultimo">
-              <i className="lv-dot" />Último análisis · <b>{u.etiqueta}</b> · <span className="lv-ultimo-comuna">{u.comuna} · </span>{haceCuanto(u.createdAt, ahora)}
-            </div>
-          )}
-          <div className="lv-osm">
-            Mapa © <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">OpenStreetMap</a>
-          </div>
-        </div>
-      </footer>
+          banda del cierre y baja hasta el azul oscuro con que abrió la página. Vive en
+          Marca.tsx porque /metodologia usa el mismo. */}
+      <PieLanding ultimo={datos.ultimoAnalisis} ahora={ahora} />
     </div>
   );
 }

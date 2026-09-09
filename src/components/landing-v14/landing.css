@@ -215,8 +215,10 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
 /* solo el eje vertical: el mockup usaba el shorthand y pisaba los 24px laterales
    de .col (a 390px el texto salía pegado al borde). */
 /* header: wordmark a la izquierda y "Entrar" a la derecha, alineados al centro
-   de la fila, con la altura de un header (no un logo suelto pegado al borde) */
-.lv-hero .lv-top { min-height: 64px; padding-top: 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+   de la fila, con la altura de un header (no un logo suelto pegado al borde).
+   La barra de /metodologia (`.mtd-top`) hereda la ALTURA de acá: una definición
+   para las dos páginas (solo cambia la alineación, en metodologia.css). */
+.lv-hero .lv-top, .mtd-top { min-height: 64px; padding-top: 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 /* "Entrar" centrado con la línea del wordmark (no con el bloque wordmark + slogan) */
 .lv-entrar { margin-top: 1px; padding: 0; line-height: 22px; }
 /* el h1 arriba con su propio aire; el bloque [campo + sin dirección] baja como
@@ -524,7 +526,7 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   .lv-wm > span { font-size: 26px; }
   .lv-tag { font-size: 11px; letter-spacing: 0.16em; }
   .lv-hero .lv-tag { display: block; }
-  .lv-hero .lv-top { min-height: 88px; padding-top: 20px; }
+  .lv-hero .lv-top, .mtd-top { min-height: 88px; padding-top: 20px; }
   .lv-entrar { margin-top: 2px; line-height: 26px; }
   .lv-hero .lv-mid { padding-top: 60px; padding-bottom: 40px; }
   .lv-h1 { margin-bottom: 72px; }
