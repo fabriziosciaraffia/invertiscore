@@ -28,35 +28,33 @@ import { CLAIMS_HERO, CLAIMS_VECES, violacionesClaims, type ClaimHero } from "./
 import { frasesCanonicasDe, oracionQueCopia } from "./copia-frase";
 
 // ─── Campos de prosa (paths `sección.campo`; `titular` y `francoCaveat` top-level) ───
+// v17: la lista pasa de 16 paths a 6. Salieron los cinco bloques que el motor ya
+// dibujaba (rentabilidad, operacion, largoPlazo, vsLTR.contenido, riesgos) y la cápsula.
 export const PROSA_PATHS_STR = [
   "titular",
-  "conviene.respuestaDirecta", "conviene.veredictoFrase", "conviene.reencuadre", "conviene.cajaAccionable",
-  "rentabilidad.contenido", "rentabilidad.cajaAccionable",
-  "vsLTR.contenido", "vsLTR.estrategiaSugerida", "vsLTR.cajaAccionable",
-  "operacion.contenido", "operacion.cajaAccionable",
-  "largoPlazo.contenido", "largoPlazo.cajaAccionable",
-  "riesgos.contenido", "riesgos.cajaAccionable",
+  "conviene.respuestaDirecta", "conviene.reencuadre", "conviene.cajaAccionable",
+  "vsLTR.estrategiaSugerida",
   "francoCaveat",
 ] as const;
 export type ProsaPathStr = (typeof PROSA_PATHS_STR)[number];
 
-/** Campos de prosa que NINGÚN componente renderiza (06-sep-2026): `francoCaveat` es audit-only
- *  por contrato del prompt, y las cajas de vsLTR / operación / largoPlazo no las lee ni la
- *  página (HeroStrDictamen + capítulos deterministas) ni /documento (DocumentoSTR pinta las
- *  de rentabilidad y riesgos). Se siguen DETECTANDO (reporte, juez, monitores) pero el
- *  generador no paga un reintento quirúrgico por un campo que nadie lee: en la tanda v16
- *  se fueron 3 quirúrgicos a francoCaveat. Si un componente empieza a leer uno de estos,
- *  sale de esta lista. */
-export const PATHS_SIN_RENDER_STR: readonly ProsaPathStr[] = [
-  "francoCaveat", "vsLTR.cajaAccionable", "operacion.cajaAccionable", "largoPlazo.cajaAccionable",
-];
+/** Campos de prosa que NINGÚN componente renderiza. Se siguen DETECTANDO (reporte, juez,
+ *  monitores) pero el generador no paga un reintento quirúrgico por un campo que nadie
+ *  lee: en la tanda v16 se fueron 3 quirúrgicos a `francoCaveat`.
+ *
+ *  v17: esta lista era el diagnóstico de este goal antes de que existiera. Documentaba
+ *  desde el 06-sep que las cajas de vsLTR / operación / largoPlazo no se leían en ninguna
+ *  parte — y la auditoría del render encontró que tampoco se leían sus CONTENIDOS. Los
+ *  campos salieron del schema, así que ya no hay nada que exceptuar: queda solo
+ *  `francoCaveat`, que es audit-only por contrato del prompt. Si un componente empieza a
+ *  leer uno nuevo, sale de esta lista. */
+export const PATHS_SIN_RENDER_STR: readonly ProsaPathStr[] = ["francoCaveat"];
 /** Lo que el usuario lee: los paths que reintentan y los que cuentan como residuo. */
 export const PROSA_RETRY_PATHS_STR: readonly ProsaPathStr[] = PROSA_PATHS_STR.filter((p) => !PATHS_SIN_RENDER_STR.includes(p));
 
 /** Las cajas (una por sección) y la estrategia: lo que el usuario lee como recomendación. */
 export const CAJAS_PATHS_STR: ProsaPathStr[] = [
-  "conviene.cajaAccionable", "rentabilidad.cajaAccionable", "vsLTR.cajaAccionable", "vsLTR.estrategiaSugerida",
-  "operacion.cajaAccionable", "largoPlazo.cajaAccionable", "riesgos.cajaAccionable",
+  "conviene.cajaAccionable", "vsLTR.estrategiaSugerida",
 ];
 
 export function leerCampo(ai: unknown, path: string): string | null {

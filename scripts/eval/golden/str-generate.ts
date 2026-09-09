@@ -44,7 +44,8 @@ import { conTimeout, esTimeout, TIMEOUT_GENERADOR_MS } from "./timeout";
 import { STR_GE_SEEDS, loadFrozen } from "./str-seeds";
 import { recomputeStrSeed } from "./str-recompute";
 import { frasesCanonicasDe, oracionQueCopia } from "../../../src/lib/copia-frase";
-import { contextoGuardsStr, violacionesPorCampo } from "../../../src/lib/str-guards";
+// Los imports de `contextoGuardsStr` y `violacionesPorCampo` se fueron con AS6: los
+// guards de dirección siguen corriendo DENTRO del generador (str-guards.ts), no acá.
 import { buildTruthBundle, captureStrPrompt, runJudgeV2 } from "../judge";
 import type { Check } from "./invariants";
 import type { SeedReport } from "./recompute";
@@ -174,14 +175,23 @@ export async function runStrGenerateTier(
         // AS5 — ninguna oración del lead copia una fraseCanonica (regla A1 de LTR).
         const copia = oracionQueCopia(lead, frasesCanonicasDe(r.hz));
         if (copia) { bump("AS5.copia-fraseCanonica"); detalles.push(`AS5 run ${run + 1}: «${copia.slice(0, 120)}»`); }
-        // AS6 — "corto o largo" con una fuente: ninguna afirmación "LTR / STR rinde o conviene más"
-        // contradice el signo de la sobre-renta medida (hallazgo ventaja_vs_ltr). Duro.
-        const ctxG = contextoGuardsStr(rForProse as any, frozen[key].input_data, comuna, r.sim);
-        const contra = violacionesPorCampo(ai, "modalidad", ctxG);
-        for (const [path, vs] of Object.entries(contra)) {
-          bump("AS6.modalidad-contra-signo");
-          detalles.push(`AS6 run ${run + 1} · ${path} · sobre-renta ${Math.round(ctxG.sobreRenta)}: «${vs[0].slice(0, 140)}»`);
-        }
+        // AS6.modalidad-contra-signo — RETIRADA con acta en v17 (09-sep-2026).
+        //
+        // Cazaba afirmaciones «LTR / STR rinde o conviene más» que contradicen el signo de
+        // la sobre-renta medida (hallazgo ventaja_vs_ltr). Su sitio natural era
+        // `vsLTR.contenido`, que salió del schema porque el hallazgo y su capítulo ya
+        // dibujan la comparación.
+        //
+        // ES UNA PROHIBICIÓN, así que NO habría fallado: habría quedado VERDE para siempre
+        // sin probar nada, que es peor que fallar. Es la tercera vez esta semana que
+        // aparece el mismo patrón —A8·D1 en v21, A-PC2 anteayer, esta— y las tres veces la
+        // salida fue la misma: un guard sin sujeto no se reapunta a un campo vecino ni se
+        // deja apuntando al vacío, se retira diciendo por qué.
+        //
+        // Lo que la regla protegía no queda huérfano: `conviene.respuestaDirecta` sigue
+        // pasando por los guards de dirección de `violacionesPorCampo` en el generador
+        // (str-guards.ts), que es donde el modelo puede contradecir el signo ahora que la
+        // comparación no tiene cuerpo propio.
         // Métricas BLANDAS del titular (decisión PARÁ 2) — espejo LTR.
         if (ai.titular === null) bump("~titular-null");
         if (fallbackMotor) bump("~titular-fallback-motor");
@@ -236,7 +246,7 @@ export async function runStrGenerateTier(
     }
 
     checks.push({ rule: `gen.runs(K=${K})`, pass: genOk === K, detail: `${genOk}/${K} generaciones OK` });
-    const HARD = ["AS1.respuestaDirecta", "AS2.§9-cajaAccionable", "AS3.marcas-balanceadas", "AS4.titular", "AS5.copia-fraseCanonica", "AS6.modalidad-contra-signo", "gen.null"];
+    const HARD = ["AS1.respuestaDirecta", "AS2.§9-cajaAccionable", "AS3.marcas-balanceadas", "AS4.titular", "AS5.copia-fraseCanonica", "gen.null"];
     const SOFT = ["~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado", "~titular-fallback-motor"];
     const esReglaDeProsa = (r: string) => r.startsWith("AS");
     const umbralMayoria = Math.floor(K / 2);
