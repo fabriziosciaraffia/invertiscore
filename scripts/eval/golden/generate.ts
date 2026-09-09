@@ -196,11 +196,33 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
         const nombra = /financi/i.test(todo) && /100\s*%/.test(todo);
         const celebra = /pie\s+bajo/i.test(todo) || /infinit/i.test(todo) || /espectacular/i.test(todo) || /×\s*\d/.test(todo);
         if (!nombra || celebra) bump("A-PC1.doctrina-100pct");
-        // A-PC2 (HARD) — el escenario de vacancia aparece en ALGÚN campo de la
-        // prosa (## 5.bis.b manda narrarlo pero NO fija campo: la generación real
-        // lo ubica donde el análisis lo pide — conviene, negociacion,
-        // reestructuracion...). Scope global a propósito.
-        if (!/vacancia/i.test(todo)) bump("A-PC2.vacancia");
+        // A-PC2.vacancia — RETIRADA con acta en v21.1 (09-sep-2026).
+        //
+        // Exigía que el escenario de vacancia apareciera en ALGÚN campo de la PROSA.
+        // Se retira porque el escenario dejó de ser trabajo de la prosa: desde v21 lo
+        // garantiza el MOTOR en el 100% de los informes LTR. El cierre del capítulo II
+        // dice «Un mes sin arrendatario son $X de tu bolsillo: el dividendo completo
+        // más gastos comunes y contribuciones», determinista, y renderiza SIEMPRE
+        // porque la prosa de `costoMensual` —que antes ocupaba esa caja— murió en v21.
+        // Con eso el guard había quedado midiendo que la prosa REPITIERA lo que el
+        // motor dibuja tres líneas más abajo, que es la duplicación que este rediseño
+        // viene sacando desde T3.
+        //
+        // NO ES QUE «YA NO SE PUEDA CUMPLIR». Se midió: GS-PC2 la menciona 3/3 y GS-PC1
+        // 0/3, y NO por falta de presupuesto —GS-PC1 escribe 444-466 palabras contra
+        // las 348-425 de GS-PC2— sino por encaje: GS-PC1 es `breakEvenImposible` con
+        // flujo −$391.840, donde la doctrina manda cerrar la puerta por la alternativa
+        // y la vacancia es un riesgo de segundo orden. El modelo elegía bien y el guard
+        // lo castigaba.
+        //
+        // LA COBERTURA SUBE, NO BAJA. En su lugar queda `mes-vacio-catch-test.ts`
+        // (0 tokens): verifica la aritmética del escenario para TODAS las filas y
+        // siempre, en vez de tres seeds de pie 0 y solo si el modelo se acordó. De
+        // paso el arreglo que lo acompaña corrigió un 14,9% de subestimación que
+        // estaba en producción.
+        //
+        // Mismo criterio que A8·D1 (v21): un guard sin sujeto no se reapunta a un campo
+        // vecino ni se deja apuntando al vacío, se retira diciendo por qué.
         // A-PC3 (PC2 · flujo positivo) — HARD: prohibido narrar el flujo positivo
         // como retorno sobre capital. SOFT: presencia de la lectura correcta
         // "aguanta/sostiene su (propio) financiamiento" (fraseo estocástico —
@@ -277,7 +299,7 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
           ` [techo = ${WORDS(coronaFrase)} (presupuesto de la razón que manda) + ≤${techoContinuacion}] · corridas: ${totalesWC.join("·")}`,
       );
     }
-    const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC2.vacancia", "A-PC3.retorno-sobre-capital", "gen.null"];
+    const HARD = ["A1.apertura", "A2.catch-root-a", "A5.§9-cajaAccionable", "A6.presupuesto", "A7.D2-niega-VM", "A9.titular", "A10.marcas-balanceadas", "A-PC1.doctrina-100pct", "A-PC3.retorno-sobre-capital", "gen.null"];
     const SOFT = ["~engine-ism", "~zona-drift", "~rd-trim", "~aguanta-lectura", "~titular-null", "~titular-nucleo-largo", "~titular-largo-renderizado", "~titular-fallback-motor"];
 
     // ── Umbral de MAYORÍA para las reglas que juzgan PROSA GENERADA ────────────
