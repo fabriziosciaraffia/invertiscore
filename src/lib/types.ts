@@ -1499,8 +1499,14 @@ export interface AIConvieneSection {
   // (veredicto-etiqueta.ts), que es constante por veredicto y no la escribe el
   // modelo. Las filas persistidas anteriores sí lo traen.
   pregunta?: string;
-  respuestaDirecta_clp: string;
-  respuestaDirecta_uf: string;
+  /** LEGACY desde v22 (09-sep-2026). El prompt LTR ya NO los emite: la prosa del
+   *  informe es UN campo, `cajaAccionable`, y estos dos fueron su antecesor.
+   *  OPCIONALES, no borrados, y la diferencia importa: el camino de render viejo
+   *  (`promptVersion < 21`) es PERMANENTE para las filas anónimas, que nunca van a
+   *  regenerar, y ese camino los lee. Borrarlos del tipo dejaría sin compilar a
+   *  quien los lee legítimamente. Se leen, no se escriben. */
+  respuestaDirecta_clp?: string;
+  respuestaDirecta_uf?: string;
   // Opcionales (Entrega 2 · prosa fundida): el prompt LTR ya no los emite —
   // respuestaDirecta absorbió lo decisivo del reencuadre y el hero no renderiza
   // ninguno. Se conservan en el tipo para análisis viejos persistidos que sí los
@@ -1524,6 +1530,8 @@ export interface AINegociacionSection extends Omit<AISection, "contenido_clp" | 
   contenido_clp?: string;
   contenido_uf?: string;
   precioSugerido: string;
+  /** LEGACY desde v22: el prompt ya no los emite (murieron con `contenido`).
+   *  Los sigue leyendo el camino viejo y el PDF. */
   estrategiaSugerida_clp?: string;
   estrategiaSugerida_uf?: string;
   // Fase 3.6 v9 — anclas discretas calculadas por el motor. La IA glosa, no

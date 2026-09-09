@@ -182,7 +182,23 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // no cuesta tokens. Y `negociacion.contenido` pasa a campo ÚNICO: tiene prohibida
 // toda magnitud, así que nunca pudo diferir entre monedas.
 // Es un bump de BORRADO: no entra ningún campo nuevo al contrato.
-export const PROMPT_VERSION_LTR = 21;
+// v22 (09-sep-2026) · LA PROSA PASA DE DOS BLOQUES A UN PÁRRAFO. Mueren CUATRO
+// campos: `conviene.respuestaDirecta`, `negociacion.contenido`,
+// `negociacion.estrategiaSugerida` y `negociacion.cajaAccionable` (este último
+// apareció auditando: no se renderizaba ni en el PDF). Queda UNO:
+// `conviene.cajaAccionable`, con techo fijo de 110 palabras — el p90 de 30
+// generaciones v21, calibrado en prosa-presupuesto.ts y a remedir tras la primera
+// FULL v22. `negociacion` se queda sin prosa: solo el objetivo y sus dos glosas.
+//
+// EL CAMINO DE RENDER NO SE MULTIPLICA: `esProsaDosBloques` discrimina por
+// `promptVersion >= 21`, así que v22 entra por el mismo camino que v21 y siguen
+// siendo dos — `< 21` (PERMANENTE para las filas anónimas, que no pueden
+// regenerar) y `>= 21`, que pinta la apertura solo si viene.
+//
+// Es otro bump de BORRADO. Y el borrado grande no fue el prompt sino lo que LEE
+// la salida: guards, retries y detectores que se quedaban sin sujeto y, si no se
+// tocaban, no fallaban — se callaban.
+export const PROMPT_VERSION_LTR = 22;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -323,13 +339,13 @@ a. NÓMBRALO SIN EUFEMISMOS. Pie 0 = financiamiento del 100%, típicamente bono 
 
 b. EL RIESGO A NARRAR ES ESTRUCTURAL, no una métrica: dividendo en su punto más alto, cero colchón de capital, sensibilidad total a vacancia y tasa. El escenario concreto es la vacancia: un mes vacío = pagar de tu bolsillo el dividendo completo + gastos comunes + contribuciones — el input trae esos montos, úsalos en plata, no en abstracto.
 
-c. PROHIBIDO CELEBRAR MÉTRICAS SOBRE CAPITAL. Cash-on-cash, payback del pie, TIR y multiplicador de capital vienen como "no aplica: sin capital propio (pie $0)": NO existen, NO los inventes, NO digas "rentabilidad infinita", "retorno espectacular sobre lo invertido" ni equivalentes. Si el flujo es positivo, la lectura correcta es "la operación aguanta su propio financiamiento completo" — mérito del flujo, no de un retorno sobre capital que no hay.
+c. PROHIBIDO CELEBRAR MÉTRICAS SOBRE CAPITAL. Cash-on-cash, payback del pie, TIR y multiplicador de capital vienen como "no aplica: sin capital propio (pie $0)": NO existen, NO los inventes, NO digas "rentabilidad infinita", "retorno espectacular sobre lo invertido" ni equivalentes. Si el flujo es positivo, la lectura correcta es "la operación aguanta su propio financiamiento completo" — mérito del flujo, no de un retorno sobre capital que no hay. ESA LECTURA VA EN \`conviene.cajaAccionable\`: es el único campo de prosa del informe, así que si no está ahí no está en ninguna parte.
 
 d. DUREZA CON EL PRECIO, CALIBRADA POR LA RAZÓN. Si el pie es 0, alguien lo está cubriendo. Cuando el input declara 'bono_pie' es la inmobiliaria: ahí la comparación del precio/m² contra la mediana de la zona va con MÁS dureza que en un caso normal, porque el bono suele estar cargado en el precio de lista. Con 'otra_fuente' (lo cubre el comprador) esa sospecha NO aplica — no la insinúes. Con 'sin_pie' o 'no_declarada' mantén la cautela genérica sin afirmar quién lo cubre. Si no hay mediana confiable, dilo como límite del análisis y recomienda verificar comparables antes de firmar.
 
 e. LA PALANCA DE PRECIO SE EXPRESA EN PLATA MENSUAL: cada peso menos de precio es crédito que no tomas, y eso baja el dividendo desde el día uno. El input reemplaza las lecturas de TIR de negociación por la baja de dividendo al precio sugerido — esa es la cifra que se narra. Las reglas de §12 (jerarquía de precios, umbral de veredicto, diferencia absoluta vs por m²) siguen aplicando igual; solo cambia la moneda del beneficio: dividendo/mes en vez de puntos de TIR.
 
-f. ESTA DOCTRINA NO EXPANDE TU PRESUPUESTO DE PALABRAS. Los contratos de largo por campo (§13) siguen intactos con pie 0. Si no te cabe todo, prioriza: (1º) la estructura 100% y su consecuencia en el dividendo, (2º) el escenario de vacancia en plata; el resto vive en las cards y drawers — no lo fuerces en la apertura.
+f. ESTA DOCTRINA NO EXPANDE TU PRESUPUESTO DE PALABRAS, Y AHORA HAY UN SOLO CAMPO. Todo lo de esta sección que tenga que decirse en prosa se dice en \`conviene.cajaAccionable\`, dentro de su techo de §13 — no hay un segundo campo donde derramar lo que no cupo. Si no te cabe todo, prioriza en este orden: (1º) nombrar la estructura 100% y su consecuencia en el dividendo, (2º) si el flujo es positivo, la lectura del "aguanta" de (c), (3º) el escenario de vacancia en plata. Lo que quede fuera vive en las cards y drawers, que lo dibujan igual: el motor imprime el mes vacío en plata en el cierre del capítulo II SIEMPRE, así que dejarlo afuera de tu prosa no lo borra del informe.
 
 ## 6. Tiempos verbales — disciplina pasada vs futura
 
