@@ -34,7 +34,14 @@ import fixtures from "./fixtures.json";
 // `lasCondesStrNo` / `lasCondesStrNoSeguro` son la misma fila con los otros dos estados
 // de regulacionEdificio — la unica forma de shotear el bloque determinista sin inventar
 // filas de analisis.
-type FixKey = "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "laFloridaLtr" | "nunoaLtr" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro";
+// v22 (09-sep-2026): `nunoaLtrV22` / `providenciaLtrV22` / `laFloridaLtrV22` son las MISMAS
+// tres filas con la forma v22 — un solo campo de prosa. Se derivan por SUSTRACCION de sus
+// v21 (se les sacan los cuatro campos que v22 ya no emite), no por generacion: asi la prosa
+// y el `results` siguen viniendo de la misma fila. ⚠️ EL TEXTO ES EL DE v21, o sea que
+// `cajaAccionable` mide 48-65 palabras; en v22 el campo absorbe el trabajo de los cuatro
+// muertos y su techo es 110, asi que en produccion el bloque va a ser MAS ALTO que en estos
+// shots. Sirven para verificar la FORMA del render, no el largo definitivo.
+type FixKey = "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "providenciaLtrV22" | "laFloridaLtr" | "laFloridaLtrV22" | "nunoaLtr" | "nunoaLtrV22" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro";
 
 function Inner() {
   const sp = useSearchParams();
