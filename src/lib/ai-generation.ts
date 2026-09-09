@@ -44,6 +44,8 @@ import { buildHallazgoEstructuraFinanciamiento } from "@/lib/estructura-financia
 import { calcDecisividades, costoOportunidad } from "@/lib/analysis";
 import { ordenarHallazgosUnico } from "@/lib/orden-hallazgos";
 import {
+  CAJA_ACCIONABLE_MAX,
+  TECHO_CAJA_ACCIONABLE_DURO,
   NEGOCIACION_MAX,
   NEGOCIACION_MIN,
   techoRespuestaModelo,
@@ -3277,23 +3279,25 @@ Responde SOLO este JSON, sin texto alrededor:
 
     if (aiResult?.conviene && hallazgosOrdenados.length > 0) {
       const wcCont = (ai: typeof aiResult): number =>
-        Math.max(contarPalabras(ai?.conviene?.respuestaDirecta_clp), contarPalabras(ai?.conviene?.respuestaDirecta_uf));
-      const limiteRetry = maxRespuestaModelo * TOLERANCIA_PRESUPUESTO;
-      const techoDuroModelo = techoRespuestaModelo(aperturaWC, true);
+        Math.max(contarPalabras(ai?.conviene?.cajaAccionable_clp), contarPalabras(ai?.conviene?.cajaAccionable_uf));
+      // v22: el techo es FIJO y del campo, no derivado de la apertura (que ya no existe).
+      const maxCaja = CAJA_ACCIONABLE_MAX;
+      const limiteRetry = maxCaja * TOLERANCIA_PRESUPUESTO;
+      const techoDuroModelo = TECHO_CAJA_ACCIONABLE_DURO;
       // El mejor candidato es el MÁS CORTO que hayamos visto: si el retry empeora, no
       // hay razón para quedarse con él (antes se pisaba el previo sin comparar).
       let mejor = aiResult;
       let mejorWC = wcCont(aiResult);
       const RD_MAX_RETRIES = 2;
       for (let intento = 1; intento <= RD_MAX_RETRIES && mejorWC > limiteRetry; intento++) {
-        console.warn(`[RD-BUDGET] ${analysisId}: respuestaDirecta ${mejorWC} palabras > máx ${maxRespuestaModelo} — retry quirúrgico ${intento}/${RD_MAX_RETRIES}`);
+        console.warn(`[CAJA-BUDGET] ${analysisId}: conviene.cajaAccionable ${mejorWC} palabras > máx ${maxCaja} — retry quirúrgico ${intento}/${RD_MAX_RETRIES}`);
         const insistencia =
           intento === 1
             ? ""
             : ` Este es el SEGUNDO aviso: la versión anterior también se pasó. Deja UNA sola oración si hace falta — es preferible una línea corta que una que no cabe; si te vuelves a pasar, el sistema recorta por oración y la última idea se pierde entera.`;
-        const contClp = typeof mejor?.conviene?.respuestaDirecta_clp === "string" ? mejor.conviene.respuestaDirecta_clp : "";
-        const contUf = typeof mejor?.conviene?.respuestaDirecta_uf === "string" ? mejor.conviene.respuestaDirecta_uf : "";
-        const promptQuirurgico = `Estás corrigiendo SOLO el campo conviene.respuestaDirecta de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
+        const contClp = typeof mejor?.conviene?.cajaAccionable_clp === "string" ? mejor.conviene.cajaAccionable_clp : "";
+        const contUf = typeof mejor?.conviene?.cajaAccionable_uf === "string" ? mejor.conviene.cajaAccionable_uf : "";
+        const promptQuirurgico = `Estás corrigiendo SOLO el campo conviene.cajaAccionable de un análisis YA generado y validado. El resto de la prosa no se toca y no lo verás.
 
 La RESPUESTA al veredicto la dice el TÍTULO del bloque: NO la escribas. Tu texto arranca con LA razón que manda (la primera oración actual, que se conserva) y sigue con el matiz.
 
@@ -3306,7 +3310,7 @@ TEXTO ACTUAL (variante UF):
 ${contUf}
 
 Responde SOLO este JSON, sin texto alrededor:
-{"respuestaDirecta_clp": "...", "respuestaDirecta_uf": "..."}`;
+{"cajaAccionable_clp": "...", "cajaAccionable_uf": "..."}`;
         try {
           const regen = await reg.medir("rd-budget", CLAUDE_MODEL, () => anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 500, messages: [{ role: "user", content: promptQuirurgico }], system: SYSTEM_LTR_CACHED }));
           acumularUsage(usage, regen);
@@ -3317,8 +3321,8 @@ Responde SOLO este JSON, sin texto alrededor:
           try {
             const m = regenText.match(/\{[\s\S]*\}/);
             const obj = JSON.parse(m ? m[0] : regenText);
-            nClp = typeof obj?.respuestaDirecta_clp === "string" ? obj.respuestaDirecta_clp.trim() : "";
-            nUf = typeof obj?.respuestaDirecta_uf === "string" ? obj.respuestaDirecta_uf.trim() : "";
+            nClp = typeof obj?.cajaAccionable_clp === "string" ? obj.cajaAccionable_clp.trim() : "";
+            nUf = typeof obj?.cajaAccionable_uf === "string" ? obj.cajaAccionable_uf.trim() : "";
           } catch {
             /* no parseó — se maneja abajo */
           }
@@ -3326,20 +3330,20 @@ Responde SOLO este JSON, sin texto alrededor:
             console.warn(`[RD-BUDGET] ${analysisId}: retry quirúrgico ${intento} no parseó — conservo la continuación previa`);
             break;
           }
-          const candidato = { ...mejor, conviene: { ...mejor.conviene, respuestaDirecta_clp: nClp, respuestaDirecta_uf: nUf } };
+          const candidato = { ...mejor, conviene: { ...mejor.conviene, cajaAccionable_clp: nClp, cajaAccionable_uf: nUf } };
           const wc2 = wcCont(candidato);
           console.warn(`[RD-BUDGET] ${analysisId}: retry quirúrgico ${intento} → ${wc2} palabras${wc2 <= limiteRetry ? " (OK)" : ""}`);
           // Invariante de cifras sobre el quirúrgico: como ya no se regenera el JSON
           // que LTR-CIFRA validó, el candidato completo se re-verifica con la regla
           // compartida (cifras-guard.ts — una regla, un módulo, N consumidores).
           if (empeoraCifras(userPrompt, mejor, candidato, { ufClp: UF_CLP })) {
-            console.warn(`[RD-CIFRA-REJECT] ${analysisId}: el retry quirúrgico introdujo cifras fuera del input — candidato descartado`);
+            console.warn(`[CAJA-CIFRA-REJECT] ${analysisId}: el retry quirúrgico introdujo cifras fuera del input — candidato descartado`);
           } else if (wc2 < mejorWC) {
             mejor = candidato;
             mejorWC = wc2;
           }
         } catch (e) {
-          console.warn(`[RD-BUDGET] ${analysisId}: retry quirúrgico ${intento} falló (best-effort): ${(e as Error)?.message ?? e}`);
+          console.warn(`[CAJA-BUDGET] ${analysisId}: retry quirúrgico ${intento} falló (best-effort): ${(e as Error)?.message ?? e}`);
           break;
         }
       }
@@ -3349,14 +3353,14 @@ Responde SOLO este JSON, sin texto alrededor:
       // contenido de la prosa y no solo sus cifras.
       if (mejorWC > techoDuroModelo && aiResult?.conviene) {
         const { clp, uf, oracionesDescartadas } = recortarContinuacion(
-          typeof aiResult.conviene.respuestaDirecta_clp === "string" ? aiResult.conviene.respuestaDirecta_clp : "",
-          typeof aiResult.conviene.respuestaDirecta_uf === "string" ? aiResult.conviene.respuestaDirecta_uf : "",
+          typeof aiResult.conviene.cajaAccionable_clp === "string" ? aiResult.conviene.cajaAccionable_clp : "",
+          typeof aiResult.conviene.cajaAccionable_uf === "string" ? aiResult.conviene.cajaAccionable_uf : "",
           techoDuroModelo,
         );
-        aiResult.conviene.respuestaDirecta_clp = clp;
-        aiResult.conviene.respuestaDirecta_uf = uf;
+        aiResult.conviene.cajaAccionable_clp = clp;
+        aiResult.conviene.cajaAccionable_uf = uf;
         console.warn(
-          `[RD-BUDGET-TRIM] ${analysisId}: no convergió en ${RD_MAX_RETRIES} reintentos (${mejorWC} > ${techoDuroModelo}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras${clp ? "" : " (texto vacío: queda la respuesta del motor sola)"}`,
+          `[CAJA-BUDGET-TRIM] ${analysisId}: no convergió en ${RD_MAX_RETRIES} reintentos (${mejorWC} > ${techoDuroModelo}) — recortadas ${oracionesDescartadas} oración(es), quedan ${contarPalabras(clp)} palabras${clp ? "" : " (texto vacío: queda la respuesta del motor sola)"}`,
         );
       }
     }

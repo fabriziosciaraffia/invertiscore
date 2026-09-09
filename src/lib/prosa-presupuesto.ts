@@ -115,6 +115,22 @@ export const NEGOCIACION_MIN = 20;
 /** Techo DURO de la continuación. Sobre esto no se acepta: se recorta. */
 export const TECHO_CONTINUACION_DURO = Math.ceil(CONTINUACION_MAX * TOLERANCIA_PRESUPUESTO); // 66
 
+// ── v22 · el techo del ÚNICO campo de prosa ─────────────────────────────────
+// `conviene.cajaAccionable` es, desde v22, el único texto que escribe el modelo para el
+// informe LTR. El número sale de medir 30 generaciones v21: min 54 · p25 68 · mediana 80
+// · p75 95 · p90 109 · max 149. 110 es el p90 — corta los tres desbordes reales y deja
+// pasar el resto.
+//
+// NO se apretó más a propósito. Con 90 dispararía en un tercio de las generaciones, y un
+// techo que dispara un tercio de las veces no es un techo: es un impuesto. El repo tiene
+// el contraejemplo en casa — `vsLTR.estrategiaSugerida` de STR tiene techo 75 y se pasa
+// en 9 de 12. Además el campo GANA trabajo en v22 (absorbe lo que decían los cuatro que
+// murieron), así que su distribución histórica es un piso, no el objetivo.
+//
+// Se remide tras la primera FULL v22.
+export const CAJA_ACCIONABLE_MAX = 110;
+export const TECHO_CAJA_ACCIONABLE_DURO = Math.ceil(CAJA_ACCIONABLE_MAX * TOLERANCIA_PRESUPUESTO); // 121
+
 /**
  * v18 (goal "apertura en voz de Franco", 02-sep-2026): el motor YA NO antepone la
  * fraseCanonica del #1 — el modelo escribe la respuestaDirecta completa (primera
