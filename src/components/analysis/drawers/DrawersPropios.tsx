@@ -1,6 +1,7 @@
 "use client";
 
 import { introModalVias } from "@/lib/palancas-en-palabras";
+import { salidaPorMix, cierrePopupSalida } from "@/lib/salida-por-mix";
 import { DIST_PIE_TOPE_PCT } from "@/lib/distancia-veredicto-hallazgo";
 
 // Drawers propios (rama drawers-propios · F2) — plantillas DETERMINÍSTICAS motor-templated.
@@ -353,8 +354,8 @@ const RAZON_NO_ALCANZA: Record<string, string> = {
   arriendo: "ningún arriendo de la zona llega a ese nivel",
   adr: "esa tarifa está sobre lo que paga el mercado",
   plazo: "es el máximo del mercado y no basta",
-  pie: "aun poniendo más pie no cierra la brecha",
-  gestion: "ahorra, pero no cierra la brecha",
+  pie: "aun poniendo mucho más pie no alcanza",
+  gestion: "ahorra, pero no alcanza",
 };
 
 function textoPalanca(p: PalancaDistancia, currency: Currency, valorUF: number) {
@@ -424,7 +425,8 @@ export function construirPalancas(
   // tope explorado y su razón de catálogo, y al final las que no aplican. Sin cifra
   // de "cuánto faltaría" salvo la que el motor emite (`deltaMinimoPct`, estructural).
   if (v.vias && v.vias.length > 0) {
-    const razonAlcanza = v.palancas.length === 1 ? "la única que alcanza" : "alcanza por sí sola";
+    // «Por sí sola» es idioma nuestro. El lector dice «sin mover nada más».
+    const razonAlcanza = v.palancas.length === 1 ? "la única que alcanza" : "alcanza sin mover nada más";
     const RAZON_ALCANZA_PIE = "no depende del vendedor, depende de tu liquidez";
     for (const p of v.palancas) {
       const t = textoPalanca(p, currency, valorUF);
@@ -703,6 +705,10 @@ export function DrawerDistanciaLtr({
   const base = v.veredictoBase;
   const objetivo = v.veredictoObjetivo;
   const { filas, noProbadas } = construirPalancas(v, currency, valorUF, false);
+  // ¿Ningún cambio por separado alcanza, pero juntos sí? Fuente única para las ocho
+  // superficies que hasta hoy afirmaban lo contrario.
+  const salidaMix = salidaPorMix(v);
+  const salidaLtr = salidaMix ? cierrePopupSalida(salidaMix) : null;
 
   // ── ESTRUCTURAL SIN DELTA MÍNIMO (filas sin `vias`) ── no hay una sola magnitud
   // real que dibujar. La matriz no se inventa: queda la prosa.
@@ -710,13 +716,21 @@ export function DrawerDistanciaLtr({
     return (
       <div>
         <VProsa>
-          Tu veredicto es {base}. Probamos las vías una por una y ninguna llega a {objetivo}, ni
-          llevándolas a extremos que ya no son negociación: arriendo al doble, precio a un tercio,
-          crédito a 30 años.
+          Tu veredicto es {base}. Franco probó los cambios por separado y ninguno llega a{" "}
+          {objetivo}, ni llevándolos a extremos que ya no son negociación: arriendo al doble, precio
+          a un tercio, crédito a 30 años.
         </VProsa>
         <VCierre titulo="Qué significa">
-          <mark>La brecha no está en cómo estás mirando este depto — está en el depto.</mark> Ajustar
-          supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
+          {salidaLtr ? (
+            <>
+              <mark>{salidaLtr.marca}</mark> {salidaLtr.resto}
+            </>
+          ) : (
+            <>
+              <mark>Este depto no da, y no es por cómo lo estás mirando.</mark> Ajustar los números
+              sirve cuando falta poco; acá lo que pide es de otro orden.
+            </>
+          )}
         </VCierre>
       </div>
     );
@@ -740,7 +754,7 @@ export function DrawerDistanciaLtr({
         </VProsa>
       )}
 
-      <VViz t={`Qué pediría cada palanca para llegar a ${objetivo}`}>
+      <VViz t={`Qué pediría cada cambio para llegar a ${objetivo}`}>
         <Palancas
           filas={filas}
           pie={
@@ -759,15 +773,25 @@ export function DrawerDistanciaLtr({
           pregunta que queda cuando la matriz ya mostró los números. */}
       <VCierre titulo={v.esEstructural ? "Qué significa" : "Qué haces con esto"}>
         {v.esEstructural ? (
-          <>
-            <mark>La brecha no está en cómo estás mirando este depto — está en el depto.</mark> Ajustar
-            supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.{" "}
-            {v.piePctActual === 0
-              ? "Sigue buscando: con financiamiento 100% no tienes colchón para absorberlo."
-              : "Guarda el pie para el siguiente."}{" "}
-            Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no te
-            cuentes que los números dan.
-          </>
+          salidaLtr ? (
+            /* HAY SALIDA COMBINANDO (179 filas del parque). La frase de al lado —«está en
+               el depto»— se publicaba acá a dos clics del bloque que muestra la salida, y
+               una contradicción dentro de la misma página destruye la confianza en las
+               dos mitades. Ver `salida-por-mix.ts`. */
+            <>
+              <mark>{salidaLtr.marca}</mark> {salidaLtr.resto}
+            </>
+          ) : (
+            <>
+              <mark>Este depto no da, y no es por cómo lo estás mirando.</mark> Ajustar los números
+              sirve cuando falta poco; acá lo que pide es de otro orden.{" "}
+              {v.piePctActual === 0
+                ? "Sigue buscando: con financiamiento 100% no tienes colchón para absorberlo."
+                : "Guarda el pie para el siguiente."}{" "}
+              Si igual quieres avanzar por razones que no son financieras, está bien saberlo — pero no
+              te cuentes que los números dan.
+            </>
+          )
         ) : v.palancas[0]?.palanca === "pie" ? (
           <><mark>Esta no se negocia con nadie: es plata tuya contra menos crédito.</mark> Antes de
           descartar el depto, confirma con el banco cuánto baja la cuota con ese pie y si tienes la
@@ -1763,7 +1787,7 @@ export function DrawerDistanciaStr({
         </VProsa>
       )}
 
-      <VViz t={`Qué pediría cada palanca para llegar a ${objetivo}`}>
+      <VViz t={`Qué pediría cada cambio para llegar a ${objetivo}`}>
         <Palancas
           filas={filas}
           pie={
