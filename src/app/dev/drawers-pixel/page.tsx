@@ -53,7 +53,11 @@ import fixtures from "./fixtures.json";
 // fuera de rango», no «tres suben a Ajustar». Son 574 de las 592 filas con número hacia
 // COMPRAR. Un fixture sin `ai_analysis` NO sirve para esto: el bloque solo existe en el
 // camino de dos bloques (`esProsaDosBloques`), o sea con prosa v21+.
-type FixKey = "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "providenciaLtrV22" | "laFloridaLtr" | "laFloridaLtrV22" | "nunoaLtr" | "nunoaLtrV22" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro" | "gs4LtrMixCuerpo" | "gs7LtrUnicaSalida" | "providenciaLtrViejo";
+// v22.3 (10-sep-2026) · `lasCondesLtrSinSalida` es el CONTROL de las siete líneas: fila
+// real donde ningún cambio alcanza NI combinando (`sinSalida` true, 258 del parque). Ahí
+// la frase dura es cierta y tiene que sobrevivir intacta — apagarla en las 258 cambia una
+// mentira por otra, que es la mitad que un arreglo apurado rompe.
+type FixKey = "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "providenciaLtrV22" | "laFloridaLtr" | "laFloridaLtrV22" | "nunoaLtr" | "nunoaLtrV22" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro" | "gs4LtrMixCuerpo" | "gs7LtrUnicaSalida" | "providenciaLtrViejo" | "lasCondesLtrSinSalida";
 
 function Inner() {
   const sp = useSearchParams();
