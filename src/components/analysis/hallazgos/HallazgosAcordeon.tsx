@@ -528,6 +528,9 @@ export function TokensHallazgos() {
       .ba-mult{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--doc-paper2);border:1px solid var(--doc-line);border-radius:3px;margin-top:12px}
       .ba-mult .k{font-size:12px;color:var(--doc-tx3);flex:1;line-height:1.45} .ba-mult .v{font-family:var(--font-mono, ui-monospace);font-size:17px;font-weight:700;color:var(--doc-good);white-space:nowrap}
       /* modal (overlay Ink 60%, panel 720px, pantalla completa en mobile) */
+      /* El overlay toma --overlay con el rediseno encendido: los dos overlays del
+         informe usaban el mismo alfa sobre dos negros distintos, sin razon. */
+      .doc-r2 .v-modal-overlay{background:var(--overlay)}
       .v-modal-overlay{position:fixed;inset:0;background:rgba(20,19,17,.6);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px}
       /* El modal declara su PROPIA escalera y no hereda la de la sección: cuelga del
          overlay, fuera del flujo, así que su papel es fijo y sus piezas tienen que

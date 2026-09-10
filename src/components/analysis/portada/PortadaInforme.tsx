@@ -330,6 +330,40 @@ export function DocTokens() {
         --doc-paper4:#E2DFD7;
         --doc-shadow:0 24px 60px rgba(20,19,17,.14);
       }
+      /* ═══════════════ REDISEÑO · SOMBRAS Y OVERLAY (contrato §1) ═══════════════
+         «Sombra solo en las dos cajas y en el hover de capítulos. Ninguna otra pieza
+         lleva sombra.» Las dos cajas y las filas de capítulo son de la parte 4, así que
+         acá se definen los dos valores y esperan, igual que --rad.
+
+         EL INFORME CASI NO USA SOMBRAS, y conviene decirlo porque el inventario engaña:
+         hay cuatro box-shadow en total y TRES no son sombras. Dos son anillos «inset»
+         —o sea bordes— del «hoy» de la matriz, y el tercero marca la columna pegajosa de
+         la tabla, que es una señal de scroll y no decoración. La única sombra real es la
+         del marco .doc-dictamen, y esa queda huérfana cuando la parte 4 convierta el
+         hero y la recomendación en cajas. Se retira ALLÁ, no acá: mientras el marco
+         exista, su sombra es lo que lo separa del fondo de la página.
+
+         --overlay ES UN TOKEN NUEVO, y no es una sombra. Los dos overlays de modal del
+         informe usaban el mismo alfa .6 sobre DOS negros distintos —rgba(10,10,10) y
+         rgba(20,19,17)— sin ninguna razón: el mismo rol pintado de dos maneras. Un solo
+         token cierra eso. La trama rayada a 45° de las barras (el tercer rgba literal)
+         NO entra: no es sombra ni overlay, es textura, y funciona con cualquier paleta
+         porque va sobre --doc-line2. */
+      .doc-r2,
+      .doc-r2 .doc-dictamen,
+      .doc-r2 .doc-tokens{
+        --sombra:0 1px 2px rgba(0,0,0,.5); --sombra-h:0 2px 8px rgba(0,0,0,.6);
+        --overlay:rgba(12,12,14,.72);
+      }
+      [data-theme="light"] .doc-r2,
+      [data-theme="light"] .doc-r2 .doc-dictamen,
+      [data-theme="light"] .doc-r2 .doc-tokens{
+        --sombra:0 1px 2px rgba(0,0,0,.05),0 10px 30px rgba(0,0,0,.07);
+        --sombra-h:0 2px 5px rgba(0,0,0,.07),0 14px 32px rgba(0,0,0,.10);
+        --overlay:rgba(24,24,27,.55);
+      }
+      .doc-r2 .doc-ficha-overlay{background:var(--overlay)}
+
       /* ═══════════════ REDISEÑO · RADIOS (contrato §1) ═══════════════
          Cuatro radios del contrato más uno que el contrato no tenía.
 
