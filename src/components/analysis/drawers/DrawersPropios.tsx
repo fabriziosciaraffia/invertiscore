@@ -246,7 +246,7 @@ export function Box({
  *  narrar la cadena en un párrafo aparte era la duplicación que la conversión mató. */
 export function Chain({ steps, foot }: { steps: Array<{ v: string; k: ReactNode; pos?: boolean }>; foot?: ReactNode }) {
   return (
-    <VViz t="La palanca, paso a paso">
+    <VViz t="Cómo se arma, paso a paso">
       <div style={{ display: "flex", alignItems: "stretch", gap: 8, flexWrap: "wrap" }}>
         {steps.map((s, i) => (
           <div key={i} style={{ display: "contents" }}>
@@ -660,11 +660,11 @@ export function DrawerSensibilidadLtr({
           barata es el precio o el plazo, no el arriendo): se nombra, no se dibuja. */}
       {palancaArriba && objetivoArriba && !arribaEsArriendo && (
         <VProsa>
-          Hacia arriba la vía no es el arriendo:{" "}
+          Hacia arriba el camino no es el arriendo:{" "}
           {palancaArriba.palanca === "plazo"
             ? `estirar el crédito a ${palancaArriba.objetivo} años`
             : `un precio ${pctStr(Math.abs(palancaArriba.deltaPct))} menor`}{" "}
-          bastaría para llegar a {objetivoArriba}. Esa palanca se mide en su propio hallazgo.
+          bastaría para llegar a {objetivoArriba}. Ese cambio se mide aparte.
         </VProsa>
       )}
 
@@ -742,13 +742,13 @@ export function DrawerDistanciaLtr({
         {v.vias
           ? introModalVias(v.palancas.length, v.vias.length, objetivo)
           : v.esEstructural
-            ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: probamos las palancas una por una, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
+            ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: Franco probó los cambios uno por uno, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
             : `Tu veredicto es ${base} y está cerca del borde de arriba. Estas son las vías que lo cruzan a ${objetivo}, cada una por su cuenta: no se suman, cualquiera alcanza.`}
       </VProsa>
 
       {v.pieExcluidoPorBono && !v.vias && (
         <VProsa>
-          El pie no aparece entre las vías porque lo cubre la inmobiliaria: subirlo no es una palanca, es
+          El pie no aparece entre los cambios porque lo cubre la inmobiliaria: subirlo no es un ajuste, es
           deshacer el trato que estás evaluando. Con el pie cubierto, el precio se mira con más dureza,
           porque alguien está pagando ese bono.
         </VProsa>
@@ -873,7 +873,7 @@ function PlusvaliaEje({
         legend={[
           { k: tieneData ? comunaLabel : "referencia GS", v: pctStr(anual) },
           { k: "apreciación real (Chile)", v: pctStr(umbral) },
-          { k: "brecha", v: `${g > 0 ? "+" : ""}${dec1(g)} pts` },
+          { k: "diferencia", v: `${g > 0 ? "+" : ""}${dec1(g)} pts` },
         ]}
       />
       <VizPie>
@@ -1056,7 +1056,7 @@ export function DrawerFinanciamientoStr({
               className="font-mono uppercase m-0"
               style={{ fontSize: 10, letterSpacing: "0.1em", color: "var(--franco-text-secondary)", marginBottom: 8 }}
             >
-              La palanca real: el pie
+              Lo que de verdad mueve: el pie
             </p>
             {/* AUDITORÍA fase42 (7a) — murió el párrafo que narraba paso a paso la
                 cadena dibujada cinco líneas más arriba (duplicación literal). Su único
@@ -1201,9 +1201,9 @@ export function DrawerPrecioStr({
         />
       </VViz>
 
-      <VCierre titulo="Tu palanca de negociación">
+      <VCierre titulo="Tu margen para negociar">
         {bajoMercado
-          ? `Entrar bajo mercado ya te da una ventaja de compra de ~${fmtCompact(margenCLP, currency, valorUF)} el día uno — es parte de por qué tu patrimonio a 10 años cierra a favor pese al flujo negativo. No hay urgencia de bajar más el precio: la palanca de este deal está en el flujo (pie y gestión), no en el precio de entrada.`
+          ? `Entrar bajo mercado ya te da una ventaja de compra de ~${fmtCompact(margenCLP, currency, valorUF)} el día uno — es parte de por qué tu patrimonio a 10 años cierra a favor pese al flujo negativo. No hay urgencia de bajar más el precio: lo que mueve este deal es el flujo (pie y gestión), no el precio de entrada.`
           : `Pagas sobre la referencia de mercado, así que acá sí hay espacio para negociar: cada peso que bajes del precio entra directo a tu patrimonio y mejora el flujo — menos crédito, menos cuota.`}
       </VCierre>
 
@@ -1665,7 +1665,7 @@ export function DrawerEstructuraCostosStr({
       {/* Segundo diagrama: la palanca de gestión. Sin los dos escenarios NO se dibuja
           (el guard ya existía) — no se mezclan fuentes para completar una comparación. */}
       {gestionComparable && strAuto && strAdmin && (
-        <VViz t="La única palanca real: quién administra">
+        <VViz t="Lo único que de verdad mueve: quién administra">
           <ParBarras
             cap="Comisión mensual · y el flujo que resulta"
             filas={[
@@ -1697,7 +1697,7 @@ export function DrawerEstructuraCostosStr({
             : " Acá los costos inflados son parte del problema: recortarlos ayuda de verdad. Pero con esta cuota y esta ocupación, no esperes que solo ese recorte dé vuelta el mes."
           : dentroDeVara
             ? " Cada punto que bajes de comisión o servicios va directo a tu bolsillo."
-            : " Los costos están sobre la vara: recortarlos mejora directo tu bolsillo — es la palanca más limpia acá."}
+            : " Los costos están sobre la vara: recortarlos mejora directo tu bolsillo — es lo más limpio que puedes mover acá."}
         {gestionComparable && strAuto && strAdmin
           ? ` Y la gestión sí mueve la aguja: tercerizarla se come ${fmtMoney(Math.abs(strAdmin.comisionMensual - strAuto.comisionMensual), currency, valorUF)} al mes.`
           : ""}
@@ -1741,13 +1741,13 @@ export function DrawerDistanciaStr({
     return (
       <div>
         <VProsa>
-          Tu veredicto es {base}. Probamos las vías una por una y ninguna llega a {objetivo}, ni
-          llevándolas a extremos que ya no son negociación: tarifa al doble, precio a un tercio, crédito a
-          30 años.
+          Tu veredicto es {base}. Franco probó los cambios por separado y ninguno llega a {objetivo},
+          ni llevándolos a extremos que ya no son negociación: tarifa al doble, precio a un tercio,
+          crédito a 30 años.
         </VProsa>
         <VCierre titulo="Qué significa">
-          <mark>La brecha no está en cómo estás mirando este departamento — está en el departamento.</mark>{" "}
-          Ajustar supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.
+          <mark>Este departamento no da, y no es por cómo lo estás mirando.</mark>{" "}
+          Ajustar los números sirve cuando falta poco; acá lo que pide es de otro orden.
         </VCierre>
       </div>
     );
@@ -1757,7 +1757,7 @@ export function DrawerDistanciaStr({
     <div>
       <VProsa>
         {v.esEstructural
-          ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: probamos las palancas una por una, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
+          ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: Franco probó los cambios uno por uno, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
           : v.vias && v.vias.length > 0 && !v.esPuroGate
             // T1: con `vias` la intro cuenta las vías reales (cinco en STR), la misma frase que LTR.
             ? introModalVias(v.palancas.length, v.vias.length, objetivo)
@@ -1781,7 +1781,7 @@ export function DrawerDistanciaStr({
 
       {v.pieExcluidoPorBono && (
         <VProsa>
-          El pie no aparece entre las vías porque lo cubre la inmobiliaria: subirlo no es una palanca, es
+          El pie no aparece entre los cambios porque lo cubre la inmobiliaria: subirlo no es un ajuste, es
           deshacer el trato que estás evaluando. Con el pie cubierto, el precio se mira con más dureza,
           porque alguien está pagando ese bono.
         </VProsa>
@@ -1805,8 +1805,8 @@ export function DrawerDistanciaStr({
       <VCierre titulo={v.esEstructural ? "Qué significa" : "Qué haces con esto"}>
         {v.esEstructural ? (
           <>
-            <mark>La brecha no está en cómo estás mirando este departamento — está en el departamento.</mark>{" "}
-            Ajustar supuestos sirve cuando el número está cerca; acá el esfuerzo que pide es de otro orden.{" "}
+            <mark>Este departamento no da, y no es por cómo lo estás mirando.</mark>{" "}
+            Ajustar los números sirve cuando falta poco; acá lo que pide es de otro orden.{" "}
             {v.piePctActual === 0
               ? "Sigue buscando: con financiamiento 100% no tienes colchón para absorberlo."
               : "Guarda el pie para el siguiente."}{" "}
