@@ -46,6 +46,7 @@ import type {
   ViaDistancia,
 } from "./types";
 import { classifyPieLevel } from "./financing-health";
+import { calcularMixPalancas } from "./mix-palancas";
 
 // ── Tope de honestidad (calibrado, no inventado) ──────────────────────────────
 // Sweep sobre 315 filas no-COMPRAR de prod (143 AJUSTA + 172 BUSCAR OTRA), midiendo el
@@ -595,6 +596,38 @@ export function buildHallazgoDistanciaVeredicto(p: {
     deltaMinimoComprarFueraDeTope = candidatos[0] ?? null;
   }
 
+  // ── EL MIX DE LAS TRES PALANCAS DEL COMPRADOR ─────────────────────────────
+  // Las cuatro vías de arriba se prueban de a una. Esto responde la otra pregunta:
+  // moviendo a la vez precio, pie y plazo —las tres que el comprador controla— cuánto
+  // descuento hace falta. El arriendo lo pone el mercado y la tasa el banco: fuera.
+  //
+  // Hereda las mismas reglas que la exploración de a una, y no por prolijidad: el tope
+  // del descuento es el MISMO (si el mix pudiera pedir lo que la palanca sola tiene
+  // prohibido, el informe se contradiría) y el pie respeta `pieCalifica`, o sea que con
+  // bono pie no se mueve.
+  //
+  // ⚠ SE CALCULA TAMBIÉN EN EL ESTRUCTURAL, Y ESO ABRE UNA TENSIÓN QUE HAY QUE RESOLVER
+  // ANTES DE DIBUJARLO. `esEstructural` significa que ninguna palanca cruza SOLA dentro
+  // del tope, y de ahí sale la frase dura «ningún ajuste realista lo lleva al veredicto de
+  // arriba». Pero una COMBINACIÓN puede cruzar donde cada palanca por separado no llega:
+  // medido en GS-4, el precio solo no cruza y `pie 30% + 30 años + −1,8%` sí.
+  //
+  // O sea que la frase estructural puede ser falsa en su propio caso. Por eso el dato se
+  // CALCULA —esconderlo sería decidir por omisión justo donde más vale— pero este goal es
+  // solo motor y NO toca la frase: nadie lee este campo todavía. Quien lo dibuje tiene que
+  // resolver primero qué dice el informe cuando el mix contradice al estructural.
+  const mixPalancas = calcularMixPalancas({
+    meta: veredictoObjetivo,
+    precioUF: p.precioUF,
+    piePct: p.piePct,
+    plazoCredito: p.plazoCredito,
+    pieCalifica,
+    pieTopePct: DIST_PIE_TOPE_PCT,
+    topePct: topeAplicado,
+    palancasQueCruzan: palancas.map((l) => l.palanca),
+    veredictoAtPatch: p.veredictoAtPatch,
+  });
+
   // Cercanía al umbral (1 = pegado al veredicto de arriba, 0 = en el tope o estructural).
   // Va DENTRO de `valor`, NO en magnitudContinua: ese campo lo leen los comparadores de la
   // pirámide y del hero, donde compite contra |Δscore|/25 — otra escala, otra pregunta.
@@ -721,6 +754,7 @@ export function buildHallazgoDistanciaVeredicto(p: {
       palancasHastaComprar,
       viasHastaComprar,
       deltaMinimoComprarFueraDeTope,
+      mixPalancas,
       esEstructural,
       deltaMinimoFueraDeTope,
       topePct: topeAplicado,

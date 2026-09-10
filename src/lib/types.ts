@@ -978,6 +978,63 @@ export type ViaDistancia =
 // esEstructural: true cuando NINGUNA palanca cruza dentro del tope de honestidad
 // calibrado — ahí la frase deja de prometer un ajuste y dice que no lo hay. Ver
 // distancia-veredicto-hallazgo.ts.
+/**
+ * EL MIX DE PALANCAS DEL COMPRADOR — precio + pie + plazo combinados (10-sep-2026).
+ *
+ * Las cuatro palancas de `vias` se prueban DE A UNA. Esto responde la otra pregunta:
+ * moviendo a la vez las tres que el comprador controla, ¿cuánto descuento hace falta?
+ * El arriendo (mercado) y la tasa (banco) quedan fuera por definición.
+ *
+ * La lógica vive en `mix-palancas.ts`, pura y testeada aparte.
+ */
+export interface MixPalancas {
+  /** Descuento de precio del mix ganador, en %. CERO cuando no hace falta tocar el precio. */
+  descuentoPct: number;
+  /**
+   * true ⇔ pie y plazo SOLOS ya cruzan y el precio no se toca. No es «pide un 0,1%»:
+   * es «no necesitas negociar nada, mueve lo tuyo», que es un hecho distinto y hay que
+   * poder decirlo. Sin esta marca, el piso de la bisección se leería como un descuento.
+   */
+  sinDescuento: boolean;
+  /** Nivel de pie del mix (no el aumento): el pie es un nivel, no un cambio. */
+  piePct: number;
+  plazoAnios: number;
+  /** Movimiento respecto de lo declarado: puntos de pie y años de plazo. */
+  piePctDelta: number;
+  plazoAniosDelta: number;
+  /**
+   * Lo que pediría el precio SOLO, con pie y plazo como están. `null` = no cruza ni en
+   * el tope. Es el contraste que hace legible al mix, y el caso null es justamente
+   * donde el mix más vale: el precio solo no alcanza y la combinación sí.
+   */
+  descuentoSoloPrecioPct: number | null;
+  /**
+   * Plata propia extra el día 1, en UF. Puede ser 0 (el mix no movió el pie) o negativa
+   * (el descuento achica el pie en plata aunque suba el porcentaje).
+   *
+   * Va SIEMPRE al lado del descuento: el mix ahorra puntos de negociación y los cobra en
+   * capital. Reportar el ahorro sin el costo sería un espejismo.
+   */
+  costoDiaUnoUF: number;
+  /**
+   * Contra qué se midió el costo. Siempre el PIE DECLARADO HOY sobre el precio de hoy:
+   * es la única base que el usuario reconoce y la única que existe cuando el precio solo
+   * no cruza. El campo se declara para que el consumidor no tenga que suponerlo.
+   */
+  costoDiaUnoBase: "pie_declarado";
+  combinacionesQueCruzan: number;
+  combinacionesProbadas: number;
+  /** La siguiente mejor, para que «elige la más accionable» tenga entre qué elegir. */
+  segunda: { descuentoPct: number; sinDescuento: boolean; piePct: number; plazoAnios: number; costoDiaUnoUF: number } | null;
+  /**
+   * true ⇔ el mix mueve UNA sola dimensión y esa palanca ya se reporta sola en `vias`.
+   * Pasa, por ejemplo, cuando el plazo ya está en el máximo y el mix se reduce al pie.
+   * Un mix que repite una palanca con otro nombre es ruido: el render tiene que poder
+   * no dibujarlo.
+   */
+  redundanteConPalancaSola: boolean;
+}
+
 export interface HallazgoDistanciaVeredicto {
   id: "distancia_veredicto";
   tipo: "distancia_umbral";
@@ -1027,6 +1084,10 @@ export interface HallazgoDistanciaVeredicto {
      *  `null` = se exploró y no hay (o el salto de dos bandas no aplica).
      *  AUSENTE = fila vieja, NO CALCULADO. */
     deltaMinimoComprarFueraDeTope?: { palanca: "arriendo" | "precio"; deltaPct: number } | null;
+    /** El mix de las tres palancas del comprador hacia `veredictoObjetivo`.
+     *  `null` = se probaron las combinaciones y ninguna cruza.
+     *  AUSENTE = fila persistida antes de este goal, NO CALCULADO. */
+    mixPalancas?: MixPalancas | null;
     /** Ninguna palanca cruza dentro del tope ⇒ no hay ajuste realista que lo salve. */
     esEstructural: boolean;
     /** Solo cuando `esEstructural`: el delta mínimo REAL buscado en rango extendido
