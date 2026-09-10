@@ -224,9 +224,13 @@ export function PortadaInforme({
 /** `veredicto` (goal "material del informe"): fija `data-verdict` en la raíz, de donde
  *  DocTokens deriva --verdict / --verdict-deep para la banda, los plumones y la barra de
  *  score. Sin veredicto (AMBAS) los tokens caen a Ink. */
-export function DocumentoFrame({ children, secciones = false, veredicto }: { children: ReactNode; secciones?: boolean; veredicto?: string }) {
+/** `rediseno`: SOLO LTR lo pasa. STR queda con el informe de hoy hasta que tenga su
+ *  propia pasada — encender un rediseño en un informe que nadie diseñó es exactamente
+ *  lo que el interruptor vino a evitar (contrato §11). Ver `rediseno-flag.ts` para los
+ *  tres pasos de retiro cuando STR llegue. */
+export function DocumentoFrame({ children, secciones = false, veredicto, rediseno = false }: { children: ReactNode; secciones?: boolean; veredicto?: string; rediseno?: boolean }) {
   return (
-    <div className={`doc-dictamen ${CLASE_REDISENO}`.trim()} data-verdict={veredicto}>
+    <div className={`doc-dictamen ${rediseno ? CLASE_REDISENO : ""}`.trim()} data-verdict={veredicto}>
       <DocTokens />
       <div className="doc-toprule" aria-hidden="true" />
       <div className="doc-head">

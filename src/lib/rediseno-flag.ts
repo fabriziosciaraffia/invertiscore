@@ -21,6 +21,19 @@
 //      de la ruta dev, y el prefijo `.doc-r2 ` de las reglas nuevas — que quedan como
 //      las reglas del informe, a secas.
 //
+// EL GATE ES POR MODALIDAD, y eso tiene su propio retiro. `DocumentoFrame` recibe
+// `rediseno` y HOY solo LTR lo pasa: STR se queda con el informe de siempre hasta que
+// tenga su pasada, porque encender un rediseño en un informe que nadie diseñó es
+// justo lo que este interruptor vino a evitar (contrato §11). Cuando STR llegue:
+//   a. STR agrega `rediseno` en `results-client.tsx` de renta corta.
+//   b. Con las dos modalidades pasándola, la prop deja de discriminar: se borra de
+//      `DocumentoFrame` y de los dos call sites.
+//   c. Y recién ahí cae el resto del andamio, que son los dos pasos de arriba.
+//
+// LOS DRAWERS NO ENTRAN por ninguno de los dos gates, y no es un olvido: montan fuera
+// de `DocumentoFrame`, así que nunca reciben `doc-r2`. El contenido de los pop-ups no
+// está definido (contrato §11) y es un arco propio.
+//
 // No lleva "use client": lo leen un layout de servidor y componentes de cliente.
 // ─────────────────────────────────────────────────────────────────────────────
 
