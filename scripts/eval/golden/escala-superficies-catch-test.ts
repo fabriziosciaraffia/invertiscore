@@ -65,18 +65,30 @@ function tokensDePapel(): { oscuro: Record<string, string>; claro: Record<string
   return { oscuro: sacar(partes[0]), claro: sacar(partes[1]) };
 }
 
-/** La escalera declarada por un contexto: `--doc-inset-N: var(--doc-paperM)`. */
+/** La escalera declarada por un contexto: `--doc-inset-N: var(--doc-paperM)`.
+ *
+ *  BUSCA EL BLOQUE QUE DECLARA LA ESCALERA, no el primero cuyo selector coincida. La
+ *  primera versión usaba `indexOf(selector + "{")` y se rompió sola cuando el goal de
+ *  radios agregó `.doc-r2 .v-modal{border-radius:...}`: ese bloque aparece ANTES en el
+ *  archivo, no tiene `--doc-inset-*`, y el tier lo leyó como si `.v-modal` hubiera
+ *  perdido su escalera. Un instrumento que apunta al bloque equivocado inventa una
+ *  regresión — o peor, deja de ver una real. */
 function escaleraDe(selector: string): Record<string, string> {
-  // El bloque del selector, hasta la llave de cierre.
-  const i = cssTodo.indexOf(selector + "{");
-  if (i === -1) return {};
-  const j = cssTodo.indexOf("}", i);
-  const bloque = cssTodo.slice(i, j === -1 ? undefined : j);
   const out: Record<string, string> = {};
-  for (const m of bloque.matchAll(/--doc-inset-([0-2])\s*:\s*var\(\s*(--doc-paper[0-9]?)\s*\)/g)) {
-    out[m[1]] = m[2].replace("--doc-", "");
+  let desde = 0;
+  for (;;) {
+    const i = cssTodo.indexOf(selector + "{", desde);
+    if (i === -1) return out;
+    const j = cssTodo.indexOf("}", i);
+    const bloque = cssTodo.slice(i, j === -1 ? undefined : j);
+    desde = j === -1 ? cssTodo.length : j;
+    let hubo = false;
+    for (const m of bloque.matchAll(/--doc-inset-([0-2])\s*:\s*var\(\s*(--doc-paper[0-9]?)\s*\)/g)) {
+      out[m[1]] = m[2].replace("--doc-", "");
+      hubo = true;
+    }
+    if (hubo) return out;
   }
-  return out;
 }
 
 const lin = (c: number) => { const x = c / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
