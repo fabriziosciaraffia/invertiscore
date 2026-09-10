@@ -20,14 +20,19 @@ export function SeccionInforme({
   tono,
   titulo,
   children,
+  caja = false,
 }: {
   id: string;
   tono: "paper" | "paper2";
   titulo?: ReactNode;
   children: ReactNode;
+  /** Contrato §2: SOLO el hero y la recomendación llevan caja. El resto va suelto
+   *  sobre el papel. Con el rediseño apagado la clase no hace nada — las reglas de
+   *  `.doc-sec--caja` cuelgan de `.doc-r2`. */
+  caja?: boolean;
 }) {
   return (
-    <section id={id} className={`doc-sec${tono === "paper2" ? " p2" : ""}`}>
+    <section id={id} className={`doc-sec${tono === "paper2" ? " p2" : ""}${caja ? " doc-sec--caja" : ""}`}>
       {titulo && <h2 className="doc-sec-t">{titulo}</h2>}
       {children}
     </section>

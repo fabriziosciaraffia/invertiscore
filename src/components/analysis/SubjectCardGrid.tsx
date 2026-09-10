@@ -281,7 +281,10 @@ export function SubjectCardGrid({
       )}
       </SeccionInforme>
       {/* ═══ 2 · HERO (paper2) ═══ */}
-      <SeccionInforme id="hero" tono="paper2">
+      {/* Contrato §2: el hero es una de las dos cajas. La recomendación es la otra, y
+          hoy vive DENTRO del hero (`HeroLTR` monta `PosicionFranco`): sale a su propia
+          sección en 4c, cuando se rediseñe su contenido. */}
+      <SeccionInforme id="hero" tono="paper2" caja>
       <HeroLTR
         onOpenDrawer={setActiveDrawer}
         data={prosa}

@@ -368,6 +368,44 @@ export function DocTokens() {
       }
       .doc-r2 .doc-ficha-overlay{background:var(--overlay)}
 
+      /* ═══════════════ REDISEÑO · ESTRUCTURA (contrato §2) ═══════════════
+         SOLO DOS SECCIONES LLEVAN CAJA —borde redondo, sombra, fondo propio—: el hero y
+         la recomendación. El resto va suelto sobre el papel, separado por espacio y no
+         por color. Ésa es la diferencia con la estructura de hoy, donde TODAS las
+         secciones son bloques de color alternado a sangre.
+
+         LA ALTERNANCIA MUERE ACÁ. Las secciones sueltas dejan de pintar fondo y de
+         sangrar el padding: se apoyan en --page y se separan con 38 px. Las dos cajas
+         llevan 34. El andamio de --doc-inset NO se retira —lo sigue usando el camino de
+         prosa vieja, que es permanente para 453 filas anónimas— pero en el camino nuevo
+         deja de tener trabajo, porque ya no hay dos tonos que alternar.
+
+         Y SE RETIRA LA SOMBRA DEL MARCO. «.doc-dictamen» tenía la única sombra real del
+         informe, y era lo que lo separaba del fondo de la página. Con las cajas, la
+         sombra pasa a ser de ellas: si el marco la conserva, el informe entero flota y
+         las dos cajas dejan de destacarse. El marco queda plano y sin radio propio. */
+      /* Las dos formas del selector, por lo mismo que la paleta: cuando «.doc-r2» va en
+         el MISMO elemento que «.doc-dictamen» (produccion) manda la primera; cuando
+         envuelve desde afuera (ruta dev), la segunda. Medido: sin la segunda el marco se
+         quedaba con su sombra. */
+      .doc-r2.doc-dictamen,
+      .doc-r2 .doc-dictamen{box-shadow:none;border-color:var(--line)}
+      /* «.doc-sec.p2» tiene la misma especificidad que «.doc-r2 .doc-sec» y gana por
+         orden, asi que la seccion alternada conservaba su fondo. Con «.p2» en el
+         selector se resuelve, y de paso queda explicito que la alternancia muere. */
+      .doc-r2 .doc-sec,
+      .doc-r2 .doc-sec.p2{
+        margin:0;padding:0;background:none;
+        margin-bottom:38px}
+      .doc-r2 .doc-sec:last-child{margin-bottom:0}
+      /* las dos cajas */
+      .doc-r2 .doc-sec--caja,
+      .doc-r2 .doc-sec--caja.p2{
+        border-radius:var(--rad);overflow:hidden;box-shadow:var(--sombra);
+        background:var(--card);margin-bottom:34px}
+      /* el ancho del contrato */
+      .doc-r2 .doc-page--secciones{max-width:700px;margin:0 auto}
+
       /* ═══════════════ REDISEÑO · LAS TRES PRIMITIVAS (contrato §9) ═══════════════
          Tres niveles de affordance, y la diferencia entre ellos ES información:
 
