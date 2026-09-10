@@ -547,11 +547,22 @@ export function buildHallazgoDistanciaVeredicto(p: {
     }
   }
 
-  // Solo para BUSCAR OTRA: ¿el salto de DOS bandas cae en rango? Informativo; si no, null.
-  const palancaHastaComprar =
-    p.veredictoBase === "BUSCAR OTRA" && !esEstructural
-      ? (palancasHasta("COMPRAR").palancas[0] ?? null)
-      : null;
+  // ── EL SALTO DE DOS BANDAS: BUSCAR OTRA → COMPRAR ─────────────────────────
+  // Se explora con el tope de AJUSTA (30), no con el de BUSCAR: el tope gobierna el
+  // SALTO que se mide, no el veredicto de partida (ver `topeDe`).
+  //
+  // Hasta este goal se guardaba `palancas[0]` y se DESCARTABAN las otras tres más las
+  // cuatro vías, que ya estaban calculadas. El informe podía decir «con −5% subes a
+  // AJUSTA» y no tenía forma de decir qué pediría COMPRAR. Guardarlas no cuesta un
+  // recompute más: es la misma llamada, con el resultado entero.
+  //
+  // `null` = se exploró y no aplica. La AUSENCIA del campo (filas viejas) significa
+  // NO CALCULADO y no puede leerse como «no hay vía» — ver el tipo.
+  const exploradoComprar =
+    p.veredictoBase === "BUSCAR OTRA" && !esEstructural ? palancasHasta("COMPRAR") : null;
+  const palancasHastaComprar = exploradoComprar?.palancas ?? null;
+  const viasHastaComprar = exploradoComprar?.vias ?? null;
+  const palancaHastaComprar = palancasHastaComprar?.[0] ?? null;
 
   // Cercanía al umbral (1 = pegado al veredicto de arriba, 0 = en el tope o estructural).
   // Va DENTRO de `valor`, NO en magnitudContinua: ese campo lo leen los comparadores de la
@@ -676,6 +687,8 @@ export function buildHallazgoDistanciaVeredicto(p: {
       vias,
       palancaMasBarata,
       palancaHastaComprar,
+      palancasHastaComprar,
+      viasHastaComprar,
       esEstructural,
       deltaMinimoFueraDeTope,
       topePct: topeAplicado,

@@ -993,8 +993,25 @@ export interface HallazgoDistanciaVeredicto {
     vias?: ViaDistancia[];
     /** La más barata de `palancas` (índice 0), o null si ninguna cruza. */
     palancaMasBarata: PalancaDistancia | null;
-    /** Solo para BUSCAR OTRA: distancia a COMPRAR si cae en rango (salto de dos bandas). */
+    /** Solo para BUSCAR OTRA: distancia a COMPRAR si cae en rango (salto de dos bandas).
+     *  Es exactamente `palancasHastaComprar[0]`; se conserva por compatibilidad con las
+     *  filas que ya lo traen. */
     palancaHastaComprar: PalancaDistancia | null;
+    /** Las palancas que cruzan a COMPRAR, de la más barata a la más cara — el mismo
+     *  orden que `palancas` (pie primero por prioridad, después por |delta|).
+     *
+     *  ⚠ AUSENTE (undefined) ≠ null. `undefined` = fila persistida ANTES de este goal,
+     *  o sea NO CALCULADO: nadie buscó la vía a COMPRAR. `null` = se exploró y no
+     *  aplica (el salto de dos bandas solo existe partiendo de BUSCAR OTRA, y no en el
+     *  caso estructural). Leer el undefined como «no hay vía» haría que un informe
+     *  viejo afirmara algo que nadie midió. Vale igual para `viasHastaComprar`. */
+    palancasHastaComprar?: PalancaDistancia[] | null;
+    /** Las CUATRO palancas con su estado hacia COMPRAR, en orden canónico
+     *  precio · arriendo · plazo · pie. Se guarda ADEMÁS de `palancasHastaComprar`
+     *  porque las dos dicen cosas distintas: ésta trae también las que NO cruzan con
+     *  su tope explorado (que es lo que permite decir «se probó hasta ahí»), y aquélla
+     *  trae el ORDEN de recomendación, que no se puede derivar filtrando. */
+    viasHastaComprar?: ViaDistancia[] | null;
     /** Ninguna palanca cruza dentro del tope ⇒ no hay ajuste realista que lo salve. */
     esEstructural: boolean;
     /** Solo cuando `esEstructural`: el delta mínimo REAL buscado en rango extendido
