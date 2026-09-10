@@ -140,16 +140,34 @@ const reglaDosBandas = (patch: { arriendo?: number; precio?: number; plazoCredit
     if (va.viasHastaComprar !== null) F("4a · desde AJUSTA `viasHastaComprar` debe ser null explícito");
     if (va.palancaHastaComprar !== null) F("4a · desde AJUSTA `palancaHastaComprar` debe seguir siendo null");
   }
-  // (b) Estructural: tampoco se explora el salto de dos bandas.
+  // (b) EL ESTRUCTURAL TAMBIÉN SE EXPLORA (10-sep-2026). Hasta este cambio la condición
+  //     llevaba `&& !esEstructural` y el 63% de las BUSCAR OTRA del parque —388 de 615—
+  //     se quedaba SIN ningún número hacia COMPRAR. Que ninguna palanca cruce al
+  //     veredicto de al lado no es razón para no medir cuánto pediría el de dos bandas
+  //     más arriba: es justamente donde el lector más necesita saberlo.
   const estructural = construir({
     veredictoBase: "BUSCAR OTRA",
-    regla: () => "BUSCAR OTRA",
+    // Nada cruza a AJUSTA; el precio sí llega a COMPRAR en −20%, dentro del tope 30.
+    regla: (patch) => (patch.precio != null && patch.precio <= 2_400 ? "COMPRAR" : "BUSCAR OTRA"),
   });
   const ve = estructural?.valor;
   if (ve) {
-    if (!ve.esEstructural) F("4b · el caso donde nada cruza debía salir estructural");
-    if (ve.palancasHastaComprar !== null) F("4b · en el estructural `palancasHastaComprar` debe ser null explícito");
-    if (ve.viasHastaComprar !== null) F("4b · en el estructural `viasHastaComprar` debe ser null explícito");
+    if (!ve.esEstructural) F("4b · ninguna palanca cruza a AJUSTA: debía salir estructural");
+    if (ve.viasHastaComprar === null) F("4b · el estructural TAMBIÉN explora el salto de dos bandas: `viasHastaComprar` no puede ser null");
+    else if (ve.viasHastaComprar!.length !== 4) F(`4b · viasHastaComprar trae ${ve.viasHastaComprar!.length} vías, deben ser 4`);
+    if (!ve.palancasHastaComprar?.length) F("4b · el precio cruza a COMPRAR en −20%: tiene que aparecer en palancasHastaComprar");
+  }
+  // (b2) Y si NI SIQUIERA a COMPRAR cruza nada dentro del tope, el mínimo fuera de tope
+  //      se calcula igual: es el número que la frase dura necesita para no citar el umbral.
+  const estrSinNada = construir({
+    veredictoBase: "BUSCAR OTRA",
+    regla: (patch) => (patch.precio != null && patch.precio <= 1_500 ? "COMPRAR" : "BUSCAR OTRA"),
+  });
+  const vsn = estrSinNada?.valor;
+  if (vsn) {
+    if (!vsn.esEstructural) F("4b2 · debía ser estructural");
+    if (vsn.palancasHastaComprar?.length !== 0) F("4b2 · nada cruza a COMPRAR dentro de 30: la lista debe estar VACÍA, no null");
+    if (!vsn.deltaMinimoComprarFueraDeTope) F("4b2 · el precio cruza a COMPRAR en −50%: el mínimo fuera de tope debe existir");
   }
   // (c) La distinción que importa: null (calculado, no aplica) ≠ undefined (fila vieja).
   //     El tipo declara los campos opcionales; una fila vieja NO los trae y el consumidor

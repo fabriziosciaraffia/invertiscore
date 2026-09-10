@@ -559,8 +559,17 @@ export function buildHallazgoDistanciaVeredicto(p: {
   //
   // `null` = se exploró y no aplica. La AUSENCIA del campo (filas viejas) significa
   // NO CALCULADO y no puede leerse como «no hay vía» — ver el tipo.
-  const exploradoComprar =
-    p.veredictoBase === "BUSCAR OTRA" && !esEstructural ? palancasHasta("COMPRAR") : null;
+  //
+  // EL ESTRUCTURAL TAMBIÉN SE EXPLORA (10-sep-2026). La condición llevaba
+  // `&& !esEstructural`, y eso dejaba al 63% de las BUSCAR OTRA del parque —388 de 615—
+  // sin NINGÚN número hacia COMPRAR. Que ninguna palanca cruce al veredicto de al lado no
+  // es razón para no medir cuánto pediría el de dos bandas más arriba: es justamente el
+  // caso donde el lector más necesita saber qué distancia real lo separa. El informe podía
+  // decir «ningún ajuste realista alcanza» y no tenía con qué contestar «¿y para Comprar?».
+  //
+  // Cuesta las 4 bisecciones de `palancasHasta` en los casos estructurales, que antes se
+  // salteaban: ~6 ms sobre los ~44 ms de un runAnalysis.
+  const exploradoComprar = p.veredictoBase === "BUSCAR OTRA" ? palancasHasta("COMPRAR") : null;
   const palancasHastaComprar = exploradoComprar?.palancas ?? null;
   const viasHastaComprar = exploradoComprar?.vias ?? null;
   const palancaHastaComprar = palancasHastaComprar?.[0] ?? null;
