@@ -54,26 +54,35 @@ export const MIX_PLAZOS_WIZARD = [20, 25, 30] as const;
 // Puntos del precio es escala-libre, está SIEMPRE definida (también con pie 0) y se
 // lee sola: cuántos puntos más del precio hay que poner el día uno.
 //
-// POR QUÉ 15. Sweep sobre las 1.199 filas LTR del parque, sobre las 191 estructurales
-// cuyo mix cruza: p25 5,8 · p50 9,7 · **p75 13,9** · p90 18,3 · max 30 puntos.
+// POR QUÉ 15, y qué mide de verdad este tope.
 //
-//   tope │ quedan con salida │ afuera    │ de las 71 SIN DESCUENTO sobreviven
-//   ─────┼───────────────────┼───────────┼───────────────────────────────────
-//    10  │       137         │  54 (28%) │  59 (83%)
-//    12  │       140         │  51 (27%) │  59 (83%)
-//  → 15  │       156         │  35 (18%) │  67 (94%)
-//    20  │       185         │   6 (3%)  │  70 (99%)
+// ⚠ LA PRIMERA MEDICIÓN ESTUVO MAL PLANTEADA Y EL NÚMERO CAMBIÓ. La FASE 0 midió «el
+// costo del mejor combo por descuento, y después si era pagable», y dio 35 filas
+// excluidas de 191. La implementación hace lo correcto —filtra por alcance ANTES de
+// elegir— así que cuando el combo más barato en descuento es caro, el módulo encuentra
+// otro que sí cabe. Con la semántica real el tope excluye **12 de 191 (6%)**, no 35.
 //
-// 20 se descarta porque no filtra nada: 6 casos es un tope decorativo. 10 y 12
-// sacrifican 12 de las 71 filas SIN DESCUENTO —el subconjunto donde el informe hoy
-// manda a irse y la salida no cuesta negociación, solo capital— para ganar 3 puntos de
-// filtro. 15 cae justo sobre el p75 y preserva 67 de esas 71.
+// Eso cambia lo que el tope ES: no es un filtro grueso que separa poblaciones, es una RED
+// DE SEGURIDAD que muerde solo donde NO existe ninguna combinación bajo los 15 puntos.
+// Los 12 que caza tienen costo MÍNIMO entre 15,7 y 22,1 puntos:
 //
-// Y sobre todo: LA COLA CARA NO ES UNA COLA, ES OTRA POBLACIÓN. De las 8 filas más
-// caras del parque, 6 son `pie 0% → 30%` y la séptima tiene pie 1%. El tope de 15
-// deja afuera casi exactamente ese grupo, que es el que el criterio quiere separar.
-// Mismo método con que se calibraron DIST_TOPE_AJUSTA_PCT y DIST_TOPE_BUSCAR_PCT:
-// el corte separa dos poblaciones, no es un percentil elegido a ojo.
+//   15,7 · 16,0 · 16,1 · 16,1 · 16,4 · 16,4 · 16,7 · 16,8 · 17,0 · 17,8 · 21,3 · 22,1
+//
+// Sensibilidad sobre esos mínimos: tope 16 → 10 afuera · 18 → 2 · 20 → 2 · 25 → 0.
+// Para topes bajo 15 haría falta otra corrida (el módulo no expone el mínimo cuando la
+// fila SÍ tiene salida), así que ese tramo no está medido.
+//
+// LO QUE SÍ SOSTIENE EL 15, medido con la semántica implementada:
+//  · preserva **67 de las 71** filas cuyo mix cruza SIN pedir descuento — el subconjunto
+//    donde el informe hoy manda a irse y la salida no cuesta negociación, solo capital;
+//  · la distribución del costo del mejor mix es p25 5,8 · p50 9,7 · p75 13,9 · p90 18,3,
+//    o sea que 15 cae sobre el p75 y deja pasar tres cuartos sin discutir;
+//  · y ninguna fila queda afuera por poco: el mínimo de los excluidos es 15,7, no 15,05.
+//
+// Lo que NO sostiene el 15, y conviene no repetirlo: en FASE 0 escribí que el tope «deja
+// afuera casi exactamente las filas pie 0% → 30%». Con la medición correcta **solo 3 de
+// los 12 tienen pie 0%**: las otras encuentran una combinación alternativa más barata.
+// El tope no separa esa población — la separa el propio orden del módulo.
 export const MIX_COSTO_TOPE_PTS_PRECIO = 15;
 
 /** Precisión de la bisección del descuento, en puntos porcentuales. */
