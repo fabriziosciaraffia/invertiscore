@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Source_Serif_4, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
+import { Source_Serif_4, IBM_Plex_Sans, JetBrains_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { PHProvider } from "./providers";
 import { PROPERTIES_COUNT } from "@/lib/stats";
@@ -11,7 +11,13 @@ const sourceSerif = Source_Serif_4({
   // 400 agregado el 09-sep-2026: la prosa serif del informe (la frase del hallazgo) pide
   // peso normal y NO estaba cargado, así que el navegador caía al 300 por font-matching y
   // se rendíia en Light. Se veía apretada, y la causa era el peso faltante.
-  weight: ["300", "400", "700"],
+  // 600 agregado el 10-sep-2026 para el titular del hero del rediseño (contrato §1).
+  // Sin el peso cargado pasa lo mismo que pasó con el 400: el navegador cae al más
+  // cercano por font-matching y el titular se rinde en 700, más pesado que lo pedido.
+  // Es el ÚNICO byte de esta parte que llega a prod con el interruptor apagado, y es
+  // un peso más en una fuente que ya se descarga: no cambia ningún pixel porque hoy
+  // nadie pide 600.
+  weight: ["300", "400", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-heading",
   display: "swap",
@@ -23,6 +29,27 @@ const ibmPlexSans = IBM_Plex_Sans({
   weight: ["400", "500"],
   variable: "--font-body",
   display: "swap",
+});
+
+// ── INTER — la tipografía del rediseño del informe (contrato §1) ───────────────
+// Reemplaza a IBM Plex como cuerpo y títulos, y al mono en cifras, referencias y
+// rótulos. Source Serif queda reservada al titular del hero.
+//
+// SIN `weight`: así Next toma la VARIABLE de Inter — un archivo para todo el rango
+// 400-700 — en vez de cuatro estáticos. `latin-ext` no es opcional: los nombres de
+// comuna llevan tilde y ñ.
+//
+// `preload: false` ES EL QUE HACE QUE ESTO NO CUESTE NADA HASTA EL GOAL 4. next/font
+// se llama a nivel de módulo y no se puede envolver en un `if`, pero sin preload el
+// navegador solo descarga el archivo cuando una regla usa la familia — y con el
+// interruptor apagado no hay ninguna. Lo que llega a prod es la declaración
+// @font-face, unos cientos de bytes. Cuando el rediseño se encienda, esta línea pasa
+// a `preload: true` en el mismo commit.
+const inter = Inter({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-ui",
+  display: "swap",
+  preload: false,
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -100,7 +127,7 @@ export default function RootLayout({
             persiste el default). Mantener el READ en sync con theme.ts. */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){var t;try{var k='franco-theme';t=localStorage.getItem(k);if(t!=='light'&&t!=='dark'){var l=localStorage.getItem('franco-landing-theme');if(l==='light'||l==='dark'){t=l;localStorage.setItem(k,l);}}}catch(e){}if(t!=='dark')document.documentElement.setAttribute('data-theme','light');})();` }} />
       </head>
-      <body className={`${sourceSerif.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} font-body antialiased`}>
+      <body className={`${sourceSerif.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} ${inter.variable} font-body antialiased`}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(buildSiteJsonLd()) }}
