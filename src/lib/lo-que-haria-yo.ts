@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { HallazgoDistanciaVeredicto, HallazgoSensibilidad, PalancaDistancia, Veredicto } from "./types";
+import { etiquetaVeredicto } from "./veredicto-etiqueta";
 
 /** Quién tiene que mover la palanca. Es el eje del bloque, no un adorno. */
 export type QuienLaPone = "vendedor" | "mercado" | "tuyo";
@@ -38,10 +39,24 @@ export interface MixLoQueHariaYo {
   costo: string | null;
   /** El descuento que el mix sí pide, ya formateado. null si no pide ninguno. */
   descuento: string | null;
+  /**
+   * Qué se dice DONDE IRÍA EL DESCUENTO cuando el mix no pide ninguno. Hoy ahí no se
+   * dibujaba nada, y un hueco no distingue «no pide» de «no se calculó» — que es
+   * justamente la mitad que importa del hallazgo: la salida no cuesta negociación,
+   * cuesta capital. null cuando sí hay descuento y la cifra ocupa ese lugar.
+   */
+  sinDescuento: string | null;
 }
 
 export interface BloqueLoQueHariaYo {
   rotulo: string;
+  /**
+   * La cifra IMPOSIBLE, en una línea chica y sobre el mix. No es una fila y no debe
+   * dibujarse como tal: es CONTEXTO —«esto no se arregla negociando»—, mientras que el
+   * mix de abajo es la ACCIÓN. Con el mismo peso visual el lector no sabe cuál mirar, y
+   * la que manda es la que puede ejecutar. null cuando no hay número fuera de rango.
+   */
+  contexto: string | null;
   filas: FilaLoQueHariaYo[];
   mix: MixLoQueHariaYo | null;
   /** Las que no alcanzan, en UNA línea. null en COMPRAR. */
@@ -74,8 +89,10 @@ const pct1 = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).repl
 const signo = (n: number) => (n < 0 ? "−" : "+");
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-/** El destino del bloque, SIEMPRE. Ver «EL DESTINO ES COMPRAR» más abajo. */
-const DESTINO = "Comprar";
+/** El destino del bloque, SIEMPRE. Ver «EL DESTINO ES COMPRAR» más abajo.
+ *  Sale de la fuente única y no de un literal: la etiqueta que lee el usuario vive
+ *  en `veredicto-etiqueta.ts` y en ningún otro lado (goal 10a). */
+const DESTINO = etiquetaVeredicto("COMPRAR", "frase");
 
 /** Une con comas y una "y" final: «Precio, arriendo, plazo y pie». */
 function enumerar(xs: string[]): string {
@@ -120,7 +137,7 @@ export function construirLoQueHariaYo(p: {
       });
     }
     if (filas.length === 0) return null;
-    return { rotulo: "Antes de firmar", filas, mix: null, descarte: null };
+    return { rotulo: "Antes de firmar", contexto: null, filas, mix: null, descarte: null };
   }
 
   const dv = p.distancia?.valor;
@@ -169,23 +186,23 @@ export function construirLoQueHariaYo(p: {
     return { titulo, quien, cifra, objetivo };
   });
 
-  // ── LA FILA DEL DELTA FUERA DE RANGO — el caso DOMINANTE de BUSCAR OTRA ───
+  // ── EL CONTEXTO — la cifra IMPOSIBLE, chica y arriba ─────────────────────
   // 574 de las 592 filas de BUSCAR OTRA que tienen un número hacia COMPRAR no cruzan
-  // dentro del tope: su ÚNICO dato es cuánto haría falta. Sin esta fila el 97% del
-  // veredicto se queda con un rótulo que dice «ninguna llega» y nada más — y ese es el
-  // caso normal, no un borde.
+  // dentro del tope: su único dato es cuánto haría falta. Ese es el caso normal, no un
+  // borde, así que callarlo dejaría al 97% del veredicto con un rótulo que dice «ninguna
+  // llega» y nada más.
   //
-  // Va DESPUÉS del rótulo a propósito: no entra en la cuenta de las que cruzan, porque
-  // no cruza. El «fuera de rango» debajo de la cifra es la mitad que la hace honesta.
+  // Pero NO es una fila. Nació como fila —misma tipografía, misma cifra mono de 15px que
+  // las palancas accionables— y con el mismo peso visual el lector no tenía cómo saber
+  // cuál de los dos números mirar. Son cosas distintas: ésta es CONTEXTO («esto no se
+  // arregla negociando») y el mix de abajo es la ACCIÓN. La jerarquía lo dice sola:
+  // chica y arriba, para que la que se puede ejecutar mande.
   const fueraDeRango = esBuscar ? dv.deltaMinimoComprarFueraDeTope : null;
-  if (fueraDeRango) {
-    filas.push({
-      titulo: fueraDeRango.palanca === "precio" ? "Haría falta en precio" : "Haría falta en arriendo",
-      quien: QUIEN[fueraDeRango.palanca],
-      cifra: `${signo(fueraDeRango.deltaPct)}${pct1(Math.abs(fueraDeRango.deltaPct))}%`,
-      objetivo: "fuera de rango",
-    });
-  }
+  const contexto = fueraDeRango
+    ? `Llegar a ${DESTINO} pediría un ${pct1(Math.abs(fueraDeRango.deltaPct))}% ${
+        fueraDeRango.palanca === "precio" ? "menos de precio" : "más de arriendo"
+      }, fuera de todo rango.`
+    : null;
 
   // ── EL MIX ────────────────────────────────────────────────────────────────
   // Tres razones para NO dibujarlo, y las tres vienen marcadas del motor:
@@ -199,14 +216,25 @@ export function construirLoQueHariaYo(p: {
     ? {
         // Cuando NO hay ninguna palanca sola, el mix deja de ser un apéndice y pasa a
         // ser el cuerpo: el título lo dice, y dice además si pide descuento o no.
-        // Cuenta `cruzan`, NO `filas`: la fila del delta fuera de rango no es una palanca
-        // que se pueda mover, así que su presencia no convierte al mix en un «además».
+        // EL TÍTULO SALE DEL DESTINO QUE EL MOTOR DECLARA, no del veredicto base.
+        //
+        // Cuando el mix llega al MISMO lugar que las filas —o sea a COMPRAR— sigue siendo
+        // el «además» de siempre, y con cero palancas solas es la única vía. Pero cuando
+        // deja en un veredicto MENOR que el del bloque, nombrarlo con el vocabulario del
+        // informe («sale de Buscar otro») le pide al lector que piense en nuestras
+        // etiquetas. Nadie piensa así. Piensa «que deje de ser un no», y eso es
+        // exactamente lo que el mix hace: llegar a AJUSTA SUPUESTOS no es un sí, es la
+        // desaparición del no. «Para que valga la pena» prometería el sí que el mix no
+        // entrega.
+        //
+        // AUSENTE: en una fila persistida antes del campo, `veredictoObjetivo` es el
+        // valor con que ese mismo mix se calculó — el fallback no supone nada.
         titulo:
-          cruzan.length > 0
-            ? "Si además mueves lo tuyo"
-            : m.sinDescuento
-              ? "La única salida"
-              : "La salida, combinando",
+          (m.destino ?? dv.veredictoObjetivo) !== "COMPRAR"
+            ? "Para que deje de ser un no"
+            : cruzan.length > 0
+              ? `Si además mueves lo tuyo, llegas a ${DESTINO}`
+              : `La única vía para llegar a ${DESTINO}`,
         movimiento: {
           pie: m.piePctDelta !== 0 ? { de: dv.piePctActual ?? 0, a: m.piePct } : null,
           plazo: m.plazoAniosDelta !== 0 ? { de: m.plazoAnios - m.plazoAniosDelta, a: m.plazoAnios } : null,
@@ -219,6 +247,7 @@ export function construirLoQueHariaYo(p: {
             : null,
         costo: m.costoDiaUnoUF > 0 ? `${enUF(m.costoDiaUnoUF)} más el día uno` : null,
         descuento: m.sinDescuento ? null : `−${pct1(m.descuentoPct)}%`,
+        sinDescuento: m.sinDescuento ? "sin pedirle un peso al vendedor" : null,
       }
     : null;
 
@@ -238,5 +267,5 @@ export function construirLoQueHariaYo(p: {
       ? null
       : `${enumerar(noAlcanzan).replace(/^./, (c) => c.toUpperCase())}, por separado, no ${noAlcanzan.length === 1 ? "alcanza" : "alcanzan"}.`;
 
-  return { rotulo, filas, mix, descarte };
+  return { rotulo, contexto, filas, mix, descarte };
 }

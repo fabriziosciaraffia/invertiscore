@@ -4725,7 +4725,8 @@
                 "costoDiaUnoUF": 122,
                 "costoPtsPrecio": 2.2
               },
-              "redundanteConPalancaSola": false
+              "redundanteConPalancaSola": false,
+              "destino": "COMPRAR"
             },
             "sinSalida": false,
             "esEstructural": false,
@@ -6069,7 +6070,8 @@
                 "costoDiaUnoUF": 286,
                 "costoPtsPrecio": 10
               },
-              "redundanteConPalancaSola": true
+              "redundanteConPalancaSola": true,
+              "destino": "AJUSTA SUPUESTOS"
             },
             "sinSalida": false,
             "esEstructural": false,
@@ -10313,7 +10315,8 @@
                 "costoDiaUnoUF": 122,
                 "costoPtsPrecio": 2.2
               },
-              "redundanteConPalancaSola": false
+              "redundanteConPalancaSola": false,
+              "destino": "COMPRAR"
             },
             "sinSalida": false,
             "esEstructural": false,
@@ -16773,7 +16776,8 @@
                 "costoDiaUnoUF": 62,
                 "costoPtsPrecio": 1.1
               },
-              "redundanteConPalancaSola": false
+              "redundanteConPalancaSola": false,
+              "destino": "COMPRAR"
             },
             "sinSalida": false,
             "esEstructural": false,
@@ -19309,7 +19313,8 @@
                 "costoDiaUnoUF": 122,
                 "costoPtsPrecio": 2.2
               },
-              "redundanteConPalancaSola": false
+              "redundanteConPalancaSola": false,
+              "destino": "COMPRAR"
             },
             "sinSalida": false,
             "esEstructural": false,
@@ -20644,7 +20649,8 @@
                 "costoDiaUnoUF": 286,
                 "costoPtsPrecio": 10
               },
-              "redundanteConPalancaSola": true
+              "redundanteConPalancaSola": true,
+              "destino": "AJUSTA SUPUESTOS"
             },
             "sinSalida": false,
             "esEstructural": false,
@@ -21994,7 +22000,8 @@
                 "costoDiaUnoUF": 149,
                 "costoPtsPrecio": 3.7
               },
-              "redundanteConPalancaSola": false
+              "redundanteConPalancaSola": false,
+              "destino": "AJUSTA SUPUESTOS"
             },
             "sinSalida": false,
             "esEstructural": true,
@@ -23134,7 +23141,8 @@
                 "costoDiaUnoUF": 294,
                 "costoPtsPrecio": 9.2
               },
-              "redundanteConPalancaSola": false
+              "redundanteConPalancaSola": false,
+              "destino": "AJUSTA SUPUESTOS"
             },
             "sinSalida": false,
             "esEstructural": true,

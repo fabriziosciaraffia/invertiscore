@@ -21,9 +21,12 @@
 //      cuánto cuesta cada palanca, sino de quién depende.
 //
 //   3. LOS 179 — ninguna palanca sola cruza y el mix sí. El mix pasa a ser el
-//      CUERPO: título «La única salida» cuando no pide descuento, «La salida,
-//      combinando» cuando sí, y SIN contraste tachado (no hay solo-precio contra
-//      qué contrastar). El descarte lista las cuatro.
+//      CUERPO, y su título dice ADÓNDE DEJA, leído del `destino` que el motor
+//      declara: «Para que deje de ser un no» cuando deja en un veredicto menor
+//      que el del bloque, «La única vía para llegar a Comprar» cuando llega al
+//      mismo. Sin contraste tachado (no hay solo-precio contra qué contrastar), y
+//      cuando no pide descuento lo DICE —«sin pedirle un peso al vendedor»— en vez
+//      de dejar el hueco, que no distingue «no pide» de «no se calculó».
 //
 //   4. BORDE · MIX REDUNDANTE ⇒ NO SE DIBUJA. Si el mix repite una palanca que ya
 //      está en las filas, dibujarlo es decir dos veces lo mismo con otro nombre.
@@ -37,10 +40,13 @@
 //      el mercado) y el arriendo a verificar (lo pones tú).
 //
 //   7. EL DELTA FUERA DE RANGO ES EL CASO DOMINANTE de BUSCAR OTRA (574 de 592),
-//      no un borde: se dibuja como fila, con su «fuera de rango» debajo, y NO se
-//      cuenta como palanca que cruza. Y su gemelo: una fila persistida SIN la vía
-//      a COMPRAR medida (`palancasHastaComprar` ausente) no dibuja bloque — decir
-//      «ninguna llega a Comprar» ahí sería publicar una medición que no existe.
+//      no un borde: se dice SIEMPRE, y NO como fila. Es `contexto` —una línea, con
+//      su destino nombrado y su «fuera de todo rango»— porque es contexto y no
+//      acción; dibujarlo con el peso de una palanca accionable deja al lector sin
+//      saber cuál de los dos números mirar. Y su gemelo: una fila persistida SIN
+//      la vía a COMPRAR medida (`palancasHastaComprar` ausente) no dibuja bloque —
+//      decir «ninguna llega a Comprar» ahí sería publicar una medición que no
+//      existe.
 //
 // Corre dentro del QUICK (tier "lo-que-haria-yo") y standalone:
 //   node --import tsx scripts/eval/golden/lo-que-haria-yo-catch-test.ts
@@ -192,7 +198,9 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   });
   if (!sinDesc?.mix) F("3a · los 179 sin descuento: el mix tiene que dibujarse, es el cuerpo");
   else {
-    if (sinDesc.mix.titulo !== "La única salida") F(`3a · sin descuento el título es «La única salida», dio «${sinDesc.mix.titulo}»`);
+    if (sinDesc.mix.titulo !== "Para que deje de ser un no") F(`3a · desde BUSCAR el mix deja en un veredicto menor: «Para que deje de ser un no», dio «${sinDesc.mix.titulo}»`);
+    if (sinDesc.mix.sinDescuento !== "sin pedirle un peso al vendedor") F(`3a · sin descuento hay que DECIRLO donde iría la cifra, dio «${sinDesc.mix.sinDescuento}»`);
+    if (sinDesc.mix.descuento !== null) F("3a · sin descuento no hay cifra de descuento que dibujar");
     if (sinDesc.mix.contraste !== null) F("3a · sin solo-precio que cruce NO hay contraste tachado que dibujar");
     if (sinDesc.filas.length !== 0) F(`3a · ninguna palanca sola cruza: no puede haber filas, hay ${sinDesc.filas.length}`);
     if (!sinDesc.descarte || !/precio/i.test(sinDesc.descarte)) F(`3a · el descarte tiene que listar las cuatro: «${sinDesc.descarte}»`);
@@ -210,7 +218,61 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
     }),
   });
   if (!conDesc?.mix) F("3b · con descuento el mix tiene que dibujarse");
-  else if (conDesc.mix.titulo !== "La salida, combinando") F(`3b · con descuento el título es «La salida, combinando», dio «${conDesc.mix.titulo}»`);
+  else {
+    if (conDesc.mix.titulo !== "Para que deje de ser un no") F(`3b · el título lo fija el DESTINO, no el descuento: dio «${conDesc.mix.titulo}»`);
+    if (conDesc.mix.sinDescuento !== null) F("3b · con descuento manda la cifra, no la frase de «no pide»");
+  }
+
+  // (c) el MISMO mix, pero llegando a COMPRAR: el título cambia porque cambia el
+  // destino que el motor declara, no porque cambie el veredicto base.
+  const aComprar = bloque({
+    veredicto: "AJUSTA SUPUESTOS",
+    dist: distancia({
+      veredictoBase: "AJUSTA SUPUESTOS",
+      regla: (x) => ((x.piePct ?? 20) >= 30 && (x.plazoCredito ?? 25) >= 30 ? "COMPRAR" : "AJUSTA SUPUESTOS"),
+    }),
+  });
+  if (!aComprar?.mix) F("3c · el mix hacia COMPRAR tiene que dibujarse");
+  else if (aComprar.mix.titulo !== "La única vía para llegar a Comprar") F(`3c · llegando al MISMO destino que el bloque el título lo nombra: dio «${aComprar.mix.titulo}»`);
+
+  // (d) con palancas solas y el mismo destino, sigue siendo el «además» de siempre.
+  const ademas = bloque({
+    veredicto: "AJUSTA SUPUESTOS",
+    dist: distancia({
+      veredictoBase: "AJUSTA SUPUESTOS",
+      regla: (x) => {
+        const pie = x.piePct ?? 20, plazo = x.plazoCredito ?? 25;
+        const desc = x.precio != null ? (1 - x.precio / 3_000) * 100 : 0;
+        return desc >= 20 || (pie >= 30 && plazo >= 30 && desc >= 5) ? "COMPRAR" : "AJUSTA SUPUESTOS";
+      },
+    }),
+  });
+  if (ademas?.mix && ademas.filas.length > 0 && ademas.mix.titulo !== "Si además mueves lo tuyo, llegas a Comprar") {
+    F(`3d · con palancas solas al mismo destino el mix es el «además»: dio «${ademas.mix.titulo}»`);
+  }
+}
+
+// ── 3e · AUSENTE · el mix sin `destino` cae al veredicto objetivo ─────────
+{
+  // Fila persistida entre `fcfcbd98` y el goal del destino: el mix existe pero no dice
+  // adónde deja. `veredictoObjetivo` ES el valor con que ese mismo mix se calculó, así
+  // que el fallback no supone nada.
+  //
+  // El caso se toma desde AJUSTA a propósito: ahí el destino ES COMPRAR, y sin fallback
+  // `undefined !== "COMPRAR"` da true y el título sale «Para que deje de ser un no» —o
+  // sea, la fila más vieja del parque publicaría que el mix la deja en un veredicto
+  // menor cuando la deja en el mayor. Desde BUSCAR este mismo test pasa con y sin
+  // fallback, así que no probaría nada.
+  const dist = distancia({
+    veredictoBase: "AJUSTA SUPUESTOS",
+    regla: (x) => ((x.piePct ?? 20) >= 30 && (x.plazoCredito ?? 25) >= 30 ? "COMPRAR" : "AJUSTA SUPUESTOS"),
+  }) as HallazgoDistanciaVeredicto;
+  const vieja = JSON.parse(JSON.stringify(dist)) as HallazgoDistanciaVeredicto;
+  if (!vieja.valor.mixPalancas) F("3e · el caso necesita un mix para poder borrarle el destino");
+  else delete vieja.valor.mixPalancas.destino;
+  const b = bloque({ veredicto: "AJUSTA SUPUESTOS", dist: vieja });
+  if (!b?.mix) F("3e · el mix sin `destino` igual se dibuja");
+  else if (b.mix.titulo !== "La única vía para llegar a Comprar") F(`3e · sin destino manda el veredicto objetivo, que acá es COMPRAR: dio «${b.mix.titulo}»`);
 }
 
 // ── 4 · BORDE · mix REDUNDANTE ⇒ no se dibuja ──────────────────────────────
@@ -306,14 +368,16 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   });
   if (!b) F("7 · el bloque no se construyó para el delta fuera de rango");
   else {
-    const fila = b.filas.find((f) => /haría falta/i.test(f.titulo));
-    if (!fila) F(`7 · falta la fila del delta fuera de rango; filas: ${b.filas.map((f) => f.titulo).join(" | ") || "(ninguna)"}`);
+    if (!b.contexto) F("7 · falta la línea de contexto con el delta fuera de rango");
     else {
-      if (fila.objetivo !== "fuera de rango") F(`7 · la fila tiene que decir «fuera de rango» debajo, dijo «${fila.objetivo}»`);
-      if (!/^−\d/.test(fila.cifra)) F(`7 · el delta va con signo y magnitud, dio «${fila.cifra}»`);
-      if (fila.quien !== "vendedor") F(`7 · el precio lo pone el vendedor también acá, dio «${fila.quien}»`);
+      if (!/Comprar/.test(b.contexto)) F(`7 · el contexto nombra su destino: «${b.contexto}»`);
+      if (!/fuera de todo rango/i.test(b.contexto)) F(`7 · el contexto dice que está fuera de todo rango: «${b.contexto}»`);
+      if (!/menos de precio/i.test(b.contexto)) F(`7 · el contexto nombra la palanca y su dirección: «${b.contexto}»`);
+      if (!/\d/.test(b.contexto)) F(`7 · el contexto lleva la cifra, no el umbral: «${b.contexto}»`);
     }
-    // NO cuenta como palanca que cruza: el rótulo sigue diciendo que ninguna llega.
+    // NO es una fila: con el mismo peso que una palanca accionable el lector no sabe
+    // cuál mirar. Es contexto, y el mix de abajo es la acción.
+    if (b.filas.length !== 0) F(`7 · el delta va como contexto, NO como fila: hay ${b.filas.length} fila(s)`);
     if (!/ninguna llega a Comprar$/i.test(b.rotulo)) F(`7 · el delta fuera de rango no cruza: el rótulo no puede contarlo — «${b.rotulo}»`);
   }
 }
@@ -339,7 +403,7 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
 export function runLoQueHariaYoTier(): { hard: number } {
   console.log("\n─── TIER LO-QUE-HARÍA-YO (el bloque determinista · lo-que-haria-yo.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el destino es Comprar en los dos veredictos, el chip dice quién la pone, el mix es cuerpo en los 179, el delta fuera de rango se dibuja y la fila vieja se calla");
+    console.log("  ✓ VERDE — el destino es Comprar en los dos veredictos, el mix dice adónde deja, la cifra imposible va de contexto y no de fila, y la fila vieja se calla");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

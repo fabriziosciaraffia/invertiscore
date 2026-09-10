@@ -20,7 +20,7 @@ const TEXTO_CHIP: Record<QuienLaPone, string> = {
 };
 
 export function LoQueHariaYoBloque({ bloque }: { bloque: BloqueLoQueHariaYo }) {
-  const { rotulo, filas, mix, descarte } = bloque;
+  const { rotulo, contexto, filas, mix, descarte } = bloque;
   return (
     <div className="lqhy">
       <div className="lqhy-kick">{rotulo}</div>
@@ -39,6 +39,11 @@ export function LoQueHariaYoBloque({ bloque }: { bloque: BloqueLoQueHariaYo }) {
           </div>
         </div>
       ))}
+
+      {/* La cifra imposible: chica, en mono apagado y ANTES del mix. No es una fila —el
+          mismo peso visual dejaba al lector sin saber cuál de los dos números mirar—:
+          es el contexto que hace legible la acción de abajo. */}
+      {contexto && <p className="lqhy-ctx">{contexto}</p>}
 
       {mix && (
         <div className="lqhy-mix">
@@ -75,6 +80,13 @@ export function LoQueHariaYoBloque({ bloque }: { bloque: BloqueLoQueHariaYo }) {
               <span className="u">el descuento que tendrías que pedir</span>
             </div>
           ) : null}
+          {/* Sin descuento no queda un hueco: el hueco no distingue «no pide» de «no se
+              calculó», y que no pida es la mitad que importa. */}
+          {mix.sinDescuento && (
+            <div className="lqhy-mix-res">
+              <span className="b">{mix.sinDescuento}</span>
+            </div>
+          )}
           {mix.costo && <div className="lqhy-mix-cost">{mix.costo}</div>}
         </div>
       )}

@@ -378,8 +378,14 @@ export function DocTokens() {
          --verdict ya existe por veredicto (franco-design-system) y no es color nuevo. */
       .lqhy-chip{display:inline-block;font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--doc-paper3);color:var(--doc-tx3);margin-top:5px}
       .lqhy-chip.tuyo{background:var(--verdict);color:var(--doc-paper)}
+      /* La cifra IMPOSIBLE. Va en el cuerpo de la línea de descarte —mono chica y
+         apagada— y no en el de una fila: es contexto, no acción. La jerarquía es el
+         mensaje; con el mismo peso que el mix el lector no sabe cuál mirar. */
+      .lqhy-ctx{font-family:var(--font-mono, ui-monospace);font-size:10.5px;color:var(--doc-tx3);line-height:1.55;margin:11px 0 0}
       .lqhy-mix{background:var(--doc-paper3);margin:14px -18px 0;padding:14px 18px 15px;border-left:3px solid var(--verdict)}
-      .lqhy-mix-k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx3);margin-bottom:9px}
+      /* El rótulo del mix pesa como el del bloque (700): es el encabezado de LA ACCIÓN,
+         y tiene que ganarle a la línea de contexto que va justo encima. */
+      .lqhy-mix-k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx2);font-weight:700;margin-bottom:9px}
       .lqhy-mix-mov{font-family:var(--font-mono, ui-monospace);font-size:12.5px;color:var(--doc-tx2);margin-bottom:11px;line-height:1.5}
       .lqhy-mix-mov .de{color:var(--doc-tx3)}
       .lqhy-mix-mov .fl{color:var(--doc-tx4);margin:0 4px}
