@@ -3,11 +3,13 @@
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { renderPlumon } from "./hallazgos/plumon";
 import { PosicionFranco } from "./shared/PosicionFranco";
-import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, HallazgoSensibilidad } from "@/lib/types";
+import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, HallazgoSensibilidad, Veredicto } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { DrawerDistanciaLtr, DrawerSensibilidadLtr } from "./drawers/DrawersPropios";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { MatrizPiePlazoLtr } from "./shared/MatrizPiePlazoLtr";
+import { LoQueHariaYoBloque } from "./shared/LoQueHariaYoBloque";
+import { construirLoQueHariaYo } from "@/lib/lo-que-haria-yo";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 import { esProsaDosBloques } from "./AIInsightSection";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
@@ -184,6 +186,33 @@ export function HeroLTR({
   // haría Franco. El campo es ÚNICO desde v21 (no lleva magnitudes, así que no
   // cambia con la moneda); las filas viejas traen el par y no llegan hasta acá.
   const negociacion = dosBloques ? (data?.negociacion?.contenido ?? null) : null;
+
+  // ── EL CUERPO DETERMINISTA (v22.1) ────────────────────────────────────────
+  // El motor calcula las cuatro vías, el salto de dos bandas y el mix desde fcfcbd98,
+  // y hasta acá el bloque no leía nada: mostraba un párrafo. Ahora dibuja los datos.
+  //
+  // SOLO en el camino nuevo (`dosBloques`): las filas anónimas con prosa de cuatro
+  // campos siguen igual, y su `results` recomputado igual trae los campos —pero su
+  // maqueta es otra y mezclar las dos formas es peor que dejar la vieja quieta.
+  const bloqueDeterminista = dosBloques && results
+    ? construirLoQueHariaYo({
+        veredicto: veredicto as Veredicto,
+        distancia: distanciaRow ?? null,
+        sensibilidad: sensibilidadRow ?? null,
+        arriendoDeclaradoCLP: Number(inputData?.arriendo ?? 0),
+        currency,
+        valorUF,
+      })
+    : null;
+  // LA PROSA SE MANTIENE SOLO DONDE EL CONTRATO VISUAL LA TIENE: el lead de COMPRAR y
+  // la alternativa de comunas en BUSCAR OTRA, que es el único dato del bloque que NO
+  // sale del motor (no hay fuente determinista de comunas parecidas). En AJUSTA el
+  // cuerpo son las filas y el párrafo sobra.
+  //
+  // ⚠ TRANSITORIO: hasta el goal del prompt, `cajaAccionable` sigue trayendo el párrafo
+  // completo, así que en esos dos veredictos se lee más largo que el contrato. El
+  // prompt lo va a reducir a la alternativa; el render ya está en su sitio.
+  const prosaSobrevive = !bloqueDeterminista || veredicto === "COMPRAR" || veredicto === "BUSCAR OTRA";
   // EL CHIP ES EL OBJETIVO DEL PLAN, y sale de las ANCLAS con las que se escribió
   // esta prosa —no del motor recomputado— porque está pegado al párrafo que lo
   // argumenta: si el chip y el texto de al lado nombraran precios distintos, el
@@ -315,7 +344,8 @@ export function HeroLTR({
           separaba la afirmación de su fundamento con un corte de sección en medio. */}
       {dosBloques && razones}
       <PosicionFranco
-        cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}
+        cajaAccionable={cajaAccionable && prosaSobrevive ? renderPlumon(cajaAccionable) : null}
+        bloque={bloqueDeterminista ? <LoQueHariaYoBloque bloque={bloqueDeterminista} /> : undefined}
         prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
         chip={dosBloques ? objetivoChip : undefined}
         titulo={dosBloques ? "Lo que haría yo" : undefined}

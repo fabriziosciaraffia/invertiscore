@@ -41,7 +41,12 @@ import fixtures from "./fixtures.json";
 // `cajaAccionable` mide 48-65 palabras; en v22 el campo absorbe el trabajo de los cuatro
 // muertos y su techo es 110, asi que en produccion el bloque va a ser MAS ALTO que en estos
 // shots. Sirven para verificar la FORMA del render, no el largo definitivo.
-type FixKey = "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "providenciaLtrV22" | "laFloridaLtr" | "laFloridaLtrV22" | "nunoaLtr" | "nunoaLtrV22" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro";
+// v22.1 (10-sep-2026) · los bordes del bloque determinista que ninguna fila real cubre:
+// `gs4LtrMixCuerpo` y `gs7LtrUnicaSalida` son los 179 —ninguna palanca sola cruza y el mix
+// es el cuerpo, con y sin descuento—, y `providenciaLtrViejo` es la misma fila con los
+// campos nuevos BORRADOS del hallazgo: simula lo que llega por `rawResults` cuando no hay
+// input_data (2 filas del parque) y prueba que la ausencia se lee como «no calculado».
+type FixKey = "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "providenciaLtrV22" | "laFloridaLtr" | "laFloridaLtrV22" | "nunoaLtr" | "nunoaLtrV22" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro" | "gs4LtrMixCuerpo" | "gs7LtrUnicaSalida" | "providenciaLtrViejo";
 
 function Inner() {
   const sp = useSearchParams();

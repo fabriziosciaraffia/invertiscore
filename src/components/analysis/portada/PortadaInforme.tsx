@@ -361,6 +361,41 @@ export function DocTokens() {
       .pos-foot{background:var(--doc-paper2);border-top:1px solid var(--doc-line);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
       .pos-foot .k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--doc-tx3);font-weight:700;display:block;margin-bottom:4px}
       .pos-foot .l{font-size:13px;color:var(--doc-tx2);line-height:1.5}
+      /* «LO QUE HARÍA YO» determinista (10-sep-2026) — el bloque deja de ser prosa.
+         Contrato: docs/wireframes/rediseno-informe/lo-que-haria-yo-apretado.html
+         La fila es la MISMA gramática que las de hallazgo (.hz-lin): pregunta a la
+         izquierda, cifra mono a la derecha y su referencia debajo, en small. Nada de
+         backticks acá dentro: esto vive en un template literal. */
+      .lqhy{margin-top:2px}
+      .lqhy-kick{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx3);font-weight:700;margin-bottom:9px}
+      .lqhy-row{display:grid;grid-template-columns:1fr auto;gap:0 12px;padding:12px 0;border-bottom:1px solid var(--doc-line);align-items:start}
+      .lqhy-row:last-of-type{border-bottom:none}
+      .lqhy-q{font-family:var(--font-heading, Georgia, serif);font-size:15.5px;line-height:1.3;color:var(--doc-tx)}
+      .lqhy-n{font-family:var(--font-mono, ui-monospace);font-size:15px;font-weight:700;white-space:nowrap;text-align:right;color:var(--doc-tx)}
+      .lqhy-n small{display:block;font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:500;color:var(--doc-tx3);margin-top:3px;min-height:13px;white-space:normal}
+      /* El chip de quién la pone. El de la palanca TUYA va en el color del veredicto:
+         es la única que el lector puede mover hoy, y el color lo dice sin una palabra.
+         --verdict ya existe por veredicto (franco-design-system) y no es color nuevo. */
+      .lqhy-chip{display:inline-block;font-family:var(--font-mono, ui-monospace);font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--doc-paper3);color:var(--doc-tx3);margin-top:5px}
+      .lqhy-chip.tuyo{background:var(--verdict);color:var(--doc-paper)}
+      .lqhy-mix{background:var(--doc-paper3);margin:14px -18px 0;padding:14px 18px 15px;border-left:3px solid var(--verdict)}
+      .lqhy-mix-k{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx3);margin-bottom:9px}
+      .lqhy-mix-mov{font-family:var(--font-mono, ui-monospace);font-size:12.5px;color:var(--doc-tx2);margin-bottom:11px;line-height:1.5}
+      .lqhy-mix-mov .de{color:var(--doc-tx3)}
+      .lqhy-mix-mov .fl{color:var(--doc-tx4);margin:0 4px}
+      .lqhy-mix-res{font-family:var(--font-mono, ui-monospace);font-size:13px;color:var(--doc-tx);display:flex;align-items:baseline;flex-wrap:wrap;gap:0 4px}
+      .lqhy-mix-res .a{text-decoration:line-through;color:var(--doc-tx3);font-weight:500}
+      .lqhy-mix-res .b{font-weight:700}
+      .lqhy-mix-res .fl{color:var(--doc-tx4)}
+      .lqhy-mix-res .u{font-size:10.5px;color:var(--doc-tx3);letter-spacing:.02em;margin-left:4px}
+      /* El costo del día uno en Signal Red: es lo que el mix COBRA, y el rojo acá es
+         info que pide atención, no decoración (regla del rojo, CLAUDE.md). */
+      .lqhy-mix-cost{font-family:var(--font-mono, ui-monospace);font-size:12px;font-weight:700;color:var(--signal-red);margin-top:8px}
+      .lqhy-desc{font-family:var(--font-mono, ui-monospace);font-size:10.5px;color:var(--doc-tx3);line-height:1.5;padding-top:11px;border-top:1px solid var(--doc-line);margin:13px 0 0}
+      @media (max-width:640px){
+        .lqhy-q{font-size:14.5px} .lqhy-n{font-size:14px}
+        .lqhy-mix{margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
+      }
       /* LA REGULACIÓN DEL EDIFICIO (STR, 09-sep-2026) — la quinta razón, la que no es
          un número. Vive dentro de «Qué determina el veredicto», debajo de las cuatro
          líneas. Sobre --doc-paper3, que por contrato no es fondo de sección; con el

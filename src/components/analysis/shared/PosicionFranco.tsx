@@ -34,6 +34,7 @@ export type FooterPosicion = {
 
 export function PosicionFranco({
   cajaAccionable,
+  bloque,
   prosa,
   chip,
   fechaFirma,
@@ -44,6 +45,12 @@ export function PosicionFranco({
   className = "pb-2 md:ml-9",
 }: {
   cajaAccionable: ReactNode | null;
+  /**
+   * Cuerpo DETERMINISTA (v22.1): las palancas con su chip, el mix y el descarte, que
+   * el motor calcula y esta caja dibuja. Va ARRIBA de todo lo demás porque es la
+   * respuesta; la prosa que quede abajo es contexto, no la posición.
+   */
+  bloque?: ReactNode;
   /** Cuerpo que ENTRA ANTES de la caja (v21: el argumento de negociación). */
   prosa?: ReactNode;
   /** Chip mono a la derecha del título (v21: el precio objetivo del plan). */
@@ -77,7 +84,7 @@ export function PosicionFranco({
       });
     }
   };
-  if (!cajaAccionable && !prosa && !footer) return null;
+  if (!cajaAccionable && !prosa && !bloque && !footer) return null;
   return (
     <>
       <div className={className}>
@@ -87,6 +94,7 @@ export function PosicionFranco({
               {titulo}
               {chip && <em className="pos-chip">{chip}</em>}
             </span>
+            {bloque}
             {prosa && <div className="pos-p">{prosa}</div>}
             {cajaAccionable && <div className="pos-p">{cajaAccionable}</div>}
             <div className="pos-firma">
