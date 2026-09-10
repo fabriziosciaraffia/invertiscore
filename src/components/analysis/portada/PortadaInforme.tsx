@@ -364,6 +364,83 @@ export function DocTokens() {
       }
       .doc-r2 .doc-ficha-overlay{background:var(--overlay)}
 
+      /* ═══════════════ REDISEÑO · LAS TRES PRIMITIVAS (contrato §9) ═══════════════
+         Tres niveles de affordance, y la diferencia entre ellos ES información:
+
+           BOTÓN            fondo sólido, icono circular, sombra, baja 1 px al presionar
+           FILA NAVEGABLE   levanta 1 px, gana borde y sombra, el disco se llena
+           ENLACE           subrayado al 35% que se satura, con flecha
+           y NO REACCIONAN  tarjeta de cifra, tarjeta de zona, fila de hallazgo
+
+         LA REGLA DE LO QUE NO REACCIONA NO ES UN OLVIDO, y está verificada en el código:
+         las tarjetas de cifra son «div.num-cell» sin onClick y las de zona son
+         «div» dentro de «.zona-cells», también sin handler. No reaccionan porque NO
+         ABREN NADA. Lo único clickeable de esas dos secciones es su enlace al pie, que
+         sí es un botón. Si alguna vez tienen que abrir algo, eso es estructura y
+         decisión de producto, no un hover que falta.
+
+         DOS DE LAS TRES YA EXISTEN Y SE REAPUNTAN, NO SE DUPLICAN: «.doc-btn» (1 uso, en
+         PosicionFranco) y «.doc-lnk» (3 usos, en SeisCifras, ZonaLtr y ZonaStrSection).
+         Los dos ya son «button type=button», así que la semántica estaba bien; lo que
+         les faltaba era la forma del contrato.
+
+         LA FILA NAVEGABLE SE DEFINE Y NO SE MONTA. La pieza del contrato —fila de
+         capítulo con disco y chevron— no existe todavía: hoy la navegación de capítulos
+         es «.hall-head», que es un acordeón. La clase queda lista para que la parte 4 la
+         use, y así el rediseño no inventa una estructura antes de tiempo.
+
+         EL FOCO NO ES OPCIONAL. Cada primitiva declara «:focus-visible» con el mismo
+         anillo, porque el hover no existe en teclado ni en táctil. «.hall-head» ya lo
+         tenía; acá se le da a las otras dos y el catch-test lo fija, porque es
+         exactamente lo que una reescritura de la parte 4 puede perder sin que se note. */
+
+      /* — BOTÓN — */
+      .doc-r2 .doc-btn{
+        gap:10px;font-size:14px;font-weight:600;padding:13px 20px;letter-spacing:normal;
+        text-transform:none;box-shadow:var(--sombra);
+        transition:transform .12s,box-shadow .12s,filter .12s}
+      .doc-r2 .doc-btn:hover{filter:none;box-shadow:var(--sombra-h)}
+      .doc-r2 .doc-btn:active{transform:translateY(1px)}
+      .doc-r2 .doc-btn::before{
+        content:"";width:20px;height:20px;border-radius:50%;flex:none;
+        background:var(--page);
+        -webkit-mask:radial-gradient(circle,#000 99%,transparent) center/100% 100% no-repeat;
+        mask:radial-gradient(circle,#000 99%,transparent) center/100% 100% no-repeat}
+
+      /* — ENLACE — el subrayado vive SIEMPRE, y al hover se satura. Antes aparecía
+           recién al hover, o sea que en reposo no se distinguía de un rótulo. */
+      .doc-r2 .doc-lnk{
+        display:inline-flex;align-items:center;gap:8px;
+        font-size:13.5px;font-weight:600;letter-spacing:normal;text-transform:none;
+        padding-bottom:2px;text-decoration:none;
+        border-bottom:1.5px solid color-mix(in srgb,var(--signal-red) 35%,transparent)}
+      .doc-r2 .doc-lnk:hover{text-decoration:none;border-bottom-color:var(--signal-red)}
+      .doc-r2 .doc-lnk::after{content:"→";font-size:13px;line-height:1}
+
+      /* — FILA NAVEGABLE — definida, sin montar. La parte 4 la usa. */
+      .doc-r2 .fila-nav{
+        background:var(--card);padding:16px 17px;cursor:pointer;display:grid;
+        grid-template-columns:1fr auto auto;gap:0 15px;align-items:center;
+        border-radius:var(--rad-s);border:1px solid transparent;width:100%;text-align:left;
+        color:inherit;transition:box-shadow .13s,border-color .13s,transform .13s}
+      .doc-r2 .fila-nav:hover{border-color:var(--line2);box-shadow:var(--sombra-h);transform:translateY(-1px)}
+      .doc-r2 .fila-nav .disco{
+        width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+        justify-content:center;background:var(--page);border:1px solid var(--line2);flex:none;
+        color:var(--tx3);font-size:15px;font-weight:700;line-height:1;
+        transition:background .13s,border-color .13s,color .13s}
+      .doc-r2 .fila-nav:hover .disco{background:var(--tx);border-color:var(--tx);color:var(--page)}
+
+      /* — EL FOCO, para las tres — */
+      .doc-r2 .doc-btn:focus-visible,
+      .doc-r2 .doc-lnk:focus-visible,
+      .doc-r2 .fila-nav:focus-visible{outline:2px solid var(--signal-red);outline-offset:2px}
+
+      @media (prefers-reduced-motion:reduce){
+        .doc-r2 .doc-btn,.doc-r2 .fila-nav,.doc-r2 .fila-nav .disco{transition:none}
+        .doc-r2 .doc-btn:active,.doc-r2 .fila-nav:hover{transform:none}
+      }
+
       /* ═══════════════ REDISEÑO · RADIOS (contrato §1) ═══════════════
          Cuatro radios del contrato más uno que el contrato no tenía.
 
