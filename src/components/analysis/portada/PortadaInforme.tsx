@@ -406,6 +406,45 @@ export function DocTokens() {
       /* el ancho del contrato */
       .doc-r2 .doc-page--secciones{max-width:700px;margin:0 auto}
 
+      /* ═══════════════ REDISEÑO · LAS CIFRAS (contrato §6) ═══════════════
+         La rejilla de filete pasa a tarjetas. Hoy «.nums» son seis celdas pegadas por
+         una línea de 1 px sobre un borde común: se lee como una tabla, y una tabla se
+         recorre entera. El contrato pide tarjetas separadas por aire, que se leen de a
+         una y permiten saltarse las que no importan.
+
+         DOS COLUMNAS, NO TRES. Con tres columnas la traducción de cada cifra —que es lo
+         que hace entendible el número— cabe en dos o tres palabras por línea. A dos
+         columnas la traducción respira, y en móvil baja a UNA sola.
+
+         LO QUE NO CAMBIA: el markup. «.nums», «.num-cell» y sus «.k/.v/.tr» son los
+         mismos que ya emite «SeisCifras», que es una pieza COMPARTIDA con STR. Todo esto
+         cuelga de «.doc-r2», y STR no lo recibe (ver «rediseno-flag.ts»): si se tocara el
+         JSX, el interruptor no alcanzaría para dejar a STR quieto.
+
+         Y NO REACCIONAN AL HOVER, que es la parte que parece un olvido y no lo es: las
+         tarjetas de cifra no abren nada —«div.num-cell» sin onClick, verificado— y esa
+         diferencia con la fila navegable ES información (contrato §9). Lo único
+         clickeable de la sección es «Ver cómo se calcula», que ya es «.doc-lnk». */
+      .doc-r2 .nums{grid-template-columns:repeat(2,1fr);gap:11px;background:none;border:0}
+      .doc-r2 .num-cell{background:var(--card);border-radius:var(--rad-s);padding:17px}
+      /* El rótulo deja el versalitas espaciado: a 13 px se lee como lo que es —el nombre
+         de la cifra— y no como el encabezado de una columna de tabla. */
+      .doc-r2 .num-cell .k{
+        font-size:13px;letter-spacing:normal;text-transform:none;
+        color:var(--tx3);margin-bottom:9px}
+      .doc-r2 .num-cell .v{font-size:29px;letter-spacing:-.02em}
+      .doc-r2 .num-cell .v small{font-size:12.5px;color:var(--tx3)}
+      /* La traducción sube un escalón de contraste —era «--tx3»— porque a dos columnas
+         deja de ser un pie de celda y pasa a ser la mitad de la tarjeta que se lee. El
+         «<b>» conserva su papel: un escalón más que su cuerpo, ahora «--tx». */
+      .doc-r2 .num-cell .tr{font-size:13px;line-height:1.5;color:var(--tx2);margin-top:9px}
+      .doc-r2 .num-cell .tr b{color:var(--tx);font-weight:600}
+      .doc-r2 .nums-foot{margin-top:14px}
+      @media (max-width: 767px){
+        .doc-r2 .nums{grid-template-columns:1fr}
+        .doc-r2 .num-cell .v{font-size:25px}
+      }
+
       /* ═══════════════ REDISEÑO · LAS TRES PRIMITIVAS (contrato §9) ═══════════════
          Tres niveles de affordance, y la diferencia entre ellos ES información:
 

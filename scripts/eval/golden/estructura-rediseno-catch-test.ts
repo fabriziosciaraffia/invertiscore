@@ -52,22 +52,29 @@ const CSS = leer("src/components/analysis/portada/PortadaInforme.tsx");
 const GRID = leer("src/components/analysis/SubjectCardGrid.tsx");
 const SECCION = leer("src/components/analysis/SeccionInforme.tsx");
 
-/** El bloque §2, delimitado por su encabezado y el de la sección siguiente. */
-const BLOQUE = (() => {
-  const marca = CSS.indexOf("REDISEÑO · ESTRUCTURA");
+/** Un bloque del rediseño, del encabezado que lo rotula hasta el encabezado siguiente. */
+function bloqueDe(rotulo: string): string {
+  const marca = CSS.indexOf(rotulo);
   if (marca === -1) return "";
   // Desde el ABRE-COMENTARIO, no desde el rótulo: el rótulo vive DENTRO del comentario,
   // así que cortar ahí deja un `*/` huérfano y el stripper no lo reconoce como comentario.
   // La cola de ese comentario lleva comas y se cuela en el listado de selectores.
   const i = CSS.lastIndexOf("/*", marca);
-  const j = CSS.indexOf("REDISEÑO · LAS TRES PRIMITIVAS", i);
-  // SIN COMENTARIOS. Cada regla del bloque va precedida por su comentario, y los
-  // comentarios llevan comas: sin sacarlos, el texto del comentario entra al listado de
-  // selectores y ninguna regla se reconoce. La primera versión de este tier dio seis
-  // fallas que eran todas del parser.
+  // Cierra en el PRÓXIMO bloque del rediseño, sea cual sea: anclarlo a un rótulo puntual
+  // se rompe sola cuando alguien inserta una sección en el medio, y el tier pasa a leer
+  // reglas ajenas como si fueran de la suya.
+  const j = CSS.indexOf("═══ REDISEÑO ·", marca);
+  // SIN COMENTARIOS. Cada regla va precedida por su comentario, y los comentarios llevan
+  // comas: sin sacarlos, el texto del comentario entra al listado de selectores y
+  // ninguna regla se reconoce. La primera versión de este tier dio seis fallas que eran
+  // todas del parser.
   return CSS.slice(i, j === -1 ? i + 4000 : j).replace(/\/\*[\s\S]*?\*\//g, "");
-})();
+}
+
+const BLOQUE = bloqueDe("REDISEÑO · ESTRUCTURA");
+const CIFRAS = bloqueDe("REDISEÑO · LAS CIFRAS");
 if (!BLOQUE) F("0 · no existe el bloque «REDISEÑO · ESTRUCTURA» en la portada");
+if (!CIFRAS) F("0 · no existe el bloque «REDISEÑO · LAS CIFRAS» en la portada");
 
 /** El cuerpo de la primera regla cuyo selector completo contenga exactamente `sel`.
  *  Compara selectores enteros —no substrings— para no confundir `.doc-r2 .doc-sec`
@@ -145,11 +152,54 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
   }
 }
 
+// ── 7 · las cifras son tarjetas, no una tabla ─────────────────────────────
+{
+  const nums = reglaDe(".doc-r2 .nums", CIFRAS);
+  const cell = reglaDe(".doc-r2 .num-cell", CIFRAS);
+  if (!nums) F("7 · el grid de cifras no se reapunta: siguen siendo una tabla de filete");
+  else {
+    if (!/grid-template-columns:\s*repeat\(2,\s*1fr\)/.test(nums)) F("7 · las cifras no van a DOS columnas: a tres, la traducción de cada cifra no respira");
+    if (!/gap:\s*11px/.test(nums)) F("7 · el gap entre tarjetas no es 11px");
+    if (!/background:\s*none/.test(nums) || !/border:\s*0/.test(nums)) {
+      F("7 · el grid conserva su fondo o su borde: son los que dibujan el filete de 1px que hace que las seis cifras se lean como una tabla");
+    }
+  }
+  if (!cell) F("7 · la tarjeta de cifra no se reapunta");
+  else {
+    if (!/background:\s*var\(--card\)/.test(cell)) F("7 · la tarjeta de cifra no se apoya en --card");
+    if (!/border-radius:\s*var\(--rad-s\)/.test(cell)) F("7 · la tarjeta de cifra no lleva el radio de 12px (--rad-s)");
+    if (!/padding:\s*17px/.test(cell)) F("7 · el padding de la tarjeta de cifra no es 17px");
+  }
+}
+
+// ── 8 · las tarjetas de cifra NO reaccionan ───────────────────────────────
+{
+  // No abren nada —«div.num-cell» sin onClick— y esa diferencia con la fila navegable ES
+  // información (contrato §9). Una sombra o un hover les haría prometer un clic que no
+  // existe, que es el error concreto que este invariante existe para cazar.
+  if (/\.num-cell[^{]*:hover|\.num-cell[^{}]*\{[^}]*box-shadow/.test(CIFRAS)) {
+    F("8 · la tarjeta de cifra ganó hover o sombra: no abre nada, así que estaría prometiendo un clic que no existe");
+  }
+  const SEIS = leer("src/components/analysis/shared/SeisCifras.tsx");
+  if (/onClick/.test(SEIS.slice(0, SEIS.indexOf("nums-foot") === -1 ? SEIS.length : SEIS.indexOf("nums-foot")))) {
+    F("8 · alguna celda de SeisCifras ganó onClick. Si las tarjetas tienen que abrir algo, eso es estructura y decisión de producto, no un hover.");
+  }
+  if (!/className="doc-lnk"/.test(SEIS)) F("8 · «Ver cómo se calcula» dejó de ser el enlace del contrato (.doc-lnk)");
+}
+
+// ── 9 · el móvil baja a una columna ───────────────────────────────────────
+{
+  const movil = CIFRAS.slice(CIFRAS.indexOf("max-width: 767px"));
+  if (!CIFRAS.includes("max-width: 767px")) F("9 · el bloque de cifras no define su móvil");
+  else if (!/grid-template-columns:\s*1fr/.test(movil)) F("9 · en móvil las cifras no bajan a UNA columna");
+  else if (!/font-size:\s*25px/.test(movil)) F("9 · la cifra no baja a 25px en móvil");
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runEstructuraRedisenoTier(): { hard: number } {
-  console.log("\n─── TIER ESTRUCTURA-REDISEÑO (contrato §2 · 0 tokens) ───");
+  console.log("\n─── TIER ESTRUCTURA-REDISEÑO (contrato §2 y §6 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — una sola caja (el hero), la alternancia muerta con la especificidad resuelta, el marco sin sombra en las dos formas del selector, 38/34 px de separación, 700 px de ancho y el andamio --doc-inset en pie");
+    console.log("  ✓ VERDE — una sola caja (el hero), la alternancia muerta con la especificidad resuelta, el marco sin sombra en las dos formas del selector, 38/34 px de separación, 700 px de ancho, el andamio --doc-inset en pie, y las cifras como tarjetas de dos columnas que no reaccionan");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
