@@ -293,6 +293,41 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
+// ── 9 · EL DESTINO SE DECLARA, no se deduce ────────────────────────────────
+{
+  // El mix apunta a `meta`, y `meta` es el veredicto inmediatamente superior al base:
+  // partiendo de BUSCAR OTRA es AJUSTA SUPUESTOS, NO COMPRAR. Que el campo exista es
+  // el punto: el bloque «Lo que haría yo» mide sus filas contra COMPRAR, así que un
+  // consumidor que dedujera el destino del mix por su cuenta publicaría dos descuentos
+  // del mismo precio sin decir a dónde va cada uno. Ya pasó.
+  const aAjustar = mix({ regla: (x) => ((x.piePct ?? 20) >= 30 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA") });
+  if (!aAjustar) F("9 · el mix hacia AJUSTA no se construyó");
+  else if (aAjustar.destino !== "AJUSTA SUPUESTOS") F(`9 · el mix declara su destino y es AJUSTA SUPUESTOS, dio «${aAjustar.destino}»`);
+
+  // Y el mismo mix con meta COMPRAR lo declara COMPRAR: el campo sigue a `meta`, no al
+  // veredicto base ni a una constante.
+  const aComprar = calcularMixPalancas({
+    meta: "COMPRAR",
+    precioUF: 3_000,
+    piePct: 20,
+    plazoCredito: 25,
+    pieCalifica: true,
+    pieTopePct: DIST_PIE_TOPE_PCT,
+    topePct: 30,
+    palancasQueCruzan: [],
+    veredictoAtPatch: (x) => ((x.piePct ?? 20) >= 30 ? "COMPRAR" : "AJUSTA SUPUESTOS"),
+  });
+  if (!aComprar) F("9 · el mix hacia COMPRAR no se construyó");
+  else if (aComprar.destino !== "COMPRAR") F(`9 · con meta COMPRAR el destino es COMPRAR, dio «${aComprar.destino}»`);
+
+  // Y el hallazgo lo persiste: si se pierde en el camino, el render vuelve a adivinar.
+  const h = construirHallazgo({ regla: (x) => ((x.piePct ?? 20) >= 30 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA") });
+  const m = h?.valor.mixPalancas;
+  if (m && m.destino !== h?.valor.veredictoObjetivo) {
+    F(`9 · el destino del mix persistido tiene que ser el veredicto objetivo, dio «${m.destino}» contra «${h?.valor.veredictoObjetivo}»`);
+  }
+}
+
 export function runMixPalancasTier(): { hard: number } {
   console.log("\n─── TIER MIX (las tres palancas del comprador combinadas · mix-palancas.ts, 0 tokens) ───");
   if (fallas.length === 0) {

@@ -258,5 +258,6 @@ export function calcularMixPalancas(p: {
         }
       : null,
     redundanteConPalancaSola,
+    destino: p.meta,
   };
 }

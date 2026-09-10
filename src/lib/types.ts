@@ -1042,6 +1042,22 @@ export interface MixPalancas {
    * no dibujarlo.
    */
   redundanteConPalancaSola: boolean;
+  /**
+   * ADÓNDE deja el mix. Es `meta`, o sea el veredicto inmediatamente superior al base:
+   * COMPRAR partiendo de AJUSTA SUPUESTOS, y AJUSTA SUPUESTOS partiendo de BUSCAR OTRA.
+   *
+   * Se declara en vez de dejar que el consumidor lo derive de `veredictoObjetivo`, y la
+   * razón la pagamos una vez: el bloque «Lo que haría yo» empezó a medir sus filas contra
+   * COMPRAR y el mix se quedó apuntando al escalón intermedio sin decirlo, así que la
+   * misma tarjeta publicaba dos descuentos del mismo precio —uno 24 veces el otro— sin
+   * que ninguno nombrara su destino. Un dato que el render tiene que adivinar termina
+   * adivinado mal. El motor emite el destino; la prosa lo redacta.
+   *
+   * AUSENTE = fila persistida entre `fcfcbd98` y este goal. Ahí `veredictoObjetivo` ES
+   * el valor que el motor usó para calcular ese mix, así que leerlo como fallback no es
+   * una suposición: es el mismo número por otro nombre.
+   */
+  destino?: Veredicto;
 }
 
 export interface HallazgoDistanciaVeredicto {
