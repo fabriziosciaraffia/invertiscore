@@ -6,13 +6,15 @@
 // equivoca en silencio: dibujar un mix redundante, o inventar una fila cuando no
 // hay ninguna palanca que cruce.
 //
-// Fija SEIS cosas:
+// Fija SIETE cosas:
 //
-//   1. EL RÓTULO NOMBRA EL DESTINO, SIEMPRE — también cuando el número es cero.
-//      «…· dos llevan a Comprar» · «…· ninguna llega a Comprar» · «…· dos suben a
-//      Ajustar» · «…· ninguna llega a Ajustar». Un rótulo que dice «Franco probó
-//      las palancas» a secas no dice hacia dónde mueve, que es lo único que
-//      importa.
+//   1. EL RÓTULO NOMBRA EL DESTINO, SIEMPRE — también cuando el número es cero, y
+//      ese destino es COMPRAR en los DOS veredictos. «…· dos llevan a Comprar» ·
+//      «…· ninguna llega a Comprar». En BUSCAR OTRA el escalón intermedio a
+//      Ajustar NO se nombra: nadie compra para quedar en Ajusta Supuestos. La
+//      palabra «Ajustar» dentro del bloque es una falla dura, no un matiz — una
+//      primera versión derivaba el destino de `veredictoObjetivo` y el escalón se
+//      reintroducía solo.
 //
 //   2. EL CHIP DICE QUIÉN LA PONE. precio ⇒ el vendedor · arriendo ⇒ el mercado ·
 //      pie y plazo ⇒ tú. Es la distinción que el bloque existe para hacer: no
@@ -34,12 +36,18 @@
 //   6. COMPRAR — sin mix y sin descarte. Dos filas: el margen que aguanta (lo pone
 //      el mercado) y el arriendo a verificar (lo pones tú).
 //
+//   7. EL DELTA FUERA DE RANGO ES EL CASO DOMINANTE de BUSCAR OTRA (574 de 592),
+//      no un borde: se dibuja como fila, con su «fuera de rango» debajo, y NO se
+//      cuenta como palanca que cruza. Y su gemelo: una fila persistida SIN la vía
+//      a COMPRAR medida (`palancasHastaComprar` ausente) no dibuja bloque — decir
+//      «ninguna llega a Comprar» ahí sería publicar una medición que no existe.
+//
 // Corre dentro del QUICK (tier "lo-que-haria-yo") y standalone:
 //   node --import tsx scripts/eval/golden/lo-que-haria-yo-catch-test.ts
 // ============================================================================
 import { construirLoQueHariaYo } from "../../../src/lib/lo-que-haria-yo";
 import { buildHallazgoDistanciaVeredicto } from "../../../src/lib/distancia-veredicto-hallazgo";
-import type { HallazgoSensibilidad, Veredicto } from "../../../src/lib/types";
+import type { HallazgoDistanciaVeredicto, HallazgoSensibilidad, Veredicto } from "../../../src/lib/types";
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -80,7 +88,7 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   procedencia: { base: "", confianza: "alta" },
 } as unknown as HallazgoSensibilidad);
 
-// ── 1 · el rótulo nombra el destino, también cuando es cero ─────────────────
+// ── 1 · el rótulo nombra el destino, y el destino es COMPRAR ────────────────
 {
   // AJUSTA con dos palancas que cruzan a COMPRAR.
   const conDos = bloque({
@@ -105,7 +113,7 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   if (!sinNinguna) F("1 · el bloque no se construyó para los 179");
   else if (!/ninguna llega a Comprar$/i.test(sinNinguna.rotulo)) F(`1 · rótulo de los 179 (AJUSTA): «${sinNinguna.rotulo}»`);
 
-  // BUSCAR sin ninguna palanca sola.
+  // BUSCAR sin ninguna palanca sola — el destino es Comprar, NO el escalón a Ajustar.
   const buscarSinNinguna = bloque({
     veredicto: "BUSCAR OTRA",
     dist: distancia({
@@ -114,7 +122,43 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
     }),
   });
   if (!buscarSinNinguna) F("1 · el bloque no se construyó para los 179 en BUSCAR");
-  else if (!/ninguna llega a Ajustar$/i.test(buscarSinNinguna.rotulo)) F(`1 · rótulo de los 179 (BUSCAR): «${buscarSinNinguna.rotulo}»`);
+  else if (!/ninguna llega a Comprar$/i.test(buscarSinNinguna.rotulo)) F(`1 · rótulo de los 179 (BUSCAR): «${buscarSinNinguna.rotulo}»`);
+
+  // BUSCAR con una palanca que llega a COMPRAR dentro del tope: la fila sale de la vía
+  // hasta COMPRAR, y el verbo es «lleva a» —no «sube a», que era del escalón—.
+  const buscarConUna = bloque({
+    veredicto: "BUSCAR OTRA",
+    dist: distancia({
+      veredictoBase: "BUSCAR OTRA",
+      regla: (p) => (p.precio != null && p.precio <= 2_850 ? "COMPRAR" : "BUSCAR OTRA"),
+    }),
+  });
+  if (!buscarConUna) F("1 · el bloque no se construyó para BUSCAR con palanca hasta COMPRAR");
+  else {
+    if (!/una lleva a Comprar$/i.test(buscarConUna.rotulo)) F(`1 · rótulo BUSCAR con una hasta COMPRAR: «${buscarConUna.rotulo}»`);
+    if (!buscarConUna.filas.some((f) => /precio/i.test(f.titulo))) F("1 · la palanca que llega a COMPRAR tiene que estar como fila");
+  }
+}
+
+// ── 1b · GUARDA · la palabra «Ajustar» no vive dentro del bloque ────────────
+{
+  // El escalón intermedio va al pop-up, que es donde se puede explicar. Si vuelve a
+  // colarse acá —por el rótulo, por el descarte o por el mix— es una falla dura.
+  const casos = [
+    bloque({
+      veredicto: "BUSCAR OTRA",
+      dist: distancia({ veredictoBase: "BUSCAR OTRA", regla: (p) => ((p.piePct ?? 20) >= 30 && (p.plazoCredito ?? 25) >= 30 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA") }),
+    }),
+    bloque({
+      veredicto: "BUSCAR OTRA",
+      dist: distancia({ veredictoBase: "BUSCAR OTRA", regla: (p) => (p.precio != null && p.precio <= 2_850 ? "COMPRAR" : "BUSCAR OTRA") }),
+    }),
+  ];
+  for (const b of casos) {
+    if (!b) continue;
+    const texto = [b.rotulo, b.descarte ?? "", b.mix?.titulo ?? "", ...b.filas.map((f) => `${f.titulo} ${f.objetivo ?? ""}`)].join(" · ");
+    if (/ajustar|ajusta supuestos/i.test(texto)) F(`1b · el escalón a Ajustar volvió al bloque: «${texto}»`);
+  }
 }
 
 // ── 2 · el chip dice quién la pone ──────────────────────────────────────────
@@ -171,12 +215,12 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
 
 // ── 4 · BORDE · mix REDUNDANTE ⇒ no se dibuja ──────────────────────────────
 {
-  // El plazo cruza SOLO, así que el mix «plazo 25→30» repite esa misma fila.
+  // El plazo cruza SOLO hasta COMPRAR, así que el mix «plazo 25→30» repite esa misma fila.
   const b = bloque({
     veredicto: "BUSCAR OTRA",
     dist: distancia({
       veredictoBase: "BUSCAR OTRA",
-      regla: (p) => ((p.plazoCredito ?? 25) >= 30 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
+      regla: (p) => ((p.plazoCredito ?? 25) >= 30 ? "COMPRAR" : "BUSCAR OTRA"),
     }),
   });
   if (!b) F("4 · el bloque no se construyó");
@@ -248,11 +292,54 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   }
 }
 
+// ── 7 · el delta FUERA DE RANGO — el caso dominante de BUSCAR OTRA ─────────
+{
+  // Ninguna palanca llega a COMPRAR dentro del tope de 15, pero el rango extendido sí
+  // encuentra el número (−40% de precio). Son 574 de las 592: sin esta fila el 97% del
+  // veredicto se queda con un rótulo que dice «ninguna llega» y nada más.
+  const b = bloque({
+    veredicto: "BUSCAR OTRA",
+    dist: distancia({
+      veredictoBase: "BUSCAR OTRA",
+      regla: (p) => (p.precio != null && p.precio <= 1_800 ? "COMPRAR" : "BUSCAR OTRA"),
+    }),
+  });
+  if (!b) F("7 · el bloque no se construyó para el delta fuera de rango");
+  else {
+    const fila = b.filas.find((f) => /haría falta/i.test(f.titulo));
+    if (!fila) F(`7 · falta la fila del delta fuera de rango; filas: ${b.filas.map((f) => f.titulo).join(" | ") || "(ninguna)"}`);
+    else {
+      if (fila.objetivo !== "fuera de rango") F(`7 · la fila tiene que decir «fuera de rango» debajo, dijo «${fila.objetivo}»`);
+      if (!/^−\d/.test(fila.cifra)) F(`7 · el delta va con signo y magnitud, dio «${fila.cifra}»`);
+      if (fila.quien !== "vendedor") F(`7 · el precio lo pone el vendedor también acá, dio «${fila.quien}»`);
+    }
+    // NO cuenta como palanca que cruza: el rótulo sigue diciendo que ninguna llega.
+    if (!/ninguna llega a Comprar$/i.test(b.rotulo)) F(`7 · el delta fuera de rango no cruza: el rótulo no puede contarlo — «${b.rotulo}»`);
+  }
+}
+
+// ── 7b · fila VIEJA sin la vía a COMPRAR medida ⇒ no hay bloque ────────────
+{
+  // AUSENTE ≠ vacío. Si `palancasHastaComprar` es `undefined` nadie midió la vía a
+  // COMPRAR, y publicar «ninguna llega a Comprar» sería afirmar una medición que no
+  // existe. El bloque se calla y la prosa —que en BUSCAR OTRA sobrevive— queda sola.
+  const dist = distancia({
+    veredictoBase: "BUSCAR OTRA",
+    regla: (p) => (p.precio != null && p.precio <= 2_850 ? "COMPRAR" : "BUSCAR OTRA"),
+  }) as HallazgoDistanciaVeredicto;
+  const vieja = JSON.parse(JSON.stringify(dist)) as HallazgoDistanciaVeredicto;
+  delete vieja.valor.palancasHastaComprar;
+  delete vieja.valor.viasHastaComprar;
+  delete vieja.valor.deltaMinimoComprarFueraDeTope;
+  const b = bloque({ veredicto: "BUSCAR OTRA", dist: vieja });
+  if (b !== null) F(`7b · sin la vía a COMPRAR medida el bloque no se dibuja, dio «${b.rotulo}»`);
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runLoQueHariaYoTier(): { hard: number } {
   console.log("\n─── TIER LO-QUE-HARÍA-YO (el bloque determinista · lo-que-haria-yo.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el rótulo nombra el destino, el chip dice quién la pone, el mix es cuerpo en los 179, y los tres bordes");
+    console.log("  ✓ VERDE — el destino es Comprar en los dos veredictos, el chip dice quién la pone, el mix es cuerpo en los 179, el delta fuera de rango se dibuja y la fila vieja se calla");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

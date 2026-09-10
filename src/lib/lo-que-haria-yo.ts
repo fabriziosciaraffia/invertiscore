@@ -74,8 +74,8 @@ const pct1 = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).repl
 const signo = (n: number) => (n < 0 ? "−" : "+");
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-/** Etiqueta corta del veredicto, la que el bloque usa en el rótulo. */
-const destinoCorto = (v: Veredicto) => (v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajustar" : "Buscar otro");
+/** El destino del bloque, SIEMPRE. Ver «EL DESTINO ES COMPRAR» más abajo. */
+const DESTINO = "Comprar";
 
 /** Une con comas y una "y" final: «Precio, arriendo, plazo y pie». */
 function enumerar(xs: string[]): string {
@@ -126,24 +126,35 @@ export function construirLoQueHariaYo(p: {
   const dv = p.distancia?.valor;
   if (!dv) return null;
 
+  // ── EL DESTINO ES COMPRAR, EN LOS DOS VEREDICTOS ──────────────────────────
+  // En AJUSTA SUPUESTOS el destino es el veredicto inmediatamente superior y no hay
+  // nada que decidir. En BUSCAR OTRA sí lo había, y la decisión está tomada
+  // (10-sep-2026): el bloque muestra lo que lleva a COMPRAR, aunque sea inviable, y NO
+  // el escalón intermedio a Ajustar. El motivo es de producto, no de código: nadie
+  // compra para quedar en Ajusta Supuestos. Por qué se escribe: una primera versión
+  // derivaba el destino de `veredictoObjetivo`, que en BUSCAR OTRA es AJUSTA, y el
+  // escalón se reintroducía solo. La razón por la que una palanca no alcanza vive en el
+  // pop-up, que es donde se puede explicar.
+  const esBuscar = dv.veredictoBase === "BUSCAR OTRA";
+
+  // ⚠ AUSENTE ≠ VACÍO. En una fila persistida antes del salto de dos bandas,
+  // `palancasHastaComprar` es `undefined`: nadie midió la vía a COMPRAR. Leerla como
+  // lista vacía haría que el rótulo publicara «ninguna llega a Comprar», o sea una
+  // medición que no existe. Ahí el bloque no se dibuja y la prosa —que en BUSCAR OTRA
+  // sobrevive al bloque— queda sola, que es exactamente lo que hacía antes de todo esto.
+  if (esBuscar && !Array.isArray(dv.palancasHastaComprar)) return null;
+
   // ── EL RÓTULO — nombra el DESTINO, también cuando el número es cero ────────
   // «Franco probó las palancas» a secas no dice hacia dónde mueve, que es lo único
   // que el lector necesita. Y la familia se lee en serie a lo largo del informe, así
   // que el prefijo no cambia: lo que cambia es la segunda mitad.
-  const destino = destinoCorto(dv.veredictoObjetivo);
-  const cruzan = dv.palancas ?? [];
+  const cruzan = (esBuscar ? dv.palancasHastaComprar : dv.palancas) ?? [];
   const n = cruzan.length;
-  // El verbo cambia con el punto de partida —desde BUSCAR se «sube» a Ajustar, desde
-  // AJUSTA se «lleva» a Comprar— y se conjuga explícito en vez de derivarlo del plural.
-  const verbo =
-    dv.veredictoBase === "BUSCAR OTRA"
-      ? (n === 1 ? "sube a" : "suben a")
-      : (n === 1 ? "lleva a" : "llevan a");
   const cantidad = n === 1 ? "una" : n === 2 ? "dos" : n === 3 ? "tres" : "cuatro";
   const rotulo =
     n === 0
-      ? `Franco probó cada palanca sola · ninguna llega a ${destino}`
-      : `Franco probó cada palanca sola · ${cantidad} ${verbo} ${destino}`;
+      ? `Franco probó cada palanca sola · ninguna llega a ${DESTINO}`
+      : `Franco probó cada palanca sola · ${cantidad} ${n === 1 ? "lleva a" : "llevan a"} ${DESTINO}`;
 
   // ── LAS FILAS — solo las que cruzan, en el orden del motor ────────────────
   const filas: FilaLoQueHariaYo[] = cruzan.map((l) => {
@@ -158,6 +169,24 @@ export function construirLoQueHariaYo(p: {
     return { titulo, quien, cifra, objetivo };
   });
 
+  // ── LA FILA DEL DELTA FUERA DE RANGO — el caso DOMINANTE de BUSCAR OTRA ───
+  // 574 de las 592 filas de BUSCAR OTRA que tienen un número hacia COMPRAR no cruzan
+  // dentro del tope: su ÚNICO dato es cuánto haría falta. Sin esta fila el 97% del
+  // veredicto se queda con un rótulo que dice «ninguna llega» y nada más — y ese es el
+  // caso normal, no un borde.
+  //
+  // Va DESPUÉS del rótulo a propósito: no entra en la cuenta de las que cruzan, porque
+  // no cruza. El «fuera de rango» debajo de la cifra es la mitad que la hace honesta.
+  const fueraDeRango = esBuscar ? dv.deltaMinimoComprarFueraDeTope : null;
+  if (fueraDeRango) {
+    filas.push({
+      titulo: fueraDeRango.palanca === "precio" ? "Haría falta en precio" : "Haría falta en arriendo",
+      quien: QUIEN[fueraDeRango.palanca],
+      cifra: `${signo(fueraDeRango.deltaPct)}${pct1(Math.abs(fueraDeRango.deltaPct))}%`,
+      objetivo: "fuera de rango",
+    });
+  }
+
   // ── EL MIX ────────────────────────────────────────────────────────────────
   // Tres razones para NO dibujarlo, y las tres vienen marcadas del motor:
   //   · null            — ninguna combinación cruza;
@@ -170,8 +199,10 @@ export function construirLoQueHariaYo(p: {
     ? {
         // Cuando NO hay ninguna palanca sola, el mix deja de ser un apéndice y pasa a
         // ser el cuerpo: el título lo dice, y dice además si pide descuento o no.
+        // Cuenta `cruzan`, NO `filas`: la fila del delta fuera de rango no es una palanca
+        // que se pueda mover, así que su presencia no convierte al mix en un «además».
         titulo:
-          filas.length > 0
+          cruzan.length > 0
             ? "Si además mueves lo tuyo"
             : m.sinDescuento
               ? "La única salida"
@@ -196,7 +227,10 @@ export function construirLoQueHariaYo(p: {
   // SOLO las que se probaron y no cruzaron. Las `noAplica` quedan fuera: decir que el
   // plazo «no alcanza» cuando ya está en 30 años —o que el pie no alcanza cuando lo cubre
   // un bono— es afirmar que se probó algo que no se probó. Su razón vive en el pop-up.
-  const noAlcanzan = (dv.vias ?? [])
+  // Y se lee del MISMO destino que las filas: en BUSCAR OTRA, de las vías hasta COMPRAR.
+  // Mezclarlas —filas hacia Comprar, descarte hacia Ajustar— sería decir «el precio no
+  // alcanza» sobre una medición distinta de la que está arriba.
+  const noAlcanzan = ((esBuscar ? dv.viasHastaComprar : dv.vias) ?? [])
     .filter((v) => v.estado === "noCruza")
     .map((v) => NOMBRE_LLANO[v.palanca] ?? v.palanca);
   const descarte =

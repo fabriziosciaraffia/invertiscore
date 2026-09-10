@@ -46,6 +46,13 @@ import fixtures from "./fixtures.json";
 // es el cuerpo, con y sin descuento—, y `providenciaLtrViejo` es la misma fila con los
 // campos nuevos BORRADOS del hallazgo: simula lo que llega por `rawResults` cuando no hay
 // input_data (2 filas del parque) y prueba que la ausencia se lee como «no calculado».
+// v22.2 (10-sep-2026) · el caso DOMINANTE de BUSCAR OTRA no necesita fixture nuevo: es
+// `laFloridaLtrV22`. Tiene TRES palancas que llegan al escalón intermedio (pie +5,
+// arriendo +5, precio −5,1%) y NINGUNA a COMPRAR, así que es la fila donde se ve la
+// decisión del 10-sep — dice «ninguna llega a Comprar · haría falta en precio −36,6% ·
+// fuera de rango», no «tres suben a Ajustar». Son 574 de las 592 filas con número hacia
+// COMPRAR. Un fixture sin `ai_analysis` NO sirve para esto: el bloque solo existe en el
+// camino de dos bloques (`esProsaDosBloques`), o sea con prosa v21+.
 type FixKey = "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "providenciaLtrV22" | "laFloridaLtr" | "laFloridaLtrV22" | "nunoaLtr" | "nunoaLtrV22" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro" | "gs4LtrMixCuerpo" | "gs7LtrUnicaSalida" | "providenciaLtrViejo";
 
 function Inner() {
