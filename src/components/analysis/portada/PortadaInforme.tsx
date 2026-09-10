@@ -330,6 +330,47 @@ export function DocTokens() {
         --doc-paper4:#E2DFD7;
         --doc-shadow:0 24px 60px rgba(20,19,17,.14);
       }
+      /* ═══════════════ REDISEÑO · RADIOS (contrato §1) ═══════════════
+         Cuatro radios del contrato más uno que el contrato no tenía.
+
+         POR QUÉ HACE FALTA UN QUINTO. El contrato define «--rad» 16 para cajas,
+         «--rad-s» 12 para tarjetas y filas, «--rad-xs» 10 para chips y 99 para píldoras.
+         Pero 19 de las 52 declaraciones de radio del informe son TRACKS Y FILLS DE
+         BARRA, de 6 a 16 px de alto: un radio de 12 sobre una barra de 14 la convierte
+         en píldora y deja de leerse como una escala. «--rad-bar» congela los 2 px que ya
+         funcionan y deja escrito que las barras no participan de la escala de tarjetas.
+
+         Y POR ESO LAS BARRAS NO LLEVAN REGLA ACÁ: ya valen 2 px. El token existe para
+         nombrar la decisión y para que la parte 4 tenga de dónde tomarlo, no para
+         reescribir 19 reglas que no cambian.
+
+         «--rad» no se aplica a nada todavía: las dos cajas —hero y recomendación— son de
+         la parte 4. Se define y espera. */
+      .doc-r2,
+      .doc-r2 .doc-dictamen,
+      .doc-r2 .doc-tokens{
+        --rad:16px; --rad-s:12px; --rad-xs:10px; --rad-pill:99px; --rad-bar:2px;
+      }
+      /* contenedores */
+      .doc-r2 .pos-card,
+      .doc-r2 .oport,
+      .doc-r2 .colchon,
+      .doc-r2 .esca,
+      .doc-r2 .compo,
+      .doc-r2 .ba-compo,
+      .doc-r2 .v-collapse,
+      .doc-r2 .lqhy-mix{border-radius:var(--rad-s)}
+      /* chips */
+      .doc-r2 .lqhy-chip,
+      .doc-r2 .pos-chip,
+      .doc-r2 .ba-mult{border-radius:var(--rad-xs)}
+      /* píldoras y controles */
+      .doc-r2 .doc-btn,
+      .doc-r2 .mx-toggle,
+      .doc-r2 .v-modal-x{border-radius:var(--rad-pill)}
+      /* el panel del modal es una caja */
+      .doc-r2 .v-modal{border-radius:var(--rad)}
+
       /* ═══════════════ REDISEÑO · PALETA (contrato §1) ═══════════════
          Los papeles cálidos pasan a los neutros fríos del contrato. TRES niveles de
          superficie —page, card, sunk— más las dos líneas.
