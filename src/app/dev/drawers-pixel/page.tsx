@@ -131,7 +131,10 @@ function Inner() {
   // T1 (04-sep-2026) · `?comp=<pieza>` monta las piezas compartidas sobre el recompute
   // volcado. Sin registro por pieza cada QA era un `if` a mano.
   return (
-    <div className="doc-dictamen doc-tokens" style={{ background: "var(--doc-paper, #FAF8F3)", minHeight: "100vh" }}>
+    <div
+      className={`doc-dictamen doc-tokens${sp.get("rediseno") === "1" ? " doc-r2" : ""}`}
+      style={{ background: "var(--doc-paper, #FAF8F3)", minHeight: "100vh" }}
+    >
       <DocTokens />
       <TokensHallazgos />
       <TokensShared />

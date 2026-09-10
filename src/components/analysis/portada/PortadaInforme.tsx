@@ -21,6 +21,7 @@ import { stripMarcas, normalizarMarcasTitular } from "@/lib/prosa-marcas";
 import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import type { FichaDepto } from "@/lib/ficha-depto";
 import { FichaModal } from "./FichaModal";
+import { CLASE_REDISENO } from "@/lib/rediseno-flag";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 // Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
@@ -225,7 +226,7 @@ export function PortadaInforme({
  *  score. Sin veredicto (AMBAS) los tokens caen a Ink. */
 export function DocumentoFrame({ children, secciones = false, veredicto }: { children: ReactNode; secciones?: boolean; veredicto?: string }) {
   return (
-    <div className="doc-dictamen" data-verdict={veredicto}>
+    <div className={`doc-dictamen ${CLASE_REDISENO}`.trim()} data-verdict={veredicto}>
       <DocTokens />
       <div className="doc-toprule" aria-hidden="true" />
       <div className="doc-head">
