@@ -806,7 +806,7 @@ export function DrawerDistanciaLtr({
       </VCierre>
 
 
-      <Note>Motor Franco · palancas del veredicto, una a la vez</Note>
+      <Note>Motor Franco · los cambios del veredicto, uno a la vez</Note>
     </div>
   );
 }
@@ -1831,7 +1831,7 @@ export function DrawerDistanciaStr({
         )}
       </VCierre>
 
-      <Note>Motor Franco · palancas del veredicto, una a la vez</Note>
+      <Note>Motor Franco · los cambios del veredicto, uno a la vez</Note>
     </div>
   );
 }

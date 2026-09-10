@@ -168,10 +168,13 @@ export function construirLoQueHariaYo(p: {
   const cruzan = (esBuscar ? dv.palancasHastaComprar : dv.palancas) ?? [];
   const n = cruzan.length;
   const cantidad = n === 1 ? "una" : n === 2 ? "dos" : n === 3 ? "tres" : "cuatro";
+  // «Cada palanca sola» era idioma NUESTRO en la línea más ruidosa del informe. El
+  // lector no dice palanca: dice cambio, y dice por separado. Misma regla que se aplicó
+  // a las ocho superficies del pop-up y la card (10-sep-2026).
   const rotulo =
     n === 0
-      ? `Franco probó cada palanca sola · ninguna llega a ${DESTINO}`
-      : `Franco probó cada palanca sola · ${cantidad} ${n === 1 ? "lleva a" : "llevan a"} ${DESTINO}`;
+      ? `Franco probó cada cambio por separado · ninguno llega a ${DESTINO}`
+      : `Franco probó cada cambio por separado · ${cantidad} ${n === 1 ? "lleva a" : "llevan a"} ${DESTINO}`;
 
   // ── LAS FILAS — solo las que cruzan, en el orden del motor ────────────────
   const filas: FilaLoQueHariaYo[] = cruzan.map((l) => {

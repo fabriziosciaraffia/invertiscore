@@ -10,7 +10,7 @@
 //
 //   1. EL RÓTULO NOMBRA EL DESTINO, SIEMPRE — también cuando el número es cero, y
 //      ese destino es COMPRAR en los DOS veredictos. «…· dos llevan a Comprar» ·
-//      «…· ninguna llega a Comprar». En BUSCAR OTRA el escalón intermedio a
+//      «…· ninguno llega a Comprar». En BUSCAR OTRA el escalón intermedio a
 //      Ajustar NO se nombra: nadie compra para quedar en Ajusta Supuestos. La
 //      palabra «Ajustar» dentro del bloque es una falla dura, no un matiz — una
 //      primera versión derivaba el destino de `veredictoObjetivo` y el escalón se
@@ -106,7 +106,7 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   });
   if (!conDos) F("1 · el bloque no se construyó para AJUSTA con palancas");
   else if (!/dos llevan a Comprar$/i.test(conDos.rotulo)) F(`1 · rótulo AJUSTA con dos: «${conDos.rotulo}»`);
-  else if (!/^Franco probó cada palanca sola · /.test(conDos.rotulo)) F(`1 · se perdió el prefijo de la familia: «${conDos.rotulo}»`);
+  else if (!/^Franco probó cada cambio por separado · /.test(conDos.rotulo)) F(`1 · se perdió el prefijo de la familia: «${conDos.rotulo}»`);
 
   // AJUSTA sin ninguna palanca sola (los 179) — el rótulo igual nombra el destino.
   const sinNinguna = bloque({
@@ -117,7 +117,7 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
     }),
   });
   if (!sinNinguna) F("1 · el bloque no se construyó para los 179");
-  else if (!/ninguna llega a Comprar$/i.test(sinNinguna.rotulo)) F(`1 · rótulo de los 179 (AJUSTA): «${sinNinguna.rotulo}»`);
+  else if (!/ninguno llega a Comprar$/i.test(sinNinguna.rotulo)) F(`1 · rótulo de los 179 (AJUSTA): «${sinNinguna.rotulo}»`);
 
   // BUSCAR sin ninguna palanca sola — el destino es Comprar, NO el escalón a Ajustar.
   const buscarSinNinguna = bloque({
@@ -128,7 +128,7 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
     }),
   });
   if (!buscarSinNinguna) F("1 · el bloque no se construyó para los 179 en BUSCAR");
-  else if (!/ninguna llega a Comprar$/i.test(buscarSinNinguna.rotulo)) F(`1 · rótulo de los 179 (BUSCAR): «${buscarSinNinguna.rotulo}»`);
+  else if (!/ninguno llega a Comprar$/i.test(buscarSinNinguna.rotulo)) F(`1 · rótulo de los 179 (BUSCAR): «${buscarSinNinguna.rotulo}»`);
 
   // BUSCAR con una palanca que llega a COMPRAR dentro del tope: la fila sale de la vía
   // hasta COMPRAR, y el verbo es «lleva a» —no «sube a», que era del escalón—.
@@ -378,7 +378,7 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
     // NO es una fila: con el mismo peso que una palanca accionable el lector no sabe
     // cuál mirar. Es contexto, y el mix de abajo es la acción.
     if (b.filas.length !== 0) F(`7 · el delta va como contexto, NO como fila: hay ${b.filas.length} fila(s)`);
-    if (!/ninguna llega a Comprar$/i.test(b.rotulo)) F(`7 · el delta fuera de rango no cruza: el rótulo no puede contarlo — «${b.rotulo}»`);
+    if (!/ninguno llega a Comprar$/i.test(b.rotulo)) F(`7 · el delta fuera de rango no cruza: el rótulo no puede contarlo — «${b.rotulo}»`);
   }
 }
 
