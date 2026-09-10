@@ -1,0 +1,208 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// «LO QUE HARÍA YO» — el bloque deja de ser prosa (10-sep-2026)
+//
+// El motor ya calcula las cuatro vías, el salto de dos bandas y el mix; hasta hoy
+// el bloque no leía nada de eso y mostraba un párrafo. Esta pieza lo convierte en
+// datos: quién pone cada palanca, cuánto pide y adónde llega.
+//
+// LA DISTINCIÓN QUE EL BLOQUE EXISTE PARA HACER no es cuánto cuesta cada palanca:
+// es DE QUIÉN DEPENDE. El precio lo pone el vendedor, el arriendo lo pone el
+// mercado, y el pie y el plazo los pones tú. Por eso el chip va al lado del nombre
+// y no al final: es lo primero que hay que saber de cada fila.
+//
+// Función PURA y sin JSX a propósito: la forma se testea con un catch-test
+// determinista (0 tokens, sin base) y el componente solo la dibuja.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import type { HallazgoDistanciaVeredicto, HallazgoSensibilidad, PalancaDistancia, Veredicto } from "./types";
+
+/** Quién tiene que mover la palanca. Es el eje del bloque, no un adorno. */
+export type QuienLaPone = "vendedor" | "mercado" | "tuyo";
+
+export interface FilaLoQueHariaYo {
+  titulo: string;
+  quien: QuienLaPone;
+  /** La magnitud, a la derecha ("−24,1%" · "8% → 22%" · "30 años"). */
+  cifra: string;
+  /** El valor objetivo, bajo la cifra ("UF 4.175"). null cuando la cifra ya lo dice. */
+  objetivo: string | null;
+}
+
+export interface MixLoQueHariaYo {
+  titulo: string;
+  /** null en la dimensión que no se mueve — nunca «plazo 30 → 30 años». */
+  movimiento: { pie: { de: number; a: number } | null; plazo: { de: number; a: number } | null };
+  /** El tachado. null cuando el solo-precio NO cruza: no hay contra qué contrastar. */
+  contraste: { de: string; a: string } | null;
+  /** Plata propia extra el día uno. null cuando el mix no mueve el pie. */
+  costo: string | null;
+  /** El descuento que el mix sí pide, ya formateado. null si no pide ninguno. */
+  descuento: string | null;
+}
+
+export interface BloqueLoQueHariaYo {
+  rotulo: string;
+  filas: FilaLoQueHariaYo[];
+  mix: MixLoQueHariaYo | null;
+  /** Las que no alcanzan, en UNA línea. null en COMPRAR. */
+  descarte: string | null;
+}
+
+const QUIEN: Record<PalancaDistancia["palanca"], QuienLaPone> = {
+  precio: "vendedor",
+  arriendo: "mercado",
+  adr: "mercado",
+  pie: "tuyo",
+  plazo: "tuyo",
+  gestion: "tuyo",
+};
+
+const NOMBRE_SUBIR: Record<string, string> = {
+  precio: "Bajar el precio",
+  arriendo: "Subir el arriendo",
+  adr: "Subir la tarifa",
+  pie: "Subir el pie",
+  plazo: "Estirar el plazo",
+  gestion: "Cambiar la gestión",
+};
+
+const NOMBRE_LLANO: Record<string, string> = {
+  precio: "precio", arriendo: "arriendo", adr: "tarifa", pie: "pie", plazo: "plazo", gestion: "gestión",
+};
+
+const pct1 = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
+const signo = (n: number) => (n < 0 ? "−" : "+");
+const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
+
+/** Etiqueta corta del veredicto, la que el bloque usa en el rótulo. */
+const destinoCorto = (v: Veredicto) => (v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajustar" : "Buscar otro");
+
+/** Une con comas y una "y" final: «Precio, arriendo, plazo y pie». */
+function enumerar(xs: string[]): string {
+  if (xs.length === 0) return "";
+  if (xs.length === 1) return xs[0];
+  return `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`;
+}
+
+export function construirLoQueHariaYo(p: {
+  veredicto: Veredicto;
+  distancia: HallazgoDistanciaVeredicto | null;
+  sensibilidad: HallazgoSensibilidad | null;
+  arriendoDeclaradoCLP: number;
+  currency: "CLP" | "UF";
+  valorUF: number;
+}): BloqueLoQueHariaYo | null {
+  const plata = (clp: number) =>
+    p.currency === "UF" ? `UF ${miles(clp / (p.valorUF || 1))}` : `$${miles(clp)}`;
+  const enUF = (uf: number) => (p.currency === "UF" ? `UF ${miles(uf)}` : `$${miles(uf * (p.valorUF || 1))}`);
+
+  // ── COMPRAR ───────────────────────────────────────────────────────────────
+  // Sin mix y sin descarte: no hay palanca que subir. Dos filas — cuánto aguanta
+  // antes de bajar (lo pone el mercado) y qué verificar antes de firmar (lo pones
+  // tú, porque el arriendo lo declaraste tú).
+  if (p.veredicto === "COMPRAR") {
+    const filas: FilaLoQueHariaYo[] = [];
+    const s = p.sensibilidad?.valor;
+    if (s) {
+      filas.push({
+        titulo: "Cuánto aguanta el veredicto",
+        quien: "mercado",
+        cifra: s.firme ? "−50% o más" : `−${pct1(s.marginPct)}%`,
+        objetivo: null,
+      });
+    }
+    if (p.arriendoDeclaradoCLP > 0) {
+      filas.push({
+        titulo: "Verifica el arriendo",
+        quien: "tuyo",
+        cifra: plata(p.arriendoDeclaradoCLP),
+        objetivo: "lo declaraste tú",
+      });
+    }
+    if (filas.length === 0) return null;
+    return { rotulo: "Antes de firmar", filas, mix: null, descarte: null };
+  }
+
+  const dv = p.distancia?.valor;
+  if (!dv) return null;
+
+  // ── EL RÓTULO — nombra el DESTINO, también cuando el número es cero ────────
+  // «Franco probó las palancas» a secas no dice hacia dónde mueve, que es lo único
+  // que el lector necesita. Y la familia se lee en serie a lo largo del informe, así
+  // que el prefijo no cambia: lo que cambia es la segunda mitad.
+  const destino = destinoCorto(dv.veredictoObjetivo);
+  const cruzan = dv.palancas ?? [];
+  const n = cruzan.length;
+  // El verbo cambia con el punto de partida —desde BUSCAR se «sube» a Ajustar, desde
+  // AJUSTA se «lleva» a Comprar— y se conjuga explícito en vez de derivarlo del plural.
+  const verbo =
+    dv.veredictoBase === "BUSCAR OTRA"
+      ? (n === 1 ? "sube a" : "suben a")
+      : (n === 1 ? "lleva a" : "llevan a");
+  const cantidad = n === 1 ? "una" : n === 2 ? "dos" : n === 3 ? "tres" : "cuatro";
+  const rotulo =
+    n === 0
+      ? `Franco probó cada palanca sola · ninguna llega a ${destino}`
+      : `Franco probó cada palanca sola · ${cantidad} ${verbo} ${destino}`;
+
+  // ── LAS FILAS — solo las que cruzan, en el orden del motor ────────────────
+  const filas: FilaLoQueHariaYo[] = cruzan.map((l) => {
+    const quien = QUIEN[l.palanca] ?? "tuyo";
+    const titulo = NOMBRE_SUBIR[l.palanca] ?? l.palanca;
+    // El PIE va en puntos, no en cambio relativo (0% → 26% no tiene relativo), así que
+    // su cifra es el recorrido y no lleva objetivo debajo. El plazo, ídem: son años.
+    if (l.palanca === "pie") return { titulo, quien, cifra: `${pct1(l.actual)}% → ${pct1(l.objetivo)}%`, objetivo: null };
+    if (l.palanca === "plazo") return { titulo, quien, cifra: `${l.objetivo} años`, objetivo: null };
+    const cifra = `${signo(l.deltaPct)}${pct1(Math.abs(l.deltaPct))}%`;
+    const objetivo = l.palanca === "precio" ? enUF(l.objetivo) : plata(l.objetivo);
+    return { titulo, quien, cifra, objetivo };
+  });
+
+  // ── EL MIX ────────────────────────────────────────────────────────────────
+  // Tres razones para NO dibujarlo, y las tres vienen marcadas del motor:
+  //   · null            — ninguna combinación cruza;
+  //   · fuera de alcance— cruza pero pide más capital del que es una salida;
+  //   · REDUNDANTE      — repite una palanca que ya está arriba como fila. Dibujarlo
+  //                       sería decir dos veces lo mismo con otro nombre.
+  const m = dv.mixPalancas;
+  const dibujarMix = !!m && m.dentroDelAlcance && !m.redundanteConPalancaSola;
+  const mix: MixLoQueHariaYo | null = dibujarMix && m
+    ? {
+        // Cuando NO hay ninguna palanca sola, el mix deja de ser un apéndice y pasa a
+        // ser el cuerpo: el título lo dice, y dice además si pide descuento o no.
+        titulo:
+          filas.length > 0
+            ? "Si además mueves lo tuyo"
+            : m.sinDescuento
+              ? "La única salida"
+              : "La salida, combinando",
+        movimiento: {
+          pie: m.piePctDelta !== 0 ? { de: dv.piePctActual ?? 0, a: m.piePct } : null,
+          plazo: m.plazoAniosDelta !== 0 ? { de: m.plazoAnios - m.plazoAniosDelta, a: m.plazoAnios } : null,
+        },
+        // El tachado necesita DOS números. Sin solo-precio que cruce no hay contra qué
+        // contrastar, y dibujar una flecha desde la nada sería inventar el punto de partida.
+        contraste:
+          m.descuentoSoloPrecioPct !== null
+            ? { de: `−${pct1(m.descuentoSoloPrecioPct)}%`, a: m.sinDescuento ? "sin descuento" : `−${pct1(m.descuentoPct)}%` }
+            : null,
+        costo: m.costoDiaUnoUF > 0 ? `${enUF(m.costoDiaUnoUF)} más el día uno` : null,
+        descuento: m.sinDescuento ? null : `−${pct1(m.descuentoPct)}%`,
+      }
+    : null;
+
+  // ── EL DESCARTE — las que no alcanzan, en UNA línea ───────────────────────
+  // Con cero palancas que cruzan lista las cuatro; con algunas, solo las que faltan.
+  // SOLO las que se probaron y no cruzaron. Las `noAplica` quedan fuera: decir que el
+  // plazo «no alcanza» cuando ya está en 30 años —o que el pie no alcanza cuando lo cubre
+  // un bono— es afirmar que se probó algo que no se probó. Su razón vive en el pop-up.
+  const noAlcanzan = (dv.vias ?? [])
+    .filter((v) => v.estado === "noCruza")
+    .map((v) => NOMBRE_LLANO[v.palanca] ?? v.palanca);
+  const descarte =
+    noAlcanzan.length === 0
+      ? null
+      : `${enumerar(noAlcanzan).replace(/^./, (c) => c.toUpperCase())}, por separado, no ${noAlcanzan.length === 1 ? "alcanza" : "alcanzan"}.`;
+
+  return { rotulo, filas, mix, descarte };
+}
