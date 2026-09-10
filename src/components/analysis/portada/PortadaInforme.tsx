@@ -330,6 +330,70 @@ export function DocTokens() {
         --doc-paper4:#E2DFD7;
         --doc-shadow:0 24px 60px rgba(20,19,17,.14);
       }
+      /* ═══════════════ REDISEÑO · PALETA (contrato §1) ═══════════════
+         Los papeles cálidos pasan a los neutros fríos del contrato. TRES niveles de
+         superficie —page, card, sunk— más las dos líneas.
+
+         SE PUBLICAN LOS NOMBRES DEL CONTRATO Y SE REAPUNTAN LOS VIEJOS. Los 522 usos de
+         «--doc-*» del informe siguen funcionando sin tocarlos, y el vocabulario nuevo
+         queda disponible para las partes 3 y 4. Cambiar los 522 a mano sería un diff
+         imposible de revisar y encima habría que poder apagarlo.
+
+         EL ANDAMIO DE «--doc-inset» (daedff8b) NO SE TOCA. «.doc-sec» y «.doc-sec.p2»
+         siguen declarando su escalera en términos de «--doc-paper*», así que al
+         reapuntar esos tokens la escalera se mueve sola a page/card/sunk. La escala
+         nueva se apoya en el andamio, no lo reemplaza.
+
+         EL SEMÁFORO DEL DATO —«--doc-good», «--doc-warn», «--doc-neutral», 57 usos— NO
+         se toca y NO se reapunta a la tríada. Son sistemas distintos: la tríada nombra
+         un veredicto, el semáforo mide un dato contra un umbral. Confundirlos fue el
+         error que el goal de la tríada vino a arreglar (contrato §1).
+
+         Oscuro primero, como el bloque de arriba: el default del app es oscuro
+         («data-theme» ausente) y el claro se declara aparte.
+
+         EL SELECTOR LLEVA LAS TRES FORMAS, y no es prolijidad. «.doc-dictamen» declara
+         los tokens base con la misma especificidad que «.doc-r2», así que cuando las dos
+         clases van en el MISMO elemento gana el orden de aparición —y este bloque va
+         después, o sea bien—. Pero cuando «.doc-r2» envuelve desde afuera (la ruta dev),
+         el «.doc-dictamen» de adentro está más cerca y se lleva puesta la paleta: medido,
+         la sección seguía en el papel cálido #FAF8F3. Las dos formas descendentes suben
+         la especificidad y ganan en los dos montajes. */
+      .doc-r2,
+      .doc-r2 .doc-dictamen,
+      .doc-r2 .doc-tokens{
+        --page:#0C0C0E; --card:#1A1A1E; --sunk:#232328;
+        --line:#232327; --line2:#37373D; --line-sunk:#2C2C30;
+        --tx:#FAFAFA; --tx2:#D4D4D8; --tx3:#A1A1AA; --tx4:#71717A;
+        --doc-paper:var(--page); --doc-paper2:var(--card);
+        --doc-paper3:var(--sunk); --doc-paper4:var(--sunk);
+        --doc-line:var(--line); --doc-line2:var(--line2);
+        --doc-tx:var(--tx); --doc-tx2:var(--tx2); --doc-tx3:var(--tx3); --doc-tx4:var(--tx4);
+        --doc-score-empty:var(--sunk);
+      }
+      [data-theme="light"] .doc-r2,
+      [data-theme="light"] .doc-r2 .doc-dictamen,
+      [data-theme="light"] .doc-r2 .doc-tokens{
+        --page:#FFFFFF; --card:#F4F4F6; --sunk:#EBEBEE;
+        --line:#E9E9EC; --line2:#D6D6DB; --line-sunk:#E0E0E3;
+        --tx:#18181B; --tx2:#3F3F46; --tx3:#71717A; --tx4:#A1A1AA;
+      }
+
+      /* UNA LÍNEA SOBRE UNA SUPERFICIE HUNDIDA NECESITA SU PROPIO VALOR.
+         «--line» está calibrado contra «--page» y «--card»; contra «--sunk» desaparece:
+         ΔL* 0,70 en claro y 0,04 en oscuro — en oscuro difieren en un punto del canal
+         azul. Un separador que no se ve no es un separador.
+
+         «--line-sunk» iguala el paso que «--line» tiene sobre «--card» —3,82 en claro y
+         4,44 en oscuro— desde «--sunk»: da 3,87 y 4,24. Y respeta la dirección de cada
+         tema, más oscuro en claro y más claro en oscuro, igual que «--line»; al revés se
+         leería como una ranura y no como un separador. No es «--line2» disfrazado: queda
+         a ΔL* 3,50 y 5,13 de él.
+
+         Son las dos únicas reglas del informe que hoy combinan las dos cosas. */
+      .doc-r2 .fbar .fb-ing,
+      .doc-r2 .pos-chip{border-color:var(--line-sunk)}
+
       /* ═══════════════ REDISEÑO · TIPOGRAFÍA (contrato §1) ═══════════════
          Todo lo de acá cuelga de «.doc-r2», que solo existe con el interruptor de
          «rediseno-flag.ts» encendido. Con el interruptor apagado ninguna de estas
