@@ -32,7 +32,6 @@ export function TokensShared() {
       .mz-rowh{display:flex;flex-direction:column;justify-content:center;padding-right:8px;text-align:right}
       .mz-colh small,.mz-rowh small{display:block;font-family:var(--font-body, system-ui);font-size:9.5px;font-weight:400;color:var(--doc-tx4);margin-top:2px;white-space:nowrap}
       .mz-cell{position:relative;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:var(--doc-paper2);border:1px solid var(--doc-line);border-radius:2px;font-family:var(--font-mono, ui-monospace);font-size:11px;color:var(--doc-tx);cursor:help;font-variant-numeric:tabular-nums}
-      .doc-sec--paper2 .mz-cell{background:var(--doc-paper)}
       .mz-cell.neg{color:var(--signal-red)}
       .mz-cell.umbral{border:1px solid var(--doc-good)}
       .mz-cell.umbral::after{content:'';position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--doc-good)}

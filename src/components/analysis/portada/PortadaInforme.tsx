@@ -282,6 +282,11 @@ export function DocTokens() {
            papel para que la barra sea el veredicto y no una fila de casilleros. */
         --doc-score-empty:#282828;
         --doc-paper3:#232323; --doc-neutral:#6E6A63; --doc-good:#57B98A; --doc-warn:#DFA34F;
+        /* CUARTO NIVEL (10-sep-2026) — existe para que una sección «p2» conserve DOS
+           escalones hacia adentro. Sin él la escalera miente en la mitad de las
+           secciones. El valor no se eligió a ojo: continúa el paso perceptual de la
+           rampa (ΔL* 3,82 desde paper3, contra 3,45 y 3,95 de los pasos anteriores). */
+        --doc-paper4:#2B2B2B;
         --doc-shadow:0 24px 60px rgba(0,0,0,.6);
         /* grano de papel: tile SVG 300px, NO filtro en vivo (contrato plumon-veredicto.html) */
         --doc-grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
@@ -319,14 +324,37 @@ export function DocTokens() {
            no un veredicto, y ahí verde y ámbar son la lectura convencional. En oscuro
            conservan sus variantes claras por contraste sobre #141414. */
         --doc-paper3:#EAE7DF; --doc-neutral:#8C8880; --doc-good:#2E8B57; --doc-warn:#B7791F;
+        /* el cuarto nivel en claro: ΔL* 2,82 desde paper3, dentro del rango de los
+           pasos que ya existían (3,45 y 2,48). */
+        --doc-paper4:#E2DFD7;
         --doc-shadow:0 24px 60px rgba(20,19,17,.14);
       }
       /* ═══ PÁGINA POR SECCIONES (T2, contrato CONGELADO 02-sep-2026) ═══
          Fondo alternado a sangre: cada sección sangra el padding horizontal de
          .doc-page con márgenes negativos y trae su propio padding. */
       .doc-page--secciones{padding-top:0;padding-bottom:0}
-      .doc-sec{margin:0 -64px;padding:36px 64px 44px;background:var(--doc-paper);color:var(--doc-tx)}
-      .doc-sec.p2{background:var(--doc-paper2)}
+      /* ═══ LA ESCALERA DE SUPERFICIES (10-sep-2026) ═══
+         El informe ALTERNA el papel de sus secciones, y la alternancia se INVIERTE entre
+         la prosa v21+ y el camino viejo («SubjectCardGrid.tsx»: «dosBloques ? "paper" :
+         "paper2"»). El camino viejo no es transitorio: es PERMANENTE para 453 filas
+         anónimas que no regeneran. Así que una pieza interior que pide «--doc-paper2» a
+         mano contrasta en una alternancia y se apila en la otra — y no hay token que
+         elegir bien, porque el correcto depende de la fila.
+
+         La escalera lo resuelve por construcción: cada contenedor declara SU propia
+         secuencia y las piezas piden «un escalón adentro» sin saber de qué tono parten.
+         Una pieza escribe «background:var(--doc-inset-1)» y queda bien en las dos.
+
+         El nivel 0 es el papel del contenedor y está para que una pieza pueda volver a
+         él (una tira que se apoya en el fondo de su sección) sin nombrar el token global.
+         Los contenedores que declaran escalera son los que PINTAN: las secciones y el
+         modal. Un contenedor transparente hereda la del suyo, que es lo correcto. */
+      .doc-sec{
+        --doc-inset-0:var(--doc-paper); --doc-inset-1:var(--doc-paper2); --doc-inset-2:var(--doc-paper3);
+        margin:0 -64px;padding:36px 64px 44px;background:var(--doc-inset-0);color:var(--doc-tx)}
+      .doc-sec.p2{
+        --doc-inset-0:var(--doc-paper2); --doc-inset-1:var(--doc-paper3); --doc-inset-2:var(--doc-paper4);
+        background:var(--doc-inset-0)}
       .doc-sec .doc-portada{border-bottom:none;margin-bottom:0;padding-bottom:0}
       /* UN TÍTULO POR SECCIÓN (08-sep-2026). Murieron el ksub (.doc-sec-eyebrow) y la
          bajada (.doc-sec-intent): el ksub repetía la palabra del título y la bajada

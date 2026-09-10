@@ -264,7 +264,11 @@ export function TokensHallazgos() {
       .v-viz{margin:0 0 18px}
       .v-viz-t{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
         color:var(--doc-tx4);margin-bottom:10px}
-      .v-cierre{background:var(--doc-paper2);border:1px solid var(--doc-line);border-left:3px solid var(--signal-red);
+      /* La única superficie del informe que apilaba de verdad: «paper2» sobre una
+         sección «paper2». No desaparecía —tiene borde— pero su relleno no aportaba
+         nada. Con la escalera queda un escalón adentro de lo que la contenga, sea
+         una sección de cualquier tono o el modal. */
+      .v-cierre{background:var(--doc-inset-1);border:1px solid var(--doc-line);border-left:3px solid var(--signal-red);
         border-radius:3px;padding:16px 18px;margin-top:4px;margin-bottom:4px}
       .v-cierre .t{font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
         color:var(--signal-red);font-weight:700;margin-bottom:8px}
@@ -525,7 +529,14 @@ export function TokensHallazgos() {
       .ba-mult .k{font-size:12px;color:var(--doc-tx3);flex:1;line-height:1.45} .ba-mult .v{font-family:var(--font-mono, ui-monospace);font-size:17px;font-weight:700;color:var(--doc-good);white-space:nowrap}
       /* modal (overlay Ink 60%, panel 720px, pantalla completa en mobile) */
       .v-modal-overlay{position:fixed;inset:0;background:rgba(20,19,17,.6);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px}
-      .v-modal{width:100%;max-width:720px;max-height:92vh;overflow-y:auto;background:var(--doc-paper);border:1px solid var(--doc-line2);border-radius:4px;padding:26px 28px 24px;position:relative;color:var(--doc-tx)}
+      /* El modal declara su PROPIA escalera y no hereda la de la sección: cuelga del
+         overlay, fuera del flujo, así que su papel es fijo y sus piezas tienen que
+         medirse contra él. Es también la razón por la que las piezas del modal nunca
+         se apilaron pese a pedir «--doc-paper2» a mano — algo que la auditoría de
+         septiembre dio por apilado sin mirar el padre real. */
+      .v-modal{
+        --doc-inset-0:var(--doc-paper); --doc-inset-1:var(--doc-paper2); --doc-inset-2:var(--doc-paper3);
+        width:100%;max-width:720px;max-height:92vh;overflow-y:auto;background:var(--doc-inset-0);border:1px solid var(--doc-line2);border-radius:4px;padding:26px 28px 24px;position:relative;color:var(--doc-tx)}
       .v-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:6px}
       .v-modal-head h3{font-family:var(--font-heading, Georgia, serif);font-size:22px;font-weight:700;line-height:1.2;margin:0}
       .v-modal-sub{font-size:13px;color:var(--doc-tx3);line-height:1.5;margin:0 0 18px}
