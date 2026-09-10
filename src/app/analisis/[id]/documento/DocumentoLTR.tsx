@@ -24,6 +24,7 @@ import type {
   HallazgoDistanciaVeredicto,
 } from "@/lib/types";
 import { ordenarHallazgosDocumento } from "@/lib/orden-hallazgos";
+import { salidaPorMix, pieDocumentoSalida } from "@/lib/salida-por-mix";
 import { fmtUF, fmtMoney } from "@/components/analysis/utils";
 import { metricaDisplay, metricaODefault, metricaValorONull } from "@/lib/types";
 import { calcDividendo } from "@/lib/analysis";
@@ -148,6 +149,11 @@ export function DocumentoLTR({
     const v = dist.valor;
     const objetivo = v.veredictoObjetivo === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
     if (v.esEstructural) {
+      // El PDF no tiene entrada desde la UI (0 links en src/), pero publica la misma
+      // afirmación que las otras siete: si la web dice que hay salida y el papel dice que
+      // no, la contradicción sale de la pantalla y viaja sola.
+      const salida = salidaPorMix(v);
+      if (salida) return pieDocumentoSalida(salida);
       const dm = v.deltaMinimoFueraDeTope;
       // `deltaMinimoFueraDeTope` es lo MÍNIMO que SÍ cruza (fuera del tope): se cita como lo
       // que recién cruzaría, no como algo que "no cruza" (fix del signo, 02-sep-2026).

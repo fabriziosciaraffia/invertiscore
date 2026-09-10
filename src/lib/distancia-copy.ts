@@ -19,6 +19,7 @@
 
 import type { HallazgoDistanciaVeredicto } from "@/lib/types";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
+import { salidaPorMix, tituloCardSalida, ksubCardSalida, lineaMiniSalida } from "./salida-por-mix";
 
 type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 
@@ -43,6 +44,22 @@ export function distanciaFindingDisplay(h: HallazgoDistanciaVeredicto): Distanci
   const kick = "Lo que te separa";
   const objetivo = etiquetaVeredicto(v.veredictoObjetivo === "COMPRAR" ? "COMPRAR" : "AJUSTA SUPUESTOS");
   if (v.esEstructural) {
+    // ── HAY SALIDA COMBINANDO (179 filas del parque) ──────────────────────
+    // Ningún cambio por separado alcanza, y eso sigue siendo verdad; lo que era falso
+    // es el salto de ahí a «no hay nada que hacer». El KPI pasa a ser lo que la salida
+    // CUESTA, porque es el número que ahora separa al lector del veredicto de arriba:
+    // dejar el descuento imposible de KPI al lado de un título que dice «sí se puede»
+    // reproduce exactamente la ambigüedad que acabamos de sacar del bloque.
+    const salida = salidaPorMix(v);
+    if (salida) {
+      return {
+        kick,
+        title: tituloCardSalida(salida),
+        kpi: salida.costoDiaUnoUF > 0 ? `UF ${fmtMiles(salida.costoDiaUnoUF)}` : "—",
+        kpiRed: false,
+        ksub: ksubCardSalida(salida),
+      };
+    }
     const dm = v.deltaMinimoFueraDeTope;
     return {
       kick,
@@ -106,6 +123,8 @@ export function lineaDistanciaMini(
   const v = h.valor;
   const objetivo = v.veredictoObjetivo;
   if (v.esEstructural) {
+    const salida = salidaPorMix(v);
+    if (salida) return lineaMiniSalida(salida, etiquetaVeredicto(v.veredictoBase, "banda"));
     const dm = v.deltaMinimoFueraDeTope;
     return dm
       ? `Ningún ajuste realista lo mueve de ${v.veredictoBase}: cruzaría recién con ${nombrePalanca(dm.palanca)} ${dm.deltaPct > 0 ? "+" : "−"}${pct1(Math.abs(dm.deltaPct))}%, fuera de rango.`

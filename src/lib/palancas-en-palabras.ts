@@ -20,12 +20,16 @@ export function totalEnPalabras(total: number): string {
 
 /** Línea del footer del hero: "Franco probó cuatro ajustes. Dos mueven el veredicto."
  *  Sin vías (filas viejas) queda la línea genérica. */
-export function lineaFooterVias(nCruzan: number | null, total: number): string {
+export function lineaFooterVias(nCruzan: number | null, total: number, haySalidaCombinando = false): string {
   const t = totalEnPalabras(total);
   if (nCruzan == null) return `Franco probó ${t} ajustes que mueven el veredicto.`;
   const cuantos =
     nCruzan === 0 ? "Ninguno mueve" : nCruzan >= total ? `${CARDINAL[total] ?? `Los ${t}`} mueven` : nCruzan === 1 ? "Uno mueve" : `${CARDINAL[nCruzan] ?? String(nCruzan)} mueven`;
-  return `Franco probó ${t} ajustes. ${cuantos} el veredicto.`;
+  // «POR SEPARADO» es la palabra que faltaba, y es la que la vuelve cierta: Franco los
+  // probó de a uno. Sin ella, «ninguno mueve el veredicto» le miente a las 179 filas
+  // donde la combinación sí lo mueve — y esta línea se lee en la card, sin abrir nada.
+  const cabeza = `Franco probó ${t} ajustes por separado. ${cuantos} el veredicto`;
+  return nCruzan === 0 && haySalidaCombinando ? `${cabeza}; juntos, sí.` : `${cabeza}.`;
 }
 
 /** Intro del modal de vías cuando el hallazgo trae `vias`:

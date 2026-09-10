@@ -7,6 +7,7 @@ import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, Hallazg
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { DrawerDistanciaLtr, DrawerSensibilidadLtr } from "./drawers/DrawersPropios";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";
+import { salidaPorMix } from "@/lib/salida-por-mix";
 import { MatrizPiePlazoLtr } from "./shared/MatrizPiePlazoLtr";
 import { LoQueHariaYoBloque } from "./shared/LoQueHariaYoBloque";
 import { construirLoQueHariaYo } from "@/lib/lo-que-haria-yo";
@@ -147,7 +148,11 @@ export function HeroLTR({
           l: (() => {
             const vias = distanciaRow.valor.vias;
             if (!vias || vias.length === 0) return lineaFooterVias(null, 4);
-            return lineaFooterVias(vias.filter((v) => v.estado === "cruza").length, vias.length);
+            return lineaFooterVias(
+              vias.filter((v) => v.estado === "cruza").length,
+              vias.length,
+              salidaPorMix(distanciaRow.valor) !== null,
+            );
           })(),
           btn: "Ver ajustes",
           // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo

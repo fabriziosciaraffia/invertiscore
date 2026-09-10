@@ -41,6 +41,7 @@ import {
   type BordeDial,
 } from "@/components/analysis/hallazgos/vocabulario";
 import { DrawerSensibilidadLtr, DrawerDistanciaLtr } from "@/components/analysis/drawers/DrawersPropios";
+import { salidaPorMix, SUBTITULO_PLAN_SALIDA } from "@/lib/salida-por-mix";
 import type { HallazgoSensibilidad, HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
 import { ZonaCeldasLtr, buildZonaLtr, sintesisZonaLtr } from "@/components/analysis/zona/ZonaLtr";
@@ -831,7 +832,18 @@ export function DrawerNegociacion({
             : null;
         return (
           <div style={capitulo ? { marginBottom: 18 } : undefined}>
-            {capitulo && <VSub>{esEstructuralNeg ? "Por qué no hay plan" : "Cómo negociarlo: tu plan"}</VSub>}
+            {/* «Por qué no hay plan» es falso en las 179 filas donde la combinación
+                cruza: el plan existe, lo que no existe es la parte que le toca al
+                vendedor. Ver `salida-por-mix.ts`. */}
+            {capitulo && (
+              <VSub>
+                {esEstructuralNeg
+                  ? distNeg && salidaPorMix(distNeg.valor)
+                    ? SUBTITULO_PLAN_SALIDA
+                    : "Por qué no hay plan"
+                  : "Cómo negociarlo: tu plan"}
+              </VSub>
+            )}
             <PlanNegociacion
               objetivo={objetivoPlan}
               primeraOferta={primeraOferta}
