@@ -6,7 +6,7 @@
 // plazo, el descuento mínimo de precio que cruza. El arriendo lo pone el mercado
 // y la tasa el banco: quedan fuera por definición, no por costo.
 //
-// Fija SEIS cosas, y las tres últimas son los bordes que ningún seed del golden
+// Fija OCHO cosas, y los bordes van sintéticos porque ningún seed del golden
 // cubre — por eso van sintéticas:
 //
 //   1. LA GRILLA ES LA ACORDADA. Pie del declarado hasta el techo 30, paso 5 y
@@ -39,11 +39,19 @@
 //      desarma el trato). Y BORDE · NADA CRUZA ⇒ null explícito, no un objeto
 //      vacío.
 //
+//   7. EL TOPE DE ALCANCE — 15 puntos del precio, CON SIGNO. El pie 0% (que el tope
+//      filtra), el costo NEGATIVO (que tiene que pasar: con el absoluto quedaría
+//      afuera por barato) y el borde EXACTO en 15, que entra porque el tope es <=.
+//
+//   8. «SIN SALIDA» ≠ «SIN PALANCA SOLA». Que un caso gane salida por mix NO mueve
+//      `esEstructural`: los 281 que siguen sin salida conservan copy, guards y el
+//      invariante del catch-test de vías.
+//
 // Corre dentro del QUICK (tier "mix") y standalone:
 //   node --import tsx scripts/eval/golden/mix-palancas-catch-test.ts
 // ============================================================================
-import { calcularMixPalancas, MIX_PIE_PASO_PCT, MIX_PLAZOS_WIZARD } from "../../../src/lib/mix-palancas";
-import { DIST_PIE_TOPE_PCT } from "../../../src/lib/distancia-veredicto-hallazgo";
+import { calcularMixPalancas, MIX_COSTO_TOPE_PTS_PRECIO, MIX_PIE_PASO_PCT, MIX_PLAZOS_WIZARD } from "../../../src/lib/mix-palancas";
+import { buildHallazgoDistanciaVeredicto, DIST_PIE_TOPE_PCT } from "../../../src/lib/distancia-veredicto-hallazgo";
 import type { Veredicto } from "../../../src/lib/types";
 
 const fallas: string[] = [];
@@ -69,6 +77,20 @@ function mix(o: {
     topePct: o.topePct ?? 15,
     palancasQueCruzan: o.palancasQueCruzan ?? [],
     veredictoAtPatch: o.regla,
+  });
+}
+
+/** Hallazgo completo con veredicto dirigido — para los invariantes de `sinSalida`. */
+function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (patch: Patch) => Veredicto }) {
+  return buildHallazgoDistanciaVeredicto({
+    veredictoBase: "BUSCAR OTRA",
+    arriendo: 500_000,
+    precioUF: 3_000,
+    plazoCredito: o.plazoCredito ?? 25,
+    piePct: o.piePct ?? 20,
+    veredictoAtPatch: o.regla,
+    brazosGate1Activos: [],
+    modalidad: "ltr",
   });
 }
 
@@ -189,11 +211,92 @@ function mix(o: {
   }
 }
 
+// ── 7 · EL TOPE DE ALCANCE: 15 puntos del precio, CON SIGNO ────────────────
+{
+  // (a) pie 0% → el mix pide poner los 30 puntos completos: 30 pts > 15 ⇒ fuera de
+  //     alcance. Es la población que el tope existe para separar (medido: los más caros
+  //     del parque son casi todos `pie 0% → 30%`).
+  const r = mix({
+    piePct: 0,
+    regla: (patch) => ((patch.piePct ?? 0) >= 30 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
+  });
+  if (!r) F("7a · la combinación cruza: el mix no puede ser null");
+  else {
+    if (Math.abs(r.costoPtsPrecio - 30) > 0.6) F(`7a · pie 0→30 cuesta 30 pts del precio, dio ${r.costoPtsPrecio}`);
+    if (r.dentroDelAlcance) F(`7a · 30 pts > ${MIX_COSTO_TOPE_PTS_PRECIO}: debía quedar FUERA de alcance`);
+  }
+
+  // (b) COSTO NEGATIVO: el descuento achica el pie en plata más de lo que lo agranda el
+  //     porcentaje. Un tope sobre el ABSOLUTO lo sacaría por barato — el tope va con signo.
+  const barato = mix({
+    piePct: 25,
+    // Cruza con 12% de descuento manteniendo el pie: 3.000×0,88×25% = 660 vs 750 ⇒ −UF 90.
+    regla: (patch) => {
+      const desc = patch.precio != null ? (1 - patch.precio / 3_000) * 100 : 0;
+      return desc >= 12 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+    },
+  });
+  if (!barato) F("7b · cruza con −12%: no puede ser null");
+  else {
+    if (barato.costoDiaUnoUF >= 0) F(`7b · este mix ABARATA el día uno: el costo debía ser negativo, dio ${barato.costoDiaUnoUF}`);
+    if (!barato.dentroDelAlcance) F("7b · un costo negativo está dentro del tope: con el valor absoluto quedaría afuera por barato");
+  }
+
+  // (c) EL BORDE EXACTO. pie 20 → 35 no existe (techo 30), así que se fabrica el borde con
+  //     un precio tal que el salto de pie valga exactamente 15 puntos: 20% → 35% no; usar
+  //     pie 15 → 30 = 15 puntos justos. `<=` incluye el borde.
+  const borde = mix({
+    piePct: 15,
+    regla: (patch) => ((patch.piePct ?? 15) >= 30 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
+  });
+  if (!borde) F("7c · cruza con pie 30: no puede ser null");
+  else {
+    if (Math.abs(borde.costoPtsPrecio - 15) > 0.6) F(`7c · pie 15→30 son 15 puntos justos, dio ${borde.costoPtsPrecio}`);
+    if (!borde.dentroDelAlcance) F(`7c · el borde EXACTO (${MIX_COSTO_TOPE_PTS_PRECIO} pts) entra: el tope es <=, no <`);
+  }
+
+  // (d) Cuando NINGUNA combinación entra en el tope, el mix igual se devuelve —con
+  //     `dentroDelAlcance: false`— para poder decir cuánto costaría. Es el mismo criterio
+  //     que `deltaMinimoFueraDeTope`: el número existe aunque la puerta esté cerrada.
+  const fuera = mix({
+    piePct: 0,
+    regla: (patch) => ((patch.piePct ?? 0) >= 25 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
+  });
+  if (!fuera) F("7d · la combinación cruza: no puede ser null aunque esté fuera de alcance");
+  else if (fuera.dentroDelAlcance) F(`7d · pie 0→25 son 25 pts > ${MIX_COSTO_TOPE_PTS_PRECIO}: fuera de alcance`);
+}
+
+// ── 8 · «SIN SALIDA» — el concepto nuevo, sin tocar «sin palanca sola» ─────
+{
+  // El caso donde NADA cruza: sigue siendo estructural Y sin salida. Es la prueba de que
+  // los que hoy no tienen mix no se movieron.
+  const nada = construirHallazgo({ regla: () => "BUSCAR OTRA" });
+  if (nada) {
+    if (!nada.valor.esEstructural) F("8 · sin ninguna palanca que cruce debía seguir siendo estructural");
+    if (nada.valor.sinSalida !== true) F("8 · sin palanca sola y sin mix ⇒ `sinSalida` debe ser true");
+    if (nada.valor.mixPalancas !== null) F("8 · sin ninguna combinación que cruce el mix debe ser null");
+  }
+  // El caso que cambia: ninguna palanca sola cruza, pero el mix sí y es pagable.
+  const conSalida = construirHallazgo({
+    piePct: 20,
+    regla: (patch) => {
+      const pie = patch.piePct ?? 20;
+      const plazo = patch.plazoCredito ?? 25;
+      // Ninguna palanca SOLA alcanza; la combinación pie 30 + 30 años sí.
+      return pie >= 30 && plazo >= 30 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+    },
+  });
+  if (conSalida) {
+    if (!conSalida.valor.esEstructural) F("8 · «sin palanca sola» NO cambia: ninguna cruza sola, sigue estructural");
+    if (conSalida.valor.sinSalida !== false) F("8 · el mix cruza dentro del tope ⇒ `sinSalida` debe ser false");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runMixPalancasTier(): { hard: number } {
   console.log("\n─── TIER MIX (las tres palancas del comprador combinadas · mix-palancas.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — grilla acordada, «sin descuento» explícito, contraste con solo-precio, costo del día uno contra el pie declarado, y los tres bordes");
+    console.log("  ✓ VERDE — grilla acordada, «sin descuento» explícito, contraste con solo-precio, costo contra el pie declarado, el tope de 15 pts con signo, y «sin salida» sin mover «sin palanca sola»");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

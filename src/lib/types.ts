@@ -1021,11 +1021,20 @@ export interface MixPalancas {
    * es la única base que el usuario reconoce y la única que existe cuando el precio solo
    * no cruza. El campo se declara para que el consumidor no tenga que suponerlo.
    */
+  /** El mismo costo en PUNTOS DEL PRECIO. Es la unidad del tope de alcance: escala-libre
+   *  y siempre definida, también con pie declarado 0% (donde un múltiplo no lo está). */
+  costoPtsPrecio: number;
+  /**
+   * ¿El costo cabe dentro de `MIX_COSTO_TOPE_PTS_PRECIO`? `false` ⇒ la combinación
+   * cruza pero pide más capital del que este mix considera una salida; se devuelve
+   * igual, para poder decir cuánto costaría, pero NO cuenta como salida.
+   */
+  dentroDelAlcance: boolean;
   costoDiaUnoBase: "pie_declarado";
   combinacionesQueCruzan: number;
   combinacionesProbadas: number;
   /** La siguiente mejor, para que «elige la más accionable» tenga entre qué elegir. */
-  segunda: { descuentoPct: number; sinDescuento: boolean; piePct: number; plazoAnios: number; costoDiaUnoUF: number } | null;
+  segunda: { descuentoPct: number; sinDescuento: boolean; piePct: number; plazoAnios: number; costoDiaUnoUF: number; costoPtsPrecio: number } | null;
   /**
    * true ⇔ el mix mueve UNA sola dimensión y esa palanca ya se reporta sola en `vias`.
    * Pasa, por ejemplo, cuando el plazo ya está en el máximo y el mix se reduce al pie.
@@ -1084,6 +1093,19 @@ export interface HallazgoDistanciaVeredicto {
      *  `null` = se exploró y no hay (o el salto de dos bandas no aplica).
      *  AUSENTE = fila vieja, NO CALCULADO. */
     deltaMinimoComprarFueraDeTope?: { palanca: "arriendo" | "precio"; deltaPct: number } | null;
+    /**
+     * ¿NO hay nada que ofrecerle a este comprador? Es `esEstructural` MÁS la condición del
+     * mix: ninguna palanca cruza sola Y ninguna combinación de precio+pie+plazo cruza
+     * dentro del tope de alcance (`MIX_COSTO_TOPE_PTS_PRECIO`).
+     *
+     * NO es lo mismo que `esEstructural`, y la diferencia es el punto: un caso puede ser
+     * estructural —ninguna palanca sola alcanza— y tener salida perfectamente viable
+     * combinando pie y plazo. Medido en el parque: 156 de las 437 estructurales.
+     *
+     * `esEstructural` conserva su significado y sus consumidores; éste es el que debería
+     * gobernar «no hay plan». AUSENTE = fila vieja, NO CALCULADO.
+     */
+    sinSalida?: boolean;
     /** El mix de las tres palancas del comprador hacia `veredictoObjetivo`.
      *  `null` = se probaron las combinaciones y ninguna cruza.
      *  AUSENTE = fila persistida antes de este goal, NO CALCULADO. */

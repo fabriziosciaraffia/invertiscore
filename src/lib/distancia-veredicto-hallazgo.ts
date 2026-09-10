@@ -628,6 +628,29 @@ export function buildHallazgoDistanciaVeredicto(p: {
     veredictoAtPatch: p.veredictoAtPatch,
   });
 
+  // ── «SIN PALANCA SOLA» Y «SIN SALIDA»: DOS CONCEPTOS, NO UNO ──────────────
+  //
+  // `esEstructural` significa, y sigue significando exactamente, «ninguna palanca cruza
+  // SOLA dentro del tope». No se toca: de él cuelgan el copy determinista, los guards de
+  // prosa, el plan de negociación y el invariante del catch-test de vías. Cambiarlo habría
+  // movido las 437 filas estructurales del parque de una sola vez.
+  //
+  // `sinSalida` es el concepto NUEVO y es el que responde la pregunta del informe: ¿hay
+  // algo que ofrecerle a este comprador? Suma la condición del mix — que exista una
+  // combinación que cruce Y que quepa en el tope de alcance.
+  //
+  // Medido sobre las 1.199 filas LTR del parque: de las 437 estructurales, 156 tienen
+  // salida por mix dentro de los 15 puntos y 281 no. De las 156, 145 son BUSCAR OTRA, y
+  // 67 cruzan SIN pedir un peso de descuento: el informe hoy las manda a irse cuando la
+  // salida no cuesta negociación, solo capital.
+  //
+  // ⚠ ESTE GOAL ES DE MOTOR: `sinSalida` se CALCULA y todavía no lo lee nadie. Los
+  // consumidores siguen colgando de `esEstructural`, así que el informe no cambió una
+  // coma. Repuntarlos exige antes construir la rama «salida por mix», que hoy no existe:
+  // todos los `else` de copy, render y prompt asumen que hay `palancaMasBarata`, y en
+  // estos 156 casos es null por construcción.
+  const sinSalida = esEstructural && !(mixPalancas?.dentroDelAlcance ?? false);
+
   // Cercanía al umbral (1 = pegado al veredicto de arriba, 0 = en el tope o estructural).
   // Va DENTRO de `valor`, NO en magnitudContinua: ese campo lo leen los comparadores de la
   // pirámide y del hero, donde compite contra |Δscore|/25 — otra escala, otra pregunta.
@@ -755,6 +778,7 @@ export function buildHallazgoDistanciaVeredicto(p: {
       viasHastaComprar,
       deltaMinimoComprarFueraDeTope,
       mixPalancas,
+      sinSalida,
       esEstructural,
       deltaMinimoFueraDeTope,
       topePct: topeAplicado,

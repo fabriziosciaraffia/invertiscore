@@ -35,12 +35,53 @@ export const MIX_PIE_PASO_PCT = 5;
  */
 export const MIX_PLAZOS_WIZARD = [20, 25, 30] as const;
 
+// ── TOPE DE ALCANCE: hasta cuánto capital extra sigue siendo una salida ──────
+//
+// El mix ahorra puntos de negociación y los cobra en plata propia el día 1. Sobre
+// cierto punto deja de ser una salida y pasa a ser otra compra: pedirle a alguien que
+// ponga el pie entero no es «ajustar supuestos».
+//
+// LA UNIDAD ES PUNTOS DEL PRECIO, y las otras dos se descartaron con datos:
+//
+//   · MÚLTIPLO DEL PIE — se rompe. En el parque hay 6 filas con pie declarado 0%,
+//     donde el múltiplo ni siquiera está definido, y el máximo observado (23,04×)
+//     sale de una fila con pie 1%: un múltiplo enorme sobre una base ridícula. Es la
+//     misma razón por la que `DIST_PIE_TOPE_PCT` ya eligió ser ABSOLUTO.
+//   · UF ABSOLUTAS — no escalan. UF 948 es un tercio del precio en un depto de
+//     UF 3.000 y un 9% en uno de UF 10.000; un tope en UF filtra por tamaño del deal,
+//     no por esfuerzo.
+//
+// Puntos del precio es escala-libre, está SIEMPRE definida (también con pie 0) y se
+// lee sola: cuántos puntos más del precio hay que poner el día uno.
+//
+// POR QUÉ 15. Sweep sobre las 1.199 filas LTR del parque, sobre las 191 estructurales
+// cuyo mix cruza: p25 5,8 · p50 9,7 · **p75 13,9** · p90 18,3 · max 30 puntos.
+//
+//   tope │ quedan con salida │ afuera    │ de las 71 SIN DESCUENTO sobreviven
+//   ─────┼───────────────────┼───────────┼───────────────────────────────────
+//    10  │       137         │  54 (28%) │  59 (83%)
+//    12  │       140         │  51 (27%) │  59 (83%)
+//  → 15  │       156         │  35 (18%) │  67 (94%)
+//    20  │       185         │   6 (3%)  │  70 (99%)
+//
+// 20 se descarta porque no filtra nada: 6 casos es un tope decorativo. 10 y 12
+// sacrifican 12 de las 71 filas SIN DESCUENTO —el subconjunto donde el informe hoy
+// manda a irse y la salida no cuesta negociación, solo capital— para ganar 3 puntos de
+// filtro. 15 cae justo sobre el p75 y preserva 67 de esas 71.
+//
+// Y sobre todo: LA COLA CARA NO ES UNA COLA, ES OTRA POBLACIÓN. De las 8 filas más
+// caras del parque, 6 son `pie 0% → 30%` y la séptima tiene pie 1%. El tope de 15
+// deja afuera casi exactamente ese grupo, que es el que el criterio quiere separar.
+// Mismo método con que se calibraron DIST_TOPE_AJUSTA_PCT y DIST_TOPE_BUSCAR_PCT:
+// el corte separa dos poblaciones, no es un percentil elegido a ojo.
+export const MIX_COSTO_TOPE_PTS_PRECIO = 15;
+
 /** Precisión de la bisección del descuento, en puntos porcentuales. */
 const MIX_PREC_PTS = 0.1;
 
 const RANK: Record<Veredicto, number> = { "BUSCAR OTRA": 0, "AJUSTA SUPUESTOS": 1, COMPRAR: 2 };
 
-type Combinacion = { descuentoPct: number; sinDescuento: boolean; piePct: number; plazoAnios: number; costoDiaUnoUF: number };
+type Combinacion = { descuentoPct: number; sinDescuento: boolean; piePct: number; plazoAnios: number; costoDiaUnoUF: number; costoPtsPrecio: number };
 
 /**
  * Devuelve el mejor mix y su contexto, o `null` si NINGUNA combinación cruza.
@@ -137,19 +178,42 @@ export function calcularMixPalancas(p: {
         piePct: pie,
         plazoAnios: plazo,
         costoDiaUnoUF: Math.round(pieCLP(r.pct, pie) - pieDeclaradoUF),
+        costoPtsPrecio: Math.round(((100 * (pieCLP(r.pct, pie) - pieDeclaradoUF)) / p.precioUF) * 10) / 10,
       });
     }
   }
   const probadas = pies.length * plazos.length;
   if (combos.length === 0) return null;
 
+  // ── EL FILTRO DE ALCANCE ──────────────────────────────────────────────────
+  // El tope va sobre el valor CON SIGNO, no sobre el absoluto. Hay combinaciones que
+  // ABARATAN el día uno —el descuento achica el pie en plata más de lo que lo agranda
+  // el porcentaje; el mínimo medido en el parque es −7 puntos— y con `Math.abs` esas
+  // filas quedarían afuera POR BARATAS, que es exactamente al revés de lo que el tope
+  // quiere hacer.
+  //
+  // El filtro se aplica ANTES de elegir la mejor, no después: el tope define qué
+  // combinaciones son salidas reales, y ordenar primero podría coronar una que no lo es.
+  const alcanzables = combos.filter((c) => c.costoPtsPrecio <= MIX_COSTO_TOPE_PTS_PRECIO);
+  const dentroDelAlcance = alcanzables.length > 0;
+
   // Orden: menos descuento primero —es lo que hay que pedirle a un tercero—, y a igual
   // descuento gana la que cuesta menos plata propia el día 1.
-  combos.sort((a, b) => a.descuentoPct - b.descuentoPct || a.costoDiaUnoUF - b.costoDiaUnoUF || a.piePct - b.piePct);
-  const mejor = combos[0];
-  const segunda = combos[1] ?? null;
+  const ordenar = (xs: Combinacion[]) =>
+    [...xs].sort((a, b) => a.descuentoPct - b.descuentoPct || a.costoDiaUnoUF - b.costoDiaUnoUF || a.piePct - b.piePct);
+  // Sin ninguna alcanzable se devuelve igual la MÁS BARATA de las que cruzan, con
+  // `dentroDelAlcance: false`. Mismo criterio que `deltaMinimoFueraDeTope`: el número
+  // existe aunque la puerta esté cerrada, y decir «costaría 30 puntos del precio» es
+  // más honesto que callar. Quien decide si eso es una salida es `sinSalida`, no acá.
+  const elegibles = dentroDelAlcance
+    ? ordenar(alcanzables)
+    : [...combos].sort((a, b) => a.costoPtsPrecio - b.costoPtsPrecio || a.descuentoPct - b.descuentoPct);
+  const mejor = elegibles[0];
+  const segunda = elegibles[1] ?? null;
 
   const soloPrecio = combos.find((c) => c.piePct === p.piePct && c.plazoAnios === p.plazoCredito) ?? null;
+  // El contraste NO se filtra por alcance: mover solo el precio con el pie de hoy nunca
+  // agrega capital, así que siempre es alcanzable por construcción.
 
   // ── ¿EL MIX AGREGA ALGO? ──────────────────────────────────────────────────
   // Si mueve UNA sola dimensión y esa palanca ya se reporta sola, el mix está repitiendo
@@ -169,6 +233,8 @@ export function calcularMixPalancas(p: {
     plazoAniosDelta: mejor.plazoAnios - p.plazoCredito,
     descuentoSoloPrecioPct: soloPrecio ? soloPrecio.descuentoPct : null,
     costoDiaUnoUF: mejor.costoDiaUnoUF,
+    costoPtsPrecio: mejor.costoPtsPrecio,
+    dentroDelAlcance,
     costoDiaUnoBase: "pie_declarado",
     combinacionesQueCruzan: combos.length,
     combinacionesProbadas: probadas,
@@ -179,6 +245,7 @@ export function calcularMixPalancas(p: {
           piePct: segunda.piePct,
           plazoAnios: segunda.plazoAnios,
           costoDiaUnoUF: segunda.costoDiaUnoUF,
+          costoPtsPrecio: segunda.costoPtsPrecio,
         }
       : null,
     redundanteConPalancaSola,
