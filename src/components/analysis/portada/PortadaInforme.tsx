@@ -247,7 +247,7 @@ export function DocumentoFrame({ children, secciones = false, veredicto }: { chi
 
 function Wordmark({ small = false }: { small?: boolean }) {
   return (
-    <span className={`inline-flex items-baseline leading-none font-heading ${small ? "text-[11px]" : "text-[16px]"}`}>
+    <span className={`doc-wordmark inline-flex items-baseline leading-none font-heading ${small ? "text-[11px]" : "text-[16px]"}`}>
       <em className="italic font-normal" style={{ color: "var(--doc-tx3)", marginRight: "-0.05em" }}>re</em>
       <span className="font-bold" style={{ color: "var(--doc-tx)" }}>franco</span>
       <span className="font-body font-semibold" style={{ color: "var(--signal-red)", fontSize: "0.55em", letterSpacing: "0.08em", marginLeft: 1 }}>.ai</span>
@@ -330,6 +330,53 @@ export function DocTokens() {
         --doc-paper4:#E2DFD7;
         --doc-shadow:0 24px 60px rgba(20,19,17,.14);
       }
+      /* ═══════════════ REDISEÑO · TIPOGRAFÍA (contrato §1) ═══════════════
+         Todo lo de acá cuelga de «.doc-r2», que solo existe con el interruptor de
+         «rediseno-flag.ts» encendido. Con el interruptor apagado ninguna de estas
+         reglas matchea y el informe se sirve exactamente como hoy.
+
+         POR QUÉ SE REAPUNTAN LOS TOKENS EN VEZ DE REESCRIBIR 115 REGLAS. El mono se
+         pide en 115 lugares del informe y la serif en 14. Reescribirlos uno por uno
+         sería un diff de 129 reglas que hay que revisar a mano, y que además habría
+         que poder apagar. Reapuntar el token hace el mismo trabajo en tres líneas y
+         se revierte borrando el bloque. Los tamaños y pesos de cada pieza NO se tocan
+         acá: son de las partes 2, 3 y 4.
+
+         LA SERIF SE CAPTURA ANTES DE REAPUNTAR. «--font-serif» se declara fuera de
+         «.doc-r2», porque dentro del mismo bloque donde se redefine «--font-heading»
+         la variable ya resolvería al valor nuevo — y el titular del hero perdería la
+         serif que el contrato le reserva.
+
+         Y se captura en «body», NO en «:root»: next/font define «--font-heading» en la
+         clase que va en «body», así que en «html» la variable no existe y la captura
+         resolvía a nada — medido, el titular caía a Georgia. */
+      body{--font-serif:var(--font-heading)}
+      .doc-r2{
+        --font-body:var(--font-ui);
+        --font-mono:var(--font-ui);
+        --font-heading:var(--font-ui);
+        font-family:var(--font-ui, system-ui);
+      }
+      /* Source Serif 4 se reserva al titular del hero. Todo lo demás es Inter.
+         EXCEPTO el wordmark: «refranco.ai» es la marca, no tipografía del informe, y su
+         serif está fijada en CLAUDE.md («re» Light itálica + «franco» Bold). Reapuntar
+         «--font-heading» se lo llevaba puesto — medido en el navegador. */
+      .doc-r2 .doc-headline,
+      .doc-r2 .doc-wordmark{font-family:var(--font-serif, Georgia, serif)}
+      .doc-r2 .doc-headline{font-weight:600}
+
+      /* LA COLUMNA DE CIFRAS ALINEA POR «tabular-nums», NO POR LA FUENTE.
+         El mono garantizaba el mismo ancho de dígito por construcción. Inter es
+         proporcional: su «1» mide 6,20 px y su «4» mide 9,84 a 15 px, y sin esta
+         declaración dos cifras del mismo largo se separan hasta 27 px — más de un
+         cuarto del ancho de la columna. Con «tabular-nums» los diez dígitos miden
+         9,55 y la alineación es EXACTAMENTE la del mono: cero de diferencia en los
+         cuatro pares medidos. Va en la clase de la columna y no suelta, y el
+         catch-test la fija: sin ella la alineación se cae en silencio. */
+      .doc-r2 .hz-n,
+      .doc-r2 .num-cell .v,
+      .doc-r2 .doc-keyfig-fig{font-variant-numeric:tabular-nums}
+
       /* ═══ PÁGINA POR SECCIONES (T2, contrato CONGELADO 02-sep-2026) ═══
          Fondo alternado a sangre: cada sección sangra el padding horizontal de
          .doc-page con márgenes negativos y trae su propio padding. */

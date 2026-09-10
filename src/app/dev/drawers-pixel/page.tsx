@@ -72,7 +72,12 @@ function Inner() {
   // Goal "LTR hereda piezas compartidas" (05-sep-2026) · `?row=providenciaLtr&comp=paginaLtr`
   // monta la página LTR completa con el recompute volcado de 7710a017.
   if (fix && !isSTR && comp === "paginaLtr") {
-    return (
+    // `?rediseno=1` abre las reglas del rediseno sin tocar la constante de
+    // `rediseno-flag.ts`. Envuelve en vez de pasar prop porque las reglas nuevas son
+    // descendentes (`.doc-r2 .hz-n`) y los tokens se heredan: un ancestro alcanza.
+    const envolver = (n: React.ReactNode) =>
+      sp.get("rediseno") === "1" ? <div className="doc-r2">{n}</div> : n;
+    return envolver(
       <PremiumResults
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         results={results as any}
@@ -97,7 +102,7 @@ function Inner() {
         isSharedView={false}
         isLoggedIn
         medianaResolvedAt={fix.medianaSnapshot?.resolvedAt ?? new Date().toISOString()}
-      />
+      />,
     );
   }
   if (!fix || !isSTR) return <div style={{ padding: 40 }}>fixture ?row=staRosaStr|grajalesStr (STR, con &comp=pagina o &comp=&lt;pieza&gt;) · providenciaLtr (&comp=paginaLtr) no encontrado</div>;
