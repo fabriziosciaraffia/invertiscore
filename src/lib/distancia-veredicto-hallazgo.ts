@@ -564,6 +564,37 @@ export function buildHallazgoDistanciaVeredicto(p: {
   const viasHastaComprar = exploradoComprar?.vias ?? null;
   const palancaHastaComprar = palancasHastaComprar?.[0] ?? null;
 
+  // ── EL MÍNIMO REAL HACIA COMPRAR, CUANDO QUEDA FUERA DEL TOPE ─────────────
+  // Espejo de `deltaMinimoFueraDeTope` (arriba), para el salto de dos bandas. Si el
+  // salto se exploró y NINGUNA palanca cruzó dentro de 30, el informe se quedaba sin
+  // el número: «más de un 30%» es el umbral, no el dato. Medido en c4ffe9a6, llegar a
+  // COMPRAR pedía −36,5% de precio, y eso no vivía en ninguna parte.
+  //
+  // Cuesta DOS bisecciones y solo se pagan en este caso — el mismo criterio con el que
+  // su hermano se computa solo en el estructural.
+  //
+  // El PIE queda fuera de los candidatos por la MISMA razón escrita arriba: su delta
+  // va en puntos porcentuales y estos dos en cambio relativo. Mezclarlos en el sort
+  // daría un «mínimo» que no es mínimo de nada.
+  let deltaMinimoComprarFueraDeTope: HallazgoDistanciaVeredicto["valor"]["deltaMinimoComprarFueraDeTope"] = null;
+  if (exploradoComprar && palancasHastaComprar!.length === 0) {
+    const candidatos: { palanca: "arriendo" | "precio"; deltaPct: number }[] = [];
+    const fArr = biseccionFactor(
+      (f) => alcanzaMeta(p.veredictoAtPatch({ arriendo: Math.round(p.arriendo * f) }), "COMPRAR"),
+      DIST_EXT_ARRIENDO_MAX,
+      true,
+    );
+    if (fArr != null) candidatos.push({ palanca: "arriendo", deltaPct: Math.round((fArr - 1) * 1000) / 10 });
+    const fPre = biseccionFactor(
+      (f) => alcanzaMeta(p.veredictoAtPatch({ precio: p.precioUF * f }), "COMPRAR"),
+      DIST_EXT_PRECIO_MIN,
+      false,
+    );
+    if (fPre != null) candidatos.push({ palanca: "precio", deltaPct: Math.round((fPre - 1) * 1000) / 10 });
+    candidatos.sort((a, b) => Math.abs(a.deltaPct) - Math.abs(b.deltaPct));
+    deltaMinimoComprarFueraDeTope = candidatos[0] ?? null;
+  }
+
   // Cercanía al umbral (1 = pegado al veredicto de arriba, 0 = en el tope o estructural).
   // Va DENTRO de `valor`, NO en magnitudContinua: ese campo lo leen los comparadores de la
   // pirámide y del hero, donde compite contra |Δscore|/25 — otra escala, otra pregunta.
@@ -689,6 +720,7 @@ export function buildHallazgoDistanciaVeredicto(p: {
       palancaHastaComprar,
       palancasHastaComprar,
       viasHastaComprar,
+      deltaMinimoComprarFueraDeTope,
       esEstructural,
       deltaMinimoFueraDeTope,
       topePct: topeAplicado,

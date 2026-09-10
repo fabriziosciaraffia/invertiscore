@@ -1012,6 +1012,21 @@ export interface HallazgoDistanciaVeredicto {
      *  su tope explorado (que es lo que permite decir «se probó hasta ahí»), y aquélla
      *  trae el ORDEN de recomendación, que no se puede derivar filtrando. */
     viasHastaComprar?: ViaDistancia[] | null;
+    /** El mínimo REAL hacia COMPRAR cuando NINGUNA palanca lo alcanza dentro del tope
+     *  de 30 — buscado en rango extendido (arriendo +150% · precio −70%), igual que
+     *  `deltaMinimoFueraDeTope` hace para el salto de una banda.
+     *
+     *  Existe por la misma razón que su hermano: «más de un 30%» es el UMBRAL, no el
+     *  dato, y deja al lector sin saber si está a 31% o a 80%. Medido en c4ffe9a6,
+     *  llegar a COMPRAR pedía −36,5% de precio y ese número no vivía en ninguna parte.
+     *
+     *  El PIE NO es candidato, deliberadamente: su delta va en puntos porcentuales y
+     *  estos dos en cambio relativo, así que el sort mezclaría unidades. Misma regla
+     *  que en `deltaMinimoFueraDeTope`.
+     *
+     *  `null` = se exploró y no hay (o el salto de dos bandas no aplica).
+     *  AUSENTE = fila vieja, NO CALCULADO. */
+    deltaMinimoComprarFueraDeTope?: { palanca: "arriendo" | "precio"; deltaPct: number } | null;
     /** Ninguna palanca cruza dentro del tope ⇒ no hay ajuste realista que lo salve. */
     esEstructural: boolean;
     /** Solo cuando `esEstructural`: el delta mínimo REAL buscado en rango extendido

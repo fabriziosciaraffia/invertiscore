@@ -160,11 +160,76 @@ const reglaDosBandas = (patch: { arriendo?: number; precio?: number; plazoCredit
   }
 }
 
+// ── 5 · el delta MÍNIMO a COMPRAR cuando queda fuera del tope ───────────────
+{
+  // Nada cruza a COMPRAR dentro de 30, pero el precio sí cruza en −40% (dentro del
+  // rango extendido −70%). Sin este campo el informe se queda sin el número y solo
+  // puede decir "más de un 30%", que es el umbral y no el dato.
+  const regla = (patch: { arriendo?: number; precio?: number; plazoCredito?: number; piePct?: number }): Veredicto => {
+    if (patch.precio != null) return patch.precio <= 1_800 ? "COMPRAR" : patch.precio <= 2_850 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+    if (patch.arriendo != null) return patch.arriendo >= 520_000 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+    return "BUSCAR OTRA";
+  };
+  const h = construir({ veredictoBase: "BUSCAR OTRA", regla });
+  const v = h?.valor;
+  if (!v) F("5 · el hallazgo no se construyó");
+  else if (v.esEstructural) F("5 · el caso cruza a AJUSTA por precio: no debía salir estructural");
+  else {
+    if ((v.palancasHastaComprar ?? []).length !== 0) F("5 · con esta regla nada cruza a COMPRAR dentro del tope 30");
+    const dm = v.deltaMinimoComprarFueraDeTope;
+    if (dm === undefined) F("5 · `deltaMinimoComprarFueraDeTope` no existe: el número de COMPRAR sigue sin calcularse");
+    else if (dm === null) F("5 · el precio cruza a COMPRAR en −40%, dentro del rango extendido: no puede ser null");
+    else {
+      if (dm.palanca !== "precio") F(`5 · el candidato debía ser el precio (el arriendo no cruza ni a +150%), dio «${dm.palanca}»`);
+      if (Math.abs(dm.deltaPct + 40) > 0.6) F(`5 · el mínimo debía rondar −40%, dio ${dm.deltaPct}%`);
+    }
+  }
+}
+
+// ── 6 · el PIE queda fuera del sort de candidatos ───────────────────────────
+{
+  // El pie cruza a COMPRAR con un salto ENORME en puntos porcentuales (0 → 90) y el
+  // precio con −40% en cambio relativo. Si el pie entrara al sort, |90| vs |40|
+  // ordenaría mal dos unidades distintas — la regla ya escrita para el estructural.
+  const regla = (patch: { arriendo?: number; precio?: number; plazoCredito?: number; piePct?: number }): Veredicto => {
+    if (patch.piePct != null) return patch.piePct >= 90 ? "COMPRAR" : patch.piePct >= 25 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+    if (patch.precio != null) return patch.precio <= 1_800 ? "COMPRAR" : patch.precio <= 2_850 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+    return "BUSCAR OTRA";
+  };
+  const h = construir({ veredictoBase: "BUSCAR OTRA", piePct: 10, regla });
+  const dm = h?.valor.deltaMinimoComprarFueraDeTope;
+  if (dm && dm.palanca !== "precio" && dm.palanca !== "arriendo") {
+    F(`6 · el pie no puede ser candidato del delta fuera de tope (puntos vs cambio relativo), dio «${dm.palanca}»`);
+  }
+}
+
+// ── 7 · ni el rango extendido cruza ⇒ null, y ausente ≠ null ────────────────
+{
+  // Nada llega a COMPRAR ni a −70% de precio ni a +150% de arriendo: null explícito.
+  const regla = (patch: { arriendo?: number; precio?: number; plazoCredito?: number; piePct?: number }): Veredicto => {
+    if (patch.precio != null) return patch.precio <= 2_850 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+    return "BUSCAR OTRA";
+  };
+  const h = construir({ veredictoBase: "BUSCAR OTRA", regla });
+  const v = h?.valor;
+  if (v && !v.esEstructural && v.deltaMinimoComprarFueraDeTope !== null) {
+    F(`7 · nada llega a COMPRAR ni en rango extendido: debía ser null explícito, dio ${JSON.stringify(v.deltaMinimoComprarFueraDeTope)}`);
+  }
+  // Y desde AJUSTA el campo no se calcula: null, nunca un número.
+  const desdeAjusta = construir({
+    veredictoBase: "AJUSTA SUPUESTOS",
+    regla: (patch) => (patch.precio != null && patch.precio <= 2_800 ? "COMPRAR" : "AJUSTA SUPUESTOS"),
+  });
+  if (desdeAjusta && desdeAjusta.valor.deltaMinimoComprarFueraDeTope !== null) {
+    F("7 · desde AJUSTA el salto de dos bandas no existe: el campo debe ser null");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runDistanciaComprarTier(): { hard: number } {
   console.log("\n─── TIER DISTANCIA-COMPRAR (las cuatro vías al salto de dos bandas · distancia-veredicto-hallazgo.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — las cuatro vías sobreviven, coherentes con el campo viejo, con tope 30, y ausente ≠ no cruza");
+    console.log("  ✓ VERDE — las cuatro vías sobreviven, coherentes con el campo viejo, con tope 30, el mínimo fuera de tope a COMPRAR y ausente ≠ no cruza");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
