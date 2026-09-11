@@ -192,16 +192,14 @@ function EcuacionRecomendacion({ bloque, veredicto }: { bloque: BloqueLoQueHaria
           </span>
         </div>
       ))}
-      {(mix.movimiento.pie || mix.movimiento.plazo) && (
+      {/* UNA SOLA FILA: los chips Y el descuento. «Negocias» era un rótulo del molde
+          anterior, cuando el mix iba solo y la ecuación tenía que partirlo en dos pasos.
+          Con las palancas solas arriba, la columna de rótulos se lee entera como una
+          lista de CAMINOS, y «Negocias» quedaba adentro pareciendo un cuarto camino
+          cuando es parte de éste. Plegado, cada fila es un camino y ninguno se parte. */}
+      {(mix.movimiento.pie || mix.movimiento.plazo || mix.descuento || mix.sinDescuento) && (
         <div className="rec-row">
-          {/* «Con lo tuyo» y no «Cambias»: el pie y el plazo son lo único que el lector
-              mueve sin pedirle permiso a nadie, y es lo que distingue este camino de los
-              de arriba, que dependen del vendedor o del mercado. */}
           <span className="rec-k">Con lo tuyo</span>
-          {/* EL «+» VIAJA CON EL CHIP DE LA IZQUIERDA. Suelto entre dos chips, a 390 px
-              el salto de línea cae justo antes y el signo queda solo arriba del segundo
-              chip, como si sumara con la nada. Envuelto con el primero en un grupo que
-              no rompe, el corte pasa DESPUÉS del signo. */}
           <span className="rec-v rec-chips">
             {mix.movimiento.pie && (
               <span className="rec-chip-g">
@@ -216,30 +214,21 @@ function EcuacionRecomendacion({ bloque, veredicto }: { bloque: BloqueLoQueHaria
                 Plazo <s>{mix.movimiento.plazo.de}</s> <b>{mix.movimiento.plazo.a} años</b>
               </span>
             )}
+            {/* El descuento cierra la fila: es la parte del mix que se le pide a un
+                tercero, así que va DESPUÉS de lo que pone el lector y con su flecha. */}
+            {(mix.descuento || mix.sinDescuento) && (
+              <span className="rec-dcto-g">
+                {(mix.movimiento.pie || mix.movimiento.plazo) && <i className="rec-fl">→</i>}
+                {mix.descuento
+                  ? <b className="rec-dcto">{mix.descuento} <small>dcto.</small></b>
+                  : <b className="rec-sin">{mix.sinDescuento}</b>}
+              </span>
+            )}
           </span>
         </div>
       )}
-      <div className="rec-row">
-        <span className="rec-k">Negocias</span>
-        <span className="rec-v">
-          {mix.descuento ? <b className="rec-dcto">{mix.descuento}</b> : <b className="rec-sin">{mix.sinDescuento}</b>}
-          {/* EL TACHADO NO REPITE LA CIFRA GRANDE. `contraste.a` es, casi siempre, el
-              mismo descuento que ya se lee arriba a 30 px: dibujar «−24,1% → −4,8%»
-              debajo de un «−4,8%» enorme decía dos veces lo mismo (medido en el DOM).
-              Lo que sí informa es el `de`: cuánto haría falta negociando SOLO el
-              precio, que es el nombre que el motor le da al campo
-              (`descuentoSoloPrecioPct`). Cuando los dos números difieren, la flecha
-              vuelve porque entonces sí hay dos cosas que comparar. */}
-          {/* Y si «Solo el precio» ya está como fila propia, el tachado repetiría esa
-              misma cifra dos veces en la misma card. Con la fila arriba, sobra. */}
-          {mix.contraste && solas.length === 0 && (
-            <em className="rec-contra">
-              <s>{mix.contraste.de}</s>{" "}
-              {mix.contraste.a === mix.descuento ? "solo con el precio" : <>→ <b>{mix.contraste.a}</b></>}
-            </em>
-          )}
-        </span>
-      </div>
+      {/* RESULTADO: adónde llegan TODOS los caminos de arriba. Por eso va último y sin
+          chip: no es una alternativa más, es el destino común. */}
       <div className="rec-row">
         <span className="rec-k">Resultado</span>
         <span className="rec-v rec-trans">

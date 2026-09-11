@@ -735,8 +735,12 @@ export function DocTokens() {
 
       /* — LA ECUACIÓN — */
       .doc-r2 .rec-eq{margin:0 0 20px}
+      /* LA COLUMNA DE RÓTULOS pasa de 96 a 128 px. Los rótulos dejaron de ser de una
+         palabra —«Solo el arriendo» es el más largo— y a 96 envolvía en dos líneas. 128
+         es lo medido para que entre en una sola a 700. En móvil se deja envolver: a 390
+         el ancho se lo lleva el valor, que es lo que hay que leer. */
       .doc-r2 .rec-row{
-        display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:baseline;
+        display:grid;grid-template-columns:128px 1fr;gap:14px;align-items:baseline;
         padding:13px 0;border-top:1px solid rgba(255,255,255,.14)}
       .doc-r2 .rec-row:first-child{border-top:none;padding-top:0}
       .doc-r2 .rec-k{
@@ -761,11 +765,16 @@ export function DocTokens() {
       .doc-r2 .rec-chip-g{display:inline-flex;align-items:center;gap:10px;white-space:nowrap}
       .doc-r2 .rec-mas{font-style:normal;opacity:.5;font-size:15px}
 
-      /* el descuento: 30 px y no más — compite con la cifra del hero */
+      /* EL DESCUENTO VIVE DENTRO DE «Con lo tuyo», no en una fila propia. Plegado, así
+         que ya no es un bloque: va en línea con los chips, detrás de su flecha. Baja de
+         30 a 22 px por lo mismo que no subía de 30 antes — en una fila compartida, a 30
+         se come los chips que tiene al lado. */
+      .doc-r2 .rec-dcto-g{display:inline-flex;align-items:baseline;gap:9px;white-space:nowrap}
       .doc-r2 .rec-dcto{
-        font-family:var(--font-mono, ui-monospace);font-size:30px;font-weight:700;
-        line-height:1.05;letter-spacing:-.02em;display:block}
-      .doc-r2 .rec-sin{font-size:15px;font-weight:600;display:block}
+        font-family:var(--font-mono, ui-monospace);font-size:22px;font-weight:700;
+        line-height:1.1;letter-spacing:-.02em}
+      .doc-r2 .rec-dcto small{font-size:12.5px;font-weight:500;opacity:.62;letter-spacing:normal}
+      .doc-r2 .rec-sin{font-size:14px;font-weight:600}
       .doc-r2 .rec-contra{
         display:block;font-style:normal;font-family:var(--font-mono, ui-monospace);
         font-size:13px;opacity:.72;margin-top:5px}

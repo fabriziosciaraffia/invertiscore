@@ -125,13 +125,19 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
 {
   const fila = reglaDe(".doc-r2 .rec-row", REC);
   if (!fila) F("5 · no existe la fila de la ecuación");
-  else if (!/grid-template-columns:\s*96px\s+1fr/.test(fila)) {
-    F("5 · el rótulo de la ecuación dejó de ser de 96 px fijos. Con «auto» cada fila alinea su valor en un sitio distinto y la columna de valores deja de leerse como columna.");
+  // 128 y no 96: los rótulos dejaron de ser de una palabra cuando entraron las
+  // alternativas —«Solo el arriendo» es el más largo— y a 96 envolvían en dos líneas.
+  // Medido: a 128 los cuatro entran en una sola línea a 700 px.
+  else if (!/grid-template-columns:\s*128px\s+1fr/.test(fila)) {
+    F("5 · el rótulo de la ecuación dejó de ser de 128 px fijos. Con «auto» cada fila alinea su valor en un sitio distinto y la columna de valores deja de leerse como columna; con menos, «Solo el arriendo» envuelve.");
   }
   const movil = REC.slice(REC.indexOf("max-width: 767px"));
   if (!/grid-template-columns:\s*78px\s+1fr/.test(movil)) F("5 · el rótulo no baja a 78 px en móvil");
+  // El descuento vive PLEGADO dentro de «Con lo tuyo», compartiendo fila con los chips,
+  // así que baja de 30 a 22: a 30 se comía los chips que tiene al lado.
   const dcto = reglaDe(".doc-r2 .rec-dcto", REC);
-  if (dcto && !/font-size:\s*30px/.test(dcto)) F("5 · el descuento dejó de ir a 30 px: más grande compite con la cifra del hero");
+  if (dcto && !/font-size:\s*22px/.test(dcto)) F("5 · el descuento dejó de ir a 22 px. Plegado en la fila del mix comparte ancho con los chips; a 30 se los come.");
+  if (!reglaDe(".doc-r2 .rec-dcto-g", REC)) F("5 · el descuento perdió su grupo en línea: plegado va junto a los chips, no como bloque aparte");
 }
 
 // ── 6 · los capítulos: sin romano, con foco ───────────────────────────────
@@ -253,17 +259,21 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
       F(`12 · falta o cambió el rótulo de alternativa de «${palanca}»: se esperaba «${rotulo}». El artículo va escrito y no derivado — «tarifa» y «gestión» son femeninas.`);
     }
   }
-  // Y el tachado no repite lo que la fila «Solo el precio» ya dice.
-  if (!/mix\.contraste && solas\.length === 0/.test(BLO)) {
-    F("12 · el tachado del contraste volvió a dibujarse junto a las filas solas: repetiría la misma cifra dos veces en la misma card");
+  // «Negocias» NO VUELVE. Era el rótulo del molde anterior, cuando el mix iba solo y la
+  // ecuación lo partía en dos pasos. Con las alternativas arriba, la columna de rótulos
+  // se lee entera como una lista de CAMINOS y «Negocias» quedaba adentro pareciendo un
+  // cuarto camino cuando es parte del mix. El descuento va plegado en «Con lo tuyo».
+  if (/>Negocias</.test(BLO)) {
+    F("12 · volvió la fila «Negocias». El descuento es parte de «Con lo tuyo», no un camino aparte: plegado, cada fila de la columna es un camino.");
   }
+  if (!/rec-dcto-g/.test(BLO)) F("12 · el descuento dejó de ir plegado dentro de la fila del mix");
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runRecomendacionRedisenoTier(): { hard: number } {
   console.log("\n─── TIER RECOMENDACIÓN-REDISEÑO (contrato §5 y §7 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 96/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, la recomendación apuntando SIEMPRE a Comprar, la fila de capítulo sin bajada y con la cifra apellidada, «Resultado» también sin mix, y las palancas solas junto al mix como alternativas");
+    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 128/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, la recomendación apuntando SIEMPRE a Comprar, la fila de capítulo sin bajada y con la cifra apellidada, «Resultado» también sin mix, y las palancas solas junto al mix como alternativas");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
