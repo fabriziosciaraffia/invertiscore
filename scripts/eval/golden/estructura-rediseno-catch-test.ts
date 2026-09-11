@@ -427,9 +427,11 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
   if (!/<MarcaSeccion seccion="recomendacion"/.test(HERO)) {
     F("17 · la sección «recomendacion» no emite su marca de telemetría");
   }
-  // 17f · STR no recibe el orden nuevo: su hero sigue montando la recomendación adentro.
-  if (/<SeccionInforme id="recomendacion"/.test(HSTR)) {
-    F("17 · el hero de STR pasó a emitir la sección «recomendacion». STR no tuvo su pasada de rediseño: el orden nuevo es de LTR (contrato §11).");
+  // 17f · STR recibe el MISMO orden desde el bloque B de «STR al rediseño» (11-sep-2026):
+  // su hero emite la recomendación como sección con caja, detrás de su propio interruptor.
+  // Lo fija en detalle el tier estructura-str-rediseno; acá solo que no volvió atrás.
+  if (!/<SeccionInforme id="recomendacion"[^>]*\bcaja\b/.test(HSTR)) {
+    F("17 · el hero de STR dejó de emitir la sección «recomendacion» con caja. Desde el bloque B el orden de §2 es de las dos modalidades (contrato §11).");
   }
 }
 

@@ -32,6 +32,14 @@
 //
 //   6. LA RUTA DEV monta el provider para STR con `?rediseno=1`, o no hay cómo verlo.
 //
+// BLOQUE B (hero y recomendación en su sitio):
+//
+//   7. EL ORDEN DE §2 LO EMITE `HeroStrDictamen`, como `HeroLTR`: hero → `{hallazgos}` →
+//      recomendación con caja, con su marca de telemetría. La página deja de envolver al
+//      hero en su sección (con el envoltorio el orden es inalcanzable) y le pasa la
+//      sección de hallazgos ya armada; el camino viejo monta la suya. El hero no se monta
+//      vacío. `PosicionFranco` recibe `estado` (§5) y el título del contrato.
+//
 // Corre dentro del QUICK (tier "estructura-str-rediseno") y standalone:
 //   node --import tsx scripts/eval/golden/estructura-str-rediseno-catch-test.ts
 // ============================================================================
@@ -90,19 +98,25 @@ function enOrden(txt: string, agujas: string[]): string | null {
   if (!/<SeccionInforme id="portada" tono="paper" caja=\{rediseno\}>/.test(STR)) {
     F("2 · la portada STR no pide `caja={rediseno}`: es el hero del contrato §3 y una de las dos cajas de §2");
   }
-  // Bloque A: UNA sola caja en STR (la portada). La recomendación llega con el bloque B.
-  const cajas = [...STR.matchAll(/<SeccionInforme\b[^>]*\bcaja\b/g)].length;
-  if (cajas !== 1) F(`2 · hay ${cajas} secciones con «caja» en la página STR y el bloque A pide exactamente 1 (la portada). La segunda —la recomendación— entra con el bloque B, cuando salga del hero.`);
+  // Las DOS cajas de §2 y nada más: la portada en la página y la recomendación en el hero.
+  const cajas = [...(STR + HSTR).matchAll(/<SeccionInforme\b[^>]*\bcaja\b/g)].length;
+  if (cajas !== 2) F(`2 · hay ${cajas} secciones con «caja» entre la página STR y HeroStrDictamen, y §2 pide 2: la portada y la recomendación. Si nació una tercera, el contrato dice que va suelta sobre el papel.`);
   // El hero recibe `razones` SOLO en el camino viejo: con el rediseño los hallazgos van a su sección.
   if (!/razones=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?!rediseno && strPodada && hallazgosOrdenadosSTR\.length > 0 \? \(/.test(STR)) {
     F("2 · el hero STR sigue recibiendo `razones` con el rediseño encendido: los hallazgos se dibujarían DENTRO del hero y otra vez en su sección, o solo adentro. §2 y §4: sección propia, suelta, después del hero.");
   }
-  // La sección existe en los DOS caminos con el rediseño, y en el viejo solo con prosa vieja.
-  if (!/\{\(rediseno \|\| !strPodada\) && hallazgosOrdenadosSTR\.length > 0 && \(/.test(STR)) {
-    F("2 · la sección «principales-hallazgos» de STR no se monta con `(rediseno || !strPodada)`. Es el gate de la prosa que ya dejó sin hallazgos a LTR tres veces: con el rediseño la sección va SIEMPRE, podada o vieja.");
+  // Con el rediseño la sección va SIEMPRE —podada o vieja— y viaja al hero por `hallazgos`,
+  // que es quien la monta en el medio del orden (bloque B). No cuelga del gate de la prosa.
+  const slot = STR.match(/hallazgos=\{[\s\S]*?\n\s{12}\}/)?.[0] ?? "";
+  if (!/hallazgos=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?rediseno && hallazgosOrdenadosSTR\.length > 0 \? \(/.test(STR)) {
+    F("2 · la página STR no le pasa a HeroStrDictamen la sección de hallazgos con `rediseno && hallazgosOrdenadosSTR.length > 0`. Es el gate de la prosa que ya dejó sin hallazgos a LTR tres veces: con el rediseño la sección va SIEMPRE, podada o vieja.");
   }
-  if (!/titulo=\{rediseno && strPodada \? lineaQueDeclara\(veredicto\) : "Qué determina el veredicto"\}/.test(STR)) {
-    F("2 · el título de la sección de hallazgos STR no es la línea que declara con prosa podada y el título viejo con prosa vieja (§10)");
+  if (!/titulo=\{strPodada \? lineaQueDeclara\(veredicto\) : "Qué determina el veredicto"\}/.test(slot)) {
+    F("2 · el título de la sección de hallazgos STR (en el slot `hallazgos`) no es la línea que declara con prosa podada y el título viejo con prosa vieja (§10)");
+  }
+  // Y el camino viejo conserva la suya, SOLO sin rediseño: montada en los dos se vería dos veces.
+  if (!/\{!rediseno && !strPodada && hallazgosOrdenadosSTR\.length > 0 && \(/.test(STR)) {
+    F("2 · la sección de hallazgos del camino viejo dejó de excluir el rediseño. Con el rediseño encendido HeroStrDictamen ya la monta: sin el gate, los hallazgos se dibujan DOS veces.");
   }
   // Y el hero no repite la línea que declara cuando la sección ya la lleva.
   if (!/const rediseno = useRediseno\(\);/.test(HSTR)) F("2 · HeroStrDictamen no lee el interruptor");
@@ -174,6 +188,37 @@ function enOrden(txt: string, agujas: string[]): string | null {
   if (!/className="tipo-line"/.test(ZONA)) F("5 · la tipo-line desapareció del camino viejo: ese informe no cambia hasta que se encienda");
 }
 
+// ── 7 · bloque B: hero → hallazgos → recomendación, emitidos por HeroStrDictamen ──
+{
+  // 7a · la recomendación es sección propia, caja, con su marca, y la emite el hero.
+  const iRec = HSTR.indexOf('<SeccionInforme id="recomendacion"');
+  if (iRec === -1) {
+    F("7 · HeroStrDictamen no emite la sección «recomendacion». La recomendación sigue DENTRO del hero y el lector lee la conclusión antes que lo que la sostiene (§2).");
+  } else {
+    const abre = HSTR.slice(iRec, HSTR.indexOf(">", iRec));
+    if (!/\bcaja\b/.test(abre)) F("7 · la sección «recomendacion» de STR no pide `caja`: es la segunda de las dos de §2");
+    const iHall = HSTR.indexOf("{hallazgos}");
+    if (iHall === -1) F("7 · HeroStrDictamen no monta el slot `{hallazgos}`, que es lo que va en el medio del orden");
+    else if (iHall > iRec) F("7 · en HeroStrDictamen el slot `{hallazgos}` quedó DESPUÉS de la recomendación: el orden de §2 es hero → hallazgos → recomendación");
+    if (!/<MarcaSeccion seccion="recomendacion" tipo="str"/.test(HSTR)) F("7 · la sección «recomendacion» de STR no emite su marca de telemetría");
+  }
+  // 7b · el hero no se monta vacío, y el camino viejo sigue siendo UNA sección.
+  if (!/const heroTieneCuerpo\s*=/.test(HSTR)) F("7 · HeroStrDictamen no decide si el hero tiene cuerpo propio: con prosa podada y sin apertura quedaría una sección vacía con su margen");
+  if (!/\{heroTieneCuerpo && \(/.test(HSTR)) F("7 · la sección «hero» de STR se monta sin condición");
+  if (!/if \(!rediseno\) \{\s*return \(\s*<SeccionInforme id="hero" tono="paper2">/.test(HSTR)) {
+    F("7 · con el rediseño apagado HeroStrDictamen tiene que devolver UNA sección «hero» con todo adentro, como siempre: es lo que deja al informe viejo byte a byte igual");
+  }
+  if (!/<MarcaSeccion seccion="hero" tipo="str"/.test(HSTR)) F("7 · la marca de telemetría del hero no viaja con la sección (se emitía en la página, que ya no la envuelve)");
+  // 7c · la página ya no envuelve al hero, y le pasa las dos cosas que necesita.
+  if (/<SeccionInforme id="hero"/.test(STR)) F("7 · la página STR volvió a envolver a HeroStrDictamen en la sección «hero»: con ese envoltorio todo lo que el hero emita queda ANIDADO y el orden de §2 es inalcanzable");
+  if (!/<HeroStrDictamen[\s\S]{0,700}hallazgos=\{/.test(STR)) F("7 · la página STR no le pasa `hallazgos` a HeroStrDictamen");
+  if (!/<HeroStrDictamen[\s\S]{0,700}accessLevel=\{accessLevel\}/.test(STR)) F("7 · la página STR no le pasa `accessLevel` a HeroStrDictamen, que ahora emite las marcas");
+  // 7d · la recomendación recibe el estado de §5 y el título del contrato, solo con el rediseño.
+  if (!/estado=\{rediseno \? estadoRec : undefined\}/.test(HSTR)) F("7 · PosicionFranco no recibe `estado` desde el hero STR (§5: la bajada se dibuja por estado)");
+  if (!/estadoRecomendacion\(veredicto,/.test(HSTR)) F("7 · el estado de la recomendación STR no sale de `estadoRecomendacion`, la fuente única de LTR");
+  if (!/titulo=\{rediseno \? "La recomendación de Franco" : /.test(HSTR)) F("7 · el título de la caja no es «La recomendación de Franco» con el rediseño (§5)");
+}
+
 // ── 6 · la ruta dev enciende STR con ?rediseno=1 ────────────────────────────
 {
   const i = DEV.indexOf('comp === "pagina"');
@@ -185,9 +230,9 @@ function enOrden(txt: string, agujas: string[]): string | null {
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runEstructuraStrRedisenoTier(): { hard: number } {
-  console.log("\n─── TIER ESTRUCTURA-STR-REDISEÑO (contrato §11 · bloque A · 0 tokens) ───");
+  console.log("\n─── TIER ESTRUCTURA-STR-REDISEÑO (contrato §11 · bloques A y B · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el interruptor STR propio y apagado, la portada en caja, los hallazgos en su sección en los dos caminos, los títulos de §10, tarifa y ocupación primero y destacadas con el supuesto encima, y la zona con ocupación · tarifa · comparables, pie con fecha y sin tipo-line");
+    console.log("  ✓ VERDE — el interruptor STR propio y apagado, las dos cajas de §2 en el orden hero → hallazgos → recomendación emitido por el hero STR, los hallazgos en su sección en los dos caminos sin colgar de la prosa, el hero que no se monta vacío, la recomendación con estado y título del contrato, los títulos de §10, tarifa y ocupación primero y destacadas con el supuesto encima, y la zona con ocupación · tarifa · comparables, pie con fecha y sin tipo-line");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
