@@ -15,7 +15,7 @@
     },
     "GE-2": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 60,
+      "score": 64,
       "N": 13,
       "tirPct": 7.61,
       "multiplicadorCapital": 1.9224283791734627,
@@ -27,7 +27,7 @@
     },
     "GE-4": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 55,
+      "score": 58,
       "N": 13,
       "tirPct": 13.98,
       "multiplicadorCapital": 2.966959364318719,
@@ -39,7 +39,7 @@
     },
     "GE-5": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 54,
+      "score": 57,
       "N": 13,
       "tirPct": 8.61,
       "multiplicadorCapital": 2.068720300907959,
@@ -75,7 +75,7 @@
     },
     "GE-PJ": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 60,
+      "score": 64,
       "N": 13,
       "tirPct": 7.61,
       "multiplicadorCapital": 1.9224283791734627,
