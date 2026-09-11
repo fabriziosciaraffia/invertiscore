@@ -57,7 +57,7 @@ function paleta(): { oscuro: Record<string, string>; claro: Record<string, strin
   const fin = CSS.indexOf("REDISEÑO · TIPOGRAFÍA", ini);
   const sacar = (txt: string) => {
     const out: Record<string, string> = {};
-    for (const m of txt.matchAll(/--(page|card|sunk|line2|line-sunk|line)\s*:\s*(#[0-9A-Fa-f]{6})/g)) {
+    for (const m of txt.matchAll(/--(page|card|sunk|line2|line-sunk|line|up)\s*:\s*(#[0-9A-Fa-f]{6})/g)) {
       if (!out[m[1]]) out[m[1]] = m[2].toUpperCase();
     }
     return out;
@@ -136,11 +136,63 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
   }
 }
 
+// ── 6 · el par direccional: --signal-red baja, --up sube ──────────────────
+{
+  // «--up» es el unico token DIRECCIONAL que el contrato (§1) pide y el codigo no
+  // tenia. Se publica con la escala para que nadie lo escriba a mano el dia que lo
+  // monte: las flechas de hallazgo (§3) y las pildoras de zona (§8) lo van a pedir.
+  const SIGNAL = "#C8323C"; // de marca, un solo valor para los dos temas (globals.css)
+  const PISO_AA = 4.5;
+  const PISO_PAR = 2.0;
+  const Y = (hex: string) => {
+    const h = hex.replace("#", "");
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  };
+  const contraste = (a: string, b: string) => {
+    const [x, y] = [Y(a), Y(b)].sort((p, q) => q - p);
+    return (x + 0.05) / (y + 0.05);
+  };
+  for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) {
+    const up = toks["up"];
+    if (!up) { F(`6 · falta --up en ${tema}: el contrato §1 lo pide para las flechas de hallazgo y las píldoras de zona`); continue; }
+    // Pinta texto y píldoras, así que tiene que leerse sobre las dos superficies.
+    for (const sup of ["page", "card"] as const) {
+      const fondo = toks[sup];
+      if (!fondo) continue;
+      const r = contraste(up, fondo);
+      if (r < PISO_AA) F(`6 · ${tema}: --up sobre --${sup} da ${r.toFixed(2)}:1, bajo el piso AA de ${PISO_AA}`);
+    }
+    // Lo ÚNICO que hace direccional a un color es distinguirse del otro sentido.
+    const d = Math.abs(Lstar(up) - Lstar(SIGNAL));
+    if (d < PISO_PAR) {
+      F(`6 · ${tema}: --up y --signal-red quedan a ΔL*=${d.toFixed(2)} — si las dos direcciones se leen igual, la dirección la tiene que decir otra cosa`);
+    }
+  }
+  // Y NO SE ESCRIBE A MANO. Un hex direccional suelto en una regla es el token que no
+  // se usó; el dia que cambie el valor, esa pieza se queda con el viejo en silencio.
+  // SIN COMENTARIOS: un hex citado en la tabla de medición del bloque no pinta nada.
+  const bloqueR2 = CSS.slice(CSS.indexOf("REDISEÑO · PALETA")).replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const hex of ["#2B558F", "#6C9BE0"]) {
+    const fuera = [...bloqueR2.matchAll(new RegExp(hex, "gi"))].length;
+    const declarado = [...bloqueR2.matchAll(new RegExp(`--up\s*:\s*${hex}`, "gi"))].length;
+    if (fuera > declarado) {
+      F(`6 · ${hex} aparece ${fuera - declarado} vez(ces) fuera de la declaración de --up: el color direccional va por token, no hardcodeado`);
+    }
+  }
+  // Las flechas de hallazgo siguen en UNA sola tinta: colorearlas es §3 y va con el
+  // hero. Si alguien las pinta acá, se lleva puesta la decisión «SÍMBOLO, NO COLOR».
+  const hzfl = CSS.split("\n").find((l) => l.includes(".hz-fl{")) ?? "";
+  if (hzfl && /var\(--up\)|var\(--signal-red\)/.test(hzfl)) {
+    F("6 · .hz-fl pasó a color direccional. Eso es §3 (hero, 4b) y revierte «SÍMBOLO, NO COLOR» del 09-sep, que está escrita en PrincipalesHallazgos.tsx: no entra de pasada.");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPaletaRedisenoTier(): { hard: number } {
   console.log("\n─── TIER PALETA-REDISEÑO (contrato §1 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — escala completa en los dos temas, superficies distinguibles, cada línea se ve sobre la suya, la dirección sigue al tema y el semáforo del dato queda intacto");
+    console.log("  ✓ VERDE — escala completa en los dos temas, superficies distinguibles, cada línea se ve sobre la suya, la dirección sigue al tema, el par direccional --signal-red/--up se distingue y pasa AA, y el semáforo del dato queda intacto");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

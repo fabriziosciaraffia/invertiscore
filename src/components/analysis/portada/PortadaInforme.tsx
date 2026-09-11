@@ -598,6 +598,7 @@ export function DocTokens() {
         --page:#0C0C0E; --card:#1A1A1E; --sunk:#232328;
         --line:#232327; --line2:#37373D; --line-sunk:#2C2C30;
         --tx:#FAFAFA; --tx2:#D4D4D8; --tx3:#A1A1AA; --tx4:#71717A;
+        --up:#6C9BE0;
         --doc-paper:var(--page); --doc-paper2:var(--card);
         --doc-paper3:var(--sunk); --doc-paper4:var(--sunk);
         --doc-line:var(--line); --doc-line2:var(--line2);
@@ -610,7 +611,34 @@ export function DocTokens() {
         --page:#FFFFFF; --card:#F4F4F6; --sunk:#EBEBEE;
         --line:#E9E9EC; --line2:#D6D6DB; --line-sunk:#E0E0E3;
         --tx:#18181B; --tx2:#3F3F46; --tx3:#71717A; --tx4:#A1A1AA;
+        --up:#2B558F;
       }
+
+      /* EL PAR DIRECCIONAL: «--signal-red» BAJA, «--up» SUBE (contrato §1).
+         «--signal-red» ya existía —es de marca, vive en globals.css y vale lo mismo en
+         los dos temas—; «--up» no existía en el código y sí en el contrato, que lo pide
+         para las flechas de hallazgo (§3) y las píldoras de zona (§8). Se publica acá,
+         con la escala, para que nadie lo escriba a mano cuando llegue a usarlo.
+
+         DOS VALORES, uno por tema, porque un azul que se lee sobre blanco desaparece
+         sobre negro. Medido en contraste WCAG:
+
+           claro   #2B558F  7,50:1 sobre --page · 6,83:1 sobre --card
+           oscuro  #6C9BE0  6,89:1 sobre --page · 6,12:1 sobre --card
+
+         Los cuatro pasan AA. Y el par SE DISTINGUE entre sí, que es lo único que hace
+         direccional a un color: ΔL* 9,51 en claro y 17,87 en oscuro contra
+         «--signal-red». Si los dos se leyeran igual de claros, la dirección la tendría
+         que decir otra cosa.
+
+         ES EL MISMO HEX QUE «--verdict» de COMPRAR y NO es el mismo sistema: aquel
+         nombra un veredicto, éste dice si un dato mejora o empeora tu caso. Que
+         coincidan es economía de paleta, no una equivalencia — no los unifiques.
+
+         OJO, NO LO MONTA NADIE TODAVÍA. Las flechas de hallazgo hoy van en «--doc-tx»,
+         una sola tinta para las dos direcciones, por la decisión «SÍMBOLO, NO COLOR»
+         del 09-sep que está escrita en «PrincipalesHallazgos.tsx». Colorearlas es §3 y
+         va con el hero; acá solo queda el token publicado. */
 
       /* UNA LÍNEA SOBRE UNA SUPERFICIE HUNDIDA NECESITA SU PROPIO VALOR.
          «--line» está calibrado contra «--page» y «--card»; contra «--sunk» desaparece:
