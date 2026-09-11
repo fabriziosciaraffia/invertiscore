@@ -21,10 +21,21 @@ const TEXTO_CHIP: Record<QuienLaPone, string> = {
   tuyo: "lo pones tú",
 };
 
-export function LoQueHariaYoBloque({ bloque, veredicto }: { bloque: BloqueLoQueHariaYo; veredicto?: string }) {
+export function LoQueHariaYoBloque({
+  bloque,
+  veredicto,
+  alternativa,
+}: {
+  bloque: BloqueLoQueHariaYo;
+  veredicto?: string;
+  /** LA ALTERNATIVA DE COMUNAS (§5), ya redactada por el motor. Solo llega en el
+   *  estado sin salida y solo cuando alguna comuna cruza: `null` es un caso real
+   *  —151 de las 604 filas del parque— y ahí la card no inventa nada. */
+  alternativa?: string | null;
+}) {
   const { rotulo, contexto, filas, mix, descarte } = bloque;
   const rediseno = useRediseno();
-  if (rediseno) return <EcuacionRecomendacion bloque={bloque} veredicto={veredicto} />;
+  if (rediseno) return <EcuacionRecomendacion bloque={bloque} veredicto={veredicto} alternativa={alternativa} />;
   return (
     <div className="lqhy">
       <div className="lqhy-kick">{rotulo}</div>
@@ -119,7 +130,15 @@ export function LoQueHariaYoBloque({ bloque, veredicto }: { bloque: BloqueLoQueH
    que mostrarlo: la decisión de qué hacer con esos casos es de producto y vive en el
    motor, no acá.
    ───────────────────────────────────────────────────────────────────────────── */
-function EcuacionRecomendacion({ bloque, veredicto }: { bloque: BloqueLoQueHariaYo; veredicto?: string }) {
+function EcuacionRecomendacion({
+  bloque,
+  veredicto,
+  alternativa,
+}: {
+  bloque: BloqueLoQueHariaYo;
+  veredicto?: string;
+  alternativa?: string | null;
+}) {
   const { mix, filas, contexto, descarte } = bloque;
   const corta = (v?: string) => (v ? etiquetaVeredicto(v, "corta", v) : "");
 
@@ -152,9 +171,7 @@ function EcuacionRecomendacion({ bloque, veredicto }: { bloque: BloqueLoQueHaria
       <div className="rec-eq">
         {contexto && <p className="rec-ctx">{contexto}</p>}
         {/* EL PUENTE. Sin esto la card decía cuánto haría falta y dejaba al lector ahí,
-            sin nada que hacer con esa cifra. La alternativa de comunas —lo que de verdad
-            le serviría— vive hoy en la prosa y el motor no la emite (cola propia), así
-            que esto es el puente: nombra que se probó y para dónde ir. */}
+            sin nada que hacer con esa cifra: nombra que se probó y para dónde ir. */}
         {sinSalida && (
           <p className="rec-puente">
             Franco no encontró una combinación que lo haga convenir.
@@ -162,6 +179,11 @@ function EcuacionRecomendacion({ bloque, veredicto }: { bloque: BloqueLoQueHaria
             Prueba con otro departamento.
           </p>
         )}
+        {/* Y DÓNDE (§5). Desde el 11-sep-2026 «a dónde ir» es un dato del motor y no
+            una elección del modelo: el mismo depto corrido en las otras comunas del
+            roster, con el presupuesto del comprador como techo. Va SIN cifras —el
+            detalle de por qué está en el pop-up— y solo cuando alguna cruza. */}
+        {sinSalida && alternativa && <p className="rec-donde">{alternativa}</p>}
         {filas.map((f, i) => (
           <div className="rec-row" key={`${f.titulo}-${i}`}>
             {/* El rótulo corto es de las filas de COMPRAR: «Cuánto aguanta el veredicto»

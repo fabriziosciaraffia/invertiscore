@@ -859,8 +859,29 @@ export function DocTokens() {
       /* EL PUENTE del estado sin salida: mas presente que el descarte —es lo unico
          accionable que queda— pero sin competir con el numero de arriba. */
       .doc-r2 .rec-puente{font-size:14px;line-height:1.5;opacity:.82;margin:14px 0 0}
+      /* DÓNDE SÍ (§5). Va pegada al puente —es su respuesta, no otro párrafo— y con
+         más presencia que él: el puente dice que no hay salida acá, y ésta dice a
+         dónde ir, que es lo único accionable que le queda al lector. Sin cifras. */
+      .doc-r2 .rec-donde{font-size:15px;line-height:1.45;font-weight:600;margin:8px 0 0}
       /* el costo del día uno: SIEMPRE bajo el mix (§5) */
       .doc-r2 .rec-cost{font-size:13.5px;opacity:.75;margin:16px 0 0}
+
+      /* — EL DETALLE DE LA ALTERNATIVA, en el pop-up — la línea de la card nombra
+           dos comunas; acá se rinde cuentas de todas las que cruzan, con su muestra. */
+      .doc-r2 .alt-com{margin:22px 0 0;padding:18px 0 0;border-top:1px solid var(--doc-line)}
+      .doc-r2 .alt-com-t{font-family:var(--font-mono, ui-monospace);font-size:10px;
+        letter-spacing:.16em;text-transform:uppercase;color:var(--doc-tx3);margin:0 0 8px}
+      .doc-r2 .alt-com-l{font-size:13.5px;line-height:1.5;color:var(--doc-tx2);margin:0 0 14px}
+      .doc-r2 .alt-com-tabla{width:100%;border-collapse:collapse;font-size:13px}
+      .doc-r2 .alt-com-tabla th{font-family:var(--font-mono, ui-monospace);font-size:10px;
+        letter-spacing:.12em;text-transform:uppercase;color:var(--doc-tx3);font-weight:500;
+        text-align:right;padding:0 0 8px}
+      .doc-r2 .alt-com-tabla th:first-child{text-align:left}
+      .doc-r2 .alt-com-tabla td{padding:9px 0;border-top:1px solid var(--doc-line);
+        text-align:right;color:var(--doc-tx);white-space:nowrap}
+      .doc-r2 .alt-com-tabla td:first-child{text-align:left;white-space:normal}
+      .doc-r2 .alt-com-tabla small{display:block;font-size:10.5px;color:var(--doc-tx3);
+        letter-spacing:0;margin-top:2px}
 
       /* — EL CTA — botón BLANCO SÓLIDO con icono, no un enlace (§5) — */
       .doc-r2 .rec-cta{

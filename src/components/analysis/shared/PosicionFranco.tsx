@@ -38,6 +38,7 @@ export function PosicionFranco({
   bloque,
   prosa,
   chip,
+  extraPopup,
   fechaFirma,
   footer,
   tipo,
@@ -57,6 +58,10 @@ export function PosicionFranco({
   prosa?: ReactNode;
   /** Chip mono a la derecha del título (v21: el precio objetivo del plan). */
   chip?: ReactNode;
+  /** Se agrega al final del POP-UP, después del cuerpo del footer. Lo usa la
+   *  alternativa de comunas (§5): la línea de la card nombra dos comunas y el
+   *  detalle de por qué vive acá, que es donde el lector viene a ver qué se probó. */
+  extraPopup?: ReactNode;
   fechaFirma?: string;
   footer: FooterPosicion | null;
   tipo: TipoInforme;
@@ -133,7 +138,10 @@ export function PosicionFranco({
         </div>
         {footer && (
           <Modal abierto={modalAbierto} onClose={() => setModalAbierto(false)} titulo={footer.k} sub={footer.sub}>
-            <div className="doc-tokens">{footer.cuerpo}</div>
+            <div className="doc-tokens">
+              {footer.cuerpo}
+              {extraPopup}
+            </div>
           </Modal>
         )}
       </>

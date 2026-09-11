@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { renderPlumon } from "./hallazgos/plumon";
 import { PosicionFranco } from "./shared/PosicionFranco";
@@ -11,6 +12,8 @@ import { salidaPorMix } from "@/lib/salida-por-mix";
 import { MatrizPiePlazoLtr } from "./shared/MatrizPiePlazoLtr";
 import { LoQueHariaYoBloque } from "./shared/LoQueHariaYoBloque";
 import { construirLoQueHariaYo, bajadaRecomendacion } from "@/lib/lo-que-haria-yo";
+import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
+import { DetalleAlternativaComunas } from "./shared/DetalleAlternativaComunas";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 import { esProsaDosBloques } from "./AIInsightSection";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
@@ -306,6 +309,25 @@ export function HeroLTR({
     })();
   const bajada = bajadaRecomendacion(veredicto, bloqueDeterminista);
 
+  // ── LA ALTERNATIVA DE COMUNAS (§5) ────────────────────────────────────────
+  // «Prueba con otro departamento» dejaba al lector sin el dato que más le sirve:
+  // a dónde ir. Hasta hoy eso vivía en el prompt —el modelo elegía una comuna de
+  // una lista fija— y la card de §5 no lleva prosa, así que no tenía dónde
+  // aparecer. Ahora lo calcula el motor: el MISMO depto corrido en las otras
+  // comunas del roster, con el presupuesto del comprador como techo.
+  //
+  // SOLO EN EL ESTADO SIN SALIDA, y es deliberado: son 23 corridas del motor,
+  // baratas pero no gratis, y en cualquier otro estado la card ya tiene qué decir.
+  // `useMemo` para que no se repitan en cada render de la moneda.
+  const alternativa = useMemo(
+    () =>
+      rediseno && sinSalidaRecomendacion && inputData
+        ? construirAlternativaComunas({ input: inputData, ufClp: valorUF, asOf: new Date(fechaProsa ?? createdAt ?? Date.now()) })
+        : null,
+    [rediseno, sinSalidaRecomendacion, inputData, valorUF, fechaProsa, createdAt],
+  );
+  const lineaAlternativa = lineaAlternativaComunas(alternativa);
+
   /* LA RECOMENDACIÓN. Se calcula acá —nueve derivadas de este componente— y se
      monta en el lugar que mande el camino: con el rediseño es su PROPIA sección,
      después de los hallazgos (contrato §2); en el camino viejo sigue dentro del
@@ -316,9 +338,14 @@ export function HeroLTR({
   const recomendacion = (
     <PosicionFranco
       cajaAccionable={cajaAccionable && prosaSobrevive ? renderPlumon(cajaAccionable) : null}
-      bloque={bloqueDeterminista ? <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} /> : undefined}
+      bloque={
+          bloqueDeterminista ? (
+            <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} alternativa={lineaAlternativa} />
+          ) : undefined
+        }
       prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
       chip={dosBloques ? objetivoChip : undefined}
+      extraPopup={<DetalleAlternativaComunas alternativa={alternativa} currency={currency} valorUF={valorUF} />}
       titulo={rediseno ? "La recomendación de Franco" : dosBloques ? "Lo que haría yo" : undefined}
       bajada={rediseno ? bajada : undefined}
       fechaFirma={fechaFirma}
