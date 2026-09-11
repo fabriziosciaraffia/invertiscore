@@ -325,6 +325,15 @@ export type FilaPalanca = {
    *  abajo y atenuada, con su razón en una línea. `"–"` en el veredicto = no aplica. */
   atenuada?: boolean;
   noAplica?: boolean;
+  /** §5 revisado (11-sep-2026): quién pone la palanca, en la forma «Lo pone el mercado,
+   *  no tú» / «Lo pone el vendedor, no tú». Va por fila SOLO acá: en la card el grupo y
+   *  la oración de «Alternativamente» ya lo dicen. Sin valor para lo que pones tú. */
+  quien?: "mercado" | "vendedor";
+};
+
+const TEXTO_QUIEN: Record<NonNullable<FilaPalanca["quien"]>, string> = {
+  mercado: "Lo pone el mercado, no tú",
+  vendedor: "Lo pone el vendedor, no tú",
 };
 
 /** Matriz de palancas: una fila por palanca, con delta, veredicto y magnitudes
@@ -338,6 +347,7 @@ export function Palancas({ filas, pie }: { filas: FilaPalanca[]; pie?: ReactNode
           <div className="pal-name">
             {f.nombre}
             <span className={`pal-delta ${f.alcanza ? "si" : "no"}`}>{f.delta}</span>
+            {f.quien && <small className="pal-quien">{TEXTO_QUIEN[f.quien]}</small>}
             {f.glosa && <small className="pal-glosa">{f.glosa}</small>}
           </div>
           <div className={`pal-verdict ${f.alcanza ? "si" : "no"}`}>{f.alcanza ? "✓" : f.noAplica ? "–" : "✕"}</div>

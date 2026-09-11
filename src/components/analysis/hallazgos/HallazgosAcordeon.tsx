@@ -392,6 +392,10 @@ export function TokensHallazgos() {
       .pal-row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;background:var(--doc-paper);padding:11px 13px}
       .pal-row.si{background:var(--doc-paper3)}
       .pal-glosa{flex-basis:100%;font-size:11px;font-weight:400;color:var(--doc-tx3);margin-top:1px}
+      .pal-quien{/* el chip de quien pone la palanca (§5 revisado): salio de la card y va aca por fila */
+        font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:600;letter-spacing:.06em;
+        text-transform:uppercase;color:var(--doc-tx3);padding:1px 6px;border-radius:2px;
+        border:1px solid var(--doc-line2);white-space:nowrap}
       .pal-row.off{opacity:.62}
       .pal-row.off .pal-name{color:var(--doc-tx2)}
       .pal-row.wash-warn{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-warn) 7%,transparent),transparent 70%)}

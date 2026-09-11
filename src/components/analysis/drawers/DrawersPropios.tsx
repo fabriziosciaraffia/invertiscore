@@ -349,6 +349,14 @@ const NOMBRE_PALANCA: Record<string, string> = {
 
 // Catálogo DETERMINISTA de razones — mismo criterio que los captions de cifraClave:
 // lo escribe el motor, nunca la IA.
+/** Quién pone cada palanca, para el chip del pop-up (§5 revisado, 11-sep-2026). El pie,
+ *  el plazo y la gestión los pones tú y no llevan chip. */
+const QUIEN_PALANCA: Record<string, "mercado" | "vendedor" | undefined> = {
+  precio: "vendedor",
+  arriendo: "mercado",
+  adr: "mercado",
+};
+
 const RAZON_NO_ALCANZA: Record<string, string> = {
   precio: "ese descuento no existe en el mercado",
   arriendo: "ningún arriendo de la zona llega a ese nivel",
@@ -432,6 +440,7 @@ export function construirPalancas(
       const t = textoPalanca(p, currency, valorUF);
       filas.push({
         nombre: NOMBRE_PALANCA[p.palanca] ?? p.palanca,
+        quien: QUIEN_PALANCA[p.palanca],
         delta: t.delta,
         alcanza: true,
         origen: t.origen,
@@ -452,6 +461,7 @@ export function construirPalancas(
             : {};
       filas.push({
         nombre: NOMBRE_PALANCA[via.palanca] ?? via.palanca,
+        quien: QUIEN_PALANCA[via.palanca],
         delta: dm != null ? `${dm < 0 ? "−" : "+"}${pctStr(Math.abs(dm))}` : textoTope(via),
         alcanza: false,
         ...tramo,
@@ -462,6 +472,7 @@ export function construirPalancas(
     for (const via of v.vias.filter((x): x is Extract<ViaDistancia, { estado: "noAplica" }> => x.estado === "noAplica")) {
       filas.push({
         nombre: NOMBRE_PALANCA[via.palanca] ?? via.palanca,
+        quien: QUIEN_PALANCA[via.palanca],
         delta: "no aplica",
         alcanza: false,
         razon: via.razon,
