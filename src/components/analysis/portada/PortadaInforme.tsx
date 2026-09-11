@@ -660,16 +660,31 @@ export function DocTokens() {
       .doc-r2 .hall.cap .q{
         font-family:var(--font-heading, Georgia, serif);font-size:15.5px;font-weight:600;
         color:var(--tx);line-height:1.35}
-      .doc-r2 .hall.cap .ksub{display:block;font-size:12.5px;font-weight:400;color:var(--tx3);margin-top:3px}
+      /* SIN BAJADA (§7): la fila es titulo y cifra. El «ksub» explica el numero —«de los
+         $750.000 del arriendo, despues de cuota, gastos y vacancia»— y eso es el cuerpo
+         del capitulo, no la fila. Con la cifra ya apellidada, la fila se lee sola. No se
+         borra del JSX: la pieza la monta tambien STR, que lo conserva. */
+      .doc-r2 .hall.cap .ksub{display:none}
       .doc-r2 .hall.cap .val{
         font-family:var(--font-mono, ui-monospace);font-size:14px;font-weight:700;
-        color:var(--tx);font-variant-numeric:tabular-nums}
+        color:var(--tx);font-variant-numeric:tabular-nums;white-space:nowrap}
+      /* EL APELLIDO es contexto, no cifra: va mas liviano y sin el mono, para que el
+         numero siga siendo lo que el ojo agarra primero. */
+      .doc-r2 .hall.cap .val-ap{
+        font-family:inherit;font-size:12.5px;font-weight:500;color:var(--tx3)}
       /* EL DISCO del chevron: el mismo de «.fila-nav», que al hover se llena. */
+      /* EL DISCO LLEVA «›», no la flecha hacia abajo. El «↓» del acordeon dice «esto se
+         despliega»; el «›» dice «esto lleva a algo», que es lo que la primitiva de fila
+         navegable promete. El caracter del JSX se oculta con «font-size:0» en vez de
+         cambiarse, porque esa pieza la monta tambien STR. Al abrirse gira 90 grados y
+         vuelve a apuntar hacia abajo, que es adonde efectivamente se abrio. */
       .doc-r2 .hall.cap .chev{
         width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
         justify-content:center;background:var(--page);border:1px solid var(--line2);
-        color:var(--tx3);font-size:15px;line-height:1;
+        color:var(--tx3);font-size:0;line-height:1;
         transition:background .13s,border-color .13s,color .13s,transform .2s}
+      .doc-r2 .hall.cap .chev::after{content:"›";font-size:17px;line-height:1}
+      .doc-r2 .hall.cap.open .chev{transform:rotate(90deg)}
       .doc-r2 .hall.cap .hall-head:not([disabled]):hover .chev{
         background:var(--tx);border-color:var(--tx);color:var(--page)}
       .doc-r2 .hall.cap.open .hall-head{border-color:var(--line2)}
@@ -740,6 +755,10 @@ export function DocTokens() {
         font-family:var(--font-mono, ui-monospace);font-size:13px;white-space:nowrap}
       .doc-r2 .rec-chip s{opacity:.45;text-decoration:line-through}
       .doc-r2 .rec-chip b{font-weight:700}
+      /* EL GRUPO QUE NO ROMPE: el chip y su «+» viajan juntos, asi el salto de linea
+         cae DESPUES del signo y nunca antes. Suelto, a 390 px el «+» quedaba solo
+         arriba del segundo chip, sumando con la nada. */
+      .doc-r2 .rec-chip-g{display:inline-flex;align-items:center;gap:10px;white-space:nowrap}
       .doc-r2 .rec-mas{font-style:normal;opacity:.5;font-size:15px}
 
       /* el descuento: 30 px y no más — compite con la cifra del hero */

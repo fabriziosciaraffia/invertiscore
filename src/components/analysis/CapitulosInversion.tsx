@@ -4,6 +4,8 @@ import { SegsCierre } from "./shared/SegsCierre";
 
 import { FilaDato, FilasDato } from "./shared/FilaDato";
 import { Ang } from "./shared/Ang";
+import { useRediseno } from "./RedisenoContexto";
+import type { ReactNode } from "react";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 
 import type {
@@ -87,6 +89,26 @@ const mult2 = (n: number) => n.toFixed(2).replace(".", ",");
 /** Margen de sensibilidad: entero sin decimal (−6%), coma chilena si no (−6,2%). */
 const pctMargin = (n: number) => (Number.isInteger(Math.round(n * 10) / 10) ? String(Math.round(n)) : pct1(n));
 const capVer = (v: string) => etiquetaVeredicto(v, "frase", v);
+/**
+ * LA CIFRA CON APELLIDO (contrato §7). Regla general del informe: un numero sin apellido
+ * no se entiende solo, salvo que el contexto lo de pegado.
+ *
+ * En las tarjetas de cifra y en las de zona el contexto SI esta pegado —el rotulo va
+ * justo encima del numero—, asi que ahi la cifra va sola. En la fila de capitulo no: el
+ * titulo es una pregunta («Cuanto renta») y la cifra vive al otro extremo de la fila, a
+ * cuatrocientos pixeles. «4,3%» ahi no dice de que.
+ *
+ * Se aplica SOLO con el redisenno: el camino de siempre conserva su cifra pelada, que es
+ * lo que hoy se ve en produccion.
+ */
+const conApellido = (rediseno: boolean, apellido: string, cifra: ReactNode): ReactNode =>
+  rediseno ? (
+    <>
+      <span className="val-ap">{apellido}</span> {cifra}
+    </>
+  ) : (
+    cifra
+  );
 
 function formatearEntrega(fecha?: string | null): string {
   if (!fecha) return "";
@@ -122,6 +144,7 @@ export function CapitulosInversion({
   /** Apertura pedida desde afuera («↓ Ver detalle» de Principales hallazgos). */
   abrir?: { id: string; nonce: number } | null;
 }) {
+  const rediseno = useRediseno();
   const m = results.metrics;
   const exit = results.exitScenario;
   const hs = results.hallazgos ?? [];
@@ -226,7 +249,7 @@ export function CapitulosInversion({
           id: "renta",
           numero: "I",
           pregunta: "Cuánto renta",
-          valor: `${pct1(v.capRatePct)}%`,
+          valor: conApellido(rediseno, "Cap rate", `${pct1(v.capRatePct)}%`),
           valorRojo: capRate.direccion === "adverso",
           ksub: (
             <>
@@ -279,7 +302,7 @@ export function CapitulosInversion({
     id: "flujo",
     numero: "II",
     pregunta: "Tu flujo mensual",
-    valor: signed(flujo),
+    valor: conApellido(rediseno, "Flujo", signed(flujo)),
     valorRojo: flujo < 0,
     ksub: `de los ${money(arriendo)} del arriendo, después de cuota, gastos y vacancia`,
     anchorId: anchorCapitulo("flujo"),
@@ -368,7 +391,7 @@ export function CapitulosInversion({
     id: "pagas",
     numero: "III",
     pregunta: "Cómo lo pagas",
-    valor: valorIII.v,
+    valor: conApellido(rediseno, "Precio", valorIII.v),
     valorRojo: valorIII.rojo,
     ksub: ksubIII,
     anchorId: anchorCapitulo("pagas"),
@@ -521,7 +544,7 @@ export function CapitulosInversion({
           id: "plusvalia",
           numero: "IV",
           pregunta: "Plusvalía",
-          valor: `${pct1(anual)}% anual`,
+          valor: conApellido(rediseno, "Plusvalía", `${pct1(anual)}% anual`),
           valorRojo: plus.direccion === "adverso",
           ksub: [
             v.tieneData ? `${comuna} ${rango}` : `sin serie propia · promedio Gran Santiago`,
@@ -663,7 +686,7 @@ export function CapitulosInversion({
             id: "resultado",
             numero: "V",
             pregunta: `Tu resultado a ${anios} años`,
-            valor: compact(patrimonio),
+            valor: conApellido(rediseno, "Resultado", compact(patrimonio)),
             valorRojo: mult < 1,
             ksub: [`tu parte al vender el año ${anios}`, v.sinCapitalPropio ? "" : `×${mult2(mult)} sobre lo puesto`, tir != null ? `TIR ${pct1(tir)}%` : ""].filter(Boolean).join(" · "),
             anchorId: anchorCapitulo("resultado"),

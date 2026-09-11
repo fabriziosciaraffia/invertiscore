@@ -27,6 +27,13 @@ export interface FilaLoQueHariaYo {
   cifra: string;
   /** El valor objetivo, bajo la cifra ("UF 4.175"). null cuando la cifra ya lo dice. */
   objetivo: string | null;
+  /**
+   * Rótulo de UNA palabra para la columna fija de la ecuación (contrato §5). El
+   * `titulo` es una frase —«Cuánto aguanta el veredicto»— y en una columna de 96 px se
+   * parte en tres líneas. Solo lo llevan las filas de COMPRAR, que son las únicas que
+   * se dibujan como ecuación sin mix. `null` ⇒ se usa el `titulo`.
+   */
+  rotuloCorto?: string | null;
 }
 
 export interface MixLoQueHariaYo {
@@ -131,6 +138,7 @@ export function construirLoQueHariaYo(p: {
     if (s) {
       filas.push({
         titulo: "Cuánto aguanta el veredicto",
+        rotuloCorto: "Aguanta",
         quien: "mercado",
         cifra: s.firme ? "−50% o más" : `−${pct1(s.marginPct)}%`,
         objetivo: null,
@@ -139,6 +147,7 @@ export function construirLoQueHariaYo(p: {
     if (p.arriendoDeclaradoCLP > 0) {
       filas.push({
         titulo: "Verifica el arriendo",
+        rotuloCorto: "Verifica",
         quien: "tuyo",
         cifra: plata(p.arriendoDeclaradoCLP),
         objetivo: "lo declaraste tú",

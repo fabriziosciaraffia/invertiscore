@@ -135,18 +135,39 @@ function EcuacionRecomendacion({ bloque, veredicto }: { bloque: BloqueLoQueHaria
   // SIN ECUACIÓN hay tres estados: COMPRAR —dos datos—, sin salida —el número real— y
   // el mix que solo llega al escalón, que se lee igual que sin salida.
   if (!mix || soloEscalon) {
+    // LA FILA «RESULTADO» NO ES DEL MIX, ES DE LA ECUACIÓN. Sin mix, cuando hay filas,
+    // esas filas SON salidas —palancas que cruzan solas, medidas por el motor contra
+    // COMPRAR— y la transición es tan cierta como con mix. Faltaba por construcción: la
+    // rama sin mix no la dibujaba nunca, ni siquiera cuando el dato la sostenía.
+    //
+    // NO va en los otros dos casos de esta misma rama:
+    //   · COMPRAR — ya está en Comprar, no hay transición que mostrar;
+    //   · sin salida / solo escalón — no se llega, que es justamente lo que dice.
+    const mostrarResultado = !soloEscalon && veredicto !== "COMPRAR" && filas.length > 0;
     return (
       <div className="rec-eq">
         {contexto && <p className="rec-ctx">{contexto}</p>}
         {filas.map((f, i) => (
           <div className="rec-row" key={`${f.titulo}-${i}`}>
-            <span className="rec-k">{f.titulo}</span>
+            {/* El rótulo corto es de las filas de COMPRAR: «Cuánto aguanta el veredicto»
+                en una columna de 96 px se parte en tres líneas. */}
+            <span className="rec-k">{f.rotuloCorto ?? f.titulo}</span>
             <span className="rec-v">
               <b>{f.cifra}</b>
               {f.objetivo && <em>{f.objetivo}</em>}
             </span>
           </div>
         ))}
+        {mostrarResultado && (
+          <div className="rec-row">
+            <span className="rec-k">Resultado</span>
+            <span className="rec-v rec-trans">
+              <span className="rec-pill de">{corta(veredicto)}</span>
+              <i className="rec-fl">→</i>
+              <span className="rec-pill a">{corta("COMPRAR")}</span>
+            </span>
+          </div>
+        )}
         {descarte && <p className="rec-desc">{descarte}</p>}
       </div>
     );
@@ -158,13 +179,19 @@ function EcuacionRecomendacion({ bloque, veredicto }: { bloque: BloqueLoQueHaria
       {(mix.movimiento.pie || mix.movimiento.plazo) && (
         <div className="rec-row">
           <span className="rec-k">Cambias</span>
+          {/* EL «+» VIAJA CON EL CHIP DE LA IZQUIERDA. Suelto entre dos chips, a 390 px
+              el salto de línea cae justo antes y el signo queda solo arriba del segundo
+              chip, como si sumara con la nada. Envuelto con el primero en un grupo que
+              no rompe, el corte pasa DESPUÉS del signo. */}
           <span className="rec-v rec-chips">
             {mix.movimiento.pie && (
-              <span className="rec-chip">
-                Pie <s>{mix.movimiento.pie.de}%</s> <b>{mix.movimiento.pie.a}%</b>
+              <span className="rec-chip-g">
+                <span className="rec-chip">
+                  Pie <s>{mix.movimiento.pie.de}%</s> <b>{mix.movimiento.pie.a}%</b>
+                </span>
+                {mix.movimiento.plazo && <i className="rec-mas">+</i>}
               </span>
             )}
-            {mix.movimiento.pie && mix.movimiento.plazo && <i className="rec-mas">+</i>}
             {mix.movimiento.plazo && (
               <span className="rec-chip">
                 Plazo <s>{mix.movimiento.plazo.de}</s> <b>{mix.movimiento.plazo.a} años</b>

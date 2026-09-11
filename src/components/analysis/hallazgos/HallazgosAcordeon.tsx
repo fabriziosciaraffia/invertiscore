@@ -36,8 +36,11 @@ export type FilaHallazgo = {
   numero: string;
   /** La pregunta/resumen — la línea visible. */
   pregunta: string;
-  /** Valor mono a la derecha (KPI del hallazgo). */
-  valor: string;
+  /** Valor mono a la derecha (KPI del hallazgo). Acepta nodo porque con el rediseño la
+   *  fila de capítulo lo lleva APELLIDADO —«Cap rate 4,3%»— y el apellido va en su
+   *  propio span para poder pintarlo distinto. Los call sites de siempre siguen
+   *  pasando un string. */
+  valor: ReactNode;
   /** Sub-label del KPI (`findingDisplay().ksub`): la unidad y el contraste que el
    *  KPI solo no dice — "bajo la mediana de Ñuñoa · UF 78,4 vs UF 93,1 /m²".
    *  GOAL 16 (c): hasta acá `findingDisplay` lo construía y NINGUNA superficie lo

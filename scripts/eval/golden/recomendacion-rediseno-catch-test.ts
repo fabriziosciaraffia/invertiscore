@@ -46,6 +46,7 @@ const POS = leer("src/components/analysis/shared/PosicionFranco.tsx");
 const BLO = leer("src/components/analysis/shared/LoQueHariaYoBloque.tsx");
 const HERO = leer("src/components/analysis/HeroLTR.tsx");
 const ACO = leer("src/components/analysis/hallazgos/HallazgosAcordeon.tsx");
+const CAPS = leer("src/components/analysis/CapitulosInversion.tsx");
 
 /** Un bloque del rediseño, sin comentarios (llevan comas y ensucian los selectores). */
 function bloqueDe(rotulo: string): string {
@@ -186,11 +187,58 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   }
 }
 
+// ── 9 · la fila de capítulo: sin bajada, disco con «›», cifra apellidada ──
+{
+  const ksub = reglaDe(".doc-r2 .hall.cap .ksub", CAP);
+  if (!ksub || !/display:\s*none/.test(ksub)) F("9 · la bajada volvió a la fila de capítulo (§7: la fila es título y cifra; el ksub es el cuerpo del capítulo)");
+  const chev = reglaDe(".doc-r2 .hall.cap .chev::after", CAP);
+  if (!chev) F("9 · el disco no dibuja su carácter propio");
+  else if (!chev.includes("›")) {
+    F(`9 · el disco dejó de llevar «›»: «${chev.slice(0, 50)}». El «↓» dice «esto se despliega»; «›» dice «esto lleva a algo», que es lo que la primitiva promete. Ojo con escribirlo como escape hexadecimal de CSS: pasado por un script de Python el prefijo se lee como octal y sale una «A» (medido en el DOM).`);
+  }
+  // LA CIFRA CON APELLIDO. En la fila de capítulo el título es una pregunta y la cifra
+  // vive al otro extremo: «4,3%» solo no dice de qué. En las tarjetas de cifra y de zona
+  // el rótulo va a 9 px ENCIMA del valor —medido—, así que ahí la cifra va sola.
+  const APELLIDOS = ["Cap rate", "Flujo", "Precio", "Plusvalía", "Resultado"];
+  for (const a of APELLIDOS) {
+    if (!CAPS.includes(`conApellido(rediseno, "${a}"`)) {
+      F(`9 · la cifra del capítulo perdió su apellido «${a}». Un número sin apellido no se entiende solo salvo que el contexto lo dé pegado, y acá no lo da.`);
+    }
+  }
+  if (!/rediseno \?/.test(CAPS)) F("9 · el apellido dejó de estar detrás del interruptor: el camino de siempre lleva la cifra pelada");
+}
+
+// ── 10 · la ecuación: rótulo de una palabra y el «+» que no queda solo ────
+{
+  if (!/rotuloCorto \?\? f\.titulo/.test(BLO)) {
+    F("10 · la ecuación volvió a usar el título largo. «Cuánto aguanta el veredicto» en una columna de 96 px se parte en tres líneas.");
+  }
+  if (!/rotuloCorto: "Aguanta"/.test(leer("src/lib/lo-que-haria-yo.ts")) || !/rotuloCorto: "Verifica"/.test(leer("src/lib/lo-que-haria-yo.ts"))) {
+    F("10 · las filas de COMPRAR perdieron su rótulo de una palabra");
+  }
+  if (!/rec-chip-g/.test(BLO) || !reglaDe(".doc-r2 .rec-chip-g", REC)) {
+    F("10 · el «+» volvió a ir suelto entre los dos chips. A 390 px el salto de línea cae justo antes y el signo queda solo arriba del segundo chip, sumando con la nada (medido).");
+  }
+}
+
+// ── 11 · «Resultado» también sin mix, cuando las filas cruzan ─────────────
+{
+  // EL USO, no la declaración: `/mostrarResultado/` a secas matchea el `const`, así que
+  // con `{false && (` puesto el guard seguía verde — la fila no se dibujaba y el tier no
+  // lo veía. Es la misma trampa que con `useRediseno` y el import.
+  if (!BLO.includes("{mostrarResultado && (")) {
+    F("11 · la rama sin mix volvió a no dibujar «Resultado». Cuando hay filas, esas filas SON salidas —palancas que cruzan solas, medidas contra COMPRAR— y la transición es tan cierta como con mix.");
+  }
+  if (!/!soloEscalon && veredicto !== "COMPRAR" && filas\.length > 0/.test(BLO)) {
+    F("11 · la condición de «Resultado» sin mix cambió. No va en COMPRAR —ya está ahí— ni en sin salida —no se llega, que es lo que dice—.");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runRecomendacionRedisenoTier(): { hard: number } {
   console.log("\n─── TIER RECOMENDACIÓN-REDISEÑO (contrato §5 y §7 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 96/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, y la recomendación apuntando SIEMPRE a Comprar");
+    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 96/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, la recomendación apuntando SIEMPRE a Comprar, la fila de capítulo sin bajada y con la cifra apellidada, y «Resultado» también sin mix");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
