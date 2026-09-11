@@ -37,7 +37,6 @@ import { StateBox } from "@/components/ui/StateBox";
 import { fechaCortaCL } from "@/lib/fecha-cl";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { PrincipalesHallazgos } from "@/components/analysis/PrincipalesHallazgos";
-import { RegulacionEdificio } from "@/components/analysis/str/RegulacionEdificio";
 import { esProsaStrPodada } from "@/components/analysis/AIInsightSection";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { TokensShared } from "@/components/analysis/shared";
@@ -510,14 +509,13 @@ export function STRResultsClient({
                 <>
                   <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
                   <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} />
-                  <RegulacionEdificio inputData={inputData} currency={currency} valorUF={ufValue} />
                 </>
               ) : undefined
             }
           />
         </SeccionInforme>
         {/* CAMINO VIEJO. Con prosa podada esta sección no existe: las mismas cuatro
-            líneas (más la regulación) se leen arriba, bajo la línea que declara. Acá
+            líneas se leen arriba, bajo la línea que declara. Acá
             siguen porque el informe viejo tiene que verse coherente consigo mismo —su
             título pregunta lo que su prosa contesta— y porque las 94 filas anónimas del
             parque STR nunca van a regenerar. */}
@@ -529,11 +527,6 @@ export function STRResultsClient({
           >
             <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
             <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} />
-            {/* LA QUINTA RAZÓN, la que no es un número: si el reglamento del edificio
-                permite operar por día. Determinista (input del wizard + el amoblamiento
-                en riesgo), cero IA. Con «sí permite» no renderiza nada — que no aparezca
-                ES la señal de que no hay nada que confirmar. */}
-            <RegulacionEdificio inputData={inputData} currency={currency} valorUF={ufValue} />
           </SeccionInforme>
         )}
         <SeccionInforme

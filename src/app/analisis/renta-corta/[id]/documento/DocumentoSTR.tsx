@@ -501,11 +501,9 @@ export function DocumentoSTR({
         <div className="chips">
           <p className="cl">Datos de factibilidad</p>
           <div className="grid g3">
-            <div className="c"><p className="ck">Reglamento del edificio</p><div className="cv">No verificado</div></div>
             <div className="c"><p className="ck">Zona · demanda STR</p><div className="cv">{tierLabel}</div></div>
             <div className="c"><p className="ck">Recomendación</p><div className="cv">{bandaLabel}</div></div>
           </div>
-          <p className="foot">El reglamento de copropiedad no está confirmado — es lo primero a verificar antes de comprar para renta corta.</p>
         </div>
 
         {riesgosParsed.length > 0 && (

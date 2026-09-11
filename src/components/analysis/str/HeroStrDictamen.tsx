@@ -38,9 +38,9 @@ export function HeroStrDictamen({
   onRetryProsa,
   razones,
 }: {
-  /** Las cuatro líneas de hallazgo más el bloque de regulación. En v17 se leen DENTRO
-   *  de este bloque, debajo de la línea que declara; con prosa vieja el caller las monta
-   *  en su sección aparte y acá no llega nada. */
+  /** Las cuatro líneas de hallazgo. En v17 se leen DENTRO de este bloque, debajo de la
+   *  línea que declara; con prosa vieja el caller las monta en su sección aparte y acá
+   *  no llega nada. (El bloque de regulación que las acompañaba se retiró el 11-sep-2026.) */
   razones?: ReactNode;
   ai: AIAnalysisSTRv2 | null;
   results: ShortTermResult;
@@ -172,9 +172,9 @@ export function HeroStrDictamen({
           ) : null}
         </div>
       </div>
-      {/* LAS RAZONES, dentro del mismo bloque (v17): las cuatro líneas de hallazgo y el
-          bloque de regulación suben acá desde su sección propia. «Qué determina el
-          veredicto» no se borra — se fusiona: la línea que declara ya es ese título. */}
+      {/* LAS RAZONES, dentro del mismo bloque (v17): las cuatro líneas de hallazgo suben
+          acá desde su sección propia. «Qué determina el veredicto» no se borra — se
+          fusiona: la línea que declara ya es ese título. */}
       {podada && razones}
       <PosicionFranco
         cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}

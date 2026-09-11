@@ -288,7 +288,8 @@ export function TokensHallazgos() {
       /* .v-fuente.aviso — cuando la procedencia deja de ser una nota al pie y pasa a ser
          una advertencia: el dato del que cuelga el capitulo no esta contrastado. Sube de
          --doc-tx4 (el gris mas apagado) al gris de cuerpo, gana el tamano de la prosa
-         chica y toma el borde izquierdo del patron .reg del bloque de regulacion STR.
+         chica y toma un borde izquierdo de 3px en --doc-tx3 (el patron que usaba el bloque
+         de regulacion STR, retirado el 11-sep-2026).
          SIN COLOR NUEVO y sin Signal Red a proposito: el rojo es del veredicto y de la
          cifra negativa, y este bloque acaba de dejar de usarlo para no decir dos cosas
          con el mismo color. Un caveat no es una alarma. */

@@ -160,9 +160,8 @@ export function buildZonaStr(p: {
   const dorms = num(d.dormitorios);
   const m2 = num(d.superficieUtil);
   const huespedes = num(d.capacidadHuespedes);
-  const permite = d.edificioPermiteAirbnb;
-  const reglamento = permite === "si" || permite === true ? "el reglamento permite renta corta · declarado por ti, no verificado" : permite === "no" ? "el reglamento no permite renta corta · declarado por ti" : "reglamento del edificio sin confirmar";
-  const tipologia = [dorms != null ? `${dorms}D` : null, m2 != null ? `${Math.round(m2)} m²` : null, huespedes != null ? `${huespedes} huéspedes` : null, reglamento].filter(Boolean).join(" · ");
+  // El estado del reglamento cerraba esta línea hasta el 11-sep-2026 (retiro V1 de la regulación).
+  const tipologia = [dorms != null ? `${dorms}D` : null, m2 != null ? `${Math.round(m2)} m²` : null, huespedes != null ? `${huespedes} huéspedes` : null].filter(Boolean).join(" · ");
 
   // ── lugares y perfiles (dataset Franco, sin IA) ──
   const lugares = lat != null && lng != null ? getNearbyAttractors(lat, lng, 1500).slice(0, 6).map((a) => ({ nombre: a.meta ? `${a.nombre} · ${a.meta}` : a.nombre, tipo: a.tipo, distanciaM: Math.round(a.distancia) })) : [];

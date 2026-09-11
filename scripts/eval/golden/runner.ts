@@ -43,7 +43,6 @@ import { runEtiquetaTier } from "./etiqueta-veredicto-catch-test";
 import { runTitularFinalTier } from "./titular-final-catch-test";
 import { runInstrumentosTier } from "./instrumentos-catch-test";
 import { runMesVacioTier } from "./mes-vacio-catch-test";
-import { runRegulacionTier } from "./regulacion-catch-test";
 import { runRegulacionNoPesaTier } from "./regulacion-no-pesa-catch-test";
 import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runRespaldoArriendoTier } from "./respaldo-arriendo-catch-test";
@@ -265,12 +264,6 @@ async function printStrSemantic() {
   // lo exigía en la prosa y se retiró con acta. Corre siempre con el QUICK. ──
   totalHard += runMesVacioTier().hard;
 
-  // ── Tier REGULACIÓN (09-sep-2026, 0 tokens): el bloque determinista que dice si el
-  // edificio permite operar por día, con el amoblamiento en riesgo. Reemplaza al bloque
-  // `riesgos` del schema STR, retirado con acta: de las nueve familias de riesgo que el
-  // modelo escribía, ocho ya las dibuja el motor y esta era la única sin cubrir.
-  // Corre siempre con el QUICK. ──
-  totalHard += runRegulacionTier().hard;
   // ── Tier REGULACIÓN NO PESA (retiro V1 · 11-sep-2026, 0 tokens, sin base): sin gate
   // g1_regulacion, «no» = «no_seguro» = «sí» en score y veredicto, y las «sí» byte-idénticas
   // a la baseline. Verificado en rojo con la fila «no» del golden. Corre siempre con el QUICK. ──

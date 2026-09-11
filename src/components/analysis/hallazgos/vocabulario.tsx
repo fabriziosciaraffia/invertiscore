@@ -52,7 +52,7 @@ export function VCierre({ titulo, children }: { titulo: ReactNode; children: Rea
 /** 4 · Línea de fuente/procedencia.
  *  `aviso` la sube de nota al pie a advertencia: se usa cuando lo que declara NO es de
  *  dónde salió un dato sino que ese dato no está contrastado. Sin color nuevo — toma el
- *  borde izquierdo del patrón `.reg`, no Signal Red: un caveat no es una alarma. */
+ *  borde izquierdo de 3px en --doc-tx3, no Signal Red: un caveat no es una alarma. */
 export function VFuente({ children, aviso = false }: { children: ReactNode; aviso?: boolean }) {
   return <div className={aviso ? "v-fuente aviso" : "v-fuente"}>{children}</div>;
 }

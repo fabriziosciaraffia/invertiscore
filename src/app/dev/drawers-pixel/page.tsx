@@ -32,9 +32,9 @@ import fixtures from "./fixtures.json";
 // la unica forma de shotear el camino congelado sin abrir una fila anonima en prod.
 // v17 (09-sep-2026): los tres STR se volcaron a la prosa podada; `staRosaStrV11`
 // conserva la misma fila con los siete bloques viejos (camino congelado), y
-// `lasCondesStrNo` / `lasCondesStrNoSeguro` son la misma fila con los otros dos estados
-// de regulacionEdificio — la unica forma de shotear el bloque determinista sin inventar
-// filas de analisis.
+// `lasCondesStrNo` / `lasCondesStrNoSeguro` eran la misma fila con los otros dos estados
+// del reglamento; desde el retiro de la regulacion (11-sep-2026) renderizan igual que
+// `lasCondesStr` y quedan solo como fixtures inertes.
 // v22 (09-sep-2026): `nunoaLtrV22` / `providenciaLtrV22` / `laFloridaLtrV22` son las MISMAS
 // tres filas con la forma v22 — un solo campo de prosa. Se derivan por SUSTRACCION de sus
 // v21 (se les sacan los cuatro campos que v22 ya no emite), no por generacion: asi la prosa
