@@ -122,6 +122,37 @@ if (!/\.hall-head:focus-visible/.test(leer("src/components/analysis/hallazgos/Ha
   }
 }
 
+// ── 7 · el enlace no dibuja DOS flechas ──────────────────────────────────
+{
+  // Los tres usos de «.doc-lnk» ya traen la flecha en su propio texto —«Ver cómo se
+  // calcula →», «Ver los comparables →»—, así que un «::after» que la agrega dibuja dos.
+  // Medido en el DOM del informe encendido: textContent «Ver cómo se calcula →» y
+  // ::after content "→", en los dos enlaces de la página.
+  //
+  // LA QUE SE VA ES LA DEL PSEUDO-ELEMENTO, NO LA DEL TEXTO. Por eso el invariante tiene
+  // dos mitades: que el «::after» no la ponga, y que el texto siga trayéndola — si
+  // alguien «arregla» el doble sacándola del texto, el enlace queda sin ninguna.
+  //
+  // LA UNIDAD ES LA FRASE, NO LA LÍNEA. En ZonaLtr el rótulo vive en un ternario junto
+  // a «Explorar →», así que una línea que conserva UNA flecha no prueba que la conserve
+  // ESTE rótulo: con la línea como unidad, la mutación que se la saca daba verde.
+  const m = CSS.match(/\.doc-r2 \.doc-lnk::after\{([^}]*)\}/);
+  if (m && /content:\s*"[^"]*[→›»>]/.test(m[1])) {
+    F(`7 · «.doc-r2 .doc-lnk::after» volvió a poner una flecha ({${m[1]}}). Los tres usos ya la traen en su texto: el pseudo-elemento dibuja la SEGUNDA.`);
+  }
+  const usos: [string, string][] = [
+    ["src/components/analysis/shared/SeisCifras.tsx", "Ver cómo se calcula"],
+    ["src/components/analysis/zona/ZonaLtr.tsx", "Ver los comparables"],
+  ];
+  for (const [ruta, frase] of usos) {
+    const txt = leer(ruta);
+    if (!txt.includes(frase)) F(`7 · desapareció «${frase}» de ${ruta}`);
+    else if (!txt.includes(`${frase} →`)) {
+      F(`7 · «${frase}» perdió la flecha de su propio texto en ${ruta}. La que se retiró es la del ::after; sin la del texto el enlace queda sin ninguna.`);
+    }
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runRadiosSombrasTier(): { hard: number } {
   console.log("\n─── TIER RADIOS-SOMBRAS (contrato §1 y §9 · 0 tokens) ───");

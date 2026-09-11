@@ -934,7 +934,10 @@ export function DocTokens() {
         padding-bottom:2px;text-decoration:none;
         border-bottom:1.5px solid color-mix(in srgb,var(--signal-red) 35%,transparent)}
       .doc-r2 .doc-lnk:hover{text-decoration:none;border-bottom-color:var(--signal-red)}
-      .doc-r2 .doc-lnk::after{content:"→";font-size:13px;line-height:1}
+      /* SIN FLECHA PROPIA. Los tres usos ya la traen en su texto («Ver cómo se calcula
+           →», «Ver los comparables →»), así que un «::after» que la agrega dibuja DOS.
+           Medido en el DOM: textContent «Ver cómo se calcula →» + ::after content "→".
+           La del texto se queda; la del pseudo-elemento se va. */
 
       /* — FILA NAVEGABLE — definida, sin montar. La parte 4 la usa. */
       .doc-r2 .fila-nav{

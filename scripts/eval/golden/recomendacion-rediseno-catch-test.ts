@@ -310,6 +310,32 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   if (!reglaDe(".doc-r2 .rec-puente", REC)) F("14 · el puente no tiene estilo propio: queda con el del descarte, que es lo menos accionable de la card");
 }
 
+// ── EL ANCHO DE LA RECOMENDACIÓN (contrato §2) ───────────────────────────
+{
+  // El default de la firma es «pb-2 md:ml-9»: cuelga la caja del texto del título, que
+  // es como se leía cuando la recomendación vivía DENTRO del hero. Ahora es una sección
+  // del informe y mide lo que miden las demás. Medido en el DOM a 1100 px de ancho:
+  // colgada arrancaba en left 229 con 664 de ancho, contra los 700 del hero — 36 px más
+  // angosta y desalineada contra todo lo demás.
+  //
+  // EL GATE VA EN LA RAMA DEL REDISEÑO, NO EN EL DEFAULT DE LA FIRMA. STR usa ese mismo
+  // default y no entra nunca en esta rama: tocar la firma lo movería a él también.
+  const i = POS.indexOf("if (rediseno) {");
+  const rama = i === -1 ? "" : POS.slice(i, i + 2500);
+  if (!rama) F("ancho · no se encontró la rama del rediseño en PosicionFranco");
+  else {
+    const div = rama.match(/<div className=\{([^}]*)\}>/)?.[1] ?? "";
+    if (!div) F("ancho · la rama del rediseño ya no abre con un div de className calculada");
+    else if (!div.includes("md:ml-9")) {
+      F(`ancho · la rama del rediseño dejó de retirar «md:ml-9»: «${div.trim().slice(0, 80)}». La recomendación vuelve a colgar del título y queda 36 px más angosta que el resto del informe.`);
+    }
+  }
+  // Y el default de la firma sigue intacto, que es lo que deja a STR quieto.
+  if (!/className = "pb-2 md:ml-9"/.test(POS)) {
+    F("ancho · cambió el DEFAULT de `className` en la firma de PosicionFranco. Ese default es el que usa STR, que no pasa la prop: moverlo mueve STR, y el gate por modalidad existe justamente para que eso no pase (contrato §11).");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runRecomendacionRedisenoTier(): { hard: number } {
   console.log("\n─── TIER RECOMENDACIÓN-REDISEÑO (contrato §5 y §7 · 0 tokens) ───");

@@ -95,7 +95,14 @@ export function PosicionFranco({
   if (rediseno) {
     return (
       <>
-        <div className={className}>
+        {/* EL ANCHO ES EL DEL INFORME (contrato §2). El default «md:ml-9» cuelga la caja
+            del texto del título, que es como se leía cuando la recomendación vivía DENTRO
+            del hero. Es una sección del informe, y colgada quedaba 36 px más angosta y
+            desalineada contra todas las demás. El gate va acá y no en el default de la
+            firma para que STR —que usa ese mismo default y no entra nunca en esta rama—
+            no se mueva ni un píxel. Se filtra por token y no por regex para no morder
+            una clase que lo contenga como prefijo. */}
+        <div className={className.split(" ").filter((c) => c !== "md:ml-9").join(" ")}>
           {/* ES LA ÚNICA PIEZA CUYO FONDO DEPENDE DEL VEREDICTO (contrato §5): del tono
               profundo del veredicto a tinta. El hero usa el mismo espectro para los tres
               justamente para que esta caja pueda no hacerlo. El filtro va en la capa,
