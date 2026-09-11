@@ -269,11 +269,33 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   if (!/rec-dcto-g/.test(BLO)) F("12 · el descuento dejó de ir plegado dentro de la fila del mix");
 }
 
+// ── 13 · «Resultado» es obligatoria EN LAS DOS RAMAS ─────────────────────
+{
+  // El invariante 11 mira la rama SIN mix. Esta fila también vive en la rama CON mix, y
+  // ahí no la cubría nadie: al plegar el descuento dentro de «Con lo tuyo», el reemplazo
+  // se comió las tres filas del molde viejo —«Cambias», «Negocias» y «Resultado»— y la
+  // card se quedó sin destino sin que ningún test lo viera. Se repuso a mano.
+  //
+  // ACOTADO A LA RAMA CON MIX: desde `const solas = …` —la primera línea después del
+  // `if (!mix || soloEscalon)`— hasta el fin de la función. Mirar todo el archivo daría
+  // verde por la fila de la otra rama, que es justo el agujero que esto tapa.
+  const i = BLO.indexOf("const solas = filas.filter");
+  const rama = i === -1 ? "" : BLO.slice(i);
+  if (!rama) F("13 · no se encontró la rama con mix de la ecuación");
+  else if (!/<span className="rec-k">Resultado<\/span>/.test(rama)) {
+    F("13 · la rama CON mix perdió la fila «Resultado». Es el destino común de los caminos de arriba: sin ella la card muestra alternativas y no dice adónde llevan.");
+  }
+  // Y que siga siendo una transición y no un texto suelto.
+  else if (!/rec-trans/.test(rama) || !/rec-pill de/.test(rama) || !/rec-pill a/.test(rama)) {
+    F("13 · «Resultado» dejó de dibujarse como transición (píldora tenue → píldora blanca)");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runRecomendacionRedisenoTier(): { hard: number } {
   console.log("\n─── TIER RECOMENDACIÓN-REDISEÑO (contrato §5 y §7 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 128/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, la recomendación apuntando SIEMPRE a Comprar, la fila de capítulo sin bajada y con la cifra apellidada, «Resultado» también sin mix, y las palancas solas junto al mix como alternativas");
+    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 128/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, la recomendación apuntando SIEMPRE a Comprar, la fila de capítulo sin bajada y con la cifra apellidada, «Resultado» también sin mix, las palancas solas junto al mix como alternativas, y «Resultado» obligatoria en las DOS ramas");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
