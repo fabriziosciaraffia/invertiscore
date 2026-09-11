@@ -22,6 +22,9 @@ export type QuienLaPone = "vendedor" | "mercado" | "tuyo";
 
 export interface FilaLoQueHariaYo {
   titulo: string;
+  /** El nombre llano de la palanca —«precio», «arriendo», «tarifa»— para la oración
+   *  «Alternativamente: +X% de arriendo o −Y% de precio» de la card (§5 revisado). */
+  nombre: string;
   quien: QuienLaPone;
   /** La magnitud, a la derecha ("−24,1%" · "8% → 22%" · "30 años"). */
   cifra: string;
@@ -156,6 +159,7 @@ export function construirLoQueHariaYo(p: {
     if (s) {
       filas.push({
         titulo: "Cuánto aguanta el veredicto",
+        nombre: "arriendo",
         rotuloCorto: "Aguanta",
         quien: "mercado",
         cifra: s.firme ? "−50% o más" : `−${pct1(s.marginPct)}%`,
@@ -165,6 +169,7 @@ export function construirLoQueHariaYo(p: {
     if (p.arriendoDeclaradoCLP > 0) {
       filas.push({
         titulo: "Verifica el arriendo",
+        nombre: "arriendo",
         rotuloCorto: "Verifica",
         quien: "tuyo",
         cifra: plata(p.arriendoDeclaradoCLP),
@@ -218,11 +223,12 @@ export function construirLoQueHariaYo(p: {
     // El PIE va en puntos, no en cambio relativo (0% → 26% no tiene relativo), así que
     // su cifra es el recorrido y no lleva objetivo debajo. El plazo, ídem: son años.
     const rotuloCorto = SOLO[l.palanca] ?? null;
-    if (l.palanca === "pie") return { titulo, rotuloCorto, quien, cifra: `${pct1(l.actual)}% → ${pct1(l.objetivo)}%`, objetivo: null };
-    if (l.palanca === "plazo") return { titulo, rotuloCorto, quien, cifra: `${l.objetivo} años`, objetivo: null };
+    const nombre = NOMBRE_LLANO[l.palanca] ?? l.palanca;
+    if (l.palanca === "pie") return { titulo, nombre, rotuloCorto, quien, cifra: `${pct1(l.actual)}% → ${pct1(l.objetivo)}%`, objetivo: null };
+    if (l.palanca === "plazo") return { titulo, nombre, rotuloCorto, quien, cifra: `${l.objetivo} años`, objetivo: null };
     const cifra = `${signo(l.deltaPct)}${pct1(Math.abs(l.deltaPct))}%`;
     const objetivo = l.palanca === "precio" ? enUF(l.objetivo) : plata(l.objetivo);
-    return { titulo, rotuloCorto, quien, cifra, objetivo };
+    return { titulo, nombre, rotuloCorto, quien, cifra, objetivo };
   });
 
   // ── EL CONTEXTO — la cifra IMPOSIBLE, chica y arriba ─────────────────────
@@ -286,9 +292,12 @@ export function construirLoQueHariaYo(p: {
           m.descuentoSoloPrecioPct !== null
             ? { de: `−${pct1(m.descuentoSoloPrecioPct)}%`, a: m.sinDescuento ? "sin descuento" : `−${pct1(m.descuentoPct)}%` }
             : null,
-        costo: m.costoDiaUnoUF > 0 ? `${enUF(m.costoDiaUnoUF)} más el día uno` : null,
+        // §5 revisado (11-sep-2026): las tres acotaciones de la card hablan igual, y ésta
+        // dice qué cuesta y cuándo: «Poner ese pie cuesta UF 230 más el día uno.»
+        costo: m.costoDiaUnoUF > 0 ? `Poner ese pie cuesta ${enUF(m.costoDiaUnoUF)} más el día uno.` : null,
         descuento: m.sinDescuento ? null : `−${pct1(m.descuentoPct)}%`,
-        sinDescuento: m.sinDescuento ? "sin pedirle un peso al vendedor" : null,
+        // Va en el lugar de «Negocias −X% dcto. en precio», con su flecha y sin paréntesis.
+        sinDescuento: m.sinDescuento ? "Sin pedirle un peso al vendedor" : null,
       }
     : null;
 
@@ -324,20 +333,57 @@ export function construirLoQueHariaYo(p: {
  * negación. Es la misma confusión que antes fue «sin mix ≠ sin salida», una capa más
  * arriba.
  */
-export function bajadaRecomendacion(veredicto: Veredicto | string, bloque: BloqueLoQueHariaYo | null | undefined): string {
-  if (veredicto === "COMPRAR") return "Cierra al precio pedido";
-  // ESTADO 3 — sin bloque: no se afirma nada. La card queda con su título, esta línea y
-  // el CTA, que lleva al pop-up donde sí está todo lo que el motor probó.
-  if (!bloque) return "Lo que Franco probó para este caso";
+/**
+ * EL ESTADO DE LA RECOMENDACIÓN (§5 revisado, 11-sep-2026). Es lo que `PosicionFranco`
+ * lee para dibujar la bajada: el texto por estado y, SOLO con salida, la píldora neutra
+ * «✓ COMPRAR». La bajada ya no viaja como string con el destino adentro.
+ *
+ *   · comprar     — ya está en Comprar: «Cierra al precio pedido», sin píldora.
+ *   · con_salida  — hay mix a COMPRAR o palancas que cruzan solas: «Para que el
+ *                   veredicto pase a» + píldora.
+ *   · sin_salida  — nada llega: «No hay forma de que este departamento convenga».
+ *   · sin_bloque  — nadie midió: no se afirma nada.
+ */
+export type EstadoRecomendacion = "comprar" | "con_salida" | "sin_salida" | "sin_bloque";
+
+export const BAJADA_RECOMENDACION: Record<EstadoRecomendacion, string> = {
+  comprar: "Cierra al precio pedido",
+  con_salida: "Para que el veredicto pase a",
+  sin_salida: "No hay forma de que este departamento convenga",
+  sin_bloque: "Lo que Franco probó para este caso",
+};
+
+export function estadoRecomendacion(veredicto: Veredicto | string, bloque: BloqueLoQueHariaYo | null | undefined): EstadoRecomendacion {
+  if (veredicto === "COMPRAR") return "comprar";
+  // SIN BLOQUE no es SIN SALIDA: es «no se sabe», y de una ausencia no se concluye una
+  // negación (medido: 1.194 de 1.202 filas caían ahí con el gate de prosa delante).
+  if (!bloque) return "sin_bloque";
   const mix = bloque.mix;
-  if (mix && mix.destino === "COMPRAR") return `Para que el veredicto pase a ${DESTINO}`;
+  if (mix && mix.destino === "COMPRAR") return "con_salida";
   // LAS FILAS SE PREGUNTAN ANTES QUE EL ESCALÓN, y el orden importa. Un mix que solo
   // llega al escalón intermedio no es una recomendación (§5) y la card no lo dibuja —
   // pero si además hay palancas que cruzan SOLAS a COMPRAR, entonces sí hay forma de que
   // convenga, y negarlo sería falso. Medido sobre el parque: 2 filas están exactamente
-  // en ese cruce. Con el orden invertido la card les decía que no había forma teniendo
-  // dos palancas que llegan.
-  if (bloque.filas.length > 0) return `Para que el veredicto pase a ${DESTINO}`;
-  // Sin filas: acá sí, el mix al escalón se lee como sin salida y vive en el pop-up.
-  return "No hay forma de que este departamento convenga";
+  // en ese cruce.
+  if (bloque.filas.length > 0) return "con_salida";
+  return "sin_salida";
+}
+
+/** La bajada en palabras (con el destino, para tests y logs). El render la arma desde
+ *  `estadoRecomendacion` y dibuja el destino como píldora. */
+export function bajadaRecomendacion(veredicto: Veredicto | string, bloque: BloqueLoQueHariaYo | null | undefined): string {
+  const estado = estadoRecomendacion(veredicto, bloque);
+  return estado === "con_salida" ? `${BAJADA_RECOMENDACION.con_salida} ${DESTINO}` : BAJADA_RECOMENDACION[estado];
+}
+
+/**
+ * «Pero eso no depende de ti: lo pone el mercado o el vendedor.» — la línea que sigue
+ * a «Alternativamente». Nombra quién y descarta que seas tú en el mismo gesto (§10).
+ * Recibe quiénes ponen las alternativas que se nombraron, en su orden.
+ */
+export function lineaNoDependeDeTi(quienes: QuienLaPone[]): string {
+  const ajenos = Array.from(new Set(quienes.filter((q) => q !== "tuyo")));
+  const nombre = (q: QuienLaPone) => (q === "mercado" ? "el mercado" : "el vendedor");
+  const quien = ajenos.length === 0 ? "el mercado" : ajenos.map(nombre).join(" o ");
+  return `Pero eso no depende de ti: lo pone ${quien}.`;
 }

@@ -74,3 +74,15 @@ const LINEAS_DECLARA: Record<Veredicto, string> = {
 export function lineaQueDeclara(v: Veredicto | string | null | undefined): string | null {
   return esVeredicto(v) ? LINEAS_DECLARA[v] : null;
 }
+
+/**
+ * EL SIGNO DEL VEREDICTO — los mismos glifos del botón del hero y de la landing
+ * (U+2715, U+2212, U+2713). Cuelga del veredicto y no de la etiqueta: la etiqueta es copy
+ * y puede cambiar; los tres veredictos son un enum cerrado. Fallback al escalón
+ * intermedio, igual que la etiqueta. Desde el 11-sep-2026 lo leen también las píldoras
+ * de la card de §5 («− AJUSTAR» → «✓ COMPRAR»).
+ */
+const SIGNO: Record<string, string> = { "BUSCAR OTRA": "✕", "AJUSTA SUPUESTOS": "−", COMPRAR: "✓" };
+export function signoVeredicto(v: Veredicto | string | null | undefined): string {
+  return SIGNO[String(v ?? "")] ?? SIGNO["AJUSTA SUPUESTOS"];
+}
