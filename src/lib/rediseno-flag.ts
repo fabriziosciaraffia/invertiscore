@@ -38,11 +38,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * ¿El informe se dibuja con el rediseño? Con `false` no cambia ni un byte de lo
- * que se sirve hoy: la clase `doc-r2` no se emite, ninguna regla nueva matchea, y
- * las fuentes del rediseño no se descargan (van con `preload:false`).
+ * ¿El informe se dibuja con el rediseño? ENCENDIDO desde el goal 4d (11-sep-2026), y
+ * solo para LTR: STR no pasa la prop ni monta el provider, y el contexto tiene default
+ * `false`, así que su informe queda exactamente como estaba (contrato §11).
+ *
+ * PARA APAGAR: `git revert` del commit que puso esto en `true`. Es lo único que ese
+ * commit cambia —esta línea y el `preload` de Inter— justamente para que el revert sea
+ * limpio y no arrastre nada del rediseño construido, que sigue detrás del interruptor.
  */
-export const REDISENO_INFORME = false;
+export const REDISENO_INFORME = true;
 
 /** La clase que abre las reglas del rediseño. Vacía cuando el interruptor está en
  *  `false`, así que se puede interpolar sin condicionales en el call site. */

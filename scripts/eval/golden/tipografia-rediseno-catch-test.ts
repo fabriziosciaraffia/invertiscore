@@ -49,15 +49,23 @@ const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8"); 
 const LAYOUT = leer("src/app/layout.tsx");
 const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 
-// ── 1 · el interruptor está apagado ────────────────────────────────────────
-{
-  if (REDISENO_INFORME !== false) {
-    F("1 · REDISENO_INFORME quedó ENCENDIDO. El rediseño va en cuatro partes y prod no puede ver una sola. Si esta es la parte 4, invertí este invariante en el mismo commit que lo enciende.");
-  }
-  if (CLASE_REDISENO !== "") {
-    F(`1 · con el interruptor apagado CLASE_REDISENO tiene que ser vacía, y vale «${CLASE_REDISENO}»`);
-  }
-}
+// ── 1 · EL INVARIANTE DEL INTERRUPTOR SE RETIRA CON ACTA (11-sep-2026) ─────
+//
+// Pedía que `REDISENO_INFORME` fuera `false` y que `CLASE_REDISENO` fuera vacía, con su
+// motivo escrito: el rediseño iba en cuatro partes y producción no podía ver una sola.
+// El goal 4d enciende, así que el invariante cumplió su trabajo y se va — su propio
+// mensaje decía «si esta es la parte 4, invertí este invariante en el mismo commit que
+// lo enciende».
+//
+// NO SE INVIERTE ACÁ: se reemplaza por el tier `interruptor-rediseno`, que fija las
+// CINCO condiciones del encendido —constante en `true`, STR sin la prop y sin el
+// provider, Inter con preload, la clase derivada de la constante y el contexto con
+// default `false`—. Invertirlo acá habría dejado el mismo chequeo en dos tiers, y con
+// dos dueños ninguno lo mantiene.
+//
+// El import de la constante se conserva: lo usa el chequeo de más abajo.
+void REDISENO_INFORME;
+void CLASE_REDISENO;
 
 // ── 2 · las fuentes y sus pesos ────────────────────────────────────────────
 {
@@ -127,7 +135,7 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 export function runTipografiaRedisenoTier(): { hard: number } {
   console.log("\n─── TIER TIPOGRAFÍA-REDISEÑO (contrato §1 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — interruptor apagado, pesos cargados, tabular-nums en la columna, Inter sin preload, serif capturada en body y wordmark exceptuado");
+    console.log("  ✓ VERDE — pesos cargados, tabular-nums en la columna, el preload de Inter coherente con el interruptor, serif capturada en body y wordmark exceptuado");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

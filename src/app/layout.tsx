@@ -39,17 +39,19 @@ const ibmPlexSans = IBM_Plex_Sans({
 // 400-700 — en vez de cuatro estáticos. `latin-ext` no es opcional: los nombres de
 // comuna llevan tilde y ñ.
 //
-// `preload: false` ES EL QUE HACE QUE ESTO NO CUESTE NADA HASTA EL GOAL 4. next/font
-// se llama a nivel de módulo y no se puede envolver en un `if`, pero sin preload el
-// navegador solo descarga el archivo cuando una regla usa la familia — y con el
-// interruptor apagado no hay ninguna. Lo que llega a prod es la declaración
-// @font-face, unos cientos de bytes. Cuando el rediseño se encienda, esta línea pasa
-// a `preload: true` en el mismo commit.
+// `preload: true` DESDE EL GOAL 4d, en el mismo commit que enciende el interruptor.
+// Mientras estuvo apagado iba en `false` y eso era lo que hacía que el rediseño no
+// costara nada: sin preload el navegador solo descarga el archivo cuando una regla usa
+// la familia, y con el interruptor apagado no había ninguna.
+//
+// Encendido, `false` sería peor que inútil: la primera regla que pide Inter es la del
+// informe, así que la descarga arrancaría recién al renderizarlo y el lector vería el
+// fallback y después el salto. Con `true` el archivo viaja con el documento.
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
   variable: "--font-ui",
   display: "swap",
-  preload: false,
+  preload: true,
 });
 
 const jetbrainsMono = JetBrains_Mono({
