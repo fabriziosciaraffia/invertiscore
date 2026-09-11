@@ -333,11 +333,49 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
   }
 }
 
+// ── 16 · el marco se va ENTERO (contrato §2) ─────────────────────────────
+{
+  // «Página blanca, dos cajas y nada más». El marco de documento —fondo, borde, sombra,
+  // grano, barra roja, cabecera con el wordmark y pie con el tagline— es la metáfora que
+  // el rediseño abandona: la marca vive en el chrome de la app y el informe no la repite.
+  //
+  // SE OCULTA, NO SE BORRA: `DocumentoFrame` lo monta también STR, que conserva el suyo.
+  const marco = reglaDe(".doc-r2.doc-dictamen") ?? reglaDe(".doc-r2 .doc-dictamen");
+  if (!marco) F("16 · no existe la regla que retira el marco");
+  else {
+    for (const [prop, val] of [["background", "none"], ["border", "none"], ["box-shadow", "none"]] as const) {
+      if (!new RegExp(`${prop}:\s*${val}`).test(marco)) F(`16 · el marco recuperó su «${prop}»: §2 pide página blanca`);
+    }
+  }
+  // Las dos formas del selector, como siempre: pegada y descendente.
+  for (const f of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
+    if (reglaDe(f) === null) F(`16 · falta «${f}» al retirar el marco. En producción las clases van PEGADAS y en la ruta dev envuelve: con una sola forma, uno de los dos montajes conserva el marco.`);
+  }
+  // El grano del marco también: el rediseño tiene el suyo en el hero y la recomendación,
+  // y dos granos superpuestos son ruido, no un grano más fuerte.
+  for (const g of [".doc-r2.doc-dictamen::after", ".doc-r2 .doc-dictamen::after"]) {
+    const r = reglaDe(g);
+    if (r === null || !/display:\s*none/.test(r)) {
+      F(`16 · «${g}» no apaga el grano del marco: se superpone con el del hero y el de la recomendación, y dos granos no son un grano más fuerte`);
+    }
+  }
+  // La cabecera, el pie y la barra roja.
+  for (const pieza of [".doc-r2 .doc-toprule", ".doc-r2 .doc-head", ".doc-r2 .doc-foot"]) {
+    const r = reglaDe(pieza);
+    if (r === null || !/display:\s*none/.test(r)) {
+      F(`16 · «${pieza}» sigue montándose. El wordmark y el tagline se van con el marco: la marca vive en el chrome de la app.`);
+    }
+  }
+  // Y el padding del marco muere con él: la página es la página.
+  const pag = reglaDe(".doc-r2 .doc-page");
+  if (!pag || !/padding:\s*0/.test(pag)) F("16 · el padding del marco sobrevivió al marco");
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runEstructuraRedisenoTier(): { hard: number } {
   console.log("\n─── TIER ESTRUCTURA-REDISEÑO (contrato §2, §6 y §8 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — una sola caja (el hero), la alternancia muerta con la especificidad resuelta, el marco sin sombra en las dos formas del selector, 38/34 px de separación, 700 px de ancho, el andamio --doc-inset en pie, las cifras como tarjetas de dos columnas que no reaccionan, los tres títulos de §10 detrás del interruptor, y la zona con el arriendo primero, las píldoras en el par direccional y el caveat del período en el pie común");
+    console.log("  ✓ VERDE — una sola caja (el hero), la alternancia muerta con la especificidad resuelta, el marco sin sombra en las dos formas del selector, 38/34 px de separación, 700 px de ancho, el andamio --doc-inset en pie, las cifras como tarjetas de dos columnas que no reaccionan, el marco retirado entero, los tres títulos de §10 detrás del interruptor, y la zona con el arriendo primero, las píldoras en el par direccional y el caveat del período en el pie común");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

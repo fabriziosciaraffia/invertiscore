@@ -432,16 +432,31 @@ export function DocTokens() {
          prosa vieja, que es permanente para 453 filas anónimas— pero en el camino nuevo
          deja de tener trabajo, porque ya no hay dos tonos que alternar.
 
-         Y SE RETIRA LA SOMBRA DEL MARCO. «.doc-dictamen» tenía la única sombra real del
-         informe, y era lo que lo separaba del fondo de la página. Con las cajas, la
-         sombra pasa a ser de ellas: si el marco la conserva, el informe entero flota y
-         las dos cajas dejan de destacarse. El marco queda plano y sin radio propio. */
-      /* Las dos formas del selector, por lo mismo que la paleta: cuando «.doc-r2» va en
-         el MISMO elemento que «.doc-dictamen» (produccion) manda la primera; cuando
-         envuelve desde afuera (ruta dev), la segunda. Medido: sin la segunda el marco se
-         quedaba con su sombra. */
+         Y SE VA EL MARCO ENTERO. §2 pide «página blanca, dos cajas y nada más», así que
+         no se retira solo la sombra: el fondo, el borde, la barra roja, la cabecera con
+         el wordmark y el pie con el tagline. La marca vive en el chrome de la app y el
+         informe no la repite — repetirla convertía el informe en un documento impreso
+         dentro de la pantalla, que es justo la metáfora que el rediseño abandona.
+
+         SE OCULTAN, NO SE BORRAN DEL JSX: «DocumentoFrame» lo monta también STR, que
+         conserva su marco completo. Las dos formas del selector por lo de siempre —en
+         producción las clases van pegadas, en la ruta dev envuelve—.
+
+         El grano del marco («.doc-dictamen::after») también se va: el rediseño tiene el
+         suyo en el hero y en la recomendación, y dos granos superpuestos no son un
+         grano más fuerte, son ruido. */
       .doc-r2.doc-dictamen,
-      .doc-r2 .doc-dictamen{box-shadow:none;border-color:var(--line)}
+      .doc-r2 .doc-dictamen{
+        background:none;border:none;box-shadow:none}
+      .doc-r2.doc-dictamen::after,
+      .doc-r2 .doc-dictamen::after{display:none}
+      .doc-r2 .doc-toprule,
+      .doc-r2 .doc-head,
+      .doc-r2 .doc-foot{display:none}
+      /* Sin cabecera ni pie, el padding del marco deja de tener sentido: la página es la
+         página. */
+      .doc-r2 .doc-page{padding:0}
+      @media (max-width: 767px){ .doc-r2 .doc-page{padding:0} }
       /* «.doc-sec.p2» tiene la misma especificidad que «.doc-r2 .doc-sec» y gana por
          orden, asi que la seccion alternada conservaba su fondo. Con «.p2» en el
          selector se resuelve, y de paso queda explicito que la alternancia muere. */
