@@ -445,6 +445,52 @@ export function DocTokens() {
         .doc-r2 .num-cell .v{font-size:25px}
       }
 
+      /* ═══════════════ REDISEÑO · LA ZONA (contrato §8) ═══════════════
+         Tres tarjetas, MISMO ESTILO QUE LAS CIFRAS —el contrato lo dice así—, pero con
+         una jerarquía propia: qué es, TU valor, la referencia, la píldora con la
+         diferencia y una línea de contexto. El arriendo va primero.
+
+         LAS TARJETAS NO REACCIONAN, igual que las de cifra: no abren nada. Lo único
+         clickeable de la sección es «Ver los comparables», que es «.doc-lnk».
+
+         LAS PÍLDORAS USAN EL PAR DIRECCIONAL, no colores nuevos: «--signal-red» cuando
+         el dato empeora tu caso y «--up» cuando lo mejora, las dos con fondo al 12% como
+         pide el contrato. La neutra va en gris. Ojo con la dirección: en dos de las tres
+         tarjetas «más» es PEOR —pagar más por m², declarar un arriendo por encima de lo
+         que la zona publica— y en la valorización «más» es mejor. El color lo decide el
+         SENTIDO, no el signo.
+
+         EL PIE COMÚN ES UNA PIEZA, no un pie de tarjeta: ahí vive el caveat del período
+         de la valorización, que es de las tres y no de una. */
+      .doc-r2 .zona-cards{
+        display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:18px}
+      .doc-r2 .zc{
+        background:var(--card);border-radius:var(--rad-s);padding:17px;
+        display:flex;flex-direction:column;align-items:flex-start;gap:0}
+      .doc-r2 .zc-k{font-size:13px;line-height:1.35;color:var(--tx3);margin:0 0 9px}
+      .doc-r2 .zc-v{
+        font-family:var(--font-mono, ui-monospace);font-size:26px;font-weight:700;
+        line-height:1;letter-spacing:-.02em;color:var(--tx);margin:0;
+        font-variant-numeric:tabular-nums}
+      .doc-r2 .zc-r{font-size:13px;line-height:1.4;color:var(--tx3);margin:7px 0 0;min-height:18px}
+      .doc-r2 .zc-s{font-size:12.5px;line-height:1.45;color:var(--tx2);margin:10px 0 0}
+      .doc-r2 .zc-s b{color:var(--tx);font-weight:600}
+      /* la píldora */
+      .doc-r2 .zp{
+        display:inline-block;margin-top:9px;padding:3px 9px;border-radius:var(--rad-pill);
+        font-size:12px;font-weight:600;line-height:1.35;white-space:nowrap}
+      .doc-r2 .zp-mal{color:var(--signal-red);background:color-mix(in srgb,var(--signal-red) 12%,transparent)}
+      .doc-r2 .zp-bien{color:var(--up);background:color-mix(in srgb,var(--up) 12%,transparent)}
+      .doc-r2 .zp-neu{color:var(--tx3);background:color-mix(in srgb,var(--tx3) 12%,transparent)}
+      /* el pie común de las tres */
+      .doc-r2 .zona-caveat{
+        font-size:12px;line-height:1.5;color:var(--tx3);margin:13px 0 0}
+      .doc-r2 .zona-foot{margin-top:13px}
+      @media (max-width: 767px){
+        .doc-r2 .zona-cards{grid-template-columns:1fr}
+        .doc-r2 .zc-v{font-size:23px}
+      }
+
       /* ═══════════════ REDISEÑO · LAS TRES PRIMITIVAS (contrato §9) ═══════════════
          Tres niveles de affordance, y la diferencia entre ellos ES información:
 

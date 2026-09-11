@@ -218,7 +218,11 @@ export interface RespaldoArriendo {
  *  umbral que el wizard ya usaba; acá se nombra para que se pueda leer y testear. */
 export const N_MINIMO_MEDIANA = 10;
 
-const fmtRadio = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${m} m`);
+/** El radio, en la unidad que se lee. Exportado porque la tarjeta de zona del contrato
+ *  §8 dice la MISMA frase que el caveat del capítulo II («a menos de 900 m»): si cada
+ *  una lo formatea por su cuenta, el mismo dato se imprime distinto en el mismo informe. */
+export const fmtRadioArriendo = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${m} m`);
+const fmtRadio = fmtRadioArriendo;
 
 /**
  * Qué respalda el arriendo declarado. Nunca devuelve `null`: cuando no hay con qué

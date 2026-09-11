@@ -7,13 +7,15 @@ import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/type
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { MarcaSeccion, useDrawerAbierto } from "./informeTelemetry";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
-import { ZonaLtrSection, buildZonaLtr } from "./zona/ZonaLtr";
+import { ZonaLtrSection, buildZonaLtr, buildZonaLtrR2 } from "./zona/ZonaLtr";
 import { HeroLTR } from "./HeroLTR";
 import { ordenarHallazgosPiramide } from "@/lib/orden-hallazgos";
 import { TokensHallazgos } from "./hallazgos/HallazgosAcordeon";
 import { CapitulosInversion, type CapituloId } from "./CapitulosInversion";
 import { SeccionInforme } from "./SeccionInforme";
 import { PrincipalesHallazgos } from "./PrincipalesHallazgos";
+import { RedisenoProvider, useRediseno } from "./RedisenoContexto";
+import { REDISENO_INFORME } from "@/lib/rediseno-flag";
 import { LosNumeros } from "./LosNumeros";
 import { ModalCalculo } from "./ModalCalculo";
 import { getCapRefComuna } from "@/lib/cap-rate-hallazgo";
@@ -181,6 +183,9 @@ export function SubjectCardGrid({
   // Murió acá el acordeón de hallazgos con sus cuerpos de drawer inline, la
   // simulación con sus sliders y el análisis a 10 años de la IA. Los hallazgos
   // siguen siendo datos deterministas del motor; los capítulos los leen directo.
+  // Lo que diga un provider de más afuera (la ruta dev con `?rediseno=1`). Se lee ACÁ,
+  // antes de proveer, porque un componente no ve su propio provider.
+  const redisenoHeredado = useRediseno();
   const ctxDrawer = results && inputData ? { results, inputData, prosa } : null;
 
   // ═══ PORTADA (FASE 3 rediseño Dictamen — mockups v8/v9) ═══
@@ -206,6 +211,15 @@ export function SubjectCardGrid({
   const sobreprecioPortada =
     ((results?.metrics as { hallazgoSobreprecio?: HallazgoSobreprecio | null } | undefined)?.hallazgoSobreprecio ??
       aiAnalysis?.hallazgoSobreprecio) || null;
+  // Una sola construcción: la sección de siempre y la del contrato §8 leen la MISMA
+  // base, así no pueden divergir mientras las dos existan.
+  const zonaLtr = buildZonaLtr({
+    stats: zoneInsight?.stats,
+    sobre: sobreprecioPortada,
+    medianaResolvedAt,
+    arriendoUsuarioCLP: Number(inputData?.arriendo) || 0,
+    comuna: comunaPortada || "",
+  });
   const fichaPortada = inputData
     ? buildFichaLtr({
         input: inputData,
@@ -245,6 +259,13 @@ export function SubjectCardGrid({
 
   return (
     <div id="informe-pro-section" className="mb-8">
+      {/* El MISMO gate por modalidad que `DocumentoFrame`, para lo que es estructura y
+          una clase CSS no puede apagar (contrato §8: qué número manda en cada tarjeta
+          de zona). STR no monta este provider — ver `RedisenoContexto.tsx`.
+          El `|| heredado` NO es redundante: sin él este provider PISA al de la ruta dev
+          —que envuelve desde afuera— con la constante en `false`, y `?rediseno=1` dejaba
+          de encender la zona. Medido: las tarjetas nuevas no montaban. */}
+      <RedisenoProvider valor={REDISENO_INFORME || redisenoHeredado}>
       <DocumentoFrame secciones veredicto={veredicto} rediseno>
       {/* CSS del acordeón + vocabulario + modal, montado siempre: el modal de la
           posición y el de cálculo lo necesitan también mientras la prosa carga. */}
@@ -423,12 +444,13 @@ export function SubjectCardGrid({
                 onClick={() => setActiveDrawer("zona")}
                 currency={currency}
                 valorUF={valorUF}
-                zona={buildZonaLtr({
-                  stats: zoneInsight?.stats,
-                  sobre: sobreprecioPortada,
-                  medianaResolvedAt,
+                zona={zonaLtr}
+                zonaR2={buildZonaLtrR2({
+                  base: zonaLtr,
+                  inputData,
                   arriendoUsuarioCLP: Number(inputData?.arriendo) || 0,
-                  comuna: comunaPortada || "",
+                  precioUF: Number(inputData?.precio) || 0,
+                  superficie: Number(inputData?.superficie) || 0,
                 })}
               />
             </SeccionInforme>
@@ -445,6 +467,7 @@ export function SubjectCardGrid({
         </div>
       )}
       </DocumentoFrame>
+      </RedisenoProvider>
 
       <p className="text-center text-[10px] text-[var(--franco-text-muted)] mt-4">
         Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.

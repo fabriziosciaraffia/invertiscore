@@ -17,6 +17,7 @@ import { useSearchParams, notFound } from "next/navigation";
 import type { FullAnalysisResult } from "@/lib/types";
 import { TokensHallazgos } from "@/components/analysis/hallazgos/HallazgosAcordeon";
 import { DocTokens } from "@/components/analysis/portada/PortadaInforme";
+import { RedisenoProvider } from "@/components/analysis/RedisenoContexto";
 import { TokensShared } from "@/components/analysis/shared";
 import { PiezasShared } from "./PiezasShared";
 import { STRResultsClient } from "@/app/analisis/renta-corta/[id]/results-client";
@@ -72,11 +73,15 @@ function Inner() {
   // Goal "LTR hereda piezas compartidas" (05-sep-2026) · `?row=providenciaLtr&comp=paginaLtr`
   // monta la página LTR completa con el recompute volcado de 7710a017.
   if (fix && !isSTR && comp === "paginaLtr") {
-    // `?rediseno=1` abre las reglas del rediseno sin tocar la constante de
-    // `rediseno-flag.ts`. Envuelve en vez de pasar prop porque las reglas nuevas son
-    // descendentes (`.doc-r2 .hz-n`) y los tokens se heredan: un ancestro alcanza.
+    // `?rediseno=1` abre el rediseno sin tocar la constante de `rediseno-flag.ts`.
+    // DOS ENVOLTORIOS, porque el rediseno tiene dos mitades: la clase `.doc-r2` abre las
+    // reglas CSS (descendentes, `.doc-r2 .hz-n`, y los tokens se heredan: un ancestro
+    // alcanza), y el provider abre lo que es ESTRUCTURA y una clase no puede apagar —
+    // la zona del contrato §8 cambia que numero manda en cada tarjeta, no su color.
     const envolver = (n: React.ReactNode) =>
-      sp.get("rediseno") === "1" ? <div className="doc-r2">{n}</div> : n;
+      sp.get("rediseno") === "1"
+        ? <div className="doc-r2"><RedisenoProvider valor>{n}</RedisenoProvider></div>
+        : n;
     return envolver(
       <PremiumResults
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
