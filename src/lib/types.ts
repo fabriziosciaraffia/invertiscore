@@ -1108,7 +1108,20 @@ export interface HallazgoDistanciaVeredicto {
      *
      *  `null` = se exploró y no hay (o el salto de dos bandas no aplica).
      *  AUSENTE = fila vieja, NO CALCULADO. */
-    deltaMinimoComprarFueraDeTope?: { palanca: "arriendo" | "precio"; deltaPct: number } | null;
+    deltaMinimoComprarFueraDeTope?: { palanca: "arriendo" | "precio" | "adr"; deltaPct: number } | null;
+    /**
+     * LA SEGUNDA CORRIDA DEL MIX (STR, 11-sep-2026): pie × plazo × precio con meta COMPRAR
+     * partiendo de BUSCAR OTRA, con el tope de ESE salto (el de AJUSTA, 25 en STR) y
+     * `destino: "COMPRAR"`. Existe porque el contrato §5 no muestra nunca un mix que solo
+     * llega al escalón, y `mixPalancas` desde BUSCAR apunta al escalón por construcción:
+     * sin este campo la card no tenía con qué decir «con lo tuyo más −X% llegas a Comprar»
+     * ni «no hay forma». `mixPalancas` NO cambia de significado y `sinSalida` tampoco.
+     *
+     * `null` = se exploró y no aplica (AJUSTA de partida, donde `mixPalancas` ya apunta
+     * a COMPRAR) o ninguna combinación cruza. AUSENTE = fila vieja o LTR, NO CALCULADO:
+     * LTR no lo emite todavía.
+     */
+    mixPalancasHastaComprar?: MixPalancas | null;
     /**
      * ¿NO hay nada que ofrecerle a este comprador? Es `esEstructural` MÁS la condición del
      * mix: ninguna palanca cruza sola Y ninguna combinación de precio+pie+plazo cruza

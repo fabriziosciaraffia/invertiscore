@@ -451,9 +451,73 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     deltaMinimoFueraDeTope = candidatos[0] ?? null;
   }
 
-  // Solo para BUSCAR OTRA: ¿el salto de DOS bandas cae en rango? Informativo.
-  const palancaHastaComprar =
-    p.veredictoBase === "BUSCAR OTRA" && !esEstructural ? (palancasHasta("COMPRAR").palancas[0] ?? null) : null;
+  // ── EL SALTO DE DOS BANDAS, ENTERO (11-sep-2026 · espejo de LTR del 10-sep) ────────
+  // Hasta acá se guardaba `palancas[0]` de `palancasHasta("COMPRAR")` —y solo cuando no era
+  // estructural— y se tiraban las otras cuatro vías, ya calculadas. El informe podía decir
+  // «con −5% subes a AJUSTA» y no tenía cómo contestar «¿y para Comprar?»: la card de §5
+  // quedaba muda en las 129 BUSCAR OTRA del parque STR (52%).
+  //
+  // EL ESTRUCTURAL TAMBIÉN SE EXPLORA. Que ninguna palanca cruce al escalón no es razón
+  // para no medir cuánto pediría el veredicto de dos bandas más arriba: es justamente el
+  // caso donde el lector más necesita saber qué distancia real lo separa.
+  //
+  // `null` = se exploró y no aplica (AJUSTA de partida). La AUSENCIA (filas viejas) es
+  // NO CALCULADO y no puede leerse como «no hay vía» — ver el tipo.
+  const exploradoComprar = p.veredictoBase === "BUSCAR OTRA" ? palancasHasta("COMPRAR") : null;
+  const palancasHastaComprar = exploradoComprar?.palancas ?? null;
+  const viasHastaComprar = exploradoComprar?.vias ?? null;
+  const palancaHastaComprar = palancasHastaComprar?.[0] ?? null;
+
+  // ── EL MÍNIMO REAL HACIA COMPRAR, CUANDO QUEDA FUERA DEL TOPE ─────────────
+  // Espejo de `deltaMinimoFueraDeTope`, para el salto de dos bandas: si NINGUNA palanca
+  // cruzó dentro de 25, «más de un 25%» es el umbral y no el dato. Dos bisecciones en
+  // rango extendido (tarifa +150% · precio −70%), solo en este caso. El pie no es
+  // candidato: su delta va en puntos y estos dos en cambio relativo.
+  let deltaMinimoComprarFueraDeTope: HallazgoDistanciaVeredicto["valor"]["deltaMinimoComprarFueraDeTope"] = null;
+  if (exploradoComprar && palancasHastaComprar!.length === 0) {
+    const candidatos: { palanca: "precio" | "adr"; deltaPct: number }[] = [];
+    const fAdr = biseccionFactor(
+      (f) => alcanzaMeta(p.veredictoAtPatch({ adrOverride: Math.round(p.adrActual * f) }), "COMPRAR"),
+      DIST_STR_EXT_ADR_MAX,
+      true,
+    );
+    if (fAdr != null) candidatos.push({ palanca: "adr", deltaPct: Math.round((fAdr - 1) * 1000) / 10 });
+    const fPre = biseccionFactor(
+      (f) => alcanzaMeta(p.veredictoAtPatch({ precioCompra: Math.round(p.precioCLP * f) }), "COMPRAR"),
+      DIST_STR_EXT_PRECIO_MIN,
+      false,
+    );
+    if (fPre != null) candidatos.push({ palanca: "precio", deltaPct: Math.round((fPre - 1) * 1000) / 10 });
+    candidatos.sort((a, b) => Math.abs(a.deltaPct) - Math.abs(b.deltaPct));
+    deltaMinimoComprarFueraDeTope = candidatos[0] ?? null;
+  }
+
+  // ── LA SEGUNDA CORRIDA DEL MIX: META COMPRAR DESDE BUSCAR ──────────────────
+  // `mixPalancas` apunta al escalón por construcción, y el contrato §5 nunca muestra un
+  // mix que solo llega al escalón: la card necesita la misma combinación medida hacia
+  // COMPRAR. Mismo adaptador, mismas reglas, y el tope del SALTO que se mide —el de
+  // AJUSTA (25), igual que `palancasHasta("COMPRAR")`—; las palancas que ya cruzan solas
+  // son las de ese salto, no las del escalón. `mixPalancas` y `sinSalida` no se tocan:
+  // de ellos cuelgan el pop-up y, en el bump v19, el prompt.
+  const mixPalancasHastaComprar =
+    exploradoComprar
+      ? calcularMixPalancas({
+          meta: "COMPRAR",
+          precioUF: p.precioUF,
+          piePct: p.piePct,
+          plazoCredito: p.plazoCredito,
+          pieCalifica: pieExplorado,
+          pieTopePct: DIST_PIE_TOPE_PCT,
+          topePct: topeDe("COMPRAR"),
+          palancasQueCruzan: (palancasHastaComprar ?? []).map((l) => l.palanca),
+          veredictoAtPatch: (m) =>
+            p.veredictoAtPatch({
+              precioCompra: m.precio != null ? Math.round(m.precio * ufCongelada) : undefined,
+              piePercent: m.piePct != null ? m.piePct / 100 : undefined,
+              plazoCredito: m.plazoCredito,
+            }),
+        })
+      : null;
 
   // Cercanía medida sobre la palanca RELATIVA más barata: pie y gestión están en puntos
   // porcentuales y dividirlas por un tope expresado en cambio relativo daría una cercanía
@@ -575,7 +639,11 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
       vias,
       palancaMasBarata,
       palancaHastaComprar,
+      palancasHastaComprar,
+      viasHastaComprar,
+      deltaMinimoComprarFueraDeTope,
       mixPalancas,
+      mixPalancasHastaComprar,
       sinSalida,
       esEstructural,
       deltaMinimoFueraDeTope,
