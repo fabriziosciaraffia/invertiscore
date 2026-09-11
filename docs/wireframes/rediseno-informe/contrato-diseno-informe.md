@@ -114,13 +114,18 @@ Ancho máximo 700 px. Móvil se prueba a 390 px.
   `linear-gradient(135deg,#0F2440 0%,#2E1C28 50%,#4E1119 100%)` — con
   `filter: brightness(1.10) saturate(.90)` aplicado a **una capa de fondo aparte**,
   nunca al texto.
-- Grano encima al 12% con `mix-blend-mode: overlay`.
+- Grano encima al **16%** con `mix-blend-mode: overlay` (medido: 1,94% de amplitud;
+  el 12% del mockup daba 1,53%).
 - El fondo del hero **no depende del veredicto**: es el mismo espectro siempre.
-- Eyebrow (dirección · tipología · superficie a la izquierda, modalidad a la derecha),
-  opacidad .6. En móvil se apila.
-- **Botón de veredicto**: píldora del color del veredicto, con anillo blanco de 2 px
-  (`box-shadow: 0 0 0 2px rgba(255,255,255,.3)`) y un punto blanco que late —
-  `scale(.6) → scale(2.1)`, opacidad .6 → 0, 1.8 s, infinito.
+- Eyebrow: **solo dirección y comuna** a la izquierda («Merced 562 · Santiago»), opacidad
+  .6. Tipología y superficie viven en la ficha, no acá. A la derecha la modalidad —«Renta
+  larga» / «Renta corta»— en **negrita y un punto más grande**. En móvil se apila.
+- **Botón de veredicto**: píldora del color del veredicto con anillo blanco de 2 px
+  (`box-shadow: 0 0 0 2px rgba(255,255,255,.3)`). Orden: **signo · rótulo · punto** —
+  `[✕ BUSCAR OTRO ●]`, `[− AJUSTAR ●]`, `[✓ COMPRAR ●]`. Los glifos son los de la landing
+  (U+2715, U+2212, U+2713). El punto va a la derecha y late con **doble anillo**: dos
+  anillos de 2 px, `scale(.9) → 3.4`, ciclo 1,6 s, el segundo con `animation-delay: .8s`,
+  opacidad .95 sostenida en .55 hasta el 60% del ciclo. Siempre hay uno visible.
   **Obligatorio**: se desactiva con `@media (prefers-reduced-motion: reduce)`.
 - Score en texto plano: «Franco Score 66 de 100».
 - Titular en serif con el plumón blanco al 26%.
@@ -141,58 +146,98 @@ de todo el informe.
 
 ## 5 · La recomendación de Franco
 
+Aplica igual a LTR y STR. Lo único que cambia entre los dos es el nombre de la palanca
+que pone el mercado: **arriendo** en LTR, **tarifa** en STR.
+
 ### Fondo
 
 `linear-gradient(135deg, var(--verdict-deep) 0%, #18181B 100%)` — del tono profundo del
-veredicto a tinta — con `brightness(1.30) saturate(.70)` en capa aparte y grano al 10%.
+veredicto a tinta — con `brightness(1.30) saturate(.70)` en capa aparte y grano al 16%.
 **Es la única pieza cuyo fondo depende del veredicto.**
 
-### Contenido
+### Contenido — con salida
 
 ```
-La recomendación de Franco          ← Inter 22 / 700
-Para que el veredicto pase a X      ← bajada, opacidad .62
+La recomendación de Franco                          ← Inter 22 / 700
+Para que el veredicto pase a  [✓ COMPRAR]           ← bajada + píldora neutra con ✓, sin color
 
-Cambias    [Pie 20% 30%] + [Plazo 25 30 años]
-──────────────────────────────────────────────
-Negocias   −3,8% dcto.
-           UF 5.502 → UF 5.293
-──────────────────────────────────────────────
-Resultado  AJUSTAR → COMPRAR
+┌ MODIFICACIONES QUE DEPENDEN DE TI ──────────────┐   ← caja rgba(255,255,255,.10)
+│ [Pie 20% 30%] + [Plazo 25 30 años]              │   ← chips, tachado-transparente vs sólido
+│ ────────────────────────────────────────────    │
+│ → Negocias −9,4% dcto. en precio                │   ← 19 px / 700, entero
+│ (−18% si solo modificas el precio)              │   ← 12,5 px, acotación
+└─────────────────────────────────────────────────┘
 
-Poner ese pie cuesta $22.000.000 más el día uno.
+RESULTADO
+[− AJUSTAR] → [✓ COMPRAR]                           ← píldoras con signo; actual al 45%,
+                                                       destino en blanco sólido
+
+Alternativamente: +8% de tarifa o −18% de precio (c/u por separado)   ← 13,5 px
+Pero eso no depende de ti: lo pone el mercado o el vendedor.          ← 12,5 px, acotación
+
+Poner ese pie cuesta UF 230 más el día uno.        ← 12,5 px, acotación
 
 [ ▶ Ver el detalle de cada cambio ]
 ```
 
 Reglas:
 
-- Grid de dos columnas: rótulo de **96 px fijos** (78 en móvil) pegado al margen izquierdo,
-  y el valor. Separador de 1 px entre filas.
-- Los rótulos son **Cambias / Negocias / Resultado**, en mayúsculas, 11,5 px, opacidad .5.
-- **Lo que se cambia va tachado y transparente; lo nuevo, sólido.** Aplica a los chips y
-  al precio.
-- Signo `+` entre los dos chips de cambio.
-- El descuento va a 30 px (26 en móvil). No más grande: compite con la cifra del hero.
-- La transición de veredicto: píldora del actual al 45% de opacidad, flecha, píldora del
-  destino en blanco sólido.
+- **Lo tuyo primero.** La recomendación ES lo que puedes hacer tú. Las palancas que no
+  dependen de ti van después, en una sola oración, sin fila propia.
+- La caja «Modificaciones que dependen de ti» contiene los chips del mix y, bajo una línea,
+  el descuento que resulta: «→ Negocias −X% dcto. en precio». Flecha, verbo y cifra en el
+  mismo formato. Debajo, entre paréntesis y como acotación, cuánto habría que pedir sin
+  mover lo tuyo.
+- **Lo que se cambia va tachado y transparente; lo nuevo, sólido.** Signo `+` entre chips.
+- **Resultado va inmediatamente después de la caja**, no al final: píldoras con signo,
+  la actual tenue y el destino en blanco.
+- «Alternativamente» nombra las palancas solas que también cruzan —tarifa/arriendo y
+  precio— con «(c/u por separado)», y la línea siguiente dice por qué no son la
+  recomendación: no dependen de ti.
+- Las tres acotaciones —el paréntesis del descuento, «Pero eso no depende de ti», y el
+  costo del día uno— van al **mismo tamaño y opacidad** (12,5 px, .6). Ninguna destaca.
 - El costo del día uno **siempre** acompaña al mix. Sin esa línea, el mix miente por omisión.
-- CTA: botón blanco sólido con icono, no un enlace.
+- Si el mix no pide descuento, la línea dice «→ Sin pedirle un peso al vendedor» y el
+  paréntesis se omite.
+- Si una palanca sola ya cruza y el mix es redundante con ella, no se dibuja el mix.
+- CTA: botón blanco sólido con icono.
+- Ninguna cifra de una tarjeta o fila lleva chip de «quién lo pone»: el grupo y la oración
+  de «Alternativamente» ya lo dicen.
 
 ### Qué dice según veredicto
 
-- **AJUSTA / BUSCAR OTRO con salida**: la ecuación completa, apuntando a COMPRAR.
-- **COMPRAR**: sin ecuación. Bajada «Cierra al precio pedido», y dos datos — cuánto aguanta
-  antes de bajar, y qué verificar antes de firmar.
-- **Sin salida**: sin ecuación. Bajada «No hay forma de que este departamento convenga»,
-  el número real de lo que haría falta, y la alternativa de comunas.
+- **AJUSTA con mix a COMPRAR**: la forma completa de arriba.
+- **AJUSTA sin mix, con palancas solas que cruzan**: sin la caja; «Alternativamente» pasa a
+  ser la línea principal con sus dos acotaciones, y Resultado se conserva.
+- **COMPRAR**: sin ecuación. Bajada «Cierra al precio pedido», y dos filas con rótulo de
+  una palabra: **Aguanta** (cuánto antes de bajar) y **Verifica** (el arriendo o la tarifa
+  declarada).
+- **Sin salida** (nada llega a COMPRAR): bajada «No hay forma de que este departamento
+  convenga». El número real de lo que haría falta. El puente: «Franco no encontró una
+  combinación que lo haga convenir. Prueba con otro departamento.» Y la salida, cuando el
+  motor la tiene:
+  - **LTR**: «En X o Y un departamento como este sí convendría», calculado por
+    `alternativa-comunas.ts`. Dos comunas máximo, sin cifras. Si el motor no encuentra
+    ninguna, la línea no se dibuja.
+  - **STR**: si el hallazgo «el arriendo largo te rendiría más» existe, la salida es
+    **«Analízalo como renta larga»** —mismo depto, mismo precio, otra operación—. Solo
+    cuando el motor lo dice; si no, cae al puente y a las comunas cuando el motor STR las
+    calcule.
 
 **Nunca se muestra un mix que solo llega al escalón intermedio.** Si el mix no alcanza
-COMPRAR, no es una recomendación. El escalón a Ajustar vive en el pop-up.
+COMPRAR, no es una recomendación. El escalón a Ajustar vive en el pop-up. Y la bajada dice
+«pase a Comprar» o no dice nada: nunca otro destino.
 
 ---
 
 ## 6 · Las cifras que tienes que ver
+
+Sin caja. Seis en LTR y seis en STR, con la misma tarjeta.
+
+**En STR las dos primeras son tarifa por noche y ocupación**, con un contorno de 1,5 px en
+`--line2` y una línea encima: «Las dos primeras son el supuesto del que cuelga todo lo
+demás». En renta corta el ingreso no es un dato, es una estimación, y eso se declara.
+Después: ingreso mensual, flujo mensual, cap rate por día (referencia 5,0%), TIR a 10 años.
 
 Sin caja. Grid de dos columnas (una en móvil), gap 11 px.
 Cada tarjeta: fondo `--card`, radio 12 px, padding 17 px.
@@ -213,7 +258,12 @@ Cierra con el enlace «Ver cómo se calcula →».
 
 ## 7 · Detalle de la inversión
 
-Sin caja. Cinco filas navegables, **sin números romanos**.
+Sin caja. **Cinco filas en LTR, seis en STR**, navegables, **sin números romanos**.
+
+STR: Cuánto renta (Cap rate) · Tu flujo mensual (Flujo) · Cuántas noches necesitas (Al año)
+· Cómo lo pagas (Precio) · Cómo lo gestionas (vs arriendo largo) · Tu resultado a 10 años
+(Resultado). Cada cifra con su apellido, porque el título es una pregunta y la cifra queda
+al otro extremo de la fila.
 
 ```
 [  Cuánto pones al principio          $53,9M   › ]
@@ -246,6 +296,12 @@ mediana $896.000     ← la referencia
   de la tarjeta.
 - Cierra con «Ver los comparables →».
 
+**En STR las tres tarjetas son otras**: **ocupación primero** (tu 47% contra lo típico de la
+comuna 46%) —es el único dato tuyo que puede quedar peor que la referencia—, después
+**tarifa por noche** (tú contra la mediana; sin ajuste propio la píldora es neutra), y la
+tercera son **los comparables** (25 avisos, cuántos superhost, radio), no valorización. El
+pie común dice la fecha de las estimaciones.
+
 ---
 
 ## 9 · Affordance
@@ -270,15 +326,44 @@ Tres niveles, y la diferencia entre ellos es información:
   «Ubicación · \<comuna\>».
 - El título de los hallazgos sigue siendo la línea que declara el veredicto
   («Ajusta los números. Esto es lo que pesa:»), que vive en `veredicto-etiqueta.ts`.
+- **Quién pone cada palanca** se dice con la forma «Lo pone el mercado, no tú» / «Lo pone
+  el vendedor, no tú»: nombra quién y descarta que seas tú en el mismo gesto. En la card no
+  va como chip por fila —el grupo y la oración lo dicen—; en el pop-up de palancas sí.
+- Los **números llevan apellido** cuando el contexto no está pegado: «Cap rate 4,3%»,
+  «Flujo −$283.194», «Al año 171 noches». En una tarjeta con el rótulo a 9 px no hace falta;
+  en una fila de 700 px de ancho, sí.
 
 ---
 
-## 11 · Lo que falta definir
+## 11 · STR: qué es distinto y qué se hereda
+
+Todo el sistema —paleta, tipografía, radios, primitivas, affordance, hero, la card— se
+hereda tal cual. Lo que es propio de STR:
+
+| Pieza | LTR | STR |
+|---|---|---|
+| Modalidad en el eyebrow | Renta larga | Renta corta |
+| Cifras | cap rate bruto/neto, retorno, flujo, cobertura, TIR | **tarifa, ocupación** primero; ingreso, flujo, cap rate por día, TIR |
+| Capítulos | 5 | 6 (entran «Cuántas noches necesitas» y «Cómo lo gestionas») |
+| Palanca del mercado | arriendo | tarifa |
+| Zona | arriendo, precio/m², valorización | **ocupación**, tarifa, comparables |
+| Salida sin mix | comunas (motor) | «Analízalo como renta larga» si el hallazgo existe; comunas cuando el motor STR las calcule |
+| Regulación del edificio | — | **retirada**: no se pregunta, no se muestra, no pesa |
+
+El interruptor es por modalidad: STR se enciende cuando su pasada esté completa, con su
+propio commit de encendido y su revert.
+
+---
+
+## 12 · Lo que falta definir
 
 No está en este contrato y **no se inventa**:
 
-- El contenido de los pop-ups (capítulos, palancas, matriz, comparables).
-- STR. El sistema visual sirve, pero su contenido no calza: seis capítulos, otras cifras
-  clave, y el bloque de regulación del edificio que LTR no tiene. Necesita su propia pasada.
+- El contenido de los pop-ups (capítulos, palancas, matriz, comparables). Los capítulos
+  siguen siendo acordeón inline hasta que se rediseñen.
+- El contrafactual de comunas para STR: `alternativa-comunas.ts` corre `runAnalysis` LTR;
+  STR necesita el suyo con tarifa y ocupación por comuna.
 - El CTA de re-analizar con los cambios sugeridos: depende de una decisión de producto
   sobre créditos que no está tomada.
+- El refactor de la recomendación como sección hermana del hero (hoy `HeroLTR` emite las
+  tres secciones).
