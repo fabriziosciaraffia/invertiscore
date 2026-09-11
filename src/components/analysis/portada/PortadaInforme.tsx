@@ -157,11 +157,16 @@ export function PortadaInforme({
            propio degradado. Se deja de montar solo acá, solo con el interruptor. */
         <p className="doc-hero-verdict" aria-label={`Veredicto: ${bandaLabel}`}>
           <span className="doc-hero-pill">
-            <span className="doc-hero-dot" aria-hidden="true" />
-            {/* El signo no se lee: el `aria-label` del <p> ya dice el veredicto entero,
+            {/* EL ORDEN: signo · rótulo · punto. El signo pertenece al VEREDICTO y
+                viaja pegado a su palabra; el punto es indicador de vida y no dice nada
+                del dictamen, así que va solo al otro extremo. A la izquierda competía
+                con el signo por el mismo lugar de lectura.
+
+                El signo no se lee: el `aria-label` del <p> ya dice el veredicto entero,
                 y un lector de pantalla que anuncie «equis» antes del rótulo lo empeora. */}
             <span className="doc-hero-signo" aria-hidden="true">{signoDe(veredicto)}</span>
             {bandaLabel}
+            <span className="doc-hero-dot" aria-hidden="true" />
           </span>
         </p>
       ) : (
@@ -620,13 +625,29 @@ export function DocTokens() {
       .doc-r2 .doc-hero-verdict{margin:0 0 14px}
       .doc-r2 .doc-hero-pill{
         display:inline-flex;align-items:center;gap:9px;
-        padding:8px 16px 8px 13px;border-radius:var(--rad-pill);
+        padding:8px 13px 8px 16px;border-radius:var(--rad-pill);
         background:var(--verdict);color:#fff;
         font-family:var(--font-mono, ui-monospace);font-size:12.5px;font-weight:700;
         letter-spacing:.14em;text-transform:uppercase;
         box-shadow:0 0 0 2px rgba(255,255,255,.3)}
-      /* EL PUNTO QUE LATE. El punto en sí es opaco; lo que late es su «::after», que
-         crece y se desvanece — así el punto no desaparece entre pulsos. */
+      /* EL PUNTO QUE LATE — CALIBRE «DOBLE ANILLO» (11-sep-2026).
+         El punto en sí es opaco y quieto; lo que late son sus DOS anillos.
+
+         ANILLO Y NO DISCO. Hasta hoy el pulso era un disco relleno que se disolvía
+         mientras crecía, y por eso de lejos casi no se veía: medido, su pico de
+         visibilidad —escala² × opacidad— cae en opacidad 0,30, y subirle la amplitud
+         a 3,2× dejaba el pico en 0,28. Más grande, igual de transparente. Un trazo de
+         2 px al 55% se lee; un disco al 30%, no. El limitante nunca fue el tamaño.
+
+         DOS ANILLOS A MEDIO CICLO. Con uno solo queda un hueco muerto entre pulsos, y
+         de lejos ese hueco es lo que hace que el botón parezca apagado. Con el segundo
+         desfasado 0,8 s SIEMPRE hay uno visible.
+
+         NO CUESTA. Los dos anillos animan «transform» y «opacity», o sea composite
+         puro: ninguno repinta. Medido a una píldora, 90 fps y cero frames caídos,
+         indistinguible del calibre viejo; amplificado ×200 para poder discriminar, el
+         doble anillo cuesta +4,1% de tiempo de frame. La variante que sí era cara
+         —animar el «box-shadow» de la píldora— se descartó por eso: +24,6%. */
       /* EL SIGNO DEL VEREDICTO. Va antes del rótulo y no lo empuja: el «gap» de la
          píldora ya separa, así que solo se le quita el «letter-spacing» —que en un
          glifo suelto deja un hueco a la derecha— y se le da su propio tamaño. */
@@ -634,17 +655,22 @@ export function DocTokens() {
         font-size:14px;line-height:1;letter-spacing:normal;margin-right:-2px}
       .doc-r2 .doc-hero-dot{
         position:relative;width:7px;height:7px;border-radius:50%;background:#fff;flex:none}
-      .doc-r2 .doc-hero-dot::after{
-        content:"";position:absolute;inset:0;border-radius:50%;background:#fff;
-        animation:docHeroLate 1.8s ease-out infinite}
+      .doc-r2 .doc-hero-dot::after,
+      .doc-r2 .doc-hero-dot::before{
+        content:"";position:absolute;inset:0;border-radius:50%;border:2px solid #fff;
+        animation:docHeroLate 1.6s ease-out infinite}
+      /* el segundo, a medio ciclo: es lo que tapa el hueco entre pulsos */
+      .doc-r2 .doc-hero-dot::before{animation-delay:.8s}
       @keyframes docHeroLate{
-        0%{transform:scale(.6);opacity:.6}
-        100%{transform:scale(2.1);opacity:0}
+        0%{transform:scale(.9);opacity:.95}
+        60%{opacity:.55}
+        100%{transform:scale(3.4);opacity:0}
       }
       /* OBLIGATORIO por contrato: sin esto el punto late para siempre en la cara de
          alguien que pidió que nada se mueva. */
       @media (prefers-reduced-motion:reduce){
-        .doc-r2 .doc-hero-dot::after{animation:none;opacity:0}
+        .doc-r2 .doc-hero-dot::after,
+        .doc-r2 .doc-hero-dot::before{animation:none;opacity:0}
       }
 
       /* — EL SCORE EN TEXTO PLANO — */

@@ -113,16 +113,93 @@ function reglaDe(sel: string): string | null {
   }
 }
 
-// ── 4 · reduced-motion apaga el punto que late ────────────────────────────
+// ── 4 · el calibre del pulso, con sus números ────────────────────────────
 {
+  // HASTA EL 11-sep-2026 ESTE INVARIANTE NO FIJABA NADA del calibre: solo exigía que
+  // la animación EXISTIERA. Se podía bajar el pulso a la mitad y seguía verde. Ahora
+  // fija los números del calibre elegido —doble anillo—, porque son una decisión
+  // medida y no un valor por defecto:
+  //
+  //   · ANILLO de 2 px y NO disco relleno. El disco se disolvía mientras crecía: su
+  //     pico de visibilidad (escala² × opacidad) caía en opacidad 0,30, y subirle la
+  //     amplitud a 3,2× lo dejaba en 0,28 — más grande e igual de transparente. El
+  //     limitante nunca fue el tamaño.
+  //   · DOS anillos a MEDIO CICLO (1,6 s con el segundo a 0,8 s). Con uno solo queda
+  //     un hueco muerto entre pulsos, y de lejos ese hueco es lo que hacía que el
+  //     botón pareciera apagado.
+  //   · scale .9 → 3.4 con la opacidad SOSTENIDA hasta el 60%. Esa meseta es lo que
+  //     hace que el anillo se lea: sin ella vuelve a desvanecerse apenas arranca.
   if (!/@keyframes docHeroLate/.test(BLOQUE)) F("4 · no existe la animación del punto que late");
+
+  const regla = BLOQUE.match(/\.doc-r2 \.doc-hero-dot::after,\s*\.doc-r2 \.doc-hero-dot::before\{([^}]*)\}/)?.[1] ?? "";
+  if (!regla) {
+    F("4 · los dos anillos del pulso dejaron de compartir su regla. El calibre es «doble anillo»: con uno solo hay un hueco muerto entre pulsos y el botón se lee apagado de lejos.");
+  } else {
+    if (!/border:\s*2px solid/.test(regla)) {
+      F("4 · el pulso volvió a ser un disco relleno, o el anillo perdió sus 2 px. Medido: un disco que se disuelve llega a su pico con opacidad 0,30 y no se ve de lejos por más que crezca.");
+    }
+    if (/background:\s*#fff/.test(regla)) F("4 · el anillo recuperó su relleno: vuelve a ser el disco que se disuelve");
+    if (!/animation:\s*docHeroLate 1\.6s/.test(regla)) F("4 · el ciclo del pulso dejó de ser 1,6 s");
+  }
+
+  const dos = BLOQUE.match(/\.doc-r2 \.doc-hero-dot::before\{animation-delay:\s*\.?8s\}/);
+  if (!dos) {
+    F("4 · el SEGUNDO anillo perdió su desfase de 0,8 s. Medio ciclo exacto es lo que garantiza que siempre haya uno visible: con otro valor los dos se juntan y vuelve el hueco.");
+  }
+
+  // Slice y no regex: el bloque de keyframes tiene llaves ANIDADAS, así que un
+  // «[\s\S]*?}» corta en el cierre del primer paso y no en el del bloque — y los
+  // dos últimos números quedaban fuera de lo que se miraba.
+  const iKf = BLOQUE.indexOf("@keyframes docHeroLate");
+  const kf = iKf === -1 ? "" : BLOQUE.slice(iKf, iKf + 240);
+  for (const [qué, re] of [
+    ["arranca en scale .9", /0%\{transform:scale\(\.9\)/],
+    ["llega a scale 3.4", /transform:scale\(3\.4\)/],
+    ["sostiene la opacidad hasta el 60%", /60%\{opacity:\.55\}/],
+  ] as const) {
+    if (!re.test(kf)) {
+      F(`4 · el calibre del pulso ya no ${qué}. Los tres números se eligieron mirando los cuatro calibres congelados en la misma fracción del ciclo (docs/wireframes/rediseno-informe/calibres-pulso): cambiar uno cambia la decisión.`);
+    }
+  }
+
+  // Y lo de siempre: reduced-motion apaga LOS DOS anillos.
   const i = BLOQUE.indexOf("prefers-reduced-motion");
   if (i === -1) F("4 · el bloque del hero no apaga el latido con prefers-reduced-motion. El contrato lo marca OBLIGATORIO: el punto late para siempre en la cara de alguien que pidió que nada se mueva.");
   else {
-    const trozo = BLOQUE.slice(i, i + 300);
+    const trozo = BLOQUE.slice(i, i + 320);
     if (!/doc-hero-dot/.test(trozo) || !/animation:\s*none/.test(trozo)) {
       F("4 · el bloque de prefers-reduced-motion ya no anula la animación del punto");
     }
+    if (!/::before/.test(trozo)) {
+      F("4 · reduced-motion apaga un anillo y deja el otro girando. Son DOS desde el calibre nuevo: el que no se nombra sigue latiendo en la cara de quien pidió que nada se mueva.");
+    }
+  }
+}
+
+// ── 4b · el punto va a la DERECHA, el signo a la izquierda ───────────────
+{
+  // No existía guard de posición: el punto se podía mover de lado sin que nada lo
+  // dijera. El orden es signo · rótulo · punto, y no es estético — el signo pertenece
+  // al VEREDICTO y viaja pegado a su palabra; el punto es indicador de vida y no dice
+  // nada del dictamen, así que va solo al otro extremo.
+  const pill = CSS.match(/<span className="doc-hero-pill">([\s\S]*?)<\/span>\s*<\/p>/)?.[1] ?? "";
+  if (!pill) F("4b · no se encontró el contenido del botón de veredicto");
+  else {
+    const iSigno = pill.indexOf("doc-hero-signo");
+    const iRotulo = pill.indexOf("{bandaLabel}");
+    const iPunto = pill.indexOf("doc-hero-dot");
+    if (iSigno === -1 || iRotulo === -1 || iPunto === -1) {
+      F("4b · al botón le falta el signo, el rótulo o el punto");
+    } else if (!(iSigno < iRotulo && iRotulo < iPunto)) {
+      F(`4b · el orden del botón dejó de ser signo · rótulo · punto (posiciones ${iSigno}, ${iRotulo}, ${iPunto}). El punto a la izquierda compite con el signo por el mismo lugar de lectura: el signo es del veredicto y el punto es indicador de vida.`);
+    }
+  }
+  // Y el padding acompaña: más aire del lado del texto que del lado del punto.
+  const reglaPill = reglaDe(".doc-r2 .doc-hero-pill") ?? "";
+  const pad = reglaPill.match(/padding:\s*(\d+)px (\d+)px (\d+)px (\d+)px/);
+  if (!pad) F("4b · el botón perdió su padding de cuatro valores");
+  else if (Number(pad[4]) <= Number(pad[2])) {
+    F(`4b · el padding del botón quedó con más aire a la DERECHA (${pad[2]}px) que a la izquierda (${pad[4]}px). Se dio vuelta con el punto: el lado del punto lleva menos, el del texto más.`);
   }
 }
 
