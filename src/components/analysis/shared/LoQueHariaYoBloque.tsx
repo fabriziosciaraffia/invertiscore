@@ -11,8 +11,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 "use client";
 
-import type { BloqueLoQueHariaYo, QuienLaPone } from "@/lib/lo-que-haria-yo";
-import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { Fragment } from "react";
+import { lineaNoDependeDeTi, type BloqueLoQueHariaYo, type QuienLaPone } from "@/lib/lo-que-haria-yo";
+import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 import { useRediseno } from "@/components/analysis/RedisenoContexto";
 
 const TEXTO_CHIP: Record<QuienLaPone, string> = {
@@ -112,23 +113,27 @@ export function LoQueHariaYoBloque({
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   LA ECUACIÓN (contrato §5)
+   LA CARD (contrato §5 revisado, 11-sep-2026) — «lo tuyo primero»
 
-   El mismo dato de arriba, en la forma que el contrato pide: tres filas con rótulo
-   fijo a la izquierda —Cambias / Negocias / Resultado— y el valor a la derecha.
+   La recomendación ES lo que puedes hacer tú. Por eso el mix va en una caja propia
+   —«Modificaciones que dependen de ti»— con los chips y, bajo una línea, lo que
+   resulta: «→ Negocias −X% dcto. en precio», y entre paréntesis cuánto habría que
+   pedir sin mover lo tuyo. Resultado va INMEDIATAMENTE después, con signo en las
+   píldoras. Las palancas que no dependen de ti van al final, en una sola oración
+   —«Alternativamente: +X% de arriendo o −Y% de precio (c/u por separado)»— seguida de
+   por qué no son la recomendación: «Pero eso no depende de ti: lo pone …».
 
-   LO QUE SE CAMBIA VA TACHADO Y TRANSPARENTE; LO NUEVO, SÓLIDO. Es la regla que hace
-   legible la ecuación de un vistazo: el ojo salta a lo sólido y entiende el movimiento
-   sin leer. Aplica a los chips y al precio.
+   LO QUE SE CAMBIA VA TACHADO Y TRANSPARENTE; LO NUEVO, SÓLIDO. Aplica a los chips.
 
-   EL COSTO DEL DÍA UNO SIEMPRE ACOMPAÑA AL MIX. Sin esa línea el mix miente por
-   omisión: «pon 10 puntos más de pie» suena gratis hasta que dice cuánta plata es.
+   LAS TRES ACOTACIONES —el paréntesis, «Pero eso no depende de ti» y el costo del día
+   uno— van al mismo tamaño y opacidad. Ninguna destaca. Y el costo SIEMPRE acompaña al
+   mix: sin esa línea el mix miente por omisión.
 
-   EL DESTINO SALE DEL DATO, no de un literal. Si el mix deja en un veredicto menor que
-   COMPRAR, la fila «Resultado» lo dice. No es el caso que §5 quiere mostrar —«nunca un
-   mix que solo llega al escalón intermedio»— pero mentir sobre adónde deja sería peor
-   que mostrarlo: la decisión de qué hacer con esos casos es de producto y vive en el
-   motor, no acá.
+   NINGUNA CIFRA LLEVA CHIP DE «QUIÉN LO PONE»: el grupo y la oración ya lo dicen. El
+   chip por fila vive en el pop-up de palancas.
+
+   EL DESTINO SALE DEL DATO. Un mix que solo llega al escalón intermedio NO es una
+   recomendación: la card cae al estado sin salida y el escalón vive en el pop-up.
    ───────────────────────────────────────────────────────────────────────────── */
 function EcuacionRecomendacion({
   bloque,
@@ -141,31 +146,57 @@ function EcuacionRecomendacion({
 }) {
   const { mix, filas, contexto, descarte } = bloque;
   const corta = (v?: string) => (v ? etiquetaVeredicto(v, "corta", v) : "");
-
-  // LA RECOMENDACIÓN APUNTA SIEMPRE A COMPRAR (contrato §5). Un mix que solo llega al
-  // escalón intermedio NO es una recomendación: es lo que se probó, y vive en el
-  // pop-up. Cuando el destino del mix no es COMPRAR, la card cae al estado SIN SALIDA
-  // —el número real de lo que haría falta— y la ecuación no se dibuja.
-  //
-  // No se toca el motor: el mix se sigue calculando y el pop-up lo sigue mostrando.
-  // Lo que cambia es qué muestra la CARD, que es lo que el lector lee primero.
+  // Píldoras con signo (§5 revisado): la actual tenue, el destino en blanco sólido.
+  const pill = (v: string, cls: "de" | "a") => (
+    <span className={cls === "de" ? "rec-pill de" : "rec-pill a"}>
+      {signoVeredicto(v)} {corta(v)}
+    </span>
+  );
   const soloEscalon = !!mix && mix.destino !== "COMPRAR";
 
-  // SIN ECUACIÓN hay tres estados: COMPRAR —dos datos—, sin salida —el número real— y
-  // el mix que solo llega al escalón, que se lee igual que sin salida.
+  // LAS ALTERNATIVAS: las palancas solas que cruzan y NO dependen de ti (arriendo, precio).
+  // El pie y el plazo que cruzan solos no se nombran acá —son lo tuyo— y viven en el pop-up.
+  const alternativas = filas.filter((f) => f.rotuloCorto && f.quien !== "tuyo");
+  const resultado = (
+    <>
+      <div className="rec-gt">Resultado</div>
+      <div className="rec-res rec-trans">
+        {pill(veredicto ?? "", "de")}
+        <i className="rec-fl">→</i>
+        {pill("COMPRAR", "a")}
+      </div>
+    </>
+  );
+  const alternativamente =
+    alternativas.length > 0 ? (
+      <div className="rec-alt">
+        <p className="rec-a1">
+          Alternativamente:{" "}
+          {alternativas.map((f, i) => (
+            <Fragment key={`${f.nombre}-${i}`}>
+              {i > 0 && " o "}
+              <b>
+                {f.cifra} de {f.nombre}
+              </b>
+            </Fragment>
+          ))}{" "}
+          <em>(c/u por separado)</em>
+        </p>
+        <p className="rec-a2">{lineaNoDependeDeTi(alternativas.map((f) => f.quien))}</p>
+      </div>
+    ) : null;
+
+  // SIN LA CAJA hay tres estados: COMPRAR —dos filas con rótulo de una palabra—, sin
+  // salida —el número real y el puente— y sin mix con palancas que cruzan, donde
+  // «Alternativamente» pasa a ser la línea principal y Resultado se conserva.
   if (!mix || soloEscalon) {
-    // LA FILA «RESULTADO» NO ES DEL MIX, ES DE LA ECUACIÓN. Sin mix, cuando hay filas,
-    // esas filas SON salidas —palancas que cruzan solas, medidas por el motor contra
-    // COMPRAR— y la transición es tan cierta como con mix. Faltaba por construcción: la
-    // rama sin mix no la dibujaba nunca, ni siquiera cuando el dato la sostenía.
-    //
-    // NO va en los otros dos casos de esta misma rama:
-    //   · COMPRAR — ya está en Comprar, no hay transición que mostrar;
-    //   · sin salida / solo escalón — no se llega, que es justamente lo que dice.
+    // LA FILA «RESULTADO» NO ES DEL MIX, ES DE LA CARD. Sin mix, cuando hay filas, esas
+    // filas SON salidas —palancas que cruzan solas, medidas por el motor contra COMPRAR—
+    // y la transición es tan cierta como con mix. NO va en COMPRAR (ya está ahí) ni en
+    // sin salida (no se llega, que es justamente lo que dice).
     const mostrarResultado = !soloEscalon && veredicto !== "COMPRAR" && filas.length > 0;
-    // EL ESTADO SIN SALIDA es el que se queda sin nada que ofrecer: o el mix solo llega
-    // al escalón intermedio, o no hay mix ni palancas que crucen. COMPRAR no lo es —ahí
-    // hay dos datos— y tener filas tampoco, porque esas filas SON salidas.
+    // EL ESTADO SIN SALIDA: o el mix solo llega al escalón intermedio, o no hay mix ni
+    // palancas que crucen. COMPRAR no lo es —ahí hay dos datos— y tener filas tampoco.
     const sinSalida = veredicto !== "COMPRAR" && (soloEscalon || filas.length === 0);
     return (
       <div className="rec-eq">
@@ -179,102 +210,70 @@ function EcuacionRecomendacion({
             Prueba con otro departamento.
           </p>
         )}
-        {/* Y DÓNDE (§5). Desde el 11-sep-2026 «a dónde ir» es un dato del motor y no
-            una elección del modelo: el mismo depto corrido en las otras comunas del
-            roster, con el presupuesto del comprador como techo. Va SIN cifras —el
-            detalle de por qué está en el pop-up— y solo cuando alguna cruza. */}
+        {/* Y DÓNDE (§5): «a dónde ir» es un dato del motor —el mismo depto corrido en las
+            otras comunas del roster— y va sin cifras, solo cuando alguna cruza. */}
         {sinSalida && alternativa && <p className="rec-donde">{alternativa}</p>}
-        {filas.map((f, i) => (
-          <div className="rec-row" key={`${f.titulo}-${i}`}>
-            {/* El rótulo corto es de las filas de COMPRAR: «Cuánto aguanta el veredicto»
-                en una columna de 96 px se parte en tres líneas. */}
-            <span className="rec-k">{f.rotuloCorto ?? f.titulo}</span>
-            <span className="rec-v">
-              <b>{f.cifra}</b>
-              {f.objetivo && <em>{f.objetivo}</em>}
-            </span>
-          </div>
-        ))}
+        {/* COMPRAR: dos filas con rótulo de una palabra — «Aguanta» y «Verifica». */}
+        {veredicto === "COMPRAR" &&
+          filas.map((f, i) => (
+            <div className="rec-row" key={`${f.titulo}-${i}`}>
+              <span className="rec-k">{f.rotuloCorto ?? f.titulo}</span>
+              <span className="rec-v">
+                <b>{f.cifra}</b>
+                {f.objetivo && <em>{f.objetivo}</em>}
+              </span>
+            </div>
+          ))}
+        {/* SIN MIX, CON PALANCAS QUE CRUZAN: «Alternativamente» es la línea principal. */}
+        {mostrarResultado && alternativamente}
         {mostrarResultado && (
-          <div className="rec-row">
-            <span className="rec-k">Resultado</span>
-            <span className="rec-v rec-trans">
-              <span className="rec-pill de">{corta(veredicto)}</span>
-              <i className="rec-fl">→</i>
-              <span className="rec-pill a">{corta("COMPRAR")}</span>
-            </span>
-          </div>
+          resultado
         )}
         {descarte && <p className="rec-desc">{descarte}</p>}
       </div>
     );
   }
 
-  // LAS PALANCAS SOLAS Y EL MIX SON ALTERNATIVAS, NO PASOS. Conviven en 302 de las 1.038
-  // filas LTR no-COMPRAR del parque (medido 11-sep-2026), y hasta acá la card con mix
-  // dibujaba SOLO el mix: las palancas que cruzan por su cuenta no se veían. Puestas una
-  // debajo de otra sin rótulo se leerían como una receta —«baja el precio, después sube
-  // el arriendo, después mueve lo tuyo»—, y cada una llega sola. Los rótulos lo dicen:
-  // «Solo el precio» contra «Con lo tuyo».
-  const solas = filas.filter((f) => f.rotuloCorto);
   return (
     <div className="rec-eq">
       {contexto && <p className="rec-ctx">{contexto}</p>}
-      {solas.map((f, i) => (
-        <div className="rec-row" key={`${f.titulo}-${i}`}>
-          <span className="rec-k">{f.rotuloCorto}</span>
-          <span className="rec-v">
-            <b>{f.cifra}</b>
-            {f.objetivo && <em>{f.objetivo}</em>}
-          </span>
-        </div>
-      ))}
-      {/* UNA SOLA FILA: los chips Y el descuento. «Negocias» era un rótulo del molde
-          anterior, cuando el mix iba solo y la ecuación tenía que partirlo en dos pasos.
-          Con las palancas solas arriba, la columna de rótulos se lee entera como una
-          lista de CAMINOS, y «Negocias» quedaba adentro pareciendo un cuarto camino
-          cuando es parte de éste. Plegado, cada fila es un camino y ninguno se parte. */}
-      {(mix.movimiento.pie || mix.movimiento.plazo || mix.descuento || mix.sinDescuento) && (
-        <div className="rec-row">
-          <span className="rec-k">Con lo tuyo</span>
-          <span className="rec-v rec-chips">
-            {mix.movimiento.pie && (
-              <span className="rec-chip-g">
-                <span className="rec-chip">
-                  Pie <s>{mix.movimiento.pie.de}%</s> <b>{mix.movimiento.pie.a}%</b>
-                </span>
-                {mix.movimiento.plazo && <i className="rec-mas">+</i>}
-              </span>
-            )}
-            {mix.movimiento.plazo && (
+      {/* LO TUYO PRIMERO: la caja con los chips del mix y, bajo la línea, lo que resulta. */}
+      <div className="rec-tuyo">
+        <div className="rec-gt">Modificaciones que dependen de ti</div>
+        <div className="rec-chips">
+          {mix.movimiento.pie && (
+            <span className="rec-chip-g">
               <span className="rec-chip">
-                Plazo <s>{mix.movimiento.plazo.de}</s> <b>{mix.movimiento.plazo.a} años</b>
+                Pie <s>{mix.movimiento.pie.de}%</s> <b>{mix.movimiento.pie.a}%</b>
               </span>
-            )}
-            {/* El descuento cierra la fila: es la parte del mix que se le pide a un
-                tercero, así que va DESPUÉS de lo que pone el lector y con su flecha. */}
-            {(mix.descuento || mix.sinDescuento) && (
-              <span className="rec-dcto-g">
-                {(mix.movimiento.pie || mix.movimiento.plazo) && <i className="rec-fl">→</i>}
-                {mix.descuento
-                  ? <b className="rec-dcto">{mix.descuento} <small>dcto.</small></b>
-                  : <b className="rec-sin">{mix.sinDescuento}</b>}
-              </span>
-            )}
-          </span>
+              {/* El «+» viaja con el primer chip: así el salto de línea cae después del
+                  signo y nunca antes (a 390 px quedaba solo arriba del segundo chip). */}
+              {mix.movimiento.plazo && <i className="rec-mas">+</i>}
+            </span>
+          )}
+          {mix.movimiento.plazo && (
+            <span className="rec-chip">
+              Plazo <s>{mix.movimiento.plazo.de}</s> <b>{mix.movimiento.plazo.a} años</b>
+            </span>
+          )}
         </div>
-      )}
-      {/* RESULTADO: adónde llegan TODOS los caminos de arriba. Por eso va último y sin
-          chip: no es una alternativa más, es el destino común. */}
-      <div className="rec-row">
-        <span className="rec-k">Resultado</span>
-        <span className="rec-v rec-trans">
-          <span className="rec-pill de">{corta(veredicto)}</span>
-          <i className="rec-fl">→</i>
-          <span className="rec-pill a">{corta(mix.destino)}</span>
-        </span>
+        <div className="rec-pides">
+          <span className="rec-fl">→</span>
+          <div>
+            <b>{mix.descuento ? `Negocias ${mix.descuento} dcto. en precio` : mix.sinDescuento}</b>
+            {/* El paréntesis cuelga del descuento: sin descuento no hay contra qué contrastar
+                y la línea ya dice lo que importa («Sin pedirle un peso al vendedor»). */}
+            {mix.descuento && mix.contraste && (
+              <span className="rec-vs">({mix.contraste.de} si solo modificas el precio)</span>
+            )}
+          </div>
+        </div>
       </div>
-      {/* SIEMPRE, no «si hay»: ver la cabecera. */}
+      {/* RESULTADO, inmediatamente después de lo tuyo. */}
+      {resultado}
+      {/* LO QUE NO DEPENDE DE TI, en una sola oración, después. */}
+      {alternativamente}
+      {/* EL COSTO DEL DÍA UNO, siempre con el mix. */}
       {mix.costo && <p className="rec-cost">{mix.costo}</p>}
     </div>
   );

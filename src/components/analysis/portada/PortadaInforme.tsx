@@ -822,14 +822,64 @@ export function DocTokens() {
       .doc-r2 .rec-t{font-size:22px;font-weight:700;line-height:1.25;margin:0}
       .doc-r2 .rec-sub{font-size:14px;line-height:1.45;opacity:.62;margin:5px 0 20px}
 
-      /* — LA ECUACIÓN — */
+      /* — LA CARD (§5 revisado, 11-sep-2026): lo tuyo primero — */
+      .doc-r2 .rec-sub{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+      /* la píldora neutra de la bajada: SOLO con salida, sin color */
+      .doc-r2 .rec-pill-neutra{
+        display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:var(--rad-pill);
+        background:rgba(255,255,255,.14);box-shadow:0 0 0 1.5px rgba(255,255,255,.55);
+        font-family:var(--font-mono, ui-monospace);font-size:11px;font-weight:700;
+        letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;opacity:1}
       .doc-r2 .rec-eq{margin:0 0 20px}
-      /* LA COLUMNA DE RÓTULOS pasa de 96 a 128 px. Los rótulos dejaron de ser de una
-         palabra —«Solo el arriendo» es el más largo— y a 96 envolvía en dos líneas. 128
-         es lo medido para que entre en una sola a 700. En móvil se deja envolver: a 390
-         el ancho se lo lleva el valor, que es lo que hay que leer. */
+      /* rótulos de grupo: «Modificaciones que dependen de ti» · «Resultado» */
+      .doc-r2 .rec-gt{font-family:var(--font-mono, ui-monospace);font-size:10.5px;font-weight:600;
+        letter-spacing:.09em;text-transform:uppercase;opacity:.55;margin:0 0 10px}
+
+      /* LA CAJA DE LO TUYO: los chips del mix y, bajo una línea, lo que resulta. */
+      .doc-r2 .rec-tuyo{background:rgba(255,255,255,.10);padding:14px;border-radius:var(--rad-s);margin:0 0 16px}
+      .doc-r2 .rec-chips{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 12px}
+      .doc-r2 .rec-chip{
+        display:inline-flex;align-items:baseline;gap:6px;
+        padding:8px 12px;border-radius:var(--rad-xs);background:rgba(255,255,255,.14);
+        font-size:13.5px;font-weight:600;white-space:nowrap}
+      .doc-r2 .rec-chip s{opacity:.42;font-weight:500;text-decoration:line-through;text-decoration-thickness:1.5px}
+      .doc-r2 .rec-chip b{font-weight:700}
+      /* EL GRUPO QUE NO ROMPE: el chip y su «+» viajan juntos, asi el salto de linea
+         cae DESPUES del signo y nunca antes (a 390 px quedaba solo arriba del segundo). */
+      .doc-r2 .rec-chip-g{display:inline-flex;align-items:center;gap:9px;white-space:nowrap}
+      .doc-r2 .rec-mas{font-style:normal;opacity:.42;font-size:16px;font-weight:600}
+      /* «→ Negocias −X% dcto. en precio», entero en grande; el paréntesis debajo */
+      .doc-r2 .rec-pides{display:grid;grid-template-columns:auto 1fr;gap:0 8px;align-items:start;
+        font-size:14px;line-height:1.45;padding-top:11px;border-top:1px solid rgba(255,255,255,.16)}
+      .doc-r2 .rec-pides > .rec-fl{font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.45;opacity:1}
+      .doc-r2 .rec-pides b{display:block;font-size:19px;font-weight:700;letter-spacing:-.02em}
+      /* LAS TRES ACOTACIONES —paréntesis, «Pero eso no depende de ti», costo— al mismo
+         tamaño y opacidad. Ninguna destaca. */
+      .doc-r2 .rec-vs{display:block;font-size:12.5px;opacity:.6;margin-top:5px}
+
+      /* RESULTADO, inmediatamente después de la caja: píldoras con signo */
+      .doc-r2 .rec-res{margin:0 0 18px}
+      .doc-r2 .rec-trans{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .doc-r2 .rec-pill{
+        padding:5px 11px;border-radius:var(--rad-pill);
+        font-family:var(--font-mono, ui-monospace);font-size:11.5px;font-weight:700;
+        letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+      .doc-r2 .rec-pill.de{background:rgba(255,255,255,.10);opacity:.5}
+      .doc-r2 .rec-pill.a{background:#fff;color:#18181B}
+      .doc-r2 .rec-fl{font-style:normal;opacity:.5}
+
+      /* ALTERNATIVAMENTE: lo que no depende de ti, en una oración, después */
+      .doc-r2 .rec-alt{padding-top:14px;border-top:1px solid rgba(255,255,255,.16)}
+      .doc-r2 .rec-a1{font-size:13.5px;line-height:1.5;margin:0}
+      .doc-r2 .rec-a1 b{font-weight:700}
+      .doc-r2 .rec-a1 em{font-style:normal;opacity:.6;font-size:12px}
+      .doc-r2 .rec-a2{font-size:12.5px;line-height:1.5;opacity:.6;margin:5px 0 0}
+      /* el costo del día uno: SIEMPRE con el mix (§5), como tercera acotación */
+      .doc-r2 .rec-cost{font-size:12.5px;opacity:.6;margin:16px 0 0;padding-top:13px;border-top:1px solid rgba(255,255,255,.15)}
+
+      /* LAS DOS FILAS DE COMPRAR («Aguanta» / «Verifica»): rótulo fijo a la izquierda */
       .doc-r2 .rec-row{
-        display:grid;grid-template-columns:128px 1fr;gap:14px;align-items:baseline;
+        display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:baseline;
         padding:13px 0;border-top:1px solid rgba(255,255,255,.14)}
       .doc-r2 .rec-row:first-child{border-top:none;padding-top:0}
       .doc-r2 .rec-k{
@@ -838,47 +888,6 @@ export function DocTokens() {
       .doc-r2 .rec-v{display:block;font-size:15px;line-height:1.45}
       .doc-r2 .rec-v > b{font-weight:700}
       .doc-r2 .rec-v > em{display:block;font-style:normal;font-size:13px;opacity:.62;margin-top:3px}
-
-      /* los chips del cambio */
-      .doc-r2 .rec-chips{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-      .doc-r2 .rec-chip{
-        display:inline-flex;align-items:baseline;gap:6px;
-        padding:6px 12px;border-radius:var(--rad-pill);
-        background:rgba(255,255,255,.10);box-shadow:0 0 0 1px rgba(255,255,255,.18);
-        font-family:var(--font-mono, ui-monospace);font-size:13px;white-space:nowrap}
-      .doc-r2 .rec-chip s{opacity:.45;text-decoration:line-through}
-      .doc-r2 .rec-chip b{font-weight:700}
-      /* EL GRUPO QUE NO ROMPE: el chip y su «+» viajan juntos, asi el salto de linea
-         cae DESPUES del signo y nunca antes. Suelto, a 390 px el «+» quedaba solo
-         arriba del segundo chip, sumando con la nada. */
-      .doc-r2 .rec-chip-g{display:inline-flex;align-items:center;gap:10px;white-space:nowrap}
-      .doc-r2 .rec-mas{font-style:normal;opacity:.5;font-size:15px}
-
-      /* EL DESCUENTO VIVE DENTRO DE «Con lo tuyo», no en una fila propia. Plegado, así
-         que ya no es un bloque: va en línea con los chips, detrás de su flecha. Baja de
-         30 a 22 px por lo mismo que no subía de 30 antes — en una fila compartida, a 30
-         se come los chips que tiene al lado. */
-      .doc-r2 .rec-dcto-g{display:inline-flex;align-items:baseline;gap:9px;white-space:nowrap}
-      .doc-r2 .rec-dcto{
-        font-family:var(--font-mono, ui-monospace);font-size:22px;font-weight:700;
-        line-height:1.1;letter-spacing:-.02em}
-      .doc-r2 .rec-dcto small{font-size:12.5px;font-weight:500;opacity:.62;letter-spacing:normal}
-      .doc-r2 .rec-sin{font-size:14px;font-weight:600}
-      .doc-r2 .rec-contra{
-        display:block;font-style:normal;font-family:var(--font-mono, ui-monospace);
-        font-size:13px;opacity:.72;margin-top:5px}
-      .doc-r2 .rec-contra s{opacity:.55;text-decoration:line-through}
-      .doc-r2 .rec-contra b{font-weight:700;opacity:1}
-
-      /* la transición de veredicto */
-      .doc-r2 .rec-trans{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-      .doc-r2 .rec-pill{
-        padding:5px 13px;border-radius:var(--rad-pill);
-        font-family:var(--font-mono, ui-monospace);font-size:11.5px;font-weight:700;
-        letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
-      .doc-r2 .rec-pill.de{background:rgba(255,255,255,.12);opacity:.45}
-      .doc-r2 .rec-pill.a{background:#fff;color:#18181B}
-      .doc-r2 .rec-fl{font-style:normal;opacity:.5}
 
       .doc-r2 .rec-ctx{font-size:13px;opacity:.62;margin:0 0 14px}
       .doc-r2 .rec-desc{font-size:13px;opacity:.62;margin:14px 0 0}
@@ -889,8 +898,6 @@ export function DocTokens() {
          más presencia que él: el puente dice que no hay salida acá, y ésta dice a
          dónde ir, que es lo único accionable que le queda al lector. Sin cifras. */
       .doc-r2 .rec-donde{font-size:15px;line-height:1.45;font-weight:600;margin:8px 0 0}
-      /* el costo del día uno: SIEMPRE bajo el mix (§5) */
-      .doc-r2 .rec-cost{font-size:13.5px;opacity:.75;margin:16px 0 0}
 
       /* — EL DETALLE DE LA ALTERNATIVA, en el pop-up — la línea de la card nombra
            dos comunas; acá se rinde cuentas de todas las que cruzan, con su muestra. */
@@ -924,7 +931,6 @@ export function DocTokens() {
       @media (max-width: 767px){
         .doc-r2 .rec-card{padding:22px 18px 20px}
         .doc-r2 .rec-row{grid-template-columns:78px 1fr;gap:10px}
-        .doc-r2 .rec-dcto{font-size:26px}
         .doc-r2 .rec-t{font-size:19px}
       }
       @media (prefers-reduced-motion:reduce){

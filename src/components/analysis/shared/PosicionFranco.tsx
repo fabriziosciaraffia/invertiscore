@@ -5,6 +5,8 @@ import { usePostHog } from "posthog-js/react";
 import { Modal } from "@/components/analysis/hallazgos/vocabulario";
 import type { TipoInforme } from "@/components/analysis/informeTelemetry";
 import { useRediseno } from "@/components/analysis/RedisenoContexto";
+import { BAJADA_RECOMENDACION, type EstadoRecomendacion } from "@/lib/lo-que-haria-yo";
+import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 
 /**
  * "La posición de Franco" — la única caja del hero (contrato CONGELADO, T2), con la
@@ -45,7 +47,7 @@ export function PosicionFranco({
   veredicto,
   titulo = "La posición de Franco",
   className = "pb-2 md:ml-9",
-  bajada,
+  estado,
 }: {
   cajaAccionable: ReactNode | null;
   /**
@@ -69,10 +71,11 @@ export function PosicionFranco({
   titulo?: string;
   /** Cuelga del texto del título (md:ml-9) igual que la prosa del hero. */
   className?: string;
-  /** Contrato §5: la bajada bajo el título. La arma el caller, que es quien tiene el
-   *  estado — «Para que el veredicto pase a Comprar», «Cierra al precio pedido» o
-   *  «No hay forma de que este departamento convenga». Esta pieza es presentacional. */
-  bajada?: string;
+  /** Contrato §5 revisado: la bajada bajo el título se dibuja SEGÚN EL ESTADO, que lo
+   *  calcula el caller (`estadoRecomendacion`). Con salida lleva el texto y la píldora
+   *  neutra «✓ COMPRAR»; COMPRAR y sin salida, solo el texto. El destino no viaja como
+   *  string adentro de la bajada: esta pieza lo dibuja. */
+  estado?: EstadoRecomendacion;
 }) {
   const [modalAbierto, setModalAbierto] = useState(false);
   const rediseno = useRediseno();
@@ -116,7 +119,16 @@ export function PosicionFranco({
             <div className="rec-bg" aria-hidden="true" />
             <div className="rec-grain" aria-hidden="true" />
             <p className="rec-t">{titulo}</p>
-            {bajada && <p className="rec-sub">{bajada}</p>}
+            {estado && (
+              <p className="rec-sub">
+                {BAJADA_RECOMENDACION[estado]}
+                {estado === "con_salida" && (
+                  <span className="rec-pill-neutra">
+                    {signoVeredicto("COMPRAR")} {etiquetaVeredicto("COMPRAR", "corta")}
+                  </span>
+                )}
+              </p>
+            )}
             {bloque}
             {/* SIN FIRMA Y SIN «análisis generado por IA» (contrato §5): la recomendación
                 es del informe, no de un narrador, y la línea de la IA acá pedía leer la

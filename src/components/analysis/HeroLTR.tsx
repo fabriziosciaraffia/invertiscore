@@ -11,7 +11,7 @@ import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { salidaPorMix } from "@/lib/salida-por-mix";
 import { MatrizPiePlazoLtr } from "./shared/MatrizPiePlazoLtr";
 import { LoQueHariaYoBloque } from "./shared/LoQueHariaYoBloque";
-import { construirLoQueHariaYo, bajadaRecomendacion } from "@/lib/lo-que-haria-yo";
+import { construirLoQueHariaYo, estadoRecomendacion } from "@/lib/lo-que-haria-yo";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
 import { DetalleAlternativaComunas } from "./shared/DetalleAlternativaComunas";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
@@ -307,7 +307,9 @@ export function HeroLTR({
       if (mix) return mix.destino !== "COMPRAR";
       return (bloqueDeterminista?.filas?.length ?? 0) === 0;
     })();
-  const bajada = bajadaRecomendacion(veredicto, bloqueDeterminista);
+  // §5 revisado: PosicionFranco dibuja la bajada según el estado (y la píldora solo con
+  // salida). Acá se calcula el estado; el texto no viaja.
+  const estadoRec = estadoRecomendacion(veredicto, bloqueDeterminista);
 
   // ── LA ALTERNATIVA DE COMUNAS (§5) ────────────────────────────────────────
   // «Prueba con otro departamento» dejaba al lector sin el dato que más le sirve:
@@ -347,7 +349,7 @@ export function HeroLTR({
       chip={dosBloques ? objetivoChip : undefined}
       extraPopup={<DetalleAlternativaComunas alternativa={alternativa} currency={currency} valorUF={valorUF} />}
       titulo={rediseno ? "La recomendación de Franco" : dosBloques ? "Lo que haría yo" : undefined}
-      bajada={rediseno ? bajada : undefined}
+      estado={rediseno ? estadoRec : undefined}
       fechaFirma={fechaFirma}
       footer={
         /* EL CTA DEL ESTADO SIN SALIDA nombra lo que hay del otro lado: no quedan
