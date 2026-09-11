@@ -46,6 +46,14 @@ export interface MixLoQueHariaYo {
    * cuesta capital. null cuando sí hay descuento y la cifra ocupa ese lugar.
    */
   sinDescuento: string | null;
+  /**
+   * ADÓNDE DEJA el mix, como veredicto. Es EXACTAMENTE el mismo valor del que ya sale
+   * `titulo` (`m.destino ?? dv.veredictoObjetivo`): no se calcula nada nuevo, se expone
+   * lo que el título ya decía en palabras para que la fila «Resultado» del contrato §5
+   * pueda dibujar la transición sin adivinarla. Si un día el destino deja de ser
+   * COMPRAR, la fila lo dice en vez de mentir.
+   */
+  destino: Veredicto;
 }
 
 export interface BloqueLoQueHariaYo {
@@ -232,6 +240,8 @@ export function construirLoQueHariaYo(p: {
         //
         // AUSENTE: en una fila persistida antes del campo, `veredictoObjetivo` es el
         // valor con que ese mismo mix se calculó — el fallback no supone nada.
+        // EL MISMO valor que decide el título, expuesto para la fila «Resultado» de §5.
+        destino: (m.destino ?? dv.veredictoObjetivo) as Veredicto,
         titulo:
           (m.destino ?? dv.veredictoObjetivo) !== "COMPRAR"
             ? "Para que deje de ser un no"

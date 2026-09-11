@@ -13,7 +13,7 @@ import { LoQueHariaYoBloque } from "./shared/LoQueHariaYoBloque";
 import { construirLoQueHariaYo } from "@/lib/lo-que-haria-yo";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 import { esProsaDosBloques } from "./AIInsightSection";
-import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
+import { lineaQueDeclara, etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { useRediseno } from "./RedisenoContexto";
 import type { ReactNode } from "react";
 
@@ -194,6 +194,7 @@ export function HeroLTR({
   // cambia con la moneda); las filas viejas traen el par y no llegan hasta acá.
   const negociacion = dosBloques ? (data?.negociacion?.contenido ?? null) : null;
 
+
   // ── EL CUERPO DETERMINISTA (v22.1) ────────────────────────────────────────
   // El motor calcula las cuatro vías, el salto de dos bandas y el mix desde fcfcbd98,
   // y hasta acá el bloque no leía nada: mostraba un párrafo. Ahora dibuja los datos.
@@ -266,6 +267,39 @@ export function HeroLTR({
   //
   // FUERA el rotulo "Veredicto": la banda de la portada ya lo dice a ancho completo y
   // repetirlo era etiquetar lo obvio. En su lugar, la pregunta la firma Franco.
+  /* LA BAJADA DE §5, uno por estado. La arma acá y no en `PosicionFranco` porque el
+     estado vive en el dato y esa pieza es presentacional — la misma razón por la que
+     recibe la caja IA ya renderizada.
+
+     Los tres salen de la forma del bloque, no de un campo nuevo: COMPRAR tiene su rama
+     propia en el motor (sin mix y sin descarte), «sin salida» es el mix que no pide
+     descuento porque no lo hay, y el resto es la ecuación completa. */
+  /** ¿La card cae al estado SIN SALIDA? Sin mix y sin filas, o con un mix que solo
+   *  llega al escalón intermedio — que por §5 no es una recomendación. */
+  const sinSalidaRecomendacion =
+    veredicto !== "COMPRAR" &&
+    (() => {
+      const mix = bloqueDeterminista?.mix ?? null;
+      if (mix) return mix.destino !== "COMPRAR";
+      return (bloqueDeterminista?.filas?.length ?? 0) === 0;
+    })();
+  const bajadaRecomendacion = (() => {
+    if (veredicto === "COMPRAR") return "Cierra al precio pedido";
+    const mix = bloqueDeterminista?.mix ?? null;
+    // LA RECOMENDACIÓN APUNTA SIEMPRE A COMPRAR (§5). Un mix que solo llega al escalón
+    // intermedio no es una recomendación —es lo que se probó, y vive en el pop-up—, así
+    // que la card lee «sin salida» aunque el mix exista.
+    if (mix && mix.destino === "COMPRAR") return `Para que el veredicto pase a ${etiquetaVeredicto("COMPRAR", "frase")}`;
+    if (mix) return "No hay forma de que este departamento convenga";
+    // SIN MIX NO ES LO MISMO QUE SIN SALIDA. Cuando hay filas, esas filas SON salidas
+    // —palancas que cruzan solas— y el motor las mide contra COMPRAR. Medido: con
+    // «!mix» a secas la bajada decía «No hay forma de que este departamento convenga»
+    // encima de «Bajar el precio −24,1%», que es lo contrario de lo que mostraba.
+    const cruzan = bloqueDeterminista?.filas?.length ?? 0;
+    if (cruzan > 0) return `Para que el veredicto pase a ${etiquetaVeredicto("COMPRAR", "frase")}`;
+    return "No hay forma de que este departamento convenga";
+  })();
+
   return (
     <div className="mb-3">
       {/* SIN PADDING HORIZONTAL. El `px-6 md:px-8` era el padding INTERNO de la
@@ -361,12 +395,19 @@ export function HeroLTR({
       {dosBloques && razones}
       <PosicionFranco
         cajaAccionable={cajaAccionable && prosaSobrevive ? renderPlumon(cajaAccionable) : null}
-        bloque={bloqueDeterminista ? <LoQueHariaYoBloque bloque={bloqueDeterminista} /> : undefined}
+        bloque={bloqueDeterminista ? <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} /> : undefined}
         prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
         chip={dosBloques ? objetivoChip : undefined}
-        titulo={dosBloques ? "Lo que haría yo" : undefined}
+        titulo={rediseno ? "La recomendación de Franco" : dosBloques ? "Lo que haría yo" : undefined}
+        bajada={rediseno ? bajadaRecomendacion : undefined}
         fechaFirma={fechaFirma}
-        footer={footer}
+        footer={
+          /* EL CTA DEL ESTADO SIN SALIDA nombra lo que hay del otro lado: no quedan
+             ajustes que hacer, queda ver QUÉ SE PROBÓ. El pop-up es el mismo — ahí
+             sigue el mix que llega al escalón intermedio, que es donde el contrato
+             §5 lo manda. Solo cambia el rótulo del botón. */
+          rediseno && footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
+        }
         tipo="ltr"
         veredicto={veredicto}
       />

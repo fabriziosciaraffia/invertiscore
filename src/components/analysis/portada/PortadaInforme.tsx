@@ -627,6 +627,170 @@ export function DocTokens() {
         .doc-r2 .doc-hero .doc-headline{font-size:25px}
       }
 
+      /* ═══════════════ REDISEÑO · LOS CAPÍTULOS (contrato §7) ═══════════════
+         SE MONTA «.fila-nav», la primitiva que la parte 3 definió y dejó sin usar. La
+         fila de capítulo deja de ser una línea con un romano gigante y pasa a ser una
+         tarjeta navegable: fondo propio, radio, la cifra a la derecha y el disco del
+         chevron. La rejilla es «1fr auto auto» — pregunta, cifra, disco.
+
+         LA PUERTA NO CAMBIA. Los capítulos NO abren un pop-up: son un acordeón que
+         expande «.hall-body» en el mismo lugar, con su «↑ Cerrar» al pie. Eso queda
+         igual. Lo que cambia es la FILA, no adónde lleva, y por eso el chevron sigue
+         girando al abrirse en vez de apuntar a la derecha.
+
+         MUEREN LOS NÚMEROS ROMANOS (§7 los nombra explícitamente). El romano ocupaba
+         46 px de ancho y competía con la cifra, que es el dato que hace la lista útil
+         sin abrir nada.
+
+         EL «:focus-visible» NO SE PIERDE. «.hall-head» ya lo tenía antes del rediseño y
+         el catch-test de la parte 3 lo fija; acá se le agrega el de «.fila-nav» con el
+         mismo anillo. Es exactamente lo que una reescritura de la fila deja caer. */
+      .doc-r2 .hall.cap{border-bottom:none;margin-bottom:9px}
+      .doc-r2 .hall.cap .hall-head{
+        background:var(--card);padding:16px 17px;border-radius:var(--rad-s);
+        border:1px solid transparent;display:grid;grid-template-columns:1fr auto auto;
+        gap:0 15px;align-items:center;
+        transition:box-shadow .13s,border-color .13s,transform .13s}
+      .doc-r2 .hall.cap .hall-head:not([disabled]):hover{
+        padding-left:17px;border-color:var(--line2);box-shadow:var(--sombra-h);transform:translateY(-1px)}
+      .doc-r2 .hall.cap .hall-head:focus-visible{outline:2px solid var(--signal-red);outline-offset:2px}
+      /* El romano sale de la fila; se oculta en vez de borrarse del JSX porque la misma
+         pieza la monta STR, que conserva su numeración. */
+      .doc-r2 .hall.cap .num{display:none}
+      .doc-r2 .hall.cap .q{
+        font-family:var(--font-heading, Georgia, serif);font-size:15.5px;font-weight:600;
+        color:var(--tx);line-height:1.35}
+      .doc-r2 .hall.cap .ksub{display:block;font-size:12.5px;font-weight:400;color:var(--tx3);margin-top:3px}
+      .doc-r2 .hall.cap .val{
+        font-family:var(--font-mono, ui-monospace);font-size:14px;font-weight:700;
+        color:var(--tx);font-variant-numeric:tabular-nums}
+      /* EL DISCO del chevron: el mismo de «.fila-nav», que al hover se llena. */
+      .doc-r2 .hall.cap .chev{
+        width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+        justify-content:center;background:var(--page);border:1px solid var(--line2);
+        color:var(--tx3);font-size:15px;line-height:1;
+        transition:background .13s,border-color .13s,color .13s,transform .2s}
+      .doc-r2 .hall.cap .hall-head:not([disabled]):hover .chev{
+        background:var(--tx);border-color:var(--tx);color:var(--page)}
+      .doc-r2 .hall.cap.open .hall-head{border-color:var(--line2)}
+      .doc-r2 .hall.cap .hall-body{padding:14px 17px 20px}
+      .doc-r2 .chapters-eyebrow{border-bottom:none;padding-bottom:6px}
+      @media (max-width: 767px){
+        .doc-r2 .hall.cap .hall-head{padding:14px 14px;gap:0 11px}
+        .doc-r2 .hall.cap .hall-head:not([disabled]):hover{padding-left:14px}
+        .doc-r2 .hall.cap .q{font-size:14.5px}
+        .doc-r2 .hall.cap .hall-body{padding:12px 14px 18px}
+      }
+      @media (prefers-reduced-motion:reduce){
+        .doc-r2 .hall.cap .hall-head{transition:none}
+        .doc-r2 .hall.cap .hall-head:not([disabled]):hover{transform:none}
+      }
+
+      /* ═══════════════ REDISEÑO · LA RECOMENDACIÓN (contrato §5) ═══════════════
+         ES LA ÚNICA PIEZA CUYO FONDO DEPENDE DEL VEREDICTO. El hero usa el mismo
+         espectro para los tres precisamente para que esta caja pueda no hacerlo: si las
+         dos cambiaran de color, el color dejaría de significar algo. Acá va del tono
+         profundo del veredicto a tinta.
+
+         EL FILTRO EN SU CAPA, igual que en el hero: sobre la caja se comería el texto.
+
+         LA ECUACIÓN ES UNA REJILLA DE DOS COLUMNAS con el rótulo a 96 px fijos (78 en
+         móvil) pegado al margen. Fijo y no «auto» a propósito: con «auto» cada fila
+         alinea su valor en un sitio distinto según el largo del rótulo, y la columna de
+         valores deja de leerse como una columna.
+
+         LO QUE SE CAMBIA VA TACHADO Y TRANSPARENTE; LO NUEVO, SÓLIDO. Es lo que hace
+         legible el movimiento sin leer: el ojo salta a lo sólido. */
+      .doc-r2 .rec-card{
+        position:relative;isolation:isolate;overflow:hidden;
+        border-radius:var(--rad);padding:28px 30px 26px;color:#fff;
+        box-shadow:var(--sombra)}
+      .doc-r2 .rec-bg{
+        position:absolute;inset:0;z-index:0;pointer-events:none;
+        background:linear-gradient(135deg,var(--verdict-deep) 0%,#18181B 100%);
+        filter:brightness(1.30) saturate(.70)}
+      .doc-r2 .rec-grain{
+        position:absolute;inset:0;z-index:1;pointer-events:none;
+        background-image:var(--doc-grain);background-size:300px;
+        opacity:.16;mix-blend-mode:overlay}
+      .doc-r2 .rec-card > *:not(.rec-bg):not(.rec-grain):not(.sr-only){position:relative;z-index:2}
+
+      .doc-r2 .rec-t{font-size:22px;font-weight:700;line-height:1.25;margin:0}
+      .doc-r2 .rec-sub{font-size:14px;line-height:1.45;opacity:.62;margin:5px 0 20px}
+
+      /* — LA ECUACIÓN — */
+      .doc-r2 .rec-eq{margin:0 0 20px}
+      .doc-r2 .rec-row{
+        display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:baseline;
+        padding:13px 0;border-top:1px solid rgba(255,255,255,.14)}
+      .doc-r2 .rec-row:first-child{border-top:none;padding-top:0}
+      .doc-r2 .rec-k{
+        font-family:var(--font-mono, ui-monospace);font-size:11.5px;letter-spacing:.1em;
+        text-transform:uppercase;opacity:.5;line-height:1.5}
+      .doc-r2 .rec-v{display:block;font-size:15px;line-height:1.45}
+      .doc-r2 .rec-v > b{font-weight:700}
+      .doc-r2 .rec-v > em{display:block;font-style:normal;font-size:13px;opacity:.62;margin-top:3px}
+
+      /* los chips del cambio */
+      .doc-r2 .rec-chips{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .doc-r2 .rec-chip{
+        display:inline-flex;align-items:baseline;gap:6px;
+        padding:6px 12px;border-radius:var(--rad-pill);
+        background:rgba(255,255,255,.10);box-shadow:0 0 0 1px rgba(255,255,255,.18);
+        font-family:var(--font-mono, ui-monospace);font-size:13px;white-space:nowrap}
+      .doc-r2 .rec-chip s{opacity:.45;text-decoration:line-through}
+      .doc-r2 .rec-chip b{font-weight:700}
+      .doc-r2 .rec-mas{font-style:normal;opacity:.5;font-size:15px}
+
+      /* el descuento: 30 px y no más — compite con la cifra del hero */
+      .doc-r2 .rec-dcto{
+        font-family:var(--font-mono, ui-monospace);font-size:30px;font-weight:700;
+        line-height:1.05;letter-spacing:-.02em;display:block}
+      .doc-r2 .rec-sin{font-size:15px;font-weight:600;display:block}
+      .doc-r2 .rec-contra{
+        display:block;font-style:normal;font-family:var(--font-mono, ui-monospace);
+        font-size:13px;opacity:.72;margin-top:5px}
+      .doc-r2 .rec-contra s{opacity:.55;text-decoration:line-through}
+      .doc-r2 .rec-contra b{font-weight:700;opacity:1}
+
+      /* la transición de veredicto */
+      .doc-r2 .rec-trans{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .doc-r2 .rec-pill{
+        padding:5px 13px;border-radius:var(--rad-pill);
+        font-family:var(--font-mono, ui-monospace);font-size:11.5px;font-weight:700;
+        letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+      .doc-r2 .rec-pill.de{background:rgba(255,255,255,.12);opacity:.45}
+      .doc-r2 .rec-pill.a{background:#fff;color:#18181B}
+      .doc-r2 .rec-fl{font-style:normal;opacity:.5}
+
+      .doc-r2 .rec-ctx{font-size:13px;opacity:.62;margin:0 0 14px}
+      .doc-r2 .rec-desc{font-size:13px;opacity:.62;margin:14px 0 0}
+      /* el costo del día uno: SIEMPRE bajo el mix (§5) */
+      .doc-r2 .rec-cost{font-size:13.5px;opacity:.75;margin:16px 0 0}
+
+      /* — EL CTA — botón BLANCO SÓLIDO con icono, no un enlace (§5) — */
+      .doc-r2 .rec-cta{
+        display:inline-flex;align-items:center;gap:10px;
+        padding:12px 20px;border-radius:var(--rad-pill);border:none;cursor:pointer;
+        background:#fff;color:#18181B;
+        font-size:14px;font-weight:600;letter-spacing:normal;
+        transition:transform .12s,box-shadow .12s}
+      .doc-r2 .rec-cta:hover{box-shadow:var(--sombra-h)}
+      .doc-r2 .rec-cta:active{transform:translateY(1px)}
+      .doc-r2 .rec-cta:focus-visible{outline:2px solid #fff;outline-offset:3px}
+      .doc-r2 .rec-cta-ico{font-size:10px;line-height:1;opacity:.65}
+
+      @media (max-width: 767px){
+        .doc-r2 .rec-card{padding:22px 18px 20px}
+        .doc-r2 .rec-row{grid-template-columns:78px 1fr;gap:10px}
+        .doc-r2 .rec-dcto{font-size:26px}
+        .doc-r2 .rec-t{font-size:19px}
+      }
+      @media (prefers-reduced-motion:reduce){
+        .doc-r2 .rec-cta{transition:none}
+        .doc-r2 .rec-cta:active{transform:none}
+      }
+
       /* ═══════════════ REDISEÑO · LA ZONA (contrato §8) ═══════════════
          Tres tarjetas, MISMO ESTILO QUE LAS CIFRAS —el contrato lo dice así—, pero con
          una jerarquía propia: qué es, TU valor, la referencia, la píldora con la
