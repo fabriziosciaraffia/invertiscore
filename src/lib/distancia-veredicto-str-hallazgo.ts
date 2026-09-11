@@ -34,6 +34,7 @@ import {
   DIST_PLAZO_TOPE_ANIOS,
   DIST_PLAZO_TRAMO_ANIOS,
 } from "./distancia-veredicto-hallazgo";
+import { calcularMixPalancas } from "./mix-palancas";
 import type { StrPatch } from "./analysis/veredicto-str-con-patch";
 
 // ── Topes de honestidad (calibrados sobre el parque STR, no heredados) ────────────
@@ -377,6 +378,59 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   const palancaMasBarata = palancas[0] ?? null;
   const esEstructural = palancas.length === 0;
 
+  // ── EL MIX DE LAS TRES PALANCAS DEL COMPRADOR (11-sep-2026) ───────────────
+  // La MISMA pieza que LTR (`mix-palancas.ts`) con la misma forma: pie × plazo × precio,
+  // hacia el veredicto inmediatamente superior — el escalón cuando se parte de BUSCAR
+  // OTRA; `destino` lo declara y la card filtra por él, el escalón vive en el pop-up—.
+  //
+  // LA TARIFA QUEDA FUERA, y no por costo: es el arriendo de STR y la pone el mercado.
+  // Medido sobre el parque, entra en 18 AJUSTA más; ofrecerla como «lo tuyo» sería falso.
+  // La gestión tampoco entra: es discreta y ya se reporta sola.
+  //
+  // EL ADAPTADOR. El módulo habla en UF y en puntos de pie; el motor STR en CLP y en
+  // decimal. La UF es la congelada del análisis —`precioCLP / precioUF`, la misma que usó
+  // el recompute— así que precio y sonda quedan en la misma base. Tres líneas, probadas
+  // sobre las 246 filas recomputables del parque antes de cablearlas.
+  //
+  // EL PIE ENTRA A LA GRILLA SI SE EXPLORÓ: sin bono y bajo el techo. No `pieCalifica`,
+  // que acá es la banda de prioridad (mejorable/problemático) y decide el ORDEN de la
+  // vía, no si existe — con 20% o más el pie cruza «como intercambio» y sigue siendo una
+  // vía; el mix lo mueve con la misma doctrina y su costo del día uno al lado.
+  //
+  // EL TOPE ES EL DE LA PALANCA SOLA (25 desde AJUSTA · 15 desde BUSCAR): si el mix
+  // pudiera pedir un descuento que el precio solo tiene prohibido, el informe se
+  // contradiría consigo mismo.
+  const pieExplorado = !esBonoPie && Number.isFinite(p.piePct) && p.piePct < DIST_PIE_TOPE_PCT;
+  const ufCongelada = p.precioCLP / p.precioUF;
+  const mixPalancas = calcularMixPalancas({
+    meta: veredictoObjetivo,
+    precioUF: p.precioUF,
+    piePct: p.piePct,
+    plazoCredito: p.plazoCredito,
+    pieCalifica: pieExplorado,
+    pieTopePct: DIST_PIE_TOPE_PCT,
+    topePct: topeAplicado,
+    palancasQueCruzan: palancas.map((l) => l.palanca),
+    veredictoAtPatch: (m) =>
+      p.veredictoAtPatch({
+        precioCompra: m.precio != null ? Math.round(m.precio * ufCongelada) : undefined,
+        piePercent: m.piePct != null ? m.piePct / 100 : undefined,
+        plazoCredito: m.plazoCredito,
+      }),
+  });
+
+  // «SIN PALANCA SOLA» Y «SIN SALIDA» SON DOS CONCEPTOS (espejo exacto del LTR).
+  // `esEstructural` no cambia de significado: sigue siendo «ninguna palanca cruza sola»
+  // y de él cuelgan la frase, el pop-up y los guards de hoy. `sinSalida` es el que
+  // responde si hay algo que ofrecer: ninguna sola Y ninguna combinación alcanzable.
+  //
+  // ⚠ LA CONTRADICCIÓN NACE ACÁ Y SE CIERRA EN EL BUMP STR. La prosa sigue colgando de
+  // `esEstructural` —A8-STR en ai-generation-str.ts y el guard STR-ESTRUCTURAL—, así que
+  // en las filas estructurales con salida por mix el motor dice «hay» y la prosa cierra
+  // la puerta. Se resuelve como en LTR v24, con `hayMixACOMPRAR` en el prompt; este goal
+  // es de motor y no lo toca.
+  const sinSalida = esEstructural && !(mixPalancas?.dentroDelAlcance ?? false);
+
   // Estructural: delta mínimo en rango EXTENDIDO, solo para respaldar la frase dura con el
   // número real. No es accionable — es evidencia. Se computa solo acá (2 bisecciones extra).
   let deltaMinimoFueraDeTope: HallazgoDistanciaVeredicto["valor"]["deltaMinimoFueraDeTope"] = null;
@@ -522,6 +576,8 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
       vias,
       palancaMasBarata,
       palancaHastaComprar,
+      mixPalancas,
+      sinSalida,
       esEstructural,
       deltaMinimoFueraDeTope,
       topePct: topeAplicado,

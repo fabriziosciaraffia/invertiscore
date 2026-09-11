@@ -1124,7 +1124,10 @@ export interface HallazgoDistanciaVeredicto {
     sinSalida?: boolean;
     /** El mix de las tres palancas del comprador hacia `veredictoObjetivo`.
      *  `null` = se probaron las combinaciones y ninguna cruza.
-     *  AUSENTE = fila persistida antes de este goal, NO CALCULADO. */
+     *  AUSENTE = fila persistida antes de este goal, NO CALCULADO.
+     *  LTR desde el 10-sep-2026; STR desde el 11-sep-2026 (mismo módulo, adaptador
+     *  UF→CLP / %→decimal en `distancia-veredicto-str-hallazgo.ts`; la tarifa queda fuera
+     *  porque la pone el mercado). `sinSalida` viaja con él en las dos modalidades. */
     mixPalancas?: MixPalancas | null;
     /** Ninguna palanca cruza dentro del tope ⇒ no hay ajuste realista que lo salve. */
     esEstructural: boolean;
