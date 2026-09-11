@@ -1142,10 +1142,10 @@ export function DocTokens() {
          nombra un veredicto, éste dice si un dato mejora o empeora tu caso. Que
          coincidan es economía de paleta, no una equivalencia — no los unifiques.
 
-         OJO, NO LO MONTA NADIE TODAVÍA. Las flechas de hallazgo hoy van en «--doc-tx»,
-         una sola tinta para las dos direcciones, por la decisión «SÍMBOLO, NO COLOR»
-         del 09-sep que está escrita en «PrincipalesHallazgos.tsx». Colorearlas es §3 y
-         va con el hero; acá solo queda el token publicado. */
+         YA LO MONTAN LAS FLECHAS DE HALLAZGO (§4, 11-sep-2026): «↑» en «--up» y «↓» en
+         «--signal-red», a 20 px, detrás del interruptor. La decisión «SÍMBOLO, NO COLOR»
+         del 09-sep queda superada, con acta en «PrincipalesHallazgos.tsx»: el color
+         vuelve solo a las flechas, no a las cifras ni a los textos. */
 
       /* UNA LÍNEA SOBRE UNA SUPERFICIE HUNDIDA NECESITA SU PROPIO VALOR.
          «--line» está calibrado contra «--page» y «--card»; contra «--sunk» desaparece:
@@ -1336,9 +1336,9 @@ export function DocTokens() {
       .hz-lin{display:grid;grid-template-columns:16px 1fr 120px;gap:14px;align-items:start;width:100%;
         padding:15px 0;border-bottom:1px solid var(--doc-line);text-align:left}
       .hz-lin:last-child{border-bottom:none}
-      /* La flecha: SIEMPRE Ink. Nunca toma el color de la dirección — ese es justo el
-         acoplamiento que este bloque dejó de hacer. Ancho fijo para que la fila
-         la fila neutral, que no lleva flecha, no corra la frase hacia la izquierda. */
+      /* La flecha en el informe de siempre: Ink, una sola tinta para las dos
+         direcciones. Ancho fijo para que la fila neutral, que no lleva flecha, no corra
+         la frase hacia la izquierda. El color de §4 entra con el interruptor, más abajo. */
       .hz-fl{font-family:var(--font-mono, ui-monospace);font-size:14px;line-height:1.4;color:var(--doc-tx);text-align:center}
       .hz-lin p{font-family:var(--font-heading, Georgia, serif);font-weight:400;font-size:16px;line-height:1.4;color:var(--doc-tx);margin:0}
       /* Sin :hover ni :focus-visible: la fila dejó de ser un control. Un hover sobre algo
@@ -1351,6 +1351,21 @@ export function DocTokens() {
       /* La ÚNICA cifra con color: el monto negativo. «.mal» (adverso) y «.bien»
          (--doc-good) murieron — codificaban DIRECCIÓN, que ahora dice la flecha. */
       .hz-n.neg{color:var(--signal-red)}
+      /* — LAS FLECHAS DE HALLAZGO (contrato §4) — el color vuelve, y SOLO acá.
+           A 20 px y en el par direccional: «↓» lo que frena en «--signal-red», «↑» lo
+           que ayuda en «--up». Las cifras y los textos siguen en tinta; la única
+           excepción de color que ya había —el monto negativo— sigue siendo la única.
+
+           SUPERA A «SÍMBOLO, NO COLOR» (09-sep), con acta en «PrincipalesHallazgos.tsx».
+           Aquella decisión sacó el color del bloque entero porque estaba en todos lados;
+           acá vuelve a UN solo lugar, y a un lugar que no carga significado propio: la
+           flecha es «aria-hidden» y repite lo que la frase ya dice con palabras.
+
+           EL GANCHO ES «data-dir», que emite el componente con la dirección del motor.
+           La tercera dirección, «neutral», no lleva flecha: no necesita regla. */
+      .doc-r2 .hz-fl{font-size:20px}
+      .doc-r2 .hz-fl[data-dir="adverso"]{color:var(--signal-red)}
+      .doc-r2 .hz-fl[data-dir="favorable"]{color:var(--up)}
       /* El slot de la referencia reserva su alto AUNQUE ESTÉ VACÍO (min-height + el
          espacio duro que emite el componente): sin eso la fila sin referencia —Pie 20%—
          se hundía respecto de las otras tres. */

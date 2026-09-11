@@ -31,9 +31,18 @@ import { referenciaHallazgo } from "./referencia-hallazgo";
  * inalcanzable — cada capítulo de «Cómo funciona como inversión» es su propio botón en
  * el acordeón, así que la fila era un atajo, no la única puerta.
  *
- * SÍMBOLO, NO COLOR (09-sep-2026). La dirección la dice una flecha en Ink: ↓ lo que
- * frena, ↑ lo que ayuda. El bloque queda SIN color salvo una excepción: la cifra que
- * es un MONTO NEGATIVO conserva Signal Red.
+ * SÍMBOLO, NO COLOR (09-sep-2026) — SUPERADA POR EL CONTRATO §4 (11-sep-2026).
+ *
+ * ACTA. Aquella decisión sacó el color del bloque entero porque estaba en todos lados
+ * —cifras, textos y flechas—, y un bloque donde todo grita no jerarquiza nada. La
+ * flecha quedó en Ink y la dirección la dijo el símbolo.
+ *
+ * El contrato §4 la reemplaza, y no la revierte: el color vuelve SOLO a las flechas,
+ * a 20 px, ↓ en «--signal-red» y ↑ en «--up». Las cifras y los textos siguen en tinta,
+ * con la única excepción de siempre —el monto negativo en Signal Red—. Lo que se
+ * mantiene de la decisión vieja es lo que la motivaba: el color no se reparte.
+ *
+ * Va detrás del interruptor: el informe de siempre conserva su flecha en tinta.
  */
 /** 0 = frena (va arriba), 1 = ayuda o no mueve la aguja. */
 const grupo = (h: Hallazgo): number => (h.direccion === "adverso" ? 0 : 1);
@@ -77,8 +86,10 @@ export function PrincipalesHallazgos({
         return (
           <div key={h.id} className="hz-lin">
             {/* La flecha REPITE lo que la frase ya dice con palabras: es apoyo visual,
-                no información nueva, así que no entra al árbol de accesibilidad. */}
-            <span className="hz-fl" aria-hidden="true">{flecha}</span>
+                no información nueva, así que no entra al árbol de accesibilidad — y por
+                eso el color de §4 puede ser lo único que la distinga: no carga
+                significado que el texto no traiga ya. */}
+            <span className="hz-fl" data-dir={h.direccion} aria-hidden="true">{flecha}</span>
             <p>{frase}</p>
             <span className={`hz-n${kpiNegativo ? " neg" : ""}`}>
               {kpi}

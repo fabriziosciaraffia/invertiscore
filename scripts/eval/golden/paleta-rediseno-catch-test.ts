@@ -49,6 +49,7 @@ const leerArchivo = (p: string) => {
   try { return readFileSync(join(RAIZ, p), "utf8"); } catch { return ""; }
 };
 const RUTA_LTR = leerArchivo("src/app/analisis/[id]/page.tsx");
+const HALLAZGOS = leerArchivo("src/components/analysis/PrincipalesHallazgos.tsx");
 const RUTA_STR = leerArchivo("src/app/analisis/renta-corta/[id]/results-client.tsx");
 
 const PISO = 2.0;
@@ -186,11 +187,45 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
       F(`6 · ${hex} aparece ${fuera - declarado} vez(ces) fuera de la declaración de --up: el color direccional va por token, no hardcodeado`);
     }
   }
-  // Las flechas de hallazgo siguen en UNA sola tinta: colorearlas es §3 y va con el
-  // hero. Si alguien las pinta acá, se lleva puesta la decisión «SÍMBOLO, NO COLOR».
-  const hzfl = CSS.split("\n").find((l) => l.includes(".hz-fl{")) ?? "";
-  if (hzfl && /var\(--up\)|var\(--signal-red\)/.test(hzfl)) {
-    F("6 · .hz-fl pasó a color direccional. Eso es §3 (hero, 4b) y revierte «SÍMBOLO, NO COLOR» del 09-sep, que está escrita en PrincipalesHallazgos.tsx: no entra de pasada.");
+  // ACTA · EL GUARD DE «SÍMBOLO, NO COLOR» SE RETIRA Y SE INVIERTE (11-sep-2026).
+  //
+  // Hasta hoy este invariante PROHIBÍA colorear «.hz-fl»: fijaba la decisión del
+  // 09-sep, que sacó el color del bloque de hallazgos porque estaba en todos lados
+  // —cifras, textos y flechas— y un bloque donde todo grita no jerarquiza nada.
+  //
+  // El contrato §4 la reemplaza, y no la revierte: el color vuelve SOLO a las flechas,
+  // a 20 px, «↓» en «--signal-red» y «↑» en «--up». Las cifras y los textos siguen en
+  // tinta, con la única excepción de siempre —el monto negativo—. Lo que se conserva de
+  // la decisión vieja es lo que la motivaba: el color no se reparte.
+  //
+  // Así que el guard no se borra: se da vuelta. Antes fijaba la ausencia; ahora fija la
+  // presencia, que es más difícil de perder sin querer.
+  {
+    const bloqueFl = CSS.slice(CSS.indexOf(".doc-r2 .hz-fl{"), CSS.indexOf(".doc-r2 .hz-fl{") + 400);
+    if (!CSS.includes(".doc-r2 .hz-fl{")) {
+      F("6 · desapareció la regla de las flechas de hallazgo del rediseño (§4): sin ella vuelven a los 14 px y a una sola tinta");
+    } else {
+      if (!/font-size:\s*20px/.test(bloqueFl)) F("6 · las flechas de hallazgo dejaron de medir 20 px (§4)");
+      const PAR: [string, string][] = [["adverso", "--signal-red"], ["favorable", "--up"]];
+      for (const [dir, tok] of PAR) {
+        const re = new RegExp(`\\.hz-fl\\[data-dir="${dir}"\\]\\{color:var\\(${tok}\\)\\}`);
+        if (!re.test(bloqueFl)) {
+          F(`6 · la flecha «${dir === "adverso" ? "↓" : "↑"}» dejó de ir en «${tok}» (§4). El par direccional es lo único que distingue una dirección de la otra: con las dos en la misma tinta, el color deja de decir nada y sobra.`);
+        }
+      }
+      // Y el gancho lo emite el componente: sin «data-dir» la regla no matchea nada y el
+      // tier seguiría verde mirando un CSS que no se aplica.
+      if (!/<span className="hz-fl" data-dir=\{h\.direccion\}/.test(HALLAZGOS)) {
+        F("6 · `PrincipalesHallazgos` dejó de emitir `data-dir` en la flecha: la regla de §4 existe pero no matchea nada, y el bloque vuelve a una sola tinta sin que el CSS lo diga.");
+      }
+    }
+    // Y el color NO se reparte: las cifras y los textos de la fila siguen en tinta.
+    for (const sel of [".hz-lin p{", ".hz-n{"]) {
+      const linea = CSS.split("\n").find((l) => l.includes(sel)) ?? "";
+      if (linea && /var\(--up\)|var\(--signal-red\)/.test(linea)) {
+        F(`6 · «${sel.replace("{", "")}» tomó color direccional. §4 le devuelve el color a las FLECHAS y a nada más: repartirlo por la fila es exactamente lo que «SÍMBOLO, NO COLOR» vino a arreglar en septiembre.`);
+      }
+    }
   }
 }
 
@@ -284,7 +319,7 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
 export function runPaletaRedisenoTier(): { hard: number } {
   console.log("\n─── TIER PALETA-REDISEÑO (contrato §1 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — escala completa en los dos temas, superficies distinguibles, cada línea se ve sobre la suya, la dirección sigue al tema, el par direccional --signal-red/--up se distingue y pasa AA, el semáforo del dato queda intacto, el selector lleva las CUATRO formas, y el lienzo de la página LTR pinta --page sin llevarse la paleta del informe al chrome");
+    console.log("  ✓ VERDE — escala completa en los dos temas, superficies distinguibles, cada línea se ve sobre la suya, la dirección sigue al tema, el par direccional --signal-red/--up se distingue y pasa AA, el semáforo del dato queda intacto, las flechas de hallazgo con el par direccional a 20 px y el color sin repartirse, el selector lleva las CUATRO formas, y el lienzo de la página LTR pinta --page sin llevarse la paleta del informe al chrome");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
