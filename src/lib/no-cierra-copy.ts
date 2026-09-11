@@ -24,7 +24,9 @@
 
 import type { BrazoSTR } from "./engines/short-term-score";
 
-export type FamiliaMotivo = "regulacion" | "ingreso" | "bolsillo" | "vsLargo";
+// La familia `regulacion` («el edificio no permite arriendo por días») existió hasta el
+// 11-sep-2026: se retiró con el gate g1_regulacion (retiro V1 de la regulación).
+export type FamiliaMotivo = "ingreso" | "bolsillo" | "vsLargo";
 
 /**
  * Brazo → familia. Cada brazo cae en UNA sola familia, la de su lectura dominante.
@@ -34,7 +36,6 @@ export type FamiliaMotivo = "regulacion" | "ingreso" | "bolsillo" | "vsLargo";
  * meses — la comparación contra el largo ya tiene su propia familia y su propio brazo.
  */
 const FAMILIA_DE: Record<BrazoSTR, FamiliaMotivo> = {
-  g1_regulacion: "regulacion",
   g1_beInviable: "ingreso",
   g1_capRateMinimo: "ingreso",
   g2_beApretado: "ingreso",
@@ -46,7 +47,7 @@ const FAMILIA_DE: Record<BrazoSTR, FamiliaMotivo> = {
 };
 
 /** Orden de presentación: primero lo que cierra la puerta, después lo que aprieta. */
-const ORDEN_FAMILIA: FamiliaMotivo[] = ["regulacion", "ingreso", "bolsillo", "vsLargo"];
+const ORDEN_FAMILIA: FamiliaMotivo[] = ["ingreso", "bolsillo", "vsLargo"];
 
 /**
  * Lectura de cada familia. Frase corta, en consecuencia vivida, sin cifras: los montos
@@ -61,7 +62,6 @@ const ORDEN_FAMILIA: FamiliaMotivo[] = ["regulacion", "ingreso", "bolsillo", "vs
 //
 // Cláusula = la frase pelada, sin apertura, pensada para concatenarse con otra.
 const CLAUSULA: Record<FamiliaMotivo, string> = {
-  regulacion: "el edificio no permite arriendo por días",
   ingreso: "lo que puede facturar arrendando por día no da para su precio",
   bolsillo: "pones plata de tu bolsillo todos los meses que ni la venta a 10 años alcanza a devolverte",
   vsLargo: "arrendarlo a un arrendatario fijo te dejaría más plata y con menos trabajo",
@@ -73,8 +73,6 @@ const CLAUSULA: Record<FamiliaMotivo, string> = {
  * sola, que es como la ve el 15% del parque con una sola causa.
  */
 const FRASE_SOLA: Record<FamiliaMotivo, string> = {
-  regulacion:
-    "Acá no se trata de números: el edificio no permite arriendo por días, así que el negocio no se puede hacer como está planteado.",
   ingreso:
     "No cierra por una razón concreta: lo que este depto puede facturar arrendando por día no da para su precio.",
   bolsillo:
@@ -101,7 +99,6 @@ const FRASE_COMBINADA: Record<string, string> = {
  * "Aporte mensual" era la etiqueta interna y no le dice nada a quien no la acuñó.
  */
 const ETIQUETA: Record<FamiliaMotivo, string> = {
-  regulacion: "No está permitido",
   ingreso: "No da para su precio",
   bolsillo: "Pones plata cada mes",
   vsLargo: "Rinde más con arrendatario fijo",
@@ -137,12 +134,6 @@ export function describirMotivosSTR(motivos: readonly BrazoSTR[]): MotivosDescri
   const lecturas = familias.map((f) => CLAUSULA[f]);
   const etiquetas = familias.map((f) => ETIQUETA[f]);
   const base = { familias, etiquetas, lecturas };
-
-  // La regulación cierra la puerta sola: cuando está, es LA razón y el resto es ruido
-  // — no tiene sentido hablar de mejorar la caja de algo que no se puede operar.
-  if (familias[0] === "regulacion") {
-    return { ...base, frase: FRASE_SOLA.regulacion };
-  }
 
   if (familias.length === 1) {
     return { ...base, frase: FRASE_SOLA[familias[0]] };

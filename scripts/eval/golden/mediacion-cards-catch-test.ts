@@ -65,12 +65,14 @@ console.log("── (B) encuadre por veredicto ──");
 }
 
 console.log("── (A) hallazgo del gate ──");
-const base = { motivos: ["g1_regulacion"], glosas: { g1_regulacion: "Edificio no permite Airbnb — operación inviable" }, score: 78, veredictoFinal: "BUSCAR OTRA" };
+// El brazo de muestra era `g1_regulacion` hasta el retiro V1 de la regulación (11-sep-2026);
+// el mecanismo es el mismo para cualquier gate que mueva la banda.
+const base = { motivos: ["g1_beInviable"], glosas: { g1_beInviable: "Break-even >130% del mercado — depende de occ/ADR fuera de alcance" }, score: 78, veredictoFinal: "BUSCAR OTRA" };
 {
   const g = buildHallazgoGateVeredicto({ ...base, hayAdverso: false })!;
   check("emite con gate + cero adversas", !!g && g.direccion === "adverso");
   check("decisividad medida = 1 (el gate mueve la banda)", g.decisividad === 1, `banda=${veredictoDeBanda(78)}`);
-  check("la frase nombra el hecho y el flip", g.fraseCanonica.includes("Edificio no permite Airbnb") && g.fraseCanonica.includes("COMPRAR"));
+  check("la frase nombra el hecho y el flip", g.fraseCanonica.includes("Break-even >130% del mercado") && g.fraseCanonica.includes("COMPRAR"));
 }
 {
   check("con una card adversa NO emite (el orden ya media)", buildHallazgoGateVeredicto({ ...base, hayAdverso: true }) === null);

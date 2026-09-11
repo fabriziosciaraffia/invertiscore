@@ -72,7 +72,7 @@ export interface AuditFixture {
   /** Input STR completo con AirbnbData sintético (para STR y AMBAS). */
   strInput?: ShortTermInputs;
   /** Contexto extra para calcFrancoScoreSTR (regulación + coords). */
-  strScore?: { regulacionEdificio: string; lat: number; lng: number };
+  strScore?: { lat: number; lng: number };
   /** Nota libre (por qué este caso es interesante para el juez). */
   nota?: string;
 }
@@ -413,28 +413,28 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     modalidad: "STR", tier: "estandar", ejes: ["veredicto:COMPRAR", "regulacion:si", "revenue:alto"],
     expected: { str: "COMPRAR" },
     strInput: str({ comuna: "Providencia", adrP50: 75000, occP50: 0.65, arriendoLargoMensual: 600000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.pedroValdiviaL1 },
+    strScore: { ...COORDS.pedroValdiviaL1 },
   },
   {
     id: "str-comprar-lastarria-02",
     modalidad: "STR", tier: "experto", ejes: ["veredicto:COMPRAR", "regulacion:si", "tier:experto", "tipologia:1D"],
     expected: { str: "COMPRAR" },
     strInput: str({ comuna: "Santiago Centro", adrP50: 70000, occP50: 0.68, dormitorios: 1, superficie: 38, precioCompra: 2600 * AUDIT_UF, arriendoLargoMensual: 480000 }),
-    strScore: { regulacionEdificio: "si", lat: -33.4372, lng: -70.6386 },
+    strScore: { lat: -33.4372, lng: -70.6386 },
   },
   {
     id: "str-comprar-lascondes-03",
     modalidad: "STR", tier: "estandar", ejes: ["veredicto:COMPRAR", "regulacion:si", "adminPro"],
     expected: { str: "COMPRAR" },
     strInput: str({ comuna: "Las Condes", adrP50: 90000, occP50: 0.62, adminPro: true, tipoEdificio: "dedicado", modoGestion: "administrador", precioCompra: 4500 * AUDIT_UF, arriendoLargoMensual: 850000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.trazaL7LasCondes },
+    strScore: { ...COORDS.trazaL7LasCondes },
   },
   {
     id: "str-comprar-nunoa-04",
     modalidad: "STR", tier: "esencial", ejes: ["veredicto:COMPRAR", "regulacion:si", "tier:esencial"],
     expected: { str: "COMPRAR" },
     strInput: str({ comuna: "Ñuñoa", adrP50: 68000, occP50: 0.64, precioCompra: 2800 * AUDIT_UF, arriendoLargoMensual: 520000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.inesDeSuarez },
+    strScore: { ...COORDS.inesDeSuarez },
   },
   // AJUSTA (4)
   {
@@ -442,28 +442,28 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     modalidad: "STR", tier: "estandar", ejes: ["veredicto:AJUSTA", "regulacion:si", "break-even:apretado"],
     expected: { str: "AJUSTA SUPUESTOS" },
     strInput: str({ comuna: "Providencia", adrP50: 60000, occP50: 0.50, precioCompra: 4500 * AUDIT_UF, arriendoLargoMensual: 600000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.pedroValdiviaL1 },
+    strScore: { ...COORDS.pedroValdiviaL1 },
   },
   {
     id: "str-ajusta-santiago-06",
     modalidad: "STR", tier: "esencial", ejes: ["veredicto:AJUSTA", "regulacion:no_seguro", "tier:esencial"],
     expected: { str: "AJUSTA SUPUESTOS" },
     strInput: str({ comuna: "Santiago Centro", adrP50: 55000, occP50: 0.46, dormitorios: 1, superficie: 40, precioCompra: 3800 * AUDIT_UF, arriendoLargoMensual: 420000 }),
-    strScore: { regulacionEdificio: "no_seguro", lat: -33.4372, lng: -70.6386 },
+    strScore: { lat: -33.4372, lng: -70.6386 },
   },
   {
     id: "str-ajusta-lascondes-07",
     modalidad: "STR", tier: "experto", ejes: ["veredicto:AJUSTA", "regulacion:si", "ltr-gana-poco"],
     expected: { str: "AJUSTA SUPUESTOS" },
     strInput: str({ comuna: "Las Condes", adrP50: 65000, occP50: 0.52, precioCompra: 5000 * AUDIT_UF, arriendoLargoMensual: 900000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.trazaL7LasCondes },
+    strScore: { ...COORDS.trazaL7LasCondes },
   },
   {
     id: "str-ajusta-nunoa-08",
     modalidad: "STR", tier: "estandar", ejes: ["veredicto:AJUSTA", "regulacion:si", "flujo:levemente-negativo"],
     expected: { str: "AJUSTA SUPUESTOS" },
     strInput: str({ comuna: "Ñuñoa", adrP50: 56000, occP50: 0.50, precioCompra: 4200 * AUDIT_UF, arriendoLargoMensual: 550000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.inesDeSuarez },
+    strScore: { ...COORDS.inesDeSuarez },
   },
   // BUSCAR (4)
   {
@@ -471,7 +471,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     modalidad: "STR", tier: "estandar", ejes: ["veredicto:BUSCAR", "regulacion:no", "gate:regulacion"],
     expected: { str: "BUSCAR OTRA" },
     strInput: str({ comuna: "Providencia", adrP50: 75000, occP50: 0.65, arriendoLargoMensual: 600000 }),
-    strScore: { regulacionEdificio: "no", ...COORDS.pedroValdiviaL1 },
+    strScore: { ...COORDS.pedroValdiviaL1 },
     nota: "Mismo caso económico que str-comprar-01 pero regulación 'no' → gate fuerza BUSCAR.",
   },
   {
@@ -479,7 +479,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     modalidad: "STR", tier: "estandar", ejes: ["veredicto:BUSCAR", "regulacion:si", "cap-rate:bajo", "precio:alto"],
     expected: { str: "BUSCAR OTRA" },
     strInput: str({ comuna: "Las Condes", adrP50: 45000, occP50: 0.40, precioCompra: 6000 * AUDIT_UF, arriendoLargoMensual: 600000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.trazaL7LasCondes },
+    strScore: { ...COORDS.trazaL7LasCondes },
     nota: "ADR/occ bajos + precio alto → CAP rate <2% y flujo muy negativo.",
   },
   {
@@ -487,14 +487,14 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     modalidad: "STR", tier: "experto", ejes: ["veredicto:BUSCAR", "regulacion:si", "flujo:muy-negativo", "tier:experto"],
     expected: { str: "BUSCAR OTRA" },
     strInput: str({ comuna: "Vitacura", adrP50: 55000, occP50: 0.42, precioCompra: 7000 * AUDIT_UF, arriendoLargoMensual: 700000 }),
-    strScore: { regulacionEdificio: "si", lat: -33.3950, lng: -70.5750 },
+    strScore: { lat: -33.3950, lng: -70.5750 },
   },
   {
     id: "str-buscar-3d-12",
     modalidad: "STR", tier: "esencial", ejes: ["veredicto:BUSCAR", "regulacion:no_seguro", "tipologia:3D", "tier:esencial"],
     expected: { str: "BUSCAR OTRA" },
     strInput: str({ comuna: "La Florida", adrP50: 50000, occP50: 0.45, dormitorios: 3, superficie: 95, precioCompra: 4500 * AUDIT_UF, arriendoLargoMensual: 650000 }),
-    strScore: { regulacionEdificio: "no_seguro", lat: -33.5220, lng: -70.5980 },
+    strScore: { lat: -33.5220, lng: -70.5980 },
   },
 
   // ───────────────────────── AMBAS (6) ─────────────────────────────────
@@ -505,7 +505,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     ltrInput: ltr({ comuna: "Providencia", precio: 4000, arriendo: 700000, antiguedad: 5, ...COORDS.pedroValdiviaL1 }),
     ltrMediana: medianaSeed("Providencia", 2),
     strInput: str({ comuna: "Providencia", adrP50: 78000, occP50: 0.66, precioCompra: 4000 * AUDIT_UF, arriendoLargoMensual: 700000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.pedroValdiviaL1 },
+    strScore: { ...COORDS.pedroValdiviaL1 },
   },
   {
     id: "ambas-nunoa-02",
@@ -514,7 +514,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     ltrInput: ltr({ comuna: "Ñuñoa", precio: 2600, arriendo: 780000, antiguedad: 2, ...COORDS.inesDeSuarez }),
     ltrMediana: medianaSeed("Ñuñoa", 2),
     strInput: str({ comuna: "Ñuñoa", adrP50: 70000, occP50: 0.66, precioCompra: 2600 * AUDIT_UF, arriendoLargoMensual: 520000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.inesDeSuarez },
+    strScore: { ...COORDS.inesDeSuarez },
   },
   {
     id: "ambas-lascondes-03",
@@ -523,7 +523,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     ltrInput: ltr({ comuna: "Las Condes", precio: 5500, arriendo: 1200000, antiguedad: 10, superficie: 70, dormitorios: 2 }),
     ltrMediana: medianaSeed("Las Condes", 2),
     strInput: str({ comuna: "Las Condes", adrP50: 68000, occP50: 0.55, precioCompra: 5500 * AUDIT_UF, superficie: 70, arriendoLargoMensual: 1200000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.trazaL7LasCondes },
+    strScore: { ...COORDS.trazaL7LasCondes },
   },
   {
     id: "ambas-santiago-04",
@@ -532,7 +532,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     ltrInput: ltr({ comuna: "Santiago Centro", precio: 5000, arriendo: 480000, antiguedad: 16, dormitorios: 1, superficie: 40 }),
     ltrMediana: medianaSeed("Santiago Centro", 1),
     strInput: str({ comuna: "Santiago Centro", adrP50: 60000, occP50: 0.55, dormitorios: 1, superficie: 40, precioCompra: 5000 * AUDIT_UF, arriendoLargoMensual: 480000 }),
-    strScore: { regulacionEdificio: "si", lat: -33.4372, lng: -70.6386 },
+    strScore: { lat: -33.4372, lng: -70.6386 },
   },
   {
     id: "ambas-sanmiguel-05",
@@ -541,7 +541,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     ltrInput: ltr({ comuna: "San Miguel", precio: 2200, arriendo: 720000, antiguedad: 4, superficie: 48 }),
     ltrMediana: medianaSeed("San Miguel", 2),
     strInput: str({ comuna: "San Miguel", adrP50: 52000, occP50: 0.50, precioCompra: 2200 * AUDIT_UF, superficie: 48, arriendoLargoMensual: 720000 }),
-    strScore: { regulacionEdificio: "no_seguro", lat: -33.4970, lng: -70.6510 },
+    strScore: { lat: -33.4970, lng: -70.6510 },
   },
   {
     id: "ambas-vitacura-06",
@@ -550,7 +550,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     ltrInput: ltr({ comuna: "Vitacura", precio: 9000, arriendo: 950000, antiguedad: 20, superficie: 80, dormitorios: 2 }),
     ltrMediana: medianaSeed("Vitacura", 2),
     strInput: str({ comuna: "Vitacura", adrP50: 55000, occP50: 0.42, precioCompra: 9000 * AUDIT_UF, superficie: 80, arriendoLargoMensual: 950000 }),
-    strScore: { regulacionEdificio: "si", lat: -33.3950, lng: -70.5750 },
+    strScore: { lat: -33.3950, lng: -70.5750 },
   },
 
   // ───────────────────── TRAMPAS / BORDES (10) ─────────────────────────
@@ -569,7 +569,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     modalidad: "STR", tier: "estandar", ejes: ["trampa:L7-futura", "regulacion:si"],
     expected: { str: "COMPRAR" },
     strInput: str({ comuna: "Providencia", adrP50: 78000, occP50: 0.66, arriendoLargoMensual: 600000 }),
-    strScore: { regulacionEdificio: "si", lat: -33.4253, lng: -70.6135 },
+    strScore: { lat: -33.4253, lng: -70.6135 },
     nota: "Coords exactas de 'Pedro de Valdivia L7' (future, ficticia en metro-stations.ts). Caso canónico de alucinación.",
   },
   {
@@ -601,7 +601,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     modalidad: "STR", tier: "estandar", ejes: ["trampa:L8-futura", "regulacion:si", "veredicto:AJUSTA"],
     expected: { str: "AJUSTA SUPUESTOS" },
     strInput: str({ comuna: "Macul", adrP50: 56000, occP50: 0.50, precioCompra: 4200 * AUDIT_UF, arriendoLargoMensual: 550000 }),
-    strScore: { regulacionEdificio: "si", ...COORDS.maculL8 },
+    strScore: { ...COORDS.maculL8 },
     nota: "STR con coords sobre traza L8 futura (Macul L8). El motor ignora la futura; el juez debe cazar alucinación L8 en prosa STR.",
   },
   // Datos-zona null: mediana null + comuna fuera de PLUSVALIA_HISTORICA.
@@ -626,7 +626,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
     modalidad: "STR", tier: "estandar", ejes: ["datos-zona:null", "comuna:sin-plusvalia", "str-zona-debil"],
     expected: { str: "BUSCAR OTRA" },
     strInput: str({ comuna: "Renca", adrP50: 45000, occP50: 0.42, precioCompra: 3000 * AUDIT_UF, arriendoLargoMensual: 480000 }),
-    strScore: { regulacionEdificio: "no_seguro", lat: -33.4040, lng: -70.7280 },
+    strScore: { lat: -33.4040, lng: -70.7280 },
     nota: "Comuna periférica fuera del universo STR fuerte; lejos de metro activo → factibilidad baja.",
   },
   // Sobreprecio fuerte (mediana presente, precio muy sobre mediana).

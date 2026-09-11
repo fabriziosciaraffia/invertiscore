@@ -696,7 +696,6 @@ export async function buildShortTermAnalysisRow(
     precioCompra: body.precioCompra,
     dormitorios: body.dormitorios,
     superficie: body.superficieUtil,
-    regulacionEdificio: body.edificioPermiteAirbnb || "no_seguro",
     lat,
     lng,
     ingresoP50,
@@ -727,7 +726,6 @@ export async function buildShortTermAnalysisRow(
       scoreExtras: {
         dormitorios: scoreInputs.dormitorios,
         superficie: scoreInputs.superficie,
-        regulacionEdificio: scoreInputs.regulacionEdificio,
         lat: scoreInputs.lat,
         lng: scoreInputs.lng,
         ingresoP50: scoreInputs.ingresoP50,

@@ -127,7 +127,6 @@ export function buildStrRecomputeCtx(
     scoreExtras: {
       dormitorios: inputData.dormitorios,
       superficie: inputData.superficieUtil,
-      regulacionEdificio: inputData.edificioPermiteAirbnb || "no_seguro",
       lat,
       lng,
       ingresoP50,

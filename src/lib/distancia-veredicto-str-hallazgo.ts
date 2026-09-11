@@ -96,7 +96,6 @@ const fmtUF = (n: number) => "UF " + Math.round(n).toLocaleString("es-CL");
  * motor no sale a pantalla).
  */
 const GLOSA_MOTIVO: Record<string, string> = {
-  g1_regulacion: "el edificio no permite arriendo corto",
   g1_cocSevero: "lo que pones de tu bolsillo se come el capital que aportaste",
   g1_beInviable: "el arriendo corto no alcanza a cubrir la operación ni con la zona rindiendo lo que rinde",
   g1_flujoSevero: "cada mes tienes que poner una cifra fuerte de tu bolsillo, y el corto no compensa frente al arriendo tradicional",

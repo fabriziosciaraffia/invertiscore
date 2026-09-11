@@ -64,15 +64,12 @@ const PC_PRECIO_MULT = 0.7;
 const PC_ADR_MULT = 1.4;
 
 // Aplica la síntesis del caso (GE-3 reg=no; GE-5 occ-strip; GE-PC pie 0) sobre el frozen.
-function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any; reg: string } {
+function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any } {
   const d = { ...fx.input_data };
   let raw = fx.airbnbRaw;
-  let reg = d.edificioPermiteAirbnb || "no_seguro";
-  // La regulación se escribe DENTRO de `d`, no solo en la variable suelta: `reg` va al
-  // motor de score y `d` va al prompt, y hasta el 09-sep-2026 la síntesis solo tocaba la
-  // primera. GE-3 le mostraba al modelo «Edificio permite Airbnb: si» mientras el motor
-  // gatillaba BUSCAR OTRA por el gate G1. Una fuente, no dos.
-  if (s === "reg_no") { reg = "no"; d.edificioPermiteAirbnb = "no"; }
+  // Retiro V1 de la regulación (11-sep-2026): el score ya no la lee, así que la síntesis
+  // `reg_no` solo alcanza al input que ve el prompt, hasta que la seed se retire.
+  if (s === "reg_no") { d.edificioPermiteAirbnb = "no"; }
   if (s === "pie_cero_banda") {
     const ab = buildAirbnbData(fx.airbnbRaw as any, fx.uf) as any;
     const adrBase = ab.adr ?? ab.percentiles?.adr?.p50 ?? 45000;
@@ -92,7 +89,7 @@ function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any; reg: string 
     d.adrOverride = null;
     d.occOverride = null;
   }
-  return { d, raw, reg };
+  return { d, raw };
 }
 
 interface Check { rule: string; pass: boolean; detail: string }
@@ -230,7 +227,7 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
   // que reg_no/occ_strip sintetizan sobre la suya. Cero datos nuevos congelados.
   const fx = frozen[seed.key] ?? frozen[FILA_BASE[seed.key] ?? ""];
   if (!fx) return null;
-  const { d, raw, reg } = synth(fx, seed.sintesis);
+  const { d, raw } = synth(fx, seed.sintesis);
   const airbnbData = buildAirbnbData(raw as any, fx.uf);
   // asOf constante fija (determinismo golden). Hoy es no-op en la aritmética (pre-entrega
   // diferido; buildProjections la void-ea) pero fija la firma para cuando el modelo de
@@ -238,7 +235,7 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
   const asOfGolden = new Date("2026-01-01T00:00:00Z");
   const inputs = buildInputs(d, airbnbData, fx.uf) as any;
   const rec = calcShortTerm(inputs, asOfGolden);
-  const scoreExtras = { dormitorios: d.dormitorios, superficie: d.superficieUtil, regulacionEdificio: reg,
+  const scoreExtras = { dormitorios: d.dormitorios, superficie: d.superficieUtil,
     lat: d.lat ?? -33.4378, lng: d.lng ?? -70.6504,
     ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue };
   const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, ...scoreExtras } as any);

@@ -18,8 +18,6 @@ import { findNearestStation } from '../metro-stations';
  * Convención de nombres: prefijo `g1_` fuerza BUSCAR OTRA · `g2_` capa COMPRAR a AJUSTA.
  */
 export interface GatesBrazosSTR {
-  /** El edificio no permite Airbnb: la operación es inviable, no cara. */
-  g1_regulacion: boolean;
   /** Cash-on-Cash < −30%: pérdida estructural sobre el capital propio. */
   g1_cocSevero: boolean;
   /** Break-even > 130% del nivel de la zona: depende de occ/ADR fuera de alcance. */
@@ -41,8 +39,9 @@ export interface GatesBrazosSTR {
 export type BrazoSTR = keyof GatesBrazosSTR;
 
 /** Precedencia de GATE 1 — el orden ES el de la cadena if/else-if original. */
+// `g1_regulacion` encabezaba la lista hasta el 11-sep-2026 (retiro de la regulación, V1).
 export const G1_BRAZOS = [
-  'g1_regulacion', 'g1_cocSevero', 'g1_beInviable', 'g1_flujoSevero', 'g1_capRateMinimo',
+  'g1_cocSevero', 'g1_beInviable', 'g1_flujoSevero', 'g1_capRateMinimo',
 ] as const satisfies readonly BrazoSTR[];
 
 /** Precedencia de GATE 2 — idem. */
@@ -56,7 +55,6 @@ export const G2_BRAZOS = [
  * NO es copy de producto: las superficies usan `no-cierra-copy.ts`.
  */
 export const GLOSA_BRAZO: Record<BrazoSTR, string> = {
-  g1_regulacion: 'Edificio no permite Airbnb — operación inviable',
   g1_cocSevero: 'Cash-on-Cash <-30% — pérdida estructural insostenible',
   g1_beInviable: 'Break-even >130% del mercado — depende de occ/ADR fuera de alcance',
   g1_flujoSevero: 'Flujo muy negativo sin ventaja clara sobre LTR',
@@ -76,7 +74,6 @@ export const GLOSA_BRAZO: Record<BrazoSTR, string> = {
  * `coc !== null`.
  */
 export function evalGatesSTR(p: {
-  regulacionEdificio: string;
   /** Cash-on-Cash en DECIMAL (−0,10 = −10%). null ⇒ no aplica (pie cero). */
   coc: number | null;
   beRatio: number;
@@ -86,7 +83,6 @@ export function evalGatesSTR(p: {
   horizonteCierraFavorable: boolean;
 }): GatesBrazosSTR {
   return {
-    g1_regulacion: p.regulacionEdificio === 'no',
     g1_cocSevero: p.coc !== null && p.coc < -0.30,
     g1_beInviable: p.beRatio > 1.30,
     g1_flujoSevero: p.flujoCajaMensual < -250000 && p.sobreRentaPct < 0.10,
@@ -140,7 +136,9 @@ export interface ScoreSTRInputs {
   precioCompra: number;
   dormitorios: number;
   superficie: number;
-  regulacionEdificio: string;
+  // `regulacionEdificio` vivió acá hasta el 11-sep-2026: el score ya no lee el reglamento
+  // del edificio (retiro V1, ver PUNTAJE_REGULACION_RETIRADA). El `input_data` de las
+  // filas persistidas conserva `edificioPermiteAirbnb`; se ignora, no se borra.
 
   lat: number;
   lng: number;
@@ -318,12 +316,23 @@ function calcTipologia(dormitorios: number, superficie: number): number {
   return 60;
 }
 
-function calcRegulacion(regulacion: string): number {
-  if (regulacion === 'si') return 100;
-  if (regulacion === 'no_seguro' || regulacion === 'no_estoy_seguro') return 45;
-  if (regulacion === 'no') return 5;
-  return 45;
-}
+// ── ACTA · LA REGULACIÓN DEL EDIFICIO SE RETIRÓ DEL PRODUCTO (V1, 11-sep-2026) ───────
+// Decisión de Fabrizio: no se pregunta en el wizard, no se muestra en el informe y no
+// pesa en el score. Hasta acá `calcRegulacion` daba 100 («sí») · 45 («no seguro») · 5
+// («no») y el 25% de la factibilidad; «no» además disparaba el gate g1_regulacion.
+//
+// POR QUÉ UNA CONSTANTE Y NO RENORMALIZAR. Medido sobre las 246 filas recomputables del
+// parque (11-sep-2026): con la dimensión retirada y la factibilidad renormalizada a
+// 0,75, siete filas «sí» BAJAN de veredicto (cinco COMPRAR → AJUSTA en 70 → 69, dos
+// AJUSTA → BUSCAR en 46/45 → 44), porque el 100 que las sostenía desaparece. Con la
+// constante en el valor de «sí», las 183 «sí» quedan byte-idénticas y cambian cuatro
+// veredictos, todos hacia arriba: la única fila «no» (era BUSCAR solo por el gate) y
+// tres «no seguro» (+3,4 puntos). Ese es el costo asumido.
+//
+// ES UNA CONSTANTE MUERTA, NO UN DATO: ocupa 25 puntos fijos dentro de la factibilidad
+// y se limpia —renormalizando los otros tres pesos— cuando se rediseñe el score STR.
+// Hasta entonces, nadie la lee como si midiera algo.
+const PUNTAJE_REGULACION_RETIRADA = 100;
 
 // Distancia "metro lejano" usada cuando no hay estación derivable (sin coords o
 // sin estaciones activas en el dataset). >4000m → cae al tramo final (score 10).
@@ -393,7 +402,8 @@ function calcFactibilidad(inputs: ScoreSTRInputs): DimensionScore {
 
   const puntajeTipologia = calcTipologia(inputs.dormitorios, inputs.superficie);
 
-  const puntajeRegulacion = calcRegulacion(inputs.regulacionEdificio);
+  // Retiro V1: la regulación ya no se lee; la constante conserva el 25% con el valor «sí».
+  const puntajeRegulacion = PUNTAJE_REGULACION_RETIRADA;
 
   const atractores = calcAtractores(inputs.lat, inputs.lng);
 
@@ -493,7 +503,6 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   // 51 BUSCAR OTRA tenían DOS O MÁS brazos de Gate 1 a la vez.
   // El veredicto NO cambia: se computa con el mismo OR y la misma precedencia.
   const brazos = evalGatesSTR({
-    regulacionEdificio: inputs.regulacionEdificio,
     coc,
     beRatio,
     flujoCajaMensual: base.flujoCajaMensual,

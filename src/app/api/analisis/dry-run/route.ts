@@ -122,7 +122,6 @@ async function evaluarStrBranch(
     precioCompra: str.precioCompra,
     dormitorios: str.dormitorios,
     superficie: str.superficieUtil,
-    regulacionEdificio: str.edificioPermiteAirbnb || "no_seguro",
     lat: typeof str.lat === "number" ? str.lat : -33.4378,
     lng: typeof str.lng === "number" ? str.lng : -70.6504,
     ingresoP50: airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0,

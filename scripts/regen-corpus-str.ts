@@ -70,7 +70,7 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
   const lng = typeof d.lng === "number" ? d.lng : -70.6504;
   const score = calcFrancoScoreSTR({
     results: rec, precioCompra: d.precioCompra, dormitorios: d.dormitorios, superficie: d.superficieUtil,
-    regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro", lat, lng,
+    lat, lng,
     ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue,
   } as any);
   // mediana comunal real (sobreprecio) — mismo helper que el prefetch del pipeline.
@@ -88,7 +88,6 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
       inputs: inputs as any,
       scoreExtras: {
         dormitorios: d.dormitorios, superficie: d.superficieUtil,
-        regulacionEdificio: d.edificioPermiteAirbnb || "no_seguro",
         lat: typeof d.lat === "number" ? d.lat : -33.4378,
         lng: typeof d.lng === "number" ? d.lng : -70.6504,
         ingresoP50: airbnbData.percentiles.revenue.p50, ingresoMensualScore: airbnbData.monthly_revenue,

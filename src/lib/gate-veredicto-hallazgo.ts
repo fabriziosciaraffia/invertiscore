@@ -21,6 +21,11 @@
 // implementarlo no es el volumen sino que el hueco es estructural: se repite
 // cada vez que un gate dispara solo.
 //
+// ACTA (11-sep-2026): el caso que motivó esta pieza —`04dafb00`, decidido por
+// `g1_regulacion`— dejó de existir con el retiro V1 de la regulación: ese gate ya no
+// está en el motor y la fila pasa a COMPRAR por su banda. El mecanismo sigue vivo para
+// los cuatro brazos G1 que quedan (el censo del 11-sep tiene 43 BUSCAR puro-gate).
+//
 // LA DECISIVIDAD ES MEDIDA, NO ASIGNADA
 // ─────────────────────────────────────
 // No se inventa un número para forzar el 01. Se compara el veredicto de la BANDA
