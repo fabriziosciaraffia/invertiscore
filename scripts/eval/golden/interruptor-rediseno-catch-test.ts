@@ -10,9 +10,11 @@
 //      revert parcial—, el informe vuelve al de antes en silencio y nadie se entera
 //      hasta que lo mira. Es el invariante que hace ruido.
 //
-//   2. STR SIGUE APAGADO, Y POR CONSTRUCCIÓN. Hay dos call sites de `DocumentoFrame`:
-//      el de LTR pasa `rediseno`, el de STR no. Y el contexto tiene default `false`,
-//      así que STR no se enciende ni con la constante en `true`.
+//   2. STR SIGUE APAGADO, Y POR SU PROPIO INTERRUPTOR. Desde el bloque A de «STR al
+//      rediseño» (11-sep-2026) los dos call sites de `DocumentoFrame` pasan `rediseno`,
+//      pero el de STR lo deriva de `REDISENO_INFORME_STR` —en `false`— o del contexto
+//      heredado (la ruta dev con `?rediseno=1`). Nunca de la constante de LTR: si
+//      compartieran interruptor, STR se encendería con la pasada a medias (§11).
 //
 //   3. INTER SE PRECARGA. `preload: false` era lo que hacía que el rediseño no costara
 //      nada mientras estaba apagado: sin él, la fuente se descarga recién cuando la
@@ -47,16 +49,23 @@ if (!/export const REDISENO_INFORME = true;/.test(FLAG)) {
   F("1 · el interruptor NO está en `true`. Si esto es un apagado deliberado, este tier se retira en el mismo commit; si no, el informe volvió al de antes en silencio.");
 }
 
-// ── 2 · STR apagado, por construcción ─────────────────────────────────────
+// ── 2 · STR apagado, por su propio interruptor ────────────────────────────
 {
-  // El call site de STR no pasa la prop. Es lo que lo deja afuera del CSS.
+  if (!/export const REDISENO_INFORME_STR = false;/.test(FLAG)) {
+    F("2 · `REDISENO_INFORME_STR` no está en `false`. STR se enciende en su propio goal, con su commit y su revert: si esto es ese goal, este tier se actualiza en el mismo commit.");
+  }
+  // El call site de STR pasa la prop DERIVADA de su constante o del contexto, nunca de la de LTR.
   const strFrame = STR.match(/<DocumentoFrame[^>]*>/)?.[0] ?? "";
   if (!strFrame) F("2 · no se encontró el `DocumentoFrame` de STR");
-  else if (/\brediseno\b/.test(strFrame)) {
-    F(`2 · el DocumentoFrame de STR pasó a pedir el rediseño: «${strFrame.slice(0, 70)}». STR no tuvo su pasada — encenderle el rediseño es exactamente lo que el gate por modalidad evita (contrato §11).`);
+  else if (!/\brediseno=\{rediseno\}/.test(strFrame)) {
+    F(`2 · el DocumentoFrame de STR no pasa \`rediseno={rediseno}\`: «${strFrame.slice(0, 70)}». Desde el bloque A la prop viaja y la decide REDISENO_INFORME_STR.`);
   }
-  // Y no monta el provider, que es lo que lo deja afuera del JSX.
-  if (/RedisenoProvider/.test(STR)) F("2 · STR pasó a montar el provider del rediseño");
+  if (!/const rediseno = REDISENO_INFORME_STR \|\| redisenoHeredado;/.test(STR)) {
+    F("2 · la página STR no deriva `rediseno` de `REDISENO_INFORME_STR || redisenoHeredado`. Con la constante de LTR, STR se encendería solo.");
+  }
+  if (/REDISENO_INFORME\b(?!_STR)/.test(STR)) F("2 · la página STR lee `REDISENO_INFORME` (la de LTR): el gate por modalidad muere ahí");
+  // Y monta el provider con ESE valor, para que las piezas compartidas lo lean.
+  if (!/<RedisenoProvider valor=\{rediseno\}>/.test(STR)) F("2 · STR no monta `<RedisenoProvider valor={rediseno}>`");
   // LTR sí hace las dos cosas.
   if (!/<DocumentoFrame[^>]*\brediseno\b/.test(GRID)) F("2 · el DocumentoFrame de LTR dejó de pedir el rediseño");
   if (!/<RedisenoProvider valor=\{rediseno\}>/.test(GRID)) F("2 · LTR dejó de montar el provider");
@@ -86,9 +95,9 @@ if (!/createContext<boolean>\(false\)/.test(CTX)) {
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runInterruptorRedisenoTier(): { hard: number } {
-  console.log("\n─── TIER INTERRUPTOR-REDISEÑO (LTR encendido · STR apagado · 0 tokens) ───");
+  console.log("\n─── TIER INTERRUPTOR-REDISEÑO (LTR encendido · STR apagado por su interruptor · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el interruptor en true, STR sin la prop y sin el provider, Inter con preload, la clase derivada de la constante y el contexto con default false");
+    console.log("  ✓ VERDE — el interruptor LTR en true, el de STR en false y derivando la prop de su constante o del contexto, Inter con preload, la clase derivada de la constante y el contexto con default false");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
