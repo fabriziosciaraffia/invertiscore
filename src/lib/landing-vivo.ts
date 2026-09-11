@@ -44,7 +44,7 @@ import { captureApiWarning } from "@/lib/observabilidad";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
 import { ordenarHallazgosPiramide } from "@/lib/orden-hallazgos";
-import { bajadaRecomendacion, construirLoQueHariaYo, type BloqueLoQueHariaYo } from "@/lib/lo-que-haria-yo";
+import { construirLoQueHariaYo, estadoRecomendacion, type BloqueLoQueHariaYo, type EstadoRecomendacion } from "@/lib/lo-que-haria-yo";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
 import type {
   AIAnalysisV2,
@@ -108,18 +108,16 @@ export interface EjemploLanding {
   recomendacion: RecomendacionLanding | null;
 }
 
-/** La card §5, ya resuelta por el motor: la bajada (uno por estado), el bloque
- *  determinista que el render dibuja sin decidir nada, y la alternativa de
- *  comunas cuando el estado es «sin salida» y el motor encontró alguna. */
+/** La card §5, ya resuelta por el motor: el estado (`estadoRecomendacion`, el
+ *  mismo que lee PosicionFranco para la bajada), el bloque determinista que el
+ *  render dibuja sin decidir nada, y la alternativa de comunas cuando el estado es
+ *  «sin salida» y el motor encontró alguna. */
 export interface RecomendacionLanding {
-  bajada: string;
+  estado: EstadoRecomendacion;
   bloque: BloqueLoQueHariaYo | null;
   /** «En X o Y un departamento como este sí convendría.» Solo sin salida y solo
    *  si alguna comuna cruza: null es un caso real y ahí no se inventa nada. */
   alternativa: string | null;
-  /** Sin mix ni palancas que crucen, o un mix que solo llega al escalón
-   *  intermedio (§5: eso no es una recomendación). Mismo criterio que HeroLTR. */
-  sinSalida: boolean;
 }
 
 export interface DatosLanding {
@@ -222,7 +220,7 @@ const RESPALDO = {
       valorUF: 40894,
       hallazgo: HALLAZGO_RESPALDO[0],
       recomendacion: {
-        bajada: "No hay forma de que este departamento convenga",
+        estado: "sin_salida" as const,
         bloque: {
           rotulo: "Franco probó cada cambio por separado · ninguno llega a Comprar",
           contexto: "Llegar a Comprar pediría un 62,3% menos de precio, fuera de todo rango.",
@@ -231,7 +229,6 @@ const RESPALDO = {
           descarte: "Precio, arriendo, plazo y pie, por separado, no alcanzan.",
         },
         alternativa: "En Puente Alto o Quilicura un departamento como este sí convendría.",
-        sinSalida: true,
       },
     },
     {
@@ -246,19 +243,19 @@ const RESPALDO = {
       valorUF: 40001,
       hallazgo: HALLAZGO_RESPALDO[1],
       recomendacion: {
-        bajada: "Para que el veredicto pase a Comprar",
+        estado: "con_salida" as const,
         bloque: {
           rotulo: "Franco probó cada cambio por separado · dos llevan a Comprar",
           contexto: null,
           filas: [
-            { titulo: "Bajar el precio", rotuloCorto: "Solo el precio", quien: "vendedor", cifra: "−24,1%", objetivo: "$167.004.175" },
-            { titulo: "Subir el arriendo", rotuloCorto: "Solo el arriendo", quien: "mercado", cifra: "+25,6%", objetivo: "$1.205.813" },
+            { titulo: "Bajar el precio", nombre: "precio", rotuloCorto: "Solo el precio", quien: "vendedor", cifra: "−24,1%", objetivo: "$167.004.175" },
+            { titulo: "Subir el arriendo", nombre: "arriendo", rotuloCorto: "Solo el arriendo", quien: "mercado", cifra: "+25,6%", objetivo: "$1.205.813" },
           ],
           mix: {
             titulo: "Si además mueves lo tuyo, llegas a Comprar",
             movimiento: { pie: { de: 20, a: 30 }, plazo: { de: 25, a: 30 } },
             contraste: { de: "−24,1%", a: "−4,8%" },
-            costo: "$18.840.471 más el día uno",
+            costo: "Poner ese pie cuesta $18.840.471 más el día uno.",
             descuento: "−4,8%",
             sinDescuento: null,
             destino: "COMPRAR" as Veredicto,
@@ -266,7 +263,6 @@ const RESPALDO = {
           descarte: "Plazo y pie, por separado, no alcanzan.",
         },
         alternativa: null,
-        sinSalida: false,
       },
     },
     {
@@ -281,19 +277,18 @@ const RESPALDO = {
       valorUF: 40878,
       hallazgo: HALLAZGO_RESPALDO[2],
       recomendacion: {
-        bajada: "Cierra al precio pedido",
+        estado: "comprar" as const,
         bloque: {
           rotulo: "Antes de firmar",
           contexto: null,
           filas: [
-            { titulo: "Cuánto aguanta el veredicto", rotuloCorto: "Aguanta", quien: "mercado", cifra: "−6,5%", objetivo: null },
-            { titulo: "Verifica el arriendo", rotuloCorto: "Verifica", quien: "tuyo", cifra: "$750.000", objetivo: "lo declaraste tú" },
+            { titulo: "Cuánto aguanta el veredicto", nombre: "arriendo", rotuloCorto: "Aguanta", quien: "mercado", cifra: "−6,5%", objetivo: null },
+            { titulo: "Verifica el arriendo", nombre: "arriendo", rotuloCorto: "Verifica", quien: "tuyo", cifra: "$750.000", objetivo: "lo declaraste tú" },
           ],
           mix: null,
           descarte: null,
         },
         alternativa: null,
-        sinSalida: false,
       },
     },
   ] satisfies Array<Omit<EjemploLanding, "etiqueta">>,
@@ -385,13 +380,12 @@ function recomendacionDe(p: {
     valorUF: p.uf,
   });
   if (!bloque && p.veredicto === "COMPRAR") return null;
-  const mix = bloque?.mix ?? null;
-  const sinSalida = p.veredicto !== "COMPRAR" && (mix ? mix.destino !== "COMPRAR" : (bloque?.filas.length ?? 0) === 0);
+  const estado = estadoRecomendacion(p.veredicto, bloque);
   const alternativa =
-    sinSalida && p.input
+    estado === "sin_salida" && p.input
       ? lineaAlternativaComunas(construirAlternativaComunas({ input: p.input, ufClp: p.uf, asOf: p.asOf }))
       : null;
-  return { bajada: bajadaRecomendacion(p.veredicto, bloque), bloque, alternativa, sinSalida };
+  return { estado, bloque, alternativa };
 }
 
 /** Un ejemplo, leído COMO LO LEE EL INFORME: `results` se recomputa en memoria con

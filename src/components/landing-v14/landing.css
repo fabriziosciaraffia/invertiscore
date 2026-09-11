@@ -536,10 +536,38 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
 }
 .lv-reco-eyebrow-v .lv-glifo { width: 10px; height: 10px; }
 .lv-reco h3 { margin: 16px 0 0; font-size: 22px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; }
-.lr-bajada { margin: 5px 0 0; font-size: 14px; line-height: 1.45; opacity: 0.62; min-height: 1.45em; }
+.lr-bajada { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin: 5px 0 0; font-size: 14px; line-height: 1.45; opacity: 0.62; min-height: 1.45em; }
+/* la píldora neutra de la bajada: SOLO con salida, sin color */
+.lr-pill-neutra {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: var(--lv-rad-pill);
+  background: rgba(255, 255, 255, 0.14); box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+}
 
-/* — la ecuación (contrato §5): rejilla de dos columnas con el rótulo fijo — */
+/* — la card (contrato §5 revisado, 11-sep-2026): lo tuyo primero — */
 .lr-eq { margin-top: 18px; }
+.lr-gt {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; opacity: 0.55; margin: 0 0 10px;
+}
+/* la caja de lo tuyo: los chips y, bajo la línea, lo que resulta */
+.lr-tuyo { background: rgba(255, 255, 255, 0.10); padding: 14px; border-radius: var(--lv-rad-s); margin: 0 0 16px; }
+.lr-pides {
+  display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: start;
+  font-size: 14px; line-height: 1.45; padding-top: 11px; border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+.lr-pides > .lr-fl { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.45; opacity: 1; }
+.lr-pides b { display: block; font-size: 19px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+/* LAS TRES ACOTACIONES —paréntesis, «Pero eso no depende de ti», costo— al mismo tamaño y opacidad */
+.lr-vs { display: block; font-size: 12.5px; opacity: 0.6; margin-top: 5px; }
+.lr-res { margin: 0 0 18px; }
+.lr-alt { padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.16); }
+.lr-alt + .lr-gt { margin-top: 16px; }
+.lr-a1 { font-size: 13.5px; line-height: 1.5; margin: 0; }
+.lr-a1 b { font-weight: 700; }
+.lr-a1 em { font-style: normal; opacity: 0.6; font-size: 12px; }
+.lr-a2 { font-size: 12.5px; line-height: 1.5; opacity: 0.6; margin: 5px 0 0; }
+/* las dos filas de COMPRAR («Aguanta» / «Verifica»): rótulo fijo a la izquierda */
 .lr-row {
   display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: baseline;
   padding: 12px 0; border-top: 1px solid rgba(255, 255, 255, 0.14);
@@ -552,20 +580,16 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
 .lr-v > b { font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
 .lr-v > em { display: block; font-style: normal; font-size: 12.5px; opacity: 0.62; margin-top: 3px; }
 /* los chips del cambio: lo que se cambia tachado y transparente, lo nuevo sólido */
-.lr-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lr-chips { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin: 0 0 12px; }
 .lr-chip {
   display: inline-flex; align-items: baseline; gap: 5px; padding: 5px 10px; border-radius: var(--lv-rad-pill);
   background: rgba(255, 255, 255, 0.10); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
   font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums;
 }
-.lr-chip s { opacity: 0.45; }
+.lr-chip s { opacity: 0.42; font-weight: 500; text-decoration: line-through; text-decoration-thickness: 1.5px; }
 .lr-chip b { font-weight: 700; }
-.lr-chip-g { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-.lr-mas { font-style: normal; opacity: 0.5; font-size: 15px; }
-.lr-dcto-g { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; }
-.lr-dcto { font-size: 22px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.lr-dcto small { font-size: 12.5px; font-weight: 500; opacity: 0.62; letter-spacing: normal; }
-.lr-sin { font-size: 14px; font-weight: 600; }
+.lr-chip-g { display: inline-flex; align-items: center; gap: 9px; white-space: nowrap; }
+.lr-mas { font-style: normal; opacity: 0.42; font-size: 16px; font-weight: 600; }
 /* la transición de veredicto: la píldora de salida apagada, la de llegada en blanco */
 .lr-trans { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .lr-pill {
@@ -573,14 +597,15 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
 }
 .lr-pill .lv-glifo { width: 10px; height: 10px; }
-.lr-pill.de { background: rgba(255, 255, 255, 0.12); opacity: 0.45; }
+.lr-pill.de { background: rgba(255, 255, 255, 0.10); opacity: 0.5; }
 .lr-pill.a { background: #fff; color: #18181B; }
 .lr-fl { font-style: normal; opacity: 0.5; }
 .lr-ctx { margin: 0; font-size: 13px; line-height: 1.5; opacity: 0.62; }
 .lr-desc { margin: 14px 0 0; font-size: 13px; line-height: 1.5; opacity: 0.62; }
 .lr-puente { margin: 14px 0 0; font-size: 14px; line-height: 1.5; opacity: 0.82; }
 .lr-donde { margin: 8px 0 0; font-size: 15px; line-height: 1.45; font-weight: 600; }
-.lr-costo { margin: 14px 0 0; font-size: 13.5px; opacity: 0.75; }
+/* el costo del día uno: SIEMPRE con el mix (§5), como tercera acotación */
+.lr-costo { margin: 16px 0 0; padding-top: 13px; border-top: 1px solid rgba(255, 255, 255, 0.15); font-size: 12.5px; opacity: 0.6; }
 
 /* el pie de la card: la barra de progreso compartida y el botón de pausa */
 .lv-reco-pie { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
