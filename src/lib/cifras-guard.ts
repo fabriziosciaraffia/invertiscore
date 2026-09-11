@@ -173,6 +173,77 @@ export function comunasFueraDeAlternativa(userPrompt: string, ai: unknown): stri
 }
 
 /**
+ * LAS FRASES CON QUE LA PROSA CIERRA LA PUERTA (A8 · bump 24).
+ *
+ * Calibradas LEYENDO el parque, no imaginadas: son las que aparecen en las 104 filas
+ * donde la prosa niega una salida que el motor tiene. El conteo por familia, medido:
+ * «ningún ajuste» 78 · «estructural» 68 · «fuera de rango» 3 · «no se arregla» 3 ·
+ * «no alcanza/basta» 1 · «ni negociando» 1.
+ */
+/** Nombrar la salida absuelve: con esto en el texto, no hay dos respuestas opuestas. */
+const NOMBRA_LA_SALIDA =
+  /(salida|soluci[óo]n|combinaci[óo]n|v[íi]a)\s+(combinad|conjunt|mixt)|combinando|(subir|subiendo|mover|moviendo)\s+el\s+pie[^.]{0,60}(plazo|a la vez)|pie[^.]{0,30}(m[áa]s|y)\s+(el\s+)?plazo/i;
+
+/** «por separado» / «por sí sola»: dicen lo MISMO que el motor, no lo contrario. */
+const POR_SEPARADO =
+  /\b(por separado|por s[íi] (sol[oa]|mism[oa])|aislad[oa]s?|individualmente|de manera aislada|una sola|cada una por)\b/gi;
+
+const CIERRAN_LA_PUERTA: [string, RegExp][] = [
+  ["estructural", /estructural/i],
+  ["no hay forma", /no hay (ninguna |ning[úu]n )?(forma|manera|modo|salida)/i],
+  ["ningún ajuste", /ning[úu]n[a]? (ajuste|cambio|descuento|movimiento|palanca|v[íi]a)/i],
+  ["no alcanza", /(no alcanza|no basta|no cierra) (por|con) (m[áa]s|ning)/i],
+  ["ni negociando", /ni (negociando|bajando|subiendo|estirando|con)\b[^.]{0,60}(alcanza|cierra|basta|mueve)/i],
+  ["no se arregla", /no se (arregla|resuelve|soluciona)/i],
+  ["fuera de rango", /fuera de (todo )?rango/i],
+];
+
+/**
+ * ¿LA PROSA NIEGA UNA SALIDA QUE EL MOTOR ENCONTRÓ? (A8 · bump 24)
+ *
+ * El motor encuentra salida combinando pie y plazo en filas donde NINGÚN cambio por
+ * separado alcanza, y la card la dibuja. Hasta el bump 24 el modelo no recibía ese
+ * dato y el prompt le mandaba cerrar la puerta: medido sobre las 674 filas con prosa,
+ * 136 tienen salida por mix y **104 la niegan por escrito** — el 76,5% —, al lado de
+ * una card que la muestra. Una decía «ningún descuento negociable, ni la tasa actual,
+ * ni extender el plazo alcanza» mientras el motor cruzaba moviendo pie Y plazo.
+ *
+ * QUÉ MIRA: solo dispara con `hayMixACOMPRAR: sí` en el user prompt. Sin ese bloque
+ * —prosa vieja, o un caller que no lo pasa— no audita nada: el guard no inventa la
+ * regla donde el dato no llegó.
+ *
+ * ES UN MATCHER DE FRASES, NO DE SENTIDO, y por eso las siete familias salieron de
+ * leer el parque. Puede tener falsos negativos (una forma de negar que no está en la
+ * lista); no puede tener falsos positivos caros, porque el reintento que dispara solo
+ * se acepta si MEJORA el conteo.
+ */
+export function niegaSalidaConMix(userPrompt: string, ai: unknown): string[] {
+  if (!/- hayMixACOMPRAR:\s*s[íi]/i.test(userPrompt)) return [];
+  const strings: { path: string; value: string }[] = [];
+  collectStrings(ai, "", strings);
+  const out: string[] = [];
+  for (const { path, value } of strings) {
+    // NOMBRAR LA SALIDA ABSUELVE, y es la mitad que importa. «Ninguna palanca por
+    // separado alcanza» es VERDAD —es exactamente lo que dice el motor— y va seguida
+    // de «hay una salida combinada»: ahí el lector no ve dos respuestas opuestas, ve
+    // una sola bien contada. La primera versión de este guard marcaba esa prosa como
+    // violación y el reintento no podía mejorarla porque no había nada que arreglar.
+    if (NOMBRA_LA_SALIDA.test(value)) continue;
+    // Y el calificador de separación desarma la frase aunque no se nombre la salida:
+    // «por separado», «por sí sola» dicen justo lo que el motor dice.
+    const sinCalificador = value.replace(POR_SEPARADO, " ");
+    for (const [nombre, re] of CIERRAN_LA_PUERTA) {
+      if (re.test(sinCalificador)) {
+        const m = sinCalificador.match(re);
+        out.push(`${path}[${nombre}]="${(m?.[0] ?? "").slice(0, 40)}"`);
+        break; // una violación por campo: la familia alcanza para el correctivo
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * ¿El candidato introduce cifras fuera del input que la base no tenía?
  *
  * Para retries QUIRÚRGICOS (Goal D): cuando un retry reescribe un solo campo de

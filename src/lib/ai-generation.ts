@@ -53,8 +53,9 @@ import {
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico, piezasDeAiLtr } from "@/lib/precio-jerarquia";
 import { construirReferenciasZona, faltaReconciliacion } from "@/lib/referencias-zona";
-import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad, comunasFueraDeAlternativa } from "@/lib/cifras-guard";
+import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad, comunasFueraDeAlternativa, niegaSalidaConMix } from "@/lib/cifras-guard";
 import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
+import { salidaPorMix } from "@/lib/salida-por-mix";
 import { derivarCifraClaveLtr, captionDeCifraClave } from "@/lib/cifra-clave";
 import { validarTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
 import { reescribirTitular } from "@/lib/titular-retry";
@@ -199,7 +200,7 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // Es otro bump de BORRADO. Y el borrado grande no fue el prompt sino lo que LEE
 // la salida: guards, retries y detectores que se quedaban sin sujeto y, si no se
 // tocaban, no fallaban — se callaban.
-export const PROMPT_VERSION_LTR = 23;
+export const PROMPT_VERSION_LTR = 24;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -2023,6 +2024,34 @@ ALTERNATIVA DE COMUNAS (motor)
 - comunasAlternativas: ${nombres.length ? nombres.join(", ") : "(ninguna)"}`;
     })();
 
+    // ── LA SALIDA COMBINADA, para A8 (§1.12.3) ────────────────────────────
+    // El motor encuentra salida combinando pie y plazo en filas donde NINGÚN cambio
+    // por separado alcanza, y el bloque determinista la dibuja en la card. Hasta el
+    // bump 24 el modelo no recibía ese dato y el prompt le mandaba cerrar la puerta:
+    // medido sobre las 674 filas con prosa, 136 tienen salida por mix y 104 de ésas
+    // —el 76,5%— la NIEGAN por escrito, al lado de una card que la muestra.
+    //
+    // MISMA FUNCIÓN QUE LA CARD: `salidaPorMix` es pura y solo devuelve algo cuando
+    // ningún cambio por separado alcanza, que es exactamente el caso en cuestión.
+    const salidaMixBloque = (() => {
+      const dvMix = (results.hallazgos as Hallazgo[] | undefined)?.find(
+        (h) => h.id === "distancia_veredicto",
+      );
+      if (!dvMix || dvMix.id !== "distancia_veredicto" || !dvMix.valor.esEstructural) return "";
+      const sm = salidaPorMix(dvMix.valor);
+      if (!sm) {
+        return `
+SALIDA COMBINADA (motor)
+- hayMixACOMPRAR: no`;
+      }
+      return `
+SALIDA COMBINADA (motor)
+- hayMixACOMPRAR: sí
+- movimiento: ${sm.movimiento}
+- costoDiaUno: ${fmtUF(sm.costoDiaUnoUF)} de tu bolsillo el día uno
+- descuentoQueAdemásPide: ${sm.descuentoPct === null ? "ninguno" : `−${pct(sm.descuentoPct)}%`}`;
+    })();
+
     const financingHealthBloque = fh ? `
 financingHealth:
 - overall: ${fh.overall}
@@ -2382,7 +2411,7 @@ DISTANCIA AL VEREDICTO (último de la lista). Trae los valores YA CALCULADOS de 
 
 OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra. Es la condición concreta bajo la que tu posición se sostiene (§1.10) y es lo único del informe que responde "¿y ahora qué?".
 
-TAMBIÉN, si el hallazgo NO es estructural: cierra con UNA mención breve de esa distancia ("estás a X% de arriendo de que esto sea un Comprar"). Una sola frase corta, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer. Si el hallazgo dice que ningún ajuste realista alcanza, NO menciones distancia: no hay una que prometer y anunciarla sería falso.
+TAMBIÉN, si el hallazgo NO es estructural: cierra con UNA mención breve de esa distancia ("estás a X% de arriendo de que esto sea un Comprar"). Una sola frase corta, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer. Si ningún cambio por separado alcanza Y \`hayMixACOMPRAR\` es \`no\`, NO menciones distancia: no hay una que prometer y anunciarla sería falso. Con \`hayMixACOMPRAR: sí\` la distancia SÍ existe — es la combinación del bloque SALIDA COMBINADA — y se nombra con sus palabras.
 
 REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase y en el bloque VÍAS. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí${
   viaPieGen?.estado === "cruza"
@@ -2412,7 +2441,15 @@ LA PALANCA DE ARRIENDO ES UNA APUESTA, NO UN AJUSTE (§1.12.3): ${arriendoRefCon
 
 ${matizPalancaArriendo}
 
-SI EL HALLAZGO DICE QUE NINGÚN AJUSTE REALISTA ALCANZA (caso estructural): PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues" o cualquier ajuste como salida. La honestidad acá es cerrar la puerta, no dejarla entornada: ${casoPrecioJustoGen ? "la brecha no es de este depto ni de su precio — es de lo que la zona rinde hoy (ver CASO PRECIO-JUSTO)" : "la brecha es del deal"}. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe.
+CUANDO NINGÚN CAMBIO POR SEPARADO ALCANZA, MIRA \`hayMixACOMPRAR\` ANTES DE CERRAR LA PUERTA. El bloque SALIDA COMBINADA te lo dice, y no es opinable.
+
+· \`hayMixACOMPRAR: sí\` → HAY salida, y es la combinación que el bloque describe. PROHIBIDO escribir que no hay forma, que ningún ajuste alcanza, que el problema es de fondo, que no se arregla o que está fuera de rango: el informe muestra esa combinación al lado de tu texto y el lector vería dos respuestas opuestas en la misma página. Nómbrala con las palabras del bloque — QUÉ hay que mover (\`movimiento\`) y CUÁNTO cuesta el día uno (\`costoDiaUno\`). Y lee \`descuentoQueAdemásPide\` antes de calificarla:
+  · \`ninguno\` → la salida no pasa por el vendedor: no es un descuento que pedir, es plata propia que poner.
+  · un porcentaje → además hay que pedir ESE descuento. Dilo así: primero lo que se mueve, después el descuento con su cifra. NO lo llames «chico» en absoluto —medido en el parque llega al 21%— ni digas que la salida no pasa por el vendedor: sí pasa. Lo que SÍ puedes decir, porque es verdad y es el punto, es que ese descuento es MENOR que el que haría falta bajando solo el precio.
+
+· \`hayMixACOMPRAR: no\`, pero el bloque VÍAS trae una que CRUZA → esa vía es la salida. Nómbrala.
+
+· \`hayMixACOMPRAR: no\` y ninguna vía cruza → recién ahí se cierra la puerta, y se cierra entera: PROHIBIDO ofrecer negociación, descuento, "si logras" o "si consigues" como salida. ${casoPrecioJustoGen ? "Lo que no cierra no es este depto ni su precio — es lo que la zona rinde hoy (ver CASO PRECIO-JUSTO)" : "Lo que no cierra es el deal"}. El cierre entra por la alternativa de comunas (Ángulo 2), no por un ajuste que no existe.
 ` : ""}
 CÓMO ESCRIBIR conviene.cajaAccionable (contrato completo en §13): PRIMERA ORACIÓN = la razón que manda (hallazgo 1, con su cifra, en tu voz); DESPUÉS un solo matiz — el de mayor consecuencia en plata — que la condiciona, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${CAJA_ACCIONABLE_MAX} palabras en total. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
@@ -2465,6 +2502,7 @@ ESTRUCTURA FINANCIERA DEL USUARIO
 ${viasBloque}
 ${escaleraBloque}
 ${financingHealthBloque}
+${salidaMixBloque}
 ${alternativaBloque}
 
 OPERACIÓN MENSUAL
@@ -2933,6 +2971,43 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // exacta, se acepta solo si mejora. Corre ANTES de RD-BUDGET (el techo de
     // palabras sigue siendo la última palabra) y ANTES de FASE B (que inyecta bloques
     // del motor que no son prosa del modelo y no se auditan). Best-effort.
+    // ─── CATCH-MIX (§1.12.3, A8 · bump 24) ───────────────────────────────────
+    // El motor encuentra salida combinando pie y plazo donde ningún cambio por
+    // separado alcanza, y la card la dibuja. Si la prosa dice que no hay forma, el
+    // lector ve dos respuestas opuestas en la misma página. Medido ANTES del bump:
+    // de 136 filas con salida por mix, 104 la negaban por escrito — el 76,5%.
+    if (aiResult) {
+      try {
+        const mixViol = niegaSalidaConMix(userPrompt, aiResult);
+        if (mixViol.length) {
+          console.warn(`[LTR-MIX] ${analysisId}: ${mixViol.length} campo(s) niegan una salida que el motor tiene — ${mixViol.join(" | ")} — 1 reintento`);
+          const correctivoM = `
+
+⚠️ CORRECCIÓN DE SALIDA (§1.12.3): la versión anterior cierra la puerta en ${mixViol.join(", ")}, pero el bloque SALIDA COMBINADA del caso dice \`hayMixACOMPRAR: sí\` — el motor SÍ encontró cómo llegar a Comprar, y el informe la muestra al lado de tu texto. Nómbrala con las palabras del bloque: qué hay que mover y cuánto cuesta el día uno. Si \`descuentoQueAdemásPide\` es «ninguno», la salida no pasa por el vendedor; si trae un porcentaje, además hay que pedir ESE descuento y es chico. Reescribe el JSON COMPLETO respetando la doctrina §1-§17.`;
+          const regenM = await anthropic.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 8000,
+            messages: [{ role: "user", content: userPrompt + correctivoM }],
+            system: SYSTEM_LTR_CACHED,
+          });
+          acumularUsage(usage, regenM);
+          const regenTextM = regenM.content[0].type === "text" ? regenM.content[0].text : "";
+          const regenResultM = parseAndNormalize(regenTextM);
+          const quedanM = regenResultM ? niegaSalidaConMix(userPrompt, regenResultM) : null;
+          if (regenResultM && quedanM && quedanM.length < mixViol.length) {
+            console.warn(`[LTR-MIX] ${analysisId}: retry mejoró ${mixViol.length}→${quedanM.length} — aceptado`);
+            aiResult = regenResultM;
+          } else {
+            console.warn(`[LTR-MIX] ${analysisId}: retry no mejoró o no parseó — conservo la prosa previa`);
+          }
+          const sobrevivenM = niegaSalidaConMix(userPrompt, aiResult);
+          if (sobrevivenM.length) aiResult._niegaSalidaConMix = sobrevivenM;
+        }
+      } catch (e) {
+        console.warn(`[LTR-MIX] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
     // ─── CATCH-COMUNA (§3, Ángulo 2 · bump 23) ───────────────────────────────
     // La card muestra las comunas que calculó el motor; si la prosa nombra otras, la
     // misma página dice dos cosas distintas. Medido ANTES del bump, sobre el parque:

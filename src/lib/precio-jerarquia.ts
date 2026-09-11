@@ -128,11 +128,16 @@ export function construirJerarquiaPrecios(args: {
   }
   if (precios.length === 0) return { precios, bloque: "" };
 
-  // `costoMensual` salió del schema LTR en v21: nombrarlo acá le declaraba al modelo
+  // A8 (bump 24): «SIN plan» era falso. Cuando ningún cambio por separado alcanza, el
+// motor todavía puede tener salida combinando pie y plazo —136 filas del parque con
+// prosa la tienen— y el plan existe; lo que NO existe es un precio objetivo. La
+// distinción importa: decirle «sin plan» al modelo es lo que producía las 104 filas
+// donde la prosa niega una salida que la card muestra al lado.
+// `costoMensual` salió del schema LTR en v21: nombrarlo acá le declaraba al modelo
   // el precio protagonista de una sección que ya no puede escribir. Queda
   // `reestructuracion`, que sigue viva y sigue sin objetivo de precio.
   const protagonistas = args.esEstructural
-    ? "\`negociacion\` → SIN plan ni precio objetivo (cierra por la alternativa) · \`posicion\` → solo lo que haría falta, fuera de rango · \`reestructuracion\` → SIN objetivo de precio"
+    ? "\`negociacion\` → SIN precio objetivo; el plan, si lo hay, es de pie y plazo y vive en el bloque SALIDA COMBINADA · \`posicion\` → solo lo que haría falta, fuera de rango · \`reestructuracion\` → SIN objetivo de precio"
     : "\`negociacion\`, \`posicion\` y el drawer de distancia → el objetivo del plan · \`reestructuracion\` → SIN objetivo de precio (sus palancas son pie/tasa/plazo)";
 
   const bloque = `

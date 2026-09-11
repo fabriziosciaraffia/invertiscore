@@ -14,6 +14,7 @@
 
 import { SYSTEM_PROMPT } from "../../src/lib/ai-generation";
 import { construirAlternativaComunas } from "../../src/lib/alternativa-comunas";
+import { salidaPorMix } from "../../src/lib/salida-por-mix";
 import { findNearestStation } from "../../src/lib/metro-stations";
 import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, rangoHistDe } from "../../src/lib/plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "../../src/lib/plusvalia-proyeccion";
@@ -288,6 +289,25 @@ financingHealth:
   // ── LA ALTERNATIVA DE COMUNAS (§3, Ángulo 2 · bump 23) ────────────────────
   // Espejo del bloque de producción. Misma función pura que el informe y que la card:
   // no hay una segunda implementación que pueda divergir.
+  // ── LA SALIDA COMBINADA (§1.12.3, A8 · bump 24) ──────────────────────────
+  // Espejo del bloque de producción. Misma función pura que el informe y que la card.
+  const salidaMixBloque = (() => {
+    const dvMix = (results.hallazgos as any[] | undefined)?.find((h) => h.id === "distancia_veredicto");
+    if (!dvMix || !dvMix.valor?.esEstructural) return "";
+    const sm = salidaPorMix(dvMix.valor);
+    if (!sm) {
+      return `
+SALIDA COMBINADA (motor)
+- hayMixACOMPRAR: no`;
+    }
+    return `
+SALIDA COMBINADA (motor)
+- hayMixACOMPRAR: sí
+- movimiento: ${sm.movimiento}
+- costoDiaUno: ${fmtUF(sm.costoDiaUnoUF)} de tu bolsillo el día uno
+- descuentoQueAdemásPide: ${sm.descuentoPct === null ? "ninguno" : `−${sm.descuentoPct.toFixed(1).replace(".", ",")}%`}`;
+  })();
+
   const alternativaBloque = (() => {
     const alt = construirAlternativaComunas({ input, ufClp: UF_CLP, asOf: options.asOf ?? new Date() });
     const nombres = alt?.nombradas ?? [];
@@ -315,6 +335,7 @@ ESTRUCTURA FINANCIERA DEL USUARIO
 - credito: ${fmtCLP(creditoCLP)} a ${input.tasaInteres}% en ${input.plazoCredito} años
 - dividendoMensual: ${fmtCLP(m.dividendo)} (${fmtUF(m.dividendo / UF_CLP)})
 ${fhBloque}
+${salidaMixBloque}
 ${alternativaBloque}
 
 OPERACIÓN MENSUAL
