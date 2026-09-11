@@ -870,6 +870,8 @@ export function DocTokens() {
 
       /* ALTERNATIVAMENTE: lo que no depende de ti, en una oración, después */
       .doc-r2 .rec-alt{padding-top:14px;border-top:1px solid rgba(255,255,255,.16)}
+      /* rama sin mix: «Alternativamente» va primero y Resultado la sigue con el mismo aire que la caja */
+      .doc-r2 .rec-alt + .rec-gt{margin-top:16px}
       .doc-r2 .rec-a1{font-size:13.5px;line-height:1.5;margin:0}
       .doc-r2 .rec-a1 b{font-weight:700}
       .doc-r2 .rec-a1 em{font-style:normal;opacity:.6;font-size:12px}
