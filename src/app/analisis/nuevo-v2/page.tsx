@@ -565,7 +565,6 @@ function NuevoAnalisisV3Inner() {
       comisionAdministrador: state.modoGestion === "administrador"
         ? (parseDecimalLocale(state.comisionAdminPct) / 100)
         : 0.20,
-      edificioPermiteAirbnb: state.edificioPermiteAirbnb,
 
       // Modelo STR v1 — 3 ejes operacionales + operador.
       // tipoEdificio null = el user no eligió en el wizard. Motor STR

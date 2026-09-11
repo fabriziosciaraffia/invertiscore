@@ -41,11 +41,6 @@ const LABEL_MODALIDAD: Record<NonNullable<WizardV3State["modalidad"]>, string> =
   str: "Renta corta",
   both: "Ambas (LTR vs STR)",
 };
-const LABEL_EDIFICIO_PERMITE: Record<WizardV3State["edificioPermiteAirbnb"], string> = {
-  si: "Sí permite",
-  no: "No permite",
-  no_seguro: "No estoy seguro",
-};
 
 // ─── Helpers ────────────────────────────────────────────
 
@@ -325,11 +320,6 @@ export function Paso4Resumen({
         label: "Habilitación",
         value: LABEL_HABILITACION[state.habilitacion],
         tooltip: "Calidad del amoblamiento y fotos. Premium implica decoración curada y amenidades extra; define el costo de habilitación, no la tarifa.",
-      },
-      {
-        label: "Edificio permite Airbnb",
-        value: LABEL_EDIFICIO_PERMITE[state.edificioPermiteAirbnb],
-        tooltip: "Algunos edificios prohíben Airbnb en su reglamento. Verifica esto antes de comprar — un veto del comité puede invalidar el modelo entero.",
       },
     );
     if (state.tipoEdificio === "dedicado" && state.operadorNombre.trim().length > 0) {

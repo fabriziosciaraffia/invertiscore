@@ -11,7 +11,6 @@
 //   - tipoEdificio (binario: residencial_puro | dedicado)
 //   - gestionOption (binario: tu_mismo | pro_formal) → fusión modoGestion+adminPro
 //   - comisionAdminPct (slider, solo si pro_formal)
-//   - edificioPermiteAirbnb (select, oculto si tipoEdificio=dedicado)
 //   - operadorNombre (text, solo si tipoEdificio=dedicado)
 //
 // Preview live:
@@ -24,7 +23,6 @@
 
 import { useEffect, useState } from "react";
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { StateBox } from "@/components/ui/StateBox";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { CampoEstado } from "./FieldEstado";
 import {
@@ -272,9 +270,8 @@ export function BloqueOperacionSTR({
                   type="button"
                   onClick={() => {
                     // Edificio dedicado → auto-aplica defaults que reflejan la
-                    // realidad: opera con admin profesional y obviamente permite
-                    // Airbnb. El user puede cambiar gestionOption manualmente
-                    // después; edificioPermiteAirbnb queda oculto.
+                    // realidad: opera con admin profesional. El user puede cambiar
+                    // gestionOption manualmente después.
                     if (opt.value === "dedicado") {
                       const m = gestionOptionToMotor("pro_formal");
                       setState({
@@ -283,7 +280,6 @@ export function BloqueOperacionSTR({
                         modoGestion: m.modoGestion,
                         adminPro: m.adminPro,
                         comisionAdminPct: String(m.comisionDefaultPct),
-                        edificioPermiteAirbnb: "si",
                       });
                     } else {
                       setState({ tipoEdificio: opt.value });
@@ -358,43 +354,6 @@ export function BloqueOperacionSTR({
             </div>
           )}
         </div>
-
-        {/* ── ¿Edificio permite Airbnb? ──
-            Oculto si tipoEdificio=dedicado — un edificio 100% renta corta
-            obviamente lo permite (auto-seteado a "si" en el handler de
-            tipoEdificio). */}
-        {state.tipoEdificio !== "dedicado" && (
-          <div>
-            <label className="font-body text-[13px] font-semibold text-[var(--franco-text)] block mb-1.5">
-              ¿Tu edificio permite Airbnb?
-            </label>
-            <select
-              className={`${inputBase} appearance-none pr-8`}
-              value={state.edificioPermiteAirbnb}
-              onChange={(e) =>
-                setState({
-                  edificioPermiteAirbnb: e.target.value as WizardV3State["edificioPermiteAirbnb"],
-                })
-              }
-            >
-              <option value="si">Sí permite</option>
-              <option value="no">No permite</option>
-              <option value="no_seguro">No estoy seguro</option>
-            </select>
-            {state.edificioPermiteAirbnb === "no" && (
-              <div className="mt-2">
-                <StateBox variant="left-border" state="negative">
-                  Algunos edificios prohíben Airbnb en su reglamento. Verifica antes de invertir — esto puede invalidar el modelo de negocio.
-                </StateBox>
-              </div>
-            )}
-            {state.edificioPermiteAirbnb === "no_seguro" && (
-              <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2">
-                Te conviene revisar el reglamento de copropiedad antes de comprar.
-              </p>
-            )}
-          </div>
-        )}
 
         {/* ── Operador (condicional a dedicado) ── */}
         {state.tipoEdificio === "dedicado" && (

@@ -78,8 +78,6 @@ export interface WizardV3State {
   estaAmoblado: boolean;
   /** Inversión inicial amoblamiento (CLP). */
   costoAmoblamiento: string;
-  /** Permite Airbnb el reglamento del edificio. */
-  edificioPermiteAirbnb: "si" | "no" | "no_seguro";
 
   // Modelo STR v1 (mayo 2026) — 3 ejes operacionales + operador.
   // Solo aplican si modalidad ∈ {str, both}; el motor STR los lee como
@@ -182,7 +180,6 @@ export const DEFAULT_STATE: WizardV3State = {
   mantencionMensual: "11000",
   estaAmoblado: false,
   costoAmoblamiento: "3500000",
-  edificioPermiteAirbnb: "no_seguro",
   // Preseleccionado residencial (antes null) para que el preview de ingresos
   // del Paso 3 se vea de entrada sin gatear por "¿Cómo es el edificio?". El
   // motor ya coercionaba null → residencial_puro, así que el payload no cambia.
