@@ -80,7 +80,9 @@ function Inner() {
     // la zona del contrato §8 cambia que numero manda en cada tarjeta, no su color.
     const envolver = (n: React.ReactNode) =>
       sp.get("rediseno") === "1"
-        ? <div className="doc-r2"><RedisenoProvider valor>{n}</RedisenoProvider></div>
+        // `doc-lienzo` también: en la ruta real lo pone `analisis/[id]/page.tsx` (server), que
+        // esta página no monta, y sin él el shot de LTR salía sobre el gris de la app.
+        ? <div className="doc-r2 doc-lienzo"><RedisenoProvider valor>{n}</RedisenoProvider></div>
         : n;
     return envolver(
       <PremiumResults

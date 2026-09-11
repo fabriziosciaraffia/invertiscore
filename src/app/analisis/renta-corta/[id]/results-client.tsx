@@ -404,7 +404,13 @@ export function STRResultsClient({
   const isAdmin = false; // El page.tsx ya resuelve admin a "subscriber"
 
   return (
-    <div className="min-h-screen bg-[var(--franco-bg)]">
+    /* EL LIENZO DE §2 (fix del bloque A · 11-sep-2026, el mismo bug de 0b825fca en LTR): con
+       el marco del documento retirado, lo que quedaba detrás del informe STR era el gris de
+       la app —medido en el DOM: wrapper y body #F6F6F7 contra tarjetas #F4F4F6, o sea nada
+       que distinguir—. `doc-lienzo` pinta «--page» en el wrapper y en el body, y nada más:
+       NO lleva `doc-r2` (ese trae `--card`, que también es token de shadcn y rompe el chrome).
+       Detrás del interruptor STR, como todo lo demás. */
+    <div className={`min-h-screen bg-[var(--franco-bg)] ${rediseno ? "doc-lienzo" : ""}`}>
       {/* Chrome de nav/header — el PDF usa la vista documento aparte, no esta página. */}
       {accessLevel === "guest" || isAnonOwner ? (
         <PublicShareHeader

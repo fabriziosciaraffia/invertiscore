@@ -274,10 +274,13 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
   if (!/REDISENO_INFORME \? "doc-lienzo" : ""/.test(RUTA_LTR)) {
     F("8 · la ruta del análisis LTR dejó de pintar su lienzo detrás del interruptor. Con el marco ya retirado, sin esto el informe queda sobre el gris de la app (§2).");
   }
-  // 8b · y NO en STR ni en ninguna otra ruta.
-  if (/doc-lienzo/.test(RUTA_STR)) {
-    F("8 · la ruta de STR pasó a pintar el lienzo del rediseño. STR no tuvo su pasada y conserva su fondo (contrato §11).");
+  // 8b · y en STR desde el bloque A de «STR al rediseño» (11-sep-2026), detrás de SU
+  // interruptor: `rediseno` ahí es `REDISENO_INFORME_STR || heredado`, nunca la constante
+  // de LTR. Sin el lienzo, medido en el DOM: wrapper y body #F6F6F7 contra tarjetas #F4F4F6.
+  if (!/\$\{rediseno \? "doc-lienzo" : ""\}/.test(RUTA_STR)) {
+    F("8 · la ruta de STR no pinta el lienzo detrás de su interruptor (`rediseno ? \"doc-lienzo\" : \"\"`): con el marco retirado el informe queda sobre el gris de la app (§2).");
   }
+  if (/REDISENO_INFORME \? "doc-lienzo"/.test(RUTA_STR)) F("8 · la ruta de STR cuelga el lienzo de la constante de LTR: el gate por modalidad muere ahí");
   // 8c · NO lleva «doc-r2». Esa clase trae los doce tokens del informe, y «--card» es
   // TAMBIÉN un token de shadcn: puesta en el wrapper le cambiaba el valor a todo el
   // chrome de la página —de «40 20% 98%» en HSL a un hex— y «bg-card» pasaba a resolver

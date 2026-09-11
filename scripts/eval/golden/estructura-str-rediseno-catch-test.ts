@@ -32,6 +32,11 @@
 //
 //   6. LA RUTA DEV monta el provider para STR con `?rediseno=1`, o no hay cómo verlo.
 //
+//   8. EL LIENZO DE §2: la ruta STR pinta «--page» en el wrapper (`doc-lienzo`) detrás de su
+//      interruptor. Sin él —medido en el DOM el 11-sep-2026— wrapper y body quedaban en el
+//      gris de la app (#F6F6F7) y las tarjetas (#F4F4F6) no se distinguían de nada. Mismo
+//      bug que 0b825fca en LTR. La ruta dev también lo lleva, o los shots mienten.
+//
 // BLOQUE B (hero y recomendación en su sitio):
 //
 //   7. EL ORDEN DE §2 LO EMITE `HeroStrDictamen`, como `HeroLTR`: hero → `{hallazgos}` →
@@ -217,6 +222,14 @@ function enOrden(txt: string, agujas: string[]): string | null {
   if (!/estado=\{rediseno \? estadoRec : undefined\}/.test(HSTR)) F("7 · PosicionFranco no recibe `estado` desde el hero STR (§5: la bajada se dibuja por estado)");
   if (!/estadoRecomendacion\(veredicto,/.test(HSTR)) F("7 · el estado de la recomendación STR no sale de `estadoRecomendacion`, la fuente única de LTR");
   if (!/titulo=\{rediseno \? "La recomendación de Franco" : /.test(HSTR)) F("7 · el título de la caja no es «La recomendación de Franco» con el rediseño (§5)");
+}
+
+// ── 8 · el lienzo de §2 en la ruta STR y en la ruta dev ───────────────────
+{
+  if (!/className=\{`min-h-screen bg-\[var\(--franco-bg\)\] \$\{rediseno \? "doc-lienzo" : ""\}`\}/.test(STR)) {
+    F("8 · el wrapper de la página STR no pinta `doc-lienzo` con el rediseño: el informe queda sobre el gris de la app y las tarjetas no se distinguen del fondo (§2, mismo bug que 0b825fca)");
+  }
+  if (!/className="doc-r2 doc-lienzo"/.test(DEV)) F("8 · la ruta dev no pinta el lienzo para LTR: el shot sale sobre el gris de la app y no es el de la ruta real");
 }
 
 // ── 6 · la ruta dev enciende STR con ?rediseno=1 ────────────────────────────
