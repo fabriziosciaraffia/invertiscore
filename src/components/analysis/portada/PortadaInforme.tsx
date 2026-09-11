@@ -22,6 +22,7 @@ import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import type { FichaDepto } from "@/lib/ficha-depto";
 import { FichaModal } from "./FichaModal";
 import { CLASE_REDISENO } from "@/lib/rediseno-flag";
+import { useRediseno } from "@/components/analysis/RedisenoContexto";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 // Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
@@ -90,47 +91,92 @@ export function PortadaInforme({
   const bandaLabel = bandaLabelDe(veredicto);
   const scorePct = Math.max(0, Math.min(100, score ?? 0));
 
+  const rediseno = useRediseno();
+  // El eyebrow del contrato §3 sale de la ficha que ya se arma: «Tipología» es
+  // «3D · 2B» y «Superficie» es «72 m²». Cero datos nuevos.
+  const spec = (k: string) => ficha.specs.find(([e]) => e === k)?.[1] ?? "";
+
   return (
-    <section className="doc-portada" data-verdict={veredicto}>
-      {/* Eyebrow — la dirección deja de ser H1 (decisión 8) */}
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] mb-4" style={{ color: "var(--doc-tx3)" }}>
-        <b className="font-medium" style={{ color: "var(--doc-tx2)" }}>{direccion || comuna}</b>
-        {direccion && (
-          <>
-            <span className="mx-2" style={{ color: "var(--doc-tx4)" }}>·</span>
-            {comuna}
-          </>
-        )}
-        <span className="mx-2" style={{ color: "var(--doc-tx4)" }}>·</span>
-        {modalidadLabel}
-        <span className="mx-2" style={{ color: "var(--doc-tx4)" }}>·</span>
-        {fecha}
-      </div>
-
-      {/* Banda de veredicto — full-bleed del documento, único color semántico */}
-      <div className="doc-banda" aria-label={`Veredicto: ${bandaLabel}`}>
-        <span className="doc-banda-band">{bandaLabel}</span>
-      </div>
-
-      {/* Score = barra de bloques llenos bajo la banda, en el color del veredicto
-          (contrato: "▓▓▓░░"). Diez bloques de 10 puntos; muere la barra fina Ink. */}
-      <div className="flex items-center gap-3 max-w-[420px] mb-5">
-        <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] whitespace-nowrap" style={{ color: "var(--doc-tx3)" }}>
-          Franco Score
-        </span>
-        <div className="flex-1 flex gap-[3px]" aria-hidden="true">
-          {Array.from({ length: 10 }, (_, i) => (
-            <span
-              key={i}
-              className="flex-1 h-[6px] rounded-[1px]"
-              style={{ background: i < Math.round(scorePct / 10) ? "var(--verdict)" : "var(--doc-score-empty)" }}
-            />
-          ))}
+    <section className={`doc-portada${rediseno ? " doc-hero" : ""}`} data-verdict={veredicto}>
+      {/* LA CAPA DE FONDO VA APARTE Y EL FILTRO VIVE EN ELLA (contrato §3): si el
+          `filter` se aplicara a la sección, se lo comería también el texto. Y el
+          espectro NO depende del veredicto — es el mismo siempre. El grano va en su
+          propia capa encima, con su modo de fusión. */}
+      {rediseno && (
+        <>
+          <div className="doc-hero-bg" aria-hidden="true" />
+          <div className="doc-hero-grain" aria-hidden="true" />
+        </>
+      )}
+      {rediseno ? (
+        /* Eyebrow del contrato: identidad a la izquierda, modalidad a la derecha. */
+        <div className="doc-hero-eyebrow">
+          <span className="doc-hero-eyebrow-l">
+            <b>{direccion || comuna}</b>
+            {spec("Tipología") && <><i>·</i>{spec("Tipología")}</>}
+            {spec("Superficie") && <><i>·</i>{spec("Superficie")}</>}
+          </span>
+          <span>{modalidadLabel}</span>
         </div>
-        <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] whitespace-nowrap" style={{ color: "var(--doc-tx3)" }}>
-          <b style={{ color: "var(--doc-tx)" }}>{score ?? "—"}</b>/100
-        </span>
-      </div>
+      ) : (
+        /* Eyebrow — la dirección deja de ser H1 (decisión 8) */
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] mb-4" style={{ color: "var(--doc-tx3)" }}>
+          <b className="font-medium" style={{ color: "var(--doc-tx2)" }}>{direccion || comuna}</b>
+          {direccion && (
+            <>
+              <span className="mx-2" style={{ color: "var(--doc-tx4)" }}>·</span>
+              {comuna}
+            </>
+          )}
+          <span className="mx-2" style={{ color: "var(--doc-tx4)" }}>·</span>
+          {modalidadLabel}
+          <span className="mx-2" style={{ color: "var(--doc-tx4)" }}>·</span>
+          {fecha}
+        </div>
+      )}
+
+      {rediseno ? (
+        /* EL BOTÓN REEMPLAZA A LA BANDA, y la banda NO se borra: `PortadaInforme` lo
+           monta también STR (`renta-corta/[id]/results-client.tsx`), y el OG dibuja su
+           propio degradado. Se deja de montar solo acá, solo con el interruptor. */
+        <p className="doc-hero-verdict" aria-label={`Veredicto: ${bandaLabel}`}>
+          <span className="doc-hero-pill">
+            <span className="doc-hero-dot" aria-hidden="true" />
+            {bandaLabel}
+          </span>
+        </p>
+      ) : (
+        /* Banda de veredicto — full-bleed del documento, único color semántico */
+        <div className="doc-banda" aria-label={`Veredicto: ${bandaLabel}`}>
+          <span className="doc-banda-band">{bandaLabel}</span>
+        </div>
+      )}
+
+      {rediseno ? (
+        /* Score en TEXTO PLANO. La barra de bloques se retira del hero: sobre el
+           espectro compite con el botón, que es lo que tiene que mirarse primero. */
+        <p className="doc-hero-score">Franco Score {score ?? "—"} de 100</p>
+      ) : (
+        /* Score = barra de bloques llenos bajo la banda, en el color del veredicto
+            (contrato: "▓▓▓░░"). Diez bloques de 10 puntos; muere la barra fina Ink. */
+        <div className="flex items-center gap-3 max-w-[420px] mb-5">
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] whitespace-nowrap" style={{ color: "var(--doc-tx3)" }}>
+            Franco Score
+          </span>
+          <div className="flex-1 flex gap-[3px]" aria-hidden="true">
+            {Array.from({ length: 10 }, (_, i) => (
+              <span
+                key={i}
+                className="flex-1 h-[6px] rounded-[1px]"
+                style={{ background: i < Math.round(scorePct / 10) ? "var(--verdict)" : "var(--doc-score-empty)" }}
+              />
+            ))}
+          </div>
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] whitespace-nowrap" style={{ color: "var(--doc-tx3)" }}>
+            <b style={{ color: "var(--doc-tx)" }}>{score ?? "—"}</b>/100
+          </span>
+        </div>
+      )}
 
       {/* Grid portada: contenido + mapa (mapa solo PC) */}
       <div className="doc-cover-grid">
@@ -443,6 +489,114 @@ export function DocTokens() {
       @media (max-width: 767px){
         .doc-r2 .nums{grid-template-columns:1fr}
         .doc-r2 .num-cell .v{font-size:25px}
+      }
+
+      /* ═══════════════ REDISEÑO · EL HERO (contrato §3) ═══════════════
+         EL HERO DEL CONTRATO ES LA PORTADA, no la sección que el código llama «hero».
+         §3 lista eyebrow, botón de veredicto, score, titular con plumón y cifra clave:
+         eso es «.doc-portada». Lo que el código llama «hero» es la prosa IA más la
+         recomendación. En 4a le puse la caja a la sección equivocada leyendo el nombre
+         en vez del contenido; acá se corrige y la caja pasa a la portada, que es la
+         primera de las dos del contrato.
+
+         EL FILTRO VA EN UNA CAPA APARTE Y NUNCA SOBRE EL TEXTO. «filter» crea un
+         contexto de apilado y afecta a todo el subárbol: aplicado a la sección, el
+         «brightness(1.10)» se comería también el titular y el botón. Por eso el
+         espectro vive en «.doc-hero-bg», que es un hermano absoluto detrás del
+         contenido, y el grano en otra capa encima de ella.
+
+         EL FONDO NO DEPENDE DEL VEREDICTO. Es el mismo espectro para los tres. La
+         tríada sigue viva donde corresponde —el botón— y nada más.
+
+         EL GRANO, MEDIDO SOBRE ESTE FONDO Y NO SOBRE EL VIEJO. Método: el mismo árbol
+         con el grano apagado al lado, misma «background-position», y se restan los dos
+         píxel a píxel — la resta ES el control. Amplitud = desviación estándar de esa
+         diferencia, sobre la media del tile:
+
+           overlay .05   0,288   0,83%     ← el valor de este bloque
+           overlay .08   0,282   0,82%
+           overlay .12   0,513   1,53%     ← lo que decía el contrato
+           overlay .16   0,639   1,94%
+
+         El «~2% del claro» que se usó de objetivo NO EXISTE: en tema claro el grano
+         mide 0,00%, y no es fallo del instrumento — «soft-light» es un no-op cuando el
+         fondo es blanco puro (Cb=1 da 1 para cualquier fuente). El valor queda en una
+         sola constante para que moverlo sea una línea. */
+      /* «.doc-sec .doc-portada» —que ya existía para matar el borde y el margen de la
+         portada dentro de una sección— tiene la MISMA especificidad que «.doc-r2
+         .doc-hero» y va después en el archivo, así que se llevaba puesto el
+         «padding-bottom». Medido: 34px 32px 0px en vez de 30 abajo. Con «.doc-sec» en
+         el selector gana el rediseño; el borde y el margen los sigue matando ella. */
+      .doc-r2 .doc-sec .doc-hero{position:relative;isolation:isolate;overflow:hidden;
+        border-radius:var(--rad);padding:34px 32px 30px;color:#fff}
+      .doc-r2 .doc-hero-bg{
+        position:absolute;inset:0;z-index:0;pointer-events:none;
+        background:linear-gradient(135deg,#0F2440 0%,#2E1C28 50%,#4E1119 100%);
+        filter:brightness(1.10) saturate(.90)}
+      .doc-r2 .doc-hero-grain{
+        position:absolute;inset:0;z-index:1;pointer-events:none;
+        background-image:var(--doc-grain);background-size:300px;
+        opacity:.05;mix-blend-mode:overlay}
+      .doc-r2 .doc-hero > *:not(.doc-hero-bg):not(.doc-hero-grain){position:relative;z-index:2}
+
+      /* — EL EYEBROW — identidad a la izquierda, modalidad a la derecha. En móvil se
+           apila, que es lo único que el contrato pide para este ancho. */
+      .doc-r2 .doc-hero-eyebrow{
+        display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+        font-size:12px;line-height:1.4;opacity:.6;margin:0 0 18px}
+      .doc-r2 .doc-hero-eyebrow b{font-weight:600}
+      .doc-r2 .doc-hero-eyebrow i{font-style:normal;margin:0 7px;opacity:.7}
+
+      /* — EL BOTÓN DE VEREDICTO — píldora del color del veredicto con anillo blanco.
+           El anillo va en «box-shadow» y no en «border» para no mover la caja. */
+      .doc-r2 .doc-hero-verdict{margin:0 0 14px}
+      .doc-r2 .doc-hero-pill{
+        display:inline-flex;align-items:center;gap:9px;
+        padding:8px 16px 8px 13px;border-radius:var(--rad-pill);
+        background:var(--verdict);color:#fff;
+        font-family:var(--font-mono, ui-monospace);font-size:12.5px;font-weight:700;
+        letter-spacing:.14em;text-transform:uppercase;
+        box-shadow:0 0 0 2px rgba(255,255,255,.3)}
+      /* EL PUNTO QUE LATE. El punto en sí es opaco; lo que late es su «::after», que
+         crece y se desvanece — así el punto no desaparece entre pulsos. */
+      .doc-r2 .doc-hero-dot{
+        position:relative;width:7px;height:7px;border-radius:50%;background:#fff;flex:none}
+      .doc-r2 .doc-hero-dot::after{
+        content:"";position:absolute;inset:0;border-radius:50%;background:#fff;
+        animation:docHeroLate 1.8s ease-out infinite}
+      @keyframes docHeroLate{
+        0%{transform:scale(.6);opacity:.6}
+        100%{transform:scale(2.1);opacity:0}
+      }
+      /* OBLIGATORIO por contrato: sin esto el punto late para siempre en la cara de
+         alguien que pidió que nada se mueva. */
+      @media (prefers-reduced-motion:reduce){
+        .doc-r2 .doc-hero-dot::after{animation:none;opacity:0}
+      }
+
+      /* — EL SCORE EN TEXTO PLANO — */
+      .doc-r2 .doc-hero-score{
+        font-family:var(--font-mono, ui-monospace);font-size:12.5px;letter-spacing:.06em;
+        opacity:.75;margin:0 0 20px}
+
+      /* — EL TITULAR — 30 px, peso 600, y el plumón BLANCO al 26%.
+           NO se repunta «--doc-hl»: ese token lo usan también las marcas de prosa de
+           las secciones, que van sobre papel y con blanco quedarían invisibles. El
+           blanco vive acotado a este titular y a nada más. */
+      .doc-r2 .doc-hero .doc-headline{
+        font-size:30px;font-weight:600;line-height:1.18;color:#fff;margin:0 0 14px}
+      .doc-r2 .doc-hero .doc-headline mark{
+        background:linear-gradient(transparent 60%, rgba(255,255,255,.26) 60%);
+        color:#fff}
+      /* La cifra clave y su caption se conservan; sobre el espectro cambian de tinta. */
+      .doc-r2 .doc-hero .doc-keyfig-fig{color:#fff}
+      .doc-r2 .doc-hero .doc-keyfig-cap{color:rgba(255,255,255,.7)}
+      .doc-r2 .doc-hero .doc-props-link{color:rgba(255,255,255,.75)}
+
+      @media (max-width: 767px){
+        .doc-r2 .doc-hero{padding:26px 20px 24px;border-radius:var(--rad)}
+        .doc-r2 .doc-hero-eyebrow{flex-direction:column;align-items:flex-start;gap:4px}
+        .doc-r2 .doc-hero .doc-headline{font-size:25px}
       }
 
       /* ═══════════════ REDISEÑO · LA ZONA (contrato §8) ═══════════════

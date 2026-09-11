@@ -98,7 +98,12 @@ function reglaDe(sel: string, txt = BLOQUE): string | null {
   if (usos !== CAJAS_ESPERADAS) {
     F(`1 · hay ${usos} secciones con «caja» y el tier espera ${CAJAS_ESPERADAS}. Si 4c sacó la recomendación del hero, subí la constante; si no, alguien le puso caja a una sección que el contrato deja suelta.`);
   }
-  if (!/id="hero"[^>]*\bcaja\b/.test(GRID)) F("1 · el hero dejó de pedir caja: es una de las dos del contrato");
+  // LA CAJA VA EN LA PORTADA. El «hero» del contrato §3 —eyebrow, botón, score, titular,
+  // cifra clave— es `id="portada"`; lo que el código llama `id="hero"` es la prosa IA y
+  // la recomendación. 4a se la dio a la equivocada leyendo el nombre en vez del
+  // contenido, y 4b lo corrige. El segundo chequeo impide que vuelva.
+  if (!/id="portada"[^>]*\bcaja\b/.test(GRID)) F("1 · la portada dejó de pedir caja: ES el hero del contrato §3, y una de las dos cajas");
+  if (/id="hero"[^>]*\bcaja\b/.test(GRID)) F("1 · la sección `hero` volvió a pedir caja. Esa es la prosa y la recomendación, no el hero de §3.");
   if (!/caja\s*\?\s*" doc-sec--caja"/.test(SECCION)) F("1 · SeccionInforme no emite la clase doc-sec--caja");
 }
 

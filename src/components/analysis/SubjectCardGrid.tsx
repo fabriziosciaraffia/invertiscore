@@ -272,7 +272,10 @@ export function SubjectCardGrid({
       <TokensHallazgos />
       <TokensShared />
       {/* ═══ 1 · PORTADA (paper) ═══ */}
-      <SeccionInforme id="portada" tono="paper">
+      {/* Contrato §2: la caja va ACÁ. El «hero» de §3 —eyebrow, botón, score,
+          titular, cifra— es esta sección, no la que el código llama «hero», que es
+          la prosa y la recomendación. En 4a se la puse a la otra leyendo el nombre. */}
+      <SeccionInforme id="portada" tono="paper" caja>
       {fichaPortada && (
         <PortadaInforme
           veredicto={veredicto}
@@ -305,7 +308,7 @@ export function SubjectCardGrid({
       {/* Contrato §2: el hero es una de las dos cajas. La recomendación es la otra, y
           hoy vive DENTRO del hero (`HeroLTR` monta `PosicionFranco`): sale a su propia
           sección en 4c, cuando se rediseñe su contenido. */}
-      <SeccionInforme id="hero" tono="paper2" caja>
+      <SeccionInforme id="hero" tono="paper2">
       <HeroLTR
         onOpenDrawer={setActiveDrawer}
         data={prosa}
