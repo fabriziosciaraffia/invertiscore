@@ -144,9 +144,24 @@ function EcuacionRecomendacion({ bloque, veredicto }: { bloque: BloqueLoQueHaria
     //   · COMPRAR — ya está en Comprar, no hay transición que mostrar;
     //   · sin salida / solo escalón — no se llega, que es justamente lo que dice.
     const mostrarResultado = !soloEscalon && veredicto !== "COMPRAR" && filas.length > 0;
+    // EL ESTADO SIN SALIDA es el que se queda sin nada que ofrecer: o el mix solo llega
+    // al escalón intermedio, o no hay mix ni palancas que crucen. COMPRAR no lo es —ahí
+    // hay dos datos— y tener filas tampoco, porque esas filas SON salidas.
+    const sinSalida = veredicto !== "COMPRAR" && (soloEscalon || filas.length === 0);
     return (
       <div className="rec-eq">
         {contexto && <p className="rec-ctx">{contexto}</p>}
+        {/* EL PUENTE. Sin esto la card decía cuánto haría falta y dejaba al lector ahí,
+            sin nada que hacer con esa cifra. La alternativa de comunas —lo que de verdad
+            le serviría— vive hoy en la prosa y el motor no la emite (cola propia), así
+            que esto es el puente: nombra que se probó y para dónde ir. */}
+        {sinSalida && (
+          <p className="rec-puente">
+            Franco no encontró una combinación que lo haga convenir.
+            <br />
+            Prueba con otro departamento.
+          </p>
+        )}
         {filas.map((f, i) => (
           <div className="rec-row" key={`${f.titulo}-${i}`}>
             {/* El rótulo corto es de las filas de COMPRAR: «Cuánto aguanta el veredicto»

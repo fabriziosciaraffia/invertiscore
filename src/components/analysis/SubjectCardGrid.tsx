@@ -389,7 +389,9 @@ export function SubjectCardGrid({
             <SeccionInforme
               id="los-numeros"
               tono={tonoNumeros}
-              titulo="Las seis cifras"
+              /* Contrato §10: los tres títulos fijados. Detrás del interruptor — el
+                 camino de siempre conserva los suyos hasta que 4d encienda. */
+              titulo={rediseno ? "Las cifras que tienes que ver" : "Las seis cifras"}
             >
               <MarcaSeccion seccion="numeros" tipo="ltr" accessLevel={accessLevel} />
               <LosNumeros
@@ -415,7 +417,7 @@ export function SubjectCardGrid({
           <SeccionInforme
             id="la-inversion"
             tono={tonoInversion}
-            titulo="Cómo funciona como inversión"
+            titulo={rediseno ? "Detalle de la inversión" : "Cómo funciona como inversión"}
           >
           <MarcaSeccion seccion="piramide" tipo="ltr" accessLevel={accessLevel} />
           {ctxDrawer && (
@@ -449,7 +451,7 @@ export function SubjectCardGrid({
               tono={tonoZona}
               // La comuna vivía en el ksub; al morir el ksub sube al título, que es el
               // único lugar donde el nombre de la comuna aparece en esta sección.
-              titulo={`La zona${comunaPortada ? ` · ${comunaPortada}` : ""}`}
+              titulo={`${rediseno ? "Ubicación" : "La zona"}${comunaPortada ? ` · ${comunaPortada}` : ""}`}
             >
               <MarcaSeccion seccion="zona" tipo="ltr" accessLevel={accessLevel} />
               <ZonaLtrSection

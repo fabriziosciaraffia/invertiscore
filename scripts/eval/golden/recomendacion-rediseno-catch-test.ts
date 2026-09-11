@@ -291,11 +291,29 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   }
 }
 
+// ── 14 · el puente del estado sin salida ─────────────────────────────────
+{
+  // Sin esto la card decía cuánto haría falta y dejaba al lector ahí, con una cifra y
+  // nada que hacer. La alternativa de comunas —lo que de verdad le serviría— vive hoy en
+  // la prosa y el motor no la emite (cola propia), así que este texto es el puente.
+  const PUENTE = "Franco no encontró una combinación que lo haga convenir.";
+  if (!BLO.includes(PUENTE)) F(`14 · falta el puente del estado sin salida: «${PUENTE}»`);
+  if (!BLO.includes("Prueba con otro departamento.")) F("14 · el puente dejó de decir para dónde ir");
+  // SOLO en el estado sin salida: en COMPRAR hay dos datos y con filas que cruzan esas
+  // filas SON salidas. Ponerlo en cualquiera de los dos sería decir que no hay nada
+  // justo donde sí lo hay.
+  if (!/const sinSalida = veredicto !== "COMPRAR" && \(soloEscalon \|\| filas\.length === 0\)/.test(BLO)) {
+    F("14 · la condición del puente cambió. Va SOLO en el estado sin salida: en COMPRAR hay dos datos, y con filas que cruzan esas filas son salidas.");
+  }
+  if (!/\{sinSalida && \(/.test(BLO)) F("14 · el puente dejó de montarse");
+  if (!reglaDe(".doc-r2 .rec-puente", REC)) F("14 · el puente no tiene estilo propio: queda con el del descarte, que es lo menos accionable de la card");
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runRecomendacionRedisenoTier(): { hard: number } {
   console.log("\n─── TIER RECOMENDACIÓN-REDISEÑO (contrato §5 y §7 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 128/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, la recomendación apuntando SIEMPRE a Comprar, la fila de capítulo sin bajada y con la cifra apellidada, «Resultado» también sin mix, las palancas solas junto al mix como alternativas, y «Resultado» obligatoria en las DOS ramas");
+    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 128/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, la recomendación apuntando SIEMPRE a Comprar, la fila de capítulo sin bajada y con la cifra apellidada, «Resultado» también sin mix, las palancas solas junto al mix como alternativas, «Resultado» obligatoria en las DOS ramas, y el puente del estado sin salida");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

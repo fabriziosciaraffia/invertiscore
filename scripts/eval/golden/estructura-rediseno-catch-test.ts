@@ -309,11 +309,35 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
   if (usos < 2) F(`14 · la tarjeta de m² usa el formateador ${usos} vez/veces: tu valor y la mediana tienen que pasar por el MISMO, o el lector compara cifras de distinta escala`);
 }
 
+// ── 15 · los tres títulos fijados por §10 ────────────────────────────────
+{
+  // §10 los fija con nombre y apellido. Van detrás del interruptor: el camino de siempre
+  // conserva los suyos, que es lo que hay en producción hasta que el flag se encienda.
+  const PARES: [string, string][] = [
+    ["Las cifras que tienes que ver", "Las seis cifras"],
+    ["Detalle de la inversión", "Cómo funciona como inversión"],
+    ["Ubicación", "La zona"],
+  ];
+  for (const [nuevo, viejo] of PARES) {
+    if (!GRID.includes(nuevo)) F(`15 · falta el título de §10 «${nuevo}»`);
+    if (!GRID.includes(viejo)) F(`15 · se perdió el título del camino de siempre «${viejo}»: con el interruptor apagado el informe tiene que verse igual que hoy`);
+    // El título de la zona se arma con plantilla, así que el chequeo mira la forma
+    // literal de cada uno por separado en vez de un regex que los cubra a los tres.
+    if (!GRID.includes(`rediseno ? "${nuevo}"`)) {
+      F(`15 · el título «${nuevo}» no está detrás del interruptor: con el flag apagado el informe tiene que verse igual que hoy`);
+    }
+  }
+  // La línea que declara el veredicto NO es uno de estos: sigue viviendo en su módulo.
+  if (!/lineaQueDeclara\(veredicto\)/.test(GRID)) {
+    F("15 · el título de los hallazgos dejó de salir de `lineaQueDeclara`. §10: esa línea vive en veredicto-etiqueta.ts y no se duplica acá.");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runEstructuraRedisenoTier(): { hard: number } {
   console.log("\n─── TIER ESTRUCTURA-REDISEÑO (contrato §2, §6 y §8 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — una sola caja (el hero), la alternancia muerta con la especificidad resuelta, el marco sin sombra en las dos formas del selector, 38/34 px de separación, 700 px de ancho, el andamio --doc-inset en pie, las cifras como tarjetas de dos columnas que no reaccionan, y la zona con el arriendo primero, las píldoras en el par direccional y el caveat del período en el pie común");
+    console.log("  ✓ VERDE — una sola caja (el hero), la alternancia muerta con la especificidad resuelta, el marco sin sombra en las dos formas del selector, 38/34 px de separación, 700 px de ancho, el andamio --doc-inset en pie, las cifras como tarjetas de dos columnas que no reaccionan, los tres títulos de §10 detrás del interruptor, y la zona con el arriendo primero, las píldoras en el par direccional y el caveat del período en el pie común");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

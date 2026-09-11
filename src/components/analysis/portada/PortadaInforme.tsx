@@ -793,6 +793,9 @@ export function DocTokens() {
 
       .doc-r2 .rec-ctx{font-size:13px;opacity:.62;margin:0 0 14px}
       .doc-r2 .rec-desc{font-size:13px;opacity:.62;margin:14px 0 0}
+      /* EL PUENTE del estado sin salida: mas presente que el descarte —es lo unico
+         accionable que queda— pero sin competir con el numero de arriba. */
+      .doc-r2 .rec-puente{font-size:14px;line-height:1.5;opacity:.82;margin:14px 0 0}
       /* el costo del día uno: SIEMPRE bajo el mix (§5) */
       .doc-r2 .rec-cost{font-size:13.5px;opacity:.75;margin:16px 0 0}
 
