@@ -15,6 +15,9 @@ import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import type { ReactNode } from "react";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { useRediseno } from "@/components/analysis/RedisenoContexto";
+import { SeccionInforme } from "@/components/analysis/SeccionInforme";
+import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
+import { estadoRecomendacion } from "@/lib/lo-que-haria-yo";
 
 /**
  * Hero STR con el contrato LTR (T1 · 04-sep-2026): chip `f.` en el título, prosa a
@@ -24,8 +27,15 @@ import { useRediseno } from "@/components/analysis/RedisenoContexto";
  * el botón VER AJUSTES que abre el modal de vías. Con COMPRAR el footer es "Cuánto
  * aguanta este veredicto": hasta dónde puede caer la tarifa (frontera del motor).
  * Reemplaza a HeroSTR en la página; HeroSTR sigue en el repo (T3).
+ *
+ * CON EL REDISEÑO (bloque B · 11-sep-2026) EMITE LAS TRES SECCIONES DE §2, igual que
+ * `HeroLTR`: hero → `{hallazgos}` → recomendación con caja. La página le pasa la sección
+ * de hallazgos ya armada y deja de envolverlo en la suya. Apagado, devuelve UNA sección
+ * «hero» con todo adentro, como siempre.
  */
 export function HeroStrDictamen({
+  hallazgos,
+  accessLevel,
   ai,
   results,
   veredicto,
@@ -43,6 +53,11 @@ export function HeroStrDictamen({
    *  línea que declara; con prosa vieja el caller las monta en su sección aparte y acá
    *  no llega nada. (El bloque de regulación que las acompañaba se retiró el 11-sep-2026.) */
   razones?: ReactNode;
+  /** Contrato §2 (bloque B): la sección de hallazgos YA ARMADA por la página, que este
+   *  componente monta entre el hero y la recomendación. Solo con el rediseño. */
+  hallazgos?: ReactNode;
+  /** Para las marcas de telemetría de las secciones que emite. */
+  accessLevel: string;
   ai: AIAnalysisSTRv2 | null;
   results: ShortTermResult;
   veredicto: STRVerdict;
@@ -80,8 +95,9 @@ export function HeroStrDictamen({
   const fechaFirma = fechaCortaCL(fechaProsa ?? createdAt);
   const money = (n: number) => (currency === "UF" ? `UF ${(n / (valorUF || 1)).toFixed(1).replace(".", ",")}` : `$${Math.round(n).toLocaleString("es-CL")}`);
 
-  const hallazgos = (results.hallazgos ?? []) as Hallazgo[];
-  const distancia = hallazgos.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
+  // `hallazgos` (prop) es la SECCIÓN que la página arma; los del motor van con apellido.
+  const hallazgosMotor = (results.hallazgos ?? []) as Hallazgo[];
+  const distancia = hallazgosMotor.find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
   const fr = simulacion?.fronterasIngreso ?? null;
   const adr = results.metrics?.tarifaNoche ?? results.ejesAplicados?.adrFinal ?? results.escenarios.base.adrReferencia;
 
@@ -138,8 +154,30 @@ export function HeroStrDictamen({
           }
         : null;
 
-  return (
-    <div className="mb-3">
+  // §5: LA BAJADA SE DIBUJA POR ESTADO. El bloque determinista STR lo construye el
+  // bloque C; hasta entonces no hay bloque, y `estadoRecomendacion` lo dice tal cual:
+  // «comprar» en COMPRAR y «sin_bloque» en los otros dos, nunca «no hay forma».
+  const estadoRec = estadoRecomendacion(veredicto, null);
+  const recomendacion = (
+    <PosicionFranco
+      cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}
+      prosa={estrategia ? renderPlumon(estrategia) : undefined}
+      titulo={rediseno ? "La recomendación de Franco" : podada ? "Lo que haría yo" : undefined}
+      estado={rediseno ? estadoRec : undefined}
+      fechaFirma={fechaFirma}
+      footer={footer}
+      tipo="str"
+      veredicto={veredicto}
+    />
+  );
+
+  /* ¿EL HERO TIENE CUERPO PROPIO? Con el rediseño y prosa podada el h2 no va (§10 se lo da
+     a la sección de hallazgos), así que lo que queda es la apertura —respuesta y
+     reencuadre, que se conservan (decisión del 11-sep-2026)—, el error o el skeleton.
+     Sin ninguna de las tres, la sección no se monta: §2 pide «nada más». */
+  const heroTieneCuerpo = !(rediseno && podada) || Boolean(respuesta) || Boolean(prosaError) || Boolean(aiLoading);
+
+  const cuerpoHero = (
       <div className="py-[9px]">
         <div>
           {/* CON EL REDISEÑO Y PROSA PODADA ESTE TÍTULO NO VA: es la línea que declara,
@@ -180,19 +218,42 @@ export function HeroStrDictamen({
           ) : null}
         </div>
       </div>
-      {/* LAS RAZONES, dentro del mismo bloque (v17): las cuatro líneas de hallazgo suben
-          acá desde su sección propia. «Qué determina el veredicto» no se borra — se
-          fusiona: la línea que declara ya es ese título. */}
-      {podada && razones}
-      <PosicionFranco
-        cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}
-        prosa={estrategia ? renderPlumon(estrategia) : undefined}
-        titulo={podada ? "Lo que haría yo" : undefined}
-        fechaFirma={fechaFirma}
-        footer={footer}
-        tipo="str"
-        veredicto={veredicto}
-      />
-    </div>
+  );
+
+  /* EL ORDEN DEL CONTRATO §2: hero → hallazgos → recomendación. Hasta hoy la
+     recomendación vivía DENTRO del hero, así que el lector leía la conclusión antes que
+     lo que la sostiene. Mismo reparto que en `HeroLTR`: las tres secciones las emite el
+     hero, porque la recomendación se arma con lo que se calcula acá (footer, prosa,
+     estado); la página decide QUÉ va en el medio y lo pasa por `hallazgos`. */
+  if (!rediseno) {
+    return (
+      <SeccionInforme id="hero" tono="paper2">
+        <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
+        <div className="mb-3">
+          {cuerpoHero}
+          {/* LAS RAZONES, dentro del mismo bloque (v17): las cuatro líneas de hallazgo suben
+              acá desde su sección propia. «Qué determina el veredicto» no se borra — se
+              fusiona: la línea que declara ya es ese título. */}
+          {podada && razones}
+          {recomendacion}
+        </div>
+      </SeccionInforme>
+    );
+  }
+  return (
+    <>
+      {heroTieneCuerpo && (
+        <SeccionInforme id="hero" tono="paper2">
+          <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
+          <div className="mb-3">{cuerpoHero}</div>
+        </SeccionInforme>
+      )}
+      {hallazgos}
+      {/* LA SEGUNDA CAJA de §2. La primera es «portada»; ésta nace con este orden. */}
+      <SeccionInforme id="recomendacion" tono="paper2" caja>
+        <MarcaSeccion seccion="recomendacion" tipo="str" accessLevel={accessLevel} />
+        {recomendacion}
+      </SeccionInforme>
+    </>
   );
 }

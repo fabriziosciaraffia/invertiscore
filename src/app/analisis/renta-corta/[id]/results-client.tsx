@@ -504,9 +504,29 @@ export function STRResultsClient({
             capítulos I–VI) → la zona (placeholder hasta T2). Lo viejo (AdvancedSectionSTR,
             EjesAplicadosSTR, la pirámide y los drawers como cuerpo) queda desmontado de la
             página y vivo en el repo hasta T3. */}
-        <SeccionInforme id="hero" tono="paper2">
-          <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
+        {/* ═══ 2 · HERO · HALLAZGOS · RECOMENDACIÓN ═══ EL ORDEN DEL CONTRATO §2 lo emite
+            `HeroStrDictamen`, como `HeroLTR`: con el rediseño devuelve las tres secciones
+            —hero, la de hallazgos que le pasa esta página, y la recomendación con caja—;
+            apagado devuelve la sección «hero» de siempre con todo adentro. Por eso la
+            página ya no lo envuelve: con el envoltorio el orden era inalcanzable. */}
           <HeroStrDictamen
+            accessLevel={accessLevel}
+            hallazgos={
+              /* La MISMA sección que el camino viejo monta más abajo; solo cambia de lugar.
+                 Con el rediseño va SIEMPRE, podada o vieja, sin colgar del gate de la
+                 prosa: con prosa podada su título es la línea que declara (§10), que el
+                 hero deja de repetir; con prosa vieja conserva el suyo. */
+              rediseno && hallazgosOrdenadosSTR.length > 0 ? (
+                <SeccionInforme
+                  id="principales-hallazgos"
+                  tono="paper"
+                  titulo={strPodada ? lineaQueDeclara(veredicto) : "Qué determina el veredicto"}
+                >
+                  <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
+                  <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} />
+                </SeccionInforme>
+              ) : undefined
+            }
             ai={aiParaRender as unknown as AIAnalysisSTRv2 | null}
             results={results}
             veredicto={veredicto}
@@ -529,21 +549,17 @@ export function STRResultsClient({
               ) : undefined
             }
           />
-        </SeccionInforme>
         {/* CAMINO VIEJO. Con prosa podada esta sección no existe: las mismas cuatro
             líneas se leen arriba, bajo la línea que declara. Acá
             siguen porque el informe viejo tiene que verse coherente consigo mismo —su
             título pregunta lo que su prosa contesta— y porque las 94 filas anónimas del
-            parque STR nunca van a regenerar. */}
-        {/* CON EL REDISEÑO LA SECCIÓN VA SIEMPRE, podada o vieja: es el gate de la prosa
-            que dejó a LTR sin hallazgos tres veces. Con prosa podada el título es la línea
-            que declara (§10), que el hero deja de repetir; con prosa vieja conserva el suyo,
-            porque esa prosa no trae la línea y ponérsela sería inventarle un encabezado. */}
-        {(rediseno || !strPodada) && hallazgosOrdenadosSTR.length > 0 && (
+            parque STR nunca van a regenerar. Con el rediseño la monta HeroStrDictamen en
+            el medio del orden de §2: montada acá también se vería dos veces. */}
+        {!rediseno && !strPodada && hallazgosOrdenadosSTR.length > 0 && (
           <SeccionInforme
             id="principales-hallazgos"
             tono="paper"
-            titulo={rediseno && strPodada ? lineaQueDeclara(veredicto) : "Qué determina el veredicto"}
+            titulo="Qué determina el veredicto"
           >
             <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
             <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} />
