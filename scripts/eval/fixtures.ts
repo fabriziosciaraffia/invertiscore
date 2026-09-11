@@ -410,28 +410,28 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
   // COMPRAR (4)
   {
     id: "str-comprar-providencia-01",
-    modalidad: "STR", tier: "estandar", ejes: ["veredicto:COMPRAR", "regulacion:si", "revenue:alto"],
+    modalidad: "STR", tier: "estandar", ejes: ["veredicto:COMPRAR", "revenue:alto"],
     expected: { str: "COMPRAR" },
     strInput: str({ comuna: "Providencia", adrP50: 75000, occP50: 0.65, arriendoLargoMensual: 600000 }),
     strScore: { ...COORDS.pedroValdiviaL1 },
   },
   {
     id: "str-comprar-lastarria-02",
-    modalidad: "STR", tier: "experto", ejes: ["veredicto:COMPRAR", "regulacion:si", "tier:experto", "tipologia:1D"],
+    modalidad: "STR", tier: "experto", ejes: ["veredicto:COMPRAR", "tier:experto", "tipologia:1D"],
     expected: { str: "COMPRAR" },
     strInput: str({ comuna: "Santiago Centro", adrP50: 70000, occP50: 0.68, dormitorios: 1, superficie: 38, precioCompra: 2600 * AUDIT_UF, arriendoLargoMensual: 480000 }),
     strScore: { lat: -33.4372, lng: -70.6386 },
   },
   {
     id: "str-comprar-lascondes-03",
-    modalidad: "STR", tier: "estandar", ejes: ["veredicto:COMPRAR", "regulacion:si", "adminPro"],
+    modalidad: "STR", tier: "estandar", ejes: ["veredicto:COMPRAR", "adminPro"],
     expected: { str: "COMPRAR" },
     strInput: str({ comuna: "Las Condes", adrP50: 90000, occP50: 0.62, adminPro: true, tipoEdificio: "dedicado", modoGestion: "administrador", precioCompra: 4500 * AUDIT_UF, arriendoLargoMensual: 850000 }),
     strScore: { ...COORDS.trazaL7LasCondes },
   },
   {
     id: "str-comprar-nunoa-04",
-    modalidad: "STR", tier: "esencial", ejes: ["veredicto:COMPRAR", "regulacion:si", "tier:esencial"],
+    modalidad: "STR", tier: "esencial", ejes: ["veredicto:COMPRAR", "tier:esencial"],
     expected: { str: "COMPRAR" },
     strInput: str({ comuna: "Ñuñoa", adrP50: 68000, occP50: 0.64, precioCompra: 2800 * AUDIT_UF, arriendoLargoMensual: 520000 }),
     strScore: { ...COORDS.inesDeSuarez },
@@ -439,28 +439,28 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
   // AJUSTA (4)
   {
     id: "str-ajusta-providencia-05",
-    modalidad: "STR", tier: "estandar", ejes: ["veredicto:AJUSTA", "regulacion:si", "break-even:apretado"],
+    modalidad: "STR", tier: "estandar", ejes: ["veredicto:AJUSTA", "break-even:apretado"],
     expected: { str: "AJUSTA SUPUESTOS" },
     strInput: str({ comuna: "Providencia", adrP50: 60000, occP50: 0.50, precioCompra: 4500 * AUDIT_UF, arriendoLargoMensual: 600000 }),
     strScore: { ...COORDS.pedroValdiviaL1 },
   },
   {
     id: "str-ajusta-santiago-06",
-    modalidad: "STR", tier: "esencial", ejes: ["veredicto:AJUSTA", "regulacion:no_seguro", "tier:esencial"],
+    modalidad: "STR", tier: "esencial", ejes: ["veredicto:AJUSTA", "tier:esencial"],
     expected: { str: "AJUSTA SUPUESTOS" },
     strInput: str({ comuna: "Santiago Centro", adrP50: 55000, occP50: 0.46, dormitorios: 1, superficie: 40, precioCompra: 3800 * AUDIT_UF, arriendoLargoMensual: 420000 }),
     strScore: { lat: -33.4372, lng: -70.6386 },
   },
   {
     id: "str-ajusta-lascondes-07",
-    modalidad: "STR", tier: "experto", ejes: ["veredicto:AJUSTA", "regulacion:si", "ltr-gana-poco"],
+    modalidad: "STR", tier: "experto", ejes: ["veredicto:AJUSTA", "ltr-gana-poco"],
     expected: { str: "AJUSTA SUPUESTOS" },
     strInput: str({ comuna: "Las Condes", adrP50: 65000, occP50: 0.52, precioCompra: 5000 * AUDIT_UF, arriendoLargoMensual: 900000 }),
     strScore: { ...COORDS.trazaL7LasCondes },
   },
   {
     id: "str-ajusta-nunoa-08",
-    modalidad: "STR", tier: "estandar", ejes: ["veredicto:AJUSTA", "regulacion:si", "flujo:levemente-negativo"],
+    modalidad: "STR", tier: "estandar", ejes: ["veredicto:AJUSTA", "flujo:levemente-negativo"],
     expected: { str: "AJUSTA SUPUESTOS" },
     strInput: str({ comuna: "Ñuñoa", adrP50: 56000, occP50: 0.50, precioCompra: 4200 * AUDIT_UF, arriendoLargoMensual: 550000 }),
     strScore: { ...COORDS.inesDeSuarez },
@@ -468,7 +468,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
   // BUSCAR (4)
   {
     id: "str-buscar-regulacion-09",
-    modalidad: "STR", tier: "estandar", ejes: ["veredicto:BUSCAR", "regulacion:no", "gate:regulacion"],
+    modalidad: "STR", tier: "estandar", ejes: ["veredicto:BUSCAR"],
     expected: { str: "BUSCAR OTRA" },
     strInput: str({ comuna: "Providencia", adrP50: 75000, occP50: 0.65, arriendoLargoMensual: 600000 }),
     strScore: { ...COORDS.pedroValdiviaL1 },
@@ -476,7 +476,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
   },
   {
     id: "str-buscar-economico-10",
-    modalidad: "STR", tier: "estandar", ejes: ["veredicto:BUSCAR", "regulacion:si", "cap-rate:bajo", "precio:alto"],
+    modalidad: "STR", tier: "estandar", ejes: ["veredicto:BUSCAR", "cap-rate:bajo", "precio:alto"],
     expected: { str: "BUSCAR OTRA" },
     strInput: str({ comuna: "Las Condes", adrP50: 45000, occP50: 0.40, precioCompra: 6000 * AUDIT_UF, arriendoLargoMensual: 600000 }),
     strScore: { ...COORDS.trazaL7LasCondes },
@@ -484,14 +484,14 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
   },
   {
     id: "str-buscar-flujo-11",
-    modalidad: "STR", tier: "experto", ejes: ["veredicto:BUSCAR", "regulacion:si", "flujo:muy-negativo", "tier:experto"],
+    modalidad: "STR", tier: "experto", ejes: ["veredicto:BUSCAR", "flujo:muy-negativo", "tier:experto"],
     expected: { str: "BUSCAR OTRA" },
     strInput: str({ comuna: "Vitacura", adrP50: 55000, occP50: 0.42, precioCompra: 7000 * AUDIT_UF, arriendoLargoMensual: 700000 }),
     strScore: { lat: -33.3950, lng: -70.5750 },
   },
   {
     id: "str-buscar-3d-12",
-    modalidad: "STR", tier: "esencial", ejes: ["veredicto:BUSCAR", "regulacion:no_seguro", "tipologia:3D", "tier:esencial"],
+    modalidad: "STR", tier: "esencial", ejes: ["veredicto:BUSCAR", "tipologia:3D", "tier:esencial"],
     expected: { str: "BUSCAR OTRA" },
     strInput: str({ comuna: "La Florida", adrP50: 50000, occP50: 0.45, dormitorios: 3, superficie: 95, precioCompra: 4500 * AUDIT_UF, arriendoLargoMensual: 650000 }),
     strScore: { lat: -33.5220, lng: -70.5980 },
@@ -566,7 +566,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
   },
   {
     id: "trampa-l7-pedrodevaldivia-02",
-    modalidad: "STR", tier: "estandar", ejes: ["trampa:L7-futura", "regulacion:si"],
+    modalidad: "STR", tier: "estandar", ejes: ["trampa:L7-futura"],
     expected: { str: "COMPRAR" },
     strInput: str({ comuna: "Providencia", adrP50: 78000, occP50: 0.66, arriendoLargoMensual: 600000 }),
     strScore: { lat: -33.4253, lng: -70.6135 },
@@ -598,7 +598,7 @@ export const AUDIT_FIXTURES: AuditFixture[] = [
   },
   {
     id: "trampa-l8-macul-06",
-    modalidad: "STR", tier: "estandar", ejes: ["trampa:L8-futura", "regulacion:si", "veredicto:AJUSTA"],
+    modalidad: "STR", tier: "estandar", ejes: ["trampa:L8-futura", "veredicto:AJUSTA"],
     expected: { str: "AJUSTA SUPUESTOS" },
     strInput: str({ comuna: "Macul", adrP50: 56000, occP50: 0.50, precioCompra: 4200 * AUDIT_UF, arriendoLargoMensual: 550000 }),
     strScore: { ...COORDS.maculL8 },
