@@ -25,18 +25,6 @@
       "patrimonioCLP": 92356962,
       "patrimonioMult": 1.92
     },
-    "GE-3": {
-      "veredicto": "BUSCAR OTRA",
-      "score": 48,
-      "N": 13,
-      "tirPct": 11.54,
-      "multiplicadorCapital": 2.720346081835174,
-      "equityCLP": 118123768,
-      "valorVenta": 227556222,
-      "capitalInvertido": 42383104,
-      "patrimonioCLP": 118123768,
-      "patrimonioMult": 2.72
-    },
     "GE-4": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 55,

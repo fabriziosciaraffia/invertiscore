@@ -63,13 +63,11 @@ export const FILA_BASE: Record<string, string> = { "GE-PC": "GE-1", "GE-PJ": "GE
 const PC_PRECIO_MULT = 0.7;
 const PC_ADR_MULT = 1.4;
 
-// Aplica la síntesis del caso (GE-3 reg=no; GE-5 occ-strip; GE-PC pie 0) sobre el frozen.
+// Aplica la síntesis del caso (GE-5 occ-strip; GE-PC pie 0; GE-PJ precio justo) sobre el
+// frozen. `reg_no` (GE-3) se retiró con la regulación el 11-sep-2026.
 function synth(fx: FrozenFixture, s: Sintesis): { d: any; raw: any } {
   const d = { ...fx.input_data };
   let raw = fx.airbnbRaw;
-  // Retiro V1 de la regulación (11-sep-2026): el score ya no la lee, así que la síntesis
-  // `reg_no` solo alcanza al input que ve el prompt, hasta que la seed se retire.
-  if (s === "reg_no") { d.edificioPermiteAirbnb = "no"; }
   if (s === "pie_cero_banda") {
     const ab = buildAirbnbData(fx.airbnbRaw as any, fx.uf) as any;
     const adrBase = ab.adr ?? ab.percentiles?.adr?.p50 ?? 45000;
@@ -213,7 +211,6 @@ export interface StrRecompute {
 export const MEDIANA_DESV_POR_SEED: Record<string, number> = {
   "GE-1": -0.05,
   "GE-2": +0.03,
-  "GE-3": -0.03,
   "GE-4": +0.12,
   "GE-5": +0.03,
   "GE-6": -0.03,

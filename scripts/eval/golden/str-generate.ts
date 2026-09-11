@@ -57,10 +57,11 @@ const WORDS = (s: string) => (s.trim().match(/\S+/g) || []).length;
 // Si la cuenta viviera en los dos lados, tarde o temprano dirían cosas distintas del
 // mismo dump.
 
-// Los seis GE reales del corpus: dos veredictos dominantes (GE-1 COMPRAR, GE-2 AJUSTA),
-// el gate de regulación (GE-3), LTR-negativo (GE-4), ocupación fallback (GE-5) y ADR
-// legacy (GE-6). GE-PC y GE-PJ son síntesis de GE-1/GE-2 y no generan: cubren motor.
-export const STR_GEN_SEEDS = ["GE-1", "GE-2", "GE-3", "GE-4", "GE-5", "GE-6"] as const;
+// Los cinco GE reales del corpus: dos veredictos dominantes (GE-1 COMPRAR, GE-2 AJUSTA),
+// LTR-negativo (GE-4), ocupación fallback (GE-5) y ADR legacy (GE-6). GE-3 (el gate de
+// regulación) se retiró con la regulación el 11-sep-2026. GE-PC y GE-PJ son síntesis de
+// GE-1/GE-2 y no generan: cubren motor.
+export const STR_GEN_SEEDS = ["GE-1", "GE-2", "GE-4", "GE-5", "GE-6"] as const;
 
 /** Lo que la tanda muestra por seed: el coronado real, el lead que escribió el modelo y
  *  lo que dijo el juez. Se imprime aparte de los checks para leerlo de corrido. */

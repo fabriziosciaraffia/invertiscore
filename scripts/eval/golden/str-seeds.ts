@@ -6,7 +6,7 @@
 // así que el determinismo se logra congelando el airbnbRaw (no re-pegándole a la API).
 // El recompute reconstruye airbnbData con la réplica DirectData de buildAirbnbData y corre
 // calcShortTerm → calcFrancoScoreSTR → buildStrHallazgos. Dos GE se SINTETIZAN sobre su fila
-// base (GE-3 regulación=no; GE-5 fallback-occ por occ-strip). Los BE-*-str son razor-edges
+// base (GE-5 fallback-occ por occ-strip; GE-3 regulación=no se retiró el 11-sep-2026). Los BE-*-str son razor-edges
 // a nivel de builder (frontera exacta del corte). Diseño: of-e1a-piramide-str.md §Fase 5.
 // ============================================================================
 
@@ -14,7 +14,10 @@
 import fs from "fs";
 import path from "path";
 
-export type Sintesis = "reg_no" | "occ_strip" | "pie_cero_banda" | "precio_justo" | null;
+// `reg_no` (GE-3, BUSCAR por el gate de regulación) existió hasta el 11-sep-2026: el gate se
+// retiró con la regulación (V1) y la seed se fue con él. Deuda: una seed de gate por
+// números (g1_beInviable / g1_flujoSevero) que cubra «BUSCAR por gate con cero adversas».
+export type Sintesis = "occ_strip" | "pie_cero_banda" | "precio_justo" | null;
 
 export interface StrGeSeed {
   key: string;         // "GE-1"
@@ -24,7 +27,7 @@ export interface StrGeSeed {
   nota: string;
 }
 
-// Metadata de los 6 GE (los datos frozen viven en str-seeds-frozen.json, key == GE-*).
+// Metadata de los GE (5 reales + 2 sintetizados) (los datos frozen viven en str-seeds-frozen.json, key == GE-*).
 export const STR_GE_SEEDS: StrGeSeed[] = [
   { key: "GE-1", label: "COMPRAR · ventaja clara", sintesis: null,
     ejes: ["E1:COMPRAR", "E3:fav", "E4:observada", "E5:exit", "N:12"],
@@ -32,9 +35,6 @@ export const STR_GE_SEEDS: StrGeSeed[] = [
   { key: "GE-2", label: "AJUSTA · flujo<0 sin horizonte · cost-stack alto", sintesis: null,
     ejes: ["E1:AJUSTA", "E2:G2-flujo", "flujo:-", "E9:cost-stack>40"],
     nota: "flujo negativo + cost-stack >40% (estructura_costos_str adverso)." },
-  { key: "GE-3", label: "BUSCAR · regulación=no (gate)", sintesis: "reg_no",
-    ejes: ["E1:BUSCAR", "E2:G1-regulacion", "E7:no", "sensibilidad:presente"],
-    nota: "edificioPermiteAirbnb='no' fuerza BUSCAR OTRA (gate G1). Sintetizado sobre fila base." },
   { key: "GE-4", label: "LTR-negativo · KPI en CLP", sintesis: null,
     ejes: ["E3:LTR-negativo", "ventaja:KPI-CLP", "cero-%"],
     nota: "ltr_noiMensual ≤ 0: ventaja_vs_ltr usa CLP absoluto, sin % (rama LTR-negativo)." },
