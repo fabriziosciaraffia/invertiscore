@@ -552,6 +552,14 @@ export function DocTokens() {
       .doc-r2 .num-cell .tr{font-size:13px;line-height:1.5;color:var(--tx2);margin-top:9px}
       .doc-r2 .num-cell .tr b{color:var(--tx);font-weight:600}
       .doc-r2 .nums-foot{margin-top:14px}
+      .doc-r2 .num-cell.destacada{
+        /* §6 · STR: tarifa y ocupación son EL SUPUESTO del que cuelga todo lo demás y se
+        destacan con un contorno de 1.5 px en --line2 —no con color— más una línea encima
+        que lo declara. El contorno va en outline hacia adentro: sigue el radio y no mueve
+        la caja ni es una sombra (§9: la tarjeta de cifra no reacciona). LTR no destaca
+        ninguna cifra: las dos props son opcionales y no las pasa. */
+        outline:1.5px solid var(--line2);outline-offset:-1.5px}
+      .doc-r2 .nums-sup{font-size:12.5px;line-height:1.5;color:var(--tx3);margin:0 0 16px}
       @media (max-width: 767px){
         .doc-r2 .nums{grid-template-columns:1fr}
         .doc-r2 .num-cell .v{font-size:25px}

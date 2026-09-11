@@ -15,14 +15,27 @@ export type CifraInforme = {
   neg?: boolean;
   /** Traducción de una línea (con `<b>` para lo que pesa). */
   tr: ReactNode;
+  /** Contrato §6 · STR: la cifra es un SUPUESTO (tarifa, ocupación) y lleva contorno.
+   *  Opcional; LTR no la pasa. Sin el rediseño la clase no hace nada. */
+  destacada?: boolean;
 };
 
-export function SeisCifras({ cifras, onCalculo }: { cifras: CifraInforme[]; onCalculo?: () => void }) {
+export function SeisCifras({
+  cifras,
+  onCalculo,
+  encabezado,
+}: {
+  cifras: CifraInforme[];
+  onCalculo?: () => void;
+  /** Una línea ENCIMA de la grilla («Las dos primeras son el supuesto…»). Opcional. */
+  encabezado?: ReactNode;
+}) {
   return (
     <div className="nums-wrap">
+      {encabezado && <p className="nums-sup">{encabezado}</p>}
       <div className="nums">
         {cifras.map((c, i) => (
-          <div key={i} className="num-cell">
+          <div key={i} className={`num-cell${c.destacada ? " destacada" : ""}`}>
             <div className="k">{c.k}</div>
             <div className={`v${c.neg ? " neg" : ""}`}>{c.v}</div>
             <div className="tr">{c.tr}</div>
