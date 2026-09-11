@@ -61,8 +61,8 @@ function recorrer(a: WizardV4Answers): NodeId[] {
 }
 
 const LTR: WizardV4Answers = { modalidad: "ltr", tipoPropiedad: "usado" };
-const STR: WizardV4Answers = { modalidad: "str", tipoPropiedad: "nuevo", edificioPermiteAirbnb: "si" };
-const BOTH: WizardV4Answers = { modalidad: "both", tipoPropiedad: "usado", edificioPermiteAirbnb: "si" };
+const STR: WizardV4Answers = { modalidad: "str", tipoPropiedad: "nuevo" };
+const BOTH: WizardV4Answers = { modalidad: "both", tipoPropiedad: "usado" };
 
 // ─────────────────────────────────────────────────────────────────────────────
 seccion("El orden nuevo: dir primero, mod última pregunta");
@@ -77,7 +77,9 @@ test("plazo entrega a mod, y mod bifurca la renta", () => {
   assert.equal(computeNext("plazo", LTR), "mod");
   assert.equal(computeNext("plazo", STR), "mod", "el destino de plazo no depende de la modalidad");
   assert.equal(computeNext("mod", LTR), "arr");
-  assert.equal(computeNext("mod", STR), "gate");
+  // Retiro V1 de la regulación (11-sep-2026): el gate del reglamento ya no existe y STR va
+  // directo a la tarifa.
+  assert.equal(computeNext("mod", STR), "adr");
   assert.equal(computeNext("mod", BOTH), "arr");
 });
 
@@ -95,7 +97,7 @@ seccion("La premisa que hizo barato el reordenamiento");
 test("los actos 1 y 2 son idénticos en las tres modalidades", () => {
   // Mismo tipo de propiedad en las tres para aislar la variable modalidad.
   const usado = (m: WizardV4Answers["modalidad"]): NodeId[] => {
-    const p = recorrer({ modalidad: m, tipoPropiedad: "usado", edificioPermiteAirbnb: "si" });
+    const p = recorrer({ modalidad: m, tipoPropiedad: "usado" });
     return p.slice(0, p.indexOf("mod"));
   };
   const base = usado("ltr");
@@ -123,12 +125,12 @@ test("LTR: mod → arr → resumen", () => {
   assert.deepEqual(recorrer(LTR).slice(-3), ["mod", "arr", "resumen"]);
 });
 
-test("STR: mod → gate → adr → resumen", () => {
-  assert.deepEqual(recorrer(STR).slice(-4), ["mod", "gate", "adr", "resumen"]);
+test("STR: mod → adr → resumen", () => {
+  assert.deepEqual(recorrer(STR).slice(-3), ["mod", "adr", "resumen"]);
 });
 
-test("BOTH: mod → arr → gate → adr → resumen", () => {
-  assert.deepEqual(recorrer(BOTH).slice(-5), ["mod", "arr", "gate", "adr", "resumen"]);
+test("BOTH: mod → arr → adr → resumen", () => {
+  assert.deepEqual(recorrer(BOTH).slice(-4), ["mod", "arr", "adr", "resumen"]);
 });
 
 test("ningún recorrido cicla ni se queda sin salida", () => {

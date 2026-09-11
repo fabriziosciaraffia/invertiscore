@@ -35,7 +35,7 @@ export function useWizardV4DryRun(answers: WizardV4Answers, data: WizardV4Data):
     answers.tipoPropiedad, answers.comuna,
     // STR dominantes:
     answers.adrModo, answers.adrTarifa, answers.adrOcupacion, answers.modoGestion,
-    answers.edificioPermiteAirbnb, answers.comisionStrPct,
+    answers.comisionStrPct,
     answers.dormitorios, answers.superficieUtil, answers.banos,
   ].join("|");
 

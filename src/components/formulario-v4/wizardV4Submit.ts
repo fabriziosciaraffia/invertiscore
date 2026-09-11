@@ -239,7 +239,6 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     modoGestion: a.modoGestion ?? "auto",
     comisionAdministrador:
       a.modoGestion === "administrador" ? leerNum(a.comisionStrPct, DEC.comisionAdmin) / 100 || 0.2 : 0.2,
-    edificioPermiteAirbnb: a.edificioPermiteAirbnb ?? "no_seguro",
     tipoEdificio: "residencial_puro",
     adminPro: a.modoGestion === "administrador",
     habilitacion: "basico",

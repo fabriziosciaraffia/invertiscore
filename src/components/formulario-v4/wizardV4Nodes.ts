@@ -3,16 +3,19 @@
 //
 // Doctrina: una pregunta por pantalla (GOV.UK one-thing-per-page). Cada nodo es
 // una pantalla. Los "actos" son solo rótulo de contexto + barra de progreso; NO
-// son páginas. El gate del edificio sigue en el Acto 3. El grafo con ramas:
+// son páginas. El grafo con ramas:
 //
 //   dir → tipo ─(usado)→ ant → tam → precio → pie → tasa → plazo → mod → [rama]
 //              └(nuevo)→ ent → tam
 //
 //   mod ─(ltr)→ arr → resumen
-//       ├(str)→ gate ─(sí/no-seguro)→ adr → resumen
-//       │        └(no)→ gateNo ─(cambiar a ltr)→ arr → resumen  (arr pendiente)
-//       └(both)→ arr → gate ─(sí/no-seguro)→ adr → resumen      (agrupado por modalidad)
-//                        └(no)→ gateNo ─(seguir ltr)→ resumen   (arr ya listo)
+//       ├(str)→ adr → resumen
+//       └(both)→ arr → adr → resumen      (agrupado por modalidad)
+//
+// EL GATE DEL REGLAMENTO SE RETIRÓ (11-sep-2026, decisión V1). `gate` y `gateNo` vivían
+// entre `mod`/`arr` y `adr`: el reglamento del edificio ya no se pregunta, no se muestra
+// ni pesa en el score. Un draft parado en esos nodos no valida contra `ALL_NODES` y se
+// descarta al retomar (medido: 0 abandonos ahí en 30 días).
 //
 // LA MODALIDAD VA AL FINAL (19-ago-2026). Estuvo de primera pantalla y era la
 // mayor fuga del wizard: 29% de abandono, 214 salidas, 61 personas que se iban
@@ -43,8 +46,6 @@ export type NodeId =
   | "tasaFix"
   | "plazo"
   | "mod"
-  | "gate"
-  | "gateNo"
   | "arr"
   | "arrFix"
   | "adr"
@@ -56,7 +57,6 @@ export type Acto = "compra" | "finanza" | "informe" | "renta" | "resumen";
 export type TipoPropiedad = "usado" | "nuevo";
 export type TasaModo = "estimada" | "preaprobada";
 export type Modalidad = "ltr" | "str" | "both";
-export type GateResp = "si" | "no_seguro" | "no";
 export type EstimModo = "estimacion" | "corregir";
 
 /**
@@ -137,7 +137,6 @@ export interface WizardV4Answers {
   tipoPropiedad?: TipoPropiedad;
   tasaModo?: TasaModo;
   modalidad?: Modalidad;
-  edificioPermiteAirbnb?: GateResp;
   arrModo?: EstimModo;
   adrModo?: EstimModo;
 
@@ -195,14 +194,14 @@ export interface WizardV4Answers {
 /** Todos los nodos válidos (para validar drafts al cargar). */
 export const ALL_NODES: ReadonlySet<NodeId> = new Set<NodeId>([
   "dir", "tipo", "ent", "ant", "tam", "precio", "pie", "tasa", "tasaFix", "plazo",
-  "mod", "gate", "gateNo", "arr", "arrFix", "adr", "adrFix", "resumen",
+  "mod", "arr", "arrFix", "adr", "adrFix", "resumen",
 ]);
 
 /** Pantallas de corrección inline (detours, no cuentan progreso). */
 export const FIX_NODES: ReadonlySet<NodeId> = new Set<NodeId>(["tasaFix", "arrFix", "adrFix"]);
 
 /** Nodos de la rama del Acto 3 (renta) — se invalidan al cambiar modalidad. */
-export const BRANCH_ACTO3: readonly NodeId[] = ["gate", "gateNo", "arr", "arrFix", "adr", "adrFix"];
+export const BRANCH_ACTO3: readonly NodeId[] = ["arr", "arrFix", "adr", "adrFix"];
 
 export const ACTO_LABEL: Record<Acto, string> = {
   compra: "ACTO 1 · QUÉ COMPRAS",
@@ -224,8 +223,6 @@ export const ACTO_BY_NODE: Record<NodeId, Acto> = {
   tasaFix: "finanza",
   plazo: "finanza",
   mod: "informe",
-  gate: "renta",
-  gateNo: "renta",
   arr: "renta",
   arrFix: "renta",
   adr: "renta",
@@ -249,8 +246,6 @@ export const NODE_TITLE: Record<NodeId, string> = {
   tasaFix: "Ingresa tu tasa pre-aprobada",
   plazo: "¿A cuántos años el crédito?",
   mod: "¿A quién le vas a arrendar?",
-  gate: "¿El edificio permite arriendo por noche?",
-  gateNo: "El edificio no permite arriendo por noche",
   arr: "¿En cuánto lo arriendas al mes?",
   arrFix: "Corrige el arriendo mensual",
   adr: "Tarifa por noche y ocupación",
@@ -262,14 +257,14 @@ export const NODE_TITLE: Record<NodeId, string> = {
  * Siguiente pantalla en el flujo lineal, dado el nodo actual + respuestas.
  * Las pantallas de corrección (tasaFix/arrFix/adrFix) se entran con `goDetour`,
  * no por acá; su computeNext replica el de su pantalla padre.
- * Devuelve null solo en pantallas terminales o de salida explícita (gateNo).
+ * Devuelve null solo en pantallas terminales.
  */
 export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
   switch (node) {
     case "mod":
       // Acto 3 agrupado por modalidad: ltr y both empiezan por arr (renta larga
-      // primero); str va directo al gate (ahí el permiso mata todo el análisis).
-      return a.modalidad === "str" ? "gate" : "arr";
+      // primero); str va directo a la tarifa.
+      return a.modalidad === "str" ? "adr" : "arr";
     case "dir":
       return "tipo";
     case "tipo":
@@ -290,16 +285,11 @@ export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
       return "plazo";
     case "plazo":
       return "mod"; // última pregunta: recién acá la modalidad bifurca algo
-    case "gate":
-      if (a.edificioPermiteAirbnb === "no") return "gateNo";
-      // sí | no_seguro → str y both van a adr (en both, arr ya se respondió antes)
-      return "adr";
-    case "gateNo":
-      return null; // salida por botones explícitos (seguir LTR / volver)
     case "arr":
-      return a.modalidad === "both" ? "gate" : "resumen";
+      // En both, arr ya se respondió: sigue la tarifa.
+      return a.modalidad === "both" ? "adr" : "resumen";
     case "arrFix":
-      return a.modalidad === "both" ? "gate" : "resumen";
+      return a.modalidad === "both" ? "adr" : "resumen";
     case "adr":
       return "resumen";
     case "adrFix":
@@ -313,7 +303,7 @@ export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
  * Camino planificado dir → resumen dadas las respuestas actuales, para la barra
  * de progreso. Usa las decisiones ya tomadas; donde falta una rama, asume el
  * default más corto (usado / ltr) para tener un denominador estable. Excluye
- * detours de corrección y gateNo (no son progreso). El denominador crece al
+ * detours de corrección (no son progreso). El denominador crece al
  * elegir STR/BOTH — señal legítima de "el comparativo es más trabajo".
  */
 export function computePlannedPath(a: WizardV4Answers): NodeId[] {
@@ -328,11 +318,11 @@ export function computePlannedPath(a: WizardV4Answers): NodeId[] {
   return path;
 }
 
-/** Transición "feliz" para la planificación de progreso (nunca a fix/gateNo). */
+/** Transición "feliz" para la planificación de progreso (nunca a fix). */
 function plannedNext(node: NodeId, a: WizardV4Answers): NodeId | null {
   switch (node) {
     case "mod":
-      return a.modalidad === "str" ? "gate" : "arr";
+      return a.modalidad === "str" ? "adr" : "arr";
     case "dir":
       return "tipo";
     case "tipo":
@@ -350,10 +340,8 @@ function plannedNext(node: NodeId, a: WizardV4Answers): NodeId | null {
       return "plazo";
     case "plazo":
       return "mod";
-    case "gate":
-      return "adr";
     case "arr":
-      return a.modalidad === "both" ? "gate" : "resumen";
+      return a.modalidad === "both" ? "adr" : "resumen";
     case "adr":
       return "resumen";
     default:
@@ -370,8 +358,6 @@ function progressAnchor(node: NodeId): NodeId {
       return "arr";
     case "adrFix":
       return "adr";
-    case "gateNo":
-      return "gate";
     default:
       return node;
   }
@@ -400,14 +386,14 @@ export function stepCounter(current: NodeId, a: WizardV4Answers): { step: number
 
 /** ¿Editar este nodo puede cambiar la estructura de ramas aguas abajo? */
 export function isBranchNode(node: NodeId): boolean {
-  return node === "mod" || node === "tipo" || node === "gate";
+  return node === "mod" || node === "tipo";
 }
 
 // ── Reacciones de Franco ─────────────────────────────────────────────────────
 // Una línea de contexto que aparece SOBRE la pregunta siguiente tras ciertas
 // respuestas. Dura una pantalla, no se acumula. Los valores reales (N comparables,
 // UF del día, cuota) se inyectan vía `live` en Fases 2-3; en Fase 1 caen a
-// placeholders legibles. La reacción de `gate` depende de la respuesta.
+// placeholders legibles.
 
 export interface ReactionLive {
   /** N comparables reales del RPC (reacción de `dir`). */
@@ -432,8 +418,6 @@ export function nodeReacts(node: NodeId, a: WizardV4Answers): boolean {
     case "precio":
     case "plazo":
       return true;
-    case "gate":
-      return a.edificioPermiteAirbnb === "no_seguro";
     case "tam":
       return a.tipoPropiedad === "nuevo"; // aviso de subsidio (se filtra por `live`)
     default:
@@ -458,10 +442,6 @@ export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLi
       return `≈ ${live?.precioCLP ?? "$X"} al valor UF de hoy. Ahora, la plata.`;
     case "plazo":
       return `Tu cuota queda en ${live?.cuota ?? "$X"} al mes. Ahora, lo que puede rendir.`;
-    case "gate":
-      return a.edificioPermiteAirbnb === "no_seguro"
-        ? "Ok — el informe lo marcará como riesgo por confirmar antes de firmar."
-        : null;
     case "tam":
       // Aviso anticipado de subsidio: solo programa + rango, JAMÁS el valor
       // estimado del depto (regla de copy dura).

@@ -17,7 +17,7 @@ import { usePostHog } from "posthog-js/react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { trackWizard } from "./track";
 import { useWizardV4 } from "./useWizardV4";
-import { useStepTelemetry, reportarValidacionRechazo } from "./stepTelemetry";
+import { useStepTelemetry } from "./stepTelemetry";
 import { useWizardV4Data } from "./useWizardV4Data";
 import { useWizardV4Tier, esNuevoConAnalisisGratis } from "./useWizardV4Tier";
 import { useWizardV4Owner } from "./useWizardV4Owner";
@@ -35,7 +35,7 @@ import {
 } from "./wizardV4Nodes";
 import { cuotaCLP, fmtCLP, leerNum } from "./derive";
 import { avisoSubsidioAplica } from "./wizardV4Subsidio";
-import { ChoiceTile, FrancoReaction, GhostBtn, PrimaryBtn } from "./ui";
+import { FrancoReaction, GhostBtn } from "./ui";
 import {
   AntiguedadScreen,
   EntregaScreen,
@@ -129,13 +129,6 @@ export function WizardV4({
   // es un abandono). Declarado acá arriba porque ambos lo necesitan.
   const terminatedRef = useRef(false);
   const markTerminal = useCallback(() => { terminatedRef.current = true; }, []);
-
-  // Rechazo por reglamento (I-1): llegar a `gateNo` ES el rechazo — el edificio
-  // no permite renta corta y la rama STR muere ahí. Un disparo por llegada.
-  useEffect(() => {
-    if (nav.current === "gateNo") reportarValidacionRechazo(posthog, "gate_reglamento", "gateNo");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nav.current]);
 
   // Ciclo de vida por paso (I-1): `wizard4_step_left` con dwell, interacciones,
   // rechazos de validación y la VÍA de salida. Vive acá porque este componente
@@ -443,46 +436,6 @@ function Screen({
       return <InformeScreen {...screenProps} />;
 
     // ── Acto 3 ──
-    case "gate":
-      return (
-        <div className="flex flex-col gap-4">
-          <p className="font-body text-[14px] text-[var(--franco-text-secondary)] m-0 leading-relaxed">
-            Muchos edificios prohíben el arriendo por noche en su reglamento. Es lo primero que hay
-            que confirmar: sin permiso, la renta corta no corre.
-          </p>
-          <div className="flex flex-col gap-3">
-            <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "si" })}>Sí permite</ChoiceTile>
-            <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "no" })}>No permite</ChoiceTile>
-            <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "no_seguro" })}>No estoy seguro</ChoiceTile>
-          </div>
-        </div>
-      );
-    case "gateNo": {
-      // En AMBAS el arriendo ya está respondido → la salida conserva la renta
-      // larga y va directo al resumen; el copy lo reconoce. En STR puro, seguir
-      // con LTR lleva a responder el arriendo (arr pendiente).
-      const esBoth = w.nav.answers.modalidad === "both";
-      return (
-        <>
-          <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-5">
-            <p className="font-body text-[14px] text-[var(--franco-text-secondary)] m-0 leading-relaxed">
-              El edificio no permite arriendo por noche. Sin permiso del reglamento, el informe de
-              renta corta nace muerto — Franco no te va a dejar gastar un crédito en eso.
-              {esBoth && (
-                <>
-                  {" "}
-                  <span className="text-[var(--franco-text)]">Tu informe de renta larga sigue en pie — seguimos con ese.</span>
-                </>
-              )}
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-start gap-3 mt-6">
-            <PrimaryBtn onClick={w.gateNoSwitchToLtr}>Seguir con informe de renta larga</PrimaryBtn>
-            <GhostBtn onClick={w.gateNoBack}>Me equivoqué — volver</GhostBtn>
-          </div>
-        </>
-      );
-    }
     case "arr":
       return <ArrScreen {...screenProps} />;
     case "arrFix":

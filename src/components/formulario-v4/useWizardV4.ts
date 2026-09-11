@@ -78,10 +78,6 @@ export interface UseWizardV4 {
   goBack: () => void;
   /** Entra a una pantalla de corrección inline (tasaFix/arrFix/adrFix). */
   goDetour: (fix: NodeId, patch?: Partial<WizardV4Answers>) => void;
-  /** gateNo: cambia a renta larga e invalida la rama STR. */
-  gateNoSwitchToLtr: () => void;
-  /** gateNo: "me equivoqué, volver" → regresa al gate. */
-  gateNoBack: () => void;
   /** Retoma el draft ofrecido. */
   resumeDraft: () => void;
   /** Descarta el draft ofrecido y arranca limpio. */
@@ -252,41 +248,6 @@ export function useWizardV4({
     }));
   }, [emit]);
 
-  const gateNoSwitchToLtr = useCallback(() => {
-    setNav((s) => {
-      // Cambia a renta larga e invalida SOLO lo STR. En AMBAS el arriendo ya se
-      // respondió (arr → gate → adr), así que se conserva y vamos directo al
-      // resumen; en STR puro arr está pendiente y caemos en arr.
-      const answers: WizardV4Answers = {
-        ...s.answers,
-        modalidad: "ltr",
-        edificioPermiteAirbnb: undefined,
-        adrModo: undefined,
-        adrTarifa: undefined,
-        adrOcupacion: undefined,
-      };
-      const completed = { ...s.completed };
-      delete completed["gate"];
-      delete completed["gateNo"];
-      delete completed["adr"];
-      delete completed["adrFix"];
-      const current: NodeId = completed["arr"] ? "resumen" : "arr";
-      return {
-        ...s,
-        answers,
-        completed,
-        history: [...s.history, s.current],
-        current,
-        reactionSource: null,
-        dir: "forward",
-      };
-    });
-  }, []);
-
-  const gateNoBack = useCallback(() => {
-    goBack();
-  }, [goBack]);
-
   const resumeDraft = useCallback(() => {
     const d = draftPendiente;
     if (!d) return;
@@ -350,8 +311,6 @@ export function useWizardV4({
     answer,
     goBack,
     goDetour,
-    gateNoSwitchToLtr,
-    gateNoBack,
     resumeDraft,
     discardDraft,
     bannerDraftVisible,

@@ -85,7 +85,6 @@ export function gateVariant(anonCap: boolean): string {
 }
 
 const LABEL_MOD: Record<string, string> = { ltr: "Renta larga", str: "Renta corta", both: "Comparativo" };
-const LABEL_GATE: Record<string, string> = { si: "Sí permite", no: "No permite", no_seguro: "No estoy seguro" };
 
 type Wizard = ReturnType<typeof useWizardV4>;
 
@@ -838,15 +837,12 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const tarifaVal = leerNum(a.adrTarifa, DEC.tarifa) || sugTarifa;
   const occVal = leerNum(a.adrOcupacion, DEC.ocupacion) || sugOcc;
 
-  // POR COMPLETAR (R3): tras cambiar de modalidad, la rama STR exige el gate
-  // (sin estimación posible). Bloquea generar hasta responderlo.
-  const gatePorCompletar = esStr && !a.edificioPermiteAirbnb;
   // Fix pie-cero: el pie tiene que estar DECLARADO para generar — monto escrito,
   // y si es exactamente 0, con su razón. Cubre el agujero del resumen: acá se
   // puede vaciar el pie editándolo (o llegar con un draft viejo sin pie), y sin
   // este gate el submit salía con piePct 0 silencioso.
   const pieIncompleto = !pieDeclarado || (pct === 0 && !a.pieRazon);
-  const incompleto = gatePorCompletar || pieIncompleto;
+  const incompleto = pieIncompleto;
   // Rechazo por pie incompleto (I-1): el CTA queda bloqueado con la línea de
   // aviso. Un disparo por ENTRADA al estado, no por render.
   const pieIncompletoPrevio = useRef(false);
@@ -857,11 +853,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     pieIncompletoPrevio.current = pieIncompleto;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pieIncompleto]);
-  const lineaIncompleto = gatePorCompletar
-    ? "Completa la card 03 para generar."
-    : pieIncompleto
-      ? "Falta el pie — complétalo en la card 02 para generar."
-      : null;
+  const lineaIncompleto = pieIncompleto ? "Falta el pie — complétalo en la card 02 para generar." : null;
 
   // ── Datos del modal de plausibilidad ──────────────────────────────────────
   const huellaActual = [a.precio, a.superficieUtil, a.arriendo, a.tasaInteres, a.adrTarifa, a.adrOcupacion].join("|");
@@ -1107,7 +1099,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   // y el resumen se leía como si el pie no existiera.
   const summary02 = [pct > 0 ? `${Math.round(pct)}% pie` : pieDeclarado ? "Sin pie" : null, a.plazoCredito ? `${a.plazoCredito} años` : null, a.tasaInteres ? `${a.tasaInteres}%` : null].filter(Boolean).join(" · ") || "—";
   const summary03 = esStr
-    ? [a.adrTarifa ? `${fmtCLP(leerNum(a.adrTarifa, DEC.tarifa))}/noche` : null, a.adrOcupacion ? `${a.adrOcupacion}%` : null, a.edificioPermiteAirbnb ? LABEL_GATE[a.edificioPermiteAirbnb] : null].filter(Boolean).join(" · ") || "—"
+    ? [a.adrTarifa ? `${fmtCLP(leerNum(a.adrTarifa, DEC.tarifa))}/noche` : null, a.adrOcupacion ? `${a.adrOcupacion}%` : null].filter(Boolean).join(" · ") || "—"
     : (a.arriendo ? `${fmtCLP(leerNum(a.arriendo, DEC.arriendo))}/mes` : "—");
 
   const toggleCard = (c: "01" | "02" | "03") => {
@@ -1331,28 +1323,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             </Nivel3>
           )}
           {esStr && (
-            // Si el gate está POR COMPLETAR (tras cambiar de modalidad) se fuerza
-            // abierto para que el usuario lo vea y desbloquee generar.
-            <Nivel3 title="Operación renta corta" open={l3 === "gest" || gatePorCompletar} onToggle={() => openL3("gest")}>
-              {/* Gate: interruptor de existencia de la mitad STR — primer campo del bloque. */}
-              {gatePorCompletar ? (
-                <FieldShell label="Edificio permite Airbnb · por completar">
-                  <div className="flex flex-wrap gap-1.5 rounded-lg border border-dashed border-signal-red p-1.5">
-                    {(["si", "no", "no_seguro"] as const).map((g) => (
-                      <button key={g} type="button" onClick={() => commitEdit("gate", { edificioPermiteAirbnb: g })}
-                        className="font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
-                        {LABEL_GATE[g]}
-                      </button>
-                    ))}
-                  </div>
-                </FieldShell>
-              ) : (
-                <ChipsField
-                  label="Edificio permite Airbnb" value={a.edificioPermiteAirbnb}
-                  options={[{ value: "si", label: "Sí permite" }, { value: "no", label: "No permite" }, { value: "no_seguro", label: "No estoy seguro" }]}
-                  onCommit={(v) => commitEdit("gate", { edificioPermiteAirbnb: v })}
-                />
-              )}
+            <Nivel3 title="Operación renta corta" open={l3 === "gest"} onToggle={() => openL3("gest")}>
               <NumField label="Costos operativos" raw={a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos)} display={`${fmtCLP(leerNum(a.costoInsumos, DEC.costos) || costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos)}/mes`} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$", "/mes")} tag={a.costoInsumos ? "corregido por ti" : undefined} fuente={`consumo operativo típico para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("costoInsumos", { costoInsumos: v })} />
               <NumField label="Mantención" raw={a.mantencionStr ?? String(costos.mantencion)} display={`${fmtCLP(leerNum(a.mantencionStr, DEC.costos) || costos.mantencion)}/mes`} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$", "/mes")} tag={a.mantencionStr ? "corregido por ti" : undefined} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: v })} />
               <NumField label="Amoblamiento (capex)" raw={a.costoAmoblamiento ?? String(costos.costoAmoblamiento)} display={fmtCLP(leerNum(a.costoAmoblamiento, DEC.costos) || costos.costoAmoblamiento)} suffix="$" decimales={DEC.costos} formatEco={ecoPorDefecto("$")} tag={a.costoAmoblamiento ? "corregido por ti" : undefined} fuente="capex inicial estimado si el depto no está amoblado" onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: v })} />

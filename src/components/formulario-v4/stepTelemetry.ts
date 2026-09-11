@@ -61,13 +61,12 @@ export type SalidaPaso =
  * Reglas de validación que RECHAZAN input, enum cerrado. Corresponden a
  * rechazos que ya existen en el producto — esto no agrega validaciones nuevas.
  *  · cobertura        — comuna fuera del Gran Santiago (paso dir)
- *  · gate_reglamento  — el edificio no permite renta corta (gateNo)
  *  · escala           — el aviso de magnitud de un campo numérico
  *  · pie_incompleto   — pie sin declarar / 0 sin razón (resumen)
  * `plausibilidad` NO entra: ya tiene sus propios eventos (`wizard4_input_implausible`
  * cliente+server y `wizard4_alerta_temprana`) y duplicarla ensuciaría ambos.
  */
-export type ReglaValidacion = "cobertura" | "gate_reglamento" | "escala" | "pie_incompleto";
+export type ReglaValidacion = "cobertura" | "escala" | "pie_incompleto";
 
 /**
  * Rechazos sufridos en el paso VIGENTE. Vive a nivel de módulo a propósito: las
@@ -189,7 +188,7 @@ export function useStepTelemetry(opts: {
     const opts: CaptureOptions | undefined = urgente ? { send_instantly: true } : undefined;
     // Índice del paso EN SU RAMA: el mismo cálculo que alimenta la barra de
     // progreso, así "posición 3" significa lo mismo en el evento y en la UI.
-    // Los detours (tasaFix/arrFix/adrFix) y gateNo no están en el camino
+    // Los detours (tasaFix/arrFix/adrFix) no están en el camino
     // planificado → posicion null, que es la verdad: no son progreso.
     const idx = computePlannedPath(a).indexOf(paso.node);
     trackWizard(posthog, "wizard4_step_left", {
