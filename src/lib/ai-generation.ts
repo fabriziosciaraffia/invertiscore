@@ -53,7 +53,8 @@ import {
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico, piezasDeAiLtr } from "@/lib/precio-jerarquia";
 import { construirReferenciasZona, faltaReconciliacion } from "@/lib/referencias-zona";
-import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad } from "@/lib/cifras-guard";
+import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad, comunasFueraDeAlternativa } from "@/lib/cifras-guard";
+import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
 import { derivarCifraClaveLtr, captionDeCifraClave } from "@/lib/cifra-clave";
 import { validarTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
 import { reescribirTitular } from "@/lib/titular-retry";
@@ -198,7 +199,7 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // Es otro bump de BORRADO. Y el borrado grande no fue el prompt sino lo que LEE
 // la salida: guards, retries y detectores que se quedaban sin sujeto y, si no se
 // tocaban, no fallaban — se callaban.
-export const PROMPT_VERSION_LTR = 22;
+export const PROMPT_VERSION_LTR = 23;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -243,25 +244,21 @@ Ejemplo de forma (NO uses estos números — usa SIEMPRE precioM2Zona y sobrepre
 REGLA DURA — origen de las cifras de la comuna: los valores de precio/m² de la comuna, mediana y sobreprecio SOLO pueden salir de las variables \`precioM2Zona\` y \`sobreprecioPorM2\` que recibes en el caso. NUNCA cites una mediana de memoria por nombre de comuna. Si el número que vas a escribir no está en los datos del caso, no lo escribas.
 
 **Ángulo 2 — Inter-comuna (otras comunas):**
-OBLIGATORIO cuando veredicto = "BUSCAR OTRA". Sin excepciones. TAMBIÉN obligatorio cuando el caso llega marcado como CASO PRECIO-JUSTO (bloque propio del user prompt), sea AJUSTA o BUSCAR: si la zona no rinde a precios de mercado, la respuesta útil es mostrar dónde sí (§1.12.4).
+OBLIGATORIO cuando veredicto = "BUSCAR OTRA" Y el caso trae comunas en \`comunasAlternativas\`. TAMBIÉN obligatorio, con la misma condición, cuando el caso llega marcado como CASO PRECIO-JUSTO (bloque propio del user prompt), sea AJUSTA o BUSCAR: si la zona no rinde a precios de mercado, la respuesta útil es mostrar dónde sí (§1.12.4). Con \`comunasAlternativas\` vacía este ángulo NO aplica y no se fuerza.
 Va en \`conviene.cajaAccionable\`.
 
-DEBE nombrar al menos 1 comuna alternativa concreta de Santiago. Lista de referencia (usar la que aplique al perfil del usuario):
-- Sectores residenciales medios: Ñuñoa, La Reina, Macul
-- Sectores premium: Las Condes, Vitacura, Lo Barnechea
-- Sectores en alza: San Miguel, Independencia, Estación Central
-- Sectores establecidos: Providencia, Santiago centro
+REGLA DURA — origen de las comunas: las comunas alternativas SOLO pueden salir de la variable \`comunasAlternativas\` que recibes en el caso. NUNCA nombres una comuna de memoria ni por perfil. El motor las calculó corriendo ESTE MISMO departamento en cada comuna —con el pie, la tasa y el plazo de este comprador— y dejó las que puede pagar y donde el veredicto deja de ser BUSCAR OTRA. El informe ya las muestra en su recomendación: si nombras otra, la misma página dice dos cosas distintas.
 
-Forma:
-- Con datos en input: "Para tu rango (UF X-Y) Ñuñoa o La Reina te dan deptos similares con plusvalía superior."
-- Sin datos comparativos: "Para tu rango UF X, vale explorar Ñuñoa o Macul antes de cerrar — perfil similar a Providencia con precios 15-20% menores históricamente."
+SI \`comunasAlternativas\` VIENE VACÍA, no nombres ninguna comuna. Significa que el motor no encontró una donde este departamento convenga dentro de este presupuesto. Di que lo que no cierra es el precio de este departamento para lo que renta, y no mandes a ninguna parte: inventar un destino es peor que no darlo.
+
+Forma, con las del caso: "Para tu presupuesto, [comunasAlternativas] dan departamentos como este donde los números cierran."
 
 PROHIBIDO frases genéricas tipo:
 - "hay mejores opciones"
 - "busca otra propiedad"
 - "explora otras zonas"
 
-Si el output va a contener cualquiera de esas frases genéricas sin nombrar al menos una comuna específica, reescribir.
+Con \`comunasAlternativas\` en el caso, si el output va a contener cualquiera de esas frases genéricas sin nombrar al menos una de ellas, reescribir. Con la variable vacía no hay nada que nombrar y la salida correcta es no mandar a ninguna parte — ahí esas frases siguen prohibidas igual, pero se resuelven hablando del precio de ESTE departamento, no de otro lugar.
 
 **Ángulo 3 — Estructura financiera del usuario:**
 Pie + tasa del usuario, ver §5 abajo.
@@ -2007,6 +2004,25 @@ ${filas}
   ⚠ Más pie alivia el mes y baja el retorno: es un INTERCAMBIO, no una mejora. El informe NO declara un pie óptimo, así que no lo presentes como "el pie que deberías tener".`;
     })();
 
+    // ── LA ALTERNATIVA DE COMUNAS, para el Ángulo 2 (§3) ──────────────────
+    // El motor corre ESTE MISMO depto en las otras comunas del roster y deja las que
+    // el comprador puede pagar y donde el veredicto deja de ser BUSCAR OTRA. Hasta el
+    // bump 23 el Ángulo 2 elegía de una lista fija por perfil, sin un solo dato: medido
+    // sobre el parque, de 105 filas donde la prosa nombraba una comuna y la card
+    // mostraba la suya, coincidieron CERO — los dos universos son disjuntos, porque la
+    // lista del prompt eran comunas de perfil medio y premium y el motor, que filtra
+    // por presupuesto, nombra las baratas.
+    //
+    // MISMA FUNCIÓN QUE LA CARD, no una copia: `construirAlternativaComunas` es pura y
+    // sin queries, y recibe los mismos tres insumos que el render.
+    const alternativaBloque = (() => {
+      const alt = construirAlternativaComunas({ input, ufClp: UF_CLP, asOf: asOfFrozen });
+      const nombres = alt?.nombradas ?? [];
+      return `
+ALTERNATIVA DE COMUNAS (motor)
+- comunasAlternativas: ${nombres.length ? nombres.join(", ") : "(ninguna)"}`;
+    })();
+
     const financingHealthBloque = fh ? `
 financingHealth:
 - overall: ${fh.overall}
@@ -2449,6 +2465,7 @@ ESTRUCTURA FINANCIERA DEL USUARIO
 ${viasBloque}
 ${escaleraBloque}
 ${financingHealthBloque}
+${alternativaBloque}
 
 OPERACIÓN MENSUAL
 - arriendo: ${fmtCLP(input.arriendo)}/mes (${fmtUF(input.arriendo / UF_CLP)}/mes)
@@ -2916,6 +2933,43 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // exacta, se acepta solo si mejora. Corre ANTES de RD-BUDGET (el techo de
     // palabras sigue siendo la última palabra) y ANTES de FASE B (que inyecta bloques
     // del motor que no son prosa del modelo y no se auditan). Best-effort.
+    // ─── CATCH-COMUNA (§3, Ángulo 2 · bump 23) ───────────────────────────────
+    // La card muestra las comunas que calculó el motor; si la prosa nombra otras, la
+    // misma página dice dos cosas distintas. Medido ANTES del bump, sobre el parque:
+    // 105 filas donde la prosa nombraba una comuna y la card mostraba la suya, con
+    // CERO coincidencias — los dos universos eran disjuntos por construcción.
+    if (aiResult) {
+      try {
+        const comunasViol = comunasFueraDeAlternativa(userPrompt, aiResult);
+        if (comunasViol.length) {
+          console.warn(`[LTR-COMUNA] ${analysisId}: ${comunasViol.length} comuna(s) fuera de comunasAlternativas — ${comunasViol.join(" | ")} — 1 reintento`);
+          const correctivoC = `
+
+⚠️ CORRECCIÓN DE COMUNAS (§3, Ángulo 2): la versión anterior nombró comunas que NO están en \`comunasAlternativas\` del caso: ${comunasViol.join(", ")}. Las comunas alternativas SOLO salen de esa variable — el motor las calculó corriendo este mismo departamento en cada una con el pie, la tasa y el plazo de este comprador, y el informe ya las muestra. Si la variable viene vacía, no nombres ninguna: habla del precio de ESTE departamento. Reescribe el JSON COMPLETO respetando la doctrina §1-§17.`;
+          const regenC = await anthropic.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 8000,
+            messages: [{ role: "user", content: userPrompt + correctivoC }],
+            system: SYSTEM_LTR_CACHED,
+          });
+          acumularUsage(usage, regenC);
+          const regenTextC = regenC.content[0].type === "text" ? regenC.content[0].text : "";
+          const regenResultC = parseAndNormalize(regenTextC);
+          const quedanC = regenResultC ? comunasFueraDeAlternativa(userPrompt, regenResultC) : null;
+          if (regenResultC && quedanC && quedanC.length < comunasViol.length) {
+            console.warn(`[LTR-COMUNA] ${analysisId}: retry mejoró ${comunasViol.length}→${quedanC.length} — aceptado`);
+            aiResult = regenResultC;
+          } else {
+            console.warn(`[LTR-COMUNA] ${analysisId}: retry no mejoró o no parseó — conservo la prosa previa`);
+          }
+          const sobrevivenC = comunasFueraDeAlternativa(userPrompt, aiResult);
+          if (sobrevivenC.length) aiResult._comunasFueraDeAlternativa = sobrevivenC;
+        }
+      } catch (e) {
+        console.warn(`[LTR-COMUNA] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
     if (aiResult) {
       try {
         const viol = cifrasFueraDeInput(userPrompt, aiResult, { ufClp: UF_CLP });

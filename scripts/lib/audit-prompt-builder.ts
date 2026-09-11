@@ -13,6 +13,7 @@
  */
 
 import { SYSTEM_PROMPT } from "../../src/lib/ai-generation";
+import { construirAlternativaComunas } from "../../src/lib/alternativa-comunas";
 import { findNearestStation } from "../../src/lib/metro-stations";
 import { PLUSVALIA_ESTIMADO as PLUSVALIA_HISTORICA, PLUSVALIA_ESTIMADO_DEFAULT as PLUSVALIA_DEFAULT, rangoHistDe } from "../../src/lib/plusvalia-estimado.gen";
 import { PLUSVALIA_PROYECCION_ANUAL } from "../../src/lib/plusvalia-proyeccion";
@@ -36,6 +37,10 @@ interface Options {
   zoneInsightStats?: { precioM2?: { medianaComuna?: number } };
   marketData?: { precio_m2_venta_promedio: number; arriendo_promedio: number } | null;
   etapa?: "evaluando" | "cerrado";
+  /** Fecha CONGELADA del análisis, espejo de `asOfFrozen` en producción. La consume
+   *  la alternativa de comunas, que corre el motor. Sin ella se usa hoy, que es lo
+   *  correcto para un caso sintético pero NO reproduce una fila del parque. */
+  asOf?: Date;
 }
 
 export interface BuiltPrompts {
@@ -280,6 +285,17 @@ financingHealth:
 
   const etapa = options.etapa || "evaluando";
 
+  // ── LA ALTERNATIVA DE COMUNAS (§3, Ángulo 2 · bump 23) ────────────────────
+  // Espejo del bloque de producción. Misma función pura que el informe y que la card:
+  // no hay una segunda implementación que pueda divergir.
+  const alternativaBloque = (() => {
+    const alt = construirAlternativaComunas({ input, ufClp: UF_CLP, asOf: options.asOf ?? new Date() });
+    const nombres = alt?.nombradas ?? [];
+    return `
+ALTERNATIVA DE COMUNAS (motor)
+- comunasAlternativas: ${nombres.length ? nombres.join(", ") : "(ninguna)"}`;
+  })();
+
   const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
 
 PERFIL Y ETAPA
@@ -299,6 +315,7 @@ ESTRUCTURA FINANCIERA DEL USUARIO
 - credito: ${fmtCLP(creditoCLP)} a ${input.tasaInteres}% en ${input.plazoCredito} años
 - dividendoMensual: ${fmtCLP(m.dividendo)} (${fmtUF(m.dividendo / UF_CLP)})
 ${fhBloque}
+${alternativaBloque}
 
 OPERACIÓN MENSUAL
 - arriendo: ${fmtCLP(input.arriendo)}/mes (${fmtUF(input.arriendo / UF_CLP)}/mes)

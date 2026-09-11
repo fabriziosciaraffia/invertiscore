@@ -1,3 +1,4 @@
+import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 // ── Guard de CIFRAS — la prosa no recalcula números del motor ─────────────────
 // Compartido LTR + STR (nació como STR-CIFRA en ai-generation-str; extraído acá al
 // portarlo a LTR). La capa primaria es la regla del system prompt (STR §1.quater /
@@ -104,6 +105,68 @@ export function cifrasFueraDeInput(userPrompt: string, ai: unknown, opts?: { ufC
         if (uf && uf > 0 && montosOk.some((p) => calzaMonto(p * uf, c.n) || calzaMonto(p / uf, c.n))) continue;
       }
       out.push(`${path}="${c.raw}"`);
+    }
+  }
+  return out;
+}
+
+/**
+ * COMUNAS QUE LA PROSA NOMBRA Y EL MOTOR NO DIO (§3, Ángulo 2 · bump 23).
+ *
+ * Misma regla que `cifrasFueraDeInput`, aplicada a los nombres de comuna: lo que el
+ * modelo escribe tiene que salir del caso, no de su memoria.
+ *
+ * POR QUÉ EXISTE, con el número. Hasta el bump 22 el Ángulo 2 le daba al modelo una
+ * lista fija de doce comunas agrupadas por perfil —medios, premium, en alza,
+ * establecidos— y ningún dato de ninguna. Medido sobre el parque: de las 105 filas
+ * donde la prosa nombraba una comuna Y la card mostraba la del motor, coincidieron
+ * CERO. No es mala suerte: los dos universos son disjuntos por construcción, porque
+ * la lista eran comunas de perfil medio y premium y el motor, que filtra por el
+ * presupuesto del comprador, nombra las baratas — Puente Alto, Conchalí, Cerrillos,
+ * Quilicura, ninguna de las cuales estaba en la lista.
+ *
+ * QUÉ MIRA: la comuna PROPIA nunca cuenta —la prosa la nombra todo el tiempo y es
+ * correcta—, y las permitidas salen del bloque «comunasAlternativas» del user prompt,
+ * que es la única fuente. Con el bloque vacío, cualquier comuna del roster que
+ * aparezca es una invención.
+ *
+ * DEVUELVE las violaciones con su path, igual que las cifras, para que el correctivo
+ * pueda nombrarlas.
+ */
+export function comunasFueraDeAlternativa(userPrompt: string, ai: unknown): string[] {
+  // Las permitidas, del bloque que arma el motor. Sin bloque no se audita nada: es
+  // una prosa vieja o un caller que no lo pasa, y este guard no inventa la regla.
+  const m = userPrompt.match(/- comunasAlternativas:\s*(.*)/);
+  if (!m) return [];
+  const crudo = m[1].trim();
+  const permitidas = crudo === "(ninguna)" || crudo === ""
+    ? []
+    : crudo.split(",").map((x) => x.trim()).filter(Boolean);
+
+  // La comuna del propio depto: viaja en «ubicacion: <comuna>, <ciudad>».
+  const propia = userPrompt.match(/- ubicacion:\s*([^,\n]+)/)?.[1]?.trim() ?? "";
+
+  // LOS ALIAS CUENTAN. El prompt viejo le enseñó al modelo a escribir «Santiago
+  // centro», que es la MISMA comuna que «Santiago»: sin esto, una fila de Ñuñoa que
+  // mande a «Santiago centro» esquiva el guard, y una de Santiago que diga su propio
+  // nombre alternativo se marca como violación cuando no lo es. Medido: de seis filas
+  // reales del parque el guard cazaba cinco y se le escapaba justo ésa.
+  const ALIAS: Record<string, string> = { "Santiago centro": "Santiago", "Santiago Centro": "Santiago" };
+  const objetivo = (txtComuna: string) => ALIAS[txtComuna] ?? txtComuna;
+
+  const strings: { path: string; value: string }[] = [];
+  collectStrings(ai, "", strings);
+  const out: string[] = [];
+  for (const { path, value } of strings) {
+    for (const c of [...COMUNAS_DISPONIBLES, ...Object.keys(ALIAS)]) {
+      const canon = objetivo(c);
+      if (canon === objetivo(propia) || permitidas.some((p) => objetivo(p) === canon)) continue;
+      // Límite de palabra a los dos lados: «Santiago» no debe dispararse dentro de
+      // «Santiago centro» ni de «Gran Santiago», que son otras cosas.
+      const re = new RegExp(`(^|[^\\p{L}])${c.replace(/[.*+?^$()|[\]\\]/g, "\\$&")}([^\\p{L}]|$)`, "u");
+      // Se reporta el nombre CANÓNICO: dos alias de la misma comuna son una sola
+      // violación, no dos.
+      if (re.test(value) && !out.includes(`${path}="${canon}"`)) out.push(`${path}="${canon}"`);
     }
   }
   return out;
