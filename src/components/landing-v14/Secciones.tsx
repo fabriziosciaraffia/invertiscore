@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Landing v14 — las cuatro pantallas y el footer (server components).
+// Landing v14 — las cinco pantallas y el footer (server components).
 //
 // El copy es el del contrato `landing-v14-final.html`, palabra por palabra. Lo
 // que cambia respecto del mockup son los datos: contador, hora del último
@@ -11,6 +11,7 @@ import type { DatosLanding } from "@/lib/landing-vivo";
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 import { CampoDireccion } from "./CampoDireccion";
 import { Respuesta } from "./Respuesta";
+import { LoQueHariaFranco } from "./Recomendacion";
 import { MapaSantiago } from "./MapaSantiago";
 import { SeccionVista } from "./Telemetria";
 import { LinkMedido } from "./LinkMedido";
@@ -51,20 +52,36 @@ export function Hero() {
 }
 
 // ===== 2 · LA RESPUESTA =====
-export function LaRespuesta({ datos }: { datos: DatosLanding }) {
+// Los ejemplos llegan por el contexto `RotacionEjemplos` (page.tsx), que envuelve
+// esta sección y la siguiente: un solo estado mueve las dos.
+export function LaRespuesta() {
   return (
     <SeccionVista n={2} id="respuesta" className="lv-s2">
       <div className="lv-col lv-s2-grid">
-        <Respuesta ejemplos={datos.ejemplos} />
+        <Respuesta />
       </div>
     </SeccionVista>
   );
 }
 
-// ===== 3 · POR QUÉ CREERLE =====
+// ===== 3 · LO QUE HARÍA FRANCO =====
+// La card §5 del informe para el mismo ejemplo que la sección 2 (FASE 1.9, plan B:
+// sección propia, 100 svh, papel). Ritmo: hero oscuro · respuesta papel ·
+// recomendación papel · por qué creerle tinta · cierre papel.
+export function LoQueHaria() {
+  return (
+    <SeccionVista n={3} id="recomendacion" className="lv-sreco">
+      <div className="lv-col lv-sreco-grid">
+        <LoQueHariaFranco />
+      </div>
+    </SeccionVista>
+  );
+}
+
+// ===== 4 · POR QUÉ CREERLE =====
 export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
   return (
-    <SeccionVista n={3} className="lv-s3">
+    <SeccionVista n={4} className="lv-s3">
       {/* resplandor muy tenue del azul del token en la esquina superior derecha, en
           vez de tinta plana (FASE 1.8; se compara con y sin en el reporte) */}
       <div className="lv-s3-glow" data-verdict="COMPRAR" aria-hidden="true" />
@@ -99,7 +116,7 @@ export function PorQueCreerle({ datos, ahora }: { datos: DatosLanding; ahora: Da
   );
 }
 
-// ===== 4 · CIERRE + FOOTER =====
+// ===== 5 · CIERRE + FOOTER =====
 export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
   return (
     <div className="lv-cierre-wrap">
@@ -114,7 +131,7 @@ export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
       </picture>
       {/* Igual que el hero: título + precio + "Ver planes" arriba con su aire; el
           bloque [campo + sin dirección] baja como unidad sobre la banda roja. */}
-      <SeccionVista n={4} className="lv-s4">
+      <SeccionVista n={5} className="lv-s4">
         <div className="lv-col lv-s4-col">
           <div className="lv-cierre-izq">
             <h2 className="lv-h2">Antes de comprar,<br /><mark>evalúa con Franco.</mark></h2>

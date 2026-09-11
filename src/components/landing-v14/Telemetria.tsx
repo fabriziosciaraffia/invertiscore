@@ -4,6 +4,10 @@
 // `landing_section_viewed{n}` la primera vez que cada sección entra en
 // pantalla. Los `<section>` se identifican por `data-seccion="n"`.
 //
+// Numeración desde FASE 1.9 (11-sep-2026, la landing v14 todavía no está en
+// producción, así que no hay histórico que preservar): 1 hero · 2 la respuesta ·
+// 3 lo que haría Franco · 4 por qué creerle · 5 cierre.
+//
 // `SeccionVista` además marca el elemento con `data-anim="listo"` (hay JS) y
 // `data-visto` (entró en pantalla): la sección 3 usa esos atributos para
 // arrancar la animación del mapa recién cuando se ve.
@@ -29,7 +33,7 @@ export function SeccionVista({
   className,
   children,
 }: {
-  n: 1 | 2 | 3 | 4;
+  n: 1 | 2 | 3 | 4 | 5;
   id?: string;
   className: string;
   children: ReactNode;

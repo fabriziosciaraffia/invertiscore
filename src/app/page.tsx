@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Landing v14 (07-sep-2026) — cuatro pantallas, un solo CTA (el campo de
+// Landing v14 (07-sep-2026) — cinco pantallas, un solo CTA (el campo de
 // dirección) repetido al inicio y al final. La página vende una respuesta, no un
 // producto. Reemplaza completa a la landing anterior; no recicla secciones.
 //
@@ -12,7 +12,8 @@
 import type { Metadata } from "next";
 import "@/components/landing-v14/landing.css";
 import { leerDatosLanding } from "@/lib/landing-vivo";
-import { Hero, LaRespuesta, PorQueCreerle, Cierre } from "@/components/landing-v14/Secciones";
+import { Hero, LaRespuesta, LoQueHaria, PorQueCreerle, Cierre } from "@/components/landing-v14/Secciones";
+import { RotacionEjemplos } from "@/components/landing-v14/Rotacion";
 import { LandingViewed } from "@/components/landing-v14/Telemetria";
 import { SuaveScroll } from "@/components/landing-v14/SuaveScroll";
 
@@ -43,7 +44,11 @@ export default async function LandingPage() {
       <SuaveScroll />
       <main>
         <Hero />
-        <LaRespuesta datos={datos} />
+        {/* las secciones 2 y 3 muestran el MISMO ejemplo: la rotación es una sola */}
+        <RotacionEjemplos ejemplos={datos.ejemplos}>
+          <LaRespuesta />
+          <LoQueHaria />
+        </RotacionEjemplos>
         <PorQueCreerle datos={datos} ahora={ahora} />
         <Cierre datos={datos} ahora={ahora} />
       </main>

@@ -5,35 +5,37 @@
 //
 // Lo que se muestra es una MINIATURA DEL HERO DEL INFORME, no una banda: misma
 // tarjeta oscura con el gradiente del contrato (135°, brightness 1.10 saturate .90,
-// grano al 12 % en overlay), mismo eyebrow, misma píldora de veredicto con el punto
-// que late, mismo score en texto plano, mismo titular en serif con plumón y misma
-// cifra clave. Debajo, UNA línea de hallazgo con su flecha y su cifra.
+// grano al 16 % en overlay), mismo eyebrow, mismo botón de veredicto —signo ·
+// rótulo · punto con doble anillo—, mismo score en texto plano, mismo titular en
+// serif con plumón y misma cifra clave con su caption en línea. Debajo, UNA línea
+// de hallazgo con su flecha y su cifra, armada con las funciones del informe.
 //
 // Por qué: la banda prometía algo que el informe ya no entrega. La sección que
 // convierte tiene que enseñar lo que el visitante va a recibir.
 //
-// Se muestra la comuna, no la dirección: el informe lleva la calle en su eyebrow,
-// pero la landing nunca publicó la dirección de los ejemplos y este goal no es el
-// lugar para empezar.
+// DESVÍO DOCUMENTADO DEL CONTRATO §3 (11-sep-2026, decisión de Fabrizio): el
+// eyebrow del informe es «dirección · comuna» con la dirección en negrita. La
+// landing nunca publicó la dirección de los ejemplos y este goal no es el lugar
+// para empezar, así que acá va la COMUNA en negrita, en el lugar de la calle, y
+// la tipología con los metros («2D2B 60 m²»), que sin calle ni ficha es lo único
+// que dice qué depto es. La modalidad va como en el informe: negrita, 13 px.
 //
-// Contrato (seccion2-transiciones.html, modo B): salida de los cuatro bloques
-// junta; a los 900 ms se cambia el veredicto (`data-verdict` → tríada de
-// globals.css) y el contenido, y los bloques entran escalonados 0/140/280/420
-// ms; espera 6 s con barra de progreso; arranca al entrar en pantalla; se
-// detiene al tocar un chip (decisión del goal: el toque es una elección, no un
-// reinicio); `prefers-reduced-motion` deja BUSCAR OTRO fijo con los chips vivos.
+// La rotación vive en `Rotacion.tsx` y la comparte con la sección 3 («Lo que
+// haría Franco»): un solo estado mueve las dos. Esta sección es la que la arranca
+// (al entrar en pantalla) y sus filas son las que la detienen.
 //
 // El contenido viene del backend (server component → props): etiqueta del
-// veredicto, titular de la IA con sus marcas, cifra + caption del catálogo.
+// veredicto, titular de la IA con sus marcas, cifra + caption del catálogo y el
+// hallazgo crudo que acá se formatea igual que en «Principales hallazgos».
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { usePostHog } from "posthog-js/react";
-import type { EjemploLanding } from "@/lib/landing-vivo";
+import { useEffect, useRef, type ReactNode } from "react";
 import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
-import { EV } from "./eventos";
-import { Glifo } from "./Marca";
 import type { Veredicto } from "@/lib/types";
+import { findingDisplay } from "@/components/analysis/GenericFindingCard";
+import { referenciaHallazgo } from "@/components/analysis/referencia-hallazgo";
+import { Glifo } from "./Marca";
+import { BarraProgreso, useRotacion } from "./Rotacion";
 
 /** Qué significa obtener cada veredicto, explicado en simple (tres filas bajo la
  *  respuesta, en PC y en mobile). No habla de un informe en particular: es la
@@ -46,11 +48,8 @@ const EXPLICACION: Record<Veredicto, string> = {
   COMPRAR: "Rentabilidad, flujo y precio de entrada juegan a favor. Se paga solo y compite bien con la zona.",
 };
 
-const DUR = 900;
-const HOLD = 6000;
-
 /** `**…**` → <mark>. Igual que la portada del informe, sin cifras en el titular. */
-function conPlumon(titular: string): ReactNode {
+export function conPlumon(titular: string): ReactNode {
   const partes = titular.split(/(\*\*[^*]+\*\*)/g);
   return partes.map((p, i) =>
     p.startsWith("**") && p.endsWith("**") ? <mark key={i}>{p.slice(2, -2)}</mark> : <span key={i}>{p}</span>,
@@ -63,86 +62,35 @@ function fmtCifra(cifra: CifraClave): string {
   return `${signo}$${cifra.valorClp.toLocaleString("es-CL")}`;
 }
 
-export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
-  const posthog = usePostHog();
-  const [i, setI] = useState(0);
-  const [out, setOut] = useState(false);
-  const [entrando, setEntrando] = useState(false);
-  const [progreso, setProgreso] = useState<"quieto" | "corriendo" | "reinicio">("quieto");
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const swap = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function Respuesta() {
+  const { ejemplos, i, out, elegir, arrancar, delay } = useRotacion();
   const raiz = useRef<HTMLDivElement>(null);
-  const detenido = useRef(false);
-  const reduce = useRef(false);
 
-  const mostrar = (j: number) => {
-    if (swap.current) clearTimeout(swap.current);
-    setOut(true);
-    setEntrando(false);
-    setProgreso("reinicio");
-    swap.current = setTimeout(() => {
-      setI(j);
-      setOut(false);
-      setEntrando(true);
-      // dos frames: que el ancho 0 se pinte antes de la transición a 100%
-      requestAnimationFrame(() => requestAnimationFrame(() => setProgreso(detenido.current ? "quieto" : "corriendo")));
-    }, DUR);
-  };
-
-  const parar = () => {
-    detenido.current = true;
-    if (timer.current) clearInterval(timer.current);
-    timer.current = null;
-  };
-
-  const loop = () => {
-    if (timer.current) clearInterval(timer.current);
-    timer.current = setInterval(() => {
-      setI((actual) => {
-        mostrar((actual + 1) % ejemplos.length);
-        return actual;
-      });
-    }, HOLD + DUR * 2);
-  };
-
-  // Arranca al entrar en pantalla (una vez). Con reduced-motion no rota.
+  // Arranca la rotación compartida al entrar en pantalla (una vez).
   useEffect(() => {
-    if (ejemplos.length < 2) return;
-    reduce.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce.current) return;
     const el = raiz.current;
     if (!el) return;
-    let arrancado = false;
     const obs = new IntersectionObserver(
       (es) => {
-        if (!es[0]?.isIntersecting || arrancado || detenido.current) return;
-        arrancado = true;
-        setProgreso("corriendo");
-        loop();
+        if (!es[0]?.isIntersecting) return;
+        arrancar();
         obs.disconnect();
       },
       { threshold: 0.4 },
     );
     obs.observe(el);
-    return () => {
-      obs.disconnect();
-      if (timer.current) clearInterval(timer.current);
-      if (swap.current) clearTimeout(swap.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ejemplos.length]);
-
-  const elegir = (j: number) => {
-    parar();
-    posthog?.capture(EV.ejemplo, { ejemplo: ejemplos[j]?.etiqueta, origen: "fila" });
-    if (j !== i) mostrar(j);
-    else setProgreso("quieto");
-  };
+    return () => obs.disconnect();
+  }, [arrancar]);
 
   const x = ejemplos[i];
   if (!x) return null;
-  const delay = (k: number) => ({ transitionDelay: out ? "0ms" : entrando ? `${k * 140}ms` : "0ms" });
   const caption = x.cifra ? captionDeCifraClave(x.cifra) : null;
+  // La línea de hallazgo, con las MISMAS funciones que «Principales hallazgos» del
+  // informe: la frase es el titular del motor, la cifra `findingDisplay` y la
+  // referencia `referenciaHallazgo`. Siempre en pesos: la landing no tiene toggle.
+  const h = x.hallazgo;
+  const linea = h ? { kpi: findingDisplay(h, "CLP", x.valorUF).kpi, ref: referenciaHallazgo(h, "CLP", x.valorUF) } : null;
+  const flecha = h?.direccion === "adverso" ? "↓" : h?.direccion === "favorable" ? "↑" : "";
 
   return (
     <div ref={raiz} className="lv-s2-grid-inner">
@@ -152,12 +100,19 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
         <div className="lv-mini-fondo" aria-hidden="true" />
         <div className="lv-mini-cuerpo">
           <div className={`lv-mini-eyebrow lv-x${out ? " out" : ""}`} style={delay(0)}>
-            <span>{x.eyebrow}</span>
-            <span>{x.modalidad}</span>
+            <span>
+              <b>{x.comuna}</b>
+              {x.detalle && <> · {x.detalle}</>}
+            </span>
+            <span className="lv-mini-modalidad">{x.modalidad}</span>
           </div>
-          <div className="lv-pill lv-mini-pill">
-            <i aria-hidden="true" />
+          {/* EL BOTÓN DE VEREDICTO, como en el hero: signo · rótulo · punto. El signo
+              pertenece al veredicto y viaja pegado a su palabra; el punto es indicador
+              de vida y va solo al otro extremo, latiendo con dos anillos a medio ciclo. */}
+          <div className="lv-pill lv-mini-pill" aria-label={`Veredicto: ${x.etiqueta}`}>
+            <Glifo veredicto={x.veredicto} />
             {x.etiqueta}
+            <i aria-hidden="true" />
           </div>
           {x.score != null && (
             <div className={`lv-mini-score lv-x${out ? " out" : ""}`} style={delay(1)}>
@@ -171,33 +126,19 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
             {x.cifra ? fmtCifra(x.cifra) : null}
             {caption && <small>{caption}</small>}
           </div>
-          {x.hallazgo && (
-            <div
-              className={`lv-mini-hallazgo lv-x${out ? " out" : ""}`}
-              style={delay(3)}
-              data-dir={x.hallazgo.direccion}
-            >
-              <span className="lv-mini-flecha" aria-hidden="true">
-                {x.hallazgo.direccion === "favorable" ? "↑" : "↓"}
-              </span>
-              <span className="lv-mini-frase">{x.hallazgo.frase}</span>
-              {x.hallazgo.cifra && (
+          {h && (
+            <div className={`lv-mini-hallazgo lv-x${out ? " out" : ""}`} style={delay(3)} data-dir={h.direccion}>
+              <span className="lv-mini-flecha" aria-hidden="true">{flecha}</span>
+              <span className="lv-mini-frase">{h.titular}</span>
+              {linea?.kpi && (
                 <span className="lv-mini-num">
-                  {x.hallazgo.cifra}
-                  {x.hallazgo.referencia && <small>{x.hallazgo.referencia}</small>}
+                  {linea.kpi}
+                  {linea.ref && <small>{linea.ref}</small>}
                 </span>
               )}
             </div>
           )}
-          <div className="lv-prog" aria-hidden="true">
-            <i
-              style={
-                progreso === "corriendo"
-                  ? { transition: `width ${HOLD}ms linear`, width: "100%" }
-                  : { transition: "none", width: progreso === "quieto" && detenido.current ? "100%" : "0" }
-              }
-            />
-          </div>
+          <BarraProgreso />
         </div>
       </article>
       {/* las tres explicaciones son también el control: mobile al pie (los chips
@@ -212,7 +153,7 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
             aria-selected={j === i}
             className={`lv-fila${j === i ? " on" : ""}`}
             data-verdict={e.veredicto}
-            onClick={() => elegir(j)}
+            onClick={() => elegir(j, "fila")}
           >
             <span className="lv-fila-banda"><Glifo veredicto={e.veredicto} />{e.etiqueta}</span>
             <span className="lv-fila-razon">{EXPLICACION[e.veredicto]}</span>

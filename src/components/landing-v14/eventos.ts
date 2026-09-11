@@ -11,6 +11,8 @@ export const EV = {
   ejemplo: "landing_ejemplo_click",
   planes: "landing_planes_click",
   sinDireccion: "landing_sin_direccion",
+  /** Pausar / seguir la rotación desde «Lo que haría Franco» (`accion`, `ejemplo`). */
+  rotacion: "landing_rotacion",
 } as const;
 
 /** Dónde vive el campo de dirección. `metodologia` es el CTA del interior:
