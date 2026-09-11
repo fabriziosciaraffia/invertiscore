@@ -208,9 +208,13 @@ export function PortadaInforme({
             <button type="button" className="doc-props-link" onClick={() => setFichaOpen(true)}>
               🏢 Ficha del depto evaluado →
             </button>
+            {/* LOS COLORES DEL TOGGLE SON INLINE, así que una regla CSS no los puede
+                pisar: sobre el espectro hay que cambiarlos acá. Mismo tratamiento que el
+                botón de veredicto —blanco translúcido y anillo, no un bloque sólido— y
+                la opción activa se distingue por opacidad, no por otro color. */}
             <div
-              className="inline-flex rounded-md overflow-hidden shrink-0"
-              style={{ border: "1px solid var(--doc-line2)" }}
+              className={`inline-flex overflow-hidden shrink-0 ${rediseno ? "doc-cur-toggle" : "rounded-md"}`}
+              style={rediseno ? undefined : { border: "1px solid var(--doc-line2)" }}
               role="group"
               aria-label="Moneda"
             >
@@ -221,11 +225,13 @@ export function PortadaInforme({
                     key={c}
                     type="button"
                     onClick={() => onCurrencyChange(c)}
+                    aria-pressed={on}
                     className="font-mono text-[10px] font-medium tracking-[0.06em] px-2.5 py-1 transition-colors"
-                    style={{
-                      background: on ? "var(--doc-tx)" : "transparent",
-                      color: on ? "var(--doc-paper)" : "var(--doc-tx3)",
-                    }}
+                    style={
+                      rediseno
+                        ? { background: on ? "rgba(255,255,255,.18)" : "transparent", color: on ? "#fff" : "rgba(255,255,255,.6)" }
+                        : { background: on ? "var(--doc-tx)" : "transparent", color: on ? "var(--doc-paper)" : "var(--doc-tx3)" }
+                    }
                   >
                     {c}
                   </button>
@@ -513,10 +519,10 @@ export function DocTokens() {
          píxel a píxel — la resta ES el control. Amplitud = desviación estándar de esa
          diferencia, sobre la media del tile:
 
-           overlay .05   0,288   0,83%     ← el valor de este bloque
+           overlay .05   0,288   0,83%
            overlay .08   0,282   0,82%
-           overlay .12   0,513   1,53%     ← lo que decía el contrato
-           overlay .16   0,639   1,94%
+           overlay .12   0,513   1,53%     ← lo que decía el contrato antes
+           overlay .16   0,639   1,94%     ← el valor de este bloque
 
          El «~2% del claro» que se usó de objetivo NO EXISTE: en tema claro el grano
          mide 0,00%, y no es fallo del instrumento — «soft-light» es un no-op cuando el
@@ -536,8 +542,12 @@ export function DocTokens() {
       .doc-r2 .doc-hero-grain{
         position:absolute;inset:0;z-index:1;pointer-events:none;
         background-image:var(--doc-grain);background-size:300px;
-        opacity:.05;mix-blend-mode:overlay}
-      .doc-r2 .doc-hero > *:not(.doc-hero-bg):not(.doc-hero-grain){position:relative;z-index:2}
+        opacity:.16;mix-blend-mode:overlay}
+      /* «:not(.sr-only)» NO es prolijidad. «.sr-only» se esconde con «clip», y «clip»
+         SOLO aplica a elementos posicionados en absoluto: al forzarles «position:
+         relative» para subirlos sobre el grano, la copia para lectores de pantalla del
+         titular se volvía VISIBLE debajo de la caja. Se ve en los primeros shots. */
+      .doc-r2 .doc-hero > *:not(.doc-hero-bg):not(.doc-hero-grain):not(.sr-only){position:relative;z-index:2}
 
       /* — EL EYEBROW — identidad a la izquierda, modalidad a la derecha. En móvil se
            apila, que es lo único que el contrato pide para este ancho. */
@@ -592,6 +602,24 @@ export function DocTokens() {
       .doc-r2 .doc-hero .doc-keyfig-fig{color:#fff}
       .doc-r2 .doc-hero .doc-keyfig-cap{color:rgba(255,255,255,.7)}
       .doc-r2 .doc-hero .doc-props-link{color:rgba(255,255,255,.75)}
+      /* EL MAPA Y EL TOGGLE no están en §3 y quedaban con su tinta de papel sobre el
+         espectro: la tarjeta gris clara y el chip blanco se leían como dos parches. Van
+         con el resto del hero —texto blanco— y el toggle recibe el MISMO tratamiento
+         que el botón de veredicto: fondo blanco translúcido y anillo, no un bloque
+         sólido. La opción activa se distingue por opacidad, no por color. */
+      /* EL MAPA: su tarjeta viene de «MapaThumbnail», que se pinta con los tokens de la
+         app («--franco-card», «--franco-border») porque también vive en el wizard. Sobre
+         el espectro quedaba como un parche gris claro. Se reapunta desde acá —no se
+         toca el componente, que es compartido— y el texto va en blanco como el resto. */
+      .doc-r2 .doc-hero .doc-mapcol > div{
+        background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.22)}
+      .doc-r2 .doc-hero .doc-mapcol span,
+      .doc-r2 .doc-hero .doc-mapcol svg{color:rgba(255,255,255,.75)}
+      /* El toggle lleva su forma acá; los COLORES van inline en el JSX, porque los del
+         camino de siempre también lo son y una regla no los podría pisar. */
+      .doc-r2 .doc-hero .doc-cur-toggle{
+        border-radius:var(--rad-pill);box-shadow:0 0 0 1px rgba(255,255,255,.22);
+        background:rgba(255,255,255,.06)}
 
       @media (max-width: 767px){
         .doc-r2 .doc-hero{padding:26px 20px 24px;border-radius:var(--rad)}

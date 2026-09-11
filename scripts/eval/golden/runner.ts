@@ -55,6 +55,7 @@ import { runTipografiaRedisenoTier } from "./tipografia-rediseno-catch-test";
 import { runPaletaRedisenoTier } from "./paleta-rediseno-catch-test";
 import { runRadiosSombrasTier } from "./radios-sombras-catch-test";
 import { runEstructuraRedisenoTier } from "./estructura-rediseno-catch-test";
+import { runHeroRedisenoTier } from "./hero-rediseno-catch-test";
 import { runCandadoTier } from "./candado-catch-test";
 import { runGeneradorEnScriptsTier } from "./generador-en-scripts-catch-test";
 import { runStrGenerateTier, type TandaStr } from "./str-generate";
@@ -275,6 +276,7 @@ async function printStrSemantic() {
   totalHard += runPaletaRedisenoTier().hard;
   totalHard += runRadiosSombrasTier().hard;
   totalHard += runEstructuraRedisenoTier().hard;
+  totalHard += runHeroRedisenoTier().hard;
 
   // ── Tier CANDADO (goal #3 · 07-sep-2026, 0 tokens, sin base): generating_since solo
   // se escribe en candado-generacion.ts; dos tomas → una gana; TTL vence. Siempre con el QUICK. ──

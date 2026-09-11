@@ -16,6 +16,7 @@ import { SeccionInforme } from "./SeccionInforme";
 import { PrincipalesHallazgos } from "./PrincipalesHallazgos";
 import { RedisenoProvider, useRediseno } from "./RedisenoContexto";
 import { REDISENO_INFORME } from "@/lib/rediseno-flag";
+import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import { LosNumeros } from "./LosNumeros";
 import { ModalCalculo } from "./ModalCalculo";
 import { getCapRefComuna } from "@/lib/cap-rate-hallazgo";
@@ -186,6 +187,9 @@ export function SubjectCardGrid({
   // Lo que diga un provider de más afuera (la ruta dev con `?rediseno=1`). Se lee ACÁ,
   // antes de proveer, porque un componente no ve su propio provider.
   const redisenoHeredado = useRediseno();
+  /** Lo que decide si esta pantalla se dibuja con el rediseño. Mismo valor que el
+   *  que se provee más abajo; se calcula acá porque las secciones lo necesitan. */
+  const rediseno = REDISENO_INFORME || redisenoHeredado;
   const ctxDrawer = results && inputData ? { results, inputData, prosa } : null;
 
   // ═══ PORTADA (FASE 3 rediseño Dictamen — mockups v8/v9) ═══
@@ -265,7 +269,7 @@ export function SubjectCardGrid({
           El `|| heredado` NO es redundante: sin él este provider PISA al de la ruta dev
           —que envuelve desde afuera— con la constante en `false`, y `?rediseno=1` dejaba
           de encender la zona. Medido: las tarjetas nuevas no montaban. */}
-      <RedisenoProvider valor={REDISENO_INFORME || redisenoHeredado}>
+      <RedisenoProvider valor={rediseno}>
       <DocumentoFrame secciones veredicto={veredicto} rediseno>
       {/* CSS del acordeón + vocabulario + modal, montado siempre: el modal de la
           posición y el de cálculo lo necesitan también mientras la prosa carga. */}
@@ -313,7 +317,12 @@ export function SubjectCardGrid({
         onOpenDrawer={setActiveDrawer}
         data={prosa}
         razones={
-          dosBloques && hallazgosOrdenados.length > 0 ? (
+          /* Contrato §2 y §4: los hallazgos son SU PROPIA SECCIÓN, suelta, después del
+             hero. Se van CON la línea que declara, que pasa a ser el título de esa
+             sección (§10): el título y las cuatro filas son una unidad —«Ajusta los
+             números. Esto es lo que pesa:» y lo que pesa— y separarlos dejaba al hero
+             prometiendo algo que no mostraba. */
+          !rediseno && dosBloques && hallazgosOrdenados.length > 0 ? (
             <>
               <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
               <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} />
@@ -362,11 +371,14 @@ export function SubjectCardGrid({
               porque el informe viejo tiene que verse coherente consigo mismo —su
               título pregunta lo que su prosa contesta— y porque las 453 filas
               anónimas del parque nunca van a regenerar. */}
-          {!dosBloques && hallazgosOrdenados.length > 0 && (
+          {(!dosBloques || rediseno) && hallazgosOrdenados.length > 0 && (
             <SeccionInforme
               id="principales-hallazgos"
               tono="paper"
-              titulo="Qué determina el veredicto"
+              /* EL TÍTULO LO DA LA LÍNEA QUE DECLARA cuando hay prosa nueva (§10). El
+                 camino viejo conserva el suyo: su prosa no trae esa línea, así que
+                 ponérsela sería inventarle un encabezado que nada sostiene. */
+              titulo={rediseno && dosBloques ? lineaQueDeclara(veredicto) : "Qué determina el veredicto"}
             >
               <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
               <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} />

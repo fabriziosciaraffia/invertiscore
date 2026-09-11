@@ -14,6 +14,7 @@ import { construirLoQueHariaYo } from "@/lib/lo-que-haria-yo";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 import { esProsaDosBloques } from "./AIInsightSection";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
+import { useRediseno } from "./RedisenoContexto";
 import type { ReactNode } from "react";
 
 /**
@@ -82,6 +83,7 @@ export function HeroLTR({
   // Prosa de DOS BLOQUES (v21) o de los cuatro campos viejos. Ver
   // `esProsaDosBloques`: el camino viejo es transitorio para las filas con dueño y
   // PERMANENTE para las anónimas, que nunca van a regenerar.
+  const rediseno = useRediseno();
   const dosBloques = esProsaDosBloques(data);
   const conviene = data?.conviene;
   const respuesta =
@@ -286,12 +288,21 @@ export function HeroLTR({
               sola cosa" y enumeraba tres— y repetía el hecho del bolsillo dos veces.
               Lo que decía no se pierde: la prosa lo narra, que es su trabajo. */}
           {/* El chip `f.` entra al TITULO -- mismo isotipo que el sticky del margen, inline. */}
-          <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
-            <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
-              f.
-            </span>
-            <span className="min-w-0">{pregunta}</span>
-          </h2>
+          {/* CON EL REDISEÑO ESTE TÍTULO NO VA. En v21 el h2 es la línea que declara el
+              veredicto y debajo van las cuatro filas: son una unidad. El contrato §2 y §4
+              saca las filas a su propia sección suelta y §10 le da a esa sección la misma
+              línea como título, así que repetirla acá dejaría el mismo texto dos veces y
+              un encabezado sin nada que lo sostenga. Esta sección no necesita título:
+              tiene el titular del hero arriba. El camino viejo lo conserva — su título es
+              la pregunta de la prosa, que sí se contesta acá abajo. */}
+          {!(rediseno && dosBloques) && (
+            <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
+              <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
+                f.
+              </span>
+              <span className="min-w-0">{pregunta}</span>
+            </h2>
+          )}
           {/* A3: alineación izquierda (no justificado), ~65ch, 14-15px */}
           {/* La prosa cuelga del TEXTO del titulo, no del borde del bloque: `ml-9` = 36px
               = el ancho del chip `f.` (26px) mas el `gap-2.5` (10px) del h2. Asi el
