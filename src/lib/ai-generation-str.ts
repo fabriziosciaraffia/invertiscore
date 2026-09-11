@@ -117,7 +117,15 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 //
 // SOBREVIVE `vsLTR.estrategiaSugerida`, que no tiene equivalente determinista: es la
 // acción concreta, y pasa a leerse dentro de «Lo que haría yo».
-export const PROMPT_VERSION_STR = 17;
+// v18 (11-sep-2026) · LA REGULACIÓN DEL EDIFICIO SE RETIRA DEL PRODUCTO (decisión V1).
+// Salen del system las dos reglas que la nombraban —«no afirmes la regulación si el input
+// no la confirma» y «regulacionEdificio="no" ya es un gate del motor»— y del user las dos
+// anomalías y la línea «Edificio permite Airbnb». Nada más del contrato cambia: el
+// vocabulario («palanca», «vía», «brecha») y `hayMixACOMPRAR` van en v19, para que la FULL
+// de cada bump atribuya una sola causa. Sube para que las 168 prosas persistidas queden
+// stale: 110 nombran el reglamento; las del dueño se regeneran al abrir, las 62 anónimas
+// no (deuda anotada).
+export const PROMPT_VERSION_STR = 18;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del caso, que llegan YA CALCULADOS — no de adjetivos ni tono enfático. Interpretas esos números y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -226,7 +234,6 @@ Franco SÍ puede afirmar: cifras del input; métricas del motor (NOI, CAP, Cash-
 
 Franco NO puede afirmar sin evidencia del input:
 - **Umbrales/rangos de mercado inventados** (ver §1.ter). Los umbrales son los del input.
-- **Regulación del edificio** si el input no la confirma. Si es "no_seguro": "verifica el reglamento antes de invertir en amoblamiento", nunca "probablemente permite Airbnb".
 - **Operadores específicos.** Nunca nombres administradoras/agencias. Di "un operador profesional verificado".
 - **Plazos exactos de estabilización.** "la estabilización del listing toma ~6 meses hasta ocupación normal", no "en 90 días". PROHIBIDO "ramp-up".
 - **Calidad del edificio/administración** sin evidencia. **Predicciones de tasas/regulación futura** — trabaja con escenarios.
@@ -255,7 +262,7 @@ Default: el usuario está EVALUANDO. Lenguaje condicional: "si compras esto y op
 
 ## 7. Veredicto del motor — narra, no contradigas
 
-El \`veredicto\` del motor es la conclusión final. La IA NUNCA lo contradice en el output visible. Tu trabajo es NARRAR el matiz: qué empuja el veredicto, qué riesgos quedan, qué palancas existen. Si crees que el motor está mal calibrado, NO lo contradigas en ningún campo visible: usa \`francoCaveat\` (opcional, audit-only, NO renderizado). regulacionEdificio="no" YA es un gate del motor — no necesitas anularlo.
+El \`veredicto\` del motor es la conclusión final. La IA NUNCA lo contradice en el output visible. Tu trabajo es NARRAR el matiz: qué empuja el veredicto, qué riesgos quedan, qué palancas existen. Si crees que el motor está mal calibrado, NO lo contradigas en ningún campo visible: usa \`francoCaveat\` (opcional, audit-only, NO renderizado).
 
 ## 7.bis Ancla del hero al hallazgo coronado
 
@@ -453,7 +460,7 @@ function extraerCardFrases(hallazgos: Hallazgo[] | undefined | null): CardFrases
 // buildUserPromptSTR — user prompt v3. Compartido por el endpoint y el regen.
 // `inp` = input_data (se normalizan defensivamente las dos convenciones de
 // claves que conviven en el corpus: piePercent|piePct, tasaCredito|tasaInteres,
-// superficie|superficieUtil, edificioPermiteAirbnb|regulacionEdificio).
+// superficie|superficieUtil). La regulación del edificio ya no entra (retiro V1, 11-sep-2026).
 // `r` = results (persistido en prod, recomputado en el regen).
 // ─────────────────────────────────────────────────────────────────────────
 export function buildUserPromptSTR(
@@ -484,9 +491,6 @@ export function buildUserPromptSTR(
   const plazo = num(inp.plazoCredito) ?? 25;
   const modoGestion = (inp.modoGestion as string) ?? "auto";
   const comisionPct = modoGestion === "auto" ? 3 : Math.round((num(inp.comisionAdministrador) ?? 0.2) * 100);
-  // `regulacionEdificio` va segundo: es un alias que nunca se materializó en los datos
-  // (0 de 246 filas; ese nombre es el de ShortTermScoreInputs, que no llega hasta acá).
-  const regulacion = (inp.edificioPermiteAirbnb as string) ?? (inp.regulacionEdificio as string) ?? "no_seguro";
   const costoAmoblamiento = inp.estaAmoblado ? 0 : (num(inp.costoAmoblamiento) ?? 0);
   const amoblado = costoAmoblamiento > 0 ? "Sí" : "No";
   const elec = num(inp.costoElectricidad) ?? 0;
@@ -522,12 +526,6 @@ export function buildUserPromptSTR(
   const anomalias: string[] = [];
   if (r.breakEvenPctDelMercado > 1) {
     anomalias.push(`BREAK-EVEN SOBRE MERCADO: necesitas ${Math.round(r.breakEvenPctDelMercado * 100)}% de los ingresos brutos medianos de la zona (P50) solo para cubrir costos.`);
-  }
-  if (regulacion === "no") {
-    anomalias.push(`REGULACIÓN BLOQUEA AIRBNB: el edificio NO permite arriendo corto plazo. Operar es riesgo de multa o cancelación del reglamento.`);
-  }
-  if (regulacion === "no_seguro" || regulacion === "no_estoy_seguro") {
-    anomalias.push(`REGULACIÓN NO CONFIRMADA: el usuario no sabe si el edificio permite Airbnb. DEBE verificar el reglamento antes de invertir en amoblamiento.`);
   }
   const minM = r.flujoEstacional.length ? Math.min(...r.flujoEstacional.map((m) => m.ingresoBruto)) : 0;
   const maxM = r.flujoEstacional.length ? Math.max(...r.flujoEstacional.map((m) => m.ingresoBruto)) : 0;
@@ -924,7 +922,6 @@ Tasa crédito: ${pct(tasa)}%, Plazo: ${plazo} años
 Dividendo: ${fmtCLP(dividendo)}/mes
 Capital invertido inicial: ${fmtCLP(capitalInv)} (pie + amoblamiento + gastos cierre)${sinCapitalPropio ? " — SIN pie: amoblamiento y cierre, NO capital propio que rente" : ""}
 Modo gestión seleccionado: ${modoGestion} (comisión: ${comisionPct}%)
-Edificio permite Airbnb: ${regulacion}
 Amoblado: ${amoblado} (costo amoblamiento: ${fmtCLP(costoAmoblamiento)})
 
 === FRANCO SCORE STR: ${score}/100 ===
