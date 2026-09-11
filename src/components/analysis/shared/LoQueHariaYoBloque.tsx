@@ -173,12 +173,31 @@ function EcuacionRecomendacion({ bloque, veredicto }: { bloque: BloqueLoQueHaria
     );
   }
 
+  // LAS PALANCAS SOLAS Y EL MIX SON ALTERNATIVAS, NO PASOS. Conviven en 302 de las 1.038
+  // filas LTR no-COMPRAR del parque (medido 11-sep-2026), y hasta acá la card con mix
+  // dibujaba SOLO el mix: las palancas que cruzan por su cuenta no se veían. Puestas una
+  // debajo de otra sin rótulo se leerían como una receta —«baja el precio, después sube
+  // el arriendo, después mueve lo tuyo»—, y cada una llega sola. Los rótulos lo dicen:
+  // «Solo el precio» contra «Con lo tuyo».
+  const solas = filas.filter((f) => f.rotuloCorto);
   return (
     <div className="rec-eq">
       {contexto && <p className="rec-ctx">{contexto}</p>}
+      {solas.map((f, i) => (
+        <div className="rec-row" key={`${f.titulo}-${i}`}>
+          <span className="rec-k">{f.rotuloCorto}</span>
+          <span className="rec-v">
+            <b>{f.cifra}</b>
+            {f.objetivo && <em>{f.objetivo}</em>}
+          </span>
+        </div>
+      ))}
       {(mix.movimiento.pie || mix.movimiento.plazo) && (
         <div className="rec-row">
-          <span className="rec-k">Cambias</span>
+          {/* «Con lo tuyo» y no «Cambias»: el pie y el plazo son lo único que el lector
+              mueve sin pedirle permiso a nadie, y es lo que distingue este camino de los
+              de arriba, que dependen del vendedor o del mercado. */}
+          <span className="rec-k">Con lo tuyo</span>
           {/* EL «+» VIAJA CON EL CHIP DE LA IZQUIERDA. Suelto entre dos chips, a 390 px
               el salto de línea cae justo antes y el signo queda solo arriba del segundo
               chip, como si sumara con la nada. Envuelto con el primero en un grupo que
@@ -211,7 +230,9 @@ function EcuacionRecomendacion({ bloque, veredicto }: { bloque: BloqueLoQueHaria
               precio, que es el nombre que el motor le da al campo
               (`descuentoSoloPrecioPct`). Cuando los dos números difieren, la flecha
               vuelve porque entonces sí hay dos cosas que comparar. */}
-          {mix.contraste && (
+          {/* Y si «Solo el precio» ya está como fila propia, el tachado repetiría esa
+              misma cifra dos veces en la misma card. Con la fila arriba, sobra. */}
+          {mix.contraste && solas.length === 0 && (
             <em className="rec-contra">
               <s>{mix.contraste.de}</s>{" "}
               {mix.contraste.a === mix.descuento ? "solo con el precio" : <>→ <b>{mix.contraste.a}</b></>}

@@ -234,11 +234,36 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   }
 }
 
+// ── 12 · las palancas solas y el mix se leen como ALTERNATIVAS ───────────
+{
+  const LIB = leer("src/lib/lo-que-haria-yo.ts");
+  // Conviven en 302 de las 1.038 filas LTR no-COMPRAR del parque (medido 11-sep-2026), y
+  // hasta 4c la card con mix dibujaba SOLO el mix: las palancas que cruzan por su cuenta
+  // no se veían. Puestas juntas sin rótulo se leen como una receta de pasos, y cada una
+  // llega sola.
+  if (!/const solas = filas\.filter\(\(f\) => f\.rotuloCorto\)/.test(BLO)) {
+    F("12 · la card con mix dejó de dibujar las palancas que cruzan solas. Son alternativas al mix, no un camino distinto que se esconde.");
+  }
+  if (!BLO.includes("{solas.map(")) F("12 · las filas de palancas solas no se montan en la rama del mix");
+  if (!/<span className="rec-k">Con lo tuyo<\/span>/.test(BLO)) {
+    F("12 · el rótulo del mix volvió a «Cambias». «Con lo tuyo» es lo que lo distingue de los caminos que dependen del vendedor o del mercado.");
+  }
+  for (const [palanca, rotulo] of [["precio", "Solo el precio"], ["arriendo", "Solo el arriendo"], ["adr", "Solo la tarifa"], ["gestion", "Solo la gestión"]] as const) {
+    if (!LIB.includes(`${palanca}: "${rotulo}"`)) {
+      F(`12 · falta o cambió el rótulo de alternativa de «${palanca}»: se esperaba «${rotulo}». El artículo va escrito y no derivado — «tarifa» y «gestión» son femeninas.`);
+    }
+  }
+  // Y el tachado no repite lo que la fila «Solo el precio» ya dice.
+  if (!/mix\.contraste && solas\.length === 0/.test(BLO)) {
+    F("12 · el tachado del contraste volvió a dibujarse junto a las filas solas: repetiría la misma cifra dos veces en la misma card");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runRecomendacionRedisenoTier(): { hard: number } {
   console.log("\n─── TIER RECOMENDACIÓN-REDISEÑO (contrato §5 y §7 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 96/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, la recomendación apuntando SIEMPRE a Comprar, la fila de capítulo sin bajada y con la cifra apellidada, y «Resultado» también sin mix");
+    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 96/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, la recomendación apuntando SIEMPRE a Comprar, la fila de capítulo sin bajada y con la cifra apellidada, «Resultado» también sin mix, y las palancas solas junto al mix como alternativas");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

@@ -96,6 +96,24 @@ const NOMBRE_SUBIR: Record<string, string> = {
   gestion: "Cambiar la gestión",
 };
 
+/**
+ * EL RÓTULO DE ALTERNATIVA. En la card de §5 la palanca sola y el mix conviven —302 de
+ * 1.038 filas del parque, medido—, y sin rótulo se leen como PASOS de una receta: «baja
+ * el precio, después sube el arriendo, después mueve lo tuyo». Son CAMINOS, y cada uno
+ * llega solo. «Solo el …» lo dice en dos palabras.
+ *
+ * El artículo va escrito y no derivado: «tarifa» y «gestión» son femeninas y una regla
+ * por terminación se equivoca en la primera excepción.
+ */
+const SOLO: Record<string, string> = {
+  precio: "Solo el precio",
+  arriendo: "Solo el arriendo",
+  adr: "Solo la tarifa",
+  pie: "Solo el pie",
+  plazo: "Solo el plazo",
+  gestion: "Solo la gestión",
+};
+
 const NOMBRE_LLANO: Record<string, string> = {
   precio: "precio", arriendo: "arriendo", adr: "tarifa", pie: "pie", plazo: "plazo", gestion: "gestión",
 };
@@ -199,11 +217,12 @@ export function construirLoQueHariaYo(p: {
     const titulo = NOMBRE_SUBIR[l.palanca] ?? l.palanca;
     // El PIE va en puntos, no en cambio relativo (0% → 26% no tiene relativo), así que
     // su cifra es el recorrido y no lleva objetivo debajo. El plazo, ídem: son años.
-    if (l.palanca === "pie") return { titulo, quien, cifra: `${pct1(l.actual)}% → ${pct1(l.objetivo)}%`, objetivo: null };
-    if (l.palanca === "plazo") return { titulo, quien, cifra: `${l.objetivo} años`, objetivo: null };
+    const rotuloCorto = SOLO[l.palanca] ?? null;
+    if (l.palanca === "pie") return { titulo, rotuloCorto, quien, cifra: `${pct1(l.actual)}% → ${pct1(l.objetivo)}%`, objetivo: null };
+    if (l.palanca === "plazo") return { titulo, rotuloCorto, quien, cifra: `${l.objetivo} años`, objetivo: null };
     const cifra = `${signo(l.deltaPct)}${pct1(Math.abs(l.deltaPct))}%`;
     const objetivo = l.palanca === "precio" ? enUF(l.objetivo) : plata(l.objetivo);
-    return { titulo, quien, cifra, objetivo };
+    return { titulo, rotuloCorto, quien, cifra, objetivo };
   });
 
   // ── EL CONTEXTO — la cifra IMPOSIBLE, chica y arriba ─────────────────────
