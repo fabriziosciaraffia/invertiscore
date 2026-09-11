@@ -382,7 +382,14 @@ export function ZonaCeldasLtrR2({
   valorUF: number;
   cargando?: boolean;
 }) {
-  const fmtM2 = (uf: number) => (currency === "UF" ? `UF ${pct1(uf)}` : fmtCLP(uf * (valorUF || 0)));
+  // EL UF/m² VA SIN DECIMAL, y tu número y la mediana con la MISMA regla. Es la misma
+  // decisión que ya tomó la referencia de los hallazgos («UF 92 · med 94»,
+  // `referencia-hallazgo.ts`): un decimal sobre una mediana de N publicaciones es
+  // precisión falsa, y la diferencia entre UF 92,0 y UF 92 es ruido. La precisión que
+  // importa la lleva la píldora, que es el % de brecha. Redondear solo uno de los dos
+  // sería peor que redondear los dos: el lector compararía cifras de distinta escala.
+  const fmtM2 = (uf: number) =>
+    currency === "UF" ? `UF ${Math.round(uf).toLocaleString("es-CL")}` : fmtCLP(uf * (valorUF || 0));
   const fmtArr = (clp: number) => (currency === "UF" ? `UF ${pct1(valorUF > 0 ? clp / valorUF : 0)}` : fmtMil(clp));
   const { arriendo: ar, m2, valorizacion: pl } = zona;
 

@@ -274,6 +274,36 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
   }
 }
 
+// ── 14 · el UF/m² de la zona va sin decimal, y los DOS con la misma regla ──
+{
+  // La referencia de los hallazgos ya lo decidió («UF 92 · med 94»): un decimal sobre
+  // una mediana de N publicaciones es precisión falsa. La tarjeta usa UN solo
+  // formateador para tu número y para la mediana, así que no pueden divergir — que es
+  // el error concreto: redondear solo uno deja al lector comparando distinta escala.
+  const REF = leer("src/components/analysis/referencia-hallazgo.ts");
+  if (!/Math\.round\(x\)\.toLocaleString\("es-CL"\)/.test(REF)) {
+    F("14 · la referencia de hallazgo dejó de redondear el UF/m²: la tarjeta de zona se alineó a ELLA, así que si cambia hay que decidir las dos juntas");
+  }
+  // DESDE EL COMPONENTE NUEVO, no desde el primer `fmtM2` del archivo: hay DOS, y el
+  // primero es el de las celdas viejas, que conserva el decimal a propósito porque es
+  // producción y no se mueve. Apuntando al primero el guard daba rojo con el árbol sano.
+  const r2 = ZONA.indexOf("export function ZonaCeldasLtrR2");
+  const desde = r2 === -1 ? -1 : ZONA.indexOf("const fmtM2 =", r2);
+  const fm = desde === -1 ? "" : ZONA.slice(desde, ZONA.indexOf("const fmtArr =", desde));
+  if (!fm) F("14 · no se encontró el formateador de UF/m² de la tarjeta de zona");
+  else if (/pct1\(/.test(fm) || !/Math\.round\(/.test(fm)) {
+    F(`14 · el UF/m² de la tarjeta volvió al decimal: «${fm.replace(/\s+/g, " ").slice(0, 90)}». Sobre una mediana de N publicaciones es precisión falsa.`);
+  }
+  // Y que siga siendo UNO solo para las dos cifras: si aparece un segundo formateador
+  // de m², tu número y la mediana pueden salir con reglas distintas.
+  // También acotado al componente nuevo: contando todo el archivo, las celdas viejas
+  // aportan sus propias llamadas y el conteo nunca baja de 2 aunque la tarjeta nueva
+  // saque la suya. Medido: con la mutación puesta el guard daba verde.
+  const cuerpoR2 = r2 === -1 ? "" : ZONA.slice(r2);
+  const usos = [...cuerpoR2.matchAll(/fmtM2\(/g)].length;
+  if (usos < 2) F(`14 · la tarjeta de m² usa el formateador ${usos} vez/veces: tu valor y la mediana tienen que pasar por el MISMO, o el lector compara cifras de distinta escala`);
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runEstructuraRedisenoTier(): { hard: number } {
   console.log("\n─── TIER ESTRUCTURA-REDISEÑO (contrato §2, §6 y §8 · 0 tokens) ───");
