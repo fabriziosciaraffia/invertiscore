@@ -412,14 +412,22 @@ html:has(.lv-root) .lv-input { font-size: 19px !important; }
   font-size: 11.5px; letter-spacing: 0.02em; opacity: 0.6;
 }
 
-/* píldora del veredicto: color del veredicto, anillo blanco y el punto que late */
-.lv-mini-pill {
-  display: inline-flex; align-items: center; gap: 9px; margin-top: 16px;
+/* PÍLDORA DE VEREDICTO — primitiva compartida (contrato §3). El color sale del
+   token; el anillo blanco y el punto que late son del hero, donde la píldora
+   anuncia un resultado VIVO. Fuera de ahí (p. ej. /metodologia, que explica qué
+   significa cada veredicto) va la píldora sola: sin anillo y sin punto, porque no
+   hay nada latiendo. */
+.lv-pill {
+  display: inline-flex; align-items: center; gap: 9px;
   padding: 8px 16px; border-radius: var(--lv-rad-pill);
   background: var(--verdict); color: #fff;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
   font-weight: 700; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
   transition: background var(--lv-dur) ease;
+}
+.lv-pill .lv-glifo { width: 13px; height: 13px; }
+.lv-mini-pill {
+  margin-top: 16px;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
 }
 .lv-mini-pill i { position: relative; width: 7px; height: 7px; border-radius: 50%; background: #fff; flex: none; }
 .lv-mini-pill i::after {

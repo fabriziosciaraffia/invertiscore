@@ -73,7 +73,10 @@
   display: grid; grid-template-columns: 34px 1fr; align-items: baseline; gap: 10px;
   padding: 9px 0; text-decoration: none; color: var(--lv-ink); border-bottom: 1px solid var(--lv-ll);
 }
+.mtd-indice a { transition: color 0.2s, text-decoration-color 0.2s; }
+.mtd-indice a span { text-decoration: underline; text-underline-offset: 4px; text-decoration-color: transparent; transition: text-decoration-color 0.2s; }
 .mtd-indice a:hover, .mtd-indice a:focus-visible { color: var(--lv-red); }
+.mtd-indice a:hover span, .mtd-indice a:focus-visible span { text-decoration-color: var(--lv-red); }
 .mtd-indice em {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--lv-g);
@@ -140,13 +143,18 @@
 .mtd-v {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-weight: 700; color: var(--lv-ink); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .mtd-tabla small { display: block; margin-top: 3px; font-size: 12.5px; line-height: 1.45; color: var(--lv-g); }
 
 /* ── los cuatro ejes ── */
-.mtd-ejes { margin-top: 26px; display: grid; gap: 0; }
-.mtd-eje { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--lv-ll); }
-.mtd-eje:first-child { border-top: 1px solid var(--lv-ink); }
+/* tarjetas de dato: llevan radio pero NO reaccionan al hover, y esa diferencia es
+   información (contrato §9) — no abren nada. */
+.mtd-ejes { margin-top: 26px; display: grid; gap: 10px; }
+.mtd-eje {
+  display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 14px;
+  padding: 16px 18px; border: 1px solid var(--lv-ll); border-radius: var(--lv-rad-s);
+}
 .mtd-eje h3 {
   margin: 0;
   font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
@@ -156,17 +164,22 @@
 .mtd-peso {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-weight: 700; font-size: 22px; letter-spacing: -0.02em; color: var(--lv-ink); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── bandas de veredicto (el mismo componente de la sección 2) ── */
-.mtd-bandas { margin-top: 26px; display: grid; gap: 22px; }
-.mtd-banda .lv-band { font-size: clamp(20px, 4.6vw, 26px); padding: 14px 18px; margin: 0; letter-spacing: 0.12em; }
-.mtd-banda .lv-glifo { width: 15px; height: 15px; }
+.mtd-bandas { margin-top: 26px; display: grid; gap: 24px; }
 .mtd-banda p { margin-top: 12px !important; }
 
 /* ── FAQ ── */
-.mtd-faq { margin-top: 24px; border-top: 1px solid var(--lv-ink); }
-.mtd-faq details { border-bottom: 1px solid var(--lv-ll); }
+.mtd-faq { margin-top: 24px; display: grid; gap: 8px; }
+/* Affordance nivel 2 — la pregunta SÍ abre algo: levanta, gana borde y sombra. */
+.mtd-faq details {
+  border: 1px solid var(--lv-ll); border-radius: var(--lv-rad-s); padding: 0 18px;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.mtd-faq details:hover { border-color: var(--lv-l); box-shadow: 0 2px 8px rgba(15, 15, 15, 0.06); transform: translateY(-1px); }
+.mtd-faq details[open] { border-color: var(--lv-l); }
 .mtd-faq summary {
   list-style: none; cursor: pointer; padding: 16px 34px 16px 0; position: relative;
   font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
@@ -174,7 +187,7 @@
 }
 .mtd-faq summary::-webkit-details-marker { display: none; }
 .mtd-faq summary::after {
-  content: "+"; position: absolute; right: 2px; top: 14px;
+  content: "+"; position: absolute; right: 0; top: 14px;
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-size: 18px; font-weight: 400; color: var(--lv-g);
 }

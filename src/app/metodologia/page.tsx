@@ -129,17 +129,16 @@ function Seccion({
   );
 }
 
-/** Banda de veredicto: el mismo componente de la sección 2 de la landing
- *  (`.lv-band` + glifo), con `--verdict` del token. Cero hexes copiados. */
-function Banda({ veredicto, children }: { veredicto: Veredicto; children: React.ReactNode }) {
+/** Veredicto en píldora, la primitiva compartida con el hero del informe, con su
+ *  glifo. Sin anillo ni punto que late: acá no hay un resultado vivo, se explica
+ *  qué significa cada veredicto. */
+function Veredicto3({ veredicto, children }: { veredicto: Veredicto; children: React.ReactNode }) {
   return (
     <div className="mtd-banda" data-verdict={veredicto}>
-      <div className="lv-band">
-        <span>
-          <Glifo veredicto={veredicto} />
-          {etiquetaVeredicto(veredicto, "banda")}
-        </span>
-      </div>
+      <span className="lv-pill">
+        <Glifo veredicto={veredicto} />
+        {etiquetaVeredicto(veredicto, "banda")}
+      </span>
       <p>{children}</p>
     </div>
   );
@@ -572,18 +571,18 @@ export default async function MetodologiaPage() {
             todos: el color y el signo son refuerzo, la palabra es la señal.
           </p>
           <div className="mtd-bandas">
-            <Banda veredicto="COMPRAR">
+            <Veredicto3 veredicto="COMPRAR">
               Los números se sostienen con los supuestos que declaraste. No significa que sea el mejor
               depto del mercado: significa que este, a este precio, funciona.
-            </Banda>
-            <Banda veredicto="AJUSTA SUPUESTOS">
+            </Veredicto3>
+            <Veredicto3 veredicto="AJUSTA SUPUESTOS">
               El depto sirve, los supuestos no. A otro precio, con más pie o a otro plazo el negocio
               cierra, y el análisis te dice hasta dónde.
-            </Banda>
-            <Banda veredicto="BUSCAR OTRA">
+            </Veredicto3>
+            <Veredicto3 veredicto="BUSCAR OTRA">
               Ni el arriendo ni la plusvalía esperada justifican el precio. Franco prefiere decírtelo
               antes de que firmes.
-            </Banda>
+            </Veredicto3>
           </div>
         </Seccion>
 

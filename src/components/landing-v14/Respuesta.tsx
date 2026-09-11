@@ -155,7 +155,7 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
             <span>{x.eyebrow}</span>
             <span>{x.modalidad}</span>
           </div>
-          <div className="lv-mini-pill">
+          <div className="lv-pill lv-mini-pill">
             <i aria-hidden="true" />
             {x.etiqueta}
           </div>
