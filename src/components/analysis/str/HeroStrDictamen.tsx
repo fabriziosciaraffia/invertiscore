@@ -14,6 +14,7 @@ import { esProsaStrPodada } from "@/components/analysis/AIInsightSection";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import type { ReactNode } from "react";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { useRediseno } from "@/components/analysis/RedisenoContexto";
 
 /**
  * Hero STR con el contrato LTR (T1 · 04-sep-2026): chip `f.` en el título, prosa a
@@ -58,6 +59,7 @@ export function HeroStrDictamen({
   // Prosa podada (v17) o los siete bloques viejos. El camino viejo es permanente para
   // las 94 filas anónimas del parque STR, que no pueden regenerar.
   const podada = esProsaStrPodada(ai);
+  const rediseno = useRediseno();
   const conviene = ai?.conviene;
   const respuesta = conviene?.respuestaDirecta?.trim() || null;
   const reencuadre = conviene?.reencuadre?.trim() || null;
@@ -140,12 +142,18 @@ export function HeroStrDictamen({
     <div className="mb-3">
       <div className="py-[9px]">
         <div>
-          <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
-            <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
-              f.
-            </span>
-            <span className="min-w-0">{pregunta}</span>
-          </h2>
+          {/* CON EL REDISEÑO Y PROSA PODADA ESTE TÍTULO NO VA: es la línea que declara,
+              y §10 se la da como título a la sección de hallazgos, que ahora vive suelta
+              después del hero. Repetirla acá dejaría el mismo texto dos veces seguidas.
+              El camino viejo lo conserva: su título es la pregunta de su propia prosa. */}
+          {!(rediseno && podada) && (
+            <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
+              <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
+                f.
+              </span>
+              <span className="min-w-0">{pregunta}</span>
+            </h2>
+          )}
           {respuesta ? (
             <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch] md:ml-9">
               {renderPlumon(respuesta)}

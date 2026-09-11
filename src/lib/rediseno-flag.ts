@@ -48,6 +48,16 @@
  */
 export const REDISENO_INFORME = true;
 
+/**
+ * EL INTERRUPTOR DE STR, APARTE (bloque A de «STR al rediseño», 11-sep-2026). STR ya
+ * recibe `rediseno` y monta el provider —igual que LTR— pero lo decide ESTA constante,
+ * no la de arriba: con LTR en `true`, compartir interruptor habría encendido en STR una
+ * pasada a medias (contrato §11). Se enciende en su propio goal, con su commit y su
+ * revert. Mientras tanto la ruta dev lo fuerza con `?rediseno=1` a través del contexto.
+ * Cuando se encienda y se retire el andamio, las dos constantes se van juntas.
+ */
+export const REDISENO_INFORME_STR = false;
+
 /** La clase que abre las reglas del rediseño. Vacía cuando el interruptor está en
  *  `false`, así que se puede interpolar sin condicionales en el call site. */
 export const CLASE_REDISENO = REDISENO_INFORME ? "doc-r2" : "";

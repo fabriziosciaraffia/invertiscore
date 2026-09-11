@@ -112,9 +112,12 @@ function Inner() {
   }
   if (!fix || !isSTR) return <div style={{ padding: 40 }}>fixture ?row=staRosaStr|grajalesStr (STR, con &comp=pagina o &comp=&lt;pieza&gt;) · providenciaLtr (&comp=paginaLtr) no encontrado</div>;
 
-  // `?comp=pagina` monta la página STR completa (T1) con el fixture.
+  // `?comp=pagina` monta la página STR completa (T1) con el fixture. `?rediseno=1` le
+  // provee el contexto desde afuera (bloque A · 11-sep-2026): la página lo combina con
+  // `REDISENO_INFORME_STR`, que sigue apagada, igual que hace LTR con la suya.
   if (comp === "pagina") {
     return (
+      <RedisenoProvider valor={sp.get("rediseno") === "1"}>
       <STRResultsClient
         analysisId={fix.id}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -135,6 +138,7 @@ function Inner() {
         simulacionStr={fix.simulacion ?? null}
         zonaStr={fix.zonaStr ?? null}
       />
+      </RedisenoProvider>
     );
   }
 
