@@ -15,6 +15,8 @@ import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 import { esProsaDosBloques } from "./AIInsightSection";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import { useRediseno } from "./RedisenoContexto";
+import { SeccionInforme } from "./SeccionInforme";
+import { MarcaSeccion } from "./informeTelemetry";
 import type { ReactNode } from "react";
 
 /**
@@ -40,11 +42,21 @@ export function HeroLTR({
   prosaError,
   onRetryProsa,
   razones,
+  hallazgos,
+  accessLevel = "free",
 }: {
   /** Las cuatro líneas de hallazgo. En v21 se leen DENTRO de este bloque, debajo de
    *  la línea que declara; con prosa vieja el caller las monta en su sección aparte
    *  y acá no llega nada. */
   razones?: ReactNode;
+  /** EL ORDEN (contrato §2): la sección de hallazgos, la que va ENTRE el hero y la
+   *  recomendación. La arma el grid —es quien tiene la lista ordenada y sus gates— y
+   *  la monta este componente, porque la recomendación que va después se calcula acá
+   *  y no puede salir del subárbol sin mover nueve derivadas con ella. Solo llega con
+   *  el rediseño encendido; el camino viejo sigue recibiendo `razones`. */
+  hallazgos?: ReactNode;
+  /** Para la marca de telemetría de la sección nueva. */
+  accessLevel?: string;
   /** Prosa IA. `null` mientras se genera (Goal C/E/E.2: veredicto inmediato) —
    *  el hero renderiza todo lo que viene del motor y el slot de prosa muestra
    *  ProgresoGeneracion (skeleton didáctico) hasta que llegue. */
@@ -294,7 +306,48 @@ export function HeroLTR({
     })();
   const bajada = bajadaRecomendacion(veredicto, bloqueDeterminista);
 
-  return (
+  /* LA RECOMENDACIÓN. Se calcula acá —nueve derivadas de este componente— y se
+     monta en el lugar que mande el camino: con el rediseño es su PROPIA sección,
+     después de los hallazgos (contrato §2); en el camino viejo sigue dentro del
+     bloque del hero, que es donde se leía hasta hoy. */
+  /* Pieza compartida desde T1 (PosicionFranco): la caja IA + la firma en el cuerpo
+     con la línea roja, y el footer con el botón que abre el modal. Sin caja ni
+     footer no hay bloque. */
+  const recomendacion = (
+    <PosicionFranco
+      cajaAccionable={cajaAccionable && prosaSobrevive ? renderPlumon(cajaAccionable) : null}
+      bloque={bloqueDeterminista ? <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} /> : undefined}
+      prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
+      chip={dosBloques ? objetivoChip : undefined}
+      titulo={rediseno ? "La recomendación de Franco" : dosBloques ? "Lo que haría yo" : undefined}
+      bajada={rediseno ? bajada : undefined}
+      fechaFirma={fechaFirma}
+      footer={
+        /* EL CTA DEL ESTADO SIN SALIDA nombra lo que hay del otro lado: no quedan
+           ajustes que hacer, queda ver QUÉ SE PROBÓ. El pop-up es el mismo — ahí
+           sigue el mix que llega al escalón intermedio, que es donde el contrato
+           §5 lo manda. Solo cambia el rótulo del botón. */
+        rediseno && footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
+      }
+      tipo="ltr"
+      veredicto={veredicto}
+    />
+  );
+
+  /* ¿EL HERO TIENE CUERPO PROPIO? Con el rediseño y prosa de dos bloques el h2 no va
+     (§10: la línea que declara es el título de los hallazgos), y v22 mató
+     `respuestaDirecta`, así que en esas filas no queda NADA para pintar acá. Hasta hoy
+     no se notaba porque esta sección alojaba la recomendación; sacándola a su propia
+     sección, lo que queda es una sección vacía con su margen — 56 px de aire medidos en
+     el DOM. Una sección sin contenido no se monta: §2 pide «nada más».
+
+     Las tres cosas que sí la pueblan: el título del camino viejo, la apertura de la
+     prosa cuando existe (filas v21 y anteriores), y el skeleton o el error mientras la
+     redacción viene en camino. */
+  const heroTieneCuerpo =
+    !(rediseno && dosBloques) || Boolean(respuesta) || !hayProsa || Boolean(prosaError);
+
+  const cuerpoHero = (
     <div className="mb-3">
       {/* SIN PADDING HORIZONTAL. El `px-6 md:px-8` era el padding INTERNO de la
           card: al retirarla quedo empujando el texto 32px hacia adentro, y el
@@ -377,35 +430,50 @@ export function HeroLTR({
         </div>
 
       </div>
-      {/* ═══ LA POSICIÓN DE FRANCO — card con footer propio (contrato CONGELADO, T2) ═══
-          Pieza compartida desde T1 (PosicionFranco): la caja IA + la firma en el cuerpo
-          con la línea roja; el footer "Lo que te separa" / "Cuánto aguanta" con fondo
-          propio y el botón real que abre el modal. Cuelga del texto del título (md:ml-9)
-          igual que la prosa. Sin caja ni footer no hay bloque. */}
       {/* LAS RAZONES, dentro del mismo bloque (v21): las cuatro líneas de hallazgo
           suben acá desde su sección propia. «Qué determina el veredicto» no se borra
           —se fusiona—: la línea que declara ya es ese título, y tenerlo dos veces
           separaba la afirmación de su fundamento con un corte de sección en medio. */}
       {dosBloques && razones}
-      <PosicionFranco
-        cajaAccionable={cajaAccionable && prosaSobrevive ? renderPlumon(cajaAccionable) : null}
-        bloque={bloqueDeterminista ? <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} /> : undefined}
-        prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
-        chip={dosBloques ? objetivoChip : undefined}
-        titulo={rediseno ? "La recomendación de Franco" : dosBloques ? "Lo que haría yo" : undefined}
-        bajada={rediseno ? bajada : undefined}
-        fechaFirma={fechaFirma}
-        footer={
-          /* EL CTA DEL ESTADO SIN SALIDA nombra lo que hay del otro lado: no quedan
-             ajustes que hacer, queda ver QUÉ SE PROBÓ. El pop-up es el mismo — ahí
-             sigue el mix que llega al escalón intermedio, que es donde el contrato
-             §5 lo manda. Solo cambia el rótulo del botón. */
-          rediseno && footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
-        }
-        tipo="ltr"
-        veredicto={veredicto}
-      />
+      {!rediseno && recomendacion}
     </div>
+  );
+
+  /* EL ORDEN DEL CONTRATO §2: hero → hallazgos → recomendación. Hasta hoy la
+     recomendación vivía DENTRO del hero, así que el lector leía la conclusión antes
+     que lo que la sostiene.
+
+     POR QUÉ LAS TRES SECCIONES LAS EMITE ESTE COMPONENTE Y NO EL GRID. La
+     recomendación se arma con nueve derivadas que se calculan acá —`cajaAccionable`,
+     `footer`, `negociacion`, `bloqueDeterminista`, `prosaSobrevive`, `objetivoChip`,
+     `fechaFirma`, `sinSalidaRecomendacion` y `bajada`—, así que sacarla del subárbol
+     sin moverlas a todas era imposible. El grid sigue decidiendo QUÉ va en el medio:
+     le pasa la sección de hallazgos ya armada, igual que hoy le pasa `razones`.
+
+     Sacar ese cálculo a una pieza propia —y que el grid monte las tres— es el refactor
+     que el contrato pide de verdad, y queda en cola: no es trabajo de este goal. */
+  if (!rediseno) {
+    return (
+      <SeccionInforme id="hero" tono="paper2">
+        {cuerpoHero}
+      </SeccionInforme>
+    );
+  }
+  return (
+    <>
+      {heroTieneCuerpo && (
+        <SeccionInforme id="hero" tono="paper2">
+          {cuerpoHero}
+        </SeccionInforme>
+      )}
+      {hallazgos}
+      {/* LA SEGUNDA CAJA de §2. La primera es «portada»; ésta es la otra, y hasta hoy
+          no existía como sección: nace con este orden. */}
+      <SeccionInforme id="recomendacion" tono="paper2" caja>
+        <MarcaSeccion seccion="recomendacion" tipo="ltr" accessLevel={accessLevel} />
+        {recomendacion}
+      </SeccionInforme>
+    </>
   );
 }
 

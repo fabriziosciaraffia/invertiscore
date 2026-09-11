@@ -50,6 +50,9 @@ const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8"); 
 
 const CSS = leer("src/components/analysis/portada/PortadaInforme.tsx");
 const GRID = leer("src/components/analysis/SubjectCardGrid.tsx");
+const HERO = leer("src/components/analysis/HeroLTR.tsx");
+const TELE = leer("src/components/analysis/informeTelemetry.tsx");
+const HSTR = leer("src/components/analysis/str/HeroStrDictamen.tsx");
 const SECCION = leer("src/components/analysis/SeccionInforme.tsx");
 const ZONA = leer("src/components/analysis/zona/ZonaLtr.tsx");
 const CTX = leer("src/components/analysis/RedisenoContexto.tsx");
@@ -91,12 +94,19 @@ function reglaDe(sel: string, txt = BLOQUE): string | null {
   return null;
 }
 
-// ── 1 · solo el hero pide caja ─────────────────────────────────────────────
+// ── 1 · las DOS cajas, y solo ésas ─────────────────────────────────────────
 {
-  const CAJAS_ESPERADAS = 1; // sube a 2 cuando 4c saque la recomendación del hero
-  const usos = [...GRID.matchAll(/<SeccionInforme\b[^>]*\bcaja\b/g)].length;
+  // §2: «página blanca, DOS cajas y nada más». Son la portada —el hero del contrato
+  // §3— y la recomendación. Se cuentan en los DOS archivos que montan secciones: el
+  // grid y `HeroLTR`, que desde el 11-sep emite la de la recomendación. Contarlas solo
+  // en el grid daba 1 y VERDE justo después de que la segunda naciera en otro archivo.
+  const CAJAS_ESPERADAS = 2;
+  const usos = [...(GRID + HERO).matchAll(/<SeccionInforme\b[^>]*\bcaja\b/g)].length;
   if (usos !== CAJAS_ESPERADAS) {
-    F(`1 · hay ${usos} secciones con «caja» y el tier espera ${CAJAS_ESPERADAS}. Si 4c sacó la recomendación del hero, subí la constante; si no, alguien le puso caja a una sección que el contrato deja suelta.`);
+    F(`1 · hay ${usos} secciones con «caja» entre el grid y HeroLTR, y §2 pide ${CAJAS_ESPERADAS}: la portada y la recomendación. Si nació una tercera, el contrato dice que va suelta sobre el papel.`);
+  }
+  if (!/id="recomendacion"[^>]*\bcaja\b/.test(HERO)) {
+    F("1 · la recomendación dejó de pedir caja: es la SEGUNDA de las dos de §2");
   }
   // LA CAJA VA EN LA PORTADA. El «hero» del contrato §3 —eyebrow, botón, score, titular,
   // cifra clave— es `id="portada"`; lo que el código llama `id="hero"` es la prosa IA y
@@ -371,11 +381,77 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
   if (!pag || !/padding:\s*0/.test(pag)) F("16 · el padding del marco sobrevivió al marco");
 }
 
+// ── 17 · el orden: hero → hallazgos → recomendación (contrato §2) ────────
+{
+  // Hasta el 11-sep-2026 la recomendación vivía DENTRO del hero, así que el lector
+  // leía la conclusión ANTES que lo que la sostiene. §2 pide el orden inverso.
+  //
+  // Medido en el DOM con el interruptor encendido, después del cambio:
+  //   portada (caja) · principales-hallazgos · recomendacion (caja) · los-numeros ·
+  //   la-inversion · la-zona
+  // Las dos cajas de §2 son «portada» y «recomendacion», y no hay ninguna otra sección
+  // entre los hallazgos y la recomendación.
+
+  // 17a · la sección existe, es caja, y la emite HeroLTR.
+  const iRec = HERO.indexOf('<SeccionInforme id="recomendacion"');
+  if (iRec === -1) {
+    F("17 · HeroLTR dejó de emitir la sección «recomendacion». La recomendación volvió a vivir dentro del hero y el lector lee la conclusión antes que lo que la sostiene (§2).");
+  } else {
+    const abre = HERO.slice(iRec, HERO.indexOf(">", iRec));
+    if (!/\bcaja\b/.test(abre)) {
+      F("17 · la sección «recomendacion» dejó de pedir `caja`. §2 tiene DOS cajas —la portada y ésta—; sin la prop queda suelta sobre el papel como una sección más.");
+    }
+    // 17b · y el orden dentro del JSX: los hallazgos ANTES que ella.
+    const iHall = HERO.indexOf("{hallazgos}");
+    if (iHall === -1) F("17 · HeroLTR dejó de montar el slot `{hallazgos}`, que es lo que va en el medio del orden");
+    else if (iHall > iRec) {
+      F("17 · en HeroLTR el slot `{hallazgos}` quedó DESPUÉS de la sección «recomendacion»: el orden de §2 es hero → hallazgos → recomendación.");
+    }
+  }
+  // 17c · el grid ya no envuelve al hero, que es lo que hacía imposible el orden.
+  if (/<SeccionInforme id="hero"/.test(GRID)) {
+    F("17 · el grid volvió a envolver a HeroLTR en la sección «hero». Con ese envoltorio, todo lo que HeroLTR emita queda ANIDADO dentro del hero y el orden de §2 es inalcanzable.");
+  }
+  if (!/<HeroLTR[\s\S]{0,400}hallazgos=\{/.test(GRID)) {
+    F("17 · el grid dejó de pasarle `hallazgos` a HeroLTR: la sección del medio no llega y el orden queda hero → recomendación.");
+  }
+  // 17d · la sección vieja de hallazgos queda SOLO para el camino viejo. Montada en los
+  // dos caminos se vería DOS VECES.
+  if (!/\{!rediseno && !dosBloques && hallazgosOrdenados\.length > 0 && \(/.test(GRID)) {
+    F("17 · la sección de hallazgos del camino viejo dejó de excluir el rediseño. Con el rediseño encendido HeroLTR ya la monta: sin el gate, los hallazgos se dibujan DOS veces.");
+  }
+  // 17e · la telemetría tiene la clave, o la sección nueva no se mide.
+  if (!/\|\s*"recomendacion"/.test(TELE)) {
+    F("17 · falta la clave «recomendacion» en el tipo `SeccionInforme` de la telemetría. La sección es nueva en el orden: sin su clave no hay serie, y su lectura se seguiría contando dentro de `hero`.");
+  }
+  if (!/<MarcaSeccion seccion="recomendacion"/.test(HERO)) {
+    F("17 · la sección «recomendacion» no emite su marca de telemetría");
+  }
+  // 17f · STR no recibe el orden nuevo: su hero sigue montando la recomendación adentro.
+  if (/<SeccionInforme id="recomendacion"/.test(HSTR)) {
+    F("17 · el hero de STR pasó a emitir la sección «recomendacion». STR no tuvo su pasada de rediseño: el orden nuevo es de LTR (contrato §11).");
+  }
+}
+
+// ── 18 · una sección sin contenido no se monta ───────────────────────────
+{
+  // Al sacar la recomendación, la sección «hero» quedó VACÍA en las filas con prosa de
+  // dos bloques: el h2 no va (§10 se lo da a los hallazgos) y v22 mató
+  // `respuestaDirecta`, así que no queda nada que pintar. Medido antes del gate: 18 px
+  // de alto, texto de largo 0, y 56 px de aire con su margen. §2 pide «nada más».
+  if (!/const heroTieneCuerpo\s*=/.test(HERO)) {
+    F("18 · HeroLTR dejó de decidir si el hero tiene cuerpo propio. Con prosa v22 esa sección no tiene NADA que pintar —el h2 no va y no hay apertura—, y montarla deja una sección vacía con su margen.");
+  }
+  if (!/\{heroTieneCuerpo && \(/.test(HERO)) {
+    F("18 · la sección «hero» volvió a montarse sin condición: con prosa v22 queda vacía.");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runEstructuraRedisenoTier(): { hard: number } {
   console.log("\n─── TIER ESTRUCTURA-REDISEÑO (contrato §2, §6 y §8 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — una sola caja (el hero), la alternancia muerta con la especificidad resuelta, el marco sin sombra en las dos formas del selector, 38/34 px de separación, 700 px de ancho, el andamio --doc-inset en pie, las cifras como tarjetas de dos columnas que no reaccionan, el marco retirado entero, los tres títulos de §10 detrás del interruptor, y la zona con el arriendo primero, las píldoras en el par direccional y el caveat del período en el pie común");
+    console.log("  ✓ VERDE — las dos cajas de §2 en el orden hero → hallazgos → recomendación, la alternancia muerta con la especificidad resuelta, el marco sin sombra en las dos formas del selector, 38/34 px de separación, 700 px de ancho, el andamio --doc-inset en pie, las cifras como tarjetas de dos columnas que no reaccionan, el marco retirado entero, el hero que no se monta vacío, los tres títulos de §10 detrás del interruptor, y la zona con el arriendo primero, las píldoras en el par direccional y el caveat del período en el pie común");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

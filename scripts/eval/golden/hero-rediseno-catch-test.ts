@@ -145,10 +145,15 @@ function reglaDe(sel: string): string | null {
   }
   if (!/rediseno \?[\s\S]{0,400}doc-hero-pill/.test(CSS)) F("6 · el botón dejó de estar detrás del interruptor: STR se llevaría el cambio puesto");
   // Los hallazgos son sección suelta (§2, §4) y su título es la línea que declara (§10).
-  if (!/\(!dosBloques \|\| rediseno\) && hallazgosOrdenados\.length > 0/.test(GRID)) {
+  // DESDE EL ORDEN (11-sep): la sección la sigue ARMANDO el grid —es quien tiene la
+  // lista y sus gates— pero se la pasa a `HeroLTR` por la prop `hallazgos`, que la monta
+  // entre el hero y la recomendación. Lo que se fija es que exista y cómo se titula, no
+  // dónde queda el JSX; el orden lo fija el invariante 17 del tier de estructura.
+  const slot = GRID.slice(GRID.indexOf("hallazgos={"), GRID.indexOf("prosaError="));
+  if (!/rediseno && !\(!prosa && loading\) && hallazgosOrdenados\.length > 0/.test(slot)) {
     F("6 · la sección suelta de hallazgos dejó de montarse con el rediseño (contrato §2 y §4)");
   }
-  if (!/titulo=\{rediseno && dosBloques \? lineaQueDeclara\(veredicto\)/.test(GRID)) {
+  if (!/titulo=\{dosBloques \? lineaQueDeclara\(veredicto\)/.test(slot)) {
     F("6 · la sección de hallazgos dejó de titularse con la línea que declara (§10)");
   }
   if (!/!rediseno && dosBloques && hallazgosOrdenados\.length > 0/.test(GRID)) {

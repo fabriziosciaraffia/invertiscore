@@ -71,6 +71,12 @@ export type SeccionInforme =
   // T2 del rediseño (contrato CONGELADO 02-sep-2026): las dos secciones nuevas de
   // la página LTR. `piramide` sigue midiendo el acordeón (misma serie).
   | "hallazgos"
+  // LA SECCIÓN ES NUEVA EN EL ORDEN (11-sep-2026, contrato §2): la recomendación
+  // dejó de vivir dentro del hero y pasó a ser su propia sección, entre los
+  // hallazgos y las cifras. Hasta hoy su lectura se medía como parte de `hero`,
+  // así que la serie de `recomendacion` arranca en el deploy de este cambio y no
+  // es comparable con nada anterior — y `hero` deja de incluirla.
+  | "recomendacion"
   | "numeros"
   | "piramide"
   | "evidencia"

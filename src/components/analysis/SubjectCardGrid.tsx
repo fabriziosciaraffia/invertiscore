@@ -308,12 +308,29 @@ export function SubjectCardGrid({
         />
       )}
       </SeccionInforme>
-      {/* ═══ 2 · HERO (paper2) ═══ */}
-      {/* Contrato §2: el hero es una de las dos cajas. La recomendación es la otra, y
-          hoy vive DENTRO del hero (`HeroLTR` monta `PosicionFranco`): sale a su propia
-          sección en 4c, cuando se rediseñe su contenido. */}
-      <SeccionInforme id="hero" tono="paper2">
+      {/* ═══ 2 · HERO · HALLAZGOS · RECOMENDACIÓN ═══ */}
+      {/* EL ORDEN DEL CONTRATO §2: hero → hallazgos → recomendación. Las tres secciones
+          las emite `HeroLTR`, no este grid: la recomendación se arma con nueve derivadas
+          que se calculan ahí dentro, así que sacarla del subárbol pedía moverlas a todas.
+          El grid sigue decidiendo QUÉ va en el medio —le pasa la sección de hallazgos ya
+          armada, igual que hoy le pasa `razones`— y con el rediseño apagado no le pasa
+          nada: `HeroLTR` devuelve una sola sección y el informe viejo queda igual. */}
       <HeroLTR
+        accessLevel={accessLevel}
+        hallazgos={
+          /* La MISMA sección que el camino viejo monta más abajo, con sus mismos gates:
+             solo cambia de lugar. Durante la espera de prosa no se monta, igual que hoy. */
+          rediseno && !(!prosa && loading) && hallazgosOrdenados.length > 0 ? (
+            <SeccionInforme
+              id="principales-hallazgos"
+              tono="paper"
+              titulo={dosBloques ? lineaQueDeclara(veredicto) : "Qué determina el veredicto"}
+            >
+              <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
+              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} />
+            </SeccionInforme>
+          ) : undefined
+        }
         onOpenDrawer={setActiveDrawer}
         data={prosa}
         razones={
@@ -343,7 +360,6 @@ export function SubjectCardGrid({
         createdAt={createdAt}
         fechaProsa={fechaProsa}
       />
-      </SeccionInforme>
       {/* ═══ ZONA 2 (Goal E) ═══ Sin prosa: UN solo bloque de espera — mensajes
           progresivos + siluetas puras (cero texto a medias, cero afordancia).
           Con error de prosa el bloque queda estático (el error vive inline en el
@@ -371,14 +387,14 @@ export function SubjectCardGrid({
               porque el informe viejo tiene que verse coherente consigo mismo —su
               título pregunta lo que su prosa contesta— y porque las 453 filas
               anónimas del parque nunca van a regenerar. */}
-          {(!dosBloques || rediseno) && hallazgosOrdenados.length > 0 && (
+          {!rediseno && !dosBloques && hallazgosOrdenados.length > 0 && (
             <SeccionInforme
               id="principales-hallazgos"
               tono="paper"
-              /* EL TÍTULO LO DA LA LÍNEA QUE DECLARA cuando hay prosa nueva (§10). El
-                 camino viejo conserva el suyo: su prosa no trae esa línea, así que
-                 ponérsela sería inventarle un encabezado que nada sostiene. */
-              titulo={rediseno && dosBloques ? lineaQueDeclara(veredicto) : "Qué determina el veredicto"}
+              /* El camino viejo conserva su título: su prosa no trae la línea que
+                 declara, así que ponérsela sería inventarle un encabezado que nada
+                 sostiene. El de §10 vive ahora en la sección que emite `HeroLTR`. */
+              titulo="Qué determina el veredicto"
             >
               <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
               <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} />
