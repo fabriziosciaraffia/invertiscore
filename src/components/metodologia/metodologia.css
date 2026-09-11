@@ -97,7 +97,9 @@
   font-weight: 700; font-size: clamp(24px, 5.4vw, 34px); line-height: 1.15; letter-spacing: -0.02em;
   max-width: 22ch;
 }
-.mtd-sec p { margin: 18px 0 0; max-width: 62ch; font-size: 16px; line-height: 1.6; color: var(--lv-g2); }
+/* los párrafos de la card de la sección 04 (.lv-reco) tienen su propia tipografía en
+   landing.css: la regla de sección no los toca */
+.mtd-sec p:not(.lv-reco *) { margin: 18px 0 0; max-width: 62ch; font-size: 16px; line-height: 1.6; color: var(--lv-g2); }
 .mtd-sec p b { color: var(--lv-ink); font-weight: 600; }
 .mtd-sec p mark { background: linear-gradient(transparent 60%, var(--lv-plumon) 60%); }
 .mtd-nota {
@@ -170,6 +172,17 @@
 /* ── bandas de veredicto (el mismo componente de la sección 2) ── */
 .mtd-bandas { margin-top: 26px; display: grid; gap: 24px; }
 .mtd-banda p { margin-top: 12px !important; }
+/* subtítulo dentro de una sección (04: la recomendación como mecanismo) */
+.mtd-h3 {
+  margin: 44px 0 0;
+  font-family: var(--font-heading), "Source Serif 4", Georgia, serif;
+  font-weight: 700; font-size: clamp(20px, 4.6vw, 26px); line-height: 1.2; letter-spacing: -0.015em;
+  max-width: 26ch;
+}
+/* la card §5 congelada: la misma pieza de la sección 3 de la landing, sin rotación
+   ni pausa, con el ancho de lectura de la página */
+.mtd-reco { margin-top: 26px; max-width: 620px; }
+.mtd-reco .lv-reco { margin: 0; }
 
 /* ── FAQ ── */
 .mtd-faq { margin-top: 24px; display: grid; gap: 8px; }

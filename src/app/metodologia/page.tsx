@@ -29,6 +29,8 @@ import type { Veredicto } from "@/lib/types";
 
 import { actualizado, Glifo, PieLanding, Wordmark } from "@/components/landing-v14/Marca";
 import { CampoDireccion } from "@/components/landing-v14/CampoDireccion";
+import { CardRecomendacion } from "@/components/landing-v14/Recomendacion";
+import type { EjemploLanding } from "@/lib/landing-vivo";
 import { Modalidad, ToggleModalidad } from "@/components/metodologia/Modalidad";
 
 import "@/components/landing-v14/landing.css";
@@ -144,6 +146,36 @@ function Veredicto3({ veredicto, children }: { veredicto: Veredicto; children: R
   );
 }
 
+/** El párrafo del ejemplo real de la sección 04, escrito DESDE la card: los
+ *  números son los del bloque (`construirLoQueHariaYo`) y no constantes, así la
+ *  prosa y la card no pueden decir cosas distintas — «si cambia uno, cambia el
+ *  otro» por construcción (decisión de Fabrizio, FASE 1.9). Sin pesos ni umbrales.
+ *  Si el ejemplo no trae la forma completa (precio y arriendo solos + mix con pie y
+ *  plazo), devuelve null y la sección se queda con el copy general. */
+function parrafoEjemplo(ej: EjemploLanding): string | null {
+  const b = ej.recomendacion?.bloque;
+  const mix = b?.mix;
+  const precio = b?.filas.find((f) => f.rotuloCorto === "Solo el precio");
+  const arriendo = b?.filas.find((f) => f.rotuloCorto === "Solo el arriendo");
+  if (!b || !mix || mix.destino !== "COMPRAR" || !precio || !arriendo || !mix.descuento) return null;
+  const pie = mix.movimiento.pie;
+  const plazo = mix.movimiento.plazo;
+  if (!pie && !plazo) return null;
+  const dorms = /^(\d)D/.exec(ej.detalle ?? "")?.[1];
+  const que = dorms ? `un departamento de ${dorms === "1" ? "un dormitorio" : `${dorms} dormitorios`}` : "un departamento";
+  const sinSigno = (c: string) => c.replace(/^[−+–-]/, "");
+  const tuyo = [
+    pie ? `subes el pie de ${pie.de} a ${pie.a}%` : null,
+    plazo ? `estiras el plazo de ${plazo.de} a ${plazo.a} años` : null,
+  ].filter(Boolean).join(" y ");
+  return (
+    `Un ejemplo real, ${que} en ${ej.comuna}. Solo bajando el precio, haría falta un ${sinSigno(precio.cifra)} de descuento. ` +
+    `Solo con el arriendo, un ${sinSigno(arriendo.cifra)} más alto. Pero si ${tuyo}, el descuento que queda por pedir baja a ` +
+    `${sinSigno(mix.descuento)}. Ese es el camino que Franco recomienda, porque el pie y el plazo los mueves tú, y el precio ` +
+    `depende del vendedor.`
+  );
+}
+
 function Fila({ k, v, nota }: { k: string; v: string; nota?: string }) {
   return (
     <tr>
@@ -159,6 +191,11 @@ function Fila({ k, v, nota }: { k: string; v: string; nota?: string }) {
 // ─── Página ──────────────────────────────────────────────────────────────────
 export default async function MetodologiaPage() {
   const datos = await leerDatosLanding();
+  // El ejemplo de la sección 04: el MISMO AJUSTA de la landing (Providencia), con la
+  // card congelada (sin rotación). Si un día no trae ecuación completa, la sección
+  // se queda con el copy general y sin card: no se inventa un caso.
+  const ejemploReco = datos.ejemplos.find((e) => e.veredicto === "AJUSTA SUPUESTOS" && parrafoEjemplo(e)) ?? null;
+  const parrafoReco = ejemploReco ? parrafoEjemplo(ejemploReco) : null;
   const ahora = new Date();
 
   const faqSchema = {
@@ -584,6 +621,25 @@ export default async function MetodologiaPage() {
               antes de que firmes.
             </Veredicto3>
           </div>
+          {/* La recomendación como MECANISMO (FASE 1.9): un caso real, sin pesos ni
+              umbrales. El párrafo sale de la card y la card del motor: misma fuente que
+              la sección 3 de la landing. Copy aprobado por Fabrizio el 11-sep-2026. */}
+          <h3 className="mtd-h3">Cuando el veredicto no es Comprar, Franco te dice qué tendría que cambiar</h3>
+          <p>
+            No es un consejo genérico: <b>prueba cada cambio por separado</b> y después combina los que
+            dependen de ti.
+          </p>
+          {parrafoReco && <p>{parrafoReco}</p>}
+          <p>
+            La recomendación siempre apunta a <b>{etiquetaVeredicto("COMPRAR", "frase")}</b>. Si ninguna
+            combinación llega, Franco lo dice con el número real de lo que haría falta, y cuando encuentra
+            una comuna donde un depto así sí convendría, la nombra.
+          </p>
+          {ejemploReco && (
+            <div className="mtd-reco">
+              <CardRecomendacion ejemplo={ejemploReco} />
+            </div>
+          )}
         </Seccion>
 
         <Seccion n="05" id="gates" titulo="Cuándo el veredicto ignora el puntaje">
