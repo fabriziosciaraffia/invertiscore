@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La fila como una línea</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --serif:"Source Serif 4",Georgia,serif;
+    --sans:"IBM Plex Sans",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+    --signal:#C8323C;
+  }
+  [data-theme="light"]{
+    --bg:#E9E6DF;--paper:#FAF8F3;--paper2:#F1EEE7;--paper3:#EAE7DF;
+    --line:#DAD6CC;--line2:#C4BFB2;
+    --tx:#141311;--tx2:#3B3A36;--tx3:#75726A;--tx4:#A39F94;--good:#2F7D55;
+  }
+  [data-theme="dark"]{
+    --bg:#0A0A0A;--paper:#141414;--paper2:#1B1B1B;--paper3:#232323;
+    --line:#282828;--line2:#3A3A3A;
+    --tx:#EDEBE6;--tx2:#C4C2BC;--tx3:#8C8A84;--tx4:#5C5A55;--good:#57B98A;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);padding:26px 16px 90px}
+  .lab{max-width:1180px;margin:0 auto}
+  h1{font-family:var(--serif);font-size:20px;font-weight:600;margin-bottom:6px}
+  .sub{font-size:13px;color:var(--tx3);line-height:1.6;max-width:74ch;margin-bottom:20px}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+    padding:8px 13px;background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;align-items:start}
+  [data-view="mobile"] .grid{grid-template-columns:390px;justify-content:center}
+
+  .opt{background:var(--paper);border:1px solid var(--line);padding:17px 19px 20px}
+  .opt.antes{background:var(--paper2)}
+  .opt-n{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--tx4)}
+  .opt-t{font-family:var(--serif);font-size:16.5px;font-weight:600;margin-top:2px}
+  .opt-d{font-size:12.5px;color:var(--tx3);line-height:1.55;margin:10px 0 6px;
+    padding-bottom:12px;border-bottom:1px solid var(--line)}
+  .cnt{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--signal)}
+
+  /* ---------- HOY: la fila con seis elementos ---------- */
+  .row{display:grid;grid-template-columns:22px 1fr auto;gap:3px 10px;padding:14px 0;
+    border-bottom:1px solid var(--line);align-items:start}
+  .row:last-of-type{border-bottom:none}
+  .num{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--tx4);padding-top:3px}
+  .tit{font-family:var(--serif);font-size:14.5px;font-weight:600;line-height:1.3}
+  .kic{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--tx3);margin-top:4px;display:flex;align-items:center;gap:6px}
+  .dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex:none}
+  .dot.mal{background:var(--signal)}.dot.bien{background:var(--good)}
+  .kpi{font-family:var(--mono);font-size:16px;font-weight:700;text-align:right;white-space:nowrap;padding-top:2px}
+  .kpi.mal{color:var(--signal)}.kpi.bien{color:var(--good)}
+  .viejo{grid-column:2/4;margin-top:8px;font-size:12.8px;line-height:1.6;color:var(--tx3)}
+
+  /* ---------- LÍNEAS PURAS ---------- */
+  .lineas{list-style:none}
+  .lin{padding:15px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .lin:last-child{border-bottom:none}
+  .lin p{font-family:var(--serif);font-size:15.5px;line-height:1.45;font-weight:400}
+  .lin b{font-weight:600}
+  .lin .cif{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:-.01em}
+  .lin .par{font-family:var(--mono);font-size:13.5px;color:var(--tx3);font-weight:500}
+  .lin:hover p{color:var(--tx)}
+
+  /* ---------- LÍNEAS CON CIFRA APARTE ---------- */
+  .lin2{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:baseline;
+    padding:15px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .lin2:last-child{border-bottom:none}
+  .lin2 p{font-family:var(--serif);font-size:15.5px;line-height:1.45}
+  .lin2 .n{font-family:var(--mono);font-size:15px;font-weight:700;white-space:nowrap;letter-spacing:-.01em}
+  .lin2 .n.mal{color:var(--signal)}
+  .lin2 .n.bien{color:var(--good)}
+  .lin2 .n small{display:block;font-size:10.5px;font-weight:500;color:var(--tx3);
+    text-align:right;margin-top:2px;letter-spacing:0}
+
+  .pie{font-family:var(--mono);font-size:10px;color:var(--tx4);margin-top:20px;line-height:1.75;
+    border-top:1px solid var(--line);padding-top:12px;max-width:78ch}
+  .pie b{color:var(--tx3);font-weight:700}
+  .pie .q{color:var(--signal);font-weight:700}
+</style>
+</head>
+<body>
+<div class="lab">
+  <h1>La fila, reducida a una línea</h1>
+  <p class="sub">Hoy cada hallazgo usa seis elementos para decir una cosa: número de orden, título,
+    kicker, punto de color, cifra grande y bajada. A la derecha, la misma información en una línea que
+    ya lleva la dirección adentro. Datos reales de 7710a017.</p>
+
+  <div class="controls">
+    <div class="seg" id="seg-theme"><button class="on" data-v="light">Claro</button><button data-v="dark">Oscuro</button></div>
+    <div class="seg" id="seg-view"><button class="on" data-v="wide">Lado a lado</button><button data-v="mobile">390 px</button></div>
+  </div>
+
+  <div class="grid">
+
+    <!-- HOY -->
+    <div class="opt antes">
+      <div class="opt-n">Hoy</div>
+      <div class="opt-t">Seis elementos por fila</div>
+      <p class="opt-d">Numeración, título en serif, kicker en mono, punto de color, cifra grande
+        y bajada. <span class="cnt">107 palabras</span></p>
+
+      <div class="row">
+        <div class="num">01</div>
+        <div><div class="tit">Lo que sale de tu bolsillo cada mes</div>
+             <div class="kic"><span class="dot mal"></span>flujo mensual · en contra</div></div>
+        <div class="kpi mal">−$283.194</div>
+        <p class="viejo">Tienes que poner $283.194 al mes de tu bolsillo — acotado frente al dividendo,
+          pero recurrente: sale mes a mes, no una sola vez…</p>
+      </div>
+      <div class="row">
+        <div class="num">02</div>
+        <div><div class="tit">Lo que renta hoy vs lo que debería</div>
+             <div class="kic"><span class="dot bien"></span>rendimiento operativo · a favor</div></div>
+        <div class="kpi bien">4,3%</div>
+        <p class="viejo">Tu CAP rate —lo que el arriendo te deja al año sobre el precio, ya descontados
+          los gastos— es 4,3% — +0,3 pts sobre la referencia de mercado (4,0%)…</p>
+      </div>
+      <div class="row">
+        <div class="num">03</div>
+        <div><div class="tit">Cómo estás financiando</div>
+             <div class="kic"><span class="dot bien"></span>estructura · a favor</div></div>
+        <div class="kpi bien">Pie 20%</div>
+        <p class="viejo">La estructura está bien: el pie de 20% cumple y la tasa está en buen nivel.
+          Ventaja real, pero no es lo que decide acá…</p>
+      </div>
+      <div class="row">
+        <div class="num">04</div>
+        <div><div class="tit">Precio por metro cuadrado</div>
+             <div class="kic"><span class="dot bien"></span>precio vs comuna · a favor</div></div>
+        <div class="kpi bien">−3%</div>
+        <p class="viejo">Tu precio por m² (UF 91,7) está 3% bajo la mediana de 216 publicaciones de
+          departamentos usados de la comuna (UF 94,2)…</p>
+      </div>
+    </div>
+
+    <!-- LÍNEAS PURAS -->
+    <div class="opt">
+      <div class="opt-n">Opción 1</div>
+      <div class="opt-t">Solo la línea</div>
+      <p class="opt-d">La frase lleva la dirección adentro, así que mueren el punto, el kicker, el
+        título y la numeración. La cifra va dentro de la frase. <span class="cnt">31 palabras</span></p>
+
+      <ul class="lineas">
+        <li class="lin"><p>Tienes que poner <span class="cif">$283.194</span> al mes.</p></li>
+        <li class="lin"><p>El cap rate está sobre el promedio <span class="par">· 4,3 / 4,0</span></p></li>
+        <li class="lin"><p>El financiamiento está bien armado <span class="par">· pie 20%</span></p></li>
+        <li class="lin"><p>Compras bajo el promedio de la comuna <span class="par">· UF 91,7 / 94,2</span></p></li>
+      </ul>
+    </div>
+
+    <!-- LÍNEA + CIFRA APARTE -->
+    <div class="opt">
+      <div class="opt-n">Opción 2</div>
+      <div class="opt-t">Línea, y la cifra a la derecha</div>
+      <p class="opt-d">La frase se lee sin números y la cifra queda alineada a la derecha, donde el ojo
+        la busca al comparar. Un color solo cuando la cifra es el juicio. <span class="cnt">28 palabras</span></p>
+
+      <div class="lin2"><p>Tienes que poner plata todos los meses</p>
+        <div class="n mal">−$283.194<small>al mes</small></div></div>
+      <div class="lin2"><p>El cap rate está sobre el promedio</p>
+        <div class="n bien">4,3%<small>promedio 4,0%</small></div></div>
+      <div class="lin2"><p>El financiamiento está bien armado</p>
+        <div class="n bien">Pie 20%<small>tasa en rango</small></div></div>
+      <div class="lin2"><p>Compras bajo el promedio de la comuna</p>
+        <div class="n bien">UF 91,7<small>mediana 94,2</small></div></div>
+    </div>
+
+  </div>
+
+  <p class="pie">
+    Datos reales de 7710a017 · Providencia · 66 · AJUSTAR. Las cuatro frases son propuestas:
+    hoy las escribe el motor y habría que reescribir la plantilla de cada tipo de hallazgo.<br><br>
+    <b>La diferencia entre las dos:</b> en la 1 la cifra vive dentro de la frase, así que se lee como
+    una oración pero las cifras no se alinean entre filas. En la 2 la frase se lee sin números y las
+    cifras quedan en columna, comparables de un vistazo.<br><br>
+    <span class="q">Lo que falta decidir:</span> el formato en el informe. Hoy las filas van separadas
+    por línea. Con líneas cortas eso puede sobrar, o puede ser justo lo que hace falta para que no se
+    lean como un párrafo. La línea entera abre el drawer.
+  </p>
+</div>
+
+<script>
+function wire(id,attr){document.querySelectorAll('#'+id+' button').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('#'+id+' button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on');document.documentElement.dataset[attr]=b.dataset.v;})})}
+wire('seg-theme','theme');
+wire('seg-view','view');
+</script>
+</body>
+</html>

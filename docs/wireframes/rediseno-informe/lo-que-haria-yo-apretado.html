@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lo que haría yo · apretado</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --serif:"Source Serif 4",Georgia,serif;
+    --sans:"IBM Plex Sans",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+    --signal:#C8323C;
+  }
+  [data-theme="light"]{
+    --bg:#E9E6DF;--paper:#FAF8F3;--paper2:#F1EEE7;--paper3:#EAE7DF;
+    --line:#DAD6CC;--line2:#C4BFB2;
+    --tx:#141311;--tx2:#3B3A36;--tx3:#75726A;--tx4:#A39F94;
+  }
+  [data-theme="dark"]{
+    --bg:#0A0A0A;--paper:#141414;--paper2:#1B1B1B;--paper3:#232323;
+    --line:#282828;--line2:#3A3A3A;
+    --tx:#EDEBE6;--tx2:#C4C2BC;--tx3:#8C8A84;--tx4:#5C5A55;
+  }
+  .comprar{--verdict:#2B558F;--verdict-deep:#1B3559}
+  .ajustar{--verdict:#6E4560;--verdict-deep:#442B3B}
+  .buscar {--verdict:#C8323C;--verdict-deep:#7A1F27}
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);padding:24px 16px 90px;
+       font-optical-sizing:auto}
+  .lab{max-width:1240px;margin:0 auto}
+  h1{font-family:var(--serif);font-size:20px;font-weight:600;margin-bottom:6px}
+  .sub{font-size:13px;color:var(--tx3);line-height:1.6;max-width:84ch;margin-bottom:18px}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px;align-items:center}
+  .clab{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+    padding:8px 13px;background:var(--paper);color:var(--tx3);border:none;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--bg);font-weight:700}
+
+  h2.grp{font-family:var(--serif);font-size:17px;font-weight:600;margin:30px 0 4px}
+  .grpd{font-size:12.5px;color:var(--tx3);margin-bottom:14px;max-width:80ch;line-height:1.55}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start}
+  [data-view="mobile"] .grid{grid-template-columns:390px;justify-content:center}
+
+  .card{background:var(--paper);border:1px solid var(--line);overflow:hidden}
+  .banda{background:linear-gradient(100deg,var(--verdict) 0%,var(--verdict-deep) 100%);
+    color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:.16em;padding:9px 18px}
+  .rot{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--tx4);padding:12px 18px 0;display:flex;justify-content:space-between;gap:10px}
+  .rot .c{color:var(--signal);font-weight:700}
+  .body{padding:0 18px 18px}
+  .h3{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--tx3);margin-bottom:4px;padding-top:15px}
+  .kick{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--tx4);margin-bottom:12px}
+  .lead{font-family:var(--serif);font-style:italic;font-size:14.8px;line-height:1.58;
+    color:var(--tx2);margin-bottom:12px}
+  .firma{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--tx4);margin-top:16px}
+
+  /* fila apretada: nombre · chip · cifra + objetivo */
+  .row{display:grid;grid-template-columns:1fr auto;gap:0 12px;padding:12px 0;
+    border-bottom:1px solid var(--line);align-items:start}
+  .row:last-of-type{border-bottom:none}
+  .row .q{font-family:var(--serif);font-size:15.5px;line-height:1.3}
+  .row .n{font-family:var(--mono);font-size:15px;font-weight:700;white-space:nowrap;text-align:right}
+  .row .n small{display:block;font-family:var(--mono);font-size:10px;font-weight:500;
+    color:var(--tx3);margin-top:3px;min-height:13px}
+  .row .n small:empty::after{content:"\00a0"}
+  .chip{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.07em;
+    text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--paper3);
+    color:var(--tx3);margin-top:5px}
+  .chip.tuyo{background:var(--verdict);color:#fff}
+
+  /* mix apretado */
+  .mix{background:var(--paper3);margin:14px -18px 0;padding:14px 18px 15px;
+       border-left:3px solid var(--verdict)}
+  .mix .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--tx3);margin-bottom:9px}
+  .mix .mov{font-family:var(--mono);font-size:12.5px;color:var(--tx2);margin-bottom:11px;line-height:1.5}
+  .mix .mov .de{color:var(--tx3)}
+  .mix .mov .fl{color:var(--tx4);margin:0 4px}
+  .res{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .res .a{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--tx3);text-decoration:line-through}
+  .res .fl{font-family:var(--mono);font-size:13px;color:var(--tx4)}
+  .res .b{font-family:var(--mono);font-size:25px;font-weight:700;color:var(--verdict);letter-spacing:-.02em}
+  .res .u{font-family:var(--mono);font-size:10.5px;color:var(--tx3);width:100%;margin-top:4px}
+  .cost{font-family:var(--mono);font-size:10.5px;color:var(--signal);margin-top:8px}
+
+  .desc{font-family:var(--mono);font-size:10.5px;color:var(--tx3);line-height:1.5;
+    padding-top:11px;border-top:1px solid var(--line);margin-top:13px}
+  .alt{font-family:var(--serif);font-style:italic;font-size:14px;line-height:1.55;
+    color:var(--tx2);margin-top:12px}
+
+  .nota{background:var(--paper3);border:1px dashed var(--line2);margin:0 18px 16px;padding:9px 12px;
+    font-family:var(--mono);font-size:9.5px;color:var(--tx3);line-height:1.6}
+  .nota b{color:var(--signal)}
+
+  .pie{font-family:var(--mono);font-size:10px;color:var(--tx4);margin-top:26px;line-height:1.8;
+    border-top:1px solid var(--line);padding-top:13px;max-width:88ch}
+  .pie b{color:var(--tx3)}
+</style>
+</head>
+<body>
+<div class="lab">
+  <h1>Apretado, al lado de lo anterior</h1>
+  <p class="sub">Mismo contenido, un tercio del texto. La glosa doble de cada fila se reemplaza por
+     el chip de quién la pone y el valor objetivo bajo la cifra. Los conteos son del cuerpo del
+     bloque, sin el título ni la firma.</p>
+
+  <div class="controls">
+    <span class="clab">Tema</span>
+    <div class="seg" id="seg-theme"><button class="on" data-v="light">Claro</button><button data-v="dark">Oscuro</button></div>
+    <span class="clab">Ancho</span>
+    <div class="seg" id="seg-view"><button class="on" data-v="wide">Lado a lado</button><button data-v="mobile">390 px</button></div>
+  </div>
+
+  <h2 class="grp">AJUSTAR · el caso completo</h2>
+  <p class="grpd">Izquierda lo que hay hoy en producción, medio la versión anterior, derecha la
+     apretada.</p>
+
+  <div class="grid">
+
+    <div class="card ajustar">
+      <div class="banda">AJUSTAR</div>
+      <div class="rot"><span>Hoy en producción</span><span class="c">111 palabras</span></div>
+      <div class="body">
+        <div class="h3">Lo que haría yo</div>
+        <p class="lead" style="color:var(--tx3)">El problema es uno solo: el arriendo de $960.000 no
+          alcanza a cubrir el dividendo de $978.290, y eso no cambia en ningún punto de los 25 años
+          — aportas de tu bolsillo todos los meses, sin tope. Hay dos vías para que esto sea un
+          Comprar: bajar el precio a UF 4.175 (descuento de 24,1%, requiere vendedor motivado) o
+          subir el arriendo a $1.205.813. La primera depende del vendedor; la segunda del mercado.
+          Ninguna de las dos está en tus manos.</p>
+        <div class="firma">f. Franco · ANÁLISIS GENERADO POR IA</div>
+      </div>
+    </div>
+
+    <div class="card ajustar">
+      <div class="banda">AJUSTAR</div>
+      <div class="rot"><span>Versión anterior</span><span class="c">118 palabras</span></div>
+      <div class="body">
+        <div class="h3">Lo que haría yo</div>
+        <p class="lead">Franco probó cada palanca por separado, para ver si alguna cambia el
+          veredicto sola. Dos lo hacen, y hay una tercera combinando. La diferencia entre ellas no
+          es cuánto cuestan: es de quién dependen.</p>
+        <div class="kick">Franco probó cada una · dos sirven</div>
+        <div class="row"><div class="q">Bajar el precio<br>
+          <span style="font-size:12px;color:var(--tx3)">a UF 4.175 · un descuento así pide un
+          vendedor motivado</span></div><div class="n">−24,1%<small></small></div></div>
+        <div class="row"><div class="q">Subir el arriendo<br>
+          <span style="font-size:12px;color:var(--tx3)">a $1.205.813 · se testea publicando, no se
+          decide</span></div><div class="n">+25,6%<small></small></div></div>
+        <div class="mix">
+          <div class="k">Si además mueves lo que depende de ti</div>
+          <div class="mov">Pie <span class="de">20%</span><span class="fl">→</span>30% ·
+            Plazo <span class="de">25 años</span><span class="fl">→</span>30 años</div>
+          <div class="res"><span class="a">−24,1%</span><span class="fl">→</span>
+            <span class="b">−3,8%</span>
+            <span class="u">el descuento que necesitas pedir</span></div>
+          <div class="cost">cuesta UF 386 más el día uno</div>
+        </div>
+        <p class="desc">Las otras dos no cambian el veredicto por sí solas: el plazo, ni estirándolo
+          a 30 años, y el pie, ni subiéndolo al 30%.</p>
+        <div class="firma">f. Franco · ANÁLISIS GENERADO POR IA</div>
+      </div>
+    </div>
+
+    <div class="card ajustar">
+      <div class="banda">AJUSTAR</div>
+      <div class="rot"><span>Apretada</span><span class="c">41 palabras</span></div>
+      <div class="body">
+        <div class="h3">Lo que haría yo</div>
+        <div class="kick">Franco probó cada palanca sola · dos sirven</div>
+
+        <div class="row">
+          <div class="q">Bajar el precio<div class="chip">lo pone el vendedor</div></div>
+          <div class="n">−24,1%<small>UF 4.175</small></div>
+        </div>
+        <div class="row">
+          <div class="q">Subir el arriendo<div class="chip">lo pone el mercado</div></div>
+          <div class="n">+25,6%<small>$1.205.813</small></div>
+        </div>
+
+        <div class="mix">
+          <div class="k">Si además mueves lo tuyo</div>
+          <div class="mov">Pie <span class="de">20%</span><span class="fl">→</span>30% ·
+            Plazo <span class="de">25</span><span class="fl">→</span>30 años</div>
+          <div class="res"><span class="a">−24,1%</span><span class="fl">→</span>
+            <span class="b">−3,8%</span>
+            <span class="u">el descuento que tendrías que pedir</span></div>
+          <div class="cost">UF 386 más el día uno</div>
+        </div>
+
+        <p class="desc">Plazo y pie, por separado, no alcanzan.</p>
+        <div class="firma">f. Franco · ANÁLISIS GENERADO POR IA</div>
+      </div>
+    </div>
+
+  </div>
+
+  <h2 class="grp">Los otros dos, apretados</h2>
+  <p class="grpd">Misma pieza, mismo criterio.</p>
+
+  <div class="grid">
+
+    <div class="card comprar">
+      <div class="banda">COMPRAR</div>
+      <div class="rot"><span>09cad61e · Providencia 74</span><span class="c">31 palabras</span></div>
+      <div class="body">
+        <div class="h3">Lo que haría yo</div>
+        <p class="lead">Cierra al precio pedido: no hay argumento de mercado para pedir descuento.</p>
+        <div class="kick">Antes de firmar</div>
+
+        <div class="row">
+          <div class="q">Cuánto aguanta el veredicto<div class="chip">lo pone el mercado</div></div>
+          <div class="n">−7,5%</div>
+        </div>
+        <div class="row">
+          <div class="q">Verifica el arriendo<div class="chip tuyo">lo pones tú</div></div>
+          <div class="n">$825.000<small>lo declaraste tú</small></div>
+        </div>
+
+        <div class="firma">f. Franco · ANÁLISIS GENERADO POR IA</div>
+      </div>
+      <div class="nota">Sin mix y sin descarte: no hay palanca que subir.</div>
+    </div>
+
+    <div class="card buscar">
+      <div class="banda">BUSCAR OTRO</div>
+      <div class="rot"><span>c4ffe9a6 · La Florida 46</span><span class="c">42 palabras</span></div>
+      <div class="body">
+        <div class="h3">Lo que haría yo</div>
+        <div class="kick">Franco probó cada palanca sola · dos suben a Ajustar</div>
+
+        <div class="row">
+          <div class="q">Subir el pie<div class="chip tuyo">lo pones tú</div></div>
+          <div class="n">8% → 22%</div>
+        </div>
+        <div class="row">
+          <div class="q">Bajar el precio<div class="chip">lo pone el vendedor</div></div>
+          <div class="n">−14,5%<small>UF 2.441</small></div>
+        </div>
+
+        <p class="desc">Arriendo y plazo no alcanzan. Ninguna llega a Comprar.</p>
+        <p class="alt">Si no tienes esa liquidez, en La Florida y Puente Alto hay deptos del mismo
+          perfil en tu rango.</p>
+        <div class="firma">f. Franco · ANÁLISIS GENERADO POR IA</div>
+      </div>
+    </div>
+
+    <div class="card buscar">
+      <div class="banda">BUSCAR OTRO</div>
+      <div class="rot"><span>Borde · ninguna cruza</span><span class="c">29 palabras</span></div>
+      <div class="body">
+        <div class="h3">Lo que haría yo</div>
+        <p class="lead">Busca otro depto.</p>
+        <div class="kick">Franco probó las cuatro · ninguna sirve</div>
+
+        <div class="row">
+          <div class="q">Haría falta en precio<div class="chip">fuera de rango</div></div>
+          <div class="n">−28,7%</div>
+        </div>
+
+        <p class="desc">Arriendo, pie y plazo tampoco alcanzan.</p>
+        <p class="alt">En Macul, Ñuñoa o La Reina hay deptos del mismo perfil en tu rango de
+          UF 3.000–3.500.</p>
+        <div class="firma">f. Franco · ANÁLISIS GENERADO POR IA</div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="pie">
+    <b>Qué se fue:</b> la intro de tres oraciones —el rótulo ya dice lo mismo en seis palabras— y
+    la glosa doble de cada fila. Lo que decía la glosa ahora está repartido: el juicio en el chip,
+    el valor objetivo bajo la cifra.<br>
+    <b>Qué se conservó:</b> quién pone cada palanca, cuánto pide, adónde llega, el mix con su
+    movimiento y su costo, el descarte y la alternativa.<br>
+    <b>El conteo:</b> 111 hoy · 118 la anterior · <b>41 la apretada</b>. La versión anterior era más
+    larga que producción, que es justo lo contrario de lo que veníamos a hacer.<br>
+    <b>Lo que se perdió y hay que decidir:</b> en la apretada no se explica POR QUÉ un descuento de
+    24,1% es difícil. El chip dice quién lo pone, no cuánto cuesta convencerlo. Si eso importa, va
+    como una palabra en el chip —«vendedor motivado»— y no como una oración.
+  </p>
+</div>
+
+<script>
+function wire(id,attr){document.querySelectorAll('#'+id+' button').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('#'+id+' button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on');document.documentElement.dataset[attr]=b.dataset.v;})})}
+wire('seg-theme','theme');
+wire('seg-view','view');
+</script>
+</body>
+</html>

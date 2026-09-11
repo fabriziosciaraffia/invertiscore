@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide" data-ver="ajustar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe · versión final</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --serif:"Source Serif 4",Georgia,serif;
+    --sans:"Inter",system-ui,-apple-system,sans-serif;
+    --signal:#C8323C;
+    --rad:16px; --rad-s:12px; --rad-xs:10px;
+    --hero-b:1.10; --hero-s:.90; --rec-b:1.30; --rec-s:.70; --grano:.12;
+    --esp:linear-gradient(135deg,#0F2440 0%,#2E1C28 50%,#4E1119 100%);
+    --rec:linear-gradient(135deg,var(--verdict-deep) 0%,#18181B 100%);
+  }
+  [data-theme="light"]{
+    --page:#FFFFFF;--card:#F4F4F6;--line:#E9E9EC;--line2:#D6D6DB;
+    --tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--up:#2B558F;
+    --sombra:0 1px 2px rgba(0,0,0,.05),0 10px 30px rgba(0,0,0,.07);
+    --sombra-h:0 2px 5px rgba(0,0,0,.07),0 14px 32px rgba(0,0,0,.10);
+  }
+  [data-theme="dark"]{
+    --page:#0C0C0E;--card:#1A1A1E;--line:#232327;--line2:#37373D;
+    --tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--up:#6C9BE0;
+    --sombra:0 1px 2px rgba(0,0,0,.5);--sombra-h:0 2px 8px rgba(0,0,0,.6);
+  }
+  [data-ver="buscar"] {--verdict:#C8323C;--verdict-deep:#7A1F27}
+  [data-ver="ajustar"]{--verdict:#6E4560;--verdict-deep:#442B3B}
+  [data-ver="comprar"]{--verdict:#2B558F;--verdict-deep:#1B3559}
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;
+       -webkit-font-smoothing:antialiased}
+  .lab{max-width:700px;margin:0 auto;transition:max-width .18s}
+  [data-view="mobile"] .lab{max-width:390px}
+  .ctrl{max-width:700px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);
+    padding:12px 14px;margin-bottom:24px;position:sticky;top:8px;z-index:30;
+    display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;
+    color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+
+  .caja{border-radius:var(--rad);overflow:hidden;box-shadow:var(--sombra);margin-bottom:34px}
+  .suelta{margin-bottom:38px}
+
+  /* ══ HERO ══ */
+  .hero{padding:30px 24px 32px;color:#fff;position:relative;overflow:hidden}
+  [data-view="mobile"] .hero{padding:26px 20px 28px}
+  .hero .capa{position:absolute;inset:0;z-index:0;background:var(--esp);
+    filter:brightness(var(--hero-b)) saturate(var(--hero-s))}
+  .gr{position:absolute;inset:0;pointer-events:none;opacity:var(--grano);mix-blend-mode:overlay;
+    z-index:1;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .z{position:relative;z-index:2}
+  .eyebrow{font-size:11.5px;font-weight:500;display:flex;justify-content:space-between;gap:10px;
+    margin-bottom:18px;opacity:.6}
+  [data-view="mobile"] .eyebrow{flex-direction:column;gap:2px}
+  .btnver{display:inline-flex;align-items:center;gap:8px;background:var(--verdict);color:#fff;
+    font-size:12.5px;font-weight:600;padding:8px 16px;border-radius:99px;margin-bottom:16px;
+    position:relative;box-shadow:0 0 0 2px rgba(255,255,255,.3)}
+  .btnver .dot{width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9;position:relative}
+  .btnver .dot::after{content:"";position:absolute;inset:-3px;border-radius:50%;background:#fff;
+    opacity:.5;animation:late 1.8s ease-out infinite}
+  @keyframes late{0%{transform:scale(.6);opacity:.6}
+    70%{transform:scale(2.1);opacity:0}100%{transform:scale(2.1);opacity:0}}
+  @media (prefers-reduced-motion:reduce){.btnver .dot::after{animation:none}}
+  .score{font-size:12px;font-weight:500;opacity:.6;margin-bottom:15px}
+  .h1d{font-family:var(--serif);font-size:30px;font-weight:600;line-height:1.16;letter-spacing:-.016em}
+  [data-view="mobile"] .h1d{font-size:25px}
+  .h1d mark{background:linear-gradient(transparent 62%,rgba(255,255,255,.26) 62%);color:inherit}
+  .cifra{font-size:36px;font-weight:700;margin-top:21px;letter-spacing:-.035em;opacity:.96}
+  [data-view="mobile"] .cifra{font-size:31px}
+  .capt{font-size:13.5px;opacity:.62;margin-top:4px}
+
+  /* ══ títulos de sección ══ */
+  .st{font-family:var(--sans);font-size:21px;font-weight:700;line-height:1.24;margin-bottom:18px;
+    letter-spacing:-.02em}
+  [data-view="mobile"] .st{font-size:19px}
+
+  /* ══ hallazgos ══ */
+  .hz{display:grid;grid-template-columns:22px 1fr auto;gap:0 14px;padding:14px 0;
+      border-bottom:1px solid var(--line);align-items:start}
+  .hz:last-of-type{border-bottom:none;padding-bottom:0}
+  .hz p{font-size:14px;line-height:1.45;color:var(--tx2)}
+  .gl{font-size:20px;font-weight:700;text-align:center;line-height:1.05}
+  .gl.down{color:var(--signal)} .gl.up{color:var(--up)}
+  .hz .n{font-size:15px;font-weight:600;text-align:right;white-space:nowrap;min-width:118px}
+  [data-view="mobile"] .hz .n{min-width:96px;font-size:14px}
+  .hz .n.mal{color:var(--signal)}
+  .hz .n small{display:block;font-size:11.5px;font-weight:400;color:var(--tx3);margin-top:3px;
+    min-height:15px}
+  .hz .n small:empty::after{content:"\00a0"}
+
+  /* ══ recomendación ══ */
+  .acc{padding:30px 24px 26px;color:#FAFAFA;position:relative;overflow:hidden}
+  [data-view="mobile"] .acc{padding:26px 20px 24px}
+  .acc .capa{position:absolute;inset:0;z-index:0;background:var(--rec);
+    filter:brightness(var(--rec-b)) saturate(var(--rec-s))}
+  .acc .tit{font-family:var(--sans);font-size:22px;font-weight:700;line-height:1.22;
+    margin-bottom:6px;letter-spacing:-.02em}
+  .acc .baja{font-size:14px;line-height:1.5;margin-bottom:26px;opacity:.62}
+  .flw{display:grid;grid-template-columns:96px 1fr;gap:16px;align-items:center}
+  [data-view="mobile"] .flw{grid-template-columns:78px 1fr;gap:14px 11px}
+  .et{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;opacity:.5;
+    white-space:nowrap;text-align:left}
+  .sepa{grid-column:1/3;height:1px;background:rgba(255,255,255,.22)}
+  .val{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .chip2{background:rgba(255,255,255,.14);padding:10px 15px;border-radius:var(--rad-xs);
+    white-space:nowrap;font-size:15px;font-weight:600;display:inline-block}
+  [data-view="mobile"] .chip2{font-size:13.5px;padding:8px 12px}
+  .chip2 s{opacity:.42;font-weight:500;text-decoration-thickness:1.5px;margin-right:6px}
+  .plus{font-size:18px;font-weight:600;opacity:.42}
+  .grande{font-size:30px;font-weight:700;letter-spacing:-.032em;line-height:1;white-space:nowrap}
+  [data-view="mobile"] .grande{font-size:26px}
+  .precio{font-size:13.5px;font-weight:600;opacity:.66;margin-top:7px;white-space:nowrap}
+  .precio s{opacity:.5;font-weight:500;text-decoration-thickness:1.5px;margin-right:5px}
+  .trans{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .vp{font-size:12.5px;font-weight:700;letter-spacing:.04em;padding:7px 13px;border-radius:99px;
+    white-space:nowrap}
+  [data-view="mobile"] .vp{font-size:11.5px;padding:6px 11px}
+  .vp.ahora{opacity:.45;background:rgba(255,255,255,.13)}
+  .vp.dest{background:#fff;color:#18181B}
+  .trans .fl2{font-size:14px;opacity:.45;font-weight:700}
+  .costo{font-size:12.5px;opacity:.58;margin-top:24px;padding-top:16px;
+    border-top:1px solid rgba(255,255,255,.15)}
+
+  /* ══ affordance ══ */
+  .btn{display:inline-flex;align-items:center;gap:10px;font-size:14px;font-weight:600;
+    padding:13px 20px;border-radius:99px;text-decoration:none;cursor:pointer;border:none;
+    font-family:var(--sans);transition:transform .12s,box-shadow .12s}
+  .btn:active{transform:translateY(1px)}
+  .btn .ico{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
+    border-radius:50%;background:#18181B;flex:none}
+  .btn .ico::before{content:"";width:0;height:0;border-left:5px solid #fff;
+    border-top:4px solid transparent;border-bottom:4px solid transparent;margin-left:2px}
+  .btn-claro{background:#fff;color:#18181B;margin-top:22px;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+  .btn-claro:hover{box-shadow:0 4px 16px rgba(0,0,0,.3)}
+  .link{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;
+    color:var(--signal);text-decoration:none;cursor:pointer;margin-top:17px;
+    border-bottom:1.5px solid color-mix(in srgb,var(--signal) 35%,transparent);padding-bottom:2px}
+  .link:hover{border-bottom-color:var(--signal)}
+
+  /* ══ cifras ══ */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .kpi{background:var(--card);padding:17px;border-radius:var(--rad-s)}
+  .kpi .k{font-size:13px;color:var(--tx3);margin-bottom:12px}
+  .kpi .v{font-size:29px;font-weight:700;letter-spacing:-.028em;line-height:1;margin-bottom:12px}
+  [data-view="mobile"] .kpi .v{font-size:25px}
+  .kpi .v.mal{color:var(--signal)}
+  .kpi .g{font-size:13px;color:var(--tx2);line-height:1.45}
+  .kpi .g b{font-weight:600;color:var(--tx)}
+
+  /* ══ capítulos ══ */
+  .caps{display:flex;flex-direction:column;gap:9px}
+  .cap{background:var(--card);padding:16px 17px;cursor:pointer;display:grid;
+    grid-template-columns:1fr auto auto;gap:0 15px;align-items:center;border-radius:var(--rad-s);
+    border:1px solid transparent;transition:box-shadow .13s,border-color .13s,transform .13s}
+  .cap:hover{border-color:var(--line2);box-shadow:var(--sombra-h);transform:translateY(-1px)}
+  .cap .t{font-size:15.5px;font-weight:600;line-height:1.3}
+  [data-view="mobile"] .cap .t{font-size:14.5px}
+  .cap .n{font-size:15px;font-weight:600;white-space:nowrap;text-align:right}
+  .cap .n.mal{color:var(--signal)}
+  .disco{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;background:var(--page);border:1px solid var(--line2);flex:none;
+    transition:background .13s,border-color .13s,color .13s;color:var(--tx3);font-size:15px;
+    font-weight:700;line-height:1}
+  .cap:hover .disco{background:var(--tx);border-color:var(--tx);color:var(--page)}
+
+  /* ══ zona ══ */
+  .zcards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+  [data-view="mobile"] .zcards{grid-template-columns:1fr}
+  .zc{background:var(--card);padding:17px;border-radius:var(--rad-s)}
+  .zc .k{font-size:12.5px;color:var(--tx3);margin-bottom:11px;font-weight:500}
+  .zc .v{font-size:26px;font-weight:700;letter-spacing:-.028em;line-height:1}
+  .zc .ref{font-size:12.5px;color:var(--tx3);margin-top:8px}
+  .zc .delta{font-size:12px;font-weight:600;padding:4px 9px;border-radius:99px;
+    display:inline-block;margin-top:11px}
+  .zc .delta.bien{color:var(--up);background:color-mix(in srgb,var(--up) 12%,transparent)}
+  .zc .delta.mal{color:var(--signal);background:color-mix(in srgb,var(--signal) 12%,transparent)}
+  .zc .delta.neu{color:var(--tx3);background:var(--line)}
+  .zc .g{font-size:12.5px;color:var(--tx2);line-height:1.45;margin-top:11px}
+  .zpie{font-size:12.5px;color:var(--tx3);line-height:1.5;margin-top:14px}
+
+  .nota{background:var(--card);border:1px dashed var(--line2);margin-top:10px;padding:14px 16px;
+    font-size:12px;color:var(--tx3);line-height:1.65;border-radius:var(--rad-s)}
+  .nota b{color:var(--tx2);font-weight:600}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">Informe LTR — versión final</h1>
+  <p class="subx">Caso 7710a017 · Av. Providencia · 2D2B 60 m² · AJUSTA SUPUESTOS · 66.</p>
+  <div class="panel">
+    <span class="clab">Vista</span>
+    <div class="seg" id="s-view">
+      <button class="on" data-v="wide">700 px</button><button data-v="mobile">390 px</button></div>
+    <span class="clab">Caso</span>
+    <div class="seg" id="s-ver">
+      <button data-v="buscar">Buscar</button>
+      <button class="on" data-v="ajustar">Ajustar</button>
+      <button data-v="comprar">Comprar</button></div>
+    <span class="clab">Tema</span>
+    <div class="seg" id="s-theme">
+      <button class="on" data-v="light">Claro</button><button data-v="dark">Oscuro</button></div>
+  </div>
+</div>
+
+<div class="lab">
+
+  <div class="caja">
+    <div class="hero">
+      <div class="capa"></div><div class="gr"></div>
+      <div class="z">
+        <div class="eyebrow"><span>Av. Providencia · 2D2B · 60 m²</span><span>Renta larga</span></div>
+        <div class="btnver"><span class="dot"></span>AJUSTAR</div>
+        <div class="score">Franco Score 66 de 100</div>
+        <h2 class="h1d">Providencia tiene el metro, pero <mark>el arriendo no cubre la cuota</mark>: ajusta el precio.</h2>
+        <div class="cifra">−$283.194</div>
+        <p class="capt">sale de tu bolsillo cada mes</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="suelta">
+    <h2 class="st">Ajusta los números. Esto es lo que pesa:</h2>
+    <div class="hz"><span class="gl down">↓</span><p>Pones algo de tu bolsillo cada mes.</p>
+      <div class="n mal">−$283.194<small>cuota $978.290</small></div></div>
+    <div class="hz"><span class="gl up">↑</span><p>Rinde por sobre lo que el mercado paga.</p>
+      <div class="n">4,3%<small>promedio 4,0%</small></div></div>
+    <div class="hz"><span class="gl up">↑</span><p>Tu financiamiento está bien, sin un punto débil claro.</p>
+      <div class="n">Pie 20%<small></small></div></div>
+    <div class="hz"><span class="gl up">↑</span><p>Entras barato: el metro está bajo la mediana comunal.</p>
+      <div class="n">−3%<small>mediana UF 94</small></div></div>
+  </div>
+
+  <div class="caja">
+    <div class="acc">
+      <div class="capa"></div><div class="gr"></div>
+      <div class="z">
+        <h2 class="tit">La recomendación de Franco</h2>
+        <p class="baja">Para que el veredicto pase a Comprar</p>
+        <div class="flw">
+          <span class="et">Cambias</span>
+          <div class="val">
+            <span class="chip2">Pie <s>20%</s> 30%</span>
+            <span class="plus">+</span>
+            <span class="chip2">Plazo <s>25</s> 30 años</span>
+          </div>
+          <div class="sepa"></div>
+          <span class="et">Negocias</span>
+          <div class="val">
+            <div>
+              <div class="grande">−3,8% dcto.</div>
+              <p class="precio"><s>UF 5.502</s> → UF 5.293</p>
+            </div>
+          </div>
+          <div class="sepa"></div>
+          <span class="et">Resultado</span>
+          <div class="val">
+            <div class="trans">
+              <span class="vp ahora">AJUSTAR</span><span class="fl2">→</span>
+              <span class="vp dest">COMPRAR</span>
+            </div>
+          </div>
+        </div>
+        <p class="costo">Poner ese pie cuesta $22.000.000 más el día uno.</p>
+        <a class="btn btn-claro"><span class="ico"></span>Ver el detalle de cada cambio</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="suelta">
+    <h2 class="st">Las cifras que tienes que ver</h2>
+    <div class="cards">
+      <div class="kpi"><div class="k">Cap rate bruto</div><div class="v">5,1%</div>
+        <p class="g">Lo que renta al año sobre el precio, <b>antes</b> de gastos.</p></div>
+      <div class="kpi"><div class="k">Cap rate neto</div><div class="v">4,3%</div>
+        <p class="g">Descontados los gastos. <b>Referencia de mercado: 4,0%.</b></p></div>
+      <div class="kpi"><div class="k">Retorno sobre lo puesto</div><div class="v mal">−6,5%</div>
+        <p class="g">Cash-on-cash: por cada $100 que pusiste, <b>este año pones $6,50 más</b>.</p></div>
+      <div class="kpi"><div class="k">Flujo mensual</div><div class="v mal">−$283.194</div>
+        <p class="g">Lo que sale de tu bolsillo, <b>después de todo</b>: dividendo, gastos y vacancia.</p></div>
+      <div class="kpi"><div class="k">Cobertura de cuota</div><div class="v">0,98×</div>
+        <p class="g">El arriendo <b>casi alcanza</b> a pagar el dividendo: falta un 2%.</p></div>
+      <div class="kpi"><div class="k">TIR a 10 años</div><div class="v">6,9%</div>
+        <p class="g">Rinde tu plata al año. <b>Bajo 6%, conviene otra inversión.</b></p></div>
+    </div>
+    <a class="link">Ver cómo se calcula →</a>
+  </div>
+
+  <div class="suelta">
+    <h2 class="st">Detalle de la inversión</h2>
+    <div class="caps">
+      <div class="cap"><div class="t">Cuánto pones al principio</div>
+        <div class="n">$53,9M</div><span class="disco">›</span></div>
+      <div class="cap"><div class="t">Qué te cuesta mes a mes</div>
+        <div class="n mal">−$283.194</div><span class="disco">›</span></div>
+      <div class="cap"><div class="t">Cómo lo pagas</div>
+        <div class="n">Pie 20%</div><span class="disco">›</span></div>
+      <div class="cap"><div class="t">Cómo crece tu parte</div>
+        <div class="n">2,9%</div><span class="disco">›</span></div>
+      <div class="cap"><div class="t">Si vendes o refinancias</div>
+        <div class="n">$114,4M</div><span class="disco">›</span></div>
+    </div>
+  </div>
+
+  <div class="suelta">
+    <h2 class="st">Ubicación · Providencia</h2>
+    <div class="zcards">
+      <div class="zc">
+        <div class="k">Tu arriendo</div>
+        <div class="v">$960.000</div>
+        <p class="ref">mediana $896.000</p>
+        <span class="delta mal">7% sobre</span>
+        <p class="g">10 publicaciones a menos de 800 m.</p>
+      </div>
+      <div class="zc">
+        <div class="k">Tu precio por m²</div>
+        <div class="v">UF 92</div>
+        <p class="ref">mediana UF 94</p>
+        <span class="delta bien">3% bajo</span>
+        <p class="g">Departamentos usados de la comuna.</p>
+      </div>
+      <div class="zc">
+        <div class="k">Valorización</div>
+        <div class="v">2,9%</div>
+        <p class="ref">referencia 3,0%</p>
+        <span class="delta neu">al año</span>
+        <p class="g">2015–2025, sobre la inflación.</p>
+      </div>
+    </div>
+    <p class="zpie">El período de valorización cruza el estallido y la pandemia: es un promedio de
+      años atípicos, no una proyección.</p>
+    <a class="link">Ver los comparables →</a>
+  </div>
+
+  <div class="nota">
+    <b>Cerrado.</b> Hero en espectro tonalidad 2 (brillo 110, saturación 90) con el punto del
+    veredicto latiendo · recomendación a tinta (brillo 130, saturación 70) con la ecuación en filas
+    Cambias / Negocias / Resultado · hallazgos, cifras, capítulos y zona sueltos · zona al final con
+    su línea de glosa · hero en serif, títulos en sans · esquinas redondas · sin números romanos.<br>
+    <b>Nota de datos:</b> las cifras del mix (pie 20→30, plazo 25→30, −3,8%, $22M) son ilustrativas
+    — el motor todavía no calcula esa combinación para este caso. Todo lo demás es real.
+  </div>
+</div>
+
+<script>
+function wire(id,attr){document.querySelectorAll('#'+id+' button').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('#'+id+' button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on');document.documentElement.dataset[attr]=b.dataset.v;})})}
+wire('s-view','view');wire('s-ver','ver');wire('s-theme','theme');
+</script>
+</body>
+</html>
