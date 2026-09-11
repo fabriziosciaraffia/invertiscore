@@ -3,6 +3,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Sección 2 — "La respuesta, en fácil": tres análisis reales rotando.
 //
+// Lo que se muestra es una MINIATURA DEL HERO DEL INFORME, no una banda: misma
+// tarjeta oscura con el gradiente del contrato (135°, brightness 1.10 saturate .90,
+// grano al 12 % en overlay), mismo eyebrow, misma píldora de veredicto con el punto
+// que late, mismo score en texto plano, mismo titular en serif con plumón y misma
+// cifra clave. Debajo, UNA línea de hallazgo con su flecha y su cifra.
+//
+// Por qué: la banda prometía algo que el informe ya no entrega. La sección que
+// convierte tiene que enseñar lo que el visitante va a recibir.
+//
+// Se muestra la comuna, no la dirección: el informe lleva la calle en su eyebrow,
+// pero la landing nunca publicó la dirección de los ejemplos y este goal no es el
+// lugar para empezar.
+//
 // Contrato (seccion2-transiciones.html, modo B): salida de los cuatro bloques
 // junta; a los 900 ms se cambia el veredicto (`data-verdict` → tríada de
 // globals.css) y el contenido, y los bloques entran escalonados 0/140/280/420
@@ -134,39 +147,59 @@ export function Respuesta({ ejemplos }: { ejemplos: EjemploLanding[] }) {
   return (
     <div ref={raiz} className="lv-s2-grid-inner">
       <div className="lv-idx">La respuesta, en fácil</div>
-      {/* la banda usa todo el ancho del contenido; debajo, el ejemplo. En PC el
-          bloque .lv-ans se disuelve en la grilla (display: contents) para que la
-          banda cruce las dos columnas y las explicaciones queden al pie del
-          bloque; los tokens del veredicto se siguen heredando. */}
-      <div className="lv-ans" data-verdict={x.veredicto} aria-live="polite">
-        <div className="lv-band">
-          <span className={`lv-x${out ? " out" : ""}`} style={delay(0)}>
-            <Glifo veredicto={x.veredicto} />
+      {/* la miniatura del informe; a su lado, en PC, las tres explicaciones */}
+      <article className="lv-ans lv-mini" data-verdict={x.veredicto} aria-live="polite">
+        <div className="lv-mini-fondo" aria-hidden="true" />
+        <div className="lv-mini-cuerpo">
+          <div className={`lv-mini-eyebrow lv-x${out ? " out" : ""}`} style={delay(0)}>
+            <span>{x.eyebrow}</span>
+            <span>{x.modalidad}</span>
+          </div>
+          <div className="lv-mini-pill">
+            <i aria-hidden="true" />
             {x.etiqueta}
-          </span>
-        </div>
-        <div className="lv-ans-cuerpo">
-          <div className="lv-ans-izq">
-            <h2 className={`lv-why lv-x${out ? " out" : ""}`} style={delay(1)}>
-              {x.titular ? conPlumon(x.titular) : null}
-            </h2>
-            <div className={`lv-num lv-x${out ? " out" : ""}`} style={delay(2)}>
-              {x.cifra ? fmtCifra(x.cifra) : null}
-              {caption && <small>{caption}</small>}
+          </div>
+          {x.score != null && (
+            <div className={`lv-mini-score lv-x${out ? " out" : ""}`} style={delay(1)}>
+              Franco Score {x.score} de 100
             </div>
-            <div className={`lv-ey lv-x${out ? " out" : ""}`} style={delay(3)}>{x.eyebrow}</div>
-            <div className="lv-prog" aria-hidden="true">
-              <i
-                style={
-                  progreso === "corriendo"
-                    ? { transition: `width ${HOLD}ms linear`, width: "100%" }
-                    : { transition: "none", width: progreso === "quieto" && detenido.current ? "100%" : "0" }
-                }
-              />
+          )}
+          <h2 className={`lv-mini-titular lv-x${out ? " out" : ""}`} style={delay(1)}>
+            {x.titular ? conPlumon(x.titular) : null}
+          </h2>
+          <div className={`lv-mini-cifra lv-x${out ? " out" : ""}`} style={delay(2)}>
+            {x.cifra ? fmtCifra(x.cifra) : null}
+            {caption && <small>{caption}</small>}
+          </div>
+          {x.hallazgo && (
+            <div
+              className={`lv-mini-hallazgo lv-x${out ? " out" : ""}`}
+              style={delay(3)}
+              data-dir={x.hallazgo.direccion}
+            >
+              <span className="lv-mini-flecha" aria-hidden="true">
+                {x.hallazgo.direccion === "favorable" ? "↑" : "↓"}
+              </span>
+              <span className="lv-mini-frase">{x.hallazgo.frase}</span>
+              {x.hallazgo.cifra && (
+                <span className="lv-mini-num">
+                  {x.hallazgo.cifra}
+                  {x.hallazgo.referencia && <small>{x.hallazgo.referencia}</small>}
+                </span>
+              )}
             </div>
+          )}
+          <div className="lv-prog" aria-hidden="true">
+            <i
+              style={
+                progreso === "corriendo"
+                  ? { transition: `width ${HOLD}ms linear`, width: "100%" }
+                  : { transition: "none", width: progreso === "quieto" && detenido.current ? "100%" : "0" }
+              }
+            />
           </div>
         </div>
-      </div>
+      </article>
       {/* las tres explicaciones son también el control: mobile al pie (los chips
           murieron el 08-sep, eran redundantes con estas filas), PC en la columna derecha */}
       <div className="lv-lista" role="tablist" aria-label="Qué significa cada veredicto">

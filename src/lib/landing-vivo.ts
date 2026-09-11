@@ -54,6 +54,22 @@ export interface EjemploLanding {
   cifra: CifraClave | null;
   /** "Santiago · Estudio 38 m² · UF 3.529 · análisis real" */
   eyebrow: string;
+  /** Franco Score del análisis (1-100). Null si la fila no lo trae. */
+  score: number | null;
+  /** Lo que va a la derecha del eyebrow en la miniatura: "Renta larga" / "Renta corta". */
+  modalidad: string;
+  /** La línea de hallazgo que acompaña a la miniatura: la PRIMERA de la pirámide,
+   *  que ya viene ordenada por decisividad. Una sola, como en el contrato. */
+  hallazgo: LineaHallazgo | null;
+}
+
+/** Una línea de hallazgo tal como la muestra el informe: flecha, frase corta y
+ *  cifra con su referencia. */
+export interface LineaHallazgo {
+  direccion: "adverso" | "favorable" | "neutral";
+  frase: string;
+  cifra: string | null;
+  referencia: string | null;
 }
 
 export interface DatosLanding {
@@ -80,6 +96,9 @@ const RESPALDO = {
       titular: "Este depto no conviene: **el arriendo no cubre la cuota ni a tasa cero**.",
       cifra: { tipo: "monto", caso: "flujo_negativo_ltr", valorClp: 256149, valorUf: 6.8, signo: -1 } as CifraClave,
       eyebrow: "Santiago · Estudio 38 m² · UF 3.529 · análisis real",
+      score: 46,
+      modalidad: "Renta larga",
+      hallazgo: { direccion: "adverso" as const, frase: "Rinde bajo lo que el mercado exige acá.", cifra: "3,3%", referencia: "promedio 4,0%" },
     },
     {
       id: EJEMPLOS_LANDING[1].id,
@@ -87,6 +106,9 @@ const RESPALDO = {
       titular: "Buen depto, pero **el arriendo no cubre la cuota**: ajusta los supuestos.",
       cifra: { tipo: "monto", caso: "flujo_negativo_ltr", valorClp: 283194, valorUf: 7.1, signo: -1 } as CifraClave,
       eyebrow: "Providencia · 2D2B 60 m² · UF 5.500 · análisis real",
+      score: 66,
+      modalidad: "Renta larga",
+      hallazgo: { direccion: "adverso" as const, frase: "Necesita puesta a punto antes de arrendar a mercado.", cifra: "$3.600.090", referencia: "90 UF" },
     },
     {
       id: EJEMPLOS_LANDING[2].id,
@@ -94,6 +116,9 @@ const RESPALDO = {
       titular: "Compras **muy bajo la mediana** y el arriendo cubre el dividendo desde el inicio.",
       cifra: { tipo: "monto", caso: "comprar_excedente", valorClp: 43810, valorUf: 1.1, signo: 1 } as CifraClave,
       eyebrow: "Ñuñoa · 2D2B 80 m² · UF 4.000 · análisis real",
+      score: 70,
+      modalidad: "Renta larga",
+      hallazgo: { direccion: "favorable" as const, frase: "Rinde por sobre lo que el mercado paga.", cifra: "5,1%", referencia: "promedio 4,0%" },
     },
   ],
 };
@@ -101,6 +126,7 @@ const RESPALDO = {
 interface FilaEjemplo {
   id: string;
   comuna: string | null;
+  score: number | null;
   input_data: Record<string, unknown> | null;
   results: Record<string, unknown> | null;
   ai_analysis: { titular?: string | null } | null;
@@ -153,6 +179,44 @@ function titularDe(fila: FilaEjemplo): string | null {
   return normalizarMarcasTitular(limpio);
 }
 
+/** La cifra de una línea de hallazgo.
+ *
+ *  ⚠ El informe tiene su propio constructor de estas filas, pero vive en la rama
+ *  del rediseño y todavía no está mergeado. Mientras tanto acá se cubren SOLO los
+ *  tipos que producen los tres ejemplos de la landing (medido contra la base el
+ *  11-sep-2026: cap_rate en dos y capex_puesta_a_punto en uno). Cualquier otro
+ *  tipo cae sin cifra, que es la degradación correcta: la línea sigue diciendo
+ *  algo verdadero. Cuando el constructor del informe mergee, esto se reemplaza
+ *  por él en vez de crecer. */
+function cifraDeHallazgo(h: { id?: string; valor?: Record<string, unknown> }): { cifra: string | null; referencia: string | null } {
+  const v = h.valor ?? {};
+  const pct = (n: unknown) => (Number.isFinite(Number(n)) ? `${Number(n).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : null);
+  if (h.id === "cap_rate") {
+    return { cifra: pct(v.capRatePct), referencia: pct(v.capRefPct) ? `promedio ${pct(v.capRefPct)}` : null };
+  }
+  if (h.id === "capex_puesta_a_punto") {
+    const clp = Number(v.montoCLP);
+    const uf = Number(v.montoUF);
+    return {
+      cifra: Number.isFinite(clp) && clp > 0 ? `$${Math.round(clp).toLocaleString("es-CL")}` : null,
+      referencia: Number.isFinite(uf) && uf > 0 ? `${Math.round(uf).toLocaleString("es-CL")} UF` : null,
+    };
+  }
+  return { cifra: null, referencia: null };
+}
+
+/** La PRIMERA línea de la pirámide, que ya viene ordenada por decisividad. El
+ *  titular del hallazgo es corto y sin montos por contrato, así que se muestra
+ *  tal cual; si falta, no hay línea. */
+function lineaDe(fila: FilaEjemplo): LineaHallazgo | null {
+  const lista = (fila.results?.hallazgos ?? []) as Array<{ id?: string; direccion?: string; titular?: string | null; valor?: Record<string, unknown> }>;
+  const h = lista[0];
+  const frase = typeof h?.titular === "string" ? sanitizeVozChilenaTexto(h.titular.trim()) : "";
+  if (!h || !frase) return null;
+  const dir = h.direccion === "favorable" || h.direccion === "neutral" ? h.direccion : "adverso";
+  return { direccion: dir, frase, ...cifraDeHallazgo(h) };
+}
+
 function ejemploDe(fila: FilaEjemplo, ufLive: number): EjemploLanding | null {
   const veredicto = readVeredicto(fila.results as Parameters<typeof readVeredicto>[0]);
   if (!veredicto) return null;
@@ -181,6 +245,11 @@ function ejemploDe(fila: FilaEjemplo, ufLive: number): EjemploLanding | null {
     titular: titularDe(fila),
     cifra,
     eyebrow: eyebrowDe(fila),
+    score: Number.isFinite(Number(fila.score)) ? Number(fila.score) : null,
+    // Los tres ejemplos son LTR (EJEMPLOS_LANDING); si algún día entra un STR, el
+    // rótulo sale de su modalidad y no de una constante.
+    modalidad: "Renta larga",
+    hallazgo: lineaDe(fila),
   };
 }
 
@@ -226,7 +295,7 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
         return null;
       }
     })(),
-    sb.from("analisis").select("id, comuna, input_data, results, ai_analysis").in("id", EJEMPLOS_LANDING.map((e) => e.id))
+    sb.from("analisis").select("id, comuna, score, input_data, results, ai_analysis").in("id", EJEMPLOS_LANDING.map((e) => e.id))
       .then((r) => (r.error ? (aviso("ejemplos", r.error), null) : (r.data as FilaEjemplo[]))),
     getUFValue(),
   ]);
