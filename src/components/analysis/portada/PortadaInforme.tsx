@@ -1008,7 +1008,23 @@ export function DocTokens() {
          Oscuro primero, como el bloque de arriba: el default del app es oscuro
          («data-theme» ausente) y el claro se declara aparte.
 
-         EL SELECTOR LLEVA LAS TRES FORMAS, y no es prolijidad. «.doc-dictamen» declara
+         EL SELECTOR LLEVA LAS CUATRO FORMAS, y la cuarta llegó A PRODUCCIÓN antes de
+         encontrarse. Este comentario decía TRES y faltaba justo la de prod:
+         «.doc-r2.doc-dictamen», las dos clases PEGADAS en el mismo elemento.
+
+         Qué pasaba, medido en prod con el interruptor encendido: los repuntes
+         «--doc-*: var(--page)» viven en el bloque de arriba, cuyo selector «.doc-r2» es
+         (0,1,0). En tema CLARO hay una regla anterior «[data-theme=light] .doc-dictamen»
+         que es (0,1,1) y le gana, así que los NUEVE tokens «--doc-*» se quedaban en la
+         paleta cálida vieja —#FAF8F3 en vez de #FFFFFF— y con ellos la mayor parte del
+         informe. En oscuro no pasaba: ahí compite «.doc-dictamen» (0,1,0), empata, y
+         gana el bloque posterior.
+
+         Y NO SE VIO EN NINGÚN SHOT porque la ruta dev ENVUELVE con «.doc-r2», y ahí sí
+         matchea la forma descendente (0,2,1). Con la forma pegada, «.doc-r2.doc-dictamen»
+         es (0,2,0) y le gana a (0,1,1) en los dos montajes.
+
+         El resto del comentario original: «.doc-dictamen» declara
          los tokens base con la misma especificidad que «.doc-r2», así que cuando las dos
          clases van en el MISMO elemento gana el orden de aparición —y este bloque va
          después, o sea bien—. Pero cuando «.doc-r2» envuelve desde afuera (la ruta dev),
@@ -1016,6 +1032,7 @@ export function DocTokens() {
          la sección seguía en el papel cálido #FAF8F3. Las dos formas descendentes suben
          la especificidad y ganan en los dos montajes. */
       .doc-r2,
+      .doc-r2.doc-dictamen,
       .doc-r2 .doc-dictamen,
       .doc-r2 .doc-tokens{
         --page:#0C0C0E; --card:#1A1A1E; --sunk:#232328;
@@ -1029,6 +1046,7 @@ export function DocTokens() {
         --doc-score-empty:var(--sunk);
       }
       [data-theme="light"] .doc-r2,
+      [data-theme="light"] .doc-r2.doc-dictamen,
       [data-theme="light"] .doc-r2 .doc-dictamen,
       [data-theme="light"] .doc-r2 .doc-tokens{
         --page:#FFFFFF; --card:#F4F4F6; --sunk:#EBEBEE;

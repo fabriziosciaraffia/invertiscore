@@ -188,11 +188,43 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
   }
 }
 
+// ── 7 · el selector lleva las CUATRO formas, con la PEGADA ───────────────
+{
+  // LA CUARTA LLEGÓ A PRODUCCIÓN ANTES DE ENCONTRARSE. En prod las dos clases van en el
+  // MISMO elemento —«class="doc-dictamen doc-r2"», medido— y ahí la forma descendente
+  // «.doc-r2 .doc-dictamen» no matchea. Los repuntes «--doc-*» quedaban en un selector
+  // (0,1,0) que en tema CLARO perdía contra «[data-theme=light] .doc-dictamen» (0,1,1),
+  // así que los NUEVE tokens se quedaban en la paleta cálida vieja. En oscuro no pasaba,
+  // y en la ruta dev tampoco porque ahí «.doc-r2» ENVUELVE. Ningún shot lo mostró.
+  const FORMAS = [".doc-r2", ".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen", ".doc-r2 .doc-tokens"];
+  const bloque = CSS.slice(CSS.indexOf("REDISEÑO · PALETA"), CSS.indexOf("REDISEÑO · TIPOGRAFÍA"));
+  // CADA TEMA EN SU PROPIO SUB-BLOQUE. Buscando el substring en todo el bloque, la forma
+  // del tema CLARO —«[data-theme=light] .doc-r2.doc-dictamen»— contiene a la del oscuro
+  // —«.doc-r2.doc-dictamen»— y la satisface: borrada del oscuro, el guard seguía verde.
+  const corte = bloque.indexOf('[data-theme="light"] .doc-r2');
+  const SUB = { oscuro: corte === -1 ? bloque : bloque.slice(0, corte), claro: corte === -1 ? "" : bloque.slice(corte) };
+  for (const tema of ["oscuro", "claro"] as const) {
+    const pref = tema === "claro" ? '[data-theme="light"] ' : "";
+    const donde = SUB[tema];
+    for (const f of FORMAS) {
+      if (!donde.includes(pref + f + ",") && !donde.includes(pref + f + "{")) {
+        F(`7 · falta «${pref}${f}» en el bloque de la paleta (${tema}). Sin la forma PEGADA los tokens --doc-* se quedan en la paleta vieja en tema claro, que es lo que llegó a producción.`);
+      }
+    }
+  }
+  // Y los repuntes siguen ahí: si se van, la forma no sirve de nada.
+  for (const t of ["--doc-paper", "--doc-line", "--doc-tx"]) {
+    if (!bloque.replace(/\s/g, "").includes(`${t}:var(`)) {
+      F(`7 · el repunte de «${t}» desapareció del bloque de la paleta`);
+    }
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPaletaRedisenoTier(): { hard: number } {
   console.log("\n─── TIER PALETA-REDISEÑO (contrato §1 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — escala completa en los dos temas, superficies distinguibles, cada línea se ve sobre la suya, la dirección sigue al tema, el par direccional --signal-red/--up se distingue y pasa AA, y el semáforo del dato queda intacto");
+    console.log("  ✓ VERDE — escala completa en los dos temas, superficies distinguibles, cada línea se ve sobre la suya, la dirección sigue al tema, el par direccional --signal-red/--up se distingue y pasa AA, el semáforo del dato queda intacto, y el selector lleva las CUATRO formas");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
