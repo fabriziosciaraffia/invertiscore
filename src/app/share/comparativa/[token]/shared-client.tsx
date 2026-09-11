@@ -48,7 +48,6 @@ interface Props {
   costoAmoblamiento: number;
   modoGestion: "auto" | "admin";
   comisionAdministrador: number;
-  edificioPermiteAirbnb: string;
   ufValue: number;
   createdAt: string;
   /** Fecha de la PROSA vigente; el pie la prefiere sobre `createdAt`. Ver
@@ -80,10 +79,9 @@ export function SharedComparativaClient(p: Props) {
       modoGestion: p.modoGestion,
       comisionAdministrador: p.comisionAdministrador,
       costoAmoblamiento: p.costoAmoblamiento,
-      edificioPermiteAirbnb: p.edificioPermiteAirbnb,
     });
     return ctx ? buildFindingsComparativa(ctx, currency, uf) : [];
-  }, [p.ltrResults, p.strResults, p.modoGestion, p.comisionAdministrador, p.costoAmoblamiento, p.edificioPermiteAirbnb, currency, uf]);
+  }, [p.ltrResults, p.strResults, p.modoGestion, p.comisionAdministrador, p.costoAmoblamiento, currency, uf]);
 
   const ltrVerdict = useMemo(
     () => readVeredicto(p.ltrResults) ?? null,

@@ -69,7 +69,6 @@ interface Props {
   costoAmoblamiento: number;
   modoGestion: "auto" | "admin";
   comisionAdministrador: number;
-  edificioPermiteAirbnb: string;
   // UI
   ufValue: number;
   accessLevel: AccessLevel;
@@ -138,10 +137,9 @@ export function ComparativaClient(p: Props) {
       modoGestion: p.modoGestion,
       comisionAdministrador: p.comisionAdministrador,
       costoAmoblamiento: p.costoAmoblamiento,
-      edificioPermiteAirbnb: p.edificioPermiteAirbnb,
     });
     return ctx ? buildFindingsComparativa(ctx, currency, uf) : [];
-  }, [p.ltrResults, p.strResults, p.modoGestion, p.comisionAdministrador, p.costoAmoblamiento, p.edificioPermiteAirbnb, currency, uf]);
+  }, [p.ltrResults, p.strResults, p.modoGestion, p.comisionAdministrador, p.costoAmoblamiento, currency, uf]);
 
   // Subsidio: mini-línea solo si califica de un lado (idéntico en ambas modalidades).
   const subsidioCalifica =

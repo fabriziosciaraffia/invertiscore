@@ -240,13 +240,11 @@ PROHIBIDO: resolverlo con un descuento cosmético, culpar la ejecución (gestió
   const modoGestion = (strInput?.modoGestion as string) ?? "auto";
   const comisionAdminDec = (strInput?.comisionAdministrador as number) ?? 0.2;
   const comisionAdmin = Math.round(comisionAdminDec * 100);
-  const edificioPermiteAirbnb = (strInput?.edificioPermiteAirbnb as string) ?? "no_seguro";
 
   const ctxFindings = ctxFromResults(ltrResults, strResults, {
     modoGestion: modoGestion === "admin" ? "admin" : "auto",
     comisionAdministrador: comisionAdminDec,
     costoAmoblamiento,
-    edificioPermiteAirbnb,
   });
   const findings = ctxFindings ? buildFindingsComparativa(ctxFindings, "CLP", ltrUf) : [];
   const top = findings[0];

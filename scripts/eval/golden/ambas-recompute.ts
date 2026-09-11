@@ -71,7 +71,6 @@ function findingsOrdenDe(rec: any, d: any): string {
     breakEvenIngresoAnual: rec.breakEvenIngresoAnual ?? 0,
     zonaTier: rec.zonaSTR?.tierZona, zonaPercentilADR: rec.zonaSTR?.percentilADR,
     zonaPercentilOcupacion: rec.zonaSTR?.percentilOcupacion, zonaComuna: rec.zonaSTR?.comuna,
-    edificioPermiteAirbnb: typeof d?.edificioPermiteAirbnb === "string" ? d.edificioPermiteAirbnb : "no_seguro",
     ltrCapitalInicial: 0, ltrCapitalEsSimetrico: false,
     strCapitalInvertido: rec.capitalInvertido ?? 0,
     costoAmoblamiento: typeof d?.costoAmoblamiento === "number" ? d.costoAmoblamiento : 0,

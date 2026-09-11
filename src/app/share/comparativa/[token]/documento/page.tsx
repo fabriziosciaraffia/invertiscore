@@ -84,7 +84,6 @@ export default async function DocumentoAmbasPage({
   const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
   const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
-  const edificioPermiteAirbnb = (strInput?.edificioPermiteAirbnb as string) ?? "no_seguro";
 
   // Homologación: el lado STR adopta la UF real reconstruida del lado LTR.
   const ltrUfFrozen = resolveUfForAnalysis(
@@ -155,7 +154,6 @@ export default async function DocumentoAmbasPage({
       costoAmoblamiento={costoAmoblamiento}
       modoGestion={modoGestion}
       comisionAdministrador={comisionAdministrador}
-      edificioPermiteAirbnb={edificioPermiteAirbnb}
     />
   );
 }

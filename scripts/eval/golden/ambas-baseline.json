@@ -35,7 +35,7 @@
       "flipCambia": true,
       "flipAuto": "INDIFERENTE",
       "flipAdmin": "LTR_PREFERIDO",
-      "findingsOrden": "flujo,breakeven,gestion,regulatorio,capital,patrimonio"
+      "findingsOrden": "flujo,breakeven,gestion,capital,patrimonio"
     },
     "AG-4-nd-degenerado-clara": {
       "recomendacion": "STR_VENTAJA_CLARA",
@@ -59,7 +59,7 @@
       "flipCambia": false,
       "flipAuto": "STR_VENTAJA_CLARA",
       "flipAdmin": "STR_VENTAJA_CLARA",
-      "findingsOrden": "flujo,breakeven,gestion,regulatorio,capital,patrimonio"
+      "findingsOrden": "flujo,breakeven,gestion,capital,patrimonio"
     },
     "AG-6-ltr-preferido": {
       "recomendacion": "LTR_PREFERIDO",
@@ -71,7 +71,7 @@
       "flipCambia": false,
       "flipAuto": "LTR_PREFERIDO",
       "flipAdmin": "LTR_PREFERIDO",
-      "findingsOrden": "flujo,breakeven,gestion,regulatorio,capital,patrimonio"
+      "findingsOrden": "flujo,breakeven,gestion,capital,patrimonio"
     },
     "AG-7-indiferente-5-15": {
       "recomendacion": "INDIFERENTE",

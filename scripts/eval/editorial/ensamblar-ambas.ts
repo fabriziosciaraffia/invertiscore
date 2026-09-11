@@ -207,13 +207,11 @@ export async function ensamblarAMBAS(
   const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
   const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
-  const edificioPermiteAirbnb = (strInput?.edificioPermiteAirbnb as string) ?? "no_seguro";
 
   const ctx = ctxFromResults(ltrResults, strResults, {
     modoGestion,
     comisionAdministrador,
     costoAmoblamiento,
-    edificioPermiteAirbnb,
   });
   const findings = ctx ? buildFindingsComparativa(ctx, "CLP", ltrUf) : [];
   const top3 = findings.slice(0, 3);

@@ -57,13 +57,12 @@ export interface DocumentoAmbasProps {
   costoAmoblamiento: number;
   modoGestion: "auto" | "admin";
   comisionAdministrador: number;
-  edificioPermiteAirbnb: string;
 }
 
 export function DocumentoAmbas({
   token, ltrResults, strResults, ai, ltrInput,
   ltrScore, strScore, ufFrozen, comuna, direccionLabel,
-  costoAmoblamiento, modoGestion, comisionAdministrador, edificioPermiteAirbnb,
+  costoAmoblamiento, modoGestion, comisionAdministrador,
 }: DocumentoAmbasProps) {
   const money = (n: number) => fmtMoney(n, "CLP", ufFrozen);
   const zona = comuna || "tu zona";
@@ -198,7 +197,7 @@ export function DocumentoAmbas({
 
   // ── Hallazgos comparativos (builder puro compartido con la web) ──
   const ctx = ctxFromResults(ltrResults, strResults, {
-    modoGestion, comisionAdministrador, costoAmoblamiento, edificioPermiteAirbnb,
+    modoGestion, comisionAdministrador, costoAmoblamiento,
   });
   const findings = ctx ? buildFindingsComparativa(ctx, "CLP", ufFrozen) : [];
 

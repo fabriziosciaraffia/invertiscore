@@ -17,7 +17,8 @@ import type { FullAnalysisResult } from "./types";
 import type { ShortTermResult } from "./engines/short-term-engine";
 import { hayAsimetriaDeEntrega } from "./comparativa-patrimonio";
 
-export type FindingId = "flujo" | "gestion" | "patrimonio" | "breakeven" | "regulatorio" | "capital";
+// `regulatorio` (F5, el reglamento del edificio) existió hasta el 11-sep-2026: se retiró con la regulación (V1).
+export type FindingId = "flujo" | "gestion" | "patrimonio" | "breakeven" | "capital";
 export type FindingLado = "ltr" | "str" | "neutro";
 export type Currency = "CLP" | "UF";
 
@@ -29,7 +30,7 @@ export interface PuenteLink { label: string; hijo: "ltr" | "str"; seccion: strin
 //  · Finding de DOS lados (el detalle existe en ambos hijos) → 2 botones, uno por hijo.
 //    Solo aplica a `flujo` (flujo mes a mes en ambos) y `patrimonio` (proyección en ambos).
 //  · Finding de UN lado (el fenómeno es propio del corto) → 1 botón al hijo STR.
-//    `gestion` (escenarios STR), `breakeven` (zona STR), `regulatorio` (supuestos STR),
+//    `gestion` (escenarios STR), `breakeven` (zona STR),
 //    `capital` (inversión inicial STR): el arriendo largo no tiene ese detalle que aportar.
 
 export interface FindingComparativa {
@@ -96,8 +97,6 @@ export interface FindingsCtx {
   zonaPercentilADR?: number;
   zonaPercentilOcupacion?: number;
   zonaComuna?: string;
-  // Regulatorio
-  edificioPermiteAirbnb: string;    // "si" | "no" | "no_seguro" | ""
   // Capital
   ltrCapitalInicial: number;        // simétrico (inversionInicial) si existe, si no pie
   ltrCapitalEsSimetrico: boolean;   // false ⇒ es pieCLP (asimétrico), el card se limita al amoblamiento
@@ -123,7 +122,7 @@ const glosaTier = (t?: string) =>
 export function ctxFromResults(
   ltr: FullAnalysisResult | null,
   str: ShortTermResult | null,
-  inputs: { modoGestion: "auto" | "admin"; comisionAdministrador: number; costoAmoblamiento: number; edificioPermiteAirbnb: string },
+  inputs: { modoGestion: "auto" | "admin"; comisionAdministrador: number; costoAmoblamiento: number },
 ): FindingsCtx | null {
   if (!ltr || !str) return null;
   const vc = str.veredictoComparativo;
@@ -157,7 +156,6 @@ export function ctxFromResults(
     zonaPercentilADR: str.zonaSTR?.percentilADR,
     zonaPercentilOcupacion: str.zonaSTR?.percentilOcupacion,
     zonaComuna: str.zonaSTR?.comuna,
-    edificioPermiteAirbnb: inputs.edificioPermiteAirbnb,
     ltrCapitalInicial: ltrCapitalEsSimetrico ? (ltrInvInicial as number) : (ltr.metrics?.pieCLP ?? 0),
     ltrCapitalEsSimetrico,
     strCapitalInvertido: str.capitalInvertido ?? 0,
@@ -403,39 +401,6 @@ function buildBreakEven(x: FindingsCtx, c: Currency, uf: number): FindingCompara
   };
 }
 
-// ── F5 · Riesgo regulatorio condicional (CONDICIONAL: aparece salvo "si") ─────
-function buildRegulatorio(x: FindingsCtx): FindingComparativa {
-  const confirmadoNo = x.edificioPermiteAirbnb === "no";
-  return {
-    id: "regulatorio",
-    kicker: "RIESGO REGULATORIO",
-    titular: confirmadoNo
-      ? "El edificio no permite Airbnb — la opción corto no está sobre la mesa"
-      : "El edificio no confirma que permita Airbnb, y eso puede voltear todo el plan",
-    kpi: confirmadoNo ? "NO PERMITE" : "SIN CONFIRMAR",
-    kpiRed: true,
-    ksub: confirmadoNo ? "REGLAMENTO DE COPROPIEDAD · PROHÍBE EL CORTO" : "REGLAMENTO DE COPROPIEDAD · SIN VERIFICAR",
-    cuerpo: confirmadoNo
-      ? "El reglamento de copropiedad prohíbe el arriendo corto, así que toda la comparación con Airbnb es teórica: no puedes operarlo acá. La decisión real es entre renta larga en este depto o buscar otra propiedad que sí permita corto."
-      : "Nadie confirmó que el reglamento de copropiedad permita arriendo corto, y ese es un riesgo que anula la opción, no que la encarece: si el edificio lo prohíbe, todo el caso del corto se cae y te quedas con la renta larga igual. Confírmalo con el administrador del edificio antes de gastar un peso en amoblar.",
-    lado: "ltr",
-    decisividad: 0.8,
-    procedencia: "Estado declarado del reglamento de copropiedad para arriendo corto",
-    puente: {
-      titulo: confirmadoNo ? "Por qué el corto no está sobre la mesa" : "Por qué esto puede anular la opción corto",
-      lead: `El reglamento de copropiedad es el que decide si un edificio admite arriendo corto — no lo decides tú ni el rendimiento. Acá su estado es:`,
-      filas: [
-        { label: "Reglamento para arriendo corto", str: confirmadoNo ? "Lo prohíbe" : "Sin confirmar" },
-      ],
-      nota: confirmadoNo
-        ? "Es un riesgo binario ya realizado: no reduce el rendimiento del corto, lo anula. Toda la comparativa de arriba solo tiene sentido si consigues cambiar de propiedad."
-        : "Es un riesgo binario: no reduce el rendimiento del corto, lo anula por completo. Una llamada al administrador del edificio lo despeja — hazla antes de amoblar, no después.",
-      links: [{ label: "Revisar los supuestos del corto", hijo: "str", seccion: "supuestos" }],
-    },
-    valor: { edificioPermiteAirbnb: x.edificioPermiteAirbnb, confirmadoNo },
-  };
-}
-
 // ── F6 · Capital inicial diferencial (CONDICIONAL: amoblamiento > 0) ──────────
 function buildCapital(x: FindingsCtx, c: Currency, uf: number): FindingComparativa {
   const deltaSimetrico = x.strCapitalInvertido - x.ltrCapitalInicial;
@@ -503,10 +468,9 @@ export function buildFindingsComparativa(x: FindingsCtx, c: Currency, uf: number
   const patrimonio = buildPatrimonio(x, c, uf);
   const breakeven = buildBreakEven(x, c, uf);
   const capital = x.costoAmoblamiento > 0 ? buildCapital(x, c, uf) : null;         // condicional
-  const regulatorio = x.edificioPermiteAirbnb !== "si" ? buildRegulatorio(x) : null; // default APARECE (no confirmado incluye no preguntado)
 
   // Orden base (por decisividad); patrimonio SIEMPRE cierra; condicionales al medio.
-  const medio = [regulatorio, capital].filter(Boolean) as FindingComparativa[];
+  const medio = [capital].filter(Boolean) as FindingComparativa[];
   const cabeza: FindingComparativa[] = x.banda === "STR_FRAGIL"
     ? [breakeven, flujo, gestion]   // frágil → break-even lidera
     : [flujo, breakeven, gestion];  // resto → flujo lidera
