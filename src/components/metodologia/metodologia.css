@@ -105,7 +105,7 @@
 .mtd-sec a:hover { text-decoration-color: var(--lv-red); }
 
 /* ── toggle LTR/STR (un solo estado para las dos tablas) ── */
-.mtd-toggle { display: inline-flex; margin-top: 26px; border: 1px solid var(--lv-ink); }
+.mtd-toggle { display: inline-flex; margin-top: 26px; border: 1px solid var(--lv-ink); border-radius: var(--lv-rad-pill); overflow: hidden; }
 .mtd-toggle button {
   font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
