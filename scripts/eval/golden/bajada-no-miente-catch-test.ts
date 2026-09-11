@@ -27,7 +27,7 @@
 // Corre dentro del QUICK (tier "bajada-no-miente") y standalone:
 //   node --import tsx scripts/eval/golden/bajada-no-miente-catch-test.ts
 // ============================================================================
-import { bajadaRecomendacion, type BloqueLoQueHariaYo, type MixLoQueHariaYo } from "@/lib/lo-que-haria-yo";
+import { bajadaRecomendacion, estadoRecomendacion, type BloqueLoQueHariaYo, type MixLoQueHariaYo } from "@/lib/lo-que-haria-yo";
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -48,7 +48,7 @@ const bloque = (p: Partial<BloqueLoQueHariaYo>): BloqueLoQueHariaYo => ({
   rotulo: "x", contexto: null, filas: [], mix: null, descarte: null, ...p,
 });
 
-const unaFila = { titulo: "Bajar el precio", rotuloCorto: "Solo el precio", quien: "vendedor" as const, cifra: "−24,1%", objetivo: "UF 4.175" };
+const unaFila = { titulo: "Bajar el precio", nombre: "precio", rotuloCorto: "Solo el precio", quien: "vendedor" as const, cifra: "−24,1%", objetivo: "UF 4.175" };
 
 // ── 1 · mix que llega a COMPRAR ───────────────────────────────────────────
 {
@@ -95,6 +95,19 @@ for (const ausente of [null, undefined]) {
 {
   const b = bajadaRecomendacion("COMPRAR", bloque({ filas: [unaFila] }));
   if (b.includes(NIEGA)) F(`5 · en COMPRAR la bajada dice «${b}»`);
+}
+
+// ── 6 · el ESTADO que dibuja la píldora ─────────────────────────────────────
+// La píldora «✓ COMPRAR» de la bajada va SOLO con salida (§5 revisado, 11-sep-2026).
+// PosicionFranco la dibuja según este estado, no según un string con el destino adentro.
+{
+  if (estadoRecomendacion("AJUSTA SUPUESTOS", bloque({ mix: mixA("COMPRAR") })) !== "con_salida") F("6 · mix a COMPRAR ⇒ estado con_salida");
+  if (estadoRecomendacion("AJUSTA SUPUESTOS", bloque({ filas: [unaFila] })) !== "con_salida") F("6 · palancas que cruzan ⇒ estado con_salida");
+  if (estadoRecomendacion("BUSCAR OTRA", bloque({ mix: mixA("AJUSTA SUPUESTOS"), filas: [unaFila] })) !== "con_salida") F("6 · mix al escalón + palancas que cruzan ⇒ con_salida");
+  if (estadoRecomendacion("BUSCAR OTRA", bloque({ mix: mixA("AJUSTA SUPUESTOS") })) !== "sin_salida") F("6 · mix solo al escalón ⇒ sin_salida");
+  if (estadoRecomendacion("BUSCAR OTRA", bloque({})) !== "sin_salida") F("6 · sin mix y sin palancas ⇒ sin_salida");
+  if (estadoRecomendacion("COMPRAR", bloque({ filas: [unaFila] })) !== "comprar") F("6 · COMPRAR ⇒ estado comprar");
+  if (estadoRecomendacion("AJUSTA SUPUESTOS", undefined) !== "sin_bloque") F("6 · bloque ausente ⇒ sin_bloque: no se afirma nada");
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */

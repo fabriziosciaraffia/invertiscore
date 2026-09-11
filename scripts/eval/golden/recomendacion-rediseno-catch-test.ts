@@ -121,23 +121,20 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   else if (!/background:\s*#fff/.test(cta)) F("4 · el CTA dejó de ser un botón BLANCO SÓLIDO (§5), que es lo que lo distingue de un enlace");
 }
 
-// ── 5 · el rótulo de la ecuación es fijo ──────────────────────────────────
+// ── 5 · «lo tuyo primero»: la caja reemplaza a la rejilla de rótulos ──────
 {
+  // §5 revisado (11-sep-2026): el mix ya no es una fila con rótulo fijo a la izquierda.
+  // Vive en una caja propia —«Modificaciones que dependen de ti»— con los chips y,
+  // bajo una línea, «→ Negocias −X% dcto. en precio» a 19 px y su paréntesis debajo.
+  if (!BLO.includes("Modificaciones que dependen de ti")) F("5 · la card perdió el rótulo de la caja «Modificaciones que dependen de ti»");
+  if (!reglaDe(".doc-r2 .rec-tuyo", REC)) F("5 · no existe la caja de lo tuyo (.rec-tuyo)");
+  const pides = reglaDe(".doc-r2 .rec-pides b", REC);
+  if (!pides || !/font-size:\s*19px/.test(pides)) F("5 · «Negocias −X% dcto. en precio» dejó de ir a 19 px / 700, entero");
+  if (!/rec-pides/.test(BLO)) F("5 · el descuento dejó de dibujarse bajo la línea de la caja (.rec-pides)");
+  if (/rec-dcto-g|rec-contra\b/.test(BLO)) F("5 · volvió el descuento plegado del molde anterior (rec-dcto-g / rec-contra)");
+  // La rejilla rótulo/valor sigue viva SOLO para las dos filas de COMPRAR.
   const fila = reglaDe(".doc-r2 .rec-row", REC);
-  if (!fila) F("5 · no existe la fila de la ecuación");
-  // 128 y no 96: los rótulos dejaron de ser de una palabra cuando entraron las
-  // alternativas —«Solo el arriendo» es el más largo— y a 96 envolvían en dos líneas.
-  // Medido: a 128 los cuatro entran en una sola línea a 700 px.
-  else if (!/grid-template-columns:\s*128px\s+1fr/.test(fila)) {
-    F("5 · el rótulo de la ecuación dejó de ser de 128 px fijos. Con «auto» cada fila alinea su valor en un sitio distinto y la columna de valores deja de leerse como columna; con menos, «Solo el arriendo» envuelve.");
-  }
-  const movil = REC.slice(REC.indexOf("max-width: 767px"));
-  if (!/grid-template-columns:\s*78px\s+1fr/.test(movil)) F("5 · el rótulo no baja a 78 px en móvil");
-  // El descuento vive PLEGADO dentro de «Con lo tuyo», compartiendo fila con los chips,
-  // así que baja de 30 a 22: a 30 se comía los chips que tiene al lado.
-  const dcto = reglaDe(".doc-r2 .rec-dcto", REC);
-  if (dcto && !/font-size:\s*22px/.test(dcto)) F("5 · el descuento dejó de ir a 22 px. Plegado en la fila del mix comparte ancho con los chips; a 30 se los come.");
-  if (!reglaDe(".doc-r2 .rec-dcto-g", REC)) F("5 · el descuento perdió su grupo en línea: plegado va junto a los chips, no como bloque aparte");
+  if (!fila) F("5 · la fila rótulo/valor de COMPRAR («Aguanta» / «Verifica») perdió su estilo");
 }
 
 // ── 6 · los capítulos: sin romano, con foco ───────────────────────────────
@@ -241,55 +238,79 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   }
 }
 
-// ── 12 · las palancas solas y el mix se leen como ALTERNATIVAS ───────────
+// ── 12 · lo que no depende de ti va en UNA oración, después de lo tuyo ────
 {
   const LIB = leer("src/lib/lo-que-haria-yo.ts");
-  // Conviven en 302 de las 1.038 filas LTR no-COMPRAR del parque (medido 11-sep-2026), y
-  // hasta 4c la card con mix dibujaba SOLO el mix: las palancas que cruzan por su cuenta
-  // no se veían. Puestas juntas sin rótulo se leen como una receta de pasos, y cada una
-  // llega sola.
-  if (!/const solas = filas\.filter\(\(f\) => f\.rotuloCorto\)/.test(BLO)) {
-    F("12 · la card con mix dejó de dibujar las palancas que cruzan solas. Son alternativas al mix, no un camino distinto que se esconde.");
+  // §5 revisado: las palancas solas que cruzan —arriendo y precio— dejan de ser filas
+  // con rótulo «Solo el …» y se nombran en «Alternativamente: +X% de arriendo o −Y% de
+  // precio (c/u por separado)», seguidas de por qué no son la recomendación.
+  if (!BLO.includes("Alternativamente:")) F("12 · la card dejó de nombrar las alternativas en una oración");
+  if (!BLO.includes("(c/u por separado)")) F("12 · «Alternativamente» perdió «(c/u por separado)»: sin eso se leen como pasos");
+  if (!/lineaNoDependeDeTi/.test(BLO) || !/export function lineaNoDependeDeTi/.test(LIB)) {
+    F("12 · la línea «Pero eso no depende de ti: lo pone …» no sale del modelo (lineaNoDependeDeTi)");
   }
-  if (!BLO.includes("{solas.map(")) F("12 · las filas de palancas solas no se montan en la rama del mix");
-  if (!/<span className="rec-k">Con lo tuyo<\/span>/.test(BLO)) {
-    F("12 · el rótulo del mix volvió a «Cambias». «Con lo tuyo» es lo que lo distingue de los caminos que dependen del vendedor o del mercado.");
-  }
-  for (const [palanca, rotulo] of [["precio", "Solo el precio"], ["arriendo", "Solo el arriendo"], ["adr", "Solo la tarifa"], ["gestion", "Solo la gestión"]] as const) {
-    if (!LIB.includes(`${palanca}: "${rotulo}"`)) {
-      F(`12 · falta o cambió el rótulo de alternativa de «${palanca}»: se esperaba «${rotulo}». El artículo va escrito y no derivado — «tarifa» y «gestión» son femeninas.`);
-    }
-  }
-  // «Negocias» NO VUELVE. Era el rótulo del molde anterior, cuando el mix iba solo y la
-  // ecuación lo partía en dos pasos. Con las alternativas arriba, la columna de rótulos
-  // se lee entera como una lista de CAMINOS y «Negocias» quedaba adentro pareciendo un
-  // cuarto camino cuando es parte del mix. El descuento va plegado en «Con lo tuyo».
-  if (/>Negocias</.test(BLO)) {
-    F("12 · volvió la fila «Negocias». El descuento es parte de «Con lo tuyo», no un camino aparte: plegado, cada fila de la columna es un camino.");
-  }
-  if (!/rec-dcto-g/.test(BLO)) F("12 · el descuento dejó de ir plegado dentro de la fila del mix");
+  if (/rotuloCorto: "Solo el precio"|>Solo el /.test(BLO)) F("12 · volvieron las filas «Solo el …»: las alternativas van en una oración, no en filas");
+  if (/<span className="rec-k">Con lo tuyo<\/span>/.test(BLO)) F("12 · volvió el rótulo «Con lo tuyo»: la caja se llama «Modificaciones que dependen de ti»");
+  // «Negocias» VUELVE, pero adentro de la caja: es lo que resulta de lo tuyo.
+  if (!/Negocias /.test(BLO)) F("12 · «→ Negocias −X% dcto. en precio» no está en la caja");
+  // El nombre llano de cada palanca viene del modelo, no se deduce del título.
+  if (!/nombre = NOMBRE_LLANO\[l\.palanca\]/.test(LIB)) F("12 · las filas del modelo no llevan su nombre llano (precio / arriendo / tarifa)");
 }
 
-// ── 13 · «Resultado» es obligatoria EN LAS DOS RAMAS ─────────────────────
+// ── 13 · «Resultado» es obligatoria EN LAS DOS RAMAS, y va con signo ────────
 {
   // El invariante 11 mira la rama SIN mix. Esta fila también vive en la rama CON mix, y
   // ahí no la cubría nadie: al plegar el descuento dentro de «Con lo tuyo», el reemplazo
-  // se comió las tres filas del molde viejo —«Cambias», «Negocias» y «Resultado»— y la
-  // card se quedó sin destino sin que ningún test lo viera. Se repuso a mano.
-  //
-  // ACOTADO A LA RAMA CON MIX: desde `const solas = …` —la primera línea después del
-  // `if (!mix || soloEscalon)`— hasta el fin de la función. Mirar todo el archivo daría
-  // verde por la fila de la otra rama, que es justo el agujero que esto tapa.
-  const i = BLO.indexOf("const solas = filas.filter");
+  // se comió las tres filas del molde viejo y la card se quedó sin destino. Se repuso a
+  // mano. §5 revisado: Resultado va INMEDIATAMENTE después de la caja, y las píldoras
+  // llevan signo — «− AJUSTAR» → «✓ COMPRAR».
+  const i = BLO.indexOf("const alternativas = filas.filter");
   const rama = i === -1 ? "" : BLO.slice(i);
-  if (!rama) F("13 · no se encontró la rama con mix de la ecuación");
-  else if (!/<span className="rec-k">Resultado<\/span>/.test(rama)) {
-    F("13 · la rama CON mix perdió la fila «Resultado». Es el destino común de los caminos de arriba: sin ella la card muestra alternativas y no dice adónde llevan.");
-  }
-  // Y que siga siendo una transición y no un texto suelto.
-  else if (!/rec-trans/.test(rama) || !/rec-pill de/.test(rama) || !/rec-pill a/.test(rama)) {
+  if (!rama) F("13 · no se encontró la rama con mix de la ecuación (const alternativas = …)");
+  else if (!/Resultado/.test(rama)) F("13 · la rama CON mix perdió «Resultado». Es el destino común: sin ella la card muestra alternativas y no dice adónde llevan.");
+  // La píldora es un helper definido antes de la rama: sus clases se buscan en todo el archivo.
+  else if (!/rec-trans/.test(rama) || !/rec-pill de/.test(BLO) || !/rec-pill a/.test(BLO)) {
     F("13 · «Resultado» dejó de dibujarse como transición (píldora tenue → píldora blanca)");
   }
+  // El orden: la caja de lo tuyo ANTES que Resultado, y Resultado ANTES que «Alternativamente».
+  const jsx = rama.slice(rama.indexOf('<div className="rec-tuyo">'));
+  const iRes = jsx.indexOf("{resultado}"), iAlt = jsx.indexOf("{alternativamente}"), iCosto = jsx.indexOf("rec-cost");
+  if (!(jsx && iRes > 0 && iAlt > iRes && iCosto > iAlt)) {
+    F("13 · el orden de la card con mix no es caja → Resultado → Alternativamente → costo");
+  }
+  if (!/signoVeredicto\(/.test(BLO)) F("13 · las píldoras de Resultado no llevan el signo del veredicto (✕ / − / ✓)");
+  if (!/export function signoVeredicto/.test(leer("src/lib/veredicto-etiqueta.ts"))) F("13 · el signo del veredicto no vive en la fuente única (veredicto-etiqueta.ts)");
+}
+
+// ── 15 · la bajada: píldora neutra SOLO con salida; tres acotaciones iguales ─
+{
+  // PosicionFranco dibuja la píldora «✓ COMPRAR» según el ESTADO, no un string con el
+  // destino adentro: con salida lleva píldora; COMPRAR y sin salida, no.
+  if (!/estado === "con_salida"/.test(POS)) F("15 · PosicionFranco no gatea la píldora de la bajada por el estado «con_salida»");
+  if (!/rec-pill-neutra/.test(POS) || !reglaDe(".doc-r2 .rec-pill-neutra", REC)) F("15 · falta la píldora neutra de la bajada (rec-pill-neutra)");
+  if (/bajada=\{rediseno \? bajada/.test(HERO)) F("15 · HeroLTR sigue pasando la bajada como string con el destino adentro");
+  if (!/estadoRecomendacion\(/.test(HERO)) F("15 · HeroLTR no calcula el estado de la recomendación para la bajada");
+  // Las TRES acotaciones —paréntesis, «Pero eso no depende de ti», costo— al mismo
+  // tamaño y opacidad (12,5 px / .6). Ninguna destaca.
+  for (const sel of [".doc-r2 .rec-vs", ".doc-r2 .rec-a2", ".doc-r2 .rec-cost"]) {
+    const r = reglaDe(sel, REC);
+    if (!r) F(`15 · falta la acotación ${sel}`);
+    else if (!/font-size:\s*12\.5px/.test(r) || !/opacity:\s*\.6\b/.test(r)) F(`15 · la acotación ${sel} no va a 12,5 px / .6 como las otras dos`);
+  }
+  // Sin descuento: «→ Sin pedirle un peso al vendedor» y el paréntesis se omite.
+  if (!/mix\.descuento && mix\.contraste/.test(BLO)) F("15 · el paréntesis «(−X% si solo modificas el precio)» no cuelga del descuento: sin descuento no puede dibujarse");
+  if (!/Sin pedirle un peso al vendedor/.test(leer("src/lib/lo-que-haria-yo.ts"))) F("15 · la frase sin descuento no es «Sin pedirle un peso al vendedor»");
+}
+
+// ── 16 · el chip «Lo pone …, no tú» sale de la card y entra al pop-up ────────
+{
+  const VOC = leer("src/components/analysis/hallazgos/vocabulario.tsx");
+  const DRW = leer("src/components/analysis/drawers/DrawersPropios.tsx");
+  if (/lqhy-chip|TEXTO_CHIP/.test(BLO.slice(BLO.indexOf("function EcuacionRecomendacion")))) F("16 · la ecuación volvió a dibujar el chip por fila");
+  if (!/quien\?:/.test(VOC) || !/pal-quien/.test(VOC)) F("16 · la primitiva Palancas no dibuja quién pone la palanca (pal-quien)");
+  if (!reglaDe(".pal-quien", ACO)) F("16 · falta el estilo .pal-quien del pop-up");
+  if (!/quien: QUIEN_PALANCA\[/.test(DRW)) F("16 · construirPalancas no asigna quién pone cada palanca");
+  if (!/Lo pone el mercado, no tú/.test(VOC) || !/Lo pone el vendedor, no tú/.test(VOC)) F("16 · el chip no usa la forma «Lo pone el mercado, no tú» / «Lo pone el vendedor, no tú»");
 }
 
 // ── 14 · el puente del estado sin salida ─────────────────────────────────
@@ -340,7 +361,7 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
 export function runRecomendacionRedisenoTier(): { hard: number } {
   console.log("\n─── TIER RECOMENDACIÓN-REDISEÑO (contrato §5 y §7 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo del día uno con el mix, la card sin firma y con CTA blanco, el rótulo a 128/78 px, los capítulos sin romano y con foco, la puerta intacta detrás del interruptor, la recomendación apuntando SIEMPRE a Comprar, la fila de capítulo sin bajada y con la cifra apellidada, «Resultado» también sin mix, las palancas solas junto al mix como alternativas, «Resultado» obligatoria en las DOS ramas, y el puente del estado sin salida");
+    console.log("  ✓ VERDE — el fondo por veredicto solo en la recomendación, el filtro en su capa, el costo con el mix, la card sin firma y con CTA blanco, lo tuyo primero en su caja, Resultado con signo y después de la caja, «Alternativamente» en una oración, la píldora de la bajada solo con salida, las tres acotaciones iguales, el chip en el pop-up, y los capítulos sin romano, con foco y sin cambiar de puerta");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

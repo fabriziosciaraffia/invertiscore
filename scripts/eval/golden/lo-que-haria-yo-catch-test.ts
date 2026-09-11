@@ -51,7 +51,7 @@
 // Corre dentro del QUICK (tier "lo-que-haria-yo") y standalone:
 //   node --import tsx scripts/eval/golden/lo-que-haria-yo-catch-test.ts
 // ============================================================================
-import { construirLoQueHariaYo } from "../../../src/lib/lo-que-haria-yo";
+import { lineaNoDependeDeTi, construirLoQueHariaYo } from "../../../src/lib/lo-que-haria-yo";
 import { buildHallazgoDistanciaVeredicto } from "../../../src/lib/distancia-veredicto-hallazgo";
 import type { HallazgoDistanciaVeredicto, HallazgoSensibilidad, Veredicto } from "../../../src/lib/types";
 
@@ -184,6 +184,15 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   if (quien(/precio/i) !== "vendedor") F(`2 · el precio lo pone el vendedor, dio «${quien(/precio/i)}»`);
   if (quien(/arriendo/i) !== "mercado") F(`2 · el arriendo lo pone el mercado, dio «${quien(/arriendo/i)}»`);
   if (quien(/pie/i) !== "tuyo") F(`2 · el pie lo pones tú, dio «${quien(/pie/i)}»`);
+  // §5 revisado: la card ya no dibuja el chip por fila; la oración «Alternativamente: +X%
+  // de arriendo o −Y% de precio» necesita el nombre llano, y «Pero eso no depende de ti:
+  // lo pone …» sale de una sola función.
+  const nombre = (t: RegExp) => b?.filas.find((f) => t.test(f.titulo))?.nombre;
+  if (nombre(/precio/i) !== "precio") F(`2 · la fila del precio no lleva nombre llano «precio», dio «${nombre(/precio/i)}»`);
+  if (nombre(/arriendo/i) !== "arriendo") F(`2 · la fila del arriendo no lleva nombre llano «arriendo», dio «${nombre(/arriendo/i)}»`);
+  if (lineaNoDependeDeTi(["mercado", "vendedor"]) !== "Pero eso no depende de ti: lo pone el mercado o el vendedor.") F("2 · la línea con las dos palancas ajenas no dice «lo pone el mercado o el vendedor»");
+  if (lineaNoDependeDeTi(["vendedor"]) !== "Pero eso no depende de ti: lo pone el vendedor.") F("2 · la línea con solo el precio no dice «lo pone el vendedor»");
+  if (lineaNoDependeDeTi(["mercado"]) !== "Pero eso no depende de ti: lo pone el mercado.") F("2 · la línea con solo el arriendo no dice «lo pone el mercado»");
 }
 
 // ── 3 · LOS 179 · el mix es el cuerpo ───────────────────────────────────────
@@ -199,7 +208,7 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   if (!sinDesc?.mix) F("3a · los 179 sin descuento: el mix tiene que dibujarse, es el cuerpo");
   else {
     if (sinDesc.mix.titulo !== "Para que deje de ser un no") F(`3a · desde BUSCAR el mix deja en un veredicto menor: «Para que deje de ser un no», dio «${sinDesc.mix.titulo}»`);
-    if (sinDesc.mix.sinDescuento !== "sin pedirle un peso al vendedor") F(`3a · sin descuento hay que DECIRLO donde iría la cifra, dio «${sinDesc.mix.sinDescuento}»`);
+    if (sinDesc.mix.sinDescuento !== "Sin pedirle un peso al vendedor") F(`3a · sin descuento hay que DECIRLO donde iría la cifra, dio «${sinDesc.mix.sinDescuento}»`);
     if (sinDesc.mix.descuento !== null) F("3a · sin descuento no hay cifra de descuento que dibujar");
     if (sinDesc.mix.contraste !== null) F("3a · sin solo-precio que cruce NO hay contraste tachado que dibujar");
     if (sinDesc.filas.length !== 0) F(`3a · ninguna palanca sola cruza: no puede haber filas, hay ${sinDesc.filas.length}`);
