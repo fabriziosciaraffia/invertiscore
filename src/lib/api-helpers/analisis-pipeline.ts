@@ -546,7 +546,6 @@ export interface ShortTermAnalysisBody {
   estaAmoblado?: boolean;
   costoAmoblamiento?: number;
   arriendoLargoMensual: number;
-  edificioPermiteAirbnb?: string;
   lat?: number;
   lng?: number;
 }
