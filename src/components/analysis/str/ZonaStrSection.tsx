@@ -4,6 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { usePostHog } from "posthog-js/react";
 import type { ZonaStr } from "@/lib/zona-str";
 import { fechaCortaCL } from "@/lib/fecha-cl";
+import { useRediseno } from "@/components/analysis/RedisenoContexto";
 import { Modal, VProsa, VViz, VSub, VCierre, VFuente } from "@/components/analysis/hallazgos/vocabulario";
 import { FilaDato, FilasDato, Planilla, type FilaPlanilla } from "@/components/analysis/shared";
 
@@ -15,6 +16,12 @@ import { FilaDato, FilasDato, Planilla, type FilaPlanilla } from "@/components/a
  * cerca. Todo viene de `ZonaStr` (server, con procedencia); acá no se calcula nada.
  * Telemetría: `informe_capitulo_abierto` con tipo 'str' y capítulo 'zona', una vez por
  * montaje, al abrir el modal.
+ *
+ * CON EL REDISEÑO (contrato §8 · bloque A, 11-sep-2026) el cuerpo son las tres tarjetas
+ * de `ZonaCeldasStrR2` —ocupación primero, tarifa, comparables—, el pie común con la
+ * fecha de las estimaciones y el enlace «Ver los comparables →», que abre el MISMO modal.
+ * La tipo-line del reglamento no va: la regulación se retiró (§11). El camino viejo
+ * queda exactamente como estaba.
  */
 export function ZonaStrSection({
   zona,
@@ -34,6 +41,7 @@ export function ZonaStrSection({
   accessLevel: string;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const rediseno = useRediseno();
   const posthog = usePostHog();
   const medido = useRef(false);
   const abrir = () => {
@@ -104,8 +112,28 @@ export function ZonaStrSection({
     return <>{partes}</>;
   })();
 
-  return (
-    <div>
+  // EL PIE COMÚN DE §8: la fecha de las estimaciones, una vez, y no dentro de cada
+  // tarjeta. Dice de dónde salen tarifa y ocupación —tuyas o estimadas— y cuándo.
+  const pieR2 =
+    `${t?.esTuya || o.esTuya ? "Tarifa y ocupación definidas por ti" : "Tarifa y ocupación estimadas para este depto"}` +
+    `${c ? ` · ${c.n} avisos parecidos · ${fecha(c.fecha)}` : ""}` +
+    `${o.comuna ? ` · típico de ${comuna} al ${fecha(o.comuna.fecha)}` : ""}.`;
+
+  const cuerpo = rediseno ? (
+    <>
+      <ZonaCeldasStrR2 zona={zona} comuna={comuna} currency={currency} valorUF={valorUF} />
+      <p className="zona-caveat">{pieR2}</p>
+      <div className="zona-foot">
+        {/* La procedencia ya está en el pie común: acá solo queda el enlace, que el
+            contrato §8 nombra «Ver los comparables». Abre el mismo modal de siempre. */}
+        <span />
+        <button type="button" className="doc-lnk" onClick={abrir}>
+          Ver los comparables →
+        </button>
+      </div>
+    </>
+  ) : (
+    <>
       <VProsa>{sintesis}</VProsa>
       <div className="zona-cells">
         <div>
@@ -149,6 +177,12 @@ export function ZonaStrSection({
           Explorar →
         </button>
       </div>
+    </>
+  );
+
+  return (
+    <div>
+      {cuerpo}
 
       <Modal abierto={abierto} onClose={() => setAbierto(false)} titulo={`La zona · ${comuna}`} sub={direccion || undefined}>
         <div className="doc-tokens">
@@ -205,6 +239,115 @@ export function ZonaStrSection({
           </VFuente>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+type TonoPildora = "bien" | "mal" | "neu";
+
+/** La píldora del par direccional (contrato §8). Mismas clases que la de LTR: `bien` en
+ *  --up, `mal` en --signal, `neu` en gris, todas con fondo al 12%. */
+function Pildora({ tono, children }: { tono: TonoPildora; children: ReactNode }) {
+  return <span className={`zp zp-${tono}`}>{children}</span>;
+}
+
+/** «hasta 800 m» · «hasta 3,1 km». */
+function fmtRadio(m: number): string {
+  return m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`;
+}
+
+/**
+ * Las tres tarjetas del contrato §8 para STR: OCUPACIÓN primero —tu porcentaje contra lo
+ * típico de la comuna; es el único dato tuyo que puede quedar peor que la referencia y
+ * el número del que cuelga todo—, después la TARIFA POR NOCHE contra la mediana (sin
+ * ajuste propio la píldora es neutra: cobras la mediana), y la tercera son LOS
+ * COMPARABLES —cuántos avisos, cuántos superhost, hasta qué radio—, no valorización.
+ * Mismo estilo que las tarjetas de cifra y, como ellas, no reaccionan: no abren nada.
+ *
+ * LA DIRECCIÓN LA DECIDE EL SENTIDO, no el signo: ocupar MÁS que la comuna mejora tu
+ * caso («bien»); cobrar MÁS que la mediana es una apuesta a diferenciarte, o sea empeora
+ * lo que se puede sostener («mal»). Igual que el arriendo en LTR.
+ */
+export function ZonaCeldasStrR2({
+  zona,
+  comuna,
+  currency,
+  valorUF,
+}: {
+  zona: ZonaStr;
+  comuna: string;
+  currency: "CLP" | "UF";
+  valorUF: number;
+}) {
+  const money = (n: number) => (currency === "UF" ? `UF ${(n / (valorUF || 1)).toFixed(1).replace(".", ",")}` : `$${Math.round(n).toLocaleString("es-CL")}`);
+  const pct = (x: number) => `${Math.round(x * 100)}%`;
+  const fecha = (iso: string) => fechaCortaCL(iso);
+  const t = zona.tarifaZona;
+  const o = zona.ocupacion;
+  const c = zona.comparables;
+
+  // ocupación: puntos contra la comuna, ya redondeados los dos lados. LA PÍLDORA COMPARA
+  // LO QUE LA TARJETA MUESTRA —tu porcentaje contra el típico— y no `o.relacion`, que mide
+  // la estimación de la ZONA contra la comuna: con un supuesto tuyo (80% contra 46%) decía
+  // «parecido» al lado de dos números que no se parecen en nada. Misma tolerancia que la
+  // relación del motor: hasta 3 puntos es parecido.
+  const ptsOcc = o.comuna ? Math.round(o.tuya * 100) - Math.round(o.comuna.valor * 100) : null;
+  const pildoraOcc =
+    ptsOcc == null ? null
+    : Math.abs(ptsOcc) <= 3 ? <Pildora tono="neu">parecido</Pildora>
+    : ptsOcc > 0 ? <Pildora tono="bien">{ptsOcc} pts sobre</Pildora>
+    : <Pildora tono="mal">{Math.abs(ptsOcc)} pts bajo</Pildora>;
+  const glosaOcc = o.comuna
+    ? `${o.esTuya ? "El supuesto que definiste tú · " : ""}${o.comuna.n} ${o.comuna.n === 1 ? "estimación" : "estimaciones"} al ${fecha(o.comuna.fecha)}.`
+    : o.esTuya
+      ? "El supuesto que definiste tú; sin datos suficientes de la comuna para contrastarlo."
+      : "Sin datos suficientes de la comuna para contrastarla.";
+
+  // tarifa: % contra la mediana, solo si hay ajuste propio; si no, neutra
+  const pctTarifa = t && t.mediana > 0 ? Math.round((Math.abs(t.tuya - t.mediana) / t.mediana) * 100) : 0;
+  const pildoraTarifa = !t
+    ? null
+    : !t.esTuya || t.posicion === "igual" || pctTarifa === 0
+      ? <Pildora tono="neu">cobras la mediana</Pildora>
+      : t.posicion === "arriba"
+        ? <Pildora tono="mal">{pctTarifa}% sobre</Pildora>
+        : <Pildora tono="bien">{pctTarifa}% bajo</Pildora>;
+  const glosaTarifa = !t ? "Sin tarifa de referencia para tu zona." : t.esTuya ? "Tarifa definida por ti." : "Sin ajuste propio.";
+
+  return (
+    <div className="zona-cards">
+      {/* 1 · TU OCUPACIÓN — primero, por el contrato */}
+      <div className="zc">
+        <p className="zc-k">Tu ocupación</p>
+        <p className="zc-v">{pct(o.tuya)}</p>
+        <p className="zc-r">{o.comuna ? `típico de ${comuna} ${pct(o.comuna.valor)}` : <>&nbsp;</>}</p>
+        {pildoraOcc}
+        <p className="zc-s">{glosaOcc}</p>
+      </div>
+
+      {/* 2 · TU TARIFA POR NOCHE */}
+      <div className="zc">
+        <p className="zc-k">Tu tarifa por noche</p>
+        <p className="zc-v">{t ? money(t.tuya) : "—"}</p>
+        <p className="zc-r">{t ? `mediana ${money(t.mediana)}` : <>&nbsp;</>}</p>
+        {pildoraTarifa}
+        <p className="zc-s">{glosaTarifa}</p>
+      </div>
+
+      {/* 3 · CONTRA QUIÉN TE COMPARAN — los comparables, no valorización */}
+      <div className="zc">
+        <p className="zc-k">Contra quién te comparan</p>
+        <p className="zc-v">{c ? `${c.n} avisos` : "—"}</p>
+        <p className="zc-r">{c ? `${c.nSuperhost} ${c.nSuperhost === 1 ? "es" : "son"} superhost` : <>&nbsp;</>}</p>
+        {c && c.radioM != null ? <Pildora tono="neu">hasta {fmtRadio(c.radioM)}</Pildora> : null}
+        <p className="zc-s">
+          {c
+            ? c.estadiaNoches != null
+              ? `Estadía típica ${c.estadiaNoches.toFixed(1).replace(".", ",")} noches.`
+              : "Avisos parecidos por tipología y radio."
+            : "Sin datos suficientes: este análisis no guardó los avisos con los que se comparó."}
+        </p>
+      </div>
     </div>
   );
 }
