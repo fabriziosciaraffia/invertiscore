@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informe simplificado — iteración 2</title>
+<style>
+/* ════════════════════════════════════════════════════════════════════════════
+   TOKENS — verbatim de producción. No se rediseña nada de lo que hace que el
+   informe se vea Franco: tríada Tinta, plumón, banda, papel, serif en titulares,
+   mono en cifras. Simplificar es sacar repetición y niveles, no carácter.
+   ════════════════════════════════════════════════════════════════════════════ */
+.dir{
+  --paper:#141414; --paper2:#1B1B1B; --paper3:#232323;
+  --line:#282828; --line2:#3A3A3A;
+  --tx:#EDEBE6; --tx2:#C4C2BC; --tx3:#8C8A84; --tx4:#5C5A55;
+  --hl:color-mix(in srgb,color-mix(in srgb,var(--verdict),white 25%) 40%,transparent);
+  --good:#57B98A; --warn:#DFA34F; --signal-red:#C8323C;
+}
+[data-theme="light"] .dir{
+  --paper:#FAF8F3; --paper2:#F1EEE7; --paper3:#EAE7DF;
+  --line:#DAD6CC; --line2:#C4BFB2;
+  --tx:#141311; --tx2:#3B3A36; --tx3:#75726A; --tx4:#A39F94;
+  --hl:color-mix(in srgb,var(--verdict) 32%,transparent);
+  --good:#2E8B57; --warn:#B7791F;
+}
+[data-verdict="BUSCAR OTRA"]{--verdict:#C8323C; --verdict-deep:#7A1F27}
+[data-verdict="AJUSTA SUPUESTOS"]{--verdict:#6E4560; --verdict-deep:#442B3B}
+[data-verdict="COMPRAR"]{--verdict:#2B558F; --verdict-deep:#1B3559}
+
+/* ── chrome del mockup (no cuenta) ───────────────────────────────────────── */
+:root{color-scheme:light dark}
+body{margin:0;background:#9C9890;font:14px/1.6 "IBM Plex Sans",system-ui,sans-serif;color:#141311}
+[data-theme="dark"] body{background:#0A0A0A;color:#EDEBE6}
+.wrap{max-width:1240px;margin:0 auto;padding:18px 16px 70px}
+.mk-head{position:sticky;top:0;z-index:20;background:#9C9890;padding:12px 0 10px;border-bottom:1px solid rgba(0,0,0,.25);margin-bottom:18px}
+[data-theme="dark"] .mk-head{background:#0A0A0A;border-color:rgba(255,255,255,.2)}
+.mk-head h1{font-family:"Source Serif 4",Georgia,serif;font-size:21px;margin:0 0 3px}
+.mk-head p{margin:0;font-size:12.5px;opacity:.85;max-width:104ch}
+.mk-btns{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;align-items:center}
+.mk-btn{font:600 11.5px/1 "IBM Plex Sans",sans-serif;padding:7px 10px;border:1px solid currentColor;background:transparent;color:inherit;border-radius:3px;cursor:pointer}
+.mk-btn.on{background:currentColor}
+.mk-btn.on span{color:#FAF8F3;mix-blend-mode:difference}
+.sep{width:1px;height:20px;background:currentColor;opacity:.3;margin:0 4px}
+h2.mk{font-family:"Source Serif 4",Georgia,serif;font-size:19px;margin:34px 0 4px;border-top:2px solid currentColor;padding-top:12px}
+h2.mk small{display:block;font-family:"IBM Plex Sans",sans-serif;font-size:12.5px;font-weight:400;opacity:.8;margin-top:5px;max-width:100ch}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(390px,1fr));gap:18px;align-items:start;margin-top:14px}
+.col-h{font:700 11px/1.35 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;
+  padding:9px 11px;background:rgba(0,0,0,.14);border-radius:4px 4px 0 0}
+[data-theme="dark"] .col-h{background:rgba(255,255,255,.1)}
+.col-h em{display:block;font-style:normal;font-weight:400;letter-spacing:0;text-transform:none;font-family:"IBM Plex Sans",sans-serif;font-size:11.5px;opacity:.8;margin-top:4px}
+.caja{width:390px;max-width:100%;border:1px solid rgba(0,0,0,.3);border-top:0;border-radius:0 0 4px 4px;overflow:hidden}
+[data-theme="dark"] .caja{border-color:rgba(255,255,255,.18)}
+.caja.scroll{height:820px;overflow-y:auto}
+.reco{margin:12px 0 0;padding:11px 13px;border-left:3px solid #C8323C;background:rgba(200,50,60,.08);font-size:13px}
+.falta{margin:12px 0 0;padding:11px 13px;border:1px dashed #C8323C;background:rgba(200,50,60,.06);font-size:12.5px}
+.ok{margin:12px 0 0;padding:11px 13px;border-left:3px solid #2E8B57;background:rgba(46,139,87,.09);font-size:13px}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   EL INFORME
+   ════════════════════════════════════════════════════════════════════════════ */
+.dir{color:var(--tx);font-family:"IBM Plex Sans",system-ui,sans-serif;background:var(--paper);padding-bottom:24px}
+.dir .pad{padding:0 16px}
+.dir mark{background:linear-gradient(transparent 60%,var(--hl) 60%);color:var(--tx);padding:0 2px;font-weight:500}
+
+/* hero — NO SE TOCA */
+.eyebrow{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx4)}
+.h-nombre{font-family:"Source Serif 4",Georgia,serif;font-size:20px;font-weight:700;margin:6px 0 2px}
+.h-dir{font-size:12px;color:var(--tx3)}
+.pill{display:inline-block;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--tx4);border:1px solid var(--line);border-radius:99px;padding:3px 9px;margin:2px 4px 2px 0}
+.banda{background:linear-gradient(100deg,var(--verdict) 0%,color-mix(in srgb,var(--verdict) 80%,var(--verdict-deep)) 70%,var(--verdict-deep) 100%);
+  color:#fff;padding:13px 16px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:14px}
+.banda b{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:15px;font-weight:700;letter-spacing:.06em}
+.banda span{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;opacity:.92}
+.score{display:flex;gap:2px;margin-top:9px}
+.score i{flex:1;height:5px;border-radius:1px;background:var(--paper3)}
+.score i.on{background:var(--verdict)}
+.titular{font-family:"Source Serif 4",Georgia,serif;font-size:23px;line-height:1.22;font-weight:700;margin:15px 0 4px;color:var(--tx)}
+
+/* títulos de sección — serif, uno solo, con filete */
+.sec-t{font-family:"Source Serif 4",Georgia,serif;font-size:19px;font-weight:700;line-height:1.2;
+  margin:26px 0 12px;padding-top:16px;border-top:1px solid var(--line);color:var(--tx)}
+.sec-t.primero{margin-top:18px;padding-top:14px}
+/* subtítulo de sublista (solución b) — un escalón bajo el título, no otro título */
+.sub-lista{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--tx3);font-weight:700;margin:16px 0 4px}
+.sub-lista.manda{color:var(--verdict)}
+
+/* filas de razón */
+.razon{display:grid;grid-template-columns:auto auto 1fr auto;gap:3px 9px;padding:10px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.razon:last-child{border-bottom:0}
+.razon .n{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;color:var(--tx4)}
+.razon .dot{width:7px;height:7px;border-radius:99px;align-self:center}
+.razon .dot.mal{background:var(--signal-red)} .razon .dot.bien{background:var(--good)}
+.razon .t{font-size:13.5px;color:var(--tx)}
+.razon .v{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px;font-weight:700;white-space:nowrap}
+.razon .v.mal{color:var(--signal-red)} .razon .v.bien{color:var(--good)}
+.razon .g{grid-column:3/-1;font-size:11.5px;color:var(--tx3)}
+.razon.sindot{grid-template-columns:auto 1fr auto}
+.razon.sindot .g{grid-column:2/-1}
+
+/* Lo que haría yo */
+.haria{border:1px solid var(--verdict);border-left-width:3px;border-radius:3px;padding:14px 15px;margin:14px 0 0}
+.haria .rk{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--verdict);font-weight:700;margin-bottom:8px}
+.haria p{font-size:14px;line-height:1.6;color:var(--tx2);margin:0 0 10px}
+.haria .chip{display:inline-block;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;font-weight:700;
+  padding:5px 10px;border-radius:2px;background:color-mix(in srgb,var(--verdict) 12%,transparent);color:var(--verdict)}
+.haria .neg{font-size:12.5px;line-height:1.55;color:var(--tx3);margin:10px 0 0;padding-top:10px;border-top:1px solid var(--line)}
+.haria .vias{margin:10px 0 0;padding-top:10px;border-top:1px solid var(--line)}
+.haria .vk{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:6px}
+.haria .via{display:grid;grid-template-columns:1fr auto;gap:1px 10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.haria .via:last-of-type{border-bottom:0}
+.haria .via .n{font-size:13px;color:var(--tx)}
+.haria .via .d{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--good);text-align:right}
+.haria .via .x{grid-column:1/-1;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;color:var(--tx3)}
+.haria .viaoff{font-size:11.5px;color:var(--tx4);margin-top:6px}
+.firma{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--tx3);margin-top:12px}
+.firma i{width:20px;height:20px;border:1px solid var(--line2);border-radius:2px;display:grid;place-items:center;
+  font-family:"Source Serif 4",Georgia,serif;font-style:normal;font-size:10px;color:var(--tx2)}
+
+/* números en grilla */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.cel{background:var(--paper);padding:12px 13px}
+.cel .k{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx4)}
+.cel .v{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:20px;font-weight:700;margin-top:5px;color:var(--tx)}
+.cel .v.neg{color:var(--signal-red)}
+.cel .g{font-size:11px;line-height:1.45;color:var(--tx3);margin-top:5px}
+
+/* capítulos narrados */
+.cap{padding:14px 0;border-bottom:1px solid var(--line)}
+.cap:last-child{border-bottom:0}
+.cap-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.cap-r{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;color:var(--tx4);letter-spacing:.12em}
+.cap-k{font-family:"Source Serif 4",Georgia,serif;font-size:16px;font-weight:700;color:var(--tx);flex:1;margin-left:8px}
+.cap-v{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:14px;font-weight:700}
+.cap-p{font-size:13px;line-height:1.6;color:var(--tx2);margin:7px 0 0}
+
+.kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.kv:last-child{border-bottom:0}
+.kv b{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:700;white-space:nowrap}
+.kv .sub{font-size:11.5px;color:var(--tx3);display:block;margin-top:2px;font-weight:400}
+.deep{font-size:11.5px;color:var(--tx3);border:1px dashed var(--line2);border-radius:3px;padding:8px 11px;margin-top:14px}
+
+/* ════════ DIAGRAMAS DE HALLAZGO ════════ */
+.dg{padding:14px 0;border-bottom:1px solid var(--line)}
+.dg:last-child{border-bottom:0}
+.dg-h{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:baseline}
+.dg-n{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;color:var(--tx4)}
+.dg-t{font-size:13.5px;color:var(--tx);font-weight:600}
+.dg-v{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;font-weight:700}
+.dg-v.mal{color:var(--signal-red)} .dg-v.bien{color:var(--good)}
+.dg-c{margin-top:10px}
+.dg-cap{font-size:11.5px;line-height:1.5;color:var(--tx3);margin-top:7px}
+.dg-frase{font-size:11.5px;line-height:1.5;color:var(--tx4);margin-top:8px;padding-top:7px;border-top:1px dashed var(--line);font-style:italic}
+/* eje con umbral */
+.eje{position:relative;height:34px}
+.eje-l{position:absolute;left:0;right:0;top:16px;height:3px;background:var(--paper3);border-radius:2px}
+.eje-u{position:absolute;top:8px;width:1px;height:19px;background:var(--tx3)}
+.eje-u b{position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:9px;color:var(--tx3);white-space:nowrap;font-weight:400}
+.eje-m{position:absolute;top:11px;width:11px;height:11px;border-radius:99px;transform:translateX(-50%);border:2px solid var(--paper)}
+.eje-e{position:absolute;top:23px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:9px;color:var(--tx4)}
+/* barra de proporción */
+.prop{height:26px;background:var(--paper3);border-radius:3px;overflow:hidden;display:flex}
+.prop .a{background:color-mix(in srgb,var(--good) 45%,transparent);display:grid;place-items:center;
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;color:var(--tx2)}
+.prop .b{background:color-mix(in srgb,var(--signal-red) 45%,transparent);display:grid;place-items:center;
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;color:var(--tx)}
+/* dos juicios (el que no se deja diagramar) */
+.juicio{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.juicio:last-child{border-bottom:0}
+.juicio .d{width:7px;height:7px;border-radius:99px;background:var(--warn)}
+.juicio .k{font-size:12.5px;color:var(--tx)}
+.juicio .v{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--tx2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="mk-head">
+  <h1>Informe simplificado — iteración 2</h1>
+  <p>Tres cosas para mirar: <b>1</b> cómo se resuelve que la lista mezcle a favor y en contra · <b>2</b> los cuatro hallazgos del
+  canónico con el diagrama que le toca a cada uno · <b>3</b> el informe con lo ya decidido (capítulos narrados, números en grilla,
+  palancas plegadas, sin rótulo «¿Conviene?»). Datos reales de 7710a017, c4ffe9a6 y 17b4e10d. Drawers y pop-ups no se tocan acá.</p>
+  <div class="mk-btns">
+    <button class="mk-btn" id="tema"><span>Cambiar a oscuro</span></button>
+    <span class="sep"></span>
+    <button class="mk-btn" data-v="COMPRAR"><span>COMPRAR</span></button>
+    <button class="mk-btn on" data-v="AJUSTA SUPUESTOS"><span>AJUSTAR</span></button>
+    <button class="mk-btn" data-v="BUSCAR OTRA"><span>BUSCAR OTRO</span></button>
+  </div>
+</div>
+
+<h2 class="mk">1 · La lista mezcla a favor y en contra
+  <small>Tenías razón: «Tienes que ajustar esto:» seguido de «Entras barato» se contradice. Dos salidas, con los tres veredictos.
+  Los botones de arriba cambian las dos columnas a la vez.</small>
+</h2>
+<div class="cols" id="c1"></div>
+<div class="reco" id="r1"></div>
+
+<h2 class="mk">2 · La frase canónica, a diagrama
+  <small>Los cuatro hallazgos del canónico, cada uno con la figura que le corresponde. Abajo de cada uno, en cursiva, la frase que
+  hoy se escribe — para comparar.</small>
+</h2>
+<div class="cols" id="c2"></div>
+<div class="ok" id="r2ok"></div>
+<div class="falta" id="r2falta"></div>
+
+<h2 class="mk">3 · El informe con lo decidido
+  <small>Capítulos narrados + números en grilla + palancas plegadas dentro de «Lo que haría yo» + sin rótulo «¿Conviene?».
+  Se scrollea entero, 390px.</small>
+</h2>
+<div class="cols" id="c3"></div>
+<div class="reco" id="r3"></div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// DATOS REALES del fixture. Nada inventado.
+// ════════════════════════════════════════════════════════════════════════════
+const CASOS = {
+  "AJUSTA SUPUESTOS": {
+    id:"7710a017", etiqueta:"AJUSTAR", score:66,
+    nombre:"Depto 2D2B Providencia", dir:"Av. Providencia 1500, Providencia",
+    ficha:["60 m²","2D · 2B","UF 5.500","4 años"],
+    titular:["Buen depto, pero ","el arriendo no cubre la cuota",": ajusta los supuestos."],
+    declaraA:"Ajusta los supuestos. Esto es lo que pesa:",
+    mandaLabel:"Lo que no cierra",
+    razones:[
+      {n:"01",t:"Lo que sale de tu bolsillo cada mes",v:"−$283.194",mal:true,
+       g:"El arriendo de $960.000 no cubre el dividendo de $978.290. Sale mes a mes, no una sola vez."},
+      {n:"02",t:"Lo que renta hoy vs lo que debería",v:"4,3%",mal:false,
+       g:"Cap rate neto, +0,3 pts sobre la referencia de mercado (4,0%)."},
+      {n:"03",t:"Cómo estás financiando",v:"Pie 20%",mal:false,
+       g:"Pie y tasa (4,5%) cumplen. Suma a favor, pero solo no mueve el veredicto."},
+      {n:"04",t:"Entras barato por el metro cuadrado",v:"−3%",mal:false,
+       g:"UF 91,7 contra la mediana de 216 publicaciones usadas de la comuna (UF 94,2)."},
+    ],
+    haria:{
+      texto:'Llévalo a la mesa con un número. A <mark>UF 4.175 el veredicto cambia a Comprar</mark>, y ese descuento pide un vendedor motivado. Si no cede, mira Ñuñoa o La Reina antes de forzar esta negociación.',
+      chip:"Tu número · UF 4.175",
+      neg:'<b>Cómo lo abres:</b> ofrece UF 3.966 ($158.643.966). Anclas bajo y te queda margen para subir hasta tu número sin perder el caso.',
+      vias:[{n:"Precio de compra",d:"−24,1%",x:"$220.005.500 → $167.004.175"},
+            {n:"Arriendo mensual",d:"+25,6%",x:"$960.000 → $1.205.813"}],
+      viasOff:"Plazo hasta 30 años · Pie hasta 30% — ninguno cambia el veredicto.",
+    },
+  },
+  "COMPRAR": {
+    id:"17b4e10d", etiqueta:"COMPRAR", score:70,
+    nombre:"Depto en Ñuñoa", dir:"Ñuñoa", ficha:["UF 4.000"],
+    titular:["Compras ","muy bajo la mediana"," y el arriendo cubre el dividendo desde el inicio."],
+    declaraA:"Compra. Esto es lo que pesa:",
+    mandaLabel:"Lo que lo sostiene",
+    razones:[
+      {n:"01",t:"Entras barato por el metro cuadrado",v:"−51%",mal:false,g:"UF 50,0 contra la mediana de la comuna (UF 101,1)."},
+      {n:"02",t:"Lo que renta hoy vs lo que debería",v:"5,1%",mal:false,g:"Cap rate neto, +1,1 pts sobre la referencia de mercado (4,0%)."},
+      {n:"03",t:"El arriendo cubre la cuota",v:"+$43.810",mal:false,g:"Cubre todos los costos y te deja plata en el bolsillo desde el día uno."},
+      {n:"04",t:"Tu parte a 10 años",v:"×3,18",mal:false,g:"UF 2.799 contra las UF 880 que aportaste."},
+    ],
+    haria:{
+      texto:'Cerrar. <mark>Antes de firmar, verifica con dos o tres arriendos publicados hoy</mark> que los $750.000 son alcanzables para este depto: ese número es el corazón del caso.',
+      chip:"Cierra a · UF 4.000",
+      neg:'<b>Negociar no aplica acá.</b> Tu objetivo ES el precio actual: no hay rebaja que mejore un caso que ya funciona.',
+      vias:null,
+      viasOff:"El arriendo puede caer un 6,5% antes de que el veredicto baje a Ajustar.",
+    },
+  },
+  "BUSCAR OTRA": {
+    id:"c4ffe9a6", etiqueta:"BUSCAR OTRO", score:46,
+    nombre:"Depto en La Florida", dir:"La Florida", ficha:["UF 2.851"],
+    titular:["No conviene: ","el arriendo no alcanza a cubrir la cuota ni con tasa cero","."],
+    declaraA:"Busca otra. Esto es lo que pesa:",
+    mandaLabel:"Lo que no cierra",
+    razones:[
+      {n:"01",t:"Lo que sale de tu bolsillo cada mes",v:"−$190.962",mal:true,g:"Constante: sale mes a mes mientras tengas el depto."},
+      {n:"02",t:"Lo que renta hoy vs lo que debería",v:"3,3%",mal:true,g:"Cap rate neto, 0,7 pts bajo la referencia de mercado (4,0%)."},
+      {n:"03",t:"Cómo estás financiando",v:"Pie 8%",mal:true,g:"El pie de 8% dispara el crédito y con él la cuota. La tasa (3,4%) está bien."},
+      {n:"04",t:"La comuna ganó valor real",v:"5,8%",mal:false,g:"La Florida se valorizó 5,8% anual, sobre el umbral de apreciación real (3,0%)."},
+    ],
+    haria:{
+      texto:'Buscar otra. <mark>Al precio pedido no cierra por razones que ningún ajuste de tasa o plazo resuelve</mark>, y comprometer el pie acá tiene costo de oportunidad.',
+      chip:"Solo a · UF 2.709",
+      neg:'<b>Negociar es una condición, no un plan.</b> Si el vendedor llega a UF 2.709 el análisis cambia de banda: abres en UF 2.574 y ese es tu techo.',
+      vias:[{n:"Pie",d:"+5 pts",x:"8% → 13%"},{n:"Arriendo mensual",d:"+5,0%",x:"$340.000 → $356.934"}],
+      viasOff:"Precio y plazo — probados hasta el tope, ninguno cambia el veredicto.",
+    },
+  },
+};
+
+const RESTO = {
+  cifras:[
+    {k:"Cap rate bruto",v:"5,2%",g:"El arriendo de un año, antes de gastos."},
+    {k:"Cap rate neto",v:"4,3%",g:"Ya descontados los gastos. Referencia: 4,0%."},
+    {k:"Retorno sobre lo puesto",v:"−6,5%",neg:true,g:"Por cada $100 puestos, este año pones $6,5 más."},
+    {k:"Flujo mensual",v:"−$283.194",neg:true,g:"Lo que sale de tu bolsillo cada mes, después de todo."},
+    {k:"Cobertura de cuota",v:"0,98×",g:"Al arriendo le falta un 2% para pagar el dividendo."},
+    {k:"TIR a 10 años",v:"6,9%",g:"Bajo 6%, conviene más otra inversión."},
+  ],
+  capitulos:[
+    {r:"I",k:"Cuánto renta",v:"4,3%",p:"El arriendo de $960.000 deja un cap rate neto de 4,3%, apenas sobre la referencia de mercado (4,0%). Aguanta una caída de 11,5% antes de que el veredicto se mueva."},
+    {r:"II",k:"Tu flujo mensual",v:"−$283.194",neg:true,p:"De los $960.000 que entran, después de la cuota, los gastos y la vacancia quedan $283.194 en contra. Es lo que pones tú, todos los meses."},
+    {r:"III",k:"Cómo lo pagas",v:"−24,1%",p:"Pie de 20% y crédito a 25 años al 4,5%, más UF 90 de puesta a punto. El caso cierra en Comprar bajo UF 4.175."},
+    {r:"IV",k:"Plusvalía",v:"2,9%",p:"Providencia se valorizó 2,9% al año entre 2015 y 2025 — un rango que cruza el estallido y la pandemia, así que es un promedio ruidoso."},
+    {r:"V",k:"Tu resultado a 10 años",v:"$161,9 MM",p:"Al vender el año 10 y saldar el crédito, tu parte vale $161,9 MM contra los $97,3 MM que aportaste: ×1,66, con una TIR de 6,9%."},
+  ],
+  zona:[
+    {k:"Precio del m² en la comuna",v:"$3.768.094",sub:"Tu depto: $3.668.092 · 3,0% bajo la mediana · 216 publicaciones de venta, deptos usados"},
+    {k:"Arriendo típico de la zona",v:"$700 mil–$1,1 MM",sub:"Tu arriendo: $960 mil · dentro del rango"},
+    {k:"Se valorizó",v:"2,9% al año",sub:"Providencia, 2015-2025"},
+  ],
+  profundidad:"Cada cifra abre su detalle: de dónde sale, con qué se comparó y qué pasa si se mueve. Los drawers no cambian.",
+  firma:"Franco · análisis generado por IA · 8 sept 2026",
+};
+
+let VEREDICTO = "AJUSTA SUPUESTOS";
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const pct = (x,min,max) => Math.max(0,Math.min(100,((x-min)/(max-min))*100));
+
+// ── piezas ─────────────────────────────────────────────────────────────────
+function hero(c){
+  return '<div class="pad" style="padding-top:16px"><div class="eyebrow">Informe de inversión · 8 sept 2026</div>'+
+    '<div class="h-nombre">'+esc(c.nombre)+'</div><div class="h-dir">'+esc(c.dir)+'</div>'+
+    '<div style="margin-top:8px">'+c.ficha.map(f=>'<span class="pill">'+esc(f)+'</span>').join("")+'</div></div>'+
+    '<div class="banda"><b>'+esc(c.etiqueta)+'</b><span>Score '+c.score+'/100</span></div>'+
+    '<div class="pad"><div class="score">'+Array.from({length:10},(_,i)=>'<i class="'+(i<Math.round(c.score/10)?"on":"")+'"></i>').join("")+
+    '</div><p class="titular">'+esc(c.titular[0])+'<mark>'+esc(c.titular[1])+'</mark>'+esc(c.titular[2])+'</p></div>';
+}
+const fila = (r,dot) => '<div class="razon'+(dot?"":" sindot")+'"><span class="n">'+r.n+'</span>'+
+  (dot?'<span class="dot '+(r.mal?"mal":"bien")+'"></span>':'')+
+  '<span class="t">'+esc(r.t)+'</span><span class="v '+(r.mal?"mal":"bien")+'">'+esc(r.v)+'</span>'+
+  '<span class="g">'+esc(r.g)+'</span></div>';
+
+// (a) título neutro + punto de dirección por fila
+function convieneA(c){
+  return '<div class="pad"><h2 class="sec-t primero">'+esc(c.declaraA)+'</h2>'+c.razones.map(r=>fila(r,true)).join("")+'</div>';
+}
+// (b) dos listas, la que manda arriba
+function convieneB(c){
+  const mal = c.razones.filter(r=>r.mal), bien = c.razones.filter(r=>!r.mal);
+  const manda = mal.length ? mal : bien, otra = mal.length ? bien : [];
+  let h = '<div class="pad"><h2 class="sec-t primero">'+esc(c.declaraA.split(".")[0])+'.</h2>';
+  h += '<div class="sub-lista manda">'+esc(c.mandaLabel)+'</div>'+manda.map(r=>fila(r,false)).join("");
+  if (otra.length) h += '<div class="sub-lista">Lo que juega a favor</div>'+otra.map(r=>fila(r,false)).join("");
+  else h += '<div class="sub-lista" style="opacity:.55">Lo que no cierra — <span style="text-transform:none;letter-spacing:0;font-weight:400">nada: los cuatro juegan a favor</span></div>';
+  return h+'</div>';
+}
+function haria(c,plegado){
+  const v = c.haria;
+  let vias = "";
+  if (plegado) {
+    vias = '<div class="vias"><div class="vk">'+(v.vias?"Las vías que llegan":"Cuánto aguanta")+'</div>'+
+      (v.vias ? v.vias.map(x=>'<div class="via"><span class="n">'+esc(x.n)+'</span><span class="d">'+esc(x.d)+'</span><span class="x">'+esc(x.x)+'</span></div>').join("") : "")+
+      '<div class="viaoff">'+esc(v.viasOff)+'</div></div>';
+  }
+  return '<div class="pad"><div class="haria"><div class="rk">Lo que haría yo</div><p>'+v.texto+'</p>'+
+    '<span class="chip">'+esc(v.chip)+'</span><div class="neg">'+v.neg+'</div>'+vias+
+    '<div class="firma"><i>f.</i><span>'+esc(RESTO.firma)+'</span></div></div></div>';
+}
+function numerosGrilla(){
+  return '<div class="pad"><h2 class="sec-t">Los números</h2><div class="grid">'+
+    RESTO.cifras.map(c=>'<div class="cel"><div class="k">'+esc(c.k)+'</div><div class="v '+(c.neg?"neg":"")+'">'+esc(c.v)+
+      '</div><div class="g">'+esc(c.g)+'</div></div>').join("")+'</div></div>';
+}
+function capitulos(){
+  return '<div class="pad"><h2 class="sec-t">Cómo funciona como inversión</h2>'+
+    RESTO.capitulos.map(c=>'<div class="cap"><div class="cap-h"><span class="cap-r">'+c.r+'</span><span class="cap-k">'+esc(c.k)+
+      '</span><span class="cap-v" style="'+(c.neg?"color:var(--signal-red)":"")+'">'+esc(c.v)+'</span></div><p class="cap-p">'+esc(c.p)+'</p></div>').join("")+'</div>';
+}
+function zona(){
+  return '<div class="pad"><h2 class="sec-t">La zona · Providencia</h2>'+
+    RESTO.zona.map(z=>'<div class="kv"><span>'+esc(z.k)+'<span class="sub">'+esc(z.sub)+'</span></span><b>'+esc(z.v)+'</b></div>').join("")+
+    '<div class="deep">'+esc(RESTO.profundidad)+'</div></div>';
+}
+
+// ════════ BLOQUE 1 ════════
+function pintar1(){
+  const c = CASOS[VEREDICTO];
+  document.getElementById("c1").innerHTML =
+    '<div><div class="col-h">a · un título, una lista, punto por fila<em>El título declara el veredicto e introduce la lista sin prometer una sola dirección. Cada fila dice la suya con punto y color.</em></div>'+
+      '<div class="caja"><div class="dir" data-verdict="'+VEREDICTO+'">'+convieneA(c)+'</div></div></div>'+
+    '<div><div class="col-h">b · dos listas, la que manda arriba<em>«Lo que no cierra» y «Lo que juega a favor», con la que decide el veredicto primero.</em></div>'+
+      '<div class="caja"><div class="dir" data-verdict="'+VEREDICTO+'">'+convieneB(c)+'</div></div></div>';
+  const mal = c.razones.filter(r=>r.mal).length;
+  document.getElementById("r1").innerHTML =
+    '<b>Recomiendo (a).</b> Por tres razones que se ven al cambiar de veredicto. <b>Primero</b>, (b) se rompe en COMPRAR: los cuatro '+
+    'hallazgos son a favor, así que «Lo que no cierra» queda vacío y hay que escribir un encabezado que dice que no hay nada — un título '+
+    'para el vacío. <b>Segundo</b>, en AJUSTAR la lista que manda tiene UN elemento: un encabezado de sección para una fila es un nivel '+
+    'de más, justo lo que estamos sacando. <b>Tercero</b>, (b) rompe la numeración 01-04 del orden del motor, que es la jerarquía por '+
+    'decisividad: al partir en dos listas el 01 y el 02 ya no se leen como primero y segundo. '+
+    '<b>En este caso hay '+mal+' en contra y '+(4-mal)+' a favor.</b> La contradicción que marcaste se arregla en (a) cambiando el verbo del '+
+    'título: «Esto es lo que pesa» introduce una lista mixta sin mentir; «Tienes que ajustar esto» prometía que todo lo de abajo era un problema.';
+}
+
+// ════════ BLOQUE 2 · diagramas ════════
+// Datos TIPADOS del motor (hallazgo.valor), tal cual vienen en el fixture.
+const DIAG = [
+  { n:"01", t:"Lo que sale de tu bolsillo cada mes", v:"−$283.194", mal:true,
+    tipo:"Proporción · parte de un todo",
+    c:(()=>{ const flujo=283194, div=978290, r=flujo/div;
+      return '<div class="prop"><div class="a" style="flex:'+(1-r)+'">lo cubre el arriendo</div>'+
+        '<div class="b" style="flex:'+r+'">29%</div></div>'+
+        '<div class="dg-cap">El dividendo es $978.290. Lo que pones tú equivale al <b>29%</b> de esa cuota, todos los meses.</div>'; })(),
+    frase:"Tienes que poner $283.194 al mes de tu bolsillo — acotado frente al dividendo, pero recurrente: sale mes a mes, no una sola vez.",
+    valor:"{ flujoNetoMensualCLP: −283194, dividendoMensualCLP: 978290, ratioSobreDividendo: 0.29 }", ok:true },
+  { n:"02", t:"Lo que renta hoy vs lo que debería", v:"4,3%", mal:false,
+    tipo:"Valor contra umbral · eje",
+    c:(()=>{ const min=2,max=6,ref=4,val=4.3;
+      return '<div class="eje"><div class="eje-l"></div>'+
+        '<div class="eje-u" style="left:'+pct(ref,min,max)+'%"><b>referencia 4,0%</b></div>'+
+        '<div class="eje-m" style="left:'+pct(val,min,max)+'%;background:var(--good)"></div>'+
+        '<span class="eje-e" style="left:0">2,0%</span><span class="eje-e" style="right:0">6,0%</span></div>'+
+        '<div class="dg-cap">Tu cap rate neto está <b>+0,3 pts</b> sobre la referencia de mercado.</div>'; })(),
+    frase:"Tu CAP rate —lo que el arriendo te deja al año sobre el precio, ya descontados los gastos— es 4,3% — +0,3 pts sobre la referencia de mercado (4,0%).",
+    valor:"{ capRatePct: 4.3, capRefPct: 4, gapPts: 0.3, banda: 2 }", ok:true },
+  { n:"03", t:"Cómo estás financiando", v:"Pie 20%", mal:false,
+    tipo:"NO se deja diagramar",
+    c:'<div class="juicio"><span class="d"></span><span class="k">Pie · 20%</span><span class="v">aceptable</span></div>'+
+      '<div class="juicio"><span class="d"></span><span class="k">Tasa · 4,5% <span style="color:var(--tx4)">vs 4,1% de mercado</span></span><span class="v">aceptable</span></div>'+
+      '<div class="dg-cap">Dos juicios ordinales independientes (<code>pieLevel</code>, <code>tasaLevel</code>) más un spread de 40 bps. No hay un eje común donde ponerlos: cualquier figura única los forzaría a una escala que el motor no calcula.</div>',
+    frase:"Tu estructura de financiamiento está bien: el pie (20%) y la tasa (4,5%) cumplen, con espacio menor de optimización en ambos.",
+    valor:'{ overall: "aceptable", driver: "ambos", pieLevel: "aceptable", piePct: 20, tasaLevel: "aceptable", tasaPct: 4.5, tasaMarketPct: 4.1, spreadBps: 40 }', ok:false },
+  { n:"04", t:"Entras barato por el metro cuadrado", v:"−3%", mal:false,
+    tipo:"Posición en escala",
+    c:(()=>{ const med=94.2, min=med*0.7, max=med*1.3, val=91.7;
+      return '<div class="eje"><div class="eje-l"></div>'+
+        '<div class="eje-u" style="left:'+pct(med,min,max)+'%"><b>mediana UF 94,2</b></div>'+
+        '<div class="eje-m" style="left:'+pct(val,min,max)+'%;background:var(--good)"></div>'+
+        '<span class="eje-e" style="left:0">−30%</span><span class="eje-e" style="right:0">+30%</span></div>'+
+        '<div class="dg-cap">Tu UF 91,7/m², <b>3% bajo</b> la mediana de 216 publicaciones de deptos usados de la comuna.</div>'; })(),
+    frase:"Tu precio por m² (UF 91,7) está 3% bajo la mediana de 216 publicaciones de departamentos usados de la comuna (UF 94,2).",
+    valor:"{ sujetoUfM2: 91.7, medianaComunaUfM2: 94.2, desviacionPct: −3, banda: 30, n: 216 }", ok:true },
+];
+function pintar2(){
+  const mitad = n => DIAG.slice(n,n+2).map(d =>
+    '<div class="dg"><div class="dg-h"><span class="dg-n">'+d.n+'</span><span class="dg-t">'+esc(d.t)+
+    '</span><span class="dg-v '+(d.mal?"mal":"bien")+'">'+esc(d.v)+'</span></div>'+
+    '<div class="dg-c">'+d.c+'</div>'+
+    '<div class="dg-frase">Hoy dice: «'+esc(d.frase)+'»</div>'+
+    '<div class="dg-cap" style="font-family:ui-monospace,monospace;font-size:10px;color:var(--tx4)">valor: '+esc(d.valor)+'</div></div>').join("");
+  document.getElementById("c2").innerHTML =
+    '<div><div class="col-h">01 y 02<em>Proporción · valor contra umbral</em></div><div class="caja"><div class="dir" data-verdict="'+VEREDICTO+'"><div class="pad">'+mitad(0)+'</div></div></div></div>'+
+    '<div><div class="col-h">03 y 04<em>El que no se deja · posición en escala</em></div><div class="caja"><div class="dir" data-verdict="'+VEREDICTO+'"><div class="pad">'+mitad(2)+'</div></div></div></div>';
+  document.getElementById("r2ok").innerHTML =
+    '<b>Confirmado: es render puro y no toca el prompt.</b> La <code>fraseCanonica</code> la escribe el MOTOR — '+
+    '<code>cap-rate-hallazgo.ts:94</code> lo dice con todas las letras: «la línea determinística del motor (sin LLM)» — y se construye en los '+
+    'módulos <code>*-hallazgo.ts</code>. Los datos ya vienen tipados en <code>hallazgo.valor</code>, que es lo que dibujan los tres diagramas de arriba. '+
+    '<b>El matiz que hay que anotar:</b> la frase igual entra al user prompt como insumo (<code>ai-generation.ts:820</code>: «toda cifra que escribas ya viene '+
+    'en el input: en los datos del caso, en una fraseCanonica»). O sea que el diagrama la reemplaza <b>en pantalla</b>, no en el prompt: la frase sigue '+
+    'viva y el hash no se mueve. Si algún día se borrara del motor, sí lo movería.';
+  document.getElementById("r2falta").innerHTML =
+    '<b>Uno de los cuatro NO se deja diagramar: <code>estructura_financiamiento</code>.</b> Su <code>valor</code> son dos juicios ordinales '+
+    'independientes (<code>pieLevel</code> y <code>tasaLevel</code>, ambos «aceptable») más un spread de 40 bps. No comparten eje ni unidad, así que '+
+    'cualquier figura única los forzaría a una escala que el motor no calcula — y eso sería inventar. La forma honesta es la de arriba: dos filas con su '+
+    'nivel. <b>Es el único de los cuatro</b>, pero conviene saber que el patrón se repite fuera del canónico: <code>capex_puesta_a_punto</code> tiene la '+
+    'misma forma (un monto más una fracción de la inversión, sin umbral propio). Los otros tres tipos —proporción, valor contra umbral y posición en '+
+    'escala— cubren el resto de los hallazgos que vi.';
+}
+
+// ════════ BLOQUE 3 · el informe ════════
+function pintar3(){
+  const c = CASOS[VEREDICTO];
+  const informe = '<div class="dir" data-verdict="'+VEREDICTO+'">'+hero(c)+convieneA(c)+haria(c,true)+numerosGrilla()+capitulos()+zona()+'</div>';
+  document.getElementById("c3").innerHTML =
+    '<div><div class="col-h">El informe completo<em>Sin rótulo «¿Conviene?»: la línea que declara es el título. Palancas plegadas dentro de «Lo que haría yo». Números en grilla, capítulos narrados.</em></div>'+
+    '<div class="caja scroll">'+informe+'</div></div>';
+  const BASURA=/[→·✓✕–↑↓]/g;
+  const w = (document.querySelector("#c3 .dir").innerText||"").replace(BASURA," ").trim().split(/\s+/).filter(Boolean).length;
+  document.getElementById("r3").innerHTML =
+    '<b>Plegar las palancas dentro de «Lo que haría yo»: sí funciona, y mejor de lo que esperaba.</b> El chip dice <code>Tu número · UF 4.175</code> y '+
+    'la vía de precio, tres líneas abajo, muestra <code>$220.005.500 → $167.004.175</code> — que es el mismo número en pesos. Ya no compiten: el chip es '+
+    'la conclusión y la vía es de dónde sale. Antes estaban en secciones distintas y el lector los leía como dos datos; ahora se leen como uno solo con su '+
+    'respaldo. <b>Además resuelve el caso COMPRAR</b>: sin palancas, el bloque muestra «Cuánto aguanta» con el margen de 6,5%, y no queda una sección '+
+    'huérfana en el flujo. <b>Lo que cuesta:</b> «Lo que haría yo» pasa a ser el bloque más largo del informe — texto, chip, negociación y vías en una '+
+    'sola caja. Si crece más, hay que decidir qué sale. El informe completo quedó en <b>'+w+' palabras</b>.';
+}
+
+function pintarTodo(){ pintar1(); pintar2(); pintar3(); }
+pintarTodo();
+
+const root=document.documentElement, bTema=document.getElementById("tema");
+(function(){const o=root.getAttribute("data-theme")==="dark";bTema.firstChild.textContent=o?"Cambiar a claro":"Cambiar a oscuro";})();
+bTema.addEventListener("click",()=>{const o=root.getAttribute("data-theme")==="dark";
+  root.setAttribute("data-theme",o?"light":"dark");bTema.firstChild.textContent=o?"Cambiar a oscuro":"Cambiar a claro";});
+document.querySelectorAll(".mk-btn[data-v]").forEach(b=>b.addEventListener("click",()=>{
+  VEREDICTO=b.dataset.v;
+  document.querySelectorAll(".mk-btn[data-v]").forEach(x=>x.classList.toggle("on",x===b));
+  pintarTodo();
+}));
+</script>
+</body>
+</html>

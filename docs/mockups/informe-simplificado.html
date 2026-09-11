@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informe simplificado — mockup de decisión</title>
+<style>
+/* ════════════════════════════════════════════════════════════════════════════
+   TOKENS — copiados VERBATIM de producción. No se rediseña color ni destacado.
+   · papeles y tintas: PortadaInforme.tsx (.doc-dictamen / [data-theme="light"])
+   · tríada Tinta [data-verdict]: src/app/globals.css
+   · plumón: distinto por tema, tal como está en producción
+   ════════════════════════════════════════════════════════════════════════════ */
+.doc{
+  --doc-paper:#141414; --doc-paper2:#1B1B1B; --doc-paper3:#232323;
+  --doc-line:#282828; --doc-line2:#3A3A3A;
+  --doc-tx:#EDEBE6; --doc-tx2:#C4C2BC; --doc-tx3:#8C8A84; --doc-tx4:#5C5A55;
+  --doc-hl:color-mix(in srgb,color-mix(in srgb,var(--verdict),white 25%) 40%,transparent);
+  --doc-hl-tx:var(--doc-tx);
+  --doc-neutral:#6E6A63; --doc-good:#57B98A; --doc-warn:#DFA34F;
+  --signal-red:#C8323C;
+}
+[data-theme="light"] .doc{
+  --doc-paper:#FAF8F3; --doc-paper2:#F1EEE7; --doc-paper3:#EAE7DF;
+  --doc-line:#DAD6CC; --doc-line2:#C4BFB2;
+  --doc-tx:#141311; --doc-tx2:#3B3A36; --doc-tx3:#75726A; --doc-tx4:#A39F94;
+  --doc-hl:color-mix(in srgb,var(--verdict) 32%,transparent);
+  --doc-hl-tx:var(--doc-tx);
+  --doc-neutral:#8C8880; --doc-good:#2E8B57; --doc-warn:#B7791F;
+}
+[data-verdict="BUSCAR OTRA"]{--verdict:#C8323C; --verdict-deep:#7A1F27}
+[data-verdict="AJUSTA SUPUESTOS"]{--verdict:#6E4560; --verdict-deep:#442B3B}
+[data-verdict="COMPRAR"]{--verdict:#2B558F; --verdict-deep:#1B3559}
+
+/* ── chrome del mockup (NO cuenta como palabras del informe) ─────────────── */
+:root{color-scheme:light dark}
+body{margin:0;background:#8C8880;font:14px/1.6 "IBM Plex Sans",system-ui,sans-serif;color:#141311}
+[data-theme="dark"] body{background:#0A0A0A;color:#EDEBE6}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 20px 80px}
+.mk-head{position:sticky;top:0;z-index:9;background:#8C8880;padding:14px 0 12px;border-bottom:1px solid rgba(128,128,128,.35);margin-bottom:26px}
+[data-theme="dark"] .mk-head{background:#0A0A0A}
+.mk-head h1{font-family:"Source Serif 4",Georgia,serif;font-size:24px;margin:0 0 4px}
+.mk-head p{margin:0;font-size:13px;opacity:.8;max-width:80ch}
+.mk-btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.mk-btn{font:600 12px/1 "IBM Plex Sans",sans-serif;padding:8px 12px;border:1px solid currentColor;background:transparent;color:inherit;border-radius:3px;cursor:pointer}
+.mk-btn[aria-pressed="true"]{background:currentColor}
+.mk-btn[aria-pressed="true"] span{color:#FAF8F3;mix-blend-mode:difference}
+h2.mk{font-family:"Source Serif 4",Georgia,serif;font-size:21px;margin:42px 0 6px;border-top:2px solid currentColor;padding-top:14px}
+h2.mk small{display:block;font-family:"IBM Plex Sans",sans-serif;font-size:12.5px;font-weight:400;opacity:.75;margin-top:5px;max-width:86ch}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px;margin-top:18px;align-items:start}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:18px;margin-top:18px;align-items:start}
+.card{border:1px solid rgba(128,128,128,.4);border-radius:4px;overflow:hidden;background:var(--doc-paper)}
+.card-h{font:700 11px/1 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;padding:10px 12px;background:rgba(128,128,128,.16);display:flex;justify-content:space-between;gap:10px;align-items:center}
+.wc{font-weight:700;font-size:11px;white-space:nowrap;opacity:.9}
+.reco{margin:14px 0 0;padding:12px 14px;border-left:3px solid var(--signal-red);background:rgba(200,50,60,.07);font-size:13.5px;max-width:92ch}
+.reco b{font-weight:700}
+.falta{margin:12px 0 0;padding:12px 14px;border:1px dashed var(--signal-red);background:rgba(200,50,60,.05);font-size:13px;max-width:92ch}
+.falta b{color:var(--signal-red)}
+table.fin{width:100%;border-collapse:collapse;margin-top:16px;font-size:13.5px}
+table.fin th,table.fin td{border:1px solid rgba(128,128,128,.4);padding:9px 11px;text-align:left}
+table.fin th{background:rgba(128,128,128,.16);font:700 11.5px/1.3 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase}
+table.fin td.n{font-family:"JetBrains Mono",ui-monospace,monospace;text-align:right;white-space:nowrap}
+table.fin tr.tot td{font-weight:700;background:rgba(128,128,128,.1)}
+.delta-ok{color:#2E8B57;font-weight:700}
+.delta-bad{color:#C8323C;font-weight:700}
+
+/* ── piezas del informe (verbatim de producción) ──────────────────────────── */
+.doc{padding:22px 20px 24px;color:var(--doc-tx);background:var(--doc-paper)}
+.doc.p2{background:var(--doc-paper2)}
+.doc-sec-eyebrow{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--signal-red);font-weight:700;margin-bottom:12px}
+.doc-sec-t{font-family:"Source Serif 4",Georgia,serif;font-size:30px;font-weight:700;line-height:1.12;letter-spacing:-.012em;margin:0 0 10px;color:var(--doc-tx)}
+.doc-sec-intent{font-size:14.5px;line-height:1.62;color:var(--doc-tx3);max-width:64ch;margin:0 0 26px}
+.doc mark{background:linear-gradient(transparent 60%,var(--doc-hl) 60%);color:var(--doc-hl-tx);padding:0 2px;font-weight:500}
+.vprosa{font-size:14px;line-height:1.66;color:var(--doc-tx2);margin:0 0 14px;max-width:64ch}
+.vviz-t{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--doc-tx3);margin:0 0 8px}
+.vcierre{margin-top:14px;padding-top:12px;border-top:1px solid var(--doc-line)}
+.vcierre-t{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--doc-tx3);margin:0 0 6px}
+.vcierre p{margin:0;font-size:14px;line-height:1.66;color:var(--doc-tx2)}
+.note{margin-top:12px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--doc-tx4)}
+
+/* matriz de palancas — CSS verbatim de HallazgosAcordeon.tsx:364-384 */
+.pal{display:flex;flex-direction:column;gap:1px;background:var(--doc-line);border:1px solid var(--doc-line);border-radius:3px;overflow:hidden}
+.pal-row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;background:var(--doc-paper);padding:11px 13px}
+.pal-row.si{background:var(--doc-paper2)}
+.pal-row.off{opacity:.62}
+.pal-row.off .pal-name{color:var(--doc-tx2)}
+.pal-row.wash-warn{background:linear-gradient(90deg,color-mix(in srgb,var(--doc-warn) 7%,transparent),transparent 70%)}
+.pal-name{font-size:13px;color:var(--doc-tx);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.pal-delta{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;font-weight:700;padding:1px 5px;border-radius:2px}
+.pal-delta.si{color:var(--doc-good);background:color-mix(in srgb,var(--doc-good) 12%,transparent)}
+.pal-delta.no{color:var(--signal-red);background:color-mix(in srgb,var(--signal-red) 8%,transparent)}
+.pal-verdict{font-size:13px;text-align:right;line-height:1.4}
+.pal-verdict.si{color:var(--doc-good)}
+.pal-verdict.no{color:var(--doc-tx4)}
+.pal-detail{grid-column:1/-1;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;color:var(--doc-tx3)}
+.pal-arrow{margin:0 6px;color:var(--doc-tx4)}
+.pal-why{color:var(--doc-tx4);font-style:italic}
+
+/* ── variante b · barras ─────────────────────────────────────────────────── */
+.bar-row{display:grid;grid-template-columns:120px 1fr 74px;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--doc-line)}
+.bar-row:last-child{border-bottom:0}
+.bar-lbl{font-size:12.5px;color:var(--doc-tx)}
+.bar-track{position:relative;height:16px;background:color-mix(in srgb,var(--doc-line) 70%,transparent);border-radius:2px;overflow:hidden}
+.bar-fill{position:absolute;inset:0 auto 0 0;background:var(--verdict);opacity:.85}
+.bar-fill.no{background:var(--doc-line2);opacity:1}
+.bar-val{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;font-weight:700;text-align:right}
+.bar-val.si{color:var(--doc-good)} .bar-val.no{color:var(--doc-tx4)}
+.bar-cap{font-size:11.5px;line-height:1.5;color:var(--doc-tx3);margin:10px 0 0}
+
+/* ── variante c · colapsada ──────────────────────────────────────────────── */
+.cx{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 13px;border:1px solid var(--doc-line);border-radius:3px;background:var(--doc-paper3);margin-bottom:8px}
+.cx-n{font-size:14px;font-weight:600;color:var(--doc-tx)}
+.cx-d{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--doc-good);text-align:right}
+.cx-x{grid-column:1/-1;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;color:var(--doc-tx3)}
+.cx-off{font-size:12px;color:var(--doc-tx4);padding:9px 13px;border:1px dashed var(--doc-line2);border-radius:3px}
+
+/* ── bloque 3 · instrumentos ─────────────────────────────────────────────── */
+.ins-row{display:grid;grid-template-columns:132px 1fr 132px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--doc-line)}
+.ins-row:last-of-type{border-bottom:0}
+.ins-lbl{font-size:12.5px;color:var(--doc-tx)}
+.ins-lbl small{display:block;font-size:10.5px;color:var(--doc-tx3);font-family:"JetBrains Mono",ui-monospace,monospace}
+.ins-track{height:20px;background:color-mix(in srgb,var(--doc-line) 70%,transparent);border-radius:2px;position:relative;overflow:hidden}
+.ins-fill{position:absolute;inset:0 auto 0 0;background:var(--verdict);opacity:.85}
+.ins-fill.alt{background:var(--doc-neutral);opacity:.55}
+.ins-val{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;font-weight:700;text-align:right;color:var(--doc-tx)}
+.ins-tab{width:100%;border-collapse:collapse}
+.ins-tab td{border-top:1px solid var(--doc-line);padding:9px 0;font-size:12.5px;color:var(--doc-tx)}
+.ins-tab td.v{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:700;text-align:right;white-space:nowrap}
+.ins-tab td small{color:var(--doc-tx3);font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px}
+
+/* ── bloque 4 · apilado de fondos ────────────────────────────────────────── */
+.stack-demo{padding:18px}
+.stack-demo .pal{margin-top:10px}
+.fix .pal-row.si{background:var(--doc-paper3)}
+.fix .pal-row{background:var(--doc-paper)}
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+
+<div class="mk-head">
+  <h1>Informe simplificado — mockup de decisión</h1>
+  <p>Datos reales de <b>7710a017</b> (Providencia · score 66 · AJUSTA SUPUESTOS · flujo −$283.194) y, para el estado vacío,
+     de <b>17b4e10d</b> (Ñuñoa · score 70 · COMPRAR). Nada inventado: todo sale del fixture del repo.
+     Los conteos de palabras se calculan <b>al vuelo</b> sobre el DOM de cada variante — no hay números escritos a mano.
+     El chrome del mockup (estos títulos, las recomendaciones) no se cuenta.</p>
+  <div class="mk-btns">
+    <button class="mk-btn" id="tema" aria-pressed="false"><span>Cambiar a oscuro</span></button>
+    <button class="mk-btn" id="ver" aria-pressed="false"><span>Ver AJUSTA / COMPRAR</span></button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 1 · PALANCAS EN EL FLUJO ═══════════════════════ -->
+<h2 class="mk">1 · Palancas en el flujo
+  <small>Mismos datos en las tres: precio −24,1% ✓ · arriendo +25,6% ✓ · plazo ✕ · pie ✕.
+  El motor las emite en <code>distancia_veredicto.vias</code> y hoy viven en un modal.</small>
+</h2>
+
+<div class="grid3">
+
+  <!-- ── a) la matriz actual, tal cual sale del modal ───────────────────── -->
+  <div class="card">
+    <div class="card-h"><span>a · matriz actual (del modal)</span><span class="wc" data-wc-for="v1a">…</span></div>
+    <div class="doc" data-verdict="AJUSTA SUPUESTOS">
+      <div data-wc="v1a">
+        <p class="vprosa">Franco probó cuatro ajustes, uno a la vez y con el resto fijo. Dos cruzan a COMPRAR, cada una por su cuenta; las demás dicen hasta dónde se probaron.</p>
+        <p class="vviz-t">Qué pediría cada palanca para llegar a COMPRAR</p>
+        <div class="pal">
+          <div class="pal-row si wash-warn">
+            <div class="pal-name">Precio de compra <span class="pal-delta si">−24,1%</span></div>
+            <div class="pal-verdict si">✓</div>
+            <div class="pal-detail">$220.005.500<span class="pal-arrow">→</span>$167.004.175 · <span class="pal-why">alcanza por sí sola</span></div>
+          </div>
+          <div class="pal-row si wash-warn">
+            <div class="pal-name">Arriendo mensual <span class="pal-delta si">+25,6%</span></div>
+            <div class="pal-verdict si">✓</div>
+            <div class="pal-detail">$960.000<span class="pal-arrow">→</span>$1.205.813 · <span class="pal-why">alcanza por sí sola</span></div>
+          </div>
+          <div class="pal-row off">
+            <div class="pal-name">Plazo del crédito <span class="pal-delta no">hasta 30 años</span></div>
+            <div class="pal-verdict no">✕</div>
+            <div class="pal-detail">25 años<span class="pal-arrow">→</span>30 años · <span class="pal-why">ni a 30 años cambia el veredicto</span></div>
+          </div>
+          <div class="pal-row off">
+            <div class="pal-name">Pie <span class="pal-delta no">hasta 30%</span></div>
+            <div class="pal-verdict no">✕</div>
+            <div class="pal-detail">20%<span class="pal-arrow">→</span>30% · <span class="pal-why">ni con un pie de 30% cambia el veredicto</span></div>
+          </div>
+        </div>
+        <div class="vcierre">
+          <p class="vcierre-t">Qué haces con esto</p>
+          <p>Llévalo a la mesa: <mark>la diferencia está en rango de negociación, no en otro departamento</mark>. Si el vendedor no baja, ya sabes exactamente cuánto te separa.</p>
+        </div>
+        <p class="note">Motor Franco · palancas del veredicto, una a la vez</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── b) barras: el largo es el delta que pide cada palanca ──────────── -->
+  <div class="card">
+    <div class="card-h"><span>b · barras por delta</span><span class="wc" data-wc-for="v1b">…</span></div>
+    <div class="doc" data-verdict="AJUSTA SUPUESTOS">
+      <div data-wc="v1b">
+        <p class="vviz-t">Qué pediría cada palanca para llegar a COMPRAR</p>
+        <div class="bar-row">
+          <div class="bar-lbl">Precio de compra</div>
+          <div class="bar-track"><div class="bar-fill" style="width:80.3%"></div></div>
+          <div class="bar-val si">−24,1% ✓</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-lbl">Arriendo mensual</div>
+          <div class="bar-track"><div class="bar-fill" style="width:85.3%"></div></div>
+          <div class="bar-val si">+25,6% ✓</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-lbl">Plazo del crédito</div>
+          <div class="bar-track"><div class="bar-fill no" style="width:100%"></div></div>
+          <div class="bar-val no">30 años ✕</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-lbl">Pie</div>
+          <div class="bar-track"><div class="bar-fill no" style="width:100%"></div></div>
+          <div class="bar-val no">30% ✕</div>
+        </div>
+        <p class="bar-cap">Cada barra es lo que esa palanca tendría que moverse, sola y con el resto fijo. Las grises se probaron hasta el tope y no alcanzan.</p>
+      </div>
+    </div>
+    <div class="falta" style="margin:0;border:0;border-top:1px dashed #C8323C;border-radius:0">
+      <b>Dato que falta:</b> las barras de plazo y pie <b>no son comparables</b> con las otras dos.
+      Precio y arriendo dibujan el delta que el motor calculó; plazo y pie no tienen delta que cruce, así que su barra
+      solo puede dibujar <i>hasta dónde se probó</i>. Mismo largo, dos significados. Si se elige esta variante hay que
+      decidir: o las grises van sin barra, o el eje se rotula «cuánto se movió la palanca» y no «cuánto pide».
+    </div>
+  </div>
+
+  <!-- ── c) las que cruzan destacadas, el resto en una línea ────────────── -->
+  <div class="card">
+    <div class="card-h"><span>c · cruzan destacadas + resto colapsado</span><span class="wc" data-wc-for="v1c">…</span></div>
+    <div class="doc" data-verdict="AJUSTA SUPUESTOS">
+      <div data-wc="v1c">
+        <p class="vviz-t">Dos vías cruzan a COMPRAR, cada una por su cuenta</p>
+        <div class="cx">
+          <div class="cx-n">Precio de compra</div>
+          <div class="cx-d">−24,1%</div>
+          <div class="cx-x">$220.005.500<span class="pal-arrow">→</span>$167.004.175</div>
+        </div>
+        <div class="cx">
+          <div class="cx-n">Arriendo mensual</div>
+          <div class="cx-d">+25,6%</div>
+          <div class="cx-x">$960.000<span class="pal-arrow">→</span>$1.205.813</div>
+        </div>
+        <div class="cx-off">Plazo del crédito y pie: probados hasta 30 años y 30%, ninguno cambia el veredicto.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="reco"><b>Recomendación: (c).</b> El motivo no es que use menos palabras — es que dice lo que el lector vino a
+buscar. De las cuatro palancas, dos son accionables y dos son un descarte; la matriz actual las presenta con el mismo peso
+tipográfico y el lector tiene que hacer el trabajo de separar. (b) se ve mejor de lejos pero tiene el problema de arriba:
+dos barras del mismo largo que significan cosas distintas, y arreglar eso pide más rótulo que el que ahorra. (a) es
+correcta y ya existe, pero es la que más texto arrastra: intro, cierre y nota suman más que la matriz misma.
+<b>La caja «Qué haces con esto» no se pierde</b>: es plantilla determinista por palanca dominante y puede vivir en el
+bloque ¿Conviene?, que es donde ahora se ordenan las razones.</p>
+
+<!-- ═══════════════════════ 2 · ESTADO VACÍO ═══════════════════════════════ -->
+<h2 class="mk">2 · Estado vacío — el mismo bloque con veredicto COMPRAR
+  <small>Con COMPRAR el motor devuelve <code>null</code>: no hay veredicto superior al que llegar, así que no hay palancas.
+  Datos reales de 17b4e10d (Ñuñoa · score 70 · COMPRAR), cuyo hallazgo <code>sensibilidad</code> trae margen 6,5%.</small>
+</h2>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-h"><span>A · el slot cambia de pregunta (recomendada)</span><span class="wc" data-wc-for="v2a">…</span></div>
+    <div class="doc" data-verdict="COMPRAR">
+      <div data-wc="v2a">
+        <p class="vviz-t">Cuánto aguanta este veredicto</p>
+        <div class="bar-row">
+          <div class="bar-lbl">Arriendo mensual</div>
+          <div class="bar-track"><div class="bar-fill" style="width:26%"></div></div>
+          <div class="bar-val si">−6,5%</div>
+        </div>
+        <p class="bar-cap">El arriendo puede caer 6,5% antes de que el veredicto baje a AJUSTA SUPUESTOS. Bajo eso, la conclusión cambia.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span>B · una línea y nada más</span><span class="wc" data-wc-for="v2b">…</span></div>
+    <div class="doc" data-verdict="COMPRAR">
+      <div data-wc="v2b">
+        <p class="vviz-t">Qué pediría cada palanca</p>
+        <div class="cx-off">No hay ajuste que pedir: el veredicto ya es COMPRAR.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="reco"><b>Recomendación: (A).</b> Es lo que el informe <b>ya hace hoy</b> y no hay que inventarlo: el footer del hero
+cae a sensibilidad cuando no hay distancia (HeroLTR.tsx), con el rótulo «Cuánto aguanta este veredicto». Mantener esa regla
+al subir las palancas al flujo significa que el bloque nunca queda vacío y que en COMPRAR responde la pregunta que
+corresponde — no «qué te falta» sino «cuánto margen tienes». (B) deja un hueco que se lee como error de carga.
+<b>Sin esto la variante elegida en el bloque 1 no se puede implementar</b>: uno de cada tres informes es COMPRAR.</p>
+
+<!-- ═══════════════════════ 3 · INSTRUMENTOS ═══════════════════════════════ -->
+<h2 class="mk">3 · Instrumentos — la misma plata en otro lado, a 10 años
+  <small>Valores de <code>costoOportunidad(52.001.300, 10)</code> con
+  <code>INSTRUMENTOS_REFERENCIA = { depositoUF: 0.05, fondoMutuo: 0.07 }</code>. Son los MISMOS números que la prosa
+  actual ya cita — el motor los calcula, la IA solo los narra.</small>
+</h2>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-h"><span>A · tres barras</span><span class="wc" data-wc-for="v3a">…</span></div>
+    <div class="doc" data-verdict="AJUSTA SUPUESTOS">
+      <div data-wc="v3a">
+        <p class="vviz-t">La misma plata en otro lado, a 10 años</p>
+        <div class="ins-row">
+          <div class="ins-lbl">Este depto <small>tu parte al vender</small></div>
+          <div class="ins-track"><div class="ins-fill" style="width:100%"></div></div>
+          <div class="ins-val">$161.873.497</div>
+        </div>
+        <div class="ins-row">
+          <div class="ins-lbl">Fondo mutuo <small>7% anual</small></div>
+          <div class="ins-track"><div class="ins-fill alt" style="width:63.2%"></div></div>
+          <div class="ins-val">$102.294.428</div>
+        </div>
+        <div class="ins-row">
+          <div class="ins-lbl">Depósito a plazo <small>UF + 5% anual</small></div>
+          <div class="ins-track"><div class="ins-fill alt" style="width:52.3%"></div></div>
+          <div class="ins-val">$84.704.638</div>
+        </div>
+        <p class="bar-cap">El depósito y el fondo no piden aporte mensual, no tienen vacancia y son líquidos. El depto gana si la plusvalía se cumple.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span>B · tres filas de tabla</span><span class="wc" data-wc-for="v3b">…</span></div>
+    <div class="doc" data-verdict="AJUSTA SUPUESTOS">
+      <div data-wc="v3b">
+        <p class="vviz-t">La misma plata en otro lado, a 10 años</p>
+        <table class="ins-tab">
+          <tr><td>Este depto <small>tu parte al vender</small></td><td class="v">$161.873.497</td></tr>
+          <tr><td>Fondo mutuo <small>7% anual</small></td><td class="v">$102.294.428</td></tr>
+          <tr><td>Depósito a plazo <small>UF + 5% anual</small></td><td class="v">$84.704.638</td></tr>
+        </table>
+        <p class="bar-cap">Sin aporte mensual, sin vacancia y líquidos. El depto gana si la plusvalía se cumple.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="falta"><b>Dato que falta — y es el que decide si esto se puede publicar.</b>
+Los instrumentos capitalizan la <b>inversión inicial</b> ($52.001.300). El número del depto es <b>tu parte al vender</b>
+($161.873.497), que llega después de aportar $97.264.407 en total (pie más aportes mes a mes, porque el flujo es negativo).
+Comparar 161 contra 102 sin decir eso <b>infla el depto</b>: son plata distinta. La prosa actual lo resuelve nombrando los
+$97.264.407 en la misma oración. Un diagrama de tres barras no tiene dónde ponerlo.
+<b>Dos salidas, y hay que elegir una antes de implementar:</b> (1) agregar una cuarta fila «Lo que pusiste en total ·
+$97.264.407» y que el eje sea plata contra plata; (2) capitalizar los instrumentos sobre el total aportado, lo que
+<b>cambia el cálculo del motor</b> y hay que decidirlo como producto, no como render.</div>
+
+<p class="reco"><b>Recomendación: (A) con la cuarta fila.</b> Las barras hacen visible de un vistazo lo que la prosa tarda
+144 palabras en decir, y la cuarta fila es justamente la que impide que el diagrama mienta. (B) ahorra un poco más pero
+pierde la proporción, que es lo único que un diagrama aporta sobre una lista. El caveat de una línea se queda en las dos:
+sin él la comparación es tramposa, y esa regla ya está escrita en el prompt (§ «comparar TIR vs tasa sin contextualizar
+esfuerzo, riesgo e iliquidez es trampa contable»).</p>
+
+<!-- ═══════════════════════ 4 · TÍTULO ÚNICO + FONDOS ═════════════════════ -->
+<h2 class="mk">4 · Sección con título único, y el apilado de fondos
+  <small>Los tres niveles son literales en SubjectCardGrid.tsx (líneas 321-325): ninguno viene del motor ni del prompt.</small>
+</h2>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-h"><span>hoy · ksub + título + bajada</span><span class="wc" data-wc-for="v4a">…</span></div>
+    <div class="doc" data-verdict="AJUSTA SUPUESTOS">
+      <div data-wc="v4a">
+        <div class="doc-sec-eyebrow">Principales hallazgos</div>
+        <h2 class="doc-sec-t">Qué determina el veredicto en este departamento</h2>
+        <p class="doc-sec-intent">Franco analizó los factores que pesan en la decisión. Estos son los cuatro que la mueven.</p>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><span>propuesta · solo el título</span><span class="wc" data-wc-for="v4b">…</span></div>
+    <div class="doc" data-verdict="AJUSTA SUPUESTOS">
+      <div data-wc="v4b">
+        <h2 class="doc-sec-t">Qué determina el veredicto</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="reco"><b>Recomendación: solo el título, y acortado.</b> El ksub repite la palabra «hallazgos», que el lector no usa;
+la bajada anuncia lo que la sección va a hacer en vez de hacerlo, y además <b>promete «los cuatro»</b> cuando el número de
+hallazgos varía por caso. «en este departamento» sobra: todo el informe es sobre este departamento.</p>
+
+<h2 class="mk" style="border-top-width:1px;font-size:17px">4b · El apilado de fondos
+  <small>Dos superficies del mismo token, una dentro de otra. Deja de ser cosmético en cuanto la matriz de palancas
+  sube al flujo: hoy vive en un modal sobre <code>--doc-paper</code>, y ahí el problema no se ve.</small>
+</h2>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-h"><span>roto · sección p2 + fila .si (ambas paper2)</span><span class="wc" data-wc-for="v4c">…</span></div>
+    <div class="doc p2 stack-demo" data-verdict="AJUSTA SUPUESTOS">
+      <div data-wc="v4c">
+        <h2 class="doc-sec-t">Qué determina el veredicto</h2>
+        <div class="pal">
+          <div class="pal-row si"><div class="pal-name">Precio de compra <span class="pal-delta si">−24,1%</span></div><div class="pal-verdict si">✓</div></div>
+          <div class="pal-row si"><div class="pal-name">Arriendo mensual <span class="pal-delta si">+25,6%</span></div><div class="pal-verdict si">✓</div></div>
+          <div class="pal-row off"><div class="pal-name">Plazo del crédito <span class="pal-delta no">hasta 30 años</span></div><div class="pal-verdict no">✕</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><span>arreglado · la fila destacada usa paper3</span><span class="wc" data-wc-for="v4d">…</span></div>
+    <div class="doc p2 stack-demo fix" data-verdict="AJUSTA SUPUESTOS">
+      <div data-wc="v4d">
+        <h2 class="doc-sec-t">Qué determina el veredicto</h2>
+        <div class="pal">
+          <div class="pal-row si"><div class="pal-name">Precio de compra <span class="pal-delta si">−24,1%</span></div><div class="pal-verdict si">✓</div></div>
+          <div class="pal-row si"><div class="pal-name">Arriendo mensual <span class="pal-delta si">+25,6%</span></div><div class="pal-verdict si">✓</div></div>
+          <div class="pal-row off"><div class="pal-name">Plazo del crédito <span class="pal-delta no">hasta 30 años</span></div><div class="pal-verdict no">✕</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="reco"><b>El arreglo es una línea.</b> <code>.pal-row.si</code> pinta <code>--doc-paper2</code>; en una sección
+<code>.p2</code> ese es el fondo de la sección, así que la fila destacada <b>desaparece</b> justo cuando es la que importa.
+La fila destacada pasa a <code>--doc-paper3</code>, que existe para eso y ya está definido en los dos temas. No toca grano
+ni plumón. Míralo en oscuro también: ahí el colapso es más visible, porque <code>#1B1B1B</code> sobre <code>#1B1B1B</code>
+no deja ni el borde.</p>
+
+<!-- ═══════════════════════ TABLA FINAL ════════════════════════════════════ -->
+<h2 class="mk">El criterio — palabras antes / después
+  <small>Contado al vuelo sobre el DOM. Regla: se cuentan tokens separados por espacio, descartando flechas, puntos medios
+  y los símbolos ✓ ✕ –. El «antes» del bloque 3 es la prosa real de 7710a017 (<code>largoPlazo.contenido_clp</code>).</small>
+</h2>
+<table class="fin" id="tabla"><thead>
+<tr><th>Bloque</th><th>Antes</th><th class="n">Palabras</th><th>Después (recomendada)</th><th class="n">Palabras</th><th class="n">Δ</th></tr>
+</thead><tbody></tbody></table>
+
+<p class="reco" id="cierre"></p>
+
+</div>
+
+<script>
+(function () {
+  // ── conteo de palabras, al vuelo ───────────────────────────────────────────
+  var BASURA = /[→·✓✕–]/g;
+  function contar(el) {
+    if (!el) return 0;
+    var t = (el.innerText || el.textContent || "").replace(BASURA, " ");
+    return t.trim().split(/\s+/).filter(function (w) { return w.length > 0; }).length;
+  }
+  var wc = {};
+  Array.prototype.forEach.call(document.querySelectorAll("[data-wc]"), function (el) {
+    var k = el.getAttribute("data-wc");
+    wc[k] = contar(el);
+    var badge = document.querySelector('[data-wc-for="' + k + '"]');
+    if (badge) badge.textContent = wc[k] + " palabras";
+  });
+
+  // La prosa que hoy ocupa el lugar de cada bloque. Textos REALES del fixture
+  // 7710a017 — se cuentan con la misma función, no se escriben a mano.
+  var PROSA_HOY = {
+    b3: "Un depósito a plazo en UF al 5% anual te dejaría $84.704.638 en 10 años sobre la misma inversión inicial, sin aporte mensual, sin vacancia y con liquidez inmediata; un fondo mutuo al 7% llegaría a $102.294.428 — frente a los $97.264.407 que comprometes en total con este depto (pie más aportes mes a mes), y tu parte al liquidar el depto a 10 años sería $161.873.497, un número que supera a los instrumentos líquidos pero que exige que la plusvalía se cumpla. Providencia promedió 2,9% anual entre 2015 y 2025 — un rango que cruza el estallido social de 2019 y la pandemia de 2020-2021, así que es un promedio ruidoso; la proyección base del análisis usa 3% anual, apenas por encima de lo observado en ese período atípico, lo que lo convierte en un supuesto razonable pero no en un piso garantizado."
+  };
+  function contarTexto(s) {
+    return s.replace(BASURA, " ").trim().split(/\s+/).filter(function (w) { return w.length > 0; }).length;
+  }
+  var b3Antes = contarTexto(PROSA_HOY.b3);
+
+  var FILAS = [
+    ["1 · Palancas", "matriz actual, en modal", wc.v1a, "variante (c), en el flujo", wc.v1c],
+    ["2 · Estado vacío", "no existe (bloque ausente)", 0, "variante (A), sensibilidad", wc.v2a],
+    ["3 · Instrumentos", "prosa largoPlazo.contenido", b3Antes, "variante (A), tres barras", wc.v3a],
+    ["4 · Título de sección", "ksub + título + bajada", wc.v4a, "solo el título", wc.v4b]
+  ];
+
+  var tb = document.querySelector("#tabla tbody");
+  var totA = 0, totD = 0;
+  FILAS.forEach(function (f) {
+    totA += f[2]; totD += f[4];
+    var d = f[4] - f[2];
+    var cls = d < 0 ? "delta-ok" : d > 0 ? "delta-bad" : "";
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td><b>" + f[0] + "</b></td><td>" + f[1] + "</td><td class='n'>" + f[2] +
+      "</td><td>" + f[3] + "</td><td class='n'>" + f[4] +
+      "</td><td class='n " + cls + "'>" + (d > 0 ? "+" : "") + d + "</td>";
+    tb.appendChild(tr);
+  });
+  var d = totD - totA;
+  var tr = document.createElement("tr");
+  tr.className = "tot";
+  tr.innerHTML = "<td>TOTAL</td><td></td><td class='n'>" + totA + "</td><td></td><td class='n'>" + totD +
+    "</td><td class='n " + (d < 0 ? "delta-ok" : "delta-bad") + "'>" + (d > 0 ? "+" : "") + d + "</td>";
+  tb.appendChild(tr);
+
+  var pct = totA ? Math.round((1 - totD / totA) * 100) : 0;
+  document.getElementById("cierre").innerHTML =
+    "<b>" + totA + " → " + totD + " palabras (−" + pct + "%)</b> en los cuatro bloques, contando solo lo que se muestra. " +
+    "El bloque 2 <b>suma</b> palabras a propósito: hoy no existe, y sin él la variante del bloque 1 no se puede implementar. " +
+    "Lo que no está medido acá y pesa más que todo esto junto: al fusionar la prosa en dos bloques mueren " +
+    "<code>costoMensual</code> (90 palabras de cuerpo + 27 de caja) y <code>largoPlazo</code> (144 + 42) como campos del " +
+    "prompt. Eso es el grueso de la simplificación; estos cuatro bloques son lo que queda en pantalla después.";
+
+  // ── controles del mockup ───────────────────────────────────────────────────
+  var root = document.documentElement;
+  var bTema = document.getElementById("tema");
+  // El rótulo sale del estado real, no de un default: si el tema se cambia por fuera
+  // (o el archivo se abre con data-theme puesto), el botón no puede mentir.
+  (function sincronizarRotulo() {
+    var oscuro = root.getAttribute("data-theme") === "dark";
+    bTema.setAttribute("aria-pressed", String(oscuro));
+    bTema.firstChild.textContent = oscuro ? "Cambiar a claro" : "Cambiar a oscuro";
+  })();
+  bTema.addEventListener("click", function () {
+    var oscuro = root.getAttribute("data-theme") === "dark";
+    root.setAttribute("data-theme", oscuro ? "light" : "dark");
+    bTema.setAttribute("aria-pressed", String(!oscuro));
+    bTema.firstChild.textContent = oscuro ? "Cambiar a oscuro" : "Cambiar a claro";
+  });
+  var bVer = document.getElementById("ver");
+  bVer.addEventListener("click", function () {
+    var comprar = bVer.getAttribute("aria-pressed") === "true";
+    var v = comprar ? "AJUSTA SUPUESTOS" : "COMPRAR";
+    Array.prototype.forEach.call(document.querySelectorAll(".doc[data-verdict]"), function (el) {
+      if (el.closest(".grid2") && el.getAttribute("data-verdict") === "COMPRAR" && !comprar) return;
+      el.setAttribute("data-verdict", v);
+    });
+    bVer.setAttribute("aria-pressed", String(!comprar));
+    bVer.firstChild.textContent = comprar ? "Ver AJUSTA / COMPRAR" : "Volver a AJUSTA";
+  });
+})();
+</script>
+</body>
+</html>

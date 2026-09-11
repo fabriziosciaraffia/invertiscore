@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hallazgos como diagrama — la pieza única</title>
+<style>
+/* ════════════════════════════════════════════════════════════════════════════
+   TOKENS de producción (PortadaInforme.tsx + globals.css). Tríada, plumón,
+   serif, mono: sin cambios.
+   ════════════════════════════════════════════════════════════════════════════ */
+.dir{
+  --paper:#141414; --paper2:#1B1B1B; --paper3:#232323;
+  --line:#282828; --line2:#3A3A3A;
+  --tx:#EDEBE6; --tx2:#C4C2BC; --tx3:#8C8A84; --tx4:#5C5A55;
+  --hl:color-mix(in srgb,color-mix(in srgb,var(--verdict),white 25%) 40%,transparent);
+  --good:#57B98A; --warn:#DFA34F; --signal-red:#C8323C;
+}
+[data-theme="light"] .dir{
+  --paper:#FAF8F3; --paper2:#F1EEE7; --paper3:#EAE7DF;
+  --line:#DAD6CC; --line2:#C4BFB2;
+  --tx:#141311; --tx2:#3B3A36; --tx3:#75726A; --tx4:#A39F94;
+  --hl:color-mix(in srgb,var(--verdict) 32%,transparent);
+  --good:#2E8B57; --warn:#B7791F;
+}
+[data-verdict="BUSCAR OTRA"]{--verdict:#C8323C; --verdict-deep:#7A1F27}
+[data-verdict="AJUSTA SUPUESTOS"]{--verdict:#6E4560; --verdict-deep:#442B3B}
+[data-verdict="COMPRAR"]{--verdict:#2B558F; --verdict-deep:#1B3559}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   LA PIEZA — copiada VERBATIM del bloque «Hallazgos: barras vs referencia» de
+   franco-informe-opcion-b-hero-claro_4.html (líneas 107-122). Geometría intacta:
+   pista 8px, radio 99px, marca 2×16 en top:-4px, etiqueta en top:-15px a
+   mono 500 10px. Lo único que cambia son los NOMBRES de los tokens de color,
+   para que use la paleta del documento en vez de la del mockup suelto:
+     --soft-2 → --doc-paper3 · --ink → --doc-tx · --ink-3 → --doc-tx3
+     --red    → --signal-red · --pos → --doc-good
+   ════════════════════════════════════════════════════════════════════════════ */
+.track{position:relative;height:8px;border-radius:99px;background:var(--paper3);overflow:visible}
+.fill{height:100%;border-radius:99px;background:var(--tx);transition:width .9s cubic-bezier(.2,.7,.2,1)}
+.fill.neg{background:var(--signal-red)}
+.fill.pos{background:var(--good)}
+.ref{position:absolute;top:-4px;width:2px;height:16px;background:var(--tx3);border-radius:2px}
+.ref::after{content:attr(data-l);position:absolute;top:-15px;left:50%;transform:translateX(-50%);
+  white-space:nowrap;font:500 10px var(--mono);color:var(--tx3)}
+@media (prefers-reduced-motion:reduce){.fill{transition:none}}
+
+/* ── la FILA, con lo que ya existe en prod: numeración, punto y KPI ───────── */
+.dir{--mono:"JetBrains Mono",ui-monospace,monospace}
+.hz{padding:16px 0;border-bottom:1px solid var(--line)}
+.hz:last-child{border-bottom:0}
+.hz-top{display:grid;grid-template-columns:auto auto 1fr auto;gap:9px;align-items:baseline;margin-bottom:16px}
+.hz-n{font-family:var(--mono);font-size:10px;color:var(--tx4)}
+.hz-dot{width:7px;height:7px;border-radius:99px;align-self:center}
+.hz-dot.neg{background:var(--signal-red)} .hz-dot.pos{background:var(--good)} .hz-dot.neu{background:var(--tx4)}
+.hz-t{font-family:"Source Serif 4",Georgia,serif;font-size:15.5px;font-weight:700;color:var(--tx);line-height:1.25}
+.hz-v{font-family:var(--mono);font-weight:700;font-size:14px;white-space:nowrap}
+.hz-v.neg{color:var(--signal-red)} .hz-v.pos{color:var(--good)} .hz-v.neu{color:var(--tx2)}
+.hz-dos{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.hz-dos .n{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx4);margin-bottom:14px}
+.hz-esc{display:flex;justify-content:space-between;font:500 10px var(--mono);color:var(--tx4);margin-top:7px}
+
+/* ── chrome del mockup (NO cuenta en las palabras) ───────────────────────── */
+:root{color-scheme:light dark}
+body{margin:0;background:#9C9890;font:14px/1.6 "IBM Plex Sans",system-ui,sans-serif;color:#141311}
+[data-theme="dark"] body{background:#0A0A0A;color:#EDEBE6}
+.wrap{max-width:1240px;margin:0 auto;padding:18px 16px 70px}
+.mk-head{position:sticky;top:0;z-index:20;background:#9C9890;padding:12px 0 10px;border-bottom:1px solid rgba(0,0,0,.25);margin-bottom:18px}
+[data-theme="dark"] .mk-head{background:#0A0A0A;border-color:rgba(255,255,255,.2)}
+.mk-head h1{font-family:"Source Serif 4",Georgia,serif;font-size:21px;margin:0 0 3px}
+.mk-head p{margin:0;font-size:12.5px;opacity:.85;max-width:104ch}
+.mk-btn{font:600 11.5px/1 "IBM Plex Sans",sans-serif;padding:7px 10px;border:1px solid currentColor;background:transparent;color:inherit;border-radius:3px;cursor:pointer;margin-top:9px}
+h2.mk{font-family:"Source Serif 4",Georgia,serif;font-size:19px;margin:32px 0 4px;border-top:2px solid currentColor;padding-top:12px}
+h2.mk small{display:block;font-family:"IBM Plex Sans",sans-serif;font-size:12.5px;font-weight:400;opacity:.8;margin-top:5px;max-width:104ch}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(390px,1fr));gap:18px;align-items:start;margin-top:12px}
+.col-h{font:700 11px/1.35 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;
+  padding:9px 11px;background:rgba(0,0,0,.14);border-radius:4px 4px 0 0}
+[data-theme="dark"] .col-h{background:rgba(255,255,255,.1)}
+.col-h em{display:block;font-style:normal;font-weight:400;letter-spacing:0;text-transform:none;font-family:"IBM Plex Sans",sans-serif;font-size:11.5px;opacity:.8;margin-top:4px}
+.caja{width:390px;max-width:100%;border:1px solid rgba(0,0,0,.3);border-top:0;border-radius:0 0 4px 4px;overflow:hidden}
+[data-theme="dark"] .caja{border-color:rgba(255,255,255,.18)}
+.dir{background:var(--paper);color:var(--tx);padding:6px 16px 16px;font-family:"IBM Plex Sans",system-ui,sans-serif}
+.antes{font-size:11px;line-height:1.45;color:#6b6b6b;background:rgba(0,0,0,.05);border-left:2px solid rgba(0,0,0,.2);
+  padding:6px 9px;margin:10px 0 0}
+[data-theme="dark"] .antes{color:#8f8f8f;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.2)}
+.reco{margin:12px 0 0;padding:11px 13px;border-left:3px solid #C8323C;background:rgba(200,50,60,.08);font-size:13px}
+.falta{margin:12px 0 0;padding:11px 13px;border:1px dashed #C8323C;background:rgba(200,50,60,.06);font-size:12.5px}
+.ok{margin:12px 0 0;padding:11px 13px;border-left:3px solid #2E8B57;background:rgba(46,139,87,.09);font-size:13px}
+table.fin{width:100%;border-collapse:collapse;margin-top:14px;font-size:12.5px}
+table.fin th,table.fin td{border:1px solid rgba(0,0,0,.3);padding:7px 9px;text-align:left;vertical-align:top}
+[data-theme="dark"] table.fin th,[data-theme="dark"] table.fin td{border-color:rgba(255,255,255,.22)}
+table.fin th{background:rgba(0,0,0,.12);font:700 10.5px/1.3 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.05em;text-transform:uppercase}
+[data-theme="dark"] table.fin th{background:rgba(255,255,255,.09)}
+table.fin td.n{font-family:"JetBrains Mono",ui-monospace,monospace;text-align:right;white-space:nowrap}
+table.fin tr.tot td{font-weight:700;background:rgba(0,0,0,.08)}
+[data-theme="dark"] table.fin tr.tot td{background:rgba(255,255,255,.08)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="mk-head">
+  <h1>Hallazgos como diagrama — la pieza única</h1>
+  <p>Una sola pieza para todas las filas, copiada del bloque «Hallazgos: barras vs referencia» de tu HTML:
+  pista de 8px con radio 99, relleno, y marca de referencia de 2×16 con etiqueta mono de 10px arriba.
+  <b>La pieza reemplaza la frase</b>: lo que aparece en gris bajo cada fila es la frase de hoy, y está solo para comparar —
+  no cuenta en las palabras de «después». Datos reales del fixture. Los drawers no se tocan.</p>
+  <button class="mk-btn" id="tema"><span>Cambiar a oscuro</span></button>
+</div>
+
+<h2 class="mk">La sección completa · «Qué determina el veredicto»
+  <small>Los cuatro hallazgos del canónico 7710a017, tal como quedaría la sección. Claro y oscuro con el botón de arriba.</small>
+</h2>
+<div class="cols" id="seccion"></div>
+
+<h2 class="mk">Los diecisiete tipos, agrupados por la forma que les toca
+  <small>Cada grupo usa la MISMA pieza; lo que cambia es qué representa el relleno y si hay marca de referencia.</small>
+</h2>
+<div id="grupos"></div>
+
+<h2 class="mk">Palabras: antes y después</h2>
+<table class="fin" id="tabla"><thead>
+<tr><th>Tipo</th><th>Forma</th><th class="n">Antes<br>(frase)</th><th class="n">Después<br>(pieza)</th><th class="n">Δ</th></tr>
+</thead><tbody></tbody></table>
+
+<div class="ok" id="okrender"></div>
+<div class="falta" id="nofit"></div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// DATOS REALES — hallazgo.valor tal cual viene en el fixture, y la fraseCanonica
+// que la pieza vendría a reemplazar. Nada inventado.
+// ════════════════════════════════════════════════════════════════════════════
+const pc = (x,min,max) => Math.max(0,Math.min(100,((x-min)/(max-min))*100));
+
+const H = [
+  // ── VALOR CONTRA UMBRAL · una referencia ────────────────────────────────
+  { g:"umbral", id:"cap_rate", n:"01", t:"Lo que renta hoy vs lo que debería", v:"4,3%", dir:"pos",
+    fill:pc(4.3,2,6), ref:{x:pc(4,2,6), l:"ref 4,0%"}, ejes:["2,0%","6,0%"],
+    frase:"Tu CAP rate —lo que el arriendo te deja al año sobre el precio, ya descontados los gastos— es 4,3% — +0,3 pts sobre la referencia de mercado (4,0%). Rinde por sobre lo que el mercado paga para este precio. Suma a favor, pero por sí solo no alcanza para mover el veredicto.",
+    valor:"capRatePct 4.3 · capRefPct 4 · banda 2" },
+  { g:"umbral", id:"rentabilidad_str", n:"—", t:"Lo que renta la renta corta", v:"4,1%", dir:"neg",
+    fill:pc(4.1,2,8), ref:{x:pc(5,2,8), l:"umbral 5,0%"}, ejes:["2,0%","8,0%"],
+    frase:"Tu CAP rate de renta corta es 4,1% — 0,9 pts bajo el umbral de 5,0% que exige la operación. Rinde bajo lo que la modalidad pide.",
+    valor:"capRatePct 4.1 · umbralPct 5 · banda 3" },
+  { g:"umbral", id:"plusvalia", n:"—", t:"Cuánto se valorizó la comuna", v:"5,0%", dir:"pos",
+    fill:pc(5,1,5.5), ref:{x:pc(3,1,5.5), l:"umbral real 3,0%"}, ejes:["1,0%","5,5%"],
+    frase:"En la última década los departamentos en Santiago se valorizaron 5,0% anual, sobre el umbral de apreciación real (3,0%). Ganaron valor por sobre la inflación.",
+    valor:"anualizadaPct 5 · refPct 3 · banda 2" },
+  { g:"umbral", id:"tir", n:"—", t:"Lo que rinde tu plata al año", v:"9,3%", dir:"pos",
+    fill:pc(9.3,0,14), ref:{x:pc(6,0,14), l:"umbral 6,0%"}, ejes:["0%","14%"],
+    frase:"Puesto todo junto —arriendo, aportes y venta— el retorno anual es 9,3%, sobre el umbral de 6,0% bajo el cual conviene más otra inversión.",
+    valor:"tirPct 9.3 · umbralPct 6 · banda 10" },
+  { g:"umbral", id:"ocupacion_vs_estimacion", n:"—", t:"Cuántas noches se llenan", v:"43%", dir:"neu",
+    fill:pc(43,0,80), ref:{x:pc(43,0,80), l:"estimado 43%"}, ejes:["0%","80%"],
+    frase:"Tu ocupación declarada (43%) coincide con la estimación de la zona para Santiago (43%). No hay brecha que explicar.",
+    valor:"ocupacionPct 43 · estimacionPct 43 · gapPts 0" },
+  { g:"umbral", id:"ventaja_vs_ltr", n:"—", t:"Cuánto renta más que el arriendo largo", v:"+65%", dir:"pos",
+    fill:pc(65,0,120), ref:{x:pc(15,0,120), l:"borde 15%"}, ejes:["0%","120%"],
+    frase:"La renta corta deja 65% más que arrendarlo largo: $150.102 mensuales sobre el NOI de $231.416 que daría el arriendo tradicional.",
+    valor:"sobreRentaPct 65 · bordePct 15" },
+  // ── VALOR CONTRA UMBRAL · más de una referencia ─────────────────────────
+  { g:"multi", id:"sensibilidad", n:"—", t:"Cuánto aguanta este veredicto", v:"11,5%", dir:"pos",
+    fill:pc(11.5,0,25), refs:[{x:pc(7,0,25),l:"frágil 7%"},{x:pc(15,0,25),l:"firme 15%"}], ejes:["0%","25%"],
+    frase:"El arriendo puede caer 11,5% antes de que el veredicto baje a BUSCAR OTRA. Está sobre el corte de fragilidad (7%) pero bajo el de firmeza (15%).",
+    valor:"marginPct 11.5 · corteAdverso 7 · corteFavorable 15" },
+  { g:"multi", id:"patrimonio", n:"—", t:"Tu parte a 10 años", v:"×2,2", dir:"pos",
+    fill:pc(2.2,0,3), refs:[{x:pc(1,0,3),l:"×1"},{x:pc(2,0,3),l:"×2"}], ejes:["×0","×3"],
+    frase:"A 10 años, tras vender y saldar el crédito, tu parte vale $82.330.269 contra los $37.430.631 que aportaste — un multiplicador de ×2,2. El patrimonio supera con holgura lo puesto.",
+    valor:"multiplicador 2.2 · corteAdverso 1 · corteFavorable 2" },
+  { g:"multi", id:"estructura_costos_str", n:"—", t:"Cuánto se va en costos", v:"36%", dir:"neu",
+    fill:pc(36,20,50), refs:[{x:pc(30,20,50),l:"30%"},{x:pc(40,20,50),l:"40%"}], ejes:["20%","50%"],
+    frase:"Tus costos de operación se llevan el 36% de lo que factura, dentro de la banda normal de la modalidad (30-40%).",
+    valor:"costStackPct 36 · bandaFavPct 30 · bandaAdvPct 40" },
+  { g:"multi", id:"sensibilidad_str", n:"—", t:"Cuánto necesita llenarse para cerrar", v:"115%", dir:"neg",
+    fill:pc(115,80,140), refs:[{x:pc(100,80,140),l:"100%"},{x:pc(110,80,140),l:"110%"},{x:pc(130,80,140),l:"130%"}], ejes:["80%","140%"],
+    frase:"Necesitas un 115% de la ocupación de equilibrio para cerrar el mes: estás sobre el corte de fragilidad (110%) pero bajo el de inviabilidad (130%).",
+    valor:"beRatioPct 115 · cortes 100 / 110 / 130" },
+  // ── PROPORCIÓN · sin referencia ─────────────────────────────────────────
+  { g:"prop", id:"flujo_mensual", n:"02", t:"Lo que sale de tu bolsillo cada mes", v:"−$283.194", dir:"neg",
+    fill:71, ejes:["el arriendo cubre 71%","pones 29%"],
+    frase:"Tienes que poner $283.194 al mes de tu bolsillo — acotado frente al dividendo, pero recurrente: sale mes a mes, no una sola vez. Sostenible solo si tu flujo lo aguanta sin apuro.",
+    valor:"ratioSobreDividendo 0.29 · dividendo 978290" },
+  { g:"prop", id:"capex_puesta_a_punto", n:"—", t:"Dejarlo listo para arrendar", v:"UF 90", dir:"neg",
+    fill:6.9, ejes:["6,9% de la inversión inicial",""],
+    frase:"Antes de arrendarlo a mercado hay que poner UF 90 (UF 1,5 por m² sobre 60 m², 4 años de antigüedad): un 6,9% de tu inversión inicial que no es pie ni crédito.",
+    valor:"fraccionInversion 0.069 · montoUF 90" },
+  // ── POSICIÓN EN ESCALA ──────────────────────────────────────────────────
+  { g:"escala", id:"sobreprecio", n:"03", t:"Entras barato por el metro cuadrado", v:"−25%", dir:"pos",
+    fill:pc(60,55.8,103.6), ref:{x:pc(79.7,55.8,103.6), l:"mediana UF 79,7"}, ejes:["−30%","+30%"],
+    frase:"Tu precio por m² (UF 60,0) está 25% bajo la mediana de 181 publicaciones de departamentos usados de la comuna (UF 79,7). Entras barato para esta comuna.",
+    valor:"sujetoUfM2 60 · medianaComunaUfM2 79.7 · banda 30" },
+  // ── DOS PISTAS ──────────────────────────────────────────────────────────
+  { g:"dos", id:"estructura_financiamiento", n:"04", t:"Cómo estás financiando", v:"Pie 20%", dir:"pos",
+    dos:[
+      { n:"Pie · 20%", fill:50, ref:null, nota:"aceptable" },
+      { n:"Tasa · 4,0%", fill:pc(4,3,5.5), ref:{x:pc(4.1,3,5.5), l:"mercado 4,1%"}, nota:"óptimo" },
+    ],
+    frase:"Tu estructura de financiamiento está bien: el pie (20%) y la tasa (4,0%) cumplen, con espacio menor de optimización en ambos. Suma a favor, pero por sí solo no alcanza para mover el veredicto.",
+    valor:'pieLevel "aceptable" · piePct 20 · tasaPct 4 · tasaMarketPct 4.1' },
+  // ── MAGNITUD SIN REFERENCIA ─────────────────────────────────────────────
+  { g:"magnitud", id:"flujo_str", n:"—", t:"Tu flujo mensual de renta corta", v:"−$84.407", dir:"neg",
+    fill:pc(84407,0,250000), ejes:["$0","banda $250.000"],
+    frase:"El mes cierra con $84.407 en contra: la operación no se paga sola y esa diferencia sale de tu bolsillo.",
+    valor:"flujoMensualCLP −84407 · banda 250000" },
+];
+
+const FUERA = [
+  { id:"distancia_veredicto", motivo:"No es un valor: su <code>valor.palancas</code> es una LISTA de vías con delta y tope por cada una. Ya tiene su pieza propia —la matriz de palancas— y desde <code>ae84f10e</code> vive en el flujo. Meterla en una pista sería elegir una vía y esconder las otras tres.", frase:39 },
+  { id:"gate_veredicto", motivo:"<b>No está medido.</b> No aparece en ninguna de las seis filas del fixture, así que no puedo decir qué forma le toca sin ir al parque. Se emite solo cuando un gate decide el veredicto y ninguna otra pieza es adversa — un informe del parque cuando se escribió.", frase:null },
+];
+
+const GRUPOS = [
+  { k:"umbral", t:"Valor contra umbral · una referencia", d:"El relleno llega hasta el valor; la marca queda en el umbral. Seis tipos, todos con <code>valor</code>, <code>ref/umbral</code> y <code>banda</code> tipados." },
+  { k:"multi", t:"Valor contra umbral · más de una referencia", d:"La misma pieza, con la marca repetida. Cuatro tipos. El de tres cortes es el límite: a 390px las etiquetas se rozan." },
+  { k:"prop", t:"Proporción · sin referencia", d:"El relleno ES la proporción, y no hay umbral que marcar. Dos tipos." },
+  { k:"escala", t:"Posición en escala", d:"Igual que el umbral, pero la referencia es la mediana y el eje es la banda ±30%. Un tipo." },
+  { k:"dos", t:"Dos pistas cortas", d:"Un tipo. Dos rieles en vez de un eje común — cada uno con su nivel." },
+  { k:"magnitud", t:"Magnitud sin referencia", d:"Un tipo. Se puede dibujar, pero el eje no significa nada para el lector: ver la nota de abajo." },
+];
+
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const pista = (fill, dir, refs, ejes) => {
+  const rs = (refs||[]).map(r => '<span class="ref" data-l="'+esc(r.l)+'" style="left:'+r.x.toFixed(1)+'%"></span>').join("");
+  const ej = ejes && (ejes[0]||ejes[1]) ? '<div class="hz-esc"><span>'+esc(ejes[0]||"")+'</span><span>'+esc(ejes[1]||"")+'</span></div>' : "";
+  return '<div class="track"><div class="fill '+dir+'" style="width:'+fill.toFixed(1)+'%"></div>'+rs+'</div>'+ej;
+};
+function fila(h, conAntes) {
+  const refs = h.refs || (h.ref ? [h.ref] : []);
+  let cuerpo;
+  if (h.dos) {
+    cuerpo = '<div class="hz-dos">'+h.dos.map(d =>
+      '<div><div class="n">'+esc(d.n)+'</div>'+pista(d.fill, "pos", d.ref?[d.ref]:[], null)+
+      '<div class="hz-esc"><span>'+esc(d.nota)+'</span><span></span></div></div>').join("")+'</div>';
+  } else {
+    cuerpo = pista(h.fill, h.dir, refs, h.ejes);
+  }
+  return '<div class="hz"><div class="hz-top"><span class="hz-n">'+esc(h.n)+'</span>'+
+    '<span class="hz-dot '+h.dir+'"></span><span class="hz-t">'+esc(h.t)+'</span>'+
+    '<span class="hz-v '+h.dir+'">'+esc(h.v)+'</span></div>'+cuerpo+'</div>'+
+    (conAntes ? '<div class="antes"><b>Hoy dice</b> ('+h.frase.trim().split(/\s+/).length+' palabras): «'+esc(h.frase)+'»<br><b>valor:</b> '+h.valor+'</div>' : "");
+}
+
+// ── la sección completa del canónico ───────────────────────────────────────
+const CANON = ["flujo_mensual","cap_rate","estructura_financiamiento","sobreprecio"];
+const canonNum = { flujo_mensual:"01", cap_rate:"02", estructura_financiamiento:"03", sobreprecio:"04" };
+function pintarSeccion(){
+  const filas = CANON.map(id => { const h = {...H.find(x=>x.id===id)}; h.n = canonNum[id]; return fila(h,false); }).join("");
+  document.getElementById("seccion").innerHTML =
+    '<div><div class="col-h">La sección, con la pieza<em>Numeración, punto de dirección, titular en serif y KPI en mono: todo como en prod. La pieza reemplaza la frase.</em></div>'+
+      '<div class="caja"><div class="dir" data-verdict="AJUSTA SUPUESTOS"><h2 style="font-family:\'Source Serif 4\',Georgia,serif;font-size:19px;font-weight:700;margin:14px 0 14px;color:var(--tx)">Ajusta los supuestos. Esto es lo que pesa:</h2>'+filas+'</div></div></div>'+
+    '<div><div class="col-h">La misma sección, como está hoy<em>La frase canónica entera bajo cada fila. Es lo que se reemplaza.</em></div>'+
+      '<div class="caja"><div class="dir" id="hoy" data-verdict="AJUSTA SUPUESTOS"><h2 style="font-family:\'Source Serif 4\',Georgia,serif;font-size:19px;font-weight:700;margin:14px 0 14px;color:var(--tx)">Ajusta los supuestos. Esto es lo que pesa:</h2>'+
+      CANON.map(id=>{const h=H.find(x=>x.id===id);return '<div class="hz"><div class="hz-top"><span class="hz-n">'+canonNum[id]+'</span><span class="hz-dot '+h.dir+'"></span><span class="hz-t">'+esc(h.t)+'</span><span class="hz-v '+h.dir+'">'+esc(h.v)+'</span></div>'+
+        '<p style="font-size:12.5px;line-height:1.55;color:var(--tx3);margin:0">'+esc(h.frase)+'</p></div>';}).join("")+
+      '</div></div></div>';
+}
+
+// ── los grupos ─────────────────────────────────────────────────────────────
+function pintarGrupos(){
+  document.getElementById("grupos").innerHTML = GRUPOS.map(g => {
+    const hs = H.filter(h=>h.g===g.k);
+    return '<h2 class="mk" style="border-top-width:1px;font-size:16px">'+g.t+' <small>'+g.d+'</small></h2>'+
+      '<div class="cols"><div><div class="caja" style="border-top:1px solid rgba(0,0,0,.3)"><div class="dir" data-verdict="AJUSTA SUPUESTOS">'+
+      hs.map(h=>fila(h,true)).join("")+'</div></div></div></div>';
+  }).join("");
+}
+
+// ── tabla ──────────────────────────────────────────────────────────────────
+function pintarTabla(){
+  const NOM = { umbral:"umbral (1 ref)", multi:"umbral (2-3 refs)", prop:"proporción", escala:"escala", dos:"dos pistas", magnitud:"magnitud sin ref" };
+  let ta=0, td=0;
+  const filas = H.map(h => {
+    const antes = h.frase.trim().split(/\s+/).length;
+    // «después» = solo las palabras que la pieza escribe: etiquetas de referencia y de eje.
+    const refs = h.dos ? h.dos.flatMap(d=>[d.ref?d.ref.l:"", d.nota]) : (h.refs||(h.ref?[h.ref]:[])).map(r=>r.l).concat(h.ejes||[]);
+    const desp = refs.filter(Boolean).join(" ").trim().split(/\s+/).filter(Boolean).length;
+    ta+=antes; td+=desp;
+    return '<tr><td><code>'+h.id+'</code></td><td>'+NOM[h.g]+'</td><td class="n">'+antes+'</td><td class="n">'+desp+'</td><td class="n" style="color:#2E8B57;font-weight:700">−'+(antes-desp)+'</td></tr>';
+  }).join("");
+  const fueraFilas = FUERA.map(f =>
+    '<tr><td><code>'+f.id+'</code></td><td style="color:#C8323C">no entra</td><td class="n">'+(f.frase??"—")+'</td><td class="n">—</td><td class="n">—</td></tr>').join("");
+  document.querySelector("#tabla tbody").innerHTML = filas + fueraFilas +
+    '<tr class="tot"><td>TOTAL · los 15 que entran</td><td></td><td class="n">'+ta+'</td><td class="n">'+td+'</td><td class="n">−'+(ta-td)+'</td></tr>';
+  document.getElementById("okrender").innerHTML =
+    '<b>Render puro, confirmado.</b> La <code>fraseCanonica</code> la escribe el MOTOR —<code>cap-rate-hallazgo.ts:94</code>: «la línea determinística del motor (sin LLM)»— y se construye en los módulos '+
+    '<code>*-hallazgo.ts</code>. Todo lo que dibuja la pieza sale de <code>hallazgo.valor</code>, que ya viene tipado. <b>El prompt no se toca y el hash no se mueve.</b> '+
+    'Matiz: la frase sigue entrando al user prompt como insumo (<code>ai-generation.ts:820</code>), así que la pieza la reemplaza EN PANTALLA, no en el prompt. '+
+    '<b>El ahorro medido son '+(ta-td)+' palabras</b> sobre los quince tipos que entran ('+ta+' → '+td+').';
+}
+
+function pintar(){ pintarSeccion(); pintarGrupos(); pintarTabla(); }
+pintar();
+
+document.getElementById("nofit").innerHTML =
+  '<b>Los que NO entran, y los que entran con reparo.</b>'+
+  '<br><br><b>1 · <code>distancia_veredicto</code> — no entra.</b> '+FUERA[0].motivo+
+  '<br><br><b>2 · <code>gate_veredicto</code> — no se puede decidir.</b> '+FUERA[1].motivo+
+  '<br><br><b>3 · <code>estructura_financiamiento</code> — entra a medias.</b> La pista de la TASA sí funciona: tiene su referencia numérica (<code>tasaMarketPct</code> 4,1%). '+
+  'La del PIE no: <code>pieLevel</code> es un juicio ordinal («aceptable») y en <code>valor</code> no hay ningún umbral de pie contra el cual posicionarlo. '+
+  'El relleno que ves está puesto al 50% para que la fila no quede coja, y <b>eso es exactamente lo que no hay que hacer</b>: es un largo sin significado. '+
+  'O el motor emite un umbral de pie, o esa pista se queda sin relleno y solo lleva la palabra del nivel.'+
+  '<br><br><b>4 · <code>flujo_str</code> — entra, pero el eje no dice nada.</b> Su <code>valor</code> trae <code>banda: 250000</code>, que es una escala de magnitud para clasificar, '+
+  'no un umbral que el lector reconozca. La pista queda al 34% de una banda arbitraria. Se dibuja, pero comunica menos que la frase. '+
+  '<b>Es el único caso donde la frase gana.</b>'+
+  '<br><br><b>5 · <code>sensibilidad_str</code> — tres referencias es el límite.</b> A 390px las etiquetas «100%», «110%» y «130%» quedan a 18px una de otra y se rozan. '+
+  'Con tres cortes hay que decidir si se rotulan todos o solo el que el caso cruza.'+
+  '<br><br><b>6 · <code>ocupacion_vs_estimacion</code> — caso degenerado.</b> En el fixture el valor y la estimación son idénticos (43% y 43%), así que la marca cae ENCIMA del final del relleno. '+
+  'Se ve, pero conviene revisarlo con un caso donde haya brecha.';
+
+const root=document.documentElement, bTema=document.getElementById("tema");
+(function(){const o=root.getAttribute("data-theme")==="dark";bTema.firstChild.textContent=o?"Cambiar a claro":"Cambiar a oscuro";})();
+bTema.addEventListener("click",()=>{const o=root.getAttribute("data-theme")==="dark";
+  root.setAttribute("data-theme",o?"light":"dark");bTema.firstChild.textContent=o?"Cambiar a oscuro":"Cambiar a claro";});
+</script>
+</body>
+</html>
