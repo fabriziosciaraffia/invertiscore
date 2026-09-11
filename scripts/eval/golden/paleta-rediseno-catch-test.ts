@@ -45,6 +45,12 @@ const CSS = (() => {
   try { return readFileSync(join(RAIZ, "src/components/analysis/portada/PortadaInforme.tsx"), "utf8"); } catch { return ""; }
 })();
 
+const leerArchivo = (p: string) => {
+  try { return readFileSync(join(RAIZ, p), "utf8"); } catch { return ""; }
+};
+const RUTA_LTR = leerArchivo("src/app/analisis/[id]/page.tsx");
+const RUTA_STR = leerArchivo("src/app/analisis/renta-corta/[id]/results-client.tsx");
+
 const PISO = 2.0;
 const TOKENS = ["page", "card", "sunk", "line", "line2", "line-sunk"] as const;
 type Tok = (typeof TOKENS)[number];
@@ -220,11 +226,65 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
   }
 }
 
+// ── 8 · el lienzo de la página (contrato §2) ─────────────────────────────
+{
+  // Retirado el marco, lo que queda detrás del informe es el gris de la app. §2 pide la
+  // página entera del color del papel, así que el wrapper de la ruta LTR pinta «--page».
+  //
+  // Medido en el DOM, wrapper y body:
+  //   claro   #FFFFFF   ·   --card del informe #F4F4F6   → contraste 1,098 · ΔL* 3,76
+  //   oscuro  #0C0C0E   ·   --card del informe #1A1A1E   → contraste 1,126 · ΔL* 6,05
+
+  // 8a · la clase está en la ruta LTR y detrás del interruptor.
+  if (!/REDISENO_INFORME \? "doc-lienzo" : ""/.test(RUTA_LTR)) {
+    F("8 · la ruta del análisis LTR dejó de pintar su lienzo detrás del interruptor. Con el marco ya retirado, sin esto el informe queda sobre el gris de la app (§2).");
+  }
+  // 8b · y NO en STR ni en ninguna otra ruta.
+  if (/doc-lienzo/.test(RUTA_STR)) {
+    F("8 · la ruta de STR pasó a pintar el lienzo del rediseño. STR no tuvo su pasada y conserva su fondo (contrato §11).");
+  }
+  // 8c · NO lleva «doc-r2». Esa clase trae los doce tokens del informe, y «--card» es
+  // TAMBIÉN un token de shadcn: puesta en el wrapper le cambiaba el valor a todo el
+  // chrome de la página —de «40 20% 98%» en HSL a un hex— y «bg-card» pasaba a resolver
+  // «hsl(#F4F4F6)», que es inválido. Se midió en el DOM antes de corregirlo.
+  const wrapper = RUTA_LTR.match(/<div className=\{`min-h-screen[^`]*`\}>/)?.[0] ?? "";
+  if (!wrapper) F("8 · no se encontró el wrapper de la ruta LTR");
+  else if (/doc-r2|CLASE_REDISENO/.test(wrapper)) {
+    F(`8 · el wrapper de la ruta LTR volvió a llevar «doc-r2»: «${wrapper.slice(0, 90)}». Esa clase trae los doce tokens del informe, y «--card» es también de shadcn: le cambia el valor a TODO el chrome de la página y «bg-card» resuelve «hsl(#F4F4F6)», que es inválido.`);
+  }
+  // 8d · la regla pinta con el token, y el «body» va con ella: el wrapper es su
+  // descendiente y no puede pintarlo. Hoy el wrapper cubre el documento entero, así que
+  // el gris del body solo asoma en el rebote del scroll — pero asomar sigue siendo asomar.
+  const regla = CSS.match(/\.doc-lienzo,\s*body:has\(\.doc-lienzo\)\{([^}]*)\}/)?.[1] ?? "";
+  if (!regla) {
+    F("8 · falta la regla del lienzo, o el «body:has(.doc-lienzo)» que la acompaña: sin el body, el gris de la app vuelve en el rebote del scroll");
+  } else if (!/background:\s*var\(--page\)/.test(regla)) {
+    F("8 · el lienzo dejó de pintarse con «--page»: el fondo de la página tiene que ser el MISMO token que el papel del informe, no un hex suelto que se desincroniza");
+  }
+  // 8e · y los dos valores que declara son los MISMOS del bloque de paleta. El lienzo no
+  // puede reusar «.doc-r2» (8c), así que repite el hex: este chequeo es lo único que
+  // impide que los dos se separen sin que nadie lo vea.
+  const iL = CSS.indexOf(".doc-lienzo,");
+  const trozoLienzo = iL === -1 ? "" : CSS.slice(iL, iL + 400);
+  // Se ancla al BLOQUE por su nombre y no al selector: «.doc-r2,» sola aparece TRES
+  // veces en el archivo, y la primera no es la paleta.
+  const iP = CSS.indexOf("REDISEÑO · PALETA");
+  const trozoPaleta = iP === -1 ? "" : CSS.slice(iP, iP + 8000);
+  for (const [tema, hex] of [["oscuro", "#0C0C0E"], ["claro", "#FFFFFF"]] as const) {
+    if (!trozoLienzo.includes(`--page:${hex}`)) {
+      F(`8 · el «--page» ${tema} del lienzo dejó de ser ${hex}. El lienzo repite el valor porque no puede reusar «.doc-r2» —le daría «--card» al chrome de la app—: si se separa del bloque de paleta, la página y el papel dejan de ser el mismo color.`);
+    }
+    if (!trozoPaleta.includes(`--page:${hex}`)) {
+      F(`8 · el «--page» ${tema} del BLOQUE DE PALETA dejó de ser ${hex}: el lienzo lo repite, así que ahora los dos dicen cosas distintas y la página no es del color del papel.`);
+    }
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPaletaRedisenoTier(): { hard: number } {
   console.log("\n─── TIER PALETA-REDISEÑO (contrato §1 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — escala completa en los dos temas, superficies distinguibles, cada línea se ve sobre la suya, la dirección sigue al tema, el par direccional --signal-red/--up se distingue y pasa AA, el semáforo del dato queda intacto, y el selector lleva las CUATRO formas");
+    console.log("  ✓ VERDE — escala completa en los dos temas, superficies distinguibles, cada línea se ve sobre la suya, la dirección sigue al tema, el par direccional --signal-red/--up se distingue y pasa AA, el semáforo del dato queda intacto, el selector lleva las CUATRO formas, y el lienzo de la página LTR pinta --page sin llevarse la paleta del informe al chrome");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

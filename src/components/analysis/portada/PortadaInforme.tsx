@@ -467,6 +467,27 @@ export function DocTokens() {
       .doc-r2.doc-dictamen,
       .doc-r2 .doc-dictamen{
         background:none;border:none;box-shadow:none}
+      /* Y EL LIENZO DE LA PÁGINA, un nivel más afuera. Retirado el marco, lo que queda
+         detrás del informe es el gris de la app, y §2 pide la página entera del color
+         del papel. Sobre ese lienzo, las tarjetas «--card» son lo único con superficie.
+
+         LA CLASE LA PONE LA RUTA DEL ANÁLISIS LTR, solo ésa. STR tiene su propio wrapper
+         y no la lleva; el resto de la app conserva su fondo.
+
+         DECLARA «--page» Y NADA MÁS, y por eso no reusa «.doc-r2»: esa clase trae los
+         doce tokens del informe, y «--card» es también un token de shadcn —«40 20% 98%»,
+         en HSL—. Puesta en el wrapper le cambiaba el valor a todo el chrome de la página,
+         y «bg-card» pasaba a resolver «hsl(#F4F4F6)», que es inválido. Medido en el DOM.
+
+         EL «body» VA POR «:has» porque el wrapper no puede pintarlo: es su ancestro. Hoy
+         el wrapper cubre el documento entero —medido: 7727 px los dos— así que el gris
+         del body solo asoma en el rebote del scroll, pero asomar en un rebote sigue
+         siendo asomar. Los dos selectores comparten la declaración para que el valor
+         viva UNA sola vez. */
+      .doc-lienzo,
+      body:has(.doc-lienzo){--page:#0C0C0E;background:var(--page)}
+      [data-theme="light"] .doc-lienzo,
+      [data-theme="light"] body:has(.doc-lienzo){--page:#FFFFFF}
       .doc-r2.doc-dictamen::after,
       .doc-r2 .doc-dictamen::after{display:none}
       .doc-r2 .doc-toprule,

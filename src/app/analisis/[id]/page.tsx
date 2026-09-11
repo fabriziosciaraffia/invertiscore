@@ -1,5 +1,6 @@
 import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { DEMO_ANALYSIS_ID } from "@/lib/demo";
+import { REDISENO_INFORME } from "@/lib/rediseno-flag";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
@@ -351,7 +352,23 @@ export default async function AnalisisDetallePage({
   const fechaProsaLtr = fechaProsaVigente((data as Record<string, unknown>).pipeline_timing, "ltr") ?? undefined;
 
   return (
-    <div className="min-h-screen bg-[var(--franco-bg)]">
+    /* EL LIENZO DE LA PÁGINA (contrato §2). Con el interruptor, el fondo del análisis
+       LTR deja de ser el gris de la app y pasa a `--page`: blanco en claro, #0C0C0E en
+       oscuro. §2 pide «página blanca, dos cajas y nada más», y el gris alrededor
+       convertía el informe en un documento apoyado sobre un escritorio — la misma
+       metáfora que el marco, un nivel más afuera.
+
+       SOLO ESTA RUTA. STR tiene su propio wrapper en
+       `analisis/renta-corta/[id]/results-client.tsx` y no se toca; el resto de la app
+       conserva su fondo. Con el interruptor apagado `CLASE_REDISENO` es "" y la clase
+       de Tailwind sigue siendo la única que pinta.
+
+       NO LLEVA `doc-r2`, Y ES EL PUNTO. Esa clase trae los doce tokens del informe, y
+       uno de ellos —`--card`— también es de shadcn: puesta acá le cambiaba el valor a
+       TODO el chrome de la página (header, nav, drawers, botones), de `40 20% 98%` en
+       HSL a un hex, o sea `hsl(#F4F4F6)`, que es inválido y lo consume `bg-card`.
+       Medido en el DOM antes de corregirlo. `doc-lienzo` declara `--page` y nada más. */
+    <div className={`min-h-screen bg-[var(--franco-bg)] ${REDISENO_INFORME ? "doc-lienzo" : ""}`}>
       {accessLevel === "guest" || isAnonOwner ? (
         <PublicShareHeader
           date={formatFechaCorta(fechaProsaLtr ?? analisis.created_at)}
