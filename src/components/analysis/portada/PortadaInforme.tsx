@@ -32,6 +32,20 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 // veredicto que no sea de los tres cae a la etiqueta de AJUSTA, como antes.
 const bandaLabelDe = (v: string): string => etiquetaVeredicto(v, "banda", etiquetaVeredicto("AJUSTA SUPUESTOS", "banda"));
 
+/** EL SIGNO DEL BOTÓN DE VEREDICTO, como en la landing. Los glifos son los que ya usa
+ *  `SectionObjections` —«✕ Una calculadora dice» / «✓ Franco te dice»— y el «−» es el
+ *  mismo U+2212 con que la landing escribe sus negativos. No se inventa ninguno.
+ *
+ *  Cuelga del VEREDICTO y no de la etiqueta: la etiqueta es copy y puede cambiar; los
+ *  tres veredictos son un enum cerrado. El fallback es el del escalón intermedio, igual
+ *  que en `bandaLabelDe`. */
+const SIGNO_VEREDICTO: Record<string, string> = {
+  "BUSCAR OTRA": "✕",
+  "AJUSTA SUPUESTOS": "−",
+  COMPRAR: "✓",
+};
+const signoDe = (v: string): string => SIGNO_VEREDICTO[v] ?? SIGNO_VEREDICTO["AJUSTA SUPUESTOS"];
+
 /** Titular con marcas `**…**` → <mark> plumón. Normaliza defensivamente
  *  (marcas rotas en prosa persistida: sin plumón o con el primer par — el
  *  escalón del guard ya persiste limpio, esto cubre filas raras). */
@@ -92,9 +106,6 @@ export function PortadaInforme({
   const scorePct = Math.max(0, Math.min(100, score ?? 0));
 
   const rediseno = useRediseno();
-  // El eyebrow del contrato §3 sale de la ficha que ya se arma: «Tipología» es
-  // «3D · 2B» y «Superficie» es «72 m²». Cero datos nuevos.
-  const spec = (k: string) => ficha.specs.find(([e]) => e === k)?.[1] ?? "";
 
   return (
     <section className={`doc-portada${rediseno ? " doc-hero" : ""}`} data-verdict={veredicto}>
@@ -111,12 +122,17 @@ export function PortadaInforme({
       {rediseno ? (
         /* Eyebrow del contrato: identidad a la izquierda, modalidad a la derecha. */
         <div className="doc-hero-eyebrow">
+          {/* SOLO DIRECCIÓN Y COMUNA. La tipología («2D · 1B») y la superficie («55 m²»)
+              salieron: ya viven en la ficha del depto, y acá no decían nada que la
+              ficha no dijera mejor. Medido antes de sacarlas: iban en texto plano,
+              peso 400 y la misma opacidad que el resto — el único resalte del eyebrow
+              es, y era, el <b> de la dirección. */}
           <span className="doc-hero-eyebrow-l">
             <b>{direccion || comuna}</b>
-            {spec("Tipología") && <><i>·</i>{spec("Tipología")}</>}
-            {spec("Superficie") && <><i>·</i>{spec("Superficie")}</>}
+            {direccion && comuna && <><i>·</i>{comuna}</>}
           </span>
-          <span>{modalidadLabel}</span>
+          {/* LA MODALIDAD PESA: negrita y un punto más que el eyebrow (§3). */}
+          <span className="doc-hero-modalidad">{modalidadLabel}</span>
         </div>
       ) : (
         /* Eyebrow — la dirección deja de ser H1 (decisión 8) */
@@ -142,6 +158,9 @@ export function PortadaInforme({
         <p className="doc-hero-verdict" aria-label={`Veredicto: ${bandaLabel}`}>
           <span className="doc-hero-pill">
             <span className="doc-hero-dot" aria-hidden="true" />
+            {/* El signo no se lee: el `aria-label` del <p> ya dice el veredicto entero,
+                y un lector de pantalla que anuncie «equis» antes del rótulo lo empeora. */}
+            <span className="doc-hero-signo" aria-hidden="true">{signoDe(veredicto)}</span>
             {bandaLabel}
           </span>
         </p>
@@ -571,6 +590,9 @@ export function DocTokens() {
         font-size:12px;line-height:1.4;opacity:.6;margin:0 0 18px}
       .doc-r2 .doc-hero-eyebrow b{font-weight:600}
       .doc-r2 .doc-hero-eyebrow i{font-style:normal;margin:0 7px;opacity:.7}
+      /* La modalidad es el otro extremo del eyebrow y tiene que sostenerlo: un punto
+         más (13 px contra 12) y en negrita. */
+      .doc-r2 .doc-hero-modalidad{font-size:13px;font-weight:700}
 
       /* — EL BOTÓN DE VEREDICTO — píldora del color del veredicto con anillo blanco.
            El anillo va en «box-shadow» y no en «border» para no mover la caja. */
@@ -584,6 +606,11 @@ export function DocTokens() {
         box-shadow:0 0 0 2px rgba(255,255,255,.3)}
       /* EL PUNTO QUE LATE. El punto en sí es opaco; lo que late es su «::after», que
          crece y se desvanece — así el punto no desaparece entre pulsos. */
+      /* EL SIGNO DEL VEREDICTO. Va antes del rótulo y no lo empuja: el «gap» de la
+         píldora ya separa, así que solo se le quita el «letter-spacing» —que en un
+         glifo suelto deja un hueco a la derecha— y se le da su propio tamaño. */
+      .doc-r2 .doc-hero-signo{
+        font-size:14px;line-height:1;letter-spacing:normal;margin-right:-2px}
       .doc-r2 .doc-hero-dot{
         position:relative;width:7px;height:7px;border-radius:50%;background:#fff;flex:none}
       .doc-r2 .doc-hero-dot::after{

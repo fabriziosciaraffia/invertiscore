@@ -179,6 +179,62 @@ function reglaDe(sel: string): string | null {
   }
 }
 
+// ── 7 · el botón lleva signo, el eyebrow adelgaza y la modalidad pesa ────
+{
+  // 7a · EL SIGNO, con el glifo de la landing. No se inventa uno: «✕» y «✓» son los
+  // que ya usa `SectionObjections` («✕ Una calculadora dice» / «✓ Franco te dice») y
+  // el «−» es el U+2212 con que la landing escribe sus negativos. Cuelgan del
+  // VEREDICTO y no de la etiqueta: la etiqueta es copy, el veredicto es un enum.
+  // Medido en el DOM, los tres: «✓ COMPRAR», «− AJUSTAR», «✕ BUSCAR OTRO».
+  const ESPERADOS: [string, string][] = [
+    ["BUSCAR OTRA", "✕"],
+    ["AJUSTA SUPUESTOS", "−"],
+    ["COMPRAR", "✓"],
+  ];
+  const i = CSS.indexOf("const SIGNO_VEREDICTO");
+  const mapa = i === -1 ? "" : CSS.slice(i, CSS.indexOf("};", i));
+  if (!mapa) F("7 · desapareció el mapa de signos del botón de veredicto (§3)");
+  else {
+    for (const [v, glifo] of ESPERADOS) {
+      if (!mapa.includes(glifo)) {
+        F(`7 · el signo de ${v} ya no es «${glifo}». Los tres glifos son los de la landing —«✕» y «✓» de SectionObjections, «−» U+2212—: cambiarlos por otros parecidos (x, -, ✔) rompe el que el lector ya vio ahí.`);
+      }
+    }
+  }
+  if (!/<span className="doc-hero-signo" aria-hidden="true">\{signoDe\(veredicto\)\}/.test(CSS)) {
+    F("7 · el botón dejó de dibujar el signo, o el signo dejó de ser `aria-hidden`. El `aria-label` del <p> ya dice el veredicto entero: leer «equis» antes del rótulo lo empeora.");
+  }
+
+  // 7b · EL EYEBROW: solo dirección y comuna. La tipología y la superficie ya viven en
+  // la ficha del depto y acá no decían nada que la ficha no dijera mejor.
+  const iEye = CSS.indexOf('className="doc-hero-eyebrow-l"');
+  const eye = iEye === -1 ? "" : CSS.slice(iEye, CSS.indexOf("</span>", iEye));
+  if (!eye) F("7 · no se encontró el eyebrow del rediseño");
+  else {
+    for (const fuera of ["Tipología", "Superficie"]) {
+      if (eye.includes(fuera)) {
+        F(`7 · el eyebrow volvió a traer «${fuera}». §3 lo deja en dirección y comuna: eso ya vive en la ficha del depto.`);
+      }
+    }
+    if (!/\{direccion && comuna &&/.test(eye)) {
+      F("7 · el eyebrow dejó de mostrar la comuna junto a la dirección («Merced 562 · Santiago»). Sin dirección la comuna es el rótulo, y con dirección va al lado: nunca las dos veces.");
+    }
+  }
+
+  // 7c · LA MODALIDAD PESA: un punto más que el eyebrow, y en negrita. Medido en el
+  // DOM: eyebrow 12 px / 400, modalidad 13 px / 700.
+  const reglaMod = CSS.match(/\.doc-r2 \.doc-hero-modalidad\{([^}]*)\}/)?.[1] ?? "";
+  const reglaEye = CSS.match(/\.doc-r2 \.doc-hero-eyebrow\{([^}]*)\}/)?.[1] ?? "";
+  const px = (r: string) => Number(r.match(/font-size:\s*([\d.]+)px/)?.[1] ?? NaN);
+  if (!reglaMod) F("7 · la modalidad del eyebrow perdió su regla: vuelve a medir lo mismo que el resto");
+  else {
+    if (!(px(reglaMod) > px(reglaEye))) {
+      F(`7 · la modalidad mide ${px(reglaMod)}px y el eyebrow ${px(reglaEye)}px: §3 la quiere un punto MÁS GRANDE, que es lo que la hace sostener el otro extremo de la línea.`);
+    }
+    if (!/font-weight:\s*[67]00/.test(reglaMod)) F("7 · la modalidad dejó de ir en negrita (§3)");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runHeroRedisenoTier(): { hard: number } {
   console.log("\n─── TIER HERO-REDISEÑO (contrato §3 · 0 tokens) ───");
