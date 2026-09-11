@@ -47,6 +47,7 @@ import { runRegulacionNoPesaTier } from "./regulacion-no-pesa-catch-test";
 import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runRespaldoArriendoTier } from "./respaldo-arriendo-catch-test";
 import { runDistanciaComprarTier } from "./distancia-comprar-catch-test";
+import { runDistanciaComprarStrTier } from "./distancia-comprar-str-catch-test";
 import { runMixPalancasTier } from "./mix-palancas-catch-test";
 import { runMixStrTier } from "./mix-str-catch-test";
 import { runLoQueHariaYoTier } from "./lo-que-haria-yo-catch-test";
@@ -272,6 +273,9 @@ async function printStrSemantic() {
   totalHard += runPlusvaliaGlosaTier().hard;
   totalHard += runRespaldoArriendoTier().hard;
   totalHard += runDistanciaComprarTier().hard;
+  // Tier DISTANCIA-COMPRAR-STR (11-sep-2026, 0 tokens, sin base): las cinco vias a COMPRAR y
+  // el mix hacia COMPRAR desde BUSCAR en el builder STR, espejo del tier LTR. Siempre con el QUICK.
+  totalHard += runDistanciaComprarStrTier().hard;
   totalHard += runMixPalancasTier().hard;
   // ── Tier MIX STR (11-sep-2026, 0 tokens, sin base): el builder STR emite el mismo mix
   // que LTR a través del adaptador UF→CLP / %→decimal; destino = escalón, tope 25/15,

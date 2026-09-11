@@ -12,7 +12,8 @@
 //      tarifa es el arriendo de STR y la pone el mercado; la gestión ya se reporta sola.
 //   2. EL DESTINO ES EL ESCALÓN, y se declara. Desde AJUSTA el mix apunta a COMPRAR; desde
 //      BUSCAR OTRA, a AJUSTA SUPUESTOS — nunca a COMPRAR—. La card filtra por `destino`;
-//      el escalón vive en el pop-up.
+//      el escalón vive en el pop-up. El mix HACIA COMPRAR desde BUSCAR es otro campo
+//      (`mixPalancasHastaComprar`, 11-sep-2026) y lo fija el tier distancia-comprar-str.
 //   3. EL TOPE ES EL DE LA PALANCA SOLA: 25% desde AJUSTA, 15% desde BUSCAR. Un
 //      descuento que el precio solo tiene prohibido, el mix tampoco lo pide.
 //   4. REDUNDANCIA. Si el mix mueve UNA sola dimensión y esa palanca ya cruza sola, lo
@@ -129,8 +130,12 @@ const dcto = (x: StrPatch) => (x.precioCompra != null ? 1 - x.precioCompra / PRE
     regla: (x) => { if (esSondaMix(x)) sondasBuscar.push(x); return regla20("AJUSTA SUPUESTOS", "BUSCAR OTRA")(x); },
   });
   if (hB?.valor.mixPalancas) F(`3 · desde BUSCAR el tope es ${DIST_STR_TOPE_BUSCAR_PCT}%: un mix que necesita −20% no existe, dio ${JSON.stringify(hB.valor.mixPalancas.descuentoPct)}`);
-  const pasoTope = sondasBuscar.filter((s) => dcto(s) > DIST_STR_TOPE_BUSCAR_PCT / 100 + 1e-6);
-  if (pasoTope.length) F(`3 · desde BUSCAR la bisección sondeó más allá del ${DIST_STR_TOPE_BUSCAR_PCT}% (${pasoTope.length} sondas)`);
+  // Desde BUSCAR el motor corre DOS mixes (11-sep-2026): el del escalón, con tope 15, y el
+  // de COMPRAR, con el tope de ese salto (25). Las sondas se mezclan en el mismo closure,
+  // así que el techo observable es 25; que el escalón respetó 15 lo prueba su resultado
+  // null de arriba (un −20% no existe para él). El mix a COMPRAR lo fija distancia-comprar-str.
+  const pasoTope = sondasBuscar.filter((s) => dcto(s) > DIST_STR_TOPE_AJUSTA_PCT / 100 + 1e-6);
+  if (pasoTope.length) F(`3 · desde BUSCAR la bisección sondeó más allá del ${DIST_STR_TOPE_AJUSTA_PCT}% (${pasoTope.length} sondas)`);
   if (hB && hB.valor.topePct !== DIST_STR_TOPE_BUSCAR_PCT) F(`3 · topePct desde BUSCAR debía ser ${DIST_STR_TOPE_BUSCAR_PCT}, dio ${hB.valor.topePct}`);
 
   const sondasAjusta: StrPatch[] = [];
