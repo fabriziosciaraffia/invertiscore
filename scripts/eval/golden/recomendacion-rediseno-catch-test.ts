@@ -170,10 +170,12 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     }
   }
   if (!/rec-card/.test(POS)) F("7 · PosicionFranco perdió la card del rediseño");
-  // La bajada distingue «sin mix» de «sin salida»: con filas, esas filas SON salidas.
-  if (!/cruzan > 0/.test(HERO)) {
-    F("7 · la bajada volvió a tratar «sin mix» como «sin salida». Medido: decía «No hay forma de que este departamento convenga» encima de «Bajar el precio −24,1%».");
-  }
+  // LA BAJADA SE MUDÓ Y SU CHEQUEO TAMBIÉN. Vivía inline en `HeroLTR` y este guard la
+  // buscaba ahí por substring. Ahora es `bajadaRecomendacion` en `lo-que-haria-yo.ts`,
+  // función pura, y la cubre el tier `bajada-no-miente` EJERCITÁNDOLA con bloques
+  // sintéticos en vez de buscar texto. Es mejor gate: el de acá habría seguido verde
+  // con la función correcta y el string movido, y rojo con el string intacto y la
+  // función rota. Se retira acá para no tener dos dueños del mismo invariante.
 }
 
 // ── 8 · la recomendación apunta SIEMPRE a Comprar ────────────────────────
@@ -185,9 +187,8 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   if (!/mix\.destino !== "COMPRAR"/.test(BLO)) {
     F("8 · la card volvió a dibujar la ecuación de un mix que no llega a COMPRAR. §5: el escalón intermedio no es una recomendación, va al pop-up.");
   }
-  if (!/mix && mix\.destino === "COMPRAR"/.test(HERO)) {
-    F("8 · la bajada volvió a prometer el destino del mix sea cual sea. Con un mix al escalón decía «Para que el veredicto pase a Ajustar», que es justo lo que §5 prohíbe.");
-  }
+  // El lado de la BAJADA de este invariante lo cubre ahora `bajada-no-miente`, que
+  // ejercita la función. Acá queda lo que es del render: la ecuación y el CTA.
   if (!/Ver qué se probó/.test(HERO)) {
     F("8 · el CTA del estado sin salida dejó de nombrar lo que hay del otro lado: no quedan ajustes, queda ver qué se probó");
   }

@@ -310,3 +310,34 @@ export function construirLoQueHariaYo(p: {
 
   return { rotulo, contexto, filas, mix, descarte };
 }
+
+/**
+ * LA BAJADA DE LA CARD DE §5. Función pura y exportada para que un catch-test la pueda
+ * ejercitar: vivía inline en `HeroLTR` y ahí no la medía nadie.
+ *
+ * TRES ESTADOS, NO DOS, y ésa es la corrección. La versión anterior leía la AUSENCIA del
+ * bloque como «no hay salida» y afirmaba «No hay forma de que este departamento
+ * convenga». Medido con el interruptor encendido: 1.194 de 1.202 filas del parque caían
+ * ahí, muchas con mix y palancas que cruzan en su propio motor.
+ *
+ * «SIN BLOQUE» NO ES «SIN SALIDA»: es «no se sabe», y de una ausencia no se concluye una
+ * negación. Es la misma confusión que antes fue «sin mix ≠ sin salida», una capa más
+ * arriba.
+ */
+export function bajadaRecomendacion(veredicto: Veredicto | string, bloque: BloqueLoQueHariaYo | null | undefined): string {
+  if (veredicto === "COMPRAR") return "Cierra al precio pedido";
+  // ESTADO 3 — sin bloque: no se afirma nada. La card queda con su título, esta línea y
+  // el CTA, que lleva al pop-up donde sí está todo lo que el motor probó.
+  if (!bloque) return "Lo que Franco probó para este caso";
+  const mix = bloque.mix;
+  if (mix && mix.destino === "COMPRAR") return `Para que el veredicto pase a ${DESTINO}`;
+  // LAS FILAS SE PREGUNTAN ANTES QUE EL ESCALÓN, y el orden importa. Un mix que solo
+  // llega al escalón intermedio no es una recomendación (§5) y la card no lo dibuja —
+  // pero si además hay palancas que cruzan SOLAS a COMPRAR, entonces sí hay forma de que
+  // convenga, y negarlo sería falso. Medido sobre el parque: 2 filas están exactamente
+  // en ese cruce. Con el orden invertido la card les decía que no había forma teniendo
+  // dos palancas que llegan.
+  if (bloque.filas.length > 0) return `Para que el veredicto pase a ${DESTINO}`;
+  // Sin filas: acá sí, el mix al escalón se lee como sin salida y vive en el pop-up.
+  return "No hay forma de que este departamento convenga";
+}

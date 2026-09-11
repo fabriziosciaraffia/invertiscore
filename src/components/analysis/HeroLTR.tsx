@@ -10,10 +10,10 @@ import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { salidaPorMix } from "@/lib/salida-por-mix";
 import { MatrizPiePlazoLtr } from "./shared/MatrizPiePlazoLtr";
 import { LoQueHariaYoBloque } from "./shared/LoQueHariaYoBloque";
-import { construirLoQueHariaYo } from "@/lib/lo-que-haria-yo";
+import { construirLoQueHariaYo, bajadaRecomendacion } from "@/lib/lo-que-haria-yo";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 import { esProsaDosBloques } from "./AIInsightSection";
-import { lineaQueDeclara, etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import { useRediseno } from "./RedisenoContexto";
 import type { ReactNode } from "react";
 
@@ -202,7 +202,16 @@ export function HeroLTR({
   // SOLO en el camino nuevo (`dosBloques`): las filas anónimas con prosa de cuatro
   // campos siguen igual, y su `results` recomputado igual trae los campos —pero su
   // maqueta es otra y mezclar las dos formas es peor que dejar la vieja quieta.
-  const bloqueDeterminista = dosBloques && results
+  // EL GATE DE PROSA SE LEVANTA (11-sep-2026). `dosBloques` protegía dos MAQUETAS DE
+  // TEXTO: la prosa vieja de cuatro campos y la nueva de dos bloques, que no se podían
+  // mezclar. La card del contrato §5 no lleva prosa —título, bajada, ecuación, costo y
+  // CTA—, así que esa condición se quedó sin sujeto, y lo único que seguía haciendo era
+  // dejar sin bloque a 1.194 de las 1.202 filas del parque.
+  //
+  // El dato existe para todas: `results` se recomputa en cada visita con el motor vivo,
+  // así que el mix y las palancas están ahí aunque la prosa sea de v3. Lo que faltaba
+  // era dejar de esconderlo.
+  const bloqueDeterminista = results
     ? construirLoQueHariaYo({
         veredicto: veredicto as Veredicto,
         distancia: distanciaRow ?? null,
@@ -283,22 +292,7 @@ export function HeroLTR({
       if (mix) return mix.destino !== "COMPRAR";
       return (bloqueDeterminista?.filas?.length ?? 0) === 0;
     })();
-  const bajadaRecomendacion = (() => {
-    if (veredicto === "COMPRAR") return "Cierra al precio pedido";
-    const mix = bloqueDeterminista?.mix ?? null;
-    // LA RECOMENDACIÓN APUNTA SIEMPRE A COMPRAR (§5). Un mix que solo llega al escalón
-    // intermedio no es una recomendación —es lo que se probó, y vive en el pop-up—, así
-    // que la card lee «sin salida» aunque el mix exista.
-    if (mix && mix.destino === "COMPRAR") return `Para que el veredicto pase a ${etiquetaVeredicto("COMPRAR", "frase")}`;
-    if (mix) return "No hay forma de que este departamento convenga";
-    // SIN MIX NO ES LO MISMO QUE SIN SALIDA. Cuando hay filas, esas filas SON salidas
-    // —palancas que cruzan solas— y el motor las mide contra COMPRAR. Medido: con
-    // «!mix» a secas la bajada decía «No hay forma de que este departamento convenga»
-    // encima de «Bajar el precio −24,1%», que es lo contrario de lo que mostraba.
-    const cruzan = bloqueDeterminista?.filas?.length ?? 0;
-    if (cruzan > 0) return `Para que el veredicto pase a ${etiquetaVeredicto("COMPRAR", "frase")}`;
-    return "No hay forma de que este departamento convenga";
-  })();
+  const bajada = bajadaRecomendacion(veredicto, bloqueDeterminista);
 
   return (
     <div className="mb-3">
@@ -399,7 +393,7 @@ export function HeroLTR({
         prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
         chip={dosBloques ? objetivoChip : undefined}
         titulo={rediseno ? "La recomendación de Franco" : dosBloques ? "Lo que haría yo" : undefined}
-        bajada={rediseno ? bajadaRecomendacion : undefined}
+        bajada={rediseno ? bajada : undefined}
         fechaFirma={fechaFirma}
         footer={
           /* EL CTA DEL ESTADO SIN SALIDA nombra lo que hay del otro lado: no quedan
