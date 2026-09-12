@@ -828,6 +828,12 @@ export interface HallazgoSensibilidad {
     corteFavorable: number;           // 15 — sobre este margen el veredicto es firme
     banda: number;                    // 25 — normalización de magnitudContinua
     modalidad: "ltr" | "str" | "ambas";
+    /** EL OTRO MARGEN DE COMPRAR (12-sep-2026): el último precio, en UF, al que el
+     *  veredicto sigue siendo COMPRAR, biseccionado hacia arriba hasta ×2 con la misma
+     *  ruta de veredicto que la distancia. `null` = aguanta más de ×2, o base distinta de
+     *  COMPRAR. AUSENTE = fila persistida antes de este campo, NO CALCULADO. STR lo lee de
+     *  `fronteraPrecio.caeA` de su simulación, que ya existía. */
+    precioMaximoComprarUF?: number | null;
   };
   // favorable salvo la banda frágil (margin < corteAdverso), que es adversa. La señal-
   // máquina es binaria; la frase distingue frágil / borde / firme.

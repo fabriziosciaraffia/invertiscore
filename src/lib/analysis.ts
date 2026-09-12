@@ -2514,6 +2514,9 @@ export function runAnalysis(
     // Salida bit-idéntica al closure anterior: mismo clon { ...input, arriendo }.
     veredictoAt: (factor: number) =>
       veredictoAtPatch({ arriendo: Math.round(input.arriendo * factor) }),
+    // El otro margen de COMPRAR: el precio hacia arriba, por LA MISMA ruta (12-sep-2026).
+    precioUF: input.precio,
+    veredictoAtPrecio: (factor: number) => veredictoAtPatch({ precio: input.precio * factor }),
     modalidad: "ltr",
   });
   // Hallazgo de PATRIMONIO (a 10 años): 9º hallazgo, el tercero SOLO-LECTURA. Envuelve

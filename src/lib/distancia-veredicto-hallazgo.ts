@@ -222,7 +222,7 @@ const DIST_EXT_ARRIENDO_MAX = 2.5;  // +150%
 const DIST_EXT_PRECIO_MIN = 0.30;   // −70%
 
 /** Precisión de la bisección de arriendo/precio, en puntos porcentuales. */
-const DIST_PREC_PTS = 0.1;
+export const DIST_PREC_PTS = 0.1;
 
 const RANK: Record<Veredicto, number> = {
   "BUSCAR OTRA": 0,

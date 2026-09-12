@@ -24,6 +24,7 @@
 //   3. arriendo no computable (≤0 o no finito) → OMITIDO: no se puede escalar una caída.
 
 import type { HallazgoSensibilidad, Veredicto } from "./types";
+import { biseccionFactor, DIST_PREC_PTS } from "./distancia-veredicto-hallazgo";
 
 // Cortes de clasificación (Fase 0). Bajo el corte adverso el veredicto cuelga de un
 // arriendo justo (dirección adversa); sobre el favorable la conclusión es firme; entre
@@ -43,6 +44,10 @@ export const SENS_BANDA_MAGNITUD = 25;
 const SENS_FACTOR_MIN = 0.5;  // −50%
 const SENS_PREC_PTS = 0.5;    // precisión en puntos porcentuales
 const SENS_PREC_FACTOR = SENS_PREC_PTS / 100;
+// El precio hacia ARRIBA se explora hasta ×2, espejo de SIM_PRECIO_MAX en STR: más allá
+// del doble ya no es el mismo depto sino otro presupuesto.
+const SENS_PRECIO_MAX = 2.0;
+const RANK: Record<Veredicto, number> = { "BUSCAR OTRA": 0, "AJUSTA SUPUESTOS": 1, COMPRAR: 2 };
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 // Margen sin decimal si es entero (−7%), coma chilena si no (−7,5%).
@@ -66,6 +71,10 @@ export function buildHallazgoSensibilidad(p: {
   /** Reevalúa el veredicto con `arriendo * factor` por la ruta veredicto-only de runAnalysis. */
   veredictoAt: (factor: number) => Veredicto;
   modalidad: "ltr" | "str" | "ambas";
+  /** EL OTRO MARGEN (12-sep-2026): precio en UF y el MISMO closure de veredicto con
+   *  `precio * factor`. Opcionales para los callers que no lo miden (AMBAS). */
+  precioUF?: number;
+  veredictoAtPrecio?: (factor: number) => Veredicto;
 }): HallazgoSensibilidad | null {
   // Caso especial 1: BUSCAR OTRA base ⇒ omitido.
   if (p.veredictoBase === "BUSCAR OTRA") return null;
@@ -113,6 +122,20 @@ export function buildHallazgoSensibilidad(p: {
   const base = p.veredictoBase;
   const nuevo = veredictoNuevo; // no null salvo firme
 
+  // ── HASTA QUÉ PRECIO SIGUE SIENDO COMPRAR ──────────────────────────────────
+  // La card de §5 en COMPRAR dice dos márgenes: cuánto puede caer el arriendo y cuánto
+  // puede subir el precio. Este es el segundo, medido solo con base COMPRAR y con
+  // `biseccionFactor` en su forma «subiendo» —la misma con que STR encuentra `caeA`—: el
+  // factor más chico que YA pierde el veredicto, hasta ×2. El precio máximo es un paso de
+  // precisión por debajo de ese factor, para que el número que se imprime todavía sea
+  // Comprar y no el primero que deja de serlo. Cuesta ~10 sondas de calcMetrics por fila.
+  let precioMaximoComprarUF: number | null = null;
+  if (p.veredictoBase === "COMPRAR" && p.veredictoAtPrecio && Number.isFinite(p.precioUF) && (p.precioUF ?? 0) > 0) {
+    const cae = p.veredictoAtPrecio;
+    const fCae = biseccionFactor((f) => RANK[cae(f)] < RANK.COMPRAR, SENS_PRECIO_MAX, true);
+    precioMaximoComprarUF = fCae != null ? Math.floor(p.precioUF! * (fCae - DIST_PREC_PTS / 100)) : null;
+  }
+
   let titular: string;
   let fraseCanonica: string;
   if (firme) {
@@ -148,6 +171,7 @@ export function buildHallazgoSensibilidad(p: {
     tipo: "robustez_veredicto",
     valor: {
       marginPct,
+      precioMaximoComprarUF,
       firme,
       veredictoBase: base,
       veredictoNuevo,
