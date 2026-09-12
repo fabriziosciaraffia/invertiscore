@@ -13,8 +13,11 @@
 //                       antes solo detección; ahora reintenta.
 //   3. [STR-INTERNAS]   palabras de la mecánica interna ("fallback", "override"…) que el
 //                       propio prompt nombra como fuentes y el modelo copia.
-//   4. [STR-ESTRUCTURAL] con distancia estructural, ninguna caja ofrece negociar,
-//                       descuento ni "si logras": regla contable pegada al campo.
+//   4. [STR-ESTRUCTURAL] con distancia estructural Y SIN COMBINACIÓN (v19: la fuente de la
+//                       card, salidaPorMixStr / mixAlEscalonStr), ninguna caja ofrece
+//                       negociar, descuento ni "si logras": regla contable pegada al campo.
+//                       Con combinación, el prompt le pide al modelo nombrar el descuento
+//                       que el mix además pide; este guard no puede borrarlo.
 //   5. [STR-COPIA]      ninguna oración de NINGÚN campo copia una fraseCanonica (≥ 60%
 //                       de la frase, mínimo 8 palabras) — la card ya la muestra.
 
@@ -26,6 +29,7 @@ import type { HallazgoDistanciaVeredicto } from "./types";
 import { CAP_STR_UMBRAL_PCT } from "./rentabilidad-str-hallazgo";
 import { CLAIMS_HERO, CLAIMS_VECES, violacionesClaims, type ClaimHero } from "./hero-claim-core";
 import { frasesCanonicasDe, oracionQueCopia } from "./copia-frase";
+import { salidaPorMixStr, mixAlEscalonStr } from "./salida-por-mix";
 
 // ─── Campos de prosa (paths `sección.campo`; `titular` y `francoCaveat` top-level) ───
 // v17: la lista pasa de 16 paths a 6. Salieron los cinco bloques que el motor ya
@@ -340,6 +344,15 @@ export function esDistanciaEstructural(r: { hallazgos?: Hallazgo[] }): boolean {
   const d = (r.hallazgos ?? []).find((h) => h.id === "distancia_veredicto") as { valor?: { esEstructural?: boolean } } | undefined;
   return d?.valor?.esEstructural === true;
 }
+/** v19 (12-sep-2026): ¿el motor TAMPOCO encontró combinación? Es la otra mitad de «estructural»
+ *  para este guard: con `esEstructural` solo, la caja que nombra el descuento que el mix pide
+ *  («y un 17,5% de descuento») se marcaba como oferta y el reintento la borraba — justo lo que
+ *  el prompt v19 manda escribir. Misma fuente que la card y que el bloque del prompt. */
+export function sinCombinacionSegunLaCard(r: { hallazgos?: Hallazgo[] }): boolean {
+  const d = (r.hallazgos ?? []).find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
+  if (!d) return true;
+  return !salidaPorMixStr(d.valor) && !mixAlEscalonStr(d.valor);
+}
 /** Las palabras exactas que el bloque del prompt prohíbe ("si logras", "si consigues"). Sin
  *  "puedes": "si no puedes dedicar horas a la operación" no ofrece negociar nada. */
 const RE_SI_LOGRAS = /\bsi (?:no )?(?:logras|consigues|lograras|consiguieras|lograses|consiguieses)\b/i;
@@ -457,7 +470,7 @@ export interface ContextoGuardsStr {
 export function contextoGuardsStr(r: ShortTermResult & { hallazgos?: Hallazgo[] }, inp: Record<string, unknown>, comuna: string, sim?: SimulacionStr | null): ContextoGuardsStr {
   return {
     razones: razonesHeroClaimStr(r, inp, comuna, sim),
-    estructural: esDistanciaEstructural(r),
+    estructural: esDistanciaEstructural(r) && sinCombinacionSegunLaCard(r),
     frases: frasesCanonicasStr(r),
     sobreRenta: Number.isFinite(r.comparativa?.sobreRenta) ? r.comparativa.sobreRenta : 0,
   };

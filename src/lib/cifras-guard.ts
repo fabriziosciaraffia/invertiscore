@@ -229,9 +229,14 @@ export function niegaSalidaConMix(userPrompt: string, ai: unknown): string[] {
     // una sola bien contada. La primera versión de este guard marcaba esa prosa como
     // violación y el reintento no podía mejorarla porque no había nada que arreglar.
     if (NOMBRA_LA_SALIDA.test(value)) continue;
-    // Y el calificador de separación desarma la frase aunque no se nombre la salida:
-    // «por separado», «por sí sola» dicen justo lo que el motor dice.
-    const sinCalificador = value.replace(POR_SEPARADO, " ");
+    // Y el calificador de separación desarma la ORACIÓN aunque no se nombre la salida:
+    // «ningún ajuste por separado alcanza» dice justo lo que el motor dice. La primera
+    // versión BORRABA el calificador y después miraba —«ningún ajuste  alcanza»— o sea que
+    // disparaba exactamente sobre la frase verdadera (falso positivo visto al espejar el
+    // guard en STR, 12-sep-2026). Ahora la oración que lo lleva queda fuera y se miran las
+    // demás: «…por separado no alcanza. No hay forma.» sigue disparando por la segunda.
+    const porSeparado = new RegExp(POR_SEPARADO.source, "i");
+    const sinCalificador = value.split(/(?<=[.!?;:])\s+/).filter((o) => !porSeparado.test(o)).join(" ");
     for (const [nombre, re] of CIERRAN_LA_PUERTA) {
       if (re.test(sinCalificador)) {
         const m = sinCalificador.match(re);

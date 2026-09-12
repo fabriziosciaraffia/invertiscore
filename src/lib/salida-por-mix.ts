@@ -50,7 +50,38 @@ export function salidaPorMix(v: HallazgoDistanciaVeredicto["valor"]): SalidaPorM
   if (typeof v.sinSalida !== "boolean" || v.sinSalida) return null;
   const m = v.mixPalancas;
   if (!m || !m.dentroDelAlcance) return null;
+  return desdeMix(m);
+}
 
+/**
+ * STR: LA FUENTE DE LA CARD (12-sep-2026 · v19). El motor STR emite DOS combinaciones —
+ * `mixPalancas` al escalón y, desde BUSCAR OTRA, `mixPalancasHastaComprar`— y la card de §5
+ * (`lo-que-haria-yo.ts`) lee en BUSCAR solo el camino a Comprar: el mix al escalón no se
+ * dibuja. El prompt y el guard leen de ACÁ, no de `salidaPorMix`, para que la prosa nombre
+ * exactamente la salida que el lector tiene al lado. Medido: 7 filas AJUSTA con salida por
+ * esta fuente; 9 BUSCAR con combinación solo al escalón, que van por `mixAlEscalonStr`.
+ */
+export function salidaPorMixStr(v: HallazgoDistanciaVeredicto["valor"]): SalidaPorMix | null {
+  if (!v.esEstructural) return null;
+  const m = v.veredictoBase === "BUSCAR OTRA" && v.mixPalancasHastaComprar !== undefined ? v.mixPalancasHastaComprar : v.mixPalancas;
+  if (!m || !m.dentroDelAlcance || m.redundanteConPalancaSola) return null;
+  return desdeMix(m);
+}
+
+/**
+ * STR desde BUSCAR OTRA: la combinación que llega al ESCALÓN (AJUSTA SUPUESTOS) cuando no hay
+ * una a Comprar. La card no la muestra, pero el motor la tiene: la prosa no puede decir «no
+ * hay forma» y tampoco prometer Comprar. `null` fuera de ese caso exacto.
+ */
+export function mixAlEscalonStr(v: HallazgoDistanciaVeredicto["valor"]): SalidaPorMix | null {
+  if (!v.esEstructural || v.veredictoBase !== "BUSCAR OTRA") return null;
+  if (salidaPorMixStr(v)) return null;
+  const m = v.mixPalancas;
+  if (!m || !m.dentroDelAlcance || m.redundanteConPalancaSola) return null;
+  return desdeMix(m);
+}
+
+function desdeMix(m: NonNullable<HallazgoDistanciaVeredicto["valor"]["mixPalancas"]>): SalidaPorMix | null {
   const partes: string[] = [];
   if (m.piePctDelta !== 0) partes.push(`el pie en ${pct1(m.piePct)}%`);
   if (m.plazoAniosDelta !== 0) partes.push(`el plazo en ${m.plazoAnios} años`);
