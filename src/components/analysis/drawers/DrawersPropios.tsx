@@ -1,7 +1,8 @@
 "use client";
 
 import { introModalVias } from "@/lib/palancas-en-palabras";
-import { salidaPorMix, cierrePopupSalida } from "@/lib/salida-por-mix";
+import { salidaPorMix, cierrePopupSalida, salidaPorMixStr, mixAlEscalonStr, cierrePopupEscalonStr, loTuyo } from "@/lib/salida-por-mix";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { DIST_PIE_TOPE_PCT } from "@/lib/distancia-veredicto-hallazgo";
 
 // Drawers propios (rama drawers-propios · F2) — plantillas DETERMINÍSTICAS motor-templated.
@@ -1742,6 +1743,14 @@ export function DrawerDistanciaStr({
   const objetivo = v.veredictoObjetivo;
 
   const { filas, noProbadas } = construirPalancas(v, currency, valorUF, true);
+  // LA COMBINACIÓN (12-sep-2026): misma fuente que la card y la frase. `salidaStr` llega a
+  // Comprar; `escalonStr` (solo desde BUSCAR) llega a Ajusta supuestos y no a Comprar. Con
+  // cualquiera de las dos, este pop-up deja de decir «este departamento no da».
+  const salidaStr = salidaPorMixStr(v);
+  const escalonStr = salidaStr ? null : mixAlEscalonStr(v);
+  const salidaCombinada = salidaStr ?? escalonStr;
+  const ESCALON = etiquetaVeredicto("AJUSTA SUPUESTOS");
+  const cierreCombinado = salidaStr ? cierrePopupSalida(salidaStr) : escalonStr ? cierrePopupEscalonStr(escalonStr, ESCALON) : null;
   const tieneAdr = v.palancas.some((l) => l.palanca === "adr");
   const tieneGestion = v.palancas.some((l) => l.palanca === "gestion");
   const primera = v.palancas[0]?.palanca;
@@ -1754,11 +1763,17 @@ export function DrawerDistanciaStr({
         <VProsa>
           Tu veredicto es {base}. Franco probó los cambios por separado y ninguno llega a {objetivo},
           ni llevándolos a extremos que ya no son negociación: tarifa al doble, precio a un tercio,
-          crédito a 30 años.
+          crédito a 30 años.{salidaCombinada ? ` Combinando ${loTuyo(salidaCombinada)}, ${salidaStr ? "sí" : `llega a ${ESCALON}, no a Comprar`}.` : ""}
         </VProsa>
         <VCierre titulo="Qué significa">
-          <mark>Este departamento no da, y no es por cómo lo estás mirando.</mark>{" "}
-          Ajustar los números sirve cuando falta poco; acá lo que pide es de otro orden.
+          {cierreCombinado ? (
+            <><mark>{cierreCombinado.marca}</mark> {cierreCombinado.resto}</>
+          ) : (
+            <>
+              <mark>Este departamento no da, y no es por cómo lo estás mirando.</mark>{" "}
+              Ajustar los números sirve cuando falta poco; acá lo que pide es de otro orden.
+            </>
+          )}
         </VCierre>
       </div>
     );
@@ -1768,7 +1783,9 @@ export function DrawerDistanciaStr({
     <div>
       <VProsa>
         {v.esEstructural
-          ? `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: Franco probó los cambios uno por uno, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
+          ? salidaCombinada
+            ? `Tu veredicto es ${base}. Franco probó los cambios uno por uno y ninguno alcanza solo; combinando ${loTuyo(salidaCombinada)}, ${salidaStr ? "sí" : `llega a ${ESCALON}, no a Comprar`}.`
+            : `Tu veredicto es ${base}. La pregunta honesta no es qué falta, sino si hay algo que alcance: Franco probó los cambios uno por uno, hasta donde dejan de ser un ajuste y pasan a ser otro departamento.`
           : v.vias && v.vias.length > 0 && !v.esPuroGate
             // T1: con `vias` la intro cuenta las vías reales (cinco en STR), la misma frase que LTR.
             ? introModalVias(v.palancas.length, v.vias.length, objetivo)
@@ -1803,7 +1820,9 @@ export function DrawerDistanciaStr({
           filas={filas}
           pie={
             v.esEstructural
-              ? "Es la vía menos exigente de todas las que probamos, y aun así queda fuera de rango. Las demás piden más."
+              ? salidaCombinada
+                ? "Ninguno alcanza por separado; la salida está en combinarlos, abajo."
+                : "Es el cambio menos exigente de todos los que probamos, y aun así queda fuera de rango. Los demás piden más."
               : noProbadas.length > 0
                 ? `Probamos también ${noProbadas.join(", ")}: ninguna cruza dentro de lo razonable.`
                 : tieneGestion
@@ -1814,7 +1833,9 @@ export function DrawerDistanciaStr({
       </VViz>
 
       <VCierre titulo={v.esEstructural ? "Qué significa" : "Qué haces con esto"}>
-        {v.esEstructural ? (
+        {v.esEstructural && cierreCombinado ? (
+          <><mark>{cierreCombinado.marca}</mark> {cierreCombinado.resto}</>
+        ) : v.esEstructural ? (
           <>
             <mark>Este departamento no da, y no es por cómo lo estás mirando.</mark>{" "}
             Ajustar los números sirve cuando falta poco; acá lo que pide es de otro orden.{" "}

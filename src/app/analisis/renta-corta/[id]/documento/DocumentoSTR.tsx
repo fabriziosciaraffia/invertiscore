@@ -17,6 +17,7 @@ import { normalizeLegacyVerdict, metricaValorONull, esMetricaNoAplica } from "@/
 import { NO_APLICA_FOOTNOTE_DOC } from "@/lib/no-aplica-copy";
 import { piePctDesdeInputData } from "@/lib/analysis/pie-input-data";
 import { describirMotivosSTR } from "@/lib/no-cierra-copy";
+import { salidaPorMixStr, mixAlEscalonStr, pieDocumentoSalidaStr } from "@/lib/salida-por-mix";
 import type { HallazgoDistanciaVeredicto } from "@/lib/types";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
 import { findingDisplay } from "@/components/analysis/GenericFindingCard";
@@ -120,6 +121,12 @@ export function DocumentoSTR({
     const dv = dist.valor;
     const objetivo = dv.veredictoObjetivo === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
     if (dv.esEstructural) {
+      // Con combinación (12-sep-2026), la misma fuente que la card: no se afirma «fuera de lo
+      // que un ajuste puede dar» donde pie y plazo juntos sí llegan.
+      const salidaComprar = salidaPorMixStr(dv);
+      if (salidaComprar) return pieDocumentoSalidaStr(salidaComprar, null);
+      const salidaEscalon = mixAlEscalonStr(dv);
+      if (salidaEscalon) return pieDocumentoSalidaStr(salidaEscalon, "Ajusta supuestos");
       const dm = dv.deltaMinimoFueraDeTope;
       // `deltaMinimoFueraDeTope` es lo MÍNIMO que SÍ cruza (fuera del tope): se cita como lo
       // que recién cruzaría, no como algo que "no llega" (fix del signo, 02-sep-2026).

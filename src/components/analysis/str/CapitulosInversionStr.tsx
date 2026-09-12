@@ -12,6 +12,7 @@ import { argsCierresStr, cierresStr, type EntradaCierresStr } from "@/lib/cierre
 import type { FmtCierre } from "@/lib/cierres-capitulos";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
 import { barraDia1 } from "@/lib/plata-dia1";
+import { salidaPorMixStr, mixAlEscalonStr, loTuyo } from "@/lib/salida-por-mix";
 import { costoOportunidad, calcDividendo } from "@/lib/analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { fechaCortaCL } from "@/lib/fecha-cl";
@@ -456,6 +457,10 @@ export function CapitulosInversionStr({
     // capítulo, pero no como oferta de negociación. Es el mismo caso que cubre el guard
     // [STR-ESTRUCTURAL] en la prosa (esDistanciaEstructural lee dist.valor.esEstructural).
     const esEstructural = dist?.valor.esEstructural === true;
+    // Con combinación (12-sep-2026) el subtítulo no dice «fuera de lo negociable»: 15 de las 16
+    // filas salen con un descuento negociado dentro del mix. Misma fuente que la card.
+    const salidaCap = dist && esEstructural ? salidaPorMixStr(dist.valor) ?? mixAlEscalonStr(dist.valor) : null;
+    const subEstructural = salidaCap ? `solo con ${loTuyo(salidaCap)}${salidaCap.descuentoPct === null ? "" : " más descuento"}` : "fuera de lo negociable";
     return {
       id: "pagas",
       numero: ROMANO.pagas,
@@ -463,7 +468,7 @@ export function CapitulosInversionStr({
       // §7: la fila dice el PRECIO («Precio UF 5.042»); el delta al techo sigue en el cuerpo.
       valor: conApellido(rediseno, "Precio", rediseno ? ufTxt(precioUF) : valorIV),
       valorRojo: false,
-      ksub: [`precio ${ufTxt(precioUF)}`, `pie ${Math.round(piePct)}%`, plazo > 0 ? `${plazo} años al ${pct1(tasa)}%` : "sin crédito", esEstructural ? "fuera de lo negociable" : subeTxt].filter(Boolean).join(" · "),
+      ksub: [`precio ${ufTxt(precioUF)}`, `pie ${Math.round(piePct)}%`, plazo > 0 ? `${plazo} años al ${pct1(tasa)}%` : "sin crédito", esEstructural ? subEstructural : subeTxt].filter(Boolean).join(" · "),
       anchorId: anchorCapituloStr("pagas"),
       cuerpo: (
         <div>

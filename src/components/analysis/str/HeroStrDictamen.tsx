@@ -5,6 +5,7 @@ import type { AIAnalysisSTRv2, Hallazgo, HallazgoDistanciaVeredicto, HallazgoVen
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";
+import { salidaPorMixStr, mixAlEscalonStr } from "@/lib/salida-por-mix";
 import { ProgresoGeneracion, ETAPAS_GENERACION_STR, COPY_TIEMPO_STR } from "@/components/analysis/ProsaSkeleton";
 import { renderPlumon } from "@/components/analysis/hallazgos/plumon";
 import { VProsa, VViz, VCierre, Dial, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
@@ -115,7 +116,16 @@ export function HeroStrDictamen({
           l: (() => {
             const vias = distancia.valor.vias;
             if (!vias || vias.length === 0) return lineaFooterVias(null, 5);
-            return lineaFooterVias(vias.filter((v) => v.estado === "cruza").length, vias.length);
+            // «; juntos, sí» cuando la combinación llega a Comprar; «; juntos, solo hasta Ajusta
+            // supuestos» cuando llega al escalón (desde BUSCAR). Misma fuente que la card.
+            const salidaComprar = salidaPorMixStr(distancia.valor);
+            const salidaEscalon = salidaComprar ? null : mixAlEscalonStr(distancia.valor);
+            return lineaFooterVias(
+              vias.filter((v) => v.estado === "cruza").length,
+              vias.length,
+              salidaComprar !== null || salidaEscalon !== null,
+              salidaEscalon ? etiquetaVeredicto("AJUSTA SUPUESTOS") : null,
+            );
           })(),
           btn: "Ver ajustes",
           cuerpo: <DrawerDistanciaStr hallazgo={distancia} currency={currency} valorUF={valorUF} />,
