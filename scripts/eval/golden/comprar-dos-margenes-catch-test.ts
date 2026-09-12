@@ -30,6 +30,17 @@
 //   4. LOS DOS HEROS PASAN EL PRECIO MÁXIMO: LTR desde `precioMaximoComprarUF`, STR desde
 //      `fronteraPrecio.caeA`.
 //
+//   5. «VERIFICA» SEGÚN LA PROCEDENCIA DEL ARRIENDO (12-sep-2026). El wizard prellena el
+//      arriendo con la estimación de Franco y no persiste si la aceptaste; el motor lo
+//      deriva (`resolverProcedenciaArriendo`: igualdad al peso con `zonaRadio.arriendoPromedio`).
+//      Tres copys, no dos:
+//        declarado_usuario  «Declaraste $X de arriendo. Todo cuelga de ese número: confírmalo antes de firmar.»
+//        estimacion_franco  «Usamos $X de arriendo, la mediana de tu zona. Confírmalo con avisos reales antes de firmar.»
+//                           (fuente comuna-m2: «…, el estimado de tu comuna. …»: es un estimado, no una mediana)
+//        sin_registro       «El análisis usa $X de arriendo. Todo cuelga de ese número: confírmalo antes de firmar.»
+//      HeroLTR la resuelve con la MISMA función que ya usa el prompt. Medido: 55 · 20 · 85 de
+//      las 160 COMPRAR. STR no cambia: `adrFuente` viene persistido.
+//
 // Corre dentro del QUICK (tier "comprar-dos-margenes") y standalone:
 //   node --import tsx scripts/eval/golden/comprar-dos-margenes-catch-test.ts
 // ============================================================================
@@ -133,6 +144,23 @@ const sens = (o: { base?: Veredicto; cae?: number | null; arriendoCae?: number }
   if (!/^El arriendo puede caer hasta UF 18,7 \(−6,3%\)/.test(uf?.filas[0]?.oracion ?? "")) F(`2 · en UF el piso va en UF: «${uf?.filas[0]?.oracion}»`);
 }
 
+// ── 5 · «Verifica» según la procedencia del arriendo ────────────────────────
+{
+  const base = { veredicto: "COMPRAR" as const, distancia: null, currency: "CLP" as const, valorUF: 39_000, sensibilidad: null, precioMax: null, montoMercadoCLP: 768_000 };
+  const ver = (v: Parameters<typeof construirLoQueHariaYo>[0]["verifica"]) =>
+    construirLoQueHariaYo({ ...base, verifica: v })?.filas.find((f) => f.rotuloCorto === "Verifica")?.oracion;
+  if (ver({ cifraCLP: 768_000, procedencia: "declarado_usuario" }) !== "Declaraste $768.000 de arriendo. Todo cuelga de ese número: confírmalo antes de firmar.") F(`5 · declarado_usuario: «${ver({ cifraCLP: 768_000, procedencia: "declarado_usuario" })}»`);
+  if (ver({ cifraCLP: 768_000, procedencia: "estimacion_franco", fuente: "radio" }) !== "Usamos $768.000 de arriendo, la mediana de tu zona. Confírmalo con avisos reales antes de firmar.") F(`5 · estimacion_franco: «${ver({ cifraCLP: 768_000, procedencia: "estimacion_franco", fuente: "radio" })}»`);
+  if (ver({ cifraCLP: 768_000, procedencia: "estimacion_franco", fuente: "comuna-m2" }) !== "Usamos $768.000 de arriendo, el estimado de tu comuna. Confírmalo con avisos reales antes de firmar.") F(`5 · estimacion_franco desde el m²: «${ver({ cifraCLP: 768_000, procedencia: "estimacion_franco", fuente: "comuna-m2" })}»`);
+  if (ver({ cifraCLP: 768_000, procedencia: "sin_registro" }) !== "El análisis usa $768.000 de arriendo. Todo cuelga de ese número: confírmalo antes de firmar.") F(`5 · sin_registro: «${ver({ cifraCLP: 768_000, procedencia: "sin_registro" })}»`);
+  // sin procedencia (la llamada LTR de siempre y STR con override) sigue diciendo «Declaraste» / «Definiste»
+  if (ver({ cifraCLP: 768_000 }) !== "Declaraste $768.000 de arriendo. Todo cuelga de ese número: confírmalo antes de firmar.") F("5 · sin procedencia el copy tiene que seguir siendo «Declaraste…»");
+  // y HeroLTR la resuelve con la función del motor, no con una igualdad propia
+  if (!/resolverProcedenciaArriendo\(/.test(HERO_LTR)) F("5 · HeroLTR no resuelve la procedencia del arriendo con `resolverProcedenciaArriendo`, la misma que usa el prompt");
+  if (!/procedencia:/.test(HERO_LTR)) F("5 · HeroLTR no le pasa `procedencia` al constructor en `verifica`");
+  if (/procedencia/.test(HSTR)) F("5 · STR no lleva procedencia: la tarifa tuya ya viene persistida en `adrFuente`");
+}
+
 // ── 3 · «(c/u por separado)» solo con dos, y la línea en singular ───────────
 {
   if (!/alternativas\.length > 1 && <em>\(c\/u por separado\)<\/em>/.test(BLO)) F("3 · la card imprime «(c/u por separado)» también con UNA alternativa: solo va con dos");
@@ -156,7 +184,7 @@ const sens = (o: { base?: Veredicto; cae?: number | null; arriendoCae?: number }
 export function runComprarDosMargenesTier(): { hard: number } {
   console.log("\n─── TIER COMPRAR-DOS-MÁRGENES (contrato §5 · estado COMPRAR · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el motor LTR mide hasta qué precio sigue siendo Comprar, las tres filas con oración en las dos modalidades (Verifica solo si el dato es tuyo, el piso en pesos solo con monto), «(c/u por separado)» solo con dos, y los dos heros pasan el precio máximo");
+    console.log("  ✓ VERDE — el motor LTR mide hasta qué precio sigue siendo Comprar, las tres filas con oración en las dos modalidades (Verifica solo si el dato es tuyo, el piso en pesos solo con monto), Verifica con los tres copys por procedencia del arriendo, «(c/u por separado)» solo con dos, y los dos heros pasan el precio máximo");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
