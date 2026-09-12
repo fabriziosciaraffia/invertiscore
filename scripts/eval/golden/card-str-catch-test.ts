@@ -85,10 +85,10 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
     const ver = str.filas.find((f) => f.rotuloCorto === "Verifica");
     if (!ver) F("1 · falta la fila «Verifica» en COMPRAR STR");
     else if (ver.titulo !== "Verifica la tarifa" || ver.nombre !== "tarifa") F(`1 · la fila de COMPRAR STR dice «${ver.titulo}» / «${ver.nombre}»: en STR se verifica la TARIFA`);
-    else if (!/52\.000/.test(ver.cifra)) F(`1 · la cifra de Verifica no es la tarifa declarada: «${ver.cifra}»`);
-    const ag = str.filas.find((f) => f.rotuloCorto === "Aguanta");
-    if (!ag) F("1 · falta la fila «Aguanta» en COMPRAR STR");
-    else if (ag.cifra !== "−12%") F(`1 · Aguanta debía decir «−12%», dio «${ag.cifra}»`);
+    else if (!/Definiste \$52\.000 la noche/.test(ver.oracion ?? "")) F(`1 · la oración de Verifica no nombra la tarifa declarada: «${ver.oracion}»`);
+    const ag = str.filas.find((f) => f.rotuloCorto === "Margen");
+    if (!ag) F("1 · falta la fila «Margen» en COMPRAR STR");
+    else if (!/^La tarifa por noche puede caer hasta .*\(−12%\) y sigue siendo Comprar\.$/.test(ag.oracion ?? "")) F(`1 · Margen debía decir «La tarifa por noche puede caer hasta … (−12%) y sigue siendo Comprar.», dio «${ag.oracion}»`);
   }
   // el default sigue siendo LTR: misma llamada de siempre, «arriendo»
   const ltr = construirLoQueHariaYo({ veredicto: "COMPRAR", distancia: null, sensibilidad: null, arriendoDeclaradoCLP: 500_000, currency: "CLP", valorUF: UF });
@@ -96,7 +96,7 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   if (!verL || verL.titulo !== "Verifica el arriendo" || verL.nombre !== "arriendo") F("1 · el default del constructor dejó de ser LTR: la fila de COMPRAR ya no dice «Verifica el arriendo»");
   // firme: «−50% o más», igual que LTR
   const firme = construirLoQueHariaYo({ modalidad: "str", veredicto: "COMPRAR", distancia: null, currency: "CLP", valorUF: UF, aguanta: { marginPct: 70, firme: true }, verifica: null });
-  if (firme?.filas.find((f) => f.rotuloCorto === "Aguanta")?.cifra !== "−50% o más") F("1 · con aguanta firme la cifra es «−50% o más», como en LTR");
+  if (firme?.filas.find((f) => f.rotuloCorto === "Margen")?.oracion !== "La tarifa por noche puede caer hasta −50% o más y sigue siendo Comprar.") F("1 · con aguanta firme la oración es «… hasta −50% o más y sigue siendo Comprar.», como en LTR");
 }
 
 // ── 2 · los cuatro estados con el motor STR ─────────────────────────────────
@@ -140,7 +140,7 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   if (bE && !/tarifa/.test(bE.descarte ?? "")) F(`2f · el descarte STR no nombra la tarifa: «${bE.descarte}»`);
 }
 
-// ── 3 · «Verifica» solo con override, «Aguanta» desde la frontera ──────────
+// ── 3 · «Verifica» solo con override, «Margen» desde la frontera ───────────
 {
   const sinVerifica = bloqueStr("COMPRAR", null, { aguanta: { marginPct: 8, firme: false }, verifica: null });
   if (!sinVerifica) F("3 · COMPRAR sin verifica pero con aguanta tiene que construir bloque (una fila)");

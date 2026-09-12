@@ -217,7 +217,8 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   if (!/rotuloCorto \?\? f\.titulo/.test(BLO)) {
     F("10 · la ecuación volvió a usar el título largo. «Cuánto aguanta el veredicto» en una columna de 96 px se parte en tres líneas.");
   }
-  if (!/rotuloCorto: "Aguanta"/.test(leer("src/lib/lo-que-haria-yo.ts")) || !/rotuloCorto: "Verifica"/.test(leer("src/lib/lo-que-haria-yo.ts"))) {
+  // 12-sep-2026: «Aguanta» pasó a «Margen» y entró «Precio» (los dos márgenes de COMPRAR).
+  if (!/rotuloCorto: "Margen"/.test(leer("src/lib/lo-que-haria-yo.ts")) || !/rotuloCorto: "Precio"/.test(leer("src/lib/lo-que-haria-yo.ts")) || !/rotuloCorto: "Verifica"/.test(leer("src/lib/lo-que-haria-yo.ts"))) {
     F("10 · las filas de COMPRAR perdieron su rótulo de una palabra");
   }
   if (!/rec-chip-g/.test(BLO) || !reglaDe(".doc-r2 .rec-chip-g", REC)) {

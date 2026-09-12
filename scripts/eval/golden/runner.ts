@@ -62,6 +62,7 @@ import { runRecomendacionRedisenoTier } from "./recomendacion-rediseno-catch-tes
 import { runInterruptorRedisenoTier } from "./interruptor-rediseno-catch-test";
 import { runEstructuraStrRedisenoTier } from "./estructura-str-rediseno-catch-test";
 import { runCardStrTier } from "./card-str-catch-test";
+import { runComprarDosMargenesTier } from "./comprar-dos-margenes-catch-test";
 import { runBajadaNoMienteTier } from "./bajada-no-miente-catch-test";
 import { runAlternativaComunasTier } from "./alternativa-comunas-catch-test";
 import { runCandadoTier } from "./candado-catch-test";
@@ -298,6 +299,9 @@ async function printStrSemantic() {
   // Tier CARD-STR (bloque C · 11-sep-2026, 0 tokens, sin base): el constructor por modalidad, los
   // cuatro estados con el motor STR, Verifica solo con override, renta larga solo con el hallazgo. ──
   totalHard += runCardStrTier().hard;
+  // Tier COMPRAR-DOS-MARGENES (12-sep-2026, 0 tokens, sin base): el precio maximo de COMPRAR en
+  // LTR, las tres filas con oracion en las dos modalidades y «(c/u por separado)» solo con dos. ──
+  totalHard += runComprarDosMargenesTier().hard;
   totalHard += runBajadaNoMienteTier().hard;
   totalHard += runAlternativaComunasTier().hard;
 
