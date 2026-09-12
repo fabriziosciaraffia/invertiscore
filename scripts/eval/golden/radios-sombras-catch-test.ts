@@ -105,7 +105,7 @@ for (const r of RADIOS) {
 
 // ── 5 · el foco de las tres primitivas ─────────────────────────────────────
 for (const prim of [".doc-btn", ".doc-lnk", ".fila-nav"]) {
-  const re = new RegExp(`\\.doc-r2 \\${prim}:focus-visible`);
+  const re = new RegExp(`\\.doc-dictamen \\${prim}:focus-visible`);
   if (!re.test(CSS)) F(`5 · ${prim} no declara :focus-visible. El hover no existe en teclado ni en táctil.`);
 }
 if (!/\.hall-head:focus-visible/.test(leer("src/components/analysis/hallazgos/HallazgosAcordeon.tsx"))) {
@@ -136,7 +136,7 @@ if (!/\.hall-head:focus-visible/.test(leer("src/components/analysis/hallazgos/Ha
   // LA UNIDAD ES LA FRASE, NO LA LÍNEA. En ZonaLtr el rótulo vive en un ternario junto
   // a «Explorar →», así que una línea que conserva UNA flecha no prueba que la conserve
   // ESTE rótulo: con la línea como unidad, la mutación que se la saca daba verde.
-  const m = CSS.match(/\.doc-r2 \.doc-lnk::after\{([^}]*)\}/);
+  const m = CSS.match(/\.doc-dictamen \.doc-lnk::after\{([^}]*)\}/);
   if (m && /content:\s*"[^"]*[→›»>]/.test(m[1])) {
     F(`7 · «.doc-r2 .doc-lnk::after» volvió a poner una flecha ({${m[1]}}). Los tres usos ya la traen en su texto: el pseudo-elemento dibuja la SEGUNDA.`);
   }

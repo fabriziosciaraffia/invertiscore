@@ -119,22 +119,22 @@ function reglaDe(sel: string, txt = BLOQUE): string | null {
 
 // ── 2 · la alternancia muere, y le gana a .doc-sec.p2 ──────────────────────
 {
-  const suelta = reglaDe(".doc-r2 .doc-sec");
+  const suelta = reglaDe(".doc-dictamen .doc-sec");
   if (!suelta) F("2 · no existe la regla de la sección suelta");
   else {
     if (!/background:\s*none/.test(suelta)) F("2 · la sección suelta volvió a pintar fondo: el papel es continuo");
     if (/padding:\s*(?!0)/.test(suelta)) F("2 · la sección suelta recuperó padding de sangrado");
   }
-  if (reglaDe(".doc-r2 .doc-sec.p2") === null) {
+  if (reglaDe(".doc-dictamen .doc-sec.p2") === null) {
     F("2 · falta «.doc-r2 .doc-sec.p2» en el selector de la sección suelta. `.doc-sec.p2` tiene la MISMA especificidad y va después: sin esto la sección alternada conserva su fondo, medido en el DOM.");
   }
-  if (reglaDe(".doc-r2 .doc-sec--caja.p2") === null) {
+  if (reglaDe(".doc-dictamen .doc-sec--caja.p2") === null) {
     F("2 · falta «.doc-r2 .doc-sec--caja.p2»: el hero es p2, así que sin esa forma la caja pierde contra la regla de la suelta");
   }
 }
 
 // ── 3 · las dos formas del selector del marco ──────────────────────────────
-for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
+for (const sel of [".doc-dictamen.doc-dictamen"]) {
   const r = reglaDe(sel);
   if (r === null) {
     F(`3 · falta «${sel}» al retirar la sombra del marco. Hacen falta las DOS formas: en producción «.doc-r2» va en el mismo elemento, en la ruta dev envuelve desde afuera.`);
@@ -145,17 +145,17 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
 
 // ── 4 · la separación es espacio ───────────────────────────────────────────
 {
-  const suelta = reglaDe(".doc-r2 .doc-sec") ?? "";
-  const caja = reglaDe(".doc-r2 .doc-sec--caja") ?? "";
+  const suelta = reglaDe(".doc-dictamen .doc-sec") ?? "";
+  const caja = reglaDe(".doc-dictamen .doc-sec--caja") ?? "";
   const mb = (c: string) => Number((c.match(/margin-bottom:\s*(\d+)px/) ?? [])[1]);
   if (mb(suelta) !== 38) F(`4 · la separación entre secciones sueltas es ${mb(suelta) || "?"}px y el contrato pide 38`);
   if (mb(caja) !== 34) F(`4 · la separación de las cajas es ${mb(caja) || "?"}px y el contrato pide 34`);
-  if (reglaDe(".doc-r2 .doc-sec:last-child") === null) F("4 · la última sección no anula su margen: deja un hueco al pie del informe");
+  if (reglaDe(".doc-dictamen .doc-sec:last-child") === null) F("4 · la última sección no anula su margen: deja un hueco al pie del informe");
 }
 
 // ── 5 · el ancho del contrato ──────────────────────────────────────────────
 {
-  const p = reglaDe(".doc-r2 .doc-page--secciones");
+  const p = reglaDe(".doc-dictamen .doc-page--secciones");
   if (!p) F("5 · no se fija el ancho de la página de secciones");
   else if (!/max-width:\s*700px/.test(p)) F(`5 · el ancho no es 700px: «${p.trim().slice(0, 60)}»`);
 }
@@ -173,8 +173,8 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
 
 // ── 7 · las cifras son tarjetas, no una tabla ─────────────────────────────
 {
-  const nums = reglaDe(".doc-r2 .nums", CIFRAS);
-  const cell = reglaDe(".doc-r2 .num-cell", CIFRAS);
+  const nums = reglaDe(".doc-dictamen .nums", CIFRAS);
+  const cell = reglaDe(".doc-dictamen .num-cell", CIFRAS);
   if (!nums) F("7 · el grid de cifras no se reapunta: siguen siendo una tabla de filete");
   else {
     if (!/grid-template-columns:\s*repeat\(2,\s*1fr\)/.test(nums)) F("7 · las cifras no van a DOS columnas: a tres, la traducción de cada cifra no respira");
@@ -222,10 +222,10 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
     F(`10 · la primera tarjeta de zona es «${orden[0]}». El arriendo va PRIMERO: es el único dato tuyo que puede quedar peor que la referencia y es del que cuelga todo el análisis.`);
   }
   if (!/Ver los comparables/.test(ZONA)) F("10 · la zona no cierra con «Ver los comparables →» (contrato §8)");
-  const cards = reglaDe(".doc-r2 .zona-cards", ZONACSS);
+  const cards = reglaDe(".doc-dictamen .zona-cards", ZONACSS);
   if (!cards) F("10 · no existe la regla del grid de tarjetas de zona");
   else if (!/grid-template-columns:\s*repeat\(3,\s*1fr\)/.test(cards)) F("10 · las tarjetas de zona no van a tres columnas");
-  const zc = reglaDe(".doc-r2 .zc", ZONACSS);
+  const zc = reglaDe(".doc-dictamen .zc", ZONACSS);
   if (!zc) F("10 · no existe la regla de la tarjeta de zona");
   // «mismo estilo que las cifras», dice el contrato: si divergen, son dos sistemas.
   else if (!/background:\s*var\(--card\)/.test(zc) || !/border-radius:\s*var\(--rad-s\)/.test(zc) || !/padding:\s*17px/.test(zc)) {
@@ -244,12 +244,12 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
 // ── 11 · las píldoras: par direccional, y el SENTIDO de cada una ──────────
 {
   for (const [clase, token] of [["zp-mal", "--signal-red"], ["zp-bien", "--up"]] as const) {
-    const r = reglaDe(`.doc-r2 .${clase}`, ZONACSS);
+    const r = reglaDe(`.doc-dictamen .${clase}`, ZONACSS);
     if (!r) { F(`11 · falta la píldora .${clase}`); continue; }
     if (!r.includes(`var(${token})`)) F(`11 · .${clase} no usa ${token}: el color direccional va por token, no hardcodeado`);
     if (!/12%/.test(r)) F(`11 · .${clase} no lleva el fondo al 12% que pide el contrato §8`);
   }
-  if (!reglaDe(".doc-r2 .zp-neu", ZONACSS)) F("11 · falta la píldora neutra");
+  if (!reglaDe(".doc-dictamen .zp-neu", ZONACSS)) F("11 · falta la píldora neutra");
   // EL SENTIDO SE INVIERTE entre tarjetas y es lo más fácil de romper al refactorizar:
   // pagar MÁS por m² es peor y declarar un arriendo por ENCIMA de la mediana es el caso
   // exigente, pero valorizarse MÁS que el promedio es mejor.
@@ -345,7 +345,7 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
   // el rediseño abandona: la marca vive en el chrome de la app y el informe no la repite.
   //
   // SE OCULTA, NO SE BORRA: `DocumentoFrame` lo monta también STR, que conserva el suyo.
-  const marco = reglaDe(".doc-r2.doc-dictamen") ?? reglaDe(".doc-r2 .doc-dictamen");
+  const marco = reglaDe(".doc-dictamen.doc-dictamen");
   if (!marco) F("16 · no existe la regla que retira el marco");
   else {
     for (const [prop, val] of [["background", "none"], ["border", "none"], ["box-shadow", "none"]] as const) {
@@ -353,26 +353,26 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
     }
   }
   // Las dos formas del selector, como siempre: pegada y descendente.
-  for (const f of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
+  for (const f of [".doc-dictamen.doc-dictamen"]) {
     if (reglaDe(f) === null) F(`16 · falta «${f}» al retirar el marco. En producción las clases van PEGADAS y en la ruta dev envuelve: con una sola forma, uno de los dos montajes conserva el marco.`);
   }
   // El grano del marco también: el rediseño tiene el suyo en el hero y la recomendación,
   // y dos granos superpuestos son ruido, no un grano más fuerte.
-  for (const g of [".doc-r2.doc-dictamen::after", ".doc-r2 .doc-dictamen::after"]) {
+  for (const g of [".doc-dictamen.doc-dictamen::after"]) {
     const r = reglaDe(g);
     if (r === null || !/display:\s*none/.test(r)) {
       F(`16 · «${g}» no apaga el grano del marco: se superpone con el del hero y el de la recomendación, y dos granos no son un grano más fuerte`);
     }
   }
   // La cabecera, el pie y la barra roja.
-  for (const pieza of [".doc-r2 .doc-toprule", ".doc-r2 .doc-head", ".doc-r2 .doc-foot"]) {
+  for (const pieza of [".doc-dictamen .doc-toprule", ".doc-dictamen .doc-head", ".doc-dictamen .doc-foot"]) {
     const r = reglaDe(pieza);
     if (r === null || !/display:\s*none/.test(r)) {
       F(`16 · «${pieza}» sigue montándose. El wordmark y el tagline se van con el marco: la marca vive en el chrome de la app.`);
     }
   }
   // Y el padding del marco muere con él: la página es la página.
-  const pag = reglaDe(".doc-r2 .doc-page");
+  const pag = reglaDe(".doc-dictamen .doc-page");
   if (!pag || !/padding:\s*0/.test(pag)) F("16 · el padding del marco sobrevivió al marco");
 }
 

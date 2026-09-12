@@ -90,8 +90,8 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 
 // ── 3 · tabular-nums en la columna de cifras ───────────────────────────────
 {
-  const reglaTab = /\.doc-r2[^{]*\.hz-n[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/.test(PORTADA)
-    || /font-variant-numeric:\s*tabular-nums/.test(PORTADA.slice(PORTADA.indexOf(".doc-r2 .hz-n"), PORTADA.indexOf(".doc-r2 .hz-n") + 400));
+  const reglaTab = /\.doc-dictamen[^{]*\.hz-n[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/.test(PORTADA)
+    || /font-variant-numeric:\s*tabular-nums/.test(PORTADA.slice(PORTADA.indexOf(".doc-dictamen .hz-n"), PORTADA.indexOf(".doc-dictamen .hz-n") + 400));
   if (!reglaTab) {
     F("3 · la columna de cifras perdió `tabular-nums`. Inter es proporcional: sin esa declaración dos cifras del mismo largo se separan hasta 27 px y la alineación se cae EN SILENCIO");
   }
@@ -126,7 +126,7 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
   if (!/doc-wordmark/.test(PORTADA)) {
     F("6 · el wordmark no tiene clase propia: la excepción de la serif cuelga de una utilidad de Tailwind y se rompe sola");
   }
-  if (!/\.doc-r2 \.doc-wordmark\{font-family:var\(--font-serif/.test(PORTADA)) {
+  if (!/\.doc-dictamen \.doc-wordmark\{font-family:var\(--font-serif/.test(PORTADA)) {
     F("6 · el wordmark no está exceptuado del reapunte: «refranco.ai» es la marca, no tipografía del informe (CLAUDE.md)");
   }
 }

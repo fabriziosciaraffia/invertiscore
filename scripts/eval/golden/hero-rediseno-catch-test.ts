@@ -68,7 +68,7 @@ function reglaDe(sel: string): string | null {
 
 // ── 1 · el filtro va en la capa de fondo, nunca en el hero ────────────────
 {
-  const bg = reglaDe(".doc-r2 .doc-hero-bg");
+  const bg = reglaDe(".doc-dictamen .doc-hero-bg");
   if (!bg) F("1 · no existe la capa de fondo del hero");
   else {
     if (!/filter:\s*brightness\(1\.10\)\s*saturate\(\.90\)/.test(bg)) F("1 · la capa de fondo perdió el filtro del contrato");
@@ -87,11 +87,11 @@ function reglaDe(sel: string): string | null {
 
 // ── 2 · el fondo no depende del veredicto ─────────────────────────────────
 {
-  const bg = reglaDe(".doc-r2 .doc-hero-bg") ?? "";
+  const bg = reglaDe(".doc-dictamen .doc-hero-bg") ?? "";
   if (/var\(--verdict/.test(bg)) F("2 · el fondo del hero pasó a depender del veredicto. §3: es el mismo espectro siempre; la tríada vive en el botón.");
   if (!/#0F2440[\s\S]*#2E1C28[\s\S]*#4E1119/.test(bg)) F("2 · el espectro del fondo no es el del contrato (#0F2440 → #2E1C28 → #4E1119)");
   // Y el botón SÍ lo lleva: si los dos dejan de usarlo, el veredicto deja de tener color.
-  const pill = reglaDe(".doc-r2 .doc-hero-pill") ?? "";
+  const pill = reglaDe(".doc-dictamen .doc-hero-pill") ?? "";
   if (!/background:\s*var\(--verdict\)/.test(pill)) F("2 · el botón dejó de pintarse con --verdict: es la única pieza del hero que lleva el color del veredicto");
   if (!/box-shadow:0 0 0 2px rgba\(255,255,255,\.3\)/.test(pill.replace(/\s*:\s*/g, ":"))) F("2 · el botón perdió el anillo blanco de 2 px del contrato");
 }
@@ -99,7 +99,7 @@ function reglaDe(sel: string): string | null {
 // ── 3 · el grano, con su número ───────────────────────────────────────────
 {
   const OPACIDAD = "0.16"; // 1,94% de amplitud relativa, medido sobre el espectro
-  const gr = reglaDe(".doc-r2 .doc-hero-grain");
+  const gr = reglaDe(".doc-dictamen .doc-hero-grain");
   if (!gr) F("3 · no existe la capa de grano del hero");
   else {
     const m = gr.match(/opacity:\s*\.?(\d+)/);
@@ -131,7 +131,7 @@ function reglaDe(sel: string): string | null {
   //     hace que el anillo se lea: sin ella vuelve a desvanecerse apenas arranca.
   if (!/@keyframes docHeroLate/.test(BLOQUE)) F("4 · no existe la animación del punto que late");
 
-  const regla = BLOQUE.match(/\.doc-r2 \.doc-hero-dot::after,\s*\.doc-r2 \.doc-hero-dot::before\{([^}]*)\}/)?.[1] ?? "";
+  const regla = BLOQUE.match(/\.doc-dictamen \.doc-hero-dot::after,\s*\.doc-dictamen \.doc-hero-dot::before\{([^}]*)\}/)?.[1] ?? "";
   if (!regla) {
     F("4 · los dos anillos del pulso dejaron de compartir su regla. El calibre es «doble anillo»: con uno solo hay un hueco muerto entre pulsos y el botón se lee apagado de lejos.");
   } else {
@@ -142,7 +142,7 @@ function reglaDe(sel: string): string | null {
     if (!/animation:\s*docHeroLate 1\.6s/.test(regla)) F("4 · el ciclo del pulso dejó de ser 1,6 s");
   }
 
-  const dos = BLOQUE.match(/\.doc-r2 \.doc-hero-dot::before\{animation-delay:\s*\.?8s\}/);
+  const dos = BLOQUE.match(/\.doc-dictamen \.doc-hero-dot::before\{animation-delay:\s*\.?8s\}/);
   if (!dos) {
     F("4 · el SEGUNDO anillo perdió su desfase de 0,8 s. Medio ciclo exacto es lo que garantiza que siempre haya uno visible: con otro valor los dos se juntan y vuelve el hueco.");
   }
@@ -195,7 +195,7 @@ function reglaDe(sel: string): string | null {
     }
   }
   // Y el padding acompaña: más aire del lado del texto que del lado del punto.
-  const reglaPill = reglaDe(".doc-r2 .doc-hero-pill") ?? "";
+  const reglaPill = reglaDe(".doc-dictamen .doc-hero-pill") ?? "";
   const pad = reglaPill.match(/padding:\s*(\d+)px (\d+)px (\d+)px (\d+)px/);
   if (!pad) F("4b · el botón perdió su padding de cuatro valores");
   else if (Number(pad[4]) <= Number(pad[2])) {
@@ -205,7 +205,7 @@ function reglaDe(sel: string): string | null {
 
 // ── 5 · el plumón blanco no repunta el token global ───────────────────────
 {
-  const mk = reglaDe(".doc-r2 .doc-hero .doc-headline mark");
+  const mk = reglaDe(".doc-dictamen .doc-hero .doc-headline mark");
   if (!mk) F("5 · el titular del hero no declara su plumón");
   else if (!/rgba\(255,255,255,\.26\)/.test(mk.replace(/\s/g, ""))) F("5 · el plumón del titular no es blanco al 26%");
   for (const linea of BLOQUE.split("\n")) {
@@ -304,8 +304,8 @@ function reglaDe(sel: string): string | null {
 
   // 7c · LA MODALIDAD PESA: un punto más que el eyebrow, y en negrita. Medido en el
   // DOM: eyebrow 12 px / 400, modalidad 13 px / 700.
-  const reglaMod = CSS.match(/\.doc-r2 \.doc-hero-modalidad\{([^}]*)\}/)?.[1] ?? "";
-  const reglaEye = CSS.match(/\.doc-r2 \.doc-hero-eyebrow\{([^}]*)\}/)?.[1] ?? "";
+  const reglaMod = CSS.match(/\.doc-dictamen \.doc-hero-modalidad\{([^}]*)\}/)?.[1] ?? "";
+  const reglaEye = CSS.match(/\.doc-dictamen \.doc-hero-eyebrow\{([^}]*)\}/)?.[1] ?? "";
   const px = (r: string) => Number(r.match(/font-size:\s*([\d.]+)px/)?.[1] ?? NaN);
   if (!reglaMod) F("7 · la modalidad del eyebrow perdió su regla: vuelve a medir lo mismo que el resto");
   else {

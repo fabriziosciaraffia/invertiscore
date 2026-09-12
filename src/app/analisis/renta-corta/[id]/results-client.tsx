@@ -462,7 +462,7 @@ export function STRResultsClient({
             conviene.pregunta ?? hardcode (v3 podó el campo). */}
         {/* ═══ DOCUMENTO (FASE 3 rediseño Dictamen): papel + portada; el interior
             se transforma en FASE 4 ═══ */}
-        <DocumentoFrame secciones veredicto={veredicto} rediseno>
+        <DocumentoFrame secciones veredicto={veredicto}>
         <TokensShared />
         {/* Contrato §2: la portada ES el hero de §3 y una de las dos cajas. */}
         <SeccionInforme id="portada" tono="paper" caja>

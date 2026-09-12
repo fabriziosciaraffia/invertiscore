@@ -159,10 +159,10 @@ function enOrden(txt: string, agujas: string[]): string | null {
   if (!/className="nums-sup"/.test(PRIM)) F("4 · la primitiva no dibuja el encabezado como `.nums-sup`");
   if (/destacada|encabezado/.test(NUMS_LTR)) F("4 · LosNumeros (LTR) pasó a usar `destacada` o `encabezado`: son de §6 para STR; LTR no destaca ninguna cifra");
   // el contorno: 1,5 px en --line2, detrás de doc-r2
-  const dest = reglaDe(".doc-r2 .num-cell.destacada", CSS);
+  const dest = reglaDe(".doc-dictamen .num-cell.destacada", CSS);
   if (!dest) F("4 · falta la regla «.doc-r2 .num-cell.destacada»");
   else if (!/1\.5px/.test(dest) || !/var\(--line2\)/.test(dest)) F(`4 · el contorno de la cifra destacada no es de 1,5 px en --line2: «${dest.trim()}»`);
-  const sup = reglaDe(".doc-r2 .nums-sup", CSS);
+  const sup = reglaDe(".doc-dictamen .nums-sup", CSS);
   if (!sup) F("4 · falta la regla «.doc-r2 .nums-sup» de la línea del supuesto");
   else if (!/font-size:\s*12\.5px/.test(sup)) F(`4 · la línea del supuesto no va a 12,5 px: «${sup.trim()}»`);
 }
@@ -228,7 +228,7 @@ function enOrden(txt: string, agujas: string[]): string | null {
   if (!/className="min-h-screen bg-\[var\(--franco-bg\)\] doc-lienzo"/.test(STR)) {
     F("8 · el wrapper de la página STR no pinta `doc-lienzo`: el informe queda sobre el gris de la app y las tarjetas no se distinguen del fondo (§2, mismo bug que 0b825fca)");
   }
-  if (!/className="doc-r2 doc-lienzo"/.test(DEV)) F("8 · la ruta dev no pinta el lienzo para LTR: el shot sale sobre el gris de la app y no es el de la ruta real");
+  if (!/className="doc-lienzo"/.test(DEV)) F("8 · la ruta dev no pinta el lienzo para LTR: el shot sale sobre el gris de la app y no es el de la ruta real");
 }
 
 // ── 6 · la ruta dev enciende STR con ?rediseno=1 ────────────────────────────

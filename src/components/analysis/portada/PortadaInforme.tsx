@@ -21,7 +21,6 @@ import { stripMarcas, normalizarMarcasTitular } from "@/lib/prosa-marcas";
 import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import type { FichaDepto } from "@/lib/ficha-depto";
 import { FichaModal } from "./FichaModal";
-import { CLASE_REDISENO } from "@/lib/rediseno-flag";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 // Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
@@ -245,13 +244,9 @@ export function PortadaInforme({
 /** `veredicto` (goal "material del informe"): fija `data-verdict` en la raíz, de donde
  *  DocTokens deriva --verdict / --verdict-deep para la banda, los plumones y la barra de
  *  score. Sin veredicto (AMBAS) los tokens caen a Ink. */
-/** `rediseno`: SOLO LTR lo pasa. STR queda con el informe de hoy hasta que tenga su
- *  propia pasada — encender un rediseño en un informe que nadie diseñó es exactamente
- *  lo que el interruptor vino a evitar (contrato §11). Ver `rediseno-flag.ts` para los
- *  tres pasos de retiro cuando STR llegue. */
-export function DocumentoFrame({ children, secciones = false, veredicto, rediseno = false }: { children: ReactNode; secciones?: boolean; veredicto?: string; rediseno?: boolean }) {
+export function DocumentoFrame({ children, secciones = false, veredicto }: { children: ReactNode; secciones?: boolean; veredicto?: string }) {
   return (
-    <div className={`doc-dictamen ${rediseno ? CLASE_REDISENO : ""}`.trim()} data-verdict={veredicto}>
+    <div className="doc-dictamen" data-verdict={veredicto}>
       <DocTokens />
       <div className="doc-toprule" aria-hidden="true" />
       <div className="doc-head">
@@ -374,20 +369,18 @@ export function DocTokens() {
          token cierra eso. La trama rayada a 45° de las barras (el tercer rgba literal)
          NO entra: no es sombra ni overlay, es textura, y funciona con cualquier paleta
          porque va sobre --doc-line2. */
-      .doc-r2,
-      .doc-r2 .doc-dictamen,
-      .doc-r2 .doc-tokens{
+      .doc-dictamen,
+      .doc-dictamen .doc-tokens{
         --sombra:0 1px 2px rgba(0,0,0,.5); --sombra-h:0 2px 8px rgba(0,0,0,.6);
         --overlay:rgba(12,12,14,.72);
       }
-      [data-theme="light"] .doc-r2,
-      [data-theme="light"] .doc-r2 .doc-dictamen,
-      [data-theme="light"] .doc-r2 .doc-tokens{
+      [data-theme="light"] .doc-dictamen,
+      [data-theme="light"] .doc-dictamen .doc-tokens{
         --sombra:0 1px 2px rgba(0,0,0,.05),0 10px 30px rgba(0,0,0,.07);
         --sombra-h:0 2px 5px rgba(0,0,0,.07),0 14px 32px rgba(0,0,0,.10);
         --overlay:rgba(24,24,27,.55);
       }
-      .doc-r2 .doc-ficha-overlay{background:var(--overlay)}
+      .doc-dictamen .doc-ficha-overlay{background:var(--overlay)}
 
       /* ═══════════════ REDISEÑO · ESTRUCTURA (contrato §2) ═══════════════
          SOLO DOS SECCIONES LLEVAN CAJA —borde redondo, sombra, fondo propio—: el hero y
@@ -414,8 +407,7 @@ export function DocTokens() {
          El grano del marco («.doc-dictamen::after») también se va: el rediseño tiene el
          suyo en el hero y en la recomendación, y dos granos superpuestos no son un
          grano más fuerte, son ruido. */
-      .doc-r2.doc-dictamen,
-      .doc-r2 .doc-dictamen{
+      .doc-dictamen.doc-dictamen{
         background:none;border:none;box-shadow:none}
       /* Y EL LIENZO DE LA PÁGINA, un nivel más afuera. Retirado el marco, lo que queda
          detrás del informe es el gris de la app, y §2 pide la página entera del color
@@ -438,30 +430,29 @@ export function DocTokens() {
       body:has(.doc-lienzo){--page:#0C0C0E;background:var(--page)}
       [data-theme="light"] .doc-lienzo,
       [data-theme="light"] body:has(.doc-lienzo){--page:#FFFFFF}
-      .doc-r2.doc-dictamen::after,
-      .doc-r2 .doc-dictamen::after{display:none}
-      .doc-r2 .doc-toprule,
-      .doc-r2 .doc-head,
-      .doc-r2 .doc-foot{display:none}
+      .doc-dictamen.doc-dictamen::after{display:none}
+      .doc-dictamen .doc-toprule,
+      .doc-dictamen .doc-head,
+      .doc-dictamen .doc-foot{display:none}
       /* Sin cabecera ni pie, el padding del marco deja de tener sentido: la página es la
          página. */
-      .doc-r2 .doc-page{padding:0}
-      @media (max-width: 767px){ .doc-r2 .doc-page{padding:0} }
+      .doc-dictamen .doc-page{padding:0}
+      @media (max-width: 767px){ .doc-dictamen .doc-page{padding:0} }
       /* «.doc-sec.p2» tiene la misma especificidad que «.doc-r2 .doc-sec» y gana por
          orden, asi que la seccion alternada conservaba su fondo. Con «.p2» en el
          selector se resuelve, y de paso queda explicito que la alternancia muere. */
-      .doc-r2 .doc-sec,
-      .doc-r2 .doc-sec.p2{
+      .doc-dictamen .doc-sec,
+      .doc-dictamen .doc-sec.p2{
         margin:0;padding:0;background:none;
         margin-bottom:38px}
-      .doc-r2 .doc-sec:last-child{margin-bottom:0}
+      .doc-dictamen .doc-sec:last-child{margin-bottom:0}
       /* las dos cajas */
-      .doc-r2 .doc-sec--caja,
-      .doc-r2 .doc-sec--caja.p2{
+      .doc-dictamen .doc-sec--caja,
+      .doc-dictamen .doc-sec--caja.p2{
         border-radius:var(--rad);overflow:hidden;box-shadow:var(--sombra);
         background:var(--card);margin-bottom:34px}
       /* el ancho del contrato */
-      .doc-r2 .doc-page--secciones{max-width:700px;margin:0 auto}
+      .doc-dictamen .doc-page--secciones{max-width:700px;margin:0 auto}
 
       /* ═══════════════ REDISEÑO · LAS CIFRAS (contrato §6) ═══════════════
          La rejilla de filete pasa a tarjetas. Hoy «.nums» son seis celdas pegadas por
@@ -482,32 +473,32 @@ export function DocTokens() {
          tarjetas de cifra no abren nada —«div.num-cell» sin onClick, verificado— y esa
          diferencia con la fila navegable ES información (contrato §9). Lo único
          clickeable de la sección es «Ver cómo se calcula», que ya es «.doc-lnk». */
-      .doc-r2 .nums{grid-template-columns:repeat(2,1fr);gap:11px;background:none;border:0}
-      .doc-r2 .num-cell{background:var(--card);border-radius:var(--rad-s);padding:17px}
+      .doc-dictamen .nums{grid-template-columns:repeat(2,1fr);gap:11px;background:none;border:0}
+      .doc-dictamen .num-cell{background:var(--card);border-radius:var(--rad-s);padding:17px}
       /* El rótulo deja el versalitas espaciado: a 13 px se lee como lo que es —el nombre
          de la cifra— y no como el encabezado de una columna de tabla. */
-      .doc-r2 .num-cell .k{
+      .doc-dictamen .num-cell .k{
         font-size:13px;letter-spacing:normal;text-transform:none;
         color:var(--tx3);margin-bottom:9px}
-      .doc-r2 .num-cell .v{font-size:29px;letter-spacing:-.02em}
-      .doc-r2 .num-cell .v small{font-size:12.5px;color:var(--tx3)}
+      .doc-dictamen .num-cell .v{font-size:29px;letter-spacing:-.02em}
+      .doc-dictamen .num-cell .v small{font-size:12.5px;color:var(--tx3)}
       /* La traducción sube un escalón de contraste —era «--tx3»— porque a dos columnas
          deja de ser un pie de celda y pasa a ser la mitad de la tarjeta que se lee. El
          «<b>» conserva su papel: un escalón más que su cuerpo, ahora «--tx». */
-      .doc-r2 .num-cell .tr{font-size:13px;line-height:1.5;color:var(--tx2);margin-top:9px}
-      .doc-r2 .num-cell .tr b{color:var(--tx);font-weight:600}
-      .doc-r2 .nums-foot{margin-top:14px}
-      .doc-r2 .num-cell.destacada{
+      .doc-dictamen .num-cell .tr{font-size:13px;line-height:1.5;color:var(--tx2);margin-top:9px}
+      .doc-dictamen .num-cell .tr b{color:var(--tx);font-weight:600}
+      .doc-dictamen .nums-foot{margin-top:14px}
+      .doc-dictamen .num-cell.destacada{
         /* §6 · STR: tarifa y ocupación son EL SUPUESTO del que cuelga todo lo demás y se
         destacan con un contorno de 1.5 px en --line2 —no con color— más una línea encima
         que lo declara. El contorno va en outline hacia adentro: sigue el radio y no mueve
         la caja ni es una sombra (§9: la tarjeta de cifra no reacciona). LTR no destaca
         ninguna cifra: las dos props son opcionales y no las pasa. */
         outline:1.5px solid var(--line2);outline-offset:-1.5px}
-      .doc-r2 .nums-sup{font-size:12.5px;line-height:1.5;color:var(--tx3);margin:0 0 16px}
+      .doc-dictamen .nums-sup{font-size:12.5px;line-height:1.5;color:var(--tx3);margin:0 0 16px}
       @media (max-width: 767px){
-        .doc-r2 .nums{grid-template-columns:1fr}
-        .doc-r2 .num-cell .v{font-size:25px}
+        .doc-dictamen .nums{grid-template-columns:1fr}
+        .doc-dictamen .num-cell .v{font-size:25px}
       }
 
       /* ═══════════════ REDISEÑO · EL HERO (contrato §3) ═══════════════
@@ -546,13 +537,13 @@ export function DocTokens() {
          .doc-hero» y va después en el archivo, así que se llevaba puesto el
          «padding-bottom». Medido: 34px 32px 0px en vez de 30 abajo. Con «.doc-sec» en
          el selector gana el rediseño; el borde y el margen los sigue matando ella. */
-      .doc-r2 .doc-sec .doc-hero{position:relative;isolation:isolate;overflow:hidden;
+      .doc-dictamen .doc-sec .doc-hero{position:relative;isolation:isolate;overflow:hidden;
         border-radius:var(--rad);padding:34px 32px 30px;color:#fff}
-      .doc-r2 .doc-hero-bg{
+      .doc-dictamen .doc-hero-bg{
         position:absolute;inset:0;z-index:0;pointer-events:none;
         background:linear-gradient(135deg,#0F2440 0%,#2E1C28 50%,#4E1119 100%);
         filter:brightness(1.10) saturate(.90)}
-      .doc-r2 .doc-hero-grain{
+      .doc-dictamen .doc-hero-grain{
         position:absolute;inset:0;z-index:1;pointer-events:none;
         background-image:var(--doc-grain);background-size:300px;
         opacity:.16;mix-blend-mode:overlay}
@@ -560,23 +551,23 @@ export function DocTokens() {
          SOLO aplica a elementos posicionados en absoluto: al forzarles «position:
          relative» para subirlos sobre el grano, la copia para lectores de pantalla del
          titular se volvía VISIBLE debajo de la caja. Se ve en los primeros shots. */
-      .doc-r2 .doc-hero > *:not(.doc-hero-bg):not(.doc-hero-grain):not(.sr-only){position:relative;z-index:2}
+      .doc-dictamen .doc-hero > *:not(.doc-hero-bg):not(.doc-hero-grain):not(.sr-only){position:relative;z-index:2}
 
       /* — EL EYEBROW — identidad a la izquierda, modalidad a la derecha. En móvil se
            apila, que es lo único que el contrato pide para este ancho. */
-      .doc-r2 .doc-hero-eyebrow{
+      .doc-dictamen .doc-hero-eyebrow{
         display:flex;justify-content:space-between;align-items:baseline;gap:12px;
         font-size:12px;line-height:1.4;opacity:.6;margin:0 0 18px}
-      .doc-r2 .doc-hero-eyebrow b{font-weight:600}
-      .doc-r2 .doc-hero-eyebrow i{font-style:normal;margin:0 7px;opacity:.7}
+      .doc-dictamen .doc-hero-eyebrow b{font-weight:600}
+      .doc-dictamen .doc-hero-eyebrow i{font-style:normal;margin:0 7px;opacity:.7}
       /* La modalidad es el otro extremo del eyebrow y tiene que sostenerlo: un punto
          más (13 px contra 12) y en negrita. */
-      .doc-r2 .doc-hero-modalidad{font-size:13px;font-weight:700}
+      .doc-dictamen .doc-hero-modalidad{font-size:13px;font-weight:700}
 
       /* — EL BOTÓN DE VEREDICTO — píldora del color del veredicto con anillo blanco.
            El anillo va en «box-shadow» y no en «border» para no mover la caja. */
-      .doc-r2 .doc-hero-verdict{margin:0 0 14px}
-      .doc-r2 .doc-hero-pill{
+      .doc-dictamen .doc-hero-verdict{margin:0 0 14px}
+      .doc-dictamen .doc-hero-pill{
         display:inline-flex;align-items:center;gap:9px;
         padding:8px 13px 8px 16px;border-radius:var(--rad-pill);
         background:var(--verdict);color:#fff;
@@ -604,16 +595,16 @@ export function DocTokens() {
       /* EL SIGNO DEL VEREDICTO. Va antes del rótulo y no lo empuja: el «gap» de la
          píldora ya separa, así que solo se le quita el «letter-spacing» —que en un
          glifo suelto deja un hueco a la derecha— y se le da su propio tamaño. */
-      .doc-r2 .doc-hero-signo{
+      .doc-dictamen .doc-hero-signo{
         font-size:14px;line-height:1;letter-spacing:normal;margin-right:-2px}
-      .doc-r2 .doc-hero-dot{
+      .doc-dictamen .doc-hero-dot{
         position:relative;width:7px;height:7px;border-radius:50%;background:#fff;flex:none}
-      .doc-r2 .doc-hero-dot::after,
-      .doc-r2 .doc-hero-dot::before{
+      .doc-dictamen .doc-hero-dot::after,
+      .doc-dictamen .doc-hero-dot::before{
         content:"";position:absolute;inset:0;border-radius:50%;border:2px solid #fff;
         animation:docHeroLate 1.6s ease-out infinite}
       /* el segundo, a medio ciclo: es lo que tapa el hueco entre pulsos */
-      .doc-r2 .doc-hero-dot::before{animation-delay:.8s}
+      .doc-dictamen .doc-hero-dot::before{animation-delay:.8s}
       @keyframes docHeroLate{
         0%{transform:scale(.9);opacity:.95}
         60%{opacity:.55}
@@ -622,12 +613,12 @@ export function DocTokens() {
       /* OBLIGATORIO por contrato: sin esto el punto late para siempre en la cara de
          alguien que pidió que nada se mueva. */
       @media (prefers-reduced-motion:reduce){
-        .doc-r2 .doc-hero-dot::after,
-        .doc-r2 .doc-hero-dot::before{animation:none;opacity:0}
+        .doc-dictamen .doc-hero-dot::after,
+      .doc-dictamen .doc-hero-dot::before{animation:none;opacity:0}
       }
 
       /* — EL SCORE EN TEXTO PLANO — */
-      .doc-r2 .doc-hero-score{
+      .doc-dictamen .doc-hero-score{
         font-family:var(--font-mono, ui-monospace);font-size:12.5px;letter-spacing:.06em;
         opacity:.75;margin:0 0 20px}
 
@@ -635,15 +626,15 @@ export function DocTokens() {
            NO se repunta «--doc-hl»: ese token lo usan también las marcas de prosa de
            las secciones, que van sobre papel y con blanco quedarían invisibles. El
            blanco vive acotado a este titular y a nada más. */
-      .doc-r2 .doc-hero .doc-headline{
+      .doc-dictamen .doc-hero .doc-headline{
         font-size:30px;font-weight:600;line-height:1.18;color:#fff;margin:0 0 14px}
-      .doc-r2 .doc-hero .doc-headline mark{
+      .doc-dictamen .doc-hero .doc-headline mark{
         background:linear-gradient(transparent 60%, rgba(255,255,255,.26) 60%);
         color:#fff}
       /* La cifra clave y su caption se conservan; sobre el espectro cambian de tinta. */
-      .doc-r2 .doc-hero .doc-keyfig-fig{color:#fff}
-      .doc-r2 .doc-hero .doc-keyfig-cap{color:rgba(255,255,255,.7)}
-      .doc-r2 .doc-hero .doc-props-link{color:rgba(255,255,255,.75)}
+      .doc-dictamen .doc-hero .doc-keyfig-fig{color:#fff}
+      .doc-dictamen .doc-hero .doc-keyfig-cap{color:rgba(255,255,255,.7)}
+      .doc-dictamen .doc-hero .doc-props-link{color:rgba(255,255,255,.75)}
       /* EL MAPA Y EL TOGGLE no están en §3 y quedaban con su tinta de papel sobre el
          espectro: la tarjeta gris clara y el chip blanco se leían como dos parches. Van
          con el resto del hero —texto blanco— y el toggle recibe el MISMO tratamiento
@@ -653,20 +644,20 @@ export function DocTokens() {
          app («--franco-card», «--franco-border») porque también vive en el wizard. Sobre
          el espectro quedaba como un parche gris claro. Se reapunta desde acá —no se
          toca el componente, que es compartido— y el texto va en blanco como el resto. */
-      .doc-r2 .doc-hero .doc-mapcol > div{
+      .doc-dictamen .doc-hero .doc-mapcol > div{
         background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.22)}
-      .doc-r2 .doc-hero .doc-mapcol span,
-      .doc-r2 .doc-hero .doc-mapcol svg{color:rgba(255,255,255,.75)}
+      .doc-dictamen .doc-hero .doc-mapcol span,
+      .doc-dictamen .doc-hero .doc-mapcol svg{color:rgba(255,255,255,.75)}
       /* El toggle lleva su forma acá; los COLORES van inline en el JSX, porque los del
          camino de siempre también lo son y una regla no los podría pisar. */
-      .doc-r2 .doc-hero .doc-cur-toggle{
+      .doc-dictamen .doc-hero .doc-cur-toggle{
         border-radius:var(--rad-pill);box-shadow:0 0 0 1px rgba(255,255,255,.22);
         background:rgba(255,255,255,.06)}
 
       @media (max-width: 767px){
-        .doc-r2 .doc-hero{padding:26px 20px 24px;border-radius:var(--rad)}
-        .doc-r2 .doc-hero-eyebrow{flex-direction:column;align-items:flex-start;gap:4px}
-        .doc-r2 .doc-hero .doc-headline{font-size:25px}
+        .doc-dictamen .doc-hero{padding:26px 20px 24px;border-radius:var(--rad)}
+        .doc-dictamen .doc-hero-eyebrow{flex-direction:column;align-items:flex-start;gap:4px}
+        .doc-dictamen .doc-hero .doc-headline{font-size:25px}
       }
 
       /* ═══════════════ REDISEÑO · LOS CAPÍTULOS (contrato §7) ═══════════════
@@ -687,32 +678,32 @@ export function DocTokens() {
          EL «:focus-visible» NO SE PIERDE. «.hall-head» ya lo tenía antes del rediseño y
          el catch-test de la parte 3 lo fija; acá se le agrega el de «.fila-nav» con el
          mismo anillo. Es exactamente lo que una reescritura de la fila deja caer. */
-      .doc-r2 .hall.cap{border-bottom:none;margin-bottom:9px}
-      .doc-r2 .hall.cap .hall-head{
+      .doc-dictamen .hall.cap{border-bottom:none;margin-bottom:9px}
+      .doc-dictamen .hall.cap .hall-head{
         background:var(--card);padding:16px 17px;border-radius:var(--rad-s);
         border:1px solid transparent;display:grid;grid-template-columns:1fr auto auto;
         gap:0 15px;align-items:center;
         transition:box-shadow .13s,border-color .13s,transform .13s}
-      .doc-r2 .hall.cap .hall-head:not([disabled]):hover{
+      .doc-dictamen .hall.cap .hall-head:not([disabled]):hover{
         padding-left:17px;border-color:var(--line2);box-shadow:var(--sombra-h);transform:translateY(-1px)}
-      .doc-r2 .hall.cap .hall-head:focus-visible{outline:2px solid var(--signal-red);outline-offset:2px}
+      .doc-dictamen .hall.cap .hall-head:focus-visible{outline:2px solid var(--signal-red);outline-offset:2px}
       /* El romano sale de la fila; se oculta en vez de borrarse del JSX porque la misma
          pieza la monta STR, que conserva su numeración. */
-      .doc-r2 .hall.cap .num{display:none}
-      .doc-r2 .hall.cap .q{
+      .doc-dictamen .hall.cap .num{display:none}
+      .doc-dictamen .hall.cap .q{
         font-family:var(--font-heading, Georgia, serif);font-size:15.5px;font-weight:600;
         color:var(--tx);line-height:1.35}
       /* SIN BAJADA (§7): la fila es titulo y cifra. El «ksub» explica el numero —«de los
          $750.000 del arriendo, despues de cuota, gastos y vacancia»— y eso es el cuerpo
          del capitulo, no la fila. Con la cifra ya apellidada, la fila se lee sola. No se
          borra del JSX: la pieza la monta tambien STR, que lo conserva. */
-      .doc-r2 .hall.cap .ksub{display:none}
-      .doc-r2 .hall.cap .val{
+      .doc-dictamen .hall.cap .ksub{display:none}
+      .doc-dictamen .hall.cap .val{
         font-family:var(--font-mono, ui-monospace);font-size:14px;font-weight:700;
         color:var(--tx);font-variant-numeric:tabular-nums;white-space:nowrap}
       /* EL APELLIDO es contexto, no cifra: va mas liviano y sin el mono, para que el
          numero siga siendo lo que el ojo agarra primero. */
-      .doc-r2 .hall.cap .val-ap{
+      .doc-dictamen .hall.cap .val-ap{
         font-family:inherit;font-size:12.5px;font-weight:500;color:var(--tx3)}
       /* EL DISCO del chevron: el mismo de «.fila-nav», que al hover se llena. */
       /* EL DISCO LLEVA «›», no la flecha hacia abajo. El «↓» del acordeon dice «esto se
@@ -720,27 +711,27 @@ export function DocTokens() {
          navegable promete. El caracter del JSX se oculta con «font-size:0» en vez de
          cambiarse, porque esa pieza la monta tambien STR. Al abrirse gira 90 grados y
          vuelve a apuntar hacia abajo, que es adonde efectivamente se abrio. */
-      .doc-r2 .hall.cap .chev{
+      .doc-dictamen .hall.cap .chev{
         width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
         justify-content:center;background:var(--page);border:1px solid var(--line2);
         color:var(--tx3);font-size:0;line-height:1;
         transition:background .13s,border-color .13s,color .13s,transform .2s}
-      .doc-r2 .hall.cap .chev::after{content:"›";font-size:17px;line-height:1}
-      .doc-r2 .hall.cap.open .chev{transform:rotate(90deg)}
-      .doc-r2 .hall.cap .hall-head:not([disabled]):hover .chev{
+      .doc-dictamen .hall.cap .chev::after{content:"›";font-size:17px;line-height:1}
+      .doc-dictamen .hall.cap.open .chev{transform:rotate(90deg)}
+      .doc-dictamen .hall.cap .hall-head:not([disabled]):hover .chev{
         background:var(--tx);border-color:var(--tx);color:var(--page)}
-      .doc-r2 .hall.cap.open .hall-head{border-color:var(--line2)}
-      .doc-r2 .hall.cap .hall-body{padding:14px 17px 20px}
-      .doc-r2 .chapters-eyebrow{border-bottom:none;padding-bottom:6px}
+      .doc-dictamen .hall.cap.open .hall-head{border-color:var(--line2)}
+      .doc-dictamen .hall.cap .hall-body{padding:14px 17px 20px}
+      .doc-dictamen .chapters-eyebrow{border-bottom:none;padding-bottom:6px}
       @media (max-width: 767px){
-        .doc-r2 .hall.cap .hall-head{padding:14px 14px;gap:0 11px}
-        .doc-r2 .hall.cap .hall-head:not([disabled]):hover{padding-left:14px}
-        .doc-r2 .hall.cap .q{font-size:14.5px}
-        .doc-r2 .hall.cap .hall-body{padding:12px 14px 18px}
+        .doc-dictamen .hall.cap .hall-head{padding:14px 14px;gap:0 11px}
+        .doc-dictamen .hall.cap .hall-head:not([disabled]):hover{padding-left:14px}
+        .doc-dictamen .hall.cap .q{font-size:14.5px}
+        .doc-dictamen .hall.cap .hall-body{padding:12px 14px 18px}
       }
       @media (prefers-reduced-motion:reduce){
-        .doc-r2 .hall.cap .hall-head{transition:none}
-        .doc-r2 .hall.cap .hall-head:not([disabled]):hover{transform:none}
+        .doc-dictamen .hall.cap .hall-head{transition:none}
+        .doc-dictamen .hall.cap .hall-head:not([disabled]):hover{transform:none}
       }
 
       /* ═══════════════ REDISEÑO · LA RECOMENDACIÓN (contrato §5) ═══════════════
@@ -758,140 +749,140 @@ export function DocTokens() {
 
          LO QUE SE CAMBIA VA TACHADO Y TRANSPARENTE; LO NUEVO, SÓLIDO. Es lo que hace
          legible el movimiento sin leer: el ojo salta a lo sólido. */
-      .doc-r2 .rec-card{
+      .doc-dictamen .rec-card{
         position:relative;isolation:isolate;overflow:hidden;
         border-radius:var(--rad);padding:28px 30px 26px;color:#fff;
         box-shadow:var(--sombra)}
-      .doc-r2 .rec-bg{
+      .doc-dictamen .rec-bg{
         position:absolute;inset:0;z-index:0;pointer-events:none;
         background:linear-gradient(135deg,var(--verdict-deep) 0%,#18181B 100%);
         filter:brightness(1.30) saturate(.70)}
-      .doc-r2 .rec-grain{
+      .doc-dictamen .rec-grain{
         position:absolute;inset:0;z-index:1;pointer-events:none;
         background-image:var(--doc-grain);background-size:300px;
         opacity:.16;mix-blend-mode:overlay}
-      .doc-r2 .rec-card > *:not(.rec-bg):not(.rec-grain):not(.sr-only){position:relative;z-index:2}
+      .doc-dictamen .rec-card > *:not(.rec-bg):not(.rec-grain):not(.sr-only){position:relative;z-index:2}
 
-      .doc-r2 .rec-t{font-size:22px;font-weight:700;line-height:1.25;margin:0}
-      .doc-r2 .rec-sub{font-size:14px;line-height:1.45;opacity:.62;margin:5px 0 20px}
+      .doc-dictamen .rec-t{font-size:22px;font-weight:700;line-height:1.25;margin:0}
+      .doc-dictamen .rec-sub{font-size:14px;line-height:1.45;opacity:.62;margin:5px 0 20px}
 
       /* — LA CARD (§5 revisado, 11-sep-2026): lo tuyo primero — */
-      .doc-r2 .rec-sub{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+      .doc-dictamen .rec-sub{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
       /* la píldora neutra de la bajada: SOLO con salida, sin color */
-      .doc-r2 .rec-pill-neutra{
+      .doc-dictamen .rec-pill-neutra{
         display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:var(--rad-pill);
         background:rgba(255,255,255,.14);box-shadow:0 0 0 1.5px rgba(255,255,255,.55);
         font-family:var(--font-mono, ui-monospace);font-size:11px;font-weight:700;
         letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;opacity:1}
-      .doc-r2 .rec-eq{margin:0 0 20px}
+      .doc-dictamen .rec-eq{margin:0 0 20px}
       /* rótulos de grupo: «Modificaciones que dependen de ti» · «Resultado» */
-      .doc-r2 .rec-gt{font-family:var(--font-mono, ui-monospace);font-size:10.5px;font-weight:600;
+      .doc-dictamen .rec-gt{font-family:var(--font-mono, ui-monospace);font-size:10.5px;font-weight:600;
         letter-spacing:.09em;text-transform:uppercase;opacity:.55;margin:0 0 10px}
 
       /* LA CAJA DE LO TUYO: los chips del mix y, bajo una línea, lo que resulta. */
-      .doc-r2 .rec-tuyo{background:rgba(255,255,255,.10);padding:14px;border-radius:var(--rad-s);margin:0 0 16px}
-      .doc-r2 .rec-chips{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 12px}
-      .doc-r2 .rec-chip{
+      .doc-dictamen .rec-tuyo{background:rgba(255,255,255,.10);padding:14px;border-radius:var(--rad-s);margin:0 0 16px}
+      .doc-dictamen .rec-chips{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 12px}
+      .doc-dictamen .rec-chip{
         display:inline-flex;align-items:baseline;gap:6px;
         padding:8px 12px;border-radius:var(--rad-xs);background:rgba(255,255,255,.14);
         font-size:13.5px;font-weight:600;white-space:nowrap}
-      .doc-r2 .rec-chip s{opacity:.42;font-weight:500;text-decoration:line-through;text-decoration-thickness:1.5px}
-      .doc-r2 .rec-chip b{font-weight:700}
+      .doc-dictamen .rec-chip s{opacity:.42;font-weight:500;text-decoration:line-through;text-decoration-thickness:1.5px}
+      .doc-dictamen .rec-chip b{font-weight:700}
       /* EL GRUPO QUE NO ROMPE: el chip y su «+» viajan juntos, asi el salto de linea
          cae DESPUES del signo y nunca antes (a 390 px quedaba solo arriba del segundo). */
-      .doc-r2 .rec-chip-g{display:inline-flex;align-items:center;gap:9px;white-space:nowrap}
-      .doc-r2 .rec-mas{font-style:normal;opacity:.42;font-size:16px;font-weight:600}
+      .doc-dictamen .rec-chip-g{display:inline-flex;align-items:center;gap:9px;white-space:nowrap}
+      .doc-dictamen .rec-mas{font-style:normal;opacity:.42;font-size:16px;font-weight:600}
       /* «→ Negocias −X% dcto. en precio», entero en grande; el paréntesis debajo */
-      .doc-r2 .rec-pides{display:grid;grid-template-columns:auto 1fr;gap:0 8px;align-items:start;
+      .doc-dictamen .rec-pides{display:grid;grid-template-columns:auto 1fr;gap:0 8px;align-items:start;
         font-size:14px;line-height:1.45;padding-top:11px;border-top:1px solid rgba(255,255,255,.16)}
-      .doc-r2 .rec-pides > .rec-fl{font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.45;opacity:1}
-      .doc-r2 .rec-pides b{display:block;font-size:19px;font-weight:700;letter-spacing:-.02em}
+      .doc-dictamen .rec-pides > .rec-fl{font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.45;opacity:1}
+      .doc-dictamen .rec-pides b{display:block;font-size:19px;font-weight:700;letter-spacing:-.02em}
       /* LAS TRES ACOTACIONES —paréntesis, «Pero eso no depende de ti», costo— al mismo
          tamaño y opacidad. Ninguna destaca. */
-      .doc-r2 .rec-vs{display:block;font-size:12.5px;opacity:.6;margin-top:5px}
+      .doc-dictamen .rec-vs{display:block;font-size:12.5px;opacity:.6;margin-top:5px}
 
       /* RESULTADO, inmediatamente después de la caja: píldoras con signo */
-      .doc-r2 .rec-res{margin:0 0 18px}
-      .doc-r2 .rec-trans{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-      .doc-r2 .rec-pill{
+      .doc-dictamen .rec-res{margin:0 0 18px}
+      .doc-dictamen .rec-trans{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .doc-dictamen .rec-pill{
         padding:5px 11px;border-radius:var(--rad-pill);
         font-family:var(--font-mono, ui-monospace);font-size:11.5px;font-weight:700;
         letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-      .doc-r2 .rec-pill.de{background:rgba(255,255,255,.10);opacity:.5}
-      .doc-r2 .rec-pill.a{background:#fff;color:#18181B}
-      .doc-r2 .rec-fl{font-style:normal;opacity:.5}
+      .doc-dictamen .rec-pill.de{background:rgba(255,255,255,.10);opacity:.5}
+      .doc-dictamen .rec-pill.a{background:#fff;color:#18181B}
+      .doc-dictamen .rec-fl{font-style:normal;opacity:.5}
 
       /* ALTERNATIVAMENTE: lo que no depende de ti, en una oración, después */
-      .doc-r2 .rec-alt{padding-top:14px;border-top:1px solid rgba(255,255,255,.16)}
+      .doc-dictamen .rec-alt{padding-top:14px;border-top:1px solid rgba(255,255,255,.16)}
       /* rama sin mix: «Alternativamente» va primero y Resultado la sigue con el mismo aire que la caja */
-      .doc-r2 .rec-alt + .rec-gt{margin-top:16px}
-      .doc-r2 .rec-a1{font-size:13.5px;line-height:1.5;margin:0}
-      .doc-r2 .rec-a1 b{font-weight:700}
-      .doc-r2 .rec-a1 em{font-style:normal;opacity:.6;font-size:12px}
-      .doc-r2 .rec-a2{font-size:12.5px;line-height:1.5;opacity:.6;margin:5px 0 0}
+      .doc-dictamen .rec-alt + .rec-gt{margin-top:16px}
+      .doc-dictamen .rec-a1{font-size:13.5px;line-height:1.5;margin:0}
+      .doc-dictamen .rec-a1 b{font-weight:700}
+      .doc-dictamen .rec-a1 em{font-style:normal;opacity:.6;font-size:12px}
+      .doc-dictamen .rec-a2{font-size:12.5px;line-height:1.5;opacity:.6;margin:5px 0 0}
       /* el costo del día uno: SIEMPRE con el mix (§5), como tercera acotación */
-      .doc-r2 .rec-cost{font-size:12.5px;opacity:.6;margin:16px 0 0;padding-top:13px;border-top:1px solid rgba(255,255,255,.15)}
+      .doc-dictamen .rec-cost{font-size:12.5px;opacity:.6;margin:16px 0 0;padding-top:13px;border-top:1px solid rgba(255,255,255,.15)}
 
       /* LAS DOS FILAS DE COMPRAR («Aguanta» / «Verifica»): rótulo fijo a la izquierda */
-      .doc-r2 .rec-row{
+      .doc-dictamen .rec-row{
         display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:baseline;
         padding:13px 0;border-top:1px solid rgba(255,255,255,.14)}
-      .doc-r2 .rec-row:first-child{border-top:none;padding-top:0}
-      .doc-r2 .rec-k{
+      .doc-dictamen .rec-row:first-child{border-top:none;padding-top:0}
+      .doc-dictamen .rec-k{
         font-family:var(--font-mono, ui-monospace);font-size:11.5px;letter-spacing:.1em;
         text-transform:uppercase;opacity:.5;line-height:1.5}
-      .doc-r2 .rec-v{display:block;font-size:15px;line-height:1.45}
-      .doc-r2 .rec-v > b{font-weight:700}
-      .doc-r2 .rec-v > em{display:block;font-style:normal;font-size:13px;opacity:.62;margin-top:3px}
-      .doc-r2 .rec-v.rec-o{font-size:13.5px;line-height:1.5;font-weight:400}
+      .doc-dictamen .rec-v{display:block;font-size:15px;line-height:1.45}
+      .doc-dictamen .rec-v > b{font-weight:700}
+      .doc-dictamen .rec-v > em{display:block;font-style:normal;font-size:13px;opacity:.62;margin-top:3px}
+      .doc-dictamen .rec-v.rec-o{font-size:13.5px;line-height:1.5;font-weight:400}
 
-      .doc-r2 .rec-ctx{font-size:13px;opacity:.62;margin:0 0 14px}
-      .doc-r2 .rec-desc{font-size:13px;opacity:.62;margin:14px 0 0}
+      .doc-dictamen .rec-ctx{font-size:13px;opacity:.62;margin:0 0 14px}
+      .doc-dictamen .rec-desc{font-size:13px;opacity:.62;margin:14px 0 0}
       /* EL PUENTE del estado sin salida: mas presente que el descarte —es lo unico
          accionable que queda— pero sin competir con el numero de arriba. */
-      .doc-r2 .rec-puente{font-size:14px;line-height:1.5;opacity:.82;margin:14px 0 0}
+      .doc-dictamen .rec-puente{font-size:14px;line-height:1.5;opacity:.82;margin:14px 0 0}
       /* DÓNDE SÍ (§5). Va pegada al puente —es su respuesta, no otro párrafo— y con
          más presencia que él: el puente dice que no hay salida acá, y ésta dice a
          dónde ir, que es lo único accionable que le queda al lector. Sin cifras. */
-      .doc-r2 .rec-donde{font-size:15px;line-height:1.45;font-weight:600;margin:8px 0 0}
+      .doc-dictamen .rec-donde{font-size:15px;line-height:1.45;font-weight:600;margin:8px 0 0}
 
       /* — EL DETALLE DE LA ALTERNATIVA, en el pop-up — la línea de la card nombra
            dos comunas; acá se rinde cuentas de todas las que cruzan, con su muestra. */
-      .doc-r2 .alt-com{margin:22px 0 0;padding:18px 0 0;border-top:1px solid var(--doc-line)}
-      .doc-r2 .alt-com-t{font-family:var(--font-mono, ui-monospace);font-size:10px;
+      .doc-dictamen .alt-com{margin:22px 0 0;padding:18px 0 0;border-top:1px solid var(--doc-line)}
+      .doc-dictamen .alt-com-t{font-family:var(--font-mono, ui-monospace);font-size:10px;
         letter-spacing:.16em;text-transform:uppercase;color:var(--doc-tx3);margin:0 0 8px}
-      .doc-r2 .alt-com-l{font-size:13.5px;line-height:1.5;color:var(--doc-tx2);margin:0 0 14px}
-      .doc-r2 .alt-com-tabla{width:100%;border-collapse:collapse;font-size:13px}
-      .doc-r2 .alt-com-tabla th{font-family:var(--font-mono, ui-monospace);font-size:10px;
+      .doc-dictamen .alt-com-l{font-size:13.5px;line-height:1.5;color:var(--doc-tx2);margin:0 0 14px}
+      .doc-dictamen .alt-com-tabla{width:100%;border-collapse:collapse;font-size:13px}
+      .doc-dictamen .alt-com-tabla th{font-family:var(--font-mono, ui-monospace);font-size:10px;
         letter-spacing:.12em;text-transform:uppercase;color:var(--doc-tx3);font-weight:500;
         text-align:right;padding:0 0 8px}
-      .doc-r2 .alt-com-tabla th:first-child{text-align:left}
-      .doc-r2 .alt-com-tabla td{padding:9px 0;border-top:1px solid var(--doc-line);
+      .doc-dictamen .alt-com-tabla th:first-child{text-align:left}
+      .doc-dictamen .alt-com-tabla td{padding:9px 0;border-top:1px solid var(--doc-line);
         text-align:right;color:var(--doc-tx);white-space:nowrap}
-      .doc-r2 .alt-com-tabla td:first-child{text-align:left;white-space:normal}
-      .doc-r2 .alt-com-tabla small{display:block;font-size:10.5px;color:var(--doc-tx3);
+      .doc-dictamen .alt-com-tabla td:first-child{text-align:left;white-space:normal}
+      .doc-dictamen .alt-com-tabla small{display:block;font-size:10.5px;color:var(--doc-tx3);
         letter-spacing:0;margin-top:2px}
 
       /* — EL CTA — botón BLANCO SÓLIDO con icono, no un enlace (§5) — */
-      .doc-r2 .rec-cta{
+      .doc-dictamen .rec-cta{
         display:inline-flex;align-items:center;gap:10px;
         padding:12px 20px;border-radius:var(--rad-pill);border:none;cursor:pointer;
         background:#fff;color:#18181B;
         font-size:14px;font-weight:600;letter-spacing:normal;
         transition:transform .12s,box-shadow .12s}
-      .doc-r2 .rec-cta:hover{box-shadow:var(--sombra-h)}
-      .doc-r2 .rec-cta:active{transform:translateY(1px)}
-      .doc-r2 .rec-cta:focus-visible{outline:2px solid #fff;outline-offset:3px}
-      .doc-r2 .rec-cta-ico{font-size:10px;line-height:1;opacity:.65}
+      .doc-dictamen .rec-cta:hover{box-shadow:var(--sombra-h)}
+      .doc-dictamen .rec-cta:active{transform:translateY(1px)}
+      .doc-dictamen .rec-cta:focus-visible{outline:2px solid #fff;outline-offset:3px}
+      .doc-dictamen .rec-cta-ico{font-size:10px;line-height:1;opacity:.65}
 
       @media (max-width: 767px){
-        .doc-r2 .rec-card{padding:22px 18px 20px}
-        .doc-r2 .rec-row{grid-template-columns:78px 1fr;gap:10px}
-        .doc-r2 .rec-t{font-size:19px}
+        .doc-dictamen .rec-card{padding:22px 18px 20px}
+        .doc-dictamen .rec-row{grid-template-columns:78px 1fr;gap:10px}
+        .doc-dictamen .rec-t{font-size:19px}
       }
       @media (prefers-reduced-motion:reduce){
-        .doc-r2 .rec-cta{transition:none}
-        .doc-r2 .rec-cta:active{transform:none}
+        .doc-dictamen .rec-cta{transition:none}
+        .doc-dictamen .rec-cta:active{transform:none}
       }
 
       /* ═══════════════ REDISEÑO · LA ZONA (contrato §8) ═══════════════
@@ -911,33 +902,33 @@ export function DocTokens() {
 
          EL PIE COMÚN ES UNA PIEZA, no un pie de tarjeta: ahí vive el caveat del período
          de la valorización, que es de las tres y no de una. */
-      .doc-r2 .zona-cards{
+      .doc-dictamen .zona-cards{
         display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:18px}
-      .doc-r2 .zc{
+      .doc-dictamen .zc{
         background:var(--card);border-radius:var(--rad-s);padding:17px;
         display:flex;flex-direction:column;align-items:flex-start;gap:0}
-      .doc-r2 .zc-k{font-size:13px;line-height:1.35;color:var(--tx3);margin:0 0 9px}
-      .doc-r2 .zc-v{
+      .doc-dictamen .zc-k{font-size:13px;line-height:1.35;color:var(--tx3);margin:0 0 9px}
+      .doc-dictamen .zc-v{
         font-family:var(--font-mono, ui-monospace);font-size:26px;font-weight:700;
         line-height:1;letter-spacing:-.02em;color:var(--tx);margin:0;
         font-variant-numeric:tabular-nums}
-      .doc-r2 .zc-r{font-size:13px;line-height:1.4;color:var(--tx3);margin:7px 0 0;min-height:18px}
-      .doc-r2 .zc-s{font-size:12.5px;line-height:1.45;color:var(--tx2);margin:10px 0 0}
-      .doc-r2 .zc-s b{color:var(--tx);font-weight:600}
+      .doc-dictamen .zc-r{font-size:13px;line-height:1.4;color:var(--tx3);margin:7px 0 0;min-height:18px}
+      .doc-dictamen .zc-s{font-size:12.5px;line-height:1.45;color:var(--tx2);margin:10px 0 0}
+      .doc-dictamen .zc-s b{color:var(--tx);font-weight:600}
       /* la píldora */
-      .doc-r2 .zp{
+      .doc-dictamen .zp{
         display:inline-block;margin-top:9px;padding:3px 9px;border-radius:var(--rad-pill);
         font-size:12px;font-weight:600;line-height:1.35;white-space:nowrap}
-      .doc-r2 .zp-mal{color:var(--signal-red);background:color-mix(in srgb,var(--signal-red) 12%,transparent)}
-      .doc-r2 .zp-bien{color:var(--up);background:color-mix(in srgb,var(--up) 12%,transparent)}
-      .doc-r2 .zp-neu{color:var(--tx3);background:color-mix(in srgb,var(--tx3) 12%,transparent)}
+      .doc-dictamen .zp-mal{color:var(--signal-red);background:color-mix(in srgb,var(--signal-red) 12%,transparent)}
+      .doc-dictamen .zp-bien{color:var(--up);background:color-mix(in srgb,var(--up) 12%,transparent)}
+      .doc-dictamen .zp-neu{color:var(--tx3);background:color-mix(in srgb,var(--tx3) 12%,transparent)}
       /* el pie común de las tres */
-      .doc-r2 .zona-caveat{
+      .doc-dictamen .zona-caveat{
         font-size:12px;line-height:1.5;color:var(--tx3);margin:13px 0 0}
-      .doc-r2 .zona-foot{margin-top:13px}
+      .doc-dictamen .zona-foot{margin-top:13px}
       @media (max-width: 767px){
-        .doc-r2 .zona-cards{grid-template-columns:1fr}
-        .doc-r2 .zc-v{font-size:23px}
+        .doc-dictamen .zona-cards{grid-template-columns:1fr}
+        .doc-dictamen .zc-v{font-size:23px}
       }
 
       /* ═══════════════ REDISEÑO · LAS TRES PRIMITIVAS (contrato §9) ═══════════════
@@ -971,13 +962,13 @@ export function DocTokens() {
          exactamente lo que una reescritura de la parte 4 puede perder sin que se note. */
 
       /* — BOTÓN — */
-      .doc-r2 .doc-btn{
+      .doc-dictamen .doc-btn{
         gap:10px;font-size:14px;font-weight:600;padding:13px 20px;letter-spacing:normal;
         text-transform:none;box-shadow:var(--sombra);
         transition:transform .12s,box-shadow .12s,filter .12s}
-      .doc-r2 .doc-btn:hover{filter:none;box-shadow:var(--sombra-h)}
-      .doc-r2 .doc-btn:active{transform:translateY(1px)}
-      .doc-r2 .doc-btn::before{
+      .doc-dictamen .doc-btn:hover{filter:none;box-shadow:var(--sombra-h)}
+      .doc-dictamen .doc-btn:active{transform:translateY(1px)}
+      .doc-dictamen .doc-btn::before{
         content:"";width:20px;height:20px;border-radius:50%;flex:none;
         background:var(--page);
         -webkit-mask:radial-gradient(circle,#000 99%,transparent) center/100% 100% no-repeat;
@@ -985,39 +976,39 @@ export function DocTokens() {
 
       /* — ENLACE — el subrayado vive SIEMPRE, y al hover se satura. Antes aparecía
            recién al hover, o sea que en reposo no se distinguía de un rótulo. */
-      .doc-r2 .doc-lnk{
+      .doc-dictamen .doc-lnk{
         display:inline-flex;align-items:center;gap:8px;
         font-size:13.5px;font-weight:600;letter-spacing:normal;text-transform:none;
         padding-bottom:2px;text-decoration:none;
         border-bottom:1.5px solid color-mix(in srgb,var(--signal-red) 35%,transparent)}
-      .doc-r2 .doc-lnk:hover{text-decoration:none;border-bottom-color:var(--signal-red)}
+      .doc-dictamen .doc-lnk:hover{text-decoration:none;border-bottom-color:var(--signal-red)}
       /* SIN FLECHA PROPIA. Los tres usos ya la traen en su texto («Ver cómo se calcula
            →», «Ver los comparables →»), así que un «::after» que la agrega dibuja DOS.
            Medido en el DOM: textContent «Ver cómo se calcula →» + ::after content "→".
            La del texto se queda; la del pseudo-elemento se va. */
 
       /* — FILA NAVEGABLE — definida, sin montar. La parte 4 la usa. */
-      .doc-r2 .fila-nav{
+      .doc-dictamen .fila-nav{
         background:var(--card);padding:16px 17px;cursor:pointer;display:grid;
         grid-template-columns:1fr auto auto;gap:0 15px;align-items:center;
         border-radius:var(--rad-s);border:1px solid transparent;width:100%;text-align:left;
         color:inherit;transition:box-shadow .13s,border-color .13s,transform .13s}
-      .doc-r2 .fila-nav:hover{border-color:var(--line2);box-shadow:var(--sombra-h);transform:translateY(-1px)}
-      .doc-r2 .fila-nav .disco{
+      .doc-dictamen .fila-nav:hover{border-color:var(--line2);box-shadow:var(--sombra-h);transform:translateY(-1px)}
+      .doc-dictamen .fila-nav .disco{
         width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
         justify-content:center;background:var(--page);border:1px solid var(--line2);flex:none;
         color:var(--tx3);font-size:15px;font-weight:700;line-height:1;
         transition:background .13s,border-color .13s,color .13s}
-      .doc-r2 .fila-nav:hover .disco{background:var(--tx);border-color:var(--tx);color:var(--page)}
+      .doc-dictamen .fila-nav:hover .disco{background:var(--tx);border-color:var(--tx);color:var(--page)}
 
       /* — EL FOCO, para las tres — */
-      .doc-r2 .doc-btn:focus-visible,
-      .doc-r2 .doc-lnk:focus-visible,
-      .doc-r2 .fila-nav:focus-visible{outline:2px solid var(--signal-red);outline-offset:2px}
+      .doc-dictamen .doc-btn:focus-visible,
+      .doc-dictamen .doc-lnk:focus-visible,
+      .doc-dictamen .fila-nav:focus-visible{outline:2px solid var(--signal-red);outline-offset:2px}
 
       @media (prefers-reduced-motion:reduce){
-        .doc-r2 .doc-btn,.doc-r2 .fila-nav,.doc-r2 .fila-nav .disco{transition:none}
-        .doc-r2 .doc-btn:active,.doc-r2 .fila-nav:hover{transform:none}
+        .doc-dictamen .doc-btn,.doc-dictamen .fila-nav,.doc-dictamen .fila-nav .disco{transition:none}
+        .doc-dictamen .doc-btn:active,.doc-dictamen .fila-nav:hover{transform:none}
       }
 
       /* ═══════════════ REDISEÑO · RADIOS (contrato §1) ═══════════════
@@ -1036,30 +1027,29 @@ export function DocTokens() {
 
          «--rad» no se aplica a nada todavía: las dos cajas —hero y recomendación— son de
          la parte 4. Se define y espera. */
-      .doc-r2,
-      .doc-r2 .doc-dictamen,
-      .doc-r2 .doc-tokens{
+      .doc-dictamen,
+      .doc-dictamen .doc-tokens{
         --rad:16px; --rad-s:12px; --rad-xs:10px; --rad-pill:99px; --rad-bar:2px;
       }
       /* contenedores */
-      .doc-r2 .pos-card,
-      .doc-r2 .oport,
-      .doc-r2 .colchon,
-      .doc-r2 .esca,
-      .doc-r2 .compo,
-      .doc-r2 .ba-compo,
-      .doc-r2 .v-collapse,
-      .doc-r2 .lqhy-mix{border-radius:var(--rad-s)}
+      .doc-dictamen .pos-card,
+      .doc-dictamen .oport,
+      .doc-dictamen .colchon,
+      .doc-dictamen .esca,
+      .doc-dictamen .compo,
+      .doc-dictamen .ba-compo,
+      .doc-dictamen .v-collapse,
+      .doc-dictamen .lqhy-mix{border-radius:var(--rad-s)}
       /* chips */
-      .doc-r2 .lqhy-chip,
-      .doc-r2 .pos-chip,
-      .doc-r2 .ba-mult{border-radius:var(--rad-xs)}
+      .doc-dictamen .lqhy-chip,
+      .doc-dictamen .pos-chip,
+      .doc-dictamen .ba-mult{border-radius:var(--rad-xs)}
       /* píldoras y controles */
-      .doc-r2 .doc-btn,
-      .doc-r2 .mx-toggle,
-      .doc-r2 .v-modal-x{border-radius:var(--rad-pill)}
+      .doc-dictamen .doc-btn,
+      .doc-dictamen .mx-toggle,
+      .doc-dictamen .v-modal-x{border-radius:var(--rad-pill)}
       /* el panel del modal es una caja */
-      .doc-r2 .v-modal{border-radius:var(--rad)}
+      .doc-dictamen .v-modal{border-radius:var(--rad)}
 
       /* ═══════════════ REDISEÑO · PALETA (contrato §1) ═══════════════
          Los papeles cálidos pasan a los neutros fríos del contrato. TRES niveles de
@@ -1106,10 +1096,9 @@ export function DocTokens() {
          el «.doc-dictamen» de adentro está más cerca y se lleva puesta la paleta: medido,
          la sección seguía en el papel cálido #FAF8F3. Las dos formas descendentes suben
          la especificidad y ganan en los dos montajes. */
-      .doc-r2,
-      .doc-r2.doc-dictamen,
-      .doc-r2 .doc-dictamen,
-      .doc-r2 .doc-tokens{
+      .doc-dictamen,
+      .doc-dictamen.doc-dictamen,
+      .doc-dictamen .doc-tokens{
         --page:#0C0C0E; --card:#1A1A1E; --sunk:#232328;
         --line:#232327; --line2:#37373D; --line-sunk:#2C2C30;
         --tx:#FAFAFA; --tx2:#D4D4D8; --tx3:#A1A1AA; --tx4:#71717A;
@@ -1120,10 +1109,9 @@ export function DocTokens() {
         --doc-tx:var(--tx); --doc-tx2:var(--tx2); --doc-tx3:var(--tx3); --doc-tx4:var(--tx4);
         --doc-score-empty:var(--sunk);
       }
-      [data-theme="light"] .doc-r2,
-      [data-theme="light"] .doc-r2.doc-dictamen,
-      [data-theme="light"] .doc-r2 .doc-dictamen,
-      [data-theme="light"] .doc-r2 .doc-tokens{
+      [data-theme="light"] .doc-dictamen,
+      [data-theme="light"] .doc-dictamen.doc-dictamen,
+      [data-theme="light"] .doc-dictamen .doc-tokens{
         --page:#FFFFFF; --card:#F4F4F6; --sunk:#EBEBEE;
         --line:#E9E9EC; --line2:#D6D6DB; --line-sunk:#E0E0E3;
         --tx:#18181B; --tx2:#3F3F46; --tx3:#71717A; --tx4:#A1A1AA;
@@ -1168,8 +1156,8 @@ export function DocTokens() {
          a ΔL* 3,50 y 5,13 de él.
 
          Son las dos únicas reglas del informe que hoy combinan las dos cosas. */
-      .doc-r2 .fbar .fb-ing,
-      .doc-r2 .pos-chip{border-color:var(--line-sunk)}
+      .doc-dictamen .fbar .fb-ing,
+      .doc-dictamen .pos-chip{border-color:var(--line-sunk)}
 
       /* ═══════════════ REDISEÑO · TIPOGRAFÍA (contrato §1) ═══════════════
          Todo lo de acá cuelga de «.doc-r2», que solo existe con el interruptor de
@@ -1192,7 +1180,7 @@ export function DocTokens() {
          clase que va en «body», así que en «html» la variable no existe y la captura
          resolvía a nada — medido, el titular caía a Georgia. */
       body{--font-serif:var(--font-heading)}
-      .doc-r2{
+      .doc-dictamen{
         --font-body:var(--font-ui);
         --font-mono:var(--font-ui);
         --font-heading:var(--font-ui);
@@ -1202,9 +1190,9 @@ export function DocTokens() {
          EXCEPTO el wordmark: «refranco.ai» es la marca, no tipografía del informe, y su
          serif está fijada en CLAUDE.md («re» Light itálica + «franco» Bold). Reapuntar
          «--font-heading» se lo llevaba puesto — medido en el navegador. */
-      .doc-r2 .doc-headline,
-      .doc-r2 .doc-wordmark{font-family:var(--font-serif, Georgia, serif)}
-      .doc-r2 .doc-headline{font-weight:600}
+      .doc-dictamen .doc-headline,
+      .doc-dictamen .doc-wordmark{font-family:var(--font-serif, Georgia, serif)}
+      .doc-dictamen .doc-headline{font-weight:600}
 
       /* LA COLUMNA DE CIFRAS ALINEA POR «tabular-nums», NO POR LA FUENTE.
          El mono garantizaba el mismo ancho de dígito por construcción. Inter es
@@ -1214,9 +1202,9 @@ export function DocTokens() {
          9,55 y la alineación es EXACTAMENTE la del mono: cero de diferencia en los
          cuatro pares medidos. Va en la clase de la columna y no suelta, y el
          catch-test la fija: sin ella la alineación se cae en silencio. */
-      .doc-r2 .hz-n,
-      .doc-r2 .num-cell .v,
-      .doc-r2 .doc-keyfig-fig{font-variant-numeric:tabular-nums}
+      .doc-dictamen .hz-n,
+      .doc-dictamen .num-cell .v,
+      .doc-dictamen .doc-keyfig-fig{font-variant-numeric:tabular-nums}
 
       /* ═══ PÁGINA POR SECCIONES (T2, contrato CONGELADO 02-sep-2026) ═══
          Fondo alternado a sangre: cada sección sangra el padding horizontal de
@@ -1359,9 +1347,9 @@ export function DocTokens() {
 
            EL GANCHO ES «data-dir», que emite el componente con la dirección del motor.
            La tercera dirección, «neutral», no lleva flecha: no necesita regla. */
-      .doc-r2 .hz-fl{font-size:20px}
-      .doc-r2 .hz-fl[data-dir="adverso"]{color:var(--signal-red)}
-      .doc-r2 .hz-fl[data-dir="favorable"]{color:var(--up)}
+      .doc-dictamen .hz-fl{font-size:20px}
+      .doc-dictamen .hz-fl[data-dir="adverso"]{color:var(--signal-red)}
+      .doc-dictamen .hz-fl[data-dir="favorable"]{color:var(--up)}
       /* El slot de la referencia reserva su alto AUNQUE ESTÉ VACÍO (min-height + el
          espacio duro que emite el componente): sin eso la fila sin referencia —Pie 20%—
          se hundía respecto de las otras tres. */

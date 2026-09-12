@@ -71,13 +71,13 @@ function reglaDe(sel: string, txt: string): string | null {
 
 // ── 1 · el fondo depende del veredicto, y es el ÚNICO que lo hace ─────────
 {
-  const bg = reglaDe(".doc-r2 .rec-bg", REC);
+  const bg = reglaDe(".doc-dictamen .rec-bg", REC);
   if (!bg) F("1 · no existe la capa de fondo de la recomendación");
   else if (!/var\(--verdict-deep\)/.test(bg)) {
     F("1 · el fondo de la recomendación dejó de depender del veredicto. §5: es la ÚNICA pieza que lo hace, y el hero usa el mismo espectro para los tres justamente por eso.");
   }
   // Y el hero NO lo hace: si los dos cambian de color, el color deja de significar algo.
-  const heroBg = reglaDe(".doc-r2 .doc-hero-bg", bloqueDe("REDISEÑO · EL HERO"));
+  const heroBg = reglaDe(".doc-dictamen .doc-hero-bg", bloqueDe("REDISEÑO · EL HERO"));
   if (heroBg && /var\(--verdict/.test(heroBg)) {
     F("1 · el fondo del HERO pasó a depender del veredicto. Entonces son dos, y §5 dice que la recomendación es la única.");
   }
@@ -96,7 +96,7 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   if (!/mix\.costo && <p className="rec-cost">/.test(BLO)) {
     F("3 · el costo del día uno dejó de dibujarse bajo el mix. §5: «sin esa línea el mix miente por omisión».");
   }
-  if (!reglaDe(".doc-r2 .rec-cost", REC)) F("3 · no existe el estilo del costo del día uno");
+  if (!reglaDe(".doc-dictamen .rec-cost", REC)) F("3 · no existe el estilo del costo del día uno");
 }
 
 // ── 4 · la card nueva no lleva firma ──────────────────────────────────────
@@ -115,7 +115,7 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     if (/generado por IA/.test(rama)) F("4 · la card de §5 volvió a decir «análisis generado por IA»: pide leerla como una opinión");
     if (!/rec-cta/.test(rama)) F("4 · la card de §5 perdió su CTA");
   }
-  const cta = reglaDe(".doc-r2 .rec-cta", REC);
+  const cta = reglaDe(".doc-dictamen .rec-cta", REC);
   if (!cta) F("4 · no existe el estilo del CTA");
   else if (!/background:\s*#fff/.test(cta)) F("4 · el CTA dejó de ser un botón BLANCO SÓLIDO (§5), que es lo que lo distingue de un enlace");
 }
@@ -126,26 +126,26 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   // Vive en una caja propia —«Modificaciones que dependen de ti»— con los chips y,
   // bajo una línea, «→ Negocias −X% dcto. en precio» a 19 px y su paréntesis debajo.
   if (!BLO.includes("Modificaciones que dependen de ti")) F("5 · la card perdió el rótulo de la caja «Modificaciones que dependen de ti»");
-  if (!reglaDe(".doc-r2 .rec-tuyo", REC)) F("5 · no existe la caja de lo tuyo (.rec-tuyo)");
-  const pides = reglaDe(".doc-r2 .rec-pides b", REC);
+  if (!reglaDe(".doc-dictamen .rec-tuyo", REC)) F("5 · no existe la caja de lo tuyo (.rec-tuyo)");
+  const pides = reglaDe(".doc-dictamen .rec-pides b", REC);
   if (!pides || !/font-size:\s*19px/.test(pides)) F("5 · «Negocias −X% dcto. en precio» dejó de ir a 19 px / 700, entero");
   if (!/rec-pides/.test(BLO)) F("5 · el descuento dejó de dibujarse bajo la línea de la caja (.rec-pides)");
   if (/rec-dcto-g|rec-contra\b/.test(BLO)) F("5 · volvió el descuento plegado del molde anterior (rec-dcto-g / rec-contra)");
   // La rejilla rótulo/valor sigue viva SOLO para las dos filas de COMPRAR.
-  const fila = reglaDe(".doc-r2 .rec-row", REC);
+  const fila = reglaDe(".doc-dictamen .rec-row", REC);
   if (!fila) F("5 · la fila rótulo/valor de COMPRAR («Aguanta» / «Verifica») perdió su estilo");
 }
 
 // ── 6 · los capítulos: sin romano, con foco ───────────────────────────────
 {
-  const num = reglaDe(".doc-r2 .hall.cap .num", CAP);
+  const num = reglaDe(".doc-dictamen .hall.cap .num", CAP);
   if (!num || !/display:\s*none/.test(num)) F("6 · el número romano volvió a la fila de capítulo (§7 lo saca explícitamente)");
-  if (!reglaDe(".doc-r2 .hall.cap .hall-head:focus-visible", CAP)) {
+  if (!reglaDe(".doc-dictamen .hall.cap .hall-head:focus-visible", CAP)) {
     F("6 · la fila de capítulo del rediseño no declara :focus-visible");
   }
   // Y el de siempre sigue en pie: es el que el tier de la parte 3 fija.
   if (!/\.hall-head:focus-visible/.test(ACO)) F("6 · «.hall-head» perdió su :focus-visible, que tenía desde antes del rediseño");
-  const head = reglaDe(".doc-r2 .hall.cap .hall-head", CAP);
+  const head = reglaDe(".doc-dictamen .hall.cap .hall-head", CAP);
   if (!head) F("6 · no existe la regla de la fila de capítulo");
   else if (!/grid-template-columns:\s*1fr auto auto/.test(head)) F("6 · la fila de capítulo no usa la rejilla «1fr auto auto» de la primitiva");
 }
@@ -189,9 +189,9 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
 
 // ── 9 · la fila de capítulo: sin bajada, disco con «›», cifra apellidada ──
 {
-  const ksub = reglaDe(".doc-r2 .hall.cap .ksub", CAP);
+  const ksub = reglaDe(".doc-dictamen .hall.cap .ksub", CAP);
   if (!ksub || !/display:\s*none/.test(ksub)) F("9 · la bajada volvió a la fila de capítulo (§7: la fila es título y cifra; el ksub es el cuerpo del capítulo)");
-  const chev = reglaDe(".doc-r2 .hall.cap .chev::after", CAP);
+  const chev = reglaDe(".doc-dictamen .hall.cap .chev::after", CAP);
   if (!chev) F("9 · el disco no dibuja su carácter propio");
   else if (!chev.includes("›")) {
     F(`9 · el disco dejó de llevar «›»: «${chev.slice(0, 50)}». El «↓» dice «esto se despliega»; «›» dice «esto lleva a algo», que es lo que la primitiva promete. Ojo con escribirlo como escape hexadecimal de CSS: pasado por un script de Python el prefijo se lee como octal y sale una «A» (medido en el DOM).`);
@@ -217,7 +217,7 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   if (!/rotuloCorto: "Margen"/.test(leer("src/lib/lo-que-haria-yo.ts")) || !/rotuloCorto: "Precio"/.test(leer("src/lib/lo-que-haria-yo.ts")) || !/rotuloCorto: "Verifica"/.test(leer("src/lib/lo-que-haria-yo.ts"))) {
     F("10 · las filas de COMPRAR perdieron su rótulo de una palabra");
   }
-  if (!/rec-chip-g/.test(BLO) || !reglaDe(".doc-r2 .rec-chip-g", REC)) {
+  if (!/rec-chip-g/.test(BLO) || !reglaDe(".doc-dictamen .rec-chip-g", REC)) {
     F("10 · el «+» volvió a ir suelto entre los dos chips. A 390 px el salto de línea cae justo antes y el signo queda solo arriba del segundo chip, sumando con la nada (medido).");
   }
 }
@@ -284,12 +284,12 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   // PosicionFranco dibuja la píldora «✓ COMPRAR» según el ESTADO, no un string con el
   // destino adentro: con salida lleva píldora; COMPRAR y sin salida, no.
   if (!/estado === "con_salida"/.test(POS)) F("15 · PosicionFranco no gatea la píldora de la bajada por el estado «con_salida»");
-  if (!/rec-pill-neutra/.test(POS) || !reglaDe(".doc-r2 .rec-pill-neutra", REC)) F("15 · falta la píldora neutra de la bajada (rec-pill-neutra)");
+  if (!/rec-pill-neutra/.test(POS) || !reglaDe(".doc-dictamen .rec-pill-neutra", REC)) F("15 · falta la píldora neutra de la bajada (rec-pill-neutra)");
   if (/bajada=\{rediseno \? bajada/.test(HERO)) F("15 · HeroLTR sigue pasando la bajada como string con el destino adentro");
   if (!/estadoRecomendacion\(/.test(HERO)) F("15 · HeroLTR no calcula el estado de la recomendación para la bajada");
   // Las TRES acotaciones —paréntesis, «Pero eso no depende de ti», costo— al mismo
   // tamaño y opacidad (12,5 px / .6). Ninguna destaca.
-  for (const sel of [".doc-r2 .rec-vs", ".doc-r2 .rec-a2", ".doc-r2 .rec-cost"]) {
+  for (const sel of [".doc-dictamen .rec-vs", ".doc-dictamen .rec-a2", ".doc-dictamen .rec-cost"]) {
     const r = reglaDe(sel, REC);
     if (!r) F(`15 · falta la acotación ${sel}`);
     else if (!/font-size:\s*12\.5px/.test(r) || !/opacity:\s*\.6\b/.test(r)) F(`15 · la acotación ${sel} no va a 12,5 px / .6 como las otras dos`);
@@ -325,7 +325,7 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     F("14 · la condición del puente cambió. Va SOLO en el estado sin salida: en COMPRAR hay dos datos, y con filas que cruzan esas filas son salidas.");
   }
   if (!/\{sinSalida && \(/.test(BLO)) F("14 · el puente dejó de montarse");
-  if (!reglaDe(".doc-r2 .rec-puente", REC)) F("14 · el puente no tiene estilo propio: queda con el del descarte, que es lo menos accionable de la card");
+  if (!reglaDe(".doc-dictamen .rec-puente", REC)) F("14 · el puente no tiene estilo propio: queda con el del descarte, que es lo menos accionable de la card");
 }
 
 // ── EL ANCHO DE LA RECOMENDACIÓN (contrato §2) ───────────────────────────

@@ -82,7 +82,7 @@ function Inner() {
       sp.get("rediseno") === "1"
         // `doc-lienzo` también: en la ruta real lo pone `analisis/[id]/page.tsx` (server), que
         // esta página no monta, y sin él el shot de LTR salía sobre el gris de la app.
-        ? <div className="doc-r2 doc-lienzo"><RedisenoProvider valor>{n}</RedisenoProvider></div>
+        ? <div className="doc-lienzo"><RedisenoProvider valor>{n}</RedisenoProvider></div>
         : n;
     return envolver(
       <PremiumResults
@@ -148,7 +148,7 @@ function Inner() {
   // volcado. Sin registro por pieza cada QA era un `if` a mano.
   return (
     <div
-      className={`doc-dictamen doc-tokens${sp.get("rediseno") === "1" ? " doc-r2" : ""}`}
+      className="doc-dictamen doc-tokens"
       style={{ background: "var(--doc-paper, #FAF8F3)", minHeight: "100vh" }}
     >
       <DocTokens />

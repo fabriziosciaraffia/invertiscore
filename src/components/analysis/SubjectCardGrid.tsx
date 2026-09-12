@@ -255,7 +255,7 @@ export function SubjectCardGrid({
 
   return (
     <div id="informe-pro-section" className="mb-8">
-      <DocumentoFrame secciones veredicto={veredicto} rediseno>
+      <DocumentoFrame secciones veredicto={veredicto}>
       {/* CSS del acordeón + vocabulario + modal, montado siempre: el modal de la
           posición y el de cálculo lo necesitan también mientras la prosa carga. */}
       <TokensHallazgos />

@@ -60,7 +60,7 @@ type Tok = (typeof TOKENS)[number];
  *  `[data-theme="light"] .doc-r2`; lo anterior es el oscuro. */
 function paleta(): { oscuro: Record<string, string>; claro: Record<string, string> } {
   const ini = CSS.indexOf("REDISEÑO · PALETA");
-  const corte = CSS.indexOf('[data-theme="light"] .doc-r2', ini);
+  const corte = CSS.indexOf('[data-theme="light"] .doc-dictamen', ini);
   const fin = CSS.indexOf("REDISEÑO · TIPOGRAFÍA", ini);
   const sacar = (txt: string) => {
     const out: Record<string, string> = {};
@@ -201,8 +201,8 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
   // Así que el guard no se borra: se da vuelta. Antes fijaba la ausencia; ahora fija la
   // presencia, que es más difícil de perder sin querer.
   {
-    const bloqueFl = CSS.slice(CSS.indexOf(".doc-r2 .hz-fl{"), CSS.indexOf(".doc-r2 .hz-fl{") + 400);
-    if (!CSS.includes(".doc-r2 .hz-fl{")) {
+    const bloqueFl = CSS.slice(CSS.indexOf(".doc-dictamen .hz-fl{"), CSS.indexOf(".doc-dictamen .hz-fl{") + 400);
+    if (!CSS.includes(".doc-dictamen .hz-fl{")) {
       F("6 · desapareció la regla de las flechas de hallazgo del rediseño (§4): sin ella vuelven a los 14 px y a una sola tinta");
     } else {
       if (!/font-size:\s*20px/.test(bloqueFl)) F("6 · las flechas de hallazgo dejaron de medir 20 px (§4)");
@@ -237,12 +237,12 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
   // (0,1,0) que en tema CLARO perdía contra «[data-theme=light] .doc-dictamen» (0,1,1),
   // así que los NUEVE tokens se quedaban en la paleta cálida vieja. En oscuro no pasaba,
   // y en la ruta dev tampoco porque ahí «.doc-r2» ENVUELVE. Ningún shot lo mostró.
-  const FORMAS = [".doc-r2", ".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen", ".doc-r2 .doc-tokens"];
+  const FORMAS = [".doc-dictamen", ".doc-dictamen.doc-dictamen", ".doc-dictamen", ".doc-dictamen .doc-tokens"];
   const bloque = CSS.slice(CSS.indexOf("REDISEÑO · PALETA"), CSS.indexOf("REDISEÑO · TIPOGRAFÍA"));
   // CADA TEMA EN SU PROPIO SUB-BLOQUE. Buscando el substring en todo el bloque, la forma
   // del tema CLARO —«[data-theme=light] .doc-r2.doc-dictamen»— contiene a la del oscuro
   // —«.doc-r2.doc-dictamen»— y la satisface: borrada del oscuro, el guard seguía verde.
-  const corte = bloque.indexOf('[data-theme="light"] .doc-r2');
+  const corte = bloque.indexOf('[data-theme="light"] .doc-dictamen');
   const SUB = { oscuro: corte === -1 ? bloque : bloque.slice(0, corte), claro: corte === -1 ? "" : bloque.slice(corte) };
   for (const tema of ["oscuro", "claro"] as const) {
     const pref = tema === "claro" ? '[data-theme="light"] ' : "";

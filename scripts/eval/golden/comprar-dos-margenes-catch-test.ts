@@ -168,7 +168,7 @@ const sens = (o: { base?: Veredicto; cae?: number | null; arriendoCae?: number }
   if (lineaNoDependeDeTi(["mercado", "vendedor"]) !== "Pero eso no depende de ti: lo pone el mercado o el vendedor.") F("3 · con dos la línea nombra a los dos");
   // y la card dibuja la oración de las filas COMPRAR
   if (!/f\.oracion/.test(BLO)) F("3 · la card no dibuja `f.oracion` en las filas COMPRAR");
-  const o = CSS.match(/\.doc-r2 \.rec-v\.rec-o\{([^}]*)\}/)?.[1] ?? "";
+  const o = CSS.match(/\.doc-dictamen \.rec-v\.rec-o\{([^}]*)\}/)?.[1] ?? "";
   if (!o) F("3 · falta la regla «.doc-r2 .rec-v.rec-o» de la oración (cuerpo de lectura, no cifra en mono)");
   else if (!/font-size:\s*13\.5px/.test(o)) F(`3 · la oración de COMPRAR va a 13,5 px: «${o.trim()}»`);
 }
