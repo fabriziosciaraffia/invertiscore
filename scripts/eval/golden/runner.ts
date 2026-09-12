@@ -61,6 +61,7 @@ import { runHeroRedisenoTier } from "./hero-rediseno-catch-test";
 import { runRecomendacionRedisenoTier } from "./recomendacion-rediseno-catch-test";
 import { runInterruptorRedisenoTier } from "./interruptor-rediseno-catch-test";
 import { runEstructuraStrRedisenoTier } from "./estructura-str-rediseno-catch-test";
+import { runCardStrTier } from "./card-str-catch-test";
 import { runBajadaNoMienteTier } from "./bajada-no-miente-catch-test";
 import { runAlternativaComunasTier } from "./alternativa-comunas-catch-test";
 import { runCandadoTier } from "./candado-catch-test";
@@ -294,6 +295,9 @@ async function printStrSemantic() {
   // ── Tier STR AL REDISEÑO (11-sep-2026, 0 tokens, sin base): lo propio de §11 detrás del
   // interruptor STR, bloque por bloque. Corre siempre con el QUICK. ──
   totalHard += runEstructuraStrRedisenoTier().hard;
+  // Tier CARD-STR (bloque C · 11-sep-2026, 0 tokens, sin base): el constructor por modalidad, los
+  // cuatro estados con el motor STR, Verifica solo con override, renta larga solo con el hallazgo. ──
+  totalHard += runCardStrTier().hard;
   totalHard += runBajadaNoMienteTier().hard;
   totalHard += runAlternativaComunasTier().hard;
 
