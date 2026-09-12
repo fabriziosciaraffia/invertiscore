@@ -23,8 +23,10 @@ import { DIST_PREC_PTS } from "@/lib/distancia-veredicto-hallazgo";
 
 /**
  * Hero STR con el contrato LTR (T1 · 04-sep-2026): chip `f.` en el título, prosa a
- * 75ch colgando del texto del título, la cápsula y el reencuadre dentro de la prosa,
- * "La posición de Franco" con firma (pieza compartida) y el footer "Lo que te separa"
+ * 75ch colgando del texto del título, la cápsula y el reencuadre dentro de la prosa
+ * —SOLO en el camino de la prosa vieja desde el 12-sep-2026; con prosa podada el hero no
+ * monta apertura, igual que LTR—, "La posición de Franco" con firma (pieza compartida)
+ * y el footer "Lo que te separa"
  * con el conteo REAL de vías (cinco en STR: precio · tarifa · plazo · pie · gestión) y
  * el botón VER AJUSTES que abre el modal de vías. Con COMPRAR el footer es "Cuánto
  * aguanta este veredicto": hasta dónde puede caer la tarifa (frontera del motor).
@@ -229,10 +231,12 @@ export function HeroStrDictamen({
   );
 
   /* ¿EL HERO TIENE CUERPO PROPIO? Con prosa podada el h2 no va (§10 se lo da a la sección
-     de hallazgos), así que lo que queda es la apertura —respuesta y reencuadre, que se
-     conservan (decisión del 11-sep-2026)—, el error o el skeleton. Sin ninguna de las
-     tres, la sección no se monta: §2 pide «nada más». */
-  const heroTieneCuerpo = !podada || Boolean(respuesta) || Boolean(prosaError) || Boolean(aiLoading);
+     de hallazgos) y la apertura TAMPOCO (12-sep-2026: `respuestaDirecta` y `reencuadre`
+     no se montan, igual que LTR, aunque el prompt v19 los siga generando y la base los
+     conserve), así que lo que queda es el error o el skeleton. Sin ninguno de los dos, la
+     sección no se monta: §2 pide «nada más». El camino viejo conserva su apertura: su h2
+     es la pregunta de esa prosa y la respuesta la contesta. */
+  const heroTieneCuerpo = !podada || Boolean(prosaError) || Boolean(aiLoading);
 
   const cuerpoHero = (
       <div className="py-[9px]">
@@ -249,7 +253,10 @@ export function HeroStrDictamen({
               <span className="min-w-0">{pregunta}</span>
             </h2>
           )}
-          {respuesta ? (
+          {/* LA APERTURA SOLO CON PROSA VIEJA (12-sep-2026). Con prosa podada la línea que
+              declara ya titula los hallazgos y la recomendación lleva «Lo que haría yo»:
+              la respuesta y el reencuadre repetían en prosa lo que el motor ya muestra. */}
+          {!podada && respuesta ? (
             <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[75ch] md:ml-9">
               {renderPlumon(respuesta)}
               {capsula && (

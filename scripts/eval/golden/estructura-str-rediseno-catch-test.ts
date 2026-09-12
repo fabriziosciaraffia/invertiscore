@@ -234,6 +234,29 @@ function enOrden(txt: string, agujas: string[]): string | null {
 // llevó el provider y la constante: la ruta dev monta la página tal cual la sirve la real,
 // y lo que queda de ella lo fija el bloque 8 (el lienzo).
 
+// ── 9 · la apertura de la prosa podada NO se monta en el hero (12-sep-2026) ──
+// Igual que LTR: con prosa podada (v17+) el hero STR no pinta `respuestaDirecta` ni
+// `reencuadre`. El prompt los sigue generando (v19, quieto) y la base los conserva; lo
+// que cambia es que la página no los lee. El hero podado solo se monta con el error o
+// el skeleton de generación. El camino viejo (prosa v16 y anteriores, 94 filas anónimas
+// que no regeneran) conserva su apertura: su h2 es la pregunta de esa prosa y la
+// respuesta la contesta — sin ella quedaría una pregunta sin respuesta.
+{
+  if (!/const heroTieneCuerpo = !podada \|\| Boolean\(prosaError\) \|\| Boolean\(aiLoading\);/.test(HSTR)) {
+    F("9 · `heroTieneCuerpo` en HeroStrDictamen no es exactamente `!podada || Boolean(prosaError) || Boolean(aiLoading)`: con prosa podada la apertura no cuenta como cuerpo, igual que en LTR");
+  }
+  if (!/\{!podada && respuesta \? \(/.test(HSTR)) {
+    F("9 · la apertura del hero STR no está detrás de `!podada && respuesta`: con prosa podada `respuestaDirecta` y `reencuadre` no se montan (igual que LTR)");
+  }
+  if (/\{respuesta \? \(/.test(HSTR)) F("9 · HeroStrDictamen volvió a montar la apertura con `{respuesta ? (` pelado, sin el gate de la prosa vieja");
+  // y el reencuadre no tiene un render propio fuera de esa rama
+  const ocurrencias = HSTR.match(/renderPlumon\(reencuadre\)/g)?.length ?? 0;
+  if (ocurrencias !== 1) F(`9 · \`renderPlumon(reencuadre)\` aparece ${ocurrencias} veces en HeroStrDictamen; va UNA, dentro de la rama de la prosa vieja`);
+  const iApertura = HSTR.indexOf("{!podada && respuesta ? (");
+  const iReenc = HSTR.indexOf("renderPlumon(reencuadre)");
+  if (iApertura !== -1 && iReenc !== -1 && iReenc < iApertura) F("9 · `renderPlumon(reencuadre)` quedó ANTES de la rama `!podada && respuesta`: se estaría montando con prosa podada");
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runEstructuraStrRedisenoTier(): { hard: number } {
   console.log("\n─── TIER ESTRUCTURA-STR-REDISEÑO (contrato §11 · bloques A y B · 0 tokens) ───");
