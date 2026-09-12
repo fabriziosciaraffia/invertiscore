@@ -60,7 +60,6 @@ const F = (m: string) => fallas.push(m);
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n"); } catch { return ""; } };
 
-const FLAG = leer("src/lib/rediseno-flag.ts");
 const STR = leer("src/app/analisis/renta-corta/[id]/results-client.tsx");
 const HSTR = leer("src/components/analysis/str/HeroStrDictamen.tsx");
 const CIF = leer("src/components/analysis/str/SeisCifrasStr.tsx");
@@ -89,65 +88,61 @@ function enOrden(txt: string, agujas: string[]): string | null {
   return null;
 }
 
-// ── 1 · el interruptor de STR: propio y combinado con el contexto (su valor lo fija
-//        el tier interruptor-rediseno, único dueño del encendido) ──
-{
-  if (!/export const REDISENO_INFORME_STR = (?:true|false);/.test(FLAG)) {
-    F("1 · falta la constante `REDISENO_INFORME_STR` en rediseno-flag.ts. STR necesita SU interruptor: compartir el de LTR ata una modalidad a la otra (contrato §11).");
-  }
-  if (!/const rediseno = REDISENO_INFORME_STR \|\| redisenoHeredado;/.test(STR)) {
-    F("1 · la página STR no deriva `rediseno` de su constante O del contexto heredado. Sin el `||`, la ruta dev con `?rediseno=1` no enciende nada y no hay cómo shotear.");
-  }
-  if (!/<RedisenoProvider valor=\{rediseno\}>/.test(STR)) F("1 · STR no monta `<RedisenoProvider valor={rediseno}>`: las piezas que leen el contexto (cifras, zona, PosicionFranco) no se enteran");
-  const frame = STR.match(/<DocumentoFrame[^>]*>/)?.[0] ?? "";
-  if (!/\brediseno=\{rediseno\}/.test(frame)) F(`1 · el DocumentoFrame de STR no pasa \`rediseno={rediseno}\`: sin la clase doc-r2 el CSS del rediseño no aplica. Encontrado: «${frame.slice(0, 80)}»`);
-}
+// ── 1 · el interruptor de STR — RETIRADO CON ACTA (12-sep-2026, retiro del andamio) ──
+// Fijaba la constante `REDISENO_INFORME_STR`, la derivación `|| redisenoHeredado`, el provider
+// y la prop del frame. Nada de eso existe: el rediseño es el único camino de STR.
 
 // ── 2 · el esqueleto de §2: caja en la portada, hallazgos a su sección en los dos caminos ──
 {
-  if (!/<SeccionInforme id="portada" tono="paper" caja=\{rediseno\}>/.test(STR)) {
-    F("2 · la portada STR no pide `caja={rediseno}`: es el hero del contrato §3 y una de las dos cajas de §2");
+  if (!/<SeccionInforme id="portada" tono="paper" caja>/.test(STR)) {
+    F("2 · la portada STR no pide `caja`: es el hero del contrato §3 y una de las dos cajas de §2");
   }
   // Las DOS cajas de §2 y nada más: la portada en la página y la recomendación en el hero.
   const cajas = [...(STR + HSTR).matchAll(/<SeccionInforme\b[^>]*\bcaja\b/g)].length;
   if (cajas !== 2) F(`2 · hay ${cajas} secciones con «caja» entre la página STR y HeroStrDictamen, y §2 pide 2: la portada y la recomendación. Si nació una tercera, el contrato dice que va suelta sobre el papel.`);
   // El hero recibe `razones` SOLO en el camino viejo: con el rediseño los hallazgos van a su sección.
-  if (!/razones=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?!rediseno && strPodada && hallazgosOrdenadosSTR\.length > 0 \? \(/.test(STR)) {
-    F("2 · el hero STR sigue recibiendo `razones` con el rediseño encendido: los hallazgos se dibujarían DENTRO del hero y otra vez en su sección, o solo adentro. §2 y §4: sección propia, suelta, después del hero.");
+  // INVERTIDO (12-sep-2026): el hero ya no recibe `razones`; los hallazgos van a su sección.
+  if (/razones=\{/.test(STR) || /\{podada && razones\}/.test(HSTR)) {
+    F("2 · el hero STR volvió a recibir `razones`: los hallazgos van a su sección propia, suelta, después del hero (§2 y §4).");
   }
   // Con el rediseño la sección va SIEMPRE —podada o vieja— y viaja al hero por `hallazgos`,
   // que es quien la monta en el medio del orden (bloque B). No cuelga del gate de la prosa.
   const slot = STR.match(/hallazgos=\{[\s\S]*?\n\s{12}\}/)?.[0] ?? "";
-  if (!/hallazgos=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?rediseno && hallazgosOrdenadosSTR\.length > 0 \? \(/.test(STR)) {
-    F("2 · la página STR no le pasa a HeroStrDictamen la sección de hallazgos con `rediseno && hallazgosOrdenadosSTR.length > 0`. Es el gate de la prosa que ya dejó sin hallazgos a LTR tres veces: con el rediseño la sección va SIEMPRE, podada o vieja.");
+  if (!/hallazgos=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?hallazgosOrdenadosSTR\.length > 0 \? \(/.test(STR)) {
+    F("2 · la página STR no le pasa a HeroStrDictamen la sección de hallazgos con `hallazgosOrdenadosSTR.length > 0`. Es el gate de la prosa que ya dejó sin hallazgos a LTR tres veces: la sección va SIEMPRE, podada o vieja.");
   }
   if (!/titulo=\{strPodada \? lineaQueDeclara\(veredicto\) : "Qué determina el veredicto"\}/.test(slot)) {
     F("2 · el título de la sección de hallazgos STR (en el slot `hallazgos`) no es la línea que declara con prosa podada y el título viejo con prosa vieja (§10)");
   }
-  // Y el camino viejo conserva la suya, SOLO sin rediseño: montada en los dos se vería dos veces.
-  if (!/\{!rediseno && !strPodada && hallazgosOrdenadosSTR\.length > 0 && \(/.test(STR)) {
-    F("2 · la sección de hallazgos del camino viejo dejó de excluir el rediseño. Con el rediseño encendido HeroStrDictamen ya la monta: sin el gate, los hallazgos se dibujan DOS veces.");
+  // INVERTIDO (12-sep-2026): la sección vieja ya no existe en la página; la única la monta
+  // el hero. «principales-hallazgos» aparece exactamente una vez.
+  if ((STR.match(/id="principales-hallazgos"/g) ?? []).length !== 1) {
+    F("2 · la página STR tiene que montar «principales-hallazgos» exactamente UNA vez, dentro del slot `hallazgos` del hero");
   }
   // Y el hero no repite la línea que declara cuando la sección ya la lleva.
-  if (!/const rediseno = useRediseno\(\);/.test(HSTR)) F("2 · HeroStrDictamen no lee el interruptor");
-  if (!/\{!\(rediseno && podada\) && \(\s*<h2/.test(HSTR)) {
-    F("2 · HeroStrDictamen sigue pintando su h2 con el rediseño y prosa podada: ese h2 ES la línea que declara, que ahora titula la sección de hallazgos. Se leería dos veces seguidas.");
+  if (/useRediseno/.test(HSTR)) F("2 · HeroStrDictamen volvió a leer un interruptor que ya no existe");
+  if (!/\{!podada && \(\s*<h2/.test(HSTR)) {
+    F("2 · HeroStrDictamen sigue pintando su h2 con prosa podada: ese h2 ES la línea que declara, que titula la sección de hallazgos. Se leería dos veces seguidas.");
   }
 }
 
-// ── 3 · los títulos de §10, detrás del interruptor ──────────────────────────
+// ── 3 · los títulos de §10 — INVERTIDO el 12-sep-2026 (retiro del andamio): sin interruptor,
+//        y los del camino viejo ausentes ──
 {
-  if (!/titulo=\{rediseno \? "Las cifras que tienes que ver" : "Las seis cifras"\}/.test(STR)) F("3 · «Las cifras que tienes que ver» no está detrás del interruptor en STR");
-  if (!/titulo=\{rediseno \? "Detalle de la inversión" : "Cómo funciona como renta corta"\}/.test(STR)) F("3 · «Detalle de la inversión» no está detrás del interruptor en STR");
-  if (!/titulo=\{`\$\{rediseno \? "Ubicación" : "La zona"\} · \$\{comuna\}`\}/.test(STR)) F("3 · «Ubicación · comuna» no está detrás del interruptor en STR");
+  if (!/titulo="Las cifras que tienes que ver"/.test(STR)) F("3 · falta «Las cifras que tienes que ver» en STR");
+  if (!/titulo="Detalle de la inversión"/.test(STR)) F("3 · falta «Detalle de la inversión» en STR");
+  if (!/titulo=\{`Ubicación · \$\{comuna\}`\}/.test(STR)) F("3 · falta «Ubicación · comuna» en STR");
+  for (const viejo of ["Las seis cifras", "Cómo funciona como renta corta", '"La zona"']) {
+    if (STR.includes(viejo)) F(`3 · volvió el título del camino viejo «${viejo}» en STR: el andamio se retiró`);
+  }
 }
 
 // ── 4 · las cifras de §6: tarifa y ocupación primero, destacadas, con el supuesto encima ──
 {
-  if (!/const rediseno = useRediseno\(\);/.test(CIF)) F("4 · SeisCifrasStr no lee el interruptor: el orden y el copy de §6 no pueden depender de él");
-  const i = CIF.indexOf("rediseno\n    ? [");
-  const rama = i === -1 ? "" : CIF.slice(i, CIF.indexOf("\n    : [", i));
-  if (!rama) F("4 · no se encontró la rama del rediseño en las cifras STR (`rediseno ? [ … ] : [ … ]`)");
+  if (/useRediseno/.test(CIF)) F("4 · SeisCifrasStr volvió a leer un interruptor que ya no existe");
+  const i = CIF.indexOf("const cifras: CifraInforme[] = [");
+  const rama = i === -1 ? "" : CIF.slice(i, CIF.indexOf("\n    ];", i));
+  if (!rama) F("4 · no se encontró la lista de cifras STR (`const cifras: CifraInforme[] = [ … ];`)");
   else {
     const falla = enOrden(rama, ['k: "Tarifa por noche"', 'k: "Ocupación"', 'k: "Ingreso mensual"', 'k: "Flujo mensual"', "por día", 'k: "TIR a 10 años"']);
     if (falla) F(`4 · el orden de §6 se rompió en las cifras STR: no encontré «${falla}» después de lo anterior (tarifa · ocupación · ingreso · flujo · cap rate por día · TIR)`);
@@ -156,7 +151,7 @@ function enOrden(txt: string, agujas: string[]): string | null {
     if (!/CAP_STR_UMBRAL_PCT/.test(rama)) F("4 · el cap rate por día perdió su referencia del motor (CAP_STR_UMBRAL_PCT = 5,0%)");
   }
   if (!/Las dos primeras son el supuesto del que cuelga todo lo demás\./.test(CIF)) F("4 · falta la línea «Las dos primeras son el supuesto del que cuelga todo lo demás.»: en renta corta el ingreso es una estimación y eso se declara (§6)");
-  if (!/encabezado=\{rediseno \? /.test(CIF)) F("4 · la línea del supuesto no está detrás del interruptor (`encabezado={rediseno ? …}`)");
+  if (!/encabezado="Las dos primeras son el supuesto/.test(CIF)) F("4 · la línea del supuesto dejó de pasarse a la primitiva como `encabezado`");
   // la primitiva compartida: dos props opcionales, y LTR no las pasa
   if (!/destacada\?: boolean;/.test(PRIM)) F("4 · `CifraInforme` no tiene `destacada?: boolean`");
   if (!/encabezado\?: ReactNode/.test(PRIM)) F("4 · `SeisCifras` no acepta `encabezado?: ReactNode`");
@@ -174,7 +169,7 @@ function enOrden(txt: string, agujas: string[]): string | null {
 
 // ── 5 · la zona de §8: ocupación · tarifa · comparables, pie con fecha, sin tipo-line ──
 {
-  if (!/const rediseno = useRediseno\(\);/.test(ZONA)) F("5 · ZonaStrSection no lee el interruptor");
+  if (/useRediseno/.test(ZONA)) F("5 · ZonaStrSection volvió a leer un interruptor que ya no existe");
   const i = ZONA.indexOf("export function ZonaCeldasStrR2");
   const fin = i === -1 ? -1 : ZONA.indexOf("\n}\n", i);
   const r2 = i === -1 || fin === -1 ? "" : ZONA.slice(i, fin);
@@ -185,17 +180,17 @@ function enOrden(txt: string, agujas: string[]): string | null {
     if (/tipo-line/.test(r2)) F("5 · las tarjetas del rediseño dibujan la tipo-line: la regulación se retiró y §8 no la lista");
     if (!/zp-/.test(r2) && !/<Pildora/.test(r2)) F("5 · las tarjetas STR no usan las píldoras del par direccional (`zp-…`)");
   }
-  // la rama del rediseño de la sección: el pie común con fecha y el enlace del contrato
-  const j = ZONA.indexOf("rediseno ? (");
-  const ramaSec = j === -1 ? "" : ZONA.slice(j, ZONA.indexOf("\n  ) : (", j));
-  if (!ramaSec) F("5 · no se encontró la rama `rediseno ? (` en ZonaStrSection");
+  // el cuerpo de la sección (12-sep-2026: un solo camino): el pie común con fecha y el enlace
+  const j = ZONA.indexOf("const cuerpo = (");
+  const ramaSec = j === -1 ? "" : ZONA.slice(j, ZONA.indexOf("\n  );", j));
+  if (!ramaSec) F("5 · no se encontró `const cuerpo = (` en ZonaStrSection");
   else {
     if (!/className="zona-caveat"/.test(ramaSec)) F("5 · la rama del rediseño no dibuja el pie común (`zona-caveat`) con la fecha de las estimaciones");
     if (!/Ver los comparables →/.test(ramaSec)) F("5 · el enlace de §8 es «Ver los comparables →», no «Explorar»");
     if (/tipo-line/.test(ramaSec)) F("5 · la rama del rediseño conserva la tipo-line");
   }
-  // y el camino viejo sigue con la suya, porque no se rediseñó
-  if (!/className="tipo-line"/.test(ZONA)) F("5 · la tipo-line desapareció del camino viejo: ese informe no cambia hasta que se encienda");
+  // INVERTIDO (12-sep-2026): el camino viejo se fue con su tipo-line; ninguna queda en la sección.
+  if (/className="tipo-line"/.test(ZONA)) F("5 · volvió la tipo-line a ZonaStrSection: la regulación se retiró y el camino viejo también");
 }
 
 // ── 7 · bloque B: hero → hallazgos → recomendación, emitidos por HeroStrDictamen ──
@@ -215,24 +210,23 @@ function enOrden(txt: string, agujas: string[]): string | null {
   // 7b · el hero no se monta vacío, y el camino viejo sigue siendo UNA sección.
   if (!/const heroTieneCuerpo\s*=/.test(HSTR)) F("7 · HeroStrDictamen no decide si el hero tiene cuerpo propio: con prosa podada y sin apertura quedaría una sección vacía con su margen");
   if (!/\{heroTieneCuerpo && \(/.test(HSTR)) F("7 · la sección «hero» de STR se monta sin condición");
-  if (!/if \(!rediseno\) \{\s*return \(\s*<SeccionInforme id="hero" tono="paper2">/.test(HSTR)) {
-    F("7 · con el rediseño apagado HeroStrDictamen tiene que devolver UNA sección «hero» con todo adentro, como siempre: es lo que deja al informe viejo byte a byte igual");
-  }
+  // 7b' · RETIRADO CON ACTA (12-sep-2026): «apagado devuelve UNA sección» — ya no hay apagado.
+  if (/if \(!rediseno\)/.test(HSTR)) F("7 · HeroStrDictamen volvió a tener un camino apagado");
   if (!/<MarcaSeccion seccion="hero" tipo="str"/.test(HSTR)) F("7 · la marca de telemetría del hero no viaja con la sección (se emitía en la página, que ya no la envuelve)");
   // 7c · la página ya no envuelve al hero, y le pasa las dos cosas que necesita.
   if (/<SeccionInforme id="hero"/.test(STR)) F("7 · la página STR volvió a envolver a HeroStrDictamen en la sección «hero»: con ese envoltorio todo lo que el hero emita queda ANIDADO y el orden de §2 es inalcanzable");
   if (!/<HeroStrDictamen[\s\S]{0,700}hallazgos=\{/.test(STR)) F("7 · la página STR no le pasa `hallazgos` a HeroStrDictamen");
   if (!/<HeroStrDictamen[\s\S]{0,700}accessLevel=\{accessLevel\}/.test(STR)) F("7 · la página STR no le pasa `accessLevel` a HeroStrDictamen, que ahora emite las marcas");
   // 7d · la recomendación recibe el estado de §5 y el título del contrato, solo con el rediseño.
-  if (!/estado=\{rediseno \? estadoRec : undefined\}/.test(HSTR)) F("7 · PosicionFranco no recibe `estado` desde el hero STR (§5: la bajada se dibuja por estado)");
+  if (!/estado=\{estadoRec\}/.test(HSTR)) F("7 · PosicionFranco no recibe `estado` desde el hero STR (§5: la bajada se dibuja por estado)");
   if (!/estadoRecomendacion\(veredicto,/.test(HSTR)) F("7 · el estado de la recomendación STR no sale de `estadoRecomendacion`, la fuente única de LTR");
-  if (!/titulo=\{rediseno \? "La recomendación de Franco" : /.test(HSTR)) F("7 · el título de la caja no es «La recomendación de Franco» con el rediseño (§5)");
+  if (!/titulo="La recomendación de Franco"/.test(HSTR)) F("7 · el título de la caja no es «La recomendación de Franco» (§5)");
 }
 
 // ── 8 · el lienzo de §2 en la ruta STR y en la ruta dev ───────────────────
 {
-  if (!/className=\{`min-h-screen bg-\[var\(--franco-bg\)\] \$\{rediseno \? "doc-lienzo" : ""\}`\}/.test(STR)) {
-    F("8 · el wrapper de la página STR no pinta `doc-lienzo` con el rediseño: el informe queda sobre el gris de la app y las tarjetas no se distinguen del fondo (§2, mismo bug que 0b825fca)");
+  if (!/className="min-h-screen bg-\[var\(--franco-bg\)\] doc-lienzo"/.test(STR)) {
+    F("8 · el wrapper de la página STR no pinta `doc-lienzo`: el informe queda sobre el gris de la app y las tarjetas no se distinguen del fondo (§2, mismo bug que 0b825fca)");
   }
   if (!/className="doc-r2 doc-lienzo"/.test(DEV)) F("8 · la ruta dev no pinta el lienzo para LTR: el shot sale sobre el gris de la app y no es el de la ruta real");
 }

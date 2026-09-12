@@ -38,8 +38,6 @@ import { fechaCortaCL } from "@/lib/fecha-cl";
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
 import { PrincipalesHallazgos } from "@/components/analysis/PrincipalesHallazgos";
 import { esProsaStrPodada } from "@/components/analysis/AIInsightSection";
-import { RedisenoProvider, useRediseno } from "@/components/analysis/RedisenoContexto";
-import { REDISENO_INFORME_STR } from "@/lib/rediseno-flag";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { TokensShared } from "@/components/analysis/shared";
@@ -137,14 +135,6 @@ export function STRResultsClient({
   zonaStr = null,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
-  // ═══ EL INTERRUPTOR DEL REDISEÑO, PARA STR (bloque A · 11-sep-2026) ═══
-  // Espejo de `SubjectCardGrid`, con SU constante: `REDISENO_INFORME_STR` —apagada— o lo
-  // que diga un provider de más afuera (la ruta dev con `?rediseno=1`). Nunca la de LTR:
-  // está en `true`, y compartirla encendería acá una pasada a medias (contrato §11).
-  // Se lee ACÁ y se re-provee abajo, para que las piezas compartidas —cifras, zona,
-  // PosicionFranco— lean el mismo valor que el marco.
-  const redisenoHeredado = useRediseno();
-  const rediseno = REDISENO_INFORME_STR || redisenoHeredado;
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
   // SubjectCardGrid): lo abre la pirámide (hallazgos) y la card zona (tipoHuesped).
   // T1 — modal "Cómo se calcula" y apertura de un capítulo desde Principales hallazgos
@@ -408,9 +398,8 @@ export function STRResultsClient({
        el marco del documento retirado, lo que quedaba detrás del informe STR era el gris de
        la app —medido en el DOM: wrapper y body #F6F6F7 contra tarjetas #F4F4F6, o sea nada
        que distinguir—. `doc-lienzo` pinta «--page» en el wrapper y en el body, y nada más:
-       NO lleva `doc-r2` (ese trae `--card`, que también es token de shadcn y rompe el chrome).
-       Detrás del interruptor STR, como todo lo demás. */
-    <div className={`min-h-screen bg-[var(--franco-bg)] ${rediseno ? "doc-lienzo" : ""}`}>
+       NO lleva `doc-r2` (ese trae `--card`, que también es token de shadcn y rompe el chrome). */
+    <div className="min-h-screen bg-[var(--franco-bg)] doc-lienzo">
       {/* Chrome de nav/header — el PDF usa la vista documento aparte, no esta página. */}
       {accessLevel === "guest" || isAnonOwner ? (
         <PublicShareHeader
@@ -473,12 +462,10 @@ export function STRResultsClient({
             conviene.pregunta ?? hardcode (v3 podó el campo). */}
         {/* ═══ DOCUMENTO (FASE 3 rediseño Dictamen): papel + portada; el interior
             se transforma en FASE 4 ═══ */}
-        <RedisenoProvider valor={rediseno}>
-        <DocumentoFrame secciones veredicto={veredicto} rediseno={rediseno}>
+        <DocumentoFrame secciones veredicto={veredicto} rediseno>
         <TokensShared />
-        {/* Contrato §2: la portada ES el hero de §3 y una de las dos cajas. Sin el
-            rediseño la prop no hace nada: `.doc-sec--caja` cuelga de `.doc-r2`. */}
-        <SeccionInforme id="portada" tono="paper" caja={rediseno}>
+        {/* Contrato §2: la portada ES el hero de §3 y una de las dos cajas. */}
+        <SeccionInforme id="portada" tono="paper" caja>
         <PortadaInforme
           veredicto={veredicto}
           score={score}
@@ -511,18 +498,16 @@ export function STRResultsClient({
             EjesAplicadosSTR, la pirámide y los drawers como cuerpo) queda desmontado de la
             página y vivo en el repo hasta T3. */}
         {/* ═══ 2 · HERO · HALLAZGOS · RECOMENDACIÓN ═══ EL ORDEN DEL CONTRATO §2 lo emite
-            `HeroStrDictamen`, como `HeroLTR`: con el rediseño devuelve las tres secciones
-            —hero, la de hallazgos que le pasa esta página, y la recomendación con caja—;
-            apagado devuelve la sección «hero» de siempre con todo adentro. Por eso la
-            página ya no lo envuelve: con el envoltorio el orden era inalcanzable. */}
+            `HeroStrDictamen`, como `HeroLTR`: devuelve las tres secciones —hero, la de
+            hallazgos que le pasa esta página, y la recomendación con caja—. Por eso la
+            página no lo envuelve: con el envoltorio el orden era inalcanzable. */}
           <HeroStrDictamen
             accessLevel={accessLevel}
             hallazgos={
-              /* La MISMA sección que el camino viejo monta más abajo; solo cambia de lugar.
-                 Con el rediseño va SIEMPRE, podada o vieja, sin colgar del gate de la
-                 prosa: con prosa podada su título es la línea que declara (§10), que el
-                 hero deja de repetir; con prosa vieja conserva el suyo. */
-              rediseno && hallazgosOrdenadosSTR.length > 0 ? (
+              /* Va SIEMPRE, podada o vieja, sin colgar del gate de la prosa: con prosa
+                 podada su título es la línea que declara (§10), que el hero deja de
+                 repetir; con prosa vieja conserva el suyo. */
+              hallazgosOrdenadosSTR.length > 0 ? (
                 <SeccionInforme
                   id="principales-hallazgos"
                   tono="paper"
@@ -544,38 +529,12 @@ export function STRResultsClient({
             aiLoading={aiLoading && !aiAnalysis}
             prosaError={aiError && !aiAnalysis ? aiError : null}
             onRetryProsa={() => generarProsa("manual")}
-            razones={
-              /* Con el rediseño los hallazgos NO viajan al hero: van a su sección, suelta,
-                 después de él (contrato §2 y §4). Solo el camino viejo los lee adentro. */
-              !rediseno && strPodada && hallazgosOrdenadosSTR.length > 0 ? (
-                <>
-                  <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
-                  <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} />
-                </>
-              ) : undefined
-            }
           />
-        {/* CAMINO VIEJO. Con prosa podada esta sección no existe: las mismas cuatro
-            líneas se leen arriba, bajo la línea que declara. Acá
-            siguen porque el informe viejo tiene que verse coherente consigo mismo —su
-            título pregunta lo que su prosa contesta— y porque las 94 filas anónimas del
-            parque STR nunca van a regenerar. Con el rediseño la monta HeroStrDictamen en
-            el medio del orden de §2: montada acá también se vería dos veces. */}
-        {!rediseno && !strPodada && hallazgosOrdenadosSTR.length > 0 && (
-          <SeccionInforme
-            id="principales-hallazgos"
-            tono="paper"
-            titulo="Qué determina el veredicto"
-          >
-            <MarcaSeccion seccion="hallazgos" tipo="str" accessLevel={accessLevel} />
-            <PrincipalesHallazgos hallazgos={hallazgosOrdenadosSTR} currency={currency} valorUF={ufValue} />
-          </SeccionInforme>
-        )}
         <SeccionInforme
           id="los-numeros"
           tono={tonoNumerosStr}
-          /* Contrato §10: los tres títulos fijados, detrás del interruptor. */
-          titulo={rediseno ? "Las cifras que tienes que ver" : "Las seis cifras"}
+          /* Contrato §10: los tres títulos fijados. */
+          titulo="Las cifras que tienes que ver"
         >
           <MarcaSeccion seccion="numeros" tipo="str" accessLevel={accessLevel} />
           <SeisCifrasStr results={results} currency={currency} valorUF={ufValue} onCalculo={() => setCalculoAbierto(true)} />
@@ -584,7 +543,7 @@ export function STRResultsClient({
         <SeccionInforme
           id="la-inversion"
           tono={tonoInversionStr}
-          titulo={rediseno ? "Detalle de la inversión" : "Cómo funciona como renta corta"}
+          titulo="Detalle de la inversión"
         >
           <MarcaSeccion seccion="piramide" tipo="str" accessLevel={accessLevel} />
           {francoScore ? (
@@ -615,7 +574,7 @@ export function STRResultsClient({
           )}
         </SeccionInforme>
         {/* La comuna vivía en el ksub; al morir el ksub sube al título. */}
-        <SeccionInforme id="la-zona" tono={tonoZonaStr} titulo={`${rediseno ? "Ubicación" : "La zona"} · ${comuna}`}>
+        <SeccionInforme id="la-zona" tono={tonoZonaStr} titulo={`Ubicación · ${comuna}`}>
           <MarcaSeccion seccion="zona" tipo="str" accessLevel={accessLevel} />
           {/* T2 (05-sep-2026): La zona sobre piezas compartidas, desde `zonaStr` (server, con
               procedencia). T3 borró ZonaCardSTR y el drawer de tipo de huésped. */}
@@ -626,7 +585,6 @@ export function STRResultsClient({
           )}
         </SeccionInforme>
         </DocumentoFrame>
-        </RedisenoProvider>
 
         {/* CTA post-análisis welcome — banda inline al cierre del informe +
             popup (trigger IntersectionObserver + dwell). Solo cobro welcome.

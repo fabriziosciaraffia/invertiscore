@@ -1,7 +1,6 @@
 "use client";
 
 import { Ang } from "@/components/analysis/shared/Ang";
-import { useRediseno } from "@/components/analysis/RedisenoContexto";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { metricaValorONull } from "@/lib/types";
 import { CAP_STR_UMBRAL_PCT } from "@/lib/rentabilidad-str-hallazgo";
@@ -34,7 +33,6 @@ export function SeisCifrasStr({
   valorUF: number;
   onCalculo?: () => void;
 }) {
-  const rediseno = useRediseno();
   const m = results.metrics;
   const base = results.escenarios.base;
   const pct1 = (n: number) => `${n.toFixed(1).replace(".", ",")}%`;
@@ -67,8 +65,7 @@ export function SeisCifrasStr({
       </>
     );
 
-  const cifras: CifraInforme[] = rediseno
-    ? [
+  const cifras: CifraInforme[] = [
         {
           k: "Tarifa por noche",
           v: money(tarifa),
@@ -110,64 +107,12 @@ export function SeisCifrasStr({
           ),
         },
         { k: "TIR a 10 años", v: tir != null ? pct1(tir) : "—", tr: trTir },
-      ]
-    : [
-        {
-          k: "Ingreso mensual estabilizado",
-          v: money(ingreso),
-          tr: (
-            <>
-              Lo que factura un mes típico con la ocupación estimada, <b>antes</b> de comisiones y costos.
-            </>
-          ),
-        },
-        { k: "Flujo mensual", v: money(flujo), neg: flujo < 0, tr: trFlujo },
-        {
-          k: <><Ang>Cap rate</Ang> STR</>,
-          v: pct1(cap),
-          tr: (
-            <>
-              <Ang>Cap rate</Ang> (lo que renta al año sobre el precio): el ingreso neto de un año, lo que queda antes de la cuota, sobre el precio. <b>La referencia para renta corta es {pct1(CAP_STR_UMBRAL_PCT)}.</b>
-            </>
-          ),
-        },
-        {
-          k: "TIR a 10 años",
-          v: tir != null ? pct1(tir) : "—",
-          tr:
-            tir == null ? (
-              <>No se puede calcular: el flujo no cruza cero en el horizonte.</>
-            ) : (
-              <>
-                Lo que rinde tu plata al año, sumando operación, aportes y venta.{" "}
-                <b>Bajo {TIR_LIMITE_PCT}%, conviene más otra inversión.</b>
-              </>
-            ),
-        },
-        {
-          k: "Tarifa por noche · ADR",
-          v: money(tarifa),
-          tr: tarifaEsTuya ? (
-            <>Lo que cobras cada noche ocupada: <b>la tarifa que tú definiste</b>, no la mediana de la zona.</>
-          ) : (
-            <>Lo que cobras cada noche ocupada: <b>la mediana de la zona</b>, sin ajuste.</>
-          ),
-        },
-        {
-          k: "Ocupación base",
-          v: `${Math.round(occ * 100)}%`,
-          tr: occEsTuya ? (
-            <>Noches ocupadas sobre noches del año: <b>el supuesto que tú definiste</b>, no la estimación del mercado.</>
-          ) : (
-            <>Noches ocupadas sobre noches del año: <b>la que estima el mercado para este depto</b>, no un supuesto tuyo.</>
-          ),
-        },
       ];
   return (
     <SeisCifras
       cifras={cifras}
       onCalculo={onCalculo}
-      encabezado={rediseno ? "Las dos primeras son el supuesto del que cuelga todo lo demás." : undefined}
+      encabezado="Las dos primeras son el supuesto del que cuelga todo lo demás."
     />
   );
 }

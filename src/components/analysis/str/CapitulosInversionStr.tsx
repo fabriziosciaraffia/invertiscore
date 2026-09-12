@@ -22,7 +22,6 @@ import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-
 import { PlanNegociacion } from "@/components/ui/AnalysisDrawer";
 import { Matriz, nombreVeredicto, FilaDato, FilasDato, BarraTramos, CurvaAnual, CurvaPatrimonio, BloqueDia1, SegsCierre } from "@/components/analysis/shared";
 import { conApellido } from "@/components/analysis/CapitulosInversion";
-import { useRediseno } from "@/components/analysis/RedisenoContexto";
 
 /**
  * LA INVERSIÓN · STR — los seis capítulos del CONGELADO (T1 · 04-sep-2026):
@@ -125,10 +124,8 @@ export function CapitulosInversionStr({
     }
     return "$" + Math.round(abs).toLocaleString("es-CL");
   };
-  // Contrato §7 (bloque C · 11-sep-2026): con el rediseño las seis filas llevan su cifra
-  // APELLIDADA —Cap rate · Flujo · Al año · Precio · vs arriendo largo · Resultado—, con el
-  // mismo helper de LTR. El camino de siempre conserva la cifra pelada.
-  const rediseno = useRediseno();
+  // Contrato §7 (bloque C · 11-sep-2026): las seis filas llevan su cifra APELLIDADA —Cap
+  // rate · Flujo · Al año · Precio · vs arriendo largo · Resultado—, con el helper de LTR.
   const signed = (n: number) => `${n < 0 ? "−" : n > 0 ? "+" : ""}${money(n)}`;
   const neg = (n: number) => `${n < 0 ? "−" : ""}${money(n)}`;
   const compact = (n: number) => {
@@ -351,7 +348,7 @@ export function CapitulosInversionStr({
       numero: ROMANO.noches,
       pregunta: "Cuántas noches necesitas",
       // «Al año 171 noches»: la unidad va con la cifra porque el apellido solo no la da.
-      valor: conApellido("Al año", rediseno ? `${noches} noches` : String(noches)),
+      valor: conApellido("Al año", `${noches} noches`),
       ksub: [`${noches} noches al año con la ocupación ${occEsTuya ? "que definiste" : "estimada"} (${Math.round(occ * 100)}%)`, arribaTxt, zonaTxt].filter(Boolean).join(" · "),
       anchorId: anchorCapituloStr("noches"),
       cuerpo: (
@@ -424,7 +421,6 @@ export function CapitulosInversionStr({
     const fp = simulacion?.fronteraPrecio ?? null;
     const techoUF = args.pagas.techoUF;
     const techoDeltaPct = techoUF != null && precioUF > 0 ? ((techoUF - precioUF) / precioUF) * 100 : null;
-    const valorIV = techoDeltaPct != null ? `${techoDeltaPct < 0 ? "−" : "+"}${pct1(Math.abs(techoDeltaPct))}%` : ufTxt(precioUF);
     const subeTxt = techoUF != null && args.pagas.veredictoObjetivo ? `sube a ${nombreVeredicto(args.pagas.veredictoObjetivo)} bajo ${ufTxt(techoUF)}` : "";
     const dialPrecio = fp
       ? (() => {
@@ -466,7 +462,7 @@ export function CapitulosInversionStr({
       numero: ROMANO.pagas,
       pregunta: "Cómo lo pagas",
       // §7: la fila dice el PRECIO («Precio UF 5.042»); el delta al techo sigue en el cuerpo.
-      valor: conApellido("Precio", rediseno ? ufTxt(precioUF) : valorIV),
+      valor: conApellido("Precio", ufTxt(precioUF)),
       valorRojo: false,
       ksub: [`precio ${ufTxt(precioUF)}`, `pie ${Math.round(piePct)}%`, plazo > 0 ? `${plazo} años al ${pct1(tasa)}%` : "sin crédito", esEstructural ? subEstructural : subeTxt].filter(Boolean).join(" · "),
       anchorId: anchorCapituloStr("pagas"),

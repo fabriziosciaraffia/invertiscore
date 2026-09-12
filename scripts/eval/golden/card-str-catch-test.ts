@@ -171,14 +171,14 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   if (!/estadoRecomendacion\(veredicto, bloqueDeterminista\)/.test(HSTR)) F("5 · PosicionFranco sigue recibiendo el estado de `estadoRecomendacion(veredicto, null)`: tiene que ser el del bloque construido");
   if (!/btn: "Ver qué se probó"/.test(HSTR)) F("5 · el CTA del estado sin salida no dice «Ver qué se probó» (mismo rótulo que LTR)");
   if (!/<LoQueHariaYoBloque bloque=\{bloqueDeterminista\}/.test(HSTR)) F("5 · el hero STR no monta `LoQueHariaYoBloque` con el bloque determinista");
-  if (!/bloque=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?rediseno && bloqueDeterminista/.test(HSTR)) F("5 · el bloque tiene que ir a PosicionFranco SOLO con el rediseño: apagado, el informe STR no cambia");
+  if (!/bloque=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?bloqueDeterminista \?/.test(HSTR)) F("5 · el bloque no va a PosicionFranco desde el bloque construido");
 }
 
 // ── 6 · los capítulos de §7 con apellido ────────────────────────────────────
 {
   if (!/export const conApellido/.test(CAPS_LTR)) F("6 · `conApellido` no se exporta de CapitulosInversion.tsx: STR tiene que usar el mismo helper, no una copia");
   if (!/import \{[^}]*conApellido[^}]*\} from "@\/components\/analysis\/CapitulosInversion"/.test(CAPS_STR)) F("6 · CapitulosInversionStr no importa `conApellido` de LTR");
-  if (!/const rediseno = useRediseno\(\);/.test(CAPS_STR)) F("6 · CapitulosInversionStr no lee el interruptor");
+  if (/useRediseno/.test(CAPS_STR)) F("6 · CapitulosInversionStr volvió a leer un interruptor que ya no existe");
   for (const ap of ["Cap rate", "Flujo", "Al año", "Precio", "vs arriendo largo", "Resultado"]) {
     if (!new RegExp(`conApellido\\("${ap.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}"`).test(CAPS_STR)) F(`6 · falta el apellido «${ap}» en las filas STR (§7)`);
   }

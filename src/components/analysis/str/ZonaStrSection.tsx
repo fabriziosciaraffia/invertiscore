@@ -4,7 +4,6 @@ import { useRef, useState, type ReactNode } from "react";
 import { usePostHog } from "posthog-js/react";
 import type { ZonaStr } from "@/lib/zona-str";
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import { useRediseno } from "@/components/analysis/RedisenoContexto";
 import { Modal, VProsa, VViz, VSub, VCierre, VFuente } from "@/components/analysis/hallazgos/vocabulario";
 import { FilaDato, FilasDato, Planilla, type FilaPlanilla } from "@/components/analysis/shared";
 
@@ -41,7 +40,6 @@ export function ZonaStrSection({
   accessLevel: string;
 }) {
   const [abierto, setAbierto] = useState(false);
-  const rediseno = useRediseno();
   const posthog = usePostHog();
   const medido = useRef(false);
   const abrir = () => {
@@ -72,12 +70,6 @@ export function ZonaStrSection({
   const cobras = t ? (t.posicion === "igual" ? "Cobras lo que cobra la zona" : t.posicion === "arriba" ? "Cobras sobre lo que cobra la zona" : "Cobras bajo lo que cobra la zona") : "Sin tarifa de referencia para tu zona";
   const ocupa = relTxt ? ` y tu zona ocupa ${relTxt} lo típico de ${comuna}` : "";
   const sintesis = `${cobras}${ocupa}.`;
-  const mitad = t ? (t.posicion === "abajo" ? "la mitad de la zona cobra más que tú" : "la mitad de la zona cobra menos que tú") : "";
-  const superhost = (
-    <>
-      <i>superhost</i> (anfitrión destacado por la plataforma)
-    </>
-  );
 
   // ── detalle para el modal ──
   const avisos = [...zona.avisos].sort((a, b) => (a.distanciaM ?? 1e9) - (b.distanciaM ?? 1e9));
@@ -119,7 +111,7 @@ export function ZonaStrSection({
     `${c ? ` · ${c.n} avisos parecidos · ${fecha(c.fecha)}` : ""}` +
     `${o.comuna ? ` · típico de ${comuna} al ${fecha(o.comuna.fecha)}` : ""}.`;
 
-  const cuerpo = rediseno ? (
+  const cuerpo = (
     <>
       <ZonaCeldasStrR2 zona={zona} comuna={comuna} currency={currency} valorUF={valorUF} />
       <p className="zona-caveat">{pieR2}</p>
@@ -129,52 +121,6 @@ export function ZonaStrSection({
         <span />
         <button type="button" className="doc-lnk" onClick={abrir}>
           Ver los comparables →
-        </button>
-      </div>
-    </>
-  ) : (
-    <>
-      <VProsa>{sintesis}</VProsa>
-      <div className="zona-cells">
-        <div>
-          <p className="k">Tarifa típica de la zona</p>
-          <p className="v">{t ? money(t.mediana) : "sin datos suficientes"}</p>
-          {t && (
-            <p className="s">
-              Tú: <b>{money(t.tuya)}</b> · {t.posicion === "igual" ? "cobras la mediana" : t.posicion === "arriba" ? `cobras sobre la mediana · ${mitad}` : `cobras bajo la mediana · ${mitad}`}
-              {t.esTuya ? " · tarifa definida por ti" : ""}
-            </p>
-          )}
-        </div>
-        <div>
-          <p className="k">Ocupación {o.esTuya ? "definida por ti" : "estimada"}</p>
-          <p className="v">{pct(o.tuya)}</p>
-          <p className="s">
-            Para tu depto{o.comuna ? <> · lo típico de {comuna} es <b>{pct(o.comuna.valor)}</b> · {o.comuna.n} estimaciones al {fecha(o.comuna.fecha)}</> : " · sin datos suficientes de la comuna"}
-          </p>
-        </div>
-        <div>
-          <p className="k">Contra quién te comparan</p>
-          <p className="v">{c ? `${c.n} avisos` : "sin datos suficientes"}</p>
-          {c && (
-            <p className="s">
-              parecidos{c.radioM != null ? ` · hasta ${c.radioM} m` : ""} · <b>{c.nSuperhost}</b> son {superhost} · {fecha(c.fecha)}
-            </p>
-          )}
-        </div>
-      </div>
-      <p className="tipo-line">
-        <b>Tu depto</b>
-        {zona.tipologia}
-      </p>
-      <div className="zona-foot">
-        <VFuente>
-          Datos de mercado · tarifa y ocupación {t?.esTuya || o.esTuya ? "definidas por ti" : "estimadas para este depto"}
-          {c ? ` · ${c.n} avisos parecidos · ${fecha(c.fecha)}` : ""}
-          {o.comuna ? " · típico de la comuna: universo Franco V2" : ""}
-        </VFuente>
-        <button type="button" className="doc-lnk" onClick={abrir}>
-          Explorar →
         </button>
       </div>
     </>

@@ -15,7 +15,6 @@ import { esProsaStrPodada } from "@/components/analysis/AIInsightSection";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import type { ReactNode } from "react";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { useRediseno } from "@/components/analysis/RedisenoContexto";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 import { construirLoQueHariaYo, estadoRecomendacion } from "@/lib/lo-que-haria-yo";
@@ -50,12 +49,7 @@ export function HeroStrDictamen({
   aiLoading,
   prosaError,
   onRetryProsa,
-  razones,
 }: {
-  /** Las cuatro líneas de hallazgo. En v17 se leen DENTRO de este bloque, debajo de la
-   *  línea que declara; con prosa vieja el caller las monta en su sección aparte y acá
-   *  no llega nada. (El bloque de regulación que las acompañaba se retiró el 11-sep-2026.) */
-  razones?: ReactNode;
   /** Contrato §2 (bloque B): la sección de hallazgos YA ARMADA por la página, que este
    *  componente monta entre el hero y la recomendación. Solo con el rediseño. */
   hallazgos?: ReactNode;
@@ -77,7 +71,6 @@ export function HeroStrDictamen({
   // Prosa podada (v17) o los siete bloques viejos. El camino viejo es permanente para
   // las 94 filas anónimas del parque STR, que no pueden regenerar.
   const podada = esProsaStrPodada(ai);
-  const rediseno = useRediseno();
   const conviene = ai?.conviene;
   const respuesta = conviene?.respuestaDirecta?.trim() || null;
   const reencuadre = conviene?.reencuadre?.trim() || null;
@@ -175,9 +168,7 @@ export function HeroStrDictamen({
   //     explorado (−70%), o con la frontera a la mitad o más, aguanta «−50% o más».
   //   · VERIFICA solo si la tarifa la definiste tú (`adrFuente === "override"`): con la
   //     mediana de la zona no hay nada que verificar y la fila no va.
-  // Solo con el rediseño: apagado no hay bloque y el informe de siempre no cambia.
-  const bloqueDeterminista = rediseno
-    ? construirLoQueHariaYo({
+  const bloqueDeterminista = construirLoQueHariaYo({
         modalidad: "str",
         veredicto: veredicto as Veredicto,
         distancia: distancia ?? null,
@@ -202,8 +193,7 @@ export function HeroStrDictamen({
           const uf = Math.floor(fp.precioUFActual * (fp.caeA.factor - DIST_PREC_PTS / 100));
           return uf > fp.precioUFActual ? { uf, pct: Math.round((uf / fp.precioUFActual - 1) * 1000) / 10 } : null;
         })(),
-      })
-    : null;
+      });
   // §5: LA BAJADA SE DIBUJA POR ESTADO, y el estado sale del bloque construido: «comprar»,
   // «con_salida», «sin_salida», o «sin_bloque» solo si el motor no midió (filas viejas).
   const estadoRec = estadoRecomendacion(veredicto, bloqueDeterminista);
@@ -222,39 +212,37 @@ export function HeroStrDictamen({
       cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}
       prosa={estrategia ? renderPlumon(estrategia) : undefined}
       bloque={
-        /* SOLO CON EL REDISEÑO: la rama vieja de PosicionFranco dibujaría el bloque de
-           «Lo que haría yo» en el informe apagado, que no cambia. */
-        rediseno && bloqueDeterminista ? (
+        bloqueDeterminista ? (
           <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} alternativa={alternativa} />
         ) : undefined
       }
-      titulo={rediseno ? "La recomendación de Franco" : podada ? "Lo que haría yo" : undefined}
-      estado={rediseno ? estadoRec : undefined}
+      titulo="La recomendación de Franco"
+      estado={estadoRec}
       fechaFirma={fechaFirma}
       footer={
         /* EL CTA DEL ESTADO SIN SALIDA nombra lo que hay del otro lado: no quedan ajustes
            que hacer, queda ver QUÉ SE PROBÓ. El pop-up es el mismo; cambia el rótulo. */
-        rediseno && footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
+        footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
       }
       tipo="str"
       veredicto={veredicto}
     />
   );
 
-  /* ¿EL HERO TIENE CUERPO PROPIO? Con el rediseño y prosa podada el h2 no va (§10 se lo da
-     a la sección de hallazgos), así que lo que queda es la apertura —respuesta y
-     reencuadre, que se conservan (decisión del 11-sep-2026)—, el error o el skeleton.
-     Sin ninguna de las tres, la sección no se monta: §2 pide «nada más». */
-  const heroTieneCuerpo = !(rediseno && podada) || Boolean(respuesta) || Boolean(prosaError) || Boolean(aiLoading);
+  /* ¿EL HERO TIENE CUERPO PROPIO? Con prosa podada el h2 no va (§10 se lo da a la sección
+     de hallazgos), así que lo que queda es la apertura —respuesta y reencuadre, que se
+     conservan (decisión del 11-sep-2026)—, el error o el skeleton. Sin ninguna de las
+     tres, la sección no se monta: §2 pide «nada más». */
+  const heroTieneCuerpo = !podada || Boolean(respuesta) || Boolean(prosaError) || Boolean(aiLoading);
 
   const cuerpoHero = (
       <div className="py-[9px]">
         <div>
-          {/* CON EL REDISEÑO Y PROSA PODADA ESTE TÍTULO NO VA: es la línea que declara,
-              y §10 se la da como título a la sección de hallazgos, que ahora vive suelta
-              después del hero. Repetirla acá dejaría el mismo texto dos veces seguidas.
-              El camino viejo lo conserva: su título es la pregunta de su propia prosa. */}
-          {!(rediseno && podada) && (
+          {/* CON PROSA PODADA ESTE TÍTULO NO VA: es la línea que declara, y §10 se la da
+              como título a la sección de hallazgos, que vive suelta después del hero.
+              Repetirla acá dejaría el mismo texto dos veces seguidas. La prosa vieja lo
+              conserva: su título es la pregunta de su propia prosa. */}
+          {!podada && (
             <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
               <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
                 f.
@@ -295,21 +283,6 @@ export function HeroStrDictamen({
      lo que la sostiene. Mismo reparto que en `HeroLTR`: las tres secciones las emite el
      hero, porque la recomendación se arma con lo que se calcula acá (footer, prosa,
      estado); la página decide QUÉ va en el medio y lo pasa por `hallazgos`. */
-  if (!rediseno) {
-    return (
-      <SeccionInforme id="hero" tono="paper2">
-        <MarcaSeccion seccion="hero" tipo="str" accessLevel={accessLevel} />
-        <div className="mb-3">
-          {cuerpoHero}
-          {/* LAS RAZONES, dentro del mismo bloque (v17): las cuatro líneas de hallazgo suben
-              acá desde su sección propia. «Qué determina el veredicto» no se borra — se
-              fusiona: la línea que declara ya es ese título. */}
-          {podada && razones}
-          {recomendacion}
-        </div>
-      </SeccionInforme>
-    );
-  }
   return (
     <>
       {heroTieneCuerpo && (
