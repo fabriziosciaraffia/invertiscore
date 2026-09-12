@@ -42397,5 +42397,3727 @@
       "universo": "usado",
       "resolvedAt": "2026-08-15T00:33:56.578Z"
     }
+  },
+  "estructuralMixStr": {
+    "id": "761b08ad-0422-4efc-ac62-70e3f03956b2",
+    "comuna": "Providencia",
+    "ciudad": "Santiago",
+    "nombre": "Renta Corta - Av. Sta. María 0206, 7520400 Providencia, Región Metropolitana, Chile",
+    "tipo": "short-term",
+    "uf": 40851,
+    "created_at": "2026-08-15T13:33:31.687464+00:00",
+    "input_data": {
+      "lat": -33.434713,
+      "lng": -70.632352,
+      "banos": 2,
+      "ciudad": "Santiago",
+      "comuna": "Providencia",
+      "piePct": 20,
+      "adminPro": false,
+      "costoAgua": 12000,
+      "costoWifi": 22000,
+      "direccion": "Av. Sta. María 0206, 7520400 Providencia, Región Metropolitana, Chile",
+      "antiguedad": 15,
+      "mantencion": 20000,
+      "adrOverride": null,
+      "dormitorios": 2,
+      "estadoVenta": "inmediata",
+      "modoGestion": "auto",
+      "occOverride": null,
+      "tasaInteres": 4,
+      "tasaMercado": 4,
+      "ufCongelada": 40851,
+      "ambasGroupId": "e0400f25-a422-47a5-8dfc-c67dc4ae0d8a",
+      "costoInsumos": 22000,
+      "estaAmoblado": false,
+      "habilitacion": "basico",
+      "plazoCredito": 25,
+      "precioCompra": 224680500,
+      "tipoAnalisis": "short-term",
+      "tipoEdificio": "residencial_puro",
+      "gastosComunes": 143000,
+      "tipoPropiedad": "usado",
+      "contribuciones": 251312,
+      "operadorNombre": null,
+      "precioCompraUF": 5500,
+      "superficieUtil": 65,
+      "prepaidChargeId": "charge-e44a9b9e-4052-4565-86a5-e2d2205ac621",
+      "costoAmoblamiento": 3500000,
+      "costoElectricidad": 55000,
+      "capacidadHuespedes": 4,
+      "arriendoLargoMensual": 830000,
+      "comisionAdministrador": 0.2,
+      "edificioPermiteAirbnb": "si"
+    },
+    "superficie": 65,
+    "ai_analysis": {
+      "vsLTR": {
+        "contenido": "En NOI absoluto, el corto te deja $688.183 mensuales frente a $541.729 del arriendo largo —una diferencia de $146.454 al mes. Esa brecha es real, pero los dos escenarios parten en flujo negativo: LTR en -$407.028 y STR en -$260.574. La ventaja del corto no te saca del rojo; solo lo achica. Lo que decide si vale el esfuerzo es esa diferencia de $146.454 mensuales frente a las 8-12 horas semanales de gestión que requiere la autogestión. Si delegas a un administrador, el NOI cae a $504.871 y el flujo empeora a -$443.886: la opción pasiva rinde menos que el arriendo largo.",
+        "cajaAccionable": "Si decides operar, hazlo en modo auto: es la única configuración donde STR supera a LTR. Delegar la gestión invierte la ventaja.",
+        "estrategiaSugerida": "Con autogestión, STR gana $146.454/mes sobre LTR. Pero si tu disponibilidad de tiempo no es real, el administrador te deja peor que un arriendo largo tradicional —evalúa primero si puedes sostener esas horas de forma consistente."
+      },
+      "riesgos": {
+        "contenido": "El break-even está estructuralmente sobre el mercado.\nNecesitas ingresos brutos de $16.163.233 al año para no poner plata de tu bolsillo —eso equivale al 125% de lo que genera la mediana de la zona. No es un problema de mala gestión ni de mes flojo: es que la operación, tal como está financiada, no alcanza a cubrirse sola con lo que el mercado entrega.\n\nLa ocupación observada no alcanza para sostener los números.\nCon 46% de ocupación y un upside potencial de 55%, la operación sigue en rojo incluso en el escenario optimista con gestión profesional (-$67.282/mes). El gap de 9 puntos entre lo observado y el potencial depende de la calidad del listing, las reseñas acumuladas y la consistencia operativa —no del mercado solo. Si la ocupación se queda en el cuartil bajo observado, el flujo cae a -$708.629 mensuales.\n\nEl primer operador STR típicamente subestima los costos de rotación.\nAmoblamiento de entrada y limpieza entre estadías se presupuestan fino, pero el desgaste real de insumos, reposición de amenidades (toallas, sábanas, café, jabones) y mantenciones menores no programadas suele superar lo calculado. Sin un fondo de reserva mensual separado, el primer imprevisto mayor se come el margen que ya era estrecho.",
+        "cajaAccionable": "Mi posición: este depto tiene zona, tipología y edificio a favor, pero el precio de entrada genera una brecha que ningún ajuste operativo cierra. Si no puedes negociar un descuento significativo, hay mejores lugares donde poner este capital."
+      },
+      "conviene": {
+        "reencuadre": "Providencia tiene atractores reales —metro a 295m, Clínica Santa María a 418m, Bellavista a 597m— pero la factibilidad de zona no rescata una rentabilidad que parte bajo el umbral. El edificio permite Airbnb, la tipología es correcta; el problema es el precio pagado por ese acceso.",
+        "cajaAccionable": "Antes de seguir, define cuánto flujo negativo mensual puedes sostener y por cuántos años: si el número no cierra con lo que el activo entrega hoy, el camino es buscar otra propiedad, no ajustar supuestos.",
+        "veredictoFrase": "Flujo negativo estructural: ajusta supuestos antes de comprometerte.",
+        "respuestaDirecta": "El problema central no es la gestión ni la tarifa: es que este departamento necesita rendir 125% por encima de la mediana de la zona solo para cubrir costos. Con ocupación observada del 46%, el flujo queda negativo en $260.574 mensuales incluso operando tú mismo. No hay ajuste realista que cambie esa ecuación; la brecha viene del precio de entrada y la estructura de costos fijos, no de cómo estás mirando los números."
+      },
+      "operacion": {
+        "contenido": "La autogestión exige 8-12 horas semanales sostenidas: check-in, comunicación con huéspedes, coordinación de limpieza, ajuste de tarifas. En los primeros meses de operación, mientras el listing gana reseñas y posición, la ocupación estará bajo el nivel normal —la pérdida acumulada estimada de ese período llega a $1.617.455. Eso exige tener ese colchón disponible antes de la primera reserva, no buscarlo después. En el mes de menor demanda estacional, evalúa activar estadías de mediana duración para sostener la ocupación base.",
+        "cajaAccionable": "Ten al menos $1.617.455 líquidos separados antes de operar: cubren la estabilización inicial sin tocar el capital de emergencia."
+      },
+      "veredicto": "AJUSTA SUPUESTOS",
+      "largoPlazo": {
+        "contenido": "A 10 años, tu capital rinde ×1,74 en este depto frente a ×1,63 en un depósito UF y ×1,97 en un fondo mutuo. La ventaja sobre el depósito es modesta —y viene a cambio de gestión activa, iliquidez y riesgo de vacancia. El fondo supera al depto sin exigir nada. Providencia apreció 3,0% anual en la última década, en línea con la proyección estándar del análisis, así que la plusvalía no es una apuesta a recuperación —pero tampoco es garantía futura: ese 3% ya ocurrió; repetirlo depende de condiciones que no controlas. El flujo acumulado a 10 años suma -$34.106.105: el retorno total descansa casi enteramente en que el activo valga más al vender, no en lo que genera operando.",
+        "cajaAccionable": "La apuesta es que Providencia siga apreciándose 3% real anual y que puedas sostener el flujo negativo 10 años: si alguna de esas dos condiciones falla, un fondo mutuo gana sin esfuerzo."
+      },
+      "rentabilidad": {
+        "contenido": "A UF 5.500 por 65 m², el precio de entrada deja poco margen para que la operación respire. Los costos fijos —gastos comunes, contribuciones, mantención— suman $357.771 mensuales antes de pagar el crédito, y eso comprime el NOI hasta $688.183 en el escenario base. El dividendo de $948.757 está $260.574 por encima de lo que genera la operación. La palanca real no es subir la tarifa ni la ocupación: es negociar el precio de compra. Un descuento del 10% llevaría el CAP a 4,08% y el flujo mensual a -$165.698, lo que reduce la hemorragia pero no la elimina; igual estarías debajo del umbral de 5%.",
+        "cajaAccionable": "Pide contrapropuesta con al menos 10% de descuento y recalcula: si el CAP no supera 5%, el precio de entrada no se justifica por rentabilidad operativa."
+      },
+      "promptVersion": 3
+    },
+    "results": {
+      "veredicto": "AJUSTA SUPUESTOS",
+      "legacyEngineVeredicto": "COMPRAR",
+      "ejesAplicados": {
+        "tipoEdificio": "residencial_puro",
+        "habilitacion": "basico",
+        "adminPro": false,
+        "factorEdificio": 1,
+        "factorHabilitacion": 1,
+        "factorADRTotal": 1,
+        "banda": "auto_gestion_residencial",
+        "ocupacionTarget": 0.55,
+        "adrBaselineP50": 76367.89835330397,
+        "adrAjustado": 76368,
+        "ocupacionBaselineP50": 0.4642133500493698,
+        "adrOverride": null,
+        "occOverride": null,
+        "adrFinal": 76368,
+        "ocupacionFinal": 0.4642133500493698
+      },
+      "pie": 44936100,
+      "montoCredito": 179744400,
+      "dividendoMensual": 948757,
+      "capitalInvertido": 62223313,
+      "metrics": {
+        "ingresoEstabilizadoMensual": 1078303,
+        "ingresoEstabilizadoAnual": 12939631,
+        "flujoMensual": -260574,
+        "capRatePct": 3.6755285839225036,
+        "tirPct": 6.82,
+        "tarifaNoche": 76368,
+        "ocupacion": 0.4642133500493698,
+        "desgloseFall": {
+          "ingreso": 1078303,
+          "comisionPlataforma": 32349,
+          "administrador": 0,
+          "costosDirectos": 111000,
+          "gastosComunesMantencion": 163000,
+          "contribucionesMensuales": 83771,
+          "cuota": 948757,
+          "saleDeTuBolsillo": -260574
+        },
+        "tramosBarra": {
+          "ingreso": 1078303,
+          "costosOperar": 390120,
+          "cuota": 948757,
+          "exceso": 260574,
+          "libre": 0
+        },
+        "dia1": {
+          "pieCLP": 44936100,
+          "gastosCompraCLP": 4493610,
+          "amoblamientoCLP": 3500000,
+          "capexCLP": 9293603,
+          "inversionInicial": 62223313
+        }
+      },
+      "hallazgos": [
+        {
+          "id": "rentabilidad_str",
+          "tipo": "rentabilidad_operativa_str",
+          "valor": {
+            "capRatePct": 3.7,
+            "umbralPct": 5,
+            "gapPts": -1.3,
+            "banda": 3,
+            "modalidad": "str"
+          },
+          "direccion": "adverso",
+          "decisividad": 0.88,
+          "magnitudContinua": 0.88,
+          "procedencia": {
+            "base": "CAP neto (NOI) sobre tu precio y los ingresos del escenario base; umbral STR nacional 5%, aún sin comparables de la comuna",
+            "confianza": "baja"
+          },
+          "titular": "La rentabilidad operativa se queda corta.",
+          "fraseCanonica": "Tu CAP rate en corto es 3,7%, bajo el umbral de 5% que le pedimos a una renta corta en Santiago. Genera caja, pero por debajo del piso que hace que el precio de entrada se justifique por rentabilidad."
+        },
+        {
+          "id": "flujo_str",
+          "tipo": "flujo_estabilizado",
+          "valor": {
+            "flujoMensualCLP": -260574,
+            "banda": 250000,
+            "modalidad": "str"
+          },
+          "direccion": "adverso",
+          "decisividad": 0.24,
+          "magnitudContinua": 0.24,
+          "procedencia": {
+            "base": "flujo del escenario base (ocupación observada de la zona), tras dividendo, comisión y todos los costos operativos",
+            "confianza": "alta"
+          },
+          "titular": "Pones plata de tu bolsillo todos los meses.",
+          "fraseCanonica": "Con la ocupación estimada para tu depto, el corto deja −$260.574 al mes después de la cuota y los costos — un aporte fuerte. Antes de avanzar, confirma que puedes sostenerlo mes a mes: es plata que sale de tu bolsillo, no de la operación."
+        },
+        {
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
+          "valor": {
+            "ocupacionPct": 46,
+            "estimacionPct": 46,
+            "gapPts": 0,
+            "esOverride": false,
+            "esFallback": false,
+            "comuna": "Providencia",
+            "saturacionPts": 15,
+            "modalidad": "str"
+          },
+          "direccion": "neutral",
+          "decisividad": 0,
+          "magnitudContinua": 0,
+          "procedencia": {
+            "base": "estimación de mercado para este depto (valor central de la zona)",
+            "confianza": "media"
+          },
+          "titular": "Tu ocupación es la que estima el mercado para este depto.",
+          "fraseCanonica": "El cálculo usa la ocupación que los datos de mercado estiman para un depto como el tuyo en esta zona: 46%. No pusiste un supuesto propio, así que el caso base y la estimación son el mismo número."
+        },
+        {
+          "id": "ventaja_vs_ltr",
+          "tipo": "ventaja_vs_ltr",
+          "valor": {
+            "sobreRentaPct": 27,
+            "sobreRentaCLP": 146454,
+            "ltrNoiMensual": 541729,
+            "ltrNegativo": false,
+            "pctConfiable": true,
+            "bordePct": 15,
+            "modalidad": "str"
+          },
+          "direccion": "favorable",
+          "decisividad": 0.85,
+          "magnitudContinua": 0.4,
+          "procedencia": {
+            "base": "sobre-renta sobre NOI: corto (escenario base) menos el arriendo largo que declaraste, neto de comisión y gastos",
+            "confianza": "alta"
+          },
+          "titular": "El corto le saca ventaja clara al arriendo largo.",
+          "fraseCanonica": "En corto rindes 27% más neto que arrendando largo el mismo depto —pero esa ventaja compara un corto estabilizado, con la ocupación proyectada, contra un arriendo largo contractual y garantizado. La diferencia justifica el esfuerzo operativo extra —rotación, gestión, estacionalidad—; si la ocupación proyectada no se cumple, se achica. Suma a favor, pero por sí solo no alcanza para mover el veredicto."
+        },
+        {
+          "id": "sensibilidad_str",
+          "tipo": "robustez_veredicto_str",
+          "valor": {
+            "beRatioPct": 125,
+            "corteFavorable": 100,
+            "corteFragil": 110,
+            "corteInviable": 130,
+            "banda": 25,
+            "modalidad": "str"
+          },
+          "direccion": "adverso",
+          "decisividad": 0,
+          "magnitudContinua": 0.6,
+          "procedencia": {
+            "base": "break-even como % de los ingresos brutos de mercado de la zona; recálculo determinístico sobre tus costos y la cuota",
+            "confianza": "alta"
+          },
+          "titular": "El veredicto se sostiene solo si la ocupación se cumple.",
+          "fraseCanonica": "Para no perder plata necesitas facturar el 125% del nivel de mercado — sobre lo que rinde la zona típica. Es un margen apretado: si la ocupación o la tarifa diaria (ADR) vienen algo abajo, el corto deja de cuadrar. Confírmalas contra listings comparables activos antes de comprar."
+        },
+        {
+          "id": "estructura_costos_str",
+          "tipo": "cost_stack",
+          "valor": {
+            "costStackPct": 36,
+            "bandaFavPct": 30,
+            "bandaAdvPct": 40,
+            "banda": 15,
+            "modalidad": "str"
+          },
+          "direccion": "favorable",
+          "decisividad": 0,
+          "magnitudContinua": 0.26666666666666666,
+          "procedencia": {
+            "base": "costos operativos + comisión sobre los ingresos brutos del escenario base; banda típica de mercado, no medida por comuna",
+            "confianza": "media"
+          },
+          "titular": "Los costos están dentro de lo típico.",
+          "fraseCanonica": "Los costos se llevan 36 de cada 100 pesos brutos — dentro de la banda típica en corto. Cada punto que bajes de comisión o servicios va directo a tu flujo."
+        },
+        {
+          "id": "estructura_financiamiento",
+          "tipo": "salud_financiamiento",
+          "valor": {
+            "overall": "aceptable",
+            "driver": "pie",
+            "pieLevel": "aceptable",
+            "piePct": 20,
+            "tasaLevel": "optimo",
+            "tasaPct": 4,
+            "tasaMarketPct": 4.1,
+            "spreadBps": -10,
+            "modalidad": "str"
+          },
+          "direccion": "favorable",
+          "decisividad": 0.04,
+          "magnitudContinua": 0.04,
+          "procedencia": {
+            "base": "Estructura de financiamiento (pie + tasa) sobre tus datos declarados. La tasa se compara contra un promedio de mercado de referencia (UF 4,1%), no en tiempo real — pull manual, puede estar desactualizado. El pie no se mide contra un óptimo: su efecto se muestra calculado, nivel por nivel.",
+            "confianza": "media"
+          },
+          "titular": "Tu financiamiento está bien; el pie puede afinarse.",
+          "fraseCanonica": "Tu estructura de financiamiento está bien: la tasa (4,0%) está en buen nivel y el pie de 20% cumple. Subirlo baja crédito y cuota; cuánto, lo ves nivel por nivel en el detalle. Suma a favor, pero por sí solo no alcanza para mover el veredicto."
+        },
+        {
+          "id": "sobreprecio",
+          "tipo": "precio_vs_comuna",
+          "valor": {
+            "sujetoUfM2": 84.6,
+            "medianaComunaUfM2": 92,
+            "desviacionPct": -8,
+            "sobreprecioUfM2": -7.4,
+            "banda": 30,
+            "n": 264,
+            "comuna": "Providencia"
+          },
+          "direccion": "favorable",
+          "decisividad": 0.85,
+          "magnitudContinua": 0.08,
+          "procedencia": {
+            "base": "mediana de precios de PUBLICACIÓN de venta de la comuna (scraped), no transacción",
+            "confianza": "media"
+          },
+          "titular": "Entras barato: el metro está bajo la mediana comunal.",
+          "fraseCanonica": "Tu precio por m² (UF 84,6) está 8% bajo la mediana de la comuna (UF 92,0). Entras barato para esta comuna. Suma a favor, pero por sí solo no alcanza para mover el veredicto."
+        },
+        {
+          "id": "plusvalia",
+          "tipo": "apreciacion_historica",
+          "valor": {
+            "anualizadaPct": 2.9,
+            "refPct": 3,
+            "gapPts": -0.1,
+            "banda": 2,
+            "fuente": "Histórico 2015-2025 · GfK/NielsenIQ, precios de oferta de deptos nuevos",
+            "scope": "absoluta",
+            "tieneData": true,
+            "cobertura": "trayectoria_propia",
+            "nivelUfM2": 106,
+            "nivelPeriodo": "1T-2025",
+            "modalidad": "str"
+          },
+          "direccion": "adverso",
+          "decisividad": 0,
+          "magnitudContinua": 0.050000000000000044,
+          "procedencia": {
+            "base": "apreciación histórica de la comuna 2015-2025 (GfK/NielsenIQ, precios de oferta de deptos nuevos), no garantía de apreciación futura",
+            "confianza": "media"
+          },
+          "titular": "La comuna subió parejo con la inflación, histórico normal.",
+          "fraseCanonica": "En la última década los departamentos en Providencia se valorizaron 2,9% anual, en línea con el umbral de apreciación real (3,0%). Plusvalía histórica normal: referencia, no garantía futura."
+        },
+        {
+          "id": "capex_puesta_a_punto",
+          "tipo": "capex_habilitacion",
+          "valor": {
+            "montoCLP": 9293603,
+            "montoUF": 227.5,
+            "ufM2": 3.5,
+            "antiguedadAnios": 15,
+            "superficieUtilM2": 65,
+            "modalidad": "str",
+            "origen": "derivado",
+            "fraccionInversion": 0.14935885847158284,
+            "montoMinUF": 227.5,
+            "montoMaxUF": 227.5,
+            "montoMinCLP": 9293603,
+            "montoMaxCLP": 9293603,
+            "ufM2Min": 3.5,
+            "ufM2Max": 3.5
+          },
+          "direccion": "adverso",
+          "decisividad": 0,
+          "magnitudContinua": 0,
+          "procedencia": {
+            "base": "curva por antigüedad",
+            "confianza": "media"
+          },
+          "titular": "Necesita puesta a punto antes de arrendar a mercado.",
+          "fraseCanonica": "Departamento de 15 años: para captar arriendo de mercado, considera unos UF 228 ($9.293.603) de puesta a punto — cerca del 15% de tu inversión inicial. No es remodelar para revender: es dejarlo en estándar de arriendo."
+        },
+        {
+          "id": "tir",
+          "tipo": "retorno_total",
+          "valor": {
+            "tirPct": 6.8,
+            "umbralPct": 6,
+            "gapPts": 0.8,
+            "banda": 10,
+            "modalidad": "str"
+          },
+          "direccion": "favorable",
+          "decisividad": 0,
+          "magnitudContinua": 0.08,
+          "procedencia": {
+            "base": "TIR del exit scenario a 10 años sobre tu inversión inicial, tus aportes mensuales y la venta proyectada",
+            "confianza": "media"
+          },
+          "titular": "Puesto todo junto, el retorno anual rinde lo suficiente.",
+          "fraseCanonica": "Tu TIR —la rentabilidad anual de toda tu inversión— es 6,8%, sobre el mínimo de 6% que le pedimos a una compra apalancada —hecha con crédito— para valer el esfuerzo y la iliquidez. Ese número ya integra el arriendo, tus aportes mensuales y la venta proyectada a 10 años, no solo la renta del mes."
+        },
+        {
+          "id": "patrimonio",
+          "tipo": "patrimonio_neto",
+          "valor": {
+            "patrimonioCLP": 167648249,
+            "aportadoCLP": 96329419,
+            "multiplicador": 1.74,
+            "corteAdverso": 1,
+            "corteFavorable": 2,
+            "banda": 2,
+            "incluyeCorretaje": false,
+            "modalidad": "str"
+          },
+          "direccion": "favorable",
+          "decisividad": 0,
+          "magnitudContinua": 0.37,
+          "procedencia": {
+            "base": "Patrimonio a 10 años sobre lo que aportaste, del escenario de venta",
+            "confianza": "media"
+          },
+          "titular": "A 10 años tu parte vale algo más de lo aportado.",
+          "fraseCanonica": "A 10 años, tras vender y saldar el crédito, tu parte vale UF 4.104 contra las UF 2.358 que aportaste — un multiplicador de ×1,74. Terminas con más de lo que pusiste, pero el margen es acotado: buena parte de ese resultado depende de que la plusvalía proyectada se cumpla."
+        },
+        {
+          "id": "distancia_veredicto",
+          "tipo": "distancia_umbral",
+          "valor": {
+            "veredictoBase": "AJUSTA SUPUESTOS",
+            "veredictoObjetivo": "COMPRAR",
+            "palancas": [],
+            "vias": [
+              {
+                "estado": "noCruza",
+                "palanca": "precio",
+                "actual": 5500,
+                "topeExplorado": 25,
+                "razon": "ni bajando el precio un 25% cambia el veredicto"
+              },
+              {
+                "estado": "noCruza",
+                "palanca": "adr",
+                "actual": 76368,
+                "topeExplorado": 10,
+                "razon": "ni cobrando un 10% más por noche cambia el veredicto"
+              },
+              {
+                "estado": "noCruza",
+                "palanca": "plazo",
+                "actual": 25,
+                "topeExplorado": 30,
+                "razon": "ni a 30 años cambia el veredicto"
+              },
+              {
+                "estado": "noCruza",
+                "palanca": "pie",
+                "actual": 20,
+                "topeExplorado": 30,
+                "razon": "ni con un pie de 30% cambia el veredicto"
+              },
+              {
+                "estado": "noCruza",
+                "palanca": "gestion",
+                "actual": 3,
+                "topeExplorado": 20,
+                "razon": "ni con administrador cambia el veredicto"
+              }
+            ],
+            "palancaMasBarata": null,
+            "palancaHastaComprar": null,
+            "palancasHastaComprar": null,
+            "viasHastaComprar": null,
+            "deltaMinimoComprarFueraDeTope": null,
+            "mixPalancas": {
+              "descuentoPct": 17.5,
+              "sinDescuento": false,
+              "piePct": 30,
+              "plazoAnios": 30,
+              "piePctDelta": 10,
+              "plazoAniosDelta": 5,
+              "descuentoSoloPrecioPct": null,
+              "costoDiaUnoUF": 261,
+              "costoPtsPrecio": 4.8,
+              "dentroDelAlcance": true,
+              "costoDiaUnoBase": "pie_declarado",
+              "combinacionesQueCruzan": 5,
+              "combinacionesProbadas": 6,
+              "segunda": {
+                "descuentoPct": 19.7,
+                "sinDescuento": false,
+                "piePct": 25,
+                "plazoAnios": 30,
+                "costoDiaUnoUF": 4,
+                "costoPtsPrecio": 0.1
+              },
+              "redundanteConPalancaSola": false,
+              "destino": "COMPRAR"
+            },
+            "mixPalancasHastaComprar": null,
+            "sinSalida": false,
+            "esEstructural": true,
+            "deltaMinimoFueraDeTope": {
+              "palanca": "adr",
+              "deltaPct": 21.8
+            },
+            "topePct": 25,
+            "topeAdrPct": 10,
+            "cercaniaUmbral": 0,
+            "brazosGate1Activos": [],
+            "motivosGate": [],
+            "esPuroGate": false,
+            "pieEsPalanca": false,
+            "pieExcluidoPorBono": false,
+            "piePctActual": 20,
+            "casoPrecioJusto": false,
+            "modalidad": "str"
+          },
+          "direccion": "neutral",
+          "decisividad": 0,
+          "procedencia": {
+            "base": "Reevaluación del veredicto moviendo una palanca a la vez: pie, modo de gestión, precio, tarifa por noche y plazo del crédito",
+            "confianza": "alta"
+          },
+          "titular": "Ningún ajuste realista lo lleva al veredicto de arriba.",
+          "fraseCanonica": "Cerrar hasta −25% bajo el precio o cobrar hasta +10% más por noche no cambia el veredicto; recién cobrando +21,8% por noche cruzaría a COMPRAR, y eso ya no es un ajuste. Ni a 30 años, ni con pie 30% ni con administrador cambia. La brecha es del negocio, no de cómo lo estás mirando."
+        }
+      ],
+      "escenarios": {
+        "conservador": {
+          "label": "Conservador",
+          "ingresoAnual": 7396693,
+          "ingresoBrutoMensual": 616391,
+          "comisionMensual": 18492,
+          "costosOperativos": 357771,
+          "noiMensual": 240128,
+          "flujoCajaMensual": -708629,
+          "capRate": 0.012825038220940402,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.13666176855610374
+          },
+          "rentabilidadBruta": 0.03292093439350544,
+          "adrReferencia": 60420,
+          "ocupacionReferencia": 0.3354007335249549
+        },
+        "base": {
+          "label": "Base",
+          "ingresoAnual": 12939631,
+          "ingresoBrutoMensual": 1078303,
+          "comisionMensual": 32349,
+          "costosOperativos": 357771,
+          "noiMensual": 688183,
+          "flujoCajaMensual": -260574,
+          "capRate": 0.036755285839225035,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.05025267619549605
+          },
+          "rentabilidadBruta": 0.057591272940909426,
+          "adrReferencia": 76368,
+          "ocupacionReferencia": 0.4642133500493698
+        },
+        "agresivo": {
+          "label": "Agresivo",
+          "ingresoAnual": 15330876,
+          "ingresoBrutoMensual": 1277573,
+          "comisionMensual": 38327,
+          "costosOperativos": 357771,
+          "noiMensual": 881475,
+          "flujoCajaMensual": -67282,
+          "capRate": 0.04707885196979711,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.012975586819043209
+          },
+          "rentabilidadBruta": 0.06823411911581112,
+          "adrReferencia": 76368,
+          "ocupacionReferencia": 0.55
+        }
+      },
+      "comparativa": {
+        "ltr": {
+          "ingresoBruto": 830000,
+          "noiMensual": 541729,
+          "flujoCaja": -407028
+        },
+        "str_auto": {
+          "label": "Auto",
+          "ingresoAnual": 12939631,
+          "ingresoBrutoMensual": 1078303,
+          "comisionMensual": 32349,
+          "costosOperativos": 357771,
+          "noiMensual": 688183,
+          "flujoCajaMensual": -260574,
+          "capRate": 0.036755285839225035,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.05025267619549605
+          },
+          "rentabilidadBruta": 0.057591272940909426,
+          "adrReferencia": 76368,
+          "ocupacionReferencia": 0.4642133500493698
+        },
+        "str_admin": {
+          "label": "Administrador",
+          "ingresoAnual": 12939631,
+          "ingresoBrutoMensual": 1078303,
+          "comisionMensual": 215661,
+          "costosOperativos": 357771,
+          "noiMensual": 504871,
+          "flujoCajaMensual": -443886,
+          "capRate": 0.026964743268774995,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.08560508502657195
+          },
+          "rentabilidadBruta": 0.057591272940909426,
+          "adrReferencia": 76368,
+          "ocupacionReferencia": 0.4642133500493698
+        },
+        "sobreRenta": 146454,
+        "sobreRentaPct": 0.27034550485574893,
+        "sobreRentaPctConfiable": true,
+        "paybackMeses": 24
+      },
+      "flujoEstacional": [
+        {
+          "mes": "Enero",
+          "ingresoBruto": 1074033,
+          "ingresoNeto": 684041,
+          "flujo": -264716,
+          "factor": 0.08300334917602466
+        },
+        {
+          "mes": "Febrero",
+          "ingresoBruto": 853993,
+          "ingresoNeto": 470602,
+          "flujo": -478155,
+          "factor": 0.06599824696301206
+        },
+        {
+          "mes": "Marzo",
+          "ingresoBruto": 990387,
+          "ingresoNeto": 602904,
+          "flujo": -345853,
+          "factor": 0.07653905059865357
+        },
+        {
+          "mes": "Abril",
+          "ingresoBruto": 896394,
+          "ingresoNeto": 511731,
+          "flujo": -437026,
+          "factor": 0.06927507371457675
+        },
+        {
+          "mes": "Mayo",
+          "ingresoBruto": 888962,
+          "ingresoNeto": 504522,
+          "flujo": -444235,
+          "factor": 0.06870074425240348
+        },
+        {
+          "mes": "Junio",
+          "ingresoBruto": 1035027,
+          "ingresoNeto": 646205,
+          "flujo": -302552,
+          "factor": 0.07998893612307777
+        },
+        {
+          "mes": "Julio",
+          "ingresoBruto": 1546168,
+          "ingresoNeto": 1142012,
+          "flujo": 193255,
+          "factor": 0.1194908706521747
+        },
+        {
+          "mes": "Agosto",
+          "ingresoBruto": 1255256,
+          "ingresoNeto": 859827,
+          "flujo": -88930,
+          "factor": 0.09700866401757212
+        },
+        {
+          "mes": "Septiembre",
+          "ingresoBruto": 992158,
+          "ingresoNeto": 604622,
+          "flujo": -344135,
+          "factor": 0.0766758936321092
+        },
+        {
+          "mes": "Octubre",
+          "ingresoBruto": 1077567,
+          "ingresoNeto": 687469,
+          "flujo": -261288,
+          "factor": 0.08327650742858317
+        },
+        {
+          "mes": "Noviembre",
+          "ingresoBruto": 1166533,
+          "ingresoNeto": 773766,
+          "flujo": -174991,
+          "factor": 0.09015192446317766
+        },
+        {
+          "mes": "Diciembre",
+          "ingresoBruto": 1163153,
+          "ingresoNeto": 770487,
+          "flujo": -178270,
+          "factor": 0.08989073897863492
+        }
+      ],
+      "perdidaRampUp": 1617455,
+      "breakEvenIngresoAnual": 16163233,
+      "breakEvenPctDelMercado": 1.2491262695203595,
+      "sensibilidad": [
+        {
+          "label": "P25",
+          "ingresoAnual": 9047278.101940012,
+          "noiMensual": 373551,
+          "sobreRenta": -168178,
+          "sobreRentaPct": -0.3104467362832708,
+          "sobreRentaPctConfiable": true
+        },
+        {
+          "label": "P50",
+          "ingresoAnual": 12301745.45551486,
+          "noiMensual": 636620,
+          "sobreRenta": 94891,
+          "sobreRentaPct": 0.17516322737014264,
+          "sobreRentaPctConfiable": true
+        },
+        {
+          "label": "P75",
+          "ingresoAnual": 17407658.979755975,
+          "noiMensual": 1049348,
+          "sobreRenta": 507619,
+          "sobreRentaPct": 0.9370349381332733,
+          "sobreRentaPctConfiable": true
+        },
+        {
+          "label": "P90",
+          "ingresoAnual": 22484025.796780013,
+          "noiMensual": 1459688,
+          "sobreRenta": 917959,
+          "sobreRentaPct": 1.6944985407833069,
+          "sobreRentaPctConfiable": true
+        },
+        {
+          "label": "Promedio",
+          "ingresoAnual": 13776946.145002771,
+          "noiMensual": 755866,
+          "sobreRenta": 214137,
+          "sobreRentaPct": 0.3952843580461818,
+          "sobreRentaPctConfiable": true
+        }
+      ],
+      "sensibilidadPrecio": [
+        {
+          "label": "actual",
+          "precioCLP": 224680500,
+          "delta": 0,
+          "capRate": 0.0368,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.0542
+          },
+          "flujoCajaMensual": -260574,
+          "paybackMeses": -1
+        },
+        {
+          "label": "-5%",
+          "precioCLP": 213446475,
+          "delta": -11234025,
+          "capRate": 0.0387,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.0461
+          },
+          "flujoCajaMensual": -213136,
+          "paybackMeses": -1
+        },
+        {
+          "label": "-10%",
+          "precioCLP": 202212450,
+          "delta": -22468050,
+          "capRate": 0.0408,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.0374
+          },
+          "flujoCajaMensual": -165698,
+          "paybackMeses": -1
+        }
+      ],
+      "projections": [
+        {
+          "year": 1,
+          "valorDepto": 231420915,
+          "saldoCredito": 175471315,
+          "flujoOperacionalAnual": -4744349,
+          "flujoAcumulado": -4744349,
+          "aporteMensualPromedio": 395362,
+          "patrimonioNeto": 55949600,
+          "mesesOperativos": 12,
+          "ingresoAnual": 12939631,
+          "comisionAnual": 388189,
+          "costosAnual": 4293252,
+          "ingresoNetoAnual": 8258190,
+          "cuotaAnual": 11385084,
+          "estabilizacionAnual": 1617455,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 2,
+          "valorDepto": 238363542,
+          "saldoCredito": 171024138,
+          "flujoOperacionalAnual": -3157944,
+          "flujoAcumulado": -7902292,
+          "aporteMensualPromedio": 263162,
+          "patrimonioNeto": 67339405,
+          "mesesOperativos": 12,
+          "ingresoAnual": 13392518,
+          "comisionAnual": 401776,
+          "costosAnual": 4422050,
+          "ingresoNetoAnual": 8568693,
+          "cuotaAnual": 11726637,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 3,
+          "valorDepto": 245514449,
+          "saldoCredito": 166395776,
+          "flujoOperacionalAnual": -3187728,
+          "flujoAcumulado": -11090021,
+          "aporteMensualPromedio": 265644,
+          "patrimonioNeto": 79118673,
+          "mesesOperativos": 12,
+          "ingresoAnual": 13861256,
+          "comisionAnual": 415838,
+          "costosAnual": 4554711,
+          "ingresoNetoAnual": 8890707,
+          "cuotaAnual": 12078436,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 4,
+          "valorDepto": 252879882,
+          "saldoCredito": 161578847,
+          "flujoOperacionalAnual": -3216133,
+          "flujoAcumulado": -14306153,
+          "aporteMensualPromedio": 268011,
+          "patrimonioNeto": 91301035,
+          "mesesOperativos": 12,
+          "ingresoAnual": 14346400,
+          "comisionAnual": 430392,
+          "costosAnual": 4691352,
+          "ingresoNetoAnual": 9224656,
+          "cuotaAnual": 12440789,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 5,
+          "valorDepto": 260466279,
+          "saldoCredito": 156565670,
+          "flujoOperacionalAnual": -3243037,
+          "flujoAcumulado": -17549190,
+          "aporteMensualPromedio": 270253,
+          "patrimonioNeto": 103900609,
+          "mesesOperativos": 12,
+          "ingresoAnual": 14848524,
+          "comisionAnual": 445456,
+          "costosAnual": 4832093,
+          "ingresoNetoAnual": 9570976,
+          "cuotaAnual": 12814012,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 6,
+          "valorDepto": 268280267,
+          "saldoCredito": 151348248,
+          "flujoOperacionalAnual": -3268313,
+          "flujoAcumulado": -20817503,
+          "aporteMensualPromedio": 272359,
+          "patrimonioNeto": 116932019,
+          "mesesOperativos": 12,
+          "ingresoAnual": 15368223,
+          "comisionAnual": 461047,
+          "costosAnual": 4977056,
+          "ingresoNetoAnual": 9930120,
+          "cuotaAnual": 13198433,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 7,
+          "valorDepto": 276328675,
+          "saldoCredito": 145918260,
+          "flujoOperacionalAnual": -3291826,
+          "flujoAcumulado": -24109329,
+          "aporteMensualPromedio": 274319,
+          "patrimonioNeto": 130410415,
+          "mesesOperativos": 12,
+          "ingresoAnual": 15906110,
+          "comisionAnual": 477183,
+          "costosAnual": 5126367,
+          "ingresoNetoAnual": 10302560,
+          "cuotaAnual": 13594386,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 8,
+          "valorDepto": 284618535,
+          "saldoCredito": 140267045,
+          "flujoOperacionalAnual": -3313436,
+          "flujoAcumulado": -27422765,
+          "aporteMensualPromedio": 276120,
+          "patrimonioNeto": 144351490,
+          "mesesOperativos": 12,
+          "ingresoAnual": 16462824,
+          "comisionAnual": 493885,
+          "costosAnual": 5280158,
+          "ingresoNetoAnual": 10688781,
+          "cuotaAnual": 14002217,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 9,
+          "valorDepto": 293157091,
+          "saldoCredito": 134385592,
+          "flujoOperacionalAnual": -3332995,
+          "flujoAcumulado": -30755760,
+          "aporteMensualPromedio": 277750,
+          "patrimonioNeto": 158771499,
+          "mesesOperativos": 12,
+          "ingresoAnual": 17039023,
+          "comisionAnual": 511171,
+          "costosAnual": 5438563,
+          "ingresoNetoAnual": 11089289,
+          "cuotaAnual": 14422284,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 10,
+          "valorDepto": 301951804,
+          "saldoCredito": 128264519,
+          "flujoOperacionalAnual": -3350345,
+          "flujoAcumulado": -34106105,
+          "aporteMensualPromedio": 279195,
+          "patrimonioNeto": 173687285,
+          "mesesOperativos": 12,
+          "ingresoAnual": 17635389,
+          "comisionAnual": 529062,
+          "costosAnual": 5601720,
+          "ingresoNetoAnual": 11504607,
+          "cuotaAnual": 14854952,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        }
+      ],
+      "exitScenario": {
+        "yearVenta": 10,
+        "valorVenta": 301951804,
+        "saldoCreditoAlVender": 128264519,
+        "gastosCierre": 6039036,
+        "flujoAcumuladoAlVender": -34106105,
+        "equityCLP": 167648249,
+        "retornoTotal": 133542144,
+        "totalAportado": 96329419,
+        "inversionInicial": 62223313,
+        "multiplicadorCapital": {
+          "tipo": "valor",
+          "valor": 1.7403639588026583
+        },
+        "tirAnual": {
+          "tipo": "valor",
+          "valor": 6.82
+        }
+      },
+      "subsidioTasa": {
+        "califica": false,
+        "tasaConSubsidio": 3.5,
+        "aplicado": false
+      },
+      "zonaSTR": {
+        "comuna": "Providencia",
+        "adrZona": 76368,
+        "occZona": 0.464,
+        "ingresoZonaMensual": 1063530,
+        "percentilADR": 95,
+        "percentilOcupacion": 95,
+        "percentilIngreso": 100,
+        "tierZona": "alta",
+        "score": 97,
+        "comunaNoListada": false,
+        "comunaOcupacion": {
+          "valor": 0.459,
+          "n": 192,
+          "fecha": "2026-08-31"
+        },
+        "comunaAdr": {
+          "valor": 62113,
+          "n": 192,
+          "fecha": "2026-08-31"
+        },
+        "ocupacionVsComuna": "similar",
+        "ocupacionVsComunaPts": 1
+      },
+      "recomendacionModalidad": "INDIFERENTE",
+      "veredictoComparativo": {
+        "recomendacion": "INDIFERENTE",
+        "banda": "INDIFERENTE",
+        "fragil": false,
+        "porAbsoluto": false,
+        "breakEvenPctDelMercado": 1.2491262695203595,
+        "sobreRentaPct": 0.27034550485574893,
+        "sobreRenta": 146454,
+        "flipGestion": {
+          "cambiaVeredicto": true,
+          "modoActual": "auto",
+          "recomendacionAuto": "INDIFERENTE",
+          "recomendacionAdmin": "LTR_PREFERIDO"
+        }
+      },
+      "occFuente": "observada",
+      "occObservada": 0.4642133500493698,
+      "occObservadaFuente": "observada",
+      "adrFuente": "modelo",
+      "adrModelo": 76368,
+      "tipoAnalisis": "short-term",
+      "francoScore": {
+        "score": 55,
+        "veredicto": "AJUSTA SUPUESTOS",
+        "overrideApplied": null,
+        "gates": {
+          "brazos": {
+            "g1_cocSevero": false,
+            "g1_beInviable": false,
+            "g1_flujoSevero": false,
+            "g1_capRateMinimo": false,
+            "g2_ltrGana": false,
+            "g2_cocFuerte": false,
+            "g2_flujoSinHorizonte": true,
+            "g2_beApretado": true
+          },
+          "gate1": false,
+          "gate2": false,
+          "motivos": []
+        },
+        "desglose": {
+          "rentabilidad": {
+            "score": 44,
+            "label": "Rentabilidad",
+            "detail": "CAP Rate 3.7% — bajo, apenas viable",
+            "peso": 25
+          },
+          "sostenibilidad": {
+            "score": 17,
+            "label": "Sostenibilidad",
+            "detail": "Flujo -$260.574/mes. Break-even al 125% del mercado",
+            "peso": 25
+          },
+          "ventaja": {
+            "score": 72,
+            "label": "Ventaja vs LTR",
+            "detail": "STR genera +27% más que arriendo largo",
+            "peso": 25
+          },
+          "factibilidad": {
+            "score": 87,
+            "label": "Factibilidad",
+            "detail": "Buena zona y tipología para Airbnb. Metro: 295m · Clínica: Clínica Santa María (418m) · Bellavista / Pío Nono (597m)",
+            "peso": 25
+          }
+        }
+      },
+      "airbnbRaw": {
+        "baths": 2,
+        "guests": 4,
+        "address": "Av. Sta. María 0206, 7520400 Providencia, Región Metropolitana, Chile",
+        "bedrooms": 2,
+        "currency": "CLP",
+        "expires_at": "2026-11-13T13:29:44.713+00:00",
+        "percentiles": {
+          "revenue": {
+            "avg": 13776946.145002771,
+            "p25": 9047278.101940012,
+            "p50": 12301745.45551486,
+            "p75": 17407658.979755975,
+            "p90": 22484025.796780013
+          },
+          "occupancy": {
+            "avg": 0.47161882760032564,
+            "p25": 0.3354007335249549,
+            "p50": 0.4642133500493698,
+            "p75": 0.6058649025537546,
+            "p90": 0.7239719956042827
+          },
+          "average_daily_rate": {
+            "avg": 85203.75674153755,
+            "p25": 60419.97651962757,
+            "p50": 76367.89835330397,
+            "p75": 100996.68254325539,
+            "p90": 129457.32428931177
+          }
+        },
+        "estimated_adr": 85204,
+        "monthly_revenue": [
+          0.08300334917602466,
+          0.06599824696301206,
+          0.07653905059865357,
+          0.06927507371457675,
+          0.06870074425240348,
+          0.07998893612307777,
+          0.1194908706521747,
+          0.09700866401757212,
+          0.0766758936321092,
+          0.08327650742858317,
+          0.09015192446317766,
+          0.08989073897863492
+        ],
+        "comparables_count": 0,
+        "estimated_occupancy": 0.47,
+        "estimated_annual_revenue": 13776946
+      },
+      "ocupacionRealizadaComparables": {
+        "n": 25,
+        "p50": 0.411,
+        "nSuperhost": 19,
+        "p50Superhost": 0.49
+      }
+    },
+    "simulacion": {
+      "veredictoBase": "AJUSTA SUPUESTOS",
+      "fronterasIngreso": {
+        "veredictoBase": "AJUSTA SUPUESTOS",
+        "abajo": {
+          "factor": 0.9603515625000001,
+          "veredicto": "BUSCAR OTRA"
+        },
+        "arriba": {
+          "factor": 1.21875,
+          "veredicto": "COMPRAR"
+        },
+        "tarifa": {
+          "actual": 76368,
+          "abajo": 73340,
+          "arriba": 93074
+        },
+        "ocupacion": {
+          "actual": 0.4642133500493698,
+          "abajo": 0.446,
+          "arriba": 0.566
+        }
+      },
+      "fronteraPrecio": {
+        "precioUFActual": 5500,
+        "subeA": {
+          "factor": 0.7251953125,
+          "veredicto": "COMPRAR",
+          "precioUF": 3988
+        },
+        "caeA": {
+          "factor": 1.056640625,
+          "veredicto": "BUSCAR OTRA",
+          "precioUF": 5812
+        }
+      },
+      "mesCierra": {
+        "precioCLP": 162972568,
+        "precioUF": 3989,
+        "factor": 0.725352525029987
+      },
+      "limiteTir": {
+        "precioCLP": 251725593,
+        "precioUF": 6162,
+        "factor": 1.120371340637038
+      },
+      "matrizTarifaOcupacion": {
+        "tarifas": [
+          60420,
+          76368,
+          100997,
+          129457
+        ],
+        "ocupaciones": [
+          0.335,
+          0.464,
+          0.606,
+          0.724
+        ],
+        "celdas": [
+          {
+            "tarifaCLP": 60420,
+            "ocupacion": 0.335,
+            "flujoMensual": -709343,
+            "veredicto": "BUSCAR OTRA",
+            "esActual": false,
+            "cruza": false,
+            "cae": true
+          },
+          {
+            "tarifaCLP": 76368,
+            "ocupacion": 0.335,
+            "flujoMensual": -551715,
+            "veredicto": "BUSCAR OTRA",
+            "esActual": false,
+            "cruza": false,
+            "cae": true
+          },
+          {
+            "tarifaCLP": 100997,
+            "ocupacion": 0.335,
+            "flujoMensual": -308285,
+            "veredicto": "BUSCAR OTRA",
+            "esActual": false,
+            "cruza": false,
+            "cae": true
+          },
+          {
+            "tarifaCLP": 129457,
+            "ocupacion": 0.335,
+            "flujoMensual": -26988,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 60420,
+            "ocupacion": 0.464,
+            "flujoMensual": -479382,
+            "veredicto": "BUSCAR OTRA",
+            "esActual": false,
+            "cruza": false,
+            "cae": true
+          },
+          {
+            "tarifaCLP": 76368,
+            "ocupacion": 0.464,
+            "flujoMensual": -260574,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "esActual": true,
+            "cruza": false,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 100997,
+            "ocupacion": 0.464,
+            "flujoMensual": 76114,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 129457,
+            "ocupacion": 0.464,
+            "flujoMensual": 465730,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 60420,
+            "ocupacion": 0.606,
+            "flujoMensual": -226247,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "esActual": false,
+            "cruza": false,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 76368,
+            "ocupacion": 0.606,
+            "flujoMensual": 58895,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 100997,
+            "ocupacion": 0.606,
+            "flujoMensual": 499250,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 129457,
+            "ocupacion": 0.606,
+            "flujoMensual": 1008102,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 60420,
+            "ocupacion": 0.724,
+            "flujoMensual": -15895,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 76368,
+            "ocupacion": 0.724,
+            "flujoMensual": 324770,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 100997,
+            "ocupacion": 0.724,
+            "flujoMensual": 850870,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 129457,
+            "ocupacion": 0.724,
+            "flujoMensual": 1458805,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          }
+        ]
+      },
+      "matrizPiePlazo": {
+        "pies": [
+          15,
+          20,
+          25,
+          30
+        ],
+        "plazos": [
+          15,
+          20,
+          25,
+          30
+        ],
+        "celdas": [
+          {
+            "piePct": 15,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -724461,
+            "tirPct": 5.97,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 15,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -469109,
+            "tirPct": 6.6,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 15,
+            "plazoAnios": 25,
+            "esActual": false,
+            "flujoMensual": -319871,
+            "tirPct": 7.05,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 15,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -223577,
+            "tirPct": 7.38,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -641365,
+            "tirPct": 5.92,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -401033,
+            "tirPct": 6.45,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 25,
+            "esActual": true,
+            "flujoMensual": -260574,
+            "tirPct": 6.82,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -169944,
+            "tirPct": 7.09,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 25,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -558268,
+            "tirPct": 5.89,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 25,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -332957,
+            "tirPct": 6.34,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 25,
+            "plazoAnios": 25,
+            "esActual": false,
+            "flujoMensual": -201277,
+            "tirPct": 6.64,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 25,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -116311,
+            "tirPct": 6.86,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 30,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -475171,
+            "tirPct": 5.85,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 30,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -264881,
+            "tirPct": 6.24,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 30,
+            "plazoAnios": 25,
+            "esActual": false,
+            "flujoMensual": -141980,
+            "tirPct": 6.49,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 30,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -62678,
+            "tirPct": 6.67,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          }
+        ]
+      }
+    },
+    "mediana": {
+      "mediana": 92.02,
+      "n": 264,
+      "universo": "usado",
+      "ventanaDias": 90
+    },
+    "zonaStr": {
+      "tarifaZona": {
+        "mediana": 76368,
+        "tuya": 76368,
+        "esTuya": false,
+        "posicion": "igual",
+        "n": 25,
+        "fecha": "2026-08-15T13:29:47.543211+00:00"
+      },
+      "ocupacion": {
+        "tuya": 0.4642133500493698,
+        "esTuya": false,
+        "comuna": {
+          "valor": 0.459,
+          "n": 192,
+          "fecha": "2026-08-31"
+        },
+        "relacion": "similar"
+      },
+      "comparables": {
+        "n": 25,
+        "nSuperhost": 19,
+        "radioM": 950,
+        "estadiaNoches": 4.4,
+        "fecha": "2026-08-15T13:29:47.543211+00:00"
+      },
+      "tipologia": "2D · 65 m² · 4 huéspedes",
+      "lugares": [
+        {
+          "nombre": "Parque Balmaceda",
+          "tipo": "parque",
+          "distanciaM": 264
+        },
+        {
+          "nombre": "Baquedano · L1",
+          "tipo": "metro",
+          "distanciaM": 295
+        },
+        {
+          "nombre": "Clínica Santa María",
+          "tipo": "clinica",
+          "distanciaM": 418
+        },
+        {
+          "nombre": "Salvador · L1",
+          "tipo": "metro",
+          "distanciaM": 622
+        },
+        {
+          "nombre": "Parque Bustamante",
+          "tipo": "parque",
+          "distanciaM": 687
+        },
+        {
+          "nombre": "Universidad de Chile - Casa Central",
+          "tipo": "universidad",
+          "distanciaM": 787
+        }
+      ],
+      "perfiles": [
+        {
+          "perfil": "paciente_medico",
+          "label": "Paciente médico / Familiar acompañante",
+          "descripcion": "Paciente en tratamiento o familiar acompañante (1-3 semanas). Prioriza cercanía caminable a una clínica, silencio, cortinas que oscurezcan para el descanso prolongado, cocina equipada y lavadora."
+        },
+        {
+          "perfil": "ejecutivo_corto",
+          "label": "Ejecutivo en visita corta",
+          "descripcion": "Visita por trabajo (3-7 noches). Prioriza cercanía a zona de negocios (El Golf, Sanhattan, Apoquindo), internet rápido, escritorio funcional y conexión rápida con el aeropuerto."
+        },
+        {
+          "perfil": "nomada_digital",
+          "label": "Trabajador remoto",
+          "descripcion": "Trabajador remoto extranjero o de regiones (1-3 meses). Prioriza cocina equipada, lavadora, espacio de trabajo cómodo, internet sólido y barrio activo con cafés."
+        },
+        {
+          "perfil": "turista_leisure",
+          "label": "Turista",
+          "descripcion": "Visita Santiago por turismo (2-5 noches). Prioriza una ubicación caminable, cerca de barrios con vida (Lastarria, Bellavista, centro histórico), restaurantes y transporte público."
+        },
+        {
+          "perfil": "familia",
+          "label": "Familia visitando",
+          "descripcion": "Familia en visita corta (3-5 noches), a veces acompañando a estudiantes o eventos. Prioriza parques cercanos, centros comerciales familiares y un depto amplio antes que lujo."
+        }
+      ],
+      "avisos": [
+        {
+          "tarifa": 75509.6,
+          "ocupacion": 0.115,
+          "estadiaNoches": 3.2,
+          "superhost": true,
+          "distanciaM": 314,
+          "resenas": 60,
+          "nota": 4.88,
+          "lat": -33.4342,
+          "lng": -70.6357
+        },
+        {
+          "tarifa": 80468.2,
+          "ocupacion": 0.411,
+          "estadiaNoches": 4.3,
+          "superhost": false,
+          "distanciaM": 338,
+          "resenas": 124,
+          "nota": 4.61,
+          "lat": -33.4348,
+          "lng": -70.6287
+        },
+        {
+          "tarifa": 45320.6,
+          "ocupacion": 0.474,
+          "estadiaNoches": 7.4,
+          "superhost": true,
+          "distanciaM": 387,
+          "resenas": 182,
+          "nota": 4.77,
+          "lat": -33.4336,
+          "lng": -70.6363
+        },
+        {
+          "tarifa": 63263.1,
+          "ocupacion": 0.301,
+          "estadiaNoches": 2.8,
+          "superhost": true,
+          "distanciaM": 432,
+          "resenas": 35,
+          "nota": 4.6,
+          "lat": -33.4349,
+          "lng": -70.6277
+        },
+        {
+          "tarifa": 81720,
+          "ocupacion": 0.595,
+          "estadiaNoches": 3.4,
+          "superhost": true,
+          "distanciaM": 446,
+          "resenas": 132,
+          "nota": 4.85,
+          "lat": -33.4353,
+          "lng": -70.6276
+        },
+        {
+          "tarifa": 71534.1,
+          "ocupacion": 0.425,
+          "estadiaNoches": 3.6,
+          "superhost": false,
+          "distanciaM": 446,
+          "resenas": 76,
+          "nota": 4.59,
+          "lat": -33.4353,
+          "lng": -70.6276
+        },
+        {
+          "tarifa": 90262.4,
+          "ocupacion": 0.611,
+          "estadiaNoches": 3.6,
+          "superhost": true,
+          "distanciaM": 446,
+          "resenas": 40,
+          "nota": 4.8,
+          "lat": -33.4353,
+          "lng": -70.6276
+        },
+        {
+          "tarifa": 85851.7,
+          "ocupacion": 0.386,
+          "estadiaNoches": 6,
+          "superhost": true,
+          "distanciaM": 446,
+          "resenas": 21,
+          "nota": 4.71,
+          "lat": -33.4353,
+          "lng": -70.6276
+        },
+        {
+          "tarifa": 71454.7,
+          "ocupacion": 0.34,
+          "estadiaNoches": 5.4,
+          "superhost": true,
+          "distanciaM": 446,
+          "resenas": 11,
+          "nota": 5,
+          "lat": -33.4353,
+          "lng": -70.6276
+        },
+        {
+          "tarifa": 59771.3,
+          "ocupacion": 0.362,
+          "estadiaNoches": 5.7,
+          "superhost": false,
+          "distanciaM": 448,
+          "resenas": 40,
+          "nota": 4.35,
+          "lat": -33.4354,
+          "lng": -70.6276
+        },
+        {
+          "tarifa": 62328.7,
+          "ocupacion": 0.104,
+          "estadiaNoches": 5.3,
+          "superhost": true,
+          "distanciaM": 448,
+          "resenas": 92,
+          "nota": 4.46,
+          "lat": -33.4322,
+          "lng": -70.6361
+        },
+        {
+          "tarifa": 67000.5,
+          "ocupacion": 0.518,
+          "estadiaNoches": 5.6,
+          "superhost": true,
+          "distanciaM": 474,
+          "resenas": 58,
+          "nota": 4.93,
+          "lat": -33.4331,
+          "lng": -70.6371
+        },
+        {
+          "tarifa": 99956.8,
+          "ocupacion": 0.49,
+          "estadiaNoches": 7,
+          "superhost": true,
+          "distanciaM": 508,
+          "resenas": 33,
+          "nota": 4.91,
+          "lat": -33.4343,
+          "lng": -70.6269
+        },
+        {
+          "tarifa": 63856.9,
+          "ocupacion": 0.501,
+          "estadiaNoches": 3.8,
+          "superhost": true,
+          "distanciaM": 523,
+          "resenas": 59,
+          "nota": 4.9,
+          "lat": -33.4354,
+          "lng": -70.6268
+        },
+        {
+          "tarifa": 89576.4,
+          "ocupacion": 0.31,
+          "estadiaNoches": 3.8,
+          "superhost": false,
+          "distanciaM": 546,
+          "resenas": 32,
+          "nota": 4.78,
+          "lat": -33.4316,
+          "lng": -70.6369
+        },
+        {
+          "tarifa": 66829,
+          "ocupacion": 0.784,
+          "estadiaNoches": 13.1,
+          "superhost": true,
+          "distanciaM": 643,
+          "resenas": 47,
+          "nota": 4.94,
+          "lat": -33.4387,
+          "lng": -70.6273
+        },
+        {
+          "tarifa": 74239.9,
+          "ocupacion": 0.203,
+          "estadiaNoches": 4.6,
+          "superhost": true,
+          "distanciaM": 714,
+          "resenas": 64,
+          "nota": 4.95,
+          "lat": -33.4381,
+          "lng": -70.6388
+        },
+        {
+          "tarifa": 92520.3,
+          "ocupacion": 0.31,
+          "estadiaNoches": 6.3,
+          "superhost": false,
+          "distanciaM": 718,
+          "resenas": 37,
+          "nota": 5,
+          "lat": -33.4327,
+          "lng": -70.625
+        },
+        {
+          "tarifa": 75701.6,
+          "ocupacion": 0.677,
+          "estadiaNoches": 3.9,
+          "superhost": true,
+          "distanciaM": 790,
+          "resenas": 289,
+          "nota": 4.87,
+          "lat": -33.4416,
+          "lng": -70.6346
+        },
+        {
+          "tarifa": 81141.5,
+          "ocupacion": 0.586,
+          "estadiaNoches": 4,
+          "superhost": true,
+          "distanciaM": 794,
+          "resenas": 390,
+          "nota": 4.84,
+          "lat": -33.4415,
+          "lng": -70.635
+        },
+        {
+          "tarifa": 61348.3,
+          "ocupacion": 0.4,
+          "estadiaNoches": 7,
+          "superhost": true,
+          "distanciaM": 802,
+          "resenas": 22,
+          "nota": 4.82,
+          "lat": -33.4321,
+          "lng": -70.6243
+        },
+        {
+          "tarifa": 57160.1,
+          "ocupacion": 0.208,
+          "estadiaNoches": 2.9,
+          "superhost": true,
+          "distanciaM": 835,
+          "resenas": 22,
+          "nota": 5,
+          "lat": -33.4288,
+          "lng": -70.6268
+        },
+        {
+          "tarifa": 67671.2,
+          "ocupacion": 0.378,
+          "estadiaNoches": 4.1,
+          "superhost": false,
+          "distanciaM": 842,
+          "resenas": 146,
+          "nota": 4.88,
+          "lat": -33.4418,
+          "lng": -70.6357
+        },
+        {
+          "tarifa": 53481.6,
+          "ocupacion": 0.715,
+          "estadiaNoches": 7.5,
+          "superhost": true,
+          "distanciaM": 887,
+          "resenas": 85,
+          "nota": 4.93,
+          "lat": -33.4335,
+          "lng": -70.6418
+        },
+        {
+          "tarifa": 113834.1,
+          "ocupacion": 0.751,
+          "estadiaNoches": 4.4,
+          "superhost": true,
+          "distanciaM": 906,
+          "resenas": 207,
+          "nota": 4.99,
+          "lat": -33.4364,
+          "lng": -70.6419
+        }
+      ]
+    }
+  },
+  "estructuralMixNiegaStr": {
+    "id": "2cb57d90-e6ef-405c-98f4-a8524afe35cd",
+    "comuna": "Santiago",
+    "ciudad": "Santiago",
+    "nombre": "Renta Corta - Lord Cochrane 302, 2017, 8331163 Santiago, Región Metropolitana, Chile",
+    "tipo": "short-term",
+    "uf": 40854,
+    "created_at": "2026-08-16T21:13:29.393579+00:00",
+    "input_data": {
+      "lat": -33.4503528,
+      "lng": -70.6545533,
+      "banos": 1,
+      "ciudad": "Santiago",
+      "comuna": "Santiago",
+      "piePct": 10,
+      "adminPro": false,
+      "costoAgua": 12000,
+      "costoWifi": 22000,
+      "direccion": "Lord Cochrane 302, 2017, 8331163 Santiago, Región Metropolitana, Chile",
+      "antiguedad": 8,
+      "mantencion": 20000,
+      "adrOverride": 29000,
+      "dormitorios": 2,
+      "estadoVenta": "inmediata",
+      "modoGestion": "auto",
+      "occOverride": 0.6,
+      "tasaInteres": 4,
+      "tasaMercado": 4,
+      "ufCongelada": 40854,
+      "ambasGroupId": "a2ea33db-a729-4e0e-a02f-bd268ca47b0a",
+      "costoInsumos": 22000,
+      "estaAmoblado": false,
+      "habilitacion": "basico",
+      "plazoCredito": 25,
+      "precioCompra": 79665300,
+      "tipoAnalisis": "short-term",
+      "tipoEdificio": "residencial_puro",
+      "gastosComunes": 83000,
+      "tipoPropiedad": "usado",
+      "contribuciones": 0,
+      "operadorNombre": null,
+      "precioCompraUF": 1950,
+      "superficieUtil": 46,
+      "costoAmoblamiento": 3500000,
+      "costoElectricidad": 55000,
+      "capacidadHuespedes": 4,
+      "arriendoLargoMensual": 380000,
+      "comisionAdministrador": 0.2,
+      "edificioPermiteAirbnb": "si"
+    },
+    "superficie": 46,
+    "ai_analysis": {
+      "vsLTR": {
+        "contenido": "En términos de NOI mensual, el STR en modo autogestión entrega $299.372 frente a $258.000 del arriendo largo: una diferencia de $41.372 al mes. Esa brecha es real, pero convive con un flujo negativo en ambas modalidades: tanto STR como LTR implican poner plata de tu bolsillo cada mes. La ventaja STR desaparece completamente si delegas la operación a un administrador, donde el NOI cae a $209.400 y el flujo se deteriora más que con arriendo largo. Aquí la decisión no es STR versus LTR por rendimiento: está parejo considerando el esfuerzo operativo de 8 a 12 horas semanales que exige la autogestión, frente a un arriendo largo que corre casi solo. La sobre-renta de 16% compensa ese esfuerzo solo si la ocupación asumida se sostiene, y hoy no hay datos observados que la confirmen.",
+        "cajaAccionable": "Opera en autogestión o no operes en corto: la ventaja STR existe solo en ese modo, y aun así el flujo sigue negativo. Arriendo largo es la alternativa más simple si no puedes dedicar tiempo operativo.",
+        "estrategiaSugerida": "Si optas por STR, mantén la autogestión: el modo administrador elimina la ventaja sobre LTR y profundiza el flujo negativo en $89.972 mensuales adicionales. El payback del amoblamiento en 85 meses es largo; considera si ese capital tiene mejor uso mientras la ocupación real no se confirma."
+      },
+      "riesgos": {
+        "contenido": "Break-even estructuralmente fuera del mercado.\nEl depto necesita 115% de los ingresos brutos medianos de la zona solo para no poner plata de tu bolsillo. Eso significa que incluso operando al nivel promedio de la competencia, el flujo sigue negativo. No es un problema de temporada ni de gestión: es la estructura del negocio con este precio de compra y este stack de costos.\n\nSupuesto de ocupación sin respaldo observado.\nAsumes 60% de ocupación en una zona donde la observada es 42%, y el potencial con gestión profesional que el análisis estima es 55%, por debajo de tu supuesto base. Tus escenarios conservador y upside cuestan más que tu caso base en flujo mensual, lo que significa que el punto de partida más probable está más cerca del conservador que del base que ves en pantalla.\n\nPlusvalía como driver real del retorno, en una comuna con historial negativo.\nLa TIR y el multiplicador a 10 años descansan en que el depto se aprecie 3% anual, pero Santiago registró caída de 1,1% anual en la última década. Si esa tendencia persiste, el retorno total y tu parte al vender se achican materialmente. El flujo operativo acumulado proyectado a 10 años ya es negativo, así que el resultado de esta inversión depende casi completamente de que la plusvalía revierta la historia reciente.",
+        "cajaAccionable": "Mi posición: con un break-even sobre el mercado, supuestos sin respaldo observado y una apuesta de plusvalía que la comuna no ha mostrado, no compraría este depto a este precio. Si la zona te convence, el camino honesto es negociar precio, no ajustar supuestos."
+      },
+      "conviene": {
+        "reencuadre": "Un CAP rate bajo el umbral y un break-even sobre el mercado no son problemas de gestión: son señales del precio de entrada. El perfil financiero de esta compra descansa en plusvalía, no en flujo.",
+        "cajaAccionable": "Antes de comprometerte, valida si puedes sostener aportes mensuales de tu bolsillo durante al menos los primeros meses de operación, sabiendo que la ocupación real puede estar muy por debajo de lo que supusiste.",
+        "veredictoFrase": "Flujo negativo incluso con tu supuesto optimista: el negocio no cierra.",
+        "respuestaDirecta": "El caso descansa en un supuesto que tú pusiste, no en lo que la zona muestra: asumes 60% de ocupación sobre una observada de 42%, y con ese supuesto igual el flujo es negativo. Si la ocupación real se acerca a lo observado, la pérdida mensual se dispara a terreno que ningún ajuste de tarifa o gestión puede cerrar. El análisis pide ajustar supuestos porque la brecha no es operativa, es del negocio."
+      },
+      "operacion": {
+        "contenido": "La autogestión requiere dedicación activa de 8 a 12 horas semanales: check-in, limpieza coordinada, respuesta a huéspedes y ajuste de tarifas. El edificio permite Airbnb, lo que elimina un riesgo de entrada. En el mes valle, estadías más largas pueden ayudar a sostener la ocupación base sin sacrificar mucho el ingreso. Ten en cuenta que los primeros meses de operación el listing opera por debajo de su ocupación normal mientras acumula reseñas: la pérdida estimada acumulada de ese período es $793.875, capital que debes tener disponible antes de partir.",
+        "cajaAccionable": "Provisiona $793.875 para los primeros meses de operación antes de invertir en amoblamiento adicional: ese es el costo de entrada real, además del pie y los gastos de cierre."
+      },
+      "veredicto": "AJUSTA SUPUESTOS",
+      "largoPlazo": {
+        "contenido": "Tu capital rinde ×1,81 en el depto frente a ×1,63 en depósito UF y ×1,97 en fondo mutuo, pero el depto lo hace con gestión activa, iliquidez total y riesgo operacional que los otros dos no exigen: esa prima de complejidad tiene que valer algo para ti. La proyección usa 3% anual de plusvalía, y la comuna Santiago registró caída de 1,1% en la última década: la TIR de 7,2% y el ×1,81 llevan puesta una apuesta a recuperación que la historia reciente no muestra. Si la plusvalía real se estanca en 0%, los indicadores caen en forma relevante.",
+        "cajaAccionable": "Para que el horizonte de 10 años se justifique, la comuna tiene que revertir una década de caída real de valor y la ocupación tiene que sostenerse sobre lo observado hoy. Son dos apuestas simultáneas: ponlas sobre la mesa antes de comprometer el capital."
+      },
+      "francoCaveat": "El veredicto del análisis es AJUSTA SUPUESTOS, pero el input declara explícitamente que ningún ajuste realista cruza a COMPRAR y que la brecha es del negocio. En esa lectura, el veredicto correcto sería BUSCAR OTRA. Lo registro aquí para revisión del análisis: cuando el bloque de datos cierra la puerta a toda palanca realista, el veredicto debería reflejar esa dureza.",
+      "rentabilidad": {
+        "contenido": "El precio de compra a UF 1.950 por 46 m² fija el piso de rentabilidad antes de operar un solo día. Sobre ese precio, los costos operativos consumen 43% del ingreso bruto mensual, cuando la banda que el análisis marca como alta empieza en 40%: gastos comunes, electricidad, agua, wifi e insumos suman una carga que el ingreso bruto bajo no puede absorber. La comisión de autogestión al 3% ayuda, pero no alcanza a compensar ese stack de costos. El resultado es un CAP rate que no llega al umbral de 5% que esta tipología necesita para justificar el precio de entrada, y un flujo mensual negativo incluso bajo tus supuestos. La palanca real no es operativa: está en el precio de compra.",
+        "cajaAccionable": "Si negocias un descuento de 10% sobre el precio actual, el CAP rate cruza el umbral de 5% y el flujo mensual mejora en forma material, según la tabla de sensibilidad. Sin ese ajuste, la rentabilidad operativa no se sostiene."
+      },
+      "promptVersion": 4
+    },
+    "results": {
+      "veredicto": "AJUSTA SUPUESTOS",
+      "legacyEngineVeredicto": "COMPRAR",
+      "ejesAplicados": {
+        "tipoEdificio": "residencial_puro",
+        "habilitacion": "basico",
+        "adminPro": false,
+        "factorEdificio": 1,
+        "factorHabilitacion": 1,
+        "factorADRTotal": 1,
+        "banda": "auto_gestion_residencial",
+        "ocupacionTarget": 0.55,
+        "adrBaselineP50": 51806.3601199387,
+        "adrAjustado": 51806,
+        "ocupacionBaselineP50": 0.4168807659900091,
+        "adrOverride": 29000,
+        "occOverride": 0.6,
+        "adrFinal": 29000,
+        "ocupacionFinal": 0.6
+      },
+      "pie": 7966530,
+      "montoCredito": 71698770,
+      "dividendoMensual": 378453,
+      "capitalInvertido": 19637330,
+      "metrics": {
+        "ingresoEstabilizadoMensual": 529250,
+        "ingresoEstabilizadoAnual": 6351000,
+        "flujoMensual": -79081,
+        "capRatePct": 4.509446396360774,
+        "tirPct": 7.2,
+        "tarifaNoche": 29000,
+        "ocupacion": 0.6,
+        "desgloseFall": {
+          "ingreso": 529250,
+          "comisionPlataforma": 15878,
+          "administrador": 0,
+          "costosDirectos": 111000,
+          "gastosComunesMantencion": 103000,
+          "contribucionesMensuales": 0,
+          "cuota": 378453,
+          "saleDeTuBolsillo": -79081
+        },
+        "tramosBarra": {
+          "ingreso": 529250,
+          "costosOperar": 229878,
+          "cuota": 378453,
+          "exceso": 79081,
+          "libre": 0
+        },
+        "dia1": {
+          "pieCLP": 7966530,
+          "gastosCompraCLP": 1593306,
+          "amoblamientoCLP": 3500000,
+          "capexCLP": 6577494,
+          "inversionInicial": 19637330
+        }
+      },
+      "hallazgos": [
+        {
+          "id": "rentabilidad_str",
+          "tipo": "rentabilidad_operativa_str",
+          "valor": {
+            "capRatePct": 4.5,
+            "umbralPct": 5,
+            "gapPts": -0.5,
+            "banda": 3,
+            "modalidad": "str"
+          },
+          "direccion": "adverso",
+          "decisividad": 0.36,
+          "magnitudContinua": 0.36,
+          "procedencia": {
+            "base": "CAP neto (NOI) sobre tu precio y los ingresos del escenario base; umbral STR nacional 5%, aún sin comparables de la comuna",
+            "confianza": "baja"
+          },
+          "titular": "La rentabilidad operativa se queda corta.",
+          "fraseCanonica": "Tu CAP rate en corto es 4,5%, bajo el umbral de 5% que le pedimos a una renta corta en Santiago. Genera caja, pero por debajo del piso que hace que el precio de entrada se justifique por rentabilidad."
+        },
+        {
+          "id": "flujo_str",
+          "tipo": "flujo_estabilizado",
+          "valor": {
+            "flujoMensualCLP": -79081,
+            "banda": 250000,
+            "modalidad": "str"
+          },
+          "direccion": "adverso",
+          "decisividad": 0.12,
+          "magnitudContinua": 0.12,
+          "procedencia": {
+            "base": "flujo del escenario base con la ocupación que definiste (no la observada de la zona), tras dividendo, comisión y todos los costos operativos",
+            "confianza": "alta"
+          },
+          "titular": "Pones algo de tu bolsillo cada mes.",
+          "fraseCanonica": "Con la ocupación que definiste (60%), no la estimación de mercado para tu depto (42%), el corto deja −$79.081 al mes después de la cuota y los costos. No es una sangría, pero necesitas un colchón: la operación todavía no se sostiene sola."
+        },
+        {
+          "id": "ocupacion_vs_estimacion",
+          "tipo": "ocupacion_vs_estimacion",
+          "valor": {
+            "ocupacionPct": 60,
+            "estimacionPct": 42,
+            "gapPts": 18,
+            "esOverride": true,
+            "esFallback": false,
+            "comuna": "Santiago",
+            "saturacionPts": 15,
+            "modalidad": "str"
+          },
+          "direccion": "adverso",
+          "decisividad": 1,
+          "magnitudContinua": 1,
+          "procedencia": {
+            "base": "ocupación definida por ti (60%); la estimación de mercado para este depto es 42%. El cálculo usa tu supuesto",
+            "confianza": "baja"
+          },
+          "titular": "Supusiste más ocupación que la que estima el mercado.",
+          "fraseCanonica": "Tú supusiste 60% y la estimación de mercado para tu depto es 42%: 18 puntos más. El veredicto descansa en ese supuesto; trátalo como una meta a validar, no como el caso base."
+        },
+        {
+          "id": "ventaja_vs_ltr",
+          "tipo": "ventaja_vs_ltr",
+          "valor": {
+            "sobreRentaPct": 16,
+            "sobreRentaCLP": 41372,
+            "ltrNoiMensual": 258000,
+            "ltrNegativo": false,
+            "pctConfiable": true,
+            "bordePct": 15,
+            "modalidad": "str"
+          },
+          "direccion": "favorable",
+          "decisividad": 0.28,
+          "magnitudContinua": 0.28,
+          "procedencia": {
+            "base": "sobre-renta sobre NOI: corto (escenario base) menos el arriendo largo que declaraste, neto de comisión y gastos",
+            "confianza": "alta"
+          },
+          "titular": "El corto le saca ventaja clara al arriendo largo.",
+          "fraseCanonica": "En corto rindes 16% más neto que arrendando largo el mismo depto —pero esa ventaja compara un corto estabilizado, con la ocupación proyectada, contra un arriendo largo contractual y garantizado. La diferencia justifica el esfuerzo operativo extra —rotación, gestión, estacionalidad—; si la ocupación proyectada no se cumple, se achica. Suma a favor, pero por sí solo no alcanza para mover el veredicto."
+        },
+        {
+          "id": "sensibilidad_str",
+          "tipo": "robustez_veredicto_str",
+          "valor": {
+            "beRatioPct": 115,
+            "corteFavorable": 100,
+            "corteFragil": 110,
+            "corteInviable": 130,
+            "banda": 25,
+            "modalidad": "str"
+          },
+          "direccion": "adverso",
+          "decisividad": 0,
+          "magnitudContinua": 0.2,
+          "procedencia": {
+            "base": "break-even como % de los ingresos brutos de mercado de la zona; recálculo determinístico sobre tus costos y la cuota",
+            "confianza": "alta"
+          },
+          "titular": "El veredicto se sostiene solo si la ocupación se cumple.",
+          "fraseCanonica": "Para no perder plata necesitas facturar el 115% del nivel de mercado — sobre lo que rinde la zona típica. Es un margen apretado: si la ocupación o la tarifa diaria (ADR) vienen algo abajo, el corto deja de cuadrar. Confírmalas contra listings comparables activos antes de comprar."
+        },
+        {
+          "id": "estructura_costos_str",
+          "tipo": "cost_stack",
+          "valor": {
+            "costStackPct": 43,
+            "bandaFavPct": 30,
+            "bandaAdvPct": 40,
+            "banda": 15,
+            "modalidad": "str"
+          },
+          "direccion": "adverso",
+          "decisividad": 0,
+          "magnitudContinua": 0.2,
+          "procedencia": {
+            "base": "costos operativos + comisión sobre los ingresos brutos del escenario base; banda típica de mercado, no medida por comuna",
+            "confianza": "media"
+          },
+          "titular": "Los costos se comen buena parte del bruto.",
+          "fraseCanonica": "Entre comisión, gastos comunes, servicios y mantención, esta operación se lleva 43 de cada 100 pesos que factura. Está sobre el borde alto de lo típico en corto; cada punto que bajes de comisión o servicios va directo a tu flujo."
+        },
+        {
+          "id": "estructura_financiamiento",
+          "tipo": "salud_financiamiento",
+          "valor": {
+            "overall": "problematico",
+            "driver": "pie",
+            "pieLevel": "problematico",
+            "piePct": 10,
+            "tasaLevel": "optimo",
+            "tasaPct": 4,
+            "tasaMarketPct": 4.1,
+            "spreadBps": -10,
+            "modalidad": "str"
+          },
+          "direccion": "adverso",
+          "decisividad": 0.16,
+          "magnitudContinua": 0.16,
+          "procedencia": {
+            "base": "Estructura de financiamiento (pie + tasa) sobre tus datos declarados. La tasa se compara contra un promedio de mercado de referencia (UF 4,1%), no en tiempo real — pull manual, puede estar desactualizado. El pie no se mide contra un óptimo: su efecto se muestra calculado, nivel por nivel.",
+            "confianza": "media"
+          },
+          "titular": "Tu financiamiento tiene un problema de fondo por el pie.",
+          "fraseCanonica": "Tu estructura de financiamiento tiene un problema de fondo, principalmente por el pie: 10% dispara el crédito y con él la cuota. La tasa (4,0%) está en mejor nivel."
+        },
+        {
+          "id": "sobreprecio",
+          "tipo": "precio_vs_comuna",
+          "valor": {
+            "sujetoUfM2": 42.4,
+            "medianaComunaUfM2": 50.1,
+            "desviacionPct": -15,
+            "sobreprecioUfM2": -7.7,
+            "banda": 30,
+            "n": 1897,
+            "comuna": "Santiago"
+          },
+          "direccion": "favorable",
+          "decisividad": 0.2,
+          "magnitudContinua": 0.2,
+          "procedencia": {
+            "base": "mediana de precios de PUBLICACIÓN de venta de la comuna (scraped), no transacción",
+            "confianza": "media"
+          },
+          "titular": "Entras barato: el metro está bajo la mediana comunal.",
+          "fraseCanonica": "Tu precio por m² (UF 42,4) está 15% bajo la mediana de la comuna (UF 50,1). Entras barato para esta comuna. Suma a favor, pero por sí solo no alcanza para mover el veredicto."
+        },
+        {
+          "id": "plusvalia",
+          "tipo": "apreciacion_historica",
+          "valor": {
+            "anualizadaPct": 5,
+            "refPct": 3,
+            "gapPts": 2,
+            "banda": 2,
+            "fuente": "Histórico 2015-2025 · GfK/NielsenIQ, precios de oferta de deptos nuevos",
+            "scope": "absoluta",
+            "tieneData": true,
+            "cobertura": "trayectoria_propia",
+            "nivelUfM2": 80.9,
+            "nivelPeriodo": "1T-2025",
+            "modalidad": "str"
+          },
+          "direccion": "favorable",
+          "decisividad": 0,
+          "magnitudContinua": 1,
+          "procedencia": {
+            "base": "apreciación histórica de la comuna 2015-2025 (GfK/NielsenIQ, precios de oferta de deptos nuevos), no garantía de apreciación futura",
+            "confianza": "media"
+          },
+          "titular": "La comuna ganó valor real sobre la inflación, históricamente.",
+          "fraseCanonica": "En la última década los departamentos en Santiago se valorizaron 5,0% anual, sobre el umbral de apreciación real (3,0%). Ganaron valor por sobre la inflación; es respaldo histórico, no garantía de que se repita."
+        },
+        {
+          "id": "capex_puesta_a_punto",
+          "tipo": "capex_habilitacion",
+          "valor": {
+            "montoCLP": 6577494,
+            "montoUF": 161,
+            "ufM2": 3.5,
+            "antiguedadAnios": 8,
+            "superficieUtilM2": 46,
+            "modalidad": "str",
+            "origen": "derivado",
+            "fraccionInversion": 0.33494848841466734,
+            "montoMinUF": 161,
+            "montoMaxUF": 161,
+            "montoMinCLP": 6577494,
+            "montoMaxCLP": 6577494,
+            "ufM2Min": 3.5,
+            "ufM2Max": 3.5
+          },
+          "direccion": "adverso",
+          "decisividad": 0,
+          "magnitudContinua": 0,
+          "procedencia": {
+            "base": "curva por antigüedad",
+            "confianza": "media"
+          },
+          "titular": "Necesita puesta a punto antes de arrendar a mercado.",
+          "fraseCanonica": "Departamento de 8 años: para captar arriendo de mercado, considera unos UF 161 ($6.577.494) de puesta a punto — cerca del 33% de tu inversión inicial. No es remodelar para revender: es dejarlo en estándar de arriendo."
+        },
+        {
+          "id": "tir",
+          "tipo": "retorno_total",
+          "valor": {
+            "tirPct": 7.2,
+            "umbralPct": 6,
+            "gapPts": 1.2,
+            "banda": 10,
+            "modalidad": "str"
+          },
+          "direccion": "favorable",
+          "decisividad": 0,
+          "magnitudContinua": 0.12,
+          "procedencia": {
+            "base": "TIR del exit scenario a 10 años sobre tu inversión inicial, tus aportes mensuales y la venta proyectada",
+            "confianza": "media"
+          },
+          "titular": "Puesto todo junto, el retorno anual rinde lo suficiente.",
+          "fraseCanonica": "Tu TIR —la rentabilidad anual de toda tu inversión— es 7,2%, sobre el mínimo de 6% que le pedimos a una compra apalancada —hecha con crédito— para valer el esfuerzo y la iliquidez. Ese número ya integra el arriendo, tus aportes mensuales y la venta proyectada a 10 años, no solo la renta del mes."
+        },
+        {
+          "id": "patrimonio",
+          "tipo": "patrimonio_neto",
+          "valor": {
+            "patrimonioCLP": 53758422,
+            "aportadoCLP": 29662025,
+            "multiplicador": 1.81,
+            "corteAdverso": 1,
+            "corteFavorable": 2,
+            "banda": 2,
+            "incluyeCorretaje": false,
+            "modalidad": "str"
+          },
+          "direccion": "favorable",
+          "decisividad": 0,
+          "magnitudContinua": 0.405,
+          "procedencia": {
+            "base": "Patrimonio a 10 años sobre lo que aportaste, del escenario de venta",
+            "confianza": "media"
+          },
+          "titular": "A 10 años tu parte vale algo más de lo aportado.",
+          "fraseCanonica": "A 10 años, tras vender y saldar el crédito, tu parte vale UF 1.316 contra las UF 726 que aportaste — un multiplicador de ×1,81. Terminas con más de lo que pusiste, pero el margen es acotado: buena parte de ese resultado depende de que la plusvalía proyectada se cumpla."
+        },
+        {
+          "id": "distancia_veredicto",
+          "tipo": "distancia_umbral",
+          "valor": {
+            "veredictoBase": "AJUSTA SUPUESTOS",
+            "veredictoObjetivo": "COMPRAR",
+            "palancas": [],
+            "vias": [
+              {
+                "estado": "noCruza",
+                "palanca": "precio",
+                "actual": 1950,
+                "topeExplorado": 25,
+                "razon": "ni bajando el precio un 25% cambia el veredicto"
+              },
+              {
+                "estado": "noCruza",
+                "palanca": "adr",
+                "actual": 29000,
+                "topeExplorado": 10,
+                "razon": "ni cobrando un 10% más por noche cambia el veredicto"
+              },
+              {
+                "estado": "noCruza",
+                "palanca": "plazo",
+                "actual": 25,
+                "topeExplorado": 30,
+                "razon": "ni a 30 años cambia el veredicto"
+              },
+              {
+                "estado": "noCruza",
+                "palanca": "pie",
+                "actual": 10,
+                "topeExplorado": 30,
+                "razon": "ni con un pie de 30% cambia el veredicto"
+              },
+              {
+                "estado": "noCruza",
+                "palanca": "gestion",
+                "actual": 3,
+                "topeExplorado": 20,
+                "razon": "ni con administrador cambia el veredicto"
+              }
+            ],
+            "palancaMasBarata": null,
+            "palancaHastaComprar": null,
+            "palancasHastaComprar": null,
+            "viasHastaComprar": null,
+            "deltaMinimoComprarFueraDeTope": null,
+            "mixPalancas": {
+              "descuentoPct": 18.1,
+              "sinDescuento": false,
+              "piePct": 30,
+              "plazoAnios": 30,
+              "piePctDelta": 20,
+              "plazoAniosDelta": 5,
+              "descuentoSoloPrecioPct": null,
+              "costoDiaUnoUF": 284,
+              "costoPtsPrecio": 14.6,
+              "dentroDelAlcance": true,
+              "costoDiaUnoBase": "pie_declarado",
+              "combinacionesQueCruzan": 9,
+              "combinacionesProbadas": 10,
+              "segunda": {
+                "descuentoPct": 20,
+                "sinDescuento": false,
+                "piePct": 25,
+                "plazoAnios": 30,
+                "costoDiaUnoUF": 195,
+                "costoPtsPrecio": 10
+              },
+              "redundanteConPalancaSola": false,
+              "destino": "COMPRAR"
+            },
+            "mixPalancasHastaComprar": null,
+            "sinSalida": false,
+            "esEstructural": true,
+            "deltaMinimoFueraDeTope": {
+              "palanca": "adr",
+              "deltaPct": 12.6
+            },
+            "topePct": 25,
+            "topeAdrPct": 10,
+            "cercaniaUmbral": 0,
+            "brazosGate1Activos": [],
+            "motivosGate": [],
+            "esPuroGate": false,
+            "pieEsPalanca": true,
+            "pieExcluidoPorBono": false,
+            "piePctActual": 10,
+            "casoPrecioJusto": false,
+            "modalidad": "str"
+          },
+          "direccion": "neutral",
+          "decisividad": 0,
+          "procedencia": {
+            "base": "Reevaluación del veredicto moviendo una palanca a la vez: pie, modo de gestión, precio, tarifa por noche y plazo del crédito",
+            "confianza": "alta"
+          },
+          "titular": "Ningún ajuste realista lo lleva al veredicto de arriba.",
+          "fraseCanonica": "Cerrar hasta −25% bajo el precio o cobrar hasta +10% más por noche no cambia el veredicto; recién cobrando +12,6% por noche cruzaría a COMPRAR, y eso ya no es un ajuste. Ni a 30 años, ni con pie 30% ni con administrador cambia. La brecha es del negocio, no de cómo lo estás mirando."
+        }
+      ],
+      "escenarios": {
+        "conservador": {
+          "label": "Conservador",
+          "ingresoAnual": 2685949,
+          "ingresoBrutoMensual": 223829,
+          "comisionMensual": 6715,
+          "costosOperativos": 214000,
+          "noiMensual": 3114,
+          "flujoCajaMensual": -375339,
+          "capRate": 0.00046906243998328,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.22936254572286557
+          },
+          "rentabilidadBruta": 0.033715406833338984,
+          "adrReferencia": 25186,
+          "ocupacionReferencia": 0.2921767267171374
+        },
+        "base": {
+          "label": "Base",
+          "ingresoAnual": 6351000,
+          "ingresoBrutoMensual": 529250,
+          "comisionMensual": 15878,
+          "costosOperativos": 214000,
+          "noiMensual": 299372,
+          "flujoCajaMensual": -79081,
+          "capRate": 0.045094463963607744,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.04832489956628523
+          },
+          "rentabilidadBruta": 0.0797210328712752,
+          "adrReferencia": 29000,
+          "ocupacionReferencia": 0.6
+        },
+        "agresivo": {
+          "label": "Agresivo",
+          "ingresoAnual": 5821750,
+          "ingresoBrutoMensual": 485146,
+          "comisionMensual": 14554,
+          "costosOperativos": 214000,
+          "noiMensual": 256592,
+          "flujoCajaMensual": -121861,
+          "capRate": 0.03865050404630372,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.07446694637203734
+          },
+          "rentabilidadBruta": 0.07307763857036878,
+          "adrReferencia": 29000,
+          "ocupacionReferencia": 0.55
+        }
+      },
+      "comparativa": {
+        "ltr": {
+          "ingresoBruto": 380000,
+          "noiMensual": 258000,
+          "flujoCaja": -120453
+        },
+        "str_auto": {
+          "label": "Auto",
+          "ingresoAnual": 6351000,
+          "ingresoBrutoMensual": 529250,
+          "comisionMensual": 15878,
+          "costosOperativos": 214000,
+          "noiMensual": 299372,
+          "flujoCajaMensual": -79081,
+          "capRate": 0.045094463963607744,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.04832489956628523
+          },
+          "rentabilidadBruta": 0.0797210328712752,
+          "adrReferencia": 29000,
+          "ocupacionReferencia": 0.6
+        },
+        "str_admin": {
+          "label": "Administrador",
+          "ingresoAnual": 6351000,
+          "ingresoBrutoMensual": 529250,
+          "comisionMensual": 105850,
+          "costosOperativos": 214000,
+          "noiMensual": 209400,
+          "flujoCajaMensual": -169053,
+          "capRate": 0.03154196369059051,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.103305082717457
+          },
+          "rentabilidadBruta": 0.0797210328712752,
+          "adrReferencia": 29000,
+          "ocupacionReferencia": 0.6
+        },
+        "sobreRenta": 41372,
+        "sobreRentaPct": 0.16035658914728682,
+        "sobreRentaPctConfiable": true,
+        "paybackMeses": 85
+      },
+      "flujoEstacional": [
+        {
+          "mes": "Enero",
+          "ingresoBruto": 516118,
+          "ingresoNeto": 286634,
+          "flujo": -91819,
+          "factor": 0.08126561787033565
+        },
+        {
+          "mes": "Febrero",
+          "ingresoBruto": 445549,
+          "ingresoNeto": 218183,
+          "flujo": -160270,
+          "factor": 0.07015417457828323
+        },
+        {
+          "mes": "Marzo",
+          "ingresoBruto": 503030,
+          "ingresoNeto": 273939,
+          "flujo": -104514,
+          "factor": 0.07920486100013267
+        },
+        {
+          "mes": "Abril",
+          "ingresoBruto": 443516,
+          "ingresoNeto": 216211,
+          "flujo": -162242,
+          "factor": 0.06983396848094856
+        },
+        {
+          "mes": "Mayo",
+          "ingresoBruto": 452934,
+          "ingresoNeto": 225346,
+          "flujo": -153107,
+          "factor": 0.07131691242892176
+        },
+        {
+          "mes": "Junio",
+          "ingresoBruto": 521862,
+          "ingresoNeto": 292206,
+          "flujo": -86247,
+          "factor": 0.0821700464969303
+        },
+        {
+          "mes": "Julio",
+          "ingresoBruto": 702337,
+          "ingresoNeto": 467267,
+          "flujo": 88814,
+          "factor": 0.110586856586966
+        },
+        {
+          "mes": "Agosto",
+          "ingresoBruto": 594211,
+          "ingresoNeto": 362385,
+          "flujo": -16068,
+          "factor": 0.09356177780286475
+        },
+        {
+          "mes": "Septiembre",
+          "ingresoBruto": 501161,
+          "ingresoNeto": 272126,
+          "flujo": -106327,
+          "factor": 0.07891061088145697
+        },
+        {
+          "mes": "Octubre",
+          "ingresoBruto": 539965,
+          "ingresoNeto": 309766,
+          "flujo": -68687,
+          "factor": 0.08502046660435178
+        },
+        {
+          "mes": "Noviembre",
+          "ingresoBruto": 565297,
+          "ingresoNeto": 334338,
+          "flujo": -44115,
+          "factor": 0.08900907309503925
+        },
+        {
+          "mes": "Diciembre",
+          "ingresoBruto": 565021,
+          "ingresoNeto": 334070,
+          "flujo": -44383,
+          "factor": 0.08896563417376914
+        }
+      ],
+      "perdidaRampUp": 793875,
+      "breakEvenIngresoAnual": 7329315,
+      "breakEvenPctDelMercado": 1.154041095890411,
+      "sensibilidad": [
+        {
+          "label": "P25",
+          "ingresoAnual": 5959615.752177,
+          "noiMensual": 267736,
+          "sobreRenta": 9736,
+          "sobreRentaPct": 0.03773643410852713,
+          "sobreRentaPctConfiable": true
+        },
+        {
+          "label": "P50",
+          "ingresoAnual": 7688366.790987968,
+          "noiMensual": 407476,
+          "sobreRenta": 149476,
+          "sobreRentaPct": 0.5793643410852714,
+          "sobreRentaPctConfiable": true
+        },
+        {
+          "label": "P75",
+          "ingresoAnual": 11282875.600573968,
+          "noiMensual": 698033,
+          "sobreRenta": 440033,
+          "sobreRentaPct": 1.7055542635658916,
+          "sobreRentaPctConfiable": true
+        },
+        {
+          "label": "P90",
+          "ingresoAnual": 15153921.243870592,
+          "noiMensual": 1010942,
+          "sobreRenta": 752942,
+          "sobreRentaPct": 2.9183798449612404,
+          "sobreRentaPctConfiable": true
+        },
+        {
+          "label": "Promedio",
+          "ingresoAnual": 8721424.359474782,
+          "noiMensual": 490981,
+          "sobreRenta": 232981,
+          "sobreRentaPct": 0.9030271317829457,
+          "sobreRentaPctConfiable": true
+        }
+      ],
+      "sensibilidadPrecio": [
+        {
+          "label": "actual",
+          "precioCLP": 79665300,
+          "delta": 0,
+          "capRate": 0.0451,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.0526
+          },
+          "flujoCajaMensual": -79080,
+          "paybackMeses": -1
+        },
+        {
+          "label": "-5%",
+          "precioCLP": 75682035,
+          "delta": -3983265,
+          "capRate": 0.0475,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.0409
+          },
+          "flujoCajaMensual": -60157,
+          "paybackMeses": -1
+        },
+        {
+          "label": "-10%",
+          "precioCLP": 71698770,
+          "delta": -7966530,
+          "capRate": 0.0501,
+          "cashOnCash": {
+            "tipo": "valor",
+            "valor": -0.0287
+          },
+          "flujoCajaMensual": -41234,
+          "paybackMeses": -1
+        }
+      ],
+      "projections": [
+        {
+          "year": 1,
+          "valorDepto": 82055259,
+          "saldoCredito": 69994267,
+          "flujoOperacionalAnual": -1742841,
+          "flujoAcumulado": -1742841,
+          "aporteMensualPromedio": 145237,
+          "patrimonioNeto": 12060992,
+          "mesesOperativos": 12,
+          "ingresoAnual": 6351000,
+          "comisionAnual": 190530,
+          "costosAnual": 2568000,
+          "ingresoNetoAnual": 3592470,
+          "cuotaAnual": 4541436,
+          "estabilizacionAnual": 793875,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 2,
+          "valorDepto": 84516917,
+          "saldoCredito": 68220319,
+          "flujoOperacionalAnual": -946633,
+          "flujoAcumulado": -2689474,
+          "aporteMensualPromedio": 78886,
+          "patrimonioNeto": 16296598,
+          "mesesOperativos": 12,
+          "ingresoAnual": 6573285,
+          "comisionAnual": 197199,
+          "costosAnual": 2645040,
+          "ingresoNetoAnual": 3731046,
+          "cuotaAnual": 4677679,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 3,
+          "valorDepto": 87052424,
+          "saldoCredito": 66374098,
+          "flujoOperacionalAnual": -943151,
+          "flujoAcumulado": -3632625,
+          "aporteMensualPromedio": 78596,
+          "patrimonioNeto": 20678326,
+          "mesesOperativos": 12,
+          "ingresoAnual": 6803350,
+          "comisionAnual": 204100,
+          "costosAnual": 2724391,
+          "ingresoNetoAnual": 3874858,
+          "cuotaAnual": 4818009,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 4,
+          "valorDepto": 89663997,
+          "saldoCredito": 64452660,
+          "flujoOperacionalAnual": -938449,
+          "flujoAcumulado": -4571074,
+          "aporteMensualPromedio": 78204,
+          "patrimonioNeto": 25211337,
+          "mesesOperativos": 12,
+          "ingresoAnual": 7041467,
+          "comisionAnual": 211244,
+          "costosAnual": 2806123,
+          "ingresoNetoAnual": 4024100,
+          "cuotaAnual": 4962550,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 5,
+          "valorDepto": 92353917,
+          "saldoCredito": 62452938,
+          "flujoOperacionalAnual": -932452,
+          "flujoAcumulado": -5503526,
+          "aporteMensualPromedio": 77704,
+          "patrimonioNeto": 29900978,
+          "mesesOperativos": 12,
+          "ingresoAnual": 7287919,
+          "comisionAnual": 218638,
+          "costosAnual": 2890307,
+          "ingresoNetoAnual": 4178974,
+          "cuotaAnual": 5111426,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 6,
+          "valorDepto": 95124534,
+          "saldoCredito": 60371746,
+          "flujoOperacionalAnual": -925079,
+          "flujoAcumulado": -6428605,
+          "aporteMensualPromedio": 77090,
+          "patrimonioNeto": 34752789,
+          "mesesOperativos": 12,
+          "ingresoAnual": 7542996,
+          "comisionAnual": 226290,
+          "costosAnual": 2977016,
+          "ingresoNetoAnual": 4339690,
+          "cuotaAnual": 5264769,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 7,
+          "valorDepto": 97978270,
+          "saldoCredito": 58205762,
+          "flujoOperacionalAnual": -916248,
+          "flujoAcumulado": -7344853,
+          "aporteMensualPromedio": 76354,
+          "patrimonioNeto": 39772509,
+          "mesesOperativos": 12,
+          "ingresoAnual": 7807001,
+          "comisionAnual": 234210,
+          "costosAnual": 3066326,
+          "ingresoNetoAnual": 4506464,
+          "cuotaAnual": 5422712,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 8,
+          "valorDepto": 100917619,
+          "saldoCredito": 55951532,
+          "flujoOperacionalAnual": -905871,
+          "flujoAcumulado": -8250724,
+          "aporteMensualPromedio": 75489,
+          "patrimonioNeto": 44966086,
+          "mesesOperativos": 12,
+          "ingresoAnual": 8080246,
+          "comisionAnual": 242407,
+          "costosAnual": 3158316,
+          "ingresoNetoAnual": 4679522,
+          "cuotaAnual": 5585393,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 9,
+          "valorDepto": 103945147,
+          "saldoCredito": 53605462,
+          "flujoOperacionalAnual": -893858,
+          "flujoAcumulado": -9144582,
+          "aporteMensualPromedio": 74488,
+          "patrimonioNeto": 50339685,
+          "mesesOperativos": 12,
+          "ingresoAnual": 8363054,
+          "comisionAnual": 250892,
+          "costosAnual": 3253066,
+          "ingresoNetoAnual": 4859097,
+          "cuotaAnual": 5752955,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        },
+        {
+          "year": 10,
+          "valorDepto": 107063502,
+          "saldoCredito": 51163810,
+          "flujoOperacionalAnual": -880113,
+          "flujoAcumulado": -10024696,
+          "aporteMensualPromedio": 73343,
+          "patrimonioNeto": 55899692,
+          "mesesOperativos": 12,
+          "ingresoAnual": 8655761,
+          "comisionAnual": 259673,
+          "costosAnual": 3350658,
+          "ingresoNetoAnual": 5045431,
+          "cuotaAnual": 5925544,
+          "estabilizacionAnual": 0,
+          "amoblamientoAnual": 0
+        }
+      ],
+      "exitScenario": {
+        "yearVenta": 10,
+        "valorVenta": 107063502,
+        "saldoCreditoAlVender": 51163810,
+        "gastosCierre": 2141270,
+        "flujoAcumuladoAlVender": -10024696,
+        "equityCLP": 53758422,
+        "retornoTotal": 43733726,
+        "totalAportado": 29662025,
+        "inversionInicial": 19637330,
+        "multiplicadorCapital": {
+          "tipo": "valor",
+          "valor": 1.8123652043311271
+        },
+        "tirAnual": {
+          "tipo": "valor",
+          "valor": 7.2
+        }
+      },
+      "subsidioTasa": {
+        "califica": false,
+        "tasaConSubsidio": 3.5,
+        "aplicado": false
+      },
+      "zonaSTR": {
+        "comuna": "Santiago",
+        "adrZona": 51806,
+        "occZona": 0.417,
+        "ingresoZonaMensual": 647912,
+        "percentilADR": 40,
+        "percentilOcupacion": 55,
+        "percentilIngreso": 45,
+        "tierZona": "media",
+        "score": 47,
+        "comunaNoListada": false,
+        "comunaOcupacion": {
+          "valor": 0.419,
+          "n": 231,
+          "fecha": "2026-09-03"
+        },
+        "comunaAdr": {
+          "valor": 48733,
+          "n": 231,
+          "fecha": "2026-09-03"
+        },
+        "ocupacionVsComuna": "similar",
+        "ocupacionVsComunaPts": 0
+      },
+      "recomendacionModalidad": "INDIFERENTE",
+      "veredictoComparativo": {
+        "recomendacion": "INDIFERENTE",
+        "banda": "INDIFERENTE",
+        "fragil": false,
+        "porAbsoluto": false,
+        "breakEvenPctDelMercado": 1.154041095890411,
+        "sobreRentaPct": 0.16035658914728682,
+        "sobreRenta": 41372,
+        "flipGestion": {
+          "cambiaVeredicto": true,
+          "modoActual": "auto",
+          "recomendacionAuto": "INDIFERENTE",
+          "recomendacionAdmin": "LTR_PREFERIDO"
+        }
+      },
+      "occFuente": "override",
+      "occObservada": 0.4168807659900091,
+      "occObservadaFuente": "observada",
+      "adrFuente": "override",
+      "adrModelo": 51806,
+      "tipoAnalisis": "short-term",
+      "francoScore": {
+        "score": 57,
+        "veredicto": "AJUSTA SUPUESTOS",
+        "overrideApplied": null,
+        "gates": {
+          "brazos": {
+            "g1_cocSevero": false,
+            "g1_beInviable": false,
+            "g1_flujoSevero": false,
+            "g1_capRateMinimo": false,
+            "g2_ltrGana": false,
+            "g2_cocFuerte": false,
+            "g2_flujoSinHorizonte": true,
+            "g2_beApretado": true
+          },
+          "gate1": false,
+          "gate2": false,
+          "motivos": []
+        },
+        "desglose": {
+          "rentabilidad": {
+            "score": 60,
+            "label": "Rentabilidad",
+            "detail": "CAP Rate 4.5% — promedio del mercado",
+            "peso": 25
+          },
+          "sostenibilidad": {
+            "score": 35,
+            "label": "Sostenibilidad",
+            "detail": "Flujo -$79.081/mes. Break-even al 115% del mercado",
+            "peso": 25
+          },
+          "ventaja": {
+            "score": 57,
+            "label": "Ventaja vs LTR",
+            "detail": "STR genera +16% más — ventaja moderada",
+            "peso": 25
+          },
+          "factibilidad": {
+            "score": 76,
+            "label": "Factibilidad",
+            "detail": "Buena zona y tipología para Airbnb. Metro: 388m · Clínica: Clínica UC Christus (1580m) · Centro Financiero Santiago (1124m)",
+            "peso": 25
+          }
+        }
+      },
+      "airbnbRaw": {
+        "baths": 1,
+        "guests": 4,
+        "address": "Lord Cochrane 302, 2017, 8331163 Santiago, Región Metropolitana, Chile",
+        "bedrooms": 2,
+        "currency": "CLP",
+        "expires_at": "2026-11-14T21:11:39.152+00:00",
+        "percentiles": {
+          "revenue": {
+            "avg": 8721424.359474782,
+            "p25": 5959615.752177,
+            "p50": 7688366.790987968,
+            "p75": 11282875.600573968,
+            "p90": 15153921.243870592
+          },
+          "occupancy": {
+            "avg": 0.43699017225636516,
+            "p25": 0.2921767267171374,
+            "p50": 0.4168807659900091,
+            "p75": 0.5661090459890524,
+            "p90": 0.6923789246785265
+          },
+          "average_daily_rate": {
+            "avg": 54155.394156749775,
+            "p25": 44992.99966071054,
+            "p50": 51806.3601199387,
+            "p75": 65904.36130728007,
+            "p90": 83086.69450933099
+          }
+        },
+        "estimated_adr": 54155,
+        "monthly_revenue": [
+          0.08126561787033565,
+          0.07015417457828323,
+          0.07920486100013267,
+          0.06983396848094856,
+          0.07131691242892176,
+          0.0821700464969303,
+          0.110586856586966,
+          0.09356177780286475,
+          0.07891061088145697,
+          0.08502046660435178,
+          0.08900907309503925,
+          0.08896563417376914
+        ],
+        "comparables_count": 0,
+        "estimated_occupancy": 0.44,
+        "estimated_annual_revenue": 8721424
+      },
+      "ocupacionRealizadaComparables": {
+        "n": 25,
+        "p50": 0.31,
+        "nSuperhost": 15,
+        "p50Superhost": 0.208
+      }
+    },
+    "simulacion": {
+      "veredictoBase": "AJUSTA SUPUESTOS",
+      "fronterasIngreso": {
+        "veredictoBase": "AJUSTA SUPUESTOS",
+        "abajo": {
+          "factor": 0.90703125,
+          "veredicto": "BUSCAR OTRA"
+        },
+        "arriba": {
+          "factor": 1.1259765625,
+          "veredicto": "COMPRAR"
+        },
+        "tarifa": {
+          "actual": 29000,
+          "abajo": 26304,
+          "arriba": 32653
+        },
+        "ocupacion": {
+          "actual": 0.6,
+          "abajo": 0.544,
+          "arriba": 0.676
+        }
+      },
+      "fronteraPrecio": {
+        "precioUFActual": 1950,
+        "subeA": {
+          "factor": 0.7388671875,
+          "veredicto": "COMPRAR",
+          "precioUF": 1440
+        },
+        "caeA": {
+          "factor": 1.1982421875,
+          "veredicto": "BUSCAR OTRA",
+          "precioUF": 2337
+        }
+      },
+      "mesCierra": {
+        "precioCLP": 63018700,
+        "precioUF": 1542,
+        "factor": 0.7910432773114517
+      },
+      "limiteTir": {
+        "precioCLP": 92660249,
+        "precioUF": 2268,
+        "factor": 1.1631193129254518
+      },
+      "matrizTarifaOcupacion": {
+        "tarifas": [
+          29000,
+          44993,
+          65904,
+          83087
+        ],
+        "ocupaciones": [
+          0.292,
+          0.566,
+          0.6,
+          0.692
+        ],
+        "celdas": [
+          {
+            "tarifaCLP": 29000,
+            "ocupacion": 0.292,
+            "flujoMensual": -342612,
+            "veredicto": "BUSCAR OTRA",
+            "esActual": false,
+            "cruza": false,
+            "cae": true
+          },
+          {
+            "tarifaCLP": 44993,
+            "ocupacion": 0.292,
+            "flujoMensual": -204828,
+            "veredicto": "BUSCAR OTRA",
+            "esActual": false,
+            "cruza": false,
+            "cae": true
+          },
+          {
+            "tarifaCLP": 65904,
+            "ocupacion": 0.292,
+            "flujoMensual": -24676,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "esActual": false,
+            "cruza": false,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 83087,
+            "ocupacion": 0.292,
+            "flujoMensual": 123359,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 29000,
+            "ocupacion": 0.566,
+            "flujoMensual": -108172,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "esActual": false,
+            "cruza": false,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 44993,
+            "ocupacion": 0.566,
+            "flujoMensual": 158901,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 65904,
+            "ocupacion": 0.566,
+            "flujoMensual": 508101,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 83087,
+            "ocupacion": 0.566,
+            "flujoMensual": 795047,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 29000,
+            "ocupacion": 0.6,
+            "flujoMensual": -79081,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "esActual": true,
+            "cruza": false,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 44993,
+            "ocupacion": 0.6,
+            "flujoMensual": 204035,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 65904,
+            "ocupacion": 0.6,
+            "flujoMensual": 574213,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 83087,
+            "ocupacion": 0.6,
+            "flujoMensual": 878395,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 29000,
+            "ocupacion": 0.692,
+            "flujoMensual": -363,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 44993,
+            "ocupacion": 0.692,
+            "flujoMensual": 326164,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 65904,
+            "ocupacion": 0.692,
+            "flujoMensual": 753101,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          },
+          {
+            "tarifaCLP": 83087,
+            "ocupacion": 0.692,
+            "flujoMensual": 1103925,
+            "veredicto": "COMPRAR",
+            "esActual": false,
+            "cruza": true,
+            "cae": false
+          }
+        ]
+      },
+      "matrizPiePlazo": {
+        "pies": [
+          5,
+          10,
+          15,
+          20
+        ],
+        "plazos": [
+          15,
+          20,
+          25,
+          30
+        ],
+        "celdas": [
+          {
+            "piePct": 5,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -260439,
+            "tirPct": 6.11,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 5,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -159246,
+            "tirPct": 6.9,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 5,
+            "plazoAnios": 25,
+            "esActual": false,
+            "flujoMensual": -100106,
+            "tirPct": 7.5,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 5,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -61946,
+            "tirPct": 7.95,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 10,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -230975,
+            "tirPct": 6.05,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 10,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -135108,
+            "tirPct": 6.71,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 10,
+            "plazoAnios": 25,
+            "esActual": true,
+            "flujoMensual": -79081,
+            "tirPct": 7.2,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 10,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -42929,
+            "tirPct": 7.56,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 15,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -201511,
+            "tirPct": 6,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 15,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -110971,
+            "tirPct": 6.56,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 15,
+            "plazoAnios": 25,
+            "esActual": false,
+            "flujoMensual": -58055,
+            "tirPct": 6.96,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 15,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -23912,
+            "tirPct": 7.25,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 15,
+            "esActual": false,
+            "flujoMensual": -172048,
+            "tirPct": 5.95,
+            "veredicto": "BUSCAR OTRA",
+            "cruza": false
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 20,
+            "esActual": false,
+            "flujoMensual": -86833,
+            "tirPct": 6.44,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 25,
+            "esActual": false,
+            "flujoMensual": -37030,
+            "tirPct": 6.77,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          },
+          {
+            "piePct": 20,
+            "plazoAnios": 30,
+            "esActual": false,
+            "flujoMensual": -4895,
+            "tirPct": 7,
+            "veredicto": "AJUSTA SUPUESTOS",
+            "cruza": false
+          }
+        ]
+      }
+    },
+    "mediana": {
+      "mediana": 50.11,
+      "n": 1897,
+      "universo": "usado",
+      "ventanaDias": 90
+    },
+    "zonaStr": {
+      "tarifaZona": {
+        "mediana": 51806,
+        "tuya": 29000,
+        "esTuya": true,
+        "posicion": "abajo",
+        "n": 25,
+        "fecha": "2026-08-16T21:11:41.228078+00:00"
+      },
+      "ocupacion": {
+        "tuya": 0.6,
+        "esTuya": true,
+        "comuna": {
+          "valor": 0.419,
+          "n": 231,
+          "fecha": "2026-09-03"
+        },
+        "relacion": "similar"
+      },
+      "comparables": {
+        "n": 25,
+        "nSuperhost": 15,
+        "radioM": 1000,
+        "estadiaNoches": 4,
+        "fecha": "2026-08-16T21:11:41.228078+00:00"
+      },
+      "tipologia": "2D · 46 m² · 4 huéspedes",
+      "lugares": [
+        {
+          "nombre": "Parque Almagro · L3",
+          "tipo": "metro",
+          "distanciaM": 388
+        },
+        {
+          "nombre": "Toesca · L2",
+          "tipo": "metro",
+          "distanciaM": 474
+        },
+        {
+          "nombre": "La Moneda · L1",
+          "tipo": "metro",
+          "distanciaM": 610
+        },
+        {
+          "nombre": "UDP Facultad Comunicaciones",
+          "tipo": "universidad",
+          "distanciaM": 681
+        },
+        {
+          "nombre": "Los Héroes · L1",
+          "tipo": "metro",
+          "distanciaM": 717
+        },
+        {
+          "nombre": "UC Casa Central",
+          "tipo": "universidad",
+          "distanciaM": 726
+        }
+      ],
+      "perfiles": [
+        {
+          "perfil": "nomada_digital",
+          "label": "Trabajador remoto",
+          "descripcion": "Trabajador remoto extranjero o de regiones (1-3 meses). Prioriza cocina equipada, lavadora, espacio de trabajo cómodo, internet sólido y barrio activo con cafés."
+        },
+        {
+          "perfil": "ejecutivo_corto",
+          "label": "Ejecutivo en visita corta",
+          "descripcion": "Visita por trabajo (3-7 noches). Prioriza cercanía a zona de negocios (El Golf, Sanhattan, Apoquindo), internet rápido, escritorio funcional y conexión rápida con el aeropuerto."
+        },
+        {
+          "perfil": "turista_leisure",
+          "label": "Turista",
+          "descripcion": "Visita Santiago por turismo (2-5 noches). Prioriza una ubicación caminable, cerca de barrios con vida (Lastarria, Bellavista, centro histórico), restaurantes y transporte público."
+        },
+        {
+          "perfil": "paciente_medico",
+          "label": "Paciente médico / Familiar acompañante",
+          "descripcion": "Paciente en tratamiento o familiar acompañante (1-3 semanas). Prioriza cercanía caminable a una clínica, silencio, cortinas que oscurezcan para el descanso prolongado, cocina equipada y lavadora."
+        },
+        {
+          "perfil": "familia",
+          "label": "Familia visitando",
+          "descripcion": "Familia en visita corta (3-5 noches), a veces acompañando a estudiantes o eventos. Prioriza parques cercanos, centros comerciales familiares y un depto amplio antes que lujo."
+        }
+      ],
+      "avisos": [
+        {
+          "tarifa": 61035.9,
+          "ocupacion": 0.534,
+          "estadiaNoches": 3.5,
+          "superhost": false,
+          "distanciaM": 84,
+          "resenas": 37,
+          "nota": 4.7,
+          "lat": -33.4497,
+          "lng": -70.655
+        },
+        {
+          "tarifa": 48085.3,
+          "ocupacion": 0.359,
+          "estadiaNoches": 4.8,
+          "superhost": false,
+          "distanciaM": 107,
+          "resenas": 18,
+          "nota": 4.78,
+          "lat": -33.4503,
+          "lng": -70.6534
+        },
+        {
+          "tarifa": 50719.5,
+          "ocupacion": 0.126,
+          "estadiaNoches": 4.9,
+          "superhost": true,
+          "distanciaM": 162,
+          "resenas": 12,
+          "nota": 5,
+          "lat": -33.4517,
+          "lng": -70.6552
+        },
+        {
+          "tarifa": 57375.2,
+          "ocupacion": 0.17,
+          "estadiaNoches": 2.6,
+          "superhost": true,
+          "distanciaM": 254,
+          "resenas": 19,
+          "nota": 5,
+          "lat": -33.4509,
+          "lng": -70.6519
+        },
+        {
+          "tarifa": 68902.5,
+          "ocupacion": 0.197,
+          "estadiaNoches": 4,
+          "superhost": true,
+          "distanciaM": 341,
+          "resenas": 55,
+          "nota": 4.78,
+          "lat": -33.4473,
+          "lng": -70.6549
+        },
+        {
+          "tarifa": 53760.7,
+          "ocupacion": 0.208,
+          "estadiaNoches": 5.3,
+          "superhost": true,
+          "distanciaM": 354,
+          "resenas": 24,
+          "nota": 4.92,
+          "lat": -33.4472,
+          "lng": -70.654
+        },
+        {
+          "tarifa": 44273.7,
+          "ocupacion": 0.123,
+          "estadiaNoches": 1.7,
+          "superhost": true,
+          "distanciaM": 354,
+          "resenas": 24,
+          "nota": 4.96,
+          "lat": -33.4472,
+          "lng": -70.654
+        },
+        {
+          "tarifa": 48459.1,
+          "ocupacion": 0.115,
+          "estadiaNoches": 1.4,
+          "superhost": false,
+          "distanciaM": 480,
+          "resenas": 24,
+          "nota": 4.33,
+          "lat": -33.4461,
+          "lng": -70.6537
+        },
+        {
+          "tarifa": 68290.7,
+          "ocupacion": 0.301,
+          "estadiaNoches": 5.4,
+          "superhost": false,
+          "distanciaM": 517,
+          "resenas": 63,
+          "nota": 4.57,
+          "lat": -33.4494,
+          "lng": -70.6491
+        },
+        {
+          "tarifa": 63534.3,
+          "ocupacion": 0.162,
+          "estadiaNoches": 2.5,
+          "superhost": false,
+          "distanciaM": 517,
+          "resenas": 4,
+          "nota": 5,
+          "lat": -33.4494,
+          "lng": -70.6491
+        },
+        {
+          "tarifa": 52626.6,
+          "ocupacion": 0.386,
+          "estadiaNoches": 4.4,
+          "superhost": false,
+          "distanciaM": 533,
+          "resenas": 48,
+          "nota": 4.54,
+          "lat": -33.4495,
+          "lng": -70.6489
+        },
+        {
+          "tarifa": 36837,
+          "ocupacion": 0.477,
+          "estadiaNoches": 5.4,
+          "superhost": true,
+          "distanciaM": 555,
+          "resenas": 25,
+          "nota": 5,
+          "lat": -33.4508,
+          "lng": -70.6486
+        },
+        {
+          "tarifa": 39409.8,
+          "ocupacion": 0.31,
+          "estadiaNoches": 4.5,
+          "superhost": true,
+          "distanciaM": 564,
+          "resenas": 77,
+          "nota": 4.79,
+          "lat": -33.4508,
+          "lng": -70.6485
+        },
+        {
+          "tarifa": 60897.7,
+          "ocupacion": 0.586,
+          "estadiaNoches": 2.9,
+          "superhost": false,
+          "distanciaM": 572,
+          "resenas": 145,
+          "nota": 4.81,
+          "lat": -33.4464,
+          "lng": -70.6585
+        },
+        {
+          "tarifa": 33209.7,
+          "ocupacion": 0.184,
+          "estadiaNoches": 6.7,
+          "superhost": true,
+          "distanciaM": 606,
+          "resenas": 44,
+          "nota": 4.98,
+          "lat": -33.4449,
+          "lng": -70.6551
+        },
+        {
+          "tarifa": 39430.3,
+          "ocupacion": 0.323,
+          "estadiaNoches": 6.2,
+          "superhost": true,
+          "distanciaM": 615,
+          "resenas": 91,
+          "nota": 4.9,
+          "lat": -33.4481,
+          "lng": -70.6485
+        },
+        {
+          "tarifa": 35546.9,
+          "ocupacion": 0.46,
+          "estadiaNoches": 2.9,
+          "superhost": false,
+          "distanciaM": 616,
+          "resenas": 23,
+          "nota": 4.74,
+          "lat": -33.4479,
+          "lng": -70.6486
+        },
+        {
+          "tarifa": 99654.7,
+          "ocupacion": 0.329,
+          "estadiaNoches": 6.2,
+          "superhost": false,
+          "distanciaM": 648,
+          "resenas": 15,
+          "nota": 4.27,
+          "lat": -33.4494,
+          "lng": -70.6477
+        },
+        {
+          "tarifa": 37999.3,
+          "ocupacion": 0.211,
+          "estadiaNoches": 4.8,
+          "superhost": false,
+          "distanciaM": 749,
+          "resenas": 6,
+          "nota": 4.17,
+          "lat": -33.4482,
+          "lng": -70.6469
+        },
+        {
+          "tarifa": 49680.2,
+          "ocupacion": 0.427,
+          "estadiaNoches": 2.2,
+          "superhost": true,
+          "distanciaM": 756,
+          "resenas": 97,
+          "nota": 4.95,
+          "lat": -33.4563,
+          "lng": -70.6585
+        },
+        {
+          "tarifa": 46553.1,
+          "ocupacion": 0.192,
+          "estadiaNoches": 2.9,
+          "superhost": true,
+          "distanciaM": 823,
+          "resenas": 51,
+          "nota": 4.78,
+          "lat": -33.4565,
+          "lng": -70.6595
+        },
+        {
+          "tarifa": 41859.6,
+          "ocupacion": 0.148,
+          "estadiaNoches": 3,
+          "superhost": true,
+          "distanciaM": 843,
+          "resenas": 28,
+          "nota": 4.89,
+          "lat": -33.4579,
+          "lng": -70.6554
+        },
+        {
+          "tarifa": 128714.8,
+          "ocupacion": 0.326,
+          "estadiaNoches": 2.6,
+          "superhost": true,
+          "distanciaM": 857,
+          "resenas": 13,
+          "nota": 5,
+          "lat": -33.4446,
+          "lng": -70.6484
+        },
+        {
+          "tarifa": 44104.7,
+          "ocupacion": 0.882,
+          "estadiaNoches": 3.1,
+          "superhost": true,
+          "distanciaM": 897,
+          "resenas": 49,
+          "nota": 4.84,
+          "lat": -33.4437,
+          "lng": -70.66
+        },
+        {
+          "tarifa": 59958.2,
+          "ocupacion": 0.348,
+          "estadiaNoches": 4.4,
+          "superhost": true,
+          "distanciaM": 964,
+          "resenas": 27,
+          "nota": 5,
+          "lat": -33.4426,
+          "lng": -70.6592
+        }
+      ]
+    }
   }
 }
