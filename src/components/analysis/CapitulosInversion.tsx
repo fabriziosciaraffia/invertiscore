@@ -101,7 +101,7 @@ const capVer = (v: string) => etiquetaVeredicto(v, "frase", v);
  * Se aplica SOLO con el redisenno: el camino de siempre conserva su cifra pelada, que es
  * lo que hoy se ve en produccion.
  */
-const conApellido = (rediseno: boolean, apellido: string, cifra: ReactNode): ReactNode =>
+export const conApellido = (rediseno: boolean, apellido: string, cifra: ReactNode): ReactNode =>
   rediseno ? (
     <>
       <span className="val-ap">{apellido}</span> {cifra}

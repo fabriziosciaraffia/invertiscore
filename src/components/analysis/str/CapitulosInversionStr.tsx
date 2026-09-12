@@ -20,6 +20,8 @@ import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, Bars, Barr
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
 import { PlanNegociacion } from "@/components/ui/AnalysisDrawer";
 import { Matriz, nombreVeredicto, FilaDato, FilasDato, BarraTramos, CurvaAnual, CurvaPatrimonio, BloqueDia1, SegsCierre } from "@/components/analysis/shared";
+import { conApellido } from "@/components/analysis/CapitulosInversion";
+import { useRediseno } from "@/components/analysis/RedisenoContexto";
 
 /**
  * LA INVERSIÓN · STR — los seis capítulos del CONGELADO (T1 · 04-sep-2026):
@@ -122,6 +124,10 @@ export function CapitulosInversionStr({
     }
     return "$" + Math.round(abs).toLocaleString("es-CL");
   };
+  // Contrato §7 (bloque C · 11-sep-2026): con el rediseño las seis filas llevan su cifra
+  // APELLIDADA —Cap rate · Flujo · Al año · Precio · vs arriendo largo · Resultado—, con el
+  // mismo helper de LTR. El camino de siempre conserva la cifra pelada.
+  const rediseno = useRediseno();
   const signed = (n: number) => `${n < 0 ? "−" : n > 0 ? "+" : ""}${money(n)}`;
   const neg = (n: number) => `${n < 0 ? "−" : ""}${money(n)}`;
   const compact = (n: number) => {
@@ -175,7 +181,7 @@ export function CapitulosInversionStr({
       id: "renta",
       numero: ROMANO.renta,
       pregunta: "Cuánto renta",
-      valor: `${pct1(cap)}%`,
+      valor: conApellido(rediseno, "Cap rate", `${pct1(cap)}%`),
       valorRojo: cap < CAP_STR_UMBRAL_PCT,
       ksub: (
         <>
@@ -279,7 +285,7 @@ export function CapitulosInversionStr({
       id: "flujo",
       numero: ROMANO.flujo,
       pregunta: "Tu flujo mensual",
-      valor: signed(flujo),
+      valor: conApellido(rediseno, "Flujo", signed(flujo)),
       valorRojo: flujo < 0,
       ksub: `de los ${money(ingreso)} del ingreso, después de comisión, costos y cuota`,
       anchorId: anchorCapituloStr("flujo"),
@@ -343,7 +349,8 @@ export function CapitulosInversionStr({
       id: "noches",
       numero: ROMANO.noches,
       pregunta: "Cuántas noches necesitas",
-      valor: String(noches),
+      // «Al año 171 noches»: la unidad va con la cifra porque el apellido solo no la da.
+      valor: conApellido(rediseno, "Al año", rediseno ? `${noches} noches` : String(noches)),
       ksub: [`${noches} noches al año con la ocupación ${occEsTuya ? "que definiste" : "estimada"} (${Math.round(occ * 100)}%)`, arribaTxt, zonaTxt].filter(Boolean).join(" · "),
       anchorId: anchorCapituloStr("noches"),
       cuerpo: (
@@ -453,7 +460,8 @@ export function CapitulosInversionStr({
       id: "pagas",
       numero: ROMANO.pagas,
       pregunta: "Cómo lo pagas",
-      valor: valorIV,
+      // §7: la fila dice el PRECIO («Precio UF 5.042»); el delta al techo sigue en el cuerpo.
+      valor: conApellido(rediseno, "Precio", rediseno ? ufTxt(precioUF) : valorIV),
       valorRojo: false,
       ksub: [`precio ${ufTxt(precioUF)}`, `pie ${Math.round(piePct)}%`, plazo > 0 ? `${plazo} años al ${pct1(tasa)}%` : "sin crédito", esEstructural ? "fuera de lo negociable" : subeTxt].filter(Boolean).join(" · "),
       anchorId: anchorCapituloStr("pagas"),
@@ -562,7 +570,7 @@ export function CapitulosInversionStr({
       id: "gestion",
       numero: ROMANO.gestion,
       pregunta: "Cómo lo gestionas",
-      valor: valorV,
+      valor: conApellido(rediseno, "vs arriendo largo", valorV),
       valorRojo: sr < 0,
       ksub: [`autogestión ${signed(auto.flujoCajaMensual)} al mes`, `con administrador ${signed(admin.flujoCajaMensual)}`, `${valorV} sobre el arriendo largo`].join(" · "),
       anchorId: anchorCapituloStr("gestion"),
@@ -651,7 +659,7 @@ export function CapitulosInversionStr({
             id: "resultado",
             numero: ROMANO.resultado,
             pregunta: `Tu resultado a ${anios} años`,
-            valor: compact(patrimonio),
+            valor: conApellido(rediseno, "Resultado", compact(patrimonio)),
             valorRojo: patrimonio < 0,
             ksub: [`tu parte al vender el año ${anios}`, mult != null ? `×${mult.toFixed(2).replace(".", ",")} sobre lo puesto` : "", tir != null ? `TIR ${pct1(tir)}%` : ""].filter(Boolean).join(" · "),
             anchorId: anchorCapituloStr("resultado"),
