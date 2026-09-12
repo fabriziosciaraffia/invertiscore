@@ -234,6 +234,14 @@ export function HeroLTR({
         arriendoDeclaradoCLP: Number(inputData?.arriendo ?? 0),
         currency,
         valorUF,
+        // El otro margen de COMPRAR (12-sep-2026): el último precio que sigue siendo
+        // Comprar, medido por el motor en el hallazgo de sensibilidad. Ausente en filas
+        // viejas ⇒ la fila no va.
+        precioMax: (() => {
+          const uf = sensibilidadRow?.valor.precioMaximoComprarUF;
+          const precio = Number(inputData?.precio ?? 0);
+          return uf != null && precio > 0 ? { uf, pct: Math.round((uf / precio - 1) * 1000) / 10 } : null;
+        })(),
       })
     : null;
   // LA PROSA SE MANTIENE SOLO DONDE EL CONTRATO VISUAL LA TIENE: el lead de COMPRAR y

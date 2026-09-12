@@ -37,6 +37,10 @@ export interface FilaLoQueHariaYo {
    * se dibujan como ecuación sin mix. `null` ⇒ se usa el `titulo`.
    */
   rotuloCorto?: string | null;
+  /** COMPRAR (12-sep-2026): la fila es una ORACIÓN completa al lado del rótulo —«El
+   *  arriendo puede caer hasta $720.000 (−6,3%) y sigue siendo Comprar.»—, no una cifra.
+   *  Solo la llevan las tres filas de COMPRAR; el resto sigue con `cifra`/`objetivo`. */
+  oracion?: string | null;
 }
 
 export interface MixLoQueHariaYo {
@@ -163,6 +167,14 @@ export function construirLoQueHariaYo(p: {
    *  el caller pasa null. Tienen precedencia sobre los dos de LTR cuando vienen. */
   aguanta?: { marginPct: number; firme: boolean } | null;
   verifica?: { cifraCLP: number } | null;
+  /** EL OTRO MARGEN DE COMPRAR, resuelto por el caller (12-sep-2026): el último precio
+   *  que sigue siendo Comprar y cuánto es sobre el pedido. LTR lo saca de
+   *  `precioMaximoComprarUF`; STR de `fronteraPrecio.caeA`. null ⇒ la fila no va. */
+  precioMax?: { uf: number; pct: number } | null;
+  /** El monto del que cuelga el piso en pesos —el arriendo o la tarifa que usa el
+   *  análisis, tuyo o del mercado—. Sin él la oración va solo con el porcentaje. En LTR
+   *  cae a `arriendoDeclaradoCLP`. */
+  montoMercadoCLP?: number;
 }): BloqueLoQueHariaYo | null {
   const modalidad = p.modalidad ?? "ltr";
   const mercado = LO_DEL_MERCADO[modalidad];
@@ -171,23 +183,46 @@ export function construirLoQueHariaYo(p: {
   const enUF = (uf: number) => (p.currency === "UF" ? `UF ${miles(uf)}` : `$${miles(uf * (p.valorUF || 1))}`);
 
   // ── COMPRAR ───────────────────────────────────────────────────────────────
-  // Sin mix y sin descarte: no hay palanca que subir. Dos filas — cuánto aguanta
-  // antes de bajar (lo pone el mercado) y qué verificar antes de firmar (lo pones
-  // tú, porque el arriendo —o la tarifa— lo declaraste tú).
+  // Sin mix y sin descarte: no hay palanca que subir. Tres filas con ORACIÓN completa
+  // (12-sep-2026), rótulo en la columna: MARGEN —cuánto puede caer el arriendo o la
+  // tarifa y sigue siendo Comprar—, PRECIO —hasta cuánto puedes pagar y sigue siendo
+  // Comprar— y VERIFICA —el dato que es tuyo y del que cuelga todo—. Hoy decía «Aguanta
+  // −6,3%» y no decía qué aguantaba.
   if (p.veredicto === "COMPRAR") {
     const filas: FilaLoQueHariaYo[] = [];
     const s = p.sensibilidad?.valor;
     const aguanta = p.aguanta !== undefined ? p.aguanta : s ? { marginPct: s.marginPct, firme: s.firme } : null;
     const verifica =
       p.verifica !== undefined ? p.verifica : (p.arriendoDeclaradoCLP ?? 0) > 0 ? { cifraCLP: p.arriendoDeclaradoCLP! } : null;
+    // El piso en pesos = monto × (1 + margen). El monto es el que USA el análisis —tuyo
+    // o del mercado—; sin él no se inventa: la oración va solo con el porcentaje.
+    const monto = p.montoMercadoCLP ?? verifica?.cifraCLP ?? ((p.arriendoDeclaradoCLP ?? 0) > 0 ? p.arriendoDeclaradoCLP : undefined);
+    // El arriendo va con un decimal en UF («UF 18,7»): a esa escala el entero es poco.
+    const piso = (clp: number) => (p.currency === "UF" ? `UF ${(clp / (p.valorUF || 1)).toFixed(1).replace(".", ",")}` : `$${miles(clp)}`);
+    const sujeto = modalidad === "str" ? "La tarifa por noche" : "El arriendo";
     if (aguanta) {
+      const m = aguanta.marginPct;
+      const hasta = aguanta.firme ? "−50% o más" : monto ? `${piso(monto * (1 - m / 100))} (−${pct1(m)}%)` : `−${pct1(m)}%`;
       filas.push({
         titulo: "Cuánto aguanta el veredicto",
         nombre: mercado.nombre,
-        rotuloCorto: "Aguanta",
+        rotuloCorto: "Margen",
         quien: "mercado",
-        cifra: aguanta.firme ? "−50% o más" : `−${pct1(aguanta.marginPct)}%`,
+        cifra: aguanta.firme ? "−50% o más" : `−${pct1(m)}%`,
         objetivo: null,
+        oracion: `${sujeto} puede caer hasta ${hasta} y sigue siendo ${DESTINO}.`,
+      });
+    }
+    if (p.precioMax) {
+      filas.push({
+        titulo: "Hasta qué precio sigue siendo Comprar",
+        nombre: "precio",
+        rotuloCorto: "Precio",
+        quien: "vendedor",
+        cifra: `UF ${miles(p.precioMax.uf)}`,
+        objetivo: null,
+        // El precio de cierre va SIEMPRE en UF, con el toggle o sin él: es un precio, no caja.
+        oracion: `Puedes pagar hasta UF ${miles(p.precioMax.uf)} (+${pct1(p.precioMax.pct)}%) y sigue siendo ${DESTINO}.`,
       });
     }
     if (verifica) {
@@ -198,6 +233,10 @@ export function construirLoQueHariaYo(p: {
         quien: "tuyo",
         cifra: plata(verifica.cifraCLP),
         objetivo: "lo declaraste tú",
+        oracion:
+          modalidad === "str"
+            ? `Definiste ${plata(verifica.cifraCLP)} la noche. Todo cuelga de ese número: confírmalo antes de firmar.`
+            : `Declaraste ${plata(verifica.cifraCLP)} de arriendo. Todo cuelga de ese número: confírmalo antes de firmar.`,
       });
     }
     if (filas.length === 0) return null;

@@ -179,8 +179,11 @@ function EcuacionRecomendacion({
                 {f.cifra} de {f.nombre}
               </b>
             </Fragment>
-          ))}{" "}
-          <em>(c/u por separado)</em>
+          ))}
+          {/* «(c/u por separado)» SOLO con dos alternativas (12-sep-2026): con una no hay
+              «cada una», y la oración cierra con punto. Medido: 74 cards LTR y 15 STR. */}
+          {alternativas.length > 1 ? " " : "."}
+          {alternativas.length > 1 && <em>(c/u por separado)</em>}
         </p>
         <p className="rec-a2">{lineaNoDependeDeTi(alternativas.map((f) => f.quien))}</p>
       </div>
@@ -218,10 +221,16 @@ function EcuacionRecomendacion({
           filas.map((f, i) => (
             <div className="rec-row" key={`${f.titulo}-${i}`}>
               <span className="rec-k">{f.rotuloCorto ?? f.titulo}</span>
-              <span className="rec-v">
-                <b>{f.cifra}</b>
-                {f.objetivo && <em>{f.objetivo}</em>}
-              </span>
+              {/* Con oración (12-sep-2026) la fila se lee como cuerpo, no como cifra en mono:
+                  «El arriendo puede caer hasta $720.000 (−6,3%) y sigue siendo Comprar.» */}
+              {f.oracion ? (
+                <span className="rec-v rec-o">{f.oracion}</span>
+              ) : (
+                <span className="rec-v">
+                  <b>{f.cifra}</b>
+                  {f.objetivo && <em>{f.objetivo}</em>}
+                </span>
+              )}
             </div>
           ))}
         {/* SIN MIX, CON PALANCAS QUE CRUZAN: «Alternativamente» es la línea principal. */}

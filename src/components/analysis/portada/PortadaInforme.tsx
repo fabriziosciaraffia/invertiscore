@@ -898,6 +898,7 @@ export function DocTokens() {
       .doc-r2 .rec-v{display:block;font-size:15px;line-height:1.45}
       .doc-r2 .rec-v > b{font-weight:700}
       .doc-r2 .rec-v > em{display:block;font-style:normal;font-size:13px;opacity:.62;margin-top:3px}
+      .doc-r2 .rec-v.rec-o{font-size:13.5px;line-height:1.5;font-weight:400}
 
       .doc-r2 .rec-ctx{font-size:13px;opacity:.62;margin:0 0 14px}
       .doc-r2 .rec-desc{font-size:13px;opacity:.62;margin:14px 0 0}

@@ -19,6 +19,7 @@ import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
 import { construirLoQueHariaYo, estadoRecomendacion } from "@/lib/lo-que-haria-yo";
 import { LoQueHariaYoBloque } from "@/components/analysis/shared/LoQueHariaYoBloque";
+import { DIST_PREC_PTS } from "@/lib/distancia-veredicto-hallazgo";
 
 /**
  * Hero STR con el contrato LTR (T1 · 04-sep-2026): chip `f.` en el título, prosa a
@@ -180,6 +181,17 @@ export function HeroStrDictamen({
             : { marginPct: 70, firme: true }
           : null,
         verifica: results.adrFuente === "override" ? { cifraCLP: adr } : null,
+        // El piso en pesos cuelga de la tarifa que USA el análisis, tuya o de la zona.
+        montoMercadoCLP: adr,
+        // El otro margen de COMPRAR: `fronteraPrecio.caeA` ya existía —el precio al que
+        // el veredicto cae subiendo el precio—; el máximo es un paso de precisión por
+        // debajo, para que lo que se imprime todavía sea Comprar.
+        precioMax: (() => {
+          const fp = simulacion?.fronteraPrecio ?? null;
+          if (!fp?.caeA || !(fp.precioUFActual > 0)) return null;
+          const uf = Math.floor(fp.precioUFActual * (fp.caeA.factor - DIST_PREC_PTS / 100));
+          return uf > fp.precioUFActual ? { uf, pct: Math.round((uf / fp.precioUFActual - 1) * 1000) / 10 } : null;
+        })(),
       })
     : null;
   // §5: LA BAJADA SE DIBUJA POR ESTADO, y el estado sale del bloque construido: «comprar»,
