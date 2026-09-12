@@ -35,6 +35,8 @@ import {
   DIST_PLAZO_TRAMO_ANIOS,
 } from "./distancia-veredicto-hallazgo";
 import { calcularMixPalancas } from "./mix-palancas";
+import { salidaPorMixStr, mixAlEscalonStr, cierreFraseCanonicaStr } from "./salida-por-mix";
+import { etiquetaVeredicto } from "./veredicto-etiqueta";
 import type { StrPatch } from "./analysis/veredicto-str-con-patch";
 
 // ── Topes de honestidad (calibrados sobre el parque STR, no heredados) ────────────
@@ -533,7 +535,18 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   let fraseCanonica: string;
 
   if (esEstructural) {
-    titular = "Ningún ajuste realista lo lleva al veredicto de arriba.";
+    // LA COMBINACIÓN, ANTES DE AFIRMAR (12-sep-2026). «Estructural» sigue siendo «ninguna
+    // sola cruza», pero 16 filas del parque cruzan combinando pie y plazo (7 a COMPRAR desde
+    // AJUSTA, 9 solo al escalón desde BUSCAR) y esta frase les cerraba la puerta con «la brecha
+    // es del negocio» — la misma fuente que la card y el prompt (v19) dicen lo contrario. La
+    // frase no se renderiza (la pirámide la filtra) pero entra al user prompt, y el modelo la
+    // leyó como contradicción antes que nadie. Misma fuente que la card: salidaPorMixStr.
+    const valorSalida = { esEstructural, veredictoBase: p.veredictoBase, mixPalancas, mixPalancasHastaComprar };
+    const salidaComprar = salidaPorMixStr(valorSalida);
+    const salidaEscalon = salidaComprar ? null : mixAlEscalonStr(valorSalida);
+    titular = salidaComprar || salidaEscalon
+      ? "Ningún ajuste por separado lo lleva al veredicto de arriba; juntos, sí."
+      : "Ningún ajuste realista lo lleva al veredicto de arriba.";
     // FRASE ESTRUCTURAL (fix del signo, 02-sep-2026 — espejo del LTR c48877d):
     // `deltaMinimoFueraDeTope` es lo MÍNIMO que SÍ cruza (bisección en rango extendido) y
     // la frase lo escribía como si no cruzara ("Ni cerrando un 33,6% bajo el precio…").
@@ -568,9 +581,17 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     // ancladas a la mediana observada, "la brecha es del negocio" apunta mal —
     // el negocio está a mercado; lo que no rinde en corto a estos precios de
     // compra es la zona. Variante canónica STR.
-    const cierreBrecha = p.casoPrecioJusto
-      ? "La brecha no es de este departamento ni de su precio — esta zona no sostiene renta corta a los precios de compra actuales. Otro depto igual, acá mismo, tendría el mismo problema."
-      : "La brecha es del negocio, no de cómo lo estás mirando.";
+    // Con combinación, el cierre dice lo que hay: «Con lo tuyo —pie y plazo— y un descuento de
+    // X% llega a Comprar» (sin descuento, la forma corta; desde BUSCAR al escalón, «llega a
+    // Ajusta supuestos, no a Comprar»). Lee el descuento como el prompt lee
+    // `descuentoQueAdemásPide`. Sin combinación, el cierre de siempre.
+    const cierreBrecha = salidaComprar
+      ? cierreFraseCanonicaStr(salidaComprar, null)
+      : salidaEscalon
+        ? cierreFraseCanonicaStr(salidaEscalon, etiquetaVeredicto("AJUSTA SUPUESTOS"))
+        : p.casoPrecioJusto
+          ? "La brecha no es de este departamento ni de su precio — esta zona no sostiene renta corta a los precios de compra actuales. Otro depto igual, acá mismo, tendría el mismo problema."
+          : "La brecha es del negocio, no de cómo lo estás mirando.";
     fraseCanonica = `${primera}${segunda} ${cierreBrecha}`;
   } else {
     const l = palancaMasBarata!;

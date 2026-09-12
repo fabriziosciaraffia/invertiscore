@@ -31,7 +31,13 @@ export interface SalidaPorMix {
   descuentoPct: number | null;
   /** Plata propia extra el día uno, en UF. */
   costoDiaUnoUF: number;
+  /** Qué dimensiones mueve: el copy STR dice «lo tuyo —pie y plazo—» / «—el pie—». */
+  mueve: ("pie" | "plazo")[];
 }
+
+/** Lo que el hallazgo STR necesita para decidir la combinación: el tipo mínimo, para que el
+ *  builder pueda preguntarlo ANTES de armar el valor completo. */
+export type ValorParaSalidaStr = Pick<HallazgoDistanciaVeredicto["valor"], "esEstructural" | "veredictoBase" | "mixPalancas" | "mixPalancasHastaComprar">;
 
 const pct1 = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
 
@@ -61,7 +67,7 @@ export function salidaPorMix(v: HallazgoDistanciaVeredicto["valor"]): SalidaPorM
  * exactamente la salida que el lector tiene al lado. Medido: 7 filas AJUSTA con salida por
  * esta fuente; 9 BUSCAR con combinación solo al escalón, que van por `mixAlEscalonStr`.
  */
-export function salidaPorMixStr(v: HallazgoDistanciaVeredicto["valor"]): SalidaPorMix | null {
+export function salidaPorMixStr(v: ValorParaSalidaStr): SalidaPorMix | null {
   if (!v.esEstructural) return null;
   const m = v.veredictoBase === "BUSCAR OTRA" && v.mixPalancasHastaComprar !== undefined ? v.mixPalancasHastaComprar : v.mixPalancas;
   if (!m || !m.dentroDelAlcance || m.redundanteConPalancaSola) return null;
@@ -73,7 +79,7 @@ export function salidaPorMixStr(v: HallazgoDistanciaVeredicto["valor"]): SalidaP
  * una a Comprar. La card no la muestra, pero el motor la tiene: la prosa no puede decir «no
  * hay forma» y tampoco prometer Comprar. `null` fuera de ese caso exacto.
  */
-export function mixAlEscalonStr(v: HallazgoDistanciaVeredicto["valor"]): SalidaPorMix | null {
+export function mixAlEscalonStr(v: ValorParaSalidaStr): SalidaPorMix | null {
   if (!v.esEstructural || v.veredictoBase !== "BUSCAR OTRA") return null;
   if (salidaPorMixStr(v)) return null;
   const m = v.mixPalancas;
@@ -98,7 +104,45 @@ function desdeMix(m: NonNullable<HallazgoDistanciaVeredicto["valor"]["mixPalanca
         ? "subiendo el pie"
         : "estirando el plazo";
 
-  return { movimiento: partes.join(" y "), remate, descuentoPct, costoDiaUnoUF: m.costoDiaUnoUF };
+  const mueve: ("pie" | "plazo")[] = [];
+  if (m.piePctDelta !== 0) mueve.push("pie");
+  if (m.plazoAniosDelta !== 0) mueve.push("plazo");
+  return { movimiento: partes.join(" y "), remate, descuentoPct, costoDiaUnoUF: m.costoDiaUnoUF, mueve };
+}
+
+// ── EL COPY STR (12-sep-2026 · «la fraseCanonica estructural STR deja de negar el mix») ──
+// Cinco superficies STR seguían diciendo «no hay forma» en las 16 filas con combinación. Las
+// que son neutrales de modalidad —cierrePopupSalida, tituloCardSalida, lineaMiniSalida— se
+// reutilizan tal cual; estas son las que LTR no tiene: el cierre de la fraseCanonica, el
+// escalón desde BUSCAR (la combinación llega a Ajusta supuestos, no a Comprar) y el pie del
+// PDF STR, que en LTR nombra dos condiciones que renta corta no tiene.
+
+/** «pie y plazo» · «el pie» · «el plazo»: lo tuyo, lo que se mueve sin pedirle nada a nadie. */
+export function loTuyo(s: SalidaPorMix): string {
+  return s.mueve.length >= 2 ? "pie y plazo" : s.mueve[0] === "plazo" ? "el plazo" : "el pie";
+}
+
+/** El cierre de la fraseCanonica STR con combinación. `escalon` = a dónde llega cuando NO es
+ *  Comprar («Ajusta supuestos», desde BUSCAR); null = llega a Comprar. Lee el descuento como el
+ *  prompt lee `descuentoQueAdemásPide`: con descuento se dice; sin descuento, la forma corta. */
+export function cierreFraseCanonicaStr(s: SalidaPorMix, escalon: string | null): string {
+  const tuyo = `Con lo tuyo —${loTuyo(s)}—`;
+  if (escalon) return `${tuyo}${s.descuentoPct === null ? "" : ` y un descuento de ${pct1(s.descuentoPct)}%`} llega a ${escalon}, no a Comprar.`;
+  return s.descuentoPct === null ? `${tuyo} sí llega a Comprar.` : `${tuyo} y un descuento de ${pct1(s.descuentoPct)}% llega a Comprar.`;
+}
+
+/** El cierre del pop-up STR desde BUSCAR cuando la combinación llega solo al escalón. A Comprar
+ *  se usa `cierrePopupSalida`, el de LTR, que no nombra modalidad. */
+export function cierrePopupEscalonStr(s: SalidaPorMix, escalon: string): { marca: string; resto: string } {
+  const marca = `Ningún cambio por separado alcanza. ${s.remate[0].toUpperCase()}${s.remate.slice(1)}, llega a ${escalon}.`;
+  const resto = `Con ${s.movimiento}${s.descuentoPct === null ? "" : `, y un ${pct1(s.descuentoPct)}% de descuento`}, deja de ser un no, pero no llega a Comprar. Lo que cuesta es plata tuya el día uno.`;
+  return { marca, resto };
+}
+
+/** El pie del PDF STR (bloque «por qué no cierra»). */
+export function pieDocumentoSalidaStr(s: SalidaPorMix, escalon: string | null): string {
+  const con = `con ${s.movimiento}${s.descuentoPct === null ? "" : `, y un ${pct1(s.descuentoPct)}% de descuento`}`;
+  return `Y no es cuestión de afinar un supuesto: ningún cambio por separado lo lleva a Comprar, pero ${con}${escalon ? ` llega a ${escalon}, no a Comprar` : ", sí"}. Lo que pide es plata tuya el día uno.`;
 }
 
 // ── EL COPY DE CADA SUPERFICIE ───────────────────────────────────────────────

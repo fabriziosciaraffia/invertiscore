@@ -20,7 +20,7 @@ export function totalEnPalabras(total: number): string {
 
 /** Línea del footer del hero: "Franco probó cuatro ajustes. Dos mueven el veredicto."
  *  Sin vías (filas viejas) queda la línea genérica. */
-export function lineaFooterVias(nCruzan: number | null, total: number, haySalidaCombinando = false): string {
+export function lineaFooterVias(nCruzan: number | null, total: number, haySalidaCombinando = false, escalon: string | null = null): string {
   const t = totalEnPalabras(total);
   if (nCruzan == null) return `Franco probó ${t} ajustes que mueven el veredicto.`;
   const cuantos =
@@ -29,7 +29,9 @@ export function lineaFooterVias(nCruzan: number | null, total: number, haySalida
   // probó de a uno. Sin ella, «ninguno mueve el veredicto» le miente a las 179 filas
   // donde la combinación sí lo mueve — y esta línea se lee en la card, sin abrir nada.
   const cabeza = `Franco probó ${t} ajustes por separado. ${cuantos} el veredicto`;
-  return nCruzan === 0 && haySalidaCombinando ? `${cabeza}; juntos, sí.` : `${cabeza}.`;
+  // STR desde BUSCAR: la combinación llega a Ajusta supuestos, no a Comprar; se dice hasta dónde.
+  if (nCruzan === 0 && haySalidaCombinando) return escalon ? `${cabeza}; juntos, solo hasta ${escalon}.` : `${cabeza}; juntos, sí.`;
+  return `${cabeza}.`;
 }
 
 /** Intro del modal de vías cuando el hallazgo trae `vias`:
