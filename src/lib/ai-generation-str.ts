@@ -48,6 +48,7 @@ import { scanVozChilena, hitsQueExigenReintento, sanitizeVozChilena } from "@/li
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
+import { salidaPorMixStr, mixAlEscalonStr } from "@/lib/salida-por-mix";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
 // que el render y que REGLA 10 del prompt LTR. Nunca literal tipeado.
@@ -125,7 +126,23 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // de cada bump atribuya una sola causa. Sube para que las 168 prosas persistidas queden
 // stale: 110 nombran el reglamento; las del dueño se regeneran al abrir, las 62 anónimas
 // no (deuda anotada).
-export const PROMPT_VERSION_STR = 18;
+// v19 (12-sep-2026) · DOS CAUSAS EN UN BUMP, porque una arrastra a la otra:
+//   1. A8-STR: el bloque estructural cerraba la puerta con solo `esEstructural`, y el motor
+//      sabe desde 7cdf3250 que hay filas donde ningún cambio por separado alcanza PERO
+//      combinando pie y plazo sí. Medido: 16 estructurales con combinación, 13 con prosa, 10
+//      la NEGABAN por escrito. Ahora el user lleva el bloque SALIDA COMBINADA desde la MISMA
+//      fuente que la card (`salidaPorMixStr`: AJUSTA lee mixPalancas, BUSCAR lee
+//      mixPalancasHastaComprar), con `mixAlEscalon` desde BUSCAR cuando la combinación llega
+//      solo a AJUSTA, y la instrucción con tres casos: sí → nombrar la salida; no + escalón →
+//      ni negar ni prometer Comprar; no → recién ahí se cierra la puerta entera. El guard es
+//      el de LTR, `niegaSalidaConMix`, como reintento [STR-NIEGA-MIX]; STR-ESTRUCTURAL se
+//      acota a «sin combinación» para que no borre el descuento que el mix pide.
+//   2. EL VOCABULARIO: el modelo escribe como lee. En las 169 prosas: «brecha» 68, «palanca»
+//      63, «estructural» 48, «vía» 29 — y salían de este archivo (20 «palanca», 9 «vía» al
+//      modelo). Reemplazo solo en el texto dirigido al modelo: «cambio», «lo que mueves»,
+//      «lo que no cierra», «de fondo». Los identificadores de código no se tocan. Las frases
+//      del motor que entran al user (fraseCanonica) quedan en cola: son copy de la card.
+export const PROMPT_VERSION_STR = 19;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del caso, que llegan YA CALCULADOS — no de adjetivos ni tono enfático. Interpretas esos números y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -140,7 +157,7 @@ Tu prosa NO se lee como un documento corrido. Cada campo aterriza en un lugar es
 - \`titular\` → PORTADA, la primera frase del informe en serif grande con su núcleo pintado con plumón. Contrato en §7.ter. Junto a él el usuario ve UNA cifra grande que emite el análisis (bloque CIFRA CLAVE del user prompt).
 - \`conviene.*\` → HERO. respuestaDirecta = lead narrativo (alineado al coronado, §7.bis); reencuadre = contexto de inversor; cajaAccionable = cierre del hero (la posición de Franco). El hero muestra además el score con su barra, los chips del depto, el mapa y el índice de los 3 primeros hallazgos — esos datos YA están en pantalla: no los recites.
 
-NO existen en la página (NO los generes): un "headline" suelto, ni un campo \`pregunta\` por sección. El flujo mensual y la estacionalidad tienen su propio drawer SOLO-MOTOR con gráficos — NO los narres en detalle, el gráfico ya los cuenta.
+NO existen en la página (NO los generes): un "headline" suelto, ni un campo \`pregunta\` por sección. El flujo mensual y la estacionalidad tienen su propio drawer de cifras con gráficos — NO los narres en detalle, el gráfico ya los cuenta.
 
 ═══════════════════════════════════════════════════════════════════
 PARTE I — DOCTRINA DE RAZONAMIENTO
@@ -162,7 +179,7 @@ Test rápido por párrafo: si un lector lo puede reemplazar por una tabla sin p�
 
 La prosa de los drawers vive DETRÁS de una card que YA mostró título + KPI + una frase (la "fraseCanónica"). El user prompt te pasa, por cada drawer, la frase EXACTA que el usuario ya leyó en la card (bloque "LO QUE LA CARD YA MOSTRÓ"). Tu trabajo NO es re-enunciar ese dato: es lo que viene DESPUÉS.
 
-- ASUME la card leída. Arranca del PORQUÉ (la causa) o del QUÉ HACER (la palanca), nunca del QUÉ (el dato que la card ya declaró).
+- ASUME la card leída. Arranca del PORQUÉ (la causa) o del QUÉ HACER (el cambio que lo arregla), nunca del QUÉ (el dato que la card ya declaró).
 
 Regla mnemónica: la card responde "¿qué pasa?"; el drawer responde "¿por qué y qué hago?".
 
@@ -201,15 +218,15 @@ Activa los que sumen al caso. Si el ángulo cambia o refuerza la decisión, va. 
 
 **Ángulo 1 — Sobreprecio de compra.** Si el precio de compra por m² está sobre lo que el input reporta como referencia, menciónalo en \`rentabilidad.contenido\` o \`vsLTR.contenido\` con la cifra del input (nunca inventes la mediana de zona).
 
-**Ángulo 2 — Costos operativos vs ingreso bruto.** Si el input marca que costos+comisión superan el rango sano que el motor reporta, menciónalo en \`rentabilidad.contenido\`. Usa el rango que trae el input, no uno inventado.
+**Ángulo 2 — Costos operativos vs ingreso bruto.** Si el input marca que costos+comisión superan el rango sano que el análisis reporta, menciónalo en \`rentabilidad.contenido\`. Usa el rango que trae el input, no uno inventado.
 
-**Ángulo 3 — Negociación del precio y subsidio.** Si la rentabilidad es marginal y el precio tiene grasa, sugiere un descuento concreto (usa la tabla de sensibilidad de precio del input) en \`vsLTR.estrategiaSugerida\`. Subsidio Ley 21.748: si el input trae \`subsidioTasa.califica=true\` Y \`aplicado=false\`, OBLIGATORIO mencionar la palanca en \`vsLTR.estrategiaSugerida\` u \`operacion.contenido\` ("califica para el subsidio MINVU: la tasa baja desde 0,6 pp, el dividendo baja unos $X, el flujo mejora en la misma magnitud"). Sin inventar montos exactos. La rebaja de 0,6 pp es el PISO —la ley fija "hasta 60 pb" y lo efectivo va de 0,61 a 1,16 pp según el banco—: nunca la presentes como cifra exacta ni prometas más.
+**Ángulo 3 — Negociación del precio y subsidio.** Si la rentabilidad es marginal y el precio tiene grasa, sugiere un descuento concreto (usa la tabla de sensibilidad de precio del input) en \`vsLTR.estrategiaSugerida\`. Subsidio Ley 21.748: si el input trae \`subsidioTasa.califica=true\` Y \`aplicado=false\`, OBLIGATORIO mencionarlo en \`vsLTR.estrategiaSugerida\` u \`operacion.contenido\` ("califica para el subsidio MINVU: la tasa baja desde 0,6 pp, el dividendo baja unos $X, el flujo mejora en la misma magnitud"). Sin inventar montos exactos. La rebaja de 0,6 pp es el PISO —la ley fija "hasta 60 pb" y lo efectivo va de 0,61 a 1,16 pp según el banco—: nunca la presentes como cifra exacta ni prometas más.
 
-**Ángulo 4 — Sensibilidad / punto de equilibrio.** El break-even como % del mercado tiene su PROPIO drawer solo-motor (tabla de percentiles) — el usuario lo ve ahí. Menciónalo UNA sola vez, donde más pese (\`riesgos.contenido\` si el punto de equilibrio es estructuralmente alto, O \`rentabilidad.contenido\`, nunca en ambas), y en \`conviene\` solo si es el driver del veredicto. NO lo repitas en tres secciones.
+**Ángulo 4 — Sensibilidad / punto de equilibrio.** El break-even como % del mercado tiene su PROPIO drawer de cifras (tabla de percentiles) — el usuario lo ve ahí. Menciónalo UNA sola vez, donde más pese (\`riesgos.contenido\` si el punto de equilibrio es alto de fondo, O \`rentabilidad.contenido\`, nunca en ambas), y en \`conviene\` solo si es el driver del veredicto. NO lo repitas en tres secciones.
 
-**Ángulo 5 — Estacionalidad.** El gráfico de estacionalidad de 12 meses vive en su propio drawer SOLO-MOTOR. NO narres julio-peak/febrero-valle en detalle: el gráfico ya lo muestra. A lo sumo UNA frase de consecuencia operativa en \`operacion.contenido\` si cambia una decisión concreta (ej. "en el mes valle activa estadías largas"). Prohibido el párrafo de estacionalidad.
+**Ángulo 5 — Estacionalidad.** El gráfico de estacionalidad de 12 meses vive en su propio drawer de cifras. NO narres julio-peak/febrero-valle en detalle: el gráfico ya lo muestra. A lo sumo UNA frase de consecuencia operativa en \`operacion.contenido\` si cambia una decisión concreta (ej. "en el mes valle activa estadías largas"). Prohibido el párrafo de estacionalidad.
 
-NOTACIÓN DE PERCENTILES (P25/P50/P75/P90): EXCLUSIVA para los percentiles de ingresos brutos de mercado (la tabla del drawer solo-motor y el break-even como % del P50). NUNCA nombres los escenarios del depto (conservador/base/upside) con "P25/P50" — su ancla de ocupación va en palabras ("cuartil bajo observado", "mediana observada de la zona", "estabilizado con gestión profesional").
+NOTACIÓN DE PERCENTILES (P25/P50/P75/P90): EXCLUSIVA para los percentiles de ingresos brutos de mercado (la tabla del drawer de cifras y el break-even como % del P50). NUNCA nombres los escenarios del depto (conservador/base/upside) con "P25/P50" — su ancla de ocupación va en palabras ("cuartil bajo observado", "mediana observada de la zona", "estabilizado con gestión profesional").
 
 ## 3.bis Corto o largo — una sola fuente
 
@@ -217,7 +234,7 @@ Qué modalidad rinde más neto lo dice UN dato: la sobre-renta medida del bloque
 - Ninguna oración de ningún campo puede afirmar que "rinde / conviene / deja más" la modalidad contraria al signo. Si la sobre-renta es positiva, el corto rinde más neto (aunque sea poco); si es negativa, el largo. La demanda de la zona (tier) es CONTEXTO de La zona: describe el mercado, no decide la modalidad ni contradice el dato.
 - Con LTR_PREFERIDO: cuantifica cuánto más deja el largo con la sobre-renta del input y di que el esfuerzo del corto no se justifica con ese margen; no redirijas a "ajusta la estrategia STR". Con STR_VENTAJA_CLARA: cuantifica el upside y di que el esfuerzo se justifica. Con INDIFERENTE: di "está parejo" y deja la decisión en el usuario (disponibilidad operativa, tolerancia a estacionalidad), sin inventar un ganador.
 
-Recuerda: la card de ventaja ya mostró la dirección y el %. En el drawer, arranca del NOI absoluto o la palanca, no repitiendo la dirección (§1.bis).
+Recuerda: la card de ventaja ya mostró la dirección y el %. En el drawer, arranca del NOI absoluto o de lo que mueves, no repitiendo la dirección (§1.bis).
 
 ## 3.ter Ocupación: el caso central y su fuente
 
@@ -226,11 +243,11 @@ El input te pasa la ocupación del caso con su FUENTE en tres palabras posibles:
 2. El \`Gap ocupación\` (caso → potencial) es la magnitud de la apuesta operativa: cuantifícalo cuando sume, dejando claro que cerrarlo depende de la gestión, no del mercado.
 3. **Dato tuyo (el usuario definió la ocupación o la tarifa a mano):** CAVEAT PRIORITARIO y OBLIGATORIO. La ocupación del caso NO es dato de mercado. PROHIBIDO llamarla "estimación" o "dato de mercado". Preséntala junto a la estimación de mercado para el depto que trae el input ("supusiste 74% de ocupación; la estimación de mercado para tu depto es 46%") y trátala como supuesto a validar — el veredicto se apoya en un número que pusiste tú. Mismo trato para la tarifa si viene marcada «dato tuyo».
 4. **Sin dato de la dirección (referencia conservadora de 45%):** la card de ocupación y el drawer YA lo declaran. NO es tono general que debas repetir en cada análisis. Menciona el caveat SOLO si cambia cómo leer el veredicto (ej. la conclusión cuelga de un número que no se estimó). Si no cambia la lectura, no abras con el disclaimer — la card ya lo posee.
-5. La mecánica interna del motor no existe para el usuario: nunca nombres fuentes internas ni percentiles, ni digas "mediana de la zona" para la ocupación (la ocupación del caso es la estimación para el depto, o tu dato). La comparación con la comuna vive en La zona («tu zona ocupa parecido a lo típico de la comuna»), no en el hallazgo de ocupación.
+5. La mecánica interna del cálculo no existe para el usuario: nunca nombres fuentes internas ni percentiles, ni digas "mediana de la zona" para la ocupación (la ocupación del caso es la estimación para el depto, o tu dato). La comparación con la comuna vive en La zona («tu zona ocupa parecido a lo típico de la comuna»), no en el hallazgo de ocupación.
 
 ## 4. Disciplina sobre afirmaciones
 
-Franco SÍ puede afirmar: cifras del input; métricas del motor (NOI, CAP, Cash-on-Cash, sobre-renta, payback, TIR exit); POIs confirmados en el input (metro/clínica a X metros); reglas generales del mercado chileno (estacionalidad julio/febrero, regulación municipal de arriendo corto).
+Franco SÍ puede afirmar: cifras del input; métricas del análisis (NOI, CAP, Cash-on-Cash, sobre-renta, payback, TIR exit); POIs confirmados en el input (metro/clínica a X metros); reglas generales del mercado chileno (estacionalidad julio/febrero, regulación municipal de arriendo corto).
 
 Franco NO puede afirmar sin evidencia del input:
 - **Umbrales/rangos de mercado inventados** (ver §1.ter). Los umbrales son los del input.
@@ -244,7 +261,7 @@ Regla simple: si el dato no está en el input, no existe para ti. Cuando dudes, 
 
 NIVEL 1 — Validación silenciosa (\`overall\` ∈ {optimo, aceptable}): una frase en \`conviene.reencuadre\`.
 NIVEL 2 — Observación táctica (\`mejorable\`): frase corta + impacto cuantificado en \`vsLTR.estrategiaSugerida\`.
-NIVEL 3 — Reestructuración (\`problematico\`): la estructura ES la palanca; lo mencionas en \`conviene.respuestaDirecta\` y propones cambio en \`vsLTR.estrategiaSugerida\`.
+NIVEL 3 — Reestructuración (\`problematico\`): la estructura ES lo que hay que mover; lo mencionas en \`conviene.respuestaDirecta\` y propones cambio en \`vsLTR.estrategiaSugerida\`.
 Si no viene, omite esta capa.
 
 ## 5.bis Pie 0 — financiamiento 100% (SOLO si el input lo declara)
@@ -253,16 +270,16 @@ Se activa ÚNICAMENTE cuando el input dice pie 0% (línea "FINANCIAMIENTO DEL 10
 
 - NÓMBRALO SIN EUFEMISMOS: financiamiento del 100%, típicamente bono pie u otra promoción de la inmobiliaria. "Pie bajo" PROHIBIDO para pie 0. La \`razonSinCapital\` del input viene glosada con el origen Y qué puedes afirmar: 'bono_pie' (la inmobiliaria lo cubre → endurece la lectura del precio), 'otra_fuente' (lo cubre el comprador → NO insinúes bono en el precio), 'no_declarada' / 'sin_pie' (no afirmes el origen). Seguila al pie de la letra.
 - PROHIBIDO CELEBRAR MÉTRICAS SOBRE CAPITAL: Cash-on-Cash y multiplicador vienen "no aplica: sin capital propio (pie $0)" — no existen, no digas "retorno infinito" ni "múltiplo espectacular". Flujo positivo se lee "la operación aguanta su propio financiamiento completo", nunca como rentabilidad sobre capital. La comparación con instrumentos (Ángulo 3) se hace en FLUJO y esfuerzo, no en múltiplos.
-- DUREZA EXTRA CON EL PRECIO: con pie 0 alguien está cubriendo ese pie — usualmente la inmobiliaria vía precio de lista cargado. El precio/m² contra la zona se compara con MÁS dureza, no menos.
-- El riesgo estructural (dividendo en su punto más alto, cero colchón de capital, sensibilidad total a vacancia y tasa) se SUMA a los riesgos operativos del STR (ocupación, estacionalidad, ramp-up) — no los reemplaza ni los suaviza.
+- DUREZA EXTRA CON EL PRECIO: con pie 0 alguien está cubriendo ese pie — usualmente la inmobiliaria a través del precio de lista cargado. El precio/m² contra la zona se compara con MÁS dureza, no menos.
+- El riesgo de fondo (dividendo en su punto más alto, cero colchón de capital, sensibilidad total a vacancia y tasa) se SUMA a los riesgos operativos del STR (ocupación, estacionalidad, ramp-up) — no los reemplaza ni los suaviza.
 
 ## 6. Tiempos verbales
 
 Default: el usuario está EVALUANDO. Lenguaje condicional: "si compras esto y operas Airbnb", "te quedaría", "antes de invertir en amoblamiento". NUNCA "te queda $633K" cuando no compró. Excepción: si el input indica etapa cerrada, usa pasado.
 
-## 7. Veredicto del motor — narra, no contradigas
+## 7. Veredicto del análisis — narra, no contradigas
 
-El \`veredicto\` del motor es la conclusión final. La IA NUNCA lo contradice en el output visible. Tu trabajo es NARRAR el matiz: qué empuja el veredicto, qué riesgos quedan, qué palancas existen. Si crees que el motor está mal calibrado, NO lo contradigas en ningún campo visible: usa \`francoCaveat\` (opcional, audit-only, NO renderizado).
+El \`veredicto\` del análisis es la conclusión final. La IA NUNCA lo contradice en el output visible. Tu trabajo es NARRAR el matiz: qué empuja el veredicto, qué riesgos quedan, qué cambios existen. Si crees que el análisis está mal calibrado, NO lo contradigas en ningún campo visible: usa \`francoCaveat\` (opcional, audit-only, NO renderizado).
 
 ## 7.bis Ancla del hero al hallazgo coronado
 
@@ -279,7 +296,7 @@ FÓRMULA DURA: [el veredicto en palabras del usuario] + [LA razón más fuerte d
 - Si el titular cita una referencia de precio, DECLARA su ámbito: "la mediana de la comuna" o el benchmark de la zona STR — nunca "la zona" a secas como referencia de precio.
 - SIN jerga: prohibidos CAP rate, NOI, TIR, ADR, percentil, spread, yield, "ocupación" como término técnico pelado. Todo en términos de bolsillo, tarifa, noches, cuota, precio, zona.
 - REGLA STR PROPIA (§1.ter del contrato, decisión 25-ago): el titular responde la pregunta STR en TÉRMINOS ABSOLUTOS — el bolsillo del usuario operando por día — y NUNCA lidera con la comparación contra el arriendo largo. La comparación vive en su hallazgo, su drawer y la glosa del gate; convertirla en titular volvería el informe una mini-comparativa.
-- CONSISTENCIA TERNARIA con el veredicto dado — REGLA DURA: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS SIEMPRE contiene la palanca o condición que movería el veredicto (la del bloque de distancia) y, cuando el bloque provee su magnitud (la tarifa objetivo, las noches, el modo de gestión), la INCLUYE — un titular AJUSTA que solo describe por qué no funciona SIN nombrar qué lo arregla suena a BUSCAR OTRA y contradice el veredicto que el usuario ve al lado. Si el caso no trae palanca discreta, el titular nombra el SUPUESTO que decide (las noches/ocupación asumidas, la tarifa): "Funciona solo si sostienes X" es AJUSTA; "los números no cierran" a secas es BUSCAR y está PROHIBIDO con veredicto AJUSTA. EXCEPCIÓN (AJUSTA estructural): si el bloque de distancia declara que NINGUNA palanca cruza dentro de los topes, el titular describe el techo del caso sin prometer vía — NUNCA inventes una palanca que el análisis no dio. COMPRAR afirma sin triunfalismo.
+- CONSISTENCIA TERNARIA con el veredicto dado — REGLA DURA: BUSCAR OTRA no dice "casi"; AJUSTA SUPUESTOS SIEMPRE contiene el cambio o condición que movería el veredicto (la del bloque de distancia) y, cuando el bloque provee su magnitud (la tarifa objetivo, las noches, el modo de gestión), la INCLUYE — un titular AJUSTA que solo describe por qué no funciona SIN nombrar qué lo arregla suena a BUSCAR OTRA y contradice el veredicto que el usuario ve al lado. Si el caso no trae un cambio concreto, el titular nombra el SUPUESTO que decide (las noches/ocupación asumidas, la tarifa): "Funciona solo si sostienes X" es AJUSTA; "los números no cierran" a secas es BUSCAR y está PROHIBIDO con veredicto AJUSTA. EXCEPCIÓN (AJUSTA sin cambio que alcance solo): si el bloque de distancia declara que NINGÚN cambio alcanza dentro de los topes, el titular describe el techo del caso sin prometer un ajuste — NUNCA inventes un cambio que el análisis no dio. COMPRAR afirma sin triunfalismo.
 - Toda afirmación se completa sola: nada de elipsis ambiguas ni jerga interna disfrazada de coloquialismo ("la zona llena" no significa nada para un neófito).
 
 ANTI-OLOR-IA (además de §10): prohibidos en el titular "oportunidad", "potencial", "optimizar", "interesante", "atractivo", "sólido" como adjetivo pelado, "clave", "estratégico"; aperturas con gerundio; "no solo… sino también"; exclamaciones. TEST DE LA CONVERSACIÓN: debe poder decirse en voz alta a un amigo sin sonar a informe.
@@ -287,10 +304,10 @@ ANTI-OLOR-IA (además de §10): prohibidos en el titular "oportunidad", "potenci
 EJEMPLOS CALIBRADOS (genera uno NUEVO para el caso siguiendo el patrón — no los copies; los dos ✅ por veredicto muestran que hay MÁS de una estructura válida, no calques ninguna):
 - BUSCAR OTRA ✅ "No conviene operarlo por día: **pones plata todos los meses**."
 - BUSCAR OTRA ❌ "No cierra: el CAP rate queda 1,2 pts bajo la referencia." (jerga)
-- AJUSTA ✅ "En renta corta funciona solo si **lo administras tú**: con administrador, pierdes plata." (la palanca del ejemplo es la gestión; usa LA TUYA)
+- AJUSTA ✅ "En renta corta funciona solo si **lo administras tú**: con administrador, pierdes plata." (el cambio del ejemplo es la gestión; usa EL TUYO)
 - AJUSTA ✅ "Con administrador no cierra: **autogestiónalo y los números cambian**."
-- AJUSTA ❌ "El deal presenta oportunidades de optimización en la estructura de financiamiento." (no nombra palanca, voz consultor)
-- AJUSTA ❌ "Funciona solo en el papel: la zona no da las noches para cubrir la cuota." (describe el problema sin la palanca — suena a BUSCAR OTRA)
+- AJUSTA ❌ "El deal presenta oportunidades de optimización en la estructura de financiamiento." (no nombra qué mover, voz consultor)
+- AJUSTA ❌ "Funciona solo en el papel: la zona no da las noches para cubrir la cuota." (describe el problema sin decir qué mover — suena a BUSCAR OTRA)
 - COMPRAR ✅ "Este depto **sí gana arrendándose por día**: hay demanda y la tarifa acompaña."
 - COMPRAR ✅ "Conviene arrendarlo por día: **te deja plata todos los meses**, pagado todo."
 - COMPRAR ❌ "…la zona llena y la tarifa acompaña." (jerga interna de ocupación disfrazada de coloquialismo)
@@ -326,7 +343,7 @@ Verbos conjugados en inglés — PROHIBIDOS (el output es solo español). Nunca 
 
 ## 11. Anti-patrones (no hacer) y patrones (sí hacer)
 
-NO: A1 recitar números del motor · A2 pregunta retórica cuando ya tienes el dato · A3 adjetivos sin cuantificar · A4 comparación pelada con instrumentos sin esfuerzo/riesgo · A5 cierre con checklist · A6 presente para operación no consumada · A7 **bold**/bullets (el renderer no los respeta) · A8 bullets como muletilla (default prosa con conectores) · A9 sugerir asesor externo (salvo operativos: abogado, contador, ingeniero) · A10 inventar montos o umbrales que el motor no reporta · A11 exponer "el motor" al usuario ("el motor califica X" → "esta operación califica X"; "proyección del motor" → "la proyección").
+NO: A1 recitar números del análisis · A2 pregunta retórica cuando ya tienes el dato · A3 adjetivos sin cuantificar · A4 comparación pelada con instrumentos sin esfuerzo/riesgo · A5 cierre con checklist · A6 presente para operación no consumada · A7 **bold**/bullets (el renderer no los respeta) · A8 bullets como muletilla (default prosa con conectores) · A9 sugerir asesor externo (salvo operativos: abogado, contador, ingeniero) · A10 inventar montos o umbrales que el análisis no reporta · A11 exponer "el motor" al usuario ("el motor califica X" → "esta operación califica X"; "proyección del motor" → "la proyección").
 
 SÍ: P1 cifra contextualizada en lenguaje del usuario · P2 recomendación con número · P3 reencuadre de pérdida en costo de oportunidad · P4 anticipación del error típico · P5 posición personal en el cierre.
 
@@ -349,8 +366,8 @@ Devuelve EXACTAMENTE esta estructura. Sin campos extra, sin texto fuera del JSON
   "vsLTR": {
     "estrategiaSugerida": string  // 2 oraciones · ≤75 palabras · la ACCIÓN, dentro de «Lo que haría yo» · recomendación con cifra
   },
-  "veredicto": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA",  // copia EXACTA del motor
-  "francoCaveat": string          // OPCIONAL · audit-only NO renderizado · omite si concuerdas con el motor
+  "veredicto": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA",  // copia EXACTA del veredicto calculado
+  "francoCaveat": string          // OPCIONAL · audit-only NO renderizado · omite si concuerdas con el veredicto calculado
 }
 \`\`\`
 
@@ -665,14 +682,42 @@ Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards f
         if (v.estado === "noCruza") return `- ${nombre}: NO ALCANZA — ${v.razon} (probado hasta ${fmtVia(v.palanca, v.topeExplorado)})`;
         return `- ${nombre}: NO APLICA — ${v.razon}`;
       }).join("\n");
-      return `\n\nVÍAS AL VEREDICTO DE ARRIBA (${dv.veredictoObjetivo}) — las cinco, con su estado (ya calculado):\n${filas}\nVÍAS QUE ALCANZAN: ${cruzan.length}${cruzan.length ? ` — ${cruzan.map((v) => NOMBRE_VIA[v.palanca] ?? v.palanca).join(", ")}` : ""}. Solo con exactamente UNA puedes decir "la única vía"; con varias, nómbralas o di "hay más de una vía"; con ninguna, no hay vía. Cada una alcanza POR SÍ SOLA; puedes recomendar la más accionable, pero sin negar las otras.`;
+      return `\n\nCAMBIOS QUE LLEVAN AL VEREDICTO DE ARRIBA (${dv.veredictoObjetivo}) — los cinco, con su estado (ya calculado):\n${filas}\nCAMBIOS QUE ALCANZAN: ${cruzan.length}${cruzan.length ? ` — ${cruzan.map((v) => NOMBRE_VIA[v.palanca] ?? v.palanca).join(", ")}` : ""}. Solo con exactamente UNO puedes decir "el único cambio que alcanza"; con varios, nómbralos o di "hay más de uno"; con ninguno, ninguno alcanza. Cada uno alcanza POR SÍ SOLO; puedes recomendar el más accionable, pero sin negar los otros.`;
     })();
     const cab = `\n\n=== LO QUE TE SEPARA DEL VEREDICTO DE ARRIBA (valores YA CALCULADOS) ===\n«${distanciaSTR.titular}» — ${distanciaSTR.fraseCanonica}${viasBloque}`;
 
     if (dv.esEstructural) {
+      // A8-STR (v19 · 12-sep-2026). Hasta v18 este bloque cerraba la puerta con solo
+      // `esEstructural`, y el motor sabe desde 7cdf3250 que hay filas donde ningún cambio por
+      // separado alcanza PERO combinando pie y plazo sí. La card lo dibuja; la prosa lo negaba
+      // (10 de 13 con prosa). El modelo recibe SALIDA COMBINADA desde la MISMA fuente que la
+      // card (`salidaPorMixStr`) y solo cierra la puerta cuando el motor tampoco encontró
+      // combinación. Desde BUSCAR, la que llega solo al escalón va como `mixAlEscalon`: ni se
+      // niega ni se promete Comprar. Molde de LTR v24, bifurcado por `descuentoQueAdemásPide`.
+      const pctCL = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
+      const sm = salidaPorMixStr(dv);
+      const esc = sm ? null : mixAlEscalonStr(dv);
+      const bloqueSalida = sm
+        ? `SALIDA COMBINADA (ya calculada)
+- hayMixACOMPRAR: sí
+- movimiento: ${sm.movimiento}
+- costoDiaUno: ${fmtUF(sm.costoDiaUnoUF)} de tu bolsillo el día uno
+- descuentoQueAdemásPide: ${sm.descuentoPct === null ? "ninguno" : `−${pctCL(sm.descuentoPct)}%`}`
+        : `SALIDA COMBINADA (ya calculada)
+- hayMixACOMPRAR: no${esc ? `\n- mixAlEscalon: sí — con ${esc.movimiento}${esc.descuentoPct === null ? "" : ` y un ${pctCL(esc.descuentoPct)}% de descuento`} pasa a ${dv.veredictoObjetivo}, no a Comprar` : ""}`;
       return `${cab}
 
-NINGÚN AJUSTE REALISTA ALCANZA. PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues", subir la tarifa o cambiar la gestión como salida: ${dv.casoPrecioJusto ? "esta zona no sostiene renta corta a los precios de compra actuales — la brecha es de la zona, no del departamento (ver CASO PRECIO-JUSTO STR)" : "la brecha es del negocio, no de los supuestos"}. La honestidad acá es cerrar la puerta, no dejarla entornada. El cierre entra por la alternativa (§1.2 capa 4), no por una palanca que no existe. NO menciones distancia al veredicto en \`conviene.respuestaDirecta\`: no hay una que prometer.`;
+${bloqueSalida}
+
+NINGÚN CAMBIO POR SEPARADO ALCANZA. Antes de cerrar la puerta, mira \`hayMixACOMPRAR\`: el bloque SALIDA COMBINADA te lo dice y no es opinable.
+
+· \`hayMixACOMPRAR: sí\` → HAY salida, y es la combinación que el bloque describe. PROHIBIDO escribir que no hay forma, que ningún ajuste alcanza, que el problema es de fondo, que no se arregla o que está fuera de rango: el informe muestra esa combinación al lado de tu texto y el lector vería dos respuestas opuestas en la misma página. Nómbrala con las palabras del bloque — QUÉ hay que mover (\`movimiento\`) y CUÁNTO cuesta el día uno (\`costoDiaUno\`). Y lee \`descuentoQueAdemásPide\` antes de calificarla:
+  · \`ninguno\` → la salida no pasa por el vendedor: no es un descuento que pedir, es plata propia que poner.
+  · un porcentaje → además hay que pedir ESE descuento. Primero lo que se mueve, después el descuento con su cifra. NO lo llames «chico» ni digas que la salida no pasa por el vendedor: sí pasa. Lo que SÍ puedes decir, porque es verdad y es el punto, es que ese descuento es MENOR que el que haría falta bajando solo el precio.
+
+· \`hayMixACOMPRAR: no\` y \`mixAlEscalon: sí\` → no digas que no hay forma: con ese movimiento deja de ser un no, pero no llega a Comprar. Dilo con las dos mitades y sin prometer Comprar.
+
+· \`hayMixACOMPRAR: no\` y nada más → recién ahí se cierra la puerta, y se cierra entera: PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues", subir la tarifa o cambiar la gestión como salida: ${dv.casoPrecioJusto ? "esta zona no sostiene renta corta a los precios de compra actuales — lo que no cierra es la zona, no el departamento (ver CASO PRECIO-JUSTO STR)" : "lo que no cierra es el negocio, no los supuestos"}. La honestidad acá es cerrar la puerta, no dejarla entornada. El cierre entra por la alternativa (§1.2 capa 4), no por un ajuste que no existe. NO menciones distancia al veredicto en \`conviene.respuestaDirecta\`: no hay una que prometer.`;
     }
 
     // La tarifa es la única vía que pide superar al mercado. Si el modelo la presenta como
@@ -680,15 +725,15 @@ NINGÚN AJUSTE REALISTA ALCANZA. PROHIBIDO ofrecer negociación, descuento, "si 
     // explícita y no queda a criterio del tono.
     const esAdr = dv.palancaMasBarata?.palanca === "adr";
     const avisoAdr = esAdr
-      ? `\n\nLA VÍA MÁS BARATA ES LA TARIFA, y la tarifa NO es un supuesto del usuario: sale de lo que se cobra realmente en su zona. Decilo como lo que es — una APUESTA a rendir sobre la mediana de la zona, sostenida con trabajo de gestión (fotos, calendario, respuesta) — nunca como "ajusta este supuesto" ni como un número que estaba mal.`
+      ? `\n\nEL CAMBIO MÁS BARATO ES LA TARIFA, y la tarifa NO es un supuesto del usuario: sale de lo que se cobra realmente en su zona. Decilo como lo que es — una APUESTA a rendir sobre la mediana de la zona, sostenida con trabajo de gestión (fotos, calendario, respuesta) — nunca como "ajusta este supuesto" ni como un número que estaba mal.`
       : "";
 
     const avisoPuroGate = dv.esPuroGate
-      ? `\n\nOJO — EL PUNTAJE YA ALCANZA la banda de arriba: lo que retiene el veredicto es que la operación todavía no cierra, no que falten puntos. PROHIBIDO escribir "estás cerca del puntaje", "te faltan puntos" o cualquier variante que atribuya el veredicto al Franco Score. Nombra primero, en consecuencia vivida, qué es lo que hoy no cierra, y recién después la vía que lo da vuelta.`
+      ? `\n\nOJO — EL PUNTAJE YA ALCANZA la banda de arriba: lo que retiene el veredicto es que la operación todavía no cierra, no que falten puntos. PROHIBIDO escribir "estás cerca del puntaje", "te faltan puntos" o cualquier variante que atribuya el veredicto al Franco Score. Nombra primero, en consecuencia vivida, qué es lo que hoy no cierra, y recién después el cambio que lo da vuelta.`
       : "";
 
     const avisoPie = dv.pieExcluidoPorBono
-      ? `\n\nEl pie de este caso lo cubre un bono de la inmobiliaria: NO ofrezcas subir el pie como vía — desarma la compra que se está evaluando.`
+      ? `\n\nEl pie de este caso lo cubre un bono de la inmobiliaria: NO ofrezcas subir el pie como salida — desarma la compra que se está evaluando.`
       : "";
 
     // §1.12.1 — banda de esfuerzo de la palanca precio, pre-digerida (helper
@@ -696,7 +741,7 @@ NINGÚN AJUSTE REALISTA ALCANZA. PROHIBIDO ofrecer negociación, descuento, "si 
     // topes propios STR — la banda describe el esfuerzo del delta emitido).
     const palancaPrecioStr = dv.palancas.find((l) => l.palanca === "precio");
     const avisoBandaPrecio = palancaPrecioStr
-      ? `\n\nBANDA DE ESFUERZO del descuento de la palanca precio (§1.12.1 — ya calculado; nárrala con este lenguaje, NUNCA la reclasifiques): ${bandaEsfuerzoDescuento(Math.abs(palancaPrecioStr.deltaPct)).lectura}.`
+      ? `\n\nBANDA DE ESFUERZO del descuento en el precio (§1.12.1 — ya calculado; nárrala con este lenguaje, NUNCA la reclasifiques): ${bandaEsfuerzoDescuento(Math.abs(palancaPrecioStr.deltaPct)).lectura}.`
       : "";
 
     // §1.12.3 — doble filo del pie, obligatorio al recomendarlo como palanca.
@@ -709,7 +754,7 @@ NINGÚN AJUSTE REALISTA ALCANZA. PROHIBIDO ofrecer negociación, descuento, "si 
     const sobreNeg = (Array.isArray(r.hallazgos) ? r.hallazgos : []).find((h) => h.id === "sobreprecio");
     const sobreNegV = sobreNeg?.valor as { desviacionPct?: number; sujetoUfM2?: number } | undefined;
     const casoNegociador = palancaPrecioStr
-      ? `\n\nCASO NEGOCIADOR de la palanca precio (§1.12.2 — los argumentos van EN LA MISMA PIEZA que el número, en este orden de fuerza; SOLO estos — señales que no vienen acá NO existen: nada de urgencia del vendedor, días en mercado ni pre-aprobación del comprador):${sobreNegV?.desviacionPct != null && sobreNegV.desviacionPct > 2 ? `
+      ? `\n\nCASO NEGOCIADOR del precio (§1.12.2 — los argumentos van EN LA MISMA PIEZA que el número, en este orden de fuerza; SOLO estos — señales que no vienen acá NO existen: nada de urgencia del vendedor, días en mercado ni pre-aprobación del comprador):${sobreNegV?.desviacionPct != null && sobreNegV.desviacionPct > 2 ? `
   1) sobreprecio vs mediana comunal: pides UF ${(sobreNegV.sujetoUfM2 ?? 0).toLocaleString("es-CL")}/m² donde la mediana confiable de la comuna está ${pct(sobreNegV.desviacionPct)}% más abajo — el ancla de comparables
   2) ` : `
   1) `}umbral del análisis: bajo ${fmtUF(palancaPrecioStr.objetivo)} el veredicto sube a ${dv.veredictoObjetivo} — no es regateo, es la conclusión del análisis`
@@ -733,9 +778,9 @@ NINGÚN AJUSTE REALISTA ALCANZA. PROHIBIDO ofrecer negociación, descuento, "si 
 
 OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra. Es la condición concreta bajo la que tu posición se sostiene (§1.10) y lo único que responde "¿y ahora qué?".
 
-TAMBIÉN en \`conviene.respuestaDirecta\`: cierra con UNA mención breve de esa distancia, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer.
+TAMBIÉN en \`conviene.respuestaDirecta\`: cierra con UNA mención breve de esa distancia, con la cifra tipada, SIN desarrollar los cambios — el detalle vive en cajaAccionable y en su drawer.
 
-REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase de arriba. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí, NUNCA inventes un valor intermedio. La OCUPACIÓN no es palanca de este análisis (no la fija el propietario y en el cálculo mueve lo mismo que la tarifa); la TASA tampoco (es condición del banco).${avisoPuroGate}${avisoAdr}${avisoPie}${avisoDobleFiloPie}${avisoBandaPrecio}${casoNegociador}${avisoJerarquia}`;
+REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase de arriba. NUNCA los recalcules, NUNCA propongas un cambio que no esté ahí, NUNCA inventes un valor intermedio. La OCUPACIÓN no es algo que muevas en este análisis (no la fija el propietario y en el cálculo mueve lo mismo que la tarifa); la TASA tampoco (es condición del banco).${avisoPuroGate}${avisoAdr}${avisoPie}${avisoDobleFiloPie}${avisoBandaPrecio}${casoNegociador}${avisoJerarquia}`;
   })();
 
   // PLUSVALÍA — la card (builder, con el puente histórica↔proyección) entra al prompt.
@@ -894,7 +939,7 @@ PROHIBIDO resolver este caso pidiendo un descuento chico "por matemática propia
       ? `
 
 === DRIVER NO ACCIONABLE (§1.12.7) ===
-Lo que más pesa en esta lectura es la plusvalía histórica de la comuna — una dimensión que el usuario NO controla. ANTES de ofrecer cualquier palanca, dilo con el marco canónico (adáptalo lo mínimo): "lo que más pesa acá no se negocia con nadie — es la historia de apreciación de la comuna. Las palancas de abajo mejoran el flujo, pero no cambian ese hecho". Ofrecer precio/tarifa/pie sin ese marco vende la ilusión de que todo se arregla negociando.`
+Lo que más pesa en esta lectura es la plusvalía histórica de la comuna — una dimensión que el usuario NO controla. ANTES de ofrecer cualquier cambio, dilo con el marco canónico (adáptalo lo mínimo): "lo que más pesa acá no se negocia con nadie — es la historia de apreciación de la comuna. Los cambios de abajo mejoran el flujo, pero no cambian ese hecho". Ofrecer precio/tarifa/pie sin ese marco vende la ilusión de que todo se arregla negociando.`
       : "";
 
   // Pie cero (RESUELTO fase 4): con pie 0 las métricas sobre capital llegan como
@@ -967,7 +1012,7 @@ Diferencia: auto-gestión genera ${fmtCLPSigned(difAutoAdmin)}/mes ${difAutoAdmi
 Estacionalidad Santiago general: julio peak (vacaciones invierno + ski), febrero valle. El gráfico de 12 meses ya vive en la página; a lo sumo 1 frase de consecuencia operativa en \`operacion.contenido\` si cambia una decisión.
 
 === BREAK-EVEN (ya digerido — menciónalo UNA vez, §Ángulo 6) ===
-Para no poner plata de tu bolsillo, este depto necesita ingresos brutos de ${fmtCLP(r.breakEvenIngresoAnual)}/año, que es el ${Math.round(r.breakEvenPctDelMercado * 100)}% de los ingresos brutos medianos de la zona (P50). ${r.breakEvenPctDelMercado > 1 ? "Está SOBRE el mercado: ni operando al nivel mediano cubre costos — riesgo estructural." : "Está bajo el mercado: hay margen antes de poner plata."}
+Para no poner plata de tu bolsillo, este depto necesita ingresos brutos de ${fmtCLP(r.breakEvenIngresoAnual)}/año, que es el ${Math.round(r.breakEvenPctDelMercado * 100)}% de los ingresos brutos medianos de la zona (P50). ${r.breakEvenPctDelMercado > 1 ? "Está SOBRE el mercado: ni operando al nivel mediano cubre costos — riesgo de fondo." : "Está bajo el mercado: hay margen antes de poner plata."}
 
 === ESTABILIZACIÓN INICIAL (no "ramp-up" en el output) ===
 Los primeros ~6 meses el listing opera bajo su ocupación normal mientras gana reseñas; pérdida estimada acumulada de ese período: ${fmtCLP(r.perdidaRampUp)}.
@@ -998,7 +1043,7 @@ ${r.zonaSTR.comunaOcupacion && r.zonaSTR.ocupacionVsComuna && r.zonaSTR.ocupacio
 Corto o largo (UNA fuente — §3.bis): la sobre-renta medida es ${fmtCLPSigned(r.comparativa.sobreRenta)}/mes${sobreRentaPctEsConfiable(r.comparativa.ltr.noiMensual, r.comparativa.sobreRentaPct) ? ` (${r.comparativa.sobreRentaPct >= 0 ? "+" : ""}${Math.round(r.comparativa.sobreRentaPct * 100)}%)` : " (porcentaje N/D: usa el monto)"} → ${r.comparativa.sobreRenta > 0 ? "el CORTO rinde más neto que el largo" : r.comparativa.sobreRenta < 0 ? "el LARGO rinde más neto que el corto" : "rinden igual"}. Recomendación derivada: ${r.recomendacionModalidad ?? "(no disponible)"}. Tier de demanda de la zona (${r.zonaSTR?.tierZona ?? "sin dato"}): contexto de La zona, no decide.
 ${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ En \`vsLTR.estrategiaSugerida\`: cuantifica cuánto más deja el largo con esa sobre-renta y di que el esfuerzo del corto no se justifica con ese margen. NO endulces (§1.1). Arranca del NOI absoluto, no re-enunciando la dirección que la card ya mostró (§1.bis).` : r.recomendacionModalidad === "STR_VENTAJA_CLARA" ? `→ En \`vsLTR.contenido\`: cuantifica el upside del corto sobre el largo; el esfuerzo se justifica.` : r.recomendacionModalidad === "INDIFERENTE" ? `→ En \`vsLTR.contenido\`: di "está parejo" sin inventar un ganador contrario al signo; la decisión depende del esfuerzo operativo y el perfil de riesgo.` : ""}
 
-=== SUBSIDIO LEY 21.748 (palanca financiera externa · Ángulo 4) ===
+=== SUBSIDIO LEY 21.748 (ayuda financiera externa · Ángulo 4) ===
 ${r.subsidioTasa ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioTasa.aplicado} | tasaConSubsidio=${pct(r.subsidioTasa.tasaConSubsidio)}%
 ${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar: el usuario puede pedir tasa subsidiada al banco (desde 0,6 pp menos; el banco define cuánto más). BAJA el dividendo y MEJORA el flujo. No está reflejado en este cálculo. Requisito: vivienda NUEVA EN PRIMERA VENTA hasta UF 6.000 — NO se exige que sea la primera vivienda del comprador.` : r.subsidioTasa.califica && r.subsidioTasa.aplicado ? `→ Ya aplicado (la tasa ingresada coincide con la subsidiada). No lo menciones como mejora.` : `→ No califica. NO mencionar el subsidio.`}` : "(subsidio no calculado)"}
 
@@ -1094,7 +1139,7 @@ export function scanStrDrift(ai: unknown): string[] { return [...scanStrHardDrif
 
 // Guard de cifras: extraído a módulo compartido al portarlo a LTR (rama
 // prosa-no-recalcula-ltr). Se re-exporta para los consumidores existentes.
-import { cifrasFueraDeInput, empeoraCifras } from "./cifras-guard";
+import { cifrasFueraDeInput, empeoraCifras, niegaSalidaConMix } from "./cifras-guard";
 import {
   contextoGuardsStr, violacionesPorCampo, totalViolaciones, leerCampo, escribirCampo,
   razonesHeroClaimStrTexto, STR_ENGINEISM_RE, PROSA_RETRY_PATHS_STR, PATHS_SIN_RENDER_STR, type ReglaStr,
@@ -1451,6 +1496,15 @@ Responde SOLO este JSON, sin texto alrededor:
   // de arrancar»), determinista y en el 100% de los informes. Un reparto entre secciones
   // que no existen no reparte nada — y dejarlo apuntando al vacío es el patrón A8·D1.
 
+  // A8-STR (v19): ¿la prosa niega una salida que el bloque SALIDA COMBINADA del user prompt
+  // declara? Mismo detector que LTR; los paths vuelven limpios de la familia (`path[familia]=`)
+  // para que agruparPorCampo los reconozca.
+  const niegaMix = (ai: AIAnalysisSTRv2 | null | undefined): string[] =>
+    ai ? niegaSalidaConMix(userPrompt, ai).map((v) => v.replace(/\[[^\]]*\]=/, "=")) : [];
+  const dvGuards = ((Array.isArray(r.hallazgos) ? r.hallazgos : []) as Hallazgo[]).find(
+    (h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto",
+  )?.valor ?? null;
+
   // ── GUARDS DE SALIDA (Goal 2 · 04-sep-2026) · paridad con LTR ────────────────
   // Detección pura en str-guards.ts: la MISMA que evalúan los fixtures del golden y el
   // reporte sobre el dump. Cada regla hace UN reintento quirúrgico por campo y acepta
@@ -1486,16 +1540,33 @@ Responde SOLO este JSON, sin texto alrededor:
     await reintentoQuirurgico(
       "estructural",
       "[STR-ESTRUCTURAL]",
-      (v) => `la distancia al veredicto es ESTRUCTURAL (ningún ajuste realista alcanza) y la caja ofrece negociar, un descuento o un "si logras" como salida: ${v.map((x) => `«${x}»`).join(" · ")}`,
-      "reescribe cada campo cerrando la puerta: sin negociación, sin descuento, sin \"si logras / si consigues\"; la brecha es del negocio, no de los supuestos, y el cierre entra por la alternativa.",
+      (v) => `ningún cambio por separado alcanza y el análisis tampoco encontró combinación, y la caja ofrece negociar, un descuento o un "si logras" como salida: ${v.map((x) => `«${x}»`).join(" · ")}`,
+      "reescribe cada campo cerrando la puerta: sin negociación, sin descuento, sin \"si logras / si consigues\"; lo que no cierra es el negocio, no los supuestos, y el cierre entra por la alternativa.",
     );
+    // A8-STR · [STR-NIEGA-MIX] (v19): el MISMO guard de LTR. Solo dispara con `hayMixACOMPRAR: sí`
+    // en el user prompt; absuelve si la prosa nombra la salida y no cuenta «por separado».
+    // Corre DESPUÉS del estructural, que ya no ve estas filas (contexto acotado), y ANTES de
+    // los demás, sobre el texto que ellos van a corregir.
+    {
+      const smNiega = dvGuards ? salidaPorMixStr(dvGuards) : null;
+      await correrQuirurgico({
+        guard: "niega-mix",
+        etiqueta: "[STR-NIEGA-MIX]",
+        campos: camposDe(niegaMix(best)),
+        problema: (v) => `cierra la puerta (${v.map(cita).join(", ")}) cuando el bloque SALIDA COMBINADA del caso dice \`hayMixACOMPRAR: sí\`: el análisis SÍ encontró cómo llegar a Comprar y el informe lo muestra al lado de tu texto`,
+        instruccion: smNiega
+          ? `reescribe cada campo nombrando la salida con las palabras del bloque: qué hay que mover (${smNiega.movimiento}) y cuánto cuesta el día uno (${fmtUF(smNiega.costoDiaUnoUF)} de tu bolsillo)${smNiega.descuentoPct === null ? "; la salida no pasa por el vendedor: es plata propia que poner" : `, y que además hay que pedir un ${smNiega.descuentoPct.toFixed(1).replace(".", ",")}% de descuento — menor que el que haría falta bajando solo el precio, y sin llamarlo «chico»`}. Puedes decir que ningún cambio por separado alcanza; no puedes decir que no hay forma.`
+          : "reescribe cada campo nombrando la salida combinada que el bloque SALIDA COMBINADA describe, sin decir que no hay forma.",
+        evaluar: (ai) => niegaMix(ai).length,
+      });
+    }
     // 1. [HERO-CLAIM] — múltiplos contra la razón del motor.
     const razonesTxt = razonesHeroClaimStrTexto(ctxGuards.razones);
     await reintentoQuirurgico(
       "hero-claim",
       "[HERO-CLAIM]",
-      (v) => `afirma un múltiplo que el motor contradice — ${v.join("; ")}`,
-      `RAZONES DEL MOTOR (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad" / "el triple" / "N veces" solo con el SUJETO y el COMPARADOR nombrados en la MISMA oración y con la razón del motor dentro del rango; si no hay razón para ese par, escribe la cifra y no el múltiplo.`,
+      (v) => `afirma un múltiplo que el análisis contradice — ${v.join("; ")}`,
+      `RAZONES DEL ANÁLISIS (sujeto ÷ comparador): ${razonesTxt}. "El doble" / "la mitad" / "el triple" / "N veces" solo con el SUJETO y el COMPARADOR nombrados en la MISMA oración y con la razón del análisis dentro del rango; si no hay razón para ese par, escribe la cifra y no el múltiplo.`,
     );
     // 6. [STR-MODALIDAD] — "corto o largo" con una sola fuente: el signo de la sobre-renta medida.
     const srGuard = ctxGuards.sobreRenta;
@@ -1649,6 +1720,7 @@ Responde SOLO este JSON, sin texto alrededor:
       const v = violacionesPorCampo(best, regla, ctxRes, PROSA_RETRY_PATHS_STR);
       addRes(regla, Object.keys(v).filter((p) => v[p].length > 0));
     }
+    addRes("niega-mix", Array.from(agruparPorCampo(niegaMix(best)).keys()).filter((p) => !sinRender(p)));
   }
   if (residuo.length) {
     best._residuoGuards = residuo;
