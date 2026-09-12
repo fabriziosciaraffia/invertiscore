@@ -20,6 +20,7 @@ import { prefetchMedianaComunaVenta } from "../../../src/lib/api-helpers/analisi
 import { DIST_STR_TOPE_ADR_PCT, topeStrParaVeredicto } from "../../../src/lib/distancia-veredicto-str-hallazgo";
 import { DIST_PIE_TOPE_PCT, DIST_PLAZO_TOPE_ANIOS } from "../../../src/lib/distancia-veredicto-hallazgo";
 import type { HallazgoDistanciaVeredicto } from "../../../src/lib/types";
+import { salidaPorMixStr, mixAlEscalonStr } from "../../../src/lib/salida-por-mix";
 import type { ShortTermResult } from "../../../src/lib/engines/short-term-engine";
 
 const CASOS: { id: string; dmPalanca: "precio" | "adr" }[] = [
@@ -81,7 +82,12 @@ async function main() {
     const pieProbado = vPie ? vPie.estado !== "noAplica" : !!v.pieEsPalanca;
     if (pieProbado !== fr.includes(`con pie ${DIST_PIE_TOPE_PCT}%`)) f(`pie ${v.piePctActual}: la frase ${pieProbado ? "debía" : "no debía"} citar el pie ${DIST_PIE_TOPE_PCT}%`);
     if (!/(con administrador|autogestionando)/.test(fr)) f("no cita la gestión, que el builder siempre prueba");
-    if (!/La brecha (es del negocio|no es de este departamento)/.test(fr)) f("sin cierre de brecha");
+    // 12-sep-2026: con combinación el cierre es «Con lo tuyo —…— … llega a …» (5dc42a82 llega al
+    // escalón con pie 25% + plazo 30 y −11%); sin combinación, el cierre de siempre.
+    if (salidaPorMixStr(v) ?? mixAlEscalonStr(v)) {
+      if (!/Con lo tuyo —[^—]+— .*llega a /.test(fr)) f("con combinación el cierre tenía que ser «Con lo tuyo —…— … llega a …»");
+      if (!/juntos, sí\.$/.test(dv.titular ?? "")) f(`con combinación el titular tenía que terminar en «juntos, sí.»: «${dv.titular}»`);
+    } else if (!/La brecha (es del negocio|no es de este departamento)/.test(fr)) f("sin cierre de brecha");
   }
   console.log("\nFRASE ESTRUCTURAL STR · catch-test");
   for (const x of fallas) console.log(`  ✗ ${x}`);

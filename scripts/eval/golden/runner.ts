@@ -64,6 +64,7 @@ import { runEstructuraStrRedisenoTier } from "./estructura-str-rediseno-catch-te
 import { runCardStrTier } from "./card-str-catch-test";
 import { runNiegaSalidaStrTier } from "./niega-salida-str-catch-test";
 import { runVocabularioPromptStrTier } from "./vocabulario-prompt-str-catch-test";
+import { runSalidaStrCopyTier } from "./salida-str-copy-catch-test";
 import { runComprarDosMargenesTier } from "./comprar-dos-margenes-catch-test";
 import { runBajadaNoMienteTier } from "./bajada-no-miente-catch-test";
 import { runAlternativaComunasTier } from "./alternativa-comunas-catch-test";
@@ -306,6 +307,9 @@ async function printStrSemantic() {
   // palanca / vía / brecha / estructural. ──
   totalHard += runNiegaSalidaStrTier().hard;
   totalHard += runVocabularioPromptStrTier().hard;
+  // Tier SALIDA-STR-COPY (12-sep-2026, 0 tokens, sin base): la frase estructural STR y sus cuatro
+  // superficies dejan de negar la combinación; el copy en un solo módulo. ──
+  totalHard += runSalidaStrCopyTier().hard;
   // Tier COMPRAR-DOS-MARGENES (12-sep-2026, 0 tokens, sin base): el precio maximo de COMPRAR en
   // LTR, las tres filas con oracion en las dos modalidades y «(c/u por separado)» solo con dos. ──
   totalHard += runComprarDosMargenesTier().hard;
