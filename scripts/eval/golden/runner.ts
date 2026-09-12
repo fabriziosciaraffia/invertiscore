@@ -297,8 +297,8 @@ async function printStrSemantic() {
   // interruptor-rediseno: RETIRADO CON ACTA el 12-sep-2026 (retiro del andamio). Fijaba las
   // dos constantes en `true`, la derivación de la prop STR, la clase derivada y el default del
   // contexto: todo eso ya no existe. Inter con preload pasó a tipografia-rediseno 4.
-  // ── Tier STR AL REDISEÑO (11-sep-2026, 0 tokens, sin base): lo propio de §11 detrás del
-  // interruptor STR, bloque por bloque. Corre siempre con el QUICK. ──
+  // ── Tier STR AL REDISEÑO (11-sep-2026, 0 tokens, sin base): lo propio de §11, bloque por
+  // bloque. Corre siempre con el QUICK. ──
   totalHard += runEstructuraStrRedisenoTier().hard;
   // Tier CARD-STR (bloque C · 11-sep-2026, 0 tokens, sin base): el constructor por modalidad, los
   // cuatro estados con el motor STR, Verifica solo con override, renta larga solo con el hallazgo. ──

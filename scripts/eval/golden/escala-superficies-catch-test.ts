@@ -69,7 +69,7 @@ function tokensDePapel(): { oscuro: Record<string, string>; claro: Record<string
  *
  *  BUSCA EL BLOQUE QUE DECLARA LA ESCALERA, no el primero cuyo selector coincida. La
  *  primera versión usaba `indexOf(selector + "{")` y se rompió sola cuando el goal de
- *  radios agregó `.doc-r2 .v-modal{border-radius:...}`: ese bloque aparece ANTES en el
+ *  radios agregó `.doc-dictamen .v-modal{border-radius:...}` (entonces `.doc-r2`): ese bloque aparece ANTES en el
  *  archivo, no tiene `--doc-inset-*`, y el tier lo leyó como si `.v-modal` hubiera
  *  perdido su escalera. Un instrumento que apunta al bloque equivocado inventa una
  *  regresión — o peor, deja de ver una real. */

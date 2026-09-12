@@ -27,8 +27,8 @@ export function SeccionInforme({
   titulo?: ReactNode;
   children: ReactNode;
   /** Contrato §2: SOLO el hero y la recomendación llevan caja. El resto va suelto
-   *  sobre el papel. Con el rediseño apagado la clase no hace nada — las reglas de
-   *  `.doc-sec--caja` cuelgan de `.doc-r2`. */
+   *  sobre el papel. Las reglas de `.doc-sec--caja` cuelgan de `.doc-dictamen`, el
+   *  marco, en `PortadaInforme`. */
   caja?: boolean;
 }) {
   return (

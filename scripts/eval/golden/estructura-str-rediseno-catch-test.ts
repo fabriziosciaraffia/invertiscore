@@ -4,26 +4,22 @@
 // Contrato: docs/wireframes/rediseno-informe/contrato-diseno-informe.md §11 (qué es
 // distinto en STR), §2, §6, §8 y §10. Mockup: informe-str-mockup.html.
 //
-// LTR tuvo su pasada en 4a+4b+4c. STR hereda todo lo compartido al recibir `rediseno`
-// y este tier fija lo que es PROPIO de §11, bloque por bloque. BLOQUE A (esqueleto,
-// cifras y zona):
+// LTR tuvo su pasada en 4a+4b+4c. STR hereda todo lo compartido y este tier fija lo que
+// es PROPIO de §11, bloque por bloque. BLOQUE A (esqueleto, cifras y zona):
 //
-//   1. EL INTERRUPTOR DE STR ES PROPIO, Y LA PÁGINA LO DERIVA: `REDISENO_INFORME_STR ||
-//      redisenoHeredado`, el provider re-provisto con ese valor y el `DocumentoFrame` con
-//      la prop, igual que LTR. QUÉ VALOR TIENE LA CONSTANTE NO SE FIJA ACÁ: hasta el
-//      12-sep-2026 este bloque exigía `= false` («encender es un goal aparte»), y en el
-//      commit que la encendió la aserción se RETIRÓ CON ACTA en vez de invertirse. El
-//      tier interruptor-rediseno ya fijaba el valor de las dos constantes y es su único
-//      dueño: el mismo chequeo en dos tiers tiene dos dueños y ninguno lo mantiene.
+//   1. EL INTERRUPTOR DE STR — RETIRADO CON ACTA. Fijaba la constante propia y su
+//      derivación en la página; el encendido (12-sep-2026) retiró la aserción del valor
+//      y el retiro del andamio, el mismo día, retiró el interruptor entero: el rediseño
+//      es el único camino en las dos modalidades.
 //
 //   2. EL ESQUELETO DE §2: la portada es caja; los hallazgos salen del hero a su sección
-//      propia con la línea que declara (podada) o el título viejo (prosa vieja), en los
-//      DOS caminos, sin esconderse detrás del gate de la prosa; el hero no repite el
-//      título que la sección ya lleva. Ya pasó tres veces en LTR: el gate de la prosa
-//      dejaba la página sin hallazgos.
+//      propia con la línea que declara (podada) o el título viejo (prosa vieja), sin
+//      esconderse detrás del gate de la prosa; el hero no repite el título que la
+//      sección ya lleva. Ya pasó tres veces en LTR: el gate de la prosa dejaba la página
+//      sin hallazgos.
 //
-//   3. LOS TÍTULOS DE §10 detrás del interruptor: «Las cifras que tienes que ver»,
-//      «Detalle de la inversión», «Ubicación · comuna».
+//   3. LOS TÍTULOS DE §10, sin condición: «Las cifras que tienes que ver», «Detalle de
+//      la inversión», «Ubicación · comuna»; los del camino viejo, ausentes.
 //
 //   4. LAS CIFRAS DE §6: tarifa y ocupación PRIMERO, destacadas con un contorno de 1,5 px
 //      en --line2, la línea «Las dos primeras son el supuesto del que cuelga todo lo
@@ -32,14 +28,15 @@
 //
 //   5. LA ZONA DE §8: tres tarjetas —ocupación primero, tarifa, comparables— con las
 //      píldoras del par direccional, el pie común con la fecha de las estimaciones y SIN
-//      la tipo-line del reglamento (retirada). El camino viejo conserva la suya.
+//      la tipo-line del reglamento (retirada); ninguna queda en la sección.
 //
-//   6. LA RUTA DEV monta el provider para STR con `?rediseno=1`, o no hay cómo verlo.
+//   6. LA RUTA DEV con `?rediseno=1` — RETIRADO CON ACTA (12-sep-2026): sin interruptor no
+//      hay nada que encender; la ruta dev monta la página STR tal cual.
 //
-//   8. EL LIENZO DE §2: la ruta STR pinta «--page» en el wrapper (`doc-lienzo`) detrás de su
-//      interruptor. Sin él —medido en el DOM el 11-sep-2026— wrapper y body quedaban en el
-//      gris de la app (#F6F6F7) y las tarjetas (#F4F4F6) no se distinguían de nada. Mismo
-//      bug que 0b825fca en LTR. La ruta dev también lo lleva, o los shots mienten.
+//   8. EL LIENZO DE §2: la ruta STR pinta «--page» en el wrapper (`doc-lienzo`). Sin él
+//      —medido en el DOM el 11-sep-2026— wrapper y body quedaban en el gris de la app
+//      (#F6F6F7) y las tarjetas (#F4F4F6) no se distinguían de nada. Mismo bug que
+//      0b825fca en LTR. La ruta dev también lo lleva, o los shots mienten.
 //
 // BLOQUE B (hero y recomendación en su sitio):
 //
@@ -158,12 +155,12 @@ function enOrden(txt: string, agujas: string[]): string | null {
   if (!/className=\{`num-cell\$\{c\.destacada \? " destacada" : ""\}`\}/.test(PRIM)) F("4 · la tarjeta no lleva la clase `destacada` cuando la cifra lo pide");
   if (!/className="nums-sup"/.test(PRIM)) F("4 · la primitiva no dibuja el encabezado como `.nums-sup`");
   if (/destacada|encabezado/.test(NUMS_LTR)) F("4 · LosNumeros (LTR) pasó a usar `destacada` o `encabezado`: son de §6 para STR; LTR no destaca ninguna cifra");
-  // el contorno: 1,5 px en --line2, detrás de doc-r2
+  // el contorno: 1,5 px en --line2
   const dest = reglaDe(".doc-dictamen .num-cell.destacada", CSS);
-  if (!dest) F("4 · falta la regla «.doc-r2 .num-cell.destacada»");
+  if (!dest) F("4 · falta la regla «.doc-dictamen .num-cell.destacada»");
   else if (!/1\.5px/.test(dest) || !/var\(--line2\)/.test(dest)) F(`4 · el contorno de la cifra destacada no es de 1,5 px en --line2: «${dest.trim()}»`);
   const sup = reglaDe(".doc-dictamen .nums-sup", CSS);
-  if (!sup) F("4 · falta la regla «.doc-r2 .nums-sup» de la línea del supuesto");
+  if (!sup) F("4 · falta la regla «.doc-dictamen .nums-sup» de la línea del supuesto");
   else if (!/font-size:\s*12\.5px/.test(sup)) F(`4 · la línea del supuesto no va a 12,5 px: «${sup.trim()}»`);
 }
 
@@ -231,20 +228,17 @@ function enOrden(txt: string, agujas: string[]): string | null {
   if (!/className="doc-lienzo"/.test(DEV)) F("8 · la ruta dev no pinta el lienzo para LTR: el shot sale sobre el gris de la app y no es el de la ruta real");
 }
 
-// ── 6 · la ruta dev enciende STR con ?rediseno=1 ────────────────────────────
-{
-  const i = DEV.indexOf('comp === "pagina"');
-  const tramo = i === -1 ? "" : DEV.slice(i, i + 900);
-  if (!/<RedisenoProvider valor=\{sp\.get\("rediseno"\) === "1"\}>/.test(tramo)) {
-    F("6 · la ruta dev no envuelve la página STR en `RedisenoProvider` con `?rediseno=1`: sin eso no hay cómo shotear el rediseño STR antes de encenderlo");
-  }
-}
+// ── 6 · la ruta dev enciende STR con ?rediseno=1 — RETIRADO CON ACTA (12-sep-2026) ──
+// Exigía el `RedisenoProvider` con `?rediseno=1` alrededor de la página STR, porque sin
+// eso no había cómo shotear el rediseño antes de encenderlo. El retiro del andamio se
+// llevó el provider y la constante: la ruta dev monta la página tal cual la sirve la real,
+// y lo que queda de ella lo fija el bloque 8 (el lienzo).
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runEstructuraStrRedisenoTier(): { hard: number } {
   console.log("\n─── TIER ESTRUCTURA-STR-REDISEÑO (contrato §11 · bloques A y B · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el interruptor STR propio y derivado con el contexto, las dos cajas de §2 en el orden hero → hallazgos → recomendación emitido por el hero STR, los hallazgos en su sección en los dos caminos sin colgar de la prosa, el hero que no se monta vacío, la recomendación con estado y título del contrato, los títulos de §10, tarifa y ocupación primero y destacadas con el supuesto encima, y la zona con ocupación · tarifa · comparables, pie con fecha y sin tipo-line");
+    console.log("  ✓ VERDE — las dos cajas de §2 en el orden hero → hallazgos → recomendación emitido por el hero STR, los hallazgos en su sección en los dos caminos sin colgar de la prosa, el hero que no se monta vacío, la recomendación con estado y título del contrato, los títulos de §10, tarifa y ocupación primero y destacadas con el supuesto encima, y la zona con ocupación · tarifa · comparables, pie con fecha y sin tipo-line");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

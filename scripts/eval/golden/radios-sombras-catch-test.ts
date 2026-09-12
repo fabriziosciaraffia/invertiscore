@@ -96,7 +96,7 @@ for (const r of RADIOS) {
     }
   }
   for (const prohibida of [".num-cell", ".zona-cells", ".hz-lin"]) {
-    const re = new RegExp(`\\.doc-r2[^{]*\\${prohibida}[^{]*\\{[^}]*box-shadow`);
+    const re = new RegExp(`\\.doc-dictamen[^{]*\\${prohibida}[^{]*\\{[^}]*box-shadow`);
     if (re.test(BLOQUE)) {
       F(`4 · ${prohibida} lleva sombra: no reacciona porque no abre nada, y una sombra le hace prometer un clic que no existe`);
     }
@@ -138,7 +138,7 @@ if (!/\.hall-head:focus-visible/.test(leer("src/components/analysis/hallazgos/Ha
   // ESTE rótulo: con la línea como unidad, la mutación que se la saca daba verde.
   const m = CSS.match(/\.doc-dictamen \.doc-lnk::after\{([^}]*)\}/);
   if (m && /content:\s*"[^"]*[→›»>]/.test(m[1])) {
-    F(`7 · «.doc-r2 .doc-lnk::after» volvió a poner una flecha ({${m[1]}}). Los tres usos ya la traen en su texto: el pseudo-elemento dibuja la SEGUNDA.`);
+    F(`7 · «.doc-dictamen .doc-lnk::after» volvió a poner una flecha ({${m[1]}}). Los tres usos ya la traen en su texto: el pseudo-elemento dibuja la SEGUNDA.`);
   }
   const usos: [string, string][] = [
     ["src/components/analysis/shared/SeisCifras.tsx", "Ver cómo se calcula"],

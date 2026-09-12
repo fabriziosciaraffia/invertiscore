@@ -17,7 +17,6 @@ import { useSearchParams, notFound } from "next/navigation";
 import type { FullAnalysisResult } from "@/lib/types";
 import { TokensHallazgos } from "@/components/analysis/hallazgos/HallazgosAcordeon";
 import { DocTokens } from "@/components/analysis/portada/PortadaInforme";
-import { RedisenoProvider } from "@/components/analysis/RedisenoContexto";
 import { TokensShared } from "@/components/analysis/shared";
 import { PiezasShared } from "./PiezasShared";
 import { STRResultsClient } from "@/app/analisis/renta-corta/[id]/results-client";
@@ -73,18 +72,12 @@ function Inner() {
   // Goal "LTR hereda piezas compartidas" (05-sep-2026) · `?row=providenciaLtr&comp=paginaLtr`
   // monta la página LTR completa con el recompute volcado de 7710a017.
   if (fix && !isSTR && comp === "paginaLtr") {
-    // `?rediseno=1` abre el rediseno sin tocar la constante de `rediseno-flag.ts`.
-    // DOS ENVOLTORIOS, porque el rediseno tiene dos mitades: la clase `.doc-r2` abre las
-    // reglas CSS (descendentes, `.doc-r2 .hz-n`, y los tokens se heredan: un ancestro
-    // alcanza), y el provider abre lo que es ESTRUCTURA y una clase no puede apagar —
-    // la zona del contrato §8 cambia que numero manda en cada tarjeta, no su color.
-    const envolver = (n: React.ReactNode) =>
-      sp.get("rediseno") === "1"
-        // `doc-lienzo` también: en la ruta real lo pone `analisis/[id]/page.tsx` (server), que
-        // esta página no monta, y sin él el shot de LTR salía sobre el gris de la app.
-        ? <div className="doc-lienzo"><RedisenoProvider valor>{n}</RedisenoProvider></div>
-        : n;
-    return envolver(
+    // `doc-lienzo`: en la ruta real lo pone `analisis/[id]/page.tsx` (server), que esta
+    // página no monta, y sin él el shot de LTR salía sobre el gris de la app. Hasta el
+    // 12-sep-2026 (retiro del andamio) `?rediseno=1` envolvía además con el provider del
+    // interruptor; el rediseño es el único camino y ya no hay nada que encender.
+    return (
+      <div className="doc-lienzo">
       <PremiumResults
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         results={results as any}
@@ -109,17 +102,16 @@ function Inner() {
         isSharedView={false}
         isLoggedIn
         medianaResolvedAt={fix.medianaSnapshot?.resolvedAt ?? new Date().toISOString()}
-      />,
+      />
+      </div>
     );
   }
   if (!fix || !isSTR) return <div style={{ padding: 40 }}>fixture ?row=staRosaStr|grajalesStr (STR, con &comp=pagina o &comp=&lt;pieza&gt;) · providenciaLtr (&comp=paginaLtr) no encontrado</div>;
 
-  // `?comp=pagina` monta la página STR completa (T1) con el fixture. `?rediseno=1` le
-  // provee el contexto desde afuera (bloque A · 11-sep-2026): la página lo combina con
-  // `REDISENO_INFORME_STR`, que sigue apagada, igual que hace LTR con la suya.
+  // `?comp=pagina` monta la página STR completa (T1) con el fixture, tal como la sirve la
+  // ruta real (el rediseño es el único camino desde el 12-sep-2026).
   if (comp === "pagina") {
     return (
-      <RedisenoProvider valor={sp.get("rediseno") === "1"}>
       <STRResultsClient
         analysisId={fix.id}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -140,7 +132,6 @@ function Inner() {
         simulacionStr={fix.simulacion ?? null}
         zonaStr={fix.zonaStr ?? null}
       />
-      </RedisenoProvider>
     );
   }
 

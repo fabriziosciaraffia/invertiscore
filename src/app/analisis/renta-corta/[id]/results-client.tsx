@@ -398,7 +398,7 @@ export function STRResultsClient({
        el marco del documento retirado, lo que quedaba detrás del informe STR era el gris de
        la app —medido en el DOM: wrapper y body #F6F6F7 contra tarjetas #F4F4F6, o sea nada
        que distinguir—. `doc-lienzo` pinta «--page» en el wrapper y en el body, y nada más:
-       NO lleva `doc-r2` (ese trae `--card`, que también es token de shadcn y rompe el chrome). */
+       NO lleva `doc-dictamen` (esa trae `--card`, que también es token de shadcn y rompe el chrome). */
     <div className="min-h-screen bg-[var(--franco-bg)] doc-lienzo">
       {/* Chrome de nav/header — el PDF usa la vista documento aparte, no esta página. */}
       {accessLevel === "guest" || isAnonOwner ? (

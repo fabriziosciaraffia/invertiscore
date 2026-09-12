@@ -30,10 +30,9 @@ import { DIST_PREC_PTS } from "@/lib/distancia-veredicto-hallazgo";
  * aguanta este veredicto": hasta dónde puede caer la tarifa (frontera del motor).
  * Reemplaza a HeroSTR en la página; HeroSTR sigue en el repo (T3).
  *
- * CON EL REDISEÑO (bloque B · 11-sep-2026) EMITE LAS TRES SECCIONES DE §2, igual que
- * `HeroLTR`: hero → `{hallazgos}` → recomendación con caja. La página le pasa la sección
- * de hallazgos ya armada y deja de envolverlo en la suya. Apagado, devuelve UNA sección
- * «hero» con todo adentro, como siempre.
+ * EMITE LAS TRES SECCIONES DE §2 (bloque B · 11-sep-2026), igual que `HeroLTR`: hero →
+ * `{hallazgos}` → recomendación con caja. La página le pasa la sección de hallazgos ya
+ * armada y deja de envolverlo en la suya.
  */
 export function HeroStrDictamen({
   hallazgos,

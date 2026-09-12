@@ -17,15 +17,16 @@
 //
 //   2. LA ALTERNANCIA MUERE, Y LE GANA A `.doc-sec.p2`. Las secciones sueltas dejan de
 //      pintar fondo. `.doc-sec.p2{background:var(--doc-inset-0)}` tiene la MISMA
-//      especificidad que `.doc-r2 .doc-sec` y va después en el archivo, así que la
+//      especificidad que `.doc-dictamen .doc-sec` y va después en el archivo, así que la
 //      regla del rediseño necesita `.p2` en su propio selector o no pinta nada. Medido
 //      en el DOM: sin `.p2` la sección `la-inversion` conservaba su fondo.
 //
-//   3. LAS DOS FORMAS DEL SELECTOR DEL MARCO. Retirar la sombra huérfana de
-//      `.doc-dictamen` exige `.doc-r2.doc-dictamen` (producción: las dos clases en el
-//      mismo elemento) Y `.doc-r2 .doc-dictamen` (ruta dev: `.doc-r2` envuelve desde
-//      afuera). Con una sola, la ruta de prueba miente. Es la trampa de
-//      `docs/wireframes/rediseno-informe/entorno-de-prueba-no-es-produccion.md`.
+//   3. LA FORMA PEGADA DEL SELECTOR DEL MARCO. Retirar la sombra huérfana de
+//      `.doc-dictamen` exige `.doc-dictamen.doc-dictamen`, (0,2,0). Hasta el 12-sep-2026
+//      era `.doc-r2.doc-dictamen` (la clase del interruptor pegada al marco) y al retirar
+//      el andamio se renombró en su sitio para conservar la especificidad; la forma
+//      descendente `.doc-r2 .doc-dictamen`, que existía para la ruta dev, se fue con ella.
+//      Ver `docs/wireframes/rediseno-informe/entorno-de-prueba-no-es-produccion.md`.
 //
 //   4. LA SEPARACIÓN ES ESPACIO, NO COLOR: 38 px entre secciones sueltas, 34 entre
 //      cajas, y la última sin margen. Si alguien vuelve a poner `padding` de sangrado
@@ -55,7 +56,6 @@ const TELE = leer("src/components/analysis/informeTelemetry.tsx");
 const HSTR = leer("src/components/analysis/str/HeroStrDictamen.tsx");
 const SECCION = leer("src/components/analysis/SeccionInforme.tsx");
 const ZONA = leer("src/components/analysis/zona/ZonaLtr.tsx");
-const CTX = leer("src/components/analysis/RedisenoContexto.tsx");
 
 /** Un bloque del rediseño, del encabezado que lo rotula hasta el encabezado siguiente. */
 function bloqueDe(rotulo: string): string {
@@ -84,8 +84,8 @@ if (!CIFRAS) F("0 · no existe el bloque «REDISEÑO · LAS CIFRAS» en la porta
 if (!ZONACSS) F("0 · no existe el bloque «REDISEÑO · LA ZONA» en la portada");
 
 /** El cuerpo de la primera regla cuyo selector completo contenga exactamente `sel`.
- *  Compara selectores enteros —no substrings— para no confundir `.doc-r2 .doc-sec`
- *  con `.doc-r2 .doc-sec--caja`, que lo contiene como prefijo. */
+ *  Compara selectores enteros —no substrings— para no confundir `.doc-dictamen .doc-sec`
+ *  con `.doc-dictamen .doc-sec--caja`, que lo contiene como prefijo. */
 function reglaDe(sel: string, txt = BLOQUE): string | null {
   for (const m of txt.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selectores = m[1].split(",").map((s) => s.trim().replace(/\s+/g, " ")).filter(Boolean);
@@ -126,18 +126,18 @@ function reglaDe(sel: string, txt = BLOQUE): string | null {
     if (/padding:\s*(?!0)/.test(suelta)) F("2 · la sección suelta recuperó padding de sangrado");
   }
   if (reglaDe(".doc-dictamen .doc-sec.p2") === null) {
-    F("2 · falta «.doc-r2 .doc-sec.p2» en el selector de la sección suelta. `.doc-sec.p2` tiene la MISMA especificidad y va después: sin esto la sección alternada conserva su fondo, medido en el DOM.");
+    F("2 · falta «.doc-dictamen .doc-sec.p2» en el selector de la sección suelta. `.doc-sec.p2` tiene la MISMA especificidad y va después: sin esto la sección alternada conserva su fondo, medido en el DOM.");
   }
   if (reglaDe(".doc-dictamen .doc-sec--caja.p2") === null) {
-    F("2 · falta «.doc-r2 .doc-sec--caja.p2»: el hero es p2, así que sin esa forma la caja pierde contra la regla de la suelta");
+    F("2 · falta «.doc-dictamen .doc-sec--caja.p2»: el hero es p2, así que sin esa forma la caja pierde contra la regla de la suelta");
   }
 }
 
-// ── 3 · las dos formas del selector del marco ──────────────────────────────
+// ── 3 · la forma pegada del selector del marco ─────────────────────────────
 for (const sel of [".doc-dictamen.doc-dictamen"]) {
   const r = reglaDe(sel);
   if (r === null) {
-    F(`3 · falta «${sel}» al retirar la sombra del marco. Hacen falta las DOS formas: en producción «.doc-r2» va en el mismo elemento, en la ruta dev envuelve desde afuera.`);
+    F(`3 · falta «${sel}» al retirar la sombra del marco. Es la forma PEGADA, (0,2,0): con «.doc-dictamen» sola la regla pierde contra las que van después.`);
   } else if (!/box-shadow:\s*none/.test(r)) {
     F(`3 · «${sel}» ya no retira la sombra huérfana del marco: con ella el informe entero flota y las dos cajas dejan de destacarse`);
   }
@@ -274,13 +274,11 @@ for (const sel of [".doc-dictamen.doc-dictamen"]) {
   }
 }
 
-// ── 13 · el gate de JSX no se enciende solo, y las tres tarjetas degradan ──
+// ── 13 · las tres tarjetas degradan ──────────────────────────────────────────
 {
-  if (!/createContext<boolean>\(false\)/.test(CTX)) {
-    F("13 · el contexto del rediseño dejó de tener default `false`. Con el default en la constante, el día que 4d la ponga en `true` STR se enciende solo — que es justo lo que el gate por modalidad evita.");
-  }
-  // 13 · «el provider de SubjectCardGrid hereda» — RETIRADO CON ACTA (12-sep-2026, retiro del
-  // andamio): el grid ya no monta provider ni lee constante; el rediseño es el único camino.
+  // 13 · «el contexto tiene default false» y «el provider de SubjectCardGrid hereda» —
+  // RETIRADOS CON ACTA (12-sep-2026, retiro del andamio): `RedisenoContexto.tsx` ya no
+  // existe, el grid no monta provider ni lee constante; el rediseño es el único camino.
   // Las tres tienen que dibujarse con datos faltantes: de 1.447 filas LTR, 670 no tienen
   // mediana de arriendo y 314 no tienen hallazgo de sobreprecio.
   for (const rama of ["Sin arriendos publicados cerca", "Sin mediana comunal de venta", "no tiene serie propia"]) {
@@ -427,7 +425,7 @@ for (const sel of [".doc-dictamen.doc-dictamen"]) {
     F("17 · la sección «recomendacion» no emite su marca de telemetría");
   }
   // 17f · STR recibe el MISMO orden desde el bloque B de «STR al rediseño» (11-sep-2026):
-  // su hero emite la recomendación como sección con caja, detrás de su propio interruptor.
+  // su hero emite la recomendación como sección con caja.
   // Lo fija en detalle el tier estructura-str-rediseno; acá solo que no volvió atrás.
   if (!/<SeccionInforme id="recomendacion"[^>]*\bcaja\b/.test(HSTR)) {
     F("17 · el hero de STR dejó de emitir la sección «recomendacion» con caja. Desde el bloque B el orden de §2 es de las dos modalidades (contrato §11).");

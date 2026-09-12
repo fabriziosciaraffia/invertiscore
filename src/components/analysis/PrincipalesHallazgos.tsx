@@ -42,7 +42,8 @@ import { referenciaHallazgo } from "./referencia-hallazgo";
  * con la única excepción de siempre —el monto negativo en Signal Red—. Lo que se
  * mantiene de la decisión vieja es lo que la motivaba: el color no se reparte.
  *
- * Va detrás del interruptor: el informe de siempre conserva su flecha en tinta.
+ * La regla base `.hz-fl` sigue en tinta y la de `.doc-dictamen` la repunta; desde el
+ * 12-sep-2026 (retiro del andamio) el rediseño es el único camino y no hay informe sin marco.
  */
 /** 0 = frena (va arriba), 1 = ayuda o no mueve la aguja. */
 const grupo = (h: Hallazgo): number => (h.direccion === "adverso" ? 0 : 1);

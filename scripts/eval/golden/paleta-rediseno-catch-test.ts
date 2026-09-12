@@ -57,7 +57,7 @@ const TOKENS = ["page", "card", "sunk", "line", "line2", "line-sunk"] as const;
 type Tok = (typeof TOKENS)[number];
 
 /** Los valores del bloque del rediseño, por tema. El claro vive tras el selector
- *  `[data-theme="light"] .doc-r2`; lo anterior es el oscuro. */
+ *  `[data-theme="light"] .doc-dictamen`; lo anterior es el oscuro. */
 function paleta(): { oscuro: Record<string, string>; claro: Record<string, string> } {
   const ini = CSS.indexOf("REDISEÑO · PALETA");
   const corte = CSS.indexOf('[data-theme="light"] .doc-dictamen', ini);
@@ -229,19 +229,20 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
   }
 }
 
-// ── 7 · el selector lleva las CUATRO formas, con la PEGADA ───────────────
+// ── 7 · el selector lleva la forma PEGADA ────────────────────────────────
 {
-  // LA CUARTA LLEGÓ A PRODUCCIÓN ANTES DE ENCONTRARSE. En prod las dos clases van en el
-  // MISMO elemento —«class="doc-dictamen doc-r2"», medido— y ahí la forma descendente
-  // «.doc-r2 .doc-dictamen» no matchea. Los repuntes «--doc-*» quedaban en un selector
-  // (0,1,0) que en tema CLARO perdía contra «[data-theme=light] .doc-dictamen» (0,1,1),
-  // así que los NUEVE tokens se quedaban en la paleta cálida vieja. En oscuro no pasaba,
-  // y en la ruta dev tampoco porque ahí «.doc-r2» ENVUELVE. Ningún shot lo mostró.
-  const FORMAS = [".doc-dictamen", ".doc-dictamen.doc-dictamen", ".doc-dictamen", ".doc-dictamen .doc-tokens"];
+  // LA PEGADA LLEGÓ A PRODUCCIÓN ANTES DE ENCONTRARSE (11-sep-2026, con el interruptor:
+  // «class="doc-dictamen doc-r2"»). Los repuntes «--doc-*» quedaban en un selector (0,1,0)
+  // que en tema CLARO perdía contra «[data-theme=light] .doc-dictamen» (0,1,1), la paleta
+  // cálida vieja que sigue arriba para «.doc-tokens» fuera del marco, así que los NUEVE
+  // tokens se quedaban en ella. Con el andamio retirado (12-sep-2026) la forma pegada es
+  // «.doc-dictamen.doc-dictamen», (0,2,0) a propósito: renombrada en su sitio, no quitada.
+  const FORMAS = [".doc-dictamen", ".doc-dictamen.doc-dictamen", ".doc-dictamen .doc-tokens"];
   const bloque = CSS.slice(CSS.indexOf("REDISEÑO · PALETA"), CSS.indexOf("REDISEÑO · TIPOGRAFÍA"));
   // CADA TEMA EN SU PROPIO SUB-BLOQUE. Buscando el substring en todo el bloque, la forma
-  // del tema CLARO —«[data-theme=light] .doc-r2.doc-dictamen»— contiene a la del oscuro
-  // —«.doc-r2.doc-dictamen»— y la satisface: borrada del oscuro, el guard seguía verde.
+  // del tema CLARO —«[data-theme=light] .doc-dictamen.doc-dictamen»— contiene a la del
+  // oscuro —«.doc-dictamen.doc-dictamen»— y la satisface: borrada del oscuro, el guard
+  // seguía verde.
   const corte = bloque.indexOf('[data-theme="light"] .doc-dictamen');
   const SUB = { oscuro: corte === -1 ? bloque : bloque.slice(0, corte), claro: corte === -1 ? "" : bloque.slice(corte) };
   for (const tema of ["oscuro", "claro"] as const) {
@@ -279,14 +280,14 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
   if (!/min-h-screen bg-\[var\(--franco-bg\)\] doc-lienzo/.test(RUTA_STR)) {
     F("8 · la ruta de STR no pinta el lienzo: con el marco retirado el informe queda sobre el gris de la app (§2).");
   }
-  // 8c · NO lleva «doc-r2». Esa clase trae los doce tokens del informe, y «--card» es
+  // 8c · NO lleva «doc-dictamen». Esa clase trae los doce tokens del informe, y «--card» es
   // TAMBIÉN un token de shadcn: puesta en el wrapper le cambiaba el valor a todo el
   // chrome de la página —de «40 20% 98%» en HSL a un hex— y «bg-card» pasaba a resolver
   // «hsl(#F4F4F6)», que es inválido. Se midió en el DOM antes de corregirlo.
   const wrapper = RUTA_LTR.match(/<div className="min-h-screen[^"]*">/)?.[0] ?? "";
   if (!wrapper) F("8 · no se encontró el wrapper de la ruta LTR");
-  else if (/doc-r2|CLASE_REDISENO/.test(wrapper)) {
-    F(`8 · el wrapper de la ruta LTR volvió a llevar «doc-r2»: «${wrapper.slice(0, 90)}». Esa clase trae los doce tokens del informe, y «--card» es también de shadcn: le cambia el valor a TODO el chrome de la página y «bg-card» resuelve «hsl(#F4F4F6)», que es inválido.`);
+  else if (/doc-dictamen|doc-tokens|doc-r2/.test(wrapper)) {
+    F(`8 · el wrapper de la ruta LTR volvió a llevar la clase de los tokens: «${wrapper.slice(0, 90)}». Esa clase trae los doce tokens del informe, y «--card» es también de shadcn: le cambia el valor a TODO el chrome de la página y «bg-card» resuelve «hsl(#F4F4F6)», que es inválido.`);
   }
   // 8d · la regla pinta con el token, y el «body» va con ella: el wrapper es su
   // descendiente y no puede pintarlo. Hoy el wrapper cubre el documento entero, así que
@@ -298,17 +299,17 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
     F("8 · el lienzo dejó de pintarse con «--page»: el fondo de la página tiene que ser el MISMO token que el papel del informe, no un hex suelto que se desincroniza");
   }
   // 8e · y los dos valores que declara son los MISMOS del bloque de paleta. El lienzo no
-  // puede reusar «.doc-r2» (8c), así que repite el hex: este chequeo es lo único que
+  // puede reusar «.doc-dictamen» (8c), así que repite el hex: este chequeo es lo único que
   // impide que los dos se separen sin que nadie lo vea.
   const iL = CSS.indexOf(".doc-lienzo,");
   const trozoLienzo = iL === -1 ? "" : CSS.slice(iL, iL + 400);
-  // Se ancla al BLOQUE por su nombre y no al selector: «.doc-r2,» sola aparece TRES
-  // veces en el archivo, y la primera no es la paleta.
+  // Se ancla al BLOQUE por su nombre y no al selector: «.doc-dictamen,» sola aparece
+  // varias veces en el archivo, y la primera no es la paleta.
   const iP = CSS.indexOf("REDISEÑO · PALETA");
   const trozoPaleta = iP === -1 ? "" : CSS.slice(iP, iP + 8000);
   for (const [tema, hex] of [["oscuro", "#0C0C0E"], ["claro", "#FFFFFF"]] as const) {
     if (!trozoLienzo.includes(`--page:${hex}`)) {
-      F(`8 · el «--page» ${tema} del lienzo dejó de ser ${hex}. El lienzo repite el valor porque no puede reusar «.doc-r2» —le daría «--card» al chrome de la app—: si se separa del bloque de paleta, la página y el papel dejan de ser el mismo color.`);
+      F(`8 · el «--page» ${tema} del lienzo dejó de ser ${hex}. El lienzo repite el valor porque no puede reusar «.doc-dictamen» —le daría «--card» al chrome de la app—: si se separa del bloque de paleta, la página y el papel dejan de ser el mismo color.`);
     }
     if (!trozoPaleta.includes(`--page:${hex}`)) {
       F(`8 · el «--page» ${tema} del BLOQUE DE PALETA dejó de ser ${hex}: el lienzo lo repite, así que ahora los dos dicen cosas distintas y la página no es del color del papel.`);

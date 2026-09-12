@@ -28,8 +28,8 @@
 //   5. EL PLUMÓN BLANCO NO REPUNTA `--doc-hl`. Ese token lo usan además las marcas de
 //      prosa de las secciones, que van sobre PAPEL: en blanco serían invisibles.
 //
-//   6. LA BANDA NO SE BORRA. `PortadaInforme` lo monta también STR, así que la banda
-//      sigue en el archivo y solo deja de montarse con el interruptor.
+//   6. LA BANDA NO SE BORRA. El OG la sigue dibujando, así que la banda sigue en el
+//      archivo; el hero simplemente no la monta.
 //
 // Corre dentro del QUICK (tier "hero-rediseno") y standalone:
 //   node --import tsx scripts/eval/golden/hero-rediseno-catch-test.ts

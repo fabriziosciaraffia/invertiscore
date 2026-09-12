@@ -7,10 +7,9 @@
 //
 // Fija SEIS cosas, y la tercera es la razón de existir de este tier:
 //
-//   1. EL INTERRUPTOR ESTÁ APAGADO. Mientras el rediseño no esté completo,
-//      `REDISENO_INFORME` es `false` y prod no ve nada. Si alguien lo enciende sin
-//      querer —o lo deja encendido tras sacar shots— esto lo caza. En el goal 4 este
-//      invariante se invierte a mano, en el commit que estrena el rediseño.
+//   1. EL INTERRUPTOR — RETIRADO CON ACTA (ver el bloque 1): fijó `false` hasta el
+//      encendido, el encendido lo pasó al tier interruptor-rediseno y el retiro del
+//      andamio (12-sep-2026) se llevó las constantes; queda acá Inter con preload (4).
 //
 //   2. LAS FUENTES ESTÁN CARGADAS Y CON LOS PESOS QUE EL CONTRATO PIDE. Source Serif
 //      necesita el 600 del titular; sin el peso, el navegador cae al más cercano por
@@ -22,9 +21,9 @@
 //      27,19 px (`1.111.111` contra `4.444.444` a 15 px) — más de un cuarto de la
 //      columna. Con ella, cero. Y se cae en SILENCIO: nada falla, solo se desalinea.
 //
-//   4. INTER NO SE DESCARGA HASTA EL GOAL 4. `preload: false` es lo que hace que el
-//      interruptor apagado no cueste bytes. Si alguien lo saca, prod paga la fuente
-//      sin usarla.
+//   4. INTER SE PRECARGA. Hasta el goal 4 iba en `preload: false` para que el rediseño
+//      apagado no costara bytes; encendido, sin preload el lector ve el fallback y
+//      después el salto. Desde el 12-sep-2026 no hay apagado: `true`, sin condición.
 //
 //   5. LA SERIF SE CAPTURA EN `body`, NO EN `:root`. next/font define
 //      `--font-heading` en la clase que monta en `body`; capturarla en `html` la deja
@@ -135,7 +134,7 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 export function runTipografiaRedisenoTier(): { hard: number } {
   console.log("\n─── TIER TIPOGRAFÍA-REDISEÑO (contrato §1 · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — pesos cargados, tabular-nums en la columna, el preload de Inter coherente con el interruptor, serif capturada en body y wordmark exceptuado");
+    console.log("  ✓ VERDE — pesos cargados, tabular-nums en la columna, Inter con preload, serif capturada en body y wordmark exceptuado");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

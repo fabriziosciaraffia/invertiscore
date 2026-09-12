@@ -14,9 +14,7 @@ const sourceSerif = Source_Serif_4({
   // 600 agregado el 10-sep-2026 para el titular del hero del rediseño (contrato §1).
   // Sin el peso cargado pasa lo mismo que pasó con el 400: el navegador cae al más
   // cercano por font-matching y el titular se rinde en 700, más pesado que lo pedido.
-  // Es el ÚNICO byte de esta parte que llega a prod con el interruptor apagado, y es
-  // un peso más en una fuente que ya se descarga: no cambia ningún pixel porque hoy
-  // nadie pide 600.
+  // Un peso más en una fuente que ya se descarga; lo pide el titular del hero.
   weight: ["300", "400", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-heading",
@@ -39,14 +37,13 @@ const ibmPlexSans = IBM_Plex_Sans({
 // 400-700 — en vez de cuatro estáticos. `latin-ext` no es opcional: los nombres de
 // comuna llevan tilde y ñ.
 //
-// `preload: true` DESDE EL GOAL 4d, en el mismo commit que enciende el interruptor.
-// Mientras estuvo apagado iba en `false` y eso era lo que hacía que el rediseño no
-// costara nada: sin preload el navegador solo descarga el archivo cuando una regla usa
-// la familia, y con el interruptor apagado no había ninguna.
-//
-// Encendido, `false` sería peor que inútil: la primera regla que pide Inter es la del
-// informe, así que la descarga arrancaría recién al renderizarlo y el lector vería el
-// fallback y después el salto. Con `true` el archivo viaja con el documento.
+// `preload: true` DESDE EL GOAL 4d (10-sep-2026), el commit que encendió el rediseño.
+// Mientras el rediseño estuvo detrás de un interruptor iba en `false`, y eso era lo que
+// hacía que no costara nada: sin preload el navegador solo descarga el archivo cuando
+// una regla usa la familia. Desde el 12-sep-2026 el rediseño es el único camino del
+// informe y no hay vuelta a `false`: la primera regla que pide Inter es la del informe,
+// así que sin preload la descarga arrancaría recién al renderizarlo y el lector vería
+// el fallback y después el salto. Con `true` el archivo viaja con el documento.
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
   variable: "--font-ui",

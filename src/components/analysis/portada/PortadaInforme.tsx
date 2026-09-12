@@ -416,7 +416,7 @@ export function DocTokens() {
          LA CLASE LA PONE LA RUTA DEL ANÁLISIS LTR, solo ésa. STR tiene su propio wrapper
          y no la lleva; el resto de la app conserva su fondo.
 
-         DECLARA «--page» Y NADA MÁS, y por eso no reusa «.doc-r2»: esa clase trae los
+         DECLARA «--page» Y NADA MÁS, y por eso no reusa «.doc-dictamen»: esa clase trae los
          doce tokens del informe, y «--card» es también un token de shadcn —«40 20% 98%»,
          en HSL—. Puesta en el wrapper le cambiaba el valor a todo el chrome de la página,
          y «bg-card» pasaba a resolver «hsl(#F4F4F6)», que es inválido. Medido en el DOM.
@@ -438,7 +438,7 @@ export function DocTokens() {
          página. */
       .doc-dictamen .doc-page{padding:0}
       @media (max-width: 767px){ .doc-dictamen .doc-page{padding:0} }
-      /* «.doc-sec.p2» tiene la misma especificidad que «.doc-r2 .doc-sec» y gana por
+      /* «.doc-sec.p2» tiene la misma especificidad que «.doc-dictamen .doc-sec» y gana por
          orden, asi que la seccion alternada conservaba su fondo. Con «.p2» en el
          selector se resuelve, y de paso queda explicito que la alternancia muere. */
       .doc-dictamen .doc-sec,
@@ -466,8 +466,8 @@ export function DocTokens() {
 
          LO QUE NO CAMBIA: el markup. «.nums», «.num-cell» y sus «.k/.v/.tr» son los
          mismos que ya emite «SeisCifras», que es una pieza COMPARTIDA con STR. Todo esto
-         cuelga de «.doc-r2», y STR no lo recibe (ver «rediseno-flag.ts»): si se tocara el
-         JSX, el interruptor no alcanzaría para dejar a STR quieto.
+         cuelga de «.doc-dictamen», y desde el 11-sep-2026 STR lo recibe también (§11): lo
+         que STR destaca aparte —tarifa y ocupación— va en su propio bloque, más abajo.
 
          Y NO REACCIONAN AL HOVER, que es la parte que parece un olvido y no lo es: las
          tarjetas de cifra no abren nada —«div.num-cell» sin onClick, verificado— y esa
@@ -533,7 +533,7 @@ export function DocTokens() {
          fondo es blanco puro (Cb=1 da 1 para cualquier fuente). El valor queda en una
          sola constante para que moverlo sea una línea. */
       /* «.doc-sec .doc-portada» —que ya existía para matar el borde y el margen de la
-         portada dentro de una sección— tiene la MISMA especificidad que «.doc-r2
+         portada dentro de una sección— tiene la MISMA especificidad que «.doc-dictamen
          .doc-hero» y va después en el archivo, así que se llevaba puesto el
          «padding-bottom». Medido: 34px 32px 0px en vez de 30 abajo. Con «.doc-sec» en
          el selector gana el rediseño; el borde y el margen los sigue matando ella. */
@@ -1073,29 +1073,22 @@ export function DocTokens() {
          Oscuro primero, como el bloque de arriba: el default del app es oscuro
          («data-theme» ausente) y el claro se declara aparte.
 
-         EL SELECTOR LLEVA LAS CUATRO FORMAS, y la cuarta llegó A PRODUCCIÓN antes de
-         encontrarse. Este comentario decía TRES y faltaba justo la de prod:
-         «.doc-r2.doc-dictamen», las dos clases PEGADAS en el mismo elemento.
-
-         Qué pasaba, medido en prod con el interruptor encendido: los repuntes
-         «--doc-*: var(--page)» viven en el bloque de arriba, cuyo selector «.doc-r2» es
-         (0,1,0). En tema CLARO hay una regla anterior «[data-theme=light] .doc-dictamen»
-         que es (0,1,1) y le gana, así que los NUEVE tokens «--doc-*» se quedaban en la
-         paleta cálida vieja —#FAF8F3 en vez de #FFFFFF— y con ellos la mayor parte del
-         informe. En oscuro no pasaba: ahí compite «.doc-dictamen» (0,1,0), empata, y
+         EL SELECTOR LLEVA LA FORMA PEGADA «.doc-dictamen.doc-dictamen» A PROPÓSITO: es
+         (0,2,0) y le gana a «[data-theme=light] .doc-dictamen» (0,1,1), la paleta cálida
+         vieja que sigue declarada más arriba porque «.doc-tokens» fuera del marco —los
+         drawers LTR se montan afuera de «DocumentoFrame»— todavía vive de ella. Con
+         (0,1,0) sola, en tema CLARO los NUEVE repuntes «--doc-*: var(--page)» perdían y
+         el informe se quedaba en #FAF8F3 en vez de #FFFFFF; medido en prod el
+         11-sep-2026. En oscuro no pasaba: ahí compite «.doc-dictamen» (0,1,0), empata, y
          gana el bloque posterior.
 
-         Y NO SE VIO EN NINGÚN SHOT porque la ruta dev ENVUELVE con «.doc-r2», y ahí sí
-         matchea la forma descendente (0,2,1). Con la forma pegada, «.doc-r2.doc-dictamen»
-         es (0,2,0) y le gana a (0,1,1) en los dos montajes.
-
-         El resto del comentario original: «.doc-dictamen» declara
-         los tokens base con la misma especificidad que «.doc-r2», así que cuando las dos
-         clases van en el MISMO elemento gana el orden de aparición —y este bloque va
-         después, o sea bien—. Pero cuando «.doc-r2» envuelve desde afuera (la ruta dev),
-         el «.doc-dictamen» de adentro está más cerca y se lleva puesta la paleta: medido,
-         la sección seguía en el papel cálido #FAF8F3. Las dos formas descendentes suben
-         la especificidad y ganan en los dos montajes. */
+         DE DÓNDE VIENE LA FORMA: hasta el 12-sep-2026 el interruptor del rediseño ponía
+         «.doc-r2» pegada a «.doc-dictamen» en el marco, y este bloque se escribía
+         «.doc-r2.doc-dictamen». Al retirar el andamio el prefijo se renombró EN SU SITIO
+         —no se quitó ni se movió— para conservar exactamente la especificidad y el orden
+         de cada regla: quitar el prefijo y mudar las reglas al final del archivo cambiaba
+         píxeles (medido: los repuntes claros volvían a la paleta cálida y «.ksub» perdía
+         contra el stylesheet de «HallazgosAcordeon», que se inyecta después). */
       .doc-dictamen,
       .doc-dictamen.doc-dictamen,
       .doc-dictamen .doc-tokens{
@@ -1140,7 +1133,7 @@ export function DocTokens() {
          coincidan es economía de paleta, no una equivalencia — no los unifiques.
 
          YA LO MONTAN LAS FLECHAS DE HALLAZGO (§4, 11-sep-2026): «↑» en «--up» y «↓» en
-         «--signal-red», a 20 px, detrás del interruptor. La decisión «SÍMBOLO, NO COLOR»
+         «--signal-red», a 20 px. La decisión «SÍMBOLO, NO COLOR»
          del 09-sep queda superada, con acta en «PrincipalesHallazgos.tsx»: el color
          vuelve solo a las flechas, no a las cifras ni a los textos. */
 
@@ -1160,9 +1153,9 @@ export function DocTokens() {
       .doc-dictamen .pos-chip{border-color:var(--line-sunk)}
 
       /* ═══════════════ REDISEÑO · TIPOGRAFÍA (contrato §1) ═══════════════
-         Todo lo de acá cuelga de «.doc-r2», que solo existe con el interruptor de
-         «rediseno-flag.ts» encendido. Con el interruptor apagado ninguna de estas
-         reglas matchea y el informe se sirve exactamente como hoy.
+         Todo lo de acá cuelga de «.doc-dictamen», el marco. Hasta el 12-sep-2026 el
+         prefijo era «.doc-r2», la clase del interruptor; con el andamio retirado estas
+         son las reglas base del informe y las de arriba que repuntan, los cimientos.
 
          POR QUÉ SE REAPUNTAN LOS TOKENS EN VEZ DE REESCRIBIR 115 REGLAS. El mono se
          pide en 115 lugares del informe y la serif en 14. Reescribirlos uno por uno
@@ -1172,7 +1165,7 @@ export function DocTokens() {
          acá: son de las partes 2, 3 y 4.
 
          LA SERIF SE CAPTURA ANTES DE REAPUNTAR. «--font-serif» se declara fuera de
-         «.doc-r2», porque dentro del mismo bloque donde se redefine «--font-heading»
+         «.doc-dictamen», porque dentro del mismo bloque donde se redefine «--font-heading»
          la variable ya resolvería al valor nuevo — y el titular del hero perdería la
          serif que el contrato le reserva.
 
@@ -1322,7 +1315,7 @@ export function DocTokens() {
       .hz-lin:last-child{border-bottom:none}
       /* La flecha en el informe de siempre: Ink, una sola tinta para las dos
          direcciones. Ancho fijo para que la fila neutral, que no lleva flecha, no corra
-         la frase hacia la izquierda. El color de §4 entra con el interruptor, más abajo. */
+         la frase hacia la izquierda. El color de §4 la repunta más abajo, en «.doc-dictamen». */
       .hz-fl{font-family:var(--font-mono, ui-monospace);font-size:14px;line-height:1.4;color:var(--doc-tx);text-align:center}
       .hz-lin p{font-family:var(--font-heading, Georgia, serif);font-weight:400;font-size:16px;line-height:1.4;color:var(--doc-tx);margin:0}
       /* Sin :hover ni :focus-visible: la fila dejó de ser un control. Un hover sobre algo
