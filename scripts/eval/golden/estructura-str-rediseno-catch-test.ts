@@ -8,9 +8,13 @@
 // y este tier fija lo que es PROPIO de §11, bloque por bloque. BLOQUE A (esqueleto,
 // cifras y zona):
 //
-//   1. EL INTERRUPTOR DE STR ES PROPIO Y ESTÁ APAGADO. `REDISENO_INFORME_STR = false`,
-//      y la página lo combina con lo heredado del contexto (`?rediseno=1` en la ruta
-//      dev), igual que LTR. Encender es un goal aparte con su commit y su revert.
+//   1. EL INTERRUPTOR DE STR ES PROPIO, Y LA PÁGINA LO DERIVA: `REDISENO_INFORME_STR ||
+//      redisenoHeredado`, el provider re-provisto con ese valor y el `DocumentoFrame` con
+//      la prop, igual que LTR. QUÉ VALOR TIENE LA CONSTANTE NO SE FIJA ACÁ: hasta el
+//      12-sep-2026 este bloque exigía `= false` («encender es un goal aparte»), y en el
+//      commit que la encendió la aserción se RETIRÓ CON ACTA en vez de invertirse. El
+//      tier interruptor-rediseno ya fijaba el valor de las dos constantes y es su único
+//      dueño: el mismo chequeo en dos tiers tiene dos dueños y ninguno lo mantiene.
 //
 //   2. EL ESQUELETO DE §2: la portada es caja; los hallazgos salen del hero a su sección
 //      propia con la línea que declara (podada) o el título viejo (prosa vieja), en los
@@ -85,10 +89,11 @@ function enOrden(txt: string, agujas: string[]): string | null {
   return null;
 }
 
-// ── 1 · el interruptor de STR: propio, apagado, y combinado con el contexto ──
+// ── 1 · el interruptor de STR: propio y combinado con el contexto (su valor lo fija
+//        el tier interruptor-rediseno, único dueño del encendido) ──
 {
-  if (!/export const REDISENO_INFORME_STR = false;/.test(FLAG)) {
-    F("1 · falta `REDISENO_INFORME_STR = false` en rediseno-flag.ts. STR necesita SU interruptor: el de LTR está en true y compartirlo encendería STR con la pasada a medias (contrato §11).");
+  if (!/export const REDISENO_INFORME_STR = (?:true|false);/.test(FLAG)) {
+    F("1 · falta la constante `REDISENO_INFORME_STR` en rediseno-flag.ts. STR necesita SU interruptor: compartir el de LTR ata una modalidad a la otra (contrato §11).");
   }
   if (!/const rediseno = REDISENO_INFORME_STR \|\| redisenoHeredado;/.test(STR)) {
     F("1 · la página STR no deriva `rediseno` de su constante O del contexto heredado. Sin el `||`, la ruta dev con `?rediseno=1` no enciende nada y no hay cómo shotear.");
@@ -245,7 +250,7 @@ function enOrden(txt: string, agujas: string[]): string | null {
 export function runEstructuraStrRedisenoTier(): { hard: number } {
   console.log("\n─── TIER ESTRUCTURA-STR-REDISEÑO (contrato §11 · bloques A y B · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el interruptor STR propio y apagado, las dos cajas de §2 en el orden hero → hallazgos → recomendación emitido por el hero STR, los hallazgos en su sección en los dos caminos sin colgar de la prosa, el hero que no se monta vacío, la recomendación con estado y título del contrato, los títulos de §10, tarifa y ocupación primero y destacadas con el supuesto encima, y la zona con ocupación · tarifa · comparables, pie con fecha y sin tipo-line");
+    console.log("  ✓ VERDE — el interruptor STR propio y derivado con el contexto, las dos cajas de §2 en el orden hero → hallazgos → recomendación emitido por el hero STR, los hallazgos en su sección en los dos caminos sin colgar de la prosa, el hero que no se monta vacío, la recomendación con estado y título del contrato, los títulos de §10, tarifa y ocupación primero y destacadas con el supuesto encima, y la zona con ocupación · tarifa · comparables, pie con fecha y sin tipo-line");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

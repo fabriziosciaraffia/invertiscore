@@ -49,14 +49,19 @@
 export const REDISENO_INFORME = true;
 
 /**
- * EL INTERRUPTOR DE STR, APARTE (bloque A de «STR al rediseño», 11-sep-2026). STR ya
+ * EL INTERRUPTOR DE STR, APARTE (bloque A de «STR al rediseño», 11-sep-2026). STR
  * recibe `rediseno` y monta el provider —igual que LTR— pero lo decide ESTA constante,
- * no la de arriba: con LTR en `true`, compartir interruptor habría encendido en STR una
- * pasada a medias (contrato §11). Se enciende en su propio goal, con su commit y su
- * revert. Mientras tanto la ruta dev lo fuerza con `?rediseno=1` a través del contexto.
- * Cuando se encienda y se retire el andamio, las dos constantes se van juntas.
+ * no la de arriba: compartir interruptor ata una modalidad a la otra (contrato §11).
+ * ENCENDIDO desde el 12-sep-2026, en su propio goal y su propio commit, con los bloques
+ * A, B, el motor de vías a COMPRAR y C ya en master.
+ *
+ * PARA APAGAR: `git revert` del commit que puso esto en `true`. Ese commit cambia esta
+ * línea y dos tiers del golden —el interruptor, que ahora exige `true` para las dos
+ * modalidades, y el bloque 1 de estructura-str, que dejó de fijar el valor— y nada más,
+ * justamente para que el revert apague todo sin arrastrar nada del rediseño construido.
+ * Cuando se retire el andamio, las dos constantes se van juntas.
  */
-export const REDISENO_INFORME_STR = false;
+export const REDISENO_INFORME_STR = true;
 
 /** La clase que abre las reglas del rediseño. Vacía cuando el interruptor está en
  *  `false`, así que se puede interpolar sin condicionales en el call site. */

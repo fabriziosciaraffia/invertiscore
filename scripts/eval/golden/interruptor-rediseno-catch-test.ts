@@ -1,8 +1,12 @@
 // ============================================================================
 // GOLDEN · EL INTERRUPTOR DEL REDISEÑO — catch-test (11-sep-2026). 0 tokens.
 // ============================================================================
-// Este tier existe para el único goal del arco que llega a producción VISIBLE. Todo lo
-// demás se construyó apagado; acá se enciende, y solo para LTR.
+// Este tier existe para los dos goals del arco que llegan a producción VISIBLES. Todo lo
+// demás se construyó apagado; acá se enciende: LTR el 11-sep-2026 (4d) y STR el
+// 12-sep-2026 («Encender el rediseño STR»). ES EL ÚNICO DUEÑO DEL ENCENDIDO: el bloque 1
+// del tier estructura-str fijaba la constante STR en `false` y se retiró con acta en el
+// commit que la encendió —el mismo chequeo en dos tiers tiene dos dueños y ninguno lo
+// mantiene—; ahí queda solo la derivación.
 //
 // Fija CINCO cosas:
 //
@@ -10,11 +14,11 @@
 //      revert parcial—, el informe vuelve al de antes en silencio y nadie se entera
 //      hasta que lo mira. Es el invariante que hace ruido.
 //
-//   2. STR SIGUE APAGADO, Y POR SU PROPIO INTERRUPTOR. Desde el bloque A de «STR al
-//      rediseño» (11-sep-2026) los dos call sites de `DocumentoFrame` pasan `rediseno`,
-//      pero el de STR lo deriva de `REDISENO_INFORME_STR` —en `false`— o del contexto
-//      heredado (la ruta dev con `?rediseno=1`). Nunca de la constante de LTR: si
-//      compartieran interruptor, STR se encendería con la pasada a medias (§11).
+//   2. STR TAMBIÉN ESTÁ ENCENDIDO, Y POR SU PROPIO INTERRUPTOR. Desde el bloque A de «STR
+//      al rediseño» (11-sep-2026) los dos call sites de `DocumentoFrame` pasan `rediseno`,
+//      y el de STR lo deriva de `REDISENO_INFORME_STR` —en `true` desde el 12-sep— o del
+//      contexto heredado. Nunca de la constante de LTR: las dos se apagan por separado, con
+//      su propio revert, y compartirlas volvería a atar una modalidad a la otra (§11).
 //
 //   3. INTER SE PRECARGA. `preload: false` era lo que hacía que el rediseño no costara
 //      nada mientras estaba apagado: sin él, la fuente se descarga recién cuando la
@@ -49,10 +53,10 @@ if (!/export const REDISENO_INFORME = true;/.test(FLAG)) {
   F("1 · el interruptor NO está en `true`. Si esto es un apagado deliberado, este tier se retira en el mismo commit; si no, el informe volvió al de antes en silencio.");
 }
 
-// ── 2 · STR apagado, por su propio interruptor ────────────────────────────
+// ── 2 · STR encendido, por su propio interruptor ──────────────────────────
 {
-  if (!/export const REDISENO_INFORME_STR = false;/.test(FLAG)) {
-    F("2 · `REDISENO_INFORME_STR` no está en `false`. STR se enciende en su propio goal, con su commit y su revert: si esto es ese goal, este tier se actualiza en el mismo commit.");
+  if (!/export const REDISENO_INFORME_STR = true;/.test(FLAG)) {
+    F("2 · `REDISENO_INFORME_STR` no está en `true`. Si esto es un apagado deliberado de STR, es el revert del commit que lo encendió y este bloque vuelve a `false` en el mismo commit; si no, el informe STR volvió al de antes en silencio.");
   }
   // El call site de STR pasa la prop DERIVADA de su constante o del contexto, nunca de la de LTR.
   const strFrame = STR.match(/<DocumentoFrame[^>]*>/)?.[0] ?? "";
@@ -95,9 +99,9 @@ if (!/createContext<boolean>\(false\)/.test(CTX)) {
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runInterruptorRedisenoTier(): { hard: number } {
-  console.log("\n─── TIER INTERRUPTOR-REDISEÑO (LTR encendido · STR apagado por su interruptor · 0 tokens) ───");
+  console.log("\n─── TIER INTERRUPTOR-REDISEÑO (LTR y STR encendidos, cada uno por su interruptor · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — el interruptor LTR en true, el de STR en false y derivando la prop de su constante o del contexto, Inter con preload, la clase derivada de la constante y el contexto con default false");
+    console.log("  ✓ VERDE — los dos interruptores en true, STR derivando la prop de su constante o del contexto, Inter con preload, la clase derivada de la constante y el contexto con default false");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
