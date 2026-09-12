@@ -34,7 +34,10 @@ const payload = {
     "equity(sin flujo) / totalAportado(inicial + Σ aportes<0), espejo exacto de analysis.ts:727 (mata el " +
     "doble-conteo). Inflación de flujos homologada a LTR (revenue 3,5% · costos 3% · dividendo 3%). Vs la " +
     "pre-foto F2, veredicto/N preservados (gate re-derivado a 2,65); drift en tirPct (inflación) + " +
-    "equityCLP/patrimonioCLP/multiplicador (re-semántica). Re-baseline con OK de Fabrizio (⛔#A).",
+    "equityCLP/patrimonioCLP/multiplicador (re-semántica). Re-baseline con OK de Fabrizio (⛔#A). " +
+    "Último re-baseline: 12-sep-2026, «rentabilidad sobre lo puesto en el score» (cash-on-cash y TIR como " +
+    "dimensiones, esquema A, curva calibrada); veredictos y N intactos, drift de score en GE-4/5/6/PC — acta por " +
+    "seed en ACTAS-score-retorno.md.",
   seeds,
 };
 const path = join(__dirname, "str-baseline.json");

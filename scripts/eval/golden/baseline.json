@@ -1,10 +1,10 @@
 {
   "uf": 38800,
-  "note": "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio.",
+  "note": "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 12-sep-2026, «rentabilidad sobre lo puesto en el score» (cash-on-cash y TIR como dimensiones, esquema A, curva calibrada) — acta por seed en ACTAS-score-retorno.md.",
   "seeds": {
     "GS-1": {
       "veredicto": "COMPRAR",
-      "score": 81,
+      "score": 87,
       "N": 8,
       "corona": "cap_rate",
       "hallazgoIds": [
@@ -25,7 +25,7 @@
     },
     "GS-2": {
       "veredicto": "COMPRAR",
-      "score": 70,
+      "score": 72,
       "N": 8,
       "corona": "cap_rate",
       "hallazgoIds": [
@@ -46,7 +46,7 @@
     },
     "GS-3": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 69,
+      "score": 68,
       "N": 10,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -91,7 +91,7 @@
     },
     "GS-5": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 58,
+      "score": 59,
       "N": 9,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -113,9 +113,9 @@
     },
     "GS-6": {
       "veredicto": "BUSCAR OTRA",
-      "score": 37,
+      "score": 30,
       "N": 9,
-      "corona": "sobreprecio",
+      "corona": "flujo_mensual",
       "hallazgoIds": [
         "cap_rate",
         "capex_puesta_a_punto",
@@ -135,9 +135,9 @@
     },
     "GS-7": {
       "veredicto": "BUSCAR OTRA",
-      "score": 40,
+      "score": 33,
       "N": 8,
-      "corona": "sobreprecio",
+      "corona": "flujo_mensual",
       "hallazgoIds": [
         "cap_rate",
         "distancia_veredicto",
@@ -156,7 +156,7 @@
     },
     "GS-PC1": {
       "veredicto": "BUSCAR OTRA",
-      "score": 51,
+      "score": 58,
       "N": 6,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -175,7 +175,7 @@
     },
     "GS-PC2": {
       "veredicto": "COMPRAR",
-      "score": 75,
+      "score": 80,
       "N": 6,
       "corona": "cap_rate",
       "hallazgoIds": [
@@ -194,7 +194,7 @@
     },
     "GS-PJ": {
       "veredicto": "AJUSTA SUPUESTOS",
-      "score": 68,
+      "score": 69,
       "N": 10,
       "corona": "flujo_mensual",
       "hallazgoIds": [
@@ -217,7 +217,7 @@
     },
     "BE-caprate": {
       "veredicto": "COMPRAR",
-      "score": 78,
+      "score": 86,
       "N": 9,
       "corona": "cap_rate",
       "hallazgoIds": [
@@ -239,7 +239,7 @@
     },
     "BE-patrimonio": {
       "veredicto": "BUSCAR OTRA",
-      "score": 34,
+      "score": 33,
       "N": 9,
       "corona": "sobreprecio",
       "hallazgoIds": [
@@ -261,7 +261,7 @@
     },
     "BE-sensibilidad": {
       "veredicto": "COMPRAR",
-      "score": 71,
+      "score": 75,
       "N": 9,
       "corona": "cap_rate",
       "hallazgoIds": [

@@ -35,7 +35,13 @@ for (const s of BORDE_SEEDS) {
   baseline[s.key] = factsToBaseline(extractFacts(res, s.input.precio));
 }
 
-const payload = { uf: GOLDEN_UF, note: "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio.", seeds: baseline };
+const payload = {
+  uf: GOLDEN_UF,
+  note: "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio. Último re-baseline: 12-sep-2026, " +
+    "«rentabilidad sobre lo puesto en el score» (cash-on-cash y TIR como dimensiones, esquema A, curva calibrada) — " +
+    "acta por seed en ACTAS-score-retorno.md.",
+  seeds: baseline,
+};
 const path = join(__dirname, "baseline.json");
 writeFileSync(path, JSON.stringify(payload, null, 2) + "\n", "utf8");
 console.log(`baseline.json escrito (${Object.keys(baseline).length} seeds) → ${path}`);
