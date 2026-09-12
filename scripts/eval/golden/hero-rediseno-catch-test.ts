@@ -215,29 +215,33 @@ function reglaDe(sel: string): string | null {
   }
 }
 
-// ── 6 · la banda no se borra, y los hallazgos salieron del hero ───────────
+// ── 6 · el botón es el único veredicto del hero, y los hallazgos salieron de él ──
+// INVERTIDO el 12-sep-2026 (retiro del andamio): ya no hay interruptor ni camino viejo; la
+// banda vive en su CSS para el OG y el botón se monta sin condición.
 {
   if (!/doc-banda-band/.test(CSS)) {
-    F("6 · la banda se borró del archivo. `PortadaInforme` lo monta también STR: la banda se deja de MONTAR con el interruptor, no se retira.");
+    F("6 · la banda se borró del archivo: el OG la sigue dibujando.");
   }
-  if (!/rediseno \?[\s\S]{0,400}doc-hero-pill/.test(CSS)) F("6 · el botón dejó de estar detrás del interruptor: STR se llevaría el cambio puesto");
+  if (/rediseno \?[\s\S]{0,400}doc-hero-pill/.test(CSS)) F("6 · el botón volvió a colgar de un interruptor que ya no existe");
+  if (!/className="doc-portada doc-hero"/.test(CSS)) F("6 · la portada dejó de montarse como hero sin condición");
   // Los hallazgos son sección suelta (§2, §4) y su título es la línea que declara (§10).
   // DESDE EL ORDEN (11-sep): la sección la sigue ARMANDO el grid —es quien tiene la
   // lista y sus gates— pero se la pasa a `HeroLTR` por la prop `hallazgos`, que la monta
   // entre el hero y la recomendación. Lo que se fija es que exista y cómo se titula, no
   // dónde queda el JSX; el orden lo fija el invariante 17 del tier de estructura.
   const slot = GRID.slice(GRID.indexOf("hallazgos={"), GRID.indexOf("prosaError="));
-  if (!/rediseno && !\(!prosa && loading\) && hallazgosOrdenados\.length > 0/.test(slot)) {
-    F("6 · la sección suelta de hallazgos dejó de montarse con el rediseño (contrato §2 y §4)");
+  if (!/!\(!prosa && loading\) && hallazgosOrdenados\.length > 0/.test(slot)) {
+    F("6 · la sección suelta de hallazgos dejó de montarse (contrato §2 y §4)");
   }
+  if (/rediseno &&/.test(slot)) F("6 · la sección de hallazgos volvió a colgar de un interruptor que ya no existe");
   if (!/titulo=\{dosBloques \? lineaQueDeclara\(veredicto\)/.test(slot)) {
     F("6 · la sección de hallazgos dejó de titularse con la línea que declara (§10)");
   }
-  if (!/!rediseno && dosBloques && hallazgosOrdenados\.length > 0/.test(GRID)) {
-    F("6 · el hero volvió a recibir las filas de hallazgo: con el rediseño van a su propia sección");
+  if (/razones=\{/.test(GRID) || /\{dosBloques && razones\}/.test(HERO)) {
+    F("6 · el hero volvió a recibir las filas de hallazgo: van a su propia sección");
   }
-  if (!/!\(rediseno && dosBloques\)/.test(HERO)) {
-    F("6 · HeroLTR volvió a dibujar su h2. La línea que declara se fue con las filas: acá quedaría repetida y encabezando algo que no está.");
+  if (!/\{!dosBloques && \(/.test(HERO)) {
+    F("6 · HeroLTR volvió a dibujar su h2 con prosa de dos bloques. La línea que declara se fue con las filas: acá quedaría repetida.");
   }
 }
 

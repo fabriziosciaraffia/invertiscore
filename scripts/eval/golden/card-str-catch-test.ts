@@ -27,7 +27,7 @@
 //      con el bloque construido, no null; el CTA de sin salida dice «Ver qué se probó».
 //
 //   6. LOS CAPÍTULOS DE §7 con apellido: Cap rate · Flujo · Al año · Precio · vs arriendo
-//      largo · Resultado, con el MISMO `conApellido` de LTR, detrás del interruptor.
+//      largo · Resultado, con el MISMO `conApellido` de LTR (sin interruptor desde el 12-sep-2026).
 //
 // Corre dentro del QUICK (tier "card-str") y standalone:
 //   node --import tsx scripts/eval/golden/card-str-catch-test.ts
@@ -180,11 +180,11 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   if (!/import \{[^}]*conApellido[^}]*\} from "@\/components\/analysis\/CapitulosInversion"/.test(CAPS_STR)) F("6 · CapitulosInversionStr no importa `conApellido` de LTR");
   if (!/const rediseno = useRediseno\(\);/.test(CAPS_STR)) F("6 · CapitulosInversionStr no lee el interruptor");
   for (const ap of ["Cap rate", "Flujo", "Al año", "Precio", "vs arriendo largo", "Resultado"]) {
-    if (!new RegExp(`conApellido\\(rediseno, "${ap.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}"`).test(CAPS_STR)) F(`6 · falta el apellido «${ap}» en las filas STR (§7)`);
+    if (!new RegExp(`conApellido\\("${ap.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}"`).test(CAPS_STR)) F(`6 · falta el apellido «${ap}» en las filas STR (§7)`);
   }
-  const n = [...CAPS_STR.matchAll(/conApellido\(rediseno, "/g)].length;
+  const n = [...CAPS_STR.matchAll(/conApellido\("/g)].length;
   if (n !== 6) F(`6 · ${n} filas con apellido en STR; §7 pide seis`);
-  if (!/noches/.test(CAPS_STR.slice(CAPS_STR.indexOf('conApellido(rediseno, "Al año"'), CAPS_STR.indexOf('conApellido(rediseno, "Al año"') + 120))) F("6 · «Al año» va con la unidad: «Al año 171 noches»");
+  if (!/noches/.test(CAPS_STR.slice(CAPS_STR.indexOf('conApellido("Al año"'), CAPS_STR.indexOf('conApellido("Al año"') + 120))) F("6 · «Al año» va con la unidad: «Al año 171 noches»");
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */

@@ -15,7 +15,6 @@ import {
   type EstadoRespaldoArriendo,
 } from "@/lib/arriendo-referencia";
 import { RANGO_GRAN_SANTIAGO } from "@/lib/plusvalia-procedencia";
-import { useRediseno } from "@/components/analysis/RedisenoContexto";
 
 /**
  * LA ZONA · LTR (goal "LTR hereda piezas compartidas", 05-sep-2026).
@@ -197,15 +196,14 @@ export function ZonaLtrSection({
   currency: "CLP" | "UF";
   valorUF: number;
   zona: ZonaLtr;
-  /** Contrato §8. Lo arma el caller con `buildZonaLtrR2`; se dibuja solo con el
-   *  interruptor encendido. Ausente ⇒ la sección de siempre, sin ninguna rama nueva. */
+  /** Contrato §8. Lo arma el caller con `buildZonaLtrR2`. Ausente ⇒ las celdas de
+   *  siempre (es un dato que falta, no un interruptor). */
   zonaR2?: ZonaLtrR2;
 }) {
   void data;
   void error;
-  const rediseno = useRediseno();
   const sintesis = sintesisZonaLtr(zona);
-  const r2 = rediseno && zonaR2 ? zonaR2 : null;
+  const r2 = zonaR2 ?? null;
 
   return (
     <div>
@@ -216,9 +214,9 @@ export function ZonaLtrSection({
         <ZonaCeldasLtr zona={zona} currency={currency} valorUF={valorUF} cargando={loading && !data} />
       )}
       <div className="zona-foot">
-        {/* Con el rediseño la procedencia de cada tarjeta ya está en su propia línea y
-            el período de la valorización en el pie común: repetirla acá sería decir lo
-            mismo tres veces. El enlace sí cambia de nombre — el contrato §8 lo fija. */}
+        {/* La procedencia de cada tarjeta ya está en su propia línea y el período de la
+            valorización en el pie común: repetirla acá sería decir lo mismo tres veces.
+            El enlace lo nombra el contrato §8. */}
         {r2 ? <span /> : <VFuente>{fuenteZonaLtr(zona)}</VFuente>}
         <button type="button" className="doc-lnk" onClick={onClick} disabled={loading && !data}>
           {r2 ? "Ver los comparables →" : "Explorar →"}

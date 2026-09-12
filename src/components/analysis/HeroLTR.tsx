@@ -18,7 +18,6 @@ import { DetalleAlternativaComunas } from "./shared/DetalleAlternativaComunas";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 import { esProsaDosBloques } from "./AIInsightSection";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
-import { useRediseno } from "./RedisenoContexto";
 import { SeccionInforme } from "./SeccionInforme";
 import { MarcaSeccion } from "./informeTelemetry";
 import type { ReactNode } from "react";
@@ -45,19 +44,13 @@ export function HeroLTR({
   fechaProsa,
   prosaError,
   onRetryProsa,
-  razones,
   hallazgos,
   accessLevel = "free",
 }: {
-  /** Las cuatro líneas de hallazgo. En v21 se leen DENTRO de este bloque, debajo de
-   *  la línea que declara; con prosa vieja el caller las monta en su sección aparte
-   *  y acá no llega nada. */
-  razones?: ReactNode;
   /** EL ORDEN (contrato §2): la sección de hallazgos, la que va ENTRE el hero y la
    *  recomendación. La arma el grid —es quien tiene la lista ordenada y sus gates— y
    *  la monta este componente, porque la recomendación que va después se calcula acá
-   *  y no puede salir del subárbol sin mover nueve derivadas con ella. Solo llega con
-   *  el rediseño encendido; el camino viejo sigue recibiendo `razones`. */
+   *  y no puede salir del subárbol sin mover nueve derivadas con ella. */
   hallazgos?: ReactNode;
   /** Para la marca de telemetría de la sección nueva. */
   accessLevel?: string;
@@ -99,7 +92,6 @@ export function HeroLTR({
   // Prosa de DOS BLOQUES (v21) o de los cuatro campos viejos. Ver
   // `esProsaDosBloques`: el camino viejo es transitorio para las filas con dueño y
   // PERMANENTE para las anónimas, que nunca van a regenerar.
-  const rediseno = useRediseno();
   const dosBloques = esProsaDosBloques(data);
   const conviene = data?.conviene;
   const respuesta =
@@ -341,17 +333,15 @@ export function HeroLTR({
   // `useMemo` para que no se repitan en cada render de la moneda.
   const alternativa = useMemo(
     () =>
-      rediseno && sinSalidaRecomendacion && inputData
+      sinSalidaRecomendacion && inputData
         ? construirAlternativaComunas({ input: inputData, ufClp: valorUF, asOf: new Date(fechaProsa ?? createdAt ?? Date.now()) })
         : null,
-    [rediseno, sinSalidaRecomendacion, inputData, valorUF, fechaProsa, createdAt],
+    [sinSalidaRecomendacion, inputData, valorUF, fechaProsa, createdAt],
   );
   const lineaAlternativa = lineaAlternativaComunas(alternativa);
 
   /* LA RECOMENDACIÓN. Se calcula acá —nueve derivadas de este componente— y se
-     monta en el lugar que mande el camino: con el rediseño es su PROPIA sección,
-     después de los hallazgos (contrato §2); en el camino viejo sigue dentro del
-     bloque del hero, que es donde se leía hasta hoy. */
+     monta en su PROPIA sección, después de los hallazgos (contrato §2). */
   /* Pieza compartida desde T1 (PosicionFranco): la caja IA + la firma en el cuerpo
      con la línea roja, y el footer con el botón que abre el modal. Sin caja ni
      footer no hay bloque. */
@@ -366,15 +356,15 @@ export function HeroLTR({
       prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
       chip={dosBloques ? objetivoChip : undefined}
       extraPopup={<DetalleAlternativaComunas alternativa={alternativa} currency={currency} valorUF={valorUF} />}
-      titulo={rediseno ? "La recomendación de Franco" : dosBloques ? "Lo que haría yo" : undefined}
-      estado={rediseno ? estadoRec : undefined}
+      titulo="La recomendación de Franco"
+      estado={estadoRec}
       fechaFirma={fechaFirma}
       footer={
         /* EL CTA DEL ESTADO SIN SALIDA nombra lo que hay del otro lado: no quedan
            ajustes que hacer, queda ver QUÉ SE PROBÓ. El pop-up es el mismo — ahí
            sigue el mix que llega al escalón intermedio, que es donde el contrato
            §5 lo manda. Solo cambia el rótulo del botón. */
-        rediseno && footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
+        footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
       }
       tipo="ltr"
       veredicto={veredicto}
@@ -392,7 +382,7 @@ export function HeroLTR({
      prosa cuando existe (filas v21 y anteriores), y el skeleton o el error mientras la
      redacción viene en camino. */
   const heroTieneCuerpo =
-    !(rediseno && dosBloques) || Boolean(respuesta) || !hayProsa || Boolean(prosaError);
+    !dosBloques || Boolean(respuesta) || !hayProsa || Boolean(prosaError);
 
   const cuerpoHero = (
     <div className="mb-3">
@@ -416,14 +406,13 @@ export function HeroLTR({
               sola cosa" y enumeraba tres— y repetía el hecho del bolsillo dos veces.
               Lo que decía no se pierde: la prosa lo narra, que es su trabajo. */}
           {/* El chip `f.` entra al TITULO -- mismo isotipo que el sticky del margen, inline. */}
-          {/* CON EL REDISEÑO ESTE TÍTULO NO VA. En v21 el h2 es la línea que declara el
-              veredicto y debajo van las cuatro filas: son una unidad. El contrato §2 y §4
-              saca las filas a su propia sección suelta y §10 le da a esa sección la misma
-              línea como título, así que repetirla acá dejaría el mismo texto dos veces y
-              un encabezado sin nada que lo sostenga. Esta sección no necesita título:
-              tiene el titular del hero arriba. El camino viejo lo conserva — su título es
-              la pregunta de la prosa, que sí se contesta acá abajo. */}
-          {!(rediseno && dosBloques) && (
+          {/* CON PROSA DE DOS BLOQUES ESTE TÍTULO NO VA. En v21 el h2 es la línea que
+              declara el veredicto y debajo van las cuatro filas: son una unidad. El
+              contrato §2 y §4 saca las filas a su propia sección suelta y §10 le da a esa
+              sección la misma línea como título, así que repetirla acá dejaría el mismo
+              texto dos veces. La prosa vieja lo conserva — su título es la pregunta de la
+              prosa, que sí se contesta acá abajo. */}
+          {!dosBloques && (
             <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0 flex items-baseline gap-2.5">
               <span className="doc-fmark-inline shrink-0 select-none" aria-hidden="true">
                 f.
@@ -477,12 +466,6 @@ export function HeroLTR({
         </div>
 
       </div>
-      {/* LAS RAZONES, dentro del mismo bloque (v21): las cuatro líneas de hallazgo
-          suben acá desde su sección propia. «Qué determina el veredicto» no se borra
-          —se fusiona—: la línea que declara ya es ese título, y tenerlo dos veces
-          separaba la afirmación de su fundamento con un corte de sección en medio. */}
-      {dosBloques && razones}
-      {!rediseno && recomendacion}
     </div>
   );
 
@@ -499,13 +482,6 @@ export function HeroLTR({
 
      Sacar ese cálculo a una pieza propia —y que el grid monte las tres— es el refactor
      que el contrato pide de verdad, y queda en cola: no es trabajo de este goal. */
-  if (!rediseno) {
-    return (
-      <SeccionInforme id="hero" tono="paper2">
-        {cuerpoHero}
-      </SeccionInforme>
-    );
-  }
   return (
     <>
       {heroTieneCuerpo && (

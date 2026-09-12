@@ -14,8 +14,6 @@ import { TokensHallazgos } from "./hallazgos/HallazgosAcordeon";
 import { CapitulosInversion, type CapituloId } from "./CapitulosInversion";
 import { SeccionInforme } from "./SeccionInforme";
 import { PrincipalesHallazgos } from "./PrincipalesHallazgos";
-import { RedisenoProvider, useRediseno } from "./RedisenoContexto";
-import { REDISENO_INFORME } from "@/lib/rediseno-flag";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
 import { LosNumeros } from "./LosNumeros";
 import { ModalCalculo } from "./ModalCalculo";
@@ -184,12 +182,6 @@ export function SubjectCardGrid({
   // Murió acá el acordeón de hallazgos con sus cuerpos de drawer inline, la
   // simulación con sus sliders y el análisis a 10 años de la IA. Los hallazgos
   // siguen siendo datos deterministas del motor; los capítulos los leen directo.
-  // Lo que diga un provider de más afuera (la ruta dev con `?rediseno=1`). Se lee ACÁ,
-  // antes de proveer, porque un componente no ve su propio provider.
-  const redisenoHeredado = useRediseno();
-  /** Lo que decide si esta pantalla se dibuja con el rediseño. Mismo valor que el
-   *  que se provee más abajo; se calcula acá porque las secciones lo necesitan. */
-  const rediseno = REDISENO_INFORME || redisenoHeredado;
   const ctxDrawer = results && inputData ? { results, inputData, prosa } : null;
 
   // ═══ PORTADA (FASE 3 rediseño Dictamen — mockups v8/v9) ═══
@@ -263,13 +255,6 @@ export function SubjectCardGrid({
 
   return (
     <div id="informe-pro-section" className="mb-8">
-      {/* El MISMO gate por modalidad que `DocumentoFrame`, para lo que es estructura y
-          una clase CSS no puede apagar (contrato §8: qué número manda en cada tarjeta
-          de zona). STR no monta este provider — ver `RedisenoContexto.tsx`.
-          El `|| heredado` NO es redundante: sin él este provider PISA al de la ruta dev
-          —que envuelve desde afuera— con la constante en `false`, y `?rediseno=1` dejaba
-          de encender la zona. Medido: las tarjetas nuevas no montaban. */}
-      <RedisenoProvider valor={rediseno}>
       <DocumentoFrame secciones veredicto={veredicto} rediseno>
       {/* CSS del acordeón + vocabulario + modal, montado siempre: el modal de la
           posición y el de cálculo lo necesitan también mientras la prosa carga. */}
@@ -312,15 +297,13 @@ export function SubjectCardGrid({
       {/* EL ORDEN DEL CONTRATO §2: hero → hallazgos → recomendación. Las tres secciones
           las emite `HeroLTR`, no este grid: la recomendación se arma con nueve derivadas
           que se calculan ahí dentro, así que sacarla del subárbol pedía moverlas a todas.
-          El grid sigue decidiendo QUÉ va en el medio —le pasa la sección de hallazgos ya
-          armada, igual que hoy le pasa `razones`— y con el rediseño apagado no le pasa
-          nada: `HeroLTR` devuelve una sola sección y el informe viejo queda igual. */}
+          El grid sigue decidiendo QUÉ va en el medio: le pasa la sección de hallazgos ya
+          armada. */}
       <HeroLTR
         accessLevel={accessLevel}
         hallazgos={
-          /* La MISMA sección que el camino viejo monta más abajo, con sus mismos gates:
-             solo cambia de lugar. Durante la espera de prosa no se monta, igual que hoy. */
-          rediseno && !(!prosa && loading) && hallazgosOrdenados.length > 0 ? (
+          /* Durante la espera de prosa no se monta. */
+          !(!prosa && loading) && hallazgosOrdenados.length > 0 ? (
             <SeccionInforme
               id="principales-hallazgos"
               tono="paper"
@@ -333,19 +316,6 @@ export function SubjectCardGrid({
         }
         onOpenDrawer={setActiveDrawer}
         data={prosa}
-        razones={
-          /* Contrato §2 y §4: los hallazgos son SU PROPIA SECCIÓN, suelta, después del
-             hero. Se van CON la línea que declara, que pasa a ser el título de esa
-             sección (§10): el título y las cuatro filas son una unidad —«Ajusta los
-             números. Esto es lo que pesa:» y lo que pesa— y separarlos dejaba al hero
-             prometiendo algo que no mostraba. */
-          !rediseno && dosBloques && hallazgosOrdenados.length > 0 ? (
-            <>
-              <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
-              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} />
-            </>
-          ) : undefined
-        }
         prosaError={!prosa && !loading ? (error ?? null) : null}
         onRetryProsa={onRetry}
         currency={currency}
@@ -380,34 +350,13 @@ export function SubjectCardGrid({
         </SeccionInforme>
       ) : (
         <div style={materializa ? { animation: "zona2Aparece 450ms ease-out" } : undefined}>
-          {/* ═══ 3 · PRINCIPALES HALLAZGOS (paper) — CAMINO VIEJO ═══
-              Los cuatro que mueven el veredicto, del mismo orden único que el
-              acordeón. Con prosa de dos bloques esta sección no existe: las mismas
-              cuatro líneas se leen arriba, bajo la línea que declara. Acá siguen
-              porque el informe viejo tiene que verse coherente consigo mismo —su
-              título pregunta lo que su prosa contesta— y porque las 453 filas
-              anónimas del parque nunca van a regenerar. */}
-          {!rediseno && !dosBloques && hallazgosOrdenados.length > 0 && (
-            <SeccionInforme
-              id="principales-hallazgos"
-              tono="paper"
-              /* El camino viejo conserva su título: su prosa no trae la línea que
-                 declara, así que ponérsela sería inventarle un encabezado que nada
-                 sostiene. El de §10 vive ahora en la sección que emite `HeroLTR`. */
-              titulo="Qué determina el veredicto"
-            >
-              <MarcaSeccion seccion="hallazgos" tipo="ltr" accessLevel={accessLevel} />
-              <PrincipalesHallazgos hallazgos={hallazgosOrdenados} currency={currency} valorUF={valorUF} />
-            </SeccionInforme>
-          )}
           {/* ═══ 4 · LOS NÚMEROS (paper2) — seis cifras + modal de cálculo ═══ */}
           {results?.metrics && inputData && (
             <SeccionInforme
               id="los-numeros"
               tono={tonoNumeros}
-              /* Contrato §10: los tres títulos fijados. Detrás del interruptor — el
-                 camino de siempre conserva los suyos hasta que 4d encienda. */
-              titulo={rediseno ? "Las cifras que tienes que ver" : "Las seis cifras"}
+              /* Contrato §10: los tres títulos fijados. */
+              titulo="Las cifras que tienes que ver"
             >
               <MarcaSeccion seccion="numeros" tipo="ltr" accessLevel={accessLevel} />
               <LosNumeros
@@ -433,7 +382,7 @@ export function SubjectCardGrid({
           <SeccionInforme
             id="la-inversion"
             tono={tonoInversion}
-            titulo={rediseno ? "Detalle de la inversión" : "Cómo funciona como inversión"}
+            titulo="Detalle de la inversión"
           >
           <MarcaSeccion seccion="piramide" tipo="ltr" accessLevel={accessLevel} />
           {ctxDrawer && (
@@ -467,7 +416,7 @@ export function SubjectCardGrid({
               tono={tonoZona}
               // La comuna vivía en el ksub; al morir el ksub sube al título, que es el
               // único lugar donde el nombre de la comuna aparece en esta sección.
-              titulo={`${rediseno ? "Ubicación" : "La zona"}${comunaPortada ? ` · ${comunaPortada}` : ""}`}
+              titulo={`Ubicación${comunaPortada ? ` · ${comunaPortada}` : ""}`}
             >
               <MarcaSeccion seccion="zona" tipo="ltr" accessLevel={accessLevel} />
               <ZonaLtrSection
@@ -500,7 +449,6 @@ export function SubjectCardGrid({
         </div>
       )}
       </DocumentoFrame>
-      </RedisenoProvider>
 
       <p className="text-center text-[10px] text-[var(--franco-text-muted)] mt-4">
         Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.

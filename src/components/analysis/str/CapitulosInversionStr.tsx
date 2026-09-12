@@ -182,7 +182,7 @@ export function CapitulosInversionStr({
       id: "renta",
       numero: ROMANO.renta,
       pregunta: "Cuánto renta",
-      valor: conApellido(rediseno, "Cap rate", `${pct1(cap)}%`),
+      valor: conApellido("Cap rate", `${pct1(cap)}%`),
       valorRojo: cap < CAP_STR_UMBRAL_PCT,
       ksub: (
         <>
@@ -286,7 +286,7 @@ export function CapitulosInversionStr({
       id: "flujo",
       numero: ROMANO.flujo,
       pregunta: "Tu flujo mensual",
-      valor: conApellido(rediseno, "Flujo", signed(flujo)),
+      valor: conApellido("Flujo", signed(flujo)),
       valorRojo: flujo < 0,
       ksub: `de los ${money(ingreso)} del ingreso, después de comisión, costos y cuota`,
       anchorId: anchorCapituloStr("flujo"),
@@ -351,7 +351,7 @@ export function CapitulosInversionStr({
       numero: ROMANO.noches,
       pregunta: "Cuántas noches necesitas",
       // «Al año 171 noches»: la unidad va con la cifra porque el apellido solo no la da.
-      valor: conApellido(rediseno, "Al año", rediseno ? `${noches} noches` : String(noches)),
+      valor: conApellido("Al año", rediseno ? `${noches} noches` : String(noches)),
       ksub: [`${noches} noches al año con la ocupación ${occEsTuya ? "que definiste" : "estimada"} (${Math.round(occ * 100)}%)`, arribaTxt, zonaTxt].filter(Boolean).join(" · "),
       anchorId: anchorCapituloStr("noches"),
       cuerpo: (
@@ -466,7 +466,7 @@ export function CapitulosInversionStr({
       numero: ROMANO.pagas,
       pregunta: "Cómo lo pagas",
       // §7: la fila dice el PRECIO («Precio UF 5.042»); el delta al techo sigue en el cuerpo.
-      valor: conApellido(rediseno, "Precio", rediseno ? ufTxt(precioUF) : valorIV),
+      valor: conApellido("Precio", rediseno ? ufTxt(precioUF) : valorIV),
       valorRojo: false,
       ksub: [`precio ${ufTxt(precioUF)}`, `pie ${Math.round(piePct)}%`, plazo > 0 ? `${plazo} años al ${pct1(tasa)}%` : "sin crédito", esEstructural ? subEstructural : subeTxt].filter(Boolean).join(" · "),
       anchorId: anchorCapituloStr("pagas"),
@@ -575,7 +575,7 @@ export function CapitulosInversionStr({
       id: "gestion",
       numero: ROMANO.gestion,
       pregunta: "Cómo lo gestionas",
-      valor: conApellido(rediseno, "vs arriendo largo", valorV),
+      valor: conApellido("vs arriendo largo", valorV),
       valorRojo: sr < 0,
       ksub: [`autogestión ${signed(auto.flujoCajaMensual)} al mes`, `con administrador ${signed(admin.flujoCajaMensual)}`, `${valorV} sobre el arriendo largo`].join(" · "),
       anchorId: anchorCapituloStr("gestion"),
@@ -664,7 +664,7 @@ export function CapitulosInversionStr({
             id: "resultado",
             numero: ROMANO.resultado,
             pregunta: `Tu resultado a ${anios} años`,
-            valor: conApellido(rediseno, "Resultado", compact(patrimonio)),
+            valor: conApellido("Resultado", compact(patrimonio)),
             valorRojo: patrimonio < 0,
             ksub: [`tu parte al vender el año ${anios}`, mult != null ? `×${mult.toFixed(2).replace(".", ",")} sobre lo puesto` : "", tir != null ? `TIR ${pct1(tir)}%` : ""].filter(Boolean).join(" · "),
             anchorId: anchorCapituloStr("resultado"),

@@ -39,7 +39,6 @@
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { REDISENO_INFORME, CLASE_REDISENO } from "../../../src/lib/rediseno-flag";
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -63,9 +62,8 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 // default `false`—. Invertirlo acá habría dejado el mismo chequeo en dos tiers, y con
 // dos dueños ninguno lo mantiene.
 //
-// El import de la constante se conserva: lo usa el chequeo de más abajo.
-void REDISENO_INFORME;
-void CLASE_REDISENO;
+// 12-sep-2026 (retiro del andamio): el tier interruptor-rediseno también se retiró con acta —
+// las dos constantes ya no existen— y su chequeo de Inter con preload vive acá (bloque 4).
 
 // ── 2 · las fuentes y sus pesos ────────────────────────────────────────────
 {
@@ -103,12 +101,14 @@ void CLASE_REDISENO;
   }
 }
 
-// ── 4 · Inter no se descarga hasta el goal 4 ───────────────────────────────
+// ── 4 · Inter se precarga ──────────────────────────────────────────────────
+// Mientras el rediseño estuvo apagado iba en `preload: false`; encendido, sin preload la
+// fuente se descarga recién cuando la primera regla la usa —el primer render del informe—
+// y el lector ve el fallback y después el salto. Venía del tier interruptor-rediseno.
 {
   const inter = LAYOUT.slice(LAYOUT.indexOf("Inter({"), LAYOUT.indexOf("});", LAYOUT.indexOf("Inter({")));
-  if (!REDISENO_INFORME && !/preload:\s*false/.test(inter)) {
-    F("4 · Inter sin `preload:false` con el interruptor apagado: prod descarga una fuente que ninguna regla usa");
-  }
+  if (!inter) F("4 · no se encontró la declaración de Inter en el layout");
+  else if (!/preload:\s*true/.test(inter)) F("4 · Inter no declara `preload: true`: el lector vería el fallback y después el salto");
 }
 
 // ── 5 · la serif se captura en body, no en :root ───────────────────────────

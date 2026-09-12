@@ -105,13 +105,12 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   // `indexOf` que no matcheaba y el slice se comía la rama VIEJA, que sí lleva firma —
   // o sea daba rojo con el árbol sano. El cierre de la rama es su `}` seguido del
   // `return (` del camino de siempre.
-  const i = POS.indexOf("if (rediseno) {");
-  const j = i === -1 ? -1 : POS.indexOf("\n  }\n  return (", i);
+  // 12-sep-2026 (retiro del andamio): PosicionFranco tiene un solo camino; la «rama» es el
+  // componente entero.
   // SIN COMENTARIOS: el comentario que explica por qué la card no lleva la línea de la
   // IA contiene la línea de la IA, y el guard se acusaba a sí mismo.
-  const rama = i === -1 || j === -1 ? "" : POS.slice(i, j).replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
-  if (!rama) F("4 · no se encontró la rama del rediseño en PosicionFranco");
-  else {
+  const rama = POS.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  {
     if (/pos-firma/.test(rama)) F("4 · la card de §5 volvió a dibujar la firma");
     if (/generado por IA/.test(rama)) F("4 · la card de §5 volvió a decir «análisis generado por IA»: pide leerla como una opinión");
     if (!/rec-cta/.test(rama)) F("4 · la card de §5 perdió su CTA");
@@ -158,13 +157,10 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   if (!/\{open && f\.cuerpo && \(/.test(ACO)) {
     F("7 · los capítulos dejaron de expandirse en el mismo lugar. `.fila-nav` cambia la FILA, no adónde lleva; convertirlos en pop-up es un arco propio.");
   }
-  // LA LLAMADA, no el import. `/useRediseno/` a secas matchea la línea del `import`, así
-  // que con `const rediseno = false` puesto el guard seguía verde: el gate estaba muerto
-  // y el tier no lo veía. Se exige la asignación desde el hook.
+  // INVERTIDO el 12-sep-2026 (retiro del andamio): las piezas compartidas ya no leen ningún
+  // interruptor; el rediseño es el único camino en las dos modalidades.
   for (const [arch, nombre] of [[POS, "PosicionFranco"], [BLO, "el bloque de la ecuación"]] as const) {
-    if (!/const rediseno = useRediseno\(\)/.test(arch)) {
-      F(`7 · ${nombre} dejó de leer el interruptor con el hook. Es una pieza COMPARTIDA con STR: sin el gate, STR se lleva el rediseño puesto.`);
-    }
+    if (/useRediseno/.test(arch)) F(`7 · ${nombre} volvió a leer un interruptor que ya no existe`);
   }
   if (!/rec-card/.test(POS)) F("7 · PosicionFranco perdió la card del rediseño");
   // LA BAJADA SE MUDÓ Y SU CHEQUEO TAMBIÉN. Vivía inline en `HeroLTR` y este guard la
@@ -205,11 +201,11 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   // el rótulo va a 9 px ENCIMA del valor —medido—, así que ahí la cifra va sola.
   const APELLIDOS = ["Cap rate", "Flujo", "Precio", "Plusvalía", "Resultado"];
   for (const a of APELLIDOS) {
-    if (!CAPS.includes(`conApellido(rediseno, "${a}"`)) {
+    if (!CAPS.includes(`conApellido("${a}"`)) {
       F(`9 · la cifra del capítulo perdió su apellido «${a}». Un número sin apellido no se entiende solo salvo que el contexto lo dé pegado, y acá no lo da.`);
     }
   }
-  if (!/rediseno \?/.test(CAPS)) F("9 · el apellido dejó de estar detrás del interruptor: el camino de siempre lleva la cifra pelada");
+  if (/conApellido\(rediseno/.test(CAPS)) F("9 · el apellido volvió a colgar de un interruptor que ya no existe");
 }
 
 // ── 10 · la ecuación: rótulo de una palabra y el «+» que no queda solo ────
@@ -340,11 +336,10 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   // colgada arrancaba en left 229 con 664 de ancho, contra los 700 del hero — 36 px más
   // angosta y desalineada contra todo lo demás.
   //
-  // EL GATE VA EN LA RAMA DEL REDISEÑO, NO EN EL DEFAULT DE LA FIRMA. STR usa ese mismo
-  // default y no entra nunca en esta rama: tocar la firma lo movería a él también.
-  const i = POS.indexOf("if (rediseno) {");
+  // EL GATE VA EN EL RETURN, NO EN EL DEFAULT DE LA FIRMA (12-sep-2026: un solo camino).
+  const i = POS.indexOf("  return (");
   const rama = i === -1 ? "" : POS.slice(i, i + 2500);
-  if (!rama) F("ancho · no se encontró la rama del rediseño en PosicionFranco");
+  if (!rama) F("ancho · no se encontró el return de PosicionFranco");
   else {
     const div = rama.match(/<div className=\{([^}]*)\}>/)?.[1] ?? "";
     if (!div) F("ancho · la rama del rediseño ya no abre con un div de className calculada");

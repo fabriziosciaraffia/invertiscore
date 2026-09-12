@@ -22,7 +22,6 @@ import { captionDeCifraClave, type CifraClave } from "@/lib/cifra-clave";
 import type { FichaDepto } from "@/lib/ficha-depto";
 import { FichaModal } from "./FichaModal";
 import { CLASE_REDISENO } from "@/lib/rediseno-flag";
-import { useRediseno } from "@/components/analysis/RedisenoContexto";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
 // Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
@@ -72,7 +71,6 @@ export function PortadaInforme({
   direccion,
   comuna,
   modalidadLabel,
-  fecha,
   titular,
   cifra,
   ficha,
@@ -103,23 +101,16 @@ export function PortadaInforme({
 }) {
   const [fichaOpen, setFichaOpen] = useState(false);
   const bandaLabel = bandaLabelDe(veredicto);
-  const scorePct = Math.max(0, Math.min(100, score ?? 0));
-
-  const rediseno = useRediseno();
 
   return (
-    <section className={`doc-portada${rediseno ? " doc-hero" : ""}`} data-verdict={veredicto}>
+    <section className="doc-portada doc-hero" data-verdict={veredicto}>
       {/* LA CAPA DE FONDO VA APARTE Y EL FILTRO VIVE EN ELLA (contrato §3): si el
           `filter` se aplicara a la sección, se lo comería también el texto. Y el
           espectro NO depende del veredicto — es el mismo siempre. El grano va en su
           propia capa encima, con su modo de fusión. */}
-      {rediseno && (
-        <>
-          <div className="doc-hero-bg" aria-hidden="true" />
-          <div className="doc-hero-grain" aria-hidden="true" />
-        </>
-      )}
-      {rediseno ? (
+      <div className="doc-hero-bg" aria-hidden="true" />
+      <div className="doc-hero-grain" aria-hidden="true" />
+      {(
         /* Eyebrow del contrato: identidad a la izquierda, modalidad a la derecha. */
         <div className="doc-hero-eyebrow">
           {/* SOLO DIRECCIÓN Y COMUNA. La tipología («2D · 1B») y la superficie («55 m²»)
@@ -134,27 +125,11 @@ export function PortadaInforme({
           {/* LA MODALIDAD PESA: negrita y un punto más que el eyebrow (§3). */}
           <span className="doc-hero-modalidad">{modalidadLabel}</span>
         </div>
-      ) : (
-        /* Eyebrow — la dirección deja de ser H1 (decisión 8) */
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] mb-4" style={{ color: "var(--doc-tx3)" }}>
-          <b className="font-medium" style={{ color: "var(--doc-tx2)" }}>{direccion || comuna}</b>
-          {direccion && (
-            <>
-              <span className="mx-2" style={{ color: "var(--doc-tx4)" }}>·</span>
-              {comuna}
-            </>
-          )}
-          <span className="mx-2" style={{ color: "var(--doc-tx4)" }}>·</span>
-          {modalidadLabel}
-          <span className="mx-2" style={{ color: "var(--doc-tx4)" }}>·</span>
-          {fecha}
-        </div>
       )}
 
-      {rediseno ? (
-        /* EL BOTÓN REEMPLAZA A LA BANDA, y la banda NO se borra: `PortadaInforme` lo
-           monta también STR (`renta-corta/[id]/results-client.tsx`), y el OG dibuja su
-           propio degradado. Se deja de montar solo acá, solo con el interruptor. */
+      {(
+        /* EL BOTÓN REEMPLAZA A LA BANDA (contrato §3). La banda sigue viva para el OG,
+           que dibuja su propio degradado. */
         <p className="doc-hero-verdict" aria-label={`Veredicto: ${bandaLabel}`}>
           <span className="doc-hero-pill">
             {/* EL ORDEN: signo · rótulo · punto. El signo pertenece al VEREDICTO y
@@ -169,37 +144,12 @@ export function PortadaInforme({
             <span className="doc-hero-dot" aria-hidden="true" />
           </span>
         </p>
-      ) : (
-        /* Banda de veredicto — full-bleed del documento, único color semántico */
-        <div className="doc-banda" aria-label={`Veredicto: ${bandaLabel}`}>
-          <span className="doc-banda-band">{bandaLabel}</span>
-        </div>
       )}
 
-      {rediseno ? (
+      {(
         /* Score en TEXTO PLANO. La barra de bloques se retira del hero: sobre el
            espectro compite con el botón, que es lo que tiene que mirarse primero. */
         <p className="doc-hero-score">Franco Score {score ?? "—"} de 100</p>
-      ) : (
-        /* Score = barra de bloques llenos bajo la banda, en el color del veredicto
-            (contrato: "▓▓▓░░"). Diez bloques de 10 puntos; muere la barra fina Ink. */
-        <div className="flex items-center gap-3 max-w-[420px] mb-5">
-          <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] whitespace-nowrap" style={{ color: "var(--doc-tx3)" }}>
-            Franco Score
-          </span>
-          <div className="flex-1 flex gap-[3px]" aria-hidden="true">
-            {Array.from({ length: 10 }, (_, i) => (
-              <span
-                key={i}
-                className="flex-1 h-[6px] rounded-[1px]"
-                style={{ background: i < Math.round(scorePct / 10) ? "var(--verdict)" : "var(--doc-score-empty)" }}
-              />
-            ))}
-          </div>
-          <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] whitespace-nowrap" style={{ color: "var(--doc-tx3)" }}>
-            <b style={{ color: "var(--doc-tx)" }}>{score ?? "—"}</b>/100
-          </span>
-        </div>
       )}
 
       {/* Grid portada: contenido + mapa (mapa solo PC) */}
@@ -237,8 +187,7 @@ export function PortadaInforme({
                 botón de veredicto —blanco translúcido y anillo, no un bloque sólido— y
                 la opción activa se distingue por opacidad, no por otro color. */}
             <div
-              className={`inline-flex overflow-hidden shrink-0 ${rediseno ? "doc-cur-toggle" : "rounded-md"}`}
-              style={rediseno ? undefined : { border: "1px solid var(--doc-line2)" }}
+              className="inline-flex overflow-hidden shrink-0 doc-cur-toggle"
               role="group"
               aria-label="Moneda"
             >
@@ -251,11 +200,7 @@ export function PortadaInforme({
                     onClick={() => onCurrencyChange(c)}
                     aria-pressed={on}
                     className="font-mono text-[10px] font-medium tracking-[0.06em] px-2.5 py-1 transition-colors"
-                    style={
-                      rediseno
-                        ? { background: on ? "rgba(255,255,255,.18)" : "transparent", color: on ? "#fff" : "rgba(255,255,255,.6)" }
-                        : { background: on ? "var(--doc-tx)" : "transparent", color: on ? "var(--doc-paper)" : "var(--doc-tx3)" }
-                    }
+                    style={{ background: on ? "rgba(255,255,255,.18)" : "transparent", color: on ? "#fff" : "rgba(255,255,255,.6)" }}
                   >
                     {c}
                   </button>

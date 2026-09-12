@@ -270,9 +270,9 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
   //   claro   #FFFFFF   ·   --card del informe #F4F4F6   → contraste 1,098 · ΔL* 3,76
   //   oscuro  #0C0C0E   ·   --card del informe #1A1A1E   → contraste 1,126 · ΔL* 6,05
 
-  // 8a · la clase está en la ruta LTR y detrás del interruptor.
-  if (!/REDISENO_INFORME \? "doc-lienzo" : ""/.test(RUTA_LTR)) {
-    F("8 · la ruta del análisis LTR dejó de pintar su lienzo detrás del interruptor. Con el marco ya retirado, sin esto el informe queda sobre el gris de la app (§2).");
+  // 8a · la clase está en la ruta LTR, sin condición (12-sep-2026: el interruptor se retiró).
+  if (!/min-h-screen bg-\[var\(--franco-bg\)\] doc-lienzo/.test(RUTA_LTR)) {
+    F("8 · la ruta del análisis LTR dejó de pintar su lienzo. Con el marco ya retirado, sin esto el informe queda sobre el gris de la app (§2).");
   }
   // 8b · y en STR desde el bloque A de «STR al rediseño» (11-sep-2026), detrás de SU
   // interruptor: `rediseno` ahí es `REDISENO_INFORME_STR || heredado`, nunca la constante
@@ -285,7 +285,7 @@ for (const [tema, toks] of [["oscuro", P.oscuro], ["claro", P.claro]] as const) 
   // TAMBIÉN un token de shadcn: puesta en el wrapper le cambiaba el valor a todo el
   // chrome de la página —de «40 20% 98%» en HSL a un hex— y «bg-card» pasaba a resolver
   // «hsl(#F4F4F6)», que es inválido. Se midió en el DOM antes de corregirlo.
-  const wrapper = RUTA_LTR.match(/<div className=\{`min-h-screen[^`]*`\}>/)?.[0] ?? "";
+  const wrapper = RUTA_LTR.match(/<div className="min-h-screen[^"]*">/)?.[0] ?? "";
   if (!wrapper) F("8 · no se encontró el wrapper de la ruta LTR");
   else if (/doc-r2|CLASE_REDISENO/.test(wrapper)) {
     F(`8 · el wrapper de la ruta LTR volvió a llevar «doc-r2»: «${wrapper.slice(0, 90)}». Esa clase trae los doce tokens del informe, y «--card» es también de shadcn: le cambia el valor a TODO el chrome de la página y «bg-card» resuelve «hsl(#F4F4F6)», que es inválido.`);

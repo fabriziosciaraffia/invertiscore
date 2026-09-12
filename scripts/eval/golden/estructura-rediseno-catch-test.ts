@@ -279,9 +279,8 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
   if (!/createContext<boolean>\(false\)/.test(CTX)) {
     F("13 · el contexto del rediseño dejó de tener default `false`. Con el default en la constante, el día que 4d la ponga en `true` STR se enciende solo — que es justo lo que el gate por modalidad evita.");
   }
-  if (!/REDISENO_INFORME \|\| redisenoHeredado/.test(GRID)) {
-    F("13 · el provider de SubjectCardGrid dejó de heredar. Sin el `|| heredado` pisa al de la ruta dev con la constante en `false` y `?rediseno=1` deja de encender la zona: medido, las tarjetas nuevas no montaban.");
-  }
+  // 13 · «el provider de SubjectCardGrid hereda» — RETIRADO CON ACTA (12-sep-2026, retiro del
+  // andamio): el grid ya no monta provider ni lee constante; el rediseño es el único camino.
   // Las tres tienen que dibujarse con datos faltantes: de 1.447 filas LTR, 670 no tienen
   // mediana de arriendo y 314 no tienen hallazgo de sobreprecio.
   for (const rama of ["Sin arriendos publicados cerca", "Sin mediana comunal de venta", "no tiene serie propia"]) {
@@ -321,8 +320,8 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
 
 // ── 15 · los tres títulos fijados por §10 ────────────────────────────────
 {
-  // §10 los fija con nombre y apellido. Van detrás del interruptor: el camino de siempre
-  // conserva los suyos, que es lo que hay en producción hasta que el flag se encienda.
+  // §10 los fija con nombre y apellido. INVERTIDO el 12-sep-2026 (retiro del andamio): los
+  // tres son los únicos títulos; los del camino viejo ya no existen en el grid.
   const PARES: [string, string][] = [
     ["Las cifras que tienes que ver", "Las seis cifras"],
     ["Detalle de la inversión", "Cómo funciona como inversión"],
@@ -330,12 +329,8 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
   ];
   for (const [nuevo, viejo] of PARES) {
     if (!GRID.includes(nuevo)) F(`15 · falta el título de §10 «${nuevo}»`);
-    if (!GRID.includes(viejo)) F(`15 · se perdió el título del camino de siempre «${viejo}»: con el interruptor apagado el informe tiene que verse igual que hoy`);
-    // El título de la zona se arma con plantilla, así que el chequeo mira la forma
-    // literal de cada uno por separado en vez de un regex que los cubra a los tres.
-    if (!GRID.includes(`rediseno ? "${nuevo}"`)) {
-      F(`15 · el título «${nuevo}» no está detrás del interruptor: con el flag apagado el informe tiene que verse igual que hoy`);
-    }
+    if (new RegExp(`titulo=[^\n]*"${viejo}"`).test(GRID)) F(`15 · volvió el título del camino viejo «${viejo}»: el andamio se retiró, el rediseño es el único camino`);
+    if (GRID.includes(`rediseno ? "${nuevo}"`)) F(`15 · el título «${nuevo}» volvió a colgar de un interruptor que ya no existe`);
   }
   // La línea que declara el veredicto NO es uno de estos: sigue viviendo en su módulo.
   if (!/lineaQueDeclara\(veredicto\)/.test(GRID)) {
@@ -415,10 +410,14 @@ for (const sel of [".doc-r2.doc-dictamen", ".doc-r2 .doc-dictamen"]) {
   if (!/<HeroLTR[\s\S]{0,400}hallazgos=\{/.test(GRID)) {
     F("17 · el grid dejó de pasarle `hallazgos` a HeroLTR: la sección del medio no llega y el orden queda hero → recomendación.");
   }
-  // 17d · la sección vieja de hallazgos queda SOLO para el camino viejo. Montada en los
-  // dos caminos se vería DOS VECES.
-  if (!/\{!rediseno && !dosBloques && hallazgosOrdenados\.length > 0 && \(/.test(GRID)) {
-    F("17 · la sección de hallazgos del camino viejo dejó de excluir el rediseño. Con el rediseño encendido HeroLTR ya la monta: sin el gate, los hallazgos se dibujan DOS veces.");
+  // 17d · INVERTIDO (12-sep-2026, retiro del andamio): la sección vieja de hallazgos ya no
+  // existe en el grid; la única la monta HeroLTR en el medio del orden. Montada dos veces
+  // se vería dos veces.
+  if (/\{!rediseno && !dosBloques && hallazgosOrdenados\.length > 0 && \(/.test(GRID)) {
+    F("17 · volvió la sección de hallazgos del camino viejo al grid: HeroLTR ya la monta y se vería dos veces.");
+  }
+  if ((GRID.match(/id="principales-hallazgos"/g) ?? []).length !== 1) {
+    F("17 · el grid tiene que montar «principales-hallazgos» exactamente UNA vez, dentro del slot `hallazgos` de HeroLTR");
   }
   // 17e · la telemetría tiene la clave, o la sección nueva no se mide.
   if (!/\|\s*"recomendacion"/.test(TELE)) {
