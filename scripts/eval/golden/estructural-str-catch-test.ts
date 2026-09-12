@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================================
 // GOLDEN · [STR-ESTRUCTURAL] — catch-test (04-sep-2026). 0 tokens, puro.
 // ============================================================================
@@ -9,7 +10,10 @@
 // texto cuando la distancia NO es estructural.
 //   node --env-file=.env.local --import tsx scripts/eval/golden/estructural-str-catch-test.ts
 // ============================================================================
-import { ofertasNegociacion, violacionesPorCampo, type ContextoGuardsStr } from "../../../src/lib/str-guards";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { ofertasNegociacion, violacionesPorCampo, contextoGuardsStr, type ContextoGuardsStr } from "../../../src/lib/str-guards";
+import { simularStrDesdePersistido } from "../../../src/lib/analysis/simular-str";
 import type { AIAnalysisSTRv2 } from "../../../src/lib/types";
 
 const fallas: string[] = [];
@@ -46,6 +50,24 @@ const conEstructural = violacionesPorCampo(ai, "estructural", base);
 if (!conEstructural["conviene.cajaAccionable"]) F("estructural: la caja con oferta debía disparar");
 if (conEstructural["rentabilidad.contenido"]) F("estructural: el contenido no es caja y no debía evaluarse");
 if (Object.keys(violacionesPorCampo(ai, "estructural", { ...base, estructural: false })).length) F("no estructural: ninguna caja debía disparar");
+
+// v19 (12-sep-2026) · EL GUARD SE ACOTA: «estructural» acá es «ningún cambio por separado
+// alcanza Y el motor tampoco encontró combinación» (la fuente de la card, salidaPorMixStr).
+// Con combinación, la instrucción nueva le pide al modelo nombrar el descuento que el mix
+// además pide: si este guard siguiera colgando de `esEstructural`, borraría en el reintento
+// justo lo que el prompt manda escribir. Medido en dos fixtures reales, con simulación.
+{
+  const fixtures = JSON.parse(readFileSync(join(__dirname, "..", "..", "..", "src", "app", "dev", "drawers-pixel", "fixtures.json"), "utf8")) as Record<string, any>;
+  const ctxDe = (clave: string): ContextoGuardsStr => {
+    const fx = fixtures[clave];
+    const d = fx.input_data as Record<string, unknown>;
+    const uf = Number(d.precioCompra) / Number(d.precioCompraUF);
+    return contextoGuardsStr(fx.results, d, fx.comuna, simularStrDesdePersistido(d, fx.results, uf, new Date(fx.created_at)));
+  };
+  if (ctxDe("estructuralMixStr").estructural) F("acotado · estructuralMixStr (AJUSTA, ningún cambio solo pero mix pie 30% + plazo 30 años + −17,5%) NO puede quedar como estructural para este guard: la caja tiene que poder nombrar ese descuento");
+  if (!ctxDe("maculStrSinSalida").estructural) F("acotado · maculStrSinSalida no tiene combinación: sigue siendo estructural y la caja no puede ofrecer negociar");
+  if (ctxDe("grajalesStr").estructural) F("acotado · grajalesStr (BUSCAR con combinación solo al escalón) tampoco cierra la puerta entera: no es estructural para este guard");
+}
 
 console.log("\n[STR-ESTRUCTURAL] · catch-test\n");
 if (fallas.length) { for (const x of fallas) console.log("  ✗ " + x); console.log(`\n✗ ROJO — ${fallas.length} falla(s)`); process.exit(1); }
