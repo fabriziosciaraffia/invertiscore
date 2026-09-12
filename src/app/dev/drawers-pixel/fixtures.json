@@ -17293,7 +17293,8 @@
           "desviacionPct": -51,
           "sobreprecioUfM2": -51.1,
           "confiable": true,
-          "n": 141
+          "n": 141,
+          "universo": "nuevo"
         },
         "hallazgoSobreprecio": {
           "id": "sobreprecio",
@@ -17305,17 +17306,18 @@
             "sobreprecioUfM2": -51.1,
             "banda": 30,
             "n": 141,
-            "comuna": "Ñuñoa"
+            "comuna": "Ñuñoa",
+            "universo": "nuevo"
           },
           "direccion": "favorable",
           "decisividad": 1,
           "magnitudContinua": 1,
           "procedencia": {
-            "base": "mediana de precios de PUBLICACIÓN de venta de la comuna (scraped), no transacción",
+            "base": "mediana de precios de PUBLICACIÓN de venta de departamentos NUEVOS de la comuna (scraped), no transacción",
             "confianza": "media"
           },
           "titular": "Entras barato: el metro está bajo la mediana comunal.",
-          "fraseCanonica": "Tu precio por m² (UF 50,0) está 51% bajo la mediana de la comuna (UF 101,1). Entras barato para esta comuna."
+          "fraseCanonica": "Tu precio por m² (UF 50,0) está 51% bajo la mediana de 141 publicaciones de departamentos nuevos de la comuna (UF 101,1). Entras barato para esta comuna."
         }
       },
       "cashflowYear1": [
@@ -17997,17 +17999,18 @@
             "sobreprecioUfM2": -51.1,
             "banda": 30,
             "n": 141,
-            "comuna": "Ñuñoa"
+            "comuna": "Ñuñoa",
+            "universo": "nuevo"
           },
           "direccion": "favorable",
           "decisividad": 1,
           "magnitudContinua": 1,
           "procedencia": {
-            "base": "mediana de precios de PUBLICACIÓN de venta de la comuna (scraped), no transacción",
+            "base": "mediana de precios de PUBLICACIÓN de venta de departamentos NUEVOS de la comuna (scraped), no transacción",
             "confianza": "media"
           },
           "titular": "Entras barato: el metro está bajo la mediana comunal.",
-          "fraseCanonica": "Tu precio por m² (UF 50,0) está 51% bajo la mediana de la comuna (UF 101,1). Entras barato para esta comuna."
+          "fraseCanonica": "Tu precio por m² (UF 50,0) está 51% bajo la mediana de 141 publicaciones de departamentos nuevos de la comuna (UF 101,1). Entras barato para esta comuna."
         },
         {
           "id": "estructura_financiamiento",
@@ -18058,6 +18061,7 @@
           "tipo": "robustez_veredicto",
           "valor": {
             "marginPct": 6.5,
+            "precioMaximoComprarUF": 4300,
             "firme": false,
             "veredictoBase": "COMPRAR",
             "veredictoNuevo": "AJUSTA SUPUESTOS",
