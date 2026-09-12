@@ -1,7 +1,7 @@
 "use client";
 
 import { fechaCortaCL } from "@/lib/fecha-cl";
-import type { AIAnalysisSTRv2, Hallazgo, HallazgoDistanciaVeredicto } from "@/lib/types";
+import type { AIAnalysisSTRv2, Hallazgo, HallazgoDistanciaVeredicto, HallazgoVentajaVsLtr, Veredicto } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";
@@ -17,7 +17,8 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { useRediseno } from "@/components/analysis/RedisenoContexto";
 import { SeccionInforme } from "@/components/analysis/SeccionInforme";
 import { MarcaSeccion } from "@/components/analysis/informeTelemetry";
-import { estadoRecomendacion } from "@/lib/lo-que-haria-yo";
+import { construirLoQueHariaYo, estadoRecomendacion } from "@/lib/lo-que-haria-yo";
+import { LoQueHariaYoBloque } from "@/components/analysis/shared/LoQueHariaYoBloque";
 
 /**
  * Hero STR con el contrato LTR (T1 · 04-sep-2026): chip `f.` en el título, prosa a
@@ -154,18 +155,65 @@ export function HeroStrDictamen({
           }
         : null;
 
-  // §5: LA BAJADA SE DIBUJA POR ESTADO. El bloque determinista STR lo construye el
-  // bloque C; hasta entonces no hay bloque, y `estadoRecomendacion` lo dice tal cual:
-  // «comprar» en COMPRAR y «sin_bloque» en los otros dos, nunca «no hay forma».
-  const estadoRec = estadoRecomendacion(veredicto, null);
+  // ── EL BLOQUE DETERMINISTA DE §5 (bloque C · 11-sep-2026) ──────────────────
+  // El MISMO constructor de LTR con `modalidad: "str"`: dice «tarifa» donde LTR dice
+  // «arriendo», lee `palancasHastaComprar` y `mixPalancasHastaComprar` del motor en BUSCAR,
+  // y en COMPRAR recibe las dos filas ya resueltas acá, que es donde vive el dato:
+  //   · AGUANTA sale de la frontera de tarifa del motor (`fronterasIngreso.abajo`): hasta
+  //     dónde cae la tarifa antes de que el veredicto cambie. Sin frontera dentro del rango
+  //     explorado (−70%), o con la frontera a la mitad o más, aguanta «−50% o más».
+  //   · VERIFICA solo si la tarifa la definiste tú (`adrFuente === "override"`): con la
+  //     mediana de la zona no hay nada que verificar y la fila no va.
+  // Solo con el rediseño: apagado no hay bloque y el informe de siempre no cambia.
+  const bloqueDeterminista = rediseno
+    ? construirLoQueHariaYo({
+        modalidad: "str",
+        veredicto: veredicto as Veredicto,
+        distancia: distancia ?? null,
+        currency,
+        valorUF,
+        aguanta: fr
+          ? fr.abajo
+            ? fr.abajo.factor <= 0.5
+              ? { marginPct: 50, firme: true }
+              : { marginPct: Math.round((1 - fr.abajo.factor) * 1000) / 10, firme: false }
+            : { marginPct: 70, firme: true }
+          : null,
+        verifica: results.adrFuente === "override" ? { cifraCLP: adr } : null,
+      })
+    : null;
+  // §5: LA BAJADA SE DIBUJA POR ESTADO, y el estado sale del bloque construido: «comprar»,
+  // «con_salida», «sin_salida», o «sin_bloque» solo si el motor no midió (filas viejas).
+  const estadoRec = estadoRecomendacion(veredicto, bloqueDeterminista);
+  const sinSalidaRecomendacion = estadoRec === "sin_salida";
+  // LA SALIDA DE STR EN SIN SALIDA (§5 y §11): «Analízalo como renta larga» —mismo depto,
+  // mismo precio, otra operación— SOLO cuando el motor lo dice: el hallazgo
+  // `ventaja_vs_ltr` adverso con el porcentaje confiable. Si no, la card cae al puente.
+  // Las comunas alternativas de STR quedan para cuando el motor STR las calcule (§12).
+  const ventaja = hallazgosMotor.find((h): h is HallazgoVentajaVsLtr => h.id === "ventaja_vs_ltr");
+  const alternativa =
+    sinSalidaRecomendacion && ventaja && ventaja.direccion === "adverso" && ventaja.valor.pctConfiable
+      ? "Analízalo como renta larga"
+      : null;
   const recomendacion = (
     <PosicionFranco
       cajaAccionable={cajaAccionable ? renderPlumon(cajaAccionable) : null}
       prosa={estrategia ? renderPlumon(estrategia) : undefined}
+      bloque={
+        /* SOLO CON EL REDISEÑO: la rama vieja de PosicionFranco dibujaría el bloque de
+           «Lo que haría yo» en el informe apagado, que no cambia. */
+        rediseno && bloqueDeterminista ? (
+          <LoQueHariaYoBloque bloque={bloqueDeterminista} veredicto={veredicto} alternativa={alternativa} />
+        ) : undefined
+      }
       titulo={rediseno ? "La recomendación de Franco" : podada ? "Lo que haría yo" : undefined}
       estado={rediseno ? estadoRec : undefined}
       fechaFirma={fechaFirma}
-      footer={footer}
+      footer={
+        /* EL CTA DEL ESTADO SIN SALIDA nombra lo que hay del otro lado: no quedan ajustes
+           que hacer, queda ver QUÉ SE PROBÓ. El pop-up es el mismo; cambia el rótulo. */
+        rediseno && footer && sinSalidaRecomendacion ? { ...footer, btn: "Ver qué se probó" } : footer
+      }
       tipo="str"
       veredicto={veredicto}
     />
