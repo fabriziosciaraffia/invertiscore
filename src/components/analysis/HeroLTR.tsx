@@ -13,6 +13,7 @@ import { MatrizPiePlazoLtr } from "./shared/MatrizPiePlazoLtr";
 import { LoQueHariaYoBloque } from "./shared/LoQueHariaYoBloque";
 import { construirLoQueHariaYo, estadoRecomendacion } from "@/lib/lo-que-haria-yo";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
+import { resolverArriendoReferencia, resolverProcedenciaArriendo } from "@/lib/arriendo-referencia";
 import { DetalleAlternativaComunas } from "./shared/DetalleAlternativaComunas";
 import { ProgresoGeneracion } from "@/components/analysis/ProsaSkeleton";
 import { esProsaDosBloques } from "./AIInsightSection";
@@ -232,6 +233,15 @@ export function HeroLTR({
         distancia: distanciaRow ?? null,
         sensibilidad: sensibilidadRow ?? null,
         arriendoDeclaradoCLP: Number(inputData?.arriendo ?? 0),
+        // DE DÓNDE SALIÓ EL ARRIENDO (12-sep-2026): la MISMA derivación que usa el prompt.
+        // Tuyo → «Declaraste»; aceptaste la estimación de Franco → «Usamos …, la mediana de
+        // tu zona»; sin referencia no se sabe → «El análisis usa …».
+        verifica: (() => {
+          const arriendo = Number(inputData?.arriendo ?? 0);
+          if (!(arriendo > 0)) return null;
+          const ref = resolverArriendoReferencia(inputData);
+          return { cifraCLP: arriendo, procedencia: resolverProcedenciaArriendo(arriendo, ref), fuente: ref?.fuente };
+        })(),
         currency,
         valorUF,
         // El otro margen de COMPRAR (12-sep-2026): el último precio que sigue siendo

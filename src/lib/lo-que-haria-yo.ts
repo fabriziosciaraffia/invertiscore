@@ -166,7 +166,13 @@ export function construirLoQueHariaYo(p: {
    *  (`adrFuente === "override"`); con la mediana de la zona no hay nada que verificar y
    *  el caller pasa null. Tienen precedencia sobre los dos de LTR cuando vienen. */
   aguanta?: { marginPct: number; firme: boolean } | null;
-  verifica?: { cifraCLP: number } | null;
+  /** VERIFICA, y de dónde salió el número (12-sep-2026). El wizard LTR prellena el
+   *  arriendo con la estimación de Franco y no persiste si la aceptaste: el motor lo
+   *  DERIVA (`resolverProcedenciaArriendo`, igualdad al peso con la referencia) y el
+   *  caller lo pasa acá. Sin `procedencia` se lee como declarado por ti —la llamada LTR
+   *  de siempre y STR, donde `adrFuente` ya lo dice—. `fuente` distingue la mediana de
+   *  la zona del estimado desde el m² de la comuna, que no es una mediana. */
+  verifica?: { cifraCLP: number; procedencia?: "declarado_usuario" | "estimacion_franco" | "sin_registro"; fuente?: "radio" | "comuna" | "comuna-m2" } | null;
   /** EL OTRO MARGEN DE COMPRAR, resuelto por el caller (12-sep-2026): el último precio
    *  que sigue siendo Comprar y cuánto es sobre el pedido. LTR lo saca de
    *  `precioMaximoComprarUF`; STR de `fronteraPrecio.caeA`. null ⇒ la fila no va. */
@@ -236,7 +242,11 @@ export function construirLoQueHariaYo(p: {
         oracion:
           modalidad === "str"
             ? `Definiste ${plata(verifica.cifraCLP)} la noche. Todo cuelga de ese número: confírmalo antes de firmar.`
-            : `Declaraste ${plata(verifica.cifraCLP)} de arriendo. Todo cuelga de ese número: confírmalo antes de firmar.`,
+            : verifica.procedencia === "estimacion_franco"
+              ? `Usamos ${plata(verifica.cifraCLP)} de arriendo, ${verifica.fuente === "comuna-m2" ? "el estimado de tu comuna" : "la mediana de tu zona"}. Confírmalo con avisos reales antes de firmar.`
+              : verifica.procedencia === "sin_registro"
+                ? `El análisis usa ${plata(verifica.cifraCLP)} de arriendo. Todo cuelga de ese número: confírmalo antes de firmar.`
+                : `Declaraste ${plata(verifica.cifraCLP)} de arriendo. Todo cuelga de ese número: confírmalo antes de firmar.`,
       });
     }
     if (filas.length === 0) return null;
