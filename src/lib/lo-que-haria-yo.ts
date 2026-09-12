@@ -137,14 +137,35 @@ function enumerar(xs: string[]): string {
   return `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`;
 }
 
+/** Lo que el mercado pone en cada modalidad: el arriendo en LTR, la tarifa por noche en
+ *  STR. Es la única palabra que cambia entre las dos cards de §5 (contrato §11). */
+const LO_DEL_MERCADO: Record<"ltr" | "str", { nombre: string; verifica: string }> = {
+  ltr: { nombre: "arriendo", verifica: "Verifica el arriendo" },
+  str: { nombre: "tarifa", verifica: "Verifica la tarifa" },
+};
+
 export function construirLoQueHariaYo(p: {
   veredicto: Veredicto;
   distancia: HallazgoDistanciaVeredicto | null;
-  sensibilidad: HallazgoSensibilidad | null;
-  arriendoDeclaradoCLP: number;
   currency: "CLP" | "UF";
   valorUF: number;
+  /** UN constructor para las dos modalidades (bloque C · 11-sep-2026). Decide la palabra
+   *  del mercado —«arriendo» / «tarifa»— y nada más: la forma del bloque es la misma.
+   *  Default LTR, para que el call site de siempre no cambie. */
+  modalidad?: "ltr" | "str";
+  /** LTR · COMPRAR: el margen sale del hallazgo de sensibilidad y lo verificado es el
+   *  arriendo que declaraste. Los dos siguen acá tal cual. */
+  sensibilidad?: HallazgoSensibilidad | null;
+  arriendoDeclaradoCLP?: number;
+  /** STR · COMPRAR, RESUELTOS POR EL CALLER: el margen sale de la frontera de tarifa
+   *  (`fronterasIngreso.abajo`) y lo verificado es la tarifa SOLO si la definiste tú
+   *  (`adrFuente === "override"`); con la mediana de la zona no hay nada que verificar y
+   *  el caller pasa null. Tienen precedencia sobre los dos de LTR cuando vienen. */
+  aguanta?: { marginPct: number; firme: boolean } | null;
+  verifica?: { cifraCLP: number } | null;
 }): BloqueLoQueHariaYo | null {
+  const modalidad = p.modalidad ?? "ltr";
+  const mercado = LO_DEL_MERCADO[modalidad];
   const plata = (clp: number) =>
     p.currency === "UF" ? `UF ${miles(clp / (p.valorUF || 1))}` : `$${miles(clp)}`;
   const enUF = (uf: number) => (p.currency === "UF" ? `UF ${miles(uf)}` : `$${miles(uf * (p.valorUF || 1))}`);
@@ -152,27 +173,30 @@ export function construirLoQueHariaYo(p: {
   // ── COMPRAR ───────────────────────────────────────────────────────────────
   // Sin mix y sin descarte: no hay palanca que subir. Dos filas — cuánto aguanta
   // antes de bajar (lo pone el mercado) y qué verificar antes de firmar (lo pones
-  // tú, porque el arriendo lo declaraste tú).
+  // tú, porque el arriendo —o la tarifa— lo declaraste tú).
   if (p.veredicto === "COMPRAR") {
     const filas: FilaLoQueHariaYo[] = [];
     const s = p.sensibilidad?.valor;
-    if (s) {
+    const aguanta = p.aguanta !== undefined ? p.aguanta : s ? { marginPct: s.marginPct, firme: s.firme } : null;
+    const verifica =
+      p.verifica !== undefined ? p.verifica : (p.arriendoDeclaradoCLP ?? 0) > 0 ? { cifraCLP: p.arriendoDeclaradoCLP! } : null;
+    if (aguanta) {
       filas.push({
         titulo: "Cuánto aguanta el veredicto",
-        nombre: "arriendo",
+        nombre: mercado.nombre,
         rotuloCorto: "Aguanta",
         quien: "mercado",
-        cifra: s.firme ? "−50% o más" : `−${pct1(s.marginPct)}%`,
+        cifra: aguanta.firme ? "−50% o más" : `−${pct1(aguanta.marginPct)}%`,
         objetivo: null,
       });
     }
-    if (p.arriendoDeclaradoCLP > 0) {
+    if (verifica) {
       filas.push({
-        titulo: "Verifica el arriendo",
-        nombre: "arriendo",
+        titulo: mercado.verifica,
+        nombre: mercado.nombre,
         rotuloCorto: "Verifica",
         quien: "tuyo",
-        cifra: plata(p.arriendoDeclaradoCLP),
+        cifra: plata(verifica.cifraCLP),
         objetivo: "lo declaraste tú",
       });
     }
@@ -245,7 +269,7 @@ export function construirLoQueHariaYo(p: {
   const fueraDeRango = esBuscar ? dv.deltaMinimoComprarFueraDeTope : null;
   const contexto = fueraDeRango
     ? `Llegar a ${DESTINO} pediría un ${pct1(Math.abs(fueraDeRango.deltaPct))}% ${
-        fueraDeRango.palanca === "precio" ? "menos de precio" : "más de arriendo"
+        fueraDeRango.palanca === "precio" ? "menos de precio" : `más de ${NOMBRE_LLANO[fueraDeRango.palanca] ?? fueraDeRango.palanca}`
       }, fuera de todo rango.`
     : null;
 
@@ -255,7 +279,11 @@ export function construirLoQueHariaYo(p: {
   //   · fuera de alcance— cruza pero pide más capital del que es una salida;
   //   · REDUNDANTE      — repite una palanca que ya está arriba como fila. Dibujarlo
   //                       sería decir dos veces lo mismo con otro nombre.
-  const m = dv.mixPalancas;
+  // DESDE BUSCAR, EL MIX QUE LLEGA A COMPRAR (11-sep-2026). `mixPalancas` apunta al
+  // escalón por construcción y §5 nunca lo muestra; el motor STR emite aparte la misma
+  // combinación medida hacia COMPRAR. LTR no la emite todavía (AUSENTE = no calculado),
+  // así que cae al de siempre, que la card filtra por destino: nada cambia allá.
+  const m = esBuscar && dv.mixPalancasHastaComprar !== undefined ? dv.mixPalancasHastaComprar : dv.mixPalancas;
   const dibujarMix = !!m && m.dentroDelAlcance && !m.redundanteConPalancaSola;
   const mix: MixLoQueHariaYo | null = dibujarMix && m
     ? {
