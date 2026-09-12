@@ -377,7 +377,7 @@ export default async function AnalisisDetallePage({
         <AnalysisNav
           userId={user?.id ?? null}
           analysisId={analisis.id}
-          score={analisis.score}
+          score={results?.score ?? analisis.score}
           nombre={analisis.nombre}
           comuna={analisis.comuna}
           isSharedView={isSharedView}
@@ -395,7 +395,7 @@ export default async function AnalisisDetallePage({
           analysisId={analisis.id}
           inputData={analisis.input_data as AnalisisInput | undefined}
           comuna={analisis.comuna}
-          score={analisis.score}
+          score={results?.score ?? analisis.score}
           freeYieldBruto={results?.metrics?.rentabilidadBruta ?? yieldBruto}
           freeFlujo={flujoEstimado}
           freePrecioM2={precioM2}

@@ -44,6 +44,7 @@ import { runTitularFinalTier } from "./titular-final-catch-test";
 import { runInstrumentosTier } from "./instrumentos-catch-test";
 import { runMesVacioTier } from "./mes-vacio-catch-test";
 import { runRegulacionNoPesaTier } from "./regulacion-no-pesa-catch-test";
+import { runScoreRetornoTier } from "./score-retorno-catch-test";
 import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runRespaldoArriendoTier } from "./respaldo-arriendo-catch-test";
 import { runDistanciaComprarTier } from "./distancia-comprar-catch-test";
@@ -274,6 +275,10 @@ async function printStrSemantic() {
   // g1_regulacion, «no» = «no_seguro» = «sí» en score y veredicto, y las «sí» byte-idénticas
   // a la baseline. Verificado en rojo con la fila «no» del golden. Corre siempre con el QUICK. ──
   totalHard += runRegulacionNoPesaTier().hard;
+  // ── Tier SCORE-RETORNO (12-sep-2026, 0 tokens, sin base): cash-on-cash y TIR como dimensiones
+  // ponderadas (esquema A, curva calibrada), pie cero con rendimiento neto sobre el precio,
+  // puertas intactas. Corre siempre con el QUICK. ──
+  totalHard += runScoreRetornoTier().hard;
   totalHard += runPlusvaliaGlosaTier().hard;
   totalHard += runRespaldoArriendoTier().hard;
   totalHard += runDistanciaComprarTier().hard;

@@ -69,11 +69,18 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
 
 // ── 1 · el hallazgo: titular y cierre según la combinación ──────────────────
 {
-  // AJUSTA estructural con mix a COMPRAR (761b08ad): pie 30% + plazo 30 años + −17,5%.
+  // AJUSTA estructural con mix a COMPRAR (761b08ad): pie 30% + plazo 30 años + descuento.
+  // El descuento se LEE del motor y no se fija: era −17,5% hasta el 12-sep-2026 y pasó a
+  // −15% con el score de retorno sobre lo puesto (cash-on-cash y TIR como dimensiones: con
+  // más pie la celda cruza antes). Lo que fija este bloque es que el cierre diga el MISMO
+  // número que `descuentoQueAdemásPide`, no cuál es ese número.
   const h = distanciaDe("estructuralMixStr");
-  if (!h.valor.esEstructural || !salidaPorMixStr(h.valor)) F("1 · estructuralMixStr tenía que ser estructural con combinación a COMPRAR");
+  const salidaH = salidaPorMixStr(h.valor);
+  if (!h.valor.esEstructural || !salidaH) F("1 · estructuralMixStr tenía que ser estructural con combinación a COMPRAR");
   if (h.titular !== "Ningún ajuste por separado lo lleva al veredicto de arriba; juntos, sí.") F(`1 · titular con mix: «${h.titular}»`);
-  if (!h.fraseCanonica.includes("Con lo tuyo —pie y plazo— y un descuento de 17,5% llega a Comprar.")) F(`1 · el cierre no lee descuentoQueAdemásPide: «${h.fraseCanonica.slice(-160)}»`);
+  const dH = salidaH?.descuentoPct ?? null;
+  if (dH === null) F("1 · estructuralMixStr tenía que pedir descuento además del pie y el plazo");
+  else if (!h.fraseCanonica.includes(`Con lo tuyo —pie y plazo— y un descuento de ${String(dH).replace(".", ",")}% llega a Comprar.`)) F(`1 · el cierre no lee descuentoQueAdemásPide (${dH}%): «${h.fraseCanonica.slice(-160)}»`);
   if (/brecha/i.test(h.fraseCanonica)) F("1 · con combinación la frase sigue diciendo «brecha»");
   if (!/no cambia el veredicto; recién/.test(h.fraseCanonica)) F("1 · la primera oración (los topes probados de a uno) tenía que quedar: sigue siendo verdad");
 

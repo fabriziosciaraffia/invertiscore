@@ -1,5 +1,6 @@
 import { ShortTermResult } from './short-term-engine';
 import { metricaValorONull } from '../types';
+import { PESOS_SCORE_STR, puntajeCashOnCash, puntajeTir, combinarConReparto } from '../score-retorno';
 import { CLINICAS, ZONAS_NEGOCIOS, ZONAS_TURISTICAS, ACCESO_SKI, distanciaMinima } from '../data/str-attractors';
 import { findNearestStation } from '../metro-stations';
 
@@ -116,6 +117,10 @@ export interface FrancoScoreSTR {
     sostenibilidad: DimensionScore;
     ventaja: DimensionScore;
     factibilidad: DimensionScore;
+    /** Retorno sobre lo puesto (12-sep-2026, `score-retorno.ts`). Ausentes en filas
+     *  persistidas antes de ese día. */
+    cashOnCash: DimensionScore;
+    tir: DimensionScore;
   };
 }
 
@@ -124,6 +129,9 @@ export interface DimensionScore {
   label: string;
   detail: string;
   peso: number;
+  /** `false` = la dimensión no aplica en esta fila (hoy: la TIR con pie cero) y su peso se
+   *  reparte entre las demás. Ausente = aplica. */
+  aplica?: boolean;
 }
 
 // ============================================================
@@ -196,7 +204,7 @@ function calcRentabilidad(capRate: number): DimensionScore {
   else if (capRate >= 0.03) detail = `CAP Rate ${(capRate * 100).toFixed(1)}% — bajo, apenas viable`;
   else detail = `CAP Rate ${(capRate * 100).toFixed(1)}% — muy bajo`;
 
-  return { score, label: "Rentabilidad", detail, peso: 25 };
+  return { score, label: "Rentabilidad", detail, peso: PESOS_SCORE_STR.rentabilidad };
 }
 
 // ============================================================
@@ -253,7 +261,7 @@ function calcSostenibilidad(
   if (flujoCajaMensual >= 0) detail = `Flujo positivo $${Math.round(flujoCajaMensual).toLocaleString('es-CL')}/mes`;
   else detail = `Flujo -$${Math.abs(Math.round(flujoCajaMensual)).toLocaleString('es-CL')}/mes. Break-even al ${Math.round(breakEvenPctDelMercado * 100)}% del mercado`;
 
-  return { score, label: "Sostenibilidad", detail, peso: 25 };
+  return { score, label: "Sostenibilidad", detail, peso: PESOS_SCORE_STR.sostenibilidad };
 }
 
 // ============================================================
@@ -280,7 +288,7 @@ function calcVentaja(sobreRentaPct: number): DimensionScore {
   else if (sobreRentaPct >= 0) detail = `STR y LTR generan similar — el esfuerzo extra no se justifica`;
   else detail = `LTR gana por ${Math.abs(Math.round(sobreRentaPct * 100))}% — STR no conviene`;
 
-  return { score, label: "Ventaja vs LTR", detail, peso: 25 };
+  return { score, label: "Ventaja vs LTR", detail, peso: PESOS_SCORE_STR.ventaja };
 }
 
 // ============================================================
@@ -419,7 +427,36 @@ function calcFactibilidad(inputs: ScoreSTRInputs): DimensionScore {
   else if (score >= 45) detail = `Zona aceptable. ${atractores.detail}`;
   else detail = `Zona con fundamentos débiles para STR. ${atractores.detail}`;
 
-  return { score, label: "Factibilidad", detail, peso: 25 };
+  return { score, label: "Factibilidad", detail, peso: PESOS_SCORE_STR.factibilidad };
+}
+
+// ============================================================
+// RETORNO SOBRE LO PUESTO (12-sep-2026) — las dos dimensiones nuevas
+// ============================================================
+// Curvas y pesos en `score-retorno.ts`, compartidos con LTR. Con PIE CERO el cash-on-cash
+// del motor es `no_aplica` y la dimensión usa el rendimiento neto sobre el precio (el cap
+// rate, sin apalancar); la TIR sí queda sin aplicar y reparte su peso.
+
+function calcCashOnCashDim(cocDecimal: number | null, capRate: number): DimensionScore {
+  const sinPie = cocDecimal === null;
+  const pct = sinPie ? capRate * 100 : cocDecimal * 100;
+  const score = Math.round(puntajeCashOnCash(pct));
+  const detail = sinPie
+    ? `Sin pie: rendimiento neto sobre el precio ${pct.toFixed(1)}%`
+    : pct >= 6 ? `Cash-on-cash ${pct.toFixed(1)}% anual sobre tu capital — alto`
+    : pct >= 0 ? `Cash-on-cash ${pct.toFixed(1)}% anual — el depto se paga solo`
+    : pct >= -5 ? `Cash-on-cash ${pct.toFixed(1)}% anual — aporte moderado de tu bolsillo`
+    : `Cash-on-cash ${pct.toFixed(1)}% anual — aporte fuerte de tu bolsillo`;
+  return { score, label: "Retorno sobre lo puesto", detail, peso: PESOS_SCORE_STR.cashOnCash };
+}
+
+function calcTirDim(tirPct: number | null): DimensionScore {
+  if (tirPct === null || !Number.isFinite(tirPct)) {
+    return { score: 0, label: "TIR a 10 años", detail: "No aplica sin capital propio: su peso se reparte", peso: PESOS_SCORE_STR.tir, aplica: false };
+  }
+  const score = Math.round(puntajeTir(tirPct));
+  const detail = tirPct >= 12 ? `TIR ${tirPct.toFixed(1)}% a 10 años — alta` : tirPct >= 7 ? `TIR ${tirPct.toFixed(1)}% a 10 años — razonable` : `TIR ${tirPct.toFixed(1)}% a 10 años — baja`;
+  return { score, label: "TIR a 10 años", detail, peso: PESOS_SCORE_STR.tir };
 }
 
 // ============================================================
@@ -437,12 +474,16 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   );
   const ventaja = calcVentaja(inputs.results.comparativa.sobreRentaPct);
   const factibilidad = calcFactibilidad(inputs);
+  const cashOnCash = calcCashOnCashDim(metricaValorONull(base.cashOnCash), base.capRate);
+  const tirDim = calcTirDim(metricaValorONull(inputs.results.exitScenario?.tirAnual));
 
-  let score = Math.round(
-    rentabilidad.score * 0.25 +
-    sostenibilidad.score * 0.25 +
-    ventaja.score * 0.25 +
-    factibilidad.score * 0.25
+  // Una sola fórmula, pesos de `score-retorno.ts`; la TIR sin aplicar reparte su peso.
+  const dims = { rentabilidad, sostenibilidad, ventaja, factibilidad, cashOnCash, tir: tirDim };
+  let score = combinarConReparto(
+    (Object.keys(PESOS_SCORE_STR) as (keyof typeof PESOS_SCORE_STR)[]).map((k) => ({
+      peso: PESOS_SCORE_STR[k],
+      puntaje: dims[k].aplica === false ? null : dims[k].score,
+    })),
   );
   score = Math.max(0, Math.min(100, score));
 
@@ -538,6 +579,6 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
       // cuando el veredicto salió de la banda del score y ningún gate disparó.
       motivos: activosDecisivos,
     },
-    desglose: { rentabilidad, sostenibilidad, ventaja, factibilidad },
+    desglose: { rentabilidad, sostenibilidad, ventaja, factibilidad, cashOnCash, tir: tirDim },
   };
 }

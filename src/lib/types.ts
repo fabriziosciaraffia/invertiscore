@@ -11,6 +11,13 @@ export interface Desglose {
   plusvalia: number;
   eficiencia: number;
   flujoCaja: number;
+  /** Retorno sobre lo puesto (12-sep-2026, `score-retorno.ts`): la curva del cash-on-cash
+   *  anual, o del rendimiento neto sobre el precio cuando no hay pie. Ausente en filas
+   *  persistidas antes de ese día. */
+  cashOnCash?: number;
+  /** La curva de la TIR a 10 años. `null` = no aplica (pie cero: la TIR es `no_aplica` en
+   *  el motor y su peso se reparte entre las demás dimensiones). */
+  tir?: number | null;
   riesgo?: number; // legacy: kept for backward compatibility with old saved analyses
 }
 

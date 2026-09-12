@@ -16,6 +16,7 @@ import type {
   UniversoDepto,
 } from "./types";
 import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "./types";
+import { PESOS_SCORE_LTR, puntajeCashOnCash, puntajeTir, combinarConReparto } from "./score-retorno";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
 import { calcIRRPct } from "./finance/irr";
 import { estimarContribuciones } from "./contribuciones";
@@ -1089,7 +1090,7 @@ function calcSensitivity(input: AnalisisInput, baseScore: number, _baseMetrics: 
     }
 
     const newMetrics = calcMetrics(modified, ufClp);
-    const newScore = calcScoreFromMetrics(modified, newMetrics, ufClp, asOf);
+    const newScore = calcScoreFromMetrics(modified, newMetrics, ufClp, asOf, tirDe(modified, newMetrics, ufClp, asOf));
 
     rows.push({
       variable: v.variable,
@@ -1271,7 +1272,32 @@ function calcEficienciaScore(precioM2: number, yieldBruto: number, zonaRadio: an
   return Math.round(preciScore * 0.5 + yieldScore * 0.5);
 }
 
-function calcScoreFromMetrics(
+/**
+ * LA TIR DEL DEAL para el score, por la MISMA ruta que el canónico (proyección a 20 años →
+ * escenario de salida a 10). Los callers que ya calcularon el exit pasan `exit.tir`
+ * directo; los que solo tienen métricas (sensibilidad, decisividades, la ruta parchada)
+ * la piden acá. `null` = no aplica (pie cero) o no calculable: el score reparte su peso.
+ */
+function tirDe(input: AnalisisInput, metrics: AnalysisMetrics, ufClp: number, asOf: Date): number | null {
+  const proj = calcProjections({ input, metrics, ufClp, asOf });
+  return metricaValorONull(calcExitScenario(input, metrics, proj, 10).tir);
+}
+
+/**
+ * LAS SEIS DIMENSIONES DEL SCORE Y EL SCORE, de una sola fórmula (12-sep-2026). Hasta hoy
+ * `calcScoreFromMetrics` y el desglose de `runAnalysis` escribían la misma aritmética dos
+ * veces («mirrors calcScoreFromMetrics»); ahora el score ES la media ponderada del
+ * desglose, con `PESOS_SCORE_LTR` como única fuente, y el tier `score-retorno` lo fija.
+ *
+ * RETORNO SOBRE LO PUESTO (decisión de producto, Fabrizio 12-sep-2026):
+ *  · `cashOnCash`: la curva calibrada del CoC anual del motor. Con PIE CERO el CoC es
+ *    `no_aplica` y la dimensión usa el RENDIMIENTO NETO SOBRE EL PRECIO (`rentabilidadNeta`,
+ *    lo que rinde el activo sin apalancar), sin neutro.
+ *  · `tir`: la curva de la TIR a 10 años. `null` cuando no aplica (pie cero) o no es
+ *    calculable, y entonces su peso se reparte entre las demás (`combinarConReparto`).
+ * La penalización por entrega futura se aplica sobre el score, como siempre.
+ */
+function dimensionesScoreLtr(
   input: AnalisisInput,
   metrics: AnalysisMetrics,
   ufClp: number,
@@ -1280,9 +1306,11 @@ function calcScoreFromMetrics(
   // Overrides de neutralización contrafactual (E2 · calibración de decisividades).
   // historicaOverride reemplaza la tasa histórica de la comuna en la dimensión
   // Plusvalía (sub-componente 30%). Ausente ⇒ comportamiento idéntico.
-  overrides?: { historicaOverride?: number },
-): number {
-  // Rentabilidad (30%): based on rentabilidad bruta calibrated for Chilean market
+  overrides: { historicaOverride?: number } | undefined,
+  // La TIR a 10 años del deal (ver `tirDe`). null = no aplica / no calculable.
+  tirPct: number | null,
+): { desglose: Desglose; score: number } {
+  // Rentabilidad: based on rentabilidad bruta calibrated for Chilean market
   let rentabilidad: number;
   const yb = metrics.rentabilidadBruta;
   if (yb >= 6) rentabilidad = lerp(yb, 6, 8, 90, 100);
@@ -1325,12 +1353,27 @@ function calcScoreFromMetrics(
   } : null;
   const eficiencia = calcEficienciaScore(metrics.precioM2, metrics.rentabilidadBruta, zonaRadioForEficiencia);
 
-  let score = Math.round(
-    rentabilidad * 0.30 +
-    flujoCaja * 0.25 +
-    plusvalia * 0.25 +
-    eficiencia * 0.20
-  );
+  const coc = metricaValorONull(metrics.cashOnCash);
+  const cashOnCash = clamp(puntajeCashOnCash(coc ?? metrics.rentabilidadNeta), 0, 100);
+  const tir = tirPct == null || !Number.isFinite(tirPct) ? null : clamp(puntajeTir(tirPct), 0, 100);
+
+  const desglose: Desglose = {
+    rentabilidad: clamp(rentabilidad, 0, 100),
+    flujoCaja: clamp(flujoCaja, 0, 100),
+    plusvalia: clamp(plusvalia, 0, 100),
+    eficiencia: clamp(eficiencia, 0, 100),
+    cashOnCash,
+    tir,
+  };
+  const w = PESOS_SCORE_LTR;
+  let score = combinarConReparto([
+    { peso: w.rentabilidad, puntaje: desglose.rentabilidad },
+    { peso: w.flujoCaja, puntaje: desglose.flujoCaja },
+    { peso: w.cashOnCash, puntaje: cashOnCash },
+    { peso: w.tir, puntaje: tir },
+    { peso: w.plusvalia, puntaje: desglose.plusvalia },
+    { peso: w.eficiencia, puntaje: desglose.eficiencia },
+  ]);
 
   // Penalize entrega futura for months without return
   const mesesEspera = calcMesesHastaEntrega(input, asOf);
@@ -1339,7 +1382,19 @@ function calcScoreFromMetrics(
     score -= penalty;
   }
 
-  return clamp(score, 0, 100);
+  return { desglose, score: clamp(score, 0, 100) };
+}
+
+/** El score solo. Misma fórmula que el desglose (ver `dimensionesScoreLtr`). */
+function calcScoreFromMetrics(
+  input: AnalisisInput,
+  metrics: AnalysisMetrics,
+  ufClp: number,
+  asOf: Date,
+  tirPct: number | null,
+  overrides?: { historicaOverride?: number },
+): number {
+  return dimensionesScoreLtr(input, metrics, ufClp, asOf, overrides, tirPct).score;
 }
 
 // =========================================
@@ -1708,7 +1763,7 @@ export function simularPieYPlazo(
       const exit = calcExitScenario(clone, m, proj);
       // Veredicto de la combinación por la MISMA ruta que `veredictoConPatch` (y que el
       // canónico de runAnalysis), reutilizando las métricas que la celda ya calculó.
-      const score = calcScoreFromMetrics(clone, m, ufClp, asOf);
+      const score = calcScoreFromMetrics(clone, m, ufClp, asOf, metricaValorONull(exit.tir));
       const veredicto = deriveVeredicto(score, m, calcBreakEvenTasa(clone, m, ufClp));
       celdas.push({
         piePct,
@@ -1767,7 +1822,8 @@ export function veredictoConPatch(
 ): Veredicto {
   const clone = { ...input, ...patch };
   const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
-  const s = calcScoreFromMetrics(clone, m, ufClp, asOf);
+  // La TIR también se reevalúa sobre el parche: es dimensión del score desde el 12-sep-2026.
+  const s = calcScoreFromMetrics(clone, m, ufClp, asOf, tirDe(clone, m, ufClp, asOf));
   const bet = calcBreakEvenTasa(clone, m, ufClp);
   return deriveVeredicto(s, m, bet);
 }
@@ -1885,7 +1941,8 @@ export function calcDecisividades(
   asOf: Date = new Date(),
 ): Decisividades {
   const baseMetrics = calcMetrics(input, ufClp, medianaComuna);
-  const baseScore = calcScoreFromMetrics(input, baseMetrics, ufClp, asOf);
+  const baseTir = tirDe(input, baseMetrics, ufClp, asOf);
+  const baseScore = calcScoreFromMetrics(input, baseMetrics, ufClp, asOf, baseTir);
   const baseBreakEven = calcBreakEvenTasa(input, baseMetrics, ufClp);
   const base = evalVeredicto(baseScore, baseMetrics, baseBreakEven);
 
@@ -1905,7 +1962,7 @@ export function calcDecisividades(
   });
   if (capexBase.montoCLP > 0) {
     const mNeu = calcMetrics(input, ufClp, medianaComuna, { capexPuestaAPuntoCLP: 0 });
-    const sNeu = calcScoreFromMetrics(input, mNeu, ufClp, asOf);
+    const sNeu = calcScoreFromMetrics(input, mNeu, ufClp, asOf, tirDe(input, mNeu, ufClp, asOf));
     out.capex_puesta_a_punto = fin(sNeu, evalVeredicto(sNeu, mNeu, baseBreakEven));
   }
 
@@ -1915,7 +1972,7 @@ export function calcDecisividades(
     const arriendoNeu = solveArriendoForCapRate(input, ufClp, medianaComuna, CAP_RATE_REF_NACIONAL);
     const inputNeu = { ...input, arriendo: arriendoNeu };
     const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
-    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf);
+    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf, tirDe(inputNeu, mNeu, ufClp, asOf));
     const beNeu = calcBreakEvenTasa(inputNeu, mNeu, ufClp);
     out.cap_rate = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
   }
@@ -1932,7 +1989,7 @@ export function calcDecisividades(
       cashOnCash:
         baseMetrics.cashOnCash.tipo === "no_aplica" ? baseMetrics.cashOnCash : metricaValor(0),
     };
-    const sNeu = calcScoreFromMetrics(input, mNeu, ufClp, asOf);
+    const sNeu = calcScoreFromMetrics(input, mNeu, ufClp, asOf, tirDe(input, mNeu, ufClp, asOf));
     const beNeu = baseBreakEven === -1 ? input.tasaInteres : baseBreakEven;
     out.flujo_mensual = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
   }
@@ -1944,7 +2001,7 @@ export function calcDecisividades(
     const precioNeuUF = medianaComuna.mediana * input.superficie;
     const inputNeu = { ...input, precio: precioNeuUF };
     const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
-    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf);
+    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf, tirDe(inputNeu, mNeu, ufClp, asOf));
     const beNeu = calcBreakEvenTasa(inputNeu, mNeu, ufClp);
     out.sobreprecio = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
   }
@@ -1953,7 +2010,7 @@ export function calcDecisividades(
   //    apreciación real (3%) vía override de score. No toca métricas ni flujo →
   //    reusa base metrics y break-even. Mueve solo la dimensión Plusvalía. ──
   {
-    const sNeu = calcScoreFromMetrics(input, baseMetrics, ufClp, asOf, { historicaOverride: PLUSVALIA_REF_REAL });
+    const sNeu = calcScoreFromMetrics(input, baseMetrics, ufClp, asOf, baseTir, { historicaOverride: PLUSVALIA_REF_REAL });
     out.plusvalia = fin(sNeu, evalVeredicto(sNeu, baseMetrics, baseBreakEven));
   }
 
@@ -1966,7 +2023,7 @@ export function calcDecisividades(
       tasaInteres: Math.min(input.tasaInteres, MARKET_AVG_TASA_UF),
     };
     const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
-    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf);
+    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf, tirDe(inputNeu, mNeu, ufClp, asOf));
     const beNeu = calcBreakEvenTasa(inputNeu, mNeu, ufClp);
     out.estructura_financiamiento = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
   }
@@ -2354,61 +2411,18 @@ export function runAnalysis(
   }
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
   const refinanceScenario = calcRefinanceScenario(input, metrics, projections, 5);
-  const score = calcScoreFromMetrics(input, metrics, ufClp, asOf);
+  // Score y desglose salen de la MISMA llamada (una sola fórmula, ver dimensionesScoreLtr).
+  const dimsScore = dimensionesScoreLtr(input, metrics, ufClp, asOf, undefined, metricaValorONull(exitScenario.tir));
+  const score = dimsScore.score;
   const sensitivity = calcSensitivity(input, score, metrics, ufClp, asOf);
   const breakEvenTasa = calcBreakEvenTasa(input, metrics, ufClp);
   const valorMaximoCompra = calcValorMaximoCompra(input, metrics, ufClp);
   const pros = generatePros(input, metrics, asOf, horizonteFlujo);
   const contras = generateContras(input, metrics, asOf);
 
-  // Score breakdown by dimension (mirrors calcScoreFromMetrics)
-
-  const yb = metrics.rentabilidadBruta;
-  let rentabilidadScore: number;
-  if (yb >= 6) rentabilidadScore = lerp(yb, 6, 8, 90, 100);
-  else if (yb >= 5) rentabilidadScore = lerp(yb, 5, 6, 70, 89);
-  else if (yb >= 4) rentabilidadScore = lerp(yb, 4, 5, 45, 65);
-  else if (yb >= 3) rentabilidadScore = lerp(yb, 3, 4, 25, 44);
-  else rentabilidadScore = lerp(yb, 0, 3, 0, 24);
-  if (metrics.rentabilidadNeta >= 4) rentabilidadScore = Math.min(100, rentabilidadScore + 5);
-  else if (metrics.rentabilidadNeta < 2) rentabilidadScore = Math.max(0, rentabilidadScore - 5);
-
-  // Flujo de caja: ratio relativo al arriendo
-  const arriendoTotalR = metrics.ingresoMensual;
-  let flujoCajaScore: number;
-  if (arriendoTotalR <= 0) {
-    flujoCajaScore = 0;
-  } else {
-    const ratioR = metrics.flujoNetoMensual / arriendoTotalR;
-    if (ratioR >= 0) flujoCajaScore = lerp(ratioR, 0, 0.3, 80, 100);
-    else if (ratioR >= -0.3) flujoCajaScore = lerp(ratioR, -0.3, 0, 50, 79);
-    else if (ratioR >= -0.6) flujoCajaScore = lerp(ratioR, -0.6, -0.3, 25, 49);
-    else if (ratioR >= -1.0) flujoCajaScore = lerp(ratioR, -1.0, -0.6, 10, 24);
-    else flujoCajaScore = lerp(ratioR, -2.0, -1.0, 0, 9);
-  }
-
-  // Plusvalía: metro + histórica + antigüedad
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const inputAnyR = input as any;
-  const latR = inputAnyR.zonaRadio?.lat || inputAnyR.lat || null;
-  const lngR = inputAnyR.zonaRadio?.lng || inputAnyR.lng || null;
-  const plusvaliaScore = calcPlusvaliaScore(latR, lngR, input.comuna, input.antiguedad);
-
-  // Eficiencia: datos del radio real
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const zonaRadioR = (input as any)?.zonaRadio;
-  const zonaRadioForEfR = zonaRadioR ? {
-    precioM2VentaUF: zonaRadioR.precioM2VentaCLP ? zonaRadioR.precioM2VentaCLP / ufClp : 0,
-    yieldPromedio: zonaRadioR.yieldPromedio || 0,
-  } : null;
-  const eficienciaScore = calcEficienciaScore(metrics.precioM2, metrics.rentabilidadBruta, zonaRadioForEfR);
-
-  const desglose: Desglose = {
-    rentabilidad: clamp(rentabilidadScore, 0, 100),
-    flujoCaja: clamp(flujoCajaScore, 0, 100),
-    plusvalia: clamp(plusvaliaScore, 0, 100),
-    eficiencia: clamp(eficienciaScore, 0, 100),
-  };
+  // El desglose por dimensión: la misma fórmula que el score (12-sep-2026). Antes estaba
+  // escrita dos veces acá y en calcScoreFromMetrics.
+  const desglose: Desglose = dimsScore.desglose;
 
   const fmtR = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
   const coberturaPct = metrics.egresosMensuales > 0 ? Math.round((metrics.ingresoMensual / metrics.egresosMensuales) * 100) : 0;
