@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide" data-mod="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El pop-up de palancas · final</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px;
+    --verdict:#6E4560;--verdict-deep:#442B3B}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;
+    --tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--up:#2B558F;--velo:rgba(24,24,27,.45)}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;
+    --tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--up:#6C9BE0;--velo:rgba(0,0,0,.6)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;
+    -webkit-font-smoothing:antialiased}
+  .ctrl{max-width:780px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);
+    padding:12px 14px;margin-bottom:24px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;
+    color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+
+  .escena{position:relative;max-width:780px;margin:0 auto;min-height:660px;border-radius:var(--rad);
+    overflow:hidden;background:var(--card)}
+  [data-view="mobile"] .escena{max-width:390px}
+  .fondo{position:absolute;inset:0;padding:24px;opacity:.3;filter:blur(1px)}
+  .fondo .cardp{background:linear-gradient(135deg,var(--verdict-deep),#18181B);border-radius:var(--rad);
+    height:200px;margin-bottom:16px}
+  .fondo .ln{height:14px;background:var(--line2);border-radius:4px;margin:10px 0;width:70%}
+  .velo{position:absolute;inset:0;background:var(--velo)}
+
+  .pop{position:absolute;top:24px;left:50%;transform:translateX(-50%);width:480px;
+    max-height:calc(100% - 48px);border-radius:var(--rad);
+    background:var(--page);color:var(--tx);overflow:auto;box-shadow:0 16px 48px rgba(0,0,0,.3)}
+  [data-view="mobile"] .pop{top:40px;left:12px;right:12px;bottom:12px;width:auto;transform:none;
+    max-height:none}
+  .pop-in{padding:22px 22px 26px}
+  [data-view="mobile"] .pop-in{padding:18px 18px 24px}
+
+  .pop-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:22px}
+  .pop-h h2{font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.22}
+  .chipsv{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .pillv{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.04em;
+    padding:5px 11px;border-radius:99px;white-space:nowrap;background:var(--card);
+    border:1px solid var(--line2);color:var(--tx3)}
+  .pillv.dest{background:var(--tx);color:var(--page);border-color:var(--tx)}
+  .flv{color:var(--tx4);font-weight:700;font-size:13px}
+  .cerrar{width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--line2);
+    display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--tx3);flex:none;cursor:pointer}
+
+  .sec{margin-bottom:26px}
+  .sec .st{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx4);
+    margin-bottom:10px}
+  .sec .sx{font-size:12px;color:var(--tx3);line-height:1.45;margin:-4px 0 12px}
+
+  /* matriz */
+  .eje-x{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--tx4);text-align:center;margin-bottom:6px;padding-left:52px}
+  .mwrap{display:grid;grid-template-columns:auto 1fr;gap:0 8px;align-items:center}
+  .eje-y{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10.5px;font-weight:600;
+    letter-spacing:.05em;text-transform:uppercase;color:var(--tx4);text-align:center;padding:22px 0 0}
+  .mtx{border-collapse:separate;border-spacing:4px;width:100%;font-variant-numeric:tabular-nums}
+  .mtx th{font-size:11.5px;font-weight:600;color:var(--tx3);padding:3px 2px;text-align:center}
+  .mtx th.rot{text-align:right;padding-right:7px;white-space:nowrap;width:44px}
+  .mtx td{text-align:center;padding:8px 3px;border-radius:8px;font-size:12.5px;font-weight:700;
+    background:var(--card);color:var(--tx3);cursor:pointer;transition:transform .1s,box-shadow .1s;line-height:1.2}
+  .mtx td:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.12)}
+  .mtx td small{display:block;font-size:10.5px;font-weight:600;opacity:.75;margin-top:2px}
+  .mtx td.cruza{background:color-mix(in srgb,var(--up) 14%,transparent);color:var(--up)}
+  .mtx td.hoy{outline:2px solid var(--tx3);outline-offset:-2px}
+  .mtx td.mix{background:var(--tx);color:var(--page)}
+  .mtx td.sel{outline:2.5px solid var(--verdict);outline-offset:-2px}
+  .mleyenda{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:var(--tx3);margin-top:10px;
+    padding-left:52px}
+  [data-view="mobile"] .mleyenda{padding-left:0}
+  .mleyenda span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .sw.a{background:var(--tx)} .sw.b{background:color-mix(in srgb,var(--up) 14%,transparent);border:1px solid var(--up)}
+  .sw.c{background:var(--card);outline:2px solid var(--tx3);outline-offset:-2px}
+
+  /* detalle de celda · dos datos */
+  .cel{background:var(--sunk);border-radius:var(--rad-s);padding:13px 14px;margin-top:12px;
+    display:none;position:relative}
+  .cel.on{display:block}
+  .cel .x{position:absolute;top:9px;right:10px;width:24px;height:24px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--tx3);cursor:pointer;
+    background:var(--page)}
+  .cel .ct{font-size:13.5px;font-weight:700;margin-bottom:10px;padding-right:30px}
+  .cg{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:13px}
+  .cg .l{color:var(--tx3)} .cg .v{font-weight:700;text-align:right;white-space:nowrap}
+  .cg .v.mal{color:var(--signal)}
+
+  /* óptimo · pares con flecha */
+  .eleg{background:var(--card);border-radius:var(--rad-s);padding:16px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .chip{background:var(--page);border:1px solid var(--line2);padding:7px 11px;border-radius:var(--rad-xs);
+    font-size:13px;font-weight:600;white-space:nowrap}
+  .chip s{color:var(--tx4);font-weight:500;text-decoration-thickness:1.5px;margin-right:5px}
+  .plus{color:var(--tx4);font-weight:600}
+  .neg{font-size:16px;font-weight:700;letter-spacing:-.015em;padding:12px 0;
+    border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);margin-bottom:6px}
+  .neg small{display:block;font-size:12px;font-weight:400;color:var(--tx3);margin-top:3px}
+  .par{padding:10px 0;font-size:13px}
+  .par+.par{border-top:1px solid var(--line2)}
+  .par .l{color:var(--tx3);margin-bottom:3px}
+  .par .p{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .par .a1{font-size:13px;color:var(--tx4);white-space:nowrap}
+  .par .fl{color:var(--tx4);font-weight:700}
+  .par .b1{font-size:16px;font-weight:700;white-space:nowrap;letter-spacing:-.015em}
+  .par .b1.bien{color:var(--up)} .par .b1.mal{color:var(--signal)}
+
+  /* no depende de ti · tabla */
+  .nod table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  .nod th{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--tx4);
+    text-align:right;padding:0 0 8px}
+  .nod th:first-child{text-align:left}
+  .nod td{padding:11px 0;border-top:1px solid var(--line);font-size:13.5px;text-align:right}
+  .nod td:first-child{text-align:left;font-weight:600}
+  .nod td:first-child em{display:block;font-style:normal;font-weight:400;color:var(--tx3);
+    font-size:11.5px;margin-top:2px}
+  .nod .num{font-weight:700;font-size:15px;letter-spacing:-.015em;white-space:nowrap}
+  .nod .num small{display:block;font-size:11px;font-weight:400;color:var(--tx3);margin-top:2px}
+  .nod .dst{color:var(--up);font-weight:700;white-space:nowrap}
+  .nod .dst small{display:block;font-size:11px;font-weight:600;opacity:.75;margin-top:2px}
+
+  .str-only{display:none} [data-mod="str"] .str-only{display:table-row}
+  .ltr-only{display:table-row} [data-mod="str"] .ltr-only{display:none}
+
+  .cta{margin-top:4px;padding-top:18px;border-top:1px solid var(--line)}
+  .cta p{font-size:13px;color:var(--tx2);line-height:1.5;margin-bottom:12px}
+  .btn{display:inline-flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600;padding:12px 18px;
+    border-radius:99px;background:var(--verdict);color:#fff;cursor:pointer}
+  .btn .ico{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;
+    border-radius:50%;background:#fff;flex:none}
+  .btn .ico::before{content:"";width:0;height:0;border-left:5px solid var(--verdict);
+    border-top:4px solid transparent;border-bottom:4px solid transparent;margin-left:2px}
+
+  .nota{max-width:780px;margin:14px auto 0;background:var(--card);border:1px dashed var(--line2);
+    padding:14px 16px;font-size:12px;color:var(--tx3);line-height:1.65;border-radius:var(--rad-s)}
+  .nota b{color:var(--tx2);font-weight:600}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">El pop-up de palancas — final</h1>
+  <p class="subx">Pop-up centrado, no drawer. Con las tres disposiciones elegidas y el óptimo con cap
+     rate y TIR. La sensibilidad STR sale de acá y va al bloque de las cifras.</p>
+  <div class="panel">
+    <span class="clab">Modalidad</span>
+    <div class="seg" id="s-mod"><button class="on" data-v="ltr">LTR</button><button data-v="str">STR</button></div>
+    <span class="clab">Vista</span>
+    <div class="seg" id="s-view"><button class="on" data-v="wide">780</button><button data-v="mobile">390</button></div>
+    <span class="clab">Tema</span>
+    <div class="seg" id="s-theme"><button class="on" data-v="light">Claro</button><button data-v="dark">Oscuro</button></div>
+  </div>
+</div>
+
+<div class="escena">
+  <div class="fondo"><div class="cardp"></div><div class="ln"></div><div class="ln" style="width:55%"></div><div class="ln" style="width:80%"></div></div>
+  <div class="velo"></div>
+
+  <div class="pop">
+    <div class="pop-in">
+      <div class="pop-h">
+        <div><h2>Recomendación de ajustes</h2>
+          <div class="chipsv"><span class="pillv">− AJUSTAR</span><span class="flv">→</span>
+            <span class="pillv dest">✓ COMPRAR</span></div></div>
+        <span class="cerrar">✕</span>
+      </div>
+
+      <!-- matriz -->
+      <div class="sec">
+        <div class="st">Ajustes que dependen de ti</div>
+        <p class="sx">El descuento que pides se ajusta en consecuencia.</p>
+        <div class="eje-x">Plazo del crédito</div>
+        <div class="mwrap">
+          <div class="eje-y">Pie que pones</div>
+          <table class="mtx" id="mtx">
+            <tr><th class="rot"></th><th>20 años</th><th>25 años</th><th>30 años</th></tr>
+            <tr><th class="rot">20%</th>
+              <td data-d="−31%" data-c="no" data-p="—">Buscar<small>score 58</small></td>
+              <td class="hoy" data-d="−24%" data-c="no" data-p="—">Ajustar<small>score 62</small></td>
+              <td data-d="−19%" data-c="no" data-p="—">Ajustar<small>score 65</small></td></tr>
+            <tr><th class="rot">25%</th>
+              <td data-d="−22%" data-c="no" data-p="+$11,0M">Ajustar<small>score 64</small></td>
+              <td data-d="−15%" data-c="no" data-p="+$11,0M">Ajustar<small>score 68</small></td>
+              <td class="cruza" data-d="−9%" data-c="si" data-p="+$11,0M">Comprar<small>score 73</small></td></tr>
+            <tr><th class="rot">30%</th>
+              <td data-d="−14%" data-c="no" data-p="+$22,0M">Ajustar<small>score 67</small></td>
+              <td class="cruza" data-d="−8%" data-c="si" data-p="+$22,0M">Comprar<small>score 72</small></td>
+              <td class="mix" data-d="−3,8%" data-c="si" data-p="+$22,0M">Comprar<small>score 76</small></td></tr>
+          </table>
+        </div>
+        <div class="mleyenda">
+          <span><i class="sw c"></i>hoy</span>
+          <span><i class="sw b"></i>llega a Comprar</span>
+          <span><i class="sw a"></i>el óptimo</span>
+        </div>
+
+        <div class="cel" id="cel">
+          <span class="x" id="cel-x">✕</span>
+          <div class="ct" id="cel-t">Pie 25% · 30 años</div>
+          <div class="cg">
+            <span class="l">Pides de descuento</span><span class="v" id="cel-d">−9%</span>
+            <span class="l">Pie extra el día uno</span><span class="v mal" id="cel-p">+$11,0M</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- el óptimo -->
+      <div class="sec">
+        <div class="st">El ajuste óptimo</div>
+        <div class="eleg">
+          <div class="chips">
+            <span class="chip">Pie <s>20%</s> 30%</span><span class="plus">+</span>
+            <span class="chip">Plazo <s>25</s> 30 años</span>
+          </div>
+          <div class="neg">→ Negocias −3,8% dcto. en precio
+            <small>UF 5.502 → UF 5.293</small></div>
+          <div class="par"><div class="l">Pie el día uno</div>
+            <div class="p"><span class="a1">$36,7M</span><span class="fl">→</span><span class="b1 mal">$58,7M</span></div></div>
+          <div class="par"><div class="l">Cuota mensual</div>
+            <div class="p"><span class="a1">$978.290</span><span class="fl">→</span><span class="b1">$862.400</span></div></div>
+          <div class="par"><div class="l">Flujo mensual</div>
+            <div class="p"><span class="a1">−$283.194</span><span class="fl">→</span><span class="b1 bien">+$14.210</span></div></div>
+          <div class="par"><div class="l">Por cada $100 que pones, al año</div>
+            <div class="p"><span class="a1">−$6,50</span><span class="fl">→</span><span class="b1 bien">+$0,30</span></div></div>
+          <div class="par"><div class="l">Cap rate neto</div>
+            <div class="p"><span class="a1">4,3%</span><span class="fl">→</span><span class="b1 bien">4,5%</span></div></div>
+          <div class="par"><div class="l">TIR a 10 años</div>
+            <div class="p"><span class="a1">6,9%</span><span class="fl">→</span><span class="b1 bien">7,4%</span></div></div>
+          <div class="par"><div class="l">Franco Score</div>
+            <div class="p"><span class="a1">66</span><span class="fl">→</span><span class="b1 bien">76</span></div></div>
+        </div>
+      </div>
+
+      <!-- no depende de ti -->
+      <div class="sec nod">
+        <div class="st">No depende de ti</div>
+        <table>
+          <tr><th>Si cambia</th><th>Cuánto</th><th>Llegas a</th></tr>
+          <tr class="ltr-only"><td>Precio<em>lo pone el vendedor</em></td>
+            <td class="num">−24,1%<small>UF 4.175</small></td>
+            <td class="dst">Comprar<small>score 74</small></td></tr>
+          <tr class="ltr-only"><td>Arriendo<em>lo pone el mercado</em></td>
+            <td class="num">+25,6%<small>$1.205.813</small></td>
+            <td class="dst">Comprar<small>score 71</small></td></tr>
+          <tr class="str-only"><td>Tarifa<em>lo pone el mercado</em></td>
+            <td class="num">+8%<small>$62.500 la noche</small></td>
+            <td class="dst">Comprar<small>score 72</small></td></tr>
+          <tr class="str-only"><td>Precio<em>lo pone el vendedor</em></td>
+            <td class="num">−18%<small>UF 4.134</small></td>
+            <td class="dst">Comprar<small>score 70</small></td></tr>
+        </table>
+      </div>
+
+      <div class="cta">
+        <p>Si consigues ese precio, el informe cambia entero.</p>
+        <span class="btn"><span class="ico"></span>Analízalo a UF 5.293</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="nota">
+  <b>Las tres elegidas.</b> «No depende de ti» como tabla de tres columnas · el detalle de celda con
+  dos datos y su ✕ · el óptimo con pares antes → después, igual que la card.<br>
+  <b>Es pop-up, no drawer:</b> centrado sobre el velo, 480 px; en móvil ocupa la pantalla con
+  márgenes. El óptimo muestra siete pares, con cap rate y TIR entre ellos.<br>
+  <b>La sensibilidad STR sale de este pop-up.</b> Queda anotada para el bloque de las cifras, donde
+  tarifa y ocupación ya están marcadas como el supuesto del que cuelga todo. Ahí es donde el usuario
+  pregunta «¿y si el mercado no es así?», no acá, donde pregunta «¿qué puedo hacer yo?».<br>
+  <b>Nota de datos:</b> los scores por celda y los de las palancas solas son ilustrativos. El motor
+  los calcula —el score sale de la misma pasada que el veredicto— pero hoy no los persiste por celda.
+</div>
+
+<script>
+function wire(id,attr){document.querySelectorAll('#'+id+' button').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('#'+id+' button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on');document.documentElement.dataset[attr]=b.dataset.v;})})}
+wire('s-mod','mod');wire('s-view','view');wire('s-theme','theme');
+document.querySelectorAll('#mtx td').forEach(function(td){
+  td.addEventListener('click',function(){
+    document.querySelectorAll('#mtx td').forEach(function(x){x.classList.remove('sel')});
+    td.classList.add('sel');
+    var fila=td.parentNode.querySelector('.rot').textContent;
+    var col=document.querySelectorAll('#mtx tr:first-child th')[td.cellIndex].textContent;
+    document.getElementById('cel-t').textContent='Pie '+fila+' \u00b7 '+col;
+    document.getElementById('cel-d').textContent=td.dataset.c==='si'?td.dataset.d:'no llega a Comprar';
+    document.getElementById('cel-p').textContent=td.dataset.p;
+    document.getElementById('cel').classList.add('on');
+  });
+});
+document.getElementById('cel-x').addEventListener('click',function(){
+  document.getElementById('cel').classList.remove('on');
+  document.querySelectorAll('#mtx td').forEach(function(x){x.classList.remove('sel')});
+});
+</script>
+</body>
+</html>
