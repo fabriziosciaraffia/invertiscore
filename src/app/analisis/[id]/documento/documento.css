@@ -115,8 +115,8 @@
 .franco-doc .gauge .dot { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: var(--text); transform: translate(-50%, -50%); box-shadow: 0 0 0 3px var(--card); }
 .franco-doc .gauge-axis { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--mono); font-size: 9px; color: var(--text-muted); }
 
-/* 4 dimensiones (desglose) */
-.franco-doc .dims { margin-top: 11px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+/* 6 dimensiones (desglose): dos filas de tres desde el 12-sep-2026 (retorno sobre lo puesto y TIR) */
+.franco-doc .dims { margin-top: 11px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; }
 .franco-doc .dim .dk { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; }
 .franco-doc .dim .dbar { height: 5px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
 .franco-doc .dim .dbar > i { display: block; height: 100%; background: var(--ink-400); border-radius: 3px; }

@@ -30,6 +30,7 @@ import { metricaDisplay, metricaODefault, metricaValorONull } from "@/lib/types"
 import { calcDividendo } from "@/lib/analysis";
 import { NO_APLICA_FOOTNOTE_DOC } from "@/lib/no-aplica-copy";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+import { PESOS_SCORE_LTR } from "@/lib/score-retorno";
 import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
 import { PatrimonioChartSVG } from "./PatrimonioChartSVG";
 
@@ -87,8 +88,10 @@ export function DocumentoLTR({
   const tasaPct = Number(inputData?.tasaInteres) || 4.1;
   const arriendoCLP = Number(inputData?.arriendo) || m.ingresoMensual || 0;
 
-  // ── Desglose (4 dimensiones) ──
+  // ── Desglose (6 dimensiones desde el 12-sep-2026: retorno sobre lo puesto y TIR) ──
+  // Los pesos se leen del motor (`score-retorno.ts`): hasta hoy iban hardcodeados en el JSX.
   const d = results.desglose;
+  const W = PESOS_SCORE_LTR;
 
   // ── Negociación (NegociacionScenario) ── (QA punto 1)
   const neg = results.negociacion;
@@ -261,10 +264,18 @@ export function DocumentoLTR({
         </div>
 
         <div className="dims avoid-break">
-          <div className="dim"><p className="dk">Rentabilidad</p><div className="dbar"><i style={{ width: `${d.rentabilidad}%` }} /></div><div className="dv">{Math.round(d.rentabilidad)}</div><div className="dw">peso 30%</div></div>
-          <div className="dim"><p className="dk">Flujo de caja</p><div className="dbar"><i style={{ width: `${d.flujoCaja}%` }} /></div><div className="dv">{Math.round(d.flujoCaja)}</div><div className="dw">peso 25%</div></div>
-          <div className="dim"><p className="dk">Plusvalía</p><div className="dbar"><i style={{ width: `${d.plusvalia}%` }} /></div><div className="dv">{Math.round(d.plusvalia)}</div><div className="dw">peso 25%</div></div>
-          <div className="dim"><p className="dk">Eficiencia</p><div className="dbar"><i style={{ width: `${d.eficiencia}%` }} /></div><div className="dv">{Math.round(d.eficiencia)}</div><div className="dw">peso 20%</div></div>
+          <div className="dim"><p className="dk">Rentabilidad</p><div className="dbar"><i style={{ width: `${d.rentabilidad}%` }} /></div><div className="dv">{Math.round(d.rentabilidad)}</div><div className="dw">peso {W.rentabilidad}%</div></div>
+          <div className="dim"><p className="dk">Flujo de caja</p><div className="dbar"><i style={{ width: `${d.flujoCaja}%` }} /></div><div className="dv">{Math.round(d.flujoCaja)}</div><div className="dw">peso {W.flujoCaja}%</div></div>
+          {typeof d.cashOnCash === "number" && (
+            <div className="dim"><p className="dk">Retorno sobre lo puesto</p><div className="dbar"><i style={{ width: `${d.cashOnCash}%` }} /></div><div className="dv">{Math.round(d.cashOnCash)}</div><div className="dw">peso {W.cashOnCash}%</div></div>
+          )}
+          {d.tir !== undefined && (
+            d.tir === null
+              ? <div className="dim"><p className="dk">TIR a 10 años</p><div className="dbar" /><div className="dv">—</div><div className="dw">no aplica sin pie · peso repartido</div></div>
+              : <div className="dim"><p className="dk">TIR a 10 años</p><div className="dbar"><i style={{ width: `${d.tir}%` }} /></div><div className="dv">{Math.round(d.tir)}</div><div className="dw">peso {W.tir}%</div></div>
+          )}
+          <div className="dim"><p className="dk">Plusvalía</p><div className="dbar"><i style={{ width: `${d.plusvalia}%` }} /></div><div className="dv">{Math.round(d.plusvalia)}</div><div className="dw">peso {W.plusvalia}%</div></div>
+          <div className="dim"><p className="dk">Eficiencia</p><div className="dbar"><i style={{ width: `${d.eficiencia}%` }} /></div><div className="dv">{Math.round(d.eficiencia)}</div><div className="dw">peso {W.eficiencia}%</div></div>
         </div>
 
         <div className="exec avoid-break"><p>{results.resumenEjecutivo}</p></div>

@@ -163,7 +163,7 @@ export default async function DocumentoLTRPage({
       ai={ai}
       inputData={inputDataRaw}
       veredicto={veredicto}
-      score={analisis.score}
+      score={results?.score ?? analisis.score}
       ufFrozen={ufFrozen}
       nombre={analisis.nombre}
       comuna={analisis.comuna}

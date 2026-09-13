@@ -163,11 +163,28 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
   if (/score=\{analisis\.score\}/.test(P)) F("6 · la página LTR sigue pasando la columna `analisis.score` persistida: con el score nuevo mostraría el número viejo junto a un veredicto recomputado");
 }
 
+// ── 7 · los dos PDF leen los pesos del motor y pintan las seis dimensiones ─
+// Bloque 0 del plan (12-sep-2026): `DocumentoLTR.tsx` hardcodeaba «peso 30%/25%/25%/20%» en
+// el JSX; con seis dimensiones eso mentiría. Los dos documentos leen `score-retorno.ts`
+// (LTR) o el `peso` que viaja en cada `DimensionScore` (STR), y pintan también el retorno
+// sobre lo puesto y la TIR. Y el documento LTR pasa el score recomputado, no la columna.
+{
+  const L = leer("src/app/analisis/[id]/documento/DocumentoLTR.tsx");
+  if (/peso \d+%/.test(L)) F("7 · DocumentoLTR.tsx sigue con un peso hardcodeado en el JSX («peso NN%»): los pesos viven en score-retorno.ts");
+  if (!/PESOS_SCORE_LTR/.test(L)) F("7 · DocumentoLTR.tsx no lee PESOS_SCORE_LTR");
+  for (const k of ["cashOnCash", "tir"]) if (!L.includes(`d.${k}`)) F(`7 · DocumentoLTR.tsx no pinta la dimensión «${k}» del desglose`);
+  const S2 = leer("src/app/analisis/renta-corta/[id]/documento/DocumentoSTR.tsx");
+  for (const k of ["cashOnCash", "tir"]) if (!S2.includes(`d.${k}`)) F(`7 · DocumentoSTR.tsx no pinta la dimensión «${k}» del desglose`);
+  if (/peso \d+%/.test(S2)) F("7 · DocumentoSTR.tsx tiene un peso hardcodeado");
+  const PL = leer("src/app/analisis/[id]/documento/page.tsx");
+  if (/score=\{analisis\.score\}/.test(PL)) F("7 · el documento LTR sigue pasando la columna `analisis.score` persistida en vez del score recomputado");
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runScoreRetornoTier(): { hard: number } {
   console.log("\n─── TIER SCORE-RETORNO (esquema A · curva calibrada · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — pesos A en las dos modalidades, curvas calibradas, pie cero con rendimiento neto sobre el precio y TIR repartida, desglose de seis, puertas intactas, la página pinta el score recomputado");
+    console.log("  ✓ VERDE — pesos A en las dos modalidades, curvas calibradas, pie cero con rendimiento neto sobre el precio y TIR repartida, desglose de seis, puertas intactas, la página y el PDF pintan el score recomputado y los PDF leen los pesos del motor");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

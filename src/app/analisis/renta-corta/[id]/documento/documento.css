@@ -103,7 +103,8 @@
 .franco-doc .gauge-axis { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--mono); font-size: 9px; color: var(--text-muted); }
 
 /* 4 dimensiones STR (cada una pesa 25%) */
-.franco-doc .dims { margin-top: 11px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+/* 6 dimensiones desde el 12-sep-2026 (retorno sobre lo puesto y TIR): dos filas de tres */
+.franco-doc .dims { margin-top: 11px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; }
 .franco-doc .dim .dk { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; }
 .franco-doc .dim .dbar { height: 5px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
 .franco-doc .dim .dbar > i { display: block; height: 100%; background: var(--ink-400); border-radius: 3px; }

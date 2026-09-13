@@ -327,6 +327,15 @@ export function DocumentoSTR({
             <div className="dim"><p className="dk">Sostenibilidad</p><div className="dbar"><i style={{ width: `${d.sostenibilidad.score}%` }} /></div><div className="dv">{Math.round(d.sostenibilidad.score)}</div><div className="dw">peso {d.sostenibilidad.peso}%</div></div>
             <div className="dim"><p className="dk">Ventaja vs LTR</p><div className="dbar"><i style={{ width: `${d.ventaja.score}%` }} /></div><div className="dv">{Math.round(d.ventaja.score)}</div><div className="dw">peso {d.ventaja.peso}%</div></div>
             <div className="dim"><p className="dk">Factibilidad</p><div className="dbar"><i style={{ width: `${d.factibilidad.score}%` }} /></div><div className="dv">{Math.round(d.factibilidad.score)}</div><div className="dw">peso {d.factibilidad.peso}%</div></div>
+            {/* Retorno sobre lo puesto y TIR (12-sep-2026). Filas persistidas antes no las traen. */}
+            {d.cashOnCash && (
+              <div className="dim"><p className="dk">Retorno sobre lo puesto</p><div className="dbar"><i style={{ width: `${d.cashOnCash.score}%` }} /></div><div className="dv">{Math.round(d.cashOnCash.score)}</div><div className="dw">peso {d.cashOnCash.peso}%</div></div>
+            )}
+            {d.tir && (
+              d.tir.aplica === false
+                ? <div className="dim"><p className="dk">TIR a 10 años</p><div className="dbar" /><div className="dv">—</div><div className="dw">no aplica sin pie · peso repartido</div></div>
+                : <div className="dim"><p className="dk">TIR a 10 años</p><div className="dbar"><i style={{ width: `${d.tir.score}%` }} /></div><div className="dv">{Math.round(d.tir.score)}</div><div className="dw">peso {d.tir.peso}%</div></div>
+            )}
           </div>
         )}
 
