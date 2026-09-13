@@ -49,6 +49,7 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
 import { salidaPorMixStr, mixAlEscalonStr } from "@/lib/salida-por-mix";
+import { PESOS_SCORE_STR } from "@/lib/score-retorno";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
 // que el render y que REGLA 10 del prompt LTR. Nunca literal tipeado.
@@ -142,7 +143,22 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 //      modelo). Reemplazo solo en el texto dirigido al modelo: «cambio», «lo que mueves»,
 //      «lo que no cierra», «de fondo». Los identificadores de código no se tocan. Las frases
 //      del motor que entran al user (fraseCanonica) quedan en cola: son copy de la card.
-export const PROMPT_VERSION_STR = 19;
+// v20 (12-sep-2026) · EL PROMPT RECIBE LAS SEIS DIMENSIONES (espejo del bump LTR v25).
+// El score STR tiene cash-on-cash y TIR como dimensiones ponderadas desde el bloque 1 del
+// goal del retorno (`score-retorno.ts`, pesos 15/20/20/20/15/10) y este prompt seguía
+// mostrando CUATRO: el modelo explicaba el veredicto sin saber que el retorno sobre lo
+// puesto pesa el 15% ni que la TIR pesa el 10%, y sin poder nombrarlos. Entran las seis
+// con sus pesos leídos del motor, el pie cero dice que la TIR no aplica y reparte, y el
+// motor declara cuáles son las dos que más suman y las dos que más restan —la lección de
+// v25: sin el ranking explícito la prosa elige los extremos por su cuenta—.
+//
+// LA ORDEN DE NOMBRARLO VA EN EL USER PROMPT, pegada a los números, y no solo en el
+// system. En v25 la instrucción vivió en §4 del system, a dos mil líneas del contrato por
+// campo, y de 8 generaciones donde el retorno mandaba ninguna lo nombró. Acá va en los dos
+// lugares, con la glosa al lado del puntaje.
+//
+// Se mueve el hash del SYSTEM (bloque nuevo) y el del USER (bloque del score).
+export const PROMPT_VERSION_STR = 20;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del caso, que llegan YA CALCULADOS — no de adjetivos ni tono enfático. Interpretas esos números y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -272,6 +288,16 @@ Se activa ÚNICAMENTE cuando el input dice pie 0% (línea "FINANCIAMIENTO DEL 10
 - PROHIBIDO CELEBRAR MÉTRICAS SOBRE CAPITAL: Cash-on-Cash y multiplicador vienen "no aplica: sin capital propio (pie $0)" — no existen, no digas "retorno infinito" ni "múltiplo espectacular". Flujo positivo se lee "la operación aguanta su propio financiamiento completo", nunca como rentabilidad sobre capital. La comparación con instrumentos (Ángulo 3) se hace en FLUJO y esfuerzo, no en múltiplos.
 - DUREZA EXTRA CON EL PRECIO: con pie 0 alguien está cubriendo ese pie — usualmente la inmobiliaria a través del precio de lista cargado. El precio/m² contra la zona se compara con MÁS dureza, no menos.
 - El riesgo de fondo (dividendo en su punto más alto, cero colchón de capital, sensibilidad total a vacancia y tasa) se SUMA a los riesgos operativos del STR (ocupación, estacionalidad, ramp-up) — no los reemplaza ni los suaviza.
+
+## 5.ter EL SCORE MIRA EL RETORNO SOBRE LO QUE PONES
+
+El Franco Score STR tiene SEIS dimensiones, con pesos 15/20/20/20/15/10: rentabilidad, sostenibilidad, ventaja vs LTR, factibilidad, retorno sobre lo puesto y TIR. Las seis llegan con su puntaje en el bloque "FRANCO SCORE STR". Dos son sobre TU capital, no sobre el activo, y son las que el lector no sabe leer solo:
+- **retorno sobre lo puesto** — por cada $100 que pones el día uno (pie, amoblamiento, gastos de cierre), cuánto te devuelve la operación al año después del dividendo, la comisión y los costos; negativo significa que cada año pones plata además de lo inicial. Su dato es el Cash-on-Cash del bloque base.
+- **TIR a 10 años** — lo que rinde al año todo lo que pusiste, contando el flujo de la operación, la deuda que se amortiza y la plusvalía al vender.
+
+El input dice cuáles son «las dos que más suman» y «las dos que más restan». Si el retorno sobre lo puesto o la TIR están en cualquiera de esas listas, NÓMBRALO al explicar el veredicto —con la glosa de arriba y con su cifra—, y si están las dos, las dos: no se elige una en vez de la otra. Si ninguna está, no las fuerces.
+
+Los puntajes y los pesos se citan tal cual vienen: no calcules ni redondees ninguno, y no inventes puntajes que el input no trae. Con pie 0 la TIR no aplica y su peso se reparte entre las demás —no la nombres como dimensión— y el retorno sobre lo puesto es el rendimiento neto sobre el precio, sin apalancar; ahí manda §5.bis, que prohíbe celebrar métricas sobre capital.
 
 ## 6. Tiempos verbales
 
@@ -581,6 +607,18 @@ export function buildUserPromptSTR(
 
   // --- Score + veredicto ---
   const fs = r.francoScore;
+  // QUÉ DIMENSIONES MANDAN, dicho por el motor y no inferido por el modelo (v20). La que
+  // no aplica —la TIR sin pie— queda fuera del ranking: no se puede sumar ni restar lo que
+  // no se calculó.
+  const DIMS_STR: [string, { score: number; aplica?: boolean } | undefined][] = fs
+    ? [["rentabilidad", fs.desglose.rentabilidad], ["sostenibilidad", fs.desglose.sostenibilidad], ["ventaja vs LTR", fs.desglose.ventaja],
+       ["factibilidad", fs.desglose.factibilidad], ["retorno sobre lo puesto", fs.desglose.cashOnCash], ["TIR", fs.desglose.tir]]
+    : [];
+  const rankStr = DIMS_STR.filter((x): x is [string, { score: number; aplica?: boolean }] => !!x[1] && x[1].aplica !== false)
+    .sort((a, b) => b[1].score - a[1].score);
+  const fmtDimStr = (x: [string, { score: number }]) => `${x[0]} (${Math.round(x[1].score)})`;
+  const dimsQueSumanStr = rankStr.slice(0, 2).map(fmtDimStr).join(", ");
+  const dimsQueRestanStr = rankStr.slice(-2).reverse().map(fmtDimStr).join(", ");
   const score = fs?.score ?? 50;
   const veredictoMotor: STRVerdict = (fs?.veredicto as STRVerdict) ?? r.veredicto;
 
@@ -971,10 +1009,15 @@ Amoblado: ${amoblado} (costo amoblamiento: ${fmtCLP(costoAmoblamiento)})
 
 === FRANCO SCORE STR: ${score}/100 ===
 veredicto (dado — úsalo como conclusión, no lo contradigas · §7): ${veredictoMotor}
-${fs ? `Rentabilidad: ${fs.desglose.rentabilidad.score}/100 — ${fs.desglose.rentabilidad.detail}
-Sostenibilidad: ${fs.desglose.sostenibilidad.score}/100 — ${fs.desglose.sostenibilidad.detail}
-Ventaja vs LTR: ${fs.desglose.ventaja.score}/100 — ${fs.desglose.ventaja.detail}
-Factibilidad: ${fs.desglose.factibilidad.score}/100 — ${fs.desglose.factibilidad.detail}` : "(desglose no disponible)"}
+${fs ? `Rentabilidad: ${fs.desglose.rentabilidad.score}/100 — ${fs.desglose.rentabilidad.detail} (peso ${PESOS_SCORE_STR.rentabilidad}%)
+Sostenibilidad: ${fs.desglose.sostenibilidad.score}/100 — ${fs.desglose.sostenibilidad.detail} (peso ${PESOS_SCORE_STR.sostenibilidad}%)
+Ventaja vs LTR: ${fs.desglose.ventaja.score}/100 — ${fs.desglose.ventaja.detail} (peso ${PESOS_SCORE_STR.ventaja}%)
+Factibilidad: ${fs.desglose.factibilidad.score}/100 — ${fs.desglose.factibilidad.detail} (peso ${PESOS_SCORE_STR.factibilidad}%)
+${fs.desglose.cashOnCash ? `Retorno sobre lo puesto: ${fs.desglose.cashOnCash.score}/100 — ${fs.desglose.cashOnCash.detail} (peso ${PESOS_SCORE_STR.cashOnCash}%)` : ""}
+${!fs.desglose.tir ? "" : fs.desglose.tir.aplica === false ? `TIR a 10 años: no aplica (sin pie: su peso de ${PESOS_SCORE_STR.tir}% se reparte entre las demás)` : `TIR a 10 años: ${fs.desglose.tir.score}/100 — ${fs.desglose.tir.detail} (peso ${PESOS_SCORE_STR.tir}%)`}
+Los puntajes y los pesos se citan TAL CUAL: no calcules ni redondees ninguno.
+Las dos que más suman: ${dimsQueSumanStr}. Las dos que más restan: ${dimsQueRestanStr}.
+Si «retorno sobre lo puesto» o «TIR» están en cualquiera de esas dos listas, NÓMBRALO al explicar el veredicto en \`conviene.respuestaDirecta\` —con su glosa de lector y su cifra—; si están las dos, las dos, no una en vez de la otra.` : "(desglose no disponible)"}
 ${motivosBloque}
 
 ${bloqueBaseHeader}

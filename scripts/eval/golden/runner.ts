@@ -46,6 +46,7 @@ import { runMesVacioTier } from "./mes-vacio-catch-test";
 import { runRegulacionNoPesaTier } from "./regulacion-no-pesa-catch-test";
 import { runScoreRetornoTier } from "./score-retorno-catch-test";
 import { runPromptV25Tier } from "./prompt-v25-catch-test";
+import { runPromptV20StrTier } from "./prompt-v20-str-catch-test";
 import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runRespaldoArriendoTier } from "./respaldo-arriendo-catch-test";
 import { runDistanciaComprarTier } from "./distancia-comprar-catch-test";
@@ -284,6 +285,7 @@ async function printStrSemantic() {
   // ── Tier PROMPT-V25 (12-sep-2026, 0 tokens): las seis dimensiones al user prompt, el system las
   // explica, y el guard de puntajes con sujeto está cableado. Corre siempre con el QUICK. ──
   totalHard += runPromptV25Tier().hard;
+  totalHard += runPromptV20StrTier().hard;
   totalHard += runPlusvaliaGlosaTier().hard;
   totalHard += runRespaldoArriendoTier().hard;
   totalHard += runDistanciaComprarTier().hard;
