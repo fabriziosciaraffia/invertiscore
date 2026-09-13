@@ -12,7 +12,7 @@
 //   LTR            772             0             270        160
 //   STR            114             6              73         56
 //
-// Fija SIETE cosas:
+// Fija OCHO cosas:
 //
 //   1. EL POP-UP LEE DEL MOTOR. La matriz sale de `mixPalancas.celdas` y la tabla de
 //      `palancas[]`; el componente no recalcula descuentos ni scores. Si alguien mete
@@ -40,16 +40,23 @@
 //      créditos es del bloque C. Un CTA que navega antes de esa decisión cobraría un
 //      análisis sin que nadie lo haya decidido.
 //
+//   8. EL CUARTO ESTADO TIENE FIXTURE. «Sin grilla, con palancas solas» son 6 filas STR y
+//      ninguna estaba volcada: el estado no se podía ver ni fotografiar.
+//      `providenciaStrSoloPalancas` lo cubre, y el invariante fija que ahí el pop-up no
+//      dibuje matriz vacía ni óptimo inventado.
+//
 // Corre dentro del QUICK (tier "popup-ajustes") y standalone:
 //   node --import tsx scripts/eval/golden/popup-ajustes-catch-test.ts
 // ============================================================================
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import fixtures from "../../../src/app/dev/drawers-pixel/fixtures.json";
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n"); } catch { return ""; } };
+
 
 const POPUP = leer("src/components/analysis/shared/PopupAjustes.tsx");
 const HERO_LTR = leer("src/components/analysis/HeroLTR.tsx");
@@ -135,11 +142,47 @@ const HERO_STR = leer("src/components/analysis/str/HeroStrDictamen.tsx");
   }
 }
 
+// ── 8 · el cuarto estado: sin grilla, con palancas solas ───────────────────
+//
+// Son 6 filas STR del parque y ninguna estaba volcada, así que el estado vivía sin
+// fixture: nadie podía verlo ni fotografiarlo. `providenciaStrSoloPalancas` lo cubre
+// (13-sep-2026). Lo que este invariante protege es que el pop-up NO dibuje matriz vacía
+// ni óptimo inventado cuando el motor no encontró combinación: solo la tabla.
+{
+  const fx = (fixtures as Record<string, unknown>)["providenciaStrSoloPalancas"] as
+    | { results?: { hallazgos?: { id: string; valor?: Record<string, unknown> }[] } }
+    | undefined;
+  if (!fx) F("8 · falta el fixture `providenciaStrSoloPalancas`: el cuarto estado del pop-up quedaría sin cobertura");
+  else {
+    const dv = (fx.results?.hallazgos ?? []).find((h) => h.id === "distancia_veredicto")?.valor as
+      | { mixPalancas?: { celdas?: unknown[] } | null; mixPalancasHastaComprar?: { celdas?: unknown[] } | null; palancas?: unknown[] }
+      | undefined;
+    if (!dv) F("8 · el fixture del cuarto estado no trae hallazgo de distancia");
+    else {
+      const celdas = (dv.mixPalancas ?? dv.mixPalancasHastaComprar)?.celdas ?? [];
+      const solas = dv.palancas ?? [];
+      if (celdas.length) F(`8 · el fixture del cuarto estado trae ${celdas.length} celdas: ya no es «sin grilla» y deja de cubrir el estado`);
+      if (!solas.length) F("8 · el fixture del cuarto estado no trae palancas que crucen solas");
+    }
+  }
+  // Y el componente tiene que sobrevivir a ese caso: la matriz y el óptimo cuelgan de que
+  // HAYA celdas, y el CTA del mix. Si alguno se dibujara sin grilla, sería una caja vacía.
+  if (POPUP) {
+    if (!/celdas\.length > 0 && \(\s*\n?\s*<SeccionMatriz|celdas\.length > 0 &&/.test(POPUP)) {
+      F("8 · la matriz no está condicionada a que haya celdas: sin grilla dibujaría una caja vacía");
+    }
+    if (!/celdas\.length > 0 && <Cta|celdas\.length > 0 && <SeccionOptimo/.test(POPUP)) {
+      F("8 · el óptimo o el CTA no están condicionados a que haya grilla");
+    }
+    if (!/solas\.length > 0 &&/.test(POPUP)) F("8 · la tabla de las solas no está condicionada a que existan");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPopupAjustesTier(): { hard: number } {
   console.log("\n─── TIER POPUP-AJUSTES (el render del pop-up · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — lee del motor, la celda dice veredicto y score, «hoy» no se inventa, los siete pares con el retorno en guion, COMPRAR sin matriz, sin grilla ni palancas no hay botón y el CTA va inerte");
+    console.log("  ✓ VERDE — lee del motor, la celda dice veredicto y score, «hoy» no se inventa, los siete pares con el retorno en guion, COMPRAR sin matriz, el cuarto estado con su fixture, sin grilla ni palancas no hay botón y el CTA va inerte");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
