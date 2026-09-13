@@ -1714,70 +1714,7 @@ export function simularPie(
 
 // `CeldaPiePlazo` / `MatrizPiePlazo` viven en types.ts desde el goal "Matriz III: cruza por
 // veredicto" (06-sep-2026), porque `FullAnalysisResult.matrizPiePlazo` las necesita ahí.
-export type { CeldaPiePlazo, MatrizPiePlazo } from "./types";
-import type { CeldaPiePlazo, MatrizPiePlazo } from "./types";
 
-/**
- * MATRIZ PIE × PLAZO — la simulación COMBINADA que el contrato CONGELADO (02-sep-2026)
- * pide en el capítulo "Cómo lo pagas", en reemplazo de las dos escaleras separadas.
- *
- * Misma ruta que `simularPie` (clon del input → calcMetrics → calcProjections →
- * calcExitScenario), pero con AMBOS parches a la vez: `piePct` y `plazoCredito`.
- * Ni `simularPie` ni `simularPlazo` sirven para esto — cada una mueve una sola
- * dimensión y deja la otra en el valor declarado; la celda (pie+5, plazo−5) no
- * existe en ninguna de las dos.
- *
- * INVARIANTE (la caza scripts/eval/golden/simulacion-catch-test.ts): la celda
- * `esActual` reproduce BIT-IDÉNTICO `metrics.flujoNetoMensual` y `exitScenario.tir`
- * del análisis canónico. Si divergiera, la matriz describiría otro deal que el
- * que muestra el resto del informe.
- *
- * DEVUELVE VACÍO con la misma regla que las escaleras que reemplaza: pie 0 o 100
- * (no hay pie que mover) y plazo declarado fuera de los tramos comerciales (no
- * habría celda "hoy" que anclar).
- */
-export function simularPieYPlazo(
-  input: AnalisisInput,
-  ufClp: number,
-  asOf: Date,
-  medianaComunaVentaUF?: MedianaComunaInyectada,
-): MatrizPiePlazo {
-  const vacia: MatrizPiePlazo = { pies: [], plazos: [], celdas: [] };
-  const pieActual = input.piePct;
-  const plazoActual = input.plazoCredito;
-  if (!Number.isFinite(pieActual) || pieActual <= 0 || pieActual >= 100) return vacia;
-  if (!Number.isFinite(plazoActual)) return vacia;
-  if (!PLAZOS_COMERCIALES.includes(plazoActual as (typeof PLAZOS_COMERCIALES)[number])) return vacia;
-  const precioCLP = input.precio * ufClp;
-  if (!(precioCLP > 0) || !(ufClp > 0)) return vacia;
-  const pies = [pieActual - 5, pieActual, pieActual + 5, pieActual + 10]
-    .filter((p) => p > 0 && p < 100)
-    // Misma regla que simularPie: el actual queda exacto, el resto a 1 decimal.
-    .map((p) => (p === pieActual ? p : Math.round(p * 10) / 10));
-  const plazos = [...PLAZOS_COMERCIALES];
-  const celdas: CeldaPiePlazo[] = [];
-  for (const piePct of pies) {
-    for (const plazoAnios of plazos) {
-      const clone: AnalisisInput = { ...input, piePct, plazoCredito: plazoAnios };
-      const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
-      const proj = calcProjections({ input: clone, metrics: m, ufClp, asOf });
-      const exit = calcExitScenario(clone, m, proj);
-      // Veredicto de la combinación por la MISMA ruta que `veredictoConPatch` (y que el
-      // canónico de runAnalysis), reutilizando las métricas que la celda ya calculó.
-      const score = calcScoreFromMetrics(clone, m, ufClp, asOf, metricaValorONull(exit.tir));
-      const veredicto = deriveVeredicto(score, m, calcBreakEvenTasa(clone, m, ufClp));
-      celdas.push({
-        piePct,
-        plazoAnios,
-        esActual: piePct === pieActual && plazoAnios === plazoActual,
-        flujoMensual: m.flujoNetoMensual,
-        tirPct: metricaValorONull(exit.tir),
-        veredicto,
-      });
-    }
-  }
-  return { pies, plazos, celdas };
-}
 
 /** Tasas de referencia de los instrumentos contra los que el informe compara la
  *  plata inicial ("La misma plata en otro lado"). Son las mismas que el prompt

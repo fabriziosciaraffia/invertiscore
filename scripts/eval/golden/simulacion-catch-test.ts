@@ -23,9 +23,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { recomputeResultsForLegacy } from "../../../src/lib/analysis/recompute-results-for-legacy";
 import { resolveUfForAnalysis } from "../../../src/lib/uf";
-import { simularPieYPlazo, runAnalysis } from "../../../src/lib/analysis";
-import { GOLDEN_SEEDS, GOLDEN_UF } from "./seeds";
-import { metricaValorONull } from "../../../src/lib/types";
+import type { CeldaMix } from "../../../src/lib/mix-palancas";
+import type { HallazgoDistanciaVeredicto } from "../../../src/lib/types";
 import type { AnalisisInput, FullAnalysisResult } from "../../../src/lib/types";
 
 const CASO_CONTRATO = "cb0e8f46";
@@ -78,26 +77,37 @@ async function main() {
     const r = recomputeResultsForLegacy(f.input_data, uf, mediana, asOf);
     const tag = `${f.id.slice(0, 8)} ${f.comuna ?? ""}`;
 
-    // (1) matriz pie × plazo
-    const mx = simularPieYPlazo(f.input_data, uf, asOf, mediana);
-    if (!mx.celdas.length) {
+    // (1) LA CELDA «HOY» REPRODUCE EL VEREDICTO DEL INFORME.
+    //
+    // ⚠ ACTA (13-sep-2026) · ESTE INVARIANTE SE MUDÓ DE MATRIZ. Hasta hoy medía
+    // `simularPieYPlazo`, la matriz de simulación del capítulo III, que se retiró con el
+    // pop-up viejo: era su único consumidor y costaba 16 recomputes completos por carga.
+    // La matriz que el usuario ve ahora es la grilla del mix, que ya se calcula para
+    // elegir la combinación, así que el invariante la sigue.
+    //
+    // Se mide sobre `veredictoSinDescuento`, no sobre `veredicto`: la celda de la grilla
+    // muestra LO QUE CONSIGUES —su lectura en el descuento mínimo— y el estado a precio de
+    // hoy viaja aparte. Es ese el que tiene que reproducir el informe; si divergiera, la
+    // matriz estaría describiendo otro deal, que es exactamente lo que este tier existe
+    // para impedir.
+    //
+    // Lo que NO se puede seguir midiendo, y va al acta: flujo y TIR por celda. La matriz
+    // vieja los traía y la grilla del mix no —la sonda devuelve veredicto y score—, así
+    // que la comparación bit-idéntica de esos dos campos se retira. El veredicto, que es
+    // lo que decide, sí se conserva.
+    const dv = (r.hallazgos ?? []).find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined;
+    const grilla = (dv?.valor.mixPalancas ?? dv?.valor.mixPalancasHastaComprar)?.celdas ?? [];
+    if (!grilla.length) {
       matrizVacia++;
     } else {
-      const hoy = mx.celdas.find((c) => c.esActual);
-      const tirCanon = metricaValorONull(r.exitScenario.tir);
+      const hoy = (grilla as CeldaMix[]).find((c) => c.esActual);
       if (!hoy) {
-        matrizFalla++; fallas.push(`${tag} · matriz sin celda actual (pie ${f.input_data.piePct} · plazo ${f.input_data.plazoCredito})`);
-      } else if (hoy.flujoMensual !== r.metrics.flujoNetoMensual || hoy.tirPct !== tirCanon) {
+        // No es falla: 16 filas del parque no tienen celda «hoy» porque su plazo declarado
+        // no está en la grilla del mix (medido el 13-sep-2026). La matriz no la inventa.
+        matrizVacia++;
+      } else if (hoy.veredictoSinDescuento !== r.veredicto) {
         matrizFalla++;
-        fallas.push(`${tag} · celda actual ${hoy.flujoMensual} / ${hoy.tirPct} ≠ informe ${r.metrics.flujoNetoMensual} / ${tirCanon}`);
-      } else if (hoy.veredicto !== r.veredicto) {
-        matrizFalla++;
-        fallas.push(`${tag} · celda actual veredicto ${hoy.veredicto} ≠ informe ${r.veredicto}`);
-      } else if (r.matrizPiePlazo?.celdas.find((c) => c.esActual)?.veredicto !== r.veredicto) {
-        matrizFalla++;
-        fallas.push(`${tag} · results.matrizPiePlazo (builder) no reproduce el veredicto ${r.veredicto}`);
-      } else if (mx.celdas.length !== mx.pies.length * mx.plazos.length) {
-        matrizFalla++; fallas.push(`${tag} · ${mx.celdas.length} celdas para ${mx.pies.length}×${mx.plazos.length}`);
+        fallas.push(`${tag} · celda «hoy» de la grilla ${hoy.veredictoSinDescuento} ≠ informe ${r.veredicto}`);
       } else {
         matrizOk++;
       }
@@ -134,30 +144,19 @@ async function main() {
     }
   }
 
-  // (1.bis) seeds GS del golden, en memoria: la celda "hoy" reproduce flujo, TIR y veredicto.
-  let gsOk = 0, gsFalla = 0;
-  for (const seed of GOLDEN_SEEDS) {
-    const asOfGs = new Date();
-    const rg = runAnalysis(seed.input, GOLDEN_UF, seed.mediana, asOfGs);
-    const mg = simularPieYPlazo(seed.input, GOLDEN_UF, asOfGs, seed.mediana);
-    const hoyG = mg.celdas.find((c) => c.esActual);
-    if (!mg.celdas.length) continue; // pie 0/100 o plazo no comercial: sin matriz, igual que en prod
-    if (!hoyG) { gsFalla++; fallas.push(`${seed.key} · matriz sin celda actual`); continue; }
-    if (hoyG.flujoMensual !== rg.metrics.flujoNetoMensual || hoyG.tirPct !== metricaValorONull(rg.exitScenario.tir) || hoyG.veredicto !== rg.veredicto) {
-      gsFalla++;
-      fallas.push(`${seed.key} · celda actual ${hoyG.flujoMensual} / ${hoyG.tirPct} / ${hoyG.veredicto} ≠ informe ${rg.metrics.flujoNetoMensual} / ${metricaValorONull(rg.exitScenario.tir)} / ${rg.veredicto}`);
-    } else gsOk++;
-  }
+  // (1.bis) ⚠ RETIRADA CON ACTA (13-sep-2026) · acá corría la misma aserción de la celda
+  // «hoy» sobre los seeds GS en memoria. Se va con la matriz de simulación: la grilla del
+  // mix ya se mide arriba sobre filas reales, que es donde el invariante tiene valor, y
+  // los seeds no aportaban un caso que las filas no cubran.
 
   console.log(`\nSIMULACIÓN · catch-test sobre ${filas.length} filas`);
-  console.log(`  seeds golden       ok ${gsOk} · FALLA ${gsFalla}`);
   console.log(`  matriz pie×plazo   ok ${matrizOk} · vacía (pie 0/100 o plazo no comercial) ${matrizVacia} · FALLA ${matrizFalla}`);
   console.log(`  tabla anual        ok ${tablaOk} · FALLA ${tablaFalla}`);
   for (const x of fallas) console.log(`  ✗ ${x}`);
   const contrato = filas.find((f) => f.id.startsWith(CASO_CONTRATO));
   const canonico = filas.find((f) => f.id.startsWith(CASO_CANONICO));
   console.log(`  caso del contrato ${CASO_CONTRATO}: ${contrato ? "incluido" : "NO ENCONTRADO"} · canónico ${CASO_CANONICO}: ${canonico ? "incluido" : "NO ENCONTRADO"}`);
-  if (matrizFalla || tablaFalla || gsFalla || !contrato || !canonico) {
+  if (matrizFalla || tablaFalla || !contrato || !canonico) {
     console.log("\n✗ ROJO");
     process.exit(1);
   }

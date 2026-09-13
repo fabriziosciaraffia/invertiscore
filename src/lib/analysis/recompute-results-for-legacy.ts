@@ -1,5 +1,5 @@
 import type { AnalisisInput, FullAnalysisResult } from "@/lib/types";
-import { runAnalysis, simularPieYPlazo } from "@/lib/analysis";
+import { runAnalysis } from "@/lib/analysis";
 import type { MedianaComunaInyectada } from "@/lib/comuna-stats";
 
 /**
@@ -47,9 +47,14 @@ export function recomputeResultsForLegacy(
   // usaría new Date() por su cuenta y la matriz otra.
   const fecha = asOf ?? new Date();
   const base = runAnalysis(input, ufClp, medianaComuna, fecha);
-  // Matriz pie × plazo del capítulo III (goal "cruza por veredicto", 06-sep-2026): se
-  // arma acá, en el builder, con la MISMA mediana, UF y fecha que el veredicto canónico.
-  // Antes la simulaba el componente en un useMemo, sin la mediana comunal, así que en
-  // filas con sobreprecio la celda "hoy" podía no reproducir el veredicto del informe.
-  return { ...base, matrizPiePlazo: simularPieYPlazo(input, ufClp, fecha, medianaComuna) };
+  // ⚠ ACTA (13-sep-2026) · ACÁ SE ARMABA LA MATRIZ PIE × PLAZO y ya no. La simulaba
+  // `simularPieYPlazo`, 16 celdas con recompute completo cada una, y su único consumidor
+  // era `MatrizPiePlazoLtr`, que solo montaba el pop-up viejo. Con el pop-up nuevo la
+  // matriz sale de la grilla del mix —que ya se calcula para elegir la combinación— así
+  // que esas 16 celdas quedaron sin nadie que las leyera.
+  //
+  // Lo que la matriz aportaba y NO se pierde: su celda «hoy» reproducía el veredicto del
+  // informe, y eso era un invariante del golden. Se mudó a la grilla del mix, sobre
+  // `veredictoSinDescuento` de la celda `esActual` (simulacion-catch-test, parte 1).
+  return base;
 }
