@@ -62,7 +62,9 @@ import fixtures from "./fixtures.json";
 // mentira por otra, que es la mitad que un arreglo apurado rompe.
 // `providenciaStrSoloPalancas` (13-sep-2026) es el CUARTO estado del pop-up: sin grilla y
 // con una palanca que cruza sola. Son 6 filas STR en el parque y ninguna estaba volcada.
-type FixKey = "providenciaStrSoloPalancas" | "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "providenciaLtrV22" | "laFloridaLtr" | "laFloridaLtrV22" | "nunoaLtr" | "nunoaLtrV22" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro" | "gs4LtrMixCuerpo" | "gs7LtrUnicaSalida" | "providenciaLtrViejo" | "lasCondesLtrSinSalida";
+// `santiagoStrUnaFila` (13-sep-2026): la grilla degenerada de UNA FILA (un solo pie), 63
+// filas LTR y 2 STR. Con una fila no hay matriz que dibujar: hay una línea de plazos.
+type FixKey = "santiagoStrUnaFila" | "providenciaStrSoloPalancas" | "staRosaStr" | "staRosaStrV11" | "grajalesStr" | "providenciaLtr" | "providenciaLtrV20" | "providenciaLtrV22" | "laFloridaLtr" | "laFloridaLtrV22" | "nunoaLtr" | "nunoaLtrV22" | "lasCondesStr" | "lasCondesStrNo" | "lasCondesStrNoSeguro" | "gs4LtrMixCuerpo" | "gs7LtrUnicaSalida" | "providenciaLtrViejo" | "lasCondesLtrSinSalida";
 
 function Inner() {
   const sp = useSearchParams();
