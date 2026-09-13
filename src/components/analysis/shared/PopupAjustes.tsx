@@ -79,6 +79,22 @@ function mixAComprar(v: HallazgoDistanciaVeredicto["valor"]) {
   return v.veredictoBase === "BUSCAR OTRA" ? v.mixPalancasHastaComprar ?? null : v.mixPalancas ?? null;
 }
 
+/**
+ * ¿ESTA CELDA LLEGA AL DESTINO? Y que el color diga lo mismo que la palabra.
+ *
+ * `alcanzable` sale de la bisección —hay un descuento que cruza y cuesta dentro del tope—,
+ * pero el veredicto que la celda ESCRIBE sale de recomputar en el descuento publicado, que
+ * es el de la bisección redondeado. Cuando el redondeo cae hacia abajo, el recompute ya no
+ * cruza: la celda quedaba pintada de «llega a Comprar» y con la palabra «Ajustar» adentro.
+ * Con el verde eso no se notaba; con el azul del veredicto la contradicción es literal.
+ *
+ * Acá manda la palabra, que es un recompute de verdad. El redondeo del motor es un arreglo
+ * aparte —anotado el 13-sep-2026— y hasta que se haga el color no promete de más.
+ */
+function cruzaDeVerdad(c: CeldaMix, destino: Veredicto) {
+  return c.descuentoPct !== null && c.alcanzable && c.veredicto === destino;
+}
+
 export interface PopupAjustesProps {
   modalidad: "ltr" | "str";
   veredicto: Veredicto;
@@ -220,7 +236,7 @@ function SeccionMatriz({
 
   if (unaSola) {
     const c = celdas[0];
-    const cruza = c.descuentoPct !== null && c.alcanzable;
+    const cruza = cruzaDeVerdad(c, destino);
     return (
       <section className="paj-sec">
         <div className="paj-st">Ajustes que dependen de ti</div>
@@ -267,7 +283,7 @@ function SeccionMatriz({
                 {plazos.map((plazo) => {
                   const c = at(pie, plazo);
                   if (!c) return <td key={plazo} className="vacia" />;
-                  const cruza = c.descuentoPct !== null && c.alcanzable;
+                  const cruza = cruzaDeVerdad(c, destino);
                   const clases = [
                     c.esElegida ? "mix" : cruza ? "cruza" : "",
                     c.esActual ? "hoy" : "",
@@ -436,14 +452,21 @@ function SeccionOptimo({
           label="Franco Score"
           antes={antes?.score != null ? String(antes.score) : actual?.scoreSinDescuento != null ? String(actual.scoreSinDescuento) : PAR_SIN_VALOR}
           despues={mix.score != null ? String(mix.score) : PAR_SIN_VALOR}
-          tono="bien"
+          tono="destino"
         />
       </div>
     </section>
   );
 }
 
-function Par({ label, antes, despues, tono }: { label: string; antes: string; despues: string; tono?: "bien" | "mal" }) {
+/**
+ * Un par antes → después. El `tono` NO es decoración:
+ *   · `bien` / `mal` es el semáforo del DATO, y solo va donde el dato tiene signo (flujo
+ *     mensual, retorno por cada $100). Verde y rojo ahí son la lectura convencional.
+ *   · `destino` es el Franco Score de después, que no es un dato con signo sino el número
+ *     que declara el veredicto al que llegas: va con el azul de Comprar.
+ */
+function Par({ label, antes, despues, tono }: { label: string; antes: string; despues: string; tono?: "bien" | "mal" | "destino" }) {
   return (
     <div className="paj-par">
       <div className="l">{label}</div>
@@ -501,7 +524,7 @@ function SeccionSolas({
                 {cifra(p)}
                 {detalle(p) && <small>{detalle(p)}</small>}
               </td>
-              <td className="dst">
+              <td className={`dst${p.destino === "COMPRAR" ? " comprar" : ""}`}>
                 {p.destino ? etiquetaVeredicto(p.destino, "frase") : PAR_SIN_VALOR}
                 <small>score {p.score ?? PAR_SIN_VALOR}</small>
               </td>

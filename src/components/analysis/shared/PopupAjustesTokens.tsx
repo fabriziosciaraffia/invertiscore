@@ -5,11 +5,22 @@
  * con los tokens de la app: el mockup define los suyos (--page, --card, --tx…) y acá se leen
  * los `--doc-*` de la portada, que son los que ya gobiernan el informe en los dos temas.
  *
- * Dos mapeos que vale la pena dejar dichos:
- *  · el azul `--up` del mockup pasa a `--doc-good`, que es el color con el que el informe ya
- *    dice «esto mejora». Un azul nuevo sería un color nuevo en una paleta de dos.
- *  · el CTA usa `--verdict`, el mismo de la card, para que el botón se lea como continuación
- *    de la recomendación y no como un elemento de otra familia.
+ * TRES FAMILIAS DE COLOR, Y NINGUNA CUARTA (auditoría del 13-sep-2026):
+ *  · la TRÍADA DEL VEREDICTO. Todo lo que nombra un veredicto se pinta con ella. «La celda
+ *    llega a Comprar», «llegas a Comprar» y el Score de destino van en `--doc-comprar`, que
+ *    es el azul de la tríada nombrable sin depender del veredicto de la fila. Hasta hoy iban
+ *    en `--doc-good`: un verde que en la página significa «este dato está bien», no «este
+ *    caso pasa a Comprar». Eran dos afirmaciones distintas con el mismo color, y encima el
+ *    verde compite con el rojo de Franco en una paleta de dos. El CTA sigue en `--verdict`
+ *    —el de la fila— para leerse como continuación de la card.
+ *  · el SEMÁFORO DEL DATO, `--doc-good` / `--signal-red`, y solo donde hay un dato en un eje
+ *    ordinal: flujo mensual y retorno por cada $100, que pueden ser negativos. Es la misma
+ *    excepción documentada del Dial y el Thermo.
+ *  · el ROJO DE FRANCO por la regla del rojo: la plata que el ajuste te exige poner el día
+ *    uno. Métrica que pide atención, no decoración.
+ *
+ * La selección de una celda NO es color: es un aro de tinta. Antes usaba `--verdict`, o sea
+ * dibujaba un aro ciruela alrededor de una celda que dice «llega a Comprar».
  *
  * Viaja con el componente (se monta solo cuando el pop-up se abre), no en el árbol de la página.
  */
@@ -63,23 +74,26 @@ export function PopupAjustesTokens() {
       .paj-mtx td.vacia{background:transparent;cursor:default}
       .paj-mtx td:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.12)}
       .paj-mtx td small{display:block;font-size:10.5px;font-weight:600;opacity:.75;margin-top:2px}
-      .paj-mtx td.cruza{background:color-mix(in srgb,var(--doc-good) 16%,transparent);color:var(--doc-good)}
+      .paj-mtx td.cruza{background:color-mix(in srgb,var(--doc-comprar) 16%,transparent);color:var(--doc-comprar)}
       .paj-mtx td.hoy{outline:2px solid var(--doc-tx3);outline-offset:-2px}
       .paj-mtx td.mix{background:var(--doc-tx);color:var(--doc-paper)}
-      .paj-mtx td.sel{outline:2.5px solid var(--verdict);outline-offset:-2px}
+      /* El aro de selección va POR FUERA (offset positivo) y en tinta: así se ve también
+         sobre la celda elegida, que ya tiene el fondo de tinta lleno. Cabe en el
+         \`border-spacing:4px\` sin tocar a la vecina. */
+      .paj-mtx td.sel{outline:2px solid var(--doc-tx);outline-offset:1px}
       .paj-leyenda{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:var(--doc-tx3);
         margin-top:10px;padding-left:52px}
       .paj-leyenda span{display:inline-flex;align-items:center;gap:6px}
       .paj-sw{width:12px;height:12px;border-radius:3px;display:inline-block}
       .paj-sw.a{background:var(--doc-tx)}
-      .paj-sw.b{background:color-mix(in srgb,var(--doc-good) 16%,transparent);border:1px solid var(--doc-good)}
+      .paj-sw.b{background:color-mix(in srgb,var(--doc-comprar) 16%,transparent);border:1px solid var(--doc-comprar)}
       .paj-sw.c{background:var(--doc-paper2);outline:2px solid var(--doc-tx3);outline-offset:-2px}
       /* La celda única: una línea, no un cuadrito con ejes alrededor. */
       .paj-unica{display:flex;justify-content:space-between;align-items:center;gap:12px;
         background:var(--doc-paper2);border-radius:12px;padding:14px 16px;cursor:pointer;font-size:13.5px}
       .paj-unica .k{color:var(--doc-tx2)}
       .paj-unica .v{font-weight:700;white-space:nowrap}
-      .paj-unica .v.cruza{color:var(--doc-good)}
+      .paj-unica .v.cruza{color:var(--doc-comprar)}
       .paj-cel{background:var(--doc-paper3,var(--doc-paper2));border-radius:12px;padding:13px 14px;
         margin-top:12px;position:relative}
       .paj-cel .x{position:absolute;top:9px;right:10px;width:24px;height:24px;border-radius:50%;
@@ -106,8 +120,13 @@ export function PopupAjustesTokens() {
       .paj-par .a1{font-size:13px;color:var(--doc-tx4);white-space:nowrap}
       .paj-par .fl{color:var(--doc-tx4);font-weight:700}
       .paj-par .b1{font-size:16px;font-weight:700;white-space:nowrap;letter-spacing:-.015em}
+      /* Semáforo del DATO, y solo donde hay un dato con signo: flujo y retorno. */
       .paj-par .b1.bien{color:var(--doc-good)}
       .paj-par .b1.mal{color:var(--signal-red)}
+      /* El Score de después NO es un dato con signo: es el número que declara el veredicto
+         al que llegas. Iba en verde fijo —«bien» pase lo que pase—, que pintaba de bueno un
+         62 igual que un 81. Va con el azul de Comprar, que es lo que ese número dice. */
+      .paj-par .b1.destino{color:var(--doc-comprar)}
       .paj-nod table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
       .paj-nod th{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
         color:var(--doc-tx4);text-align:right;padding:0 0 8px}
@@ -118,7 +137,11 @@ export function PopupAjustesTokens() {
         font-size:11.5px;margin-top:2px}
       .paj-nod .num{font-weight:700;font-size:15px;letter-spacing:-.015em;white-space:nowrap}
       .paj-nod .num small{display:block;font-size:11px;font-weight:400;color:var(--doc-tx3);margin-top:2px}
-      .paj-nod .dst{color:var(--doc-good);font-weight:700;white-space:nowrap}
+      /* «Llegas a …» dice un VEREDICTO, así que se pinta con el de la tríada que nombra, no
+         con el verde del dato. Solo el azul cuando dice Comprar: si la palanca deja el caso
+         en otro lado, el color no puede prometer Comprar. */
+      .paj-nod .dst{color:var(--doc-tx);font-weight:700;white-space:nowrap}
+      .paj-nod .dst.comprar{color:var(--doc-comprar)}
       .paj-nod .dst small{display:block;font-size:11px;font-weight:600;opacity:.75;margin-top:2px}
       .paj-nod .paj-oracion{text-align:left;font-weight:400;color:var(--doc-tx2);padding-left:14px;
         line-height:1.5;font-size:13px}

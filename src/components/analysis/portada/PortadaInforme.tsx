@@ -303,6 +303,17 @@ export function DocTokens() {
            papel para que la barra sea el veredicto y no una fila de casilleros. */
         --doc-score-empty:#282828;
         --doc-paper3:#232323; --doc-neutral:#6E6A63; --doc-good:#57B98A; --doc-warn:#DFA34F;
+        /* EL AZUL DE COMPRAR, NOMBRABLE (13-sep-2026). \`--verdict\` vale el veredicto de
+           LA FILA, así que dentro de un informe AJUSTA vale ciruela: no sirve para pintar
+           «esto llega a Comprar», que es una pieza que solo aparece cuando la fila NO es
+           Comprar. Este token nombra el azul de la tríada con independencia de la fila.
+           Base #2B558F (el hex de [data-verdict="COMPRAR"]); en oscuro se aclara a
+           #6C9BE0 porque como TEXTO sobre papel oscuro el original da 2,63:1 y no se lee
+           —la tríada se diseñó como banda con texto blanco encima, no como tinta—.
+           Coincide en hex con \`--up\` por la misma economía de paleta que ya está anotada
+           abajo, y sigue sin ser el mismo sistema: aquel dice si un dato sube, éste
+           nombra un veredicto. */
+        --doc-comprar:#6C9BE0;
         /* CUARTO NIVEL (10-sep-2026) — existe para que una sección «p2» conserve DOS
            escalones hacia adentro. Sin él la escalera miente en la mitad de las
            secciones. El valor no se eligió a ojo: continúa el paso perceptual de la
@@ -345,6 +356,9 @@ export function DocTokens() {
            no un veredicto, y ahí verde y ámbar son la lectura convencional. En oscuro
            conservan sus variantes claras por contraste sobre #141414. */
         --doc-paper3:#EAE7DF; --doc-neutral:#8C8880; --doc-good:#2E8B57; --doc-warn:#B7791F;
+        /* el azul de COMPRAR en claro es el hex pelado de la tríada: 7,50:1 sobre el
+           papel, no necesita corrección. */
+        --doc-comprar:#2B558F;
         /* el cuarto nivel en claro: ΔL* 2,82 desde paper3, dentro del rango de los
            pasos que ya existían (3,45 y 2,48). */
         --doc-paper4:#E2DFD7;

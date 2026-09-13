@@ -12,7 +12,7 @@
 //   LTR            772             0             270        160
 //   STR            114             6              73         56
 //
-// Fija OCHO cosas:
+// Fija NUEVE cosas:
 //
 //   1. EL POP-UP LEE DEL MOTOR. La matriz sale de `mixPalancas.celdas` y la tabla de
 //      `palancas[]`; el componente no recalcula descuentos ni scores. Si alguien mete
@@ -35,6 +35,13 @@
 //   6. SIN GRILLA NI PALANCAS, NO HAY POP-UP. La card ya lo dice todo —«no hay forma», el
 //      número y la alternativa de comunas— y repetirlo en un pop-up es ruido. El botón no
 //      se dibuja (decisión Fabrizio, 13-sep-2026).
+//
+//   9. EL COLOR VA POR FAMILIA. Lo que nombra un VEREDICTO se pinta con la tríada
+//      (`--doc-comprar`), no con el verde `--doc-good` del semáforo del dato. Son dos
+//      afirmaciones distintas —«este caso pasa a Comprar» contra «este dato está bien»— y
+//      con el mismo color el pop-up decía las dos a la vez. El verde queda donde hay un
+//      dato con signo: flujo mensual y retorno. Y la selección de una celda es un aro de
+//      tinta, no un color de veredicto (decisión Fabrizio, 13-sep-2026).
 //
 //   7. EL CTA VA INERTE. Se dibuja con el precio negociado y no navega: la decisión de
 //      créditos es del bloque C. Un CTA que navega antes de esa decisión cobraría un
@@ -61,6 +68,8 @@ const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8").r
 const POPUP = leer("src/components/analysis/shared/PopupAjustes.tsx");
 const HERO_LTR = leer("src/components/analysis/HeroLTR.tsx");
 const HERO_STR = leer("src/components/analysis/str/HeroStrDictamen.tsx");
+const CSS = leer("src/components/analysis/shared/PopupAjustesTokens.tsx");
+const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 
 // ── 1 · existe y lee del motor ─────────────────────────────────────────────
 {
@@ -178,11 +187,58 @@ const HERO_STR = leer("src/components/analysis/str/HeroStrDictamen.tsx");
   }
 }
 
+// ── 9 · el color va por familia ─────────────────────────────────────────────
+{
+  // El token tiene que existir en los DOS temas: sin la variante clara la celda se pinta
+  // con el azul de papel oscuro sobre blanco, o no se pinta.
+  if (PORTADA) {
+    const decls = PORTADA.match(/--doc-comprar:\s*#[0-9A-Fa-f]{6}/g) ?? [];
+    if (decls.length < 2) {
+      F(`9 · «--doc-comprar» está declarado ${decls.length} vez/veces: hacen falta las dos, oscuro y claro`);
+    }
+  }
+  if (CSS) {
+    // Cada regla que nombra un veredicto, con el color que le toca.
+    const porVeredicto: [RegExp, string][] = [
+      [/\.paj-mtx td\.cruza\{[^}]*\}/, "la celda que llega a Comprar"],
+      [/\.paj-sw\.b\{[^}]*\}/, "el cuadrito de la leyenda"],
+      [/\.paj-unica \.v\.cruza\{[^}]*\}/, "la celda única que cruza"],
+      [/\.paj-nod \.dst\.comprar\{[^}]*\}/, "«llegas a Comprar» de la tabla de las solas"],
+      [/\.paj-par \.b1\.destino\{[^}]*\}/, "el Franco Score de destino"],
+    ];
+    for (const [re, quien] of porVeredicto) {
+      const m = CSS.match(re);
+      if (!m) { F(`9 · no se encuentra la regla de ${quien}`); continue; }
+      if (/--doc-good|--doc-warn/.test(m[0])) {
+        F(`9 · ${quien} se pinta con el semáforo del dato: nombra un veredicto, va con «--doc-comprar»`);
+      }
+      if (!/--doc-comprar/.test(m[0])) F(`9 · ${quien} no usa «--doc-comprar»`);
+    }
+    // El verde sobrevive SOLO en el semáforo del dato. Cualquier otro uso es una cuarta
+    // familia de color entrando por la ventana.
+    const usos = (CSS.match(/^[ ]*\.[^{\n]*\{[^}]*--doc-good[^}]*\}/gm) ?? []).map((r) => r.split("{")[0].trim());
+    const permitidos = [".paj-par .b1.bien"];
+    for (const u of usos) {
+      if (!permitidos.includes(u)) F(`9 · «${u}» usa el verde del dato fuera del semáforo`);
+    }
+    // La selección es tinta, no veredicto.
+    const selRule = CSS.match(/\.paj-mtx td\.sel\{[^}]*\}/);
+    if (!selRule) F("9 · no se encuentra la regla del aro de selección");
+    else if (/--verdict/.test(selRule[0])) {
+      F("9 · el aro de selección usa «--verdict»: en una fila Ajusta dibuja un aro ciruela alrededor de una celda que dice «llega a Comprar»");
+    }
+    // Las barras de COMPRAR se retiraron: las tres filas lo dicen con oraciones completas.
+    if (/paj-fr/.test(CSS) || /BarraFrontera/.test(POPUP)) {
+      F("9 · volvieron las barras de frontera de COMPRAR: repiten las tres filas y se leían en direcciones opuestas");
+    }
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPopupAjustesTier(): { hard: number } {
   console.log("\n─── TIER POPUP-AJUSTES (el render del pop-up · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — lee del motor, la celda dice veredicto y score, «hoy» no se inventa, los siete pares con el retorno en guion, COMPRAR sin matriz, el cuarto estado con su fixture, sin grilla ni palancas no hay botón y el CTA va inerte");
+    console.log("  ✓ VERDE — lee del motor, la celda dice veredicto y score, «hoy» no se inventa, los siete pares con el retorno en guion, COMPRAR sin matriz, el cuarto estado con su fixture, sin grilla ni palancas no hay botón, el CTA va inerte y el color va por familia");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
