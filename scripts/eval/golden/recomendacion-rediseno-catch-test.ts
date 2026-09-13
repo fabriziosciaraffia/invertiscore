@@ -302,11 +302,16 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
 // ── 16 · el chip «Lo pone …, no tú» sale de la card y entra al pop-up ────────
 {
   const VOC = leer("src/components/analysis/hallazgos/vocabulario.tsx");
-  const DRW = leer("src/components/analysis/drawers/DrawersPropios.tsx");
+  const PAJ = leer("src/components/analysis/shared/PopupAjustes.tsx");
   if (/lqhy-chip|TEXTO_CHIP/.test(BLO.slice(BLO.indexOf("function EcuacionRecomendacion")))) F("16 · la ecuación volvió a dibujar el chip por fila");
   if (!/quien\?:/.test(VOC) || !/pal-quien/.test(VOC)) F("16 · la primitiva Palancas no dibuja quién pone la palanca (pal-quien)");
   if (!reglaDe(".pal-quien", ACO)) F("16 · falta el estilo .pal-quien del pop-up");
-  if (!/quien: QUIEN_PALANCA\[/.test(DRW)) F("16 · construirPalancas no asigna quién pone cada palanca");
+  // ⚠ ACTA (13-sep-2026) · el pop-up se reescribió (bloque B) y la lista de palancas dejó
+  // de ser chips para ser la tabla «No depende de ti», con su columna «Si cambia». El quién
+  // sigue siendo obligatorio —es la razón de ser de esa sección— pero ahora vive en el
+  // componente nuevo. Apuntar al viejo dejaría el invariante verde sobre código sin montar.
+  if (!/const QUIEN: Record<PalancaDistancia\["palanca"\], string>/.test(PAJ)) F("16 · el pop-up no declara quién mueve cada palanca");
+  if (!/lo pone el vendedor/.test(PAJ) || !/lo pone el mercado/.test(PAJ)) F("16 · la tabla del pop-up no dice quién pone el precio ni quién el arriendo");
   if (!/Lo pone el mercado, no tú/.test(VOC) || !/Lo pone el vendedor, no tú/.test(VOC)) F("16 · el chip no usa la forma «Lo pone el mercado, no tú» / «Lo pone el vendedor, no tú»");
 }
 

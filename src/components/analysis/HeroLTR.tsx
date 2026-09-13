@@ -6,10 +6,11 @@ import { renderPlumon } from "./hallazgos/plumon";
 import { PosicionFranco } from "./shared/PosicionFranco";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo, HallazgoDistanciaVeredicto, HallazgoSensibilidad, Veredicto } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { DrawerDistanciaLtr, DrawerSensibilidadLtr } from "./drawers/DrawersPropios";
+import { PopupAjustes, hayAjustesQueMostrar } from "./shared/PopupAjustes";
+import { metricaValorONull } from "@/lib/types";
+import { PopupAjustesTokens } from "./shared/PopupAjustesTokens";
 import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { salidaPorMix } from "@/lib/salida-por-mix";
-import { MatrizPiePlazoLtr } from "./shared/MatrizPiePlazoLtr";
 import { LoQueHariaYoBloque } from "./shared/LoQueHariaYoBloque";
 import { construirLoQueHariaYo, estadoRecomendacion } from "@/lib/lo-que-haria-yo";
 import { construirAlternativaComunas, lineaAlternativaComunas } from "@/lib/alternativa-comunas";
@@ -147,47 +148,6 @@ export function HeroLTR({
   // Sin distancia cae a sensibilidad si existe; sin ninguna, no hay footer. Es
   // información de otra índole que no compite con el flujo de lectura: modal,
   // no drawer, y el único botón real del informe hasta que exista el CTA.
-  const footer =
-    distanciaRow && veredicto !== "COMPRAR"
-      ? {
-          key: "distanciaVeredicto" as const,
-          k: "Lo que te separa del veredicto de arriba",
-          // Cuántas de las vías cruzan, leído de `vias` (goal "cuatro palancas
-          // siempre"). Sin `vias` (filas viejas) queda la línea genérica. El total es el
-          // de las vías reales (LTR: 4); la frase vive en palancas-en-palabras (T1).
-          l: (() => {
-            const vias = distanciaRow.valor.vias;
-            if (!vias || vias.length === 0) return lineaFooterVias(null, 4);
-            return lineaFooterVias(
-              vias.filter((v) => v.estado === "cruza").length,
-              vias.length,
-              salidaPorMix(distanciaRow.valor) !== null,
-            );
-          })(),
-          btn: "Ver ajustes",
-          // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo
-          // (DrawerDistanciaLtr), que sabe cuántas vías cruzan.
-          sub: undefined,
-          // LAS DOS PROFUNDIDADES, UN SOLO POP-UP. Primero qué te separa del veredicto
-          // (las cuatro palancas con su intro y su cierre) y después qué pasa si mueves
-          // pie y plazo. Son la misma pregunta a dos niveles y no justifican dos botones.
-          cuerpo: (
-            <>
-              <DrawerDistanciaLtr hallazgo={distanciaRow} currency={currency} valorUF={valorUF} />
-              {results && <MatrizPiePlazoLtr results={results} currency={currency} valorUF={valorUF} />}
-            </>
-          ),
-        }
-      : sensibilidadRow && results
-        ? {
-            key: "sensibilidad" as const,
-            k: "Cuánto aguanta este veredicto",
-            l: "Franco probó hasta dónde puede caer el arriendo sin que cambie la conclusión.",
-            btn: "Ver margen",
-            sub: "Bajamos el arriendo declarado hasta que el veredicto se mueve. Esto es lo que aguanta antes de cambiar.",
-            cuerpo: <DrawerSensibilidadLtr hallazgo={sensibilidadRow} results={results} currency={currency} valorUF={valorUF} />,
-          }
-        : null;
   // POR QUÉ NO CIERRA (LTR) — puerto del patrón STR (§1.12.8): la glosa de los
   // motivos que decidieron el veredicto, SOLO cuando lo decidió un gate y no la
   // banda del score. Los brazos del Gate 1 viajan en el hallazgo de distancia
@@ -246,6 +206,83 @@ export function HeroLTR({
         })(),
       })
     : null;
+
+  // ¿HAY ALGO QUE MOSTRAR? (13-sep-2026) Si el motor no encontró grilla NI palancas que
+  // crucen, la card ya lo dice todo —«no hay forma», el número de lo que haría falta y la
+  // alternativa de comunas— y un pop-up que repita eso es ruido. Ahí NO se dibuja el botón.
+  // Medido: 267 filas LTR caen en ese caso. OJO con no confundirlo con el estado
+  // `sin_salida` de la card (600 filas): 333 de esas SÍ tienen grilla y sí abren el pop-up.
+  const hayQueMostrar = hayAjustesQueMostrar({
+    veredicto: veredicto as Veredicto,
+    distancia: distanciaRow ?? null,
+    filasComprar: bloqueDeterminista?.filas ?? null,
+  });
+  const cuerpoAjustes = (
+    <>
+      <PopupAjustesTokens />
+      <PopupAjustes
+        modalidad="ltr"
+        veredicto={veredicto as Veredicto}
+        distancia={distanciaRow ?? null}
+        filasComprar={bloqueDeterminista?.filas ?? null}
+        currency={currency}
+        valorUF={valorUF}
+        precioUF={Number(inputData?.precio ?? 0)}
+        antes={
+          results?.metrics
+            ? {
+                cuotaMensual: results.metrics.dividendo ?? null,
+                flujoMensual: results.metrics.flujoNetoMensual ?? null,
+                cocPct: metricaValorONull(results.metrics.cashOnCash),
+                capRateNetoPct: results.metrics.rentabilidadNeta ?? null,
+                tirPct: metricaValorONull(results.exitScenario?.tir),
+                score: results.score ?? null,
+              }
+            : null
+        }
+      />
+    </>
+  );
+  const footer =
+    !hayQueMostrar
+      ? null
+      : distanciaRow && veredicto !== "COMPRAR"
+      ? {
+          key: "distanciaVeredicto" as const,
+          k: "Recomendación de ajustes",
+          // Cuántas de las vías cruzan, leído de `vias` (goal "cuatro palancas
+          // siempre"). Sin `vias` (filas viejas) queda la línea genérica. El total es el
+          // de las vías reales (LTR: 4); la frase vive en palancas-en-palabras (T1).
+          l: (() => {
+            const vias = distanciaRow.valor.vias;
+            if (!vias || vias.length === 0) return lineaFooterVias(null, 4);
+            return lineaFooterVias(
+              vias.filter((v) => v.estado === "cruza").length,
+              vias.length,
+              salidaPorMix(distanciaRow.valor) !== null,
+            );
+          })(),
+          btn: "Ver ajustes",
+          // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo
+          // (DrawerDistanciaLtr), que sabe cuántas vías cruzan.
+          sub: undefined,
+          // LAS DOS PROFUNDIDADES, UN SOLO POP-UP. Primero qué te separa del veredicto
+          // (las cuatro palancas con su intro y su cierre) y después qué pasa si mueves
+          // pie y plazo. Son la misma pregunta a dos niveles y no justifican dos botones.
+          cuerpo: cuerpoAjustes,
+        }
+      : veredicto === "COMPRAR"
+        ? {
+            // COMPRAR: no hay a dónde subir, así que no hay matriz ni óptimo. Van los
+            // márgenes de la card —Margen, Precio, Verifica— con su oración completa.
+            key: "sensibilidad" as const,
+            k: "Recomendación de ajustes",
+            l: "Franco probó hasta dónde puede moverse cada supuesto sin que cambie la conclusión.",
+            btn: "Ver margen",
+            sub: undefined,
+            cuerpo: cuerpoAjustes,
+          }
+        : null;
   // LA PROSA SE MANTIENE SOLO DONDE EL CONTRATO VISUAL LA TIENE: el lead de COMPRAR y
   // la alternativa de comunas en BUSCAR OTRA, que es el único dato del bloque que NO
   // sale del motor (no hay fuente determinista de comunas parecidas). En AJUSTA el

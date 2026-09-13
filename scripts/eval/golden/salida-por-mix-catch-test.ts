@@ -171,7 +171,6 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
   // si el componente no las llama. Esto no prueba la rama —para eso está el shot— pero
   // sí caza el caso que de verdad pasa: alguien arregla el copy y se olvida de cablearlo.
   const CABLEADOS: [string, string][] = [
-    ["A · pop-up", "src/components/analysis/drawers/DrawersPropios.tsx"],
     ["C y D · card y comparativa", "src/lib/distancia-copy.ts"],
     ["E · capítulo de negociación", "src/components/ui/AnalysisDrawer.tsx"],
     ["G · PDF LTR", "src/app/analisis/[id]/documento/DocumentoLTR.tsx"],
@@ -182,6 +181,16 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
     if (!src) { F(`7 · ${donde}: no se pudo leer ${ruta}`); continue; }
     if (!/salida-por-mix/.test(src)) F(`7 · ${donde} no lee la fuente única (${ruta})`);
   }
+  // ⚠ ACTA (13-sep-2026) · LA SUPERFICIE A CAMBIÓ DE FUENTE. El pop-up se reescribió en el
+  // bloque B y ya no lleva prosa: no dice «hay salida» ni «no hay forma», DIBUJA la grilla
+  // del motor con su celda óptima. Pedirle que importe `salida-por-mix` —el módulo que
+  // redacta esas frases— sería pedirle copy que el contrato visual sacó. Lo que sí tiene que
+  // hacer, y se fija acá, es leer la grilla: una superficie que dibuja el mix desde otra
+  // fuente podría mostrar una combinación distinta de la que la card promete.
+  const popup = readFileSync(join(__dirname, "..", "..", "..", "src/components/analysis/shared/PopupAjustes.tsx"), "utf8");
+  if (!/mixPalancas/.test(popup) || !/\.celdas/.test(popup)) F("7 · A · el pop-up no dibuja la grilla del motor (`mixPalancas.celdas`)");
+  if (!/despues/.test(popup)) F("7 · A · el pop-up no lee el «después» de la celda elegida");
+
   // B es el único que no importa el módulo: recibe la respuesta por parámetro, porque
   // `lineaFooterVias` es una plantilla de conteo y no debe saber de hallazgos.
   const b = readFileSync(join(__dirname, "..", "..", "..", "src/lib/palancas-en-palabras.ts"), "utf8");

@@ -118,13 +118,23 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
 
 // ── 3 · las cuatro superficies leen del módulo ──────────────────────────────
 {
-  const drawer = leer("src/components/analysis/drawers/DrawersPropios.tsx");
-  const i = drawer.indexOf("export function DrawerDistanciaStr(");
-  const cuerpo = i === -1 ? "" : drawer.slice(i);
-  if (!cuerpo) F("3 · no se encontró DrawerDistanciaStr");
-  if (!/salidaPorMixStr\(/.test(cuerpo) || !/mixAlEscalonStr\(/.test(cuerpo)) F("3 · DrawerDistanciaStr no lee salidaPorMixStr / mixAlEscalonStr");
-  if (!/cierrePopupSalida\(/.test(cuerpo) || !/cierrePopupEscalonStr\(/.test(cuerpo)) F("3 · DrawerDistanciaStr no usa los cierres del módulo (cierrePopupSalida / cierrePopupEscalonStr)");
-  if (/Este departamento no da, y no es por cómo lo estás mirando\.<\/mark>\{" "\}\s*Ajustar los números sirve cuando falta poco; acá lo que pide es de otro orden\.\{" "\}\s*\{v\.piePctActual/.test(cuerpo) && !/salidaMixStr|salidaEscalonStr|salida(Str)?\s*\?/.test(cuerpo)) F("3 · el cierre «Este departamento no da» sigue sin bifurcar por la combinación");
+  // ⚠ ACTA (13-sep-2026) · EL POP-UP DEJÓ DE TENER PROSA. Hasta hoy esta parte fijaba tres
+  // cosas del cuerpo de `DrawerDistanciaStr`: que leyera `salidaPorMixStr` y
+  // `mixAlEscalonStr`, que usara los cierres del módulo (`cierrePopupSalida` /
+  // `cierrePopupEscalonStr`) y que no quedara el cierre viejo hardcodeado.
+  //
+  // El pop-up nuevo (`PopupAjustes`, bloque B) NO tiene intro ni cierre en prosa: es título,
+  // matriz, óptimo, tabla y CTA. Los dos cierres siguen existiendo y siguen usándose en las
+  // otras superficies —la card, la frase canónica del motor, el PDF— y ahí se siguen
+  // fijando, más abajo. Pero en el pop-up ya no tienen sujeto: exigirlos sería exigir prosa
+  // que el contrato visual sacó a propósito.
+  //
+  // Lo que SÍ se fija ahora es que el pop-up lea la celda del motor, que es de donde salen
+  // la matriz y el óptimo. `DrawerDistanciaStr` queda sin montar: si alguien lo vuelve a
+  // montar, el tier del pop-up (`popup-ajustes`) lo caza por el lado del hero.
+  const popup = leer("src/components/analysis/shared/PopupAjustes.tsx");
+  if (!popup) F("3 · no se encontró PopupAjustes, el cuerpo del pop-up");
+  if (!/mixPalancas/.test(popup) || !/\.celdas/.test(popup)) F("3 · el pop-up no lee la grilla del motor (`mixPalancas.celdas`)");
   const pdf = leer("src/app/analisis/renta-corta/[id]/documento/DocumentoSTR.tsx");
   if (!/pieDocumentoSalidaStr\(/.test(pdf)) F("3 · DocumentoSTR no usa pieDocumentoSalidaStr con combinación");
   const hero = leer("src/components/analysis/str/HeroStrDictamen.tsx");

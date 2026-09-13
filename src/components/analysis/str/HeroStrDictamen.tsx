@@ -8,8 +8,9 @@ import { lineaFooterVias } from "@/lib/palancas-en-palabras";
 import { salidaPorMixStr, mixAlEscalonStr } from "@/lib/salida-por-mix";
 import { ProgresoGeneracion, ETAPAS_GENERACION_STR, COPY_TIEMPO_STR } from "@/components/analysis/ProsaSkeleton";
 import { renderPlumon } from "@/components/analysis/hallazgos/plumon";
-import { VProsa, VViz, VCierre, Dial, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
-import { DrawerDistanciaStr } from "@/components/analysis/drawers/DrawersPropios";
+import { PopupAjustes, hayAjustesQueMostrar } from "@/components/analysis/shared/PopupAjustes";
+import { metricaValorONull } from "@/lib/types";
+import { PopupAjustesTokens } from "@/components/analysis/shared/PopupAjustesTokens";
 import { PosicionFranco, type FooterPosicion } from "@/components/analysis/shared";
 import { esProsaStrPodada } from "@/components/analysis/AIInsightSection";
 import { lineaQueDeclara } from "@/lib/veredicto-etiqueta";
@@ -90,7 +91,6 @@ export function HeroStrDictamen({
   // dos redacciones por modalidad sería lo que la fuente única vino a evitar.
   const pregunta = (podada ? lineaQueDeclara(veredicto) : conviene?.pregunta?.trim()) || "¿Conviene o no conviene?";
   const fechaFirma = fechaCortaCL(fechaProsa ?? createdAt);
-  const money = (n: number) => (currency === "UF" ? `UF ${(n / (valorUF || 1)).toFixed(1).replace(".", ",")}` : `$${Math.round(n).toLocaleString("es-CL")}`);
 
   // `hallazgos` (prop) es la SECCIÓN que la página arma; los del motor van con apellido.
   const hallazgosMotor = (results.hallazgos ?? []) as Hallazgo[];
@@ -102,63 +102,6 @@ export function HeroStrDictamen({
   // abren "Lo que te separa" (la matriz de vías, en modal); COMPRAR abre "Cuánto
   // aguanta este veredicto" (hasta dónde cae la tarifa). Sin distancia ni frontera, no
   // hay footer: la caja queda informativa.
-  const footer: FooterPosicion | null =
-    distancia && veredicto !== "COMPRAR"
-      ? {
-          key: "distanciaVeredicto",
-          k: "Lo que te separa del veredicto de arriba",
-          l: (() => {
-            const vias = distancia.valor.vias;
-            if (!vias || vias.length === 0) return lineaFooterVias(null, 5);
-            // «; juntos, sí» cuando la combinación llega a Comprar; «; juntos, solo hasta Ajusta
-            // supuestos» cuando llega al escalón (desde BUSCAR). Misma fuente que la card.
-            const salidaComprar = salidaPorMixStr(distancia.valor);
-            const salidaEscalon = salidaComprar ? null : mixAlEscalonStr(distancia.valor);
-            return lineaFooterVias(
-              vias.filter((v) => v.estado === "cruza").length,
-              vias.length,
-              salidaComprar !== null || salidaEscalon !== null,
-              salidaEscalon ? etiquetaVeredicto("AJUSTA SUPUESTOS") : null,
-            );
-          })(),
-          btn: "Ver ajustes",
-          cuerpo: <DrawerDistanciaStr hallazgo={distancia} currency={currency} valorUF={valorUF} />,
-        }
-      : fr?.abajo
-        ? {
-            key: "sensibilidad",
-            k: "Cuánto aguanta este veredicto",
-            l: "Franco probó hasta dónde puede caer la tarifa sin que cambie la conclusión.",
-            btn: "Ver margen",
-            sub: "Bajamos la tarifa por noche hasta que el veredicto se mueve. Esto es lo que aguanta antes de cambiar.",
-            cuerpo: (() => {
-              const abajo = fr.abajo!;
-              const lo = Math.min(0.6, abajo.factor - 0.1);
-              const hi = 1.2;
-              const pos = (x: number) => ((x - lo) / (hi - lo)) * 100;
-              const tono = (v: string): ZonaDial["tono"] => (v === "COMPRAR" ? "comprar" : v === "AJUSTA SUPUESTOS" ? "ajusta" : "buscar");
-              const nombre = (v: string) => etiquetaVeredicto(v, "frase");
-              const zonas: ZonaDial[] = [
-                { k: nombre(abajo.veredicto), pct: pos(abajo.factor) - pos(lo), tono: tono(abajo.veredicto) },
-                { k: "Comprar", pct: pos(hi) - pos(abajo.factor), tono: "comprar" },
-              ];
-              const bordes: BordeDial[] = [{ pos: pos(abajo.factor), delta: `−${((1 - abajo.factor) * 100).toFixed(1).replace(".", ",")}%`, v: `${money(adr * abajo.factor)} por noche`, k: `y cae a ${nombre(abajo.veredicto)}`, dir: "abajo" }];
-              return (
-                <div>
-                  <VProsa>
-                    Tu veredicto es COMPRAR con {money(adr)} por noche. Bajamos la tarifa con el resto fijo: aguanta hasta {money(adr * abajo.factor)} (−{((1 - abajo.factor) * 100).toFixed(1).replace(".", ",")}%) antes de caer a {nombre(abajo.veredicto)}.
-                  </VProsa>
-                  <VViz t="Tu veredicto según la tarifa por noche">
-                    <Dial zonas={zonas} bordes={bordes} marcaPct={pos(1)} marcaK={results.adrFuente === "override" ? "Tu tarifa" : "Mediana de la zona"} marcaV={money(adr)} />
-                  </VViz>
-                  <VCierre titulo="Qué significa">
-                    <mark>El colchón es de {money(adr - adr * abajo.factor)} por noche.</mark> Si la zona baja más que eso de forma sostenida, el veredicto cambia; hasta ahí, la conclusión se sostiene.
-                  </VCierre>
-                </div>
-              );
-            })(),
-          }
-        : null;
 
   // ── EL BLOQUE DETERMINISTA DE §5 (bloque C · 11-sep-2026) ──────────────────
   // El MISMO constructor de LTR con `modalidad: "str"`: dice «tarifa» donde LTR dice
@@ -195,6 +138,77 @@ export function HeroStrDictamen({
           return uf > fp.precioUFActual ? { uf, pct: Math.round((uf / fp.precioUFActual - 1) * 1000) / 10 } : null;
         })(),
       });
+
+  // ¿HAY ALGO QUE MOSTRAR? (13-sep-2026) Sin grilla NI palancas que crucen, la card ya lo
+  // dice todo y el pop-up repetiría. Ahí no se dibuja el botón: 73 filas STR.
+  const hayQueMostrar = hayAjustesQueMostrar({
+    veredicto: veredicto as Veredicto,
+    distancia: distancia ?? null,
+    filasComprar: bloqueDeterminista?.filas ?? null,
+  });
+  const cuerpoAjustes = (
+    <>
+      <PopupAjustesTokens />
+      <PopupAjustes
+        modalidad="str"
+        veredicto={veredicto as Veredicto}
+        distancia={distancia ?? null}
+        filasComprar={bloqueDeterminista?.filas ?? null}
+        currency={currency}
+        valorUF={valorUF}
+        precioUF={Number(simulacion?.fronteraPrecio?.precioUFActual ?? 0)}
+        antes={(() => {
+          const base = results.escenarios?.base;
+          if (!base) return null;
+          const coc = metricaValorONull(base.cashOnCash);
+          return {
+            cuotaMensual: results.metrics?.desgloseFall?.cuota ?? null,
+            flujoMensual: base.flujoCajaMensual ?? null,
+            cocPct: coc === null ? null : coc * 100,
+            capRateNetoPct: Number.isFinite(base.capRate) ? base.capRate * 100 : null,
+            tirPct: results.exitScenario ? metricaValorONull(results.exitScenario.tirAnual) : null,
+            score: (results as { francoScore?: { score?: number } }).francoScore?.score ?? null,
+          };
+        })()}
+      />
+    </>
+  );
+
+  const footer: FooterPosicion | null =
+    !hayQueMostrar
+      ? null
+      : distancia && veredicto !== "COMPRAR"
+      ? {
+          key: "distanciaVeredicto",
+          k: "Recomendación de ajustes",
+          l: (() => {
+            const vias = distancia.valor.vias;
+            if (!vias || vias.length === 0) return lineaFooterVias(null, 5);
+            // «; juntos, sí» cuando la combinación llega a Comprar; «; juntos, solo hasta Ajusta
+            // supuestos» cuando llega al escalón (desde BUSCAR). Misma fuente que la card.
+            const salidaComprar = salidaPorMixStr(distancia.valor);
+            const salidaEscalon = salidaComprar ? null : mixAlEscalonStr(distancia.valor);
+            return lineaFooterVias(
+              vias.filter((v) => v.estado === "cruza").length,
+              vias.length,
+              salidaComprar !== null || salidaEscalon !== null,
+              salidaEscalon ? etiquetaVeredicto("AJUSTA SUPUESTOS") : null,
+            );
+          })(),
+          btn: "Ver ajustes",
+          cuerpo: cuerpoAjustes,
+        }
+      : veredicto === "COMPRAR"
+        ? {
+            // COMPRAR: no hay a dónde subir. Van los márgenes de la card —Margen, Precio,
+            // Verifica— con su oración completa; el dial se queda en su capítulo.
+            key: "sensibilidad",
+            k: "Recomendación de ajustes",
+            l: "Franco probó hasta dónde puede moverse cada supuesto sin que cambie la conclusión.",
+            btn: "Ver margen",
+            cuerpo: cuerpoAjustes,
+          }
+        : null;
   // §5: LA BAJADA SE DIBUJA POR ESTADO, y el estado sale del bloque construido: «comprar»,
   // «con_salida», «sin_salida», o «sin_bloque» solo si el motor no midió (filas viejas).
   const estadoRec = estadoRecomendacion(veredicto, bloqueDeterminista);
