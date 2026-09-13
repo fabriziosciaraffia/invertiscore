@@ -71,7 +71,7 @@ function distancia(o: { base: "AJUSTA SUPUESTOS" | "BUSCAR OTRA"; regla: (patch:
     plazoCredito: 25,
     piePct: 20,
     motivosGate: [],
-    veredictoAtPatch: o.regla,
+    sondaAtPatch: (patch) => ({ veredicto: o.regla(patch), retornoPct: null }),
   });
 }
 const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, comprar?: { aguanta?: { marginPct: number; firme: boolean } | null; verifica?: { cifraCLP: number } | null }) =>

@@ -34,7 +34,7 @@ import {
   DIST_PLAZO_TOPE_ANIOS,
   DIST_PLAZO_TRAMO_ANIOS,
 } from "./distancia-veredicto-hallazgo";
-import { calcularMixPalancas } from "./mix-palancas";
+import { calcularMixPalancas, type SondaMix } from "./mix-palancas";
 import { salidaPorMixStr, mixAlEscalonStr, cierreFraseCanonicaStr } from "./salida-por-mix";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 import type { StrPatch } from "./analysis/veredicto-str-con-patch";
@@ -143,7 +143,11 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   piePct: number;
   razonSinPie?: RazonSinCapital;
   /** Reevalúa el veredicto sobre un clon del input con el patch aplicado. */
-  veredictoAtPatch: (patch: StrPatch) => Veredicto;
+  /**
+   * Sonda del motor STR sobre el input parchado: veredicto Y retorno sobre lo puesto de un
+   * solo recompute. Las palancas solas usan el veredicto; el mix elige por retorno.
+   */
+  sondaAtPatch: (patch: StrPatch) => SondaMix;
   /** Todos los motivos de gate que sostienen el veredicto (`francoScore.gates.motivos`). */
   motivosGate: string[];
   /**
@@ -154,6 +158,9 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
    */
   casoPrecioJusto?: boolean;
 }): HallazgoDistanciaVeredicto | null {
+  // Espejo del LTR: una sola sonda en el contrato y un adaptador de veredicto pelado para
+  // las palancas solas, que no necesitan el retorno.
+  const veredictoAtPatch = (patch: StrPatch): Veredicto => p.sondaAtPatch(patch).veredicto;
   if (p.veredictoBase === "COMPRAR") return null;
   if (!Number.isFinite(p.precioUF) || p.precioUF <= 0) return null;
   if (!Number.isFinite(p.precioCLP) || p.precioCLP <= 0) return null;
@@ -199,7 +206,7 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
 
     // PRECIO — baja hasta el tope general.
     const fPre = biseccionFactor(
-      (f) => alcanzaMeta(p.veredictoAtPatch({ precioCompra: Math.round(p.precioCLP * f) }), meta),
+      (f) => alcanzaMeta(veredictoAtPatch({ precioCompra: Math.round(p.precioCLP * f) }), meta),
       1 - tope / 100,
       false,
     );
@@ -228,7 +235,7 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     // mueve con el veredicto: pedir superar la tarifa observada de la zona es igual de
     // arriesgado venga de donde venga el deal.
     const fAdr = biseccionFactor(
-      (f) => alcanzaMeta(p.veredictoAtPatch({ adrOverride: Math.round(p.adrActual * f) }), meta),
+      (f) => alcanzaMeta(veredictoAtPatch({ adrOverride: Math.round(p.adrActual * f) }), meta),
       1 + DIST_STR_TOPE_ADR_PCT / 100,
       true,
     );
@@ -274,12 +281,12 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
         razon: `ni a ${DIST_PLAZO_TOPE_ANIOS} años cambia el veredicto`,
       };
       for (let anios = Math.floor(p.plazoCredito) + 1; anios <= DIST_PLAZO_TOPE_ANIOS; anios++) {
-        if (!alcanzaMeta(p.veredictoAtPatch({ plazoCredito: anios }), meta)) continue;
+        if (!alcanzaMeta(veredictoAtPatch({ plazoCredito: anios }), meta)) continue;
         const comercial = Math.min(
           DIST_PLAZO_TOPE_ANIOS,
           Math.ceil(anios / DIST_PLAZO_TRAMO_ANIOS) * DIST_PLAZO_TRAMO_ANIOS,
         );
-        if (comercial > p.plazoCredito && alcanzaMeta(p.veredictoAtPatch({ plazoCredito: comercial }), meta)) {
+        if (comercial > p.plazoCredito && alcanzaMeta(veredictoAtPatch({ plazoCredito: comercial }), meta)) {
           const pal: PalancaDistancia = {
             palanca: "plazo",
             objetivo: comercial,
@@ -326,7 +333,7 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
         razon: `ni con un pie de ${DIST_PIE_TOPE_PCT}% cambia el veredicto`,
       };
       for (let pie = Math.floor(p.piePct) + 1; pie <= DIST_PIE_TOPE_PCT; pie++) {
-        if (!alcanzaMeta(p.veredictoAtPatch({ piePercent: pie / 100 }), meta)) continue;
+        if (!alcanzaMeta(veredictoAtPatch({ piePercent: pie / 100 }), meta)) continue;
         const pal: PalancaDistancia = {
           palanca: "pie",
           objetivo: pie,
@@ -348,7 +355,7 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
       const otro = p.modoGestionActual === "auto" ? "administrador" : "auto";
       const comActual = (p.modoGestionActual === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;
       const comObjetivo = (otro === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;
-      if (alcanzaMeta(p.veredictoAtPatch({ modoGestion: otro }), meta)) {
+      if (alcanzaMeta(veredictoAtPatch({ modoGestion: otro }), meta)) {
         const pal: PalancaDistancia = {
           palanca: "gestion",
           modoGestionObjetivo: otro,
@@ -412,8 +419,8 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     pieTopePct: DIST_PIE_TOPE_PCT,
     topePct: topeAplicado,
     palancasQueCruzan: palancas.map((l) => l.palanca),
-    veredictoAtPatch: (m) =>
-      p.veredictoAtPatch({
+    sondaAtPatch: (m) =>
+      p.sondaAtPatch({
         precioCompra: m.precio != null ? Math.round(m.precio * ufCongelada) : undefined,
         piePercent: m.piePct != null ? m.piePct / 100 : undefined,
         plazoCredito: m.plazoCredito,
@@ -438,13 +445,13 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   if (esEstructural) {
     const candidatos: { palanca: "precio" | "adr"; deltaPct: number }[] = [];
     const fAdrExt = biseccionFactor(
-      (f) => alcanzaMeta(p.veredictoAtPatch({ adrOverride: Math.round(p.adrActual * f) }), veredictoObjetivo),
+      (f) => alcanzaMeta(veredictoAtPatch({ adrOverride: Math.round(p.adrActual * f) }), veredictoObjetivo),
       DIST_STR_EXT_ADR_MAX,
       true,
     );
     if (fAdrExt != null) candidatos.push({ palanca: "adr", deltaPct: Math.round((fAdrExt - 1) * 1000) / 10 });
     const fPreExt = biseccionFactor(
-      (f) => alcanzaMeta(p.veredictoAtPatch({ precioCompra: Math.round(p.precioCLP * f) }), veredictoObjetivo),
+      (f) => alcanzaMeta(veredictoAtPatch({ precioCompra: Math.round(p.precioCLP * f) }), veredictoObjetivo),
       DIST_STR_EXT_PRECIO_MIN,
       false,
     );
@@ -479,13 +486,13 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   if (exploradoComprar && palancasHastaComprar!.length === 0) {
     const candidatos: { palanca: "precio" | "adr"; deltaPct: number }[] = [];
     const fAdr = biseccionFactor(
-      (f) => alcanzaMeta(p.veredictoAtPatch({ adrOverride: Math.round(p.adrActual * f) }), "COMPRAR"),
+      (f) => alcanzaMeta(veredictoAtPatch({ adrOverride: Math.round(p.adrActual * f) }), "COMPRAR"),
       DIST_STR_EXT_ADR_MAX,
       true,
     );
     if (fAdr != null) candidatos.push({ palanca: "adr", deltaPct: Math.round((fAdr - 1) * 1000) / 10 });
     const fPre = biseccionFactor(
-      (f) => alcanzaMeta(p.veredictoAtPatch({ precioCompra: Math.round(p.precioCLP * f) }), "COMPRAR"),
+      (f) => alcanzaMeta(veredictoAtPatch({ precioCompra: Math.round(p.precioCLP * f) }), "COMPRAR"),
       DIST_STR_EXT_PRECIO_MIN,
       false,
     );
@@ -512,8 +519,8 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
           pieTopePct: DIST_PIE_TOPE_PCT,
           topePct: topeDe("COMPRAR"),
           palancasQueCruzan: (palancasHastaComprar ?? []).map((l) => l.palanca),
-          veredictoAtPatch: (m) =>
-            p.veredictoAtPatch({
+          sondaAtPatch: (m) =>
+            p.sondaAtPatch({
               precioCompra: m.precio != null ? Math.round(m.precio * ufCongelada) : undefined,
               piePercent: m.piePct != null ? m.piePct / 100 : undefined,
               plazoCredito: m.plazoCredito,

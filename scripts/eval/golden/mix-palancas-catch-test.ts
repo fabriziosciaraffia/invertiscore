@@ -76,7 +76,7 @@ function mix(o: {
     pieTopePct: DIST_PIE_TOPE_PCT,
     topePct: o.topePct ?? 15,
     palancasQueCruzan: o.palancasQueCruzan ?? [],
-    veredictoAtPatch: o.regla,
+    sondaAtPatch: (patch) => ({ veredicto: o.regla(patch), retornoPct: null }),
   });
 }
 
@@ -88,7 +88,7 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
     precioUF: 3_000,
     plazoCredito: o.plazoCredito ?? 25,
     piePct: o.piePct ?? 20,
-    veredictoAtPatch: o.regla,
+    sondaAtPatch: (patch) => ({ veredicto: o.regla(patch), retornoPct: null }),
     brazosGate1Activos: [],
     modalidad: "ltr",
   });
@@ -315,7 +315,7 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
     pieTopePct: DIST_PIE_TOPE_PCT,
     topePct: 30,
     palancasQueCruzan: [],
-    veredictoAtPatch: (x) => ((x.piePct ?? 20) >= 30 ? "COMPRAR" : "AJUSTA SUPUESTOS"),
+    sondaAtPatch: (x: Patch) => ({ veredicto: ((x.piePct ?? 20) >= 30 ? "COMPRAR" : "AJUSTA SUPUESTOS") as Veredicto, retornoPct: null }),
   });
   if (!aComprar) F("9 · el mix hacia COMPRAR no se construyó");
   else if (aComprar.destino !== "COMPRAR") F(`9 · con meta COMPRAR el destino es COMPRAR, dio «${aComprar.destino}»`);

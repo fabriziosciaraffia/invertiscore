@@ -17,7 +17,8 @@
 
 import { calcShortTerm, type ShortTermInputs, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR, type FrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
-import type { Veredicto } from "@/lib/types";
+import { metricaValorONull, type Veredicto } from "@/lib/types";
+import type { SondaMix } from "@/lib/mix-palancas";
 
 /** Extras del score que NO dependen del patch — se congelan al construir el contexto. */
 export type ScoreSTRExtras = Omit<ScoreSTRInputs, "results" | "precioCompra">;
@@ -94,4 +95,21 @@ export function francoScoreStrConPatch(ctx: VeredictoStrCtx, patch: StrPatch): F
 /** Veredicto STR con el patch aplicado (lo que consume la distancia al veredicto). */
 export function veredictoStrConPatch(ctx: VeredictoStrCtx, patch: StrPatch): Veredicto {
   return francoScoreStrConPatch(ctx, patch).veredicto;
+}
+
+/**
+ * Veredicto Y retorno sobre lo puesto del MISMO recompute — lo que consume el mix de
+ * palancas desde el 12-sep-2026, que elige la celda por retorno y no por descuento mínimo.
+ *
+ * El retorno sale EN PUNTOS PORCENTUALES (el motor STR lo lleva en decimal) y con la misma
+ * sustitución de pie cero que usa el score (`calcCashOnCashDim`): sin capital propio no hay
+ * cash-on-cash, y lo que se mira es el rendimiento neto sobre el precio, el cap rate. Sin
+ * esa conversión el módulo compararía 0,05 de STR contra 5,2 de LTR.
+ */
+export function sondaStrConPatch(ctx: VeredictoStrCtx, patch: StrPatch): SondaMix {
+  const { result, francoScore } = recomputeStrConPatch(ctx, patch);
+  const base = result.escenarios.base;
+  const coc = metricaValorONull(base.cashOnCash);
+  const dec = coc ?? (Number.isFinite(base.capRate) ? base.capRate : null);
+  return { veredicto: francoScore.veredicto, retornoPct: dec === null ? null : dec * 100 };
 }

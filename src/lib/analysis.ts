@@ -17,6 +17,7 @@ import type {
 } from "./types";
 import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "./types";
 import { PESOS_SCORE_LTR, puntajeCashOnCash, puntajeTir, combinarConReparto } from "./score-retorno";
+import type { SondaMix } from "./mix-palancas";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
 import { calcIRRPct } from "./finance/irr";
 import { estimarContribuciones } from "./contribuciones";
@@ -1813,6 +1814,28 @@ export function costoOportunidad(inversionInicialCLP: number, anios: number = 10
  * internos, no las métricas que deciden el veredicto (mismo criterio que
  * calcDecisividades, que también lo omite).
  */
+export function sondaConPatch(
+  input: AnalisisInput,
+  ufClp: number,
+  medianaComunaVentaUF: MedianaComunaInyectada | undefined,
+  asOf: Date,
+  patch: Partial<AnalisisInput>,
+): SondaMix {
+  const clone = { ...input, ...patch };
+  const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
+  // La TIR también se reevalúa sobre el parche: es dimensión del score desde el 12-sep-2026.
+  const s = calcScoreFromMetrics(clone, m, ufClp, asOf, tirDe(clone, m, ufClp, asOf));
+  const bet = calcBreakEvenTasa(clone, m, ufClp);
+  // EL RETORNO SOBRE LO PUESTO, tal como lo mira el score (`dimensionesScoreLtr`): el
+  // cash-on-cash cuando hay capital propio y la rentabilidad neta sobre el precio cuando
+  // no lo hay. Las dos en puntos porcentuales, así que el mix compara peras con peras
+  // también en las filas con pie 0, donde el cash-on-cash no está definido.
+  const coc = metricaValorONull(m.cashOnCash);
+  const retornoPct = coc ?? (Number.isFinite(m.rentabilidadNeta) ? m.rentabilidadNeta : null);
+  return { veredicto: deriveVeredicto(s, m, bet), retornoPct };
+}
+
+/** Veredicto pelado sobre el parche. Es `sondaConPatch().veredicto`: una sola ruta. */
 export function veredictoConPatch(
   input: AnalisisInput,
   ufClp: number,
@@ -1820,12 +1843,7 @@ export function veredictoConPatch(
   asOf: Date,
   patch: Partial<AnalisisInput>,
 ): Veredicto {
-  const clone = { ...input, ...patch };
-  const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
-  // La TIR también se reevalúa sobre el parche: es dimensión del score desde el 12-sep-2026.
-  const s = calcScoreFromMetrics(clone, m, ufClp, asOf, tirDe(clone, m, ufClp, asOf));
-  const bet = calcBreakEvenTasa(clone, m, ufClp);
-  return deriveVeredicto(s, m, bet);
+  return sondaConPatch(input, ufClp, medianaComunaVentaUF, asOf, patch).veredicto;
 }
 
 // =========================================
@@ -2520,8 +2538,11 @@ export function runAnalysis(
   // veredictoConPatch (exportada) y el closure solo cierra sobre el contexto del
   // análisis. Lo consumen la sensibilidad (arriendo hacia abajo) y el hallazgo de
   // distancia al veredicto (arriendo/precio/plazo hacia arriba) — una sola ruta.
-  const veredictoAtPatch = (patch: Partial<AnalisisInput>): Veredicto =>
-    veredictoConPatch(input, ufClp, medianaComunaVentaUF, asOf, patch);
+  // La sonda devuelve veredicto Y retorno sobre lo puesto del mismo recompute: el mix de
+  // palancas elige por retorno desde el 12-sep-2026. El veredicto pelado sale de ella.
+  const sondaAtPatch = (patch: Partial<AnalisisInput>): SondaMix =>
+    sondaConPatch(input, ufClp, medianaComunaVentaUF, asOf, patch);
+  const veredictoAtPatch = (patch: Partial<AnalisisInput>): Veredicto => sondaAtPatch(patch).veredicto;
   const hallazgoSensibilidad = buildHallazgoSensibilidad({
     veredictoBase: veredicto,
     arriendo: input.arriendo,
@@ -2579,7 +2600,7 @@ export function runAnalysis(
     // 4ª palanca condicional: el builder decide si el pie califica (nivel + origen).
     piePct: input.piePct,
     razonSinPie: input.razonSinPie,
-    veredictoAtPatch,
+    sondaAtPatch,
     brazosGate1Activos: Object.entries(brazosGate1)
       .filter(([, activo]) => activo)
       .map(([nombre]) => nombre),

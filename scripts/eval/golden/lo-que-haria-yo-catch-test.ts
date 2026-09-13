@@ -66,7 +66,7 @@ function distancia(o: { veredictoBase: Veredicto; piePct?: number; plazoCredito?
     precioUF: 3_000,
     plazoCredito: o.plazoCredito ?? 25,
     piePct: o.piePct ?? 20,
-    veredictoAtPatch: o.regla,
+    sondaAtPatch: (patch) => ({ veredicto: o.regla(patch), retornoPct: null }),
     brazosGate1Activos: [],
     modalidad: "ltr",
   });

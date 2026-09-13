@@ -71,7 +71,7 @@ function construir(o: { base?: "AJUSTA SUPUESTOS" | "BUSCAR OTRA"; piePct?: numb
     plazoCredito: o.plazoCredito ?? 25,
     piePct: o.piePct ?? 20,
     motivosGate: [],
-    veredictoAtPatch: o.regla,
+    sondaAtPatch: (patch) => ({ veredicto: o.regla(patch), retornoPct: null }),
   });
 }
 

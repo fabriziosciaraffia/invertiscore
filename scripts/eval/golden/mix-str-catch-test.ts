@@ -63,7 +63,7 @@ function construir(o: {
     piePct: o.piePct ?? 20,
     razonSinPie: o.razonSinPie,
     motivosGate: [],
-    veredictoAtPatch: o.regla,
+    sondaAtPatch: (patch) => ({ veredicto: o.regla(patch), retornoPct: null }),
   });
 }
 

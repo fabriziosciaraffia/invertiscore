@@ -34,7 +34,7 @@ import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { classifyFinancingHealth } from "./financing-health";
 import { buildHallazgoDistanciaVeredictoStr } from "./distancia-veredicto-str-hallazgo";
 import { esCasoPrecioJustoStr } from "./distancia-veredicto-hallazgo";
-import { veredictoStrConPatch, type VeredictoStrCtx } from "./analysis/veredicto-str-con-patch";
+import { sondaStrConPatch, type VeredictoStrCtx } from "./analysis/veredicto-str-con-patch";
 import { calcDecisividadesSTR } from "./decisividades-str";
 import type { DecisividadFactor } from "./analysis";
 import { COMISION_AIRBNB } from "./engines/short-term-engine";
@@ -286,7 +286,7 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
 
   // ── DISTANCIA AL VEREDICTO (informativo, decisividad 0 declarada) ──
   // Espejo STR del hallazgo LTR: mide cuánto tiene que mejorar una palanca para que el
-  // veredicto SUBA. Usa el closure `veredictoStrConPatch`, que NO reconstruye hallazgos →
+  // veredicto SUBA. Usa el closure `sondaStrConPatch`, que NO reconstruye hallazgos →
   // sin recursión con este assembler. Ausente en COMPRAR (no hay veredicto superior).
   {
     const vc = ctx.veredictoCtx;
@@ -314,7 +314,7 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
         piePct: ctx.piePct,
         razonSinPie: vc.inputs.razonSinPie,
         motivosGate: fs.gates?.motivos ?? [],
-        veredictoAtPatch: (patch) => veredictoStrConPatch(vc, patch),
+        sondaAtPatch: (patch) => sondaStrConPatch(vc, patch),
         casoPrecioJusto,
       }),
     );

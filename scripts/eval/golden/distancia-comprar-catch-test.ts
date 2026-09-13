@@ -60,7 +60,7 @@ function construir(o: {
     plazoCredito: o.plazoCredito ?? 25,
     piePct: o.piePct ?? 20,
     razonSinPie: o.razonSinPie,
-    veredictoAtPatch: o.regla,
+    sondaAtPatch: (patch) => ({ veredicto: o.regla(patch), retornoPct: null }),
     brazosGate1Activos: [],
     modalidad: "ltr",
   });
