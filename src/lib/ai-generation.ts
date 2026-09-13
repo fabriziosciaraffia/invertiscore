@@ -53,7 +53,8 @@ import {
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico, piezasDeAiLtr } from "@/lib/precio-jerarquia";
 import { construirReferenciasZona, faltaReconciliacion } from "@/lib/referencias-zona";
-import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad, comunasFueraDeAlternativa, niegaSalidaConMix } from "@/lib/cifras-guard";
+import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad, comunasFueraDeAlternativa, niegaSalidaConMix, puntajesFueraDeDesglose } from "@/lib/cifras-guard";
+import { PESOS_SCORE_LTR } from "@/lib/score-retorno";
 import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
 import { salidaPorMix } from "@/lib/salida-por-mix";
 import { derivarCifraClaveLtr, captionDeCifraClave } from "@/lib/cifra-clave";
@@ -200,7 +201,16 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // Es otro bump de BORRADO. Y el borrado grande no fue el prompt sino lo que LEE
 // la salida: guards, retries y detectores que se quedaban sin sujeto y, si no se
 // tocaban, no fallaban — se callaban.
-export const PROMPT_VERSION_LTR = 24;
+// v25 (12-sep-2026) · EL PROMPT RECIBE LAS SEIS DIMENSIONES. El score tiene cash-on-cash
+// y TIR como dimensiones ponderadas desde el 12-sep (`score-retorno.ts`, esquema A, curva
+// calibrada) y el user prompt le seguía dando al modelo las cuatro viejas con nombre y
+// puntaje: la prosa se escribía sin saber que el retorno sobre lo puesto pesa, y sin poder
+// nombrarlo. Entran las seis con sus pesos (línea de subscores), el pie cero dice que la
+// TIR no aplica y reparte, y el system explica las dos nuevas en vocabulario del lector
+// (§4, «EL SCORE MIRA EL RETORNO SOBRE LO QUE PONES»). Guard nuevo con sujeto:
+// CATCH-PUNTAJE (puntajesFueraDeDesglose), espejo de CATCH-CIFRA.
+// Se mueven los DOS hashes: el system por el bloque nuevo y el user por la línea.
+export const PROMPT_VERSION_LTR = 25;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
@@ -292,6 +302,11 @@ Ejemplos concretos de alucinación PROHIBIDA detectados en producción:
 - "Precio que va a subir" — no predigas precios futuros.
 
 Regla simple: si el dato no está en el input del caso, no existe para ti. Cuando dudes, omitir es preferible a inventar.
+
+EL SCORE MIRA EL RETORNO SOBRE LO QUE PONES (seis dimensiones, pesos 20/20/20/10/17/13: rentabilidad, flujo de caja, retorno sobre lo puesto, TIR, plusvalía, eficiencia — vienen con su puntaje en INDICADORES CALCULADOS). Dos son sobre tu capital, no sobre el activo:
+- **retorno sobre lo puesto** — por cada $100 que pones el día uno, cuánto te devuelve el depto al año después de la cuota y los gastos; negativo significa que cada año pones plata además del pie. Su dato es el Cash-on-Cash de INDICADORES CALCULADOS.
+- **TIR** — lo que rinde al año todo lo que pusiste, contando el flujo, la deuda que se amortiza y la plusvalía al vender a 10 años. Su dato es la TIR a 10 años de INDICADORES CALCULADOS.
+El input dice cuáles son «las dos que más suman» y «las dos que más restan». Si retorno sobre lo puesto está en cualquiera de esas dos listas, NÓMBRALO en conviene.cajaAccionable —una frase corta, con la glosa y con su cifra («por cada $100 que pones recibes $X al año»)—; si la TIR también está, nómbrala TAMBIÉN, no en vez de. No se elige una de las dos, y no importa que la otra sea el matiz negativo: es lo que el lector no ve dibujado en ninguna card. Si ninguna está en las listas, no las fuerces. Los puntajes y los pesos se citan tal cual vienen: no calcules ni redondees ninguno, y no inventes puntajes que el input no trae. Con pie 0 la TIR no aplica y su peso se reparte entre las demás: no la nombres como dimensión (aplica §5.bis); el retorno sobre lo puesto ahí es el rendimiento neto sobre el precio, sin apalancar, y así se dice.
 
 Regla operacional para metros (estricta):
 
@@ -1237,6 +1252,13 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       capRate: mEnriched.capRate ?? 0,
     };
     const d = results.desglose;
+    // bump 25: qué dimensiones mandan, dicho por el motor y no inferido por el modelo. Las dos
+    // que más suman y las dos que más restan (la TIR sin aplicar no entra al ranking).
+    const DIMS_NOMBRE: [string, number | null | undefined][] = [["rentabilidad", d.rentabilidad], ["flujo caja", d.flujoCaja], ["retorno sobre lo puesto", d.cashOnCash], ["TIR", d.tir], ["plusvalia", d.plusvalia], ["eficiencia", d.eficiencia]];
+    const dimsRank = DIMS_NOMBRE.filter((x): x is [string, number] => typeof x[1] === "number").sort((a, b) => b[1] - a[1]);
+    const fmtDim = (x: [string, number]) => `${x[0]} (${Math.round(x[1])})`;
+    const dimsQueSuman = dimsRank.slice(0, 2).map(fmtDim).join(", ");
+    const dimsQueRestan = dimsRank.slice(-2).reverse().map(fmtDim).join(", ");
     const exit = results.exitScenario;
     // Rename honesto gananciaNeta→equityCLP (paridad STR): este path lee results
     // PERSISTIDO, que en filas pre-rename trae la clave vieja. Fallback compat-on-read.
@@ -2516,7 +2538,7 @@ OPERACIÓN MENSUAL
 INDICADORES CALCULADOS
 - Franco Score: ${results.score}/100
 - veredicto (dado — úsalo como tal, no lo contradigas — §7): ${veredictoMotor}
-- subscores (referenciar como "sub-score de X" si los mencionas; el score total es ${results.score}, único): rentabilidad ${Math.round(d.rentabilidad)}/100 · flujo caja ${Math.round(d.flujoCaja)}/100 · plusvalia ${Math.round(d.plusvalia)}/100 · eficiencia ${Math.round(d.eficiencia)}/100
+- subscores (referenciar como "sub-score de X" si los mencionas; el score total es ${results.score}, único; cítalos y cita los pesos tal cual, sin recalcular): rentabilidad ${Math.round(d.rentabilidad)}/100 · flujo caja ${Math.round(d.flujoCaja)}/100 · retorno sobre lo puesto ${Math.round(d.cashOnCash ?? NaN)}/100 · TIR ${d.tir == null ? "no aplica (sin pie: su peso se reparte entre las demás)" : `${Math.round(d.tir)}/100`} · plusvalia ${Math.round(d.plusvalia)}/100 · eficiencia ${Math.round(d.eficiencia)}/100 · pesos ${PESOS_SCORE_LTR.rentabilidad}/${PESOS_SCORE_LTR.flujoCaja}/${PESOS_SCORE_LTR.cashOnCash}/${PESOS_SCORE_LTR.tir}/${PESOS_SCORE_LTR.plusvalia}/${PESOS_SCORE_LTR.eficiencia} (rentabilidad/flujo/retorno sobre lo puesto/TIR/plusvalia/eficiencia) · las dos que más suman: ${dimsQueSuman} · las dos que más restan: ${dimsQueRestan}
 - Rentabilidad bruta: ${pct(m.rentabilidadBruta)}%
 - Cap rate: ${pct(capRateCard)}%
 - Rentabilidad neta: ${pct(m.rentabilidadNeta)}%
@@ -3042,6 +3064,43 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         }
       } catch (e) {
         console.warn(`[LTR-COMUNA] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
+    // ─── CATCH-PUNTAJE (bump 25 · 12-sep-2026) ───────────────────────────────
+    // El user prompt trae las seis dimensiones con su puntaje y sus pesos. Si la prosa
+    // cita un sub-score, un «NN/100» o un peso que el desglose no dio, el lector ve un
+    // número que no existe en su informe. Solo con sujeto (las formas explícitas); el
+    // número pelado ya lo vigila CATCH-CIFRA. Mismo reparto: 1 reintento con la cita.
+    if (aiResult) {
+      try {
+        const puntViol = puntajesFueraDeDesglose(userPrompt, aiResult);
+        if (puntViol.length) {
+          console.warn(`[LTR-PUNTAJE] ${analysisId}: ${puntViol.length} puntaje(s)/peso(s) fuera del desglose — ${puntViol.join(" | ")} — 1 reintento`);
+          const correctivoP = `
+
+⚠️ CORRECCIÓN DE PUNTAJES: la versión anterior cita puntajes o pesos que NO vienen del desglose: ${puntViol.join(", ")}. Los sub-scores, el score total y los pesos son EXACTAMENTE los de la línea «subscores» de INDICADORES CALCULADOS; no calcules, no redondees, no inventes ninguno. Reescribe el JSON completo citándolos tal cual o sin citarlos.`;
+          const regenP = await anthropic.messages.create({
+            model: CLAUDE_MODEL,
+            max_tokens: 8000,
+            messages: [{ role: "user", content: userPrompt + correctivoP }],
+            system: SYSTEM_LTR_CACHED,
+          });
+          acumularUsage(usage, regenP);
+          const regenTextP = regenP.content[0].type === "text" ? regenP.content[0].text : "";
+          const regenResultP = parseAndNormalize(regenTextP);
+          const quedanP = regenResultP ? puntajesFueraDeDesglose(userPrompt, regenResultP) : null;
+          if (regenResultP && quedanP && quedanP.length < puntViol.length) {
+            console.warn(`[LTR-PUNTAJE] ${analysisId}: retry mejoró ${puntViol.length}→${quedanP.length} — aceptado`);
+            aiResult = regenResultP;
+          } else {
+            console.warn(`[LTR-PUNTAJE] ${analysisId}: retry no mejoró o no parseó — conservo la prosa previa`);
+          }
+          const sobrevivenP = puntajesFueraDeDesglose(userPrompt, aiResult);
+          if (sobrevivenP.length) aiResult._puntajesFueraDeDesglose = sobrevivenP;
+        }
+      } catch (e) {
+        console.warn(`[LTR-PUNTAJE] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
       }
     }
 

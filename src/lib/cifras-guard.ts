@@ -314,3 +314,61 @@ export function cifrasPorMetroFueraDeUnidad(
   }
   return out.filter((v, i, arr) => arr.indexOf(v) === i);
 }
+
+/**
+ * PUNTAJES Y PESOS QUE LA PROSA CITA Y EL DESGLOSE NO DIO (bump 25 · 12-sep-2026).
+ *
+ * Espejo de `cifrasFueraDeInput` para el score: desde el 12-sep-2026 el user prompt lleva
+ * las seis dimensiones con su puntaje («NN/100») y sus pesos («pesos 20/20/20/10/17/13»),
+ * y el modelo puede nombrarlas. Lo que nombre tiene que ser exactamente lo que vino.
+ *
+ * SOLO CON SUJETO (decisión Fabrizio): un número pelado ya lo vigila el guard de cifras.
+ * Este dispara únicamente sobre las formas en que la prosa habla de puntajes y pesos:
+ *   «NN/100» · «NN de 100» · «sub-score de X … NN» · «pesa NN %» · «peso NN %» ·
+ *   «NN % del score/puntaje».
+ * Los permitidos salen del propio user prompt: el Franco Score total, cada «NN/100» de la
+ * línea de subscores y la lista de pesos. Con la TIR sin aplicar (pie cero) la línea no
+ * trae su puntaje y no hay nada que permitir por ese lado.
+ *
+ * DEVUELVE las violaciones con su path, igual que las cifras, para el correctivo.
+ */
+export function puntajesFueraDeDesglose(userPrompt: string, ai: unknown): string[] {
+  const permitidos = new Set<number>();
+  const iInd = userPrompt.indexOf("INDICADORES CALCULADOS");
+  const bloque = iInd === -1 ? userPrompt : userPrompt.slice(iInd, iInd + 1500);
+  const total = bloque.match(/Franco Score:\s*(\d{1,3})\s*\/\s*100/);
+  if (total) permitidos.add(Number(total[1]));
+  const iSub = bloque.indexOf("- subscores");
+  const lineaSub = iSub === -1 ? "" : bloque.slice(iSub, bloque.indexOf("\n", iSub) === -1 ? undefined : bloque.indexOf("\n", iSub));
+  for (const m of Array.from(lineaSub.matchAll(/(\d{1,3})\s*\/\s*100/g))) permitidos.add(Number(m[1]));
+  const pesos = lineaSub.match(/pesos\s+((?:\d{1,2}\/)+\d{1,2})/);
+  if (pesos) for (const p of pesos[1].split("/")) permitidos.add(Number(p));
+  const permitido = (n: number) => permitidos.has(n);
+
+  const strings: { path: string; value: string }[] = [];
+  collectStrings(ai, "", strings);
+  const out: string[] = [];
+  // una violación por (path, número): «sub-score de flujo es 23/100» casa dos formas y es UN invento
+  const vistos = new Set<string>();
+  const FORMAS: RegExp[] = [
+    /(\d{1,3})\s*\/\s*100\b/g,
+    /(\d{1,3}) de 100\b/g,
+    /sub-?scores? de [^.\d]{0,40}?(\d{1,3})\b/gi,
+    /\bpesan?\s+(?:el|un|apenas|solo)?\s*(\d{1,2})\s*%/gi,
+    /\bpeso\s+(?:del|de|es|de un)?\s*(\d{1,2})\s*%/gi,
+    /\b(\d{1,2})\s*%\s+del\s+(?:score|puntaje)/gi,
+  ];
+  for (const { path, value } of strings) {
+    for (const re of FORMAS) {
+      for (const m of Array.from(value.matchAll(re))) {
+        const n = Number(m[1]);
+        if (!Number.isFinite(n) || permitido(n)) continue;
+        const clave = `${path}#${n}`;
+        if (vistos.has(clave)) continue;
+        vistos.add(clave);
+        out.push(`${path}="${m[0].trim()}"`);
+      }
+    }
+  }
+  return out;
+}
