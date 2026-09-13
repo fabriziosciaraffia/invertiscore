@@ -1824,13 +1824,28 @@ export function sondaConPatch(
   const clone = { ...input, ...patch };
   const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
   // La TIR también se reevalúa sobre el parche: es dimensión del score desde el 12-sep-2026.
-  const s = calcScoreFromMetrics(clone, m, ufClp, asOf, tirDe(clone, m, ufClp, asOf));
+  const tir = tirDe(clone, m, ufClp, asOf);
+  const s = calcScoreFromMetrics(clone, m, ufClp, asOf, tir);
   const bet = calcBreakEvenTasa(clone, m, ufClp);
   // El score va JUNTO al veredicto y sale de la misma pasada: es el que el mix usa para
   // elegir entre las celdas que cruzan, y tiene que ser exactamente el que produjo ese
   // veredicto. Recomputarlo aparte abriría la puerta a elegir con un número que la página
   // nunca mostró.
-  return { veredicto: deriveVeredicto(s, m, bet), score: Number.isFinite(s) ? s : null };
+  //
+  // Y las métricas viajan con él (13-sep-2026): son el lado «después» de los pares del
+  // pop-up de ajustes. Ya estaban calculadas en `m` y en la TIR que el score necesitó —
+  // devolverlas no agrega una pasada, solo deja de tirarlas.
+  return {
+    veredicto: deriveVeredicto(s, m, bet),
+    score: Number.isFinite(s) ? s : null,
+    metricas: {
+      cuotaMensual: Number.isFinite(m.dividendo) ? m.dividendo : null,
+      flujoMensual: Number.isFinite(m.flujoNetoMensual) ? m.flujoNetoMensual : null,
+      cocPct: metricaValorONull(m.cashOnCash),
+      capRateNetoPct: Number.isFinite(m.rentabilidadNeta) ? m.rentabilidadNeta : null,
+      tirPct: tir,
+    },
+  };
 }
 
 /** Veredicto pelado sobre el parche. Es `sondaConPatch().veredicto`: una sola ruta. */

@@ -939,6 +939,16 @@ export interface PalancaDistancia {
    * entra al sort por |deltaPct| que ordena a las otras tres. Los consumidores que
    * comparan magnitudes entre palancas deben excluirla o tratarla aparte.
    */
+  /**
+   * A qué veredicto llega esta palanca por sí sola, y con qué score. Los pide la tabla
+   * «No depende de ti» del pop-up de ajustes: «Precio · −24,1% · Comprar, score 74».
+   *
+   * El score se mide EN EL OBJETIVO QUE SE MUESTRA, no en el punto crudo de la bisección:
+   * el número que se lee y el que se publica tienen que ser el mismo. Cuesta una sonda por
+   * palanca que cruza (a lo sumo cuatro en LTR, seis en STR). Ausentes en filas viejas.
+   */
+  destino?: Veredicto;
+  score?: number | null;
   deltaPct: number;
   /** Cambio absoluto con signo, en la unidad de la palanca (CLP · UF · años · puntos de pie). */
   deltaAbs: number;
@@ -1000,7 +1010,21 @@ export type ViaDistancia =
  *
  * La lógica vive en `mix-palancas.ts`, pura y testeada aparte.
  */
+import type { CeldaMix, MetricasCelda } from "./mix-palancas";
+
 export interface MixPalancas {
+  /**
+   * LA GRILLA ENTERA, para la matriz del pop-up de ajustes: todas las combinaciones
+   * probadas, crucen o no. Sale de la MISMA pasada que elige la mejor —la sonda a
+   * descuento 0 y la del mínimo ya se hacían— así que no cuesta un recorrido más.
+   * Ausente en filas recomputadas antes del 13-sep-2026.
+   */
+  celdas?: CeldaMix[];
+  /** Score de la celda elegida: el número CON EL QUE se eligió (la regla corona el mayor
+   *  score entre las que cruzan). Ausente en filas viejas. */
+  score?: number | null;
+  /** El lado «después» de los pares del pop-up, medido en la celda elegida. */
+  despues?: MetricasCelda | null;
   /** Descuento de precio del mix ganador, en %. CERO cuando no hace falta tocar el precio. */
   descuentoPct: number;
   /**

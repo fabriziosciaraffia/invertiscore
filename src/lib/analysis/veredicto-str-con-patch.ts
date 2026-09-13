@@ -17,7 +17,7 @@
 
 import { calcShortTerm, type ShortTermInputs, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR, type FrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
-import type { Veredicto } from "@/lib/types";
+import { metricaValorONull, type Veredicto } from "@/lib/types";
 import type { SondaMix } from "@/lib/mix-palancas";
 
 /** Extras del score que NO dependen del patch — se congelan al construir el contexto. */
@@ -106,6 +106,23 @@ export function veredictoStrConPatch(ctx: VeredictoStrCtx, patch: StrPatch): Ver
  * de la página, sin unidades del motor de por medio.
  */
 export function sondaStrConPatch(ctx: VeredictoStrCtx, patch: StrPatch): SondaMix {
-  const { francoScore } = recomputeStrConPatch(ctx, patch);
-  return { veredicto: francoScore.veredicto, score: Number.isFinite(francoScore.score) ? francoScore.score : null };
+  const { result, francoScore } = recomputeStrConPatch(ctx, patch);
+  // Las métricas del lado «después» de los pares del pop-up (13-sep-2026). Salen del MISMO
+  // recompute que el veredicto: devolverlas no agrega una pasada, solo deja de tirarlas.
+  // Porcentajes en puntos, como LTR — el motor STR los lleva en decimal.
+  const base = result.escenarios.base;
+  const coc = metricaValorONull(base.cashOnCash);
+  // La cuota vive en `metrics.desgloseFall` (el Fall del capítulo II), no en el escenario.
+  const cuota = result.metrics?.desgloseFall?.cuota;
+  return {
+    veredicto: francoScore.veredicto,
+    score: Number.isFinite(francoScore.score) ? francoScore.score : null,
+    metricas: {
+      cuotaMensual: Number.isFinite(cuota) ? (cuota as number) : null,
+      flujoMensual: Number.isFinite(base.flujoCajaMensual) ? base.flujoCajaMensual : null,
+      cocPct: coc === null ? null : coc * 100,
+      capRateNetoPct: Number.isFinite(base.capRate) ? base.capRate * 100 : null,
+      tirPct: result.exitScenario ? metricaValorONull(result.exitScenario.tirAnual) : null,
+    },
+  };
 }

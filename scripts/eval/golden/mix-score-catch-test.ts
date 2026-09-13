@@ -205,11 +205,13 @@ const donde = (m: { piePct: number; plazoAnios: number } | null) => (m ? `pie ${
   const LTR = leer("src/lib/analysis.ts");
   const STR = leer("src/lib/analysis/veredicto-str-con-patch.ts");
   if (!/export function sondaConPatch/.test(LTR)) F("7 · analysis.ts no exporta `sondaConPatch` (veredicto + score en un solo recompute)");
-  if (!/return \{ veredicto: deriveVeredicto\(s, m, bet\), score: Number\.isFinite\(s\) \? s : null \};/.test(LTR)) {
+  // El invariante es que el score devuelto SEA el que alimentó a deriveVeredicto, no la
+  // forma exacta del return: desde el goal A la sonda devuelve además las métricas.
+  if (!/veredicto: deriveVeredicto\(s, m, bet\)/.test(LTR) || !/score: Number\.isFinite\(s\) \? s : null/.test(LTR)) {
     F("7 · `sondaConPatch` (LTR) no devuelve el MISMO score que alimentó a deriveVeredicto: elegir con un score recomputado aparte es elegir con un número que la página no mostró");
   }
   if (!/export function sondaStrConPatch/.test(STR)) F("7 · veredicto-str-con-patch.ts no exporta `sondaStrConPatch`");
-  if (!/veredicto: francoScore\.veredicto, score: Number\.isFinite\(francoScore\.score\) \? francoScore\.score : null/.test(STR)) {
+  if (!/veredicto: francoScore\.veredicto/.test(STR) || !/score: Number\.isFinite\(francoScore\.score\) \? francoScore\.score : null/.test(STR)) {
     F("7 · `sondaStrConPatch` no devuelve veredicto y score del mismo `francoScore`");
   }
 }

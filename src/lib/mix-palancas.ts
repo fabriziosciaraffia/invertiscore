@@ -111,14 +111,68 @@ const MIX_PREC_PTS = 0.1;
 
 const RANK: Record<Veredicto, number> = { "BUSCAR OTRA": 0, "AJUSTA SUPUESTOS": 1, COMPRAR: 2 };
 
-type Combinacion = { descuentoPct: number; sinDescuento: boolean; piePct: number; plazoAnios: number; costoDiaUnoUF: number; costoPtsPrecio: number; score: number | null };
+type Combinacion = { descuentoPct: number; sinDescuento: boolean; piePct: number; plazoAnios: number; costoDiaUnoUF: number; costoPtsPrecio: number; score: number | null; metricas: MetricasCelda | null };
 
 /**
  * Lo que la sonda devuelve por celda, del MISMO recompute: el veredicto y el Franco Score
  * con el que ese veredicto se declaró. Salen de la misma pasada del motor, así que el mix
  * no puede elegir sobre un score que no corresponda al veredicto que acaba de leer.
  */
-export type SondaMix = { veredicto: Veredicto; score: number | null };
+export type SondaMix = {
+  veredicto: Veredicto;
+  score: number | null;
+  /**
+   * Las cifras de ESA combinación, para el lado «después» de los pares del pop-up. Las
+   * llena el llamador con lo que su recompute ya produjo —no se recalcula nada— y el mix
+   * solo guarda las de la celda que corona. Opcional a propósito: los catch-tests y los
+   * censos sondean sin métricas y el módulo no las necesita para elegir.
+   */
+  metricas?: MetricasCelda | null;
+};
+
+/** El lado «después» de los pares: lo que la combinación elegida deja. Unidades del lector:
+ *  plata mensual en CLP, porcentajes en puntos (5,2 = 5,2%). */
+export type MetricasCelda = {
+  cuotaMensual: number | null;
+  flujoMensual: number | null;
+  /** Retorno sobre lo puesto — «por cada $100 que pones, al año». */
+  cocPct: number | null;
+  capRateNetoPct: number | null;
+  tirPct: number | null;
+};
+
+/**
+ * UNA CELDA DE LA GRILLA, tal como la pinta el pop-up de ajustes. Viaja para TODAS las
+ * combinaciones probadas, crucen o no: la matriz tiene que poder mostrar «Buscar» en una
+ * celda que no llega, y el panel de detalle decir «no llega a Comprar».
+ *
+ * `veredicto` y `score` son los de la celda SIN descuento —pie y plazo movidos, precio el
+ * de hoy—, que es lo que el usuario lee en el cuadrito. El descuento es el mínimo que la
+ * hace cruzar, y va aparte porque es lo que hay que pedirle al vendedor.
+ *
+ * Nada de esto es cómputo nuevo: la sonda a descuento 0 ya se hacía para saber si la celda
+ * cruzaba sola, y la sonda en el mínimo ya se hacía para leer el score con el que se elige.
+ */
+export type CeldaMix = {
+  piePct: number;
+  plazoAnios: number;
+  /** La combinación declarada en el análisis (pie y plazo de hoy). */
+  esActual: boolean;
+  /** La que el mix corona. Exactamente una celda la lleva. */
+  esElegida: boolean;
+  /** Veredicto de la celda SIN descuento. */
+  veredicto: Veredicto;
+  /** Score de la celda SIN descuento. */
+  score: number | null;
+  /** Descuento mínimo que hace cruzar esta celda, o null si no cruza ni en el tope. */
+  descuentoPct: number | null;
+  /** Plata propia extra el día uno, sobre el pie declarado. Puede ser negativa. */
+  costoDiaUnoUF: number;
+  costoPtsPrecio: number;
+  /** ¿Está dentro del tope de alcance? Una celda cara no se ofrece por más score que deje. */
+  alcanzable: boolean;
+};
+
 
 /**
  * LA ELECCIÓN, EN UNA SOLA FUNCIÓN (12-sep-2026).
@@ -218,12 +272,20 @@ export function calcularMixPalancas(p: {
     p.sondaAtPatch({ precio: p.precioUF * (1 - descuentoPct / 100), piePct, plazoCredito: plazoAnios });
   const cruza = (descuentoPct: number, piePct: number, plazoAnios: number) => alcanza(sondar(descuentoPct, piePct, plazoAnios).veredicto);
 
-  /** Descuento mínimo que cruza para esta combinación, o null si no cruza ni en el tope. */
-  const minimoDescuento = (piePct: number, plazoAnios: number): { pct: number; sin: boolean } | null => {
-    // Primero el caso que más importa: ¿pie y plazo SOLOS ya cruzan? Se pregunta directo en
-    // vez de leerlo del piso de la bisección, que devolvería un −0,1% engañoso.
-    if (cruza(0, piePct, plazoAnios)) return { pct: 0, sin: true };
-    if (!cruza(p.topePct, piePct, plazoAnios)) return null;
+  /**
+    * Explora UNA celda: el descuento mínimo que la cruza (o null) y las DOS lecturas que el
+    * pop-up necesita, sin sondear de más.
+    *
+    * `base` es la sonda a descuento 0, que ya se hacía para preguntar si pie y plazo solos
+    * alcanzan; de ahí salen el veredicto y el score que la celda muestra. `enMin` es la
+    * sonda en el descuento mínimo, que ya se hacía para leer el score con el que se elige.
+    * Cuando la celda cruza sin descuento las dos son la MISMA lectura y no se repite la
+    * llamada: antes se sondeaba dos veces el mismo punto.
+    */
+  const explorarCelda = (piePct: number, plazoAnios: number): { pct: number | null; sin: boolean; base: SondaMix; enMin: SondaMix | null } => {
+    const base = sondar(0, piePct, plazoAnios);
+    if (alcanza(base.veredicto)) return { pct: 0, sin: true, base, enMin: base };
+    if (!cruza(p.topePct, piePct, plazoAnios)) return { pct: null, sin: false, base, enMin: null };
     let lo = 0;
     let hi = p.topePct;
     while (hi - lo > MIX_PREC_PTS) {
@@ -231,7 +293,8 @@ export function calcularMixPalancas(p: {
       if (cruza(mid, piePct, plazoAnios)) hi = mid;
       else lo = mid;
     }
-    return { pct: Math.round(hi * 10) / 10, sin: false };
+    const pct = Math.round(hi * 10) / 10;
+    return { pct, sin: false, base, enMin: sondar(pct, piePct, plazoAnios) };
   };
 
   const pieCLP = (descuentoPct: number, piePct: number) => (p.precioUF * (1 - descuentoPct / 100) * piePct) / 100;
@@ -240,25 +303,42 @@ export function calcularMixPalancas(p: {
   // cruza — que son justamente aquellos donde el mix más vale.
   const pieDeclaradoUF = (p.precioUF * p.piePct) / 100;
 
+  // UNA sola pasada por la grilla produce las dos cosas: las combinaciones que compiten por
+  // ser la elegida y la matriz completa que el pop-up dibuja. EL SCORE SE MIDE EN LA CELDA
+  // QUE SE VA A OFRECER, con su descuento MÍNIMO: bajar el precio sube el score, así que si
+  // el descuento fuera libre la elección lo llevaría siempre al tope; anclado al mínimo que
+  // cruza, el descuento sigue siendo el menor posible y el score solo arbitra entre celdas.
   const combos: Combinacion[] = [];
+  const celdas: CeldaMix[] = [];
   for (const pie of pies) {
     for (const plazo of plazos) {
-      const r = minimoDescuento(pie, plazo);
-      if (!r) continue;
-      // EL SCORE SE MIDE EN LA CELDA QUE SE VA A OFRECER, con su descuento MÍNIMO. Es la
-      // decisión que sostiene toda la regla: bajar el precio sube el score, así que si el
-      // descuento fuera libre la elección lo llevaría siempre al tope. Anclado al mínimo que
-      // cruza, el descuento sigue siendo el menor posible y el score solo arbitra entre
-      // celdas de pie × plazo. Una sonda más por celda (la grilla tiene 9 como máximo).
-      const score = sondar(r.pct, pie, plazo).score;
+      const r = explorarCelda(pie, plazo);
+      const costoUF = Math.round(pieCLP(r.pct ?? 0, pie) - pieDeclaradoUF);
+      const costoPts = Math.round(((100 * (pieCLP(r.pct ?? 0, pie) - pieDeclaradoUF)) / p.precioUF) * 10) / 10;
+      const scoreBase = Number.isFinite(r.base.score as number) ? (r.base.score as number) : null;
+      celdas.push({
+        piePct: pie,
+        plazoAnios: plazo,
+        esActual: pie === p.piePct && plazo === p.plazoCredito,
+        esElegida: false, // se marca abajo, cuando la elección ya está hecha
+        veredicto: r.base.veredicto,
+        score: scoreBase,
+        descuentoPct: r.pct,
+        costoDiaUnoUF: costoUF,
+        costoPtsPrecio: costoPts,
+        alcanzable: r.pct !== null && costoPts <= MIX_COSTO_TOPE_PTS_PRECIO,
+      });
+      if (r.pct === null || !r.enMin) continue;
+      const score = r.enMin.score;
       combos.push({
         descuentoPct: r.pct,
         sinDescuento: r.sin,
         piePct: pie,
         plazoAnios: plazo,
         score: Number.isFinite(score as number) ? (score as number) : null,
-        costoDiaUnoUF: Math.round(pieCLP(r.pct, pie) - pieDeclaradoUF),
-        costoPtsPrecio: Math.round(((100 * (pieCLP(r.pct, pie) - pieDeclaradoUF)) / p.precioUF) * 10) / 10,
+        metricas: r.enMin.metricas ?? null,
+        costoDiaUnoUF: costoUF,
+        costoPtsPrecio: costoPts,
       });
     }
   }
@@ -296,6 +376,10 @@ export function calcularMixPalancas(p: {
   // ── ¿EL MIX AGREGA ALGO? ──────────────────────────────────────────────────
   // Si mueve UNA sola dimensión y esa palanca ya se reporta sola, el mix está repitiendo
   // una vía con otro nombre. Eso es ruido, y el render tiene que poder no dibujarlo.
+  for (const c of celdas) {
+    c.esElegida = c.piePct === mejor.piePct && c.plazoAnios === mejor.plazoAnios && c.descuentoPct === mejor.descuentoPct;
+  }
+
   const movidas: ("precio" | "plazo" | "pie")[] = [];
   if (mejor.descuentoPct > 0) movidas.push("precio");
   if (mejor.piePct !== p.piePct) movidas.push("pie");
@@ -303,6 +387,9 @@ export function calcularMixPalancas(p: {
   const redundanteConPalancaSola = movidas.length === 1 && p.palancasQueCruzan.includes(movidas[0]);
 
   return {
+    celdas,
+    score: mejor.score,
+    despues: mejor.metricas,
     descuentoPct: mejor.descuentoPct,
     sinDescuento: mejor.sinDescuento,
     piePct: mejor.piePct,

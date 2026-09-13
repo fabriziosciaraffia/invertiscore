@@ -344,6 +344,18 @@ export function buildHallazgoDistanciaVeredicto(p: {
   const palancasHasta = (meta: Veredicto): { palancas: PalancaDistancia[]; vias: ViaDistancia[] } => {
     const out: PalancaDistancia[] = [];
     const tope = topeDe(meta);
+    /**
+     * El score con el que esta palanca llega a la meta, medido en el objetivo QUE SE
+     * MUESTRA (no en el punto crudo de la bisección, que se redondea para publicarse).
+     * Una sonda por palanca que cruza; las que no cruzan no la pagan.
+     */
+    const conDestino = (pal: PalancaDistancia, patch: Parameters<typeof p.sondaAtPatch>[0]): PalancaDistancia => ({
+      ...pal,
+      destino: meta,
+      score: p.sondaAtPatch(patch).score,
+    });
+
+
     let viaArriendo: ViaDistancia;
     let viaPrecio: ViaDistancia;
     let viaPlazo: ViaDistancia;
@@ -358,13 +370,13 @@ export function buildHallazgoDistanciaVeredicto(p: {
     );
     if (fArr != null) {
       const objetivo = Math.ceil(p.arriendo * fArr);
-      const pal: PalancaDistancia = {
+      const pal: PalancaDistancia = conDestino({
         palanca: "arriendo",
         objetivo,
         actual: p.arriendo,
         deltaPct: Math.round((objetivo / p.arriendo - 1) * 1000) / 10,
         deltaAbs: objetivo - p.arriendo,
-      };
+      }, { arriendo: objetivo });
       out.push(pal);
       viaArriendo = { estado: "cruza", ...pal };
     } else {
@@ -384,13 +396,13 @@ export function buildHallazgoDistanciaVeredicto(p: {
     );
     if (fPre != null) {
       const objetivo = Math.floor(p.precioUF * fPre);
-      const pal: PalancaDistancia = {
+      const pal: PalancaDistancia = conDestino({
         palanca: "precio",
         objetivo,
         actual: p.precioUF,
         deltaPct: Math.round((objetivo / p.precioUF - 1) * 1000) / 10, // negativo
         deltaAbs: objetivo - p.precioUF,
-      };
+      }, { precio: objetivo });
       out.push(pal);
       viaPrecio = { estado: "cruza", ...pal };
     } else {
@@ -439,13 +451,13 @@ export function buildHallazgoDistanciaVeredicto(p: {
           comercial > p.plazoCredito &&
           alcanzaMeta(veredictoAtPatch({ plazoCredito: comercial }), meta)
         ) {
-          const pal: PalancaDistancia = {
+          const pal: PalancaDistancia = conDestino({
             palanca: "plazo",
             objetivo: comercial,
             actual: p.plazoCredito,
             deltaPct: Math.round((comercial / p.plazoCredito - 1) * 1000) / 10,
             deltaAbs: comercial - p.plazoCredito,
-          };
+          }, { plazoCredito: comercial });
           out.push(pal);
           viaPlazo = { estado: "cruza", ...pal };
         }
@@ -487,7 +499,7 @@ export function buildHallazgoDistanciaVeredicto(p: {
       };
       for (let pie = Math.floor(p.piePct) + 1; pie <= DIST_PIE_TOPE_PCT; pie++) {
         if (!alcanzaMeta(veredictoAtPatch({ piePct: pie }), meta)) continue;
-        const pal: PalancaDistancia = {
+        const pal: PalancaDistancia = conDestino({
           palanca: "pie",
           objetivo: pie,
           actual: p.piePct,
@@ -495,7 +507,7 @@ export function buildHallazgoDistanciaVeredicto(p: {
           // relativo no existe.
           deltaPct: Math.round((pie - p.piePct) * 10) / 10,
           deltaAbs: Math.round((pie - p.piePct) * 10) / 10,
-        };
+        }, { piePct: pie });
         // PRIORIDAD (decisión Fabrizio 02-sep-2026): el pie va PRIMERO —y por lo tanto es
         // `palancaMasBarata`, el titular del hero— solo cuando el pie actual está bajo el
         // nivel aceptable (< 20%, `classifyPieLevel` mejorable/problemático), que es donde

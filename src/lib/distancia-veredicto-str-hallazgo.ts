@@ -198,6 +198,17 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   const palancasHasta = (meta: Veredicto): { palancas: PalancaDistancia[]; vias: ViaDistancia[] } => {
     const relativas: PalancaDistancia[] = [];
     const tope = topeDe(meta);
+    /**
+     * El score con el que esta palanca llega a la meta, medido en el objetivo QUE SE
+     * MUESTRA (no en el punto crudo de la bisección, que se redondea para publicarse).
+     * Espejo del de LTR: una sonda por palanca que cruza.
+     */
+    const conDestino = (pal: PalancaDistancia, patch: StrPatch): PalancaDistancia => ({
+      ...pal,
+      destino: meta,
+      score: p.sondaAtPatch(patch).score,
+    });
+
     let viaPrecio: ViaDistancia;
     let viaAdr: ViaDistancia;
     let viaPlazo: ViaDistancia;
@@ -212,13 +223,13 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     );
     if (fPre != null) {
       const objetivo = Math.floor(p.precioUF * fPre);
-      const pal: PalancaDistancia = {
+      const pal: PalancaDistancia = conDestino({
         palanca: "precio",
         objetivo,
         actual: p.precioUF,
         deltaPct: Math.round((objetivo / p.precioUF - 1) * 1000) / 10, // negativo
         deltaAbs: objetivo - p.precioUF,
-      };
+      }, { precioCompra: Math.round(objetivo * (p.precioCLP / p.precioUF)) });
       relativas.push(pal);
       viaPrecio = { estado: "cruza", ...pal };
     } else {
@@ -241,13 +252,13 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     );
     if (fAdr != null) {
       const objetivo = Math.ceil(p.adrActual * fAdr);
-      const pal: PalancaDistancia = {
+      const pal: PalancaDistancia = conDestino({
         palanca: "adr",
         objetivo,
         actual: p.adrActual,
         deltaPct: Math.round((objetivo / p.adrActual - 1) * 1000) / 10,
         deltaAbs: objetivo - p.adrActual,
-      };
+      }, { adrOverride: objetivo });
       relativas.push(pal);
       viaAdr = { estado: "cruza", ...pal };
     } else {
@@ -287,13 +298,13 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
           Math.ceil(anios / DIST_PLAZO_TRAMO_ANIOS) * DIST_PLAZO_TRAMO_ANIOS,
         );
         if (comercial > p.plazoCredito && alcanzaMeta(veredictoAtPatch({ plazoCredito: comercial }), meta)) {
-          const pal: PalancaDistancia = {
+          const pal: PalancaDistancia = conDestino({
             palanca: "plazo",
             objetivo: comercial,
             actual: p.plazoCredito,
             deltaPct: Math.round((comercial / p.plazoCredito - 1) * 1000) / 10,
             deltaAbs: comercial - p.plazoCredito,
-          };
+          }, { plazoCredito: comercial });
           relativas.push(pal);
           viaPlazo = { estado: "cruza", ...pal };
         }
@@ -334,13 +345,13 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
       };
       for (let pie = Math.floor(p.piePct) + 1; pie <= DIST_PIE_TOPE_PCT; pie++) {
         if (!alcanzaMeta(veredictoAtPatch({ piePercent: pie / 100 }), meta)) continue;
-        const pal: PalancaDistancia = {
+        const pal: PalancaDistancia = conDestino({
           palanca: "pie",
           objetivo: pie,
           actual: p.piePct,
           deltaPct: Math.round((pie - p.piePct) * 10) / 10, // PUNTOS porcentuales
           deltaAbs: Math.round((pie - p.piePct) * 10) / 10,
-        };
+        }, { piePercent: pie / 100 });
         if (pieCalifica) propias.push(pal);
         else pieAlFinal.push(pal);
         viaPie = { estado: "cruza", ...pal };
@@ -356,14 +367,14 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
       const comActual = (p.modoGestionActual === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;
       const comObjetivo = (otro === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;
       if (alcanzaMeta(veredictoAtPatch({ modoGestion: otro }), meta)) {
-        const pal: PalancaDistancia = {
+        const pal: PalancaDistancia = conDestino({
           palanca: "gestion",
           modoGestionObjetivo: otro,
           objetivo: Math.round(comObjetivo * 10) / 10,
           actual: Math.round(comActual * 10) / 10,
           deltaPct: Math.round((comObjetivo - comActual) * 10) / 10, // PUNTOS porcentuales
           deltaAbs: Math.round((comObjetivo - comActual) * 10) / 10,
-        };
+        }, { modoGestion: otro });
         propias.push(pal);
         viaGestion = { estado: "cruza", ...pal };
       } else {

@@ -53,6 +53,7 @@ import { runDistanciaComprarTier } from "./distancia-comprar-catch-test";
 import { runDistanciaComprarStrTier } from "./distancia-comprar-str-catch-test";
 import { runMixPalancasTier } from "./mix-palancas-catch-test";
 import { runMixScoreTier } from "./mix-score-catch-test";
+import { runGrillaPopupTier } from "./grilla-popup-catch-test";
 import { runMixStrTier } from "./mix-str-catch-test";
 import { runLoQueHariaYoTier } from "./lo-que-haria-yo-catch-test";
 import { runSalidaPorMixTier } from "./salida-por-mix-catch-test";
@@ -294,6 +295,7 @@ async function printStrSemantic() {
   totalHard += runDistanciaComprarStrTier().hard;
   totalHard += runMixPalancasTier().hard;
   totalHard += runMixScoreTier().hard;
+  totalHard += runGrillaPopupTier().hard;
   // ── Tier MIX STR (11-sep-2026, 0 tokens, sin base): el builder STR emite el mismo mix
   // que LTR a través del adaptador UF→CLP / %→decimal; destino = escalón, tope 25/15,
   // redundancia con palanca sola y «sin salida» coherente. Corre siempre con el QUICK. ──
