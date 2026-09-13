@@ -1,7 +1,9 @@
 import { calcShortTerm, type ShortTermInputs, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR, type FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { buildStrHallazgos, mergeHallazgosStr } from "@/lib/str-hallazgos";
-import { buildAirbnbData } from "@/lib/api-helpers/analisis-pipeline";
+// Desde el 13-sep-2026 sale del módulo puro: importarlo del pipeline arrastraba
+// `next/headers` y volvía este recompute inimportable desde el cliente.
+import { buildAirbnbData } from "@/lib/analysis/airbnb-data";
 import { piePercentDesdeInputData } from "@/lib/analysis/pie-input-data";
 import type { ScoreSTRExtras } from "@/lib/analysis/veredicto-str-con-patch";
 

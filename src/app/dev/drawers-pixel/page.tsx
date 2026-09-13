@@ -15,6 +15,9 @@
 import { Suspense } from "react";
 import { useSearchParams, notFound } from "next/navigation";
 import type { FullAnalysisResult } from "@/lib/types";
+import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
+import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { simularStrDesdePersistido } from "@/lib/analysis/simular-str";
 import { TokensHallazgos } from "@/components/analysis/hallazgos/HallazgosAcordeon";
 import { DocTokens } from "@/components/analysis/portada/PortadaInforme";
 import { TokensShared } from "@/components/analysis/shared";
@@ -65,7 +68,37 @@ function Inner() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fix = (fixtures as Record<string, any>)[rowKey];
   const isSTR = fix?.tipo === "renta_corta" || fix?.tipo === "short-term";
-  const results = fix?.results as FullAnalysisResult;
+  // RECOMPUTE, COMO LA RUTA REAL (13-sep-2026). `analisis/[id]/page.tsx` recomputa antes de
+  // montar; esta página servía los `results` congelados del fixture, así que todo lo que el
+  // motor agregó DESPUÉS del volcado —la grilla del pop-up, por ejemplo— salía vacío acá y
+  // lleno en producción. Un entorno de prueba que muestra otro estado que prod no sirve para
+  // aprobar un render. Mismas congeladas que allá: UF de la fila y fecha de creación.
+  const results = ((): FullAnalysisResult => {
+    const persisted = fix?.results as FullAnalysisResult;
+    const input = fix?.input_data;
+    if (!input) return persisted;
+    if (isSTR) {
+      // STR recomputa por su propia ruta (`recomputeShortTermForLegacy`), igual que
+      // `analisis/renta-corta/[id]/page.tsx`.
+      const uf = Number(input.precioCompra) && Number(input.precioCompraUF) ? Number(input.precioCompra) / Number(input.precioCompraUF) : 0;
+      if (!(uf > 0)) return persisted;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (recomputeShortTermForLegacy(input as any, persisted as any, uf, new Date(fix.created_at ?? Date.now()), { mediana: null, n: 0 }) ?? persisted) as unknown as FullAnalysisResult;
+      } catch {
+        return persisted;
+      }
+    }
+    const uf = persisted?.metrics?.precioCLP && input.precio ? persisted.metrics.precioCLP / input.precio : 38800;
+    const snap = fix?.medianaSnapshot;
+    const mediana = snap ? { mediana: snap.mediana, n: snap.n ?? 0 } : undefined;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (recomputeResultsForLegacy(input as any, uf, mediana as any, new Date(fix.created_at ?? Date.now())) ?? persisted) as FullAnalysisResult;
+    } catch {
+      return persisted;
+    }
+  })();
   const valorUF: number = fix?.uf ?? 38800;
   const comp = sp.get("comp");
 
@@ -129,7 +162,19 @@ function Inner() {
         userCredits={0}
         aiAnalysisInitial={fix.ai_analysis ?? null}
         puedeRegenerarProsa={false}
-        simulacionStr={fix.simulacion ?? null}
+        simulacionStr={(() => {
+          // La simulación se recalcula sobre el recompute, como en la ruta real: el fixture
+          // la trae congelada y sus fronteras quedaron en el volcado.
+          const input = fix.input_data;
+          const uf = Number(input?.precioCompra) && Number(input?.precioCompraUF) ? Number(input.precioCompra) / Number(input.precioCompraUF) : 0;
+          if (!(uf > 0)) return fix.simulacion ?? null;
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return simularStrDesdePersistido(input as any, results as any, uf, new Date(fix.created_at ?? Date.now())) ?? fix.simulacion ?? null;
+          } catch {
+            return fix.simulacion ?? null;
+          }
+        })()}
         zonaStr={fix.zonaStr ?? null}
       />
     );
