@@ -147,7 +147,17 @@ export function construirAlternativaComunas(p: {
     } catch {
       continue; // una comuna que no calcula no entra; el resto sigue
     }
-    if (r.veredicto === "BUSCAR OTRA") continue;
+    // SOLO LAS QUE DAN COMPRAR (13-sep-2026). Hasta hoy entraba todo lo que no fuera
+    // BUSCAR OTRA, así que se nombraba una comuna que apenas pasa a AJUSTA SUPUESTOS. La
+    // promesa de la línea es «ahí sí convendría», no «ahí está menos mal»: una comuna en
+    // Ajusta es otro deal que también hay que arreglar, y mandar a alguien a buscar eso es
+    // mandarlo al mismo problema con otra dirección.
+    //
+    // Medido sobre las 660 filas BUSCAR OTRA del parque: 466 tienen alternativa hoy, 219
+    // la pierden con este filtro —ninguna comuna de su presupuesto llega a Comprar— y 101
+    // cambian a qué comuna mandan. Las 219 quedan sin «dónde», que es lo honesto cuando no
+    // hay dónde.
+    if (r.veredicto !== "COMPRAR") continue;
     cruzan.push({
       comuna,
       veredicto: r.veredicto as Veredicto,

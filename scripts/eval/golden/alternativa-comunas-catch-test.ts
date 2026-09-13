@@ -61,8 +61,12 @@ const ASOF = new Date("2026-09-01T12:00:00Z");
   if (!/runAnalysis\(/.test(FUENTE)) {
     F("1 · la alternativa dejó de correr `runAnalysis`. El veredicto no sale de un cap rate: sale de las bandas del score y de los tres gates, así que la única forma de saber si un depto convendría en otra comuna es correrlo ahí con la MISMA función del informe.");
   }
-  if (!/veredicto === "BUSCAR OTRA"/.test(FUENTE)) {
-    F("1 · la alternativa dejó de filtrar por el veredicto del motor");
+  // El filtro se endureció el 13-sep-2026: antes entraba todo lo que no fuera BUSCAR OTRA
+  // —o sea también las comunas que quedan en AJUSTA SUPUESTOS— y la línea promete «ahí sí
+  // convendría», no «ahí está menos mal». Lo que el invariante protege es lo mismo de
+  // siempre: que el corte lo dé el VEREDICTO del motor y no un umbral inventado.
+  if (!/veredicto !== "COMPRAR"/.test(FUENTE)) {
+    F("1 · la alternativa dejó de filtrar por el veredicto del motor (solo COMPRAR)");
   }
   // Y NO contra una tasa fija: un número suelto comparado con cap/CoC/TIR es
   // exactamente el instrumento propio que esto vino a evitar.
