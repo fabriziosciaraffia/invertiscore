@@ -276,7 +276,9 @@ export function HeroLTR({
             // COMPRAR: no hay a dónde subir, así que no hay matriz ni óptimo. Van los
             // márgenes de la card —Margen, Precio, Verifica— con su oración completa.
             key: "sensibilidad" as const,
-            k: "Recomendación de ajustes",
+            // EN COMPRAR NO HAY AJUSTE QUE RECOMENDAR: el veredicto ya es el de arriba. Lo
+            // que el pop-up muestra es hasta dónde aguanta, así que el rótulo lo dice.
+            k: "Tu margen",
             l: "Franco probó hasta dónde puede moverse cada supuesto sin que cambie la conclusión.",
             btn: "Ver margen",
             sub: undefined,

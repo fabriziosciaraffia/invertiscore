@@ -32,11 +32,30 @@ export function PopupAjustesTokens() {
       .paj-sx{font-size:12px;color:var(--doc-tx3);line-height:1.45;margin:-4px 0 12px}
       .paj-ejex{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
         color:var(--doc-tx4);text-align:center;margin-bottom:6px;padding-left:52px}
-      .paj-mwrap{display:grid;grid-template-columns:auto 1fr;gap:0 8px;align-items:center}
+      /* LA CELDA MANDA, NO EL ANCHO DISPONIBLE. Con \`width:100%\` una grilla de dos columnas
+         estiraba las celdas hasta deformarlas; acá el ancho lo fija la celda y la tabla ocupa
+         lo que ocupe, centrada. Así 1×1 y 7×3 se leen con la misma tipografía y el mismo alto
+         de fila, que es lo que las hace parecer la misma pieza. */
+      .paj-mwrap{display:grid;grid-template-columns:auto auto;gap:0 8px;align-items:center;justify-content:center}
+      /* Con muchos pies el problema es el alto, no el ancho: la tabla scrollea dentro del
+         pop-up y no empuja al resto. Tope pensado para 7 filas. */
+      .paj-mwrap{max-height:none}
+      .paj-mtxbox{overflow-y:auto;max-height:326px}
       .paj-ejey{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10.5px;font-weight:600;
         letter-spacing:.05em;text-transform:uppercase;color:var(--doc-tx4);text-align:center;padding:22px 0 0}
-      .paj-mtx{border-collapse:separate;border-spacing:4px;width:100%;font-variant-numeric:tabular-nums}
+      .paj-mtx{border-collapse:separate;border-spacing:4px;font-variant-numeric:tabular-nums;
+        table-layout:fixed}
+      .paj-mtx td,.paj-mtx th:not(.rot){width:150px}
+      .paj-mwrap.sola .paj-mtx td,.paj-mwrap.sola .paj-mtx th:not(.rot){width:190px}
+      /* Una sola fila: sin eje vertical, la tabla queda en una columna de la rejilla y su
+         cabecera de fila se ensancha para que el rótulo del pie quepa en una línea. */
+      .paj-mwrap.linea{grid-template-columns:auto}
+      .paj-mwrap.linea .paj-mtx th.rot{width:auto;padding-right:10px;text-align:right}
+      .paj-mwrap.linea .paj-mtx th.rot small{display:block;font-size:10px;font-weight:400;
+        color:var(--doc-tx4);margin-top:2px;line-height:1.3;white-space:normal;max-width:110px}
       .paj-mtx th{font-size:11.5px;font-weight:600;color:var(--doc-tx3);padding:3px 2px;text-align:center}
+      .paj-mtx th small{display:block;font-size:10px;font-weight:400;color:var(--doc-tx4);
+        margin-top:2px;line-height:1.3;white-space:normal}
       .paj-mtx th.rot{text-align:right;padding-right:7px;white-space:nowrap;width:44px}
       .paj-mtx td{text-align:center;padding:8px 3px;border-radius:8px;font-size:12.5px;font-weight:700;
         background:var(--doc-paper2);color:var(--doc-tx3);cursor:pointer;line-height:1.2;
@@ -55,6 +74,12 @@ export function PopupAjustesTokens() {
       .paj-sw.a{background:var(--doc-tx)}
       .paj-sw.b{background:color-mix(in srgb,var(--doc-good) 16%,transparent);border:1px solid var(--doc-good)}
       .paj-sw.c{background:var(--doc-paper2);outline:2px solid var(--doc-tx3);outline-offset:-2px}
+      /* La celda única: una línea, no un cuadrito con ejes alrededor. */
+      .paj-unica{display:flex;justify-content:space-between;align-items:center;gap:12px;
+        background:var(--doc-paper2);border-radius:12px;padding:14px 16px;cursor:pointer;font-size:13.5px}
+      .paj-unica .k{color:var(--doc-tx2)}
+      .paj-unica .v{font-weight:700;white-space:nowrap}
+      .paj-unica .v.cruza{color:var(--doc-good)}
       .paj-cel{background:var(--doc-paper3,var(--doc-paper2));border-radius:12px;padding:13px 14px;
         margin-top:12px;position:relative}
       .paj-cel .x{position:absolute;top:9px;right:10px;width:24px;height:24px;border-radius:50%;
@@ -110,6 +135,9 @@ export function PopupAjustesTokens() {
         .paj-ejex,.paj-leyenda{padding-left:0}
         .paj-mtx td{font-size:11.5px;padding:7px 2px}
         .paj-mtx th.rot{width:36px;font-size:10.5px}
+        .paj-mtx td,.paj-mtx th:not(.rot){width:130px}
+        .paj-mwrap.sola .paj-mtx td,.paj-mwrap.sola .paj-mtx th:not(.rot){width:170px}
+        .paj-mtxbox{max-height:280px}
       }
       @media (prefers-reduced-motion:reduce){.paj-mtx td{transition:none}}
 `,

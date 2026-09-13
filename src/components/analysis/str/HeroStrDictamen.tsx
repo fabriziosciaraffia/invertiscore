@@ -203,7 +203,9 @@ export function HeroStrDictamen({
             // COMPRAR: no hay a dónde subir. Van los márgenes de la card —Margen, Precio,
             // Verifica— con su oración completa; el dial se queda en su capítulo.
             key: "sensibilidad",
-            k: "Recomendación de ajustes",
+            // EN COMPRAR NO HAY AJUSTE QUE RECOMENDAR: el veredicto ya es el de arriba. Lo
+            // que el pop-up muestra es hasta dónde aguanta, así que el rótulo lo dice.
+            k: "Tu margen",
             l: "Franco probó hasta dónde puede moverse cada supuesto sin que cambie la conclusión.",
             btn: "Ver margen",
             cuerpo: cuerpoAjustes,

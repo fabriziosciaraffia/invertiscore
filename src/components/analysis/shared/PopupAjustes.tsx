@@ -64,6 +64,21 @@ const NOMBRE: Record<PalancaDistancia["palanca"], string> = {
   gestion: "Gestión",
 };
 
+/**
+ * EL MIX QUE LLEGA A COMPRAR, y solo ese (contrato §5 · 13-sep-2026).
+ *
+ * `mixPalancas` apunta al veredicto INMEDIATAMENTE superior: desde AJUSTA eso ya es
+ * COMPRAR, pero desde BUSCAR OTRA es el escalón intermedio, y **el escalón no se muestra
+ * nunca**. Hasta hoy el pop-up tomaba `mixPalancas ?? mixPalancasHastaComprar`, o sea
+ * prefería el del escalón: 399 filas LTR y 55 STR estaban sensibilizando hacia Ajustar y
+ * ofreciendo un plan que no lleva a Comprar, sin decirlo.
+ *
+ * Misma regla que la card (`salidaPorMixStr`), que ya lo hacía bien.
+ */
+function mixAComprar(v: HallazgoDistanciaVeredicto["valor"]) {
+  return v.veredictoBase === "BUSCAR OTRA" ? v.mixPalancasHastaComprar ?? null : v.mixPalancas ?? null;
+}
+
 export interface PopupAjustesProps {
   modalidad: "ltr" | "str";
   veredicto: Veredicto;
@@ -89,8 +104,7 @@ export function hayAjustesQueMostrar(p: {
   if (p.veredicto === "COMPRAR") return (p.filasComprar?.length ?? 0) > 0;
   const v = p.distancia?.valor;
   if (!v) return false;
-  const celdas = (v.mixPalancas ?? v.mixPalancasHastaComprar)?.celdas ?? [];
-  return celdas.length > 0 || (v.palancas?.length ?? 0) > 0;
+  return (mixAComprar(v)?.celdas?.length ?? 0) > 0 || (v.palancas?.length ?? 0) > 0;
 }
 
 export function PopupAjustes({
@@ -104,13 +118,14 @@ export function PopupAjustes({
   antes,
 }: PopupAjustesProps) {
   const v = distancia?.valor;
-  const mix = v?.mixPalancas ?? v?.mixPalancasHastaComprar ?? null;
+  const mix = v ? mixAComprar(v) : null;
   const celdas = mix?.celdas ?? [];
   const solas = v?.palancas ?? [];
   const [sel, setSel] = useState<CeldaMix | null>(null);
 
   const esComprar = veredicto === "COMPRAR";
-  const destino: Veredicto = esComprar ? "COMPRAR" : (mix?.destino ?? v?.veredictoObjetivo ?? "COMPRAR");
+  // El destino de la matriz es COMPRAR siempre que haya matriz: el escalón no se dibuja.
+  const destino: Veredicto = "COMPRAR";
 
   return (
     <div className="paj">
@@ -184,25 +199,71 @@ function SeccionMatriz({
   // «HOY» NO SE INVENTA: 16 filas LTR y 2 STR no tienen celda actual porque su plazo
   // declarado no está en la grilla. Ahí no se marca nada y la leyenda tampoco la nombra.
   const hayActual = celdas.some((c) => c.esActual);
+  // LA GRILLA REAL NO ES 3×3 (medido el 13-sep-2026). Los pies van del declarado hasta 30
+  // de cinco en cinco y los plazos son los del wizard que no acortan el crédito, así que la
+  // forma depende del caso: de 1×1 a 7×3, con 3×2 como la más común (47% LTR, 38% STR) y
+  // una de cada tres grillas con UNA SOLA COLUMNA.
+  //
+  // Con una sola columna esto no es una matriz: es una lista de pies para un plazo fijo, y
+  // dibujarle un eje horizontal que rotula una sola cosa es ruido. Ahí el plazo se dice en
+  // el encabezado y el eje desaparece.
+  const unaColumna = plazos.length === 1;
+  // Y con UNA SOLA FILA tampoco: son 63 filas LTR y 2 STR donde el pie ya está en el techo
+  // o no califica, así que la grilla es una línea de plazos para un pie fijo. Rotular un eje
+  // vertical sobre una sola fila es la misma clase de ruido: el pie se dice en su cabecera.
+  const unaFila = pies.length === 1;
+  // UNA SOLA CELDA no es ni matriz ni línea: es UNA combinación. Son 23 filas LTR, donde el
+  // pie ya está en el techo y el plazo también. Dibujarle ejes, cabeceras y leyenda a un
+  // cuadrito solo sería andamiaje alrededor de una sola afirmación, así que se dice en
+  // palabras y el detalle queda a un clic, igual que en la matriz.
+  const unaSola = celdas.length === 1;
+
+  if (unaSola) {
+    const c = celdas[0];
+    const cruza = c.descuentoPct !== null && c.alcanzable;
+    return (
+      <section className="paj-sec">
+        <div className="paj-st">Ajustes que dependen de ti</div>
+        <div className="paj-unica" onClick={() => onSel(sel ? null : c)} role="button" tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSel(sel ? null : c); }}>
+          <span className="k">
+            Con pie {dec1(c.piePct).replace(",0", "")}% a {c.plazoAnios} años
+          </span>
+          <span className={`v${cruza ? " cruza" : ""}`}>
+            {etiquetaVeredicto(c.veredicto, "frase")} · score {c.score ?? PAR_SIN_VALOR}
+          </span>
+        </div>
+        <p className="paj-sx paj-pie">Es la única combinación que Franco puede probar: tu pie y tu plazo ya están en el techo.</p>
+        {sel && <PanelCelda sel={sel} destino={destino} currency={currency} valorUF={valorUF} onCerrar={() => onSel(null)} />}
+      </section>
+    );
+  }
 
   return (
     <section className="paj-sec">
       <div className="paj-st">Ajustes que dependen de ti</div>
       <p className="paj-sx">El descuento que pides se ajusta en consecuencia.</p>
-      <div className="paj-ejex">Plazo del crédito</div>
-      <div className="paj-mwrap">
-        <div className="paj-ejey">Pie que pones</div>
+      {!unaColumna && <div className="paj-ejex">Plazo del crédito</div>}
+      <div className={`paj-mwrap${unaColumna ? " sola" : ""}${unaFila ? " linea" : ""}`}>
+        {!unaFila && <div className="paj-ejey">Pie que pones</div>}
+        <div className="paj-mtxbox">
         <table className="paj-mtx">
           <tbody>
             <tr>
               <th className="rot" />
               {plazos.map((p) => (
-                <th key={p}>{p} años</th>
+                <th key={p}>
+                  {p} años
+                  {unaColumna && <small>el único plazo que no acorta tu crédito</small>}
+                </th>
               ))}
             </tr>
             {pies.map((pie) => (
               <tr key={pie}>
-                <th className="rot">{dec1(pie).replace(",0", "")}%</th>
+                <th className="rot">
+                  {unaFila ? "Pie " : ""}{dec1(pie).replace(",0", "")}%
+                  {unaFila && <small>tu pie, el único que Franco prueba acá</small>}
+                </th>
                 {plazos.map((plazo) => {
                   const c = at(pie, plazo);
                   if (!c) return <td key={plazo} className="vacia" />;
@@ -232,6 +293,7 @@ function SeccionMatriz({
             ))}
           </tbody>
         </table>
+        </div>
       </div>
       <div className="paj-leyenda">
         {hayActual && (
@@ -250,32 +312,49 @@ function SeccionMatriz({
         </span>
       </div>
 
-      {sel && (
-        <div className="paj-cel">
-          <span className="x" onClick={() => onSel(null)} role="button" tabIndex={0}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSel(null); }}>
-            ✕
-          </span>
-          <div className="ct">
-            Pie {dec1(sel.piePct).replace(",0", "")}% · {sel.plazoAnios} años
-          </div>
-          <div className="paj-cg">
-            <span className="l">Pides de descuento</span>
-            <span className="v">
-              {sel.descuentoPct === null || !sel.alcanzable
-                ? `no llega a ${etiquetaVeredicto(destino, "frase")}`
-                : sel.descuentoPct === 0
-                  ? "nada"
-                  : `−${pct1(sel.descuentoPct)}`}
-            </span>
-            <span className="l">Pie extra el día uno</span>
-            <span className={`v${sel.costoDiaUnoUF > 0 ? " mal" : ""}`}>
-              {sel.costoDiaUnoUF === 0 ? "—" : plataFirmada(sel.costoDiaUnoUF * valorUF, currency, valorUF)}
-            </span>
-          </div>
-        </div>
-      )}
+      {sel && <PanelCelda sel={sel} destino={destino} currency={currency} valorUF={valorUF} onCerrar={() => onSel(null)} />}
     </section>
+  );
+}
+
+/** El detalle de una celda: los DOS datos que la matriz no muestra y su ✕. */
+function PanelCelda({
+  sel,
+  destino,
+  currency,
+  valorUF,
+  onCerrar,
+}: {
+  sel: CeldaMix;
+  destino: Veredicto;
+  currency: Currency;
+  valorUF: number;
+  onCerrar: () => void;
+}) {
+  return (
+    <div className="paj-cel">
+      <span className="x" onClick={onCerrar} role="button" tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onCerrar(); }}>
+        ✕
+      </span>
+      <div className="ct">
+        Pie {dec1(sel.piePct).replace(",0", "")}% · {sel.plazoAnios} años
+      </div>
+      <div className="paj-cg">
+        <span className="l">Pides de descuento</span>
+        <span className="v">
+          {sel.descuentoPct === null || !sel.alcanzable
+            ? `no llega a ${etiquetaVeredicto(destino, "frase")}`
+            : sel.descuentoPct === 0
+              ? "nada"
+              : `−${pct1(sel.descuentoPct)}`}
+        </span>
+        <span className="l">Pie extra el día uno</span>
+        <span className={`v${sel.costoDiaUnoUF > 0 ? " mal" : ""}`}>
+          {sel.costoDiaUnoUF === 0 ? "—" : plataFirmada(sel.costoDiaUnoUF * valorUF, currency, valorUF)}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -435,11 +514,25 @@ function SeccionSolas({
   );
 }
 
-// ── COMPRAR · los márgenes de la card ───────────────────────────────────────
+// ── COMPRAR · cuánto aguanta el veredicto ───────────────────────────────────
+//
+// NO HAY MATRIZ NI ÓPTIMO: no hay a dónde subir, y sensibilizar hacia arriba sería
+// inventar un veredicto que no existe.
+//
+// Y TAMPOCO HAY BARRAS (13-sep-2026). Hubo dos rieles dibujando las fronteras —el arriendo
+// que puede caer y el precio que puede subir— y se retiraron: las tres filas ya dicen lo
+// mismo con oraciones completas, y una barra que repite una oración no agrega profundidad,
+// agrega una segunda lectura que hay que reconciliar con la primera. Peor todavía, las dos
+// se leían en direcciones opuestas —una cae, la otra sube— así que el mismo riel
+// significaba cosas distintas según cuál mirabas. La frontera es un número con su oración;
+// eso ya está.
+//
+// Queda el pop-up más corto que el resto, y está bien: en COMPRAR hay menos que decir.
 function SeccionComprar({ filas }: { filas: FilaLoQueHariaYo[] }) {
+  const verifica = filas.some((f) => f.rotuloCorto === "Verifica");
   return (
     <section className="paj-sec paj-nod">
-      <div className="paj-st">Cuánto aguanta este veredicto</div>
+      <div className="paj-st">{verifica ? "Cuánto aguanta, y qué verificar" : "Cuánto aguanta este veredicto"}</div>
       <table>
         <tbody>
           {filas.map((f, i) => (
