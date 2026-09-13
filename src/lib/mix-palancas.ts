@@ -6,15 +6,26 @@
 // —precio, pie y plazo— y para cada combinación de pie × plazo devuelve el
 // descuento mínimo de precio que cruza al veredicto de arriba.
 //
-// CUÁL DE ESAS COMBINACIONES SE OFRECE (regla nueva, 12-sep-2026). Hasta hoy ganaba la
-// de MENOR DESCUENTO, con la plata del día uno como desempate. Es un criterio sobre lo
-// que hay que pedirle a un tercero, no sobre lo que se lleva el comprador: medido en el
-// parque cambia la elegida en el 51% de las filas LTR, y en el 92% de esas la TIR de la
-// celda nueva es más alta. Desde hoy gana la de MAYOR RETORNO SOBRE LO PUESTO entre las
-// que cruzan, y el descuento desempata. El retorno se mide EN la celda con su descuento
-// mínimo —si el descuento fuera libre la regla lo llevaría siempre al tope— y llega por
-// la sonda ya resuelto en puntos porcentuales, con la sustitución de pie cero que usa el
-// score: este módulo no sabe de modalidades ni de unidades del motor.
+// CUÁL DE ESAS COMBINACIONES SE OFRECE (13-sep-2026). Hasta el 12-sep ganaba la de MENOR
+// DESCUENTO, con la plata del día uno como desempate: un criterio sobre lo que hay que
+// pedirle a un tercero, no sobre el negocio que queda. Desde hoy gana la de MAYOR FRANCO
+// SCORE entre las que cruzan, y el descuento desempata.
+//
+// POR QUÉ EL SCORE Y NO UNA MÉTRICA SOLA. Se midieron tres criterios sobre las mismas
+// celdas (375 filas LTR, 59 STR). Elegir por cash-on-cash sube el retorno anual pero BAJA
+// la TIR en 9 de cada 10 filas donde cambia la elegida: compra retorno con más pie, y más
+// pie es menos apalancamiento. Elegir por TIR hace lo inverso y encima la compra con
+// descuento —pide 10,6 puntos más de rebaja en la mediana—, o sea le exige mucho más al
+// vendedor y empeora el mes del comprador. El score pondera flujo, retorno sobre lo puesto
+// y TIR juntas, así que no hay que elegir entre las dos, y es la MISMA vara con la que la
+// página declara el veredicto: el mix deja de poder ofrecer una combinación que el informe
+// que la muestra considera peor negocio. Medido: sube el score en el 100% de las filas
+// donde cambia la elegida (mediana +2 pts), sube la TIR en el 69% y pide la mitad de
+// descuento que el criterio por TIR.
+//
+// El score se mide EN la celda con su descuento mínimo: si el descuento fuera libre la
+// regla lo llevaría siempre al tope. Llega por la sonda ya calculado, así que este módulo
+// no sabe de modalidades ni de unidades del motor.
 //
 // El arriendo y la tasa quedan fuera por definición, no por costo: el arriendo lo
 // pone el mercado y la tasa el banco. Un mix que le pide al comprador mover algo
@@ -100,15 +111,14 @@ const MIX_PREC_PTS = 0.1;
 
 const RANK: Record<Veredicto, number> = { "BUSCAR OTRA": 0, "AJUSTA SUPUESTOS": 1, COMPRAR: 2 };
 
-type Combinacion = { descuentoPct: number; sinDescuento: boolean; piePct: number; plazoAnios: number; costoDiaUnoUF: number; costoPtsPrecio: number; retornoPct: number | null };
+type Combinacion = { descuentoPct: number; sinDescuento: boolean; piePct: number; plazoAnios: number; costoDiaUnoUF: number; costoPtsPrecio: number; score: number | null };
 
 /**
- * Lo que la sonda devuelve por celda: el veredicto y el retorno sobre lo puesto, del MISMO
- * recompute. `retornoPct` viene en puntos porcentuales y con la sustitución de pie cero YA
- * resuelta por el llamador (rendimiento neto sobre el precio), igual que la mira el score:
- * este módulo no sabe de pies, de modalidades ni de unidades del motor.
+ * Lo que la sonda devuelve por celda, del MISMO recompute: el veredicto y el Franco Score
+ * con el que ese veredicto se declaró. Salen de la misma pasada del motor, así que el mix
+ * no puede elegir sobre un score que no corresponda al veredicto que acaba de leer.
  */
-export type SondaMix = { veredicto: Veredicto; retornoPct: number | null };
+export type SondaMix = { veredicto: Veredicto; score: number | null };
 
 /**
  * LA ELECCIÓN, EN UNA SOLA FUNCIÓN (12-sep-2026).
@@ -116,25 +126,26 @@ export type SondaMix = { veredicto: Veredicto; retornoPct: number | null };
  * Antes había dos ordenamientos —uno para las alcanzables y otro para el fallback— y cada
  * uno podía derivar por su lado. Ahora el criterio entra como dato:
  *
- *  · `retorno` — entre las que cruzan, la que más deja por lo que el comprador pone. El
- *    descuento desempata (es lo que hay que pedirle a un tercero), después la plata del día
- *    uno y por último el pie, para que el resultado no dependa del recorrido de la grilla.
- *    Una celda sin retorno medible NO le gana a una con número: se ordena al final.
+ *  · `score` — entre las que cruzan, la del mejor negocio según la vara de Franco: el score
+ *    pondera flujo, retorno sobre lo puesto y TIR juntas. El descuento desempata (es lo que
+ *    hay que pedirle a un tercero), después la plata del día uno y por último el pie, para
+ *    que el resultado no dependa del recorrido de la grilla. Una celda sin score medible NO
+ *    le gana a una con número: se ordena al final.
  *  · `costo` — la más barata en puntos del precio. Es el criterio del borde donde NINGUNA
  *    celda está dentro del alcance: ahí no se está eligiendo un plan sino reportando cuánto
  *    costaría el más barato, y el retorno de una salida que no existe no significa nada.
  */
-export function elegirCelda<T extends Combinacion>(xs: readonly T[], criterio: "retorno" | "costo"): T[] {
-  const porRetorno = (a: T, b: T) => {
+export function elegirCelda<T extends Combinacion>(xs: readonly T[], criterio: "score" | "costo"): T[] {
+  const porScore = (a: T, b: T) => {
     // null al final: sin número no se compite (filas legacy sin métricas recomputables).
-    if (a.retornoPct == null && b.retornoPct == null) return 0;
-    if (a.retornoPct == null) return 1;
-    if (b.retornoPct == null) return -1;
-    return b.retornoPct - a.retornoPct;
+    if (a.score == null && b.score == null) return 0;
+    if (a.score == null) return 1;
+    if (b.score == null) return -1;
+    return b.score - a.score;
   };
   const cmp = (a: T, b: T) =>
-    criterio === "retorno"
-      ? porRetorno(a, b) || a.descuentoPct - b.descuentoPct || a.costoDiaUnoUF - b.costoDiaUnoUF || a.piePct - b.piePct
+    criterio === "score"
+      ? porScore(a, b) || a.descuentoPct - b.descuentoPct || a.costoDiaUnoUF - b.costoDiaUnoUF || a.piePct - b.piePct
       : a.costoPtsPrecio - b.costoPtsPrecio || a.descuentoPct - b.descuentoPct || a.piePct - b.piePct;
   return [...xs].sort(cmp);
 }
@@ -178,10 +189,9 @@ export function calcularMixPalancas(p: {
    */
   palancasQueCruzan: PalancaDistancia["palanca"][];
   /**
-   * Sonda del motor: veredicto Y retorno sobre lo puesto para el input parchado, en una
-   * sola pasada. Hasta el 12-sep-2026 devolvía solo el veredicto y la elegida se decidía
-   * por descuento mínimo — un criterio sobre lo que hay que pedirle al vendedor, no sobre
-   * lo que se lleva el comprador.
+   * Sonda del motor: veredicto Y score para el input parchado, en una sola pasada. Hasta el
+   * 12-sep-2026 devolvía solo el veredicto y la elegida se decidía por descuento mínimo, un
+   * criterio sobre lo que hay que pedirle al vendedor y no sobre el negocio que queda.
    */
   sondaAtPatch: (patch: { precio?: number; piePct?: number; plazoCredito?: number }) => SondaMix;
 }): MixPalancas | null {
@@ -235,18 +245,18 @@ export function calcularMixPalancas(p: {
     for (const plazo of plazos) {
       const r = minimoDescuento(pie, plazo);
       if (!r) continue;
-      // EL RETORNO SE MIDE EN LA CELDA QUE SE VA A OFRECER, con su descuento MÍNIMO. Es la
-      // decisión que sostiene toda la regla: bajar el precio sube el retorno, así que si el
+      // EL SCORE SE MIDE EN LA CELDA QUE SE VA A OFRECER, con su descuento MÍNIMO. Es la
+      // decisión que sostiene toda la regla: bajar el precio sube el score, así que si el
       // descuento fuera libre la elección lo llevaría siempre al tope. Anclado al mínimo que
-      // cruza, el descuento sigue siendo el menor posible y el retorno solo arbitra entre
+      // cruza, el descuento sigue siendo el menor posible y el score solo arbitra entre
       // celdas de pie × plazo. Una sonda más por celda (la grilla tiene 9 como máximo).
-      const retornoPct = sondar(r.pct, pie, plazo).retornoPct;
+      const score = sondar(r.pct, pie, plazo).score;
       combos.push({
         descuentoPct: r.pct,
         sinDescuento: r.sin,
         piePct: pie,
         plazoAnios: plazo,
-        retornoPct: Number.isFinite(retornoPct as number) ? (retornoPct as number) : null,
+        score: Number.isFinite(score as number) ? (score as number) : null,
         costoDiaUnoUF: Math.round(pieCLP(r.pct, pie) - pieDeclaradoUF),
         costoPtsPrecio: Math.round(((100 * (pieCLP(r.pct, pie) - pieDeclaradoUF)) / p.precioUF) * 10) / 10,
       });
@@ -267,16 +277,15 @@ export function calcularMixPalancas(p: {
   const alcanzables = combos.filter((c) => c.costoPtsPrecio <= MIX_COSTO_TOPE_PTS_PRECIO);
   const dentroDelAlcance = alcanzables.length > 0;
 
-  // LA REGLA (12-sep-2026): entre las que cruzan, la de MAYOR retorno sobre lo puesto; el
-  // descuento desempata. Medido en el parque, cambia la elegida en el 51% de las filas LTR
-  // y en el 92% de esas la TIR sube — el criterio viejo optimizaba lo que hay que pedirle
-  // al vendedor, no lo que el comprador se lleva.
+  // LA REGLA (13-sep-2026): entre las que cruzan, la de MAYOR Franco Score; el descuento
+  // desempata. Es la misma vara con la que la página declara el veredicto, así que el mix
+  // no puede ofrecer una combinación que el propio informe considere peor negocio.
   //
   // Sin ninguna alcanzable se devuelve igual la MÁS BARATA de las que cruzan, con
   // `dentroDelAlcance: false`. Mismo criterio que `deltaMinimoFueraDeTope`: el número
   // existe aunque la puerta esté cerrada, y decir «costaría 30 puntos del precio» es
   // más honesto que callar. Quien decide si eso es una salida es `sinSalida`, no acá.
-  const elegibles = dentroDelAlcance ? elegirCelda(alcanzables, "retorno") : elegirCelda(combos, "costo");
+  const elegibles = dentroDelAlcance ? elegirCelda(alcanzables, "score") : elegirCelda(combos, "costo");
   const mejor = elegibles[0];
   const segunda = elegibles[1] ?? null;
 

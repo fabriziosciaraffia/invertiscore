@@ -1826,13 +1826,11 @@ export function sondaConPatch(
   // La TIR también se reevalúa sobre el parche: es dimensión del score desde el 12-sep-2026.
   const s = calcScoreFromMetrics(clone, m, ufClp, asOf, tirDe(clone, m, ufClp, asOf));
   const bet = calcBreakEvenTasa(clone, m, ufClp);
-  // EL RETORNO SOBRE LO PUESTO, tal como lo mira el score (`dimensionesScoreLtr`): el
-  // cash-on-cash cuando hay capital propio y la rentabilidad neta sobre el precio cuando
-  // no lo hay. Las dos en puntos porcentuales, así que el mix compara peras con peras
-  // también en las filas con pie 0, donde el cash-on-cash no está definido.
-  const coc = metricaValorONull(m.cashOnCash);
-  const retornoPct = coc ?? (Number.isFinite(m.rentabilidadNeta) ? m.rentabilidadNeta : null);
-  return { veredicto: deriveVeredicto(s, m, bet), retornoPct };
+  // El score va JUNTO al veredicto y sale de la misma pasada: es el que el mix usa para
+  // elegir entre las celdas que cruzan, y tiene que ser exactamente el que produjo ese
+  // veredicto. Recomputarlo aparte abriría la puerta a elegir con un número que la página
+  // nunca mostró.
+  return { veredicto: deriveVeredicto(s, m, bet), score: Number.isFinite(s) ? s : null };
 }
 
 /** Veredicto pelado sobre el parche. Es `sondaConPatch().veredicto`: una sola ruta. */
