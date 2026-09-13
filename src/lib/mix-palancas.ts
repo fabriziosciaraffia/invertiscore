@@ -146,9 +146,14 @@ export type MetricasCelda = {
  * combinaciones probadas, crucen o no: la matriz tiene que poder mostrar «Buscar» en una
  * celda que no llega, y el panel de detalle decir «no llega a Comprar».
  *
- * `veredicto` y `score` son los de la celda SIN descuento —pie y plazo movidos, precio el
- * de hoy—, que es lo que el usuario lee en el cuadrito. El descuento es el mínimo que la
- * hace cruzar, y va aparte porque es lo que hay que pedirle al vendedor.
+ * `veredicto` y `score` son LO QUE CONSIGUES con esa combinación: medidos en su descuento
+ * mínimo cuando la celda cruza, y sin descuento cuando no cruza ni en el tope. Es la
+ * pregunta que el cuadrito contesta —«¿y si pongo este pie a este plazo?»— y por eso una
+ * celda verde dice «Comprar» y no «Ajustar»: con el descuento que pide, llega. El descuento
+ * va aparte, en el panel, porque es lo que hay que pedirle a un tercero.
+ *
+ * `veredictoSinDescuento` y `scoreSinDescuento` conservan el estado a precio de hoy, para
+ * quien necesite separar lo que se consigue moviendo solo lo propio.
  *
  * Nada de esto es cómputo nuevo: la sonda a descuento 0 ya se hacía para saber si la celda
  * cruzaba sola, y la sonda en el mínimo ya se hacía para leer el score con el que se elige.
@@ -160,10 +165,13 @@ export type CeldaMix = {
   esActual: boolean;
   /** La que el mix corona. Exactamente una celda la lleva. */
   esElegida: boolean;
-  /** Veredicto de la celda SIN descuento. */
+  /** Veredicto de la celda EN su descuento mínimo (o sin descuento si no cruza). */
   veredicto: Veredicto;
-  /** Score de la celda SIN descuento. */
+  /** Score de la celda EN su descuento mínimo (o sin descuento si no cruza). */
   score: number | null;
+  /** Veredicto a precio de hoy, moviendo solo pie y plazo. */
+  veredictoSinDescuento: Veredicto;
+  scoreSinDescuento: number | null;
   /** Descuento mínimo que hace cruzar esta celda, o null si no cruza ni en el tope. */
   descuentoPct: number | null;
   /** Plata propia extra el día uno, sobre el pie declarado. Puede ser negativa. */
@@ -316,13 +324,20 @@ export function calcularMixPalancas(p: {
       const costoUF = Math.round(pieCLP(r.pct ?? 0, pie) - pieDeclaradoUF);
       const costoPts = Math.round(((100 * (pieCLP(r.pct ?? 0, pie) - pieDeclaradoUF)) / p.precioUF) * 10) / 10;
       const scoreBase = Number.isFinite(r.base.score as number) ? (r.base.score as number) : null;
+      // LO QUE CONSIGUES con esa celda: su lectura en el descuento mínimo cuando cruza. Sin
+      // esto una celda marcada «llega a Comprar» mostraría «Ajustar», que es su estado a
+      // precio de hoy — y la leyenda diría una cosa y el cuadrito otra.
+      const lectura = r.enMin ?? r.base;
+      const scoreLectura = Number.isFinite(lectura.score as number) ? (lectura.score as number) : null;
       celdas.push({
         piePct: pie,
         plazoAnios: plazo,
         esActual: pie === p.piePct && plazo === p.plazoCredito,
         esElegida: false, // se marca abajo, cuando la elección ya está hecha
-        veredicto: r.base.veredicto,
-        score: scoreBase,
+        veredicto: lectura.veredicto,
+        score: scoreLectura,
+        veredictoSinDescuento: r.base.veredicto,
+        scoreSinDescuento: scoreBase,
         descuentoPct: r.pct,
         costoDiaUnoUF: costoUF,
         costoPtsPrecio: costoPts,
