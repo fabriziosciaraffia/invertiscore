@@ -12,7 +12,7 @@
 //   LTR            772             0             270        160
 //   STR            114             6              73         56
 //
-// Fija NUEVE cosas:
+// Fija DOCE cosas:
 //
 //   1. EL POP-UP LEE DEL MOTOR. La matriz sale de `mixPalancas.celdas` y la tabla de
 //      `palancas[]`; el componente no recalcula descuentos ni scores. Si alguien mete
@@ -234,11 +234,83 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
   }
 }
 
+// ── 10 · LA CELDA DEL ARO HABLA DEL HOY, Y LA MATRIZ LO DECLARA ────────────
+//
+// `esActual` significa «el pie y el plazo que tienes declarados», no «tu caso actual». El
+// render dibujaba ahí la lectura EN EL DESCUENTO MÍNIMO, así que el aro prometía «tu
+// situación» y el contenido mostraba «tu situación con un descuento encima». Medido el
+// 14-sep-2026: en 501 de 739 filas esa celda mostraba un veredicto distinto al de la fila,
+// y en el 100% de las 360 que el pop-up dibuja pasaba a decir «Comprar» sobre un caso que
+// la propia página declara «Ajustar».
+//
+// Tres cosas que tienen que viajar juntas, o el arreglo se deshace solo:
+//   · la celda del aro lee `veredictoSinDescuento` / `scoreSinDescuento`;
+//   · la matriz DECLARA que tiene dos lecturas — subtítulo que lo dice y chip en la celda;
+//   · cuando el aro coincide con la coronada, el fondo de tinta se retira (145 filas): un
+//     fondo que dice «lo que Franco recomienda» sobre una celda que dice «Ajustar» promete
+//     lo contrario de lo que pasa.
+{
+  if (!POPUP) F("10 · sin componente no hay celda del aro que fijar");
+  else {
+    if (!/veredictoSinDescuento/.test(POPUP)) {
+      F("10 · el render no lee `veredictoSinDescuento`: la celda del aro sigue mostrando su lectura con descuento y contradice el veredicto de la fila");
+    }
+    if (!/scoreSinDescuento/.test(POPUP)) F("10 · el render no lee `scoreSinDescuento`");
+    // La declaración de las dos lecturas: el subtítulo tiene que nombrar el precio de hoy.
+    if (!/precio de hoy/i.test(POPUP)) {
+      F("10 · la matriz no declara que la celda del aro va a precio de hoy: sin esa línea el próximo lector deshace el arreglo");
+    }
+    // El chip dentro de la celda, con el precedente de la otra matriz del informe.
+    if (!/paj-hoy/.test(POPUP)) F("10 · la celda del aro no lleva chip: el rótulo tiene que ir pegado a la celda, no solo en la leyenda");
+    // La regla de las 145: si el aro es la coronada, no hay tinta plena.
+    if (!/esActual\s*&&\s*c\.esElegida|c\.esElegida\s*&&\s*!c\.esActual/.test(POPUP)) {
+      F("10 · la clase de tinta plena no excluye la celda del aro: en 145 filas el fondo diría «lo que Franco recomienda» sobre el veredicto de partida");
+    }
+  }
+  if (CSS && !/\.paj-hoy\{/.test(CSS)) F("10 · falta el CSS del chip de la celda del aro");
+}
+
+// ── 11 · EL PANEL DE DETALLE NO CONTRADICE A SU CELDA ──────────────────────
+//
+// Al tocar la celda del aro, el panel decía «Pides de descuento −24,2%» sobre la misma
+// celda que ahora dice «Ajustar». Las dos lecturas conviven, pero separadas y con su
+// rótulo cada una: la celda dice el hoy y el panel dice a dónde llega con descuento.
+{
+  if (POPUP && !/llegas a|Pidiendo/.test(POPUP)) {
+    F("11 · el panel de detalle no distingue la celda del aro: sigue rotulando «Pides de descuento» sobre una celda que habla del hoy");
+  }
+}
+
+// ── 12 · EL COLOR LEE DE LA MISMA FUENTE QUE LA PALABRA ────────────────────
+//
+// La primera versión de este arreglo cambió la palabra de la celda del aro y dejó el color
+// leyendo `c.veredicto`. Cazado en el navegador el 14-sep-2026 sobre el análisis demo: la
+// celda quedó con clase «cruza hoy», o sea fondo azul diciendo «llega a Comprar» con
+// «Ajustar score 67» escrito adentro. Es la misma contradicción que el arreglo de color del
+// 13-sep declaró prohibida —«acá manda la palabra»— reintroducida por la puerta de al lado,
+// y el mismo argumento por el que la corona pierde la tinta cuando cae sobre el aro.
+//
+// Por eso el invariante no es «que exista veredictoSinDescuento en el archivo» (eso ya lo
+// fija el 10) sino que el predicado del COLOR lea la misma función que la palabra.
+{
+  if (POPUP) {
+    if (!/function veredictoMostrado/.test(POPUP)) {
+      F("12 · no hay fuente única de lo que la celda escribe: sin `veredictoMostrado` la palabra y el color vuelven a separarse");
+    }
+    const cuerpo = POPUP.match(/function cruzaDeVerdad[^]*?\n\}/)?.[0] ?? "";
+    if (!cuerpo) {
+      F("12 · no se encontró `cruzaDeVerdad` para auditar de dónde saca el veredicto");
+    } else if (!/veredictoMostrado\(/.test(cuerpo)) {
+      F("12 · el color no lee `veredictoMostrado`: la celda del aro puede quedar pintada de «llega a Comprar» con «Ajustar» escrito adentro");
+    }
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPopupAjustesTier(): { hard: number } {
   console.log("\n─── TIER POPUP-AJUSTES (el render del pop-up · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — lee del motor, la celda dice veredicto y score, «hoy» no se inventa, los siete pares con el retorno en guion, COMPRAR sin matriz, el cuarto estado con su fixture, sin grilla ni palancas no hay botón, el CTA va inerte y el color va por familia");
+    console.log("  ✓ VERDE — lee del motor, la celda dice veredicto y score, «hoy» no se inventa, los siete pares con el retorno en guion, COMPRAR sin matriz, el cuarto estado con su fixture, sin grilla ni palancas no hay botón, el CTA va inerte, el color va por familia, la celda del aro habla del hoy, el panel no la contradice y el color lee la misma fuente que la palabra");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
