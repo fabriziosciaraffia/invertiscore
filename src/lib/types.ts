@@ -1010,7 +1010,7 @@ export type ViaDistancia =
  *
  * La lógica vive en `mix-palancas.ts`, pura y testeada aparte.
  */
-import type { CeldaMix, MetricasCelda } from "./mix-palancas";
+import type { CeldaMix, MetricasCelda, RespuestaMix } from "./mix-palancas";
 
 export interface MixPalancas {
   /**
@@ -1070,8 +1070,30 @@ export interface MixPalancas {
   costoDiaUnoBase: "pie_declarado";
   combinacionesQueCruzan: number;
   combinacionesProbadas: number;
-  /** La siguiente mejor, para que «elige la más accionable» tenga entre qué elegir. */
+  /** La siguiente mejor, para que «elige la más accionable» tenga entre qué elegir.
+   *
+   *  ⚠ NO CONFUNDIR CON `respuestas`. `segunda` es la siguiente mejor POR EL MISMO CRITERIO
+   *  y viene en forma reducida (sin score, sin métricas, sin deltas): es el runner-up de la
+   *  equilibrada. Una RESPUESTA es otra pregunta sobre la misma grilla, con su propio
+   *  criterio, su propio tope y su propia cifra. */
   segunda: { descuentoPct: number; sinDescuento: boolean; piePct: number; plazoAnios: number; costoDiaUnoUF: number; costoPtsPrecio: number } | null;
+  /**
+   * EL MENÚ DE RESPUESTAS (16-sep-2026): hasta tres caminos sobre la MISMA grilla, en el
+   * orden del contrato — score («Lo que Franco recomienda»), tir («La que más rinde») y
+   * flujo («La que más alivia el mes»).
+   *
+   * LA PRIMERA ES LA RAÍZ. La respuesta por score describe exactamente la misma celda que
+   * los campos planos de acá arriba; no los reemplaza ni los contradice. Se conserva la
+   * raíz por la misma razón —y con el mismo molde— que `palancaHastaComprar` se conservó
+   * junto a `palancasHastaComprar[]`: los veinte consumidores que leen la raíz siguen
+   * leyendo lo mismo, bit a bit, y quien quiera el menú lo pide por su nombre.
+   *
+   * ⚠ AUSENTE (undefined) ≠ null. `undefined` = fila persistida ANTES de este goal, o sea
+   * NO CALCULADO: nadie preguntó por los otros caminos. `null` = se preguntó y no hay menú
+   * que ofrecer. Leer el undefined como «no hay más de un camino» haría que un informe
+   * viejo afirmara algo que nadie midió — la misma trampa de `palancasHastaComprar`.
+   */
+  respuestas?: RespuestaMix[] | null;
   /**
    * true ⇔ el mix mueve UNA sola dimensión y esa palanca ya se reporta sola en `vias`.
    * Pasa, por ejemplo, cuando el plazo ya está en el máximo y el mix se reduce al pie.

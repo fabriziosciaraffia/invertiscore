@@ -106,6 +106,34 @@ export const MIX_PLAZOS_WIZARD = [20, 25, 30] as const;
 // El tope no separa esa población — la separa el propio orden del módulo.
 export const MIX_COSTO_TOPE_PTS_PRECIO = 15;
 
+/**
+ * EL TOPE DE LA RESPUESTA DE FLUJO (16-sep-2026). Es el único que se ensancha, y solo para
+ * «la que más alivia el mes».
+ *
+ * POR QUÉ ESTA RESPUESTA Y NINGUNA OTRA. El tope de 15 es una red de seguridad contra
+ * «esto ya no es ajustar supuestos, es otra compra»: mide cuánto capital extra sigue siendo
+ * una salida. La respuesta de flujo es la única que COMPRA MES CON CAPITAL —más pie es
+ * menos deuda y por lo tanto mejor mes— así que es la única donde el capital extra no es un
+ * peaje sino el mecanismo. Ensancharle la puerta a ella es coherente; ensancharla para
+ * todas convertiría el tope en decorado.
+ *
+ * POR QUÉ 25 Y NO OTRO NÚMERO. Sale de la sensibilidad ya medida sobre el mínimo de las
+ * filas que el tope de 15 deja afuera (ver el bloque de arriba): 16 → 10 afuera · 18 → 2 ·
+ * 20 → 2 · 25 → 0. En 25 no queda ninguna fila del parque sin salida por costo. Y coincide
+ * con `DIST_STR_TOPE_AJUSTA_PCT`, que ya vale 25 por su propia doctrina — pero eso es una
+ * coincidencia de número, no un préstamo de argumento: este tope está en PUNTOS DEL PRECIO
+ * que el comprador pone, y aquél en puntos de descuento que se le piden al vendedor.
+ *
+ * LA TASA NO LO HEREDA, Y ES DELIBERADO. «La que más rinde» sigue midiéndose contra los 15
+ * puntos de la equilibrada, por dos razones. La primera es de lectura: la fusión se define
+ * como «la corona de la tasa cae en la misma celda que la de score», y dos respuestas que
+ * compiten sobre conjuntos de candidatas distintos podrían dejar de coincidir por un motivo
+ * que no es el negocio sino el tope. La segunda es de coherencia: ofrecer mejor tasa a un
+ * costo que la propia recomendación declara fuera de alcance es la contradicción que el
+ * criterio por score se eligió para evitar.
+ */
+export const MIX_COSTO_TOPE_PTS_PRECIO_FLUJO = 25;
+
 /** Precisión de la bisección del descuento, en puntos porcentuales. */
 const MIX_PREC_PTS = 0.1;
 
@@ -195,6 +223,97 @@ export type CeldaMix = {
    * (`SondaMix.metricas` es opcional). Ausente en filas recomputadas antes de esa fecha.
    */
   metricas?: MetricasCelda | null;
+  /**
+   * LOS CRITERIOS QUE CORONAN ESTA CELDA (16-sep-2026). Vacío en las que no corona ninguno.
+   *
+   * ⚠ ES REDUNDANTE CON `esElegida`, A PROPÓSITO, Y HAY QUE SABERLO PARA QUE NO DIVERJAN:
+   * `esElegida` ⟺ `coronaDe.includes("score")`. Las dos dicen lo mismo de la equilibrada.
+   *
+   * Se conservan las dos porque contestan preguntas distintas y tienen dueños distintos.
+   * `esElegida` es el booleano que ya viaja PERSISTIDO en las filas del parque y del que
+   * cuelga la tinta plena del pop-up —el contrato del menú fija que «el fondo de tinta no
+   * se mueve: marca siempre lo que Franco recomienda»—, así que convertirlo en rol obligaría
+   * a un adaptador de lectura por celda sobre filas ya escritas, y el repo no tiene ningún
+   * molde de esa migración. `coronaDe` es el dato nuevo: qué OTRAS respuestas encender
+   * cuando el usuario elige otra opción del menú.
+   *
+   * O sea: si alguna vez parecen contradecirse, la pregunta no es cuál revertir sino cuál
+   * de las dos preguntas se está haciendo. `esElegida` no se deriva de acá ni al revés: las
+   * dos las escribe el motor en la misma pasada, con la misma celda.
+   *
+   * Ausente en filas recomputadas antes de esta fecha.
+   */
+  coronaDe?: CriterioRespuesta[];
+};
+
+/**
+ * LOS TRES CRITERIOS QUE PUEDEN CORONAR, en el orden en que el contrato del menú los pinta
+ * (`docs/wireframes/rediseno-informe/popup-menu-respuestas.html`): «Lo que Franco
+ * recomienda» · «La que más rinde» · «La que más alivia el mes».
+ *
+ * `costo` NO está acá, y la distinción importa: `costo` no es una respuesta, es el narrador
+ * del borde —el criterio con el que se reporta cuánto costaría la más barata cuando NINGUNA
+ * celda está dentro del alcance—. Ver `elegirCelda`.
+ */
+export type CriterioRespuesta = "score" | "tir" | "flujo";
+
+/**
+ * UNA RESPUESTA DEL MENÚ (16-sep-2026).
+ *
+ * LA VARA ÚNICA ES PARA EL VEREDICTO, NO PARA EL CONSEJO. Franco juzga con UNA SOLA VARA
+ * —el Franco Score, la misma con la que la página declara el veredicto— y por eso la
+ * respuesta por score sigue siendo el default y sigue describiéndose en la RAÍZ de
+ * `MixPalancas`. Lo que cambia es que, hecho el juicio, Franco muestra que hay más de un
+ * camino para llegar ahí: la misma grilla contestada con otras dos preguntas que el lector
+ * se hace de verdad —¿cuál rinde más? ¿cuál me cierra el mes?— y que el score, que las
+ * pondera juntas, no puede contestar por separado.
+ *
+ * Esto NO deroga el acta de por qué se eligió el score (arriba, 13-sep-2026). Aquella
+ * decidía con qué vara se CORONA la recomendación, y sigue vigente palabra por palabra.
+ * Ésta decide qué más se MUESTRA al lado, sin mover la corona.
+ *
+ * Cada respuesta declara su propio tope porque hay dos en juego y un consumidor que tenga
+ * que adivinar cuál se aplicó lo va a adivinar mal — el mismo argumento que ya obligó a
+ * declarar `costoDiaUnoBase`.
+ */
+export type RespuestaMix = {
+  criterio: CriterioRespuesta;
+  /**
+   * Los OTROS criterios que coronan esta misma celda. Vacío ⇒ la respuesta va sola.
+   *
+   * LA FUSIÓN LA RESUELVE EL MOTOR, no el render: si cada superficie tuviera que volver a
+   * comparar celdas para saber si dos respuestas son la misma, dos superficies terminarían
+   * fusionando distinto — que es exactamente lo que pasó cuando el destino del mix se
+   * dejaba derivar (ver `MixPalancas.destino`). El motor emite el dato; la prosa lo redacta.
+   *
+   * Es simétrico por construcción: si la de score nombra a la de tasa, la de tasa nombra a
+   * la de score.
+   */
+  fusionadaCon: CriterioRespuesta[];
+  /** La celda coronada, con las mismas tres coordenadas que identifican a una celda. */
+  piePct: number;
+  plazoAnios: number;
+  descuentoPct: number;
+  /** true ⇔ pie y plazo solos ya cruzan. Mismo significado que en la raíz. */
+  sinDescuento: boolean;
+  piePctDelta: number;
+  plazoAniosDelta: number;
+  costoDiaUnoUF: number;
+  costoPtsPrecio: number;
+  /**
+   * EL TOPE QUE SE LE APLICÓ A ESTA RESPUESTA, en puntos del precio. 15 para la equilibrada
+   * y para la tasa; 25 para la de flujo (ver `MIX_COSTO_TOPE_PTS_PRECIO_FLUJO`). Viaja
+   * declarado y no supuesto: con dos topes vivos, suponerlo es adivinarlo.
+   */
+  topePtsPrecio: number;
+  /** ¿Cabe en SU tope? No es lo mismo que `dentroDelAlcance` de la raíz, que contesta
+   *  siempre por la equilibrada y por los 15 puntos. */
+  dentroDeSuTope: boolean;
+  /** El score de la celda coronada. Viaja también en la respuesta de flujo y en la de tasa,
+   *  porque el contrato muestra las tres con su cifra y la recomendada con la suya. */
+  score: number | null;
+  /** Las cifras de la celda coronada: el lado «después» de los pares, por respuesta. */
+  metricas: MetricasCelda | null;
 };
 
 
