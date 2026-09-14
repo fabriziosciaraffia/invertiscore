@@ -27,6 +27,30 @@
 // regla lo llevaría siempre al tope. Llega por la sonda ya calculado, así que este módulo
 // no sabe de modalidades ni de unidades del motor.
 //
+// Y DESDE EL 16-sep-2026 ESA ELECCIÓN DEJÓ DE SER LO ÚNICO QUE SE MUESTRA.
+//
+// LA VARA ÚNICA ES PARA EL VEREDICTO, NO PARA EL CONSEJO. Franco juzga con una sola vara
+// —el Franco Score, la misma con la que la página declara el veredicto— y después muestra
+// que hay más de un camino para llegar ahí. El acta de arriba sigue vigente palabra por
+// palabra: decide con qué vara se CORONA la recomendación, y esa corona no se movió ni una
+// fila. Lo que entra al lado es qué MÁS se muestra, y son dos preguntas que el lector se
+// hace de verdad y que el score, justamente por ponderarlas juntas, no puede contestar por
+// separado: ¿cuál rinde más? ¿cuál me cierra el mes?
+//
+// La medición de arriba —el CoC sube el retorno y baja la TIR; la TIR pide 10,6 puntos más
+// de descuento— no dice que esas preguntas sean malas. Dice que son malas COMO VARA ÚNICA,
+// porque cada una compra su virtud pagándola con la otra y en silencio. Como respuesta
+// declarada, al lado de la recomendada y con su costo escrito, ese mismo trade-off deja de
+// ser una trampa y pasa a ser la información: el contrato del menú obliga a que cada línea
+// lo diga en voz alta («rinde 3,2 puntos más y libera UF 205 el día uno, a cambio de 4,5
+// puntos más de descuento»). Ofrecer sin decir el precio es lo que el acta de arriba
+// prohíbe; ofrecer diciéndolo es lo contrario.
+//
+// Por eso la raíz sigue describiendo la equilibrada y el menú entra al lado, en
+// `respuestas`: ninguno de los veinte consumidores de la raíz se entera. Medido sobre el
+// parque, contra una predicción firmada ANTES de escribir el motor: la equilibrada es
+// idéntica en 364 de 364 filas; 228 dan dos respuestas distintas y 136 fusionan.
+//
 // El arriendo y la tasa quedan fuera por definición, no por costo: el arriendo lo
 // pone el mercado y la tasa el banco. Un mix que le pide al comprador mover algo
 // que no controla no es un plan, es una lista de deseos.
