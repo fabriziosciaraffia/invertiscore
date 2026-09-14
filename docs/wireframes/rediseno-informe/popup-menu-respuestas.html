@@ -104,7 +104,14 @@
   /* lo que NOMBRA un veredicto va con la tríada, no con el semáforo del dato */
   .mtx td.cruza{background:color-mix(in srgb,var(--comprar) 16%,transparent);color:var(--comprar)}
   /* el aro gris: la combinación declarada hoy */
-  .mtx td.hoy{outline:2px solid var(--tx3);outline-offset:-2px}
+  /* EL ARO DE HOY EN SOMBRA INSET, no en outline (15-sep-2026, ya en producción). Siendo
+     los dos `outline`, con la misma especificidad, `td.sel` se llevaba puesto al aro de hoy
+     y la celda perdía su marca justo al tocarla — y acá la celda de hoy ES una de las
+     respuestas que el menú ofrece, así que se toca. Precedente: `.mz-cell.hoy`. */
+  .mtx td.hoy{box-shadow:inset 0 0 0 2px var(--tx3)}
+  /* La sombra de hover es la misma propiedad: la celda de hoy lista las dos o pierde el
+     realce que dice que se puede tocar. */
+  .mtx td.hoy:hover{box-shadow:inset 0 0 0 2px var(--tx3),0 3px 10px rgba(0,0,0,.12)}
   /* EL FONDO DE TINTA NO SE MUEVE: marca lo que Franco recomienda, siempre */
   .mtx td.mix{background:var(--tx);color:var(--page)}
   /* EL ARO DE TINTA SIGUE AL USUARIO. Va por fuera para verse sobre el fondo lleno */
@@ -223,14 +230,20 @@
 
       <div class="sec">
         <div class="st">Ajustes que dependen de ti</div>
-        <p class="sx">El descuento que pides se ajusta en consecuencia.</p>
+        <p class="sx">El descuento que pides se ajusta en consecuencia. La celda de hoy no: va a precio de hoy.</p>
         <div class="eje-x">Plazo del crédito</div>
         <div class="mwrap">
           <div class="eje-y">Pie que pones</div>
           <table class="mtx" data-mtx="a">
             <tr><th class="rot"></th><th>25 años</th><th>30 años</th></tr>
+            <!-- LA CELDA DE HOY VA A PRECIO DE HOY (15-sep-2026, ya en producción). Decía
+                 «Comprar score 73», que es su lectura EN SU DESCUENTO MÍNIMO; a precio de hoy
+                 dice «Ajustar score 55», el mismo score que el «antes» de todos los pares.
+                 Y va sin `cruza`: el color lee la palabra que la celda tiene escrita, y esa
+                 palabra ya no es el destino. Medido sobre el parque: la celda del aro es
+                 siempre `hoy` pelada, 348/348 en LTR y 58/58 en STR. -->
             <tr><th class="rot">10%</th>
-              <td class="cruza hoy" data-k="10|25">Comprar<small>score 73</small></td>
+              <td class="hoy" data-k="10|25">Ajustar<small>score 55</small></td>
               <td class="cruza" data-k="10|30">Comprar<small>score 72</small></td></tr>
             <tr><th class="rot">15%</th>
               <td class="mix" data-k="15|25">Comprar<small>score 73</small></td>
@@ -311,7 +324,7 @@
 
       <div class="sec">
         <div class="st">Ajustes que dependen de ti</div>
-        <p class="sx">El descuento que pides se ajusta en consecuencia.</p>
+        <p class="sx">El descuento que pides se ajusta en consecuencia. La celda de hoy no: va a precio de hoy.</p>
         <div class="eje-x">Plazo del crédito</div>
         <div class="mwrap">
           <div class="eje-y">Pie que pones</div>
@@ -459,9 +472,12 @@
     // el título del panel nombra la respuesta elegida
     document.querySelector(`[data-st="${id}"]`).textContent = o.st;
     // los chips del mix, con el tachado solo donde el valor cambia
+    // `pieHoy` y `o.pie` ya traen el «%» en los datos, así que la plantilla NO se lo agrega:
+    // agregándolo salía «Pie 10%% 15%». El chip del plazo no tiene el problema porque sus
+    // datos van sin unidad y el «años» se escribe una sola vez al final.
     const chipPie = o.pie === caso.pieHoy
       ? `<span class="chip">Pie ${o.pie}</span>`
-      : `<span class="chip">Pie <s>${caso.pieHoy}%</s> ${o.pie}</span>`;
+      : `<span class="chip">Pie <s>${caso.pieHoy}</s> ${o.pie}</span>`;
     const chipPlazo = o.plazo === caso.plazoHoy
       ? `<span class="chip">Plazo ${o.plazo} años</span>`
       : `<span class="chip">Plazo <s>${caso.plazoHoy}</s> ${o.plazo} años</span>`;
