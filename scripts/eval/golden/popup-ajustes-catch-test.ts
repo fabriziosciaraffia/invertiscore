@@ -12,7 +12,7 @@
 //   LTR            772             0             270        160
 //   STR            114             6              73         56
 //
-// Fija DOCE cosas:
+// Fija TRECE cosas:
 //
 //   1. EL POP-UP LEE DEL MOTOR. La matriz sale de `mixPalancas.celdas` y la tabla de
 //      `palancas[]`; el componente no recalcula descuentos ni scores. Si alguien mete
@@ -293,6 +293,74 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
     if (CSS && regla && !/\.paj-mtx td\.hoy:hover\{[^}]*inset[^}]*,/.test(CSS)) {
       F("10 · `td.hoy` no repone la sombra de hover junto al aro: el aro gris se come el realce y la celda deja de parecer tocable");
     }
+  }
+}
+
+// ── 13 · LA BANDA DE ESFUERZO SE DIBUJA, Y SOLO EN DOS LUGARES ─────────────
+//
+// El juicio sobre cuán conseguible es el descuento EXISTE desde hace tiempo:
+// `bandaEsfuerzoDescuento` (distancia-veredicto-hallazgo.ts:85), tres bandas con cortes
+// doctrinales 5 y 12 (§1.12.1 del skill analysis-voice-franco) y lenguaje canónico. Hasta
+// el 15-sep-2026 sus únicos consumidores eran builders de prompt: el juicio se calculaba,
+// se le pasaba al modelo para que lo narrara, y el usuario no lo veía nunca.
+//
+// Medido sobre el parque: de las 265 filas LTR con descuento de mix, el 86,8% cae en la
+// banda «difícil, requiere vendedor motivado» y se publicaba con la misma cara que un 4%.
+//
+// DOS LUGARES Y NINGUNO MÁS, y el «ninguno más» es la mitad del invariante:
+//   · `.paj-neg` del pop-up y `.rec-pides` de la card §5 — el MISMO número, el que Franco
+//     recomienda pedir;
+//   · NO la tabla de palancas solas ni el drawer. Ese es otro descuento —el precio como
+//     palanca única— y cae en banda DISTINTA en el 10,5% de las filas. Las dos marcas en
+//     el mismo modal emitirían dos juicios sobre «el descuento» en una pantalla.
+//
+// Y TRES BANDAS, NO CUATRO. `/comunas` tiene una segunda implementación con un cuarto
+// corte en 25 que llama «estructural»; ese 25 es `DIST_STR_TOPE_AJUSTA_PCT`, el tope de
+// RENTA CORTA. La doctrina dice «hasta el tope aplicable», que en LTR es 30, y medido:
+// 0 de 265 filas superan 30. Llamar estructural a algo que está dentro de su tope diría
+// algo falso, y el caso estructural de verdad ya tiene su propia frase, no una banda.
+{
+  const LQHY = leer("src/components/analysis/shared/LoQueHariaYoBloque.tsx");
+  if (!LQHY) F("13 · no se pudo leer LoQueHariaYoBloque.tsx");
+  const BUILDER = leer("src/lib/lo-que-haria-yo.ts");
+  for (const [src, quien] of [[POPUP, "el pop-up"], [LQHY, "la card §5"]] as const) {
+    if (!src) continue;
+    // DIBUJARLA es usar la etiqueta canónica; de dónde sale la CLASE es otra pregunta y la
+    // contesta el bloque de abajo. El pop-up clasifica al vuelo porque su descuento es un
+    // número; la card lee `mix.bandaEsfuerzo`, que su builder ya clasificó — y eso es MÁS
+    // doctrinal, no menos (§1.12.1: «la banda se calcula en el builder»).
+    if (!/ETIQUETA_BANDA_ESFUERZO/.test(src)) {
+      F(`13 · ${quien} no dibuja la banda de esfuerzo: el juicio existe en el motor y el usuario sigue sin verlo`);
+    }
+    // UNA SOLA VEZ POR SUPERFICIE. Dos usos en el mismo archivo ya serían la banda esparcida.
+    const veces = (src.match(/ETIQUETA_BANDA_ESFUERZO\[/g) ?? []).length;
+    if (veces > 1) F(`13 · ${quien} dibuja la banda ${veces} veces: va en un solo lugar por superficie`);
+    // NO SE RECLASIFICA EN EL RENDER. Los cortes viven en la fuente, §1.1.
+    if (/<=\s*5\b[^]{0,80}<=\s*12\b/.test(src)) {
+      F(`13 · ${quien} reimplementa los cortes 5/12 en vez de llamar a la fuente`);
+    }
+    // NI CUARTA BANDA NI SU COLOR.
+    if (/estructural/i.test(src)) F(`13 · ${quien} nombra una banda «estructural»: son TRES, y el caso estructural no es una banda`);
+    if (/#C8323C/i.test(src)) F(`13 · ${quien} trae el rojo hardcodeado de la pill de /comunas`);
+  }
+  // LA TABLA DE PALANCAS SOLAS NO LLEVA BANDA: otro descuento, otro juicio.
+  if (POPUP) {
+    const tabla = POPUP.match(/paj-nod[^]*?<\/table>/)?.[0] ?? "";
+    if (tabla && /bandaEsfuerzoDescuento/.test(tabla)) {
+      F("13 · la tabla «no depende de ti» lleva banda: es el precio como palanca sola y cae en otra banda en el 10,5% de las filas");
+    }
+  }
+  // LA CLASE SALE DE LA FUENTE, NUNCA DEL RENDER. Una de las dos superficies la pide al
+  // vuelo y la otra la recibe del builder, pero ninguna la deduce por su cuenta.
+  if (BUILDER && !/bandaEsfuerzoDescuento\(/.test(BUILDER)) {
+    F("13 · el builder de la card §5 no clasifica la banda: sin eso el render tendría que volver a parsear «−24,3%» a número para juzgarlo");
+  }
+  // Y CADA HUÉSPED CON SUS TOKENS. La card §5 es oscura en los DOS temas, así que su pill
+  // no puede usar los `--doc-*` del pop-up ni al revés.
+  if (CSS && !/\.paj-banda\{/.test(CSS)) F("13 · falta el CSS de la pill de banda en el pop-up");
+  if (PORTADA && !/\.rec-banda\{/.test(PORTADA)) F("13 · falta el CSS de la pill de banda en la card §5");
+  if (PORTADA && /\.rec-banda\{[^}]*--doc-/.test(PORTADA)) {
+    F("13 · la pill de la card §5 usa tokens `--doc-*`: esa card es oscura en los dos temas y ahí resolverían al tema de la página, dejándola invisible");
   }
 }
 
