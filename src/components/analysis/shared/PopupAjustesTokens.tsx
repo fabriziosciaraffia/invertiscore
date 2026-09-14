@@ -104,6 +104,48 @@ export function PopupAjustesTokens() {
       .paj-sw{width:12px;height:12px;border-radius:3px;display:inline-block}
       .paj-sw.a{background:var(--doc-tx)}
       .paj-sw.b{background:color-mix(in srgb,var(--doc-comprar) 16%,transparent);border:1px solid var(--doc-comprar)}
+      /* EL SWATCH DEL ARO, la cuarta entrada. Se dibuja igual que la marca que nombra: aro de
+         tinta POR FUERA sobre fondo de tarjeta, con el mismo offset positivo que «td.sel».
+         El «margin:1px» le hace sitio al aro dentro de la caja de 12px, o el outline se come
+         al vecino de la leyenda. Del contrato, «.sw.d». */
+      .paj-sw.d{background:var(--doc-paper);outline:2px solid var(--doc-tx);outline-offset:1px;margin:1px}
+
+      /* ── EL MENÚ DE RESPUESTAS ──────────────────────────────────────────────
+         Se monta sobre «.fila-nav», que NO vive acá: la define la portada como
+         «.doc-dictamen .fila-nav» (PortadaInforme.tsx:1029) y el pop-up cae dentro de ese
+         scope —verificado en el DOM: la cadena es .paj › .doc-tokens › .v-modal › … ›
+         .doc-dictamen— así que la rejilla, el radio, el borde que se pinta al hover, la
+         elevación de 1px, el disco de 32px que se invierte y el anillo de foco en Signal Red
+         se heredan sin escribir una línea.
+         Lo único que se corrige de la herencia es el GAP DE FILA: producción lo tiene en 0
+         porque allá la fila es de una sola línea, y acá el trade-off es una segunda fila que
+         quedaría pegada al título. */
+      .paj-opts{display:flex;flex-direction:column;gap:8px}
+      .paj-opts .fila-nav{gap:4px 14px}
+      /* LA ELEGIDA NO FLOTA Y LAS ALTERNATIVAS SÍ — regla del sistema para conjuntos de
+         opciones. La marca de activa va en EL DISCO, que es pieza chica y admite la tinta
+         invertida; la fila alta no se invierte porque el sistema no tiene ese gesto escrito. */
+      .paj-opts .fila-nav.on{border-color:var(--doc-line2)}
+      .paj-opts .fila-nav.on:hover{box-shadow:none;transform:none}
+      .paj-opts .fila-nav.on .disco{background:var(--doc-tx);border-color:var(--doc-tx);color:var(--doc-paper)}
+      .paj-opt-t{font-size:13.5px;font-weight:700;letter-spacing:-.01em}
+      .paj-opt-t s{color:var(--doc-tx4);font-weight:500;margin-right:5px}
+      .paj-opt-sub{display:block;font-size:11.5px;font-weight:400;color:var(--doc-tx3);margin-top:2px}
+      /* NINGÚN GRUPO SE PARTE POR DENTRO. A 390 px la línea rompía entre «30» y «años», que
+         quedaba huérfano arriba. Precedente: «.rec-chip» y «.rec-chip-g» de «Lo que haría
+         yo», que resuelven exactamente esto al mismo ancho y con acta escrita. Y el «·» viaja
+         DENTRO del grupo que lo precede, igual que allá el «+» viaja con el primer chip: así
+         el salto cae siempre después del separador y el «·» no puede quedar solo al principio
+         de una línea. */
+      .paj-opt-sub .nb{white-space:nowrap}
+      .paj-opt-sub b{font-weight:700;color:var(--doc-tx)}
+      .paj-opt-v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;
+        letter-spacing:-.015em;text-align:right}
+      .paj-opt-v small{display:block;font-size:10.5px;font-weight:600;color:var(--doc-tx3);
+        letter-spacing:.02em;margin-top:1px}
+      /* EL TRADE-OFF, en fila propia y a lo ancho. Precedente de tratamiento: «.pal-detail»
+         —chica, en gris de cuerpo— que es como el informe dice una acotación bajo una fila. */
+      .paj-opt-tr{grid-column:1/-1;font-size:11.5px;line-height:1.45;color:var(--doc-tx3)}
       .paj-sw.c{background:var(--doc-paper2);outline:2px solid var(--doc-tx3);outline-offset:-2px}
       /* La celda única: una línea, no un cuadrito con ejes alrededor. */
       .paj-unica{display:flex;justify-content:space-between;align-items:center;gap:12px;

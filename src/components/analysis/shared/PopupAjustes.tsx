@@ -21,7 +21,7 @@
 //      STR           114            6               73         56
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState } from "react";
-import type { CeldaMix, MetricasCelda } from "@/lib/mix-palancas";
+import type { CeldaMix, CriterioRespuesta, MetricasCelda, RespuestaMix } from "@/lib/mix-palancas";
 import type { FilaLoQueHariaYo } from "@/lib/lo-que-haria-yo";
 import type { HallazgoDistanciaVeredicto, PalancaDistancia, Veredicto } from "@/lib/types";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
@@ -188,11 +188,47 @@ export function PopupAjustes({
   const mix = v ? mixAComprar(v) : null;
   const celdas = mix?.celdas ?? [];
   const solas = v?.palancas ?? [];
+  // DOS ESTADOS, Y SON DOS PREGUNTAS DISTINTAS (16-sep-2026).
+  //
+  // `sel` es la celda cuyo PANEL DE DETALLE está abierto: arranca en null, responde en
+  // TODAS las celdas y se apaga con la ✕. `criterio` es LA RESPUESTA QUE SE ESTÁ LEYENDO:
+  // nunca es null, arranca en la recomendada y solo se mueve entre las celdas coronadas.
+  //
+  // El contrato del menú no tiene panel de detalle —cero `.cel`, cero «Pides de descuento»,
+  // cero ✕— y su script deja inerte el clic en una celda que no es respuesta. Acá el panel
+  // se conserva a propósito (decisión Fabrizio, 16-sep): el descuento y el pie extra de
+  // CUALQUIER celda son información real y no se pierden porque el mockup no los dibuje.
+  // Por eso hacen falta los dos estados, y por eso el aro no puede servir a los dos: el aro
+  // es de la respuesta —la leyenda nueva lo nombra «la que estás viendo»— y la celda del
+  // panel se identifica en el propio panel, que la titula «Pie 30% · 30 años».
   const [sel, setSel] = useState<CeldaMix | null>(null);
+  const [criterio, setCriterio] = useState<CriterioRespuesta>("score");
 
   const esComprar = veredicto === "COMPRAR";
   // El destino de la matriz es COMPRAR siempre que haya matriz: el escalón no se dibuja.
   const destino: Veredicto = "COMPRAR";
+
+  // ── EL MENÚ ──────────────────────────────────────────────────────────────
+  // `respuestas` es OPCIONAL y puede faltar: LTR recomputa siempre en la visita, pero STR
+  // cae a lo persistido cuando el recompute devuelve null (`renta-corta/[id]/page.tsx:145`,
+  // `recomputed ?? persistedResults`). Sin menú, el pop-up queda exactamente como antes.
+  const respuestas = mix?.respuestas ?? [];
+  // SE DIBUJA CON DOS CELDAS DISTINTAS, NO CON DOS RESPUESTAS. La clave es la misma tripleta
+  // con la que el motor fusiona, así que contar celdas distintas ES contar líneas del menú:
+  // si las tres coronas caen en la misma celda hay un solo camino y no hay nada que elegir.
+  // Medido sobre el parque: 90 filas con tres líneas, 241 con dos y 33 con una sola.
+  const lineas = new Set(respuestas.map((r) => `${r.piePct}|${r.plazoAnios}|${r.descuentoPct}`));
+  const hayMenu = celdas.length > 0 && lineas.size >= 2;
+  const respuestaSel = respuestas.find((r) => r.criterio === criterio) ?? respuestas[0] ?? null;
+  // La celda que el aro marca: la de la respuesta que se está leyendo.
+  const celdaDeLaRespuesta = respuestaSel
+    ? celdas.find(
+        (c) =>
+          c.piePct === respuestaSel.piePct &&
+          c.plazoAnios === respuestaSel.plazoAnios &&
+          c.descuentoPct === respuestaSel.descuentoPct,
+      ) ?? null
+    : null;
 
   return (
     <div className="paj">
@@ -216,15 +252,42 @@ export function PopupAjustes({
             celdas={celdas}
             destino={destino}
             sel={sel}
-            onSel={setSel}
+            onSel={(c) => {
+              setSel(c);
+              // Y SI LA CELDA ES UNA RESPUESTA, TAMBIÉN LA ELIGE. El contrato hace esto y
+              // nada más («desde la matriz también, pero solo a las celdas que el menú
+              // ofrece»); acá se le suma el panel, que el contrato no tiene.
+              const r = c && respuestas.find((x) => x.piePct === c.piePct && x.plazoAnios === c.plazoAnios && x.descuentoPct === c.descuentoPct);
+              if (r) setCriterio(r.criterio);
+            }}
+            aro={hayMenu ? celdaDeLaRespuesta : sel}
+            hayMenu={hayMenu}
             currency={currency}
             valorUF={valorUF}
           />
         )
       )}
 
+      {hayMenu && !esComprar && (
+        <SeccionRespuestas
+          respuestas={respuestas}
+          criterio={respuestaSel?.criterio ?? "score"}
+          onElegir={setCriterio}
+          currency={currency}
+          valorUF={valorUF}
+        />
+      )}
+
       {!esComprar && mix && celdas.length > 0 && (
-        <SeccionOptimo mix={mix} currency={currency} valorUF={valorUF} precioUF={precioUF} antes={antes ?? null} />
+        <SeccionOptimo
+          mix={mix}
+          respuesta={respuestaSel}
+          hayMenu={hayMenu}
+          currency={currency}
+          valorUF={valorUF}
+          precioUF={precioUF}
+          antes={antes ?? null}
+        />
       )}
 
       {solas.length > 0 && <SeccionSolas solas={solas} modalidad={modalidad} currency={currency} valorUF={valorUF} />}
@@ -250,13 +313,21 @@ function SeccionMatriz({
   destino,
   sel,
   onSel,
+  aro,
+  hayMenu,
   currency,
   valorUF,
 }: {
   celdas: CeldaMix[];
   destino: Veredicto;
+  /** La celda cuyo PANEL está abierto. Puede ser cualquiera, incluso una que nadie ofrece. */
   sel: CeldaMix | null;
   onSel: (c: CeldaMix | null) => void;
+  /** La celda que lleva EL ARO. Con menú es la de la respuesta que se está leyendo —la
+   *  leyenda la nombra «la que estás viendo»—; sin menú sigue siendo la del panel, que es
+   *  lo que el aro significaba antes de que hubiera respuestas que elegir. */
+  aro: CeldaMix | null;
+  hayMenu: boolean;
   currency: Currency;
   valorUF: number;
 }) {
@@ -369,7 +440,15 @@ function SeccionMatriz({
                   const clases = [
                     coronaVisible ? "mix" : cruza ? "cruza" : "",
                     c.esActual ? "hoy" : "",
-                    sel && sel.piePct === c.piePct && sel.plazoAnios === c.plazoAnios ? "sel" : "",
+                    // EL ARO YA NO ES DEL PANEL CUANDO HAY MENÚ. La comparación suma el
+                    // descuento porque dos respuestas pueden compartir pie y plazo y no ser
+                    // la misma celda; es la misma tripleta con la que el motor fusiona.
+                    aro &&
+                    aro.piePct === c.piePct &&
+                    aro.plazoAnios === c.plazoAnios &&
+                    aro.descuentoPct === c.descuentoPct
+                      ? "sel"
+                      : "",
                   ].filter(Boolean).join(" ");
                   return (
                     <td
@@ -424,7 +503,25 @@ function SeccionMatriz({
         {celdas.some((c) => c.esElegida && !c.esActual) && (
           <span>
             <i className="paj-sw a" />
-            el óptimo
+            {/* «EL ÓPTIMO» PASA A «LO QUE FRANCO RECOMIENDA» (16-sep-2026). Es uno de los dos
+                cambios que el contrato pone explícitamente «a aprobar»: con el menú el óptimo
+                deja de ser uno solo —hay hasta tres celdas coronadas— pero la recomendación
+                sigue siendo una, y es la que lleva la tinta plena. El swatch no cambia; cambia
+                lo que afirma. Sin menú el texto nuevo sigue siendo cierto, así que no hay dos
+                leyendas que mantener. */}
+            {hayMenu ? "lo que Franco recomienda" : "el óptimo"}
+          </span>
+        )}
+        {/* LA CUARTA ENTRADA, el otro cambio que el contrato pone a aprobar. El aro de tinta
+            ya existía y ya seguía al usuario en producción, y era la única marca de la matriz
+            que la leyenda nunca explicó. Con el menú pasa a ser la más importante —es el
+            puente entre la fila que lees y la celda— así que dejarla muda sería peor que
+            antes. Solo con menú: sin él el aro vuelve a ser el del panel, que no es «la que
+            estás viendo» sino «la que tocaste», y nombrarlo así mentiría. */}
+        {hayMenu && (
+          <span>
+            <i className="paj-sw d" />
+            la que estás viendo
           </span>
         )}
       </div>
@@ -501,51 +598,240 @@ function PanelCelda({
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   EL MENÚ DE RESPUESTAS — «Hay más de un camino» (16-sep-2026).
+
+   Contrato: docs/wireframes/rediseno-informe/popup-menu-respuestas.html, estados A y B.
+
+   LOS TEXTOS SON DETERMINISTAS Y SALEN DEL MOCKUP. Nada de copy generado, nada de prompt.
+   Los títulos son literales; la línea de coordenadas y el trade-off se arman con cifras del
+   motor y un marco fijo.
+
+   EL TRADE-OFF ES UNA RESTA CONTRA LA RECOMENDADA, no contra hoy. Verificado sobre las cinco
+   filas del contrato: «UF 94 más de pie que hoy» = costoDiaUnoUF de la recomendada; «libera
+   UF 205» = 94 − (−111), la resta contra la recomendada; «UF 558 más de pie que la
+   recomendada» = 652 − 94. Las tres al decimal.
+
+   LO QUE NO SE PORTA, Y ES A PROPÓSITO: el mockup adorna cada trade-off con juicios —«El mes
+   queda casi cerrado», «porque no toca tu pie»— que son prosa y dependen de leer el número.
+   Esta fase deja la prosa afuera, así que van las TRES CLÁUSULAS QUE SON HECHOS: cuánto rinde
+   de más o de menos, cuánto capital libera o cuesta, y cuánto más o menos hay que pedirle al
+   vendedor. Si alguna vez entran los juicios, entran con su propio radio.
+   ───────────────────────────────────────────────────────────────────────────── */
+const TITULO_RESPUESTA: Record<CriterioRespuesta, string> = {
+  score: "Lo que Franco recomienda",
+  tir: "La que más rinde",
+  flujo: "La que más alivia el mes",
+};
+/** El título de la línea fusionada, tal como lo escribe el contrato en su estado B. */
+function tituloDe(r: RespuestaMix): string {
+  if (r.criterio === "score" && (r.fusionadaCon ?? []).includes("tir")) {
+    return "Lo que Franco recomienda, y la que más rinde";
+  }
+  return TITULO_RESPUESTA[r.criterio];
+}
+
+function SeccionRespuestas({
+  respuestas,
+  criterio,
+  onElegir,
+  currency,
+  valorUF,
+}: {
+  respuestas: RespuestaMix[];
+  criterio: CriterioRespuesta;
+  onElegir: (c: CriterioRespuesta) => void;
+  currency: Currency;
+  valorUF: number;
+}) {
+  // LA FUSIÓN SE DIBUJA COMO UNA LÍNEA CON LOS DOS NOMBRES, no como la misma celda repetida.
+  // El motor ya la resolvió: basta con quedarse con la PRIMERA respuesta de cada celda —el
+  // orden del contrato es score, tir, flujo— y su título nombra a las dos.
+  const vistas: RespuestaMix[] = [];
+  for (const r of respuestas) {
+    if (!vistas.some((x) => x.piePct === r.piePct && x.plazoAnios === r.plazoAnios && x.descuentoPct === r.descuentoPct)) {
+      vistas.push(r);
+    }
+  }
+  const rec = respuestas.find((r) => r.criterio === "score") ?? null;
+
+  return (
+    <section className="paj-sec">
+      <div className="paj-st">Hay más de un camino</div>
+      <p className="paj-sx">
+        {vistas.length === 2 ? "Los dos llegan" : "Los tres llegan"} a Comprar. Cambia qué le pides al vendedor y
+        cuánta plata pones tú.
+      </p>
+      <div className="paj-opts">
+        {vistas.map((r) => {
+          // La fila está «on» cuando el criterio elegido cae en SU celda: con la fusión, una
+          // sola fila representa a dos criterios y los dos la encienden.
+          const suyos: CriterioRespuesta[] = [r.criterio, ...(r.fusionadaCon ?? [])];
+          const on = suyos.includes(criterio);
+          const dPie = r.piePctDelta !== 0;
+          const dPlazo = r.plazoAniosDelta !== 0;
+          return (
+            <button
+              key={r.criterio}
+              type="button"
+              className={`fila-nav${on ? " on" : ""}`}
+              onClick={() => onElegir(r.criterio)}
+            >
+              <div className="paj-opt-t">
+                {tituloDe(r)}
+                <span className="paj-opt-sub">
+                  <span className="nb">
+                    Pie {dPie && <><s>{dec1(r.piePct - r.piePctDelta).replace(",0", "")}%</s>{" "}</>}
+                    {dPie ? <b>{dec1(r.piePct).replace(",0", "")}%</b> : `${dec1(r.piePct).replace(",0", "")}%`} ·
+                  </span>{" "}
+                  <span className="nb">
+                    Plazo {dPlazo && <><s>{r.plazoAnios - r.plazoAniosDelta}</s>{" "}</>}
+                    {dPlazo ? <b>{r.plazoAnios} años</b> : `${r.plazoAnios} años`} ·
+                  </span>{" "}
+                  <span className="nb">{r.sinDescuento ? "no pides descuento" : `pides ${pct1(r.descuentoPct)}`}</span>
+                </span>
+              </div>
+              <div className="paj-opt-v">{cifraDe(r, currency, valorUF)}</div>
+              <div className="disco">{on ? "✓" : "›"}</div>
+              <div className="paj-opt-tr">{tradeOffDe(r, rec, currency, valorUF)}</div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** La cifra de la derecha: la del criterio que corona, y la de su fusionada debajo. */
+function cifraDe(r: RespuestaMix, currency: Currency, valorUF: number) {
+  const tir = r.metricas?.tirPct;
+  const flujo = r.metricas?.flujoMensual;
+  if (r.criterio === "score") {
+    const conTir = (r.fusionadaCon ?? []).includes("tir") && tir != null;
+    return (
+      <>
+        {r.score ?? PAR_SIN_VALOR}
+        <small>score{conTir ? ` · TIR ${pct1(tir)}` : ""}</small>
+      </>
+    );
+  }
+  if (r.criterio === "tir") {
+    return (
+      <>
+        {tir != null ? pct1(tir) : PAR_SIN_VALOR}
+        <small>TIR</small>
+      </>
+    );
+  }
+  return (
+    <>
+      {flujo != null ? plataFirmada(flujo, currency, valorUF) : PAR_SIN_VALOR}
+      <small>flujo</small>
+    </>
+  );
+}
+
+/** Las tres cláusulas que son hechos, restadas contra la recomendada. */
+function tradeOffDe(r: RespuestaMix, rec: RespuestaMix | null, currency: Currency, valorUF: number): string {
+  if (r.criterio === "score") {
+    return (r.fusionadaCon ?? []).includes("tir")
+      ? "Acá las dos preguntas tienen la misma respuesta: es el mejor negocio de la grilla y también la que más rinde."
+      : "El mejor negocio de la grilla, con la misma vara que declara el veredicto.";
+  }
+  if (!rec) return "";
+  const partes: string[] = [];
+  // LAS DIFERENCIAS DE TIR Y DE DESCUENTO VAN EN PUNTOS, NO EN PORCENTAJE. Son restas entre
+  // dos porcentajes, así que «3,2%» diría que rinde un 3,2% más de lo que rinde —una
+  // proporción— cuando lo que pasa es que rinde 3,2 puntos más. El contrato lo escribe así:
+  // «Rinde 3,2 puntos más», «le pide 4,5 puntos más de descuento al vendedor».
+  const puntos = (x: number) => `${dec1(Math.abs(x)).replace("−", "")} ${Math.abs(x) === 1 ? "punto" : "puntos"}`;
+  const dTir = r.metricas?.tirPct != null && rec.metricas?.tirPct != null ? r.metricas.tirPct - rec.metricas.tirPct : null;
+  if (dTir != null && Math.abs(dTir) >= 0.05) {
+    partes.push(`rinde ${puntos(dTir)} ${dTir > 0 ? "más" : "menos"}`);
+  }
+  // Y EL COSTO DEL DÍA UNO VIAJA EN UF: hay que llevarlo a la moneda del lector antes de
+  // formatearlo, como hace el resto del pop-up. Sin el factor, «UF 205» salía «$205».
+  const dUF = r.costoDiaUnoUF - rec.costoDiaUnoUF;
+  if (Math.round(dUF) !== 0) {
+    const monto = plata(Math.abs(dUF) * valorUF, currency, valorUF);
+    partes.push(dUF < 0 ? `libera ${monto} el día uno` : `cuesta ${monto} más de pie`);
+  }
+  const dDcto = r.descuentoPct - rec.descuentoPct;
+  if (Math.abs(dDcto) >= 0.05) {
+    partes.push(`le pide ${puntos(dDcto)} ${dDcto > 0 ? "más" : "menos"} de descuento al vendedor`);
+  }
+  if (partes.length === 0) return "Comparada con la recomendada, no cambia nada de lo que se compara.";
+  // Coma entre las primeras y « y » antes de la última, que es como el informe enumera.
+  const cola = partes.length > 1 ? `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}` : partes[0];
+  return `Comparada con la recomendada: ${cola}.`;
+}
+
 // ── 3 · el ajuste óptimo ────────────────────────────────────────────────────
 function SeccionOptimo({
   mix,
+  respuesta,
+  hayMenu,
   currency,
   valorUF,
   precioUF,
   antes,
 }: {
   mix: NonNullable<HallazgoDistanciaVeredicto["valor"]["mixPalancas"]>;
+  /** La respuesta que se está leyendo. `null` en filas sin menú persistido, y ahí todo se
+   *  lee de la raíz, que es exactamente lo que este bloque hacía antes. */
+  respuesta: RespuestaMix | null;
+  hayMenu: boolean;
   currency: Currency;
   valorUF: number;
   precioUF: number;
   antes: (MetricasCelda & { score?: number | null }) | null;
 }) {
-  const d = mix.despues ?? null;
-  const elegida = (mix.celdas ?? []).find((c) => c.esElegida) ?? null;
+  // EL BLOQUE PASA A DESCRIBIR LA RESPUESTA ELEGIDA, NO LA RAÍZ (16-sep-2026). Los siete
+  // campos que necesita existen los dos lados con el mismo significado, así que la elección
+  // es una sola línea y el resto del bloque no se entera. Sin respuesta —fila vieja sin el
+  // campo persistido— cae a la raíz y queda como estaba.
+  const r = respuesta;
+  const descuentoPct = r ? r.descuentoPct : mix.descuentoPct;
+  const sinDescuento = r ? r.sinDescuento : mix.sinDescuento;
+  const piePct = r ? r.piePct : mix.piePct;
+  const piePctDelta = r ? r.piePctDelta : mix.piePctDelta;
+  const plazoAnios = r ? r.plazoAnios : mix.plazoAnios;
+  const plazoAniosDelta = r ? r.plazoAniosDelta : mix.plazoAniosDelta;
+  const costoDiaUnoUF = r ? r.costoDiaUnoUF : ((mix.celdas ?? []).find((c) => c.esElegida)?.costoDiaUnoUF ?? null);
+  const score = r ? r.score : mix.score ?? null;
+  const d = (r ? r.metricas : mix.despues) ?? null;
+
   const actual = (mix.celdas ?? []).find((c) => c.esActual) ?? null;
-  const precioObjetivo = precioUF * (1 - mix.descuentoPct / 100);
+  const precioObjetivo = precioUF * (1 - descuentoPct / 100);
   const pieAntesUF = actual ? (precioUF * actual.piePct) / 100 : null;
-  const pieDespuesUF = pieAntesUF != null && elegida ? pieAntesUF + elegida.costoDiaUnoUF : null;
+  const pieDespuesUF = pieAntesUF != null && costoDiaUnoUF != null ? pieAntesUF + costoDiaUnoUF : null;
 
   return (
     <section className="paj-sec">
-      <div className="paj-st">El ajuste óptimo</div>
+      {/* EL TÍTULO NOMBRA LA RESPUESTA ELEGIDA. Sin menú se conserva el fijo de siempre: no
+          hay nada que nombrar cuando hay un solo camino. */}
+      <div className="paj-st">{hayMenu && r ? `El ajuste: ${tituloDe(r).toLowerCase()}` : "El ajuste óptimo"}</div>
       <div className="paj-eleg">
         <div className="paj-chipsm">
-          {mix.piePctDelta !== 0 && (
+          {piePctDelta !== 0 && (
             <span className="paj-chip">
-              Pie <s>{dec1(mix.piePct - mix.piePctDelta).replace(",0", "")}%</s>{" "}
-              {dec1(mix.piePct).replace(",0", "")}%
+              Pie <s>{dec1(piePct - piePctDelta).replace(",0", "")}%</s>{" "}
+              {dec1(piePct).replace(",0", "")}%
             </span>
           )}
-          {mix.piePctDelta !== 0 && mix.plazoAniosDelta !== 0 && <span className="paj-plus">+</span>}
-          {mix.plazoAniosDelta !== 0 && (
+          {piePctDelta !== 0 && plazoAniosDelta !== 0 && <span className="paj-plus">+</span>}
+          {plazoAniosDelta !== 0 && (
             <span className="paj-chip">
-              Plazo <s>{mix.plazoAnios - mix.plazoAniosDelta}</s> {mix.plazoAnios} años
+              Plazo <s>{plazoAnios - plazoAniosDelta}</s> {plazoAnios} años
             </span>
           )}
         </div>
         <div className="paj-neg">
-          {mix.sinDescuento ? (
+          {sinDescuento ? (
             "→ Sin pedir descuento"
           ) : (
             <>
-              → Negocias −{pct1(mix.descuentoPct)} dcto. en precio
+              → Negocias −{pct1(descuentoPct)} dcto. en precio
               <small>
                 UF {miles(precioUF)} → UF {miles(precioObjetivo)}
                 {/* LA BANDA DE ESFUERZO, QUE YA EXISTÍA Y NO SE VEÍA. El motor clasifica
@@ -558,7 +844,7 @@ function SeccionOptimo({
                     precio si fuera lo único que mueves— y cae en banda distinta en el 10,5%
                     de las filas. Las dos marcas en el mismo modal dirían dos cosas sobre
                     «el descuento» en una pantalla. */}
-                <span className="paj-banda">{ETIQUETA_BANDA_ESFUERZO[bandaEsfuerzoDescuento(mix.descuentoPct).banda]}</span>
+                <span className="paj-banda">{ETIQUETA_BANDA_ESFUERZO[bandaEsfuerzoDescuento(descuentoPct).banda]}</span>
               </small>
             </>
           )}
@@ -567,7 +853,7 @@ function SeccionOptimo({
           label="Pie el día uno"
           antes={pieAntesUF != null ? plata(pieAntesUF * valorUF, currency, valorUF) : PAR_SIN_VALOR}
           despues={pieDespuesUF != null ? plata(pieDespuesUF * valorUF, currency, valorUF) : PAR_SIN_VALOR}
-          tono={elegida && elegida.costoDiaUnoUF > 0 ? "mal" : undefined}
+          tono={costoDiaUnoUF != null && costoDiaUnoUF > 0 ? "mal" : undefined}
         />
         <Par label="Cuota mensual" antes={antes?.cuotaMensual != null ? plata(antes.cuotaMensual, currency, valorUF) : PAR_SIN_VALOR} despues={d?.cuotaMensual != null ? plata(d.cuotaMensual, currency, valorUF) : PAR_SIN_VALOR} />
         <Par
@@ -589,7 +875,7 @@ function SeccionOptimo({
         <Par
           label="Franco Score"
           antes={antes?.score != null ? String(antes.score) : actual?.scoreSinDescuento != null ? String(actual.scoreSinDescuento) : PAR_SIN_VALOR}
-          despues={mix.score != null ? String(mix.score) : PAR_SIN_VALOR}
+          despues={score != null ? String(score) : PAR_SIN_VALOR}
           tono="destino"
         />
       </div>
@@ -716,6 +1002,10 @@ function Cta({
   mix: NonNullable<HallazgoDistanciaVeredicto["valor"]["mixPalancas"]>;
   precioUF: number;
 }) {
+  // EL CTA SIGUE LEYENDO LA RAÍZ, o sea la recomendación, y no la respuesta elegida: es un
+  // botón inerte que nombra UN precio objetivo, y prometer el de la respuesta que el lector
+  // está mirando sería ofrecer tres precios distintos con el mismo botón. Cuando el CTA deje
+  // de ser inerte, esta decisión se toma con su propio radio.
   const objetivo = precioUF * (1 - mix.descuentoPct / 100);
   // INERTE A PROPÓSITO (13-sep-2026): el botón se dibuja con el precio negociado y NO
   // navega. Conectarlo pide que el wizard acepte un precio por query y, sobre todo, que
