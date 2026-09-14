@@ -74,8 +74,20 @@
   .mtx td:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.12)}
   .mtx td small{display:block;font-size:10.5px;font-weight:600;opacity:.75;margin-top:2px}
   .mtx td.cruza{background:color-mix(in srgb,var(--up) 14%,transparent);color:var(--up)}
+  /* EL CÓDIGO USA LA MISMA MARCA CON OTRA PROPIEDAD. Desde el 15-sep-2026 producción la
+     dibuja con `box-shadow:inset 0 0 0 2px var(--doc-tx3)`. Se ve igual, pero convive con el
+     aro de selección: siendo los dos `outline`, con la misma especificidad, el de selección
+     se llevaba puesto al de hoy y la celda perdía su marca justo al tocarla. */
   .mtx td.hoy{outline:2px solid var(--tx3);outline-offset:-2px}
   .mtx td.mix{background:var(--tx);color:var(--page)}
+  /* EL CÓDIGO NO HACE ESTO. Desde el 13-sep-2026 producción usa
+     `outline:2px solid var(--doc-tx); outline-offset:1px` — tinta, y por FUERA.
+     Por qué: `--verdict` vale el veredicto de LA FILA, y esta matriz solo se dibuja cuando
+     la fila NO es Comprar, así que acá el aro salía ciruela (o rojo en las filas Buscar) y
+     quedaba dibujado alrededor de una celda que dice «llega a Comprar». Y va por fuera para
+     que también se vea sobre la celda coronada, que ya tiene el fondo de tinta lleno.
+     Queda anotado acá y no corregido arriba: el mockup sigue mostrando la versión vieja.
+     Ver la nota «El aro de selección», más abajo. */
   .mtx td.sel{outline:2.5px solid var(--verdict);outline-offset:-2px}
   .mleyenda{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:var(--tx3);margin-top:10px;
     padding-left:52px}
@@ -175,7 +187,9 @@
         <span class="cerrar">✕</span>
       </div>
 
-      <!-- matriz -->
+      <!-- matriz
+           LA CELDA DE HOY SE MARCA CON EL ARO, Y CON NADA MÁS: la tinta plena de esta matriz
+           ya significa «el óptimo». Ver la nota «Las marcas de la matriz», más abajo. -->
       <div class="sec">
         <div class="st">Ajustes que dependen de ti</div>
         <p class="sx">El descuento que pides se ajusta en consecuencia.</p>
@@ -198,6 +212,9 @@
               <td class="mix" data-d="−3,8%" data-c="si" data-p="+$22,0M">Comprar<small>score 76</small></td></tr>
           </table>
         </div>
+        <!-- LA LEYENDA TIENE TRES ENTRADAS, SALVO CUANDO EL ARO ES LA CORONADA: ahí no hay
+             celda con tinta plena, así que «el óptimo» no se nombra. 133 filas de renta larga
+             y 7 de renta corta. Ver la nota «Las marcas de la matriz», más abajo. -->
         <div class="mleyenda">
           <span><i class="sw c"></i>hoy</span>
           <span><i class="sw b"></i>llega a Comprar</span>
@@ -267,6 +284,27 @@
       </div>
     </div>
   </div>
+</div>
+
+<div class="nota">
+  <b>Las marcas de la matriz.</b> La celda de hoy se marca con el aro, y con nada más: la tinta
+  plena de esta matriz ya significa «el óptimo».<br>
+  <b>Cuando la celda de hoy es la coronada.</b> En 133 filas de renta larga y 7 de renta corta el
+  mix corona el pie y el plazo que ya tienes declarados: el plan es solo precio. Ahí la celda
+  <b>no lleva tinta plena</b> y la leyenda <b>no nombra «el óptimo»</b>. Un fondo que dice «lo que
+  Franco recomienda» sobre una celda que dice «Ajustar» promete lo contrario de lo que pasa, y la
+  recomendación no es «quédate donde estás» sino «mover pie y plazo no te ayuda». Quien la nombra es
+  el panel del óptimo, que en esas filas no lleva chips de pie ni de plazo y dice solo el descuento.
+  Este mockup dibuja el caso separado —la celda de hoy en (20%, 25 años) y la coronada en (30%, 30
+  años)—; el caso en que coinciden se declara acá, en palabras, para no duplicar la tabla entera.<br>
+  <b>El aro de selección.</b> El CSS de arriba dice <code>outline var(--verdict)</code> por dentro y
+  el código NO hace eso: desde el 13-sep-2026 producción usa tinta por fuera
+  (<code>outline:2px solid var(--doc-tx); outline-offset:1px</code>). La razón está medida: «--verdict»
+  vale el veredicto de LA FILA y esta matriz solo se dibuja cuando la fila no es Comprar, así que el
+  aro salía ciruela alrededor de una celda que dice «llega a Comprar». Va por fuera para que también
+  se vea sobre la celda coronada, que ya tiene el fondo lleno. Y desde el 15-sep el aro de hoy va en
+  <code>box-shadow</code> inset en vez de <code>outline</code>, porque siendo los dos outline el de
+  selección se llevaba puesto al de hoy y la celda perdía su marca al tocarla.
 </div>
 
 <div class="nota">
