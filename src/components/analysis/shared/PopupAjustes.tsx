@@ -25,6 +25,7 @@ import type { CeldaMix, MetricasCelda } from "@/lib/mix-palancas";
 import type { FilaLoQueHariaYo } from "@/lib/lo-que-haria-yo";
 import type { HallazgoDistanciaVeredicto, PalancaDistancia, Veredicto } from "@/lib/types";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { bandaEsfuerzoDescuento, ETIQUETA_BANDA_ESFUERZO } from "@/lib/distancia-veredicto-hallazgo";
 
 type Currency = "CLP" | "UF";
 
@@ -510,6 +511,17 @@ function SeccionOptimo({
               → Negocias −{pct1(mix.descuentoPct)} dcto. en precio
               <small>
                 UF {miles(precioUF)} → UF {miles(precioObjetivo)}
+                {/* LA BANDA DE ESFUERZO, QUE YA EXISTÍA Y NO SE VEÍA. El motor clasifica
+                    desde hace tiempo cuán conseguible es este descuento —tres bandas con
+                    cortes doctrinales 5 y 12, §1.12.1— y hasta hoy el único que lo leía era
+                    el modelo que narra. Medido el 15-sep-2026: el 86,8% de las 265 filas con
+                    descuento cae en «difícil, requiere vendedor motivado» y se publicaba con
+                    la misma cara que un 4%.
+                    Va acá y no en la tabla de palancas solas: ese es OTRO descuento —el
+                    precio si fuera lo único que mueves— y cae en banda distinta en el 10,5%
+                    de las filas. Las dos marcas en el mismo modal dirían dos cosas sobre
+                    «el descuento» en una pantalla. */}
+                <span className="paj-banda">{ETIQUETA_BANDA_ESFUERZO[bandaEsfuerzoDescuento(mix.descuentoPct).banda]}</span>
               </small>
             </>
           )}

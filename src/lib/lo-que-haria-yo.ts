@@ -16,6 +16,7 @@
 
 import type { HallazgoDistanciaVeredicto, HallazgoSensibilidad, PalancaDistancia, Veredicto } from "./types";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
+import { bandaEsfuerzoDescuento, type BandaEsfuerzo } from "./distancia-veredicto-hallazgo";
 
 /** Quién tiene que mover la palanca. Es el eje del bloque, no un adorno. */
 export type QuienLaPone = "vendedor" | "mercado" | "tuyo";
@@ -53,6 +54,18 @@ export interface MixLoQueHariaYo {
   costo: string | null;
   /** El descuento que el mix sí pide, ya formateado. null si no pide ninguno. */
   descuento: string | null;
+  /**
+   * CUÁN CONSEGUIBLE ES ESE DESCUENTO, clasificado acá y no en el render (§1.12.1: «la
+   * banda se calcula en el builder»; §1.1: la clasificación se resuelve en la fuente).
+   *
+   * El modelo de esta card sólo llevaba el descuento YA FORMATEADO, así que sin este campo
+   * el render tendría que volver a parsear «−24,3%» a número para poder clasificarlo. Es
+   * la única superficie de las dos que lo necesita: el pop-up trabaja sobre `mixPalancas`
+   * y ahí el descuento sigue siendo un número.
+   *
+   * null cuando no hay descuento que juzgar — el mix cruza sin pedir nada.
+   */
+  bandaEsfuerzo: BandaEsfuerzo | null;
   /**
    * Qué se dice DONDE IRÍA EL DESCUENTO cuando el mix no pide ninguno. Hoy ahí no se
    * dibujaba nada, y un hueco no distingue «no pide» de «no se calculó» — que es
@@ -373,6 +386,8 @@ export function construirLoQueHariaYo(p: {
         // dice qué cuesta y cuándo: «Poner ese pie cuesta UF 230 más el día uno.»
         costo: m.costoDiaUnoUF > 0 ? `Poner ese pie cuesta ${enUF(m.costoDiaUnoUF)} más el día uno.` : null,
         descuento: m.sinDescuento ? null : `−${pct1(m.descuentoPct)}%`,
+        // La MISMA banda que el pop-up, del mismo número y por la misma función.
+        bandaEsfuerzo: m.sinDescuento ? null : bandaEsfuerzoDescuento(Math.abs(m.descuentoPct)).banda,
         // Va en el lugar de «Negocias −X% dcto. en precio», con su flecha y sin paréntesis.
         sinDescuento: m.sinDescuento ? "Sin pedirle un peso al vendedor" : null,
       }

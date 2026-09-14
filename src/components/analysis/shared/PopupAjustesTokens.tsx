@@ -130,6 +130,25 @@ export function PopupAjustesTokens() {
       .paj-neg{font-size:16px;font-weight:700;letter-spacing:-.015em;padding:12px 0;
         border-top:1px solid var(--doc-line2);border-bottom:1px solid var(--doc-line2);margin-bottom:6px}
       .paj-neg small{display:block;font-size:12px;font-weight:400;color:var(--doc-tx3);margin-top:3px}
+      /* LA PILL DE LA BANDA DE ESFUERZO. Portada de «/comunas» (VeredictoCuota.tsx:286) en
+         su tipografia —mono, versalita, tracking .08em, 10px— y NADA MAS: alla la banda
+         estructural va en un #C8323C hardcodeado, y aca ese rojo ya significa la plata que
+         pones (.paj-cg .v.mal, .paj-par .b1.mal). Tercer sentido del mismo rojo en un modal.
+         La cuarta banda no existe en el informe, asi que el problema no se plantea: van las
+         tres en la escala de tinta, que es donde viven las marcas que no son veredicto.
+         Resetea peso y tamano porque .paj-neg es 16px/700 y la pill los heredaria. */
+      /* EN LÍNEA PROPIA, no al costado. Medido a 390: al lado de «UF 5.500 → UF 4.175» la
+         pill mide 249 px sobre 288 disponibles, le deja 31 px a la referencia y la parte en
+         dos — el bloque pasaba de una línea a tres. Abajo ocupa una sola. */
+      .paj-banda{display:block;width:fit-content;margin-top:6px;font-family:var(--font-mono, ui-monospace);
+        font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
+        padding:2px 8px;border-radius:99px;white-space:nowrap;
+        /* EL FONDO ES «--doc-paper», NO «--doc-paper2». La pill vive dentro de «.paj-eleg»,
+           que YA es «--doc-paper2»: con ese token medía el mismo hex que su contenedor
+           (rgb(26,26,30) sobre rgb(26,26,30)) y se leía como un contorno vacío, no como una
+           pill. El vecino que resuelve esto en el MISMO panel es «.paj-chip», que usa
+           «--doc-paper» con borde «--doc-line2»; esta se apoya en él. */
+        background:var(--doc-paper);border:1px solid var(--doc-line2);color:var(--doc-tx3)}
       .paj-par{padding:10px 0;font-size:13px}
       .paj-par+.paj-par{border-top:1px solid var(--doc-line2)}
       .paj-par .l{color:var(--doc-tx3);margin-bottom:3px}

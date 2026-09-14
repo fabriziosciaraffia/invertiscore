@@ -814,6 +814,22 @@ export function DocTokens() {
       /* LAS TRES ACOTACIONES —paréntesis, «Pero eso no depende de ti», costo— al mismo
          tamaño y opacidad. Ninguna destaca. */
       .doc-dictamen .rec-vs{display:block;font-size:12.5px;opacity:.6;margin-top:5px}
+      /* LA PILL DE LA BANDA DE ESFUERZO. Misma tipografia que la del pop-up —mono, versalita,
+         tracking .08em, 10px, portada de /comunas— pero OTROS TOKENS: esta card es oscura en
+         los DOS temas, asi que sus marcas viven en la escala de blancos translucidos como
+         «.rec-chip» (rgba(255,255,255,.14)) y no en los «--doc-*», que aca resolverian al
+         tema de la pagina y la dejarian invisible sobre el fondo oscuro.
+         Va en linea propia bajo el descuento, no al lado: la linea de arriba es 19px/700 y
+         «difícil, requiere vendedor motivado» no entra al costado a 390 px.
+         Y ENVUELVE, sin «white-space:nowrap». Medido a 375: la etiqueta larga mide 249 px y
+         la columna util de «.rec-pides» son 264, pero la pill arranca corrida por la flecha
+         del grid, asi que se pasaba 12 px del bloque. La pill de dos lineas se lee; una que
+         desborda su columna, no. */
+      .doc-dictamen .rec-banda{display:inline-block;margin-top:7px;
+        font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:500;
+        letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:99px;
+        background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);
+        color:rgba(255,255,255,.72)}
 
       /* RESULTADO, inmediatamente después de la caja: píldoras con signo */
       .doc-dictamen .rec-res{margin:0 0 18px}

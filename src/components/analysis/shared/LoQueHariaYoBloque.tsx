@@ -14,6 +14,7 @@
 import { Fragment } from "react";
 import { lineaNoDependeDeTi, type BloqueLoQueHariaYo } from "@/lib/lo-que-haria-yo";
 import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
+import { ETIQUETA_BANDA_ESFUERZO } from "@/lib/distancia-veredicto-hallazgo";
 
 export function LoQueHariaYoBloque({
   bloque,
@@ -188,6 +189,15 @@ function EcuacionRecomendacion({
           <span className="rec-fl">→</span>
           <div>
             <b>{mix.descuento ? `Negocias ${mix.descuento} dcto. en precio` : mix.sinDescuento}</b>
+            {/* LA BANDA DE ESFUERZO. Misma decisión y mismo número que en el pop-up: acá se
+                dice qué descuento hay que pedir, así que acá se dice cuán conseguible es.
+                El dato sale de `mix.descuentoPctNum`, que es el mismo que alimenta la línea
+                de arriba; si falta —fila vieja sin el campo— no se inventa banda. */}
+            {mix.bandaEsfuerzo && (
+              <span className="rec-banda">
+                {ETIQUETA_BANDA_ESFUERZO[mix.bandaEsfuerzo]}
+              </span>
+            )}
             {/* El paréntesis cuelga del descuento: sin descuento no hay contra qué contrastar
                 y la línea ya dice lo que importa («Sin pedirle un peso al vendedor»). */}
             {mix.descuento && mix.contraste && (

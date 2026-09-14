@@ -107,6 +107,30 @@ export function bandaEsfuerzoDescuento(deltaPctAbs: number): {
   };
 }
 
+/**
+ * LA MISMA BANDA, EN CORTO, PARA CUANDO SE DIBUJA (15-sep-2026).
+ *
+ * `lectura` es para el prompt: lleva la banda Y su instrucción de uso, porque el modelo
+ * tiene que saber qué hacer con ella. Para una píldora al lado del número eso no cabe ni
+ * corresponde, así que acá va sólo el nombre de la banda — el mismo que la doctrina
+ * §1.12.1 le da, recortado antes del guion.
+ *
+ * Vive junto a la clasificación a propósito: si la palabra se copiara en cada render, dos
+ * superficies podrían terminar llamando distinto a la misma banda. La doctrina dice que la
+ * clasificación se resuelve en la fuente (§1.1); el nombre de la clase también.
+ *
+ * NO HAY CUARTA. `/comunas` tiene una segunda implementación con un corte en 25 que llama
+ * «estructural»; ese 25 es `DIST_STR_TOPE_AJUSTA_PCT`, el tope de renta corta. La doctrina
+ * dice «hasta el tope aplicable», que en LTR es 30, y medido el 15-sep-2026 ninguna de las
+ * 265 filas con descuento de mix lo supera. El caso estructural de verdad —sobre el tope—
+ * no es una banda: es la puerta cerrada, y ya tiene su propia frase.
+ */
+export const ETIQUETA_BANDA_ESFUERZO: Record<BandaEsfuerzo, string> = {
+  normal: "negociación normal",
+  con_argumentos: "alcanzable con argumentos",
+  dificil: "difícil, requiere vendedor motivado",
+};
+
 // ── Caso precio-justo (§1.12.4) — FUENTE ÚNICA de la detección ────────────────
 // Condición dura Y-ada, nunca "o". La comparten runAnalysis (siembra el flag en
 // el hallazgo → cierre estructural + render) y el builder del prompt LTR (que NO
