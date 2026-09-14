@@ -75,15 +75,24 @@ export function PopupAjustesTokens() {
       .paj-mtx td:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.12)}
       .paj-mtx td small{display:block;font-size:10.5px;font-weight:600;opacity:.75;margin-top:2px}
       .paj-mtx td.cruza{background:color-mix(in srgb,var(--doc-comprar) 16%,transparent);color:var(--doc-comprar)}
-      .paj-mtx td.hoy{outline:2px solid var(--doc-tx3);outline-offset:-2px;position:relative}
-      /* EL CHIP DE LA CELDA DEL ARO. Portado tal cual de la otra matriz del informe
-         («.mz-hoy», TokensShared.tsx:43): mono, versalita, tinta invertida, pegado a la
-         esquina. El aro solo ubica; el chip es el que dice que esa celda se lee distinto, y
-         va pegado a ella porque la doctrina de la escalera del plazo lo pide asi: cuando la
-         vara cambia por fila, el rotulo va en la celda y no en nota al pie. */
-      .paj-hoy{position:absolute;top:-1px;left:-1px;font-family:var(--font-mono, ui-monospace);
-        font-size:8px;letter-spacing:.14em;text-transform:uppercase;background:var(--doc-tx);
-        color:var(--doc-paper);padding:2px 5px 2px 6px;border-radius:2px 0 3px 0;line-height:1}
+      /* EL ARO DE HOY VA EN SOMBRA INSET, NO EN OUTLINE (15-sep-2026). Precedente directo:
+         «.mz-cell.hoy» (TokensShared.tsx:42) marca el hoy con box-shadow inset por la misma
+         razon. Con outline, «td.sel» —que tambien es outline, con la misma especificidad y
+         declarado despues— se lo llevaba puesto: al seleccionar la celda del aro el aro gris
+         DESAPARECIA y la celda quedaba sin la marca que la leyenda llama «hoy». Bug del
+         13-sep, ajeno al chip. Outline y box-shadow no compiten, asi que ahora conviven: el
+         gris por dentro dice cual es la de hoy, el de tinta por fuera dice cual tocaste.
+
+         LA MARCA ES EL ARO Y NADA MAS, como el contrato visual
+         (popup-palancas-final.html:77). Entre el 14 y el 15 de septiembre hubo aca un chip
+         de tinta portado de «.mz-hoy»; se retiro porque en ESTA matriz la tinta plena ya
+         significa «el optimo» (td.mix y el swatch .paj-sw.a la nombran), mientras que en la
+         matriz de origen ninguna celda lleva tinta y por eso alla el chip no ambigua. */
+      .paj-mtx td.hoy{box-shadow:inset 0 0 0 2px var(--doc-tx3)}
+      /* La sombra de hover y el aro son la MISMA propiedad, asi que la celda de hoy tiene que
+         listar las dos o pierde una: sin esta linea el aro gris se comia el realce al pasar
+         por encima, que es la unica senal de que la celda se puede tocar. */
+      .paj-mtx td.hoy:hover{box-shadow:inset 0 0 0 2px var(--doc-tx3),0 3px 10px rgba(0,0,0,.12)}
       .paj-mtx td.mix{background:var(--doc-tx);color:var(--doc-paper)}
       /* El aro de selección va POR FUERA (offset positivo) y en tinta: así se ve también
          sobre la celda elegida, que ya tiene el fondo de tinta lleno. Cabe en el

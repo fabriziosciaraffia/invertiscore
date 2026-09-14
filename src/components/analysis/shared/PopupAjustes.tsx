@@ -367,10 +367,16 @@ function SeccionMatriz({
                           de una celda es la de su descuento mínimo, y en esta el aro prometía
                           «tu situación» mientras el contenido mostraba «tu situación con un
                           descuento encima». Medido: en 501 de 739 filas mostraba un veredicto
-                          distinto al de la propia página. El dato ya viajaba en la celda. */}
+                          distinto al de la propia página. El dato ya viajaba en la celda.
+                          Y la marca es EL ARO, sola, como manda el contrato visual
+                          (popup-palancas-final.html:189, donde esta celda ya decía «Ajustar
+                          score 62» marcada solo con el aro). El chip de tinta que hubo acá
+                          entre el 14 y el 15 de septiembre se retiró: en esta matriz la tinta
+                          plena ya significa «el óptimo» —la celda coronada y su swatch de
+                          leyenda— así que el chip prometía lo contrario de lo que la celda
+                          dice. Quien habla es el aro; quien explica es el subtítulo. */}
                       {etiquetaVeredicto(veredictoMostrado(c), "frase")}
                       <small>score {scoreMostrado(c) ?? PAR_SIN_VALOR}</small>
-                      {c.esActual && <span className="paj-hoy">hoy</span>}
                     </td>
                   );
                 })}
