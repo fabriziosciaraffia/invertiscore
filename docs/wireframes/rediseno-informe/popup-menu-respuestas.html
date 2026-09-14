@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es-CL" data-theme="light" data-view="wide">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El pop-up de ajustes · el menú de respuestas</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     TOKENS. Heredados de `popup-palancas-final.html` SALVO EN EL COLOR, donde manda
+     el acta del commit d1ddbc85 (13-sep-2026) y no el contrato, que quedó stale:
+
+       · `--comprar` — el azul de la TRÍADA del veredicto, nombrable sin depender del
+         veredicto de la fila. Pinta lo que NOMBRA un veredicto: la celda que cruza, su
+         cuadrito en la leyenda, «llegas a Comprar». Base #2B558F; en oscuro se aclara a
+         #6C9BE0 porque como tinta sobre papel oscuro el original da 2,63:1.
+       · `--good` — el verde del SEMÁFORO DEL DATO, y solo donde hay un dato con signo:
+         el flujo mensual y el retorno por cada $100. El contrato los pintaba con `--up`,
+         el mismo token que usaba para la celda que cruza; eso ponía el mismo color en dos
+         afirmaciones distintas y con el menú empeora, porque el flujo de cada respuesta
+         queda al lado de la matriz.
+       · `--signal` — el rojo de Franco, por la regla del rojo.
+
+     `--up` NO se declara acá a propósito: en este pop-up no hay ninguna pieza direccional.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{--sans:"Inter",system-ui,sans-serif;--signal:#C8323C;--rad:16px;--rad-s:12px;--rad-xs:10px;
+    --verdict:#6E4560;--verdict-deep:#442B3B;--sombra-h:0 6px 20px rgba(0,0,0,.08)}
+  [data-theme="light"]{--page:#FFFFFF;--card:#F4F4F6;--sunk:#EBEBEE;--line:#E9E9EC;--line2:#D6D6DB;
+    --tx:#18181B;--tx2:#3F3F46;--tx3:#71717A;--tx4:#A1A1AA;--comprar:#2B558F;--good:#2E8B57;
+    --velo:rgba(24,24,27,.45)}
+  [data-theme="dark"]{--page:#0C0C0E;--card:#1A1A1E;--sunk:#232328;--line:#232327;--line2:#37373D;
+    --tx:#FAFAFA;--tx2:#D4D4D8;--tx3:#A1A1AA;--tx4:#71717A;--comprar:#6C9BE0;--good:#57B98A;
+    --velo:rgba(0,0,0,.6);--sombra-h:0 6px 20px rgba(0,0,0,.5)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--page);color:var(--tx);font-family:var(--sans);padding:20px 14px 90px;
+    -webkit-font-smoothing:antialiased}
+  .ctrl{max-width:780px;margin:0 auto}
+  h1.lt{font-size:17px;font-weight:600;margin-bottom:4px}
+  .subx{font-size:12.5px;color:var(--tx3);line-height:1.55;margin-bottom:16px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--rad-s);
+    padding:12px 14px;margin-bottom:24px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .clab{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx4)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+  .seg button{font-size:11px;font-weight:500;padding:5px 10px;background:transparent;
+    color:var(--tx3);border:none;cursor:pointer;font-family:var(--sans)}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button.on{background:var(--tx);color:var(--page);font-weight:600}
+
+  .rot-estado{max-width:780px;margin:34px auto 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .rot-estado h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .rot-estado span{font-size:12px;color:var(--tx3)}
+
+  .escena{position:relative;max-width:780px;margin:0 auto;min-height:900px;border-radius:var(--rad);
+    overflow:hidden;background:var(--card)}
+  [data-view="mobile"] .escena{max-width:390px}
+  .fondo{position:absolute;inset:0;padding:24px;opacity:.3;filter:blur(1px)}
+  .fondo .cardp{background:linear-gradient(135deg,var(--verdict-deep),#18181B);border-radius:var(--rad);
+    height:200px;margin-bottom:16px}
+  .fondo .ln{height:14px;background:var(--line2);border-radius:4px;margin:10px 0;width:70%}
+  .velo{position:absolute;inset:0;background:var(--velo)}
+
+  .pop{position:absolute;top:24px;left:50%;transform:translateX(-50%);width:480px;
+    max-height:calc(100% - 48px);border-radius:var(--rad);
+    background:var(--page);color:var(--tx);overflow:auto;box-shadow:0 16px 48px rgba(0,0,0,.3)}
+  [data-view="mobile"] .pop{top:40px;left:12px;right:12px;bottom:12px;width:auto;transform:none;
+    max-height:none}
+  .pop-in{padding:22px 22px 26px}
+  [data-view="mobile"] .pop-in{padding:18px 18px 24px}
+
+  .pop-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:22px}
+  .pop-h h3{font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.22}
+  .chipsv{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .pillv{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.04em;
+    padding:5px 11px;border-radius:99px;white-space:nowrap;background:var(--card);
+    border:1px solid var(--line2);color:var(--tx3)}
+  .pillv.dest{background:var(--tx);color:var(--page);border-color:var(--tx)}
+  .flv{color:var(--tx4);font-weight:700;font-size:13px}
+  .cerrar{width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--line2);
+    display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--tx3);flex:none;cursor:pointer}
+
+  .sec{margin-bottom:26px}
+  .sec .st{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--tx4);
+    margin-bottom:10px}
+  .sec .sx{font-size:12px;color:var(--tx3);line-height:1.45;margin:-4px 0 12px}
+
+  /* ── la matriz ── */
+  .eje-x{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--tx4);
+    text-align:center;margin-bottom:6px;padding-left:52px}
+  [data-view="mobile"] .eje-x{padding-left:0}
+  .mwrap{display:grid;grid-template-columns:auto auto;gap:0 8px;align-items:center;justify-content:center}
+  .eje-y{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10.5px;font-weight:600;
+    letter-spacing:.05em;text-transform:uppercase;color:var(--tx4);text-align:center;padding:22px 0 0}
+  .mtx{border-collapse:separate;border-spacing:4px;font-variant-numeric:tabular-nums;table-layout:fixed}
+  .mtx td,.mtx th:not(.rot){width:150px}
+  [data-view="mobile"] .mtx td,[data-view="mobile"] .mtx th:not(.rot){width:130px}
+  .mtx th{font-size:11.5px;font-weight:600;color:var(--tx3);padding:3px 2px;text-align:center}
+  .mtx th.rot{text-align:right;padding-right:7px;white-space:nowrap;width:44px}
+  .mtx td{text-align:center;padding:8px 3px;border-radius:8px;font-size:12.5px;font-weight:700;
+    background:var(--card);color:var(--tx3);cursor:pointer;line-height:1.2;
+    transition:transform .1s,box-shadow .1s}
+  [data-view="mobile"] .mtx td{font-size:11.5px;padding:7px 2px}
+  .mtx td:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.12)}
+  .mtx td small{display:block;font-size:10.5px;font-weight:600;opacity:.75;margin-top:2px}
+  /* lo que NOMBRA un veredicto va con la tríada, no con el semáforo del dato */
+  .mtx td.cruza{background:color-mix(in srgb,var(--comprar) 16%,transparent);color:var(--comprar)}
+  /* el aro gris: la combinación declarada hoy */
+  .mtx td.hoy{outline:2px solid var(--tx3);outline-offset:-2px}
+  /* EL FONDO DE TINTA NO SE MUEVE: marca lo que Franco recomienda, siempre */
+  .mtx td.mix{background:var(--tx);color:var(--page)}
+  /* EL ARO DE TINTA SIGUE AL USUARIO. Va por fuera para verse sobre el fondo lleno */
+  .mtx td.sel{outline:2px solid var(--tx);outline-offset:1px}
+  .mleyenda{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:var(--tx3);
+    margin-top:10px;padding-left:52px}
+  [data-view="mobile"] .mleyenda{padding-left:0}
+  .mleyenda span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
+  .sw.a{background:var(--tx)}
+  .sw.b{background:color-mix(in srgb,var(--comprar) 16%,transparent);border:1px solid var(--comprar)}
+  .sw.c{background:var(--card);outline:2px solid var(--tx3);outline-offset:-2px}
+  .sw.d{background:var(--card);outline:2px solid var(--tx);outline-offset:1px;margin:1px}
+
+  /* ═══ EL BLOQUE NUEVO · LAS RESPUESTAS ═══
+     Montado sobre `.fila-nav`, que está DEFINIDA Y SIN MONTAR en PortadaInforme.tsx:1004.
+     Se hereda tal cual: rejilla 1fr auto auto, superficie de tarjeta, radio --rad-s, borde
+     transparente que se pinta al hover, elevación de 1px, disco de 32px que se invierte, y
+     el anillo de foco en Signal Red con offset 2.
+     Lo único que se agrega es la fila del trade-off, con el precedente de `.pal-detail`
+     (HallazgosAcordeon.tsx:410): grid-column 1/-1, chica y en gris de cuerpo.
+     LA ELEGIDA NO FLOTA y las alternativas sí — regla del sistema para conjuntos de
+     opciones. La marca de «activa» va en el DISCO, que es pieza chica y sí admite la tinta
+     invertida; la fila alta no se invierte porque el sistema no tiene ese gesto escrito. */
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .fila-nav{background:var(--card);padding:14px 15px;cursor:pointer;display:grid;
+    grid-template-columns:1fr auto auto;gap:4px 14px;align-items:center;
+    border-radius:var(--rad-s);border:1px solid transparent;width:100%;text-align:left;
+    color:inherit;font-family:var(--sans);
+    transition:box-shadow .13s,border-color .13s,transform .13s}
+  .fila-nav:hover{border-color:var(--line2);box-shadow:var(--sombra-h);transform:translateY(-1px)}
+  .fila-nav:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .fila-nav.on{border-color:var(--line2)}
+  .fila-nav.on:hover{box-shadow:none;transform:none}
+  .fila-nav .disco{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;background:var(--page);border:1px solid var(--line2);flex:none;
+    color:var(--tx3);font-size:15px;font-weight:700;line-height:1;
+    transition:background .13s,border-color .13s,color .13s}
+  .fila-nav:hover .disco{background:var(--tx);border-color:var(--tx);color:var(--page)}
+  .fila-nav.on .disco{background:var(--tx);border-color:var(--tx);color:var(--page)}
+  .opt-t{font-size:13.5px;font-weight:700;letter-spacing:-.01em}
+  .opt-t s{color:var(--tx4);font-weight:500;margin-right:5px}
+  .opt-sub{display:block;font-size:11.5px;font-weight:400;color:var(--tx3);margin-top:2px}
+  .opt-v{font-size:15px;font-weight:700;letter-spacing:-.015em;white-space:nowrap;text-align:right}
+  .opt-v small{display:block;font-size:10px;font-weight:600;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--tx4);margin-top:2px}
+  /* el trade-off, a todo el ancho, como `.pal-detail` */
+  .opt-tr{grid-column:1/-1;font-size:11.5px;color:var(--tx3);line-height:1.5;margin-top:6px;
+    padding-top:8px;border-top:1px solid var(--line)}
+  @media (prefers-reduced-motion:reduce){
+    .fila-nav,.fila-nav .disco,.mtx td{transition:none}
+    .fila-nav:hover{transform:none}
+  }
+
+  /* ── el panel del ajuste ── */
+  .eleg{background:var(--card);border-radius:var(--rad-s);padding:16px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .chip{background:var(--page);border:1px solid var(--line2);padding:7px 11px;border-radius:var(--rad-xs);
+    font-size:13px;font-weight:600;white-space:nowrap}
+  .chip s{color:var(--tx4);font-weight:500;text-decoration-thickness:1.5px;margin-right:5px}
+  .plus{color:var(--tx4);font-weight:600}
+  .neg{font-size:16px;font-weight:700;letter-spacing:-.015em;padding:12px 0;
+    border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);margin-bottom:6px}
+  .neg small{display:block;font-size:12px;font-weight:400;color:var(--tx3);margin-top:3px}
+  .par{padding:10px 0;font-size:13px}
+  .par+.par{border-top:1px solid var(--line2)}
+  .par .l{color:var(--tx3);margin-bottom:3px}
+  .par .p{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .par .a1{font-size:13px;color:var(--tx4);white-space:nowrap}
+  .par .fl{color:var(--tx4);font-weight:700}
+  .par .b1{font-size:16px;font-weight:700;white-space:nowrap;letter-spacing:-.015em}
+  /* semáforo del DATO, y solo donde el dato tiene signo */
+  .par .b1.bien{color:var(--good)} .par .b1.mal{color:var(--signal)}
+  /* el Score de destino NO es un dato con signo: es el número que declara el veredicto */
+  .par .b1.destino{color:var(--comprar)}
+
+  .nota{max-width:780px;margin:18px auto 0;background:var(--card);border:1px dashed var(--line2);
+    padding:14px 16px;font-size:12px;color:var(--tx3);line-height:1.65;border-radius:var(--rad-s)}
+  .nota b{color:var(--tx2);font-weight:600}
+  .nota+.nota{margin-top:10px}
+  .nota ul{margin:6px 0 0 18px}
+  .nota li{margin-bottom:3px}
+</style>
+</head>
+<body>
+<div class="ctrl">
+  <h1 class="lt">El pop-up de ajustes — el menú de respuestas</h1>
+  <p class="subx">El criterio de hoy queda intacto como default y las otras respuestas se nombran.
+     Dos estados del mismo pop-up, con cifras reales de dos análisis del parque.</p>
+  <div class="panel">
+    <span class="clab">Vista</span>
+    <div class="seg" id="s-view"><button class="on" data-v="wide">780</button><button data-v="mobile">390</button></div>
+    <span class="clab">Tema</span>
+    <div class="seg" id="s-theme"><button class="on" data-v="light">Claro</button><button data-v="dark">Oscuro</button></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ ESTADO A ══════════════════════ -->
+<div class="rot-estado">
+  <h2>Estado A — tres respuestas distintas</h2>
+  <span>La Florida · 54344fa0 · Av. Tobalaba 7300 · UF 4.600 · pie 10% · 25 años</span>
+</div>
+
+<div class="escena" id="escena-a">
+  <div class="fondo"><div class="cardp"></div><div class="ln"></div><div class="ln" style="width:55%"></div><div class="ln" style="width:80%"></div></div>
+  <div class="velo"></div>
+
+  <div class="pop">
+    <div class="pop-in">
+      <div class="pop-h">
+        <div><h3>Recomendación de ajustes</h3>
+          <div class="chipsv"><span class="pillv">− AJUSTAR</span><span class="flv">→</span>
+            <span class="pillv dest">✓ COMPRAR</span></div></div>
+        <span class="cerrar">✕</span>
+      </div>
+
+      <div class="sec">
+        <div class="st">Ajustes que dependen de ti</div>
+        <p class="sx">El descuento que pides se ajusta en consecuencia.</p>
+        <div class="eje-x">Plazo del crédito</div>
+        <div class="mwrap">
+          <div class="eje-y">Pie que pones</div>
+          <table class="mtx" data-mtx="a">
+            <tr><th class="rot"></th><th>25 años</th><th>30 años</th></tr>
+            <tr><th class="rot">10%</th>
+              <td class="cruza hoy" data-k="10|25">Comprar<small>score 73</small></td>
+              <td class="cruza" data-k="10|30">Comprar<small>score 72</small></td></tr>
+            <tr><th class="rot">15%</th>
+              <td class="mix" data-k="15|25">Comprar<small>score 73</small></td>
+              <td class="cruza" data-k="15|30">Comprar<small>score 71</small></td></tr>
+            <tr><th class="rot">20%</th>
+              <td class="cruza" data-k="20|25">Comprar<small>score 72</small></td>
+              <td class="cruza" data-k="20|30">Comprar<small>score 70</small></td></tr>
+            <tr><th class="rot">25%</th>
+              <td class="cruza" data-k="25|25">Comprar<small>score 70</small></td>
+              <td class="cruza" data-k="25|30">Comprar<small>score 70</small></td></tr>
+            <tr><th class="rot">30%</th>
+              <td class="cruza" data-k="30|25">Comprar<small>score 70</small></td>
+              <td class="cruza" data-k="30|30">Comprar<small>score 69</small></td></tr>
+          </table>
+        </div>
+        <div class="mleyenda">
+          <span><i class="sw c"></i>hoy</span>
+          <span><i class="sw b"></i>llega a Comprar</span>
+          <span><i class="sw a"></i>lo que Franco recomienda</span>
+          <span><i class="sw d"></i>la que estás viendo</span>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="st">Hay más de un camino</div>
+        <p class="sx">Los tres llegan a Comprar. Cambia qué le pides al vendedor y cuánta plata pones tú.</p>
+        <div class="opts" data-opts="a">
+          <button class="fila-nav on" data-k="15|25">
+            <div class="opt-t">Lo que Franco recomienda
+              <span class="opt-sub">Pie <s>10%</s> 15% · Plazo 25 años · pides 19,7%</span></div>
+            <div class="opt-v">73<small>score</small></div>
+            <div class="disco">✓</div>
+            <div class="opt-tr">El mejor negocio de la grilla con la misma vara que declara el veredicto. Pone UF 94 más de pie que hoy.</div>
+          </button>
+          <button class="fila-nav" data-k="10|25">
+            <div class="opt-t">La que más rinde
+              <span class="opt-sub">Pie 10% · Plazo 25 años · pides 24,2%</span></div>
+            <div class="opt-v">17,1%<small>TIR</small></div>
+            <div class="disco">›</div>
+            <div class="opt-tr">Rinde 3,2 puntos más y libera UF 205 el día uno, porque no toca tu pie. A cambio le pide 4,5 puntos más de descuento al vendedor.</div>
+          </button>
+          <button class="fila-nav" data-k="25|30">
+            <div class="opt-t">La que más alivia el mes
+              <span class="opt-sub">Pie <s>10%</s> 25% · Plazo <s>25</s> 30 años · pides 3,3%</span></div>
+            <div class="opt-v">−$14.511<small>flujo</small></div>
+            <div class="disco">›</div>
+            <div class="opt-tr">El mes queda casi cerrado y le pide 16,4 puntos menos al vendedor. Cuesta UF 558 más de pie que la recomendada, y estirar a 30 años baja el rendimiento 4,2 puntos.</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="st" data-st="a">El ajuste que Franco recomienda</div>
+        <div class="eleg" data-eleg="a"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ ESTADO B ══════════════════════ -->
+<div class="rot-estado">
+  <h2>Estado B — dos respuestas</h2>
+  <span>Las Condes · 1274a305 · Cerro El Plomo 5880 · UF 5.500 · pie 20% · 25 años</span>
+</div>
+
+<div class="escena" id="escena-b">
+  <div class="fondo"><div class="cardp"></div><div class="ln"></div><div class="ln" style="width:55%"></div><div class="ln" style="width:80%"></div></div>
+  <div class="velo"></div>
+
+  <div class="pop">
+    <div class="pop-in">
+      <div class="pop-h">
+        <div><h3>Recomendación de ajustes</h3>
+          <div class="chipsv"><span class="pillv">− AJUSTAR</span><span class="flv">→</span>
+            <span class="pillv dest">✓ COMPRAR</span></div></div>
+        <span class="cerrar">✕</span>
+      </div>
+
+      <div class="sec">
+        <div class="st">Ajustes que dependen de ti</div>
+        <p class="sx">El descuento que pides se ajusta en consecuencia.</p>
+        <div class="eje-x">Plazo del crédito</div>
+        <div class="mwrap">
+          <div class="eje-y">Pie que pones</div>
+          <table class="mtx" data-mtx="b">
+            <tr><th class="rot"></th><th>25 años</th><th>30 años</th></tr>
+            <tr><th class="rot">20%</th>
+              <td class="hoy" data-k="20|25">Ajustar<small>score 51</small></td>
+              <td class="mix" data-k="20|30">Comprar<small>score 72</small></td></tr>
+            <tr><th class="rot">25%</th>
+              <td class="cruza" data-k="25|25">Comprar<small>score 72</small></td>
+              <td class="cruza" data-k="25|30">Comprar<small>score 70</small></td></tr>
+            <tr><th class="rot">30%</th>
+              <td class="cruza" data-k="30|25">Comprar<small>score 70</small></td>
+              <td class="cruza" data-k="30|30">Comprar<small>score 70</small></td></tr>
+          </table>
+        </div>
+        <div class="mleyenda">
+          <span><i class="sw c"></i>hoy</span>
+          <span><i class="sw b"></i>llega a Comprar</span>
+          <span><i class="sw a"></i>lo que Franco recomienda</span>
+          <span><i class="sw d"></i>la que estás viendo</span>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="st">Hay más de un camino</div>
+        <p class="sx">Los dos llegan a Comprar. Cambia qué le pides al vendedor y cuánta plata pones tú.</p>
+        <div class="opts" data-opts="b">
+          <button class="fila-nav on" data-k="20|30">
+            <div class="opt-t">Lo que Franco recomienda, y la que más rinde
+              <span class="opt-sub">Pie 20% · Plazo <s>25</s> 30 años · pides 24,3%</span></div>
+            <div class="opt-v">72<small>score · TIR 10,9%</small></div>
+            <div class="disco">✓</div>
+            <div class="opt-tr">Acá las dos preguntas tienen la misma respuesta: es el mejor negocio de la grilla y también la que más rinde. Libera UF 267 el día uno, porque no toca tu pie.</div>
+          </button>
+          <button class="fila-nav" data-k="30|30">
+            <div class="opt-t">La que más alivia el mes
+              <span class="opt-sub">Pie <s>20%</s> 30% · Plazo <s>25</s> 30 años · pides 18,2%</span></div>
+            <div class="opt-v">−$5.320<small>flujo</small></div>
+            <div class="disco">›</div>
+            <div class="opt-tr">El mes queda casi cerrado y le pide 6,1 puntos menos al vendedor. Cuesta UF 517 más de pie que la recomendada, y rinde 2,3 puntos menos.</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="st" data-st="b">El ajuste que Franco recomienda</div>
+        <div class="eleg" data-eleg="b"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="nota">
+  <b>Qué cambia respecto del pop-up de hoy.</b>
+  <ul>
+    <li>Aparece el bloque de respuestas entre la matriz y el panel, sobre <b>.fila-nav</b>, que estaba definida y sin montar.</li>
+    <li>El título del panel <b>nombra la respuesta elegida</b> en vez de ser el fijo «El ajuste óptimo».</li>
+    <li><b>El aro de tinta sigue al usuario. El fondo de tinta no se mueve</b>: marca siempre lo que Franco recomienda, así la recomendación no desaparece al primer clic. En el estado A los dos gestos se separan apenas eliges otra respuesta; en el estado B la recomendada arranca con los dos encima.</li>
+    <li>Al elegir una respuesta cambian los chips, el descuento y los siete pares.</li>
+    <li>Cada respuesta declara su trade-off en segunda línea, con el precedente de <b>.pal-detail</b> y la doctrina de las escaleras del pie y del plazo: más pie alivia el mes y baja el retorno sobre tu plata; estirar el plazo alivia el mes y encarece el crédito.</li>
+    <li>La fila elegida <b>no flota</b> y las alternativas sí. La marca de activa va en el disco, que es pieza chica y admite la tinta invertida; la fila alta no se invierte porque el sistema no tiene ese gesto escrito.</li>
+  </ul>
+</div>
+
+<div class="nota">
+  <b>Lo que hay que aprobar, y no está inventado acá.</b>
+  <ul>
+    <li><b>El tercer swatch deja de decir «el óptimo»</b> y pasa a decir «lo que Franco recomienda». Con el menú el óptimo deja de ser uno solo, pero la recomendación sigue siendo una.</li>
+    <li><b>Una cuarta entrada en la leyenda</b>, para el aro de tinta: «la que estás viendo». Ese aro ya existe y ya sigue al usuario en producción, y es la única marca de la matriz que la leyenda nunca explicó. Con el menú pasa a ser la más importante, así que dejarla muda sería peor que antes.</li>
+  </ul>
+</div>
+
+<div class="nota">
+  <b>Cifras.</b> Todas reales, sondeadas sobre los dos análisis con el motor del worktree.
+  Las de la matriz son el veredicto y el score de cada celda en su descuento mínimo; las de los
+  siete pares son el antes del caso y el después de cada respuesta.
+  <b>Ninguna quedó como falta.</b>
+  <br><br>
+  <b>Fuera a propósito:</b> el tope de 15 puntos de costo del día uno y el interés total del plazo
+  largo. En el estado A las dos celdas de pie 30% están sobre ese tope y por eso no aparecen en el
+  menú, pero sí en la matriz, que es lo que hace hoy.
+  <br><br>
+  <b>Un hueco que conviene saber:</b> el verde del semáforo del dato NO se ejercita en ninguno de
+  los dos casos. Las cinco respuestas dejan el flujo mensual y el retorno en negativo, así que
+  todos los pares con signo salen en rojo. La regla está escrita en el CSS y lista, pero sin un
+  caso que la muestre no se puede aprobar mirando. El candidato más cercano del parque es
+  <b>82219c67</b> (Providencia), donde la respuesta de mejor mes deja +$29.472 y el par sale verde;
+  a cambio su contraste de descuento es de 7,1 puntos en vez de los 16,4 de este caso.
+</div>
+
+<script>
+  /* Los datos de los dos casos, tal como salieron del motor. El «antes» es el caso a precio
+     de hoy; el «después», cada respuesta en su descuento mínimo. */
+  const CASOS = {
+    a: {
+      antes: { pie: "UF 460", pieCLP: "$18.792.840", cuota: "$892.760", flujo: "−$256.577",
+               coc: "−$13,70", cap: "4,1%", tir: "10,9%", score: "55" },
+      pieHoy: "10%", plazoHoy: "25", precioUF: "UF 4.600",
+      opts: {
+        "15|25": { st: "El ajuste que Franco recomienda", pie: "15%", plazo: "25", dcto: "−19,7%",
+          precio: "UF 4.600 → UF 3.694",
+          pares: { pie: ["$18.792.840", "$22.635.976", "mal"], cuota: ["$892.760", "$677.059", ""],
+                   flujo: ["−$256.577", "−$40.876", "mal"], coc: ["−$13,70", "−$1,90", "mal"],
+                   cap: ["4,1%", "5,1%", ""], tir: ["10,9%", "13,9%", ""], score: ["55", "73", "destino"] } },
+        "10|25": { st: "El ajuste que más rinde", pie: "10%", plazo: "25", dcto: "−24,2%",
+          precio: "UF 4.600 → UF 3.487",
+          pares: { pie: ["$18.792.840", "$14.244.973", ""], cuota: ["$892.760", "$676.712", ""],
+                   flujo: ["−$256.577", "−$40.529", "mal"], coc: ["−$13,70", "−$2,90", "mal"],
+                   cap: ["4,1%", "5,4%", ""], tir: ["10,9%", "17,1%", ""], score: ["55", "73", "destino"] } },
+        "25|30": { st: "El ajuste que más alivia el mes", pie: "25%", plazo: "30", dcto: "−3,3%",
+          precio: "UF 4.600 → UF 4.448",
+          pares: { pie: ["$18.792.840", "$45.431.691", "mal"], cuota: ["$892.760", "$650.694", ""],
+                   flujo: ["−$256.577", "−$14.511", "mal"], coc: ["−$13,70", "−$0,30", "mal"],
+                   cap: ["4,1%", "4,2%", ""], tir: ["10,9%", "9,7%", ""], score: ["55", "70", "destino"] } },
+      },
+    },
+    b: {
+      antes: { pie: "UF 1.100", pieCLP: "$44.943.800", cuota: "$948.920", flujo: "−$339.930",
+               coc: "−$8,30", cap: "3,3%", tir: "7,4%", score: "51" },
+      pieHoy: "20%", plazoHoy: "25", precioUF: "UF 5.500",
+      opts: {
+        "20|30": { st: "El ajuste que Franco recomienda", pie: "20%", plazo: "30", dcto: "−24,3%",
+          precio: "UF 5.500 → UF 4.164",
+          pares: { pie: ["$44.943.800", "$34.022.457", ""], cuota: ["$948.920", "$649.714", ""],
+                   flujo: ["−$339.930", "−$40.724", "mal"], coc: ["−$8,30", "−$1,30", "mal"],
+                   cap: ["3,3%", "4,3%", ""], tir: ["7,4%", "10,9%", ""], score: ["51", "72", "destino"] } },
+        "30|30": { st: "El ajuste que más alivia el mes", pie: "30%", plazo: "30", dcto: "−18,2%",
+          precio: "UF 5.500 → UF 4.499",
+          pares: { pie: ["$44.943.800", "$55.146.043", "mal"], cuota: ["$948.920", "$614.310", ""],
+                   flujo: ["−$339.930", "−$5.320", "mal"], coc: ["−$8,30", "−$0,10", "mal"],
+                   cap: ["3,3%", "4,0%", ""], tir: ["7,4%", "8,6%", ""], score: ["51", "70", "destino"] } },
+      },
+    },
+  };
+
+  const ROTULOS = [
+    ["pie", "Pie el día uno"], ["cuota", "Cuota mensual"], ["flujo", "Flujo mensual"],
+    ["coc", "Por cada $100 que pones, al año"], ["cap", "Cap rate neto"],
+    ["tir", "TIR a 10 años"], ["score", "Franco Score"],
+  ];
+
+  function pintar(id, k) {
+    const caso = CASOS[id], o = caso.opts[k];
+    // el título del panel nombra la respuesta elegida
+    document.querySelector(`[data-st="${id}"]`).textContent = o.st;
+    // los chips del mix, con el tachado solo donde el valor cambia
+    const chipPie = o.pie === caso.pieHoy
+      ? `<span class="chip">Pie ${o.pie}</span>`
+      : `<span class="chip">Pie <s>${caso.pieHoy}%</s> ${o.pie}</span>`;
+    const chipPlazo = o.plazo === caso.plazoHoy
+      ? `<span class="chip">Plazo ${o.plazo} años</span>`
+      : `<span class="chip">Plazo <s>${caso.plazoHoy}</s> ${o.plazo} años</span>`;
+    const pares = ROTULOS.map(([campo, rot]) => {
+      const [a, d, tono] = o.pares[campo];
+      return `<div class="par"><div class="l">${rot}</div>
+        <div class="p"><span class="a1">${a}</span><span class="fl">→</span>
+        <span class="b1${tono ? " " + tono : ""}">${d}</span></div></div>`;
+    }).join("");
+    document.querySelector(`[data-eleg="${id}"]`).innerHTML =
+      `<div class="chips">${chipPie}<span class="plus">+</span>${chipPlazo}</div>
+       <div class="neg">→ Negocias ${o.dcto} dcto. en precio<small>${o.precio}</small></div>${pares}`;
+    // el ARO sigue a la respuesta; el FONDO no se toca
+    document.querySelectorAll(`[data-mtx="${id}"] td`).forEach((td) => {
+      td.classList.toggle("sel", td.dataset.k === k);
+    });
+    document.querySelectorAll(`[data-opts="${id}"] .fila-nav`).forEach((b) => {
+      const on = b.dataset.k === k;
+      b.classList.toggle("on", on);
+      b.querySelector(".disco").textContent = on ? "✓" : "›";
+    });
+  }
+
+  for (const id of ["a", "b"]) {
+    document.querySelectorAll(`[data-opts="${id}"] .fila-nav`).forEach((b) => {
+      b.addEventListener("click", () => pintar(id, b.dataset.k));
+    });
+    // desde la matriz también, pero solo a las celdas que el menú ofrece
+    document.querySelectorAll(`[data-mtx="${id}"] td`).forEach((td) => {
+      td.addEventListener("click", () => { if (CASOS[id].opts[td.dataset.k]) pintar(id, td.dataset.k); });
+    });
+    pintar(id, Object.keys(CASOS[id].opts)[0]);
+  }
+
+  document.getElementById("s-view").addEventListener("click", (e) => {
+    if (e.target.tagName !== "BUTTON") return;
+    document.documentElement.dataset.view = e.target.dataset.v;
+    [...e.currentTarget.children].forEach((b) => b.classList.toggle("on", b === e.target));
+  });
+  document.getElementById("s-theme").addEventListener("click", (e) => {
+    if (e.target.tagName !== "BUTTON") return;
+    document.documentElement.dataset.theme = e.target.dataset.v;
+    [...e.currentTarget.children].forEach((b) => b.classList.toggle("on", b === e.target));
+  });
+</script>
+</body>
+</html>
