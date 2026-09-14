@@ -108,13 +108,22 @@ function scoreMostrado(c: CeldaMix) {
  * Acá manda la palabra, que es un recompute de verdad. El redondeo del motor es un arreglo
  * aparte —anotado el 13-sep-2026— y hasta que se haga el color no promete de más.
  *
- * Por eso lee `veredictoMostrado` y no `c.veredicto`: la regla no es «la palabra del
- * descuento mínimo» sino «la palabra que esta celda tiene escrita», que en la del aro es
- * otra. Es el mismo argumento con el que la corona pierde la tinta plena cuando cae sobre
- * el aro: una marca que promete un destino sobre una celda que dice lo contrario miente.
+ * Por eso el predicado recibe LA PALABRA ESCRITA y no la saca él: la regla no es «la
+ * palabra del descuento mínimo» sino «la palabra que esta celda tiene escrita», y no todas
+ * las ramas escriben la misma. Es el mismo argumento con el que la corona pierde la tinta
+ * plena cuando cae sobre el aro: una marca que promete un destino sobre una celda que dice
+ * lo contrario miente.
+ *
+ * Cada sitio de render nombra su lectura al llamar. La matriz pasa `veredictoMostrado(c)`;
+ * la rama de celda única pasa `c.veredicto`, porque es lo que esa rama escribe. Cuando el
+ * predicado sacaba la palabra por su cuenta, cambiar la matriz desincronizó a la otra rama
+ * en silencio: la palabra quedó diciendo «Comprar» y el color dejó de pintarla.
  */
+function cruzaSegun(veredictoEscrito: Veredicto | null | undefined, c: CeldaMix, destino: Veredicto) {
+  return c.descuentoPct !== null && c.alcanzable && veredictoEscrito === destino;
+}
 function cruzaDeVerdad(c: CeldaMix, destino: Veredicto) {
-  return c.descuentoPct !== null && c.alcanzable && veredictoMostrado(c) === destino;
+  return cruzaSegun(veredictoMostrado(c), c, destino);
 }
 
 export interface PopupAjustesProps {
@@ -258,7 +267,10 @@ function SeccionMatriz({
 
   if (unaSola) {
     const c = celdas[0];
-    const cruza = cruzaDeVerdad(c, destino);
+    // ESTA RAMA ESCRIBE `c.veredicto`, ASÍ QUE SU COLOR LEE `c.veredicto`. No es un olvido:
+    // es la misma regla que la matriz, aplicada a lo que esta rama dice. Si algún día la
+    // celda única pasa al precio de hoy, acá se cambia la palabra Y esta línea, juntas.
+    const cruza = cruzaSegun(c.veredicto, c, destino);
     return (
       <section className="paj-sec">
         <div className="paj-st">Ajustes que dependen de ti</div>
