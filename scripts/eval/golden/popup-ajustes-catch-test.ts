@@ -245,10 +245,18 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 //
 // Tres cosas que tienen que viajar juntas, o el arreglo se deshace solo:
 //   · la celda del aro lee `veredictoSinDescuento` / `scoreSinDescuento`;
-//   · la matriz DECLARA que tiene dos lecturas — subtítulo que lo dice y chip en la celda;
+//   · la matriz DECLARA que tiene dos lecturas — el subtítulo lo dice en palabras y el aro
+//     marca cuál es;
 //   · cuando el aro coincide con la coronada, el fondo de tinta se retira (145 filas): un
 //     fondo que dice «lo que Franco recomienda» sobre una celda que dice «Ajustar» promete
 //     lo contrario de lo que pasa.
+//
+// LA MARCA ES EL ARO, NO UN CHIP (15-sep-2026). Entre el 14 y el 15 este invariante exigía
+// un chip de tinta pegado a la celda. Se retiró, y la aserción no se borró: se reescribió
+// leyendo del contrato visual (popup-palancas-final.html:77 y :189), que marca esa celda
+// con el aro y nada más, y que ya la mostraba diciendo «Ajustar score 62».
+// El chip era ambiguo acá porque la tinta plena de esta matriz ya significa «el óptimo»
+// (td.mix y el swatch .paj-sw.a); en la matriz de origen ninguna celda lleva tinta.
 {
   if (!POPUP) F("10 · sin componente no hay celda del aro que fijar");
   else {
@@ -260,14 +268,32 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
     if (!/precio de hoy/i.test(POPUP)) {
       F("10 · la matriz no declara que la celda del aro va a precio de hoy: sin esa línea el próximo lector deshace el arreglo");
     }
-    // El chip dentro de la celda, con el precedente de la otra matriz del informe.
-    if (!/paj-hoy/.test(POPUP)) F("10 · la celda del aro no lleva chip: el rótulo tiene que ir pegado a la celda, no solo en la leyenda");
     // La regla de las 145: si el aro es la coronada, no hay tinta plena.
     if (!/esActual\s*&&\s*c\.esElegida|c\.esElegida\s*&&\s*!c\.esActual/.test(POPUP)) {
       F("10 · la clase de tinta plena no excluye la celda del aro: en 145 filas el fondo diría «lo que Franco recomienda» sobre el veredicto de partida");
     }
+    // Y la marca tiene que existir en el render: sin la clase, el CSS del aro no cuelga de nada.
+    if (!/c\.esActual \? "hoy"|esActual.*"hoy"/.test(POPUP)) {
+      F("10 · el render no le pone la clase `hoy` a la celda del aro: la marca que la leyenda nombra no tendría de dónde colgar");
+    }
   }
-  if (CSS && !/\.paj-hoy\{/.test(CSS)) F("10 · falta el CSS del chip de la celda del aro");
+  // LA MARCA DEL ARO, EN EL CSS. No alcanza con que exista: tiene que ir en sombra inset y
+  // NO en outline, porque `td.sel` también es outline, con la misma especificidad y
+  // declarado después, así que se la lleva puesta y al tocar la celda del aro el aro gris
+  // desaparece. Medido en el navegador el 14-sep-2026. Precedente: `.mz-cell.hoy`
+  // (TokensShared.tsx:42) marca el hoy con box-shadow inset por esta misma razón.
+  {
+    const regla = CSS.match(/\.paj-mtx td\.hoy\{[^}]*\}/)?.[0] ?? "";
+    if (CSS && !regla) F("10 · no existe la regla de `td.hoy`: la celda del aro quedaría sin marca");
+    else if (regla && !/box-shadow:\s*inset/.test(regla)) {
+      F("10 · el aro de hoy no va en sombra inset: con outline, el aro de selección lo reemplaza y la celda pierde la marca que la leyenda llama «hoy»");
+    }
+    // Y la sombra de hover es la misma propiedad, así que la celda de hoy tiene que listar
+    // las dos o pierde el realce que dice que se puede tocar.
+    if (CSS && regla && !/\.paj-mtx td\.hoy:hover\{[^}]*inset[^}]*,/.test(CSS)) {
+      F("10 · `td.hoy` no repone la sombra de hover junto al aro: el aro gris se come el realce y la celda deja de parecer tocable");
+    }
+  }
 }
 
 // ── 11 · EL PANEL DE DETALLE NO CONTRADICE A SU CELDA ──────────────────────
