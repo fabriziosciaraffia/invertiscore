@@ -362,10 +362,56 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
   }
 }
 
+// ── 11 · LAS MÉTRICAS VIAJAN POR CELDA, NO SOLO EN LA CORONADA ─────────────
+//
+// El motor sondea cada celda que cruza y la sonda devuelve cuota, flujo, retorno, cap rate
+// y TIR en la misma pasada. Hasta hoy todas esas cifras se tiraban salvo las de la celda
+// coronada (`despues`), así que nadie podía comparar dos celdas por otra cosa que el score.
+// Cero sondas nuevas: el dato ya está en la mano cuando la celda se arma.
+{
+  const METRICAS = { cuotaMensual: 111_111, flujoMensual: -22_222, cocPct: -1.5, capRateNetoPct: 4.4, tirPct: 9.9 };
+  const r = calcularMixPalancas({
+    meta: "AJUSTA SUPUESTOS",
+    precioUF: 3_000,
+    piePct: 20,
+    plazoCredito: 25,
+    pieCalifica: true,
+    pieTopePct: DIST_PIE_TOPE_PCT,
+    topePct: 15,
+    palancasQueCruzan: [],
+    sondaAtPatch: (patch) => {
+      const d = patch.precio != null ? 100 * (1 - patch.precio / 3_000) : 0;
+      return { veredicto: d >= 5 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA", score: 70, metricas: METRICAS };
+    },
+  });
+  if (!r) F("11 · el mix no cruzó: el caso de métricas no se está ejerciendo");
+  else {
+    const cruzan = (r.celdas ?? []).filter((c) => c.descuentoPct !== null);
+    if (!cruzan.length) F("11 · ninguna celda cruza en el caso de métricas");
+    for (const c of cruzan) {
+      const m = (c as unknown as { metricas?: unknown }).metricas;
+      if (m == null) {
+        F(`11 · la celda pie ${c.piePct}% · ${c.plazoAnios}a cruza pero no lleva métricas: sin ellas no se puede comparar dos celdas por flujo ni por TIR`);
+        break;
+      }
+      const mm = m as typeof METRICAS;
+      if (mm.tirPct !== METRICAS.tirPct || mm.flujoMensual !== METRICAS.flujoMensual) {
+        F(`11 · la celda pie ${c.piePct}% · ${c.plazoAnios}a lleva métricas que no son las de su sonda`);
+        break;
+      }
+    }
+    // Y las que NO cruzan no inventan métricas: su lectura es la de precio de hoy.
+    for (const c of (r.celdas ?? []).filter((x) => x.descuentoPct === null)) {
+      const m = (c as unknown as { metricas?: unknown }).metricas;
+      if (m === undefined) F(`11 · la celda pie ${c.piePct}% que no cruza no declara el campo de métricas (debe existir, aunque sea null)`);
+    }
+  }
+}
+
 export function runMixPalancasTier(): { hard: number } {
   console.log("\n─── TIER MIX (las tres palancas del comprador combinadas · mix-palancas.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — grilla acordada, «sin descuento» explícito, contraste con solo-precio, costo contra el pie declarado, el tope de 15 pts con signo, «sin salida» sin mover «sin palanca sola» y el descuento publicado CRUZA");
+    console.log("  ✓ VERDE — grilla acordada, «sin descuento» explícito, contraste con solo-precio, costo contra el pie declarado, el tope de 15 pts con signo, «sin salida» sin mover «sin palanca sola», el descuento publicado CRUZA y las métricas viajan por celda");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

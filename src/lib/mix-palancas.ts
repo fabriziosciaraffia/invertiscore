@@ -179,6 +179,22 @@ export type CeldaMix = {
   costoPtsPrecio: number;
   /** ¿Está dentro del tope de alcance? Una celda cara no se ofrece por más score que deje. */
   alcanzable: boolean;
+  /**
+   * LAS CIFRAS DE ESTA CELDA, en la misma lectura de la que salen `veredicto` y `score`:
+   * el descuento mínimo si cruza, el precio de hoy si no.
+   *
+   * Viajan desde el 14-sep-2026. Antes el motor las calculaba para TODAS las celdas —la
+   * sonda devuelve cuota, flujo, retorno, cap rate y TIR en la misma pasada que el
+   * veredicto— y las tiraba en el mismo bucle, salvo las de la coronada (`despues`). Con
+   * eso, dos celdas solo se podían comparar por el score, que es un entero que pondera
+   * cinco cosas a la vez: nadie podía preguntar cuál deja mejor mes o mejor tasa.
+   *
+   * CERO SONDAS NUEVAS: el dato ya está en la mano cuando la celda se arma.
+   *
+   * `null` cuando el llamador sondea sin métricas — los catch-tests lo hacen a propósito
+   * (`SondaMix.metricas` es opcional). Ausente en filas recomputadas antes de esa fecha.
+   */
+  metricas?: MetricasCelda | null;
 };
 
 
@@ -360,6 +376,9 @@ export function calcularMixPalancas(p: {
         costoDiaUnoUF: costoUF,
         costoPtsPrecio: costoPts,
         alcanzable: r.pct !== null && costoPts <= MIX_COSTO_TOPE_PTS_PRECIO,
+        // De la MISMA lectura que el veredicto y el score de arriba, para que las tres cosas
+        // describan el mismo punto. Se dejaban caer acá; ahora se guardan.
+        metricas: lectura.metricas ?? null,
       });
       if (r.pct === null || !r.enMin) continue;
       const score = r.enMin.score;
