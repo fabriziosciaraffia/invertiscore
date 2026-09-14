@@ -86,9 +86,20 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
 
   // BUSCAR estructural con mix solo al escalón (grajalesStr 5dc42a82): pie 25% + plazo 30 + −11%.
   const g = distanciaDe("grajalesStr");
-  if (salidaPorMixStr(g.valor) || !mixAlEscalonStr(g.valor)) F("1 · grajalesStr tenía que llegar solo al escalón");
+  const escalonG = mixAlEscalonStr(g.valor);
+  if (salidaPorMixStr(g.valor) || !escalonG) F("1 · grajalesStr tenía que llegar solo al escalón");
   if (g.titular !== "Ningún ajuste por separado lo lleva al veredicto de arriba; juntos, sí.") F(`1 · titular al escalón: «${g.titular}»`);
-  if (!g.fraseCanonica.includes(`Con lo tuyo —pie y plazo— y un descuento de 11% llega a ${ESCALON}, no a Comprar.`)) F(`1 · el cierre al escalón: «${g.fraseCanonica.slice(-160)}»`);
+  // EL NÚMERO SE LEE DEL MOTOR, NO SE ESCRIBE ACÁ (14-sep-2026). Esta línea fijaba «11%» a
+  // mano sobre un hallazgo RECOMPUTADO, así que vigilaba una cifra en vez del invariante. Al
+  // pasar el redondeo del descuento de `round` a `ceil` el motor publicó 11,1% y el test se
+  // puso rojo por un cambio correcto. Su hermana de arriba ya leía `salidaH.descuentoPct`;
+  // ahora las dos hacen lo mismo y lo que se vigila es que el cierre CITE el número del
+  // motor, que es el invariante que importa.
+  const dG = escalonG?.descuentoPct ?? null;
+  if (dG === null) F("1 · grajalesStr tenía que pedir descuento además del pie y el plazo");
+  else if (!g.fraseCanonica.includes(`Con lo tuyo —pie y plazo— y un descuento de ${String(dG).replace(".", ",")}% llega a ${ESCALON}, no a Comprar.`)) {
+    F(`1 · el cierre al escalón no lee el descuento del motor (${dG}%): «${g.fraseCanonica.slice(-160)}»`);
+  }
 
   // Sin combinación (maculStrSinSalida 213d321c): nada cambia.
   const m = distanciaDe("maculStrSinSalida");

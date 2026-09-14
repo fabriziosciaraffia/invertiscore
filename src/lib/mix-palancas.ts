@@ -301,7 +301,25 @@ export function calcularMixPalancas(p: {
       if (cruza(mid, piePct, plazoAnios)) hi = mid;
       else lo = mid;
     }
-    const pct = Math.round(hi * 10) / 10;
+    // SE REDONDEA HACIA ARRIBA, Y ES CORRECTITUD, NO POLÍTICA (14-sep-2026).
+    //
+    // El invariante del bucle garantiza que `hi` cruza y que `lo` no. `Math.round` podía
+    // bajar el valor publicado hasta 0,05 puntos por debajo de `hi`, o sea meterlo en el
+    // tramo (lo, hi) donde el cruce NO está verificado. Recomputado en ese número, el caso
+    // ya no alcanzaba: la celda quedaba pintada «llega a Comprar» con la palabra «Ajustar»
+    // adentro. Medido sobre el parque: 388 de 1.806 celdas alcanzables, el 21,5%.
+    //
+    // `Math.ceil` publica siempre un punto que cruza, por construcción. Cuesta como máximo
+    // 0,1 punto más de descuento pedido al vendedor, y eso está medido y aceptado.
+    //
+    // La tolerancia de 1e-9 evita que un `hi` que ya es múltiplo exacto de 0,1 salte un
+    // décimo entero por ruido de punto flotante.
+    //
+    // Y el `min` con el tope no es decorativo: el tope es el MISMO que gobierna la palanca
+    // sola, y publicar por encima haría que el mix pida un descuento que el precio solo
+    // tiene prohibido ofrecer. Con `hi <= topePct` y topes de un decimal o menos el clamp
+    // nunca muerde; queda igual porque el día que el tope tenga más decimales, muerde.
+    const pct = Math.min(Math.ceil(hi * 10 - 1e-9) / 10, p.topePct);
     return { pct, sin: false, base, enMin: sondar(pct, piePct, plazoAnios) };
   };
 

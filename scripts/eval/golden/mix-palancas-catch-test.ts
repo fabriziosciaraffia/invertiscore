@@ -328,10 +328,44 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
   }
 }
 
+// ── 10 · EL DESCUENTO QUE SE PUBLICA TIENE QUE CRUZAR ──────────────────────
+//
+// La bisección garantiza que `hi` cruza, pero después el valor se redondea a un decimal.
+// Con `Math.round` ese redondeo puede caer HACIA ABAJO hasta 0,05 puntos y dejar el número
+// publicado por debajo del umbral: la celda queda marcada «llega a Comprar» y, recomputada
+// en el descuento que ella misma publica, dice otra cosa. Medido sobre el parque el
+// 13-sep-2026: 388 de 1.806 celdas alcanzables (21,5%) publicaban un descuento que no cruza.
+//
+// El umbral 7,72 no es decorativo: es un punto donde la bisección de paso 0,1 termina en
+// hi = 7,734375, que redondea a 7,7 y NO alcanza, y que con `ceil` publica 7,8 y sí.
+{
+  const UMBRAL = 7.72;
+  const r = mix({
+    piePct: 30, // pie en el techo ⇒ una sola fila, la grilla no distrae
+    plazoCredito: 30, // plazo en el máximo ⇒ una sola columna
+    regla: (patch) => {
+      const d = patch.precio != null ? 100 * (1 - patch.precio / 3_000) : 0;
+      return d >= UMBRAL ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+    },
+  });
+  if (!r) F("10 · el mix no cruzó donde debía: el caso del umbral fino no se está ejerciendo");
+  else {
+    for (const c of r.celdas ?? []) {
+      if (c.descuentoPct === null) continue;
+      if (c.descuentoPct < UMBRAL) {
+        F(`10 · la celda pie ${c.piePct}% · ${c.plazoAnios}a publica −${c.descuentoPct}%, que NO alcanza el umbral ${UMBRAL}: el número publicado no hace lo que dice`);
+      }
+    }
+    if (r.descuentoPct < UMBRAL) {
+      F(`10 · el mix publica −${r.descuentoPct}% y el umbral es ${UMBRAL}: el descuento coronado no cruza`);
+    }
+  }
+}
+
 export function runMixPalancasTier(): { hard: number } {
   console.log("\n─── TIER MIX (las tres palancas del comprador combinadas · mix-palancas.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — grilla acordada, «sin descuento» explícito, contraste con solo-precio, costo contra el pie declarado, el tope de 15 pts con signo, y «sin salida» sin mover «sin palanca sola»");
+    console.log("  ✓ VERDE — grilla acordada, «sin descuento» explícito, contraste con solo-precio, costo contra el pie declarado, el tope de 15 pts con signo, «sin salida» sin mover «sin palanca sola» y el descuento publicado CRUZA");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
