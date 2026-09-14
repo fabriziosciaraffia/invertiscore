@@ -46,6 +46,36 @@ function median(values: number[]): number {
 /**
  * Banda de esfuerzo del descuento necesario. Los cortes son los de
  * `analysis-voice-franco` §1.12 — no se inventó un umbral propio.
+ *
+ * ── POR QUÉ EL TERCER CORTE ESTÁ FIJO EN 25 (acta, 15-sep-2026) ──────────────
+ *
+ * La doctrina NO dice 25. Dice, textual: «~12% hasta el tope aplicable
+ * (15/25/30 según salto y modalidad) — difícil, requiere vendedor motivado» y
+ * «Sobre el tope (caso estructural)». O sea que el tercer corte es VARIABLE y sus
+ * tres valores son exactamente los tres topes del motor:
+ *
+ *   DIST_TOPE_BUSCAR_PCT     = 15   LTR, salto desde BUSCAR
+ *   DIST_STR_TOPE_AJUSTA_PCT = 25   STR, salto desde AJUSTA   ← el que quedó acá
+ *   DIST_TOPE_AJUSTA_PCT     = 30   LTR, salto desde AJUSTA
+ *
+ * Esta página congeló el 25, que es el tope de RENTA CORTA, para una superficie
+ * que habla de medianas de arriendo largo. No hay nada escrito que lo justifique:
+ * el contrato de /comunas (assets-export/mockup-comunas-enriquecido.html:60) lo
+ * declara doctrinal —«12-25% difícil · >25% estructural. No se inventó un umbral
+ * propio»— y eso, en rigor, no es lo que la doctrina dice.
+ *
+ * NO SE TOCA ACÁ, y a propósito. Estas cuatro bandas sostienen toda la rama
+ * editorial de `VeredictoCuota` —el encabezado, el pill, el flag `critico` y el
+ * párrafo que redirige a otra comuna—, y el `deltaPct` que clasifican NO es el
+ * mismo que el del motor: acá es la distancia de la mediana de venta al precio
+ * donde la mediana de arriendo cubre el dividendo, un agregado comunal sin
+ * veredicto ni modalidad. Unificar las dos funciones pondría la misma etiqueta
+ * sobre dos magnitudes distintas.
+ *
+ * Lo que sí quedó decidido (15-sep-2026) es que el INFORME no usa este corte: el
+ * pop-up y la card §5 dibujan las TRES bandas de `bandaEsfuerzoDescuento`, porque
+ * en LTR el tope aplicable es 30 y ninguna de las 265 filas con descuento de mix
+ * lo supera. Llamar «estructural» a algo que está dentro de su tope sería falso.
  */
 export type BandaEsfuerzo = "normal" | "con-argumentos" | "dificil" | "estructural";
 
