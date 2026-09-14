@@ -825,10 +825,18 @@ export function DocTokens() {
          la columna util de «.rec-pides» son 264, pero la pill arranca corrida por la flecha
          del grid, asi que se pasaba 12 px del bloque. La pill de dos lineas se lee; una que
          desborda su columna, no. */
+      /* EL FONDO ES .14, EL DE SU HERMANA «.rec-chip», y no .10. Con .10 medía el MISMO
+         rgba que «.rec-tuyo», la caja que la contiene: translucido sobre translucido aclara
+         apenas y la pill quedaba mas floja que cualquier vecina. Es el mismo error que la
+         pill del pop-up tenia con «--doc-paper2», y se arregla igual: mirando al vecino.
+         SIN «border»: en esta card ninguna pieza lo usa —la unica con contorno,
+         «.rec-pill-neutra», lo hace con box-shadow— y encima suma 2 px de ancho justo
+         donde la etiqueta larga ya venia apretada. Lo que la baja de jerarquia es el color
+         del texto, coherente con el opacity .6 de «.rec-vs». */
       .doc-dictamen .rec-banda{display:inline-block;margin-top:7px;
         font-family:var(--font-mono, ui-monospace);font-size:10px;font-weight:500;
         letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:99px;
-        background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);
+        background:rgba(255,255,255,.14);
         color:rgba(255,255,255,.72)}
 
       /* RESULTADO, inmediatamente después de la caja: píldoras con signo */
