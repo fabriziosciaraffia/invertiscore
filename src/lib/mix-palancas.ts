@@ -328,22 +328,94 @@ export type RespuestaMix = {
  *    hay que pedirle a un tercero), después la plata del día uno y por último el pie, para
  *    que el resultado no dependa del recorrido de la grilla. Una celda sin score medible NO
  *    le gana a una con número: se ordena al final.
+ *  · `tir` — la que más rinde. Desde el menú de respuestas (16-sep-2026).
+ *  · `flujo` — la que más alivia el mes. Desde el menú de respuestas (16-sep-2026).
  *  · `costo` — la más barata en puntos del precio. Es el criterio del borde donde NINGUNA
  *    celda está dentro del alcance: ahí no se está eligiendo un plan sino reportando cuánto
  *    costaría el más barato, y el retorno de una salida que no existe no significa nada.
+ *
+ * ⚠ TRES SON RESPUESTAS Y UNO ES EL NARRADOR, y la distinción no es cosmética. `score`,
+ * `tir` y `flujo` coronan celdas que se le OFRECEN al lector: cada una contesta una
+ * pregunta distinta sobre la misma grilla y cada una viaja en `MixPalancas.respuestas` con
+ * su propio tope. `costo` no se ofrece nunca: es con lo que se reporta cuánto costaría la
+ * salida más barata cuando ninguna cabe. Quien lea esta unión como «cuatro criterios
+ * equivalentes» va a terminar ofreciendo el borde como si fuera un plan.
  */
-export function elegirCelda<T extends Combinacion>(xs: readonly T[], criterio: "score" | "costo"): T[] {
-  const porScore = (a: T, b: T) => {
-    // null al final: sin número no se compite (filas legacy sin métricas recomputables).
-    if (a.score == null && b.score == null) return 0;
-    if (a.score == null) return 1;
-    if (b.score == null) return -1;
-    return b.score - a.score;
+export type CriterioEleccion = CriterioRespuesta | "costo";
+
+/**
+ * EL VALOR CON EL QUE COMPITE CADA CRITERIO. `null` ⇒ esa celda no puede contestar esa
+ * pregunta y se ordena al final; nunca corona.
+ *
+ * ⚠ ACÁ VIVE LA EXCEPCIÓN DE `SondaMix.metricas`, VIVA Y NO ABANDONADA. El campo es
+ * opcional a propósito —«los catch-tests y los censos sondean sin métricas y el módulo no
+ * las necesita para elegir»— y eso dejó de ser cierto para dos de los tres criterios: el
+ * flujo y la TIR SÍ las necesitan. La salida no es volver el campo obligatorio, que
+ * pondría en rojo los nueve arneses que sondean sin métricas y borraría una invariante que
+ * alguien escribió con su razón. La salida es la que el propio módulo ya usaba para el
+ * score: una celda sin el número no le gana a una que lo tiene, se va al final, y si es la
+ * única que hay entonces ese criterio simplemente no tiene respuesta que ofrecer.
+ */
+const VALOR_DEL_CRITERIO: Record<CriterioRespuesta, (c: Combinacion) => number | null> = {
+  score: (c) => c.score,
+  tir: (c) => c.metricas?.tirPct ?? null,
+  flujo: (c) => c.metricas?.flujoMensual ?? null,
+};
+
+export function elegirCelda<T extends Combinacion>(xs: readonly T[], criterio: CriterioEleccion): T[] {
+  const valor = criterio === "costo" ? null : VALOR_DEL_CRITERIO[criterio];
+  const porValor = (a: T, b: T) => {
+    if (!valor) return 0;
+    // null al final: sin número no se compite (filas legacy sin métricas recomputables, y
+    // celdas sondeadas sin métricas a propósito).
+    const va = valor(a);
+    const vb = valor(b);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    return vb - va;
   };
-  const cmp = (a: T, b: T) =>
-    criterio === "score"
-      ? porScore(a, b) || a.descuentoPct - b.descuentoPct || a.costoDiaUnoUF - b.costoDiaUnoUF || a.piePct - b.piePct
-      : a.costoPtsPrecio - b.costoPtsPrecio || a.descuentoPct - b.descuentoPct || a.piePct - b.piePct;
+
+  // EL DESEMPATE APORTA LO QUE EL CRITERIO NO MIRA (16-sep-2026).
+  //
+  // Hasta el menú de respuestas había un solo criterio de respuesta y un solo desempate:
+  // descuento mínimo primero, porque el descuento es lo que hay que pedirle a un tercero y
+  // es lo escaso. Ese argumento NO es universal, y la diferencia se mide:
+  //
+  //  · SCORE ya trae el capital adentro —pondera flujo, retorno sobre lo puesto y TIR
+  //    juntas— así que un empate de score es un empate en el que la plata ya se contó. Su
+  //    desempate queda libre para gastarse en lo escaso. No se mueve.
+  //  · TIR es un retorno SOBRE lo puesto: tampoco es ciega al capital. Mismo desempate.
+  //  · FLUJO mira SOLO el mes. Es ciega al capital, y por eso su desempate tiene que
+  //    aportarlo: entre dos celdas que dejan el MISMO mes, corona la que pide menos plata
+  //    el día uno. Medido sobre el parque, con el tope de flujo en 25: el empate de flujo
+  //    aparece en 6 filas, en 3 de ellas los dos órdenes eligen celdas distintas, y ahí
+  //    «descuento primero» coronaba celdas que costaban 154, 318 y 573 UF más por el mismo
+  //    mes. Una respuesta que se vende como «la que más alivia el mes» no puede cobrar eso.
+  //
+  // Y `plazoAnios` cierra los cuatro (16-sep-2026). El acta de arriba decía que el
+  // desempate existe «para que el resultado no dependa del recorrido de la grilla», y eso
+  // era casi cierto: dos celdas iguales en todo salvo el plazo empataban del todo y ganaba
+  // la que el bucle insertó primero. Medido: pasa en 4 de 346 filas, y en las 4 gana el
+  // plazo MENOR, que es lo mismo que elige esta clave —menos plazo es menos interés a
+  // igualdad de todo lo demás—. O sea que declararlo cambia CERO filas y convierte un
+  // determinismo por accidente en uno por regla.
+  //
+  // UN SOLO ORDENAMIENTO, Y ES UNA INVARIANTE CON GATE: el invariante 6 de
+  // `mix-score-catch-test.ts` cuenta las llamadas a ordenar que hay en este archivo y da
+  // rojo con más de una, porque la elección ya estuvo repartida en dos y podían derivar
+  // por su lado. Por eso el criterio elige el COMPARADOR y no el camino: cuatro criterios,
+  // una sola llamada. (Y el guard mira el texto crudo, así que este comentario tampoco
+  // puede nombrar la llamada con su sintaxis: ya se pagó esa vez.)
+  const cmp: (a: T, b: T) => number =
+    criterio === "costo"
+      ? // EL BORDE: no es una respuesta, es el narrador. Se ordena por plata y no por
+        // negocio, porque acá no se elige un plan sino que se reporta cuánto costaría el
+        // más barato, y el retorno de una salida que no existe no significa nada.
+        (a, b) => a.costoPtsPrecio - b.costoPtsPrecio || a.descuentoPct - b.descuentoPct || a.piePct - b.piePct || a.plazoAnios - b.plazoAnios
+      : criterio === "flujo"
+        ? (a, b) => porValor(a, b) || a.costoDiaUnoUF - b.costoDiaUnoUF || a.descuentoPct - b.descuentoPct || a.piePct - b.piePct || a.plazoAnios - b.plazoAnios
+        : (a, b) => porValor(a, b) || a.descuentoPct - b.descuentoPct || a.costoDiaUnoUF - b.costoDiaUnoUF || a.piePct - b.piePct || a.plazoAnios - b.plazoAnios;
   return [...xs].sort(cmp);
 }
 
@@ -516,6 +588,7 @@ export function calcularMixPalancas(p: {
         // De la MISMA lectura que el veredicto y el score de arriba, para que las tres cosas
         // describan el mismo punto. Se dejaban caer acá; ahora se guardan.
         metricas: lectura.metricas ?? null,
+        coronaDe: [], // se llena abajo, con las coronas ya resueltas
       });
       if (r.pct === null || !r.enMin) continue;
       const score = r.enMin.score;
@@ -558,6 +631,59 @@ export function calcularMixPalancas(p: {
   const mejor = elegibles[0];
   const segunda = elegibles[1] ?? null;
 
+  // ── EL MENÚ DE RESPUESTAS ──────────────────────────────────────────────────
+  //
+  // La MISMA grilla contestada con tres preguntas distintas. La primera es la que ya
+  // estaba —la vara con la que la página declara el veredicto— y sigue siendo la que
+  // describen los campos planos de la raíz. Las otras dos se agregan al lado.
+  //
+  // LA FUSIÓN SE RESUELVE ACÁ Y NO EN EL RENDER. Si cada superficie tuviera que volver a
+  // comparar celdas para saber si dos respuestas son la misma, dos superficies terminarían
+  // fusionando distinto — es la lección que ya costó una vez, cuando el destino del mix se
+  // dejaba derivar y la misma tarjeta publicó dos descuentos del mismo precio.
+  const TOPE_DE_LA_RESPUESTA: Record<CriterioRespuesta, number> = {
+    score: MIX_COSTO_TOPE_PTS_PRECIO,
+    tir: MIX_COSTO_TOPE_PTS_PRECIO,
+    flujo: MIX_COSTO_TOPE_PTS_PRECIO_FLUJO,
+  };
+  const laMisma = (a: Combinacion, b: Combinacion) =>
+    a.piePct === b.piePct && a.plazoAnios === b.plazoAnios && a.descuentoPct === b.descuentoPct;
+
+  const coronaPorCriterio = (criterio: CriterioRespuesta): Combinacion | null => {
+    // LA EQUILIBRADA ES `mejor`, POR CONSTRUCCIÓN Y NO POR COINCIDENCIA. Recalcularla acá
+    // la dejaría libre de divergir de la raíz en el borde donde ninguna celda alcanza y
+    // `mejor` sale del narrador; que la primera línea del menú SEA la raíz es lo que hace
+    // que ningún consumidor de la raíz se entere de que hay menú.
+    if (criterio === "score") return mejor;
+    const caben = combos.filter((c) => c.costoPtsPrecio <= TOPE_DE_LA_RESPUESTA[criterio]);
+    if (caben.length === 0) return null;
+    const primera = elegirCelda(caben, criterio)[0];
+    // Sin el número del criterio no hay respuesta: la celda se ordenó al final y coronarla
+    // sería contestar una pregunta con un dato que no existe.
+    return VALOR_DEL_CRITERIO[criterio](primera) == null ? null : primera;
+  };
+
+  const ORDEN_DEL_CONTRATO: CriterioRespuesta[] = ["score", "tir", "flujo"];
+  const coronas = ORDEN_DEL_CONTRATO.map((criterio) => ({ criterio, celda: coronaPorCriterio(criterio) })).filter(
+    (x): x is { criterio: CriterioRespuesta; celda: Combinacion } => x.celda !== null,
+  );
+  const respuestas: RespuestaMix[] = coronas.map(({ criterio, celda }) => ({
+    criterio,
+    fusionadaCon: coronas.filter((o) => o.criterio !== criterio && laMisma(o.celda, celda)).map((o) => o.criterio),
+    piePct: celda.piePct,
+    plazoAnios: celda.plazoAnios,
+    descuentoPct: celda.descuentoPct,
+    sinDescuento: celda.sinDescuento,
+    piePctDelta: Math.round((celda.piePct - p.piePct) * 10) / 10,
+    plazoAniosDelta: celda.plazoAnios - p.plazoCredito,
+    costoDiaUnoUF: celda.costoDiaUnoUF,
+    costoPtsPrecio: celda.costoPtsPrecio,
+    topePtsPrecio: TOPE_DE_LA_RESPUESTA[criterio],
+    dentroDeSuTope: celda.costoPtsPrecio <= TOPE_DE_LA_RESPUESTA[criterio],
+    score: celda.score,
+    metricas: celda.metricas,
+  }));
+
   const soloPrecio = combos.find((c) => c.piePct === p.piePct && c.plazoAnios === p.plazoCredito) ?? null;
   // El contraste NO se filtra por alcance: mover solo el precio con el pie de hoy nunca
   // agrega capital, así que siempre es alcanzable por construcción.
@@ -567,6 +693,13 @@ export function calcularMixPalancas(p: {
   // una vía con otro nombre. Eso es ruido, y el render tiene que poder no dibujarlo.
   for (const c of celdas) {
     c.esElegida = c.piePct === mejor.piePct && c.plazoAnios === mejor.plazoAnios && c.descuentoPct === mejor.descuentoPct;
+    // Las DOS marcas se escriben en la misma pasada y sobre la misma celda: `esElegida` es
+    // la tinta plena que no se mueve —el contrato fija que marca siempre lo que Franco
+    // recomienda— y `coronaDe` es qué otras respuestas encender cuando el lector elige otra
+    // opción del menú. Son redundantes en «score» a propósito; ver el tipo.
+    c.coronaDe = coronas
+      .filter((x) => c.piePct === x.celda.piePct && c.plazoAnios === x.celda.plazoAnios && c.descuentoPct === x.celda.descuentoPct)
+      .map((x) => x.criterio);
   }
 
   const movidas: ("precio" | "plazo" | "pie")[] = [];
@@ -602,6 +735,7 @@ export function calcularMixPalancas(p: {
           costoPtsPrecio: segunda.costoPtsPrecio,
         }
       : null,
+    respuestas,
     redundanteConPalancaSola,
     destino: p.meta,
   };
