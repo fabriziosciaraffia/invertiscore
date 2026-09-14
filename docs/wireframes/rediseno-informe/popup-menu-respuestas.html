@@ -155,6 +155,20 @@
   .opt-t{font-size:13.5px;font-weight:700;letter-spacing:-.01em}
   .opt-t s{color:var(--tx4);font-weight:500;margin-right:5px}
   .opt-sub{display:block;font-size:11.5px;font-weight:400;color:var(--tx3);margin-top:2px}
+  /* NINGÚN GRUPO SE PARTE POR DENTRO. A 390 px la línea rompía entre «30» y «años», que
+     quedaba huérfano arriba, y con dos cambios juntos son cuatro números y dos tachados en
+     una línea de 124 px. Precedente: «.rec-chip» y «.rec-chip-g» de «Lo que haría yo»
+     (PortadaInforme.tsx:802 y :807), que resuelven exactamente esto al mismo ancho y con
+     acta escrita. Y el «·» viaja DENTRO del grupo que lo precede, igual que allá el «+»
+     viaja con el primer chip: así el salto cae siempre después del separador y el «·» no
+     puede quedar solo al principio de una línea. */
+  .opt-sub .nb{white-space:nowrap}
+  /* El tachado retrocede: mismo tratamiento que «.chip s» en este archivo. El destino
+     avanza, que es lo que el precedente hace con «<b>» y lo que le falta a esta línea:
+     con cuatro números seguidos el ojo no encontraba el vivo. Sólo donde hay tachado
+     contra el que contrastar; si el valor no cambia no hay nada que destacar. */
+  .opt-sub s{color:var(--tx4);font-weight:500;text-decoration-thickness:1.5px}
+  .opt-sub b{font-weight:600;color:var(--tx2)}
   .opt-v{font-size:15px;font-weight:700;letter-spacing:-.015em;white-space:nowrap;text-align:right}
   .opt-v small{display:block;font-size:10px;font-weight:600;letter-spacing:.05em;
     text-transform:uppercase;color:var(--tx4);margin-top:2px}
@@ -273,21 +287,21 @@
         <div class="opts" data-opts="a">
           <button class="fila-nav on" data-k="15|25">
             <div class="opt-t">Lo que Franco recomienda
-              <span class="opt-sub">Pie <s>10%</s> 15% · Plazo 25 años · pides 19,7%</span></div>
+              <span class="opt-sub"><span class="nb">Pie <s>10%</s> <b>15%</b> ·</span> <span class="nb">Plazo 25 años ·</span> <span class="nb">pides 19,7%</span></span></div>
             <div class="opt-v">73<small>score</small></div>
             <div class="disco">✓</div>
             <div class="opt-tr">El mejor negocio de la grilla con la misma vara que declara el veredicto. Pone UF 94 más de pie que hoy.</div>
           </button>
           <button class="fila-nav" data-k="10|25">
             <div class="opt-t">La que más rinde
-              <span class="opt-sub">Pie 10% · Plazo 25 años · pides 24,2%</span></div>
+              <span class="opt-sub"><span class="nb">Pie 10% ·</span> <span class="nb">Plazo 25 años ·</span> <span class="nb">pides 24,2%</span></span></div>
             <div class="opt-v">17,1%<small>TIR</small></div>
             <div class="disco">›</div>
             <div class="opt-tr">Rinde 3,2 puntos más y libera UF 205 el día uno, porque no toca tu pie. A cambio le pide 4,5 puntos más de descuento al vendedor.</div>
           </button>
           <button class="fila-nav" data-k="25|30">
             <div class="opt-t">La que más alivia el mes
-              <span class="opt-sub">Pie <s>10%</s> 25% · Plazo <s>25</s> 30 años · pides 3,3%</span></div>
+              <span class="opt-sub"><span class="nb">Pie <s>10%</s> <b>25%</b> ·</span> <span class="nb">Plazo <s>25</s> <b>30 años</b> ·</span> <span class="nb">pides 3,3%</span></span></div>
             <div class="opt-v">−$14.511<small>flujo</small></div>
             <div class="disco">›</div>
             <div class="opt-tr">El mes queda casi cerrado y le pide 16,4 puntos menos al vendedor. Cuesta UF 558 más de pie que la recomendada, y estirar a 30 años baja el rendimiento 4,2 puntos.</div>
@@ -355,14 +369,14 @@
         <div class="opts" data-opts="b">
           <button class="fila-nav on" data-k="20|30">
             <div class="opt-t">Lo que Franco recomienda, y la que más rinde
-              <span class="opt-sub">Pie 20% · Plazo <s>25</s> 30 años · pides 24,3%</span></div>
+              <span class="opt-sub"><span class="nb">Pie 20% ·</span> <span class="nb">Plazo <s>25</s> <b>30 años</b> ·</span> <span class="nb">pides 24,3%</span></span></div>
             <div class="opt-v">72<small>score · TIR 10,9%</small></div>
             <div class="disco">✓</div>
             <div class="opt-tr">Acá las dos preguntas tienen la misma respuesta: es el mejor negocio de la grilla y también la que más rinde. Libera UF 267 el día uno, porque no toca tu pie.</div>
           </button>
           <button class="fila-nav" data-k="30|30">
             <div class="opt-t">La que más alivia el mes
-              <span class="opt-sub">Pie <s>20%</s> 30% · Plazo <s>25</s> 30 años · pides 18,2%</span></div>
+              <span class="opt-sub"><span class="nb">Pie <s>20%</s> <b>30%</b> ·</span> <span class="nb">Plazo <s>25</s> <b>30 años</b> ·</span> <span class="nb">pides 18,2%</span></span></div>
             <div class="opt-v">−$5.320<small>flujo</small></div>
             <div class="disco">›</div>
             <div class="opt-tr">El mes queda casi cerrado y le pide 6,1 puntos menos al vendedor. Cuesta UF 517 más de pie que la recomendada, y rinde 2,3 puntos menos.</div>
