@@ -102,10 +102,12 @@ function mix(o: {
   topePct?: number;
   cruza: (pie: number, plazo: number, descuentoPct: number) => boolean;
   score?: (pie: number, plazo: number, descuentoPct: number) => number;
-  /** Flujo mensual de la celda. Sin esto, el de la doctrina. */
-  flujo?: (pie: number, plazo: number, descuentoPct: number) => number;
-  /** TIR de la celda. Sin esto, la de la doctrina. */
-  tir?: (pie: number, plazo: number, descuentoPct: number) => number;
+  /** Flujo mensual de la celda. Sin esto, el de la doctrina. Puede devolver `null`: el
+   *  campo es `number | null` en `MetricasCelda`, asi que «metricas presentes con el campo
+   *  vacio» es un estado real y distinto de «sin metricas». */
+  flujo?: (pie: number, plazo: number, descuentoPct: number) => number | null;
+  /** TIR de la celda. Mismo contrato que `flujo`. */
+  tir?: (pie: number, plazo: number, descuentoPct: number) => number | null;
   /**
    * Las celdas que sondean SIN métricas. Es la excepción de `SondaMix.metricas` —opcional
    * a propósito, «los catch-tests y los censos sondean sin métricas»— puesta a prueba en
@@ -137,6 +139,7 @@ function mix(o: {
         ? null
         : {
             cuotaMensual: METRICA.cuota(pie, plazo, d),
+            // `o.flujo ?` y no `??`: un callback que devuelve null tiene que GANAR.
             flujoMensual: o.flujo ? o.flujo(pie, plazo, d) : METRICA.flujo(pie, plazo, d),
             cocPct: METRICA.coc(pie, plazo, d),
             capRateNetoPct: METRICA.capRate(pie, plazo, d),
@@ -445,6 +448,55 @@ const respuesta = (m: MixPalancas | null | undefined, criterio: CriterioRespuest
   }
 }
 
+// ── 14 · SEED · la fusión NO es una propiedad de la equilibrada ────────────
+// `fusionadaCon` compara todos los pares, no «cada uno contra la recomendada». Si algún día
+// se reescribiera como un booleano colgado de la equilibrada —que es la forma que primero se
+// le ocurre a cualquiera, porque es el caso que el contrato dibuja— este caso quedaría sin
+// declarar y el pop-up podría pintar la misma celda dos veces con dos nombres.
+{
+  // El score corona el pie máximo. El flujo y la TIR coronan los dos la MISMA celda barata,
+  // que no es la del score.
+  const { m } = mix({
+    cruza: (pie) => pie >= 20,
+    score: (pie) => 50 + pie,
+    flujo: (pie, plazo) => (pie === 25 && plazo === 25 ? 0 : -500_000),
+    tir: (pie, plazo) => (pie === 25 && plazo === 25 ? 20 : 1),
+  });
+  const eq = respuesta(m, "score");
+  const ti = respuesta(m, "tir");
+  const fl = respuesta(m, "flujo");
+  if (!eq || !ti || !fl) F("14 · falta alguna de las tres respuestas");
+  else {
+    if (celdaDe(ti) !== celdaDe(fl)) F(`14 · tasa (${celdaDe(ti)}) y flujo (${celdaDe(fl)}) tenían que coronar la misma celda`);
+    if (celdaDe(eq) === celdaDe(ti)) F("14 · la equilibrada cayó en la celda de las otras dos: esta grilla la quiere aparte");
+    if (!(ti.fusionadaCon ?? []).includes("flujo") || !(fl.fusionadaCon ?? []).includes("tir")) {
+      F("14 · tasa y flujo coronan la misma celda y no se declaran fusionadas entre sí: la fusión se está mirando solo contra la equilibrada");
+    }
+    if ((eq.fusionadaCon ?? []).length > 0) F("14 · la equilibrada declara fusión y no comparte celda con ninguna");
+  }
+}
+
+// ── 15 · SEED · métricas PRESENTES con el campo en null ──────────────────
+// Es un estado distinto de «sin métricas» y el tipo lo permite: `MetricasCelda` declara sus
+// cinco campos como `number | null`. Una celda puede traer su objeto de métricas con la
+// cuota y el cap rate llenos y el flujo vacío. El criterio de flujo tiene que tratarla igual
+// que a la que no trae métricas —al final, sin coronar— y el de TIR tiene que poder
+// coronarla igual, porque su número sí está.
+{
+  const { m } = mix({
+    cruza: (pie) => pie >= 25,
+    score: (pie) => 50 + pie,
+    flujo: (pie) => (pie === 30 ? null : -200_000 + pie * 5_000),
+    tir: (pie) => 5 + pie / 10,
+  });
+  const fl = respuesta(m, "flujo");
+  const ti = respuesta(m, "tir");
+  if (!fl) F("15 · no hay respuesta de flujo: una celda con el campo vacío no puede tumbar al criterio entero");
+  else if (fl.piePct === 30) F("15 · el flujo coronó la celda cuyo `flujoMensual` es null: el campo vacío se ordena al final igual que la celda sin métricas");
+  if (!ti) F("15 · no hay respuesta de tasa");
+  else if (ti.piePct !== 30) F(`15 · la tasa coronó pie ${ti.piePct}%: su número SÍ está en esa celda, el que falta es el del flujo`);
+}
+
 // ── 13 · el BORDE del tope nuevo: 25,0 entra y 25,1 no ─────────────────────
 // El gemelo del borde de §7c. El tope de la equilibrada tiene su borde fijado desde el
 // 13-sep («el borde EXACTO entra: el tope es <=, no <»); el de la respuesta de flujo no
@@ -457,6 +509,28 @@ const respuesta = (m: MixPalancas | null | undefined, criterio: CriterioRespuest
   else {
     if (Math.abs(fl.costoPtsPrecio - 25) > 0.05) F(`13a · la celda del borde cuesta ${fl.costoPtsPrecio} pts, la seed la construye en 25,0 justos`);
     if (!fl.dentroDeSuTope) F("13a · el borde EXACTO (25,0 pts) quedó afuera: el tope de la respuesta de flujo es <=, no <");
+  }
+  // ── EL BORDE CARO, Y ES EL ESTADO MÁS DELICADO DE TODO EL GOAL ───────────────
+  // Esta misma grilla es el caso «NADA cabe en 15 pero SÍ en 25», y dispara cuatro cosas a
+  // la vez que hay que fijar juntas o el motor queda diciendo dos cosas:
+  //   · `dentroDelAlcance` de la raíz es FALSE — y de ahí cuelga `sinSalida`, o sea que el
+  //     informe declara que no hay salida;
+  //   · la equilibrada NO sale del criterio score sino del narrador `costo`, porque su
+  //     conjunto de candidatas quedó vacío;
+  //   · por eso mismo viaja con `dentroDeSuTope: false` sobre SU propio tope de 15;
+  //   · la de tasa no existe (mismo conjunto vacío) y la de flujo SÍ, porque su tope es 25.
+  //
+  // ⛔ Y LA CONSECUENCIA DE PRODUCTO QUEDA ACÁ ESCRITA, NO RESUELTA: en estas filas el
+  // informe dice «Franco no encontró una combinación que lo haga convenir» mientras el menú
+  // tiene una línea que ofrecer. Las dos frases salen de topes distintos y las dos son
+  // ciertas por separado. Esta fase es de motor y no mueve prosa: quien monte el render o
+  // repunte `sinSalida` tiene que resolver esa contradicción a propósito y con su medición.
+  if (m) {
+    if (m.dentroDelAlcance) F("13a · con la única celda que cruza en 25 pts, `dentroDelAlcance` tiene que ser false: contesta por la equilibrada y su tope es 15");
+    const eq = respuesta(m, "score");
+    if (!eq) F("13a · la equilibrada desapareció en el borde: el narrador del costo siempre deja una celda que describir");
+    else if (eq.dentroDeSuTope) F(`13a · la equilibrada cuesta ${eq.costoPtsPrecio} pts y se declara DENTRO de su tope de ${eq.topePtsPrecio}`);
+    if (respuesta(m, "tir")) F("13a · hay respuesta de tasa con ninguna celda bajo 15: la tasa NO hereda el tope de flujo");
   }
 }
 {
