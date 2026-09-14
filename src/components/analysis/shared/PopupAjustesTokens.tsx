@@ -75,7 +75,15 @@ export function PopupAjustesTokens() {
       .paj-mtx td:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.12)}
       .paj-mtx td small{display:block;font-size:10.5px;font-weight:600;opacity:.75;margin-top:2px}
       .paj-mtx td.cruza{background:color-mix(in srgb,var(--doc-comprar) 16%,transparent);color:var(--doc-comprar)}
-      .paj-mtx td.hoy{outline:2px solid var(--doc-tx3);outline-offset:-2px}
+      .paj-mtx td.hoy{outline:2px solid var(--doc-tx3);outline-offset:-2px;position:relative}
+      /* EL CHIP DE LA CELDA DEL ARO. Portado tal cual de la otra matriz del informe
+         («.mz-hoy», TokensShared.tsx:43): mono, versalita, tinta invertida, pegado a la
+         esquina. El aro solo ubica; el chip es el que dice que esa celda se lee distinto, y
+         va pegado a ella porque la doctrina de la escalera del plazo lo pide asi: cuando la
+         vara cambia por fila, el rotulo va en la celda y no en nota al pie. */
+      .paj-hoy{position:absolute;top:-1px;left:-1px;font-family:var(--font-mono, ui-monospace);
+        font-size:8px;letter-spacing:.14em;text-transform:uppercase;background:var(--doc-tx);
+        color:var(--doc-paper);padding:2px 5px 2px 6px;border-radius:2px 0 3px 0;line-height:1}
       .paj-mtx td.mix{background:var(--doc-tx);color:var(--doc-paper)}
       /* El aro de selección va POR FUERA (offset positivo) y en tinta: así se ve también
          sobre la celda elegida, que ya tiene el fondo de tinta lleno. Cabe en el

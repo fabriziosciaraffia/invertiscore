@@ -80,6 +80,23 @@ function mixAComprar(v: HallazgoDistanciaVeredicto["valor"]) {
 }
 
 /**
+ * LO QUE LA CELDA ESCRIBE (14-sep-2026). Cada celda muestra su lectura en el descuento
+ * mínimo —lo que CONSEGUIRÍAS con ella— salvo la del aro, que muestra la lectura a precio
+ * de hoy: lo que TIENES. `esActual` es «el pie y el plazo que declaraste», no «tu caso».
+ *
+ * Fuente única a propósito: la palabra, el score, el color y el panel de detalle leen de
+ * acá, así que no pueden separarse. La primera versión de este arreglo cambió solo la
+ * palabra y dejó el color leyendo `c.veredicto`: la celda del aro quedó con fondo azul
+ * —«llega a Comprar»— y con «Ajustar score 67» escrito adentro.
+ */
+function veredictoMostrado(c: CeldaMix) {
+  return c.esActual ? c.veredictoSinDescuento : c.veredicto;
+}
+function scoreMostrado(c: CeldaMix) {
+  return c.esActual ? c.scoreSinDescuento : c.score;
+}
+
+/**
  * ¿ESTA CELDA LLEGA AL DESTINO? Y que el color diga lo mismo que la palabra.
  *
  * `alcanzable` sale de la bisección —hay un descuento que cruza y cuesta dentro del tope—,
@@ -90,9 +107,14 @@ function mixAComprar(v: HallazgoDistanciaVeredicto["valor"]) {
  *
  * Acá manda la palabra, que es un recompute de verdad. El redondeo del motor es un arreglo
  * aparte —anotado el 13-sep-2026— y hasta que se haga el color no promete de más.
+ *
+ * Por eso lee `veredictoMostrado` y no `c.veredicto`: la regla no es «la palabra del
+ * descuento mínimo» sino «la palabra que esta celda tiene escrita», que en la del aro es
+ * otra. Es el mismo argumento con el que la corona pierde la tinta plena cuando cae sobre
+ * el aro: una marca que promete un destino sobre una celda que dice lo contrario miente.
  */
 function cruzaDeVerdad(c: CeldaMix, destino: Veredicto) {
-  return c.descuentoPct !== null && c.alcanzable && c.veredicto === destino;
+  return c.descuentoPct !== null && c.alcanzable && veredictoMostrado(c) === destino;
 }
 
 export interface PopupAjustesProps {
@@ -245,6 +267,15 @@ function SeccionMatriz({
           <span className="k">
             Con pie {dec1(c.piePct).replace(",0", "")}% a {c.plazoAnios} años
           </span>
+          {/* PENDIENTE DE DECISIÓN, NO DE CÓDIGO (medido el 14-sep-2026). Esta rama sigue
+              diciendo la lectura del descuento mínimo, así que en las 12 filas LTR que la
+              usan —las 12 tienen celda de hoy y las 12 contradicen a su fila— el cuadrito
+              dice «Comprar 70» sobre un informe que dice «Ajustar 68».
+              Es el mismo bug que la matriz acaba de perder, pero acá no hay aro ni chip ni
+              segunda celda: con UNA sola combinación no hay dos lecturas que separar, y
+              cambiar la palabra se llevaría de la cara la promesa «con −X% llegas a
+              Comprar» sin superficie donde devolverla. Eso es decisión de producto y no se
+              inventa acá. `veredictoMostrado` ya existe para cuando se decida. */}
           <span className={`v${cruza ? " cruza" : ""}`}>
             {etiquetaVeredicto(c.veredicto, "frase")} · score {c.score ?? PAR_SIN_VALOR}
           </span>
@@ -258,7 +289,17 @@ function SeccionMatriz({
   return (
     <section className="paj-sec">
       <div className="paj-st">Ajustes que dependen de ti</div>
-      <p className="paj-sx">El descuento que pides se ajusta en consecuencia.</p>
+      {/* LA MATRIZ TIENE DOS LECTURAS Y LO DICE (14-sep-2026). Cada celda muestra lo que
+          CONSEGUIRÍAS con ella, o sea su lectura en el descuento mínimo. La del aro no: esa
+          muestra lo que TIENES, a precio de hoy. Sin esta línea las dos lecturas conviven
+          calladas y el próximo lector deshace el arreglo — es la receta del contrato para
+          declarar que un subconjunto se lee distinto: una línea en palabras encima, y una
+          marca sin color en lo que difiere (acá, el chip de la celda).
+          Cuando no hay celda de hoy —16 filas LTR y 2 STR— la segunda mitad no se dice. */}
+      <p className="paj-sx">
+        El descuento que pides se ajusta en consecuencia.
+        {hayActual ? " La del aro no: va a precio de hoy." : ""}
+      </p>
       {!unaColumna && <div className="paj-ejex">Plazo del crédito</div>}
       <div className={`paj-mwrap${unaColumna ? " sola" : ""}${unaFila ? " linea" : ""}`}>
         {!unaFila && <div className="paj-ejey">Pie que pones</div>}
@@ -284,8 +325,17 @@ function SeccionMatriz({
                   const c = at(pie, plazo);
                   if (!c) return <td key={plazo} className="vacia" />;
                   const cruza = cruzaDeVerdad(c, destino);
+                  // EL ARO GANA, LA CORONA PIERDE EL FONDO (decisión Fabrizio, 14-sep-2026).
+                  // En 145 de 360 filas la celda del aro es TAMBIÉN la coronada: pasa cuando
+                  // el plan es solo precio y no mueve ni pie ni plazo. Ahí el fondo de tinta,
+                  // que la leyenda nombra «el óptimo», caería sobre una celda que dice
+                  // «Ajustar» — o sea prometería lo contrario de lo que pasa. La recomendación
+                  // en esas filas no es «quédate donde estás», es «mover pie y plazo no te
+                  // ayuda», y eso lo dice el panel del ajuste, que sigue nombrándola con sus
+                  // chips y su descuento. El fondo se retira; la corona no se pierde.
+                  const coronaVisible = c.esElegida && !c.esActual;
                   const clases = [
-                    c.esElegida ? "mix" : cruza ? "cruza" : "",
+                    coronaVisible ? "mix" : cruza ? "cruza" : "",
                     c.esActual ? "hoy" : "",
                     sel && sel.piePct === c.piePct && sel.plazoAnios === c.plazoAnios ? "sel" : "",
                   ].filter(Boolean).join(" ");
@@ -300,8 +350,15 @@ function SeccionMatriz({
                         if (e.key === "Enter" || e.key === " ") onSel(c);
                       }}
                     >
-                      {etiquetaVeredicto(c.veredicto, "frase")}
-                      <small>score {c.score ?? PAR_SIN_VALOR}</small>
+                      {/* LA CELDA DEL ARO HABLA DEL HOY. `esActual` significa «el pie y el
+                          plazo que tienes declarados», no «tu caso actual»: la lectura normal
+                          de una celda es la de su descuento mínimo, y en esta el aro prometía
+                          «tu situación» mientras el contenido mostraba «tu situación con un
+                          descuento encima». Medido: en 501 de 739 filas mostraba un veredicto
+                          distinto al de la propia página. El dato ya viajaba en la celda. */}
+                      {etiquetaVeredicto(veredictoMostrado(c), "frase")}
+                      <small>score {scoreMostrado(c) ?? PAR_SIN_VALOR}</small>
+                      {c.esActual && <span className="paj-hoy">hoy</span>}
                     </td>
                   );
                 })}
@@ -322,10 +379,16 @@ function SeccionMatriz({
           <i className="paj-sw b" />
           llega a {etiquetaVeredicto(destino, "frase")}
         </span>
-        <span>
-          <i className="paj-sw a" />
-          el óptimo
-        </span>
+        {/* SIN CELDA, SIN ORACIÓN — la misma doctrina que ya gobierna «hoy» acá arriba y que
+            la otra matriz del informe declara por escrito. Con el fondo retirado de la celda
+            del aro, en 145 filas no queda ninguna celda con tinta plena: nombrar «el óptimo»
+            ahí sería señalar un color que no está en pantalla. */}
+        {celdas.some((c) => c.esElegida && !c.esActual) && (
+          <span>
+            <i className="paj-sw a" />
+            el óptimo
+          </span>
+        )}
       </div>
 
       {sel && <PanelCelda sel={sel} destino={destino} currency={currency} valorUF={valorUF} onCerrar={() => onSel(null)} />}
@@ -357,13 +420,21 @@ function PanelCelda({
         Pie {dec1(sel.piePct).replace(",0", "")}% · {sel.plazoAnios} años
       </div>
       <div className="paj-cg">
-        <span className="l">Pides de descuento</span>
+        {/* LAS DOS LECTURAS, SEPARADAS Y CADA UNA CON SU RÓTULO. La celda del aro dice lo que
+            TIENES; acá se dice a dónde llega esa misma combinación SI pides el descuento. Sin
+            esta separación el panel rotulaba «Pides de descuento −24,2%» sobre una celda que
+            acababa de decir «Ajustar», y la contradicción se mudaba del cuadrito al clic. */}
+        <span className="l">{sel.esActual ? "Pidiendo descuento llegas a" : "Pides de descuento"}</span>
         <span className="v">
           {sel.descuentoPct === null || !sel.alcanzable
             ? `no llega a ${etiquetaVeredicto(destino, "frase")}`
-            : sel.descuentoPct === 0
-              ? "nada"
-              : `−${pct1(sel.descuentoPct)}`}
+            : sel.esActual
+              ? sel.descuentoPct === 0
+                ? `${etiquetaVeredicto(sel.veredicto, "frase")} sin pedir nada`
+                : `${etiquetaVeredicto(sel.veredicto, "frase")} con −${pct1(sel.descuentoPct)}`
+              : sel.descuentoPct === 0
+                ? "nada"
+                : `−${pct1(sel.descuentoPct)}`}
         </span>
         <span className="l">Pie extra el día uno</span>
         <span className={`v${sel.costoDiaUnoUF > 0 ? " mal" : ""}`}>
