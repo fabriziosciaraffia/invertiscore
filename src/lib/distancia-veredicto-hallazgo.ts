@@ -705,6 +705,19 @@ export function buildHallazgoDistanciaVeredicto(p: {
   // coma. Repuntarlos exige antes construir la rama «salida por mix», que hoy no existe:
   // todos los `else` de copy, render y prompt asumen que hay `palancaMasBarata`, y en
   // estos 156 casos es null por construcción.
+  //
+  // ⛔ Y SIGUE LEYENDO LA EQUILIBRADA, A PROPÓSITO (16-sep-2026). Con el menú de respuestas
+  // hay dos topes de alcance vivos, así que la pregunta «¿hay algo que ofrecerle a este
+  // comprador?» se parte en dos: una fila puede no tener salida equilibrada dentro de 15 y
+  // sí tener salida de flujo dentro de 25. Este campo NO mira la unión, y no es un olvido:
+  // de él cuelgan las ocho superficies de copy de `salida-por-mix.ts` —los dos drawers, los
+  // dos PDF, los dos heros, el subtítulo del plan, la card mini de comparativa y share— y
+  // repuntarlo cambiaría de rama esas ocho de una sola vez. Esta fase es de motor y no
+  // mueve prosa. El día que se repunte, se repunta con su propia medición y su propio goal.
+  //
+  // El candado ejecutable de esta decisión ya existe y conviene no romperlo: el §5 de
+  // `mix-str-catch-test.ts` fija la identidad `sinSalida ≡ esEstructural && !alcanzable`.
+  // Mientras esa aserción viva, nadie puede repuntar esto al tope de flujo en silencio.
   const sinSalida = esEstructural && !(mixPalancas?.dentroDelAlcance ?? false);
 
   // Cercanía al umbral (1 = pegado al veredicto de arriba, 0 = en el tope o estructural).

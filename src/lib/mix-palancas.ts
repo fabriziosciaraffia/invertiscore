@@ -191,7 +191,15 @@ export type CeldaMix = {
   plazoAnios: number;
   /** La combinación declarada en el análisis (pie y plazo de hoy). */
   esActual: boolean;
-  /** La que el mix corona. Exactamente una celda la lleva. */
+  /**
+   * La que el mix corona POR SCORE. Exactamente una celda la lleva, y sigue siendo así con
+   * el menú de respuestas: es la tinta plena del pop-up, que el contrato manda no mover
+   * («el fondo de tinta no se mueve: marca siempre lo que Franco recomienda»).
+   *
+   * Las otras coronas —tasa y flujo— NO entran acá; viajan en `coronaDe`. Quien quiera
+   * «¿qué respuestas corona esta celda?» tiene que preguntarle a ese campo: éste contesta
+   * solo por la recomendación.
+   */
   esElegida: boolean;
   /** Veredicto de la celda EN su descuento mínimo (o sin descuento si no cruza). */
   veredicto: Veredicto;
@@ -205,7 +213,28 @@ export type CeldaMix = {
   /** Plata propia extra el día uno, sobre el pie declarado. Puede ser negativa. */
   costoDiaUnoUF: number;
   costoPtsPrecio: number;
-  /** ¿Está dentro del tope de alcance? Una celda cara no se ofrece por más score que deje. */
+  /**
+   * ¿Está dentro del tope de alcance DE LA EQUILIBRADA? Una celda cara no se ofrece por más
+   * score que deje.
+   *
+   * ⚠ DESDE EL MENÚ DE RESPUESTAS ESTE BOOLEANO YA NO CONTESTA SOLO (16-sep-2026), y hay
+   * que saberlo antes de leerlo. Se mide contra `MIX_COSTO_TOPE_PTS_PRECIO` (15) y nada
+   * más, porque es el campo que viaja PERSISTIDO en las filas del parque y porque la raíz
+   * entera sigue describiendo a la equilibrada. Pero la respuesta de flujo corre con su
+   * propio tope de 25, así que una celda del tramo (15, 25] puede venir con
+   * `alcanzable: false` y estar ofrecida en `MixPalancas.respuestas` al mismo tiempo. Las
+   * dos cosas son ciertas: no cabe en el tope de la recomendación y sí cabe en el suyo.
+   *
+   * ⛔ CONSECUENCIA VIVA, ANOTADA A PROPÓSITO: hoy el pop-up pinta el color de la celda y
+   * escribe «no llega a Comprar» leyendo este campo (`PopupAjustes.tsx:124` y `:448`). En
+   * cuanto el render monte el menú, esa celda va a decir «no llega» justo cuando el menú la
+   * está ofreciendo. Esta fase es de motor y no mueve render a propósito, así que la deuda
+   * queda declarada acá y no resuelta: quien monte el menú tiene que hacer que el color y
+   * el panel pregunten por el tope de LA RESPUESTA QUE SE ESTÁ VIENDO, no por éste.
+   *
+   * Quien quiera saber si una celda cabe para una respuesta concreta, la fuente es
+   * `RespuestaMix.dentroDeSuTope`, que viaja con su tope declarado al lado.
+   */
   alcanzable: boolean;
   /**
    * LAS CIFRAS DE ESTA CELDA, en la misma lectura de la que salen `veredicto` y `score`:

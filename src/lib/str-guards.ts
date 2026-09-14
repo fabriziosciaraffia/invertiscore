@@ -348,6 +348,16 @@ export function esDistanciaEstructural(r: { hallazgos?: Hallazgo[] }): boolean {
  *  para este guard: con `esEstructural` solo, la caja que nombra el descuento que el mix pide
  *  («y un 17,5% de descuento») se marcaba como oferta y el reintento la borraba — justo lo que
  *  el prompt v19 manda escribir. Misma fuente que la card y que el bloque del prompt. */
+/** ⛔ LEE LA EQUILIBRADA Y SE QUEDA AHÍ (16-sep-2026). Desde el menú de respuestas el mix
+ *  ofrece hasta tres caminos y el de flujo corre con un tope de alcance más ancho (25 en
+ *  vez de 15 puntos del precio). Este guard NO mira ese tope: sigue preguntándole a
+ *  `salidaPorMixStr`, que cuelga de `dentroDelAlcance` de la raíz, o sea de la equilibrada.
+ *
+ *  No es un descuido, es la decisión. Este guard BORRA prosa —decide si una caja que nombra
+ *  un descuento es «oferta prohibida»— y la fase del menú es de motor: si el guard se
+ *  ensanchara sin que el prompt se entere, borraría prosa que el prompt manda escribir, o
+ *  dejaría pasar la que no. Es el mismo bug que arregló el v19, entrando por la puerta de
+ *  al lado. Se ensancha el día que el prompt reciba el menú, en el mismo movimiento. */
 export function sinCombinacionSegunLaCard(r: { hallazgos?: Hallazgo[] }): boolean {
   const d = (r.hallazgos ?? []).find((h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto");
   if (!d) return true;

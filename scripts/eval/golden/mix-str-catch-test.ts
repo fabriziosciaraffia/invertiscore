@@ -180,7 +180,7 @@ const dcto = (x: StrPatch) => (x.precioCompra != null ? 1 - x.precioCompra / PRE
   if (conSalida) {
     if (!conSalida.valor.esEstructural) F("5 · «sin palanca sola» NO cambia de significado: ninguna cruza sola, sigue estructural");
     if (conSalida.valor.sinSalida !== false) F("5 · el mix cruza dentro del alcance ⇒ `sinSalida` false");
-    if (!conSalida.valor.mixPalancas?.dentroDelAlcance) F("5 · pie 20→30 son 10 pts: cabe en el alcance");
+    if (!conSalida.valor.mixPalancas?.dentroDelAlcance) F("5 · pie 20→30 son 10 pts: cabe en el alcance de la equilibrada (y en el de flujo, que es más ancho)");
   }
   // Cruza solo con pie 25 Y 30 años, partiendo de pie 0: ninguna palanca sola alcanza
   // (el pie solo va con 25 años; el plazo solo, con pie 0), y la combinación cuesta 25
@@ -189,14 +189,36 @@ const dcto = (x: StrPatch) => (x.precioCompra != null ? 1 - x.precioCompra / PRE
   if (caro) {
     const m = caro.valor.mixPalancas;
     if (!m) F("5 · la combinación cruza: se devuelve aunque esté fuera de alcance");
-    else if (m.dentroDelAlcance) F(`5 · pie 0→25 son 25 pts > ${MIX_COSTO_TOPE_PTS_PRECIO}: fuera de alcance`);
-    if (caro.valor.sinSalida !== true) F("5 · mix fuera de alcance ⇒ `sinSalida` true (cruza, pero no es una salida)");
+    else if (m.dentroDelAlcance) F(`5 · pie 0→25 son 25 pts > ${MIX_COSTO_TOPE_PTS_PRECIO} (el tope de la EQUILIBRADA): fuera de alcance`);
+    // ⚠ GEMELO STR DEL §7d, Y CON UNA CONSECUENCIA PEOR (16-sep-2026). La seed construye
+    // una celda de 25 puntos exactos —que es justo el tope de la respuesta de FLUJO— y
+    // tres líneas más abajo declara que la fila NO TIENE SALIDA. Las dos cosas son ciertas
+    // y hay que leerlas juntas: no tiene salida EQUILIBRADA, y el menú sí le ofrece esa
+    // misma celda como «la que más alivia el mes». `sinSalida` contesta por la equilibrada
+    // a propósito (ver el acta en `distancia-veredicto-str-hallazgo.ts`), porque de esta
+    // puerta cuelga el guard STR-ESTRUCTURAL, que borra prosa.
+    if (caro.valor.sinSalida !== true) F("5 · mix fuera del alcance de la EQUILIBRADA ⇒ `sinSalida` true (cruza, y el menú la ofrece por flujo, pero no es LA salida recomendada)");
+    // Y ACÁ SE FIJA LA OTRA MITAD, la que los ocho arneses sin métricas necesitaban y
+    // ninguno tenía: este tier sondea con `{ veredicto, score: null }` y SIN métricas, a
+    // propósito. Con eso ninguna celda puede contestar «¿cuál alivia más el mes?», así que
+    // el menú tiene que traer SOLO la equilibrada —el score no necesita métricas— y no
+    // inventar una respuesta de flujo sobre un dato que no existe. Si algún día el módulo
+    // eligiera por flujo con métricas en null, esto se pone rojo antes que nada.
+    const R = m?.respuestas ?? [];
+    if (m && R.length === 0) F("5 · el menú vino vacío: la equilibrada existe siempre, aunque no haya métricas");
+    if (R.some((x) => x.criterio !== "score")) {
+      F(`5 · sin métricas en ninguna celda el menú ofrece ${R.map((x) => x.criterio).join(",")}: flujo y tasa no pueden coronar sin el número con el que se elige`);
+    }
   }
   // Coherencia contable en los cuatro casos: sinSalida ≡ esEstructural && !alcanzable.
   for (const [k, h] of Object.entries({ nada, conSalida, caro })) {
     if (!h) continue;
+    // ⛔ ESTE ES EL CANDADO EJECUTABLE DE «sinSalida LEE LA EQUILIBRADA». Mientras esta
+    // identidad viva, nadie puede repuntar `sinSalida` al tope de la respuesta de flujo sin
+    // que el tier se caiga — y repuntarlo movería de rama las ocho superficies de copy que
+    // cuelgan de `salida-por-mix.ts`. No relajarla: es la red, no el estorbo.
     const esperado = h.valor.esEstructural && !(h.valor.mixPalancas?.dentroDelAlcance ?? false);
-    if (h.valor.sinSalida !== esperado) F(`5 · ${k}: sinSalida=${h.valor.sinSalida} no es esEstructural && !alcanzable (${esperado})`);
+    if (h.valor.sinSalida !== esperado) F(`5 · ${k}: sinSalida=${h.valor.sinSalida} no es esEstructural && !alcanzable-de-la-equilibrada (${esperado})`);
   }
 }
 

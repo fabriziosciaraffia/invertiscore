@@ -211,7 +211,13 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
   }
 }
 
-// ── 7 · EL TOPE DE ALCANCE: 15 puntos del precio, CON SIGNO ────────────────
+// ── 7 · EL TOPE DE ALCANCE DE LA EQUILIBRADA: 15 puntos del precio, CON SIGNO ──
+//
+// TODO ESTE BLOQUE MIDE UN SOLO TOPE, Y DESDE EL MENÚ DE RESPUESTAS HAY DOS (16-sep-2026).
+// Acá se mide `dentroDelAlcance` de la RAÍZ, que contesta siempre por la equilibrada y por
+// sus 15 puntos. La respuesta de flujo corre con 25 y no toca nada de lo de acá: su borde
+// tiene su propio gemelo en `grilla-popup-catch-test.ts` (invariante 13). Los mensajes
+// nombran el tope que miden para que nadie lea un rojo de acá como un rojo del otro.
 {
   // (a) pie 0% → el mix pide poner los 30 puntos completos: 30 pts > 15 ⇒ fuera de
   //     alcance. Es la población que el tope existe para separar (medido: los más caros
@@ -223,7 +229,7 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
   if (!r) F("7a · la combinación cruza: el mix no puede ser null");
   else {
     if (Math.abs(r.costoPtsPrecio - 30) > 0.6) F(`7a · pie 0→30 cuesta 30 pts del precio, dio ${r.costoPtsPrecio}`);
-    if (r.dentroDelAlcance) F(`7a · 30 pts > ${MIX_COSTO_TOPE_PTS_PRECIO}: debía quedar FUERA de alcance`);
+    if (r.dentroDelAlcance) F(`7a · 30 pts > ${MIX_COSTO_TOPE_PTS_PRECIO} (el tope de la EQUILIBRADA): debía quedar FUERA de alcance`);
   }
 
   // (b) COSTO NEGATIVO: el descuento achica el pie en plata más de lo que lo agranda el
@@ -239,7 +245,12 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
   if (!barato) F("7b · cruza con −12%: no puede ser null");
   else {
     if (barato.costoDiaUnoUF >= 0) F(`7b · este mix ABARATA el día uno: el costo debía ser negativo, dio ${barato.costoDiaUnoUF}`);
-    if (!barato.dentroDelAlcance) F("7b · un costo negativo está dentro del tope: con el valor absoluto quedaría afuera por barato");
+    if (!barato.dentroDelAlcance) F("7b · un costo negativo está dentro del tope de la equilibrada: con el valor absoluto quedaría afuera por barato");
+    // La regla del signo es doctrina COMPARTIDA: el tope de la respuesta de flujo la hereda
+    // entera. Una celda que ABARATA el día uno no puede quedar afuera de ningún tope.
+    if (barato.respuestas?.some((x) => x.costoDiaUnoUF < 0 && !x.dentroDeSuTope)) {
+      F("7b · una respuesta con costo NEGATIVO se declara fuera de SU tope: la regla del signo vale para los dos topes");
+    }
   }
 
   // (c) EL BORDE EXACTO. pie 20 → 35 no existe (techo 30), así que se fabrica el borde con
@@ -252,7 +263,7 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
   if (!borde) F("7c · cruza con pie 30: no puede ser null");
   else {
     if (Math.abs(borde.costoPtsPrecio - 15) > 0.6) F(`7c · pie 15→30 son 15 puntos justos, dio ${borde.costoPtsPrecio}`);
-    if (!borde.dentroDelAlcance) F(`7c · el borde EXACTO (${MIX_COSTO_TOPE_PTS_PRECIO} pts) entra: el tope es <=, no <`);
+    if (!borde.dentroDelAlcance) F(`7c · el borde EXACTO del tope de la EQUILIBRADA (${MIX_COSTO_TOPE_PTS_PRECIO} pts) entra: el tope es <=, no <`);
   }
 
   // (d) Cuando NINGUNA combinación entra en el tope, el mix igual se devuelve —con
@@ -263,7 +274,21 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
     regla: (patch) => ((patch.piePct ?? 0) >= 25 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
   });
   if (!fuera) F("7d · la combinación cruza: no puede ser null aunque esté fuera de alcance");
-  else if (fuera.dentroDelAlcance) F(`7d · pie 0→25 son 25 pts > ${MIX_COSTO_TOPE_PTS_PRECIO}: fuera de alcance`);
+  else if (fuera.dentroDelAlcance) {
+    F(`7d · pie 0→25 son 25 pts > ${MIX_COSTO_TOPE_PTS_PRECIO} (el tope de la EQUILIBRADA): fuera de alcance`);
+  }
+  // ⚠ ESTA SEED CUESTA EXACTAMENTE 25 PUNTOS, que es el tope de la respuesta de FLUJO
+  // (16-sep-2026). No es coincidencia aprovechable: es la trampa de este bloque. La misma
+  // celda está FUERA del alcance de la equilibrada y DENTRO del de flujo, y las dos cosas
+  // son ciertas. Lo que se fija acá es que el campo de la raíz NO se contagie del tope
+  // nuevo — si algún día `dentroDelAlcance` empieza a mirar la unión de los dos topes,
+  // este invariante se pone rojo y hace bien, porque con él se moverían de rama las ocho
+  // superficies de copy que cuelgan de `sinSalida`.
+  if (fuera) {
+    const flujo = fuera.respuestas?.find((x) => x.criterio === "flujo") ?? null;
+    if (flujo && !flujo.dentroDeSuTope) F("7d · la respuesta de flujo declara FUERA de su tope una celda de 25 pts: su tope es 25 y es <=");
+    if (flujo && flujo.topePtsPrecio !== 25) F(`7d · la respuesta de flujo declara tope ${flujo.topePtsPrecio}; tiene que declarar el suyo, no heredar el de la raíz`);
+  }
 }
 
 // ── 8 · «SIN SALIDA» — el concepto nuevo, sin tocar «sin palanca sola» ─────

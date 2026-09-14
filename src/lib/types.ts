@@ -1065,6 +1065,14 @@ export interface MixPalancas {
    * ¿El costo cabe dentro de `MIX_COSTO_TOPE_PTS_PRECIO`? `false` ⇒ la combinación
    * cruza pero pide más capital del que este mix considera una salida; se devuelve
    * igual, para poder decir cuánto costaría, pero NO cuenta como salida.
+   *
+   * CONTESTA POR LA EQUILIBRADA Y POR SU TOPE, y desde el menú de respuestas eso hay que
+   * decirlo en vez de suponerlo: hay dos topes de alcance vivos y este campo solo conoce
+   * uno. De él cuelga toda la cascada de `sinSalida` —y con ella las ocho superficies de
+   * copy de `salida-por-mix.ts`— así que repuntarlo al tope de flujo movería prosa en ocho
+   * lugares de una vez. No se repunta: cada respuesta lleva su propio `dentroDeSuTope` con
+   * su tope declarado al lado, que es el mismo argumento que ya obligó a declarar
+   * `costoDiaUnoBase` en vez de dejar que el consumidor lo dedujera.
    */
   dentroDelAlcance: boolean;
   costoDiaUnoBase: "pie_declarado";

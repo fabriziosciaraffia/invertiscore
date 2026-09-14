@@ -448,6 +448,17 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   // en las filas estructurales con salida por mix el motor dice «hay» y la prosa cierra
   // la puerta. Se resuelve como en LTR v24, con `hayMixACOMPRAR` en el prompt; este goal
   // es de motor y no lo toca.
+  //
+  // ⛔ Y CON EL MENÚ DE RESPUESTAS SIGUE LEYENDO LA EQUILIBRADA (16-sep-2026), espejo exacto
+  // del LTR y por la misma razón, más una propia de STR: de esta misma puerta cuelga el
+  // guard STR-ESTRUCTURAL (`sinCombinacionSegunLaCard`), que BORRA cajas de prosa que
+  // nombran un descuento. Si leyera el tope de flujo, el guard empezaría a dejar pasar
+  // prosa que el prompt no escribió, o a borrar la que sí — que es exactamente el bug que
+  // el v19 arregló, reintroducido por la puerta de al lado.
+  //
+  // Los dos `sinSalida` son espejo literal y tienen que seguir siéndolo: dos copias de la
+  // misma regla que divergen es cómo nacieron los ocho `if` que `salida-por-mix.ts` existe
+  // para unificar.
   const sinSalida = esEstructural && !(mixPalancas?.dentroDelAlcance ?? false);
 
   // Estructural: delta mínimo en rango EXTENDIDO, solo para respaldar la frase dura con el

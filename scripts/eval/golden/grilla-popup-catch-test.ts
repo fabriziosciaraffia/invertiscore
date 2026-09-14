@@ -190,7 +190,13 @@ const respuesta = (m: MixPalancas | null | undefined, criterio: CriterioRespuest
     if (c30.descuentoPct !== 0) F(`2 · pie 30% cruza sin descuento y la celda dice ${c30.descuentoPct}`);
     // pie 30 sobre 20 declarado = 10 puntos del precio = UF 300 sobre UF 3.000.
     if (c30.costoDiaUnoUF !== 300) F(`2 · el pie extra de pie 30% es ${c30.costoDiaUnoUF} UF, esperaba 300`);
-    if (c30.costoPtsPrecio > MIX_COSTO_TOPE_PTS_PRECIO && c30.alcanzable) F("2 · una celda sobre el tope viaja como alcanzable");
+    // `alcanzable` mide el tope de LA EQUILIBRADA y nada más — es el único sitio del golden
+    // que mide ese campo por celda, y desde el menú de respuestas el campo ya no contesta
+    // solo: una celda del tramo (15, 25] viaja con `alcanzable: false` y a la vez ofrecida
+    // como «la que más alivia el mes». Ver el acta del campo en `mix-palancas.ts`.
+    if (c30.costoPtsPrecio > MIX_COSTO_TOPE_PTS_PRECIO && c30.alcanzable) {
+      F(`2 · una celda de ${c30.costoPtsPrecio} pts viaja como alcanzable, y el tope de la EQUILIBRADA es ${MIX_COSTO_TOPE_PTS_PRECIO}`);
+    }
   }
 }
 
