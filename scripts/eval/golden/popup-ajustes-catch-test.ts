@@ -303,6 +303,23 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
     } else if (!/veredictoMostrado\(/.test(cuerpo)) {
       F("12 · el color no lee `veredictoMostrado`: la celda del aro puede quedar pintada de «llega a Comprar» con «Ajustar» escrito adentro");
     }
+    // Y EL PREDICADO RECIBE LA PALABRA, NO LA SACA. Mientras `cruzaDeVerdad` elegía por su
+    // cuenta, arreglar la matriz desincronizó la rama de celda única en silencio: esa rama
+    // siguió escribiendo `c.veredicto` y su color pasó a leer el hoy. La palabra decía
+    // «Comprar» y el color dejaba de pintarla — el mismo divorcio, del otro lado.
+    if (!/function cruzaSegun\(\s*veredictoEscrito/.test(POPUP)) {
+      F("12 · el predicado del color no recibe la palabra escrita: con una sola fuente interna, la rama que escribe otra lectura se desincroniza sin que nada falle");
+    }
+    const unaSola = POPUP.match(/if \(unaSola\) \{[^]*?\n  \}/)?.[0] ?? "";
+    if (!unaSola) {
+      F("12 · no se encontró la rama de celda única para auditar su color");
+    } else {
+      const palabraHoy = /veredictoMostrado\(c\)/.test(unaSola);
+      const colorHoy = /cruzaSegun\(\s*veredictoMostrado\(c\)/.test(unaSola) || /cruzaDeVerdad\(/.test(unaSola);
+      if (palabraHoy !== colorHoy) {
+        F("12 · la rama de celda única escribe una lectura y pinta con la otra: las 12 filas LTR que la usan quedan con la palabra y el color divorciados");
+      }
+    }
   }
 }
 
