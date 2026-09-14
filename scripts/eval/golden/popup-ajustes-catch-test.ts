@@ -91,6 +91,27 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
   if (POPUP && !/descuentoPct/.test(POPUP)) F("2 · el panel de detalle no muestra el descuento que se pide");
   if (POPUP && !/costoDiaUnoUF/.test(POPUP)) F("2 · el panel de detalle no muestra el pie extra del día uno");
   if (POPUP && !/no llega a/.test(POPUP)) F("2 · el panel no contempla la celda que no cruza («no llega a Comprar»)");
+  // ENSANCHADO (16-sep-2026): «no llega» es de UNA sola celda, y antes era de dos.
+  // La condición era `descuentoPct === null || !alcanzable` y las dos ramas escribían lo
+  // mismo. Solo la primera es cierta: la segunda CRUZA y cuesta más de lo que la
+  // recomendación pone, y en 43 filas del parque es justo la que el menú ofrece. El panel
+  // tiene que separarlas o vuelve a decirle «no llega» a una celda que llega.
+  if (POPUP) {
+    // El corte va hasta el siguiente `function` de columna 0, no hasta el primer `\n}`: el
+    // cuerpo de PanelCelda tiene llaves anidadas y un corte no-goloso se detenía adentro de
+    // la destructuración, así que el guard leía un fragmento y daba rojo sano por la razón
+    // equivocada. Es la misma trampa de «un guard se acota al componente, no al archivo».
+    const panel = POPUP.match(/function PanelCelda\([^]*?\n(?=(?:\/\/|\/\*\*|function ))/)?.[0] ?? "";
+    if (!panel) F("2 · no se encontró `PanelCelda` para auditar su condición");
+    else {
+      if (/descuentoPct === null \|\| !sel\.alcanzable/.test(panel)) {
+        F("2 · el panel volvió a colapsar los dos casos: una celda que cruza y cuesta de más NO es una que no llega");
+      }
+      if (!/!sel\.alcanzable/.test(panel)) {
+        F("2 · el panel dejó de declarar el caso de la celda que llega y cuesta más de lo que Franco recomienda poner");
+      }
+    }
+  }
 }
 
 // ── 3 · «hoy» no se inventa ────────────────────────────────────────────────
@@ -403,6 +424,25 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
     // «Comprar» y el color dejaba de pintarla — el mismo divorcio, del otro lado.
     if (!/function cruzaSegun\(\s*veredictoEscrito/.test(POPUP)) {
       F("12 · el predicado del color no recibe la palabra escrita: con una sola fuente interna, la rama que escribe otra lectura se desincroniza sin que nada falle");
+    }
+    // ── ENSANCHADO CON EL MENÚ (16-sep-2026): EL COLOR NO PREGUNTA POR NINGÚN TOPE ──
+    //
+    // El predicado llevaba un tercer conjunto, `c.alcanzable`, que no es sobre la palabra
+    // sino sobre el tope de la equilibrada. Con él, 57 de 1.912 celdas del parque decían
+    // «Comprar» pintadas en gris, y 43 de esas son las que el menú ofrece como «la que más
+    // alivia el mes». Quien manda es la leyenda: los DOS contratos rotulan el swatch azul
+    // «llega a Comprar», así que el azul afirma que LLEGA, no que quepa en un tope — y el
+    // contrato nuevo lo dibuja así, pintando `cruza` celdas sobre el tope que su propio menú
+    // no ofrece (popup-menu-respuestas.html:264-265).
+    //
+    // Sin esta aserción, devolver el tope al predicado no rompe nada y la contradicción
+    // vuelve sola. Vale para CUALQUIER tope: el de la equilibrada, el de flujo, o el de la
+    // respuesta que se esté viendo.
+    const cuerpoSegun = POPUP.match(/function cruzaSegun\([^]*?\n\}/)?.[0] ?? "";
+    if (!cuerpoSegun) {
+      F("12 · no se encontró el cuerpo de `cruzaSegun` para auditar por qué pregunta");
+    } else if (/alcanzable|dentroDeSuTope|topePtsPrecio|costoPtsPrecio/.test(cuerpoSegun)) {
+      F("12 · el predicado del color volvió a preguntar por un tope: el azul dice «llega a Comprar», y quién es una salida lo dice el menú");
     }
     const unaSola = POPUP.match(/if \(unaSola\) \{[^]*?\n  \}/)?.[0] ?? "";
     if (!unaSola) {

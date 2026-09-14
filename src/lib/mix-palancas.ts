@@ -249,12 +249,24 @@ export type CeldaMix = {
    * `alcanzable: false` y estar ofrecida en `MixPalancas.respuestas` al mismo tiempo. Las
    * dos cosas son ciertas: no cabe en el tope de la recomendación y sí cabe en el suyo.
    *
-   * ⛔ CONSECUENCIA VIVA, ANOTADA A PROPÓSITO: hoy el pop-up pinta el color de la celda y
-   * escribe «no llega a Comprar» leyendo este campo (`PopupAjustes.tsx:124` y `:448`). En
-   * cuanto el render monte el menú, esa celda va a decir «no llega» justo cuando el menú la
-   * está ofreciendo. Esta fase es de motor y no mueve render a propósito, así que la deuda
-   * queda declarada acá y no resuelta: quien monte el menú tiene que hacer que el color y
-   * el panel pregunten por el tope de LA RESPUESTA QUE SE ESTÁ VIENDO, no por éste.
+   * ⛔ LA CONSECUENCIA QUE ESTO TENÍA EN EL RENDER YA SE RESOLVIÓ (16-sep-2026), Y NO COMO
+   * DECÍA ESTA ACTA. Acá quedó escrito que «quien monte el menú tiene que hacer que el color
+   * y el panel pregunten por el tope de LA RESPUESTA QUE SE ESTÁ VIENDO». **Eso está mal y
+   * queda derogado**, por dos razones que aparecieron al abrir el contrato:
+   *
+   *  · La leyenda de los DOS contratos rotula el swatch azul «llega a Comprar» —no «es una
+   *    salida» ni «cabe en el tope»—, así que el color nunca fue una pregunta sobre topes y
+   *    no hay ningún tope por el que deba preguntar, ni éste ni el de la respuesta elegida.
+   *  · El contrato del menú pinta `cruza` las celdas que están SOBRE el tope y que su propio
+   *    menú no ofrece, y su script no repinta la matriz al cambiar de respuesta: solo mueve
+   *    el aro. Repintar el mapa habría roto la comparación entre respuestas, que es para lo
+   *    que el menú existe.
+   *
+   * Lo que se hizo: `alcanzable` SALIÓ del predicado del color (`cruzaSegun`), que ahora
+   * pregunta solo por la palabra que la celda escribe. Quién es una salida lo dice el menú,
+   * que lista las respuestas por su nombre. Y el panel dejó de escribir «no llega a Comprar»
+   * sobre una celda que llega: ahora declara el descuento y cuelga del pie la nota de que
+   * pide más capital del que la recomendación pone.
    *
    * Quien quiera saber si una celda cabe para una respuesta concreta, la fuente es
    * `RespuestaMix.dentroDeSuTope`, que viaja con su tope declarado al lado.

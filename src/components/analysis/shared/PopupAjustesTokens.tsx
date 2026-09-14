@@ -121,6 +121,13 @@ export function PopupAjustesTokens() {
       .paj-cg .l{color:var(--doc-tx3)}
       .paj-cg .v{font-weight:700;text-align:right;white-space:nowrap}
       .paj-cg .v.mal{color:var(--signal-red)}
+      /* LA NOTA DEL PIE QUE SE PASA DEL TOPE DE LA RECOMENDACIÓN. Mismo tratamiento que
+         «.paj-neg small»: bloque, chica, sin peso y en tinta terciaria. Suelta el «nowrap»
+         de «.v» —la frase no cabe en una línea a 390— y se queda con el «text-align:right»
+         heredado, que es el del valor al que califica. NO va en rojo: en este modal el rojo
+         ya significa «la plata que pones» y esto no es un error, es un precio. */
+      .paj-cg .v small{display:block;font-size:11.5px;font-weight:400;color:var(--doc-tx3);
+        white-space:normal;margin-top:3px;max-width:200px;margin-left:auto}
       .paj-eleg{background:var(--doc-paper2);border-radius:12px;padding:16px}
       .paj-chipsm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
       .paj-chip{background:var(--doc-paper);border:1px solid var(--doc-line2);padding:7px 11px;

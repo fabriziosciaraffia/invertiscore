@@ -119,9 +119,28 @@ function scoreMostrado(c: CeldaMix) {
  * la rama de celda única pasa `c.veredicto`, porque es lo que esa rama escribe. Cuando el
  * predicado sacaba la palabra por su cuenta, cambiar la matriz desincronizó a la otra rama
  * en silencio: la palabra quedó diciendo «Comprar» y el color dejó de pintarla.
+ *
+ * ⛔ Y EL TOPE SALIÓ DE ACÁ (16-sep-2026). Hasta el menú de respuestas el predicado pedía
+ * además `c.alcanzable`, que no pregunta por la palabra sino por el tope de la equilibrada.
+ * Con eso, una celda que dice «Comprar» y cuesta más de 15 puntos del precio quedaba pintada
+ * de gris: la contradicción exacta que este predicado existe para matar, entrando por el
+ * tercer conjunto en vez de por la palabra. Medido sobre el parque: 57 de 1.912 celdas
+ * decían «Comprar» en gris, y el panel de una de ellas escribía «no llega a Comprar» encima.
+ * Se vio en el navegador sobre `54344fa0`, que es la fila del propio contrato.
+ *
+ * QUIÉN MANDA: LA LEYENDA. Los dos contratos rotulan el swatch azul «llega a Comprar» —no
+ * «es una salida», no «cabe en el tope»— así que el azul es una afirmación sobre LLEGAR, y
+ * el tope nunca fue parte de esa pregunta. El contrato nuevo lo dibuja así de frente: en su
+ * estado A pinta `cruza` las dos celdas de pie 30% que están sobre el tope y que su propio
+ * menú no ofrece (popup-menu-respuestas.html:264-265), y de sus ocho celdas azules solo UNA
+ * está en el menú. El azul huérfano es el estado normal de esta matriz.
+ *
+ * QUIÉN ES UNA SALIDA LO DICE EL MENÚ, que lista las respuestas por su nombre. Son dos
+ * preguntas distintas y cada una tiene su superficie: el color dice si llega, el menú dice
+ * si Franco te lo ofrece.
  */
 function cruzaSegun(veredictoEscrito: Veredicto | null | undefined, c: CeldaMix, destino: Veredicto) {
-  return c.descuentoPct !== null && c.alcanzable && veredictoEscrito === destino;
+  return c.descuentoPct !== null && veredictoEscrito === destino;
 }
 function cruzaDeVerdad(c: CeldaMix, destino: Veredicto) {
   return cruzaSegun(veredictoMostrado(c), c, destino);
@@ -443,9 +462,20 @@ function PanelCelda({
             TIENES; acá se dice a dónde llega esa misma combinación SI pides el descuento. Sin
             esta separación el panel rotulaba «Pides de descuento −24,2%» sobre una celda que
             acababa de decir «Ajustar», y la contradicción se mudaba del cuadrito al clic. */}
+        {/* DOS CASOS QUE ESTABAN COLAPSADOS EN UNO, Y SOLO UNO ERA CIERTO (16-sep-2026).
+            La condición era `descuentoPct === null || !alcanzable` y las dos ramas escribían
+            «no llega a Comprar». Son hechos distintos:
+              · `descuentoPct === null` — no cruza NI pidiendo el tope entero. «No llega» es
+                verdad, y es la única celda de la que lo es.
+              · `!alcanzable` — cruza, y cuesta más de lo que la recomendación pone. Decirle
+                «no llega» era falso, y desde el menú es además lo contrario de lo que la
+                página hace al lado: en 43 filas del parque esa celda ES la que el menú
+                ofrece como «la que más alivia el mes».
+            Ahora el descuento se dice como en cualquier celda que cruza —porque es un número
+            real— y lo que la califica cuelga del pie, que es la cifra que se encareció. */}
         <span className="l">{sel.esActual ? "Pidiendo descuento llegas a" : "Pides de descuento"}</span>
         <span className="v">
-          {sel.descuentoPct === null || !sel.alcanzable
+          {sel.descuentoPct === null
             ? `no llega a ${etiquetaVeredicto(destino, "frase")}`
             : sel.esActual
               ? sel.descuentoPct === 0
@@ -458,6 +488,13 @@ function PanelCelda({
         <span className="l">Pie extra el día uno</span>
         <span className={`v${sel.costoDiaUnoUF > 0 ? " mal" : ""}`}>
           {sel.costoDiaUnoUF === 0 ? "—" : plataFirmada(sel.costoDiaUnoUF * valorUF, currency, valorUF)}
+          {/* LA NOTA NO ES UN ERROR, ES UN PRECIO. La celda llega —el cuadrito lo dice y el
+              color ahora también— y lo que se declara es cuánto capital pide de más respecto
+              de lo que Franco recomienda poner. Cuelga del pie y no del descuento porque es
+              el pie lo que se encareció. Precedente de forma: `.paj-neg small`. */}
+          {sel.descuentoPct !== null && !sel.alcanzable && (
+            <small>más pie del que Franco recomienda poner</small>
+          )}
         </span>
       </div>
     </div>
