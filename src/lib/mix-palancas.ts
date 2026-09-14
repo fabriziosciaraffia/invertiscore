@@ -361,6 +361,24 @@ export function calcularMixPalancas(p: {
       // LO QUE CONSIGUES con esa celda: su lectura en el descuento mínimo cuando cruza. Sin
       // esto una celda marcada «llega a Comprar» mostraría «Ajustar», que es su estado a
       // precio de hoy — y la leyenda diría una cosa y el cuadrito otra.
+      //
+      // ⚠ CON UNA EXCEPCIÓN, Y ESTÁ ACÁ PARA QUE NADIE LA DESHAGA (14-sep-2026).
+      //
+      // Lo de arriba vale para las celdas que PROMETEN: se leen como «si consigo esto». NO
+      // vale para la celda del caso base, la que el render marca con el aro de «hoy»: esa el
+      // usuario la lee como «mi situación», y mostrarle su lectura con descuento la hacía
+      // decir «Comprar» sobre un caso que la misma página declara «Ajustar». Medido sobre el
+      // parque: 501 de 739 filas, y el 100% de las 360 que el pop-up efectivamente dibuja.
+      //
+      // El motor NO cambia: sigue emitiendo las dos lecturas por celda, que es lo correcto.
+      // Quien elige cuál mostrar es el render, y desde el 14-sep la celda del aro muestra
+      // `veredictoSinDescuento` / `scoreSinDescuento` mientras las demás muestran estas.
+      // La matriz lo declara en su subtítulo y con un chip en la celda, porque dos lecturas
+      // calladas en la misma grilla es exactamente lo que hizo falta arreglar dos veces.
+      //
+      // O sea: las dos decisiones son correctas y son de celdas distintas. Si alguna vez
+      // parecen contradecirse, la pregunta no es cuál revertir sino cuál celda se está
+      // mirando.
       const lectura = r.enMin ?? r.base;
       const scoreLectura = Number.isFinite(lectura.score as number) ? (lectura.score as number) : null;
       celdas.push({
