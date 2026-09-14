@@ -457,6 +457,60 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
   }
 }
 
+// ── 14 · EL PLAN QUE NO SE MUEVE A NINGUNA CELDA (16-sep-2026) ─────────────
+//
+// Cuando la respuesta elegida tiene las DOS deltas en cero, el plan es quedarse donde estás
+// y negociar precio. Apuntar ahí con el aro dejaba la marca sobre la única celda del grillado
+// que no dice «Comprar» —la de hoy muestra su lectura a precio de hoy— y con la tinta ya
+// retirada, o sea sin ninguna marca en pantalla. Medido: 143 filas LTR (37,1% de las que
+// tienen menú) y 7 STR abrían así. Y encima el mismo score salía escrito dos veces distinto:
+// 74 en el menú y 54 en la celda.
+//
+// TRES COSAS QUE TIENEN QUE MOVERSE JUNTAS, y por eso van en un invariante y no en tres:
+//  · la fila deja de mostrar coordenadas de celda y score de celda;
+//  · no se dibuja aro;
+//  · la cuarta entrada de la leyenda cuelga de que HAYA ARO, no de que haya menú — si no,
+//    nombraría una marca ausente, que es el único bug de esa clase que el barrido de
+//    coherencia buscó en 481 pop-ups y no encontró.
+{
+  if (POPUP) {
+    if (!/const planSinCelda\s*=/.test(POPUP)) {
+      F("14 · no existe `planSinCelda`: nada distingue el plan que no se mueve a ninguna celda");
+    }
+    // El predicado son LAS DOS DELTAS, no `redundanteConPalancaSola`: la bandera es un
+    // superconjunto y toca 19 filas LTR más, donde el mix SÍ mueve una dimensión y su fila
+    // no miente. Esas quedan fuera a propósito.
+    const decl = POPUP.match(/const planSinCelda[^;]*;/)?.[0] ?? "";
+    if (!/piePctDelta === 0[\s\S]*plazoAniosDelta === 0/.test(decl)) {
+      F("14 · `planSinCelda` no se escribe con las dos deltas en cero");
+    }
+    if (/redundanteConPalancaSola/.test(decl)) {
+      F("14 · `planSinCelda` se escribió con la bandera del motor: es un superconjunto y arrastra 19 filas que esta decisión no miró");
+    }
+    // El aro se apaga con ese predicado.
+    if (!/planSinCelda \? null :/.test(POPUP)) {
+      F("14 · el aro no se apaga con `planSinCelda`: volvería a pararse sobre la celda de hoy");
+    }
+    // Y la leyenda cuelga del aro, no del menú.
+    const leyenda = POPUP.match(/\{hayAro && \([\s\S]{0,220}?la que estás viendo/)?.[0] ?? "";
+    if (!leyenda) {
+      F("14 · la cuarta entrada de la leyenda no cuelga de `hayAro`: con el aro apagado nombraría una marca que no está en pantalla");
+    }
+    // La fila muestra el destino, no el score de la celda. No basta con que la función
+    // exista: tiene que ESTAR CABLEADA en la columna de la cifra, o la fila vuelve a escribir
+    // el score de la celda —54— al lado del que el plan alcanza —74—.
+    if (!/function destinoDe/.test(POPUP)) {
+      F("14 · no existe `destinoDe`: la fila sin celda necesita el score como DESTINO, no como score de la celda que señala");
+    }
+    if (!/sinCelda \? destinoDe\(/.test(POPUP)) {
+      F("14 · la columna de la cifra no usa `destinoDe` en la fila sin celda: vuelven los dos scores contradictorios en la misma pantalla");
+    }
+    if (!/sinCelda \?/.test(POPUP.match(/<span className="paj-opt-sub">[\s\S]{0,400}/)?.[0] ?? "")) {
+      F("14 · la línea de coordenadas no se bifurca: la fila sin celda seguiría diciendo «Pie 20% · Plazo 25 años», que es decir «hoy»");
+    }
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPopupAjustesTier(): { hard: number } {
   console.log("\n─── TIER POPUP-AJUSTES (el render del pop-up · 0 tokens) ───");

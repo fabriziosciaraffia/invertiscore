@@ -220,7 +220,7 @@ export function PopupAjustes({
   const lineas = new Set(respuestas.map((r) => `${r.piePct}|${r.plazoAnios}|${r.descuentoPct}`));
   const hayMenu = celdas.length > 0 && lineas.size >= 2;
   const respuestaSel = respuestas.find((r) => r.criterio === criterio) ?? respuestas[0] ?? null;
-  // La celda que el aro marca: la de la respuesta que se está leyendo.
+  // La celda que el aro marca: la de la respuesta que se está leyendo…
   const celdaDeLaRespuesta = respuestaSel
     ? celdas.find(
         (c) =>
@@ -229,6 +229,28 @@ export function PopupAjustes({
           c.descuentoPct === respuestaSel.descuentoPct,
       ) ?? null
     : null;
+  // …SALVO CUANDO EL PLAN NO SE MUEVE A NINGUNA CELDA (16-sep-2026).
+  //
+  // Con las dos deltas en cero el plan es quedarse donde estás y negociar precio. Apuntar
+  // ahí con el aro no despega la recomendación de la celda: la deja parada sobre la ÚNICA
+  // celda del grillado que no dice «Comprar», porque la celda de hoy muestra su lectura a
+  // precio de hoy. Medido sobre el parque: 143 filas LTR (37,1% de las que tienen menú) y 7
+  // STR abren así, con el aro sobre un cuadrito que dice «Ajustar» mientras el menú promete
+  // Comprar, y con la tinta retirada —la corona la pierde cuando cae sobre el aro— o sea sin
+  // ninguna marca en pantalla.
+  //
+  // Y hay una razón más de fondo, medida: en esas 150 filas la recomendación ES la palanca
+  // sola de precio. Mismo descuento en 150 de 150 y mismo score de destino en 148. El motor
+  // ya lo declara con `redundanteConPalancaSola`, la card §5 lo lee y por eso no dibuja el
+  // mix, y las dos puertas STR devuelven null. El pop-up era la única superficie que seguía
+  // presentándolo como un movimiento en la grilla.
+  //
+  // ⚠ LA REGLA SE ESCRIBE CON LAS DOS DELTAS, NO CON LA BANDERA. `redundanteConPalancaSola`
+  // es un superconjunto: también es true en 19 filas LTR donde el mix SÍ mueve una dimensión
+  // y esa palanca ya cruza sola. Esas apuntan a una celda de verdad y su fila no miente, así
+  // que quedan fuera a propósito (decisión Fabrizio, 16-sep).
+  const planSinCelda = !!respuestaSel && respuestaSel.piePctDelta === 0 && respuestaSel.plazoAniosDelta === 0;
+  const aro = hayMenu ? (planSinCelda ? null : celdaDeLaRespuesta) : sel;
 
   return (
     <div className="paj">
@@ -260,8 +282,9 @@ export function PopupAjustes({
               const r = c && respuestas.find((x) => x.piePct === c.piePct && x.plazoAnios === c.plazoAnios && x.descuentoPct === c.descuentoPct);
               if (r) setCriterio(r.criterio);
             }}
-            aro={hayMenu ? celdaDeLaRespuesta : sel}
+            aro={aro}
             hayMenu={hayMenu}
+            hayAro={aro !== null}
             currency={currency}
             valorUF={valorUF}
           />
@@ -315,6 +338,7 @@ function SeccionMatriz({
   onSel,
   aro,
   hayMenu,
+  hayAro,
   currency,
   valorUF,
 }: {
@@ -328,6 +352,11 @@ function SeccionMatriz({
    *  lo que el aro significaba antes de que hubiera respuestas que elegir. */
   aro: CeldaMix | null;
   hayMenu: boolean;
+  /** ¿Hay aro EN PANTALLA? No es lo mismo que «hay menú»: cuando la respuesta elegida es un
+   *  plan que no se mueve a ninguna celda, el menú existe y el aro no. La leyenda cuelga de
+   *  esto y no de `hayMenu`, o nombraría una marca ausente — que es exactamente la clase de
+   *  bug que el barrido de coherencia buscó y no encontró; sería el primer caso. */
+  hayAro: boolean;
   currency: Currency;
   valorUF: number;
 }) {
@@ -517,8 +546,13 @@ function SeccionMatriz({
             que la leyenda nunca explicó. Con el menú pasa a ser la más importante —es el
             puente entre la fila que lees y la celda— así que dejarla muda sería peor que
             antes. Solo con menú: sin él el aro vuelve a ser el del panel, que no es «la que
-            estás viendo» sino «la que tocaste», y nombrarlo así mentiría. */}
-        {hayMenu && (
+            estás viendo» sino «la que tocaste», y nombrarlo así mentiría.
+
+            Y DESDE EL 16-sep CUELGA DEL ARO, NO DEL MENÚ: cuando la respuesta elegida es un
+            plan que no se mueve a ninguna celda, hay menú y no hay aro. Nombrarlo igual sería
+            señalar una marca ausente — la clase de bug que el barrido de coherencia buscó en
+            481 pop-ups y no encontró; sería el primer caso. */}
+        {hayAro && (
           <span>
             <i className="paj-sw d" />
             la que estás viendo
@@ -670,6 +704,11 @@ function SeccionRespuestas({
           const on = suyos.includes(criterio);
           const dPie = r.piePctDelta !== 0;
           const dPlazo = r.plazoAniosDelta !== 0;
+          // EL PLAN QUE NO SE MUEVE A NINGUNA CELDA. Con las dos deltas en cero, «Pie 20% ·
+          // Plazo 25 años» dice «hoy», o sea no dice nada, y el score de la celda es el de
+          // hoy —54— peleado con el que este plan alcanza —74—. La fila deja de apuntar a la
+          // matriz y toma la forma de la tabla de abajo: qué cambia, cuánto, y a dónde llegas.
+          const sinCelda = r.piePctDelta === 0 && r.plazoAniosDelta === 0;
           return (
             <button
               key={r.criterio}
@@ -680,25 +719,67 @@ function SeccionRespuestas({
               <div className="paj-opt-t">
                 {tituloDe(r)}
                 <span className="paj-opt-sub">
-                  <span className="nb">
-                    Pie {dPie && <><s>{dec1(r.piePct - r.piePctDelta).replace(",0", "")}%</s>{" "}</>}
-                    {dPie ? <b>{dec1(r.piePct).replace(",0", "")}%</b> : `${dec1(r.piePct).replace(",0", "")}%`} ·
-                  </span>{" "}
-                  <span className="nb">
-                    Plazo {dPlazo && <><s>{r.plazoAnios - r.plazoAniosDelta}</s>{" "}</>}
-                    {dPlazo ? <b>{r.plazoAnios} años</b> : `${r.plazoAnios} años`} ·
-                  </span>{" "}
-                  <span className="nb">{r.sinDescuento ? "no pides descuento" : `pides ${pct1(r.descuentoPct)}`}</span>
+                  {sinCelda ? (
+                    // NI COORDENADAS NI SCORE DE CELDA: lo único que se mueve es el precio, y
+                    // quién lo mueve importa tanto como cuánto. El «lo pone el vendedor» es
+                    // literal de `QUIEN.precio`, la misma fuente que la tabla de abajo.
+                    <>
+                      <span className="nb">
+                        {/* «−26,4% de precio» es literal de la card §5, que para estas mismas
+                            filas ya escribe «Alternativamente: −26,4% de precio. Pero eso no
+                            depende de ti: lo pone el vendedor». El signo va porque acá el
+                            descuento es el dato principal de la fila, no una coordenada. */}
+                        <b>{r.sinDescuento ? "Sin pedir descuento" : `Negocias −${pct1(r.descuentoPct)} de precio`}</b> ·
+                      </span>{" "}
+                      <span className="nb">{QUIEN.precio}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="nb">
+                        Pie {dPie && <><s>{dec1(r.piePct - r.piePctDelta).replace(",0", "")}%</s>{" "}</>}
+                        {dPie ? <b>{dec1(r.piePct).replace(",0", "")}%</b> : `${dec1(r.piePct).replace(",0", "")}%`} ·
+                      </span>{" "}
+                      <span className="nb">
+                        Plazo {dPlazo && <><s>{r.plazoAnios - r.plazoAniosDelta}</s>{" "}</>}
+                        {dPlazo ? <b>{r.plazoAnios} años</b> : `${r.plazoAnios} años`} ·
+                      </span>{" "}
+                      <span className="nb">{r.sinDescuento ? "no pides descuento" : `pides ${pct1(r.descuentoPct)}`}</span>
+                    </>
+                  )}
                 </span>
               </div>
-              <div className="paj-opt-v">{cifraDe(r, currency, valorUF)}</div>
+              <div className="paj-opt-v">{sinCelda ? destinoDe(r) : cifraDe(r, currency, valorUF)}</div>
               <div className="disco">{on ? "✓" : "›"}</div>
-              <div className="paj-opt-tr">{tradeOffDe(r, rec, currency, valorUF)}</div>
+              <div className="paj-opt-tr">
+                {sinCelda ? "Mover el pie o el plazo no ayuda: el ajuste es solo de precio." : tradeOffDe(r, rec, currency, valorUF)}
+              </div>
             </button>
           );
         })}
       </div>
     </section>
+  );
+}
+
+/**
+ * EL DESTINO, cuando la fila no apunta a ninguna celda.
+ *
+ * El score NO SE SACA: CAMBIA DE DUEÑO. El problema nunca fue que 74 estuviera mal, sino que
+ * se leía como «el score de la celda que estás señalando» mientras esa celda decía 54. Bajo
+ * «llegas a», 74 es el score del DESTINO y 54 no compite con él — que es exactamente lo que
+ * el par «Franco Score 54 → 74» del panel de abajo ya explica.
+ *
+ * La forma sale de la columna «Llegas a» de la tabla de palancas solas, 200 px más abajo en
+ * este mismo pop-up: veredicto en frase y el score en segunda línea. Y no es un parecido
+ * casual — en estas filas la recomendación ES la palanca sola de precio: mismo descuento en
+ * 150 de 150 y mismo score de destino en 148.
+ */
+function destinoDe(r: RespuestaMix) {
+  return (
+    <>
+      {etiquetaVeredicto("COMPRAR", "frase")}
+      <small>llegas a · score {r.score ?? PAR_SIN_VALOR}</small>
+    </>
   );
 }
 
