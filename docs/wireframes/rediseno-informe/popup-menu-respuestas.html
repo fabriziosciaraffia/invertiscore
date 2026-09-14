@@ -422,6 +422,37 @@
   largo. En el estado A las dos celdas de pie 30% están sobre ese tope y por eso no aparecen en el
   menú, pero sí en la matriz, que es lo que hace hoy.
   <br><br>
+  <b>⛔ DOS DIVERGENCIAS ANOTADAS AL IMPLEMENTAR (16-sep-2026).</b> Este archivo se dibujó antes
+  de que el motor emitiera las respuestas, y en dos puntos dejó de describir lo que pasa. Se
+  anotan acá y no solo en el código, porque si la divergencia vive únicamente en un comentario
+  el contrato deja de ser fuente de verdad sin que nadie lo note — la misma regla que se aplicó
+  con <b>td.sel</b>.
+  <ul>
+    <li><b>Las cifras del estado A quedaron stale en una línea.</b> El mockup se sondeó con UN
+      tope de alcance, el de 15, y después el tope de «la que más alivia el mes» subió a 25
+      (<code>MIX_COSTO_TOPE_PTS_PRECIO_FLUJO</code>). Con el motor mergeado, la respuesta de flujo
+      de <b>54344fa0</b> ya no es <b>pie 25% · 30 años · pides 3,3%</b> (14,2 pts) sino
+      <b>pie 30% · 30 años · sin pedir descuento</b> (20 pts) — una de las dos celdas que la
+      frase de arriba da por fuera del menú. El estado B (<b>1274a305</b>) no cambió: sus tres
+      respuestas salen idénticas. La FORMA de este archivo sigue mandando; sus NÚMEROS del estado
+      A no.</li>
+    <li><b>La frase «que es lo que hace hoy», sobre el color, era falsa.</b> El marcado de acá
+      pinta <code>cruza</code> las dos celdas de pie 30%, y producción las pintaba grises: su
+      predicado de color exigía además <code>alcanzable</code>, o sea el tope. Medido: 57 de 1.912
+      celdas del parque decían «Comprar» en gris, y el panel de una de ellas escribía «no llega a
+      Comprar» encima. <b>Ganó este archivo</b>: el tope salió del predicado el 16-sep y el color
+      quedó preguntando solo por la palabra que la celda escribe, que es lo que la leyenda
+      promete al rotular el swatch azul «llega a Comprar».</li>
+  </ul>
+  <b>Y DOS COSAS QUE ESTE ARCHIVO NO TIENE Y PRODUCCIÓN SÍ CONSERVA</b>, por decisión explícita
+  del 16-sep: el <b>panel de detalle de una celda</b> —acá no aparece ni una vez: cero
+  <code>.cel</code>, cero ✕, cero «Pides de descuento»— y el <b>clic en cualquier celda</b>, que
+  el script de acá deja inerte salvo en las que el menú ofrece. El descuento y el pie extra de
+  una celda cualquiera son información real y no se pierden porque el mockup no los dibuje. La
+  consecuencia es que el aro no puede servir a los dos dueños: acá es de la respuesta que se
+  está leyendo —así lo nombra la cuarta entrada de la leyenda— y la celda del panel se
+  identifica en el propio panel, que la titula «Pie 30% · 30 años».
+  <br><br>
   <b>Un hueco que conviene saber:</b> el verde del semáforo del dato NO se ejercita en ninguno de
   los dos casos. Las cinco respuestas dejan el flujo mensual y el retorno en negativo, así que
   todos los pares con signo salen en rojo. La regla está escrita en el CSS y lista, pero sin un
