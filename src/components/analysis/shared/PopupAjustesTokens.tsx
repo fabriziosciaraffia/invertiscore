@@ -103,6 +103,11 @@ export function PopupAjustesTokens() {
       .paj-leyenda span{display:inline-flex;align-items:center;gap:6px}
       .paj-sw{width:12px;height:12px;border-radius:3px;display:inline-block}
       .paj-sw.a{background:var(--doc-tx)}
+      /* LA CELDA QUE CAE (15-sep-2026). Es el fondo pelado de «.paj-mtx td», sin el azul de
+         «llega» ni ninguna marca propia: en la matriz de COMPRAR el gris deja de ser el
+         estado por defecto y pasa a significar algo, así que la leyenda lo nombra. El swatch
+         es el mismo color que la celda para que se reconozca de un vistazo. */
+      .paj-sw.e{background:var(--doc-paper2)}
       .paj-sw.b{background:color-mix(in srgb,var(--doc-comprar) 16%,transparent);border:1px solid var(--doc-comprar)}
       /* EL SWATCH DEL ARO, la cuarta entrada. Se dibuja igual que la marca que nombra: aro de
          tinta POR FUERA sobre fondo de tarjeta, con el mismo offset positivo que «td.sel».

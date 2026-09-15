@@ -22,6 +22,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState } from "react";
 import type { CeldaMix, CriterioRespuesta, MetricasCelda, RespuestaMix } from "@/lib/mix-palancas";
+import type { MixPalancas } from "@/lib/types";
 import { QUIEN_LA_PONE, type FilaLoQueHariaYo, type QuienLaPone } from "@/lib/lo-que-haria-yo";
 import type { HallazgoDistanciaVeredicto, PalancaDistancia, Veredicto } from "@/lib/types";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
@@ -67,6 +68,10 @@ const FRASE_DEL_DUENO: Record<QuienLaPone, string> = {
   mercado: "lo pone el mercado",
   tuyo: "lo decides tú",
 };
+
+/** Orden canónico para listar los veredictos caídos: del menos grave al más grave, que es
+ *  como los ordena la matriz hermana (`Matriz.tsx:92`). */
+const RANK_LEYENDA: Record<Veredicto, number> = { "BUSCAR OTRA": 0, "AJUSTA SUPUESTOS": 1, COMPRAR: 2 };
 
 const NOMBRE: Record<PalancaDistancia["palanca"], string> = {
   precio: "Precio",
@@ -170,6 +175,16 @@ export interface PopupAjustesProps {
   distancia?: HallazgoDistanciaVeredicto | null;
   /** Las filas de la card en COMPRAR: Margen, Precio, Verifica. */
   filasComprar?: FilaLoQueHariaYo[] | null;
+  /**
+   * LA GRILLA DE COMPRAR (15-sep-2026). Pie × plazo sin descuento. Viene por su propio prop
+   * y no dentro de `distancia` porque ese hallazgo es null en COMPRAR por construcción; el
+   * motor la emite en `results.mixComprar` (LTR) y en la simulación (STR).
+   *
+   * Es el MISMO tipo que la grilla de los otros dos veredictos, así que la dibuja el mismo
+   * componente: lo que cambia no es la forma sino lo que las marcas AFIRMAN, y eso vive en
+   * la leyenda.
+   */
+  mixComprar?: MixPalancas | null;
   currency: Currency;
   valorUF: number;
   /** Precio del caso, en UF: el CTA lo necesita para nombrar el precio negociado. */
@@ -195,13 +210,17 @@ export function PopupAjustes({
   veredicto,
   distancia,
   filasComprar,
+  mixComprar,
   currency,
   valorUF,
   precioUF,
   antes,
 }: PopupAjustesProps) {
   const v = distancia?.valor;
-  const mix = v ? mixAComprar(v) : null;
+  // EN COMPRAR LA GRILLA VIENE POR OTRA PUERTA (15-sep-2026). `distancia` es null ahí —no hay
+  // veredicto superior— así que la grilla de COMPRAR llega en su propio prop. De acá para
+  // abajo el componente no vuelve a distinguir: es el mismo tipo y el mismo render.
+  const mix = veredicto === "COMPRAR" ? mixComprar ?? null : v ? mixAComprar(v) : null;
   const celdas = mix?.celdas ?? [];
   const solas = v?.palancas ?? [];
   // DOS ESTADOS, Y SON DOS PREGUNTAS DISTINTAS (16-sep-2026).
@@ -282,13 +301,17 @@ export function PopupAjustes({
         )}
       </div>
 
-      {esComprar ? (
-        <SeccionComprar filas={filasComprar ?? []} />
-      ) : (
+      {esComprar && <SeccionComprar filas={filasComprar ?? []} />}
+      {/* LA MATRIZ EN LOS TRES VEREDICTOS (15-sep-2026). Hasta hoy `esComprar` la apagaba, y
+          no por decisión: el hallazgo de distancia es null en COMPRAR y sin él no había
+          grilla. Con la grilla por su propia puerta, la matriz dibuja igual — es el mismo
+          tipo— y lo que cambia es lo que las marcas afirman, que vive en la leyenda. */}
+      {(
         celdas.length > 0 && (
           <SeccionMatriz
             celdas={celdas}
             destino={destino}
+            esComprar={esComprar}
             sel={sel}
             onSel={(c) => {
               setSel(c);
@@ -307,17 +330,18 @@ export function PopupAjustes({
         )
       )}
 
-      {hayMenu && !esComprar && (
+      {hayMenu && (
         <SeccionRespuestas
           respuestas={respuestas}
           criterio={respuestaSel?.criterio ?? "score"}
           onElegir={setCriterio}
+          esComprar={esComprar}
           currency={currency}
           valorUF={valorUF}
         />
       )}
 
-      {!esComprar && mix && celdas.length > 0 && (
+      {mix && celdas.length > 0 && (
         <SeccionOptimo
           mix={mix}
           respuesta={respuestaSel}
@@ -331,6 +355,9 @@ export function PopupAjustes({
 
       {solas.length > 0 && <SeccionSolas solas={solas} currency={currency} valorUF={valorUF} />}
 
+      {/* EL CTA SIGUE FUERA DE COMPRAR, y ahora por su propia razón: se dibuja con el
+          precio NEGOCIADO («Analízalo a UF X») y en COMPRAR no hay descuento que negociar,
+          así que nombraría el precio de hoy y sería un botón para volver a mirar lo mismo. */}
       {!esComprar && mix && celdas.length > 0 && <Cta mix={mix} precioUF={precioUF} />}
     </div>
   );
@@ -350,6 +377,7 @@ function Pill({ veredicto, destacado }: { veredicto: Veredicto; destacado?: bool
 function SeccionMatriz({
   celdas,
   destino,
+  esComprar,
   sel,
   onSel,
   aro,
@@ -360,6 +388,10 @@ function SeccionMatriz({
 }: {
   celdas: CeldaMix[];
   destino: Veredicto;
+  /** ¿El caso YA está en el destino? Cambia lo que la leyenda AFIRMA de sus marcas: el azul
+   *  pasa de «llega a» a «sigue siendo», y aparecen las entradas de las que caen. La forma
+   *  de la matriz no cambia. */
+  esComprar: boolean;
   /** La celda cuyo PANEL está abierto. Puede ser cualquiera, incluso una que nadie ofrece. */
   sel: CeldaMix | null;
   onSel: (c: CeldaMix | null) => void;
@@ -476,10 +508,22 @@ function SeccionMatriz({
           calladas y el próximo lector deshace el arreglo — es la receta del contrato para
           declarar que un subconjunto se lee distinto: una línea en palabras encima, y una
           marca sin color en lo que difiere (acá, el chip de la celda).
-          Cuando no hay celda de hoy —16 filas LTR y 2 STR— la segunda mitad no se dice. */}
+          Cuando no hay celda de hoy —16 filas LTR y 2 STR— la segunda mitad no se dice.
+
+          Y EN COMPRAR NO HAY DOS LECTURAS (15-sep-2026): sin umbral no hay descuento que
+          biseccionar, así que TODA la grilla se lee a precio de hoy y la línea que separaba
+          las dos lecturas no tiene nada que separar. Decirla ahí sería anunciar un descuento
+          que el pop-up no pide en ninguna celda. Lo que esa matriz sí necesita declarar es
+          qué mueve: pie y plazo, lo tuyo, sin tocar el precio. */}
       <p className="paj-sx">
-        El descuento que pides se ajusta en consecuencia.
-        {hayActual ? " La del aro no: va a precio de hoy." : ""}
+        {esComprar ? (
+          "Todas van a precio de hoy: lo único que se mueve es lo tuyo, el pie y el plazo."
+        ) : (
+          <>
+            El descuento que pides se ajusta en consecuencia.
+            {hayActual ? " La del aro no: va a precio de hoy." : ""}
+          </>
+        )}
       </p>
       {!unaColumna && <div className="paj-ejex">Plazo del crédito</div>}
       <div className={`paj-mwrap${unaColumna ? " sola" : ""}${unaFila ? " linea" : ""}`}>
@@ -570,10 +614,42 @@ function SeccionMatriz({
             hoy
           </span>
         )}
+        {/* EL SWATCH AFIRMA COSAS DISTINTAS SEGÚN DÓNDE ESTÁS (15-sep-2026).
+            En AJUSTAR y BUSCAR el azul es una PROMESA condicionada a un descuento que hay
+            que negociarle a un tercero: «llega a Comprar». En COMPRAR es una CONSTATACIÓN
+            sobre lo que ya tenés si movés lo tuyo: «sigue siendo Comprar». No hay una frase
+            que sirva para las dos sin volverse vaga —«queda en Comprar» es raro cuando
+            todavía no llegaste—, y colapsarlas borraría justo la distinción que el color
+            existe para hacer.
+            «sigue siendo» no es vocabulario nuevo: es lo que la sección de arriba escribe
+            dos veces en cada COMPRAR —«El arriendo puede caer hasta $X y sigue siendo
+            Comprar»—. Y el precedente de un swatch que cambia lo que afirma es el vecino:
+            «lo que Franco recomienda» / «el óptimo», con su acta. */}
         <span>
           <i className="paj-sw b" />
-          llega a {etiquetaVeredicto(destino, "frase")}
+          {esComprar ? "sigue siendo" : "llega a"} {etiquetaVeredicto(destino, "frase")}
         </span>
+        {/* LAS QUE CAEN, UNA ENTRADA POR VEREDICTO PRESENTE (15-sep-2026). En COMPRAR el pie
+            baja un escalón, y ahí hay celdas que pierden el veredicto: medido, en 51 de las
+            160 filas (31,9%), con p50 4 celdas de 12. Es información real —bajar el pie te
+            saca de Comprar— y el gris, que en los otros veredictos significa «no llega» (un
+            no-evento que la leyenda ni nombra), acá pasa a significar «te caés».
+            NO LLEVA CHIP EN LA CELDA. La matriz hermana sí lo lleva («↓ Ajustar»,
+            `Matriz.tsx:47`) porque allá la celda muestra un NÚMERO y el veredicto vive solo
+            en el tooltip; acá la celda escribe la palabra, así que el chip sería la segunda
+            marca del mismo hecho. Una marca por hecho.
+            Y son varias entradas porque caen a veredictos distintos: en renta corta ya se ven
+            celdas cayendo a Buscar otro, no solo a Ajustar. Se recogen de las celdas, como
+            hace la hermana, y solo si existen. */}
+        {esComprar &&
+          Array.from(new Set(celdas.map((c) => veredictoMostrado(c)).filter((x): x is Veredicto => !!x && x !== destino)))
+            .sort((a, b) => RANK_LEYENDA[b] - RANK_LEYENDA[a])
+            .map((vd) => (
+              <span key={vd}>
+                <i className="paj-sw e" />
+                baja a {etiquetaVeredicto(vd, "frase")}
+              </span>
+            ))}
         {/* SIN CELDA, SIN ORACIÓN — la misma doctrina que ya gobierna «hoy» acá arriba y que
             la otra matriz del informe declara por escrito. Con el fondo retirado de la celda
             del aro, en 145 filas no queda ninguna celda con tinta plena: nombrar «el óptimo»
@@ -718,12 +794,15 @@ function SeccionRespuestas({
   respuestas,
   criterio,
   onElegir,
+  esComprar,
   currency,
   valorUF,
 }: {
   respuestas: RespuestaMix[];
   criterio: CriterioRespuesta;
   onElegir: (c: CriterioRespuesta) => void;
+  /** Sin umbral que cruzar el trade-off compara otras cosas: ver `tradeOffDe`. */
+  esComprar: boolean;
   currency: Currency;
   valorUF: number;
 }) {
@@ -741,9 +820,22 @@ function SeccionRespuestas({
   return (
     <section className="paj-sec">
       <div className="paj-st">Hay más de un camino</div>
+      {/* EN COMPRAR NO SE LLEGA, SE MANTIENE (15-sep-2026) — el mismo argumento del swatch:
+          «llegar» es una promesa condicionada a un descuento, y acá no hay ninguno. Y lo que
+          cambia entre las respuestas tampoco es «qué le pides al vendedor»: al vendedor no se
+          le pide nada. Lo único que se mueve es lo tuyo. */}
       <p className="paj-sx">
-        {vistas.length === 2 ? "Los dos llegan" : "Los tres llegan"} a Comprar. Cambia qué le pides al vendedor y
-        cuánta plata pones tú.
+        {esComprar ? (
+          <>
+            {vistas.length === 2 ? "Las dos siguen" : "Las tres siguen"} en Comprar. Cambia cuánta plata pones tú
+            y a cuántos años.
+          </>
+        ) : (
+          <>
+            {vistas.length === 2 ? "Los dos llegan" : "Los tres llegan"} a Comprar. Cambia qué le pides al vendedor y
+            cuánta plata pones tú.
+          </>
+        )}
       </p>
       <div className="paj-opts">
         {vistas.map((r) => {
@@ -788,11 +880,19 @@ function SeccionRespuestas({
                         Pie {dPie && <><s>{dec1(r.piePct - r.piePctDelta).replace(",0", "")}%</s>{" "}</>}
                         {dPie ? <b>{dec1(r.piePct).replace(",0", "")}%</b> : `${dec1(r.piePct).replace(",0", "")}%`} ·
                       </span>{" "}
+                      {/* El separador cuelga del descuento: sin él, «Plazo 30 años ·» deja un
+                          punto medio al aire al final de la línea. */}
                       <span className="nb">
                         Plazo {dPlazo && <><s>{r.plazoAnios - r.plazoAniosDelta}</s>{" "}</>}
-                        {dPlazo ? <b>{r.plazoAnios} años</b> : `${r.plazoAnios} años`} ·
+                        {dPlazo ? <b>{r.plazoAnios} años</b> : `${r.plazoAnios} años`}
+                        {!esComprar ? " ·" : ""}
                       </span>{" "}
-                      <span className="nb">{r.sinDescuento ? "no pides descuento" : `pides ${pct1(r.descuentoPct)}`}</span>
+                      {/* EN COMPRAR NO SE DICE (15-sep-2026). Ahí TODAS las respuestas son sin
+                          descuento —la bajada de la matriz ya lo declara una vez—, así que
+                          repetirlo en cada línea no distingue nada: es ruido en las tres. */}
+                      {!esComprar && (
+                        <span className="nb">{r.sinDescuento ? "no pides descuento" : `pides ${pct1(r.descuentoPct)}`}</span>
+                      )}
                     </>
                   )}
                 </span>
@@ -800,7 +900,7 @@ function SeccionRespuestas({
               <div className="paj-opt-v">{sinCelda ? destinoDe(r) : cifraDe(r, currency, valorUF)}</div>
               <div className="disco">{on ? "✓" : "›"}</div>
               <div className="paj-opt-tr">
-                {sinCelda ? "Mover el pie o el plazo no ayuda: el ajuste es solo de precio." : tradeOffDe(r, rec, currency, valorUF)}
+                {sinCelda ? "Mover el pie o el plazo no ayuda: el ajuste es solo de precio." : tradeOffDe(r, rec, currency, valorUF, esComprar)}
               </div>
             </button>
           );
@@ -862,7 +962,7 @@ function cifraDe(r: RespuestaMix, currency: Currency, valorUF: number) {
 }
 
 /** Las tres cláusulas que son hechos, restadas contra la recomendada. */
-function tradeOffDe(r: RespuestaMix, rec: RespuestaMix | null, currency: Currency, valorUF: number): string {
+function tradeOffDe(r: RespuestaMix, rec: RespuestaMix | null, currency: Currency, valorUF: number, sinUmbral: boolean): string {
   if (r.criterio === "score") {
     return (r.fusionadaCon ?? []).includes("tir")
       ? "Acá las dos preguntas tienen la misma respuesta: es el mejor negocio de la grilla y también la que más rinde."
@@ -878,6 +978,39 @@ function tradeOffDe(r: RespuestaMix, rec: RespuestaMix | null, currency: Currenc
   const dTir = r.metricas?.tirPct != null && rec.metricas?.tirPct != null ? r.metricas.tirPct - rec.metricas.tirPct : null;
   if (dTir != null && Math.abs(dTir) >= 0.05) {
     partes.push(`rinde ${puntos(dTir)} ${dTir > 0 ? "más" : "menos"}`);
+  }
+  // ── EL MES Y EL SCORE, CUANDO NO HAY DESCUENTO (15-sep-2026) ──────────────
+  //
+  // Esta línea comparaba TIR, costo del día uno y descuento. En AJUSTAR alcanzaba: el eje
+  // escaso era el descuento y estaba nombrado. En COMPRAR el descuento desaparece, y las dos
+  // dimensiones que quedan moviéndose son justo las dos que la línea NO miraba.
+  //
+  // Medido sobre las 160 filas COMPRAR: la respuesta de TIR corona otra celda en 99 (61,9%),
+  // y en 67 de esas 99 (67,7%) empeora el mes —p50 −$25.600, mínimo −$263.300— y el score
+  // —p50 −1—. Son las mismas 67: cuando empeora, empeora las dos juntas. Sin esta parte, la
+  // línea de `092b7792` diría «rinde 3,7 puntos más y libera UF 550 el día uno» y callaría
+  // los $143.000 que te saca del mes. Las dos mitades ciertas, la foto al revés.
+  //
+  // Van solo en COMPRAR y no siempre: en los otros veredictos el mes y el score se mueven
+  // con el descuento, que la línea ya nombra, y decirlo tres veces sería ruido.
+  if (sinUmbral) {
+    const dFlujo =
+      r.metricas?.flujoMensual != null && rec.metricas?.flujoMensual != null
+        ? r.metricas.flujoMensual - rec.metricas.flujoMensual
+        : null;
+    // El corte en mil pesos: bajo eso es ruido de redondeo en una cifra mensual.
+    if (dFlujo != null && Math.abs(dFlujo) >= 1_000) {
+      // SIEMPRE «deja», y el signo lo lleva «más»/«menos». Con «saca … menos al mes» salía
+      // una doble negación que hay que leer dos veces para saber de qué lado está.
+      partes.push(`deja ${plata(Math.abs(dFlujo), currency, valorUF)} ${dFlujo > 0 ? "más" : "menos"} al mes`);
+    }
+    const dScore = r.score != null && rec.score != null ? Math.round(r.score) - Math.round(rec.score) : null;
+    if (dScore != null && dScore !== 0) {
+      // El score es ENTERO, así que no pasa por `puntos()`: «4,0 puntos» sobre un número que
+      // la página nunca escribe con decimal se lee como otra magnitud.
+      const abs = Math.abs(dScore);
+      partes.push(`el score queda ${abs} ${abs === 1 ? "punto" : "puntos"} ${dScore > 0 ? "arriba" : "abajo"}`);
+    }
   }
   // Y EL COSTO DEL DÍA UNO VIAJA EN UF: hay que llevarlo a la moneda del lector antes de
   // formatearlo, como hace el resto del pop-up. Sin el factor, «UF 205» salía «$205».

@@ -143,11 +143,41 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
   }
 }
 
-// ── 5 · COMPRAR: márgenes, sin matriz ni óptimo ────────────────────────────
+// ── 5 · COMPRAR: los márgenes Y la matriz, sin CTA (ensanchado 15-sep-2026) ─
+//
+// ⚠ ESTE INVARIANTE DECÍA «SIN MATRIZ NI ÓPTIMO», y era cierto por omisión: el hallazgo de
+// distancia devuelve null en COMPRAR y sin él no había grilla que dibujar. No era una
+// decisión de producto, era la ausencia del dato. Desde el 15-sep la grilla entra por su
+// propia puerta (`mixComprar`) y la matriz dibuja en los tres veredictos.
+//
+// Lo que se fija ahora es lo que es cierto: las filas de márgenes SIGUEN —son la respuesta a
+// «cuánto aguanta», que la matriz no contesta—, la matriz ya NO cuelga de `!esComprar`, la
+// grilla viene por su prop, los DOS heros la pasan, y el CTA se queda afuera porque nombra un
+// precio negociado que en COMPRAR no existe.
 {
   if (POPUP && !/Margen/.test(POPUP)) F("5 · en COMPRAR el pop-up no muestra la fila «Margen» de la card");
   if (POPUP && !/Verifica/.test(POPUP)) F("5 · en COMPRAR el pop-up no muestra la fila «Verifica» de la card");
   if (POPUP && !/COMPRAR/.test(POPUP)) F("5 · el pop-up no distingue el caso COMPRAR");
+  if (POPUP) {
+    // La grilla llega por su propia puerta, no dentro del hallazgo.
+    if (!/mixComprar/.test(POPUP)) F("5 · el pop-up no lee `mixComprar`: en COMPRAR el hallazgo de distancia es null y sin ese prop no hay grilla");
+    // Y la matriz dejó de colgar del veredicto.
+    if (/esComprar \? \(\s*<SeccionComprar/.test(POPUP)) {
+      F("5 · la matriz volvió a ser excluyente con las filas de márgenes: en COMPRAR van las dos");
+    }
+    if (/\{hayMenu && !esComprar &&/.test(POPUP)) F("5 · el menú de respuestas volvió a apagarse en COMPRAR");
+    if (/\{!esComprar && mix && celdas\.length > 0 && \(\s*<SeccionOptimo/.test(POPUP)) F("5 · «El ajuste» volvió a apagarse en COMPRAR");
+    // El CTA sí se queda afuera, y ahora por su razón propia.
+    if (!/\{!esComprar && mix && celdas\.length > 0 && <Cta/.test(POPUP)) {
+      F("5 · el CTA dejó de estar acotado a los veredictos con descuento: en COMPRAR nombraría el precio de hoy");
+    }
+  }
+  // LOS DOS HEROS LA PASAN. Sin esto renta corta queda sin matriz en COMPRAR y los dos
+  // usuarios con el mismo veredicto ven cosas distintas — que es la asimetría que este goal
+  // existe para cerrar.
+  for (const [src, quien] of [[HERO_LTR, "HeroLTR"], [HERO_STR, "HeroStrDictamen"]] as const) {
+    if (src && !/mixComprar=/.test(src)) F(`5 · ${quien} no le pasa \`mixComprar\` al pop-up: en COMPRAR su matriz no se dibuja`);
+  }
 }
 
 // ── 6 · sin grilla ni palancas, no hay botón ───────────────────────────────

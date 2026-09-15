@@ -233,6 +233,9 @@ export function HeroLTR({
         veredicto={veredicto as Veredicto}
         distancia={distanciaRow ?? null}
         filasComprar={bloqueDeterminista?.filas ?? null}
+        // La grilla de COMPRAR viene por su propio campo: el hallazgo de distancia es null
+        // ahí, así que no puede viajar dentro. Ver el jsdoc de `FullAnalysisResult`.
+        mixComprar={results?.mixComprar ?? null}
         currency={currency}
         valorUF={valorUF}
         precioUF={Number(inputData?.precio ?? 0)}

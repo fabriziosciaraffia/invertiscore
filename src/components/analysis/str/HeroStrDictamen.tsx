@@ -166,6 +166,9 @@ export function HeroStrDictamen({
         veredicto={veredicto as Veredicto}
         distancia={distancia ?? null}
         filasComprar={bloqueDeterminista?.filas ?? null}
+        // La grilla de COMPRAR sale de la simulación, como las otras dos matrices de STR, y
+        // no del hallazgo de distancia, que es null en COMPRAR. Ver `simular-str.ts`.
+        mixComprar={simulacion?.mixComprar ?? null}
         currency={currency}
         valorUF={valorUF}
         precioUF={Number(simulacion?.fronteraPrecio?.precioUFActual ?? 0)}
