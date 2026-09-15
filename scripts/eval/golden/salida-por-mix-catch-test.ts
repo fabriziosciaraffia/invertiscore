@@ -38,6 +38,7 @@
 // ============================================================================
 import {
   salidaPorMix,
+  caminosQueAbren,
   lineaMiniSalida,
   pieDocumentoSalida,
   SUBTITULO_PLAN_SALIDA,
@@ -48,6 +49,14 @@ import { buildHallazgoDistanciaVeredicto } from "../../../src/lib/distancia-vere
 import type { HallazgoDistanciaVeredicto, Veredicto } from "../../../src/lib/types";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
+const soloCodigo = (src: string) =>
+  src
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .split(/\r?\n/)
+    .filter((l) => !/^\s*\/\//.test(l))
+    .join("\n")
+    .replace(/import[\s\S]*?from\s+"[^"]+";/g, " ");
 
 const fallas: string[] = [];
 const F = (m: string) => fallas.push(m);
@@ -191,13 +200,6 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
   //   `CLAUDE.md`: borrar el uso y dejar el import dejaba el guard VERDE. Ahora el cuerpo se
   //   mira sin comentarios y sin imports, y cada entrada pide el SÍMBOLO que esa superficie
   //   tiene que llamar, no el nombre del módulo.
-  const soloCodigo = (src: string) =>
-    src
-      .replace(/\/\*[\s\S]*?\*\//g, " ")
-      .split(/\r?\n/)
-      .filter((l) => !/^\s*\/\//.test(l))
-      .join("\n")
-      .replace(/import[\s\S]*?from\s+"[^"]+";/g, " ");
   const CABLEADOS: [string, string, RegExp][] = [
     ["D · línea de comparativa", "src/lib/distancia-copy.ts", /salidaPorMix\s*\(/],
     ["E · capítulo de negociación", "src/components/ui/AnalysisDrawer.tsx", /SUBTITULO_PLAN_SALIDA/],
@@ -223,6 +225,76 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
   // `lineaFooterVias` es una plantilla de conteo y no debe saber de hallazgos.
   const b = readFileSync(join(__dirname, "..", "..", "..", "src/lib/palancas-en-palabras.ts"), "utf8");
   if (!/haySalidaCombinando/.test(b)) F("7 · B · `lineaFooterVias` no recibe si hay salida combinando");
+}
+
+// ── 8 · EL ARMADO DEL BLOQUE: «no hay salida» SI Y SOLO SI ninguna respuesta cabe ──
+//
+// LA REGLA DE PRODUCTO QUE VIGILA (17-sep-2026): Franco puede cerrar la puerta, pero **solo
+// cuando ninguna respuesta abre**. De `caminosQueAbren` —y no de `hayMixACOMPRAR`, que
+// contesta por una sola celda— cuelga si la prosa tiene permiso para cerrar.
+//
+// Esto NO mide castellano: mide el número del que cuelga la doctrina. La familia de fórmulas
+// que caza la clausura EN la prosa es otro trabajo y necesita corpus v25 para escribirse.
+{
+  // (a) las dos direcciones del «si y solo si», sobre la función pura
+  const sin = caminosQueAbren(sinSalida.valor, { equilibrada: salidaPorMix(sinSalida.valor) });
+  if (sin.total !== 0) F(`8 · sin salida y sin vía que cruce, «caminosQueAbren» tiene que ser 0 y da ${sin.total}`);
+  const norm = caminosQueAbren(normal.valor, { equilibrada: salidaPorMix(normal.valor) });
+  if (norm.total < 1) F("8 · una fila donde el precio cruza SOLO tiene al menos un camino");
+  if (norm.viasSolas < 1) F("8 · la vía que cruza sola tiene que contarse en `viasSolas`");
+  const con = caminosQueAbren(conSalida.valor, { equilibrada: salidaPorMix(conSalida.valor) });
+  if (con.total < 1) F("8 · estructural con salida: la grilla abre, así que no puede dar 0");
+  if (con.viasSolas !== 0) F("8 · estructural = nada cruza solo; `viasSolas` tiene que ser 0");
+
+  // (b) EL TOPE ES EL DE CADA RESPUESTA, NO EL DE LA RAÍZ. Es la mutación más probable:
+  //     leer `dentroDelAlcance` (la equilibrada, 15 puntos) en vez de `dentroDeSuTope` (25
+  //     para la de flujo). Acá la raíz dice que SÍ y ninguna respuesta cabe: si el conteo
+  //     mira la raíz, da 1 donde tiene que dar 0.
+  type Valor = HallazgoDistanciaVeredicto["valor"];
+  const celda = (extra: Record<string, unknown>) => ({
+    criterio: "score", fusionadaCon: [], piePct: 30, plazoAnios: 30, descuentoPct: 10,
+    sinDescuento: false, piePctDelta: 10, plazoAniosDelta: 5, costoDiaUnoUF: 200,
+    costoPtsPrecio: 20, topePtsPrecio: 15, score: 60, metricas: null, ...extra,
+  });
+  const base = JSON.parse(JSON.stringify(sinSalida.valor)) as Valor;
+  const conGrilla = (respuestas: unknown[], dentroDelAlcance: boolean) => ({
+    ...base,
+    mixPalancas: { ...(base.mixPalancas ?? {}), dentroDelAlcance, respuestas },
+  } as unknown as Valor);
+
+  const ningunaCabe = caminosQueAbren(conGrilla([celda({ dentroDeSuTope: false })], true));
+  if (ningunaCabe.total !== 0) {
+    F(`8 · el tope es el de CADA respuesta: con «dentroDeSuTope: false» y la raíz en «true», el conteo da ${ningunaCabe.total} en vez de 0`);
+  }
+  const unaCabe = caminosQueAbren(conGrilla([celda({ dentroDeSuTope: true })], false));
+  if (unaCabe.total !== 1) F(`8 · una respuesta que cabe en SU tope abre un camino, aunque la raíz diga que no: da ${unaCabe.total}`);
+
+  // (c) SE CUENTA POR COORDENADA, NO POR OBJETO — la misma tripleta con la que el motor
+  //     fusiona. Contar objetos daría 2 donde el lector ve UNA línea.
+  const dosObjetosUnaCelda = caminosQueAbren(conGrilla([
+    celda({ dentroDeSuTope: true }),
+    celda({ dentroDeSuTope: true, criterio: "tir" }),
+  ], false));
+  if (dosObjetosUnaCelda.total !== 1) {
+    F(`8 · dos criterios que coronan la MISMA celda son un camino, no dos: da ${dosObjetosUnaCelda.total}`);
+  }
+  const dosCeldas = caminosQueAbren(conGrilla([
+    celda({ dentroDeSuTope: true }),
+    celda({ dentroDeSuTope: true, criterio: "flujo", piePct: 25, topePtsPrecio: 25 }),
+  ], false));
+  if (dosCeldas.total !== 2) F(`8 · dos coordenadas distintas son dos caminos: da ${dosCeldas.total}`);
+
+  // (d) Y EL BLOQUE DEL PROMPT NO VUELVE A COLGAR DE `esEstructural`. El gate se abrió el
+  //     17-sep porque 307 de las 331 filas con menú NO son estructurales; reponerlo las deja
+  //     otra vez sin bloque, y eso no lo caza ninguna prueba sobre la función pura.
+  for (const ruta of ["src/lib/ai-generation.ts", "src/lib/ai-generation-str.ts"]) {
+    let src = "";
+    try { src = readFileSync(join(__dirname, "..", "..", "..", ruta), "utf8"); } catch { /* falta */ }
+    if (!src) { F(`8 · no se pudo leer ${ruta}`); continue; }
+    const codigo = soloCodigo(src);
+    if (!/caminosQueAbren\s*\(/.test(codigo)) F(`8 · ${ruta} no arma el bloque con «caminosQueAbren»`);
+    if (/esEstructural\)\s*return ""/.test(codigo)) F(`8 · ${ruta} volvió a cerrar el bloque detrás de «esEstructural»`);
+  }
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
