@@ -98,7 +98,16 @@ export interface BloqueLoQueHariaYo {
   descarte: string | null;
 }
 
-const QUIEN: Record<PalancaDistancia["palanca"], QuienLaPone> = {
+/**
+ * QUIÉN MUEVE CADA PALANCA. Es el hecho, y vive una sola vez (16-sep-2026).
+ *
+ * Hasta hoy el pop-up declaraba el suyo y decía «el plazo lo pone el banco», mientras acá
+ * —y en `distancia-veredicto-hallazgo.ts`, y en `mix-palancas.ts`, y en `types.ts`— el plazo
+ * es del comprador. Dos mapas del mismo hecho discrepando en dos superficies del mismo
+ * informe. El hecho se declara acá; la FRASE la escribe cada superficie, que es otra cosa:
+ * la card compara (`quien !== "tuyo"`) y el pop-up redacta («lo pone el vendedor»).
+ */
+export const QUIEN_LA_PONE: Record<PalancaDistancia["palanca"], QuienLaPone> = {
   precio: "vendedor",
   arriendo: "mercado",
   adr: "mercado",
@@ -304,7 +313,7 @@ export function construirLoQueHariaYo(p: {
 
   // ── LAS FILAS — solo las que cruzan, en el orden del motor ────────────────
   const filas: FilaLoQueHariaYo[] = cruzan.map((l) => {
-    const quien = QUIEN[l.palanca] ?? "tuyo";
+    const quien = QUIEN_LA_PONE[l.palanca] ?? "tuyo";
     const titulo = NOMBRE_SUBIR[l.palanca] ?? l.palanca;
     // El PIE va en puntos, no en cambio relativo (0% → 26% no tiene relativo), así que
     // su cifra es el recorrido y no lleva objetivo debajo. El plazo, ídem: son años.

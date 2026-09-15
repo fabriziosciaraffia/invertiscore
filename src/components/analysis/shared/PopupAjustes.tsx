@@ -22,7 +22,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState } from "react";
 import type { CeldaMix, CriterioRespuesta, MetricasCelda, RespuestaMix } from "@/lib/mix-palancas";
-import type { FilaLoQueHariaYo } from "@/lib/lo-que-haria-yo";
+import { QUIEN_LA_PONE, type FilaLoQueHariaYo, type QuienLaPone } from "@/lib/lo-que-haria-yo";
 import type { HallazgoDistanciaVeredicto, PalancaDistancia, Veredicto } from "@/lib/types";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { bandaEsfuerzoDescuento, ETIQUETA_BANDA_ESFUERZO } from "@/lib/distancia-veredicto-hallazgo";
@@ -46,14 +46,25 @@ const plata = (n: number, currency: Currency, valorUF: number) => {
 const plataFirmada = (n: number, currency: Currency, valorUF: number) =>
   `${n > 0 ? "+" : ""}${plata(n, currency, valorUF)}`;
 
-/** Quién mueve cada palanca. Es la columna «Si cambia» de la tabla. */
-const QUIEN: Record<PalancaDistancia["palanca"], string> = {
-  precio: "lo pone el vendedor",
-  arriendo: "lo pone el mercado",
-  adr: "lo pone el mercado",
-  plazo: "lo pone el banco",
-  pie: "lo pones tú",
-  gestion: "lo decides tú",
+/**
+ * LA FRASE del dueño, bajo el nombre de cada fila. El HECHO no se declara acá: lo trae
+ * `QUIEN_LA_PONE` del motor (16-sep-2026).
+ *
+ * Había dos mapas y discrepaban. El motor dice cuatro veces que precio, pie y plazo son lo
+ * que el comprador controla; este archivo le atribuía el plazo al banco, y era la única
+ * superficie del informe que lo hacía —la card, con el mismo dato, lo cuenta como tuyo y por
+ * eso no lo nombra entre las alternativas ajenas—. Un hecho, dos fuentes, dos respuestas a
+ * dos clics de distancia.
+ *
+ * Ahora la clave es el DUEÑO y no la palanca, así que no hay dónde volver a discrepar: lo
+ * que queda acá es redacción. «Lo decides tú» sirve para las tres tuyas —el pie se pone, el
+ * plazo se elige y la gestión se decide, pero «decidir» las cubre a las tres— y esa es la
+ * razón de que sean tres frases y no seis.
+ */
+const FRASE_DEL_DUENO: Record<QuienLaPone, string> = {
+  vendedor: "lo pone el vendedor",
+  mercado: "lo pone el mercado",
+  tuyo: "lo decides tú",
 };
 
 const NOMBRE: Record<PalancaDistancia["palanca"], string> = {
@@ -722,7 +733,7 @@ function SeccionRespuestas({
                   {sinCelda ? (
                     // NI COORDENADAS NI SCORE DE CELDA: lo único que se mueve es el precio, y
                     // quién lo mueve importa tanto como cuánto. El «lo pone el vendedor» es
-                    // literal de `QUIEN.precio`, la misma fuente que la tabla de abajo.
+                    // literal del dueño que declara el motor, la misma fuente que la tabla.
                     <>
                       <span className="nb">
                         {/* «−26,4% de precio» es literal de la card §5, que para estas mismas
@@ -731,7 +742,7 @@ function SeccionRespuestas({
                             descuento es el dato principal de la fila, no una coordenada. */}
                         <b>{r.sinDescuento ? "Sin pedir descuento" : `Negocias −${pct1(r.descuentoPct)} de precio`}</b> ·
                       </span>{" "}
-                      <span className="nb">{QUIEN.precio}</span>
+                      <span className="nb">{FRASE_DEL_DUENO[QUIEN_LA_PONE.precio]}</span>
                     </>
                   ) : (
                     <>
@@ -1023,7 +1034,7 @@ function SeccionSolas({
             <tr key={`${p.palanca}-${i}`}>
               <td>
                 {NOMBRE[p.palanca]}
-                <em>{QUIEN[p.palanca]}</em>
+                <em>{FRASE_DEL_DUENO[QUIEN_LA_PONE[p.palanca]]}</em>
               </td>
               <td className="num">
                 {cifra(p)}

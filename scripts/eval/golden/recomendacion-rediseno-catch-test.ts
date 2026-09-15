@@ -310,7 +310,17 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   // de ser chips para ser la tabla «No depende de ti», con su columna «Si cambia». El quién
   // sigue siendo obligatorio —es la razón de ser de esa sección— pero ahora vive en el
   // componente nuevo. Apuntar al viejo dejaría el invariante verde sobre código sin montar.
-  if (!/const QUIEN: Record<PalancaDistancia\["palanca"\], string>/.test(PAJ)) F("16 · el pop-up no declara quién mueve cada palanca");
+  // ⚠ ACTA (16-sep-2026) · HABÍA DOS MAPAS DE DUEÑO Y DISCREPABAN. El pop-up declaraba el
+  // suyo y le atribuía el plazo AL BANCO; el motor dice cuatro veces que precio, pie y plazo
+  // son lo que el comprador controla (`lo-que-haria-yo.ts:8`, `distancia-veredicto-hallazgo
+  // .ts:657`, `mix-palancas.ts:5`, `types.ts:1008`), y la card filtra por eso mismo. El
+  // pop-up era la única superficie que se lo daba al banco.
+  // Ahora el HECHO vive una vez, en el motor (`QUIEN_LA_PONE`), y el pop-up solo lo REDACTA:
+  // importa el dueño y escribe la frase. Si alguien vuelve a declarar el mapa en el render,
+  // vuelven las dos fuentes y la próxima divergencia es muda otra vez.
+  if (/const QUIEN: Record<PalancaDistancia\["palanca"\]/.test(PAJ)) F("16 · el pop-up volvió a declarar su propio mapa de dueños: ya hubo dos y discreparon en el plazo");
+  if (!/QUIEN_LA_PONE/.test(PAJ)) F("16 · el pop-up no lee `QUIEN_LA_PONE` del motor: el dueño de cada palanca sale de una sola fuente");
+  if (/lo pone el banco/.test(PAJ)) F("16 · el pop-up le sigue atribuyendo el plazo al banco: el motor dice que es tuyo");
   if (!/lo pone el vendedor/.test(PAJ) || !/lo pone el mercado/.test(PAJ)) F("16 · la tabla del pop-up no dice quién pone el precio ni quién el arriendo");
   if (!/Lo pone el mercado, no tú/.test(VOC) || !/Lo pone el vendedor, no tú/.test(VOC)) F("16 · el chip no usa la forma «Lo pone el mercado, no tú» / «Lo pone el vendedor, no tú»");
 }

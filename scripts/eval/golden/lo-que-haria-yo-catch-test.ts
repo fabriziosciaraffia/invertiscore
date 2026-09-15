@@ -51,7 +51,7 @@
 // Corre dentro del QUICK (tier "lo-que-haria-yo") y standalone:
 //   node --import tsx scripts/eval/golden/lo-que-haria-yo-catch-test.ts
 // ============================================================================
-import { lineaNoDependeDeTi, construirLoQueHariaYo } from "../../../src/lib/lo-que-haria-yo";
+import { lineaNoDependeDeTi, construirLoQueHariaYo, QUIEN_LA_PONE } from "../../../src/lib/lo-que-haria-yo";
 import { buildHallazgoDistanciaVeredicto } from "../../../src/lib/distancia-veredicto-hallazgo";
 import type { HallazgoDistanciaVeredicto, HallazgoSensibilidad, Veredicto } from "../../../src/lib/types";
 
@@ -184,6 +184,12 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   if (quien(/precio/i) !== "vendedor") F(`2 · el precio lo pone el vendedor, dio «${quien(/precio/i)}»`);
   if (quien(/arriendo/i) !== "mercado") F(`2 · el arriendo lo pone el mercado, dio «${quien(/arriendo/i)}»`);
   if (quien(/pie/i) !== "tuyo") F(`2 · el pie lo pones tú, dio «${quien(/pie/i)}»`);
+  // EL MAPA, no la muestra. El plazo y la gestión no cruzan en este fixture, así que por la
+  // fila no se pueden fijar; y el mapa dejó de ser interno el 16-sep-2026: lo importa el
+  // pop-up, que hasta entonces tenía el suyo diciendo «lo pone el banco». El hecho vive acá,
+  // así que acá se fija.
+  if (QUIEN_LA_PONE.plazo !== "tuyo") F(`2 · el plazo es tuyo —el bloque lo dice en palabras desde el 10-sep— y el mapa dio «${QUIEN_LA_PONE.plazo}»`);
+  if (QUIEN_LA_PONE.gestion !== "tuyo") F(`2 · la gestión es tuya y el mapa dio «${QUIEN_LA_PONE.gestion}»`);
   // §5 revisado: la card ya no dibuja el chip por fila; la oración «Alternativamente: +X%
   // de arriendo o −Y% de precio» necesita el nombre llano, y «Pero eso no depende de ti:
   // lo pone …» sale de una sola función.
