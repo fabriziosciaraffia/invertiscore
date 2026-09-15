@@ -47,12 +47,13 @@ const RAIZ = join(__dirname, "..", "..", "..");
  *    entrar lo llevaría de ~8,6 s a ~12,5 s. Es una decisión de presupuesto de corrida,
  *    no de calidad del guard, y está sin tomar a propósito.
  *
- *  · `jerarquia-catch-test.ts` — YA NO ESTÁ ROJO (17-sep-2026). Lo estaba por un bug vivo
- *    de producto: el arbitraje de precios detectaba la colisión y escribía en cinco campos
- *    muertos en v22. Ese writer se retiró con acta (precio-jerarquia.ts) y el archivo quedó
- *    verde. O sea que la razón por la que estaba afuera CADUCÓ: hoy solo lo frena el mismo
- *    presupuesto de corrida que a los cuatro de arriba, y la decisión de cablearlo está sin
- *    tomar. Mientras siga afuera se pudre igual que se pudrió antes.
+ *  · `jerarquia-catch-test.ts` — YA ENTRÓ (17-sep-2026), y la historia importa porque es el
+ *    caso que este tier existe para evitar. Estaba afuera por estar ROJO, y estaba rojo por
+ *    un bug vivo de producto: el arbitraje de precios detectaba la colisión y escribía en
+ *    cinco campos muertos en v22. Cuando ese writer se retiró con acta (precio-jerarquia.ts)
+ *    el archivo quedó verde y la razón de la exclusión caducó — pero el archivo se habría
+ *    quedado afuera igual, porque nadie relee una lista de exclusiones. Cuesta ~0,45 s y no
+ *    toca Supabase: corre sin `--env-file`.
  */
 const STANDALONE = [
   "ambitos-zona",
@@ -61,6 +62,7 @@ const STANDALONE = [
   "estructural-str",
   "fecha-santiago",
   "hero-claim-str",
+  "jerarquia",
   "marcas",
   "mediacion-cards",
   "modalidad-str",
