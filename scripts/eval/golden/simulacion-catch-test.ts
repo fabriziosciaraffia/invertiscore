@@ -1,12 +1,18 @@
 // ============================================================================
 // SIMULACIÓN — catch-test (determinístico, 0 tokens) · T1 del rediseño de la página
 // ============================================================================
-// Fixture obligatorio del tramo (contrato CONGELADO 02-sep-2026):
-//   (1) MATRIZ PIE × PLAZO: la celda `esActual` de `simularPieYPlazo` reproduce
-//       BIT-IDÉNTICO `metrics.flujoNetoMensual` y `exitScenario.tir` del análisis
-//       canónico, y (goal "cruza por veredicto", 06-sep-2026) su `veredicto` es el
-//       veredicto del informe. Si divergiera, la matriz describiría otro deal. La misma
-//       aserción corre sobre los seeds GS del golden (en memoria) y sobre 7710a017.
+// Fixture obligatorio del tramo (contrato CONGELADO 02-sep-2026; la parte (1) se enmendó
+// el 13-sep-2026 con 6ecd80c1 — las actas viven en el cuerpo, junto a cada aserción):
+//   (1) CELDA «HOY» DE LA GRILLA DEL MIX: el `veredictoSinDescuento` de la celda
+//       `esActual` —su estado a precio de hoy— es el veredicto del informe. Si divergiera,
+//       la grilla estaría describiendo otro deal. Sale del hallazgo `distancia_veredicto`
+//       (`mixPalancas` / `mixPalancasHastaComprar`); si la fila no trae grilla, o su plazo
+//       declarado no está en ella, cuenta como vacía y NO es falla.
+//       Hasta 6ecd80c1 el invariante se medía sobre `simularPieYPlazo` y comparaba además
+//       `metrics.flujoNetoMensual` y `exitScenario.tir` BIT-IDÉNTICOS: esa matriz se retiró
+//       y la sonda del mix devuelve veredicto y score, así que la comparación de esos dos
+//       campos —y la corrida gemela sobre los seeds GS en memoria— se fueron con ella. El
+//       veredicto, que es lo que decide, se conserva.
 //   (2) TABLA ANUAL: los desgloses nuevos de `YearProjection` cierran exacto —
 //       `arriendoAnual − gastosOperativosAnual === noiAnual` y
 //       `noiAnual − vacanciaRotacionAnual − dividendoAnual === flujoAnual` en cada
@@ -14,8 +20,9 @@
 //       (la suma de los años redondeados puede diferir hasta ±1 CLP por año).
 //
 // Corre sobre filas reales (las N más recientes con input_data) por la MISMA ruta
-// que el render: recomputeResultsForLegacy con UF y fecha congeladas. Incluye
-// SIEMPRE el caso del contrato (cb0e8f46) si sigue en la base.
+// que el render: recomputeResultsForLegacy con UF y fecha congeladas. Fuerza SIEMPRE dos
+// casos —el del contrato (cb0e8f46) y el canónico del rediseño (7710a017)—: si alguno no
+// aparece, la corrida termina en ROJO.
 //
 //   node --env-file=.env.local --import tsx scripts/eval/golden/simulacion-catch-test.ts [n]
 // ============================================================================
