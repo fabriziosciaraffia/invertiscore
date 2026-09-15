@@ -55,6 +55,7 @@ import { runMixPalancasTier } from "./mix-palancas-catch-test";
 import { runMixScoreTier } from "./mix-score-catch-test";
 import { runGrillaPopupTier } from "./grilla-popup-catch-test";
 import { runPopupAjustesTier } from "./popup-ajustes-catch-test";
+import { runStandaloneTier } from "./standalone-tier";
 import { runMixStrTier } from "./mix-str-catch-test";
 import { runLoQueHariaYoTier } from "./lo-que-haria-yo-catch-test";
 import { runSalidaPorMixTier } from "./salida-por-mix-catch-test";
@@ -302,6 +303,12 @@ async function printStrSemantic() {
   // standalone»— y el runner no lo importaba: veinte invariantes del pop-up vivían fuera del
   // gate, verdes solo si alguien los invocaba a mano. Un guard que no corre no es un guard.
   totalHard += runPopupAjustesTier().hard;
+  // ── Tier STANDALONE (17-sep-2026): los catch-tests que corrían SOLO a mano. Nueve de los
+  // 28 estaban en rojo cuando se los corrió, y `zona` llevaba 14 días protegiendo una regla
+  // derogada a propósito — o sea que su rojo ya no se podía leer. Entran los 12 que no tocan
+  // Supabase; los que recomputan el parque y el que tapa un bug vivo quedan fuera, con su
+  // lista y su razón en `standalone-tier.ts`.
+  totalHard += (await runStandaloneTier()).hard;
   // ── Tier MIX STR (11-sep-2026, 0 tokens, sin base): el builder STR emite el mismo mix
   // que LTR a través del adaptador UF→CLP / %→decimal; destino = escalón, tope 25/15,
   // redundancia con palanca sola y «sin salida» coherente. Corre siempre con el QUICK. ──
