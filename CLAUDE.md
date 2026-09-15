@@ -114,6 +114,14 @@ Antes del push final, en el worktree:
 2. Re-correr gates después del rebase: `node_modules/.bin/tsc --noEmit` + `node_modules/.bin/next lint` (nunca npx) + `npm run typecheck:scripts` si se tocó `scripts/` o un tipo del motor
 3. `git push --force-with-lease origin <rama>` (solo la rama, nunca master)
 
+**Y antes de cerrar, medir el índice de memoria.** Corta en **23,4 KiB**, un KiB antes del límite real (24,4), que a `276 caracteres por goal son casi cuatro goals de aviso:
+
+```bash
+node -e "const s=require('fs').readFileSync(process.argv[1],'utf8');const k=s.length/1024;console.log(k.toFixed(1)+' KiB '+(k>23.4?'⛔ DRENÁ ANTES DE CERRAR':'ok'))" "$HOME/.claude/projects/C--Users-fabri-invertiscore/memory/MEMORY.md"
+```
+
+El aviso que el sistema ya da llega **después** de escribir, y cuando dice «over the limit» ya hay algo invisible. Éste llega cuando todavía se puede drenar sin apuro, y es un paso del cierre — no un hook que reacciona.
+
 Si el rebase conflictúa: DETENTE y reporta. No resolver a ciegas sobre trabajo ajeno recién mergeado.
 
 Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual de dos pasos.
@@ -182,6 +190,10 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
 - **Facturación:** `OPENFACTURA_API_KEY`, `OPENFACTURA_ENV`, `OPENFACTURA_ENABLED` (ver `.env.example`). En prod la emisión está **apagada** por kill-switch hasta setear `OPENFACTURA_ENV=prod` + `OPENFACTURA_ENABLED=true` en Vercel.
 
 ## Workflow
+- **El índice de memoria lleva NOMBRES, no resúmenes.** Una entrada de `MEMORY.md` es un puntero: etiqueta de **60 caracteres o menos**, y el detalle en el archivo. Si la etiqueta necesita explicar, el que está mal es el archivo — arreglá el archivo. Medido el 17-sep-2026: **39% de las etiquetas pasaban de 60** y ese solo exceso era el **23% del índice**; ocho transcribían entera la `description` del archivo al que apuntaban. Y no es estética: lo que pasa del corte de lectura **se descarta en silencio**, sin avisar — el 14-sep el 21% del índice era invisible, y lo invisible eran las dos PRIORITARIAS que después fueron goals.
+- **Cerrar una cola es MOVERLA.** Si un goal cerró, caducó o refutó una entrada: actualizá la `description` del archivo —no solo el cuerpo— y mové su puntero a `CERRADOS.md` **en el mismo cambio**. Cerrar sin mover no es cerrar: deja el índice creciendo con cosas muertas y la `description` mintiendo, que es peor — la `description` es lo que el recall usa para decidir si una memoria es relevante.
+  **Excepción, explícita y no por inercia:** una entrada cerrada se queda en el índice **solo si lo que sobrevive es una LECCIÓN todavía aplicable**, y entonces la etiqueta nombra a la lección, no al goal. Primer uso: `cola-salidas-ia-huerfanas-salida-por-mix`, que cerró como cola y quedó como ««consumidores reales» se aplica al símbolo, no al archivo».
+  **Y no todo lo que dice «cerrada» lo está**: cerrado con merge pendiente NO es cerrado — es trabajo terminado esperando una acción, y se queda en el índice diciéndolo.
 - **Diagnóstico read-only primero**: auditá el estado actual (queries SELECT, leer archivos) antes de escribir cualquier código. Nunca escribas sin entender el estado.
 - **Un paso a la vez**: ejecutá, reportá el output, esperá antes de continuar. No encadenar acciones irreversibles.
 - **Validá empíricamente** (sandbox, mediciones reales) antes de optimizar. No confíes en supuestos ni en docs sin verificar.
