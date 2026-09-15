@@ -368,7 +368,7 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
   if (POPUP) {
     const tabla = POPUP.match(/paj-nod[^]*?<\/table>/)?.[0] ?? "";
     if (tabla && /bandaEsfuerzoDescuento/.test(tabla)) {
-      F("13 · la tabla «no depende de ti» lleva banda: es el precio como palanca sola y cae en otra banda en el 10,5% de las filas");
+      F("13 · la tabla «Un cambio a la vez» lleva banda: es el precio como palanca sola y cae en otra banda en el 10,5% de las filas");
     }
   }
   // LA CLASE SALE DE LA FUENTE, NUNCA DEL RENDER. Una de las dos superficies la pide al

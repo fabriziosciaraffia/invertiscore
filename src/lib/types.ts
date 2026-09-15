@@ -941,7 +941,9 @@ export interface PalancaDistancia {
    */
   /**
    * A qué veredicto llega esta palanca por sí sola, y con qué score. Los pide la tabla
-   * «No depende de ti» del pop-up de ajustes: «Precio · −24,1% · Comprar, score 74».
+   * «Un cambio a la vez» del pop-up de ajustes: «Precio · −24,1% · Comprar, score 74».
+   * (Se llamaba «No depende de ti» hasta el 16-sep-2026; el título organizaba por dueño y
+   * esta lista no está filtrada por dueño —trae el pie, el plazo y la gestión—.)
    *
    * El score se mide EN EL OBJETIVO QUE SE MUESTRA, no en el punto crudo de la bisección:
    * el número que se lee y el que se publica tienen que ser el mismo. Cuesta una sonda por

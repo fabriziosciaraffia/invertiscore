@@ -212,6 +212,12 @@ export function PopupAjustesTokens() {
          al que llegas. Iba en verde fijo —«bien» pase lo que pase—, que pintaba de bueno un
          62 igual que un 81. Va con el azul de Comprar, que es lo que ese número dice. */
       .paj-par .b1.destino{color:var(--doc-comprar)}
+      /* El prefijo «paj-nod» viene de «no depende», que era el título de una de las dos secciones que
+         usa estas reglas. Ese título ya no existe —ahora dice «Un cambio a la vez»— y el
+         prefijo se queda igual a propósito: esto es el ESTILO DE TABLA del pop-up y lo
+         comparte «Cuánto aguanta este veredicto», así que el nombre nunca describió una
+         sola sección. Renombrarlo toca 16 sitios entre este archivo, el componente y dos
+         guards, y eso es una barrida aparte. Nadie lo lee en pantalla. */
       .paj-nod table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
       .paj-nod th{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
         color:var(--doc-tx4);text-align:right;padding:0 0 8px}

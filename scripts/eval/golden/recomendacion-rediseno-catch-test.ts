@@ -307,7 +307,8 @@ for (const m of REC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   if (!/quien\?:/.test(VOC) || !/pal-quien/.test(VOC)) F("16 · la primitiva Palancas no dibuja quién pone la palanca (pal-quien)");
   if (!reglaDe(".pal-quien", ACO)) F("16 · falta el estilo .pal-quien del pop-up");
   // ⚠ ACTA (13-sep-2026) · el pop-up se reescribió (bloque B) y la lista de palancas dejó
-  // de ser chips para ser la tabla «No depende de ti», con su columna «Si cambia». El quién
+  // de ser chips para ser la tabla de palancas solas —«Un cambio a la vez» desde el
+  // 16-sep-2026; «No depende de ti» antes—, con su columna «Si cambia». El quién
   // sigue siendo obligatorio —es la razón de ser de esa sección— pero ahora vive en el
   // componente nuevo. Apuntar al viejo dejaría el invariante verde sobre código sin montar.
   // ⚠ ACTA (16-sep-2026) · HABÍA DOS MAPAS DE DUEÑO Y DISCREPABAN. El pop-up declaraba el

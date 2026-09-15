@@ -408,6 +408,19 @@ function SeccionMatriz({
     const cruza = cruzaSegun(c.veredicto, c, destino);
     return (
       <section className="paj-sec">
+        {/* ESTE TÍTULO NO SE MOVIÓ, A PROPÓSITO (16-sep-2026). La otra rama pasó a «Las
+            combinaciones que Franco probó»; acá el plural mentiría, porque hay UNA. La forma
+            que calzaría —«La única combinación»— es la misma frase que ya dice el pie de esta
+            rama, y las 13 filas de celda única viajan juntas en su propio goal (decisión
+            Fabrizio). Las dos ramas son excluyentes, así que estos dos títulos nunca se ven
+            juntos.
+            LO QUE SÍ CONVIVE, y hay que saberlo: en estas 13 filas la tabla de abajo ya dice
+            «Un cambio a la vez». O sea que el pop-up queda con un título de DUEÑO arriba y
+            uno de EJE abajo. No se contradicen —son dos cosas distintas, no dos respuestas a
+            la misma pregunta— pero la oposición limpia que había («depende de ti» / «no
+            depende de ti») se perdió, y este título sigue siendo el impreciso de los dos: su
+            celda también promete un descuento, que lo pone el vendedor. Eso se arregla con
+            las 13, no acá. */}
         <div className="paj-st">Ajustes que dependen de ti</div>
         <div className="paj-unica" onClick={() => onSel(sel ? null : c)} role="button" tabIndex={0}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSel(sel ? null : c); }}>
@@ -435,7 +448,27 @@ function SeccionMatriz({
 
   return (
     <section className="paj-sec">
-      <div className="paj-st">Ajustes que dependen de ti</div>
+      {/* EL TÍTULO DEJA DE ORGANIZAR POR DUEÑO (16-sep-2026).
+          Decía «Ajustes que dependen de ti» sobre una matriz cuyo tercer eje es el
+          DESCUENTO, que lo pone el vendedor. No era impreciso en una minoría de filas: el
+          descuento es lo que cada celda promete, así que el título se contradecía en las
+          405 filas LTR y las 59 STR que dibujan matriz —o sea en todas— y encima contra su
+          propia bajada, dos líneas más abajo: «El descuento que PIDES». El menú, veinte
+          píxeles después, lo repite: «Cambia qué le pides al vendedor».
+          (Medido con la entrada de cada página. En 366 de las 405 LTR y 38 de las 59 STR
+          TODAS las celdas piden descuento; en el resto alguna no llega a ningún precio y
+          no muestra número, que es lo único que impide decir «cada celda, siempre».
+          Ojo con el 607/89 que se cita más abajo: ese cuenta la TABLA de palancas solas,
+          que es otro conjunto. Los dos números vivían mezclados hasta que un barrido
+          adversario los separó.)
+          Lo que esta sección responde no es de quién depende sino QUÉ SE COMBINA: pie,
+          plazo y descuento a la vez, contra la tabla de abajo, que mueve uno solo. Las dos
+          palabras del título son las que el pop-up ya usa en pantalla para esto mismo —el
+          pie de la rama de celda única dice «la única COMBINACIÓN que Franco puede PROBAR»,
+          y el botón que abre todo esto se llama «Ver qué se probó»—, así que no entra
+          vocabulario nuevo. Diverge del contrato (popup-palancas-final.html:194 y
+          popup-menu-respuestas.html:246/:340), anotado ahí. */}
+      <div className="paj-st">Las combinaciones que Franco probó</div>
       {/* LA MATRIZ TIENE DOS LECTURAS Y LO DICE (14-sep-2026). Cada celda muestra lo que
           CONSEGUIRÍAS con ella, o sea su lectura en el descuento mínimo. La del aro no: esa
           muestra lo que TIENES, a precio de hoy. Sin esta línea las dos lecturas conviven
@@ -999,7 +1032,7 @@ function Par({ label, antes, despues, tono }: { label: string; antes: string; de
   );
 }
 
-// ── 4 · no depende de ti ────────────────────────────────────────────────────
+// ── 4 · un cambio a la vez ────────────────────────────────────────────────────
 function SeccionSolas({
   solas,
   currency,
@@ -1032,7 +1065,22 @@ function SeccionSolas({
   };
   return (
     <section className="paj-sec paj-nod">
-      <div className="paj-st">No depende de ti</div>
+      {/* EL TÍTULO DEJA DE ORGANIZAR POR DUEÑO (16-sep-2026).
+          «No depende de ti» era falso de la tabla entera en 43 de 607 pop-ups LTR (7,1%) y
+          11 de 89 STR (12,4%) —ahí TODAS las filas son del usuario— y de alguna fila en 265
+          LTR y 49 STR. El dueño ya lo dice cada fila en su `<em>`, así que la sección no
+          necesita decirlo, y cuando lo dice, miente.
+          Lo que esta tabla responde es OTRA pregunta que la matriz de arriba: qué pasa si se
+          mueve UNA sola cosa, sin combinarla con nada. Ese es el eje y ese es el título.
+          Sin la palabra «palanca», que es jerga prohibida en copy (`salida-por-mix-catch
+          -test.ts:83` y el tier de vocabulario STR) y que este pop-up no dice ni una vez en
+          pantalla. Y sin repetir «Si cambia», que es el encabezado de la primera columna dos
+          líneas más abajo.
+          Ojo: «no depende de ti» sigue vivo y bien usado en la card §5 (`lineaNoDependeDeTi`),
+          donde la lista SÍ está filtrada por dueño. Lo que estaba mal era pedirle la frase a
+          una tabla sin filtrar. Diverge del contrato (popup-palancas-final.html:263),
+          anotado ahí. */}
+      <div className="paj-st">Un cambio a la vez</div>
       <table>
         <tbody>
           <tr>

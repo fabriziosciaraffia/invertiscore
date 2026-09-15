@@ -35,8 +35,9 @@
 //      y score de la combinación elegida. Sin eso el pop-up tendría que recomputar en el
 //      cliente, que es exactamente lo que el informe no hace.
 //
-//   5. LAS PALANCAS SOLAS TRAEN SCORE Y DESTINO. La tabla «No depende de ti» dice
-//      «Llegas a Comprar · score NN» por palanca.
+//   5. LAS PALANCAS SOLAS TRAEN SCORE Y DESTINO. La tabla «Un cambio a la vez» dice
+//      «Llegas a Comprar · score NN» por palanca. (Se llamó «No depende de ti» hasta el
+//      16-sep-2026: el título organizaba por dueño sobre una lista sin filtrar por dueño.)
 //
 //   6. NO SE AGREGA UNA TERCERA PASADA. El módulo del mix no puede sondear más veces por
 //      celda que antes: una a descuento 0, la bisección, y una final en el mínimo.
@@ -263,7 +264,7 @@ const respuesta = (m: MixPalancas | null | undefined, criterio: CriterioRespuest
   const T = readFileSync(join(__dirname, "..", "..", "..", "src", "lib", "types.ts"), "utf8").replace(/\r\n/g, "\n");
   const i = T.indexOf("export interface PalancaDistancia");
   const bloque = i === -1 ? "" : T.slice(i, T.indexOf("\n}", i));
-  if (!/score\??:/.test(bloque)) F("5 · `PalancaDistancia` no lleva `score`: la tabla «No depende de ti» no puede decir el score del destino");
+  if (!/score\??:/.test(bloque)) F("5 · `PalancaDistancia` no lleva `score`: la tabla «Un cambio a la vez» no puede decir el score del destino");
   if (!/destino\??:/.test(bloque)) F("5 · `PalancaDistancia` no lleva `destino`: la tabla no puede decir a qué veredicto llegas");
 }
 

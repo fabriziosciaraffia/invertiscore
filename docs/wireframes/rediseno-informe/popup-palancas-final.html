@@ -319,6 +319,50 @@
   los calcula —el score sale de la misma pasada que el veredicto— pero hoy no los persiste por celda.
 </div>
 
+<div class="nota">
+  <b>⛔ LOS DOS TÍTULOS DE SECCIÓN CAMBIARON (16-sep-2026).</b> Se anota acá y no solo en el código,
+  porque si la divergencia vive únicamente en un comentario el contrato deja de ser fuente de verdad
+  sin que nadie lo note — la misma regla de <b>td.sel</b> y de las dos divergencias del menú.
+  <ul>
+    <li><b>«Ajustes que dependen de ti» → «Las combinaciones que Franco probó»</b> (línea 194).
+      El tercer eje de esa matriz es el <b>descuento</b>, y el descuento lo pone el vendedor. No
+      era impreciso en una minoría: el descuento es lo que cada celda promete, así que el título
+      se contradecía en las <b>405</b> filas LTR y las <b>59</b> STR que dibujan matriz —todas—
+      y encima contra
+      su propia bajada dos líneas abajo, «El descuento que <b>pides</b>», y contra el menú, que
+      dice «Cambia qué le pides al vendedor». Lo que la sección responde no es de quién depende
+      sino <b>qué se combina</b>: pie, plazo y descuento a la vez. Las dos palabras nuevas ya
+      viven en pantalla: el pie de la rama de celda única dice «la única <b>combinación</b> que
+      Franco puede <b>probar</b>» y el botón que abre el pop-up se llama «Ver qué se probó».<br>
+      <b>Cuidado con confundir los conjuntos:</b> 405 y 59 son las que dibujan MATRIZ; 607 y 89,
+      las que traen la tabla de palancas solas; 13 y 0, las de celda única. Son tres conjuntos
+      distintos y la primera versión de esta nota usó el de la tabla para hablar de la matriz.
+      En 366 de las 405 LTR y 38 de las 59 STR todas las celdas piden descuento; en el resto
+      alguna no llega a ningún precio y por eso no muestra número.</li>
+    <li><b>«No depende de ti» → «Un cambio a la vez»</b> (línea 263). Esa tabla dibuja
+      <code>palancas[]</code>, que NO está filtrada por dueño: incluye el pie, el plazo y la
+      gestión. Medido sobre el parque con la entrada de cada página: en <b>43 de 607</b> pop-ups
+      LTR (7,1%) y <b>11 de 89</b> STR (12,4%) <b>todas</b> las filas son del usuario, y alguna lo
+      es en 265 LTR y 49 STR. El dueño ya lo dice cada fila en su <code>&lt;em&gt;</code> —«lo pone
+      el vendedor», «lo pone el mercado», «lo decides tú»—, así que la sección no necesita
+      decirlo, y cuando lo dice, miente. La pregunta que esta tabla responde es otra que la de
+      arriba: qué pasa si se mueve UNA sola cosa, sin combinarla con nada.<br>
+      <b>La frase no muere</b>: sigue viva y bien usada en la card §5
+      (<code>lineaNoDependeDeTi</code>), donde la lista SÍ está filtrada por dueño. Lo que estaba
+      mal era pedírsela a una tabla sin filtrar.<br>
+      Y no dice «cada palanca por separado» porque <b>«palanca» es jerga prohibida en copy</b>
+      (<code>salida-por-mix-catch-test.ts:83</code> y el tier de vocabulario STR); este pop-up no
+      la dice ni una vez en pantalla y no va a empezar por un título.</li>
+  </ul>
+  <b>La rama de celda única conserva el título viejo</b> (13 filas LTR), por decisión: sobre UNA
+  celda el plural mentiría, y esas filas se tocan todas juntas en su propio goal. La matriz y la
+  celda única son excluyentes, así que esos dos títulos nunca se ven juntos. Lo que sí convive
+  —verificado en pantalla sobre <b>02a449c9</b>— es que en esas 13 filas el pop-up queda con un
+  título de <b>dueño</b> arriba y uno de <b>eje</b> abajo: «Ajustes que dependen de ti» y «Un
+  cambio a la vez». No se contradicen, pero la oposición limpia que había se perdió, y el de
+  arriba sigue siendo el impreciso: su celda también promete un descuento.
+</div>
+
 <script>
 function wire(id,attr){document.querySelectorAll('#'+id+' button').forEach(function(b){
   b.addEventListener('click',function(){
