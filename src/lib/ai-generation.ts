@@ -58,6 +58,8 @@ import { PATHS_SIN_RENDER_LTR } from "@/lib/analysis";
 import { PESOS_SCORE_LTR } from "@/lib/score-retorno";
 import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
 import { salidaPorMix, caminosQueAbren, movimientoDeRespuesta, RECOMENDADA } from "@/lib/salida-por-mix";
+import { retryQuirurgico, agruparPorCampo } from "@/lib/retry-quirurgico";
+import { escribirCampo, leerCampo } from "@/lib/str-guards";
 import { derivarCifraClaveLtr, captionDeCifraClave } from "@/lib/cifra-clave";
 import { validarTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
 import { reescribirTitular } from "@/lib/titular-retry";
@@ -3112,12 +3114,18 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           const correctivoM = `
 
 ⚠️ CORRECCIÓN DE SALIDA (§1.12.3): la versión anterior cierra la puerta en ${mixViol.join(", ")}, pero el bloque SALIDA COMBINADA del caso dice \`hayMixACOMPRAR: sí\` — el motor SÍ encontró cómo llegar a Comprar, y el informe la muestra al lado de tu texto. Nómbrala con las palabras del bloque: qué hay que mover y cuánto cuesta el día uno. Si \`descuentoQueAdemásPide\` es «ninguno», la salida no pasa por el vendedor; si trae un porcentaje, además hay que pedir ESE descuento — y NO lo llames «chico»: lo que sí puedes decir es que es MENOR que el que haría falta bajando solo el precio. Reescribe el JSON COMPLETO respetando la doctrina §1-§17.`;
-          const regenM = await anthropic.messages.create({
+          // INSTRUMENTADO el 17-sep-2026. Estas tres regeneraciones completas llamaban a la
+          // API sin `reg.medir`, así que sus tokens entraban al acumulado de la fila pero su
+          // costo por llamada era INVISIBLE en `pipeline_timing` — y son las más caras del
+          // pipeline: ~US$0,068 cada una contra US$0,004-0,012 de un quirúrgico. Se vio al
+          // medir qué correctivo ponía el guard de la puerta: los roles que SÍ estaban
+          // instrumentados dieron la tabla de costos, y estos tres no aparecían en ella.
+          const regenM = await reg.medir("catch-mix", CLAUDE_MODEL, () => anthropic.messages.create({
             model: CLAUDE_MODEL,
             max_tokens: 8000,
             messages: [{ role: "user", content: userPrompt + correctivoM }],
             system: SYSTEM_LTR_CACHED,
-          });
+          }));
           acumularUsage(usage, regenM);
           const regenTextM = regenM.content[0].type === "text" ? regenM.content[0].text : "";
           const regenResultM = parseAndNormalize(regenTextM);
@@ -3149,12 +3157,18 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           const correctivoC = `
 
 ⚠️ CORRECCIÓN DE COMUNAS (§3, Ángulo 2): la versión anterior nombró comunas que NO están en \`comunasAlternativas\` del caso: ${comunasViol.join(", ")}. Las comunas alternativas SOLO salen de esa variable — el motor las calculó corriendo este mismo departamento en cada una con el pie, la tasa y el plazo de este comprador, y el informe ya las muestra. Si la variable viene vacía, no nombres ninguna: habla del precio de ESTE departamento. Reescribe el JSON COMPLETO respetando la doctrina §1-§17.`;
-          const regenC = await anthropic.messages.create({
+          // INSTRUMENTADO el 17-sep-2026. Estas tres regeneraciones completas llamaban a la
+          // API sin `reg.medir`, así que sus tokens entraban al acumulado de la fila pero su
+          // costo por llamada era INVISIBLE en `pipeline_timing` — y son las más caras del
+          // pipeline: ~US$0,068 cada una contra US$0,004-0,012 de un quirúrgico. Se vio al
+          // medir qué correctivo ponía el guard de la puerta: los roles que SÍ estaban
+          // instrumentados dieron la tabla de costos, y estos tres no aparecían en ella.
+          const regenC = await reg.medir("catch-comuna", CLAUDE_MODEL, () => anthropic.messages.create({
             model: CLAUDE_MODEL,
             max_tokens: 8000,
             messages: [{ role: "user", content: userPrompt + correctivoC }],
             system: SYSTEM_LTR_CACHED,
-          });
+          }));
           acumularUsage(usage, regenC);
           const regenTextC = regenC.content[0].type === "text" ? regenC.content[0].text : "";
           const regenResultC = parseAndNormalize(regenTextC);
@@ -3186,12 +3200,18 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           const correctivoP = `
 
 ⚠️ CORRECCIÓN DE PUNTAJES: la versión anterior cita puntajes o pesos que NO vienen del desglose: ${puntViol.join(", ")}. Los sub-scores, el score total y los pesos son EXACTAMENTE los de la línea «subscores» de INDICADORES CALCULADOS; no calcules, no redondees, no inventes ninguno. Reescribe el JSON completo citándolos tal cual o sin citarlos.`;
-          const regenP = await anthropic.messages.create({
+          // INSTRUMENTADO el 17-sep-2026. Estas tres regeneraciones completas llamaban a la
+          // API sin `reg.medir`, así que sus tokens entraban al acumulado de la fila pero su
+          // costo por llamada era INVISIBLE en `pipeline_timing` — y son las más caras del
+          // pipeline: ~US$0,068 cada una contra US$0,004-0,012 de un quirúrgico. Se vio al
+          // medir qué correctivo ponía el guard de la puerta: los roles que SÍ estaban
+          // instrumentados dieron la tabla de costos, y estos tres no aparecían en ella.
+          const regenP = await reg.medir("catch-puntaje", CLAUDE_MODEL, () => anthropic.messages.create({
             model: CLAUDE_MODEL,
             max_tokens: 8000,
             messages: [{ role: "user", content: userPrompt + correctivoP }],
             system: SYSTEM_LTR_CACHED,
-          });
+          }));
           acumularUsage(usage, regenP);
           const regenTextP = regenP.content[0].type === "text" ? regenP.content[0].text : "";
           const regenResultP = parseAndNormalize(regenTextP);
@@ -3262,8 +3282,69 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       try {
         const puertaViol = cierraSobreElVendedor(userPrompt, aiResult);
         if (puertaViol.length) {
-          console.warn(`[LTR-PUERTA] ${analysisId}: ${puertaViol.length} campo(s) cierran sobre el vendedor habiendo otro camino — ${puertaViol.join(" | ")}`);
-          aiResult._cierraSobreElVendedor = puertaViol;
+          // ── 1 · EL QUIRÚRGICO, por el módulo compartido y con `reg.medir` adentro ──
+          // Medido antes de elegirlo: el completo cuesta US$0,068 por caso contra US$0,004
+          // a 0,012 el quirúrgico, y el defecto vive SIEMPRE en el mismo campo — 30 de 30
+          // marcas del corpus v25 caen en `conviene.cajaAccionable`. Reescribir el JSON
+          // entero para arreglar un campo arriesga los que estaban bien, y a 29% de disparo
+          // lo haría en una de cada tres generaciones.
+          const campos = Array.from(agruparPorCampo(puertaViol).entries())
+            .map(([path, viol]) => ({ path, actual: leerCampo(aiResult, path) ?? "", viol }))
+            .filter((c) => c.actual);
+          const res = await retryQuirurgico<typeof aiResult>({
+            anthropic, model: CLAUDE_MODEL, system: SYSTEM_LTR_CACHED, reg, usage,
+            guard: "puerta", etiqueta: `[LTR-PUERTA] ${analysisId}:`,
+            // ⛔ EL BLOQUE VA EN EL ENCABEZADO, y no es opcional. El prompt quirúrgico por
+            // default solo muestra el TEXTO DEL CAMPO, así que el modelo no tiene
+            // `costoDiaUno` ni el movimiento y termina reusando la cifra que tiene a mano.
+            // Medido sobre cinco filas reales: sin el bloque limpió las cinco pero usó el
+            // aporte MENSUAL como costo del día uno en una y el PRECIO en otra; con el
+            // bloque, cuatro de cinco quedaron con las cifras del motor. Las cifras existían
+            // — lo que faltaba era dárselas.
+            encabezado: `Estás corrigiendo SOLO el cierre de ${campos.length} campo(s) de un informe YA generado y validado. El resto de la prosa no se toca y no lo ves.
+
+${salidaMixBloque.trim()}`,
+            base: aiResult, campos,
+            problema: (v) => `cierra el caso sobre el vendedor cuando hay otro camino que NO pasa por él: ${v.map((x) => x.slice(x.indexOf("=") + 1)).join(", ")}`,
+            instruccion:
+              "reescribe el campo conservando su contenido, su orden y su largo, cambiando SOLO el cierre. "
+              + "El caso NO se cierra sobre el vendedor: si no cede, queda el otro camino, y ese camino va EN LA MISMA ORACIÓN que hoy cierra. "
+              + "Forma canónica: «si el vendedor no cede a UF X, queda mover el pie a Y% — son UF Z tuyas el día uno». "
+              + "Usa SOLO cifras que ya aparecen en el texto o en el bloque SALIDA COMBINADA; ninguna cifra nueva.",
+            evaluar: (ai) => cierraSobreElVendedor(userPrompt, ai).length,
+            noEmpeora: (base, cand) => !empeoraCifras(userPrompt, base, cand, { ufClp: UF_CLP }),
+            escribir: escribirCampo,
+            log: (msg) => console.warn(msg),
+          });
+          if (res.aceptado) aiResult = res.ai;
+
+          // ── 2 · SI NO LIMPIÓ, NO SE PUBLICA ──────────────────────────────────
+          // El escalón que a CATCH-MIX le falta: hoy, cuando su reintento no mejora,
+          // publica igual y deja una marca que no lee nadie. Acá la prosa falsa NO sale.
+          //
+          // SUPRIMIR ES BARATO Y TIENE RED: el render ya acepta `cajaAccionable={null}`
+          // (`HeroLTR.tsx`) y la sección se sostiene con `LoQueHariaYoBloque`, el bloque
+          // determinista que enumera los caminos con sus cifras. Medido sobre las 15 filas
+          // que el guard marca: **las 15 tienen ese bloque**, así que ninguna se queda sin
+          // «¿y ahora qué?». Es el mismo molde de cuatro escalones que ya tiene el titular:
+          // ia → reescrito → escalón → motor.
+          const quedan = cierraSobreElVendedor(userPrompt, aiResult);
+          if (quedan.length) {
+            const descartadas: Record<string, string> = {};
+            for (const path of Array.from(new Set(quedan.map((x) => x.slice(0, x.indexOf("=")))))) {
+              const txt = leerCampo(aiResult, path);
+              if (typeof txt === "string" && txt) {
+                // EL TEXTO DESCARTADO SE GUARDA, no se borra: sin la evidencia nadie puede
+                // leer después qué escribió el modelo ni por qué no salió. Mismo criterio
+                // que `pipeline_timing.titular`, que conserva el `original`.
+                descartadas[path] = txt;
+                escribirCampo(aiResult, path, "");
+              }
+            }
+            aiResult._cierraSobreElVendedor = quedan;
+            aiResult._cajaDescartada = descartadas;
+            console.warn(`[LTR-PUERTA] ${analysisId}: el quirúrgico no limpió — NO SE PUBLICA la caja (${Object.keys(descartadas).join(", ")}); queda el bloque determinista`);
+          }
         }
       } catch (e) {
         console.warn(`[LTR-PUERTA] ${analysisId}: falló (best-effort): ${(e as Error)?.message ?? e}`);

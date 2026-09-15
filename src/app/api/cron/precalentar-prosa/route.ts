@@ -46,10 +46,16 @@ const RUTA = "GET /api/cron/precalentar-prosa";
  * generación. Ritmo resultante ~12/hora: drenar un parque recién bumpeado toma
  * cerca de un día.
  *
- * COSTO, para dimensionarlo: ~US$0,23 por generación a la tarifa de Sonnet con
- * la mediana de tokens del parque. Drenar las ~318 stale de una ventana de 14
- * días cuesta del orden de US$75, UNA VEZ POR BUMP — no es gasto recurrente,
- * porque los análisis nuevos nacen ya en la versión vigente.
+ * COSTO, para dimensionarlo: **~US$0,076 por generación**, medido el 17-sep-2026 sobre
+ * las 1.387 generaciones LTR instrumentadas en `pipeline_timing` (in p50 7.361 · out
+ * p50 3.612, tarifa Sonnet 4.6). Drenar ~318 filas stale cuesta del orden de **US$24**,
+ * UNA VEZ POR BUMP — no es gasto recurrente, porque los análisis nuevos nacen en la
+ * versión vigente.
+ *
+ * ⚠ ACÁ DECÍA ~US$0,23 y US$75, o sea 3× de más. No cambió ninguna decisión —la corrida
+ *   de las 63 se aprobó con US$14,49 estimados y costó menos— pero el número se usó para
+ *   dimensionarla y estaba escrito como si fuera medido. Cuando una cifra de costo entra
+ *   a un acta, entra con su fuente: ésta sale de `generaciones[].llamadas[].tokens`.
  *
  * IDEMPOTENTE por construcción: solo toca filas cuya `promptVersion` no es la
  * vigente, así que una corrida sobre un parque fresco no genera nada.
