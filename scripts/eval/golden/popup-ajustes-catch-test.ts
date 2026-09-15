@@ -64,6 +64,42 @@ const F = (m: string) => fallas.push(m);
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n"); } catch { return ""; } };
 
+/**
+ * EL CUERPO DE UNA FUNCIÓN DE NIVEL SUPERIOR, SIN SU FIRMA, hasta el `}` solo en la columna 0.
+ *
+ * Las DOS mitades de la trampa que cazó al invariante 18, que arregla las dos:
+ *  · EL FINAL busca `\n}\n` y no `\n}`. `PanelCelda` declara su tipo de props inline y sus dos
+ *    cierres —`}: {` y `}) {`— empiezan en la columna 0: con el patrón corto la captura moría
+ *    en la firma y el resto del cuerpo quedaba sin medir.
+ *  · Y EL PRINCIPIO descarta la lista de props, que contiene los tokens `esComprar`, `destino`
+ *    y `sel`. Hoy ningún predicado de 22-25 se satisfaría con ellos, pero el invariante 18 dio
+ *    verde sobre código revertido exactamente así, y una captura que incluye su firma es una
+ *    trampa esperando a que alguien escriba el predicado equivocado.
+ */
+function cuerpoDe(src: string, firma: string): string {
+  const i = src.indexOf(firma);
+  if (i < 0) return "";
+  const j = src.indexOf("\n}\n", i);
+  const todo = j < 0 ? src.slice(i) : src.slice(i, j + 2);
+  // De `) {` de la firma en adelante: el último `) {` antes del primer salto con contenido.
+  const k = todo.indexOf("}) {");
+  return k < 0 ? todo.slice(todo.indexOf("{")) : todo.slice(k + 4);
+}
+
+/**
+ * EL CÓDIGO SIN SUS COMENTARIOS. Cuarta vez en este arco que hace falta: las actas de este
+ * repo citan textualmente el literal que el guard busca —los invariantes de abajo exigen
+ * «Pides de descuento» y «Pie extra el día uno», que el acta del panel nombra para explicar
+ * por qué se fueron— así que sin esto la prosa satisface al predicado y borrar el render
+ * entero deja el tier VERDE.
+ */
+function sinComentarios(src: string): string {
+  return src
+    .replace(/\{\/\*[^]*?\*\/\}/g, "")
+    .replace(/\/\*[^]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+}
+
 
 const POPUP = leer("src/components/analysis/shared/PopupAjustes.tsx");
 const HERO_LTR = leer("src/components/analysis/HeroLTR.tsx");
@@ -843,6 +879,173 @@ const POSICION = leer("src/components/analysis/shared/PosicionFranco.tsx");
     }
   }
 }
+// ── 22 · EL PANEL NO PREGUNTA POR EL DESCUENTO EN COMPRAR (17-sep-2026) ───
+//
+// En modo «mejorar» el eje del precio no existe: `explorarCelda` devuelve `{pct: 0}` para
+// TODAS las celdas (mix-palancas.ts:613). La primera fila del panel escribía entonces
+// «Pides de descuento: nada» en las 2.220 celdas no-aro de COMPRAR — el 100%, medido — y
+// ocupaba la mitad del panel justo donde las 295 que caen no tenían dónde decirlo.
+//
+// ⚠ TODO ESTE BLOQUE MIDE EL CÓDIGO SIN COMENTARIOS: el acta del panel cita los mismos
+//   literales que acá se exigen y se prohíben, así que sobre el texto crudo estos
+//   predicados se cumplirían con la prosa. Verificado por mutación.
+const PANEL = sinComentarios(cuerpoDe(POPUP, "function PanelCelda"));
+const RAMA_SIN_COMPRAR = PANEL.match(/\{!esComprar && \([^]*?\n\s{4,}\)\}/)?.[0] ?? "";
+// ⛔ UN CERO DE MEDICIÓN QUE NO DISTINGUE «NO CORRIÓ». Si `PanelCelda` se renombra —un
+//   refactor legítimo— `cuerpoDe` devuelve "" y los invariantes 23, 24 y la primera mitad del
+//   25 se callan enteros: todos cuelgan de `if (PANEL)`. Hoy el 22 grita, pero eso es suerte,
+//   no diseño. La ausencia se declara UNA vez, acá, y por eso los demás pueden seguir
+//   colgando de la presencia sin mentir. (CLAUDE.md § Testing.)
+if (!PANEL) F("22-25 · no se encontró el cuerpo de `PanelCelda`: los cuatro invariantes del panel NO CORRIERON");
+{
+  if (PANEL && !RAMA_SIN_COMPRAR) F("22 · la primera fila del panel ya no cuelga de `!esComprar`");
+  else {
+    // (a) el rótulo del descuento vive ADENTRO de esa rama…
+    if (!/Pides de descuento/.test(RAMA_SIN_COMPRAR)) {
+      F("22 · «Pides de descuento» salió de la rama `!esComprar`: en COMPRAR vuelve a preguntar por un descuento que ese modo no tiene");
+    }
+    // (b) …y en ningún otro lado. Sin esta mitad, mover la fila fuera de la condición y
+    //     dejar la rama vacía pasaba: (a) solo prohíbe que el rótulo NO esté adentro.
+    if (/Pides de descuento|Pidiendo descuento llegas a/.test(PANEL.replace(RAMA_SIN_COMPRAR, ""))) {
+      F("22 · el rótulo del descuento aparece fuera de la rama `!esComprar`");
+    }
+  }
+}
+
+// ── 23 · LA CELDA QUE CAE LO DICE (17-sep-2026) ───────────────────────────
+//
+// 295 celdas en 71 de las 218 filas COMPRAR tienen una palabra que no es COMPRAR, y el
+// panel las despachaba con «nada». El cuadrito ya escribe la palabra y el score; lo que
+// faltaba es la consecuencia de tomarla.
+{
+  if (PANEL) {
+    // (a) el predicado compara la palabra MOSTRADA contra el destino — no `sel.veredicto`
+    //     crudo, que es lo que las dos frases del aro usan a propósito.
+    // Se mide la EXPRESIÓN, no el nombre: `const cae = …` era una grafía renombrable.
+    if (!/=\s*esComprar && caeDelDestino\(sel, destino\)/.test(PANEL)) {
+      F("23 · el predicado de la celda caída dejó de ser `esComprar && caeDelDestino(sel, destino)`");
+    }
+    // Y `caeDelDestino` es UNA sola definición para las dos superficies que predican el mismo
+    // hecho. Antes la leyenda hacía `!!vd && vd !== destino` y el panel omitía el `!!`: con el
+    // veredicto ausente el panel afirmaba «Te saca de Comprar» sobre una celda que la leyenda
+    // no contaba. Lo encontró la revisión adversaria del diff.
+    if (!/function caeDelDestino\(c: CeldaMix, destino: Veredicto\)[^]*?return !!vd && vd !== destino;/.test(sinComentarios(POPUP))) {
+      F("23 · `caeDelDestino` dejó de guardar el nulo: `undefined !== \"COMPRAR\"` es true y el panel afirmaría la caída de una celda sin veredicto");
+    }
+    const usosCae = (sinComentarios(POPUP).match(/caeDelDestino\(/g) ?? []).length;
+    if (usosCae < 3) F(`23 · \`caeDelDestino\` se usa ${usosCae} veces: la leyenda y el panel tienen que predicar el MISMO hecho con la misma función`);
+    // La indentación se mide laxa (`\s{4,}`) a propósito: fijar ocho espacios convierte
+    // cualquier envoltorio nuevo alrededor de la rejilla en un rojo por la razón equivocada.
+    const linea = PANEL.match(/\{cae && \([^]*?\n\s{4,}\)\}/)?.[0] ?? "";
+    if (!linea) F("23 · no hay línea colgada de `cae`: la celda que te saca del veredicto no lo dice");
+    else {
+      // El destino sale del módulo, no de un literal: con «Te saca de Comprar» escrito a
+      // mano, renombrar la etiqueta del veredicto dejaba la frase vieja en pantalla.
+      if (!/Te saca de \{etiquetaVeredicto\(destino/.test(linea)) {
+        F("23 · la línea de la celda caída no nombra el destino desde `etiquetaVeredicto`");
+      }
+      if (!/className="v mal"/.test(linea)) {
+        F("23 · la línea de la celda caída perdió el rojo: es el costo de la celda, como el pie que encarece");
+      }
+      // Y SU RÓTULO. La rejilla es de pares: sin él queda un valor huérfano en la columna
+      // derecha y nada que lo nombre en la izquierda.
+      if (!/className="l">Si la tomas</.test(linea)) {
+        F("23 · la línea de la celda caída perdió su rótulo «Si la tomas»: la rejilla queda con un valor sin etiqueta");
+      }
+    }
+  }
+}
+
+// ── 24 · EL RÓTULO DEL PIE LLEVA LA DIRECCIÓN, Y EL NÚMERO NO LA REPITE ───
+//
+// Era un rótulo solo, «Pie extra el día uno», con el número firmado. En las 1.318 celdas
+// que LIBERAN capital eso imprimía «Pie extra el día uno: −$13.944.700»: «extra» y «menos»
+// en la misma línea. Y el cero imprimía «—», que no es una respuesta — son 787 celdas, de
+// las cuales 361 de COMPRAR se quedarían sin ninguna fila.
+{
+  // ⛔ NO ALCANZA CON QUE LAS TRES FORMAS EXISTAN, y las dos primeras versiones de este
+  //   invariante lo hacían así. Cuatro `includes` son PRESENCIA: dejar un rótulo fijo y las
+  //   otras grafías en un `<span hidden>` muerto los satisface a los cuatro. Y pedir
+  //   `plata(Math.abs(…))` en cualquier parte del panel tampoco ata nada: invirtiendo el
+  //   ternario del VALOR —`: sel.costoDiaUnoUF < 0`— y dejando el del rótulo intacto, sale
+  //   «Pie que liberas el día uno: −$13.944.700», que es el bug entero, con el tier VERDE.
+  //   Las dos las encontró la revisión adversaria del diff.
+  //   Por eso acá se capturan los DOS ternarios completos y se exige que cada rama vaya con
+  //   su forma: es la relación, no la presencia.
+  const ternarioRotulo = PANEL.match(/costoDiaUnoUF === 0\s*\n?\s*\? "Pie el día uno"\s*\n?\s*: sel\.costoDiaUnoUF > 0\s*\n?\s*\? "Pie extra el día uno"\s*\n?\s*: "Pie que liberas el día uno"/);
+  if (!ternarioRotulo) {
+    F("24 · el rótulo del pie dejó de salir del signo: las tres formas tienen que colgar de `costoDiaUnoUF`, en ese orden");
+  }
+  const ternarioValor = PANEL.match(/costoDiaUnoUF === 0\s*\n?\s*\? "no cambia"\s*\n?\s*: sel\.costoDiaUnoUF > 0\s*\n?\s*\? plataFirmada\([^)]*\)\s*\n?\s*: plata\(Math\.abs\(sel\.costoDiaUnoUF\)/);
+  if (!ternarioValor) {
+    F("24 · el valor del pie no acompaña al rótulo: el cero va «no cambia», el positivo firmado y el negativo por `Math.abs` — cualquier otra combinación pone las dos direcciones en la misma línea");
+  }
+  // Y EL COLOR SIGUE COLGANDO DEL SIGNO. El acta razona sobre él («el color estaba bien») y
+  // hasta la revisión no lo guardaba nadie: fijarlo en `"v mal"` pintaba de rojo las 1.318
+  // que liberan capital y las 787 que no cambian nada.
+  if (!/className=\{`v\$\{sel\.costoDiaUnoUF > 0 \? " mal" : ""\}`\}/.test(PANEL)) {
+    F("24 · el rojo de la fila del pie dejó de colgar del signo: pintaría de rojo a las celdas que liberan capital");
+  }
+}
+
+// ── 25 · LA NOTA DEL TOPE NO SALE DONDE EL TOPE NO APLICA (17-sep-2026) ───
+//
+// `alcanzable` se mide contra `MIX_COSTO_TOPE_PTS_PRECIO` (15) y nada más, y ese tope está
+// DESACTIVADO en modo «mejorar»: `mix-palancas.ts:771` elige entre `combos` entero. La nota
+// le decía «más pie del que Franco recomienda poner» a 96 celdas de COMPRAR cuya
+// recomendación nunca miró ese número. Fuera de COMPRAR sigue, en 135 de las 231.
+{
+  // La condición se mide por sus DOS extremos y no por su grafía exacta: exigir la cadena
+  // literal `!esComprar && sel.descuentoPct !== null && !sel.alcanzable` mata en rojo a
+  // cualquiera que meta una condición legítima en el medio. Lo que importa es que `!esComprar`
+  // gobierne la misma condición que termina en `!sel.alcanzable`.
+  const nota = PANEL.match(/\{!esComprar &&[^\n]*!sel\.alcanzable && \(/);
+  if (PANEL && !nota) {
+    F("25 · la nota «más pie del que Franco recomienda poner» dejó de colgar de `!esComprar`: vuelve a juzgar COMPRAR con un tope que ese modo apagó");
+  }
+  // Y LA CELDA DEL ARO NO ABRE PANEL EN COMPRAR: sus dos filas quedan sin contenido, y lo
+  // que diría ya está tres veces en pantalla (el aro, la palabra de la celda, la leyenda).
+  const POPUP_SC = sinComentarios(POPUP);
+  if (!/function abrePanel\(\s*\w+: CeldaMix \| null,\s*esComprar: boolean\s*\)/.test(POPUP_SC)) {
+    F("25 · no existe `abrePanel`: el corte de quién abre panel volvió a estar disperso");
+  } else if (!/return !!(\w+) && !\(esComprar && \1\.esActual\);/.test(POPUP_SC)) {
+    F("25 · `abrePanel` dejó de excluir la celda del aro en COMPRAR");
+  }
+  // LOS DOS MONTAJES CUELGAN DE ÉL **SOLO**, y esa última palabra es el invariante.
+  // Contar ocurrencias no alcanzaba: `{(abrePanel(sel, esComprar) || sel?.esActual) && sel &&`
+  // sigue contando dos y devuelve el panel a la celda del aro. Se mide la condición ENTERA
+  // del montaje, que es lo único que dice quién abre.
+  const montajes = POPUP_SC.match(/\{[^{}\n]*&& sel && \(\s*\n\s*<PanelCelda/g) ?? [];
+  if (montajes.length !== 2) {
+    F(`25 · hay ${montajes.length} montajes de <PanelCelda> con la forma esperada, y son 2`);
+  }
+  for (const m of montajes) {
+    if (!/^\{abrePanel\(sel, esComprar\) && sel && \($/m.test(m.split("\n")[0] + "")) {
+      F(`25 · un montaje de <PanelCelda> no cuelga EXACTAMENTE de \`abrePanel(sel, esComprar)\`: «${m.split("\n")[0].trim()}»`);
+    }
+  }
+  if (!/setSel\(abrePanel\(c, esComprar\) \? c : null\)/.test(POPUP_SC)) {
+    F("25 · el handler de la matriz no pasa por `abrePanel`: la celda del aro quedaría seleccionada sin panel");
+  }
+  // ⛔ Y `esComprar` TIENE QUE LLEGAR AL COMPONENTE. Sin esto, los invariantes 22, 23 y 25
+  //   miran el cuerpo de `PanelCelda` y dan verde mientras los dos montajes le pasan
+  //   `esComprar={false}`: vuelve la fila del descuento a las 2.220, `cae` nunca es true y la
+  //   nota del tope vuelve a las 96. Es «presencia ≠ cableado» — el cuerpo está bien escrito
+  //   y no gobierna nada. Lo encontró la revisión adversaria del diff, no las mutaciones.
+  const pasan = (POPUP_SC.match(/<PanelCelda[^>]*esComprar=\{esComprar\}/g) ?? []).length;
+  if (pasan !== 2) {
+    F(`25 · <PanelCelda> recibe \`esComprar={esComprar}\` en ${pasan} de los 2 montajes: el cuerpo puede estar perfecto y no gobernar nada`);
+  }
+  // Y LA CELDA QUE NO ABRE PANEL TAMPOCO FINGE SER BOTÓN: en 184 de las 210 el clic no
+  // producía nada visible, y si había otro panel abierto se lo cerraba sin explicar por qué.
+  if (!/onClick=\{interactiva \? \(\) => onSel\(c\) : undefined\}/.test(POPUP_SC)) {
+    F("25 · la celda de la matriz volvió a ser clickeable sin condición: la del aro en COMPRAR promete un panel que no abre");
+  }
+  if (!/const interactiva = abrePanel\(c, esComprar\);/.test(POPUP_SC)) {
+    F("25 · la interactividad de la celda dejó de salir de `abrePanel`");
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPopupAjustesTier(): { hard: number } {
   console.log("\n─── TIER POPUP-AJUSTES (el render del pop-up · 0 tokens) ───");
