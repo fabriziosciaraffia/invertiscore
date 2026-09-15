@@ -1,11 +1,24 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// «HAY SALIDA, Y ES ÉSTA» — la fuente única de las ocho superficies (10-sep-2026)
+// «HAY SALIDA, Y ES ÉSTA» — la fuente única de las superficies que la nombran (10-sep-2026)
 //
-// El motor sabe desde `bece47c1` que 179 filas del parque son estructurales Y tienen
-// salida moviendo pie y plazo. Nadie leía ese campo, así que ocho lugares del informe
-// seguían afirmando lo contrario — el peor, el pop-up: «la brecha no está en cómo estás
-// mirando este depto, está en el depto», a dos clics del bloque que muestra la salida.
-// Una contradicción dentro de la misma página destruye la confianza en las dos mitades.
+// El motor sabe desde `bece47c1` que hay filas estructurales que IGUAL tienen salida
+// moviendo pie y plazo. Nadie leía ese campo, así que ocho lugares del informe seguían
+// afirmando lo contrario — el peor, el pop-up: «la brecha no está en cómo estás mirando
+// este depto, está en el depto», a dos clics del bloque que muestra la salida. Una
+// contradicción dentro de la misma página destruye la confianza en las dos mitades.
+//
+// ⛔ LAS DOS CIFRAS DEL TÍTULO ESTABAN STALE, y las dos por razones distintas (17-sep-2026):
+//
+//  · «179 FILAS» era del 10-sep. **Remedido el 17-sep: 45** (LTR 37 · STR 8; de ellas 32 con
+//    menú de respuestas). La caída NO es del motor: el 17-sep `hayAjustesQueMostrar` dejó de
+//    contar `palancas` y pasó a contar las que llegan a COMPRAR, y con eso el pop-up dejó de
+//    dibujarse en 237 filas. El número describe el parque de ESA fecha y va a volver a
+//    moverse; lo que no caduca es la razón por la que este módulo existe —que ocho lugares
+//    decían lo contrario del mismo hecho—, no el conteo.
+//
+//  · «OCHO SUPERFICIES» hoy son CATORCE, y **cinco de ellas están muertas**: no tienen
+//    ningún nodo en el DOM de producción. Están inventariadas con su porqué en la cola de
+//    salidas huérfanas; no se tocan desde acá.
 //
 // Este módulo existe para que esa rama se lea de UN lugar. Ocho `if` con la misma
 // condición escrita ocho veces vuelven a divergir; ya divergieron una vez.
@@ -33,6 +46,43 @@ export interface SalidaPorMix {
   costoDiaUnoUF: number;
   /** Qué dimensiones mueve: el copy STR dice «lo tuyo —pie y plazo—» / «—el pie—». */
   mueve: ("pie" | "plazo")[];
+  /**
+   * ¿EL MOTOR ENCONTRÓ MÁS DE UN CAMINO? (17-sep-2026)
+   *
+   * Los cinco campos de arriba describen UNA combinación —la equilibrada, la que el menú
+   * llama «Lo que Franco recomienda»— porque cuando se escribieron había una sola. Desde el
+   * menú de respuestas hay hasta tres, y eso deja a los cinco campos diciendo algo cierto
+   * sobre un camino como si fuera el único.
+   *
+   * Medido sobre el parque el 17-sep: de las 45 filas donde este módulo emite, **32 tienen
+   * más de un camino**. En esas 32, `movimiento` y `costoDiaUnoUF` describen la equilibrada y
+   * el menú ofrece otras coordenadas y otros costos (28 filas con dos costos distintos, 4 con
+   * tres). No son falsos: son incompletos, y lo que les faltaba era poder decirlo.
+   *
+   * ⚠ QUIÉN PONE EL CUALIFICADOR: LA SUPERFICIE, NO EL CAMPO. El PDF, la comparativa y el
+   *   share NO tienen menú, así que el campo no puede decidir por ellos cuánto contar. Este
+   *   booleano dice si HAY otros caminos; qué hacer con eso lo decide cada superficie, y las
+   *   que no tienen dónde elegir lo usan solo para nombrar cuál están describiendo.
+   *
+   * ⛔ `null` = NADIE LO MIDIÓ, y no es `false`. `respuestas` viaja PERSISTIDO y es opcional:
+   *   las filas anteriores al menú lo traen AUSENTE, y en STR el recompute cae a lo
+   *   persistido, así que existen hoy. Leer ese `undefined` como «no hay otros caminos» haría
+   *   que el ksub del capítulo escribiera «SOLO con pie y plazo» —una afirmación de
+   *   exclusividad— sobre un campo que nadie calculó: el bug que este goal vino a matar,
+   *   entrando por la puerta del default. Es lo que `types.ts` declara para este campo
+   *   («AUSENTE ≠ VACÍO») y lo que el pop-up ya aplicó con `Array.isArray` en vez de `?? []`.
+   *   Lo encontró la revisión adversaria del diff, no las mutaciones.
+   *
+   * ⚠ Y NO ES «¿EL POP-UP DIBUJA MENÚ?». Acá se pregunta por el MOTOR: cuántas combinaciones
+   *   distintas encontró. El pop-up ADEMÁS exige tener grilla para dibujar el menú, así que
+   *   los dos pueden diferir — y la diferencia es del pop-up, no de este campo.
+   *
+   *   MEDIDA, para que nadie la suponga grande: de las 45 filas, **1 sola** tiene otros
+   *   caminos sin menú visible. En esa fila el cualificador nombra el plan, no una línea de
+   *   pantalla, y eso está bien: las tres superficies que lo usan —los dos PDF y la línea de
+   *   comparativa y share— no dibujan el pop-up en ningún caso.
+   */
+  hayOtrosCaminos: boolean | null;
 }
 
 /** Lo que el hallazgo STR necesita para decidir la combinación: el tipo mínimo, para que el
@@ -107,7 +157,23 @@ function desdeMix(m: NonNullable<HallazgoDistanciaVeredicto["valor"]["mixPalanca
   const mueve: ("pie" | "plazo")[] = [];
   if (m.piePctDelta !== 0) mueve.push("pie");
   if (m.plazoAniosDelta !== 0) mueve.push("plazo");
-  return { movimiento: partes.join(" y "), remate, descuentoPct, costoDiaUnoUF: m.costoDiaUnoUF, mueve };
+
+  // LA MISMA TRIPLETA CON LA QUE EL MOTOR FUSIONA las respuestas que son la misma celda
+  // (`mix-palancas.ts`: score y TIR se fusionan cuando coinciden en pie, plazo y descuento).
+  // Contar objetos en vez de coordenadas daría 3 donde el lector ve 2 líneas.
+  // `Array.isArray` y NO `?? []`: ver el acta del campo. Ausente es «no se midió», y eso no
+  // se convierte en «no hay» sin inventar una afirmación.
+  const caminos = Array.isArray(m.respuestas)
+    ? new Set(m.respuestas.map((r) => `${r.piePct}|${r.plazoAnios}|${r.descuentoPct}`))
+    : null;
+  return {
+    movimiento: partes.join(" y "),
+    remate,
+    descuentoPct,
+    costoDiaUnoUF: m.costoDiaUnoUF,
+    mueve,
+    hayOtrosCaminos: caminos === null ? null : caminos.size >= 2,
+  };
 }
 
 // ── EL COPY STR (12-sep-2026 · «la fraseCanonica estructural STR deja de negar el mix») ──
@@ -124,7 +190,22 @@ export function loTuyo(s: SalidaPorMix): string {
 
 /** El cierre de la fraseCanonica STR con combinación. `escalon` = a dónde llega cuando NO es
  *  Comprar («Ajusta supuestos», desde BUSCAR); null = llega a Comprar. Lee el descuento como el
- *  prompt lee `descuentoQueAdemásPide`: con descuento se dice; sin descuento, la forma corta. */
+ *  prompt lee `descuentoQueAdemásPide`: con descuento se dice; sin descuento, la forma corta.
+ *
+ *  ⛔ ESTA FRASE ENTRA AL PROMPT CON UNA PREMISA INCOMPLETA, Y A PROPÓSITO NO SE ARREGLA ACÁ
+ *    (17-sep-2026). `loTuyo(s)` dice «pie y plazo» describiendo la equilibrada, y medido sobre
+ *    el parque hay **4 filas STR** donde el menú ofrece además una respuesta que mueve UNA
+ *    sola dimensión. En esas 4 el modelo recibe «Con lo tuyo —pie y plazo—» como hecho dado,
+ *    sin saber que hay otro camino.
+ *
+ *    No se toca porque la fraseCanonica viaja al prompt (`ai-generation-str.ts:725`) y
+ *    cambiarla MUEVE EL HASH DE GENERACIÓN: eso obliga a regenerar y a verificar con muestra
+ *    semántica, que es el lado caro de la prosa. Este goal hizo el lado determinista. El
+ *    cualificador está disponible en `hayOtrosCaminos` para cuando se abran los prompts, y es
+ *    lo primero que hay que mirar ahí.
+ *
+ *    (La otra superficie viva de `loTuyo` —el ksub del capítulo STR— sí lo usa: ver
+ *    `CapitulosInversionStr.tsx`. La tercera, `DrawerDistanciaStr`, está muerta.) */
 export function cierreFraseCanonicaStr(s: SalidaPorMix, escalon: string | null): string {
   const tuyo = `Con lo tuyo —${loTuyo(s)}—`;
   if (escalon) return `${tuyo}${s.descuentoPct === null ? "" : ` y un descuento de ${pct1(s.descuentoPct)}%`} llega a ${escalon}, no a Comprar.`;
@@ -141,9 +222,34 @@ export function cierrePopupEscalonStr(s: SalidaPorMix, escalon: string): { marca
 
 /** El pie del PDF STR (bloque «por qué no cierra»). */
 export function pieDocumentoSalidaStr(s: SalidaPorMix, escalon: string | null): string {
-  const con = `con ${s.movimiento}${s.descuentoPct === null ? "" : `, y un ${pct1(s.descuentoPct)}% de descuento`}`;
+  // EL CUALIFICADOR VA AL FINAL, no pegado al movimiento. En el menú «Lo que Franco
+  // recomienda» es la CELDA ENTERA: pie, plazo Y descuento son sus tres coordenadas. Metido
+  // entre el movimiento y el descuento calificaba media celda y dejaba el descuento
+  // leyéndose como un extra fuera de la recomendación.
+  const base = `con ${s.movimiento}${s.descuentoPct === null ? "" : `, y un ${pct1(s.descuentoPct)}% de descuento`}`;
+  const con = s.hayOtrosCaminos === true ? `${base} —${RECOMENDADA}—` : base;
   return `Y no es cuestión de afinar un supuesto: ningún cambio por separado lo lleva a Comprar, pero ${con}${escalon ? ` llega a ${escalon}, no a Comprar` : ", sí"}. Lo que pide es plata tuya el día uno.`;
 }
+
+/**
+ * EL CUALIFICADOR, PARA LAS SUPERFICIES QUE NO TIENEN DÓNDE ELEGIR (17-sep-2026).
+ *
+ * El PDF, la comparativa y el share describen la equilibrada y no dibujan menú. Cuando el
+ * motor encontró más de un camino, la línea tiene que decir CUÁL está describiendo — si no,
+ * el lector se lleva un plan como si fuera el plan.
+ *
+ * ⚠ EL NOMBRE ES EL DEL MENÚ, y eso es la mitad de la decisión: «Lo que Franco recomienda»
+ *   es el título que esa misma combinación lleva en `TITULO_RESPUESTA` (`PopupAjustes.tsx`).
+ *   Inventar acá un segundo nombre para la misma cosa —«el plan principal», «la
+ *   recomendada»— le daría al lector dos vocabularios para un solo objeto, que es cómo
+ *   empiezan las divergencias que este módulo existe para evitar.
+ *
+ * ⚠ Y NO SE DIBUJA CUANDO ES EL ÚNICO CAMINO. Medido: 13 de las 45 filas. Nombrar «la
+ *   recomendada» donde no hay nada más que recomendar promete una elección que no existe —
+ *   la misma doctrina de «sin celda, sin oración» que ya gobierna «hoy» en la leyenda del
+ *   pop-up y la nota de la tarifa.
+ */
+const RECOMENDADA = "lo que Franco recomienda";
 
 // ── EL COPY DE CADA SUPERFICIE ───────────────────────────────────────────────
 // Vive acá, y no repartido en los componentes, por dos razones: se testea sin montar
@@ -172,9 +278,14 @@ export function ksubCardSalida(s: SalidaPorMix): string {
     : `${s.movimiento} · y un ${pct1(s.descuentoPct)}% de descuento`;
 }
 
-/** D · la línea corta de comparativa, share y PDF de ambas. */
+/** D · la línea corta de comparativa, share y PDF de ambas.
+ *
+ *  EL CUALIFICADOR VA ADELANTE, y es la única de las tres donde va así: es la más corta, el
+ *  lector no tiene ninguna otra señal de que hubo una elección, y puesto al final competiría
+ *  con el «sí», que es lo que la línea vino a decir. */
 export function lineaMiniSalida(s: SalidaPorMix, veredictoBase: string): string {
-  return `Ningún cambio por separado lo mueve de ${veredictoBase}: con ${s.movimiento}, sí.`;
+  const con = s.hayOtrosCaminos === true ? `${RECOMENDADA} —${s.movimiento}—` : s.movimiento;
+  return `Ningún cambio por separado lo mueve de ${veredictoBase}: con ${con}, sí.`;
 }
 
 /** E · el subtítulo del capítulo de negociación. El plan existe; no pasa por el vendedor. */
@@ -182,5 +293,9 @@ export const SUBTITULO_PLAN_SALIDA = "El plan no pasa por el vendedor";
 
 /** G · el pie del PDF LTR. */
 export function pieDocumentoSalida(s: SalidaPorMix): string {
-  return `Cumplir las dos es condición necesaria para un Comprar, y ningún cambio por separado alcanza — pero con ${s.movimiento}, sí. No es cuestión de afinar un número: lo que pide es plata tuya el día uno.`;
+  // CON COMA Y NO CON RAYAS. La oración ya trae una raya suelta («alcanza — pero con…»), así
+  // que un inciso entre rayas adentro deja TRES en una frase y el lector puede cerrar el par
+  // en la equivocada. Lo marcó la revisión adversaria del diff.
+  const con = s.hayOtrosCaminos === true ? `${s.movimiento}, que es ${RECOMENDADA},` : `${s.movimiento},`;
+  return `Cumplir las dos es condición necesaria para un Comprar, y ningún cambio por separado alcanza — pero con ${con} sí. No es cuestión de afinar un número: lo que pide es plata tuya el día uno.`;
 }

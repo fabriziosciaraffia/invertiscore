@@ -456,7 +456,30 @@ export function CapitulosInversionStr({
     // Con combinación (12-sep-2026) el subtítulo no dice «fuera de lo negociable»: 15 de las 16
     // filas salen con un descuento negociado dentro del mix. Misma fuente que la card.
     const salidaCap = dist && esEstructural ? salidaPorMixStr(dist.valor) ?? mixAlEscalonStr(dist.valor) : null;
-    const subEstructural = salidaCap ? `solo con ${loTuyo(salidaCap)}${salidaCap.descuentoPct === null ? "" : " más descuento"}` : "fuera de lo negociable";
+    // ⛔ EL «SOLO» ERA FALSO EN 4 FILAS (17-sep-2026). `loTuyo` describe la combinación
+    //    EQUILIBRADA, y desde el menú de respuestas el motor ofrece hasta tres: medido sobre
+    //    el parque, en 4 filas STR esta línea decía «solo con pie y plazo» mientras el menú
+    //    ofrecía además una respuesta que mueve UNA sola dimensión. La palabra que mentía era
+    //    «solo», no `loTuyo` — la función describe bien lo que describe.
+    //
+    //    Con más de un camino se nombra CUÁL es éste, con el nombre que ese mismo plan lleva
+    //    en el menú («Lo que Franco recomienda», `TITULO_RESPUESTA`); con uno solo, «solo»
+    //    es verdad y se queda. El booleano lo trae el motor: ver `hayOtrosCaminos` en
+    //    `salida-por-mix.ts`, que explica por qué el cualificador lo pone la superficie.
+    // TRES RAMAS, Y LA DEL MEDIO LA CAZÓ LA REVISIÓN ADVERSARIA. Con `hayOtrosCaminos` en
+    //   `null` —`respuestas` ausente, o sea que nadie lo midió— caer en «solo con…» es
+    //   afirmar exclusividad SIN DATO: el bug de este goal entrando por el default. Ahí no va
+    //   ni el «solo» ni el cualificador. Ver el acta del campo en `salida-por-mix.ts`.
+    const subEstructural = !salidaCap
+      ? "fuera de lo negociable"
+      : salidaCap.hayOtrosCaminos === true
+        // ⚠ CON RAYA Y NO CON « · »: ese punto medio es el separador del `join` de abajo, así
+        //   que el cualificador salía como un CHIP hermano de «precio» y «pie» —cinco ítems
+        //   donde hay cuatro datos— en vez de calificar la frase anterior.
+        ? `con ${loTuyo(salidaCap)}${salidaCap.descuentoPct === null ? "" : " más descuento"} — lo que Franco recomienda`
+        : salidaCap.hayOtrosCaminos === false
+          ? `solo con ${loTuyo(salidaCap)}${salidaCap.descuentoPct === null ? "" : " más descuento"}`
+          : `con ${loTuyo(salidaCap)}${salidaCap.descuentoPct === null ? "" : " más descuento"}`;
     return {
       id: "pagas",
       numero: ROMANO.pagas,
