@@ -205,19 +205,12 @@ export function loTuyo(s: SalidaPorMix): string {
  *    lo primero que hay que mirar ahí.
  *
  *    (La otra superficie viva de `loTuyo` —el ksub del capítulo STR— sí lo usa: ver
- *    `CapitulosInversionStr.tsx`. La tercera, `DrawerDistanciaStr`, está muerta.) */
+ *    `CapitulosInversionStr.tsx`. Hubo una tercera, `DrawerDistanciaStr`, que estaba muerta
+ *    y se borró el 17-sep-2026.) */
 export function cierreFraseCanonicaStr(s: SalidaPorMix, escalon: string | null): string {
   const tuyo = `Con lo tuyo —${loTuyo(s)}—`;
   if (escalon) return `${tuyo}${s.descuentoPct === null ? "" : ` y un descuento de ${pct1(s.descuentoPct)}%`} llega a ${escalon}, no a Comprar.`;
   return s.descuentoPct === null ? `${tuyo} sí llega a Comprar.` : `${tuyo} y un descuento de ${pct1(s.descuentoPct)}% llega a Comprar.`;
-}
-
-/** El cierre del pop-up STR desde BUSCAR cuando la combinación llega solo al escalón. A Comprar
- *  se usa `cierrePopupSalida`, el de LTR, que no nombra modalidad. */
-export function cierrePopupEscalonStr(s: SalidaPorMix, escalon: string): { marca: string; resto: string } {
-  const marca = `Ningún cambio por separado alcanza. ${s.remate[0].toUpperCase()}${s.remate.slice(1)}, llega a ${escalon}.`;
-  const resto = `Con ${s.movimiento}${s.descuentoPct === null ? "" : `, y un ${pct1(s.descuentoPct)}% de descuento`}, deja de ser un no, pero no llega a Comprar. Lo que cuesta es plata tuya el día uno.`;
-  return { marca, resto };
 }
 
 /** El pie del PDF STR (bloque «por qué no cierra»). */
@@ -253,30 +246,52 @@ const RECOMENDADA = "lo que Franco recomienda";
 
 // ── EL COPY DE CADA SUPERFICIE ───────────────────────────────────────────────
 // Vive acá, y no repartido en los componentes, por dos razones: se testea sin montar
-// JSX, y la familia se lee junta — que es la única forma de que ocho lugares digan lo
-// mismo con la misma voz.
+// JSX, y la familia se lee junta — que es la única forma de que varios lugares digan lo
+// mismo con la misma voz. (El ksub del capítulo STR es la excepción y no debería serlo:
+// su copy vive en `CapitulosInversionStr.tsx`, así que solo se puede vigilar por regex.)
+//
+// ⛔ CINCO SE RETIRARON EL 17-sep-2026, TODAS MEDIDAS SIN LECTOR. El método fue
+// «consumidores reales, no referencias», y la diferencia entre las dos cosas es todo:
+//
+//  · `tituloCardSalida` — produce `.title`. Los tres consumidores de `findingDisplay`
+//    que corren en producción no lo leen: el PDF STR lee `kpi`/`ksub`/`kpiRed`,
+//    `PrincipalesHallazgos` destructura `{kpi, kpiNegativo}` y el anexo
+//    (`resumen-anexo.ts`) lee `kpi`/`ksub`/`kpiRed`.
+//    ⚠ Pero `.title` SÍ se pinta en otras dos partes —`GenericFindingCard.tsx:501` y el
+//      bundle del juez—, así que la razón verdadera no es «nadie lee el campo» sino que
+//      **este hallazgo no llega**: `orden-hallazgos.ts` saca `distancia_veredicto` de la
+//      pirámide por id (136 y 195). Escrito mal, este bullet le da permiso al próximo
+//      retiro de `.title` en un hallazgo que SÍ entra a la pirámide. Ver el acta larga en
+//      `distancia-copy.ts`.
+//  · `ksubCardSalida` — tenía una vía viva posible, el anexo de comparativa, y se MIDIÓ:
+//    de 960 filas, 742 traen el hallazgo de distancia y en **0** entra al top-3 del anexo.
+//    No es casualidad: la distancia lleva decisividad 0 por construcción y `topFindings`
+//    ordena por decisividad. Las otras dos vías la filtran antes.
+//  · `cierrePopupSalida` y `cierrePopupEscalonStr` — vivían en `DrawerDistanciaLtr` y
+//    `DrawerDistanciaStr`. El primero estaba detrás de `drawerSequence = ["zona"]`; el
+//    segundo no tenía NI UN import en todo el repo. Y su contenido no quedó huérfano: lo
+//    dice el pop-up de ajustes, que además dice más. (Los dos drawers se borraron el mismo
+//    día: ya no existen, así que ningún grep los va a encontrar.)
+//  · `SUBTITULO_PLAN_SALIDA` — el subtítulo del drawer de negociación. `DrawerNegociacion`
+//    sigue VIVO en `CapitulosInversion.tsx`; lo que estaba muerto era la segunda montura.
+//
+// LA REGLA QUE SALIÓ DE ESTO, y vale más que el retiro: **reemplazado se retira, apagado
+// se decide, nunca por inercia.** Cuatro de las cinco estaban reemplazadas por superficies
+// mejores. La quinta se midió antes de tocarla.
 
-/** A · el cierre del pop-up. `marca` va resaltada, igual que la frase que reemplaza. */
-export function cierrePopupSalida(s: SalidaPorMix): { marca: string; resto: string } {
-  const marca = `Ningún cambio por separado alcanza. ${s.remate[0].toUpperCase()}${s.remate.slice(1)}, sí.`;
-  const resto =
-    s.descuentoPct === null
-      ? `Con ${s.movimiento} el veredicto cambia sin pedirle un peso al vendedor. Lo que cuesta no es negociación: es plata tuya el día uno.`
-      : `Con ${s.movimiento}, y un ${pct1(s.descuentoPct)}% de descuento, el veredicto cambia. La mayor parte no se negocia: es plata tuya el día uno.`;
-  return { marca, resto };
-}
-
-/** C · el título de la finding card. */
-export function tituloCardSalida(s: SalidaPorMix): string {
-  return `Ningún cambio por separado alcanza. ${s.remate[0].toUpperCase()}${s.remate.slice(1)}, sí.`;
-}
-
-/** C · la línea bajo el KPI de la card: qué mover, en concreto. */
-export function ksubCardSalida(s: SalidaPorMix): string {
-  return s.descuentoPct === null
-    ? `${s.movimiento} · sin pedir descuento`
-    : `${s.movimiento} · y un ${pct1(s.descuentoPct)}% de descuento`;
-}
+/** E · el subtítulo del capítulo de negociación. El plan existe; no pasa por el vendedor.
+ *
+ *  ⚠ ÉSTA SÍ ESTÁ VIVA, y estuvo a un paso de retirarse por un diagnóstico mío equivocado
+ *    (17-sep-2026). La FASE 0 la contó entre las muertas porque su único uso está en
+ *    `AnalysisDrawer.tsx`, que es el archivo del drawer inalcanzable. Pero ese uso vive DENTRO
+ *    de `DrawerNegociacion`, que es una función EXPORTADA y que `CapitulosInversion.tsx` monta
+ *    —pasándole `capitulo`, que es justo la condición de la que este subtítulo cuelga—.
+ *    El archivo estaba muerto; la función, no.
+ *
+ *    LA LECCIÓN, que corrige el método: «consumidores reales, no referencias» hay que
+ *    aplicarlo al SÍMBOLO, no al archivo donde vive. Un archivo con una superficie muerta
+ *    puede exportar otra viva, y el grep por archivo las confunde. */
+export const SUBTITULO_PLAN_SALIDA = "El plan no pasa por el vendedor";
 
 /** D · la línea corta de comparativa, share y PDF de ambas.
  *
@@ -287,9 +302,6 @@ export function lineaMiniSalida(s: SalidaPorMix, veredictoBase: string): string 
   const con = s.hayOtrosCaminos === true ? `${RECOMENDADA} —${s.movimiento}—` : s.movimiento;
   return `Ningún cambio por separado lo mueve de ${veredictoBase}: con ${con}, sí.`;
 }
-
-/** E · el subtítulo del capítulo de negociación. El plan existe; no pasa por el vendedor. */
-export const SUBTITULO_PLAN_SALIDA = "El plan no pasa por el vendedor";
 
 /** G · el pie del PDF LTR. */
 export function pieDocumentoSalida(s: SalidaPorMix): string {

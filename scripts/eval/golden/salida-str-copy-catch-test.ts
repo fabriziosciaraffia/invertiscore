@@ -13,7 +13,8 @@
 //      pero SALIDA COMBINADA confirma hayMixACOMPRAR=sí». Con mix: «Con lo tuyo —pie y plazo—
 //      y un descuento de X% llega a Comprar» (sin descuento, la forma corta; desde BUSCAR al
 //      escalón, «llega a Ajustar, no a Comprar», con la etiqueta única). Sin combinación no cambia nada.
-//   2. EL POP-UP «Ver ajustes» (DrawerDistanciaStr): intro, pie de la matriz y cierre «Este
+//   2. EL POP-UP «Ver ajustes» (hasta el 13-sep `DrawerDistanciaStr`, borrado el 17-sep;
+//      hoy `PopupAjustes`): intro, pie de la matriz y cierre «Este
 //      departamento no da».
 //   3. EL PDF (DocumentoSTR, bloque «por qué no cierra»).
 //   4. EL FOOTER DE LA CARD §5 (HeroStrDictamen): «Ninguno mueve el veredicto» gana «; juntos,
@@ -33,7 +34,7 @@ import { buildStrRecomputeCtx } from "../../../src/lib/analysis/recompute-short-
 import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../../../src/lib/engines/short-term-score";
 import { buildStrHallazgos, mergeHallazgosStr } from "../../../src/lib/str-hallazgos";
-import { salidaPorMixStr, mixAlEscalonStr, cierreFraseCanonicaStr, cierrePopupEscalonStr, pieDocumentoSalidaStr, cierrePopupSalida, lineaMiniSalida, pieDocumentoSalida } from "../../../src/lib/salida-por-mix";
+import { salidaPorMixStr, mixAlEscalonStr, cierreFraseCanonicaStr, pieDocumentoSalidaStr, lineaMiniSalida, pieDocumentoSalida } from "../../../src/lib/salida-por-mix";
 import { lineaFooterVias } from "../../../src/lib/palancas-en-palabras";
 import { etiquetaVeredicto } from "../../../src/lib/veredicto-etiqueta";
 import type { HallazgoDistanciaVeredicto } from "../../../src/lib/types";
@@ -219,13 +220,13 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
     }
   }
 
-  const pop = cierrePopupEscalonStr(s, ESCALON);
-  if (pop.marca !== `Ningún cambio por separado alcanza. Moviendo dos cosas a la vez, llega a ${ESCALON}.`) F(`2 · cierrePopupEscalonStr.marca: «${pop.marca}»`);
-  if (pop.resto !== "Con el pie en 30% y el plazo en 30 años, y un 17,5% de descuento, deja de ser un no, pero no llega a Comprar. Lo que cuesta es plata tuya el día uno.") F(`2 · cierrePopupEscalonStr.resto: «${pop.resto}»`);
+  // ⛔ `cierrePopupEscalonStr` y `cierrePopupSalida` SE RETIRARON (17-sep-2026). Vivían en
+  //   `DrawerDistanciaStr` —cero importadores en todo el repo— y en `DrawerDistanciaLtr`,
+  //   detrás de `drawerSequence = ["zona"]`. Su contenido no quedó huérfano: lo dice el
+  //   pop-up de ajustes, que además dice a dónde CAE la celda. Estas dos aserciones se van
+  //   con ellas; lo que el lector sí ve sigue vigilado en los bloques 2b, 2c y 3b.
   if (pieDocumentoSalidaStr(s, null) !== "Y no es cuestión de afinar un supuesto: ningún cambio por separado lo lleva a Comprar, pero con el pie en 30% y el plazo en 30 años, y un 17,5% de descuento, sí. Lo que pide es plata tuya el día uno.") F(`2 · pieDocumentoSalidaStr a Comprar: «${pieDocumentoSalidaStr(s, null)}»`);
   if (pieDocumentoSalidaStr(sin, "Ajusta supuestos") !== "Y no es cuestión de afinar un supuesto: ningún cambio por separado lo lleva a Comprar, pero con el pie en 30% llega a Ajusta supuestos, no a Comprar. Lo que pide es plata tuya el día uno.") F(`2 · pieDocumentoSalidaStr al escalón: «${pieDocumentoSalidaStr(sin, "Ajusta supuestos")}»`);
-  // El cierre del pop-up a Comprar es el de LTR, tal cual: no dice arriendo ni renta corta.
-  if (/arriendo|renta corta|STR/i.test(cierrePopupSalida(s).marca + cierrePopupSalida(s).resto)) F("2 · cierrePopupSalida no es neutral de modalidad");
   if (lineaFooterVias(0, 5, true) !== "Franco probó cinco ajustes por separado. Ninguno mueve el veredicto; juntos, sí.") F(`2 · lineaFooterVias con salida: «${lineaFooterVias(0, 5, true)}»`);
   if (lineaFooterVias(0, 5, true, ESCALON) !== `Franco probó cinco ajustes por separado. Ninguno mueve el veredicto; juntos, solo hasta ${ESCALON}.`) F(`2 · lineaFooterVias al escalón: «${lineaFooterVias(0, 5, true, ESCALON)}»`);
   if (lineaFooterVias(0, 4, true) !== "Franco probó cuatro ajustes por separado. Ninguno mueve el veredicto; juntos, sí.") F("2 · la línea de LTR (cuatro ajustes, sin escalón) cambió");
@@ -245,8 +246,9 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
   // que el contrato visual sacó a propósito.
   //
   // Lo que SÍ se fija ahora es que el pop-up lea la celda del motor, que es de donde salen
-  // la matriz y el óptimo. `DrawerDistanciaStr` queda sin montar: si alguien lo vuelve a
-  // montar, el tier del pop-up (`popup-ajustes`) lo caza por el lado del hero.
+  // la matriz y el óptimo. `DrawerDistanciaStr` ya no existe —se borró el 17-sep-2026, sin
+  // un solo importador en todo el repo—; si alguna vez vuelve un cuerpo con prosa propia,
+  // el tier del pop-up (`popup-ajustes`) lo caza por el lado del hero.
   const popup = leer("src/components/analysis/shared/PopupAjustes.tsx");
   if (!popup) F("3 · no se encontró PopupAjustes, el cuerpo del pop-up");
   if (!/mixPalancas/.test(popup) || !/\.celdas/.test(popup)) F("3 · el pop-up no lee la grilla del motor (`mixPalancas.celdas`)");

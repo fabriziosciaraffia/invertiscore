@@ -19,7 +19,7 @@
 
 import type { HallazgoDistanciaVeredicto } from "@/lib/types";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
-import { salidaPorMix, tituloCardSalida, ksubCardSalida, lineaMiniSalida } from "./salida-por-mix";
+import { salidaPorMix, lineaMiniSalida } from "./salida-por-mix";
 
 type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 
@@ -50,16 +50,32 @@ export function distanciaFindingDisplay(h: HallazgoDistanciaVeredicto): Distanci
     // CUESTA, porque es el número que ahora separa al lector del veredicto de arriba:
     // dejar el descuento imposible de KPI al lado de un título que dice «sí se puede»
     // reproduce exactamente la ambigüedad que acabamos de sacar del bloque.
-    const salida = salidaPorMix(v);
-    if (salida) {
-      return {
-        kick,
-        title: tituloCardSalida(salida),
-        kpi: salida.costoDiaUnoUF > 0 ? `UF ${fmtMiles(salida.costoDiaUnoUF)}` : "—",
-        kpiRed: false,
-        ksub: ksubCardSalida(salida),
-      };
-    }
+    // ⛔ LA RAMA DE LA SALIDA COMBINADA SE RETIRÓ (17-sep-2026). Escribía el título y el
+    //   ksub de la finding card con `tituloCardSalida` / `ksubCardSalida`, y se midió que
+    //   NINGUNA superficie viva los RECIBE.
+    //
+    //   ⚠ Y la razón NO es «`.title` no lo lee nadie» —así estaba escrito acá, y es
+    //     falso—. `.title` SÍ se pinta: `GenericFindingCard.tsx:501` lo renderiza y el
+    //     bundle del juez lo imprime (`scripts/eval/editorial/ensamblar.ts:80`). Lo que no
+    //     pasa es que ESTE hallazgo llegue hasta ahí: `orden-hallazgos.ts` excluye
+    //     `distancia_veredicto` de la pirámide POR ID (líneas 136 y 195), y la pirámide es
+    //     la única puerta a las dos superficies que pintan `.title`.
+    //
+    //     Los tres consumidores de `findingDisplay` que SÍ corren en producción no lo leen,
+    //     cada uno por su cuenta: el PDF STR usa `kpi`/`ksub`/`kpiRed`,
+    //     `PrincipalesHallazgos` destructura `{kpi, kpiNegativo}` —su frase es el `titular`
+    //     del motor, no el `title` del render— y el anexo (`resumen-anexo.ts`) también lee
+    //     `kpi`/`ksub`/`kpiRed`. El anexo es el único que no filtra por id, pero ordena por
+    //     decisividad y la distancia lleva 0 por construcción: medido, 0 de 742 filas
+    //     entran a su top-3.
+    //
+    //     La distinción no es cosmética: «nadie lee el campo» y «nadie recibe este
+    //     hallazgo» se reabren distinto. Si la distancia vuelve a la pirámide, el título se
+    //     lee al día siguiente sin que nadie toque este archivo.
+    //
+    //   Lo que el lector SÍ ve de esta rama vive en el pop-up de ajustes y en la card de
+    //   §5, que leen del mismo `salidaPorMix`. Acá quedaba un tercer texto para el mismo
+    //   hecho, sin superficie.
     const dm = v.deltaMinimoFueraDeTope;
     return {
       kick,

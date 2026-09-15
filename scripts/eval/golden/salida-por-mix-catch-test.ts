@@ -1,12 +1,12 @@
 // ============================================================================
-// GOLDEN · «HAY SALIDA» — catch-test de las ocho superficies (10-sep-2026). 0 tokens.
+// GOLDEN · «HAY SALIDA» — catch-test de las cinco superficies vivas (10-sep-2026). 0 tokens.
 // ============================================================================
 // El motor sabe desde `bece47c1` que 179 filas del parque son estructurales Y tienen
 // salida moviendo pie y plazo. Ocho lugares del informe seguían diciendo lo contrario,
 // el peor a dos clics del bloque que muestra la salida.
 //
-// Este tier fija que NINGUNA de las ocho afirme «no hay salida» cuando la hay, y —lo
-// que importa igual— que las ocho SIGAN afirmándolo cuando de verdad no la hay. Un
+// Este tier fija que NINGUNA afirme «no hay salida» cuando la hay, y —lo que importa
+// igual— que TODAS SIGAN afirmándolo cuando de verdad no la hay. Un
 // arreglo que apague la frase dura en las 258 filas donde es cierta cambia una mentira
 // por otra.
 //
@@ -17,10 +17,11 @@
 //      por `sinSalida === false` manda a las filas sanas por la rama de la salida
 //      combinada: 778 contra 179. Es el error que este test existe para cazar.
 //
-//   2. LAS OCHO POSICIONES, con salida: ninguna dice «ningún ajuste realista»,
-//      «no hay plan», «está en el depto» ni «ninguna vía».
+//   2. LAS POSICIONES VIVAS, con salida: ninguna dice «ningún ajuste realista»,
+//      «no hay plan», «está en el depto» ni «ninguna vía». Eran ocho; el 17-sep-2026
+//      quedaron CINCO (el acta del bloque 2 dice cuáles se fueron y por qué).
 //
-//   3. LAS OCHO POSICIONES, sin salida: todas SIGUEN diciendo la frase dura. Es la
+//   3. LAS MISMAS, sin salida: todas SIGUEN diciendo la frase dura. Es la
 //      mitad que un arreglo apurado rompe.
 //
 //   4. AUSENTE ≠ «no hay». Sin `sinSalida` medido nadie puede afirmar que hay salida:
@@ -37,9 +38,6 @@
 // ============================================================================
 import {
   salidaPorMix,
-  cierrePopupSalida,
-  tituloCardSalida,
-  ksubCardSalida,
   lineaMiniSalida,
   pieDocumentoSalida,
   SUBTITULO_PLAN_SALIDA,
@@ -95,23 +93,39 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
   if (salidaPorMix(sinSalida.valor) !== null) F("1 · el caso SIN salida no puede entrar por la rama nueva");
 }
 
-// ── 2 · las ocho posiciones, CON salida: ninguna niega ─────────────────────
+// ── 2 · las cinco posiciones vivas, CON salida: ninguna niega ──────────────
 {
   const s = salidaPorMix(conSalida.valor);
   if (!s) F("2 · sin `SalidaPorMix` no se puede probar ninguna posición");
   else {
     const base = conSalida.valor.veredictoBase;
-    const c = cierrePopupSalida(s);
-    const card = distanciaFindingDisplay(conSalida);
+    // ⛔ TRES POSICIONES SE RETIRARON CON SUS SUPERFICIES (17-sep-2026). El tier medía que
+    //   NINGUNA de las ocho negara la salida; tres de ellas ya no existen porque nadie las
+    //   leía: «A · cierre del pop-up» (`cierrePopupSalida`, vivía en `DrawerDistanciaLtr`,
+    //   detrás de `drawerSequence = ["zona"]`) y las dos «C» de la finding card
+    //   (`tituloCardSalida` / `ksubCardSalida`).
+    //
+    //   ⚠ LA RAZÓN DE LAS DOS «C» NO ES «nadie lee esos campos», y así estaba escrito acá:
+    //     `.title` se pinta en `GenericFindingCard.tsx:501` y se imprime en el bundle del
+    //     juez. Lo que no pasa es que el hallazgo de distancia LLEGUE: `orden-hallazgos.ts`
+    //     lo saca de la pirámide por id (136 y 195), y el anexo —la única vía que no filtra
+    //     por id— ordena por decisividad, donde la distancia lleva 0 por construcción
+    //     (medido: 0 de 742 filas entran a su top-3).
+    //
+    //     Por eso los bloques 3 y 4 SIGUEN midiendo `card.title` y no se contradicen con
+    //     esto: vigilan la FUNCIÓN, que sigue viva y exportada, no la superficie, que hoy
+    //     no la recibe. El día que la distancia vuelva a la pirámide ese título se lee sin
+    //     que nadie toque nada, y tiene que seguir siendo honesto.
+    //
+    //   Las cinco que quedan son las que el lector SÍ ve, y siguen con el mismo guard. «E»
+    //   se queda porque `DrawerNegociacion` está VIVO en `CapitulosInversion.tsx` — estuvo a
+    //   un paso de retirarse por confundir el archivo con el símbolo.
     const posiciones: [string, string][] = [
-      ["A · cierre del pop-up", `${c.marca} ${c.resto}`],
       ["B · footer de la card del hero", lineaFooterVias(0, 4, true)],
-      ["C · título de la finding card", card.title],
-      ["C · ksub de la finding card", card.ksub],
       ["D · línea de comparativa", lineaDistanciaMini(conSalida, "BUSCAR OTRA") ?? ""],
       ["E · subtítulo del capítulo", SUBTITULO_PLAN_SALIDA],
       ["G · pie del PDF LTR", pieDocumentoSalida(s)],
-      ["copy · título y ksub sueltos", `${tituloCardSalida(s)} ${ksubCardSalida(s)} ${lineaMiniSalida(s, base)}`],
+      ["copy · la línea mini", lineaMiniSalida(s, base)],
     ];
     for (const [donde, texto] of posiciones) {
       if (!texto) { F(`2 · ${donde}: quedó vacía`); continue; }
@@ -121,7 +135,7 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
   }
 }
 
-// ── 3 · las ocho posiciones, SIN salida: todas SIGUEN diciendo la frase dura ─
+// ── 3 · las mismas, SIN salida: todas SIGUEN diciendo la frase dura ──────────
 {
   const card = distanciaFindingDisplay(sinSalida);
   if (!/ningún ajuste realista/i.test(card.title)) F(`3 · sin salida la card mantiene la frase dura: «${card.title}»`);
@@ -170,16 +184,30 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
   // Las funciones puras de arriba pueden estar perfectas y el informe seguir mintiendo
   // si el componente no las llama. Esto no prueba la rama —para eso está el shot— pero
   // sí caza el caso que de verdad pasa: alguien arregla el copy y se olvida de cablearlo.
-  const CABLEADOS: [string, string][] = [
-    ["C y D · card y comparativa", "src/lib/distancia-copy.ts"],
-    ["E · capítulo de negociación", "src/components/ui/AnalysisDrawer.tsx"],
-    ["G · PDF LTR", "src/app/analisis/[id]/documento/DocumentoLTR.tsx"],
+  // ⚠ EL ANCLAJE VA SOBRE CÓDIGO, NO SOBRE EL ARCHIVO CRUDO (17-sep-2026). Hasta hoy esto
+  //   era /salida-por-mix/ sobre el texto entero, y en los tres archivos lo satisfacía la
+  //   línea del import —y en `AnalysisDrawer.tsx`, además, un comentario que nombra el
+  //   módulo—. Es «presencia ≠ cableado», el tercero de los doce falsos verdes de
+  //   `CLAUDE.md`: borrar el uso y dejar el import dejaba el guard VERDE. Ahora el cuerpo se
+  //   mira sin comentarios y sin imports, y cada entrada pide el SÍMBOLO que esa superficie
+  //   tiene que llamar, no el nombre del módulo.
+  const soloCodigo = (src: string) =>
+    src
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .split(/\r?\n/)
+      .filter((l) => !/^\s*\/\//.test(l))
+      .join("\n")
+      .replace(/import[\s\S]*?from\s+"[^"]+";/g, " ");
+  const CABLEADOS: [string, string, RegExp][] = [
+    ["D · línea de comparativa", "src/lib/distancia-copy.ts", /salidaPorMix\s*\(/],
+    ["E · capítulo de negociación", "src/components/ui/AnalysisDrawer.tsx", /SUBTITULO_PLAN_SALIDA/],
+    ["G · PDF LTR", "src/app/analisis/[id]/documento/DocumentoLTR.tsx", /pieDocumentoSalida\s*\(/],
   ];
-  for (const [donde, ruta] of CABLEADOS) {
+  for (const [donde, ruta, pide] of CABLEADOS) {
     let src = "";
     try { src = readFileSync(join(__dirname, "..", "..", "..", ruta), "utf8"); } catch { /* falta el archivo */ }
     if (!src) { F(`7 · ${donde}: no se pudo leer ${ruta}`); continue; }
-    if (!/salida-por-mix/.test(src)) F(`7 · ${donde} no lee la fuente única (${ruta})`);
+    if (!pide.test(soloCodigo(src))) F(`7 · ${donde} no llama a la fuente única (${ruta}: falta ${pide.source})`);
   }
   // ⚠ ACTA (13-sep-2026) · LA SUPERFICIE A CAMBIÓ DE FUENTE. El pop-up se reescribió en el
   // bloque B y ya no lleva prosa: no dice «hay salida» ni «no hay forma», DIBUJA la grilla
@@ -199,9 +227,9 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runSalidaPorMixTier(): { hard: number } {
-  console.log("\n─── TIER SALIDA-POR-MIX (las ocho superficies · salida-por-mix.ts, 0 tokens) ───");
+  console.log("\n─── TIER SALIDA-POR-MIX (las cinco superficies vivas · salida-por-mix.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — ninguna de las ocho niega la salida cuando la hay, todas la afirman cuando no la hay, ausente ≠ no hay, y sin vocabulario nuestro");
+    console.log("  ✓ VERDE — ninguna de las cinco niega la salida cuando la hay, todas la afirman cuando no la hay, ausente ≠ no hay, y sin vocabulario nuestro");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
