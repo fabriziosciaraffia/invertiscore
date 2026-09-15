@@ -37,8 +37,15 @@ const RAIZ = join(__dirname, "..", "..", "..");
  *    `str-congelado` 2,7 · `valor-mercado` 2,5 · `vias` 2,3 · `guards-v16-dump` 1,7 ·
  *    `guards-contables` 1,6 · `zona` 1,6 · `gate-sobreprecio` 0,9 · `mes-cierra-str` 0,7.
  *    Suman ~25 s: sextuplicarían el golden, y un golden lento no lo corre nadie — que es
- *    volver al mismo lugar por otra puerta. Entran cuando dejen de fijar cifras de filas
- *    vivas (ver la regla «un catch-test fija la REGLA, no la cifra», CLAUDE.md § Testing).
+ *    volver al mismo lugar por otra puerta.
+ *
+ *    ⚠ DOS RAZONES DISTINTAS, y conviene no confundirlas: la mayoría está afuera por el
+ *    TIEMPO **y** porque fijaban cifras de filas vivas (la regla «un catch-test fija la
+ *    REGLA, no la cifra», CLAUDE.md § Testing). Al 17-sep cuatro ya no fijan cifras
+ *    —`vias`, `precios-nombre`, `frase-estructural-str` y `decisividad-str`, reescritos—,
+ *    así que a esos solo los frena el reloj: `decisividad-str` cuesta 3,9 s él solo y
+ *    entrar lo llevaría de ~8,6 s a ~12,5 s. Es una decisión de presupuesto de corrida,
+ *    no de calidad del guard, y está sin tomar a propósito.
  *
  *  · `jerarquia-catch-test.ts` — ROJO por un bug VIVO de producto: el arbitraje de precios
  *    detecta la colisión y escribe en cinco campos muertos en v22. Está anotado en el
