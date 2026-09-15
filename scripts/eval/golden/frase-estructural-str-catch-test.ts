@@ -23,9 +23,16 @@ import type { HallazgoDistanciaVeredicto } from "../../../src/lib/types";
 import { salidaPorMixStr, mixAlEscalonStr } from "../../../src/lib/salida-por-mix";
 import type { ShortTermResult } from "../../../src/lib/engines/short-term-engine";
 
-const CASOS: { id: string; dmPalanca: "precio" | "adr" }[] = [
-  { id: "5dc42a82-69d8-4aeb-84c8-1e8b908ca474", dmPalanca: "precio" },
-  { id: "d043ebfc-b8e0-491f-abae-118f048933c9", dmPalanca: "adr" },
+// ⛔ SIN `dmPalanca` (17-sep-2026). La tabla fijaba QUÉ palanca gana el desempate del mínimo
+// fuera de tope en cada fila —«d043ebfc: adr»—, y eso lo decide un `sort` sobre cifras que el
+// motor recomputa: la fila se movió a «precio» por calibración y el test quedó rojo sin que
+// nada estuviera roto. En rojo se quedó, porque tampoco estaba cableado al runner.
+// La REGLA sigue abajo y es la que importa: sea cual sea la palanca que gane, la frase tiene
+// que citarla con su cifra y con su forma («recién con −X% de precio» / «recién cobrando +X%
+// por noche»). (CLAUDE.md § Testing: «un catch-test fija la REGLA, no la cifra».)
+const CASOS: { id: string }[] = [
+  { id: "5dc42a82-69d8-4aeb-84c8-1e8b908ca474" },
+  { id: "d043ebfc-b8e0-491f-abae-118f048933c9" },
 ];
 const fmtPct = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
 
@@ -68,7 +75,6 @@ async function main() {
     const dm = v.deltaMinimoFueraDeTope;
     if (!dm) f("el caso debía traer mínimo fuera de tope");
     else {
-      if (dm.palanca !== caso.dmPalanca) f(`mínimo por ${dm.palanca}, se esperaba ${caso.dmPalanca}`);
       const cifra = fmtPct(Math.abs(dm.deltaPct));
       const esperado = dm.palanca === "precio" ? `recién con −${cifra}% de precio` : `recién cobrando +${cifra}% por noche`;
       if (!fr.includes(esperado)) f(`no cita el mínimo como lo que recién cruzaría ("${esperado}")`);

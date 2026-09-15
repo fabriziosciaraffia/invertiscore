@@ -86,24 +86,18 @@ async function main() {
     if (palancaPrecio && umbral !== palancaPrecio.objetivo) F(`umbral ${umbral} ≠ palanca precio ${palancaPrecio.objetivo}`);
     if (!palancaPrecio && umbral !== null) F(`umbral ${umbral} sin palanca precio que cruce`);
     if (dv.valor.esEstructural && umbral !== null) F("estructural con umbral");
-    // 3. expectativas por caso
-    if (caso.espera === "sugeridoBajoUmbral") {
-      if (umbral === null) F("debía tener umbral");
-      else if (!(sugerido < umbral)) F(`sugerido ${sugerido} debía quedar bajo el umbral ${umbral}`);
-    }
-    if (caso.espera === "estructuralBajoMinimo" || caso.espera === "estructuralCoherente") {
-      if (!dv.valor.esEstructural) F("debía ser estructural");
-      if (!dm || dm.palanca !== "precio") F("debía traer mínimo fuera de tope por precio");
-      else {
-        const minimo = precio * (1 + dm.deltaPct / 100);
-        if (caso.espera === "estructuralBajoMinimo" && !(sugerido < minimo)) F(`sugerido ${sugerido} debía quedar bajo el mínimo ${Math.round(minimo)}`);
-        if (caso.espera === "estructuralCoherente" && !(sugerido > minimo)) F(`sugerido ${sugerido} debía quedar sobre el mínimo ${Math.round(minimo)}`);
-      }
-    }
-    if (caso.espera === "contrato") {
-      if (umbral !== 3945) F(`umbral ${umbral} ≠ 3945`);
-      if (Math.round(sugerido) !== 3827) F(`sugerido ${sugerido} ≠ 3827`);
-    }
+    // ⛔ LAS «EXPECTATIVAS POR CASO» SE FUERON (17-sep-2026). Eran clasificaciones y cifras
+    // escritas a mano por FILA VIVA del parque —una tabla `CASOS` con `espera:
+    // "estructuralBajoMinimo"`, y un `if (umbral !== 3945)` con el número literal—. El motor
+    // las movió por decisión de producto (cf5264d7, 12-sep) y el test quedó rojo sin que nada
+    // estuviera roto. En rojo se quedó, porque tampoco estaba cableado al runner.
+    //
+    // Lo que queda arriba son REGLAS, y pasan con cualquier calibración: que el umbral que
+    // publica la negociación sea EXACTAMENTE la palanca de precio de la distancia; que sin
+    // palanca que cruce no haya umbral; que un estructural no traiga umbral. Son acuerdos
+    // entre dos salidas del motor, no fotos de una fila. Y abajo sigue el bloque de jerarquía,
+    // que se mide sobre lo que el recompute devuelva.
+    // (CLAUDE.md § Testing: «un catch-test fija la REGLA, no la cifra».)
     // 4. el bloque de jerarquía: sin "techo", con nombres; estructural sin objetivo
     const m = r.metrics;
     const jer = construirJerarquiaPrecios({

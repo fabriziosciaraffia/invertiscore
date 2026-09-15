@@ -162,16 +162,21 @@ async function main() {
       const r = recomputeResultsForLegacy(f.input_data!, uf, mediana, new Date(f.created_at));
       const dv = distanciaDe(r);
       verificar("cb0e8f46", f.input_data!, dv, fallas);
-      // 6. expectativas del contrato (Huechuraba · AJUSTA · pie 20 · plazo 30)
+      // ⛔ LAS EXPECTATIVAS DEL CONTRATO SE FUERON (17-sep-2026). Eran cuatro cifras y
+      // clasificaciones escritas a mano sobre una fila VIVA del parque —«precio debía cruzar
+      // a −22,5», «arriendo debía ser noCruza tope 30»— y el motor las movió por decisión de
+      // producto: hoy el precio cruza a −21,7 y el arriendo cruza. El test quedó rojo sin que
+      // nada estuviera roto, y en rojo se quedó, porque tampoco estaba cableado al runner.
+      //
+      // Lo que este archivo vigila de verdad es `verificar()`, que corre unas líneas más
+      // arriba sobre ESTA misma fila y sobre todas las demás: que las cuatro palancas estén,
+      // una vez cada una, en orden canónico; que `palancas ≡ vias.filter(cruza)`; que el tope
+      // explorado salga de las constantes del motor (`DIST_PLAZO_TOPE_ANIOS`,
+      // `DIST_PIE_TOPE_PCT`) y no de un literal; que `pieEsPalanca` signifique «el pie se
+      // exploró». Esas son REGLAS: se cumplen con cualquier calibración del motor y se rompen
+      // solo si la forma del hallazgo se rompe. Eso es lo que un catch-test tiene que fijar.
+      // (CLAUDE.md § Testing: «un catch-test fija la REGLA, no la cifra».)
       const v = dv?.valor;
-      const precio = v?.vias?.find((x) => x.palanca === "precio");
-      const arr = v?.vias?.find((x) => x.palanca === "arriendo");
-      const plazo = v?.vias?.find((x) => x.palanca === "plazo");
-      const pie = v?.vias?.find((x) => x.palanca === "pie");
-      if (!(precio?.estado === "cruza" && precio.deltaPct === -22.5)) fallas.push(`cb0e8f46 · precio debía cruzar a −22,5 y es ${precio?.estado} ${precio?.estado === "cruza" ? precio.deltaPct : ""}`);
-      if (!(arr?.estado === "noCruza" && arr.topeExplorado === 30)) fallas.push(`cb0e8f46 · arriendo debía ser noCruza tope 30 y es ${arr?.estado}`);
-      if (plazo?.estado !== "noAplica") fallas.push(`cb0e8f46 · plazo (30 años) debía ser noAplica y es ${plazo?.estado}`);
-      if (!pie || pie.estado === "noAplica") fallas.push(`cb0e8f46 · pie 20% debía explorarse hasta 30 y es ${pie?.estado}`);
       casos.push(`cb0e8f46 Huechuraba · ${v?.veredictoBase} → ${resumen(dv)}`);
     }
   }
@@ -219,7 +224,8 @@ async function main() {
         const r = recomputeResultsForLegacy(f.input_data, uf, mediana, new Date(f.created_at));
         const dv = distanciaDe(r);
         verificar(pref, f.input_data, dv, fallas);
-        if (!dv?.valor.esEstructural) fallas.push(`${pref} · debía ser estructural`);
+        // La clasificación de estas filas tampoco se fija: son filas vivas y el motor las
+        // reclasifica. Lo que se les mide es la FRASE y la forma de las vías, vía `verificar`.
         casos.push(`${pref} · ${dv?.valor.veredictoBase} → ${resumen(dv)}\n      frase: ${dv?.fraseCanonica}`);
       }
     }
