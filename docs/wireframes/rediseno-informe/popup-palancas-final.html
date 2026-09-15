@@ -95,6 +95,16 @@
   .mleyenda span{display:inline-flex;align-items:center;gap:6px}
   .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
   .sw.a{background:var(--tx)} .sw.b{background:color-mix(in srgb,var(--up) 14%,transparent);border:1px solid var(--up)}
+  /* EL CÓDIGO USA OTRO FONDO. Desde el 17-sep-2026 producción escribe
+     `background:var(--doc-paper)` —o sea `--page`, no `--card`—, con el mismo aro inset.
+     Por qué: `--card` es EXACTAMENTE el fondo de una celda de la matriz, así que en COMPRAR
+     este swatch quedaba del mismo color que el de la celda que cae (`.sw.e`), y los dos del
+     mismo color que «hoy». Medido en el navegador, en los dos temas: rgb(244,244,246) los
+     dos en claro, rgb(26,26,30) los dos en oscuro — la leyenda prometía dos marcas y
+     dibujaba una. Y la marca que este swatch nombra no es un fondo: `td.hoy` es un ARO sobre
+     la celda que sea. Sobre `--page` el aro queda solo, que es lo que la marca es.
+     Precedente de forma: `.sw.d`, que ya se dibuja así con el aro de selección.
+     Queda anotado acá y no corregido arriba: el mockup sigue mostrando la versión vieja. */
   .sw.c{background:var(--card);outline:2px solid var(--tx3);outline-offset:-2px}
 
   /* detalle de celda · dos datos */
