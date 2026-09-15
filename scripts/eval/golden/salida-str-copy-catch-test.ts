@@ -33,7 +33,7 @@ import { buildStrRecomputeCtx } from "../../../src/lib/analysis/recompute-short-
 import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../../../src/lib/engines/short-term-score";
 import { buildStrHallazgos, mergeHallazgosStr } from "../../../src/lib/str-hallazgos";
-import { salidaPorMixStr, mixAlEscalonStr, cierreFraseCanonicaStr, cierrePopupEscalonStr, pieDocumentoSalidaStr, cierrePopupSalida } from "../../../src/lib/salida-por-mix";
+import { salidaPorMixStr, mixAlEscalonStr, cierreFraseCanonicaStr, cierrePopupEscalonStr, pieDocumentoSalidaStr, cierrePopupSalida, lineaMiniSalida, pieDocumentoSalida } from "../../../src/lib/salida-por-mix";
 import { lineaFooterVias } from "../../../src/lib/palancas-en-palabras";
 import { etiquetaVeredicto } from "../../../src/lib/veredicto-etiqueta";
 import type { HallazgoDistanciaVeredicto } from "../../../src/lib/types";
@@ -110,11 +110,115 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
 
 // ── 2 · el copy, desde el único módulo ──────────────────────────────────────
 {
-  const s = { movimiento: "el pie en 30% y el plazo en 30 años", remate: "moviendo dos cosas a la vez", descuentoPct: 17.5, costoDiaUnoUF: 261, mueve: ["pie", "plazo"] as ("pie" | "plazo")[] };
+  // `hayOtrosCaminos: false` en los dos de base — son los que estaban antes del menú de
+  // respuestas y describen el caso de UN solo camino. La rama nueva se prueba abajo, con su
+  // propio par: sin eso, el campo entra al tipo y ninguna aserción lo ejercita.
+  const s = { movimiento: "el pie en 30% y el plazo en 30 años", remate: "moviendo dos cosas a la vez", descuentoPct: 17.5, costoDiaUnoUF: 261, mueve: ["pie", "plazo"] as ("pie" | "plazo")[], hayOtrosCaminos: false };
   const sin = { ...s, movimiento: "el pie en 30%", remate: "subiendo el pie", descuentoPct: null, mueve: ["pie"] as ("pie" | "plazo")[] };
   if (cierreFraseCanonicaStr(s, null) !== "Con lo tuyo —pie y plazo— y un descuento de 17,5% llega a Comprar.") F(`2 · cierreFraseCanonicaStr con descuento: «${cierreFraseCanonicaStr(s, null)}»`);
   if (cierreFraseCanonicaStr(sin, null) !== "Con lo tuyo —el pie— sí llega a Comprar.") F(`2 · cierreFraseCanonicaStr forma corta: «${cierreFraseCanonicaStr(sin, null)}»`);
   if (cierreFraseCanonicaStr(s, ESCALON) !== `Con lo tuyo —pie y plazo— y un descuento de 17,5% llega a ${ESCALON}, no a Comprar.`) F(`2 · cierreFraseCanonicaStr al escalón: «${cierreFraseCanonicaStr(s, ESCALON)}»`);
+  // ── EL CUALIFICADOR, LAS DOS RAMAS (17-sep-2026) ──────────────────────────
+  // Con más de un camino las tres superficies sin menú nombran CUÁL describen; con uno solo
+  // no dibujan nada. Se prueban las dos formas de cada una: verificar solo la que cambió deja
+  // sin gate a la que se quedó igual, que es la que el 71% de las filas ve.
+  {
+    const uno = { ...s, hayOtrosCaminos: false };
+    const varios = { ...s, hayOtrosCaminos: true };
+    const REC = "lo que Franco recomienda";
+
+    const miniUno = lineaMiniSalida(uno, "Ajusta supuestos");
+    const miniVarios = lineaMiniSalida(varios, "Ajusta supuestos");
+    if (miniUno.includes(REC)) F(`2b · lineaMiniSalida nombra la recomendada con UN solo camino: «${miniUno}»`);
+    if (!miniVarios.includes(`con ${REC} —el pie en 30% y el plazo en 30 años—`)) {
+      F(`2b · lineaMiniSalida no antepone el cualificador con varios caminos: «${miniVarios}»`);
+    }
+
+    const pieUno = pieDocumentoSalida(uno);
+    const pieVarios = pieDocumentoSalida(varios);
+    if (pieUno.includes(REC)) F(`2b · pieDocumentoSalida nombra la recomendada con UN solo camino: «${pieUno}»`);
+    if (!pieVarios.includes(`el plazo en 30 años, que es ${REC},`)) {
+      F(`2b · pieDocumentoSalida no nombra la recomendada con coma: con rayas quedan TRES en la misma oración — «${pieVarios}»`);
+    }
+
+    // El caso ESCALÓN también, que no tenía ninguna aserción: es el que arma la frase más
+    // larga y donde el cualificador convive con el destino.
+    const escUno = pieDocumentoSalidaStr(uno, ESCALON);
+    const escVarios = pieDocumentoSalidaStr(varios, ESCALON);
+    if (escUno.includes(REC)) F(`2b · pieDocumentoSalidaStr(escalón) nombra la recomendada con UN camino: «${escUno}»`);
+    if (!escVarios.includes(`de descuento —${REC}—`)) {
+      F(`2b · en el escalón el cualificador no va DESPUÉS del descuento: la recomendada es la celda entera, no solo el movimiento — «${escVarios}»`);
+    }
+
+    const strUno = pieDocumentoSalidaStr(uno, null);
+    const strVarios = pieDocumentoSalidaStr(varios, null);
+    if (strUno.includes(REC)) F(`2b · pieDocumentoSalidaStr nombra la recomendada con UN solo camino: «${strUno}»`);
+    if (!strVarios.includes(`de descuento —${REC}—`)) {
+      F(`2b · pieDocumentoSalidaStr no pone el cualificador después del descuento: «${strVarios}»`);
+    }
+
+    // Y EL NOMBRE ES EL DEL MENÚ, no uno nuevo: se lee de `PopupAjustes.tsx` en vez de
+    // fijarlo acá. Con el literal escrito dos veces, renombrar el del menú deja este verde.
+    // Sin comentarios: ese archivo está lleno de actas que citan literales del contrato, así
+    // que sobre el texto crudo una nota satisface al predicado. (Cuarta vez en este arco.)
+    const POPUP = leer("src/components/analysis/shared/PopupAjustes.tsx")
+      .replace(/\{\/\*[^]*?\*\/\}/g, "").replace(/\/\*[^]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    if (!/score: "Lo que Franco recomienda"/.test(POPUP)) {
+      F("2b · el menú dejó de llamarla «Lo que Franco recomienda»: el cualificador del PDF y del share quedó con un nombre que ya no existe");
+    }
+  }
+
+  // ── Y QUIÉN PRODUCE `hayOtrosCaminos` (17-sep-2026) ───────────────────────
+  // Los fixtures de arriba lo fijan a mano, así que prueban a los CONSUMIDORES y no al
+  // productor: con `desdeMix` devolviendo siempre `false` —o siempre `true`— las seis
+  // aserciones de arriba siguen verdes. Verificado por mutación; por eso va este par.
+  //
+  // El fixture declara solo los campos que `salidaPorMixStr` → `desdeMix` lee, que es toda
+  // la superficie de esa cadena. Las dos respuestas difieren en `plazoAnios`: la clave de
+  // fusión del motor es la TRIPLETA (pie, plazo, descuento), así que dos objetos con las
+  // mismas coordenadas son UNA línea para el lector y tienen que contar como una.
+  {
+    const raiz = {
+      piePctDelta: 5, piePct: 30, plazoAniosDelta: 5, plazoAnios: 30,
+      sinDescuento: false, descuentoPct: -17.5, costoDiaUnoUF: 261,
+      dentroDelAlcance: true, redundanteConPalancaSola: false,
+    };
+    const valor = (respuestas: unknown[]) =>
+      ({ esEstructural: true, veredictoBase: "AJUSTA SUPUESTOS", mixPalancas: { ...raiz, respuestas } } as unknown as Parameters<typeof salidaPorMixStr>[0]);
+    const r = (piePct: number, plazoAnios: number) => ({ piePct, plazoAnios, descuentoPct: -17.5 });
+
+    const una = salidaPorMixStr(valor([r(30, 30)]));
+    if (!una) F("2c · el fixture de UN camino no produjo salida: el resto del bloque no midió nada");
+    else if (una.hayOtrosCaminos) F("2c · `hayOtrosCaminos` es true con UNA sola respuesta");
+
+    const dos = salidaPorMixStr(valor([r(30, 30), r(30, 25)]));
+    if (!dos) F("2c · el fixture de DOS caminos no produjo salida");
+    else if (!dos.hayOtrosCaminos) F("2c · `hayOtrosCaminos` es false con DOS respuestas en coordenadas distintas");
+
+    // Y LA FUSIÓN: dos objetos en la MISMA celda son una línea, no dos.
+    const fusionadas = salidaPorMixStr(valor([r(30, 30), r(30, 30)]));
+    if (fusionadas?.hayOtrosCaminos) {
+      F("2c · dos respuestas en la MISMA celda cuentan como dos caminos: el lector ve una línea y el PDF nombraría una elección que no existe");
+    }
+
+    // LAS TRES COORDENADAS, CADA UNA CON SU PAR. Con los tres fixtures variando solo el
+    // plazo, borrar `piePct` o `descuentoPct` de la clave quedaba VERDE — y el motor fusiona
+    // por la TRIPLETA, así que dos respuestas que comparten pie y plazo pero piden distinto
+    // descuento SON dos líneas para el lector. Lo marcó la revisión adversaria.
+    const soloPie = salidaPorMixStr(valor([r(30, 30), { piePct: 25, plazoAnios: 30, descuentoPct: -17.5 }]));
+    if (!soloPie?.hayOtrosCaminos) F("2c · dos respuestas que solo difieren en el PIE cuentan como un camino");
+    const soloDesc = salidaPorMixStr(valor([r(30, 30), { piePct: 30, plazoAnios: 30, descuentoPct: -12 }]));
+    if (!soloDesc?.hayOtrosCaminos) F("2c · dos respuestas que solo difieren en el DESCUENTO cuentan como un camino");
+
+    // ⛔ AUSENTE ≠ VACÍO, y las dos formas dicen cosas distintas.
+    const vacio = salidaPorMixStr(valor([]));
+    if (vacio?.hayOtrosCaminos !== false) F("2c · con `respuestas: []` —medido, no hay— el campo debería ser false y da " + String(vacio?.hayOtrosCaminos));
+    const ausente = salidaPorMixStr({ esEstructural: true, veredictoBase: "AJUSTA SUPUESTOS", mixPalancas: { ...raiz } } as unknown as Parameters<typeof salidaPorMixStr>[0]);
+    if (ausente?.hayOtrosCaminos !== null) {
+      F("2c · con `respuestas` AUSENTE el campo tiene que ser `null`: leerlo como false hace que el ksub afirme «solo con…» sobre algo que nadie midió");
+    }
+  }
+
   const pop = cierrePopupEscalonStr(s, ESCALON);
   if (pop.marca !== `Ningún cambio por separado alcanza. Moviendo dos cosas a la vez, llega a ${ESCALON}.`) F(`2 · cierrePopupEscalonStr.marca: «${pop.marca}»`);
   if (pop.resto !== "Con el pie en 30% y el plazo en 30 años, y un 17,5% de descuento, deja de ser un no, pero no llega a Comprar. Lo que cuesta es plata tuya el día uno.") F(`2 · cierrePopupEscalonStr.resto: «${pop.resto}»`);
@@ -152,6 +256,46 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
   if (!/lineaFooterVias\([^)]*salidaPorMixStr|salidaPorMixStr\(distancia\.valor\)/.test(hero)) F("3 · el footer de la card STR no pasa la combinación a lineaFooterVias");
   const cap = leer("src/components/analysis/str/CapitulosInversionStr.tsx");
   if (/esEstructural \? "fuera de lo negociable" : subeTxt/.test(cap)) F("3 · el capítulo «Cómo lo pagas» sigue diciendo «fuera de lo negociable» aunque haya combinación");
+
+  // ── EL «SOLO» DEL KSUB, QUE ERA FALSO EN 4 FILAS (17-sep-2026) ────────────
+  // `loTuyo` describe la combinación EQUILIBRADA. Con el menú de respuestas el motor ofrece
+  // hasta tres, y medido sobre el parque hay 4 filas STR donde este ksub decía «solo con pie
+  // y plazo» mientras el menú ofrecía además una que mueve UNA sola dimensión. La palabra
+  // que mentía era «solo».
+  //
+  // Se mide sin comentarios: el acta de arriba de esa línea cita «solo con» para explicar
+  // por qué se fue, así que sobre el texto crudo el predicado se cumpliría con la prosa.
+  {
+    const capSC = cap.replace(/\/\*[^]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const bloque = capSC.match(/const subEstructural = [^;]*;/)?.[0] ?? "";
+    if (!bloque) F("3b · no se encontró `subEstructural` en el capítulo");
+    else {
+      // ⛔ CADA LITERAL ATADO A SU RAMA, y no «que exista en algún lado» (17-sep-2026).
+      //   Con los tres predicados de presencia, INVERTIR las dos ramas —decir «solo» justo
+      //   cuando HAY otros caminos— quedaba VERDE: el bug original al revés y peor. Y poner
+      //   el mismo template en las dos ramas también pasaba. Lo cazó la revisión adversaria
+      //   del diff, no las mutaciones propias.
+      // Por POSICIÓN y no por regex: los templates traen ternarios anidados (`=== null ? ""
+      // : " más descuento"`), así que cualquier `[^:]*` se corta antes del literal que importa.
+      const iSi = bloque.indexOf("hayOtrosCaminos === true");
+      const iNo = bloque.indexOf("hayOtrosCaminos === false");
+      const ramaSi = iSi >= 0 && iNo > iSi ? bloque.slice(iSi, iNo) : "";
+      const ramaNo = iNo >= 0 ? bloque.slice(iNo) : "";
+      if (!ramaSi || !ramaNo) F("3b · el ksub dejó de bifurcar en las tres ramas de `hayOtrosCaminos`");
+      else {
+        if (!/lo que Franco recomienda/.test(ramaSi)) F("3b · la rama de VARIOS caminos no nombra la recomendada");
+        if (/solo con/.test(ramaSi)) F("3b · la rama de VARIOS caminos dice «solo»: es la afirmación que el goal vino a matar, invertida");
+        if (!/solo con/.test(ramaNo)) F("3b · la rama de UN camino perdió el «solo», que ahí es el hecho");
+        if (/lo que Franco recomienda/.test(ramaNo)) F("3b · la rama de UN camino nombra la recomendada: promete una elección que no existe");
+      }
+      // (a) el «solo» cuelga de que NO haya otros caminos…
+      // Y EL SEPARADOR NO PUEDE SER « · », que es el del `join` de los chips: ahí el
+      // cualificador sale como un ítem hermano de «precio» y «pie» en vez de calificar.
+      if (/·\s*lo que Franco recomienda/.test(bloque)) {
+        F("3b · el cualificador del ksub volvió al separador « · »: sale como un chip más, no como cualificador");
+      }
+    }
+  }
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
