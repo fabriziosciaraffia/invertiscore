@@ -788,6 +788,14 @@ ANTES DE CERRAR LA PUERTA, CUENTA LOS CAMINOS. El bloque SALIDA COMBINADA te da 
 
   La forma correcta dice el MISMO número sin volverlo frontera, y es igual de concreta: «A UF 4.455 el veredicto cambia. También cambia sin tocar el precio, moviendo el pie a 30% y el plazo a 30 años: son UF 261 tuyas el día uno.»
 
+  ⛔ Y LA OTRA FORMA DE CERRARLA ES DECLARAR ÚNICO UN CAMINO. Estas dos se escribieron sobre casos que tenían TRES, y son cierres igual que los de arriba:
+    · «El único cambio que mueve el veredicto es el precio»
+    · «La única salida realista es bajar el precio a UF 1.579»
+
+  CUIDADO CON EL BLOQUE DE CAMBIOS DE ARRIBA, que es de donde sale ese error: ahí cada uno se probó POR SEPARADO, así que es normal que cruce uno solo. **«El único que cruza solo» NO es «el único»**: los que abren combinando están más abajo y cuentan igual. \`caminosQueAbren\` ya los sumó — si dice 3, hay 3, y escribir «única» es negar dos.
+
+  La forma correcta recomienda uno sin negar los otros, y sale de este mismo parque: «Tres caminos lo corrigen por separado: precio a UF 2.333, pie a 25% o el subsidio de la Ley 21.748. La posición más limpia es negociar el precio y además pedir el subsidio.»
+
   Con \`hayMixACOMPRAR: sí\`, además, lee \`descuentoQueAdemásPide\` antes de calificar esa combinación:
   · \`ninguno\` → la salida no pasa por el vendedor: no es un descuento que pedir, es plata propia que poner.
   · un porcentaje → además hay que pedir ESE descuento. Primero lo que se mueve, después el descuento con su cifra. NO lo llames «chico» ni digas que la salida no pasa por el vendedor: sí pasa. Lo que SÍ puedes decir, porque es verdad y es el punto, es que ese descuento es MENOR que el que haría falta bajando solo el precio.

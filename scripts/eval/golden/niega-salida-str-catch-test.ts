@@ -78,8 +78,20 @@ const dvDe = (clave: string): HallazgoDistanciaVeredicto["valor"] =>
   // estructurales, que son la mayoría de las que tienen menú.
   if (!/ANTES DE CERRAR LA PUERTA, CUENTA LOS CAMINOS/.test(p)) F("1 · falta la cabecera que cuenta los caminos");
   if (!/caminosQueAbren` ≥ 1 → no se cierra/.test(p)) F("1 · falta la instrucción del caso «hay al menos un camino»");
+  // LAS DOS FORMAS DE CERRAR LA PUERTA, y las dos salieron de leer prosa, no de imaginarla.
+  // La segunda se agregó el 17-sep tras la corrida de las 63: tres filas quedaron PEOR que
+  // antes escribiendo «la única palanca» sobre casos con tres caminos, porque los tres
+  // ejemplos que tenía el prompt apuntaban todos a la primera forma.
   if (!/conviertes un número en la frontera del caso/.test(p)) {
-    F("1 · falta la mitad que importa: cerrar la puerta también se hace declarando un número como frontera");
+    F("1 · falta una de las dos formas de cerrar: declarar un número como frontera");
+  }
+  if (!/DECLARAR ÚNICO UN CAMINO/.test(p)) {
+    F("1 · falta la otra forma de cerrar: declarar único un camino cuando el bloque cuenta varios");
+  }
+  // Y el desarme del agravante: el bloque de cambios prueba de a uno, así que «el único que
+  // cruza solo» se lee como «el único» si nadie lo dice. Es de donde salían las tres.
+  if (!/«El único que cruza solo» NO es «el único»/.test(p)) {
+    F("1 · falta la línea que desarma el bloque de cambios: «el único que cruza solo» no es «el único»");
   }
   if (!/descuentoQueAdemásPide/.test(p) || /«chico»/.test(p) && !/NO lo llames «chico»/.test(p)) F("1 · la instrucción tiene que leer `descuentoQueAdemásPide` y prohibir «chico»");
 
