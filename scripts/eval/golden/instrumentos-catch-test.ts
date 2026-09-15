@@ -2,8 +2,18 @@
 // GOLDEN · instrumentos por su nombre — catch-test (#11 · 07-sep-2026). 0 tokens.
 // ============================================================================
 // Fija qué wording nombra el instrumento y cuál solo nombra el género. Nació para
-// A8·D1 en LTR; esa regla se retiró con `largoPlazo` en v21 (08-sep-2026) y el
-// matcher quedó sirviendo al golden de STR, donde el campo existe y se renderiza.
+// A8·D1 en LTR; esa regla se retiró con `largoPlazo` en v21 (08-sep-2026).
+//
+// ⛔ Y LA SEGUNDA MITAD DE ESA FRASE ERA FALSA (17-sep-2026). Decía que «el matcher quedó
+// sirviendo al golden de STR, donde el campo existe y se renderiza» —la misma afirmación
+// está en `generate.ts:180`, palabra por palabra— y no: `PROSA_PATHS_STR` tiene seis paths
+// y `largoPlazo` no está en ninguno desde v17. Grep sobre todo el árbol: el único
+// importador de `nombraInstrumento` es este archivo.
+//
+// Los nueve predicados de acá abajo MIDEN BIEN: el problema está un nivel más arriba. El
+// instrumento está calibrado y desconectado, que es el mismo modo de falla que `generate.ts`
+// describe seis líneas antes del comentario falso: «la red midiendo cero y reportándolo como
+// éxito». La conversación que abre no es si el test mide, es si el matcher vive. Su goal.
 // Los legítimos salen del parque y de los dumps LTR: «depósito a
 // plazo», «depósito en UF al 5%», «depósito a plazo en UF», «depósito UF», «fondos
 // mutuos», plural de depósito. Los ilegítimos son los que la regla protege.

@@ -177,8 +177,18 @@ export async function runGenerateTier(sb: SupabaseClient, K: number, opts: { dum
       // reportándolo como éxito. Es el mismo modo de falla que ya costó cuatro campos
       // rotos en el bundle del juez.
       //
-      // `nombraInstrumento` y su catch-test siguen vivos: los usa el golden de STR,
-      // donde `largoPlazo` sí existe y sí se renderiza.
+      // ⛔ ESTA JUSTIFICACIÓN ES FALSA, VERIFICADA (17-sep-2026). Decía que
+      // `nombraInstrumento` y su catch-test siguen vivos «porque los usa el golden de STR,
+      // donde largoPlazo sí existe y sí se renderiza». No: `PROSA_PATHS_STR`
+      // (`str-guards.ts:37-42`) tiene SEIS paths y `largoPlazo` no está en ninguno — v17 lo
+      // sacó del schema—, `str-generate.ts` no lo menciona nunca, y ningún guard STR importa
+      // el matcher. Grep sobre todo el árbol: el ÚNICO importador de `nombraInstrumento` es
+      // su propio catch-test.
+      //
+      // O sea que es un lazo cerrado: nueve predicados que miden bien un instrumento que
+      // nadie llama. Y la pregunta que abre no es si el test mide bien —mide bien— sino si
+      // el matcher vive. Va en su propio goal: retirar `instrumentos.ts`, su catch-test y la
+      // línea del runner, o encontrarle el consumidor que esta nota dice que tiene.
 
       // ── Checks pie-0 (GS-PC* · fase 4, aprobados 2026-08-01) — doctrina ## 5.bis ──
       if (seed.key.startsWith("GS-PC")) {
