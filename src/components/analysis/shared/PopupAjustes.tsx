@@ -69,9 +69,6 @@ const FRASE_DEL_DUENO: Record<QuienLaPone, string> = {
   tuyo: "lo decides tú",
 };
 
-/** Orden canónico para listar los veredictos caídos: del menos grave al más grave, que es
- *  como los ordena la matriz hermana (`Matriz.tsx:92`). */
-const RANK_LEYENDA: Record<Veredicto, number> = { "BUSCAR OTRA": 0, "AJUSTA SUPUESTOS": 1, COMPRAR: 2 };
 
 const NOMBRE: Record<PalancaDistancia["palanca"], string> = {
   precio: "Precio",
@@ -95,6 +92,31 @@ const NOMBRE: Record<PalancaDistancia["palanca"], string> = {
  */
 function mixAComprar(v: HallazgoDistanciaVeredicto["valor"]) {
   return v.veredictoBase === "BUSCAR OTRA" ? v.mixPalancasHastaComprar ?? null : v.mixPalancas ?? null;
+}
+
+/**
+ * LAS PALANCAS QUE LLEGAN AL DESTINO, y solo esas (17-sep-2026).
+ *
+ * MISMA REGLA QUE `mixAComprar`, Y ESA ES TODA LA HISTORIA: el 13-sep se arregló la
+ * grilla y se dejó la tabla de al lado leyendo `palancas`, que en BUSCAR OTRA apunta al
+ * escalón intermedio. Así, en 259 de 264 pop-ups sin grilla (98,1% — el 27,0% del total)
+ * el chip de arriba decía «BUSCAR OTRO → ✓ COMPRAR» y las tres filas de la única tabla
+ * en pantalla, bajo la columna «Llegas a», decían «Ajustar». Ninguna llegaba.
+ *
+ * La card de §5 ya lo hacía bien con el mismo dato desde el 10-sep
+ * (`lo-que-haria-yo.ts`, `esBuscar ? dv.palancasHastaComprar : dv.palancas`), así que la
+ * misma fila contestaba distinto en dos superficies a un clic de distancia — exactamente
+ * lo que la fuente única vino a evitar. Acá se copia esa expresión, no se inventa otra.
+ *
+ * ⚠ AUSENTE ≠ VACÍO. En una fila persistida antes del salto de dos bandas el campo es
+ * `undefined`: nadie midió la vía a COMPRAR. `[]` es «se midió y ninguna llega». Las dos
+ * dibujan lo mismo —nada, que es «sin celda, sin oración»— pero por razones distintas, y
+ * leer el undefined como lista vacía haría que el pop-up publicara una medición que no
+ * existe. Por eso el predicado es `Array.isArray` y no `?? []`.
+ */
+function solasAComprar(v: HallazgoDistanciaVeredicto["valor"]): PalancaDistancia[] {
+  if (v.veredictoBase !== "BUSCAR OTRA") return v.palancas ?? [];
+  return Array.isArray(v.palancasHastaComprar) ? v.palancasHastaComprar : [];
 }
 
 /**
@@ -203,7 +225,10 @@ export function hayAjustesQueMostrar(p: {
   if (p.veredicto === "COMPRAR") return (p.filasComprar?.length ?? 0) > 0;
   const v = p.distancia?.valor;
   if (!v) return false;
-  return (mixAComprar(v)?.celdas?.length ?? 0) > 0 || (v.palancas?.length ?? 0) > 0;
+  // LA MISMA FUENTE QUE DIBUJA. Contar `palancas` acá y dibujar `palancasHastaComprar`
+  // abajo deja al hero abriendo un pop-up vacío, que es el estado que el invariante 6
+  // existe para impedir.
+  return (mixAComprar(v)?.celdas?.length ?? 0) > 0 || solasAComprar(v).length > 0;
 }
 
 export function PopupAjustes({
@@ -222,7 +247,7 @@ export function PopupAjustes({
   // abajo el componente no vuelve a distinguir: es el mismo tipo y el mismo render.
   const mix = veredicto === "COMPRAR" ? mixComprar ?? null : v ? mixAComprar(v) : null;
   const celdas = mix?.celdas ?? [];
-  const solas = v?.palancas ?? [];
+  const solas = v ? solasAComprar(v) : [];
   // DOS ESTADOS, Y SON DOS PREGUNTAS DISTINTAS (16-sep-2026).
   //
   // `sel` es la celda cuyo PANEL DE DETALLE está abierto: arranca en null, responde en
@@ -287,6 +312,29 @@ export function PopupAjustes({
   const planSinCelda = !!respuestaSel && respuestaSel.piePctDelta === 0 && respuestaSel.plazoAniosDelta === 0;
   const aro = hayMenu ? (planSinCelda ? null : celdaDeLaRespuesta) : sel;
 
+  // ¿EL AJUSTE AJUSTA ALGO? (17-sep-2026)
+  //
+  // El bloque de abajo se titula «El ajuste» y dibuja siete pares antes → después. Con las
+  // dos deltas en cero y sin descuento los siete salen idénticos: «$17.539.910 →
+  // $17.539.910», «Score 77 → 77». Medido: 6 filas COMPRAR abren así. Un bloque que se
+  // llama ajuste y no ajusta nada no describe nada — y el lector tiene que leer siete
+  // filas para descubrirlo.
+  //
+  // Es la misma doctrina de «sin celda, sin oración» que ya gobierna «hoy» en la leyenda,
+  // la nota de la tarifa y la segunda mitad del subtítulo de la matriz: la pieza cuelga de
+  // lo que describe. Acá lo que describe es un movimiento, y no hay ninguno.
+  //
+  // CUELGA DE LA RESPUESTA ELEGIDA, no de la fila: el mismo pop-up donde la recomendada no
+  // mueve nada tiene otras líneas en el menú que sí mueven, y al elegirlas el bloque vuelve.
+  // Sin menú cae a la raíz, que es de donde el bloque leía antes de que hubiera respuestas.
+  const ajustaAlgo = (() => {
+    const r = respuestaSel;
+    const dPie = r ? r.piePctDelta : mix?.piePctDelta ?? 0;
+    const dPlazo = r ? r.plazoAniosDelta : mix?.plazoAniosDelta ?? 0;
+    const sinDcto = r ? r.sinDescuento : mix?.sinDescuento ?? true;
+    return dPie !== 0 || dPlazo !== 0 || !sinDcto;
+  })();
+
   return (
     <div className="paj">
       {/* LOS CHIPS DE VEREDICTO, con signo, igual que la card. En COMPRAR es uno solo:
@@ -341,7 +389,7 @@ export function PopupAjustes({
         />
       )}
 
-      {mix && celdas.length > 0 && (
+      {mix && celdas.length > 0 && ajustaAlgo && (
         <SeccionOptimo
           mix={mix}
           respuesta={respuestaSel}
@@ -638,18 +686,23 @@ function SeccionMatriz({
             `Matriz.tsx:47`) porque allá la celda muestra un NÚMERO y el veredicto vive solo
             en el tooltip; acá la celda escribe la palabra, así que el chip sería la segunda
             marca del mismo hecho. Una marca por hecho.
-            Y son varias entradas porque caen a veredictos distintos: en renta corta ya se ven
-            celdas cayendo a Buscar otro, no solo a Ajustar. Se recogen de las celdas, como
-            hace la hermana, y solo si existen. */}
-        {esComprar &&
-          Array.from(new Set(celdas.map((c) => veredictoMostrado(c)).filter((x): x is Veredicto => !!x && x !== destino)))
-            .sort((a, b) => RANK_LEYENDA[b] - RANK_LEYENDA[a])
-            .map((vd) => (
-              <span key={vd}>
-                <i className="paj-sw e" />
-                baja a {etiquetaVeredicto(vd, "frase")}
-              </span>
-            ))}
+            UNA ENTRADA, NO UNA POR VEREDICTO (17-sep-2026). Hasta hoy se dibujaba una por
+            veredicto caído presente —«baja a Ajustar», «baja a Buscar otro»— y las dos usaban
+            el MISMO swatch, porque el gris de la celda es uno solo. Medido en el navegador,
+            en los dos temas: rgb(244,244,246) las dos en claro y rgb(26,26,30) en oscuro. La
+            leyenda prometía dos marcas y dibujaba una.
+            Es la misma regla con la que el chip «↓ Ajustar» se quedó afuera dos párrafos más
+            arriba: UNA MARCA POR HECHO. La leyenda explica el COLOR, y el color dice una sola
+            cosa —«esta combinación te saca de Comprar»—; cuál es el veredicto de destino lo
+            escribe la celda, con su palabra, que es donde el lector lo está mirando.
+            «deja de ser» es el espejo literal de «sigue siendo», que es lo que el swatch de
+            arriba escribe en esta misma leyenda: la oposición se lee sin vocabulario nuevo. */}
+        {esComprar && celdas.some((c) => { const vd = veredictoMostrado(c); return !!vd && vd !== destino; }) && (
+          <span>
+            <i className="paj-sw e" />
+            deja de ser {etiquetaVeredicto(destino, "frase")}
+          </span>
+        )}
         {/* SIN CELDA, SIN ORACIÓN — la misma doctrina que ya gobierna «hoy» acá arriba y que
             la otra matriz del informe declara por escrito. Con el fondo retirado de la celda
             del aro, en 145 filas no queda ninguna celda con tinta plena: nombrar «el óptimo»
@@ -864,6 +917,22 @@ function SeccionRespuestas({
                     // NI COORDENADAS NI SCORE DE CELDA: lo único que se mueve es el precio, y
                     // quién lo mueve importa tanto como cuánto. El «lo pone el vendedor» es
                     // literal del dueño que declara el motor, la misma fuente que la tabla.
+                    //
+                    // ⚠ Y EN COMPRAR NO SE MUEVE NI EL PRECIO (17-sep-2026). Esta rama se
+                    // escribió para AJUSTAR, donde el plan ES negociar. En COMPRAR todas las
+                    // respuestas son sin descuento —la bajada de la matriz lo dice dos líneas
+                    // antes— así que «Sin pedir descuento · lo pone el vendedor» nombraba a un
+                    // vendedor al que no se le pide nada, en una sección cuya propia bajada
+                    // acaba de decir que lo único que se mueve es lo tuyo. Acá la respuesta no
+                    // es un plan: es que el plan es quedarte donde estás, y eso se dice.
+                    esComprar ? (
+                      <>
+                        <span className="nb">
+                          <b>No mover nada</b> ·
+                        </span>{" "}
+                        <span className="nb">es lo que ya tienes</span>
+                      </>
+                    ) : (
                     <>
                       <span className="nb">
                         {/* «−26,4% de precio» es literal de la card §5, que para estas mismas
@@ -874,6 +943,7 @@ function SeccionRespuestas({
                       </span>{" "}
                       <span className="nb">{FRASE_DEL_DUENO[QUIEN_LA_PONE.precio]}</span>
                     </>
+                    )
                   ) : (
                     <>
                       <span className="nb">
@@ -897,10 +967,18 @@ function SeccionRespuestas({
                   )}
                 </span>
               </div>
-              <div className="paj-opt-v">{sinCelda ? destinoDe(r) : cifraDe(r, currency, valorUF)}</div>
+              <div className="paj-opt-v">{sinCelda ? destinoDe(r, esComprar) : cifraDe(r, currency, valorUF)}</div>
               <div className="disco">{on ? "✓" : "›"}</div>
               <div className="paj-opt-tr">
-                {sinCelda ? "Mover el pie o el plazo no ayuda: el ajuste es solo de precio." : tradeOffDe(r, rec, currency, valorUF, esComprar)}
+                {/* LA FRASE FIJA TIENE DOS VERSIONES, una por veredicto. En AJUSTAR «el ajuste
+                    es solo de precio» es el hecho; en COMPRAR no hay precio que ajustar y la
+                    frase decía lo contrario de la bajada de su propia sección. Lo que esta
+                    línea informa en COMPRAR es por qué la grilla no ofrece nada mejor. */}
+                {sinCelda
+                  ? esComprar
+                    ? "Ninguna combinación de pie y plazo mejora lo que ya tienes."
+                    : "Mover el pie o el plazo no ayuda: el ajuste es solo de precio."
+                  : tradeOffDe(r, rec, currency, valorUF, esComprar)}
               </div>
             </button>
           );
@@ -923,11 +1001,14 @@ function SeccionRespuestas({
  * casual — en estas filas la recomendación ES la palanca sola de precio: mismo descuento en
  * 150 de 150 y mismo score de destino en 148.
  */
-function destinoDe(r: RespuestaMix) {
+function destinoDe(r: RespuestaMix, esComprar: boolean) {
   return (
     <>
       {etiquetaVeredicto("COMPRAR", "frase")}
-      <small>llegas a · score {r.score ?? PAR_SIN_VALOR}</small>
+      {/* EN COMPRAR NO SE LLEGA, SE MANTIENE (17-sep-2026) — el mismo argumento con el que
+          el swatch dice «sigue siendo» en vez de «llega a». Escribir «llegas a Comprar»
+          sobre una fila que YA es Comprar convierte el veredicto que tienes en una promesa. */}
+      <small>{esComprar ? "sigue siendo" : "llegas a"} · score {r.score ?? PAR_SIN_VALOR}</small>
     </>
   );
 }

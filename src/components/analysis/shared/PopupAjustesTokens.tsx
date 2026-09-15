@@ -48,10 +48,19 @@ export function PopupAjustesTokens() {
          lo que ocupe, centrada. Así 1×1 y 7×3 se leen con la misma tipografía y el mismo alto
          de fila, que es lo que las hace parecer la misma pieza. */
       .paj-mwrap{display:grid;grid-template-columns:auto auto;gap:0 8px;align-items:center;justify-content:center}
-      /* Con muchos pies el problema es el alto, no el ancho: la tabla scrollea dentro del
-         pop-up y no empuja al resto. Tope pensado para 7 filas. */
+      /* EL TOPE DE ALTO SE FUE, Y LA PREMISA DEL COMENTARIO VIEJO ERA FALSA (17-sep-2026).
+         Decía «tope pensado para 7 filas» y el tope era 326 px (280 bajo 460). Medido en el
+         navegador a 390: la cabecera mide 30,5 px y cada fila 46,5, así que siete filas miden
+         356 y seis miden 310. Nunca dio para siete ni para seis: cortaba en cinco.
+         Medido sobre el parque: 46 de 681 matrices (6,8%) se cortaban, y en 5 la celda que la
+         leyenda llama «lo que Franco recomienda» abría FUERA DE VISTA — dentro de una caja con
+         scroll propio adentro de un modal que ya scrollea, o sea sin ninguna señal de que
+         hubiera algo más abajo.
+         Lo que el tope compraba era altura del modal, y el modal ya mide entre 1.200 y 1.950 px
+         al abrir: sacarlo suma 76 px en el peor caso (7 filas) sobre el tope de 280. La caja se
+         queda —es la que centra la tabla en la rejilla— sin recortarla. */
       .paj-mwrap{max-height:none}
-      .paj-mtxbox{overflow-y:auto;max-height:326px}
+      .paj-mtxbox{max-height:none}
       .paj-ejey{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10.5px;font-weight:600;
         letter-spacing:.05em;text-transform:uppercase;color:var(--doc-tx4);text-align:center;padding:22px 0 0}
       .paj-mtx{border-collapse:separate;border-spacing:4px;font-variant-numeric:tabular-nums;
@@ -151,7 +160,17 @@ export function PopupAjustesTokens() {
       /* EL TRADE-OFF, en fila propia y a lo ancho. Precedente de tratamiento: «.pal-detail»
          —chica, en gris de cuerpo— que es como el informe dice una acotación bajo una fila. */
       .paj-opt-tr{grid-column:1/-1;font-size:11.5px;line-height:1.45;color:var(--doc-tx3)}
-      .paj-sw.c{background:var(--doc-paper2);outline:2px solid var(--doc-tx3);outline-offset:-2px}
+      /* EL SWATCH DE «HOY» NO PUEDE SER EL COLOR DE LA CELDA QUE CAE (17-sep-2026).
+         Llevaba «--doc-paper2», que es exactamente el fondo de «.paj-mtx td» —o sea el de la
+         celda caída y el de su swatch «.paj-sw.e»—, así que en COMPRAR la leyenda tenía dos
+         entradas con el mismo gris y lo único que las separaba era un aro de 2 px dentro de un
+         cuadrado de 12. Medido en el navegador, en los dos temas: rgb(244,244,246) las dos en
+         claro, rgb(26,26,30) en oscuro.
+         Y la marca que nombra tampoco es un fondo: «td.hoy» es un ARO inset sobre la celda que
+         sea —azul, gris o de tinta—. El swatch se dibuja como su marca, que es lo que «.paj-sw.d»
+         ya hace con el aro de selección y su acta. Sobre «--doc-paper» el aro queda solo, que es
+         justamente lo que la marca es. */
+      .paj-sw.c{background:var(--doc-paper);outline:2px solid var(--doc-tx3);outline-offset:-2px}
       /* La celda única: una línea, no un cuadrito con ejes alrededor. */
       .paj-unica{display:flex;justify-content:space-between;align-items:center;gap:12px;
         background:var(--doc-paper2);border-radius:12px;padding:14px 16px;cursor:pointer;font-size:13.5px}
@@ -267,7 +286,6 @@ export function PopupAjustesTokens() {
         .paj-mtx th.rot{width:36px;font-size:10.5px}
         .paj-mtx td,.paj-mtx th:not(.rot){width:130px}
         .paj-mwrap.sola .paj-mtx td,.paj-mwrap.sola .paj-mtx th:not(.rot){width:170px}
-        .paj-mtxbox{max-height:280px}
       }
       @media (prefers-reduced-motion:reduce){.paj-mtx td{transition:none}}
 `,

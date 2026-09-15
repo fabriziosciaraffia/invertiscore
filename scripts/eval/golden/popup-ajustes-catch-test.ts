@@ -70,6 +70,8 @@ const HERO_LTR = leer("src/components/analysis/HeroLTR.tsx");
 const HERO_STR = leer("src/components/analysis/str/HeroStrDictamen.tsx");
 const CSS = leer("src/components/analysis/shared/PopupAjustesTokens.tsx");
 const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
+// La card de §5: es el PRECEDENTE del invariante 17 y la regla espejo se mide contra ella.
+const CARD = leer("src/lib/lo-que-haria-yo.ts");
 
 // ── 1 · existe y lee del motor ─────────────────────────────────────────────
 {
@@ -608,6 +610,166 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
   }
 }
 
+// ── 17 · LA TABLA DE LAS SOLAS APUNTA ADONDE APUNTA EL CHIP (17-sep-2026) ──
+//
+// El chip de arriba dice «BUSCAR OTRO → ✓ COMPRAR» y la tabla de abajo se titula
+// «Llegas a». Hasta hoy esa tabla salía de `v.palancas`, que en BUSCAR OTRA apunta al
+// ESCALÓN INTERMEDIO —AJUSTA—, así que en 259 de 264 pop-ups sin grilla (98,1%, el 27,0%
+// del total) ninguna fila llegaba a Comprar y las tres decían «Ajustar» bajo un
+// encabezado que prometía Comprar.
+//
+// Es EL MISMO BUG que `mixAComprar` mató para la matriz, con su acta escrita arriba en
+// este mismo archivo: se arregló la grilla y no la tabla de al lado. Y la card de §5, con
+// el mismo dato, ya lo hacía bien desde el 10-sep (`lo-que-haria-yo.ts:343`). Dos
+// superficies, un dato, dos respuestas: exactamente lo que la fuente única vino a evitar.
+//
+// ⚠ AUSENTE ≠ VACÍO, y por eso el predicado pide `Array.isArray`. En una fila persistida
+// antes del salto de dos bandas `palancasHastaComprar` es `undefined`: nadie midió la vía
+// a COMPRAR. Leerla como lista vacía haría que el pop-up afirmara «ninguna llega» sobre
+// una medición que no existe. Las dos salidas dibujan lo mismo —nada— pero por razones
+// distintas, y la que se escribe en el código es la del acta.
+{
+  if (POPUP) {
+    const solas = POPUP.match(/const solas = [^;]+;/)?.[0] ?? "";
+    if (!solas) F("17 · no se encontró de dónde sale `solas` en el pop-up");
+    else if (!/palancasHastaComprar|solasAComprar/.test(solas)) {
+      F("17 · la tabla de las solas sigue leyendo `palancas` pelado: en BUSCAR OTRA eso apunta a AJUSTA y el chip promete COMPRAR");
+    }
+    if (!/Array\.isArray\([^)]*palancasHastaComprar\)/.test(POPUP)) {
+      F("17 · el pop-up no distingue AUSENTE de VACÍO en `palancasHastaComprar`: sin `Array.isArray` una fila vieja publica una medición que nadie hizo");
+    }
+    // EL GATE DEL BOTÓN LEE LA MISMA FUENTE. Si no, el hero dibuja el botón de un pop-up
+    // que abriría vacío — el estado que el invariante 6 existe para impedir.
+    // ⚠ DOS TRAMPAS, LAS DOS PISADAS EN ESTE MISMO INVARIANTE.
+    //
+    // 1 · Hasta el CUERPO, no hasta el primer salto + llave: la firma lleva un tipo inline
+    //     cuyo cierre («}): boolean {») está en columna 0, así que el perezoso cortaba ahí y
+    //     el predicado medía la firma. Dio ROJO sobre el código ya arreglado.
+    //
+    // 2 · SIN COMENTARIOS. La versión siguiente buscaba el nombre de la función sobre el
+    //     bloque entero, y el acta que explica POR QUÉ el gate lee la misma fuente nombra a
+    //     las dos: el predicado se cumplía con la prosa. Verificado por mutación —volver el
+    //     gate a `v.palancas` dejaba el tier en VERDE—. Un guard que lee comentarios mide
+    //     que alguien escribió la palabra, no que el código la usa.
+    const gate = (POPUP.match(/export function hayAjustesQueMostrar[^]*?(?=export function PopupAjustes)/)?.[0] ?? "")
+      .replace(/\/\*[^]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    if (!gate) F("17 · no se encontró `hayAjustesQueMostrar`");
+    else if (!/solasAComprar\(/.test(gate)) {
+      F("17 · `hayAjustesQueMostrar` cuenta `palancas` y la tabla dibuja otra cosa: el botón abriría un pop-up vacío");
+    }
+  }
+  // LA REGLA ESPEJO: el precedente vive en la card y tiene que seguir ahí.
+  if (CARD && !/esBuscar \? dv\.palancasHastaComprar : dv\.palancas/.test(CARD)) {
+    F("17 · la card de §5 dejó de elegir la fuente por veredicto: era el precedente de esta regla");
+  }
+}
+
+// ── 18 · EL «AJUSTE» NO SE DIBUJA CUANDO NO AJUSTA (17-sep-2026) ───────────
+//
+// La línea `sinCelda` del menú se escribió para AJUSTAR, donde «el ajuste es solo de
+// precio» es verdad y el precio lo pone el vendedor. En COMPRAR miente dos veces: no hay
+// descuento que pedir —la bajada de la matriz acaba de decirlo— y al vendedor no se le
+// pide nada. Medido: 6 filas abren así, y en las 6 el bloque de abajo publica los siete
+// pares idénticos («$17.539.910 → $17.539.910», «Score 77 → 77») bajo el título «El
+// ajuste». Un bloque que se llama ajuste y no ajusta nada no tiene razón de existir.
+//
+// Misma doctrina que «sin celda, sin oración», que ya gobierna «hoy» en la leyenda, la
+// nota de la tarifa y la segunda mitad del subtítulo de la matriz: la pieza cuelga de lo
+// que describe.
+//
+// ⚠ LOS PREDICADOS SON LITERALES, Y ESO ES DELIBERADO. La primera versión de este
+// invariante preguntaba por `/mueveAlgo|hayAjuste/` y por la vecindad de `esComprar`, y
+// dio VERDE sobre el código roto: `hayAjuste` matchea `hayAjustesQueMostrar`, y en una
+// función de 120 líneas `esComprar` aparece a menos de 200 caracteres de casi todo. Un
+// predicado por vecindad no mide una rama, mide una coincidencia.
+{
+  if (POPUP) {
+    // 1 · el bloque del óptimo cuelga de que la respuesta elegida MUEVA algo.
+    if (!/ajustaAlgo/.test(POPUP)) {
+      F("18 · no existe el predicado `ajustaAlgo`: con las dos deltas en cero y sin descuento el bloque publica siete pares idénticos bajo el título «El ajuste»");
+    } else if (!/ajustaAlgo && <SeccionOptimo|ajustaAlgo &&\s*\(?\s*<SeccionOptimo/.test(POPUP)) {
+      F("18 · `ajustaAlgo` existe pero no condiciona `<SeccionOptimo`");
+    }
+    // 2 · LAS DOS RAMAS DE LA LÍNEA SIN CELDA tienen que existir, cada una con su texto.
+    //     Si queda una sola, es la de AJUSTAR y en COMPRAR miente.
+    const deAjustar = /Mover el pie o el plazo no ayuda: el ajuste es solo de precio\./.test(POPUP);
+    const deComprar = /Ninguna combinación de pie y plazo mejora lo que ya tienes\./.test(POPUP);
+    if (!deAjustar) F("18 · desapareció el trade-off de la línea sin celda en AJUSTAR: ahí sí es cierto que el ajuste es solo de precio");
+    if (!deComprar) {
+      F("18 · la línea sin celda dice «el ajuste es solo de precio» también en COMPRAR, donde la bajada de su propia sección acaba de decir que al vendedor no se le pide nada");
+    }
+    // 3 · y el dueño del movimiento tampoco puede ser el vendedor en COMPRAR.
+    if (!/es lo que ya tienes/.test(POPUP)) {
+      F("18 · la línea sin celda de COMPRAR no dice qué es: hoy escribe «Sin pedir descuento · lo pone el vendedor» en una pantalla sin vendedor");
+    }
+    // 4 · y el destino tampoco «llega»: se mantiene, igual que el swatch.
+    const destino = POPUP.match(/function destinoDe\([^]*?\n\}/)?.[0] ?? "";
+    if (!destino) F("18 · no se encontró `destinoDe`");
+    else if (!/esComprar|sigue siendo/.test(destino)) {
+      F("18 · `destinoDe` escribe «llegas a» en los tres veredictos: en COMPRAR no se llega, se mantiene — el mismo argumento del swatch");
+    }
+  }
+}
+
+// ── 19 · UNA MARCA, UNA ENTRADA DE LEYENDA (17-sep-2026) ───────────────────
+//
+// La leyenda de COMPRAR dibujaba UNA entrada por veredicto caído presente —«baja a
+// Ajustar», «baja a Buscar otro»— y las dos usan el MISMO swatch `.paj-sw.e`. Medido en
+// el navegador, en los dos temas: `rgb(244,244,246)` las dos en claro y `rgb(26,26,30)`
+// las dos en oscuro. La leyenda prometía dos marcas y dibujaba una.
+//
+// Es la misma regla con la que el chip «↓ Ajustar» se quedó fuera el 15-sep: UNA MARCA
+// POR HECHO. El color dice «esta celda se cae»; cuál es el veredicto lo escribe la celda,
+// con su palabra. Dos entradas para un color es la cara opuesta del mismo error.
+//
+// Y el swatch de «hoy» compartía el fondo con el de las caídas (`--doc-paper2`), así que
+// eran TRES entradas con el mismo gris. La marca de «hoy» en la matriz no es un fondo
+// gris: es un aro (`td.hoy{box-shadow:inset …}`) sobre la celda que sea. El swatch se
+// dibuja como su marca, igual que `.paj-sw.d` hace con el aro de tinta y su acta.
+{
+  if (POPUP) {
+    const mtz = POPUP.match(/function SeccionMatriz\([^]*?\n(?=(?:\/\/|\/\*\*|function ))/)?.[0] ?? "";
+    if (!mtz) F("19 · no se encontró `SeccionMatriz` para auditar la leyenda");
+    else if (/new Set\(celdas\.map[^]{0,400}\.map\(\(vd\)/.test(mtz)) {
+      F("19 · la leyenda sigue dibujando una entrada por veredicto caído: son dos entradas con el mismo swatch, y la celda ya escribe cuál es");
+    }
+  }
+  if (CSS) {
+    const c = CSS.match(/\.paj-sw\.c\{([^}]*)\}/)?.[1] ?? "";
+    const e = CSS.match(/\.paj-sw\.e\{([^}]*)\}/)?.[1] ?? "";
+    if (!c || !e) F("19 · faltan las reglas de `.paj-sw.c` o `.paj-sw.e`");
+    else {
+      const fondo = (x: string) => x.match(/background:([^;]+)/)?.[1]?.trim() ?? "";
+      if (fondo(c) && fondo(c) === fondo(e)) {
+        F(`19 · «hoy» y «la que cae» comparten el mismo fondo (${fondo(c)}): son dos entradas de leyenda con un solo color`);
+      }
+    }
+  }
+}
+
+// ── 20 · LA MATRIZ NO SE CORTA (17-sep-2026) ───────────────────────────────
+//
+// `.paj-mtxbox` tenía `max-height:326px` y `280px` bajo 460, con el comentario «tope
+// pensado para 7 filas». Medido en el navegador a 390: la cabecera mide 30,5 px y cada
+// fila 46,5, así que siete filas miden 356 y seis miden 310. El tope nunca dio para siete
+// ni para seis: cortaba en cinco.
+//
+// Medido sobre el parque: 46 de 681 matrices (6,8%) no caben, y en 5 la celda que la
+// leyenda llama «lo que Franco recomienda» abre FUERA DE VISTA, dentro de una caja con
+// scroll propio adentro de un modal que ya scrollea. El modal mide entre 1.200 y 1.950 px
+// al abrir: sacar el tope suma 76 px en el peor caso.
+{
+  if (CSS) {
+    const caja = [...CSS.matchAll(/\.paj-mtxbox\{([^}]*)\}/g)].map((m) => m[1]);
+    for (const regla of caja) {
+      const mh = regla.match(/max-height:\s*([^;]+)/)?.[1]?.trim();
+      if (mh && mh !== "none") {
+        F(`20 · la matriz sigue con tope de alto (${mh}): 46 matrices del parque se cortan y en 5 la recomendada abre fuera de vista`);
+      }
+    }
+  }
+}
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPopupAjustesTier(): { hard: number } {
   console.log("\n─── TIER POPUP-AJUSTES (el render del pop-up · 0 tokens) ───");
