@@ -135,11 +135,18 @@ export function construirJerarquiaPrecios(args: {
 // distinción importa: decirle «sin plan» al modelo es lo que producía las 104 filas
 // donde la prosa niega una salida que la card muestra al lado.
 // `costoMensual` salió del schema LTR en v21: nombrarlo acá le declaraba al modelo
-  // el precio protagonista de una sección que ya no puede escribir. Queda
-  // `reestructuracion`, que sigue viva y sigue sin objetivo de precio.
+  // el precio protagonista de una sección que ya no puede escribir.
+  //
+  // ⛔ Y `reestructuracion` SALIÓ IGUAL el 17-sep-2026, por la misma razón y con el mismo
+  //   arreglo. El acta de arriba decía «queda `reestructuracion`, que sigue viva»: dejó de
+  //   estarlo cuando su único render —`DrawerReestructuracion`, detrás de
+  //   `drawerSequence = ["zona"]`— resultó inalcanzable y el campo salió del schema.
+  //   Nombrarlo acá le daba al modelo una regla de jerarquía sobre una sección que ya no
+  //   puede escribir, que es exactamente el precedente de la línea de arriba. Lo encontró
+  //   la revisión adversaria del diff que lo retiró, no el retiro.
   const protagonistas = args.esEstructural
     ? "\`negociacion\` → SIN precio objetivo; el plan, si lo hay, es de pie y plazo y vive en el bloque SALIDA COMBINADA · \`posicion\` → solo lo que haría falta, fuera de rango · \`reestructuracion\` → SIN objetivo de precio"
-    : "\`negociacion\`, \`posicion\` y el drawer de distancia → el objetivo del plan · \`reestructuracion\` → SIN objetivo de precio (sus palancas son pie/tasa/plazo)";
+    : "\`negociacion\`, \`posicion\` y el drawer de distancia → el objetivo del plan";
 
   const bloque = `
 

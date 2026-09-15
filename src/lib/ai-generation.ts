@@ -54,6 +54,7 @@ import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChile
 import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, piezasDeAiLtr } from "@/lib/precio-jerarquia";
 import { construirReferenciasZona, faltaReconciliacion } from "@/lib/referencias-zona";
 import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad, comunasFueraDeAlternativa, niegaSalidaConMix, puntajesFueraDeDesglose } from "@/lib/cifras-guard";
+import { PATHS_SIN_RENDER_LTR } from "@/lib/analysis";
 import { PESOS_SCORE_LTR } from "@/lib/score-retorno";
 import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
 import { salidaPorMix } from "@/lib/salida-por-mix";
@@ -210,6 +211,21 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
 // (§4, «EL SCORE MIRA EL RETORNO SOBRE LO QUE PONES»). Guard nuevo con sujeto:
 // CATCH-PUNTAJE (puntajesFueraDeDesglose), espejo de CATCH-CIFRA.
 // Se mueven los DOS hashes: el system por el bloque nuevo y el user por la línea.
+//
+// ⛔ v25 CAMBIÓ DE CONTRATO SIN CAMBIAR DE NÚMERO (17-sep-2026), Y ES UNA DECISIÓN, NO UN
+//   OLVIDO. Ese día salió `reestructuracion` del schema y de las instrucciones, así que hay
+//   filas selladas `promptVersion: 25` que lo traen escrito y filas nuevas, también 25, que
+//   no. La versión NO se bumpó porque este número no rotula el prompt: rotula si la prosa
+//   persistida sirve (`page.tsx`, `documento/page.tsx`, `api/analisis/ai` y el cron la
+//   comparan para invalidar). Un bump a 26 mandaría a regenerar las 686 filas LTR —a
+//   `US$0,23 cada una, ver el cron` — para borrar un campo que NINGUNA superficie lee: el
+//   único render de `reestructuracion` vive detrás de `drawerSequence = ["zona"]` y no se
+//   alcanza. Una fila vieja no queda MAL, queda con un campo de más que nadie abre.
+//
+//   Lo que sí queda anotado, porque es el costo de la decisión: `promptVersion === 25` ya
+//   no identifica una forma única de salida. Cualquier instrumento que cense por versión
+//   (`scripts/eval/editorial/censo.ts`) tiene que tolerar el campo ausente, y el próximo
+//   bump —por la razón que sea— cierra la ambigüedad solo.
 export const PROMPT_VERSION_LTR = 25;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
@@ -325,12 +341,12 @@ El input incluye un objeto \`financingHealth\` con clasificación de pie y tasa 
 
 NIVEL 1 — Validación silenciosa.
 Cuándo: \`overall\` ∈ {optimo, aceptable}.
-Forma: una sola frase integrada en \`conviene.cajaAccionable\`. Sin sección dedicada. Sin \`reestructuracion\`. Ejemplo:
+Forma: una sola frase integrada en \`conviene.cajaAccionable\`. Sin sección dedicada. Ejemplo:
 > "La estructura está bien calibrada: [pie%] de pie a [plazo] años con tasa [tasa]% es coherente con lo que da el mercado hoy."
 
 NIVEL 2 — Observación táctica.
 Cuándo: \`overall\` === "mejorable".
-Forma: una observación corta + el impacto cuantificado, en \`conviene.cajaAccionable\` (si condiciona la decisión). Sin sección dedicada. Sin \`reestructuracion\`. Los datos vienen en \`financingHealth\` (nivel, actual, y para la tasa el mercado y el ahorro mensual): REDACTALO vos con esas cifras. Para el pie NO hay meta que citar — si el pie es el problema, la magnitud sale de la ESCALERA. Ejemplo:
+Forma: una observación corta + el impacto cuantificado, en \`conviene.cajaAccionable\` (si condiciona la decisión). Sin sección dedicada. Los datos vienen en \`financingHealth\` (nivel, actual, y para la tasa el mercado y el ahorro mensual): REDACTALO vos con esas cifras. Para el pie NO hay meta que citar — si el pie es el problema, la magnitud sale de la ESCALERA. Ejemplo:
 > "Tu tasa al 4,5% está ~0,4 puntos porcentuales sobre el mercado. Cotiza en 2-3 bancos antes de firmar — bajar a 4,1% reduce la cuota mensual ~$48K."
 
 NIVEL 3 — Reestructuración recomendada.
@@ -338,11 +354,7 @@ Cuándo (cualquiera de estos disparadores):
 - \`overall\` === "problematico".
 - \`veredicto\` ≠ "COMPRAR" Y la estructura financiera es la causa principal del problema (no el precio del depto ni la zona).
 - \`veredicto\` === "COMPRAR" + \`tasa\` o \`pie\` ∈ {mejorable, problematico} + \`flujoCruzaEnHorizonte\` === false. Este es el caso "depto bueno, financiamiento débil, aporte indefinido". La matemática del depto cierra, pero la estructura del usuario fuerza un aporte sin tope. La palanca correcta NO es el precio — es el financiamiento.
-Forma: completa el campo \`reestructuracion\` del JSON output con contenido_clp, contenido_uf y \`estructuraSugerida\` (numérica). Adicionalmente, indícalo explícitamente en \`conviene.cajaAccionable\` si aplica: la palanca de ajuste correcta es la estructura financiera, no el precio. El veredicto (típicamente AJUSTA SUPUESTOS cuando aplica Nivel 3) NO cambia; la sección reestructuración aparece como sub-card explicativa dentro de ese veredicto.
-
-Cuando completas \`reestructuracion\`:
-- contenido_clp/uf: 3-5 frases. Diagnóstico de por qué la estructura actual no funciona + recomendación concreta + simulación del impacto. Tono honesto sobre el esfuerzo.
-- estructuraSugerida: NO la calcules. Los DOS números (plazoSugerido_anios, tasaObjetivo_pct) vienen ya calculados en \`estructuraFinancieraSugerida\`. Copialos tal cual: son la fuente única y se sobrescriben de todas formas. Tu prosa (contenido_clp/uf) DEBE ser coherente con ellos. Y NO hay pie sugerido ni ahorro de cuota que copiar: si tu prosa habla del pie, la magnitud sale de la ESCALERA y se dice como intercambio.
+Forma: una sola frase en \`conviene.cajaAccionable\`: la palanca de ajuste correcta es la estructura financiera, no el precio. SIN sección dedicada. El veredicto (típicamente AJUSTA SUPUESTOS cuando aplica Nivel 3) NO cambia.
 
 ## 5.bis Pie 0 — financiamiento 100% (SOLO si el input trae \`capitalPropio: no aplica\`)
 
@@ -392,8 +404,7 @@ Antes de E.2 existía una "REGLA DE DIVERGENCIA" que permitía emitir \`francoVe
 
 Recordatorios operativos:
 - Hay SOLO 3 valores posibles de \`veredicto\`: "COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA". Tu narrativa lo asume como dado.
-- Commit E.3 · 2026-05-13: el veredicto "RECONSIDERA LA ESTRUCTURA" fue fundido en "AJUSTA SUPUESTOS". Cuando el problema es la estructura financiera (no el precio), el veredicto sigue siendo AJUSTA SUPUESTOS y completas la sección \`reestructuracion\` como contenido adicional. No emitas "RECONSIDERA LA ESTRUCTURA" — la UI ya no lo soporta como veredicto distinto y el read-path lo coerce a AJUSTA si aparece.
-- Sección \`reestructuracion\` opcional: complétala cuando aplique el Nivel 3 financingHealth (§5) — eso es CONTENIDO dentro del veredicto vigente, no un veredicto propio.
+- Commit E.3 · 2026-05-13: el veredicto "RECONSIDERA LA ESTRUCTURA" fue fundido en "AJUSTA SUPUESTOS". Cuando el problema es la estructura financiera (no el precio), el veredicto sigue siendo AJUSTA SUPUESTOS y lo dices en \`conviene.cajaAccionable\`. No emitas "RECONSIDERA LA ESTRUCTURA" — la UI ya no lo soporta como veredicto distinto y el read-path lo coerce a AJUSTA si aparece.
 
 ## 8. Anomalías del input
 
@@ -727,15 +738,6 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
       "glosaWalkAway_clp": string,        // si walkAway === null en anclas, devolver ""
       "glosaWalkAway_uf": string
     }
-  },
-
-  "reestructuracion": {  // OPCIONAL — solo si Nivel 3 (§5)
-    "contenido_clp": string,
-    "contenido_uf": string,
-    "estructuraSugerida": {             // copiar de estructuraFinancieraSugerida (input) — NO inventar; se sobrescriben de todas formas. SIN pie ni impacto: no existen.
-      "plazoSugerido_anios": number,    // = estructuraFinancieraSugerida.plazoSugerido (igual al actual)
-      "tasaObjetivo_pct": number,       // = estructuraFinancieraSugerida.tasaObjetivo
-    }
   }
 }
 \`\`\`
@@ -756,7 +758,6 @@ Largos por campo:
   Nada de eso necesita que lo repitas. Tu trabajo es lo que ningún bloque puede hacer:
   ELEGIR — cuál palanca es la más accionable y por qué, qué verificar antes de firmar, y
   cuál es la alternativa concreta si el caso no cierra. Esa es la posición de Franco.
-- reestructuracion.contenido: 3-5 frases. UNA MARCA \`**…**\` OBLIGATORIA en este cuerpo (ni cero ni dos): frase completa con predicado, que se lea sola — el lector que solo barre lo marcado tiene que entender este cuerpo.
 
 CLP/UF — cuándo duplicar:
 - Campo con cifras concretas que cambian con la moneda → duplicar (un texto con $X y otro con UF Y).
@@ -772,7 +773,7 @@ Labels y preguntas constantes (no derivar — usar EXACTAMENTE estos strings):
 
 Reglas universales del output:
 - Todo monto formateado a la chilena. Decimal con coma, miles con punto.
-- DESTACADORES \`**…**\` (único markdown permitido; el render los pinta con plumón): marca las frases clave de la prosa. Máximo 2 marcas por párrafo. Cada marca envuelve una FRASE COMPLETA con predicado que se lee sola como mini-hallazgo (el lector que solo lee lo marcado entiende el análisis) — nunca un número pelado ni un fragmento sin verbo. Una marca JAMÁS cruza un punto ni parte un token de cifra ($X.XXX, UF X, X%): la cifra queda entera dentro o entera fuera. Aplica a conviene, negociacion y reestructuracion; en el \`titular\` rige §18 (exactamente UNA marca). Y en CADA \`cajaAccionable\` va EXACTAMENTE UNA marca — ni dos ni cero: es el cierre del cuerpo y el lector que solo barre lo marcado tiene que poder quedarse con la frase-fuerza de ese cierre. (STR ya lo cumple desde su v9; esto lo iguala en LTR.) Ningún otro markdown (sin cursivas, sin listas, sin encabezados).
+- DESTACADORES \`**…**\` (único markdown permitido; el render los pinta con plumón): marca las frases clave de la prosa. Máximo 2 marcas por párrafo. Cada marca envuelve una FRASE COMPLETA con predicado que se lee sola como mini-hallazgo (el lector que solo lee lo marcado entiende el análisis) — nunca un número pelado ni un fragmento sin verbo. Una marca JAMÁS cruza un punto ni parte un token de cifra ($X.XXX, UF X, X%): la cifra queda entera dentro o entera fuera. Aplica a conviene y negociacion; en el \`titular\` rige §18 (exactamente UNA marca). Y en CADA \`cajaAccionable\` va EXACTAMENTE UNA marca — ni dos ni cero: es el cierre del cuerpo y el lector que solo barre lo marcado tiene que poder quedarse con la frase-fuerza de ese cierre. (STR ya lo cumple desde su v9; esto lo iguala en LTR.) Ningún otro markdown (sin cursivas, sin listas, sin encabezados).
 - No inventar datos del input. Si falta un dato, omítelo o di "sin dato".
 - NUNCA emitas un veredicto en el JSON. El veredicto viene dado (\`veredicto\` en input). Tu narrativa lo asume. Si discrepas, usa \`francoCaveat\` audit-only.
 
@@ -2079,11 +2080,11 @@ financingHealth:
 - overall: ${fh.overall}
 - pie: ${fh.pie.level} (actual ${fh.pie.actual_pct}%) — es una CLASIFICACIÓN, no una meta: no existe un pie recomendado. El trade-off del pie está en la ESCALERA, más abajo.
 - tasa: ${fh.tasa.level} (actual ${fh.tasa.actual_pct}%, mercado ${fh.tasa.market_avg_pct}%, spread ${fh.tasa.spread_bps >= 0 ? "+" : ""}${(fh.tasa.spread_bps / 100).toFixed(2).replace(".", ",")} puntos porcentuales)${fh.tasa.ahorro_mensual_clp ? ` · ahorro si baja al mercado: ${fmtCLP(fh.tasa.ahorro_mensual_clp)}/mes` : ""}${reestructuracionFinanciera ? `
-estructuraFinancieraSugerida (si completas reestructuracion, USA ESTOS NÚMEROS EXACTOS — NO los inventes ni recalcules; se sobrescriben con estos de todas formas):
+estructuraFinancieraSugerida (referencia para tu prosa — NO inventes ni recalcules estos números):
 - tasaObjetivo: ${reestructuracionFinanciera.tasaObjetivo_pct}%
 - plazoSugerido: ${reestructuracionFinanciera.plazoSugerido_anios} años (igual al actual — no se recomienda cambiar el plazo)
   ⚠ NO HAY PIE SUGERIDO, y no es un dato que falte: no existe. Si la reestructuración habla del pie, la magnitud sale de la ESCALERA y se dice como intercambio, nunca como meta.
-  ⚠ SIN CIFRAS: la sección de reestructuración las dibuja. Ahí la palanca se NOMBRA ("trabajar la estructura con tu banco mueve más que el precio"), sin sus números.` : ""}` : "";
+  ⚠ ESTOS DOS NÚMEROS SON REFERENCIA TUYA, NO TEXTO A COPIAR: no los publiques como una meta. La palanca se NOMBRA ("trabajar la estructura con tu banco mueve más que el precio") y, si el caso lo pide, el IMPACTO va cuantificado en \`conviene.cajaAccionable\` con las cifras de \`financingHealth\` — que es el único lugar donde el lector lo va a ver.` : ""}` : "";
 
     // FINDINGS LAYER — ensamblado de los 6 hallazgos tipados desde el scope de
     // generación (objetos VIVOS: hallazgoCapex/hallazgoSobreprecio ya construidos
@@ -2809,6 +2810,14 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       const desalineadas: string[] = [];
       for (const [campo, txt] of [
         ["cajaAccionable_clp", aiResult?.conviene?.cajaAccionable_clp],
+        // ⛔ `reestructuracion` SALIÓ DEL PROMPT el 17-sep-2026: su texto no tenía dónde
+        //   leerse. El único render era `DrawerReestructuracion`, detrás de
+        //   `drawerSequence = ["zona"]`, y ningún capítulo lo monta. Costaba DOS bloques de
+        //   3-5 frases —pero NO en toda generación: medido sobre el parque, 261 de 686 filas
+        //   LTR con prosa (38%) lo traen escrito, mediana de 1.317 caracteres los dos
+        //   bloques juntos. El prompt sí adelgaza en las 686: 1.435 caracteres menos.
+        //   Esta entrada del barrido se deja para las filas VIEJAS, que sí lo traen
+        //   persistido; en las nuevas el campo llega `undefined` y el barrido lo salta.
         // `reestructuracion` entra al barrido desde la 4ª palanca (pie): es la sección que
         // trae el OTRO pie (`financingHealth.pieSugerido_pct`, hoy una constante fija que
         // NO es un óptimo calculado — ver el goal de reconciliación) y donde se vio la
@@ -3156,6 +3165,15 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       }
       for (const [campoBase, viols] of Array.from(porCampo.entries())) {
         const etiqueta = `[LTR-UNIDAD-M2:${campoBase}]`;
+        // Campos que ningún componente renderiza (`francoCaveat`, audit-only por contrato
+        // del prompt): se DETECTAN y se loguean —el reporte y el juez los siguen leyendo—
+        // pero no se paga una llamada al modelo por un texto que nadie ve. Espejo exacto
+        // del `sinRender` de STR (`ai-generation-str.ts`), que nació porque en la tanda v16
+        // se fueron tres quirúrgicos a `francoCaveat`.
+        if (PATHS_SIN_RENDER_LTR.includes(campoBase)) {
+          console.warn(`${etiqueta} ${analysisId}: ${viols.join(" | ")} — campo sin render, no se reintenta`);
+          continue;
+        }
         try {
           console.warn(`${etiqueta} ${analysisId}: ${viols.join(" | ")} — 1 reintento quirúrgico`);
           const [seccion, campo] = campoBase.split(".");

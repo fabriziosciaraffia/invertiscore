@@ -1835,6 +1835,38 @@ export interface Decisividades {
 // mismas constantes — una sola escala de decisividad para los dos motores.
 export const DECISIVIDAD_DIVISOR = 25;
 export const DECISIVIDAD_FLOOR = 0.85;
+
+/**
+ * CAMPOS DE PROSA LTR QUE NINGÚN COMPONENTE RENDERIZA (17-sep-2026).
+ *
+ * Espejo de `PATHS_SIN_RENDER_STR` (`str-guards.ts`), y existe por la misma razón: el
+ * campo se audita —reporte, juez, monitores— pero el generador no paga un reintento
+ * quirúrgico por algo que nadie lee. Lo que no existía era la declaración del lado LTR: el
+ * prompt pedía `francoCaveat` en las dos modalidades y solo STR tenía escrito que es
+ * audit-only. **Si un campo se audita, tiene que estar declarado en los dos lados** — si
+ * no, del lado sin lista parece residuo y alguien lo retira creyendo que limpia.
+ *
+ * SE CONSUME en el reintento quirúrgico por campo de LTR-UNIDAD-M2 (`ai-generation.ts`),
+ * que es el único lazo de LTR que itera por path —el resto de los guards apuntan a un
+ * campo fijo—. Ese lazo lo alcanza de verdad: `cifrasPorMetroFueraDeUnidad` recorre el
+ * JSON entero con `collectStrings`, así que `francoCaveat` entra a sus violaciones como
+ * cualquier otro campo. Sin el lazo cableado esta lista sería decoración: un símbolo
+ * declarado que nadie pregunta es exactamente el falso verde de «presencia ≠ cableado».
+ *
+ * ⚠ NO ES UNA UNIÓN DE PATHS como la de STR, y la asimetría es del motor, no un descuido:
+ *   STR declara su catálogo (`PROSA_PATHS_STR`) porque su generador itera sobre él. LTR no
+ *   tiene catálogo —sus guards descubren los paths recorriendo el JSON—, así que no hay
+ *   unión contra la cual tipar. Si algún día LTR declara sus paths, esta lista se estrecha
+ *   a ese tipo el mismo día.
+ *
+ * ⚠ Y AMBAS TAMBIÉN PIDE `francoCaveat` (`ai-generation-ambas.ts:234`), pero su generador
+ *   no tiene reintentos quirúrgicos: no hay gasto que exceptuar, así que una lista allá
+ *   sería decorativa hoy. El día que AMBAS tenga quirúrgicos, la lista va con ellos —no
+ *   antes—.
+ *
+ * Si un componente empieza a leer uno, sale de esta lista.
+ */
+export const PATHS_SIN_RENDER_LTR: readonly string[] = ["francoCaveat"];
 export const NEUTRAL_PIE_PCT = 25;
 
 const clamp01Dec = (v: number) => Math.max(0, Math.min(1, v));
