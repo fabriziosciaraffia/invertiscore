@@ -181,6 +181,13 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
   en `PATHS_SIN_RENDER_STR` —con su razón: se mide, pero no paga reintento quirúrgico— y LTR no
   tenía lista. Del lado sin declaración el campo parece residuo, y alguien lo retira creyendo
   que limpia. Espejo agregado en `PATHS_SIN_RENDER_LTR` (`analysis.ts`).
+- **Y esto NO es solo de los gates: un INSTRUMENTO DE DIAGNÓSTICO que mide la grafía y no el hecho hace el mismo daño, sin que ningún tier se ponga rojo.** Al drenar `MEMORY.md` (17-sep-2026) hizo falta saber qué memorias tenían la `description` desfasada —el cuerpo decía «cerrada» y la `description` seguía describiendo el problema abierto— y el detector fue un regex de palabras de estado sobre la prosa. **Dio 23, 25, 30 y 54 según la ventana de lectura, y al leer los 54 a mano quedaron 14 ciertas: 35 eran ruido.** Lo que contaba de más:
+  · **la negación** — el cuerpo dice «DEUDA ANOTADA, **NO** RESUELTA» y el regex ve «RESUELTA»; «Mitigación ya mergeada (**no cierra el goal**)», igual;
+  · **el enlace** — `[[apagado-ambas-cerrado]]` es el NOMBRE de otro archivo, y cuatro memorias se marcaron por citarlo;
+  · **la parte por el todo** — «⛔ CERRADO» aplicado a UNO de tres huecos, en una entrada que dice que quedan dos;
+  · **la metáfora** — «las puertas **cerradas**», «la grilla, **cerrada**», «transacciones **cerradas**».
+  Acá no había gate que se pusiera rojo: el daño habría sido **escribir 40 `description` falsas**, y una `description` falsa es peor que una línea de más porque es lo que el recall usa para decidir relevancia. La regla es la misma que para un catch-test — **antes de ACTUAR sobre lo que cuenta un instrumento, verificá una muestra a mano**; si la muestra no aguanta, el número no es un número.
+  **Y el mismo regex tenía un segundo error, de sintaxis y no de semántica**: `\[([^\]]+)\]` para leer etiquetas de markdown **se corta en el primer `]`**, así que las dos etiquetas que llevían `drawerSequence = ["zona"]` adentro quedaron fuera del censo. Eran 79, no 77. Un contador que no sabe contar el caso con corchetes tampoco sabe que se los perdió.
 - **Los tests con shim de storage no modelan el debounce de 500ms.** Cualquier operación que borre y reescriba necesita verificación en navegador midiendo el instante intermedio.
 
 ## Entorno y seguridad
