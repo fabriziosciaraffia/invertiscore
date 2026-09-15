@@ -72,7 +72,7 @@ async function main() {
     if (extra?.length) filas.push(extra[0] as Fila);
   }
 
-  let matrizOk = 0, matrizVacia = 0, matrizFalla = 0;
+  let celdaHoyOk = 0, celdaHoyAusente = 0, celdaHoyFalla = 0;
   let tablaOk = 0, tablaFalla = 0;
   const fallas: string[] = [];
 
@@ -105,18 +105,18 @@ async function main() {
     const dv = (r.hallazgos ?? []).find((h) => h.id === "distancia_veredicto") as HallazgoDistanciaVeredicto | undefined;
     const grilla = (dv?.valor.mixPalancas ?? dv?.valor.mixPalancasHastaComprar)?.celdas ?? [];
     if (!grilla.length) {
-      matrizVacia++;
+      celdaHoyAusente++;
     } else {
       const hoy = (grilla as CeldaMix[]).find((c) => c.esActual);
       if (!hoy) {
         // No es falla: 16 filas del parque no tienen celda «hoy» porque su plazo declarado
-        // no está en la grilla del mix (medido el 13-sep-2026). La matriz no la inventa.
-        matrizVacia++;
+        // no está en la grilla del mix (medido el 13-sep-2026). La grilla no la inventa.
+        celdaHoyAusente++;
       } else if (hoy.veredictoSinDescuento !== r.veredicto) {
-        matrizFalla++;
+        celdaHoyFalla++;
         fallas.push(`${tag} · celda «hoy» de la grilla ${hoy.veredictoSinDescuento} ≠ informe ${r.veredicto}`);
       } else {
-        matrizOk++;
+        celdaHoyOk++;
       }
     }
 
@@ -157,13 +157,13 @@ async function main() {
   // los seeds no aportaban un caso que las filas no cubran.
 
   console.log(`\nSIMULACIÓN · catch-test sobre ${filas.length} filas`);
-  console.log(`  grilla del mix     ok ${matrizOk} · sin celda «hoy» (fila sin grilla o plazo fuera de ella) ${matrizVacia} · FALLA ${matrizFalla}`);
+  console.log(`  grilla del mix     ok ${celdaHoyOk} · sin celda «hoy» (fila sin grilla o plazo fuera de ella) ${celdaHoyAusente} · FALLA ${celdaHoyFalla}`);
   console.log(`  tabla anual        ok ${tablaOk} · FALLA ${tablaFalla}`);
   for (const x of fallas) console.log(`  ✗ ${x}`);
   const contrato = filas.find((f) => f.id.startsWith(CASO_CONTRATO));
   const canonico = filas.find((f) => f.id.startsWith(CASO_CANONICO));
   console.log(`  caso del contrato ${CASO_CONTRATO}: ${contrato ? "incluido" : "NO ENCONTRADO"} · canónico ${CASO_CANONICO}: ${canonico ? "incluido" : "NO ENCONTRADO"}`);
-  if (matrizFalla || tablaFalla || !contrato || !canonico) {
+  if (celdaHoyFalla || tablaFalla || !contrato || !canonico) {
     console.log("\n✗ ROJO");
     process.exit(1);
   }
