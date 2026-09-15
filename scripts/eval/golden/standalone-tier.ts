@@ -47,10 +47,12 @@ const RAIZ = join(__dirname, "..", "..", "..");
  *    entrar lo llevaría de ~8,6 s a ~12,5 s. Es una decisión de presupuesto de corrida,
  *    no de calidad del guard, y está sin tomar a propósito.
  *
- *  · `jerarquia-catch-test.ts` — ROJO por un bug VIVO de producto: el arbitraje de precios
- *    detecta la colisión y escribe en cinco campos muertos en v22. Está anotado en el
- *    jsdoc de `piezasDeAiLtr` y va en su propio goal. Cablearlo ahora pondría el golden en
- *    rojo permanente por algo que este goal no arregla.
+ *  · `jerarquia-catch-test.ts` — YA NO ESTÁ ROJO (17-sep-2026). Lo estaba por un bug vivo
+ *    de producto: el arbitraje de precios detectaba la colisión y escribía en cinco campos
+ *    muertos en v22. Ese writer se retiró con acta (precio-jerarquia.ts) y el archivo quedó
+ *    verde. O sea que la razón por la que estaba afuera CADUCÓ: hoy solo lo frena el mismo
+ *    presupuesto de corrida que a los cuatro de arriba, y la decisión de cablearlo está sin
+ *    tomar. Mientras siga afuera se pudre igual que se pudrió antes.
  */
 const STANDALONE = [
   "ambitos-zona",

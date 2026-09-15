@@ -160,7 +160,14 @@ ${reglas.map((r) => `· ${r}`).join("\n")}`,
 // Un reintento regenera el JSON completo (~8.000 tokens) para agregar una frase
 // que el builder ya tiene escrita palabra por palabra. El append cuesta 0 tokens,
 // es determinista y AGREGA en vez de reescribir — el mismo criterio con que el
-// guard de jerarquía appendea su línea de arbitraje.
+// guard de jerarquía appendeaba su línea de arbitraje.
+//
+// Y ESE ARGUMENTO NO SOBREVIVIÓ A LOS DOS. El append de jerarquía se retiró el
+// 17-sep-2026 por la misma causa que este (precio-jerarquia.ts): barato y
+// determinista no sirve de nada si no queda anfitrión donde escribir. Lo que
+// faltaba en el razonamiento es que el costo del append no se paga en tokens,
+// se paga en presupuesto de palabras del campo que lo aloja — y ese presupuesto
+// existe en todos los campos vivos de v22.
 
 /**
  * Frases que satisfacen el guard: las que RECONCILIAN las dos lecturas. NO basta

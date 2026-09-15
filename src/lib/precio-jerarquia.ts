@@ -16,8 +16,9 @@
 //     Anclado a las cifras canónicas del caso — NO un contador lexical de "%"
 //     (medido sobre las 177 prosas frescas del re-censo: el conteo dispara 90/139
 //     con contexto laxo y 5/139 con recall 19% en estricto; inservible en ambos
-//     extremos). El caller reintenta con feedback y, a la 2ª falla, appendea la
-//     línea de arbitraje canónica (fallback determinístico).
+//     extremos). El caller reintenta hasta 2 veces con el correctivo; si la
+//     colisión persiste, la loguea. Hubo una 3ª capa —un fallback que appendeaba
+//     la línea de arbitraje— retirada con acta el 17-sep-2026 (ver abajo).
 // ============================================================================
 
 /** Un nombre por precio (goal 02-sep-2026): objetivo = "donde cambia el veredicto" ·
@@ -208,43 +209,27 @@ export function detectarColisionesEnTexto(
 
 /**
  * Mapa pieza → textos del JSON LTR (solo prosa IA; los drawers de motor son coherentes
- * por construcción).
+ * por construcción). Es un mapa de DETECCIÓN: lee de todas las formas que el parque
+ * contiene —v22 y las anteriores— porque una cifra citada en un campo viejo colisiona
+ * igual que una citada en uno nuevo.
  *
- * ⛔ ANOTADO, NO ARREGLADO (17-sep-2026) — `campos` quedó ASIMÉTRICO contra `texto`, y el
- * arbitraje escribe en el vacío.
- *
- * `texto` (la DETECCIÓN) lee once fuentes de `negociacion`. `campos` (la ESCRITURA, lo que
- * `appendArbitrajeCanonico` usa para pegar la línea que dice cuál precio manda) apunta a
- * `negociacion.contenido` y a los cuatro `estrategiaSugerida_*` / `cajaAccionable_*`, que
- * están MUERTOS en v22: el schema de salida lo dice literal en `ai-generation.ts` —
- * «negociacion: { // v22: SIN PROSA. Solo el objetivo y sus dos glosas }».
- *
- * Medido con la forma real de v22: colisión DETECTADA, `TOCADOS = 0`, y producción loguea
- * «línea de arbitraje appendeada en 0 campo(s)». Es la clase de cero que no distingue «no
- * hacía falta» de «no pude». O sea que el guard §1.12.6 detecta y no corrige: la última
- * línea de defensa contra que una pieza cite dos precios canónicos de roles distintos sin
- * decir cuál manda está desconectada.
- *
- * SU GEMELO YA SE RETIRÓ POR ESTO MISMO. `appendReconciliacion` salió el 09-sep con acta
- * (`referencias-zona.ts:188-200`), y esa acta nombra justamente `negociacion.contenido_clp/_uf`
- * y `conviene.respuestaDirecta_*` como muertos en v22. Se retiró uno y este quedó vivo y ciego.
- *
- * Lo cazó `jerarquia-catch-test.ts` —2 de sus 3 fallas—, que lleva semanas en rojo porque no
- * está cableado al runner. Va en su propio goal: decidir si este arbitraje se retira como su
- * gemelo o si se le dan campos vivos donde escribir.
+ * Cada pieza declara `pieza` y `texto`, y nada más. Hasta el 17-sep-2026 declaraba
+ * además `campos`, la lista de anfitriones donde `appendArbitrajeCanonico` escribía; ese
+ * writer se retiró (acta abajo) y la lista se fue con él.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function piezasDeAiLtr(ai: any): { pieza: string; texto: string; campos: string[] }[] {
+export function piezasDeAiLtr(ai: any): { pieza: string; texto: string }[] {
   const s = (v: unknown) => (typeof v === "string" ? v : "");
   return [
-    { pieza: "conviene.respuestaDirecta", campos: ["conviene.respuestaDirecta_clp", "conviene.respuestaDirecta_uf"], texto: `${s(ai?.conviene?.respuestaDirecta_clp)}\n${s(ai?.conviene?.respuestaDirecta_uf)}` },
-    { pieza: "posicion", campos: ["conviene.cajaAccionable_clp", "conviene.cajaAccionable_uf"], texto: `${s(ai?.conviene?.cajaAccionable_clp)}\n${s(ai?.conviene?.cajaAccionable_uf)}` },
+    { pieza: "conviene.respuestaDirecta", texto: `${s(ai?.conviene?.respuestaDirecta_clp)}\n${s(ai?.conviene?.respuestaDirecta_uf)}` },
+    { pieza: "posicion", texto: `${s(ai?.conviene?.cajaAccionable_clp)}\n${s(ai?.conviene?.cajaAccionable_uf)}` },
     {
       // `negociacion.contenido` es campo único desde v21; las filas viejas traen el par.
-      pieza: "negociacion", campos: ["negociacion.contenido", "negociacion.estrategiaSugerida_clp", "negociacion.estrategiaSugerida_uf", "negociacion.cajaAccionable_clp", "negociacion.cajaAccionable_uf"],
+      // En v22 los siete primeros están muertos y la detección entra por las dos glosas.
+      pieza: "negociacion",
       texto: [ai?.negociacion?.contenido, ai?.negociacion?.contenido_clp, ai?.negociacion?.contenido_uf, ai?.negociacion?.estrategiaSugerida_clp, ai?.negociacion?.estrategiaSugerida_uf, ai?.negociacion?.cajaAccionable_clp, ai?.negociacion?.cajaAccionable_uf, ai?.negociacion?.precios?.glosaPrimeraOferta_clp, ai?.negociacion?.precios?.glosaPrimeraOferta_uf, ai?.negociacion?.precios?.glosaWalkAway_clp, ai?.negociacion?.precios?.glosaWalkAway_uf].map(s).join("\n"),
     },
-    { pieza: "reestructuracion", campos: ["reestructuracion.contenido_clp", "reestructuracion.contenido_uf"], texto: [ai?.reestructuracion?.contenido_clp, ai?.reestructuracion?.contenido_uf].map(s).join("\n") },
+    { pieza: "reestructuracion", texto: [ai?.reestructuracion?.contenido_clp, ai?.reestructuracion?.contenido_uf].map(s).join("\n") },
   ];
 }
 
@@ -267,28 +252,43 @@ ${subs}
 Reescribe el JSON COMPLETO respetando la doctrina §1-§17.`;
 }
 
-/**
- * Fallback determinístico (2ª falla): appendea la línea de arbitraje canónica a
- * los campos de la pieza ofensora. Muta `ai` in place; devuelve cuántos campos tocó.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function appendArbitrajeCanonico(ai: any, colisiones: ColisionJerarquia[], precios: PrecioCanonico[]): number {
-  const piezas = piezasDeAiLtr(ai);
-  let tocados = 0;
-  for (const c of colisiones) {
-    // La línea del rol subordinado presente en la colisión (el primero con subordinación).
-    const linea = c.roles.map((r) => precios.find((p) => p.rol === r && p.subordinacion)).find(Boolean)?.subordinacion;
-    if (!linea) continue;
-    const def = piezas.find((p) => p.pieza === c.pieza);
-    if (!def) continue;
-    for (const campo of def.campos) {
-      const [a, b] = campo.split(".");
-      const obj = ai?.[a];
-      if (obj && typeof obj[b] === "string" && obj[b].length > 0 && !MARCADOR_SUBORDINACION.test(obj[b])) {
-        obj[b] = `${obj[b].replace(/\s+$/, "")} ${linea.charAt(0).toUpperCase()}${linea.slice(1)}.`;
-        tocados++;
-      }
-    }
-  }
-  return tocados;
-}
+// ─── appendArbitrajeCanonico — RETIRADA CON ACTA (v22, 17-sep-2026) ─────────
+//
+// Era el fallback determinístico de la 2ª falla: appendeaba la línea de arbitraje
+// canónica a los campos de la pieza ofensora y devolvía cuántos tocó. Sus anfitriones
+// vivían en un `campos` hardcodeado por pieza, independiente de qué campo tenía texto.
+//
+// SE RETIRA POR LAS MISMAS DOS RAZONES QUE SU GEMELO `appendReconciliacion`
+// (referencias-zona.ts, 09-sep), y por una tercera que solo se vio al medirlo.
+//
+// 1. LA RAMA QUE DETECTA NO ESCRIBE. La pieza `negociacion` apuntaba a
+//    `negociacion.contenido` y a los cuatro `estrategiaSugerida_*` / `cajaAccionable_*`,
+//    muertos en v22 —el schema lo dice literal: «negociacion: { // v22: SIN PROSA. Solo
+//    el objetivo y sus dos glosas }»—, mientras su detección seguía viva por las glosas.
+//    Medido sobre el parque el 17-sep-2026, cohorte promptVersion ≥ 22 (23 filas):
+//    detecta en 19, escribe en 0. Los siete campos: 0 filas cada uno.
+//
+// 2. LA RAMA QUE ESCRIBE SE BORRA SOLA. La única viva en v22 era `posicion` →
+//    `conviene.cajaAccionable_clp/_uf`, que es EXACTAMENTE el campo que el acta del
+//    gemelo prohibió reapuntar, y por la razón que dio: tope duro de palabras y un
+//    trimmer que recorta desde el final. Medido simulando el orden real de producción
+//    (append → CAJA-BUDGET → `recortarContinuacion(122)`) sobre las 22 filas v22+ que el
+//    writer tocaría: la línea appendeada se PIERDE en 14 con la subordinación corta (25
+//    palabras) y en 17 con la larga (38). `cajaAccionable` mide 107 palabras de mediana
+//    contra un techo duro de 122, y `recortarContinuacion` hace `slice(0, quedan)` — el
+//    append queda al final, o sea que es lo primero que cae.
+//
+// 3. NUNCA LLEGÓ A HACER FALTA. Colisiones detectadas hoy sobre el parque: 7 de 514
+//    filas evaluadas (1,4%). En la cohorte v22+: 1 de 20, y es de la pieza `posicion`
+//    —la del punto 2—. De `negociacion`, la asimétrica: 0 de 20.
+//
+// LO QUE NO MUERE, que es la capa que sí funciona: el guard §1.12.6 sigue DETECTANDO
+// (`detectarColisionesJerarquia`) y sigue pidiendo hasta 2 reintentos con
+// `correctivoJerarquia`, que le entrega al modelo qué chocó y la línea de subordinación
+// que manda. Y el bloque JERARQUÍA DE PRECIOS del user prompt —la capa 1, el colapso
+// pre-digerido— no se toca. Lo que se retira es el parche determinista de después.
+//
+// SI LA COLISIÓN VUELVE A IMPORTAR, el punto 2 dice dónde NO va el arreglo: ningún
+// anfitrión con presupuesto de palabras propio. Las glosas tampoco (contrato de ≤25
+// palabras, y una subordinación mide 25-38). El lugar sería prosa con presupuesto propio
+// o un renglón dibujado por el motor — la misma conclusión a la que llegó el gemelo.

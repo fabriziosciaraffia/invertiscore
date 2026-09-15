@@ -51,7 +51,7 @@ import {
   recortarContinuacion,
 } from "@/lib/prosa-presupuesto";
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
-import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, appendArbitrajeCanonico, piezasDeAiLtr } from "@/lib/precio-jerarquia";
+import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, piezasDeAiLtr } from "@/lib/precio-jerarquia";
 import { construirReferenciasZona, faltaReconciliacion } from "@/lib/referencias-zona";
 import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad, comunasFueraDeAlternativa, niegaSalidaConMix, puntajesFueraDeDesglose } from "@/lib/cifras-guard";
 import { PESOS_SCORE_LTR } from "@/lib/score-retorno";
@@ -3263,10 +3263,11 @@ Responde SOLO este JSON, sin texto alrededor:
     // 2026-08-16: 33 AC D3 de descuentos conviviendo sin jerarquía, CON la regla
     // ya en el prompt). Anclado a las cifras canónicas del bloque JERARQUÍA (no
     // conteo lexical de "%": medido inservible en ambos extremos). Hasta 2
-    // reintentos con el correctivo; si persiste, fallback determinístico: se
-    // appendea la línea de arbitraje canónica a la pieza ofensora. Corre después
-    // de LTR-CIFRA (cifras ya saneadas) y ANTES de RD-BUDGET (el techo de
-    // palabras sigue siendo la última palabra). Best-effort en try/catch.
+    // reintentos con el correctivo; si persiste, se LOGUEA y sigue de largo — el
+    // fallback determinístico que appendeaba la línea de arbitraje se retiró con
+    // acta el 17-sep-2026 (ver precio-jerarquia.ts). Corre después de LTR-CIFRA
+    // (cifras ya saneadas) y ANTES de RD-BUDGET (el techo de palabras sigue
+    // siendo la última palabra). Best-effort en try/catch.
     if (aiResult && jerarquiaPrecios.precios.length >= 2) {
       try {
         let colisiones = detectarColisionesJerarquia(aiResult, jerarquiaPrecios.precios);
@@ -3292,8 +3293,12 @@ Responde SOLO este JSON, sin texto alrededor:
           }
         }
         if (colisiones.length > 0) {
-          const tocados = appendArbitrajeCanonico(aiResult, colisiones, jerarquiaPrecios.precios);
-          console.warn(`[JERARQUIA-PRECIOS] ${analysisId}: agotó reintentos — fallback determinístico: línea de arbitraje appendeada en ${tocados} campo(s)`);
+          // AUDIT-ONLY desde el 17-sep-2026: hasta acá llegaba el fallback determinístico
+          // `appendArbitrajeCanonico`, retirado con acta (ver precio-jerarquia.ts). Escribía
+          // en campos que v22 mató, y en el único vivo —`conviene.cajaAccionable`— el
+          // trimmer de CAJA-BUDGET le borraba la línea en 14 de 22 filas del parque.
+          // La corrección viaja por los reintentos de arriba; esto solo deja constancia.
+          console.warn(`[JERARQUIA-PRECIOS] ${analysisId}: agotó reintentos — ${colisiones.length} colisión(es) sin resolver: ${colisiones.map((c) => `${c.pieza}[${c.roles.join("+")}]`).join(", ")}`);
         }
       } catch (e) {
         console.warn(`[JERARQUIA-PRECIOS] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);

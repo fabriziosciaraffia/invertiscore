@@ -14,9 +14,10 @@
 
 import {
   construirJerarquiaPrecios,
+  correctivoJerarquia,
   detectarColisionesEnTexto,
   detectarColisionesJerarquia,
-  appendArbitrajeCanonico,
+  piezasDeAiLtr,
   MARCADOR_SUBORDINACION,
 } from "../../../src/lib/precio-jerarquia";
 
@@ -102,16 +103,57 @@ const jerE = construirJerarquiaPrecios({
 // que el caso estructural necesita: en `negociacion` no hay precio objetivo que ofrecer.
 check("estructural solo con el mínimo fuera de rango", jerE.precios.length === 1 && jerE.precios[0].rol === "minimo_fuera_rango" && /SIN precio objetivo/.test(jerE.bloque) && !/techo/i.test(jerE.bloque));
 
-console.log("── fallback: append determinístico a la 2ª falla ──");
-const aiFalso = {
-  conviene: { respuestaDirecta_clp: "ok", respuestaDirecta_uf: "ok", cajaAccionable_clp: "ok", cajaAccionable_uf: "ok" },
-  negociacion: { contenido_clp: textoSucio, contenido_uf: textoSucio.replace("31,4", "31,4") },
+// ── LO QUE SE FUE CON EL FALLBACK (17-sep-2026) ──────────────────────────────
+// Acá vivían tres aserciones sobre `appendArbitrajeCanonico`: que appendeaba la línea
+// de arbitraje a los campos de la pieza ofensora, que tocaba 2 campos y que post-append
+// el guard quedaba satisfecho. El writer se RETIRÓ CON ACTA (precio-jerarquia.ts), así
+// que fijar lo que hacía sería fijar código que no existe.
+//
+// Y su fixture —`negociacion.contenido_clp/_uf`— era de v21: el guard corría sobre una
+// forma que el modelo ya no emite. De ahí que estas aserciones estuvieran en rojo sin
+// que el producto estuviera roto en ese punto.
+//
+// LA COBERTURA NO SE VA CON ELLAS. Lo que el fallback prometía —que una colisión que
+// sobrevive a los reintentos se corrige igual— pasa a estar cubierto por las dos cosas
+// que SÍ tienen que ser ciertas ahora, y ninguna es un predicado solo-negativo (uno que
+// prohíbe no afirma que lo correcto exista):
+//   (a) las piezas declaran DETECCIÓN y nada más —`campos` era la lista de anfitriones
+//       de escritura del writer, y sin writer no tiene consumidor—, y
+//   (b) el ciclo cierra por el CORRECTIVO, que es lo que el modelo recibe para arreglarlo.
+console.log("── el guard corrige por CORRECTIVO al modelo, no por parche determinista ──");
+const forma = piezasDeAiLtr({});
+check(
+  "las piezas declaran solo {pieza, texto}",
+  forma.length > 0 && forma.every((p) => Object.keys(p).sort().join(",") === "pieza,texto"),
+  forma.map((p) => Object.keys(p).sort().join("+")).join(" | "),
+);
+
+// Fixture con la FORMA REAL de v22 —`negociacion` sin prosa, solo el objetivo y sus dos
+// glosas—, que es por donde la detección de esta pieza sigue entrando: medido el
+// 17-sep-2026 sobre el parque, 19 de 23 filas v22+ traen texto en las glosas y cero en
+// los campos de prosa que v22 mató.
+const aiV22 = {
+  conviene: { cajaAccionable_clp: "ok", cajaAccionable_uf: "ok" },
+  negociacion: {
+    precioSugerido: "UF 686",
+    precios: {
+      glosaPrimeraOferta_clp: "Abre pidiendo un 31,4% de descuento.",
+      glosaPrimeraOferta_uf: "Abre pidiendo un 31,4% de descuento.",
+      glosaWalkAway_clp: "Para que la caja cierre necesitarías un 54,6% menos.",
+      glosaWalkAway_uf: "Para que la caja cierre necesitarías un 54,6% menos.",
+    },
+  },
 };
-const colFalso = detectarColisionesJerarquia(aiFalso, jer.precios);
-check("colisión en el JSON", colFalso.length === 1 && colFalso[0].pieza === "negociacion");
-const tocados = appendArbitrajeCanonico(aiFalso, colFalso, jer.precios);
-check("append tocó los campos con texto", tocados === 2, `tocados=${tocados}`);
-check("post-append el guard queda satisfecho", detectarColisionesJerarquia(aiFalso, jer.precios).length === 0);
+const colV22 = detectarColisionesJerarquia(aiV22, jer.precios);
+check("la colisión se detecta en la forma v22 (por las glosas)", colV22.length === 1 && colV22[0].pieza === "negociacion", JSON.stringify(colV22));
+
+const correctivo = correctivoJerarquia(colV22, jer.precios);
+check("el correctivo nombra la pieza que chocó", /negociacion/.test(correctivo));
+check("el correctivo nombra cada rol en colisión", colV22.length === 1 && colV22[0].roles.every((r) => correctivo.includes(r)), colV22[0]?.roles.join("+"));
+check(
+  "el correctivo le entrega al modelo la línea de subordinación de cada rol que la tiene",
+  jer.precios.filter((p) => p.subordinacion).every((p) => correctivo.includes(p.subordinacion)),
+);
 
 console.log(fallas === 0 ? "\n✓ VERDE — guard jerarquía de precios caza y calla donde corresponde" : `\n✗ ${fallas} falla(s)`);
 process.exit(fallas === 0 ? 0 : 1);
