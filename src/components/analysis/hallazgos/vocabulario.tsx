@@ -337,7 +337,22 @@ const TEXTO_QUIEN: Record<NonNullable<FilaPalanca["quien"]>, string> = {
 };
 
 /** Matriz de palancas: una fila por palanca, con delta, veredicto y magnitudes
- *  origen→destino. Lista vacía ⇒ no se dibuja (el caller cae a prosa). */
+ *  origen→destino. Lista vacía ⇒ no se dibuja (el caller cae a prosa).
+ *
+ *  ⛔ SIN SUPERFICIE DESDE EL 17-sep-2026, Y CONSERVADA A PROPÓSITO. Su único caller era
+ *    `construirPalancas` (`DrawersPropios.tsx`), que alimentó a `DrawerDistanciaLtr` y
+ *    `DrawerDistanciaStr` hasta que los tres se borraron por estar detrás de
+ *    `drawerSequence = ["zona"]`. Con el caller se fueron sus cinco piezas privadas
+ *    (`NOMBRE_PALANCA`, `QUIEN_PALANCA`, `RAZON_NO_ALCANZA`, `textoPalanca`, `textoTope`):
+ *    eran maquinaria de una función retirada, no superficie, y se recuperan del árbol
+ *    anterior al retiro si alguna vez esta matriz vuelve a montarse.
+ *
+ *    NO se retira porque NO está reemplazada: el pop-up de ajustes dibuja una GRILLA de
+ *    pie × plazo con su veredicto por celda, que es otra pregunta —cuánto cuesta cruzar—
+ *    que la que responde esta matriz —cuál palanca alcanza sola, y por qué las otras no—.
+ *    Aplica la regla del goal: **reemplazado se retira, apagado se decide, nunca por
+ *    inercia**; ésta está apagada, y la decisión es de producto. Misma familia que
+ *    `EscaleraPie` / `EscaleraPlazo` / `referenciaTasa`, anotadas el mismo día. */
 export function Palancas({ filas, pie }: { filas: FilaPalanca[]; pie?: ReactNode }) {
   if (!filas.length) return null;
   return (

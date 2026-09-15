@@ -48,7 +48,20 @@ export function lineaFooterVias(nCruzan: number | null, total: number, haySalida
 }
 
 /** Intro del modal de vías cuando el hallazgo trae `vias`:
- *  "Franco probó cuatro ajustes, uno a la vez y con el resto fijo. Dos cruzan a COMPRAR, …". */
+ *  "Franco probó cuatro ajustes, uno a la vez y con el resto fijo. Dos cruzan a COMPRAR, …".
+ *
+ *  ⛔ SIN SUPERFICIE DESDE EL 17-sep-2026, Y CONSERVADA A PROPÓSITO. Su único lector era el
+ *    modal de vías de `DrawerDistanciaLtr`, borrado ese día con el resto de lo que colgaba
+ *    de `drawerSequence = ["zona"]`.
+ *
+ *    El pop-up de ajustes NO la reemplaza: no tiene intro en prosa —es título, matriz,
+ *    óptimo, tabla y CTA, por contrato visual del bloque B (13-sep)—. Así que la frase que
+ *    decía lo más importante de ese modal —que las vías se probaron **una a la vez y con el
+ *    resto fijo**— hoy no la dice nadie. Eso es una pérdida de información, no una
+ *    simplificación, y por eso la función se queda: el día que alguna superficie vuelva a
+ *    necesitarla está escrita y con su contrato de conteo intacto.
+ *
+ *    `lineaFooterVias`, su hermana, sigue viva en los dos heros. */
 export function introModalVias(nCruzan: number, total: number, objetivo: string): string {
   const t = totalEnPalabras(total);
   const cabeza = `Franco probó ${t} ajustes, uno a la vez y con el resto fijo. `;

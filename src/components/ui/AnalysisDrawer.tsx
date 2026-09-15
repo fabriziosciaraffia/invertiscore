@@ -40,9 +40,8 @@ import {
   type ZonaDial,
   type BordeDial,
 } from "@/components/analysis/hallazgos/vocabulario";
-import { DrawerSensibilidadLtr, DrawerDistanciaLtr } from "@/components/analysis/drawers/DrawersPropios";
 import { salidaPorMix, SUBTITULO_PLAN_SALIDA } from "@/lib/salida-por-mix";
-import type { HallazgoSensibilidad, HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
+import type { HallazgoDistanciaVeredicto, HallazgoSobreprecio } from "@/lib/types";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
 import { ZonaCeldasLtr, buildZonaLtr, sintesisZonaLtr } from "@/components/analysis/zona/ZonaLtr";
 import { ZoneMap } from "@/components/zone-insight/ZoneMap";
@@ -55,13 +54,7 @@ export type DrawerKey =
   | "reestructuracion"
   | "largoPlazo"
   | "zona"
-  | "capexPuestaAPunto"
-  // rama drawers-propios (F2). T5: tir / patrimonio / plusvalia murieron (sus cuerpos
-  // viven en los capítulos IV y V); sensibilidad y distancia siguen porque HeroLTR los
-  // monta directo.
-  | "sensibilidad"
-  // rama superficies-distancia: drawer propio del 10º hallazgo (LTR-only).
-  | "distanciaVeredicto";
+  | "capexPuestaAPunto";
 
 interface DrawerProps {
   activeKey: DrawerKey;
@@ -114,8 +107,6 @@ const DRAWER_META: Record<DrawerKey, { label: string }> = {
   largoPlazo: { label: "A 10 años" },
   zona: { label: "La zona" },
   capexPuestaAPunto: { label: "Puesta a punto" },
-  sensibilidad: { label: "Margen del veredicto" },
-  distanciaVeredicto: { label: "Lo que te separa" },
 };
 
 function fmtCLP(n: number): string {
@@ -1297,6 +1288,42 @@ export function extractRiesgos(
 // siendo el del motor (típicamente AJUSTA SUPUESTOS cuando aplica Nivel 3),
 // y el drawer aparece como tab adicional con la palanca de reestructuración
 // financiera. No es un veredicto distinto.
+/**
+ * ⛔ SIN SUPERFICIE, Y A PROPÓSITO SE CONSERVA (17-sep-2026).
+ *
+ * Este drawer no se alcanza: `drawerSequence = ["zona"]` desde `81b05cce` y ningún
+ * capítulo lo monta. Lo que SÍ se retiró es el campo de prosa `reestructuracion` del
+ * prompt —dos bloques de 3-5 frases escritos para este drawer— porque el texto no tenía
+ * dónde leerse y el ahorro es hoy.
+ *
+ * EL AHORRO, MEDIDO sobre el parque y no estimado: el prompt adelgaza 1.435 caracteres en
+ * TODAS las generaciones LTR, y la salida deja de escribirse en el 38% de ellas —261 de
+ * 686 filas con prosa lo traen, mediana de 1.317 caracteres los dos bloques juntos, unos
+ * 376 tokens—. No es «dos bloques por generación»: el Nivel 3 de `financingHealth` no
+ * dispara siempre, y decirlo redondo infla el ahorro casi tres veces.
+ *
+ * PERO LAS TRES PIEZAS DE RENDER SE QUEDAN, y no por inercia:
+ *  · `EscaleraPie` — el tramo del pie contra su óptimo;
+ *  · `EscaleraPlazo` — lo mismo para el plazo;
+ *  · `referenciaTasa` — la procedencia de la tasa: contra qué se compara la tuya.
+ *
+ * NINGUNA SUPERFICIE VIVA LAS DICE. El pop-up hace pie × plazo como una GRILLA de
+ * veredictos, que es otra cosa que una escalera contra el óptimo, y la TASA no está en el
+ * pop-up en ninguna forma. `EstructuraComparada`, que era la cuarta pieza, sí migró a los
+ * dos capítulos y por eso no está en esta lista.
+ *
+ * O SEA QUE ESTO NO ES CÓDIGO HUÉRFANO: es render terminado esperando un capítulo. Si
+ * alguna vez la escalera entra a uno, el componente está y el prompt vuelve a pedir el
+ * texto. Lo que NO se podía hacer es lo contrario — sacar el render y dejar al modelo
+ * escribiendo (decisión Fabrizio, 17-sep).
+ *
+ * NO SON LAS ÚNICAS PIEZAS APAGADAS, y conviene que estén contadas en un solo lugar. El
+ * mismo día quedaron sin lector `Palancas` (`vocabulario.tsx`) y `introModalVias`
+ * (`palancas-en-palabras.ts`), las dos con su acta al lado. Y el censo encontró dos más
+ * que YA estaban apagadas antes de este goal y no las apagó nadie de acá: `Composicion` y
+ * `Escenarios`, cero montajes en el repo también en `HEAD`. Ésas quedan fuera del radio —no
+ * se tocan sin decisión— pero anotadas, que es la diferencia entre apagado y olvidado.
+ */
 function DrawerReestructuracion({
   data,
   currency,
@@ -1926,23 +1953,7 @@ export function AnalysisDrawer({
     results.metrics?.hallazgoCapRate ??
     undefined;
 
-  // Hallazgos de los drawers propios LTR que siguen vivos (motor-seeded en
-  // results.hallazgos). Alimentan plantillas determinísticas.
-  const sensibilidadHallazgo = results.hallazgos?.find(
-    (h): h is HallazgoSensibilidad => h.id === "sensibilidad",
-  );
-  const distanciaHallazgo = results.hallazgos?.find(
-    (h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto",
-  );
 
-  // Fallback simétrico al de STR (DrawerContentSTR): si la card abrió un drawer propio
-  // pero el hallazgo no está (fila legacy), se muestra una constatación honesta, no un
-  // cuerpo vacío. En el flujo normal es inalcanzable (la card solo existe con su hallazgo).
-  const faltaHallazgoLtr = (
-    <p className="font-body italic text-[13px] text-[var(--franco-text-secondary)] leading-[1.6] m-0">
-      Este detalle no está disponible para este análisis.
-    </p>
-  );
 
   const meta = DRAWER_META[activeKey];
 
@@ -1967,11 +1978,6 @@ export function AnalysisDrawer({
     : "¿Cómo está tu estructura?";
   const capexTitle = "Dejarlo listo para arrendar";
   const capRateTitle = "Lo que renta hoy vs lo que debería";
-  // Preguntas de los 4 drawers propios LTR (deterministas, cero IA). La de TIR se
-  // completa con el % real más abajo (drawerPregunta); las otras son estables.
-  const sensibilidadTitle = "¿Cuánto aguanta tu veredicto?";
-  const distanciaTitle = "¿Qué tendría que pasar para que suba?";
-
   // Hallazgo estructura (motor-seeded, siempre presente en LTR) — alimenta el
   // fallback del drawer de reestructuración cuando no hay sección IA.
   const estructuraHallazgo = results.hallazgos?.find(
@@ -1992,11 +1998,7 @@ export function AnalysisDrawer({
           ? ({ pregunta: capexTitle } as { pregunta: string })
           : activeKey === "capRate"
             ? ({ pregunta: capRateTitle } as { pregunta: string })
-            : activeKey === "sensibilidad"
-              ? ({ pregunta: sensibilidadTitle } as { pregunta: string })
-              : activeKey === "distanciaVeredicto"
-                ? ({ pregunta: distanciaTitle } as { pregunta: string })
-                : aiAnalysis?.[activeKey];
+            : aiAnalysis?.[activeKey];
 
   // Override de pregunta por drawer + estado. La pregunta IA es genérica;
   // hardcoded varía según el "veredicto numérico" del bloque para evitar
@@ -2129,18 +2131,17 @@ export function AnalysisDrawer({
           medianaResolvedAt={medianaResolvedAt}
         />
       )}
-      {activeKey === "sensibilidad" &&
-        (sensibilidadHallazgo ? (
-          <DrawerSensibilidadLtr hallazgo={sensibilidadHallazgo} results={results} currency={currency} valorUF={valorUF} />
-        ) : (
-          faltaHallazgoLtr
-        ))}
-      {activeKey === "distanciaVeredicto" &&
-        (distanciaHallazgo ? (
-          <DrawerDistanciaLtr hallazgo={distanciaHallazgo} currency={currency} valorUF={valorUF} />
-        ) : (
-          faltaHallazgoLtr
-        ))}
+      {/* ⛔ LAS DOS MONTURAS DE `sensibilidad` Y `distanciaVeredicto` SE RETIRARON
+          (17-sep-2026). Las dos eran inalcanzables —`drawerSequence = ["zona"]` desde
+          `81b05cce`, y `HeroLTR` recibe `onOpenDrawer` y nunca lo llama— y las dos tenían
+          su contenido ya mudado a superficies mejores:
+           · sensibilidad → el dial vive en `CapitulosInversion.tsx`, el margen y su banda
+             («colchón amplio/acotado») en el pop-up, que además dice a qué veredicto CAE,
+             cosa que el drawer no decía;
+           · distanciaVeredicto → el pop-up de ajustes entero, al que se llega por «Ver
+             ajustes» en `PosicionFranco`.
+          No es limpieza de código huérfano: es retirar la copia vieja de algo que ya se
+          dice mejor en otro lado. */}
 
     </>
   );

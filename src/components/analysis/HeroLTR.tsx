@@ -274,8 +274,10 @@ export function HeroLTR({
             );
           })(),
           btn: "Ver ajustes",
-          // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo
-          // (DrawerDistanciaLtr), que sabe cuántas vías cruzan.
+          // Sin bajada: la intro del modal es UN solo párrafo y vive en el cuerpo.
+          // (Hasta el 17-sep-2026 ese cuerpo era `DrawerDistanciaLtr`, que se borró con el
+          //  resto de lo que colgaba de `drawerSequence = ["zona"]`; hoy el cuerpo es
+          //  `cuerpoAjustes`, más abajo.)
           sub: undefined,
           // LAS DOS PROFUNDIDADES, UN SOLO POP-UP. Primero qué te separa del veredicto
           // (las cuatro palancas con su intro y su cierre) y después qué pasa si mueves
