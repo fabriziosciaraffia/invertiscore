@@ -1954,6 +1954,23 @@ CAPEX PUESTA A PUNTO (depto usado de ${hallazgoCapex.valor.antiguedadAnios} año
         : fmtCLP(v);
       const pals = dv.valor.palancas ?? [];
       const vias = dv.valor.vias;
+      // ⛔ EL DENOMINADOR ES UNO SOLO (17-sep-2026). Hasta hoy este bloque declaraba su
+      // propio total —«Cruzan N de 4»— Y su propia regla anti-exclusividad, acotada a esas
+      // cuatro. El bloque SALIDA COMBINADA declaraba OTRO total. El modelo recibía dos
+      // números distintos para la misma pregunta, y usó el que tenía más cerca: en Las
+      // Condes escribió «hay dos caminos por separado» copiando este bloque, con
+      // `caminosQueAbren: 3` abajo.
+      //
+      // Peor todavía: con UNA sola vía que cruza, la regla vieja de acá **licenciaba** «la
+      // única vía» —era cierta dentro de su alcance— mientras la de abajo la prohíbe. Por eso
+      // el ejemplo que agregamos contra la exclusividad rindió una de tres: no competía con
+      // el silencio, competía con una instrucción anterior que decía lo contrario.
+      //
+      // Ahora este bloque declara su número como PARTE y no tiene regla propia: la única
+      // vive abajo, con el único total.
+      const caminos = caminosQueAbren(dv.valor, {
+        equilibrada: dv.valor.esEstructural ? salidaPorMix(dv.valor) : null,
+      });
       // Filas sin `vias` (persistidas antes del goal "cuatro palancas siempre"):
       // el bloque anterior, solo con las que cruzan.
       if (!vias || vias.length === 0) {
@@ -1967,7 +1984,7 @@ CAPEX PUESTA A PUNTO (depto usado de ${hallazgoCapex.valor.antiguedadAnios} año
         return `
 VÍAS QUE CRUZAN AL VEREDICTO DE ARRIBA (${pals.length}) — cada una alcanza POR SÍ SOLA:
 ${filas}
-  ⚠ Son ${pals.length}. Si dices "la única vía" o "la condición es una sola" cuando hay más de una, es falso. Puedes elegir la más accionable y decir por qué, pero sin negar las otras.`;
+  ⚠ Son ${pals.length} de los ${caminos.total} caminos que abren EN TOTAL: éstas alcanzan POR SEPARADO y las demás abren COMBINANDO (bloque SALIDA COMBINADA). Este número es una PARTE. Lo que puedes afirmar sobre cuántos hay y sobre "el único" se decide con \`caminosQueAbren\`, no acá.`;
       }
       // ── GOAL "cuatro palancas siempre" (02-sep-2026): las CUATRO vías, cada una
       // con su estado. El modelo deja de confundir "no está en la lista" con "no
@@ -2003,10 +2020,20 @@ ${filas}
         })
         .join("\n");
       const nCruzan = vias.filter((v) => v.estado === "cruza").length;
+      // La aritmética, en castellano y sin afirmar de más: con resto 0 el total COINCIDE con
+      // este número, y decir «es una parte» ahí sería la misma falsedad chica que este
+      // arreglo vino a sacar. Espejo del bloque STR.
+      const restoLtr = caminos.total - nCruzan;
+      const totalLtrTxt = caminos.total === 1 ? "1 camino que abre" : `${caminos.total} caminos que abren`;
+      const restoLtrTxt = restoLtr === 0
+        ? "ninguno abre COMBINANDO, así que acá el total coincide"
+        : nCruzan === 0
+          ? (restoLtr === 1 ? "ese único camino abre COMBINANDO" : `esos ${restoLtr} abren COMBINANDO`)
+          : (restoLtr === 1 ? "el otro abre COMBINANDO" : `los otros ${restoLtr} abren COMBINANDO`);
       return `
 VÍAS AL VEREDICTO DE ARRIBA (${objetivo}) — las cuatro, cada una probada POR SEPARADO con el resto de los supuestos fijos:
 ${filas}
-  ⚠ Cruzan ${nCruzan} de 4, y cada una que cruza alcanza POR SÍ SOLA. Si dices "la única vía" o "la condición es una sola" cuando cruza más de una, es falso; puedes elegir la más accionable y decir por qué, sin negar las otras.
+  ⚠ Cruzan ${nCruzan} de 4 POR SEPARADO, de ${totalLtrTxt} EN TOTAL: ${restoLtrTxt}${restoLtr ? " y eso está en el bloque SALIDA COMBINADA" : ""}. ${restoLtr ? "**Este número es una PARTE, no el total**, y d" : "D"}e este bloque no se deduce cuántos caminos hay. Lo que puedes afirmar sobre eso —y sobre "el único"— se decide con \`caminosQueAbren\`, más abajo.
   ⚠ Las que NO CRUZAN sí se probaron, hasta el tope que dice su línea: puedes decirlo con ese tope. Nunca digas que una de ellas "no existe" o "no se probó".
   ⚠ Las que NO APLICAN no se probaron, por la razón que dice su línea; esa razón es la única forma de nombrarlas.`;
     })();

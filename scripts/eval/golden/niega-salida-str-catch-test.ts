@@ -95,6 +95,21 @@ const dvDe = (clave: string): HallazgoDistanciaVeredicto["valor"] =>
   }
   if (!/descuentoQueAdemásPide/.test(p) || /«chico»/.test(p) && !/NO lo llames «chico»/.test(p)) F("1 · la instrucción tiene que leer `descuentoQueAdemásPide` y prohibir «chico»");
 
+  // ⛔ UN SOLO DENOMINADOR (17-sep-2026). El bloque de CAMBIOS declaraba su propio total y su
+  //   propia regla anti-exclusividad —«Solo con exactamente UNO puedes decir "el único cambio
+  //   que alcanza"»—, acotada a las cinco vías. El bloque SALIDA COMBINADA declaraba OTRO
+  //   total. Con UNA sola vía que cruza, la regla de arriba LICENCIABA exactamente la frase
+  //   que la de abajo prohíbe, y es lo que se midió en tres filas del parque.
+  if (!/Este número es una PARTE, no el total/.test(p)) {
+    F("1 · el bloque de cambios tiene que declarar su número como PARTE del total, no como el total");
+  }
+  // El singular importa: con un solo camino dice «1 camino que abre», y un pin que fije el
+  // plural se rompe sobre prosa correcta — que es lo que pasó al escribirlo.
+  if (!/de \d+ caminos? que abren? EN TOTAL/.test(p)) F("1 · el bloque de cambios no nombra el total del que es parte");
+  if (/Solo con exactamente UNO puedes decir/.test(p)) {
+    F("1 · volvió la regla anti-exclusividad con denominador propio: licencia «el único» donde la otra lo prohíbe");
+  }
+
   // BUSCAR estructural con mix solo al escalón (grajalesStr 5dc42a82): no promete Comprar.
   const dvG = dvDe("grajalesStr");
   if (salidaPorMixStr(dvG)) F("1 · grajalesStr llega solo al escalón: salidaPorMixStr (la fuente de la card) tenía que dar null");

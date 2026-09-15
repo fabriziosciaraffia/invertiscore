@@ -293,6 +293,15 @@ const JERGA = /\bpalanca|\bvía\b|\bvías\b|por sí sola|\bbrecha\b|supuesto/i;
     if (!src) { F(`8 · no se pudo leer ${ruta}`); continue; }
     const codigo = soloCodigo(src);
     if (!/caminosQueAbren\s*\(/.test(codigo)) F(`8 · ${ruta} no arma el bloque con «caminosQueAbren»`);
+    // UN SOLO DENOMINADOR: el bloque de vías declara su número como PARTE del total, y no
+    // lleva regla anti-exclusividad propia — la suya licenciaba «el único» con una sola vía
+    // que cruza, que es la de abajo prohibiendo lo que la de arriba permitía.
+    if (!/Este número es una PARTE, no el total/.test(codigo)) {
+      F(`8 · ${ruta}: el bloque de vías dejó de declarar su número como PARTE del total`);
+    }
+    if (/Si dices "la única vía"|Solo con exactamente UNO puedes decir/.test(codigo)) {
+      F(`8 · ${ruta}: volvió la regla anti-exclusividad con denominador propio en el bloque de vías`);
+    }
     if (/esEstructural\)\s*return ""/.test(codigo)) F(`8 · ${ruta} volvió a cerrar el bloque detrás de «esEstructural»`);
   }
 }

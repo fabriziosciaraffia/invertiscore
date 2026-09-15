@@ -720,7 +720,31 @@ Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards f
         if (v.estado === "noCruza") return `- ${nombre}: NO ALCANZA — ${v.razon} (probado hasta ${fmtVia(v.palanca, v.topeExplorado)})`;
         return `- ${nombre}: NO APLICA — ${v.razon}`;
       }).join("\n");
-      return `\n\nCAMBIOS QUE LLEVAN AL VEREDICTO DE ARRIBA (${dv.veredictoObjetivo}) — los cinco, con su estado (ya calculado):\n${filas}\nCAMBIOS QUE ALCANZAN: ${cruzan.length}${cruzan.length ? ` — ${cruzan.map((v) => NOMBRE_VIA[v.palanca] ?? v.palanca).join(", ")}` : ""}. Solo con exactamente UNO puedes decir "el único cambio que alcanza"; con varios, nómbralos o di "hay más de uno"; con ninguno, ninguno alcanza. Cada uno alcanza POR SÍ SOLO; puedes recomendar el más accionable, pero sin negar los otros.`;
+      // ⛔ ESTE BLOQUE YA NO DECLARA UN TOTAL NI SU PROPIA REGLA (17-sep-2026). Decía «Solo
+      // con exactamente UNO puedes decir "el único cambio que alcanza"», y eso LICENCIABA la
+      // exclusividad en toda fila donde cruza una sola vía — mientras el bloque SALIDA
+      // COMBINADA, abajo, contaba los caminos combinados y la prohibía. Dos denominadores
+      // para la misma pregunta, y el modelo usaba el que tenía más cerca. Espejo del arreglo
+      // de LTR; el acta larga está en `ai-generation.ts`.
+      const caminosStr = caminosQueAbren(dv, {
+        grilla: dv.veredictoBase === "BUSCAR OTRA" && dv.mixPalancasHastaComprar !== undefined ? dv.mixPalancasHastaComprar : dv.mixPalancas,
+        equilibrada: dv.esEstructural ? salidaPorMixStr(dv) : null,
+      });
+      // La aritmética se dice en castellano: «de 1 camino», no «de los 1 caminos», y con cero
+      // que alcanzan no se agrega «cada uno de éstos alcanza por sí solo», que no nombra nada.
+      const totalTxt = caminosStr.total === 1 ? "1 camino que abre" : `${caminosStr.total} caminos que abren`;
+      const resto = caminosStr.total - cruzan.length;
+      // CON resto 0 NO SE DICE «es una parte»: ahí el total coincide, y afirmar lo contrario
+      // sería la misma clase de falsedad chica que este arreglo vino a sacar.
+      const restoTxt = resto === 0
+        ? "ninguno abre COMBINANDO, así que acá el total coincide"
+        : cruzan.length === 0
+          ? (resto === 1 ? "ese único camino abre COMBINANDO" : `esos ${resto} abren COMBINANDO`)
+          : (resto === 1 ? "el otro abre COMBINANDO" : `los otros ${resto} abren COMBINANDO`);
+      const colaSeparado = cruzan.length
+        ? " Cada uno de éstos alcanza POR SÍ SOLO y puedes recomendar el más accionable, pero"
+        : "";
+      return `\n\nCAMBIOS QUE LLEVAN AL VEREDICTO DE ARRIBA (${dv.veredictoObjetivo}) — los cinco, con su estado (ya calculado):\n${filas}\nCAMBIOS QUE ALCANZAN POR SEPARADO: ${cruzan.length}${cruzan.length ? ` — ${cruzan.map((v) => NOMBRE_VIA[v.palanca] ?? v.palanca).join(", ")}` : ""}, de ${totalTxt} EN TOTAL: ${restoTxt}${resto ? " y eso está en el bloque SALIDA COMBINADA" : ""}. ${resto ? "**Este número es una PARTE, no el total**, y d" : "D"}e este bloque no se deduce cuántos caminos hay.${colaSeparado} Lo que puedas afirmar sobre cuántos hay —y sobre "el único"— se decide con \`caminosQueAbren\`, más abajo.`;
     })();
     const cab = `\n\n=== LO QUE TE SEPARA DEL VEREDICTO DE ARRIBA (valores YA CALCULADOS) ===\n«${distanciaSTR.titular}» — ${distanciaSTR.fraseCanonica}${viasBloque}`;
 
