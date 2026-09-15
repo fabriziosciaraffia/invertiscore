@@ -206,7 +206,33 @@ export function detectarColisionesEnTexto(
   return out;
 }
 
-/** Mapa pieza → textos del JSON LTR (solo prosa IA; los drawers de motor son coherentes por construcción). */
+/**
+ * Mapa pieza → textos del JSON LTR (solo prosa IA; los drawers de motor son coherentes
+ * por construcción).
+ *
+ * ⛔ ANOTADO, NO ARREGLADO (17-sep-2026) — `campos` quedó ASIMÉTRICO contra `texto`, y el
+ * arbitraje escribe en el vacío.
+ *
+ * `texto` (la DETECCIÓN) lee once fuentes de `negociacion`. `campos` (la ESCRITURA, lo que
+ * `appendArbitrajeCanonico` usa para pegar la línea que dice cuál precio manda) apunta a
+ * `negociacion.contenido` y a los cuatro `estrategiaSugerida_*` / `cajaAccionable_*`, que
+ * están MUERTOS en v22: el schema de salida lo dice literal en `ai-generation.ts` —
+ * «negociacion: { // v22: SIN PROSA. Solo el objetivo y sus dos glosas }».
+ *
+ * Medido con la forma real de v22: colisión DETECTADA, `TOCADOS = 0`, y producción loguea
+ * «línea de arbitraje appendeada en 0 campo(s)». Es la clase de cero que no distingue «no
+ * hacía falta» de «no pude». O sea que el guard §1.12.6 detecta y no corrige: la última
+ * línea de defensa contra que una pieza cite dos precios canónicos de roles distintos sin
+ * decir cuál manda está desconectada.
+ *
+ * SU GEMELO YA SE RETIRÓ POR ESTO MISMO. `appendReconciliacion` salió el 09-sep con acta
+ * (`referencias-zona.ts:188-200`), y esa acta nombra justamente `negociacion.contenido_clp/_uf`
+ * y `conviene.respuestaDirecta_*` como muertos en v22. Se retiró uno y este quedó vivo y ciego.
+ *
+ * Lo cazó `jerarquia-catch-test.ts` —2 de sus 3 fallas—, que lleva semanas en rojo porque no
+ * está cableado al runner. Va en su propio goal: decidir si este arbitraje se retira como su
+ * gemelo o si se le dan campos vivos donde escribir.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function piezasDeAiLtr(ai: any): { pieza: string; texto: string; campos: string[] }[] {
   const s = (v: unknown) => (typeof v === "string" ? v : "");
