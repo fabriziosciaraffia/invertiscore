@@ -19,11 +19,12 @@
 // canónico. Sin `airbnbRaw` no hay contexto y no se inventa uno (igual que simularPieStr).
 // ─────────────────────────────────────────────────────────────────────────────
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { metricaValorONull, type Veredicto } from "@/lib/types";
+import { metricaValorONull, type MixPalancas, type Veredicto } from "@/lib/types";
 import { TIR_LIMITE_PCT } from "@/lib/tir-limite";
-import { biseccionFactor } from "@/lib/distancia-veredicto-hallazgo";
+import { biseccionFactor, DIST_PIE_TOPE_PCT } from "@/lib/distancia-veredicto-hallazgo";
+import { calcularMixPalancas } from "@/lib/mix-palancas";
 import { buildStrRecomputeCtx } from "./recompute-short-term-for-legacy";
-import { recomputeStrConPatch, type VeredictoStrCtx } from "./veredicto-str-con-patch";
+import { recomputeStrConPatch, sondaStrConPatch, type VeredictoStrCtx } from "./veredicto-str-con-patch";
 
 const RANK: Record<Veredicto, number> = { "BUSCAR OTRA": 0, "AJUSTA SUPUESTOS": 1, COMPRAR: 2 };
 /** Rango explorado para el ingreso: hasta −70% hacia abajo y hasta ×3 hacia arriba. */
@@ -117,6 +118,17 @@ export interface SimulacionStr {
   limiteTir: PrecioConNombre | null;
   matrizTarifaOcupacion: MatrizTarifaOcupacion;
   matrizPiePlazo: MatrizPiePlazoStr;
+  /**
+   * LA GRILLA DE COMPRAR (15-sep-2026), la que dibuja el pop-up de la recomendación. Es el
+   * mismo tipo y el mismo render que en los otros dos veredictos: pie × plazo sin descuento.
+   * `null` fuera de COMPRAR y cuando no se puede construir.
+   *
+   * ⚠ NO ES `matrizPiePlazo`, y conviene tenerlo claro porque conviven. Aquella es del
+   * capítulo IV —financiamiento, contexto— y corre en los tres veredictos; esta es de la
+   * recomendación, que es donde se decide. Ejes distintos, lecturas distintas, y esta sale
+   * de `calcularMixPalancas`, la misma máquina que el pop-up ya usa en AJUSTAR y BUSCAR.
+   */
+  mixComprar: MixPalancas | null;
 }
 
 const uniqSorted = (xs: number[]) => Array.from(new Set(xs.filter((x) => Number.isFinite(x) && x > 0))).sort((a, b) => a - b);
@@ -292,7 +304,39 @@ export function simularStr(
     limiteTir: precioLimiteTirStr(ctx, base),
     matrizTarifaOcupacion: simularTarifaYOcupacionStr(ctx, base, percentiles),
     matrizPiePlazo: simularPieYPlazoStr(ctx, base),
+    mixComprar: mixComprarStr(ctx, base),
   };
+}
+
+/**
+ * LA GRILLA DE COMPRAR, espejo del punto de emisión de LTR (`analysis.ts`). El hallazgo de
+ * distancia STR devuelve null en COMPRAR —igual que el de LTR, y por la misma razón— así que
+ * la grilla entra por su propia puerta.
+ *
+ * Vive acá y no en el ensamblador de hallazgos porque no es un hallazgo: es material de
+ * render, como las otras dos matrices de esta simulación, y porque acá está el contexto que
+ * la sonda necesita sin reconstruir nada.
+ */
+export function mixComprarStr(ctx: VeredictoStrCtx, base: { veredicto: Veredicto; precioUF: number }): MixPalancas | null {
+  if (base.veredicto !== "COMPRAR") return null;
+  const piePct = Math.round((ctx.inputs.piePercent ?? 0) * 1000) / 10;
+  const plazo = ctx.inputs.plazoCredito;
+  if (!Number.isFinite(piePct) || !Number.isFinite(plazo as number)) return null;
+  return calcularMixPalancas({
+    meta: "COMPRAR",
+    modo: "mejorar",
+    precioUF: base.precioUF,
+    piePct,
+    plazoCredito: plazo as number,
+    // La MISMA doctrina del pie que el hallazgo STR (`distancia-veredicto-str-hallazgo.ts`):
+    // con bono pie no se mueve, y en el techo no hay a dónde subir.
+    pieCalifica: !ctx.inputs.razonSinPie && piePct > 0 && piePct < DIST_PIE_TOPE_PCT,
+    pieTopePct: DIST_PIE_TOPE_PCT,
+    // Sin umbral no hay descuento que biseccionar; viaja porque la firma lo pide.
+    topePct: DIST_PIE_TOPE_PCT,
+    palancasQueCruzan: [],
+    sondaAtPatch: (patch) => sondaStrConPatch(ctx, patch),
+  });
 }
 
 /**

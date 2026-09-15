@@ -6,15 +6,17 @@
 // plazo, el descuento mínimo de precio que cruza. El arriendo lo pone el mercado
 // y la tasa el banco: quedan fuera por definición, no por costo.
 //
-// Fija OCHO cosas, y los bordes van sintéticos porque ningún seed del golden
-// cubre — por eso van sintéticas:
+// Fija DOCE cosas, y los bordes van sintéticos porque ningún seed del golden
+// cubre — por eso van sintéticas (las 9 a 12 tienen su acta en el cuerpo):
 //
-//   1. LA GRILLA ES LA ACORDADA. Pie del declarado hasta el techo 30, paso 5 y
-//      NUNCA hacia abajo (menos pie empeora el mes: no es recomendación).
-//      Plazo solo el enum que el wizard acepta —20/25/30— y solo hacia arriba.
-//      Precio por bisección con el MISMO tope que la palanca sola: si el mix
-//      pudiera pedir un descuento que la palanca sola tiene prohibido, Franco se
-//      contradiría dentro del mismo informe.
+//   1. LA GRILLA ES LA ACORDADA, EN MODO «CRUZAR». Pie del declarado hasta el techo
+//      30, paso 5 y NUNCA hacia abajo (menos pie empeora el mes: no es
+//      recomendación). Plazo solo el enum que el wizard acepta —20/25/30— y solo
+//      hacia arriba. Precio por bisección con el MISMO tope que la palanca sola: si
+//      el mix pudiera pedir un descuento que la palanca sola tiene prohibido, Franco
+//      se contradiría dentro del mismo informe.
+//      (El modo «mejorar» —la grilla de COMPRAR— tiene otras reglas y las fija el
+//      invariante 12, que es donde están sus razones y sus mediciones.)
 //
 //   2. «SIN DESCUENTO» SE DICE, NO SE REDONDEA. Cuando pie y plazo solos ya
 //      cruzan, `descuentoPct` es 0 y `sinDescuento` es true. Devolver el piso de
@@ -431,6 +433,116 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
       if (m === undefined) F(`11 · la celda pie ${c.piePct}% que no cruza no declara el campo de métricas (debe existir, aunque sea null)`);
     }
   }
+}
+
+// ── 12 · EL MODO «MEJORAR» — la grilla de COMPRAR (15-sep-2026) ─────────────
+//
+// En COMPRAR no hay umbral que cruzar, así que «cuánto descuento pedir» no tiene respuesta
+// honesta: cualquier descuento mejora y el máximo sería «todo el que consigas». La grilla
+// deja de contestar «qué necesito para cruzar» y pasa a contestar «cómo queda cada opción».
+//
+// TRES COSAS CAMBIAN, y van juntas porque son la misma decisión:
+//
+//  1. NO HAY DESCUENTO. No hay que apagarlo: con la meta ya alcanzada, `explorarCelda` corta
+//     en su primera línea y toda la grilla sale en 0. Se fija igual, porque el día que
+//     alguien cambie esa salida temprana la grilla empezaría a pedir descuentos sin umbral.
+//
+//  2. EL PIE BAJA UN ESCALÓN. La doctrina de «solo hacia arriba» existe porque para AJUSTAR
+//     menos pie empeora el mes y sería una recomendación al revés. En COMPRAR la pregunta es
+//     otra: menos pie es menos capital inmovilizado. Medido sobre las 160 filas COMPRAR del
+//     parque: un escalón mejora la TIR en 142 (88,8%) con p50 +2,5 puntos, contra p50 +11 y
+//     máx +120,7 si se explora hasta el piso —ahí la mejor TIR cae en pie 5% el 81,1% de las
+//     veces y la grilla sería una máquina de apalancamiento—. Un escalón lo acota.
+//     Y el plazo deja de filtrarse a los ≥ declarado: acortarlo también es una opción real
+//     cuando no hay nada que cruzar, y es la grilla que se midió.
+//
+//  3. NO HAY TOPE DE ALCANCE. Los 15 puntos significaban «cuánto capital extra sigue siendo
+//     una salida», y acá no hay salida. Medido: muerde en 14 de 160 filas (8,8%) —las del
+//     pie declarado bajo 15— y en LAS 14 cambia la corona del flujo, en 8 la del score y en
+//     NINGUNA la de la TIR, porque el tope solo recortaba por arriba y la TIR mira al revés.
+{
+  // Base que YA alcanza la meta: es una fila COMPRAR mirándose a sí misma.
+  const vistos: Patch[] = [];
+  const m = calcularMixPalancas({
+    meta: "COMPRAR",
+    modo: "mejorar",
+    precioUF: 3_000,
+    piePct: 20,
+    plazoCredito: 25,
+    pieCalifica: true,
+    pieTopePct: DIST_PIE_TOPE_PCT,
+    topePct: 15,
+    palancasQueCruzan: [],
+    sondaAtPatch: (patch) => { vistos.push(patch); return { veredicto: "COMPRAR", score: 80 }; },
+  });
+  if (!m || !m.celdas) F("12 · el modo «mejorar» no devolvió grilla con la meta ya alcanzada");
+  else {
+    // 1 · ninguna celda pide descuento.
+    const conDescuento = m.celdas.filter((c) => (c.descuentoPct ?? 0) !== 0);
+    if (conDescuento.length) F(`12 · ${conDescuento.length} celdas piden descuento en COMPRAR: sin umbral no hay descuento que justificar`);
+    if (m.celdas.some((c) => c.descuentoPct === null)) F("12 · hay celdas sin descuento calculado: con la meta alcanzada todas cruzan en 0");
+    // 2 · el pie baja UN escalón y no más.
+    const pies = [...new Set(m.celdas.map((c) => c.piePct))].sort((a, b) => a - b);
+    if (pies[0] !== 15) F(`12 · el pie más bajo de la grilla es ${pies[0]} y tiene que ser 15 (un escalón bajo el declarado)`);
+    if (pies.includes(10)) F("12 · la grilla bajó DOS escalones: se midió con uno, y hasta el piso la TIR se vuelve apalancamiento");
+    if (pies[pies.length - 1] !== DIST_PIE_TOPE_PCT) F(`12 · el pie más alto es ${pies[pies.length - 1]} y el techo sigue siendo ${DIST_PIE_TOPE_PCT}`);
+    // 2b · el plazo deja de filtrarse a los ≥ declarado.
+    const plazos = [...new Set(m.celdas.map((c) => c.plazoAnios))].sort((a, b) => a - b);
+    if (!plazos.includes(20)) F("12 · la grilla no ofrece el plazo corto: en COMPRAR acortar también es una opción");
+    // 3 · el tope de alcance no filtra: la elegida puede costar más de 15 puntos.
+    if (!m.dentroDelAlcance) F("12 · `dentroDelAlcance` es false en COMPRAR: sin salida que buscar, el tope no aplica");
+  }
+
+  // ⚠ LA CELDA QUE CAE, QUE ES POR DONDE SE ESCAPABA. El fixture de arriba devuelve COMPRAR
+  // siempre, así que nunca ejercita el caso que importa: con el pie un escalón abajo la celda
+  // puede NO alcanzar a precio de hoy, y ahí `explorarCelda` se iba a la bisección y volvía
+  // con un descuento. Medido antes del arreglo: 48 filas del parque tenían celdas pidiendo
+  // plata al vendedor dentro de la grilla de COMPRAR, y esas celdas mostraban «Comprar» —su
+  // lectura en el descuento— en vez de decir que te sacan del veredicto.
+  // Un fixture que no modela la celda que cae no falla: miente.
+  {
+    const sondas: Patch[] = [];
+    const conCaida = calcularMixPalancas({
+      meta: "COMPRAR", modo: "mejorar", precioUF: 3_000, piePct: 20, plazoCredito: 25,
+      pieCalifica: true, pieTopePct: DIST_PIE_TOPE_PCT, topePct: 15, palancasQueCruzan: [],
+      sondaAtPatch: (patch) => {
+        sondas.push({ ...patch });
+        // Con el pie bajo el declarado se cae a AJUSTA, pase lo que pase con el precio.
+        return { veredicto: (patch.piePct ?? 20) < 20 ? "AJUSTA SUPUESTOS" : "COMPRAR", score: 70 };
+      },
+    });
+    if (!conCaida || !conCaida.celdas) F("12 · con una celda que cae el modo «mejorar» no devolvió grilla");
+    else {
+      const caidas = conCaida.celdas.filter((c) => c.veredicto !== "COMPRAR");
+      if (!caidas.length) F("12 · el fixture tenía que producir celdas que caen y no produjo ninguna");
+      if (caidas.some((c) => (c.descuentoPct ?? 0) !== 0)) {
+        F("12 · la celda que cae pidió descuento: en COMPRAR toda la grilla se lee a precio de hoy");
+      }
+      if (caidas.some((c) => c.veredicto === "COMPRAR")) {
+        F("12 · la celda que cae dice «Comprar»: está mostrando su lectura con descuento en vez del hecho");
+      }
+    }
+    // Y no se gastan sondas de bisección: una por celda, ni una más.
+    const celdas = conCaida?.celdas?.length ?? 0;
+    if (celdas > 0 && sondas.length > celdas) {
+      F(`12 · el modo «mejorar» sondeó ${sondas.length} veces para ${celdas} celdas: no puede biseccionar`);
+    }
+  }
+
+  // EL TOPE, MEDIDO EN SU BORDE. Con el pie declarado en 5 la grilla llega a 30, o sea 25
+  // puntos de precio sobre el declarado: en modo «cruzar» esa celda queda fuera de la
+  // elección y en «mejorar» tiene que poder coronar.
+  const alto = (modo: "cruzar" | "mejorar") =>
+    calcularMixPalancas({
+      meta: "COMPRAR", modo, precioUF: 3_000, piePct: 5, plazoCredito: 30,
+      pieCalifica: true, pieTopePct: DIST_PIE_TOPE_PCT, topePct: 15, palancasQueCruzan: [],
+      // El score sube con el pie: la mejor es siempre la de pie más alto.
+      sondaAtPatch: (patch) => ({ veredicto: "COMPRAR", score: 60 + (patch.piePct ?? 5) }),
+    });
+  const cruzar = alto("cruzar");
+  const mejorar = alto("mejorar");
+  if (cruzar && cruzar.piePct > 20) F(`12 · en modo «cruzar» el tope tiene que seguir filtrando y coronó pie ${cruzar.piePct}`);
+  if (mejorar && mejorar.piePct !== DIST_PIE_TOPE_PCT) F(`12 · en modo «mejorar» la corona tiene que poder ser la de pie ${DIST_PIE_TOPE_PCT}, dio ${mejorar?.piePct}`);
 }
 
 export function runMixPalancasTier(): { hard: number } {

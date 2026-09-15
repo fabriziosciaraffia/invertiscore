@@ -493,6 +493,21 @@ export function elegirCelda<T extends Combinacion>(xs: readonly T[], criterio: C
 export function calcularMixPalancas(p: {
   /** Veredicto al que hay que llegar (el inmediatamente superior al base). */
   meta: Veredicto;
+  /**
+   * QUÉ PREGUNTA CONTESTA LA GRILLA (15-sep-2026).
+   *
+   * · «cruzar» (default, y lo único que existía): el caso está DEBAJO de la meta y la grilla
+   *   busca cuánto hace falta para llegar. Hay un umbral, así que hay un descuento mínimo
+   *   que biseccionar y un tope de capital que define qué es una salida real.
+   *
+   * · «mejorar»: el caso YA está en la meta —COMPRAR— y la pregunta es otra: cómo queda cada
+   *   opción. Sin umbral, «cuánto descuento pedir» no tiene respuesta honesta —cualquier
+   *   descuento mejora y el máximo sería «todo el que consigas», que no es un consejo—, así
+   *   que el eje del precio desaparece. Lo que queda es pie × plazo, y con eso cambian tres
+   *   cosas que son la misma decisión: el pie baja un escalón, el plazo deja de filtrarse a
+   *   los ≥ declarado, y el tope de alcance no aplica. Cada una está argumentada en su sitio.
+   */
+  modo?: "cruzar" | "mejorar";
   precioUF: number;
   /** Pie declarado, en % del precio. */
   piePct: number;
@@ -537,14 +552,33 @@ export function calcularMixPalancas(p: {
   // del hallazgo (`DIST_PIE_TOPE_PCT`), con su razón ya escrita allá: a alguien con 10%
   // declarado pedirle 40% deja de ser un ajuste de supuestos. Y hacia abajo no se explora
   // porque menos pie empeora el mes: sería una recomendación al revés.
+  const mejorar = p.modo === "mejorar";
   const pies: number[] = [p.piePct];
   if (p.pieCalifica) {
     for (let x = p.piePct + MIX_PIE_PASO_PCT; x <= p.pieTopePct; x += MIX_PIE_PASO_PCT) pies.push(x);
+    // ── UN ESCALÓN HACIA ABAJO, Y SOLO EN «MEJORAR» (15-sep-2026) ───────────
+    //
+    // La doctrina de arriba —«hacia abajo no se explora porque menos pie empeora el mes»—
+    // vale para CRUZAR: ahí la grilla propone un plan para llegar, y proponer menos pie
+    // sería una recomendación al revés. Con la meta ya alcanzada la pregunta es otra:
+    // menos pie es menos capital inmovilizado, y eso es una opción legítima.
+    //
+    // UN escalón, no hasta el piso, y está medido: sobre las 160 filas COMPRAR del parque,
+    // un escalón mejora la TIR en 142 (88,8%) con p50 +2,5 puntos y techo +10,5; bajando
+    // hasta el piso la mediana salta a +11 y el techo a +120,7, y la mejor TIR cae en pie
+    // 5% en el 81,1% de los casos. Eso ya no es un mejor negocio, es apalancamiento, y la
+    // grilla se volvería una máquina de proponerlo. Un escalón lo deja adentro en una
+    // magnitud comparable con lo que mueven los otros criterios.
+    if (mejorar && p.piePct - MIX_PIE_PASO_PCT > 0) pies.unshift(p.piePct - MIX_PIE_PASO_PCT);
   }
   // Plazo: solo hacia arriba y solo lo que el wizard acepta. Si ya está en el máximo, la
   // grilla queda de una columna y el mix se reduce a las otras dos palancas — es el borde
   // que `redundanteConPalancaSola` tiene que poder declarar.
-  const plazosArriba = MIX_PLAZOS_WIZARD.filter((a) => a >= p.plazoCredito);
+  //
+  // EN «MEJORAR» NO SE FILTRA (15-sep-2026). Acortar el plazo sube la cuota, así que para
+  // cruzar va al revés y por eso se recorta; sin umbral que cruzar es una opción como
+  // cualquier otra —más cuota, menos interés total— y es la grilla que se midió.
+  const plazosArriba = mejorar ? [...MIX_PLAZOS_WIZARD] : MIX_PLAZOS_WIZARD.filter((a) => a >= p.plazoCredito);
   const plazos: number[] = plazosArriba.length > 0 ? [...plazosArriba] : [p.plazoCredito];
 
   const alcanza = (v: Veredicto) => RANK[v] >= RANK[p.meta];
@@ -564,6 +598,19 @@ export function calcularMixPalancas(p: {
     */
   const explorarCelda = (piePct: number, plazoAnios: number): { pct: number | null; sin: boolean; base: SondaMix; enMin: SondaMix | null } => {
     const base = sondar(0, piePct, plazoAnios);
+    // ⚠ EN «MEJORAR» NO SE BISECCIONA NUNCA, Y ESTO NO ES UNA OPTIMIZACIÓN (15-sep-2026).
+    //
+    // Con la meta alcanzada uno esperaría que la salida temprana de abajo cubriera todo —si
+    // la celda ya está en COMPRAR, no hay descuento que buscar—. Pero el pie baja un escalón
+    // y el plazo puede acortarse, así que HAY celdas que a precio de hoy NO alcanzan: medido
+    // sobre el parque, 51 de 160 filas tienen alguna. Sin este corte, esas celdas caían a la
+    // bisección y volvían con un descuento —48 filas del parque lo hacían— o sea que la
+    // grilla de COMPRAR terminaba pidiendo plata al vendedor justo donde la decisión dice
+    // que no hay nada honesto que pedir. Y peor: esa celda mostraría «Comprar» —su lectura
+    // en el descuento— en vez de decir que te saca del veredicto, que es el hecho.
+    //
+    // Toda la grilla se lee a precio de HOY. La que cae, lo dice.
+    if (mejorar) return { pct: 0, sin: true, base, enMin: base };
     if (alcanza(base.veredicto)) return { pct: 0, sin: true, base, enMin: base };
     if (!cruza(p.topePct, piePct, plazoAnios)) return { pct: null, sin: false, base, enMin: null };
     let lo = 0;
@@ -681,7 +728,15 @@ export function calcularMixPalancas(p: {
   //
   // El filtro se aplica ANTES de elegir la mejor, no después: el tope define qué
   // combinaciones son salidas reales, y ordenar primero podría coronar una que no lo es.
-  const alcanzables = combos.filter((c) => c.costoPtsPrecio <= MIX_COSTO_TOPE_PTS_PRECIO);
+  //
+  // Y EN «MEJORAR» NO APLICA (15-sep-2026). El tope significa «cuánto capital extra sigue
+  // siendo una salida», y con la meta ya alcanzada no hay salida que buscar: filtrar por él
+  // sería recortar opciones con la vara de una pregunta que nadie hizo. Medido sobre las 160
+  // filas COMPRAR: muerde en 14 (8,8%) —las del pie declarado bajo 15, que es la condición
+  // exacta porque `costoPtsPrecio` es el pie menos el declarado— y en LAS 14 cambia la corona
+  // del flujo, en 8 la del score y en NINGUNA la de la TIR: el tope solo recortaba por arriba
+  // y la TIR mira al revés. O sea que le estaba escondiendo al flujo justo sus mejores celdas.
+  const alcanzables = mejorar ? combos : combos.filter((c) => c.costoPtsPrecio <= MIX_COSTO_TOPE_PTS_PRECIO);
   const dentroDelAlcance = alcanzables.length > 0;
 
   // LA REGLA (13-sep-2026): entre las que cruzan, la de MAYOR Franco Score; el descuento

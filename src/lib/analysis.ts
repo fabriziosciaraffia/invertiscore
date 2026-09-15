@@ -17,7 +17,7 @@ import type {
 } from "./types";
 import { metricaNoAplica, metricaNoCalculable, metricaValor, metricaValorONull } from "./types";
 import { PESOS_SCORE_LTR, puntajeCashOnCash, puntajeTir, combinarConReparto } from "./score-retorno";
-import type { SondaMix } from "./mix-palancas";
+import { calcularMixPalancas, type SondaMix } from "./mix-palancas";
 import { aplicarEncuadreVeredicto } from "./encuadre-veredicto";
 import { calcIRRPct } from "./finance/irr";
 import { estimarContribuciones } from "./contribuciones";
@@ -27,7 +27,7 @@ import { resolverModeloCostos, calcMantencionMensual, antiguedadEfectiva, getMan
 import { getCapRefComuna, buildHallazgoCapRate, CAP_RATE_REF_NACIONAL } from "./cap-rate-hallazgo";
 import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
-import { buildHallazgoDistanciaVeredicto, esCasoPrecioJusto } from "./distancia-veredicto-hallazgo";
+import { buildHallazgoDistanciaVeredicto, esCasoPrecioJusto, DIST_PIE_TOPE_PCT, DIST_TOPE_AJUSTA_PCT } from "./distancia-veredicto-hallazgo";
 import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { buildHallazgoFlujoMensual, aplicarVeredictoAFlujo, aplicarHorizonteAFlujo, analizarHorizonteFlujo, type HorizonteFlujo } from "./flujo-mensual-hallazgo";
 import { esReferenciaContrastable, resolverArriendoReferencia, resolverProcedenciaArriendo } from "./arriendo-referencia";
@@ -2555,6 +2555,41 @@ export function runAnalysis(
     casoPrecioJusto,
   });
 
+  // ── LA GRILLA DE COMPRAR (15-sep-2026) ────────────────────────────────────
+  //
+  // El hallazgo de distancia devuelve null en COMPRAR —no hay veredicto superior— y con él
+  // se apagaba la grilla entera. Pero la pregunta de COMPRAR no es la suya: no es «qué
+  // necesito para cruzar» sino «cómo queda cada opción», y para eso la grilla sirve igual.
+  //
+  // Entra por su propia puerta y en modo «mejorar»: pie × plazo sin descuento, con el pie un
+  // escalón hacia abajo y sin el tope de alcance. Las tres reglas están argumentadas en
+  // `mix-palancas.ts`, cada una con su medición.
+  //
+  // COSTO: p50 6 sondas por fila, medido con contador sobre las 160 filas COMPRAR del
+  // parque, y solo en el 13,2% de las filas que son COMPRAR. Es menos de la mitad de lo que
+  // costaba la matriz pie × plazo que se retiró en `6ecd80c1` —16 recomputes completos, en
+  // TODAS las filas— porque acá la bisección del descuento no corre: con la meta ya
+  // alcanzada, `explorarCelda` corta en su primera línea.
+  const mixComprar =
+    veredicto === "COMPRAR"
+      ? calcularMixPalancas({
+          meta: "COMPRAR",
+          modo: "mejorar",
+          precioUF: input.precio,
+          piePct: input.piePct,
+          plazoCredito: input.plazoCredito,
+          // La MISMA doctrina del pie que el hallazgo: con bono pie no se mueve, y en el
+          // techo no hay a dónde subir. Se resuelve acá porque el hallazgo no corre.
+          pieCalifica: !input.razonSinPie && Number.isFinite(input.piePct) && input.piePct < DIST_PIE_TOPE_PCT,
+          pieTopePct: DIST_PIE_TOPE_PCT,
+          // Sin umbral no hay descuento que biseccionar; el tope viaja igual porque la firma
+          // lo pide y el modo «mejorar» nunca lo usa.
+          topePct: DIST_TOPE_AJUSTA_PCT,
+          palancasQueCruzan: [],
+          sondaAtPatch,
+        })
+      : null;
+
   // Negociación DESPUÉS del hallazgo de distancia (antes se calculaba junto al exit):
   // necesita la palanca precio para aplicar la jerarquía. El reorden es seguro —
   // calcNegociacionScenario solo depende de input/tir/metrics/uf/asOf, y su resultado
@@ -2623,5 +2658,8 @@ export function runAnalysis(
     // llegan a la card con su clausula de subordinacion. No cambia el dato ni la
     // direccion: solo el encuadre. Ver encuadre-veredicto.ts.
     ], veredicto),
+    // La grilla de COMPRAR viaja en su propio campo: no es un hallazgo —no afirma nada del
+    // caso— sino el material con el que el pop-up dibuja la matriz. Ver el jsdoc del tipo.
+    mixComprar,
   };
 }

@@ -1617,10 +1617,26 @@ export interface FullAnalysisResult {
   // Proto-hallazgos del motor (CapEx puesta a punto + cap rate). Vacío/omitido
   // si no aplica. Sin lógica de ordenamiento — es la semilla de la capa.
   hallazgos?: Hallazgo[];
-  /** Matriz pie × plazo del capítulo III, calculada en el builder del servidor
-   *  (`recomputeResultsForLegacy`, con la mediana comunal, el UF y la fecha congelados
-   *  del informe), nunca en render. Ausente en resultados persistidos viejos y en el
-   *  demo: el capítulo no la pinta. */
+  /**
+   * LA GRILLA DE COMPRAR (15-sep-2026). Pie × plazo SIN descuento, para las filas que ya
+   * están en COMPRAR: no contesta «qué necesito para cruzar» —ya cruzaste— sino «cómo queda
+   * cada opción». Sale de `calcularMixPalancas` en modo «mejorar», que es la misma grilla y
+   * el mismo tipo que dibuja el pop-up en los otros dos veredictos, así que el render es uno.
+   *
+   * ⚠ NO VIVE EN EL HALLAZGO DE DISTANCIA, y no es un olvido: ese hallazgo devuelve null en
+   * COMPRAR desde siempre (`distancia-veredicto-hallazgo.ts:329`) porque no hay veredicto
+   * superior al que llegar, y mover esa guarda arrastraría `palancas`, `vias`,
+   * `esEstructural` y `sinSalida` de una sola vez. Este campo es la puerta propia.
+   *
+   * `null` = se calculó y no hay grilla (pie o plazo no computables). AUSENTE = fila
+   * persistida antes del campo, o veredicto distinto de COMPRAR: NO CALCULADO.
+   *
+   * (Acá vivía el jsdoc de `matrizPiePlazo`, la matriz pie × plazo del capítulo III que se
+   * retiró en `6ecd80c1` — el comentario sobrevivió al campo. Lo que vuelve no es aquella:
+   * aquella corría en las tres bandas y costaba 16 recomputes completos por carga; esta
+   * corre solo en COMPRAR —13,2% de las filas— y cuesta p50 6 sondas, medido.)
+   */
+  mixComprar?: MixPalancas | null;
 }
 
 export interface AIAnalysis {
