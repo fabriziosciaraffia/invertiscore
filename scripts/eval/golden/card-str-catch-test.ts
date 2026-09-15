@@ -94,9 +94,22 @@ const bloqueStr = (veredicto: Veredicto, dist: ReturnType<typeof distancia>, com
   const ltr = construirLoQueHariaYo({ veredicto: "COMPRAR", distancia: null, sensibilidad: null, arriendoDeclaradoCLP: 500_000, currency: "CLP", valorUF: UF });
   const verL = ltr?.filas.find((f) => f.rotuloCorto === "Verifica");
   if (!verL || verL.titulo !== "Verifica el arriendo" || verL.nombre !== "arriendo") F("1 · el default del constructor dejó de ser LTR: la fila de COMPRAR ya no dice «Verifica el arriendo»");
-  // firme: «−50% o más», igual que LTR
-  const firme = construirLoQueHariaYo({ modalidad: "str", veredicto: "COMPRAR", distancia: null, currency: "CLP", valorUF: UF, aguanta: { marginPct: 70, firme: true }, verifica: null });
-  if (firme?.filas.find((f) => f.rotuloCorto === "Margen")?.oracion !== "La tarifa por noche puede caer hasta −50% o más y sigue siendo Comprar.") F("1 · con aguanta firme la oración es «… hasta −50% o más y sigue siendo Comprar.», como en LTR");
+  // ⚠ ENSANCHADO (15-sep-2026) · ESTE INVARIANTE FIJABA EL NÚMERO EQUIVOCADO. Pedía «−50% o
+  // más» sobre un fixture de `marginPct: 70`, o sea fijaba exactamente la pérdida que había
+  // que arreglar: STR bisecciona hasta −70% (SIM_INGRESO_MIN) y LTR hasta −50%
+  // (SENS_FACTOR_MIN), y la oración escribía 50 a mano en los dos. Con el literal, una fila
+  // de renta corta medida hasta 70 se publicaba como si nadie hubiera mirado más allá de 50.
+  //
+  // Lo que se fija ahora es la REGLA, no el número: la oración dice el tope que ESE motor
+  // exploró de verdad. Por eso van los dos casos, uno por modalidad.
+  const firmeStr = construirLoQueHariaYo({ modalidad: "str", veredicto: "COMPRAR", distancia: null, currency: "CLP", valorUF: UF, aguanta: { marginPct: 70, firme: true }, verifica: null });
+  if (firmeStr?.filas.find((f) => f.rotuloCorto === "Margen")?.oracion !== "La tarifa por noche puede caer hasta −70% o más y sigue siendo Comprar.") {
+    F(`1 · con aguanta firme en STR la oración dice el tope explorado por STR (−70%), dio «${firmeStr?.filas.find((f) => f.rotuloCorto === "Margen")?.oracion}»`);
+  }
+  const firmeLtr = construirLoQueHariaYo({ veredicto: "COMPRAR", distancia: null, currency: "CLP", valorUF: UF, aguanta: { marginPct: 50, firme: true }, verifica: null });
+  if (firmeLtr?.filas.find((f) => f.rotuloCorto === "Margen")?.oracion !== "El arriendo puede caer hasta −50% o más y sigue siendo Comprar.") {
+    F(`1 · con aguanta firme en LTR la oración dice el tope explorado por LTR (−50%), dio «${firmeLtr?.filas.find((f) => f.rotuloCorto === "Margen")?.oracion}»`);
+  }
 }
 
 // ── 2 · los cuatro estados con el motor STR ─────────────────────────────────

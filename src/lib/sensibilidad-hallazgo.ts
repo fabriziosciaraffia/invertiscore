@@ -33,6 +33,37 @@ import { biseccionFactor, DIST_PREC_PTS } from "./distancia-veredicto-hallazgo";
 export const SENS_CORTE_ADVERSO = 7;    // < 7% de caída aguantada ⇒ frágil / adverso
 export const SENS_CORTE_FAVORABLE = 15; // ≥ 15% ⇒ firme / favorable
 
+// ── LA BANDA DEL MARGEN, EN PANTALLA (15-sep-2026) ───────────────────────────
+//
+// Los tres tramos existían desde Fase 0 y no salían de acá: el hallazgo los usaba para su
+// `direccion` y su `fraseCanonica`, y la fila de COMPRAR escribía la MISMA oración en los
+// tres casos. Medido sobre las 217 filas COMPRAR del parque: 44 (20,3%) aguantan menos de
+// 7 puntos de caída y se leían igual que una que aguanta 48. En renta corta son 23 de 57,
+// el 40,4% — cuatro de cada diez.
+//
+// Función PURA del número, calcada de `bandaEsfuerzoDescuento`: la clasificación se resuelve
+// en la fuente y las superficies solo la escriben (patrón §1.1). La etiqueta va en minúscula
+// como `ETIQUETA_BANDA_ESFUERZO`; quien quiera versalitas las pone con CSS.
+//
+// LOS CORTES VIAJAN IGUALES A LAS DOS MODALIDADES (decisión Fabrizio, 15-sep-2026). Se
+// calibraron sobre LTR, pero lo que miden —cuánto aguanta antes de caerse— significa lo
+// mismo en arriendo largo y en tarifa por noche. Que renta corta dé 40% frágil no es un
+// problema de calibración: es el dato, y es justo lo que el usuario tiene que saber.
+export type BandaMargen = "sin_colchon" | "acotado" | "amplio";
+
+export function bandaMargen(marginPct: number): BandaMargen {
+  if (marginPct < SENS_CORTE_ADVERSO) return "sin_colchon";
+  if (marginPct < SENS_CORTE_FAVORABLE) return "acotado";
+  return "amplio";
+}
+
+/** Lo que se lee bajo el rótulo de la fila. «Sin colchón» es literal en las que miden 0,0. */
+export const ETIQUETA_BANDA_MARGEN: Record<BandaMargen, string> = {
+  sin_colchon: "sin colchón",
+  acotado: "colchón acotado",
+  amplio: "colchón amplio",
+};
+
 // Banda de normalización de magnitudContinua (|margin−corteAdverso|/banda saturado a 1).
 // 25 pts: mantiene discriminable el rango 0–50% del margen sin clipping temprano. Solo
 // desempate secundario del sort entre pares de igual decisividad (E4).
@@ -130,10 +161,24 @@ export function buildHallazgoSensibilidad(p: {
   // precisión por debajo de ese factor, para que el número que se imprime todavía sea
   // Comprar y no el primero que deja de serlo. Cuesta ~10 sondas de calcMetrics por fila.
   let precioMaximoComprarUF: number | null = null;
+  // ⚠ Y A QUÉ VEREDICTO CAE, SIN PAGAR UNA SONDA MÁS (15-sep-2026). El predicado ya evalúa
+  // `cae(f)` en cada paso y se quedaba solo con el booleano: el veredicto se calculaba y se
+  // botaba adentro del closure. Acá se retiene el ÚLTIMO que dio `true`, que por el
+  // invariante de `biseccionFactor` es exactamente el del `hi` que devuelve —el factor más
+  // chico que ya pierde COMPRAR—. Es el mismo truco que la bisección del margen usa doce
+  // líneas más arriba con `veredictoNuevo`; cero sondas nuevas.
+  let veredictoSobrePrecioMaximo: Veredicto | null = null;
   if (p.veredictoBase === "COMPRAR" && p.veredictoAtPrecio && Number.isFinite(p.precioUF) && (p.precioUF ?? 0) > 0) {
     const cae = p.veredictoAtPrecio;
-    const fCae = biseccionFactor((f) => RANK[cae(f)] < RANK.COMPRAR, SENS_PRECIO_MAX, true);
+    const fCae = biseccionFactor((f) => {
+      const v = cae(f);
+      const pierde = RANK[v] < RANK.COMPRAR;
+      if (pierde) veredictoSobrePrecioMaximo = v;
+      return pierde;
+    }, SENS_PRECIO_MAX, true);
     precioMaximoComprarUF = fCae != null ? Math.floor(p.precioUF! * (fCae - DIST_PREC_PTS / 100)) : null;
+    // Sin frontera dentro del ×2 no hay destino que declarar: nadie lo midió.
+    if (fCae == null) veredictoSobrePrecioMaximo = null;
   }
 
   let titular: string;
@@ -172,6 +217,7 @@ export function buildHallazgoSensibilidad(p: {
     valor: {
       marginPct,
       precioMaximoComprarUF,
+      veredictoSobrePrecioMaximo,
       firme,
       veredictoBase: base,
       veredictoNuevo,

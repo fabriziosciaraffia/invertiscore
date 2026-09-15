@@ -841,6 +841,12 @@ export interface HallazgoSensibilidad {
      *  COMPRAR. AUSENTE = fila persistida antes de este campo, NO CALCULADO. STR lo lee de
      *  `fronteraPrecio.caeA` de su simulación, que ya existía. */
     precioMaximoComprarUF?: number | null;
+    /** A QUÉ VEREDICTO CAE SI PAGAS MÁS QUE ESE MÁXIMO (15-sep-2026). Lo calculaba la
+     *  misma bisección y lo botaba adentro del predicado: ahora se retiene el último
+     *  veredicto que ya perdió COMPRAR, que por el invariante de `biseccionFactor` es el
+     *  del factor publicado. Cero sondas nuevas. `null` = sin frontera dentro del ×2, o
+     *  base distinta de COMPRAR. AUSENTE = fila persistida antes de este campo. */
+    veredictoSobrePrecioMaximo?: Veredicto | null;
   };
   // favorable salvo la banda frágil (margin < corteAdverso), que es adversa. La señal-
   // máquina es binaria; la frase distingue frágil / borde / firme.

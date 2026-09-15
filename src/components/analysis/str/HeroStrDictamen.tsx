@@ -108,8 +108,8 @@ export function HeroStrDictamen({
   // «arriendo», lee `palancasHastaComprar` y `mixPalancasHastaComprar` del motor en BUSCAR,
   // y en COMPRAR recibe las dos filas ya resueltas acá, que es donde vive el dato:
   //   · AGUANTA sale de la frontera de tarifa del motor (`fronterasIngreso.abajo`): hasta
-  //     dónde cae la tarifa antes de que el veredicto cambie. Sin frontera dentro del rango
-  //     explorado (−70%), o con la frontera a la mitad o más, aguanta «−50% o más».
+  //     dónde cae la tarifa antes de que el veredicto cambie, con el número MEDIDO. Solo
+  //     sin frontera dentro del rango explorado (−70%) aguanta «−70% o más».
   //   · VERIFICA solo si la tarifa la definiste tú (`adrFuente === "override"`): con la
   //     mediana de la zona no hay nada que verificar y la fila no va.
   const bloqueDeterminista = construirLoQueHariaYo({
@@ -118,12 +118,21 @@ export function HeroStrDictamen({
         distancia: distancia ?? null,
         currency,
         valorUF,
+        // ⚠ SE PUBLICA EL NÚMERO MEDIDO (15-sep-2026). Había una rama que, con la frontera
+        // en factor <= 0,5, escribía «−50% o más» IGNORANDO el número que el motor acababa
+        // de biseccionar. No era falta de precisión: era tirarla. Medido sobre las 57 filas
+        // COMPRAR de renta corta: 2 escondían −52,2% y −52,5% detrás del «o más».
+        // `firme` queda para el único caso donde «o más» es lo honesto: sin frontera dentro
+        // del rango explorado (−70%), que hoy dispara en 0 filas del parque pero es el borde
+        // que el tipo tiene que poder declarar.
         aguanta: fr
           ? fr.abajo
-            ? fr.abajo.factor <= 0.5
-              ? { marginPct: 50, firme: true }
-              : { marginPct: Math.round((1 - fr.abajo.factor) * 1000) / 10, firme: false }
-            : { marginPct: 70, firme: true }
+            ? {
+                marginPct: Math.round((1 - fr.abajo.factor) * 1000) / 10,
+                firme: false,
+                caeA: fr.abajo.veredicto ?? null,
+              }
+            : { marginPct: 70, firme: true, caeA: null }
           : null,
         verifica: results.adrFuente === "override" ? { cifraCLP: adr } : null,
         // El piso en pesos cuelga de la tarifa que USA el análisis, tuya o de la zona.
@@ -135,7 +144,11 @@ export function HeroStrDictamen({
           const fp = simulacion?.fronteraPrecio ?? null;
           if (!fp?.caeA || !(fp.precioUFActual > 0)) return null;
           const uf = Math.floor(fp.precioUFActual * (fp.caeA.factor - DIST_PREC_PTS / 100));
-          return uf > fp.precioUFActual ? { uf, pct: Math.round((uf / fp.precioUFActual - 1) * 1000) / 10 } : null;
+          // `caeA.veredicto` ya viajaba en la simulación y nadie lo leía: es a dónde cae si
+          // pagas por encima del máximo.
+          return uf > fp.precioUFActual
+            ? { uf, pct: Math.round((uf / fp.precioUFActual - 1) * 1000) / 10, caeA: fp.caeA.veredicto ?? null }
+            : null;
         })(),
       });
 

@@ -52,6 +52,7 @@
 //   node --import tsx scripts/eval/golden/lo-que-haria-yo-catch-test.ts
 // ============================================================================
 import { lineaNoDependeDeTi, construirLoQueHariaYo, QUIEN_LA_PONE } from "../../../src/lib/lo-que-haria-yo";
+import { bandaMargen, ETIQUETA_BANDA_MARGEN } from "../../../src/lib/sensibilidad-hallazgo";
 import { buildHallazgoDistanciaVeredicto } from "../../../src/lib/distancia-veredicto-hallazgo";
 import type { HallazgoDistanciaVeredicto, HallazgoSensibilidad, Veredicto } from "../../../src/lib/types";
 
@@ -87,7 +88,12 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
   id: "sensibilidad",
   tipo: "robustez_veredicto",
   valor: {
-    marginPct, firme: marginPct >= 50, veredictoBase: "COMPRAR", veredictoNuevo: "AJUSTA SUPUESTOS",
+    marginPct, firme: marginPct >= 50, veredictoBase: "COMPRAR",
+    // MODELA AL MOTOR, NO AL REVÉS (15-sep-2026). `buildHallazgoSensibilidad` solo asigna
+    // `veredictoNuevo` en la rama que BISECCIONA: con `firme` el veredicto no se movió ni al
+    // piso explorado, así que no hay destino y el campo queda null. El fixture lo fijaba
+    // siempre, y un fixture incoherente no falla: miente.
+    veredictoNuevo: marginPct >= 50 ? null : "AJUSTA SUPUESTOS",
     corteAdverso: 7, corteFavorable: 15, banda: 25, modalidad: "ltr",
   },
   titular: "", fraseCanonica: "", direccion: "favorable", decisividad: 0,
@@ -415,6 +421,58 @@ const sensibilidad = (marginPct: number): HallazgoSensibilidad => ({
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
+// ── 8 · COMPRAR · LA BANDA Y EL DESTINO, QUE EL MOTOR TIRABA (15-sep-2026) ──
+//
+// El hallazgo clasifica el margen en tres desde siempre —frágil <7, borde 7-15, colchón
+// ≥15— y la pantalla escribía la misma oración en los tres casos. Medido sobre las 217
+// filas COMPRAR del parque: 44 (20,3%) aguantan menos de 7 puntos y se leían igual que una
+// que aguanta 48. En renta corta son 23 de 57, el 40,4%.
+//
+// Y el veredicto al que cae estaba guardado y sin lector: `veredictoNuevo` en LTR,
+// `fronterasIngreso.abajo.veredicto` en STR. Cae a Ajustar en 213 de 217 filas.
+//
+// ⚠ LOS DOS CAMPOS VAN FUERA DE `oracion`, Y ESO ES LA DECISIÓN, NO UN DETALLE. La card de
+// §5 dibuja la MISMA fila: si el dato entra a la oración, la card lo hereda y el pop-up
+// sigue siendo eco palabra por palabra (medido: 83% idéntico). Campos propios que solo lee
+// el pop-up, con el precedente de `PalancaDistancia.score` y `.destino`, que el motor emite
+// y la card no toca.
+{
+  // Los cortes, en sus dos bordes. Son los del hallazgo (7 y 15) y viajan iguales a las dos
+  // modalidades: el corte mide cuánto aguanta antes de caerse y eso significa lo mismo en
+  // arriendo largo y en tarifa por noche (decisión Fabrizio, 15-sep-2026).
+  const casos: Array<[number, string]> = [
+    [0, "sin_colchon"], [6.9, "sin_colchon"], [7, "acotado"], [14.9, "acotado"], [15, "amplio"], [50, "amplio"],
+  ];
+  for (const [pts, esperada] of casos) {
+    const dio = bandaMargen(pts);
+    if (dio !== esperada) F(`8 · bandaMargen(${pts}) dio «${dio}» y el corte dice «${esperada}»`);
+  }
+  if (!ETIQUETA_BANDA_MARGEN.sin_colchon || !ETIQUETA_BANDA_MARGEN.acotado || !ETIQUETA_BANDA_MARGEN.amplio) {
+    F("8 · falta alguna etiqueta de banda del margen");
+  }
+
+  // La fila del margen lleva banda SIEMPRE y destino solo si alguien lo midió.
+  const conMargen = bloque({ veredicto: "COMPRAR", dist: null, sens: sensibilidad(7.5) });
+  const fm = conMargen?.filas.find((f) => f.rotuloCorto === "Margen");
+  if (!fm) F("8 · no hay fila de Margen que auditar");
+  else {
+    if (fm.banda !== "acotado") F(`8 · el margen de 7,5 puntos no cae en «acotado», dio «${fm.banda}»`);
+    if (fm.caeA !== "AJUSTA SUPUESTOS") F(`8 · la fila del margen no dice a qué veredicto cae, dio «${fm.caeA}»`);
+    // Y NO por la oración: si el texto lo dice, la card lo hereda.
+    if (/pasa a|cae a|colch[óo]n/i.test(fm.oracion ?? "")) {
+      F("8 · la banda o el destino se colaron en `oracion`: la card dibuja esa misma cadena y el pop-up vuelve a ser eco");
+    }
+  }
+
+  // `firme`: la banda se sabe (es la de arriba), el destino NO — nadie miró más abajo.
+  const firme = bloque({ veredicto: "COMPRAR", dist: null, sens: sensibilidad(50) });
+  const ff = firme?.filas.find((f) => f.rotuloCorto === "Margen");
+  if (ff) {
+    if (ff.banda !== "amplio") F(`8 · con el margen en el tope la banda es «amplio», dio «${ff.banda}»`);
+    if (ff.caeA != null) F("8 · con `firme` nadie midió a dónde cae: la fila no puede inventar un destino");
+  }
+}
+
 export function runLoQueHariaYoTier(): { hard: number } {
   console.log("\n─── TIER LO-QUE-HARÍA-YO (el bloque determinista · lo-que-haria-yo.ts, 0 tokens) ───");
   if (fallas.length === 0) {

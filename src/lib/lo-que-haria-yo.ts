@@ -17,6 +17,7 @@
 import type { HallazgoDistanciaVeredicto, HallazgoSensibilidad, PalancaDistancia, Veredicto } from "./types";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 import { bandaEsfuerzoDescuento, type BandaEsfuerzo } from "./distancia-veredicto-hallazgo";
+import { bandaMargen, type BandaMargen } from "./sensibilidad-hallazgo";
 
 /** Quién tiene que mover la palanca. Es el eje del bloque, no un adorno. */
 export type QuienLaPone = "vendedor" | "mercado" | "tuyo";
@@ -42,6 +43,25 @@ export interface FilaLoQueHariaYo {
    *  arriendo puede caer hasta $720.000 (−6,3%) y sigue siendo Comprar.»—, no una cifra.
    *  Solo la llevan las tres filas de COMPRAR; el resto sigue con `cifra`/`objetivo`. */
   oracion?: string | null;
+  /**
+   * COMPRAR · LA BANDA DEL MARGEN (15-sep-2026). Solo la fila «Margen». El motor clasifica
+   * en tres desde Fase 0 y la pantalla escribía la misma oración en los tres casos: 44 de
+   * las 217 filas COMPRAR del parque aguantan menos de 7 puntos y se leían igual que una
+   * que aguanta 48 (en STR son 23 de 57).
+   *
+   * ⚠ VA FUERA DE `oracion`, Y ESA ES LA DECISIÓN. La card de §5 dibuja esta MISMA fila: si
+   * el dato entra al texto, la card lo hereda y el pop-up sigue siendo eco palabra por
+   * palabra. Campo propio que solo lee el pop-up, con el precedente de
+   * `PalancaDistancia.score` y `.destino`, que el motor emite y la card no toca.
+   */
+  banda?: BandaMargen | null;
+  /**
+   * COMPRAR · A QUÉ VEREDICTO CAE si el supuesto se pasa del borde que dice la oración.
+   * En «Margen», si el arriendo o la tarifa caen por debajo; en «Precio», si pagas más que
+   * el máximo. Los dos los medía el motor y los botaba. `null` cuando nadie lo midió —con
+   * `firme` la bisección nunca miró más abajo— y ahí la línea no va: sin dato, sin oración.
+   */
+  caeA?: Veredicto | null;
 }
 
 export interface MixLoQueHariaYo {
@@ -187,7 +207,7 @@ export function construirLoQueHariaYo(p: {
    *  (`fronterasIngreso.abajo`) y lo verificado es la tarifa SOLO si la definiste tú
    *  (`adrFuente === "override"`); con la mediana de la zona no hay nada que verificar y
    *  el caller pasa null. Tienen precedencia sobre los dos de LTR cuando vienen. */
-  aguanta?: { marginPct: number; firme: boolean } | null;
+  aguanta?: { marginPct: number; firme: boolean; caeA?: Veredicto | null } | null;
   /** VERIFICA, y de dónde salió el número (12-sep-2026). El wizard LTR prellena el
    *  arriendo con la estimación de Franco y no persiste si la aceptaste: el motor lo
    *  DERIVA (`resolverProcedenciaArriendo`, igualdad al peso con la referencia) y el
@@ -198,7 +218,7 @@ export function construirLoQueHariaYo(p: {
   /** EL OTRO MARGEN DE COMPRAR, resuelto por el caller (12-sep-2026): el último precio
    *  que sigue siendo Comprar y cuánto es sobre el pedido. LTR lo saca de
    *  `precioMaximoComprarUF`; STR de `fronteraPrecio.caeA`. null ⇒ la fila no va. */
-  precioMax?: { uf: number; pct: number } | null;
+  precioMax?: { uf: number; pct: number; caeA?: Veredicto | null } | null;
   /** El monto del que cuelga el piso en pesos —el arriendo o la tarifa que usa el
    *  análisis, tuyo o del mercado—. Sin él la oración va solo con el porcentaje. En LTR
    *  cae a `arriendoDeclaradoCLP`. */
@@ -219,7 +239,13 @@ export function construirLoQueHariaYo(p: {
   if (p.veredicto === "COMPRAR") {
     const filas: FilaLoQueHariaYo[] = [];
     const s = p.sensibilidad?.valor;
-    const aguanta = p.aguanta !== undefined ? p.aguanta : s ? { marginPct: s.marginPct, firme: s.firme } : null;
+    const aguanta = p.aguanta !== undefined
+      ? p.aguanta
+      // `veredictoNuevo` es null cuando el veredicto no se movio ni al piso explorado:
+      // ahi nadie midio a donde cae y la fila no lo dice.
+      : s
+        ? { marginPct: s.marginPct, firme: s.firme, caeA: s.veredictoNuevo ?? null }
+        : null;
     const verifica =
       p.verifica !== undefined ? p.verifica : (p.arriendoDeclaradoCLP ?? 0) > 0 ? { cifraCLP: p.arriendoDeclaradoCLP! } : null;
     // El piso en pesos = monto × (1 + margen). El monto es el que USA el análisis —tuyo
@@ -230,15 +256,25 @@ export function construirLoQueHariaYo(p: {
     const sujeto = modalidad === "str" ? "La tarifa por noche" : "El arriendo";
     if (aguanta) {
       const m = aguanta.marginPct;
-      const hasta = aguanta.firme ? "−50% o más" : monto ? `${piso(monto * (1 - m / 100))} (−${pct1(m)}%)` : `−${pct1(m)}%`;
+      // EL TOPE QUE CADA MOTOR EXPLORÓ DE VERDAD (15-sep-2026). Estaba escrito «−50% o más»
+      // a mano, y son dos números distintos: LTR bisecciona hasta −50% (SENS_FACTOR_MIN) y
+      // STR hasta −70% (SIM_INGRESO_MIN). Con el literal, una fila de renta corta que el
+      // motor midió hasta 70 se publicaba como si nadie hubiera mirado más allá de 50.
+      // `pct1` no pone decimal en los enteros, así que LTR sigue diciendo «−50% o más»,
+      // byte por byte.
+      const hasta = aguanta.firme ? `−${pct1(m)}% o más` : monto ? `${piso(monto * (1 - m / 100))} (−${pct1(m)}%)` : `−${pct1(m)}%`;
       filas.push({
         titulo: "Cuánto aguanta el veredicto",
         nombre: mercado.nombre,
         rotuloCorto: "Margen",
         quien: "mercado",
-        cifra: aguanta.firme ? "−50% o más" : `−${pct1(m)}%`,
+        cifra: aguanta.firme ? `−${pct1(m)}% o más` : `−${pct1(m)}%`,
         objetivo: null,
         oracion: `${sujeto} puede caer hasta ${hasta} y sigue siendo ${DESTINO}.`,
+        // LA BANDA Y EL DESTINO, FUERA DE LA ORACION (15-sep-2026). Ver el jsdoc de los dos
+        // campos: si entran al texto, la card de §5 los hereda y el pop-up sigue siendo eco.
+        banda: bandaMargen(m),
+        caeA: aguanta.caeA ?? null,
       });
     }
     if (p.precioMax) {
@@ -251,6 +287,10 @@ export function construirLoQueHariaYo(p: {
         objetivo: null,
         // El precio de cierre va SIEMPRE en UF, con el toggle o sin él: es un precio, no caja.
         oracion: `Puedes pagar hasta UF ${miles(p.precioMax.uf)} (+${pct1(p.precioMax.pct)}%) y sigue siendo ${DESTINO}.`,
+        // El precio no tiene banda —los cortes 7/15 miden caida de INGRESO, no cuanto puedes
+        // pagar de mas— pero si tiene el mismo destino, y lo botaba la misma bisección.
+        banda: null,
+        caeA: p.precioMax.caeA ?? null,
       });
     }
     if (verifica) {

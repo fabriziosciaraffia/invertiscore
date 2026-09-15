@@ -202,7 +202,16 @@ export function HeroLTR({
         precioMax: (() => {
           const uf = sensibilidadRow?.valor.precioMaximoComprarUF;
           const precio = Number(inputData?.precio ?? 0);
-          return uf != null && precio > 0 ? { uf, pct: Math.round((uf / precio - 1) * 1000) / 10 } : null;
+          return uf != null && precio > 0
+            ? {
+                uf,
+                pct: Math.round((uf / precio - 1) * 1000) / 10,
+                // A DÓNDE CAE SI PAGAS MÁS (15-sep-2026). La misma bisección ya lo evaluaba
+                // y lo botaba adentro del predicado; ahora lo retiene. Ausente en filas
+                // persistidas antes del campo ⇒ la segunda línea no va.
+                caeA: sensibilidadRow?.valor.veredictoSobrePrecioMaximo ?? null,
+              }
+            : null;
         })(),
       })
     : null;
