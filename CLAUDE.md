@@ -144,6 +144,35 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
 - **Una fila viva puede no ejercitar la rama que el guard cree vigilar.** En las tres filas de `decisividad-str` el adverso más decisivo YA es el tope del ranking (`iAdv === 0`), así que la promoción del 01 **nunca corre**: borrarla entera dejaba las propiedades del orden en VERDE. Lo que la ejercita es un fixture de cuatro campos sobre la función pura (favorable 0,90 + adverso 0,87 ⇒ abre el adverso; con 0,80 ⇒ no). Mide qué rama corre antes de suponer que el guard la cubre — y cuando la rama no corre con datos reales, el fixture sintético sobre función pura no es un atajo: es lo único que la prueba.
 - **Dos constantes que se declaran «espejo» no están atadas por nada.** `DECISIVIDAD_FLOOR` (`analysis.ts`) y `DECISIVIDAD_FLOOR_ORDEN` (`orden-hallazgos.ts`) son dos literales `0.85` en dos archivos, y si se separan el módulo calibra contra un piso y el orden promueve contra otro, en silencio, porque cada archivo sigue siendo coherente consigo mismo. Un `if (A !== B)` de una línea en el gate cuesta nada; el comentario «espejo de» no cuesta nada tampoco, y no sirve.
 - **Al sacar pins, mira qué COBERTURA se va con ellos — no solo qué rigidez.** El `pisos` de `decisividad-str` fijaba cifras de filas vivas, pero además hacía `if (!f) F("está ausente")`. Al borrarlo, los 21 chequeos por factor y el invariante pirámide≡módulo quedaron todos detrás de un `if (!f) continue`: con `calcDecisividadesSTR` devolviendo `{}` el tier salía VERDE con la pirámide entera en decisividad 0. Es «un cero de medición que no distingue NO CORRIÓ» aplicado a un objeto completo, y lo agrava que `calibrar()` haga `f?.decisividad ?? 0`: la ausencia se emite como un 0 legítimo. El arreglo es un PISO DE COBERTURA — la lista de lo que siempre tiene que estar (los knobs que no dependen de datos vivos), separada de lo que puede faltar con razón (`sobreprecio` sin mediana, `capex` sin CapEx). Lo encontró una revisión adversarial del archivo ya reescrito, no las ocho mutaciones que se le habían corrido.
+- **Reemplazado se retira, apagado se decide, nunca por inercia.** Una superficie sin lector no
+  se borra por estar sin lector: primero hay que saber **por qué** lo perdió. Si su contenido se
+  mudó a una superficie mejor, es una copia vieja y se retira. Si se apagó sin que nadie lo
+  decidiera, puede ser trabajo terminado que nadie enchúfó, y eso se reconecta. Los tres casos
+  del 17-sep-2026, que son la evidencia de que la distinción no es teórica:
+  · **`sensibilidad` — REEMPLAZADO.** El `SensibilidadDial` ya vive en `CapitulosInversion.tsx`,
+    el margen y su banda («colchón amplio/acotado») en el pop-up, y el pop-up además dice a qué
+    veredicto CAE, cosa que el drawer nunca dijo. Se retira.
+  · **`negociación` — REEMPLAZADO, por el capítulo y no por el pop-up.** `DrawerNegociacion`
+    sigue montado en `CapitulosInversion.tsx`; lo muerto era la SEGUNDA montura. Se retira esa.
+  · **`reestructuración` — APAGADO.** `EscaleraPie`, `EscaleraPlazo` y `referenciaTasa` no las
+    dice ninguna superficie viva: el pop-up hace pie × plazo como GRILLA, que es otra cosa que
+    una escalera contra el óptimo, y la tasa no está ahí en ninguna forma. El render se
+    conserva; lo que sale es el CAMPO DE PROSA del prompt, que costaba dos bloques de 3-5
+    frases para un texto sin superficie. **Lo que no se hace es lo contrario: sacar el render y
+    dejar al modelo escribiendo.**
+- **«Consumidores reales, no referencias» se aplica al SÍMBOLO, no al archivo.** Un archivo puede
+  exportar una superficie muerta y otra viva, y el grep por archivo las confunde.
+  `SUBTITULO_PLAN_SALIDA` estuvo a un paso de retirarse porque su único uso está en
+  `AnalysisDrawer.tsx` —el archivo del drawer inalcanzable— y ese uso vive DENTRO de
+  `DrawerNegociacion`, que el capítulo monta. Mismo error en `GenericFindingCard.tsx`: el
+  componente es dev-only, pero `findingDisplay`, en el mismo archivo, alimenta el PDF STR y el
+  anexo. Y mismo error al revés en `MiniCard.tsx`, que **no lo importa nadie**: el `<MiniCard>`
+  que sí se renderiza es una función local de la landing, sin relación con el módulo.
+- **Si un campo se audita, tiene que estar declarado en los DOS lados.** `francoCaveat` lo
+  escribe el modelo en LTR y en STR y no lo renderiza nadie; STR lo tenía declarado audit-only
+  en `PATHS_SIN_RENDER_STR` —con su razón: se mide, pero no paga reintento quirúrgico— y LTR no
+  tenía lista. Del lado sin declaración el campo parece residuo, y alguien lo retira creyendo
+  que limpia. Espejo agregado en `PATHS_SIN_RENDER_LTR` (`analysis.ts`).
 - **Los tests con shim de storage no modelan el debounce de 500ms.** Cualquier operación que borre y reescriba necesita verificación en navegador midiendo el instante intermedio.
 
 ## Entorno y seguridad
