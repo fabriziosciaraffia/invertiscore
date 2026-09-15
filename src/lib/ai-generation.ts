@@ -57,7 +57,7 @@ import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad, comunas
 import { PATHS_SIN_RENDER_LTR } from "@/lib/analysis";
 import { PESOS_SCORE_LTR } from "@/lib/score-retorno";
 import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
-import { salidaPorMix } from "@/lib/salida-por-mix";
+import { salidaPorMix, caminosQueAbren, movimientoDeRespuesta, RECOMENDADA } from "@/lib/salida-por-mix";
 import { derivarCifraClaveLtr, captionDeCifraClave } from "@/lib/cifra-clave";
 import { validarTitular, marcasBalanceadas, stripMarcas } from "@/lib/prosa-marcas";
 import { reescribirTitular } from "@/lib/titular-retry";
@@ -2056,23 +2056,60 @@ ALTERNATIVA DE COMUNAS (motor)
     //
     // MISMA FUNCIÓN QUE LA CARD: `salidaPorMix` es pura y solo devuelve algo cuando
     // ningún cambio por separado alcanza, que es exactamente el caso en cuestión.
+    // ⛔ EL GATE DE `esEstructural` SE ABRIÓ (17-sep-2026), Y ES EL CAMBIO QUE IMPORTA.
+    // Hasta hoy este bloque existía solo en filas estructurales. Medido sobre el parque: de
+    // las 331 filas con menú de dos o más caminos, **307 NO son estructurales** — el 92,7%.
+    // O sea que en el 93% de los casos donde el lector tiene un menú al lado, el modelo
+    // escribía sin saber que existía, y después cerraba la puerta con un número. No era que
+    // la prohibición se quedara corta: no había bloque.
+    //
+    // ⚠ Y PRIMERO EL BLOQUE LLEVÓ LAS RESPUESTAS, DESPUÉS SE ABRIÓ EL GATE. Al revés hubiera
+    //   sido darle el dato incompleto a 307 filas más en vez de a 24.
     const salidaMixBloque = (() => {
       const dvMix = (results.hallazgos as Hallazgo[] | undefined)?.find(
         (h) => h.id === "distancia_veredicto",
       );
-      if (!dvMix || dvMix.id !== "distancia_veredicto" || !dvMix.valor.esEstructural) return "";
-      const sm = salidaPorMix(dvMix.valor);
-      if (!sm) {
-        return `
-SALIDA COMBINADA (motor)
-- hayMixACOMPRAR: no`;
-      }
+      if (!dvMix || dvMix.id !== "distancia_veredicto") return "";
+      const c = caminosQueAbren(dvMix.valor, { equilibrada: dvMix.valor.esEstructural ? salidaPorMix(dvMix.valor) : null });
+      // `hayMixACOMPRAR` SOLO EN FILAS ESTRUCTURALES, y no es una omisión: la pregunta que
+      // contesta —«con nada que alcance solo, ¿la equilibrada es la salida?»— no tiene sentido
+      // donde algo alcanza solo. Emitirla ahí diría `no` sobre una combinación que SÍ cruza,
+      // que es justo la clase de media verdad que este bloque existe para sacar. Además
+      // mantiene intacto el gate del guard `niegaSalidaConMix`, que se dispara con esa línea.
+      const sm = dvMix.valor.esEstructural ? salidaPorMix(dvMix.valor) : null;
+      const lineaMix = dvMix.valor.esEstructural ? `
+- hayMixACOMPRAR: ${sm ? "sí" : "no"}` : "";
+      const desc = (d: number | null) => (d === null || d === 0 ? "ninguno" : `−${pct(Math.abs(d))}%`);
+      const rec = c.recomendado;
+      const movRec = rec ? movimientoDeRespuesta(rec) : null;
+      // LOS NOMBRES DE CAMPO SE CONSERVAN DENTRO DE CADA CAMINO, y no es cosmética: la
+      // doctrina de abajo manda leer `costoDiaUno` y `descuentoQueAdemásPide` por su nombre.
+      // Si el bloque los disolviera en prosa, la instrucción quedaría apuntando a campos que
+      // ya no existen — un puntero colgado dentro del propio prompt.
+      // SIN MENÚ MEDIDO, LA EQUILIBRADA OCUPA ESE LUGAR. `respuestas` AUSENTE es una fila
+      // persistida antes del menú: ahí `recomendado` viene null y, sin este fallback, el
+      // bloque diría «caminosQueAbren: 1» sin decir CUÁL — y la doctrina, que manda contarlo
+      // con su movimiento y su costo, quedaría pidiendo un dato que el prompt no trae.
+      // La equilibrada ES la que el menú corona por score (lo declara `MixPalancas`), así que
+      // lleva la misma etiqueta: no son dos objetos.
+      const lineaRec = rec && movRec ? `
+- recomendado (${RECOMENDADA}): ${movRec}
+  · costoDiaUno: ${fmtUF(rec.costoDiaUnoUF)} de tu bolsillo el día uno
+  · descuentoQueAdemásPide: ${desc(rec.descuentoPct)}` : sm ? `
+- recomendado (${RECOMENDADA}): ${sm.movimiento}
+  · costoDiaUno: ${fmtUF(sm.costoDiaUnoUF)} de tu bolsillo el día uno
+  · descuentoQueAdemásPide: ${desc(sm.descuentoPct)}` : "";
+      const otros = c.otros
+        .map((r) => ({ r, mov: movimientoDeRespuesta(r) }))
+        .filter((x): x is { r: typeof x.r; mov: string } => x.mov !== null)
+        .map((x) => `
+- otro: ${x.mov}
+  · costoDiaUno: ${fmtUF(x.r.costoDiaUnoUF)} de tu bolsillo el día uno
+  · descuentoQueAdemásPide: ${desc(x.r.descuentoPct)}`)
+        .join("");
       return `
 SALIDA COMBINADA (motor)
-- hayMixACOMPRAR: sí
-- movimiento: ${sm.movimiento}
-- costoDiaUno: ${fmtUF(sm.costoDiaUnoUF)} de tu bolsillo el día uno
-- descuentoQueAdemásPide: ${sm.descuentoPct === null ? "ninguno" : `−${pct(sm.descuentoPct)}%`}`;
+- caminosQueAbren: ${c.total}${lineaMix}${lineaRec}${otros}`;
     })();
 
     const financingHealthBloque = fh ? `
@@ -2434,7 +2471,7 @@ DISTANCIA AL VEREDICTO (último de la lista). Trae los valores YA CALCULADOS de 
 
 OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra. Es la condición concreta bajo la que tu posición se sostiene (§1.10) y es lo único del informe que responde "¿y ahora qué?".
 
-TAMBIÉN, si el hallazgo NO es estructural: cierra con UNA mención breve de esa distancia ("estás a X% de arriendo de que esto sea un Comprar"). Una sola frase corta, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer. Si ningún cambio por separado alcanza Y \`hayMixACOMPRAR\` es \`no\`, NO menciones distancia: no hay una que prometer y anunciarla sería falso. Con \`hayMixACOMPRAR: sí\` la distancia SÍ existe — es la combinación del bloque SALIDA COMBINADA — y se nombra con sus palabras.
+TAMBIÉN, si el hallazgo NO es estructural: cierra con UNA mención breve de esa distancia ("estás a X% de arriendo de que esto sea un Comprar"). Una sola frase corta, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer. Con \`caminosQueAbren: 0\` NO menciones distancia: no hay una que prometer y anunciarla sería falso. Con \`caminosQueAbren\` ≥ 1 la distancia SÍ existe — es lo que el bloque SALIDA COMBINADA describe — y se nombra con sus palabras.
 
 REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase y en el bloque VÍAS. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí${
   viaPieGen?.estado === "cruza"
@@ -2464,15 +2501,23 @@ LA PALANCA DE ARRIENDO ES UNA APUESTA, NO UN AJUSTE (§1.12.3): ${arriendoRefCon
 
 ${matizPalancaArriendo}
 
-CUANDO NINGÚN CAMBIO POR SEPARADO ALCANZA, MIRA \`hayMixACOMPRAR\` ANTES DE CERRAR LA PUERTA. El bloque SALIDA COMBINADA te lo dice, y no es opinable.
+ANTES DE CERRAR LA PUERTA, CUENTA LOS CAMINOS. El bloque SALIDA COMBINADA te da el número: \`caminosQueAbren\`. Suma lo que abre por separado y lo que abre combinando, y no es opinable: no lo recalcules ni lo deduzcas del veredicto. Cerrar la puerta es una afirmación sobre TODOS los caminos a la vez, no sobre el que elegiste contar. Los que abren POR SEPARADO están en el bloque de cambios de arriba, con su cifra; los que abren COMBINANDO están acá abajo.
 
-· \`hayMixACOMPRAR: sí\` → HAY salida, y es la combinación que el bloque describe. PROHIBIDO escribir que no hay forma, que ningún ajuste alcanza, que el problema es de fondo, que no se arregla o que está fuera de rango: el informe muestra esa combinación al lado de tu texto y el lector vería dos respuestas opuestas en la misma página. Nómbrala con las palabras del bloque — QUÉ hay que mover (\`movimiento\`) y CUÁNTO cuesta el día uno (\`costoDiaUno\`). Y lee \`descuentoQueAdemásPide\` antes de calificarla:
+· \`caminosQueAbren\` ≥ 1 → no se cierra. Cuenta uno —el que el bloque marca como \`recomendado\`, salvo que el caso pida otro— con sus palabras: qué hay que mover y cuánto cuesta el día uno. Si el bloque trae alguna línea \`otro\`, dilo en la misma oración («también cambia moviendo…»). Lo que no puedes es presentar el que elegiste como si fuera el único.
+
+  ⛔ Y CERRAR LA PUERTA NO ES SOLO DECIR «no hay forma». También la cierras cuando conviertes un número en la frontera del caso. Estas tres son cierres, aunque suenen a precisión:
+    · «UF 1.839 es tu techo real: sobre ese precio el análisis no cierra»
+    · «conviene solo si consigues UF 4.786»
+    · «si no llegas a UF 4.455, aportas $126.641 al mes sin tope»
+  Las tres son falsas con \`caminosQueAbren\` ≥ 1, y el informe muestra el otro camino al lado de tu texto.
+
+  La forma correcta dice el MISMO número sin volverlo frontera, y es igual de concreta: «A UF 4.455 el veredicto cambia. También cambia sin tocar el precio, moviendo el pie a 30% y el plazo a 30 años: son UF 261 tuyas el día uno.»
+
+  Con \`hayMixACOMPRAR: sí\`, además, lee \`descuentoQueAdemásPide\` antes de calificar esa combinación:
   · \`ninguno\` → la salida no pasa por el vendedor: no es un descuento que pedir, es plata propia que poner.
   · un porcentaje → además hay que pedir ESE descuento. Dilo así: primero lo que se mueve, después el descuento con su cifra. NO lo llames «chico» en absoluto —medido en el parque llega al 21%— ni digas que la salida no pasa por el vendedor: sí pasa. Lo que SÍ puedes decir, porque es verdad y es el punto, es que ese descuento es MENOR que el que haría falta bajando solo el precio.
 
-· \`hayMixACOMPRAR: no\`, pero el bloque VÍAS trae una que CRUZA → esa vía es la salida. Nómbrala.
-
-· \`hayMixACOMPRAR: no\` y ninguna vía cruza → recién ahí se cierra la puerta, y se cierra entera: PROHIBIDO ofrecer negociación, descuento, "si logras" o "si consigues" como salida. ${casoPrecioJustoGen ? "Lo que no cierra no es este depto ni su precio — es lo que la zona rinde hoy (ver CASO PRECIO-JUSTO)" : "Lo que no cierra es el deal"}. El cierre entra por la alternativa de comunas (Ángulo 2), no por un ajuste que no existe.
+· \`caminosQueAbren: 0\` → recién ahí se cierra la puerta, y se cierra entera: PROHIBIDO ofrecer negociación, descuento, "si logras" o "si consigues" como salida. ${casoPrecioJustoGen ? "Lo que no cierra no es este depto ni su precio — es lo que la zona rinde hoy (ver CASO PRECIO-JUSTO)" : "Lo que no cierra es el deal"}. El cierre entra por la alternativa de comunas (Ángulo 2), no por un ajuste que no existe.
 ` : ""}
 CÓMO ESCRIBIR conviene.cajaAccionable (contrato completo en §13): PRIMERA ORACIÓN = la razón que manda (hallazgo 1, con su cifra, en tu voz); DESPUÉS un solo matiz — el de mayor consecuencia en plata — que la condiciona, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${CAJA_ACCIONABLE_MAX} palabras en total. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
@@ -3014,7 +3059,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           console.warn(`[LTR-MIX] ${analysisId}: ${mixViol.length} campo(s) niegan una salida que el motor tiene — ${mixViol.join(" | ")} — 1 reintento`);
           const correctivoM = `
 
-⚠️ CORRECCIÓN DE SALIDA (§1.12.3): la versión anterior cierra la puerta en ${mixViol.join(", ")}, pero el bloque SALIDA COMBINADA del caso dice \`hayMixACOMPRAR: sí\` — el motor SÍ encontró cómo llegar a Comprar, y el informe la muestra al lado de tu texto. Nómbrala con las palabras del bloque: qué hay que mover y cuánto cuesta el día uno. Si \`descuentoQueAdemásPide\` es «ninguno», la salida no pasa por el vendedor; si trae un porcentaje, además hay que pedir ESE descuento y es chico. Reescribe el JSON COMPLETO respetando la doctrina §1-§17.`;
+⚠️ CORRECCIÓN DE SALIDA (§1.12.3): la versión anterior cierra la puerta en ${mixViol.join(", ")}, pero el bloque SALIDA COMBINADA del caso dice \`hayMixACOMPRAR: sí\` — el motor SÍ encontró cómo llegar a Comprar, y el informe la muestra al lado de tu texto. Nómbrala con las palabras del bloque: qué hay que mover y cuánto cuesta el día uno. Si \`descuentoQueAdemásPide\` es «ninguno», la salida no pasa por el vendedor; si trae un porcentaje, además hay que pedir ESE descuento — y NO lo llames «chico»: lo que sí puedes decir es que es MENOR que el que haría falta bajando solo el precio. Reescribe el JSON COMPLETO respetando la doctrina §1-§17.`;
           const regenM = await anthropic.messages.create({
             model: CLAUDE_MODEL,
             max_tokens: 8000,

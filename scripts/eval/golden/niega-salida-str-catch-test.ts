@@ -56,12 +56,31 @@ const dvDe = (clave: string): HallazgoDistanciaVeredicto["valor"] =>
   else if (sm.movimiento !== "el pie en 30% y el plazo en 30 años" || sm.descuentoPct !== 17.5 || sm.costoDiaUnoUF !== 261) {
     F(`1 · la salida de estructuralMixStr salió distinta al motor: «${sm.movimiento}» · −${sm.descuentoPct}% · UF ${sm.costoDiaUnoUF}`);
   }
+  // ⛔ EL CONTRATO DEL BLOQUE CAMBIÓ EL 17-sep-2026, y estos pines se movieron con él. Lo que
+  //   fijaban —que el prompt reciba la combinación con su movimiento, su costo y su
+  //   descuento— sigue fijado; lo que cambió es dónde viven esas tres cifras: antes eran
+  //   líneas sueltas de la equilibrada, ahora cuelgan del camino que las trae, porque el
+  //   bloque describe hasta tres. Los nombres de campo se conservaron a propósito: la
+  //   doctrina los nombra y un puntero colgado dentro del prompt no lo caza nadie.
   const p = promptDe("estructuralMixStr");
-  for (const linea of ["- hayMixACOMPRAR: sí", "- movimiento: el pie en 30% y el plazo en 30 años", "- costoDiaUno: UF 261 de tu bolsillo el día uno", "- descuentoQueAdemásPide: −17,5%"]) {
+  for (const linea of [
+    "- caminosQueAbren:",
+    "- hayMixACOMPRAR: sí",
+    "- recomendado (lo que Franco recomienda): el pie en 30% y el plazo en 30 años",
+    "  · costoDiaUno: UF 261 de tu bolsillo el día uno",
+    "  · descuentoQueAdemásPide: −17,5%",
+  ]) {
     if (!p.includes(linea)) F(`1 · el user prompt de estructuralMixStr no trae «${linea}»`);
   }
   if (/NINGÚN AJUSTE REALISTA ALCANZA/.test(p)) F("1 · con salida combinada el prompt sigue mandando cerrar la puerta («NINGÚN AJUSTE REALISTA ALCANZA»)");
-  if (!/hayMixACOMPRAR: sí` → HAY salida/.test(p)) F("1 · falta la instrucción del caso «sí» (HAY salida, y es la combinación que el bloque describe)");
+  // LA DOCTRINA CUELGA DE `caminosQueAbren`, NO DE `hayMixACOMPRAR`. Es el cambio de llave:
+  // la premisa vieja («cuando ningún cambio por separado alcanza») era falsa en las filas no
+  // estructurales, que son la mayoría de las que tienen menú.
+  if (!/ANTES DE CERRAR LA PUERTA, CUENTA LOS CAMINOS/.test(p)) F("1 · falta la cabecera que cuenta los caminos");
+  if (!/caminosQueAbren` ≥ 1 → no se cierra/.test(p)) F("1 · falta la instrucción del caso «hay al menos un camino»");
+  if (!/conviertes un número en la frontera del caso/.test(p)) {
+    F("1 · falta la mitad que importa: cerrar la puerta también se hace declarando un número como frontera");
+  }
   if (!/descuentoQueAdemásPide/.test(p) || /«chico»/.test(p) && !/NO lo llames «chico»/.test(p)) F("1 · la instrucción tiene que leer `descuentoQueAdemásPide` y prohibir «chico»");
 
   // BUSCAR estructural con mix solo al escalón (grajalesStr 5dc42a82): no promete Comprar.
@@ -79,8 +98,20 @@ const dvDe = (clave: string): HallazgoDistanciaVeredicto["valor"] =>
   if (!pm.includes("- hayMixACOMPRAR: no")) F("1 · el user prompt de maculStrSinSalida no dice `hayMixACOMPRAR: no`");
   if (/^- mixAlEscalon: sí/m.test(pm)) F("1 · maculStrSinSalida no tiene combinación al escalón y el prompt dice que sí");
   if (!/se cierra la puerta, y se cierra entera/.test(pm)) F("1 · sin combinación el prompt tiene que cerrar la puerta entera (caso tres)");
-  // Y una fila NO estructural no lleva el bloque: hay una salida más simple y ya se cuenta en las vías.
-  if (/SALIDA COMBINADA/.test(promptDe("staRosaStr"))) F("1 · staRosaStr no es estructural y el prompt le mete el bloque de salida combinada");
+  // ⛔ ESTE PIN SE DIO VUELTA EL 17-sep-2026, Y ES EL GATE QUE SE ABRIÓ. Decía que una fila NO
+  //   estructural no lleva el bloque, «porque hay una salida más simple y ya se cuenta en las
+  //   vías». Medido, esa premisa era la que dejaba ciego al modelo: en STR hay 47 filas no
+  //   estructurales con menú de dos o más caminos (29 con prosa), y en LTR 307. Tener una vía
+  //   simple no impide que el menú ofrezca otra más barata al lado — que es exactamente la
+  //   contradicción que el lector ve.
+  const pne = promptDe("staRosaStr");
+  if (!/SALIDA COMBINADA/.test(pne)) F("1 · staRosaStr no es estructural y AUN ASÍ tiene que recibir el bloque: el gate se abrió");
+  if (!/- caminosQueAbren:/.test(pne)) F("1 · el bloque de una fila no estructural tiene que traer `caminosQueAbren`");
+  // LAS DOS LLAVES NO SE MEZCLAN: `hayMixACOMPRAR` contesta por la equilibrada y solo tiene
+  // sentido donde nada alcanza solo. Emitirla acá diría `no` sobre una combinación que sí
+  // cruza, y además abriría el gate del guard `niegaSalidaConMix` sobre prosa que su lista de
+  // fórmulas no sabe leer.
+  if (/- hayMixACOMPRAR:/.test(pne)) F("1 · una fila NO estructural no puede llevar `hayMixACOMPRAR`: esa llave contesta por la equilibrada");
 }
 
 // ── 2 · el guard, con una fila real ─────────────────────────────────────────

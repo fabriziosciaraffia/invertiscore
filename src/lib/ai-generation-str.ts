@@ -48,7 +48,7 @@ import { scanVozChilena, hitsQueExigenReintento, sanitizeVozChilena } from "@/li
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { COSTOS_STR_BANDA_FAV_PCT, COSTOS_STR_BANDA_ADV_PCT } from "@/lib/estructura-costos-str-hallazgo";
 import type { SimulacionStr } from "@/lib/analysis/simular-str";
-import { salidaPorMixStr, mixAlEscalonStr } from "@/lib/salida-por-mix";
+import { salidaPorMixStr, mixAlEscalonStr, caminosQueAbren, movimientoDeRespuesta, RECOMENDADA } from "@/lib/salida-por-mix";
 import { PESOS_SCORE_STR } from "@/lib/score-retorno";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
@@ -724,7 +724,10 @@ Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards f
     })();
     const cab = `\n\n=== LO QUE TE SEPARA DEL VEREDICTO DE ARRIBA (valores YA CALCULADOS) ===\n«${distanciaSTR.titular}» — ${distanciaSTR.fraseCanonica}${viasBloque}`;
 
-    if (dv.esEstructural) {
+    // EL BLOQUE Y SU DOCTRINA SE ARMAN UNA VEZ Y SIRVEN A LOS DOS CAMINOS. Antes vivían
+    // dentro del `if (dv.esEstructural)`, que era el gate; ahora el gate se abrió y el
+    // camino no estructural —que tiene su propio cierre, con sus avisos— los recibe también.
+    const salidaStr = (() => {
       // A8-STR (v19 · 12-sep-2026). Hasta v18 este bloque cerraba la puerta con solo
       // `esEstructural`, y el motor sabe desde 7cdf3250 que hay filas donde ningún cambio por
       // separado alcanza PERO combinando pie y plazo sí. La card lo dibuja; la prosa lo negaba
@@ -732,30 +735,72 @@ Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards f
       // card (`salidaPorMixStr`) y solo cierra la puerta cuando el motor tampoco encontró
       // combinación. Desde BUSCAR, la que llega solo al escalón va como `mixAlEscalon`: ni se
       // niega ni se promete Comprar. Molde de LTR v24, bifurcado por `descuentoQueAdemásPide`.
+      //
+      // ⛔ EL GATE DE `esEstructural` SE ABRIÓ (17-sep-2026), espejo del de LTR y con su propia
+      //   medición, no por simetría: en STR hay **47 filas NO estructurales con menú de dos o
+      //   más caminos** (29 con prosa escrita) que hasta hoy no recibían bloque ninguno. Es la
+      //   misma escala relativa que LTR, con otro tamaño.
+      //
+      // ⚠ DOS LLAVES QUE SE PARECEN. `hayMixACOMPRAR` contesta por la EQUILIBRADA y solo
+      //   existe en filas estructurales (la lee el guard por su gate); `caminosQueAbren`
+      //   cuenta TODAS las formas y existe siempre. De la segunda, y solo de ella, cuelga si
+      //   se puede cerrar la puerta. El acta larga está en `salida-por-mix.ts`.
       const pctCL = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
-      const sm = salidaPorMixStr(dv);
-      const esc = sm ? null : mixAlEscalonStr(dv);
-      const bloqueSalida = sm
-        ? `SALIDA COMBINADA (ya calculada)
-- hayMixACOMPRAR: sí
-- movimiento: ${sm.movimiento}
-- costoDiaUno: ${fmtUF(sm.costoDiaUnoUF)} de tu bolsillo el día uno
-- descuentoQueAdemásPide: ${sm.descuentoPct === null ? "ninguno" : `−${pctCL(sm.descuentoPct)}%`}`
-        : `SALIDA COMBINADA (ya calculada)
-- hayMixACOMPRAR: no${esc ? `\n- mixAlEscalon: sí — con ${esc.movimiento}${esc.descuentoPct === null ? "" : ` y un ${pctCL(esc.descuentoPct)}% de descuento`} pasa a ${dv.veredictoObjetivo}, no a Comprar` : ""}`;
-      return `${cab}
+      const sm = dv.esEstructural ? salidaPorMixStr(dv) : null;
+      const esc = dv.esEstructural && !sm ? mixAlEscalonStr(dv) : null;
+      // LA MISMA GRILLA QUE `salidaPorMixStr` elige, y no la de por default: desde BUSCAR OTRA
+      // el motor STR emite dos combinaciones y la card lee `mixPalancasHastaComprar`. Contar
+      // las respuestas de la otra dejaría al prompt describiendo un menú que el lector no ve.
+      const grillaStr = dv.veredictoBase === "BUSCAR OTRA" && dv.mixPalancasHastaComprar !== undefined
+        ? dv.mixPalancasHastaComprar
+        : dv.mixPalancas;
+      const c = caminosQueAbren(dv, { grilla: grillaStr, equilibrada: sm });
+      const desc = (d: number | null) => (d === null || d === 0 ? "ninguno" : `−${pctCL(Math.abs(d))}%`);
+      const rec = c.recomendado;
+      const movRec = rec ? movimientoDeRespuesta(rec) : null;
+      const lineaMix = dv.esEstructural
+        ? `\n- hayMixACOMPRAR: ${sm ? "sí" : "no"}${esc ? `\n- mixAlEscalon: sí — con ${esc.movimiento}${esc.descuentoPct === null ? "" : ` y un ${pctCL(esc.descuentoPct)}% de descuento`} pasa a ${dv.veredictoObjetivo}, no a Comprar` : ""}`
+        : "";
+      // Sin menú medido la equilibrada ocupa ese lugar — el acta está en `ai-generation.ts`.
+      const lineaRec = rec && movRec
+        ? `\n- recomendado (${RECOMENDADA}): ${movRec}\n  · costoDiaUno: ${fmtUF(rec.costoDiaUnoUF)} de tu bolsillo el día uno\n  · descuentoQueAdemásPide: ${desc(rec.descuentoPct)}`
+        : sm
+          ? `\n- recomendado (${RECOMENDADA}): ${sm.movimiento}\n  · costoDiaUno: ${fmtUF(sm.costoDiaUnoUF)} de tu bolsillo el día uno\n  · descuentoQueAdemásPide: ${desc(sm.descuentoPct)}`
+          : "";
+      const otros = c.otros
+        .map((r) => ({ r, mov: movimientoDeRespuesta(r) }))
+        .filter((x): x is { r: typeof x.r; mov: string } => x.mov !== null)
+        .map((x) => `\n- otro: ${x.mov}\n  · costoDiaUno: ${fmtUF(x.r.costoDiaUnoUF)} de tu bolsillo el día uno\n  · descuentoQueAdemásPide: ${desc(x.r.descuentoPct)}`)
+        .join("");
+      const bloqueSalida = `SALIDA COMBINADA (ya calculada)
+- caminosQueAbren: ${c.total}${lineaMix}${lineaRec}${otros}`;
+      return `${bloqueSalida}
 
-${bloqueSalida}
+ANTES DE CERRAR LA PUERTA, CUENTA LOS CAMINOS. El bloque SALIDA COMBINADA te da el número: \`caminosQueAbren\`. Suma lo que abre por separado y lo que abre combinando, y no es opinable: no lo recalcules ni lo deduzcas del veredicto. Cerrar la puerta es una afirmación sobre TODOS los caminos a la vez, no sobre el que elegiste contar. Los que abren POR SEPARADO están en el bloque de cambios de arriba, con su cifra; los que abren COMBINANDO están acá abajo.
 
-NINGÚN CAMBIO POR SEPARADO ALCANZA. Antes de cerrar la puerta, mira \`hayMixACOMPRAR\`: el bloque SALIDA COMBINADA te lo dice y no es opinable.
+· \`caminosQueAbren\` ≥ 1 → no se cierra. Cuenta uno —el que el bloque marca como \`recomendado\`, salvo que el caso pida otro— con sus palabras: qué hay que mover y cuánto cuesta el día uno. Si el bloque trae alguna línea \`otro\`, dilo en la misma oración («también cambia moviendo…»). Lo que no puedes es presentar el que elegiste como si fuera el único.
 
-· \`hayMixACOMPRAR: sí\` → HAY salida, y es la combinación que el bloque describe. PROHIBIDO escribir que no hay forma, que ningún ajuste alcanza, que el problema es de fondo, que no se arregla o que está fuera de rango: el informe muestra esa combinación al lado de tu texto y el lector vería dos respuestas opuestas en la misma página. Nómbrala con las palabras del bloque — QUÉ hay que mover (\`movimiento\`) y CUÁNTO cuesta el día uno (\`costoDiaUno\`). Y lee \`descuentoQueAdemásPide\` antes de calificarla:
+  ⛔ Y CERRAR LA PUERTA NO ES SOLO DECIR «no hay forma». También la cierras cuando conviertes un número en la frontera del caso. Estas tres son cierres, aunque suenen a precisión:
+    · «UF 1.839 es tu techo real: sobre ese precio el análisis no cierra»
+    · «conviene solo si consigues UF 4.786»
+    · «si no llegas a UF 4.455, aportas $126.641 al mes sin tope»
+  Las tres son falsas con \`caminosQueAbren\` ≥ 1, y el informe muestra el otro camino al lado de tu texto.
+
+  La forma correcta dice el MISMO número sin volverlo frontera, y es igual de concreta: «A UF 4.455 el veredicto cambia. También cambia sin tocar el precio, moviendo el pie a 30% y el plazo a 30 años: son UF 261 tuyas el día uno.»
+
+  Con \`hayMixACOMPRAR: sí\`, además, lee \`descuentoQueAdemásPide\` antes de calificar esa combinación:
   · \`ninguno\` → la salida no pasa por el vendedor: no es un descuento que pedir, es plata propia que poner.
   · un porcentaje → además hay que pedir ESE descuento. Primero lo que se mueve, después el descuento con su cifra. NO lo llames «chico» ni digas que la salida no pasa por el vendedor: sí pasa. Lo que SÍ puedes decir, porque es verdad y es el punto, es que ese descuento es MENOR que el que haría falta bajando solo el precio.
 
-· \`hayMixACOMPRAR: no\` y \`mixAlEscalon: sí\` → no digas que no hay forma: con ese movimiento deja de ser un no, pero no llega a Comprar. Dilo con las dos mitades y sin prometer Comprar.
+· \`mixAlEscalon: sí\` → no digas que no hay forma: con ese movimiento deja de ser un no, pero no llega a Comprar. Dilo con las dos mitades y sin prometer Comprar.
 
-· \`hayMixACOMPRAR: no\` y nada más → recién ahí se cierra la puerta, y se cierra entera: PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues", subir la tarifa o cambiar la gestión como salida: ${dv.casoPrecioJusto ? "esta zona no sostiene renta corta a los precios de compra actuales — lo que no cierra es la zona, no el departamento (ver CASO PRECIO-JUSTO STR)" : "lo que no cierra es el negocio, no los supuestos"}. La honestidad acá es cerrar la puerta, no dejarla entornada. El cierre entra por la alternativa (§1.2 capa 4), no por un ajuste que no existe. NO menciones distancia al veredicto en \`conviene.respuestaDirecta\`: no hay una que prometer.`;
+· \`caminosQueAbren: 0\` → recién ahí se cierra la puerta, y se cierra entera: PROHIBIDO ofrecer negociación, descuento, "si logras", "si consigues", subir la tarifa o cambiar la gestión como salida: ${dv.casoPrecioJusto ? "esta zona no sostiene renta corta a los precios de compra actuales — lo que no cierra es la zona, no el departamento (ver CASO PRECIO-JUSTO STR)" : "lo que no cierra es el negocio, no los supuestos"}. La honestidad acá es cerrar la puerta, no dejarla entornada. El cierre entra por la alternativa (§1.2 capa 4), no por un ajuste que no existe. NO menciones distancia al veredicto en \`conviene.respuestaDirecta\`: no hay una que prometer.`;
+    })();
+
+    if (dv.esEstructural) {
+      return `${cab}
+
+${salidaStr}`;
     }
 
     // La tarifa es la única vía que pide superar al mercado. Si el modelo la presenta como
@@ -763,7 +808,7 @@ NINGÚN CAMBIO POR SEPARADO ALCANZA. Antes de cerrar la puerta, mira \`hayMixACO
     // explícita y no queda a criterio del tono.
     const esAdr = dv.palancaMasBarata?.palanca === "adr";
     const avisoAdr = esAdr
-      ? `\n\nEL CAMBIO MÁS BARATO ES LA TARIFA, y la tarifa NO es un supuesto del usuario: sale de lo que se cobra realmente en su zona. Decilo como lo que es — una APUESTA a rendir sobre la mediana de la zona, sostenida con trabajo de gestión (fotos, calendario, respuesta) — nunca como "ajusta este supuesto" ni como un número que estaba mal.`
+      ? `\n\nEL CAMBIO MÁS BARATO ES LA TARIFA, y la tarifa NO es un supuesto del usuario: sale de lo que se cobra realmente en su zona. Dilo como lo que es — una APUESTA a rendir sobre la mediana de la zona, sostenida con trabajo de gestión (fotos, calendario, respuesta) — nunca como "ajusta este supuesto" ni como un número que estaba mal.`
       : "";
 
     const avisoPuroGate = dv.esPuroGate
@@ -818,7 +863,9 @@ OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra
 
 TAMBIÉN en \`conviene.respuestaDirecta\`: cierra con UNA mención breve de esa distancia, con la cifra tipada, SIN desarrollar los cambios — el detalle vive en cajaAccionable y en su drawer.
 
-REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase de arriba. NUNCA los recalcules, NUNCA propongas un cambio que no esté ahí, NUNCA inventes un valor intermedio. La OCUPACIÓN no es algo que muevas en este análisis (no la fija el propietario y en el cálculo mueve lo mismo que la tarifa); la TASA tampoco (es condición del banco).${avisoPuroGate}${avisoAdr}${avisoPie}${avisoDobleFiloPie}${avisoBandaPrecio}${casoNegociador}${avisoJerarquia}`;
+REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en la frase de arriba. NUNCA los recalcules, NUNCA propongas un cambio que no esté ahí, NUNCA inventes un valor intermedio. La OCUPACIÓN no es algo que muevas en este análisis (no la fija el propietario y en el cálculo mueve lo mismo que la tarifa); la TASA tampoco (es condición del banco).${avisoPuroGate}${avisoAdr}${avisoPie}${avisoDobleFiloPie}${avisoBandaPrecio}${casoNegociador}${avisoJerarquia}
+
+${salidaStr}`;
   })();
 
   // PLUSVALÍA — la card (builder, con el puente histórica↔proyección) entra al prompt.
