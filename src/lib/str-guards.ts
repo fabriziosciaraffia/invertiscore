@@ -395,6 +395,19 @@ export function ofertasNegociacion(texto: string): string[] {
 export function frasesCanonicasStr(r: { hallazgos?: Hallazgo[] }): string[][] {
   return frasesCanonicasDe(r.hallazgos ?? []);
 }
+// ─── copia-str-catch-test.ts — RETIRADO CON ACTA (17-sep-2026) ──────────────
+//
+// Armaba un `AIAnalysisSTRv2` con la copia en `riesgos.contenido` y exigía que el guard la
+// cazara ahí. Ese path salió del schema de salida STR en v17 —la prosa se podó a dos
+// bloques— así que el fixture describía una forma que el modelo ya no puede producir: el
+// test no medía el guard, medía un JSON imposible.
+//
+// Lo que el tier existía para probar —que la regla de copia corre sobre CUALQUIER campo y
+// no solo sobre el lead— sigue vivo y sigue siendo cierto: `violacionesPorCampo` recorre
+// `PROSA_PATHS_STR`, que es la lista viva. Un fixture que apunta a un campo muerto no
+// prueba esa generalidad: prueba que el walker no encuentra lo que no existe.
+//
+// Estuvo en rojo desde v17 sin que nadie lo supiera, porque no estaba cableado al runner.
 /** La oración del texto que copia una fraseCanonica (≥ 60% de la frase, mínimo 8 palabras), o null. */
 export function copiaFraseCanonica(texto: string, frases: string[][]): string | null {
   return oracionQueCopia(texto, frases);

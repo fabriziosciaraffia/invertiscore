@@ -23,7 +23,24 @@ Diseño aprobado: `of-golden-design.md` (raíz, untracked).
 | `runner.ts` | CLI orquestador | — |
 | `accept.ts` | re-baseline (regenera baseline.json) | 0 |
 | `str-v16-dump/` | corpus: las 12 salidas STR de la tanda FULL parcial del prompt v16 (6 seeds × 2), prosa persistida. Alimenta catch-tests de 0 tokens; no son cifras congeladas. | — |
-| `guards-v16-dump-catch-test.ts` | [STR-ENGINEISM] + [HERO-CLAIM] sobre el corpus v16: caza toda oración con la familia y no dispara fuera de ella | 0 |
+| ~~`guards-v16-dump-catch-test.ts`~~ | **RETIRADO 17-sep-2026** — ver el acta bajo la tabla | — |
+
+### `guards-v16-dump-catch-test.ts` — retirado con acta (17-sep-2026)
+
+Medía [STR-ENGINEISM] y [HERO-CLAIM] sobre el corpus congelado de la tanda v16. Quedó rojo
+por **dos decisiones deliberadas distintas**, ninguna suya:
+
+- la seed **GE-3 se retiró** de `STR_GE_SEEDS`, así que sus dos casos («GE-3: sin recompute»)
+  piden una fila que el corpus ya no tiene;
+- el **umbral de hero-claim cambió**, y el corpus v16 —congelado— trae 11 oraciones de la
+  familia donde el test exige ≥ 20.
+
+O sea que el test no vigilaba los guards: vigilaba una foto de los guards contra una foto
+del corpus, y las dos se movieron por separado. Los dos guards siguen vivos y medidos sobre
+prosa fresca en el tier STR de la FULL, que es donde corresponde.
+
+Estuvo en rojo semanas sin que nadie lo supiera: no estaba cableado al runner. Es el mismo
+caso que `zona-catch-test.ts` — ver la regla en `CLAUDE.md` § Testing.
 
 ## Uso
 

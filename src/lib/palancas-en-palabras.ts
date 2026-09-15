@@ -18,6 +18,19 @@ export function totalEnPalabras(total: number): string {
   return TOTAL_EN_PALABRAS[total] ?? String(total);
 }
 
+// ─── palancas-en-palabras-catch-test.ts — RETIRADO CON ACTA (17-sep-2026) ────
+//
+// Fijaba las ocho salidas de `lineaFooterVias` con su redacción de entonces. El commit
+// `21562e0d` (10-sep-2026, «las cinco superficies dejan de decir que no hay salida cuando
+// la hay») le agregó a la función la combinación del mix, así que «Ninguno mueve el
+// veredicto» pasó a ganar «; juntos, sí» — y las ocho expectativas quedaron desfasadas.
+//
+// Estuvo en rojo desde entonces sin que nadie lo viera: no estaba cableado al runner.
+//
+// NO SE REESCRIBE ACÁ, y no es abandono: lo que ese test fijaba —que el footer diga
+// «juntos, sí» cuando hay combinación— lo cubre hoy `salida-str-copy-catch-test.ts`, que
+// sí corre en el golden y lo mide sobre la función viva en vez de sobre ocho literales.
+// Un guard duplicado que además está desfasado no protege: entrega dos respuestas.
 /** Línea del footer del hero: "Franco probó cuatro ajustes. Dos mueven el veredicto."
  *  Sin vías (filas viejas) queda la línea genérica. */
 export function lineaFooterVias(nCruzan: number | null, total: number, haySalidaCombinando = false, escalon: string | null = null): string {

@@ -232,6 +232,20 @@ export function resolverMedianaZona(p: {
     }
     return { precioM2: null, universo: undefined };
   }
+  // ─── zona-catch-test.ts — RETIRADO CON ACTA (17-sep-2026) ──────────────────
+  //
+  // Ese catch-test fijaba la regla CONTRARIA a la de abajo: «motor no-confiable ⇒ la zona
+  // NO publica mediana», escrita el 20-ago (`f0ded258`). El 03-sep `b822cf1b` la derogó a
+  // propósito —es el `void pvcMotor` de doce líneas más abajo— y nadie actualizó el test.
+  //
+  // Quedó CATORCE DÍAS EN ROJO sin que nadie lo supiera, porque no estaba cableado al
+  // runner. Ese es el costo que el goal de los gates vino a medir: un guard fuera del gate
+  // no solo deja de cazar — su rojo deja de ser legible, y encontrarlo no dice si el
+  // producto se rompió o si la regla se derogó. Averiguarlo costó una sesión.
+  //
+  // No se reescribe: la regla que fijaba ya no existe. Lo que sí queda vivo es el resto de
+  // sus casos —el snapshot manda cuando existe, mediana null ⇒ no compara, sin universo no
+  // se rotula—, que son la lógica de las once líneas de arriba y siguen cubiertos ahí.
   // Tramo A (03-sep-2026): sin snapshot, la zona consulta VIVA igual que el hallazgo
   // de sobreprecio de la prosa. Antes acataba `precioVsComuna.confiable === false`
   // del motor, que se decidió al CREAR: 7710a017 (abril, n=0 entonces) quedó con la
