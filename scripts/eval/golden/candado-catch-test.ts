@@ -46,27 +46,58 @@ function grepFueraDelHelper(): string[] {
   return hits;
 }
 
-// ── stub de PostgREST: una fila, check-and-set ────────────────────────────────
-interface Fila { generating_since: string | null; generating_kind: string | null }
-function stubDb(fila: Fila): CandadoDb & { fila: Fila; updates: number } {
-  const estado = { fila, updates: 0 };
+// ── stub de PostgREST: una TABLA, check-and-set por fila ──────────────────────
+//
+// ⛔ EL STUB VIEJO MODELABA LA INTENCIÓN, NO LA CONSULTA (17-sep-2026). Tenía DOS cegueras
+// y las dos dejaban pasar un cambio que rompe producción entera:
+//
+//  1 · `or(expr)` extraía solo el valor del `lt` y después empujaba un filtro con la
+//      semántica deseada ESCRITA A MANO: `since === null || since < vence`. La rama
+//      `generating_since.is.null` del código nunca se verificaba. Borrarla de producción
+//      dejaba el tier VERDE — y en PostgREST `lt` sobre NULL da NULL, no true, así que
+//      ninguna fila nueva podría tomar el candado nunca: cero informes generados.
+//
+//  2 · `eq(col, v)` descartaba el filtro de `id` sin registrarlo, y la tabla tenía UNA
+//      fila. Borrar `.eq("id", analysisId)` dejaba los cuatro casos VERDES, y en
+//      producción el UPDATE estampa `generating_since` sobre TODAS las filas que cumplan
+//      el `or`: ninguna otra fila del parque vuelve a generar prosa.
+//
+// Ahora el stub INTERPRETA la consulta: parsea el `or` término a término y filtra por
+// cualquier columna, `id` incluida, sobre una tabla de varias filas. No sabe qué querría
+// el código: aplica lo que el código pide.
+interface Fila { id: string; generating_since: string | null; generating_kind: string | null }
+
+/** Un término PostgREST: `columna.op.valor`. Soporta los dos que el helper usa. */
+function predicadoDeTermino(t: string): (f: Fila) => boolean {
+  const [col, op, ...resto] = t.split(".");
+  const valor = resto.join(".");
+  const leer = (f: Fila) => (f as unknown as Record<string, unknown>)[col];
+  if (op === "is" && valor === "null") return (f) => leer(f) === null;
+  // En PostgREST una comparación contra NULL da NULL, no true: la fila NO entra.
+  if (op === "lt") return (f) => { const v = leer(f); return typeof v === "string" && v < valor; };
+  throw new Error(`stub: operador PostgREST no modelado en «${t}»`);
+}
+
+function stubDb(filas: Fila[] | Fila): CandadoDb & { filas: Fila[]; fila: Fila; updates: number } {
+  const tabla = Array.isArray(filas) ? filas : [filas];
+  const estado = { filas: tabla, fila: tabla[0], updates: 0 };
   const builder = (payload: Partial<Fila>) => {
     const filtros: Array<(f: Fila) => boolean> = [];
     const aplicar = () => {
       estado.updates += 1;
-      if (!filtros.every((p) => p(estado.fila))) return { data: [], error: null };
-      Object.assign(estado.fila, payload);
-      return { data: [{ id: "x" }], error: null };
+      const tocadas = estado.filas.filter((f) => filtros.every((p) => p(f)));
+      for (const f of tocadas) Object.assign(f, payload);
+      return { data: tocadas.map((f) => ({ id: f.id })), error: null };
     };
     const b = {
       eq(col: string, v: unknown) {
-        if (col === "id") return b;
         filtros.push((f) => (f as unknown as Record<string, unknown>)[col] === v);
         return b;
       },
       or(expr: string) {
-        const vence = expr.match(/generating_since\.lt\.([^,]+)/)?.[1] ?? "";
-        filtros.push((f) => f.generating_since === null || f.generating_since < vence);
+        const terminos = expr.split(",").map((t) => t.trim()).filter(Boolean).map(predicadoDeTermino);
+        if (!terminos.length) throw new Error("stub: `or` vacío");
+        filtros.push((f) => terminos.some((p) => p(f)));
         return b;
       },
       select() { return Promise.resolve(aplicar()); },
@@ -89,7 +120,7 @@ const CASOS: Caso[] = [
   {
     nombre: "(b) dos tomas concurrentes sobre la misma fila → una gana, una recibe null",
     check: async () => {
-      const db = stubDb({ generating_since: null, generating_kind: null });
+      const db = stubDb({ id: "x", generating_since: null, generating_kind: null });
       const ahora = new Date();
       const [a, b] = await Promise.all([tomarCandado("x", "ltr", db, ahora), tomarCandado("x", "str", db, ahora)]);
       const ganadores = [a, b].filter((t) => t && !t.sinCandado).length;
@@ -99,22 +130,50 @@ const CASOS: Caso[] = [
     },
   },
   {
-    nombre: "(c) candado vencido (>10 min) → la toma gana; candado vivo (9 min) → no",
+    nombre: "(c) el TTL son 10 minutos: a los 11 la toma gana, a los 9 no",
     check: async () => {
+      // ⛔ LOS MINUTOS VAN LITERALES, Y ESO ES LA MITAD DEL INVARIANTE (17-sep-2026). Antes
+      // los dos fixtures se calculaban DESDE la constante (`CANDADO_TTL_MIN ± 1`), así que
+      // el test probaba que el helper es coherente CONSIGO MISMO y no que el TTL sea 10:
+      // poner la constante en 1 lo dejaba VERDE, y en producción un proceso vivo
+      // (maxDuration 300 s) pierde el candado al minuto y arranca una segunda generación
+      // encima — la doble prosa pagada que el goal #3 vino a matar.
+      if (CANDADO_TTL_MIN !== 10) return `CANDADO_TTL_MIN es ${CANDADO_TTL_MIN} y el TTL acordado son 10 minutos`;
       const ahora = new Date();
-      const vencido = stubDb({ generating_since: new Date(ahora.getTime() - min(CANDADO_TTL_MIN + 1)).toISOString(), generating_kind: "ltr" });
+      const vencido = stubDb({ id: "x", generating_since: new Date(ahora.getTime() - min(11)).toISOString(), generating_kind: "ltr" });
       const t1 = await tomarCandado("x", "ltr", vencido, ahora);
-      if (!t1 || t1.sinCandado) return "vencido: no ganó";
-      const vivo = stubDb({ generating_since: new Date(ahora.getTime() - min(CANDADO_TTL_MIN - 1)).toISOString(), generating_kind: "ltr" });
+      if (!t1 || t1.sinCandado) return "a los 11 min no ganó";
+      const vivo = stubDb({ id: "x", generating_since: new Date(ahora.getTime() - min(9)).toISOString(), generating_kind: "ltr" });
       const t2 = await tomarCandado("x", "ltr", vivo, ahora);
-      if (t2) return "vivo: ganó y no debía";
+      if (t2) return "a los 9 min ganó y no debía";
+      return null;
+    },
+  },
+  {
+    nombre: "(d) el UPDATE es POR FILA: tomar en una no toca a las demás",
+    check: async () => {
+      // La cabecera del stub declara «check-and-set atómico POR FILA» y esa mitad no se
+      // medía: el stub tenía UNA fila y descartaba el filtro de `id` sin registrarlo, así
+      // que borrar `.eq("id", analysisId)` dejaba los cuatro casos verdes. En producción",
+      // ese UPDATE estampa `generating_since` sobre TODAS las filas que cumplan el `or`.
+      const db = stubDb([
+        { id: "x", generating_since: null, generating_kind: null },
+        { id: "y", generating_since: null, generating_kind: null },
+      ]);
+      const t = await tomarCandado("x", "ltr", db, new Date());
+      if (!t || t.sinCandado) return "no tomó";
+      const y = db.filas.find((f) => f.id === "y")!;
+      if (y.generating_since !== null) return `tomar en «x» estampó también a «y» (${y.generating_since})`;
+      await soltarCandado(t, db);
+      const x = db.filas.find((f) => f.id === "x")!;
+      if (x.generating_since !== null) return "no soltó la propia";
       return null;
     },
   },
   {
     nombre: "soltarCandado solo suelta con la marca propia; conCandado suelta en finally aunque fn lance",
     check: async () => {
-      const db = stubDb({ generating_since: null, generating_kind: null });
+      const db = stubDb({ id: "x", generating_since: null, generating_kind: null });
       const t = await tomarCandado("x", "ltr", db);
       if (!t) return "no tomó";
       await soltarCandado({ ...t, since: "1999-01-01T00:00:00.000Z" }, db);

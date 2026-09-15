@@ -149,17 +149,32 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
 
 // ── 6 · las puertas no se tocan y la página pinta el score recomputado ─────
 {
+  // ⛔ LOS UMBRALES VAN ANCLADOS POR LA DERECHA (17-sep-2026). Sin ancla, un umbral es
+  // PREFIJO de cualquier otro que empiece igual —"0.02" ⊂ "0.025", "-30" ⊂ "-30.5",
+  // "1.30" ⊂ "1.305"— así que recalibrar una puerta dejaba el tier VERDE. Y además
+  // admitía AGREGAR condiciones: `coc < -30 && score < 60,` seguía conteniendo el literal.
+  // La coma final (o el `&&`) cierra las dos direcciones: fija el umbral Y el fin de la
+  // expresión. Verificado por mutación en los cinco brazos con decimal y en los tres gates.
   const A = leer("src/lib/analysis.ts");
-  if (!/cocSevero: coc !== null && coc < -30/.test(A)) F("6 · G1 cocSevero dejó de ser CoC < −30");
+  if (!/cocSevero: coc !== null && coc < -30,/.test(A)) F("6 · G1 cocSevero dejó de ser CoC < −30");
   if (!/\(cocGate2 < -10 \|\| \(flujoMuyNegativoRatio < -0\.05 && cocGate2 < 0\)\)/.test(A)) F("6 · G2 LTR cambió sus umbrales (CoC < −10 / flujo < −5 % con CoC < 0)");
-  if (!/metrics\.flujoNetoMensual >= 0 &&\s*metrics\.rentabilidadNeta >= 4/.test(A)) F("6 · G3 LTR cambió (flujo ≥ 0 y neta ≥ 4)");
+  if (!/metrics\.flujoNetoMensual >= 0 &&\s*metrics\.rentabilidadNeta >= 4(?![\d.])/.test(A)) F("6 · G3 LTR cambió (flujo ≥ 0 y neta ≥ 4)");
   if (!/score >= 70 \? "COMPRAR" : score >= 45 \? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"/.test(A)) F("6 · las bandas LTR dejaron de ser 70/45");
   const S = leer("src/lib/engines/short-term-score.ts");
   for (const brazo of ["g1_cocSevero: p.coc !== null && p.coc < -0.30", "g1_beInviable: p.beRatio > 1.30", "g1_flujoSevero: p.flujoCajaMensual < -250000 && p.sobreRentaPct < 0.10", "g1_capRateMinimo: p.capRate < 0.02", "g2_ltrGana: p.sobreRentaPct < 0", "g2_cocFuerte: p.coc !== null && p.coc < -0.10", "g2_flujoSinHorizonte: p.flujoCajaMensual < 0 && !p.horizonteCierraFavorable", "g2_beApretado: p.beRatio > 1.10"]) {
-    if (!S.includes(brazo)) F(`6 · el brazo STR «${brazo.split(":")[0]}» cambió su umbral`);
+    // Con la coma: `p.capRate < 0.02,` no está en `p.capRate < 0.025,` ni en `p.capRate < 0.02 && x,`.
+    if (!S.includes(`${brazo},`)) F(`6 · el brazo STR «${brazo.split(":")[0]}» cambió su umbral`);
   }
   if (!/const HORIZONTE_TIR_MINIMO = 10;/.test(S) || !/const HORIZONTE_MULT_MINIMO = 2\.65;/.test(S)) F("6 · el horizonte STR (TIR 10 / multiplicador 2,65) cambió");
+  // Y ACÁ SE AFIRMA, NO SOLO SE PROHÍBE. El predicado era `if (/score=\{analisis\.score\}/)`,
+  // puramente negativo: invertir el `??` a `analisis.score ?? results?.score` lo evadía y la
+  // página volvía a pintar la columna persistida. También lo evadían `score={s}` con una
+  // const intermedia, o `score={analisis.score ?? 0}`. Ahora se exige la forma que manda —el
+  // recomputado primero— y se cuentan los DOS sitios, porque arreglar uno y no el otro
+  // dejaba media página mintiendo.
   const P = leer("src/app/analisis/[id]/page.tsx");
+  const recomputado = (P.match(/score=\{results\?\.score \?\? analisis\.score\}/g) ?? []).length;
+  if (recomputado < 2) F(`6 · la página LTR pasa el score recomputado en ${recomputado} de los 2 sitios: el recompute tiene que ir primero en el \`??\``);
   if (/score=\{analisis\.score\}/.test(P)) F("6 · la página LTR sigue pasando la columna `analisis.score` persistida: con el score nuevo mostraría el número viejo junto a un veredicto recomputado");
 }
 
@@ -169,14 +184,26 @@ const cerca = (a: number, b: number, tol = 0.51) => Math.abs(a - b) <= tol;
 // (LTR) o el `peso` que viaja en cada `DimensionScore` (STR), y pintan también el retorno
 // sobre lo puesto y la TIR. Y el documento LTR pasa el score recomputado, no la columna.
 {
+  // ⛔ LA PROHIBICIÓN SOLA NO ALCANZABA (17-sep-2026). `/peso \d+%/` prohíbe UNA grafía y
+  // nunca afirma que el JSX lea el módulo: la evaden `peso {20}%`, `peso&nbsp;20%`,
+  // `peso 20 %` y `Peso 20%` (el regex es case-sensitive). Y `/PESOS_SCORE_LTR/` sobre el
+  // archivo entero es PRESENCIA: lo satisface la línea de import, o un comentario.
+  // Peor, la mutación que de verdad importa las evade a las dos: `const W = {
+  // ...PESOS_SCORE_LTR, cashOnCash: 25 }` deja el PDF pintando pesos que no son los del
+  // score, con el import intacto y sin ningún número en el JSX. Por eso acá va la grafía
+  // exacta de la asignación: es lo único que ata el W del JSX al módulo.
   const L = leer("src/app/analisis/[id]/documento/DocumentoLTR.tsx");
-  if (/peso \d+%/.test(L)) F("7 · DocumentoLTR.tsx sigue con un peso hardcodeado en el JSX («peso NN%»): los pesos viven en score-retorno.ts");
-  if (!/PESOS_SCORE_LTR/.test(L)) F("7 · DocumentoLTR.tsx no lee PESOS_SCORE_LTR");
+  if (/[Pp]eso(&nbsp;|\s)*\d+(&nbsp;|\s)*%/.test(L)) F("7 · DocumentoLTR.tsx sigue con un peso hardcodeado en el JSX («peso NN%»): los pesos viven en score-retorno.ts");
+  if (!/const W = PESOS_SCORE_LTR;/.test(L)) F("7 · DocumentoLTR.tsx no toma los pesos TAL CUAL de PESOS_SCORE_LTR: con un spread que sobreescriba una clave, el PDF pinta pesos que no son los del score");
+  if (!/peso \{W\./.test(L)) F("7 · DocumentoLTR.tsx no interpola los pesos del módulo en el JSX («peso {W.…}%»)");
   for (const k of ["cashOnCash", "tir"]) if (!L.includes(`d.${k}`)) F(`7 · DocumentoLTR.tsx no pinta la dimensión «${k}» del desglose`);
   const S2 = leer("src/app/analisis/renta-corta/[id]/documento/DocumentoSTR.tsx");
   for (const k of ["cashOnCash", "tir"]) if (!S2.includes(`d.${k}`)) F(`7 · DocumentoSTR.tsx no pinta la dimensión «${k}» del desglose`);
-  if (/peso \d+%/.test(S2)) F("7 · DocumentoSTR.tsx tiene un peso hardcodeado");
+  if (/[Pp]eso(&nbsp;|\s)*\d+(&nbsp;|\s)*%/.test(S2)) F("7 · DocumentoSTR.tsx tiene un peso hardcodeado");
+  // En STR el peso viaja en cada `DimensionScore`, así que la afirmación es que el JSX lo lea de ahí.
+  if (!/peso \{d\.\w+\.peso\}/.test(S2)) F("7 · DocumentoSTR.tsx no interpola el `peso` que viaja en cada dimensión del motor");
   const PL = leer("src/app/analisis/[id]/documento/page.tsx");
+  if (!/score=\{results\?\.score \?\? analisis\.score\}/.test(PL)) F("7 · el documento LTR no pasa el score recomputado primero en el `??`");
   if (/score=\{analisis\.score\}/.test(PL)) F("7 · el documento LTR sigue pasando la columna `analisis.score` persistida en vez del score recomputado");
 }
 
