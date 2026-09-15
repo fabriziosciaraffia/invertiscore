@@ -22,6 +22,7 @@
 // este archivo se retira. Hasta entonces, corren.
 // ============================================================================
 import { spawn } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -71,6 +72,64 @@ const STANDALONE = [
   "voseo",
 ];
 
+/**
+ * ⛔ LOS QUE NO CORREN, CON SU RAZÓN — Y ESTA LISTA ES MECÁNICA, NO PROSA (17-sep-2026).
+ *
+ * POR QUÉ EXISTE. `jerarquia-catch-test.ts` estuvo afuera meses porque la razón escrita era
+ * «está rojo». Dejó de estarlo el 17-sep —el writer que lo rompía se retiró con acta— y se
+ * habría quedado afuera igual, porque **nadie relee una lista de exclusiones**. Es el mismo
+ * modo de podrirse que este tier existe para evitar, entrando por la lista en vez de por el
+ * runner: un guard que no corre deja de cazar, y su estado deja de ser legible.
+ *
+ * La prosa del acta de arriba explica; esta lista DECIDE. Un catch-test que no está cableado
+ * ni acá enciende el gate, así que agregar uno nuevo obliga a elegir: o corre, o se declara
+ * por qué no. Y retirar un archivo obliga a sacarlo de acá, o también enciende.
+ */
+const EXCLUIDOS: Record<string, string> = {
+  // Los que recomputan el parque. Suman ~25 s: sextuplicarían el golden, y un golden lento
+  // no lo corre nadie — que es volver al mismo lugar por otra puerta.
+  "decisividad-str": "recomputa el parque (~3,9 s)",
+  "precios-nombre": "recomputa el parque (~3,6 s)",
+  "ocupacion-vs-estimacion": "recomputa el parque (~3,5 s)",
+  "frase-estructural-str": "recomputa el parque (~3,3 s)",
+  "simulacion": "recomputa el parque (~3,0 s)",
+  "str-congelado": "recomputa el parque (~2,7 s)",
+  "valor-mercado": "recomputa el parque (~2,5 s)",
+  "vias": "recomputa el parque (~2,3 s)",
+  "guards-contables": "recomputa el parque (~1,6 s)",
+  "gate-sobreprecio": "recomputa el parque (~0,9 s)",
+  "mes-cierra-str": "recomputa el parque (~0,7 s)",
+};
+
+/**
+ * ¿HAY ALGÚN CATCH-TEST QUE NO CORRE EN NINGÚN LADO?
+ *
+ * Tres formas de estar cableado y son todas: en `STANDALONE` (corre acá), importado por el
+ * runner (corre como tier propio), o declarado en `EXCLUIDOS` con su razón. Cualquier otra
+ * cosa es un archivo que solo corre si alguien lo tipea, que es de donde salió todo esto.
+ */
+function auditarCableado(): string[] {
+  const dir = join(RAIZ, "scripts", "eval", "golden");
+  const SUF = "-catch-test.ts";
+  const enDisco = readdirSync(dir).filter((f) => f.endsWith(SUF)).map((f) => f.slice(0, -SUF.length));
+  const runner = readFileSync(join(dir, "runner.ts"), "utf8");
+  const importados = new Set(
+    [...runner.matchAll(/from "\.\/([a-z0-9-]+)-catch-test"/g)].map((m) => m[1]),
+  );
+  const fallas: string[] = [];
+  for (const n of enDisco) {
+    if (STANDALONE.includes(n) || importados.has(n) || n in EXCLUIDOS) continue;
+    fallas.push(`\`${n}-catch-test.ts\` no corre en ningún lado: ni en STANDALONE, ni importado por el runner, ni declarado en EXCLUIDOS con su razón`);
+  }
+  // Y AL REVÉS: una exclusión que nombra un archivo que ya no existe es la misma podredumbre
+  // mirada desde el otro lado — la lista deja de describir la carpeta y nadie se entera.
+  for (const n of Object.keys(EXCLUIDOS)) {
+    if (!enDisco.includes(n)) fallas.push(`EXCLUIDOS nombra \`${n}\`, que ya no está en la carpeta: la exclusión sobrevivió a su archivo`);
+    if (STANDALONE.includes(n)) fallas.push(`\`${n}\` está en STANDALONE y en EXCLUIDOS a la vez: una de las dos miente`);
+  }
+  return fallas;
+}
+
 function correr(nombre: string): Promise<{ nombre: string; ok: boolean; salida: string }> {
   return new Promise((res) => {
     const p = spawn(
@@ -88,11 +147,13 @@ function correr(nombre: string): Promise<{ nombre: string; ok: boolean; salida: 
 
 export async function runStandaloneTier(): Promise<{ hard: number }> {
   console.log("\n─── TIER STANDALONE (los catch-tests que corrían solo a mano · 0 tokens) ───");
+  const sinCablear = auditarCableado();
+  for (const f of sinCablear) console.log(`  ✗ ${f}`);
   // En paralelo: el costo es el más lento, no la suma.
   const rs = await Promise.all(STANDALONE.map(correr));
   const rotos = rs.filter((r) => !r.ok);
-  if (rotos.length === 0) {
-    console.log(`  ✓ VERDE — ${rs.length} catch-tests que hasta hoy solo corrían si alguien los tipeaba`);
+  if (rotos.length === 0 && sinCablear.length === 0) {
+    console.log(`  ✓ VERDE — ${rs.length} catch-tests corriendo, ${Object.keys(EXCLUIDOS).length} excluidos con su razón, 0 sueltos`);
     return { hard: 0 };
   }
   for (const r of rotos) {
@@ -102,7 +163,7 @@ export async function runStandaloneTier(): Promise<{ hard: number }> {
       console.log(`      ${l.trim().slice(0, 140)}`);
     }
   }
-  return { hard: rotos.length };
+  return { hard: rotos.length + sinCablear.length };
 }
 
 if (require.main === module) {
