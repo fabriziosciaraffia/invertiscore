@@ -405,7 +405,25 @@ export function HeroLTR({
         }
       prosa={dosBloques && negociacion ? renderPlumon(negociacion) : undefined}
       chip={dosBloques ? objetivoChip : undefined}
-      extraPopup={<DetalleAlternativaComunas alternativa={alternativa} currency={currency} valorUF={valorUF} />}
+      puertaExtra={
+        /* LA TABLA DE COMUNAS, POR SU PROPIA PUERTA (17-sep-2026). Hasta hoy viajaba como
+           `extraPopup` dentro del modal del pop-up de ajustes, así que cuando ese botón dejó
+           de dibujarse —237 filas, la decisión correcta— la tabla se fue con él: 35 filas
+           quedaron con la línea «En Puente Alto un departamento como este sí convendría» y
+           sin las cifras que la respaldan. Ver el acta de `PuertaExtra`.
+           EL CALLER DECIDE SI HAY CONTENIDO. `DetalleAlternativaComunas` se autoanula sin
+           comunas y el padre no se enteraba: habría dibujado un botón hacia un modal vacío.
+           EL RÓTULO es el eco de la línea que la cita, el mismo patrón de «Ver qué se probó»
+           contra «Las combinaciones que Franco probó». */
+        alternativa && alternativa.todas.length > 0
+          ? {
+              key: "alternativaComunas",
+              k: "Dónde sí convendría",
+              btn: "Ver dónde sí convendría",
+              cuerpo: <DetalleAlternativaComunas alternativa={alternativa} currency={currency} valorUF={valorUF} />,
+            }
+          : null
+      }
       titulo="La recomendación de Franco"
       estado={estadoRec}
       fechaFirma={fechaFirma}

@@ -33,11 +33,41 @@ export type FooterPosicion = {
   cuerpo: ReactNode;
 };
 
+/**
+ * UNA PUERTA PROPIA, y la historia de por qué (17-sep-2026).
+ *
+ * La tabla «Dónde sí convendría» —el mismo depto corrido en las otras comunas, con lo
+ * que cuesta y lo que renta en cada una— se montaba DENTRO del modal del footer, después
+ * del cuerpo del pop-up de ajustes, con un prop `extraPopup` que era un ReactNode suelto.
+ * Nunca fue una decisión: era el único modal que había a mano.
+ *
+ * El 17-sep el pop-up de ajustes dejó de dibujarse en 237 filas —correctamente, porque
+ * ahí no hay ningún ajuste que llegue a COMPRAR— y se llevó la tabla puesta. Medido: 35
+ * filas LTR quedaron con la línea «En Puente Alto un departamento como este sí
+ * convendría» en la card, que por contrato va SIN cifras porque las cifras vivían en la
+ * tabla, y sin ninguna superficie donde verlas. Apagar una apagó la otra.
+ *
+ * Son dos preguntas distintas —«qué se probó acá» y «dónde sí convendría»— y ahora cada
+ * una tiene su botón y su modal. Que hoy sean excluyentes (medido: 0 filas del parque
+ * encienden las dos) no las hace la misma puerta: las hacía la misma puerta el hecho de
+ * que solo hubiera una.
+ */
+export type PuertaExtra = {
+  /** Destino que se reporta en telemetría. */
+  key: string;
+  /** Título del modal. La pieza de adentro ya NO lo repite. */
+  k: string;
+  /** Texto del botón, sin la flecha. */
+  btn: string;
+  sub?: ReactNode;
+  cuerpo: ReactNode;
+};
+
 export function PosicionFranco({
   cajaAccionable,
   bloque,
   prosa,
-  extraPopup,
+  puertaExtra,
   footer,
   tipo,
   veredicto,
@@ -56,10 +86,10 @@ export function PosicionFranco({
   prosa?: ReactNode;
   /** Chip mono a la derecha del título (v21: el precio objetivo del plan). */
   chip?: ReactNode;
-  /** Se agrega al final del POP-UP, después del cuerpo del footer. Lo usa la
-   *  alternativa de comunas (§5): la línea de la card nombra dos comunas y el
-   *  detalle de por qué vive acá, que es donde el lector viene a ver qué se probó. */
-  extraPopup?: ReactNode;
+  /** LA SEGUNDA PUERTA, con su botón y su modal. La usa la alternativa de comunas (§5).
+   *  Ver el acta de `PuertaExtra`: hasta el 17-sep esto era un ReactNode que viajaba
+   *  dentro del modal del footer, y por eso apagar el pop-up apagaba la tabla. */
+  puertaExtra?: PuertaExtra | null;
   fechaFirma?: string;
   footer: FooterPosicion | null;
   tipo: TipoInforme;
@@ -74,27 +104,31 @@ export function PosicionFranco({
   estado?: EstadoRecomendacion;
 }) {
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [modalExtra, setModalExtra] = useState(false);
   // Evento propio de la posición de Franco: su apertura NO es un hallazgo (la
   // distancia al veredicto está excluida de la pirámide por diseño), así que
   // colgaba de `informe_drawer_abierto` sin par de hallazgo. Tiene su propia serie.
   const posthog = usePostHog();
   const posicionMedida = useRef(false);
-  const abrirPosicion = () => {
+  // EL DESTINO LO TRAE LA PUERTA QUE SE ABRIÓ. Con dos puertas, `footer?.key` ya no
+  // describe el evento. El disparo sigue siendo UNO POR MONTAJE, como dice el acta de
+  // arriba: si alguien abriera las dos, la serie cuenta la primera.
+  const abrirPosicion = (destino: string | undefined) => {
     if (posicionMedida.current) return;
     posicionMedida.current = true;
     try {
-      posthog?.capture("informe_posicion_abierta", { veredicto, tipo, destino: footer?.key });
+      posthog?.capture("informe_posicion_abierta", { veredicto, tipo, destino });
     } catch {
       /* la telemetría jamás rompe la lectura */
     }
     if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
       (window.__informeEvents ??= []).push({
         name: "informe_posicion_abierta",
-        props: { veredicto, tipo, destino: footer?.key },
+        props: { veredicto, tipo, destino },
       });
     }
   };
-  if (!cajaAccionable && !prosa && !bloque && !footer) return null;
+  if (!cajaAccionable && !prosa && !bloque && !footer && !puertaExtra) return null;
   return (
       <>
         {/* EL ANCHO ES EL DEL INFORME (contrato §2). El default «md:ml-9» cuelga la caja
@@ -132,7 +166,7 @@ export function PosicionFranco({
                 type="button"
                 className="rec-cta"
                 onClick={() => {
-                  abrirPosicion();
+                  abrirPosicion(footer.key);
                   setModalAbierto(true);
                 }}
               >
@@ -140,14 +174,32 @@ export function PosicionFranco({
                 {footer.btn}
               </button>
             )}
+            {/* EL SEGUNDO BOTÓN. Hoy no convive con el de arriba —son estados excluyentes
+                y está medido en 0 filas— pero no cuelga de eso: cuelga de que exista su
+                propia puerta, que es lo que evita que apagar una apague la otra. */}
+            {puertaExtra && (
+              <button
+                type="button"
+                className="rec-cta"
+                onClick={() => {
+                  abrirPosicion(puertaExtra.key);
+                  setModalExtra(true);
+                }}
+              >
+                <span className="rec-cta-ico" aria-hidden="true">▶</span>
+                {puertaExtra.btn}
+              </button>
+            )}
           </div>
         </div>
         {footer && (
           <Modal abierto={modalAbierto} onClose={() => setModalAbierto(false)} titulo={footer.k} sub={footer.sub}>
-            <div className="doc-tokens">
-              {footer.cuerpo}
-              {extraPopup}
-            </div>
+            <div className="doc-tokens">{footer.cuerpo}</div>
+          </Modal>
+        )}
+        {puertaExtra && (
+          <Modal abierto={modalExtra} onClose={() => setModalExtra(false)} titulo={puertaExtra.k} sub={puertaExtra.sub}>
+            <div className="doc-tokens">{puertaExtra.cuerpo}</div>
           </Modal>
         )}
       </>

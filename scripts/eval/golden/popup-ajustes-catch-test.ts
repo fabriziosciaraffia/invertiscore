@@ -72,6 +72,8 @@ const CSS = leer("src/components/analysis/shared/PopupAjustesTokens.tsx");
 const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
 // La card de §5: es el PRECEDENTE del invariante 17 y la regla espejo se mide contra ella.
 const CARD = leer("src/lib/lo-que-haria-yo.ts");
+// La caja que monta el pop-up Y la tabla de comunas: el invariante 21 vive acá.
+const POSICION = leer("src/components/analysis/shared/PosicionFranco.tsx");
 
 // ── 1 · existe y lee del motor ─────────────────────────────────────────────
 {
@@ -670,7 +672,7 @@ const CARD = leer("src/lib/lo-que-haria-yo.ts");
 // La línea `sinCelda` del menú se escribió para AJUSTAR, donde «el ajuste es solo de
 // precio» es verdad y el precio lo pone el vendedor. En COMPRAR miente dos veces: no hay
 // descuento que pedir —la bajada de la matriz acaba de decirlo— y al vendedor no se le
-// pide nada. Medido: 6 filas abren así, y en las 6 el bloque de abajo publica los siete
+// pide nada. Medido: 17 de 217 filas COMPRAR (7,8%) abren así, y en las 17 el bloque de abajo publica los siete
 // pares idénticos («$17.539.910 → $17.539.910», «Score 77 → 77») bajo el título «El
 // ajuste». Un bloque que se llama ajuste y no ajusta nada no tiene razón de existir.
 //
@@ -704,9 +706,18 @@ const CARD = leer("src/lib/lo-que-haria-yo.ts");
       F("18 · la línea sin celda de COMPRAR no dice qué es: hoy escribe «Sin pedir descuento · lo pone el vendedor» en una pantalla sin vendedor");
     }
     // 4 · y el destino tampoco «llega»: se mantiene, igual que el swatch.
-    const destino = POPUP.match(/function destinoDe\([^]*?\n\}/)?.[0] ?? "";
-    if (!destino) F("18 · no se encontró `destinoDe`");
-    else if (!/esComprar|sigue siendo/.test(destino)) {
+    // ⚠ TERCERA TRAMPA DE ESTE ARCHIVO, y la cazó la evaluación por mutación: el
+    //   predicado era `/esComprar|sigue siendo/` sobre la captura ENTERA, y la captura
+    //   arranca en la firma —`function destinoDe(r: RespuestaMix, esComprar: boolean)`—
+    //   que contiene `esComprar`. Revertir el arreglo dejando «llegas a» en los tres
+    //   veredictos dejaba el tier VERDE. Ahora se mide el CUERPO, sin firma y sin
+    //   comentarios, y se pide el ternario, que es lo único que decide qué se escribe.
+    const cuerpoDestino = (POPUP.match(/function destinoDe\([^]*?\n\}/)?.[0] ?? "")
+      .replace(/^function destinoDe\([^)]*\)\s*\{/, "")
+      .replace(/\/\*[^]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    if (!cuerpoDestino) F("18 · no se encontró `destinoDe`");
+    else if (!/esComprar \?/.test(cuerpoDestino)) {
       F("18 · `destinoDe` escribe «llegas a» en los tres veredictos: en COMPRAR no se llega, se mantiene — el mismo argumento del swatch");
     }
   }
@@ -731,8 +742,21 @@ const CARD = leer("src/lib/lo-que-haria-yo.ts");
   if (POPUP) {
     const mtz = POPUP.match(/function SeccionMatriz\([^]*?\n(?=(?:\/\/|\/\*\*|function ))/)?.[0] ?? "";
     if (!mtz) F("19 · no se encontró `SeccionMatriz` para auditar la leyenda");
-    else if (/new Set\(celdas\.map[^]{0,400}\.map\(\(vd\)/.test(mtz)) {
-      F("19 · la leyenda sigue dibujando una entrada por veredicto caído: son dos entradas con el mismo swatch, y la celda ya escribe cuál es");
+    else {
+      // ⚠ EL PREDICADO ERA PURAMENTE NEGATIVO Y ATABA UN NOMBRE DE VARIABLE. Prohibía la
+      //   grafía `.map((vd)` y no afirmaba en ningún lado que la entrada única existiera:
+      //   renombrar el parámetro devolvía la leyenda vieja con el tier en verde. Lo cazó la
+      //   evaluación. Ahora van las dos mitades, y ninguna depende de cómo se llame nada.
+      // (a) LA ENTRADA ÚNICA EXISTE, con su texto.
+      if (!/deja de ser \{etiquetaVeredicto\(destino/.test(mtz)) {
+        F("19 · la leyenda no dibuja la entrada única «deja de ser Comprar»: es el espejo de «sigue siendo Comprar» y el único texto que el swatch gris puede sostener");
+      }
+      // (b) Y NO SE ARMA UN CONJUNTO DE VEREDICTOS CAÍDOS, que es la forma que producía
+      //     una entrada por cada uno. Se mira `new Set(` junto a la comparación contra el
+      //     destino, no el nombre del parámetro.
+      if (/new Set\([^]{0,300}!== destino/.test(mtz)) {
+        F("19 · la leyenda vuelve a recoger los veredictos caídos en un conjunto: eso es una entrada por veredicto, y las dos usan el mismo swatch");
+      }
     }
   }
   if (CSS) {
@@ -767,6 +791,55 @@ const CARD = leer("src/lib/lo-que-haria-yo.ts");
       if (mh && mh !== "none") {
         F(`20 · la matriz sigue con tope de alto (${mh}): 46 matrices del parque se cortan y en 5 la recomendada abre fuera de vista`);
       }
+    }
+  }
+}
+// ── 21 · LA TABLA DE COMUNAS TIENE SU PROPIA PUERTA (17-sep-2026) ─────────
+//
+// LO QUE PASÓ, y es la razón de que este invariante exista: `hayAjustesQueMostrar` dejó
+// de contar `palancas` y pasó a contar las que llegan a COMPRAR, así que en 237 pop-ups
+// el botón dejó de dibujarse — la decisión correcta, porque ahí no había nada que mostrar.
+// Pero el botón NO era solo del pop-up: `PosicionFranco` montaba el <Modal> con
+// `{footer && …}` y adentro, después del cuerpo, iba `{extraPopup}`, que es la tabla
+// «Dónde sí convendría» (comuna · costaría · rentaría · veredicto · n de avisos).
+//
+// Al apagar una se apagó la otra. Medido: 35 filas LTR quedaron con la línea «En Puente
+// Alto un departamento como este sí convendría» en la card —que va SIN cifras por
+// contrato, porque las cifras vivían en la tabla— y sin ninguna superficie donde verlas.
+// Verificado por mutación sobre `0209b8a1`: revirtiendo la línea del gate, la tabla
+// vuelve a aparecer.
+//
+// SON DOS PREGUNTAS DISTINTAS —«qué se probó acá» y «dónde sí convendría»— y compartían
+// puerta por accidente de implementación, no por decisión. Cada una con la suya.
+{
+  if (POSICION) {
+    // Ya no se cuelga del cuerpo del footer.
+    if (/\{extraPopup\}/.test(POSICION)) {
+      F("21 · la tabla de comunas sigue montándose dentro del modal del footer: apagar el pop-up la apaga");
+    }
+    if (!/puertaExtra/.test(POSICION)) {
+      F("21 · `PosicionFranco` no declara una puerta propia para la tabla de comunas");
+    }
+    // DOS modales, y el segundo condicionado a su propia puerta.
+    const modales = (POSICION.match(/<Modal\b/g) ?? []).length;
+    if (modales < 2) F(`21 · hay ${modales} modal(es) en PosicionFranco: la tabla de comunas necesita el suyo`);
+    if (!/puertaExtra && \(/.test(POSICION)) {
+      F("21 · el segundo modal no cuelga de `puertaExtra`");
+    }
+    // Y la caja no puede devolver null cuando lo único que hay es la puerta extra.
+    const guarda = POSICION.match(/if \(!cajaAccionable[^\n]*\) return null;/)?.[0] ?? "";
+    if (!guarda) F("21 · no se encontró la guarda de «no hay nada que dibujar»");
+    else if (!/puertaExtra/.test(guarda)) {
+      F("21 · la guarda de salida no cuenta la puerta extra: con la tabla de comunas como único contenido, la sección no se monta");
+    }
+  }
+  // Y EL CALLER DECIDE SI HAY CONTENIDO. `DetalleAlternativaComunas` se autoanula cuando
+  // no hay comunas (`alternativa.todas.length === 0`) y el padre no se enteraba, así que
+  // habría dibujado un botón hacia un modal vacío.
+  if (HERO_LTR) {
+    if (!/puertaExtra=/.test(HERO_LTR)) F("21 · HeroLTR no pasa `puertaExtra`");
+    else if (!/alternativa[^\n]{0,80}todas\.length/.test(HERO_LTR)) {
+      F("21 · HeroLTR no condiciona la puerta a que la tabla tenga filas: el botón abriría un modal vacío");
     }
   }
 }

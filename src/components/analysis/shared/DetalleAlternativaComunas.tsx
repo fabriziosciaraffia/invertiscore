@@ -29,7 +29,9 @@ export function DetalleAlternativaComunas({
 
   return (
     <div className="alt-com">
-      <p className="alt-com-t">Dónde sí convendría</p>
+      {/* EL TÍTULO LO PONE EL MODAL (17-sep-2026). Desde que la tabla tiene su propia
+          puerta, `PuertaExtra.k` escribe «Dónde sí convendría» en la cabecera del modal;
+          repetirlo acá sería la misma frase dos veces en la misma pantalla. */}
       <p className="alt-com-l">
         El mismo departamento —tu pie, tu tasa y tu plazo— corrido en las otras comunas,
         con lo que cuesta y lo que renta en cada una. Solo aparecen las que no cuestan
