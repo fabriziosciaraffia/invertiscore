@@ -88,10 +88,15 @@ const dvDe = (clave: string): HallazgoDistanciaVeredicto["valor"] =>
   if (!/DECLARAR ÚNICO UN CAMINO/.test(p)) {
     F("1 · falta la otra forma de cerrar: declarar único un camino cuando el bloque cuenta varios");
   }
-  // Y el desarme del agravante: el bloque de cambios prueba de a uno, así que «el único que
-  // cruza solo» se lee como «el único» si nadie lo dice. Es de donde salían las tres.
-  if (!/«El único que cruza solo» NO es «el único»/.test(p)) {
-    F("1 · falta la línea que desarma el bloque de cambios: «el único que cruza solo» no es «el único»");
+  // EL DESARME DEL AGRAVANTE CAMBIÓ DE FORMA (17-sep-2026) y el pin con él. Decía «"El único
+  // que cruza solo" NO es "el único"», que prohibía sin enseñar. Ahora el prompt ENSEÑA el
+  // calificador como la forma correcta de nombrar la parte: sin eso, el ejemplo contra la
+  // exclusividad vuelve a pelear con el guard, que es el conflicto que acabamos de sacar.
+  if (!/alcanza \*\*por sí solo\*\*/.test(p)) {
+    F("1 · la doctrina dejó de ENSEÑAR el calificador «por sí solo» como la forma correcta");
+  }
+  if (!/escribir «única» a secas es negar dos/.test(p)) {
+    F("1 · falta el desarme del bloque de cambios: «única» a secas niega los que combinan");
   }
   if (!/descuentoQueAdemásPide/.test(p) || /«chico»/.test(p) && !/NO lo llames «chico»/.test(p)) F("1 · la instrucción tiene que leer `descuentoQueAdemásPide` y prohibir «chico»");
 

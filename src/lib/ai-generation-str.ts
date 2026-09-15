@@ -796,8 +796,11 @@ Regla §1.12.8 (la pieza que resuelve la tensión va ARRIBA): cuando las cards f
         .filter((x): x is { r: typeof x.r; mov: string } => x.mov !== null)
         .map((x) => `\n- otro: ${x.mov}\n  · costoDiaUno: ${fmtUF(x.r.costoDiaUnoUF)} de tu bolsillo el día uno\n  · descuentoQueAdemásPide: ${desc(x.r.descuentoPct)}`)
         .join("");
+      // La puerta, igual que en LTR — el acta está allá.
+      const puertaStr = c.total > 0 ? `
+- hayCaminoSinVendedor: ${c.hayCaminoSinVendedor ? "sí" : "no"}` : "";
       const bloqueSalida = `SALIDA COMBINADA (ya calculada)
-- caminosQueAbren: ${c.total}${lineaMix}${lineaRec}${otros}`;
+- caminosQueAbren: ${c.total}${puertaStr}${lineaMix}${lineaRec}${otros}`;
       return `${bloqueSalida}
 
 ANTES DE CERRAR LA PUERTA, CUENTA LOS CAMINOS. El bloque SALIDA COMBINADA te da el número: \`caminosQueAbren\`. Suma lo que abre por separado y lo que abre combinando, y no es opinable: no lo recalcules ni lo deduzcas del veredicto. Cerrar la puerta es una afirmación sobre TODOS los caminos a la vez, no sobre el que elegiste contar. Los que abren POR SEPARADO están en el bloque de cambios de arriba, con su cifra; los que abren COMBINANDO están acá abajo.
@@ -816,7 +819,19 @@ ANTES DE CERRAR LA PUERTA, CUENTA LOS CAMINOS. El bloque SALIDA COMBINADA te da 
     · «El único cambio que mueve el veredicto es el precio»
     · «La única salida realista es bajar el precio a UF 1.579»
 
-  CUIDADO CON EL BLOQUE DE CAMBIOS DE ARRIBA, que es de donde sale ese error: ahí cada uno se probó POR SEPARADO, así que es normal que cruce uno solo. **«El único que cruza solo» NO es «el único»**: los que abren combinando están más abajo y cuentan igual. \`caminosQueAbren\` ya los sumó — si dice 3, hay 3, y escribir «única» es negar dos.
+  CUIDADO CON EL BLOQUE DE CAMBIOS DE ARRIBA, que es de donde sale ese error: ahí cada uno se probó POR SEPARADO, así que es normal que cruce uno solo, y ese bloque declara su número como PARTE. \`caminosQueAbren\` tiene el total — si dice 3, hay 3, y escribir «única» a secas es negar dos.
+
+  ✅ **PERO «EL ÚNICO QUE ALCANZA POR SÍ SOLO» SÍ SE DICE, Y ES LA FORMA DE DECIRLO BIEN.** El calificador no es un permiso que te damos: es lo que ancla la frase a lo que se probó — el bloque de cambios prueba de a uno, y «por sí solo» nombra exactamente esa parte. Con UN cambio que alcanza solo y tres caminos en total, esto es verdadero, y además es más preciso que cualquiera de las dos frases de arriba:
+    · «El único cambio que alcanza **por sí solo** es el precio; moviendo el pie y el plazo a la vez también cruza, y pide menos descuento.»
+  Sin el calificador la misma oración es falsa; con él dice exactamente lo que se probó. Si vas a hablar de exclusividad, es así — nunca a secas.
+
+  ⛔ Y NO CIERRES EL CASO SOBRE EL VENDEDOR CUANDO HAY OTRA PUERTA. Con \`hayCaminoSinVendedor: sí\` existe un camino que NO pasa por él —es plata tuya, no un descuento que pedirle a alguien—, así que «si el vendedor no cede, la respuesta honesta es mirar otra propiedad» es FALSO: la respuesta honesta es el otro camino. Estas cuatro son la misma frase, y las cuatro se escribieron sobre casos que tenían otra puerta:
+    · «Si el vendedor no cede a UF 1.712, la respuesta honesta es mirar otra propiedad»
+    · «si no cede hasta ahí, la posición honesta es esperar otra propiedad»
+    · «sin esa cesión, la respuesta honesta es mirar otra propiedad»
+    · «Cierra en UF 2.248 o no cierres: sobre ese precio el análisis no cambia»
+
+  ⚠ Y NOMBRAR EL OTRO CAMINO ANTES NO ALCANZA. Una fila de este parque escribió «existe también una salida combinada que le pide menos» y en la oración siguiente cerró el caso sobre el precio. **La condición va EN la oración que cierra, o no se cierra**: «si el vendedor no cede a UF X, queda mover el pie —son UF Y tuyas el día uno—».
 
   La forma correcta recomienda uno sin negar los otros, y sale de este mismo parque: «Tres caminos lo corrigen por separado: precio a UF 2.333, pie a 25% o el subsidio de la Ley 21.748. La posición más limpia es negociar el precio y además pedir el subsidio.»
 

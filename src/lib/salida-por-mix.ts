@@ -156,6 +156,18 @@ export interface CaminosQueAbren {
   recomendado: RespuestaMix | null;
   /** Las otras respuestas que caben en su tope, sin repetir la coordenada de la recomendada. */
   otros: RespuestaMix[];
+  /**
+   * ¿ALGUNO DE LOS CAMINOS NO PASA POR EL VENDEDOR? (17-sep-2026)
+   *
+   * Es la distinción que el lector vive como dos puertas distintas: pedirle un descuento a
+   * alguien, o poner plata propia. Medido sobre el parque: **520 de 667 filas con dos o más
+   * caminos (78%) tienen las dos puertas**, y de ahí cuelga el invariante del cierre: **con
+   * una puerta que no es el vendedor, cerrar el caso sobre el vendedor es falso.**
+   *
+   * Lo emite el motor y no lo deduce cada consumidor, por la misma razón que `destino`: una
+   * pregunta que dos superficies contestan por su cuenta termina contestada distinto.
+   */
+  hayCaminoSinVendedor: boolean;
 }
 
 export function caminosQueAbren(
@@ -179,7 +191,10 @@ export function caminosQueAbren(
 
   // AUSENTE ≠ VACÍO: sin menú medido, la grilla aporta lo único medido — la equilibrada.
   if (!m || !Array.isArray(m.respuestas)) {
-    return { total: viasSolas + (equilibrada ? 1 : 0), viasSolas, recomendado: null, otros: [] };
+    // Sin menú medido, la única puerta sin vendedor que se puede afirmar es una vía que
+    // cruza sola y no es el precio; la equilibrada, sin sus coordenadas, no se sabe.
+    const sinVendedorAusente = (v.vias ?? []).some((x) => x.estado === "cruza" && x.palanca !== "precio");
+    return { total: viasSolas + (equilibrada ? 1 : 0), viasSolas, recomendado: null, otros: [], hayCaminoSinVendedor: sinVendedorAusente };
   }
 
   const vistas = new Set<string>();
@@ -194,7 +209,13 @@ export function caminosQueAbren(
   }
   const recomendado = abren.find((r) => r.criterio === "score") ?? abren[0] ?? null;
   const otros = recomendado ? abren.filter((r) => r !== recomendado) : [];
-  return { total: viasSolas + abren.length, viasSolas, recomendado, otros };
+  // DOS PUERTAS: una vía que cruza sola y no es el precio (arriendo, pie, plazo), o una
+  // respuesta de la grilla que no pide descuento. Las dos son «esto no pasa por el
+  // vendedor», que es como el lector las distingue.
+  const hayCaminoSinVendedor =
+    (v.vias ?? []).some((x) => x.estado === "cruza" && x.palanca !== "precio") ||
+    abren.some((r) => r.sinDescuento || r.descuentoPct === 0);
+  return { total: viasSolas + abren.length, viasSolas, recomendado, otros, hayCaminoSinVendedor };
 }
 
 /**

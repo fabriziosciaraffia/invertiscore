@@ -53,7 +53,7 @@ import {
 import { scanVozChilena, hitsQueExigenReintento, correctivoVoz, sanitizeVozChilena } from "@/lib/voz-chilena";
 import { construirJerarquiaPrecios, detectarColisionesJerarquia, correctivoJerarquia, piezasDeAiLtr } from "@/lib/precio-jerarquia";
 import { construirReferenciasZona, faltaReconciliacion } from "@/lib/referencias-zona";
-import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad, comunasFueraDeAlternativa, niegaSalidaConMix, puntajesFueraDeDesglose } from "@/lib/cifras-guard";
+import { cifrasFueraDeInput, empeoraCifras, cifrasPorMetroFueraDeUnidad, comunasFueraDeAlternativa, niegaSalidaConMix, cierraSobreElVendedor, puntajesFueraDeDesglose } from "@/lib/cifras-guard";
 import { PATHS_SIN_RENDER_LTR } from "@/lib/analysis";
 import { PESOS_SCORE_LTR } from "@/lib/score-retorno";
 import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
@@ -2134,9 +2134,14 @@ ALTERNATIVA DE COMUNAS (motor)
   · costoDiaUno: ${fmtUF(x.r.costoDiaUnoUF)} de tu bolsillo el día uno
   · descuentoQueAdemásPide: ${desc(x.r.descuentoPct)}`)
         .join("");
+      // LA PUERTA, declarada por el motor y no deducida por quien lee el prompt: con un
+      // camino que no pasa por el vendedor, cerrar el caso sobre el vendedor es falso.
+      // Medido: 520 de 667 filas con dos o más caminos tienen las dos puertas.
+      const puerta = c.total > 0 ? `
+- hayCaminoSinVendedor: ${c.hayCaminoSinVendedor ? "sí" : "no"}` : "";
       return `
 SALIDA COMBINADA (motor)
-- caminosQueAbren: ${c.total}${lineaMix}${lineaRec}${otros}`;
+- caminosQueAbren: ${c.total}${puerta}${lineaMix}${lineaRec}${otros}`;
     })();
 
     const financingHealthBloque = fh ? `
@@ -2544,7 +2549,19 @@ ANTES DE CERRAR LA PUERTA, CUENTA LOS CAMINOS. El bloque SALIDA COMBINADA te da 
     · «El único cambio que mueve el veredicto es el precio»
     · «La única salida realista es bajar el precio a UF 1.579»
 
-  CUIDADO CON EL BLOQUE DE CAMBIOS DE ARRIBA, que es de donde sale ese error: ahí cada uno se probó POR SEPARADO, así que es normal que cruce uno solo. **«El único que cruza solo» NO es «el único»**: los que abren combinando están más abajo y cuentan igual. \`caminosQueAbren\` ya los sumó — si dice 3, hay 3, y escribir «única» es negar dos.
+  CUIDADO CON EL BLOQUE DE CAMBIOS DE ARRIBA, que es de donde sale ese error: ahí cada uno se probó POR SEPARADO, así que es normal que cruce uno solo, y ese bloque declara su número como PARTE. \`caminosQueAbren\` tiene el total — si dice 3, hay 3, y escribir «única» a secas es negar dos.
+
+  ✅ **PERO «EL ÚNICO QUE ALCANZA POR SÍ SOLO» SÍ SE DICE, Y ES LA FORMA DE DECIRLO BIEN.** El calificador no es un permiso que te damos: es lo que ancla la frase a lo que se probó — el bloque de cambios prueba de a uno, y «por sí solo» nombra exactamente esa parte. Con UN cambio que alcanza solo y tres caminos en total, esto es verdadero, y además es más preciso que cualquiera de las dos frases de arriba:
+    · «El único cambio que alcanza **por sí solo** es el precio; moviendo el pie y el plazo a la vez también cruza, y pide menos descuento.»
+  Sin el calificador la misma oración es falsa; con él dice exactamente lo que se probó. Si vas a hablar de exclusividad, es así — nunca a secas.
+
+  ⛔ Y NO CIERRES EL CASO SOBRE EL VENDEDOR CUANDO HAY OTRA PUERTA. Con \`hayCaminoSinVendedor: sí\` existe un camino que NO pasa por él —es plata tuya, no un descuento que pedirle a alguien—, así que «si el vendedor no cede, la respuesta honesta es mirar otra propiedad» es FALSO: la respuesta honesta es el otro camino. Estas cuatro son la misma frase, y las cuatro se escribieron sobre casos que tenían otra puerta:
+    · «Si el vendedor no cede a UF 1.712, la respuesta honesta es mirar otra propiedad»
+    · «si no cede hasta ahí, la posición honesta es esperar otra propiedad»
+    · «sin esa cesión, la respuesta honesta es mirar otra propiedad»
+    · «Cierra en UF 2.248 o no cierres: sobre ese precio el análisis no cambia»
+
+  ⚠ Y NOMBRAR EL OTRO CAMINO ANTES NO ALCANZA. Una fila de este parque escribió «existe también una salida combinada que le pide menos» y en la oración siguiente cerró el caso sobre el precio. **La condición va EN la oración que cierra, o no se cierra**: «si el vendedor no cede a UF X, queda mover el pie —son UF Y tuyas el día uno—».
 
   La forma correcta recomienda uno sin negar los otros, y sale de este mismo parque: «Tres caminos lo corrigen por separado: precio a UF 2.333, pie a 25% o el subsidio de la Ley 21.748. La posición más limpia es negociar el precio y además pedir el subsidio.»
 
@@ -3225,6 +3242,31 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         }
       } catch (e) {
         console.warn(`[LTR-CIFRA] ${analysisId}: falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
+    // ─── CATCH-PUERTA (17-sep-2026) · el cierre condicional ───────────────────
+    // La forma dominante de cerrar la puerta, y la que ningún guard veía: la prosa enumera
+    // bien y dos oraciones después condiciona TODO el caso a que el vendedor ceda, teniendo
+    // un camino que no pasa por él. Leído en el corpus v25: 15 de las 51 filas que el guard
+    // audita (29%), y la que define el invariante nombra el otro camino en la oración
+    // anterior y cierra igual en la siguiente.
+    //
+    // ⚠ DETECTA Y PERSISTE, NO REINTENTA TODAVÍA. El correctivo de esta familia sería una
+    //   regeneración completa como la de CATCH-MIX, y a 29% de disparo eso es caro: la
+    //   decisión de pagarlo —o de hacerlo quirúrgico sobre `conviene.cajaAccionable`, que es
+    //   donde vive el defecto— va aparte, con su medición. Mientras tanto el residuo queda
+    //   en el jsonb para que un instrumento lo lea sin parsear logs, igual que
+    //   `_cifrasFueraDeInput` y `_niegaSalidaConMix`.
+    if (aiResult) {
+      try {
+        const puertaViol = cierraSobreElVendedor(userPrompt, aiResult);
+        if (puertaViol.length) {
+          console.warn(`[LTR-PUERTA] ${analysisId}: ${puertaViol.length} campo(s) cierran sobre el vendedor habiendo otro camino — ${puertaViol.join(" | ")}`);
+          aiResult._cierraSobreElVendedor = puertaViol;
+        }
+      } catch (e) {
+        console.warn(`[LTR-PUERTA] ${analysisId}: falló (best-effort): ${(e as Error)?.message ?? e}`);
       }
     }
 

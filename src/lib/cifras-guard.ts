@@ -221,6 +221,74 @@ const CIERRAN_LA_PUERTA: [string, RegExp][] = [
 ];
 
 /**
+ * ¿LA PROSA CIERRA EL CASO SOBRE EL VENDEDOR HABIENDO OTRA PUERTA? (17-sep-2026)
+ *
+ * LA FAMILIA SALIÓ DE LEER, NO DE IMAGINAR. Diez filas v25 con menú, leídas enteras tras la
+ * corrida de las 63. La forma dominante —nueve de diez— no era la exclusividad que
+ * buscábamos, era el CIERRE CONDICIONAL: la prosa enumera bien y dos oraciones después
+ * condiciona todo el caso a que el vendedor ceda.
+ *
+ *   · «Si el vendedor no cede a UF 1.712, la respuesta honesta es mirar otra propiedad.»
+ *   · «si no cede hasta ahí, la posición honesta es esperar otra propiedad»
+ *   · «sin esa cesión, la respuesta honesta es mirar otra propiedad»
+ *
+ * EL CASO QUE DEFINE EL INVARIANTE es `fe72d672` (Las Condes): «La vía que depende del
+ * vendedor es bajar a UF 5.212 (−25,4%); **existe también una salida combinada que le pide
+ * menos**. **Si el vendedor no cede cerca de UF 5.212, la respuesta honesta es mirar otra
+ * propiedad.**» Nombra el camino más barato y cierra sobre el otro. Por eso **nombrarlo antes
+ * no absuelve**: la absolución tiene que estar EN la oración que cierra.
+ *
+ * QUÉ LO HACE FALSO, y lo contesta el motor: `hayCaminoSinVendedor`. Con una puerta que no
+ * pasa por el vendedor —plata propia, no un descuento que pedirle a alguien— cerrar el caso
+ * sobre él es falso. Medido: **520 de 667 filas con dos o más caminos (78%) tienen las dos
+ * puertas**, así que el gate no es un caso de borde.
+ *
+ * ⚠ EL GATE ES EL DATO DEL MOTOR, NO UNA PALABRA. Se dispara con `- hayCaminoSinVendedor: sí`
+ *   en el user prompt, que el bloque emite desde `caminosQueAbren`. Sin esa línea el guard no
+ *   corre: es la lección de la familia `estructural`, que miraba una grafía y marcaba elogios.
+ */
+  // ⚠ EL HUECO SE MIDE CON [^;], NO CON [^.;]. La oración ya viene acotada por el split,
+  //   y excluir el punto dejaba afuera **todo cierre que cita una cifra con separador de
+  //   miles** — «no cede cerca de UF 5.212, … mirar otra», que es la forma más frecuente y
+  //   la del caso que define el invariante. Con la clase vieja el guard daba CERO sobre esa
+  //   fila; lo encontró leer la muestra, no el conteo, que solo mostraba 10 marcadas.
+const CIERRA_SOBRE_EL_VENDEDOR =
+  /\b(?:si\s+(?:el\s+vendedor\s+|no\s+)?[^;]{0,70}?\b(?:no\s+(?:cede|baja|acepta|llega|afloja)|no\s+(?:consigues|logras|llegas))\b|sin\s+esa\s+cesi[óo]n|si\s+no\s+hay\s+descuento)[^;]{0,140}?\b(?:mirar|buscar|esperar|ver)\s+(?:otra|otro)\b/i;
+/** El ultimátum: «cierra en UF X o no cierres». UN solo caso en el corpus — se deja SIN regex
+ *  a propósito (con uno no se escribe una familia) y queda anotado acá para cuando aparezca
+ *  el segundo. */
+// const ULTIMATUM = /\b(cierra|compra)\b[^.;]{0,40}\bo no (cierres|compres)\b/i;
+
+/**
+ * LA ABSOLUCIÓN, y es la mitad que evita el falso positivo: la MISMA oración deja la puerta
+ * abierta. «Si el vendedor no cede a UF X, queda mover el pie» no cierra nada — ofrece.
+ * Mismo molde que `NOMBRA_LA_SALIDA` y que `POR_SEPARADO`: se mira la oración, no el texto.
+ */
+const DEJA_LA_PUERTA_ABIERTA =
+  /\b(?:queda|quedan|te queda|sigue estando|tambi[ée]n|adem[áa]s|salvo que|a menos que|o bien|sin tocar el precio|sin pedirle|por tu cuenta|de tu bolsillo)\b/i;
+
+/**
+ * Devuelve los campos donde la prosa cierra el caso sobre el vendedor teniendo otra puerta.
+ * Vacío si el prompt no declara la puerta, o si cada cierre la mantiene abierta en su oración.
+ */
+export function cierraSobreElVendedor(userPrompt: string, ai: unknown): string[] {
+  if (!/- hayCaminoSinVendedor:\s*s[íi]/i.test(userPrompt)) return [];
+  const strings: { path: string; value: string }[] = [];
+  collectStrings(ai, "", strings);
+  const out: string[] = [];
+  for (const { path, value } of strings) {
+    for (const oracion of value.split(/(?<=[.!?;:])\s+/)) {
+      const m = oracion.match(CIERRA_SOBRE_EL_VENDEDOR);
+      if (!m) continue;
+      if (DEJA_LA_PUERTA_ABIERTA.test(oracion)) continue;
+      out.push(`${path}="${m[0].slice(0, 70)}"`);
+      break; // una por campo: el correctivo no necesita más
+    }
+  }
+  return out;
+}
+
+/**
  * ¿LA PROSA NIEGA UNA SALIDA QUE EL MOTOR ENCONTRÓ? (A8 · bump 24)
  *
  * El motor encuentra salida combinando pie y plazo en filas donde NINGÚN cambio por
