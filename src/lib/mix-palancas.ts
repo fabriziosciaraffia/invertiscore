@@ -703,6 +703,28 @@ export function calcularMixPalancas(p: {
         coronaDe: [], // se llena abajo, con las coronas ya resueltas
       });
       if (r.pct === null || !r.enMin) continue;
+      // ⛔ EN «MEJORAR», UNA CELDA QUE PERDIÓ EL VEREDICTO NO ES UNA RESPUESTA (17-sep-2026).
+      //
+      // `explorarCelda` corta arriba y devuelve `pct: 0` para TODAS, así que sin esta línea
+      // entran a `combos` también las celdas que a precio de hoy ya no sostienen la meta —las
+      // que abrió el pie un escalón abajo—, y de `combos` salen las tres coronas del menú.
+      // `elegirCelda(…, "tir")` coronaba la de pie más bajo sin preguntar qué veredicto tiene.
+      //
+      // Medido antes del arreglo: 8 de 138 filas COMPRAR con menú (5,8%) ofrecían bajo «La que
+      // más rinde» —y bajo una bajada que dice «Las dos siguen en Comprar»— una celda que la
+      // leyenda de la misma matriz marca como caída. Y en un empate de score la raíz podía caer
+      // ahí también, que es peor: la raíz la leen veinte consumidores fuera de este pop-up.
+      //
+      // LA CELDA SIGUE DIBUJÁNDOSE. Bajar el pie te saca de Comprar y eso es información real:
+      // por eso entró al modo «mejorar» y por eso la leyenda tiene una entrada para el gris. Lo
+      // que no puede es ser una RESPUESTA. Son dos preguntas con dos superficies —el color dice
+      // qué pasa, el menú dice qué hacer— y es la misma separación con la que el azul huérfano
+      // convive con un menú que no lo ofrece.
+      //
+      // NO PUEDE VACIAR `combos`: la celda del caso declarado sostiene el veredicto por
+      // construcción —es la fila que se está mirando, y su veredicto ES la meta—, así que
+      // siempre queda al menos una. El catch-test lo fija sobre el fixture que modela la caída.
+      if (mejorar && !alcanza(lectura.veredicto)) continue;
       const score = r.enMin.score;
       combos.push({
         descuentoPct: r.pct,

@@ -522,6 +522,42 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
         F("12 · la celda que cae dice «Comprar»: está mostrando su lectura con descuento en vez del hecho");
       }
     }
+    // ⛔ Y NINGUNA RESPUESTA PUEDE CORONAR UNA CELDA QUE PERDIÓ EL VEREDICTO (17-sep-2026).
+    //
+    // En «mejorar» `explorarCelda` corta en su primera línea y devuelve `pct: 0` para TODAS,
+    // así que todas entran a `combos` — incluidas las que a precio de hoy ya no sostienen la
+    // meta. De ahí salen las tres coronas, y `elegirCelda(…, "tir")` coronaba la de pie más
+    // bajo sin preguntar qué veredicto tiene.
+    //
+    // Medido sobre el parque: 8 de 138 filas COMPRAR con menú (5,8%) ofrecían, bajo el título
+    // «La que más rinde» y una bajada que dice «Las dos siguen en Comprar», una celda que la
+    // leyenda de la misma matriz marca «baja a Ajustar». Siempre el criterio TIR, siempre el
+    // pie bajado un escalón — que es la puerta que el modo «mejorar» abrió.
+    //
+    // La celda SIGUE DIBUJÁNDOSE: bajar el pie te saca de Comprar y eso es información real,
+    // y el gris de la leyenda existe para decirlo. Lo que no puede es ser una RESPUESTA: el
+    // menú lista lo que Franco ofrece, y no se ofrece salir del veredicto que ya tienes.
+    // Son dos preguntas con dos superficies — el color dice qué pasa, el menú dice qué hacer—,
+    // la misma separación que ya gobierna el azul huérfano.
+    if (conCaida?.respuestas?.length) {
+      const caidas = new Set(
+        (conCaida.celdas ?? [])
+          .filter((c) => (c.esActual ? c.veredictoSinDescuento : c.veredicto) !== "COMPRAR")
+          .map((c) => `${c.piePct}|${c.plazoAnios}|${c.descuentoPct}`),
+      );
+      for (const r of conCaida.respuestas) {
+        if (caidas.has(`${r.piePct}|${r.plazoAnios}|${r.descuentoPct}`)) {
+          F(`12 · la respuesta «${r.criterio}» corona pie ${r.piePct}% / ${r.plazoAnios}a, una celda que NO sostiene el veredicto: el menú estaría ofreciendo salir de Comprar bajo «las dos siguen en Comprar»`);
+        }
+      }
+    }
+    // Y la corona por score tampoco: es la raíz, o sea lo que el resto del informe lee.
+    if (conCaida) {
+      const raiz = (conCaida.celdas ?? []).find((c) => c.piePct === conCaida.piePct && c.plazoAnios === conCaida.plazoAnios);
+      if (raiz && (raiz.esActual ? raiz.veredictoSinDescuento : raiz.veredicto) !== "COMPRAR") {
+        F("12 · la raíz del mix cayó sobre una celda que perdió el veredicto: los veinte consumidores que leen la raíz publicarían una recomendación que saca del veredicto");
+      }
+    }
     // Y no se gastan sondas de bisección: una por celda, ni una más.
     const celdas = conCaida?.celdas?.length ?? 0;
     if (celdas > 0 && sondas.length > celdas) {
