@@ -124,16 +124,75 @@ function solasAComprar(v: HallazgoDistanciaVeredicto["valor"]): PalancaDistancia
  * mínimo —lo que CONSEGUIRÍAS con ella— salvo la del aro, que muestra la lectura a precio
  * de hoy: lo que TIENES. `esActual` es «el pie y el plazo que declaraste», no «tu caso».
  *
- * Fuente única a propósito: la palabra, el score, el color y el panel de detalle leen de
- * acá, así que no pueden separarse. La primera versión de este arreglo cambió solo la
- * palabra y dejó el color leyendo `c.veredicto`: la celda del aro quedó con fondo azul
- * —«llega a Comprar»— y con «Ajustar score 67» escrito adentro.
+ * Fuente única de TRES superficies —la palabra de la celda, su score y su color—, que por
+ * eso no pueden separarse. La primera versión de este arreglo cambió solo la palabra y dejó
+ * el color leyendo `c.veredicto`: la celda del aro quedó con fondo azul —«llega a Comprar»—
+ * y con «Ajustar score 67» escrito adentro.
+ *
+ * ⚠ Y EL PANEL DE DETALLE NO ES LA CUARTA, aunque esta acta lo declaró desde el 14-sep hasta
+ *   el 17-sep-2026. `PanelCelda` no llamaba a esta función ni una vez: leía `sel.veredicto`
+ *   crudo. La frase afirmaba una atadura inexistente, que es peor que no declarar ninguna —
+ *   el mismo «presencia ≠ cableado» que el arco de los gates encontró en los predicados,
+ *   acá en prosa. Hoy el panel se reparte a propósito, y conviene saber por qué:
+ *
+ *    · LAS DOS FRASES DEL ARO —«Pidiendo descuento llegas a Comprar sin pedir nada» y
+ *      «…con −8,2%»— leen `sel.veredicto` CRUDO, y tienen que seguir haciéndolo. Hablan a
+ *      propósito de la lectura CON descuento: es lo que la frase promete. Si llamaran acá
+ *      recibirían `veredictoSinDescuento` y la oración diría una cosa mientras muestra la
+ *      otra — el bug exacto que esta función existe para matar, causado por obedecerla.
+ *    · LA LÍNEA DE LA CELDA QUE CAE sí llama acá. Tiene que decir la misma palabra que la
+ *      celda muestra, y para las celdas que no son el aro `veredictoMostrado(c) ≡
+ *      c.veredicto`: hoy es idéntico y gratis, y mañana los ata de verdad si alguien cambia
+ *      qué lectura muestra la matriz.
  */
 function veredictoMostrado(c: CeldaMix) {
   return c.esActual ? c.veredictoSinDescuento : c.veredicto;
 }
 function scoreMostrado(c: CeldaMix) {
   return c.esActual ? c.scoreSinDescuento : c.score;
+}
+
+/**
+ * ¿ESTA CELDA TIENE PANEL? (17-sep-2026). En COMPRAR la del aro no.
+ *
+ * El panel tiene dos filas y en COMPRAR las dos se le quedan sin contenido para esa celda:
+ * la primera no se dibuja —«Pides de descuento» es una pregunta que el modo `mejorar` no
+ * hace, ver el acta de `PanelCelda`— y la segunda diría «Pie el día uno · no cambia», que
+ * es la definición de la celda del aro. Lo demás ya está dicho tres veces en pantalla: el
+ * aro la marca, la celda escribe su palabra y su score, y la leyenda explica el aro.
+ *
+ * Medido sobre el parque: son 210 celdas (154 LTR + 56 STR), el 100% de las del aro en
+ * COMPRAR, porque su `costoDiaUnoUF` es 0 por construcción — el pie de la celda ES el pie
+ * declarado. Otras 361 celdas de COMPRAR también quedarían con la segunda fila en cero,
+ * pero ésas SÍ abren: en ellas «no cambia» es un hecho que el lector no tiene —el mismo
+ * capital con otro plazo— y es justamente la razón por la que tomaría esa celda.
+ *
+ * NO SE HACE INERTE EL CLIC, y esto es lo que hay que saber antes de simplificarlo: en 26
+ * de esas 210 la celda del aro ES una de las respuestas del menú, así que el clic sigue
+ * eligiendo su línea (`setCriterio`) y lo único que no pasa es que se abra el panel. Por eso
+ * el corte vive acá y no en el `onClick` del `<td>`.
+ *
+ * Y LA RAMA DE CELDA ÚNICA: medido, 0 de las 13 filas que la usan son COMPRAR, así que hoy
+ * este corte no puede dejarla con su única celda muda. Si alguna vez lo fuera, el panel
+ * estaría igual de vacío y el corte seguiría siendo el correcto.
+ */
+function abrePanel(c: CeldaMix | null, esComprar: boolean): boolean {
+  return !!c && !(esComprar && c.esActual);
+}
+
+/**
+ * ¿ESTA CELDA SE CAE DEL DESTINO? Una sola definición para las dos superficies que la
+ * predican: la entrada de leyenda que cuenta las caídas y la línea del panel.
+ *
+ * El `!!vd` no es paranoia y por eso vive acá: `veredictoMostrado` devuelve el campo de la
+ * celda, y `cruzaSegun` tipa su entrada como `Veredicto | null | undefined`. Con el
+ * veredicto ausente, `undefined !== "COMPRAR"` es true — el panel afirmaría «Te saca de
+ * Comprar» sobre una celda que la leyenda no cuenta entre las caídas. Eran dos predicados
+ * escritos por separado con distinto manejo del nulo; ahora es uno.
+ */
+function caeDelDestino(c: CeldaMix, destino: Veredicto): boolean {
+  const vd = veredictoMostrado(c);
+  return !!vd && vd !== destino;
 }
 
 /**
@@ -362,7 +421,12 @@ export function PopupAjustes({
             esComprar={esComprar}
             sel={sel}
             onSel={(c) => {
-              setSel(c);
+              // SIN PANEL TAMPOCO HAY SELECCIÓN. Cuando no hay menú el aro de «la que estás
+              // viendo» ES `sel` —`const aro = hayMenu ? … : sel`, unas líneas más arriba—,
+              // así que dejar entrar una celda que no abre panel pondría esa marca sobre una
+              // celda que no muestra nada. La cita va por nombre y no por número de línea a
+              // propósito: este mismo cambio corrió las que había.
+              setSel(abrePanel(c, esComprar) ? c : null);
               // Y SI LA CELDA ES UNA RESPUESTA, TAMBIÉN LA ELIGE. El contrato hace esto y
               // nada más («desde la matriz también, pero solo a las celdas que el menú
               // ofrece»); acá se le suma el panel, que el contrato no tiene.
@@ -503,8 +567,19 @@ function SeccionMatriz({
             celda también promete un descuento, que lo pone el vendedor. Eso se arregla con
             las 13, no acá. */}
         <div className="paj-st">Ajustes que dependen de ti</div>
-        <div className="paj-unica" onClick={() => onSel(sel ? null : c)} role="button" tabIndex={0}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSel(sel ? null : c); }}>
+        {/* LA MISMA REGLA QUE LA MATRIZ, y acá hace falta decir por qué puede morder. En esta
+            rama la única celda es SIEMPRE la del aro por construcción —`esActual: pie ===
+            p.piePct && plazo === p.plazoCredito` (mix-palancas.ts:690) y la grilla tiene una
+            sola combinación, que es la declarada— así que en COMPRAR `abrePanel` deja toda la
+            sección sin superficie que abra nada. Medido: 0 de las 13 filas que usan esta rama
+            son COMPRAR, así que hoy no pasa. Si pasara, la sección no fingiría un botón. */}
+        <div
+          className="paj-unica"
+          onClick={abrePanel(c, esComprar) ? () => onSel(sel ? null : c) : undefined}
+          role={abrePanel(c, esComprar) ? "button" : undefined}
+          tabIndex={abrePanel(c, esComprar) ? 0 : undefined}
+          onKeyDown={abrePanel(c, esComprar) ? (e) => { if (e.key === "Enter" || e.key === " ") onSel(sel ? null : c); } : undefined}
+        >
           <span className="k">
             Con pie {dec1(c.piePct).replace(",0", "")}% a {c.plazoAnios} años
           </span>
@@ -522,7 +597,9 @@ function SeccionMatriz({
           </span>
         </div>
         <p className="paj-sx paj-pie">Es la única combinación que Franco puede probar: tu pie y tu plazo ya están en el techo.</p>
-        {sel && <PanelCelda sel={sel} destino={destino} currency={currency} valorUF={valorUF} onCerrar={() => onSel(null)} />}
+        {abrePanel(sel, esComprar) && sel && (
+          <PanelCelda sel={sel} destino={destino} esComprar={esComprar} currency={currency} valorUF={valorUF} onCerrar={() => onSel(null)} />
+        )}
       </section>
     );
   }
@@ -620,16 +697,26 @@ function SeccionMatriz({
                       ? "sel"
                       : "",
                   ].filter(Boolean).join(" ");
+                  // ⛔ SIN PANEL, SIN AFFORDANCE (17-sep-2026). La celda del aro en COMPRAR
+                  //    no abre panel, y dejarla como `role="button"` era peor que no tener
+                  //    panel: en 184 de esas 210 el clic no produce nada visible, y si el
+                  //    lector tenía abierto el panel de otra celda se lo cerraba sin decir
+                  //    por qué. Ahora no es interactiva y se ve que no lo es.
+                  //    LO QUE SE PIERDE, dicho para que nadie lo redescubra: en 26 de las 210
+                  //    esa celda es también una línea del menú, así que se pierde el atajo de
+                  //    elegirla desde la matriz. No se pierde la acción: el menú de abajo
+                  //    lista esa misma línea y es clickeable.
+                  const interactiva = abrePanel(c, esComprar);
                   return (
                     <td
                       key={plazo}
                       className={clases}
-                      onClick={() => onSel(c)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
+                      onClick={interactiva ? () => onSel(c) : undefined}
+                      role={interactiva ? "button" : undefined}
+                      tabIndex={interactiva ? 0 : undefined}
+                      onKeyDown={interactiva ? (e) => {
                         if (e.key === "Enter" || e.key === " ") onSel(c);
-                      }}
+                      } : undefined}
                     >
                       {/* LA CELDA DEL ARO HABLA DEL HOY. `esActual` significa «el pie y el
                           plazo que tienes declarados», no «tu caso actual»: la lectura normal
@@ -697,7 +784,7 @@ function SeccionMatriz({
             escribe la celda, con su palabra, que es donde el lector lo está mirando.
             «deja de ser» es el espejo literal de «sigue siendo», que es lo que el swatch de
             arriba escribe en esta misma leyenda: la oposición se lee sin vocabulario nuevo. */}
-        {esComprar && celdas.some((c) => { const vd = veredictoMostrado(c); return !!vd && vd !== destino; }) && (
+        {esComprar && celdas.some((c) => caeDelDestino(c, destino)) && (
           <span>
             <i className="paj-sw e" />
             deja de ser {etiquetaVeredicto(destino, "frase")}
@@ -738,7 +825,9 @@ function SeccionMatriz({
         )}
       </div>
 
-      {sel && <PanelCelda sel={sel} destino={destino} currency={currency} valorUF={valorUF} onCerrar={() => onSel(null)} />}
+      {abrePanel(sel, esComprar) && sel && (
+        <PanelCelda sel={sel} destino={destino} esComprar={esComprar} currency={currency} valorUF={valorUF} onCerrar={() => onSel(null)} />
+      )}
     </section>
   );
 }
@@ -747,16 +836,37 @@ function SeccionMatriz({
 function PanelCelda({
   sel,
   destino,
+  esComprar,
   currency,
   valorUF,
   onCerrar,
 }: {
   sel: CeldaMix;
   destino: Veredicto;
+  /** Cambia QUÉ PREGUNTA contesta el panel. Ver el acta de la primera fila. */
+  esComprar: boolean;
   currency: Currency;
   valorUF: number;
   onCerrar: () => void;
 }) {
+  // LA CELDA QUE TE SACA DEL VEREDICTO, que es lo único que la celda no dice ya. El cuadrito
+  // escribe su palabra y su score —`etiquetaVeredicto(veredictoMostrado(c))` con su `<small>`—
+  // y la leyenda explica el color; lo que falta es la consecuencia de tomarla, y hasta hoy el
+  // panel la despachaba con «Pides de descuento: nada».
+  //
+  // Medido el 17-sep-2026: 295 celdas en 71 de las 218 filas COMPRAR que abren el pop-up.
+  //
+  // ⚠ Y ESE DENOMINADOR DISCREPA EN UNO con el del acta de `ajustaAlgo`, más arriba en este
+  //   mismo archivo, que dice «17 de 217 filas COMPRAR» y es del mismo día. Se verificó que
+  //   NO son universos distintos: en COMPRAR toda fila que abre el pop-up dibuja además la
+  //   matriz, así que las dos cuentan lo mismo y una está stale. La de acá es la fresca. No
+  //   se corrige la otra a ciegas: se anota, porque reemplazar una cifra medida por otra sin
+  //   saber qué movió el parque es exactamente como se ensucian estas actas.
+  //
+  // Llama a `veredictoMostrado` a propósito, aunque para una celda que no es la del aro sea
+  // idéntico a `sel.veredicto` — ver el acta de esa función, que explica por qué las dos
+  // frases del aro NO lo hacen.
+  const cae = esComprar && caeDelDestino(sel, destino);
   return (
     <div className="paj-cel">
       <span className="x" onClick={onCerrar} role="button" tabIndex={0}
@@ -767,11 +877,24 @@ function PanelCelda({
         Pie {dec1(sel.piePct).replace(",0", "")}% · {sel.plazoAnios} años
       </div>
       <div className="paj-cg">
-        {/* LAS DOS LECTURAS, SEPARADAS Y CADA UNA CON SU RÓTULO. La celda del aro dice lo que
+        {/* ⛔ LA FILA DEL DESCUENTO NO EXISTE EN COMPRAR (17-sep-2026).
+            En modo «mejorar» el eje del precio desaparece —no hay umbral que cruzar, así que
+            «cuánto descuento pedir» no tiene respuesta honesta y `explorarCelda` devuelve
+            `{pct: 0}` para TODAS las celdas (mix-palancas.ts:613)—. La consecuencia acá era
+            que las 2.220 celdas no-aro de COMPRAR escribían «Pides de descuento: nada»:
+            medido sobre el parque, el 100%. Es verdad y es vacío, y ocupaba la mitad del
+            panel justo donde las 295 que caen no tenían dónde decirlo.
+            La fila entera se va: si no queda nada que poner, no se dibuja la fila. Es la
+            misma doctrina de «sin celda, sin oración» que ya gobierna «hoy» en la leyenda y
+            la nota de la tarifa — la pieza cuelga de lo que describe.
+            (Las 210 celdas del aro de COMPRAR no llegan acá: no abren panel, ver `abrePanel`.)
+
+            LAS DOS LECTURAS, SEPARADAS Y CADA UNA CON SU RÓTULO. La celda del aro dice lo que
             TIENES; acá se dice a dónde llega esa misma combinación SI pides el descuento. Sin
             esta separación el panel rotulaba «Pides de descuento −24,2%» sobre una celda que
-            acababa de decir «Ajustar», y la contradicción se mudaba del cuadrito al clic. */}
-        {/* DOS CASOS QUE ESTABAN COLAPSADOS EN UNO, Y SOLO UNO ERA CIERTO (16-sep-2026).
+            acababa de decir «Ajustar», y la contradicción se mudaba del cuadrito al clic.
+
+            DOS CASOS QUE ESTABAN COLAPSADOS EN UNO, Y SOLO UNO ERA CIERTO (16-sep-2026).
             La condición era `descuentoPct === null || !alcanzable` y las dos ramas escribían
             «no llega a Comprar». Son hechos distintos:
               · `descuentoPct === null` — no cruza NI pidiendo el tope entero. «No llega» es
@@ -782,26 +905,80 @@ function PanelCelda({
                 ofrece como «la que más alivia el mes».
             Ahora el descuento se dice como en cualquier celda que cruza —porque es un número
             real— y lo que la califica cuelga del pie, que es la cifra que se encareció. */}
-        <span className="l">{sel.esActual ? "Pidiendo descuento llegas a" : "Pides de descuento"}</span>
-        <span className="v">
-          {sel.descuentoPct === null
-            ? `no llega a ${etiquetaVeredicto(destino, "frase")}`
-            : sel.esActual
-              ? sel.descuentoPct === 0
-                ? `${etiquetaVeredicto(sel.veredicto, "frase")} sin pedir nada`
-                : `${etiquetaVeredicto(sel.veredicto, "frase")} con −${pct1(sel.descuentoPct)}`
-              : sel.descuentoPct === 0
-                ? "nada"
-                : `−${pct1(sel.descuentoPct)}`}
+        {!esComprar && (
+          <>
+            <span className="l">{sel.esActual ? "Pidiendo descuento llegas a" : "Pides de descuento"}</span>
+            <span className="v">
+              {sel.descuentoPct === null
+                ? `no llega a ${etiquetaVeredicto(destino, "frase")}`
+                : sel.esActual
+                  ? sel.descuentoPct === 0
+                    // MEDIDO EN CERO FUERA DE COMPRAR, y se queda igual: la celda del aro sin
+                    // descuento exige que el caso YA alcance el destino, que es lo que un
+                    // veredicto distinto de COMPRAR niega. Si el motor cambiara y esa celda
+                    // apareciera acá, sin esta rama caería en la de abajo y escribiría
+                    // «Comprar con −0,0%».
+                    ? `${etiquetaVeredicto(sel.veredicto, "frase")} sin pedir nada`
+                    : `${etiquetaVeredicto(sel.veredicto, "frase")} con −${pct1(sel.descuentoPct)}`
+                  : sel.descuentoPct === 0
+                    ? "nada"
+                    : `−${pct1(sel.descuentoPct)}`}
+            </span>
+          </>
+        )}
+        {cae && (
+          <>
+            <span className="l">Si la tomas</span>
+            {/* En rojo por lo mismo que el pie que encarece: es el costo de la celda, no su
+                promesa. La leyenda dice «deja de ser Comprar» de la MATRIZ; acá se le habla
+                al lector, que es lo que hace el resto del panel («Pides», «llegas a»). */}
+            <span className="v mal">Te saca de {etiquetaVeredicto(destino, "frase")}</span>
+          </>
+        )}
+        {/* ⛔ EL RÓTULO LLEVA LA DIRECCIÓN, Y POR ESO SON TRES (17-sep-2026).
+            Era uno solo, «Pie extra el día uno», con el número firmado. En las 1.318 celdas
+            donde la combinación LIBERA capital eso imprimía «Pie extra el día uno:
+            −$13.944.700» — «extra» y «menos» en la misma línea, y encima en el color neutro
+            mientras la que cuesta plata va en rojo. El color estaba bien; la palabra no
+            acompañaba.
+            Ahora la dirección la dice el rótulo y el número no la repite: en la rama que
+            libera va SIN signo, porque «liberas −$13.944.700» vuelve a poner las dos
+            direcciones juntas. En la rama que encarece el «+» se queda, que concuerda con
+            «extra». «Liberas» no es palabra nueva: es la del trade-off del menú («libera
+            UF 205»).
+            Y el cero deja de ser un guion: «no cambia» es un hecho —el mismo capital con
+            otro plazo— y es la razón por la que alguien tomaría esa celda. Son 787 celdas.
+            De ellas, las 361 de COMPRAR que llegan al destino son las que más lo necesitan:
+            sin la fila del descuento, su panel queda con esta sola fila, y un «—» ahí no es
+            una respuesta — la fila se dibujaba igual, pero sin decir nada. */}
+        <span className="l">
+          {sel.costoDiaUnoUF === 0
+            ? "Pie el día uno"
+            : sel.costoDiaUnoUF > 0
+              ? "Pie extra el día uno"
+              : "Pie que liberas el día uno"}
         </span>
-        <span className="l">Pie extra el día uno</span>
         <span className={`v${sel.costoDiaUnoUF > 0 ? " mal" : ""}`}>
-          {sel.costoDiaUnoUF === 0 ? "—" : plataFirmada(sel.costoDiaUnoUF * valorUF, currency, valorUF)}
+          {sel.costoDiaUnoUF === 0
+            ? "no cambia"
+            : sel.costoDiaUnoUF > 0
+              ? plataFirmada(sel.costoDiaUnoUF * valorUF, currency, valorUF)
+              : plata(Math.abs(sel.costoDiaUnoUF) * valorUF, currency, valorUF)}
           {/* LA NOTA NO ES UN ERROR, ES UN PRECIO. La celda llega —el cuadrito lo dice y el
               color ahora también— y lo que se declara es cuánto capital pide de más respecto
               de lo que Franco recomienda poner. Cuelga del pie y no del descuento porque es
-              el pie lo que se encareció. Precedente de forma: `.paj-neg small`. */}
-          {sel.descuentoPct !== null && !sel.alcanzable && (
+              el pie lo que se encareció. Precedente de forma: `.paj-neg small`.
+
+              ⛔ Y NO SALE EN COMPRAR (17-sep-2026). `alcanzable` son DOS condiciones
+              (`mix-palancas.ts:699`): que la celda cruce y que cueste `<= MIX_COSTO_TOPE_PTS_PRECIO`
+              (15). En modo «mejorar» la primera es siempre verdadera —`:613` devuelve `pct: 0`
+              para todas— así que ahí el booleano contesta SOLO por el tope, y ese tope está
+              DESACTIVADO en ese modo: `:771` elige entre `combos` entero. O sea que la nota
+              juzgaba con una vara que el propio modo apagó, y le decía «más pie del que
+              Franco recomienda poner» a 96 celdas cuya recomendación nunca miró ese número.
+              Fuera de COMPRAR las dos condiciones gobiernan y la nota sigue igual, en 135 de
+              las 231. */}
+          {!esComprar && sel.descuentoPct !== null && !sel.alcanzable && (
             <small>más pie del que Franco recomienda poner</small>
           )}
         </span>
