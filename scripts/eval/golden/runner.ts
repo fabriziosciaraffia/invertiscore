@@ -54,6 +54,7 @@ import { runDistanciaComprarStrTier } from "./distancia-comprar-str-catch-test";
 import { runMixPalancasTier } from "./mix-palancas-catch-test";
 import { runMixScoreTier } from "./mix-score-catch-test";
 import { runGrillaPopupTier } from "./grilla-popup-catch-test";
+import { runPopupAjustesTier } from "./popup-ajustes-catch-test";
 import { runMixStrTier } from "./mix-str-catch-test";
 import { runLoQueHariaYoTier } from "./lo-que-haria-yo-catch-test";
 import { runSalidaPorMixTier } from "./salida-por-mix-catch-test";
@@ -296,6 +297,11 @@ async function printStrSemantic() {
   totalHard += runMixPalancasTier().hard;
   totalHard += runMixScoreTier().hard;
   totalHard += runGrillaPopupTier().hard;
+  // ⛔ EL TIER DEL RENDER NUNCA HABÍA CORRIDO ACÁ (17-sep-2026). `popup-ajustes-catch-test`
+  // existe desde el 13-sep con su acta —«corre dentro del QUICK (tier popup-ajustes) y
+  // standalone»— y el runner no lo importaba: veinte invariantes del pop-up vivían fuera del
+  // gate, verdes solo si alguien los invocaba a mano. Un guard que no corre no es un guard.
+  totalHard += runPopupAjustesTier().hard;
   // ── Tier MIX STR (11-sep-2026, 0 tokens, sin base): el builder STR emite el mismo mix
   // que LTR a través del adaptador UF→CLP / %→decimal; destino = escalón, tope 25/15,
   // redundancia con palanca sola y «sin salida» coherente. Corre siempre con el QUICK. ──
