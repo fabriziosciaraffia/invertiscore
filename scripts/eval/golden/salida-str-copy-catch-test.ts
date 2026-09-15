@@ -81,7 +81,24 @@ function distanciaDe(clave: string): HallazgoDistanciaVeredicto {
   if (h.titular !== "Ningún ajuste por separado lo lleva al veredicto de arriba; juntos, sí.") F(`1 · titular con mix: «${h.titular}»`);
   const dH = salidaH?.descuentoPct ?? null;
   if (dH === null) F("1 · estructuralMixStr tenía que pedir descuento además del pie y el plazo");
-  else if (!h.fraseCanonica.includes(`Con lo tuyo —pie y plazo— y un descuento de ${String(dH).replace(".", ",")}% llega a Comprar.`)) F(`1 · el cierre no lee descuentoQueAdemásPide (${dH}%): «${h.fraseCanonica.slice(-160)}»`);
+  else {
+    // EL PIN SE PARTIÓ EN TRES (17-sep-2026) y con eso mide más, no menos. Era un literal
+    // que incluía «Con lo tuyo —pie y plazo—», y al entrar el cualificador de
+    // `hayOtrosCaminos` ese literal se rompió — correctamente: el guard cazó el cambio. Pero
+    // lo que este bloque declara vigilar, y dice arriba, es que el cierre diga el MISMO
+    // número que `descuentoQueAdemásPide`; la forma del inciso era incidental. Ahora van por
+    // separado el número, lo que se mueve, y el cualificador con sus dos direcciones.
+    if (!h.fraseCanonica.includes(`y un descuento de ${String(dH).replace(".", ",")}% llega a Comprar.`)) {
+      F(`1 · el cierre no lee descuentoQueAdemásPide (${dH}%): «${h.fraseCanonica.slice(-160)}»`);
+    }
+    if (!/Con lo tuyo —pie y plazo(,|—)/.test(h.fraseCanonica)) F(`1 · el cierre dejó de nombrar lo que se mueve: «${h.fraseCanonica.slice(-160)}»`);
+    // LAS DOS DIRECCIONES: nombrar de más promete una elección que no existe, y nombrar de
+    // menos entrega una de varias como si fuera la única — que es la premisa incompleta que
+    // este cambio vino a sacar del prompt.
+    const cualifica = /, lo que Franco recomienda—/.test(h.fraseCanonica);
+    if (salidaH?.hayOtrosCaminos === true && !cualifica) F("1 · con más de un camino el cierre tiene que nombrar CUÁL describe");
+    if (salidaH?.hayOtrosCaminos !== true && cualifica) F("1 · con un solo camino —o sin medir— el cierre NO puede nombrar «lo que Franco recomienda»");
+  }
   if (/brecha/i.test(h.fraseCanonica)) F("1 · con combinación la frase sigue diciendo «brecha»");
   if (!/no cambia el veredicto; recién/.test(h.fraseCanonica)) F("1 · la primera oración (los topes probados de a uno) tenía que quedar: sigue siendo verdad");
 

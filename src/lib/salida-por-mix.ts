@@ -34,6 +34,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { HallazgoDistanciaVeredicto } from "./types";
+import type { RespuestaMix } from "./mix-palancas";
+import type { MixPalancas } from "./types";
 
 export interface SalidaPorMix {
   /** Lo que hay que mover, en palabras del lector: «el pie en 30% y el plazo en 30 años». */
@@ -107,6 +109,110 @@ export function salidaPorMix(v: HallazgoDistanciaVeredicto["valor"]): SalidaPorM
   const m = v.mixPalancas;
   if (!m || !m.dentroDelAlcance) return null;
   return desdeMix(m);
+}
+
+/**
+ * CUÁNTOS CAMINOS ABREN (17-sep-2026) — el número del que cuelga la doctrina del prompt.
+ *
+ * LA REGLA QUE IMPLEMENTA, y que es de producto: **Franco puede cerrar la puerta, pero solo
+ * cuando NINGUNA respuesta abre.** «Ni bajando el precio ni poniendo más pie esto cierra» es
+ * igual de contundente que «UF 1.839 es tu techo real» y no la desmiente nadie.
+ *
+ * ⚠ DOS LLAVES QUE SE PARECEN, Y NO GOBIERNAN LO MISMO. El bloque del prompt lleva las dos:
+ *
+ *   · `hayMixACOMPRAR` (de `salidaPorMix`) contesta UNA pregunta estrecha: «en una fila donde
+ *     ningún cambio por separado alcanza, ¿la combinación EQUILIBRADA —la de tope 15 puntos—
+ *     es la salida?». Solo existe en filas `esEstructural`. La lee el guard
+ *     `niegaSalidaConMix` por su gate (`- hayMixACOMPRAR: sí`) y la usa el bloque STR. NO se
+ *     toca: sacarla es otro cambio y no hace falta para esto.
+ *
+ *   · `caminosQueAbren` (esta función) contesta la ANCHA: ¿cuántas formas hay, en total, de
+ *     mover el veredicto? Suma las que alcanzan por separado y las de la grilla que caben en
+ *     SU tope. Existe en todas las filas. **De ésta, y solo de ésta, cuelga si se puede
+ *     cerrar la puerta.**
+ *
+ *   Dicho al revés por si alguien las confunde: `hayMixACOMPRAR: no` NO autoriza a cerrar.
+ *   Autoriza `caminosQueAbren: 0`.
+ *
+ * QUÉ CUENTA, y por qué no cuenta dos veces lo mismo:
+ *  · las vías con `estado: "cruza"` — cada una alcanza sola;
+ *  · más las respuestas del menú con `dentroDeSuTope`, deduplicadas por COORDENADA (la misma
+ *    tripleta con la que el motor fusiona: pie, plazo y descuento), que es lo que hace el
+ *    campo `hayOtrosCaminos` y por la misma razón — contar objetos daría 3 donde el lector ve 2;
+ *  · menos las respuestas que son PURO PRECIO (no mueven ni pie ni plazo) cuando la vía del
+ *    precio ya cruza sola: ahí las dos describen el mismo movimiento con otro nombre.
+ *
+ * ⚠ `respuestas` AUSENTE no es `respuestas: []`. Ausente = fila persistida antes del menú, o
+ *   sea que NADIE miró los otros caminos; ahí la grilla aporta lo único que sí está medido,
+ *   la equilibrada, y no se inventa un cero. Medido el 17-sep: 0 filas del parque, pero el
+ *   borde se escribe igual — es la misma trampa que `hayOtrosCaminos` documenta abajo.
+ */
+export interface CaminosQueAbren {
+  /** El número del que cuelga la doctrina. 0 ⇒ y solo entonces ⇒ se puede cerrar la puerta. */
+  total: number;
+  /** Cuántas alcanzan POR SEPARADO (bloque VÍAS). */
+  viasSolas: number;
+  /** La respuesta que el menú corona por score: «Lo que Franco recomienda». */
+  recomendado: RespuestaMix | null;
+  /** Las otras respuestas que caben en su tope, sin repetir la coordenada de la recomendada. */
+  otros: RespuestaMix[];
+}
+
+export function caminosQueAbren(
+  v: HallazgoDistanciaVeredicto["valor"],
+  /**
+   * LO QUE ESTA FUNCIÓN NO PUEDE ADIVINAR, y por eso entra por parámetro: en qué modalidad
+   * corre. STR desde BUSCAR OTRA lee `mixPalancasHastaComprar` y LTR siempre `mixPalancas`
+   * — dejar que lo dedujera acá sería un tercer lugar donde esa elección se escribe, y ya
+   * hay dos (`salidaPorMix` y `salidaPorMixStr`) que tienen que coincidir con la card.
+   *
+   *  · `grilla` — de dónde salen las respuestas. Default: `v.mixPalancas`.
+   *  · `equilibrada` — la respuesta de la combinación equilibrada según su modalidad. Solo
+   *    se usa en el borde de `respuestas` AUSENTE, donde es lo único medido.
+   */
+  opts?: { grilla?: MixPalancas | null; equilibrada?: SalidaPorMix | null },
+): CaminosQueAbren {
+  const equilibrada = opts?.equilibrada ?? null;
+  const viasSolas = (v.vias ?? []).filter((x) => x.estado === "cruza").length;
+  const cruzaPrecioSolo = (v.vias ?? []).some((x) => x.estado === "cruza" && x.palanca === "precio");
+  const m = opts?.grilla !== undefined ? opts.grilla : v.mixPalancas;
+
+  // AUSENTE ≠ VACÍO: sin menú medido, la grilla aporta lo único medido — la equilibrada.
+  if (!m || !Array.isArray(m.respuestas)) {
+    return { total: viasSolas + (equilibrada ? 1 : 0), viasSolas, recomendado: null, otros: [] };
+  }
+
+  const vistas = new Set<string>();
+  const abren: RespuestaMix[] = [];
+  for (const r of m.respuestas) {
+    if (!r.dentroDeSuTope) continue;
+    if (cruzaPrecioSolo && r.piePctDelta === 0 && r.plazoAniosDelta === 0) continue;
+    const k = `${r.piePct}|${r.plazoAnios}|${r.descuentoPct}`;
+    if (vistas.has(k)) continue;
+    vistas.add(k);
+    abren.push(r);
+  }
+  const recomendado = abren.find((r) => r.criterio === "score") ?? abren[0] ?? null;
+  const otros = recomendado ? abren.filter((r) => r !== recomendado) : [];
+  return { total: viasSolas + abren.length, viasSolas, recomendado, otros };
+}
+
+/**
+ * El movimiento de UNA respuesta del menú, con LAS MISMAS PALABRAS que usa la equilibrada.
+ *
+ * No es una cortesía de estilo: si el bloque del prompt describiera la recomendada con un
+ * molde y las otras con otro, el modelo leería dos clases de objeto donde hay una sola, y la
+ * prosa saldría tratando a las «otras» como algo menor. Comparte la lógica de `desdeMix` a
+ * propósito — misma pregunta, misma respuesta.
+ *
+ * Devuelve `null` cuando la respuesta no mueve ni pie ni plazo: eso es un descuento de precio
+ * a secas, que ya se cuenta como vía sola y no es una combinación que nombrar.
+ */
+export function movimientoDeRespuesta(r: RespuestaMix): string | null {
+  const partes: string[] = [];
+  if (r.piePctDelta !== 0) partes.push(`el pie en ${pct1(r.piePct)}%`);
+  if (r.plazoAniosDelta !== 0) partes.push(`el plazo en ${r.plazoAnios} años`);
+  return partes.length ? partes.join(" y ") : null;
 }
 
 /**
@@ -192,23 +298,41 @@ export function loTuyo(s: SalidaPorMix): string {
  *  Comprar («Ajusta supuestos», desde BUSCAR); null = llega a Comprar. Lee el descuento como el
  *  prompt lee `descuentoQueAdemásPide`: con descuento se dice; sin descuento, la forma corta.
  *
- *  ⛔ ESTA FRASE ENTRA AL PROMPT CON UNA PREMISA INCOMPLETA, Y A PROPÓSITO NO SE ARREGLA ACÁ
- *    (17-sep-2026). `loTuyo(s)` dice «pie y plazo» describiendo la equilibrada, y medido sobre
- *    el parque hay **4 filas STR** donde el menú ofrece además una respuesta que mueve UNA
- *    sola dimensión. En esas 4 el modelo recibe «Con lo tuyo —pie y plazo—» como hecho dado,
- *    sin saber que hay otro camino.
+ *  ✅ LA PREMISA INCOMPLETA SE ARREGLÓ ACÁ (17-sep-2026). Lo que sigue es el acta de cuando
+ *    no estaba arreglada, porque explica qué se ganaba esperando y qué se paga al hacerlo
+ *    (17-sep-2026). `loTuyo(s)` dice «pie y plazo» describiendo la equilibrada, y el menú
+ *    puede ofrecer otro camino que la frase no nombra. En esas filas el modelo recibe «Con
+ *    lo tuyo —pie y plazo—» como hecho dado, sin saber que hay más.
  *
- *    No se toca porque la fraseCanonica viaja al prompt (`ai-generation-str.ts:725`) y
- *    cambiarla MUEVE EL HASH DE GENERACIÓN: eso obliga a regenerar y a verificar con muestra
- *    semántica, que es el lado caro de la prosa. Este goal hizo el lado determinista. El
- *    cualificador está disponible en `hayOtrosCaminos` para cuando se abran los prompts, y es
- *    lo primero que hay que mirar ahí.
+ *    ⚠ CUÁNTAS SON: **6**, y manda `hayOtrosCaminos`. Este acta decía **4** y los dos números
+ *      eran ciertos con definiciones distintas: 4 contaba solo las respuestas que mueven UNA
+ *      dimensión; `hayOtrosCaminos` cuenta CUALQUIER coordenada distinta (pie, plazo o
+ *      descuento). Gobierna la del campo, y la razón no es que sea más grande: es que ese
+ *      campo ya gobierna el ksub del capítulo STR, y dos definiciones de «hay otro camino»
+ *      conviviendo en el repo es el problema de los dos mapas otra vez — cada superficie
+ *      termina contestando distinto la misma pregunta.
+ *
+ *    No se tocaba porque la fraseCanonica viaja al prompt (`ai-generation-str.ts:725`) y
+ *    cambiarla MUEVE EL HASH DE GENERACIÓN. Ese costo se paga ahora, con los prompts
+ *    abiertos, que es donde correspondía: el hash del user STR se mueve y las filas STR
+ *    nuevas nacen con la frase completa. NO invalida prosa persistida — eso lo hace
+ *    `PROMPT_VERSION_STR`, que no se toca desde acá.
  *
  *    (La otra superficie viva de `loTuyo` —el ksub del capítulo STR— sí lo usa: ver
  *    `CapitulosInversionStr.tsx`. Hubo una tercera, `DrawerDistanciaStr`, que estaba muerta
  *    y se borró el 17-sep-2026.) */
 export function cierreFraseCanonicaStr(s: SalidaPorMix, escalon: string | null): string {
-  const tuyo = `Con lo tuyo —${loTuyo(s)}—`;
+  // EL CUALIFICADOR VA DENTRO DE LOS GUIONES, no pegado detrás. «Con lo tuyo —pie y plazo—
+  // —lo que Franco recomienda—» pone dos incisos seguidos y se lee como un tropezón; adentro,
+  // el inciso sigue siendo uno y nombra lo que describe. Mismo nombre que el menú por la
+  // misma razón que `RECOMENDADA` documenta: un solo vocabulario para un solo objeto.
+  //
+  // TRES RAMAS, y la del medio importa: `null` es `respuestas` AUSENTE —nadie midió— y ahí no
+  // se dibuja nada, porque afirmar «es el único camino» sin haberlo medido es la misma
+  // invención que este módulo existe para evitar.
+  const tuyo = s.hayOtrosCaminos === true
+    ? `Con lo tuyo —${loTuyo(s)}, ${RECOMENDADA}—`
+    : `Con lo tuyo —${loTuyo(s)}—`;
   if (escalon) return `${tuyo}${s.descuentoPct === null ? "" : ` y un descuento de ${pct1(s.descuentoPct)}%`} llega a ${escalon}, no a Comprar.`;
   return s.descuentoPct === null ? `${tuyo} sí llega a Comprar.` : `${tuyo} y un descuento de ${pct1(s.descuentoPct)}% llega a Comprar.`;
 }
@@ -242,7 +366,7 @@ export function pieDocumentoSalidaStr(s: SalidaPorMix, escalon: string | null): 
  *   la misma doctrina de «sin celda, sin oración» que ya gobierna «hoy» en la leyenda del
  *   pop-up y la nota de la tarifa.
  */
-const RECOMENDADA = "lo que Franco recomienda";
+export const RECOMENDADA = "lo que Franco recomienda";
 
 // ── EL COPY DE CADA SUPERFICIE ───────────────────────────────────────────────
 // Vive acá, y no repartido en los componentes, por dos razones: se testea sin montar
