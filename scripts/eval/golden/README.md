@@ -80,6 +80,59 @@ a re-baseline, no bloquea). Flags semánticos → reporte, no bloquean.
 - **B6** omisiones donde corresponde (sensibilidad si BUSCAR; patrimonio si totalAportado≤0; sobreprecio si mediana confiable).
 - **B8** veredicto persistido == recompute.
 
+## Meta-validación: qué cubre y qué no
+
+`catch-test.ts` muta invariantes y exige que el checker falle. **Cubre `checkClassA` y
+`checkClassB` (`invariants.ts`) y nada más**: las otras 44 tiers del runner no tienen
+meta-validación de ninguna clase. Hasta el 17-sep-2026 su cabecera decía lo contrario.
+
+Por qué importa: en el arco del pop-up (13-17 sep) **cuatro catch-tests estuvieron verdes
+sobre código roto**, y una auditoría adversaria confirmó **102 predicados más que no miden
+lo que dicen — 94 en tiers que sí corren acá**. La regla y los seis modos de falla están en
+`CLAUDE.md` § Testing.
+
+### El tamaño del problema
+
+| | |
+|---|---|
+| tiers cableados | 36 archivos · 44 tiers |
+| bloques de invariante | **234** |
+| llamadas de aserción | 1.183 |
+| tiers que ninguna costura puede alcanzar | **0** |
+| tiers que entran en una costura compartida | **35 de 36** |
+
+Por tipo: 12 leen fuente con regex (**texto**), 11 llaman funciones del motor con fixtures
+(**dato**), 13 hacen las dos cosas (**mixto**). Por esfuerzo: 6 triviales, 16 bajos, 11
+medios, 3 altos — y de los tres altos, dos son volumen y no dificultad.
+
+### Las dos costuras
+
+1. **TEXTO** — `leer(ruta)` con un mapa de overrides. Hoy cada tier define su propia copia
+   (21 comparten la función byte por byte) y llama a `readFileSync` directo. La mutación es
+   inyectar un texto fuente modificado y exigir rojo. Probada sobre `popup-ajustes` mutando
+   `esActual` en `PopupAjustes.tsx`: 0 fallas → 3.
+2. **DATO/MOTOR** — reemplazo del módulo en `require.cache` antes de requerir el tier.
+   Probada de punta a punta sobre `titular-final`.
+
+⛔ **Dos trampas del arnés, las dos medidas.** Asignarle a un export para mutarlo
+**se ignora en silencio**: tsx/esbuild los emite como getters sin setter, así que un
+meta-runner escrito así da verde sin haber mutado nada — el punto ciego exacto que esto
+viene a cerrar. Y varios tiers corren todo en top-level, así que no se los puede re-ejecutar
+con otra entrada sin sacarlos de ahí primero.
+
+### Etapas
+
+- **Etapa 0 — que la frase no mienta.** Declarar el alcance real en `catch-test.ts`. Hecho.
+- **Etapa 1 — la costura compartida + sanity.** Las dos costuras y una pasada que corre cada
+  tier SIN mutar exigiendo `hard === 0`. Cubre las 44 de una sola vez y ordena el resto.
+  Incluye sacar de top-level los tiers que no se pueden re-ejecutar.
+- **Etapa 2 — el catálogo, tier por tier.** Una mutación declarada por bloque de invariante.
+  Es el volumen: 234 mutaciones, y **no se derivan solas** — cada bloque pincha otra cosa.
+  No hay bloqueo entre tiers, así que entra por lotes y se prioriza por lo que vigila.
+- **Etapa 3 — identidad del caso.** Hoy un tier devuelve `{hard: number}` y el nombre del
+  invariante roto solo existe en stdout. Una meta-validación honesta afirma «esta mutación
+  mata ESTE invariante», y con un contador no se puede.
+
 ## Alcance
 
 Nace LTR. STR se suma en su migración. La paridad exacta del KPI del render con el

@@ -128,6 +128,18 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
 - **Scripts de diagnóstico/QA** (`scripts/of-*`): facturación, créditos y pruebas de correo. Corren con `node --env-file=.env.local [--import tsx] scripts/of-*.mjs`. Untracked, NO se commitean.
 
 ## Testing
+- **Un catch-test se verifica EN ROJO mutando el código que vigila, no leyendo el predicado.** Escribir el guard y releerlo no prueba nada: prueba que quien lo escribió cree que mide. La verificación es mecánica y son tres pasos — revierte la línea que el invariante protege, corre el tier, exige que salga rojo, y devuelve la línea. Sin ese paso no hay guard: hay intención.
+  **Cuatro veces en el arco del pop-up (13-17 sep 2026) un catch-test estuvo VERDE sobre código roto**, y las cuatro se descubrieron por casualidad —mutando a mano o mirando el navegador—, nunca por el gate. Una auditoría posterior confirmó **102 predicados más que no miden lo que dicen, 94 de ellos en tiers que sí corren en el golden**. Los modos de falla, todos verificados por mutación:
+  · **con un COMENTARIO** — el acta que explica la regla nombra el campo que el regex busca, así que la prosa satisface al guard. Borrar el render entero lo deja verde; editar un jsdoc lo pone rojo.
+  · **con la FIRMA** — la captura arranca en `function f(r: X, esComprar: boolean)` y ahí está la palabra que el predicado pide.
+  · **con un IMPORT** — `/hayAjustesQueMostrar/` sobre el hero lo satisface la línea 9. *Presencia ≠ cableado*: que un identificador aparezca no es que gobierne lo que dice gobernar.
+  · **con una GRAFÍA** — prohibir `.map((vd)` se evade renombrando el parámetro a `w`. Un predicado puramente negativo no afirma que lo correcto exista.
+  · **con una RAMA LAXA** — en `/A && \(<X|A &&/` la segunda rama es prefijo de la primera y la vuelve trivial. Y un `|` donde hacía falta un `&&` acepta que se cumpla la mitad.
+  · **por VECINDAD** — `/A[^]{0,200}B/` en una función de 120 líneas, donde casi todo está a menos de 200 caracteres de casi todo.
+  · **y al revés**: un predicado que exige ADYACENCIA muere en silencio cuando alguien mete una condición en el medio. Queda verde y vacío.
+  Dos trampas del arnés, las dos medidas: si el extractor no encuentra su propiedad devuelve cadena vacía y el `&&` **deja pasar** (un cero de medición que no distingue «no corrió»); y en este repo **asignarle a un export para mutarlo se ignora en silencio** —tsx/esbuild los emite como getters sin setter—, así que un meta-runner escrito así da verde sin haber mutado nada.
+- **Un guard que no corre en el runner se pudre.** `popup-ajustes-catch-test.ts` declaraba «corre dentro del QUICK» y nunca estuvo cableado: 20 invariantes sueltos desde el 13-sep. Y de los 28 catch-tests que solo corren a mano, **nueve están en rojo**: `zona-catch-test.ts` lleva 14 días protegiendo una regla que el repo derogó a propósito el 03-sep (`b822cf1b`). El costo no es solo dejar de cazar — es que después **ese rojo ya no se puede leer**: no se sabe si el producto se rompió o si la regla se derogó.
+- **Un catch-test fija la REGLA, no la cifra.** Los que fijan valores recomputados de filas vivas del parque (`deltaPct === -22.5`, `if (umbral !== 3945)`) se ponen rojos solos cuando el motor evoluciona por decisión de producto. La forma sana está en el mismo repo: leer el tope de la constante del motor (`DIST_PIE_TOPE_PCT`) y exigir la relación (`umbral ≡ palanca precio`), no el número.
 - **Los tests con shim de storage no modelan el debounce de 500ms.** Cualquier operación que borre y reescriba necesita verificación en navegador midiendo el instante intermedio.
 
 ## Entorno y seguridad

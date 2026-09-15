@@ -3,8 +3,23 @@
 // ============================================================================
 // Rompe sintéticamente cada clase de invariante sobre un resultado válido en
 // memoria y verifica que el checker correspondiente FALLA. Si una mutación NO
-// produce falla, el runner tiene un punto ciego → catch-test rojo. Es la prueba
-// de que los verdes de las otras tiers significan algo.
+// produce falla, el runner tiene un punto ciego → catch-test rojo.
+//
+// ⛔ SU ALCANCE, DECLARADO (17-sep-2026). Hasta hoy la línea de arriba terminaba con
+// «Es la prueba de que los verdes de las otras tiers significan algo», y esa frase era
+// FALSA: este archivo muta `checkClassA` y `checkClassB` —los invariantes del Golden Set,
+// `invariants.ts`— y NINGUNA de las otras 44 tiers del runner. Lo que prueba es que el
+// recompute caza sus propias clases (a) y (b). Nada más.
+//
+// Lo que quedaba afuera no era teórico: en el arco del pop-up (13-17 sep) cuatro
+// catch-tests estuvieron VERDES sobre código roto, y una auditoría confirmó 102
+// predicados más que no miden lo que dicen — 94 en tiers que sí corren en el golden.
+// Ninguno de esos vive acá, o sea que ninguno podía ser cazado por este archivo.
+//
+// La regla general —un catch-test se verifica EN ROJO mutando el código que vigila, no
+// leyendo el predicado— está en CLAUDE.md § Testing, con los seis modos de falla y las
+// dos trampas del arnés. El plan por etapas para extender ESTE mecanismo a las 44 tiers
+// está en el README de esta carpeta, § «Meta-validación: qué cubre y qué no».
 // ============================================================================
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
