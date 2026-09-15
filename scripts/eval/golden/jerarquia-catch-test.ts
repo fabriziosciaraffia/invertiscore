@@ -94,7 +94,13 @@ const jerE = construirJerarquiaPrecios({
   esEstructural: true, minimoFueraDeRangoUF: 3086, minimoFueraDeRangoPct: -18.8,
   precioFlujoNeutroUF: 0, descuentoParaNeutro: 0, lecturaFlujoNeutro: "no existe", limiteTirUF: null, sinCapitalPropio: false,
 });
-check("estructural solo con el mínimo fuera de rango", jerE.precios.length === 1 && jerE.precios[0].rol === "minimo_fuera_rango" && /SIN plan/.test(jerE.bloque) && !/techo/i.test(jerE.bloque));
+// El predicado exigía «SIN plan», y b2bbb948 (bump 23→24) lo DEROGÓ a propósito: cuando
+// ningún cambio por separado alcanza, el motor todavía puede tener salida combinando pie y
+// plazo —136 filas del parque la tienen— así que el plan existe; lo que no existe es un
+// PRECIO objetivo. El test quedó rojo sin que nada estuviera roto, y en rojo se quedó porque
+// tampoco está cableado al runner. Lo que se fija ahora es la regla viva, que es además la
+// que el caso estructural necesita: en `negociacion` no hay precio objetivo que ofrecer.
+check("estructural solo con el mínimo fuera de rango", jerE.precios.length === 1 && jerE.precios[0].rol === "minimo_fuera_rango" && /SIN precio objetivo/.test(jerE.bloque) && !/techo/i.test(jerE.bloque));
 
 console.log("── fallback: append determinístico a la 2ª falla ──");
 const aiFalso = {
