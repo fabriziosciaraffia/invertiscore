@@ -188,8 +188,30 @@ const NOMBRA_LA_SALIDA =
 const POR_SEPARADO =
   /\b(por separado|por s[íi] (sol[oa]|mism[oa])|aislad[oa]s?|individualmente|de manera aislada|una sola|cada una por)\b/gi;
 
-const CIERRAN_LA_PUERTA: [string, RegExp][] = [
+/**
+ * ⚠ «estructural» SOLO VALE DONDE LA FILA LO ES (17-sep-2026), y por eso no está en esta
+ * lista sino en `SOLO_SI_ES_ESTRUCTURAL`. La familia se escribió cuando el guard únicamente
+ * corría en filas estructurales, donde «el problema es estructural» quiere decir «no hay
+ * salida». Fuera de ahí la misma palabra aparece diciendo otra cosa, y medido sobre las 149
+ * filas no estructurales con menú: dispararía en 13, y **9 de esos 13 son solo esta
+ * familia**. Las oraciones, leídas:
+ *   · «entras barato para Providencia, y eso es estructural» — es un elogio;
+ *   · «convierte la negociación en una conversación estructuralmente difícil»;
+ *   · «demasiado atípicos para leerlo como tendencia estructural» — es sobre plusvalía;
+ *   · «el pie del 10% es el problema estructural de esta operación» — nombra algo movible.
+ * Ninguna dice que no haya salida. Y el correctivo de una violación es una REGENERACIÓN
+ * COMPLETA del JSON, así que un falso positivo no es ruido: es una llamada al modelo
+ * pidiéndole que arregle prosa sana.
+ *
+ * Retirarla del todo tampoco: sobre las filas estructurales es la ÚNICA que caza 2 de las 10
+ * que hoy dispara (medido mutando el módulo y volviendo a correr). Así que se condiciona, no
+ * se borra — que es lo que ya hacía implícitamente el gate viejo.
+ */
+const SOLO_SI_ES_ESTRUCTURAL: [string, RegExp][] = [
   ["estructural", /estructural/i],
+];
+
+const CIERRAN_LA_PUERTA: [string, RegExp][] = [
   ["no hay forma", /no hay (ninguna |ning[úu]n )?(forma|manera|modo|salida)/i],
   ["ningún ajuste", /ning[úu]n[a]? (ajuste|cambio|descuento|movimiento|palanca|v[íi]a)/i],
   ["no alcanza", /(no alcanza|no basta|no cierra) (por|con) (m[áa]s|ning)/i],
@@ -219,6 +241,13 @@ const CIERRAN_LA_PUERTA: [string, RegExp][] = [
  */
 export function niegaSalidaConMix(userPrompt: string, ai: unknown): string[] {
   if (!/- hayMixACOMPRAR:\s*s[íi]/i.test(userPrompt)) return [];
+  // `- hayMixACOMPRAR:` solo se emite en filas estructurales (ver el armado del bloque en
+  // `ai-generation.ts`), así que su presencia ES la condición de la familia condicional.
+  // Hoy el gate de arriba ya la garantiza; queda escrito para el día que este guard mire
+  // `caminosQueAbren` en vez de `hayMixACOMPRAR` y empiece a ver las filas no estructurales.
+  const familias = /- hayMixACOMPRAR:/i.test(userPrompt)
+    ? [...SOLO_SI_ES_ESTRUCTURAL, ...CIERRAN_LA_PUERTA]
+    : CIERRAN_LA_PUERTA;
   const strings: { path: string; value: string }[] = [];
   collectStrings(ai, "", strings);
   const out: string[] = [];
@@ -237,7 +266,7 @@ export function niegaSalidaConMix(userPrompt: string, ai: unknown): string[] {
     // demás: «…por separado no alcanza. No hay forma.» sigue disparando por la segunda.
     const porSeparado = new RegExp(POR_SEPARADO.source, "i");
     const sinCalificador = value.split(/(?<=[.!?;:])\s+/).filter((o) => !porSeparado.test(o)).join(" ");
-    for (const [nombre, re] of CIERRAN_LA_PUERTA) {
+    for (const [nombre, re] of familias) {
       if (re.test(sinCalificador)) {
         const m = sinCalificador.match(re);
         out.push(`${path}[${nombre}]="${(m?.[0] ?? "").slice(0, 40)}"`);
