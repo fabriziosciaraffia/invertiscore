@@ -1712,9 +1712,6 @@ export function simularPie(
   return salida;
 }
 
-// `CeldaPiePlazo` / `MatrizPiePlazo` viven en types.ts desde el goal "Matriz III: cruza por
-// veredicto" (06-sep-2026), porque `FullAnalysisResult.matrizPiePlazo` las necesita ahí.
-
 
 /** Tasas de referencia de los instrumentos contra los que el informe compara la
  *  plata inicial ("La misma plata en otro lado"). Son las mismas que el prompt

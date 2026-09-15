@@ -437,11 +437,14 @@ export function CapitulosInversion({
                       <FilaDato k="Cuota mensual" tip="Dividendo del crédito hipotecario" sub={`crédito de ${compact(precioCLP - pieCLP)} a ${plazo} años`} v={money(dividendo)} unidad="/mes" />
                     </FilasDato>
                   </VViz>
-                  {/* La matriz pie × plazo BAJÓ al pop-up (08-sep-2026): se intercambió
-                      con la matriz de palancas. Aquella contesta «qué te separa del
-                      veredicto» y subió al flujo; esta contesta «qué pasa si muevo pie y
-                      plazo», que es explorar, no decidir. Vive en
-                      shared/MatrizPiePlazoLtr.tsx, con su toggle. */}
+                  {/* En LTR ya no hay matriz pie × plazo: se retiró en 6ecd80c1 junto con
+                      el productor `simularPieYPlazo` y el campo `matrizPiePlazo` de
+                      FullAnalysisResult. No la montaba nadie —el pop-up dibuja la suya
+                      desde la grilla del mix— y costaba 16 recomputes completos por
+                      carga LTR (−20% de tiempo de página). El acta del commit deja por
+                      escrito qué aportaba y adónde se mudó su invariante. Renta corta SÍ
+                      conserva la suya: `simularPieYPlazoStr` en lib/analysis/simular-str.ts,
+                      dibujada en str/CapitulosInversionStr.tsx. */}
                 </>
               )}
               {capexV && (

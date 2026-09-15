@@ -67,7 +67,7 @@
 
 import type { MixPalancas, PalancaDistancia, Veredicto } from "./types";
 
-/** Paso de la grilla del pie, en puntos. El mismo que usa `simularPieYPlazo`. */
+/** Paso de la grilla del pie, en puntos. El mismo que usa `simularPieYPlazoStr`. */
 export const MIX_PIE_PASO_PCT = 5;
 
 /**

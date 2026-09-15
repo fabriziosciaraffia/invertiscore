@@ -11,8 +11,9 @@
 //     para el dial de precio).
 //   · matrizTarifaOcupacion — 4 × 4 recomputes completos (motor + score): tarifas y
 //     ocupaciones en los percentiles de la zona más el caso, veredicto por celda.
-//   · matrizPiePlazo — espejo de `simularPieYPlazo` (LTR): pie −5 / actual / +5 / +10
-//     × plazos comerciales, flujo, TIR y veredicto por celda.
+//   · matrizPiePlazo — pie −5 / actual / +5 / +10 × plazos comerciales, flujo, TIR y
+//     veredicto por celda. (Tuvo un espejo en LTR, `simularPieYPlazo`, retirado en
+//     6ecd80c1; este lado no se tocó.)
 //
 // Todo pasa por `recomputeStrConPatch`: la MISMA ruta motor → score → gates del veredicto
 // canónico. Sin `airbnbRaw` no hay contexto y no se inventa uno (igual que simularPieStr).
@@ -246,7 +247,9 @@ export function simularTarifaYOcupacionStr(
   return { tarifas, ocupaciones, celdas };
 }
 
-/** Espejo de `simularPieYPlazo` (LTR): pie −5 / actual / +5 / +10 × plazos comerciales. */
+/** Pie −5 / actual / +5 / +10 × plazos comerciales, con flujo, TIR y veredicto por celda.
+ *  Era el espejo de `simularPieYPlazo` (LTR), retirada en 6ecd80c1 por no tener quién la
+ *  montara; esta sí tiene consumidores vivos —el prompt, los guards y el capítulo—. */
 export function simularPieYPlazoStr(ctx: VeredictoStrCtx, base: { veredicto: Veredicto }): MatrizPiePlazoStr {
   const vacia: MatrizPiePlazoStr = { pies: [], plazos: [], celdas: [] };
   const rankBase = RANK[base.veredicto];
