@@ -316,7 +316,7 @@ export function PopupAjustes({
   //
   // El bloque de abajo se titula «El ajuste» y dibuja siete pares antes → después. Con las
   // dos deltas en cero y sin descuento los siete salen idénticos: «$17.539.910 →
-  // $17.539.910», «Score 77 → 77». Medido: 6 filas COMPRAR abren así. Un bloque que se
+  // $17.539.910», «Score 77 → 77». Medido: 17 de 217 filas COMPRAR (7,8%) abren así. Un
   // llama ajuste y no ajusta nada no describe nada — y el lector tiene que leer siete
   // filas para descubrirlo.
   //

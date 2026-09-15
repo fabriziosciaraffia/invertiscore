@@ -713,7 +713,10 @@ export function calcularMixPalancas(p: {
       // Medido antes del arreglo: 8 de 138 filas COMPRAR con menú (5,8%) ofrecían bajo «La que
       // más rinde» —y bajo una bajada que dice «Las dos siguen en Comprar»— una celda que la
       // leyenda de la misma matriz marca como caída. Y en un empate de score la raíz podía caer
-      // ahí también, que es peor: la raíz la leen veinte consumidores fuera de este pop-up.
+      // ahí también, que es peor: la raíz es la que describen los campos planos del mix, o sea
+      // lo que lee TODO lo que no sea el menú. (La frase anterior decía «veinte consumidores
+      // fuera de este pop-up» y era del otro modo: en «mejorar» la raíz es `mixComprar`, que
+      // hoy leen los dos heros y nadie más. El riesgo es el mismo; el alcance no era ese.)
       //
       // LA CELDA SIGUE DIBUJÁNDOSE. Bajar el pie te saca de Comprar y eso es información real:
       // por eso entró al modo «mejorar» y por eso la leyenda tiene una entrada para el gris. Lo
@@ -721,9 +724,16 @@ export function calcularMixPalancas(p: {
       // qué pasa, el menú dice qué hacer— y es la misma separación con la que el azul huérfano
       // convive con un menú que no lo ofrece.
       //
-      // NO PUEDE VACIAR `combos`: la celda del caso declarado sostiene el veredicto por
-      // construcción —es la fila que se está mirando, y su veredicto ES la meta—, así que
-      // siempre queda al menos una. El catch-test lo fija sobre el fixture que modela la caída.
+      // ⚠ NO VACÍA `combos` — PERO LA GARANTÍA ES MEDIDA, NO ESTRUCTURAL, y la primera
+      // versión de este acta decía «por construcción». El argumento era que la celda del caso
+      // declarado sostiene el veredicto: cierto cuando esa celda EXISTE, y hay 8 filas COMPRAR
+      // del parque donde no existe, porque su plazo declarado no está en {20, 25, 30} y la
+      // grilla no lo incluye. En esas la garantía descansa en que alguna otra celda sostenga
+      // el veredicto, que es un hecho del caso y no del código.
+      // Medido: `combos` queda vacío en 0 de 217 filas COMPRAR con grilla. Si algún día no
+      // fuera 0, `calcularMixPalancas` devolvería null y la matriz entera dejaría de dibujarse
+      // —no se rompe nada, pero se pierde una pieza sin avisar—. El catch-test lo fija sobre
+      // el fixture que modela la caída; el parque lo confirma.
       if (mejorar && !alcanza(lectura.veredicto)) continue;
       const score = r.enMin.score;
       combos.push({
