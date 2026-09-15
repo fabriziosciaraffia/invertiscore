@@ -539,6 +539,45 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
   }
 }
 
+// ── 16 · COMPRAR · LAS DOS SEGUNDAS LÍNEAS DE LA FILA (15-sep-2026) ──────────
+//
+// En COMPRAR el pop-up era la card palabra por palabra: los dos dibujan el MISMO array y
+// escriben `rotuloCorto` + `oracion`. Medido: de las 9 cadenas que escribe con tres filas,
+// 6 son literales de la card —83% por caracteres— y el botón que lo abre vive DENTRO de esa
+// card, veinte píxeles debajo de la última fila que repite.
+//
+// Margen y Precio ganan contenido propio: la BANDA en la primera columna y el VEREDICTO AL
+// QUE CAE en la segunda. Los dos ya los calculaba el motor y los tiraba.
+//
+// LA FORMA SALE DE LA TABLA DE ABAJO, que es la misma: `SeccionComprar` ya usa
+// `paj-sec paj-nod`, así que la regla `.paj-nod td:first-child em` —la que pone «lo pone el
+// vendedor» bajo el nombre— ya le aplica. La banda entra ahí sin CSS nuevo. El destino va
+// como `small` bajo la oración, con una regla calcada de las dos que esa tabla ya tiene.
+{
+  if (POPUP) {
+    const sec = POPUP.match(/function SeccionComprar\([^]*?\n(?=(?:\/\/|\/\*\*|function ))/)?.[0] ?? "";
+    if (!sec) F("16 · no se encontró `SeccionComprar` para auditar sus filas");
+    else {
+      if (!/<em>\{[^}]*banda/.test(sec)) {
+        F("16 · la fila no dibuja la banda en un `<em>`: sin ella un margen de 0 puntos se lee igual que uno de 48, y son 44 filas del parque");
+      }
+      if (!/ETIQUETA_BANDA_MARGEN/.test(POPUP)) {
+        F("16 · el pop-up no usa `ETIQUETA_BANDA_MARGEN`: la etiqueta de la banda sale del motor, no del render");
+      }
+      if (!/<small>\{[^}]*caeA/.test(sec) && !/caeA[^]{0,120}<small>/.test(sec)) {
+        F("16 · la fila no dibuja a qué veredicto cae: el motor lo guarda y nadie lo leía");
+      }
+      if (!/etiquetaVeredicto\(/.test(sec)) {
+        F("16 · el destino no pasa por `etiquetaVeredicto`: es la fuente única de la escritura del veredicto");
+      }
+    }
+    // La regla del `small` de la oración, calcada de las dos que ya existen.
+    if (!/\.paj-nod \.paj-oracion small\{/.test(CSS)) {
+      F("16 · falta la regla `.paj-nod .paj-oracion small`: la segunda línea del destino no tendría forma");
+    }
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPopupAjustesTier(): { hard: number } {
   console.log("\n─── TIER POPUP-AJUSTES (el render del pop-up · 0 tokens) ───");

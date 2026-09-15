@@ -234,6 +234,17 @@ export function PopupAjustesTokens() {
       .paj-nod .dst{color:var(--doc-tx);font-weight:700;white-space:nowrap}
       .paj-nod .dst.comprar{color:var(--doc-comprar)}
       .paj-nod .dst small{display:block;font-size:11px;font-weight:600;opacity:.75;margin-top:2px}
+      /* LA BANDA NO SE PARTE (15-sep-2026). Acá la segunda columna lleva una oración larga y
+         la primera colapsa a su mínimo, así que «sin colchón» salía en dos líneas —«sin» y
+         «colchón»— en los dos anchos. La otra tabla que comparte «paj-nod» no tiene el
+         problema porque su segunda columna son cifras, así que la regla va acotada a esta
+         sección y no a las dos. Es el mismo «nowrap» que «.paj-nod .num» ya usa para que un
+         dato de segunda línea no se parta. */
+      .paj-aguanta td:first-child em{white-space:nowrap}
+      /* La segunda línea de la oración: a qué veredicto cae si el supuesto se pasa del borde
+         (15-sep-2026). Calcada de las dos de arriba —«.num small» y «.dst small»—, que es la
+         forma que esta tabla ya usa para poner un dato debajo de otro. */
+      .paj-nod .paj-oracion small{display:block;font-size:11px;font-weight:400;color:var(--doc-tx3);margin-top:3px}
       .paj-nod .paj-oracion{text-align:left;font-weight:400;color:var(--doc-tx2);padding-left:14px;
         line-height:1.5;font-size:13px}
       .paj-pie{margin:10px 0 0}

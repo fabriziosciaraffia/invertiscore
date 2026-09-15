@@ -26,6 +26,7 @@ import { QUIEN_LA_PONE, type FilaLoQueHariaYo, type QuienLaPone } from "@/lib/lo
 import type { HallazgoDistanciaVeredicto, PalancaDistancia, Veredicto } from "@/lib/types";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { bandaEsfuerzoDescuento, ETIQUETA_BANDA_ESFUERZO } from "@/lib/distancia-veredicto-hallazgo";
+import { ETIQUETA_BANDA_MARGEN } from "@/lib/sensibilidad-hallazgo";
 
 type Currency = "CLP" | "UF";
 
@@ -1128,14 +1129,37 @@ function SeccionSolas({
 function SeccionComprar({ filas }: { filas: FilaLoQueHariaYo[] }) {
   const verifica = filas.some((f) => f.rotuloCorto === "Verifica");
   return (
-    <section className="paj-sec paj-nod">
+    <section className="paj-sec paj-nod paj-aguanta">
       <div className="paj-st">{verifica ? "Cuánto aguanta, y qué verificar" : "Cuánto aguanta este veredicto"}</div>
       <table>
         <tbody>
           {filas.map((f, i) => (
             <tr key={`${f.titulo}-${i}`}>
-              <td>{f.rotuloCorto ?? f.titulo}</td>
-              <td className="paj-oracion">{f.oracion ?? f.cifra}</td>
+              <td>
+                {f.rotuloCorto ?? f.titulo}
+                {/* LA BANDA DEL MARGEN (15-sep-2026). El motor clasifica en tres desde Fase 0
+                    y acá se escribía la misma oración en los tres casos: 44 de las 217 filas
+                    COMPRAR del parque aguantan menos de 7 puntos y se leían igual que una que
+                    aguanta 48 —en renta corta, 23 de 57—. La forma es la de la tabla de
+                    abajo: `.paj-nod td:first-child em` es la MISMA regla que pone «lo pone el
+                    vendedor» bajo el nombre de la palanca, y esta sección ya la hereda porque
+                    comparte `paj-nod`. Cero CSS nuevo. */}
+                {f.banda && <em>{ETIQUETA_BANDA_MARGEN[f.banda]}</em>}
+              </td>
+              <td className="paj-oracion">
+                {f.oracion ?? f.cifra}
+                {/* A DÓNDE CAE SI SE PASA DEL BORDE. Lo medía la misma bisección que publica
+                    la cifra y lo botaba adentro del predicado. Cae a Ajustar en 213 de las
+                    217 filas COMPRAR; una sola cae a Buscar otro, y esa es justamente la que
+                    no se puede leer igual que las demás.
+                    Sin dato no va la línea: con `firme` nadie miró más abajo. */}
+                {f.caeA && (
+                  <small>
+                    {f.rotuloCorto === "Precio" ? "Por encima de eso" : "Abajo de eso"}, pasa a{" "}
+                    {etiquetaVeredicto(f.caeA, "frase")}.
+                  </small>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
