@@ -157,7 +157,7 @@ async function main() {
   // los seeds no aportaban un caso que las filas no cubran.
 
   console.log(`\nSIMULACIÓN · catch-test sobre ${filas.length} filas`);
-  console.log(`  matriz pie×plazo   ok ${matrizOk} · vacía (pie 0/100 o plazo no comercial) ${matrizVacia} · FALLA ${matrizFalla}`);
+  console.log(`  grilla del mix     ok ${matrizOk} · sin celda «hoy» (fila sin grilla o plazo fuera de ella) ${matrizVacia} · FALLA ${matrizFalla}`);
   console.log(`  tabla anual        ok ${tablaOk} · FALLA ${tablaFalla}`);
   for (const x of fallas) console.log(`  ✗ ${x}`);
   const contrato = filas.find((f) => f.id.startsWith(CASO_CONTRATO));
