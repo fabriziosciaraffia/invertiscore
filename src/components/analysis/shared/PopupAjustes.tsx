@@ -52,9 +52,9 @@ const plataFirmada = (n: number, currency: Currency, valorUF: number) =>
  *
  * Había dos mapas y discrepaban. El motor dice cuatro veces que precio, pie y plazo son lo
  * que el comprador controla; este archivo le atribuía el plazo al banco, y era la única
- * superficie del informe que lo hacía —la card, con el mismo dato, lo cuenta como tuyo y por
- * eso no lo nombra entre las alternativas ajenas—. Un hecho, dos fuentes, dos respuestas a
- * dos clics de distancia.
+ * superficie del informe que lo hacía —la card, con el mismo dato, lo cuenta
+ * como tuyo y por eso no lo nombra entre las alternativas ajenas—. Un hecho, dos fuentes,
+ * dos respuestas a dos clics de distancia.
  *
  * Ahora la clave es el DUEÑO y no la palanca, así que no hay dónde volver a discrepar: lo
  * que queda acá es redacción. «Lo decides tú» sirve para las tres tuyas —el pie se pone, el
@@ -157,8 +157,13 @@ function cruzaDeVerdad(c: CeldaMix, destino: Veredicto) {
   return cruzaSegun(veredictoMostrado(c), c, destino);
 }
 
+/**
+ * SIN `modalidad` (16-sep-2026). La traía para una sola cosa: decidir si iba la nota de la
+ * tarifa. Esa nota ahora cuelga de que exista su fila, y `adr` solo existe en renta corta,
+ * así que la modalidad viaja adentro del dato y el prop quedaba sin lector. Todo lo demás
+ * que el pop-up dibuja sale del hallazgo, que ya viene por modalidad.
+ */
 export interface PopupAjustesProps {
-  modalidad: "ltr" | "str";
   veredicto: Veredicto;
   /** El hallazgo de distancia con la grilla y las palancas. Ausente en COMPRAR. */
   distancia?: HallazgoDistanciaVeredicto | null;
@@ -186,7 +191,6 @@ export function hayAjustesQueMostrar(p: {
 }
 
 export function PopupAjustes({
-  modalidad,
   veredicto,
   distancia,
   filasComprar,
@@ -324,7 +328,7 @@ export function PopupAjustes({
         />
       )}
 
-      {solas.length > 0 && <SeccionSolas solas={solas} modalidad={modalidad} currency={currency} valorUF={valorUF} />}
+      {solas.length > 0 && <SeccionSolas solas={solas} currency={currency} valorUF={valorUF} />}
 
       {!esComprar && mix && celdas.length > 0 && <Cta mix={mix} precioUF={precioUF} />}
     </div>
@@ -998,15 +1002,21 @@ function Par({ label, antes, despues, tono }: { label: string; antes: string; de
 // ── 4 · no depende de ti ────────────────────────────────────────────────────
 function SeccionSolas({
   solas,
-  modalidad,
   currency,
   valorUF,
 }: {
   solas: PalancaDistancia[];
-  modalidad: "ltr" | "str";
   currency: Currency;
   valorUF: number;
 }) {
+  // SIN FILA DE TARIFA, SIN ORACIÓN (16-sep-2026). La nota colgaba de la modalidad, o sea se
+  // dibujaba en los 91 pop-ups STR con tabla; en 31 de ellos (34,1%) no hay fila de tarifa y
+  // la nota explicaba algo que no está en pantalla —y en 22 de esos 31 la tabla sí tiene una
+  // fila del usuario, así que debajo de «lo decides tú» se leía «la pone el mercado».
+  // Es la misma doctrina del subtítulo de la matriz: la oración cuelga de lo que describe.
+  // `adr` solo existe en renta corta, así que esta condición ya trae la modalidad adentro y
+  // la otra sobraba.
+  const hayTarifa = solas.some((p) => p.palanca === "adr");
   const cifra = (p: PalancaDistancia) => {
     if (p.palanca === "plazo") return `${p.objetivo} años`;
     if (p.palanca === "pie") return `${dec1(p.objetivo).replace(",0", "")}%`;
@@ -1048,7 +1058,7 @@ function SeccionSolas({
           ))}
         </tbody>
       </table>
-      {modalidad === "str" && <p className="paj-sx paj-pie">La tarifa la pone el mercado, no tú.</p>}
+      {hayTarifa && <p className="paj-sx paj-pie">La tarifa la pone el mercado, no tú.</p>}
     </section>
   );
 }

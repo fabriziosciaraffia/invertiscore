@@ -511,6 +511,34 @@ const PORTADA = leer("src/components/analysis/portada/PortadaInforme.tsx");
   }
 }
 
+// ── 15 · SIN FILA DE TARIFA, SIN NOTA (16-sep-2026) ───────────────────────────
+//
+// La nota «La tarifa la pone el mercado, no tú» colgaba de `modalidad === "str"`, o sea se
+// dibujaba SIEMPRE en renta corta. Medido sobre el parque recomputado: de los 91 pop-ups STR
+// con tabla, 31 (34,1%) no tienen fila de tarifa —así que la nota explicaba una fila que no
+// está— y en 22 de esos 31 la tabla sí tiene una fila del usuario, con una nota debajo
+// hablando del mercado sobre una fila que no habla del mercado.
+//
+// Es la doctrina «sin celda, sin oración» que la matriz ya aplica en su subtítulo: la segunda
+// mitad no se dice cuando no hay celda de hoy. Acá la oración entera cuelga de su fila.
+{
+  if (POPUP) {
+    if (/modalidad === "str" && <p/.test(POPUP)) {
+      F("15 · la nota de la tarifa sigue colgando de la modalidad: se dibuja en 31 pop-ups STR donde esa fila no existe");
+    }
+    if (!/const hayTarifa\s*=/.test(POPUP)) {
+      F("15 · no existe `hayTarifa`: nada condiciona la nota a que la fila de tarifa exista");
+    }
+    const decl = POPUP.match(/const hayTarifa[^;]*;/)?.[0] ?? "";
+    if (!/palanca === "adr"/.test(decl)) {
+      F("15 · `hayTarifa` no se escribe mirando la fila `adr`: la nota volvería a hablar de lo que no está en la tabla");
+    }
+    if (!/\{hayTarifa && <p/.test(POPUP)) {
+      F("15 · la nota no cuelga de `hayTarifa`");
+    }
+  }
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runPopupAjustesTier(): { hard: number } {
   console.log("\n─── TIER POPUP-AJUSTES (el render del pop-up · 0 tokens) ───");

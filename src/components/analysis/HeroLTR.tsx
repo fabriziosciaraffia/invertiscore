@@ -221,7 +221,6 @@ export function HeroLTR({
     <>
       <PopupAjustesTokens />
       <PopupAjustes
-        modalidad="ltr"
         veredicto={veredicto as Veredicto}
         distancia={distanciaRow ?? null}
         filasComprar={bloqueDeterminista?.filas ?? null}

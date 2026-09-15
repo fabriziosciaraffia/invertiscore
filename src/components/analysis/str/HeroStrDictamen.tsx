@@ -150,7 +150,6 @@ export function HeroStrDictamen({
     <>
       <PopupAjustesTokens />
       <PopupAjustes
-        modalidad="str"
         veredicto={veredicto as Veredicto}
         distancia={distancia ?? null}
         filasComprar={bloqueDeterminista?.filas ?? null}
