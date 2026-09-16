@@ -49,6 +49,7 @@ import { runPromptV25Tier } from "./prompt-v25-catch-test";
 import { runPromptV20StrTier } from "./prompt-v20-str-catch-test";
 import { runGestionSinVeredictoTier } from "./gestion-sin-veredicto-catch-test";
 import { runFlujoDiezAniosTier } from "./flujo-diez-anios-catch-test";
+import { runPatchQueEmpeoraTier } from "./patch-que-empeora-catch-test";
 import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runRespaldoArriendoTier } from "./respaldo-arriendo-catch-test";
 import { runDistanciaComprarTier } from "./distancia-comprar-catch-test";
@@ -304,6 +305,12 @@ async function printStrSemantic() {
   // el cero siempre está en el dominio, y que el capítulo II ya no tiene cierre. Fixtures
   // sintéticos con piso POR FIXTURE. Verificado en rojo con 5 mutaciones. Siempre con el QUICK.
   totalHard += runFlujoDiezAniosTier().hard;
+  // ── Tier PATCH-QUE-EMPEORA (16-sep-2026, 0 tokens, sin base): un patch que empeora el caso
+  // no puede cruzar hacia un veredicto mejor, así que no se prueba. Con el caso en auto el
+  // builder no sondea «administrador» NI CON UNA SONDA MENTIROSA — que es lo que distingue
+  // «no cruza» de «no pregunta»—, y el tramo de gestión entra a la frase estructural solo del
+  // lado que probó sacar un costo real. Verificado en rojo con 3 mutaciones. Siempre con el QUICK.
+  totalHard += runPatchQueEmpeoraTier().hard;
   totalHard += runPlusvaliaGlosaTier().hard;
   totalHard += runRespaldoArriendoTier().hard;
   totalHard += runDistanciaComprarTier().hard;
