@@ -243,11 +243,91 @@ const reglaDosBandas = (patch: { arriendo?: number; precio?: number; plazoCredit
   }
 }
 
+
+// ── 8 · LA CIFRA PUBLICADA CRUZA, SONDEADA EN LA MISMA REGLA ─────────────────
+//
+// Las celdas de la tabla «Un cambio a la vez» muestran, juntas, un % y su monto. Son la misma
+// magnitud dicha de dos formas, así que el lector puede confrontarlas con una multiplicación —
+// y es la única aritmética del informe que alguien verifica a mano.
+//
+// LA REGLA QUE SE FIJA ACÁ: **el redondeo va siempre hacia MÁS ESFUERZO** (más descuento, más
+// arriendo, más tarifa), de modo que CUALQUIERA de las dos cifras que el lector use lo deje en
+// un punto que cruza. Lo que cambia entre celdas es cuál de las dos es la PETICIÓN —el % cuando
+// hay contraparte a quien pedirle (precio), el monto cuando es una apuesta que se publica
+// (arriendo, tarifa)— pero eso decide cuál queda EXACTA, no hacia dónde se redondea.
+//
+// Y EL % TIENE QUE CRUZAR AUNQUE NO SEA LA PETICIÓN, PORQUE VIAJA SOLO: el cierre del capítulo
+// II escribe «subir a COMPRAR por el arriendo pediría un +X%» sin el monto al lado, y encima
+// bifurca el copy en el umbral de 30 (`cierres-capitulos.ts`). El PDF STR hace lo mismo.
+//
+// Medido sobre el parque el 17-sep-2026, antes del arreglo: precio LTR publicaba un descuento
+// que no cruza en 269 de 510 filas; el % del arriendo dejaba la cuenta del lector corta en 22
+// de 160 sondeadas; ADR en 9 de 55; precio STR en 10 de 72. Los cuatro a 0.
+//
+// ⛔ NO SE VERIFICA LEYENDO LA ARITMÉTICA. Comprobar que `actual × (1+pct/100) ≈ objetivo` mide
+// la GRAFÍA; lo que importa es si ese punto alcanza la meta, así que se SONDEA. Y la regla se
+// declara UNA vez y se usa para las dos cosas —emitir y sondear—: escribir los umbrales dos
+// veces sería el error de las «constantes espejo» que este arco viene persiguiendo.
+//
+// ⛔ Y VA POR BARRIDO, NO CON UNA FRONTERA ELEGIDA A MANO. La primera versión usaba UNA, puesta
+// entre décimos a propósito, y salió VERDE sobre el código mutado: la bisección tiene su propia
+// resolución (`DIST_PREC_PTS` = 0,1 sobre el factor), así que el punto que devuelve cae en una
+// grilla y la frontera «incómoda» que yo elegí terminaba en un décimo cómodo. Con 60 fronteras
+// el azar deja de decidir — y el PISO DE COBERTURA de abajo exige que al menos una haya caído
+// donde `round` y `ceil` difieren, porque si ninguna cae ahí el barrido no probó nada.
+{
+  const ARRIENDO_HOY = 500_000;
+  const PRECIO_HOY = 3_000;
+  let casos = 0;
+  let ejercitanElRedondeo = 0;
+
+  for (let k = 0; k < 60; k++) {
+    // fronteras repartidas a paso irregular para no alinearse con la grilla de la bisección
+    const tArr = 505_000 + k * 1_117;      // hasta `+14% sobre 500.000 (tope BUSCAR = 15)
+    const tPre = 2_990 - k * 6.83;         // hasta `−12,4% sobre 3.000
+    const regla = (patch: { arriendo?: number; precio?: number; plazoCredito?: number; piePct?: number }): Veredicto => {
+      if (patch.arriendo != null) return patch.arriendo >= tArr ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+      if (patch.precio != null) return patch.precio <= tPre ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+      return "BUSCAR OTRA";
+    };
+    const hall = construir({ veredictoBase: "BUSCAR OTRA", regla });
+    const meta = hall?.valor.veredictoObjetivo;
+    const pals = (hall?.valor.palancas ?? []).filter((p) => p.palanca === "arriendo" || p.palanca === "precio");
+    if (!hall || pals.length !== 2) continue; // se contabiliza abajo, con el piso de cobertura
+    for (const p of pals) {
+      casos++;
+      const campo = p.palanca as "arriendo" | "precio";
+      const base = campo === "arriendo" ? ARRIENDO_HOY : PRECIO_HOY;
+      // ¿este caso distingue `round` de `ceil`? si no, no prueba el invariante
+      const exacto = Math.abs((p.objetivo / base - 1) * 100);
+      if (Math.round(exacto * 10) !== Math.ceil(exacto * 10 - 1e-9)) ejercitanElRedondeo++;
+      // (a) el MONTO publicado
+      if (regla({ [campo]: p.objetivo }) !== meta) {
+        F(`8 · ${p.palanca} (frontera ${campo === "arriendo" ? tArr : tPre}): el MONTO publicado (${p.objetivo}) no alcanza ${meta} — el informe promete un número que no llega`);
+      }
+      // (b) la cuenta del LECTOR a partir del % publicado
+      const delLector = Math.round(p.actual * (1 + p.deltaPct / 100));
+      if (regla({ [campo]: delLector }) !== meta) {
+        F(`8 · ${p.palanca} (frontera ${campo === "arriendo" ? tArr : tPre}): el % publicado (${p.deltaPct}%) lleva a ${delLector} y ESO no alcanza ${meta}. El % viaja solo en el cierre del capítulo II, así que tiene que cruzar por sí mismo`);
+      }
+    }
+  }
+
+  // ⛔ PISO DE COBERTURA. Sin esto el barrido puede quedar VERDE por no haber medido: si el
+  // emisor deja de emitir las vías, `pals.length !== 2` salta todas y el bucle recorre cero
+  // casos; y si ninguna frontera cae donde `round` y `ceil` difieren, el invariante pasa sin
+  // haber ejercitado lo que vigila. Es «un cero de medición que no distingue NO CORRIÓ», que
+  // ya mordió dos veces hoy — una en el gate de la corona de score y otra en la primera
+  // versión de éste.
+  if (casos < 100) F(`8 · el barrido midió ${casos} celdas de las ~120 que debia: las vías dejaron de emitirse y el invariante no probó nada`);
+  if (ejercitanElRedondeo === 0) F("8 · ninguna de las fronteras barridas cae donde `round` y `ceil` difieren: el barrido pasó sin ejercitar el redondeo que este invariante vigila");
+}
+
 /** Tier para el runner: cada invariante roto es una falla dura. */
 export function runDistanciaComprarTier(): { hard: number } {
   console.log("\n─── TIER DISTANCIA-COMPRAR (las cuatro vías al salto de dos bandas · distancia-veredicto-hallazgo.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — las cuatro vías sobreviven, coherentes con el campo viejo, con tope 30, el mínimo fuera de tope a COMPRAR y ausente ≠ no cruza");
+    console.log("  ✓ VERDE — las cuatro vías sobreviven, coherentes con el campo viejo, con tope 30, el mínimo fuera de tope a COMPRAR, ausente ≠ no cruza, y la cifra publicada CRUZA por las dos lecturas (monto y %)");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }

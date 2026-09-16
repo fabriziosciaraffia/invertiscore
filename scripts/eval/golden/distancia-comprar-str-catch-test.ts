@@ -37,7 +37,7 @@
 // Corre dentro del QUICK (tier "distancia-comprar-str") y standalone:
 //   node --import tsx scripts/eval/golden/distancia-comprar-str-catch-test.ts
 // ============================================================================
-import { buildHallazgoDistanciaVeredictoStr, DIST_STR_TOPE_AJUSTA_PCT, DIST_STR_TOPE_BUSCAR_PCT } from "../../../src/lib/distancia-veredicto-str-hallazgo";
+import { buildHallazgoDistanciaVeredictoStr, DIST_STR_TOPE_ADR_PCT, DIST_STR_TOPE_AJUSTA_PCT, DIST_STR_TOPE_BUSCAR_PCT } from "../../../src/lib/distancia-veredicto-str-hallazgo";
 import type { StrPatch } from "../../../src/lib/analysis/veredicto-str-con-patch";
 import type { Veredicto } from "../../../src/lib/types";
 
@@ -225,10 +225,85 @@ const reglaDosBandas = (x: StrPatch): Veredicto => {
 }
 
 /** Tier para el runner: cada invariante roto es una falla dura. */
+// ── 7 · LA CIFRA PUBLICADA CRUZA, SONDEADA EN LA MISMA REGLA ─────────────────
+//
+// Espejo exacto del invariante 8 del tier LTR, y se escribe el MISMO día por lo que pasó esta
+// mañana: la vía de precio se arregló en LTR y el espejo STR quedó con el defecto intacto hasta
+// que un censo lo encontró. Si un campo se audita, tiene que estar declarado en los dos lados —
+// y el gate también.
+//
+// LA REGLA: **el redondeo va siempre hacia MÁS ESFUERZO** (más descuento, más tarifa), de modo
+// que cualquiera de las dos cifras que el lector use lo deje en un punto que cruza. Lo que
+// cambia entre celdas es cuál es la PETICIÓN —el % en «precio», que se le pide al vendedor; el
+// MONTO en «tarifa», que no se le pide a nadie: se publica y el mercado responde, y por eso el
+// pie de la tabla dice «la tarifa la pone el mercado, no tú»—. Eso decide cuál queda EXACTA,
+// no hacia dónde se redondea.
+//
+// Y el % tiene que cruzar aunque no sea la petición, porque VIAJA SOLO: el PDF STR escribe
+// «llegaría a COMPRAR recién subiendo la tarifa un X%» sin el monto al lado.
+//
+// Medido sobre el parque el 17-sep-2026, antes del arreglo: el % de la tarifa dejaba la cuenta
+// del lector corta en 9 de 55 sondeadas, y el precio STR en 10 de 72. Los dos a 0.
+//
+// Va por BARRIDO y con PISO DE COBERTURA por la misma razón que el de LTR: la bisección tiene
+// su propia resolución, así que una frontera elegida a mano puede caer en un décimo cómodo y
+// dejar el gate verde sobre código roto. Pasó, con una frontera sola, hoy.
+{
+  let casos = 0;
+  let ejercitanElRedondeo = 0;
+
+  for (let k = 0; k < 60; k++) {
+    // ⛔ LOS RANGOS SE LEEN DE LOS TOPES DEL MOTOR, no se escriben. La primera versión los
+    // hardcodeó y el barrido se pasó del tope de la TARIFA —que es 10, no 15, porque esta
+    // palanca tiene el suyo—: 42 de 120 celdas no se emitían, y el PISO DE COBERTURA lo cazó
+    // en vez de dejarlo pasar en verde. Un gate que fija una cifra del motor se pudre cuando
+    // el motor la cambia; uno que la LEE sigue midiendo. Se barre hasta el 90% del tope para
+    // no quedar pegado al borde, que es otro invariante y tiene el suyo.
+    const techoDcto = DIST_STR_TOPE_BUSCAR_PCT * 0.9;
+    const techoAdr = DIST_STR_TOPE_ADR_PCT * 0.9;
+    const tDctoPct = 1 + (k / 59) * (techoDcto - 1);              // descuento que cruza
+    const tAdrF = 1 + (0.5 + (k / 59) * (techoAdr - 0.5)) / 100;  // factor de tarifa que cruza
+    const regla = (x: StrPatch): Veredicto => {
+      if (esSondaMix(x)) return "BUSCAR OTRA";
+      if (x.precioCompra != null) return dcto(x) >= tDctoPct / 100 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+      if (x.adrOverride != null) return adrF(x) >= tAdrF ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+      return "BUSCAR OTRA";
+    };
+    const hall = construir({ base: "BUSCAR OTRA", regla });
+    const meta = hall?.valor.veredictoObjetivo;
+    const pals = (hall?.valor.palancas ?? []).filter((p) => p.palanca === "precio" || p.palanca === "adr");
+    if (!hall || pals.length !== 2) continue; // se contabiliza abajo, con el piso de cobertura
+    for (const p of pals) {
+      casos++;
+      const esPrecio = p.palanca === "precio";
+      const base = esPrecio ? PRECIO_UF : ADR;
+      const exacto = Math.abs((p.objetivo / base - 1) * 100);
+      if (Math.round(exacto * 10) !== Math.ceil(exacto * 10 - 1e-9)) ejercitanElRedondeo++;
+      // el patch de precio va en CLP, como lo arma el emisor; el de tarifa en pesos por noche
+      const patchDe = (v: number): StrPatch => (esPrecio ? { precioCompra: Math.round(v * UF) } : { adrOverride: Math.round(v) });
+      // (a) el MONTO publicado
+      if (regla(patchDe(p.objetivo)) !== meta) {
+        F(`7 · ${p.palanca}: el MONTO publicado (${p.objetivo}) no alcanza ${meta} — el informe promete un número que no llega`);
+      }
+      // (b) la cuenta del LECTOR a partir del % publicado
+      const delLector = Math.round(p.actual * (1 + p.deltaPct / 100));
+      if (regla(patchDe(delLector)) !== meta) {
+        F(`7 · ${p.palanca}: el % publicado (${p.deltaPct}%) lleva a ${delLector} y ESO no alcanza ${meta}. El % viaja solo en el PDF STR, así que tiene que cruzar por sí mismo`);
+      }
+    }
+  }
+
+  // ⛔ PISO DE COBERTURA, por lo que pasó dos veces hoy: un bucle sobre una lista vacía queda
+  // VERDE sin haber medido, y un barrido que nunca cae donde `round` y `ceil` difieren pasa sin
+  // ejercitar lo que vigila. Las dos ausencias se AFIRMAN como falla, no se saltean.
+  if (casos < 100) F(`7 · el barrido midió ${casos} celdas de las ~120 que debia: las vías dejaron de emitirse y el invariante no probó nada`);
+  if (ejercitanElRedondeo === 0) F("7 · ninguna de las fronteras barridas cae donde `round` y `ceil` difieren: el barrido pasó sin ejercitar el redondeo que este invariante vigila");
+}
+
 export function runDistanciaComprarStrTier(): { hard: number } {
   console.log("\n─── TIER DISTANCIA-COMPRAR-STR (las cinco vías y el mix hacia COMPRAR desde BUSCAR · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — las cinco vías a COMPRAR sobreviven en orden canónico, coherentes con el campo viejo, con tope 25, exploradas también en el estructural, el mínimo fuera de tope con su número, y el mix a COMPRAR aparte del mix al escalón, que no se mueve");
+    console.log("  ✓ VERDE — las cinco vías a COMPRAR sobreviven en orden canónico, coherentes con el campo viejo, con tope 25, exploradas también en el estructural, el mínimo fuera de tope con su número, el mix a COMPRAR aparte del mix al escalón, y la cifra publicada CRUZA por las dos lecturas (monto y %)");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
