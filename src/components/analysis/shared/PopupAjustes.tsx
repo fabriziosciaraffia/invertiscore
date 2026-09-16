@@ -539,39 +539,62 @@ function SeccionMatriz({
   // o no califica, así que la grilla es una línea de plazos para un pie fijo. Rotular un eje
   // vertical sobre una sola fila es la misma clase de ruido: el pie se dice en su cabecera.
   const unaFila = pies.length === 1;
-  // UNA SOLA CELDA no es ni matriz ni línea: es UNA combinación. Son 23 filas LTR, donde el
-  // pie ya está en el techo y el plazo también. Dibujarle ejes, cabeceras y leyenda a un
-  // cuadrito solo sería andamiaje alrededor de una sola afirmación, así que se dice en
+  // UNA SOLA CELDA no es ni matriz ni línea: es UNA combinación. Son 12 filas LTR y 0 STR,
+  // donde el pie ya está en el techo y el plazo también. Dibujarle ejes, cabeceras y leyenda a
+  // un cuadrito solo sería andamiaje alrededor de una sola afirmación, así que se dice en
   // palabras y el detalle queda a un clic, igual que en la matriz.
+  // (Decía «23 filas LTR». Remedido el 17-sep-2026 sobre el parque: son 12 LTR, y el lado STR
+  // da 0 de 58 filas con mix dibujable. El archivo tenía 23 acá, 12 abajo y 13 en memoria.)
   const unaSola = celdas.length === 1;
 
   if (unaSola) {
     const c = celdas[0];
-    // ESTA RAMA ESCRIBE `c.veredicto`, ASÍ QUE SU COLOR LEE `c.veredicto`. No es un olvido:
-    // es la misma regla que la matriz, aplicada a lo que esta rama dice. Si algún día la
-    // celda única pasa al precio de hoy, acá se cambia la palabra Y esta línea, juntas.
-    const cruza = cruzaSegun(c.veredicto, c, destino);
+    // ESTA RAMA YA NO ESCRIBE `c.veredicto`: escribe la lectura de HOY, como la matriz.
+    // Su color lee lo mismo que su palabra —esa parte de la regla no cambió— y por eso el
+    // predicado recibe `veredictoMostrado(c)` y no el campo crudo.
+    const cruza = cruzaSegun(veredictoMostrado(c), c, destino);
+    // LA PROMESA SALE DEL CUADRITO Y SE VA A SU LÍNEA (17-sep-2026).
+    //
+    // El cuadrito decía la lectura EN EL DESCUENTO MÍNIMO, o sea «Comprar · score 70» sobre
+    // un informe que dice «Ajustar · score 68». Medido: las 12 filas que usan esta rama lo
+    // hacían, 12 de 12. Y el «70» no era casualidad ni un score: **70 es el umbral de
+    // COMPRAR**, y la bisección aterriza sobre la frontera, así que las 12 mostraban el
+    // mismo número. Un umbral disfrazado de score es peor que un score equivocado, porque se
+    // lee como una medición de este departamento cuando es una constante del motor.
+    //
+    // No hacía falta forma nueva: la matriz ya resolvió esta pregunta separando las dos
+    // lecturas —el aro dice hoy, el chip declara la otra— y `veredictoSinDescuento` /
+    // `scoreSinDescuento` YA traen la lectura correcta en las 12 (coinciden exacto con el
+    // informe). Lo único que faltaba era dónde devolver la promesa, y el bloque ya tiene pie
+    // de texto. Acá no hay chip porque no hay grilla que anotar: hay una oración.
+    //
+    // Se dice sólo cuando hay algo que prometer: con `descuentoPct` nulo no cruza ni pidiendo
+    // el tope, y con 0 la celda ya llega sin pedir nada —ahí `veredictoMostrado` y
+    // `c.veredicto` son la misma lectura y la oración repetiría el cuadrito.
+    const promesa = c.descuentoPct !== null && c.descuentoPct > 0 && cruzaSegun(c.veredicto, c, destino);
     return (
       <section className="paj-sec">
         {/* ESTE TÍTULO NO SE MOVIÓ, A PROPÓSITO (16-sep-2026). La otra rama pasó a «Las
             combinaciones que Franco probó»; acá el plural mentiría, porque hay UNA. La forma
             que calzaría —«La única combinación»— es la misma frase que ya dice el pie de esta
-            rama, y las 13 filas de celda única viajan juntas en su propio goal (decisión
+            rama, y las 12 filas de celda única viajaron juntas en su propio goal (decisión
             Fabrizio). Las dos ramas son excluyentes, así que estos dos títulos nunca se ven
             juntos.
-            LO QUE SÍ CONVIVE, y hay que saberlo: en estas 13 filas la tabla de abajo ya dice
+            LO QUE SÍ CONVIVE, y hay que saberlo: en estas 12 filas la tabla de abajo ya dice
             «Un cambio a la vez». O sea que el pop-up queda con un título de DUEÑO arriba y
             uno de EJE abajo. No se contradicen —son dos cosas distintas, no dos respuestas a
             la misma pregunta— pero la oposición limpia que había («depende de ti» / «no
             depende de ti») se perdió, y este título sigue siendo el impreciso de los dos: su
-            celda también promete un descuento, que lo pone el vendedor. Eso se arregla con
-            las 13, no acá. */}
+            celda también promete un descuento, que lo pone el vendedor. El goal de las 12
+            (17-sep-2026) sacó esa promesa del cuadrito a su propia línea, así que ahora está
+            NOMBRADA aparte en vez de disuelta adentro — pero el título no se tocó ahí, por
+            decisión de Fabrizio, y sigue siendo la pieza impaga. */}
         <div className="paj-st">Ajustes que dependen de ti</div>
         {/* LA MISMA REGLA QUE LA MATRIZ, y acá hace falta decir por qué puede morder. En esta
             rama la única celda es SIEMPRE la del aro por construcción —`esActual: pie ===
             p.piePct && plazo === p.plazoCredito` (mix-palancas.ts:690) y la grilla tiene una
             sola combinación, que es la declarada— así que en COMPRAR `abrePanel` deja toda la
-            sección sin superficie que abra nada. Medido: 0 de las 13 filas que usan esta rama
+            sección sin superficie que abra nada. Medido: 0 de las 12 filas que usan esta rama
             son COMPRAR, así que hoy no pasa. Si pasara, la sección no fingiría un botón. */}
         <div
           className="paj-unica"
@@ -583,19 +606,19 @@ function SeccionMatriz({
           <span className="k">
             Con pie {dec1(c.piePct).replace(",0", "")}% a {c.plazoAnios} años
           </span>
-          {/* PENDIENTE DE DECISIÓN, NO DE CÓDIGO (medido el 14-sep-2026). Esta rama sigue
-              diciendo la lectura del descuento mínimo, así que en las 12 filas LTR que la
-              usan —las 12 tienen celda de hoy y las 12 contradicen a su fila— el cuadrito
-              dice «Comprar 70» sobre un informe que dice «Ajustar 68».
-              Es el mismo bug que la matriz acaba de perder, pero acá no hay aro ni chip ni
-              segunda celda: con UNA sola combinación no hay dos lecturas que separar, y
-              cambiar la palabra se llevaría de la cara la promesa «con −X% llegas a
-              Comprar» sin superficie donde devolverla. Eso es decisión de producto y no se
-              inventa acá. `veredictoMostrado` ya existe para cuando se decida. */}
+          {/* RESUELTO EL 17-sep-2026 (era «PENDIENTE DE DECISIÓN, NO DE CÓDIGO»). El cuadrito
+              dice la lectura de HOY —la misma que el informe— y la promesa bajó a su propia
+              línea. Ver el acta arriba, en `promesa`. */}
           <span className={`v${cruza ? " cruza" : ""}`}>
-            {etiquetaVeredicto(c.veredicto, "frase")} · score {c.score ?? PAR_SIN_VALOR}
+            {etiquetaVeredicto(veredictoMostrado(c), "frase")} · score {scoreMostrado(c) ?? PAR_SIN_VALOR}
           </span>
         </div>
+        {promesa && (
+          <p className="paj-sx paj-promesa">
+            Con −{pct1(c.descuentoPct!)} de descuento llega a{" "}
+            <b>{etiquetaVeredicto(c.veredicto, "frase")}</b>.
+          </p>
+        )}
         <p className="paj-sx paj-pie">Es la única combinación que Franco puede probar: tu pie y tu plazo ya están en el techo.</p>
         {abrePanel(sel, esComprar) && sel && (
           <PanelCelda sel={sel} destino={destino} esComprar={esComprar} currency={currency} valorUF={valorUF} onCerrar={() => onSel(null)} />

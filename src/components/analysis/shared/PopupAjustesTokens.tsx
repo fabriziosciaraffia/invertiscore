@@ -177,6 +177,13 @@ export function PopupAjustesTokens() {
       .paj-unica .k{color:var(--doc-tx2)}
       .paj-unica .v{font-weight:700;white-space:nowrap}
       .paj-unica .v.cruza{color:var(--doc-comprar)}
+      /* La promesa de la celda única, que salió del cuadrito a su propia línea (17-sep-2026).
+         No inventa color: usa el MISMO --doc-comprar con que esta sección ya pinta un
+         veredicto que cruza, dos líneas más arriba. Lo único propio es el margen, porque se
+         pega al cuadrito y el .paj-sx general trae el suyo para otra cosa.
+         (Y sin backticks: esto vive dentro de un template literal.) */
+      .paj-promesa{margin:8px 0 0}
+      .paj-promesa b{color:var(--doc-comprar);font-weight:700}
       .paj-cel{background:var(--doc-paper3,var(--doc-paper2));border-radius:12px;padding:13px 14px;
         margin-top:12px;position:relative}
       .paj-cel .x{position:absolute;top:9px;right:10px;width:24px;height:24px;border-radius:50%;
