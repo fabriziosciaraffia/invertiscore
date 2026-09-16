@@ -310,6 +310,7 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
         modoGestionActual: vc.inputs.modoGestion === "auto" ? "auto" : "administrador",
         comisionAutoDec: COMISION_AIRBNB,
         comisionAdminDec: vc.inputs.comisionAdministrador,
+        comisionAdminMensual: r.comparativa?.quiebreGestion?.comisionMensual ?? null,
         plazoCredito: ctx.plazoAnios,
         piePct: ctx.piePct,
         razonSinPie: vc.inputs.razonSinPie,

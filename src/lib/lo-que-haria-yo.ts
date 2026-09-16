@@ -142,7 +142,7 @@ const NOMBRE_SUBIR: Record<string, string> = {
   adr: "Subir la tarifa",
   pie: "Subir el pie",
   plazo: "Estirar el plazo",
-  gestion: "Cambiar la gestión",
+  gestion: "Dejar de pagar la comisión",
 };
 
 /**
@@ -160,7 +160,7 @@ const SOLO: Record<string, string> = {
   adr: "Solo la tarifa",
   pie: "Solo el pie",
   plazo: "Solo el plazo",
-  gestion: "Solo la gestión",
+  gestion: "Solo la comisión",
 };
 
 const NOMBRE_LLANO: Record<string, string> = {

@@ -937,6 +937,13 @@ export interface PalancaDistancia {
    * efectivamente cambia; el modo es lo que el usuario decide.
    */
   modoGestionObjetivo?: "auto" | "administrador";
+  /**
+   * Solo `palanca: "gestion"`: lo que el administrador COBRA al mes, en CLP. Viaja acá porque
+   * la tabla «Un cambio a la vez» pregunta «Cuánto» y sin esto contestaba «Tú mismo» — la
+   * única fila de esa tabla que no respondía con una cantidad. Lo emite el motor
+   * (`comparativa.quiebreGestion.comisionMensual`); el render no lo deriva.
+   */
+  comisionMensual?: number;
   /** Valor que hay que alcanzar para cruzar al veredicto objetivo. */
   objetivo: number;
   /** Valor declarado hoy (misma unidad que `objetivo`). */

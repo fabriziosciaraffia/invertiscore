@@ -76,7 +76,8 @@ const NOMBRE: Record<PalancaDistancia["palanca"], string> = {
   adr: "Tarifa",
   plazo: "Plazo",
   pie: "Pie",
-  gestion: "Gestión",
+  // No «Gestión»: lo que el cálculo mueve es la comisión, no quién opera (16-sep-2026).
+  gestion: "La comisión del administrador",
 };
 
 /**
@@ -1468,14 +1469,22 @@ function SeccionSolas({
   const cifra = (p: PalancaDistancia) => {
     if (p.palanca === "plazo") return `${p.objetivo} años`;
     if (p.palanca === "pie") return `${dec1(p.objetivo).replace(",0", "")}%`;
-    if (p.palanca === "gestion") return p.modoGestionObjetivo === "auto" ? "Tú mismo" : "Administrador";
+    // La columna se llama «Cuánto» y ésta era la única fila que no contestaba con una
+    // cantidad: decía «Tú mismo». Ahora dice lo que deja de salir cada mes; sin el monto
+    // (palanca persistida antes del campo) cae a los puntos de comisión, que sí es cuánto.
+    if (p.palanca === "gestion") {
+      return typeof p.comisionMensual === "number" && p.comisionMensual > 0
+        ? `−${plata(p.comisionMensual, currency, valorUF)}`
+        : `−${pct1(Math.abs(p.deltaPct))} pts`;
+    }
     return `${p.deltaPct >= 0 ? "+" : "−"}${pct1(Math.abs(p.deltaPct))}`;
   };
   const detalle = (p: PalancaDistancia) => {
     if (p.palanca === "precio") return `UF ${miles(p.objetivo)}`;
     if (p.palanca === "arriendo") return plata(p.objetivo, currency, valorUF);
     if (p.palanca === "adr") return `${plata(p.objetivo, currency, valorUF)} la noche`;
-    if (p.palanca === "gestion") return `comisión ${pct1(p.objetivo)}`;
+    // `pct1` ya trae el símbolo: agregarlo otra vez daba «del 20,0%% al 3,0%%» (visto renderizado).
+    if (p.palanca === "gestion") return `del ${pct1(p.actual)} al ${pct1(p.objetivo)}`;
     return null;
   };
   return (

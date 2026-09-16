@@ -138,6 +138,13 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
   /** Comisión de cada modo, en decimal (0.03 / 0.20). Para expresar el delta de gestión. */
   comisionAutoDec: number;
   comisionAdminDec: number;
+  /**
+   * Lo que el administrador COBRA al mes, en CLP. Lo emite el motor
+   * (`comparativa.quiebreGestion.comisionMensual`) y entra por parámetro para que la frase no
+   * lo derive: acá no hay ingreso bruto con el que multiplicar, y una segunda fórmula sería
+   * una segunda verdad. Sin él, la frase omite el monto y no lo inventa.
+   */
+  comisionAdminMensual?: number | null;
   plazoCredito: number;
   /** Pie declarado como % del precio. Decide si la palanca del pie se emite. */
   piePct: number;
@@ -390,10 +397,27 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
       const otro = p.modoGestionActual === "auto" ? "administrador" : "auto";
       const comActual = (p.modoGestionActual === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;
       const comObjetivo = (otro === "auto" ? p.comisionAutoDec : p.comisionAdminDec) * 100;
-      if (alcanzaMeta(veredictoAtPatch({ modoGestion: otro }), meta)) {
+      // ⛔ LA DIRECCIÓN QUE EMPEORA NO SE PRUEBA, PORQUE NO PUEDE CRUZAR (16-sep-2026).
+      //
+      // Con el caso en AUTO, `otro` es «administrador»: sube la comisión del 3% al 20%, lo que
+      // baja el ingreso neto, el flujo, el cap rate y la TIR. Todas las dimensiones del Franco
+      // Score son monótonas crecientes en el NOI, así que el veredicto SOLO puede quedarse
+      // igual o empeorar — nunca alcanzar una meta mejor. Medido: 0 de 253 filas del parque.
+      //
+      // Es la TERCERA rama muerta de la misma familia (las otras dos: el `difAutoAdmin > 0 ?
+      // "más" : "menos"` del prompt STR y el contrafáctico `flipGestion`), y `gestion` es la
+      // ÚNICA palanca bidireccional del repo — precio solo baja, tarifa y arriendo solo suben,
+      // plazo y pie solo suben, y LTR no tiene palanca de gestión. Por eso es la única donde
+      // este modo de falla existe. Ver la memoria `patch-que-empeora-no-puede-cruzar`.
+      //
+      // Cortarlo acá además ahorra un `veredictoAtPatch` por fila en el 94% del parque.
+      if (otro === "auto" && alcanzaMeta(veredictoAtPatch({ modoGestion: otro }), meta)) {
         const pal: PalancaDistancia = conDestino({
           palanca: "gestion",
           modoGestionObjetivo: otro,
+          ...(typeof p.comisionAdminMensual === "number" && p.comisionAdminMensual > 0
+            ? { comisionMensual: p.comisionAdminMensual }
+            : {}),
           objetivo: Math.round(comObjetivo * 10) / 10,
           actual: Math.round(comActual * 10) / 10,
           deltaPct: Math.round((comObjetivo - comActual) * 10) / 10, // PUNTOS porcentuales
@@ -628,7 +652,18 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
     const tramos: string[] = [];
     if (vPlazo?.estado === "noCruza") tramos.push(`a ${vPlazo.topeExplorado} años`);
     if (vPie?.estado === "noCruza") tramos.push(`con pie ${fmtPct(vPie.topeExplorado)}%`);
-    if (vGestion?.estado === "noCruza") tramos.push(p.modoGestionActual === "auto" ? "con administrador" : "autogestionando");
+    // ⛔ EL TRAMO DE GESTIÓN SOLO ENTRA SI EL CASO YA PAGA UNA COMISIÓN (16-sep-2026).
+    //
+    // Con el caso en AUTO, `otro` es «administrador» y el tramo decía «ni con administrador
+    // cambia». Eso es cierto y es VACÍO: dice que AGREGARLE una comisión del 20% al caso no
+    // mejora el veredicto. No es una vía probada y descartada — es un empeoramiento reportado
+    // como prueba, en una oración que enumera vías que sí se exploraron (plazo al tope, pie al
+    // tope). Medido sobre el parque: de las 104 filas estructurales que llevaban el tramo,
+    // **100 (96,2%) eran ese lado**.
+    //
+    // Con el caso en ADMINISTRADOR sí es una prueba real que falló: se le sacó un costo que el
+    // usuario HOY paga y aun así no cruza. Esas 4 se quedan.
+    if (vGestion?.estado === "noCruza" && p.modoGestionActual !== "auto") tramos.push("autogestionando");
     const segunda = tramos.length === 0 ? "" : tramos.length === 1 ? ` Ni ${tramos[0]} cambia.` : ` Ni ${tramos.slice(0, -1).join(", ni ")} ni ${tramos[tramos.length - 1]} cambia.`;
     // Cierre del estructural (§1.12.4): con precio a mercado y tarifa/ocupación
     // ancladas a la mediana observada, "la brecha es del negocio" apunta mal —
@@ -659,10 +694,25 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
           ? `poniendo un pie de ${fmtPct(l.objetivo)}% en vez de financiar el 100%, sin tocar el precio ni la tarifa`
           : `subiendo el pie de ${fmtPct(l.actual)}% a ${fmtPct(l.objetivo)}%, sin tocar el precio ni la tarifa`;
     } else if (l.palanca === "gestion") {
+      // DICE LO QUE EL CÁLCULO HACE, NO LO QUE IMPLICA (16-sep-2026). Antes decía «gestionando
+      // tú el departamento en vez de dejarlo con administrador», y el titular «Está a una
+      // decisión de gestión del veredicto de arriba»: las dos afirmaban que LA GESTIÓN mueve el
+      // veredicto. Lo que `veredictoAtPatch` mueve es LA COMISIÓN y nada más — el ingreso, el
+      // ADR y la ocupación son los mismos en los dos modos (ver `QuiebreGestionSTR`).
+      //
+      // Las horas se NOMBRAN y no se cuantifican, y el efecto sobre ocupación o tarifa se
+      // declara NO MEDIDO: es la conclusión del goal de la calibración —la banda que lo
+      // sostendría sale de 13 listings y se cae al estratificar—, y callarlo acá dejaría al
+      // lector completando la premisa por su cuenta.
+      //
+      // Sin ternario: una palanca de gestión que cruza SIEMPRE apunta a la autogestión.
+      const montoCom = typeof p.comisionAdminMensual === "number" && p.comisionAdminMensual > 0
+        ? ` —${fmtCLP(p.comisionAdminMensual)} al mes—`
+        : "";
       via =
-        l.modoGestionObjetivo === "auto"
-          ? `gestionando tú el departamento en vez de dejarlo con administrador: te ahorras el ${fmtPct(Math.abs(l.actual))}% de comisión que hoy pagas`
-          : `dejándolo con un administrador en vez de gestionarlo tú: te cuesta ${fmtPct(Math.abs(l.deltaPct))} puntos más de comisión, y aun así cruza`;
+        `sin la comisión del ${fmtPct(Math.abs(l.actual))}% que hoy le pagas al administrador${montoCom}. ` +
+        `El cálculo saca ese costo y nada más: operarlo tú son entre 8 y 12 horas a la semana, y si eso ` +
+        `mueve tu ocupación o tu tarifa, no está medido acá`;
     } else if (l.palanca === "precio") {
       via = `cerrando en ${fmtUF(l.objetivo)} en vez de ${fmtUF(l.actual)} —un ${d}% menos—`;
     } else if (l.palanca === "adr") {
@@ -687,7 +737,8 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
         `Tu veredicto ${p.veredictoBase} pasa a ${objetivoNombre} ${via}. Es la única vía que no depende de que ` +
         `el vendedor acepte ni de que la zona rinda más: depende de tu liquidez.`;
     } else if (l.palanca === "gestion") {
-      titular = "Está a una decisión de gestión del veredicto de arriba.";
+      // No «una decisión de gestión»: lo que el cálculo movió es la comisión.
+      titular = "Lo que lo retiene es la comisión que pagas.";
       fraseCanonica = `Tu veredicto ${p.veredictoBase} pasa a ${objetivoNombre} ${via}.`;
     } else if (l.palanca === "precio") {
       titular = "Está cerca del veredicto de arriba por el lado del precio.";
