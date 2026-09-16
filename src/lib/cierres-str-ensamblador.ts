@@ -133,10 +133,10 @@ export function argsCierresStr(e: EntradaCierresStr): ArgsCierresStr {
     gestion: {
       modo: e.modoGestion,
       sobreRenta: r.comparativa.sobreRenta,
-      sobreRentaOtroModo: otro.noiMensual - r.comparativa.ltr.noiMensual,
       flujoMensual: flujo,
       flujoOtroModo: otro.flujoCajaMensual,
       ltrIngresoNeto: r.comparativa.ltr.noiMensual,
+      quiebre: r.comparativa.quiebreGestion ?? null,
     },
     resultado: {
       comuna: e.comuna,

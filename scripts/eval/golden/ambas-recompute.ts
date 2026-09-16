@@ -59,9 +59,7 @@ function findingsOrdenDe(rec: any, d: any): string {
     strAutoNOIMensual: rec.comparativa?.str_auto?.noiMensual ?? 0,
     strAdminNOIMensual: rec.comparativa?.str_admin?.noiMensual ?? 0,
     ingresoBrutoMensual: base?.ingresoBrutoMensual ?? 0,
-    flipCambiaVeredicto: vc?.flipGestion?.cambiaVeredicto ?? false,
-    recomendacionAuto: vc?.flipGestion?.recomendacionAuto ?? "",
-    recomendacionAdmin: vc?.flipGestion?.recomendacionAdmin ?? "",
+    quiebreGestion: rec.comparativa?.quiebreGestion ?? null,
     // false = los dos lados arrancan el mismo día. Los seeds AMBAS declaran
     // entrega inmediata, así que no ejercitan la asimetría; lo que este ctx mide
     // es la COMPOSICIÓN y el ORDEN de la pirámide, y ninguno de los dos depende

@@ -201,8 +201,6 @@ export function DocumentoAmbas({
   });
   const findings = ctx ? buildFindingsComparativa(ctx, "CLP", ufFrozen) : [];
 
-  // ── Variante F — el flip de gestión como bisagra ──
-  const flip = strResults?.veredictoComparativo?.flipGestion;
   const strAuto = strResults?.comparativa?.str_auto;
   const strAdmin = strResults?.comparativa?.str_admin;
   const comisionPct = Math.round(comisionAdministrador * 100);
@@ -516,9 +514,10 @@ export function DocumentoAmbas({
               </div>
               <div className="row"><div className="gm">NOI mensual</div><div className={`gv ${modoGestion === "auto" ? "col-hl" : ""}`}>{money(strAuto.noiMensual)}</div><div className={`gv ${modoGestion === "admin" ? "col-hl" : ""}`}>{money(strAdmin.noiMensual)}</div></div>
               <div className="row"><div className="gm">Flujo mensual</div><div className={`gv ${strAuto.flujoCajaMensual < 0 ? "neg" : "pos"} ${modoGestion === "auto" ? "col-hl" : ""}`}>{money(strAuto.flujoCajaMensual)}</div><div className={`gv ${strAdmin.flujoCajaMensual < 0 ? "neg" : "pos"} ${modoGestion === "admin" ? "col-hl" : ""}`}>{money(strAdmin.flujoCajaMensual)}</div></div>
-              {flip && (
-                <div className="row"><div className="gm">Recomendación</div><div className={`gv ${modoGestion === "auto" ? "col-hl" : ""}`}>{flip.recomendacionAuto === "LTR_PREFERIDO" ? "LTR preferido" : flip.recomendacionAuto === "STR_VENTAJA_CLARA" ? "STR ventaja clara" : "Indiferente"}</div><div className={`gv ${flip.recomendacionAdmin === "LTR_PREFERIDO" ? "neg" : ""} ${modoGestion === "admin" ? "col-hl" : ""}`}>{flip.recomendacionAdmin === "LTR_PREFERIDO" ? "LTR preferido" : flip.recomendacionAdmin === "STR_VENTAJA_CLARA" ? "STR ventaja clara" : "Indiferente"}</div></div>
-              )}
+              {/* ⛔ 16-sep-2026: la fila «Recomendación» mostraba un veredicto por modo.
+                  Eran dos corridas del mismo clasificador sobre el mismo ingreso, así que
+                  la columna del administrador solo podía salir igual o peor. Ver
+                  `FlipGestionSignal`. */}
             </div>
           </>
         )}
@@ -532,16 +531,24 @@ export function DocumentoAmbas({
         {/* Movimiento IA 1 — degrada en silencio */}
         {mov1 && <p className="body">{mov1}</p>}
 
-        {/* Variante F — la bisagra: flip de gestión (3 ramas) */}
+        {/* Variante F — qué CUESTA la comisión. Ya no emite juicio sobre delegar: el
+            contrafáctico corría con el mismo ingreso y solo cambiaba la comisión, así que
+            «delegar es peor» salía por construcción. Ver `FlipGestionSignal` (16-sep-2026). */}
         {strAuto && strAdmin && (
           <div className="strat">
-            <p className="sl">{flip?.cambiaVeredicto ? "La bisagra · quién opera" : "Quién opera · cuánto pesa"}</p>
+            <p className="sl">Quién opera · cuánto cuesta</p>
             <p className="st">
-              {flip?.cambiaVeredicto ? (
-                <>Operándolo tú (comisión 3%), el corto deja {money(strAuto.flujoCajaMensual)} al mes. Delegando en un administrador ({comisionPct}%), cae a {money(strAdmin.flujoCajaMensual)} — y ahí la recomendación se da vuelta. No hay un ganador absoluto; hay un ganador según tus horas.</>
+              {/* El signo se dice en PALABRAS, no con un menos: un flujo negativo es plata que
+                  PONES, no que te queda. Decir «deja −$195.107» es el defecto que el capítulo
+                  de flujo ya corrigió, y acá las dos ramas pueden ser negativas. */}
+              {strAuto.flujoCajaMensual < 0 ? (
+                <>Operándolo tú (comisión 3%), el mes te pide {money(-strAuto.flujoCajaMensual)}; delegando en un administrador ({comisionPct}%), {money(-strAdmin.flujoCajaMensual)}.</>
+              ) : strAdmin.flujoCajaMensual < 0 ? (
+                <>Operándolo tú (comisión 3%), el corto deja {money(strAuto.flujoCajaMensual)} al mes; delegando en un administrador ({comisionPct}%), el mes deja de cerrar y pasa a pedirte {money(-strAdmin.flujoCajaMensual)}.</>
               ) : (
-                <>Entre autogestionar y delegar hay {money(Math.abs(strAuto.flujoCajaMensual - strAdmin.flujoCajaMensual))} al mes de diferencia, pero la recomendación no cambia: la modalidad que conviene es la misma operes tú o delegues. La gestión mueve el margen, no la decisión.</>
-              )}
+                <>Operándolo tú (comisión 3%), el corto deja {money(strAuto.flujoCajaMensual)} al mes; delegando en un administrador ({comisionPct}%), {money(strAdmin.flujoCajaMensual)}.</>
+              )}{" "}
+              La diferencia es {money(Math.abs(strAuto.flujoCajaMensual - strAdmin.flujoCajaMensual))} al mes, y es lo que cuesta no poner las horas. Un operador con oficio puede conseguir más ocupación o mejor tarifa y achicar esa diferencia; cuánto, no lo medimos.
             </p>
           </div>
         )}

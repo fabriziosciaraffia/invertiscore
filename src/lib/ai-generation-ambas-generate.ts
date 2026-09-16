@@ -185,8 +185,6 @@ export async function generateComparativaAI(opts: GenerateComparativaOpts): Prom
   });
 
   const banda: BandaComparativa = strResults.veredictoComparativo?.banda ?? "INDIFERENTE";
-  const flip = strResults.veredictoComparativo?.flipGestion;
-  const flipCambia = flip?.cambiaVeredicto ?? false;
 
   // Viabilidad de compra (hero 3 ejes, contrato d25096d): los veredictos de los
   // hijos ENTRAN al prompt — su ausencia era la causa raíz del D8 del censo.
@@ -262,7 +260,7 @@ PROHIBIDO: resolverlo con un descuento cosmético, culpar la ejecución (gestió
 
   const maxQuien = 60;
   const maxSwitch = 55;
-  const maxCierre = banda === "STR_FRAGIL" || flipCambia ? 55 : 45;
+  const maxCierre = banda === "STR_FRAGIL" ? 55 : 45;
   const maxTotal = maxQuien + maxSwitch + maxCierre;
 
   const estadoLabel: Record<BandaComparativa, string> = {
@@ -280,7 +278,7 @@ ${dormitorios}D${banos}B en ${comuna} · ${superficie} m² · ${fmtUFAmbas(preci
 === ESTADO DEL VEREDICTO (coherencia total, Parte III) ===
 estadoVeredicto: ${estadoLabel[banda]}
 recomendacion (cópiala EXACTO al JSON): ${reco}
-${flipCambia ? `flipGestion: SÍ — administrarlo tú vs delegarlo CAMBIA el veredicto (auto→${flip?.recomendacionAuto}, admin→${flip?.recomendacionAdmin}). Recanócelo en el cierre.` : "flipGestion: no cambia el veredicto."}
+gestión: el corto se opera tú (3% de comisión) o delegado (${Math.round(comisionAdminDec * 100)}%). El motor NO sabe si delegar conviene — mide qué CUESTA la comisión, no si se paga sola. No afirmes ninguna de las dos cosas.
 ${zona ? `zona: ${zona.tierZona} (score ${zona.score}/100)${zona.comunaNoListada ? " · comuna sin datos de mercado suficientes — atenúa" : ""}` : "zona STR no calculada"}
 
 === VIABILIDAD DE COMPRA (ver sección homónima del system) ===

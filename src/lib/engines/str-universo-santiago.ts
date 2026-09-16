@@ -185,11 +185,30 @@ export type ModoGestionAmbas = "auto" | "admin";
 // en el modo elegido (base), pero el motor evalúa AMBOS modos (str_auto y str_admin ya
 // se calculan para la comparativa). `cambiaVeredicto` marca cuando el toggle auto↔admin
 // cruza una frontera de banda → hallazgo diferencial de primera línea para la Fase B.
+/**
+ * Modo de gestión declarado por el usuario. NADA MÁS.
+ *
+ * ⛔ RETIRADO el 16-sep-2026: `cambiaVeredicto`, `recomendacionAuto` y
+ * `recomendacionAdmin`. Afirmaban que delegar da vuelta la recomendación de
+ * modalidad —en 88 de 252 análisis del parque— y esa afirmación era un
+ * artefacto aritmético: `str_admin` corre con el MISMO ingreso, ADR y ocupación
+ * que `str_auto` y solo cambia la comisión, así que delegar salía peor en el
+ * 100% de los casos POR CONSTRUCCIÓN, no por medición.
+ *
+ * El motor no tiene con qué sostener la afirmación contraria tampoco: la banda
+ * que la sostendría (0,55 auto → 0,65 pro) sale de 13 listings concentrados en
+ * el barrio más ocupado, y al estratificar por barrio el uplift se cae a
+ * +0,4pp — con el signo invertido en uno de los tres. Ver
+ * `docs/str-benchmarks-from-airroi-2026-05.md` §3 y su propio caveat.
+ *
+ * Lo que el informe dice ahora es aritmética de las dos comisiones, no un
+ * veredicto: ver `comparativa.quiebreGestion` en el motor STR.
+ *
+ * El nombre del tipo se conserva porque `modoActual` tiene lectores vivos
+ * (`comparativa-chart-notas.ts`, `comparativa-findings.ts`).
+ */
 export interface FlipGestionSignal {
-  cambiaVeredicto: boolean;
   modoActual: ModoGestionAmbas;
-  recomendacionAuto: RecomendacionModalidadSTR;
-  recomendacionAdmin: RecomendacionModalidadSTR;
 }
 
 // D1 — veredicto comparativo tipado completo. `recomendacion` es el valor de 3 estados
@@ -311,11 +330,14 @@ export function calcRecomendacionModalidad(
   return bandaAReco(clasificarBanda(sobreRentaPct, tierZona, breakEvenPct, degen));
 }
 
-// D1+D2 — veredicto comparativo tipado completo. Emite la banda refinada (con STR_FRAGIL),
-// la señal N/D por absoluto (P3) y el flip de gestión (D2), todo desde datos que el motor
-// STR ya calcula (str_auto/str_admin, break-even, sobre-renta del modo elegido). El
-// break-even por modo se recomputa aquí con la misma fórmula del motor (costos+dividendo
-// sobre 1−comisión), invariante al modo salvo la comisión.
+// D1 — veredicto comparativo tipado completo. Emite la banda refinada (con STR_FRAGIL) y
+// la señal N/D por absoluto (P3), desde la sobre-renta del modo elegido.
+//
+// D2 (el flip de gestión) se RETIRÓ el 16-sep-2026 — ver `FlipGestionSignal`. Con él se
+// fueron los cuatro campos de entrada que solo alimentaban el flip
+// (`strAutoNoiMensual`, `strAdminNoiMensual`, `breakEvenAutoPct`, `breakEvenAdminPct`):
+// el veredicto comparativo se emite desde el modo que el usuario declaró, y el otro modo
+// ya no produce una recomendación paralela con la que compararse.
 export function calcVeredictoComparativo(input: {
   modoActual: ModoGestionAmbas;
   tierZona: ZonaSTRScore["tierZona"] | undefined;
@@ -326,11 +348,6 @@ export function calcVeredictoComparativo(input: {
   sobreRentaPct: number;
   sobreRentaPctConfiable: boolean;
   breakEvenPctDelMercado: number;
-  // flip: ambos modos
-  strAutoNoiMensual: number;
-  strAdminNoiMensual: number;
-  breakEvenAutoPct: number;
-  breakEvenAdminPct: number;
 }): VeredictoComparativo {
   const banda = clasificarBanda(
     input.sobreRentaPct,
@@ -338,16 +355,6 @@ export function calcVeredictoComparativo(input: {
     input.breakEvenPctDelMercado,
     { confiable: input.sobreRentaPctConfiable, sobreRenta: input.sobreRenta, strNoiMensual: input.strNoiMensual },
   );
-
-  // Recomendación bajo cada modo de gestión, con su propia sobre-renta y break-even.
-  const recoModo = (strNoi: number, bePct: number): RecomendacionModalidadSTR => {
-    const sr = strNoi - input.ltrNoiMensual;
-    const srPct = input.ltrNoiMensual !== 0 ? sr / input.ltrNoiMensual : 0;
-    const conf = sobreRentaPctEsConfiable(input.ltrNoiMensual, srPct);
-    return bandaAReco(clasificarBanda(srPct, input.tierZona, bePct, { confiable: conf, sobreRenta: sr, strNoiMensual: strNoi }));
-  };
-  const recomendacionAuto = recoModo(input.strAutoNoiMensual, input.breakEvenAutoPct);
-  const recomendacionAdmin = recoModo(input.strAdminNoiMensual, input.breakEvenAdminPct);
 
   return {
     recomendacion: bandaAReco(banda),
@@ -357,12 +364,7 @@ export function calcVeredictoComparativo(input: {
     breakEvenPctDelMercado: input.breakEvenPctDelMercado,
     sobreRentaPct: input.sobreRentaPct,
     sobreRenta: input.sobreRenta,
-    flipGestion: {
-      cambiaVeredicto: recomendacionAuto !== recomendacionAdmin,
-      modoActual: input.modoActual,
-      recomendacionAuto,
-      recomendacionAdmin,
-    },
+    flipGestion: { modoActual: input.modoActual },
   };
 }
 

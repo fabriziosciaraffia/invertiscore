@@ -14,6 +14,7 @@ import { brechaEnPalabras, type FmtCierre, type SegCierre } from "./cierres-capi
 import type { FronterasIngresoStr, MatrizTarifaOcupacion, MatrizPiePlazoStr } from "./analysis/simular-str";
 import type { OcupacionVsComuna } from "./engines/str-universo-santiago";
 import { DIST_STR_TOPE_ADR_PCT } from "./distancia-veredicto-str-hallazgo";
+import type { QuiebreGestionSTR } from "./engines/short-term-engine";
 
 export { cierreResultado as cierreResultadoStr, type ArgsCierreResultado as ArgsCierreResultadoStr } from "./cierres-capitulos";
 
@@ -276,33 +277,71 @@ export function cierrePagasStr(a: ArgsCierrePagasStr, f: FmtCierre): SegCierre[]
 
 export interface ArgsCierreGestionStr {
   modo: "auto" | "administrador";
-  /** Sobre-renta del corto sobre el largo (ingreso neto), en el modo del caso y en el otro. */
+  /** Sobre-renta del corto sobre el largo (ingreso neto), en el modo del caso. */
   sobreRenta: number;
-  sobreRentaOtroModo: number;
   flujoMensual: number;
   flujoOtroModo: number;
   /** Ingreso neto del largo, para decir "no le gana" cuando la sobre-renta es negativa. */
   ltrIngresoNeto: number;
+  /** Lo que el motor mide sobre la comisión. Sin él, el cierre dice solo lo que cuesta. */
+  quiebre: QuiebreGestionSTR | null;
 }
 
+/**
+ * ⛔ REESCRITO el 16-sep-2026. Este cierre era la TESIS del capítulo — decía «La ventaja
+ * existe y es tuya mientras pongas las horas» y «La ventaja existe solo si pones las horas
+ * tú». Las dos salían del contrafáctico `str_admin`, que corre con el MISMO ingreso, ADR y
+ * ocupación que `str_auto` y solo cambia la comisión: delegar salía peor en el 100% del
+ * parque POR CONSTRUCCIÓN, no por medición.
+ *
+ * Ahora no toma posición. Dice tres cosas, en este orden:
+ *   1 · QUÉ CUESTA la comisión, con cuatro redacciones — la del caso que la aguanta, la del
+ *       que deja de cerrar por ella, la del que ya estaba en pérdida, y la de quien YA
+ *       delega (donde el contrafáctico corre al revés).
+ *   2 · EL PUNTO DE QUIEBRE, que es aritmética de las dos comisiones y por eso es verdadero
+ *       con cualquier calibración de ocupación. Lleva el plumón.
+ *   3 · La línea CUALITATIVA, sin números, más la pregunta que el usuario le hace al operador.
+ *
+ * El hilo del LTR sobrevive SOLO cuando la sobre-renta es negativa: ahí «ni autogestionado
+ * le gana al largo» es la conclusión más importante del capítulo, y no es sobre delegar.
+ */
 export function cierreGestionStr(a: ArgsCierreGestionStr, f: FmtCierre): SegCierre[] {
   const segs: SegCierre[] = [];
   const auto = a.modo === "auto";
-  const sobreAuto = auto ? a.sobreRenta : a.sobreRentaOtroModo;
-  const sobreAdmin = auto ? a.sobreRentaOtroModo : a.sobreRenta;
   const flujoAuto = auto ? a.flujoMensual : a.flujoOtroModo;
   const flujoAdmin = auto ? a.flujoOtroModo : a.flujoMensual;
-  if (sobreAuto > 0) {
-    segs.push({ t: `Autogestionado, el corto deja ${f.money(sobreAuto)} más al mes que arrendar largo; ` });
-    if (sobreAdmin > 0) {
-      const frac = fraccionEnPalabras(sobreAuto - sobreAdmin, sobreAuto);
-      segs.push({ t: `con administrador la ventaja baja a ${f.money(sobreAdmin)} y el mes pasa de ${f.money(flujoAuto)} a ${f.money(flujoAdmin)}. ` }, { t: `La ventaja existe y es tuya mientras pongas las horas${frac ? `: el administrador se lleva ${frac} de ella` : ""}`, mark: true }, { t: ". " });
-    } else {
-      segs.push({ t: `con administrador desaparece: el largo deja ${f.money(-sobreAdmin)} más y el mes pasa de ${f.money(flujoAuto)} a ${f.money(flujoAdmin)}. ` }, { t: "La ventaja existe solo si pones las horas tú", mark: true }, { t: ". " });
-    }
-    segs.push({ t: flujoAdmin < 0 ? `Si no vas a poner las horas, la pregunta ya no es corto o largo: es si ${f.money(-flujoAdmin)} al mes caben en tu bolsillo.` : `Si no vas a poner las horas, con administrador el mes igual queda en ${f.money(flujoAdmin)}.` });
+  const q = a.quiebre;
+  const sobrecosto = flujoAuto - flujoAdmin;
+  const pctCom = q ? `${Math.round(q.comisionAdminDec * 100)}%` : "su comisión";
+
+  // ── 1 · qué cuesta ──
+  if (!auto) {
+    segs.push({ t: `Ya lo estás delegando: la comisión del ${pctCom} son ${q ? f.money(q.comisionMensual) : f.money(sobrecosto)} al mes. Operándolo tú, ${f.money(sobrecosto)} de eso se quedarían en tu bolsillo y el mes pasaría de ${f.money(flujoAdmin)} a ${f.money(flujoAuto)}. ` });
+  } else if (flujoAuto < 0) {
+    segs.push({ t: `El mes ya te pide ${f.money(-flujoAuto)} autogestionando. Delegarlo cuesta ${f.money(sobrecosto)} más al mes —la comisión del ${pctCom}, por sobre el 3% que Airbnb ya cobra— y lo lleva a ${f.money(-flujoAdmin)}. ` });
+  } else if (flujoAdmin < 0) {
+    segs.push({ t: `Delegarlo cuesta ${f.money(sobrecosto)} al mes, más que los ${f.money(flujoAuto)} que te queda: con administrador el mes deja de cerrar y pasa a pedirte ${f.money(-flujoAdmin)}. ` });
   } else {
-    segs.push({ t: `Ni autogestionado el corto le gana al largo: deja ${f.money(-sobreAuto)} menos al mes que arrendar el mismo depto` , mark: true }, { t: `, con un ingreso neto largo de ${f.money(a.ltrIngresoNeto)}. Con administrador la brecha es de ${f.money(-sobreAdmin)}. Las horas de gestión no compran una ventaja acá.` });
+    segs.push({ t: `Delegarlo cuesta ${f.money(sobrecosto)} al mes, ${f.money(sobrecosto * 12)} al año. Tu flujo lo aguanta: el mes baja de ${f.money(flujoAuto)} a ${f.money(flujoAdmin)} y sigue cerrando en positivo. ` });
   }
+
+  // ── 2 · el punto de quiebre ──
+  if (q && q.puntosExtra > 0) {
+    const pts = f.pct1(Math.round(q.puntosExtra * 1000) / 10);
+    segs.push(
+      { t: "Para que esa comisión se pague sola, " },
+      { t: `${auto ? `el administrador tendría que conseguirte ${pts} puntos de ocupación más que tú` : `tu administrador tiene que estar consiguiéndote ${pts} puntos de ocupación más de los que conseguirías tú`}, a la misma tarifa: de ${f.pct1(q.ocupacionActual * 100)}% a ${f.pct1(q.ocupacionNecesaria * 100)}%`, mark: true },
+      { t: ". " },
+    );
+  }
+
+  // ── 3 · la línea cualitativa, sin números ──
+  segs.push({ t: `${auto ? "Puede conseguirlos" : "Puede estar consiguiéndolos"}, o puede conseguir mejor tarifa, y te saca la operación de encima; cuánto más, no lo medimos. Pídele su ocupación de los últimos doce meses en deptos parecidos.` });
+
+  // ── 4 · el hilo del largo, solo cuando el corto no le gana ──
+  if (a.sobreRenta < 0) {
+    segs.push({ t: ` Y algo que no depende de quién opere: ni ${auto ? "autogestionado" : "delegado"} el corto le gana al largo — deja ${f.money(-a.sobreRenta)} menos al mes que arrendar el mismo depto, con un ingreso neto largo de ${f.money(a.ltrIngresoNeto)}.` });
+  }
+
   return trimUltimo(segs);
 }

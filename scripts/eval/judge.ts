@@ -390,7 +390,7 @@ El bloque-caso trae \`estadoVeredicto\` con uno de 4 estados. La prosa NUNCA deb
 - STR_VENTAJA_CLARA ("RENTA CORTA"): la renta corta gana limpio.
 - STR_FRAGIL ("VENTAJA FRÁGIL"): el STR gana PERO la ventaja es frágil (break-even alto / depende de ocupación). La prosa DEBE RECONOCER la fragilidad. Si la vende como triunfo limpio del STR, o si la aplana a "da lo mismo / parejas" borrando la ventaja, → otro, ALTA.
 - INDIFERENTE ("PAREJAS"): ninguna gana claramente. Si la prosa inventa un ganador nítido, → otro, ALTA.
-Si el bloque-caso dice \`flipGestion: SÍ\` (administrarlo tú vs delegarlo CAMBIA el veredicto), el cierre DEBERÍA reconocer esa bisagra; si la prosa la ignora por completo → otro, MEDIA.
+GESTIÓN (16-sep-2026): el motor NO emite un veredicto sobre delegar — los dos modos corren con el mismo ingreso y solo cambia la comisión. Si la prosa AFIRMA que delegar conviene, que no conviene, o que "cambia el veredicto", → afirmacion-falsa, ALTA: está concluyendo de un contrafáctico que no compara nada. Nombrar el COSTO de la comisión sí es correcto.
 
 === B) CERO CIFRAS NO PROVISTAS (afirmacion-falsa, ALTA) ===
 Cualquier monto ($/UF), porcentaje o plazo/timeline concreto en la prosa que NO esté en el bloque-caso y NO sea derivable de él es FABRICACIÓN → afirmacion-falsa, severidad ALTA, requiereHumano=true. REGLA ESPEJO: si la cifra SÍ está en el bloque-caso, no es fabricación (pero puede ser recitación, criterio C). Plazos exactos de estabilización/migración presentados como certeza ("en 90 días", "en 18 meses") son afirmacion-falsa aunque suenen plausibles: la doctrina exige rangos condicionales.
@@ -418,7 +418,7 @@ Si no hay problemas: hallazgos: [].
 REGLAS DE SALIDA ESTRICTAS: SOLO problemas. NUNCA incluyas confirmaciones / "OK" / "no es hallazgo" / "cuadra" / "consistente" / "trazabilidad" / "se omite". Si algo está bien, OMITELO. NO juzgues el campo \`apertura\` (es del motor).`;
 
 export async function runJudgeAmbas(args: {
-  fixtureMeta: { id: string; modalidad: string; tier: string; banda: string; flip: boolean; comuna?: string; nota?: string };
+  fixtureMeta: { id: string; modalidad: string; tier: string; banda: string; comuna?: string; nota?: string };
   aiAnalysis: unknown;
   caseBlock: string;
   veredictoBundle: unknown;

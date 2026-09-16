@@ -391,6 +391,22 @@ export interface ShortTermResult {
     sobreRentaPct: number;
     sobreRentaPctConfiable: boolean;   // P3: false ⇒ mostrar "N/D" + sobreRenta absoluto (CLP)
     paybackMeses: number;
+    /**
+     * Qué cuesta la comisión del administrador, y cuánto tendría que compensarla.
+     *
+     * Reemplaza al contrafáctico como COMPARACIÓN (retirado el 16-sep-2026, ver
+     * `FlipGestionSignal`). Acá no hay veredicto sobre delegar: hay dos hechos
+     * aritméticos. `sobrecostoMensual` es lo que delegar cuesta DE MÁS que
+     * operarlo tú; `puntosExtra` es cuánta ocupación tendría que agregar el
+     * administrador para que esa comisión se pague sola.
+     *
+     * `puntosExtra` sale de la razón entre las dos comisiones —
+     * `occ × ((1−COMISION_AIRBNB)/(1−comisiónAdmin) − 1)` — y por eso es verdadero
+     * con cualquier calibración de ocupación: los costos fijos y la cuota son
+     * idénticos en las dos ramas y se cancelan. Vale A LA MISMA TARIFA: si el
+     * administrador sube el ADR en vez de la ocupación, empata con menos puntos.
+     */
+    quiebreGestion: QuiebreGestionSTR | null;
   };
 
   // Estacionalidad (12 meses, escenario base)
@@ -560,6 +576,42 @@ export const STR_MANTENCION_MENSUAL: Record<string, number> = {
   '3D2B': 25000,
   '3D3B': 28000,
 };
+
+/**
+ * Puntos de ocupación que el administrador tendría que AGREGAR para empatar con la
+ * autogestión, a la misma tarifa.
+ *
+ * Sale de la razón entre las dos comisiones y de nada más: los costos fijos y la cuota son
+ * idénticos en `str_auto` y `str_admin` —`calcEscenario` recibe los mismos— así que se
+ * cancelan. Por eso el número es verdadero con CUALQUIER calibración de ocupación, y por eso
+ * reemplazó al contrafáctico como comparación.
+ *
+ * Vive acá, exportada, para que el gate la lea en vez de recalcularla: dos copias de la misma
+ * fórmula en dos archivos no están atadas por nada (CLAUDE.md § Testing).
+ */
+export function puntosParaEmpatarGestion(ocupacion: number, comisionAdmin: number): number {
+  if (!(ocupacion > 0) || !(1 - comisionAdmin > 0)) return 0;
+  return ocupacion * ((1 - COMISION_AIRBNB) / (1 - comisionAdmin) - 1);
+}
+
+/** Ver `comparativa.quiebreGestion`. Nada acá emite un juicio sobre delegar. */
+export interface QuiebreGestionSTR {
+  /** Lo que el administrador COBRA al mes: ingreso bruto × su comisión. */
+  comisionMensual: number;
+  /** Lo que delegar cuesta DE MÁS que operarlo tú (la comisión menos el 3% de Airbnb). */
+  sobrecostoMensual: number;
+  sobrecostoAnual: number;
+  /** Puntos de ocupación que el administrador tendría que agregar para empatar (0,094 = 9,4pp). */
+  puntosExtra: number;
+  ocupacionActual: number;
+  ocupacionNecesaria: number;
+  /** El mes cierra en positivo autogestionando y deja de cerrar al delegar. */
+  cambiaElSigno: boolean;
+  /** Break-even como fracción del ingreso de mercado, con la comisión del administrador. */
+  breakEvenAdminPct: number;
+  /** La comisión DECLARADA del administrador, en decimal. Nunca el literal 0,20. */
+  comisionAdminDec: number;
+}
 
 // Ocupación target por banda operacional. La gestión profesional drives
 // OCUPACIÓN, no ADR (ver experimento AirROI: ADR similar entre pro/no-pro,
@@ -1185,10 +1237,17 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   const occConservador = Math.max(0.05, Math.min(0.95, p.occupancy.p25));
   const ingresoConservador = Math.round(adrConservador * occConservador * 365);
 
-  // Agresivo repurposed → UPSIDE: "potencial con gestión profesional"
-  // (estabilizado mes 7+). occ = occ_target de la banda; ADR = adrBase (mismo
-  // ADR uplifted del p50 — el upside es puramente de ocupación). El label/copy
-  // se ajusta en la capa UI.
+  // Agresivo → UPSIDE: el TECHO DE LA PROPIA BANDA del caso, estabilizado (mes 7+).
+  // occ = occ_target de la banda; ADR = adrBase (el upside es puramente de ocupación).
+  //
+  // ⛔ NO es "el potencial con gestión profesional", como decía este comentario hasta el
+  // 16-sep-2026. `ejes.ocupacionTarget` se calcula con el `adminPro` DEL PROPIO USUARIO
+  // (`determinarBandaOcupacion`), así que para quien autogestiona el target es 0,55 — la
+  // banda de la autogestión, diez puntos POR DEBAJO de la profesional. Medido sobre el
+  // parque: en 238 de 252 filas (94,4%) este escenario usa la banda de autogestión.
+  // Y la comisión que cobra es la del modo declarado (`comisionRate`), o sea el 3% de
+  // Airbnb para un usuario auto — no el 20% de un administrador. El escenario no tiene
+  // ni la ocupación ni la comisión de la gestión profesional: es el techo del usuario.
   const occAgresivo = ejes.ocupacionTarget;
   const adrAgresivo = adrBase;
   const ingresoAgresivo = Math.round(adrBase * occAgresivo * 365);
@@ -1373,16 +1432,35 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     airbnbData.percentiles.average_daily_rate.p50,
     airbnbData.percentiles.occupancy.p50,
   );
-  // D1+D2 (Rama superficie AMBAS): veredicto comparativo tipado. Break-even por modo con
-  // la misma fórmula del motor ((costos+dividendo)/(1−comisión), anualizado / ingresoBase),
-  // invariante al modo salvo la comisión. `str_auto`/`str_admin` ya calculados arriba dan la
-  // sobre-renta de cada modo para el flip de gestión.
-  const breakEvenAutoPct = ingresoBase > 0 && (1 - COMISION_AIRBNB) > 0
-    ? Math.round(((costosOperativosTotales + dividendoMensual) / (1 - COMISION_AIRBNB)) * 12) / ingresoBase
-    : Infinity;
+  // D1 (Rama superficie AMBAS): veredicto comparativo tipado, desde el modo declarado.
+  // El break-even con la comisión del administrador usa la misma fórmula del motor
+  // ((costos+dividendo)/(1−comisión), anualizado / ingresoBase) y viaja en `quiebreGestion`.
   const breakEvenAdminPct = ingresoBase > 0 && (1 - comisionAdministrador) > 0
     ? Math.round(((costosOperativosTotales + dividendoMensual) / (1 - comisionAdministrador)) * 12) / ingresoBase
     : Infinity;
+
+  // Qué cuesta la comisión y cuánto tendría que compensarla. Ver `QuiebreGestionSTR`:
+  // los costos fijos y la cuota son IDÉNTICOS en str_auto y str_admin (calcEscenario recibe
+  // los mismos), así que se cancelan y el empate depende solo de la razón entre comisiones.
+  const quiebreGestion: QuiebreGestionSTR | null =
+    (1 - comisionAdministrador) > 0 && occBase > 0
+      ? (() => {
+          const sobrecostoMensual = str_auto.flujoCajaMensual - str_admin.flujoCajaMensual;
+          const puntosExtra = puntosParaEmpatarGestion(occBase, comisionAdministrador);
+          return {
+            comisionMensual: str_admin.comisionMensual,
+            sobrecostoMensual,
+            sobrecostoAnual: sobrecostoMensual * 12,
+            puntosExtra,
+            ocupacionActual: occBase,
+            ocupacionNecesaria: occBase + puntosExtra,
+            cambiaElSigno: str_auto.flujoCajaMensual >= 0 && str_admin.flujoCajaMensual < 0,
+            breakEvenAdminPct,
+            comisionAdminDec: comisionAdministrador,
+          };
+        })()
+      : null;
+
   const veredictoComparativo = calcVeredictoComparativo({
     modoActual: (modoGestion === "auto" ? "auto" : "admin") as ModoGestionAmbas,
     tierZona: zonaSTR.tierZona,
@@ -1392,10 +1470,6 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     sobreRentaPct,
     sobreRentaPctConfiable,
     breakEvenPctDelMercado,
-    strAutoNoiMensual: str_auto.noiMensual,
-    strAdminNoiMensual: str_admin.noiMensual,
-    breakEvenAutoPct,
-    breakEvenAdminPct,
   });
   const recomendacionModalidad = veredictoComparativo.recomendacion;
 
@@ -1453,6 +1527,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
       sobreRentaPct,
       sobreRentaPctConfiable,
       paybackMeses,
+      quiebreGestion,
     },
     flujoEstacional,
     perdidaRampUp,

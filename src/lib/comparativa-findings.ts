@@ -14,7 +14,7 @@
 
 import type { BandaComparativa } from "./engines/str-universo-santiago";
 import type { FullAnalysisResult } from "./types";
-import type { ShortTermResult } from "./engines/short-term-engine";
+import type { ShortTermResult, QuiebreGestionSTR } from "./engines/short-term-engine";
 import { hayAsimetriaDeEntrega } from "./comparativa-patrimonio";
 
 // `regulatorio` (F5, el reglamento del edificio) existió hasta el 11-sep-2026: se retiró con la regulación (V1).
@@ -71,9 +71,8 @@ export interface FindingsCtx {
   strAutoNOIMensual: number;
   strAdminNOIMensual: number;
   ingresoBrutoMensual: number;
-  flipCambiaVeredicto: boolean;
-  recomendacionAuto: string;
-  recomendacionAdmin: string;
+  /** Qué cuesta la comisión y cuánto tendría que compensarla. Ver `QuiebreGestionSTR`. */
+  quiebreGestion: QuiebreGestionSTR | null;
   // Patrimonio
   ltrPatY10: number | null;
   strPatY10: number | null;
@@ -106,8 +105,6 @@ export interface FindingsCtx {
 
 const nombreLado = (l: FindingLado) => l === "ltr" ? "renta larga" : l === "str" ? "renta corta" : "ninguna";
 // Texto del lado a partir de la recomendación de un modo (para el flip de gestión D2).
-const ladoTxt = (reco: string) => { const l = recoToLado(reco); return l === "ltr" ? "renta larga" : l === "str" ? "renta corta" : "parejas"; };
-const convieneFrase = (reco: string) => { const l = recoToLado(reco); return l === "neutro" ? "quedan parejas" : `conviene ${nombreLado(l)}`; };
 
 // Glosa de jerga a lenguaje llano (C4). Percentil SIEMPRE traducido: p94 ADR → "el 6% más
 // caro"; p39 ocupación → "bajo el 61%". Tier → nivel de demanda. Voz: tuteo neutro chileno.
@@ -144,9 +141,7 @@ export function ctxFromResults(
     strAutoNOIMensual: str.comparativa?.str_auto?.noiMensual ?? 0,
     strAdminNOIMensual: str.comparativa?.str_admin?.noiMensual ?? 0,
     ingresoBrutoMensual: base?.ingresoBrutoMensual ?? 0,
-    flipCambiaVeredicto: vc?.flipGestion?.cambiaVeredicto ?? false,
-    recomendacionAuto: vc?.flipGestion?.recomendacionAuto ?? "",
-    recomendacionAdmin: vc?.flipGestion?.recomendacionAdmin ?? "",
+    quiebreGestion: str.comparativa?.quiebreGestion ?? null,
     ltrPatY10: ltr.projections?.[9]?.patrimonioNeto ?? null,
     strPatY10: str.projections?.[9]?.patrimonioNeto ?? null,
     asimetriaEntrega: hayAsimetriaDeEntrega(ltr.projections, ltr.metrics, str.projections),
@@ -223,44 +218,49 @@ function buildFlujo(x: FindingsCtx, c: Currency, uf: number): FindingComparativa
   };
 }
 
-// ── F2 · Esfuerzo / costo de gestión (FIJO, + variante flip D2) ──────────────
+// ── F2 · Esfuerzo / costo de gestión ─────────────────────────────────────────
+// ⛔ 16-sep-2026 — este finding tenía dos ramas y LAS DOS tomaban posición sobre delegar:
+// la del flip decía «esa decisión pesa tanto que da vuelta el veredicto», y la otra
+// «el corto solo rinde si lo administras tú». Las dos salían del contrafáctico, que corre
+// con el MISMO ingreso y solo cambia la comisión — así que delegar perdía por construcción.
+// Ahora cuenta dos hechos aritméticos y no emite veredicto. Ver `QuiebreGestionSTR`.
 function buildGestion(x: FindingsCtx, c: Currency, uf: number): FindingComparativa {
   const costoDelegar = x.strAutoNOIMensual - x.strAdminNOIMensual;   // cuánto baja el NOI al delegar
   const comisionMensual = x.ingresoBrutoMensual * x.comisionAdministrador;
-  const flip = x.flipCambiaVeredicto;
+  const q = x.quiebreGestion;
+  const ptsTxt = q ? pct0(q.puntosExtra * 100).replace("%", "") : null;
+  // El caso que YA delega lee el contrafáctico al revés: para él lo hipotético es operarlo
+  // él mismo. Espejo de la rama `!auto` de `cierreGestionStr`, que sin esto decía una cosa
+  // en el capítulo STR y otra en la pirámide de AMBAS sobre la MISMA fila.
+  const yaDelega = x.modoGestion === "admin";
+  const quiebreFrase = q
+    ? ` Para que se pague sola, ${yaDelega ? "tu administrador tiene que estar consiguiéndote" : "el administrador tendría que conseguirte"} ${ptsTxt} puntos de ocupación más ${yaDelega ? "de los que conseguirías tú" : "que tú"}, a la misma tarifa: de ${pct0(q.ocupacionActual * 100)} a ${pct0(q.ocupacionNecesaria * 100)}.`
+    : "";
   return {
     id: "gestion",
-    kicker: flip ? "GESTIÓN · CAMBIA EL VEREDICTO" : "ESFUERZO DE GESTIÓN",
-    // C5: titular AFIRMA la conclusión decisional; el KPI se explica en la ksub (puente titular↔número).
-    titular: flip
-      ? "Quién administre el corto cambia cuál te conviene"
-      : "El corto solo rinde si lo administras tú; delegarlo se come la ventaja",
-    kpi: flip ? money(comisionMensual, c, uf) : money(costoDelegar, c, uf),
+    kicker: "ESFUERZO DE GESTIÓN",
+    titular: "Delegar el corto tiene un precio, y un punto en que se paga solo",
+    kpi: money(costoDelegar, c, uf),
     kpiRed: false,
-    ksub: flip
-      ? `AL MES AL ADMINISTRADOR · Y AHÍ SE DA VUELTA EL VEREDICTO`
-      : `LO QUE PIERDES AL MES SI LO DELEGAS · ${pct0(x.comisionAdministrador * 100)} DEL BRUTO`,
-    // C5: concepto → evidencia (los dos modos) → consecuencia decisional. Tuteo chileno.
-    cuerpo: flip
-      ? `Operar un arriendo corto son 8-12 horas a la semana tuyas, o un administrador que cobra ${pct0(x.comisionAdministrador * 100)} del bruto (${money(comisionMensual, c, uf)} al mes). Acá esa decisión pesa tanto que da vuelta el veredicto: si lo administras tú ${convieneFrase(x.recomendacionAuto)}, y si lo delegas ${convieneFrase(x.recomendacionAdmin)}. Antes de elegir modalidad, decide si vas a poner las horas o la plata.`
-      : `Renta larga es casi pasiva: media hora a la semana y listo. El corto te exige 8-12 horas semanales, o entregar ${pct0(x.comisionAdministrador * 100)} del bruto (${money(comisionMensual, c, uf)} al mes) a un administrador. Si lo delegas, lo que renta la operación cae ${money(costoDelegar, c, uf)} al mes: esa es la parte de la ventaja del corto que estás pagando por no gestionarlo tú.`,
+    ksub: ptsTxt
+      ? `LO QUE CUESTA DELEGARLO AL MES · SE PAGA SOLO CON ${ptsTxt} PUNTOS MÁS DE OCUPACIÓN`
+      : `LO QUE CUESTA DELEGARLO AL MES · ${pct0(x.comisionAdministrador * 100)} DEL BRUTO`,
+    cuerpo: `Renta larga es casi pasiva: media hora a la semana y listo. El corto te exige 8-12 horas semanales, o entregar ${pct0(x.comisionAdministrador * 100)} del bruto (${money(comisionMensual, c, uf)} al mes) a un administrador. Sobre el 3% que Airbnb ya se lleva, ${yaDelega ? `delegarlo te cuesta ${money(costoDelegar, c, uf)} al mes más de lo que te costaría operarlo tú` : `delegarlo cuesta ${money(costoDelegar, c, uf)} al mes más que operarlo tú`}.${quiebreFrase} ${yaDelega ? "Puede estar consiguiéndolos" : "Puede conseguirlos"}, o puede conseguir mejor tarifa, y te saca la operación de encima; cuánto más, no lo medimos.`,
     lado: "ltr",
     decisividad: 0.85,
     procedencia: "Lo que renta el corto administrándolo tú vs pagando un administrador, sobre el mismo bruto",
     puente: {
-      titulo: flip ? "Cómo el administrador da vuelta el veredicto" : "Cuánto te cuesta no administrarlo tú",
+      titulo: "Cuánto te cuesta no administrarlo tú",
       lead: `El corto se opera de dos formas: lo administras tú (8-12 horas a la semana, sin comisión) o lo delegas a un administrador que cobra ${pct0(x.comisionAdministrador * 100)} del bruto. El ingreso bruto es el mismo (${money(x.ingresoBrutoMensual, c, uf)} al mes); lo que cambia es cuánto sobra después de la gestión:`,
       filas: [
         { label: "Lo que factura el corto (bruto)", str: money(x.ingresoBrutoMensual, c, uf) },
         { label: "Lo que renta si lo administras tú", str: money(x.strAutoNOIMensual, c, uf) },
         { label: `Lo que renta con administrador (−${pct0(x.comisionAdministrador * 100)})`, str: money(x.strAdminNOIMensual, c, uf), delta: signed(-costoDelegar, c, uf) },
       ],
-      nota: flip
-        ? `Por eso la gestión no es un detalle operativo: administrándolo tú conviene ${ladoTxt(x.recomendacionAuto)}, con administrador conviene ${ladoTxt(x.recomendacionAdmin)}. La decisión de modalidad no se puede separar de quién opera.`
-        : `Delegar cuesta ${money(costoDelegar, c, uf)} al mes de rentabilidad. Aun así el veredicto no cambia: la mejor opción sigue siendo ${nombreLado(recoToLado(x.recomendacionAuto))} de las dos formas.`,
+      nota: `Delegar cuesta ${money(costoDelegar, c, uf)} al mes de rentabilidad.${quiebreFrase} El motor no mide cuánta ocupación consigue un administrador: pídele la suya de los últimos doce meses en deptos parecidos y compárala con la de arriba.`,
       links: [{ label: "Ver el modelo de gestión completo del corto", hijo: "str", seccion: "escenarios" }],
     },
-    valor: { costoDelegarMensual: Math.round(costoDelegar), comisionMensual: Math.round(comisionMensual), flipCambia: flip, recomendacionAuto: x.recomendacionAuto, recomendacionAdmin: x.recomendacionAdmin },
+    valor: { costoDelegarMensual: Math.round(costoDelegar), comisionMensual: Math.round(comisionMensual), puntosExtra: q ? Math.round(q.puntosExtra * 1000) / 10 : null },
   };
 }
 
@@ -455,11 +455,9 @@ function buildCapital(x: FindingsCtx, c: Currency, uf: number): FindingComparati
   };
 }
 
-function recoToLado(reco: string): FindingLado {
-  if (reco === "LTR_PREFERIDO") return "ltr";
-  if (reco === "STR_VENTAJA_CLARA") return "str";
-  return "neutro";
-}
+// ⛔ `recoToLado` se retiró el 16-sep-2026 con el flip de gestión: su único trabajo era
+// traducir la recomendación PARALELA de cada modo (auto/admin) a un lado, y esas
+// recomendaciones ya no se emiten. `nombreLado` sigue vivo, que es otra cosa.
 
 // ── Composición con orden dinámico por banda ─────────────────────────────────
 export function buildFindingsComparativa(x: FindingsCtx, c: Currency, uf: number): FindingComparativa[] {
