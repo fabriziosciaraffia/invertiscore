@@ -85,23 +85,13 @@ export function TokensShared() {
       .drow.tot .dk{color:var(--doc-tx);font-weight:600;font-size:13px}
       .drow.tot .dv{font-weight:700;font-size:14px}
 
-      /* ── barra de tramos del Fall — RETIRADA DE LAS DOS SUPERFICIES VIVAS (16-sep-2026) ──
-         Ya no la dibuja ningún capítulo: salió del II de LTR y del II de STR porque cambiaba
-         de unidad a mitad del parque sin avisar (ver el acta en «reparto-ingreso.ts»). Lo que
-         decía ahora está escrito, con el reparto que emite el motor.
-         ⛔ EL CSS SE QUEDA A PROPÓSITO, y no es olvido: el único consumidor que sobrevive es
-         «/dev/drawers-pixel», y borrar estas cinco líneas dejaría esa página dibujando una
-         barra sin estilo —rota en silencio, que es peor que retirada—. Si se decide que la
-         pieza se va, esto se va CON ella, en el mismo cambio.
-         Su regla de borde en el rediseño («.doc-dictamen .fbar .fb-ing») SÍ se retiró: era
-         medio selector de una regla compartida con «.pos-chip», y se corrigió su acta. */
-      .fbar{position:relative;height:7px;margin:8px 0 10px;border-radius:2px;cursor:help}
-      .fbar span{position:absolute;top:0;height:100%;border-radius:2px}
-      .fbar .fb-ing{left:0;background:var(--doc-paper3);border:1px solid var(--doc-line);box-sizing:border-box}
-      .fbar .fb-op{left:0;background:var(--doc-line2)}
-      .fbar .fb-cu{background:var(--doc-tx)}
-      .fbar .fb-rojo{background:var(--signal-red)}
-      .fbar .fb-libre{background:var(--doc-good)}
+      /* ── barra de tramos del Fall — RETIRADA ENTERA (16-sep-2026) ──
+         Estuvo acá con sus cinco selectores hasta hoy. Salió del capítulo II de las dos
+         modalidades porque cambiaba de unidad a mitad del parque sin avisar (el acta larga
+         está en «reparto-ingreso.ts»), y su último consumidor era «/dev/drawers-pixel».
+         Reemplazado se retira: el componente, estos selectores, el export del índice y los
+         «tramosBarra» de los fixtures se fueron en el mismo cambio. Lo que decía ahora está
+         escrito, en «.doc-reparto», acá abajo. */
 
       /* ── el reparto del ingreso (16-sep-2026) ──
          La línea que reemplazó a la barra. Va TIPOGRAFÍA, no gráfico, y hereda el tamaño de

@@ -86,7 +86,13 @@ async function main() {
     if (d.comisionPlataforma !== 17760 || d.administrador !== 0) F(`eb7b · comisión ${d.comisionPlataforma}/${d.administrador}`);
     if (d.costosDirectos !== 85000 || d.gastosComunesMantencion !== 92000 || d.contribucionesMensuales !== 15734 || d.cuota !== 465925) F(`eb7b · desglose ${JSON.stringify(d)}`);
     if (d.ingreso - d.comisionPlataforma - d.administrador - d.costosDirectos - d.gastosComunesMantencion - d.contribucionesMensuales - d.cuota !== d.saleDeTuBolsillo) F("eb7b · el Fall no cuadra");
-    if (m.tramosBarra.exceso !== 84407 || m.tramosBarra.libre !== 0 || m.tramosBarra.costosOperar !== 210494) F(`eb7b · tramos ${JSON.stringify(m.tramosBarra)}`);
+    // `tramosBarra` se retiró con la barra (16-sep-2026); los MISMOS tres campos viven ahora
+    // en `repartoIngreso`, que es lo que emite el motor para la línea que la reemplazó. El pin
+    // no se borra al retirar la pieza: las cifras que vigilaba siguen siendo las del Fall.
+    const rep = m.repartoIngreso!;
+    if (rep.exceso !== 84407 || rep.libre !== 0 || rep.costosOperar !== 210494) F(`eb7b · reparto ${JSON.stringify(rep)}`);
+    if (rep.cuotaPor100 !== Math.round((d.cuota / d.ingreso) * 100)) F(`eb7b · el % de la cuota (${rep.cuotaPor100}) no es la cuota sobre el ingreso`);
+    if (rep.forma !== (d.cuota <= d.ingreso ? "cabe" : "supera")) F(`eb7b · la forma (${rep.forma}) no sigue al corte «la cuota cabe»`);
     // día 1
     const d1 = m.dia1;
     if (d1.pieCLP !== 22067640 || d1.gastosCompraCLP !== 2206764 || d1.amoblamientoCLP !== 2500000 || d1.capexCLP !== 0 || d1.inversionInicial !== 26774404) F(`eb7b · día 1 ${JSON.stringify(d1)}`);
@@ -167,7 +173,7 @@ async function main() {
     if (francoScore.veredicto !== "COMPRAR" || !(r.metrics!.flujoMensual < 0)) F(`2ff7 · ${francoScore.veredicto} / ${r.metrics?.flujoMensual}`);
     if (sim.fronterasIngreso.arriba !== null || sim.fronteraPrecio.subeA !== null) F("2ff7 · en COMPRAR no hay frontera hacia arriba");
     if (sim.matrizTarifaOcupacion.celdas.some((c) => c.cruza) || sim.matrizPiePlazo.celdas.some((c) => c.cruza)) F("2ff7 · en COMPRAR ninguna celda cruza");
-    if (r.metrics!.tramosBarra.exceso <= 0 || r.metrics!.tramosBarra.libre !== 0) F(`2ff7 · tramos ${JSON.stringify(r.metrics!.tramosBarra)}`);
+    if (r.metrics!.repartoIngreso!.exceso <= 0 || r.metrics!.repartoIngreso!.libre !== 0) F(`2ff7 · reparto ${JSON.stringify(r.metrics!.repartoIngreso)}`);
     const T = { renta: textoCierre(cierres.renta), flujo: textoCierre(cierres.flujo), noches: textoCierre(cierres.noches), pagas: textoCierre(cierres.pagas) };
     if (/sube a/.test(T.renta)) F(`2ff7 · cierre I ofrece subir en COMPRAR: ${T.renta}`);
     if (!/antes de caer a/.test(T.renta) && !/firme/.test(T.renta)) F(`2ff7 · cierre I sin colchón: ${T.renta}`);

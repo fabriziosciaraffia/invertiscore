@@ -4,7 +4,6 @@ export { TokensShared } from "./TokensShared";
 export { Matriz, nombreVeredicto, saltoVeredicto, type CeldaMatriz, type EjeMatriz } from "./Matriz";
 export { Planilla, type CeldaPlanilla, type FilaPlanilla } from "./Planilla";
 export { FilaDato, FilasDato } from "./FilaDato";
-export { BarraTramos } from "./BarraTramos";
 export { CurvaAnual } from "./CurvaAnual";
 export { SeisCifras, type CifraInforme } from "./SeisCifras";
 export { BloqueDia1 } from "./BloqueDia1";

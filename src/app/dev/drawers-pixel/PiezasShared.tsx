@@ -10,7 +10,7 @@ import { useState } from "react";
 import { barraDia1 } from "@/lib/plata-dia1";
 import { metricaValorONull } from "@/lib/types";
 import { VViz } from "@/components/analysis/hallazgos/vocabulario";
-import { Matriz, Planilla, FilaDato, FilasDato, BarraTramos, CurvaAnual, SeisCifras, BloqueDia1, CurvaPatrimonio } from "@/components/analysis/shared";
+import { Matriz, Planilla, FilaDato, FilasDato, CurvaAnual, SeisCifras, BloqueDia1, CurvaPatrimonio } from "@/components/analysis/shared";
 
 const clp = (n: number) => `${n < 0 ? "−" : ""}$${Math.round(Math.abs(n)).toLocaleString("es-CL")}`;
 const k = (n: number) => `${n < 0 ? "−" : ""}$${Math.round(Math.abs(n) / 1000)}k`;
@@ -46,12 +46,14 @@ export function PiezasShared({ fix, comp }: { fix: any; comp: string }) {
     });
   }
   if (on("tramos") && m) {
-    const t = m.tramosBarra;
+    // LA BARRA DE TRAMOS SE RETIRÓ (16-sep-2026): salió del capítulo II de las dos
+    // modalidades por cambiar de unidad a mitad del parque, y esta página era su último
+    // consumidor. Reemplazado se retira. El bloque conserva sus filas de dato, que es lo
+    // que el capítulo sigue mostrando; el título deja de prometer una barra que no está.
     const f = m.desgloseFall;
     bloques.push({
-      id: "tramos", titulo: "Barra de tramos + filas de dato (II)", node: (
-        <VViz t={`Qué pasa con los ${clp(t.ingreso)} del ingreso`}>
-          <BarraTramos {...t} title={`Ingreso ${clp(t.ingreso)} · costos de operar ${clp(t.costosOperar)} · cuota ${clp(t.cuota)} · sale de tu bolsillo ${clp(t.exceso)}`} />
+      id: "tramos", titulo: "Filas de dato del flujo (II)", node: (
+        <VViz t={`Qué pasa con los ${clp(f.ingreso)} del ingreso`}>
           <FilasDato>
             <FilaDato tono="in" k="Ingreso mensual estabilizado" tip="Tarifa por noche × ocupación × 365 ÷ 12" sub="lo que factura un mes típico con la ocupación estimada" v={clp(f.ingreso)} unidad="/mes" />
             <FilaDato k="Comisión de la plataforma" tip="La plataforma cobra 3% al anfitrión" sub="3% del ingreso" v={clp(-f.comisionPlataforma)} unidad="/mes" />

@@ -105,13 +105,6 @@
           "cuota": 465925,
           "saleDeTuBolsillo": -84407
         },
-        "tramosBarra": {
-          "ingreso": 592012,
-          "costosOperar": 210494,
-          "cuota": 465925,
-          "exceso": 84407,
-          "libre": 0
-        },
         "dia1": {
           "pieCLP": 22067640,
           "gastosCompraCLP": 2206764,
@@ -1921,13 +1914,6 @@
           "contribucionesMensuales": 32432,
           "cuota": 628589,
           "saleDeTuBolsillo": -352843
-        },
-        "tramosBarra": {
-          "ingreso": 486781,
-          "costosOperar": 211035,
-          "cuota": 628589,
-          "exceso": 352843,
-          "libre": 0
         },
         "dia1": {
           "pieCLP": 14101875,
@@ -7671,13 +7657,6 @@
           "cuota": 788421,
           "saleDeTuBolsillo": 544442
         },
-        "tramosBarra": {
-          "ingreso": 1581667,
-          "costosOperar": 248804,
-          "cuota": 788421,
-          "exceso": 0,
-          "libre": 544442
-        },
         "dia1": {
           "pieCLP": 34334160,
           "gastosCompraCLP": 3433416,
@@ -10697,13 +10676,6 @@
           "cuota": 465925,
           "saleDeTuBolsillo": -84407
         },
-        "tramosBarra": {
-          "ingreso": 592012,
-          "costosOperar": 210494,
-          "cuota": 465925,
-          "exceso": 84407,
-          "libre": 0
-        },
         "dia1": {
           "pieCLP": 22067640,
           "gastosCompraCLP": 2206764,
@@ -12496,13 +12468,6 @@
           "cuota": 788421,
           "saleDeTuBolsillo": 544442
         },
-        "tramosBarra": {
-          "ingreso": 1581667,
-          "costosOperar": 248804,
-          "cuota": 788421,
-          "exceso": 0,
-          "libre": 544442
-        },
         "dia1": {
           "pieCLP": 34334160,
           "gastosCompraCLP": 3433416,
@@ -14159,13 +14124,6 @@
           "contribucionesMensuales": 49354,
           "cuota": 788421,
           "saleDeTuBolsillo": 544442
-        },
-        "tramosBarra": {
-          "ingreso": 1581667,
-          "costosOperar": 248804,
-          "cuota": 788421,
-          "exceso": 0,
-          "libre": 544442
         },
         "dia1": {
           "pieCLP": 34334160,
@@ -26059,13 +26017,6 @@
           "cuota": 478482,
           "saleDeTuBolsillo": -108152
         },
-        "tramosBarra": {
-          "ingreso": 532794,
-          "costosOperar": 162464,
-          "cuota": 478482,
-          "exceso": 108152,
-          "libre": 0
-        },
         "dia1": {
           "pieCLP": 10619700,
           "gastosCompraCLP": 2123940,
@@ -27858,13 +27809,6 @@
           "contribucionesMensuales": 21280,
           "cuota": 572573,
           "saleDeTuBolsillo": -93776
-        },
-        "tramosBarra": {
-          "ingreso": 678430,
-          "costosOperar": 199633,
-          "cuota": 572573,
-          "exceso": 93776,
-          "libre": 0
         },
         "dia1": {
           "pieCLP": 12052815,
@@ -29688,13 +29632,6 @@
           "cuota": 390239,
           "saleDeTuBolsillo": -80052
         },
-        "tramosBarra": {
-          "ingreso": 480905,
-          "costosOperar": 170718,
-          "cuota": 390239,
-          "exceso": 80052,
-          "libre": 0
-        },
         "dia1": {
           "pieCLP": 20435000,
           "gastosCompraCLP": 2043500,
@@ -31516,13 +31453,6 @@
           "cuota": 538541,
           "saleDeTuBolsillo": -158923
         },
-        "tramosBarra": {
-          "ingreso": 553190,
-          "costosOperar": 173572,
-          "cuota": 538541,
-          "exceso": 158923,
-          "libre": 0
-        },
         "dia1": {
           "pieCLP": 5722920,
           "gastosCompraCLP": 2289168,
@@ -33286,13 +33216,6 @@
           "contribucionesMensuales": 25050,
           "cuota": 452192,
           "saleDeTuBolsillo": -152320
-        },
-        "tramosBarra": {
-          "ingreso": 504043,
-          "costosOperar": 204171,
-          "cuota": 452192,
-          "exceso": 152320,
-          "libre": 0
         },
         "dia1": {
           "pieCLP": 25491024,
@@ -35132,13 +35055,6 @@
           "cuota": 374186,
           "saleDeTuBolsillo": -7569
         },
-        "tramosBarra": {
-          "ingreso": 528471,
-          "costosOperar": 161854,
-          "cuota": 374186,
-          "exceso": 7569,
-          "libre": 0
-        },
         "dia1": {
           "pieCLP": 791692,
           "gastosCompraCLP": 1583385,
@@ -36807,13 +36723,6 @@
           "cuota": 511293,
           "saleDeTuBolsillo": -15955
         },
-        "tramosBarra": {
-          "ingreso": 678868,
-          "costosOperar": 183530,
-          "cuota": 511293,
-          "exceso": 15955,
-          "libre": 0
-        },
         "dia1": {
           "pieCLP": 25532800,
           "gastosCompraCLP": 2553280,
@@ -38314,13 +38223,6 @@
           "contribucionesMensuales": 22158,
           "cuota": 544444,
           "saleDeTuBolsillo": -184504
-        },
-        "tramosBarra": {
-          "ingreso": 539276,
-          "costosOperar": 179336,
-          "cuota": 544444,
-          "exceso": 184504,
-          "libre": 0
         },
         "dia1": {
           "pieCLP": 12214150,
@@ -42523,13 +42425,6 @@
           "cuota": 948757,
           "saleDeTuBolsillo": -260574
         },
-        "tramosBarra": {
-          "ingreso": 1078303,
-          "costosOperar": 390120,
-          "cuota": 948757,
-          "exceso": 260574,
-          "libre": 0
-        },
         "dia1": {
           "pieCLP": 44936100,
           "gastosCompraCLP": 4493610,
@@ -44384,13 +44279,6 @@
           "cuota": 378453,
           "saleDeTuBolsillo": -79081
         },
-        "tramosBarra": {
-          "ingreso": 529250,
-          "costosOperar": 229878,
-          "cuota": 378453,
-          "exceso": 79081,
-          "libre": 0
-        },
         "dia1": {
           "pieCLP": 7966530,
           "gastosCompraCLP": 1593306,
@@ -46243,13 +46131,6 @@
           "cuota": 662927,
           "saleDeTuBolsillo": -59687
         },
-        "tramosBarra": {
-          "ingreso": 911742,
-          "costosOperar": 308502,
-          "cuota": 662927,
-          "exceso": 59687,
-          "libre": 0
-        },
         "dia1": {
           "pieCLP": 31040000,
           "gastosCompraCLP": 3104000,
@@ -48078,13 +47959,6 @@
           "contribucionesMensuales": 26834,
           "cuota": 420868,
           "saleDeTuBolsillo": -11880
-        },
-        "tramosBarra": {
-          "ingreso": 610126,
-          "costosOperar": 201138,
-          "cuota": 420868,
-          "exceso": 11880,
-          "libre": 0
         },
         "dia1": {
           "pieCLP": 45756480,

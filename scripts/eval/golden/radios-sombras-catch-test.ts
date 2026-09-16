@@ -73,7 +73,7 @@ for (const r of RADIOS) {
 
 // ── 3 · las barras no se mapean a la escala de tarjetas ────────────────────
 {
-  const BARRAS = /\.(bar-track|bar-fill|cmp-track|cmp-fill|esc-track|esc-fill|par-track|par-fill|cien-track|compo-track|compo-sw|ba-sw|fbar|dial-track|dial-mark|thermo-track|mz-cell|pal-delta)\b/;
+  const BARRAS = /\.(bar-track|bar-fill|cmp-track|cmp-fill|esc-track|esc-fill|par-track|par-fill|cien-track|compo-track|compo-sw|ba-sw|dial-track|dial-mark|thermo-track|mz-cell|pal-delta)\b/;
   for (const linea of BLOQUE.split("\n")) {
     if (!/border-radius:\s*var\(--rad-s\)|border-radius:\s*var\(--rad-xs\)|border-radius:\s*var\(--rad\)/.test(linea)) continue;
     if (BARRAS.test(linea)) {
