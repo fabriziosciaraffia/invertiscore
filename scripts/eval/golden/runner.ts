@@ -51,6 +51,7 @@ import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runRespaldoArriendoTier } from "./respaldo-arriendo-catch-test";
 import { runDistanciaComprarTier } from "./distancia-comprar-catch-test";
 import { runDistanciaComprarStrTier } from "./distancia-comprar-str-catch-test";
+import { runRepartoIngresoTier } from "./reparto-ingreso-catch-test";
 import { runMixPalancasTier } from "./mix-palancas-catch-test";
 import { runMixScoreTier } from "./mix-score-catch-test";
 import { runGrillaPopupTier } from "./grilla-popup-catch-test";
@@ -295,6 +296,7 @@ async function printStrSemantic() {
   // Tier DISTANCIA-COMPRAR-STR (11-sep-2026, 0 tokens, sin base): las cinco vias a COMPRAR y
   // el mix hacia COMPRAR desde BUSCAR en el builder STR, espejo del tier LTR. Siempre con el QUICK.
   totalHard += runDistanciaComprarStrTier().hard;
+  totalHard += runRepartoIngresoTier().hard;
   totalHard += runMixPalancasTier().hard;
   totalHard += runMixScoreTier().hard;
   totalHard += runGrillaPopupTier().hard;
