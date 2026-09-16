@@ -23,22 +23,6 @@ const trimUltimo = (segs: SegCierre[]) => {
   return segs;
 };
 const fmtPctSigno = (n: number, pct1: (n: number) => string) => `${n >= 0 ? "+" : "−"}${pct1(Math.abs(n))}`;
-/** Fracción en palabras, para comparar dos montos sin inventar un porcentaje. */
-export function fraccionEnPalabras(parte: number, total: number): string | null {
-  if (!(total > 0) || !(parte >= 0)) return null;
-  const r = parte / total;
-  if (r < 0.15) return "una fracción";
-  if (r < 0.3) return "un cuarto";
-  if (r < 0.4) return "un tercio";
-  if (r < 0.6) return "la mitad";
-  if (r < 0.72) return "dos tercios";
-  if (r < 0.85) return "tres cuartos";
-  if (r < 1.15) return "casi lo mismo";
-  if (r < 1.7) return "una vez y media";
-  if (r < 2.5) return "el doble";
-  if (r < 3.5) return "el triple";
-  return "varias veces";
-}
 
 // ═══════════ CIERRE I · Cuánto renta (cap rate + fronteras del ingreso + matriz) ═══════════
 
@@ -117,47 +101,28 @@ export function cierreRentaStr(a: ArgsCierreRentaStr, f: FmtCierre): SegCierre[]
   return trimUltimo(segs);
 }
 
-// ═══════════ CIERRE II · Tu flujo mensual (bolsillo + caja + largo + gestión) ═══════════
-
-export interface ArgsCierreFlujoStr {
-  flujoMensual: number;
-  /** Pérdida por estabilización inicial (primeros meses), CLP. */
-  estabilizacionCLP: number;
-  /** Flujo del mismo depto arrendado largo (después de la cuota). */
-  flujoLargo: number | null;
-  /** Flujo con el otro modo de gestión. */
-  flujoOtroModo: number | null;
-  modo: "auto" | "administrador";
-}
-
-export function cierreFlujoStr(a: ArgsCierreFlujoStr, f: FmtCierre): SegCierre[] {
-  const segs: SegCierre[] = [];
-  const otro = a.modo === "auto" ? "con administrador" : "autogestionando";
-  if (a.flujoMensual < 0) {
-    segs.push(
-      { t: `¿Tienes ${f.money(-a.flujoMensual)} disponibles cada mes sin comprometer otro gasto fijo, y ${f.money(a.estabilizacionCLP)} en caja para los primeros meses, cuando el aviso todavía no tiene reseñas y se ocupa menos?`, mark: true },
-      { t: " " },
-    );
-    if (a.flujoLargo != null && a.flujoLargo < 0 && -a.flujoLargo > -a.flujoMensual) {
-      const frac = fraccionEnPalabras(-a.flujoMensual, -a.flujoLargo);
-      segs.push({ t: `No es una sangría: es ${frac ?? "menos de lo"} ${frac ? "de lo" : ""} que te pediría el mismo depto arrendado largo. `.replace("  ", " ") });
-    } else if (a.flujoLargo != null && a.flujoLargo >= 0) {
-      segs.push({ t: `Arrendado largo el mismo depto no te pediría plata: quedaría en ${f.money(a.flujoLargo)}. ` });
-    }
-    if (a.flujoOtroModo != null) {
-      segs.push({ t: a.flujoOtroModo < a.flujoMensual ? `Pero es recurrente, y ${otro} sube a ${f.money(-a.flujoOtroModo)}.` : a.flujoOtroModo < 0 ? `Es recurrente; ${otro} baja a ${f.money(-a.flujoOtroModo)}.` : `Es recurrente; ${otro} el mes queda en ${f.money(a.flujoOtroModo)}.` });
-    } else {
-      segs.push({ t: "Es recurrente." });
-    }
-  } else {
-    segs.push(
-      { t: `Te quedan ${f.money(a.flujoMensual)} cada mes después de todo`, mark: true },
-      { t: `, con la ocupación estimada. El primer año arranca con ${f.money(a.estabilizacionCLP)} de estabilización mientras el aviso gana reseñas. ` },
-    );
-    if (a.flujoOtroModo != null) segs.push({ t: a.flujoOtroModo < 0 ? `${otro[0].toUpperCase()}${otro.slice(1)} el mes pasa a ${f.money(a.flujoOtroModo)}.` : `${otro[0].toUpperCase()}${otro.slice(1)} quedan ${f.money(a.flujoOtroModo)}.` });
-  }
-  return trimUltimo(segs);
-}
+// ⛔ CIERRE II · Tu flujo mensual — RETIRADO el 16-sep-2026.
+//
+// Decía cuatro cosas y las cuatro quedaron mejor dichas en otra parte: el monto lo dice
+// la tabla del capítulo (fila «Sale de tu bolsillo» / «Te queda»), QUÉ MES es lo declara
+// ahora el sub —antes iba enterrado acá, al final de una cláusula: «…con la ocupación
+// estimada»—, la estabilización la absorbe el gráfico de diez años, y el contraste con
+// el otro modo de gestión vive en el capítulo V, donde además viene con el punto de
+// quiebre.
+//
+// Con él muere `fraccionEnPalabras`, que no tenía otro consumidor.
+//
+// LA COMPARACIÓN CONTRA EL ARRIENDO LARGO SE DEJA MORIR, y es decisión, no olvido. Este
+// cierre decía «no es una sangría: es dos tercios de lo que te pediría el mismo depto
+// arrendado largo», y el capítulo V lleva ese hilo solo cuando la sobre-renta es negativa —
+// o sea que para una fila con flujo negativo y sobre-renta positiva la frase ya no está en
+// ninguna parte. Va igual: el V YA compara largo contra corto en su segunda mitad, y tener
+// la misma comparación en dos capítulos CON DOS MÉTRICAS DISTINTAS (acá el flujo, allá el
+// NOI) es peor que no tenerla en uno.
+//
+// 👉 PARA EL GOAL DEL CAPÍTULO V: si al abrirlo el hilo largo-vs-corto queda flojo, esto es
+// lo que hay que mirar — el V es el único lugar donde esa comparación existe ahora, y su
+// métrica es el NOI. Se resuelve ahí, que es donde vive.
 
 // ═══════════ CIERRE III · Cuántas noches necesitas (estimación + frontera + zona + año) ═══════════
 

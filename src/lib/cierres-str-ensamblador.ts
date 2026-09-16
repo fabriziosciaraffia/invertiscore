@@ -14,8 +14,8 @@ import { costoOportunidad } from "./analysis";
 import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 import type { FmtCierre, SegCierre } from "./cierres-capitulos";
 import {
-  cierreRentaStr, cierreFlujoStr, cierreNochesStr, cierrePagasStr, cierreGestionStr, cierreResultadoStr,
-  type ArgsCierreRentaStr, type ArgsCierreFlujoStr, type ArgsCierreNochesStr, type ArgsCierrePagasStr, type ArgsCierreGestionStr, type ArgsCierreResultadoStr,
+  cierreRentaStr, cierreNochesStr, cierrePagasStr, cierreGestionStr, cierreResultadoStr,
+  type ArgsCierreRentaStr, type ArgsCierreNochesStr, type ArgsCierrePagasStr, type ArgsCierreGestionStr, type ArgsCierreResultadoStr,
 } from "./cierres-capitulos-str";
 
 export interface EntradaCierresStr {
@@ -31,7 +31,6 @@ export interface EntradaCierresStr {
 
 export interface ArgsCierresStr {
   renta: ArgsCierreRentaStr;
-  flujo: ArgsCierreFlujoStr;
   noches: ArgsCierreNochesStr;
   pagas: ArgsCierrePagasStr;
   gestion: ArgsCierreGestionStr;
@@ -40,7 +39,6 @@ export interface ArgsCierresStr {
 
 export interface CierresStr {
   renta: SegCierre[];
-  flujo: SegCierre[];
   noches: SegCierre[];
   pagas: SegCierre[];
   gestion: SegCierre[];
@@ -96,13 +94,6 @@ export function argsCierresStr(e: EntradaCierresStr): ArgsCierresStr {
       adrRef: Math.round(adrRef / 100) * 100,
       fronteras: sim?.fronterasIngreso ?? null,
       matriz: sim?.matrizTarifaOcupacion ?? null,
-    },
-    flujo: {
-      flujoMensual: flujo,
-      estabilizacionCLP: r.perdidaRampUp,
-      flujoLargo: r.comparativa.ltr.flujoCaja,
-      flujoOtroModo: otro.flujoCajaMensual,
-      modo: e.modoGestion,
     },
     noches: {
       veredictoBase: veredicto,
@@ -161,7 +152,6 @@ export function cierresStr(e: EntradaCierresStr, f: FmtCierre = fmtCierreCLP()):
   const a = argsCierresStr(e);
   return {
     renta: cierreRentaStr(a.renta, f),
-    flujo: cierreFlujoStr(a.flujo, f),
     noches: cierreNochesStr(a.noches, f),
     pagas: cierrePagasStr(a.pagas, f),
     gestion: cierreGestionStr(a.gestion, f),

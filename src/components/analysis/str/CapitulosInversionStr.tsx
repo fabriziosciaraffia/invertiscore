@@ -2,7 +2,7 @@
 
 import { Ang } from "@/components/analysis/shared/Ang";
 import { useMemo, useState } from "react";
-import type { ShortTermResult } from "@/lib/engines/short-term-engine";
+import { serieFlujoMensualPorAnio, type ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { Hallazgo, HallazgoDistanciaVeredicto, HallazgoEstructuraFinanciamiento, HallazgoSobreprecio, Veredicto } from "@/lib/types";
 import { metricaValorONull } from "@/lib/types";
@@ -20,7 +20,7 @@ import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hall
 import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, Bars, BarraApilada, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
 import { PlanNegociacion } from "@/components/ui/AnalysisDrawer";
-import { Matriz, nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaPatrimonio, BloqueDia1, SegsCierre } from "@/components/analysis/shared";
+import { Matriz, nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaAnios, CurvaPatrimonio, BloqueDia1, SegsCierre, type PuntoAnio } from "@/components/analysis/shared";
 import { fraseReparto } from "@/lib/reparto-ingreso";
 import { conApellido } from "@/components/analysis/CapitulosInversion";
 
@@ -152,7 +152,17 @@ export function CapitulosInversionStr({
   const occ = args.noches.ocupacionPct / 100;
   const noches = args.noches.noches;
   const ingreso = m?.ingresoEstabilizadoMensual ?? base.ingresoBrutoMensual;
-  const flujo = args.flujo.flujoMensual;
+  // Misma fuente que usaba el ensamblador para el cierre II, ahora retirado.
+  const flujo = m?.flujoMensual ?? base.flujoCajaMensual;
+
+  // La serie del gráfico de diez años. LA DERIVACIÓN LA HACE EL MOTOR
+  // (`serieFlujoMensualPorAnio`), no este render: ahí están las dos decisiones —÷12 y no
+  // dibujar los años sin operación— con su medición, y ahí las lee el gate. Si se
+  // recalculara acá, mutar el motor dejaría el gate en verde.
+  const serieAnios: PuntoAnio[] = serieFlujoMensualPorAnio(results.projections).map((p) => ({
+    anio: p.anio,
+    v: p.flujoMensualPromedio,
+  }));
   const cap = args.renta.capPct;
   const precioCLP = results.pie + results.montoCredito;
   const precioUF = valorUF > 0 ? precioCLP / valorUF : 0;
@@ -290,12 +300,17 @@ export function CapitulosInversionStr({
       anchorId: anchorCapituloStr("flujo"),
       cuerpo: (
         <div>
-          <VProsa>
-            Lo que factura cada mes contra todo lo que sale: la comisión de la plataforma, lo que cuesta tener el depto operando y la cuota del crédito.{" "}
-            {flujo < 0 ? "Lo que queda es lo que pones tú." : "Lo que queda es lo que te llevas."}
-          </VProsa>
-          <VViz t={`Qué pasa con los ${money(ingreso)} del ingreso`}>
-            <VSub>Lo que entra y lo que sale cada mes</VSub>
+          {/* LA BAJADA SALIÓ, Y CON ELLA EL RÓTULO «Qué pasa con los $X del ingreso»
+              (16-sep-2026). Las dos decían lo que la tabla de abajo ya dice fila por fila —
+              qué entra, qué sale y qué queda—, y el rótulo además repetía el ingreso, que es
+              la primera fila. La bajada anunciaba una lista que empieza tres líneas más
+              abajo; la tabla no necesita que se la presente. */}
+          <VViz>
+            {/* El sub declara QUÉ MES es éste. Antes esto vivía en el cierre en prosa, al
+                final de una cláusula («…con la ocupación estimada»), y el lector llegaba a
+                la tabla sin saber si miraba el primer mes o uno cualquiera. Es el mes
+                ESTABILIZADO —después del ramp-up— y a precios de hoy, sin inflación. */}
+            <VSub>Lo que entra y lo que sale en un mes estabilizado, a precios de hoy</VSub>
             {/* LA BARRA DE TRAMOS SALIÓ Y NO SE REEMPLAZA POR OTRO GRÁFICO (16-sep-2026).
               No se fue por fea: **cambiaba de unidad a mitad del parque sin avisar**. Su escala
               era `max(ingreso, costosOperar + cuota)`, así que mientras la cuota cabe en el
@@ -319,7 +334,7 @@ export function CapitulosInversionStr({
             })()}
             {fl ? (
               <FilasDato>
-                <FilaDato tono="in" k="Ingreso mensual estabilizado" tip="Tarifa por noche × ocupación × 365 ÷ 12" sub="lo que factura un mes típico con la ocupación estimada" v={money(fl.ingreso)} unidad="/mes" />
+                <FilaDato tono="in" k="Ingreso mensual" tip="Tarifa por noche × ocupación × 365 ÷ 12" sub="lo que factura un mes típico con la ocupación estimada" v={money(fl.ingreso)} unidad="/mes" />
                 {/* EL SUB SE ADAPTA AL MODO Y EL ⓘ DEJA DE REPETIRLO (16-sep-2026).
                   Decía «3% del ingreso» en el sub y «La plataforma cobra 3% al anfitrión» en el
                   tooltip: el mismo hecho dos veces, y las dos veces FALSO en modo administrador,
@@ -354,16 +369,65 @@ export function CapitulosInversionStr({
               </FilasDato>
             ) : (
               <FilasDato>
-                <FilaDato tono="in" k="Ingreso mensual estabilizado" v={money(ingreso)} unidad="/mes" />
+                <FilaDato tono="in" k="Ingreso mensual" v={money(ingreso)} unidad="/mes" />
                 <FilaDato k="Comisión y costos" v={neg(-(base.comisionMensual + base.costosOperativos))} unidad="/mes" />
                 <FilaDato k="Cuota del crédito" v={neg(-results.dividendoMensual)} unidad="/mes" />
                 <FilaDato tono="tot" k={flujo < 0 ? "Sale de tu bolsillo" : "Te queda"} v={neg(flujo)} unidad="/mes" />
               </FilasDato>
             )}
           </VViz>
-          <VCierre titulo="Qué haces con esto">
-            <SegsCierre segs={cierres.flujo} />
-          </VCierre>
+          {serieAnios.length >= 2 && (() => {
+            const primero = serieAnios[0];
+            const ultimo = serieAnios[serieAnios.length - 1];
+            const minimo = serieAnios.reduce((a, b) => (b.v < a.v ? b : a));
+            // El primer año operativo es el peor porque ahí cae la estabilización entera.
+            // Se AFIRMA solo si el dato lo respalda: si el mínimo está en otro año, la frase
+            // sería falsa y el capítulo estaría haciendo lo mismo que vino a corregir.
+            const primeroEsElPeor = minimo.anio === primero.anio;
+            // La estabilización en escala entendible: cuántos meses de facturación cuesta.
+            // Se DERIVA (perdidaRampUp / ingreso); con STR_RAMP_UP actual da 1,5 exacto, pero
+            // si la curva cambia el texto cambia solo.
+            const mesesFact = ingreso > 0 ? results.perdidaRampUp / ingreso : 0;
+            const enPalabras =
+              Math.abs(mesesFact - 1.5) < 0.05
+                ? "un mes y medio"
+                : Math.abs(mesesFact - 1) < 0.05
+                  ? "un mes"
+                  : `${pct1(mesesFact).replace("%", "")} meses`;
+            const sube = ultimo.v > primero.v;
+            return (
+              <>
+                <VPuente>Y lo mismo a diez años, que es donde la estabilización deja de pesar.</VPuente>
+                <VViz>
+                  <VSub>Lo que queda cada mes, año por año</VSub>
+                  <CurvaAnios puntos={serieAnios} fmt={(n) => neg(n)} />
+                  <p className="doc-reparto" style={{ marginTop: 2 }}>
+                    {primeroEsElPeor && mesesFact > 0 ? (
+                      <>
+                        El año {primero.anio} es el más duro: el aviso todavía no tiene reseñas y se ocupa
+                        menos, y esa estabilización cuesta <b>{enPalabras} de facturación</b>.{" "}
+                      </>
+                    ) : null}
+                    {sube
+                      ? `Desde ahí el arriendo sube con la inflación y la deuda baja, así que cada año deja más que el anterior.`
+                      : `De ahí en adelante la serie no mejora: el arriendo sube con la inflación, pero no alcanza a compensar lo que crecen los costos y la cuota.`}
+                  </p>
+                </VViz>
+              </>
+            );
+          })()}
+          {/* EL CIERRE EN PROSA SALIÓ ENTERO (16-sep-2026). Decía cuatro cosas y las cuatro
+              están mejor dichas en otra parte: el monto lo dice la tabla (fila «Sale de tu
+              bolsillo» / «Te queda»), el mes que es lo declara ahora el sub, la
+              estabilización la absorbe el gráfico de diez años, y el contraste con el otro
+              modo de gestión vive en el capítulo V — donde además viene con el punto de
+              quiebre, que acá nunca estuvo.
+              La comparación contra el arriendo largo («no es una sangría: es dos tercios de
+              lo que te pediría el mismo depto arrendado largo») SE DEJA MORIR, por decisión y
+              no por olvido: el capítulo V ya compara largo contra corto en su segunda mitad, y
+              tener la misma comparación en dos capítulos CON DOS MÉTRICAS DISTINTAS —acá el
+              flujo, allá el NOI— es peor que no tenerla en uno. Si al abrir el goal del V ese
+              hilo queda flojo, se resuelve ahí, que es donde vive. */}
           <VFuente>Motor Franco · {ufFecha} · costos declarados por ti; comisión de plataforma 3%</VFuente>
         </div>
       ),
