@@ -20,7 +20,8 @@ import { HallazgosAcordeon, type FilaHallazgo } from "@/components/analysis/hall
 import { VProsa, VViz, VSub, VPuente, VCierre, VFuente, Thermo, Dial, Bars, BarraApilada, type ZonaDial, type BordeDial } from "@/components/analysis/hallazgos/vocabulario";
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
 import { PlanNegociacion } from "@/components/ui/AnalysisDrawer";
-import { Matriz, nombreVeredicto, FilaDato, FilasDato, BarraTramos, CurvaAnual, CurvaPatrimonio, BloqueDia1, SegsCierre } from "@/components/analysis/shared";
+import { Matriz, nombreVeredicto, FilaDato, FilasDato, CurvaAnual, CurvaPatrimonio, BloqueDia1, SegsCierre } from "@/components/analysis/shared";
+import { fraseReparto } from "@/lib/reparto-ingreso";
 import { conApellido } from "@/components/analysis/CapitulosInversion";
 
 /**
@@ -276,7 +277,7 @@ export function CapitulosInversionStr({
   // ═══════════════ II · TU FLUJO MENSUAL ═══════════════
   const filaII: FilaHallazgo = (() => {
     const fl = m?.desgloseFall ?? null;
-    const t = m?.tramosBarra ?? null;
+    const reparto = m?.repartoIngreso ?? null;
     // Lo que cobraría un operador al 20% del ingreso (CONGELADO: "con operador al 20% serían −$118.402").
     const adminMonto = Math.round(ingreso * 0.2);
     return {
@@ -295,7 +296,27 @@ export function CapitulosInversionStr({
           </VProsa>
           <VViz t={`Qué pasa con los ${money(ingreso)} del ingreso`}>
             <VSub>Lo que entra y lo que sale cada mes</VSub>
-            {t && <BarraTramos {...t} title={`Ingreso ${money(t.ingreso)} · costos de operar ${money(t.costosOperar)} · cuota ${money(t.cuota)} · ${t.exceso > 0 ? `sale de tu bolsillo ${money(t.exceso)}` : `queda libre ${money(t.libre)}`}`} />}
+            {/* LA BARRA DE TRAMOS SALIÓ Y NO SE REEMPLAZA POR OTRO GRÁFICO (16-sep-2026).
+              No se fue por fea: **cambiaba de unidad a mitad del parque sin avisar**. Su escala
+              era `max(ingreso, costosOperar + cuota)`, así que mientras la cuota cabe en el
+              ingreso el ancho del negro decía «qué fracción de lo que ENTRA se lleva la cuota»,
+              y cuando no cabe pasaba a decir «qué fracción de lo que SALE es la cuota». Medido:
+              la cuota supera el 100%% del ingreso en más de la mitad de las filas LTR (p50 =
+              110%%), o sea que el segundo modo era la mayoría. Y encima el negro se dibujaba
+              ENCIMA de la banda gris, así que el gris dejaba de leerse como continente.
+              Lo que la barra intentaba decir ahora está escrito, que es lo único que este
+              capítulo no decía: qué se lleva la plata. El reparto lo emite el MOTOR
+              (`metrics.repartoIngreso`), no el render. */}
+            {reparto && (() => {
+              const f = fraseReparto(reparto, "operar el depto", money);
+              return (
+                <p className="doc-reparto">
+                  {f.antes}
+                  <b style={f.sale ? { color: "var(--signal-red)" } : undefined}>{f.monto}</b>
+                  {f.despues}
+                </p>
+              );
+            })()}
             {fl ? (
               <FilasDato>
                 <FilaDato tono="in" k="Ingreso mensual estabilizado" tip="Tarifa por noche × ocupación × 365 ÷ 12" sub="lo que factura un mes típico con la ocupación estimada" v={money(fl.ingreso)} unidad="/mes" />

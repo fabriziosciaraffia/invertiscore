@@ -15,6 +15,7 @@ import type {
 } from "@/lib/types";
 import { calcFlujoDesglose, calcMesVacio, tirForPrice, calcDividendo } from "@/lib/analysis";
 import { metricaValorONull } from "@/lib/types";
+import { fraseReparto } from "@/lib/reparto-ingreso";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 
 // Proyección estándar Franco a futuro como texto ("3%") — desde la constante, nunca literal.
@@ -23,7 +24,7 @@ import { renderPlumon, plumonInline } from "@/components/analysis/hallazgos/plum
 import { EscaleraPie } from "@/components/analysis/hallazgos/escalera-pie";
 import { EscaleraPlazo } from "@/components/analysis/hallazgos/escalera-plazo";
 import { EstructuraComparada } from "@/components/analysis/hallazgos/estructura-comparada";
-import { BarraTramos, FilaDato, FilasDato } from "@/components/analysis/shared";
+import { FilaDato, FilasDato } from "@/components/analysis/shared";
 import { simularPie, simularPlazo } from "@/lib/analysis";
 import { MARKET_AVG_TASA_UF } from "@/lib/financing-health";
 import {
@@ -176,6 +177,9 @@ export function DrawerCostoMensual({
   const flujo = desglose.flujoNeto;
   const isNeg = flujo < 0;
   const fmt = (v: number) => fmtMoney(v, currency, valorUF);
+  // El reparto del ingreso lo emite el motor desde el 16-sep-2026 (`reparto-ingreso.ts`);
+  // acá NO se deriva nada, que era justo lo que hacía el call site de la barra retirada.
+  const reparto = results.metrics?.repartoIngreso ?? null;
 
   // Ítems del grupo "Sale" en orden de magnitud de los fijos primero, variables después.
   const saleItems: Array<{ name: string; value: number; tooltip: string }> = [
@@ -276,14 +280,27 @@ export function DrawerCostoMensual({
           /* Goal "LTR hereda" (05-sep-2026): el capítulo II usa las mismas piezas que STR II
              (barra de tramos + filas de dato). Mismos ítems y mismas cifras que el waterfall. */
           <>
-            <BarraTramos
-              ingreso={arriendo}
-              costosOperar={Math.max(0, arriendo - desglose.dividendo - flujo)}
-              cuota={desglose.dividendo}
-              exceso={Math.max(0, -flujo)}
-              libre={Math.max(0, flujo)}
-              title={`Arriendo ${fmt(arriendo)} · gastos ${fmt(Math.max(0, arriendo - desglose.dividendo - flujo))} · cuota ${fmt(desglose.dividendo)} · ${isNeg ? `sale de tu bolsillo ${fmt(Math.abs(flujo))}` : `queda libre ${fmt(flujo)}`}`}
-            />
+            {/* LA BARRA DE TRAMOS SALIÓ Y NO SE REEMPLAZA POR OTRO GRÁFICO (16-sep-2026).
+              No se fue por fea: **cambiaba de unidad a mitad del parque sin avisar**. Su escala
+              era `max(ingreso, costosOperar + cuota)`, así que mientras la cuota cabe en el
+              ingreso el ancho del negro decía «qué fracción de lo que ENTRA se lleva la cuota»,
+              y cuando no cabe pasaba a decir «qué fracción de lo que SALE es la cuota». Medido:
+              la cuota supera el 100%% del ingreso en más de la mitad de las filas LTR (p50 =
+              110%%), o sea que el segundo modo era la mayoría. Y encima el negro se dibujaba
+              ENCIMA de la banda gris, así que el gris dejaba de leerse como continente.
+              Lo que la barra intentaba decir ahora está escrito, que es lo único que este
+              capítulo no decía: qué se lleva la plata. El reparto lo emite el MOTOR
+              (`metrics.repartoIngreso`), no el render. */}
+            {reparto && (() => {
+              const f = fraseReparto(reparto, "los gastos", fmt);
+              return (
+                <p className="doc-reparto">
+                  {f.antes}
+                  <b style={f.sale ? { color: "var(--signal-red)" } : undefined}>{f.monto}</b>
+                  {f.despues}
+                </p>
+              );
+            })()}
             <FilasDato>
               <FilaDato tono="in" k="Arriendo mensual" tip="Lo que entra cada mes, antes de cuota y gastos" v={fmt(arriendo)} unidad="/mes" />
               {saleItemsSorted

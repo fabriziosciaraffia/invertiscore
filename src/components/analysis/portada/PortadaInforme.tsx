@@ -1186,8 +1186,11 @@ export function DocTokens() {
          leería como una ranura y no como un separador. No es «--line2» disfrazado: queda
          a ΔL* 3,50 y 5,13 de él.
 
-         Son las dos únicas reglas del informe que hoy combinan las dos cosas. */
-      .doc-dictamen .fbar .fb-ing,
+         ERA LA ÚNICA REGLA CON DOS SELECTORES Y QUEDÓ CON UNO (16-sep-2026). El otro era
+         «.fbar .fb-ing», la banda de la barra de tramos del capítulo II, que se retiró junto
+         con la barra. El acta decía «son las dos únicas reglas del informe que hoy combinan
+         las dos cosas» y con la barra fuera ya no eran dos: la afirmación se corrige acá en
+         vez de quedar mintiendo sobre un selector que no existe. */
       .doc-dictamen .pos-chip{border-color:var(--line-sunk)}
 
       /* ═══════════════ REDISEÑO · TIPOGRAFÍA (contrato §1) ═══════════════
