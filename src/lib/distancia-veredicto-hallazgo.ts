@@ -393,12 +393,36 @@ export function buildHallazgoDistanciaVeredicto(p: {
       true,
     );
     if (fArr != null) {
+      // ⛔ ACÁ MANDA EL MONTO, AL REVÉS QUE EN «PRECIO» (17-sep-2026), y la razón está en el
+      // acto, no en la aritmética: **el arriendo no se le pide a nadie**. El propio prompt lo
+      // dice —«subir el arriendo no se negocia con nadie, se testea publicando»— y el pie de
+      // la tabla también: «la tarifa la pone el mercado, no tú». Lo que el lector hace con
+      // esto es FIJAR UN MONTO EN UN AVISO; el % es la etiqueta de ese monto.
+      //
+      // Por eso `objetivo` no se mueve: con `ceil` ya cruza siempre (sondeado en el motor,
+      // 0 de 99 falla, y 10 de 10 leídas a mano). Si mandara el %, habría que subirlo a un
+      // décimo y derivar el monto de ahí: le pediríamos hasta $300-500 más de arriendo por un
+      // artefacto de redondeo, en una palanca que ya es una apuesta contra el mercado.
+      //
+      // Lo que SÍ cambia es el redondeo de la etiqueta. Con `Math.round` el % podía quedar
+      // por DEBAJO del que el monto implica, así que el lector que multiplica —y es la única
+      // aritmética del informe que alguien verifica a mano— caía por debajo del punto que
+      // cruza: medido, 22 de 160 filas sondeadas (13,8%), y 2 de 10 leídas a mano. Con `ceil`
+      // la cuenta del lector nunca queda corta: 0 de 160. Sube la etiqueta 0,10 puntos en 222
+      // filas y el monto publicado no se mueve en ninguna.
+      //
+      // LA REGLA ÚNICA DE LAS CUATRO CELDAS CON PAR: **el redondeo va siempre hacia MÁS
+      // ESFUERZO** —más descuento, más arriendo, más tarifa—, y lo que cambia entre celdas es
+      // cuál de las dos cifras es la PETICIÓN: el % cuando hay una contraparte a quien
+      // pedirle (precio, en las dos modalidades), el monto cuando es una apuesta que se
+      // publica (arriendo, ADR).
       const objetivo = Math.ceil(p.arriendo * fArr);
+      const pctExacto = (objetivo / p.arriendo - 1) * 100; // positivo
       const pal: PalancaDistancia = conDestino({
         palanca: "arriendo",
         objetivo,
         actual: p.arriendo,
-        deltaPct: Math.round((objetivo / p.arriendo - 1) * 1000) / 10,
+        deltaPct: Math.min(Math.ceil(pctExacto * 10 - 1e-9) / 10, tope),
         deltaAbs: objetivo - p.arriendo,
       }, { arriendo: objetivo });
       out.push(pal);

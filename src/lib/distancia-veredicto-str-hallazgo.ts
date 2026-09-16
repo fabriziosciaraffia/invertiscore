@@ -222,12 +222,25 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
       false,
     );
     if (fPre != null) {
-      const objetivo = Math.floor(p.precioUF * fPre);
+      // ⛔ ESPEJO EXACTO DE LTR (17-sep-2026), y se escribe acá el mismo día porque arreglar
+      // un solo lado del espejo ya pasó esta mañana: la vía de precio LTR se corrigió y ésta
+      // quedó con el defecto intacto hasta que un censo la encontró. Si un campo se audita,
+      // tiene que estar declarado en los DOS lados.
+      //
+      // Acá manda el %, como en LTR, porque el precio SÍ se le pide a alguien: es lo que el
+      // comprador va a negociar con el vendedor. El precio se deriva de él.
+      // Medido sobre el parque: la celda se peleaba consigo misma en 51 de 72 filas, y la
+      // cuenta del lector no cruzaba en 10 de 72 (13,9%) → 0 con el arreglo.
+      // Ver el acta larga en `distancia-veredicto-hallazgo.ts`, vía «precio».
+      const crudo = Math.floor(p.precioUF * fPre); // el punto de la bisección: cruza
+      const pctCrudo = (1 - crudo / p.precioUF) * 100; // su descuento exacto, positivo
+      const deltaPct = -Math.min(Math.ceil(pctCrudo * 10 - 1e-9) / 10, tope);
+      const objetivo = Math.round(p.precioUF * (1 + deltaPct / 100));
       const pal: PalancaDistancia = conDestino({
         palanca: "precio",
         objetivo,
         actual: p.precioUF,
-        deltaPct: Math.round((objetivo / p.precioUF - 1) * 1000) / 10, // negativo
+        deltaPct, // negativo
         deltaAbs: objetivo - p.precioUF,
       }, { precioCompra: Math.round(objetivo * (p.precioCLP / p.precioUF)) });
       relativas.push(pal);
@@ -251,12 +264,23 @@ export function buildHallazgoDistanciaVeredictoStr(p: {
       true,
     );
     if (fAdr != null) {
+      // ⛔ ACÁ MANDA EL MONTO, como el arriendo de LTR y al revés que el precio de arriba.
+      // La tarifa por noche no se le pide a nadie: el pie de la tabla lo dice en pantalla —«la
+      // tarifa la pone el mercado, no tú»— y esta palanca es la única con tope propio
+      // justamente porque superar la tarifa observada de la zona es una apuesta. Lo que el
+      // lector hace es publicar un precio por noche, no pedir un porcentaje.
+      //
+      // El monto no se mueve (con `ceil` ya cruza: 0 de 38 sondeadas falla). Lo que cambia es
+      // el redondeo de la etiqueta: con `round` el % podía quedar por debajo del que el monto
+      // implica y la cuenta del lector caía corta en 9 de 55 (16,4%); con `ceil`, 0 de 55.
+      // El tope es el de la palanca, no el general, así que el clamp va contra ÉSE.
       const objetivo = Math.ceil(p.adrActual * fAdr);
+      const pctExacto = (objetivo / p.adrActual - 1) * 100; // positivo
       const pal: PalancaDistancia = conDestino({
         palanca: "adr",
         objetivo,
         actual: p.adrActual,
-        deltaPct: Math.round((objetivo / p.adrActual - 1) * 1000) / 10,
+        deltaPct: Math.min(Math.ceil(pctExacto * 10 - 1e-9) / 10, DIST_STR_TOPE_ADR_PCT),
         deltaAbs: objetivo - p.adrActual,
       }, { adrOverride: objetivo });
       relativas.push(pal);
