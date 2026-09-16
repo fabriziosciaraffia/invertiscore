@@ -291,6 +291,54 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
     if (flujo && !flujo.dentroDeSuTope) F("7d · la respuesta de flujo declara FUERA de su tope una celda de 25 pts: su tope es 25 y es <=");
     if (flujo && flujo.topePtsPrecio !== 25) F(`7d · la respuesta de flujo declara tope ${flujo.topePtsPrecio}; tiene que declarar el suyo, no heredar el de la raíz`);
   }
+
+  // (e) LA CORONA DE SCORE NUNCA ES NULL, Y ESO SOSTIENE UNA LÍNEA DE RENDER (17-sep-2026).
+  //
+  // `coronaPorCriterio("score")` devuelve `mejor` sin filtrar nada —es la raíz, «por
+  // construcción y no por coincidencia»—, así que la respuesta de score EXISTE siempre que
+  // haya menú. De eso cuelga `tradeOffDe` en `PopupAjustes.tsx`, que hace `if (!rec) return ""`
+  // y dejaría la línea MUDA: el título y la cifra dibujados, y sin la cláusula que explica qué
+  // se gana y qué se pierde, que es para lo que el menú existe.
+  //
+  // Hoy ese `return ""` es código muerto por construcción —medido sobre el parque el
+  // 17-sep-2026: **884 líneas de menú en 384 filas, 0 mudas y 0 filas sin respuesta de
+  // score**— y se deja en su sitio a propósito: si mañana un criterio devuelve null, callar
+  // es mejor que romper. Lo que NO puede pasar es que deje de ser código muerto en silencio.
+  //
+  // ⛔ POR QUÉ SE AFIRMA SOBRE `fuera` Y NO SOBRE UN MIX CUALQUIERA. El cambio que rompería
+  // esto es agregarle a la rama de score el filtro por tope que las otras dos ya tienen
+  // (`combos.filter(c => c.costoPtsPrecio <= TOPE_DE_LA_RESPUESTA[criterio])`), que es la
+  // simetría que cualquiera va a querer «arreglar» algún día. `fuera` cuesta 25 puntos, o sea
+  // está FUERA del tope de la equilibrada: con ese filtro su corona de score se cae y este
+  // invariante se pone rojo. Sobre un mix barato el filtro no mordería y el guard quedaría
+  // verde sin medir nada — la trampa de «una fila viva puede no ejercitar la rama».
+  //
+  // Y se afirma la POSICIÓN además de la presencia: la primera línea del menú tiene que SER
+  // la raíz, que es lo que hace que ningún consumidor de los campos planos se entere de que
+  // hay menú.
+  //
+  // ⛔ Y NO LLEVA `continue` SOBRE EL MENÚ VACÍO, QUE ES COMO SE ESCRIBIÓ PRIMERO Y NO MEDÍA.
+  // Con `if (!m?.respuestas?.length) continue` el guard salía VERDE sobre el código mutado:
+  // al filtrar la corona de score, `fuera` se queda SIN respuestas —cero— y el `continue` lo
+  // saltaba. O sea que el caso de falla era exactamente el que el predicado no miraba. Es «un
+  // cero de medición que no distingue NO CORRIÓ» aplicado al arreglo entero, y se descubrió
+  // mutando, no releyendo. Lo que va en su lugar es un PISO DE COBERTURA: un mix que existe
+  // tiene menú, siempre, porque su corona de score es la raíz.
+  for (const [nombre, m] of [["fuera de tope", fuera], ["borde del tope", borde], ["barato", barato]] as const) {
+    if (!m) continue; // `mix()` devuelve null cuando NADA cruza: ahí no hay menú que auditar
+    if (!m.respuestas?.length) {
+      F(`7e · ${nombre}: el mix existe y su menú viene VACÍO. La corona de score es la raíz y no se filtra por tope, así que siempre hay al menos una respuesta`);
+      continue;
+    }
+    const rec = m.respuestas.find((x) => x.criterio === "score") ?? null;
+    if (!rec) {
+      F(`7e · ${nombre}: el menú tiene ${m.respuestas.length} respuesta(s) y NINGUNA es la de score. La corona de score es la raíz y no se filtra; sin ella \`tradeOffDe\` devuelve "" y la línea del menú queda muda con su título y su cifra dibujados`);
+    } else if (m.respuestas[0].criterio !== "score") {
+      F(`7e · ${nombre}: la primera respuesta del menú es «${m.respuestas[0].criterio}», no «score». La raíz va primera: es lo que hace que los campos planos y la primera línea describan la misma celda`);
+    } else if (rec.piePct !== m.piePct || rec.plazoAnios !== m.plazoAnios || rec.descuentoPct !== m.descuentoPct) {
+      F(`7e · ${nombre}: la respuesta de score NO es la raíz (menú: pie ${rec.piePct}/${rec.plazoAnios}a/−${rec.descuentoPct}% · raíz: pie ${m.piePct}/${m.plazoAnios}a/−${m.descuentoPct}%). Si se separan, el menú y todo lo que lee los campos planos describen combinaciones distintas`);
+    }
+  }
 }
 
 // ── 8 · «SIN SALIDA» — el concepto nuevo, sin tocar «sin palanca sola» ─────
@@ -584,7 +632,7 @@ function construirHallazgo(o: { piePct?: number; plazoCredito?: number; regla: (
 export function runMixPalancasTier(): { hard: number } {
   console.log("\n─── TIER MIX (las tres palancas del comprador combinadas · mix-palancas.ts, 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — grilla acordada, «sin descuento» explícito, contraste con solo-precio, costo contra el pie declarado, el tope de 15 pts con signo, «sin salida» sin mover «sin palanca sola», el descuento publicado CRUZA y las métricas viajan por celda");
+    console.log("  ✓ VERDE — grilla acordada, «sin descuento» explícito, contraste con solo-precio, costo contra el pie declarado, el tope de 15 pts con signo, «sin salida» sin mover «sin palanca sola», el descuento publicado CRUZA, la corona de SCORE siempre está y va primera, y las métricas viajan por celda");
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
