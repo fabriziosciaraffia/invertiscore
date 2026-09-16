@@ -1414,9 +1414,12 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
       const ingreso = base.ingresoBrutoMensual;
       const comisionPlataforma = modoGestion === 'auto' ? base.comisionMensual : 0;
       const administrador = modoGestion === 'auto' ? 0 : base.comisionMensual;
-      const costosOperar = base.comisionMensual + costosOperativosTotales;
-      const exceso = Math.max(0, costosOperar + dividendoMensual - ingreso);
-      const libre = Math.max(0, ingreso - costosOperar - dividendoMensual);
+      // `costosOperar`, `exceso` y `libre` se fueron con `tramosBarra` (16-sep-2026): eran
+      // suyos y de nadie más. Al retirar el campo quedaron huérfanos en cascada —`exceso` y
+      // `libre` primero, y `costosOperar`, que solo los alimentaba a ellos, después— y
+      // `tsc --noEmit` no ve nada de eso porque el tsconfig no tiene `noUnusedLocals`: el
+      // build de Vercel falló dos veces con los gates locales en verde.
+      // Quien los necesite: `repartoIngreso` los emite con esos mismos nombres.
       return {
         ingresoEstabilizadoMensual: ingreso,
         ingresoEstabilizadoAnual: base.ingresoAnual,
