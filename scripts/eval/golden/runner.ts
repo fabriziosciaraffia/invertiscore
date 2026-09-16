@@ -47,6 +47,7 @@ import { runRegulacionNoPesaTier } from "./regulacion-no-pesa-catch-test";
 import { runScoreRetornoTier } from "./score-retorno-catch-test";
 import { runPromptV25Tier } from "./prompt-v25-catch-test";
 import { runPromptV20StrTier } from "./prompt-v20-str-catch-test";
+import { runGestionSinVeredictoTier } from "./gestion-sin-veredicto-catch-test";
 import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runRespaldoArriendoTier } from "./respaldo-arriendo-catch-test";
 import { runDistanciaComprarTier } from "./distancia-comprar-catch-test";
@@ -193,7 +194,7 @@ async function printAmbasSemantic(sbClient: ReturnType<typeof sb>) {
   for (const s of sem) {
     byBanda[s.bandaCaso] = (byBanda[s.bandaCaso] ?? 0) + 1;
     const head = s.error ? `⚠ ERROR (${s.error})` : `${s.flags.length === 0 ? "✓" : "⚑"} ${s.flags.length} flags`;
-    console.log(`\n  ${s.key}  ${s.comuna} · ${s.bandaCaso}${s.flipCaso ? " · flip" : ""} — ${head}`);
+    console.log(`\n  ${s.key}  ${s.comuna} · ${s.bandaCaso} — ${head}`);
     for (const fl of s.flags) console.log(`      ⚑ [${fl.severidad}/${fl.categoria}] ${fl.detalle}`);
   }
   console.log("\n  cobertura por banda:", JSON.stringify(byBanda));
@@ -290,6 +291,12 @@ async function printStrSemantic() {
   // explica, y el guard de puntajes con sujeto está cableado. Corre siempre con el QUICK. ──
   totalHard += runPromptV25Tier().hard;
   totalHard += runPromptV20StrTier().hard;
+  // ── Tier GESTIÓN-SIN-VEREDICTO (16-sep-2026, 0 tokens, sin base): el informe dejó de tomar
+  // posición sobre delegar. Fija la identidad del quiebre (razón entre comisiones, LEÍDA del
+  // motor, no recalculada), que ninguna de las cuatro redacciones emita veredicto, que las cuatro
+  // SÍ digan costo + quiebre + «no lo medimos», y un piso de cobertura que exige las cuatro
+  // distintas. Verificado en rojo con 5 mutaciones. Corre siempre con el QUICK. ──
+  totalHard += runGestionSinVeredictoTier().hard;
   totalHard += runPlusvaliaGlosaTier().hard;
   totalHard += runRespaldoArriendoTier().hard;
   totalHard += runDistanciaComprarTier().hard;
