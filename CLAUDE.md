@@ -111,7 +111,16 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
 
 Antes del push final, en el worktree:
 1. `git fetch && git rebase origin/master`
-2. Re-correr gates después del rebase: `node_modules/.bin/tsc --noEmit` + `node_modules/.bin/next lint` (nunca npx) + `npm run typecheck:scripts` si se tocó `scripts/` o un tipo del motor
+2. Re-correr gates después del rebase: `node_modules/.bin/tsc --noEmit` + **`next lint` ENTERO, sin `--file`** (nunca npx) + `npm run typecheck:scripts` si se tocó `scripts/` o un tipo del motor
+
+   **⛔ EL LINT DE CIERRE VA COMPLETO, Y NO ES CELO: es lo único que corre lo mismo que
+   Vercel.** El 16-sep-2026 dos deploys seguidos fallaron con los gates en verde. El error
+   —`'exceso' is assigned a value but never used`— estaba en un archivo que el commit SÍ
+   tocaba y que yo NO incluí en mi lista de `--file`: la armé de memoria en vez de derivarla
+   del diff, e incluí un archivo que ese commit ni tocaba. **`next lint --file <lista que
+   escribo yo>` no es un gate: es tan bueno como mi memoria de lo que toqué.**
+   El lint entero cuesta **3 segundos** —lo mismo que `tsc --noEmit`, medido— así que no hay
+   nada que optimizar salteándolo.
 3. `git push --force-with-lease origin <rama>` (solo la rama, nunca master)
 
 **Y antes de cerrar, medir el índice de memoria.** Corta en **23,4 KiB**, un KiB antes del límite real (24,4), que a `276 caracteres por goal son casi cuatro goals de aviso:
@@ -128,11 +137,33 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
 
 ## Type-check, lint y scripts
 - Type-check: `node_modules/.bin/tsc --noEmit` — **NO** `npx tsc`. El repo puede venir sin `node_modules` → `npm ci` primero.
+- **`tsc --noEmit` NO CUBRE LO QUE `npm run build` CORRE, y eso deja pasar una clase entera de
+  errores hasta Vercel con los gates locales en verde.** `npm run build` es `next build`, que
+  ejecuta **ESLint** además del type-check; y el `tsconfig.json` de este repo tiene `strict`
+  pero **no** `noUnusedLocals`, así que una variable sin usar es invisible para `tsc` y un
+  **error** para `@typescript-eslint/no-unused-vars`. En el log de Vercel eso se lee como
+  «Compiled successfully» seguido de un fallo en «Linting and checking validity of types»:
+  compiló bien, **falló el lint**.
+  Descubierto el 16-sep-2026 con dos deploys rotos y `tsc --noEmit` en exit 0. La lección no es
+  el error puntual sino la categoría: **todo lo que ESLint marca como error y el compilador no
+  —variables sin usar, imports muertos, reglas de hooks— llega a Vercel sin que ningún gate
+  local chille, salvo que el lint corra entero.**
+  Y NO se arregla prendiendo `noUnusedLocals`: taparía este caso y no la categoría, y mete
+  ruido en un tsconfig compartido. Se arregla corriendo el lint que corre el build.
 - **Type-check del tooling: `npm run typecheck:scripts`** (= `tsc --noEmit -p tsconfig.scripts.json`). El tsconfig del app **excluye `scripts/**`**, así que el gate normal NO ve la carpeta donde viven el golden y los smoke tests. Sin este gate un extractor puede leer un campo renombrado y la red de seguridad mide mal **en silencio** — pasó con el bundle del juez (4 campos rotos, 3 invisibles para `tsc`). Corre junto al type-check del app cuando se toque `scripts/` o un tipo compartido con el motor. `scripts/_archivo/` queda fuera a propósito.
 - Lint por archivo: `npx next lint --file <archivo>`.
+- **Lint en worktrees — el conflicto NO se reprodujo el 16-sep-2026.** Se corrió `next lint`
+  ENTERO en un worktree, dos veces, y salió limpio en 3 segundos reproduciendo exactamente lo
+  que reporta Vercel (los dos errores y las dos warnings preexistentes de `posthog`). O sea que
+  lo de abajo describe un entorno que hoy no se da, y **no es razón para saltear el lint
+  completo**. Se conserva por si vuelve, no como expectativa.
 - **Lint en worktrees, si aparece:** `next lint` puede fallar con exit 1 y `Plugin "@next/next" was conflicted between ".eslintrc.json" and "..\..\..\.eslintrc.json"` — incluso sobre archivos intactos — porque ESLint sube el árbol y carga dos veces el `.eslintrc.json` del repo principal. Es entorno, no código: aíslalo corriendo lint sobre un archivo que no tocaste. Gate alternativo que sí corre: `node_modules/.bin/eslint --no-eslintrc --config .eslintrc.json --resolve-plugins-relative-to <repo-principal> --ext .ts,.tsx <archivos>`. En T5 (03-sep-2026) el conflicto NO apareció en una sesión entera usando `node <repo-principal>/node_modules/next/dist/bin/next lint --file …`; el arreglo de fondo (`"root": true` en `.eslintrc.json`) es config compartida y va en su propio cambio.
 - `npm run build` puede fallar localmente por env faltante (p.ej. `FIRECRAWL_API_KEY`): usá `tsc` para el chequeo local.
-- Antes de cada commit: `tsc` limpio (exit 0) + lint del archivo tocado.
+- Antes de cada commit: `tsc` limpio (exit 0) + lint. **El lint por archivo (`--file`) sirve
+  para iterar rápido mientras escribís; el que decide es el ENTERO, y va sí o sí antes de
+  pushear** (ver el gate de cierre). Si usás `--file`, derivá la lista del diff
+  (`git diff --name-only`), nunca de memoria: así fue como se escaparon los dos deploys
+  del 16-sep-2026.
 - **Scripts de diagnóstico/QA** (`scripts/of-*`): facturación, créditos y pruebas de correo. Corren con `node --env-file=.env.local [--import tsx] scripts/of-*.mjs`. Untracked, NO se commitean.
 
 ## Testing
