@@ -56,7 +56,7 @@ import { PESOS_SCORE_STR } from "@/lib/score-retorno";
 const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 
 // Versión del prompt STR. Driver de la invalidación lazy-on-open (short-term/ai/route.ts):
-// la prosa cacheada con `promptVersion` < este número (o ausente ⇒ prosa pre-F6) se regenera
+// la prosa cacheada con `promptVersion` DISTINTO de este número (o ausente ⇒ pre-F6) se regenera
 // al abrir el análisis del owner. BUMP cada vez que cambie el prompt, el schema o la doctrina.
 // Espejo de PROMPT_VERSION_AMBAS (ai-generation-ambas.ts).
 // v5 (2026-08-20): espejo del bump LTR v7 — subsidio con techo 6.000 UF, la
@@ -158,7 +158,12 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // lugares, con la glosa al lado del puntaje.
 //
 // Se mueve el hash del SYSTEM (bloque nuevo) y el del USER (bloque del score).
-export const PROMPT_VERSION_STR = 20;
+// v21 (retiro del contrafáctico de gestión, 16-sep-2026): el bloque AUTO-GESTIÓN vs
+// ADMINISTRADOR deja de comparar y pasa a costear — trae el COSTO de delegar y el PUNTO DE
+// QUIEBRE, con la prohibición explícita de concluir que delegar conviene o no conviene. Y el
+// escenario upside deja de rotularse «gestión profesional»: es el techo de la banda del
+// propio caso (system §NOTACIÓN y §1, user ×2). Mueve el hash del system y el del user.
+export const PROMPT_VERSION_STR = 21;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del caso, que llegan YA CALCULADOS — no de adjetivos ni tono enfático. Interpretas esos números y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -242,7 +247,7 @@ Activa los que sumen al caso. Si el ángulo cambia o refuerza la decisión, va. 
 
 **Ángulo 5 — Estacionalidad.** El gráfico de estacionalidad de 12 meses vive en su propio drawer de cifras. NO narres julio-peak/febrero-valle en detalle: el gráfico ya lo muestra. A lo sumo UNA frase de consecuencia operativa en \`operacion.contenido\` si cambia una decisión concreta (ej. "en el mes valle activa estadías largas"). Prohibido el párrafo de estacionalidad.
 
-NOTACIÓN DE PERCENTILES (P25/P50/P75/P90): EXCLUSIVA para los percentiles de ingresos brutos de mercado (la tabla del drawer de cifras y el break-even como % del P50). NUNCA nombres los escenarios del depto (conservador/base/upside) con "P25/P50" — su ancla de ocupación va en palabras ("cuartil bajo observado", "mediana observada de la zona", "estabilizado con gestión profesional").
+NOTACIÓN DE PERCENTILES (P25/P50/P75/P90): EXCLUSIVA para los percentiles de ingresos brutos de mercado (la tabla del drawer de cifras y el break-even como % del P50). NUNCA nombres los escenarios del depto (conservador/base/upside) con "P25/P50" — su ancla de ocupación va en palabras ("cuartil bajo observado", "mediana observada de la zona", "el techo de tu banda, estabilizado").
 
 ## 3.bis Corto o largo — una sola fuente
 
@@ -255,7 +260,7 @@ Recuerda: la card de ventaja ya mostró la dirección y el %. En el drawer, arra
 ## 3.ter Ocupación: el caso central y su fuente
 
 El input te pasa la ocupación del caso con su FUENTE en tres palabras posibles: «estimación de mercado» (lo que los datos de mercado estiman para un depto como este), «dato tuyo» (el usuario la definió a mano) o «sin dato de la dirección» (no hay estimación: se usa una referencia conservadora de 45%). Reglas de framing:
-1. Ancla el caso central y la lectura del veredicto en la ocupación del caso, nombrando su fuente con esas palabras. El upside es CONDICIONAL ("si logras gestión profesional y el listing se estabiliza"), nunca lo que va a pasar. PROHIBIDO "ramp-up" → "estabilización inicial" o "los primeros meses de operación".
+1. Ancla el caso central y la lectura del veredicto en la ocupación del caso, nombrando su fuente con esas palabras. El upside es CONDICIONAL ("si el listing se estabiliza y sostienes esa ocupación"), nunca lo que va a pasar. NUNCA lo atribuyas a "gestión profesional": es el techo de la banda del propio caso, con su mismo modo de gestión. PROHIBIDO "ramp-up" → "estabilización inicial" o "los primeros meses de operación".
 2. El \`Gap ocupación\` (caso → potencial) es la magnitud de la apuesta operativa: cuantifícalo cuando sume, dejando claro que cerrarlo depende de la gestión, no del mercado.
 3. **Dato tuyo (el usuario definió la ocupación o la tarifa a mano):** CAVEAT PRIORITARIO y OBLIGATORIO. La ocupación del caso NO es dato de mercado. PROHIBIDO llamarla "estimación" o "dato de mercado". Preséntala junto a la estimación de mercado para el depto que trae el input ("supusiste 74% de ocupación; la estimación de mercado para tu depto es 46%") y trátala como supuesto a validar — el veredicto se apoya en un número que pusiste tú. Mismo trato para la tarifa si viene marcada «dato tuyo».
 4. **Sin dato de la dirección (referencia conservadora de 45%):** la card de ocupación y el drawer YA lo declaran. NO es tono general que debas repetir en cada análisis. Menciona el caveat SOLO si cambia cómo leer el veredicto (ej. la conclusión cuelga de un número que no se estimó). Si no cambia la lectura, no abras con el disclaimer — la card ya lo posee.
@@ -1117,7 +1122,7 @@ ${motivosBloque}
 ${bloqueBaseHeader}
 Ingresos brutos anuales: ${fmtCLP(base.ingresoAnual)}
 ${lineaADR}, ${lineaOcc}
-Ocupación upside (potencial con gestión profesional, estabilizado): ${Math.round(agr.ocupacionReferencia * 100)}%
+Ocupación upside (el techo de tu banda, estabilizado mes 7+): ${Math.round(agr.ocupacionReferencia * 100)}%
 Gap ocupación: ${(() => { const g = Math.round((agr.ocupacionReferencia - base.ocupacionReferencia) * 100); return `${g >= 0 ? "+" : ""}${g}`; })()} pts ${gapOccTag}
 ${lineaFuenteOcc}
 Ingreso bruto mensual: ${fmtCLP(base.ingresoBrutoMensual)}
@@ -1132,7 +1137,7 @@ Cash-on-Cash: ${sinCapitalPropio ? NO_APLICA_PROMPT : metricaDisplay(base.cashOn
 === ESCENARIOS (conservador / base / upside) ===
 Conservador (ocupación en el cuartil bajo observado): NOI ${fmtCLPSigned(cons.noiMensual)}/mes, Flujo ${fmtCLPSigned(cons.flujoCajaMensual)}/mes
 ${labelBaseEscenario}: NOI ${fmtCLPSigned(base.noiMensual)}/mes, Flujo ${fmtCLPSigned(base.flujoCajaMensual)}/mes
-Upside (gestión profesional): NOI ${fmtCLPSigned(agr.noiMensual)}/mes, Flujo ${fmtCLPSigned(agr.flujoCajaMensual)}/mes
+Upside (techo de tu banda, estabilizado): NOI ${fmtCLPSigned(agr.noiMensual)}/mes, Flujo ${fmtCLPSigned(agr.flujoCajaMensual)}/mes
 
 === COMPARATIVA STR vs LTR ===
 Arriendo largo (LTR): Ingreso bruto ${fmtCLP(comp.ltr.ingresoBruto)}/mes · NOI ${fmtCLPSigned(comp.ltr.noiMensual)}/mes · Flujo ${fmtCLPSigned(comp.ltr.flujoCaja)}/mes
@@ -1142,7 +1147,9 @@ DIFERENCIA: Sobre-renta NOI ${fmtCLPSigned(comp.sobreRenta)}/mes${sobreRentaPctE
 === AUTO-GESTIÓN vs ADMINISTRADOR ===
 Auto (comisión 3% Airbnb): NOI ${fmtCLPSigned(strAuto.noiMensual)}/mes, Flujo ${fmtCLPSigned(strAuto.flujoCajaMensual)}/mes — requiere ~8-12 hrs/semana del usuario.
 Admin (comisión ${Math.round((num(inp.comisionAdministrador) ?? 0.2) * 100)}%): NOI ${fmtCLPSigned(strAdmin.noiMensual)}/mes, Flujo ${fmtCLPSigned(strAdmin.flujoCajaMensual)}/mes — inversión 100% pasiva.
-Diferencia: auto-gestión genera ${fmtCLPSigned(difAutoAdmin)}/mes ${difAutoAdmin > 0 ? "más" : "menos"} que con administrador.
+Diferencia: delegarlo cuesta ${fmtCLPSigned(Math.abs(difAutoAdmin))}/mes más que operarlo tú (la comisión, por encima del 3% que Airbnb ya cobra).
+${comp.quiebreGestion ? `PUNTO DE QUIEBRE: para que esa comisión se pague sola, el administrador tendría que conseguir ${Math.round(comp.quiebreGestion.puntosExtra * 1000) / 10} puntos de ocupación más que el caso, A LA MISMA TARIFA: de ${Math.round(comp.quiebreGestion.ocupacionActual * 100)}% a ${Math.round(comp.quiebreGestion.ocupacionNecesaria * 100)}%.` : ""}
+⛔ EL MOTOR NO SABE SI DELEGAR CONVIENE. No lo afirmes ni lo niegues: los dos escenarios corren con el MISMO ingreso y solo cambia la comisión, así que la diferencia de arriba es el COSTO de delegar, no su resultado. Un operador puede conseguir más ocupación o mejor tarifa — cuánto, no está medido. Si lo mencionas, que sea como pregunta que el usuario le hace al operador, nunca como cifra.
 (NUNCA recomiendes administradores por nombre. Cierra con: "Franco pronto te conectará con operadores verificados." cuando el modo sea administrador.)
 
 === ESTACIONALIDAD (tiene su propio drawer con gráfico — NO la narres en detalle, §Ángulo 7) ===

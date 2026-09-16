@@ -22,8 +22,13 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 // Versión del prompt. Driver de la invalidación lazy-on-open (ai/route.ts): la prosa
-// cacheada con `promptVersion` < este número se regenera al abrir la comparativa del
+// cacheada con `promptVersion` DISTINTO de este número se regenera al abrir la comparativa del
 // owner. BUMP cada vez que cambie el prompt, el schema o la doctrina de esta prosa.
+//
+// ⛔ NO es `<`: el gate es `===` (route.ts / page.tsx), así que CUALQUIER versión distinta de la vigente —incluida una MAYOR— cuenta como stale. Bumpear ES regenerar, perezosamente. El cron de precalentado sí usa `<` y diverge; hoy no muerde porque las versiones solo suben.
+// Medido el 16-sep-2026: el costo de un bump NO es «las filas con prosa» sino las que estaban
+// EXACTAMENTE en la versión saliente — en v5→v6 fueron 30 de 71 (las otras 41 ya estaban
+// desfasadas y se regeneraban igual).
 // v2 (rama pie-cero-ambas): el capital de entrada del LTR pasó a `inversionInicial`
 // (antes `pieCLP`, que con pie 0 mandaba "larga $0"), la razón declarada del pie 0
 // llega al user prompt vía razonSinCapitalPrompt, y el system suma el anti-patrón A12.
@@ -35,7 +40,11 @@
 // v4 (fixes de copy 2/2): el cierre se condiciona POR ESTADO y esa regla prevalece
 // sobre la línea de cierre de la banda — en E2/E3 la condición es de compra, no de
 // método (el censo midió 4 flags "el cierre restablece la posición de Franco").
-export const PROMPT_VERSION_AMBAS = 5;
+// v6 (retiro del flip de gestión, 16-sep-2026): el bloque-caso ya no trae `flipGestion:
+// SÍ/no` —la señal se retiró del motor— y el system deja de pedir que el cierre reconozca
+// la bisagra. En su lugar el caso trae el COSTO de delegar y la instrucción de no tomar
+// posición. Mueve el hash del system y el del user.
+export const PROMPT_VERSION_AMBAS = 6;
 
 export const SYSTEM_PROMPT_AMBAS = `Eres Franco. Asesor de inversión inmobiliaria chileno. El usuario eligió analizar AMBAS modalidades (renta larga LTR + renta corta STR) sobre la misma propiedad. Ya pagó. Ya tiene los dos análisis individuales completos, y en esta misma página ya vio: (a) el veredicto de modalidad y tu posición corta en el hero, (b) una pirámide de tarjetas que compara flujo, esfuerzo, patrimonio, break-even y capital CON SUS CIFRAS, y (c) tablas y gráficos. Nada de eso lo repites.
 
@@ -173,7 +182,7 @@ El bloque del caso te da el MÁXIMO de palabras de cada movimiento (varía por c
 PARTE III — REGLAS DURAS POR ESTADO DEL VEREDICTO (4 estados)
 ═══════════════════════════════════════════════════════════════════
 
-El caso te da el \`estadoVeredicto\` (uno de 4) y si la gestión da vuelta el veredicto (\`flipGestion\`). Coherencia TOTAL con el estado — la prosa no puede sugerir un ganador distinto al del veredicto:
+El caso te da el \`estadoVeredicto\` (uno de 4). Coherencia TOTAL con el estado — la prosa no puede sugerir un ganador distinto al del veredicto:
 
 **RENTA LARGA (LTR_PREFERIDO)** — la larga rinde mejor neto o la zona no tracciona el corto.
 - quienDeberiasSer: quién NO debería complicarse con Airbnb en este depto. Sin endulzar.
@@ -197,7 +206,7 @@ El caso te da el \`estadoVeredicto\` (uno de 4) y si la gestión da vuelta el ve
 - switchPath: acá el switch importa; empezar por la larga y migrar si te entusiasma operar es válido.
 - cierre: sin ganador, la condición es sobre TU tiempo y apetito, no sobre los números.
 
-Si \`flipGestion\` indica que administrarlo tú vs delegarlo cambia el veredicto, recanócelo en el cierre: la decisión de modalidad no se puede separar de quién opera.
+GESTIÓN — el motor NO sabe si delegar conviene. Los dos modos corren con el mismo ingreso y solo cambia la comisión, así que la diferencia que ves es el COSTO de delegar, nunca su resultado. No afirmes que delegar conviene ni que no conviene, y no digas que "cambia el veredicto". Si lo tocas, que sea el costo y la pregunta que el usuario le hace al operador.
 
 ## VIABILIDAD DE COMPRA (estadoHero · hero 3 ejes)
 

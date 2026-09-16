@@ -45,7 +45,12 @@ const leer = (p: string) => { try { return readFileSync(join(RAIZ, p), "utf8").r
 const GEN = leer("src/lib/ai-generation-str.ts");
 
 // ── 1 · la versión ──────────────────────────────────────────────────────────
-if (PROMPT_VERSION_STR !== 20) F(`1 · PROMPT_VERSION_STR = ${PROMPT_VERSION_STR}, esperado 20`);
+// ⛔ Esto pineaba `!== 20` y se ponía ROJO SOLO cada vez que alguien bumpeaba el prompt
+// por una razón legítima — el 16-sep-2026 lo hizo con el bump a v21 (retiro del
+// contrafáctico de gestión). Es el antipatrón que `CLAUDE.md` § Testing nombra: FIJABA LA
+// CIFRA, NO LA REGLA. La regla real es que las cinco cosas que este tier vigila entraron
+// en v20 y no pueden RETROCEDER: una versión anterior no las tendría.
+if (PROMPT_VERSION_STR < 20) F(`1 · PROMPT_VERSION_STR = ${PROMPT_VERSION_STR}, y las seis dimensiones entraron en la 20`);
 
 // ── 2 · el bloque del score lleva las seis, con pesos del motor ─────────────
 {
@@ -91,7 +96,7 @@ if (PROMPT_VERSION_STR !== 20) F(`1 · PROMPT_VERSION_STR = ${PROMPT_VERSION_STR
 export function runPromptV20StrTier(): { hard: number } {
   console.log("\n─── TIER PROMPT-V20-STR (las seis dimensiones al prompt STR · 0 tokens) ───");
   if (fallas.length === 0) {
-    console.log("  ✓ VERDE — versión 20, las seis dimensiones con pesos del motor y el pie cero en el user prompt, el ranking lo manda el motor, el system las explica en vocabulario del lector y la salida combinada sigue leyendo la celda elegida");
+    console.log(`  ✓ VERDE — versión ${PROMPT_VERSION_STR} (≥ 20), las seis dimensiones con pesos del motor y el pie cero en el user prompt, el ranking lo manda el motor, el system las explica en vocabulario del lector y la salida combinada sigue leyendo la celda elegida`);
   } else {
     for (const f of fallas) console.log(`  ✗ ${f}`);
   }
