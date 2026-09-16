@@ -204,7 +204,7 @@ export function CapitulosInversionStr({
             <FilasDato>
               <FilaDato k="Tarifa por noche" tip={adrEsTuya ? "La tarifa que definiste" : "Mediana de la zona"} v={money(adr)} />
               <FilaDato k="Ocupación" tip={occEsTuya ? "El supuesto que definiste" : "Estimación de mercado para este depto"} sub={`${noches} noches al año · ${Math.round(noches / 12)} al mes`} v={`${Math.round(occ * 100)}%`} />
-              <FilaDato k="Ingreso mensual estabilizado" tip="Tarifa × ocupación × 365 ÷ 12" v={money(ingreso)} unidad="/mes" tono="tot" />
+              <FilaDato k="Ingreso mensual estabilizado" tip="Tarifa por noche × ocupación × 365 ÷ 12" v={money(ingreso)} unidad="/mes" tono="tot" />
             </FilasDato>
           </VViz>
           <VPuente>Ese ingreso, menos los costos, sobre el precio: la rentabilidad operativa.</VPuente>
@@ -320,7 +320,25 @@ export function CapitulosInversionStr({
             {fl ? (
               <FilasDato>
                 <FilaDato tono="in" k="Ingreso mensual estabilizado" tip="Tarifa por noche × ocupación × 365 ÷ 12" sub="lo que factura un mes típico con la ocupación estimada" v={money(fl.ingreso)} unidad="/mes" />
-                <FilaDato k="Comisión de la plataforma" tip="La plataforma cobra 3% al anfitrión" sub="3% del ingreso" v={neg(-fl.comisionPlataforma)} unidad="/mes" />
+                {/* EL SUB SE ADAPTA AL MODO Y EL ⓘ DEJA DE REPETIRLO (16-sep-2026).
+                  Decía «3% del ingreso» en el sub y «La plataforma cobra 3% al anfitrión» en el
+                  tooltip: el mismo hecho dos veces, y las dos veces FALSO en modo administrador,
+                  donde esta fila vale $0. Medido: 14 de 252 filas (5,6%) mostraban «$0» con dos
+                  explicaciones insistiendo en un 3%.
+                  El precedente estaba dos líneas abajo: la fila «Administrador» ya adapta su sub
+                  al modo y su ⓘ dice «si lo hubiera». Mismo tratamiento acá.
+                  Y el ⓘ pasa a decir lo que el sub NO puede: que estas dos filas son UN SOLO
+                  costo con dos nombres. En el motor son la misma variable —`base.comisionMensual`,
+                  que se rotula `comisionPlataforma` en auto y `administrador` con operador
+                  (short-term-engine.ts:1415-1416)—, así que una de las dos SIEMPRE vale cero y
+                  nunca se suman. Eso es lo que el lector no puede deducir mirando la tabla. */}
+                <FilaDato
+                  k="Comisión de la plataforma"
+                  tip="Este costo y el del administrador son el mismo: se cobra en una fila o en la otra según quién opere, nunca en las dos."
+                  sub={modo === "administrador" ? "no la pagas: opera un administrador" : "3% del ingreso"}
+                  v={neg(-fl.comisionPlataforma)}
+                  unidad="/mes"
+                />
                 <FilaDato k="Luz, agua, internet e insumos" tip="Costos directos declarados por ti" sub="limpieza y reposición incluidas en insumos" v={neg(-fl.costosDirectos)} unidad="/mes" />
                 <FilaDato
                   k="Administrador"

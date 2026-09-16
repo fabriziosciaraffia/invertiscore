@@ -223,7 +223,11 @@ export function DrawerCostoMensual({
     {
       name: "Gestión del arriendo",
       value: desglose.administracion,
-      tooltip: "Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). 0% si autogestionas. Distinto de gastos comunes del edificio.",
+      // ⛔ SE SACÓ «0% si autogestionas» (16-sep-2026). La fila se dibuja con
+      // `.filter((r) => r.value > 0)`, así que cuando autogestionas NO EXISTE: la
+      // frase solo podía leerla quien no está en el caso que explicaba. Y es la fila
+      // de menor población de la tabla —29 de 1.179 (2,5%)— con el tooltip más largo.
+      tooltip: "Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). Distinto de gastos comunes del edificio.",
     },
   ];
   // Items SALE ordenados por value desc; los zero al final (manteniendo
