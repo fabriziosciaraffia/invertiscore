@@ -5,6 +5,7 @@ export { Matriz, nombreVeredicto, saltoVeredicto, type CeldaMatriz, type EjeMatr
 export { Planilla, type CeldaPlanilla, type FilaPlanilla } from "./Planilla";
 export { FilaDato, FilasDato } from "./FilaDato";
 export { CurvaAnual } from "./CurvaAnual";
+export { CurvaAnios, dominioCurvaAnios, type PuntoAnio } from "./CurvaAnios";
 export { SeisCifras, type CifraInforme } from "./SeisCifras";
 export { BloqueDia1 } from "./BloqueDia1";
 export { CurvaPatrimonio } from "./CurvaPatrimonio";

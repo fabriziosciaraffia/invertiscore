@@ -112,6 +112,26 @@ export function TokensShared() {
 
       /* ── curva anual (CONGELADO · III) y chart de patrimonio (VI) ── */
       .curva{width:100%;height:150px;display:block}
+      /* -- Serie ANUAL con signo (capitulo II STR) --
+         El SVG dibuja SOLO geometria y por eso puede estirarse; TODO el texto es HTML
+         posicionado en % sobre el mismo sistema de coordenadas, asi que conserva su tamano
+         a cualquier ancho. Medido: con el texto adentro renderizaba a 4,7px a 390. */
+      .ca-wrap{margin:6px 0 4px}
+      .ca-plot{position:relative;height:118px}
+      .ca-svg{width:100%;height:100%;display:block;overflow:visible}
+      .ca-pt{position:absolute;width:7px;height:7px;border-radius:50%;
+        transform:translate(-50%,-50%);pointer-events:none}
+      .ca-pt.ext{width:9px;height:9px}
+      .ca-pt.neg{background:var(--signal-red)}
+      .ca-pt.pos{background:var(--doc-good)}
+      .ca-val{position:absolute;font-family:var(--font-mono, ui-monospace);font-size:10.5px;
+        color:var(--doc-tx3);white-space:nowrap;font-variant-numeric:tabular-nums}
+      .ca-cero-lbl{position:absolute;left:0;transform:translateY(-50%);
+        font-family:var(--font-mono, ui-monospace);font-size:9.5px;color:var(--doc-tx4);
+        background:var(--doc-paper);padding-right:3px}
+      .ca-eje{position:relative;height:14px;margin-top:2px}
+      .ca-eje span{position:absolute;font-family:var(--font-mono, ui-monospace);
+        font-size:9.5px;letter-spacing:.04em;color:var(--doc-tx4);white-space:nowrap}
       .chart{width:100%;height:170px;display:block}
       .chart-leg{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-family:var(--font-mono, ui-monospace);font-size:9.5px;letter-spacing:.06em;color:var(--doc-tx3)}
       .chart-leg span::before{content:'';display:inline-block;width:12px;height:8px;background:var(--c);margin-right:6px}

@@ -594,6 +594,41 @@ export function puntosParaEmpatarGestion(ocupacion: number, comisionAdmin: numbe
   return ocupacion * ((1 - COMISION_AIRBNB) / (1 - comisionAdmin) - 1);
 }
 
+/** Un punto de la serie anual del capítulo II: el año y su flujo mensual PROMEDIO. */
+export interface PuntoFlujoAnual {
+  anio: number;
+  flujoMensualPromedio: number;
+}
+
+/**
+ * La serie del gráfico «Lo que queda cada mes, año por año» (capítulo II STR).
+ *
+ * DOS DECISIONES, las dos medidas sobre las 252 filas del parque:
+ *
+ * 1. EL PROMEDIO SE DIVIDE POR 12, NO POR LOS MESES QUE OPERÓ. Tres razones que se suman:
+ *    · 17 filas tienen 27 años con CERO meses operativos — dividir por los meses operados
+ *      es dividir por cero;
+ *    · los 23 años parciales llevan TODOS un cargo que este motor NO prorratea: la
+ *      estabilización y el amoblamiento se restan enteros mientras el NOI sí se prorratea
+ *      (ver `buildProjections`). Dividir por los meses operados reparte una compra de una
+ *      sola vez entre menos meses e infla el punto 1,1×–1,5×, mostrando un mes que el dueño
+ *      nunca vivió;
+ *    · y el eje del gráfico es de años CALENDARIO: un punto que significa «promedio de 8»
+ *      al lado de uno que significa «promedio de 12» hace que la pendiente no signifique
+ *      nada. `aporteMensualPromedio` ya dividía por 12.
+ *
+ * 2. LOS AÑOS SIN OPERACIÓN NO ENTRAN. Valen exactamente $0 (verificado: 0 de 27 con flujo
+ *    distinto de cero), así que con color por signo saldrían neutros e indistinguibles de un
+ *    año que cierra justo — cuando lo que significan es «todavía no lo entregan».
+ *
+ * Vive en el motor, no en el render, para que el gate la lea en vez de recalcularla.
+ */
+export function serieFlujoMensualPorAnio(projections: YearProjectionSTR[] | undefined): PuntoFlujoAnual[] {
+  return (projections ?? [])
+    .filter((p) => (p.mesesOperativos ?? 12) > 0)
+    .map((p) => ({ anio: p.year, flujoMensualPromedio: Math.round(p.flujoOperacionalAnual / 12) }));
+}
+
 /** Ver `comparativa.quiebreGestion`. Nada acá emite un juicio sobre delegar. */
 export interface QuiebreGestionSTR {
   /** Lo que el administrador COBRA al mes: ingreso bruto × su comisión. */

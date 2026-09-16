@@ -48,6 +48,7 @@ import { runScoreRetornoTier } from "./score-retorno-catch-test";
 import { runPromptV25Tier } from "./prompt-v25-catch-test";
 import { runPromptV20StrTier } from "./prompt-v20-str-catch-test";
 import { runGestionSinVeredictoTier } from "./gestion-sin-veredicto-catch-test";
+import { runFlujoDiezAniosTier } from "./flujo-diez-anios-catch-test";
 import { runPlusvaliaGlosaTier } from "./plusvalia-glosa-catch-test";
 import { runRespaldoArriendoTier } from "./respaldo-arriendo-catch-test";
 import { runDistanciaComprarTier } from "./distancia-comprar-catch-test";
@@ -297,6 +298,12 @@ async function printStrSemantic() {
   // SÍ digan costo + quiebre + «no lo medimos», y un piso de cobertura que exige las cuatro
   // distintas. Verificado en rojo con 5 mutaciones. Corre siempre con el QUICK. ──
   totalHard += runGestionSinVeredictoTier().hard;
+  // ── Tier FLUJO-DIEZ-AÑOS (16-sep-2026, 0 tokens, sin base): el gráfico del capítulo II
+  // STR. Fija que el promedio mensual se divide por 12 —también en los años parciales, que
+  // llevan cargos que el motor no prorratea—, que los años sin operación no se dibujan, que
+  // el cero siempre está en el dominio, y que el capítulo II ya no tiene cierre. Fixtures
+  // sintéticos con piso POR FIXTURE. Verificado en rojo con 5 mutaciones. Siempre con el QUICK.
+  totalHard += runFlujoDiezAniosTier().hard;
   totalHard += runPlusvaliaGlosaTier().hard;
   totalHard += runRespaldoArriendoTier().hard;
   totalHard += runDistanciaComprarTier().hard;
