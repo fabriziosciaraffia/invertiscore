@@ -110,7 +110,7 @@ const ejemploComuna = ([nombre, d]: (typeof ENTRIES_PLUSVALIA)[number]) =>
   `${nombre} (${pct(d.anualizada)}% anual ${d.rangoHist})`;
 
 // Versión del prompt LTR. Driver de la invalidación lazy-on-open (analisis/ai/route.ts):
-// la prosa cacheada con `promptVersion` < este número (o ausente ⇒ prosa pre-F6) se
+// la prosa cacheada con `promptVersion` DISTINTO de este número (o ausente ⇒ pre-F6) se
 // regenera al abrir el análisis del owner. BUMP cada vez que cambie el prompt, el schema
 // o la doctrina de esta prosa. Espejo de PROMPT_VERSION_AMBAS (ai-generation-ambas.ts).
 // v5 (2026-08-16): enforcement del precio protagonista (§1.12.6) — bloque

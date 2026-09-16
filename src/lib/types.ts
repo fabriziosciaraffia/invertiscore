@@ -1852,7 +1852,7 @@ export interface AIAnalysisV2 {
   // (ver HallazgoSobreprecio en este archivo). null si no hay dato de zona.
   hallazgoSobreprecio?: HallazgoSobreprecio | null;
   // F6 — versión del prompt con que se generó la prosa. Driver de la invalidación
-  // lazy-on-open: si `promptVersion` < PROMPT_VERSION_LTR, el análisis del owner la
+  // lazy-on-open: si `promptVersion` !== PROMPT_VERSION_LTR, el análisis del owner la
   // regenera al abrir. Ausente ⇒ prosa pre-F6 (siempre stale). Espejo comparativa.
   promptVersion?: number;
 }
@@ -1918,7 +1918,7 @@ export interface AIAnalysisSTRv2 {
   // lo reporta acá para revisión humana sin contradecir al usuario.
   francoCaveat?: string;
   // F6 — versión del prompt con que se generó la prosa. Driver de la invalidación
-  // lazy-on-open: si `promptVersion` < PROMPT_VERSION_STR, el análisis del owner la
+  // lazy-on-open: si `promptVersion` !== PROMPT_VERSION_STR, el análisis del owner la
   // regenera al abrir. Ausente ⇒ prosa pre-F6 (siempre stale). Espejo comparativa.
   promptVersion?: number;
   /** Residuo persistido (goal retry por campo, 05-sep-2026): guards que quedaron en rojo
@@ -1963,7 +1963,7 @@ export interface AIAnalysisComparativa {
   // el motor recomienda, la IA narra el matiz, no contradice.
   recomendacion: RecomendacionModalidadAmbas;
   // Fase C — versión del prompt con que se generó la prosa. Driver de la
-  // invalidación lazy-on-open: si `promptVersion` < PROMPT_VERSION_AMBAS, la
+  // invalidación lazy-on-open: si `promptVersion` !== PROMPT_VERSION_AMBAS, la
   // página del owner la regenera al abrir. Ausente ⇒ prosa v0 (siempre stale).
   promptVersion?: number;
   // Audit-only NO renderizado. Si la IA cree que la recomendación del motor
