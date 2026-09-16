@@ -419,12 +419,40 @@ export function buildHallazgoDistanciaVeredicto(p: {
       false,
     );
     if (fPre != null) {
-      const objetivo = Math.floor(p.precioUF * fPre);
+      // ⛔ EL DESCUENTO SE PUBLICA PRIMERO Y EL PRECIO SALE DE ÉL (17-sep-2026).
+      //
+      // Antes era al revés —`objetivo = floor(precioUF × fPre)` y el descuento redondeado
+      // DESDE ese precio— y eso ponía dos números incompatibles EN LA MISMA CELDA: la tabla
+      // «Un cambio a la vez» escribe el descuento arriba (`cifra`) y el precio abajo
+      // (`detalle`), y el PDF los pone en la misma oración («cerrando en UF 4.786 —26,1%
+      // menos—»). Medido sobre el parque: **376 de 510 filas** con vía de precio tenían la
+      // celda peleada consigo misma, y el lector que hace la cuenta no le da.
+      //
+      // Y `Math.round` sobre el descuento era el mismo bug que el mix arregló el 14-sep:
+      // podía acercar la cifra a cero, o sea **pedirle al vendedor MENOS descuento del que
+      // hace falta**. Medido: **269 de 510 (52,7%) publicaban un descuento que no cruza**.
+      // `Math.ceil` sobre la magnitud publica siempre un punto que cruza, por construcción.
+      // Cuesta a lo sumo 0,10 puntos más de descuento pedido —medido: p50 y max 0,10— y es
+      // el mismo precio que el mix ya pagó por la misma razón: correctitud, no política.
+      //
+      // El orden importa y por eso está escrito: el descuento es lo que se le pide al
+      // usuario que negocie, así que manda él y el precio es su consecuencia. El clamp al
+      // tope es el mismo que gobierna la vía: publicar por encima pediría un descuento que
+      // esta palanca tiene prohibido ofrecer.
+      // Y el precio va con `round`, no con `floor`, porque `floor` dejaba la celda a 1 UF de
+      // la cuenta que hace el lector (precio × (1 − descuento)) en 57 de 171 filas. El punto
+      // de holgura que ya puso el `ceil` del descuento absorbe el medio UF de `round`:
+      // sondeado en el motor sobre 171 vías, el precio redondeado cruza en 171 —100%— y la
+      // celda cierra en 171. Con `floor` cruzaba igual pero la celda cerraba en 114.
+      const crudo = Math.floor(p.precioUF * fPre); // el punto de la bisección: cruza
+      const pctCrudo = (1 - crudo / p.precioUF) * 100; // su descuento exacto, positivo
+      const deltaPct = -Math.min(Math.ceil(pctCrudo * 10 - 1e-9) / 10, tope);
+      const objetivo = Math.round(p.precioUF * (1 + deltaPct / 100));
       const pal: PalancaDistancia = conDestino({
         palanca: "precio",
         objetivo,
         actual: p.precioUF,
-        deltaPct: Math.round((objetivo / p.precioUF - 1) * 1000) / 10, // negativo
+        deltaPct, // negativo
         deltaAbs: objetivo - p.precioUF,
       }, { precio: objetivo });
       out.push(pal);
