@@ -14,7 +14,7 @@ import { isAdminUser } from "@/lib/admin";
 import { STRResultsClient } from "./results-client";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
-import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { recomputeShortTermForLegacy, veredictoStrRecomputado } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
@@ -25,7 +25,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const supabase = createClient();
   const { data } = await supabase
     .from("analisis")
-    .select("nombre, comuna, results")
+    // `input_data` y `created_at` entran para poder RECOMPUTAR el veredicto (ver abajo). Esta
+    // query es propia de la metadata —no comparte nada con el cuerpo de la página— así que
+    // sumarle dos columnas a un SELECT que ya se hace no agrega un viaje a la base.
+    .select("nombre, comuna, results, input_data, created_at")
     .eq("id", params.id)
     .single();
 
@@ -37,9 +40,43 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   }
 
   const results = data.results as ShortTermResult | null;
+  // ⛔ EL TÍTULO RECOMPUTA, COMO EL CUERPO (17-sep-2026).
+  //
+  // Citaba `data.results.veredicto`, la columna persistida, mientras el cuerpo de la MISMA
+  // página corre `recomputeShortTermForLegacy`. Los dos números salen de motores distintos en
+  // momentos distintos, y cada vez que el motor se recalibra el persistido se queda donde
+  // estaba. Medido sobre el parque el 17-sep: **8 de 251 filas (3,2%)** con el persistido
+  // distinto del recomputado, y las 8 cambian la ETIQUETA que se imprime —5 BUSCAR OTRO →
+  // AJUSTAR, 2 AJUSTAR → COMPRAR, 1 BUSCAR OTRO → COMPRAR—. O sea: la pestaña del navegador y
+  // el preview del link decían COMPRAR sobre un informe que adentro dice AJUSTAR, y quien
+  // comparte el link comparte la versión vieja.
+  //
+  // La UF es la CONGELADA, igual que en el cuerpo (`precioCompra / precioCompraUF`), y la
+  // fecha es `created_at`: si la metadata usara la UF viva daría otro veredicto que la página.
+  // `veredictoStrRecomputado` es la misma función que usa el recompute del cuerpo, así que no
+  // hay dos fórmulas; su acta explica por qué no necesita la mediana ni un segundo viaje.
+  //
+  // Si el recompute no puede (legacy sin `airbnbRaw`, o sin los dos campos de precio) cae al
+  // persistido — que es exactamente lo que hace el cuerpo, así que los dos siguen coincidiendo.
+  const inputStr = data.input_data as Record<string, unknown> | null;
+  const precioCompraUF = Number(inputStr?.precioCompraUF) || 0;
+  const precioCompraCLP = Number(inputStr?.precioCompra) || 0;
+  const recomputado =
+    precioCompraUF > 0 && precioCompraCLP > 0
+      ? veredictoStrRecomputado(
+          inputStr,
+          results as { airbnbRaw?: unknown } | null,
+          precioCompraCLP / precioCompraUF,
+          new Date(data.created_at ?? new Date().toISOString()),
+        )
+      : null;
   // Commit 1 · 2026-05-11: normalizar veredicto legacy en metadata.
   // Goal 10a: en <title> y meta va la etiqueta (BUSCAR OTRO / AJUSTAR / COMPRAR), no el valor.
-  const veredicto = etiquetaVeredicto(normalizeLegacyVerdict(results?.veredicto), "banda", "Análisis");
+  const veredicto = etiquetaVeredicto(
+    normalizeLegacyVerdict(recomputado?.francoScore.veredicto ?? results?.veredicto),
+    "banda",
+    "Análisis",
+  );
   // Misma regla que el título LTR: la comuna autoritativa se pega si el nombre
   // libre no la nombra (ver `etiquetaAnalisis`).
   // T3 (05-sep-2026): el nombre libre de las filas STR ya empieza con "Renta Corta - …", así

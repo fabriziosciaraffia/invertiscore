@@ -137,6 +137,44 @@ export function buildStrRecomputeCtx(
   };
 }
 
+/**
+ * EL VEREDICTO STR RECOMPUTADO, SIN LOS HALLAZGOS Y SIN LA MEDIANA (17-sep-2026).
+ *
+ * Existe para `generateMetadata`, que arma el `<title>` y los previews de OpenGraph/Twitter.
+ * Hasta hoy ese título citaba `data.results.veredicto` —la columna persistida— mientras el
+ * cuerpo de la misma página mostraba el recomputado: medido sobre el parque, **8 de 251 filas
+ * (3,2%)** tenían la pestaña diciendo COMPRAR sobre un informe que dice AJUSTAR, y el que
+ * comparte el link comparte la versión vieja.
+ *
+ * ⛔ NO ES UNA SEGUNDA FÓRMULA DEL VEREDICTO, y por eso vive acá y no en la página:
+ * `recomputeShortTermForLegacy` llama a ESTA misma función, así que no hay dos caminos que
+ * puedan separarse en silencio —el error de las «dos constantes espejo» que ya costó caro—.
+ *
+ * Por qué puede saltarse la mediana, que es lo que haría falta un segundo viaje a la base:
+ * la mediana entra SOLO a `buildStrHallazgos`, y el veredicto sale de `calcFrancoScoreSTR`,
+ * que no la recibe. Es estructural, no de muestra; medido igual, 0 de 251 filas cambian de
+ * veredicto con o sin ella. Costo del camino: p50 0,09 ms, p90 0,17 ms y cero queries extra.
+ *
+ * (El espejo LTR NO entra por su costo: allá el score sale de `runAnalysis` completo, que no
+ * tiene camino barato — p50 60 ms, p90 121 ms contra 0,09. Queda anotado con su número.)
+ */
+export function veredictoStrRecomputado(
+  inputData: Record<string, any> | null | undefined,
+  persistedResults: { airbnbRaw?: unknown } | null | undefined,
+  ufClp: number,
+  asOf: Date,
+): { result: ShortTermResult; francoScore: ReturnType<typeof calcFrancoScoreSTR>; ctx: NonNullable<ReturnType<typeof buildStrRecomputeCtx>> } | null {
+  const ctx = buildStrRecomputeCtx(inputData, persistedResults, ufClp);
+  if (!ctx || !inputData) return null;
+  const result = calcShortTerm(ctx.inputs, asOf);
+  const francoScore = calcFrancoScoreSTR({
+    ...ctx.scoreExtras,
+    results: result,
+    precioCompra: ctx.inputs.precioCompra,
+  });
+  return { result, francoScore, ctx };
+}
+
 export function recomputeShortTermForLegacy(
   inputData: Record<string, any> | null | undefined,
   persistedResults: { airbnbRaw?: unknown; ocupacionRealizadaComparables?: ShortTermResult["ocupacionRealizadaComparables"] } | null | undefined,
@@ -144,17 +182,11 @@ export function recomputeShortTermForLegacy(
   asOf: Date,
   mediana: { mediana: number | null; n: number },
 ): ShortTermResultsPersisted | null {
-  const ctx = buildStrRecomputeCtx(inputData, persistedResults, ufClp);
-  if (!ctx || !inputData) return null;
-  const { inputs, scoreExtras, airbnbRaw } = ctx;
-
-  const result = calcShortTerm(inputs, asOf);
-
-  const francoScore = calcFrancoScoreSTR({
-    ...scoreExtras,
-    results: result,
-    precioCompra: inputs.precioCompra,
-  });
+  // La MISMA función que usa la metadata: un solo camino al veredicto, no dos.
+  const base = veredictoStrRecomputado(inputData, persistedResults, ufClp, asOf);
+  if (!base || !inputData) return null;
+  const { result, francoScore } = base;
+  const { inputs, scoreExtras, airbnbRaw } = base.ctx;
 
   const strHallazgos = buildStrHallazgos({
     result,
