@@ -35,6 +35,7 @@ import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVA
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import { resolverValorMercado, vmFrancoUFDe, resolverUniversoDepto } from "./valor-mercado";
 import { SOBREPRECIO_GATE_UMBRAL_PCT } from "./sobreprecio-hallazgo";
+import { repartoIngreso } from "./reparto-ingreso";
 import type { MedianaComunaInyectada } from "./comuna-stats";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
 import { findNearestStation } from "./metro-stations";
@@ -601,6 +602,11 @@ function calcMetrics(
     pieCLP,
     precioCLP,
     ingresoMensual,
+    // EL REPARTO DEL INGRESO — LTR lo gana el 16-sep-2026, y con eso se cierra una asimetría:
+    // STR lo emitía desde el motor (`tramosBarra`) y acá lo derivaba el RENDER, en el call site
+    // del capítulo II. La pieza que los consumía declaraba «lee del motor tal cual» y era cierto
+    // en una sola de las dos. Ahora las dos leen `repartoIngreso`, que es una función pura.
+    repartoIngreso: repartoIngreso({ ingreso: ingresoMensual, cuota: dividendo, flujo: flujoNetoMensual }),
     egresosMensuales,
     provisionMantencionAjustada,
     contribuciones: contribucionesValor,

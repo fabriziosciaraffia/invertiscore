@@ -5,6 +5,7 @@ import type { FinancingHealthLevel } from "./financing-health";
 // Universo de la mediana comunal (nuevo|usado). Canónico en comuna-stats.ts —
 // también type-only, así que no hay ciclo en runtime.
 import type { CondicionMercado } from "./comuna-stats";
+import type { RepartoIngreso } from "./reparto-ingreso";
 
 export interface Desglose {
   rentabilidad: number;
@@ -389,6 +390,10 @@ export interface AnalysisMetrics {
   pieCLP: number;
   precioCLP: number;
   ingresoMensual: number;
+  /** Qué se lleva la plata que entra cada mes, ya repartido por el motor (ver
+   *  `reparto-ingreso.ts`). Opcional: las filas persistidas antes del 16-sep-2026 no lo
+   *  traen, y el render cae a no dibujar la línea — un dato que falta, no un interruptor. */
+  repartoIngreso?: RepartoIngreso;
   egresosMensuales: number;
   // Snapshots año-1 expuestos por calcMetrics. Antes calcMetrics MUTABA input
   // con valores derivados cuando el usuario no declaraba; hoy esos valores

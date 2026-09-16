@@ -10,6 +10,7 @@ import {
   aplicaSubsidio,
   TASA_MERCADO_FALLBACK,
 } from "../constants/subsidio";
+import { repartoIngreso, type RepartoIngreso } from "../reparto-ingreso";
 import {
   calcZonaSTR,
   calcVeredictoComparativo,
@@ -253,6 +254,11 @@ export interface MetricsSTR {
    *  si suman más que el ingreso, el exceso es lo que sale de tu bolsillo; si menos, el
    *  tramo libre es lo que te queda. */
   tramosBarra: { ingreso: number; costosOperar: number; cuota: number; exceso: number; libre: number };
+  /** El mismo reparto, ya con lo que la frase del capítulo II necesita decir: cuánto se
+   *  lleva la cuota por cada $100 y el residuo EN PESOS. Lo calcula la misma función pura
+   *  que LTR (`reparto-ingreso.ts`), que es lo que impide que las dos modalidades lo digan
+   *  distinto. Opcional: las filas persistidas antes del 16-sep-2026 no lo traen. */
+  repartoIngreso?: RepartoIngreso;
   /** La plata del día 1, con los cuatro sumandos de `plata-dia1` (el amoblamiento es el cuarto tono STR). */
   dia1: { pieCLP: number; gastosCompraCLP: number; amoblamientoCLP: number; capexCLP: number; inversionInicial: number };
 }
@@ -1434,6 +1440,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
           saleDeTuBolsillo: base.flujoCajaMensual,
         },
         tramosBarra: { ingreso, costosOperar, cuota: dividendoMensual, exceso, libre },
+        repartoIngreso: repartoIngreso({ ingreso, cuota: dividendoMensual, flujo: base.flujoCajaMensual }),
         dia1: { pieCLP: pie, gastosCompraCLP: gastosCierre, amoblamientoCLP: amoblamientoDia1, capexCLP: capexPuestaAPunto.montoCLP, inversionInicial: capitalInvertido },
       };
     })(),
